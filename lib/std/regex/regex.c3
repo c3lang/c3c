@@ -124,32 +124,32 @@ const RegexFlags FLAG_EXTENDED    = (RegexFlags)16;  // x — free-spacing: igno
 // CharClass — hybrid ASCII bitmask + Unicode codepoint ranges
 // ============================================================
 
-struct UnicodeRange
+struct RegexUnicodeRange
 {
 	Char32 lo;
 	Char32 hi;
 }
 
-typedef UnicodePropMask = uint;
-const UnicodePropMask PROP_NONE        = (UnicodePropMask)0;
-const UnicodePropMask PROP_DIGIT       = (UnicodePropMask)1;
-const UnicodePropMask PROP_WORD        = (UnicodePropMask)2;
-const UnicodePropMask PROP_WHITE_SPACE = (UnicodePropMask)4;
-const UnicodePropMask PROP_HSPACE      = (UnicodePropMask)8;
-const UnicodePropMask PROP_VSPACE      = (UnicodePropMask)16;
-const UnicodePropMask PROP_ASCII       = (UnicodePropMask)32;
+typedef RegexUnicodePropMask = uint;
+const RegexUnicodePropMask PROP_NONE        = (RegexUnicodePropMask)0;
+const RegexUnicodePropMask PROP_DIGIT       = (RegexUnicodePropMask)1;
+const RegexUnicodePropMask PROP_WORD        = (RegexUnicodePropMask)2;
+const RegexUnicodePropMask PROP_WHITE_SPACE = (RegexUnicodePropMask)4;
+const RegexUnicodePropMask PROP_HSPACE      = (RegexUnicodePropMask)8;
+const RegexUnicodePropMask PROP_VSPACE      = (RegexUnicodePropMask)16;
+const RegexUnicodePropMask PROP_ASCII       = (RegexUnicodePropMask)32;
 
-struct CharClass
+struct RegexCharClass
 {
 	AsciiCharset ascii_bits;   // bitmask for codepoints 0–127
-	UnicodeRange* ranges;      // sorted [lo, hi] pairs for codepoints >= 128; not owned
+	RegexUnicodeRange* ranges;      // sorted [lo, hi] pairs for codepoints >= 128; not owned
 	usz ranges_count;
-	UnicodePropMask props;     // union of special predicate-backed classes
-	UnicodePropMask complement_props; // union of predicates whose complements were added inside [...]
+	RegexUnicodePropMask props;     // union of special predicate-backed classes
+	RegexUnicodePropMask complement_props; // union of predicates whose complements were added inside [...]
 	bool negated;
 }
 
-alias TempRangeList = List{UnicodeRange};
+alias RegexTempRangeList = List{RegexUnicodeRange};
 
 // Fold a Unicode codepoint to lowercase for case-insensitive comparison.
 // Covers ASCII, Latin-1 supplement, basic Greek, and basic Cyrillic one-to-one folds.
@@ -238,7 +238,7 @@ fn bool unicode_is_vspace(Char32 c) @local @inline
 	}
 }
 
-fn bool unicode_prop_matches(Char32 c, UnicodePropMask prop) @local @inline
+fn bool unicode_prop_matches(Char32 c, RegexUnicodePropMask prop) @local @inline
 {
 	switch (prop)
 	{
@@ -259,7 +259,7 @@ fn bool unicode_prop_matches(Char32 c, UnicodePropMask prop) @local @inline
 	}
 }
 
-fn bool unicode_props_match_any(Char32 c, UnicodePropMask mask) @local @inline
+fn bool unicode_props_match_any(Char32 c, RegexUnicodePropMask mask) @local @inline
 {
 	if (mask == PROP_NONE) return false;
 	if ((mask & PROP_DIGIT) != PROP_NONE && unicode_prop_matches(c, PROP_DIGIT)) return true;
@@ -271,7 +271,7 @@ fn bool unicode_props_match_any(Char32 c, UnicodePropMask mask) @local @inline
 	return false;
 }
 
-fn bool unicode_props_match_all(Char32 c, UnicodePropMask mask) @local @inline
+fn bool unicode_props_match_all(Char32 c, RegexUnicodePropMask mask) @local @inline
 {
 	if (mask == PROP_NONE) return false;
 	if ((mask & PROP_DIGIT) != PROP_NONE && !unicode_prop_matches(c, PROP_DIGIT)) return false;
@@ -283,7 +283,7 @@ fn bool unicode_props_match_all(Char32 c, UnicodePropMask mask) @local @inline
 	return true;
 }
 
-fn bool CharClass.matches(self, Char32 c, bool icase)
+fn bool RegexCharClass.matches(self, Char32 c, bool icase)
 {
 	bool hit;
 	if (c < 128)
@@ -311,18 +311,18 @@ fn bool CharClass.matches(self, Char32 c, bool icase)
 			while (lo < hi)
 			{
 				usz mid = lo + (hi - lo) / 2;
-				UnicodeRange r = self.ranges[mid];
+				RegexUnicodeRange r = self.ranges[mid];
 				if (cv < r.lo)      { hi = mid; }
 				else if (cv > r.hi) { lo = mid + 1; }
 				else                { hit = true; break; }
 			}
 		}
 	}
-	if (!hit && unicode_props_match_any(c, (UnicodePropMask)self.props))
+	if (!hit && unicode_props_match_any(c, (RegexUnicodePropMask)self.props))
 	{
 		hit = true;
 	}
-	if (self.complement_props != PROP_NONE && !unicode_props_match_all(c, (UnicodePropMask)self.complement_props))
+	if (self.complement_props != PROP_NONE && !unicode_props_match_all(c, (RegexUnicodePropMask)self.complement_props))
 	{
 		hit = true;
 	}
@@ -374,7 +374,7 @@ fn bool is_word_position(String input, usz pos)
 	return pos < input.len && is_word_char(codepoint_at(input, pos));
 }
 
-fn usz? charclass_fixed_width(CharClass cls)
+fn usz? charclass_fixed_width(RegexCharClass cls)
 {
 	if (cls.negated) return INVALID_PATTERN~;
 	if (cls.complement_props != PROP_NONE) return INVALID_PATTERN~;
@@ -388,7 +388,7 @@ fn usz? charclass_fixed_width(CharClass cls)
 	}
 	for (usz i = 0; i < cls.ranges_count; i++)
 	{
-		UnicodeRange r = cls.ranges[i];
+		RegexUnicodeRange r = cls.ranges[i];
 		usz lo_w = utf8_codepoint_width(r.lo);
 		usz hi_w = utf8_codepoint_width(r.hi);
 		if (lo_w != hi_w) return INVALID_PATTERN~;
@@ -396,7 +396,7 @@ fn usz? charclass_fixed_width(CharClass cls)
 		width = lo_w;
 		has_any = true;
 	}
-	UnicodePropMask prop_mask = (UnicodePropMask)cls.props;
+	RegexUnicodePropMask prop_mask = (RegexUnicodePropMask)cls.props;
 	if ((prop_mask & (PROP_WHITE_SPACE | PROP_HSPACE | PROP_VSPACE)) != PROP_NONE) return INVALID_PATTERN~;
 	if ((prop_mask & (PROP_DIGIT | PROP_WORD | PROP_ASCII)) != PROP_NONE)
 	{
@@ -436,25 +436,25 @@ const AsciiCharset CNTRL_SET    = CNTRL_LOW | ((AsciiCharset)1 << 127);
 const AsciiCharset PUNCT_SET    = ascii::@create_set("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~");
 
 // Predefined CharClass constants
-const CharClass CLASS_DIGIT      = { .ascii_bits = ascii::NUMBER_SET,      .props = PROP_DIGIT };
-const CharClass CLASS_DIGIT_INV  = { .ascii_bits = ascii::NUMBER_SET,      .props = PROP_DIGIT,       .negated = true };
-const CharClass CLASS_WORD       = { .ascii_bits = WORD_SET,               .props = PROP_WORD };
-const CharClass CLASS_WORD_INV   = { .ascii_bits = WORD_SET,               .props = PROP_WORD,        .negated = true };
-const CharClass CLASS_SPACE      = { .ascii_bits = ascii::WHITESPACE_SET,  .props = PROP_WHITE_SPACE };
-const CharClass CLASS_SPACE_INV  = { .ascii_bits = ascii::WHITESPACE_SET,  .props = PROP_WHITE_SPACE, .negated = true };
+const RegexCharClass CLASS_DIGIT      = { .ascii_bits = ascii::NUMBER_SET,      .props = PROP_DIGIT };
+const RegexCharClass CLASS_DIGIT_INV  = { .ascii_bits = ascii::NUMBER_SET,      .props = PROP_DIGIT,       .negated = true };
+const RegexCharClass CLASS_WORD       = { .ascii_bits = WORD_SET,               .props = PROP_WORD };
+const RegexCharClass CLASS_WORD_INV   = { .ascii_bits = WORD_SET,               .props = PROP_WORD,        .negated = true };
+const RegexCharClass CLASS_SPACE      = { .ascii_bits = ascii::WHITESPACE_SET,  .props = PROP_WHITE_SPACE };
+const RegexCharClass CLASS_SPACE_INV  = { .ascii_bits = ascii::WHITESPACE_SET,  .props = PROP_WHITE_SPACE, .negated = true };
 // DOT: matches everything except '\n'; compared by ascii_bits value in simulation
-const CharClass CLASS_DOT        = { .ascii_bits = ~((AsciiCharset)1 << '\n') };
+const RegexCharClass CLASS_DOT        = { .ascii_bits = ~((AsciiCharset)1 << '\n') };
 // Horizontal/vertical whitespace classes
-const CharClass CLASS_HSPACE     = { .ascii_bits = HSPACE_SET, .props = PROP_HSPACE };
-const CharClass CLASS_HSPACE_INV = { .ascii_bits = HSPACE_SET, .props = PROP_HSPACE, .negated = true };
-const CharClass CLASS_VSPACE     = { .ascii_bits = VSPACE_SET, .props = PROP_VSPACE };
-const CharClass CLASS_VSPACE_INV = { .ascii_bits = VSPACE_SET, .props = PROP_VSPACE, .negated = true };
+const RegexCharClass CLASS_HSPACE     = { .ascii_bits = HSPACE_SET, .props = PROP_HSPACE };
+const RegexCharClass CLASS_HSPACE_INV = { .ascii_bits = HSPACE_SET, .props = PROP_HSPACE, .negated = true };
+const RegexCharClass CLASS_VSPACE     = { .ascii_bits = VSPACE_SET, .props = PROP_VSPACE };
+const RegexCharClass CLASS_VSPACE_INV = { .ascii_bits = VSPACE_SET, .props = PROP_VSPACE, .negated = true };
 
 // ============================================================
 // AST nodes — temporary; allocated from tmem during compile
 // ============================================================
 
-enum AstKind : char
+enum RegexAstKind : char
 {
 	AST_LITERAL,
 	AST_CHARCLASS,
@@ -487,13 +487,13 @@ enum AstKind : char
 	AST_BRANCH_RESET,           // (?|...) — branch reset group (groups reuse IDs across alts)
 }
 
-struct AstNode
+struct RegexAstNode
 {
-	AstKind kind;
-	AstNode* left;
-	AstNode* right;
+	RegexAstKind kind;
+	RegexAstNode* left;
+	RegexAstNode* right;
 	Char32 codepoint;
-	CharClass char_class;
+	RegexCharClass char_class;
 	int group_id;
 	String group_name;   // slice into pattern; non-owning
 	int repeat_min;
@@ -505,7 +505,7 @@ struct AstNode
 // NFA states
 // ============================================================
 
-enum StateKind : char
+enum RegexStateKind : char
 {
 	STATE_LITERAL,
 	STATE_CHARSET,
@@ -531,16 +531,16 @@ enum StateKind : char
 	STATE_COND_GROUP,      // (?(N)yes|no) — conditional; backref_id=group, lookaround_start=yes, out2=no
 }
 
-struct NfaState
+struct RegexNfaState
 {
-	StateKind kind;
-	NfaState* out1;
-	NfaState* out2;             // SPLIT only
+	RegexStateKind kind;
+	RegexNfaState* out1;
+	RegexNfaState* out2;             // SPLIT only
 	usz index;                  // position in flat states[] array
 	Char32 codepoint;           // STATE_LITERAL
-	CharClass char_class;       // STATE_CHARSET
+	RegexCharClass char_class;       // STATE_CHARSET
 	int group_id;               // CAPTURE_START/END
-	NfaState* lookaround_start;   // lookahead/lookbehind sub-NFA entry
+	RegexNfaState* lookaround_start;   // lookahead/lookbehind sub-NFA entry
 	usz lookbehind_len;           // fixed-width lookbehind byte count
 	bool lookbehind_variable;     // true = variable-width; scan all start positions
 	int backref_id;               // STATE_BACKREF: capture group index (1-based)
@@ -548,19 +548,19 @@ struct NfaState
 }
 
 // Thompson construction fragment: a start state + dangling output pointers
-alias PatchList = List{NfaState**};
+alias RegexPatchList = List{RegexNfaState**};
 
-struct NfaFrag
+struct RegexNfaFrag
 {
-	NfaState* start;
-	PatchList  out;
+	RegexNfaState* start;
+	RegexPatchList out;
 }
 
 // ============================================================
 // Named group entry
 // ============================================================
 
-struct NamedGroupEntry
+struct RegexNamedGroupEntry
 {
 	String name;      // owned by Regex.allocator
 	int group_id;
@@ -573,13 +573,13 @@ struct NamedGroupEntry
 struct Regex
 {
 	Allocator       allocator;
-	NfaState*       states;
+	RegexNfaState*  states;
 	usz             state_count;
 	usz             start_idx;     // index of NFA start state in states[]
 	int             group_count;
-	NamedGroupEntry* named_groups;
+	RegexNamedGroupEntry* named_groups;
 	usz             named_group_count;
-	UnicodeRange*   range_pool;
+	RegexUnicodeRange* range_pool;
 	usz             range_pool_count;
 	RegexFlags      flags;
 	bool            has_backref;   // pattern contains \1-\9; routes to BT engine
@@ -587,7 +587,7 @@ struct Regex
 	bool            has_gpos;      // pattern contains \G; routes to BT engine
 	bool            has_cond;      // pattern contains (?(N)...); routes to BT engine
 	bool            has_start_filter; // first consumed codepoint must match start_filter
-	CharClass       start_filter;
+	RegexCharClass  start_filter;
 	usz             gpos;          // set to start_pos before each BT match attempt (for \G)
 }
 
@@ -757,7 +757,7 @@ fn Regex*? compile(Allocator allocator, String pattern, RegexFlags flags = FLAG_
 
 	@pool()
 	{
-		ParseCtx ctx = {
+		RegexParseCtx ctx = {
 			.pattern = pattern,
 			.pos = 0,
 			.next_group_id = 0,
@@ -765,22 +765,22 @@ fn Regex*? compile(Allocator allocator, String pattern, RegexFlags flags = FLAG_
 			.flags = flags
 		};
 
-		AstNode* ast = parse_expr(&ctx)!;
+		RegexAstNode* ast = parse_expr(&ctx)!;
 		if (ctx.pos != pattern.len) return INVALID_PATTERN~;
 		re.group_count = ctx.next_group_id;
 
-		BuildCtx bctx = { .alloc = allocator };
+		RegexBuildCtx bctx = { .alloc = allocator };
 		bctx.all_states.tinit(64);
 		bctx.range_pool.tinit(16);
 
-		NfaFrag frag = build_nfa(&bctx, ast, flags)!;
+		RegexNfaFrag frag = build_nfa(&bctx, ast, flags)!;
 
-		NfaState* match_s = nfa_new(&bctx, STATE_MATCH);
+		RegexNfaState* match_s = nfa_new(&bctx, STATE_MATCH);
 		frag_patch(&frag, match_s);
 		frag.out.free();
 
 		usz n = bctx.all_states.size;
-		NfaState* state_arr = alloc::new_array(allocator, NfaState, n);
+		RegexNfaState* state_arr = alloc::new_array(allocator, RegexNfaState, n);
 		for (usz i = 0; i < n; i++)
 		{
 			state_arr[i] = *bctx.all_states.entries[i];
@@ -788,7 +788,7 @@ fn Regex*? compile(Allocator allocator, String pattern, RegexFlags flags = FLAG_
 		}
 		for (usz i = 0; i < n; i++)
 		{
-			NfaState* old = bctx.all_states.entries[i];
+			RegexNfaState* old = bctx.all_states.entries[i];
 			if (old.out1 != null) state_arr[i].out1 = &state_arr[old.out1.index];
 			if (old.out2 != null) state_arr[i].out2 = &state_arr[old.out2.index];
 			if (old.lookaround_start != null) state_arr[i].lookaround_start = &state_arr[old.lookaround_start.index];
@@ -809,7 +809,7 @@ fn Regex*? compile(Allocator allocator, String pattern, RegexFlags flags = FLAG_
 		usz pool_size = bctx.range_pool.size;
 		if (pool_size > 0)
 		{
-			UnicodeRange* pool = alloc::new_array(allocator, UnicodeRange, pool_size);
+			RegexUnicodeRange* pool = alloc::new_array(allocator, RegexUnicodeRange, pool_size);
 			for (usz i = 0; i < pool_size; i++) pool[i] = bctx.range_pool.entries[i];
 			re.range_pool = pool;
 			re.range_pool_count = pool_size;
@@ -827,10 +827,10 @@ fn Regex*? compile(Allocator allocator, String pattern, RegexFlags flags = FLAG_
 		usz ng = ctx.named_groups_count;
 		if (ng > 0)
 		{
-			re.named_groups = alloc::new_array(allocator, NamedGroupEntry, ng);
+			re.named_groups = alloc::new_array(allocator, RegexNamedGroupEntry, ng);
 			for (usz i = 0; i < ng; i++)
 			{
-				NamedGroupEntry src = ctx.named_groups_buf[i];
+				RegexNamedGroupEntry src = ctx.named_groups_buf[i];
 				char* nbuf = alloc::new_array(allocator, char, src.name.len);
 				mem::copy(nbuf, src.name.ptr, src.name.len);
 				re.named_groups[i] = { .name = (String)nbuf[:src.name.len], .group_id = src.group_id };
@@ -1128,21 +1128,21 @@ fn String? Regex.replace_all(&self, Allocator allocator, String input, String re
 // Parse / build contexts
 // ============================================================
 
-struct ParseCtx
+struct RegexParseCtx
 {
 	String    pattern;
 	usz       pos;
 	int       next_group_id;
 	Allocator regex_alloc;
 	RegexFlags flags;
-	NamedGroupEntry* named_groups_buf;
+	RegexNamedGroupEntry* named_groups_buf;
 	usz named_groups_count;
 	usz named_groups_cap;
 }
 
-struct BuildCtx
+struct RegexBuildCtx
 {
 	Allocator alloc;
-	List{NfaState*} all_states;
-	List{UnicodeRange} range_pool;
+	List{RegexNfaState*} all_states;
+	List{RegexUnicodeRange} range_pool;
 }

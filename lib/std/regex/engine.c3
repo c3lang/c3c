@@ -6,14 +6,14 @@ import std::collections::list;
 // Thompson NFA simulation
 // ============================================================
 
-struct Thread
+struct RegexThread @local
 {
-	NfaState* state;
+	RegexNfaState* state;
 	MatchGroup* captures;
 	bool greedy;
 }
 
-alias ThreadList = List{Thread};
+alias RegexThreadList = List{RegexThread};
 
 fn bool is_word_char(Char32 c)
 {
@@ -25,8 +25,8 @@ fn bool is_word_char(Char32 c)
 }
 
 fn void add_thread(
-	ThreadList* list,
-	NfaState* state,
+	RegexThreadList* list,
+	RegexNfaState* state,
 	MatchGroup* caps,
 	usz* gen,
 	usz cur_gen,
@@ -152,29 +152,29 @@ fn void add_thread(
 	}
 }
 
-struct BacktrackChoice
+struct RegexBacktrackChoice @local
 {
-	NfaState* state;
+	RegexNfaState* state;
 	usz pos;
 	MatchGroup* captures;
 }
 
-alias BacktrackChoiceList = List{BacktrackChoice};
+alias RegexBacktrackChoiceList = List{RegexBacktrackChoice};
 
-struct BacktrackFrame
+struct RegexBacktrackFrame @local
 {
-	NfaState* state;
+	RegexNfaState* state;
 	usz pos;
 	MatchGroup* captures;
-	BacktrackChoiceList choices;
+	RegexBacktrackChoiceList choices;
 	bool exact_end;
 	usz end_pos;
-	BacktrackFrame* parent;
+	RegexBacktrackFrame* parent;
 	MatchGroup* parent_captures;
-	NfaState* resume_state;
+	RegexNfaState* resume_state;
 }
 
-alias BacktrackFrameList = List{BacktrackFrame*};
+alias RegexBacktrackFrameList = List{RegexBacktrackFrame*};
 
 fn MatchGroup* clone_match_groups(MatchGroup* caps, int n_groups) @local
 {
@@ -183,7 +183,7 @@ fn MatchGroup* clone_match_groups(MatchGroup* caps, int n_groups) @local
 	return clone;
 }
 
-fn void push_backtrack_choice(BacktrackChoiceList* choices, NfaState* state, usz pos, MatchGroup* caps, int n_groups) @local
+fn void push_backtrack_choice(RegexBacktrackChoiceList* choices, RegexNfaState* state, usz pos, MatchGroup* caps, int n_groups) @local
 {
 	if (state == null) return;
 	choices.push({
@@ -193,18 +193,18 @@ fn void push_backtrack_choice(BacktrackChoiceList* choices, NfaState* state, usz
 	});
 }
 
-fn BacktrackFrame* create_backtrack_frame(
-	NfaState* state,
+fn RegexBacktrackFrame* create_backtrack_frame(
+	RegexNfaState* state,
 	usz pos,
 	MatchGroup* caps,
 	bool exact_end,
 	usz end_pos,
-	BacktrackFrame* parent = null,
+	RegexBacktrackFrame* parent = null,
 	MatchGroup* parent_captures = null,
-	NfaState* resume_state = null
+	RegexNfaState* resume_state = null
 ) @local
 {
-	BacktrackFrame* frame = mem::tnew(BacktrackFrame);
+	RegexBacktrackFrame* frame = mem::tnew(RegexBacktrackFrame);
 	*frame = {
 		.state = state,
 		.pos = pos,
@@ -219,17 +219,17 @@ fn BacktrackFrame* create_backtrack_frame(
 	return frame;
 }
 
-fn usz? backtrack_execute(NfaState* state, String input, usz pos, Regex* re, MatchGroup* caps, int n_groups, bool exact_end, usz end_pos, MatchGroup** final_caps) @local
+fn usz? backtrack_execute(RegexNfaState* state, String input, usz pos, Regex* re, MatchGroup* caps, int n_groups, bool exact_end, usz end_pos, MatchGroup** final_caps) @local
 {
 	if (state == null) return NO_MATCH~;
 
-	BacktrackFrameList frames;
+	RegexBacktrackFrameList frames;
 	frames.tinit(8);
 	frames.push(create_backtrack_frame(state, pos, caps, exact_end, end_pos));
 
 	while FRAME_LOOP: (!frames.is_empty())
 	{
-		BacktrackFrame* frame = frames[frames.size - 1];
+		RegexBacktrackFrame* frame = frames[frames.size - 1];
 		while EXECUTE_PATH: (frame.state != null)
 		{
 			switch (frame.state.kind)
@@ -243,7 +243,7 @@ fn usz? backtrack_execute(NfaState* state, String input, usz pos, Regex* re, Mat
 							return frame.pos;
 						}
 						mem::copy(frame.parent_captures, frame.captures, (usz)n_groups * MatchGroup.sizeof);
-						BacktrackFrame* parent = frame.parent;
+						RegexBacktrackFrame* parent = frame.parent;
 						parent.pos = frame.pos;
 						parent.state = frame.resume_state;
 						frames.pop()!!;
@@ -284,8 +284,8 @@ fn usz? backtrack_execute(NfaState* state, String input, usz pos, Regex* re, Mat
 					frame.state = frame.state.out1;
 					continue;
 				case STATE_SPLIT:
-					NfaState* first = frame.state.lazy ? frame.state.out2 : frame.state.out1;
-					NfaState* second = frame.state.lazy ? frame.state.out1 : frame.state.out2;
+					RegexNfaState* first = frame.state.lazy ? frame.state.out2 : frame.state.out1;
+					RegexNfaState* second = frame.state.lazy ? frame.state.out1 : frame.state.out2;
 					push_backtrack_choice(&frame.choices, second, frame.pos, frame.captures, n_groups);
 					frame.state = first;
 					continue;
@@ -428,7 +428,7 @@ fn usz? backtrack_execute(NfaState* state, String input, usz pos, Regex* re, Mat
 				case STATE_COND_GROUP:
 					bool cond_ok = (frame.state.backref_id > 0 && frame.state.backref_id < n_groups)
 						&& frame.captures[frame.state.backref_id].matched;
-					NfaState* cond_branch = cond_ok ? frame.state.lookaround_start : frame.state.out2;
+					RegexNfaState* cond_branch = cond_ok ? frame.state.lookaround_start : frame.state.out2;
 					MatchGroup* cond_caps = clone_match_groups(frame.captures, n_groups);
 					frames.push(create_backtrack_frame(
 						cond_branch,
@@ -445,7 +445,7 @@ fn usz? backtrack_execute(NfaState* state, String input, usz pos, Regex* re, Mat
 					break EXECUTE_PATH;
 			}
 		}
-		BacktrackChoice? choice = frame.choices.pop();
+		RegexBacktrackChoice? choice = frame.choices.pop();
 		if (try choice)
 		{
 			frame.state = choice.state;
@@ -454,14 +454,14 @@ fn usz? backtrack_execute(NfaState* state, String input, usz pos, Regex* re, Mat
 			continue;
 		}
 		if (frame.parent == null) return NO_MATCH~;
-		BacktrackFrame* parent = frame.parent;
+		RegexBacktrackFrame* parent = frame.parent;
 		frames.pop()!!;
 		parent.state = null;
 	}
 	return NO_MATCH~;
 }
 
-fn bool backtrack_match(NfaState* state, String input, usz pos, Regex* re)
+fn bool backtrack_match(RegexNfaState* state, String input, usz pos, Regex* re)
 {
 	if (state == null) return false;
 	int n_groups = re.group_count + 1;
@@ -474,7 +474,7 @@ fn bool backtrack_match(NfaState* state, String input, usz pos, Regex* re)
 	};
 }
 
-fn bool backtrack_match_at_end(NfaState* state, String input, usz pos, usz end_pos, Regex* re)
+fn bool backtrack_match_at_end(RegexNfaState* state, String input, usz pos, usz end_pos, Regex* re)
 {
 	if (state == null) return false;
 	int n_groups = re.group_count + 1;
@@ -487,7 +487,7 @@ fn bool backtrack_match_at_end(NfaState* state, String input, usz pos, usz end_p
 	};
 }
 
-fn bool variable_lookbehind_has_match(NfaState* state, String input, usz pos, Regex* re) @local
+fn bool variable_lookbehind_has_match(RegexNfaState* state, String input, usz pos, Regex* re) @local
 {
 	for (usz ls = 0; ls < pos; ls = next_utf8_codepoint_start(input, ls, pos))
 	{
@@ -496,7 +496,7 @@ fn bool variable_lookbehind_has_match(NfaState* state, String input, usz pos, Re
 	return false;
 }
 
-fn usz? backtrack_full_exact(NfaState* state, String input, usz pos, usz end_pos, Regex* re, MatchGroup* caps, int n_groups)
+fn usz? backtrack_full_exact(RegexNfaState* state, String input, usz pos, usz end_pos, Regex* re, MatchGroup* caps, int n_groups)
 {
 	MatchGroup* final_caps = caps;
 	usz? result = backtrack_execute(state, input, pos, re, caps, n_groups, true, end_pos, &final_caps);
@@ -507,7 +507,7 @@ fn usz? backtrack_full_exact(NfaState* state, String input, usz pos, usz end_pos
 	return result;
 }
 
-fn usz? backtrack_full(NfaState* state, String input, usz pos, Regex* re, MatchGroup* caps, int n_groups)
+fn usz? backtrack_full(RegexNfaState* state, String input, usz pos, Regex* re, MatchGroup* caps, int n_groups)
 {
 	MatchGroup* final_caps = caps;
 	usz? result = backtrack_execute(state, input, pos, re, caps, n_groups, false, 0, &final_caps);
@@ -547,22 +547,22 @@ fn Match? try_match_at_bt(Regex* re, String input, usz start_pos, Allocator resu
 	};
 }
 
-fn void charclass_merge_ranges(CharClass* dst, TempRangeList* unicode, CharClass src) @local
+fn void charclass_merge_ranges(RegexCharClass* dst, RegexTempRangeList* unicode, RegexCharClass src) @local
 {
 	dst.ascii_bits |= src.ascii_bits;
 	dst.props |= src.props;
 	for (usz i = 0; i < src.ranges_count; i++)
 	{
-		UnicodeRange r = src.ranges[i];
+		RegexUnicodeRange r = src.ranges[i];
 		charclass_add_range(dst, unicode, r.lo, r.hi);
 	}
 }
 
 fn void collect_start_filter(
-	NfaState* state,
+	RegexNfaState* state,
 	bool* visited,
-	CharClass* filter,
-	TempRangeList* unicode,
+	RegexCharClass* filter,
+	RegexTempRangeList* unicode,
 	bool* supported,
 	bool* reaches_match
 ) @local
@@ -619,8 +619,8 @@ fn void Regex.compute_start_filter(&self)
 	{
 		bool* visited = alloc::new_array(tmem, bool, self.state_count);
 		mem::set(visited, 0, self.state_count * bool.sizeof);
-		CharClass filter = {};
-		TempRangeList unicode;
+		RegexCharClass filter = {};
+		RegexTempRangeList unicode;
 		unicode.tinit(4);
 		defer unicode.free();
 		bool supported = true;
@@ -631,8 +631,8 @@ fn void Regex.compute_start_filter(&self)
 		self.start_filter = filter;
 		if (unicode.size > 0)
 		{
-			self.start_filter.ranges = alloc::new_array(self.allocator, UnicodeRange, unicode.size);
-			mem::copy(self.start_filter.ranges, unicode.entries, unicode.size * UnicodeRange.sizeof);
+			self.start_filter.ranges = alloc::new_array(self.allocator, RegexUnicodeRange, unicode.size);
+			mem::copy(self.start_filter.ranges, unicode.entries, unicode.size * RegexUnicodeRange.sizeof);
 			self.start_filter.ranges_count = unicode.size;
 		}
 		self.has_start_filter = true;
@@ -651,8 +651,8 @@ fn Match? try_match_at(Regex* re, String input, usz start_pos, Allocator result_
 		usz* gen = alloc::new_array(tmem, usz, n_states);
 		mem::set(gen, 0, n_states * usz.sizeof);
 
-		ThreadList current; current.tinit(32);
-		ThreadList next_t; next_t.tinit(32);
+		RegexThreadList current; current.tinit(32);
+		RegexThreadList next_t; next_t.tinit(32);
 
 		usz cur_gen = 1;
 		MatchGroup* best = null;
@@ -694,7 +694,7 @@ fn Match? try_match_at(Regex* re, String input, usz start_pos, Allocator result_
 
 			foreach (t : current.array_view())
 			{
-				NfaState* s = t.state;
+				RegexNfaState* s = t.state;
 				bool matched_char = false;
 				switch (s.kind)
 				{
@@ -730,7 +730,7 @@ fn Match? try_match_at(Regex* re, String input, usz start_pos, Allocator result_
 			prev_char = cp;
 			is_start = false;
 
-			ThreadList tmp = current;
+			RegexThreadList tmp = current;
 			current = next_t;
 			next_t = tmp;
 			next_t.clear();

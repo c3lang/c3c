@@ -4,73 +4,73 @@ module std::regex;
 // NFA construction — Thompson fragment model
 // ============================================================
 
-fn NfaState* nfa_new(BuildCtx* bctx, StateKind kind)
+fn RegexNfaState* nfa_new(RegexBuildCtx* bctx, RegexStateKind kind)
 {
-	NfaState* s = alloc::new(bctx.alloc, NfaState);
+	RegexNfaState* s = alloc::new(bctx.alloc, RegexNfaState);
 	s.kind = kind;
 	s.index = bctx.all_states.size;
 	bctx.all_states.push(s);
 	return s;
 }
 
-fn NfaFrag frag_make(NfaState* start)
+fn RegexNfaFrag frag_make(RegexNfaState* start)
 {
-	NfaFrag f;
+	RegexNfaFrag f;
 	f.start = start;
 	f.out.tinit(4);
 	return f;
 }
 
-fn NfaFrag frag_literal(BuildCtx* bctx, Char32 c)
+fn RegexNfaFrag frag_literal(RegexBuildCtx* bctx, Char32 c)
 {
-	NfaState* s = nfa_new(bctx, STATE_LITERAL);
+	RegexNfaState* s = nfa_new(bctx, STATE_LITERAL);
 	s.codepoint = c;
-	NfaFrag f = frag_make(s);
+	RegexNfaFrag f = frag_make(s);
 	f.out.push(&s.out1);
 	return f;
 }
 
-fn NfaFrag frag_charset(BuildCtx* bctx, CharClass cls)
+fn RegexNfaFrag frag_charset(RegexBuildCtx* bctx, RegexCharClass cls)
 {
-	NfaState* s = nfa_new(bctx, STATE_CHARSET);
+	RegexNfaState* s = nfa_new(bctx, STATE_CHARSET);
 	if (cls.ranges_count > 0)
 	{
 		usz pool_offset = bctx.range_pool.size;
 		for (usz i = 0; i < cls.ranges_count; i++) bctx.range_pool.push(cls.ranges[i]);
 		s.char_class = cls;
-		s.char_class.ranges = (UnicodeRange*)(uptr)pool_offset;
+		s.char_class.ranges = (RegexUnicodeRange*)(uptr)pool_offset;
 	}
 	else
 	{
 		s.char_class = cls;
 		s.char_class.ranges = null;
 	}
-	NfaFrag f = frag_make(s);
+	RegexNfaFrag f = frag_make(s);
 	f.out.push(&s.out1);
 	return f;
 }
 
-fn void frag_patch(NfaFrag* f, NfaState* target)
+fn void frag_patch(RegexNfaFrag* f, RegexNfaState* target)
 {
 	foreach (pp : f.out.array_view()) *pp = target;
 }
 
-fn NfaFrag frag_concat(NfaFrag e1, NfaFrag e2)
+fn RegexNfaFrag frag_concat(RegexNfaFrag e1, RegexNfaFrag e2)
 {
 	frag_patch(&e1, e2.start);
 	e1.out.free();
-	NfaFrag result;
+	RegexNfaFrag result;
 	result.start = e1.start;
 	result.out = e2.out;
 	return result;
 }
 
-fn NfaFrag frag_alt(BuildCtx* bctx, NfaFrag e1, NfaFrag e2)
+fn RegexNfaFrag frag_alt(RegexBuildCtx* bctx, RegexNfaFrag e1, RegexNfaFrag e2)
 {
-	NfaState* split = nfa_new(bctx, STATE_SPLIT);
+	RegexNfaState* split = nfa_new(bctx, STATE_SPLIT);
 	split.out1 = e1.start;
 	split.out2 = e2.start;
-	NfaFrag result;
+	RegexNfaFrag result;
 	result.start = split;
 	result.out.tinit(e1.out.size + e2.out.size);
 	foreach (pp : e1.out.array_view()) result.out.push(pp);
@@ -80,13 +80,13 @@ fn NfaFrag frag_alt(BuildCtx* bctx, NfaFrag e1, NfaFrag e2)
 	return result;
 }
 
-fn NfaFrag frag_star(BuildCtx* bctx, NfaFrag e, bool lazy)
+fn RegexNfaFrag frag_star(RegexBuildCtx* bctx, RegexNfaFrag e, bool lazy)
 {
-	NfaState* split = nfa_new(bctx, STATE_SPLIT);
+	RegexNfaState* split = nfa_new(bctx, STATE_SPLIT);
 	split.lazy = lazy;
 	frag_patch(&e, split);
 	e.out.free();
-	NfaFrag result;
+	RegexNfaFrag result;
 	result.start = split;
 	result.out.tinit(2);
 	if (lazy)
@@ -102,12 +102,12 @@ fn NfaFrag frag_star(BuildCtx* bctx, NfaFrag e, bool lazy)
 	return result;
 }
 
-fn NfaFrag frag_plus(BuildCtx* bctx, NfaFrag e, bool lazy)
+fn RegexNfaFrag frag_plus(RegexBuildCtx* bctx, RegexNfaFrag e, bool lazy)
 {
-	NfaState* split = nfa_new(bctx, STATE_SPLIT);
+	RegexNfaState* split = nfa_new(bctx, STATE_SPLIT);
 	split.lazy = lazy;
 	frag_patch(&e, split);
-	NfaFrag result;
+	RegexNfaFrag result;
 	result.start = e.start;
 	e.out.free();
 	result.out.tinit(2);
@@ -124,11 +124,11 @@ fn NfaFrag frag_plus(BuildCtx* bctx, NfaFrag e, bool lazy)
 	return result;
 }
 
-fn NfaFrag frag_quest(BuildCtx* bctx, NfaFrag e, bool lazy)
+fn RegexNfaFrag frag_quest(RegexBuildCtx* bctx, RegexNfaFrag e, bool lazy)
 {
-	NfaState* split = nfa_new(bctx, STATE_SPLIT);
+	RegexNfaState* split = nfa_new(bctx, STATE_SPLIT);
 	split.lazy = lazy;
-	NfaFrag result;
+	RegexNfaFrag result;
 	result.start = split;
 	result.out.tinit(e.out.size + 1);
 	if (lazy)
@@ -148,16 +148,16 @@ fn NfaFrag frag_quest(BuildCtx* bctx, NfaFrag e, bool lazy)
 
 // Epsilon fragment: a SPLIT state with one dangling out (out1) and null out2.
 // Use instead of STATE_MATCH for transparent pass-through nodes (empty groups, comments).
-fn NfaFrag frag_epsilon(BuildCtx* bctx)
+fn RegexNfaFrag frag_epsilon(RegexBuildCtx* bctx)
 {
-	NfaState* s = nfa_new(bctx, STATE_SPLIT);
-	NfaFrag f = frag_make(s);
+	RegexNfaState* s = nfa_new(bctx, STATE_SPLIT);
+	RegexNfaFrag f = frag_make(s);
 	f.out.tinit(1);
 	f.out.push(&s.out1);
 	return f;
 }
 
-fn usz? ast_fixed_width(AstNode* node)
+fn usz? ast_fixed_width(RegexAstNode* node)
 {
 	if (node == null) return 0;
 	switch (node.kind)
@@ -220,7 +220,7 @@ fn usz? ast_fixed_width(AstNode* node)
 	}
 }
 
-fn NfaFrag? build_nfa(BuildCtx* bctx, AstNode* node, RegexFlags flags)
+fn RegexNfaFrag? build_nfa(RegexBuildCtx* bctx, RegexAstNode* node, RegexFlags flags)
 {
 	if (node == null) return frag_epsilon(bctx);
 
@@ -234,7 +234,7 @@ fn NfaFrag? build_nfa(BuildCtx* bctx, AstNode* node, RegexFlags flags)
 				&& node.char_class.ranges_count == 0
 				&& !node.char_class.negated)
 			{
-				CharClass all = { .ascii_bits = ~(AsciiCharset)0 };
+				RegexCharClass all = { .ascii_bits = ~(AsciiCharset)0 };
 				return frag_charset(bctx, all);
 			}
 			return frag_charset(bctx, node.char_class);
@@ -243,21 +243,21 @@ fn NfaFrag? build_nfa(BuildCtx* bctx, AstNode* node, RegexFlags flags)
 			{
 				return frag_epsilon(bctx);
 			}
-			NfaFrag cl = build_nfa(bctx, node.left, flags)!;
-			NfaFrag cr = build_nfa(bctx, node.right, flags)!;
+			RegexNfaFrag cl = build_nfa(bctx, node.left, flags)!;
+			RegexNfaFrag cr = build_nfa(bctx, node.right, flags)!;
 			return frag_concat(cl, cr);
 		case AST_ALT:
-			NfaFrag al = build_nfa(bctx, node.left, flags)!;
-			NfaFrag ar = build_nfa(bctx, node.right, flags)!;
+			RegexNfaFrag al = build_nfa(bctx, node.left, flags)!;
+			RegexNfaFrag ar = build_nfa(bctx, node.right, flags)!;
 			return frag_alt(bctx, al, ar);
 		case AST_STAR:
-			NfaFrag se = build_nfa(bctx, node.left, flags)!;
+			RegexNfaFrag se = build_nfa(bctx, node.left, flags)!;
 			return frag_star(bctx, se, node.lazy);
 		case AST_PLUS:
-			NfaFrag pe = build_nfa(bctx, node.left, flags)!;
+			RegexNfaFrag pe = build_nfa(bctx, node.left, flags)!;
 			return frag_plus(bctx, pe, node.lazy);
 		case AST_QUEST:
-			NfaFrag qe = build_nfa(bctx, node.left, flags)!;
+			RegexNfaFrag qe = build_nfa(bctx, node.left, flags)!;
 			return frag_quest(bctx, qe, node.lazy);
 		case AST_REPEAT:
 			int min_v = node.repeat_min;
@@ -268,17 +268,17 @@ fn NfaFrag? build_nfa(BuildCtx* bctx, AstNode* node, RegexFlags flags)
 			{
 				return frag_epsilon(bctx);
 			}
-			NfaFrag rep_result;
+			RegexNfaFrag rep_result;
 			bool rep_first = true;
 			for (int i = 0; i < min_v; i++)
 			{
-				NfaFrag copy = build_nfa(bctx, node.left, flags)!;
+				RegexNfaFrag copy = build_nfa(bctx, node.left, flags)!;
 				if (rep_first) { rep_result = copy; rep_first = false; }
 				else { rep_result = frag_concat(rep_result, copy); }
 			}
 			if (max_v == -1)
 			{
-				NfaFrag tail = build_nfa(bctx, node.left, flags)!;
+				RegexNfaFrag tail = build_nfa(bctx, node.left, flags)!;
 				tail = frag_star(bctx, tail, node.lazy);
 				if (rep_first) { rep_result = tail; }
 				else { rep_result = frag_concat(rep_result, tail); }
@@ -287,7 +287,7 @@ fn NfaFrag? build_nfa(BuildCtx* bctx, AstNode* node, RegexFlags flags)
 			{
 				for (int i = min_v; i < max_v; i++)
 				{
-					NfaFrag opt = build_nfa(bctx, node.left, flags)!;
+					RegexNfaFrag opt = build_nfa(bctx, node.left, flags)!;
 					opt = frag_quest(bctx, opt, node.lazy);
 					if (rep_first) { rep_result = opt; rep_first = false; }
 					else { rep_result = frag_concat(rep_result, opt); }
@@ -295,21 +295,21 @@ fn NfaFrag? build_nfa(BuildCtx* bctx, AstNode* node, RegexFlags flags)
 			}
 			if (rep_first)
 			{
-				NfaFrag base0 = build_nfa(bctx, node.left, flags)!;
+				RegexNfaFrag base0 = build_nfa(bctx, node.left, flags)!;
 				rep_result = frag_quest(bctx, base0, node.lazy);
 			}
 			return rep_result;
 		case AST_GROUP:
 			int gid = node.group_id;
-			NfaState* cs = nfa_new(bctx, STATE_CAPTURE_START);
+			RegexNfaState* cs = nfa_new(bctx, STATE_CAPTURE_START);
 			cs.group_id = gid;
-			NfaFrag gi = build_nfa(bctx, node.left, flags)!;
-			NfaState* ce = nfa_new(bctx, STATE_CAPTURE_END);
+			RegexNfaFrag gi = build_nfa(bctx, node.left, flags)!;
+			RegexNfaState* ce = nfa_new(bctx, STATE_CAPTURE_END);
 			ce.group_id = gid;
-			NfaFrag csf = frag_make(cs);
+			RegexNfaFrag csf = frag_make(cs);
 			csf.out.tinit(1);
 			csf.out.push(&cs.out1);
-			NfaFrag cef = frag_make(ce);
+			RegexNfaFrag cef = frag_make(ce);
 			cef.out.tinit(1);
 			cef.out.push(&ce.out1);
 			return frag_concat(frag_concat(csf, gi), cef);
@@ -320,11 +320,11 @@ fn NfaFrag? build_nfa(BuildCtx* bctx, AstNode* node, RegexFlags flags)
 		case AST_LOOKAHEAD_NEG:
 		case AST_LOOKBEHIND_POS:
 		case AST_LOOKBEHIND_NEG:
-			NfaFrag la_f = build_nfa(bctx, node.left, flags)!;
-			NfaState* la_match = nfa_new(bctx, STATE_MATCH);
+			RegexNfaFrag la_f = build_nfa(bctx, node.left, flags)!;
+			RegexNfaState* la_match = nfa_new(bctx, STATE_MATCH);
 			frag_patch(&la_f, la_match);
 			la_f.out.free();
-			StateKind la_kind;
+			RegexStateKind la_kind;
 			switch (node.kind)
 			{
 				case AST_LOOKAHEAD_POS: la_kind = STATE_LOOKAHEAD_POS;
@@ -333,7 +333,7 @@ fn NfaFrag? build_nfa(BuildCtx* bctx, AstNode* node, RegexFlags flags)
 				case AST_LOOKBEHIND_NEG: la_kind = STATE_LOOKBEHIND_NEG;
 				default: unreachable();
 			}
-			NfaState* la_s = nfa_new(bctx, la_kind);
+			RegexNfaState* la_s = nfa_new(bctx, la_kind);
 			la_s.lookaround_start = la_f.start;
 			if (node.kind == AST_LOOKBEHIND_POS || node.kind == AST_LOOKBEHIND_NEG)
 			{
@@ -349,106 +349,106 @@ fn NfaFrag? build_nfa(BuildCtx* bctx, AstNode* node, RegexFlags flags)
 					la_s.lookbehind_variable = true;
 				}
 			}
-			NfaFrag la_res = frag_make(la_s);
+			RegexNfaFrag la_res = frag_make(la_s);
 			la_res.out.tinit(1);
 			la_res.out.push(&la_s.out1);
 			return la_res;
 		case AST_ANCHOR_START:
-			NfaState* anc_s = nfa_new(bctx, STATE_ANCHOR_START);
-			NfaFrag asf = frag_make(anc_s);
+			RegexNfaState* anc_s = nfa_new(bctx, STATE_ANCHOR_START);
+			RegexNfaFrag asf = frag_make(anc_s);
 			asf.out.tinit(1); asf.out.push(&anc_s.out1);
 			return asf;
 		case AST_ANCHOR_END:
-			NfaState* anc_e = nfa_new(bctx, STATE_ANCHOR_END);
-			NfaFrag aef = frag_make(anc_e);
+			RegexNfaState* anc_e = nfa_new(bctx, STATE_ANCHOR_END);
+			RegexNfaFrag aef = frag_make(anc_e);
 			aef.out.tinit(1); aef.out.push(&anc_e.out1);
 			return aef;
 		case AST_ANCHOR_ABSOLUTE_START:
-			NfaState* abs_s = nfa_new(bctx, STATE_ANCHOR_ABSOLUTE_START);
-			NfaFrag absf = frag_make(abs_s);
+			RegexNfaState* abs_s = nfa_new(bctx, STATE_ANCHOR_ABSOLUTE_START);
+			RegexNfaFrag absf = frag_make(abs_s);
 			absf.out.tinit(1); absf.out.push(&abs_s.out1);
 			return absf;
 		case AST_ANCHOR_ABSOLUTE_END:
-			NfaState* abs_e = nfa_new(bctx, STATE_ANCHOR_ABSOLUTE_END);
-			NfaFrag abef = frag_make(abs_e);
+			RegexNfaState* abs_e = nfa_new(bctx, STATE_ANCHOR_ABSOLUTE_END);
+			RegexNfaFrag abef = frag_make(abs_e);
 			abef.out.tinit(1); abef.out.push(&abs_e.out1);
 			return abef;
 		case AST_ANCHOR_ABSOLUTE_END_NL:
-			NfaState* abs_enl = nfa_new(bctx, STATE_ANCHOR_ABSOLUTE_END_NL);
-			NfaFrag abenlf = frag_make(abs_enl);
+			RegexNfaState* abs_enl = nfa_new(bctx, STATE_ANCHOR_ABSOLUTE_END_NL);
+			RegexNfaFrag abenlf = frag_make(abs_enl);
 			abenlf.out.tinit(1); abenlf.out.push(&abs_enl.out1);
 			return abenlf;
 		case AST_WORD_BOUND:
-			NfaState* wb = nfa_new(bctx, STATE_WORD_BOUND);
-			NfaFrag wbf = frag_make(wb);
+			RegexNfaState* wb = nfa_new(bctx, STATE_WORD_BOUND);
+			RegexNfaFrag wbf = frag_make(wb);
 			wbf.out.tinit(1); wbf.out.push(&wb.out1);
 			return wbf;
 		case AST_WORD_NBOUND:
-			NfaState* wn = nfa_new(bctx, STATE_WORD_NBOUND);
-			NfaFrag wnf = frag_make(wn);
+			RegexNfaState* wn = nfa_new(bctx, STATE_WORD_NBOUND);
+			RegexNfaFrag wnf = frag_make(wn);
 			wnf.out.tinit(1); wnf.out.push(&wn.out1);
 			return wnf;
 		case AST_LINEBREAK:
 			return COMPILE_ERROR~;
 		case AST_KEEP:
-			NfaState* ks = nfa_new(bctx, STATE_KEEP);
-			NfaFrag kf = frag_make(ks);
+			RegexNfaState* ks = nfa_new(bctx, STATE_KEEP);
+			RegexNfaFrag kf = frag_make(ks);
 			kf.out.tinit(1); kf.out.push(&ks.out1);
 			return kf;
 		case AST_NON_NEWLINE:
 			return frag_charset(bctx, CLASS_DOT);
 		case AST_BACKREF:
-			NfaState* brs = nfa_new(bctx, STATE_BACKREF);
+			RegexNfaState* brs = nfa_new(bctx, STATE_BACKREF);
 			brs.backref_id = node.group_id;
-			NfaFrag brf = frag_make(brs);
+			RegexNfaFrag brf = frag_make(brs);
 			brf.out.tinit(1); brf.out.push(&brs.out1);
 			return brf;
 		case AST_ATOMIC:
-			NfaFrag atm_f = build_nfa(bctx, node.left, flags)!;
-			NfaState* atm_match = nfa_new(bctx, STATE_MATCH);
+			RegexNfaFrag atm_f = build_nfa(bctx, node.left, flags)!;
+			RegexNfaState* atm_match = nfa_new(bctx, STATE_MATCH);
 			frag_patch(&atm_f, atm_match);
 			atm_f.out.free();
-			NfaState* atm_s = nfa_new(bctx, STATE_ATOMIC);
+			RegexNfaState* atm_s = nfa_new(bctx, STATE_ATOMIC);
 			atm_s.lookaround_start = atm_f.start;
-			NfaFrag atm_res = frag_make(atm_s);
+			RegexNfaFrag atm_res = frag_make(atm_s);
 			atm_res.out.tinit(1); atm_res.out.push(&atm_s.out1);
 			return atm_res;
 		case AST_ANCHOR_GPOS:
-			NfaState* gpos_s = nfa_new(bctx, STATE_ANCHOR_GPOS);
-			NfaFrag gposf = frag_make(gpos_s);
+			RegexNfaState* gpos_s = nfa_new(bctx, STATE_ANCHOR_GPOS);
+			RegexNfaFrag gposf = frag_make(gpos_s);
 			gposf.out.tinit(1); gposf.out.push(&gpos_s.out1);
 			return gposf;
 		case AST_BRANCH_RESET:
 			if (node.left == null) return frag_epsilon(bctx);
 			return build_nfa(bctx, node.left, flags);
 		case AST_COND_GROUP:
-			NfaFrag cond_yes_f = build_nfa(bctx, node.left, flags)!;
-			NfaState* cond_yes_m = nfa_new(bctx, STATE_MATCH);
+			RegexNfaFrag cond_yes_f = build_nfa(bctx, node.left, flags)!;
+			RegexNfaState* cond_yes_m = nfa_new(bctx, STATE_MATCH);
 			frag_patch(&cond_yes_f, cond_yes_m);
 			cond_yes_f.out.free();
 
-			NfaState* cond_no_entry;
+			RegexNfaState* cond_no_entry;
 			if (node.right != null)
 			{
-				NfaFrag cond_no_f = build_nfa(bctx, node.right, flags)!;
-				NfaState* cond_no_m = nfa_new(bctx, STATE_MATCH);
+				RegexNfaFrag cond_no_f = build_nfa(bctx, node.right, flags)!;
+				RegexNfaState* cond_no_m = nfa_new(bctx, STATE_MATCH);
 				frag_patch(&cond_no_f, cond_no_m);
 				cond_no_f.out.free();
 				cond_no_entry = cond_no_f.start;
 			}
 			else
 			{
-				NfaFrag cond_eps = frag_epsilon(bctx);
-				NfaState* cond_eps_m = nfa_new(bctx, STATE_MATCH);
+				RegexNfaFrag cond_eps = frag_epsilon(bctx);
+				RegexNfaState* cond_eps_m = nfa_new(bctx, STATE_MATCH);
 				frag_patch(&cond_eps, cond_eps_m);
 				cond_eps.out.free();
 				cond_no_entry = cond_eps.start;
 			}
-			NfaState* cond_s = nfa_new(bctx, STATE_COND_GROUP);
+			RegexNfaState* cond_s = nfa_new(bctx, STATE_COND_GROUP);
 			cond_s.backref_id = node.group_id;
 			cond_s.lookaround_start = cond_yes_f.start;
 			cond_s.out2 = cond_no_entry;
-			NfaFrag cond_res = frag_make(cond_s);
+			RegexNfaFrag cond_res = frag_make(cond_s);
 			cond_res.out.tinit(1); cond_res.out.push(&cond_s.out1);
 			return cond_res;
 	}

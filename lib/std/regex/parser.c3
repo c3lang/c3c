@@ -2,33 +2,34 @@ module std::regex;
 import std::core::string::conv;
 import std::core::string::iterator;
 import std::core::ascii;
+import std::collections::list;
 
 // ============================================================
 // Parser helpers
 // ============================================================
 
-macro bool @at_end(ParseCtx* ctx) => ctx.pos >= ctx.pattern.len;
+macro bool @at_end(RegexParseCtx* ctx) => ctx.pos >= ctx.pattern.len;
 
-macro char @peek(ParseCtx* ctx)
+macro char @peek(RegexParseCtx* ctx)
 {
 	if (ctx.pos >= ctx.pattern.len) return 0;
 	return ctx.pattern[ctx.pos];
 }
 
-macro char @peek2(ParseCtx* ctx)
+macro char @peek2(RegexParseCtx* ctx)
 {
 	if (ctx.pos + 1 >= ctx.pattern.len) return 0;
 	return ctx.pattern[ctx.pos + 1];
 }
 
-macro char @consume(ParseCtx* ctx)
+macro char @consume(RegexParseCtx* ctx)
 {
 	char c = ctx.pattern[ctx.pos];
 	ctx.pos++;
 	return c;
 }
 
-macro bool @try_consume(ParseCtx* ctx, char c)
+macro bool @try_consume(RegexParseCtx* ctx, char c)
 {
 	if (ctx.pos < ctx.pattern.len && ctx.pattern[ctx.pos] == c)
 	{
@@ -38,7 +39,7 @@ macro bool @try_consume(ParseCtx* ctx, char c)
 	return false;
 }
 
-fn void skip_freespacing(ParseCtx* ctx) @local @inline
+fn void skip_freespacing(RegexParseCtx* ctx) @local @inline
 {
 	if ((ctx.flags & FLAG_EXTENDED) == FLAG_NONE) return;
 	while (!@at_end(ctx))
@@ -60,23 +61,37 @@ fn void skip_freespacing(ParseCtx* ctx) @local @inline
 	}
 }
 
-fn AstNode* ast_new(AstKind kind)
+fn RegexAstNode* ast_new(RegexAstKind kind)
 {
-	AstNode* n = alloc::new(tmem, AstNode);
+	RegexAstNode* n = alloc::new(tmem, RegexAstNode);
 	n.kind = kind;
 	n.group_id = -1;
 	return n;
 }
 
-fn void ctx_push_named_group(ParseCtx* ctx, NamedGroupEntry entry)
+alias RegexAstNodeList = List{RegexAstNode*};
+
+fn RegexAstNode* ast_build_balanced(RegexAstKind kind, RegexAstNode*[] nodes)
+{
+	assert(nodes.len > 0);
+	if (nodes.len == 1) return nodes[0];
+
+	usz mid = nodes.len / 2;
+	RegexAstNode* n = ast_new(kind);
+	n.left = ast_build_balanced(kind, nodes[:mid]);
+	n.right = ast_build_balanced(kind, nodes[mid : nodes.len - mid]);
+	return n;
+}
+
+fn void ctx_push_named_group(RegexParseCtx* ctx, RegexNamedGroupEntry entry)
 {
 	if (ctx.named_groups_count >= ctx.named_groups_cap)
 	{
 		usz new_cap = ctx.named_groups_cap ? ctx.named_groups_cap * 2 : 8;
-		NamedGroupEntry* buf = alloc::new_array(tmem, NamedGroupEntry, new_cap);
+		RegexNamedGroupEntry* buf = alloc::new_array(tmem, RegexNamedGroupEntry, new_cap);
 		if (ctx.named_groups_buf)
 		{
-			mem::copy(buf, ctx.named_groups_buf, ctx.named_groups_count * NamedGroupEntry.sizeof);
+			mem::copy(buf, ctx.named_groups_buf, ctx.named_groups_count * RegexNamedGroupEntry.sizeof);
 		}
 		ctx.named_groups_buf = buf;
 		ctx.named_groups_cap = new_cap;
@@ -89,7 +104,7 @@ fn void ctx_push_named_group(ParseCtx* ctx, NamedGroupEntry entry)
 // ============================================================
 
 // Read the next full Unicode codepoint from ctx.pattern at ctx.pos (UTF-8 aware).
-fn Char32? parse_codepoint(ParseCtx* ctx) @local @inline
+fn Char32? parse_codepoint(RegexParseCtx* ctx) @local @inline
 {
 	if (ctx.pos >= ctx.pattern.len) return INVALID_PATTERN~;
 	StringIterator it = { .utf8 = ctx.pattern, .current = ctx.pos };
@@ -99,7 +114,7 @@ fn Char32? parse_codepoint(ParseCtx* ctx) @local @inline
 }
 
 // Parse \x{HH...} braced hex escape (1+ hex digits). Caller must have already consumed '{'.
-fn Char32? parse_hex_escape_braced(ParseCtx* ctx) @local
+fn Char32? parse_hex_escape_braced(RegexParseCtx* ctx) @local
 {
 	if (@at_end(ctx) || @peek(ctx) == '}') return INVALID_PATTERN~;
 	Char32 val = 0;
@@ -116,7 +131,7 @@ fn Char32? parse_hex_escape_braced(ParseCtx* ctx) @local
 	return val;
 }
 
-fn Char32? parse_hex_escape(ParseCtx* ctx, int digits)
+fn Char32? parse_hex_escape(RegexParseCtx* ctx, int digits)
 {
 	uint val = 0;
 	for (int i = 0; i < digits; i++)
@@ -129,7 +144,7 @@ fn Char32? parse_hex_escape(ParseCtx* ctx, int digits)
 	return (Char32)val;
 }
 
-fn Char32? parse_classchar(ParseCtx* ctx)
+fn Char32? parse_classchar(RegexParseCtx* ctx)
 {
 	if (@at_end(ctx)) return INVALID_PATTERN~;
 	char c = ctx.pattern[ctx.pos];
@@ -169,7 +184,7 @@ fn Char32? parse_classchar(ParseCtx* ctx)
 	}
 }
 
-fn void charclass_add_range(CharClass* cls, TempRangeList* unicode, Char32 lo, Char32 hi)
+fn void charclass_add_range(RegexCharClass* cls, RegexTempRangeList* unicode, Char32 lo, Char32 hi)
 {
 	if (lo < 128)
 	{
@@ -181,22 +196,22 @@ fn void charclass_add_range(CharClass* cls, TempRangeList* unicode, Char32 lo, C
 	unicode.push({ .lo = lo, .hi = hi });
 }
 
-fn void charclass_merge_set(CharClass* cls, AsciiCharset set)
+fn void charclass_merge_set(RegexCharClass* cls, AsciiCharset set)
 {
 	cls.ascii_bits |= set;
 }
 
-fn void charclass_merge_property(CharClass* cls, UnicodePropMask prop)
+fn void charclass_merge_property(RegexCharClass* cls, RegexUnicodePropMask prop)
 {
 	cls.props |= prop;
 }
 
-fn void charclass_merge_complement_property(CharClass* cls, UnicodePropMask prop)
+fn void charclass_merge_complement_property(RegexCharClass* cls, RegexUnicodePropMask prop)
 {
 	cls.complement_props |= prop;
 }
 
-fn UnicodePropMask? parse_unicode_property_name(ParseCtx* ctx)
+fn RegexUnicodePropMask? parse_unicode_property_name(RegexParseCtx* ctx)
 {
 	if (!@try_consume(ctx, '{')) return INVALID_PATTERN~;
 	usz name_start = ctx.pos;
@@ -223,15 +238,15 @@ fn UnicodePropMask? parse_unicode_property_name(ParseCtx* ctx)
 	}
 }
 
-fn CharClass? parse_property_charclass(ParseCtx* ctx, bool negated)
+fn RegexCharClass? parse_property_charclass(RegexParseCtx* ctx, bool negated)
 {
-	UnicodePropMask prop = parse_unicode_property_name(ctx)!;
-	CharClass cls = { .props = prop, .negated = negated };
+	RegexUnicodePropMask prop = parse_unicode_property_name(ctx)!;
+	RegexCharClass cls = { .props = prop, .negated = negated };
 	if (prop == PROP_ASCII) cls.ascii_bits = ~(AsciiCharset)0;
 	return cls;
 }
 
-fn bool? parse_posix_bracket(ParseCtx* ctx, CharClass* cls)
+fn bool? parse_posix_bracket(RegexParseCtx* ctx, RegexCharClass* cls)
 {
 	if (@peek(ctx) != ':') return false;
 	usz saved = ctx.pos;
@@ -264,10 +279,10 @@ fn bool? parse_posix_bracket(ParseCtx* ctx, CharClass* cls)
 	return true;
 }
 
-fn AstNode*? parse_charclass_body(ParseCtx* ctx)
+fn RegexAstNode*? parse_charclass_body(RegexParseCtx* ctx)
 {
-	CharClass cls = {};
-	TempRangeList unicode;
+	RegexCharClass cls = {};
+	RegexTempRangeList unicode;
 	unicode.tinit(4);
 	defer unicode.free();
 
@@ -309,13 +324,13 @@ fn AstNode*? parse_charclass_body(ParseCtx* ctx)
 				case 'V': charclass_merge_complement_property(&cls, PROP_VSPACE);                                                     ctx.pos += 2; continue;
 				case 'p':
 					ctx.pos += 2;
-					CharClass pcls = parse_property_charclass(ctx, false)!;
+					RegexCharClass pcls = parse_property_charclass(ctx, false)!;
 					cls.ascii_bits |= pcls.ascii_bits;
 					cls.props |= pcls.props;
 					continue;
 				case 'P':
 					ctx.pos += 2;
-					CharClass p_inv = parse_property_charclass(ctx, true)!;
+					RegexCharClass p_inv = parse_property_charclass(ctx, true)!;
 					cls.complement_props |= p_inv.props;
 					continue;
 				default: break;
@@ -339,17 +354,17 @@ fn AstNode*? parse_charclass_body(ParseCtx* ctx)
 	cls.negated = negated;
 
 	// Copy unicode ranges into tmem (moved to range_pool during NFA build)
-	UnicodeRange* tmp_ranges = null;
+	RegexUnicodeRange* tmp_ranges = null;
 	usz tmp_count = unicode.size;
 	if (tmp_count > 0)
 	{
-		tmp_ranges = alloc::new_array(tmem, UnicodeRange, tmp_count);
-		mem::copy(tmp_ranges, unicode.entries, tmp_count * UnicodeRange.sizeof);
+		tmp_ranges = alloc::new_array(tmem, RegexUnicodeRange, tmp_count);
+		mem::copy(tmp_ranges, unicode.entries, tmp_count * RegexUnicodeRange.sizeof);
 	}
 	cls.ranges = tmp_ranges;
 	cls.ranges_count = tmp_count;
 
-	AstNode* n = ast_new(AST_CHARCLASS);
+	RegexAstNode* n = ast_new(AST_CHARCLASS);
 	n.char_class = cls;
 	return n;
 }
@@ -358,57 +373,46 @@ fn AstNode*? parse_charclass_body(ParseCtx* ctx)
 // Recursive descent parser
 // ============================================================
 
-fn AstNode*? parse_expr(ParseCtx* ctx) => parse_alt(ctx);
+fn RegexAstNode*? parse_expr(RegexParseCtx* ctx) => parse_alt(ctx);
 
-fn AstNode*? parse_alt(ParseCtx* ctx)
+fn RegexAstNode*? parse_alt(RegexParseCtx* ctx)
 {
-	AstNode* left = parse_concat(ctx)!;
+	RegexAstNodeList branches;
+	branches.tinit(4);
+	branches.push(parse_concat(ctx)!);
 	skip_freespacing(ctx);
 	while (@peek(ctx) == '|')
 	{
 		ctx.pos++;
-		AstNode* right = parse_concat(ctx)!;
-		AstNode* n = ast_new(AST_ALT);
-		n.left  = left;
-		n.right = right;
-		left = n;
+		branches.push(parse_concat(ctx)!);
 		skip_freespacing(ctx);
 	}
-	return left;
+	return ast_build_balanced(AST_ALT, branches.array_view());
 }
 
-fn AstNode*? parse_concat(ParseCtx* ctx)
+fn RegexAstNode*? parse_concat(RegexParseCtx* ctx)
 {
-	AstNode* result = null;
+	RegexAstNodeList atoms;
+	atoms.tinit(4);
 	while (true)
 	{
 		skip_freespacing(ctx);
 		char c = @peek(ctx);
 		if (c == '|' || c == ')' || c == 0) break;
-		AstNode* atom = parse_quantifier(ctx)!;
-		if (result == null)
-		{
-			result = atom;
-		}
-		else
-		{
-			AstNode* n = ast_new(AST_CONCAT);
-			n.left  = result;
-			n.right = atom;
-			result = n;
-		}
+		atoms.push(parse_quantifier(ctx)!);
 	}
-	if (result == null)
+	if (atoms.size == 0)
 	{
 		// Empty alternative — epsilon node
-		result = ast_new(AST_CONCAT);
-		result.left = null;
-		result.right = null;
+		RegexAstNode* epsilon = ast_new(AST_CONCAT);
+		epsilon.left = null;
+		epsilon.right = null;
+		return epsilon;
 	}
-	return result;
+	return ast_build_balanced(AST_CONCAT, atoms.array_view());
 }
 
-fn bool ast_can_consume(AstNode* node) @local
+fn bool ast_can_consume(RegexAstNode* node) @local
 {
 	if (node == null) return false;
 	switch (node.kind)
@@ -454,12 +458,12 @@ fn bool ast_can_consume(AstNode* node) @local
 	}
 }
 
-fn AstNode*? parse_quantifier(ParseCtx* ctx)
+fn RegexAstNode*? parse_quantifier(RegexParseCtx* ctx)
 {
-	AstNode* atom = parse_atom(ctx)!;
+	RegexAstNode* atom = parse_atom(ctx)!;
 	skip_freespacing(ctx);
 	char c = @peek(ctx);
-	AstNode* q = null;
+	RegexAstNode* q = null;
 	switch (c)
 	{
 		case '*':
@@ -487,7 +491,7 @@ fn AstNode*? parse_quantifier(ParseCtx* ctx)
 	if (@peek(ctx) == '+')
 	{
 		ctx.pos++;
-		AstNode* poss = ast_new(AST_ATOMIC);
+		RegexAstNode* poss = ast_new(AST_ATOMIC);
 		poss.left = q;
 		return poss;
 	}
@@ -497,7 +501,7 @@ fn AstNode*? parse_quantifier(ParseCtx* ctx)
 	return q;
 }
 
-fn AstNode*? parse_repeat_quantifier(ParseCtx* ctx, AstNode* atom)
+fn RegexAstNode*? parse_repeat_quantifier(RegexParseCtx* ctx, RegexAstNode* atom)
 {
 	usz saved = ctx.pos;
 	ctx.pos++;
@@ -541,14 +545,14 @@ fn AstNode*? parse_repeat_quantifier(ParseCtx* ctx, AstNode* atom)
 	ctx.pos++;
 	if (max_val != -1 && max_val < min_val) return INVALID_PATTERN~;
 
-	AstNode* n = ast_new(AST_REPEAT);
+	RegexAstNode* n = ast_new(AST_REPEAT);
 	n.left       = atom;
 	n.repeat_min = min_val;
 	n.repeat_max = max_val;
 	return n;
 }
 
-fn AstNode*? parse_atom(ParseCtx* ctx)
+fn RegexAstNode*? parse_atom(RegexParseCtx* ctx)
 {
 	if (@at_end(ctx)) return INVALID_PATTERN~;
 	char c = @consume(ctx);
@@ -559,7 +563,7 @@ fn AstNode*? parse_atom(ParseCtx* ctx)
 		case '[':
 			return parse_charclass_body(ctx);
 		case '.':
-			AstNode* dot = ast_new(AST_CHARCLASS);
+			RegexAstNode* dot = ast_new(AST_CHARCLASS);
 			dot.char_class = CLASS_DOT;
 			return dot;
 		case '^':
@@ -571,13 +575,13 @@ fn AstNode*? parse_atom(ParseCtx* ctx)
 		default:
 			// Back up and re-read as full UTF-8 codepoint (handles multi-byte sequences)
 			ctx.pos--;
-			AstNode* lit = ast_new(AST_LITERAL);
+			RegexAstNode* lit = ast_new(AST_LITERAL);
 			lit.codepoint = parse_codepoint(ctx)!;
 			return lit;
 	}
 }
 
-fn AstNode*? parse_group(ParseCtx* ctx)
+fn RegexAstNode*? parse_group(RegexParseCtx* ctx)
 {
 	char c = @peek(ctx);
 	if (c == '?')
@@ -591,28 +595,28 @@ fn AstNode*? parse_group(ParseCtx* ctx)
 				ctx.pos++;
 				while (!@at_end(ctx) && @peek(ctx) != ')') ctx.pos++;
 				if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-				AstNode* comment_eps = ast_new(AST_NCGROUP);
+				RegexAstNode* comment_eps = ast_new(AST_NCGROUP);
 				comment_eps.left = null;
 				return comment_eps;
 			case ':':
 				ctx.pos++;
-				AstNode* inner = parse_expr(ctx)!;
+				RegexAstNode* inner = parse_expr(ctx)!;
 				if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-				AstNode* ncg = ast_new(AST_NCGROUP);
+				RegexAstNode* ncg = ast_new(AST_NCGROUP);
 				ncg.left = inner;
 				return ncg;
 			case '=':
 				ctx.pos++;
-				AstNode* la_inner = parse_expr(ctx)!;
+				RegexAstNode* la_inner = parse_expr(ctx)!;
 				if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-				AstNode* lap = ast_new(AST_LOOKAHEAD_POS);
+				RegexAstNode* lap = ast_new(AST_LOOKAHEAD_POS);
 				lap.left = la_inner;
 				return lap;
 			case '!':
 				ctx.pos++;
-				AstNode* lna_inner = parse_expr(ctx)!;
+				RegexAstNode* lna_inner = parse_expr(ctx)!;
 				if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-				AstNode* lan = ast_new(AST_LOOKAHEAD_NEG);
+				RegexAstNode* lan = ast_new(AST_LOOKAHEAD_NEG);
 				lan.left = lna_inner;
 				return lan;
 			case '|':
@@ -620,19 +624,21 @@ fn AstNode*? parse_group(ParseCtx* ctx)
 				ctx.pos++;
 				int breset_base = ctx.next_group_id;
 				int breset_max = breset_base;
-				AstNode* br_result = null;
+				RegexAstNodeList branches;
+				branches.tinit(4);
 				while (true)
 				{
 					ctx.next_group_id = breset_base;
-					AstNode* br_branch = parse_concat(ctx)!;
+					RegexAstNode* br_branch = parse_concat(ctx)!;
 					if (ctx.next_group_id > breset_max) breset_max = ctx.next_group_id;
-					if (br_result == null) { br_result = br_branch; }
-					else { AstNode* bra = ast_new(AST_ALT); bra.left = br_result; bra.right = br_branch; br_result = bra; }
+					branches.push(br_branch);
 					if (!@try_consume(ctx, '|')) break;
 				}
 				ctx.next_group_id = breset_max;
 				if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-				AstNode* br_ncg = ast_new(AST_BRANCH_RESET); br_ncg.left = br_result; return br_ncg;
+				RegexAstNode* br_ncg = ast_new(AST_BRANCH_RESET);
+				br_ncg.left = ast_build_balanced(AST_ALT, branches.array_view());
+				return br_ncg;
 			case '(':
 				// (?(N)yes|no) or (?(name)yes|no) — conditional pattern
 				ctx.pos++;
@@ -655,11 +661,11 @@ fn AstNode*? parse_group(ParseCtx* ctx)
 					if (cond_gid < 0) return INVALID_PATTERN~;
 				}
 				if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-				AstNode* cond_yes = parse_concat(ctx)!;
-				AstNode* cond_no = null;
+				RegexAstNode* cond_yes = parse_concat(ctx)!;
+				RegexAstNode* cond_no = null;
 				if (@try_consume(ctx, '|')) cond_no = parse_concat(ctx)!;
 				if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-				AstNode* cond_node = ast_new(AST_COND_GROUP);
+				RegexAstNode* cond_node = ast_new(AST_COND_GROUP);
 				cond_node.group_id = cond_gid;
 				cond_node.left = cond_yes;
 				cond_node.right = cond_no;
@@ -667,9 +673,9 @@ fn AstNode*? parse_group(ParseCtx* ctx)
 			case '>':
 				// (?>...) — atomic group
 				ctx.pos++;
-				AstNode* atm_inner = parse_expr(ctx)!;
+				RegexAstNode* atm_inner = parse_expr(ctx)!;
 				if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-				AstNode* atm = ast_new(AST_ATOMIC);
+				RegexAstNode* atm = ast_new(AST_ATOMIC);
 				atm.left = atm_inner;
 				return atm;
 			case '<':
@@ -678,18 +684,18 @@ fn AstNode*? parse_group(ParseCtx* ctx)
 				if (next == '=')
 				{
 					ctx.pos++;
-					AstNode* lb_inner = parse_expr(ctx)!;
+					RegexAstNode* lb_inner = parse_expr(ctx)!;
 					if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-					AstNode* lbp = ast_new(AST_LOOKBEHIND_POS);
+					RegexAstNode* lbp = ast_new(AST_LOOKBEHIND_POS);
 					lbp.left = lb_inner;
 					return lbp;
 				}
 				else if (next == '!')
 				{
 					ctx.pos++;
-					AstNode* lbn_inner = parse_expr(ctx)!;
+					RegexAstNode* lbn_inner = parse_expr(ctx)!;
 					if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-					AstNode* lbn = ast_new(AST_LOOKBEHIND_NEG);
+					RegexAstNode* lbn = ast_new(AST_LOOKBEHIND_NEG);
 					lbn.left = lbn_inner;
 					return lbn;
 				}
@@ -710,15 +716,15 @@ fn AstNode*? parse_group(ParseCtx* ctx)
 	}
 
 	int id = ++ctx.next_group_id;
-	AstNode* inner = parse_expr(ctx)!;
+	RegexAstNode* inner = parse_expr(ctx)!;
 	if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-	AstNode* grp = ast_new(AST_GROUP);
+	RegexAstNode* grp = ast_new(AST_GROUP);
 	grp.left = inner;
 	grp.group_id = id;
 	return grp;
 }
 
-fn AstNode*? parse_named_group(ParseCtx* ctx)
+fn RegexAstNode*? parse_named_group(RegexParseCtx* ctx)
 {
 	usz name_start = ctx.pos;
 	while (!@at_end(ctx) && @peek(ctx) != '>') ctx.pos++;
@@ -728,9 +734,9 @@ fn AstNode*? parse_named_group(ParseCtx* ctx)
 	ctx.pos++;
 
 	int id = ++ctx.next_group_id;
-	AstNode* inner = parse_expr(ctx)!;
+	RegexAstNode* inner = parse_expr(ctx)!;
 	if (!@try_consume(ctx, ')')) return INVALID_PATTERN~;
-	AstNode* grp = ast_new(AST_GROUP);
+	RegexAstNode* grp = ast_new(AST_GROUP);
 	grp.left = inner;
 	grp.group_id = id;
 	grp.group_name = name;
@@ -738,7 +744,7 @@ fn AstNode*? parse_named_group(ParseCtx* ctx)
 	return grp;
 }
 
-fn AstNode*? parse_inline_flags(ParseCtx* ctx)
+fn RegexAstNode*? parse_inline_flags(RegexParseCtx* ctx)
 {
 	bool adding = true;
 	RegexFlags new_flags = ctx.flags;
@@ -755,7 +761,7 @@ fn AstNode*? parse_inline_flags(ParseCtx* ctx)
 			case '-': adding = false;
 			case ')':
 				ctx.flags = new_flags;
-				AstNode* n = ast_new(AST_NCGROUP);
+				RegexAstNode* n = ast_new(AST_NCGROUP);
 				n.left = null;
 				return n;
 			default:
@@ -765,70 +771,70 @@ fn AstNode*? parse_inline_flags(ParseCtx* ctx)
 	return INVALID_PATTERN~;
 }
 
-fn AstNode*? parse_escape_atom(ParseCtx* ctx)
+fn RegexAstNode*? parse_escape_atom(RegexParseCtx* ctx)
 {
 	if (@at_end(ctx)) return INVALID_PATTERN~;
 	char esc = @consume(ctx);
 	switch (esc)
 	{
 		case 'd':
-			AstNode* nd = ast_new(AST_CHARCLASS); nd.char_class = CLASS_DIGIT; return nd;
+			RegexAstNode* nd = ast_new(AST_CHARCLASS); nd.char_class = CLASS_DIGIT; return nd;
 		case 'D':
-			AstNode* nD = ast_new(AST_CHARCLASS); nD.char_class = CLASS_DIGIT_INV; return nD;
+			RegexAstNode* nD = ast_new(AST_CHARCLASS); nD.char_class = CLASS_DIGIT_INV; return nD;
 		case 'w':
-			AstNode* nw = ast_new(AST_CHARCLASS); nw.char_class = CLASS_WORD; return nw;
+			RegexAstNode* nw = ast_new(AST_CHARCLASS); nw.char_class = CLASS_WORD; return nw;
 		case 'W':
-			AstNode* nW = ast_new(AST_CHARCLASS); nW.char_class = CLASS_WORD_INV; return nW;
+			RegexAstNode* nW = ast_new(AST_CHARCLASS); nW.char_class = CLASS_WORD_INV; return nW;
 		case 's':
-			AstNode* ns = ast_new(AST_CHARCLASS); ns.char_class = CLASS_SPACE; return ns;
+			RegexAstNode* ns = ast_new(AST_CHARCLASS); ns.char_class = CLASS_SPACE; return ns;
 		case 'S':
-			AstNode* nS = ast_new(AST_CHARCLASS); nS.char_class = CLASS_SPACE_INV; return nS;
+			RegexAstNode* nS = ast_new(AST_CHARCLASS); nS.char_class = CLASS_SPACE_INV; return nS;
 		case 'p':
-			AstNode* np = ast_new(AST_CHARCLASS); np.char_class = parse_property_charclass(ctx, false)!; return np;
+			RegexAstNode* np = ast_new(AST_CHARCLASS); np.char_class = parse_property_charclass(ctx, false)!; return np;
 		case 'P':
-			AstNode* nP = ast_new(AST_CHARCLASS); nP.char_class = parse_property_charclass(ctx, true)!; return nP;
+			RegexAstNode* nP = ast_new(AST_CHARCLASS); nP.char_class = parse_property_charclass(ctx, true)!; return nP;
 		case 'A': return ast_new(AST_ANCHOR_ABSOLUTE_START);
 		case 'z': return ast_new(AST_ANCHOR_ABSOLUTE_END);
 		case 'Z': return ast_new(AST_ANCHOR_ABSOLUTE_END_NL);
 		case 'R':
 			// \R: matches \r\n | [\r\n\v\f\x85\u2028\u2029]
-			AstNode* r_lit  = ast_new(AST_LITERAL); r_lit.codepoint = '\r';
-			AstNode* n_lit  = ast_new(AST_LITERAL); n_lit.codepoint = '\n';
-			AstNode* rn_seq = ast_new(AST_CONCAT); rn_seq.left = r_lit; rn_seq.right = n_lit;
-			AstNode* lb_cls_node = ast_new(AST_CHARCLASS);
+			RegexAstNode* r_lit  = ast_new(AST_LITERAL); r_lit.codepoint = '\r';
+			RegexAstNode* n_lit  = ast_new(AST_LITERAL); n_lit.codepoint = '\n';
+			RegexAstNode* rn_seq = ast_new(AST_CONCAT); rn_seq.left = r_lit; rn_seq.right = n_lit;
+			RegexAstNode* lb_cls_node = ast_new(AST_CHARCLASS);
 			AsciiCharset lb_ascii = (AsciiCharset)0;
 			lb_ascii |= (AsciiCharset)1 << '\n';
 			lb_ascii |= (AsciiCharset)1 << '\r';
 			lb_ascii |= (AsciiCharset)1 << '\v';
 			lb_ascii |= (AsciiCharset)1 << '\f';
-			UnicodeRange* lb_ranges = alloc::new_array(tmem, UnicodeRange, 2);
+			RegexUnicodeRange* lb_ranges = alloc::new_array(tmem, RegexUnicodeRange, 2);
 			lb_ranges[0] = { .lo = 0x85, .hi = 0x85 };
 			lb_ranges[1] = { .lo = 0x2028, .hi = 0x2029 };
 			lb_cls_node.char_class = { .ascii_bits = lb_ascii, .ranges = lb_ranges, .ranges_count = 2 };
-			AstNode* lb_alt = ast_new(AST_ALT); lb_alt.left = rn_seq; lb_alt.right = lb_cls_node;
-			AstNode* lb_ncg = ast_new(AST_NCGROUP); lb_ncg.left = lb_alt;
+			RegexAstNode* lb_alt = ast_new(AST_ALT); lb_alt.left = rn_seq; lb_alt.right = lb_cls_node;
+			RegexAstNode* lb_ncg = ast_new(AST_NCGROUP); lb_ncg.left = lb_alt;
 			return lb_ncg;
 		case 'b': return ast_new(AST_WORD_BOUND);
 		case 'B': return ast_new(AST_WORD_NBOUND);
 		case 'K': return ast_new(AST_KEEP);
 		case 'N': return ast_new(AST_NON_NEWLINE);
-		case 'h': AstNode* nh = ast_new(AST_CHARCLASS); nh.char_class = CLASS_HSPACE; return nh;
-		case 'H': AstNode* nH = ast_new(AST_CHARCLASS); nH.char_class = CLASS_HSPACE_INV; return nH;
-		case 'v': AstNode* nv = ast_new(AST_CHARCLASS); nv.char_class = CLASS_VSPACE; return nv;
-		case 'V': AstNode* nV = ast_new(AST_CHARCLASS); nV.char_class = CLASS_VSPACE_INV; return nV;
-		case 'n': AstNode* nl = ast_new(AST_LITERAL); nl.codepoint = '\n'; return nl;
-		case 'r': AstNode* cr = ast_new(AST_LITERAL); cr.codepoint = '\r'; return cr;
-		case 't': AstNode* ht = ast_new(AST_LITERAL); ht.codepoint = '\t'; return ht;
-		case 'f': AstNode* ff = ast_new(AST_LITERAL); ff.codepoint = '\f'; return ff;
-		case 'a': AstNode* bell = ast_new(AST_LITERAL); bell.codepoint = '\a'; return bell;
+		case 'h': RegexAstNode* nh = ast_new(AST_CHARCLASS); nh.char_class = CLASS_HSPACE; return nh;
+		case 'H': RegexAstNode* nH = ast_new(AST_CHARCLASS); nH.char_class = CLASS_HSPACE_INV; return nH;
+		case 'v': RegexAstNode* nv = ast_new(AST_CHARCLASS); nv.char_class = CLASS_VSPACE; return nv;
+		case 'V': RegexAstNode* nV = ast_new(AST_CHARCLASS); nV.char_class = CLASS_VSPACE_INV; return nV;
+		case 'n': RegexAstNode* nl = ast_new(AST_LITERAL); nl.codepoint = '\n'; return nl;
+		case 'r': RegexAstNode* cr = ast_new(AST_LITERAL); cr.codepoint = '\r'; return cr;
+		case 't': RegexAstNode* ht = ast_new(AST_LITERAL); ht.codepoint = '\t'; return ht;
+		case 'f': RegexAstNode* ff = ast_new(AST_LITERAL); ff.codepoint = '\f'; return ff;
+		case 'a': RegexAstNode* bell = ast_new(AST_LITERAL); bell.codepoint = '\a'; return bell;
 		case 'u':
 			Char32 u4 = parse_hex_escape(ctx, 4)!;
-			AstNode* u4n = ast_new(AST_LITERAL); u4n.codepoint = u4; return u4n;
+			RegexAstNode* u4n = ast_new(AST_LITERAL); u4n.codepoint = u4; return u4n;
 		case 'U':
 			Char32 u8 = parse_hex_escape(ctx, 8)!;
-			AstNode* u8n = ast_new(AST_LITERAL); u8n.codepoint = u8; return u8n;
+			RegexAstNode* u8n = ast_new(AST_LITERAL); u8n.codepoint = u8; return u8n;
 		case 'e':
-			AstNode* esc_lit = ast_new(AST_LITERAL); esc_lit.codepoint = 0x1B; return esc_lit;
+			RegexAstNode* esc_lit = ast_new(AST_LITERAL); esc_lit.codepoint = 0x1B; return esc_lit;
 		case 'G':
 			return ast_new(AST_ANCHOR_GPOS);
 		case 'c':
@@ -838,19 +844,19 @@ fn AstNode*? parse_escape_atom(ParseCtx* ctx)
 			if (ctrl_c >= '@' && ctrl_c <= '_') { ctrl_cp = (Char32)(ctrl_c ^ 64); }
 			else if (ctrl_c >= 'a' && ctrl_c <= 'z') { ctrl_cp = (Char32)((ctrl_c - 0x20) ^ 64); }
 			else { return INVALID_PATTERN~; }
-			AstNode* ctrl_node = ast_new(AST_LITERAL); ctrl_node.codepoint = ctrl_cp; return ctrl_node;
+			RegexAstNode* ctrl_node = ast_new(AST_LITERAL); ctrl_node.codepoint = ctrl_cp; return ctrl_node;
 		case 'x':
 			if (@peek(ctx) == '{')
 			{
 				ctx.pos++;
 				Char32 xhv = parse_hex_escape_braced(ctx)!;
-				AstNode* xhn = ast_new(AST_LITERAL); xhn.codepoint = xhv; return xhn;
+				RegexAstNode* xhn = ast_new(AST_LITERAL); xhn.codepoint = xhv; return xhn;
 			}
 			Char32 x2h = parse_hex_escape(ctx, 2)!;
-			AstNode* x2n = ast_new(AST_LITERAL); x2n.codepoint = x2h; return x2n;
+			RegexAstNode* x2n = ast_new(AST_LITERAL); x2n.codepoint = x2h; return x2n;
 		case 'Q':
 			// \Q...\E — literal quoting: treat everything until \E as literal characters
-			AstNode* qlast = null;
+			RegexAstNode* qlast = null;
 			while (!@at_end(ctx))
 			{
 				if (@peek(ctx) == '\\' && ctx.pos + 1 < ctx.pattern.len && ctx.pattern[ctx.pos + 1] == 'E')
@@ -859,11 +865,11 @@ fn AstNode*? parse_escape_atom(ParseCtx* ctx)
 					break;
 				}
 				Char32 qcp = parse_codepoint(ctx)!;
-				AstNode* qlit = ast_new(AST_LITERAL); qlit.codepoint = qcp;
+				RegexAstNode* qlit = ast_new(AST_LITERAL); qlit.codepoint = qcp;
 				if (qlast == null) { qlast = qlit; }
-				else { AstNode* qcon = ast_new(AST_CONCAT); qcon.left = qlast; qcon.right = qlit; qlast = qcon; }
+				else { RegexAstNode* qcon = ast_new(AST_CONCAT); qcon.left = qlast; qcon.right = qlit; qlast = qcon; }
 			}
-			if (qlast == null) { AstNode* qeps = ast_new(AST_NCGROUP); qeps.left = null; return qeps; }
+			if (qlast == null) { RegexAstNode* qeps = ast_new(AST_NCGROUP); qeps.left = null; return qeps; }
 			return qlast;
 		case 'k':
 			// \k<name> named backreference
@@ -880,17 +886,17 @@ fn AstNode*? parse_escape_atom(ParseCtx* ctx)
 				if (ctx.named_groups_buf[ki].name == kname) { kgid = ctx.named_groups_buf[ki].group_id; break; }
 			}
 			if (kgid < 0) return INVALID_PATTERN~;
-			AstNode* br_k = ast_new(AST_BACKREF);
+			RegexAstNode* br_k = ast_new(AST_BACKREF);
 			br_k.group_id = kgid;
 			return br_k;
 		default:
 			if (esc >= '1' && esc <= '9')
 			{
-				AstNode* br = ast_new(AST_BACKREF);
+				RegexAstNode* br = ast_new(AST_BACKREF);
 				br.group_id = (int)(esc - '0');
 				return br;
 			}
-			AstNode* lit = ast_new(AST_LITERAL);
+			RegexAstNode* lit = ast_new(AST_LITERAL);
 			lit.codepoint = (Char32)esc;
 			return lit;
 	}
