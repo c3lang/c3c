@@ -31,6 +31,7 @@
 - Mutex.destroy and friends no longer return optionals.
 - Remove `@operator(!=)` overload.
 - Add `@operator(<)` overload, enabling type comparison overloads.
+- Generic inference can now look through pointer.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` is renamed `RingList`.
@@ -39,6 +40,8 @@
 - Add `std::collections::Deque`.
 - Add `compare_to` and `compare_to_ignore_case` to `String`. #3096
 - Add `OrderedMap` based on skip lists.
+- Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
+- `BufferedChannel` and `UnbufferedChannel` now pointers, create using `create_unbuffered` and `create_buffered`
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
@@ -48,6 +51,7 @@
 - Recursive inclusion of contracts was not detected.
 - `\r` was not filtered when piping a source file from stdin.
 - SHA-3 and Keccak contexts are now explicitly `@mustinit` structures. #3110
+- `UnbufferedChannel` would deadlock on multiple producers.
 
 ## 0.7.11 Change list
 
@@ -70,7 +74,6 @@
 - Zero element enums now disallowed.
 
 ### Stdlib changes
-- Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
 - Add contract on `any_to_enum_ordinal` and `any_to_int` to improve error when passed an empty any. #2977
 - Add hash method for ZStrings. #2982
 - Added json serialization from structs.

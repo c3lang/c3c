@@ -1,6 +1,6 @@
 module std::thread::channel <Type>;
 
-typedef OneShotChannel = void*;
+typedef OneShotChannel = void;
 
 struct OneShotChannelImpl @private
 {
@@ -22,14 +22,13 @@ struct OneShotChannelImpl @private
 
  Example:
  ```c3
- OneShotChannel{int} channel;
- channel.init(mem)!!;
+ OneShotChannel{int}* channel = channel::new_one_shot(mem);
  defer channel.destroy();
 
  Thread thread;
  thread.create(fn int(void* arg)
  {
- 	OneShotChannel{int} channel = (OneShotChannel{int})arg;
+ 	OneShotChannel{int}* channel = arg;
  	channel.push(123)!!;
  	return 0;
  }, (void*)channel)!!;
@@ -38,28 +37,25 @@ struct OneShotChannelImpl @private
  int value = channel.pop()!!;
  ```
 *>
-fn void? OneShotChannel.init(&self, Allocator allocator)
+fn OneShotChannel*? create_one_shot(Allocator allocator)
 {
-	OneShotChannelImpl* channel = allocator::alloc(allocator, OneShotChannelImpl);
-	defer catch (void)allocator::free(allocator, channel);
+	OneShotChannelImpl* channel = alloc::new(allocator, OneShotChannelImpl, { .allocator = allocator });
+	defer catch alloc::free(allocator, channel);
 
 	channel.allocator = allocator;
 	channel.mu.init()!;
 	defer catch channel.mu.destroy();
 	channel.cond.init()!;
 
-	*self = (OneShotChannel)channel;
+	return (OneShotChannel*)channel;
 }
 
-fn void? OneShotChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
+fn void OneShotChannel.destroy(&self)
 {
-	OneShotChannelImpl* channel = (OneShotChannelImpl*)(*self);
-
+	OneShotChannelImpl* channel = (OneShotChannelImpl*)self;
 	channel.mu.destroy();
 	channel.cond.destroy();
-	allocator::free(channel.allocator, channel);
-
-	*self = null;
+	alloc::free(channel.allocator, channel);
 }
 
 <*
@@ -67,17 +63,14 @@ fn void? OneShotChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
 
  @return? thread::CHANNEL_CLOSED : "If the channel was closed or already has a value."
 *>
-fn void? OneShotChannel.push(self, Type val)
+fn void? OneShotChannel.push(&self, Type val)
 {
 	OneShotChannelImpl* channel = (OneShotChannelImpl*)self;
 
 	channel.mu.lock();
 	defer catch channel.mu.unlock();
 
-	if (channel.closed || channel.sent)
-	{
-		return thread::CHANNEL_CLOSED~;
-	}
+	if (channel.closed || channel.sent) return thread::CHANNEL_CLOSED~;
 
 	channel.value = val;
 	channel.sent = true;
@@ -93,7 +86,7 @@ fn void? OneShotChannel.push(self, Type val)
 
  @return? thread::CHANNEL_CLOSED : "If the channel was closed before sending, or the value was already consumed."
 *>
-fn Type? OneShotChannel.pop(self)
+fn Type? OneShotChannel.pop(&self)
 {
 	OneShotChannelImpl* channel = (OneShotChannelImpl*)self;
 
@@ -119,7 +112,7 @@ fn Type? OneShotChannel.pop(self)
 <*
  Close the channel and wake any blocked receivers.
 *>
-fn void? OneShotChannel.close(self) @maydiscard
+fn void OneShotChannel.close(&self)
 {
 	OneShotChannelImpl* channel = (OneShotChannelImpl*)self;
 

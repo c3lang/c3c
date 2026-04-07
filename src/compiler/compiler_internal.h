@@ -3367,6 +3367,10 @@ INLINE bool type_is_user_defined(Type *type)
 static inline DeclId type_find_generic(Type *type)
 {
 	Type *canonical = type->canonical;
+	while (type->type_kind == TYPE_POINTER)
+	{
+		type = type->pointer->canonical;
+	}
 	if (canonical != type && type_is_user_defined(canonical))
 	{
 		Decl *decl = canonical->decl;
