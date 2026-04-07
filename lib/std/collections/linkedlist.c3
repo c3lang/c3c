@@ -306,7 +306,7 @@ fn bool LinkedList.is_empty(&self)
 	return !self._first;
 }
 
-fn Type? LinkedList.pop_front(&self)
+fn Type? LinkedList.pop_first(&self)
 {
 	if (!self._first) return NO_MORE_ELEMENT~;
 	defer linked_list_unlink_first(self);

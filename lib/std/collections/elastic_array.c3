@@ -72,7 +72,7 @@ fn void ElasticArray.clear(&self)
 <*
  @require self.size > 0
 *>
-fn Type? ElasticArray.pop_front(&self)
+fn Type? ElasticArray.pop_first(&self)
 {
 	if (!self.size) return NO_MORE_ELEMENT~;
 	defer self.remove_at(0);
