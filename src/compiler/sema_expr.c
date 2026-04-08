@@ -258,7 +258,7 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 			if (!decl->is_substruct) return NULL;
 			expr = expr_copy(parent);
 			expr->type = decl->enums.type_info->type;
-			return expr;
+			break;
 		}
 		default:
 			return NULL;
@@ -380,8 +380,6 @@ Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner,
 	{
 		switch (eval_kind)
 		{
-			case CT_EVAL_TYPE:
-				RETURN_VAL_SEMA_ERROR(poisoned_expr, inner, "'$evaltype' expects a constant string as the argument.");
 			case CT_EVAL_IDENTIFIER:
 				RETURN_VAL_SEMA_ERROR(poisoned_expr, inner, "'$eval' expects a constant string as the argument.");
 			case CT_EVAL_IMPLICIT_IDENTIFIER:

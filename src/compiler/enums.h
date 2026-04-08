@@ -2105,7 +2105,6 @@ typedef enum
 
 typedef enum
 {
-	CT_EVAL_TYPE,
 	CT_EVAL_IDENTIFIER,
 	CT_EVAL_IMPLICIT_IDENTIFIER
 } CtEvalKind;

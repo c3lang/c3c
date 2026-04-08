@@ -2791,14 +2791,9 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 		}
 		if (!parse_attributes_for_global(c, enum_const)) return false;
 		attach_deprecation_from_contract(c, &contracts, enum_const);
-		if (try_consume(c, TOKEN_EQ))
+		if (is_constdef && try_consume(c, TOKEN_EQ))
 		{
 			Expr **args = NULL;
-			if (!is_constdef && deprecate_warn)
-			{
-				deprecate_warn = false;
-				PRINT_DEPRECATED_AT_LOC(&c->prev_span, "Use {} declaration of associated values instead.");
-			}
 			if (is_single_value || !tok_is(c, TOKEN_LBRACE))
 			{
 				ASSIGN_EXPR_OR_RET(Expr *single, parse_constant_expr(c), false);
@@ -3133,8 +3128,8 @@ static bool parse_doc_discarded_comment(ParseContext *c)
 {
 	if (try_consume(c, TOKEN_STRING))
 	{
-		PRINT_DEPRECATED_AT_LOC(&c->span, "Not using ':' before the description is deprecated");
-		return true;
+		print_error_at_loc(&c->span, "You need to use ':' before the description.");
+		return false;
 	}
 	if (!parse_docs_to_comment(c)) return true;
 	if (!parse_doc_check_skip_string_eos(c)) return true;
