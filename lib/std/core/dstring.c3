@@ -325,16 +325,9 @@ fn Char32[] DString.copy_utf32(&self, Allocator allocator)
 	return self.str_view().to_utf32(allocator) @inline!!;
 }
 
-<*
- @require $defined(String s = str) ||| $typeof(str) == DString : "Expected string or DString"
-*>
-macro void DString.append_string(&self, str)
+fn void DString.append_string(&self, String str)
 {
-	$if $typeof(str) == DString:
-		self.append_string_deprecated(str);
-	$else
-		self.append_bytes((String)str);
-	$endif
+	self.append_bytes((String)str);
 }
 
 fn void DString.append_dstring(&self, DString str)

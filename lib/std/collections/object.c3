@@ -254,6 +254,19 @@ fn Object*? Object.get(&self, String key) => self.is_empty() ? NOT_FOUND~ : self
 fn bool Object.has_key(&self, String key) => self.is_map() && self.map.has_key(key);
 
 <*
+ Iterate over all key/value pairs in this object when it is a map.
+ Does nothing if the object is not a map.
+*>
+macro void Object.@each_entry(&self; @body(String key, Object* value))
+{
+	if (!self.is_map()) return;
+	self.map.@each_entry(; ObjectInternalMapEntry* e)
+	{
+		@body(e.key, e.value);
+	};
+}
+
+<*
  @require self.is_indexable()
 *>
 fn Object* Object.get_at(&self, sz index)
@@ -480,4 +493,3 @@ macro Object* @alloc_obj(Allocator a, #init) @private
 		return alloc::new(a, Object, #init);
 	$endif
 }
-

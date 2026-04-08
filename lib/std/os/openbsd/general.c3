@@ -60,7 +60,7 @@ fn Backtrace? backtrace_line_parse(Allocator allocator, String obj, String addr2
 		String source = "";
 		if (!parts[1].contains("?") && parts[1].contains(":"))
 		{
-			usz index = parts[1].rindex_of_char(':')!;
+			sz index = parts[1].rindex_of_char(':')!;
 			source = parts[1][:index];
 			line   = parts[1][index + 1..].to_uint()!;
 		}
