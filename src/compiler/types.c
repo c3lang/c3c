@@ -2281,11 +2281,6 @@ RETRY_DISTINCT:
 			// distinct + any other type => no
 			return NULL;
 		case TYPE_ENUM:
-			// Note that the int case is already handled
-			if (type->decl->is_substruct)
-			{
-				return type_find_max_type(type_flat_distinct_enum_inline(type), other, first, second);
-			}
 			return NULL;
 		case TYPE_FUNC_RAW:
 			UNREACHABLE

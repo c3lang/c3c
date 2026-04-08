@@ -539,8 +539,6 @@ typedef struct
 	Decl** values;
 	Decl** parameters;
 	TypeInfo *type_info;
-	int16_t inline_index;
-	bool inline_value;
 } EnumDecl;
 
 struct Signature_
@@ -3248,7 +3246,6 @@ static inline Type *type_base(Type *type)
 
 
 static const bool is_distinct_like[TYPE_LAST + 1] = {
-	[TYPE_ENUM] = true,
 	[TYPE_CONSTDEF] = true,
 	[TYPE_TYPEDEF] = true
 };
@@ -3307,11 +3304,6 @@ static inline Type *type_flatten_and_inline(Type *type)
 			case TYPE_CONSTDEF:
 				type = type->decl->enums.type_info->type;
 				continue;
-			case TYPE_ENUM:
-				decl = type->decl;
-				if (!decl->is_substruct) return type;
-				type = decl->enums.type_info->type;
-				continue;
 			default:
 				return type;
 		}
@@ -3332,11 +3324,6 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 				type = decl->distinct->type;
 				continue;
 			case TYPE_CONSTDEF:
-				decl = type->decl;
-				if (!decl->is_substruct) return type;
-				type = decl->enums.type_info->type;
-				continue;
-			case TYPE_ENUM:
 				decl = type->decl;
 				if (!decl->is_substruct) return type;
 				type = decl->enums.type_info->type;
@@ -3421,9 +3408,6 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_ENUM:
-				if (!type->decl->is_substruct) return type;
-				FALLTHROUGH;
 			case TYPE_CONSTDEF:
 				type = enum_inner_type(type);
 				break;

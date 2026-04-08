@@ -179,7 +179,7 @@ fn void linked_map_iterators()
 }
 
 alias FooLinkedMap = LinkedHashMap{char, Foobar};
-enum Foobar : inline char
+enum Foobar : char
 {
 	FOO,
 	BAR,
@@ -196,7 +196,7 @@ fn void linked_map_inline_enum()
 {
 	FooLinkedMap x;
 	x.tinit();
-	x[Foobar.BAZ] = FOO;
+	x[Foobar.BAZ.ordinal] = FOO;
 	x[Foobar2.ABC] = BAR;
 	test::eq(string::tformat("%s", x), "{ 2: FOO, 3: BAR }");
 	x.free();

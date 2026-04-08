@@ -56,7 +56,7 @@ fn void map()
 }
 
 alias FooMap = HashMap{char, Foobar};
-enum Foobar : inline char
+enum Foobar : char
 {
     FOO,
     BAR,
@@ -72,7 +72,7 @@ constdef Foobar2 : inline int
 fn void map_inline_enum()
 {
 	FooMap x;
-	x[Foobar.BAZ] = FOO;
+	x[Foobar.BAZ.ordinal] = FOO;
 	x[Foobar2.ABC] = BAR;
 	test::eq(string::tformat("%s", x), "{ 2: FOO, 3: BAR }");
 	x.free();

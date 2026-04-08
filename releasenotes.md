@@ -32,6 +32,8 @@
 - Remove `@operator(!=)` overload.
 - Add `@operator(<)` overload, enabling type comparison overloads.
 - Generic inference can now look through pointer.
+- Enums now implicitly convert to their ordinal when used as indices.
+- Enums can no longer declare themselves `inline`.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

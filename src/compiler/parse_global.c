@@ -16,7 +16,7 @@ typedef enum FunctionParse_
 static inline Decl *parse_enum_declaration(ParseContext *c);
 static inline Decl *parse_func_definition(ParseContext *c, ContractDescription *contracts, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
-static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index);
+static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
 static Decl *parse_ct_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
@@ -2746,7 +2746,7 @@ static inline Decl *parse_faultdef_declaration(ParseContext *c)
 /**
  * enum_param_list ::= '(' enum_param* ')'
  */
-static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index)
+static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref)
 {
 	// If no left parenthesis we're done.
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
@@ -2915,21 +2915,17 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	TypeInfo *type = NULL;
 
 	bool val_is_inline = false;
-	ArrayIndex inline_index = -1;
 	Decl **param_list = NULL;
 	if (try_consume(c, TOKEN_COLON))
 	{
-		if (!is_constdef)
-		{
-			is_constdef = try_consume(c, TOKEN_CONST);
-			if (is_constdef)
-			{
-				PRINT_DEPRECATED_AT_LOC(&c->prev_span, "Declare constdefs using 'constdef' instead.");
-			}
-		}
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
 			val_is_inline = try_consume(c, TOKEN_INLINE);
+			if (val_is_inline && !is_constdef)
+			{
+				PRINT_ERROR_LAST("An enum cannot have 'inline' on its underlying type.");
+				return poisoned_decl;
+			}
 			ASSIGN_TYPE_OR_RET(type, parse_optional_type_no_generic(c), poisoned_decl);
 			if (type->optional)
 			{
@@ -2946,7 +2942,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 		}
 		else
 		{
-			if (!parse_enum_param_list(c, &param_list, val_is_inline ? NULL : &inline_index)) return poisoned_decl;
+			if (!parse_enum_param_list(c, &param_list)) return poisoned_decl;
 		}
 	}
 
@@ -2959,8 +2955,6 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->loc);
-	decl->enums.inline_index = (int16_t)inline_index;
-	decl->enums.inline_value = is_constdef ? false : val_is_inline;
 	if (is_constdef && val_is_inline) decl->is_substruct = true;
 	if (!parse_enum_values(c, &decl->enums.values, visibility, is_constdef || expected_parameters == 1, is_constdef)) return poisoned_decl;
 	return decl;

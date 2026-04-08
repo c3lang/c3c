@@ -704,6 +704,8 @@ bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len)
 			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
 		case TYPE_I128:
 			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to an int or long.");
+		case TYPE_ENUM:
+			return cast_explicit(context, index, type_sz);
 		default:
 			RETURN_SEMA_ERROR(index, "An integer value was expected here, but it is a value of type %s, which can't be implicitly converted into an integer %s.",
 			                  type_quoted_error_string(index->type), is_len ? "length" : "index");
@@ -1256,7 +1258,6 @@ RETRY:;
 		case DECL_STRUCT:
 			inner = decl->strukt.members[0]->type->canonical;
 			break;
-		case DECL_ENUM:
 		case DECL_CONSTDEF:
 			// Could be made to work.
 			return false;
@@ -1671,12 +1672,7 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 		// Explicit just flattens and tries again.
 		return cast_is_allowed(cc, is_explicit, is_silent);
 	}
-	if (!enum_decl->is_substruct)
-	{
-		return sema_cast_error(cc, false, is_silent);
-	}
-	cast_context_set_from(cc, inner->canonical);
-	return cast_is_allowed(cc, is_explicit, is_silent);
+	return sema_cast_error(cc, false, is_silent);
 }
 
 static bool rule_bits_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
