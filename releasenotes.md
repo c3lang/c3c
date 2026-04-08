@@ -44,6 +44,7 @@
 - `BufferedChannel` and `UnbufferedChannel` now pointers, create using `create_unbuffered` and `create_buffered`
 - `RingList` now conforms to `foreach` and adds additional functions.
 - Ini parser and encoder.
+- Updated `ref::new` argument order.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

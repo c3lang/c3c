@@ -174,50 +174,48 @@ macro void free_aligned(Allocator allocator, void* ptr)
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
- @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined($Type t = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
 *>
-macro new(Allocator allocator, $Type, ...) @nodiscard
+macro new(Allocator allocator, $Type, #init = ...) @nodiscard @safemacro
 {
-	$if $vacount == 0:
-		return ($Type*)calloc(allocator, $Type.sizeof);
-	$else
+	$if $defined(#init):
 		$Type* val = malloc(allocator, $Type.sizeof);
-		*val = $vaexpr[0];
+		*val = #init;
 		return val;
+	$else
+		return ($Type*)calloc(allocator, $Type.sizeof);
 	$endif
 }
 
 <*
  @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
- @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined($Type t = $vaexpr[0]) : "The second argument must be an initializer for the type"
+ @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
 *>
-macro new_try(Allocator allocator, $Type, ...) @nodiscard
+macro new_try(Allocator allocator, $Type, #init = ...) @nodiscard @safemacro
 {
-	$if $vacount == 0:
-		return ($Type*)calloc_try(allocator, $Type.sizeof);
-	$else
+	$if $defined(#init):
 		$Type* val = malloc_try(allocator, $Type.sizeof)!;
-		*val = $vaexpr[0];
+		*val = #init;
 		return val;
+	$else
+		return ($Type*)calloc_try(allocator, $Type.sizeof);
 	$endif
 }
 
 <*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
- @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined($Type t = $vaexpr[0]) : "The second argument must be an initializer for the type"
+
+ @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
 *>
-macro new_aligned(Allocator allocator, $Type, ...) @nodiscard
+macro new_aligned(Allocator allocator, $Type, #init = ...) @nodiscard @safemacro
 {
-	$if $vacount == 0:
-		return ($Type*)calloc_aligned(allocator, $Type.sizeof, $Type.alignof);
-	$else
+	$if $defined(#init):
 		$Type* val = malloc_aligned(allocator, $Type.sizeof, $Type.alignof)!;
-		*val = $vaexpr[0];
+		*val = #init;
 		return val;
+	$else
+		return ($Type*)calloc_aligned(allocator, $Type.sizeof, $Type.alignof);
 	$endif
 }
 
