@@ -480,7 +480,6 @@ static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info
 			if (type_is_infer_type(type))
 			{
 				RETURN_SEMA_ERROR(type_info, "A pointer to a type of inferred length is not supported.");
-				return true;
 			}
 			RETURN_SEMA_ERROR(type_info, "Pointers to %s are not supported.", type_quoted_error_string(inner));
 		default:
