@@ -125,9 +125,7 @@ experimental    = false
 
 fn void test_large_config()
 {
-	IniOptions opts = ini::DEFAULT_OPTIONS;
-    opts.allow_inline_comments = true;
-    Object* obj = ini::tparse(LARGE_INI, opts)!!;
+    Object* obj = ini::tparse(LARGE_INI, allow_inline_comments: true)!!;
     defer obj.free();
 
     assert(obj.get(ini::GLOBAL)!!.get_string("app_name")!!    == "MyApp");
@@ -282,9 +280,7 @@ fn void test_colon_delimiter()
 [section]
 key: value
 `;
-    IniOptions opts = ini::DEFAULT_OPTIONS;
-    opts.delimiter = ':';
-    Object* obj = ini::tparse(src, opts)!!;
+    Object* obj = ini::tparse(src, delimiter: ':')!!;
     defer obj.free();
 
     assert(obj.get("section")!!.get_string("key")!! == "value");
@@ -310,9 +306,7 @@ fn void test_duplicate_key_error()
 key = first
 key = second
 `;
-    IniOptions opts = ini::DEFAULT_OPTIONS;
-    opts.duplicate_keys = DUPLICATE_ERROR;
-    Object*? obj = ini::tparse(src, opts);
+    Object*? obj = ini::tparse(src, on_duplicate_keys: ERROR);
     assert(@catch(obj) == ini::DUPLICATE_KEY);
 }
 
@@ -403,12 +397,10 @@ fn void test_empty_section_header_is_invalid()
 fn void test_encode_respects_delimiter()
 {
     String src = "[section]\nkey: value\n";
-    IniOptions opts = ini::DEFAULT_OPTIONS;
-    opts.delimiter = ':';
-    Object* obj = ini::tparse(src, opts)!!;
+    Object* obj = ini::tparse(src, delimiter: ':')!!;
     defer obj.free();
 
-    String encoded = ini::tencode(obj, opts);
+    String encoded = ini::tencode(obj, delimiter:':');
     assert(encoded.contains("[section]"));
     assert(encoded.contains("key : value"));
 }
@@ -416,12 +408,10 @@ fn void test_encode_respects_delimiter()
 fn void test_encode_no_pad_delimiter()
 {
     String src = "[section]\nkey=value\n";
-    IniOptions opts = ini::DEFAULT_OPTIONS;
-    opts.pad_delimiter = false;
-    Object* obj = ini::tparse(src, opts)!!;
+    Object* obj = ini::tparse(src)!!;
     defer obj.free();
 
-    String encoded = ini::tencode(obj, opts);
+    String encoded = ini::tencode(obj, pad_delimiter: false);
     assert(encoded.contains("key=value"));
     assert(!encoded.contains("key = value"));
 }
@@ -539,9 +529,7 @@ fn void test_each_empty_global_not_visited()
 fn void test_allow_global_keys_false_has_no_global_section()
 {
     String src = "[section]\nkey = value\n";
-    IniOptions opts = ini::DEFAULT_OPTIONS;
-    opts.allow_global_keys = false;
-    Object* obj = ini::tparse(src, opts)!!;
+    Object* obj = ini::tparse(src, allow_global_keys: false)!!;
     defer obj.free();
 
     assert(!obj.has_key(ini::GLOBAL));
@@ -555,9 +543,7 @@ key = value ; inline comment
 other = data # hash comment
 plain = no comment
 `;
-    IniOptions opts = ini::DEFAULT_OPTIONS;
-    opts.allow_inline_comments = true;
-    Object* obj = ini::tparse(src, opts)!!;
+    Object* obj = ini::tparse(src, allow_inline_comments: true)!!;
     defer obj.free();
 
     assert(obj.get("section")!!.get_string("key")!! == "value");
