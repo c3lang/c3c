@@ -57,6 +57,7 @@ const char *kw_libc;
 const char *kw_main;
 const char *kw_memcmp;
 const char *kw_mainstub;
+const char *kw_name;
 const char *kw_nameof;
 const char *kw_offsetof;
 const char *kw_ordinal;
@@ -144,6 +145,7 @@ void symtab_init(uint32_t capacity)
 	kw_mainstub = KW_DEF("_$main");
 	kw_main = KW_DEF("main");
 	kw_memcmp = KW_DEF("memcmp");
+	kw_name = KW_DEF("name");
 	kw_nameof = KW_DEF("nameof");
 	kw_offsetof = KW_DEF("offsetof");
 	kw_ordinal = KW_DEF("ordinal");

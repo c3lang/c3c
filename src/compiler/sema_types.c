@@ -464,7 +464,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	type_info->type = type->type;
 	if (compiler.generic_depth == 0) return true;
 	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
-	    && !context->call_env.current_function->func_decl.in_macro)
+	    && !context->call_env.current_function->func_decl.in_macro && !context->generic_instance)
 	{
 		RETURN_SEMA_ERROR(type_info, "Recursively generic type declarations are only allowed inside of macros. Use `alias` to define an alias for the type instead.");
 	}

@@ -1508,6 +1508,9 @@ static inline void type_create_float(const char *name, Type *type, TypeKind kind
 	type_init(name, type, kind, actual_bits, compiler.platform.floats[bits]);
 }
 
+/*
+ * Assume names are already interned.
+ */
 Type *type_create_struct(const char *name, Type **types, const char **names, int count)
 {
 	Decl *decl = decl_new_with_type(symtab_preset(name, TOKEN_TYPE_IDENT), 0, DECL_STRUCT);
@@ -1518,7 +1521,7 @@ Type *type_create_struct(const char *name, Type **types, const char **names, int
 	for (int i = 0; i < count; i++)
 	{
 		Type *member_type = types[i];
-		Decl *member = decl_new_var(symtab_preset(names[i], TOKEN_IDENT), 0, type_info_new_base(member_type, 0), VARDECL_MEMBER);
+		Decl *member = decl_new_var(names[i], 0, type_info_new_base(member_type, 0), VARDECL_MEMBER);
 		member->unit = compiler.context.core_unit;
 		member->type = member_type;
 		member->resolve_status = RESOLVE_DONE;
@@ -1536,6 +1539,7 @@ Type *type_create_struct(const char *name, Type **types, const char **names, int
 	global_context_add_decl(decl);
 	return decl->type;
 }
+
 void type_setup(PlatformTarget *target)
 {
 	max_alignment_vector = (AlignSize)target->align_max_vector;
@@ -1598,7 +1602,7 @@ void type_setup(PlatformTarget *target)
 	global_context_add_decl(string_decl);
 
 	Type* types[2] = { type_string, type_typeid };
-	const char* names[2] = { "name", "type" };
+	const char* names[2] = { kw_name, kw_type };
 	type_reflected_param = type_create_struct("ReflectedParam", types, names, 2);
 }
 

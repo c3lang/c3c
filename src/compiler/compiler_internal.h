@@ -2085,6 +2085,7 @@ extern const char *kw_libc;
 extern const char *kw_main;
 extern const char *kw_mainstub;
 extern const char *kw_memcmp;
+extern const char *kw_name;
 extern const char *kw_nameof;
 extern const char *kw_offsetof;
 extern const char *kw_ordinal;
