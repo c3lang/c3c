@@ -490,11 +490,7 @@ static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info
 static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	// Ok, already resolved.
-	if (type_info->resolve_status == RESOLVE_DONE)
-	{
-		if (!type_info_ok(type_info)) return false;
-		return true;
-	}
+	if (type_info->resolve_status == RESOLVE_DONE) return type_info_ok(type_info);
 
 	// We might have the resolve already running, if so then that's bad.
 	if (type_info->resolve_status == RESOLVE_RUNNING)
