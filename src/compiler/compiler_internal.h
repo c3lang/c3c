@@ -1755,7 +1755,7 @@ struct CompilationUnit_
 	bool test_by_default;
 	bool module_generated;
 	Attr **attr_links;
-	Decl **generic_defines;
+	Decl **aliases;
 	Decl **ct_asserts;
 	Decl **ct_echos;
 	Decl **ct_includes;

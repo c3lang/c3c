@@ -359,7 +359,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			return;
 		case DECL_ALIAS:
 			ASSERT(decl->name);
-			vec_add(unit->generic_defines, decl);
+			vec_add(unit->aliases, decl);
 			decl_register(unit, decl);
 			return;
 		case DECL_CONSTDEF:
