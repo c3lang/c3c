@@ -82,7 +82,7 @@ extern fn ulong mach_absolute_time();
 fn String? executable_path()
 {
 	static char[4096] path;
-	static uint len = 0;
+	static int len = 0;
 	if (!len)
 	{
 		char[4096] buf;
@@ -105,7 +105,7 @@ fn uptr? load_address() @local
 		ZString image_name = darwin::_dyld_get_image_name(i);
 		if (!image_name) continue;
 		if (image_name.str_view() != path) continue;
-		return cmd.vmaddr + darwin::_dyld_get_image_vmaddr_slide(i);
+		return (uptr)(cmd.vmaddr + (usz)darwin::_dyld_get_image_vmaddr_slide(i));
 	}
 	return backtrace::IMAGE_NOT_FOUND~;
 }
@@ -115,7 +115,7 @@ fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void*
 	if (buffer)
 	{
 		char[1024] buf;
-		String s = process::execute_stdout_to_buffer(&buf,
+		String s = process::run_capture_stdout(&buf,
 			{ "atos", "-o", execpath, "-arch", env::AARCH64 ? "arm64" : "x86_64", "-l",
 				string::bformat(&&(char[64]){}, "%p", load_address),
 				string::bformat(&&(char[64]){}, "%p", buffer - 1),
@@ -127,11 +127,11 @@ fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void*
 			{
 				String[] path_parts = parts[3].split(mem, ":");
 				return {
-					.offset = (uptr)buffer,
+					.offset = (sz)(iptr)buffer,
 					.function = parts[0].copy(allocator),
 					.object_file = parts[2][..^2].copy(allocator),
 					.file = path_parts[0][1..].copy(allocator),
-					.line = path_parts[1][..^2].to_uint()!,
+					.line = path_parts[1][..^2].to_int()!,
 					.allocator = allocator
 				};
 			}
@@ -140,7 +140,7 @@ fn Backtrace? backtrace_load_element(Allocator allocator, String execpath, void*
 	Darwin_Dl_info info;
 	if (!buffer || !darwin::dladdr(buffer, &info)) return backtrace::BACKTRACE_UNKNOWN;
 	return {
-		.offset = (uptr)buffer,
+		.offset = (sz)(iptr)buffer,
 		.function = info.dli_sname ? info.dli_sname.copy(allocator) : "???".copy(allocator),
 		.object_file = info.dli_fname.copy(allocator),
 		.file = "".copy(allocator),

@@ -16,7 +16,7 @@ typedef enum FunctionParse_
 static inline Decl *parse_enum_declaration(ParseContext *c);
 static inline Decl *parse_func_definition(ParseContext *c, ContractDescription *contracts, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
-static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index);
+static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
 static Decl *parse_ct_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
@@ -162,54 +162,6 @@ static inline Path *parse_module_path(ParseContext *c)
 
 // --- Parse import and module
 
-/**
- *
- * module_param
- * 		: TYPE_IDENT
- *		| CONST_IDENT
- *		;
- *
- * module_params ::= '{' module_param (',' module_param)* '}'
- */
-static inline bool parse_optional_module_params(ParseContext *c, Decl **decl_ref)
-{
-	SourceLoc start = c->span;
-	if (!try_consume(c, TOKEN_LBRACE)) return true;
-	if (try_consume(c, TOKEN_RBRACE)) RETURN_PRINT_ERROR_HERE("The generic parameter list cannot be empty, it needs at least one element.");
-
-	const char **tokens = NULL;
-
-	// No params
-	while (1)
-	{
-		switch (c->tok)
-		{
-			case TOKEN_TYPE_IDENT:
-			case TOKEN_CONST_IDENT:
-				break;
-			case TOKEN_COMMA:
-				RETURN_PRINT_ERROR_HERE("Unexpected ','");
-			case TOKEN_IDENT:
-				RETURN_PRINT_ERROR_HERE("The module parameter must be a type or a constant.");
-			case TOKEN_CT_IDENT:
-			case TOKEN_CT_TYPE_IDENT:
-				RETURN_PRINT_ERROR_HERE("The module parameter cannot be a $-prefixed name.");
-			default:
-				RETURN_PRINT_ERROR_HERE("Only generic parameters are allowed here as parameters to the module.");
-		}
-		vec_add(tokens, symstr(c));
-		advance(c);
-		if (!try_consume(c, TOKEN_COMMA))
-		{
-			if (!consume(c, TOKEN_RBRACE, "Expected '}'.")) return false;
-			Decl *decl = decl_new_loc(DECL_GENERIC, "", extend_loc_with_token(&start, &c->prev_span));
-			decl->generic_decl.parameters = tokens;
-			*decl_ref = decl;
-			return true;
-		}
-	}
-}
-
 
 static int generic_id = 1;
 static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
@@ -239,14 +191,14 @@ bool parse_attach_contracts(Decl *generics, ContractDescription *contracts)
 	{
 		if (contracts->has_contracts)
 		{
-			print_error_at(contracts->first_contract, "Contracts can only be used with '@generic' declarations and modules.");
+			print_error_at(contracts->first_contract, "Contracts can only be used with generic declarations and modules.");
 			return false;
 		}
 		return true;
 	}
 	if (contracts->first_non_require)
 	{
-		print_error_at(contracts->first_non_require, "Invalid constraint - only '@require' is valid for '@generic' declarations and modules.");
+		print_error_at(contracts->first_non_require, "Invalid constraint - only '@require' is valid for generic declarations and modules.");
 		return false;
 	}
 	FOREACH(Expr *, e, contracts->requires) vec_add(generics->generic_decl.requires, e);
@@ -297,13 +249,6 @@ bool parse_module(ParseContext *c, ContractDescription *contracts)
 	}
 
 	// Is this a generic module?
-	Decl *generic_decl_old = NULL;
-	if (!parse_optional_module_params(c, &generic_decl_old))
-	{
-		if (!context_set_module(c, path)) return false;
-		recover_top_level(c);
-		return true;
-	}
 	if (!context_set_module(c, path)) return false;
 	Visibility visibility = VISIBLE_PUBLIC;
 	bool weak = false;
@@ -313,18 +258,6 @@ bool parse_module(ParseContext *c, ContractDescription *contracts)
 	ASSIGN_DECL_OR_RET(Decl *generic_decl, parse_generic_decl(c), false);
 
 	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond, NULL, &weak)) return false;
-	if (generic_decl_old)
-	{
-		SEMA_DEPRECATED(generic_decl_old, "Module-based generics is deprecated, use `<...>` instead.");
-		if (generic_decl)
-		{
-			SEMA_NOTE(generic_decl_old, "Old generics combined with new will ignore the former.");
-		}
-		else
-		{
-			generic_decl = generic_decl_old;
-		}
-	}
 	if (!parse_attach_contracts(generic_decl, contracts)) return false;
 	if (generic_decl)
 	{
@@ -359,24 +292,6 @@ bool parse_module(ParseContext *c, ContractDescription *contracts)
 					RETURN_PRINT_ERROR_AT(false, attr, "'@export' appeared more than once.");
 				c->unit->export_by_default = true;
 				continue;
-			case ATTRIBUTE_EXTERN:
-			{
-				if (vec_size(attr->exprs) != 1)
-				{
-					RETURN_PRINT_ERROR_AT(false, attr, "Expected 1 argument to '@extern(..), not %d'.",
-					                      vec_size(attr->exprs));
-				}
-				Expr *expr = attr->exprs[0];
-				if (expr->resolve_status != RESOLVE_DONE || !expr_is_const_string(expr)) RETURN_PRINT_ERROR_AT(false, expr, "Expected a constant string.");
-				if (c->unit->module->extname)
-				{
-					RETURN_PRINT_ERROR_AT(false, attr,
-					                      "External name for the module may only be declared in one location.");
-				}
-				c->unit->module->extname = expr->const_expr.bytes.ptr;
-				SEMA_DEPRECATED(attr, "'@extern' is deprecated, use '@cname' instead.");
-				continue;
-			}
 			case ATTRIBUTE_CNAME:
 			{
 				if (vec_size(attr->exprs) != 1)
@@ -521,15 +436,6 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_type_info);
 		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
 		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_type_info);
-		RANGE_EXTEND_PREV(type_info);
-		return type_info;
-	}
-	if (try_consume(c, TOKEN_CT_EVALTYPE))
-	{
-		TypeInfo *type_info = type_info_new(TYPE_INFO_EVALTYPE, make_loc(c->prev_span));
-		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_type_info);
-		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
-		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_type_info);
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
@@ -1156,8 +1062,8 @@ static Expr *parse_overload_from_token(ParseContext *c, TokenType token)
 		case TOKEN_EQEQ:
 			overload = OVERLOAD_EQUAL;
 			break;
-		case TOKEN_NOT_EQUAL:
-			overload = OVERLOAD_NOT_EQUAL;
+		case TOKEN_LESS:
+			overload = OVERLOAD_LESS_THAN;
 			break;
 		default:
 			UNREACHABLE
@@ -1243,7 +1149,7 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 				case TOKEN_SHL:
 				case TOKEN_SHR:
 				case TOKEN_EQEQ:
-				case TOKEN_NOT_EQUAL:
+				case TOKEN_LESS:
 				case TOKEN_BIT_AND_ASSIGN:
 				case TOKEN_BIT_OR_ASSIGN:
 				case TOKEN_BIT_XOR_ASSIGN:
@@ -1281,11 +1187,11 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 					expr->overload_expr = try_consume(c, TOKEN_EQ) ? OVERLOAD_ELEMENT_SET : OVERLOAD_ELEMENT_AT;
 					RANGE_EXTEND_PREV(expr);
 					break;
-				case TOKEN_LESS:
+				case TOKEN_NOT_EQUAL:
 				case TOKEN_LESS_EQ:
 				case TOKEN_GREATER:
 				case TOKEN_GREATER_EQ:
-					RETURN_PRINT_ERROR_HERE("Comparisons '<', '<=', '>', '>=' cannot be overloaded, only '==' and '!=' are supported.");
+					RETURN_PRINT_ERROR_HERE("For comparisons, use '<' and '==', other comparison operations will be derived from those.");
 				case TOKEN_PLUSPLUS:
 				case TOKEN_MINUSMINUS:
 					RETURN_PRINT_ERROR_HERE("Increment and decrement operators '++' and '--' cannot be directly overloaded, use '+=' and '-=' instead.");
@@ -1674,7 +1580,6 @@ static bool parse_next_is_typed_parameter(ParseContext *c, ParameterParseKind pa
 		}
 		case TYPE_TOKENS:
 		case TOKEN_TYPE_IDENT:
-		case TOKEN_CT_EVALTYPE:
 		case TOKEN_CT_TYPEOF:
 		case TOKEN_CT_TYPEFROM:
 			return true;
@@ -1766,6 +1671,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 					print_error_at_loc(&loc, "Only a single variadic parameter is allowed.");
 					return false;
 				}
+				var_arg_found = true;
 				*variadic = VARIADIC_TYPED;
 			}
 		}
@@ -1817,9 +1723,15 @@ CHECK_ELLIPSIS:
 						PRINT_ERROR_LAST("For typed vaargs '...', needs to appear after the type.");
 						return false;
 					}
-					else if (param_kind == VARDECL_PARAM_CT)
+					if (param_kind == VARDECL_PARAM_CT)
 					{
 						PRINT_ERROR_LAST("Untyped constant vaargs are not supported. Use raw macro vaargs instead.");
+						return false;
+					}
+					if (var_arg_found)
+					{
+						loc = extend_loc_with_token(&loc, &c->prev_span);
+						print_error_at_loc(&loc, "Only a single variadic parameter is allowed.");
 						return false;
 					}
 					// This is "foo..."
@@ -1981,7 +1893,7 @@ static bool parse_element_contract(ParseContext *c, ContractDescription *contrac
 	return false;
 }
 
-INLINE void attach_deprecation_from_contract(ParseContext *c, ContractDescription *contract, Decl *decl)
+INLINE void attach_deprecation_from_contract(ParseContext *c UNUSED, ContractDescription *contract, Decl *decl)
 {
 	if (contract->deprecated) vec_add(decl->attributes, contract->deprecated);
 	contract->deprecated = NULL;
@@ -2834,27 +2746,13 @@ static inline Decl *parse_faultdef_declaration(ParseContext *c)
 /**
  * enum_param_list ::= '(' enum_param* ')'
  */
-static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index)
+static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref)
 {
 	// If no left parenthesis we're done.
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
 
-	ArrayIndex index = -1;
-	bool has_inline = !inline_index;
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
-		index++;
-		bool is_inline = try_consume(c, TOKEN_INLINE);
-		if (is_inline)
-		{
-			if (!compiler.build.old_enums)
-			{
-				RETURN_PRINT_ERROR_HERE("Inline parameters are not allowed for enums.");
-			}
-			if (has_inline) RETURN_PRINT_ERROR_HERE("An enum cannot combine an inline value and a inline parameter.");
-			if (*inline_index > -1) RETURN_PRINT_ERROR_HERE("An enum may only have one inline parameter.");
-			*inline_index = index;
-		}
 		if (!parse_enum_param_decl(c, parameters_ref)) return false;
 		Decl *last_parameter = VECLAST(*parameters_ref);
 		ASSERT(last_parameter);
@@ -2871,6 +2769,8 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 {
 	Decl **values = NULL;
 	bool deprecate_warn = true;
+	SourceLoc start = c->prev_span;
+
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		ContractDescription contracts = EMPTY_CONTRACT;
@@ -2891,14 +2791,9 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 		}
 		if (!parse_attributes_for_global(c, enum_const)) return false;
 		attach_deprecation_from_contract(c, &contracts, enum_const);
-		if (try_consume(c, TOKEN_EQ))
+		if (is_constdef && try_consume(c, TOKEN_EQ))
 		{
 			Expr **args = NULL;
-			if (!is_constdef && deprecate_warn)
-			{
-				deprecate_warn = false;
-				PRINT_DEPRECATED_AT_LOC(&c->prev_span, "Use {} declaration of associated values instead.");
-			}
 			if (is_single_value || !tok_is(c, TOKEN_LBRACE))
 			{
 				ASSIGN_EXPR_OR_RET(Expr *single, parse_constant_expr(c), false);
@@ -2978,6 +2873,11 @@ NEXT:
 			EXPECT_OR_RET(TOKEN_RBRACE, false);
 		}
 	}
+	if (!is_constdef && vec_size(values) == 0)
+	{
+		print_error_after(&start, "An enum must have at least one value.");
+		return false;
+	}
 	*values_ref = values;
 	return true;
 }
@@ -3010,21 +2910,17 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	TypeInfo *type = NULL;
 
 	bool val_is_inline = false;
-	ArrayIndex inline_index = -1;
 	Decl **param_list = NULL;
 	if (try_consume(c, TOKEN_COLON))
 	{
-		if (!is_constdef)
-		{
-			is_constdef = try_consume(c, TOKEN_CONST);
-			if (is_constdef)
-			{
-				PRINT_DEPRECATED_AT_LOC(&c->prev_span, "Declare constdefs using 'constdef' instead.");
-			}
-		}
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
 			val_is_inline = try_consume(c, TOKEN_INLINE);
+			if (val_is_inline && !is_constdef)
+			{
+				PRINT_ERROR_LAST("An enum cannot have 'inline' on its underlying type.");
+				return poisoned_decl;
+			}
 			ASSIGN_TYPE_OR_RET(type, parse_optional_type_no_generic(c), poisoned_decl);
 			if (type->optional)
 			{
@@ -3041,7 +2937,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 		}
 		else
 		{
-			if (!parse_enum_param_list(c, &param_list, val_is_inline ? NULL : &inline_index)) return poisoned_decl;
+			if (!parse_enum_param_list(c, &param_list)) return poisoned_decl;
 		}
 	}
 
@@ -3054,8 +2950,6 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->loc);
-	decl->enums.inline_index = (int16_t)inline_index;
-	decl->enums.inline_value = is_constdef ? false : val_is_inline;
 	if (is_constdef && val_is_inline) decl->is_substruct = true;
 	if (!parse_enum_values(c, &decl->enums.values, visibility, is_constdef || expected_parameters == 1, is_constdef)) return poisoned_decl;
 	return decl;
@@ -3234,8 +3128,8 @@ static bool parse_doc_discarded_comment(ParseContext *c)
 {
 	if (try_consume(c, TOKEN_STRING))
 	{
-		PRINT_DEPRECATED_AT_LOC(&c->span, "Not using ':' before the description is deprecated");
-		return true;
+		print_error_at_loc(&c->span, "You need to use ':' before the description.");
+		return false;
 	}
 	if (!parse_docs_to_comment(c)) return true;
 	if (!parse_doc_check_skip_string_eos(c)) return true;
@@ -3288,7 +3182,8 @@ static inline bool parse_doc_contract(ParseContext *c, Expr ***list_ref, const c
 		expr->contract_expr.comment = scratch_buffer_copy();
 		if (!docs_to_comment)
 		{
-			SEMA_DEPRECATED(expr, "Not using ':' before the description is deprecated");
+			PRINT_ERROR_AT(expr, "Expected a ':' before the description.");
+			return false;
 		}
 	}
 	else
@@ -3387,7 +3282,8 @@ static inline bool parse_contract_param(ParseContext *c, ContractParam **list_re
 		}
 		else
 		{
-			SEMA_DEPRECATED(&param, "Not using ':' before the string is deprecated.");
+			PRINT_ERROR_AT(&param, "Expected a ':' before the description.");
+			return false;
 		}
 	}
 	vec_add(*list_ref, param);

@@ -43,7 +43,7 @@ typedef enum
 	COMMAND_UNIT_TEST,
 	COMMAND_PRINT_SYNTAX,
 	COMMAND_PROJECT,
-	COMMAND_FETCH_MSVC,
+	COMMAND_FETCH_SDK,
 } CompilerCommand;
 
 typedef enum
@@ -98,6 +98,8 @@ typedef struct
 	WarningLevel methods_not_resolved;
 	WarningLevel dead_code;
 	WarningLevel method_visibility;
+	WarningLevel builtin;
+	WarningLevel recursive_contracts;
 } Warnings;
 
 typedef enum
@@ -260,13 +262,11 @@ typedef struct BuildOptions_
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
-	bool msvc_accept_license;
+	bool fetch_accept_license;
 	bool msvc_show_versions;
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;
-	bool old_slice_copy;
-	bool old_enums;
-	bool old_compact_eq;
+	const char *fetch_sdk_target;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
@@ -302,6 +302,7 @@ typedef struct BuildOptions_
 	uint32_t max_stack_object_size;
 	const char *cpu_flags;
 	uint32_t max_macro_iterations;
+	bool is_project;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -415,9 +416,6 @@ typedef struct
 	bool no_entry;
 	bool kernel_build;
 	bool print_stats;
-	bool old_slice_copy;
-	bool old_enums;
-	bool old_compact_eq;
 	bool single_threaded;
 	bool print_large_functions;
 	int build_threads;
@@ -589,7 +587,9 @@ extern const int manifest_target_keys_count;
 extern const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 extern LinuxLibc default_libc;
 
-void fetch_msvc(BuildOptions *options);
+void fetch_winsdk(BuildOptions *options);
+void fetch_sdk(BuildOptions *options);
+char *fetch_android_ndk(BuildOptions *options);
 BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);

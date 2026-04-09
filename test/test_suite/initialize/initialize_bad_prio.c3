@@ -1,5 +1,5 @@
 
-fn void init1() @init("hello") // #error: Expected an integer value
+fn void init1() @init("hello") // #error: Expected an integer compile time constant value
 {
 }
 

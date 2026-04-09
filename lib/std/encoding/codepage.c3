@@ -132,25 +132,25 @@ fn CodePage? by_name(String charset_name) => @pool()
 
 fn String? decode(Allocator allocator, char[] src, CodePage code_page)
 {
-	char[] dst = allocator::alloc_array(allocator, char, decode_len(src, code_page));
-	return decode_buffer(src, dst, code_page);
+	char[] dst = alloc::alloc_array(allocator, char, decode_len(src, code_page));
+	return decode_into(dst, src, code_page);
 }
 
 <*
  Decode a code-page byte buffer into a UTF‑8 string.
 
- @param src            : "Input byte array in the given code page."
  @param dst            : "Destination output string in UTF-8."
+ @param src            : "Input byte array in the given code page."
  @param code_page      : "Code page for this encoding."
  @return "String in UTF-8."
 *>
-fn String? decode_buffer(char[] src, char[] dst, CodePage code_page)
+fn String? decode_into(char[] dst, char[] src, CodePage code_page)
 {
-	usz n = 0;
+	sz n = 0;
 	CodePageTable *table = code_page.table;
 	foreach (c: src)
 	{
-		usz pos = (usz)c * 4;
+		sz pos = (sz)c * 4;
 		char len = table.to_codepoint[pos];
 
 		dst[n:len] = table.to_codepoint[pos+1:len];
@@ -162,8 +162,8 @@ fn String? decode_buffer(char[] src, char[] dst, CodePage code_page)
 
 fn char[]? encode(Allocator allocator, char[] src, CodePage code_page, char replacement = REPLACEMENT_CHAR)
 {
-	char[] dst = allocator::alloc_array(allocator, char, encode_len(src));
-	return encode_buffer(src, dst, code_page, replacement);
+	char[] dst = alloc::alloc_array(allocator, char, encode_len(src));
+	return encode_into(dst, src, code_page, replacement);
 }
 
 const uint MASK @private = (1u << 24) - 1;
@@ -171,28 +171,28 @@ const uint MASK @private = (1u << 24) - 1;
 <*
  Encode a UTF‑8 string into a single‑byte code page.
 
- @param src            : "Input byte array in UTF-8"
  @param dst            : "Destination output byte array in the target code page"
+ @param src            : "Input byte array in UTF-8"
  @param code_page      : "Code page for this encoding."
  @param replacement    : "Byte to emit when Unicode scalar cannot be represented in the target code page."
  @return "Byte array in the given code page."
 *>
-fn char[]? encode_buffer(char[] src, char[] dst, CodePage code_page, char replacement = REPLACEMENT_CHAR)
+fn char[]? encode_into(char[] dst, char[] src, CodePage code_page, char replacement = REPLACEMENT_CHAR)
 {
 	// Unpack the packed reverse table once into a local uint[256] view.
 	uint[256] from_map;
 	CodePageTable *table = code_page.table;
-	for (usz i = 0; i < 256; i++)
+	for (sz i = 0; i < 256; i++)
 	{
 	    UIntLE *val = (UIntLE*)&table.from_codepoint[i * 4];
 	    from_map[i] = mem::load(val, 1).val;
 	}
 
-	usz out = 0;
-	usz n = src.len;
-	for (usz i = 0; i < n; )
+	sz out = 0;
+	sz n = src.len;
+	for (sz i = 0; i < n; )
 	{
-		usz rem = n - i;
+		sz rem = n - i;
 		if (rem > 4) rem = 4;
 
 		Char32 codepoint = conv::utf8_to_char32(&src[i], &rem)!;
@@ -200,7 +200,7 @@ fn char[]? encode_buffer(char[] src, char[] dst, CodePage code_page, char replac
 
 		// Binary search for codepoint in low 24 bits of each entry.
 		// Returned index is between [0..from_map.len).
-		usz index = sort::binarysearch(from_map[..], (uint)codepoint, fn int(uint lhs, uint rhs) => (int)(lhs & MASK) - (int)(rhs & MASK));
+		sz index = sort::binarysearch(from_map[..], (uint)codepoint, fn int(uint lhs, uint rhs) => (int)(lhs & MASK) - (int)(rhs & MASK));
 
 		uint entry = from_map[index];
 		if ((entry & MASK) == (uint)codepoint)
@@ -223,11 +223,11 @@ fn char[]? encode_buffer(char[] src, char[] dst, CodePage code_page, char replac
  @param src                : "Input byte array in the given code page."
  @param code_page          : "Code page for this encoding."
 *>
-fn usz decode_len(char[] src, CodePage code_page) @inline
+fn sz decode_len(char[] src, CodePage code_page) @inline
 {
-	usz n;
+	sz n;
 	CodePageTable *table = code_page.table;
-	foreach (usz c: src) n += table.to_codepoint[c *4 ];
+	foreach (sz c: src) n += table.to_codepoint[c *4 ];
 	return n;
 }
 
@@ -236,7 +236,7 @@ fn usz decode_len(char[] src, CodePage code_page) @inline
  encoding src from UTF‑8 to a single‑byte code page.
  @param src                : "Input byte array in UTF-8"
 *>
-fn usz encode_len(char[] src) @inline
+fn sz encode_len(char[] src) @inline
 {
 	return conv::utf8_codepoints((String)src);
 }

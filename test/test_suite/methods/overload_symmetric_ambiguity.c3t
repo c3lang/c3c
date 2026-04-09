@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-typedef Byte = inline ushort;
+typedef Byte @constinit = inline ushort;
 
 macro Byte Byte.add(self, int other) @operator_s(+) => (Byte)((ushort)self + (ushort)other);
 

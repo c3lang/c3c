@@ -9,6 +9,8 @@
 const char *project_default_keys[][2] = {
 		{"$schema", "Json schema url"},
 		{"authors", "Authors, optionally with email."},
+		{"android-api", "Set Android API version."},
+		{"android-ndk", "Set the NDK directory location."},
 		{"benchfn", "Override the benchmark function."},
 		{"build-dir", "Build location, where intermediate files are placed by default, relative to project file."},
 		{"c-include-dirs", "Set the include directories for C sources."},
@@ -35,8 +37,8 @@ const char *project_default_keys[][2] = {
 		{"linux-libc", "Set the libc to use for Linux. Valid options are 'host', 'gnu' and 'musl', default is 'host'"},
 		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
+		{"macos-sdk", "Set the directory for the MacOS SDK for cross compilation."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
-		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
 		{"merge-functions", "Force enable/disable function merging."},
 		{"no-entry", "Do not generate (or require) a main function."},
@@ -73,7 +75,7 @@ const char *project_default_keys[][2] = {
 		{"warnings", "Warnings used for all targets."},
 		{"wincrt", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default)."},
 		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
-		{"winsdk", "Set the path to Windows system library files for cross compilation."},
+		{"win-sdk", "Set the path to Windows system library files for cross compilation."},
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
@@ -84,6 +86,8 @@ const int project_default_keys_count = ELEMENTLEN(project_default_keys);
 
 const char* project_deprecated_target_keys[] = { "xxxxxxxxxx" };
 const char* project_target_keys[][2] = {
+		{"android-api", "Set Android API version."},
+		{"android-ndk", "Set the NDK directory location."},
 		{"benchfn", "Override the benchmark function."},
 		{"build-dir", "Build location, where intermediate files are placed by default, relative to project file."},
 		{"c-include-dirs", "C sources include directories for the target."},
@@ -121,8 +125,8 @@ const char* project_target_keys[][2] = {
 		{"linux-libc", "Set the libc to use for Linux. Valid options are 'host', 'gnu' and 'musl', default is 'host'"},
 		{"loop-vectorize", "Force enable/disable loop auto-vectorization."},
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
+		{"macos-sdk", "Set the directory for the MacOS SDK for cross compilation."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
-		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
 		{"merge-functions", "Force enable/disable function merging."},
 		{"name", "Set the name to be different from the target name."},
@@ -161,7 +165,7 @@ const char* project_target_keys[][2] = {
 		{"warnings", "Warnings used for all targets."},
 		{"wincrt", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default)."},
 		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
-		{"winsdk", "Set the path to Windows system library files for cross compilation."},
+		{"win-sdk", "Set the path to Windows system library files for cross compilation."},
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
@@ -467,13 +471,15 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 
 	// winsdk
-	target->win.sdk = get_string(context, json, "winsdk", target->win.sdk);
+	target->win.sdk = get_string(context, json, "win-sdk", target->win.sdk);
+	if (!target->win.sdk) target->win.sdk = get_string(context, json, "winsdk", NULL);
 
 	// windef
 	target->win.def = get_string(context, json, "windef", target->win.def);
 
 	// macossdk
-	target->macos.sysroot = get_string(context, json, "macossdk", target->macos.sysroot);
+	target->macos.sysroot = get_string(context, json, "macos-sdk", target->macos.sysroot);
+	if (!target->macos.sysroot) target->macos.sysroot = get_string(context, json, "macossdk", NULL);
 
 	// macos-min-version
 	target->macos.min_version = get_string(context, json, "macos-min-version", target->macos.min_version);
@@ -486,6 +492,12 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// Linux crtbegin
 	target->linuxpaths.crtbegin = get_string(context, json, "linux-crtbegin", target->linuxpaths.crtbegin);
+
+	// android-ndk
+	target->android.ndk_path = get_string(context, json, "android-ndk", target->android.ndk_path);
+
+	// android-api
+	target->android.api_version = (int)get_valid_integer(context, json, "android-api", false);
 
 	// linux-libc
 	LinuxLibc linux_libc = GET_SETTING(LinuxLibc, "linux-libc", linuxlibc, "`gnu`, `musl` or `host`.");

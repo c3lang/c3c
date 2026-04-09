@@ -3,8 +3,8 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
 import std::core::test @public;
-import std::core::mem::allocator @public;
-import libc, std::time, std::io, std::sort, std::os;
+import std::core::mem::allocators @public;
+import libc, std::time, std::io, std::sort, std::os, std::thread;
 
 
 alias TestFn = fn void();
@@ -27,14 +27,14 @@ struct TestContext
 	bool is_in_panic;
 	bool is_quiet_mode;
 	bool is_no_capture;
-    bool sort;
-    bool check_leaks;
+	bool sort;
+	bool check_leaks;
 	String current_test_name;
 	TestFn setup_fn;
 	TestFn teardown_fn;
 
 	char* error_buffer;
-	usz error_buffer_capacity;
+	sz error_buffer_capacity;
 	File fake_stdout;
 	struct stored
 	{
@@ -54,7 +54,7 @@ fn TestUnit[] test_collection_create(Allocator allocator)
 {
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
-	TestUnit[] tests = allocator::alloc_array(allocator, TestUnit, names.len);
+	TestUnit[] tests = alloc::alloc_array(allocator, TestUnit, names.len);
 	foreach (i, test : fns)
 	{
 		tests[i] = { names[i], fns[i] };
@@ -65,13 +65,13 @@ fn TestUnit[] test_collection_create(Allocator allocator)
 // Sort the tests by their name in ascending order.
 fn int cmp_test_unit(TestUnit a, TestUnit b)
 {
-	usz an = a.name.len;
-	usz bn = b.name.len;
+	sz an = a.name.len;
+	sz bn = b.name.len;
 	if (an > bn) @swap(a, b);
 	foreach (i, ac : a.name)
 	{
 		char bc = b.name[i];
-		if (ac != bc) return an > bn ? bc - ac : ac - bc;
+		if (ac != bc) return an > bn ? (int)bc - (int)ac : (int)ac - (int)bc;
 	}
 	return (int)(an - bn);
 }
@@ -100,11 +100,11 @@ fn void sig_segmentation_fault(CInt i, void*, void* context) @local @if(env::POS
 	panic_test("Segmentation fault", "Unknown", "Unknown", 1, posix::stack_instruction(context));
 }
 
-fn void test_panic(String message, String file, String function, uint line) @local
+fn void test_panic(String message, String file, String function, int line) @local
 {
 	panic_test(message, file, function, line);
 }
-fn void panic_test(String message, String file, String function, uint line, void* extra_trace = null) @local
+fn void panic_test(String message, String file, String function, int line, void* extra_trace = null) @local
 {
 	if (test_context.is_in_panic) return;
 	test_context.is_in_panic = true;
@@ -114,7 +114,7 @@ fn void panic_test(String message, String file, String function, uint line, void
 	if (test_context.assert_print_backtrace)
 	{
 		$if env::NATIVE_STACKTRACE:
-    		builtin::print_backtrace(message, extra_trace ? 3 : 0, extra_trace);
+			builtin::print_backtrace(message, extra_trace ? 3 : 0, extra_trace);
 		$endif
 	}
 	io::printf("\nTest failed ^^^ ( %s:%s ) %s\n",  file, line, message);
@@ -131,7 +131,7 @@ fn void panic_test(String message, String file, String function, uint line, void
 	}
 
 	test_context.is_in_panic = false;
-	allocator::thread_allocator = test_context.stored.allocator;
+	allocators::thread_allocator = test_context.stored.allocator;
 	libc::longjmp(&test_context.buf, 1);
 }
 
@@ -139,7 +139,7 @@ fn void mute_output() @local
 {
 	if (test_context.is_no_capture || !test_context.fake_stdout.file) return;
 	File* stdout = io::stdout();
-    File* stderr = io::stderr();
+	File* stderr = io::stderr();
 	*stderr = test_context.fake_stdout;
 	*stdout = test_context.fake_stdout;
 	(void)test_context.fake_stdout.set_cursor(0)!!;
@@ -155,7 +155,7 @@ fn void unmute_output(bool has_error) @local
 	*stderr = test_context.stored.stderr;
 	*stdout = test_context.stored.stdout;
 
-	ulong log_size = test_context.fake_stdout.cursor()!!;
+	long log_size = test_context.fake_stdout.cursor()!!;
 	if (has_error)
 	{
 		io::printn(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
@@ -186,7 +186,8 @@ fn void unmute_output(bool has_error) @local
 
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
-	usz max_name;
+	Thread main = thread::current();
+	sz max_name;
 	if (!tests.len)
 	{
 		io::printn("There are no test units to run.");
@@ -204,8 +205,8 @@ $endif
 	{
 		.assert_print_backtrace = true,
 		.breakpoint_on_assert = false,
-        .sort = true,
-        .check_leaks = true,
+		.sort = true,
+		.check_leaks = true,
 		.log_level = LogPriority.ERROR,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
@@ -284,7 +285,7 @@ $endif
 	int tests_skipped = 0;
 	int test_count = tests.len;
 	DString name = dstring::temp_with_capacity(64);
-	usz len = max_name + 9;
+	sz len = max_name + 9;
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");
 	name.append_repeat('-', len - len / 2);
@@ -321,19 +322,21 @@ $endif
 		mem.init(context.stored.allocator);
 		if (libc::setjmp(&context.buf) == 0)
 		{
+			// We might arrive here from a different thread
+			if (!thread::current().equals(main)) thread::exit(-1);
 			mute_output();
 			mem.clear();
-			if (context.check_leaks) allocator::thread_allocator = &mem;
+			if (context.check_leaks) allocators::thread_allocator = &mem;
 			@pool()
-            {
-                unit.func();
-            };
+			{
+				unit.func();
+			};
 			// track cleanup that may take place in teardown_fn
 			if (context.teardown_fn)
 			{
 				context.teardown_fn();
 			}
-			if (context.check_leaks) allocator::thread_allocator = context.stored.allocator;
+			if (context.check_leaks) allocators::thread_allocator = context.stored.allocator;
 
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())

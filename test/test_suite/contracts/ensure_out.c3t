@@ -75,17 +75,17 @@ panic:                                            ; preds = %entry
 panic1:                                           ; preds = %checkok
   store i64 4, ptr %taddr, align 8
   %14 = insertvalue %any undef, ptr %taddr, 0
-  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   store i64 %3, ptr %taddr2, align 8
   %16 = insertvalue %any undef, ptr %taddr2, 0
-  %17 = insertvalue %any %16, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %17 = insertvalue %any %16, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   store %any %15, ptr %varargslots, align 16
   %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
   store %any %17, ptr %ptradd, align 16
   %18 = insertvalue %"any[]" undef, ptr %varargslots, 0
   %"$$temp" = insertvalue %"any[]" %18, i64 2, 1
   store %"any[]" %"$$temp", ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 94, ptr @.file, i64 13, ptr @.func, i64 3, i32 9, ptr byval(%"any[]") align 8 %indirectarg) #2
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64
   unreachable
 
 panic5:                                           ; preds = %checkok3
@@ -96,16 +96,16 @@ panic5:                                           ; preds = %checkok3
 panic7:                                           ; preds = %checkok6
   store i64 4, ptr %taddr8, align 8
   %20 = insertvalue %any undef, ptr %taddr8, 0
-  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   store i64 %8, ptr %taddr9, align 8
   %22 = insertvalue %any undef, ptr %taddr9, 0
-  %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   store %any %21, ptr %varargslots10, align 16
   %ptradd11 = getelementptr inbounds i8, ptr %varargslots10, i64 16
   store %any %23, ptr %ptradd11, align 16
   %24 = insertvalue %"any[]" undef, ptr %varargslots10, 0
   %"$$temp12" = insertvalue %"any[]" %24, i64 2, 1
   store %"any[]" %"$$temp12", ptr %indirectarg13, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 94, ptr @.file, i64 13, ptr @.func, i64 3, i32 5, ptr byval(%"any[]") align 8 %indirectarg13) #2
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64
   unreachable
 }

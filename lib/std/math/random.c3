@@ -34,7 +34,7 @@ macro void seed_entropy(random)
  @require is_random(random)
  @require range > 0
 *>
-macro int next(random, uint range)
+macro int next(random, int range)
 {
 	if (range == 1) return 0;
 	uint mask = ~0U;
@@ -46,7 +46,7 @@ macro int next(random, uint range)
 		x = random.next_int() & mask;
 	}
 	while (x > range);
-	return x;
+	return (int)x;
 }
 
 <*
@@ -96,7 +96,7 @@ fn int rand_in_range(int min, int max) @builtin
 fn double rnd() @builtin
 {
 	init_default_random();
-	ulong val = default_random.next_long() & (1UL << 53 - 1);
+	ulong val = default_random.next_long() & (1UL << 53 - 1u);
 	return val * 0x1.0p-53;
 }
 
@@ -117,7 +117,7 @@ macro bool next_bool(random)
 *>
 macro float next_float(random)
 {
-	uint val = random.next_int() & (1U << 24 - 1);
+	uint val = random.next_int() & (1U << 24 - 1u);
 	return val * 0x1.0p-24f;
 }
 
@@ -128,7 +128,7 @@ macro float next_float(random)
 *>
 macro double next_double(random)
 {
-	ulong val = random.next_long() & (1UL << 53 - 1);
+	ulong val = random.next_long() & (1UL << 53 - 1u);
 	return val * 0x1.0p-53;
 }
 
@@ -143,7 +143,7 @@ macro ushort @char_to_short(#function) => (ushort)#function << 8 + #function;
 macro void @random_value_to_bytes(#function, char[] bytes)
 {
 	var $byte_size = $sizeof(#function());
-	usz len = bytes.len;
+	sz len = bytes.len;
 	// Same size or smaller? Then just copy.
 	while (len > 0)
 	{

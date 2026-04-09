@@ -20,7 +20,7 @@ enum DateTimeFormat
 	TIMEONLY,	// "15:04:05"
 }
 
-fn usz? to_format(Formatter* f, TzDateTime dt, DateTimeFormat type) => @pool()
+fn sz? to_format(Formatter* f, TzDateTime dt, DateTimeFormat type) => @pool()
 {
 	switch (type)
 	{
@@ -79,12 +79,12 @@ fn String TzDateTime.format(self, Allocator allocator, DateTimeFormat dt_format)
 // .with_gmt_offset(0) instead of .to_local() is used to avoid surprises when user is formatting to a representation without a timezone
 fn String DateTime.format(self, Allocator allocator, DateTimeFormat dt_format) => format(allocator, dt_format, self.with_gmt_offset(0));
 
-fn usz? DateTime.to_format(&self, Formatter* f) @dynamic
+fn sz? DateTime.to_format(&self, Formatter* f) @dynamic
 {
 	return to_format(f, self.with_gmt_offset(0), DATETIME);
 }
 
-fn usz? TzDateTime.to_format(&self, Formatter* f) @dynamic
+fn sz? TzDateTime.to_format(&self, Formatter* f) @dynamic
 {
 	return to_format(f, *self, RFC3339MS);
 }

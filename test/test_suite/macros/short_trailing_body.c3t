@@ -30,7 +30,7 @@ entry:
   %retparam = alloca i64, align 8
   %error_var4 = alloca i64, align 8
   %error_var10 = alloca i64, align 8
-  %1 = call ptr @std.core.mem.allocator.push_pool(i64 0) #3
+  %1 = call ptr @std.core.mem.allocators.push_pool(i64 0) #3
   store ptr %1, ptr %state, align 8
   store i32 %0, ptr %taddr, align 4
   %2 = insertvalue %any undef, ptr %taddr, 0
@@ -102,6 +102,6 @@ noerr_block15:                                    ; preds = %after_check13
 
 voiderr:                                          ; preds = %noerr_block15, %guard_block14, %guard_block8, %guard_block
   %14 = load ptr, ptr %state, align 8
-  call void @std.core.mem.allocator.pop_pool(ptr %14) #3
+  call void @std.core.mem.allocators.pop_pool(ptr %14) #3
   ret i32 2
 }

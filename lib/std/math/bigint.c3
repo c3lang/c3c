@@ -13,7 +13,7 @@ const BigInt ONE = { .len = 1, .data[0] = 1 };
 struct BigInt (Printable)
 {
 	uint[MAX_LEN] data;
-	uint len;
+	int len;
 }
 
 fn BigInt from_int(int128 val)
@@ -27,7 +27,7 @@ fn BigInt* BigInt.init(&self, int128 value)
 {
 	self.data[..] = 0;
 	int128 tmp = value;
-	uint len = 0;
+	int len = 0;
 	while (tmp != 0 && len < MAX_LEN)
 	{
 		self.data[len] = (uint)(tmp & 0xFFFFFFFF);
@@ -45,7 +45,7 @@ fn BigInt* BigInt.init_with_u128(&self, uint128 value)
 {
 	self.data[..] = 0;
 	uint128 tmp = value;
-	uint len = 0;
+	int len = 0;
 	while (tmp != 0)
 	{
 		self.data[len] = (uint)(tmp & 0xFFFFFFFF);
@@ -85,12 +85,12 @@ fn BigInt* BigInt.init_with_array(&self, uint[] values)
 
 fn BigInt*? BigInt.init_string_radix(&self, String value, int radix)
 {
-	isz len = value.len;
-	isz limit = value[0] == '-' ? 1 : 0;
+	sz len = value.len;
+	sz limit = value[0] == '-' ? 1 : 0;
 	*self = ZERO;
 	BigInt multiplier = ONE;
 	BigInt radix_big = from_int(radix);
-	for (isz i = len - 1; i >= limit; i--)
+	for (sz i = len - 1; i >= limit; i--)
 	{
 		int pos_val = value[i];
 		switch (pos_val)
@@ -141,7 +141,7 @@ fn void BigInt.add_this(&self, BigInt other) @operator(+=)
 	self.len = max(self.len, other.len);
 
 	ulong carry = 0;
-	for (uint i = 0; i < self.len; i++)
+	for (int i = 0; i < self.len; i++)
 	{
 		ulong sum = (ulong)self.data[i] + (ulong)other.data[i] + carry;
 		carry = sum >> 32;
@@ -159,7 +159,7 @@ fn void BigInt.add_this(&self, BigInt other) @operator(+=)
 }
 
 
-macro uint find_length(uint* data, uint length)
+macro int find_length(uint* data, int length)
 {
 	while (length > 1 && data[length - 1] == 0)
 	{
@@ -199,7 +199,7 @@ fn void BigInt.mult_this(&self, BigInt bi2) @operator(*=)
 	}
 
 	// multiply the absolute values
-	for (uint i = 0; i < self.len; i++)
+	for (int i = 0; i < self.len; i++)
 	{
 		if (self.data[i] == 0) continue;
 		ulong mcarry = 0;
@@ -220,7 +220,7 @@ fn void BigInt.mult_this(&self, BigInt bi2) @operator(*=)
 		}
 	}
 
-	res.len = min(self.len + bi2.len, (uint)MAX_LEN);
+	res.len = min(self.len + bi2.len, MAX_LEN);
 
 	reduce_len(&res);
 
@@ -240,7 +240,7 @@ fn void BigInt.negate(&self)
 
 	bool was_negative = self.is_negative();
 	// 1's complement
-	for (uint i = 0; i < MAX_LEN; i++)
+	for (int i = 0; i < MAX_LEN; i++)
 	{
 		self.data[i] = (uint)~(self.data[i]);
 	}
@@ -290,7 +290,7 @@ fn BigInt* BigInt.sub_this(&self, BigInt other) @operator(-=)
 	// roll over to negative
 	if (carry_in != 0)
 	{
-		for (uint i = self.len; i < MAX_LEN; i++)
+		for (int i = self.len; i < MAX_LEN; i++)
 		{
 			self.data[i] = 0xFFFFFFFF;
 		}
@@ -507,7 +507,7 @@ fn String BigInt.to_string(&self, Allocator allocator) @dynamic
 	return self.to_string_with_radix(10, allocator);
 }
 
-fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
+fn sz? BigInt.to_format(&self, Formatter* format) @dynamic
 {
 	if (self.is_zero())
 	{
@@ -516,7 +516,7 @@ fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
 	}
 	BigInt a = *self;
 	bool negative = self.is_negative();
-	usz len;
+	sz len;
 	if (negative)
 	{
 		format.print_char('-')!;
@@ -526,8 +526,8 @@ fn usz? BigInt.to_format(&self, Formatter* format) @dynamic
 	uint[280] chunks @noinit;
 	int chunk_count;
 
-	const BASE10_9 = 1000000000;
-	foreach_r(d : self.data[:self.len])
+	const ulong BASE10_9 = 1000000000;
+	foreach_r (d : self.data[:self.len])
 	{
 		ulong carry = d;
 		for (int i = 0; i < chunk_count; i++)
@@ -584,7 +584,7 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 			}
 			else
 			{
-				str.append(CHARS[remainder.data[0] - 10]);
+				str.append(CHARS[remainder.data[0] - 10u]);
 			}
 			a = quotient;
 		}
@@ -618,7 +618,7 @@ fn BigInt BigInt.mod_pow(&self, BigInt exp, BigInt mod)
 	// calculate constant = b^(2k) / m
 	BigInt constant = ZERO;
 
-	uint i = mod.len << 1;
+	int i = mod.len << 1;
 	constant.data[i] = 0x00000001;
 	constant.len = i + 1;
 
@@ -757,11 +757,11 @@ fn BigInt barrett_reduction(BigInt x, BigInt n, BigInt constant)
 
 fn BigInt BigInt.sqrt(&self)
 {
-	uint num_bits = self.bitcount();
+	int num_bits = self.bitcount();
 
 	num_bits = num_bits & 0x1 != 0 ? num_bits >> 1 + 1 : num_bits >> 1;
 
-	uint byte_pos = num_bits >> 5;
+	int byte_pos = num_bits >> 5;
 	int bit_pos = num_bits & 0x1F;
 
 	uint mask;
@@ -805,7 +805,7 @@ fn BigInt BigInt.bit_and(self, BigInt bi2) @operator(&)
 
 fn void BigInt.bit_and_this(&self, BigInt bi2)
 {
-	uint len = max(self.len, bi2.len);
+	int len = max(self.len, bi2.len);
 	foreach (i, &ref : self.data[:len])
 	{
 		*ref = *ref & bi2.data[i];
@@ -823,7 +823,7 @@ fn BigInt BigInt.bit_or(self, BigInt bi2) @operator(|)
 
 fn void BigInt.bit_or_this(&self, BigInt bi2)
 {
-	uint len = max(self.len, bi2.len);
+	int len = max(self.len, bi2.len);
 	foreach (i, &ref : self.data[:len])
 	{
 		*ref = *ref | bi2.data[i];
@@ -841,7 +841,7 @@ fn BigInt BigInt.bit_xor(self, BigInt bi2) @operator(^)
 
 fn void BigInt.bit_xor_this(&self, BigInt bi2)
 {
-	uint len = max(self.len, bi2.len);
+	int len = max(self.len, bi2.len);
 	foreach (i, &ref : self.data[:len])
 	{
 		*ref = *ref ^ bi2.data[i];
@@ -971,7 +971,7 @@ fn void single_byte_divide(BigInt* self, BigInt* bi2, BigInt* quotient, BigInt* 
 	}
 
 	quotient.len = result_pos;
-	uint j = 0;
+	int j = 0;
 	for (int i = result_pos - 1; i >= 0; i--, j++)
 	{
 		quotient.data[j] = result[i];

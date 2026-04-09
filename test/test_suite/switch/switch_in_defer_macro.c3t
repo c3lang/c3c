@@ -67,13 +67,13 @@ fn void? Lexer.init(&self, InStream reader, Ident ident, Allocator using = mem)
 		assert(end.len > 0 && end.len <= ushort.max);
 		max_token = max(max_token, (ushort)end.len);
 	}
-	char* buf = allocator::malloc_try(using, max_token)!;
+	char* buf = alloc::malloc_try(using, max_token)!;
 	*self = { .allocator = using, .reader = reader, .buf = buf[:max_token], .tokens = trie };
 }
 
 fn void? Lexer.free(&self)
 {
-	allocator::free(self.allocator, self.buf);
+	alloc::free(self.allocator, self.buf);
 	*self = {};
 }
 
@@ -196,7 +196,7 @@ fn ulong? Lexer.parse_decimal(&self)
 	{
 		if (c.is_digit())
 		{
-			x = x * 10 + (ulong)(c - '0');
+			x = x * 10u + (ulong)(c - '0');
 			ok = true;
 		}
 	};
@@ -209,11 +209,11 @@ fn ulong? Lexer.parse_hexadecimal(&self)
 		switch
 		{
 			case c.is_digit():
-				x = x * 10 + (ulong)(c - '0');
+				x = x * 10u + (ulong)(c - '0');
 				ok = true;
 			case c.is_xdigit():
 				c -= c < 'A' ? 'a' : 'A';
-				x = x * 16 + (ulong)c;
+				x = x * 16u + (ulong)c;
 				ok = true;
 		}
 	};
@@ -225,7 +225,7 @@ fn ulong? Lexer.parse_binary(&self)
 	{
 		if (c.is_digit())
 		{
-			x = x * 2 + (ulong)(c - '0');
+			x = x * 2u + (ulong)(c - '0');
 			ok = true;
 		}
 	};
@@ -237,7 +237,7 @@ fn ulong? Lexer.parse_octal(&self)
 	{
 		if (c.is_odigit())
 		{
-			x = x * 8 + (ulong)(c - '0');
+			x = x * 8u + (ulong)(c - '0');
 			ok = true;
 		}
 	};
@@ -291,7 +291,7 @@ fn String? Lexer.parse_string(&self, char quote)
 			if (c == quote)
 			{
 				self.span = (uint)str.len();
-				self.column += self.span + 2;
+				self.column += self.span + 2u;
 				return str.str_view();
 			}
 			prev = c;
@@ -337,7 +337,7 @@ macro char? Lexer.read_char_for_string(&self)
 
 fn Token? Lexer.parse_token(&self)
 {
-	usz n = self.reader.read(self.buf)!;
+	sz n = self.reader.read(self.buf)!;
 	defer self.unread(n);
 	Token tok = self.tokens.get_best(self.buf[:n])!;
 	n = self.buf.len - tok.token.len;
@@ -395,7 +395,7 @@ fn String? Lexer.parse_ident(&self)
 			if (err == io::EOF) return str.str_view();
 			return err~;
 		}
-		if (!self.ident(str.len(), c)) return str.str_view();
+		if (!self.ident((usz)str.len(), c)) return str.str_view();
 		str.append_char(c);
 	}
 }
@@ -477,7 +477,7 @@ struct TrieNode
 	bool valid;
 }
 
-fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = mem)
+fn void Trie.init(&self, sz initial_capacity = 8, Allocator using = mem)
 {
 	*self = {};
 	self.nodes.init(using, initial_capacity);
@@ -568,7 +568,7 @@ fn void? TrieNode.set(&self, Trie *t, char[] key, Value value)
 	Index idx = self.children[c];
 	if (idx == 0)
 	{
-		usz new_idx = t.nodes.len();
+		sz new_idx = t.nodes.len();
 		assert(new_idx != 0);
 		if (new_idx > Index.max) return faults::TRIE_FULL~;
 		idx = (Index)new_idx;
@@ -592,7 +592,7 @@ fn void? TrieNode.del(&self, Trie* t, char[] key, TriePath path)
 		return;
 	}
 	Index current = path.pop()!;
-	for (isz i = path.len() - 1; i >= 0; i--)
+	for (sz i = path.len() - 1; i >= 0; i--)
 	{
 		Index parent = path[i];
 		bool is_empty = true;
@@ -620,14 +620,14 @@ struct Bitmap
 fn bool Bitmap.get(&self, char x)
 {
 	char i = x & 0b11;
-	char j = 1 << (x >> 2);
+	char j = 1u << (x >> 2);
 	return self.data[i] & j != 0;
 }
 
 fn void Bitmap.set(&self, char x)
 {
 	char i = x & 0b11;
-	char j = 1 << (x >> 2);
+	char j = 1u << (x >> 2);
 	self.data[i] |= j;
 }
 
@@ -698,7 +698,7 @@ fn void test()
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
 @std.core.ascii.ASCII_LOOKUP = extern_weak constant [256 x i16], align 16
 @"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@std.core.mem.allocator.thread_allocator = extern_weak thread_local global %any, align 8
+@std.core.mem.allocators.thread_allocator = extern_weak thread_local global %any, align 8
 
 define zeroext i8 @lexer_test.is_ident_char(i64 %0, i8 zeroext %1) #0 {
 entry:
@@ -764,7 +764,7 @@ entry:
 
 loop.cond:                                        ; preds = %noerr_block13, %entry
   %1 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %1, %0
+  %lt = icmp slt i64 %1, %0
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
@@ -780,7 +780,7 @@ loop.body:                                        ; preds = %loop.cond
   %4 = call ptr @std.io.ByteReader.init(ptr %br, ptr %lo, i64 %hi)
   %5 = insertvalue %any undef, ptr %4, 0
   %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
-  %7 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocator.thread_allocator)
+  %7 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator)
   store %any %6, ptr %taddr, align 8
   %lo2 = load i64, ptr %taddr, align 8
   %ptradd3 = getelementptr inbounds i8, ptr %taddr, i64 8
@@ -828,8 +828,8 @@ noerr_block13:                                    ; preds = %after_check11
   %eq = icmp eq i8 %15, 1
   call void @llvm.assume(i1 %eq)
   %16 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %16, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %16, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

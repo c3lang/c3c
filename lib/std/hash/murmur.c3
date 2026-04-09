@@ -54,7 +54,7 @@ fn uint hash32(char[] data, uint seed)
 *>
 fn uint128 hash128_64(char[] data, uint seed)
 {
-	ulong len = data.len;
+	sz len = data.len;
 	int nblocks = (int)(len / 16);
 
 	ulong h1 = seed;
@@ -105,8 +105,8 @@ fn uint128 hash128_64(char[] data, uint seed)
 	}
 
 
-	h1 ^= len;
-	h2 ^= len;
+	h1 ^= (uint)len;
+	h2 ^= (uint)len;
 
 	h1 += h2;
 	h2 += h1;
@@ -124,12 +124,12 @@ fn uint128 hash128_64(char[] data, uint seed)
 <*
  @param [in] data : "The data to hash"
  @param seed : "The seed to use for hashing"
- @require data.len <= uint.max : "Too much data"
+ @require data.len <= int.max : "Too much data"
 *>
 fn uint128 hash128_32(char[] data, uint seed)
 {
-	uint len = data.len;
-	int nblocks = (int)(len / 16);
+	int len = data.len;
+	int nblocks = len / 16;
 
 	uint h1 = seed;
 	uint h2 = seed;
@@ -190,7 +190,7 @@ fn uint128 hash128_32(char[] data, uint seed)
 			k1 *= C1; k1 = k1.rotl(15); k1 *= C2; h1 ^= k1;
 	}
 
-	h1 ^= len; h2 ^= len; h3 ^= len; h4 ^= len;
+	h1 ^= (uint)len; h2 ^= (uint)len; h3 ^= (uint)len; h4 ^= (uint)len;
 
 	h1 += h2; h1 += h3; h1 += h4;
 	h2 += h1; h3 += h1; h4 += h1;

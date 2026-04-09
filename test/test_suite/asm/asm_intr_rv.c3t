@@ -11,6 +11,7 @@ fn void main(String[] args)
 		csrrsi $zero, $mstatus, 8u;
 		csrrci $zero, $mstatus, 31u;
 		csrrw  $zero, $mtvec, fp;
+        csrrc  $zero, 3132u, fp;
 		mret;
 		wfi;
 	}
@@ -18,4 +19,4 @@ fn void main(String[] args)
 
 /* #expect: test.ll
 
-"csrw mstatus, a0\0Acsrrsi zero, mstatus, 8\0Acsrrci zero, mstatus, 31\0Acsrrw zero, mtvec, $0\0Amret \0Awfi \0A", "r,~{x0},~{mstatus},~{mtvec}"(ptr %1)
+"csrw mstatus, a0\0Acsrrsi zero, mstatus, 8\0Acsrrci zero, mstatus, 31\0Acsrrw zero, mtvec, $0\0Acsrrc zero, 3132, $0\0Amret \0Awfi \0A", "r,~{x0},~{mstatus},~{mtvec}"(ptr %1)

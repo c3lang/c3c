@@ -27,7 +27,7 @@ entry:
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
-  %2 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocator.thread_allocator)
+  %2 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator)
   %lo = load i64, ptr %2, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %2, i64 8
   %hi = load ptr, ptr %ptradd1, align 8

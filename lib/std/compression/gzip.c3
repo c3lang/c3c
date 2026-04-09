@@ -36,16 +36,16 @@ struct Gzip
 fn void Gzip.free(&self)
 {
 	if (!self.allocator) return;
-	allocator::free(self.allocator, self.extra);
+	alloc::free(self.allocator, self.extra);
 	self.filename.free(self.allocator);
 	self.comment.free(self.allocator);
-	allocator::free(self.allocator, self.uncompressed);
+	alloc::free(self.allocator, self.uncompressed);
 }
 
 fn char[]? uncompress_bytes(Allocator allocator, char[] src) @inline => @pool()
 {
 	Gzip gz = uncompress_stream(tmem, &&io::wrap_bytes(src))!;
-	return allocator::clone_slice(allocator, gz.uncompressed);
+	return alloc::clone_slice(allocator, gz.uncompressed);
 }
 
 fn Gzip? uncompress(Allocator allocator, char[] src) @inline
@@ -74,7 +74,7 @@ fn Gzip? uncompress_stream(Allocator allocator, InStream reader)
 		if (gz.header.flg.extra)
 		{
 			ushort xlen = io::read_le_ushort(header_reader)!;
-			gz.extra = allocator::malloc(allocator, xlen)[:xlen];
+			gz.extra = alloc::malloc(allocator, xlen)[:xlen];
 			header_reader.read(gz.extra)!;
 		}
 
@@ -105,7 +105,7 @@ fn Gzip? uncompress_stream(Allocator allocator, InStream reader)
 	if (crc32 != crc32::hash(gz.uncompressed)) return CORRUPT_DATA~;
 
 	uint isize = io::read_le_uint(reader)!;
-	if (isize != (gz.uncompressed.len & 0xFFFFFFFF)) return CORRUPT_DATA~;
+	if (isize != ((usz)gz.uncompressed.len & 0xFFFFFFFF)) return CORRUPT_DATA~;
 
 	return gz;
 }
@@ -136,7 +136,7 @@ fn void? compress_stream(OutStream writer, char[] src, bool hcrc = false, char[]
 		h.write((char[GzipHeader.sizeof]*)&header)!;
 		if (extra.len)
 		{
-			io::write_le_short(&h, (ushort)extra.len)!;
+			io::write_le_ushort(&h, (ushort)extra.len)!;
 			h.write(extra)!;
 		}
 		if (name.len)
@@ -150,7 +150,7 @@ fn void? compress_stream(OutStream writer, char[] src, bool hcrc = false, char[]
 		if (hcrc)
 		{
 			uint crc_hash = crc32::hash(h.array_view());
-			io::write_le_short(&h, (ushort)(crc_hash & 0xFF_FF))!;
+			io::write_le_ushort(&h, (ushort)(crc_hash & 0xFF_FF))!;
 		}
 
 		writer.write(h.array_view())!;
@@ -158,8 +158,8 @@ fn void? compress_stream(OutStream writer, char[] src, bool hcrc = false, char[]
 		deflate::compress_stream(tmem, &&io::wrap_bytes(src), writer)!;
 	};
 
-	io::write_le_int(writer, crc32::hash(src))!;
-	io::write_le_int(writer, src.len & 0xFF_FF_FF_FF)!;
+	io::write_le_uint(writer, crc32::hash(src))!;
+	io::write_le_uint(writer, (uint)src.len)!;
 }
 
 
@@ -178,7 +178,7 @@ fn void CrcWriter.init(&self)
 	self.hash.init();
 }
 
-fn usz? CrcWriter.write(&self, char[] bytes) @dynamic
+fn sz? CrcWriter.write(&self, char[] bytes) @dynamic
 {
 	self.hash.update(bytes);
 	return bytes.len;

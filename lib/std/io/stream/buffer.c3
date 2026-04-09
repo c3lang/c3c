@@ -4,8 +4,8 @@ struct ReadBuffer (InStream)
 {
 	InStream wrapped_stream;
 	char[] bytes;
-	usz read_idx;
-	usz write_idx;
+	sz read_idx;
+	sz write_idx;
 }
 
 <*
@@ -29,7 +29,7 @@ fn void? ReadBuffer.close(&self) @dynamic
 	if (&self.wrapped_stream.close) self.wrapped_stream.close()!;
 }
 
-fn usz? ReadBuffer.read(&self, char[] bytes) @dynamic
+fn sz? ReadBuffer.read(&self, char[] bytes) @dynamic
 {
 	if (self.read_idx == self.write_idx)
 	{
@@ -40,7 +40,7 @@ fn usz? ReadBuffer.read(&self, char[] bytes) @dynamic
 		}
 		readbuffer_refill(self)!;
 	}
-	usz n = min(self.write_idx - self.read_idx, bytes.len);
+	sz n = min(self.write_idx - self.read_idx, bytes.len);
 	bytes[:n] = self.bytes[self.read_idx:n];
 	self.read_idx += n;
 	return n;
@@ -65,7 +65,7 @@ struct WriteBuffer (OutStream)
 {
 	OutStream wrapped_stream;
 	char[] bytes;
-	usz index;
+	sz index;
 }
 
 <*
@@ -96,9 +96,9 @@ fn void? WriteBuffer.flush(&self) @dynamic
 	if (&self.wrapped_stream.flush) self.wrapped_stream.flush()!;
 }
 
-fn usz? WriteBuffer.write(&self, char[] bytes) @dynamic
+fn sz? WriteBuffer.write(&self, char[] bytes) @dynamic
 {
-	usz n = self.bytes.len - self.index;
+	sz n = self.bytes.len - self.index;
 	if (bytes.len < n)
 	{
 		// Enough room in the buffer.
@@ -120,7 +120,7 @@ fn usz? WriteBuffer.write(&self, char[] bytes) @dynamic
 
 fn void? WriteBuffer.write_byte(&self, char c) @dynamic
 {
-	usz n = self.bytes.len - self.index;
+	sz n = self.bytes.len - self.index;
 	if (n == 0)
 	{
 		write_buffer_write_pending(self)!;

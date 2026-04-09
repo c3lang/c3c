@@ -3,7 +3,7 @@ INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVM
 {
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
 	{
-		LLVMValueRef index_val = llvm_const_int(c, type_usz, index);
+		LLVMValueRef index_val = LLVMConstInt(c->size_type, index, false);
 		return LLVMBuildInsertElement(c->builder, agg, new_value, index_val, "");
 	}
 	return LLVMBuildInsertValue(c->builder, agg, new_value, index, "");
@@ -154,11 +154,17 @@ INLINE LLVMValueRef llvm_emit_trunc_bool(GenContext *c, LLVMValueRef value)
 
 INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index)
 {
-	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind )
+	LLVMTypeRef type = LLVMTypeOf(agg);
+	switch (LLVMGetTypeKind(type))
 	{
-		return LLVMBuildExtractElement(c->builder, agg, llvm_const_int(c, type_usz, index), "");
+		case LLVMVectorTypeKind:
+			return LLVMBuildExtractElement(c->builder, agg, LLVMConstInt(c->size_type, index, false), "");
+		case LLVMArrayTypeKind:
+		case LLVMStructTypeKind:
+			return LLVMBuildExtractValue(c->builder, agg, index, "");
+		default:
+			UNREACHABLE;
 	}
-	return LLVMBuildExtractValue(c->builder, agg, index, "");
 }
 
 INLINE bool llvm_use_accurate_debug_info(GenContext *context)
@@ -334,6 +340,16 @@ INLINE LLVMValueRef llvm_const_integer(GenContext *c, Int128 i, Type *type)
 		default:
 			return llvm_const_int(c, type, i.low);
 	}
+}
+
+INLINE LLVMValueRef llvm_const_vec(GenContext *c, LLVMValueRef scalar_val, unsigned len)
+{
+	LLVMValueRef val = LLVMGetUndef(LLVMVectorType(LLVMTypeOf(scalar_val), len));
+	for (ArraySize i = 0; i < len; i++)
+	{
+		val = llvm_emit_insert_value(c, val, scalar_val, i);
+	}
+	return val;
 }
 
 INLINE LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val)

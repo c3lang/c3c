@@ -364,7 +364,7 @@ entry:
   store i32 0, ptr %sum, align 4
   %ptradd = getelementptr inbounds i8, ptr %0, i64 8
   %1 = load i64, ptr %ptradd, align 8
-  %eq = icmp eq i64 0, %1
+  %eq = icmp eq i64 %1, 0
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
@@ -406,9 +406,7 @@ loop.cond:                                        ; preds = %loop.body, %entry
   %ptradd = getelementptr inbounds i8, ptr %0, i64 8
   %2 = load i64, ptr %ptradd, align 8
   %lt = icmp slt i64 %sext, %2
-  %check = icmp slt i64 %2, 0
-  %siui-lt = or i1 %check, %lt
-  br i1 %siui-lt, label %loop.body, label %loop.exit
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %3 = load i32, ptr %sum, align 4

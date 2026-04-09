@@ -1,4 +1,4 @@
-module test;
+module std::test;
 import std::io;
 fn void main()
 {
@@ -21,7 +21,7 @@ fn void main()
 	io::printfn("%s %s", success5, z5);
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
   %0 = load i8, ptr %x, align 1
   %1 = load i8, ptr %y, align 1

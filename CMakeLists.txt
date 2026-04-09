@@ -459,6 +459,7 @@ add_executable(c3c
         src/compiler/sema_casts.c
         src/compiler/sema_decls.c
         src/compiler/sema_expr.c
+		src/compiler/sema_generics.c
         src/compiler/sema_internal.h
         src/compiler/sema_name_resolution.c
         src/compiler/sema_errors.c
@@ -495,7 +496,10 @@ add_executable(c3c
         src/compiler/decltable.c
         src/compiler/methodtable.c
         src/compiler/mac_support.c
-        src/utils/fetch_msvc.c
+        src/utils/fetch_sdk/fetch_sdk.c
+        src/utils/fetch_sdk/fetch_utils.c
+        src/utils/fetch_sdk/windows_sdk.c
+        src/utils/fetch_sdk/android_ndk.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
         src/compiler/asm_target.c

@@ -1,7 +1,7 @@
 // #target: macos-x64
 
 module test;
-typedef Kind = int;
+typedef Kind @constinit = int;
 const Kind KIND_0 = 0;
 const Kind KIND_1 = 1;
 

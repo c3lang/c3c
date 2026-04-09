@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 import std::io;
 import std::bits;
 fn void main()
@@ -13,9 +13,8 @@ fn void main()
 	io::printfn("%b %b %b", z, z.rotr(1), z.rotl(1));
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
-define void @test.main() #0 {
 entry:
   %a = alloca i32, align 4
   %b = alloca i32, align 4

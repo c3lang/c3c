@@ -15,7 +15,7 @@ fn void? do_thing()
     int* a_value;
     // Change 'C' below to any integer value and the assert goes away.
     *a_value = may_fault(C)!;
-    io::printfn("Value: %d", *a_value);
+    io::printfn("Value: %d", *a_value); // #warning: This code will never execute
 }
 
 macro may_fault($incoming)

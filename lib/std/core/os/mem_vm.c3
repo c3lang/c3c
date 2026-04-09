@@ -11,7 +11,7 @@ import std::io, std::os::win32, std::os::posix, libc;
 struct VirtualMemory
 {
 	void* ptr;
-	usz size;
+	sz size;
 	VirtualMemoryAccess default_access;
 }
 
@@ -29,10 +29,10 @@ enum VirtualMemoryAccess
 	ANY
 }
 
-fn usz aligned_alloc_size(usz size)
+fn sz aligned_alloc_size(sz size)
 {
 	$if env::WIN32:
-		return size > 0 ? mem::aligned_offset(size, win32::allocation_granularity()) : win32::allocation_granularity();
+		return size > 0 ? mem::aligned_offset(size, (sz)win32::allocation_granularity()) : (sz)win32::allocation_granularity();
 	$else
 		return size > 0 ? mem::aligned_offset(size, mem::os_pagesize()) : mem::os_pagesize();
 	$endif
@@ -46,22 +46,22 @@ fn usz aligned_alloc_size(usz size)
  @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS
  @return "Pointer to the allocated memory, page aligned"
 *>
-fn void*? alloc(usz size, VirtualMemoryAccess access)
+fn void*? alloc(sz size, VirtualMemoryAccess access)
 {
 	$switch:
 		$case env::POSIX:
-			void* ptr = posix::mmap(null, aligned_alloc_size(size), access.to_posix(), posix::MAP_PRIVATE | posix::MAP_ANONYMOUS, -1, 0);
+			void* ptr = posix::mmap(null, (usz)aligned_alloc_size(size), access.to_posix(), posix::MAP_PRIVATE | posix::MAP_ANONYMOUS, -1, 0);
 			if (ptr != posix::MAP_FAILED) return ptr;
 			switch (libc::errno())
 			{
-				case errno::ENOMEM:    return mem::OUT_OF_MEMORY~;
-				case errno::EOVERFLOW: return RANGE_OVERFLOW~;
-				case errno::EPERM:     return ACCESS_DENIED~;
-				case errno::EINVAL:    return INVALID_ARGS~;
-				default:               return UNKNOWN_ERROR~;
+				case ENOMEM:    return mem::OUT_OF_MEMORY~;
+				case EOVERFLOW: return RANGE_OVERFLOW~;
+				case EPERM:     return ACCESS_DENIED~;
+				case EINVAL:    return INVALID_ARGS~;
+				default:        return UNKNOWN_ERROR~;
 			}
 		$case env::WIN32:
-			void* ptr = win32::virtualAlloc(null, aligned_alloc_size(size), MEM_RESERVE, access.to_win32());
+			void* ptr = win32::virtualAlloc(null, (Win32_SIZE_T)aligned_alloc_size(size), MEM_RESERVE, access.to_win32());
 			if (ptr) return ptr;
 			switch (win32::getLastError())
 			{
@@ -81,17 +81,17 @@ fn void*? alloc(usz size, VirtualMemoryAccess access)
  @param size : "The size of the allocated pointer"
  @require mem::ptr_is_page_aligned(ptr) : "The pointer should be page aligned"
 *>
-fn void? release(void* ptr, usz size)
+fn void? release(void* ptr, sz size)
 {
 	$switch:
 		$case env::POSIX:
-			if (posix::munmap(ptr, aligned_alloc_size(size)))
+			if (posix::munmap(ptr, (usz)aligned_alloc_size(size)))
 			{
 				switch (libc::errno())
 				{
-					case errno::EINVAL: return INVALID_ARGS~;    // Not a valid mapping or size
-					case errno::ENOMEM: return UNMAPPED_ACCESS~; // Address not mapped
-					default:            return RELEASE_FAILED~;
+					case EINVAL: return INVALID_ARGS~;    // Not a valid mapping or size
+					case ENOMEM: return UNMAPPED_ACCESS~; // Address not mapped
+					default:     return RELEASE_FAILED~;
 				}
 			}
 		$case env::WIN32:
@@ -117,22 +117,22 @@ fn void? release(void* ptr, usz size)
  @require mem::ptr_is_page_aligned(ptr + len) : "The length must be page aligned"
  @return? ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UPDATE_FAILED, UNMAPPED_ACCESS, INVALID_ARGS
 *>
-fn void? protect(void* ptr, usz len, VirtualMemoryAccess access)
+fn void? protect(void* ptr, sz len, VirtualMemoryAccess access)
 {
 	$switch:
 		$case env::POSIX:
-			if (!posix::mprotect(ptr, len, access.to_posix())) return;
+			if (!posix::mprotect(ptr, (usz)len, access.to_posix())) return;
 			switch (libc::errno())
 			{
-				case errno::EACCES:    return ACCESS_DENIED~;
-				case errno::EINVAL:    return UNALIGNED_ADDRESS~;
-				case errno::EOVERFLOW: return RANGE_OVERFLOW~;
-				case errno::ENOMEM:    return UNMAPPED_ACCESS~;
-				default:               return UPDATE_FAILED~;
+				case EACCES:    return ACCESS_DENIED~;
+				case EINVAL:    return UNALIGNED_ADDRESS~;
+				case EOVERFLOW: return RANGE_OVERFLOW~;
+				case ENOMEM:    return UNMAPPED_ACCESS~;
+				default:        return UPDATE_FAILED~;
 			}
 		$case env::WIN32:
 			Win32_Protect old;
-			if (win32::virtualProtect(ptr, len, access.to_win32(), &old)) return;
+			if (win32::virtualProtect(ptr, (Win32_SIZE_T)len, access.to_win32(), &old)) return;
 			switch (win32::getLastError())
 			{
 				case win32::ERROR_INVALID_ADDRESS:   return UNALIGNED_ADDRESS~;
@@ -155,13 +155,13 @@ fn void? protect(void* ptr, usz len, VirtualMemoryAccess access)
  @require mem::ptr_is_page_aligned(ptr + len) : "The length must be page aligned"
  @return? UNKNOWN_ERROR, mem::OUT_OF_MEMORY, ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UPDATE_FAILED, UNMAPPED_ACCESS, INVALID_ARGS
 *>
-fn void? commit(void* ptr, usz len, VirtualMemoryAccess access = READWRITE)
+fn void? commit(void* ptr, sz len, VirtualMemoryAccess access = READWRITE)
 {
 	$switch:
 		$case env::POSIX:
 			return protect(ptr, len, READWRITE) @inline;
 		$case env::WIN32:
-			void* result = win32::virtualAlloc(ptr, len, MEM_COMMIT, access.to_win32());
+			void* result = win32::virtualAlloc(ptr, (Win32_SIZE_T)len, MEM_COMMIT, access.to_win32());
 			if (result) return;
 			switch (win32::getLastError())
 			{
@@ -189,22 +189,22 @@ fn void? commit(void* ptr, usz len, VirtualMemoryAccess access = READWRITE)
  @require mem::ptr_is_page_aligned(ptr + len) : "The length must be page aligned"
  @return? ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UPDATE_FAILED, UNMAPPED_ACCESS, INVALID_ARGS
 *>
-fn void? decommit(void* ptr, usz len, bool block = true)
+fn void? decommit(void* ptr, sz len, bool block = true)
 {
 	$switch:
 		$case env::POSIX:
-			if (posix::madvise(ptr, len, posix::MADV_DONTNEED))
+			if (posix::madvise(ptr, (usz)len, posix::MADV_DONTNEED))
 			{
 				switch (libc::errno())
 				{
-					case errno::EINVAL: return UNALIGNED_ADDRESS~;
-					case errno::ENOMEM: return UNMAPPED_ACCESS~;
-					default:            return UPDATE_FAILED~;
+					case EINVAL: return UNALIGNED_ADDRESS~;
+					case ENOMEM: return UNMAPPED_ACCESS~;
+					default:     return UPDATE_FAILED~;
 				}
 			}
 			if (block) (void)protect(ptr, len, PROTECTED) @inline;
 		$case env::WIN32:
-			if (!win32::virtualFree(ptr, len, MEM_DECOMMIT))
+			if (!win32::virtualFree(ptr, (Win32_SIZE_T)len, MEM_DECOMMIT))
 			{
 				switch (win32::getLastError())
 				{
@@ -230,22 +230,22 @@ fn void? decommit(void* ptr, usz len, bool block = true)
  @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
  @return "Pointer to the mapped region"
 *>
-fn void*? mmap_file(Fd fd, usz size, usz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::POSIX)
+fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::POSIX)
 {
 	CInt flags = shared ? posix::MAP_SHARED : posix::MAP_PRIVATE;
-	void* ptr = posix::mmap(null, aligned_alloc_size(size), access.to_posix(), flags, fd, offset);
+	void* ptr = posix::mmap(null, (usz)aligned_alloc_size(size), access.to_posix(), flags, fd, offset);
 	if (ptr != posix::MAP_FAILED) return ptr;
 	switch (libc::errno())
 	{
-		case errno::ENOMEM:    return mem::OUT_OF_MEMORY~;
-		case errno::EOVERFLOW: return RANGE_OVERFLOW~;
-		case errno::EPERM:     return ACCESS_DENIED~;
-		case errno::EINVAL:    return INVALID_ARGS~;
-		case errno::EACCES:    return io::NO_PERMISSION~;
-		case errno::EBADF:     return io::FILE_NOT_VALID~;
-		case errno::EAGAIN:    return io::WOULD_BLOCK~;
-		case errno::ENXIO:     return io::FILE_NOT_FOUND~;
-		default:               return UNKNOWN_ERROR~;
+		case ENOMEM:    return mem::OUT_OF_MEMORY~;
+		case EOVERFLOW: return RANGE_OVERFLOW~;
+		case EPERM:     return ACCESS_DENIED~;
+		case EINVAL:    return INVALID_ARGS~;
+		case EACCES:    return io::NO_PERMISSION~;
+		case EBADF:     return io::FILE_NOT_VALID~;
+		case EAGAIN:    return io::WOULD_BLOCK~;
+		case ENXIO:     return io::FILE_NOT_FOUND~;
+		default:        return UNKNOWN_ERROR~;
 	}
 }
 
@@ -256,7 +256,7 @@ fn void*? mmap_file(Fd fd, usz size, usz offset = 0, VirtualMemoryAccess access 
  @require size > 0 : "The size must be non-zero"
  @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS
 *>
-fn VirtualMemory? virtual_alloc(usz size, VirtualMemoryAccess access = PROTECTED)
+fn VirtualMemory? virtual_alloc(sz size, VirtualMemoryAccess access = PROTECTED)
 {
 	size = aligned_alloc_size(size);
 	void* ptr = alloc(size, access)!;
@@ -274,7 +274,7 @@ fn VirtualMemory? virtual_alloc(usz size, VirtualMemoryAccess access = PROTECTED
  @require offset + len <= self.size : "Length out of range"
  @return? UPDATE_FAILED, ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UNKNOWN_ERROR
 *>
-macro void? VirtualMemory.commit(self, usz offset, usz len)
+macro void? VirtualMemory.commit(self, sz offset, sz len)
 {
 	return commit(self.ptr + offset, len, self.default_access);
 }
@@ -290,7 +290,7 @@ macro void? VirtualMemory.commit(self, usz offset, usz len)
  @require offset + len < self.size : "Length out of range"
  @return? UPDATE_FAILED, ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UNKNOWN_ERROR
 *>
-macro void? VirtualMemory.protect(self, usz offset, usz len, VirtualMemoryAccess access)
+macro void? VirtualMemory.protect(self, sz offset, sz len, VirtualMemoryAccess access)
 {
 	return protect(self.ptr + offset, len, access);
 }
@@ -306,7 +306,7 @@ macro void? VirtualMemory.protect(self, usz offset, usz len, VirtualMemoryAccess
  @require offset + len < self.size : "Length out of range"
  @return? UPDATE_FAILED
 *>
-fn void? VirtualMemory.decommit(self, usz offset, usz len, bool block = true)
+fn void? VirtualMemory.decommit(self, sz offset, sz len, bool block = true)
 {
 	return decommit(self.ptr + offset, len, block);
 }

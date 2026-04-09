@@ -63,7 +63,7 @@ fn String? read_next(String* remaining)
 
 	// Store the beginning of the parse
 	char* ptr_start = remaining.ptr;
-	usz len = 0;
+	sz len = 0;
 	while (remaining.len > 0 && (*remaining)[0] != ' ')
 	{
 		// Increase length

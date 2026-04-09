@@ -17,7 +17,7 @@ struct MultiWriter (OutStream)
 *>
 fn MultiWriter* MultiWriter.init(&self, Allocator allocator, OutStream... writers)
 {
-	OutStream[] copy = allocator::new_array(allocator, OutStream, writers.len);
+	OutStream[] copy = alloc::new_array(allocator, OutStream, writers.len);
 	copy[..] = writers[..];
 	*self = { .writers = copy, .allocator = allocator };
 	return self;
@@ -36,13 +36,13 @@ fn MultiWriter* MultiWriter.tinit(&self, OutStream... writers)
 fn void MultiWriter.free(&self)
 {
 	if (!self.allocator) return;
-	allocator::free(self.allocator, self.writers);
+	alloc::free(self.allocator, self.writers);
 	*self = {};
 }
 
-fn usz? MultiWriter.write(&self, char[] bytes) @dynamic
+fn sz? MultiWriter.write(&self, char[] bytes) @dynamic
 {
-	usz n;
+	sz n;
 	foreach (w : self.writers) 
 	{
 		n = w.write(bytes)!;

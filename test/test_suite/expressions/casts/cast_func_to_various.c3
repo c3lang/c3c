@@ -40,6 +40,13 @@ fn void test7(Func arg)
     FuncOther k = (FuncOther)(arg);
     FuncSame l = (FuncSame)(arg);
     FuncOther ke = arg;                         // #error: 'Func' (fn void(int)) to 'FuncOther' (fn bool(char*))
+}
+
+fn void test72(Func arg)
+{
+    usz g = (usz)(arg);
+    FuncOther k = (FuncOther)(arg);
+    FuncSame l = (FuncSame)(arg);
     FuncSame fe = arg;
     Enum j = (Enum)(arg);                 // #error: 'Func' (fn void(int)) to 'Enum'
 }

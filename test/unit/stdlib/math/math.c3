@@ -392,6 +392,64 @@ fn void test_exp() @test
 	}
 }
 
+fn void test_exp2() @test
+{
+	int[<5>] in = { 2, 1, 0, -1, -2 };
+	double[<5>] out = { 4.0, 2.0, 1.0, 0.5, 0.25 };
+	float[<5>] in2 = { 2.0, 1.0, 0.0, -1.0, -2.0 };
+	float[<5>] out2 = { 4.0, 2.0, 1.0, 0.5, 0.25 };
+	double[<5>] in3 = { 2.0, 1.0, 0.0, -1.0, -2.0 };
+	double[<5>] out3 = { 4.0, 2.0, 1.0, 0.5, 0.25 };
+	assert($typeof(math::exp2(in[0])) == double);
+	assert($typeof(math::exp2((float)in[0])) == float);
+	assert($typeof(math::exp2((double)in[0])) == double);
+	for (int i = 0; i < 5; i++)
+	{	
+		double x = math::exp2(in[i]);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "exp2(%d)=%f is not equal to %f", in[i], x, out[i]);
+		float f = math::exp2((float)in[i]);
+		assert(math::is_approx_rel(f, (float)out[i], 1e-6), "exp2(%f)=%f is not equal to %f", in[i], f, out[i]);
+		x = math::exp2((double)in[i]);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "exp2(%f)=%f is not equal to %f", in[i], x, out[i]);
+	}
+	float[<5>] vecf = math::exp2(in2);
+	double[<5>] vec = math::exp2(in3);
+	for (int i = 0; i < 5; i++)
+	{
+		assert(math::is_approx_rel(vecf[i], out2[i], 1e-6), "exp2(%f)=%f is not equal to %f", in2[i], vecf[i], out2[i]);
+		assert(math::is_approx_rel(vec[i], out3[i], 1e-12), "exp2(%f)=%f is not equal to %f", in3[i], vec[i], out3[i]);
+	}
+}
+
+fn void test_exp10() @test
+{
+	int[<5>] in = { 2, 1, 0, -1, -2 };
+	double[<5>] out = { 100.0, 10.0 , 1.0, 0.1, 0.01 };
+	float[<5>] in2 = { 2, 1, 0, -1, -2 };
+	float[<5>] out2 = { 100.0, 10.0 , 1.0, 0.1, 0.01 };
+	double[<5>] in3 = { 2, 1, 0, -1, -2 };
+	double[<5>] out3 = { 100.0, 10.0 , 1.0, 0.1, 0.01 };
+	assert($typeof(math::exp10(in[0])) == double);
+	assert($typeof(math::exp10((float)in[0])) == float);
+	assert($typeof(math::exp10((double)in[0])) == double);
+	for (int i = 0; i < 5; i++)
+	{	
+		double x = math::exp10(in[i]);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "exp10(%d)=%f is not equal to %f", in[i], x, out[i]);
+		float f = math::exp10((float)in[i]);
+		assert(math::is_approx_rel(f, (float)out[i], 1e-6), "exp10(%f)=%f is not equal to %f", in[i], f, out[i]);
+		x = math::exp10((double)in[i]);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "exp10(%f)=%f is not equal to %f", in[i], x, out[i]);
+	}
+	float[<5>] vecf = math::exp10(in2);
+	double[<5>] vec = math::exp10(in3);
+	for (int i = 0; i < 5; i++)
+	{
+		assert(math::is_approx_rel(vecf[i], out2[i], 1e-6), "exp10(%f)=%f is not equal to %f", in2[i], vecf[i], out2[i]);
+		assert(math::is_approx_rel(vec[i], out3[i], 1e-12), "exp10(%f)=%f is not equal to %f", in3[i], vec[i], out3[i]);
+	}
+}
+
 fn void test_floor() @test
 {
 	double d = -123.1;
@@ -459,32 +517,32 @@ fn void test_log() @test
 
 fn void test_ct_intlog2() @test @if($feature(SLOW_TESTS) && !env::OPENBSD)
 {
-	usz[129] actual;
+	sz[129] actual;
 	$for var $x = 0; $x <= 128; ++$x :
-		actual[$x] = (usz)math::@intlog2($x);
+		actual[$x] = (sz)math::@intlog2($x);
 	$endfor
-	for (usz i = 0; i <= 128; i++)
+	for (sz i = 0; i <= 128; i++)
 	{
-		usz expected = (i <= 1) ? 0 : (usz)math::floor(math::log2(i));
+		sz expected = (i <= 1) ? 0 : (sz)math::floor(math::log2(i));
 		assert(actual[i] == expected, "input %d: expected %d, got %d", i, expected, actual[i]);
 	}
 
-	usz[128] powers;
+	sz[128] powers;
 	$for var $i = 0; $i < 128; ++$i :
-		powers[$i] = (usz)math::@intlog2((uint128)1 << $i);
+		powers[$i] = (sz)math::@intlog2((uint128)1 << $i);
 	$endfor
-	for (usz i = 0; i < 128; i++)
+	for (sz i = 0; i < 128; i++)
 	{
 		assert(powers[i] == i, "input 2^%d: expected %d, got %d", i, i, powers[i]);
 	}
 
-	usz[127] complex_vals;
+	sz[127] complex_vals;
 	$for var $i = 1; $i < 128; ++$i :
-		complex_vals[$i - 1] = (usz)math::@intlog2(((uint128)1 << $i) | ((uint128)1 << ($i - 1)));
+		complex_vals[$i - 1] = (sz)math::@intlog2(((uint128)1 << $i) | ((uint128)1 << ($i - 1)));
 	$endfor
-	for (usz i = 1; i < 128; i++)
+	for (sz i = 1; i < 128; i++)
 	{
-		assert(complex_vals[i - 1] == (usz)i, "input 2^%d + 2^%d: expected %d, got %d", i, i - 1, i, complex_vals[i - 1]);
+		assert(complex_vals[i - 1] == (sz)i, "input 2^%d + 2^%d: expected %d, got %d", i, i - 1, i, complex_vals[i - 1]);
 	}
 }
 

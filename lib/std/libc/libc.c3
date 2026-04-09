@@ -49,7 +49,6 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
-typedef Errno @constinit = inline CInt;
 alias TerminateFunction = fn void();
 alias CompareFunction = fn int(void*, void*);
 alias JmpBuf = uptr[$$JMP_BUF_SIZE];
@@ -65,7 +64,7 @@ const CInt SIGSEGV = 11;
 const CInt SIGTERM = 15;
 
 alias Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
-alias Off_t = $typefrom(env::WIN32 ? int.typeid : isz.typeid);
+alias Off_t = $typefrom(env::WIN32 ? int.typeid : sz.typeid);
 
 module libc @if(env::LIBC);
 
@@ -136,8 +135,8 @@ extern fn CInt puts(ZString str);
 extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
 extern fn CInt raise(CInt signal);
 extern fn CInt rand();
-extern fn isz read(Fd fd, void* buf, usz nbyte) @if(!env::WIN32);
-extern fn isz readlink(ZString pathname, char* buf, int bufsize) @if(!env::WIN32);
+extern fn sz read(Fd fd, void* buf, usz nbyte) @if(!env::WIN32);
+extern fn sz readlink(ZString pathname, char* buf, int bufsize) @if(!env::WIN32);
 extern fn void* realloc(void* ptr, usz size);
 extern fn CInt remove(ZString filename);
 extern fn CInt rename(ZString old_name, ZString new_name);
@@ -184,10 +183,10 @@ extern fn ZString tmpnam(char *buffer);
 extern fn CFile tmpfile();
 extern fn CInt ungetc(CInt c, CFile stream);
 extern fn CInt unsetenv(ZString name) @if(!env::NETBSD);
-extern fn isz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
+extern fn sz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
 
 extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
-extern fn isz getline(char** linep, usz* linecapp, CFile stream);
+extern fn sz getline(char** linep, usz* linecapp, CFile stream);
 extern fn CInt timespec_get(TimeSpec* ts, CInt base);
 extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @if(!env::NETBSD);
 extern fn ZString ctime(Time_t* timer);
@@ -212,8 +211,8 @@ module libc @if(env::NETBSD || env::OPENBSD);
 extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn int _setjmp(void*);
 macro int setjmp(void* ptr) => _setjmp(ptr);
-extern fn int _longjmp(void*, int);
-macro usz longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
+extern fn void _longjmp(void*, int);
+macro void longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
 extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @if(env::NETBSD);
@@ -448,313 +447,328 @@ const int TIME_UTC = 1;
 const CLOCKS_PER_SEC @if(env::WIN32) = 1000;
 const CLOCKS_PER_SEC @if(!env::WIN32) = 1000000;
 
-module libc::errno;
+constdef Errno : inline CInt @if(env::DARWIN)
+{
+	OK                       = 0,
+	EPERM                    = 1, // Operation not permitted
+	ENOENT                   = 2, // No such file or directory
+	ESRCH                    = 3, // No such process
+	EINTR                    = 4, // Interrupted system call
+	EIO                      = 5, // I/O error
+	ENXIO                    = 6, // No such device or address
+	E2BIG                    = 7, // Argument list too long
+	ENOEXEC                  = 8, // Exec format error
+	EBADF                    = 9, // Bad file number
+	ECHILD                   = 10, // No child processes
+	EDEADLK                  = 11, // Resource deadlock would occur
+	ENOMEM                   = 12, // Out of memory
+	EACCES                   = 13, // Permission denied
+	EFAULT                   = 14, // Bad address
+	ENOTBLK                  = 15, // Block device required, not on Win32
+	EBUSY                    = 16, // Device or resource busy
+	EEXIST                   = 17, // File exists
+	EXDEV                    = 18, // Cross-device link
+	ENODEV                   = 19, // No such device
+	ENOTDIR                  = 20, // Not a directory
+	EISDIR                   = 21, // Is a directory
+	EINVAL                   = 22, // Invalid argument
+	ENFILE                   = 23, // File table overflow
+	EMFILE                   = 24, // Too many open files
+	ENOTTY                   = 25, // Not a typewriter
+	ETXTBSY                  = 26, // Text file busy, not on Win32
+	EFBIG                    = 27, // File too large
+	ENOSPC                   = 28, // No space left on device
+	ESPIPE                   = 29, // Illegal seek
+	EROFS                    = 30, // Read-only file system
+	EMLINK                   = 31, // Too many links
+	EPIPE                    = 32, // Broken pipe
+	EDOM                     = 33, // Math argument out of domain of func
+	ERANGE                   = 34, // Math result not representable
+	EAGAIN                   = 35, // Try again
+	EWOULDBLOCK              = EAGAIN, // Operation would block
+	EINPROGRESS              = 36, // Operation now in progress
+	EALREADY                 = 37, // Operation already in progress
+	ENOTSOCK                 = 38, // Socket operation on non-socket
+	EDESTADDRREQ             = 39, // Destination address required
+	EMSGSIZE                 = 40, // Message too long
+	EPROTOTYPE               = 41, // Protocol wrong type for socket
+	ENOPROTOOPT              = 42, // Protocol not available
+	EPROTONOSUPPORT          = 43, // Protocol not supported
+	ESOCKTNOSUPPORT          = 44, // Socket type not supported
+	ENOTSUP                  = 45, // Not supported
+	EPFNOSUPPORT             = 46, // Protocol family not supported
+	EAFNOSUPPORT             = 47, // Address family not supported by protocol family
+	EADDRINUSE               = 48, // Address already in use
+	EADDRNOTAVAIL            = 49, // Cannot assign requested address
+	ENETDOWN                 = 50, // Network is down
+	ENETUNREACH              = 51, // Network is unreachable
+	ENETRESET                = 52, // Network dropped connection on reset
+	ECONNABORTED             = 53, // Software caused connection abort
+	ECONNRESET               = 54, // Connection reset by peer
+	ENOBUFS                  = 55, // No buffer space available
+	EISCONN                  = 56, // Socket is already connected
+	ENOTCONN                 = 57, // Socket is not connected
+	ESHUTDOWN                = 58, // Cannot send after socket shutdown
+	ETIMEDOUT                = 60, // Operation timed out
+	ECONNREFUSED             = 61, // Connection refused
+	ELOOP                    = 62, // Too many levels of symbolic links
+	ENAMETOOLONG             = 63, // File name too long
+	EHOSTDOWN                = 64, // Host is down
+	EHOSTUNREACH             = 65, // No route to host
+	ENOTEMPTY                = 66, // Directory not empty
+	EPROCLIM                 = 67, // Too many processes
+	EUSERS                   = 68, // Too many users
+	EDQUOT                   = 69, // Disc quota exceeded
+	ESTALE                   = 70, // Stale NFS file handle
+	EBADRPC                  = 72, // RPC struct is bad
+	ERPCMISMATCH             = 73, // RPC version wrong
+	EPROGUNAVAIL             = 74, // RPC prog. not avail
+	EPROGMISMATCH            = 75, // Program version wrong
+	EPROCUNAVAIL             = 76, // Bad procedure for program
+	ENOLCK                   = 77, // No locks available
+	ENOSYS                   = 78, // Function not implemented
+	EFTYPE                   = 79, // Inappropriate file type or format
+	EAUTH                    = 80, // Authentication error
+	ENEEDAUTH                = 81, // Need authenticator
+	EPWROFF                  = 82, // Device power is off
+	EDEVERR                  = 83, // Device error
+	EOVERFLOW                = 84, // Value too large to be stored in data type
+	EBADEXEC                 = 85, // Bad executable (or shared library)
+	EBADARCH                 = 86, // Bad CPU type in executable
+	ESHLIBVERS               = 87, // Shared library version mismatch
+	EBADMACHO                = 88, // Malformed Mach-o file
+	ECANCELED                = 89, // Operation canceled
+	EIDRM                    = 90, // Identifier removed
+	ENOMSG                   = 91, // No message of desired type
+	EILSEQ                   = 92, // Illegal byte sequence
+	ENOATTR                  = 93, // Attribute not found
+	EBADMSG                  = 94, // Bad message
+	EMULTIHOP                = 95, // Reserved
+	ENODATA                  = 96, // No message available
+	ENOLINK                  = 97, // Reserved
+	ENOSR                    = 98, // No STREAM resources
+	ENOSTR                   = 99, // Not a STREAM
+	EPROTO                   = 100, // Protocol error
+	ETIME                    = 101, // STREAM ioctl() timeout
+	EOPNOTSUPP               = 102, // Operation not supported on socket
+}
 
-const Errno OK                       = 0;
-const Errno EPERM                    = 1; // Operation not permitted
-const Errno ENOENT                   = 2; // No such file or directory
-const Errno ESRCH                    = 3; // No such process
-const Errno EINTR                    = 4; // Interrupted system call
-const Errno EIO                      = 5; // I/O error
-const Errno ENXIO                    = 6; // No such device or address
-const Errno E2BIG                    = 7; // Argument list too long
-const Errno ENOEXEC                  = 8; // Exec format error
-const Errno EBADF                    = 9; // Bad file number
-const Errno ECHILD                   = 10; // No child processes
+constdef Errno : inline CInt @if(env::NETBSD)
+{
+	OK                       = 0,
+	EPERM                    = 1, // Operation not permitted
+	ENOENT                   = 2, // No such file or directory
+	ESRCH                    = 3, // No such process
+	EINTR                    = 4, // Interrupted system call
+	EIO                      = 5, // I/O error
+	ENXIO                    = 6, // No such device or address
+	E2BIG                    = 7, // Argument list too long
+	ENOEXEC                  = 8, // Exec format error
+	EBADF                    = 9, // Bad file number
+	ECHILD                   = 10, // No child processes
+	EDEADLK                  = 11, // Resource deadlock avoided
+	ENOMEM                   = 12, // Out of memory
+	EACCES                   = 13, // Permission denied
+	EFAULT                   = 14, // Bad address
+	ENOTBLK                  = 15, // Block device required, not on Win32
+	EBUSY                    = 16, // Device or resource busy
+	EEXIST                   = 17, // File exists
+	EXDEV                    = 18, // Cross-device link
+	ENODEV                   = 19, // No such device
+	ENOTDIR                  = 20, // Not a directory
+	EISDIR                   = 21, // Is a directory
+	EINVAL                   = 22, // Invalid argument
+	ENFILE                   = 23, // File table overflow
+	EMFILE                   = 24, // Too many open files
+	ENOTTY                   = 25, // Not a typewriter
+	ETXTBSY                  = 26, // Text file busy, not on Win32
+	EFBIG                    = 27, // File too large
+	ENOSPC                   = 28, // No space left on device
+	ESPIPE                   = 29, // Illegal seek
+	EROFS                    = 30, // Read-only file system
+	EMLINK                   = 31, // Too many links
+	EPIPE                    = 32, // Broken pipe
+	EDOM                     = 33, // Math argument out of domain of func
+	ERANGE                   = 34, // Math result not representable
+	EAGAIN                   = 35, // Try again
+	EWOULDBLOCK              = EAGAIN,    // Operation would block
+	EINPROGRESS              = 36, // Operation now in progress
+	EALREADY                 = 37, // Operation already in progress
+	ENOTSOCK                 = 38, // Socket operation on non-socket
+	EDESTADDRREQ             = 39, // Destination address required
+	EMSGSIZE                 = 40, // Message too long
+	EPROTOTYPE               = 41, // Protocol wrong type for socket
+	ENOPROTOOPT              = 42, // Protocol option not available
+	EPROTONOSUPPORT          = 43, // Protocol not supported
+	ESOCKTNOSUPPORT          = 44, // Socket type not supported
+	EOPNOTSUPP               = 45, // Operation not supported
+	EPFNOSUPPORT             = 46, // Protocol family not supported
+	EAFNOSUPPORT             = 47, // Address family not supported by protocol family
+	EADDRINUSE               = 48, // Address already in use
+	EADDRNOTAVAIL            = 49, // Can't assign requested address
+	ENETDOWN                 = 50, // Network is down
+	ENETUNREACH              = 51, // Network is unreachable
+	ENETRESET                = 52, // Network dropped connection on reset
+	ECONNABORTED             = 53, // Software caused connection abort
+	ECONNRESET               = 54, // Connection reset by peer
+	ENOBUFS                  = 55, // No buffer space available
+	EISCONN                  = 56, // Socket is already connected
+	ENOTCONN                 = 57, // Socket is not connected
+	ESHUTDOWN                = 58, // Can't send after socket shutdown
+	ETOOMANYREFS             = 59, // Too many references: can't splice
+	ETIMEDOUT                = 60, // Operation timed out
+	ECONNREFUSED             = 61, // Connection refused
+	ELOOP                    = 62, // Too many levels of symbolic links
+	ENAMETOOLONG             = 63, // File name too long
+	EHOSTDOWN                = 64, // Host is down
+	EHOSTUNREACH             = 65, // No route to host
+	ENOTEMPTY                = 66, // Directory not empty
+	EPROCLIM                 = 67, // Too many processes
+	EUSERS                   = 68, // Too many users
+	EDQUOT                   = 69, // Disc quota exceeded
+	ESTALE                   = 70, // Stale NFS file handle
+	EREMOTE                  = 71, // Too many levels of remote in path
+	EBADRPC                  = 72, // RPC struct is bad
+	ERPCMISMATCH             = 73, // RPC version wrong
+	EPROGUNAVAIL             = 74, // RPC prog. not avail
+	EPROGMISMATCH            = 75, // Program version wrong
+	EPROCUNAVAIL             = 76, // Bad procedure for program
+	ENOLCK                   = 77, // No locks available
+	ENOSYS                   = 78, // Function not implemented
+	EFTYPE                   = 79, // Inappropriate file type or format
+	EAUTH                    = 80, // Authentication error
+	ENEEDAUTH                = 81, // Need authenticator
+	EIDRM                    = 82, // Identifier removed
+	ENOMSG                   = 83, // No message of desired type
+	EOVERFLOW                = 84, // Value too large to be stored in data type
+	EILSEQ                   = 85, // Illegal byte sequence
+	ENOTSUP                  = 86, // Not supported
+	ECANCELED                = 87, // Operation canceled
+	EBADMSG                  = 88, // Bad or Corrupt message
+	ENODATA                  = 89, // No message available
+	ENOSR                    = 90, // No STREAM resources
+	ENOSTR                   = 91, // Not a STREAM
+	ETIME                    = 92, // STREAM ioctl timeout
+	ENOATTR                  = 93, // Attribute not found
+	EMULTIHOP                = 94, // Multihop attempted
+	ENOLINK                  = 95, // Link has been severed
+	EPROTO                   = 96, // Protocol error
+	EOWNERDEAD               = 97, // Previous owner died
+	ENOTRECOVERABLE          = 98, // State not recoverable
 
-
-const Errno EAGAIN @if(env::DARWIN || env::NETBSD)  = 35; // Try again Macos
-const Errno EAGAIN @if(!env::DARWIN && !env::NETBSD) = 11; // Try again
-
-const Errno ENOMEM                   = 12; // Out of memory
-const Errno EACCES                   = 13; // Permission denied
-const Errno EFAULT                   = 14; // Bad address
-const Errno ENOTBLK                  = 15; // Block device required, not on Win32
-const Errno EBUSY                    = 16; // Device or resource busy
-const Errno EEXIST                   = 17; // File exists
-const Errno EXDEV                    = 18; // Cross-device link
-const Errno ENODEV                   = 19; // No such device
-const Errno ENOTDIR                  = 20; // Not a directory
-const Errno EISDIR                   = 21; // Is a directory
-const Errno EINVAL                   = 22; // Invalid argument
-const Errno ENFILE                   = 23; // File table overflow
-const Errno EMFILE                   = 24; // Too many open files
-const Errno ENOTTY                   = 25; // Not a typewriter
-const Errno ETXTBSY                  = 26; // Text file busy, not on Win32
-const Errno EFBIG                    = 27; // File too large
-const Errno ENOSPC                   = 28; // No space left on device
-const Errno ESPIPE                   = 29; // Illegal seek
-const Errno EROFS                    = 30; // Read-only file system
-const Errno EMLINK                   = 31; // Too many links
-const Errno EPIPE                    = 32; // Broken pipe
-const Errno EDOM                     = 33; // Math argument out of domain of func
-const Errno ERANGE                   = 34; // Math result not representable
-
-// https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/intro.2.html
-module libc::errno @if(env::DARWIN);
-const Errno EWOULDBLOCK              = EAGAIN; // Operation would block
-const Errno EDEADLK                  = 11; // Resource deadlock would occur
-const Errno EINPROGRESS              = 36; // Operation now in progress
-const Errno EALREADY                 = 37; // Operation already in progress
-const Errno ENOTSOCK                 = 38; // Socket operation on non-socket
-const Errno EDESTADDRREQ             = 39; // Destination address required
-const Errno EMSGSIZE                 = 40; // Message too long
-const Errno EPROTOTYPE               = 41; // Protocol wrong type for socket
-const Errno ENOPROTOOPT              = 42; // Protocol not available
-const Errno EPROTONOSUPPORT          = 43; // Protocol not supported
-const Errno ESOCKTNOSUPPORT          = 44; // Socket type not supported
-const Errno ENOTSUP                  = 45; // Not supported
-const Errno EPFNOSUPPORT             = 46; // Protocol family not supported
-const Errno EAFNOSUPPORT             = 47; // Address family not supported by protocol family
-const Errno EADDRINUSE               = 48; // Address already in use
-const Errno EADDRNOTAVAIL            = 49; // Cannot assign requested address
-const Errno ENETDOWN                 = 50; // Network is down
-const Errno ENETUNREACH              = 51; // Network is unreachable
-const Errno ENETRESET                = 52; // Network dropped connection on reset
-const Errno ECONNABORTED             = 53; // Software caused connection abort
-const Errno ECONNRESET               = 54; // Connection reset by peer
-const Errno ENOBUFS                  = 55; // No buffer space available
-const Errno EISCONN                  = 56; // Socket is already connected
-const Errno ENOTCONN                 = 57; // Socket is not connected
-const Errno ESHUTDOWN                = 58; // Cannot send after socket shutdown
-const Errno ETIMEDOUT                = 60; // Operation timed out
-const Errno ECONNREFUSED             = 61; // Connection refused
-const Errno ELOOP                    = 62; // Too many levels of symbolic links
-const Errno ENAMETOOLONG             = 63; // File name too long
-const Errno EHOSTDOWN                = 64; // Host is down
-const Errno EHOSTUNREACH             = 65; // No route to host
-const Errno ENOTEMPTY                = 66; // Directory not empty
-const Errno EPROCLIM                 = 67; // Too many processes
-const Errno EUSERS                   = 68; // Too many users
-const Errno EDQUOT                   = 69; // Disc quota exceeded
-const Errno ESTALE                   = 70; // Stale NFS file handle
-const Errno EBADRPC                  = 72; // RPC struct is bad
-const Errno ERPCMISMATCH             = 73; // RPC version wrong
-const Errno EPROGUNAVAIL             = 74; // RPC prog. not avail
-const Errno EPROGMISMATCH            = 75; // Program version wrong
-const Errno EPROCUNAVAIL             = 76; // Bad procedure for program
-const Errno ENOLCK                   = 77; // No locks available
-const Errno ENOSYS                   = 78; // Function not implemented
-const Errno EFTYPE                   = 79; // Inappropriate file type or format
-const Errno EAUTH                    = 80; // Authentication error
-const Errno ENEEDAUTH                = 81; // Need authenticator
-const Errno EPWROFF                  = 82; // Device power is off
-const Errno EDEVERR                  = 83; // Device error
-const Errno EOVERFLOW                = 84; // Value too large to be stored in data type
-const Errno EBADEXEC                 = 85; // Bad executable (or shared library)
-const Errno EBADARCH                 = 86; // Bad CPU type in executable
-const Errno ESHLIBVERS               = 87; // Shared library version mismatch
-const Errno EBADMACHO                = 88; // Malformed Mach-o file
-const Errno ECANCELED                = 89; // Operation canceled
-const Errno EIDRM                    = 90; // Identifier removed
-const Errno ENOMSG                   = 91; // No message of desired type
-const Errno EILSEQ                   = 92; // Illegal byte sequence
-const Errno ENOATTR                  = 93; // Attribute not found
-const Errno EBADMSG                  = 94; // Bad message
-const Errno EMULTIHOP                = 95; // Reserved
-const Errno ENODATA                  = 96; // No message available
-const Errno ENOLINK                  = 97; // Reserved
-const Errno ENOSR                    = 98; // No STREAM resources
-const Errno ENOSTR                   = 99; // Not a STREAM
-const Errno EPROTO                   = 100; // Protocol error
-const Errno ETIME                    = 101; // STREAM ioctl() timeout
-const Errno EOPNOTSUPP               = 102; // Operation not supported on socket
-
-module libc::errno @if(env::NETBSD);
-const Errno EWOULDBLOCK     = EAGAIN;    // Operation would block
-const Errno EDEADLK         = 11;        // Resource deadlock avoided
-const Errno EINPROGRESS     = 36;        // Operation now in progress
-const Errno EALREADY        = 37;        // Operation already in progress
-const Errno ENOTSOCK        = 38;        // Socket operation on non-socket
-const Errno EDESTADDRREQ    = 39;        // Destination address required
-const Errno EMSGSIZE        = 40;        // Message too long
-const Errno EPROTOTYPE      = 41;        // Protocol wrong type for socket
-const Errno ENOPROTOOPT     = 42;        // Protocol option not available
-const Errno EPROTONOSUPPORT = 43;        // Protocol not supported
-const Errno ESOCKTNOSUPPORT = 44;        // Socket type not supported
-const Errno EOPNOTSUPP      = 45;        // Operation not supported
-const Errno EPFNOSUPPORT    = 46;        // Protocol family not supported
-const Errno EAFNOSUPPORT    = 47;        // Address family not supported by protocol family
-const Errno EADDRINUSE      = 48;        // Address already in use
-const Errno EADDRNOTAVAIL   = 49;        // Can't assign requested address
-const Errno ENETDOWN        = 50;        // Network is down
-const Errno ENETUNREACH     = 51;        // Network is unreachable
-const Errno ENETRESET       = 52;        // Network dropped connection on reset
-const Errno ECONNABORTED    = 53;        // Software caused connection abort
-const Errno ECONNRESET      = 54;        // Connection reset by peer
-const Errno ENOBUFS         = 55;        // No buffer space available
-const Errno EISCONN         = 56;        // Socket is already connected
-const Errno ENOTCONN        = 57;        // Socket is not connected
-const Errno ESHUTDOWN       = 58;        // Can't send after socket shutdown
-const Errno ETOOMANYREFS    = 59;        // Too many references: can't splice
-const Errno ETIMEDOUT       = 60;        // Operation timed out
-const Errno ECONNREFUSED    = 61;        // Connection refused
-const Errno ELOOP           = 62;        // Too many levels of symbolic links
-const Errno ENAMETOOLONG    = 63;        // File name too long
-const Errno EHOSTDOWN       = 64;        // Host is down
-const Errno EHOSTUNREACH    = 65;        // No route to host
-const Errno ENOTEMPTY       = 66;        // Directory not empty
-const Errno EPROCLIM        = 67;        // Too many processes
-const Errno EUSERS          = 68;        // Too many users
-const Errno EDQUOT          = 69;        // Disc quota exceeded
-const Errno ESTALE          = 70;        // Stale NFS file handle
-const Errno EREMOTE         = 71;        // Too many levels of remote in path
-const Errno EBADRPC         = 72;        // RPC struct is bad
-const Errno ERPCMISMATCH    = 73;        // RPC version wrong
-const Errno EPROGUNAVAIL    = 74;        // RPC prog. not avail
-const Errno EPROGMISMATCH   = 75;        // Program version wrong
-const Errno EPROCUNAVAIL    = 76;        // Bad procedure for program
-const Errno ENOLCK          = 77;        // No locks available
-const Errno ENOSYS          = 78;        // Function not implemented
-const Errno EFTYPE          = 79;        // Inappropriate file type or format
-const Errno EAUTH           = 80;        // Authentication error
-const Errno ENEEDAUTH       = 81;        // Need authenticator
-const Errno EIDRM           = 82;        // Identifier removed
-const Errno ENOMSG          = 83;        // No message of desired type
-const Errno EOVERFLOW       = 84;        // Value too large to be stored in data type
-const Errno EILSEQ          = 85;        // Illegal byte sequence
-const Errno ENOTSUP         = 86;        // Not supported
-const Errno ECANCELED       = 87;        // Operation canceled
-const Errno EBADMSG         = 88;        // Bad or Corrupt message
-const Errno ENODATA         = 89;        // No message available
-const Errno ENOSR           = 90;        // No STREAM resources
-const Errno ENOSTR          = 91;        // Not a STREAM
-const Errno ETIME           = 92;        // STREAM ioctl timeout
-const Errno ENOATTR         = 93;        // Attribute not found
-const Errno EMULTIHOP       = 94;        // Multihop attempted
-const Errno ENOLINK         = 95;        // Link has been severed
-const Errno EPROTO          = 96;        // Protocol error
-const Errno EOWNERDEAD      = 97;        // Previous owner died
-const Errno ENOTRECOVERABLE = 98;        // State not recoverable
-
-module libc::errno @if(env::WIN32);
-const Errno EDEADLK                  = 36; // Resource deadlock would occur Win32
-const Errno ENAMETOOLONG             = 38; // File name too long Win32
-const Errno ENOTEMPTY                = 41; // Directory not empty
-const Errno ELOOP                    = 114; // Too many symbolic links encountered
-const Errno EOVERFLOW                = 132; // Value too large for defined data type
-const Errno ENETDOWN                 = 116; // Network is down
-const Errno ECONNRESET               = 108; // Connection reset by peer
-const Errno ENETUNREACH              = 118; // Network is unreachable
-const Errno ENETRESET                = 117; // Network dropped connection because of reset
-const Errno EOPNOTSUPP               = 130; // Operation not supported on transport endpoint
-const Errno ETIMEDOUT                = 138; // Connection timed out
-const Errno EALREADY                 = 103; // Operation already in progress
-const Errno EINPROGRESS              = 112; // Operation now in progress Win32
-const Errno EDQUOT                   = -122; // Quota exceeded, not in Win32
-const Errno EWOULDBLOCK              = 140; // Operation would block
-
-module libc::errno @if(!env::WIN32 && !env::DARWIN && !env::NETBSD);
-const Errno EDEADLK                  = 35; // Resource deadlock would occur Linux (others?)
-const Errno ENAMETOOLONG             = 36; // File name too long Linux (others?)
-const Errno ENOTEMPTY                = 39; // Directory not empty
-const Errno ELOOP                    = 40; // Too many symbolic links encountered
-const Errno EWOULDBLOCK              = EAGAIN; // Operation would block
-const Errno EOVERFLOW                = 75; // Value too large for defined data type
-const Errno ENOTSOCK                 = 88; // Socket operation on non-socket
-const Errno EOPNOTSUPP               = 95; // Operation not supported on transport endpoint
-const Errno EADDRINUSE               = 98; // Address already in use
-const Errno EADDRNOTAVAIL            = 99; // Cannot assign requested address
-const Errno ENETDOWN                 = 100; // Network is down
-const Errno ENETUNREACH              = 101; // Network is unreachable
-const Errno ENETRESET                = 102; // Network dropped connection because of reset
-const Errno ECONNRESET               = 104; // Connection reset by peer
-const Errno EISCONN                  = 106; // Socket is already connected
-const Errno ETIMEDOUT                = 110; // Connection timed out
-const Errno ECONNREFUSED             = 111; // Connection refused
-const Errno EALREADY                 = 114; // Operation already in progress
-const Errno EINPROGRESS              = 115; // Operation now in progress
-const Errno EDQUOT                   = 122; // Quota exceeded
+}
 
 
-/*
-const Errno ENOLCK = 37;  /* No record locks available */
-const Errno ENOSYS = 38;  /* Function not implemented */
-
-const Errno ENOMSG = 42;  /* No message of desired type */
-const Errno EIDRM = 43;  /* Identifier removed */
-const Errno ECHRNG = 44;  /* Channel number out of range */
-const Errno EL2NSYNC = 45;  /* Level 2 not synchronized */
-const Errno EL3HLT = 46;  /* Level 3 halted */
-const Errno EL3RST = 47;  /* Level 3 reset */
-const Errno ELNRNG = 48;  /* Link number out of range */
-const Errno EUNATCH = 49;  /* Protocol driver not attached */
-const Errno ENOCSI = 50;  /* No CSI structure available */
-const Errno EL2HLT = 51;  /* Level 2 halted */
-const Errno EBADE = 52;  /* Invalid exchange */
-const Errno EBADR = 53;  /* Invalid request descriptor */
-const Errno EXFULL = 54;  /* Exchange full */
-const Errno ENOANO = 55;  /* No anode */
-const Errno EBADRQC = 56;  /* Invalid request code */
-const Errno EBADSLT = 57;  /* Invalid slot */
-
-const Errno EBFONT = 59;  /* Bad font file format */
-const Errno ENOSTR = 60;  /* Device not a stream */
-const Errno ENODATA = 61;  /* No data available */
-const Errno ETIME = 62;  /* Timer expired */
-const Errno ENOSR = 63;  /* Out of streams resources */
-const Errno ENONET = 64;  /* Machine is not on the network */
-const Errno ENOPKG = 65;  /* Package not installed */
-const Errno EREMOTE = 66;  /* Object is remote */
-const Errno ENOLINK = 67;  /* Link has been severed */
-const Errno EADV = 68;  /* Advertise error */
-const Errno ESRMNT = 69;  /* Srmount error */
-const Errno ECOMM = 70;  /* Communication error on send */
-const Errno EPROTO = 71;  /* Protocol error */
-const Errno EMULTIHOP = 72;  /* Multihop attempted */
-const Errno EDOTDOT = 73;  /* RFS specific error */
-const Errno EBADMSG = 74;  /* Not a data message */
-const Errno ENOTUNIQ = 76;  /* Name not unique on network */
-const Errno EBADFD = 77;  /* File descriptor in bad state */
-const Errno EREMCHG = 78;  /* Remote address changed */
-const Errno ELIBACC = 79;  /* Can not access a needed shared library */
-const Errno ELIBBAD = 80;  /* Accessing a corrupted shared library */
-const Errno ELIBSCN = 81;  /* .lib section in a.out corrupted */
-const Errno ELIBMAX = 82;  /* Attempting to link in too many shared libraries */
-const Errno ELIBEXEC = 83;  /* Cannot exec a shared library directly */
-const Errno EILSEQ = 84;  /* Illegal byte sequence */
-const Errno ERESTART = 85;  /* Interrupted system call should be restarted */
-const Errno ESTRPIPE = 86;  /* Streams pipe error */
-const Errno EUSERS = 87;  /* Too many users */
-const Errno ENOTSOCK = 88;  /* Socket operation on non-socket */
-const Errno EDESTADDRREQ = 89;  /* Destination address required */
-const Errno EMSGSIZE = 90;  /* Message too long */
-const Errno EPROTOTYPE = 91;  /* Protocol wrong type for socket */
-const Errno ENOPROTOOPT = 92;  /* Protocol not available */
-const Errno EPROTONOSUPPORT = 93;  /* Protocol not supported */
-const Errno ESOCKTNOSUPPORT = 94;  /* Socket type not supported */
-const Errno EPFNOSUPPORT = 96;  /* Protocol family not supported */
-const Errno EAFNOSUPPORT = 97;  /* Address family not supported by protocol */
-const Errno EADDRINUSE = 98;  /* Address already in use */
-const Errno ECONNABORTED = 103; /* Software caused connection abort */
-const Errno ENOBUFS = 105; /* No buffer space available */
-const Errno EISCONN = 106; /* Transport endpoint is already connected */
-const Errno ENOTCONN = 107; /* Transport endpoint is not connected */
-const Errno ESHUTDOWN = 108; /* Cannot send after transport endpoint shutdown */
-const Errno ETOOMANYREFS = 109; /* Too many references: cannot splice */
-const Errno ECONNREFUSED = 111; /* Connection refused */
-const Errno EHOSTDOWN = 112; /* Host is down */
-const Errno EHOSTUNREACH = 113; /* No route to host */
-*/
+constdef Errno : inline CInt @if(env::WIN32)
+{
+	OK                       = 0,
+	EPERM                    = 1, // Operation not permitted
+	ENOENT                   = 2, // No such file or directory
+	ESRCH                    = 3, // No such process
+	EINTR                    = 4, // Interrupted system call
+	EIO                      = 5, // I/O error
+	ENXIO                    = 6, // No such device or address
+	E2BIG                    = 7, // Argument list too long
+	ENOEXEC                  = 8, // Exec format error
+	EBADF                    = 9, // Bad file number
+	ECHILD                   = 10, // No child processes
+	ENOMEM                   = 12, // Out of memory
+	EAGAIN                   = 11, // Try again
+	EACCES                   = 13, // Permission denied
+	EFAULT                   = 14, // Bad address
+	ENOTBLK                  = 15, // Block device required, not on Win32
+	EBUSY                    = 16, // Device or resource busy
+	EEXIST                   = 17, // File exists
+	EXDEV                    = 18, // Cross-device link
+	ENODEV                   = 19, // No such device
+	ENOTDIR                  = 20, // Not a directory
+	EISDIR                   = 21, // Is a directory
+	EINVAL                   = 22, // Invalid argument
+	ENFILE                   = 23, // File table overflow
+	EMFILE                   = 24, // Too many open files
+	ENOTTY                   = 25, // Not a typewriter
+	ETXTBSY                  = 26, // Text file busy, not on Win32
+	EFBIG                    = 27, // File too large
+	ENOSPC                   = 28, // No space left on device
+	ESPIPE                   = 29, // Illegal seek
+	EROFS                    = 30, // Read-only file system
+	EMLINK                   = 31, // Too many links
+	EPIPE                    = 32, // Broken pipe
+	EDOM                     = 33, // Math argument out of domain of func
+	ERANGE                   = 34, // Math result not representable
+	EDEADLK                  = 36, // Resource deadlock would occur Win32
+	ENAMETOOLONG             = 38, // File name too long Win32
+	ENOTEMPTY                = 41, // Directory not empty
+	ELOOP                    = 114, // Too many symbolic links encountered
+	EOVERFLOW                = 132, // Value too large for defined data type
+	ENETDOWN                 = 116, // Network is down
+	ECONNRESET               = 108, // Connection reset by peer
+	ENETUNREACH              = 118, // Network is unreachable
+	ENETRESET                = 117, // Network dropped connection because of reset
+	EOPNOTSUPP               = 130, // Operation not supported on transport endpoint
+	ETIMEDOUT                = 138, // Connection timed out
+	EALREADY                 = 103, // Operation already in progress
+	EINPROGRESS              = 112, // Operation now in progress Win32
+	EDQUOT                   = -122, // Quota exceeded, not in Win32
+	EWOULDBLOCK              = 140, // Operation would block
+}
 
 
-/*
-const Errno ESTALE = 116; /* Stale NFS file handle */
-const Errno EUCLEAN = 117; /* Structure needs cleaning */
-const Errno ENOTNAM = 118; /* Not a XENIX named type file */
-const Errno ENAVAIL = 119; /* No XENIX semaphores available */
-const Errno EISNAM = 120; /* Is a named type file */
-const Errno EREMOTEIO = 121; /* Remote I/O error */
-
-const Errno ENOMEDIUM = 123; /* No medium found */
-const Errno EMEDIUMTYPE = 124; /* Wrong medium type */
-const Errno ECANCELED = 125; /* Operation Canceled */
-const Errno ENOKEY = 126; /* Required key not available */
-const Errno EKEYEXPIRED = 127; /* Key has expired */
-const Errno EKEYREVOKED = 128; /* Key has been revoked */
-const Errno EKEYREJECTED = 129; /* Key was rejected by service */
-
-const Errno EOWNERDEAD = 130; /* Owner died */
-const Errno ENOTRECOVERABLE = 131; /* State not recoverable */
-*/
-
+constdef Errno : inline CInt @if(!env::WIN32 && !env::DARWIN && !env::NETBSD)
+{
+	OK                       = 0,
+	EPERM                    = 1, // Operation not permitted
+	ENOENT                   = 2, // No such file or directory
+	ESRCH                    = 3, // No such process
+	EINTR                    = 4, // Interrupted system call
+	EIO                      = 5, // I/O error
+	ENXIO                    = 6, // No such device or address
+	E2BIG                    = 7, // Argument list too long
+	ENOEXEC                  = 8, // Exec format error
+	EBADF                    = 9, // Bad file number
+	ECHILD                   = 10, // No child processes
+	ENOMEM                   = 12, // Out of memory
+	EAGAIN                   = 11, // Try again
+	EACCES                   = 13, // Permission denied
+	EFAULT                   = 14, // Bad address
+	ENOTBLK                  = 15, // Block device required, not on Win32
+	EBUSY                    = 16, // Device or resource busy
+	EEXIST                   = 17, // File exists
+	EXDEV                    = 18, // Cross-device link
+	ENODEV                   = 19, // No such device
+	ENOTDIR                  = 20, // Not a directory
+	EISDIR                   = 21, // Is a directory
+	EINVAL                   = 22, // Invalid argument
+	ENFILE                   = 23, // File table overflow
+	EMFILE                   = 24, // Too many open files
+	ENOTTY                   = 25, // Not a typewriter
+	ETXTBSY                  = 26, // Text file busy, not on Win32
+	EFBIG                    = 27, // File too large
+	ENOSPC                   = 28, // No space left on device
+	ESPIPE                   = 29, // Illegal seek
+	EROFS                    = 30, // Read-only file system
+	EMLINK                   = 31, // Too many links
+	EPIPE                    = 32, // Broken pipe
+	EDOM                     = 33, // Math argument out of domain of func
+	ERANGE                   = 34, // Math result not representable
+	EDEADLK                  = 35, // Resource deadlock would occur Linux (others?)
+	ENAMETOOLONG             = 36, // File name too long Linux (others?)
+	ENOTEMPTY                = 39, // Directory not empty
+	ELOOP                    = 40, // Too many symbolic links encountered
+	EWOULDBLOCK              = EAGAIN, // Operation would block
+	EOVERFLOW                = 75, // Value too large for defined data type
+	ENOTSOCK                 = 88, // Socket operation on non-socket
+	EOPNOTSUPP               = 95, // Operation not supported on transport endpoint
+	EADDRINUSE               = 98, // Address already in use
+	EADDRNOTAVAIL            = 99, // Cannot assign requested address
+	ENETDOWN                 = 100, // Network is down
+	ENETUNREACH              = 101, // Network is unreachable
+	ENETRESET                = 102, // Network dropped connection because of reset
+	ECONNRESET               = 104, // Connection reset by peer
+	EISCONN                  = 106, // Socket is already connected
+	ETIMEDOUT                = 110, // Connection timed out
+	ECONNREFUSED             = 111, // Connection refused
+	EALREADY                 = 114, // Operation already in progress
+	EINPROGRESS              = 115, // Operation now in progress
+	EDQUOT                   = 122, // Quota exceeded
+}

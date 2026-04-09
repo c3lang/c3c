@@ -32,7 +32,7 @@ entry:
 
 loop.cond:                                        ; preds = %loop.inc, %entry
   %2 = extractvalue %"Vector3[]" %1, 1
-  %lt = icmp ult i64 0, %2
+  %lt = icmp slt i64 0, %2
   br i1 %lt, label %loop.inc, label %loop.exit
 
 loop.inc:                                         ; preds = %loop.cond

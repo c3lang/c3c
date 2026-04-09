@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 
 module std::hash::ripemd;
-const usz[4] PERMISSIBLE_SIZES_BITS = { 128, 160, 256, 320 };
+const sz[4] PERMISSIBLE_SIZES_BITS = { 128, 160, 256, 320 };
 
 <* Unchanging block size. *>
 const BLOCK_SIZE = 64;
@@ -34,7 +34,7 @@ struct RipeMd
 {
 	uint[10]	state;
 	uint[16]	buffer;
-	ulong		byte_count;
+	long		byte_count;
 }
 
 
@@ -70,8 +70,8 @@ fn void RipeMd.init(&self)
 *>
 fn void RipeMd.update(&self, char[] data)
 {
-	usz $bufsz = $sizeof(self.buffer);
-	uint avail = $bufsz - (uint)(self.byte_count & 0x3f);
+	sz $bufsz = $sizeof(self.buffer);
+	sz avail = $bufsz - (self.byte_count & 0x3f);
 	self.byte_count += data.len;
 
 	if (avail > data.len)
@@ -84,7 +84,7 @@ fn void RipeMd.update(&self, char[] data)
 	self.transform(self.buffer);
 	data = data[avail..];
 
-	for (bool is_aligned = 0 == (usz)data.ptr % uint.sizeof; data.len >= $bufsz; data = data[$bufsz..])
+	for (bool is_aligned = 0 == (sz)data.ptr % uint.sizeof; data.len >= $bufsz; data = data[$bufsz..])
 	{
 		if (is_aligned) // when aligned, this optimization is a ~10-20% performance boost
 		{
@@ -110,9 +110,9 @@ fn char[DIGEST_BYTES] RipeMd.final(&self)
 	static char[64] padding = { [0] = 0x80, [1..63] = 0x00 };
 
 	// Napkin maffs.
-	ulong bits = (ulong)self.byte_count << 3;
-	uint index = (uint)self.byte_count & 0x3f;
-	uint padlen = (index < 56) ? (56 - index) : ((64 + 56) - index);
+	long bits = self.byte_count << 3;
+	int index = (int)self.byte_count & 0x3f;
+	int padlen = (index < 56) ? (56 - index) : ((64 + 56) - index);
 
 	// Update with padding, then append bit-length of digested message.
 	self.update(padding[:padlen]);
@@ -136,14 +136,14 @@ fn uint f5(uint x, uint y, uint z) @inline @local => x ^ (y | ~z);
 
 // The primary workhorse of the digest function. Behavior only changes slightly.
 //   All 128/256 inputs will expand with 'e' as 0 - they don't use it anyway.
-macro @round(#a, b, #c, d, e, #func, k, x, s) @local
+macro @round(#a, b, #c, d, uint e, #func, uint k, x, int s) @local
 {
 	#a += #func(b, #c, d) + x + k;
 	$switch:
 		$case DIGEST_BITS == 128 ||| DIGEST_BITS == 256:
-			#a = #a.rotl(s);
+			#a = #a.rotl((uint)s);
 		$case DIGEST_BITS == 160 ||| DIGEST_BITS == 320:
-			#a = #a.rotl(s) + e;
+			#a = #a.rotl((uint)s) + e;
 			#c = #c.rotl(10);
 		$default:
 			$error "Invalid digest bits";

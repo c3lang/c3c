@@ -25,7 +25,7 @@ struct Map
 /**
  * @require map != null
  **/
-fn void Map.init(Map *map, uint capacity = 128)
+fn void Map.init(Map *map, int capacity = 128)
 {
 	if (capacity < 16) capacity = 4;
 	capacity = math::next_power_of_2(capacity);
@@ -91,7 +91,7 @@ fn Type? Map.set(Map *map, Key key, Type value) @maydiscard
     }
 }
 
-fn usz Map.size(Map* map)
+fn sz Map.size(Map* map)
 {
     return map.size;
 }

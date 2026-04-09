@@ -7,8 +7,9 @@ fn bool is_newline_codepoint(uint codepoint) {
 
 /* #expect: bitop.ll
 
-  %eq = icmp eq i32 %0, 9252
-  %eq1 = icmp eq i32 %0, 11154
+  %eq = icmp eq i32 9252, %0
+  %eq1 = icmp eq i32 11154, %0
   %or = or i1 %eq, %eq1
   %1 = zext i1 %or to i8
   ret i8 %1
+

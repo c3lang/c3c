@@ -52,10 +52,10 @@ fn void Rc4.crypt(&self, char[] in, char[] out)
 	uint i = self.i;
 	uint j = self.j;
 	char* state = &self.state;
-	isz len = in.len;
+	sz len = in.len;
 	foreach (idx, c : in)
 	{
-		i = (i + 1) & 0xFF;
+		i = (i + 1u) & 0xFF;
 		j = (j + state[i]) & 0xFF;
 		@swap(state[i], state[j]);
 		out[idx] = in[idx] ^ state[(state[i] + state[j]) & 0xFF];

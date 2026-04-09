@@ -4,7 +4,7 @@ import std::collections::growablebitset;
 import std::collections::list;
 import std::io;
 
-alias List2 = List {usz};
+alias List2 = List {sz};
 
 alias BitSet2 = BitSet {2048};
 
@@ -88,7 +88,7 @@ fn void set_get()
 				assert(!x);
 		}
 	}
-	assert(found.array_view() == (usz[]){0, 2000});
+	assert(found.array_view() == (sz[]){0, 2000});
 
 	bs.unset(0);
 	assert(!bs.get(0));
@@ -131,7 +131,7 @@ fn void growable_set_get()
 				assert(!x, "Should not get here");
 		}
 	}
-	assert(found.array_view() == (usz[]){0, 2000}, "Array view should hold 2");
+	assert(found.array_view() == (sz[]){0, 2000}, "Array view should hold 2");
 
 	bs.unset(0);
 	assert(!bs.get(0), "Get should be false");

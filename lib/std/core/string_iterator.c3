@@ -3,7 +3,7 @@ module std::core::string::iterator;
 struct StringIterator
 {
 	String utf8;
-	usz current;
+	sz current;
 }
 
 fn void StringIterator.reset(&self)
@@ -13,10 +13,10 @@ fn void StringIterator.reset(&self)
 
 fn Char32? StringIterator.next(&self)
 {
-    usz len = self.utf8.len;
-    usz current = self.current;
+    sz len = self.utf8.len;
+    sz current = self.current;
     if (current >= len) return NO_MORE_ELEMENT~;
-    usz read = (len - current < 4 ? len - current : 4);
+    sz read = (len - current < 4 ? len - current : 4);
     Char32 res = conv::utf8_to_char32(&self.utf8[current], &read)!;
     self.current += read;
     return res;
@@ -24,10 +24,10 @@ fn Char32? StringIterator.next(&self)
 
 fn Char32? StringIterator.peek(&self)
 {
-    usz len = self.utf8.len;
-    usz current = self.current;
+    sz len = self.utf8.len;
+    sz current = self.current;
     if (current >= len) return NO_MORE_ELEMENT~;
-    usz read = (len - current < 4 ? len - current : 4);
+    sz read = (len - current < 4 ? len - current : 4);
     Char32 res = conv::utf8_to_char32(&self.utf8[current], &read)!;
     return res;
 }
@@ -39,10 +39,10 @@ fn bool StringIterator.has_next(&self)
 
 fn Char32? StringIterator.get(&self)
 {
-    usz len = self.utf8.len;
-    usz current = self.current;
-    usz read = (len - current < 4 ? len - current : 4);
-    usz index = current > read ? current - read : 0;
+    sz len = self.utf8.len;
+    sz current = self.current;
+    sz read = (len - current < 4 ? len - current : 4);
+    sz index = current > read ? current - read : 0;
     if (index >= len) return NO_MORE_ELEMENT~;
     Char32 res = conv::utf8_to_char32(&self.utf8[index], &read)!;
     return res;

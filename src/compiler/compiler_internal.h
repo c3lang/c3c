@@ -51,7 +51,8 @@ typedef uint16_t FileId;
 #define MAX_MODULE_NAME 31
 #define MAX_MODULE_PATH 63
 #define MAX_IDENTIFIER_LENGTH 127
-#define MAX_MACRO_RECURSION_DEPTH 128
+#define MAX_MACRO_RECURSION_DEPTH 64
+#define MAX_CONTRACT_DEPTH 20
 #define MEMCMP_INLINE_REGS 8
 #define UINT128_MAX ((Int128) { UINT64_MAX, UINT64_MAX })
 #define INT128_MAX ((Int128) { INT64_MAX, UINT64_MAX })
@@ -538,8 +539,6 @@ typedef struct
 	Decl** values;
 	Decl** parameters;
 	TypeInfo *type_info;
-	int16_t inline_index;
-	bool inline_value;
 } EnumDecl;
 
 struct Signature_
@@ -745,8 +744,8 @@ typedef struct Decl_
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
-	bool attr_structlike : 1;
 	bool attr_constinit : 1;
+	bool attr_mustinit : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
 	bool is_method_checked : 1;
@@ -1312,7 +1311,6 @@ struct Expr_
 		ExprCtArg ct_arg_expr;
 		Expr** ct_concat;
 		ExprOtherContext expr_other_context;
-		ExprCastable assignable_expr;
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		Decl *decl_expr;                            // 8
@@ -1658,6 +1656,7 @@ typedef struct Module_
 	Decl **benchmarks;
 	Decl **tests;
 	Decl **lambdas_to_evaluate;
+	int lambda_count;
 	InliningSpan inlined_at;
 } Module;
 
@@ -1756,7 +1755,7 @@ struct CompilationUnit_
 	bool test_by_default;
 	bool module_generated;
 	Attr **attr_links;
-	Decl **generic_defines;
+	Decl **aliases;
 	Decl **ct_asserts;
 	Decl **ct_echos;
 	Decl **ct_includes;
@@ -1771,7 +1770,6 @@ struct CompilationUnit_
 	Decl *main_function;
 	Decl *error_import;
 	HTable local_symbols;
-	int lambda_count;
 	TypeInfo **check_type_variable_array;
 	struct
 	{
@@ -2042,7 +2040,7 @@ extern TypeInfo *poisoned_type_info;
 
 extern Type *type_bool, *type_void, *type_voidptr;
 extern Type *type_float16, *type_bfloat, *type_float, *type_double, *type_f128;
-extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
+extern Type *type_ichar, *type_short, *type_int, *type_long, *type_sz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
@@ -2079,6 +2077,7 @@ extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
 extern const char *kw_at_simd;
+extern const char *kw_compiler_rt;
 extern const char *kw_in;
 extern const char *kw_inout;
 extern const char *kw_len;
@@ -2086,6 +2085,7 @@ extern const char *kw_libc;
 extern const char *kw_main;
 extern const char *kw_mainstub;
 extern const char *kw_memcmp;
+extern const char *kw_name;
 extern const char *kw_nameof;
 extern const char *kw_offsetof;
 extern const char *kw_ordinal;
@@ -2422,7 +2422,6 @@ void expr_rewrite_two(Expr *original, Expr *first, Expr *second);
 void expr_insert_addr(Expr *original);
 bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
-Expr *expr_generated_local(Expr *assign, Decl **decl_ref);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);
 bool expr_may_addr(Expr *expr);
@@ -2526,13 +2525,13 @@ bool sema_cast_const(Expr *expr);
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
+bool sema_analyse_local(SemaContext *context, Decl *decl, bool *failed_ref);
 bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacement);
 void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl);
 
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
 bool sema_resolve_type_structure(SemaContext *context, Type *type);
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defined);
-bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *check_defined);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
@@ -2690,6 +2689,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_aggregate(Type *type);
 bool type_is_int128(Type *type);
+Type *type_is_must_init(Type *type);
 
 Type *type_from_token(TokenType type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
@@ -2787,12 +2787,12 @@ INLINE Type *type_no_optional(Type *type)
 
 INLINE bool type_is_pointer_sized_or_more(Type *type)
 {
-	return type_is_integer(type) && type_size(type) >= type_size(type_iptr);
+	return type_is_integer(type) && type_size(type) >= type_size(type_uptr);
 }
 
 INLINE bool type_is_pointer_sized(Type *type)
 {
-	return type_is_integer(type) && type_size(type) == type_size(type_iptr);
+	return type_is_integer(type) && type_size(type) == type_size(type_uptr);
 }
 
 #define DECL_TYPE_KIND_REAL(k_, t_) \
@@ -3012,7 +3012,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		default:
 			return false;
 	}
-	return type_size(type_flat) <= type_size(type_iptr);
+	return type_size(type_flat) <= type_size(type_uptr);
 }
 
 INLINE bool type_is_pointer(Type *type)
@@ -3247,7 +3247,6 @@ static inline Type *type_base(Type *type)
 
 
 static const bool is_distinct_like[TYPE_LAST + 1] = {
-	[TYPE_ENUM] = true,
 	[TYPE_CONSTDEF] = true,
 	[TYPE_TYPEDEF] = true
 };
@@ -3306,16 +3305,6 @@ static inline Type *type_flatten_and_inline(Type *type)
 			case TYPE_CONSTDEF:
 				type = type->decl->enums.type_info->type;
 				continue;
-			case TYPE_ENUM:
-				decl = type->decl;
-				if (!decl->is_substruct) return type;
-				if (!compiler.build.old_enums || decl->enums.inline_value)
-				{
-					type = decl->enums.type_info->type;
-					continue;
-				}
-				type = decl->enums.parameters[decl->enums.inline_index]->type;
-				continue;
 			default:
 				return type;
 		}
@@ -3339,16 +3328,6 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 				decl = type->decl;
 				if (!decl->is_substruct) return type;
 				type = decl->enums.type_info->type;
-				continue;
-			case TYPE_ENUM:
-				decl = type->decl;
-				if (!decl->is_substruct) return type;
-				if (!compiler.build.old_enums || decl->enums.inline_value)
-				{
-					type = decl->enums.type_info->type;
-					continue;
-				}
-				type = decl->enums.parameters[decl->enums.inline_index]->type;
 				continue;
 			default:
 				return type;
@@ -3376,6 +3355,10 @@ INLINE bool type_is_user_defined(Type *type)
 static inline DeclId type_find_generic(Type *type)
 {
 	Type *canonical = type->canonical;
+	while (type->type_kind == TYPE_POINTER)
+	{
+		type = type->pointer->canonical;
+	}
 	if (canonical != type && type_is_user_defined(canonical))
 	{
 		Decl *decl = canonical->decl;
@@ -3426,9 +3409,6 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_ENUM:
-				if (!type->decl->is_substruct) return type;
-				FALLTHROUGH;
 			case TYPE_CONSTDEF:
 				type = enum_inner_type(type);
 				break;
@@ -3631,7 +3611,7 @@ INLINE bool type_underlying_is_numeric(Type *type)
 
 INLINE bool type_underlying_may_add_sub(CanonicalType *type)
 {
-	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type);
+	return type->type_kind == TYPE_POINTER || type_is_numeric(type);
 }
 
 INLINE bool type_is_vec(FlatType *type)
@@ -3924,8 +3904,6 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_COND:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
-		case EXPR_CT_ASSIGNABLE:
-		case EXPR_CT_IS_CONST:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:

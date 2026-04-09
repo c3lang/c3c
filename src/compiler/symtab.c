@@ -57,6 +57,7 @@ const char *kw_libc;
 const char *kw_main;
 const char *kw_memcmp;
 const char *kw_mainstub;
+const char *kw_name;
 const char *kw_nameof;
 const char *kw_offsetof;
 const char *kw_ordinal;
@@ -65,6 +66,7 @@ const char *kw_ptr;
 const char *kw_return;
 const char *kw_self;
 const char *kw_std;
+const char *kw_compiler_rt;
 const char *kw_std__core;
 const char *kw_std__core__types;
 const char *kw_std__core__runtime;
@@ -143,6 +145,7 @@ void symtab_init(uint32_t capacity)
 	kw_mainstub = KW_DEF("_$main");
 	kw_main = KW_DEF("main");
 	kw_memcmp = KW_DEF("memcmp");
+	kw_name = KW_DEF("name");
 	kw_nameof = KW_DEF("nameof");
 	kw_offsetof = KW_DEF("offsetof");
 	kw_ordinal = KW_DEF("ordinal");
@@ -150,6 +153,7 @@ void symtab_init(uint32_t capacity)
 	kw_ptr = KW_DEF("ptr");
 	kw_self = KW_DEF("self");
 	kw_std = KW_DEF("std");
+	kw_compiler_rt = KW_DEF("compiler_rt");
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
 	kw_std__core__runtime = KW_DEF("std::core::runtime");
@@ -164,8 +168,6 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_LEN] = kw_len = KW_DEF("len");
 
 	type_property_list[TYPE_PROPERTY_ALIGNOF] = KW_DEF("alignof");
-	type_property_list[TYPE_PROPERTY_ASSOCIATED] = KW_DEF("associated");
-	type_property_list[TYPE_PROPERTY_ELEMENTS] = KW_DEF("elements");
 	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
 	type_property_list[TYPE_PROPERTY_FROM_ORDINAL] = KW_DEF("from_ordinal");
 
@@ -175,7 +177,6 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_IS_EQ] = KW_DEF("is_eq");
 	type_property_list[TYPE_PROPERTY_IS_ORDERED] = KW_DEF("is_ordered");
 	type_property_list[TYPE_PROPERTY_IS_SUBSTRUCT] = KW_DEF("is_substruct");
-	type_property_list[TYPE_PROPERTY_LOOKUP] = KW_DEF("lookup");
 	type_property_list[TYPE_PROPERTY_LOOKUP_FIELD] = KW_DEF("lookup_field");
 	type_property_list[TYPE_PROPERTY_KINDOF] = KW_DEF("kindof");
 	type_property_list[TYPE_PROPERTY_MEMBERSOF] = KW_DEF("membersof");
@@ -183,7 +184,6 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_NAMEOF] = KW_DEF("nameof");
 	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");
 	type_property_list[TYPE_PROPERTY_NAN] = KW_DEF("nan");
-	type_property_list[TYPE_PROPERTY_PARAMS] = KW_DEF("params");
 	type_property_list[TYPE_PROPERTY_PARAMSOF] = KW_DEF("paramsof");
 	type_property_list[TYPE_PROPERTY_PARENTOF] = KW_DEF("parentof");
 	type_property_list[TYPE_PROPERTY_QNAMEOF] = KW_DEF("qnameof");
@@ -195,6 +195,9 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_VALUES] = KW_DEF("values");
 
 	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
+	builtin_list[BUILTIN_ACOS] = KW_DEF("acos");
+	builtin_list[BUILTIN_ASIN] = KW_DEF("asin");
+	builtin_list[BUILTIN_ATAN] = KW_DEF("atan");
 	builtin_list[BUILTIN_ANY_MAKE] = KW_DEF("any_make");
 	builtin_list[BUILTIN_ATOMIC_LOAD] = KW_DEF("atomic_load");
 	builtin_list[BUILTIN_ATOMIC_STORE] = KW_DEF("atomic_store");
@@ -216,6 +219,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_COMPARE_EXCHANGE] = KW_DEF(("compare_exchange"));
 	builtin_list[BUILTIN_COPYSIGN] = KW_DEF("copysign");
 	builtin_list[BUILTIN_COS] = KW_DEF("cos");
+	builtin_list[BUILTIN_COSH] = KW_DEF("cosh");
 	builtin_list[BUILTIN_CTLZ] = KW_DEF("clz");
 	builtin_list[BUILTIN_CTTZ] = KW_DEF("ctz");
 	builtin_list[BUILTIN_EXACT_ADD] = KW_DEF("add");
@@ -226,6 +230,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_EXACT_SUB] = KW_DEF("sub");
 	builtin_list[BUILTIN_EXP] = KW_DEF("exp");
 	builtin_list[BUILTIN_EXP2] = KW_DEF("exp2");
+	builtin_list[BUILTIN_EXP10] = KW_DEF("exp10");
 	builtin_list[BUILTIN_EXPECT] = KW_DEF("expect");
 	builtin_list[BUILTIN_EXPECT_WITH_PROBABILITY] = KW_DEF("expect_with_probability");
 	builtin_list[BUILTIN_FENCE] = KW_DEF("fence");
@@ -282,6 +287,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_SELECT] = KW_DEF("select");
 	builtin_list[BUILTIN_SET_ROUNDING_MODE] = KW_DEF("set_rounding_mode");
 	builtin_list[BUILTIN_SIN] = KW_DEF("sin");
+	builtin_list[BUILTIN_SINH] = KW_DEF("sinh");
 	builtin_list[BUILTIN_STR_HASH] = KW_DEF("str_hash");
 	builtin_list[BUILTIN_STR_UPPER] = KW_DEF("str_upper");
 	builtin_list[BUILTIN_STR_LOWER] = KW_DEF("str_lower");
@@ -295,6 +301,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_SQRT] = KW_DEF("sqrt");
 	builtin_list[BUILTIN_SYSCALL] = KW_DEF("syscall");
 	builtin_list[BUILTIN_SYSCLOCK] = KW_DEF("sysclock");
+	builtin_list[BUILTIN_TAN] = KW_DEF("tan");
+	builtin_list[BUILTIN_TANH] = KW_DEF("tanh");
 	builtin_list[BUILTIN_TRAP] = KW_DEF("trap");
 	builtin_list[BUILTIN_TRUNC] = KW_DEF("trunc");
 	builtin_list[BUILTIN_VECCOMPLT] = KW_DEF("veccomplt");
@@ -353,7 +361,6 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
 	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");
-	attribute_list[ATTRIBUTE_EXTERN] = KW_DEF("@extern");
 	attribute_list[ATTRIBUTE_FINALIZER] = KW_DEF("@finalizer");
 	attribute_list[ATTRIBUTE_FORMAT] = KW_DEF("@format");
 	attribute_list[ATTRIBUTE_IF] = KW_DEF("@if");
@@ -364,6 +371,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("@littleendian");
 	attribute_list[ATTRIBUTE_LOCAL] = KW_DEF("@local");
 	attribute_list[ATTRIBUTE_MAYDISCARD] = KW_DEF("@maydiscard");
+	attribute_list[ATTRIBUTE_MUSTINIT] = KW_DEF("@mustinit");
 	attribute_list[ATTRIBUTE_NAKED] = KW_DEF("@naked");
 	attribute_list[ATTRIBUTE_NOALIAS] = KW_DEF("@noalias");
 	attribute_list[ATTRIBUTE_NODISCARD] = KW_DEF("@nodiscard");
@@ -389,7 +397,6 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_SAFEMACRO] = KW_DEF("@safemacro");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
 	attribute_list[ATTRIBUTE_SIMD] = kw_at_simd;
-	attribute_list[ATTRIBUTE_STRUCTLIKE] = KW_DEF("@structlike");
 	attribute_list[ATTRIBUTE_TEST] = KW_DEF("@test");
 	attribute_list[ATTRIBUTE_TAG] = KW_DEF("@tag");
 	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("@unused");

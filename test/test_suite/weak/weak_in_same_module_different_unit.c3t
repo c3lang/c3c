@@ -1,0 +1,24 @@
+// #target: macos-aarch64
+module a;
+
+fn void a() { b(); }
+fn void b() @weak {}
+
+module a;
+fn void b() {}
+fn int main() => 0;
+
+/* #expect: a.ll
+
+define void @a.a() #0 {
+entry:
+  call void @a.b()
+  ret void
+}
+
+define void @a.b() #0 {
+entry:
+  ret void
+}
+
+

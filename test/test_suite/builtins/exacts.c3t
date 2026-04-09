@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 import std::io;
 fn void main()
 {
@@ -14,7 +14,7 @@ fn void main()
 	io::printfn("%s %s %s %s %s %s", z1, z2, z3, z4, z5, z6);
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
   %emul = mul i8 %0, %1
   %esdiv = sdiv i8 %2, %3

@@ -64,7 +64,7 @@ fn void reverse()
 fn void remove_if()
 {
 	IntList test;
-	usz removed;
+	sz removed;
 
 	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_if(&filter);
@@ -82,7 +82,7 @@ fn void remove_if()
 fn void remove_using_test()
 {
 	IntList test;
-	usz removed;
+	sz removed;
 
 	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);
@@ -99,7 +99,7 @@ fn void remove_using_test()
 fn void retain_if()
 {
 	IntList test;
-	usz removed;
+	sz removed;
 
 	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.retain_if(&select);
@@ -116,7 +116,7 @@ fn void retain_if()
 fn void retain_using_test()
 {
 	IntList test;
-	usz removed;
+	sz removed;
 
 	test.push_all({ 1, 11, 2, 10, 20 });
 	removed = test.remove_using_test(fn bool(i, ctx) => *i >= *(int*)ctx, &&10);

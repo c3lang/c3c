@@ -554,7 +554,11 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	if (loop == LOOP_NONE)
 	{
 		// while (0) -> never entered
-		if (!skip_first) return;
+		if (!skip_first)
+		{
+			DEBUG_POP_LEXICAL_SCOPE(c);
+			return;
+		}
 		ASSERT(!incr && "There should not be an incr in do-while");
 		// do while(0) -> emit once
 		LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "loop.exit");
@@ -1213,6 +1217,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		BEValue value;
 		llvm_emit_expr(c, &value, assert_expr);
 		llvm_value_rvalue(c, &value);
+		if (!c->current_block) return;
 		LLVMBasicBlockRef on_fail = llvm_basic_block_new(c, "assert_fail");
 		LLVMBasicBlockRef on_ok = llvm_basic_block_new(c, "assert_ok");
 		ASSERT(value.kind == BE_BOOLEAN);
@@ -1479,7 +1484,7 @@ LLVMValueRef llvm_emit_string_const(GenContext *c, const char *str, const char *
 	size_t len = str ? strlen(str) : 0;
 	if (!len) return llvm_emit_empty_string_const(c);
 	LLVMValueRef val = llvm_emit_zstring_named(c, str, extname);
-	LLVMValueRef data[2] = { val, llvm_const_int(c, type_usz, strlen(str)) };
+	LLVMValueRef data[2] = { val, LLVMConstInt(c->size_type, strlen(str), false) };
 	return llvm_get_struct_named(c->chars_type, data, 2);
 }
 
@@ -1569,7 +1574,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const 
 			llvm_store(c, &slot, &varargs[i]);
 		}
 		BEValue value;
-		llvm_value_aggregate_two(c, &value, any_slice, array_ref.value, llvm_const_int(c, type_usz, elements));
+		llvm_value_aggregate_two(c, &value, any_slice, array_ref.value, LLVMConstInt(c->size_type, elements, false));
 		LLVMSetValueName2(value.value, temp_name, 6);
 
 		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value);
@@ -1606,6 +1611,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 		sema_warning_at(loc, "The code here was detected to always panic at runtime.");
 		always_panic = true;
 	}
+	if (llvm_is_global_eval(c) || !c->current_block) return;
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
 	if (always_panic)

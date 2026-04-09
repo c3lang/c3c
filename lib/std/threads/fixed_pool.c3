@@ -12,9 +12,9 @@ struct FixedThreadPool
 {
 	Mutex mu;
 	QueueItem[] queue;
-	usz qindex;
-	usz qworking;
-	usz num_threads;
+	sz qindex;
+	sz qworking;
+	sz num_threads;
 	bitstruct : char {
 		bool initialized;
 		bool stop;
@@ -37,7 +37,7 @@ struct QueueItem @private
  @require threads > 0 && threads < 0x1000 : `Threads should be greater than 0 and less than 0x1000`
  @require queue_size < 0x10000 : `Queue size must be less than 65536`
 *>
-fn void? FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
+fn void? FixedThreadPool.init(&self, sz threads, sz queue_size = 0)
 {
 	if (queue_size == 0) queue_size = threads * 32;
 	defer catch @ok(self.destroy());
@@ -65,7 +65,7 @@ fn void? FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
 <*
  Join all threads in the pool.
 *>
-fn void? FixedThreadPool.join(&self) @maydiscard // Remove optional in 0.8.0
+fn void FixedThreadPool.join(&self)
 {
 	if (self.initialized)
 	{
@@ -94,7 +94,7 @@ fn void? FixedThreadPool.destroy(&self)
  Stop all the threads and cleanup the pool.
  Any pending work will be processed.
 *>
-fn void? FixedThreadPool.stop_and_destroy(&self) @maydiscard // Remove optional in 0.8.0
+fn void FixedThreadPool.stop_and_destroy(&self)
 {
 	self.@shutdown(self.stop);
 }
@@ -142,7 +142,7 @@ fn void? FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 	if (args.len)
 	{
 		data = mem::alloc_array(any, args.len);
-		foreach (i, arg : args) data[i] = allocator::clone_any(mem, arg);
+		foreach (i, arg : args) data[i] = alloc::clone_any(mem, arg);
 	}
 	self.queue[self.qindex] = { .func = func, .args = data };
 	self.qindex++;

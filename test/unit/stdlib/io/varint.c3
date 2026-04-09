@@ -5,7 +5,7 @@ fn void write_read()
 {
 	ByteBuffer buf;
 	buf.tinit(16);
-	usz n;
+	sz n;
 	uint x;
 	uint y;
 
@@ -55,7 +55,7 @@ fn void samples()
 	{
 		ByteWriter bw;
 		bw.tinit();
-		usz n = io::write_varint(&bw, tc.in)!!;
+		sz n = io::write_varint(&bw, tc.in)!!;
 		assert(n == tc.bytes.len, "got %d; want %d", n, tc.bytes.len);
 		char[] bytes = bw.bytes[:bw.index];
 		assert(bytes == tc.bytes, "got %d; want %d", bytes, tc.bytes);

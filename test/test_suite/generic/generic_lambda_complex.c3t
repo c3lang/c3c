@@ -27,8 +27,8 @@ struct TextTemplate
 
 struct TextTag
 {
-	usz start;
-	usz end;
+	sz start;
+	sz end;
 	TextTagKind kind;
 	union {
 		String* data;
@@ -40,18 +40,18 @@ struct TextTag
  @require self.tags.len == 0 : "template already initialized"
  @require tag_start != tag_end
  *>
-fn void? TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator using = allocator::heap())
+fn void? TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator using = alloc::heap())
 {
 	TextTagList tags;
 	String tmpl = template;
 	uptr data = (uptr)&self.data;
 	while (true)
 	{
-		usz? start = tmpl.index_of(tag_start);
+		sz? start = tmpl.index_of(tag_start);
 		if (catch start) break;
 		tmpl = tmpl[start + tag_start.len..];
 
-		usz? end = tmpl.index_of(tag_end);
+		sz? end = tmpl.index_of(tag_end);
 		if (catch end) return abc_faults::UNTERMINATED_TAG~;
 		String name = tmpl[:end].trim();
 		if (name == "") return abc_faults::EMPTY_TAG~;
@@ -67,7 +67,7 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 						$case String.typeid:
 							tag = {
 								.kind = STRING,
-								.data = (String*)(data + $m.offsetof),
+								.data = (String*)(data + (usz)$m.offsetof),
 							};
 							break OUTER;
 						$default:
@@ -96,14 +96,14 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 
 fn void? TextTemplate.free(&self)
 {
-	allocator::free(self.allocator, self.tags);
+	alloc::free(self.allocator, self.tags);
 	*self = {};
 }
 
-fn usz? TextTemplate.write_to(&self, OutStream writer)
+fn sz? TextTemplate.write_to(&self, OutStream writer)
 {
-	usz n;
-	usz pos;
+	sz n;
+	sz pos;
 	foreach (tag : self.tags)
 	{
 			n += writer.write(self.template[pos:tag.start])!;
@@ -114,7 +114,7 @@ fn usz? TextTemplate.write_to(&self, OutStream writer)
 	return n;
 }
 
-fn usz? TextTag.write(&self, OutStream writer)
+fn sz? TextTag.write(&self, OutStream writer)
 {
 	switch (self.kind)
 	{
@@ -180,7 +180,7 @@ entry:
   %indirectarg9 = alloca %"any[]", align 8
   store %"char[]" { ptr @.str, i64 21 }, ptr %foo_tmpl, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %ft, i8 0, i64 72, i1 false)
-  %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocator.current_temp)
+  %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.current_temp)
   %lo = load ptr, ptr %foo_tmpl, align 8
   %ptradd = getelementptr inbounds i8, ptr %foo_tmpl, i64 8
   %hi = load i64, ptr %ptradd, align 8

@@ -11,7 +11,7 @@ const DEFAULT_ROUNDS = 24;
 const DEFAULT_DELIMITER = 0x01;
 
 <* The set of valid Keccak security levels supported by this implementation. *>
-const usz[] SECURITY_LEVELS = { 224, 256, 384, 512 };
+const sz[] SECURITY_LEVELS = { 224, 256, 384, 512 };
 
 <*
  Get the constant Keccak `rate` value based on the given `F` and `SECURITY_LEVEL` attributes.
@@ -32,7 +32,7 @@ macro rate($security_level, $f = DEFAULT_F) @const => ($f - ($security_level * 2
  @param $rounds : "An optional compile-time override of the rounds count used in hash computation."
  @param $delimiter : "An optional compile-time override of the delimiter used in hash computation."
 
- @require @in($security_level, ...SECURITY_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require @in($security_level, ...SECURITY_LEVELS) : "Keccak and Keccak-derived structures must use a valid security level."
  @require $outlen_bytes > 0 : "You must use an output length over zero bytes."
 
  @return "A character array of the specified `$outlen_bytes` size containing the XOF result."
@@ -54,7 +54,7 @@ alias hash = xof;
  @param [out] into : "The destination for the generated variable-length hash."
  @param [in] data : "The data to hash."
 
- @require @in($security_level, ...SECURITY_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
+ @require @in($security_level, ...SECURITY_LEVELS) : "Keccak and Keccak-derived structures must use a valid security level."
  @require into.len > 0 : "The destination slice must have a length greater than zero."
  @param $rounds : "An optional compile-time override of the rounds count used in hash computation."
  @param $delimiter : "An optional compile-time override of the delimiter used in hash computation."
@@ -70,7 +70,11 @@ macro void xof_into($security_level, char[] into, char[] data, $rounds = DEFAULT
 <* When hashing with the base Keccak context, it's the same thing as using the XOF construct. *>
 alias hash_into = xof_into;
 
-<* The default Keccak context always employs the default `F` value of `1600`. *>
+<*
+ The default Keccak context always employs the default `F` value of `1600`.
+
+ @require @in(SECURITY_LEVEL, 128, 192, ...SECURITY_LEVELS) : "Keccak and Keccak-derived structures must use a valid security level."
+*>
 alias Keccak <SECURITY_LEVEL> = KeccakContext { DEFAULT_F, SECURITY_LEVEL };
 
 
@@ -90,7 +94,7 @@ constdef KeccakState : inline int
 }
 
 <* The state machine is just the state, typedef'd to another type in case something else is added in the future. *>
-typedef KeccakStateMachine @structlike = inline KeccakState;
+typedef KeccakStateMachine = inline KeccakState;
 
 <*
  Initialize the runtime value of the Keccak context that indicates the _true_ size of the dependent/derived class.
@@ -101,7 +105,7 @@ typedef KeccakStateMachine @structlike = inline KeccakState;
  @param #instance : "The `KeccakContext` instance to modify."
  @param runtime_size : "The struct's size in bytes."
 *>
-macro void @init_runtime_size(#instance, usz runtime_size)
+macro void @init_runtime_size(#instance, sz runtime_size)
 {
 	if (!$defined(#instance.runtime_struct_size) ||| #instance.runtime_struct_size > 0) return;
 	#instance.runtime_struct_size = runtime_size;
@@ -166,7 +170,7 @@ const char[24] PI = {
 };
 
 <* The base Keccak context data structure used to generate XOF outputs. *>
-struct KeccakContext <F, OUTPUT_BITS> @align(ulong.sizeof)
+struct KeccakContext <F, OUTPUT_BITS> @align(ulong.sizeof) @mustinit
 {
 	union @align(ulong.sizeof)   // keccak sponge state
 	{
@@ -178,10 +182,10 @@ struct KeccakContext <F, OUTPUT_BITS> @align(ulong.sizeof)
 		ulong[rate(OUTPUT_BITS) / ulong.sizeof] buf_words;
 		char[rate(OUTPUT_BITS)] buf;
 	}
-	usz offset;   // tracking leftover bytes from absorption
+	sz offset;   // tracking leftover bytes from absorption
 	char runtime_delimiter;
 	char runtime_rounds;
-	usz runtime_struct_size;
+	sz runtime_struct_size;
 	bool is_padded;
 	KeccakStateMachine state;
 }
@@ -197,7 +201,7 @@ struct KeccakContext <F, OUTPUT_BITS> @align(ulong.sizeof)
 fn void KeccakContext.init(&self, char runtime_rounds = DEFAULT_ROUNDS, char runtime_delimiter = DEFAULT_DELIMITER)
 {
 	@init_runtime_size(self, $sizeof(*self));
-	usz struct_sz = self.runtime_struct_size;
+	sz struct_sz = self.runtime_struct_size;
 	*self = {
 		.runtime_rounds = runtime_rounds,
 		.runtime_delimiter = runtime_delimiter,
@@ -241,7 +245,7 @@ fn void KeccakContext.wipe(&self) @inline => mem::zero_volatile(((char*)self)[:m
 <* An internal function used to XOR the sponge with the partial "stomach" buffer (data awaiting digestion). *>
 fn void KeccakContext.fill_block(&self)
 {
-	usz i = 0;
+	sz i = 0;
 	for (; i < (self.offset / ulong.sizeof); i++) self.sponge[i] ^= self.buf_words[i];
 	for (i = i * ulong.sizeof; i < self.offset; i++) self.sponge_bytes[i] ^= self.buf[i];
 	self.permute_r();
@@ -258,11 +262,11 @@ fn void KeccakContext.absorb(&self, char[] input)
 	self.state.transition(ABSORBING);
 	if (!input.len) return;
 
-	usz i;
+	sz i;
 
 	if (self.offset > 0)   // handle any leftovers
 	{
-		usz left = min(rate(OUTPUT_BITS) - self.offset, input.len);
+		sz left = min(rate(OUTPUT_BITS) - self.offset, input.len);
 
 		self.buf[self.offset:left] = input[:left];
 		self.offset += left;
@@ -292,7 +296,7 @@ fn void KeccakContext.absorb(&self, char[] input)
 		}
 	}
 
-	usz left = input.len - i;
+	sz left = input.len - i;
 	if (left > 0) self.buf[:left] = input[i:left];
 
 	self.offset = left;
@@ -303,7 +307,7 @@ fn void KeccakContext.absorb(&self, char[] input)
 *>
 fn void KeccakContext.pad(&self)
 {
-	usz i = 0;
+	sz i = 0;
 	for (; i < (self.offset / ulong.sizeof); i++) self.sponge[i] ^= self.buf_words[i];
 	for (i = i * ulong.sizeof; i < self.offset; i++) self.sponge_bytes[i] ^= self.buf[i];
 
@@ -332,7 +336,7 @@ fn void KeccakContext.squeeze(&self, char[] out)
 	self.state.transition(SQUEEZING);
 	if (!out.len) return;
 
-	usz i;
+	sz i;
 
 	if (self.offset == rate(OUTPUT_BITS))
 	{
@@ -343,7 +347,7 @@ fn void KeccakContext.squeeze(&self, char[] out)
 		char[rate(OUTPUT_BITS)] localbuf;
 		localbuf[..] = self.buf[..];
 
-		usz left = min(rate(OUTPUT_BITS) - self.offset, out.len);
+		sz left = min(rate(OUTPUT_BITS) - self.offset, out.len);
 
 		out[:left] = localbuf[self.offset:left];
 		self.offset += left;
@@ -365,7 +369,7 @@ fn void KeccakContext.squeeze(&self, char[] out)
 		self.permute_r();
 	}
 
-	usz left = out.len - i;
+	sz left = out.len - i;
 	if (left > 0) out[i:left] = self.sponge_bytes[:left];
 
 	self.offset = left;
@@ -376,7 +380,7 @@ fn void KeccakContext.squeeze(&self, char[] out)
 *>
 fn void KeccakContext.permute_r(&self) @inline
 {
-	for (usz i = RC.len - self.runtime_rounds; i < RC.len; i++) self.round(RC[i]);
+	for (sz i = RC.len - self.runtime_rounds; i < RC.len; i++) self.round(RC[i]);
 }
 
 <*

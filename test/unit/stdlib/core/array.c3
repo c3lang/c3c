@@ -26,7 +26,7 @@ fn bool ArrTestStruct.equals(self, ArrTestStruct other) @operator(==)
 	return self.a == other.a && self.b == other.b;
 }
 
-fn usz? ArrTestStruct.to_format(&self, Formatter* f) @dynamic
+fn sz? ArrTestStruct.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("{ %d, %d }", self.a, self.b);
 }
@@ -85,11 +85,11 @@ fn void reduce() => @pool()
 
 	List {String} l;
 	l.push_all({ "abc", "adef", "ghi", "a12345" });
-	test::eq(array::@reduce(l, (usz)0, fn (acc, e, u) => acc + e.len + u), 0 + (3 + 0) + (4 + 1) + (3 + 2) + (6 + 3));
+	test::eq(array::@reduce(l, (sz)0, fn (acc, e, u) => acc + e.len + u), 0 + (3 + 0) + (4 + 1) + (3 + 2) + (6 + 3));
 
 	LinkedList {String} ll;
 	ll.push_all({ "abc", "adef", "ghi", "a12345" });
-	test::eq(array::@reduce(ll.array_view(), (usz)0, fn (acc, e, u) => acc + e.len + u), 0 + (3 + 0) + (4 + 1) + (3 + 2) + (6 + 3));
+	test::eq(array::@reduce(ll.array_view(), (sz)0, fn (acc, e, u) => acc + e.len + u), 0 + (3 + 0) + (4 + 1) + (3 + 2) + (6 + 3));
 }
 
 fn void sum()
@@ -120,21 +120,21 @@ fn void product()
 fn void indices_of() => @pool()
 {
 	int[] int_slice = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-	test::eq(array::@tindices_of(int_slice, fn (e, u) => !!(e % 2)), (usz[]){0, 2, 4, 6, 8});
-	test::eq(array::@tindices_of(int_slice, fn (e, u) => !(e % 2)), (usz[]){1, 3, 5, 7, 9});
-	test::eq(array::@tindices_of(int_slice, fn (e, u) => e > 5), (usz[]){5, 6, 7, 8, 9});
+	test::eq(array::@tindices_of(int_slice, fn (e, u) => !!(e % 2)), (sz[]){0, 2, 4, 6, 8});
+	test::eq(array::@tindices_of(int_slice, fn (e, u) => !(e % 2)), (sz[]){1, 3, 5, 7, 9});
+	test::eq(array::@tindices_of(int_slice, fn (e, u) => e > 5), (sz[]){5, 6, 7, 8, 9});
 
 	ArrTestStruct[] struct_slice = { {40, 5}, {0, 0}, {12, 13}, {3, 5} };
-	test::eq(array::@tindices_of(struct_slice, fn (e, u) => e.a > 10), (usz[]){0, 2});
-	test::eq(array::@tindices_of(struct_slice, fn (e, u) => e.b == 0 || e.a < 10), (usz[]){1, 3});
+	test::eq(array::@tindices_of(struct_slice, fn (e, u) => e.a > 10), (sz[]){0, 2});
+	test::eq(array::@tindices_of(struct_slice, fn (e, u) => e.b == 0 || e.a < 10), (sz[]){1, 3});
 
 	List {String} l;
 	l.push_all({ "abc", "adef", "ghi", "a12345" });
-	test::eq(array::@tindices_of(l, fn (e, u) => e.len <= 3), (usz[]){0, 2});
+	test::eq(array::@tindices_of(l, fn (e, u) => e.len <= 3), (sz[]){0, 2});
 
 	LinkedList {String} ll;
 	ll.push_all({ "abc", "adef", "ghi", "a12345" });
-	test::eq(array::@tindices_of(ll.array_view(), fn (e, u) => e.len <= 3), (usz[]){0, 2});
+	test::eq(array::@tindices_of(ll.array_view(), fn (e, u) => e.len <= 3), (sz[]){0, 2});
 }
 
 fn void filter() => @pool()

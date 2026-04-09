@@ -1,0 +1,7 @@
+extern fn void printf(char *);
+fn int main()
+{
+    for(; 0; );
+    printf("");
+    return 0;
+}

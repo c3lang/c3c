@@ -160,6 +160,9 @@ typedef struct GenContext_
 typedef struct
 {
 	unsigned abs;
+	unsigned acos;
+	unsigned asin;
+	unsigned atan;
 	unsigned assume;
 	unsigned bitreverse;
 	unsigned bswap;
@@ -168,11 +171,13 @@ typedef struct
 	unsigned convert_to_fp16;
 	unsigned copysign;
 	unsigned cos;
+	unsigned cosh;
 	unsigned ctlz;
 	unsigned ctpop;
 	unsigned cttz;
 	unsigned exp;
 	unsigned exp2;
+	unsigned exp10;
 	unsigned expect;
 	unsigned expect_with_probability;
 	unsigned fabs;
@@ -222,6 +227,7 @@ typedef struct
 	unsigned scatter;
 	unsigned set_rounding;
 	unsigned sin;
+	unsigned sinh;
 	unsigned smax;
 	unsigned smin;
 	unsigned smul_fixed_sat;
@@ -230,6 +236,8 @@ typedef struct
 	unsigned sshl_sat;
 	unsigned ssub_overflow;
 	unsigned ssub_sat;
+	unsigned tan;
+	unsigned tanh;
 	unsigned trap;
 	unsigned debugtrap;
 	unsigned threadlocal_address;
@@ -509,7 +517,7 @@ INLINE LLVMValueRef llvm_emit_and_raw(GenContext *c, LLVMValueRef lhs, LLVMValue
 INLINE LLVMValueRef llvm_emit_or_raw(GenContext *c, LLVMValueRef lhs, LLVMValueRef rhs);
 
 // -- Mem ops --
-LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint64_t size, AlignSize align);
+LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, int64_t size, AlignSize align);
 LLVMValueRef llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len);
 
 // -- ABI --

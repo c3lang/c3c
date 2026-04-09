@@ -3,7 +3,7 @@
 module std::os @if(env::DARWIN);
 import std::os::macos;
 
-fn uint num_cpu()
+fn int num_cpu()
 {
 	int[2] nm;
 	usz len = 4;
@@ -12,25 +12,25 @@ fn uint num_cpu()
 	nm = { darwin::CTL_HW, darwin::HW_NCPU };
 	darwin::sysctl(&nm, 2, &count, &len, null, 0);
 	if (count < 1) count = 1;
-	return count;
+	return (int)count;
 }
 
 module std::os @if(env::LINUX || env::ANDROID);
 import std::os::posix;
 
-fn uint num_cpu()
+fn int num_cpu()
 {
-	return posix::get_nprocs_conf();
+	return (int)posix::get_nprocs_conf();
 }
 
 module std::os @if(env::WIN32);
 import std::os::win32;
 
-fn uint num_cpu()
+fn int num_cpu()
 {
 	Win32_SYSTEM_INFO info;
 	win32::getSystemInfo(&info);
-	return info.dwNumberOfProcessors;
+	return (int)info.dwNumberOfProcessors;
 }
 
 module std::os @if(env::NETBSD);
@@ -53,19 +53,38 @@ module std::os @if(env::OPENBSD);
 import std::os::openbsd;
 import libc;
 
-fn uint num_cpu()
+fn int num_cpu()
 {
 	int[2] nm;
 	usz len = 4;
 	uint count;
 
 	nm = { openbsd::CTL_HW, openbsd::HW_NCPUONLINE };
-	if (libc::sysctl(&nm, 2, &count, &len, null, 0) == 0 && count >= 1) {
+	if (libc::sysctl(&nm, 2, &count, &len, null, 0) == 0 && count >= 1)
+	{
 		return count;
 	}
 
 	nm = { openbsd::CTL_HW, openbsd::HW_NCPU };
 	libc::sysctl(&nm, 2, &count, &len, null, 0);
 	if (count < 1) count = 1;
-	return count;
+	return (int)count;
 }
+
+module std::os @if(env::FREEBSD);
+import std::os::freebsd;
+import libc;
+
+fn int num_cpu()
+{
+	int[2] nm;
+	usz len = 4;
+	uint count;
+
+	nm = { freebsd::CTL_HW, freebsd::HW_NCPU };
+	libc::sysctl(&nm, 2, &count, &len, null, 0);
+	if (count < 1) count = 1;
+	return (int)count;
+}
+
+

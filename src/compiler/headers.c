@@ -188,7 +188,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 			return;
 		case TYPE_ALIAS:
 			if (type == type_usz) { PRINTF("size_t"); return; }
-			if (type == type_isz) { PRINTF("ptrdiff_t"); return; }
+			if (type == type_sz) { PRINTF("ptrdiff_t"); return; }
 			if (type == type_iptr) { PRINTF("intptr_t"); return; }
 			if (type == type_uptr) { PRINTF("uintptr_t"); return; }
 			if (type->decl->is_export)
@@ -278,7 +278,7 @@ static void header_gen_function(HeaderContext *c, Decl *decl, bool print_fn, boo
 {
 	if (!decl->is_export) return;
 	const char *ext_name = decl_get_extname(decl);
-	if (ext_name[0] == '_' && ext_name[1] == '_') return;
+	if (!ext_name || (ext_name[0] == '_' && ext_name[1] == '_')) return;
 	if (print_fn && !*fn_found)
 	{
 		*fn_found = true;

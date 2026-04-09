@@ -7,7 +7,7 @@ faultdef ABC;
 fn void? test()
 {
 	if ((ABC~!))
-	{ }
+	{ } // #warning: This code will never execute
 	else
 	{}
 }

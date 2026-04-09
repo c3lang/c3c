@@ -1,10 +1,25 @@
 module std::thread::os @if (!env::NATIVE_THREADING);
+import libc;
 
 typedef NativeMutex = int;
 typedef NativeTimedMutex = int;
 typedef NativeConditionVariable = int;
 typedef NativeOnceFlag = int;
 typedef NativeThread = int;
+
+fn NativeThread native_thread_current()
+{
+	return {};
+}
+
+fn void native_thread_exit(int result)
+{
+	$if env::NO_LIBC:
+		$$trap();
+	$else
+		libc::exit(result);
+	$endif
+}
 
 fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 {
@@ -14,6 +29,8 @@ fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 		func();
 	}
 }
+
+fn bool NativeThread.equals(thread, NativeThread other) => true;
 
 fn void? NativeMutex.init(&mtx, MutexType type) => NOT_IMPLEMENTED~;
 

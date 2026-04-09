@@ -5,5 +5,5 @@ bitstruct Foo : ushort
 
 fn void main()
 {
-	ushort foo = (ushort)((Foo) {.bar}) & 1;
+	ushort foo = (ushort)((Foo) {.bar}) & 1u;
 }

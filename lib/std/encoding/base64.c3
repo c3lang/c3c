@@ -45,14 +45,14 @@ const URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345
 
 fn String encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
-	char[] dst = allocator::alloc_array(allocator, char, encode_len(src.len, padding));
-	return encode_buffer(src, dst, padding, alphabet);
+	char[] dst = alloc::alloc_array(allocator, char, encode_len(src.len, padding));
+	return encode_into(dst, src, padding, alphabet);
 }
 
 fn char[]? decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
-	char[] dst = allocator::alloc_array(allocator, char, decode_len(src.len, padding))!;
-	return decode_buffer(src, dst, padding, alphabet);
+	char[] dst = alloc::alloc_array(allocator, char, decode_len(src.len, padding))!;
+	return decode_into(dst, src, padding, alphabet);
 }
 
 fn String tencode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => encode(tmem, code, padding, alphabet);
@@ -66,10 +66,10 @@ fn char[]? tdecode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alph
  @require padding < 0xFF : "Invalid padding character"
  @return "The size of the input once encoded."
 *>
-fn usz encode_len(usz n, char padding)
+fn sz encode_len(sz n, char padding)
 {
 	if (padding) return (n + 2) / 3 * 4;
-	usz trailing = n % 3;
+	sz trailing = n % 3;
 	return n / 3 * 4 + (trailing * 4 + 2) / 3;
 }
 
@@ -81,10 +81,10 @@ fn usz encode_len(usz n, char padding)
  @return "The size of the input once decoded."
  @return? encoding::INVALID_PADDING
 *>
-fn usz? decode_len(usz n, char padding)
+fn sz? decode_len(sz n, char padding)
 {
-	usz dn = n / 4 * 3;
-	usz trailing = n % 4;
+	sz dn = n / 4 * 3;
+	sz trailing = n % 4;
 	if (padding)
 	{
 		if (trailing != 0) return encoding::INVALID_PADDING~;
@@ -95,6 +95,7 @@ fn usz? decode_len(usz n, char padding)
 	return dn + trailing * 3 / 4;
 }
 
+
 <*
  Encode the content of src into dst, which must be properly sized.
  @param src : "The input to be encoded."
@@ -104,13 +105,13 @@ fn usz? decode_len(usz n, char padding)
  @require padding < 0xFF : "Invalid padding character"
  @return "The encoded size."
 *>
-fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
+fn String encode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
 	if (src.len == 0) return (String)dst[:0];
-	usz dn = encode_len(src.len, padding);
+	sz dn = encode_len(src.len, padding);
 	char* dst_ptr = dst;
 	assert(dst.len >= dn);
-	usz trailing = src.len % 3;
+	sz trailing = src.len % 3;
 	char[] src3 = src[:^trailing];
 
 	while (src3.len > 0)
@@ -154,6 +155,7 @@ fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base
 	return (String)dst_ptr[:dn];
 }
 
+
 <*
  Decode the content of src into dst, which must be properly sized.
  @param src : "The input to be decoded."
@@ -165,13 +167,13 @@ fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base
  @return "The decoded data."
  @return? encoding::INVALID_CHARACTER, encoding::INVALID_PADDING
 *>
-fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
+fn char[]? decode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
 	if (src.len == 0) return dst[:0];
-	usz dn = decode_len(src.len, padding)!;
+	sz dn = decode_len(src.len, padding)!;
 	assert(dst.len >= dn);
 
-	usz trailing = src.len % 4;
+	sz trailing = src.len % 4;
 	char* dst_ptr = dst;
 	char[] src4 = src;
 	switch

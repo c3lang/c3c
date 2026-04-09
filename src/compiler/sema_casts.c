@@ -342,6 +342,16 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent,
                           bool is_binary_conversion)
 {
+	if (expr->expr_kind == EXPR_OPERATOR_CHARS)
+	{
+		if (is_silent) return false;
+		RETURN_SEMA_ERROR(expr, "Operators may not be used outside of operator attributes.");
+	}
+	if (expr->expr_kind == EXPR_CALL && expr->call_expr.no_return)
+	{
+		expr->type = to_type;
+		return true;
+	}
 	Type *from_type = expr->type;
 
 	if (from_type == to_type) return true;
@@ -679,16 +689,23 @@ bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len)
 		case TYPE_I16:
 		case TYPE_I32:
 		case TYPE_I64:
-			return cast_explicit(context, index, type_isz);
+			return cast_explicit(context, index, type_sz);
 		case TYPE_U8:
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
-			return cast_explicit(context, index, type_usz);
+			if (!cast_explicit(context, index, type_usz)) return false;
+			if (expr_is_const_int(index) && !int_fits(index->const_expr.ixx, type_sz->canonical->type_kind))
+			{
+				RETURN_SEMA_ERROR(index, "The %s is out of range: it cannot fit in a %s.", is_len ? "length" : "index", type_quoted_error_string(type_sz));
+			}
+			return cast_explicit(context, index, type_sz);
 		case TYPE_U128:
 			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
 		case TYPE_I128:
 			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to an int or long.");
+		case TYPE_ENUM:
+			return cast_explicit(context, index, type_sz);
 		default:
 			RETURN_SEMA_ERROR(index, "An integer value was expected here, but it is a value of type %s, which can't be implicitly converted into an integer %s.",
 			                  type_quoted_error_string(index->type), is_len ? "length" : "index");
@@ -702,10 +719,8 @@ Type *cast_numeric_arithmetic_promotion(Type *type)
 	switch (canonical->type_kind)
 	{
 		case ALL_SIGNED_INTS:
-			if (canonical->builtin.bitsize < compiler.platform.width_c_int) return type_cint;
-			return type;
 		case ALL_UNSIGNED_INTS:
-			if (canonical->builtin.bitsize < compiler.platform.width_c_int) return type_cuint;
+			if (canonical->builtin.bitsize < compiler.platform.width_c_int) return type_cint;
 			return type;
 		case TYPE_BF16:
 		case TYPE_F16:
@@ -869,10 +884,16 @@ static bool rule_int_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 		return true;
 	}
 
-	if (type_size(cc->from) < type_size(type_iptr))
+	if (type_size(cc->from) < type_size(type_uptr))
 	{
 		if (is_silent) return false;
-		RETURN_CAST_ERROR(expr, "You cannot convert an integer smaller than a pointer size to a pointer.");
+		if (is_explicit)
+		{
+			RETURN_CAST_ERROR(expr, "You cannot convert an integer smaller than pointer size to a pointer, "
+						   "try first widening it to pointer size, for example write '(%s)(uptr)some_value' instead.", type_to_error_string(cc->to));
+		}
+		RETURN_CAST_ERROR(expr, "You cannot implicitly convert an integer to a pointer, you may use an explicit cast "
+			"if you first widen the value to pointer size, e.g. '(%s)(uptr)some_value'.", type_to_error_string(cc->to));
 	}
 
 	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
@@ -1237,7 +1258,6 @@ RETRY:;
 		case DECL_STRUCT:
 			inner = decl->strukt.members[0]->type->canonical;
 			break;
-		case DECL_ENUM:
 		case DECL_CONSTDEF:
 			// Could be made to work.
 			return false;
@@ -1332,7 +1352,7 @@ static bool rule_int_to_float(CastContext *cc, bool is_explicit, bool is_silent)
 
 INLINE bool expr_is_pointer_diff(Expr *expr)
 {
-	if (expr->type != type_isz) return false;
+	if (expr->type != type_sz) return false;
 	if (expr->expr_kind != EXPR_BINARY) return false;
 	if (expr->binary_expr.operator != BINARYOP_SUB) return false;
 	return type_is_pointer(exprptr(expr->binary_expr.left)->type) && type_is_pointer(exprptr(expr->binary_expr.right)->type);
@@ -1346,10 +1366,22 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 	ByteSize from_size = type_size(cc->from);
 
 	Expr *expr = cc->expr;
+	bool is_const = sema_cast_const(expr) && expr_is_const_number(expr);
+
 	// If widening, require simple.
 	if (to_size > from_size)
 	{
-		if (expr_is_simple(cc->expr, type_is_float(cc->to))) return true;
+		if (expr_is_simple(cc->expr, type_is_float(cc->to)))
+		{
+			// Do we have an unsigned <-> signed conversion and it's not constant?
+			if (!is_const && type_is_integer(cc->to) && type_is_integer(cc->from) && type_is_signed(cc->to) != type_is_signed(cc->from))
+			{
+				// Prevent cast int -> ulong
+				if (type_is_unsigned(cc->to)) return sema_cast_error(cc, true, is_silent);
+			}
+			return true;
+		}
+
 		if (is_silent) return false;
 		{
 			RETURN_CAST_ERROR(expr, "This conversion requires an explicit cast to %s, because the widening of the expression may be done in more than one way.",
@@ -1358,8 +1390,9 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		return false;
 	}
 
+
 	// If const, check in range.
-	if (sema_cast_const(expr) && expr_is_const_number(expr) && expr_const_will_overflow(&expr->const_expr, cc->to->type_kind))
+	if (is_const && expr_const_will_overflow(&expr->const_expr, cc->to->type_kind))
 	{
 		if (!is_silent)
 		{
@@ -1372,9 +1405,6 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		}
 		return false;
 	}
-
-	// Allow int <-> uint
-	if (to_size == from_size) return true;
 
 	// Check if narrowing works
 	Expr *problem = recursive_may_narrow(expr, cc->to);
@@ -1459,7 +1489,7 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	{
 		is_const = true;
 	}
-	if (is_const && (cc->is_binary_conversion || cc->to->decl->attr_constinit || !cc->to->decl->attr_structlike))
+	if (is_const && (cc->is_binary_conversion || cc->to->decl->attr_constinit))
 	{
 		Type *to_type = cc->to;
 		cc->to = flat;
@@ -1481,12 +1511,7 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 		// Loud and implicit:
 		if (cast_is_allowed(cc, false, true))
 		{
-			if (!cc->is_binary_conversion && !to_type->decl->attr_constinit && !expr_is_const_untyped_list(cc->expr))
-			{
-				to_type->decl->attr_constinit = true;
-				SEMA_DEPRECATED(cc->expr, "Implicit conversion of constants to distinct types is deprecated, use @constinit if %s should cast constants to its own type.", type_quoted_error_string(to_type));
-			}
-			return true;
+			return cc->is_binary_conversion || to_type->decl->attr_constinit || expr_is_const_untyped_list(cc->expr);
 		}
 		return sema_cast_error(cc, cast_is_allowed(cc, true, true), is_silent);
 	}
@@ -1632,30 +1657,6 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 {
 	Decl *enum_decl = cc->from->decl;
 
-	if (compiler.build.old_enums)
-	{
-		if (!enum_decl->is_substruct)
-		{
-			return sema_cast_error(cc, false, is_silent);
-		}
-
-		Type *inline_type;
-		if (enum_decl->enums.inline_value)
-		{
-			inline_type = enum_decl->enums.type_info->type;
-		}
-		else
-		{
-			inline_type = enum_decl->enums.parameters[enum_decl->enums.inline_index]->type;
-		}
-		if (is_explicit)
-		{
-			return rule_from_explicit_flattened(cc, is_silent);
-		}
-		cast_context_set_from(cc, inline_type->canonical);
-		return cast_is_allowed(cc, is_explicit, is_silent);
-	}
-
 	ASSERT(enum_decl->decl_kind != DECL_CONSTDEF);
 
 	Type *inner = enum_decl->enums.type_info->type;
@@ -1671,12 +1672,7 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 		// Explicit just flattens and tries again.
 		return cast_is_allowed(cc, is_explicit, is_silent);
 	}
-	if (!enum_decl->is_substruct)
-	{
-		return sema_cast_error(cc, false, is_silent);
-	}
-	cast_context_set_from(cc, inner->canonical);
-	return cast_is_allowed(cc, is_explicit, is_silent);
+	return sema_cast_error(cc, false, is_silent);
 }
 
 static bool rule_bits_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
@@ -1980,38 +1976,6 @@ static void cast_int_to_enum(Expr *expr, Type *type)
 
 static void cast_enum_to_value(Expr* expr, Type *to_type)
 {
-	Type *enum_type = type_flatten(expr->type);
-	Decl *decl = enum_type->decl;
-	if (compiler.build.old_enums)
-	{
-		assert(decl->is_substruct);
-		if (decl->enums.inline_value)
-		{
-			sema_expr_convert_enum_to_int(expr);
-			cast_no_check(expr, to_type, IS_OPTIONAL(expr));
-			return;
-		}
-		if (expr_is_const_enum(expr))
-		{
-			expr_replace(expr, copy_expr_single(expr->const_expr.enum_val->enum_constant.associated[decl->enums.inline_index]));
-			if (expr->type != to_type)
-			{
-				cast_no_check(expr, to_type, false);
-			}
-			return;
-		}
-		Expr *copy = expr_copy(expr);
-		expr->expr_kind = EXPR_ACCESS_RESOLVED;
-		expr->access_resolved_expr.parent = copy;
-		Decl *member = decl->enums.parameters[decl->enums.inline_index];
-		expr->access_resolved_expr.ref = member;
-		expr->type = type_add_optional(member->type, IS_OPTIONAL(expr));
-		if (member->type != to_type)
-		{
-			cast_no_check(expr, to_type, IS_OPTIONAL(expr));
-		}
-		return;
-	}
 	sema_expr_convert_enum_to_int(expr);
 	cast_no_check(expr, to_type, IS_OPTIONAL(expr));
 }
@@ -2113,6 +2077,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 					expr->type = to_type;
 					return;
 				}
+				case TYPE_ENUM:
 				case ALL_INTS:
 					expr_rewrite_ext_trunc(expr, to_type, type_is_signed_any(type_flatten_to_int(expr->type)));
 					return;
@@ -2331,8 +2296,8 @@ static void cast_slice_to_bool(Expr *expr, Type *type)
 	}
 	Expr *inner = expr_copy(expr);
 	Expr *len = expr_copy(expr);
-	expr_rewrite_slice_len(len, inner, type_usz);
-	expr_rewrite_to_binary(expr, len, expr_new_const_int(expr->loc, type_usz, 0), BINARYOP_NE);
+	expr_rewrite_slice_len(len, inner, type_sz);
+	expr_rewrite_to_binary(expr, len, expr_new_const_int(expr->loc, type_sz, 0), BINARYOP_NE);
 	expr->type = type;
 }
 

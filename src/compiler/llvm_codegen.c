@@ -99,9 +99,9 @@ LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 	return llvm_emit_expect_raw(c, compare);
 }
 
-LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint64_t size, AlignSize align)
+LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, int64_t size, AlignSize align)
 {
-	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), llvm_const_int(c, type_usz, size), align);
+	return LLVMBuildMemSet(c->builder, ptr, llvm_get_zero(c, type_char), LLVMConstInt(c->size_type, size, true), align);
 }
 
 INLINE void llvm_emit_xtor(GenContext *c, LLVMValueRef *list, const char *name)
@@ -812,6 +812,9 @@ static void llvm_codegen_setup()
 	if (intrinsics_setup) return;
 
 	intrinsic_id.abs = lookup_intrinsic("llvm.abs");
+	intrinsic_id.acos = lookup_intrinsic("llvm.acos");
+	intrinsic_id.asin = lookup_intrinsic("llvm.asin");
+	intrinsic_id.atan = lookup_intrinsic("llvm.atan");
 	intrinsic_id.assume = lookup_intrinsic("llvm.assume");
 	intrinsic_id.bitreverse = lookup_intrinsic("llvm.bitreverse");
 	intrinsic_id.bswap = lookup_intrinsic("llvm.bswap");
@@ -820,12 +823,14 @@ static void llvm_codegen_setup()
 	intrinsic_id.convert_to_fp16 = lookup_intrinsic("llvm.convert.to.fp16");
 	intrinsic_id.copysign = lookup_intrinsic("llvm.copysign");
 	intrinsic_id.cos = lookup_intrinsic("llvm.cos");
+	intrinsic_id.cosh = lookup_intrinsic("llvm.cosh");
 	intrinsic_id.ctlz = lookup_intrinsic("llvm.ctlz");
 	intrinsic_id.ctpop = lookup_intrinsic("llvm.ctpop");
 	intrinsic_id.cttz = lookup_intrinsic("llvm.cttz");
 	intrinsic_id.debugtrap = lookup_intrinsic("llvm.debugtrap");
 	intrinsic_id.exp = lookup_intrinsic("llvm.exp");
 	intrinsic_id.exp2 = lookup_intrinsic("llvm.exp2");
+	intrinsic_id.exp10 = lookup_intrinsic("llvm.exp10");
 	intrinsic_id.expect = lookup_intrinsic("llvm.expect");
 	intrinsic_id.expect_with_probability = lookup_intrinsic("llvm.expect.with.probability");
 	intrinsic_id.fabs = lookup_intrinsic("llvm.fabs");
@@ -875,6 +880,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.scatter = lookup_intrinsic("llvm.masked.scatter");
 	intrinsic_id.set_rounding = lookup_intrinsic("llvm.set.rounding");
 	intrinsic_id.sin = lookup_intrinsic("llvm.sin");
+	intrinsic_id.sinh = lookup_intrinsic("llvm.sinh");
 	intrinsic_id.sshl_sat = lookup_intrinsic("llvm.sshl.sat");
 	intrinsic_id.smax = lookup_intrinsic("llvm.smax");
 	intrinsic_id.smin = lookup_intrinsic("llvm.smin");
@@ -883,6 +889,8 @@ static void llvm_codegen_setup()
 	intrinsic_id.ssub_overflow = lookup_intrinsic("llvm.ssub.with.overflow");
 	intrinsic_id.ssub_sat = lookup_intrinsic("llvm.ssub.sat");
 	intrinsic_id.smul_fixed_sat = lookup_intrinsic("llvm.smul.fix.sat");
+	intrinsic_id.tan = lookup_intrinsic("llvm.tan");
+	intrinsic_id.tanh = lookup_intrinsic("llvm.tanh");
 	intrinsic_id.threadlocal_address = lookup_intrinsic("llvm.threadlocal.address");
 	intrinsic_id.trap = lookup_intrinsic("llvm.trap");
 	intrinsic_id.trunc = lookup_intrinsic("llvm.trunc");
@@ -1464,7 +1472,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		name_ref = LLVMConstNull(c->ptr_type);
 		decl_ref = LLVMConstNull(c->ptr_type);
 	}
-	LLVMValueRef count = llvm_const_int(c, type_usz, test_count);
+	LLVMValueRef count = LLVMConstInt(c->size_type, test_count, true);
 	Type *chars_array = type_get_slice(type_chars);
 	LLVMValueRef name_list = llvm_add_global(c, test_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);
@@ -1532,7 +1540,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 		name_ref = LLVMConstNull(c->ptr_type);
 		decl_ref = LLVMConstNull(c->ptr_type);
 	}
-	LLVMValueRef count = llvm_const_int(c, type_usz, benchmark_count);
+	LLVMValueRef count = LLVMConstInt(c->size_type, benchmark_count, true);
 	Type *chars_array = type_get_slice(type_chars);
 	LLVMValueRef name_list = llvm_add_global(c, benchmark_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);

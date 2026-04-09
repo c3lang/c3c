@@ -29,6 +29,6 @@ fn ulong SimpleRandom.next_long(&self) @dynamic => @int_to_long(self.next_int())
 fn ushort SimpleRandom.next_short(&self) @dynamic => (ushort)self.next_int();
 fn char SimpleRandom.next_byte(&self) @dynamic => (char)self.next_int();
 
-const long SIMPLE_RANDOM_MULTIPLIER @local = 0x5DEECE66D;
-const long SIMPLE_RANDOM_ADDEND @local = 0xB;
-const long SIMPLE_RANDOM_MASK @local = (1UL << 48) - 1;
+const ulong SIMPLE_RANDOM_MULTIPLIER @local = 0x5DEECE66D;
+const ulong SIMPLE_RANDOM_ADDEND @local = 0xB;
+const ulong SIMPLE_RANDOM_MASK @local = (1UL << 48) - 1u;

@@ -1,0 +1,13 @@
+module test;
+import std;
+
+fn void foo() <Output>
+{
+	List{Output} a;
+}
+
+fn int main()
+{
+	foo{int}();
+	return 0;
+}

@@ -31,13 +31,13 @@ struct PrivatePriorityQueue (Printable) <Type, MAX>
 	List{Type} heap;
 }
 
-fn PrivatePriorityQueue* PrivatePriorityQueue.init(&self, Allocator allocator, usz initial_capacity = 16, ) @inline
+fn PrivatePriorityQueue* PrivatePriorityQueue.init(&self, Allocator allocator, sz initial_capacity = 16, ) @inline
 {
 	self.heap.init(allocator, initial_capacity);
 	return self;
 }
 
-fn PrivatePriorityQueue* PrivatePriorityQueue.tinit(&self, usz initial_capacity = 16) @inline
+fn PrivatePriorityQueue* PrivatePriorityQueue.tinit(&self, sz initial_capacity = 16) @inline
 {
 	self.init(tmem, initial_capacity);
 	return self;
@@ -47,10 +47,10 @@ fn PrivatePriorityQueue* PrivatePriorityQueue.tinit(&self, usz initial_capacity 
 fn void PrivatePriorityQueue.push(&self, Type element)
 {
 	self.heap.push(element);
-	usz i = self.heap.len() - 1;
+	sz i = self.heap.len() - 1;
 	while (i > 0)
 	{
-		usz parent = (i - 1) / 2;
+		sz parent = (i - 1) / 2;
 		Type item = self.heap[i];
 		Type parent_item = self.heap[parent];
 		$if MAX:
@@ -67,7 +67,7 @@ fn void PrivatePriorityQueue.push(&self, Type element)
 <*
  @require index < self.len() : "Index out of range"
 *>
-fn void PrivatePriorityQueue.remove_at(&self, usz index)
+fn void PrivatePriorityQueue.remove_at(&self, sz index)
 {
 	if (index == 0)
 	{
@@ -81,14 +81,14 @@ fn void PrivatePriorityQueue.remove_at(&self, usz index)
 *>
 fn Type? PrivatePriorityQueue.pop(&self)
 {
-	usz i = 0;
-	usz len = self.heap.len();
+	sz i = 0;
+	sz len = self.heap.len();
 	if (!len) return NO_MORE_ELEMENT~;
-	usz new_count = len - 1;
+	sz new_count = len - 1;
 	self.heap.swap(0, new_count);
 	while OUTER: ((2 * i + 1) < new_count)
 	{
-		usz j = 2 * i + 1;
+		sz j = 2 * i + 1;
 		Type left = self.heap[j];
 		Type item = self.heap[i];
 		switch
@@ -127,7 +127,7 @@ fn void PrivatePriorityQueue.free(&self)
 	self.heap.free();
 }
 
-fn usz PrivatePriorityQueue.len(&self) @operator(len)
+fn sz PrivatePriorityQueue.len(&self) @operator(len)
 {
 	return self.heap.len() @inline;
 }
@@ -140,12 +140,12 @@ fn bool PrivatePriorityQueue.is_empty(&self)
 <*
  @require index < self.len()
 *>
-fn Type PrivatePriorityQueue.get(&self, usz index) @operator([])
+fn Type PrivatePriorityQueue.get(&self, sz index) @operator([])
 {
 	return self.heap[index];
 }
 
-fn usz? PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
+fn sz? PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
 {
 	return self.heap.to_format(formatter);
 }

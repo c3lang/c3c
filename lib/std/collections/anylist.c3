@@ -97,9 +97,9 @@ macro AnyList.pop_first(&self, $Type)
  @param $Type : "The type of the element"
  @return "The element at the index"
  @return? TYPE_MISMATCH, NO_MORE_ELEMENT
- @require index < self.size : "Index out of range"
+ @require index < self.size && index >= 0 : "Index out of range"
 *>
-macro AnyList.get(&self, usz index, $Type)
+macro AnyList.get(&self, sz index, $Type)
 {
 	return *anycast(self.entries[index], $Type);
 }
@@ -110,13 +110,13 @@ macro AnyList.get(&self, usz index, $Type)
  @param index : "The index of the element to retrieve"
  @return "The element at the index"
  @return? TYPE_MISMATCH, NO_MORE_ELEMENT
- @require index < self.size : "Index out of range"
+ @require index < self.size && index >= 0  : "Index out of range"
 *>
-fn any AnyList.get_any(&self, usz index) @inline @operator([]) => InterfaceList {any}.get(self, index);
+fn any AnyList.get_any(&self, sz index) @inline @operator([]) => InterfaceList {any}.get(self, index);
 
 <*
  Return the length of the list.
 
  @return "The number of elements in the list"
 *>
-fn usz AnyList.len(&self) @operator(len) @inline => InterfaceList {any}.len(self);
+fn sz AnyList.len(&self) @operator(len) @inline => InterfaceList {any}.len(self);

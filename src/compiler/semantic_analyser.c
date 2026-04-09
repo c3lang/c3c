@@ -223,7 +223,7 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 				sema_analysis_pass_functions(module);
 				break;
 			case ANALYSIS_INTERFACE:
-				sema_analysis_pass_interface(module);
+				sema_analysis_pass_interface_and_weak_sym(module);
 				break;
 			case ANALYSIS_FINALIZE:
 				break;
@@ -370,9 +370,9 @@ static void assign_panicfn(void)
 	{
 		error_exit("'%s::%s' is not a function pointer.", path->module, ident);
 	}
-	if (!type_func_match(panic_fn_type, type_void, 4, type_string, type_string, type_string, type_uint))
+	if (!type_func_match(panic_fn_type, type_void, 4, type_string, type_string, type_string, type_int))
 	{
-		error_exit("Expected panic function to have the signature fn void(String, String, String, uint).");
+		error_exit("Expected panic function to have the signature fn void(String, String, String, int).");
 	}
 	compiler.context.panic_var = decl;
 	decl->no_strip = true;
@@ -398,7 +398,7 @@ static void assign_panicfn(void)
 	{
 		error_exit("'%s' is not a function function.", panicf);
 	}
-	if (!type_func_match(type_get_func_ptr(panicf_fn_type), type_void, 5, type_string, type_string, type_string, type_uint,
+	if (!type_func_match(type_get_func_ptr(panicf_fn_type), type_void, 5, type_string, type_string, type_string, type_int,
 	                     type_get_slice(type_any)))
 	{
 		error_exit("Expected panic function to have the signature fn void(String, String, String, uint, ...).");

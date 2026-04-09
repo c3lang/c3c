@@ -149,7 +149,7 @@ fn void interval()
 	};
 
 	// 'a'-array of lengths [1, 65, 129, 193, 257]
-	for (usz i = 1, usz j = 0; i <= 257; i += 64, ++j)
+	for (sz i = 1, sz j = 0; i <= 257; i += 64, ++j)
 	{
 		test::@check(shake::xof(128, 16, x[:i])[..]  == expected[j][0], "128(16): Failed on length %d.", i);
 		test::@check(shake::xof(128, 256, x[:i])[..] == expected[j][1], "128(256): Failed on length %d.", i);

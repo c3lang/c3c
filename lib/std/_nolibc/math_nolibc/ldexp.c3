@@ -62,6 +62,6 @@ fn float ldexpf(float x, int exp) @cname("ldexpf")
     }
 
     // set new exponent
-    ix = (ix & 0x807fffff) | (hexp << 23);
+    ix = (ix & 0x807fffff) | (uint)(hexp << 23);
     return bitcast(ix, float);
 }

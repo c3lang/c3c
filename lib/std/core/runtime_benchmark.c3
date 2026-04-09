@@ -1,4 +1,4 @@
-module std::core::runtime;
+module std::core::runtime @if(env::BENCHMARKING);
 import libc, std::time, std::io, std::sort, std::math, std::collections;
 
 const DEFAULT_WARMUP_ITERS @local = 3;
@@ -22,18 +22,18 @@ fn void bench_init_context() @init
 
 struct BenchContext
 {
-	uint warmup_iterations;
-	uint max_iterations;
-	HashMap { String, uint } fn_iters;
-	HashMap { String, uint } module_iters;
-	HashMap { String, uint } module_warmup;
+	int warmup_iterations;
+	int max_iterations;
+	HashMap { String, int } fn_iters;
+	HashMap { String, int } module_iters;
+	HashMap { String, int } module_warmup;
 	Clock clock;
 	NanoDuration nano_seconds;
 	long cycle_start;
 	long cycle_stop;
 	DString log;
 	bool is_warming;
-	uint this_iteration;
+	int this_iteration;
 	bool stop;
 	bool has_ansi_codes;
 	bool generate_csv;
@@ -49,7 +49,7 @@ fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator)
 {
 	BenchmarkFn[] fns = $$BENCHMARK_FNS;
 	String[] names = $$BENCHMARK_NAMES;
-	BenchmarkUnit[] benchmarks = allocator::alloc_array(allocator, BenchmarkUnit, names.len);
+	BenchmarkUnit[] benchmarks = alloc::alloc_array(allocator, BenchmarkUnit, names.len);
 
 	foreach (i, benchmark : fns)
 	{
@@ -69,30 +69,30 @@ fn double get_stddev(NanoDuration[] set, double mean) @local
 	return math::sqrt(sum_sq_diff / (double)set.len);
 }
 
-fn void set_benchmark_module_warmup_iterations(String module_name, uint value) @builtin
+fn void set_benchmark_module_warmup_iterations(String module_name, int value) @builtin
 {
 	if (!bench_context.module_warmup.is_initialized()) bench_context.module_warmup.init(mem);
 	bench_context.module_warmup[module_name] = value;
 }
 
-fn void set_benchmark_module_max_iterations(String module_name, uint value) @builtin
+fn void set_benchmark_module_max_iterations(String module_name, int value) @builtin
 {
 	assert(value > 0);
 	if (!bench_context.module_iters.is_initialized()) bench_context.module_iters.init(mem);
 	bench_context.module_iters[module_name] = value;
 }
 
-macro void set_benchmark_warmup_iterations(uint value) @builtin
+macro void set_benchmark_warmup_iterations(int value) @builtin
 {
 	set_benchmark_module_warmup_iterations($$MODULE, value);
 }
 
-macro void set_benchmark_max_iterations(uint value) @builtin
+macro void set_benchmark_max_iterations(int value) @builtin
 {
 	set_benchmark_module_max_iterations($$MODULE, value);
 }
 
-fn void set_benchmark_func_iterations(String func, uint value) @builtin
+fn void set_benchmark_func_iterations(String func, int value) @builtin
 {
 	assert(value > 0);
 	if (!bench_context.fn_iters.is_initialized()) bench_context.fn_iters.init(mem);
@@ -161,7 +161,7 @@ fn void append_duration_colored(DString *ds, NanoDuration dur, bool ansi, String
 	static String[] colors = { "\e[0;96m", "\e[0;92m", "\e[0;93m", "\e[0;91m" };
 
 	double val = (double)dur;
-	usz idx = 0;
+	sz idx = 0;
 	while (val > 1000.0 && idx < 3)
 	{
 		val /= 1000.0;
@@ -181,7 +181,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 	BenchContext* ctx = &bench_context;
 	ctx.has_ansi_codes = terminal_has_ansi_codes();
 
-	for (usz i = 1; i < args.len; i++)
+	for (sz i = 1; i < args.len; i++)
 	{
 		switch (args[i])
 		{
@@ -197,9 +197,9 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 		}
 	}
 
-	usz max_name;
+	sz max_name;
 	foreach (&unit : benchmarks) max_name = max(max_name, unit.name.len);
-	usz len = max_name + 9;
+	sz len = max_name + 9;
 
 	DString name = dstring::temp_with_capacity(64);
 	name.append_repeat('-', len / 2);
@@ -224,8 +224,8 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 			module_name = module_name[:pos];
 		}
 
-		uint current_unit_iterations = ctx.fn_iters[unit.name] ?? ctx.module_iters[module_name] ?? ctx.max_iterations;
-		uint current_warmup_iterations = ctx.module_warmup[module_name] ?? ctx.warmup_iterations;
+		int current_unit_iterations = ctx.fn_iters[unit.name] ?? ctx.module_iters[module_name] ?? ctx.max_iterations;
+		int current_warmup_iterations = ctx.module_warmup[module_name] ?? ctx.warmup_iterations;
 
 		if (current_unit_iterations == 0)
 		{
@@ -242,7 +242,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 		io::printf("%s ", name.str_view());
 
 		ctx.is_warming = true;
-		for (uint i = 0; i < current_warmup_iterations; i++)
+		for (int i = 0; i < current_warmup_iterations; i++)
 		{
 			unit.func() @inline;
 		}
@@ -253,15 +253,15 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 
 		char[] perc_str = { [0..19] = ' ', [20] = 0 };
 		int perc = 0;
-		uint print_step = current_unit_iterations / 100;
+		int print_step = current_unit_iterations / 100;
 		if (print_step == 0) print_step = 1;
 
 		for (ctx.this_iteration = 0; ctx.this_iteration < current_unit_iterations; ++ctx.this_iteration, ctx.nano_seconds = {})
 		{
 			if (ctx.this_iteration % print_step == 0)   // only print right about when the % will update
 			{
-				perc_str[0..(uint)math::floor((ctx.this_iteration / (float)current_unit_iterations) * 20)] = '#';
-				perc = (uint)math::ceil(100 * (ctx.this_iteration / (float)current_unit_iterations));
+				perc_str[0..(int)math::floor((ctx.this_iteration / (float)current_unit_iterations) * 20)] = '#';
+				perc = (int)math::ceil(100 * (ctx.this_iteration / (float)current_unit_iterations));
 
 				io::printf(
 					ctx.has_ansi_codes

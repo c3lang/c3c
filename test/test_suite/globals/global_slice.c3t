@@ -1,6 +1,6 @@
 // #target: macos-aarch64
 module other_module;
-int[] list_of_ints = { 1, 2, 3 };
+int[*] list_of_ints = { 1, 2, 3 };
 int* ref_to_2nd = &list_of_ints[^1];
 
 module somemain;
@@ -14,6 +14,7 @@ fn void main() => @pool()
 
 /* #expect: other_module.ll
 
-@.__const_slice = private unnamed_addr global [3 x i32] [i32 1, i32 2, i32 3], align 4
-@other_module.list_of_ints = local_unnamed_addr global %"int[]" { ptr @.__const_slice, i64 3 }, align 8
-@other_module.ref_to_2nd = local_unnamed_addr global ptr getelementptr inbounds (i8, ptr @.__const_slice, i64 8), align 8
+
+@other_module.list_of_ints = local_unnamed_addr global [3 x i32] [i32 1, i32 2, i32 3], align 4
+@other_module.ref_to_2nd = local_unnamed_addr global ptr getelementptr inbounds (i8, ptr @other_module.list_of_ints, i64 8), align 8
+

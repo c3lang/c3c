@@ -1,6 +1,5 @@
 // #target: macos-x64
-
-module test;
+module std::test;
 import std::io;
 
 typedef Vc2 = float[<2>] @simd;
@@ -56,9 +55,9 @@ fn void main()
 	io::printfn("3: %s", apply3(&a, (Vc2) { 11, 13 }));
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
-define double @test.apply3(ptr %0, double %1) #0 {
+define weak double @std.test.apply3(ptr %0, double %1) #0 {
 entry:
   %vec = alloca <2 x float>, align 8
   %a = alloca <2 x float>, align 8

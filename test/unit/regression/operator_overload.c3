@@ -5,7 +5,6 @@ struct Abc
 { int a; }
 
 int b;
-fn bool Abc.neq(self, Abc abc) @operator(!=) => self.a != abc.a;
 fn bool Abc.eq(self, Abc abc) @operator(==) => self.a == abc.a;
 fn Abc Abc.plus(self, Abc abc) @operator(+) => { self.a + abc.a };
 fn Abc Abc.plus2(self, int i) @operator(+) => { self.a + i };

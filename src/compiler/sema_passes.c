@@ -771,6 +771,7 @@ void sema_analysis_pass_decls(Module *module)
 		sema_analyse_decls(&context, unit->enums);
 		FOREACH(Decl *, decl, unit->types)
 		{
+			if (decl->replacement) continue;
 			sema_analyse_decl(&context, decl);
 			sema_analyse_inner_func_ptr(&context, decl);
 		}
@@ -783,13 +784,11 @@ void sema_analysis_pass_decls(Module *module)
 		{
 			sema_analyse_decl(&context, unit->main_function);
 		}
-		sema_analyse_decls(&context, unit->generic_defines);
+		sema_analyse_decls(&context, unit->aliases);
 		FOREACH(TypeInfo *, info, unit->check_type_variable_array)
 		{
 			sema_check_type_variable_array(&context, info);
 		}
-		sema_analyse_weak_decls(&context, unit->weak_symbols_skipped);
-		vec_resize(unit->weak_symbols_skipped, 0);
 		sema_context_destroy(&context);
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
@@ -871,9 +870,9 @@ bool sema_check_interfaces(SemaContext *context, Decl *decl)
 	return true;
 }
 
-void sema_analysis_pass_interface(Module *module)
+void sema_analysis_pass_interface_and_weak_sym(Module *module)
 {
-	DEBUG_LOG("Pass: Interface analysis %s", module->name->module);
+	DEBUG_LOG("Pass: Interface/weak analysis %s", module->name->module);
 
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
@@ -897,6 +896,8 @@ void sema_analysis_pass_interface(Module *module)
 				sema_check_interfaces(&context, decl);
 			}
 		}
+		sema_analyse_weak_decls(&context, unit->weak_symbols_skipped);
+		vec_resize(unit->weak_symbols_skipped, 0);
 		sema_context_destroy(&context);
 	}
 

@@ -2,14 +2,14 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 
-module std::core::mem::allocator;
+module std::core::mem::allocators;
 import std::collections, std::io, std::os::backtrace;
 
 const MAX_BACKTRACE = 16;
 struct Allocation
 {
 	void* ptr;
-	usz size;
+	sz size;
 	void*[MAX_BACKTRACE] backtrace;
 }
 
@@ -26,10 +26,10 @@ struct TrackingAllocator (Allocator)
 {
 	Allocator inner_allocator;
 	AllocMap map;
-	usz mem_total;
-	usz allocs_total;
-	usz usage;
-	usz max_usage;
+	sz mem_total;
+	sz allocs_total;
+	sz usage;
+	sz max_usage;
 }
 
 <*
@@ -55,9 +55,9 @@ fn void TrackingAllocator.free(&self)
 <*
  @return "the total allocated memory not yet freed."
 *>
-fn usz TrackingAllocator.allocated(&self) => @pool()
+fn sz TrackingAllocator.allocated(&self) => @pool()
 {
-	usz allocated = 0;
+	sz allocated = 0;
 	foreach (&allocation : self.map.tvalues()) allocated += allocation.size;
 	return allocated;
 }
@@ -65,17 +65,17 @@ fn usz TrackingAllocator.allocated(&self) => @pool()
 <*
  @return "the total memory allocated (freed or not)."
 *>
-fn usz TrackingAllocator.total_allocated(&self) => self.mem_total;
+fn sz TrackingAllocator.total_allocated(&self) => self.mem_total;
 
 <*
  @return "the total number of allocations (freed or not)."
 *>
-fn usz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
+fn sz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
 
 <*
  @return "the maximum amount of memory allocated"
 *>
-fn usz TrackingAllocator.max_allocated(&self) => self.max_usage;
+fn sz TrackingAllocator.max_allocated(&self) => self.max_usage;
 
 fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
 {
@@ -85,9 +85,9 @@ fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
 <*
  @return "the number of non-freed allocations."
 *>
-fn usz TrackingAllocator.allocation_count(&self) => self.map.count;
+fn sz TrackingAllocator.allocation_count(&self) => self.map.count;
 
-fn void*? TrackingAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? TrackingAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	void* data = self.inner_allocator.acquire(size, init_type, alignment)!;
 	self.allocs_total++;
@@ -100,7 +100,7 @@ fn void*? TrackingAllocator.acquire(&self, usz size, AllocInitType init_type, us
 	return data;
 }
 
-fn void*? TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
+fn void*? TrackingAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
 {
 	void* data = self.inner_allocator.resize(old_pointer, size, alignment)!;
 	self.usage -= self.map[(uptr)old_pointer]!!.size;
@@ -117,7 +117,7 @@ fn void*? TrackingAllocator.resize(&self, void* old_pointer, usz size, usz align
 
 fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dynamic
 {
-	usz? old_size = self.map[(uptr)old_pointer].size;
+	sz? old_size = self.map[(uptr)old_pointer].size;
 	if (catch self.map.remove((uptr)old_pointer))
 	{
 		unreachable("Attempt to release untracked pointer %p, this is likely a bug.", old_pointer);
@@ -141,8 +141,8 @@ fn void TrackingAllocator.print_report(&self) => self.fprint_report(io::stdout()
 
 fn void? TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 {
-	usz total = 0;
-	usz entries = 0;
+	sz total = 0;
+	sz entries = 0;
 	bool leaks = false;
 
 	Allocation[] allocs = self.map.tvalues();
@@ -204,7 +204,7 @@ fn void? TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 				continue;
 			}
 			BacktraceList backtraces = {};
-			usz end = MAX_BACKTRACE;
+			sz end = MAX_BACKTRACE;
 			foreach (j, val : allocation.backtrace)
 			{
 				if (!val)

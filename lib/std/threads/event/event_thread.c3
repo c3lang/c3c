@@ -180,7 +180,7 @@ fn EventThreadPool* EventThreadPool.init(&self, int size, String name, Allocator
 	self.threads.init(allocator: allocator);
 	for (int i = 0; i < size; i++)
 	{
-		EventThread* thread = allocator::new(allocator, EventThread, { .is_alive = true, .state = FOLLOWER, .pool = null, .queue = null /* pool.getQueue() */, });
+		EventThread* thread = alloc::new(allocator, EventThread, { .is_alive = true, .state = FOLLOWER, .pool = null, .queue = null /* pool.getQueue() */, });
 		thread.name = string::format("%s:%d", name, i, allocator: allocator);
 		self.threads.push(thread);
 		if (self.leader)

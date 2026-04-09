@@ -267,12 +267,12 @@ const char[][] SEQUENTIAL_HASHES @local = {
 
 fn void test_whirlpool_sweep_block_size()
 {
-    for (usz i = 1; i < SEQUENTIAL_HASHES.len; ++i)
+    for (sz i = 1; i < SEQUENTIAL_HASHES.len; ++i)
     {
         char[] v = calloc(i)[:i];
         defer free(v.ptr);
 
-        for (usz x = 0; x < i; ++x) v[x] = 'A';
+        for (sz x = 0; x < i; ++x) v[x] = 'A';
 
         char[*] result = whirlpool::hash(v);
 

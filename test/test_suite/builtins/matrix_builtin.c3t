@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test;
+module std::test;
 fn int main()
 {
 	int[<4>] x = { 1, 2, 3, 4 };
@@ -11,9 +11,9 @@ fn int main()
 	return 0;
 }
 
-/* #expect: test.ll
+/* #expect: std.test.ll
 
-define i32 @main() #0 {
+define weak i32 @main() #0 {
 entry:
   %x = alloca <4 x i32>, align 16
   %z = alloca <4 x i32>, align 16

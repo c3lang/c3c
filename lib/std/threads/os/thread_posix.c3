@@ -1,9 +1,6 @@
 module std::thread::os @if(env::POSIX);
 import std::os::posix, std::time, libc;
-import libc::errno;
 import std::thread;
-
-
 
 struct NativeMutex
 {
@@ -70,9 +67,9 @@ fn void NativeMutex.lock(&self)
 {
 	switch (posix::pthread_mutex_lock(&self.mutex))
 	{
-		case errno::EINVAL: unreachable("Mutex invalid");
-		case errno::EDEADLK: abort("Mutex deadlock");
-		case errno::OK: return;
+		case EINVAL: unreachable("Mutex invalid");
+		case EDEADLK: abort("Mutex deadlock");
+		case OK: return;
 		default: unreachable("Unexpected error in lock");
 	}
 }
@@ -80,23 +77,23 @@ fn void NativeMutex.lock(&self)
 <*
  @require self.is_initialized() : "Mutex was not initialized"
 *>
-fn void? NativeMutex.lock_timeout(&self, ulong ms)
+fn void? NativeMutex.lock_timeout(&self, long ms)
 {
 	/* Try to acquire the lock and, if we fail, sleep for 5ms. */
 	Errno result;
-	while ((result = posix::pthread_mutex_trylock(&self.mutex)) == errno::EBUSY)
+	while ((result = posix::pthread_mutex_trylock(&self.mutex)) == EBUSY)
 	{
 		if (!ms) break;
-		ulong sleep = min(5, ms);
+		long sleep = min(5, ms);
 		if (!libc::nanosleep(&&time::ms(ms).to_timespec(), null)) return thread::LOCK_TIMEOUT~;
 		ms -= sleep;
 	}
 	switch (result)
 	{
-		case errno::OK:
+		case OK:
 			return;
-		case errno::EBUSY:
-		case errno::ETIMEDOUT:
+		case EBUSY:
+		case ETIMEDOUT:
 			return thread::LOCK_TIMEOUT~;
 		default:
 			return unreachable("Invalid lock %d", result);
@@ -151,7 +148,7 @@ fn void NativeConditionVariable.wait(&cond, NativeMutex* mtx)
  @require mtx.is_initialized()
  @return? thread::WAIT_TIMEOUT
 *>
-fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
+fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, long ms)
 {
 	Time time = time::now() + time::ms(ms);
 	return cond.wait_until(mtx, time) @inline;
@@ -176,9 +173,9 @@ fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time)
 {
 	switch (posix::pthread_cond_timedwait(cond, &mtx.mutex, &&time.to_timespec()))
 	{
-		case errno::ETIMEDOUT:
+		case ETIMEDOUT:
 			return thread::WAIT_TIMEOUT~;
-		case errno::OK:
+		case OK:
 			return;
 		default:
 			$if(env::OPENBSD):
@@ -219,8 +216,13 @@ fn void native_thread_exit(int result)
 	posix::pthread_exit((void*)(iptr)result);
 }
 
+
 fn NativeThread native_thread_current()
 {
+	if (!current_thread.thread_fn)
+	{
+		current_thread = { .pthread = posix::pthread_self(), .thread_fn = fn(void*) => 0 };
+	}
 	return current_thread;
 }
 
@@ -238,10 +240,10 @@ fn int? NativeThread.join(thread) @maydiscard
 	void *pres;
 	switch (posix::pthread_join(thread.pthread, &pres))
 	{
-		case errno::OK: return (int)(iptr)pres;
-		case errno::EINVAL: unreachable("Thread is not joinable.");
-		case errno::EDEADLK: unreachable("Thread join from current thread.");
-		case errno::ESRCH: return thread::THREAD_NOT_FOUND~;
+		case OK: return (int)(iptr)pres;
+		case EINVAL: unreachable("Thread is not joinable.");
+		case EDEADLK: unreachable("Thread join from current thread.");
+		case ESRCH: return thread::THREAD_NOT_FOUND~;
 		default: unreachable("Thread join returned unexpected result");
 	}
 }

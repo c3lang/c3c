@@ -11,12 +11,12 @@ macro void? native_chdir(Path path)
 				{
 					switch (libc::errno())
 					{
-						case errno::EACCES: return io::NO_PERMISSION~;
-						case errno::ENAMETOOLONG: return io::NAME_TOO_LONG~;
-						case errno::ENOTDIR: return io::FILE_NOT_DIR~;
-						case errno::ENOENT: return io::FILE_NOT_FOUND~;
-						case errno::ELOOP: return io::SYMLINK_FAILED~;
-						default: return io::GENERAL_ERROR~;
+						case EACCES:       return io::NO_PERMISSION~;
+						case ENAMETOOLONG: return io::NAME_TOO_LONG~;
+						case ENOTDIR:      return io::FILE_NOT_DIR~;
+						case ENOENT:       return io::FILE_NOT_FOUND~;
+						case ELOOP:        return io::SYMLINK_FAILED~;
+						default:           return io::GENERAL_ERROR~;
 					}
 				}
 			$case env::WIN32:

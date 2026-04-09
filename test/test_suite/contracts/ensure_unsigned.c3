@@ -1,10 +1,10 @@
 
 // Check that 0 <= buf is ok.
 <*
- @ensure return <= buf.len
+ @ensure return <= (usz)buf.len
  *>
 fn usz foo(char[] buf) {
   if (buf.len == 0) return 0;
   // ... return some index into buf
-  return buf.len;
+  return (usz)buf.len;
 }

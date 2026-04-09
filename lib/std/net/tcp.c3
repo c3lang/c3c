@@ -10,7 +10,7 @@ import std::net::os;
 typedef TcpSocket = inline Socket;
 typedef TcpServerSocket = inline Socket;
 
-fn TcpSocket? connect(String host, uint port, Duration timeout = time::DURATION_ZERO, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
+fn TcpSocket? connect(String host, int port, Duration timeout = time::DURATION_ZERO, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
 	AddrInfo* ai =  net::addrinfo(host, port, ip_protocol.ai_family, os::SOCK_STREAM)!;
 	defer os::freeaddrinfo(ai);
@@ -21,7 +21,7 @@ fn TcpSocket? connect(String host, uint port, Duration timeout = time::DURATION_
 	return connect_to(ai, ...options);
 }
 
-fn TcpSocket? connect_async(String host, uint port, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
+fn TcpSocket? connect_async(String host, int port, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
 	AddrInfo* ai = net::addrinfo(host, port, ip_protocol.ai_family, os::SOCK_STREAM)!;
 	defer os::freeaddrinfo(ai);
@@ -38,7 +38,7 @@ fn TcpSocket? connect_async_to(AddrInfo* ai, SocketOption... options)
 	return (TcpSocket)net::connect_async_from_addrinfo(ai, options);
 }
 
-fn TcpServerSocket? listen(String host, uint port, uint backlog, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
+fn TcpServerSocket? listen(String host, int port, int backlog, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {
 	AddrInfo* ai = net::addrinfo(host, port, ip_protocol.ai_family, os::SOCK_STREAM)!;
 	defer os::freeaddrinfo(ai);
@@ -57,7 +57,7 @@ fn TcpSocket? accept(TcpServerSocket* server_socket)
 	return socket;
 }
 
-fn TcpServerSocket? listen_to(AddrInfo* ai, uint backlog, SocketOption... options)
+fn TcpServerSocket? listen_to(AddrInfo* ai, int backlog, SocketOption... options)
 {
 	$if env::WIN32:
 		os::start_wsa()!;
@@ -93,7 +93,7 @@ fn TcpSocketPair*? TcpSocketPair.init(&self)
 		char[] listen_port_bytes = listen_sock_info.ai_addr_storage[2:2];
 		char msb = listen_port_bytes[0];
 		char lsb = listen_port_bytes[1];
-		int listen_port = (msb << 8) | lsb;
+		int listen_port = ((int)msb << 8) | lsb;
 
 		defer (void)listen_sock.close();
 		TcpSocket tcp_send_sock = tcp::connect_async("127.0.0.1", listen_port)!;
@@ -101,7 +101,7 @@ fn TcpSocketPair*? TcpSocketPair.init(&self)
 
 	$else
 		NativeSocket[2] sockets;
-		isz sockpair_result = os::socketpair(os::AF_UNIX, os::SOCK_STREAM, 0, &sockets);
+		sz sockpair_result = os::socketpair(os::AF_UNIX, os::SOCK_STREAM, 0, &sockets);
 		if (sockpair_result < 0) return os::socket_error()~;
 
 		Socket send_sock = { .sock = sockets[0] };

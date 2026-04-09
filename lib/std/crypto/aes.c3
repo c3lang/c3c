@@ -47,12 +47,14 @@ const COLNUM = 4;
  ECB - Electronic Code Book  (Not recommended, indata be 16 byte multiple)
  CBC - Cipher Block Chaining (Indata be 16 byte multiple)
  CTR - Counter Mode          (Recommended, data may be any size)
+ CTR_LE - WinZip's Counter Mode (Little-endian counter increment)
 *>
 enum BlockMode
 {
 	ECB,
 	CBC,
 	CTR,
+	CTR_LE,
 }
 
 <* AES type: 128, 192 or 256 bits *>
@@ -66,15 +68,15 @@ enum AesType : (AesKey key)
 struct AesKey
 {
 	<* Size of key in bits *>
-	usz key_size;
+	sz key_size;
 	<* Size of key in bytes *>
 	int key_len;
 	<* Size of the expanded round_key *>
 	int key_exp_size; // expected size of round_key
 	<* Number of 32 bit words in key *>
-	usz nk;
+	sz nk;
 	<* Number of rounds in the cipher *>
-	usz nr;
+	sz nr;
 }
 
 struct Aes
@@ -290,11 +292,12 @@ fn void bitsliced_mix_columns(Type[8]* q) <Type> @private @inline
 	(*q)[7] = t6 ^ s[7] ^ (*q)[7];
 }
 
-macro bool is_valid_encryption_len(BlockMode mode, usz len)
+macro bool is_valid_encryption_len(BlockMode mode, sz len)
 {
 	switch (mode)
 	{
 		case CTR:
+		case CTR_LE:
 			return true;
 		case ECB:
 		case CBC:
@@ -312,9 +315,10 @@ fn void Aes.encrypt_buffer(&self, char[] in, char[] out)
 {
 	switch (self.mode)
 	{
-		case CTR: ctr_xcrypt_buffer(self, in, out);
 		case ECB: ecb_encrypt_buffer(self, in, out);
 		case CBC: cbc_encrypt_buffer(self, in, out);
+		case CTR: ctr_xcrypt_buffer(self, in, out);
+		case CTR_LE: ctr_xcrypt_buffer(self, in, out, &inc_le);
 	}
 }
 
@@ -331,6 +335,7 @@ fn void Aes.decrypt_buffer(&self, char[] in, char[] out)
 		case ECB: ecb_decrypt_buffer(self, in, out);
 		case CBC: cbc_decrypt_buffer(self, in, out);
 		case CTR: ctr_xcrypt_buffer(self, in, out);
+		case CTR_LE: ctr_xcrypt_buffer(self, in, out, &inc_le);
 	}
 }
 
@@ -343,7 +348,7 @@ fn void Aes.decrypt_buffer(&self, char[] in, char[] out)
 *>
 fn char[] Aes.encrypt(&self, Allocator allocator, char[] in)
 {
-	char[] out = allocator::alloc_array(allocator, char, in.len);
+	char[] out = alloc::alloc_array(allocator, char, in.len);
 	self.encrypt_buffer(in, out) @inline;
 	return out;
 }
@@ -368,7 +373,7 @@ fn char[] Aes.tencrypt(&self, char[] in)
 *>
 fn char[] Aes.decrypt(&self, Allocator allocator, char[] in)
 {
-	char[] out = allocator::alloc_array(allocator, char, in.len);
+	char[] out = alloc::alloc_array(allocator, char, in.len);
 	self.decrypt_buffer(in, out) @inline;
 	return out;
 }
@@ -419,8 +424,8 @@ fn void ecb_decrypt_block(Aes *aes, char[BLOCKLEN]* in, char[BLOCKLEN]* out)
 *>
 fn void ecb_decrypt_buffer(Aes *aes, char[] in, char[] out)
 {
-	usz len = in.len;
-	for (usz i = 0; i < len; i += BLOCKLEN)
+	sz len = in.len;
+	for (sz i = 0; i < len; i += BLOCKLEN)
 	{
 		ecb_decrypt_block(aes, (char[16]*)&in[i], (char[16]*)&out[i]) @inline;
 	}
@@ -433,8 +438,8 @@ fn void ecb_decrypt_buffer(Aes *aes, char[] in, char[] out)
 *>
 fn void ecb_encrypt_buffer(Aes *aes, char[] in, char[] out)
 {
-	usz len = in.len;
-	usz i = 0;
+	sz len = in.len;
+	sz i = 0;
 	// Parallel path for 4 blocks
 	for (; i + 64 <= len; i += 64)
 	{
@@ -468,8 +473,8 @@ fn void xor_with_iv(char[] buf, char[BLOCKLEN]* iv) @local
 fn void cbc_encrypt_buffer(Aes *aes, char[] in, char[] out)
 {
 	char[BLOCKLEN] iv = aes.iv;
-	usz len = in.len;
-	for (usz i = 0; i < len; i += BLOCKLEN)
+	sz len = in.len;
+	for (sz i = 0; i < len; i += BLOCKLEN)
 	{
 		char[BLOCKLEN] tmp = in[i:BLOCKLEN];
 		xor_with_iv(tmp[..], (char[16]*)&iv);
@@ -485,8 +490,8 @@ fn void cbc_encrypt_buffer(Aes *aes, char[] in, char[] out)
 *>
 fn void cbc_decrypt_buffer(Aes *aes, char[] in, char[] out)
 {
-	usz len = in.len;
-	for (usz i = 0; i < len; i += BLOCKLEN)
+	sz len = in.len;
+	for (sz i = 0; i < len; i += BLOCKLEN)
 	{
 		char[BLOCKLEN] tmp;
 		ecb_decrypt_block(aes, in[i:BLOCKLEN], (char[16]*)&tmp);
@@ -496,16 +501,47 @@ fn void cbc_decrypt_buffer(Aes *aes, char[] in, char[] out)
 	}
 }
 
+alias BlckCounter = fn void(char[]);
+
+fn void inc_be(char[] iv)
+{
+	for (int bi = (BLOCKLEN - 1); bi >= 0; bi--)
+	{
+		if (iv[bi] == 255)
+		{
+			iv[bi] = 0;
+			continue;
+		}
+		iv[bi]++;
+		break;
+	}
+}
+
+fn void inc_le(char[] iv)
+{
+	for (int bi = 0; bi < BLOCKLEN; bi++)
+	{
+		if (iv[bi] == 255)
+		{
+			iv[bi] = 0;
+			continue;
+		}
+		iv[bi]++;
+		break;
+	}
+}
+
+
 <*
  @param [&inout] aes : "AES context."
  @param [in] in : "Plaintext/cipher input."
  @param [out] out : "Cipher/plaintext output."
 *>
-fn void ctr_xcrypt_buffer(Aes *aes, char[] in, char[] out)
+fn void ctr_xcrypt_buffer(Aes *aes, char[] in, char[] out, BlckCounter inc = &inc_be)
 {
 	 char[BLOCKLEN] buffer @noinit;
-	 usz len = in.len;
-	 usz i = 0;
+	 sz len = in.len;
+	 sz i = 0;
 
 	 // Parallel path for 4 blocks
 	 for (; i + 64 <= len; i += 64)
@@ -515,16 +551,7 @@ fn void ctr_xcrypt_buffer(Aes *aes, char[] in, char[] out)
 		 {
 			 mem::copy(&counters[b * 16], &aes.iv, 16);
 			 // Increment IV for next block
-			 for LOOP: (int bi = (BLOCKLEN - 1); bi >= 0; bi--)
-			 {
-				 if (aes.iv[bi] == 255)
-				 {
-					 aes.iv[bi] = 0;
-					 continue;
-				 }
-				 aes.iv[bi]++;
-				 break LOOP;
-			 }
+			 inc(aes.iv[:16]);
 		 }
 		 aes_cipher4(aes, &counters, &aes.round_key) @inline;
 		 char[<64>] c4;
@@ -541,17 +568,7 @@ fn void ctr_xcrypt_buffer(Aes *aes, char[] in, char[] out)
 		 {
 			 buffer = aes.iv;
 			 ecb_encrypt_block(aes, &buffer, &buffer);
-
-			 for LOOP: (bi = (BLOCKLEN - 1); bi >= 0; bi--)
-			 {
-				 if (aes.iv[bi] == 255)
-				 {
-					 aes.iv[bi] = 0;
-					 continue;
-				 }
-				 aes.iv[bi]++;
-				 break LOOP;
-			 }
+			 inc(aes.iv[..]);
 			 bi = 0;
 		 }
 		 out[i] = in[i] ^ buffer[bi];
@@ -561,19 +578,18 @@ fn void ctr_xcrypt_buffer(Aes *aes, char[] in, char[] out)
 
 fn void transpose(char[16]* in, ushort[8]* q) @private @inline
 {
-	ushort q0=0; ushort q1=0; ushort q2=0; ushort q3=0;
-	ushort q4=0; ushort q5=0; ushort q6=0; ushort q7=0;
+	ushort q0, q1, q2, q3, q4, q5, q6, q7;
 	for (int i = 0; i < 16; i++)
 	{
 		char b = (*in)[i];
-		q0 |= (ushort)((b >> 0) & 1) << i;
-		q1 |= (ushort)((b >> 1) & 1) << i;
-		q2 |= (ushort)((b >> 2) & 1) << i;
-		q3 |= (ushort)((b >> 3) & 1) << i;
-		q4 |= (ushort)((b >> 4) & 1) << i;
-		q5 |= (ushort)((b >> 5) & 1) << i;
-		q6 |= (ushort)((b >> 6) & 1) << i;
-		q7 |= (ushort)((b >> 7) & 1) << i;
+		q0 |= (ushort)((b >> 0) & 1u) << i;
+		q1 |= (ushort)((b >> 1) & 1u) << i;
+		q2 |= (ushort)((b >> 2) & 1u) << i;
+		q3 |= (ushort)((b >> 3) & 1u) << i;
+		q4 |= (ushort)((b >> 4) & 1u) << i;
+		q5 |= (ushort)((b >> 5) & 1u) << i;
+		q6 |= (ushort)((b >> 6) & 1u) << i;
+		q7 |= (ushort)((b >> 7) & 1u) << i;
 	}
 	(*q)[0] = q0; (*q)[1] = q1; (*q)[2] = q2; (*q)[3] = q3;
 	(*q)[4] = q4; (*q)[5] = q5; (*q)[6] = q6; (*q)[7] = q7;
@@ -585,14 +601,14 @@ fn void untranspose(ushort[8]* q, char[16]* out) @private @inline
 	ushort q4 = (*q)[4]; ushort q5 = (*q)[5]; ushort q6 = (*q)[6]; ushort q7 = (*q)[7];
 	for (int i = 0; i < 16; i++)
 	{
-		char b = (char)((q0 >> i) & 1) << 0;
-		b |= (char)((q1 >> i) & 1) << 1;
-		b |= (char)((q2 >> i) & 1) << 2;
-		b |= (char)((q3 >> i) & 1) << 3;
-		b |= (char)((q4 >> i) & 1) << 4;
-		b |= (char)((q5 >> i) & 1) << 5;
-		b |= (char)((q6 >> i) & 1) << 6;
-		b |= (char)((q7 >> i) & 1) << 7;
+		char b = (char)((q0 >> i) & 1u) << 0;
+		b |= (char)((q1 >> i) & 1u) << 1;
+		b |= (char)((q2 >> i) & 1u) << 2;
+		b |= (char)((q3 >> i) & 1u) << 3;
+		b |= (char)((q4 >> i) & 1u) << 4;
+		b |= (char)((q5 >> i) & 1u) << 5;
+		b |= (char)((q6 >> i) & 1u) << 6;
+		b |= (char)((q7 >> i) & 1u) << 7;
 		(*out)[i] = b;
 	}
 }
@@ -633,7 +649,7 @@ fn void transpose4(char[64]* in, ulong[8]* q) @private @inline
 		char v = (*in)[i];
 		for (int j = 0; j < 8; j++)
 		{
-			(*q)[j] |= (ulong)((v >> j) & 1) << i;
+			(*q)[j] |= (ulong)((v >> j) & 1u) << i;
 		}
 	}
 }
@@ -646,13 +662,13 @@ fn void untranspose4(ulong[8]* q, char[64]* out) @private @inline
 		char v = 0;
 		for (int j = 0; j < 8; j++)
 		{
-			v |= (char)(((*q)[j] >> i) & 1) << j;
+			v |= (char)(((*q)[j] >> i) & 1u) << j;
 		}
 		(*out)[i] = v;
 	}
 }
 
-fn void add_round_key_bitsliced(ulong[8]* q, char[] round_key, usz round) @private @inline
+fn void add_round_key_bitsliced(ulong[8]* q, char[] round_key, sz round) @private @inline
 {
 	ushort[8] kq;
 	transpose((char[16]*)&round_key[round * 16], &kq);
@@ -671,7 +687,7 @@ fn void aes_cipher4(Aes* aes, char[64]* data, char[] round_key) @private
 
 	add_round_key_bitsliced(&q, round_key, 0);
 
-	for (usz r = 1; r < aes.type.nr; r++)
+	for (sz r = 1; r < aes.type.nr; r++)
 	{
 		bitsliced_sbox{ulong}(&q);
 		bitsliced_shift_rows{ulong}(&q);
@@ -688,7 +704,7 @@ fn void aes_cipher4(Aes* aes, char[64]* data, char[] round_key) @private
 
 const char[11] RCON = x`8d01020408102040801b36`;
 
-fn void add_round_key(Aes* aes, usz round, char[] round_key)
+fn void add_round_key(Aes* aes, sz round, char[] round_key)
 {
 	char[<16>] k;
 	mem::copy(&k, &round_key[round * 16], 16);
@@ -708,7 +724,7 @@ fn void shift_rows(Aes* aes)
 
 fn char[<16>] xtime_vec(char[<16>] x) @local @inline
 {
-	return (x << 1) ^ (((x >> 7) & 1) * 0x1b);
+	return (x << 1) ^ (((x >> 7) & 1u) * 0x1b);
 }
 
 fn void mix_columns(Aes* aes)
@@ -725,16 +741,16 @@ fn void mix_columns(Aes* aes)
 
 fn char xtime(char x) @local
 {
-	return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
+	return ((x << 1) ^ (((x >> 7) & 1u) * 0x1b));
 }
 
 fn char multiply(char x, char y) @local
 {
-	return (((y & 1) * x) ^
-		   (((y>>1) & 1) * xtime(x)) ^
-		   (((y>>2) & 1) * xtime(xtime(x))) ^
-		   (((y>>3) & 1) * xtime(xtime(xtime(x)))) ^
-		   (((y>>4) & 1) * xtime(xtime(xtime(xtime(x))))));
+	return (((y & 1u) * x) ^
+		   (((y>>1) & 1u) * xtime(x)) ^
+		   (((y>>2) & 1u) * xtime(xtime(x))) ^
+		   (((y>>3) & 1u) * xtime(xtime(xtime(x)))) ^
+		   (((y>>4) & 1u) * xtime(xtime(xtime(xtime(x))))));
 }
 
 fn void inv_mix_columns(Aes* aes)
@@ -766,7 +782,7 @@ fn void inv_shift_rows(Aes* aes)
 
 fn void aes_cipher(Aes* aes, char[] round_key)
 {
-	usz round = 0;
+	sz round = 0;
 	add_round_key(aes, 0, round_key);
 
 	for LOOP: (round = 1;; round++)
@@ -783,7 +799,7 @@ fn void aes_cipher(Aes* aes, char[] round_key)
 fn void inv_cipher(Aes* aes, char[] round_key)
 {
 	add_round_key(aes, aes.type.nr, round_key);
-	for (usz round = aes.type.nr - 1; ; round--)
+	for (sz round = aes.type.nr - 1; ; round--)
 	{
 		inv_shift_rows(aes);
 		inv_sub_bytes(aes);
@@ -801,8 +817,8 @@ fn void inv_cipher(Aes* aes, char[] round_key)
 *>
 fn void key_expansion(AesType type, char[] key, char[] round_key) @private
 {
-	usz nk = type.key.nk;
-	for (usz i = 0; i < nk; i++)
+	sz nk = type.key.nk;
+	for (sz i = 0; i < nk; i++)
 	{
 		round_key[(i * 4) + 0] = key[(i * 4) + 0];
 		round_key[(i * 4) + 1] = key[(i * 4) + 1];
@@ -810,9 +826,9 @@ fn void key_expansion(AesType type, char[] key, char[] round_key) @private
 		round_key[(i * 4) + 3] = key[(i * 4) + 3];
 	}
 
-	for (usz i = nk; i < COLNUM * (type.key.nr + 1); i++)
+	for (sz i = nk; i < COLNUM * (type.key.nr + 1); i++)
 	{
-		usz k = (i - 1) * 4;
+		sz k = (i - 1) * 4;
 
 		char[4] tempa @noinit;
 
@@ -844,7 +860,7 @@ fn void key_expansion(AesType type, char[] key, char[] round_key) @private
 				sub_word_ct(&tempa);
 			}
 		}
-		usz j = i * 4;
+		sz j = i * 4;
 		k = (i - nk) * 4;
 		round_key[j + 0] = round_key[k + 0] ^ tempa[0];
 		round_key[j + 1] = round_key[k + 1] ^ tempa[1];

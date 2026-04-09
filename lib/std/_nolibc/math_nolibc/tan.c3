@@ -35,8 +35,7 @@ fn double tan(double x) @cname("tan") @weak @nostrip
 		default:
 			// argument reduction
 			double[2] y;
-			uint n = __rem_pio2(x, &y);
-			return __tan(y[0], y[1], n & 1);
+			return __tan(y[0], y[1], __rem_pio2(x, &y) & 1);
 
 	}
 }
@@ -93,8 +92,7 @@ fn float tanf(float x) @cname("tanf") @weak @nostrip
 		default:
 			// argument reduction
 			double y;
-			uint n = __rem_pio2f(x, &y);
-			return __tandf(y, n & 1);
+			return __tandf(y, __rem_pio2f(x, &y) & 1);
 	}
 }
 

@@ -8,7 +8,7 @@ struct FixedBlockPoolNode
 {
 	void* buffer;
 	FixedBlockPoolNode *next;
-	usz capacity;
+	sz capacity;
 }
 
 struct FixedBlockPoolEntry
@@ -32,12 +32,12 @@ struct FixedBlockPool
 	FixedBlockPoolNode *tail;
 	void *next_free;
 	void *freelist;
-	usz block_size;
-	usz grow_capacity;
-	usz allocated;
-	usz page_size;
-	usz alignment;
-	usz used;
+	sz block_size;
+	sz grow_capacity;
+	sz allocated;
+	sz page_size;
+	sz alignment;
+	sz used;
 	bool initialized;
 }
 
@@ -54,14 +54,14 @@ struct FixedBlockPool
  @require calculate_actual_capacity(capacity, block_size) * block_size >= block_size
     : "Total memory would overflow"
 *>
-fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, usz block_size, usz capacity = INITIAL_CAPACITY, usz alignment = 0)
+fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, sz block_size, sz capacity = INITIAL_CAPACITY, sz alignment = 0)
 {
 	self.allocator = allocator;
 	self.tail = &self.head;
 	self.head.next = null;
 	self.block_size = math::max(block_size, FixedBlockPoolEntry.sizeof);
 	capacity = calculate_actual_capacity(capacity, self.block_size);
-	self.alignment = allocator::alignment_for_allocation(alignment);
+	self.alignment = allocators::alignment_for_allocation(alignment);
 	self.page_size = capacity * self.block_size;
     assert(self.page_size >= self.block_size, "Total memory would overflow %d %d", block_size, capacity);
 	self.head.buffer = fixedblockpool_allocate_page(self);
@@ -86,7 +86,7 @@ fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, usz block_siz
  @param capacity : "The amount of blocks to be pre-allocated"
  @require !self.initialized : "The block pool must not be initialized"
 *>
-macro FixedBlockPool* FixedBlockPool.init_for_type(&self, Allocator allocator, $Type, usz capacity = INITIAL_CAPACITY)
+macro FixedBlockPool* FixedBlockPool.init_for_type(&self, Allocator allocator, $Type, sz capacity = INITIAL_CAPACITY)
 {
 	return self.init(allocator, $Type.sizeof, capacity, $Type.alignof);
 }
@@ -98,7 +98,7 @@ macro FixedBlockPool* FixedBlockPool.init_for_type(&self, Allocator allocator, $
  @param capacity : "The amount of blocks to be pre-allocated"
  @require !self.initialized : "The block pool must not be initialized"
 *>
-macro FixedBlockPool* FixedBlockPool.tinit_for_type(&self, $Type, usz capacity = INITIAL_CAPACITY) => self.init_for_type(tmem, $Type, capacity);
+macro FixedBlockPool* FixedBlockPool.tinit_for_type(&self, $Type, sz capacity = INITIAL_CAPACITY) => self.init_for_type(tmem, $Type, capacity);
 
 <*
  Initialize an block pool using Temporary allocator
@@ -107,7 +107,7 @@ macro FixedBlockPool* FixedBlockPool.tinit_for_type(&self, $Type, usz capacity =
  @param capacity : "The amount of blocks to be pre-allocated"
  @require !self.initialized : "The block pool must not be initialized"
 *>
-macro FixedBlockPool* FixedBlockPool.tinit(&self, usz block_size, usz capacity = INITIAL_CAPACITY) => self.init(tmem, block_size, capacity);
+macro FixedBlockPool* FixedBlockPool.tinit(&self, sz block_size, sz capacity = INITIAL_CAPACITY) => self.init(tmem, block_size, capacity);
 
 <*
  Free up the entire block pool
@@ -130,7 +130,7 @@ fn void FixedBlockPool.free(&self)
 		fixedblockpool_free_page(self, iter.buffer);
 		FixedBlockPoolNode* current = iter;
 		iter = iter.next;
-		allocator::free(self.allocator, current);
+		alloc::free(self.allocator, current);
 	}
 	self.initialized = false;
 	self.allocated = 0;
@@ -212,7 +212,7 @@ fn bool fixedblockpool_check_ptr(FixedBlockPool* self, void *ptr) @local
 *>
 fn void fixedblockpool_new_node(FixedBlockPool* self) @local
 {
-	FixedBlockPoolNode* node = allocator::new(self.allocator, FixedBlockPoolNode);
+	FixedBlockPoolNode* node = alloc::new(self.allocator, FixedBlockPoolNode);
 	node.buffer = fixedblockpool_allocate_page(self);
 	$if env::COMPILER_SAFE_MODE && env::ADDRESS_SANITIZER:
 		asan::poison_memory_region(node.buffer, self.page_size);
@@ -227,23 +227,23 @@ fn void fixedblockpool_new_node(FixedBlockPool* self) @local
 macro void* fixedblockpool_allocate_page(FixedBlockPool* self) @private
 {
 	return self.alignment > mem::DEFAULT_MEM_ALIGNMENT
-	       ? allocator::calloc_aligned(self.allocator, self.page_size, self.alignment)!!
-           : allocator::calloc(self.allocator, self.page_size);
+	       ? alloc::calloc_aligned(self.allocator, self.page_size, self.alignment)!!
+           : alloc::calloc(self.allocator, self.page_size);
 }
 
 macro void fixedblockpool_free_page(FixedBlockPool* self, void* page) @private
 {
 	if (self.alignment > mem::DEFAULT_MEM_ALIGNMENT)
 	{
-		allocator::free_aligned(self.allocator, page);
+		alloc::free_aligned(self.allocator, page);
 	}
 	else
 	{
-		allocator::free(self.allocator, page);
+		alloc::free(self.allocator, page);
 	}
 }
 
-macro usz calculate_actual_capacity(usz capacity, usz block_size) @private
+macro sz calculate_actual_capacity(sz capacity, sz block_size) @private
 {
 	// Assume some overhead
 	if (capacity) return capacity;

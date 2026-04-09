@@ -649,11 +649,24 @@ static void llvm_emit_int_to_mask(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMValueRef val = llvm_emit_expr_to_rvalue(c, args[0]);
 	unsigned bits = (unsigned)args[1]->const_expr.ixx.i.low;
 	unsigned int_len = type_bit_size(args[0]->type);
-	if (int_len > bits)
+	unsigned npot = next_highest_power_of_2(bits);
+	if (npot < 8) npot = 8;
+	if (npot < int_len)
 	{
-		val = LLVMBuildTrunc(c->builder, val, LLVMIntTypeInContext(c->context, bits), "");
+		val = LLVMBuildTrunc(c->builder, val, LLVMIntTypeInContext(c->context, npot), "");
+		int_len = npot;
 	}
-	val = LLVMBuildBitCast(c->builder, val, LLVMVectorType(c->bool_type, bits), "");
+	LLVMTypeRef mask_wide_type = LLVMVectorType(c->bool_type, int_len);
+	val = LLVMBuildBitCast(c->builder, val, mask_wide_type, "");
+	if (bits < int_len)
+	{
+		LLVMValueRef shuffle_index[128];
+		for (int i = 0; i < bits; i++)
+		{
+			shuffle_index[i] = llvm_const_int(c, type_int, i);
+		}
+		val = LLVMBuildShuffleVector(c->builder, val, LLVMGetPoison(mask_wide_type), LLVMConstVector(shuffle_index, bits), "");
+	}
 	llvm_value_set(be_value, val, expr->type);
 }
 
@@ -1042,6 +1055,18 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			compiler.linking.link_math = true;
 			llvm_emit_abs_builtin(c, result_value, expr);
 			return;
+		case BUILTIN_ACOS:
+			compiler.linking.link_math = true;
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.acos);
+			return;
+		case BUILTIN_ASIN:
+			compiler.linking.link_math = true;
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.asin);
+			return;
+		case BUILTIN_ATAN:
+			compiler.linking.link_math = true;
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.atan);
+			return;
 		case BUILTIN_POW_INT:
 			compiler.linking.link_math = true;
 			llvm_emit_pow_int_builtin(c, result_value, expr);
@@ -1059,6 +1084,10 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.cos);
 			return;
+		case BUILTIN_COSH:
+			compiler.linking.link_math = true;
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.cosh);
+			return;
 		case BUILTIN_COPYSIGN:
 			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.copysign);
@@ -1074,6 +1103,10 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_EXP2:
 			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.exp2);
+			return;
+		case BUILTIN_EXP10:
+			compiler.linking.link_math = true;
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.exp10);
 			return;
 		case BUILTIN_FMA:
 			compiler.linking.link_math = true;
@@ -1159,9 +1192,21 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.sin);
 			return;
+		case BUILTIN_SINH:
+			compiler.linking.link_math = true;
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.sinh);
+			return;
 		case BUILTIN_SQRT:
 			compiler.linking.link_math = true;
 			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.sqrt);
+			return;
+		case BUILTIN_TAN:
+			compiler.linking.link_math = true;
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.tan);
+			return;
+		case BUILTIN_TANH:
+			compiler.linking.link_math = true;
+			llvm_emit_simple_builtin(c, result_value, expr, intrinsic_id.tanh);
 			return;
 		case BUILTIN_TRUNC:
 			compiler.linking.link_math = true;

@@ -3,7 +3,7 @@ module vecpointer @test;
 fn void pointer_npot2_size()
 {
 	int[<9>][3] a;
-	assert((usz)&a[1] - (usz)&a[0] == 9 * 4);
+	assert((sz)&a[1] - (sz)&a[0] == 9 * 4);
 }
 
 fn void pointer_add_sub_diff()
@@ -25,7 +25,7 @@ fn void pointer_add_sub_diff()
 	y = y - z;
 	assert(y[0] == &a[0] && y[1] == &a[4]);
 	int*[<2>] yy = { &a[1], &a[2] };
-	isz[<2>] w;
+	sz[<2>] w;
 	w = y - yy;
 	assert(w == { -1, 2 });
 	int*[<2>] zz = y - (y - yy);

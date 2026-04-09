@@ -45,11 +45,11 @@ fn void test_conv() @test
 	int[<4>] w = { -1, 2, 3, 4 };
 	float[<4>] yy = w;
 	assert(yy == { -1.0, 2.0, 3.0, 4.0 });
-	ulong[<4>] ww = w;
+	ulong[<4>] ww = (ulong[<4>])w;
 	assert(ww == { (ulong)-1, 2, 3, 4 });
 	int[<4>] g = (int[<4>])ww;
 	assert(g == w);
-	ww = (long[<4>])y;
+	ww = (ulong[<4>])y;
 	assert(ww == { 1, 2, 3, 4 });
 	bool[<2>] b = { true, false };
 	int[<2>] gh = b;
@@ -77,17 +77,17 @@ fn void testf() @test
     assert(w == { 0.5, 1.0, 1.5, -0.04 });
     w = y - z;
     assert(w == { -1, 0, 1, 104 });
-    int[<4>] ww = $$veccomplt(y, z);
+    int[<4>] ww = y.comp_lt(z);
     assert(ww == { -1, 0, 0, 0 });
-    ww = $$veccomple(y, z);
+    ww = y.comp_le(z);
     assert(ww == { -1, -1, 0, 0 });
-    ww = $$veccompgt(y, z);
+    ww = y.comp_gt(z);
     assert(ww == { 0, 0, -1, -1 });
-    ww = $$veccompge(y, z);
+    ww = y.comp_ge(z);
     assert(ww == { 0, -1, -1, -1 });
-    ww = $$veccompeq(y, z);
+    ww = y.comp_eq(z);
     assert(ww == { 0, -1, 0, 0 });
-    ww = $$veccompne(y, z);
+    ww = y.comp_ne(z);
     assert(ww == { -1, 0, -1, -1 });
 }
 
@@ -95,17 +95,17 @@ fn void testb() @test
 {
     bool[<4>] y = { true, false, true, true };
     bool[<4>] z = { false, false, true, true };
-    ichar[<4>] ww = $$veccomplt(y, z);
+    ichar[<4>] ww = y.comp_lt(z);
     assert(ww == { 0, 0, 0, 0 });
-    ww = $$veccomple(y, z);
+    ww = y.comp_le(z);
     assert(ww == { 0, -1, -1, -1 });
-    ww = $$veccompgt(y, z);
+    ww = y.comp_gt(z);
 	assert(ww == { -1, 0, 0, 0 });
-    ww = $$veccompge(y, z);
+    ww = y.comp_ge(z);
     assert(ww == { -1, -1, -1, -1 });
-    ww = $$veccompeq(y, z);
+    ww = y.comp_eq(z);
     assert(ww == { 0, -1, -1, -1 });
-    ww = $$veccompne(y, z);
+    ww = y.comp_ne(z);
 	assert(ww == { -1, 0, 0, 0 });
 }
 
@@ -127,16 +127,16 @@ fn void testi() @test
     assert(w == { 1, 0, 0, -7});
     w = z << y;
     assert(w == { 4, 8, 16, -1600 });
-    w = $$veccompgt(z, y);
+    w = z.comp_gt(y);
     assert(w == { -1, 0, 0, 0});
-    w = $$veccompge(z, y);
+    w = z.comp_ge(y);
     assert(w == { -1, -1, 0, 0 });
-    w = $$veccomplt(z, y);
+    w = z.comp_lt(y);
     assert(w == { 0, 0, -1, -1 });
-    w = $$veccomple(z, y);
+    w = z.comp_le(y);
     assert(w == { 0, -1, -1, -1 });
-    w = $$veccompeq(z, y);
+    w = z.comp_eq(y);
     assert(w == { 0, -1, 0, 0 });
-    w = $$veccompne(z, y);
+    w = y.comp_ne(z);
     assert(w == { -1, 0, -1, -1 });
 }

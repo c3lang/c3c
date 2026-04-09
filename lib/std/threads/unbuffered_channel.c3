@@ -1,27 +1,25 @@
 module std::thread::channel <Type>;
 
-typedef UnbufferedChannel = void*;
+typedef UnbufferedChannel = void;
 
 struct UnbufferedChannelImpl @private
 {
 	Allocator allocator;
 	Mutex mu;
-	Type buf;
+	Type val;
 	bool closed;
-
-	Mutex send_mu;
-	usz send_waiting;
+	bool has_value;
+	sz send_waiting;
 	ConditionVariable send_cond;
 
-	Mutex read_mu;
-	usz read_waiting;
+	sz read_waiting;
 	ConditionVariable read_cond;
 }
 
-fn void? UnbufferedChannel.init(&self, Allocator allocator)
+fn UnbufferedChannel*? create_unbuffered(Allocator allocator)
 {
-	UnbufferedChannelImpl* channel = allocator::alloc(allocator, UnbufferedChannelImpl);
-	defer catch (void)allocator::free(allocator, channel);
+	UnbufferedChannelImpl* channel = alloc::alloc(allocator, UnbufferedChannelImpl);
+	defer catch (void)alloc::free(allocator, channel);
 
 	channel.allocator = allocator;
 	channel.send_waiting = 0;
@@ -29,98 +27,87 @@ fn void? UnbufferedChannel.init(&self, Allocator allocator)
 
 	channel.mu.init()!;
 	defer catch channel.mu.destroy();
-	channel.send_mu.init()!;
-	defer catch channel.send_mu.destroy();
 	channel.send_cond.init()!;
 	defer catch channel.send_cond.destroy();
-	channel.read_mu.init()!;
-	defer catch channel.read_mu.destroy();
 	channel.read_cond.init()!;
 
-	*self = (UnbufferedChannel)channel;
+	return (UnbufferedChannel*)channel;
 }
 
-fn void? UnbufferedChannel.destroy(&self) @maydiscard // Remove optional in 0.8.0
+fn void UnbufferedChannel.destroy(&self)
 {
-	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)(*self);
-
+	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)(self);
 	channel.mu.destroy();
-	channel.send_mu.destroy();
 	channel.send_cond.destroy();
-	channel.read_mu.destroy();
 	channel.read_cond.destroy();
-	allocator::free(channel.allocator, channel);
-
-	*self = null;
+	alloc::free(channel.allocator, channel);
 }
 
-fn void? UnbufferedChannel.push(self, Type val)
+fn void? UnbufferedChannel.push(&self, Type val)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
 	channel.mu.lock();
-	defer catch channel.mu.unlock();
-	channel.send_mu.lock();
-	defer catch channel.send_mu.unlock();
+	defer channel.mu.unlock();
 
-	if (channel.closed)
+	// if channel is full -> wait
+	while (channel.has_value && !channel.closed)
 	{
-		return thread::CHANNEL_CLOSED~;
+		channel.send_waiting++;
+		channel.send_cond.wait(&channel.mu);
+		channel.send_waiting--;
 	}
 
-	// store value in the buffer
-	channel.buf = val;
-	// show that we are waiting for reader
-	channel.send_waiting++;
+	// check if channel is closed
+	if (channel.closed) return thread::CHANNEL_CLOSED~;
 
-	// if reader is already waiting for us -> awake him
+	// save value to buf
+	channel.val = val;
+	channel.has_value = true;
+
+	// if someone is waiting -> awake him
 	if (channel.read_waiting > 0)
 	{
 		channel.read_cond.signal();
 	}
-
-	// wait until reader takes value from buffer
-	channel.send_cond.wait(&channel.mu);
-
-	if (channel.closed) return thread::CHANNEL_CLOSED~;
-
-	channel.mu.unlock();
-	channel.send_mu.unlock();
 }
 
-fn Type? UnbufferedChannel.pop(self)
+fn Type? UnbufferedChannel.pop(&self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
 	channel.mu.lock();
-	defer catch channel.mu.unlock();
-	channel.read_mu.lock();
-	defer catch channel.read_mu.unlock();
+	defer channel.mu.unlock();
 
-	// if no one is waiting, then there is nothing in the buffer
-	while (!channel.closed && channel.send_waiting == 0)
+	// if chan is empty -> wait for sender
+	while (!channel.has_value && !channel.closed)
 	{
 		channel.read_waiting++;
 		channel.read_cond.wait(&channel.mu);
 		channel.read_waiting--;
 	}
 
-	if (channel.closed) return thread::CHANNEL_CLOSED~;
+	// check if chan is closed and empty
+	if (channel.closed && !channel.has_value)
+	{
+		return thread::CHANNEL_CLOSED~;
+	}
 
-	// take value from buffer
-	Type ret = channel.buf;
+	// read from buf
+	Type ret = channel.val;
 
-	// awake sender
-	channel.send_waiting--;
-	channel.send_cond.signal();
+	channel.has_value = false;
 
-	channel.mu.unlock();
-	channel.read_mu.unlock();
+	// if someone is waiting -> awake him
+	if (channel.send_waiting > 0)
+	{
+		channel.send_cond.signal();
+	}
 
 	return ret;
 }
 
-fn void? UnbufferedChannel.close(self) @maydiscard // Remove optional in 0.8.0
+fn void UnbufferedChannel.close(&self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 

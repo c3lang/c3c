@@ -21,6 +21,10 @@ fn void test1(Enum e)
     char b = (char)e.ordinal;
     uint c = (uint)e.ordinal;
     float d = (float)e; // #error: float
+}
+
+fn void test12(Enum e)
+{
     uint* f = (uint*)e;         // #error: 'uint*'
 }
 
@@ -32,6 +36,11 @@ fn void test2(Enum e)
 fn void test3(Enum e)
 {
     EnumB h = (EnumB)(e);         // #error: 'EnumB'
+}
+
+fn void test31(Enum e)
+{
     Func i = (Func)(e);           // #error: 'Func'
 }
+
 

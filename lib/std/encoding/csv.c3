@@ -15,12 +15,12 @@ struct CsvRow (Printable)
 	Allocator allocator;
 }
 
-fn usz? CsvRow.to_format(&self, Formatter* f) @dynamic
+fn sz? CsvRow.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("%s", self.list);
 }
 
-fn usz CsvRow.len(&self) @operator(len)
+fn sz CsvRow.len(&self) @operator(len)
 {
 	return self.list.len;
 }
@@ -28,7 +28,7 @@ fn usz CsvRow.len(&self) @operator(len)
 <*
  @require col < self.list.len
 *>
-fn String CsvRow.get_col(&self, usz col) @operator([])
+fn String CsvRow.get_col(&self, sz col) @operator([])
 {
 	return self.list[col];
 }
@@ -44,7 +44,7 @@ fn void CsvReader.init(&self, InStream stream, String separator = ",")
 fn CsvRow? CsvReader.read_row(self, Allocator allocator)
 {
 	String row = io::readline(allocator, self.stream)!;
-	defer catch allocator::free(allocator, row);
+	defer catch alloc::free(allocator, row);
 	String[] list = row.split(allocator, self.separator);
 	return { list, row, allocator };
 }
@@ -59,8 +59,8 @@ fn CsvRow? CsvReader.tread_row(self)
 *>
 fn void CsvRow.free(&self)
 {
-	allocator::free(self.allocator, self.list);
-	allocator::free(self.allocator, self.row);
+	alloc::free(self.allocator, self.list);
+	alloc::free(self.allocator, self.row);
 	self.allocator = null;
 }
 

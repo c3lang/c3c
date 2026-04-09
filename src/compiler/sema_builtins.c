@@ -80,13 +80,14 @@ static bool sema_check_builtin_args_const(SemaContext *context, Expr **args, siz
 
 static bool sema_check_alignment_expression(SemaContext *context, Expr *align, bool may_be_zero)
 {
-	if (!sema_analyse_expr_rhs(context, type_usz, align, false, NULL, false)) return false;
+	if (!sema_analyse_expr_rhs(context, type_sz, align, false, NULL, false)) return false;
 	if (!expr_is_const_int(align)
 	    || !int_fits(align->const_expr.ixx, TYPE_U64)
 	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
 	{
 		RETURN_SEMA_ERROR(align, may_be_zero ? "Expected a constant power-of-two alignment or zero." : "Expected a constant power-of-two alignment.");
 	}
+	if (int_is_neg(align->const_expr.ixx)) RETURN_SEMA_ERROR(align, "Alignment must not be negative.");
 	if (!may_be_zero && align->const_expr.ixx.i.low == 0) RETURN_SEMA_ERROR(align, "Alignment must not be zero.");
 	return true;
 }
@@ -107,7 +108,7 @@ static bool sema_check_builtin_args(SemaContext *context, Expr **args, BuiltinAr
 				RETURN_SEMA_ERROR(arg, "Expected a char or ichar.");
 			case BA_SIZE:
 				if (type_is_integer(type) && type_size(type) == type_size(type_usz)) continue;
-				RETURN_SEMA_ERROR(arg, "Expected an usz or isz value.");
+				RETURN_SEMA_ERROR(arg, "Expected an usz or sz value.");
 			case BA_BOOL:
 				if (type == type_bool) continue;
 				RETURN_SEMA_ERROR(arg, "Expected a bool.");
@@ -363,7 +364,7 @@ static bool sema_expr_analyse_str_replace(SemaContext *context, Expr *expr, Expr
 static bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
-	if (!sema_analyse_expr_rvalue(context, inner)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take the hash of it.");
@@ -377,7 +378,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->call_expr.arguments[0];
 	Expr *inner_find = expr->call_expr.arguments[1];
-	if (!sema_analyse_expr_rvalue(context, inner) || !sema_analyse_expr_rvalue(context, inner_find)) return true;
+	if (!sema_analyse_expr_rvalue(context, inner) || !sema_analyse_expr_rvalue(context, inner_find)) return false;
 	if (!expr_is_const_string(inner))
 	{
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to search.");
@@ -389,7 +390,7 @@ bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
 	const char *inner_str = inner->const_expr.bytes.ptr;
 	const char *find_str = inner_find->const_expr.bytes.ptr;
 	const char *ret = strstr(inner_str, find_str);
-	expr_rewrite_const_int(expr, type_isz, (uint64_t)(ret == NULL ? -1 : ret - inner_str));
+	expr_rewrite_const_int(expr, type_sz, (uint64_t)(ret == NULL ? -1 : ret - inner_str));
 	return true;
 }
 
@@ -671,11 +672,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_swizzle(context, expr, func == BUILTIN_SWIZZLE2);
 		case BUILTIN_SYSCALL:
 			return sema_expr_analyse_syscall(context, expr);
-		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
 			expr->call_expr.no_return = true;
+			if (!context->call_env.in_no_eval) SET_JUMP_END(context, expr);
 			FALLTHROUGH;
 		case BUILTIN_BREAKPOINT:
+		case BUILTIN_TRAP:
 			expr->type = type_void;
 			return true;
 		case BUILTIN_SYSCLOCK:
@@ -915,11 +917,16 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			rtype = args[0]->type;
 			break;
+		case BUILTIN_ACOS:
+		case BUILTIN_ASIN:
+		case BUILTIN_ATAN:
 		case BUILTIN_CEIL:
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_COS:
+		case BUILTIN_COSH:
 		case BUILTIN_EXP:
 		case BUILTIN_EXP2:
+		case BUILTIN_EXP10:
 		case BUILTIN_FLOOR:
 		case BUILTIN_LLRINT:
 		case BUILTIN_LLROUND:
@@ -933,6 +940,9 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_ROUND:
 		case BUILTIN_ROUNDEVEN:
 		case BUILTIN_SIN:
+		case BUILTIN_SINH:
+		case BUILTIN_TAN:
+		case BUILTIN_TANH:
 		case BUILTIN_SQRT:
 		case BUILTIN_TRUNC:
 			ASSERT(arg_count);
@@ -955,13 +965,13 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		case BUILTIN_WASM_MEMORY_SIZE:
 			ASSERT(arg_count == 1);
-			if (!cast_implicit(context, args[0], type_uint, false)) return false;
-			rtype = type_uptr;
+			if (!cast_implicit(context, args[0], type_int, false)) return false;
+			rtype = type_sz;
 			break;
 		case BUILTIN_WASM_MEMORY_GROW:
 			ASSERT(arg_count == 2);
-			if (!cast_implicit(context, args[0], type_uint, false)) return false;
-			if (!cast_implicit(context, args[1], type_uptr, false)) return false;
+			if (!cast_implicit(context, args[0], type_int, false)) return false;
+			if (!cast_implicit(context, args[1], type_sz, false)) return false;
 			rtype = type_iptr;
 			break;
 		case BUILTIN_PREFETCH:
@@ -1407,23 +1417,28 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_RND:
 			return 0;
 		case BUILTIN_ABS:
+		case BUILTIN_ACOS:
+		case BUILTIN_ASIN:
+		case BUILTIN_ATAN:
 		case BUILTIN_BITREVERSE:
 		case BUILTIN_BSWAP:
 		case BUILTIN_CEIL:
 		case BUILTIN_COS:
+		case BUILTIN_COSH:
 		case BUILTIN_CTLZ:
 		case BUILTIN_CTTZ:
 		case BUILTIN_EXACT_NEG:
-		case BUILTIN_EXP2:
 		case BUILTIN_EXP:
+		case BUILTIN_EXP2:
+		case BUILTIN_EXP10:
 		case BUILTIN_FENCE:
 		case BUILTIN_FLOOR:
 		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_LLRINT:
 		case BUILTIN_LLROUND:
-		case BUILTIN_LOG10:
-		case BUILTIN_LOG2:
 		case BUILTIN_LOG:
+		case BUILTIN_LOG2:
+		case BUILTIN_LOG10:
 		case BUILTIN_LRINT:
 		case BUILTIN_LROUND:
 		case BUILTIN_MASK_TO_INT:
@@ -1443,12 +1458,15 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_ROUNDEVEN:
 		case BUILTIN_SET_ROUNDING_MODE:
 		case BUILTIN_SIN:
+		case BUILTIN_SINH:
 		case BUILTIN_SQRT:
 		case BUILTIN_STR_HASH:
 		case BUILTIN_STR_LOWER:
 		case BUILTIN_STR_PASCALCASE:
 		case BUILTIN_STR_SNAKECASE:
 		case BUILTIN_STR_UPPER:
+		case BUILTIN_TAN:
+		case BUILTIN_TANH:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
 		case BUILTIN_WASM_MEMORY_SIZE:

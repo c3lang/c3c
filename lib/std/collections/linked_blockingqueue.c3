@@ -20,9 +20,9 @@ struct LinkedBlockingQueue
 	<* Last element in queue *>
 	QueueEntry* tail;
 	<* Current number of elements *>
-	usz count;
+	sz count;
 	<* Maximum capacity (0 for unbounded) *>
-	usz capacity;
+	sz capacity;
 	Mutex lock;
 	ConditionVariable not_empty;
 	ConditionVariable not_full;
@@ -34,7 +34,7 @@ struct LinkedBlockingQueue
  @param capacity : "Maximum capacity (0 for unbounded)"
  @require !self.is_initialized() : "Queue was already initialized"
 *>
-fn LinkedBlockingQueue* LinkedBlockingQueue.init(&self, Allocator allocator, usz capacity = 0)
+fn LinkedBlockingQueue* LinkedBlockingQueue.init(&self, Allocator allocator, sz capacity = 0)
 {
 	self.allocator = allocator;
 	self.capacity = capacity;
@@ -48,7 +48,7 @@ fn LinkedBlockingQueue* LinkedBlockingQueue.init(&self, Allocator allocator, usz
 	return self;
 }
 
-fn LinkedBlockingQueue* LinkedBlockingQueue.tinit(&self, usz capacity = 0)
+fn LinkedBlockingQueue* LinkedBlockingQueue.tinit(&self, sz capacity = 0)
 {
 	return self.init(tmem, capacity) @inline;
 }
@@ -65,7 +65,7 @@ fn void LinkedBlockingQueue.free(&self)
 		while (entry != null)
 		{
 			QueueEntry* next = entry.next;
-			allocator::free(self.allocator, entry);
+			alloc::free(self.allocator, entry);
 			entry = next;
 		}
 	};
@@ -129,7 +129,7 @@ fn void LinkedBlockingQueue.push(&self, Value value)
 			self.not_full.wait(&self.lock);
 		}
 
-		QueueEntry* entry = allocator::new(self.allocator, QueueEntry, {
+		QueueEntry* entry = alloc::new(self.allocator, QueueEntry, {
 			.value = value,
 			.next = null,
 			.prev = null
@@ -158,7 +158,7 @@ fn Value LinkedBlockingQueue.poll(&self)
 
 		QueueEntry* entry = linkedblockingqueue_unlink_head(self);
 		Value value = entry.value;
-		allocator::free(self.allocator, entry);
+		alloc::free(self.allocator, entry);
 		if (self.capacity > 0)
 		{
 			self.not_full.signal();
@@ -182,7 +182,7 @@ fn Value? LinkedBlockingQueue.pop(&self)
 
 		QueueEntry* entry = linkedblockingqueue_unlink_head(self);
 		Value value = entry.value;
-		allocator::free(self.allocator, entry);
+		alloc::free(self.allocator, entry);
 
 		if (self.capacity > 0)
 		{
@@ -219,7 +219,7 @@ fn Value? LinkedBlockingQueue.poll_timeout(&self, Duration timeout)
 
 		QueueEntry* entry = linkedblockingqueue_unlink_head(self);
 		Value value = entry.value;
-		allocator::free(self.allocator, entry);
+		alloc::free(self.allocator, entry);
 
 		// Must signal not_full after removing an item
 		if (self.capacity > 0)
@@ -235,7 +235,7 @@ fn Value? LinkedBlockingQueue.poll_timeout(&self, Duration timeout)
  @require self.is_initialized() : "Queue must be initialized"
  @return "Current size of the queue"
 *>
-fn usz LinkedBlockingQueue.size(&self)
+fn sz LinkedBlockingQueue.size(&self)
 {
 	self.lock.@in_lock()
 	{
@@ -268,7 +268,7 @@ fn void? LinkedBlockingQueue.try_push(&self, Value value)
 	{
 		if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED~;
 
-		QueueEntry* entry = allocator::new(self.allocator, QueueEntry, {
+		QueueEntry* entry = alloc::new(self.allocator, QueueEntry, {
 			.value = value,
 			.next = null,
 			.prev = null
@@ -302,7 +302,7 @@ fn void? LinkedBlockingQueue.push_timeout(&self, Value value, Duration timeout)
 			if (self.capacity > 0 && self.count >= self.capacity) return CAPACITY_EXCEEDED~;
 		}
 
-		QueueEntry* entry = allocator::new(self.allocator, QueueEntry, {
+		QueueEntry* entry = alloc::new(self.allocator, QueueEntry, {
 			.value = value,
 			.next = null,
 			.prev = null

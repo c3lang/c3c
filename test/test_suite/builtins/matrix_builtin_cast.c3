@@ -1,3 +1,4 @@
+module std::test;
 fn int main()
 {
 	int[<6>] c = 2;

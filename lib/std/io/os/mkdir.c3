@@ -14,18 +14,18 @@ macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 			if (!posix::mkdir(path.str_view().zstr_tcopy(), permissions == NORMAL ? 0o777 : 0o700)) return true;
 			switch (libc::errno())
 			{
-				case errno::EACCES:
-				case errno::EPERM:
-				case errno::EROFS:
-				case errno::EFAULT: return io::NO_PERMISSION~;
-				case errno::ENAMETOOLONG: return io::NAME_TOO_LONG~;
-				case errno::EDQUOT:
-				case errno::ENOSPC: return io::OUT_OF_SPACE~;
-				case errno::EISDIR:
-				case errno::EEXIST: return false;
-				case errno::ELOOP: return io::SYMLINK_FAILED~;
-				case errno::ENOTDIR: return io::FILE_NOT_FOUND~;
-				case errno::ENOENT: return io::PARENT_DIR_MISSING~;
+				case EACCES:
+				case EPERM:
+				case EROFS:
+				case EFAULT: return io::NO_PERMISSION~;
+				case ENAMETOOLONG: return io::NAME_TOO_LONG~;
+				case EDQUOT:
+				case ENOSPC: return io::OUT_OF_SPACE~;
+				case EISDIR:
+				case EEXIST: return false;
+				case ELOOP: return io::SYMLINK_FAILED~;
+				case ENOTDIR: return io::FILE_NOT_FOUND~;
+				case ENOENT: return io::PARENT_DIR_MISSING~;
 				default:
 					return io::GENERAL_ERROR~;
 			}
