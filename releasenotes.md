@@ -48,6 +48,7 @@
 - `RingList` now conforms to `foreach` and adds additional functions.
 - Ini parser and encoder.
 - Updated `ref::new` argument order.
+- Support setting thread stack size.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

@@ -15,6 +15,15 @@ fn void testrun() @test
 	assert(t.join()!! == 10);
 }
 
+fn void testrun_stack_size() @test
+{
+	Thread t;
+	a = 0;
+	t.create(fn int(void* arg) { a++; return 0; }, null, { .stack_size = 8 * 1024 * 1024 })!!;
+	assert(t.join()!! == 0);
+	assert(a == 1);
+}
+
 
 Mutex m_global;
 

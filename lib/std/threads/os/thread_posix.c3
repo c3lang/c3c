@@ -196,10 +196,26 @@ fn void* callback(void* arg) @private
 	return (void*)(iptr)thread.thread_fn(thread.arg);
 }
 
-fn void? NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
+<*
+ @require settings.stack_size >= 0
+ @return? thread::INIT_FAILED, thread::INVALID_THREAD_SETTINGS
+*>
+fn void? NativeThread.create(&thread, ThreadFn thread_fn, void* arg, ThreadSettings settings)
 {
 	thread.thread_fn = thread_fn;
 	thread.arg = arg;
+	Pthread_attr_t attr;
+	Pthread_attr_t* attr_ptr = null;
+	defer if (attr_ptr) posix::pthread_attr_destroy(attr_ptr);
+	if (settings.stack_size > 0)
+	{
+		if (posix::pthread_attr_init(&attr)) return thread::INIT_FAILED~;
+		attr_ptr = &attr;
+		if (settings.stack_size > 0)
+		{
+			if (posix::pthread_attr_setstacksize(attr_ptr, settings.stack_size)) return thread::INVALID_THREAD_SETTINGS~;
+		}
+	}
 	if (posix::pthread_create(&thread.pthread, null, &callback, thread) != 0)
 	{
 		return thread::INIT_FAILED~;
