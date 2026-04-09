@@ -191,14 +191,14 @@ bool parse_attach_contracts(Decl *generics, ContractDescription *contracts)
 	{
 		if (contracts->has_contracts)
 		{
-			print_error_at(contracts->first_contract, "Contracts can only be used with '@generic' declarations and modules.");
+			print_error_at(contracts->first_contract, "Contracts can only be used with generic declarations and modules.");
 			return false;
 		}
 		return true;
 	}
 	if (contracts->first_non_require)
 	{
-		print_error_at(contracts->first_non_require, "Invalid constraint - only '@require' is valid for '@generic' declarations and modules.");
+		print_error_at(contracts->first_non_require, "Invalid constraint - only '@require' is valid for generic declarations and modules.");
 		return false;
 	}
 	FOREACH(Expr *, e, contracts->requires) vec_add(generics->generic_decl.requires, e);
