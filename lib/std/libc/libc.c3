@@ -64,7 +64,7 @@ const CInt SIGSEGV = 11;
 const CInt SIGTERM = 15;
 
 alias Time_t = $typefrom(env::WIN32 || env::EMSCRIPTEN ? long.typeid : CLong.typeid);
-alias Off_t = $typefrom(env::WIN32 || env::EMSCRIPTEN ? int.typeid : sz.typeid);
+alias Off_t = $typefrom(env::WIN32 || env::EMSCRIPTEN ? long.typeid : sz.typeid);
 
 module libc @if(env::LIBC);
 

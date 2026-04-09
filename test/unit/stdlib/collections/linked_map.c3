@@ -145,11 +145,11 @@ fn void linked_map_iterators()
 	m.tinit_with_key_values("a", 1, "b", 2, "c", 3);
 	
 	sz count = 0;
-	LinkedHashMapIterator{String, long} iter = m.iter();
+	LinkedHashMapIterator{String, sz} iter = m.iter();
 	while (iter.next())
 	{
 		count++;
-		LinkedEntry {String, long} * current = iter.get()!!;
+		LinkedEntry {String, sz} * current = iter.get()!!;
 		assert(current.key.len > 0);
 		assert(current.value > 0);
 	}
@@ -157,7 +157,7 @@ fn void linked_map_iterators()
 
 	count = 0;
 
-	LinkedHashMapKeyIterator{String, long} key_iter = m.key_iter();
+	LinkedHashMapKeyIterator{String, sz} key_iter = m.key_iter();
 	while (key_iter.next())
 	{
 		count++;
@@ -167,7 +167,7 @@ fn void linked_map_iterators()
 
 	count = 0;
 	sz sum = 0;
-	LinkedHashMapValueIterator{String, long} value_iter = m.value_iter();
+	LinkedHashMapValueIterator{String, sz} value_iter = m.value_iter();
 	
 	while (value_iter.next())
 	{

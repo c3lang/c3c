@@ -489,7 +489,7 @@ fn void linkedhashset_resize(LinkedHashSet* set, sz new_capacity) @private
 
 	if (old_capacity == MAXIMUM_CAPACITY)
 	{
-		set.threshold = uint.max;
+		set.threshold = sz.max;
 		return;
 	}
 
