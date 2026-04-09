@@ -200,10 +200,29 @@ fn void? NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 {
 	thread.thread_fn = thread_fn;
 	thread.arg = arg;
-	if (posix::pthread_create(&thread.pthread, null, &callback, thread) != 0)
-	{
-		return thread::INIT_FAILED~;
-	}
+	$if env::DARWIN:
+		Pthread_attr_t attr;
+		if (posix::pthread_attr_init(&attr) != 0)
+		{
+			return thread::INIT_FAILED~;
+		}
+		defer posix::pthread_attr_destroy(&attr);
+		const usz THREAD_STACK_SIZE = 8 * 1024 * 1024;
+		if (posix::pthread_attr_setstacksize(&attr, THREAD_STACK_SIZE) != 0)
+		{
+			return thread::INIT_FAILED~;
+		}
+
+		if (posix::pthread_create(&thread.pthread, &attr, &callback, thread) != 0)
+		{
+			return thread::INIT_FAILED~;
+		}
+	$else
+		if (posix::pthread_create(&thread.pthread, null, &callback, thread) != 0)
+		{
+			return thread::INIT_FAILED~;
+		}
+	$endif
 }
 
 fn void NativeThread.detach(thread)
