@@ -35,6 +35,7 @@
 - Enums now implicitly convert to their ordinal when used as indices.
 - Enums can no longer declare themselves `inline`.
 - Nested generics allowed inside of generic functions/methods.
+- `a = ...` parameters may be shadowed if not defined.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

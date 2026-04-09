@@ -1277,7 +1277,7 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 	if (is_var && decl->var.shadow) goto ADD_VAR;
 
 	Decl *other = sema_find_local(context, decl->name);
-	if (other && (other->unit->module == current_unit->module || other->is_autoimport))
+	if (other && (other->unit->module == current_unit->module || other->is_autoimport) && !decl_is_defaulted_var(other))
 	{
 		sema_shadow_error(context, decl, other);
 		decl_poison(decl);
