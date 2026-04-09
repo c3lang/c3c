@@ -680,19 +680,7 @@ void compiler_compile(void)
 		task_count--;
 		if (task_count)
 		{
-			int threads = (int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads);
-			if (threads <= 1)
-			{
-				for (unsigned i = task_count; i > 0; i--)
-				{
-					Task *next_task = tasks[i - 1];
-					next_task->task(next_task->arg);
-				}
-			}
-			else
-			{
-				taskqueue_run(threads, tasks);
-			}
+			taskqueue_run((int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads), tasks);
 		}
 	}
 	if (compiler.build.print_output)
