@@ -47,7 +47,7 @@ fn void main(String[] args)
 	temparr = mem::alloc_array(double, n);
 	double[] u = mem::alloc_array(double, n);
 	double[] v = mem::alloc_array(double, n);
-	double[] x = mem::alloc_array(double, (usz)(n * n));
+	double[] x = mem::alloc_array(double, (sz)(n * n));
 	for (int i = 0; i < n; i++)
 	{
 		for (int j = 0; j < n; j++)

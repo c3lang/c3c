@@ -459,6 +459,7 @@ add_executable(c3c
         src/compiler/sema_casts.c
         src/compiler/sema_decls.c
         src/compiler/sema_expr.c
+		src/compiler/sema_generics.c
         src/compiler/sema_internal.h
         src/compiler/sema_name_resolution.c
         src/compiler/sema_errors.c

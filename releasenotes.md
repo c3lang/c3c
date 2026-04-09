@@ -21,10 +21,43 @@
 - Removed deprecated `$assignable`.
 - Enums now no longer directly support `+` and `-` – use ordinals instead.
 - For enums, using `++` and `--` will step through enums with implicit wrap-around.
+- Rename `isz` -> `sz`.
+- Make $sizeof, $alignof and all similar functions return `sz` instead of `usz`.
+- Align literal types with C semantics.
+- Use value promotion instead of signedness promotion to int. So that small unsigned types promote to int, not uint.
+- Add a `@mustinit` attribute to enforce zero-initialization of a type. #3094
+- Improve error message when keyword is used instead of an expression. #3088
+- Add `--warn-recursivecontracts`.
+- Mutex.destroy and friends no longer return optionals.
+- Remove `@operator(!=)` overload.
+- Add `@operator(<)` overload, enabling type comparison overloads.
+- Generic inference can now look through pointer.
+- Enums now implicitly convert to their ordinal when used as indices.
+- Enums can no longer declare themselves `inline`.
+- Nested generics allowed inside of generic functions/methods.
+
+### Stdlib changes
+- `std::collections::RingBuffer` has been renamed `RingList`.
+- Add `List.remove_unordered_at`.
+- PanicFn now takes an `int` for row.
+- Add `std::collections::Deque`.
+- Add `compare_to` and `compare_to_ignore_case` to `String`. #3096
+- Add `OrderedMap` based on skip lists.
+- Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
+- `BufferedChannel` and `UnbufferedChannel` now pointers, create using `create_unbuffered` and `create_buffered`
+- `RingList` now conforms to `foreach` and adds additional functions.
+- Ini parser and encoder.
+- Updated `ref::new` argument order.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
 - Attributes `@allow_deprecated`, `@constinit`, `@noalias`, `@nostrip`, and `@optional` would erroneously accept parameters. #3098
+- Fix pipe handle leaks across concurrent process spawns #10067.
+- `$$trap` was incorrectly marked noreturn.
+- Recursive inclusion of contracts was not detected.
+- `\r` was not filtered when piping a source file from stdin.
+- SHA-3 and Keccak contexts are now explicitly `@mustinit` structures. #3110
+- `UnbufferedChannel` would deadlock on multiple producers.
 
 ## 0.7.11 Change list
 

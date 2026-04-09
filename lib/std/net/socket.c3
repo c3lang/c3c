@@ -100,7 +100,7 @@ macro Socket new_socket(fd, ai)
 {
 	Socket sock = { .sock = fd, .ai_addrlen = ai.ai_addrlen };
 	assert(sock.ai_addr_storage.len >= ai.ai_addrlen, "storage %d < addrlen %d", sock.ai_addr_storage.len, ai.ai_addrlen);
-	mem::copy(&sock.ai_addr_storage, (void*)ai.ai_addr, ai.ai_addrlen);
+	mem::copy(&sock.ai_addr_storage, (void*)ai.ai_addr, (sz)ai.ai_addrlen);
 	return sock;
 }
 
@@ -142,28 +142,28 @@ fn bool? Socket.get_option(&self, SocketOption option)
 	return (bool)flag;
 }
 
-fn usz? Socket.read(&self, char[] bytes) @dynamic
+fn sz? Socket.read(&self, char[] bytes) @dynamic
 {
 $if env::WIN32:
-	isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, 0);
+	sz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, 0);
 $else
-	isz n = libc::recv(self.sock, bytes.ptr, bytes.len, 0);
+	sz n = libc::recv(self.sock, bytes.ptr, (usz)bytes.len, 0);
 $endif
 	if (n < 0) return os::socket_error()~;
-	return (usz)n;
+	return (sz)n;
 }
 
 fn char? Socket.read_byte(&self) @dynamic => io::read_byte_using_read(self);
 
-fn usz? Socket.write(&self, char[] bytes) @dynamic
+fn sz? Socket.write(&self, char[] bytes) @dynamic
 {
 $if env::WIN32:
-	isz n = libc::send(self.sock, bytes.ptr, (int)bytes.len, 0);
+	sz n = libc::send(self.sock, bytes.ptr, (int)bytes.len, 0);
 $else
-	isz n = libc::send(self.sock, bytes.ptr, bytes.len, 0);
+	sz n = libc::send(self.sock, bytes.ptr, (usz)bytes.len, 0);
 $endif
 	if (n < 0) return os::socket_error()~;
-	return (usz)n;
+	return (sz)n;
 }
 
 fn void? Socket.write_byte(&self, char byte) @dynamic => io::write_byte_using_write(self, byte);
@@ -177,15 +177,15 @@ fn void? Socket.close(&self) @inline @dynamic
 	self.sock.close()!;
 }
 
-fn usz? Socket.peek(&self, char[] bytes) @dynamic
+fn sz? Socket.peek(&self, char[] bytes) @dynamic
 {
   $if env::WIN32:
-	  isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, os::MSG_PEEK);
+	  sz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, os::MSG_PEEK);
   $else
-	  isz n = libc::recv(self.sock, bytes.ptr, bytes.len, os::MSG_PEEK);
+	  sz n = libc::recv(self.sock, bytes.ptr, (usz)bytes.len, os::MSG_PEEK);
   $endif
 	if (n < 0) return os::socket_error()~;
-	return (usz)n;
+	return (sz)n;
 }
 
 enum SocketShutdownHow : (CInt native_value)

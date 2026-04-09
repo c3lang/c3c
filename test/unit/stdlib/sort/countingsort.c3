@@ -89,9 +89,9 @@ fn void countingsort_random_large_list()
 	random::seed_entropy(&random);
 
 	CountingSortTestList list;
-	for (usz i = 0; i < 2048; i++)
+	for (sz i = 0; i < 2048; i++)
 	{
-		list.push(random.next_int());
+		list.push((int)random.next_int());
 	}
 
 	sort::countingsort(&list, &sort::key_int_value);

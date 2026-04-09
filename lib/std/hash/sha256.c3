@@ -28,9 +28,9 @@ macro uint @sigma1(uint x) @local => x.rotr(17) ^ x.rotr(19) ^ (x >> 10);
 
 struct Sha256
 {
-	uint[8] state @align(usz.sizeof);
+	uint[8] state @align(sz.sizeof);
 	char[BLOCK_SIZE] buffer @align(ulong.sizeof);   // must align along bitcount sizeof - see `final`
-	ulong bitcount;
+	long bitcount;
 }
 
 <*
@@ -59,13 +59,13 @@ fn void Sha256.init(&self) => *self = {
 *>
 fn void Sha256.update(&self, char[] data)
 {
-	uint buffer_pos = (uint)(self.bitcount >> 3) % BLOCK_SIZE;
-	self.bitcount += (ulong)data.len << 3; // always record ingested bits count immediately
+	int buffer_pos = (int)((self.bitcount >> 3) % BLOCK_SIZE);
+	self.bitcount += (long)data.len << 3; // always record ingested bits count immediately
 
 	// Get the buffer position back to 0 if we're midway through consuming some data.
 	if (buffer_pos > 0 && buffer_pos < BLOCK_SIZE)
 	{
-		usz len = min(BLOCK_SIZE - buffer_pos, data.len);
+		sz len = min(BLOCK_SIZE - buffer_pos, data.len);
 		self.buffer[buffer_pos:len] = data[:len];
 		data = data[len..];
 		if (buffer_pos + len == BLOCK_SIZE) _transform(self);
@@ -73,7 +73,7 @@ fn void Sha256.update(&self, char[] data)
 
 	// When the data pointer is aligned, we can disregard unaligned loading in the `transform` macro.
 	//   We do this here from the outer call to reduce the expense of checking alignment on every single block.
-	if (0 == (usz)data.ptr % usz.sizeof)
+	if (0 == (sz)data.ptr % sz.sizeof)
 	{
 		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) _transform(self, (uint*)data.ptr);
 	}
@@ -93,7 +93,7 @@ fn void Sha256.update(&self, char[] data)
 fn char[HASH_SIZE] Sha256.final(&self)
 {
 	char[HASH_SIZE] hash @align(uint.sizeof);
-	ulong i = (self.bitcount / 8) % BLOCK_SIZE;
+	long i = (self.bitcount / 8) % BLOCK_SIZE;
 
 	// Append 0x80 to the buffer
 	self.buffer[i++] = 0x80;
@@ -109,7 +109,7 @@ fn char[HASH_SIZE] Sha256.final(&self)
 	self.buffer[i..(BLOCK_SIZE - 8)] = 0x00;
 
 	// Append the bitcount in big-endian format
-	*(ulong*)(&self.buffer[BLOCK_SIZE - 8]) = env::BIG_ENDIAN ??? self.bitcount : bswap(self.bitcount);
+	*(long*)(&self.buffer[BLOCK_SIZE - 8]) = env::BIG_ENDIAN ??? self.bitcount : bswap(self.bitcount);
 
 	_transform(self);
 
@@ -150,7 +150,7 @@ macro _do_transform(Sha256* self, uint* incoming = null, bool $aligned = true) @
 	g = self.state[6];
 	h = self.state[7];
 
-	$for usz $i = 0; $i < 64; $i++:
+	$for sz $i = 0; $i < 64; $i++:
 		t1 = h + @_sigma1(e) + @ch(e, f, g) + K[$i] + m[$i];
 		t2 = @_sigma0(a) + @maj(a, b, c);
 		h = g;

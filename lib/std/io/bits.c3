@@ -4,7 +4,7 @@ struct BitReader
 {
 	InStream reader;
 	uint bits;
-	uint len;
+	int len;
 }
 
 fn void BitReader.init(&self, InStream byte_reader)
@@ -18,10 +18,10 @@ fn void BitReader.clear(&self) @inline
 }
 
 <*
- @require nbits <= 8
- @require self.len + nbits <= uint.sizeof * 8
+ @require nbits <= 8 && nbits > 0
+ @require self.len + (sz)nbits <= uint.sizeof * 8
 *>
-fn char? BitReader.read_bits(&self, uint nbits)
+fn char? BitReader.read_bits(&self, int nbits)
 {
 	uint bits = self.bits;
 	if (self.len < nbits)
@@ -34,7 +34,7 @@ fn char? BitReader.read_bits(&self, uint nbits)
 		self.len += 8;
 	}
 	self.len -= nbits;
-	uint mask = (1 << nbits) - 1;
+	uint mask = (1u << nbits) - 1u;
 	return (char)((bits >> self.len) & mask);
 }
 
@@ -42,7 +42,7 @@ struct BitWriter
 {
 	OutStream writer;
 	uint bits;
-	uint len;
+	int len;
 }
 
 // c3 doesn't allow to shift more than bit width of a variable,
@@ -56,11 +56,11 @@ fn void BitWriter.init(&self, OutStream byte_writer)
 
 fn void? BitWriter.flush(&self)
 {
-	if (self.len == 0) return;
+	if (!self.len) return;
 
 	int padding = ($sizeof(self.bits) * 8 - self.len);
 	uint bits = self.bits << padding;
-	uint n = (self.len + 7) / 8;
+	sz n = ((sz)self.len + 7) / 8;
 	char[4] buffer;
 	bitorder::write(bits, &buffer, UIntBE);
 	io::write_all(self.writer, buffer[:n])!;
@@ -68,15 +68,15 @@ fn void? BitWriter.flush(&self)
 }
 
 <*
- @require nbits <= 32
+ @require nbits <= 32 && nbits >= 0
 *>
-fn void? BitWriter.write_bits(&self, uint bits, uint nbits)
+fn void? BitWriter.write_bits(&self, uint bits, int nbits)
 {
-	if (nbits == 0) return;
+	if (!nbits) return;
 	while (self.len + nbits > WRITER_BITS)
 	{
-		uint to_push = WRITER_BITS - self.len;
-		uint bits_to_push = (bits >> (nbits - to_push)) & ((1 << to_push) - 1);
+		int to_push = WRITER_BITS - self.len;
+		uint bits_to_push = (bits >> (nbits - to_push)) & ((1u << to_push) - 1u);
 
 		self.bits <<= to_push;
 		self.bits |= bits_to_push;
@@ -86,9 +86,9 @@ fn void? BitWriter.write_bits(&self, uint bits, uint nbits)
 		self.flush()!;
 	}
 
-	if (nbits == 0) return;
+	if (!nbits) return;
 
 	self.bits <<= nbits;
-	self.bits |= bits & ((1 << nbits) - 1);
+	self.bits |= bits & ((1u << nbits) - 1u);
 	self.len += nbits;
 }

@@ -784,7 +784,7 @@ void sema_analysis_pass_decls(Module *module)
 		{
 			sema_analyse_decl(&context, unit->main_function);
 		}
-		sema_analyse_decls(&context, unit->generic_defines);
+		sema_analyse_decls(&context, unit->aliases);
 		FOREACH(TypeInfo *, info, unit->check_type_variable_array)
 		{
 			sema_check_type_variable_array(&context, info);

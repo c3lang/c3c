@@ -4,8 +4,8 @@ import libc;
 
 struct VarString
 {
-    usz len;
-    usz capacity;
+    sz len;
+    sz capacity;
     char* ptr;
 }
 

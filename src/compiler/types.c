@@ -13,7 +13,7 @@ static struct
 	Type u0, u1, i8, i16, i32, i64, i128;
 	Type u8, u16, u32, u64, u128;
 	Type bf16, f16, f32, f64, f128;
-	Type usz, isz, uptr, iptr;
+	Type usz, sz, uptr, iptr;
 	Type string;
 	Type voidstar, typeid, fault, member, typeinfo, untyped_list;
 	Type any, wildcard;
@@ -36,7 +36,7 @@ Type *type_int = &t.i32;
 Type *type_long = &t.i64;
 Type *type_i128 = &t.i128;
 Type *type_iptr = &t.iptr;
-Type *type_isz = &t.isz;
+Type *type_sz = &t.sz;
 Type *type_char = &t.u8;
 Type *type_ushort = &t.u16;
 Type *type_uint = &t.u32;
@@ -452,10 +452,10 @@ TypeSize type_size(Type *type)
 			UNREACHABLE
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
-			return type->size = t.iptr.canonical->builtin.bytesize * 2;
+			return type->size = t.uptr.canonical->builtin.bytesize * 2;
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
-			return type->size = t.iptr.canonical->builtin.bytesize;
+			return type->size = t.uptr.canonical->builtin.bytesize;
 		case VECTORS:
 		case TYPE_ARRAY:
 			return type->size = type_size(type->array.base) * type->array.len;
@@ -513,6 +513,44 @@ bool type_is_int128(Type *type)
 {
 	TypeKind kind = type->canonical->type_kind;
 	return kind == TYPE_U128 || kind == TYPE_I128;
+}
+
+Type *type_is_must_init(Type *type)
+{
+	if (!type) return NULL;
+	RETRY:
+	type = type->canonical;
+	switch (type->type_kind)
+	{
+		case TYPE_TYPEDEF:
+			if (type->decl->attr_mustinit) return type;
+			return NULL;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+		case TYPE_ARRAY:
+		case TYPE_SLICE:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case ALL_VECTORS:
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_BITSTRUCT:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		{
+			Decl *decl = type->decl;
+			if (decl->attr_mustinit) return type;
+			FOREACH(Decl *, member, decl->strukt.members)
+			{
+				Type *type_inner = type_is_must_init(member->type);
+				if (type_inner) return type_inner;
+			}
+			return NULL;
+		}
+		default:
+			return NULL;
+	}
 }
 
 bool type_is_abi_aggregate(Type *type)
@@ -842,7 +880,7 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 		case TYPE_ANY:
 		case TYPE_POINTER:
 		case TYPE_TYPEID:
-			return t.iptr.canonical->builtin.abi_alignment;
+			return t.uptr.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -1470,6 +1508,9 @@ static inline void type_create_float(const char *name, Type *type, TypeKind kind
 	type_init(name, type, kind, actual_bits, compiler.platform.floats[bits]);
 }
 
+/*
+ * Assume names are already interned.
+ */
 Type *type_create_struct(const char *name, Type **types, const char **names, int count)
 {
 	Decl *decl = decl_new_with_type(symtab_preset(name, TOKEN_TYPE_IDENT), 0, DECL_STRUCT);
@@ -1480,7 +1521,7 @@ Type *type_create_struct(const char *name, Type **types, const char **names, int
 	for (int i = 0; i < count; i++)
 	{
 		Type *member_type = types[i];
-		Decl *member = decl_new_var(symtab_preset(names[i], TOKEN_IDENT), 0, type_info_new_base(member_type, 0), VARDECL_MEMBER);
+		Decl *member = decl_new_var(names[i], 0, type_info_new_base(member_type, 0), VARDECL_MEMBER);
 		member->unit = compiler.context.core_unit;
 		member->type = member_type;
 		member->resolve_status = RESOLVE_DONE;
@@ -1498,6 +1539,7 @@ Type *type_create_struct(const char *name, Type **types, const char **names, int
 	global_context_add_decl(decl);
 	return decl->type;
 }
+
 void type_setup(PlatformTarget *target)
 {
 	max_alignment_vector = (AlignSize)target->align_max_vector;
@@ -1536,7 +1578,7 @@ void type_setup(PlatformTarget *target)
 	type_create("any", &t.any, TYPE_ANY, target->width_pointer * 2, target->align_pointer.align, target->align_pointer.pref_align);
 
 	type_create_alias("usz", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
-	type_create_alias("isz", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
+	type_create_alias("sz", &t.sz, type_int_signed_by_bitsize(target->width_pointer));
 	type_create_alias("uptr", &t.uptr, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("iptr", &t.iptr, type_int_signed_by_bitsize(target->width_pointer));
 
@@ -1560,7 +1602,7 @@ void type_setup(PlatformTarget *target)
 	global_context_add_decl(string_decl);
 
 	Type* types[2] = { type_string, type_typeid };
-	const char* names[2] = { "name", "type" };
+	const char* names[2] = { kw_name, kw_type };
 	type_reflected_param = type_create_struct("ReflectedParam", types, names, 2);
 }
 
@@ -1711,8 +1753,8 @@ Type *type_from_token(TokenType type)
 			return type_int;
 		case TOKEN_IPTR:
 			return type_iptr;
-		case TOKEN_ISZ:
-			return type_isz;
+		case TOKEN_SZ:
+			return type_sz;
 		case TOKEN_LONG:
 			return type_long;
 		case TOKEN_SHORT:
@@ -1975,8 +2017,8 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 	{
 		if (type_kind_is_signed(kind))
 		{
-			// 5a. Signed + Unsigned -> Signed
-			return bit_size >= other_bit_size ? num_type : type_int_signed_by_bitsize(other_bit_size);
+			// 5a. C signed/unsigned promotion rules
+			return bit_size > other_bit_size ? num_type : other_num;
 		}
 		// 5b. Unsigned + Unsigned -> return other_num which is the bigger due to ordering.
 		return other_num;
@@ -2243,11 +2285,6 @@ RETRY_DISTINCT:
 			// distinct + any other type => no
 			return NULL;
 		case TYPE_ENUM:
-			// Note that the int case is already handled
-			if (type->decl->is_substruct)
-			{
-				return type_find_max_type(type_flat_distinct_enum_inline(type), other, first, second);
-			}
 			return NULL;
 		case TYPE_FUNC_RAW:
 			UNREACHABLE

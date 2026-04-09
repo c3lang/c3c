@@ -46,8 +46,8 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %0 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 8, %0
-  br i1 %gt, label %loop.body, label %loop.exit
+  %lt = icmp slt i64 %0, 8
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
@@ -57,8 +57,8 @@ loop.body:                                        ; preds = %loop.cond
   %3 = load i32, ptr %i, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %3)
   %4 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %4, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %4, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
@@ -66,12 +66,12 @@ loop.exit:                                        ; preds = %loop.cond
 
 cond:                                             ; preds = %assign, %loop.exit
   %5 = phi i64 [ 0, %loop.exit ], [ %add, %assign ]
-  %lt = icmp slt i64 %5, 8
-  br i1 %lt, label %assign, label %exit
+  %lt6 = icmp slt i64 %5, 8
+  br i1 %lt6, label %assign, label %exit
 
 assign:                                           ; preds = %cond
-  %ptroffset6 = getelementptr inbounds [4 x i8], ptr %x, i64 %5
-  store i32 123, ptr %ptroffset6, align 4
+  %ptroffset7 = getelementptr inbounds [4 x i8], ptr %x, i64 %5
+  store i32 123, ptr %ptroffset7, align 4
   %add = add i64 %5, 1
   br label %cond
 

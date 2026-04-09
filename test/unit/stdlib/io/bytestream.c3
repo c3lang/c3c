@@ -9,7 +9,7 @@ fn void bytestream()
 	char[5] buffer;
 	assert('a' == s.read_byte()!!);
 	s.pushback_byte()!!;
-	usz len = s.read(&buffer)!!;
+	sz len = s.read(&buffer)!!;
 	assert((String)buffer[:len] == "abc");
 	ByteWriter w;
 	w.init(mem);
@@ -56,14 +56,14 @@ module std::io;
 struct TestReader (InStream)
 {
     char[] bytes;
-    usz index;
+    sz index;
 }
 
-fn usz? TestReader.read(&self, char[] bytes) @dynamic
+fn sz? TestReader.read(&self, char[] bytes) @dynamic
 {
-    usz left = self.bytes.len - self.index;
+    sz left = self.bytes.len - self.index;
     if (left == 0) return 0;
-    usz n = min(left, bytes.len);
+    sz n = min(left, bytes.len);
     mem::copy(bytes.ptr, &self.bytes[self.index], n);
     self.index += n;
     return n;

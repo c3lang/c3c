@@ -57,7 +57,7 @@ enum JsonTokenType @local
 
 struct JsonContext @local
 {
-	uint line;
+	int line;
 	InStream stream;
 	Allocator allocator;
 	JsonTokenType token;
@@ -386,7 +386,7 @@ fn JsonTokenType? lex_string(JsonContext* context)
 				{
 					c = read_next(context)!;
 					if (!c.is_xdigit()) return INVALID_ESCAPE_SEQUENCE~;
-					val = val << 4 + (c > '9' ? (c | 32) - 'a' + 10 : c - '0');
+					val = val << 4u + (c > '9' ? (c | 32u) - 'a' + 10u : c - '0');
 				}
 				context.last_string.append_char32(val);
 				continue;

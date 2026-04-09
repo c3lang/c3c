@@ -84,7 +84,7 @@ if.exit:                                          ; preds = %entry
 
 loop.cond:                                        ; preds = %if.exit6, %if.exit
   %6 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %6, %4
+  %lt = icmp slt i64 %6, %4
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
@@ -106,8 +106,8 @@ if.else:                                          ; preds = %loop.body
 
 if.exit6:                                         ; preds = %loop.body
   %15 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %15, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %15, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
@@ -128,7 +128,7 @@ expr_block.exit:                                  ; preds = %loop.exit, %if.else
 
 loop.cond11:                                      ; preds = %if.exit17, %expr_block.exit
   %17 = load i64, ptr %.anon10, align 8
-  %lt12 = icmp ult i64 %17, 2
+  %lt12 = icmp slt i64 %17, 2
   br i1 %lt12, label %loop.body13, label %loop.exit19
 
 loop.body13:                                      ; preds = %loop.cond11
@@ -148,8 +148,8 @@ if.else16:                                        ; preds = %loop.body13
 
 if.exit17:                                        ; preds = %loop.body13
   %24 = load i64, ptr %.anon10, align 8
-  %addnuw18 = add nuw i64 %24, 1
-  store i64 %addnuw18, ptr %.anon10, align 8
+  %addnsw18 = add nsw i64 %24, 1
+  store i64 %addnsw18, ptr %.anon10, align 8
   br label %loop.cond11
 
 loop.exit19:                                      ; preds = %loop.cond11
@@ -167,7 +167,7 @@ expr_block.exit20:                                ; preds = %loop.exit19, %if.el
 
 loop.cond24:                                      ; preds = %if.exit30, %expr_block.exit20
   %27 = load i64, ptr %.anon23, align 8
-  %lt25 = icmp ult i64 %27, 2
+  %lt25 = icmp slt i64 %27, 2
   br i1 %lt25, label %loop.body26, label %loop.exit32
 
 loop.body26:                                      ; preds = %loop.cond24
@@ -187,8 +187,8 @@ if.else29:                                        ; preds = %loop.body26
 
 if.exit30:                                        ; preds = %loop.body26
   %34 = load i64, ptr %.anon23, align 8
-  %addnuw31 = add nuw i64 %34, 1
-  store i64 %addnuw31, ptr %.anon23, align 8
+  %addnsw31 = add nsw i64 %34, 1
+  store i64 %addnsw31, ptr %.anon23, align 8
   br label %loop.cond24
 
 loop.exit32:                                      ; preds = %loop.cond24

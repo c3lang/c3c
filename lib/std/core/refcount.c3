@@ -20,27 +20,29 @@ fn Ref wrap(Type* ptr, Allocator allocator = mem)
 	return { .refcount = alloc::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
 }
 <*
- @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined(Type a = $vaexpr[0]) : "The first argument must be an initializer for the type"
-*>
-macro Ref new(..., Allocator allocator = mem)
-{
+ @param #init : "The optional initializer"
 
-	$switch:
-		$case OVERALIGNED && !$vacount:
-			Type* ptr = alloc::calloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
-		$case OVERALIGNED:
+ @require !$defined(#init) ||| $defined(Type a = #init) : "#init must be an initializer for the type"
+ @return "A pointer to data of type Type."
+*>
+macro Ref new(Allocator allocator, #init = ...) @nodiscard @safemacro
+{
+	$if $defined(#init):
+		$if OVERALIGNED:
 			Type* ptr = alloc::malloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
-			*ptr = $vaexpr[0];
-		$case !$vacount:
-			Type* ptr = alloc::calloc(allocator, Type.sizeof);
-		$default:
+			*ptr = #init;
+		$else
 			Type* ptr = alloc::malloc(allocator, Type.sizeof);
-			*ptr = $vaexpr[0];
-	$endswitch
-	return { .refcount = alloc::new(allocator, Atomic{int}),
-	         .ptr = ptr,
-	         .allocator = allocator };
+			*ptr = #init;
+		$endif
+	$else
+		$if OVERALIGNED:
+			Type* ptr = alloc::calloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
+		$else
+			Type* ptr = alloc::calloc(allocator, Type.sizeof);
+		$endif
+	$endif
+	return { .refcount = alloc::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
 }
 
 struct Ref

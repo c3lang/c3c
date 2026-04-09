@@ -60,7 +60,7 @@ fn void encode(char[] in, char *out)
 	}
 
 	// move back
-	usz last = in.len - 1;
+	sz last = in.len - 1;
 	// check the last and add padding
 	switch (last % 3)
 	{

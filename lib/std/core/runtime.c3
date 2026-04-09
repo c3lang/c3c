@@ -19,7 +19,7 @@ struct AnyRaw
 struct SliceRaw
 {
 	void* ptr;
-	usz len;
+	sz len;
 }
 
 macro @enum_lookup($Type, #value, value)

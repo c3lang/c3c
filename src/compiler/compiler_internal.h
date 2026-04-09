@@ -52,6 +52,7 @@ typedef uint16_t FileId;
 #define MAX_MODULE_PATH 63
 #define MAX_IDENTIFIER_LENGTH 127
 #define MAX_MACRO_RECURSION_DEPTH 64
+#define MAX_CONTRACT_DEPTH 20
 #define MEMCMP_INLINE_REGS 8
 #define UINT128_MAX ((Int128) { UINT64_MAX, UINT64_MAX })
 #define INT128_MAX ((Int128) { INT64_MAX, UINT64_MAX })
@@ -538,8 +539,6 @@ typedef struct
 	Decl** values;
 	Decl** parameters;
 	TypeInfo *type_info;
-	int16_t inline_index;
-	bool inline_value;
 } EnumDecl;
 
 struct Signature_
@@ -746,6 +745,7 @@ typedef struct Decl_
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_constinit : 1;
+	bool attr_mustinit : 1;
 	bool is_template : 1;
 	bool is_templated : 1;
 	bool is_method_checked : 1;
@@ -1755,7 +1755,7 @@ struct CompilationUnit_
 	bool test_by_default;
 	bool module_generated;
 	Attr **attr_links;
-	Decl **generic_defines;
+	Decl **aliases;
 	Decl **ct_asserts;
 	Decl **ct_echos;
 	Decl **ct_includes;
@@ -2040,7 +2040,7 @@ extern TypeInfo *poisoned_type_info;
 
 extern Type *type_bool, *type_void, *type_voidptr;
 extern Type *type_float16, *type_bfloat, *type_float, *type_double, *type_f128;
-extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
+extern Type *type_ichar, *type_short, *type_int, *type_long, *type_sz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
@@ -2085,6 +2085,7 @@ extern const char *kw_libc;
 extern const char *kw_main;
 extern const char *kw_mainstub;
 extern const char *kw_memcmp;
+extern const char *kw_name;
 extern const char *kw_nameof;
 extern const char *kw_offsetof;
 extern const char *kw_ordinal;
@@ -2688,6 +2689,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_aggregate(Type *type);
 bool type_is_int128(Type *type);
+Type *type_is_must_init(Type *type);
 
 Type *type_from_token(TokenType type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
@@ -2785,12 +2787,12 @@ INLINE Type *type_no_optional(Type *type)
 
 INLINE bool type_is_pointer_sized_or_more(Type *type)
 {
-	return type_is_integer(type) && type_size(type) >= type_size(type_iptr);
+	return type_is_integer(type) && type_size(type) >= type_size(type_uptr);
 }
 
 INLINE bool type_is_pointer_sized(Type *type)
 {
-	return type_is_integer(type) && type_size(type) == type_size(type_iptr);
+	return type_is_integer(type) && type_size(type) == type_size(type_uptr);
 }
 
 #define DECL_TYPE_KIND_REAL(k_, t_) \
@@ -3010,7 +3012,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		default:
 			return false;
 	}
-	return type_size(type_flat) <= type_size(type_iptr);
+	return type_size(type_flat) <= type_size(type_uptr);
 }
 
 INLINE bool type_is_pointer(Type *type)
@@ -3245,7 +3247,6 @@ static inline Type *type_base(Type *type)
 
 
 static const bool is_distinct_like[TYPE_LAST + 1] = {
-	[TYPE_ENUM] = true,
 	[TYPE_CONSTDEF] = true,
 	[TYPE_TYPEDEF] = true
 };
@@ -3304,11 +3305,6 @@ static inline Type *type_flatten_and_inline(Type *type)
 			case TYPE_CONSTDEF:
 				type = type->decl->enums.type_info->type;
 				continue;
-			case TYPE_ENUM:
-				decl = type->decl;
-				if (!decl->is_substruct) return type;
-				type = decl->enums.type_info->type;
-				continue;
 			default:
 				return type;
 		}
@@ -3329,11 +3325,6 @@ static inline Type *type_flat_distinct_enum_inline(Type *type)
 				type = decl->distinct->type;
 				continue;
 			case TYPE_CONSTDEF:
-				decl = type->decl;
-				if (!decl->is_substruct) return type;
-				type = decl->enums.type_info->type;
-				continue;
-			case TYPE_ENUM:
 				decl = type->decl;
 				if (!decl->is_substruct) return type;
 				type = decl->enums.type_info->type;
@@ -3364,6 +3355,10 @@ INLINE bool type_is_user_defined(Type *type)
 static inline DeclId type_find_generic(Type *type)
 {
 	Type *canonical = type->canonical;
+	while (type->type_kind == TYPE_POINTER)
+	{
+		type = type->pointer->canonical;
+	}
 	if (canonical != type && type_is_user_defined(canonical))
 	{
 		Decl *decl = canonical->decl;
@@ -3414,9 +3409,6 @@ static inline CanonicalType *type_distinct_inline(Type *type)
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_ENUM:
-				if (!type->decl->is_substruct) return type;
-				FALLTHROUGH;
 			case TYPE_CONSTDEF:
 				type = enum_inner_type(type);
 				break;

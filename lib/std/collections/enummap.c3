@@ -17,9 +17,9 @@ fn void EnumMap.init(&self, ValueType init_value)
 	}
 }
 
-fn usz? EnumMap.to_format(&self, Formatter* formatter) @dynamic
+fn sz? EnumMap.to_format(&self, Formatter* formatter) @dynamic
 {
-	usz n = formatter.print("{ ")!;
+	sz n = formatter.print("{ ")!;
 	foreach (i, &value : self.values)
 	{
 		if (i != 0) formatter.print(", ")!;
@@ -33,7 +33,7 @@ fn usz? EnumMap.to_format(&self, Formatter* formatter) @dynamic
  @return "The total size of this map, which is the same as the number of enum values"
  @pure
 *>
-fn usz EnumMap.len(&self) @operator(len) @inline
+fn sz EnumMap.len(&self) @operator(len) @inline
 {
 	return self.values.len;
 }

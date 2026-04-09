@@ -7,12 +7,12 @@ const PROT_READ     = 0x01;    // pages can be read
 const PROT_WRITE    = 0x02;    // pages can be written
 const PROT_EXEC     = 0x04;    // pages can be executed
 
-const MAP_SHARED    = 0x0001;  // share changes
-const MAP_PRIVATE   = 0x0002;  // changes are private
+const CInt MAP_SHARED    = 0x0001;  // share changes
+const CInt MAP_PRIVATE   = 0x0002;  // changes are private
 
-const MAP_FILE       = 0x0000; // map from file (default)
+const CInt MAP_FILE       = 0x0000; // map from file (default)
 
-const MAP_ANONYMOUS  =  env::LINUX || env::ANDROID ??? 0x20 : 0x1000; // allocated from memory, swap space
+const CInt MAP_ANONYMOUS  =  env::LINUX || env::ANDROID ??? 0x20 : 0x1000; // allocated from memory, swap space
 
 const void* MAP_FAILED = (void *)(uptr)-1; // mmap failed
 const MADV_NORMAL     = 0; // no further special treatment

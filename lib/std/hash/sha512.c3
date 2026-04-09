@@ -17,7 +17,7 @@ const HASH_SIZE = 64;
 
 struct Sha512
 {
-	ulong               length;
+	long                length;
 	ulong[8]            hash_state;
 	char[BLOCK_SIZE]    buffer;
 }
@@ -137,22 +137,20 @@ fn void Sha512.init(&self)
 fn void Sha512.update(&self, char[] data)
 {
 	char* p = data.ptr;
-	ulong len = data.len;
-	ulong l;
-	ulong r = self.length % 128;
+	long len = data.len;
+	long r = self.length % 128;
 
 	self.length += len;
 
 	if (r)
 	{
-		if (len < (128 - r))
+		if (len < 128 - r)
 		{
-			for (l = 0; l < len; ++l) self.buffer[r+l] = p[l];
-
+			for (long l = 0; l < len; l++) self.buffer[r+l] = p[l];
 			return;
 		}
 
-		for (l = 0; l < 128 - r; ++l) self.buffer[r+l] = p[l];
+		for (long l = 0; l < 128 - r; l++) self.buffer[r+l] = p[l];
 
 		len -= (128 - r);
 		p = &p[128 - r];
@@ -161,8 +159,7 @@ fn void Sha512.update(&self, char[] data)
 	}
 
 	for (; len >= 128; len -= 128, p = &p[128]) sha512_transform(&self.hash_state, p);
-
-	for (l = 0; l < len; ++l) self.buffer[l] = p[l];
+	for (long l = 0; l < len; ++l) self.buffer[l] = p[l];
 }
 
 
@@ -170,21 +167,20 @@ fn char[HASH_SIZE] Sha512.final(&self)
 {
 	char[HASH_SIZE] hash;
 
-	int i;
-	ulong r = self.length % 128;
+	int r = (int)(self.length % 128);
 
 	self.buffer[r++] = 0x80;
 
 	if (r > 112)
 	{
-		for (i = 0; i < 128 - r; ++i) self.buffer[r+i] = 0;
+		for (int i = 0; i < 128 - r; i++) self.buffer[r+i] = 0;
 
 		r = 0;
 
 		sha512_transform(&self.hash_state, &self.buffer);
 	}
 
-	for (i = 0; i < 120 - r; ++i) self.buffer[r+i] = 0;
+	for (int i = 0; i < 120 - r; i++) self.buffer[r + i] = 0;
 
 	self.length *= 8;
 
@@ -199,7 +195,7 @@ fn char[HASH_SIZE] Sha512.final(&self)
 
 	sha512_transform(&self.hash_state, &self.buffer);
 
-	for (i = 0; i < 8; ++i)
+	for (int i = 0; i < 8; ++i)
 	{
 		hash[(8 * i)]     = (char)(self.hash_state[i] >> 56);
 		hash[(8 * i) + 1] = (char)(self.hash_state[i] >> 48);

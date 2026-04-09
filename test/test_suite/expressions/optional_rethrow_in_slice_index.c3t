@@ -16,7 +16,7 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "", String
 	String tmpl = template;
 	while (true)
 	{
-		usz? end = tmpl.index_of(tag_end);
+		sz? end = tmpl.index_of(tag_end);
 		if (catch end) return ;
 		tmpl = tmpl[end + io::EOF~!..];
 	}

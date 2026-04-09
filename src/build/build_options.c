@@ -139,6 +139,7 @@ static void usage(bool full)
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
 		print_opt("--print-large-functions", "Print functions with large compile size.");
 		print_opt("--warn-deadcode=<yes|no|error>", "Print warning on dead-code: yes, no, error.");
+		print_opt("--warn-recursivecontracts=<yes|no|error>", "Print warning on recursive contracts: yes, no, error.");
 		print_opt("--warn-methodvisibility=<yes|no|error>", "Print warning when methods have ignored visibility attributes.");
 		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
 		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
@@ -1014,6 +1015,11 @@ static void parse_option(BuildOptions *options)
 				options->warnings.dead_code = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
+			if ((argopt = match_argopt("warn-recursivecontracts")))
+			{
+				options->warnings.recursive_contracts = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
 			if ((argopt = match_argopt("warn-builtin")))
 			{
 				options->warnings.builtin = parse_opt_select(WarningLevel, argopt, warnings);
@@ -1780,6 +1786,35 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 			continue;
 		}
 		FAIL_WITH_ERR("Found the unexpected argument \"%s\".", current_arg);
+	}
+	switch (build_options.command)
+	{
+		case COMMAND_BUILD:
+		case COMMAND_RUN:
+		case COMMAND_CLEAN_RUN:
+		case COMMAND_CLEAN:
+		case COMMAND_DIST:
+		case COMMAND_BENCH:
+		case COMMAND_BENCHMARK:
+		case COMMAND_TEST:
+			build_options.is_project = true;
+			break;
+		case COMMAND_MISSING:
+		case COMMAND_COMPILE:
+		case COMMAND_COMPILE_ONLY:
+		case COMMAND_COMPILE_BENCHMARK:
+		case COMMAND_COMPILE_TEST:
+		case COMMAND_INIT:
+		case COMMAND_INIT_LIB:
+		case COMMAND_COMPILE_RUN:
+		case COMMAND_STATIC_LIB:
+		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_VENDOR_FETCH:
+		case COMMAND_UNIT_TEST:
+		case COMMAND_PRINT_SYNTAX:
+		case COMMAND_PROJECT:
+		case COMMAND_FETCH_SDK:
+			break;
 	}
 	if (build_options.command == COMMAND_MISSING)
 	{

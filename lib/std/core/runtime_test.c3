@@ -34,7 +34,7 @@ struct TestContext
 	TestFn teardown_fn;
 
 	char* error_buffer;
-	usz error_buffer_capacity;
+	sz error_buffer_capacity;
 	File fake_stdout;
 	struct stored
 	{
@@ -65,13 +65,13 @@ fn TestUnit[] test_collection_create(Allocator allocator)
 // Sort the tests by their name in ascending order.
 fn int cmp_test_unit(TestUnit a, TestUnit b)
 {
-	usz an = a.name.len;
-	usz bn = b.name.len;
+	sz an = a.name.len;
+	sz bn = b.name.len;
 	if (an > bn) @swap(a, b);
 	foreach (i, ac : a.name)
 	{
 		char bc = b.name[i];
-		if (ac != bc) return an > bn ? bc - ac : ac - bc;
+		if (ac != bc) return an > bn ? (int)bc - (int)ac : (int)ac - (int)bc;
 	}
 	return (int)(an - bn);
 }
@@ -100,11 +100,11 @@ fn void sig_segmentation_fault(CInt i, void*, void* context) @local @if(env::POS
 	panic_test("Segmentation fault", "Unknown", "Unknown", 1, posix::stack_instruction(context));
 }
 
-fn void test_panic(String message, String file, String function, uint line) @local
+fn void test_panic(String message, String file, String function, int line) @local
 {
 	panic_test(message, file, function, line);
 }
-fn void panic_test(String message, String file, String function, uint line, void* extra_trace = null) @local
+fn void panic_test(String message, String file, String function, int line, void* extra_trace = null) @local
 {
 	if (test_context.is_in_panic) return;
 	test_context.is_in_panic = true;
@@ -155,7 +155,7 @@ fn void unmute_output(bool has_error) @local
 	*stderr = test_context.stored.stderr;
 	*stdout = test_context.stored.stdout;
 
-	ulong log_size = test_context.fake_stdout.cursor()!!;
+	long log_size = test_context.fake_stdout.cursor()!!;
 	if (has_error)
 	{
 		io::printn(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
@@ -187,7 +187,7 @@ fn void unmute_output(bool has_error) @local
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
 	Thread main = thread::current();
-	usz max_name;
+	sz max_name;
 	if (!tests.len)
 	{
 		io::printn("There are no test units to run.");
@@ -285,7 +285,7 @@ $endif
 	int tests_skipped = 0;
 	int test_count = tests.len;
 	DString name = dstring::temp_with_capacity(64);
-	usz len = max_name + 9;
+	sz len = max_name + 9;
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");
 	name.append_repeat('-', len - len / 2);

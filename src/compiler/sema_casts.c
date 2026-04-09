@@ -689,16 +689,23 @@ bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len)
 		case TYPE_I16:
 		case TYPE_I32:
 		case TYPE_I64:
-			return cast_explicit(context, index, type_isz);
+			return cast_explicit(context, index, type_sz);
 		case TYPE_U8:
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
-			return cast_explicit(context, index, type_usz);
+			if (!cast_explicit(context, index, type_usz)) return false;
+			if (expr_is_const_int(index) && !int_fits(index->const_expr.ixx, type_sz->canonical->type_kind))
+			{
+				RETURN_SEMA_ERROR(index, "The %s is out of range: it cannot fit in a %s.", is_len ? "length" : "index", type_quoted_error_string(type_sz));
+			}
+			return cast_explicit(context, index, type_sz);
 		case TYPE_U128:
 			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
 		case TYPE_I128:
 			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to an int or long.");
+		case TYPE_ENUM:
+			return cast_explicit(context, index, type_sz);
 		default:
 			RETURN_SEMA_ERROR(index, "An integer value was expected here, but it is a value of type %s, which can't be implicitly converted into an integer %s.",
 			                  type_quoted_error_string(index->type), is_len ? "length" : "index");
@@ -712,10 +719,8 @@ Type *cast_numeric_arithmetic_promotion(Type *type)
 	switch (canonical->type_kind)
 	{
 		case ALL_SIGNED_INTS:
-			if (canonical->builtin.bitsize < compiler.platform.width_c_int) return type_cint;
-			return type;
 		case ALL_UNSIGNED_INTS:
-			if (canonical->builtin.bitsize < compiler.platform.width_c_int) return type_cuint;
+			if (canonical->builtin.bitsize < compiler.platform.width_c_int) return type_cint;
 			return type;
 		case TYPE_BF16:
 		case TYPE_F16:
@@ -879,7 +884,7 @@ static bool rule_int_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 		return true;
 	}
 
-	if (type_size(cc->from) < type_size(type_iptr))
+	if (type_size(cc->from) < type_size(type_uptr))
 	{
 		if (is_silent) return false;
 		if (is_explicit)
@@ -1253,7 +1258,6 @@ RETRY:;
 		case DECL_STRUCT:
 			inner = decl->strukt.members[0]->type->canonical;
 			break;
-		case DECL_ENUM:
 		case DECL_CONSTDEF:
 			// Could be made to work.
 			return false;
@@ -1348,7 +1352,7 @@ static bool rule_int_to_float(CastContext *cc, bool is_explicit, bool is_silent)
 
 INLINE bool expr_is_pointer_diff(Expr *expr)
 {
-	if (expr->type != type_isz) return false;
+	if (expr->type != type_sz) return false;
 	if (expr->expr_kind != EXPR_BINARY) return false;
 	if (expr->binary_expr.operator != BINARYOP_SUB) return false;
 	return type_is_pointer(exprptr(expr->binary_expr.left)->type) && type_is_pointer(exprptr(expr->binary_expr.right)->type);
@@ -1362,10 +1366,22 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 	ByteSize from_size = type_size(cc->from);
 
 	Expr *expr = cc->expr;
+	bool is_const = sema_cast_const(expr) && expr_is_const_number(expr);
+
 	// If widening, require simple.
 	if (to_size > from_size)
 	{
-		if (expr_is_simple(cc->expr, type_is_float(cc->to))) return true;
+		if (expr_is_simple(cc->expr, type_is_float(cc->to)))
+		{
+			// Do we have an unsigned <-> signed conversion and it's not constant?
+			if (!is_const && type_is_integer(cc->to) && type_is_integer(cc->from) && type_is_signed(cc->to) != type_is_signed(cc->from))
+			{
+				// Prevent cast int -> ulong
+				if (type_is_unsigned(cc->to)) return sema_cast_error(cc, true, is_silent);
+			}
+			return true;
+		}
+
 		if (is_silent) return false;
 		{
 			RETURN_CAST_ERROR(expr, "This conversion requires an explicit cast to %s, because the widening of the expression may be done in more than one way.",
@@ -1374,8 +1390,9 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		return false;
 	}
 
+
 	// If const, check in range.
-	if (sema_cast_const(expr) && expr_is_const_number(expr) && expr_const_will_overflow(&expr->const_expr, cc->to->type_kind))
+	if (is_const && expr_const_will_overflow(&expr->const_expr, cc->to->type_kind))
 	{
 		if (!is_silent)
 		{
@@ -1388,9 +1405,6 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		}
 		return false;
 	}
-
-	// Allow int <-> uint
-	if (to_size == from_size) return true;
 
 	// Check if narrowing works
 	Expr *problem = recursive_may_narrow(expr, cc->to);
@@ -1658,12 +1672,7 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 		// Explicit just flattens and tries again.
 		return cast_is_allowed(cc, is_explicit, is_silent);
 	}
-	if (!enum_decl->is_substruct)
-	{
-		return sema_cast_error(cc, false, is_silent);
-	}
-	cast_context_set_from(cc, inner->canonical);
-	return cast_is_allowed(cc, is_explicit, is_silent);
+	return sema_cast_error(cc, false, is_silent);
 }
 
 static bool rule_bits_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
@@ -2287,8 +2296,8 @@ static void cast_slice_to_bool(Expr *expr, Type *type)
 	}
 	Expr *inner = expr_copy(expr);
 	Expr *len = expr_copy(expr);
-	expr_rewrite_slice_len(len, inner, type_usz);
-	expr_rewrite_to_binary(expr, len, expr_new_const_int(expr->loc, type_usz, 0), BINARYOP_NE);
+	expr_rewrite_slice_len(len, inner, type_sz);
+	expr_rewrite_to_binary(expr, len, expr_new_const_int(expr->loc, type_sz, 0), BINARYOP_NE);
 	expr->type = type;
 }
 

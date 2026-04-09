@@ -25,9 +25,9 @@ fn TeeReader* TeeReader.init(&self, InStream r, OutStream w)
 	return self;
 }
 
-fn usz? TeeReader.read(&self, char[] bytes) @dynamic
+fn sz? TeeReader.read(&self, char[] bytes) @dynamic
 {
-	usz nr, nw;
+	sz nr, nw;
 	nr = self.r.read(bytes)!;
 	nw = self.w.write(bytes[:nr])!;
 	if (nr != nw) return GENERAL_ERROR~;

@@ -6,8 +6,8 @@ struct CpuId
 }
 fn CpuId x86_cpuid(uint eax, uint ecx = 0)
 {
-	int edx;
-	int ebx;
+	uint edx;
+	uint ebx;
 	asm
 	{
 		movl $eax, eax;

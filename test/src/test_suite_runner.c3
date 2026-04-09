@@ -22,13 +22,13 @@ struct TestRunnerContext
 	Pool pool;
 	Mutex print_mutex;
 	Atomic{int} thread_id_counter;
-	usz total_test_files;
+	sz total_test_files;
 }
 
 struct TestOutput
 {
 	DString buffer;
-	usz index;
+	sz index;
 	bool has_output;
 }
 
@@ -258,7 +258,7 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 fn bool parse_trailing_directive(int line_number, String line, RunSettings* settings, bool is_single)
 {
 	if (settings.current_file.is_output) return true;
-	usz index = line.rindex_of("// #")!! + 4;
+	sz index = line.rindex_of("// #")!! + 4;
 	String clean_line = line[index..].trim();
 	
 	Splitter s = clean_line.tokenize(":");
@@ -349,7 +349,7 @@ fn int get_terminal_width()
 const String CLEAR_LINE = "\e[2K";
 const String MOVETO_COLUMN_ONE = "\e[1G"; 
 
-fn void update_status(usz index, Path filename, TestOutput* output)
+fn void update_status(sz index, Path filename, TestOutput* output)
 {
 	if (context.no_terminal)
 	{
@@ -363,14 +363,14 @@ fn void update_status(usz index, Path filename, TestOutput* output)
 		bool has_entry = filename.str_view().len != 0;
 		const String[8] PARTS = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
 		int progress_bar_width = 25;
-		usz total = context.total_test_files;
-		usz finished = context.test_count.load();
+		sz total = context.total_test_files;
+		sz finished = context.test_count.load();
 		if (!has_entry && total != finished) return;
 		double fraction = total > 0.0 ? finished / (double)total : 0;
 		int full_width = (int)math::floor(fraction * progress_bar_width);
 		int remainder = (int)math::floor(8 * (fraction * progress_bar_width % 1.0));
 		io::printf("%s%s%sTest progress: [", Ansi.RESET, CLEAR_LINE, MOVETO_COLUMN_ONE);
-		usz failed = context.failure_count.load();
+		sz failed = context.failure_count.load();
 		io::print(failed ? Ansi.RED : Ansi.GREEN);
 		for (int i = 0; i < full_width; i++) io::print("█");
 		if (full_width != progress_bar_width) io::print(PARTS[remainder]);
@@ -381,7 +381,7 @@ fn void update_status(usz index, Path filename, TestOutput* output)
 	};
 }
 
-fn void print_failure_box(usz index, Path file_path, String error_output)
+fn void print_failure_box(sz index, Path file_path, String error_output)
 {
 	Mutex.@in_lock(&context.print_mutex)
 	{
@@ -425,7 +425,7 @@ fn void? collect_files(Path file_path, List{Path}* files)
 }
 
 /* ----------------------- Core test logic ------------------------------ */
-fn bool test_file(Path file_path, TestOutput* output, usz index)
+fn bool test_file(Path file_path, TestOutput* output, sz index)
 {
 	if (global_should_quit.load()) return false;
 	context.test_count.add(1);
@@ -656,7 +656,7 @@ fn void test_file_threaded(any[] data)
 	{
 		Path file_path = *anycast(data[0], Path)!!;
 		TestOutput* output = *anycast(data[1], TestOutput*)!!;
-		usz index = *anycast(data[2], usz)!!;
+		sz index = *anycast(data[2], sz)!!;
 
 		if (global_should_quit.load()) return;
 
@@ -713,7 +713,7 @@ fn int main(String[] args)
 	}
 
 	context.only_skipped = false;
-	usz num_threads = os::num_cpu();
+	sz num_threads = os::num_cpu();
 
 	for (int i = 3; i < args.len; i++)
 	{
@@ -775,7 +775,7 @@ fn int main(String[] args)
 	context.total_test_files = files_to_test.len();
 
 	TestOutput[] test_outputs = mem::new_array(TestOutput, context.total_test_files);
-	for (usz i = 0; i < context.total_test_files; i++)
+	for (sz i = 0; i < context.total_test_files; i++)
 	{
 		test_outputs[i].index = i;
 		test_outputs[i].buffer.init(mem);
@@ -793,7 +793,7 @@ fn int main(String[] args)
 	context.pool.init(num_threads, context.total_test_files)!!;
 	defer context.pool.stop_and_destroy();
 
-	for (usz i = 0; i < context.total_test_files; i++)
+	for (sz i = 0; i < context.total_test_files; i++)
 	{
 		context.pool.push(&test_file_threaded,
 			files_to_test[i],
@@ -801,7 +801,7 @@ fn int main(String[] args)
 			i)!!;
 	}
 
-	while (context.success_count.load() + context.failure_count.load() + context.skip_count.load() < context.total_test_files)
+	while ((sz)context.success_count.load() + context.failure_count.load() + context.skip_count.load() < context.total_test_files)
 	{
 		if (global_should_quit.load())
 		{

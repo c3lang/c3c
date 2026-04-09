@@ -1,0 +1,36 @@
+// #target: macos-x64
+module test;
+import std;
+
+enum Foo
+{
+	ABC,
+	DEF,
+	GHJ,
+	BAR
+}
+
+fn int main()
+{
+	int[Foo.len] x;
+	x[Foo.BAR] = 4;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca [4 x i32], align 16
+  store i32 0, ptr %x, align 16
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  store i32 0, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  store i32 0, ptr %ptradd1, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %x, i64 12
+  store i32 0, ptr %ptradd2, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %x, i64 12
+  store i32 4, ptr %ptradd3, align 4
+  ret i32 0
+}
+

@@ -44,10 +44,10 @@ panic:                                            ; preds = %entry
 panic1:                                           ; preds = %checkok
   store i64 4, ptr %taddr, align 8
   %8 = insertvalue %any undef, ptr %taddr, 0
-  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   store i64 %3, ptr %taddr2, align 8
   %10 = insertvalue %any undef, ptr %taddr2, 0
-  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   store %any %9, ptr %varargslots, align 16
   %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
   store %any %11, ptr %ptradd, align 16

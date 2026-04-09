@@ -46,8 +46,8 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %0 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 1000, %0
-  br i1 %gt, label %loop.body, label %loop.exit
+  %lt = icmp slt i64 %0, 1000
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
@@ -58,8 +58,8 @@ loop.body:                                        ; preds = %loop.cond
   %mul = mul i32 %3, 3
   store i32 %mul, ptr %2, align 4
   %4 = load i64, ptr %.anon, align 8
-  %addnuw = add nuw i64 %4, 1
-  store i64 %addnuw, ptr %.anon, align 8
+  %addnsw = add nsw i64 %4, 1
+  store i64 %addnsw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

@@ -26,10 +26,11 @@ macro bool contains(array, element)
  @param [in] element
  @require $kindof(array) == SLICE || $kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
+ @ensure return >= 0
  @return "the first index of the element"
  @return? NOT_FOUND
 *>
-macro usz? index_of(array, element)
+macro sz? index_of(array, element)
 {
 	foreach (i, &e : array)
 	{
@@ -66,10 +67,11 @@ macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 
  @param [in] array
  @param [in] element
+ @ensure return >= 0
  @return "the last index of the element"
  @return? NOT_FOUND
 *>
-macro usz? rindex_of(array, element)
+macro sz? rindex_of(array, element)
 {
 	foreach_r (i, &e : array)
 	{
@@ -192,7 +194,7 @@ macro @product(array, identity_value = 1)
 
 <*
  Applies a given predicate function to each element of an array and returns a new
- array of `usz` values, each element representing an index within the original array
+ array of `sz` values, each element representing an index within the original array
  where the predicate returned `true`.
 
  The `.len` value of the returned array can also be used to quickly identify how many
@@ -214,10 +216,10 @@ macro @product(array, identity_value = 1)
  @require @is_valid_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
-macro usz[] @indices_of(Allocator allocator, array, #predicate)
+macro sz[] @indices_of(Allocator allocator, array, #predicate)
 {
-	usz[] results = alloc::new_array(allocator, usz, lengthof(array));
-	usz matches;
+	sz[] results = alloc::new_array(allocator, sz, lengthof(array));
+	sz matches;
 
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
 	foreach (index, element : array)
@@ -237,7 +239,7 @@ macro usz[] @indices_of(Allocator allocator, array, #predicate)
  @require @is_valid_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
-macro usz[] @tindices_of(array, #predicate)
+macro sz[] @tindices_of(array, #predicate)
 {
 	return @indices_of(tmem, array, #predicate);
 }
@@ -266,7 +268,7 @@ macro @filter(Allocator allocator, array, #predicate) @nodiscard
 {
 	var $InnerType = $typeof(array[0]);
 
-	usz[] matched_indices = @indices_of(allocator, array, #predicate);
+	sz[] matched_indices = @indices_of(allocator, array, #predicate);
 	defer alloc::free(allocator, matched_indices.ptr);   // can free this upon leaving this call
 
 	if (!matched_indices.len) return ($InnerType[]){};
@@ -367,7 +369,7 @@ macro odd(Allocator allocator, array)
 *>
 fn Type[] unlace_impl(Allocator allocator, Type[] array) <Type> @private
 {
-	usz new_len = array.len / 2 + (array.len % 2 == 0 ? 0 : 1);
+	sz new_len = array.len / 2 + (array.len % 2 == 0 ? 0 : 1);
 	if (new_len == 0) return (Type[]){};
 	Type[] new_array = alloc::new_array(allocator, Type, new_len);
 	foreach (x, &new : new_array) *new = types::implements_copy(Type) ??? array[x * 2].copy(allocator) : array[x * 2];
@@ -465,12 +467,12 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 		$Type = $typeof(#operation).returns;
 	$endif
 
-	usz left_len = lengthof(left);
-	usz right_len = lengthof(right);
+	sz left_len = lengthof(left);
+	sz right_len = lengthof(right);
 
 	$LeftType left_fill;
 	$RightType right_fill;
-	usz result_len = min(left_len, right_len);
+	sz result_len = min(left_len, right_len);
 	$if $defined(fill_with):
 		switch
 		{
@@ -576,12 +578,12 @@ module std::core::array @private;
 
 macro typeid @predicate_fn(#array) @const
 {
-	return $typeof(fn bool ($typeof(#array[0]) a, usz index = 0) => true).typeid;
+	return $typeof(fn bool ($typeof(#array[0]) a, sz index = 0) => true).typeid;
 }
 
 macro typeid @reduce_fn(#array, #identity) @const
 {
-	return @typeid(fn $typeof(#identity) ($typeof(#identity) i, $typeof(#array[0]) a, usz index = 0) => i);
+	return @typeid(fn $typeof(#identity) ($typeof(#identity) i, $typeof(#array[0]) a, sz index = 0) => i);
 }
 
 macro typeid @zip_into_fn(#left, #right) @const
@@ -611,8 +613,8 @@ macro bool @is_valid_fill(left, right, fill_with = ...)
 	$if !$defined(fill_with):
 		return true;
 	$else
-		usz left_len = lengthof(left);
-		usz right_len = lengthof(right);
+		sz left_len = lengthof(left);
+		sz right_len = lengthof(right);
 		if (left_len == right_len) return true;
 		return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
 	$endif

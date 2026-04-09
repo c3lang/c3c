@@ -313,8 +313,8 @@ const char *token_type_to_string(TokenType type)
 			return "ichar";
 		case TOKEN_CHAR:
 			return "char";
-		case TOKEN_ISZ:
-			return "isz";
+		case TOKEN_SZ:
+			return "sz";
 		case TOKEN_USZ:
 			return "usz";
 		case TOKEN_IPTR:

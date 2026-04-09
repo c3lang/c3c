@@ -2,9 +2,9 @@ module std::core::bitorder @test;
 
 fn void test_unaligned()
 {
-	usz file_size;
+	sz file_size;
 	char[64] response;
-	bitorder::write(file_size, response[9..], ULongLE);
+	bitorder::write((ulong)file_size, response[9..], ULongLE);
 }
 
 fn void test_read()

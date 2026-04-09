@@ -99,6 +99,7 @@ typedef struct
 	WarningLevel dead_code;
 	WarningLevel method_visibility;
 	WarningLevel builtin;
+	WarningLevel recursive_contracts;
 } Warnings;
 
 typedef enum
@@ -301,6 +302,7 @@ typedef struct BuildOptions_
 	uint32_t max_stack_object_size;
 	const char *cpu_flags;
 	uint32_t max_macro_iterations;
+	bool is_project;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;

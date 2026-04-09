@@ -1582,7 +1582,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	Decl *len = NULL;
 	Decl *index_function = NULL;
-	Type *index_type = type_usz;
+	Type *index_type = type_sz;
 	bool is_enum_iterator = false;
 	bool need_deref = false;
 	// Now we lower the foreach...
@@ -1746,7 +1746,7 @@ SKIP_OVERLOAD:;
 			case TYPE_SLICE:
 				if (!sema_analyse_expr_rvalue(context, enum_val)) return false;
 				len_call = expr_new_expr(EXPR_SLICE_LEN, enumerator);
-				expr_rewrite_slice_len(len_call, enum_val, type_isz);
+				expr_rewrite_slice_len(len_call, enum_val, type_sz);
 				break;
 			default:
 				UNREACHABLE
@@ -1772,7 +1772,7 @@ SKIP_OVERLOAD:;
 		if (!len_call)
 		{
 			// Create const len if missing.
-			len_call = expr_new_const_int(enumerator->loc, type_isz, array_len);
+			len_call = expr_new_const_int(enumerator->loc, type_sz, array_len);
 		}
 		if (is_enum_iterator)
 		{
@@ -1861,7 +1861,7 @@ SKIP_OVERLOAD:;
 		}
 		else
 		{
-			Expr *rhs = expr_new_const_int(enumerator->loc, type_isz, array_len);
+			Expr *rhs = expr_new_const_int(enumerator->loc, type_sz, array_len);
 			cond->binary_expr.right = exprid(rhs);
 		}
 
@@ -2530,12 +2530,6 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	bool is_enum_switch = false;
 	bool if_chain = true;
 	Decl **enum_values = NULL;
-	if (type_is_user_defined(switch_type) && switch_type->type_kind != TYPE_ENUM)
-	{
-		BoolErr res = sema_type_has_equality_overload(context, switch_type);
-		if (res == BOOL_ERR) return false;
-		if (res == BOOL_TRUE) goto FOUND;
-	}
 	if (type_is_comparable(switch_type))
 	{
 		Type *flat = type_flatten(switch_type);
@@ -2547,9 +2541,8 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	}
 	else
 	{
-		RETURN_SEMA_ERROR_AT(expr_loc, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
+		RETURN_SEMA_ERROR_AT(expr_loc, "You cannot switch over '%s'. Only types that natively support '==' may be used.", type_to_error_string(switch_type));
 	}
-FOUND:;
 	Ast *default_case = NULL;
 	ASSERT(context->active_scope.defer_start == context->active_scope.defer_last);
 

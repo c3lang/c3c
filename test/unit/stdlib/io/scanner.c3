@@ -59,7 +59,7 @@ fn void scanner_as_reader()
 	sc.scan(" ")!!;
 
 	char[16] res;
-	usz n = sc.read(&res)!!;
+	sz n = sc.read(&res)!!;
 	String str = (String)res[:n];
 
 	assert(str == "ipsum sit.", "got '%s'; want 'ipsum sit.'", str);

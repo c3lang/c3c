@@ -10,9 +10,9 @@ fn void main()
 	String s = "123.456";
 
 	Version v;
-	v.major = @read_int(s);
+	v.major = (uint)@read_int(s);
 	s = s[1..];
-	v.minor = @read_int(s);
+	v.minor = (uint)@read_int(s);
 
 	io::printfn("Version{.major = %d, .minor = %d}", v.major, v.minor);
 }
@@ -38,7 +38,7 @@ macro int @read_int(String #s)
 	char c;
 	while (i < s.len && (c = s[i]).is_digit())
 	{
-		res = (10 * res) + (c - '0');
+		res = (10 * res) + (int)(c - '0');
 		++i;
 	}
 	return res;

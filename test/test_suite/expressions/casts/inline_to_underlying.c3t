@@ -2,10 +2,6 @@
 module test;
 import std;
 typedef DistinctInt @constinit = inline int;
-enum Foo : inline int
-{
-	ABC,
-}
 constdef Bar : inline int
 {
 	HELLO = 1
@@ -16,12 +12,10 @@ fn int main()
 	DistinctInt b = 2;
 	int c = a + b;
 	c = a + Bar.HELLO;
-	c = a + Foo.ABC;
 	return 0;
 }
 
 /* #expect: test.ll
-
 
 define i32 @main() #0 {
 entry:
@@ -37,8 +31,5 @@ entry:
   %2 = load i32, ptr %a, align 4
   %add1 = add i32 %2, 1
   store i32 %add1, ptr %c, align 4
-  %3 = load i32, ptr %a, align 4
-  %add2 = add i32 %3, 0
-  store i32 %add2, ptr %c, align 4
   ret i32 0
 }

@@ -191,14 +191,14 @@ fn void equivalencies()
     char[poly1305::KEY_SIZE] key = x'2d773be37adb1e4d683bf0075e79c4ee037918535a7f99ccb7040fb5f5f43aea';
     char[TEST_ITERATIONS] plain = { [0..(TEST_ITERATIONS - 1)] = rand.next_byte() };
 
-    usz j = 0;
-    for (usz i = 2; i < TEST_ITERATIONS; ++i, j = 0)
+    sz j = 0;
+    for (sz i = 2; i < TEST_ITERATIONS; ++i, j = 0)
     {
         Poly1305 p @noinit;
         p.init(key);
         while (j < i)
         {
-            usz jump = max(1, min(rand.next_byte(), i - 1 - j));
+            sz jump = max(1, min(rand.next_byte(), i - 1 - j));
             p.update(plain[j:jump]);
             j += jump;
         }

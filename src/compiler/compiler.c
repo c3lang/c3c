@@ -28,7 +28,6 @@ Vmem sourceloc_arena;
 static double compiler_init_time;
 static double compiler_parsing_time;
 static double compiler_sema_time;
-static double compiler_exec_time;
 static double compiler_ir_gen_time;
 static double compiler_codegen_time;
 static double compiler_link_time;
@@ -53,9 +52,12 @@ void compiler_init(BuildOptions *build_options)
 		error_exit("Failed to change path to '%s'.", build_options->path);
 	}
 
-	FOREACH(const char *, dir, build_options->unchecked_directories)
+	if (!build_options->is_project)
 	{
-		(void)check_dir(dir);
+		FOREACH(const char *, dir, build_options->unchecked_directories)
+		{
+			(void)check_dir(dir);
+		}
 	}
 
 	compiler_init_time = -1;
@@ -154,7 +156,7 @@ void thread_compile_task_llvm(void *compile_data)
 #else 
 void thread_compile_task_llvm(void *compile_data)
 {
-    error_exit("LLVM backend not available.");
+	error_exit("LLVM backend not available.");
 }
 #endif 
 
@@ -300,7 +302,7 @@ static void free_arenas(void)
 }
 
 static int compile_cfiles(const char *cc, const char **files, const char *flags, const char **include_dirs,
-                          const char **out_files, const char *output_subdir)
+						  const char **out_files, const char *output_subdir)
 {
 	if (!cc) cc = default_c_compiler();
 	int total = 0;
@@ -477,7 +479,6 @@ void compiler_compile(void)
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	compiler_sema_time = bench_mark();
-	compiler_exec_time = compiler.exec_time;
 	Module **modules = compiler.context.module_list;
 	unsigned module_count = vec_size(modules);
 	if (module_count > MAX_MODULES)
@@ -553,9 +554,9 @@ void compiler_compile(void)
 			gen_contexts = llvm_gen(modules, module_count);
 			task = &thread_compile_task_llvm;
 #else 
-            error_exit("C3C compiled without LLVM!");
+			error_exit("C3C compiled without LLVM!");
 #endif
-            break;
+			break;
 		case BACKEND_TB:
 			gen_contexts = tilde_gen(modules, module_count);
 			task = &thread_compile_task_tb;
@@ -649,7 +650,7 @@ void compiler_compile(void)
 	if (cfiles)
 	{
 		int compiled = compile_cfiles(compiler.build.cc, compiler.build.csources,
-		                              compiler.build.cflags, compiler.build.cinclude_dirs, &obj_files[output_file_count], "tmp_c_compile");
+									  compiler.build.cflags, compiler.build.cinclude_dirs, &obj_files[output_file_count], "tmp_c_compile");
 		ASSERT(cfiles == compiled);
 		(void)compiled;
 	}
@@ -657,7 +658,7 @@ void compiler_compile(void)
 	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
 		obj_file_next += compile_cfiles(lib->cc ? lib->cc : compiler.build.cc, lib->csources,
-		                                lib->cflags, lib->cinclude_dirs, obj_file_next, lib->parent->provides);
+										lib->cflags, lib->cinclude_dirs, obj_file_next, lib->parent->provides);
 	}
 	for (unsigned i = 0; i < external_objfile_count; i++)
 	{
@@ -1323,7 +1324,7 @@ void execute_scripts(void)
 		StringSlice call = slice_next_token(&execs, ' ');
 		File *script;
 		if (call.len < 3 || call.ptr[call.len - 3] != '.' || call.ptr[call.len - 2] != 'c' ||
-		    call.ptr[call.len - 1] != '3')
+			call.ptr[call.len - 1] != '3')
 		{
 			char *res = execute_cmd(exec, false, NULL, 0);
 			if (compiler.build.silent) continue;
@@ -1579,15 +1580,15 @@ void compile()
 	setup_bool_define("PANIC_MSG", compiler.build.feature.panic_level != PANIC_OFF);
 	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
 #if LLVM_AVAILABLE
-    setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
+	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 #else 
-    setup_int_define("LLVM_VERSION", 0, type_int);
+	setup_int_define("LLVM_VERSION", 0, type_int);
 #endif
 
 	setup_string_define("VERSION", COMPILER_VERSION);
 	setup_bool_define("PRERELEASE", PRERELEASE);
 
-    setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
+	setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", compiler.build.testing);
 	setup_int_define("LANGUAGE_DEV_VERSION", 7, type_int);
@@ -1736,7 +1737,7 @@ const char *scratch_buffer_interned(void)
 const char *scratch_buffer_interned_as(TokenType* type)
 {
 	return symtab_add(scratch_buffer.str, scratch_buffer.len,
-	                  fnv1a(scratch_buffer.str, scratch_buffer.len), type);
+					  fnv1a(scratch_buffer.str, scratch_buffer.len), type);
 }
 
 void scratch_buffer_append_native_safe_path(const char *data, int len)

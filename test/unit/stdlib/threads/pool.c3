@@ -5,7 +5,7 @@ alias Pool = ThreadPool{4};
 
 fn void init_destroy() @test
 {
-	for (usz i = 0; i < 20; i++)
+	for (sz i = 0; i < 20; i++)
 	{
 		Pool pool;
 		pool.init()!!;
@@ -15,7 +15,7 @@ fn void init_destroy() @test
 
 fn void push_destroy() @test
 {
-	for FOO: (usz i = 0; i < 20; i++)
+	for FOO: (sz i = 0; i < 20; i++)
 	{
 		@atomic_store(x, 0);
 		int y = 20;
@@ -30,7 +30,7 @@ fn void push_destroy() @test
 
 fn void push_stop() @test
 {
-	for (usz i = 0; i < 20; i++)
+	for (sz i = 0; i < 20; i++)
 	{
 		@atomic_store(x, 0);
 		int y = 20;
@@ -48,7 +48,7 @@ fn void join() @test
 	Pool pool;
 	pool.init()!!;
 	defer pool.stop_and_destroy();
-	for (usz i = 0; i < 4; i++)
+	for (sz i = 0; i < 4; i++)
 	{
 		pool.push(&do_wait, (void*)i);
 	}
@@ -66,8 +66,8 @@ fn int do_work(void* arg)
 
 fn int do_wait(void* arg)
 {
-	usz value = (iptr)arg;
-	for (usz i = 0; i < value; i++) thread::sleep(time::ms(50));
+	sz value = (sz)(iptr)arg;
+	for (sz i = 0; i < value; i++) thread::sleep(time::ms(50));
 	@atomic_store(x, @atomic_load(x) + (int)value);
 	return 0;
 }

@@ -20,9 +20,9 @@ struct LinkedBlockingQueue
 	<* Last element in queue *>
 	QueueEntry* tail;
 	<* Current number of elements *>
-	usz count;
+	sz count;
 	<* Maximum capacity (0 for unbounded) *>
-	usz capacity;
+	sz capacity;
 	Mutex lock;
 	ConditionVariable not_empty;
 	ConditionVariable not_full;
@@ -34,7 +34,7 @@ struct LinkedBlockingQueue
  @param capacity : "Maximum capacity (0 for unbounded)"
  @require !self.is_initialized() : "Queue was already initialized"
 *>
-fn LinkedBlockingQueue* LinkedBlockingQueue.init(&self, Allocator allocator, usz capacity = 0)
+fn LinkedBlockingQueue* LinkedBlockingQueue.init(&self, Allocator allocator, sz capacity = 0)
 {
 	self.allocator = allocator;
 	self.capacity = capacity;
@@ -48,7 +48,7 @@ fn LinkedBlockingQueue* LinkedBlockingQueue.init(&self, Allocator allocator, usz
 	return self;
 }
 
-fn LinkedBlockingQueue* LinkedBlockingQueue.tinit(&self, usz capacity = 0)
+fn LinkedBlockingQueue* LinkedBlockingQueue.tinit(&self, sz capacity = 0)
 {
 	return self.init(tmem, capacity) @inline;
 }
@@ -235,7 +235,7 @@ fn Value? LinkedBlockingQueue.poll_timeout(&self, Duration timeout)
  @require self.is_initialized() : "Queue must be initialized"
  @return "Current size of the queue"
 *>
-fn usz LinkedBlockingQueue.size(&self)
+fn sz LinkedBlockingQueue.size(&self)
 {
 	self.lock.@in_lock()
 	{

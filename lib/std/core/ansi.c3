@@ -63,7 +63,7 @@ struct AnsiColor (Printable)
 	bool bg;
 }
 
-fn usz? AnsiColor.to_format(&self, Formatter* fmt) @dynamic
+fn sz? AnsiColor.to_format(&self, Formatter* fmt) @dynamic
 {
 	return fmt.printf("\e[%s8;2;%s;%s;%sm", self.bg ? 4 : 3, self.r, self.g, self.b);
 }

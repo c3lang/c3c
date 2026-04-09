@@ -23,8 +23,8 @@ alias InterfaceTest = fn bool(Type type, Type context);
 *>
 struct InterfaceList (Printable)
 {
-	usz size;
-	usz capacity;
+	sz size;
+	sz capacity;
 	Allocator allocator;
 	Type* entries;
 }
@@ -37,7 +37,7 @@ struct InterfaceList (Printable)
  @param [&inout] allocator : "The allocator to use"
  @param initial_capacity : "The initial capacity to reserve, defaults to 16"
 *>
-fn InterfaceList* InterfaceList.init(&self, Allocator allocator, usz initial_capacity = 16)
+fn InterfaceList* InterfaceList.init(&self, Allocator allocator, sz initial_capacity = 16)
 {
 	self.allocator = allocator;
 	self.size = 0;
@@ -59,7 +59,7 @@ fn InterfaceList* InterfaceList.init(&self, Allocator allocator, usz initial_cap
 
  @param initial_capacity : "The initial capacity to reserve"
 *>
-fn InterfaceList* InterfaceList.tinit(&self, usz initial_capacity = 16)
+fn InterfaceList* InterfaceList.tinit(&self, sz initial_capacity = 16)
 {
 	return self.init(tmem, initial_capacity) @inline;
 }
@@ -123,7 +123,7 @@ fn Type? InterfaceList.pop_retained(&self)
 *>
 fn void InterfaceList.clear(&self)
 {
-	for (usz i = 0; i < self.size; i++)
+	for (sz i = 0; i < self.size; i++)
 	{
 		self.free_element(self.entries[i]);
 	}
@@ -170,9 +170,9 @@ fn Type? InterfaceList.tcopy_pop_first(&self) => self.copy_pop_first(tmem);
  Remove the element at the particular index.
 
  @param index : "The index of the element to remove"
- @require index < self.size
+ @require index <= self.size && index >= 0 : "The index is out of bounds"
 *>
-fn void InterfaceList.remove_at(&self, usz index)
+fn void InterfaceList.remove_at(&self, sz index)
 {
 	if (!--self.size || index == self.size) return;
 	self.free_element(self.entries[index]);
@@ -200,9 +200,9 @@ fn void InterfaceList.add_all(&self, InterfaceList* other_list)
 fn void InterfaceList.reverse(&self)
 {
 	if (self.size < 2) return;
-	usz half = self.size / 2U;
-	usz end = self.size - 1;
-	for (usz i = 0; i < half; i++)
+	sz half = self.size / 2U;
+	sz end = self.size - 1;
+	for (sz i = 0; i < half; i++)
 	{
 		self.swap(i, end - i);
 	}
@@ -234,10 +234,10 @@ macro void InterfaceList.push_front(&self, value)
 
  @param index : "the index where the element should be inserted"
  @param type : "the value to insert"
- @require index <= self.size : "The index is out of bounds"
+ @require index <= self.size && index >= 0 : "The index is out of bounds"
  @require $defined(Type t = &type) : "Type must implement the interface"
 *>
-macro void InterfaceList.insert_at(&self, usz index, type)
+macro void InterfaceList.insert_at(&self, sz index, type)
 {
 	if (index == self.size)
 	{
@@ -305,7 +305,7 @@ fn bool InterfaceList.is_empty(&self) @inline
 
  @return "The number of elements in the list"
 *>
-fn usz InterfaceList.len(&self) @operator(len) @inline
+fn sz InterfaceList.len(&self) @operator(len) @inline
 {
 	return self.size;
 }
@@ -316,9 +316,9 @@ fn usz InterfaceList.len(&self) @operator(len) @inline
  @param index : "The index of the element to retrieve"
  @return "The element at the index"
  @return? TYPE_MISMATCH, NO_MORE_ELEMENT
- @require index < self.size : "Index out of range"
+ @require index <= self.size && index >= 0 : "The index is out of bounds"
 *>
-fn Type InterfaceList.get(&self, usz index) @inline @operator([])
+fn Type InterfaceList.get(&self, sz index) @inline @operator([])
 {
 	return self.entries[index];
 }
@@ -340,10 +340,10 @@ fn void InterfaceList.free(&self)
 
  @param i : "Index of one of the elements"
  @param j : "Index of the other element"
- @require i < self.size : "The first index is out of range"
- @require j < self.size : "The second index is out of range"
+ @require i <= self.size && i >= 0 : "The first index is out of bounds"
+ @require j <= self.size && j >= 0 : "The second index is out of bounds"
 *>
-fn void InterfaceList.swap(&self, usz i, usz j)
+fn void InterfaceList.swap(&self, sz i, sz j)
 {
 	Type temp = self.entries[i];
 	self.entries[i] = self.entries[j];
@@ -353,7 +353,7 @@ fn void InterfaceList.swap(&self, usz i, usz j)
 <*
  Print the list to a formatter.
 *>
-fn usz? InterfaceList.to_format(&self, Formatter* formatter) @dynamic
+fn sz? InterfaceList.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.size)
 	{
@@ -362,7 +362,7 @@ fn usz? InterfaceList.to_format(&self, Formatter* formatter) @dynamic
 		case 1:
 			return formatter.printf("[%s]", self.entries[0])!;
 		default:
-			usz n = formatter.print("[")!;
+			sz n = formatter.print("[")!;
 			foreach (i, element : self.entries[:self.size])
 			{
 				if (i != 0) formatter.print(", ")!;
@@ -379,7 +379,7 @@ fn usz? InterfaceList.to_format(&self, Formatter* formatter) @dynamic
  @param filter : "The function to determine if it should be removed or not"
  @return "the number of deleted elements"
 *>
-fn usz InterfaceList.remove_if(&self, InterfacePredicate filter)
+fn sz InterfaceList.remove_if(&self, InterfacePredicate filter)
 {
 	return interfacelist_remove_if(self, filter, false);
 }
@@ -390,7 +390,7 @@ fn usz InterfaceList.remove_if(&self, InterfacePredicate filter)
  @param selection : "The function to determine if it should be kept or not"
  @return "the number of deleted elements"
 *>
-fn usz InterfaceList.retain_if(&self, InterfacePredicate selection)
+fn sz InterfaceList.retain_if(&self, InterfacePredicate selection)
 {
 	return interfacelist_remove_if(self, selection, true);
 }
@@ -402,7 +402,7 @@ fn usz InterfaceList.retain_if(&self, InterfacePredicate selection)
  @param context : "The context to the function"
  @return "the number of deleted elements"
 *>
-fn usz InterfaceList.remove_using_test(&self, InterfaceTest filter, Type context)
+fn sz InterfaceList.remove_using_test(&self, InterfaceTest filter, Type context)
 {
 	return interfacelist_remove_using_test(self, filter, false, context);
 }
@@ -414,7 +414,7 @@ fn usz InterfaceList.remove_using_test(&self, InterfaceTest filter, Type context
  @param context : "The context to the function"
  @return "the number of deleted elements"
 *>
-fn usz InterfaceList.retain_using_test(&self, InterfaceTest selection, Type context)
+fn sz InterfaceList.retain_using_test(&self, InterfaceTest selection, Type context)
 {
 	return interfacelist_remove_using_test(self, selection, true, context);
 }
@@ -423,10 +423,11 @@ fn usz InterfaceList.retain_using_test(&self, InterfaceTest selection, Type cont
  Reserve memory so that at least the `min_capacity` exists.
 
  @param min_capacity : "The min capacity to hold"
+
 *>
-fn void InterfaceList.reserve(&self, usz min_capacity)
+fn void InterfaceList.reserve(&self, sz min_capacity)
 {
-	if (!min_capacity) return;
+	if (min_capacity <= 0) return;
 	if (self.capacity >= min_capacity) return;
 	if (!self.allocator) self.allocator = tmem;
 	min_capacity = math::next_power_of_2(min_capacity);
@@ -439,10 +440,10 @@ fn void InterfaceList.reserve(&self, usz min_capacity)
 
  @param index : "The index where to set the value."
  @param value : "The value to set"
- @require index <= self.size : "Index out of range"
+ @require index <= self.size || index >= 0 : "Index out of range"
  @require $defined(Type t = &value) : "Value must implement the interface"
 *>
-macro void InterfaceList.set(&self, usz index, value)
+macro void InterfaceList.set(&self, sz index, value)
 {
 	if (index == self.size)
 	{
@@ -455,13 +456,13 @@ macro void InterfaceList.set(&self, usz index, value)
 
 // -- private
 
-fn void interfacelist_ensure_capacity(InterfaceList* self, usz added = 1) @inline @private
+fn void interfacelist_ensure_capacity(InterfaceList* self, sz added = 1) @inline @private
 {
-	usz new_size = self.size + added;
+	sz new_size = self.size + added;
 	if (self.capacity >= new_size) return;
 
-	assert(new_size < usz.max / 2U);
-	usz new_capacity = self.capacity ? 2U * self.capacity : 16U;
+	assert(new_size < sz.max / 2U);
+	sz new_capacity = self.capacity ? 2U * self.capacity : 16U;
 	while (new_capacity < new_size) new_capacity *= 2U;
 	self.reserve(new_capacity);
 }
@@ -473,12 +474,12 @@ fn void interfacelist_append(InterfaceList* self, Type element) @local
 }
 
 <*
- @require index < self.size
+ @require index <= self.size || index >= 0 : "Index out of range"
 *>
-fn void interfacelist_insert_at(InterfaceList* self, usz index, Type value) @local
+fn void interfacelist_insert_at(InterfaceList* self, sz index, Type value) @local
 {
 	interfacelist_ensure_capacity(self);
-	for (usz i = self.size; i > index; i--)
+	for (sz i = self.size; i > index; i--)
 	{
 		self.entries[i] = self.entries[i - 1];
 	}
@@ -486,10 +487,10 @@ fn void interfacelist_insert_at(InterfaceList* self, usz index, Type value) @loc
 	self.entries[index] = value;
 }
 
-macro usz interfacelist_remove_using_test(InterfaceList* self, InterfaceTest filter, bool $invert, ctx) @local
+macro sz interfacelist_remove_using_test(InterfaceList* self, InterfaceTest filter, bool $invert, ctx) @local
 {
-	usz size = self.size;
-	for (usz i = size, usz k = size; k > 0; k = i)
+	sz size = self.size;
+	for (sz i = size, sz k = size; k > 0; k = i)
 	{
 		// Find last index of item to be deleted.
 		$if $invert:
@@ -498,8 +499,8 @@ macro usz interfacelist_remove_using_test(InterfaceList* self, InterfaceTest fil
 			while (i > 0 && filter(self.entries[i - 1], ctx)) i--;
 		$endif
 		// Remove the items from this index up to the one not to be deleted.
-		usz n = self.size - k;
-		for (usz j = i; j < k; j++) self.free_element(self.entries[j]);
+		sz n = self.size - k;
+		for (sz j = i; j < k; j++) self.free_element(self.entries[j]);
 		self.entries[i:n] = self.entries[k:n];
 		self.size -= k - i;
 		// Find last index of item not to be deleted.
@@ -512,10 +513,10 @@ macro usz interfacelist_remove_using_test(InterfaceList* self, InterfaceTest fil
 	return size - self.size;
 }
 
-macro usz interfacelist_remove_if(InterfaceList* self, InterfacePredicate filter, bool $invert) @local
+macro sz interfacelist_remove_if(InterfaceList* self, InterfacePredicate filter, bool $invert) @local
 {
-	usz size = self.size;
-	for (usz i = size, usz k = size; k > 0; k = i)
+	sz size = self.size;
+	for (sz i = size, sz k = size; k > 0; k = i)
 	{
 		// Find last index of item to be deleted.
 		$if $invert:
@@ -524,8 +525,8 @@ macro usz interfacelist_remove_if(InterfaceList* self, InterfacePredicate filter
 			while (i > 0 && filter(self.entries[i - 1])) i--;
 		$endif
 		// Remove the items from this index up to the one not to be deleted.
-		usz n = self.size - k;
-		for (usz j = i; j < k; j++) self.free_element(self.entries[j]);
+		sz n = self.size - k;
+		for (sz j = i; j < k; j++) self.free_element(self.entries[j]);
 		self.entries[i:n] = self.entries[k:n];
 		self.size -= k - i;
 		// Find last index of item not to be deleted.

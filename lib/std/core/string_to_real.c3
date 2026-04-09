@@ -40,14 +40,14 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 	const uint[2] TH = B1B_MAX;
 	int emax = - $emin - $bits + 3;
 
-	const int[*] P10S = { 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
-	usz index;
+	const uint[*] P10S = { 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
+	sz index;
 	bool got_digit = chars[0] == '0';
 	bool got_rad;
 	long lrp, dc;
 	int k, j, lnz;
-	usz len = chars.len;
-	usz last_char = len - 1;
+	sz len = chars.len;
+	sz last_char = len - 1;
 
 	assert(len);
 
@@ -78,7 +78,7 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 		}
 	}
 
-	while (c - '0' < 10u || c == '.')
+	while ((char)(c - '0') < 10u || c == '.')
 	{
 		switch
 		{
@@ -267,7 +267,7 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 
 	bool denormal;
 	// Limit precision for denormal results
-	uint bits = $bits;
+	int bits = $bits;
 	if (bits > math::DOUBLE_MANT_DIG + e2 - $emin)
 	{
 		bits = math::DOUBLE_MANT_DIG + e2 - $emin;
@@ -335,9 +335,9 @@ macro double? hexfloat(char[] chars, int $bits, int $emin, int sign)
 	bool got_rad;
 	bool got_digit;
 	bool got_tail;
-	usz len = chars.len;
-	usz last_char = len - 1;
-	usz index;
+	sz len = chars.len;
+	sz last_char = len - 1;
+	sz index;
 	double y;
 
 	// Skip past first characters

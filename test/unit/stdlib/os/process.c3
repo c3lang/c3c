@@ -1,6 +1,6 @@
 // Currently disabled as they somewhat mess up the test output.
-module std::os::process @test @if(false);
-import std::os, std::io;
+module std::os::process @test @if(true);
+import std::os, std::io, std::net::os, std::time::clock, libc;
 
 fn void test_inherit_stdio_stdout()
 {
@@ -20,7 +20,7 @@ fn void test_inherit_stdio_stdout()
     
     // When using inherit_stdio, read_stdout should return 0 bytes
     char[100] buffer;
-    usz bytes_read = process.read_stdout(&buffer[0], buffer.len)!!;
+    sz bytes_read = process.read_stdout(&buffer[0], buffer.len)!!;
     assert(bytes_read == 0, "Expected 0 bytes when using inherit_stdio, got %d", bytes_read);
     
     // stdout() should return an empty file
@@ -49,7 +49,7 @@ fn void test_inherit_stdio_stderr()
     
     // read_stderr should return 0 bytes
     char[100] buffer;
-    usz bytes_read = process.read_stderr(&buffer[0], buffer.len)!!;
+    sz bytes_read = process.read_stderr(&buffer[0], buffer.len)!!;
     assert(bytes_read == 0, "Expected 0 bytes when reading stderr with inherit_stdio");
 }
 
@@ -70,7 +70,7 @@ fn void test_inherit_stdio_comparison()
     process1.join()!!;
     
     char[100] buffer1;
-    usz bytes_read1 = process1.read_stdout(&buffer1[0], buffer1.len)!!;
+    sz bytes_read1 = process1.read_stdout(&buffer1[0], buffer1.len)!!;
     assert(bytes_read1 > 0, "Expected output without inherit_stdio");
     
     // Now with inherit_stdio
@@ -80,7 +80,7 @@ fn void test_inherit_stdio_comparison()
     process2.join()!!;
     
     char[100] buffer2;
-    usz bytes_read2 = process2.read_stdout(&buffer2[0], buffer2.len)!!;
+    sz bytes_read2 = process2.read_stdout(&buffer2[0], buffer2.len)!!;
     assert(bytes_read2 == 0, "Expected no output with inherit_stdio");
 }
 
@@ -132,11 +132,41 @@ fn void test_inherit_stdio_redirect()
     assert(process.stderr().file == null, "stderr should be null with inherit_stdio");
     
     char[100] buffer;
-    usz stdout_bytes = process.read_stdout(&buffer[0], buffer.len)!!;
-    usz stderr_bytes = process.read_stderr(&buffer[0], buffer.len)!!;
+    sz stdout_bytes = process.read_stdout(&buffer[0], buffer.len)!!;
+    sz stderr_bytes = process.read_stderr(&buffer[0], buffer.len)!!;
     
     assert(stdout_bytes == 0, "Should read 0 bytes from stdout");
     assert(stderr_bytes == 0, "Should read 0 bytes from stderr");
+}
+
+fn void test_pipe_cloexec_leak() @test @if(env::POSIX)
+{
+	// Process A reads from stdin and exits when its stdin pipe closes
+	Process a = process::spawn({"cat"})!!;
+
+	// Process B is a long running process that shouldn't interfere with A
+	Process b = process::spawn({"sleep", "2"})!!;
+
+	// We close the parent's handle to A's stdin.
+	// If FD_CLOEXEC was missing on A's pipe, B would have inherited a write-handle to A's stdin.
+	// A would stay alive waiting for B to exit, even though the parent closed it.
+	libc::fclose(a.stdin_file);
+	a.stdin_file = null;
+
+	Clock start = clock::now();
+	a.join()!!; // Join A, waiting for it to exit
+
+	long ms = start.to_now().to_ms();
+
+	a.destroy();
+
+	b.terminate()!!;
+	b.join()!!;
+	b.destroy();
+
+	// If missing FD_CLOEXEC, A's join would take >= 2000 milliseconds
+	// Since it's fixed, it should return near instantly (< 1000 ms)
+	assert(ms < 1000, "Process A hung waiting for Process B to close its leaked stdin fd!");
 }
 
 fn void test_write_to_stdin() @test {
@@ -146,12 +176,12 @@ $else
 	Process? subprocess = process::spawn({"tee"}, ASYNC_OUTPUT);
 $endif
 	test::eq(@ok(subprocess), true);
-	usz? write = subprocess!!.write_stdin(")");
+	sz? write = subprocess!!.write_stdin(")");
 	test::eq(@ok(write), true);
 	test::eq(write!!, 1);
 	char buf;
 	test::eq(@ok(subprocess!!.join()), true);
-	usz? read = subprocess!!.read_stdout(&buf, 1);
+	sz? read = subprocess!!.read_stdout(&buf, 1);
 	test::eq(@ok(read), true);
 	test::eq(read!!, 1);
 	test::eq(buf, ')');

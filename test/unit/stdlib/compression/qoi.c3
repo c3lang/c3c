@@ -25,7 +25,7 @@ fn void test_qoi_all()
         assert(encoded == TEST_QOI_DATA[..], "Encoder output should match the test data");
 		defer free(encoded);
         // encode and write the decoded data to a file
-        usz written = qoi::write("unittest.qoi", decoded, &test_desc)!!;
+        sz written = qoi::write("unittest.qoi", decoded, &test_desc)!!;
 
         // read and decode the written data
         char[] read = qoi::read(mem, "unittest.qoi", &test_desc)!!;

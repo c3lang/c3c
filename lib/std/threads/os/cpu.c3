@@ -38,7 +38,7 @@ const HW_L3SETTINGS		= 21; /* int: L3 Cache Settings */
 const HW_L3CACHESIZE	= 22; /* int: L3 Cache Size in Bytes */
 const HW_MAXID			= 23; /* number of valid hw ids */
 
-fn uint native_cpu()
+fn int native_cpu()
 {
 	int[2] nm;
 	usz len = 4;
@@ -47,14 +47,14 @@ fn uint native_cpu()
 	nm = { CTL_HW, HW_NCPU };
 	libc::sysctl(&nm, 2, &count, &len, null, 0);
 	if (count < 1) count = 1;
-	return count;
+	return (int)count;
 }
 
 module std::thread::cpu @if(env::OPENBSD);
 import std::os::openbsd;
 import libc;
 
-fn uint native_cpu()
+fn int native_cpu()
 {
 	uint ncpu;
 	usz len = uint.sizeof;
@@ -62,25 +62,25 @@ fn uint native_cpu()
 
 	libc::sysctl(&mib, 2, &ncpu, &len, null, 0);
 
-	return max(1, ncpu);
+	return (int)max(1, ncpu);
 }
 
 module std::thread::cpu @if(env::LINUX);
 import libc;
 
-fn uint native_cpu()
+fn int native_cpu()
 {
-	return libc::get_nprocs_conf();
+	return (int)libc::get_nprocs_conf();
 }
 
 module std::thread::cpu @if(env::WIN32);
 import libc;
 
-fn uint native_cpu()
+fn int native_cpu()
 {
 	SystemInfo info;
 	libc::get_system_info(&info);
-	return info.dwNumberOfProcessors;
+	return (int)info.dwNumberOfProcessors;
 }
 
 module std::thread::cpu @if(!env::WIN32 && !env::LINUX && !env::OPENBSD && ! env::DARWIN);
@@ -89,4 +89,4 @@ import libc;
 <*
  For environments with an undefined way of fetching the number of CPUs, simply return 1.
 *>
-fn uint native_cpu() => 1;
+fn int native_cpu() => 1;

@@ -36,7 +36,7 @@ fn Path? cwd(Allocator allocator)
 
 fn bool is_dir(Path path) => os::native_is_dir(path.str_view());
 fn bool is_file(Path path) => os::native_is_file(path.str_view());
-fn ulong? file_size(Path path) => os::native_file_size(path.str_view());
+fn long? file_size(Path path) => os::native_file_size(path.str_view());
 fn bool exists(Path path) => os::native_file_or_dir_exists(path.str_view());
 fn Path? tcwd() => cwd(tmem) @inline;
 
@@ -195,10 +195,10 @@ fn Path? Path.append(self, Allocator allocator, String filename)
 
 fn Path? Path.tappend(self, String filename) => self.append(tmem, filename);
 
-fn usz? start_of_base_name(String str, PathEnv path_env) @local
+fn sz? start_of_base_name(String str, PathEnv path_env) @local
 {
 	if (!str.len) return 0;
-	usz? start_slash = str.rindex_of_char('/');
+	sz? start_slash = str.rindex_of_char('/');
 	if (path_env != PathEnv.WIN32) return start_slash + 1 ?? 0;
 	if (try index = str.rindex_of_char('\\'))
 	{
@@ -207,7 +207,7 @@ fn usz? start_of_base_name(String str, PathEnv path_env) @local
 		if (str[0] != '\\') return index + 1;
 		// Handle \\server\foo
 		// Find the \ before "foo"
-		usz last_index = 2 + str[2..].index_of_char('\\')!;
+		sz last_index = 2 + str[2..].index_of_char('\\')!;
 		// If they don't match, we're done
 		if (last_index > index) return INVALID_PATH~;
 		if (last_index != index) return index + 1;
@@ -226,7 +226,7 @@ fn bool? Path.is_absolute(self)
 {
 	String path_str = self.str_view();
 	if (!path_str.len) return false;
-	usz path_start = volume_name_len(path_str, self.env)!;
+	sz path_start = volume_name_len(path_str, self.env)!;
 	if (path_start > 0 && path_str[0] == '\\') return true;
 	return path_start < path_str.len && is_separator(path_str[path_start], self.env);
 }
@@ -256,7 +256,7 @@ fn Path? Path.absolute(self, Allocator allocator)
 	$if DEFAULT_ENV == WIN32:
 		@pool()
 		{
-			const usz BUFFER_LEN = 4096;
+			const sz BUFFER_LEN = 4096;
 			WString buffer = (WString)mem::talloc_array(Char16, BUFFER_LEN);
 			buffer = win32::_wfullpath(buffer, path_str.to_temp_wstring()!, BUFFER_LEN);
 			if (!buffer) return INVALID_PATH~;
@@ -277,7 +277,7 @@ fn String? String.file_tbasename(self) => self.file_basename(tmem);
 
 fn String Path.basename(self)
 {
-	usz basename_start = start_of_base_name(self.path_string, self.env)!!;
+	sz basename_start = start_of_base_name(self.path_string, self.env)!!;
 	String path_str = self.path_string;
 	if (basename_start == path_str.len) return "";
 	return path_str[basename_start..];
@@ -293,9 +293,9 @@ fn String? String.path_dirname(self, Allocator allocator) => @pool()
 fn String Path.dirname(self)
 {
 	String path_str = self.path_string;
-	usz basename_start = start_of_base_name(path_str, self.env)!!;
+	sz basename_start = start_of_base_name(path_str, self.env)!!;
 	if (basename_start == 0) return ".";
-	usz start = volume_name_len(path_str, self.env)!!;
+	sz start = volume_name_len(path_str, self.env)!!;
 	if (basename_start <= start + 1)
 	{
 		if (self.env == WIN32 && basename_start > start && path_str[0..1] == `\\`)
@@ -327,7 +327,7 @@ fn bool Path.has_extension(self, String extension)
 fn String? Path.extension(self)
 {
 	String basename = self.basename();
-	usz index = basename.rindex_of(".")!;
+	sz index = basename.rindex_of(".")!;
 	// Plain ".foo" does not have an extension
 	if (index == 0 || index == basename.len) return "";
 	return basename[index + 1..];
@@ -335,7 +335,7 @@ fn String? Path.extension(self)
 
 fn String Path.volume_name(self)
 {
-	usz len = volume_name_len(self.str_view(), self.env)!!;
+	sz len = volume_name_len(self.str_view(), self.env)!!;
 	if (!len) return "";
 	return self.path_string[:len];
 }
@@ -344,9 +344,9 @@ fn Path? String.to_path(self, Allocator allocator) => new(allocator, self);
 
 fn Path? String.to_tpath(self) => new(tmem, self);
 
-fn usz? volume_name_len(String path, PathEnv path_env) @local
+fn sz? volume_name_len(String path, PathEnv path_env) @local
 {
-	usz len = path.len;
+	sz len = path.len;
 	if (len < 2 || path_env != PathEnv.WIN32) return 0;
 	switch (path[0])
 	{
@@ -358,8 +358,8 @@ fn usz? volume_name_len(String path, PathEnv path_env) @local
 			// Not 2 => folded paths
 			if (count != 2) return 0;
 			// Check that we have a name followed by '\'
-			isz base_found = 0;
-			for (usz i = 2; i < len; i++)
+			sz base_found = 0;
+			for (sz i = 2; i < len; i++)
 			{
 				char c = path[i];
 				if (is_win32_separator(c))
@@ -416,15 +416,15 @@ fn Path? Path.parent(self)
 fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 {
 	if (!path_str.len) return path_str;
-	usz path_start = volume_name_len(path_str, path_env)!;
+	sz path_start = volume_name_len(path_str, path_env)!;
 	if (path_start > 0 && path_env == PathEnv.WIN32)
 	{
-		for (usz i = 0; i < path_start; i++) if (path_str[i] == '/') path_str[i] = '\\';
+		for (sz i = 0; i < path_start; i++) if (path_str[i] == '/') path_str[i] = '\\';
 	}
-	usz path_len = path_str.len;
+	sz path_len = path_str.len;
 	if (path_start == path_len) return path_str;
 	char path_separator = path_env == PathEnv.WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
-	usz len = path_start;
+	sz len = path_start;
 	bool has_root = is_separator(path_str[path_start], path_env);
 	if (has_root)
 	{
@@ -435,7 +435,7 @@ fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 	// This allows us to avoid checking whether it is the start of the path.
 	bool previous_was_separator = true;
 
-	for (usz i = path_start; i < path_len; i++)
+	for (sz i = path_start; i < path_len; i++)
 	{
 		char c = path_str[i];
 		// Fold foo///bar into foo/bar
@@ -537,17 +537,17 @@ fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 fn String Path.root_directory(self)
 {
 	String path_str = self.str_view();
-	usz len = path_str.len;
+	sz len = path_str.len;
 	if (!len) return "";
 	if (path_str == ".") return ".";
 	if (self.env == PathEnv.WIN32)
 	{
-		usz root_len = volume_name_len(path_str, self.env)!!;
+		sz root_len = volume_name_len(path_str, self.env)!!;
 		if (root_len == len || !is_win32_separator(path_str[root_len])) return "";
 		return path_str[root_len..root_len];
 	}
 	if (!is_posix_separator(path_str[0])) return "";
-	for (usz i = 1; i < len; i++)
+	for (sz i = 1; i < len; i++)
 	{
 		if (is_posix_separator(path_str[i]))
 		{
@@ -622,7 +622,7 @@ fn bool Path.has_suffix(self, String str) => self.str_view().ends_with(str);
 *>
 fn void Path.free(self) => alloc::free(self.allocator, self.path_string.ptr);
 
-fn usz? Path.to_format(&self, Formatter* formatter) @dynamic => formatter.print(self.str_view());
+fn sz? Path.to_format(&self, Formatter* formatter) @dynamic => formatter.print(self.str_view());
 
 
 const bool[256] RESERVED_PATH_CHAR_POSIX = {

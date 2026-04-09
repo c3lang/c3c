@@ -7,7 +7,7 @@ import std::math::random;
 
 fn void tmem_shouldnt_leak_if_no_pool()
 {
-	for (usz i = 0; i < 256; i++)
+	for (sz i = 0; i < 256; i++)
 	{
 		char[] my_arr = mem::talloc_array(char, 1024);
         my_arr[..] = (char[*]){ [0..1023] = 0xA5 }[..];

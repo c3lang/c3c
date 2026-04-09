@@ -6,7 +6,7 @@ macro foo(...)
 macro foo_a(...)
 {
 	int x;
-	$vaarg[x]; // #error: Vararg functions need a constant argument
+	$vaarg[x]; // #error: Vaarg functions need a constant argument
 }
 
 macro foo_b(...)

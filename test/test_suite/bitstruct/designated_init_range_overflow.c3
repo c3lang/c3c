@@ -1,4 +1,4 @@
-enum Row : inline int { A, B, C, D, E, F }
+enum Row : int { A, B, C, D, E, F }
 
 int[3][6] m = {
     [Row.E] = {

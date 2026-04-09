@@ -15,8 +15,6 @@ fn void test()
 
 /* #expect: test.ll
 
-
-; Function Attrs:
 define void @test.test() #0 {
 entry:
   %x = alloca [3 x i32], align 4
@@ -34,13 +32,13 @@ entry:
 
 loop.cond:                                        ; preds = %if.exit4, %if.then3, %entry
   %0 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 %0, 0
+  %gt = icmp sgt i64 %0, 0
   br i1 %gt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
-  %subnuw = sub nuw i64 %1, 1
-  store i64 %subnuw, ptr %.anon, align 8
+  %subnsw = sub nsw i64 %1, 1
+  store i64 %subnsw, ptr %.anon, align 8
   %2 = load i64, ptr %.anon, align 8
   %ptroffset = getelementptr inbounds [4 x i8], ptr %x, i64 %2
   %3 = load i32, ptr %ptroffset, align 4

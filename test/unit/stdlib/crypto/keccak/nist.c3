@@ -71,15 +71,15 @@ fn void stepped_combinations()
 		uint128 bits = x << 3;
 		uint128 swapped_x = bswap(x);
 		uint128 swapped_bits = bswap(bits);
-		char byte_count = (i / 2) + 1;
+		char byte_count = (i / 2u) + 1u;
 		byte_result[0] = byte_result[1 + byte_count] = byte_count;
 		byte_result[1:byte_count] = @as_char_view(env::BIG_ENDIAN ??? x : swapped_x)[^byte_count..];
-		char bit_count = byte_count + (i % 2);
+		char bit_count = byte_count + (i % 2u);
 		bit_result[0] = bit_result[1 + bit_count] = bit_count;
 		bit_result[1:bit_count] = @as_char_view(env::BIG_ENDIAN ??? bits : swapped_bits)[^bit_count..];
-		test::eq(nist::encode_length(LEFT, x, false), bit_result[0 : 1 + bit_count]);
-		test::eq(nist::encode_length(LEFT, x, true), byte_result[0 : 1 + byte_count]);
-		test::eq(nist::encode_length(RIGHT, x, false), bit_result[1 : 1 + bit_count]);
-		test::eq(nist::encode_length(RIGHT, x, true), byte_result[1 : 1 + byte_count]);
+		test::eq(nist::encode_length(LEFT, (int128)x, false), bit_result[0 : 1 + bit_count]);
+		test::eq(nist::encode_length(LEFT, (int128)x, true), byte_result[0 : 1 + byte_count]);
+		test::eq(nist::encode_length(RIGHT, (int128)x, false), bit_result[1 : 1 + bit_count]);
+		test::eq(nist::encode_length(RIGHT, (int128)x, true), byte_result[1 : 1 + byte_count]);
 	}
 }

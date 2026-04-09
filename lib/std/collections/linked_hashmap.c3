@@ -27,8 +27,8 @@ struct LinkedHashMap (Printable)
 {
 	LinkedEntry*[] table;
 	Allocator allocator;
-	usz count;
-	usz threshold;
+	sz count;
+	sz threshold;
 	float load_factor;
 	<* First inserted LinkedEntry *>
 	LinkedEntry* head;
@@ -44,12 +44,12 @@ struct LinkedHashMap (Printable)
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashMap* LinkedHashMap.init(&self, Allocator allocator, usz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn LinkedHashMap* LinkedHashMap.init(&self, Allocator allocator, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
 	self.load_factor = load_factor;
-	self.threshold = (usz)(capacity * load_factor);
+	self.threshold = (sz)(capacity * load_factor);
 	self.table = alloc::new_array(allocator, LinkedEntry*, capacity);
 	self.head = null;
 	self.tail = null;
@@ -62,7 +62,7 @@ fn LinkedHashMap* LinkedHashMap.init(&self, Allocator allocator, usz capacity = 
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashMap* LinkedHashMap.tinit(&self, usz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn LinkedHashMap* LinkedHashMap.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init(tmem, capacity, load_factor) @inline;
 }
@@ -106,11 +106,11 @@ macro LinkedHashMap* LinkedHashMap.tinit_with_key_values(&self, ..., uint capaci
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashMap* LinkedHashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn LinkedHashMap* LinkedHashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] keys, Value[] values, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	assert(keys.len == values.len);
 	self.init(allocator, capacity, load_factor);
-	for (usz i = 0; i < keys.len; i++)
+	for (sz i = 0; i < keys.len; i++)
 	{
 		self.set(keys[i], values[i]);
 	}
@@ -126,7 +126,7 @@ fn LinkedHashMap* LinkedHashMap.init_from_keys_and_values(&self, Allocator alloc
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashMap* LinkedHashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn LinkedHashMap* LinkedHashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_from_keys_and_values(tmem, keys, values, capacity, load_factor);
 }
@@ -168,7 +168,7 @@ fn bool LinkedHashMap.is_empty(&map) @inline
 	return !map.count;
 }
 
-fn usz LinkedHashMap.len(&map) @inline => map.count;
+fn sz LinkedHashMap.len(&map) @inline => map.count;
 
 fn Value*? LinkedHashMap.get_ref(&map, Key key)
 {
@@ -291,7 +291,7 @@ fn Key[] LinkedHashMap.keys(&self, Allocator allocator)
 	if (!self.count) return {};
 
 	Key[] list = alloc::alloc_array(allocator, Key, self.count);
-	usz index = 0;
+	sz index = 0;
 
 	LinkedEntry* entry = self.head;
 	while (entry)
@@ -330,7 +330,7 @@ fn Value[] LinkedHashMap.values(&self, Allocator allocator)
 {
 	if (!self.count) return {};
 	Value[] list = alloc::alloc_array(allocator, Value, self.count);
-	usz index = 0;
+	sz index = 0;
 	LinkedEntry* entry = self.head;
 	while (entry)
 	{
@@ -432,23 +432,23 @@ fn void linkedhashmap_add_entry(LinkedHashMap* map, uint hash, Key key, Value va
 	}
 }
 
-fn void linkedhashmap_resize(LinkedHashMap* map, uint new_capacity) @private
+fn void linkedhashmap_resize(LinkedHashMap* map, sz new_capacity) @private
 {
 	LinkedEntry*[] old_table = map.table;
-	uint old_capacity = old_table.len;
+	sz old_capacity = old_table.len;
 
 	if (old_capacity == MAXIMUM_CAPACITY)
 	{
-		map.threshold = uint.max;
+		map.threshold = int.max;
 		return;
 	}
 
 	LinkedEntry*[] new_table = alloc::new_array(map.allocator, LinkedEntry*, new_capacity);
 	map.table = new_table;
-	map.threshold = (uint)(new_capacity * map.load_factor);
+	map.threshold = (sz)(new_capacity * map.load_factor);
 
 	// Rehash all entries - linked list order remains unchanged
-	foreach (uint i, LinkedEntry *e : old_table)
+	foreach (i, LinkedEntry *e : old_table)
 	{
 		if (!e) continue;
 
@@ -461,7 +461,7 @@ fn void linkedhashmap_resize(LinkedHashMap* map, uint new_capacity) @private
 		do
 		{
 			LinkedEntry* next = e.next;
-			if ((e.hash & old_capacity) == 0)
+			if ((e.hash & (usz)old_capacity) == 0)
 			{
 				if (!lo_tail)
 				{
@@ -505,9 +505,9 @@ fn void linkedhashmap_resize(LinkedHashMap* map, uint new_capacity) @private
 	linkedhashmap_free_internal(map, old_table.ptr);
 }
 
-fn usz? LinkedHashMap.to_format(&self, Formatter* f) @dynamic
+fn sz? LinkedHashMap.to_format(&self, Formatter* f) @dynamic
 {
-	usz len;
+	sz len;
 	len += f.print("{ ")!;
 	self.@each_entry(; LinkedEntry* entry)
 	{
@@ -520,7 +520,7 @@ fn usz? LinkedHashMap.to_format(&self, Formatter* f) @dynamic
 fn void linkedhashmap_transfer(LinkedHashMap* map, LinkedEntry*[] new_table) @private
 {
 	LinkedEntry*[] src = map.table;
-	uint new_capacity = new_table.len;
+	sz new_capacity = new_table.len;
 	foreach (uint j, LinkedEntry *e : src)
 	{
 		if (!e) continue;
@@ -614,7 +614,7 @@ fn bool linkedhashmap_remove_entry_for_key(LinkedHashMap* map, Key key) @private
 	return false;
 }
 
-fn void linkedhashmap_create_entry(LinkedHashMap* map, uint hash, Key key, Value value, int bucket_index) @private
+fn void linkedhashmap_create_entry(LinkedHashMap* map, uint hash, Key key, Value value, uint bucket_index) @private
 {
 	LinkedEntry *e = map.table[bucket_index];
 	$if COPY_KEYS:
@@ -644,8 +644,8 @@ struct LinkedHashMapIterator
 typedef LinkedHashMapValueIterator = inline LinkedHashMapIterator;
 typedef LinkedHashMapKeyIterator = inline LinkedHashMapIterator;
 
-fn usz LinkedHashMapValueIterator.len(self) @operator(len) => self.map.count;
-fn usz LinkedHashMapKeyIterator.len(self) @operator(len) => self.map.count;
-fn usz LinkedHashMapIterator.len(self) @operator(len) => self.map.count;
+fn sz LinkedHashMapValueIterator.len(self) @operator(len) => self.map.count;
+fn sz LinkedHashMapKeyIterator.len(self) @operator(len) => self.map.count;
+fn sz LinkedHashMapIterator.len(self) @operator(len) => self.map.count;
 
 int dummy @local;
