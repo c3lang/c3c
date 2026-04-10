@@ -163,9 +163,8 @@ fn void DString.chop(self, sz new_size)
 
 fn String DString.str_view(self)
 {
-	StringData* data = self.data();
-	if (!data) return "";
-	return (String)data.chars[:data.len];
+	if (!self) return "";
+	return (String)self.data().chars[:self.data().len];
 }
 
 <*
