@@ -2031,6 +2031,7 @@ const char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[ELF_X86] = "elf-x86",
 		[ELF_X64] = "elf-x64",
 		[ELF_XTENSA] = "elf-xtensa",
+		[ELF_AVR] = "elf-avr",
 		[FREEBSD_X86] = "freebsd-x86",
 		[FREEBSD_X64] = "freebsd-x64",
 		[IOS_AARCH64] = "ios-aarch64",

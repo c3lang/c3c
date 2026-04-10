@@ -125,6 +125,7 @@ bool type_is_homogenous_base_type(Type *type)
 		case ABI_WASM:
 		case ABI_PPC32:
 		case ABI_RISCV:
+		case ABI_AVR:
 		case ABI_XTENSA:
 			return false;
 	}
@@ -151,6 +152,7 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
 		case ABI_WASM:
 		case ABI_PPC32:
 		case ABI_RISCV:
+		case ABI_AVR:
 		case ABI_XTENSA:
 			return false;
 	}

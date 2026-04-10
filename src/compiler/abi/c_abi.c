@@ -312,6 +312,7 @@ void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs)
 			c_abi_func_create_wasm(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_XTENSA:
+		case ABI_AVR:
 			c_abi_func_create_default(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_UNKNOWN:
