@@ -1200,7 +1200,7 @@ fn bool Splitter.at_end(&self)
 	return self.current > self.string.len;
 }
 
-fn String? Splitter.next(&self)
+fn String? Splitter.next(&self) @inline
 {
 	while (true)
 	{
@@ -1211,17 +1211,30 @@ fn String? Splitter.next(&self)
 		{
 			if (self.type != TOKENIZE_ALL) return NO_MORE_ELEMENT~;
 			self.current++;
-			return self.string[current - 1:0];
+			return self.string[current:0];
 		}
-		String remaining = self.string[current..];
-		sz? next = remaining.index_of(self.split);
-		if (try next)
+
+		sz? next;
+		if (self.split.len == 1)
 		{
-			self.current = current + next + self.split.len;
-			if (!next && self.type == TOKENIZE) continue;
-			return remaining[:next];
+			next = self.string.index_of_char_from(self.split[0], current);
 		}
+		else
+		{
+			next = self.string[current..].index_of(self.split);
+			if (try n = next) next = n + current;
+		}
+
+		if (try n = next)
+		{
+			String res = self.string[current : n - current];
+			self.current = n + self.split.len;
+			if (res.len == 0 && self.type == TOKENIZE) continue;
+			return res;
+		}
+
+		String res = self.string[current..];
 		self.current = len + 1;
-		return remaining;
+		return res;
 	}
 }
