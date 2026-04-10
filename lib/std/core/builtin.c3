@@ -1125,7 +1125,7 @@ char[64 * 1024] sig_stack @local @if(env::BACKTRACE && env::LINUX);
 // Clean this up
 fn void install_signal_handlers() @init(101) @local @if(env::BACKTRACE)
 {
-	$if env::LINUX:
+	$if env::LINUX && !env::ADDRESS_SANITIZER:
 		Stack_t ss = {
 			.ss_sp = &sig_stack,
 			.ss_size = sig_stack.len
