@@ -16,10 +16,6 @@ macro void mergesort(list) @builtin
 }
 
 module std::sort <Type> @private;
-import std::io;
-import std::thread;
-import std::time;
-import std::collections;
 
 fn void msort(Type list)
 {
