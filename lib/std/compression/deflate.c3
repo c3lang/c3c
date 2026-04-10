@@ -805,6 +805,9 @@ fn void StreamBitReader.close(&self)
 	{
 		(void)self.set_cursor_fn(self.stream, -seek_back, FROM_CURSOR);
 	}
+	self.buf_len = 0;
+	self.buf_pos = 0;
+	self.nbits = 0;
 }
 
 fn void? StreamBitReader.refill(&self) @inline
