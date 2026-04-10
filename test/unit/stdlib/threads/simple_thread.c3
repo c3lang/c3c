@@ -25,6 +25,15 @@ fn void testrun_stack_size() @test
 }
 
 
+fn void testrun_set_priority() @test
+{
+	Thread t;
+	t.create(fn int(void* arg) { thread::sleep_ms(400); return 0; }, null)!!;
+	t.set_priority(LOW);
+	assert(t.join()!! == 0);
+}
+
+
 Mutex m_global;
 
 fn void testrun_mutex()
