@@ -353,14 +353,20 @@ fn void? DString.write_byte(&self, char c) @dynamic
 	self.append_char(c);
 }
 
-fn void DString.append_char(&self, char c)
+fn void DString.append_char(&self, char c) @inline
 {
+	StringData* data = (StringData*)*self;
+	if (data && data.len < data.capacity)
+	{
+		data.chars[data.len++] = c;
+		return;
+	}
 	if (!*self)
 	{
 		*self = temp_with_capacity(MIN_CAPACITY);
 	}
 	self.reserve(1);
-	StringData* data = self.data();
+	data = (StringData*)*self;
 	data.chars[data.len++] = c;
 }
 
