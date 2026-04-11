@@ -62,6 +62,7 @@
 - `\r` was not filtered when piping a source file from stdin.
 - SHA-3 and Keccak contexts are now explicitly `@mustinit` structures. #3110
 - `UnbufferedChannel` would deadlock on multiple producers.
+- Don't override `sigaltstack` when running with `--sanitize=address`. #3115
 
 ## 0.7.11 Change list
 
