@@ -52,6 +52,8 @@
 - Support setting thread stack size.
 - Support setting thread priority.
 - Support syscall on RISCV.
+- Make `DString.append_repeat` polymorphic adding `append_string_repeat` and `append_char_repeat`.
+- Add `DString.append_inline` for optimized uses.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

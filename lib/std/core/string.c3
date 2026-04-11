@@ -642,13 +642,13 @@ fn sz? String.rindex_of_char(self, char character)
 fn sz? String.index_of(self, String substr)
 {
 	sz needed = substr.len;
-	if (needed > 0 && self.len >= needed)
+	if (!needed || self.len < needed) return NOT_FOUND~;
+	if (needed == 1) return self.index_of_char(substr[0]) @inline;
+
+	char first = substr[0];
+	foreach (i, c: self[..^needed])
 	{
-		char first = substr[0];
-		foreach (i, c: self[..^needed])
-		{
-			if (c == first && self[i : needed] == substr) return i;
-		}
+		if (c == first && self[i : needed] == substr) return i;
 	}
 	return NOT_FOUND~;
 }
@@ -1211,17 +1211,28 @@ fn String? Splitter.next(&self)
 		{
 			if (self.type != TOKENIZE_ALL) return NO_MORE_ELEMENT~;
 			self.current++;
-			return self.string[current - 1:0];
+			return self.string[current:0];
 		}
-		String remaining = self.string[current..];
-		sz? next = remaining.index_of(self.split);
+
+		sz? next;
+		if (self.split.len == 1)
+		{
+			next = self.string.index_of_char_from(self.split[0], current) @inline;
+		}
+		else
+		{
+			next = self.string[current..].index_of(self.split) @inline + current;
+		}
+
 		if (try next)
 		{
-			self.current = current + next + self.split.len;
-			if (!next && self.type == TOKENIZE) continue;
-			return remaining[:next];
+			String res = self.string[current : next - current];
+			self.current = next + self.split.len;
+			if (!res.len && self.type == TOKENIZE) continue;
+			return res;
 		}
+
 		self.current = len + 1;
-		return remaining;
+		return self.string[current..];
 	}
 }

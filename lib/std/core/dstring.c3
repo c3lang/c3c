@@ -106,7 +106,7 @@ fn void DString.replace(&self, String needle, String replacement)
 				self.append_string(str[i - match:match]);
 				match = 0;
 			}
-			self.append_char(c);
+			self.append_char(c) @inline;
 		}
 		if (match > 0) self.append_string(str[^match:match]);
 	};
@@ -129,7 +129,7 @@ fn ZString DString.zstr_view(&self)
 	if (!data) return "";
 	if (data.capacity == data.len)
 	{
-		self.reserve(1);
+		_reserve_inline(self, 1);
 		data = self.data();
 		data.chars[data.len] = 0;
 	}
@@ -163,8 +163,8 @@ fn void DString.chop(self, sz new_size)
 
 fn String DString.str_view(self)
 {
+	if (!self) return "";
 	StringData* data = self.data();
-	if (!data) return "";
 	return (String)data.chars[:data.len];
 }
 
@@ -205,7 +205,7 @@ fn void DString.set(self, sz index, char c) @operator([]=)
 	self.data().chars[index] = c;
 }
 
-fn void DString.append_repeat(&self, char c, sz times)
+fn void DString.append_char_repeat(&self, char c, sz times)
 {
 	if (times == 0) return;
 	self.reserve(times);
@@ -214,6 +214,36 @@ fn void DString.append_repeat(&self, char c, sz times)
 	{
 		data.chars[data.len++] = c;
 	}
+}
+
+macro void DString.append_repeat(&self, c, sz times)
+{
+	if (times == 0) return;
+	$switch $typeof(c):
+		$case String:
+			self.append_string_repeat(c, times);
+		$case char:
+			self.append_char_repeat(c, times);
+		$default:
+			for (sz i = 0; i < times; i++)
+			{
+				self.append(c);
+			}
+	$endswitch
+}
+
+fn void DString.append_string_repeat(&self, String c, sz times)
+{
+	sz strlen = c.len;
+	if (!times || !strlen) return;
+	self.reserve(times * strlen);
+	StringData* data = self.data();
+	sz len = data.len;
+	for (sz i = 0; i < times; i++, len += strlen)
+	{
+		mem::copy(&data.chars[len], c, strlen);
+	}
+	data.len = len;
 }
 
 <*
@@ -309,13 +339,17 @@ fn void DString.append_bytes(&self, char[] bytes)
 {
 	sz other_len = bytes.len;
 	if (!other_len) return;
-	if (!*self)
-	{
-		*self = temp((String)bytes);
-		return;
-	}
-	self.reserve(other_len);
 	StringData* data = self.data();
+	if (@unlikely(!data))
+	{
+		*self = temp_with_capacity(MIN_CAPACITY > other_len ? MIN_CAPACITY : other_len);
+		data = self.data();
+	}
+	else if (@unlikely(data.len + other_len > data.capacity))
+	{
+		_reserve_inline(self, other_len);
+		data = self.data();
+	}
 	mem::copy(&data.chars[data.len], bytes.ptr, other_len);
 	data.len += other_len;
 }
@@ -327,14 +361,14 @@ fn Char32[] DString.copy_utf32(&self, Allocator allocator)
 
 fn void DString.append_string(&self, String str)
 {
-	self.append_bytes((String)str);
+	self.append_bytes((String)str) @inline;
 }
 
 fn void DString.append_dstring(&self, DString str)
 {
 	StringData* other = str.data();
 	if (!other) return;
-	self.append(str.str_view());
+	self.append_bytes(str.str_view()) @inline;
 }
 
 fn void DString.clear(self)
@@ -345,21 +379,17 @@ fn void DString.clear(self)
 
 fn sz? DString.write(&self, char[] buffer) @dynamic
 {
-	self.append_bytes(buffer);
+	self.append_bytes(buffer) @inline;
 	return buffer.len;
 }
 
 fn void? DString.write_byte(&self, char c) @dynamic
 {
-	self.append_char(c);
+	self.append_char(c) @inline;
 }
 
 fn void DString.append_char(&self, char c)
 {
-	if (!*self)
-	{
-		*self = temp_with_capacity(MIN_CAPACITY);
-	}
 	self.reserve(1);
 	StringData* data = self.data();
 	data.chars[data.len++] = c;
@@ -418,6 +448,34 @@ macro void DString.append(&self, value)
 					self.append_string((String)value);
 				$default:
 					$error "Unsupported type for append – use appendf instead.";
+			$endswitch
+	$endswitch
+}
+
+<*
+ Same as DString.append, but may be faster due to inlining.
+*>
+macro void DString.append_inline(&self, value)
+{
+	var $Type = $typeof(value);
+	$switch $Type:
+		$case char:
+		$case ichar:
+			self.append_char(value) @inline;
+		$case DString:
+			self.append_dstring(value) @inline;
+		$case String:
+			self.append_string(value) @inline;
+		$case Char32:
+			self.append_char32(value) @inline;
+		$default:
+			$switch:
+				$case $defined((Char32)value):
+					self.append_char32((Char32)value) @inline;
+				$case $defined((String)value):
+					self.append_string((String)value) @inline;
+				$default:
+					$error "Unsupported type for append_inline – use appendf instead.";
 			$endswitch
 	$endswitch
 }
@@ -596,7 +654,7 @@ fn DString join(Allocator allocator, String[] s, String joiner) @nodiscard
 fn void? append_fn(void* data, char c)
 {
 	DString* s = data;
-	s.append_char(c);
+	s.append_char(c) @inline;
 }
 
 fn void DString.reverse(self)
@@ -613,26 +671,19 @@ fn void DString.reverse(self)
 	}
 }
 
-fn StringData* DString.data(self) @inline
+macro StringData* DString.data(self)
 {
 	return (StringData*)self;
 }
 
-fn void DString.reserve(&self, sz addition)
+fn void DString.reserve(&self, sz addition) @inline
 {
-	StringData* data = self.data();
-	if (!data)
+	if (!*self)
 	{
 		*self = dstring::temp_with_capacity(addition);
 		return;
 	}
-	sz len = data.len + addition;
-	if (data.capacity >= len) return;
-	sz new_capacity = data.capacity * 2;
-	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
-	if (new_capacity < len) new_capacity = math::next_power_of_2(len);
-	data.capacity = new_capacity;
-	*self = (DString)alloc::realloc(data.allocator, data, StringData.sizeof + new_capacity);
+	_reserve_inline(self, addition);
 }
 
 fn sz? DString.read_from_stream(&self, InStream reader)
@@ -672,4 +723,24 @@ struct StringData @private
 	sz len;
 	sz capacity;
 	char[*] chars;
+}
+
+<* @require self.data() != null *>
+macro _reserve_inline(DString *self, sz addition)
+{
+	StringData* data = self.data();
+	sz len = data.len + addition;
+	if (@likely(data.capacity >= len)) return;
+	*self = (DString)_reserve_slow(data, len);
+}
+
+<* @require data.len + addition > data.capacity *>
+fn StringData* _reserve_slow(StringData* data, sz addition) @local
+{
+	sz len = data.len + addition;
+	sz new_capacity = data.capacity * 2;
+	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
+	if (new_capacity < len) new_capacity = math::next_power_of_2(len);
+	data.capacity = new_capacity;
+	return alloc::realloc(data.allocator, data, StringData.sizeof + new_capacity);
 }
