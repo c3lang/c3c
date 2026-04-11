@@ -14,13 +14,11 @@ Precompiled binaries for the following operating systems are available:
 - MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-macos.zip), [install instructions](#macos).
 - OpenBSD x64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-openbsd.tar.gz), [install instructions](#openbsd).
 
-To build the compiler from source instead, see the [instructions for compiling C3](#compiling).
+To build the compiler from source instead, see the [instructions for building C3 from source](#building-c3-from-source).
 
-The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
+<h3 align="center"><a href="https://c3-lang.org">[Read the C3 Manual]</a></h3>
 
-![vkQuake](https://github.com/c3lang/c3c/blob/master/resources/images/vkQuake.png?raw=true)
-
-Thanks to full ABI compatibility with C, it's possible to mix C and C3 in the same project with no effort. As a demonstration, vkQuake was compiled with a small portion of the code converted to C3 and compiled with the c3c compiler. (The aging fork can be found at https://github.com/c3lang/vkQuake)
+Thanks to full ABI compatibility with C, it's possible to mix C and C3 in the same project with no effort.
 
 A non-curated list of user written projects and other resources can be found [here](https://github.com/c3lang/c3-showcase).
 
@@ -146,16 +144,15 @@ fn void main()
 
 The current stable version of the compiler is **version 0.7.11**.
 
-The upcoming 0.7.x releases will focus on expanding the standard library,
-fixing bugs and improving compile time analysis.
+The upcoming 0.8.0 release will introduce breaking changes, including the removal of deprecated functionality and a major transition from unsigned to signed sizes by default.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
 If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues)
 or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://discord.gg/qN76R87).
 
-The compiler is currently verified to compile on Linux, OpenBSD, Windows and MacOS.
+The compiler is currently verified to compile on Windows, MacOS, Linux, OpenBSD, NetBSD.
 
-**Support matrix**
+<details><summary><b>Support matrix</b></summary>
 
 | Platform                 | Native C3 compiler available? | Target supported        | Stack trace | Threads  | Sockets  | Inline asm |
 |--------------------------|-------------------------------|-------------------------|-------------|----------|----------|------------|
@@ -193,6 +190,7 @@ The compiler is currently verified to compile on Linux, OpenBSD, Windows and Mac
 *\* Xtensa support is enabled by compiling with `-DXTENSA_ENABLE`. The [espressif llvm fork](https://github.com/espressif/llvm-project) is recommended for best compatibility*
 
 More platforms will be supported in the future.
+</details>
 
 #### What can you help with?
 
@@ -204,7 +202,9 @@ More platforms will be supported in the future.
 - Start work on the C -> C3 converter which takes C code and does a "best effort" to translate it to C3. The first version only needs to work on C headers.
 - Do you have some specific area you have deep knowledge of and could help make C3 even better at doing? File or comment on issues.
 
-### Installing
+---
+
+## Installing
 
 The instructions below install the latest stable release. If you wish to use the bleeding-edge nightly build instead, you can download the [latest prerelease binaries here](https://github.com/c3lang/c3c/releases/tag/latest-prerelease-tag).
 
@@ -420,7 +420,7 @@ The generated binary will by default be named after the module that contains the
 function. In our case that is `hello_world`, so the resulting binary will be
 called `hello_world` or `hello_world.exe`depending on platform.
 
-### Compiling
+## Building C3 from Source
 
 #### Compiling on MacOS
 
@@ -499,7 +499,7 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
 4. Test it out: `./build/c3c -V`
 5. If you use `clangd` lsp server for your editor, it is recommended to make a symbolic link to `compile_command.json` in the root: `ln -s ./build/compile_commands.json compile_commands.json`
 
-*A note on compiling for Linux/Unix/MacOS: to be able to fetch vendor libraries
+*A note on compiling for Linux/Unix/MacOS: to be able to [fetch vendor libraries](# "`c3c vendor-fetch` will list easily downloadable bindings. For example: `c3c vendor-fetch raylib`")
 libcurl is needed. The CMake script should detect it if it is available. Note that
 this functionality is non-essential and it is perfectly fine to use the compiler without it.*
 
