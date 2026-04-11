@@ -550,4 +550,10 @@ And honorable mention goes to past sponsors:
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=c3lang/c3c&type=Date)](https://www.star-history.com/#c3lang/c3c&Date)
+<a href="https://www.star-history.com/?repos=c3lang%2Fc3c&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=c3lang/c3c&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=c3lang/c3c&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=c3lang/c3c&type=date&legend=top-left" />
+ </picture>
+</a>
