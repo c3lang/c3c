@@ -598,7 +598,7 @@ fn sz? String.index_of_chars(String self, char[] characters)
  @return "the index of the character"
  @return? NOT_FOUND : "if the character cannot be found starting from the start_index"
 *>
-fn sz? String.index_of_char_from(self, char character, sz start_index) @inline
+fn sz? String.index_of_char_from(self, char character, sz start_index)
 {
 	sz len = self.len;
 	if (len <= start_index) return NOT_FOUND~;
@@ -642,17 +642,13 @@ fn sz? String.rindex_of_char(self, char character)
 fn sz? String.index_of(self, String substr)
 {
 	sz needed = substr.len;
-	if (needed == 0) return NOT_FOUND~;
-	if (self.len < needed) return NOT_FOUND~;
-	if (needed == 1) return self.index_of_char(substr[0]);
+	if (!needed || self.len < needed) return NOT_FOUND~;
+	if (needed == 1) return self.index_of_char(substr[0]) @inline;
 
 	char first = substr[0];
-	char* ptr = self.ptr;
-	char* subptr = substr.ptr;
-	sz max_idx = self.len - needed;
-	for (sz i = 0; i <= max_idx; i++)
+	foreach (i, c: self[..^needed])
 	{
-		if (ptr[i] == first && mem::equals(ptr + i, subptr, needed)) return i;
+		if (c == first && self[i : needed] == substr) return i;
 	}
 	return NOT_FOUND~;
 }
@@ -1204,7 +1200,7 @@ fn bool Splitter.at_end(&self)
 	return self.current > self.string.len;
 }
 
-fn String? Splitter.next(&self) @inline
+fn String? Splitter.next(&self)
 {
 	while (true)
 	{
@@ -1221,24 +1217,22 @@ fn String? Splitter.next(&self) @inline
 		sz? next;
 		if (self.split.len == 1)
 		{
-			next = self.string.index_of_char_from(self.split[0], current);
+			next = self.string.index_of_char_from(self.split[0], current) @inline;
 		}
 		else
 		{
-			next = self.string[current..].index_of(self.split);
-			if (try n = next) next = n + current;
+			next = self.string[current..].index_of(self.split) @inline + current;
 		}
 
-		if (try n = next)
+		if (try next)
 		{
-			String res = self.string[current : n - current];
-			self.current = n + self.split.len;
-			if (res.len == 0 && self.type == TOKENIZE) continue;
+			String res = self.string[current : next - current];
+			self.current = next + self.split.len;
+			if (!res.len && self.type == TOKENIZE) continue;
 			return res;
 		}
 
-		String res = self.string[current..];
 		self.current = len + 1;
-		return res;
+		return self.string[current..];
 	}
 }

@@ -50,6 +50,8 @@
 - Ini parser and encoder.
 - Updated `ref::new` argument order.
 - Support setting thread stack size.
+- Make `DString.append_repeat` polymorphic adding `append_string_repeat` and `append_char_repeat`.
+- Add `DString.append_inline` for optimized uses.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
