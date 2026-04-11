@@ -71,6 +71,7 @@ run_examples() {
     "$C3C_BIN" compile examples/fasta.c3
     "$C3C_BIN" compile examples/gameoflife.c3
     "$C3C_BIN" compile examples/hash.c3
+    "$C3C_BIN" compile examples/http_server.c3
     "$C3C_BIN" compile-only examples/levenshtein.c3
     "$C3C_BIN" compile examples/load_world.c3
     "$C3C_BIN" compile-only examples/map.c3
@@ -207,6 +208,68 @@ run_wasm_compile() {
     "$C3C_BIN" compile --target wasm32 -g0 --no-entry -Os wasm4.c3
 }
 
+run_http_server_tests() {
+    echo "--- Running HTTP Server Integration Tests ---"
+
+    if [ -n "$SKIP_NETWORK_TESTS" ]; then
+        echo "Skipping HTTP server request tests (network tests disabled)"
+        return
+    fi
+
+    if ! command -v curl &> /dev/null; then
+        echo "::warning::curl not found, skipping HTTP server integration tests"
+        return
+    fi
+
+    # Windows runners might hang when backgrounding processes or not have curl,
+    # so we allow it to fail gracefully but still execute if possible.
+
+    cd "$ROOT_DIR/resources/examples"
+    "$C3C_BIN" compile -O1 http_server.c3
+
+    OUTPUT_BIN="./http_server"
+    if [[ "$OS_MODE" == "windows" ]]; then
+        OUTPUT_BIN="./http_server.exe"
+    fi
+
+    PORT=$(( 8085 + $RANDOM % 10000 ))
+    echo "Starting server on port $PORT..."
+    "$OUTPUT_BIN" -p $PORT -r . &
+    SERVER_PID=$!
+
+    sleep 1 # Wait for the server to start?
+
+    # Test root path (directory listing)
+    echo "Testing GET /"
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/")
+    if [ "$HTTP_STATUS" != "200" ]; then
+        echo "::error::HTTP GET / failed with status $HTTP_STATUS."
+        kill $SERVER_PID || true
+        exit 1
+    fi
+
+    # Test served file
+    echo "Testing GET /http_server.c3"
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/http_server.c3")
+    if [ "$HTTP_STATUS" != "200" ]; then
+        echo "::error::HTTP GET /http_server.c3 failed with status $HTTP_STATUS."
+        kill $SERVER_PID || true
+        exit 1
+    fi
+
+    # Test missing file (404 expected)
+    echo "Testing 404 for invalid path"
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/does_not_exist_404_test")
+    if [ "$HTTP_STATUS" != "404" ]; then
+        echo "::error::HTTP GET /does_not_exist_404_test expected 404, but got $HTTP_STATUS."
+        kill $SERVER_PID || true
+        exit 1
+    fi
+
+    echo "HTTP Server Integration Tests passed."
+    kill $SERVER_PID || true
+}
+
 run_unit_tests() {
     echo "--- Running Unit Tests ---"
     cd "$ROOT_DIR/test"
@@ -228,4 +291,5 @@ run_dynlib_tests
 run_staticlib_tests
 run_testproject
 run_wasm_compile
+run_http_server_tests
 run_unit_tests

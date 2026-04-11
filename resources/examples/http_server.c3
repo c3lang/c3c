@@ -1,6 +1,8 @@
 import std, libc;
 
-fn void ignore_sigpipe() @init(1001)
+const int THREAD_COUNT = 64;
+
+fn void ignore_sigpipe() @init(1001) @if(!env::WIN32)
 {
 	libc::signal(libc::SIGPIPE, fn void(int) {});
 }
@@ -56,6 +58,14 @@ fn int main(String[] args)
 	Path cwd = path::tcwd()!!;
 	io::printfn("Serving %s on http://0.0.0.0:%d", cwd.str_view(), port);
 
+	pool::ThreadPool{THREAD_COUNT} worker_pool;
+	if (catch err = worker_pool.init())
+	{
+		io::eprintfn("Failed to init thread pool: %s", err);
+		return 1;
+	}
+	defer worker_pool.stop_and_destroy();
+
 	while (true)
 	{
 		TcpSocket? conn = tcp::accept(&server);
@@ -64,15 +74,7 @@ fn int main(String[] args)
 		TcpSocket* conn_ptr = mem::new(TcpSocket);
 		*conn_ptr = conn;
 
-		Thread handler_thread;
-		if (catch Thread.create(&handler_thread, &handle_thread, conn_ptr))
-		{
-			io::eprintfn("Failed to create thread!");
-			mem::free(conn_ptr);
-			(void)conn.close();
-			continue;
-		}
-		Thread.detach(handler_thread);
+		worker_pool.push(&handle_thread, conn_ptr);
 	}
 }
 
@@ -81,13 +83,42 @@ fn int handle_thread(void* arg) => @pool_init(mem, 65536)
 	TcpSocket* conn_ptr = (TcpSocket*)arg;
 	TcpSocket conn = *conn_ptr;
 	mem::free(conn_ptr);
-	handle(conn);
+	(void)handle(conn);
 	return 0;
 }
 
-fn void handle(TcpSocket conn)
+fn void? handle(TcpSocket conn)
 {
 	defer (void)conn.close();
+	Clock start_time = clock::now();
+	int status_code = 0;
+	usz response_size = 0;
+	String method_str = "-";
+	String path_str = "-";
+
+	defer
+	{
+		if (status_code != 0)
+		{
+			String date_str = datetime::from_time_tz(time::now(), 0).format(tmem, RFC3339);
+			double elapsed_ms = (double)start_time.to_now() / 1_000_000.0;
+			String time_str = string::tformat("%.1fms", elapsed_ms);
+			String human_s = human_size(response_size);
+			String ip_str = "127.0.0.1";
+			if (conn.ai_addr_storage[1] == 2)
+			{
+				ip_str = string::tformat("%d.%d.%d.%d",
+					(conn.ai_addr_storage[4] & 0xFF), (conn.ai_addr_storage[5] & 0xFF),
+					(conn.ai_addr_storage[6] & 0xFF), (conn.ai_addr_storage[7] & 0xFF));
+			}
+			else if (conn.ai_addr_storage[1] == 10)
+			{
+				ip_str = "::1";
+			}
+			io::printfn("[%s] %3d %-6s %-32s %8s %8s  %s",
+				date_str, status_code, method_str, path_str, time_str, human_s, ip_str);
+		}
+	}
 
 	char[8192] buf;
 	sz total = 0;
@@ -103,9 +134,11 @@ fn void handle(TcpSocket conn)
 
 	String request_data = (String)buf[:total];
 	ParsedRequest pr = parse_request(request_data);
+	method_str = pr.method;
+	path_str = pr.path;
 	if (!pr.path)
 	{
-		(void)send_error(&conn, 400, "Bad Request");
+		send_error(&conn, 400, "Bad Request", &status_code, &response_size)!;
 		return;
 	}
 
@@ -113,13 +146,14 @@ fn void handle(TcpSocket conn)
 
 	if (raw_path.contains("/../") || raw_path.ends_with("/.."))
 	{
-		(void)send_error(&conn, 403, "Forbidden");
+		send_error(&conn, 403, "Forbidden", &status_code, &response_size)!;
 		return;
 	}
 
 	if (raw_path == "/favicon.ico" && !file::exists("favicon.ico"))
 	{
-		(void)conn.write("HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n");
+		conn.write("HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n")!;
+		status_code = 204;
 		return;
 	}
 
@@ -136,8 +170,6 @@ fn void handle(TcpSocket conn)
 		is_dir = path::is_dir(dir_check_path);
 	};
 
-	io::eprintfn("[%s] %s (gzip=%b)", conn.sock, raw_path, pr.accept_gzip);
-
 	if (is_dir)
 	{
 		String index_path = rel.len > 0 && rel != "."
@@ -146,16 +178,16 @@ fn void handle(TcpSocket conn)
 
 		if (file::exists(index_path))
 		{
-			(void)send_file(&conn, index_path, "", if_none_match, pr.method == "HEAD", pr.accept_gzip);
+			send_file(&conn, index_path, "", if_none_match, pr.method == "HEAD", pr.accept_gzip, &status_code, &response_size)!;
 		}
 		else
 		{
-			(void)send_dir_listing(&conn, rel, raw_path, pr.accept_gzip);
+			send_dir_listing(&conn, rel, raw_path, pr.accept_gzip, &status_code, &response_size)!;
 		}
 	}
 	else
 	{
-		(void)send_file(&conn, rel, range_hdr, if_none_match, pr.method == "HEAD", pr.accept_gzip);
+		send_file(&conn, rel, range_hdr, if_none_match, pr.method == "HEAD", pr.accept_gzip, &status_code, &response_size)!;
 	}
 }
 
@@ -263,10 +295,12 @@ fn ParsedRequest parse_request(String req)
 }
 
 
-fn void? send_error(TcpSocket* sock, int code, String reason)
+fn void? send_error(TcpSocket* sock, int code, String reason, int* out_status, usz* out_size)
 {
 	String body = string::tformat("<h1>%d %s</h1>", code, reason);
 	sock.write(string::tformat("HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", code, reason, body.len, body))!;
+	if (out_status) *out_status = code;
+	if (out_size) *out_size = (usz)body.len;
 }
 
 fn void? stream_gzip(TcpSocket* sock, InStream input, Allocator allocator)
@@ -278,10 +312,15 @@ fn void? stream_gzip(TcpSocket* sock, InStream input, Allocator allocator)
 	io::copy_to(input, &gz)!;
 }
 
-fn void? send_file(TcpSocket* sock, String path_str, String range_header, String if_none_match, bool head_only, bool accept_gzip)
+fn void? send_file(TcpSocket* sock, String path_str, String range_header, String if_none_match, bool head_only, bool accept_gzip, int* out_status, usz* out_size)
 {
 	@pool()
 	{
+		if (!file::exists(path_str))
+		{
+			send_error(sock, 404, "Not Found", out_status, out_size)!;
+			return;
+		}
 		File target_file = file::open(path_str, "rb")!;
 		defer (void)target_file.close();
 
@@ -295,6 +334,8 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 		if (if_none_match == etag)
 		{
 			sock.write(string::tformat("HTTP/1.1 304 Not Modified\r\nETag: %s\r\nConnection: close\r\n\r\n", etag))!;
+			if (out_status) *out_status = 304;
+			if (out_size) *out_size = 0;
 			return;
 		}
 
@@ -335,7 +376,8 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 		if (is_partial)
 		{
 			usz content_len = (usz)(end - start + 1);
-			io::eprintfn("  -> 206 Partial Content: %d-%d/%d", start, end, size);
+			if (out_status) *out_status = 206;
+			if (out_size) *out_size = content_len;
 			sock.write(string::tformat("HTTP/1.1 206 Partial Content\r\n"
 				"Date: %s\r\n"
 				"Content-Type: %s\r\n"
@@ -361,7 +403,8 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 		}
 		else
 		{
-			io::eprintfn("  -> 200 OK: %d bytes (gzip=%b)", size, compress);
+			if (out_status) *out_status = 200;
+			if (out_size) *out_size = size;
 			sock.write(string::tformat("HTTP/1.1 200 OK\r\n"
 				"Date: %s\r\n"
 				"Content-Type: %s\r\n"
@@ -395,16 +438,16 @@ fn int path_cmp_name(Path* a, Path* b)
 
 fn String human_size(long size)
 {
-	if (size < 1024) return string::tformat("%d B", size);
+	if (size < 1024) return string::tformat("%dB", size);
 	double d = (double)size / 1024.0;
-	if (d < 1024) return string::tformat("%.1f KB", d);
+	if (d < 1024) return string::tformat("%.1fKB", d);
 	d /= 1024.0;
-	if (d < 1024) return string::tformat("%.1f MB", d);
+	if (d < 1024) return string::tformat("%.1fMB", d);
 	d /= 1024.0;
-	return string::tformat("%.1f GB", d);
+	return string::tformat("%.1fGB", d);
 }
 
-fn void? send_dir_listing(TcpSocket* sock, String rel_path, String raw_path, bool accept_gzip)
+fn void? send_dir_listing(TcpSocket* sock, String rel_path, String raw_path, bool accept_gzip, int* out_status, usz* out_size)
 {
 	@pool()
 	{
@@ -412,7 +455,7 @@ fn void? send_dir_listing(TcpSocket* sock, String rel_path, String raw_path, boo
 		PathList? files = path::ls(tmem, dir_path);
 		if (catch files)
 		{
-			send_error(sock, 500, "Internal Server Error")!;
+			send_error(sock, 500, "Internal Server Error", out_status, out_size)!;
 			return;
 		}
 
@@ -545,6 +588,8 @@ function updateHidden(cb) { gTable.classList.toggle("show-hidden", cb.checked); 
 			sock.write(string::tformat("Content-Length: %d\r\n\r\n", out_html.len))!;
 			sock.write(out_html)!;
 		}
+		if (out_status) *out_status = 200;
+		if (out_size) *out_size = out_html.len;
 	};
 }
 
