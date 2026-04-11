@@ -185,7 +185,7 @@ The compiler is currently verified to compile on Linux, OpenBSD, Windows and Mac
 | Wasm64                   | No                            | Untested                | No          | No       | No       | No         |
 
 *\* Inline asm is still a work in progress*<br>
-*\* OpenBSD 7.7 is the only tested version*<br>
+*\* OpenBSD 7.8 is the only tested version*<br>
 *\* OpenBSD has limited stacktrace, needs to be tested further*<br>
 *\* Xtensa support is enabled by compiling with `-DXTENSA_ENABLE`. The [espressif llvm fork](https://github.com/espressif/llvm-project) is recommended for best compatibility*
 
@@ -203,7 +203,7 @@ More platforms will be supported in the future.
 
 ### Installing
 
-This installs the latest prerelease build, as opposed to the latest released version.
+The instructions below install the latest stable release. If you wish to use the bleeding-edge nightly build instead, you can download the [latest prerelease binaries here](https://github.com/c3lang/c3c/releases/tag/latest-prerelease-tag).
 
 #### Installing on Windows with precompiled binaries
 1. Download the zip file: [https://github.com/c3lang/c3c/releases/latest/download/c3-windows.zip](https://github.com/c3lang/c3c/releases/latest/download/c3-windows.zip)
@@ -220,13 +220,20 @@ iwr -useb https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install
 The script will inform you once the installation is successful and add the `~/.c3` directory to your PATH, which will allow you to run the c3c command from any location.
 
 You can choose another version with option `C3_VERSION`.
-For example, you can force the installation of the 0.7.4 version:
+For example, you can force the installation of the 0.7.11 version:
 ```bash
-$env:C3_VERSION='0.7.4'; powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.ps1 | iex"
+$env:C3_VERSION='0.7.11'; powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.ps1 | iex"
 ```
 
 **(Optional)** If you don't have Visual Studio 17 installed, you can run the `c3c fetch windows-sdk` command which will download the necessary files to compile on Windows.
 
+#### Installing on Windows using Scoop
+
+c3c is included in the 'Main' bucket.
+
+```sh
+scoop install c3
+```
 
 #### Installing on Linux with precompiled binaries
 1. Download tar file: [https://github.com/c3lang/c3c/releases/latest/download/c3-linux-static.tar.gz](https://github.com/c3lang/c3c/releases/latest/download/c3-linux-static.tar.gz)
@@ -243,9 +250,9 @@ curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/instal
 The C3 compiler will be installed, and the script will also update your ~/.bashrc to include `~/.c3` in your PATH, allowing you to invoke the c3c command from anywhere. You might need to restart your terminal or source your shell for the changes to take effect.
 
 You can choose another version with option `C3_VERSION`.
-For example, you can force the installation of the 0.7.4 version:
+For example, you can force the installation of the 0.7.11 version:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.sh | C3_VERSION=0.7.4 bash
+curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/install/install.sh | C3_VERSION=0.7.11 bash
 ```
 
 #### Installing on MacOS with precompiled binaries
@@ -263,7 +270,7 @@ curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/instal
 2. Unpack executable and standard lib.
 3. Run `./c3c`.
 
-(*Note that this is specifically for OpenBSD 7.7, running it on any other version is prone to ABI breaks)
+(*Note that this is specifically for OpenBSD 7.8, running it on any other version is prone to ABI breaks)
 
 #### Installing on Arch Linux
 Arch includes c3c in the official 'extra' repo. It can be easily installed the usual way:
@@ -303,6 +310,9 @@ sudo dnf install c3
 #### Installing via Nix
 
 You can access `c3c` via [flake.nix](./flake.nix), which will contain the latest commit of the compiler. To add `c3c` to your `flake.nix`, do the following:
+
+<details><summary>flake.nix example</summary>
+
 ```nix
 {
   inputs = {
@@ -331,8 +341,9 @@ You can access `c3c` via [flake.nix](./flake.nix), which will contain the latest
   );
 }
 ```
+</details>
 
-### Installing on Gentoo
+#### Installing on Gentoo
 
 `c3c` is available in the [Gentoo GURU overlay](https://wiki.gentoo.org/wiki/Project:GURU).
 
@@ -364,26 +375,6 @@ UBUNTU_VERSION=20.04 ./build-with-docker.sh
 
 See the `build-with-docker.sh` script for more information on other configurable environment variables.
 
-#### Installing on OS X using Homebrew
-
-1. Install [Homebrew](https://brew.sh/)
-2. Install LLVM 19+: `brew install llvm`
-3. Install lld: `brew install lld`
-4. Install CMake: `brew install cmake`
-5. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-6. Enter the C3C directory `cd c3c`.
-7. Set up CMake build for debug: `cmake -B build -S .`
-8. Build: `cmake --build build`
-9. Change directory to the build directory `cd build`
-
-#### Installing on Windows using Scoop
-
-c3c is included in 'Main' bucket.
-
-```sh
-scoop install c3
-```
-
 #### Getting started with a "hello world"
 
 Create a `main.c3` file with:
@@ -409,6 +400,16 @@ function. In our case that is `hello_world`, so the resulting binary will be
 called `hello_world` or `hello_world.exe`depending on platform.
 
 ### Compiling
+
+#### Compiling on MacOS
+
+1. Install [Homebrew](https://brew.sh/)
+2. Install CMake: `brew install cmake`
+3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+4. Enter the C3C directory `cd c3c`.
+5. Set up CMake build: `cmake -B build -S . -DC3_FETCH_LLVM=ON`
+8. Build: `cmake --build build`
+9. Change directory to the build directory `cd build`
 
 #### Compiling on Windows
 
@@ -438,10 +439,10 @@ You should now have a `c3c` executable in `build-debug\Debug`.
 #### Compiling on Ubuntu 24.04 LTS
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
-2. Install LLVM 18 `sudo apt-get install cmake git clang zlib1g zlib1g-dev libllvm18 llvm llvm-dev llvm-runtime liblld-dev liblld-18 libpolly-18-dev`. If you're using Ubuntu 25.04, also install `libpolly-20-dev`.
+2. Install required build tools: `sudo apt-get install cmake git clang libcurl4-openssl-dev`
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
-5. Set up CMake build: `cmake -B build -S .`
+5. Set up CMake build: `cmake -B build -S . -DC3_FETCH_LLVM=ON`
 6. Build: `cmake --build build`
 7. Change directory to the build directory `cd build`
 
@@ -452,11 +453,11 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 
 #### Compiling on Void Linux
 
-1. As root, ensure that all project dependencies are installed: `xbps-install git cmake llvm17 llvm17-devel lld17-devel libcurl-devel ncurses-devel zlib-devel libzstd-devel libxml2-devel`
+1. As root, ensure that all project dependencies are installed: `xbps-install git cmake clang libcurl-devel`
 2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
     - If you only need the latest commit, you may want to make a shallow clone instead: `git clone https://github.com/c3lang/c3c.git --depth=1`
 3. Enter the directory: `cd c3c`
-4. Create the CMake build cache: `cmake -B build -S .`
+4. Create the CMake build cache: `cmake -B build -S . -DC3_FETCH_LLVM=ON`
 5. Build: `cmake --build build`
 6. Enter the build directory: `cd build`
 
@@ -466,12 +467,11 @@ For a system-wide installation, run the following as root: `cmake --install .`
 
 #### Compiling on Fedora
 
-1. Install required project dependencies: `dnf install cmake clang git llvm llvm-devel lld lld-devel ncurses-devel`
-2. Optionally, install additional dependencies: `dnf install libcurl-devel zlib-devel libzstd-devel libxml2-devel libffi-devel`
+1. Install required project dependencies: `dnf install cmake clang git libcurl-devel`
 3. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
     - If you only need the latest commit, you may want to make a shallow clone: `git clone https://github.com/c3lang/c3c.git --depth=1`
 4. Enter the C3C directory: `cd c3c`
-5. Create the CMake build cache. The Fedora repositories provide `.so` libraries for lld, so you need to set the C3_LINK_DYNAMIC flag: `cmake -B build -S . -DC3_LINK_DYNAMIC=1`
+5. Create the CMake build cache: `cmake -B build -S . -DC3_FETCH_LLVM=ON`
 6. Build the project: `cmake --build build`
 7. Enter the build directory: `cd build`
 
@@ -479,14 +479,14 @@ The c3c binary should be created in the build directory. You can try it out by r
 
 #### Compiling on Arch Linux
 
-1. Install required project dependencies: `sudo pacman -S curl lld llvm-libs clang cmake git libedit llvm libxml2`
+1. Install required project dependencies: `sudo pacman -S curl clang cmake git`
 2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
     - If you only need the latest commit, you may want to make a shallow clone: `git clone https://github.com/c3lang/c3c.git --depth=1`
 3. Enter the C3C directory: `cd c3c`
 4. Create the CMake build cache:
 ```bash
 cmake -B build \
-    -D C3_LINK_DYNAMIC=ON \
+    -D C3_FETCH_LLVM=ON \
     -D CMAKE_BUILD_TYPE=Release
 ```
 5. Build the project: `cmake --build build`.
@@ -505,12 +505,10 @@ After compilation, the `c3c` binary will be located in the `build` directory. Yo
 
 #### Compiling on other Linux / Unix variants
 
-1. Install CMake.
-2. Install or compile LLVM and LLD *libraries* (version 19+ or higher)
-3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-4. Enter the C3C directory `cd c3c`.
-5. Set up CMake build for debug: `cmake -B build -S .`. At this point you may need to manually
-provide the link path to the LLVM CMake directories, e.g. `cmake -B build -S . -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/`
+1. Install CMake, curl, and a C compiler.
+2. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+3. Enter the C3C directory `cd c3c`.
+4. Set up CMake build: `cmake -B build -S . -DC3_FETCH_LLVM=ON`.
 6. Build: `cmake --build build`
 7. Change directory to the build directory `cd build`
 
