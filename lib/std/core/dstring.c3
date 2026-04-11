@@ -304,17 +304,25 @@ fn bool DString.less(self, DString other_string)
 	return true;
 }
 
-fn void DString.append_bytes(&self, char[] bytes)
+fn void DString.append_bytes(&self, char[] bytes) @inline
 {
 	sz other_len = bytes.len;
-	if (!other_len) return;
-	if (!*self)
+	if (other_len == 0) return;
+
+	StringData* data = (StringData*)*self;
+	if (data && data.len + other_len <= data.capacity)
 	{
-		*self = temp((String)bytes);
+		mem::copy(&data.chars[data.len], bytes.ptr, other_len);
+		data.len += other_len;
 		return;
 	}
+
+	if (!*self)
+	{
+		*self = temp_with_capacity(MIN_CAPACITY > other_len ? MIN_CAPACITY : other_len);
+	}
 	self.reserve(other_len);
-	StringData* data = self.data();
+	data = (StringData*)*self;
 	mem::copy(&data.chars[data.len], bytes.ptr, other_len);
 	data.len += other_len;
 }
