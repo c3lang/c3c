@@ -69,3 +69,34 @@ const CInt SIGIO = 29;
 const CInt SIGPOLL = 29;
 const CInt SIGPWR = 30;
 const CInt SIGUNUSED = 31;
+
+module libc @if(env::LINUX || env::ANDROID);
+
+const PRIO_MIN = -20;
+const PRIO_MAX = 20;
+const PRIO_PROCESS = 0;
+const PRIO_PGRP = 1;
+const PRIO_USER = 2;
+
+const SCHED_OTHER = 0;
+const SCHED_FIFO  = 1;
+const SCHED_RR    = 2;
+const SCHED_BATCH = 3;
+const SCHED_IDLE  = 5;
+
+const SYS_GETTID = gettid_code();
+
+macro gettid_code() @const
+{
+	$switch env::ARCH_TYPE:
+		$case X86_64:  return 186;
+		$case X86:
+		$case ARM:
+		$case ARMB:    return 224;
+		$case RISCV32:
+		$case RISCV64:
+		$case AARCH64: return 178;
+		$default:      $error("Missing gettid code");
+	$endswitch
+}
+

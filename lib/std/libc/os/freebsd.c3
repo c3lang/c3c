@@ -64,3 +64,6 @@ extern fn CInt get_nprocs_conf();
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
 
+const SCHED_OTHER = 2;
+const SCHED_FIFO  = 1;
+const SCHED_RR    = 3;

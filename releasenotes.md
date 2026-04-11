@@ -50,6 +50,8 @@
 - Ini parser and encoder.
 - Updated `ref::new` argument order.
 - Support setting thread stack size.
+- Support setting thread priority.
+- Support syscall on RISCV.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

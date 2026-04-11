@@ -286,6 +286,8 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
 		case ARCH_TYPE_AARCH64_BE:
 		case ARCH_TYPE_X86:
 		case ARCH_TYPE_X86_64:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
 			break;
 		default:
 			RETURN_SEMA_ERROR(expr, "Target does not support $$syscall.");

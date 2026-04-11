@@ -352,6 +352,18 @@ static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *exp
 			scratch_buffer_append(",~{rcx},~{r11},~{memory}");
 			inline_asm = llvm_syscall_asm(func_type, "syscall");
 			break;
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
+			scratch_buffer_append("={a0}");
+			ASSERT(arguments < 8);
+			{
+				static char const *regs[] = { "a7", "a0", "a1", "a2", "a3", "a4", "a5",  };
+				llvm_syscall_write_regs_to_scratch(regs, arguments);
+			}
+			// Check clobbers on different OSes
+			scratch_buffer_append(",~{memory}");
+			inline_asm = llvm_syscall_asm(func_type, "ecall");
+			break;
 		case ARCH_UNSUPPORTED:
 		default:
 			UNREACHABLE_VOID
