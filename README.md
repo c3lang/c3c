@@ -18,9 +18,19 @@ To build the compiler from source instead, see the [instructions for building C3
 
 <h3 align="center"><a href="https://c3-lang.org">[Read the C3 Manual]</a></h3>
 
-Thanks to full ABI compatibility with C, it's possible to mix C and C3 in the same project with no effort.
+---
+
+<img src="https://github.com/c3lang/c3c/blob/master/resources/images/vkQuake.png?raw=true" align="right" hspace="50" alt="vkQuake">
+
+> [!NOTE]
+> Thanks to full ABI compatibility with C, it's possible to mix C and C3 in the same project with no effort.
+> As a demonstration, vkQuake was compiled with a small portion of the code converted to C3 and compiled with the c3c compiler.
+> (The aging fork can be found at https://github.com/c3lang/vkQuake)
+<br clear="all">
 
 A non-curated list of user written projects and other resources can be found [here](https://github.com/c3lang/c3-showcase).
+
+---
 
 ### Design Principles
 - Procedural "get things done"-type of language.
