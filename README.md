@@ -265,6 +265,7 @@ curl -fsSL https://raw.githubusercontent.com/c3lang/c3c/refs/heads/master/instal
 ```
 
 **Arch Linux**
+
 Arch includes c3c in the official 'extra' repo. It can be easily installed the usual way:
 
 ```sh
