@@ -2,6 +2,8 @@ module std::thread::os @if(env::POSIX);
 import std::os::posix, std::time, libc;
 import std::thread;
 
+const ANDROID_LINUX = env::LINUX || env::ANDROID;
+
 struct NativeMutex
 {
 	Pthread_mutex_t mutex;
@@ -14,9 +16,11 @@ alias NativeConditionVariable = Pthread_cond_t;
 
 struct NativeThread
 {
-	inline Pthread_t pthread;
+	Pthread_t pthread;
 	ThreadFn thread_fn;
     void* arg;
+    Sem_t sem @if (ANDROID_LINUX);
+    Pid_t tid @if (ANDROID_LINUX);
 }
 
 alias NativeOnceFlag = Pthread_once_t;
@@ -193,7 +197,47 @@ fn void* callback(void* arg) @private
 {
 	NativeThread* thread = arg;
 	current_thread = *thread;
+	$if ANDROID_LINUX:
+		thread.tid = (Pid_t)@syscall(libc::SYS_GETTID);
+		os::sem_post(&thread.sem);
+	$endif
 	return (void*)(iptr)thread.thread_fn(thread.arg);
+}
+
+fn bool NativeThread.set_priority(&self, ThreadPriority priority)
+{
+	if (priority == DEFAULT) priority = NORMAL;
+	$switch:
+		$case ANDROID_LINUX:
+			if (priority == REALTIME)
+			{
+				Pthread_sched_param param =  { .sched_priority = 1 };
+				return !posix::pthread_setschedparam(self.pthread, libc::SCHED_FIFO, &param);
+			}
+			if (!self.tid) return false;
+			const CInt[4] NICE_TABLE = { 19, 5, 0, -5 };
+			return !libc::setpriority(libc::PRIO_PROCESS, (CInt)self.tid, NICE_TABLE[priority.ordinal - 1]);
+		$case $defined(libc::SCHED_OTHER, libc::sched_get_priority_min):
+			Pthread_sched_param param @noinit;
+			if (priority == REALTIME)
+			{
+				$if env::DARWIN:
+					param = { .sched_priority = libc::sched_get_priority_max(libc::SCHED_FIFO) / 2 };
+				$else
+					param = { .sched_priority = libc::sched_get_priority_max(libc::SCHED_FIFO) };
+				$endif
+				return !posix::pthread_setschedparam(self.pthread, libc::SCHED_FIFO, &param);
+			}
+			else
+			{
+				int low = libc::sched_get_priority_min(libc::SCHED_OTHER);
+				int high = libc::sched_get_priority_max(libc::SCHED_OTHER);
+				param = { .sched_priority = (low + ((high - low) * (priority.ordinal - 1)) / 4) };
+			}
+			return !posix::pthread_setschedparam(self.pthread, libc::SCHED_OTHER, &param);
+		$default:
+			return false;
+	$endswitch
 }
 
 <*
@@ -216,10 +260,18 @@ fn void? NativeThread.create(&thread, ThreadFn thread_fn, void* arg, ThreadSetti
 			if (posix::pthread_attr_setstacksize(attr_ptr, settings.stack_size)) return thread::INVALID_THREAD_SETTINGS~;
 		}
 	}
+	$if ANDROID_LINUX:
+		os::sem_init(&thread.sem, 0, 0);
+		defer os::sem_destroy(&thread.sem);
+	$endif
 	if (posix::pthread_create(&thread.pthread, null, &callback, thread) != 0)
 	{
 		return thread::INIT_FAILED~;
 	}
+	$if ANDROID_LINUX:
+		os::sem_wait(&thread.sem);
+	$endif
+	if (settings.priority != DEFAULT) thread.set_priority(settings.priority);
 }
 
 fn void NativeThread.detach(thread)

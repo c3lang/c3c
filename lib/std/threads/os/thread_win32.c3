@@ -356,6 +356,20 @@ fn void? NativeThread.create(&thread, ThreadFn func, void* args, ThreadSettings 
 	NativeThread t = (NativeThread)win32::createThread(null, settings.stack_size, func, args, settings.stack_size > 0 ? win32::STACK_SIZE_PARAM_IS_A_RESERVATION : 0, null);
 	if (!t) return thread::INIT_FAILED~;
 	*thread = t;
+	if (settings.priority != DEFAULT) t.set_priority(settings.priority);
+}
+
+fn bool NativeThread.set_priority(&self, ThreadPriority priority)
+{
+	const int[ThreadPriority.len] TABLE = {
+		win32::THREAD_PRIORITY_NORMAL,
+		win32::THREAD_PRIORITY_IDLE,
+		win32::THREAD_PRIORITY_BELOW_NORMAL,
+		win32::THREAD_PRIORITY_NORMAL,
+		win32::THREAD_PRIORITY_ABOVE_NORMAL,
+		win32::THREAD_PRIORITY_TIME_CRITICAL
+	};
+	return (bool)win32::setThreadPriority(*self, TABLE[priority.ordinal - 1]);
 }
 
 fn void NativeThread.detach(thread) @inline

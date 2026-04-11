@@ -25,6 +25,15 @@ fn void testrun_stack_size() @test
 }
 
 
+fn void testrun_set_priority() @test @if(env::POSIX || env::WIN32)
+{
+	Thread t;
+	t.create(fn int(void* arg) { thread::sleep_ms(400); return 0; }, null)!!;
+	assert(t.set_priority(LOW));
+	assert(t.join()!! == 0);
+}
+
+
 Mutex m_global;
 
 fn void testrun_mutex()

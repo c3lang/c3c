@@ -50,6 +50,8 @@
 - Ini parser and encoder.
 - Updated `ref::new` argument order.
 - Support setting thread stack size.
+- Support setting thread priority.
+- Support syscall on RISCV.
 - Make `DString.append_repeat` polymorphic adding `append_string_repeat` and `append_char_repeat`.
 - Add `DString.append_inline` for optimized uses.
 
@@ -62,6 +64,7 @@
 - `\r` was not filtered when piping a source file from stdin.
 - SHA-3 and Keccak contexts are now explicitly `@mustinit` structures. #3110
 - `UnbufferedChannel` would deadlock on multiple producers.
+- Don't override `sigaltstack` when running with `--sanitize=address`. #3115
 
 ## 0.7.11 Change list
 

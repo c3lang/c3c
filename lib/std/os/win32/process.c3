@@ -1,6 +1,14 @@
 module std::os::win32 @if(env::WIN32);
 import std::thread, std::os::backtrace;
 
+const THREAD_PRIORITY_ABOVE_NORMAL = 1;
+const THREAD_PRIORITY_BELOW_NORMAL = -1;
+const THREAD_PRIORITY_HIGHEST = 2;
+const THREAD_PRIORITY_IDLE = -15;
+const THREAD_PRIORITY_LOWEST = -2;
+const THREAD_PRIORITY_NORMAL = 0;
+const THREAD_PRIORITY_TIME_CRITICAL = 15;
+
 const win32::Win32_DWORD CREATE_SUSPENDED = 0x00000004;
 const win32::Win32_DWORD STACK_SIZE_PARAM_IS_A_RESERVATION = 0x00010000;
 const Win32_DWORD STARTF_USESTDHANDLES = 0x00000100;
@@ -75,6 +83,7 @@ extern fn Win32_DWORD waitForSingleObjectEx(Win32_HANDLE hHandle, Win32_DWORD dw
 extern fn Win32_DWORD waitForMultipleObjects(Win32_DWORD nCount, Win32_HANDLE* lpHandles, Win32_BOOL bWaitAll, Win32_DWORD dwMilliseconds) @cname("WaitForMultipleObjects");
 extern fn Win32_DWORD waitForMultipleObjectsEx(Win32_DWORD nCount, Win32_HANDLE* lpHandles, Win32_BOOL bWaitAll, Win32_DWORD dwMilliseconds, Win32_BOOL bAlertable) @cname("WaitForMultipleObjectsEx");
 extern fn void sleep(uint ms) @cname("Sleep");
+extern fn Win32_BOOL setThreadPriority(Win32_HANDLE hThread, CInt nPriority) @cname("SetThreadPriority");
 extern fn Win32_BOOL resetEvent(Win32_HANDLE event) @cname("ResetEvent");
 extern fn Win32_BOOL setEvent(Win32_HANDLE handle) @cname("SetEvent");
 extern fn long interlockedCompareExchange(int* dest, int exchange, int comperand) @cname("InterlockedCompareExchange");
