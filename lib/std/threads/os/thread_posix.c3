@@ -217,7 +217,7 @@ fn bool NativeThread.set_priority(&self, ThreadPriority priority)
 			if (!self.tid) return false;
 			const CInt[4] NICE_TABLE = { 19, 5, 0, -5 };
 			return !libc::setpriority(libc::PRIO_PROCESS, (CInt)self.tid, NICE_TABLE[priority.ordinal - 1]);
-		$case !env::OPENBSD && $defined(libc::SCHED_OTHER, libc::sched_get_priority_min):
+		$case $defined(libc::SCHED_OTHER, libc::sched_get_priority_min):
 			Pthread_sched_param param @noinit;
 			if (priority == REALTIME)
 			{
