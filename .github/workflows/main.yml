@@ -540,10 +540,17 @@ jobs:
       - name: prepare termux
         run: |
           ln -sf ${PREFIX}/etc/termux/mirrors/default ${PREFIX}/etc/termux/chosen_mirrors
+          # Ensure root can execute Termux binaries (the new image has them as 700)
+          chmod -R 755 ${PREFIX}/bin || true
           for i in 1 2; do /entrypoint.sh pkg update && break || sleep 5; done
           /entrypoint.sh bash -c "yes | pkg upgrade -y"
-          chmod -R o+x ${PREFIX}/bin
           for i in 1 2; do /entrypoint.sh pkg install -y nodejs-lts tar git && break || sleep 5; done
+          # Fix permissions again for newly installed packages and add compatibility symlinks
+          chmod -R 755 ${PREFIX}/bin
+          mkdir -p /usr/bin /bin || true
+          ln -sf ${PREFIX}/bin/env /usr/bin/env || true
+          ln -sf ${PREFIX}/bin/bash /usr/bin/bash || true
+          ln -sf ${PREFIX}/bin/sh /bin/sh || true
           # Symlink Termux node to where GHA expects it
           mkdir -p /__e/node20/bin /__e/node24/bin || true
           ln -sf ${PREFIX}/bin/node /__e/node20/bin/node || true
@@ -577,12 +584,12 @@ jobs:
 
       - name: Run Unified Tests
         if: matrix.build_type == 'Debug'
-        run: ./scripts/tools/ci_tests.sh "./build/c3c" "android"
+        run: bash ./scripts/tools/ci_tests.sh "./build/c3c" "android"
 
       - name: bundle_output
         run: |
           chmod +x ./scripts/tools/package_build.sh
-          ./scripts/tools/package_build.sh "./build/c3c" "c3-android-${{matrix.architecture}}-${{matrix.build_type}}" "tar"
+          bash ./scripts/tools/package_build.sh "./build/c3c" "c3-android-${{matrix.architecture}}-${{matrix.build_type}}" "tar"
 
       - name: upload artifacts
         uses: actions/upload-artifact@v7
