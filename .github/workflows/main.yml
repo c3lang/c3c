@@ -551,6 +551,9 @@ jobs:
           ln -sf ${PREFIX}/bin/env /usr/bin/env || true
           ln -sf ${PREFIX}/bin/bash /usr/bin/bash || true
           ln -sf ${PREFIX}/bin/sh /bin/sh || true
+          # Ensure TMPDIR exists and is writable
+          mkdir -p ${TMPDIR} /tmp || true
+          chmod 1777 ${TMPDIR} || true
           # Symlink Termux node to where GHA expects it
           mkdir -p /__e/node20/bin /__e/node24/bin || true
           ln -sf ${PREFIX}/bin/node /__e/node20/bin/node || true
