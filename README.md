@@ -1,4 +1,5 @@
 # C3 Language
+<img src="https://c3-lang.org/logo.svg" align="right" height="120" />
 
 C3 is a programming language that builds on the syntax and semantics of the C language,
 with the goal of evolving it while still retaining familiarity for C programmers.
@@ -12,6 +13,8 @@ Precompiled binaries for the following operating systems are available:
 - Linux x64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-linux-static.tar.gz), [install instructions](#installing-on-linux-with-precompiled-binaries).
 - MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-macos.zip), [install instructions](#installing-on-macos-with-precompiled-binaries).
 - OpenBSD x64 [download](https://github.com/c3lang/c3c/releases/latest/download/c3-openbsd.tar.gz), [install instructions](#installing-on-openbsd-with-precompiled-binaries).
+
+To build the compiler from source instead, see the [instructions for compiling C3](#compiling).
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
@@ -408,8 +411,8 @@ called `hello_world` or `hello_world.exe`depending on platform.
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
 5. Set up CMake build: `cmake -B build -S . -DC3_FETCH_LLVM=ON`
-8. Build: `cmake --build build`
-9. Change directory to the build directory `cd build`
+6. Build: `cmake --build build`
+7. Change directory to the build directory `cd build`
 
 #### Compiling on Windows
 
@@ -436,81 +439,46 @@ Debug build requires a different set of LLVM libraries to be loaded for which a 
 
 You should now have a `c3c` executable in `build-debug\Debug`.
 
-#### Compiling on Ubuntu 24.04 LTS
+#### Compiling on Linux
 
-1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
-2. Install required build tools: `sudo apt-get install cmake git clang libcurl4-openssl-dev`
-3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-4. Enter the C3C directory `cd c3c`.
-5. Set up CMake build: `cmake -B build -S . -DC3_FETCH_LLVM=ON`
-6. Build: `cmake --build build`
-7. Change directory to the build directory `cd build`
+1. Install required build dependencies using your distribution's package manager:
+   - **Ubuntu / Debian:** `sudo apt-get install cmake git clang libcurl4-openssl-dev`
+   - **Fedora:** `sudo dnf install cmake clang git libcurl-devel`
+   - **Arch Linux:** `sudo pacman -S curl clang cmake git`
+   - **Void Linux:** `sudo xbps-install git cmake clang libcurl-devel`
+   - *Other distributions: Install CMake, Git, a C compiler (like Clang), and libcurl development headers.*
 
-You should now have a `c3c` executable.
+2. Clone the C3C repository and enter the directory:
+   ```bash
+   git clone https://github.com/c3lang/c3c.git
+   cd c3c
+   ```
+   *(If you only need the latest commit, add `--depth=1` to the clone command)*
 
-You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
+3. Create the CMake build cache:
+   ```bash
+   cmake -B build -S . -DC3_FETCH_LLVM=ON -DCMAKE_BUILD_TYPE=Release
+   ```
 
+4. Build the compiler:
+   ```bash
+   cmake --build build
+   ```
 
-#### Compiling on Void Linux
+5. You should now have a `c3c` executable in the `build` directory. You can test it by compiling an example:
+   ```bash
+   ./build/c3c compile resources/examples/hash.c3
+   ```
 
-1. As root, ensure that all project dependencies are installed: `xbps-install git cmake clang libcurl-devel`
-2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
-    - If you only need the latest commit, you may want to make a shallow clone instead: `git clone https://github.com/c3lang/c3c.git --depth=1`
-3. Enter the directory: `cd c3c`
-4. Create the CMake build cache: `cmake -B build -S . -DC3_FETCH_LLVM=ON`
-5. Build: `cmake --build build`
-6. Enter the build directory: `cd build`
-
-Your c3c executable should have compiled properly. You may want to test it: `./c3c compile ../resources/examples/hash.c3`
-For a system-wide installation, run the following as root: `cmake --install .`
-
-
-#### Compiling on Fedora
-
-1. Install required project dependencies: `dnf install cmake clang git libcurl-devel`
-3. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
-    - If you only need the latest commit, you may want to make a shallow clone: `git clone https://github.com/c3lang/c3c.git --depth=1`
-4. Enter the C3C directory: `cd c3c`
-5. Create the CMake build cache: `cmake -B build -S . -DC3_FETCH_LLVM=ON`
-6. Build the project: `cmake --build build`
-7. Enter the build directory: `cd build`
-
-The c3c binary should be created in the build directory. You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
-
-#### Compiling on Arch Linux
-
-1. Install required project dependencies: `sudo pacman -S curl clang cmake git`
-2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
-    - If you only need the latest commit, you may want to make a shallow clone: `git clone https://github.com/c3lang/c3c.git --depth=1`
-3. Enter the C3C directory: `cd c3c`
-4. Create the CMake build cache:
-```bash
-cmake -B build \
-    -D C3_FETCH_LLVM=ON \
-    -D CMAKE_BUILD_TYPE=Release
-```
-5. Build the project: `cmake --build build`.
-
-After compilation, the `c3c` binary will be located in the `build` directory. You can test it by compiling an example: `./build/c3c compile resources/examples/ls.c3`.
-
-6. To install the compiler globally: `sudo cmake --install build`
+   *(Optional) To install the compiler globally: `sudo cmake --install build`*
 
 #### Compiling on NixOS
 
 1. Enter nix shell, by typing `nix develop` in root directory
-2. Configure cmake via `cmake . -Bbuild $=C3_CMAKE_FLAGS`. Note: passing `C3_CMAKE_FLAGS` is needed in due to generate `compile_commands.json` and find missing libs.
-4. Build it `cmake --build build`
-5. Test it out: `./build/c3c -V`
-6. If you use `clangd` lsp server for your editor, it is recommended to make a symbolic link to `compile_command.json` in the root: `ln -s ./build/compile_commands.json compile_commands.json`
-
-#### Compiling on other Linux / Unix variants
-
-1. Install CMake, curl, and a C compiler.
-2. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-3. Enter the C3C directory `cd c3c`.
-4. Set up CMake build: `cmake -B build -S . -DC3_FETCH_LLVM=ON`.
-6. Build: `cmake --build build`
-7. Change directory to the build directory `cd build`
+2. Configure cmake via `cmake . -Bbuild $=C3_CMAKE_FLAGS`. Note: passing `C3_CMAKE_FLAGS` is needed to generate `compile_commands.json` and find missing libs.
+3. Build it `cmake --build build`
+4. Test it out: `./build/c3c -V`
+5. If you use `clangd` lsp server for your editor, it is recommended to make a symbolic link to `compile_command.json` in the root: `ln -s ./build/compile_commands.json compile_commands.json`
 
 *A note on compiling for Linux/Unix/MacOS: to be able to fetch vendor libraries
 libcurl is needed. The CMake script should detect it if it is available. Note that
