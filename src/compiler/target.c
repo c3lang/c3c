@@ -1744,10 +1744,9 @@ static unsigned arch_big_endian(ArchType arch)
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_AVR:
 		case ARCH_TYPE_XTENSA:
 			return false;
-		case ARCH_TYPE_AVR:
-			return true;
 		case ARCH_TYPE_ARMB:
 		case ARCH_TYPE_THUMBEB:
 		case ARCH_TYPE_AARCH64_BE:
@@ -2179,12 +2178,6 @@ void target_setup(BuildTarget *build_target)
 	if (build_target->arch_os_target == ELF_XTENSA)
 	{
 		error_exit("Xtensa support is not available with this LLVM version.");
-	}
-#endif
-#ifdef AVR_DISABLE
-	if (build_target->arch_os_target == ELF_AVR)
-	{
-		error_exit("AVR support requires building with -DAVR_DISABLE.");
 	}
 #endif
 
