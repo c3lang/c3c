@@ -632,7 +632,7 @@ jobs:
             done
           done
 
-      # - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
+      - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
       - run: echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
 
       - name: Create GitHub Release
