@@ -598,7 +598,7 @@ fn sz? String.index_of_chars(String self, char[] characters)
  @return "the index of the character"
  @return? NOT_FOUND : "if the character cannot be found starting from the start_index"
 *>
-fn sz? String.index_of_char_from(self, char character, sz start_index)
+fn sz? String.index_of_char_from(self, char character, sz start_index) @inline
 {
 	sz len = self.len;
 	if (len <= start_index) return NOT_FOUND~;
@@ -642,13 +642,17 @@ fn sz? String.rindex_of_char(self, char character)
 fn sz? String.index_of(self, String substr)
 {
 	sz needed = substr.len;
-	if (needed > 0 && self.len >= needed)
+	if (needed == 0) return NOT_FOUND~;
+	if (self.len < needed) return NOT_FOUND~;
+	if (needed == 1) return self.index_of_char(substr[0]);
+
+	char first = substr[0];
+	char* ptr = self.ptr;
+	char* subptr = substr.ptr;
+	sz max_idx = self.len - needed;
+	for (sz i = 0; i <= max_idx; i++)
 	{
-		char first = substr[0];
-		foreach (i, c: self[..^needed])
-		{
-			if (c == first && self[i : needed] == substr) return i;
-		}
+		if (ptr[i] == first && mem::equals(ptr + i, subptr, needed)) return i;
 	}
 	return NOT_FOUND~;
 }
