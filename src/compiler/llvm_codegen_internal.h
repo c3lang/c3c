@@ -304,6 +304,10 @@ typedef struct
 	unsigned uwtable;
 	unsigned writeonly;       // No writes on pointer
 	unsigned zext;            // zero extend
+	unsigned allockind;       // allockind
+	unsigned allocsize;       // allocsize
+	unsigned willreturn;      // willreturn
+	unsigned mustprogress;    // mustprogress
 } LLVMAttributes;
 
 extern LLVMAttributes attribute_id;

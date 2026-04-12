@@ -951,6 +951,10 @@ static void llvm_codegen_setup()
 	attribute_id.uwtable = lookup_attribute("uwtable");
 	attribute_id.writeonly = lookup_attribute("writeonly");
 	attribute_id.zext = lookup_attribute("zeroext");
+	attribute_id.allockind = lookup_attribute("allockind");
+	attribute_id.allocsize = lookup_attribute("allocsize");
+	attribute_id.willreturn = lookup_attribute("willreturn");
+	attribute_id.mustprogress = lookup_attribute("mustprogress");
 	intrinsics_setup = true;
 }
 
@@ -1232,6 +1236,58 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 
 }
 
+#define LLVM_ATTRIBUTE_RETURN_INDEX 0
+#define LLVM_ATTRIBUTE_FUNCTION_INDEX -1
+
+#define LLVM_ALLOC_ALLOC 1
+#define LLVM_ALLOC_REALLOC 2
+#define LLVM_ALLOC_FREE 4
+#define LLVM_ALLOC_UNINITIALIZED 8
+#define LLVM_ALLOC_ZEROED 16
+#define LLVM_ALLOC_ALIGNED 32
+
+static void llvm_append_allocation_attributes(GenContext *c, LLVMValueRef function, Decl *decl)
+{
+	if (!decl->is_extern) return;
+	const char *name = decl->has_extname ? decl->extname : decl->name;
+	if (name == kw_malloc)
+	{
+		if (attribute_id.noalias) llvm_attribute_add(c, function, attribute_id.noalias, LLVM_ATTRIBUTE_RETURN_INDEX);
+		if (attribute_id.allockind) llvm_attribute_add_int(c, function, attribute_id.allockind, LLVM_ALLOC_ALLOC | LLVM_ALLOC_UNINITIALIZED, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.allocsize) llvm_attribute_add_int(c, function, attribute_id.allocsize, 0, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.willreturn) llvm_attribute_add(c, function, attribute_id.willreturn, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.mustprogress) llvm_attribute_add(c, function, attribute_id.mustprogress, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+	}
+	else if (name == kw_calloc)
+	{
+		if (attribute_id.noalias) llvm_attribute_add(c, function, attribute_id.noalias, LLVM_ATTRIBUTE_RETURN_INDEX);
+		if (attribute_id.allockind) llvm_attribute_add_int(c, function, attribute_id.allockind, LLVM_ALLOC_ALLOC | LLVM_ALLOC_ZEROED, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.allocsize) llvm_attribute_add_int(c, function, attribute_id.allocsize, (1ULL << 32) | 0, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.willreturn) llvm_attribute_add(c, function, attribute_id.willreturn, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.mustprogress) llvm_attribute_add(c, function, attribute_id.mustprogress, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+	}
+	else if (name == kw_realloc)
+	{
+		if (attribute_id.allockind) llvm_attribute_add_int(c, function, attribute_id.allockind, LLVM_ALLOC_REALLOC | LLVM_ALLOC_UNINITIALIZED, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.willreturn) llvm_attribute_add(c, function, attribute_id.willreturn, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.mustprogress) llvm_attribute_add(c, function, attribute_id.mustprogress, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+	}
+	else if (name == kw_free)
+	{
+		if (attribute_id.allockind) llvm_attribute_add_int(c, function, attribute_id.allockind, LLVM_ALLOC_FREE, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.willreturn) llvm_attribute_add(c, function, attribute_id.willreturn, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.mustprogress) llvm_attribute_add(c, function, attribute_id.mustprogress, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+	}
+	else if (name == kw_aligned_alloc)
+	{
+		if (attribute_id.noalias) llvm_attribute_add(c, function, attribute_id.noalias, LLVM_ATTRIBUTE_RETURN_INDEX);
+		if (attribute_id.allockind) llvm_attribute_add_int(c, function, attribute_id.allockind, LLVM_ALLOC_ALLOC | LLVM_ALLOC_UNINITIALIZED | LLVM_ALLOC_ALIGNED, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.allocsize) llvm_attribute_add_int(c, function, attribute_id.allocsize, 1, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.willreturn) llvm_attribute_add(c, function, attribute_id.willreturn, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+		if (attribute_id.mustprogress) llvm_attribute_add(c, function, attribute_id.mustprogress, LLVM_ATTRIBUTE_FUNCTION_INDEX);
+	}
+}
+
 void llvm_append_function_attributes(GenContext *c, Decl *decl)
 {
 	FunctionPrototype *prototype = type_get_resolved_prototype(decl->type);
@@ -1305,6 +1361,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.sanitize_thread, -1);
 	}
+	llvm_append_allocation_attributes(c, function, decl);
 
 	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi));
 }
