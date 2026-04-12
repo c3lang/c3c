@@ -55,7 +55,7 @@ const char *project_default_keys[][2] = {
 		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
-		{"script-dir", "The directory where 'exec' is run."},
+		{"exec-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
@@ -143,7 +143,7 @@ const char* project_target_keys[][2] = {
 		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
-		{"script-dir", "The directory where 'exec' is run."},
+		{"exec-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
@@ -187,14 +187,14 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	}
 	else
 	{
-		check_json_keys(project_default_keys, project_default_keys_count, NULL, 0, json, "default target", "--list-project-properties");
+		check_json_keys(project_default_keys, project_default_keys_count, project_deprecated_target_keys, project_deprecated_target_keys_count, json, "default target", "--list-project-properties");
 	}
 
 	// The default c compiler name
 	target->cc = get_string(context, json, "cc", target->cc);
 
 	// Where to find and execute the scripts
-	target->script_dir = get_string(context, json, "script-dir", target->script_dir);
+	target->exec_dir = get_string(context, json, "exec-dir", target->exec_dir);
 
 	// Where to `run` from
 	target->run_dir = get_string(context, json, "run-dir", target->run_dir);

@@ -250,8 +250,6 @@ void create_library(BuildOptions *build_options)
 
 	create_file_or_fail(build_options, "LICENSE", NULL);
 	create_file_or_fail(build_options, "README.md", LIB_README, build_options->project_name);
-	mkdir_or_fail(build_options, "scripts");
-
 	scratch_buffer_clear();
 	scratch_buffer_printf("%s.c3i", build_options->project_name);
 	const char *interface_file = scratch_buffer_copy();
@@ -340,10 +338,8 @@ CREATE:
 	mkdir_or_fail(build_options, "docs");
 	mkdir_or_fail(build_options, "lib");
 	mkdir_or_fail(build_options, "resources");
-	mkdir_or_fail(build_options, "scripts");
 	mkdir_or_fail(build_options, "src");
 	chdir_or_fail(build_options, "src");
-
 	create_file_or_fail(build_options, "main.c3", main_template, module_name(build_options));
 	chdir_or_fail(build_options, "..");
 	mkdir_or_fail(build_options, "test");

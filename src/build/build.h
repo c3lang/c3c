@@ -278,7 +278,7 @@ typedef struct BuildOptions_
 	const char *asm_out;
 	const char *header_out;
 	const char *obj_out;
-	const char *script_dir;
+	const char *exec_dir;
 	const char **emit_only;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
@@ -386,7 +386,7 @@ typedef struct
 	const char *ir_file_dir;
 	const char *asm_file_dir;
 	const char *header_file_dir;
-	const char *script_dir;
+	const char *exec_dir;
 	const char *run_dir;
 	const char **emit_only;
 	bool is_non_project;

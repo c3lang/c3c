@@ -1280,11 +1280,11 @@ void execute_scripts(void)
 		error_exit("This target has 'exec' directives, to run it trust level must be set to '--trust=full'.");
 	}
 	char old_path[PATH_MAX + 1];
-	if (compiler.build.script_dir)
+	if (compiler.build.exec_dir)
 	{
-		if (getcwd(old_path, PATH_MAX) && !dir_change(compiler.build.script_dir))
+		if (getcwd(old_path, PATH_MAX) && !dir_change(compiler.build.exec_dir))
 		{
-			error_exit("Failed to open script dir '%s'", compiler.build.script_dir);
+			error_exit("Failed to open exec dir '%s'", compiler.build.exec_dir);
 		}
 	}
 	double start = bench_mark();

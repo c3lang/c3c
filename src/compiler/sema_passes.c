@@ -363,12 +363,12 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	File *file;
 	char old_path_buffer[PATH_MAX]; // NOLINT
 	char *old_path = NULL;
-	if (compiler.build.script_dir)
+	if (compiler.build.exec_dir)
 	{
 		old_path = getcwd(old_path_buffer, PATH_MAX);
-		if (!dir_change(compiler.build.script_dir))
+		if (!dir_change(compiler.build.exec_dir))
 		{
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open script dir '%s'", compiler.build.script_dir);
+			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open exec dir '%s'", compiler.build.exec_dir);
 		}
 	}
 	if (c3_script)
@@ -385,7 +385,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		success = dir_change(old_path);
 		if (!success)
 		{
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open run dir '%s'", compiler.build.script_dir);
+			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to return to the original directory after changing to exec dir '%s'", compiler.build.exec_dir);
 		}
 	}
 	if (compiler.context.includes_used++ > MAX_INCLUDE_DIRECTIVES)
