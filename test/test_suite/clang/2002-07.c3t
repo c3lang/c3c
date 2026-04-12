@@ -1052,10 +1052,9 @@ if.else10:                                        ; preds = %if.else6
 }
 
 ; Function Attrs: nocallback nofree nounwind willreturn memory(argmem: readwrite)
-declare void @llvm.memcpy.p0.p0.i32(ptr noalias writeonly captures(none), ptr noalias readonly captures(none), i32, i1 immarg) #2
-
-attributes #0 = { mustprogress nounwind willreturn allockind("alloc,uninitialized") allocsize(0,0) uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
-attributes #1 = { nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+declare void @llvm.memcpy.p0.p0.i32
+attributes #0 = { mustprogress nounwind willreturn allockind("alloc,uninitialized") allocsize(0,0) uwtable
+attributes #1 = { nounwind uwtable
 attributes #2 = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4, !5}
