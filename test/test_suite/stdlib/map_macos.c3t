@@ -133,7 +133,7 @@ entry:
   %lo = load i64, ptr %0, align 8
   %ptradd = getelementptr inbounds i8, ptr %0, i64 8
   %hi = load ptr, ptr %ptradd, align 8
-  %1 = call ptr @"std.collections.map.HashMap$int$test.Foo$.init"(ptr %map, i64 %lo, ptr %hi, i32 16, float 7.500000e-01)
+  %1 = call ptr @"std.collections.map.HashMap$int$test.Foo$.init"(ptr %map, i64 %lo, ptr %hi, i64 16, float 7.500000e-01)
   %ptradd1 = getelementptr inbounds i8, ptr %map, i64 32
   %2 = insertvalue %any undef, ptr %ptradd1, 0
   %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
@@ -206,7 +206,7 @@ after_check19:                                    ; preds = %entry, %after_check
   %lo40 = load i64, ptr %33, align 8
   %ptradd41 = getelementptr inbounds i8, ptr %33, i64 8
   %hi42 = load ptr, ptr %ptradd41, align 8
-  %34 = call ptr @"std.collections.map.HashMap$int$double$.init"(ptr %map2, i64 %lo40, ptr %hi42, i32 16, float 7.500000e-01)
+  %34 = call ptr @"std.collections.map.HashMap$int$double$.init"(ptr %map2, i64 %lo40, ptr %hi42, i64 16, float 7.500000e-01)
   %35 = call i8 @"std.collections.map.HashMap$int$double$.set"(ptr %map2, i32 4, double 1.300000e+00)
   %36 = call i8 @"std.collections.map.HashMap$int$double$.has_value"(ptr %map2, double 1.300000e+00)
   store i8 %36, ptr %taddr44, align 1
@@ -248,7 +248,7 @@ after_check19:                                    ; preds = %entry, %after_check
   %lo69 = load i64, ptr %56, align 8
   %ptradd70 = getelementptr inbounds i8, ptr %56, i64 8
   %hi71 = load ptr, ptr %ptradd70, align 8
-  %57 = call ptr @"std.collections.map.HashMap$int$double$.init"(ptr %map3, i64 %lo69, ptr %hi71, i32 16, float 7.500000e-01)
+  %57 = call ptr @"std.collections.map.HashMap$int$double$.init"(ptr %map3, i64 %lo69, ptr %hi71, i64 16, float 7.500000e-01)
   %58 = call i8 @"std.collections.map.HashMap$int$double$.set"(ptr %map3, i32 5, double 3.200000e+00)
   %59 = call i8 @"std.collections.map.HashMap$int$double$.set"(ptr %map3, i32 7, double 5.200000e+00)
   %60 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator)
