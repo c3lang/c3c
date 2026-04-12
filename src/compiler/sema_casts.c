@@ -2086,6 +2086,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				case TYPE_TYPEID:
 				case TYPE_ANYFAULT:
 					expr_rewrite_to_int_to_ptr(expr, to_type);
+					return;
 				default:
 					UNREACHABLE_VOID;
 			}
