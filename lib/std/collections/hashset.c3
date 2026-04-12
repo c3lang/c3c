@@ -41,7 +41,7 @@ fn sz HashSet.len(&self) @operator(len) => self.count;
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashSet* HashSet.init(&self, Allocator allocator, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashSet* HashSet.init(&self, Allocator allocator, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
@@ -57,7 +57,7 @@ fn HashSet* HashSet.init(&self, Allocator allocator, int capacity = DEFAULT_INIT
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashSet* HashSet.tinit(&self, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashSet* HashSet.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init(tmem, capacity, load_factor) @inline;
 }
@@ -69,7 +69,7 @@ fn HashSet* HashSet.tinit(&self, int capacity = DEFAULT_INITIAL_CAPACITY, float 
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro HashSet* HashSet.init_with_values(&self, Allocator allocator, ..., int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro HashSet* HashSet.init_with_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	$for var $i = 0; $i < $vacount; $i++:
@@ -84,7 +84,7 @@ macro HashSet* HashSet.init_with_values(&self, Allocator allocator, ..., int cap
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro HashSet* HashSet.tinit_with_values(&self, ..., int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro HashSet* HashSet.tinit_with_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_with_values(tmem, $vasplat, capacity: capacity, load_factor: load_factor);
 }
@@ -97,7 +97,7 @@ macro HashSet* HashSet.tinit_with_values(&self, ..., int capacity = DEFAULT_INIT
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashSet* HashSet.init_from_values(&self, Allocator allocator, Value[] values, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashSet* HashSet.init_from_values(&self, Allocator allocator, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	foreach (v : values) self.add(v);
@@ -111,7 +111,7 @@ fn HashSet* HashSet.init_from_values(&self, Allocator allocator, Value[] values,
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashSet* HashSet.tinit_from_values(&self, Value[] values, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashSet* HashSet.tinit_from_values(&self, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_from_values(tmem, values, capacity, load_factor);
 }

@@ -45,7 +45,7 @@ struct HashMap (Printable)
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashMap* HashMap.init(&self, Allocator allocator, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashMap* HashMap.init(&self, Allocator allocator, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
@@ -61,7 +61,7 @@ fn HashMap* HashMap.init(&self, Allocator allocator, int capacity = DEFAULT_INIT
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashMap* HashMap.tinit(&self, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashMap* HashMap.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init(tmem, capacity, load_factor) @inline;
 }
@@ -74,7 +74,7 @@ fn HashMap* HashMap.tinit(&self, int capacity = DEFAULT_INITIAL_CAPACITY, float 
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	$for var $i = 0; $i < $vacount; $i += 2:
@@ -90,7 +90,7 @@ macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., int
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro HashMap* HashMap.tinit_with_key_values(&self, ..., int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro HashMap* HashMap.tinit_with_key_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_with_key_values(tmem, $vasplat, capacity: capacity, load_factor: load_factor);
 }
@@ -105,7 +105,7 @@ macro HashMap* HashMap.tinit_with_key_values(&self, ..., int capacity = DEFAULT_
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] keys, Value[] values, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] keys, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	assert(keys.len == values.len);
 	self.init(allocator, capacity, load_factor);
@@ -126,7 +126,7 @@ fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] 
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn HashMap* HashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, int capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashMap* HashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_from_keys_and_values(tmem, keys, values, capacity, load_factor);
 }
