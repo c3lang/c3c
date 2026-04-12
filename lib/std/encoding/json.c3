@@ -86,8 +86,8 @@ fn Object*? parse_from_token(JsonContext* context, JsonTokenType token) @local
 		case RBRACE:
 		case RBRACKET:
 		case COLON: return UNEXPECTED_CHARACTER~;
-		case STRING: return object::new_string(context.last_string.str_view(), context.allocator);
-		case NUMBER: return object::new_float(context.last_number, context.allocator);
+		case STRING: return object::new_string(context.allocator, context.last_string.str_view());
+		case NUMBER: return object::new_float(context.allocator, context.last_number);
 		case TRUE: return object::new_bool(true);
 		case FALSE: return object::new_bool(false);
 		case NULL: return object::new_null();
