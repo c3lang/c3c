@@ -319,14 +319,17 @@ fn int strcmp(char *s1, char *s2) {
 @.str = private unnamed_addr constant [7 x i8] c"<none>\00", align 1
 @.str.11 = private unnamed_addr constant [14 x i8] c"Hello world!\0A\00", align 1
 
-declare ptr @malloc(i32) #0
+; Function Attrs: mustprogress nounwind willreturn allockind("alloc,uninitialized") allocsize(0,0) uwtable
+declare noalias ptr @malloc(i32) #0
 
-define ptr @foo.passThroughList(ptr %0) #0 {
+; Function Attrs: nounwind uwtable
+define ptr @foo.passThroughList(ptr %0) #1 {
 entry:
   ret ptr %0
 }
 
-define void @foo.foo() #0 {
+; Function Attrs: nounwind uwtable
+define void @foo.foo() #1 {
 entry:
   %0 = load i32, ptr @foo.foo.10, align 4
   %add = add i32 %0, 1
@@ -336,7 +339,8 @@ entry:
   ret void
 }
 
-define void @foo.insertIntoListTail(ptr %0, i32 %1) #0 {
+; Function Attrs: nounwind uwtable
+define void @foo.insertIntoListTail(ptr %0, i32 %1) #1 {
 entry:
   %l = alloca ptr, align 8
   store ptr %0, ptr %l, align 8
@@ -369,7 +373,8 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
-define ptr @foo.findData(ptr %0, i32 %1) #0 {
+; Function Attrs: nounwind uwtable
+define ptr @foo.findData(ptr %0, i32 %1) #1 {
 entry:
   %i2nb = icmp eq ptr %0, null
   br i1 %i2nb, label %if.then, label %if.exit
@@ -392,9 +397,11 @@ if.exit2:                                         ; preds = %if.exit
   ret ptr %4
 }
 
-declare void @foundIt() #0
+; Function Attrs: nounwind uwtable
+declare void @foundIt() #1
 
-define void @foo.doListStuff() #0 {
+; Function Attrs: nounwind uwtable
+define void @foo.doListStuff() #1 {
 entry:
   %myList = alloca ptr, align 8
   store ptr null, ptr %myList, align 8
@@ -436,7 +443,8 @@ if.exit6:                                         ; preds = %if.then5, %if.exit3
   ret void
 }
 
-define i32 @foo.floatcomptest(ptr %0, ptr %1, ptr %2, ptr %3) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.floatcomptest(ptr %0, ptr %1, ptr %2, ptr %3) #1 {
 entry:
   %4 = load double, ptr %0, align 8
   %5 = load double, ptr %1, align 8
@@ -455,7 +463,8 @@ or.phi:                                           ; preds = %or.rhs, %entry
   ret i32 %zext
 }
 
-define ptr @foo.memset_impl(ptr %0, i32 %1, i32 %2) #0 {
+; Function Attrs: nounwind uwtable
+define ptr @foo.memset_impl(ptr %0, i32 %1, i32 %2) #1 {
 entry:
   %len = alloca i32, align 4
   %dstp = alloca i64, align 8
@@ -487,7 +496,8 @@ loop.exit:                                        ; preds = %loop.cond
   ret ptr %0
 }
 
-define internal ptr @foo.localmalloc(i32 %0) #0 {
+; Function Attrs: nounwind uwtable
+define internal ptr @foo.localmalloc(i32 %0) #1 {
 entry:
   %blah = alloca ptr, align 8
   store ptr null, ptr %blah, align 8
@@ -506,7 +516,8 @@ if.exit:                                          ; preds = %entry
   ret ptr null
 }
 
-define void @foo.testRetStruct(ptr noalias sret(%PBVTest) align 8 %0, float %1, double %2, i32 %3) #0 {
+; Function Attrs: nounwind uwtable
+define void @foo.testRetStruct(ptr noalias sret(%PBVTest) align 8 %0, float %1, double %2, i32 %3) #1 {
 entry:
   %t = alloca %PBVTest, align 8
   %fpfpext = fpext float %1 to double
@@ -519,9 +530,11 @@ entry:
   ret void
 }
 
-declare void @testRetStruct2(ptr noalias sret(%PBVTest) align 8) #0
+; Function Attrs: nounwind uwtable
+declare void @testRetStruct2(ptr noalias sret(%PBVTest) align 8) #1
 
-define double @foo.callRetStruct(float %0, double %1, i32 %2) #0 {
+; Function Attrs: nounwind uwtable
+define double @foo.callRetStruct(float %0, double %1, i32 %2) #1 {
 entry:
   %t = alloca %PBVTest, align 8
   call void @testRetStruct2(ptr sret(%PBVTest) align 8 %t)
@@ -534,9 +547,11 @@ entry:
   ret double %fadd2
 }
 
-declare i32 @fp(i32, ptr) #0
+; Function Attrs: nounwind uwtable
+declare i32 @fp(i32, ptr) #1
 
-define void @foo.__bb_exit_func() #0 {
+; Function Attrs: nounwind uwtable
+define void @foo.__bb_exit_func() #1 {
 entry:
   %0 = load ptr, ptr @foo.ext, align 8
   %i2b = icmp ne ptr %0, null
@@ -555,15 +570,18 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   ret void
 }
 
-declare i32 @puts(ptr) #0
+; Function Attrs: nounwind uwtable
+declare i32 @puts(ptr) #1
 
-define i32 @foo.ptrFunc(ptr %0, i32 %1) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.ptrFunc(ptr %0, i32 %1) #1 {
 entry:
   %2 = call i32 %0(i32 %1)
   ret i32 %2
 }
 
-define zeroext i8 @foo.ptrFunc2(ptr byval([30 x ptr]) align 8 %0, i32 %1) #0 {
+; Function Attrs: nounwind uwtable
+define zeroext i8 @foo.ptrFunc2(ptr byval([30 x ptr]) align 8 %0, i32 %1) #1 {
 entry:
   %sext = sext i32 %1 to i64
   %ptroffset = getelementptr inbounds [8 x i8], ptr %0, i64 %sext
@@ -573,11 +591,14 @@ entry:
   ret i8 %trunc
 }
 
-declare zeroext i8 @smallArgs2(i8 zeroext, i8 zeroext, i64, i8 zeroext, i8 zeroext) #0
+; Function Attrs: nounwind uwtable
+declare zeroext i8 @smallArgs2(i8 zeroext, i8 zeroext, i64, i8 zeroext, i8 zeroext) #1
 
-declare i32 @someFuncA() #0
+; Function Attrs: nounwind uwtable
+declare i32 @someFuncA() #1
 
-define zeroext i8 @foo.smallArgs(i8 zeroext %0, i8 zeroext %1, i8 zeroext %2, i8 zeroext %3) #0 {
+; Function Attrs: nounwind uwtable
+define zeroext i8 @foo.smallArgs(i8 zeroext %0, i8 zeroext %1, i8 zeroext %2, i8 zeroext %3) #1 {
 entry:
   %4 = call i32 @someFuncA()
   %zext = zext i8 %0 to i32
@@ -591,7 +612,8 @@ entry:
   ret i8 %5
 }
 
-define internal i32 @foo.f0(ptr byval(%Quad) align 8 %0, i32 %1) #0 {
+; Function Attrs: nounwind uwtable
+define internal i32 @foo.f0(ptr byval(%Quad) align 8 %0, i32 %1) #1 {
 entry:
   %r = alloca %Quad, align 8
   %i2b = icmp ne i32 %1, 0
@@ -627,7 +649,8 @@ if.exit:                                          ; preds = %if.then, %entry
   ret i32 %sub
 }
 
-define i32 @foo.f1(ptr %0, i32 %1) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.f1(ptr %0, i32 %1) #1 {
 entry:
   %r = alloca %Quad, align 8
   %i2b = icmp ne i32 %1, 0
@@ -658,7 +681,8 @@ if.exit:                                          ; preds = %if.then, %entry
   ret i32 %sub
 }
 
-define i32 @foo.badFunc(float %0) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.badFunc(float %0) #1 {
 entry:
   %result = alloca i32, align 4
   %fpfpext = fpext float %0 to double
@@ -674,9 +698,11 @@ if.exit:                                          ; preds = %if.then, %entry
   ret i32 %1
 }
 
-declare i32 @ef1(ptr, ptr, ptr) #0
+; Function Attrs: nounwind uwtable
+declare i32 @ef1(ptr, ptr, ptr) #1
 
-define i32 @foo.func(i32 %0, i64 %1) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.func(i32 %0, i64 %1) #1 {
 entry:
   %result = alloca i32, align 4
   %c = alloca i8, align 1
@@ -692,7 +718,8 @@ entry:
   ret i32 %4
 }
 
-define signext i16 @foo.funFunc(i64 %0, i8 zeroext %1) #0 {
+; Function Attrs: nounwind uwtable
+define signext i16 @foo.funFunc(i64 %0, i8 zeroext %1) #1 {
 entry:
   %zext = zext i8 %1 to i64
   %add = add i64 %0, %zext
@@ -700,12 +727,14 @@ entry:
   ret i16 %trunc
 }
 
-define i32 @foo.castTest(i32 %0) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.castTest(i32 %0) #1 {
 entry:
   ret i32 %0
 }
 
-define double @foo.testAdd(double %0, float %1) #0 {
+; Function Attrs: nounwind uwtable
+define double @foo.testAdd(double %0, float %1) #1 {
 entry:
   %fpfpext = fpext float %1 to double
   %fadd = fadd double %0, %fpfpext
@@ -713,7 +742,8 @@ entry:
   ret double %fadd1
 }
 
-define i32 @foo.funcZ(i32 %0, i32 %1) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.funcZ(i32 %0, i32 %1) #1 {
 entry:
   %i = alloca i32, align 4
   %j = alloca i32, align 4
@@ -748,7 +778,8 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 %mul4
 }
 
-define i32 @foo.sumArray(ptr %0, i32 %1) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.sumArray(ptr %0, i32 %1) #1 {
 entry:
   %i = alloca i32, align 4
   %result = alloca i32, align 4
@@ -779,7 +810,8 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 %7
 }
 
-define i32 @foo.arrayParam(ptr %0) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.arrayParam(ptr %0) #1 {
 entry:
   %ptradd = getelementptr inbounds i8, ptr %0, i64 200
   %1 = load i32, ptr %ptradd, align 4
@@ -790,7 +822,8 @@ entry:
   ret i32 %2
 }
 
-define i32 @foo.arrayToSum() #0 {
+; Function Attrs: nounwind uwtable
+define i32 @foo.arrayToSum() #1 {
 entry:
   %a = alloca [100 x i32], align 16
   %i = alloca i32, align 4
@@ -823,11 +856,11 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 %5
 }
 
-; Function Attrs:
-declare i32 @externFunc(i64, ptr, i16 signext, i8 zeroext) #0
+; Function Attrs: nounwind uwtable
+declare i32 @externFunc(i64, ptr, i16 signext, i8 zeroext) #1
 
-; Function Attrs:
-define i32 @main(i32 %0, ptr %1) #0 {
+; Function Attrs: nounwind uwtable
+define i32 @main(i32 %0, ptr %1) #1 {
 entry:
   %i = alloca i32, align 4
   %2 = call i32 @puts(ptr @.str.11)
@@ -854,7 +887,8 @@ loop.exit:                                        ; preds = %loop.cond
   ret i32 0
 }
 
-define double @foo.mathFunc(double %0, double %1, double %2, double %3, double %4, double %5, double %6, double %7, double %8, double %9, double %10, double %11, double %12, double %13, double %14, double %15, double %16) #0 {
+; Function Attrs: nounwind uwtable
+define double @foo.mathFunc(double %0, double %1, double %2, double %3, double %4, double %5, double %6, double %7, double %8, double %9, double %10, double %11, double %12, double %13, double %14, double %15, double %16) #1 {
 entry:
   %fadd = fadd double %0, %1
   %fadd1 = fadd double %fadd, %2
@@ -875,7 +909,8 @@ entry:
   ret double %fadd15
 }
 
-define void @foo.strcpy(ptr %0, ptr %1) #0 {
+; Function Attrs: nounwind uwtable
+define void @foo.strcpy(ptr %0, ptr %1) #1 {
 entry:
   %s1 = alloca ptr, align 8
   %s2 = alloca ptr, align 8
@@ -903,7 +938,7 @@ loop.exit:                                        ; preds = %loop.cond
 }
 
 ; Function Attrs: nounwind uwtable
-define void @foo.strcat(ptr %0, ptr %1) #0 {
+define void @foo.strcat(ptr %0, ptr %1) #1 {
 entry:
   %s1 = alloca ptr, align 8
   %s2 = alloca ptr, align 8
@@ -948,7 +983,7 @@ loop.exit7:                                       ; preds = %loop.cond2
 }
 
 ; Function Attrs: nounwind uwtable
-define i32 @foo.strcmp(ptr %0, ptr %1) #0 {
+define i32 @foo.strcmp(ptr %0, ptr %1) #1 {
 entry:
   %s1 = alloca ptr, align 8
   %s2 = alloca ptr, align 8
@@ -1015,3 +1050,19 @@ if.else10:                                        ; preds = %if.else6
   %sub = sub i32 %zext12, %zext14
   ret i32 %sub
 }
+
+; Function Attrs: nocallback nofree nounwind willreturn memory(argmem: readwrite)
+declare void @llvm.memcpy.p0.p0.i32(ptr noalias writeonly captures(none), ptr noalias readonly captures(none), i32, i1 immarg) #2
+
+attributes #0 = { mustprogress nounwind willreturn allockind("alloc,uninitialized") allocsize(0,0) uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #1 = { nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #2 = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
+
+!llvm.module.flags = !{!0, !1, !2, !3, !4, !5}
+
+!0 = !{i32 2, !"Dwarf Version", i32 4}
+!1 = !{i32 2, !"Debug Info Version", i32 3}
+!2 = !{i32 2, !"wchar_size", i32 4}
+!3 = !{i32 4, !"PIC Level", i32 2}
+!4 = !{i32 1, !"uwtable", i32 2}
+!5 = !{i32 2, !"frame-pointer", i32 2}
