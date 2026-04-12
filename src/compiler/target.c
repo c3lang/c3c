@@ -1946,7 +1946,7 @@ void *llvm_target_machine_create(void)
 #ifdef XTENSA_ENABLE
 		INITIALIZE_TARGET(Xtensa);
 #endif
-#ifndef AVR_DISABLE
+#ifdef AVR_ENABLE
 		INITIALIZE_TARGET(AVR);
 #endif
 #ifndef ARM_DISABLE
@@ -2178,6 +2178,12 @@ void target_setup(BuildTarget *build_target)
 	if (build_target->arch_os_target == ELF_XTENSA)
 	{
 		error_exit("Xtensa support is not available with this LLVM version.");
+	}
+#endif
+#ifndef AVR_ENABLE 
+	if (build_target->arch_os_target == ELF_XTENSA)
+	{
+		error_exit("For AVR support please use a compiler compiled with -DAVR_ENABLE");
 	}
 #endif
 
