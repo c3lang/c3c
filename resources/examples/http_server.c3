@@ -195,7 +195,10 @@ fn String ext_of(String path_str)
 {
 	sz? dot = path_str.rindex_of_char('.');
 	if (catch dot) return "";
-	return path_str[dot + 1..];
+	String raw = path_str[dot + 1..];
+	DString lower = dstring::temp_with_capacity(raw.len);
+	foreach (c : raw) lower.append((char)ascii::to_lower(c));
+	return lower.str_view();
 }
 
 
@@ -475,26 +478,53 @@ fn void? send_dir_listing(TcpSocket* sock, String rel_path, String raw_path, boo
 <link rel="icon" type="image/png" href="%s">
 <title>Index of %s</title>
 <style type="text/css">
-:root { font-family: sans-serif; background-color: -moz-dialog; color: -moz-dialogtext; font: message-box; padding-inline: 2em; color-scheme: light dark; }
-body { border: 1px solid ThreeDShadow; border-radius: 8px; padding: 3em; min-width: 30em; max-width: 65em; margin: 4em auto; background-color: Field; color: FieldText; }
-h1 { font-size: 160%%; margin: 0 0 0.6em; border-bottom: 1px solid ThreeDLightShadow; font-weight: normal; }
-a { text-decoration: none; color: #0066cc; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%%; }
+:root {
+  --bg-outer: #dcdcdc; --bg-body: #ffffff; --border: #b8b8b8;
+  --text: #1a1a1a; --link: #0055bb; --head-border: #cccccc; --hover: rgba(0,0,0,0.04);
+  font-family: sans-serif; font-size: 13px; background-color: var(--bg-outer); color: var(--text); padding-inline: 2em; color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg-outer: #181818; --bg-body: #252525; --border: #404040;
+  --text: #e0e0e0; --link: #6db3f2; --head-border: #444444; --hover: rgba(255,255,255,0.05);
+} }
+body { border: 1px solid var(--border); border-radius: 8px; padding: 3em; min-width: 30em; max-width: 65em; margin: 4em auto; background-color: var(--bg-body); color: var(--text); }
+h1 { font-size: 160%%; margin: 0 0 0.6em; border-bottom: 1px solid var(--head-border); font-weight: normal; }
+a { text-decoration: none; color: var(--link); display: block; overflow: hidden; white-space: nowrap; width: 100%%; }
 a:hover { text-decoration: underline; }
 table { clear: both; width: 100%%; margin: 0 auto; border-collapse: collapse; table-layout: fixed; }
-thead { font-size: 130%%; border-bottom: 1px solid #ccc; }
+thead { font-size: 130%%; border-bottom: 1px solid var(--head-border); }
 th { text-align: start; white-space: nowrap; cursor: pointer; padding: 0.5em; overflow: hidden; text-overflow: ellipsis; }
 th::after { display: none; width: .8em; margin-inline-end: -.8em; text-align: end; }
 table[order='asc'] > thead > tr > th.active::after { content: "\2193"; display: inline-block; }
 table[order='desc'] > thead > tr > th.active::after { content: "\2191"; display: inline-block; }
 td { padding: 0.5em; white-space: nowrap; overflow: hidden; }
-tr:hover { background: rgba(128,128,128,0.05); }
-.name-col { padding-inline-start: 28px; position: relative; }
+tr:hover { background: var(--hover); }
+.name-col { overflow: hidden; }
+.name-col a { mask-image: linear-gradient(to right, black 70%%, transparent 100%%); -webkit-mask-image: linear-gradient(to right, black 70%%, transparent 100%%); }
 .size { text-align: end; padding-inline-end: 1em; }
 .date { text-align: end; padding-inline-end: 0.5em; }
-.up::before { content: "⬆️"; position: absolute; margin-inline-start: -24px; top: 0.5em; }
-.dir::before { content: "📁"; position: absolute; margin-inline-start: -24px; top: 0.5em; }
-.file::before { content: "📄"; position: absolute; margin-inline-start: -24px; top: 0.5em; font-size: 14px; }
+.up { display: flex; align-items: center; gap: 6px; overflow: visible; }
+.up::before { content: "⬆️"; flex-shrink: 0; transform: scale(1.3); }
+.dir { display: flex; align-items: center; gap: 6px; overflow: visible; }
+.dir::before { content: "📁"; flex-shrink: 0; transform: scale(1.3); }
+.file { display: flex; align-items: center; gap: 6px; overflow: visible; }
+.file::before { content: "📄"; flex-shrink: 0; transform: scale(1.3); }
+a.file[href$=".html" i]::before, a.file[href$=".htm" i]::before, a.file[href$=".xhtml" i]::before { content: "🌐"; }
+a.file[href$=".css" i]::before { content: "🎨"; }
+a.file[href$=".js" i]::before, a.file[href$=".mjs" i]::before, a.file[href$=".ts" i]::before { content: "⚡"; }
+a.file[href$=".json" i]::before, a.file[href$=".xml" i]::before, a.file[href$=".yaml" i]::before, a.file[href$=".yml" i]::before, a.file[href$=".toml" i]::before { content: "🔧"; }
+a.file[href$=".c" i]::before, a.file[href$=".h" i]::before, a.file[href$=".cpp" i]::before, a.file[href$=".hpp" i]::before, a.file[href$=".c3" i]::before { content: "📜"; }
+a.file[href$=".py" i]::before, a.file[href$=".sh" i]::before, a.file[href$=".rs" i]::before, a.file[href$=".go" i]::before { content: "📜"; }
+a.file[href$=".md" i]::before, a.file[href$=".txt" i]::before, a.file[href$=".csv" i]::before, a.file[href$=".rtf" i]::before { content: "📝"; }
+a.file[href$=".pdf" i]::before { content: "📑"; }
+a.file[href$=".png" i]::before, a.file[href$=".jpg" i]::before, a.file[href$=".jpeg" i]::before, a.file[href$=".gif" i]::before, a.file[href$=".svg" i]::before, a.file[href$=".webp" i]::before, a.file[href$=".avif" i]::before, a.file[href$=".ico" i]::before { content: "📷"; }
+a.file[href$=".mp4" i]::before, a.file[href$=".mkv" i]::before, a.file[href$=".webm" i]::before, a.file[href$=".avi" i]::before, a.file[href$=".mov" i]::before { content: "🎬"; }
+a.file[href$=".mp3" i]::before, a.file[href$=".wav" i]::before, a.file[href$=".ogg" i]::before, a.file[href$=".flac" i]::before, a.file[href$=".opus" i]::before, a.file[href$=".m4a" i]::before, a.file[href$=".mid" i]::before { content: "🎵"; }
+a.file[href$=".zip" i]::before, a.file[href$=".tar" i]::before, a.file[href$=".gz" i]::before, a.file[href$=".xz" i]::before, a.file[href$=".7z" i]::before { content: "📦"; }
+a.file[href$=".ttf" i]::before, a.file[href$=".otf" i]::before, a.file[href$=".woff" i]::before, a.file[href$=".woff2" i]::before { content: "🔤"; }
+a.file[href$=".wasm" i]::before { content: "⚙️"; }
 tr.hidden-object { display: none; } table.show-hidden tr.hidden-object { display: table-row; }
+table.show-hidden tr.hidden-object a::before { opacity: 0.4; }
 </style>
 <script type="application/javascript">
 'use strict';
@@ -645,6 +675,7 @@ fn String mime_for_ext(String ext)
 		case "flac":              return "audio/flac";
 		case "weba":              return "audio/webm";
 		case "m4a":               return "audio/mp4";
+		case "mid":               return "audio/midi";
 		case "pdf":               return "application/pdf";
 		case "gz":                return "application/gzip";
 		case "zip":               return "application/zip";
