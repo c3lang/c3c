@@ -206,7 +206,7 @@ macro Value LinkedHashMap.@get_or_set(&map, Key key, Value #expr)
 		return val;
 	}
 	uint hash = rehash(key.hash());
-	uint index = index_for(hash, map.table.len);
+	sz index = index_for(hash, map.table.len);
 	for (LinkedEntry *e = map.table[index]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e.value;
@@ -233,7 +233,7 @@ fn bool LinkedHashMap.set(&map, Key key, Value value) @operator([]=)
 			break;
 	}
 	uint hash = rehash(key.hash());
-	uint index = index_for(hash, map.table.len);
+	sz index = index_for(hash, map.table.len);
 	for (LinkedEntry *e = map.table[index]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key))
@@ -396,7 +396,7 @@ fn bool LinkedHashMapIterator.has_next(&self)
 
 // --- private methods
 
-fn void linkedhashmap_add_entry(LinkedHashMap* map, uint hash, Key key, Value value, uint bucket_index) @private
+fn void linkedhashmap_add_entry(LinkedHashMap* map, uint hash, Key key, Value value, sz bucket_index) @private
 {
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
@@ -521,13 +521,13 @@ fn void linkedhashmap_transfer(LinkedHashMap* map, LinkedEntry*[] new_table) @pr
 {
 	LinkedEntry*[] src = map.table;
 	sz new_capacity = new_table.len;
-	foreach (uint j, LinkedEntry *e : src)
+	foreach (LinkedEntry *e : src)
 	{
 		if (!e) continue;
 		do
 		{
 			LinkedEntry* next = e.next;
-			uint i = index_for(e.hash, new_capacity);
+			sz i = index_for(e.hash, new_capacity);
 			e.next = new_table[i];
 			new_table[i] = e;
 			e = next;
@@ -547,7 +547,7 @@ fn void linkedhashmap_put_all_for_create(LinkedHashMap* map, LinkedHashMap* othe
 fn void linkedhashmap_put_for_create(LinkedHashMap* map, Key key, Value value) @private
 {
 	uint hash = rehash(key.hash());
-	uint i = index_for(hash, map.table.len);
+	sz i = index_for(hash, map.table.len);
 	for (LinkedEntry *e = map.table[i]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key))
@@ -569,7 +569,7 @@ fn bool linkedhashmap_remove_entry_for_key(LinkedHashMap* map, Key key) @private
 	if (!map.count) return false;
 
 	uint hash = rehash(key.hash());
-	uint i = index_for(hash, map.table.len);
+	sz i = index_for(hash, map.table.len);
 	LinkedEntry* prev = null;
 	LinkedEntry* e = map.table[i];
 
@@ -614,7 +614,7 @@ fn bool linkedhashmap_remove_entry_for_key(LinkedHashMap* map, Key key) @private
 	return false;
 }
 
-fn void linkedhashmap_create_entry(LinkedHashMap* map, uint hash, Key key, Value value, uint bucket_index) @private
+fn void linkedhashmap_create_entry(LinkedHashMap* map, uint hash, Key key, Value value, sz bucket_index) @private
 {
 	LinkedEntry *e = map.table[bucket_index];
 	$if COPY_KEYS:

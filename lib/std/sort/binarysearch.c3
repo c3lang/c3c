@@ -73,7 +73,7 @@ fn sz _binarysearch(ListType list, ElementType element, CmpFnType cmp, ContextTy
 			$else
 				$switch:
 					$case $defined(cmp((*list)[0], (*list)[0], context)):
-						int res = cmp(list[half], element, context);
+						int res = cmp((*list)[half], element, context);
 					$case $defined(cmp((*list)[0], (*list)[0])):
 						assert(!$has_context);
 						int res = cmp((*list)[half], element);

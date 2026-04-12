@@ -65,6 +65,7 @@
 - SHA-3 and Keccak contexts are now explicitly `@mustinit` structures. #3110
 - `UnbufferedChannel` would deadlock on multiple producers.
 - Don't override `sigaltstack` when running with `--sanitize=address`. #3115
+- Binary search broken for some supported functions.
 
 ## 0.7.11 Change list
 
