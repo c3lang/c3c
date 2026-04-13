@@ -23,6 +23,10 @@ struct LinkedEntry
 	LinkedEntry* after;
 }
 
+<*
+ The core property of this map is that it preserves the order of insertions,
+ at the cost of a doubly linked list.
+*>
 struct LinkedHashMap (Printable)
 {
 	LinkedEntry*[] table;

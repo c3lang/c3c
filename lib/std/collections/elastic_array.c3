@@ -91,6 +91,20 @@ fn void ElasticArray.remove_at(&self, sz index)
 }
 
 <*
+ Removes an element at "index" by copying the last element to this slot and reducing
+ the length by 1.
+
+ @require index < self.size && index >= 0 : "Index out of bounds"
+*>
+fn void ElasticArray.remove_unordered_at(&self, sz index)
+{
+	sz new_size = self.size - 1;
+	defer self.size--;
+	if (!new_size || index == new_size) return;
+	self.entries[index] = self.entries[new_size];
+}
+
+<*
  @require other_list.size + self.size <= MAX_SIZE
 *>
 fn void ElasticArray.add_all(&self, ElasticArray* other_list)

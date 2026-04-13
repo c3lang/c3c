@@ -78,6 +78,22 @@ fn void remove_if()
 	assert(test.array_view() == (int[]){11, 10, 20});
 }
 
+fn void remove_unordered()
+{
+	ElasticArray{int, 5} arr;
+	arr.push_all({ 1, 2, 3, 4, 5 });
+	arr.remove_unordered_at(2);
+	test::eq(arr.array_view(), (int[]){ 1, 2, 5, 4 });
+	arr.remove_unordered_at(1);
+	test::eq(arr.array_view(), (int[]){ 1, 4, 5 });
+	arr.remove_unordered_at(0);
+	test::eq(arr.array_view(), (int[]){ 5, 4 });
+	arr.remove_unordered_at(1);
+	test::eq(arr.array_view(), (int[]){ 5 });
+	arr.remove_unordered_at(0);
+	test::eq(arr.array_view(), (int[]){});
+	test::eq(arr.size, 0);
+}
 
 fn void remove_using_test()
 {
