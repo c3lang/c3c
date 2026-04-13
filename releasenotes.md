@@ -44,7 +44,7 @@
 - PanicFn now takes an `int` for row.
 - Add `std::collections::Deque`.
 - Add `compare_to` and `compare_to_ignore_case` to `String`. #3096
-- Add `OrderedMap` based on skip lists.
+- Add `SortedMap` based on skip lists.
 - Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
 - `BufferedChannel` and `UnbufferedChannel` now pointers, create using `create_unbuffered` and `create_buffered`
 - `RingList` now conforms to `foreach` and adds additional functions.
@@ -57,6 +57,8 @@
 - Add `DString.append_inline` for optimized uses.
 - Ordering of `object::new_*` arguments are now "allocator first".
 - Add `remove_unordered_at` to ElasticArray.
+- Changed `json` to support two flavors of JSON: JSON and JSONC.
+- Changed `json` API: `parse` -> `load`, `parse_string` -> `parse`.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

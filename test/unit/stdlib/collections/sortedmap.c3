@@ -1,15 +1,15 @@
-module orderedmap_test;
-import std::collections::orderedmap;
+module sortedmap_test;
+import std::collections::sortedmap;
 
 fn bool int_cmp_desc(int a, int b) => a > b;
 
-module orderedmap_test @test;
-import std::collections::orderedmap;
+module sortedmap_test @test;
+import std::collections::sortedmap;
 
-alias IntStringMap     = OrderedMap{int, String};
-alias FloatIntMap      = OrderedMap{float, int};
-alias LongBoolMap      = OrderedMap{long, bool};
-alias CharDoubleMap    = OrderedMap{char, double};
+alias IntStringMap     = SortedMap{int, String};
+alias FloatIntMap      = SortedMap{float, int};
+alias LongBoolMap      = SortedMap{long, bool};
+alias CharDoubleMap    = SortedMap{char, double};
 
 fn void basic_insert_and_get()
 {
@@ -362,7 +362,7 @@ fn void iter_range()
 
 fn void custom_cmp()
 {
-	OrderedMap{int, String} m;
+	SortedMap{int, String} m;
 	m.tinit_with_cmp(&int_cmp_desc);
 	defer m.free();
 
@@ -463,7 +463,7 @@ fn void iter_range_empty()
 
 fn void onheap_auto_init()
 {
-	IntStringMap m = orderedmap::ONHEAP;
+	IntStringMap m = sortedmap::ONHEAP;
 	assert(!m.is_initialized());
 	m.set(1, "one");
 	assert(m.is_initialized());
