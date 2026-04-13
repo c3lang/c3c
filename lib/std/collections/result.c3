@@ -4,37 +4,37 @@ faultdef RESULT_ERROR, RESULT_OK;
 
 <*
  Result{OkType, ErrType} holds either a success value or an error value with a payload.
- 
+
  **Prefer C3 optionals for normal error handling.**
  C3's built-in optional/fault system handles most error cases with less overhead.
  See: https://c3-lang.org/language-common/optionals-essential/
- 
+
  Use Result only when the error path must carry structured data that a bare fault cannot express.
- 
+
  Good Example:
  ```c3
  struct ParseError { int line; String msg; }
- 
+
  fn Result{int, ParseError} parse_number(String s)
  {
-   int! v = s.to_int();
-   if (catch v) return result::err({ .line = 1, .msg = string::tformat("not a number: %s", s) });
-   return result::ok(v);
+	 int! v = s.to_int();
+	 if (catch v) return result::err({ .line = 1, .msg = string::tformat("not a number: %s", s) });
+	 return result::ok(v);
  }
- 
+
  fn void main()
  {
-   Result{int, ParseError} r = parse_number("42");
-   if (try int v = r.ok()) 
-   {
-     io::printfn("got %d", v);
-   }
-   
-   Result{int, ParseError} bad = parse_number("abc");
-   if (try ParseError e = bad.err()) 
-   {
-     io::printfn("error on line %d: %s", e.line, e.msg);
-   }
+	 Result{int, ParseError} r = parse_number("42");
+	 if (try int v = r.ok()) 
+	 {
+		 io::printfn("got %d", v);
+	 }
+
+	 Result{int, ParseError} bad = parse_number("abc");
+	 if (try ParseError e = bad.err()) 
+	 {
+		 io::printfn("error on line %d: %s", e.line, e.msg);
+	 }
  }
  ```
 
@@ -42,19 +42,19 @@ faultdef RESULT_ERROR, RESULT_OK;
  ```c3
  fn Result{int, String} div(int a, int b) 
  {
-   if (b == 0) return result::err("division by zero");
-   return result::ok(a / b);
+	 if (b == 0) return result::err("division by zero");
+	 return result::ok(a / b);
  }
- 
+
  fn void print_int(int x) 
  {
-   io::printfn("Integer %d", x);
+	 io::printfn("Integer %d", x);
  }
- 
+
  fn void main() 
  {
-   print_int(div(4, 1).ok())!!;
-   print_int(div(4, 0).ok())!!;
+	 print_int(div(4, 1).ok())!!;
+	 print_int(div(4, 0).ok())!!;
  }
  ```
  *>
@@ -110,23 +110,23 @@ fn bool Result.equals(self, Result other) @operator(==)
 }
 
 <*
-  This macro allows the result to diverge on error (return/break/continue)
-	
+	This macro allows the result to diverge on error (return/break/continue)
+
 	**Aborts the program if the body doesn't diverge**
 
 	Examples:
 	```c3
 	fn Result{int, String} foo()
 	{
-    Result{int, String} res = result::err("Error");
-    int value = res.@or_else(;it) { return it; }; // early function return
+		Result{int, String} res = result::err("Error");
+		int value = res.@or_else(;it) { return it; }; // early function return
 		// ...
 	}
 
 	fn Result{int, String} bar()
 	{
-    Result{int, String} res = result::ok(22);
-    int value = res.@or_else(;it) { return it; };
+		Result{int, String} res = result::ok(22);
+		int value = res.@or_else(;it) { return it; };
 		// value is 22
 	}
 	```
