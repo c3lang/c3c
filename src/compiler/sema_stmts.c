@@ -2256,7 +2256,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			if (!sema_cast_const(from)) goto VARIABLE_JUMP;
 			ExprConst *const_expr = &from->const_expr;
 			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &exprptr(case_stmt->case_stmt.to_expr)->const_expr : const_expr;
-			if (expr_const_in_range(&value->const_expr, const_expr, to_const_expr))
+			if (expr_const_in_range(&value->const_expr, &value->const_expr, const_expr, to_const_expr))
 			{
 				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
@@ -2465,10 +2465,12 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 		Ast *other = cases[i];
 		if (other->ast_kind != AST_CASE_STMT) continue;
 		Expr *other_expr = exprptr(other->case_stmt.expr);
+		Expr *other_to_expr = exprptrzero(other->case_stmt.to_expr);
 		if (!sema_cast_const(other_expr)) continue;
+		if (other_to_expr && !sema_cast_const(other_to_expr)) continue;
 		ExprConst *other_const = &other_expr->const_expr;
-		ExprConst *other_to_const = other->case_stmt.to_expr ? &exprptr(other->case_stmt.to_expr)->const_expr : other_const;
-		if (expr_const_in_range(const_expr, other_const, other_to_const))
+		ExprConst *other_to_const = other_to_expr ? &other_to_expr->const_expr : other_const;
+		if (expr_const_in_range(const_expr, to_const_expr, other_const, other_to_const))
 		{
 			SEMA_ERROR(case_stmt, "The same case value appears more than once.");
 			SEMA_NOTE(other, "Here is the previous use of that value.");
@@ -2749,10 +2751,13 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				{
 					Ast *other_stmt = cases[j];
 					if (other_stmt->ast_kind == AST_DEFAULT_STMT) continue;
-					if (exprptr(other_stmt->case_stmt.expr)->resolve_status != RESOLVE_DONE) continue;
-					ExprConst *other_const = &exprptr(other_stmt->case_stmt.expr)->const_expr;
-					ExprConst *other_const_to = other_stmt->case_stmt.to_expr ? &exprptr(other_stmt->case_stmt.to_expr)->const_expr : other_const;
-					if (expr_const_in_range(const_expr, other_const, other_const_to))
+					Expr *other = exprptr(other_stmt->case_stmt.expr);
+					Expr *other_to = exprptrzero(other_stmt->case_stmt.to_expr);
+					if (other->resolve_status != RESOLVE_DONE) continue;
+					if (other_to && other_to->resolve_status != RESOLVE_DONE) continue;
+					ExprConst *other_const = &other->const_expr;
+					ExprConst *other_const_to = other_to ? &other_to->const_expr : other_const;
+					if (expr_const_in_range(const_expr, const_to_expr, other_const, other_const_to))
 					{
 						SEMA_ERROR(stmt, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
 						SEMA_NOTE(exprptr(cases[j]->case_stmt.expr), "The previous $case was here.");
@@ -2769,7 +2774,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 						matched_case = (int)i;
 					}
 				}
-				else if (expr_const_in_range(switch_expr_const, const_expr, const_to_expr))
+				else if (expr_const_in_range(switch_expr_const, switch_expr_const, const_expr, const_to_expr))
 				{
 					matched_case = (int)i;
 				}

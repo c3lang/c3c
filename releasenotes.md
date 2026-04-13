@@ -70,6 +70,7 @@
 - Don't override `sigaltstack` when running with `--sanitize=address`. #3115
 - Binary search broken for some supported functions.
 - Fix bug casting `(void*[<3>])x`.
+- Compiler crash compiling a switch with a constant case range overlapping a constant case value. #3127
 
 ## 0.7.11 Change list
 
