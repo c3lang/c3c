@@ -133,10 +133,10 @@ fn bool Result.equals(self, Result other) @operator(==)
 *>
 macro OkType Result.@or_else(&self; @body(Result res))
 {
-	if (!self.is_ok) @body(*self);
-
-	if (@unlikely(!self.is_ok)) {
-		abort("@or_else must diverge on error.");
+	if (!self.is_ok) 
+	{
+		@body(*self);
+		unreachable("@or_else must diverge on error.");
 	}
-	return self.value;
+	return self.value;;
 }
