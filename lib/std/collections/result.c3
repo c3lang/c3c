@@ -101,7 +101,7 @@ macro OkType Result.@or_else(&self; @body(Result res))
 {
 	if (!self.is_ok) @body(*self);
 
-  if (@unlickly(!self.is_ok)) {
+  if (@unlikely(!self.is_ok)) {
     abort("@or_else must diverge on error.");
   }
 	return self.value;
