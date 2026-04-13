@@ -713,6 +713,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_OPTIONAL:
@@ -863,6 +864,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_OPTIONAL:
@@ -1625,7 +1627,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 	{
 		case VARDECL_PARAM:
 			// foo
-			if (arg->expr_kind == EXPR_NAMED_ARGUMENT)
+			if (expr_is_named_param(arg))
 			{
 				// This only happens in body arguments
 				RETURN_SEMA_ERROR(arg, "Named arguments are not supported for body parameters.");
@@ -2094,7 +2096,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 			if (variadic_type && i == vaarg_index)
 			{
 				// Is it not the last and not a named argument, then we do a normal splat.
-				if (i + 1 < num_args && args[i + 1]->expr_kind != EXPR_NAMED_ARGUMENT) goto SPLAT_NORMAL;
+				if (i + 1 < num_args && !expr_is_named_param(args[i + 1])) goto SPLAT_NORMAL;
 
 				// Convert an array/vector to an address of an array.
 				Expr *inner_new = inner;
@@ -2153,6 +2155,24 @@ SPLAT_NORMAL:;
 			i--;
 			num_args = vec_size(args);
 			continue;
+		}
+		// Fold $eval
+		if (arg->expr_kind == EXPR_NAMED_EVAL_ARGUMENT)
+		{
+			Expr *eval_name = arg->eval_named_argument_expr.name;
+			Expr *name = eval_name->inner_expr;
+			if (!sema_analyse_ct_expr(context, name)) return NULL;
+			if (!expr_is_const_string(name)) RETURN_VAL_SEMA_ERROR(poisoned_expr, eval_name, "'$eval' expects a constant string as the argument.");
+			const char *name_string = name->const_expr.bytes.ptr;
+			if (!str_is_identifier(name_string)) RETURN_VAL_SEMA_ERROR(poisoned_expr, eval_name, "'$eval' expects a parameter name as the argument.");
+			TokenType type = TOKEN_IDENT;
+			name_string = symtab_add(name_string, name->const_expr.bytes.len, fnv1a(name_string, name->const_expr.bytes.len), &type);
+			if (type != TOKEN_IDENT) RETURN_VAL_SEMA_ERROR(poisoned_expr, eval_name, "'$eval' expected a parameter name as the argument.");
+			arg->expr_kind = EXPR_NAMED_ARGUMENT;
+			Expr *val = arg->eval_named_argument_expr.value;
+			arg->named_argument_expr.name = name_string;
+			arg->named_argument_expr.name_span = name->loc;
+			arg->named_argument_expr.value = val;
 		}
 		if (arg->expr_kind == EXPR_NAMED_ARGUMENT)
 		{
@@ -11383,6 +11403,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_DEFAULT_ARG:
 			case EXPR_IDENTIFIER:
 			case EXPR_NAMED_ARGUMENT:
+			case EXPR_NAMED_EVAL_ARGUMENT:
 			case EXPR_ACCESS_RESOLVED:
 			case EXPR_CT_SUBSCRIPT:
 			case EXPR_IOTA_DECL:
@@ -11832,6 +11853,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_PTR_TO_INT:
@@ -12405,6 +12427,7 @@ IDENT_CHECK:;
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_OPTIONAL:

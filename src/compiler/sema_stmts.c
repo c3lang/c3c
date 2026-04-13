@@ -798,6 +798,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CT_EVAL:
 		case EXPR_CONTRACT:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 			UNREACHABLE
 		case EXPR_BINARY:
 		case EXPR_DISCARD:

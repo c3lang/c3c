@@ -480,7 +480,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 		Expr *expr = NULL;
 		SourceLoc start_span = c->span;
 
-		if (peek(c) == TOKEN_COLON && token_is_param_name(c->tok))
+		if (peek(c) == TOKEN_COLON && (token_is_param_name(c->tok) || tok_is(c, TOKEN_CT_EVAL)))
 		{
 			// Create the parameter expr
 			expr = expr_new_loc(EXPR_NAMED_ARGUMENT, &start_span);
@@ -498,6 +498,13 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 			goto DONE;
 		}
 		ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
+		if (expr->expr_kind == EXPR_CT_EVAL && try_consume(c, TOKEN_COLON))
+		{
+			Expr *inner = expr;
+			expr = expr_new_loc(EXPR_NAMED_EVAL_ARGUMENT, &start_span);
+			expr->eval_named_argument_expr.name = inner;
+			ASSIGN_EXPR_OR_RET(expr->eval_named_argument_expr.value, parse_expr(c), false);
+		}
 DONE:
 		vec_add(*result, expr);
 		if (!try_consume(c, TOKEN_COMMA))

@@ -36,6 +36,7 @@
 - Enums can no longer declare themselves `inline`.
 - Nested generics allowed inside of generic functions/methods.
 - `a = ...` parameters may be shadowed if not defined.
+- `$eval` can now be used with named parameters, e.g. `foo($eval("arg"): 2)` #3090
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
@@ -55,6 +56,7 @@
 - Make `DString.append_repeat` polymorphic adding `append_string_repeat` and `append_char_repeat`.
 - Add `DString.append_inline` for optimized uses.
 - Ordering of `object::new_*` arguments are now "allocator first".
+- Add `remove_unordered_at` to ElasticArray.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
