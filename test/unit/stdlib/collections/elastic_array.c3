@@ -4,6 +4,15 @@ import std::collections::elastic_array;
 alias IntList = ElasticArray{int, 10};
 alias PtrList = ElasticArray{void*, 10};
 
+fn void basic() {
+	IntList test;
+	test.push_all({ 1, 2, 3 });
+	assert(test.pop_first()!! == 1);
+	assert(test.to_array(tmem) == { 2, 3 });
+	test.remove_at(1);	
+	assert(test.to_array(tmem) == { 2 });
+}
+
 fn void delete_contains_index()
 {
 	IntList test;
