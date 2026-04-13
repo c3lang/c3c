@@ -139,5 +139,5 @@ macro OkType Result.@or_else(&self; @body(Result res))
 		@body(*self);
 		unreachable("@or_else must diverge on error.");
 	}
-	return self.value;;
+	return self.value;
 }
