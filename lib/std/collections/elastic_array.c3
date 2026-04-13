@@ -82,7 +82,7 @@ fn Type? ElasticArray.pop_first(&self)
 <*
  Remove an element at a particular place.
 
- @require index < self.size && index <= 0 : "Index was out of range"
+ @require index < self.size && index >= 0 : "The index is out of bounds"
 *>
 fn void ElasticArray.remove_at(&self, sz index)
 {
