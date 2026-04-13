@@ -71,17 +71,29 @@ struct Result (Printable)
 fn Result ok(OkType val) => {.is_ok = true, .value = val};
 fn Result err(ErrType err) => {.is_ok = false, .error = err};
 
-fn isz? Result.to_format(&self, Formatter* f) @dynamic
+fn sz? Result.to_format(&self, Formatter* f) @dynamic
 {
-	if (self.is_ok) return f.printf("ok[%s]", self.value);
-	return f.printf("err[%s]", self.error);
+	if (self.is_ok) return f.printf("OK[%s]", self.value);
+	return f.printf("ERR[%s]", self.error);
 }
 
+<*
+	Returns the ok value or a fault
+
+	@return "The ok value of the result"
+	@return? RESULT_ERROR
+*>
 fn OkType? Result.ok(&self)
 {
 	return self.is_ok ? self.value : RESULT_ERROR~;
 }
 
+<*
+	Returns the error value or a fault
+
+	@return "The error of the result"
+	@return? RESULT_OK
+*>
 fn ErrType? Result.err(&self)
 {
 	return self.is_ok ? RESULT_OK~ : self.error;
@@ -97,12 +109,34 @@ fn bool Result.equals(self, Result other) @operator(==)
 	return !other.is_ok && equals(self.error, other.error);
 }
 
+<*
+  This macro allows the result to diverge on error (return/break/continue)
+	
+	**Aborts the program if the body doesn't diverge**
+
+	Examples:
+	```c3
+	fn Result{int, String} foo()
+	{
+    Result{int, String} res = result::err("Error");
+    int value = res.@or_else(;it) { return it; }; // early function return
+		// ...
+	}
+
+	fn Result{int, String} bar()
+	{
+    Result{int, String} res = result::ok(22);
+    int value = res.@or_else(;it) { return it; };
+		// value is 22
+	}
+	```
+*>
 macro OkType Result.@or_else(&self; @body(Result res))
 {
 	if (!self.is_ok) @body(*self);
 
-  if (@unlikely(!self.is_ok)) {
-    abort("@or_else must diverge on error.");
-  }
+	if (@unlikely(!self.is_ok)) {
+		abort("@or_else must diverge on error.");
+	}
 	return self.value;
 }
