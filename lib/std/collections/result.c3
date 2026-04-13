@@ -1,4 +1,5 @@
 module std::collections::result <OkType, ErrType>;
+import std::io;
 
 faultdef RESULT_ERROR, RESULT_OK;
 
