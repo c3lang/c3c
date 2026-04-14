@@ -2161,7 +2161,7 @@ SPLAT_NORMAL:;
 		{
 			Expr *eval_name = arg->eval_named_argument_expr.name;
 			Expr *name = eval_name->inner_expr;
-			if (!sema_analyse_ct_expr(context, name)) return NULL;
+			if (!sema_analyse_ct_expr(context, name)) return false;
 			if (!expr_is_const_string(name)) RETURN_VAL_SEMA_ERROR(poisoned_expr, eval_name, "'$eval' expects a constant string as the argument.");
 			const char *name_string = name->const_expr.bytes.ptr;
 			if (!str_is_identifier(name_string)) RETURN_VAL_SEMA_ERROR(poisoned_expr, eval_name, "'$eval' expects a parameter name as the argument.");
