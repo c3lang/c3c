@@ -990,6 +990,51 @@ const char * vendor_fetch_single(const char* lib, const char* path, bool progres
 	return error;	
 }
 
+static const char *vendor_extract_archive(const char *archive, const char *extract_dir)
+{
+	FILE *zip = fopen(archive, "rb");
+	if (!zip)
+	{
+		return str_printf("Failed to open downloaded archive '%s': %s", archive, strerror(errno));
+	}
+
+	char *extract_dir_copy = strdup(extract_dir);
+	if (!dir_make_recursive(extract_dir_copy))
+	{
+		fclose(zip);
+		return str_printf("Failed to create extraction directory '%s'.", extract_dir);
+	}
+
+	ZipDirIterator iterator;
+	ZipFile file;
+	const char *error = zip_dir_iterator(zip, &iterator);
+	if (error)
+	{
+		fclose(zip);
+		return error;
+	}
+
+	while (iterator.current_file < iterator.files)
+	{
+		error = zip_dir_iterator_next(&iterator, &file);
+		if (error)
+		{
+			fclose(zip);
+			return error;
+		}
+		if (file.uncompressed_size == 0 || file.name[0] == '.') continue;
+		error = zip_file_write(zip, &file, extract_dir, true);
+		if (error)
+		{
+			fclose(zip);
+			return error;
+		}
+	}
+
+	fclose(zip);
+	return NULL;
+}
+
 
 void vendor_fetch(BuildOptions *options)
 {
@@ -1062,9 +1107,35 @@ void vendor_fetch(BuildOptions *options)
 	for(int i = 0; i < total_libraries; i++)
 	{
 		const char *lib = options->libraries_to_fetch[i];
+		const char *archive_path = file_append_path(options->vendor_download_path, str_printf("%s.c3l", lib));
+		if (file_is_dir(archive_path)) {
+			if (options->vendor_force) file_delete_dir(archive_path);
+			else {
+				printf("Please delete library directory '%s'...\n", archive_path);
+				continue;
+			}
+		}
 		printf("Fetching library '%s'...\n", lib);
 		(void)fflush(stdout);
 		const char *error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
+
+		if (!error && options->vendor_extract)
+		{
+			const char *extract_tmp_dir = str_printf("%s.temp.c3l", archive_path);
+			error = vendor_extract_archive(archive_path, extract_tmp_dir);
+			if (!error)
+			{
+				if (!file_delete_file(archive_path))
+				{
+					error = str_printf("Failed to remove downloaded archive '%s'.", archive_path);
+				}
+				else if (rename(extract_tmp_dir, archive_path) != 0)
+				{
+					error = str_printf("Failed to finalize extracted library '%s': %s", lib, strerror(errno));
+				}
+			}
+			if (error) file_delete_dir(extract_tmp_dir);
+		}
 
 		if (!error)
 		{

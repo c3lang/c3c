@@ -69,7 +69,7 @@ static void usage(bool full)
 	print_cmd("compile-test <file1> [<file2> ...]", "Compile files into a benchmark-executable and run unit tests.");
 	print_cmd("static-lib <file1> [<file2> ...]", "Compile files without a project into a static library.");
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
-	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
+	print_cmd("vendor-fetch [-e|--extract] [-f|--force] <library>...","Fetch one or more libraries from the vendor collection.");
 	print_cmd("project <subcommand> ...", "Manipulate or view project files.");
 	print_cmd("fetch-sdk <windows|macos|android> ...", "Fetches the SDK required for cross-compiling.");
 	PRINTF("");
@@ -497,6 +497,19 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("vendor-fetch"))
 	{
 		options->command = COMMAND_VENDOR_FETCH;
+		while (!at_end() && next_is_opt()) {
+			next_arg();
+			if (!options->vendor_extract && (match_shortopt("e") || match_longopt("extract"))) {
+				options->vendor_extract = true;
+				continue;
+			}
+		 	if (!options->vendor_force && (match_shortopt("f") || match_longopt("force"))) {
+				options->vendor_force = true;
+				continue;
+			}
+			error_exit("Invalid options after vendor-fetch");
+			return;
+		}
 		while (!at_end() && !next_is_opt())
 		{
 			const char *lib = next_arg();
