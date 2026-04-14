@@ -5289,7 +5289,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		case TYPE_PROPERTY_KINDOF:
 		case TYPE_PROPERTY_SIZEOF:
 			return sema_expr_rewrite_to_type_property(context, expr, decl->type->canonical, type_property, decl->type->canonical);
-		case TYPE_PROPERTY_EXTNAMEOF:
+		case TYPE_PROPERTY_CNAMEOF:
 		case TYPE_PROPERTY_PARAMSOF:
 		case TYPE_PROPERTY_RETURNS:
 		case TYPE_PROPERTY_INF:
@@ -5787,7 +5787,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_NAMES:
 			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_slice(type_string));
 		case TYPE_PROPERTY_ALIGNOF:
-		case TYPE_PROPERTY_EXTNAMEOF:
+		case TYPE_PROPERTY_CNAMEOF:
 		case TYPE_PROPERTY_FROM_ORDINAL:
 		case TYPE_PROPERTY_GET:
 		case TYPE_PROPERTY_SET:
@@ -6051,7 +6051,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 		case TYPE_PROPERTY_TAGOF:
 		case TYPE_PROPERTY_HAS_TAGOF:
 			return true;
-		case TYPE_PROPERTY_EXTNAMEOF:
+		case TYPE_PROPERTY_CNAMEOF:
 			return !type_is_builtin(original_type->canonical->type_kind);
 	}
 	UNREACHABLE
@@ -6173,10 +6173,10 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr_rewrite_const_int(expr, type_sz, align);
 			return true;
 		}
-		case TYPE_PROPERTY_EXTNAMEOF:
+		case TYPE_PROPERTY_CNAMEOF:
 			ASSERT_SPAN(expr, !type_is_builtin(type->type_kind));
 			if (!sema_resolve_type_decl(context, type)) return false;
-			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_EXTNAMEOF);
+			sema_expr_rewrite_to_type_nameof(expr, type, TOKEN_CT_CNAMEOF);
 			return true;
 		case TYPE_PROPERTY_TAGOF:
 			if (!type_is_user_defined(type))
@@ -10538,7 +10538,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, TokenType name_type)
 {
 	if (type_is_func_ptr(type)) type = type->pointer->function.prototype->raw_type;
-	if (name_type == TOKEN_CT_EXTNAMEOF)
+	if (name_type == TOKEN_CT_CNAMEOF)
 	{
 		if (type_is_user_defined(type))
 		{
@@ -10583,7 +10583,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr,
 		return false;
 	}
 
-	if (name_type == TOKEN_CT_EXTNAMEOF)
+	if (name_type == TOKEN_CT_CNAMEOF)
 	{
 		switch (decl->decl_kind)
 		{
@@ -11746,7 +11746,7 @@ static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr, b
 			return sema_expr_analyse_ct_offsetof(context, expr, failed_ref);
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_NAMEOF:
-		case TOKEN_CT_EXTNAMEOF:
+		case TOKEN_CT_CNAMEOF:
 			return sema_expr_analyse_ct_nameof(context, expr, failed_ref);
 		case TOKEN_CT_FEATURE:
 			return sema_expr_analyse_ct_feature(context, expr);

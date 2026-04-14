@@ -1274,7 +1274,7 @@ static Expr *parse_lengthof(ParseContext *c, Expr *left, SourceLoc *lhs_start UN
 }
 
 /**
- * ct_call ::= (CT_ALIGNOF | CT_FEATURE | CT_EXTNAMEOF | CT_OFFSETOF | CT_NAMEOF | CT_QNAMEOF) '(' flat_path ')'
+ * ct_call ::= (CT_ALIGNOF | CT_FEATURE | CT_CNAMEOF | CT_OFFSETOF | CT_NAMEOF | CT_QNAMEOF) '(' flat_path ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
  */
 static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
@@ -2119,7 +2119,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_DEFINED] = { parse_ct_defined, NULL, PREC_NONE },
 		[TOKEN_CT_EMBED] = { parse_ct_embed, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
-		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_CNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_FEATURE] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_KINDOF] = { parse_ct_kindof, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },

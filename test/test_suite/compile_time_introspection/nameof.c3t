@@ -13,15 +13,15 @@ fn void main()
     printf("%s\n", $typefrom("Foo").qnameof);
     printf("%s\n", Foo.nameof);
     printf("%s\n", $typefrom("mymodule::Foo").nameof);
-    printf("%s\n", Foo.extnameof);
-    printf("%s\n", $typefrom("Foo").extnameof);
+    printf("%s\n", Foo.cnameof);
+    printf("%s\n", $typefrom("Foo").cnameof);
 
     printf("%s\n", $qnameof(b));
     printf("%s\n", $qnameof($eval("b")));
     printf("%s\n", $nameof(b));
     printf("%s\n", $nameof($eval("mymodule::b")));
-    printf("%s\n", $extnameof(b));
-    printf("%s\n", $extnameof($eval("b")));
+    printf("%s\n", $cnameof(b));
+    printf("%s\n", $cnameof($eval("b")));
 
     int a;
 

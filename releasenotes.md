@@ -37,6 +37,7 @@
 - Nested generics allowed inside of generic functions/methods.
 - `a = ...` parameters may be shadowed if not defined.
 - `$eval` can now be used with named parameters, e.g. `foo($eval("arg"): 2)` #3090
+- `$extnameof` / `.extnameof` is now renamed `$cnameof` / `.cnameof`.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

@@ -353,8 +353,8 @@ const char *token_type_to_string(TokenType type)
 			return "$error";
 		case TOKEN_CT_EXEC:
 			return "$exec";
-		case TOKEN_CT_EXTNAMEOF:
-			return "$extnameof";
+		case TOKEN_CT_CNAMEOF:
+			return "$cnameof";
 		case TOKEN_CT_FEATURE:
 			return "$feature";
 		case TOKEN_CT_FOR:

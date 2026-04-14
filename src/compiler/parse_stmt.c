@@ -1399,7 +1399,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_DEFINED:
 		case TOKEN_CT_EMBED:
 		case TOKEN_CT_EVAL:
-		case TOKEN_CT_EXTNAMEOF:
+		case TOKEN_CT_CNAMEOF:
 		case TOKEN_CT_FEATURE:
 		case TOKEN_CT_IDENT:
 		case TOKEN_CT_KINDOF:
