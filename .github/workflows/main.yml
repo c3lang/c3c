@@ -383,19 +383,32 @@ jobs:
           cpu_count: 4
           memory: 6G
           run: |
-            # Install dependencies
+            # Install dependencies, select best mirror
             export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
-            export PKG_PATH="https://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -m)/$(uname -r)/All/"
+            sudo mkdir -p /usr/pkg/etc/pkgin
+            MIRROR_PATH="pub/pkgsrc/packages/NetBSD/amd64/10.1/All"
+            WORKING_MIRRORS=""
+            echo "Testing mirrors..."
+            for m in "http://cdn.NetBSD.org/$MIRROR_PATH" "http://ftp.jaist.ac.jp/$MIRROR_PATH" "http://ftp.NetBSD.org/$MIRROR_PATH" "http://ftp.fr.NetBSD.org/$MIRROR_PATH" "https://mirror.planetunix.net/$MIRROR_PATH"; do
+              if curl -s -f -I -L --connect-timeout 5 --max-time 10 "$m/pkg_summary.bz2" > /dev/null; then
+                echo "OK: $m"
+                WORKING_MIRRORS="${WORKING_MIRRORS}${m}/\n"
+              fi
+            done
 
-            # Ensure pkgin is available and updated
-            sudo /usr/sbin/pkg_add -U pkgin || true
+            if [ -n "$WORKING_MIRRORS" ]; then
+              printf "$WORKING_MIRRORS" | sudo tee /usr/pkg/etc/pkgin/repositories.conf
+            else
+              echo "No mirrors responded, using main site as fallback."
+              echo "http://ftp.NetBSD.org/$MIRROR_PATH/" | sudo tee /usr/pkg/etc/pkgin/repositories.conf
+            fi
 
             for i in 1 2 3; do
               sudo pkgin -y update && \
               sudo pkgin -y install cmake gcc14 ninja-build bash \
-                'llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
-                'clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
-                'lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' && break || sleep 5
+                "llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
+                "clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
+                "lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" && break || sleep 5
             done
 
             export CC=clang
