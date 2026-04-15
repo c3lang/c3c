@@ -5486,9 +5486,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 			//     { long, long } into memory, then performing a bitcast to { int, int, short, short, int }
 
 			// 14a. Generate the type.
-			LLVMTypeRef lo = llvm_abi_type(c, ret_info->direct_pair.lo);
-			LLVMTypeRef hi = llvm_abi_type(c, ret_info->direct_pair.hi);
-			LLVMTypeRef struct_type = llvm_get_twostruct(c, lo, hi);
+			LLVMTypeRef struct_type = llvm_get_coerce_type(c, ret_info);
 
 			// 14b. Use the coerce method to go from the struct to the actual type
 			//      by storing the { lo, hi } struct to memory, then loading it

@@ -74,6 +74,7 @@
 - Binary search broken for some supported functions.
 - Fix bug casting `(void*[<3>])x`.
 - Compiler crash compiling a switch with a constant case range overlapping a constant case value. #3127
+- Incorrect handling of overaligned struct fields #3136
 
 ## 0.7.11 Change list
 

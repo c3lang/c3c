@@ -32,8 +32,6 @@ ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type, ParamInfo param);
 ABIArgInfo *abi_arg_new_indirect_not_by_val(Type *type, ParamInfo param);
 
 AlignSize abi_type_abi_alignment(AbiType type);
-bool abi_type_is_integer(AbiType type);
-bool abi_type_is_float(AbiType type);
 static inline void abi_type_set_type(AbiType *abi_type, Type *type);
 static inline AbiType abi_type_get(Type *type);
 
