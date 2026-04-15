@@ -8,32 +8,34 @@ module std::sort;
  @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "Expected a comparison function which compares values"
  @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
 *>
-macro void mergesort(list, cmp = ..., context = ...) @builtin
+macro void mergesort(list, cmp = ..., context = ..., allocator = tmem) @builtin
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if $kindof(list) == SLICE:
-		msort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx);
+		msort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, allocator);
 	$else
-		msort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx);
+		msort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, allocator);
 	$endif
 }
 
 module std::sort <Type, CmpFn, Context> @private;
 
-fn void msort(ListType list, CmpFn cmp, Context context)
+fn void msort(ListType list, CmpFn cmp, Context context, Allocator allocator)
 {
-	if (list.len <= 1) return;
-	ListType buff = mem::new_array(Type.inner, list.len);
-	msort_split(list, buff, 0, list.len, cmp, context);
-	free(buff);
+	const LIST_IS_REF = $kindof(list) == POINTER;
+	sz len = !LIST_IS_REF ??? lengthof(list) : lengthof(*list);
+	if (len <= 1) return;
+	ElementType[] buff = alloc::new_array(allocator, ElementType, len);
+	msort_split(list, buff, 0, len, cmp, context);
+	alloc::free(allocator, buff);
 	return;
 }
 
 <*
 @require left <= right : "Indexing has to be done from lower to higher index"
 *>
-fn void msort_split(ListType list, Type buff, sz left, sz right, CmpFn cmp, Context context)
+fn void msort_split(ListType list, ElementType[] buff, sz left, sz right, CmpFn cmp, Context context)
 {
 	if (right - left <= 1) return;
 	sz mid = left + (right - left) / 2;
@@ -46,12 +48,11 @@ fn void msort_split(ListType list, Type buff, sz left, sz right, CmpFn cmp, Cont
 @require left <= mid : "Indexing has to be done from lower to higher index"
 @require mid <= right : "Indexing has to be done from lower to higher index"
 *>
-fn void merge(ListType list, ListType buff, sz left, sz mid, sz right, CmpFn cmp, Context context)
+fn void merge(ListType list, ElementType[] buff, sz left, sz mid, sz right, CmpFn cmp, Context context)
 {
-	var $has_cmp = $typeof(cmp) != sort::TypeNotSet;
-	var $has_context = $typeof(context) != sort::TypeNotSet;
+	var $has_cmp = $typeof(cmp) != TypeNotSet;
+	var $has_context = $typeof(context) != TypeNotSet;
 	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) v = list_get(list, 0));
-	var $has_get_ref = IS_SLICE ||| $defined(&(*list)[0]);
 
 	sz i = left;
 	sz j = mid;
@@ -63,39 +64,22 @@ fn void merge(ListType list, ListType buff, sz left, sz mid, sz right, CmpFn cmp
 			$case $cmp_by_value:
 				bool cmp_result = cmp(list_get(list, i), list_get(list, j)) <= 0;
 			$case $has_cmp && $has_context:
-				bool cmp_result = cmp(*list_get_ref(list, i), *list_get_ref(list, j), context) <= 0;
+				bool cmp_result = cmp(list_get_ref(list, i), list_get_ref(list, j), context) <= 0;
 			$case $has_cmp:
-				bool cmp_result = cmp(*list_get_ref(list, i), *list_get_ref(list, j)) <= 0;
+				bool cmp_result = cmp(list_get_ref(list, i), list_get_ref(list, j)) <= 0;
 			$default:
 				bool cmp_result = less_eq(list_get(list, i), list_get(list, j));
 		$endswitch
 		if (cmp_result)
 		{
-			$switch:
-				$case $has_cmp:
-					list_set(buff, k++, *list_get_ref(list, i++));
-				$default:
-					list_set(buff, k++, list_get(list, i++));
-			$endswitch
+			buff[k++] = list_get(list, i++);
 		} else
 		{
-			$switch:
-				$case $has_cmp:
-					list_set(buff, k++, *list_get_ref(list, j++));
-				$default:
-					list_set(buff, k++, list_get(list, j++));
-			$endswitch
+			buff[k++] = list_get(list, j++);
 		}
 	}
 
-	$switch:
-		$case $has_cmp:
-			while (i < mid) list_set(buff, k++, *list_get_ref(list, i++));
-			while (j < right) list_set(buff, k++, *list_get_ref(list, j++));
-		$default:
-			while (i < mid) list_set(buff, k++, list_get(list, i++));
-			while (j < right) list_set(buff, k++, list_get(list, j++));	
-	$endswitch
-
-	mem::copy(&list[left], &buff[left], (right - left) * $sizeof(list[0]));
+	while (i < mid) buff[k++] = list_get(list, i++);
+	while (j < right) buff[k++] = list_get(list, j++);
+	mem::copy(list_get_ref(list, left), &buff[left], (right - left) * $sizeof(list_get(list, 0)));
 }
