@@ -184,12 +184,12 @@ entry:
   store i64 %1, ptr %ptradd, align 8
     #dbg_declare(ptr %args, !49, !DIExpression(), !50)
     #dbg_declare(ptr %asdf, !51, !DIExpression(), !56)
-  %2 = call { i32, ptr } @attach.to_scope() #5, !dbg !57
-  store { i32, ptr } %2, ptr %result, align 8
-  %lo = load i32, ptr %result, align 8, !dbg !58
+  %2 = call { i64, ptr } @attach.to_scope() #5, !dbg !57
+  store { i64, ptr } %2, ptr %result, align 8
+  %lo = load i64, ptr %result, align 8, !dbg !58
   %ptradd1 = getelementptr inbounds i8, ptr %result, i64 8, !dbg !58
   %hi = load ptr, ptr %ptradd1, align 8, !dbg !58
-  %3 = call ptr @test.create_foo(i32 %lo, ptr %hi, i64 1, ptr null, i64 0), !dbg !60
+  %3 = call ptr @test.create_foo(i64 %lo, ptr %hi, i64 1, ptr null, i64 0), !dbg !60
   store ptr %3, ptr %asdf, align 8, !dbg !60
   %ptradd2 = getelementptr inbounds i8, ptr %args, i64 8, !dbg !61
   %4 = load i64, ptr %ptradd2, align 8, !dbg !61
@@ -201,12 +201,12 @@ entry:
 }
 
 
-define ptr @test.create_foo(i32 %0, ptr %1, i64 %2, ptr %3, i64 %4) #0 !dbg !66 {
+define ptr @test.create_foo(i64 %0, ptr %1, i64 %2, ptr %3, i64 %4) #0 !dbg !66 {
 entry:
   %attach = alloca %Attach_Arg, align 8
   %flags = alloca i64, align 8
   %name = alloca %"char[]", align 8
-  store i32 %0, ptr %attach, align 8
+  store i64 %0, ptr %attach, align 8
   %ptradd = getelementptr inbounds i8, ptr %attach, i64 8
   store ptr %1, ptr %ptradd, align 8
     #dbg_declare(ptr %attach, !70, !DIExpression(), !71)
@@ -562,7 +562,7 @@ expr_block.exit30:                                ; preds = %loop.exit28
   ret i32 %55, !dbg !210
 }
 
-declare { i32, ptr } @attach.to_scope() #0
+declare { i64, ptr } @attach.to_scope() #0
 
 declare extern_weak ptr @std.core.mem.calloc(i64) #0
 

@@ -81,41 +81,41 @@ entry:
   store i32 0, ptr %literal, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %literal, i64 8
   store double 0.000000e+00, ptr %ptradd1, align 8
-  %lo = load i32, ptr %literal, align 8
+  %lo = load i64, ptr %literal, align 8
   %ptradd2 = getelementptr inbounds i8, ptr %literal, i64 8
   %hi = load double, ptr %ptradd2, align 8
-  call void @test.test2(i32 0, i32 %lo, double %hi)
+  call void @test.test2(i32 0, i64 %lo, double %hi)
   store i32 0, ptr %literal3, align 8
   %ptradd4 = getelementptr inbounds i8, ptr %literal3, i64 8
   store double 0.000000e+00, ptr %ptradd4, align 8
-  %lo5 = load i32, ptr %literal3, align 8
+  %lo5 = load i64, ptr %literal3, align 8
   %ptradd6 = getelementptr inbounds i8, ptr %literal3, i64 8
   %hi7 = load double, ptr %ptradd6, align 8
-  call void @test.test2(i32 42, i32 %lo5, double %hi7)
+  call void @test.test2(i32 42, i64 %lo5, double %hi7)
   store i32 0, ptr %literal8, align 8
   %ptradd9 = getelementptr inbounds i8, ptr %literal8, i64 8
   store double 4.500000e+00, ptr %ptradd9, align 8
-  %lo10 = load i32, ptr %literal8, align 8
+  %lo10 = load i64, ptr %literal8, align 8
   %ptradd11 = getelementptr inbounds i8, ptr %literal8, i64 8
   %hi12 = load double, ptr %ptradd11, align 8
-  call void @test.test2(i32 42, i32 %lo10, double %hi12)
+  call void @test.test2(i32 42, i64 %lo10, double %hi12)
   store i32 0, ptr %literal13, align 8
   %ptradd14 = getelementptr inbounds i8, ptr %literal13, i64 8
   store double 4.500000e+00, ptr %ptradd14, align 8
-  %lo15 = load i32, ptr %literal13, align 8
+  %lo15 = load i64, ptr %literal13, align 8
   %ptradd16 = getelementptr inbounds i8, ptr %literal13, i64 8
   %hi17 = load double, ptr %ptradd16, align 8
-  call void @test.test2(i32 0, i32 %lo15, double %hi17)
+  call void @test.test2(i32 0, i64 %lo15, double %hi17)
   store i32 100, ptr %z, align 8
   %ptradd18 = getelementptr inbounds i8, ptr %z, i64 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ptradd18, ptr align 8 %f, i32 16, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon19, ptr align 8 %z, i32 24, i1 false)
   %ptradd20 = getelementptr inbounds i8, ptr %.anon19, i64 8
   %2 = load i32, ptr %.anon19, align 8
-  %lo21 = load i32, ptr %ptradd20, align 8
+  %lo21 = load i64, ptr %ptradd20, align 8
   %ptradd22 = getelementptr inbounds i8, ptr %ptradd20, i64 8
   %hi23 = load double, ptr %ptradd22, align 8
-  call void @test.test2(i32 %2, i32 %lo21, double %hi23)
+  call void @test.test2(i32 %2, i64 %lo21, double %hi23)
   store i32 100, ptr %z2, align 8
   %ptradd24 = getelementptr inbounds i8, ptr %z2, i64 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %.anon25, ptr align 8 %f, i32 16, i1 false)

@@ -140,20 +140,20 @@ entry:
   store %any %3, ptr %varargslots, align 16
   %4 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 12, ptr %varargslots, i64 1)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 16, i1 false)
-  %lo2 = load i32, ptr %literal, align 8
+  %lo2 = load i64, ptr %literal, align 8
   %ptradd3 = getelementptr inbounds i8, ptr %literal, i64 8
   %hi4 = load ptr, ptr %ptradd3, align 8
-  %5 = call i8 @"std.collections.map.HashMap$int$test.Foo$.set"(ptr %map, i32 1, i32 %lo2, ptr %hi4)
+  %5 = call i8 @"std.collections.map.HashMap$int$test.Foo$.set"(ptr %map, i32 1, i64 %lo2, ptr %hi4)
   %ptradd6 = getelementptr inbounds i8, ptr %map, i64 32
   %6 = insertvalue %any undef, ptr %ptradd6, 0
   %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %any %7, ptr %varargslots5, align 16
   %8 = call i64 @std.io.printfn(ptr %retparam7, ptr @.str.1, i64 12, ptr %varargslots5, i64 1)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal8, ptr align 8 @.__const.2, i32 16, i1 false)
-  %lo9 = load i32, ptr %literal8, align 8
+  %lo9 = load i64, ptr %literal8, align 8
   %ptradd10 = getelementptr inbounds i8, ptr %literal8, i64 8
   %hi11 = load ptr, ptr %ptradd10, align 8
-  %9 = call i8 @"std.collections.map.HashMap$int$test.Foo$.set"(ptr %map, i32 1, i32 %lo9, ptr %hi11)
+  %9 = call i8 @"std.collections.map.HashMap$int$test.Foo$.set"(ptr %map, i32 1, i64 %lo9, ptr %hi11)
   %ptradd13 = getelementptr inbounds i8, ptr %map, i64 32
   %10 = insertvalue %any undef, ptr %ptradd13, 0
   %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.int" to i64), 1
@@ -187,10 +187,10 @@ after_check19:                                    ; preds = %entry, %after_check
   store %any %25, ptr %varargslots24, align 16
   %26 = call i64 @std.io.printfn(ptr %retparam26, ptr @.str.6, i64 9, ptr %varargslots24, i64 1)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal29, ptr align 8 @.__const.7, i32 16, i1 false)
-  %lo30 = load i32, ptr %literal29, align 8
+  %lo30 = load i64, ptr %literal29, align 8
   %ptradd31 = getelementptr inbounds i8, ptr %literal29, i64 8
   %hi32 = load ptr, ptr %ptradd31, align 8
-  %27 = call i8 @"std.collections.map.HashMap$int$test.Foo$.set"(ptr %map, i32 7, i32 %lo30, ptr %hi32)
+  %27 = call i8 @"std.collections.map.HashMap$int$test.Foo$.set"(ptr %map, i32 7, i64 %lo30, ptr %hi32)
   %28 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator)
   %lo34 = load i64, ptr %28, align 8
   %ptradd35 = getelementptr inbounds i8, ptr %28, i64 8
