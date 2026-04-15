@@ -92,7 +92,7 @@ fn void*? simple_alloc_alloc(SimpleHeapAllocator* self, sz bytes) @local
 	{
 		switch
 		{
-			case current.size >= aligned_bytes && current.size <= aligned_bytes + Header.sizeof + 64:
+			case current.size >= aligned_bytes && current.size <= aligned_bytes + Header::size + 64:
 				if (current == previous)
 				{
 					self.free_list = current.next;
@@ -104,8 +104,8 @@ fn void*? simple_alloc_alloc(SimpleHeapAllocator* self, sz bytes) @local
 				current.next = null;
 				return current + 1;
 			case current.size > aligned_bytes:
-				Header* unallocated = (Header*)((char*)current + aligned_bytes + Header.sizeof);
-				unallocated.size = current.size - aligned_bytes - Header.sizeof;
+				Header* unallocated = (Header*)((char*)current + aligned_bytes + Header::size);
+				unallocated.size = current.size - aligned_bytes - Header::size;
 				unallocated.next = current.next;
 				if (current == self.free_list)
 				{
@@ -130,9 +130,9 @@ fn void*? simple_alloc_alloc(SimpleHeapAllocator* self, sz bytes) @local
 fn void? simple_alloc_add_block(SimpleHeapAllocator* self, sz aligned_bytes) @local
 {
 	assert(mem::aligned_offset(aligned_bytes, mem::DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
-	char[] result = self.alloc_fn(aligned_bytes + Header.sizeof)!;
+	char[] result = self.alloc_fn(aligned_bytes + Header::size)!;
 	Header* new_block = (Header*)result.ptr;
-	new_block.size = result.len - Header.sizeof;
+	new_block.size = result.len - Header::size;
 	new_block.next = null;
 	simple_alloc_free(self, new_block + 1);
 }
@@ -175,7 +175,7 @@ fn void simple_alloc_free(SimpleHeapAllocator* self, void* ptr) @local
 		if (current == (Header*)((char*)(block + 1) + block.size))
 		{
 			// Merge
-			block.size += current.size + Header.sizeof;
+			block.size += current.size + Header::size;
 			block.next = current.next;
 		}
 		else
@@ -194,7 +194,7 @@ fn void simple_alloc_free(SimpleHeapAllocator* self, void* ptr) @local
 		// Prev adjacent?
 		if (block == (Header*)((char*)(prev + 1) + prev.size))
 		{
-			prev.size += block.size + Header.sizeof;
+			prev.size += block.size + Header::size;
 			prev.next = block.next;
 		}
 		else

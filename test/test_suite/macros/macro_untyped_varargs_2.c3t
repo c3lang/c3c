@@ -19,7 +19,7 @@ macro foo2(...)
 		{
 			$vatype[$i] x;
 		}
-		io::printfn("%s", $vatype[$i].nameof);
+		io::printfn("%s", $vatype[$i]::name);
 	$endfor;
 }
 

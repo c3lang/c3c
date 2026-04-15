@@ -4,9 +4,9 @@
 module std::collections::object;
 import std::collections::map, std::collections::list, std::io;
 
-const Object TRUE_OBJECT = { .b = true, .type = bool.typeid };
-const Object FALSE_OBJECT = { .b = false, .type = bool.typeid };
-const Object NULL_OBJECT = { .type = void*.typeid };
+const Object TRUE_OBJECT = { .b = true, .type = bool::typeid };
+const Object FALSE_OBJECT = { .b = false, .type = bool::typeid };
+const Object NULL_OBJECT = { .type = void*::typeid };
 
 struct Object (Printable)
 {
@@ -60,7 +60,7 @@ fn sz? Object.to_format(&self, Formatter* formatter) @dynamic
 			n += formatter.printf("}")!;
 			return n;
 		default:
-			switch (self.type.kindof)
+			switch (self.type.kind)
 			{
 				case SIGNED_INT:
 					return formatter.printf("%d", (int128)self.i)!;
@@ -78,7 +78,7 @@ fn sz? Object.to_format(&self, Formatter* formatter) @dynamic
 
 fn Object* new_obj(Allocator allocator)
 {
-	return @alloc_obj(allocator, { .allocator = allocator, .type = void.typeid });
+	return @alloc_obj(allocator, { .allocator = allocator, .type = void::typeid });
 }
 
 fn Object* new_null()
@@ -88,7 +88,7 @@ fn Object* new_null()
 
 fn Object* new_int(Allocator allocator, int128 i)
 {
-	return @alloc_obj(allocator, { .i = i, .allocator = allocator, .type = int128.typeid });
+	return @alloc_obj(allocator, { .i = i, .allocator = allocator, .type = int128::typeid });
 }
 
 macro Object* new_enum(Allocator allocator, e)
@@ -98,12 +98,12 @@ macro Object* new_enum(Allocator allocator, e)
 
 fn Object* new_float(Allocator allocator, double f)
 {
-	return @alloc_obj(allocator, { .f = f, .allocator = allocator, .type = double.typeid });
+	return @alloc_obj(allocator, { .f = f, .allocator = allocator, .type = double::typeid });
 }
 
 fn Object* new_string(Allocator allocator, String s)
 {
-	return @alloc_obj(allocator, { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid });
+	return @alloc_obj(allocator, { .s = s.copy(allocator), .allocator = allocator, .type = String::typeid });
 }
 
 
@@ -136,7 +136,7 @@ fn void Object.free(&self)
 	}
 	if (self.allocator)
 	{
-		$if Object.alignof > mem::DEFAULT_MEM_ALIGNMENT:
+		$if Object::alignment > mem::DEFAULT_MEM_ALIGNMENT:
 			alloc::free_aligned(self.allocator, self);
 		$else
 			alloc::free(self.allocator, self);
@@ -145,13 +145,13 @@ fn void Object.free(&self)
 }
 
 fn bool Object.is_null(&self) @inline => self == &NULL_OBJECT;
-fn bool Object.is_empty(&self) @inline => self.type == void.typeid;
-fn bool Object.is_map(&self) @inline => self.type == ObjectInternalMap.typeid;
-fn bool Object.is_array(&self) @inline => self.type == ObjectInternalList.typeid;
-fn bool Object.is_bool(&self) @inline => self.type == bool.typeid;
-fn bool Object.is_string(&self) @inline => self.type == String.typeid;
-fn bool Object.is_float(&self) @inline => self.type == double.typeid;
-fn bool Object.is_int(&self) @inline => self.type == int128.typeid;
+fn bool Object.is_empty(&self) @inline => self.type == void::typeid;
+fn bool Object.is_map(&self) @inline => self.type == ObjectInternalMap::typeid;
+fn bool Object.is_array(&self) @inline => self.type == ObjectInternalList::typeid;
+fn bool Object.is_bool(&self) @inline => self.type == bool::typeid;
+fn bool Object.is_string(&self) @inline => self.type == String::typeid;
+fn bool Object.is_float(&self) @inline => self.type == double::typeid;
+fn bool Object.is_int(&self) @inline => self.type == int128::typeid;
 fn bool Object.is_keyable(&self) => self.is_empty() || self.is_map();
 fn bool Object.is_indexable(&self) => self.is_empty() || self.is_array();
 
@@ -162,7 +162,7 @@ fn void object_init_map_if_needed(Object* self) @private
 {
 	if (self.is_empty())
 	{
-		self.type = ObjectInternalMap.typeid;
+		self.type = ObjectInternalMap::typeid;
 		self.map.init(self.allocator);
 	}
 }
@@ -174,7 +174,7 @@ fn void object_init_array_if_needed(Object* self) @private
 {
 	if (self.is_empty())
 	{
-		self.type = ObjectInternalList.typeid;
+		self.type = ObjectInternalList::typeid;
 		self.array.init(self.allocator);
 	}
 }
@@ -202,13 +202,13 @@ macro Object* Object.object_from_value(&self, value) @private
 			return new_int(self.allocator, value);
 		$case types::is_float($Type):
 			return new_float(self.allocator, value);
-		$case $Type.typeid == String.typeid:
+		$case $Type::typeid == String::typeid:
 			return new_string(self.allocator, value);
-		$case $Type.typeid == bool.typeid:
+		$case $Type::typeid == bool::typeid:
 			return new_bool(value);
-		$case $Type.typeid == Object*.typeid:
+		$case $Type::typeid == Object*::typeid:
 			return value;
-		$case $Type.typeid == void*.typeid:
+		$case $Type::typeid == void*::typeid:
 			return &NULL_OBJECT;
 		$case $defined(String x = value):
 			return new_string(self.allocator, value);
@@ -311,7 +311,7 @@ fn void Object.set_object_at(&self, sz index, Object* to_set)
 }
 
 <*
- @require $Type.kindof.is_int() : "Expected an integer type."
+ @require $Type::kind.is_int() : "Expected an integer type."
 *>
 macro get_integer_value(Object* value, $Type)
 {
@@ -321,7 +321,7 @@ macro get_integer_value(Object* value, $Type)
 	}
 	if (value.is_string())
 	{
-		$if $Type.kindof == TypeKind.SIGNED_INT:
+		$if $Type::kind == TypeKind.SIGNED_INT:
 			return ($Type)value.s.to_int128();
 		$else
 			return ($Type)value.s.to_uint128();
@@ -334,7 +334,7 @@ macro get_integer_value(Object* value, $Type)
 
 <*
  @require self.is_indexable()
- @require $Type.kindof.is_int() : "Expected an integer type"
+ @require $Type::kind.is_int() : "Expected an integer type"
 *>
 macro Object.get_integer_at(&self, $Type, sz index) @private
 {
@@ -343,7 +343,7 @@ macro Object.get_integer_at(&self, $Type, sz index) @private
 
 <*
  @require self.is_keyable()
- @require $Type.kindof.is_int() : "Expected an integer type"
+ @require $Type::kind.is_int() : "Expected an integer type"
 *>
 macro Object.get_integer(&self, $Type, String key) @private
 {
@@ -400,7 +400,7 @@ fn String? Object.get_string_at(&self, sz index)
 macro String? Object.get_enum(&self, $EnumType, String key)
 {
 	Object value = self.get(key)!;
-	if ($EnumType.typeid != value.type) return TYPE_MISMATCH~;
+	if ($EnumType::typeid != value.type) return TYPE_MISMATCH~;
 	return ($EnumType)value.i;
 }
 
@@ -410,7 +410,7 @@ macro String? Object.get_enum(&self, $EnumType, String key)
 macro String? Object.get_enum_at(&self, $EnumType, sz index)
 {
 	Object value = self.get_at(index);
-	if ($EnumType.typeid != value.type) return TYPE_MISMATCH~;
+	if ($EnumType::typeid != value.type) return TYPE_MISMATCH~;
 	return ($EnumType)value.i;
 }
 
@@ -441,7 +441,7 @@ fn bool? Object.get_bool_at(&self, sz index)
 fn double? Object.get_float(&self, String key)
 {
 	Object* value = self.get(key)!;
-	switch (value.type.kindof)
+	switch (value.type.kind)
 	{
 		case SIGNED_INT:
 			return (double)value.i;
@@ -460,7 +460,7 @@ fn double? Object.get_float(&self, String key)
 fn double? Object.get_float_at(&self, sz index)
 {
 	Object* value = self.get_at(index);
-	switch (value.type.kindof)
+	switch (value.type.kind)
 	{
 		case SIGNED_INT:
 			return (double)value.i;
@@ -487,7 +487,7 @@ alias ObjectInternalMapEntry @private = Entry {String, Object*};
 
 macro Object* @alloc_obj(Allocator a, #init) @private
 {
-	$if Object.alignof > mem::DEFAULT_MEM_ALIGNMENT:
+	$if Object::alignment > mem::DEFAULT_MEM_ALIGNMENT:
 		return alloc::new_aligned(a, Object, #init)!!;
 	$else
 		return alloc::new(a, Object, #init);

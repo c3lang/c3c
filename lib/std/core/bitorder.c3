@@ -140,29 +140,29 @@ macro void store_le(void* dst, value)
 <*
  @require @is_array_or_slice_of_char(bytes) : "argument must be an array, a pointer to an array or a slice of char"
  @require is_bitorder($Type) : "type must be a bitorder integer"
- @require $defined(*bytes) ||| $defined(bytes[:$Type.sizeof]) : "Data is too short to contain value"
+ @require $defined(*bytes) ||| $defined(bytes[:$Type::size]) : "Data is too short to contain value"
 *>
 macro read(bytes, $Type)
 {
 	char *ptr;
-	$switch $kindof(bytes):
+	$switch @kindof(bytes):
 		$case POINTER:
 			ptr = bytes;
 		$default:
 			ptr = bytes[..].ptr;
 	$endswitch
-	return bitcast(mem::load((char[$Type.sizeof]*)ptr, $align: 1), $Type).val;
+	return bitcast(mem::load((char[$Type::size]*)ptr, $align: 1), $Type).val;
 }
 
 <*
  @require @is_arrayptr_or_slice_of_char(bytes) : "argument must be a pointer to an array or a slice of char"
  @require is_bitorder($Type) : "type must be a bitorder integer"
- @require $defined(*bytes) ||| $defined(bytes[:$Type.sizeof]) : "Data is not sufficent to hold value"
+ @require $defined(*bytes) ||| $defined(bytes[:$Type::size]) : "Data is not sufficent to hold value"
 *>
 macro write(x, bytes, $Type)
 {
 	char *ptr;
-	$switch $kindof(bytes):
+	$switch @kindof(bytes):
 		$case POINTER:
 			ptr = bytes;
 		$default:
@@ -199,13 +199,13 @@ macro bool is_bitorder($Type)
 macro bool @is_array_or_slice_of_char(#bytes) @const
 {
     var $Type = $typeof(#bytes);
-	$switch $Type.kindof:
+	$switch $Type::kind:
 		$case POINTER:
-			typeid $inner = $Type.inner;
-			return $inner.kindof == ARRAY &&& $inner.inner == char.typeid;
+			typeid $inner = $Type::inner;
+			return $inner.kind == ARRAY &&& $inner.inner == char::typeid;
 		$case ARRAY:
 		$case SLICE:
-			return $Type.inner == char.typeid;
+			return $Type::inner == char::typeid;
 		$default:
 			return false;
 	$endswitch
@@ -214,12 +214,12 @@ macro bool @is_array_or_slice_of_char(#bytes) @const
 macro bool @is_arrayptr_or_slice_of_char(#bytes) @const
 {
 	var $Type = $typeof(#bytes);
-	$switch $Type.kindof:
+	$switch $Type::kind:
 		$case POINTER:
-			typeid $inner = $Type.inner;
-			return $inner.kindof == ARRAY &&& $inner.inner == char.typeid;
+			typeid $inner = $Type::inner;
+			return $inner.kind == ARRAY &&& $inner.inner == char::typeid;
 		$case SLICE:
-			return $Type.inner == char.typeid;
+			return $Type::inner == char::typeid;
 		$default:
 			return false;
 	$endswitch

@@ -33,13 +33,13 @@ fn void Ca.foo(&this) @dynamic {
 
 macro @patch(IFoo *x, $Type) {
     usz *y = (usz *) x;
-    y[1] = (usz) $Type.typeid;
+    y[1] = (usz) $Type::typeid;
 }
 
 fn void main() {
     IFoo foo = @clone((Ba){});
 
-    io::printfn("Aa.typeid: %p, Ba.typeid: %p", (usz) Aa.typeid, (usz) Ba.typeid);
+    io::printfn("Aa.typeid: %p, Ba.typeid: %p", (usz) Aa::typeid, (usz) Ba::typeid);
     io::printfn("foo.type: %p", (usz) foo.type);
 
 	@patch(&foo, Aa);
@@ -48,7 +48,7 @@ fn void main() {
 
     foo.foo();
 
-	foo = (IFoo)any_make(foo.ptr, Ca.typeid);
+	foo = (IFoo)any_make(foo.ptr, Ca::typeid);
 
     io::printfn("foo.type: %p", (usz) foo.type);
 

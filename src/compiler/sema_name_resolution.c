@@ -568,14 +568,14 @@ int damerau_levenshtein_distance(const char *a, int a_len, const char *b, int b_
 	if (!b_len) return a_len;
 	if (a_len >= MAX_TEST || b_len >= MAX_TEST) return MAX_TEST;
 	int score[MAX_TEST][MAX_TEST];
-	memset(score, 0, (size_t)MAX_TEST *  (size_t)MAX_TEST);
+	memset(score, 0, sizeof(int) * (size_t)MAX_TEST * (size_t)MAX_TEST);
 	for (int i = 0; i <= a_len; i++) score[i][0] = i;
 	for (int i = 0; i <= b_len; i++) score[0][i] = i;
 	for (int i = 0; i < a_len; i++)
 	{
 		for (int j = 0; j < b_len; j++)
 		{
-			int cost = a[i] == b[i] ? 0 : 1;
+			int cost = a[i] == b[j] ? 0 : 1;
 			int del = score[i][j + 1] + 1;
 			int insert = score[i + 1][j] + 1;
 			int substitute = score[i][j] + cost;
@@ -640,7 +640,7 @@ static int module_closest_ident_names(Module *module, const char *name, Decl* ma
 
 	int count = 0;
 	int len = (int)strlen(name);
-	int distance = MAX(1, (int)(len * 0.8));
+	int distance = MAX(1, (int)(len / 3));
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		find_closest(name, len, unit->functions, &count, matches, &distance);
@@ -649,6 +649,7 @@ static int module_closest_ident_names(Module *module, const char *name, Decl* ma
 	}
 	return count;
 }
+
 static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_resolve)
 {
 	ASSERT(!name_resolve->suppress_error);
@@ -666,8 +667,8 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 			              symbol);
 			return;
 		}
-		sema_error_at(context, loc, "The %s '%s' is '@private' and not visible from other modules.",
-		              private_name, symbol);
+		sema_error_at(context, loc, "The %s '%s' in %s is '@private' and not visible from other modules.",
+		              private_name, symbol, name_resolve->private_decl->unit->module->name->module);
 		return;
 	}
 	if (!found && name_resolve->maybe_decl)
@@ -749,17 +750,33 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 				default:
 					break;
 			}
-			if (matches > 0)
-			{
-				return;
-			}
 		}
 		sema_error_at(context, loc, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
+		return;
 	}
-	else
+	if (!str_is_type(name_resolve->symbol))
 	{
-		sema_error_at(context, loc, "'%s' could not be found, did you spell it right?", symbol);
+		Decl *closest[3];
+		int matches = module_closest_ident_names(context->unit->module, symbol, closest);
+		switch (matches)
+		{
+			case 1:
+				sema_error_at(context, loc, "'%s' could not be found, did you perhaps want '%s'?", symbol, closest[0]->name);
+				return;
+			case 2:
+				sema_error_at(context, loc, "'%s' could not be found, did you perhaps want '%s' or '%s'?",
+							  symbol, closest[0]->name, closest[1]->name);
+				return;
+			case 3:
+				sema_error_at(context, loc, "'%s' could not be found, did you perhaps want '%s', '%s' or '%s'?",
+							  symbol, closest[0]->name, closest[1]->name,
+							  closest[2]->name);
+				return;
+			default:
+				break;
+		}
 	}
+	sema_error_at(context, loc, "'%s' could not be found, did you spell it right?", symbol);
 }
 
 INLINE Module *sema_module_matches_path(SemaContext *context, Module *module, Path *path)
@@ -1011,16 +1028,13 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_MEMBER:
+		case SPECIAL_TYPES:
 		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return true;
 		case TYPE_OPTIONAL:
 			return sema_resolve_type_decl(context, type->optional);
-		case TYPE_TYPEINFO:
-			UNREACHABLE
 		case TYPE_ALIAS:
 			return sema_resolve_type_decl(context, type->canonical);
 		case TYPE_TYPEDEF:

@@ -14,7 +14,7 @@ import std;
 import test;
 
 fn void bar(Enum e) {
-  io::printn(e.nameof);
+  io::printn(e.description);
 }
 
 /* #expect: foo.ll

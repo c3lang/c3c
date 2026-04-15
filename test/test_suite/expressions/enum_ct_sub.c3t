@@ -8,10 +8,10 @@ fn void main()
 {
 	$assert Foo.BCD - 1 == Foo.ABC; // #error:  The subtraction
 	$assert Foo.ABC + 1 == Foo.BCD; // #error: Cannot do the addition
-	$assert $typeof(Foo.BCD - 1).typeid == Foo.typeid; // #error:  The subtraction
-	$assert $typeof(Foo.ABC + 1).typeid == Foo.typeid; // #error: Cannot do the addition
+	$assert $typeof(Foo.BCD - 1)::typeid == Foo::typeid; // #error:  The subtraction
+	$assert $typeof(Foo.ABC + 1)::typeid == Foo::typeid; // #error: Cannot do the addition
 	Foo x = Foo.BCD;
-	$assert $typeof(x - 1).typeid == Foo.typeid; // #error:  The subtraction
+	$assert $typeof(x - 1)::typeid == Foo::typeid; // #error:  The subtraction
 	x = x - 1; // #error:  The subtraction
-	$assert $typeof(x + 1).typeid == Foo.typeid; // #error: Cannot do the addition
+	$assert $typeof(x + 1)::typeid == Foo::typeid; // #error: Cannot do the addition
 }

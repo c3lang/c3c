@@ -423,7 +423,7 @@ fn String[] String.split(self, Allocator allocator, String delimiter, sz max = 0
 		if (i == capacity)
 		{
 			capacity *= 2;
-			holder = alloc::realloc(allocator, holder, String.sizeof * capacity);
+			holder = alloc::realloc(allocator, holder, String::size * capacity);
 		}
 		holder[i++] = res;
 	}
@@ -1014,7 +1014,6 @@ fn sz String.utf8_codepoints(s)
 
  Furthermore it will skip any spaces before and after the number.
 
- @param $Type : "The type to convert to"
  @param base : "The base to convert to"
  @require base > 0 && base <= 16 : "Unsupported base"
  @return? MALFORMED_INTEGER : "When the value has some illegal character"
@@ -1022,7 +1021,7 @@ fn sz String.utf8_codepoints(s)
  @return? EMPTY_STRING : "If the string was empty"
  @return? NEGATIVE_VALUE : "If the type was unsigned, and the value had a - prefix"
 *>
-macro String.to_integer(self, $Type, int base = 10)
+fn IntType? to_integer(String self, int base = 10) <IntType>
 {
 	sz len = self.len;
 	sz index = 0;
@@ -1033,20 +1032,23 @@ macro String.to_integer(self, $Type, int base = 10)
 	switch (self[index])
 	{
 		case '-':
-			if ($Type.min == 0) return NEGATIVE_VALUE~;
-			is_negative = true;
-			index++;
+			$if IntType::min == 0:
+				return NEGATIVE_VALUE~;
+			$else
+				is_negative = true;
+				index++;
+			$endif
 		case '+':
 			index++;
 		default:
 			break;
 	}
 	if (len == index) return MALFORMED_INTEGER~;
-	$Type base_used = ($Type)base;
+	IntType base_used = (IntType)base;
 	if (self[index] == '0' && base == 10)
 	{
 		index++;
-		if (index == len) return ($Type)0;
+		if (index == len) return (IntType)0;
 		switch (self[index])
 		{
 			case 'x':
@@ -1066,7 +1068,7 @@ macro String.to_integer(self, $Type, int base = 10)
 		}
 		if (len == index) return MALFORMED_INTEGER~;
 	}
-	$Type value = 0;
+	IntType value = 0;
 	while (index != len)
 	{
 		char c = self[index++];
@@ -1082,26 +1084,26 @@ macro String.to_integer(self, $Type, int base = 10)
 		{
 			if (is_negative)
 			{
-				value = value.overflow_mul(base_used).overflow_sub(($Type)c) ?? INTEGER_OVERFLOW~!;
+				value = value.overflow_mul(base_used).overflow_sub((IntType)c) ?? INTEGER_OVERFLOW~!;
 				break;
 			}
-			value = value.overflow_mul(base_used).overflow_add(($Type)c) ?? INTEGER_OVERFLOW~!;
+			value = value.overflow_mul(base_used).overflow_add((IntType)c) ?? INTEGER_OVERFLOW~!;
 		};
 	}
 	return value;
 }
 
-fn int128? String.to_int128(self, int base = 10) => self.to_integer(int128, base);
-fn long? String.to_long(self, int base = 10) => self.to_integer(long, base);
-fn int? String.to_int(self, int base = 10) => self.to_integer(int, base);
-fn short? String.to_short(self, int base = 10) => self.to_integer(short, base);
-fn ichar? String.to_ichar(self, int base = 10) => self.to_integer(ichar, base);
+fn int128? String.to_int128(self, int base = 10) => to_integer{int128}(self, base) @inline;
+fn long? String.to_long(self, int base = 10) => to_integer{long}(self, base) @inline;
+fn int? String.to_int(self, int base = 10) => to_integer{int}(self, base) @inline;
+fn short? String.to_short(self, int base = 10) => to_integer{short}(self, base) @inline;
+fn ichar? String.to_ichar(self, int base = 10) => to_integer{ichar}(self, base) @inline;
 
-fn uint128? String.to_uint128(self, int base = 10) => self.to_integer(uint128, base);
-fn ulong? String.to_ulong(self, int base = 10) => self.to_integer(ulong, base);
-fn uint? String.to_uint(self, int base = 10) => self.to_integer(uint, base);
-fn ushort? String.to_ushort(self, int base = 10) => self.to_integer(ushort, base);
-fn char? String.to_uchar(self, int base = 10) => self.to_integer(char, base);
+fn uint128? String.to_uint128(self, int base = 10) => to_integer{uint128}(self, base) @inline;
+fn ulong? String.to_ulong(self, int base = 10) => to_integer{ulong}(self, base) @inline;
+fn uint? String.to_uint(self, int base = 10) => to_integer{uint}(self, base) @inline;
+fn ushort? String.to_ushort(self, int base = 10) => to_integer{ushort}(self, base) @inline;
+fn char? String.to_char(self, int base = 10) => to_integer{char}(self, base) @inline;
 
 fn double? String.to_double(self) => self.to_real(double);
 fn float? String.to_float(self) => self.to_real(float);

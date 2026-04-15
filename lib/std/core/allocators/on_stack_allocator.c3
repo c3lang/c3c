@@ -121,7 +121,7 @@ fn void*? OnStackAllocator.resize(&self, void* old_pointer, sz size, sz alignmen
 		return chunk.data = self.backing_allocator.resize(old_pointer, size, alignment)!;
 	}
 
-	OnStackAllocatorHeader* header = old_pointer - OnStackAllocatorHeader.sizeof;
+	OnStackAllocatorHeader* header = old_pointer - OnStackAllocatorHeader::size;
 	sz old_size = header.size;
 	void* mem = self.acquire(size, NO_ZERO, alignment)!;
 	mem::copy(mem, old_pointer, math::min(old_size, size), mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
@@ -138,7 +138,7 @@ fn void*? OnStackAllocator.acquire(&self, sz size, AllocInitType init_type, sz a
 	alignment = alignment_for_allocation(alignment);
 	sz total_len = self.data.len;
 	void* start_mem = self.data.ptr;
-	void* unaligned_pointer_to_offset = start_mem + self.used + OnStackAllocatorHeader.sizeof ;
+	void* unaligned_pointer_to_offset = start_mem + self.used + OnStackAllocatorHeader::size ;
 	void* mem = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
 	sz end = (sz)(mem - self.data.ptr) + size;
 	Allocator backing_allocator = self.backing_allocator;
@@ -152,7 +152,7 @@ fn void*? OnStackAllocator.acquire(&self, sz size, AllocInitType init_type, sz a
 		return chunk.data = backing_allocator.acquire(size, init_type, aligned ? alignment : 0)!;
 	}
 	self.used = end;
-	OnStackAllocatorHeader* header = mem - OnStackAllocatorHeader.sizeof;
+	OnStackAllocatorHeader* header = mem - OnStackAllocatorHeader::size;
 	header.size = size;
 	return mem;
 }

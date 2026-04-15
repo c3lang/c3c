@@ -305,6 +305,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 	switch (any_type->type_kind)
 	{
 		case LOWERED_TYPES:
+		case TYPE_UNTYPEDLIST:
 			// If this is reachable, then we're not doing the proper lowering.
 			UNREACHABLE_VOID
 		case TYPE_STRUCT:
@@ -661,6 +662,8 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		}
 		case TYPE_ALIAS:
 			return llvm_get_typeid(c, type->canonical);
+		case TYPE_UNTYPEDLIST:
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_UNTYPEDLIST, 0);
 		case CT_TYPES:
 			UNREACHABLE_VOID
 		case TYPE_VOID:

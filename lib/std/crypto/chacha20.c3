@@ -43,7 +43,7 @@ struct ChaCha20
 	<* Count of bytes processed. Useful to track an approach to the 256GiB limit of a single context. *>
 	long bytes_processed;
 	<* The key stream or state used during cipher block operations. *>
-	uint[16] key_stream @align(ulong.sizeof);
+	uint[16] key_stream @align(ulong::size);
 	<* The secret key for the context. *>
 	char[32] key;
 	<* The one-time nonce (or IV - initialization vector) used for the context. *>
@@ -133,16 +133,16 @@ fn void ChaCha20.transform(&self, char[] data)
 	// 2. Get the amount of bytes offset from the nearest alignment boundary.
 	//   Process full blocks at a time, word by word according to the system's architecture.
 	//   Any extra bytes on each side are dynamically processed byte-by-byte.
-    sz offset = sz.sizeof - (((sz)data.ptr % sz.sizeof) ?: sz.sizeof);
+    sz offset = sz::size - (((sz)data.ptr % sz::size) ?: sz::size);
 
 	for (sz x = offset; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..], x = offset)
 	{
 		chacha20_mutate_keystream(self);
         if (offset) foreach (i, &b : data[:offset]) *b ^= key_stream[i];
         char[] aligned_data = data[offset..];
-		for (; x <= (BLOCK_SIZE - sz.sizeof); x += sz.sizeof)
+		for (; x <= (BLOCK_SIZE - sz::size); x += sz::size)
 		{
-			((sz*)aligned_data.ptr)[x / sz.sizeof] ^= mem::load((sz*)(&key_stream[x]), $align: 1);
+			((sz*)aligned_data.ptr)[x / sz::size] ^= mem::load((sz*)(&key_stream[x]), $align: 1);
 		}
         for (; x < BLOCK_SIZE; x++) data[x] ^= key_stream[x];
 	}

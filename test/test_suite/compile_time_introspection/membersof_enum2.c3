@@ -9,7 +9,7 @@ enum Foo : (String x, int val)
 
 fn int main()
 {
-	Foo.membersof[0].set(Foo.ABC, "Hello"); // #error: Enum associated values cannot be set
-	Foo.membersof[0].offsetof; // #error: No member or property 'offsetof' was found
+	Foo::members[0].set(Foo.ABC, "Hello"); // #error: Enum associated values cannot be set
+	Foo::members[0].offset; // #error: There is no property 'offset' available for the reflected expression
 	return 0;
 }

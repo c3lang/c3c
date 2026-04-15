@@ -10,7 +10,7 @@ fn void main()
 		#hash_val;
 		#hash_val;
 		#foo += $value;
-		io::printfn("The type was: %s", $Type.nameof);
+		io::printfn("The type was: %s", $Type::name);
 	};
 }
 

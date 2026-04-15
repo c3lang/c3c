@@ -62,8 +62,8 @@ fn double _log1p(double x) @weak @cname("log1p") @nostrip
 		     	{
 				/* x <= -1.0 */
 				case hx >= 0xbff00000:
-				     	if (x == -1) return -double.inf;
-					return double.nan;
+				     	if (x == -1) return -double::inf;
+					return double::nan;
 				/* |x| < 2**-53 */
 				case hx << 1 < 0x3ca00000 << 1:
 				     	/* underflow if subnormal */
@@ -176,8 +176,8 @@ fn float _log1pf(float x) @weak @cname("log1pf") @nostrip
 		     	{
 				/* x <= -1.0 */
 				case ix >= 0xbf800000:
-				     	if (x == -1) return -float.inf;
-					return float.nan;
+				     	if (x == -1) return -float::inf;
+					return float::nan;
 				/* |x| < 2**-24 */
 				case ix << 1 < 0x33800000 << 1:
 				     	/* underflow if subnormal */

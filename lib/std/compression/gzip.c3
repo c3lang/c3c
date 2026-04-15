@@ -65,7 +65,7 @@ fn Gzip? uncompress_stream(Allocator allocator, InStream reader)
 
 		InStream header_reader = (TeeReader){}.init(reader, &crc);
 
-		header_reader.read((char[GzipHeader.sizeof]*)&gz.header)!;
+		header_reader.read((char[GzipHeader::size]*)&gz.header)!;
 
 		if (gz.header.id != GZIP_MAGIC) return CORRUPT_HEADER~;
 		if (gz.header.cm != 8) return CORRUPT_HEADER~;
@@ -133,7 +133,7 @@ fn void? compress_stream(OutStream writer, char[] src, bool hcrc = false, char[]
 		ByteWriter h;
 		h.tinit();
 
-		h.write((char[GzipHeader.sizeof]*)&header)!;
+		h.write((char[GzipHeader::size]*)&header)!;
 		if (extra.len)
 		{
 			io::write_le_ushort(&h, (ushort)extra.len)!;

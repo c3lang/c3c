@@ -8,12 +8,12 @@ enum Foo
     BCD
 }
 
-Foo zfok = Foo.values[0];
-Foo[] zw = Foo.values;
+Foo zfok = Foo::values[0];
+Foo[] zw = Foo::values;
 
 fn void test(int x)
 {
-    Foo zonk = Foo.values[x];
+    Foo zonk = Foo::values[x];
 }
 
 /* #expect: test.ll

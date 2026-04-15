@@ -7,6 +7,6 @@ fn bool Foo.eq(Foo a, Foo b) @operator(==) => false;
 
 fn int main()
 {
-	$assert Foo.is_eq;
+	$assert Foo::has_equals;
 	return 0;
 }

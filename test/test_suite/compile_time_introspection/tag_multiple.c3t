@@ -5,8 +5,8 @@ struct Foo @tag("a", true) @tag("b", false)
 fn void main()
 {
 	Foo x;
-	$assert(Foo.has_tagof("b"));
-	$assert(Foo.has_tagof("a"));
-	$assert(Foo.tagof("a"));
-	$assert(!Foo.tagof("b"));
+	$assert(Foo::has_tag("b"));
+	$assert(Foo::has_tag("a"));
+	$assert(Foo::get_tag("a"));
+	$assert(!Foo::get_tag("b"));
 }

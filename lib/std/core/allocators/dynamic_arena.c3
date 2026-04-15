@@ -163,13 +163,13 @@ fn void*? DynamicArenaAllocator.acquire(&self, sz size, AllocInitType init_type,
 			ptr = _alloc_new(self, size, alignment)!;
 			break SET_DONE;
 		}
-		void* start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof, alignment);
+		void* start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk::size, alignment);
 		sz new_used = start - page.memory + size;
 		if ALLOCATE_NEW: (new_used > page.total)
 		{
 			if ((page = self.unused_page))
 			{
-				start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk.sizeof, alignment);
+				start = mem::aligned_pointer(page.memory + page.used + DynamicArenaChunk::size, alignment);
 				new_used = start + size - page.memory;
 				if (page.total >= new_used)
 				{
@@ -200,8 +200,8 @@ fn void*? DynamicArenaAllocator.acquire(&self, sz size, AllocInitType init_type,
 fn void*? _alloc_new(DynamicArenaAllocator* self, sz size, sz alignment) @local
 {
 	// First, make sure that we can align it, extending the page size if needed.
-	sz page_size = max(self.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + alignment, alignment));
-	assert(page_size > size + DynamicArenaChunk.sizeof);
+	sz page_size = max(self.page_size, mem::aligned_offset(size + DynamicArenaChunk::size + alignment, alignment));
+	assert(page_size > size + DynamicArenaChunk::size);
 	// Grab the page without alignment (we do it ourselves)
 	void* mem = alloc::malloc_try(self.backing_allocator, page_size)!;
 	DynamicArenaPage*? page = alloc::new_try(self.backing_allocator, DynamicArenaPage);
@@ -211,7 +211,7 @@ fn void*? _alloc_new(DynamicArenaAllocator* self, sz size, sz alignment) @local
 		return err~;
 	}
 	page.memory = mem;
-	void* mem_start = mem::aligned_pointer(mem + DynamicArenaChunk.sizeof, alignment);
+	void* mem_start = mem::aligned_pointer(mem + DynamicArenaChunk::size, alignment);
 	assert(mem_start + size < mem + page_size);
 	DynamicArenaChunk* chunk = (DynamicArenaChunk*)mem_start - 1;
 	chunk.size = size;

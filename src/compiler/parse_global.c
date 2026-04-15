@@ -764,6 +764,12 @@ static inline TypeInfo *parse_optional_type_maybe_generic(ParseContext *c, bool 
 		info->optional = true;
 		if (info->resolve_status == RESOLVE_DONE)
 		{
+			if (info->type == type_untypedlist)
+			{
+				RANGE_EXTEND_PREV(info);
+				PRINT_ERROR_AT(info, "%s cannot be used as an optional type, since it is compile-time only.", type_quoted_error_string(info->type));
+				return poisoned_type_info;
+			}
 			info->type = type_get_optional(info->type);
 		}
 		RANGE_EXTEND_PREV(info);

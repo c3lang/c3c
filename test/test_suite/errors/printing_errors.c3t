@@ -6,7 +6,7 @@ faultdef HELLO, WORLD;
 fn void main()
 {
 	fault x = WORLD;
-	io::printf("%s %s\n", HELLO.nameof, x.nameof);
+	io::printf("%s %s\n", HELLO.description, x.description);
 }
 
 /* #expect: test.ll

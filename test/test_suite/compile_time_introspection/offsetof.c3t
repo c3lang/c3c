@@ -36,11 +36,11 @@ union Foob
 }
 
 
-short y = Bob.y.offsetof;
-int z = Bob.w.z.offsetof;
-int w = Bob.w.offsetof;
-int z0 = Foob.c.offsetof;
-int z03 = Foob.a.offsetof;
+short y = $reflect(Bob.y).offset;
+int z = $reflect(Bob.w.z).offset;
+int w = $reflect(Bob.w).offset;
+int z0 = $reflect(Foob.c).offset;
+int z03 = $reflect(Foob.a).offset;
 
 /* #expect: foo.ll
 @foo.y = local_unnamed_addr global i16 16, align 2

@@ -12,7 +12,7 @@ fn void nested_struct()
 {
 	Test2* array;
 	assert((uptr)&array[1] - (uptr)array == 32);
-	assert((uptr)&array[1] - (uptr)array == Test2.sizeof);
-	assert(Test2.sizeof == 32);
-	assert(Test.sizeof == 16);
+	assert((uptr)&array[1] - (uptr)array == Test2::size);
+	assert(Test2::size == 32);
+	assert(Test::size == 16);
 }

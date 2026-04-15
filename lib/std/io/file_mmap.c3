@@ -46,7 +46,7 @@ fn FileMmap? mmap_file(File file, sz offset = 0, sz len = 0, VirtualMemoryAccess
 	if (len == 0)
 	{
 		long new_len = file.size()! - offset;
-		if (new_len > sz.max) return mem::OUT_OF_MEMORY~;
+		if (new_len > sz::max) return mem::OUT_OF_MEMORY~;
 		len = (sz)new_len;
 	}
 

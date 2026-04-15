@@ -28,8 +28,8 @@ fn void test_ref() @test
 	double d1 = 6.62607015e-34d;
 	double d2 = 0.0d;
 	double d3 = -0.0d;
-	double d4 = double.inf;
-	double d5 = -double.inf;
+	double d4 = double::inf;
+	double d5 = -double::inf;
 	double d6 = -4.932096661796888e-226d;
 	double d7 = 3.439070283483335e+35d;
 	double d8 = 6.606854224493745e-17d;
@@ -57,7 +57,7 @@ fn void test_uint128_decimal_formatting() @test
 	defer free(s);
 	test::eq(s, "340193404210632335760508365704335069440");
 
-	String s2 = string::format(mem, "%d", uint128.max);
+	String s2 = string::format(mem, "%d", uint128::max);
 	defer free(s2);
 	test::eq(s2, "340282366920938463463374607431768211455");
 }

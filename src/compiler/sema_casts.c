@@ -2337,6 +2337,7 @@ static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 		case CONST_UNTYPED_LIST:
 		case CONST_REF:
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 			UNREACHABLE_VOID
 		case CONST_BYTES:
 		case CONST_STRING:
@@ -2677,11 +2678,12 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_INFERRED_ARRAY]   = CONV_NO,
 	[TYPE_VECTOR]           = CONV_VECTOR,
 	[TYPE_INFERRED_VECTOR]  = CONV_NO,
-	[TYPE_UNTYPED_LIST]     = CONV_UNTYPED_LIST,
+	[TYPE_UNTYPEDLIST]      = CONV_UNTYPED_LIST,
 	[TYPE_OPTIONAL]         = CONV_NO,
 	[TYPE_WILDCARD]         = CONV_WILDCARD,
 	[TYPE_TYPEINFO]         = CONV_NO,
 	[TYPE_MEMBER]           = CONV_NO,
+	[TYPE_REFLECTION]		= CONV_NO,
 	[TYPE_SIMD_VECTOR]      = CONV_VECTOR,
 };
 

@@ -111,7 +111,7 @@ struct TupleHashXOF <SECURITY_LEVEL> @mustinit
 *>
 fn void TupleHashXOF.init(&self, String customizer = "")
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.t.is_xof_mode = true;
 	self.t.init(customizer);
 }
@@ -134,7 +134,7 @@ struct TupleHash <SECURITY_LEVEL> @mustinit
 *>
 fn void TupleHash.init(&self, String customizer = "")
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.c.init(TUPLE_HASH, customizer);
 }
 

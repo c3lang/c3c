@@ -372,6 +372,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 	switch (type->type_kind)
 	{
 		case LOWERED_TYPES:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_FUNC_RAW:
 		case TYPE_VECTOR:
 			UNREACHABLE_VOID
@@ -566,6 +567,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
 		case TYPE_VECTOR:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE_VOID
 		case TYPE_U64:
 		case TYPE_I64:

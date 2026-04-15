@@ -70,7 +70,7 @@ fn void RipeMd.init(&self)
 *>
 fn void RipeMd.update(&self, char[] data)
 {
-	sz $bufsz = $sizeof(self.buffer);
+	sz $bufsz = @sizeof(self.buffer);
 	sz avail = $bufsz - (self.byte_count & 0x3f);
 	self.byte_count += data.len;
 
@@ -84,11 +84,11 @@ fn void RipeMd.update(&self, char[] data)
 	self.transform(self.buffer);
 	data = data[avail..];
 
-	for (bool is_aligned = 0 == (sz)data.ptr % uint.sizeof; data.len >= $bufsz; data = data[$bufsz..])
+	for (bool is_aligned = 0 == (sz)data.ptr % uint::size; data.len >= $bufsz; data = data[$bufsz..])
 	{
 		if (is_aligned) // when aligned, this optimization is a ~10-20% performance boost
 		{
-			self.transform(((uint*)data.ptr)[:$bufsz / uint.sizeof]);
+			self.transform(((uint*)data.ptr)[:$bufsz / uint::size]);
 		}
 		else
 		{
@@ -106,7 +106,7 @@ fn void RipeMd.update(&self, char[] data)
 *>
 fn char[DIGEST_BYTES] RipeMd.final(&self)
 {
-	char[DIGEST_BYTES] result @align(uint.sizeof);
+	char[DIGEST_BYTES] result @align(uint::size);
 	static char[64] padding = { [0] = 0x80, [1..63] = 0x00 };
 
 	// Napkin maffs.
@@ -122,7 +122,7 @@ fn char[DIGEST_BYTES] RipeMd.final(&self)
 	defer mem::zero_volatile(@as_char_view(*self));
 
 	// Copy and return.
-	((uint*)&result)[:DIGEST_BYTES / uint.sizeof] = self.state[:DIGEST_BYTES / uint.sizeof];
+	((uint*)&result)[:DIGEST_BYTES / uint::size] = self.state[:DIGEST_BYTES / uint::size];
 	return result;
 }
 
@@ -155,12 +155,12 @@ macro @round(#a, b, #c, d, uint e, #func, uint k, x, int s) @local
 
  @param in : "Data or message block to process."
 *>
-fn void RipeMd.transform(&self, uint[BLOCK_SIZE / uint.sizeof] in) @noinline => self.@transform(in);
+fn void RipeMd.transform(&self, uint[BLOCK_SIZE / uint::size] in) @noinline => self.@transform(in);
 
 <*
  @param in : "Data or message block to process."
 *>
-macro RipeMd.@transform(&self, uint[BLOCK_SIZE / uint.sizeof] in) @local
+macro RipeMd.@transform(&self, uint[BLOCK_SIZE / uint::size] in) @local
 {
 	uint aa, bb, cc, dd, ee, aaa, bbb, ccc, ddd, eee;
 	uint[] state = self.state[..];

@@ -5,7 +5,7 @@ int[*] y = (int[*]) { 1, 2, 3 };
 
 fn void main()
 {
-	int x = $typeof((int[*]) { 1, 2, 3}).len;
+	int x = $typeof((int[*]) { 1, 2, 3})::len;
 	int z = X.len;
 	int w = y.len;
 }

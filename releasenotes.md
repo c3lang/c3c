@@ -34,10 +34,17 @@
 - Generic inference can now look through pointer.
 - Enums now implicitly convert to their ordinal when used as indices.
 - Enums can no longer declare themselves `inline`.
-- Nested generics allowed inside of generic functions/methods.
+- Nested generics allowed inside generic functions/methods.
 - `a = ...` parameters may be shadowed if not defined.
 - `$eval` can now be used with named parameters, e.g. `foo($eval("arg"): 2)` #3090
-- `$extnameof` / `.extnameof` is now renamed `$cnameof` / `.cnameof`.
+- Type properties are now accessed using `::` and the "of" suffix, removed: `int.sizeof` -> `int::size`
+- Added `$reflect` with properties `name`, `cname`, `qname`, `offset`, `alignment`, `size`.
+- Added `@kindof`, `@alignof` and `@sizeof` macros.
+- Removed `$nameof`, `$extnameof`, `$qnameof`, `$offsetof`, `$alignof`, `$kindof`, `$sizeof`.
+- `.nameof` is changed to `.description` on `fault` and enum types.
+- Type property `is_eq` is renamed `has_equals`.
+- Type function `tagof` is renamed `get_tag`.
+- Add `untypedlist` as a usable type #2647.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
@@ -75,6 +82,9 @@
 - Fix bug casting `(void*[<3>])x`.
 - Compiler crash compiling a switch with a constant case range overlapping a constant case value. #3127
 - Incorrect handling of overaligned struct fields #3136
+- EnumSet with more than 128 entries was broken.
+- Handle underflow in zip.
+- Bugs in check for name suggestions on name mismatch.
 
 ## 0.7.11 Change list
 

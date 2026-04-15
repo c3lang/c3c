@@ -20,7 +20,7 @@ struct Deque (Printable)
 
 <*
  @require capacity > 0 : "Capacity should be greater than 0"
- @require capacity < sz.max / Type.sizeof : "Capacity too great"
+ @require capacity < sz::max / Type::size : "Capacity too great"
 *>
 fn void Deque.init(&self, Allocator allocator, sz capacity = DEFAULT_CAPACITY)
 {
@@ -32,7 +32,7 @@ fn void Deque.init(&self, Allocator allocator, sz capacity = DEFAULT_CAPACITY)
 
 <*
  @require capacity > 0 : "Capacity should be greater than 0"
- @require capacity < sz.max / Type.sizeof : "Capacity too great"
+ @require capacity < sz::max / Type::size : "Capacity too great"
 *>
 fn void Deque.tinit(&self, sz capacity = DEFAULT_CAPACITY)
 {
@@ -158,7 +158,7 @@ fn void Deque.reserve(&self, sz added)
 	sz req_capacity = self.capacity + diff;
 
 	assert(req_capacity > 0);
-	assert(self.capacity < sz.max / 2);
+	assert(self.capacity < sz::max / 2);
 
 	sz new_capacity = self.capacity * 2;
 	while (new_capacity < req_capacity)
@@ -177,7 +177,7 @@ fn void Deque.shrink(&self)
 {
 	self.normalize();
 	self.capacity = self.size;
-	self.entries = alloc::realloc(self.allocator, self.entries, self.capacity * Type.sizeof);
+	self.entries = alloc::realloc(self.allocator, self.entries, self.capacity * Type::size);
 }
 
 <*
@@ -345,7 +345,7 @@ fn sz? Deque.to_format(&self, Formatter* fmt) @dynamic
 
 fn void _grow(Deque* self, sz new_capacity) @private
 {
-	self.entries = alloc::realloc(self.allocator, self.entries, Type.sizeof * new_capacity);
+	self.entries = alloc::realloc(self.allocator, self.entries, Type::size * new_capacity);
 	sz old_capacity = self.capacity;
 
 	if (self.start + self.size > old_capacity)

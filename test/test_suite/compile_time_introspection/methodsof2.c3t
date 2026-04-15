@@ -16,12 +16,12 @@ fn void Qux.test2(&self) {}
 
 fn int main(int argv, ZString* c)
 {
-    String[] s0 = Foo*.methodsof;
-    String[] s1 = int.methodsof;
-    String[] s2 = double.methodsof;
-    String[] s3 = Bar.methodsof;
-    String[] s4 = Baz.methodsof;
-    String[] s5 = Qux.methodsof;
+    String[] s0 = Foo*::methods;
+    String[] s1 = int::methods;
+    String[] s2 = double::methods;
+    String[] s3 = Bar::methods;
+    String[] s4 = Baz::methods;
+    String[] s5 = Qux::methods;
     return 0;
 }
 

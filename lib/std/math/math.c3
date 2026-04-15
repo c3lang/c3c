@@ -127,12 +127,12 @@ macro bool is_approx_rel(x, y, eps)
 }
 
 <*
- @require $kindof(x).is_int() : `The input must be an integer`
+ @require @kindof(x).is_int() : `The input must be an integer`
 *>
 macro sign(x)
 {
 	var $Type = $typeof(x);
-	$if $Type.kindof == UNSIGNED_INT:
+	$if $Type::kind == UNSIGNED_INT:
 		return ($Type)(x > 0);
 	$else
 		return ($Type)(x > 0) - ($Type)(x < 0);
@@ -190,7 +190,7 @@ macro atan2(x, y)
 
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
- @require $kindof(sinp) == POINTER : "Expected sinp to be a pointer"
+ @require @kindof(sinp) == POINTER : "Expected sinp to be a pointer"
  @require @typematch(sinp, cosp) : "Expected sinp and cosp to have the same type"
  @require $defined(*sinp = x) : "Expected x and *sinp/*cosp to have the same type"
 *>
@@ -280,7 +280,7 @@ macro ceil(x) => $$ceil(x);
 <*
  Ceil for compile time evaluation.
 
- @require $kindof($input) == FLOAT : "Only float and double may be used"
+ @require @kindof($input) == FLOAT : "Only float and double may be used"
 *>
 macro @ceil($input) @const => $$ceil($input);
 
@@ -812,10 +812,10 @@ macro next_power_of_2(x)
 	v |= v >> 2;
 	v |= v >> 4;
 
-	$if ($sizeof(x) >= 2):  v |= v >> 8;  $endif;
-	$if ($sizeof(x) >= 4):  v |= v >> 16; $endif;
-	$if ($sizeof(x) >= 8):  v |= v >> 32; $endif;
-	$if ($sizeof(x) >= 16): v |= v >> 64; $endif;
+	$if (@sizeof(x) >= 2):  v |= v >> 8;  $endif;
+	$if (@sizeof(x) >= 4):  v |= v >> 16; $endif;
+	$if (@sizeof(x) >= 8):  v |= v >> 32; $endif;
+	$if (@sizeof(x) >= 16): v |= v >> 64; $endif;
 
 	return v + ($Type)1;
 }
@@ -838,10 +838,10 @@ macro @next_power_of_2($x)
 	$v |= $v >> 2;
 	$v |= $v >> 4;
 
-	$if ($sizeof($x) >= 2):  $v |= $v >> 8;  $endif;
-	$if ($sizeof($x) >= 4):  $v |= $v >> 16; $endif;
-	$if ($sizeof($x) >= 8):  $v |= $v >> 32; $endif;
-	$if ($sizeof($x) >= 16): $v |= $v >> 64; $endif;
+	$if (@sizeof($x) >= 2):  $v |= $v >> 8;  $endif;
+	$if (@sizeof($x) >= 4):  $v |= $v >> 16; $endif;
+	$if (@sizeof($x) >= 8):  $v |= $v >> 32; $endif;
+	$if (@sizeof($x) >= 16): $v |= $v >> 64; $endif;
 
 	return $v + 1;
 }
@@ -1006,12 +1006,12 @@ macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
 macro overflow_mul(a, b, out) => $$overflow_mul(a, b, out);
 
 <*
- @require types::is_vector($Type) || ($Type.kindof == ARRAY &&& types::is_numerical($typefrom($Type.inner)))
+ @require types::is_vector($Type) || ($Type::kind == ARRAY &&& types::is_numerical($typefrom($Type::inner)))
 *>
 macro iota($Type)
 {
 	$Type $val = {};
-	$for var $i = 0; $i < $Type.len; $i++:
+	$for var $i = 0; $i < $Type::len; $i++:
 		$val[$i] = $i;
 	$endfor
 	return $val;

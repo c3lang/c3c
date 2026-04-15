@@ -268,7 +268,7 @@ fn DString DString.copy(self, Allocator allocator) @nodiscard
 	if (!self) return new(allocator);
 	StringData* data = self.data();
 	DString new_string = new_with_capacity(allocator, data.capacity);
-	mem::copy((char*)new_string.data(), (char*)data, StringData.sizeof + data.len);
+	mem::copy((char*)new_string.data(), (char*)data, StringData::size + data.len);
 	return new_string;
 }
 
@@ -693,7 +693,7 @@ fn sz? DString.read_from_stream(&self, InStream reader)
 		sz total_read = 0;
 		while (long available = reader.available()!)
 		{
-			if (available > sz.max) available = (ulong)sz.max;
+			if (available > sz::max) available = (ulong)sz::max;
 			self.reserve((sz)available);
 			StringData* data = self.data();
 			sz len = reader.read(data.chars[data.len..(data.capacity - 1)])!;
@@ -742,5 +742,5 @@ fn StringData* _reserve_slow(StringData* data, sz addition) @local
 	if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
 	if (new_capacity < len) new_capacity = math::next_power_of_2(len);
 	data.capacity = new_capacity;
-	return alloc::realloc(data.allocator, data, StringData.sizeof + new_capacity);
+	return alloc::realloc(data.allocator, data, StringData::size + new_capacity);
 }

@@ -444,10 +444,8 @@ RETRY:;
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_POISONED:
-		case TYPE_UNTYPED_LIST:
+		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 			UNREACHABLE
 		case TYPE_VOID:
 			return 1;
@@ -1068,10 +1066,8 @@ RETRY:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
-		case TYPE_UNTYPED_LIST:
+		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 			return true;
 		case TYPE_ALIAS:
 			type = type->canonical;
@@ -1631,7 +1627,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 	ASSERT(!param->var.vararg);
 	param->type = type_info->type;
 	ASSERT(param->name);
-	if (param->name == kw_nameof || param->name == kw_ordinal)
+	if (param->name == kw_description || param->name == kw_ordinal)
 	{
 		RETURN_SEMA_ERROR(param, "'%s' is not a valid parameter name for enums.", param->name);
 	}
@@ -2917,7 +2913,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	switch (par_type->canonical->type_kind)
 	{
 		case TYPE_ENUM:
-			if (kw == kw_ordinal || kw == kw_nameof)
+			if (kw == kw_ordinal || kw == kw_description)
 			{
 				errname = "an enum";
 				goto NOT_VALID_NAME;
@@ -2933,7 +2929,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			break;
 		}
 		case TYPE_ANYFAULT:
-			if (kw == kw_type || kw == kw_nameof)
+			if (kw == kw_type || kw == kw_description)
 			{
 				errname = "'fault'";
 				goto NOT_VALID_NAME;
@@ -2977,7 +2973,6 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
 		case TYPE_FUNC_RAW:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
 			break;
@@ -2989,9 +2984,8 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			break;
 		case TYPE_ALIAS:
 		case TYPE_OPTIONAL:
+		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 			UNREACHABLE
 	}
 	Decl **params = decl->func_decl.signature.params;
@@ -4652,6 +4646,7 @@ RETRY:
 		case CT_TYPES:
 		case TYPE_FUNC_RAW:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_UNTYPEDLIST:
 			return true;
 		case TYPE_OPTIONAL:
 			type = type->optional;
@@ -5223,10 +5218,8 @@ RETRY:
 		case ALL_FLOATS:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_WILDCARD:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
+		case SPECIAL_TYPES:
 			return true;
 		case TYPE_FUNC_RAW:
 		case TYPE_ENUM:

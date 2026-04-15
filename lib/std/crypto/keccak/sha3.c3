@@ -182,6 +182,6 @@ struct Sha3 <HASH_BITS> @mustinit
 *>
 fn void Sha3.init(&self)
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.k.init(runtime_delimiter: DEFAULT_DELIMITER);
 }

@@ -6,9 +6,9 @@ fn int hell() { return 1; }
 
 macro print_args($Type)
 {
-	var $params = $Type.paramsof;
+	var $params = $Type::params;
 	$foreach $param : $params:
-		io::printn($param.type.nameof);
+		io::printn($param.type.name);
 	$endforeach;
 }
 
@@ -33,10 +33,10 @@ struct Foo
 }
 macro print_fields($Type)
 {
-	io::printfn("Type: %s", $Type.nameof);
-	var $params = $Type.membersof;
+	io::printfn("Type: %s", $Type::name);
+	var $params = $Type::members;
 	$foreach $param : $params:
-		io::printfn("%s: %s", $param.nameof, $param.typeid.nameof);
+		io::printfn("%s: %s", $param.name, $param.type.name);
 	$endforeach;
 }
 
@@ -46,8 +46,8 @@ fn void test(int x)
 	print_args($typeof(&test));
 	print_args($typeof(&hell));
 	print_args($typeof(&hello));
-	io::printn($typeof(&test).returns.nameof);
-	io::printn($typeof(&hell).returns.nameof);
+	io::printn($typeof(&test)::returns.name);
+	io::printn($typeof(&hell)::returns.name);
 	print_fields(Foo);
 	print_fields(Bar);
 	print_fields(Bark);
@@ -84,17 +84,17 @@ fn void main()
 {
 	var $x = Bar.a;
 
-	io::printfn("len: %d", Bar.membersof.len);
-	io::printfn("len: %d", Bar.baz.membersof.len);
-	io::printfn("a: %d %d", Bar.a.offsetof, Bar.a.alignof);
-	io::printfn("b: %d %d", Bar.b.offsetof, Bar.b.alignof);
-	io::printfn("y: %d %d", Bar.y.offsetof, Bar.y.alignof);
-	io::printfn("z: %d %d", Bar.z.offsetof, Bar.z.alignof);
-	io::printfn("z1: %d %d", Bar.z1.offsetof, Bar.z1.alignof);
-	io::printfn("z2: %d %d", Bar.z2.offsetof, Bar.z2.alignof);
-	io::printfn("baz: %d %d", Bar.baz.offsetof, Bar.baz.alignof);
-	io::printfn("Bar: %d", $x.alignof);
-	io::printfn("foo: %d %d", Bar.baz.foo.offsetof, Bar.baz.foo.alignof);
+	io::printfn("len: %d", Bar::members.len);
+	io::printfn("len: %d", $reflect(Bar.baz).members.len);
+	io::printfn("a: %d %d", $reflect(Bar.a).offset, $reflect(Bar.a).alignment);
+	io::printfn("b: %d %d", $reflect(Bar.b).offset, $reflect(Bar.b).alignment);
+	io::printfn("y: %d %d", $reflect(Bar.y).offset, $reflect(Bar.y).alignment);
+	io::printfn("z: %d %d", $reflect(Bar.z).offset, $reflect(Bar.z).alignment);
+	io::printfn("z1: %d %d", $reflect(Bar.z1).offset, $reflect(Bar.z1).alignment);
+	io::printfn("z2: %d %d", $reflect(Bar.z2).offset, $reflect(Bar.z2).alignment);
+	io::printfn("baz: %d %d", $reflect(Bar.baz).offset, $reflect(Bar.baz).alignment);
+	io::printfn("Bar: %d", $reflect($x).alignment);
+	io::printfn("foo: %d %d", $reflect(Bar.baz.foo).offset, $reflect(Bar.baz.foo).alignment);
 
 	test(10);
 }

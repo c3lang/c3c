@@ -27,7 +27,7 @@ struct BufferedChannelImpl @private
 *>
 fn BufferedChannel*? create_buffered(Allocator allocator, sz size = 1)
 {
-	BufferedChannelImpl* channel = alloc::new_with_padding(allocator, BufferedChannelImpl, Type.sizeof * size)!;
+	BufferedChannelImpl* channel = alloc::new_with_padding(allocator, BufferedChannelImpl, Type::size * size)!;
 	defer catch alloc::free(allocator, channel);
 
 	channel.allocator = allocator;

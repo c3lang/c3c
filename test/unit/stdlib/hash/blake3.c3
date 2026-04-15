@@ -29,7 +29,7 @@ fn void empty_simple()
 
 fn void assert_finalization_state()
 {
-	static char[Blake3.sizeof] empty = {};
+	static char[Blake3::size] empty = {};
 	char[3] dummy_result = {};
 	Blake3 ctx @noinit;
 

@@ -9,26 +9,26 @@ int b;
 
 fn void main()
 {
-    printf("%s\n", Foo.qnameof);
-    printf("%s\n", $typefrom("Foo").qnameof);
-    printf("%s\n", Foo.nameof);
-    printf("%s\n", $typefrom("mymodule::Foo").nameof);
-    printf("%s\n", Foo.cnameof);
-    printf("%s\n", $typefrom("Foo").cnameof);
+    printf("%s\n", Foo::qname);
+    printf("%s\n", $typefrom("Foo")::qname);
+    printf("%s\n", Foo::name);
+    printf("%s\n", $typefrom("mymodule::Foo")::name);
+    printf("%s\n", Foo::cname);
+    printf("%s\n", $typefrom("Foo")::cname);
 
-    printf("%s\n", $qnameof(b));
-    printf("%s\n", $qnameof($eval("b")));
-    printf("%s\n", $nameof(b));
-    printf("%s\n", $nameof($eval("mymodule::b")));
-    printf("%s\n", $cnameof(b));
-    printf("%s\n", $cnameof($eval("b")));
+    printf("%s\n", $reflect(b).qname);
+    printf("%s\n", $reflect($eval("b")).qname);
+    printf("%s\n", $reflect(b).name);
+    printf("%s\n", $reflect($eval("mymodule::b")).name);
+    printf("%s\n", $reflect(b).cname);
+    printf("%s\n", $reflect($eval("b")).cname);
 
     int a;
 
-    printf("%s\n", $qnameof(a));
-    printf("%s\n", $qnameof($eval("a")));
-    printf("%s\n", $nameof(a));
-    printf("%s\n", $nameof($eval("a")));
+    printf("%s\n", $reflect(a).qname);
+    printf("%s\n", $reflect($eval("a")).qname);
+    printf("%s\n", $reflect(a).name);
+    printf("%s\n", $reflect($eval("a")).name);
 
 }
 

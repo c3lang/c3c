@@ -8,7 +8,7 @@ macro foo(int a)
 }
 
 $typeof(baz(2)) y;
-const ABC = $sizeof(baz(2));
+const ABC = @sizeof(baz(2));
 
 macro baz(int x) => foo(x);
 

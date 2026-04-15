@@ -69,9 +69,9 @@ macro void @swap(#a, #b) @builtin
 	#b = temp;
 }
 
-macro sz bitsizeof($Type) @builtin @const => $Type.sizeof * 8u;
+macro sz bitsizeof($Type) @builtin @const => $Type::size * 8u;
 
-macro sz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
+macro sz @bitsizeof(#expr) @builtin @const => @sizeof(#expr) * 8u;
 
 <*
  Compile-time check for whether a set of constants contains a certain expression.
@@ -99,7 +99,7 @@ macro bool @in($needle, ...) @builtin @const
 *>
 macro anycast(any v, $Type) @builtin
 {
-	if (v.type != $Type.typeid) return TYPE_MISMATCH~;
+	if (v.type != $Type::typeid) return TYPE_MISMATCH~;
 	return ($Type*)v.ptr;
 }
 
@@ -109,7 +109,7 @@ macro anycast(any v, $Type) @builtin
 *>
 macro any.to(self, $Type)
 {
-	if (self.type != $Type.typeid) return TYPE_MISMATCH~;
+	if (self.type != $Type::typeid) return TYPE_MISMATCH~;
 	return *($Type*)self.ptr;
 }
 
@@ -133,7 +133,7 @@ macro @addr(#val) @builtin
 
 macro typeid @typeid(#value) @const @builtin
 {
-	return $typeof(#value).typeid;
+	return $typeof(#value)::typeid;
 }
 
 
@@ -160,13 +160,13 @@ macro void always_assert(bool #value, String $fmt = "", ...) @builtin @format(1)
 <*
  Determines whether all members of a struct/union type are trivially equatable (i.e., they all implement the `==` operator).
 
- @require $defined($Type.membersof) : "Only types with members may be used here."
+ @require $defined($Type::members) : "Only types with members may be used here."
 *>
 macro bool may_member_eq($Type) @builtin @const
 {
 	bool $ret = false;
 	$Type $a, $b;
-	$foreach $member : $Type.membersof:
+	$foreach $member : $Type::members:
 		// Using |= here instead of `return false;` prevents this macro from generating many runtime return lines,
 		//   especially in the case that many of the struct fields meet this condition.
 		$ret = $ret ||| !$defined($member.get($a) == $member.get($b));
@@ -179,13 +179,13 @@ macro bool may_member_eq($Type) @builtin @const
  Importantly, this comparison _ignores_ an existing `==` overload for the struct type itself.
 
  @require may_member_eq($typeof(left)) : "Only structs with members that are trivially equatable with `==` are supported."
- @require $kindof(left) != POINTER && $kindof(right) != POINTER : "You cannot compare structures by reference. Dereference them first."
+ @require @kindof(left) != POINTER && @kindof(right) != POINTER : "You cannot compare structures by reference. Dereference them first."
  @require $typeof(left) == $typeof(right) : "Both input structures must be the same type."
 *>
 macro bool member_eq(left, right) @builtin
 {
 	bool res = true;
-	$foreach $member : $typeof(left).membersof:
+	$foreach $member : $typeof(left)::members:
 		res = res && ($member.get(left) == $member.get(right));
 	$endforeach
 	return res;
@@ -398,16 +398,17 @@ macro any.as_inner(&self)
  @param expr : "the expression to cast"
  @param $Type : "the type to cast to"
 
- @require $sizeof(expr) == $Type.sizeof  : "Cannot bitcast between types of different size."
+ @require @sizeof(expr) == $Type::size  : "Cannot bitcast between types of different size."
  @ensure $typeof(return) == $Type*
 *>
 macro bitcast(expr, $Type) @builtin
 {
-	$if $Type.alignof <= $alignof(expr):
+	var $r = $reflect(expr);
+	$if $Type::alignment <= $r.alignment:
 		return *($Type*)&expr;
 	$else
 		$Type x @noinit;
-		$$memcpy(&x, &expr, $sizeof(expr), false, $Type.alignof, $alignof(expr));
+		$$memcpy(&x, &expr, @sizeof(expr), false, $Type::alignment, $r.alignment);
 		return x;
 	$endif
 }
@@ -415,16 +416,16 @@ macro bitcast(expr, $Type) @builtin
 <*
  @param $Type : `The type of the enum`
  @param [in] enum_name : `The name of the enum to search for`
- @require $Type.kindof == ENUM : `Only enums may be used`
+ @require $Type::kind == ENUM : `Only enums may be used`
  @ensure $typeof(return) == $Type*
  @return? NOT_FOUND
 *>
 macro enum_by_name($Type, String enum_name) @builtin
 {
-	typeid x = $Type.typeid;
+	typeid x = $Type::typeid;
 	foreach (i, name : x.names)
 	{
-		if (name == enum_name) return $Type.from_ordinal(i);
+		if (name == enum_name) return $Type::from_ordinal(i);
 	}
 	return NOT_FOUND~;
 }
@@ -540,12 +541,12 @@ macro swizzle2(v, v2, ...) @builtin
  Returns the count of leading zero bits from an integer at compile-time.
 
  @require types::is_int($typeof($value)) : "Input value must be an integer"
- @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
+ @require @sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
 *>
 macro int @clz($value) @builtin @const
 {
 	$if $value == 0:
-		return (int)($sizeof($value) * 8);   // it's all leading zeroes
+		return (int)(@sizeof($value) * 8);   // it's all leading zeroes
 	$endif
 
 	sz $n = 0;
@@ -559,14 +560,14 @@ macro int @clz($value) @builtin @const
 	$if $x <= 0x3FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 2;  $x <<= 2;  $endif
 	$if $x <= 0x7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 1;             $endif
 
-	return (int)($n % ($sizeof($value) * 8));   // mod by the bitsize of the input value to go back from uint128 -> it's-type
+	return (int)($n % (@sizeof($value) * 8));   // mod by the bitsize of the input value to go back from uint128 -> it's-type
 }
 
 <*
  Return the excuse in the Optional if it is Empty, otherwise
  return a null fault.
 
- @require $kindof(#expr) == OPTIONAL : `@catch expects an Optional value`
+ @require @kindof(#expr) == OPTIONAL : `@catch expects an Optional value`
 *>
 macro fault @catch(#expr) @builtin
 {
@@ -578,7 +579,7 @@ macro fault @catch(#expr) @builtin
  Check if an Optional expression holds a value or is empty, returning true
  if it has a value.
 
- @require $kindof(#expr) == OPTIONAL : `@ok expects an Optional value`
+ @require @kindof(#expr) == OPTIONAL : `@ok expects an Optional value`
 *>
 macro bool @ok(#expr) @builtin
 {
@@ -652,7 +653,7 @@ macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
  *>
 macro char[] @as_char_view(#value) @builtin
 {
-	return ((char*)&#value)[:$sizeof(#value)];
+	return ((char*)&#value)[:@sizeof(#value)];
 }
 
 macro sz @str_find(String $string, String $needle) @builtin => $$str_find($string, $needle);
@@ -692,7 +693,7 @@ macro @generic_hash_core(h, value)
 macro uint @generic_hash(value)
 {
 	uint h = @generic_hash_core((uint)0x3efd4391, value);
-	$for var $cnt = 4; $cnt < $sizeof(value); $cnt += 4:
+	$for var $cnt = 4; $cnt < @sizeof(value); $cnt += 4:
 		value >>= 32; // reduce value
 		h = @generic_hash_core(h, value);
 	$endfor
@@ -743,11 +744,11 @@ macro uint ZString.hash(ZString c) => (uint)a5hash::hash(c.str_view());
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*
- @require $kindof(array_ptr) == POINTER &&& $kindof(*array_ptr) == ARRAY
+ @require @kindof(array_ptr) == POINTER &&& @kindof(*array_ptr) == ARRAY
 *>
 macro uint hash_array(array_ptr) @local
 {
-	var $len = $sizeof(*array_ptr);
+	var $len = @sizeof(*array_ptr);
 
 	$if $len > 16:
 		return (uint)komi::hash(((char*)array_ptr)[:$len]);
@@ -757,11 +758,11 @@ macro uint hash_array(array_ptr) @local
 }
 
 <*
- @require $kindof(vec) == VECTOR
+ @require @kindof(vec) == VECTOR
 *>
 macro uint hash_vec(vec) @local
 {
-	var $len = $sizeof(vec);
+	var $len = @sizeof(vec);
 
 	$if $len > 16:
 		return (uint)komi::hash(((char*)&&vec)[:$len]);
@@ -1055,14 +1056,14 @@ macro void* get_returnaddress(int n)
 
 fn String fault.short_name(self)
 {
-	String name = self.nameof;
+	String name = self.description;
 	return name[name.index_of("::") + 2..]!!;
 }
 
 
 macro String fault.@short_name($self) @const
 {
-	var $name = $self.nameof;
+	var $name = $self.description;
 	return $name[@str_find($name, "::") + 2..];
 }
 

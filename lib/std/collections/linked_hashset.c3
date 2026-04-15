@@ -486,9 +486,9 @@ fn void linkedhashset_resize(LinkedHashSet* set, int new_capacity) @private
 	LinkedEntry*[] old_table = set.table;
 	int old_capacity = old_table.len;
 
-	if (old_capacity >= int.max / 2)
+	if (old_capacity >= int::max / 2)
 	{
-		set.threshold = int.max;
+		set.threshold = int::max;
 		return;
 	}
 

@@ -18,7 +18,7 @@ fn double ldexp(double x, int exp) @cname("ldexp")
     // new exponent calculation
     hexp += exp;
 
-    if (hexp > 0x7fe) return x * double.inf;
+    if (hexp > 0x7fe) return x * double::inf;
     if (hexp < 1)
     {
         x *= 0x1p-1022;
@@ -52,7 +52,7 @@ fn float ldexpf(float x, int exp) @cname("ldexpf")
     // new exponent calculation
     hexp += exp;
 
-    if (hexp > 0xfe) return x * float.inf;
+    if (hexp > 0xfe) return x * float::inf;
     if (hexp < 1)
     {
         x *= 0x1p-126f;

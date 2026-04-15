@@ -57,7 +57,7 @@ import libc;
 fn int native_cpu()
 {
 	uint ncpu;
-	usz len = uint.sizeof;
+	usz len = uint::size;
 	int[2] mib = { openbsd::CTL_HW, openbsd::HW_NCPU };
 
 	libc::sysctl(&mib, 2, &ncpu, &len, null, 0);

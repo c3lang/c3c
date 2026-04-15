@@ -6,7 +6,7 @@ import std::collections::pair, std::io;
 
  @param [in] array
  @param [in] element
- @require $kindof(array) == SLICE || $kindof(array) == ARRAY
+ @require @kindof(array) == SLICE || @kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
 *>
 macro bool contains(array, element)
@@ -24,7 +24,7 @@ macro bool contains(array, element)
 
  @param [in] array
  @param [in] element
- @require $kindof(array) == SLICE || $kindof(array) == ARRAY
+ @require @kindof(array) == SLICE || @kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
  @ensure return >= 0
  @return "the first index of the element"
@@ -49,16 +49,16 @@ macro sz? index_of(array, element)
  @param xlen : "The length of the slice in x, defaults to the length of the array"
  @param ylen : "The length of the slice in y, defaults to the length of the array"
  @return "A Slice2d from the array"
- @require $kindof(array_ptr) == POINTER
- @require $kindof(*array_ptr) == VECTOR || $kindof(*array_ptr) == ARRAY
- @require $kindof((*array_ptr)[0]) == VECTOR || $kindof((*array_ptr)[0]) == ARRAY
+ @require @kindof(array_ptr) == POINTER
+ @require @kindof(*array_ptr) == VECTOR || @kindof(*array_ptr) == ARRAY
+ @require @kindof((*array_ptr)[0]) == VECTOR || @kindof((*array_ptr)[0]) == ARRAY
 *>
 macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 {
-	if (xlen < 1) xlen = $typeof((*array_ptr)[0]).len + xlen;
-	if (ylen < 1) ylen = $typeof((*array_ptr)).len + ylen;
+	if (xlen < 1) xlen = $typeof((*array_ptr)[0])::len + xlen;
+	if (ylen < 1) ylen = $typeof((*array_ptr))::len + ylen;
 	var $ElementType = $typeof((*array_ptr)[0][0]);
-	return (Slice2d{$ElementType}) { ($ElementType*)array_ptr, $typeof((*array_ptr)[0]).len, y, ylen, x, xlen };
+	return (Slice2d{$ElementType}) { ($ElementType*)array_ptr, $typeof((*array_ptr)[0])::len, y, ylen, x, xlen };
 }
 
 
@@ -87,8 +87,8 @@ macro sz? rindex_of(array, element)
  @param [in] arr1
  @param [in] arr2
  @param [&inout] allocator : "The allocator to use"
- @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
- @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
+ @require @kindof(arr1) == SLICE || @kindof(arr1) == ARRAY
+ @require @kindof(arr2) == SLICE || @kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure result.len == arr1.len + arr2.len
 *>
@@ -98,11 +98,11 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
 	$Type[] result = alloc::alloc_array(allocator, $Type, arr1.len + arr2.len);
 	if (arr1.len > 0)
 	{
-		mem::copy(result.ptr, &arr1[0], arr1.len * $Type.sizeof, $Type.alignof, $Type.alignof);
+		mem::copy(result.ptr, &arr1[0], arr1.len * $Type::size, $Type::alignment, $Type::alignment);
 	}
 	if (arr2.len > 0)
 	{
-		mem::copy(&result[arr1.len], &arr2[0], arr2.len * $Type.sizeof, $Type.alignof, $Type.alignof);
+		mem::copy(&result[arr1.len], &arr2[0], arr2.len * $Type::size, $Type::alignment, $Type::alignment);
 	}
 	return result;
 }
@@ -113,8 +113,8 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
 
  @param [in] arr1
  @param [in] arr2
- @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
- @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
+ @require @kindof(arr1) == SLICE || @kindof(arr1) == ARRAY
+ @require @kindof(arr2) == SLICE || @kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure return.len == arr1.len + arr2.len
 *>
@@ -464,7 +464,7 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 	var $Type = Pair { $LeftType, $RightType };
 	bool $is_op = $defined(#operation);
 	$if $is_op:
-		$Type = $typeof(#operation).returns;
+		$Type = $typeof(#operation)::returns;
 	$endif
 
 	sz left_len = lengthof(left);
@@ -578,7 +578,7 @@ module std::core::array @private;
 
 macro typeid @predicate_fn(#array) @const
 {
-	return $typeof(fn bool ($typeof(#array[0]) a, sz index = 0) => true).typeid;
+	return $typeof(fn bool ($typeof(#array[0]) a, sz index = 0) => true)::typeid;
 }
 
 macro typeid @reduce_fn(#array, #identity) @const
@@ -596,7 +596,7 @@ macro bool @is_valid_operation(#left, #right, #operation = ...) @const
 	$switch:
 		$case !$defined(#operation):
 			return true;
-		$case $kindof(#operation) != FUNC:
+		$case @kindof(#operation) != FUNC:
 			return false;
 		$default:
 			return $defined(#operation(#left[0], #right[0]));

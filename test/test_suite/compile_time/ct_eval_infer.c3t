@@ -13,7 +13,7 @@ struct Test
 fn void main()
 {
 
-	var $member = Test.membersof[0];
+	var $member = Test::members[0];
 	Test x;
 	x.a = $eval("A");
 	io::printn(x);

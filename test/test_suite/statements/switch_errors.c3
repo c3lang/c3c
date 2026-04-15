@@ -79,7 +79,7 @@ fn void test_duplicate_case3(Foo i)
     {
         case A:
             break;
-        case Foo.from_ordinal(0):     // #error: same case value appears
+        case Foo::from_ordinal(0):     // #error: same case value appears
             break;
     }
 }

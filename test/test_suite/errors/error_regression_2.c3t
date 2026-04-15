@@ -39,7 +39,7 @@ fn bool contains(char[] haystack, char[] needle)
 
 macro dupe(value)
 {
-	$typeof(&value) temp = malloc($sizeof(value));
+	$typeof(&value) temp = malloc(@sizeof(value));
 	if (!temp) return OUT_OF_MEMORY~;
 	*temp = value;
 	return temp;

@@ -166,7 +166,7 @@ constdef NSEventMask : inline ulong
 	PRESSURE            = 1ul << NSEventType.PRESSURE,
 	DIRECT_TOUCH        = 1ul << NSEventType.DIRECT_TOUCH,
 	CHANGE_MODE         = 1ul << NSEventType.CHANGE_MODE,
-	ANY                 = ulong.max,
+	ANY                 = ulong::max,
 }
 
 fn NSEventMask event_mask_from_type(NSEventType type) => (NSEventMask)1ul << type;

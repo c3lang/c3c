@@ -3,6 +3,6 @@ typedef Time = long;
 
 fn void main(String[] args)
 {
-	Time.min;
-	Time.max;
+	Time::min;
+	Time::max;
 }
