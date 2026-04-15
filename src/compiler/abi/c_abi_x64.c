@@ -585,7 +585,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 											  source_offset + type_size(type),
 											  source_offset + 8))
 			{
-				return abi_type_get(type);
+				if (type_size(source_type) - source_offset <= 8) return abi_type_get(type);
 			}
 			break;
 		case TYPE_STRUCT:
