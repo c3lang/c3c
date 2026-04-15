@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ master, dev, ci_testing, experiments ]
+    branches: [ master, dev, ci_testing, experiments, '*.*.x' ]
     paths-ignore:
       - '**.md'
       - 'LICENSE'
@@ -624,12 +624,13 @@ jobs:
   release:
     runs-on: ubuntu-slim
     needs: [build-msvc, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd, build-android, build-linux-musl-static]
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || endsWith(github.ref, '.x')
     permissions:
       contents: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_NAME: ""
+      TAG_NAME: ""
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
@@ -654,13 +655,23 @@ jobs:
             done
           done
 
-      - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
-      - run: echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+      - name: Set Release Names
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            echo "TAG_NAME=latest-prerelease-tag" >> $GITHUB_ENV
+            echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+          else
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+            echo "TAG_NAME=${BRANCH_NAME}-latest" >> $GITHUB_ENV
+            echo "RELEASE_NAME=${BRANCH_NAME}-latest" >> $GITHUB_ENV
+          fi
+
+      - run: gh release delete ${{ env.TAG_NAME }} --cleanup-tag -y || true
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: latest-prerelease-tag
+          tag: ${{ env.TAG_NAME }}
           name: ${{ env.RELEASE_NAME }}
           prerelease: true
           allowUpdates: true
