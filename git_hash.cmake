@@ -1,15 +1,40 @@
-find_package(Git QUIET)
-
 set(GIT_HASH "unknown")
 
-if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git")
-    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-                    OUTPUT_VARIABLE GIT_HASH
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    COMMAND_ERROR_IS_FATAL ANY)
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git/HEAD")
+    file(READ "${CMAKE_CURRENT_LIST_DIR}/.git/HEAD" HASH)
+    string(STRIP "${HASH}" HASH)
+
+    if(HASH MATCHES "^ref: (.*)")
+        set(HEAD "${CMAKE_MATCH_1}")
+        if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git/${HEAD}")
+            file(READ "${CMAKE_CURRENT_LIST_DIR}/.git/${HEAD}" HASH)
+            string(STRIP "${HASH}" HASH)
+        else()
+            set(HASH "")
+            if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git/packed-refs")
+                file(READ "${CMAKE_CURRENT_LIST_DIR}/.git/packed-refs" PACKED_REFS)
+                if("\n${PACKED_REFS}" MATCHES "\n([0-9a-f]+) ${HEAD}(\n|$)")
+                    set(HASH "${CMAKE_MATCH_1}")
+                endif()
+            endif()
+        endif()
+    endif()
+
+    if(NOT "${HASH}" STREQUAL "")
+        set(GIT_HASH "${HASH}")
+    endif()
 endif()
 
 message("Git Hash: ${GIT_HASH}")
 
-file(WRITE ${CMAKE_BINARY_DIR}/git_hash.h "#pragma once\n#define GIT_HASH \"${GIT_HASH}\"\n")
+set(NEW_CONTENTS "#pragma once\n#define GIT_HASH \"${GIT_HASH}\"\n")
+set(OUTPUT_FILE "${CMAKE_BINARY_DIR}/git_hash.h")
+
+if(EXISTS "${OUTPUT_FILE}")
+    file(READ "${OUTPUT_FILE}" OLD_CONTENTS)
+    if(NOT "${NEW_CONTENTS}" STREQUAL "${OLD_CONTENTS}")
+        file(WRITE "${OUTPUT_FILE}" "${NEW_CONTENTS}")
+    endif()
+else()
+    file(WRITE "${OUTPUT_FILE}" "${NEW_CONTENTS}")
+endif()
