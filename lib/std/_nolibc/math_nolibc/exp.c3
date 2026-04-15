@@ -20,10 +20,10 @@ const float EXPF_P4 = -1.6533901999e-06f;
 fn double exp(double x) @cname("exp") @nostrip @weak
 {
     if (x != x) return x;
-    if (x == double.inf) return double.inf;
-    if (x == -double.inf) return 0.0; // IEEE 754 spec
+    if (x == double::inf) return double::inf;
+    if (x == -double::inf) return 0.0; // IEEE 754 spec
     // Overflow threshold for exp (approx +709.78 for double)
-    if (x > 709.782712893384) return double.inf;
+    if (x > 709.782712893384) return double::inf;
     // Underflow threshold for exp (approx -745.13 for double)
     if (x < -745.133219101941) return 0.0;
 
@@ -41,10 +41,10 @@ fn double exp(double x) @cname("exp") @nostrip @weak
 fn float expf(float x) @cname("expf") @nostrip @weak
 {
     if (x != x) return x;
-    if (x == float.inf) return float.inf;
-    if (x == -float.inf) return 0.0f; // IEEE 754 spec
+    if (x == float::inf) return float::inf;
+    if (x == -float::inf) return 0.0f; // IEEE 754 spec
     // Overflow threshold (approx +88.72 for float)
-    if (x > 88.7228f) return float.inf;
+    if (x > 88.7228f) return float::inf;
     // Underflow threshold (approx -103.97 for float)
     if (x < -103.972084f) return 0.0f;
 

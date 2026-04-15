@@ -14,7 +14,7 @@ fn void test1()
 
 fn void test2()
 {
-	$typefrom(OwnedString.data.typeid) x = 1; // #error:  'char[*]' has unknown size, and
+	$typefrom($reflect(OwnedString.data).type) x = 1; // #error:  'char[*]' has unknown size, and
 }
 
 fn int main()

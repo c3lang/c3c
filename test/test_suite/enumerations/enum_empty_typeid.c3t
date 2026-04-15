@@ -4,7 +4,7 @@ module test;
 enum No_Els_Assoc : (any anything)
 { ABC {{}} }
 
-macro typeid @segfault () => No_Els_Assoc.typeid;
+macro typeid @segfault () => No_Els_Assoc::typeid;
 
 fn int main ()
 {

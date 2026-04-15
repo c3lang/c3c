@@ -3,6 +3,6 @@ fn int foo() => 0;
 alias FooFn = fn int();
 constdef Bar : FooFn
 {
-  FOO = fn () => (int)(iptr)ExclusiveRange{int}.typeid,
+  FOO = fn () => (int)(iptr)ExclusiveRange{int}::typeid,
   BAR = &foo,
 }

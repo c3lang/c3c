@@ -5,7 +5,7 @@ import abc;
 
 fn void main(String[] args)
 {
-	typeid y = Abc.typeid;
+	typeid y = Abc::typeid;
 	int* x = &abc::dabc;
 	Foo a = Foo.DEF;
 	String z = a.val;

@@ -10,12 +10,12 @@ struct Bar
 }
 fn void main()
 {
-	assert(Foo.parentof == void.typeid);
-	assert(Bar.parentof == Foo.typeid);
-	typeid x = Foo.typeid;
-	assert(x.parentof == void.typeid);
-	x = Bar.typeid;
-	assert(x.parentof == Foo.typeid);
+	assert(Foo::parent == void::typeid);
+	assert(Bar::parent == Foo::typeid);
+	typeid x = Foo::typeid;
+	assert(x.parent == void::typeid);
+	x = Bar::typeid;
+	assert(x.parent == Foo::typeid);
 }
 
 /* #expect: foo.ll

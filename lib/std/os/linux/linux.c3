@@ -191,7 +191,7 @@ fn ulong? elf_module_image_base(String path) @local
 	{
 		Elf64_Ehdr file_header;
 		io::read_any(&file, &file_header)!;
-		if (file_header.e_ehsize != Elf64_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND~;
+		if (file_header.e_ehsize != Elf64_Ehdr::size) return backtrace::IMAGE_NOT_FOUND~;
 		for (sz i = 0; i < file_header.e_phnum; i++)
 		{
 			Elf64_Phdr header;
@@ -203,7 +203,7 @@ fn ulong? elf_module_image_base(String path) @local
 	}
 	Elf32_Ehdr file_header;
 	io::read_any(&file, &file_header)!;
-	if (file_header.e_ehsize != Elf32_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND~;
+	if (file_header.e_ehsize != Elf32_Ehdr::size) return backtrace::IMAGE_NOT_FOUND~;
 	for (sz i = 0; i < file_header.e_phnum; i++)
 	{
 		Elf32_Phdr header;

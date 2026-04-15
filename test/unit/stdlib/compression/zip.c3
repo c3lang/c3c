@@ -526,24 +526,24 @@ fn void test_zip_reader_available_capping()
 		// We manually construct a reader to test the capping logic for huge entry sizes
 		// that might exist on 32-bit systems (where usz < 64-bit).
 		ZipEntryReader reader;
-		mem::set(&reader, 0, ZipEntryReader.sizeof);
+		mem::set(&reader, 0, ZipEntryReader::size);
 		reader.size = 0x7FFFFFFFFFFFFFFF;
 		reader.pos = 0;
 
 		sz avail = reader.available()!!;
-		assert(avail == sz.max, "Expected available to be capped at sz.max");
+		assert(avail == sz::max, "Expected available to be capped at sz::max");
 
 		reader.pos = 100;
 		avail = reader.available()!!;
-		if (sz.max < 0x7FFFFFFFFFFFFFFF)
+		if (sz::max < 0x7FFFFFFFFFFFFFFF)
 		{
 			// triggers on 32-bit
-			assert(avail == sz.max, "Expected available to still be capped at sz.max");
+			assert(avail == sz::max, "Expected available to still be capped at sz::max");
 		}
 		else
 		{
 			// on 64-bit
-			assert(avail == sz.max - (sz)100, "Expected available size to be correct on 64-bit");
+			assert(avail == sz::max - (sz)100, "Expected available size to be correct on 64-bit");
 		}
 	};
 }

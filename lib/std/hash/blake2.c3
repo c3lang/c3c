@@ -52,7 +52,7 @@ macro common_compress(instance, $rounds, $iv, $sigma, block) @local
 {
 	$typeof(instance.h[0])[16] m, v;
 
-	((char*)&m)[:$sizeof(block)] = block[..];
+	((char*)&m)[:@sizeof(block)] = block[..];
 
 	v[:8] = instance.h[..];
 	v[ 8] = $iv[0];
@@ -95,11 +95,11 @@ macro common_init(instance, $ParamType, $iv, sz out_len, char[] key = {}, char[]
 	if (salt.len) p.salt[:salt.len] = salt[..];
 	if (personal.len) p.personal[:personal.len] = personal[..];
 
-	array::@zip_into(((char*)&instance.h)[:$sizeof(p)], ((char*)&p)[:$sizeof(p)], fn (a, b) => a ^ b); // bytes(self.h) ^= bytes(p)
+	array::@zip_into(((char*)&instance.h)[:@sizeof(p)], ((char*)&p)[:@sizeof(p)], fn (a, b) => a ^ b); // bytes(self.h) ^= bytes(p)
 
 	if (key.len)
 	{
-		char[$sizeof($iv[0])*16] dummy = {};
+		char[@sizeof($iv[0])*16] dummy = {};
 		dummy[:key.len] = key[..];
 		instance.update(dummy[..]); // consume a FULL block
 		mem::zero_volatile(dummy[..]); // do not optimize clearing this from the stack
@@ -140,7 +140,7 @@ macro common_final(instance, char[] into) @local
 {
 	_add_ctr(instance, instance.buflen);
 
-	var $max = $typeof(instance.h[0]).max;
+	var $max = $typeof(instance.h[0])::max;
 	if (instance.last_node) instance.f[1] = $max;
 	instance.f[0] = $max;
 

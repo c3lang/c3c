@@ -1,7 +1,7 @@
 import std::io;
 
-macro foo($Type, a, ..., bool b = true, float f = 123.f) { io::printfn("%s %s %s %s", $Type.nameof, a, b, f); }
-macro bar($Type, a, ..., bool b, float f) { io::printfn("%s %s %s %s", $Type.nameof, a, b, f); }
+macro foo($Type, a, ..., bool b = true, float f = 123.f) { io::printfn("%s %s %s %s", $Type::name, a, b, f); }
+macro bar($Type, a, ..., bool b, float f) { io::printfn("%s %s %s %s", $Type::name, a, b, f); }
 
 fn void main()
 {

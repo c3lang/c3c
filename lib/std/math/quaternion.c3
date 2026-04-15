@@ -9,7 +9,7 @@ alias Quat = QuaternionNumber {float};
 <*
  The generic quaternion module, for float or double based quaternion definitions.
 
- @require Real.kindof == FLOAT : "A quaternion must use a floating type"
+ @require Real::kind == FLOAT : "A quaternion must use a floating type"
 *>
 module std::math::quaternion <Real>;
 import std::math::vector, std::math::matrix, std::io;
@@ -239,4 +239,4 @@ macro into_matrix(QuaternionNumber* q, $Type) @private
 	$endif
 }
 
-const QUATERNION_EPSILON @private = Real.kindof == FLOAT ? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON;
+const QUATERNION_EPSILON @private = Real::kind == FLOAT ? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON;

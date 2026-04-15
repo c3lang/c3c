@@ -10,9 +10,9 @@ struct Summary
 }
 macro dupe(value)
 {
- $typeof(&value) temp = malloc($sizeof(value));
- if (!temp) return OUT_OF_MEMORY~;
- return temp;
+	$typeof(&value) temp = malloc(@sizeof(value));
+	if (!temp) return OUT_OF_MEMORY~;
+	return temp;
 }
 faultdef BAD_READ, OUT_OF_MEMORY;
 fn Doc? readDoc(char[] )

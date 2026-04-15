@@ -1,9 +1,9 @@
-enum Test : int (int kindof, int qnameof)
+enum Test : int (int kindof, int qname)
 {
 	FOO {1, 2}
 }
 
-enum Test2 : (int a, int nameof)  // #error: 'nameof' is not a valid parameter name for enums
+enum Test2 : (int a, int description)  // #error: 'description' is not a valid parameter name for enums
 {
 	FOO {1, 2}
 }

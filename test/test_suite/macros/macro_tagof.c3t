@@ -6,6 +6,6 @@ macro int test() @tag("hello", 1)
 
 fn void main()
 {
-	var $v = test.tagof("hello");
+	var $v = test.get_tag("hello");
 	io::printn($v);
 }

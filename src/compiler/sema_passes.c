@@ -304,6 +304,7 @@ static bool exec_arg_append_to_scratch(Expr *arg)
 		case CONST_SLICE:
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 			return false;
 	}
 	UNREACHABLE

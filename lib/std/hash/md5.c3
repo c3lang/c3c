@@ -97,9 +97,7 @@ fn char[HASH_BYTES] Md5.final(&ctx)
 	return res;
 }
 
-module std::hash::md5 @private;
-
-const uint[64] MD5_T @private = {
+const uint[64] MD5_T @local = {
 	0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
 	0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
 	0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
@@ -118,7 +116,7 @@ const uint[64] MD5_T @private = {
 	0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 };
 
-const int[16] MD5_S @private = {
+const int[16] MD5_S @local = {
 	7, 12, 17, 22,
 	5,  9, 14, 20,
 	4, 11, 16, 23,
@@ -126,13 +124,13 @@ const int[16] MD5_S @private = {
 };
 
 // Implementation
-macro @f(x, y, z) => z ^ (x & (y ^ z));
-macro @g(x, y, z) => y ^ (z & (x ^ y));
-macro @h(x, y, z) => (x ^ y) ^ z;
-macro @h2(x, y, z) => x ^ (y ^ z);
-macro @i(x, y, z) => y ^ (x | ~z);
+macro @f(x, y, z)  @local => z ^ (x & (y ^ z));
+macro @g(x, y, z)  @local => y ^ (z & (x ^ y));
+macro @h(x, y, z)  @local => (x ^ y) ^ z;
+macro @h2(x, y, z) @local => x ^ (y ^ z);
+macro @i(x, y, z)  @local => y ^ (x | ~z);
 
-macro void @step(#f, a, b, c, d, ptr, n, t, s)
+macro void @step(#f, a, b, c, d, ptr, n, t, s) @local
 {
 	*a += #f(b, c, d) + mem::load((uint *)&ptr[n * 4], 2) + t;
 	*a = (*a << s) | ((*a & 0xffffffff) >> (32 - s));
@@ -140,7 +138,7 @@ macro void @step(#f, a, b, c, d, ptr, n, t, s)
 }
 
 
-fn char* body(Md5* ctx, void* data, sz size)
+fn char* body(Md5* ctx, void* data, sz size) @local
 {
 	char* ptr = data;
 	uint a = ctx.a;

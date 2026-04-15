@@ -11,7 +11,7 @@ fn void main()
 macro deep_print(a)
 {
     var $Type = $typeof(a);
-    $switch $Type.kindof:
+    $switch $Type::kind:
         $case ARRAY:
         $case SLICE:
             io::print("[");
@@ -23,13 +23,13 @@ macro deep_print(a)
             io::print("]");
         $case STRUCT:
             io::print("{");
-            $foreach $i, $m : $typeof(a).membersof:
+            $foreach $i, $m : $typeof(a)::members:
                 if ($i > 0) io::print(", ");
                 deep_print($m.get(a));
             $endforeach
             io::print("}");
         $default:
-            $switch $Type.nameof:
+            $switch $Type::name:
                 $case "String":
                 $case "DString":
                 $case "WString":

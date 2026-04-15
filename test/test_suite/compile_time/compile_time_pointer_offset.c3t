@@ -2,7 +2,7 @@
 module test;
 macro checker()
 {
-    long $b = (iptr) ((uint*) bool.typeid);
+    long $b = (iptr) ((uint*) bool::typeid);
     $b += 1;
     return $b;
 }

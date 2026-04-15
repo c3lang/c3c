@@ -16,7 +16,7 @@ alias Mat4 = Matrix4x4 {float};
 <*
  The generic matrix module, for float or double based matrix definitions.
 
- @require Real.kindof == FLOAT : "A matrix must use a floating type"
+ @require Real::kind == FLOAT : "A matrix must use a floating type"
 *>
 module std::math::matrix <Real>;
 import std::math::vector, std::io;

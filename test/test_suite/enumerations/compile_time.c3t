@@ -6,9 +6,9 @@ enum MyEnum : short
     BYE
 }
 
-int myenum_elements = MyEnum.values.len;
-int myenum_alignof = MyEnum.alignof;
-int myenum_sizeof = MyEnum.sizeof;
+int myenum_elements = MyEnum::values.len;
+int myenum_alignof = MyEnum::alignment;
+int myenum_sizeof = MyEnum::size;
 
 /* #expect: compile_time.ll
 

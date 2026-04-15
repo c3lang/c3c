@@ -7,13 +7,13 @@ import std::io, std::math, std::collections::list_common;
 alias ElementPredicate = fn bool(Type *type);
 alias ElementTest = fn bool(Type *type, any context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
-const ELEMENT_IS_POINTER = Type.kindof == POINTER;
+const ELEMENT_IS_POINTER = Type::kind == POINTER;
 
 const Allocator LIST_HEAP_ALLOCATOR = (Allocator)&dummy;
 
 const List ONHEAP = { .allocator = LIST_HEAP_ALLOCATOR };
 
-macro bool type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
+macro bool type_is_overaligned() => Type::alignment > mem::DEFAULT_MEM_ALIGNMENT;
 
 struct List (Printable)
 {
@@ -280,7 +280,7 @@ fn bool List.is_empty(&self) @inline
 
 fn sz List.byte_size(&self) @inline
 {
-	return Type.sizeof * self.size;
+	return Type::size * self.size;
 }
 
 fn sz List.len(&self) @operator(len) @inline
@@ -379,9 +379,9 @@ fn void list_ensure_capacity(List* self, sz min_capacity) @local
 
 	min_capacity = math::next_power_of_2(min_capacity);
 	$if type_is_overaligned():
-		self.entries = alloc::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, alignment: Type[1].alignof)!!;
+		self.entries = alloc::realloc_aligned(self.allocator, self.entries, Type::size * min_capacity, alignment: Type[1]::alignment)!!;
 	$else
-		self.entries = alloc::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
+		self.entries = alloc::realloc(self.allocator, self.entries, Type::size * min_capacity);
 	$endif;
 	self.capacity = min_capacity;
 
@@ -417,7 +417,7 @@ fn void List.reserve(&self, sz added)
 	sz new_size = self.size + added;
 	if (self.capacity >= new_size) return;
 
-	assert(new_size < sz.max / 2U);
+	assert(new_size < sz::max / 2U);
 	sz new_capacity = self.capacity ? 2U * self.capacity : 16U;
 	while (new_capacity < new_size) new_capacity *= 2U;
 	list_ensure_capacity(self, new_capacity);

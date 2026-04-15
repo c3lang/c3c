@@ -13,10 +13,10 @@ import std::io;
 
 macro bool may_serialize($Type) @const
 {
-	$switch $Type.kindof:
+	$switch $Type::kind:
 		$case STRUCT:
-			$foreach $member : $Type.membersof:
-				$if $member.nameof == "" ||| !may_serialize($member.type):
+			$foreach $member : $Type::members:
+				$if $member.name == "" ||| !may_serialize($member.type):
 					return false;
 				$endif
 			$endforeach
@@ -33,7 +33,7 @@ macro bool may_serialize($Type) @const
 			return true;
 		$case TYPEDEF:
 		$case CONSTDEF:
-			return may_serialize($Type.inner);
+			return may_serialize($Type::inner);
 		$default:
 			return false;
 	$endswitch
@@ -43,7 +43,7 @@ macro bool may_serialize($Type) @const
 
  @param allocator: "The allocator to use for the result"
  @param value: "The struct value to marshal"
- @require $kindof(value) == STRUCT
+ @require @kindof(value) == STRUCT
  @require may_serialize($typeof(value)) : "Expected a serializable type"
  @return "The JSON string representation"
 *>
@@ -60,7 +60,7 @@ macro String marshal(Allocator allocator, value) => @pool()
 
  @param stream: "The steam to serialize to"
  @param value: "The struct value to marshal"
- @require $kindof(value) == STRUCT
+ @require @kindof(value) == STRUCT
  @require may_serialize($typeof(value)) : "Expected a serializable type"
 *>
 macro void? marshal_to(OutStream stream, value)
@@ -76,7 +76,7 @@ fn void? serialize(OutStream stream, Type value) <Type>
 	stream.write_byte('{')!;
 
 	var $first = true;
-	$foreach $i, $member : Type.membersof:
+	$foreach $i, $member : Type::members:
 		$if $i > 0:
 			stream.write_byte(',')!;
 		$endif
@@ -84,7 +84,7 @@ fn void? serialize(OutStream stream, Type value) <Type>
 
 		// Add field name (always quoted)
 		stream.write_byte('"')!;
-		stream.write($member.nameof)!;
+		stream.write($member.name)!;
 		stream.write(`":`)!;
 
 		serialize_value{$member.type}(stream, $member.get(value))!;
@@ -99,7 +99,7 @@ fn void? serialize(OutStream stream, Type value) <Type>
 *>
 fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 {
-	$switch TypeElement.kindof:
+	$switch TypeElement::kind:
 		$case STRUCT:
 			return serialize{TypeElement}(stream, value);
 		$case ARRAY:
@@ -116,19 +116,19 @@ fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 			stream.write(value ? "true" : "false")!;
 		$case CONSTDEF:
 		$case TYPEDEF:
-			$switch (TypeElement.typeid):
+			$switch (TypeElement::typeid):
 				$case String:
 					@pool() { stream.write(value.tescape(false))!; };
 				$default:
-					var $Inner = $typefrom(TypeElement.inner);
+					var $Inner = $typefrom(TypeElement::inner);
 					return serialize_value{$Inner}(stream, ($Inner)value);
 			$endswitch
 		$case ENUM:
 			stream.write_byte('"')!;
-			stream.write(value.nameof)!;
+			stream.write(value.description)!;
 			stream.write_byte('"')!;
 		$default:
-			$if TypeElement.typeid == String.typeid:
+			$if TypeElement::typeid == String::typeid:
 				@pool() { stream.write(value.tescape(false))!; };
 			$else
 				$error "Unsupported type";

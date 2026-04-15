@@ -9,8 +9,8 @@ module std::sort;
 *>
 macro void countingsort(list, key_fn = ...) @builtin
 {
-	var list_length = $kindof(list) == SLICE ??? list.len : lengthof(*list);
-	var $ListType = $kindof(list) == SLICE ??? $typeof(list) : $typeof(*list);
+	var list_length = @kindof(list) == SLICE ??? list.len : lengthof(*list);
+	var $ListType = @kindof(list) == SLICE ??? $typeof(list) : $typeof(*list);
 	$if $defined(key_fn):
 		csort{$ListType, $typeof(key_fn)}(list, 0, list_length, key_fn, ~(uint)0);
 	$else
@@ -22,7 +22,7 @@ macro void insertionsort_indexed(list, start, end, cmp = ..., context = ...) @bu
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
-	$if $kindof(list) == SLICE:
+	$if @kindof(list) == SLICE:
 		isort{$typeof((list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (sz)start, (sz)end, used_cmp, used_ctx);
 	$else
 		isort{$typeof((*list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (sz)start, (sz)end, used_cmp, used_ctx);
@@ -34,7 +34,7 @@ macro void quicksort_indexed(list, start, end, cmp = ..., context = ...) @builti
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
-	$if $kindof(list) == SLICE:
+	$if @kindof(list) == SLICE:
 		qsort{$typeof((list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (sz)start, (sz)(end-1), used_cmp, used_ctx);
 	$else
 		qsort{$typeof((*list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (sz)start, (sz)(end-1), used_cmp, used_ctx);
@@ -48,18 +48,18 @@ alias Ranges @private = sz[257];
 alias Indexs @private = char[256];
 alias ElementType = $typeof((Type){}[0]);
 
-const bool NO_KEY_FN @private = KeyFn.kindof != FUNC;
-const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $defined($typefrom(KeyFn.paramsof[0].type) x = (ElementType){});
+const bool NO_KEY_FN @private = KeyFn::kind != FUNC;
+const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $defined($typefrom(KeyFn::params[0].type) x = (ElementType){});
 const bool LIST_HAS_REF @private = $defined(&(Type){}[0]);
 
-alias KeyFnReturnType @if(!NO_KEY_FN) = $typefrom(KeyFn.returns) ;
+alias KeyFnReturnType @if(!NO_KEY_FN) = $typefrom(KeyFn::returns) ;
 alias KeyFnReturnType @if(NO_KEY_FN) = ElementType;
 alias CmpCallback @if(KEY_BY_VALUE && NO_KEY_FN) = fn int(ElementType, ElementType) ;
 alias CmpCallback @if(!KEY_BY_VALUE && NO_KEY_FN) = fn int(ElementType*, ElementType*);
 alias CmpCallback @if(KEY_BY_VALUE && !NO_KEY_FN) = fn int(ElementType, ElementType, KeyFn);
 alias CmpCallback @if(!KEY_BY_VALUE && !NO_KEY_FN) = fn int(ElementType*, ElementType*, KeyFn);
 
-const bool IS_SLICE = Type.kindof == SLICE;
+const bool IS_SLICE = Type::kind == SLICE;
 alias ListType = $typefrom(IS_SLICE ??? Type : Type*);
 macro list_get(ListType l, i) @if(!IS_SLICE) => (*l)[i];
 macro list_get(ListType l, i) @if(IS_SLICE) => l[i];
@@ -94,7 +94,7 @@ macro void _csort(ListType list, sz low, sz high, sz byte_idx, KeyFn key_fn = ..
 		CmpCallback compare_fn = fn (lhs, rhs, key_fn) => compare_to(key_fn(lhs), key_fn(rhs));
 	$endif;
 
-	byte_idx = byte_idx >= KeyFnReturnType.sizeof ? KeyFnReturnType.sizeof - 1 : byte_idx;
+	byte_idx = byte_idx >= KeyFnReturnType::size ? KeyFnReturnType::size - 1 : byte_idx;
 
 	Counts counts;
 	Ranges ranges;

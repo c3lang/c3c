@@ -8,7 +8,7 @@ struct Test
 
 fn Test test()
 {
-	return { int.max, int.min };
+	return { int::max, int::min };
 }
 
 fn void main()

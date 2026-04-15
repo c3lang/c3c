@@ -437,7 +437,7 @@ fn void linkedhashmap_resize(LinkedHashMap* map, int new_capacity) @private
 
 	if (old_capacity == MAXIMUM_CAPACITY)
 	{
-		map.threshold = int.max;
+		map.threshold = int::max;
 		return;
 	}
 

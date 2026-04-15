@@ -93,7 +93,7 @@ fn long? ByteWriter.read_from(&self, InStream reader) @dynamic
 	{
 		while (long available = reader.available()!)
 		{
-			if (available > sz.max) return OUT_OF_SPACE~;
+			if (available > sz::max) return OUT_OF_SPACE~;
 			self.ensure_capacity(self.index + (sz)available)!;
 			sz read = reader.read(self.bytes[self.index..])!;
 			self.index += read;

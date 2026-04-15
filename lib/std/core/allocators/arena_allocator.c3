@@ -69,11 +69,11 @@ fn void ArenaAllocator.reset(&self, sz mark) => self.used = mark;
 fn void ArenaAllocator.release(&self, void* ptr, bool) @dynamic
 {
 	assert((uptr)ptr >= (uptr)self.data.ptr, "Pointer originates from a different allocator.");
-	ArenaAllocatorHeader* header = ptr - ArenaAllocatorHeader.sizeof;
+	ArenaAllocatorHeader* header = ptr - ArenaAllocatorHeader::size;
 	// Reclaim memory if it's the last element.
 	if (ptr + header.size == &self.data[self.used])
 	{
-		self.used -= header.size + ArenaAllocatorHeader.sizeof;
+		self.used -= header.size + ArenaAllocatorHeader::size;
 	}
 }
 
@@ -92,12 +92,12 @@ fn void*? ArenaAllocator.acquire(&self, sz size, AllocInitType init_type, sz ali
 	sz total_len = self.data.len;
 	if (size > total_len) return mem::INVALID_ALLOC_SIZE~;
 	void* start_mem = self.data.ptr;
-	void* unaligned_pointer_to_offset = start_mem + self.used + ArenaAllocatorHeader.sizeof;
+	void* unaligned_pointer_to_offset = start_mem + self.used + ArenaAllocatorHeader::size;
 	void* mem = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
 	sz end = (sz)(mem - self.data.ptr) + size;
 	if (end > total_len) return mem::OUT_OF_MEMORY~;
 	self.used = end;
-	ArenaAllocatorHeader* header = mem - ArenaAllocatorHeader.sizeof;
+	ArenaAllocatorHeader* header = mem - ArenaAllocatorHeader::size;
 	header.size = size;
 	if (init_type == ZERO) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
@@ -118,7 +118,7 @@ fn void*? ArenaAllocator.resize(&self, void *old_pointer, sz size, sz alignment)
 	assert(old_pointer >= self.data.ptr, "Pointer originates from a different allocator.");
 	sz total_len = self.data.len;
 	if (size > total_len) return mem::INVALID_ALLOC_SIZE~;
-	ArenaAllocatorHeader* header = old_pointer - ArenaAllocatorHeader.sizeof;
+	ArenaAllocatorHeader* header = old_pointer - ArenaAllocatorHeader::size;
 	sz old_size = header.size;
 	// Do last allocation and alignment match?
 	if (&self.data[self.used] == old_pointer + old_size && mem::ptr_is_aligned(old_pointer, alignment))

@@ -19,11 +19,11 @@ enum Priority
 }
 
 // Enum with associated value
-enum State : int (String description)
+enum State : int
 {
-    WAITING { "waiting" },
-    RUNNING  { "running" },
-    TERMINATED { "ended" }
+    WAITING,
+    RUNNING,
+    TERMINATED
 }
 
 // Basic structures

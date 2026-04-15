@@ -9,7 +9,7 @@ import std::collections;
 
 fn void assert_finalization()
 {
-	static char[RipeMd{160}.sizeof] empty = {};
+	static char[RipeMd{160}::size] empty = {};
 	RipeMd{160} ctx @noinit;
 
 	ctx.init();

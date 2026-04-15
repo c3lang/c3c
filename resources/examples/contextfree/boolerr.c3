@@ -85,7 +85,7 @@ fn void main()
             bool? has_title = read_whether_title_non_empty(url);
             // This looks a bit less than elegant, but as you see it's mostly due to having to
             // use printf here.
-            io::fprintf(out, "  Has title: %s vs %s\n", bool_to_string(has_title) ?? (@catch(has_title)).nameof, has_title ?? false)!!;
+            io::fprintf(out, "  Has title: %s vs %s\n", bool_to_string(has_title) ?? (@catch(has_title)).description, has_title ?? false)!!;
         };
         dynamic_arena.reset();
     }

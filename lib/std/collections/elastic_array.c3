@@ -10,8 +10,8 @@ import std::io, std::math, std::collections::list_common;
 alias ElementPredicate = fn bool(Type *type);
 alias ElementTest = fn bool(Type *type, any context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
-const ELEMENT_IS_POINTER = Type.kindof == POINTER;
-macro bool type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
+const ELEMENT_IS_POINTER = Type::kind == POINTER;
+macro bool type_is_overaligned() => Type::alignment > mem::DEFAULT_MEM_ALIGNMENT;
 
 struct ElasticArray (Printable)
 {
@@ -266,7 +266,7 @@ fn bool ElasticArray.is_empty(&self) @inline
 
 fn sz ElasticArray.byte_size(&self) @inline
 {
-	return Type.sizeof * self.size;
+	return Type::size * self.size;
 }
 
 fn sz ElasticArray.len(&self) @operator(len) @inline

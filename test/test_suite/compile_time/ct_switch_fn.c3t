@@ -10,7 +10,7 @@ macro @test(#foo)
 	$case Foo:
 	io::printn("Hello");
 	$default:
-	io::printn($typeof(#foo).nameof);
+	io::printn($typeof(#foo)::name);
 	$endswitch
 }
 fn void tester() {}

@@ -60,7 +60,7 @@ fn CInt __atomic_compare_exchange(CInt size, any ptr, any expected, any desired,
 			int de = *(int*)desired;
 			if (ex == @__atomic_compare_exchange_ordering_success(pt, ex, de, (AtomicOrderingRT)success, (AtomicOrderingRT)failure, 4)) return 1;
 		case 8:
-			$if iptr.sizeof >= 8:
+			$if iptr::size >= 8:
 				long* pt = (long*)ptr;
 				long ex = *(long*)expected;
 				long de = *(long*)desired;

@@ -2,7 +2,7 @@
 fn void test()
 {
 	typeid x;
-	$typefrom(2 > 1 ? int.typeid : double.typeid) xf;
+	$typefrom(2 > 1 ? int::typeid : double::typeid) xf;
 	$typefrom(x) a; // #error: Expected a constant
 }
 

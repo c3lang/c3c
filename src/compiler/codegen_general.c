@@ -173,6 +173,7 @@ bool type_is_homogenous_aggregate(LoweredType *type, Type **base, unsigned *elem
 	switch (type->type_kind)
 	{
 		case LOWERED_TYPES:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE
 		case TYPE_VECTOR:
 			// Converted in ABI

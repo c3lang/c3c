@@ -122,22 +122,22 @@ fn void bsearch() @test
 {
 	CInt[] int_ar = { 0, 1, 2, 3, 4, 5, 6 };
 	CInt key = 0;
-	CInt* found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
+	CInt* found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt::size, &compare_cint);
 	assert(*found == 0);
 	key = 1;
-	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt::size, &compare_cint);
 	assert(*found == 1);
 	key = 2;
-	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt::size, &compare_cint);
 	assert(*found == 2);
 	key = 5;
-	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt::size, &compare_cint);
 	assert(*found == 5);
 	key = 6;
-	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt::size, &compare_cint);
 	assert(*found == 6);
 	CInt non_existent_key = 12;
-	found = (CInt*) libc::bsearch(&non_existent_key, int_ar, 7, CInt.sizeof, &compare_cint);
+	found = (CInt*) libc::bsearch(&non_existent_key, int_ar, 7, CInt::size, &compare_cint);
 	assert(found == null);
 
 	Event[] events = {
@@ -151,17 +151,17 @@ fn void bsearch() @test
 		{ 31, 12, "End of the year" }
 	};
 	Event searching = { .day = 1, .month = 5 };
-	Event* found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_event);
+	Event* found1 = (Event*) libc::bsearch(&searching, events, 7, Event::size, &compare_event);
 	assert(found1.desc == "Begin of May");
 	searching = { .day = 4, .month = 4 };
-	found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_event);
+	found1 = (Event*) libc::bsearch(&searching, events, 7, Event::size, &compare_event);
 	assert(found1 == null);
 }
 
 fn void calloc() @test
 {
 	sz amount = 10;
-	CInt* int_ar = libc::calloc((usz)amount, CInt.sizeof);
+	CInt* int_ar = libc::calloc((usz)amount, CInt::size);
 	for (sz i = 0; i < amount; i++)
 	{
 		assert(int_ar[i] == 0);
@@ -321,7 +321,7 @@ fn void fseek_ftell_fgetpos_fsetpos_rewind() @test
 
 fn void malloc_free() @test
 {
-	CInt* ar = libc::malloc(3 * CInt.sizeof);
+	CInt* ar = libc::malloc(3 * CInt::size);
 	ar[0] = 10;
 	ar[1] = -10;
 	ar[2] = 4;

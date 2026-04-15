@@ -1,20 +1,20 @@
 fn void main()
 {
     int a;
-    $cnameof(a); // #error: 'a' does not have an external name.
+    $reflect(a).cname(a); // #error: There is no property 'cname' available for the reflected expression
 }
 fn void main2()
 {
     int a;
-    $cnameof($eval("a")); // #error: 'a' does not have an external name.
+    $reflect($eval("a")).cname; // #error: There is no property 'cname' available for the reflected expression
 }
 
 fn void main3()
 {
-    $typefrom("int").cnameof; // #error: 'int' does not have a property or method 'cnameof'
+    $typefrom("int")::cname; // #error: 'cname' is not a valid property for 'int'
 }
 
 fn void main4()
 {
-    $typefrom("foo::int").cnameof; // #error: Unexpected path in
+    $typefrom("foo::int")::cname; // #error: Unexpected path in
 }

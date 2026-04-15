@@ -100,7 +100,7 @@ fn void blake2b__empties_keyed()
 
 fn void assert_finalization_b()
 {
-	static char[Blake2b.sizeof] empty = {};
+	static char[Blake2b::size] empty = {};
 	char[20] result @noinit;
 	Blake2b ctx @noinit;
 	ctx.init(20);
@@ -113,7 +113,7 @@ fn void assert_finalization_b()
 
 fn void assert_finalization_s()
 {
-	static char[Blake2s.sizeof] empty = {};
+	static char[Blake2s::size] empty = {};
 	char[20] result @noinit;
 	Blake2s ctx @noinit;
 	ctx.init(20);

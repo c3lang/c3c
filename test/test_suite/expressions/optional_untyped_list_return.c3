@@ -1,4 +1,4 @@
-fn $typeof({})? foo() {} // #error: A function may not return an optional with a compile time type, only macros may do
+fn $typeof({}) foo() {} // #error: A function may not return an untyped list, only macros may do so
 
 fn int main()
 {

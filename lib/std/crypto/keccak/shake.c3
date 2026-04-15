@@ -79,7 +79,7 @@ struct Shake <SECURITY_LEVEL> @mustinit
 *>
 fn void Shake.init(&self, char rounds_override = DEFAULT_ROUNDS, char delimiter = DEFAULT_DELIMITER)
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.k.init(rounds_override, delimiter);
 }
 

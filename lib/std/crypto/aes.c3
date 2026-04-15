@@ -643,7 +643,7 @@ fn void sub_word_ct(char[4]* word) @private
 
 fn void transpose4(char[64]* in, ulong[8]* q) @private @inline
 {
-	mem::set(q, 0, 8 * ulong.sizeof);
+	mem::set(q, 0, 8 * ulong::size);
 	for (int i = 0; i < 64; i++)
 	{
 		char v = (*in)[i];

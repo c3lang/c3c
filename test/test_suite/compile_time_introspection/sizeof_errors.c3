@@ -3,48 +3,48 @@ import bar;
 
 fn void a()
 {
-    int x = Bazy.sizeof; // #error: 'Bazy' could not be found, did you spell it right
+    int x = Bazy::size; // #error: 'Bazy' could not be found, did you spell it right
 }
 
 fn void b()
 {
-    int x = $typefrom("Bazz").sizeof; // #error: 'Bazz' could not be found, did you spell it rig
+    int x = $typefrom("Bazz")::size; // #error: 'Bazz' could not be found, did you spell it rig
 }
 
 
 fn void e()
 {
-    int x = bar::Baze.sizeof; // #error: 'bar::Baze' could not be found, did you spell it right
+    int x = bar::Baze::size; // #error: 'bar::Baze' could not be found, did you spell it right
 }
 
 fn void f()
 {
-    int x = $typefrom("bar::Bazy").sizeof; // #error: 'bar::Bazy' could not be found
+    int x = $typefrom("bar::Bazy")::size; // #error: 'bar::Bazy' could not be found
 }
 
 fn void g()
 {
-    int x = $typefrom("bar::").sizeof; // #error: could not be resolved to a valid symbol
+    int x = $typefrom("bar::")::size; // #error: could not be resolved to a valid symbol
 }
 
 fn void k()
 {
-    int v = $typefrom("int").x.sizeof; // #error: 'x'.
+    int v = $typefrom("int").x.size; // #error: 'x'.
 }
 
 fn void l()
 {
-    int v = $sizeof(int[].len); // #error: 'len'
+    int v = $reflect(int[]::len).size; // #error: 'len'
 }
 
 fn void m()
 {
-    int v = $sizeof(int[4].len);
+    int v = @sizeof(int[4]::len);
 }
 
 fn void n()
 {
-    int v = Baz.x1.sizeof; // #error: No method or inner struct/union 'Baz.x1' found.
+    int v = Baz.x1.size; // #error: No method or inner struct/union 'Baz.x1' found.
 }
 
 

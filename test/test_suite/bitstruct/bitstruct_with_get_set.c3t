@@ -11,7 +11,7 @@ fn sz? Foo.to_format(&self, Formatter *f) @dynamic => io::struct_to_format(*self
 fn int main()
 {
 	Foo d = { 1, 11 };
-	Foo.membersof[0].set(d, 3);
+	Foo::members[0].set(d, 3);
 	return 0;
 }
 

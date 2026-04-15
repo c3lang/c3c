@@ -3,7 +3,7 @@ module std::hash::murmur3;
 <*
  @param [in] data : "The data to hash"
  @param seed : "The seed to use for hashing"
- @require (data.len / 4) <= int.max : "Too much data"
+ @require (data.len / 4) <= int::max : "Too much data"
 *>
 fn uint hash32(char[] data, uint seed)
 {
@@ -49,7 +49,7 @@ fn uint hash32(char[] data, uint seed)
 <*
  @param [in] data : "The data to hash"
  @param seed : "The seed to use for hashing"
- @require (data.len / 16) <= int.max : "Too much data"
+ @require (data.len / 16) <= int::max : "Too much data"
 
 *>
 fn uint128 hash128_64(char[] data, uint seed)
@@ -124,7 +124,7 @@ fn uint128 hash128_64(char[] data, uint seed)
 <*
  @param [in] data : "The data to hash"
  @param seed : "The seed to use for hashing"
- @require data.len <= int.max : "Too much data"
+ @require data.len <= int::max : "Too much data"
 *>
 fn uint128 hash128_32(char[] data, uint seed)
 {

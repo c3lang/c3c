@@ -6,8 +6,8 @@ typedef Duration = long;
 typedef Clock = ulong;
 typedef NanoDuration (Printable) = long;
 
-const Time FAR_FUTURE = (Time)long.max;
-const Time FAR_PAST = (Time)long.min;
+const Time FAR_FUTURE = (Time)long::max;
+const Time FAR_PAST = (Time)long::min;
 
 const NanoDuration NANO_DURATION_ZERO = (NanoDuration)0;
 const Duration US            = (Duration)1;
@@ -19,7 +19,7 @@ const Duration DAY           = (Duration)24 * HOUR;
 const Duration WEEK          = (Duration)7 * DAY;
 const Duration MONTH         = (Duration)30 * DAY;
 const Duration YEAR          = (Duration)36525 * DAY / 100;
-const Duration FOREVER       = (Duration)long.max;
+const Duration FOREVER       = (Duration)long::max;
 const Duration DURATION_ZERO = (Duration)0;
 
 fn Duration us(long l) @inline => l * US;

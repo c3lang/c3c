@@ -6,7 +6,7 @@ typedef Foo2 @constinit = Foo;
 fn void main()
 {
     Foo2? y, z;
-	y = Foo.methodsof;
+	y = Foo::methods;
 }
 
 /* #expect: test.ll
