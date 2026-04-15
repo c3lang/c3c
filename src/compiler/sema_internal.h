@@ -252,11 +252,11 @@ static inline IndexDiff range_const_len(Range *range)
 		case RANGE_SINGLE_ELEMENT:
 			UNREACHABLE;
 		case RANGE_CONST_LEN:
-			return range->const_end;
+			return (IndexDiff)range->const_end;
 		case RANGE_CONST_END:
 			return -1;
 		case RANGE_CONST_RANGE:
-			return range->len_index;
+			return (IndexDiff)range->len_index;
 		case RANGE_DYNAMIC:
 			break;
 	}
