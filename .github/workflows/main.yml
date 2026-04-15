@@ -629,6 +629,7 @@ jobs:
       contents: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_NAME: ""
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
