@@ -1076,7 +1076,9 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 		if (!is_const || is_left)
 		{
 			SCOPE_START(left->loc);
+			{
 				success = sema_analyse_maybe_dead_expr(context, left, !is_left, infer_type);
+			}
 			SCOPE_END;
 			if (!success) return expr_poison(expr);
 		}
@@ -1125,7 +1127,9 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 	if (!is_const || is_right)
 	{
 		SCOPE_START(right->loc);
+		{
 		success = sema_analyse_maybe_dead_expr(context, right, !is_right, infer_type);
+		}
 		SCOPE_END;
 		if (!success) return expr_poison(expr);
 	}
@@ -1767,9 +1771,11 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 		}
 		bool success;
 		SCOPE_START(arg->loc)
+		{
 			new_context->original_module = context->original_module;
 			success = sema_analyse_parameter(new_context, arg, param, callee->definition, optional, no_match_ref,
 											 callee->macro, false);
+		}
 		SCOPE_END;
 		context_switch_stat_pop(new_context, switch_state);
 		sema_context_destroy(&default_context);
@@ -3454,6 +3460,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	call->body_expansion_expr.declarations = macro_context->yield_params;
 	AstId last_defer = context->active_scope.defer_last;
 	SCOPE_START(call->loc);
+	{
 		unsigned ct_context = sema_context_push_ct_stack(context);
 		if (macro_defer)
 		{
@@ -3492,6 +3499,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 			context->active_scope.defer_last = last_defer;
 		}
 		sema_context_pop_ct_stack(context, ct_context);
+	}
 	SCOPE_END;
 
 	return true;
@@ -8723,7 +8731,9 @@ static inline bool sema_rewrite_expr_as_macro_block(SemaContext *context, Expr *
 	Ast *compound_stmt = ast_new(AST_COMPOUND_STMT, expr->loc);
 	compound_stmt->compound_stmt.first_stmt = start;
 	SCOPE_START_WITH_FLAGS(SCOPE_MACRO, compound_stmt->loc)
+	{
 		success = sema_analyse_stmt_chain(context, compound_stmt);
+	}
 	SCOPE_END;
 	context->expected_block_type = old_expected_block;
 	context->block_exit_ref = old_exit_ref;

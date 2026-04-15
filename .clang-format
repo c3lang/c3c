@@ -1,11 +1,17 @@
+Language: C
+
 IndentWidth: 4
-UseCRLF: false
-IndentCaseLabels: true
-UseTab: ForIndentation
 TabWidth: 4
+UseTab: ForIndentation
+IndentCaseLabels: true
+ColumnLimit: 0
 BreakBeforeBraces: Allman
 AllowShortBlocksOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortFunctionsOnASingleLine: InlineOnly
+PointerAlignment: Right
+DerivePointerAlignment: false
+UseCRLF: false
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
 SpaceBeforeParens: ControlStatementsExceptControlMacros
@@ -13,3 +19,22 @@ SpacesInCStyleCastParentheses: false
 SpacesInConditionalStatement: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
+SpacesInContainerLiterals: true
+SortIncludes: Never
+
+ForEachMacros:
+  - SCOPE_START
+  - SCOPE_START_WITH_FLAGS
+  - SCOPE_START_WITH_LABEL
+  - SCOPE_OUTER_START
+
+StatementMacros:
+  - ASSIGN_DECL_OR_RET
+  - ASSIGN_DECL_OR_NULL
+  - ASSIGN_DECL_OR_STOP
+
+TypenameMacros:
+  - ASSIGN_EXPR_OR_RET
+  - ASSIGN_DECL_OR_RET
+  - ASSIGN_DECL_OR_NULL
+  - ASSIGN_DECL_OR_STOP
