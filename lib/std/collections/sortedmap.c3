@@ -34,7 +34,7 @@ struct SkipNode
 	Key key;
 	Value value;
 	int level;
-	SkipNode*[MAX_LEVEL] forward;
+	SkipNode*[] forward;
 }
 
 // CmpFn is a comparator: returns true if a should come before b in the list.
@@ -77,13 +77,6 @@ struct SortedMapRangeIterator
 	sz count;
 }
 
-fn int sortedmap_random_level(SimpleRandom* rng) @private
-{
-	int level = 1;
-	while (level < MAX_LEVEL && (rng.next_int() & 1) == 0) level++;
-	return level;
-}
-
 // Returns true if 'a' should come before 'b' in the list.
 macro bool sortedmap_cmp(custom_cmp, a, b) @private
 {
@@ -97,7 +90,9 @@ macro bool sortedmap_cmp(custom_cmp, a, b) @private
 fn SortedMap* SortedMap.init(&self, Allocator allocator)
 {
 	*self = { .allocator = allocator };
-	self.head = alloc::new(allocator, SkipNode);
+	// Single allocation for head + forward slice, calloc for zeroing of slice pointers
+	self.head = alloc::calloc(allocator, SkipNode.sizeof + MAX_LEVEL * SkipNode*.sizeof);
+	self.head.forward = ((SkipNode**)(self.head + 1))[:MAX_LEVEL];	
 	random::seed_entropy(&self.rng);
 	return self;
 }
@@ -133,6 +128,14 @@ fn SortedMap* SortedMap.tinit_with_cmp(&self, CmpFn cmp_fn)
 fn bool SortedMap.is_initialized(&self)
 {
 	return self.allocator && self.allocator.ptr != &dummy;
+}
+
+fn int SortedMap.random_level(&self) 
+{
+	int level = 1;
+	int limit_level = min(MAX_LEVEL, self.current_level + 2);
+	while (level < limit_level && (self.rng.next_int() & 1) == 0) level++;
+	return level;
 }
 
 <*
@@ -172,15 +175,16 @@ fn bool SortedMap.set(&self, Key key, Value value) @operator([]=)
 	}
 
 	// Insert new node
-	int new_level = sortedmap_random_level(&self.rng);
+	int new_level = self.random_level();
 	if (new_level > self.current_level)
 	{
 		for (int i = self.current_level; i < new_level; i++) update[i] = self.head;
 		self.current_level = new_level;
 	}
 
-	SkipNode* node = alloc::alloc(self.allocator, SkipNode);
-	*node = { .key = key, .value = value, .level = new_level };
+	// Single allocation for node + forward slice
+	SkipNode* node = alloc::malloc(self.allocator, SkipNode.sizeof + new_level * SkipNode*.sizeof);
+	*node = { .key = key, .value = value, .level = new_level, .forward = ((SkipNode**)(node + 1))[:new_level]};
 
 	for (int i = 0; i < new_level; i++)
 	{
@@ -440,7 +444,7 @@ fn void SortedMap.clear(&self)
 		alloc::free(self.allocator, node);
 		node = next;
 	}
-	*self.head = {};
+	self.head.forward[..self.current_level] = null;
 	self.count = 0;
 	self.current_level = 0;
 }
