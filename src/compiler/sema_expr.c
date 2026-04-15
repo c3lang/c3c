@@ -5,7 +5,7 @@
 #include "sema_internal.h"
 #include <math.h>
 
-#include "compiler_tests/benchmark.h"
+
 
 #define RETURN_SEMA_FUNC_ERROR(_decl, _node, ...) do { sema_error_at(context, (_node)->loc, __VA_ARGS__); SEMA_NOTE(_decl, "The definition was here."); return false; } while (0)
 #define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0)
@@ -2213,7 +2213,7 @@ SPLAT_NORMAL:;
 				return false;
 			}
 			if (last_index == -1) last_index = i - 1;
-			for (int j = last_index + 1; j < index; j++)
+			for (int j = (int)last_index + 1; j < index; j++)
 			{
 				if (j == vaarg_index) continue;
 				if (!sema_set_default_argument(context, callee, call,
@@ -2408,7 +2408,7 @@ SPLAT_NORMAL:;
 									   callee->name, needed);
 			}
 			if (!last) last = args[0];
-			int more_needed = (ArrayIndex)func_param_count - i;
+			int more_needed = (int)((ArrayIndex)func_param_count - i);
 			if (missing != more_needed)
 			{
 				RETURN_SEMA_FUNC_ERROR(callee->definition, last,
@@ -7085,7 +7085,7 @@ SLICE_COPY:;
 	}
 	else
 	{
-		right_len = sema_len_from_const(right);
+		right_len = (IndexDiff)sema_len_from_const(right);
 	}
 	if (left_len >= 0 && right_len >= 0 && left_len != right_len)
 	{
@@ -8776,7 +8776,7 @@ static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr
 		Ast *ast_if = ast_new(AST_IF_STMT, default_loc);
 		Expr *expr_comparison = expr_new_binary(default_loc, expr_variable(len_var_left), len_right, BINARYOP_NE);
 		Ast *ast_then = ast_new(AST_RETURN_STMT, default_loc);
-		ast_then->return_stmt.expr = expr_new_const_bool(default_loc, type_bool, false);
+		ast_then->return_stmt.expr = expr_new_const_bool((int)default_loc, type_bool, false);
 		ast_if->if_stmt = (AstIfStmt) {
 			.cond = exprid(expr_new_cond(expr_comparison)),
 			.then_body = astid(ast_then),
@@ -8813,7 +8813,7 @@ static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr
 
 	Expr *expr_comparison = expr_new_binary(default_loc, left_check, right_check, BINARYOP_NE);
 	Ast *ast_then = ast_new(AST_RETURN_STMT, default_loc);
-	ast_then->return_stmt.expr = expr_new_const_bool(default_loc, type_bool, false);
+	ast_then->return_stmt.expr = expr_new_const_bool((int)default_loc, type_bool, false);
 	Ast *ast_if = ast_new(AST_IF_STMT, default_loc);
 	ast_if->if_stmt = (AstIfStmt) {
 		.cond = exprid(expr_new_cond(expr_comparison)),
@@ -8824,7 +8824,7 @@ static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr
 	current->next = astid(ast);
 	current = ast;
 	Ast *ast_after = ast_new(AST_RETURN_STMT, default_loc);
-	ast_after->return_stmt.expr = expr_new_const_bool(default_loc, type_bool, true);
+	ast_after->return_stmt.expr = expr_new_const_bool((int)default_loc, type_bool, true);
 	current->next = astid(ast_after);
 
 	return sema_rewrite_expr_as_macro_block(context, expr, dummy.next);
@@ -9499,11 +9499,11 @@ INLINE void sema_expr_inc_dec_const_enum(bool dec, Expr *value)
 			int next_val;
 			if (dec)
 			{
-				next_val = (i + count - 1) % count;
+				next_val = (int)((i + count - 1) % count);
 			}
 			else
 			{
-				next_val = (i + 1) % count;
+				next_val = (int)((i + 1) % count);
 			}
 			value->const_expr.enum_val = values[next_val];
 			return;
