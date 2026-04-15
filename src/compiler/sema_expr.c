@@ -2837,7 +2837,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 		if (common_type == rtype || (type_is_void(common_type) && rtype == type_wildcard)) continue;
 
 		// 4. Find the max of the old and new.
-		Type *max = type_find_max_type(common_type, rtype, NULL, NULL);
+		Type *max = type_find_max_type(common_type, rtype, NULL, NULL); // NOLINT(readability-suspicious-call-argument)
 
 		// 5. No match -> error.
 		if (!max)
@@ -7805,7 +7805,7 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		if (type_is_pointer_like(right_type))
 		{
 			*operator_overload_ref = OVERLOAD_NONE; // NOLINT
-			return sema_expr_analyse_ptr_add(context, parent, right, left, right_type, left_type, cast_to_iptr, failed_ref);
+			return sema_expr_analyse_ptr_add(context, parent, right, left, right_type, left_type, cast_to_iptr, failed_ref); // NOLINT(readability-suspicious-call-argument)
 		}
 	}
 
@@ -9695,10 +9695,12 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	Type *type = type_flatten(inner->type);
 
 	if (type->type_kind)
-	// 5. We can only inc/dec numbers or pointers.
-	if (type->type_kind != TYPE_ENUM && !type_underlying_may_add_sub(type) && !type_kind_is_real_vector(type->type_kind))
 	{
-		RETURN_SEMA_ERROR(inner, "The expression must be a vector, enum, number or a pointer.");
+		// 5. We can only inc/dec numbers or pointers.
+		if (type->type_kind != TYPE_ENUM && !type_underlying_may_add_sub(type) && !type_kind_is_real_vector(type->type_kind))
+		{
+			RETURN_SEMA_ERROR(inner, "The expression must be a vector, enum, number or a pointer.");
+		}
 	}
 
 	if (inner->expr_kind == EXPR_SUBSCRIPT_ASSIGN)
