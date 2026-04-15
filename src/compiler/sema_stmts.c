@@ -569,7 +569,7 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 				goto END;
 			}
 		}
-END:
+END:;
 	}
 	SCOPE_END;
 	context->return_expr = return_expr_old;
