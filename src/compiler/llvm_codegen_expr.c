@@ -3803,7 +3803,7 @@ void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEVa
 	LLVMValueRef phi = LLVMBuildPhi(c->builder, c->typeid_type, "");
 	BEValue cond;
 	llvm_emit_int_comp_raw(c, &cond, canonical_typeid, canonical_typeid, switch_val, phi, BINARYOP_EQ);
-	llvm_emit_cond_br(c, &cond, result_block, parent_type_block);
+	llvm_emit_cond_br(c, &cond, result_block, parent_type_block); // NOLINT(readability-suspicious-call-argument)
 	llvm_emit_block(c, parent_type_block);
 	LLVMValueRef introspect_ptr = LLVMBuildIntToPtr(c->builder, phi, c->ptr_type, "");
 	AlignSize alignment;
@@ -4192,7 +4192,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			{
 				Type *element_type = lhs_type->array.base->pointer;
 				unsigned len = LLVMGetVectorSize(LLVMTypeOf(lhs_value));
-				LLVMTypeRef int_vec_type = llvm_get_type(c, type_get_vector_from_vector(type_sz, lhs_type));
+				LLVMTypeRef int_vec_type = llvm_get_type(c, type_get_vector_from_vector(type_sz, lhs_type)); // NOLINT(readability-suspicious-call-argument)
 				if (lhs_type == rhs_type)
 				{
 					val = LLVMBuildSub(c->builder, LLVMBuildPtrToInt(c->builder, lhs_value, int_vec_type, ""),
@@ -6462,13 +6462,13 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 			{
 				case DESIGNATOR_ARRAY:
 				{
-					vec_value = llvm_update_vector(c, vec_value, value_ref, element->index);
+					vec_value = llvm_update_vector(c, vec_value, value_ref, element->index); // NOLINT(readability-suspicious-call-argument)
 					break;
 				}
 				case DESIGNATOR_RANGE:
 					for (ArrayIndex idx = element->index; idx <= element->index_end; idx++)
 					{
-						vec_value = llvm_update_vector(c, vec_value, value_ref, idx);
+						vec_value = llvm_update_vector(c, vec_value, value_ref, idx); // NOLINT(readability-suspicious-call-argument)
 					}
 					break;
 				case DESIGNATOR_FIELD:
