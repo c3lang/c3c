@@ -8,11 +8,8 @@
 
 bool use_ansi(void);
 
-const char** get_project_dependency_directories()
-{
-	const char *filename;
-	JSONObject *json = project_json_load(&filename);
-
+const char** get_project_dependency_directories(JSONObject *json, const char *filename)
+{	
 	const char *target = NULL;
 	const char **deps_dirs = NULL;
 	BuildParseContext context = { filename, target };
@@ -38,14 +35,14 @@ static void print_vec(const char *header, const char **vec, bool opt, const char
 	PRINTFN("");
 }
 
-const char** get_project_dependencies()
+const char** get_project_dependencies(JSONObject *project_json)
 {
-	const char *filename;
 	const char** dependencies = NULL;
 
-	JSONObject *project_json = project_json_load(&filename);
 	JSONObject *dependencies_json = json_map_get(project_json, "dependencies");
-
+	
+	if (!dependencies_json) return dependencies;
+	
 	FOREACH(JSONObject *, element, dependencies_json->elements)
 	{
 		vec_add(dependencies, element->str);
@@ -268,9 +265,6 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_BOOL("Merge functions", "merge-functions");
 }
 
-
-
-
 void fetch_project(BuildOptions* options)
 {
 	if (!download_available())
@@ -278,25 +272,21 @@ void fetch_project(BuildOptions* options)
 		error_exit("The 'project fetch' command requires libcurl to download dependencies.\n"
 				   "Please ensure libcurl is installed on your system.");
 	}
-	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON))
-	{
-		error_exit("Failed: no project file found.");
-	}
+	
+	const char *filename;
+	JSONObject *project_json = project_json_load(&filename);	
+
+	const char **libdirs = get_project_dependency_directories(project_json, filename);
+	const char **deps = get_project_dependencies(project_json);
 
 	if (str_eq(options->path, DEFAULT_PATH))
 	{
 		{
-			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = vec_size(deps_dirs);
-			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
+			int num_lib = vec_size(libdirs);
+			if (num_lib > 0) options->vendor_download_path = libdirs[0];
 		}
-	}
-
-	const char **libdirs = get_project_dependency_directories();
-	const char **deps = get_project_dependencies();
-	const char *filename;
-	JSONObject *project_json = project_json_load(&filename);
-
+	}	
+	
 	JSONObject *targets_json = json_map_get(project_json, "targets");
 
 	if (targets_json && targets_json->type == J_OBJECT)
@@ -318,47 +308,30 @@ void fetch_project(BuildOptions* options)
 			}
 		}
 	}
-
-	// dependency check tree
-	while (vec_size(deps) > 0)
-	{
-		FOREACH(const char*, dir, libdirs)
-		{
-			const char *dep = VECLAST(deps);
-			if (file_exists(file_append_path(dir, str_printf("%s.c3l", dep))))
-			{
-				vec_pop(deps);
-				break;
-			}
-
-			printf("Fetching missing library '%s'...\n", dep);
-			fflush(stdout);
-
-			const char *error = vendor_fetch_single(dep, options->vendor_download_path, use_ansi());
-
-			if (error)
-			{
-				printf("Failed: '%s'\n", error);
-			}
-
-			vec_pop(deps);
-			break;
-		}
-	}
+	
+	options->libraries_to_fetch = deps;
+	vendor_fetch(options);
 }
 
 
 
-void add_libraries_to_project_file(const char** libs, const char* target_name) {
+void add_libraries_to_project_file(const char** libs, const char* target_name, JSONObject *project_json, const char *filename) {
 
-	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return;
+	if (!libs || vec_size(libs) == 0) return;
 	//TODO! Target name option not implemented
-
-	const char *filename;
-	JSONObject *project_json = project_json_load(&filename);
 
 	// TODO! check if target is specified and exists (NULL at the moment)
 	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
+	if (!libraries_json)
+	{
+		libraries_json = json_new_object(J_ARRAY);
+		json_map_set(project_json, "dependencies", libraries_json);
+	}
+	
+	if (libraries_json->type != J_ARRAY)
+	{
+		error_exit("Project field 'dependencies' must be an array in '%s'.", filename);
+	}
 
 	const char** dependencies = NULL;
 	FOREACH(JSONObject *, element, libraries_json->elements)
@@ -387,6 +360,8 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 	if (!file) error_exit("Failed to open file '%s'", filename);
 	print_json_to_file(project_json, file);
 	fclose(file);
+	
+	printf("Project file '%s' updated...\n", filename);
 }
 
 void add_target_project(BuildOptions *build_options)
