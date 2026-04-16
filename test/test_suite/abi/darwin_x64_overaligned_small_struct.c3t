@@ -1,0 +1,35 @@
+// #target: macos-x64
+module test;
+struct Test
+{
+    int x @align(8);
+    int y @align(8);
+}
+
+fn Test test()
+{
+	return { int.max, int.min };
+}
+
+fn void main()
+{
+	Test a = test();
+}
+/* #expect: test.ll
+
+define { i64, i32 } @test.test() #0 {
+entry:
+  %literal = alloca %Test, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const, i32 16, i1 false)
+  %0 = load { i64, i32 }, ptr %literal, align 8
+  ret { i64, i32 } %0
+}
+
+entry:
+  %a = alloca %Test, align 8
+  %result = alloca %Test, align 8
+  %0 = call { i64, i32 } @test.test()
+  store { i64, i32 } %0, ptr %result, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %a, ptr align 8 %result, i32 16, i1 false)
+  ret void
+}

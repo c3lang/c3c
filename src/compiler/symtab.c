@@ -168,7 +168,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_LEN] = kw_len = KW_DEF("len");
 
 	type_property_list[TYPE_PROPERTY_ALIGNOF] = KW_DEF("alignof");
-	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
+	type_property_list[TYPE_PROPERTY_CNAMEOF] = KW_DEF("cnameof");
 	type_property_list[TYPE_PROPERTY_FROM_ORDINAL] = KW_DEF("from_ordinal");
 
 	type_property_list[TYPE_PROPERTY_GET] = KW_DEF("get");

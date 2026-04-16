@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ master, dev, ci_testing, experiments ]
+    branches: [ master, dev, ci_testing, experiments, '*.*.x' ]
     paths-ignore:
       - '**.md'
       - 'LICENSE'
@@ -383,19 +383,32 @@ jobs:
           cpu_count: 4
           memory: 6G
           run: |
-            # Install dependencies
+            # Install dependencies, select best mirror
             export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
-            export PKG_PATH="https://ftp.netbsd.org/pub/pkgsrc/packages/NetBSD/$(uname -m)/$(uname -r)/All/"
+            sudo mkdir -p /usr/pkg/etc/pkgin
+            MIRROR_PATH="pub/pkgsrc/packages/NetBSD/amd64/10.1/All"
+            WORKING_MIRRORS=""
+            echo "Testing mirrors..."
+            for m in "http://cdn.NetBSD.org/$MIRROR_PATH" "http://ftp.jaist.ac.jp/$MIRROR_PATH" "http://ftp.NetBSD.org/$MIRROR_PATH" "http://ftp.fr.NetBSD.org/$MIRROR_PATH" "https://mirror.planetunix.net/$MIRROR_PATH"; do
+              if curl -s -f -I -L --connect-timeout 5 --max-time 10 "$m/pkg_summary.bz2" > /dev/null; then
+                echo "OK: $m"
+                WORKING_MIRRORS="${WORKING_MIRRORS}${m}/\n"
+              fi
+            done
 
-            # Ensure pkgin is available and updated
-            sudo /usr/sbin/pkg_add -U pkgin || true
+            if [ -n "$WORKING_MIRRORS" ]; then
+              printf "$WORKING_MIRRORS" | sudo tee /usr/pkg/etc/pkgin/repositories.conf
+            else
+              echo "No mirrors responded, using main site as fallback."
+              echo "http://ftp.NetBSD.org/$MIRROR_PATH/" | sudo tee /usr/pkg/etc/pkgin/repositories.conf
+            fi
 
             for i in 1 2 3; do
               sudo pkgin -y update && \
               sudo pkgin -y install cmake gcc14 ninja-build bash \
-                'llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
-                'clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' \
-                'lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}' && break || sleep 5
+                "llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
+                "clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
+                "lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" && break || sleep 5
             done
 
             export CC=clang
@@ -611,11 +624,13 @@ jobs:
   release:
     runs-on: ubuntu-slim
     needs: [build-msvc, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd, build-android, build-linux-musl-static]
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || endsWith(github.ref, '.x')
     permissions:
       contents: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_NAME: ""
+      TAG_NAME: ""
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
@@ -640,13 +655,23 @@ jobs:
             done
           done
 
-      - run: gh release delete latest-prerelease-tag --cleanup-tag -y || true
-      - run: echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+      - name: Set Release Names
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            echo "TAG_NAME=latest-prerelease-tag" >> $GITHUB_ENV
+            echo "RELEASE_NAME=latest-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+          else
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+            echo "TAG_NAME=${BRANCH_NAME}-latest" >> $GITHUB_ENV
+            echo "RELEASE_NAME=${BRANCH_NAME}-latest" >> $GITHUB_ENV
+          fi
+
+      - run: gh release delete ${{ env.TAG_NAME }} --cleanup-tag -y || true
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: latest-prerelease-tag
+          tag: ${{ env.TAG_NAME }}
           name: ${{ env.RELEASE_NAME }}
           prerelease: true
           allowUpdates: true

@@ -68,6 +68,7 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_MEMBER_GET: return "member_get";
 		case EXPR_MEMBER_SET: return "member_set";
 		case EXPR_NAMED_ARGUMENT: return "named_argument";
+		case EXPR_NAMED_EVAL_ARGUMENT: return "named_eval_argument";
 		case EXPR_NOP: return "nop";
 		case EXPR_OPERATOR_CHARS: return "operator_chars";
 		case EXPR_OPTIONAL: return "optional";
@@ -269,6 +270,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_OPTIONAL:
@@ -488,6 +490,7 @@ RETRY:
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_CONTRACT:
 			UNREACHABLE
 	}
@@ -889,6 +892,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_HASH_IDENT:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_POST_UNARY:

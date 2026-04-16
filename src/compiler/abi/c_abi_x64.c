@@ -673,7 +673,12 @@ static ABIArgInfo *x64_get_argument_pair_return(AbiType low_type, AbiType high_t
 {
 	TypeSize low_size = abi_type_size(low_type);
 	unsigned hi_start = aligned_offset(low_size, abi_type_abi_alignment(high_type));
-	ASSERT(hi_start == 8 && "Expected aligned with C-style structs.");
+	ASSERT(hi_start != 0 && hi_start <= 8);
+	if (hi_start != 8)
+	{
+		low_type = abi_type_is_float(low_type) ? abi_type_get(type_double) : abi_type_get(type_long);
+	}
+
 	return abi_arg_new_direct_pair(low_type, high_type, param);
 }
 

@@ -74,7 +74,7 @@ typedef struct {
 "$eval"         { return(CT_EVAL); }
 "$evaltype"     { return(CT_EVALTYPE); }
 "$exec"         { return(CT_EXEC); }
-"$extnameof"    { return(CT_EXTNAMEOF); }
+"$cnameof"      { return(CT_CNAMEOF); }
 "$feature"      { return(CT_FEATURE); }
 "$for"          { return(CT_FOR); }
 "$foreach"      { return(CT_FOREACH); }

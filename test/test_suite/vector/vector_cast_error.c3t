@@ -1,0 +1,7 @@
+import std;
+
+fn void main()
+{
+	uptr[<3>] x;
+	void*[<3>] y = (void*[<3>])x;
+}

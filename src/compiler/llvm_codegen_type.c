@@ -230,12 +230,8 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 			retval = llvm_get_type(c, type_void);
 			break;
 		case ABI_ARG_DIRECT_PAIR:
-		{
-			LLVMTypeRef lo = llvm_abi_type(c, ret_arg_info->direct_pair.lo);
-			LLVMTypeRef hi = llvm_abi_type(c, ret_arg_info->direct_pair.hi);
-			retval = llvm_get_twostruct(c, lo, hi);
+			retval = llvm_get_coerce_type(c, ret_arg_info);
 			break;
-		}
 		case ABI_ARG_DIRECT:
 			retval = llvm_get_type(c, call_return_type);
 			break;

@@ -330,13 +330,11 @@ RETURN:
 	return op == BINARYOP_EQ ? is_eq : !is_eq;
 }
 
-bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to)
+bool expr_const_in_range(const ExprConst *left, const ExprConst *left_to, const ExprConst *right, const ExprConst *right_to)
 {
-	if (right == right_to)
-	{
-		return expr_const_compare(left, right, BINARYOP_EQ);
-	}
-	return expr_const_compare(left, right, BINARYOP_GE) && expr_const_compare(left, right_to, BINARYOP_LE);
+	if (right == right_to && left == left_to) return expr_const_compare(left, right, BINARYOP_EQ);
+	if (expr_const_compare(left, right_to, BINARYOP_GT) || expr_const_compare(left_to, right, BINARYOP_LT)) return false;
+	return true;
 }
 
 bool expr_const_float_fits_type(const ExprConst *expr_const, TypeKind kind)

@@ -325,6 +325,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_NAMED_ARGUMENT:
 			MACRO_COPY_EXPR(expr->named_argument_expr.value);
 			return expr;
+		case EXPR_NAMED_EVAL_ARGUMENT:
+			MACRO_COPY_EXPR(expr->eval_named_argument_expr.name);
+			MACRO_COPY_EXPR(expr->eval_named_argument_expr.value);
+			return expr;
 		case EXPR_EMBED:
 			MACRO_COPY_EXPR(expr->embed_expr.len);
 			MACRO_COPY_EXPR(expr->embed_expr.filename);

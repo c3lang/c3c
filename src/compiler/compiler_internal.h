@@ -1036,6 +1036,12 @@ typedef struct
 
 typedef struct
 {
+	Expr *name;
+	Expr *value;
+} ExprEvalNamedArgument;
+
+typedef struct
+{
 	Decl *type;
 	TypeProperty property;
 } ExprTypeCall;
@@ -1318,6 +1324,7 @@ struct Expr_
 		ExprDesignatedInit designated_init;         // 16
 		ExprDesignator designator_expr;             // 16
 		ExprNamedArgument named_argument_expr;
+		ExprEvalNamedArgument eval_named_argument_expr;
 		ExprEmbedExpr embed_expr;                   // 16
 		Expr **exec_expr;                           // 8
 		ExprAsmArg expr_asm_arg;                    // 24
@@ -2466,7 +2473,7 @@ bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op);
 
 Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index);
-bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
+bool expr_const_in_range(const ExprConst *left, const ExprConst *left_to, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 void expr_contract_array(ExprConst *expr_const, ConstKind contract_type);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
@@ -3719,6 +3726,11 @@ INLINE bool expr_is_deref(Expr *expr)
 	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_DEREF;
 }
 
+INLINE bool expr_is_named_param(Expr *expr)
+{
+	return expr->expr_kind == EXPR_NAMED_ARGUMENT || expr->expr_kind == EXPR_NAMED_EVAL_ARGUMENT;
+}
+
 INLINE bool expr_is_addr(Expr *expr)
 {
 	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_ADDR;
@@ -3837,6 +3849,10 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_NAMED_ARGUMENT:
 			expr->named_argument_expr.name_span = loc;
 			expr_set_loc(expr->named_argument_expr.value, loc);
+			return;
+		case EXPR_NAMED_EVAL_ARGUMENT:
+			expr_set_loc(expr->eval_named_argument_expr.name, loc);
+			expr_set_loc(expr->eval_named_argument_expr.value, loc);
 			return;
 		case EXPR_CONST:
 			switch (expr->const_expr.const_kind)

@@ -4,7 +4,6 @@
 #include <stdlib.h>
 
 
-
 ArchType hostinfo_arch_type(void)
 {
 	return target_host_arch();
@@ -85,12 +84,11 @@ const char * hostinfo_default_triple(void)
 {
     if (!triple_init)
 	{
-        sprintf(triple, "%s-unknown-unknown-%s",
+        snprintf(triple, 128, "%s-unknown-unknown-%s",
                 llvm_arch_name(hostinfo_arch_type()),
                 llvm_os_name(hostinfo_os_type()));
         triple_init = 1;
     }
-
     return triple;
 }
 

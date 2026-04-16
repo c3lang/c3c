@@ -1152,6 +1152,7 @@ typedef enum
 	EXPR_MEMBER_GET,
 	EXPR_MEMBER_SET,
 	EXPR_NAMED_ARGUMENT,
+	EXPR_NAMED_EVAL_ARGUMENT,
 	EXPR_NOP,
 	EXPR_OPERATOR_CHARS,
 	EXPR_OPTIONAL,
@@ -1615,6 +1616,7 @@ typedef enum
 	TOKEN_CT_ALIGNOF,           // $alignof
 	TOKEN_CT_ASSERT,            // $assert
 	TOKEN_CT_CASE,              // $case
+	TOKEN_CT_CNAMEOF,           // $cnameof
 	TOKEN_CT_DEFAULT,           // $default
 	TOKEN_CT_DEFINED,           // $defined
 	TOKEN_CT_ECHO,              // $echo
@@ -1627,7 +1629,6 @@ typedef enum
 	TOKEN_CT_EVAL,              // $eval
 	TOKEN_CT_ERROR,             // $error
 	TOKEN_CT_EXEC,              // $exec
-	TOKEN_CT_EXTNAMEOF,         // $extnameof
 	TOKEN_CT_FEATURE,           // $feature
 	TOKEN_CT_FOR,               // $for
 	TOKEN_CT_FOREACH,           // $foreach
@@ -1773,7 +1774,7 @@ typedef enum
 typedef enum
 {
 	TYPE_PROPERTY_ALIGNOF,
-	TYPE_PROPERTY_EXTNAMEOF,
+	TYPE_PROPERTY_CNAMEOF,
 	TYPE_PROPERTY_FROM_ORDINAL,
 	TYPE_PROPERTY_GET,
 	TYPE_PROPERTY_INF,

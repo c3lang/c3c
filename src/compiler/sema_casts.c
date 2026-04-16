@@ -760,14 +760,14 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 		{
 			RETURN_CAST_ERROR(expr,
 					   "Implicitly casting %s to %s is not permitted. It's possible to do an explicit cast by placing '(%s)' before the expression. However, explicit casts between distinct types are usually not intended and are not safe.",
-					   type_quoted_error_string_maybe_with_path(from, typeto),
+					   type_quoted_error_string_maybe_with_path(from, typeto), // NOLINT(readability-suspicious-call-argument)
 					   type_quoted_error_string_maybe_with_path(to, from),
 					   type_error_string_maybe_with_path(typeto, from));
 
 		}
 		RETURN_CAST_ERROR(expr,
 		           "Implicitly casting %s to %s is not permitted, but you may do an explicit cast by placing '(%s)' before the expression.",
-		           type_quoted_error_string_maybe_with_path(from, typeto),
+		           type_quoted_error_string_maybe_with_path(from, typeto), // NOLINT(readability-suspicious-call-argument)
 				   type_quoted_error_string_maybe_with_path(to, from),
 				   type_error_string_maybe_with_path(typeto, from));
 	}
@@ -1179,7 +1179,7 @@ static bool rule_slice_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 	{
 		if (expr_is_const_string(expr) || expr_is_const_bytes(expr))
 		{
-			if (cc->to->array.len > size) size = cc->to->array.len;
+			if ((ArrayIndex)cc->to->array.len > size) size = (ArrayIndex)cc->to->array.len;
 		}
 		cast_context_set_from(cc, type_get_array(base, size));
 	}
@@ -2086,6 +2086,7 @@ static void cast_vec_to_vec(Expr *expr, Type *to_type)
 				case TYPE_TYPEID:
 				case TYPE_ANYFAULT:
 					expr_rewrite_to_int_to_ptr(expr, to_type);
+					return;
 				default:
 					UNREACHABLE_VOID;
 			}

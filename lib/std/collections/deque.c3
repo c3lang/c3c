@@ -186,29 +186,24 @@ fn void Deque.shrink(&self)
 *>
 fn void Deque.normalize(&self)
 {
-	if (self.size < 1 || self.start < 1) return
+	if (self.size < 1 || self.start < 1) return;
+	// Simple case [ _, _, 1, 2, 3]
+	if (self.start + self.size <= self.capacity)
+	{
+		self.entries[:self.size] = self.entries[self.start:self.size];
+		self.start = 0;
+		return;
+	}
 	@pool()
 	{
-		Type[] tbuf = mem::temp_array(Type, self.size);
-
-		sz right = self.capacity - self.start;
-		sz back_idx = next_back_idx(self);
-
-		if (right < self.start)
-		{
-			tbuf[0:right] = self.entries[self.start:right];
-			tbuf[right:back_idx] = self.entries[0:back_idx];
-			self.entries[0:tbuf.len] = tbuf[..];
-			self.start = 0;
-		}
-		else
-		{
-			sz len = back_idx - self.start;
-			tbuf[..] = self.entries[self.start:len];
-			self.entries[0:tbuf.len] = tbuf[..];
-			self.start = 0;
-		}
+		Type[] tbuf = mem::temp_array(Type, self.start);
+		tbuf[..] = self.entries[0:self.start];
+		sz after_start = self.capacity - self.start;
+		self.entries[:after_start] = self.entries[self.start:after_start];
+		self.entries[after_start:self.start] = tbuf[..];
+		self.start = 0;
 	};
+
 }
 
 <*
@@ -250,6 +245,8 @@ fn bool Deque.is_empty(Deque* self) @inline
 *>
 fn void Deque.swap(&self, sz i, sz j)
 {
+	i = wrap_add(self.start, i, self.capacity);
+	j = wrap_add(self.start, j, self.capacity);
 	@swap(self.entries[i], self.entries[j]);
 }
 

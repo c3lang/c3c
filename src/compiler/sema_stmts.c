@@ -251,8 +251,10 @@ static inline bool sema_analyse_compound_stmt(SemaContext *context, Ast *stateme
 	bool success;
 	EndJump ends_with_jump;
 	SCOPE_START(statement->loc)
+	{
 		success = sema_analyse_compound_statement_no_scope(context, statement);
 		ends_with_jump = context->active_scope.end_jump;
+	}
 	SCOPE_END;
 	// If this ends with a jump, then we know we don't need to certain analysis.
 	context->active_scope.end_jump = ends_with_jump;
@@ -537,6 +539,7 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 	context->return_expr = ret_expr;
 	bool success = true;
 	SCOPE_START_WITH_FLAGS(SCOPE_ENSURE_MACRO, ret_expr->loc);
+	{
 		FOREACH(Expr *, directive, ensures)
 		{
 			Expr *checks = copy_expr_single(directive->contract_expr.decl_exprs);
@@ -566,7 +569,8 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 				goto END;
 			}
 		}
-END:
+END:;
+	}
 	SCOPE_END;
 	context->return_expr = return_expr_old;
 	return success;
@@ -761,7 +765,9 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		{
 			bool success;
 			SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->loc);
+			{
 				success = assert_create_from_contract(context, ensure, &append_id, statement->loc);
+			}
 			SCOPE_END;
 			if (!success) return false;
 		}
@@ -798,6 +804,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CT_EVAL:
 		case EXPR_CONTRACT:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 			UNREACHABLE
 		case EXPR_BINARY:
 		case EXPR_DISCARD:
@@ -1316,6 +1323,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement)
 	body->compound_stmt.parent_defer = astid(statement);
 	bool success = true;
 	SCOPE_START(statement->loc)
+	{
 
 	context->active_scope.defer_last = 0;
 	context->active_scope.defer_start = 0;
@@ -1334,6 +1342,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement)
 
 	// We should never need to replace any defers here.
 
+	}
 	SCOPE_END;
 
 	return success;
@@ -1403,6 +1412,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	}
 	// Enter for scope
 	SCOPE_OUTER_START(statement->loc)
+	{
 
 		if (statement->for_stmt.init)
 		{
@@ -1411,6 +1421,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 		// Conditional scope start
 		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label, statement->loc)
+		{
 
 			if (!do_loop)
 			{
@@ -1423,23 +1434,26 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 
 			PUSH_BREAKCONT(statement);
-				success = sema_analyse_statement(context, body);
-				statement->for_stmt.flow.no_exit = context->active_scope.end_jump.active;
+			success = sema_analyse_statement(context, body);
+			statement->for_stmt.flow.no_exit = context->active_scope.end_jump.active;
 			POP_BREAKCONT();
 
 			// End for body scope
 			context_pop_defers_and_replace_ast(context, body);
 
+		}
 		SCOPE_END;
 
 		if (statement->for_stmt.flow.skip_first)
 		{
 			SCOPE_START(statement->loc)
+			{
 				if (!sema_analyse_for_cond(context, &statement->for_stmt.cond, &is_infinite) || !success)
 				{
 					SCOPE_ERROR_END_OUTER();
 					return false;
 				}
+			}
 			SCOPE_END;
 			// Rewrite do { } while(true) to while(true) { }
 			if (is_infinite)
@@ -1453,8 +1467,10 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		{
 			// Incr scope start
 			SCOPE_START(statement->loc)
+			{
 				success = sema_analyse_expr_rvalue(context, exprptr(statement->for_stmt.incr));
 				// Incr scope end
+			}
 			SCOPE_END;
 		}
 
@@ -1462,6 +1478,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		// End for body scope
 		context_pop_defers_and_replace_ast(context, statement);
 
+	}
 	SCOPE_OUTER_END;
 
 	if (is_infinite && !statement->for_stmt.flow.has_break)
@@ -1506,6 +1523,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	}
 	// Conditional scope start
 	SCOPE_START(statement->loc)
+	{
 
 		// In the case of foreach (int x : { 1, 2, 3 }) we will infer the int[] type, so pick out the number of elements.
 		Type *inferred_type = variable_type_info ? type_get_inferred_array(type_no_optional(variable_type_info->type)) : NULL;
@@ -1519,6 +1537,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			if (!sema_analyse_expr_rvalue(context, enumerator)) return SCOPE_POP_ERROR();
 		}
 		// And pop the cond scope.
+	}
 	SCOPE_END;
 
 	// Trying to iterate over an optional is meaningless, it should always be handled
@@ -1964,6 +1983,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	bool is_invalid = false;
 	bool reverse = false;
 	SCOPE_OUTER_START(statement->loc)
+	{
 
 		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
 		if (success && cond->expr_kind == EXPR_COND)
@@ -2000,9 +2020,11 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			goto END;
 		}
 		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label, then->loc);
+		{
 			if (result == COND_FALSE) context->active_scope.is_dead = true;
 			success = success && sema_analyse_statement(context, then);
 			then_jump = context->active_scope.end_jump.active && !(statement->if_stmt.flow.label && statement->if_stmt.flow.has_break);
+		}
 		SCOPE_END;
 
 		if (!success) goto END;
@@ -2012,11 +2034,13 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			bool store_break = statement->if_stmt.flow.has_break;
 			statement->if_stmt.flow.has_break = false;
 			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label, statement->loc);
+			{
 				if (result == COND_TRUE) context->active_scope.is_dead = true;
 				sema_remove_unwraps_from_try(context, cond);
 				sema_unwrappable_from_catch_in_else(context, cond);
 				success = sema_analyse_statement(context, else_body);
 				else_jump = context->active_scope.end_jump.active && !(statement->if_stmt.flow.label && statement->if_stmt.flow.has_break);
+			}
 			SCOPE_END;
 			statement->if_stmt.flow.has_break |= store_break;
 		}
@@ -2025,6 +2049,7 @@ END:
 		context_pop_defers_and_replace_ast(context, statement);
 
 		is_invalid = context->active_scope.is_poisoned;
+	}
 	SCOPE_OUTER_END;
 	if (is_invalid) context->active_scope.is_poisoned = true;
 	if (!success)
@@ -2255,7 +2280,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			if (!sema_cast_const(from)) goto VARIABLE_JUMP;
 			ExprConst *const_expr = &from->const_expr;
 			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &exprptr(case_stmt->case_stmt.to_expr)->const_expr : const_expr;
-			if (expr_const_in_range(&value->const_expr, const_expr, to_const_expr))
+			if (expr_const_in_range(&value->const_expr, &value->const_expr, const_expr, to_const_expr))
 			{
 				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
@@ -2464,10 +2489,12 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 		Ast *other = cases[i];
 		if (other->ast_kind != AST_CASE_STMT) continue;
 		Expr *other_expr = exprptr(other->case_stmt.expr);
+		Expr *other_to_expr = exprptrzero(other->case_stmt.to_expr);
 		if (!sema_cast_const(other_expr)) continue;
+		if (other_to_expr && !sema_cast_const(other_to_expr)) continue;
 		ExprConst *other_const = &other_expr->const_expr;
-		ExprConst *other_to_const = other->case_stmt.to_expr ? &exprptr(other->case_stmt.to_expr)->const_expr : other_const;
-		if (expr_const_in_range(const_expr, other_const, other_to_const))
+		ExprConst *other_to_const = other_to_expr ? &other_to_expr->const_expr : other_const;
+		if (expr_const_in_range(const_expr, to_const_expr, other_const, other_to_const))
 		{
 			SEMA_ERROR(case_stmt, "The same case value appears more than once.");
 			SEMA_NOTE(other, "Here is the previous use of that value.");
@@ -2602,6 +2629,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	{
 		Ast *stmt = cases[i];
 		SCOPE_START(statement->loc)
+		{
 			PUSH_BREAK(statement);
 			Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 			PUSH_NEXT(next, statement);
@@ -2611,6 +2639,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			POP_NEXT();
 			if (!body && i < case_count - 1) continue;
 			all_jump_end &= context->active_scope.end_jump.active;
+		}
 		SCOPE_END;
 	}
 	if (is_enum_switch && !exhaustive && success && !if_chain)
@@ -2748,10 +2777,13 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				{
 					Ast *other_stmt = cases[j];
 					if (other_stmt->ast_kind == AST_DEFAULT_STMT) continue;
-					if (exprptr(other_stmt->case_stmt.expr)->resolve_status != RESOLVE_DONE) continue;
-					ExprConst *other_const = &exprptr(other_stmt->case_stmt.expr)->const_expr;
-					ExprConst *other_const_to = other_stmt->case_stmt.to_expr ? &exprptr(other_stmt->case_stmt.to_expr)->const_expr : other_const;
-					if (expr_const_in_range(const_expr, other_const, other_const_to))
+					Expr *other = exprptr(other_stmt->case_stmt.expr);
+					Expr *other_to = exprptrzero(other_stmt->case_stmt.to_expr);
+					if (other->resolve_status != RESOLVE_DONE) continue;
+					if (other_to && other_to->resolve_status != RESOLVE_DONE) continue;
+					ExprConst *other_const = &other->const_expr;
+					ExprConst *other_const_to = other_to ? &other_to->const_expr : other_const;
+					if (expr_const_in_range(const_expr, const_to_expr, other_const, other_const_to))
 					{
 						SEMA_ERROR(stmt, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
 						SEMA_NOTE(exprptr(cases[j]->case_stmt.expr), "The previous $case was here.");
@@ -2768,7 +2800,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 						matched_case = (int)i;
 					}
 				}
-				else if (expr_const_in_range(switch_expr_const, const_expr, const_to_expr))
+				else if (expr_const_in_range(switch_expr_const, switch_expr_const, const_expr, const_to_expr))
 				{
 					matched_case = (int)i;
 				}
@@ -2954,6 +2986,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 	statement->switch_stmt.scope_defer = context->active_scope.in_defer;
 
 	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label, statement->loc);
+	{
 
 		Expr *cond = exprptrzero(statement->switch_stmt.cond);
 		Type *switch_type;
@@ -2978,6 +3011,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 			return SCOPE_POP_ERROR();
 		}
 		context_pop_defers_and_replace_ast(context, statement);
+	}
 	SCOPE_END;
 
 	if (statement->flow.no_exit && !statement->flow.has_break)
@@ -3379,6 +3413,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	Ast *body = astptr(func->func_decl.body);
 	Decl **lambda_params = NULL;
 	SCOPE_START(func->loc)
+	{
 		ASSERT(context->active_scope.depth == 1);
 		FOREACH(Decl *, param, signature->params)
 		{
@@ -3436,6 +3471,7 @@ NEXT:
 			}
 		}
 
+	}
 	SCOPE_END;
 	if (lambda_params)
 	{

@@ -267,6 +267,7 @@ RETRY:
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case UNRESOLVED_EXPRS:
 		case EXPR_LAMBDA:
 			assert_print_line(expr->loc);

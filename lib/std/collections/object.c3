@@ -86,22 +86,22 @@ fn Object* new_null()
 	return &NULL_OBJECT;
 }
 
-fn Object* new_int(int128 i, Allocator allocator)
+fn Object* new_int(Allocator allocator, int128 i)
 {
 	return @alloc_obj(allocator, { .i = i, .allocator = allocator, .type = int128.typeid });
 }
 
-macro Object* new_enum(e, Allocator allocator)
+macro Object* new_enum(Allocator allocator, e)
 {
 	return @alloc_obj(allocator, { .i = e, .allocator = allocator, .type = @typeid(e) });
 }
 
-fn Object* new_float(double f, Allocator allocator)
+fn Object* new_float(Allocator allocator, double f)
 {
 	return @alloc_obj(allocator, { .f = f, .allocator = allocator, .type = double.typeid });
 }
 
-fn Object* new_string(String s, Allocator allocator)
+fn Object* new_string(Allocator allocator, String s)
 {
 	return @alloc_obj(allocator, { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid });
 }
@@ -199,11 +199,11 @@ macro Object* Object.object_from_value(&self, value) @private
 	var $Type = $typeof(value);
 	$switch:
 		$case types::is_int($Type):
-			return new_int(value, self.allocator);
+			return new_int(self.allocator, value);
 		$case types::is_float($Type):
-			return new_float(value, self.allocator);
+			return new_float(self.allocator, value);
 		$case $Type.typeid == String.typeid:
-			return new_string(value, self.allocator);
+			return new_string(self.allocator, value);
 		$case $Type.typeid == bool.typeid:
 			return new_bool(value);
 		$case $Type.typeid == Object*.typeid:
@@ -211,7 +211,7 @@ macro Object* Object.object_from_value(&self, value) @private
 		$case $Type.typeid == void*.typeid:
 			return &NULL_OBJECT;
 		$case $defined(String x = value):
-			return new_string(value, self.allocator);
+			return new_string(self.allocator, value);
 		$default:
 			$error "Unsupported object type.";
 	$endswitch

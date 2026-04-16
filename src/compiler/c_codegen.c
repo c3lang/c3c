@@ -476,6 +476,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_MEMBER_SET:
 			break;
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 			break;
 		case EXPR_NOP:
 			break;

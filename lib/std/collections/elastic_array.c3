@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2026 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 <*
@@ -21,29 +21,14 @@ struct ElasticArray (Printable)
 
 fn sz? ElasticArray.to_format(&self, Formatter* formatter) @dynamic
 {
-	switch (self.size)
-	{
-		case 0:
-			return formatter.print("[]")!;
-		case 1:
-			return formatter.printf("[%s]", self.entries[0])!;
-		default:
-			sz n = formatter.print("[")!;
-			foreach (i, element : self.entries[:self.size])
-			{
-				if (i != 0) formatter.print(", ")!;
-				n += formatter.printf("%s", element)!;
-			}
-			n += formatter.print("]")!;
-			return n;
-	}
+	return formatter.printf("%s", self.entries[:self.size]);
 }
 
-fn String ElasticArray.to_tstring(&self)
-{
-	return string::tformat("%s", *self);
-}
+<*
+ Try to add an element. Will fail if it is full.
 
+ @return? mem::OUT_OF_MEMORY
+*>
 fn void? ElasticArray.push_try(&self, Type element) @inline
 {
 	if (self.size == MAX_SIZE) return mem::OUT_OF_MEMORY~;
@@ -82,7 +67,7 @@ fn Type? ElasticArray.pop_first(&self)
 <*
  Remove an element at a particular place.
 
- @require index < self.size && index <= 0 : "Index was out of range"
+ @require index < self.size && index >= 0 : "The index is out of bounds"
 *>
 fn void ElasticArray.remove_at(&self, sz index)
 {
@@ -90,6 +75,18 @@ fn void ElasticArray.remove_at(&self, sz index)
 	self.entries[index .. self.size - 1] = self.entries[index + 1 .. self.size];
 }
 
+<*
+ Removes an element at "index" by copying the last element to this slot and reducing
+ the length by 1.
+
+ @require index < self.size && index >= 0 : "Index out of bounds"
+*>
+fn void ElasticArray.remove_unordered_at(&self, sz index)
+{
+	sz new_size = --self.size;
+	if (!new_size || index == new_size) return;
+	self.entries[index] = self.entries[new_size];
+}
 <*
  @require other_list.size + self.size <= MAX_SIZE
 *>
