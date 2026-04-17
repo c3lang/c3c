@@ -1,5 +1,7 @@
 module std::core::string;
 import std::io, std::math;
+import std::core::string::conv;
+
 
 typedef String @constinit @if(!$defined(String)) = inline char[];
 <*
@@ -968,7 +970,29 @@ fn String? from_utf32(Allocator allocator, Char32[] utf32)
 	sz len = conv::utf8len_for_utf32(utf32);
 	char* data = alloc::malloc_try(allocator, len + 1)!;
 	defer catch alloc::free(allocator, data);
-	conv::utf32to8_unsafe(utf32, data);
+	conv::utf32to8_unsafe(utf32, data, $unaligned: false, $bitswap: false);
+	data[len] = 0;
+	return (String)data[:len];
+}
+
+fn String? from_utf32_bytes(Allocator allocator, char[] utf32, bool swap_endianess)
+{
+	sz len = conv::utf8len_for_utf32_bytes(utf32, swap_endianess);
+	char* data = alloc::malloc_try(allocator, len + 1)!;
+	defer catch alloc::free(allocator, data);
+	bool is_aligned = (uptr)utf32.ptr % 4 == 0;
+	Char32[] unaligned = ((Char32*)utf32.ptr)[:utf32.len / 4];
+	switch
+	{
+		case is_aligned && !swap_endianess:
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: false, $bitswap: false);
+		case !is_aligned && !swap_endianess:
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: true, $bitswap: false);
+		case is_aligned && swap_endianess:
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: false, $bitswap: true);
+		default:
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: true, $bitswap: true);
+	}
 	data[len] = 0;
 	return (String)data[:len];
 }
@@ -978,7 +1002,30 @@ fn String? from_utf16(Allocator allocator, Char16[] utf16)
 	sz len = conv::utf8len_for_utf16(utf16);
 	char* data = alloc::malloc_try(allocator, len + 1)!;
 	defer catch alloc::free(allocator, data);
-	conv::utf16to8_unsafe(utf16, data)!;
+	conv::utf16to8_unsafe(utf16, data, $unaligned: false, $bitswap: false)!;
+	data[len] = 0;
+	return (String)data[:len];
+}
+
+fn String? from_utf16_bytes(Allocator allocator, char[] utf16, bool swap_endianess)
+{
+	sz len = conv::utf8len_for_utf16_bytes(utf16, swap_endianess);
+	char* data = alloc::malloc_try(allocator, len + 1)!;
+	defer catch alloc::free(allocator, data);
+
+	bool is_aligned = (uptr)utf16.ptr % 2 == 0;
+	Char16[] unaligned = ((Char16*)utf16.ptr)[:utf16.len / 2];
+	switch
+	{
+		case is_aligned && !swap_endianess:
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: false, $bitswap: false)!;
+		case !is_aligned && !swap_endianess:
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: true, $bitswap: false)!;
+		case is_aligned && swap_endianess:
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: false, $bitswap: true)!;
+		default:
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: true, $bitswap: true)!;
+	}
 	data[len] = 0;
 	return (String)data[:len];
 }
