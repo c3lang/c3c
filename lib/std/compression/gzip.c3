@@ -153,7 +153,7 @@ fn void? GzipWriter.init(&self, Allocator allocator, OutStream writer, bool hcrc
 	ByteWriter h;
 	h.tinit();
 
-	h.write(((char*)&header)[:GzipHeader.sizeof])!;
+	h.write(((char*)&header)[:GzipHeader::size])!;
 	if (extra.len)
 	{
 		io::write_le_ushort(&h, (ushort)extra.len)!;
@@ -274,7 +274,7 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 			uint isize_stored = io::read_le_uint(self.source)!;
 
 			if (crc_stored != self.hasher.final()) return CORRUPT_DATA~;
-			if (isize_stored != (uint)(self.total_out & uint.max)) return CORRUPT_DATA~;
+			if (isize_stored != (uint)(self.total_out & uint::max)) return CORRUPT_DATA~;
 		}
 
 		self.footer_verified = true;
@@ -311,9 +311,9 @@ fn void? GzipReader.read_header(&self) @dynamic
 	ByteWriter h;
 	h.tinit();
 
-	char[GzipHeader.sizeof] h_bytes;
+	char[GzipHeader::size] h_bytes;
 	sz n = self.source.read(h_bytes[..])!;
-	if (n != GzipHeader.sizeof) return IO_ERROR~;
+	if (n != GzipHeader::size) return IO_ERROR~;
 	h.write(h_bytes[..])!;
 
 	self.metadata.header = *(GzipHeader*)&h_bytes;
