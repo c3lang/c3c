@@ -2,11 +2,11 @@
 module test;
 import std;
 
-typedef Baz = int;
+typedef Baz @constinit = int;
 enum Foo : char (Baz x, String hello)
 {
-	ABC = { 123, "ugh" },
-	DEF = { 444, "hello" }
+	ABC { 123, "ugh" },
+	DEF { 444, "hello" }
 }
 fn int main(String[] a)
 {
