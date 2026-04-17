@@ -2,10 +2,10 @@ module fe;
 
 fn void main()
 {
-    float z = float.inf + 100;
-    double z2 = double.inf;
-    float g = float.nan;
-    double g2 = double.nan;
+    float z = float::inf + 100;
+    double z2 = double::inf;
+    float g = float::nan;
+    double g2 = double::nan;
     double x = (double)(z);
 }
 

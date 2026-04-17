@@ -23,12 +23,12 @@ fn int main()
 	Test2 a;
 	Test b;
 	Test3 c;
-	$assert(32 == Test3.sizeof);
-	$assert(32 == Test3.alignof);
-	$assert(32 == Test2.sizeof);
-	$assert(16 == Test2.alignof);
-	$assert(16 == Test.sizeof);
-	$assert(16 == Test.alignof);
+	$assert(32 == Test3::size);
+	$assert(32 == Test3::alignment);
+	$assert(32 == Test2::size);
+	$assert(16 == Test2::alignment);
+	$assert(16 == Test::size);
+	$assert(16 == Test::alignment);
 	return 0;
 }
 

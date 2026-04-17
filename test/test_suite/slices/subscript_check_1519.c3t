@@ -4,7 +4,7 @@ import std::collections::list;
 macro @test_list(a)
 {
   var $Type = $typeof(a);
-  $if $defined(a[0]) &&& $Type.typeid == List{$typeof(a[0])}.typeid:
+  $if $defined(a[0]) &&& $Type::typeid == List{$typeof(a[0])}::typeid:
     return 1;
   $else
     return 0;

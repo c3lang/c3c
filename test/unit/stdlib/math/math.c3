@@ -5,7 +5,7 @@ import std::core::test;
 
 fn void test_sincos() @test
 {
-	$assert(@typeid(math::sincos(1.0)) == double[<2>].typeid);
+	$assert(@typeid(math::sincos(1.0)) == double[<2>]::typeid);
 	test::eq_approx(math::sincos(math::PI / 6).x, 0.5, 4);
 	test::eq_approx(math::sincos(math::PI / 6).y, 0.866025, 5);
 	test::eq_approx(math::sincos(math::PI / 4).x, 0.707107, 5);
@@ -23,7 +23,7 @@ fn void test_sincos() @test
 }
 fn void test_sincosf() @test
 {
-	$assert(@typeid(math::sincos(1.0f)) == float[<2>].typeid);
+	$assert(@typeid(math::sincos(1.0f)) == float[<2>]::typeid);
 	test::eq_approx(math::sincos((float)(math::PI / 6)).x, 0.5, 4);
 	test::eq_approx(math::sincos((float)(math::PI / 6)).y, 0.866025, 5);
 	test::eq_approx(math::sincos((float)(math::PI / 4)).x, 0.707107, 5);

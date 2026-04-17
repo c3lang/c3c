@@ -10,11 +10,11 @@ bitstruct Bar : int
 }
 fn void main()
 {
-	$if Foo.has_tagof("foo"):
-		int a = Foo.tagof("foo");
+	$if Foo::has_tag("foo"):
+		int a = Foo::get_tag("foo");
 	$endif;
-	String b = Foo.a.tagof("foo");
-	String c = Bar.a.tagof("foo");
+	String b = $reflect(Foo.a).get_tag("foo");
+	String c = $reflect(Bar.a).get_tag("foo");
 }
 
 /* #expect: test.ll

@@ -22,7 +22,7 @@ fn sz _binarysearch(ListType list, ElementType element, CmpFnType cmp, ContextTy
 	var $no_cmp = $typeof(cmp) == TypeNotSet;
 	var $has_context = $typeof(context) != TypeNotSet;
 
-	$if $kindof(list) == SLICE:
+	$if @kindof(list) == SLICE:
 		sz len = lengthof(list);
 		for (sz j = len; i < j;)
 		{

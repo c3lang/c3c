@@ -2,7 +2,7 @@ module foo <Type>;
 import std::io;
 
 macro @hello(Type thing) {
-    io::printfn("%d", $sizeof(thing));
+    io::printfn("%d", @sizeof(thing));
 }
 
 module bar;

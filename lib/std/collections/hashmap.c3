@@ -11,7 +11,7 @@ import std::io @norecurse;
 const int DEFAULT_INITIAL_CAPACITY = 16;
 const int MAXIMUM_CAPACITY = 1 << 30;
 const float DEFAULT_LOAD_FACTOR = 0.75;
-const VALUE_IS_EQUATABLE = Value.is_eq;
+const VALUE_IS_EQUATABLE = Value::has_equals;
 const bool COPY_KEYS = types::implements_copy(Key);
 
 const Allocator MAP_HEAP_ALLOCATOR = (Allocator)&dummy;
@@ -443,7 +443,7 @@ fn sz? HashMap.to_format(&self, Formatter* f) @dynamic
 }
 
 <*
- @require new_table.len < int.max : "Too many entries"
+ @require new_table.len < int::max : "Too many entries"
 *>
 fn void hashmap_transfer(HashMap* map, Entry*[] new_table) @private
 {

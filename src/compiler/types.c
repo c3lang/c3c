@@ -15,7 +15,7 @@ static struct
 	Type bf16, f16, f32, f64, f128;
 	Type usz, sz, uptr, iptr;
 	Type string;
-	Type voidstar, typeid, fault, member, typeinfo, untyped_list;
+	Type voidstar, typeid, fault, member, reflection, typeinfo, untypedlist;
 	Type any, wildcard;
 } t;
 
@@ -45,9 +45,10 @@ Type *type_u128 = &t.u128;
 Type *type_uptr = &t.uptr;
 Type *type_usz = &t.usz;
 Type *type_fault = &t.fault;
-Type *type_untypedlist = &t.untyped_list;
+Type *type_untypedlist = &t.untypedlist;
 Type *type_wildcard = &t.wildcard;
 Type *type_member = &t.member;
+Type *type_reflection = &t.reflection;
 Type *type_chars = NULL;
 Type *type_wildcard_optional = NULL;
 Type *type_string = &t.string;
@@ -182,10 +183,8 @@ void type_append_name_to_scratch(Type *type)
 		case ALL_VECTORS:
 			scratch_buffer_append(type->name);
 			break;
-		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
+		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
 			UNREACHABLE_VOID
 			break;
@@ -270,9 +269,10 @@ const char *type_to_error_string(Type *type)
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_ANYFAULT:
-		case TYPE_UNTYPED_LIST:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_ANY:
 		case TYPE_MEMBER:
+		case TYPE_REFLECTION:
 		case TYPE_WILDCARD:
 			return type->name;
 		case TYPE_ENUM:
@@ -337,9 +337,10 @@ static const char *type_to_error_string_with_path(Type *type)
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_ANYFAULT:
-		case TYPE_UNTYPED_LIST:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_ANY:
 		case TYPE_MEMBER:
+		case TYPE_REFLECTION:
 		case TYPE_WILDCARD:
 			return type->name;
 		case TYPE_ENUM:
@@ -426,6 +427,7 @@ TypeSize type_size(Type *type)
 			return type->size = type_size(type->decl->distinct->type);
 		case CT_TYPES:
 		case TYPE_FUNC_RAW:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE;
 		case TYPE_FLEXIBLE_ARRAY:
 			return type->size = 0;
@@ -574,6 +576,7 @@ bool type_is_aggregate(Type *type)
 			type = type->canonical;
 			goto RETRY;
 		case CT_TYPES:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_FLEXIBLE_ARRAY:
 			return false;
 		case TYPE_BITSTRUCT:
@@ -654,8 +657,7 @@ bool type_is_comparable(Type *type)
 		case TYPE_VOID:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_OPTIONAL:
-		case TYPE_MEMBER:
-		case TYPE_UNTYPED_LIST:
+		case SPECIAL_TYPES:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 			return false;
@@ -685,7 +687,6 @@ bool type_is_comparable(Type *type)
 		case TYPE_ENUM:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
-		case TYPE_TYPEINFO:
 		case VECTORS:
 		case TYPE_WILDCARD:
 			return true;
@@ -699,6 +700,8 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 	{
 		case CT_TYPES:
 			UNREACHABLE_VOID
+		case TYPE_UNTYPEDLIST:
+			scratch_buffer_append("ul$");
 		case TYPE_ANY:
 			scratch_buffer_append("any$");
 			return;
@@ -819,9 +822,7 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
-		case TYPE_TYPEINFO:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_MEMBER:
+		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
 			UNREACHABLE;
 		case TYPE_BITSTRUCT:
@@ -1388,13 +1389,11 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_INFERRED_VECTOR:
 			type = type->array.base;
 			goto RETRY;
-		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
 		case TYPE_WILDCARD:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_POISONED:
 		case TYPE_VOID:
+		case SPECIAL_TYPES:
 			return false;
 	}
 	UNREACHABLE
@@ -1568,7 +1567,8 @@ void type_setup(PlatformTarget *target)
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
 	type_create("member_ref", &t.member, TYPE_MEMBER, 1, 1, 1);
-	type_create("untyped_list", &t.untyped_list, TYPE_UNTYPED_LIST, 1, 1, 1);
+	type_create("reflection_ref", &t.reflection, TYPE_REFLECTION, 1, 1, 1);
+	type_create("untypedlist", &t.untypedlist, TYPE_UNTYPEDLIST, 1, 1, 1);
 	type_create("void", &t.wildcard, TYPE_WILDCARD, 1, 1, 1);
 	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
 	type_init("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer);
@@ -1651,6 +1651,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_UNTYPEDLIST:
 			return false;
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -1727,6 +1728,8 @@ Type *type_from_token(TokenType type)
 	{
 		case TOKEN_ANY:
 			return type_any;
+		case TOKEN_UNTYPEDLIST:
+			return type_untypedlist;
 		case TOKEN_FAULT:
 			return type_fault;
 		case TOKEN_VOID:
@@ -1947,11 +1950,9 @@ bool type_may_have_method(Type *type)
 		case TYPE_VOID:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_WILDCARD:
+		case SPECIAL_TYPES:
 			return false;
 	}
 	UNREACHABLE
@@ -2297,7 +2298,7 @@ RETRY_DISTINCT:
 			return NULL;
 		case TYPE_ALIAS:
 			UNREACHABLE // Should only handle canonical types
-		case TYPE_UNTYPED_LIST:
+		case TYPE_UNTYPEDLIST:
 			if (other->type_kind == TYPE_ARRAY) return other;
 			if (type_kind_is_real_vector(other->type_kind)) return other;
 			if (other->type_kind == TYPE_STRUCT) return other;
@@ -2328,6 +2329,7 @@ RETRY_DISTINCT:
 			UNREACHABLE
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_REFLECTION:
 			return NULL;
 			UNREACHABLE
 		case TYPE_VECTOR:
@@ -2413,9 +2415,7 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_VECTOR;
 		case TYPE_OPTIONAL:
 			return INTROSPECT_TYPE_OPTIONAL;
-		case TYPE_UNTYPED_LIST:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
+		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
 			UNREACHABLE
 			return 0;
@@ -2464,9 +2464,7 @@ Module *type_base_module(Type *type)
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			goto RETRY;
-		case TYPE_UNTYPED_LIST:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
+		case SPECIAL_TYPES:
 			UNREACHABLE
 	}
 	UNREACHABLE

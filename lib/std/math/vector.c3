@@ -7,12 +7,12 @@ alias Vec3 @weak = float[<3>];
 alias Vec4 @weak = float[<4>];
 
 <*
- @require $Type.kindof == VECTOR &&& $kindof(($Type){}[0]) == BOOL : "Expected a bool vector"
- @require $kindof(mask).is_int() : "Expected an integer mask"
+ @require $Type::kind == VECTOR &&& @kindof(($Type){}[0]) == BOOL : "Expected a bool vector"
+ @require @kindof(mask).is_int() : "Expected an integer mask"
 *>
 macro bool[<*>] mask_from_int($Type, mask)
 {
-	return $$int_to_mask(mask, $Type.len);
+	return $$int_to_mask(mask, $Type::len);
 }
 
 macro bool[<*>].mask_to_int(self)

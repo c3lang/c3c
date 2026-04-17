@@ -55,7 +55,7 @@ fn Time? last_modified(String filename)
 	return (Time)(seconds * (Time_t)time::SEC);
 }
 
-fn void? delete(String filename)
+fn void? delete(String filename) @maydiscard
 {
 	return os::native_remove(filename) @inline;
 }
@@ -121,7 +121,7 @@ fn void? File.write_byte(&self, char c) @dynamic
 <*
  @param [&inout] self
 *>
-fn void? File.close(&self) @inline @dynamic
+fn void? File.close(&self) @inline @dynamic @maydiscard
 {
 	if (self.file && libc::fclose(self.file))
 	{
@@ -221,7 +221,7 @@ fn char[]? load(Allocator allocator, String filename)
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
 	long len = file.size()!;
-	if (len > sz.max) return io::OUT_OF_SPACE~;
+	if (len > sz::max) return io::OUT_OF_SPACE~;
 	char* data = alloc::malloc_try(allocator, (sz)len)!;
 	defer catch alloc::free(allocator, data);
 	sz read = 0;

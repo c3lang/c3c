@@ -8,13 +8,13 @@ fn void testa()
 
 fn void testb()
 {
-	$sizeof($$veccompeq); // #error: A builtin function has no defined type
+	@sizeof($$veccompeq); // #error: @sizeof only works on types with a definite size
 }
 
 enum Abc { ABC }
 fn void testc()
 {
-	$typeof(Abc.from_ordinal) a; // #error: A type function has no defined type
+	$typeof(Abc::from_ordinal) a; // #error: A type function has no defined type
 }
 fn void main()
 {}

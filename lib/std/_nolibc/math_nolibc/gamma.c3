@@ -51,12 +51,12 @@ fn double lgamma(double x)
 fn double tgamma(double x)
 {
 	// Handle special cases.
-	if (x == 0.0) return double.inf;
+	if (x == 0.0) return double::inf;
 
 	// Check for negative integers (poles).
 	if (x < 0.0 && x == math::floor(x))
 	{
-	    return double.nan;
+	    return double::nan;
 	}
 
 	// For positive values, use exp(lgamma(x)).

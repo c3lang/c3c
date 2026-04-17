@@ -81,6 +81,6 @@ struct TurboShake <SECURITY_LEVEL> @mustinit
 *>
 fn void TurboShake.init(&self, char delimiter = DEFAULT_DELIMITER)
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.s.init(DEFAULT_ROUNDS, delimiter);
 }

@@ -28,8 +28,8 @@ macro uint @sigma1(uint x) @local => x.rotr(17) ^ x.rotr(19) ^ (x >> 10);
 
 struct Sha256
 {
-	uint[8] state @align(sz.sizeof);
-	char[BLOCK_SIZE] buffer @align(ulong.sizeof);   // must align along bitcount sizeof - see `final`
+	uint[8] state @align(sz::size);
+	char[BLOCK_SIZE] buffer @align(ulong::size);   // must align along bitcount sizeof - see `final`
 	long bitcount;
 }
 
@@ -55,7 +55,7 @@ fn void Sha256.init(&self) => *self = {
 
 <*
  @param [in] data
- @require data.len <= uint.max
+ @require data.len <= uint::max
 *>
 fn void Sha256.update(&self, char[] data)
 {
@@ -73,7 +73,7 @@ fn void Sha256.update(&self, char[] data)
 
 	// When the data pointer is aligned, we can disregard unaligned loading in the `transform` macro.
 	//   We do this here from the outer call to reduce the expense of checking alignment on every single block.
-	if (0 == (sz)data.ptr % sz.sizeof)
+	if (0 == (sz)data.ptr % sz::size)
 	{
 		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) _transform(self, (uint*)data.ptr);
 	}
@@ -92,7 +92,7 @@ fn void Sha256.update(&self, char[] data)
 
 fn char[HASH_SIZE] Sha256.final(&self)
 {
-	char[HASH_SIZE] hash @align(uint.sizeof);
+	char[HASH_SIZE] hash @align(uint::size);
 	long i = (self.bitcount / 8) % BLOCK_SIZE;
 
 	// Append 0x80 to the buffer
@@ -114,7 +114,7 @@ fn char[HASH_SIZE] Sha256.final(&self)
 	_transform(self);
 
 	// Convert state to the final hash
-	foreach (x, s : self.state) *(uint*)(&hash[x * uint.sizeof]) = env::BIG_ENDIAN ??? s : bswap(s);
+	foreach (x, s : self.state) *(uint*)(&hash[x * uint::size]) = env::BIG_ENDIAN ??? s : bswap(s);
 	
 	return hash;
 }

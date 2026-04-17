@@ -29,7 +29,7 @@ Client[10] clients;
 
 fn void main()
 {
-	void* a = ((void*)(&clients[0])) + Client.sizeof;
+	void* a = ((void*)(&clients[0])) + Client::size;
 	void* b =  &clients[1];
 }
 

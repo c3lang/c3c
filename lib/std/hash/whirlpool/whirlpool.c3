@@ -10,7 +10,7 @@ import std::hash::hmac;
 
 const BLOCK_SIZE = 64;
 const HASH_SIZE = 64;
-const BLOCK_128 = 64 / int128.sizeof;
+const BLOCK_128 = 64 / int128::size;
 
 struct Whirlpool
 {
@@ -41,7 +41,7 @@ fn char[HASH_SIZE] hash(char[] data)
 macro void Whirlpool.init(&self) => *self = { };
 
 <*
- @require data.len <= sz.max : "Update with smaller slices"
+ @require data.len <= sz::max : "Update with smaller slices"
 *>
 fn void Whirlpool.update(&self, char[] data)
 {
@@ -116,7 +116,7 @@ fn char[HASH_SIZE] Whirlpool.final(&self)
 	_process_block(self, &self.block);
 
 	// Each ulong in the resultant hash should be bit-swapped before the final return.
-	char[HASH_SIZE] hash @align(ulong.alignof);
+	char[HASH_SIZE] hash @align(ulong::alignment);
 	ulong* hash_ref = (ulong*)&hash;
 
 	$for var $i = 0; $i < 8; ++$i :

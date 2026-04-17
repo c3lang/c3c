@@ -12,7 +12,7 @@ enum Foo
 
 fn int main()
 {
-	int[Foo.len] x;
+	int[Foo::len] x;
 	x[Foo.BAR] = 4;
 	return 0;
 }

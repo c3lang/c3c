@@ -25,7 +25,7 @@ struct AllocChunk @local
 	char[*] data;
 }
 
-const sz PAGE_IS_ALIGNED @local = sz.min;
+const sz PAGE_IS_ALIGNED @local = sz::min;
 
 struct ExtraPage @local
 {
@@ -127,12 +127,12 @@ fn void*? _realloc_page(BackedArenaAllocator* self, ExtraPage* page, sz size, sz
 
 fn void*? BackedArenaAllocator.resize(&self, void* pointer, sz size, sz alignment) @dynamic
 {
-	AllocChunk *chunk = pointer - AllocChunk.sizeof;
+	AllocChunk *chunk = pointer - AllocChunk::size;
 	if (chunk.size == -1)
 	{
 		assert(self.last_page, "Realloc of unrelated pointer");
 		// First grab the page
-		ExtraPage *page = pointer - ExtraPage.sizeof;
+		ExtraPage *page = pointer - ExtraPage::size;
 		return _realloc_page(self, page, size, alignment);
 	}
 
@@ -152,9 +152,9 @@ fn void*? BackedArenaAllocator.acquire(&self, sz size, AllocInitType init_type, 
 	alignment = alignment_for_allocation(alignment);
 	void* start_mem = &self.data;
 	void* starting_ptr = start_mem + self.used;
-	void* aligned_header_start = mem::aligned_pointer(starting_ptr, AllocChunk.alignof);
-	void* mem = aligned_header_start + AllocChunk.sizeof;
-	if (alignment > AllocChunk.alignof)
+	void* aligned_header_start = mem::aligned_pointer(starting_ptr, AllocChunk::alignment);
+	void* mem = aligned_header_start + AllocChunk::size;
+	if (alignment > AllocChunk::alignment)
 	{
 		mem = mem::aligned_pointer(mem, alignment);
 	}
@@ -164,7 +164,7 @@ fn void*? BackedArenaAllocator.acquire(&self, sz size, AllocInitType init_type, 
 	if (new_usage <= self.capacity)
 	{
 		asan::unpoison_memory_region(starting_ptr, (usz)(new_usage - self.used));
-		AllocChunk* chunk_start = mem - AllocChunk.sizeof;
+		AllocChunk* chunk_start = mem - AllocChunk::size;
 		chunk_start.size = size;
 		self.used = new_usage;
 		if (init_type == ZERO) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
@@ -178,7 +178,7 @@ fn void*? BackedArenaAllocator.acquire(&self, sz size, AllocInitType init_type, 
 	if (alignment > mem::DEFAULT_MEM_ALIGNMENT)
 	{
 		// This is actually simpler, since it will create the offset for us.
-		sz total_alloc_size = mem::aligned_offset(ExtraPage.sizeof + size, alignment);
+		sz total_alloc_size = mem::aligned_offset(ExtraPage::size + size, alignment);
 		if (init_type == ZERO)
 		{
 			mem = alloc::calloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
@@ -188,7 +188,7 @@ fn void*? BackedArenaAllocator.acquire(&self, sz size, AllocInitType init_type, 
 			mem = alloc::malloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
 		}
 		void* start = mem;
-		mem += mem::aligned_offset(ExtraPage.sizeof, alignment);
+		mem += mem::aligned_offset(ExtraPage::size, alignment);
 		page = (ExtraPage*)mem - 1;
 		page.start = start;
 		page.size = size | PAGE_IS_ALIGNED;
@@ -196,13 +196,13 @@ fn void*? BackedArenaAllocator.acquire(&self, sz size, AllocInitType init_type, 
 	else
 	{
 		// Here we might need to pad
-		sz padded_header_size = mem::aligned_offset(ExtraPage.sizeof, mem::DEFAULT_MEM_ALIGNMENT);
+		sz padded_header_size = mem::aligned_offset(ExtraPage::size, mem::DEFAULT_MEM_ALIGNMENT);
 		sz total_alloc_size = padded_header_size + size;
 		void* alloc = self.backing_allocator.acquire(total_alloc_size, init_type, 0)!;
 
 		// Find the page.
-		page = alloc + padded_header_size - ExtraPage.sizeof;
-		assert(mem::ptr_is_aligned(page, BackedArenaAllocator.alignof));
+		page = alloc + padded_header_size - ExtraPage::size;
+		assert(mem::ptr_is_aligned(page, BackedArenaAllocator::alignment));
 		assert(mem::ptr_is_aligned(&page.data[0], mem::DEFAULT_MEM_ALIGNMENT));
 		page.start = alloc;
 		page.size = size;

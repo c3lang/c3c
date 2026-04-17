@@ -16,7 +16,7 @@ fn int main()
 		$if $i % 3 == 0:
 			$x++;
 		$endif;
-		Call x = fn () => (void)io::printfn("%d %s", $x, $Type.nameof);
+		Call x = fn () => (void)io::printfn("%d %s", $x, $Type::name);
 		x();
 	}
 	$endfor

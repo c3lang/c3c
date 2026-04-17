@@ -3646,18 +3646,13 @@ MEMCMP:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_BITSTRUCT:
-		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_TYPEDEF:
 		case TYPE_FUNC_RAW:
 		case TYPE_ALIAS:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
-		case TYPE_WILDCARD:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
+		case CT_TYPES:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE_VOID
 		case TYPE_BOOL:
 		case ALL_FLOATS:
@@ -3824,6 +3819,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 	switch (lhs->type->type_kind)
 	{
 		case TYPE_VOID:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE_VOID;
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -4938,6 +4934,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_val->enum_constant.inner_ordinal), type);
 			return;
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 		case CONST_UNTYPED_LIST:
 			// This is valid in the case that this will be discarded anyway.
 			llvm_value_set(be_value, NULL, type_void);
@@ -4984,6 +4981,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE_VOID
 			break;
 		case TYPE_BOOL:

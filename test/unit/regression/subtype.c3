@@ -45,7 +45,7 @@ fn void switch_subtyping()
 		default:
 			assert(true);
 	}
-	switch (Bar.typeid)
+	switch (Bar::typeid)
 	{
 		case int:
 			assert(false);
@@ -58,7 +58,7 @@ fn void switch_subtyping()
 		default:
 			assert(false);
 	}
-	switch (Bar.typeid)
+	switch (Bar::typeid)
 	{
 		case int:
 			assert(false);
@@ -69,7 +69,7 @@ fn void switch_subtyping()
 		default:
 			assert(false);
 	}
-	$switch Bar.typeid:
+	$switch Bar::typeid:
 	$case Foo:
 		assert(true);
 	$case Bar:
@@ -83,9 +83,9 @@ fn void is_subtype()
 {
 	$assert(types::is_subtype_of(Bar, Baz));
 	$assert(!types::is_subtype_of(Baz, Bar));
-	typeid baz = Baz.typeid;
-	typeid bar = Bar.typeid;
+	typeid baz = Baz::typeid;
+	typeid bar = Bar::typeid;
 	assert(bar.is_subtype_of(baz));
-	assert(!bar.is_subtype_of(double.typeid));
+	assert(!bar.is_subtype_of(double::typeid));
 	assert(!baz.is_subtype_of(bar));
 }

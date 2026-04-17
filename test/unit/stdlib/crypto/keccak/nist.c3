@@ -64,8 +64,8 @@ fn void stepped_combinations()
 	test::@check(nist::encode_length(RIGHT, 0x6666, false) == x'033330 03');
 	test::@check(nist::encode_length(RIGHT, 0x6666, true) == x'6666 02');
 
-	char[uint128.sizeof + 2] byte_result;
-	char[uint128.sizeof + 2] bit_result;
+	char[uint128::size + 2] byte_result;
+	char[uint128::size + 2] bit_result;
 	for (char i = 0, uint128 x = 0x06; i < 30; i++, x = (x << 4) | 0x06ull)
 	{
 		uint128 bits = x << 3;

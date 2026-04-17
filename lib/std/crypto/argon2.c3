@@ -31,13 +31,13 @@ constdef Argon2Algorithm : inline uint
 }
 
 <* Present multiple ways to view the same Argon2 block. *>
-union Argon2Block @local @align(SimdVec.sizeof)
+union Argon2Block @local @align(SimdVec::size)
 {
-	SimdVec[BLOCK_SIZE / SimdVec.sizeof] vec;   // 1024 / 32 = 32
-	uint128[BLOCK_SIZE / uint128.sizeof] z;   // 1024 / 16 = 64
-	ulong[BLOCK_SIZE / ulong.sizeof] q;   // 1024 / 8 = 128
-	uint[BLOCK_SIZE / uint.sizeof] d;   // 1024 / 4 = 256
-	ushort[BLOCK_SIZE / ushort.sizeof] w;   // 1024 / 2 = 512
+	SimdVec[BLOCK_SIZE / SimdVec::size] vec;   // 1024 / 32 = 32
+	uint128[BLOCK_SIZE / uint128::size] z;   // 1024 / 16 = 64
+	ulong[BLOCK_SIZE / ulong::size] q;   // 1024 / 8 = 128
+	uint[BLOCK_SIZE / uint::size] d;   // 1024 / 4 = 256
+	ushort[BLOCK_SIZE / ushort::size] w;   // 1024 / 2 = 512
 	char[BLOCK_SIZE] b;   // 1024
 }
 
@@ -326,16 +326,16 @@ fn int process_lane_slice(void* in_ctx) @local
  @param [in] input : "The data to consume and hash."
  @param options : "Chosen algorithm options for computing the resultant tag. See the `Argon2Options` struct for more information."
 
- @require outbuf.len >= 4 && outbuf.len < uint.max : "The tag length must be at least 4 bytes and no more than (2^32)-1"
- @require input.len < uint.max : "The input data (P) length must be less than 2^32 bytes."
- @require options.salt.len < uint.max : "The salt (S) length must be less than 2^32 bytes."
- @require options.lanes > 0 && options.lanes < int.max : "Parallelism (p) must be greater than 0 and less than 2^31."
- @require options.mem_size >= options.lanes << 3 && options.mem_size < uint.max : "Memory size (m) must be at least 8*p and less than 2^32."
- @require options.iterations > 0 && options.iterations < uint.max : "Passes (t) must be greater than 0 and less than 2^32."
+ @require outbuf.len >= 4 && outbuf.len < uint::max : "The tag length must be at least 4 bytes and no more than (2^32)-1"
+ @require input.len < uint::max : "The input data (P) length must be less than 2^32 bytes."
+ @require options.salt.len < uint::max : "The salt (S) length must be less than 2^32 bytes."
+ @require options.lanes > 0 && options.lanes < int::max : "Parallelism (p) must be greater than 0 and less than 2^31."
+ @require options.mem_size >= options.lanes << 3 && options.mem_size < uint::max : "Memory size (m) must be at least 8*p and less than 2^32."
+ @require options.iterations > 0 && options.iterations < uint::max : "Passes (t) must be greater than 0 and less than 2^32."
 *>
 fn void hash_raw(char[] outbuf, char[] input, Argon2Options options) => @pool()
 {
-	char[64 + 2 * uint.sizeof] digest @noinit @align(uint.sizeof);
+	char[64 + 2 * uint::size] digest @noinit @align(uint::size);
 
 	$if $feature(ARGON2_FORCE_SEQUENTIAL):
 		$echo "Argon2: forcing the use of sequential lane processing.";
@@ -521,7 +521,7 @@ macro tencode(char[] hash_value, Argon2Options options, char key_id = {})
  @param [in] key_id : "An identifier to use for an unconveyed private key."
  @param out_size : "The output size of the intermediate hash value. This is 32 bytes by default."
 
- @require out_size >= 4 && out_size < sz.max : "The hash's output size must be >= 4 bytes but less than sz.max."
+ @require out_size >= 4 && out_size < sz::max : "The hash's output size must be >= 4 bytes but less than sz::max."
 *>
 fn String hash(Allocator allocator, char[] input, Argon2Options options, char[] key_id = {}, sz out_size = 32) => @pool()
 {
@@ -650,18 +650,18 @@ fn void? _parse_option(Argon2Decoded* result, SeenOptions* seen, String token, c
 		case "m":
 			@saw(seen.m)!;
 			foreach (c : value) if (!ascii::NUMBER_SET.contains(c)) return INVALID_MEM_SIZE~;
-			result.mem_size = (value.to_integer(uint) ?? INVALID_MEM_SIZE~)!;
-			if (result.mem_size < 1 || result.mem_size == uint.max) return INVALID_MEM_SIZE~;
+			result.mem_size = (value.to_uint() ?? INVALID_MEM_SIZE~)!;
+			if (result.mem_size < 1 || result.mem_size == uint::max) return INVALID_MEM_SIZE~;
 		case "t":
 			@saw(seen.t)!;
 			foreach (c : value) if (!ascii::NUMBER_SET.contains(c)) return INVALID_ITERATIONS~;
-			result.iterations = (value.to_integer(uint) ?? INVALID_ITERATIONS~)!;
-			if (result.iterations < 1 || result.iterations == uint.max) return INVALID_ITERATIONS~;
+			result.iterations = (value.to_uint() ?? INVALID_ITERATIONS~)!;
+			if (result.iterations < 1 || result.iterations == uint::max) return INVALID_ITERATIONS~;
 		case "p":
 			@saw(seen.p)!;
 			foreach (c : value) if (!ascii::NUMBER_SET.contains(c)) return INVALID_PARALLELISM~;
-			result.lanes = (value.to_integer(uint) ?? INVALID_PARALLELISM~)!;
-			if (result.lanes < 1 || result.lanes > char.max) return INVALID_PARALLELISM~;
+			result.lanes = (value.to_uint() ?? INVALID_PARALLELISM~)!;
+			if (result.lanes < 1 || result.lanes > char::max) return INVALID_PARALLELISM~;
 		case "keyid":
 			@saw(seen.key_id)!;
 			*decoded_key_id = base64::tdecode(value, padding: base64::NO_PAD) ?? INVALID_KEY_ID~!;
@@ -706,7 +706,7 @@ fn Argon2Decoded? decode(Allocator allocator, String hash_str) => @pool()
 
 	if (outer_tokens[1][:2] != "v=") return INVALID_VERSION~;
 	foreach (c : outer_tokens[1][2..]) if (!ascii::NUMBER_SET.contains(c)) return INVALID_VERSION~;
-	result.version = (outer_tokens[1][2..].to_integer(char) ?? INVALID_VERSION~)!;
+	result.version = (outer_tokens[1][2..].to_char() ?? INVALID_VERSION~)!;
 
 	String[] option_tokens = outer_tokens[2].tsplit(",", max: 5, skip_empty: false);
 

@@ -657,7 +657,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	}
 
 	// 5. If not, then we see if we have an array.
-	if (flattened->type_kind == TYPE_UNTYPED_LIST ||
+	if (flattened->type_kind == TYPE_UNTYPEDLIST ||
 		flattened->type_kind == TYPE_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_ARRAY ||
 		flattened->type_kind == TYPE_FLEXIBLE_ARRAY ||
@@ -860,7 +860,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 				return true;
 			}
 			break;
-		case TYPE_UNTYPED_LIST:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -924,6 +924,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_REFLECTION:
 			if (no_match_ref) goto NO_MATCH;
 			RETURN_SEMA_ERROR(expr, "You cannot use %s with an initializer list.", type_quoted_error_string(to));
 		default:

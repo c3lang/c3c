@@ -13,6 +13,6 @@ fn void test_signbit()
 {
 	assert(math::signbit(-231.3) == 1);
 	assert(math::signbit(231.3) == 0);
-	assert(math::signbit(float.inf) == 0);
-	assert(math::signbit(-float.inf) == 1);
+	assert(math::signbit(float::inf) == 0);
+	assert(math::signbit(-float::inf) == 1);
 }

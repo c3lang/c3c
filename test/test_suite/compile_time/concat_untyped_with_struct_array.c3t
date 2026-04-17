@@ -23,7 +23,7 @@ fn int main()
 module assert_repro::macros <ValueT>;
 alias SliceT = ValueT[];
 
-macro SliceT slice(SliceT $from, usz $start, usz $end = usz.max)
+macro SliceT slice(SliceT $from, usz $start, usz $end = usz::max)
 {
     $if $start >= $from.len:
         return (SliceT){};

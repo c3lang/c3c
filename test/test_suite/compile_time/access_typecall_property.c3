@@ -4,5 +4,5 @@ struct Foo
 }
 fn void main()
 {
-    Foo.has_tagof.tagof; // #error: Type functions have neither methods nor fields.
+    Foo::has_tag.get_tag; // #error: Type functions have neither methods nor fields.
 }

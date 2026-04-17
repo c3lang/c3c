@@ -7,8 +7,8 @@ fn float _erff(float x)
 {
 	// Handle special cases.
 	if (x == 0.0) return 0.0;
-	if (x == float.inf) return 1.0;
-	if (x == -float.inf) return -1.0;
+	if (x == float::inf) return 1.0;
+	if (x == -float::inf) return -1.0;
 
 	// Use symmetry: erf(-x) = -erf(x)
 	float sign = 1.0;
@@ -44,8 +44,8 @@ fn double _erf(double x)
 {
 	// Handle special cases.
 	if (x == 0.0) return 0.0;
-	if (x == double.inf) return 1.0;
-	if (x == -double.inf) return -1.0;
+	if (x == double::inf) return 1.0;
+	if (x == -double::inf) return -1.0;
 
 	// Use symmetry: erf(-x) = -erf(x)
 	double sign = 1.0;

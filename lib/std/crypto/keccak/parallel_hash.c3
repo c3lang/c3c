@@ -225,7 +225,7 @@ fn void ParallelHash.init(&self, Allocator allocator, sz block_size = MAX_BLOCK_
 	};
 	self.internal = alloc::new_array(allocator, char, self.block_size);
 
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.c.init(PARALLEL_HASH, customizer);
 
 	self.c.update(nist::encode_length(LEFT, self.block_size, true));

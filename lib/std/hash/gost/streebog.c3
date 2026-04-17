@@ -121,7 +121,7 @@ fn void Streebog.update(&self, char[] data)
 		data = data[rest..];
 		self.index = 0;
 	}
-	bool aligned = 0 == (sz)data.ptr % ulong.sizeof;
+	bool aligned = 0 == (sz)data.ptr % ulong::size;
 	for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..])
 	{
 		if (aligned)
@@ -160,7 +160,7 @@ fn void streebog_final_private(Streebog* self) @local
 	sz shift = (self.index & 0b111) * 8;
 
 	unprocessed_bits_count[0] = (ulong)(self.index * 8);
-	self.message[index]   &= ~(ulong.max << shift);
+	self.message[index]   &= ~(ulong::max << shift);
 	self.message[index++] ^= 1ul << shift;
 	if (index < 8) self.message[index..] = {};
 

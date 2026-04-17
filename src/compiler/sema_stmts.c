@@ -799,9 +799,10 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_COND:
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
-		case EXPR_CT_CALL:
+		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
+		case EXPR_CT_REFLECT:
 		case EXPR_CONTRACT:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NAMED_EVAL_ARGUMENT:
@@ -1557,7 +1558,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	// We might have an untyped list, if we failed the conversion.
 	Type *canonical = enumerator->type->canonical;
-	if (canonical->type_kind == TYPE_UNTYPED_LIST)
+	if (canonical->type_kind == TYPE_UNTYPEDLIST)
 	{
 		if (variable_type_info || !iterator_was_initializer)
 		{
@@ -2865,6 +2866,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		case CONST_TYPEID:
 		case CONST_REF:
 		case CONST_MEMBER:
+    	case CONST_REFLECTION:
 			goto FAILED_NO_LIST;
 		case CONST_SLICE:
 			if (!collection->const_expr.slice_init)

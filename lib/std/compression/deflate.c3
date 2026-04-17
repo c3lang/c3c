@@ -893,7 +893,7 @@ fn void BitWriter.write_bits(&self, uint value, int count)
 			if (new_cap < 1024) new_cap = 1024;
 			while (new_cap <= self.len)
 			{
-				if (new_cap > sz.max / 2)
+				if (new_cap > sz::max / 2)
 				{
 					new_cap = self.len + 1;
 					break;

@@ -36,7 +36,7 @@ fn Type square(Type t) => t * THE_CONST;
 module test;
 import the_generic;
 
-<* @require Type.sizeof < 5 *>
+<* @require Type::size < 5 *>
 fn Type square(Type t) <Type> => t * 3;
 fn Type bob(Type2 t) <Type2> => feok * 3;
 

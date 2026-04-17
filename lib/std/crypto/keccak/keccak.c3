@@ -170,16 +170,16 @@ const char[24] PI = {
 };
 
 <* The base Keccak context data structure used to generate XOF outputs. *>
-struct KeccakContext <F, OUTPUT_BITS> @align(ulong.sizeof) @mustinit
+struct KeccakContext <F, OUTPUT_BITS> @align(ulong::size) @mustinit
 {
-	union @align(ulong.sizeof)   // keccak sponge state
+	union @align(ulong::size)   // keccak sponge state
 	{
-		ulong[F / 8 / ulong.sizeof] sponge;
+		ulong[F / 8 / ulong::size] sponge;
 		char[F / 8] sponge_bytes;
 	}
-	union @align(ulong.sizeof)
+	union @align(ulong::size)
 	{
-		ulong[rate(OUTPUT_BITS) / ulong.sizeof] buf_words;
+		ulong[rate(OUTPUT_BITS) / ulong::size] buf_words;
 		char[rate(OUTPUT_BITS)] buf;
 	}
 	sz offset;   // tracking leftover bytes from absorption
@@ -200,7 +200,7 @@ struct KeccakContext <F, OUTPUT_BITS> @align(ulong.sizeof) @mustinit
 *>
 fn void KeccakContext.init(&self, char runtime_rounds = DEFAULT_ROUNDS, char runtime_delimiter = DEFAULT_DELIMITER)
 {
-	@init_runtime_size(self, $sizeof(*self));
+	@init_runtime_size(self, @sizeof(*self));
 	sz struct_sz = self.runtime_struct_size;
 	*self = {
 		.runtime_rounds = runtime_rounds,
@@ -239,15 +239,15 @@ fn void KeccakContext.finalize(&self)
 	self.state.transition(FINALIZED);
 }
 
-<* Explicitly zeros the instance based on the runtime size. A minimum `$sizeof(KeccakContext)` is assumed. *>
-fn void KeccakContext.wipe(&self) @inline => mem::zero_volatile(((char*)self)[:max($sizeof(*self), self.runtime_struct_size)]);
+<* Explicitly zeros the instance based on the runtime size. A minimum `@sizeof(KeccakContext)` is assumed. *>
+fn void KeccakContext.wipe(&self) @inline => mem::zero_volatile(((char*)self)[:max(@sizeof(*self), self.runtime_struct_size)]);
 
 <* An internal function used to XOR the sponge with the partial "stomach" buffer (data awaiting digestion). *>
 fn void KeccakContext.fill_block(&self)
 {
 	sz i = 0;
-	for (; i < (self.offset / ulong.sizeof); i++) self.sponge[i] ^= self.buf_words[i];
-	for (i = i * ulong.sizeof; i < self.offset; i++) self.sponge_bytes[i] ^= self.buf[i];
+	for (; i < (self.offset / ulong::size); i++) self.sponge[i] ^= self.buf_words[i];
+	for (i = i * ulong::size; i < self.offset; i++) self.sponge_bytes[i] ^= self.buf[i];
 	self.permute_r();
 	self.offset = 0;
 }
@@ -278,12 +278,12 @@ fn void KeccakContext.absorb(&self, char[] input)
 		i = left;
 	}
 
-	bool is_aligned = 0 == (uptr)&input[i] % ulong.sizeof;
+	bool is_aligned = 0 == (uptr)&input[i] % ulong::size;
 	if (is_aligned)
 	{
 		for (; i + rate(OUTPUT_BITS) < input.len; i += rate(OUTPUT_BITS))
 		{
-			foreach (j, c : *(ulong[rate(OUTPUT_BITS) / ulong.sizeof]*)(&input[i])) self.sponge[j] ^= c;
+			foreach (j, c : *(ulong[rate(OUTPUT_BITS) / ulong::size]*)(&input[i])) self.sponge[j] ^= c;
 			self.permute_r();
 		}
 	}
@@ -308,8 +308,8 @@ fn void KeccakContext.absorb(&self, char[] input)
 fn void KeccakContext.pad(&self)
 {
 	sz i = 0;
-	for (; i < (self.offset / ulong.sizeof); i++) self.sponge[i] ^= self.buf_words[i];
-	for (i = i * ulong.sizeof; i < self.offset; i++) self.sponge_bytes[i] ^= self.buf[i];
+	for (; i < (self.offset / ulong::size); i++) self.sponge[i] ^= self.buf_words[i];
+	for (i = i * ulong::size; i < self.offset; i++) self.sponge_bytes[i] ^= self.buf[i];
 
 	if (self.offset == rate(OUTPUT_BITS))
 	{

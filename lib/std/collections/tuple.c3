@@ -49,7 +49,7 @@ fn sz? Triple.to_format(&self, Formatter* f) @dynamic
  @param [&out] c
  @require $defined(*a = self.first) : "You cannot assign the first value to a"
  @require $defined(*b = self.second) : "You cannot assign the second value to b"
- @require $defined(*c = self.third) : "You cannot assign the second value to c"
+ @require $defined(*c = self.third) : "You cannot assign the third value to c"
 *>
 macro void Triple.unpack(&self, a, b, c)
 {

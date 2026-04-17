@@ -3,7 +3,7 @@ module std::math::bigint @test;
 fn void test_init_with_u128()
 {
 	BigInt bi @noinit;
-	assert(!bi.init_with_u128(uint128.max).is_negative());
+	assert(!bi.init_with_u128(uint128::max).is_negative());
 }
 
 fn void init_with_array()

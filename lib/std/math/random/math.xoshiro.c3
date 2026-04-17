@@ -151,7 +151,7 @@ macro xoshiro(Xoshiro* self) @local
 // =================================================================
 <*
  @require @in(BIT_SIZE, 64, 128, 1024) : "You must use a supported state size for Xoroshiro permutations."
- @require $typeof(OPERATION) == XorshiftType && @in(OPERATION, ...XorshiftType.values) : "OPERATION must be a value of the XorshiftType enum."
+ @require $typeof(OPERATION) == XorshiftType && @in(OPERATION, ...XorshiftType::values) : "OPERATION must be a value of the XorshiftType enum."
 *>
 module std::math::random::xoroshiro <BIT_SIZE, OPERATION> @private;
 

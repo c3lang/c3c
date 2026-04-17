@@ -374,6 +374,7 @@ RETRY:
 				case CONST_POINTER:
 				case CONST_UNTYPED_LIST:
 				case CONST_MEMBER:
+				case CONST_REFLECTION:
 					return;
 				case CONST_FAULT:
 					sema_trace_decl_liveness(expr->const_expr.fault);

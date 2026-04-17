@@ -149,7 +149,7 @@ fn Win32_DWORD? load_modules()
 	foreach (mod : modules)
 	{
 		Win32_MODULEINFO info;
-		if (!getModuleInformation(process, mod, &info, $sizeof(info)))
+		if (!getModuleInformation(process, mod, &info, @sizeof(info)))
 		{
 			return backtrace::RESOLUTION_FAILED~;
 		}
@@ -194,14 +194,14 @@ fn Backtrace? resolve_backtrace(Allocator allocator, void* addr, Win32_HANDLE pr
 {
 	Symbol symbol;
 	//Win32_DWORD image_type = load_modules()!;
-	symbol.sizeOfStruct = Win32_SYMBOL_INFO.sizeof;
+	symbol.sizeOfStruct = Win32_SYMBOL_INFO::size;
 	symbol.maxNameLen = 255;
 	if (!symFromAddr(process, (Win32_DWORD64)addr - 1u, &displacement, &symbol))
 	{
 		return backtrace::NO_BACKTRACE_SYMBOLS~;
 	}
 	Win32_IMAGEHLP_MODULE64 module_info;
-	module_info.sizeOfStruct = Win32_IMAGEHLP_MODULE64.sizeof;
+	module_info.sizeOfStruct = Win32_IMAGEHLP_MODULE64::size;
 	if (!symGetModuleInfo64(process, (Win32_DWORD64)addr - 1u, &module_info))
 	{
 		return backtrace::NO_BACKTRACE_SYMBOLS~;

@@ -15,7 +15,7 @@ fn void tester() @private {}
 module bar;
 macro test()
 {
-    tester(); // #error: function 'tester' is '@private' and not visible
+    tester(); // #error: The function 'tester' in foo is '@private' and not visible from other modules
 }
 
 macro test2()

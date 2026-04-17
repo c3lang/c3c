@@ -6,7 +6,7 @@ import std::core::mem::allocators @public;
 import std::os::posix, std::os::win32, std::math, std::io;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
-const DEFAULT_MEM_ALIGNMENT = env::WASM ? 16 : (void*.alignof) * 2;
+const DEFAULT_MEM_ALIGNMENT = env::WASM ? 16 : (void*::alignment) * 2;
 const ulong KB = 1024;
 const ulong MB = KB * 1024;
 const ulong GB = MB * 1024;
@@ -47,7 +47,7 @@ fn sz os_pagesize()
  @param mask : "The mask for the load"
  @param passthru : "The value to use for non masked values"
  @require $defined(*ptr = passthru) : "Pointer and passthru must match"
- @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require @kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
@@ -66,7 +66,7 @@ macro masked_load(ptr, bool[<*>] mask, passthru)
  @param $alignment : "The alignment to assume for the pointer"
 
  @require $defined(*ptr = passthru) : "Pointer and passthru must match"
- @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require @kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
@@ -85,8 +85,8 @@ macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, sz $alignment)
  @param mask : "The mask for the load"
  @param passthru : "The value to use for non masked values"
 
- @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require @kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require @kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require $defined(*ptrvec[0] = passthru[0]) : "Pointer and passthru must match"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -107,8 +107,8 @@ macro gather(ptrvec, bool[<*>] mask, passthru)
  @param passthru : "The value to use for non masked values"
  @param $alignment : "The alignment to assume for the pointers"
 
- @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require $kindof(passthru) == VECTOR : "Expected passthru to be a vector"
+ @require @kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require @kindof(passthru) == VECTOR : "Expected passthru to be a vector"
  @require $defined(*ptrvec[0] = passthru[0]) : "Pointer and passthru must match"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -130,7 +130,7 @@ macro @gather_aligned(ptrvec, bool[<*>] mask, passthru, sz $alignment)
  @param mask : "The mask for the store"
 
  @require $defined(*ptr = value) : "Pointer and value must match"
- @require $kindof(value) == VECTOR : "Expected value to be a vector"
+ @require @kindof(value) == VECTOR : "Expected value to be a vector"
  @require value.len == mask.len : "Mask and value must have the same length"
 *>
 macro masked_store(ptr, value, bool[<*>] mask)
@@ -145,7 +145,7 @@ macro masked_store(ptr, value, bool[<*>] mask)
  @param $alignment : "The alignment of the pointer"
 
  @require $defined(*ptr = value) : "Pointer and value must match"
- @require $kindof(value) == VECTOR : "Expected value to be a vector"
+ @require @kindof(value) == VECTOR : "Expected value to be a vector"
  @require value.len == mask.len : "Mask and value must have the same length"
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
@@ -159,8 +159,8 @@ macro @masked_store_aligned(ptr, value, bool[<*>] mask, sz $alignment)
  @param ptrvec : "The vector pointer containing the addresses to store to."
  @param value : "The value to store masked"
  @param mask : "The mask for the store"
- @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require $kindof(value) == VECTOR : "Expected value to be a vector"
+ @require @kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require @kindof(value) == VECTOR : "Expected value to be a vector"
  @require $defined(*ptrvec[0] = value[0]) : "Pointer and value must match"
  @require value.len == mask.len : "Mask and value must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -177,8 +177,8 @@ macro scatter(ptrvec, value, bool[<*>] mask)
  @param mask : "The mask for the store"
  @param $alignment : "The alignment of the load"
 
- @require $kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
- @require $kindof(value) == VECTOR : "Expected value to be a vector"
+ @require @kindof(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
+ @require @kindof(value) == VECTOR : "Expected value to be a vector"
  @require $defined(*ptrvec[0] = value[0]) : "Pointer and value must match"
  @require value.len == mask.len : "Mask and value must have the same length"
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
@@ -448,7 +448,7 @@ macro void set_inline(void* dst, char val, sz $len, sz $dst_align = 0, bool $is_
 macro bool equals(a, b, sz len = -1, sz $align = 0)
 {
 	$if !$align:
-		$align = $typeof(a[0]).alignof;
+		$align = $typeof(a[0])::alignment;
 	$endif
 	void* x @noinit;
 	void* y @noinit;
@@ -476,7 +476,7 @@ macro bool equals(a, b, sz len = -1, sz $align = 0)
 		$default:
 			$Type = ulong;
 	$endswitch
-	var $step = $Type.sizeof;
+	var $step = $Type::size;
 	sz end = len / $step;
 	for (sz i = 0; i < end; i++)
 	{
@@ -497,7 +497,7 @@ macro bool equals(a, b, sz len = -1, sz $align = 0)
 *>
 macro bool type_alloc_must_be_aligned($Type)
 {
-	return $Type.alignof > DEFAULT_MEM_ALIGNMENT;
+	return $Type::alignment > DEFAULT_MEM_ALIGNMENT;
 }
 
 <*
@@ -615,8 +615,8 @@ fn void temp_pop(PoolState old_state)
 <*
  @require pool_size >= 64
  @require realloc_size >= 64
- @require allocator.type != TempAllocator.typeid : "You may not create a temp allocator with a TempAllocator as the backing allocator."
- @require min_size > TempAllocator.sizeof + 64 : "Min size must meaningfully hold the data + some bytes"
+ @require allocator.type != TempAllocator::typeid : "You may not create a temp allocator with a TempAllocator as the backing allocator."
+ @require min_size > TempAllocator::size + 64 : "Min size must meaningfully hold the data + some bytes"
 *>
 macro void @pool_init(Allocator allocator, sz pool_size,
 	sz reserve_size = allocators::temp_allocator_reserve_size,
@@ -685,7 +685,7 @@ macro TrackingEnv* get_tracking_env()
 <*
  @param value : "The value to clone"
  @return "A pointer to the cloned value"
- @require $alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'clone_aligned' instead"
+ @require @alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'clone_aligned' instead"
 *>
 macro @clone(value) @builtin @nodiscard
 {
@@ -713,7 +713,7 @@ macro @clone_aligned(value) @builtin @nodiscard
 *>
 macro @tclone(value) @builtin @nodiscard
 {
-	$if $alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT:
+	$if @alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT:
 		return tnew($typeof(value), value);
 	$else
 		return alloc::clone_aligned(tmem, value);
@@ -751,17 +751,17 @@ fn void* tmalloc(sz size, sz alignment = 0) @builtin @inline @nodiscard
  @param #init : "The optional initializer"
 
  @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
- @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @require $Type::alignment <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  @return "A pointer to data of type $Type."
 *>
 macro new($Type, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
-		$Type* val = malloc($Type.sizeof);
+		$Type* val = malloc($Type::size);
 		*val = #init;
 		return val;
 	$else
-		return ($Type*)calloc($Type.sizeof);
+		return ($Type*)calloc($Type::size);
 	$endif
 }
 
@@ -776,11 +776,11 @@ macro new($Type, #init = ...) @nodiscard @safemacro
 macro new_with_padding($Type, sz padding, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
-		$Type* val = malloc($Type.sizeof + padding);
+		$Type* val = malloc($Type::size + padding);
 		*val = #init;
 		return val;
 	$else
-		return ($Type*)calloc($Type.sizeof + padding);
+		return ($Type*)calloc($Type::size + padding);
 	$endif
 }
 
@@ -797,37 +797,37 @@ macro new_with_padding($Type, sz padding, #init = ...) @nodiscard @safemacro
 macro new_aligned($Type, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
-		$Type* val = malloc_aligned($Type.sizeof, $Type.alignof);
+		$Type* val = malloc_aligned($Type::size, $Type::alignment);
 		*val = #init;
 		return val;
 	$else
-		return ($Type*)calloc_aligned($Type.sizeof, $Type.alignof);
+		return ($Type*)calloc_aligned($Type::size, $Type::alignment);
 	$endif
 }
 
 <*
  @param $Type : "The type to allocate"
 
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
- @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
+ @require $Type::alignment <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  @return "A pointer to uninitialized data for the type $Type"
 *>
 macro alloc($Type) @nodiscard
 {
-	return ($Type*)malloc($Type.sizeof);
+	return ($Type*)malloc($Type::size);
 }
 
 <*
  @param $Type : "The type to allocate"
  @param padding : "The padding to add after the allocation"
 
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
-  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
+  @require $Type::alignment <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  @return "A pointer to uninitialized data for the type $Type"
 *>
 macro alloc_with_padding($Type, sz padding) @nodiscard
 {
-	return ($Type*)malloc($Type.sizeof + padding);
+	return ($Type*)malloc($Type::size + padding);
 }
 
 <*
@@ -836,30 +836,30 @@ macro alloc_with_padding($Type, sz padding) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @param $Type : "The type to allocate"
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
  @return "A pointer to uninitialized data for the type $Type with the proper alignment"
 *>
 macro alloc_aligned($Type) @nodiscard
 {
-	return ($Type*)malloc_aligned($Type.sizeof, $Type.alignof);
+	return ($Type*)malloc_aligned($Type::size, $Type::alignment);
 }
 
 <*
  @param $Type : "The type to allocate"
  @param #init : "The optional initializer"
 
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
  @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to temporary data of type $Type."
 *>
 macro tnew($Type, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
-		$Type* val = tmalloc($Type.sizeof, $Type.alignof) @inline;
+		$Type* val = tmalloc($Type::size, $Type::alignment) @inline;
 		*val = #init;
 		return val;
 	$else
-		return ($Type*)tcalloc($Type.sizeof, $Type.alignof) @inline;
+		return ($Type*)tcalloc($Type::size, $Type::alignment) @inline;
 	$endif
 }
 
@@ -868,41 +868,41 @@ macro tnew($Type, #init = ...) @nodiscard @safemacro
  @param padding : "The padding to add after the allocation"
  @param #init : "The optional initializer"
 
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
  @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
  @return "A pointer to temporary data of type $Type with added padding at the end."
 *>
 macro temp_with_padding($Type, sz padding, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
-		$Type* val = tmalloc($Type.sizeof + padding, $Type.alignof) @inline;
+		$Type* val = tmalloc($Type::size + padding, $Type::alignment) @inline;
 		*val = #init;
 		return val;
 	$else
-		return ($Type*)tcalloc($Type.sizeof + padding, $Type.alignof) @inline;
+		return ($Type*)tcalloc($Type::size + padding, $Type::alignment) @inline;
 	$endif
 }
 
 <*
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
 *>
 macro talloc($Type) @nodiscard
 {
-	return tmalloc($Type.sizeof, $Type.alignof);
+	return tmalloc($Type::size, $Type::alignment);
 }
 
 <*
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
 *>
 macro talloc_with_padding($Type, sz padding) @nodiscard
 {
-	return tmalloc($Type.sizeof + padding, $Type.alignof);
+	return tmalloc($Type::size + padding, $Type::alignment);
 }
 
 <*
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
- @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
+ @require $Type::alignment <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro new_array($Type, sz elements) @nodiscard
 {
@@ -913,8 +913,8 @@ macro new_array($Type, sz elements) @nodiscard
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro new_array_aligned($Type, sz elements) @nodiscard
 {
@@ -922,9 +922,9 @@ macro new_array_aligned($Type, sz elements) @nodiscard
 }
 
 <*
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
- @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
+ @require $Type::alignment <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro alloc_array($Type, sz elements) @nodiscard
 {
@@ -935,8 +935,8 @@ macro alloc_array($Type, sz elements) @nodiscard
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
- @require $Type.kindof != OPTIONAL : "Expected a non-optional type"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require $Type::kind != OPTIONAL : "Expected a non-optional type"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro alloc_array_aligned($Type, sz elements) @nodiscard
 {
@@ -944,19 +944,19 @@ macro alloc_array_aligned($Type, sz elements) @nodiscard
 }
 
 <*
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro talloc_array($Type, sz elements) @nodiscard
 {
-	return (($Type*)tmalloc($Type.sizeof * elements, $Type.alignof))[:elements];
+	return (($Type*)tmalloc($Type::size * elements, $Type::alignment))[:elements];
 }
 
 <*
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro temp_array($Type, sz elements) @nodiscard
 {
-	return (($Type*)tcalloc($Type.sizeof * elements, $Type.alignof))[:elements];
+	return (($Type*)tcalloc($Type::size * elements, $Type::alignment))[:elements];
 }
 
 fn void* calloc(sz size) @builtin @inline @nodiscard
@@ -1015,7 +1015,7 @@ fn void* trealloc(void* ptr, sz size, sz alignment = mem::DEFAULT_MEM_ALIGNMENT)
 *>
 macro @unaligned_addr(#arg) @builtin
 {
-	return (UnalignedRef{$typeof(#arg), $alignof(#arg)})&#arg;
+	return (UnalignedRef{$typeof(#arg), @alignof(#arg)})&#arg;
 }
 
 module std::core::mem @if(env::NO_LIBC);

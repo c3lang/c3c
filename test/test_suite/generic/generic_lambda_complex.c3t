@@ -4,7 +4,7 @@ module abc_faults;
 
 faultdef UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
 
-<* @require Type.kindof == STRUCT *>
+<* @require Type::kind == STRUCT *>
 module abc <Type>;
 import std::io, abc_faults, std::collections::list;
 
@@ -60,21 +60,21 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 		TextTag tag @noinit;
 		do OUTER:
 		{
-			$foreach $m : Type.membersof:
-				if (name == $m.nameof)
+			$foreach $m : Type::members:
+				if (name == $m.name)
 				{
-					$switch $m.typeid:
-						$case String.typeid:
+					$switch $m.type:
+						$case String::typeid:
 							tag = {
 								.kind = STRING,
-								.data = (String*)(data + (usz)$m.offsetof),
+								.data = (String*)(data + (usz)$m.offset),
 							};
 							break OUTER;
 						$default:
 							$if $defined($m.get(self.data).as_stream):
 								tag = {
 									.kind = TEMPLATE,
-									.template = self.data.$eval($m.nameof).as_stream(),
+									.template = self.data.$eval($m.name).as_stream(),
 								};
 								break;
 							$endif

@@ -59,7 +59,7 @@ fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, sz block_size
 	self.allocator = allocator;
 	self.tail = &self.head;
 	self.head.next = null;
-	self.block_size = math::max(block_size, FixedBlockPoolEntry.sizeof);
+	self.block_size = math::max(block_size, FixedBlockPoolEntry::size);
 	capacity = calculate_actual_capacity(capacity, self.block_size);
 	self.alignment = allocators::alignment_for_allocation(alignment);
 	self.page_size = capacity * self.block_size;
@@ -88,7 +88,7 @@ fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, sz block_size
 *>
 macro FixedBlockPool* FixedBlockPool.init_for_type(&self, Allocator allocator, $Type, sz capacity = INITIAL_CAPACITY)
 {
-	return self.init(allocator, $Type.sizeof, capacity, $Type.alignof);
+	return self.init(allocator, $Type::size, capacity, $Type::alignment);
 }
 
 <*

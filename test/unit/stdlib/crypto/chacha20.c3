@@ -401,8 +401,8 @@ fn void scrolling_input_randomly_unaligned()
 
 	for (sz i = 1; i < LARGE_INPUT.len; i++) @pool()
 	{
-		char[] unaligned @align(ulong.sizeof) = mem::talloc_array(char, i + ulong.sizeof);
-		char[] encrypt_me = unaligned[((rand.next_byte() % (ulong.sizeof - 1)) + 1) : i];
+		char[] unaligned @align(ulong::size) = mem::talloc_array(char, i + ulong::size);
+		char[] encrypt_me = unaligned[((rand.next_byte() % (ulong::size - 1)) + 1) : i];
 		encrypt_me[..] = LARGE_INPUT[:i];
 		test::@check(chacha20::tencrypt(encrypt_me, key, nonce) == LARGE_EXPECTED[:i], "Mismatch (unaligned) on index %d", i);
 	};
@@ -417,13 +417,13 @@ fn void scrolling_input_unaligned_permutations_with_random_chunks() @if($feature
 	char[*] key = sha256::hash("dance with me");
 	char[*] nonce = "123456789abc";
  
-	for (sz i = 1; i < ulong.sizeof + 1; i++)
+	for (sz i = 1; i < ulong::size + 1; i++)
 	{
 		for (sz j = 1; j < LARGE_INPUT.len; j++)
         {
             for (sz k = 1; k < 128; k++) @pool()
             {
-                char[] unaligned @align(ulong.sizeof) = mem::talloc_array(char, 1 + j + ulong.sizeof);
+                char[] unaligned @align(ulong::size) = mem::talloc_array(char, 1 + j + ulong::size);
                 unaligned[i:j] = LARGE_INPUT[:j];
                 test::@check(chacha20::tencrypt(unaligned[i:j], key, nonce) == LARGE_EXPECTED[:j], "Mismatched permutation of hash on index (%d, %d).", i, j);
 
@@ -468,7 +468,7 @@ fn void chacha20_chunked_unaligned_keystream() => @pool()
 	char[] original_text = "This is a test string that is longer than a single block and will be used for this test.";
 	char[] encrypted_once = chacha20::tencrypt(original_text, key, nonce);
 
-	char[] unaligned_buffer_storage @align(ulong.sizeof) = mem::talloc_array(char, original_text.len + 1);
+	char[] unaligned_buffer_storage @align(ulong::size) = mem::talloc_array(char, original_text.len + 1);
 	char[] text_to_transform = unaligned_buffer_storage[1..];
 	text_to_transform[..] = original_text[..];
 

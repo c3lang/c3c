@@ -31,7 +31,7 @@ fn void test6()
 
 macro @test1($Foo = ...)
 {
-	return $Foo.typeid; // #error: The parameter '$Foo' was not provided by the caller.
+	return $Foo::typeid; // #error: The parameter '$Foo' was not provided by the caller.
 }
 
 macro @test2(#foo = ...)
@@ -52,7 +52,7 @@ macro @test4($foo = ...)
 macro @test5($Foo = ...)
 {
 	$Foo = int; // #error: The parameter '$Foo' was not provided by the caller
-	return $Foo.typeid;
+	return $Foo::typeid;
 }
 
 macro @test6(foo = ...)

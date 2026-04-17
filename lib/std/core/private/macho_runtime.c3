@@ -69,7 +69,7 @@ fn bool name_cmp(char* a, char[16]* b)
 
 fn SegmentCommand64*? find_segment(MachHeader* header, char* segname)
 {
-	LoadCommand* command = (void*)header + MachHeader64.sizeof;
+	LoadCommand* command = (void*)header + MachHeader64::size;
 	for (uint i = 0; i < header.ncmds; i++)
 	{
 		if (command.cmd == LC_SEGMENT_64)
@@ -83,7 +83,7 @@ fn SegmentCommand64*? find_segment(MachHeader* header, char* segname)
 }
 fn Section64*? find_section(SegmentCommand64* command, char* sectname)
 {
-	Section64* section = (void*)command + SegmentCommand64.sizeof;
+	Section64* section = (void*)command + SegmentCommand64::size;
 	for (uint i = 0; i < command.nsects; i++)
 	{
 		if (name_cmp(sectname, &section.sectname)) return section;
@@ -101,7 +101,7 @@ macro find_segment_section_body(MachHeader* header, char* segname, char* sectnam
 		return ($Type[]){};
 	}
 	$Type* ptr = (void*)header + section.offset;
-	return ptr[:section.size / $Type.sizeof];
+	return ptr[:section.size / $Type::size];
 }
 
 alias DyldCallback = fn void (MachHeader* mh, sz vmaddr_slide);

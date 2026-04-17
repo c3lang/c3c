@@ -58,7 +58,7 @@ macro char[] encoded_rate_bytes($security_level) @const
  @param length : "The length value to encode."
  @param as_direct_bytes : "If set to `true`, encode `length` directly, without converting the value to a bit count."
 
- @require into.len >= int128.sizeof + 2 : "The storage buffer must have adequate space for all possible 16-byte integer values (>= 18 bytes)."
+ @require into.len >= int128::size + 2 : "The storage buffer must have adequate space for all possible 16-byte integer values (>= 18 bytes)."
 
  @return "The width of the encoded length in bytes."
 *>
@@ -92,7 +92,7 @@ fn sz encode_length_into(char[] into, NistEncodingType direction, int128 length,
 *>
 macro char[] encode_length(NistEncodingType direction, int128 length, bool as_direct_bytes = false)
 {
-	char[int128.sizeof + 2] result;
+	char[int128::size + 2] result;
 	sz bytes = encode_length_into(result[..], direction, length, as_direct_bytes: as_direct_bytes);
 	return direction == LEFT ? result[:bytes + 1] : result[1:bytes + 1];
 }

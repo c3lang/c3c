@@ -1,6 +1,6 @@
 macro @foo(#type)
 {
-	return $typeof(#type).has_tagof("hello");
+	return $typeof(#type)::has_tag("hello");
 }
 
 typedef Foo @constinit = uint;

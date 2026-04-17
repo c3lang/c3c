@@ -29,7 +29,7 @@ fn void Map.init(Map *map, int capacity = 128)
 {
 	if (capacity < 16) capacity = 4;
 	capacity = math::next_power_of_2(capacity);
-	map.map = calloc(Entry.sizeof * capacity);
+	map.map = calloc(Entry::size * capacity);
     map.mod = capacity - 1;
 }
 
@@ -52,7 +52,7 @@ fn Type? Map.set(Map *map, Key key, Type value) @maydiscard
 {
 	if (!map.map)
     {
-    	map.map = calloc(Entry.sizeof * 16);
+    	map.map = calloc(Entry::size * 16);
         map.mod = 0x0F;
     }
 
@@ -80,7 +80,7 @@ fn Type? Map.set(Map *map, Key key, Type value) @maydiscard
             entry = entry.next;
             continue;
         }
-        Entry* new = mem::calloc(Entry.sizeof);
+        Entry* new = mem::calloc(Entry::size);
         new.hash = hash;
         new.key = key;
         new.value = value;

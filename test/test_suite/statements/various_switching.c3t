@@ -10,7 +10,7 @@ fn void test()
 {
     int? x = BAR~;
 
-    typeid z = int.typeid;
+    typeid z = int::typeid;
     switch (z)
     {
         case int:

@@ -276,7 +276,7 @@ static inline IndexDiff range_const_len(Range *range)
 
 static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *type)
 {
-	if (!type) return STORAGE_NORMAL;
+	if (!type) return STORAGE_UNKNOWN;
 	bool is_distinct = false;
 	RETRY:
 	if (type == type_wildcard_optional) return STORAGE_WILDCARD;
@@ -286,9 +286,7 @@ static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *
 			return is_distinct ? STORAGE_UNKNOWN : STORAGE_VOID;
 		case TYPE_WILDCARD:
 			return STORAGE_WILDCARD;
-		case TYPE_MEMBER:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_TYPEINFO:
+		case SPECIAL_TYPES:
 		case TYPE_FUNC_RAW:
 			return STORAGE_COMPILE_TIME;
 		case TYPE_OPTIONAL:

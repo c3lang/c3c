@@ -7,9 +7,9 @@ struct Bar
 
 fn void main()
 {
-	var $x = "alignof";
-	int a = Bar.z1.offsetof;
-	int b = Bar.z1.$x;
+	var $x = "alignment";
+	int a = $reflect(Bar.z1).offset;
+	int b = $reflect(Bar.z1).$x;
 }
 
 /* #expect: test.ll

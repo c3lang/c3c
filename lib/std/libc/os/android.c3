@@ -2,8 +2,8 @@ module libc @if(env::ANDROID);
 
 // Checked for x86_64, this is notoriously incorrect when comparing with Rust code etc
 
-alias Blksize_t = $typefrom(env::X86_64 ? long.typeid : CInt.typeid);
-alias Nlink_t = $typefrom(env::X86_64 ? ulong.typeid : CUInt.typeid);
+alias Blksize_t = $typefrom(env::X86_64 ? long::typeid : CInt::typeid);
+alias Nlink_t = $typefrom(env::X86_64 ? ulong::typeid : CUInt::typeid);
 alias Blkcnt_t = long;
 alias Ino_t = ulong;
 alias Dev_t = ulong;

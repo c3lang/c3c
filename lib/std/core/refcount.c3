@@ -11,7 +11,7 @@
 module std::core::mem::ref <Type>;
 import std::thread, std::atomic;
 
-const OVERALIGNED @private = Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
+const OVERALIGNED @private = Type::alignment > mem::DEFAULT_MEM_ALIGNMENT;
 
 alias DeallocFn = fn void(void*);
 
@@ -29,17 +29,17 @@ macro Ref new(Allocator allocator, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
 		$if OVERALIGNED:
-			Type* ptr = alloc::malloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
+			Type* ptr = alloc::malloc_aligned(allocator, Type::size, Type::alignment)!!;
 			*ptr = #init;
 		$else
-			Type* ptr = alloc::malloc(allocator, Type.sizeof);
+			Type* ptr = alloc::malloc(allocator, Type::size);
 			*ptr = #init;
 		$endif
 	$else
 		$if OVERALIGNED:
-			Type* ptr = alloc::calloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
+			Type* ptr = alloc::calloc_aligned(allocator, Type::size, Type::alignment)!!;
 		$else
-			Type* ptr = alloc::calloc(allocator, Type.sizeof);
+			Type* ptr = alloc::calloc(allocator, Type::size);
 		$endif
 	$endif
 	return { .refcount = alloc::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
