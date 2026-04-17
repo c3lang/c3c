@@ -74,7 +74,7 @@ struct Poll
 
 <*
  @param [inout] polls
- @param timeout : "duration to poll (clamped to CInt.max ms), or POLL_FOREVER."
+ @param timeout : "duration to poll (clamped to Cint::max ms), or POLL_FOREVER."
 *>
 fn ulong? poll(Poll[] polls, Duration timeout)
 {
@@ -83,11 +83,11 @@ fn ulong? poll(Poll[] polls, Duration timeout)
 
 <*
  @param [inout] polls
- @param timeout_ms : "duration to poll in ms or -1. Clamped to CInt.max"
+ @param timeout_ms : "duration to poll in ms or -1. Clamped to Cint::max"
 *>
 fn ulong? poll_ms(Poll[] polls, long timeout_ms)
 {
-	if (timeout_ms > CInt.max) timeout_ms = CInt.max;
+	if (timeout_ms > CInt::max) timeout_ms = CInt::max;
 	$if env::WIN32:
 		CInt result = win32::wsaPoll((Win32_LPWSAPOLLFD)polls.ptr, (Win32_ULONG)polls.len, (CInt)timeout_ms);
 	$else
@@ -129,14 +129,14 @@ fn void? Socket.set_oobinline(&self, bool value) => self.set_option(OOBINLINE, v
 fn void? Socket.set_option(&self, SocketOption option, bool value)
 {
 	CInt flag = (CInt)value;
-	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
+	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt::size);
 	if (errcode != 0) return SOCKOPT_FAILED~;
 }
 
 fn bool? Socket.get_option(&self, SocketOption option)
 {
 	CInt flag;
-	Socklen_t socklen = CInt.sizeof;
+	Socklen_t socklen = CInt::size;
 	int errcode = os::getsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, &socklen);
 	if (errcode != 0) return SOCKOPT_FAILED~;
 	return (bool)flag;

@@ -79,17 +79,17 @@ macro bool @is_not_outstream_if_ptr(#expr) @const
 *>
 macro sz? read_any(stream, any ref)
 {
-	return read_all(stream, ((char*)ref)[:ref.type.sizeof]);
+	return read_all(stream, ((char*)ref)[:ref.type.size]);
 }
 
 <*
  @param [&in] ref : "the object to write."
  @require @is_outstream(stream)
- @ensure return == ref.type.sizeof
+ @ensure return == ref.type.size
 *>
 macro sz? write_any(stream, any ref)
 {
-	return write_all(stream, ((char*)ref)[:ref.type.sizeof]);
+	return write_all(stream, ((char*)ref)[:ref.type.size]);
 }
 
 <*
@@ -113,7 +113,7 @@ macro char[]? read_fully(Allocator allocator, stream)
 	// Efficient path if it is possible to pre-allocate
 	if (try len = available(stream))
 	{
-		if (len > sz.max) return mem::INVALID_ALLOC_SIZE~;
+		if (len > sz::max) return mem::INVALID_ALLOC_SIZE~;
 		char* data = alloc::malloc_try(allocator, (sz)len)!;
 		defer catch alloc::free(allocator, data);
 		sz read = 0;
@@ -240,16 +240,16 @@ const char[*] MAX_VARS @private = { [1] = 2, [2] = 3, [4] = 5, [8] = 10, [16] = 
 
 <*
  @require @is_instream(stream)
- @require $kindof(x_ptr) == POINTER && $typeof(x_ptr).inner.kindof.is_int()
+ @require @kindof(x_ptr) == POINTER && @kindof(*x_ptr).is_int()
 *>
 macro sz? read_varint(stream, x_ptr)
 {
-	return read_varint_generic{$typeof(stream), $typeof(x_ptr).inner}(stream, x_ptr);
+	return read_varint_generic{$typeof(stream), $typeof(x_ptr)::inner}(stream, x_ptr);
 }
 
 fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @private
 {
-	const MAX = MAX_VARS[Type.sizeof];
+	const MAX = MAX_VARS[Type::size];
 	Type x;
 	uint shift;
 	sz n;
@@ -266,7 +266,7 @@ fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @p
 		{
 			if (i + 1 == MAX && c > 1) break;
 			x |= (Type)c << shift;
-			$if Type.kindof == SIGNED_INT:
+			$if Type::kind == SIGNED_INT:
 				x = x & 1 == 0 ? x >> 1 : ~(x >> 1);
 			$endif
 			*ptr = x;
@@ -281,7 +281,7 @@ fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @p
 
 <*
  @require @is_outstream(stream)
- @require $kindof(x).is_int()
+ @require @kindof(x).is_int()
 *>
 macro sz? write_varint(stream, x)
 {
@@ -290,7 +290,7 @@ macro sz? write_varint(stream, x)
 
 fn sz? write_varint_generic(VarOutStream stream, Type x) <VarOutStream, Type> @private
 {
-	const MAX = MAX_VARS[Type.sizeof];
+	const MAX = MAX_VARS[Type::size];
 	char[MAX] buffer @noinit;
 	sz i;
 	while (x >= 0x80)

@@ -372,6 +372,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 	switch (type->type_kind)
 	{
 		case LOWERED_TYPES:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_FUNC_RAW:
 		case TYPE_VECTOR:
 			UNREACHABLE_VOID
@@ -566,6 +567,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
 		case TYPE_VECTOR:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE_VOID
 		case TYPE_U64:
 		case TYPE_I64:
@@ -673,7 +675,12 @@ static ABIArgInfo *x64_get_argument_pair_return(AbiType low_type, AbiType high_t
 {
 	TypeSize low_size = abi_type_size(low_type);
 	unsigned hi_start = aligned_offset(low_size, abi_type_abi_alignment(high_type));
-	ASSERT(hi_start == 8 && "Expected aligned with C-style structs.");
+	ASSERT(hi_start != 0 && hi_start <= 8);
+	if (hi_start != 8)
+	{
+		low_type = abi_type_is_float(low_type) ? abi_type_get(type_double) : abi_type_get(type_long);
+	}
+
 	return abi_arg_new_direct_pair(low_type, high_type, param);
 }
 

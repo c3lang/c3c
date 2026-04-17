@@ -64,7 +64,7 @@ fn void overaligned_type()
 
 	Overalign y;
 	for (int i = 0; i < 1000; i++) l.push(y);
-	assert((sz)l.get_ref(2) - (sz)l.get_ref(1) == Overalign.sizeof);
+	assert((sz)l.get_ref(2) - (sz)l.get_ref(1) == Overalign::size);
 }
 
 fn void remove_at()

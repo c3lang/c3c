@@ -15,7 +15,7 @@ fn void test(any z)
         default:
             printf("Unknown type.\n");
     }
-    if (z.type == int.typeid)
+    if (z.type == int::typeid)
     {
         printf("int: %d\n", *(int*)(z));
     }

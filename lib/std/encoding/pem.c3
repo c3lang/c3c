@@ -84,7 +84,7 @@ fn Pem create(Allocator allocator, char[] data, String tag, PemHeader... args)
 		.tag = tag.copy(allocator),
 		.data = alloc::clone_slice(allocator, data),
 	};
-	result.headers.init(allocator, capacity: max(args.len, 16));
+	result.headers.init(allocator, capacity: max((int)args.len, 16));
 	foreach (arg : args)
 	{
 		result.add_header(arg[0], arg[1]);

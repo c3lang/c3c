@@ -86,7 +86,7 @@ fn void generic_hash_speeds()
 	String z1 = "This is a much longer string than the above value because longer values lead to longer hashing times.";
 	char[] z2 = "This is a much longer string than the above value because longer values lead to longer hashing times.";
 	assert(z1.hash() == z2.hash());
-	assert(int.typeid.hash());
+	assert(int::typeid.hash());
 }
 
 

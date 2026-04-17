@@ -43,7 +43,7 @@ fn void test_sha256_multi_update_permute()
 /*
 fn void gigahash_sha256()
 {
-	// > 256 MiB is just at the threshold where the SHA bitcounter rolls overflows 'len', but doesn't hit the uint.max limit...
+	// > 256 MiB is just at the threshold where the SHA bitcounter rolls overflows 'len', but doesn't hit the uint::max limit...
 	char[] c = calloc(257 * (1024*1024))[:(257*1024*1024)];
 	defer free(c);
 

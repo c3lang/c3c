@@ -92,7 +92,7 @@ module sort::check;
 
 fn bool int_ascending_sort(int[] list)
 {
-    int prev = int.min;
+    int prev = int::min;
     foreach (x : list)
     {
         if (prev > x) return false;

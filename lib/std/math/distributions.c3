@@ -238,14 +238,14 @@ fn TDist t_distribution(double df)
 
 fn double TDist.mean(&self) @dynamic
 {
-	if (self.df <= 1.0) return double.nan;
+	if (self.df <= 1.0) return double::nan;
 	return 0.0;
 }
 
 fn double TDist.variance(&self) @dynamic
 {
-	if (self.df <= 1.0) return double.nan;
-	if (self.df <= 2.0) return double.inf;
+	if (self.df <= 1.0) return double::nan;
+	if (self.df <= 2.0) return double::inf;
 	return self.df / (self.df - 2.0);
 }
 
@@ -280,7 +280,7 @@ fn double TDist.quantile(&self, double p) @dynamic
 {
 	if (p == 0.5) return 0.0;
 	double x = (p < 0.5) ? -1.0 : 1.0;
-	return newton_raphson(self, x, p) ?? double.nan;
+	return newton_raphson(self, x, p) ?? double::nan;
 }
 
 fn double TDist.random(&self, Random rand) @dynamic
@@ -311,13 +311,13 @@ fn FDist f_distribution(double d1, double d2)
 
 fn double FDist.mean(&self) @dynamic
 {
-	if (self.d2 <= 2.0) return double.nan;
+	if (self.d2 <= 2.0) return double::nan;
 	return self.d2 / (self.d2 - 2.0);
 }
 
 fn double FDist.variance(&self) @dynamic
 {
-	if (self.d2 <= 4.0) return double.nan;
+	if (self.d2 <= 4.0) return double::nan;
 	double d1 = self.d1;
 	double d2 = self.d2;
 	return 2.0 * d2 * d2 * (d1 + d2 - 2.0) /
@@ -396,7 +396,7 @@ fn double ChiSquaredDist.variance(&self) @dynamic
 fn double ChiSquaredDist.pdf(&self, double x) @dynamic
 {
 	if (x < 0.0) return 0.0;
-	if (x == 0.0 && self.k < 2.0) return double.inf;
+	if (x == 0.0 && self.k < 2.0) return double::inf;
 	if (x == 0.0) return 0.0;
 
 	double k = self.k;

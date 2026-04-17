@@ -12,7 +12,7 @@ macro void mergesort(list, cmp = ..., context = ..., allocator = tmem) @builtin
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
-	$if $kindof(list) == SLICE:
+	$if @kindof(list) == SLICE:
 		msort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, allocator);
 	$else
 		msort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, allocator);
@@ -23,7 +23,7 @@ module std::sort <Type, CmpFn, Context> @private;
 
 fn void msort(ListType list, CmpFn cmp, Context context, Allocator allocator)
 {
-	const LIST_IS_REF = $kindof(list) == POINTER;
+	const LIST_IS_REF = @kindof(list) == POINTER;
 	sz len = !LIST_IS_REF ??? lengthof(list) : lengthof(*list);
 	if (len <= 1) return;
 	ElementType[] buff = alloc::new_array(allocator, ElementType, len);
@@ -52,7 +52,7 @@ fn void merge(ListType list, ElementType[] buff, sz left, sz mid, sz right, CmpF
 {
 	var $has_cmp = $typeof(cmp) != TypeNotSet;
 	var $has_context = $typeof(context) != TypeNotSet;
-	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) v = list_get(list, 0));
+	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn::params[0].type) v = list_get(list, 0));
 
 	sz i = left;
 	sz j = mid;
@@ -81,5 +81,5 @@ fn void merge(ListType list, ElementType[] buff, sz left, sz mid, sz right, CmpF
 
 	while (i < mid) buff[k++] = list_get(list, i++);
 	while (j < right) buff[k++] = list_get(list, j++);
-	mem::copy(list_get_ref(list, left), &buff[left], (right - left) * $sizeof(list_get(list, 0)));
+	mem::copy(list_get_ref(list, left), &buff[left], (right - left) * @sizeof(list_get(list, 0)));
 }

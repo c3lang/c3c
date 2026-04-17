@@ -19,11 +19,11 @@ enum Priority
 }
 
 // Enum with associated value
-enum State : int (String description)
+enum State : int
 {
-    WAITING { "waiting" },
-    RUNNING  { "running" },
-    TERMINATED { "ended" }
+    WAITING,
+    RUNNING,
+    TERMINATED
 }
 
 // Basic structures
@@ -153,7 +153,7 @@ fn void test_comprehensive_marshaling() @test
     defer free(json);
 
     // Parse the marshaled JSON back to verify it's valid and correct
-    Object* parsed = json::tparse_string(json)!!;
+    Object* parsed = json::tparse(json)!!;
 
     // Verify primitive types
     assert(parsed.get_string("text")!! == "Hello \"World\"");

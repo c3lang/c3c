@@ -436,7 +436,7 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 					char *norm_path = str_dup(real_path);
 					for (char *p = norm_path; *p; p++)
 						if (*p == '\\') *p = '/';
-					char *full_dst = (char *)file_append_path(out_root, norm_path);
+					char *full_dst = (char *)file_append_path(out_root, norm_path); // NOLINT(readability-suspicious-call-argument)
 					file_create_folders(full_dst);
 					if (files[j].uoffset + files[j].usize <= total_usize)
 					{

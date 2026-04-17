@@ -9,15 +9,15 @@ struct Blob { int z; int f; }
 fn void main()
 {
     int help;
-    printf("printf: %s\n", $nameof(printf));
-    printf("printfq: %s\n", $qnameof(printf));
-    printf("Blobq: %s\n", Blob.qnameof);
-    printf("Blob: %s\n", Blob.nameof);
-    printf("xq: %s\n", $qnameof(x));
-    printf("x: %s\n", $nameof(x));
-    printf("helpq: %s\n", $qnameof(help));
-    printf("mainq: %s\n", $qnameof(main));
-    printf("Blob**[3]: %s\n", Blob**[3].nameof);
+    printf("printf: %s\n", $reflect(printf).name);
+    printf("printfq: %s\n", $reflect(printf).qname);
+    printf("Blobq: %s\n", Blob::qname);
+    printf("Blob: %s\n", Blob::name);
+    printf("xq: %s\n", $reflect(x).qname);
+    printf("x: %s\n", $reflect(x).name);
+    printf("helpq: %s\n", $reflect(help).qname);
+    printf("mainq: %s\n", $reflect(main).qname);
+    printf("Blob**[3]: %s\n", Blob**[3]::name);
 }
 
 /* #expect: qnametest.ll

@@ -9,7 +9,7 @@ fn int main()
 {
     const NUM = 10;
 
-    Foo* x = calloc(Foo.sizeof * NUM);
+    Foo* x = calloc(Foo::size * NUM);
 	Foo*[<1>] z = { x };
 	Foo*[<1>] g = { x };
 	Foo*[<2>] z2 = { x, x };

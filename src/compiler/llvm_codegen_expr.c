@@ -3646,18 +3646,13 @@ MEMCMP:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_BITSTRUCT:
-		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_TYPEDEF:
 		case TYPE_FUNC_RAW:
 		case TYPE_ALIAS:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
-		case TYPE_WILDCARD:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
+		case CT_TYPES:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE_VOID
 		case TYPE_BOOL:
 		case ALL_FLOATS:
@@ -3803,7 +3798,7 @@ void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEVa
 	LLVMValueRef phi = LLVMBuildPhi(c->builder, c->typeid_type, "");
 	BEValue cond;
 	llvm_emit_int_comp_raw(c, &cond, canonical_typeid, canonical_typeid, switch_val, phi, BINARYOP_EQ);
-	llvm_emit_cond_br(c, &cond, result_block, parent_type_block);
+	llvm_emit_cond_br(c, &cond, result_block, parent_type_block); // NOLINT(readability-suspicious-call-argument)
 	llvm_emit_block(c, parent_type_block);
 	LLVMValueRef introspect_ptr = LLVMBuildIntToPtr(c->builder, phi, c->ptr_type, "");
 	AlignSize alignment;
@@ -3824,6 +3819,7 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 	switch (lhs->type->type_kind)
 	{
 		case TYPE_VOID:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE_VOID;
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -4192,7 +4188,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			{
 				Type *element_type = lhs_type->array.base->pointer;
 				unsigned len = LLVMGetVectorSize(LLVMTypeOf(lhs_value));
-				LLVMTypeRef int_vec_type = llvm_get_type(c, type_get_vector_from_vector(type_sz, lhs_type));
+				LLVMTypeRef int_vec_type = llvm_get_type(c, type_get_vector_from_vector(type_sz, lhs_type)); // NOLINT(readability-suspicious-call-argument)
 				if (lhs_type == rhs_type)
 				{
 					val = LLVMBuildSub(c->builder, LLVMBuildPtrToInt(c->builder, lhs_value, int_vec_type, ""),
@@ -4938,6 +4934,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_val->enum_constant.inner_ordinal), type);
 			return;
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 		case CONST_UNTYPED_LIST:
 			// This is valid in the case that this will be discarded anyway.
 			llvm_value_set(be_value, NULL, type_void);
@@ -4984,6 +4981,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_VOID:
 		case TYPE_FUNC_RAW:
 		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_UNTYPEDLIST:
 			UNREACHABLE_VOID
 			break;
 		case TYPE_BOOL:
@@ -5486,9 +5484,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 			//     { long, long } into memory, then performing a bitcast to { int, int, short, short, int }
 
 			// 14a. Generate the type.
-			LLVMTypeRef lo = llvm_abi_type(c, ret_info->direct_pair.lo);
-			LLVMTypeRef hi = llvm_abi_type(c, ret_info->direct_pair.hi);
-			LLVMTypeRef struct_type = llvm_get_twostruct(c, lo, hi);
+			LLVMTypeRef struct_type = llvm_get_coerce_type(c, ret_info);
 
 			// 14b. Use the coerce method to go from the struct to the actual type
 			//      by storing the { lo, hi } struct to memory, then loading it
@@ -6462,13 +6458,13 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 			{
 				case DESIGNATOR_ARRAY:
 				{
-					vec_value = llvm_update_vector(c, vec_value, value_ref, element->index);
+					vec_value = llvm_update_vector(c, vec_value, value_ref, element->index); // NOLINT(readability-suspicious-call-argument)
 					break;
 				}
 				case DESIGNATOR_RANGE:
 					for (ArrayIndex idx = element->index; idx <= element->index_end; idx++)
 					{
-						vec_value = llvm_update_vector(c, vec_value, value_ref, idx);
+						vec_value = llvm_update_vector(c, vec_value, value_ref, idx); // NOLINT(readability-suspicious-call-argument)
 					}
 					break;
 				case DESIGNATOR_FIELD:
@@ -7256,6 +7252,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_MEMBER_SET:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_BUILTIN:
 		case EXPR_OPERATOR_CHARS:
 			UNREACHABLE_VOID

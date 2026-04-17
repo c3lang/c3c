@@ -34,8 +34,17 @@
 - Generic inference can now look through pointer.
 - Enums now implicitly convert to their ordinal when used as indices.
 - Enums can no longer declare themselves `inline`.
-- Nested generics allowed inside of generic functions/methods.
+- Nested generics allowed inside generic functions/methods.
 - `a = ...` parameters may be shadowed if not defined.
+- `$eval` can now be used with named parameters, e.g. `foo($eval("arg"): 2)` #3090
+- Type properties are now accessed using `::` and the "of" suffix, removed: `int.sizeof` -> `int::size`
+- Added `$reflect` with properties `name`, `cname`, `qname`, `offset`, `alignment`, `size`.
+- Added `@kindof`, `@alignof` and `@sizeof` macros.
+- Removed `$nameof`, `$extnameof`, `$qnameof`, `$offsetof`, `$alignof`, `$kindof`, `$sizeof`.
+- `.nameof` is changed to `.description` on `fault` and enum types.
+- Type property `is_eq` is renamed `has_equals`.
+- Type function `tagof` is renamed `get_tag`.
+- Add `untypedlist` as a usable type #2647.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
@@ -43,13 +52,21 @@
 - PanicFn now takes an `int` for row.
 - Add `std::collections::Deque`.
 - Add `compare_to` and `compare_to_ignore_case` to `String`. #3096
-- Add `OrderedMap` based on skip lists.
+- Add `SortedMap` based on skip lists.
 - Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
 - `BufferedChannel` and `UnbufferedChannel` now pointers, create using `create_unbuffered` and `create_buffered`
 - `RingList` now conforms to `foreach` and adds additional functions.
 - Ini parser and encoder.
 - Updated `ref::new` argument order.
 - Support setting thread stack size.
+- Support setting thread priority.
+- Support syscall on RISCV.
+- Make `DString.append_repeat` polymorphic adding `append_string_repeat` and `append_char_repeat`.
+- Add `DString.append_inline` for optimized uses.
+- Ordering of `object::new_*` arguments are now "allocator first".
+- Add `remove_unordered_at` to ElasticArray.
+- Changed `json` to support two flavors of JSON: JSON and JSONC.
+- Changed `json` API: `parse` -> `load`, `parse_string` -> `parse`.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
@@ -60,6 +77,14 @@
 - `\r` was not filtered when piping a source file from stdin.
 - SHA-3 and Keccak contexts are now explicitly `@mustinit` structures. #3110
 - `UnbufferedChannel` would deadlock on multiple producers.
+- Don't override `sigaltstack` when running with `--sanitize=address`. #3115
+- Binary search broken for some supported functions.
+- Fix bug casting `(void*[<3>])x`.
+- Compiler crash compiling a switch with a constant case range overlapping a constant case value. #3127
+- Incorrect handling of overaligned struct fields #3136
+- EnumSet with more than 128 entries was broken.
+- Handle underflow in zip.
+- Bugs in check for name suggestions on name mismatch.
 
 ## 0.7.11 Change list
 

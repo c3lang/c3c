@@ -204,6 +204,17 @@ static inline bool abi_type_match(AbiType type, Type *other_type)
 	}
 	return type.type == other_type->canonical;
 }
+
+static inline bool abi_type_is_integer(AbiType type)
+{
+	return !abi_type_is_type(type) || type_is_integer(type.type);
+}
+
+static inline bool abi_type_is_float(AbiType type)
+{
+	return abi_type_is_type(type) && type_is_float(type.type);
+}
+
 static inline bool abi_type_is_type(AbiType type)
 {
 	return !(type.abi_type & 0x01);

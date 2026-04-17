@@ -36,17 +36,17 @@ union Foob
 }
 Ar izzy;
 
-long x = $alignof(zfe);
-short y = Bob.y.alignof;
-int z = Bob.w.z.alignof;
-int v = $alignof(v);
-int x1 = Ex.c.alignof;
-int x2 = Ex.y.alignof;
-int x3 = char[8].alignof;
-int x9 = $alignof(izzy.br[1]);
-int x10 = $alignof(izzy.br[1]);
-int x11 = $alignof(izzy.br[1]);
-int z0 = Foob.c.alignof;
+long x = @alignof(zfe);
+short y = $reflect(Bob.y).alignment;
+int z = $reflect(Bob.w.z).alignment;
+int v = @alignof(v);
+int x1 = $reflect(Ex.c).alignment;
+int x2 = $reflect(Ex.y).alignment;
+int x3 = char[8]::alignment;
+int x9 = @alignof(izzy.br[1]);
+int x10 = @alignof(izzy.br[1]);
+int x11 = @alignof(izzy.br[1]);
+int z0 = $reflect(Foob.c).alignment;
 
 
 

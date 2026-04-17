@@ -286,6 +286,8 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
 		case ARCH_TYPE_AARCH64_BE:
 		case ARCH_TYPE_X86:
 		case ARCH_TYPE_X86_64:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
 			break;
 		default:
 			RETURN_SEMA_ERROR(expr, "Target does not support $$syscall.");
@@ -644,7 +646,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 
 	for (unsigned i = 0; i < arg_count; i++)
 	{
-		if (args[i]->expr_kind == EXPR_NAMED_ARGUMENT)
+		if (expr_is_named_param(args[i]))
 		{
 			RETURN_SEMA_ERROR(args[i], "Named arguments are not allowed in builtin calls.");
 		}

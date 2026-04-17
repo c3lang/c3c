@@ -73,9 +73,9 @@ fn void destroy_temp_allocators()
 // Helper functionality for building allocators:
 
 <* Default prefix for holding a size in a malloc block *>
-const DEFAULT_SIZE_PREFIX = sz.sizeof;
-<* DEfault alignment required *>
-const DEFAULT_SIZE_PREFIX_ALIGNMENT = sz.alignof;
+const DEFAULT_SIZE_PREFIX = sz::size;
+<* Default alignment required *>
+const DEFAULT_SIZE_PREFIX_ALIGNMENT = sz::alignment;
 
 fn sz alignment_for_allocation(sz alignment) @inline
 {
@@ -91,7 +91,7 @@ struct AlignedBlock
 macro void? @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-	$if $kindof(#free_fn(desc.start)) == OPTIONAL:
+	$if @kindof(#free_fn(desc.start)) == OPTIONAL:
 	#free_fn(desc.start)!;
 	$else
 	#free_fn(desc.start);
@@ -101,7 +101,7 @@ macro void? @aligned_free(#free_fn, void* old_pointer)
 macro void? @aligned_free_fn(context, #free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
-	$if $kindof(#free_fn(context, desc.start)) == OPTIONAL:
+	$if @kindof(#free_fn(context, desc.start)) == OPTIONAL:
 	#free_fn(context, desc.start)!;
 	$else
 	#free_fn(context, desc.start);
@@ -118,7 +118,7 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, sz bytes,
 	void* data_start = desc.start;
 	void* new_data = @aligned_alloc(#calloc_fn, bytes, alignment)!;
 	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, 1, 1);
-	$if $kindof(#free_fn(data_start)) == OPTIONAL:
+	$if @kindof(#free_fn(data_start)) == OPTIONAL:
 	#free_fn(data_start)!;
 	$else
 	#free_fn(data_start);
@@ -129,19 +129,19 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, sz bytes,
 <*
  @require bytes > 0
  @require alignment > 0
- @require bytes <= sz.max
+ @require bytes <= sz::max
 *>
 macro void*? @aligned_alloc(#alloc_fn, sz bytes, sz alignment)
 {
-	if (alignment < void*.alignof) alignment = void*.alignof;
-	sz header = AlignedBlock.sizeof + alignment;
+	if (alignment < void*::alignment) alignment = void*::alignment;
+	sz header = AlignedBlock::size + alignment;
 	sz alignsize = bytes + header;
-	$if $kindof(#alloc_fn(bytes)) == OPTIONAL:
+	$if @kindof(#alloc_fn(bytes)) == OPTIONAL:
 		void* data = #alloc_fn(alignsize)!;
 	$else
 		void* data = #alloc_fn(alignsize);
 	$endif
-	void* mem = mem::aligned_pointer(data + AlignedBlock.sizeof, alignment);
+	void* mem = mem::aligned_pointer(data + AlignedBlock::size, alignment);
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
 	assert(mem > data);
 	*desc = { bytes, data };
@@ -151,19 +151,19 @@ macro void*? @aligned_alloc(#alloc_fn, sz bytes, sz alignment)
 <*
  @require bytes > 0
  @require alignment > 0
- @require bytes <= sz.max
+ @require bytes <= sz::max
 *>
 macro void*? @aligned_alloc_fn(context, #alloc_fn, sz bytes, sz alignment)
 {
-	if (alignment < void*.alignof) alignment = void*.alignof;
-	sz header = AlignedBlock.sizeof + alignment;
+	if (alignment < void*::alignment) alignment = void*::alignment;
+	sz header = AlignedBlock::size + alignment;
 	sz alignsize = bytes + header;
-	$if $kindof(#alloc_fn(context, bytes)) == OPTIONAL:
+	$if @kindof(#alloc_fn(context, bytes)) == OPTIONAL:
 		void* data = #alloc_fn(context, alignsize)!;
 	$else
 		void* data = #alloc_fn(context, alignsize);
 	$endif
-	void* mem = mem::aligned_pointer(data + AlignedBlock.sizeof, alignment);
+	void* mem = mem::aligned_pointer(data + AlignedBlock::size, alignment);
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
 	assert(mem > data);
 	*desc = { bytes, data };
@@ -182,7 +182,7 @@ macro void*? @aligned_realloc_fn(context, #calloc_fn, #free_fn, void* old_pointe
 	void* data_start = desc.start;
 	void* new_data = @aligned_alloc_fn(context, #calloc_fn, bytes, alignment)!;
 	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, 1, 1);
-	$if $kindof(#free_fn(context, data_start)) == OPTIONAL:
+	$if @kindof(#free_fn(context, data_start)) == OPTIONAL:
 	#free_fn(context, data_start)!;
 	$else
 	#free_fn(context, data_start);

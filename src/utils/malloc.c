@@ -95,7 +95,7 @@ void *cmalloc(size_t size)
 
 void *ccalloc(size_t size, size_t elements)
 {
-	void *ptr = calloc(size, elements);
+	void *ptr = calloc(size, elements); // NOLINT(readability-suspicious-call-argument)
 	if (!ptr) error_exit("Failed to calloc %zu bytes.", size * elements);
 	return ptr;
 }

@@ -10,16 +10,16 @@ enum Foo : (String x, int val)
 
 fn int main()
 {
-	$assert Foo.membersof[0].get(Foo.ABC) == "Hello";
-	$assert Foo.membersof[0].get(Foo.DEF) == "World";
-	$assert Foo.membersof[1].get(Foo.ABC) == 3;
-	$assert Foo.membersof[1].get(Foo.DEF) == -100;
-	$assert Foo.membersof[0].type == String;
-	$assert Foo.membersof[0].nameof == "x";
+	$assert Foo::members[0].get(Foo.ABC) == "Hello";
+	$assert Foo::members[0].get(Foo.DEF) == "World";
+	$assert Foo::members[1].get(Foo.ABC) == 3;
+	$assert Foo::members[1].get(Foo.DEF) == -100;
+	$assert Foo::members[0].type == String;
+	$assert Foo::members[0].name == "x";
 	Foo f = ABC;
-	assert(Foo.membersof[1].get(f) == 3);
+	assert(Foo::members[1].get(f) == 3);
 	f = DEF;
-	assert(Foo.membersof[1].get(f) == -100);
+	assert(Foo::members[1].get(f) == -100);
 	return 0;
 }
 

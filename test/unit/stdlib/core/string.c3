@@ -14,6 +14,12 @@ fn void test_starts_with()
 	assert(!s.starts_with("o"));
 }
 
+fn void string_trim()
+{
+	String s = "     ";
+	assert(s.trim_charset() == "");
+}
+
 fn void test_count()
 {
 	String s = "aaabcabd";

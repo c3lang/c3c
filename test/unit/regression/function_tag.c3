@@ -2,7 +2,7 @@ module function_tag;
 
 macro bool @has_tagof_1(#function)
 {
-  return #function.has_tagof("some-tag");
+  return #function.has_tag("some-tag");
 }
 
 fn void tagged_function() @tag("some-tag", true) {}

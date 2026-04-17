@@ -22,7 +22,7 @@ INLINE bool next_is_end_parens(ParseContext *c)
 static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 {
 	Ast *ast = ast_calloc();
-	ast->loc = type->loc;
+	ast->loc = copy_loc(type->loc);
 	ast->ast_kind = AST_DECLARE_STMT;
 	ASSIGN_DECL_OR_RET(ast->declare_stmt, parse_local_decl_after_type(c, type), poisoned_ast);
 	Decl *decl = ast->declare_stmt;
@@ -1391,7 +1391,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_BUILTIN:
 		case TOKEN_BYTES:
 		case TOKEN_CHAR_LITERAL:
-		case TOKEN_CT_ALIGNOF:
 		case TOKEN_CT_AND:
 		case TOKEN_CT_CONCAT:
 		case TOKEN_CT_CONCAT_ASSIGN:
@@ -1399,17 +1398,12 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_DEFINED:
 		case TOKEN_CT_EMBED:
 		case TOKEN_CT_EVAL:
-		case TOKEN_CT_EXTNAMEOF:
 		case TOKEN_CT_FEATURE:
 		case TOKEN_CT_IDENT:
-		case TOKEN_CT_KINDOF:
-		case TOKEN_CT_NAMEOF:
-		case TOKEN_CT_OFFSETOF:
 		case TOKEN_CT_OR:
-		case TOKEN_CT_TERNARY:
-		case TOKEN_CT_QNAMEOF:
-		case TOKEN_CT_SIZEOF:
+		case TOKEN_CT_REFLECT:
 		case TOKEN_CT_STRINGIFY:
+		case TOKEN_CT_TERNARY:
 		case TOKEN_CT_VAARG:
 		case TOKEN_CT_VACONST:
 		case TOKEN_CT_VACOUNT:

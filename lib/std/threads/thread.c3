@@ -28,6 +28,16 @@ faultdef
 	INTERRUPTED,
 	CHANNEL_CLOSED;
 
+enum ThreadPriority
+{
+	DEFAULT,
+	BACKGROUND,
+	LOW,
+	NORMAL,
+	HIGH,
+	REALTIME,
+}
+
 macro void? Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, {});
 macro bool Mutex.is_initialized(mutex) => ((NativeMutex*)&mutex).is_initialized();
 macro void? RecursiveMutex.init(&mutex) @maydiscard => NativeMutex.init((NativeMutex*)mutex, {.recursive});
@@ -47,6 +57,7 @@ macro void TimedMutex.unlock(&mutex) => NativeTimedMutex.unlock((NativeTimedMute
 struct ThreadSettings
 {
 	sz stack_size;
+	ThreadPriority priority;
 }
 
 macro void fence(AtomicOrdering $ordering) @safemacro
@@ -108,7 +119,7 @@ macro void? Thread.detach(thread) @maydiscard => NativeThread.detach(thread);
 *>
 macro int? Thread.join(thread) @maydiscard => NativeThread.join(thread);
 macro bool Thread.equals(thread, Thread other) => NativeThread.equals(thread, other);
-
+macro bool Thread.set_priority(thread, ThreadPriority priority) => NativeThread.set_priority(&thread, priority);
 macro void OnceFlag.call(&flag, OnceFn func) => NativeOnceFlag.call_once((NativeOnceFlag*)flag, func);
 
 macro void yield() => os::native_thread_yield();

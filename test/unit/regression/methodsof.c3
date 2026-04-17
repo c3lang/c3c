@@ -52,29 +52,29 @@ import std::io;
 
 fn void methodsof() 
 {
-    assert(Foo.methodsof.len == 3);
-    assert(Bar.methodsof.len == 2);
-    assert(NoMethods.methodsof.len == 0);
+    assert(Foo::methods.len == 3);
+    assert(Bar::methods.len == 2);
+    assert(NoMethods::methods.len == 0);
 
-    assert(Foo.methodsof[0] == "foo");
-    assert(Foo.methodsof[1] == "bar");
-    assert(Foo.methodsof[2] == "xyz");
-    assert(Bar.methodsof[0] == "fnB");
-    assert(Bar.methodsof[1] == "fnA");
+    assert(Foo::methods[0] == "foo");
+    assert(Foo::methods[1] == "bar");
+    assert(Foo::methods[2] == "xyz");
+    assert(Bar::methods[0] == "fnB");
+    assert(Bar::methods[1] == "fnA");
 
-    assert(BazBits.methodsof[0] == "fn1");
-    assert(BazBits.methodsof[1] == "fn2");
+    assert(BazBits::methods[0] == "fn1");
+    assert(BazBits::methods[1] == "fn2");
 
-    assert(AUnion.methodsof[0] == "a");
-    assert(AUnion.methodsof[1] == "b");
+    assert(AUnion::methods[0] == "a");
+    assert(AUnion::methods[1] == "b");
 
     Foo foo = { .i = 4, .b = true };
-    assert(Foo.$eval(Foo.methodsof[2])(&foo) == true); // Foo.xyz
-    assert(Foo.$eval(Foo.methodsof[1])(&foo, 2) == 8); // Foo.bar
-    assert(Foo.$eval(Foo.methodsof[2])(&foo) == true); // Foo.xyz
-    assert(Foo.$eval(Foo.methodsof[1])(&foo, 2) == 8); // Foo.bar
+    assert(Foo.$eval(Foo::methods[2])(&foo) == true); // Foo.xyz
+    assert(Foo.$eval(Foo::methods[1])(&foo, 2) == 8); // Foo.bar
+    assert(Foo.$eval(Foo::methods[2])(&foo) == true); // Foo.xyz
+    assert(Foo.$eval(Foo::methods[1])(&foo, 2) == 8); // Foo.bar
 
     Foo foo2 = { .i = 2, .b = false };
-    assert(foo2.$eval(Foo.methodsof[2])() == false); // Foo.xyz
-    assert(foo2.$eval(Foo.methodsof[1])(10) == 20); // Foo.bar
+    assert(foo2.$eval(Foo::methods[2])() == false); // Foo.xyz
+    assert(foo2.$eval(Foo::methods[1])(10) == 20); // Foo.bar
 }

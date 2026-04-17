@@ -104,10 +104,10 @@ macro bool @is_native_atomic_value(#value) @private
 
 macro bool is_native_atomic_type($Type)
 {
-	$if $Type.sizeof > void*.sizeof:
+	$if $Type::size > void*::size:
 		return false;
 	$else
-		$switch $Type.kindof:
+		$switch $Type::kind:
 			$case SIGNED_INT:
 			$case UNSIGNED_INT:
 			$case POINTER:
@@ -117,7 +117,7 @@ macro bool is_native_atomic_type($Type)
 				return true;
 			$case TYPEDEF:
 			$case CONSTDEF:
-				return is_native_atomic_type($Type.inner);
+				return is_native_atomic_type($Type::inner);
 			$default:
 				return false;
 		$endswitch
@@ -139,7 +139,7 @@ macro bool is_native_atomic_type($Type)
 macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
-		$alignment = $typeof(*ptr).sizeof;
+		$alignment = $typeof(*ptr)::size;
 	$endif
 	return $$atomic_fetch_add(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
@@ -159,7 +159,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
-		$alignment = $typeof(*ptr).sizeof;
+		$alignment = $typeof(*ptr)::size;
 	$endif
 	return $$atomic_fetch_sub(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
@@ -448,7 +448,7 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
-		$alignment = $typeof(*ptr).sizeof;
+		$alignment = $typeof(*ptr)::size;
 	$endif
 	return $$atomic_fetch_max(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
@@ -467,7 +467,7 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
-		$alignment = $typeof(*ptr).sizeof;
+		$alignment = $typeof(*ptr)::size;
 	$endif
 	return $$atomic_fetch_min(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }

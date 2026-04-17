@@ -20,7 +20,7 @@ macro void help (String program_name, bool to_stderr = false)
         printfn("");
         printfn("Subcommands:");
         var $ident = "    ";
-        $foreach $subcommand : Subcommand.values:
+        $foreach $subcommand : Subcommand::values:
             var $line = $ident +++ $subcommand.name;
             $foreach $arg : $subcommand.args:
                 $line = $line +++ " " +++ $arg;

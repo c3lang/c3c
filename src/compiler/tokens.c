@@ -281,6 +281,8 @@ const char *token_type_to_string(TokenType type)
 			return "any";
 		case TOKEN_FAULT:
 			return "fault";
+		case TOKEN_UNTYPEDLIST:
+			return "untypedlist";
 		case TOKEN_BOOL:
 			return "bool";
 		case TOKEN_FLOAT128:
@@ -325,8 +327,6 @@ const char *token_type_to_string(TokenType type)
 			return "<*";
 		case TOKEN_DOCS_END:
 			return "*>";
-		case TOKEN_CT_ALIGNOF:
-			return "$alignof";
 		case TOKEN_CT_ASSERT:
 			return "$assert";
 		case TOKEN_CT_CASE:
@@ -353,8 +353,6 @@ const char *token_type_to_string(TokenType type)
 			return "$error";
 		case TOKEN_CT_EXEC:
 			return "$exec";
-		case TOKEN_CT_EXTNAMEOF:
-			return "$extnameof";
 		case TOKEN_CT_FEATURE:
 			return "$feature";
 		case TOKEN_CT_FOR:
@@ -365,8 +363,6 @@ const char *token_type_to_string(TokenType type)
 			return "$if";
 		case TOKEN_CT_INCLUDE:
 			return "$include";
-		case TOKEN_CT_KINDOF:
-			return "$kindof";
 		case TOKEN_CT_VACOUNT:
 			return "$vacount";
 		case TOKEN_CT_VATYPE:
@@ -379,14 +375,8 @@ const char *token_type_to_string(TokenType type)
 			return "$vaexpr";
 		case TOKEN_CT_VASPLAT:
 			return "$vasplat";
-		case TOKEN_CT_NAMEOF:
-			return "$nameof";
-		case TOKEN_CT_OFFSETOF:
-			return "$offsetof";
-		case TOKEN_CT_QNAMEOF:
-			return "$qnameof";
-		case TOKEN_CT_SIZEOF:
-			return "$sizeof";
+		case TOKEN_CT_REFLECT:
+			return "$reflect";
 		case TOKEN_CT_SWITCH:
 			return "$switch";
 		case TOKEN_CT_TYPEFROM:

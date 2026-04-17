@@ -50,6 +50,12 @@ struct Sigaction
     void*      sa_restorer @if(env::LINUX || env::ANDROID);
 }
 
+extern fn CInt setpriority(CInt which, CInt who, CInt prio);
+extern fn CInt getpriority(CInt which, CInt who);
+
+extern fn CInt sched_get_priority_min(CInt);
+extern fn CInt sched_get_priority_max(CInt);
+
 struct Stack_t
 {
 	void*   ss_sp;

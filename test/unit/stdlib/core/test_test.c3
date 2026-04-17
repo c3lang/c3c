@@ -85,8 +85,8 @@ fn void test_almost_equal()
 	test::eq_approx(1, 1);
 	test::eq_approx(1.31, 1.31);
 	test::eq_approx(1.31f, 1.31f);
-	test::eq_approx(double.nan, double.nan);
-	test::eq_approx(float.nan, float.nan);
+	test::eq_approx(double::nan, double::nan);
+	test::eq_approx(float::nan, float::nan);
 	test::eq_approx(1.31, 1.31, delta: 0.01);
 	test::eq_approx(1.311, 1.312, delta: 0.01);
 	test::eq_approx(1.311, 1.312, places: 2);
@@ -107,21 +107,21 @@ fn void test_almost_equal_fails_nan()
 {
 	test::@setup(state.setup_fn, state.teardown_fn);
 	state.expected_fail = true;
-	test::eq_approx(1.0000001, double.nan);
+	test::eq_approx(1.0000001, double::nan);
 }
 
 fn void test_almost_equal_fails_nan2()
 {
 	test::@setup(state.setup_fn, state.teardown_fn);
 	state.expected_fail = true;
-	test::eq_approx(double.nan, 1);
+	test::eq_approx(double::nan, 1);
 }
 
 fn void test_almost_equal_fails_equal_nan_false()
 {
 	test::@setup(state.setup_fn, state.teardown_fn);
 	state.expected_fail = true;
-	test::eq_approx(double.nan, double.nan, equal_nan: false);
+	test::eq_approx(double::nan, double::nan, equal_nan: false);
 }
 
 fn void setup_teardown()

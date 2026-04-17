@@ -36,7 +36,7 @@ List[10] listArray;
 // Iterative insert fn
 fn void insertIntoListTail(List **l, int data) {
   while (*l) l = &(*l).next;
-  *l = (List*)malloc(List.sizeof);
+  *l = (List*)malloc(List::size);
   (*l).data = data;
   (*l).next = null;
 }

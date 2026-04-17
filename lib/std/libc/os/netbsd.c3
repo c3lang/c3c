@@ -36,3 +36,6 @@ extern fn CInt stat(ZString path, Stat* stat) @cname("__stat50");
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
 
+const SCHED_OTHER = 0;
+const SCHED_FIFO  = 1;
+const SCHED_RR    = 2;

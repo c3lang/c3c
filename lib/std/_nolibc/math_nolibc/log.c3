@@ -22,9 +22,9 @@ const float SQRT2F = 1.41421356237309504880f;
 fn double log(double x) @cname("log") @nostrip @weak
 {
     if (x != x) return x;
-    if (x < 0.0) return double.nan;
-    if (x == 0.0) return -double.inf;
-    if (x == double.inf) return double.inf;
+    if (x < 0.0) return double::nan;
+    if (x == 0.0) return -double::inf;
+    if (x == double::inf) return double::inf;
 
     int k;
     double f = frexp(x, &k);
@@ -53,9 +53,9 @@ fn double log(double x) @cname("log") @nostrip @weak
 fn float logf(float x) @cname("logf") @nostrip @weak
 {
     if (x != x) return x;
-    if (x < 0.0f) return float.nan;
-    if (x == 0.0f) return -float.inf;
-    if (x == float.inf) return float.inf;
+    if (x < 0.0f) return float::nan;
+    if (x == 0.0f) return -float::inf;
+    if (x == float::inf) return float::inf;
 
     int k;
     float f = frexpf(x, &k);

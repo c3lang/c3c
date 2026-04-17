@@ -8,6 +8,6 @@ struct Test
 
 fn int main(String[] args)
 {
-	$assert(Test.a.has_tagof("a")); // Error: Compile time assert failed.
+	$assert($reflect(Test.a).has_tag("a")); // Error: Compile time assert failed.
 	return 0;
 }

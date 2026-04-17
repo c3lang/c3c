@@ -16,9 +16,9 @@ macro tester()
 
 }
 
-const BOOL_TYPEID = bool.typeid;
-int oefke @if(BOOL_TYPEID == int.typeid) = 23;
-int oeoekgokege @if(BOOL_TYPEID != int.typeid) = 343432;
+const BOOL_TYPEID = bool::typeid;
+int oefke @if(BOOL_TYPEID == int::typeid) = 23;
+int oeoekgokege @if(BOOL_TYPEID != int::typeid) = 343432;
 
 fn int main()
 {

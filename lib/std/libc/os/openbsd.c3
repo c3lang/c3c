@@ -3,7 +3,7 @@ module libc @if(env::OPENBSD);
 // Checked for x86_64
 
 alias Blksize_t = int;
-alias Nlink_t = $typefrom(env::X86_64 ? uint.typeid : CUInt.typeid);
+alias Nlink_t = $typefrom(env::X86_64 ? uint::typeid : CUInt::typeid);
 alias Dev_t = int;
 alias Ino_t = ulong;
 alias Mode_t = uint;
@@ -58,3 +58,6 @@ extern fn CInt stat(ZString path, Stat* stat);
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
 
+const SCHED_OTHER = 2;
+const SCHED_FIFO  = 1;
+const SCHED_RR    = 3;

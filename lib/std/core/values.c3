@@ -1,7 +1,12 @@
 module std::core::values;
 import std::core::types;
 
+<* @require $defined($reflect(#value).size) : "@alignof only works on types with a definite alignment" *>
+macro sz @alignof(#value) @builtin @const => $reflect(#value).alignment;
 
+<* @require $defined($reflect(#value).size) : "@sizeof only works on types with a definite size" *>
+macro sz @sizeof(#value) @builtin @const => $reflect(#value).size;
+macro TypeKind @kindof(#value) @builtin @const => $typeof(#value)::kind;
 macro bool @typematch(#value1, #value2) @builtin @const => $typeof(#value1) == $typeof(#value2);
 <*
  Return true if two values have the same type before any conversions.
@@ -30,9 +35,9 @@ macro promote_int_same(x, y)
 {
 	$if @is_int(x):
 		$switch:
-		$case @is_vector(y) &&& $typeof(y).inner == float.typeid:
+		$case @is_vector(y) &&& $typeof(y)::inner == float::typeid:
 			return (float)x;
-		$case $typeof(y).typeid == float.typeid:
+		$case $typeof(y)::typeid == float::typeid:
 			return (float)x;
 		$default:
 			return (double)x;

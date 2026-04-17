@@ -87,7 +87,7 @@ fn void*? Vmem.acquire(&self, sz size, AllocInitType init_type, sz alignment) @d
 	sz total_len = self.memory.size;
 	if (size > total_len) return mem::INVALID_ALLOC_SIZE~;
 	void* start_mem = self.memory.ptr;
-	void* unaligned_pointer_to_offset = start_mem + self.allocated + VmemHeader.sizeof;
+	void* unaligned_pointer_to_offset = start_mem + self.allocated + VmemHeader::size;
 	void* mem = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
 	sz after = (sz)(mem - start_mem) + size;
 	if (after > total_len) return mem::OUT_OF_MEMORY~;
@@ -96,7 +96,7 @@ fn void*? Vmem.acquire(&self, sz size, AllocInitType init_type, sz alignment) @d
 		init_type = NO_ZERO;
 	}
 	protect(self, after)!;
-	VmemHeader* header = mem - VmemHeader.sizeof;
+	VmemHeader* header = mem - VmemHeader::size;
 	header.size = size;
 	if (init_type == ZERO) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
@@ -120,7 +120,7 @@ fn void*? Vmem.resize(&self, void *old_pointer, sz size, sz alignment) @dynamic
 	if (size > self.memory.size) return mem::INVALID_ALLOC_SIZE~;
 	alignment = alignment_for_allocation(alignment);
 	assert(self.owns_pointer(old_pointer), "Pointer originates from a different allocator: %p, not in %p - %p", old_pointer, self.memory.ptr, self.memory.ptr + self.allocated);
-	VmemHeader* header = old_pointer - VmemHeader.sizeof;
+	VmemHeader* header = old_pointer - VmemHeader::size;
     sz old_size = header.size;
     if (old_size == size) return old_pointer;
     // Do last allocation and alignment match?
@@ -162,11 +162,11 @@ fn void*? Vmem.resize(&self, void *old_pointer, sz size, sz alignment) @dynamic
 fn void Vmem.release(&self, void* ptr, bool) @dynamic
 {
 	assert(self.owns_pointer(ptr), "Pointer originates from a different allocator %p.", ptr);
-	VmemHeader* header = ptr - VmemHeader.sizeof;
+	VmemHeader* header = ptr - VmemHeader::size;
 	// Reclaim memory if it's the last element.
 	if (ptr + header.size == self.memory.ptr + self.allocated)
 	{
-		unprotect(self, self.allocated - header.size - VmemHeader.sizeof);
+		unprotect(self, self.allocated - header.size - VmemHeader::size);
 	}
 }
 

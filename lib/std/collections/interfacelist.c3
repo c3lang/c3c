@@ -2,7 +2,7 @@
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 <*
- @require Type.kindof == INTERFACE || Type.kindof == ANY : "The kind of an interfacelist must be an interface or `any`"
+ @require Type::kind == INTERFACE || Type::kind == ANY : "The kind of an interfacelist must be an interface or `any`"
 *>
 module std::collections::interfacelist <Type>;
 import std::io,std::math;
@@ -431,7 +431,7 @@ fn void InterfaceList.reserve(&self, sz min_capacity)
 	if (self.capacity >= min_capacity) return;
 	if (!self.allocator) self.allocator = tmem;
 	min_capacity = math::next_power_of_2(min_capacity);
-	self.entries = alloc::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
+	self.entries = alloc::realloc(self.allocator, self.entries, Type::size * min_capacity);
 	self.capacity = min_capacity;
 }
 
@@ -461,7 +461,7 @@ fn void interfacelist_ensure_capacity(InterfaceList* self, sz added = 1) @inline
 	sz new_size = self.size + added;
 	if (self.capacity >= new_size) return;
 
-	assert(new_size < sz.max / 2U);
+	assert(new_size < sz::max / 2U);
 	sz new_capacity = self.capacity ? 2U * self.capacity : 16U;
 	while (new_capacity < new_size) new_capacity *= 2U;
 	self.reserve(new_capacity);

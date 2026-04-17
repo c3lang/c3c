@@ -2,26 +2,26 @@
 
 macro testbitcast(expr, $Type)
 {
-    $assert $sizeof(expr) == $Type.sizeof : "Cannot bitcast between types of different size.";
+    $assert @sizeof(expr) == $Type::size: "Cannot bitcast between types of different size.";
     $Type x @noinit;
-    var $size = (usz)($sizeof(expr));
+    var $size = (usz)(@sizeof(expr));
 
 	$switch:
-	    $case $alignof(expr) >= 8 && $Type.alignof >= 8:
+	    $case @alignof(expr) >= 8 && $Type::alignment >= 8:
 	        ulong *b = (ulong*)(&expr);
 	        ulong *to = (ulong*)(&x);
 	        for (usz i = 0; i < $size; i += 8)
 	        {
 	            to[i] = b[i];
 	        }
-	    $case $alignof(expr) >= 4 && $Type.alignof >= 4:
+	    $case @alignof(expr) >= 4 && $Type::alignment >= 4:
 	        uint* b = (uint*)(&expr);
 	        uint* to = (uint*)(&x);
 	        for (usz i = 0; i < $size; i += 4)
 	        {
 	            to[i] = b[i];
 	        }
-	    $case $alignof(expr) >= 2 && $Type.alignof >= 2:
+	    $case @alignof(expr) >= 2 && $Type::alignment >= 2:
 	        ushort* b = (ushort*)(&expr);
 	        ushort* to = (ushort*)(&x);
 	        for (usz i = 0; i < $size; i += 2)

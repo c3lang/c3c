@@ -12,7 +12,7 @@ macro cubic_hermite3(v1, tangent1, v2, tangent2, amount)
 		+ (amount_pow3 - amount_pow2) * tangent2;
 }
 
-fn TowardsType towards(TowardsType v, TowardsType target, $typefrom(TowardsType.inner) max_distance) <TowardsType>
+fn TowardsType towards(TowardsType v, TowardsType target, $typefrom(TowardsType::inner) max_distance) <TowardsType>
 {
 	TowardsType delta = target - v;
 	var square @safeinfer = delta.length_sq();
@@ -22,7 +22,7 @@ fn TowardsType towards(TowardsType v, TowardsType target, $typefrom(TowardsType.
 	return v + delta * max_distance / math::sqrt(square);
 }
 
-fn ClampType clamp_length(ClampType v, $typefrom(ClampType.inner) min, $typefrom(ClampType.inner) max) <ClampType>
+fn ClampType clamp_length(ClampType v, $typefrom(ClampType::inner) min, $typefrom(ClampType::inner) max) <ClampType>
 {
 	var length @safeinfer = v.length_sq();
 	if (length > 0)
@@ -125,7 +125,7 @@ macro rejection3(v1, v2)
 
 macro project3(v, model, proj, viewport)
 {
-	var $Element = $typeof(v).inner;
+	var $Element = $typeof(v)::inner;
 	$Element[<4>] tmp = { ...v, 1 };
 	tmp = model * tmp;
 	tmp = proj * tmp;
@@ -138,7 +138,7 @@ macro unproject3(v, model, proj, viewport)
 {
 	var mat_view_inverse = (proj * model).inverse()!!;
 
-	var $Element = $typeof(v).inner;
+	var $Element = $typeof(v)::inner;
 
 	$Element[<4>] tmp = {
 		2 * (v.x - viewport.x) / viewport.z - 1,
@@ -176,13 +176,13 @@ macro refract3(v, n, r)
 
 macro equals(v1, v2)
 {
-	var epsilon = ($typeof(v1).inner.kindof == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($typeof(v1))1);
+	var epsilon = ($typeof(v1)::inner.kind == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($typeof(v1))1);
 	return math::abs(v1 - v2).comp_le(epsilon).and();
 }
 
 macro not_equals(v1, v2)
 {
-	var epsilon = ($typeof(v1).inner.kindof == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($typeof(v1))1);
+	var epsilon = ($typeof(v1)::inner.kind == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($typeof(v1))1);
 
 	return math::abs(v1 - v2).comp_gt(epsilon).or();
 }

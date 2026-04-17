@@ -1,0 +1,10 @@
+import std;
+
+fn void test(int arg = 4)
+{
+	io::printn(arg);
+}
+fn void main()
+{
+	test($eval("arg"): 1);
+}

@@ -312,7 +312,7 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 	y += frac;
 	y -= bias;
 
-	if (((e2 + math::DOUBLE_MANT_DIG) & int.max) > emax - 5)
+	if (((e2 + math::DOUBLE_MANT_DIG) & int::max) > emax - 5)
 	{
 		if (math::abs(y) >= 0x1p53)
 		{
@@ -479,8 +479,8 @@ macro String.to_real(chars, $Type) @private
 	chars = chars.trim();
 	if (!chars.len) return MALFORMED_FLOAT~;
 
-	if (chars == "infinity" || chars == "INFINITY") return sign * $Type.inf;
-	if (chars == "NAN" || chars == "nan") return $Type.nan;
+	if (chars == "infinity" || chars == "INFINITY") return sign * $Type::inf;
+	if (chars == "NAN" || chars == "nan") return $Type::nan;
 
 	if (chars.len > 2 && chars[0] == '0' && (chars[1] | 32) == 'x')
 	{

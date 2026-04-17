@@ -1,8 +1,8 @@
-<* @require main.kindof == SIGNED_INT *>
+<* @require Type::kind == SIGNED_INT *>
 struct Foo <Type>
 {}
 
 fn int main()
 {
-	Foo{double} d; // #error: Parameter(s) failed validation: @require "main.kindof == SIGNED_INT" violated
+	Foo{double} d; // #error: Parameter(s) failed validation: @require "Type::kind == SIGNED_INT" violated
 }

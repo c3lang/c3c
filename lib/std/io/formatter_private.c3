@@ -37,7 +37,7 @@ fn sz? formatter_adjust(Formatter* f, sz len) @local
 
 fn uint128? int_from_any(any arg, bool *is_neg) @private
 {
-	switch (arg.type.kindof)
+	switch (arg.type.kind)
 	{
 		case FUNC:
 		case POINTER:
@@ -93,9 +93,9 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 fn FloatType? float_from_any(any arg) @private
 {
 	$if env::F128_SUPPORT:
-		if (arg.type == float128.typeid) return (FloatType)*((float128*)arg.ptr);
+		if (arg.type == float128::typeid) return (FloatType)*((float128*)arg.ptr);
 	$endif
-	if (arg.type.kindof == TYPEDEF || arg.type.kindof == CONSTDEF)
+	if (arg.type.kind == TYPEDEF || arg.type.kind == CONSTDEF)
 	{
 		return float_from_any(arg.as_inner());
 	}
@@ -184,7 +184,7 @@ fn sz? formatter_pad(Formatter* f, char c, sz width, sz len) @inline
 
 fn char* fmt_u(uint128 x, char* s)
 {
-	for (; x > ulong.max; x /= 10) *--s = '0' + (char)(x % 10);
+	for (; x > ulong::max; x /= 10) *--s = '0' + (char)(x % 10);
 	for (ulong y = (ulong)x; y; y /= 10) *--s = '0' + (char)(y % 10);
 	return s;
 }
@@ -256,7 +256,7 @@ fn sz? formatter_floatformat_hex(Formatter* self, double y, bool is_neg, sz pl, 
 	} while (y);
 	sz outlen = s - buf;
 	sz explen = ebuf - estr;
-	if (p > int.max - 2 - explen - pl) return INTERNAL_BUFFER_EXCEEDED~;
+	if (p > int::max - 2 - explen - pl) return INTERNAL_BUFFER_EXCEEDED~;
 	sz len;
 	sz l = (p && outlen - 2 < p ? explen + p + 2 : outlen + explen);
 	if (!self.flags.left && !self.flags.zeropad) len += formatter_pad(self, ' ', self.width, pl + l)!;
@@ -460,14 +460,14 @@ fn sz? formatter_floatformat(Formatter* self, FloatFormatting formatting, double
 			}
 		}
 	}
-	if (p > int.max - 1 - (sz)(p || self.flags.hash)) return INTERNAL_BUFFER_EXCEEDED~;
+	if (p > int::max - 1 - (sz)(p || self.flags.hash)) return INTERNAL_BUFFER_EXCEEDED~;
 	int l = (int)(1 + p + (sz)(p || self.flags.hash));
 	char[12] ebuf0;
 	char* ebuf = &ebuf0[0] + 12;
 	char* estr @noinit;
 	if (formatting == FLOAT)
 	{
-		if (e > int.max - l) return INTERNAL_BUFFER_EXCEEDED~;
+		if (e > int::max - l) return INTERNAL_BUFFER_EXCEEDED~;
 		if (e > 0) l += e;
 	}
 	else
@@ -476,10 +476,10 @@ fn sz? formatter_floatformat(Formatter* self, FloatFormatting formatting, double
 		while (ebuf - estr < 2) (--estr)[0] = '0';
 		*--estr = (e < 0 ? '-' : '+');
 		*--estr = self.flags.uppercase ? 'E' : 'e';
-		if (ebuf - estr > (sz)int.max - l) return INTERNAL_BUFFER_EXCEEDED~;
+		if (ebuf - estr > (sz)int::max - l) return INTERNAL_BUFFER_EXCEEDED~;
 		l += (int)(ebuf - estr);
 	}
-	if (l > int.max - pl) return INTERNAL_BUFFER_EXCEEDED~;
+	if (l > int::max - pl) return INTERNAL_BUFFER_EXCEEDED~;
 	sz len;
 	if (!self.flags.left && !self.flags.zeropad) len += formatter_pad(self, ' ', self.width, pl + l)!;
 	if (is_neg || self.flags.plus) len += self.print_char(is_neg ? '-' : '+')!;
@@ -708,7 +708,7 @@ fn sz? formatter_ntoa_any(Formatter* f, any arg, uint base) @private
 
 fn sz? formatter_out_char(Formatter* f, any arg) @private
 {
-	if (!arg.type.kindof.is_int())
+	if (!arg.type.kind.is_int())
 	{
 		return formatter_out_substr(f, "<NOT CHAR>");
 	}
@@ -775,7 +775,7 @@ fn int? printf_parse_format_field(
 	if (len >= format_len) return BAD_FORMAT~;
 	if (*args_index_ptr >= args_len) return BAD_FORMAT~;
 	any val = args_ptr[(*args_index_ptr)++];
-	if (!val.type.kindof.is_int()) return BAD_FORMAT~;
+	if (!val.type.kind.is_int()) return BAD_FORMAT~;
 	return types::any_to_int(val, int) ?? BAD_FORMAT~;
 }
 
@@ -788,15 +788,15 @@ fn sz? formatter_out_hex_buffer(Formatter* self, any arg) @private @inline
 		case ichar[]:
 			out = *(char[]*)arg;
 		default:
-			if (arg.type.kindof == ARRAY && (arg.type.inner == char.typeid || arg.type.inner == ichar.typeid))
+			if (arg.type.kind == ARRAY && (arg.type.inner == char::typeid || arg.type.inner == ichar::typeid))
 			{
-				out = ((char*)arg.ptr)[:arg.type.sizeof];
+				out = ((char*)arg.ptr)[:arg.type.size];
 				break;
 			}
-			if (arg.type.kindof == POINTER)
+			if (arg.type.kind == POINTER)
 			{
 				// Maybe there is a more idiomatic way here
-				out = ((*(char**)arg.ptr))[:arg.type.inner.sizeof];
+				out = ((*(char**)arg.ptr))[:arg.type.inner.size];
 				break;
 			}
 			return formatter_out_substr(self, "<INVALID>");
@@ -831,12 +831,12 @@ fn sz? formatter_out_unknown(Formatter* self, String category, any arg) @private
 fn sz? formatter_out_collection(Formatter* self, any arg, String open, String close) @private
 {
 	typeid inner = arg.type.inner;
-	if (inner == void.typeid) inner = char.typeid;
-	sz size = inner.sizeof;
+	if (inner == void::typeid) inner = char::typeid;
+	sz size = inner.size;
 
 	sz alen;
 	void* data_ptr;
-	if (arg.type.kindof == SLICE)
+	if (arg.type.kind == SLICE)
 	{
 		String* temp = arg.ptr;
 		data_ptr = temp.ptr;
@@ -871,13 +871,13 @@ fn sz? formatter_out_collection(Formatter* self, any arg, String open, String cl
 
 fn sz? formatter_out_str(Formatter* self, any arg) @private
 {
-	switch (arg.type.kindof)
+	switch (arg.type.kind)
 	{
 		case VOID:
 			return formatter_out_substr(self, "void");
 		case FAULT:
 			fault f = *(fault*)arg.ptr;
-			return formatter_out_substr(self, f ? f.nameof : "(empty-fault)");
+			return formatter_out_substr(self, f ? f.description : "(empty-fault)");
 		case INTERFACE:
 			any a = *(any*)arg;
 			return a ? formatter_out_str(self, a) : formatter_out_substr(self, "(empty-interface)");
@@ -900,7 +900,7 @@ fn sz? formatter_out_str(Formatter* self, any arg) @private
 			}
 			self.flags = {};
 			self.width = 0;
-			switch (arg.type.kindof)
+			switch (arg.type.kind)
 			{
 				case SIGNED_INT:
 				case UNSIGNED_INT:
@@ -909,7 +909,7 @@ fn sz? formatter_out_str(Formatter* self, any arg) @private
 					return formatter_ftoa(self, float_from_any(arg)) ?? formatter_out_substr(self, "ERR");
 				case FUNC:
 				case POINTER:
-					if (arg.type.kindof == POINTER && arg.type.inner != void.typeid)
+					if (arg.type.kind == POINTER && arg.type.inner != void::typeid)
 					{
 						void** pointer = arg.ptr;
 						any deref = any_make(*pointer, arg.type.inner);
@@ -928,7 +928,7 @@ fn sz? formatter_out_str(Formatter* self, any arg) @private
 	sz? n = self.print_with_function((Printable)arg);
 	if (try n) return n;
 	if (@catch(n) != NOT_FOUND) n!;
-	switch (arg.type.kindof)
+	switch (arg.type.kind)
 	{
 		case TYPEID:
 			return formatter_out_substr(self, "typeid[")! + formatter_ntoa(self, (uptr)*(typeid*)arg, false, 16)! + formatter_out_substr(self, "]")!;
@@ -944,15 +944,15 @@ fn sz? formatter_out_str(Formatter* self, any arg) @private
 			return formatter_out_unknown(self, "bitstruct", arg);
 		case CONSTDEF:
 		case TYPEDEF:
-			if (arg.type == String.typeid)
+			if (arg.type == String::typeid)
 			{
 				return formatter_out_substr(self, *(String*)arg);
 			}
-			if (arg.type == ZString.typeid)
+			if (arg.type == ZString::typeid)
 			{
 				return formatter_out_substr(self, *(ZString*)arg ? ((ZString*)arg).str_view() : "(null)");
 			}
-			if (arg.type == DString.typeid)
+			if (arg.type == DString::typeid)
 			{
 				return formatter_out_substr(self, *(DString*)arg ? ((DString*)arg).str_view() : "(null)");
 			}
