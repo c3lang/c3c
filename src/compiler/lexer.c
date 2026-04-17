@@ -1132,10 +1132,6 @@ static inline bool scan_base64(Lexer *lexer)
 			default:
 				UNREACHABLE
 		}
-		if (len % 4 == 3)
-		{
-			end_len = 1;
-		}
 	}
 	if ((len + end_len) % 4 != 0)
 	{
