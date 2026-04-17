@@ -1049,13 +1049,20 @@ void vendor_fetch(BuildOptions *options)
 	
 	if (str_eq(options->path, DEFAULT_PATH))
 	{
-		// check if there is a project JSON file
-		if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
-		{
-			const char** deps_dirs =  get_project_dependency_directories(project_json, filename);
-			int num_lib = (int)vec_size(deps_dirs);
-			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-		}
+		const char** deps_dirs =  get_project_dependency_directories(project_json, filename);
+		int num_lib = (int)vec_size(deps_dirs);
+		if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
+	}
+	
+	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
+	if (libraries_json && libraries_json->type != J_ARRAY)
+	{
+		error_exit("Project field 'dependencies' must be an array.");
+	}
+	
+	if (options->project_options.target_name)
+	{
+		(void)get_target_in_project_json(project_json, options->project_options.target_name);
 	}
 	
 	int total_libraries = (int)vec_size(options->libraries_to_fetch);

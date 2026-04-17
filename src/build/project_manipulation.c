@@ -299,6 +299,11 @@ void fetch_project(BuildOptions* options)
 			{
 				error_exit("Invalid data in target '%s'", key);
 			}
+			
+			if(options->project_options.target_name && strcmp(options->project_options.target_name, key) != 0)
+			{
+				continue;
+			}
 
 			const char **target_deps = get_optional_string_array((BuildParseContext) { filename, key }, target, "dependencies");
 
@@ -314,23 +319,62 @@ void fetch_project(BuildOptions* options)
 }
 
 
+JSONObject* get_target_in_project_json(JSONObject *project_json, const char* target_name) {
+	if(!project_json || !target_name) return NULL;	
+	
+	JSONObject *targets_json = json_map_get(project_json, "targets");
+	
+	if (!targets_json) error_exit("No targets found in project.");
+	if (targets_json->type != J_OBJECT) error_exit("'targets' did not contain map of targets.");
+	
+	JSONObject *target_json = json_map_get(targets_json, target_name);
+	
+	if (!target_json) error_exit("Target '%s' no found in project.", target_name);	
+	if (target_json->type != J_OBJECT) error_exit("Invalid data in target '%s'", target_name);
+	
+	JSONObject *libraries_json = json_map_get(target_json, "dependencies");
+
+	if (libraries_json && libraries_json->type != J_ARRAY)
+	{
+		error_exit("Target '%s' field 'dependencies' must be an array.", target_name);
+	}
+	
+	return target_json;
+}
 
 void add_libraries_to_project_file(const char** libs, const char* target_name, JSONObject *project_json, const char *filename) {
-
 	if (!libs || vec_size(libs) == 0) return;
-	//TODO! Target name option not implemented
-
-	// TODO! check if target is specified and exists (NULL at the moment)
-	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
+	
+	JSONObject *libraries_json = NULL;
+	JSONObject *target_json = NULL;	
+	
+	if(target_name)
+	{		
+		target_json = get_target_in_project_json(project_json, target_name);
+		libraries_json = json_map_get(target_json, "dependencies");
+	}
+	else
+	{
+		libraries_json = json_map_get(project_json, "dependencies");
+	}
+	
 	if (!libraries_json)
 	{
 		libraries_json = json_new_object(J_ARRAY);
-		json_map_set(project_json, "dependencies", libraries_json);
+		
+		json_map_set(!target_json ? project_json: target_json, "dependencies", libraries_json);
 	}
 	
 	if (libraries_json->type != J_ARRAY)
 	{
-		error_exit("Project field 'dependencies' must be an array in '%s'.", filename);
+		if(!target_json)
+		{
+			error_exit("Project field 'dependencies' must be an array in '%s'.", filename);
+		}
+		else
+		{
+			error_exit("Target '%s' field 'dependencies' must be an array in '%s'.", target_name, filename);
+		}
 	}
 
 	const char** dependencies = NULL;
