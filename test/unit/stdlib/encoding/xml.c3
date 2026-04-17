@@ -44,6 +44,16 @@ fn void test_attributes_double_quoted()
     assert(!doc.root.has_attr("missing"));
 }
 
+fn void test_attributes_double_quoted_xml_start()
+{
+    XmlDoc doc = xml::parse_string(mem, `<?xml ?><el id="42" name="foo"/>`)!!;
+    defer doc.free();
+    assert(doc.root.get_attr("id")!! == "42");
+    assert(doc.root.get_attr("name")!! == "foo");
+    assert(doc.root.has_attr("id"));
+    assert(!doc.root.has_attr("missing"));
+}
+
 fn void test_attributes_single_quoted()
 {
     XmlDoc doc = xml::parse_string(mem, `<el id='99'/>`)!!;
