@@ -23,6 +23,8 @@
 
 module std::collections::sortedmap <Key, Value>;
 import std::io, std::math::random;
+import std::core::mem::alloc;
+
 
 const int MAX_LEVEL = 32;
 
@@ -34,7 +36,7 @@ struct SkipNode
 	Key key;
 	Value value;
 	int level;
-	SkipNode*[MAX_LEVEL] forward;
+	SkipNode*[*] forward;
 }
 
 // CmpFn is a comparator: returns true if a should come before b in the list.
@@ -77,13 +79,6 @@ struct SortedMapRangeIterator
 	sz count;
 }
 
-fn int sortedmap_random_level(SimpleRandom* rng) @private
-{
-	int level = 1;
-	while (level < MAX_LEVEL && (rng.next_int() & 1) == 0) level++;
-	return level;
-}
-
 // Returns true if 'a' should come before 'b' in the list.
 macro bool sortedmap_cmp(custom_cmp, a, b) @private
 {
@@ -97,7 +92,8 @@ macro bool sortedmap_cmp(custom_cmp, a, b) @private
 fn SortedMap* SortedMap.init(&self, Allocator allocator)
 {
 	*self = { .allocator = allocator };
-	self.head = alloc::new(allocator, SkipNode);
+	// Single allocation for head + forward slice, calloc for zeroing of slice pointers
+	self.head = alloc::new_with_padding(allocator, SkipNode, SkipNode*[MAX_LEVEL]::size)!!;
 	random::seed_entropy(&self.rng);
 	return self;
 }
@@ -133,6 +129,14 @@ fn SortedMap* SortedMap.tinit_with_cmp(&self, CmpFn cmp_fn)
 fn bool SortedMap.is_initialized(&self)
 {
 	return self.allocator && self.allocator.ptr != &dummy;
+}
+
+fn int SortedMap.random_level(&self) 
+{
+	int limit_level = min(MAX_LEVEL, self.current_level + 2);
+	int level = 1;
+	while (level < limit_level && (self.rng.next_int() & 1) == 0) level++;
+	return level;
 }
 
 <*
@@ -172,14 +176,15 @@ fn bool SortedMap.set(&self, Key key, Value value) @operator([]=)
 	}
 
 	// Insert new node
-	int new_level = sortedmap_random_level(&self.rng);
+	int new_level = self.random_level();
 	if (new_level > self.current_level)
 	{
-		for (int i = self.current_level; i < new_level; i++) update[i] = self.head;
+		update[self.current_level..new_level - 1] = self.head;
 		self.current_level = new_level;
 	}
 
-	SkipNode* node = alloc::alloc(self.allocator, SkipNode);
+	// Single allocation for node + forward slice
+	SkipNode* node = alloc::alloc_with_padding(self.allocator, SkipNode, new_level * SkipNode*::size)!!;
 	*node = { .key = key, .value = value, .level = new_level };
 
 	for (int i = 0; i < new_level; i++)
@@ -400,8 +405,7 @@ fn Key? SortedMap.lower_key(&self, Key key)
 			current = current.forward[i];
 		}
 	}
-	if (current != self.head) return current.key;
-	return NOT_FOUND~;
+	return current == self.head ? NOT_FOUND~ : current.key;
 }
 
 <*
@@ -422,25 +426,24 @@ fn Key? SortedMap.higher_key(&self, Key key)
 	if (!next) return NOT_FOUND~;
 	// If next equals key, advance one more
 	if (!sortedmap_cmp(self.custom_cmp, next.key, key) && !sortedmap_cmp(self.custom_cmp, key, next.key)) next = next.forward[0];
-	if (!next) return NOT_FOUND~;
-	return next.key;
+	return next ? next.key : NOT_FOUND~;
 }
 
 fn sz SortedMap.len(&self) @inline => self.count;
 
-fn bool SortedMap.is_empty(&self) @inline => self.count == 0;
+fn bool SortedMap.is_empty(&self) @inline => !self.count;
 
 fn void SortedMap.clear(&self)
 {
 	if (!self.allocator) return;
 	SkipNode* node = self.head.forward[0];
-	while (node != null)
+	while (node)
 	{
 		SkipNode* next = node.forward[0];
 		alloc::free(self.allocator, node);
 		node = next;
 	}
-	*self.head = {};
+	self.head.forward[..self.current_level] = null;
 	self.count = 0;
 	self.current_level = 0;
 }
