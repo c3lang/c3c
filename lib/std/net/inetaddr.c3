@@ -256,6 +256,10 @@ fn bool InetAddress.is_multicast_link_local(InetAddress* addr)
 *>
 fn AddrInfo*? addrinfo(String host, int port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET) => @pool()
 {
+	$if env::WIN32: //fn TcpServerSocket? listen() calls addrinfo() before setting os::start_wsa so we need this here
+		os::start_wsa()!;
+	$endif
+
 	ZString zhost = host.zstr_tcopy();
 	DString str = dstring::temp_with_capacity(32);
 	str.appendf("%d", port);
