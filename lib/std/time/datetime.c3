@@ -120,7 +120,7 @@ fn bool TzDateTime.eq(self, TzDateTime other) @operator(==) @inline
 <*
  @require day >= 1 && day < 32
  @require hour >= 0 && hour < 24
- @require min >= 0 && min <= 60
+ @require min >= 0 && min < 60
  @require sec >= 0 && sec < 60
  @require us >= 0 && us <= 999_999
 *>
