@@ -1,18 +1,16 @@
 // #target: macos-x64
-/*
 module test;
 import std;
 
-typedef Baz = int;
-enum Foo : char (inline Baz x, String hello)
+typedef Baz @constinit = int;
+enum Foo : char (Baz x, String hello)
 {
-	ABC = { 123, "ugh" },
-	DEF = { 444, "hello" }
+	ABC { 123, "ugh" },
+	DEF { 444, "hello" }
 }
 fn int main(String[] a)
 {
-	Foo? x = Foo.lookup_field(hello, "hello");
-	Foo? y = Foo.lookup(3);
+	Foo? x = Foo::lookup_field(hello, "hello");
 	return x.ordinal ?? 222;
 }
 

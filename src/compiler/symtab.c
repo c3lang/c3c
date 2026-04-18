@@ -194,7 +194,6 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_ALIGNMENT] = kw_alignment;
 	type_property_list[TYPE_PROPERTY_CNAME] = kw_cname;
 	type_property_list[TYPE_PROPERTY_FROM_ORDINAL] = KW_DEF("from_ordinal");
-	type_property_list[TYPE_PROPERTY_GET] = kw_get;
 	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
 	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");
 	type_property_list[TYPE_PROPERTY_HAS_EQUALS] = kw_has_equals;
@@ -211,7 +210,6 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_PARENT] = KW_DEF("parent");
 	type_property_list[TYPE_PROPERTY_QNAME] = kw_qname;
 	type_property_list[TYPE_PROPERTY_RETURNS] = KW_DEF("returns");
-	type_property_list[TYPE_PROPERTY_SET] = kw_set;
 	type_property_list[TYPE_PROPERTY_SIZE] = kw_size;
 	type_property_list[TYPE_PROPERTY_GET_TAG] = kw_get_tag;
 	type_property_list[TYPE_PROPERTY_HAS_TAG] = kw_has_tag;
@@ -363,7 +361,7 @@ void symtab_init(uint32_t capacity)
 
 	kw_at_deprecated = KW_DEF("@deprecated");
 	kw_at_ensure = KW_DEF("@ensure");
-	kw_at_enum_lookup = KW_DEF("@enum_lookup_new");
+	kw_at_enum_lookup = KW_DEF("@enum_lookup");
 	kw_at_jump = KW_DEF("@jump");
 	kw_at_align = KW_DEF("@align");
 	kw_at_simd = KW_DEF("@simd");

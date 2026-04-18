@@ -478,7 +478,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 					}
 					FOREACH(ConstInitializer *, element, init->init_array.elements)
 					{
-						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
+						ASSERT_SPAN(single_expr, element->kind == CONST_INIT_ARRAY_VALUE);
 						ConstInitializer *inner_element = element->init_array_value.element;
 						Expr *inner_expr = untyped_exprs[offset + element->init_array_value.index];
 						switch (inner_element->kind)

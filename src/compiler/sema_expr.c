@@ -6018,17 +6018,15 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_ALIGNMENT:
 		case TYPE_PROPERTY_CNAME:
 		case TYPE_PROPERTY_FROM_ORDINAL:
-		case TYPE_PROPERTY_GET:
-		case TYPE_PROPERTY_SET:
 		case TYPE_PROPERTY_HAS_TAG:
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_HAS_EQUALS:
 		case TYPE_PROPERTY_IS_ORDERED:
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
 		case TYPE_PROPERTY_LOOKUP_FIELD:
-		case TYPE_PROPERTY_MAX:
 		case TYPE_PROPERTY_MEMBERS:
 		case TYPE_PROPERTY_METHODS:
+		case TYPE_PROPERTY_MAX:
 		case TYPE_PROPERTY_MIN:
 		case TYPE_PROPERTY_NAME:
 		case TYPE_PROPERTY_NAN:
@@ -6191,9 +6189,6 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 	{
 		case TYPE_PROPERTY_NONE:
 			return false;
-		case TYPE_PROPERTY_GET:
-		case TYPE_PROPERTY_SET:
-			return type == type_member;
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_NAN:
 			return type_is_float(type);
@@ -6339,8 +6334,6 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->type = type;
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
-		case TYPE_PROPERTY_GET:
-		case TYPE_PROPERTY_SET:
 			UNREACHABLE
 		case TYPE_PROPERTY_MEMBERS:
 		{
