@@ -7,15 +7,20 @@ module std::sort;
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
  @require @is_valid_cmp_fn(#cmp: ...cmp, #list: list, #context: ...context) : "Expected a comparison function which compares values"
  @require @is_valid_context(...cmp, ...context) : "Expected a valid context"
+
+ @param list : "The list to sort"
+ @param cmp : "The comparison function"
+ @param context : "The context to use with the comparion function as needed"
+ @param buffer_allocator : "The allocator to use for allocating a buffer used by merge. Defaults to tmem."
 *>
-macro void mergesort(list, cmp = ..., context = ..., allocator = tmem) @builtin
+macro void mergesort(list, cmp = ..., context = ..., buffer_allocator = tmem) @builtin
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if @kindof(list) == SLICE:
-		msort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, allocator);
+		msort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, buffer_allocator);
 	$else
-		msort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, allocator);
+		msort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, buffer_allocator);
 	$endif
 }
 
