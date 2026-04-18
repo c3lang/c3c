@@ -68,6 +68,7 @@
 - Changed `json` to support two flavors of JSON: JSON and JSONC.
 - Changed `json` API: `parse` -> `load`, `parse_string` -> `parse`.
 - `conv::detect_bom`, convert utf16/utf32 from bytes with bitswap / unaligned data.
+- Mergesort added.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
