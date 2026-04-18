@@ -92,7 +92,7 @@ fn void? handle(TcpSocket conn)
 	defer (void)conn.close();
 	Clock start_time = clock::now();
 	int status_code = 0;
-	usz response_size = 0;
+	long response_size = 0;
 	String method_str = "-";
 	String path_str = "-";
 
@@ -105,13 +105,13 @@ fn void? handle(TcpSocket conn)
 			String time_str = string::tformat("%.1fms", elapsed_ms);
 			String human_s = human_size(response_size);
 			String ip_str = "127.0.0.1";
-			if (conn.ai_addr_storage[1] == 2)
+			if (conn.addr_storage[1] == 2)
 			{
 				ip_str = string::tformat("%d.%d.%d.%d",
-					(conn.ai_addr_storage[4] & 0xFF), (conn.ai_addr_storage[5] & 0xFF),
-					(conn.ai_addr_storage[6] & 0xFF), (conn.ai_addr_storage[7] & 0xFF));
+					(conn.addr_storage[4] & 0xFF), (conn.addr_storage[5] & 0xFF),
+					(conn.addr_storage[6] & 0xFF), (conn.addr_storage[7] & 0xFF));
 			}
-			else if (conn.ai_addr_storage[1] == 10)
+			else if (conn.addr_storage[1] == 10)
 			{
 				ip_str = "::1";
 			}
@@ -327,7 +327,7 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 		File target_file = file::open(path_str, "rb")!;
 		defer (void)target_file.close();
 
-		long size = target_file.size();
+		long size = target_file.size()!;
 
 		Time mod = file::last_modified(path_str) ?? (Time)0;
 		String etag = string::tformat("\"%d-%d\"", mod, size);
