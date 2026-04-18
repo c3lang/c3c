@@ -298,12 +298,12 @@ fn ParsedRequest parse_request(String req)
 }
 
 
-fn void? send_error(TcpSocket* sock, int code, String reason, int* out_status, usz* out_size)
+fn void? send_error(TcpSocket* sock, int code, String reason, int* out_status, long* out_size)
 {
 	String body = string::tformat("<h1>%d %s</h1>", code, reason);
 	sock.write(string::tformat("HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", code, reason, body.len, body))!;
 	if (out_status) *out_status = code;
-	if (out_size) *out_size = (usz)body.len;
+	if (out_size) *out_size = body.len;
 }
 
 fn void? stream_gzip(TcpSocket* sock, InStream input, Allocator allocator)
@@ -315,7 +315,7 @@ fn void? stream_gzip(TcpSocket* sock, InStream input, Allocator allocator)
 	io::copy_to(input, &gz)!;
 }
 
-fn void? send_file(TcpSocket* sock, String path_str, String range_header, String if_none_match, bool head_only, bool accept_gzip, int* out_status, usz* out_size)
+fn void? send_file(TcpSocket* sock, String path_str, String range_header, String if_none_match, bool head_only, bool accept_gzip, int* out_status, long* out_size)
 {
 	@pool()
 	{
@@ -327,9 +327,7 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 		File target_file = file::open(path_str, "rb")!;
 		defer (void)target_file.close();
 
-		target_file.seek(0, END)!;
-		usz size = (usz)target_file.cursor()!;
-		target_file.seek(0, SET)!;
+		long size = target_file.size();
 
 		Time mod = file::last_modified(path_str) ?? (Time)0;
 		String etag = string::tformat("\"%d-%d\"", mod, size);
@@ -343,7 +341,7 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 		}
 
 		long start = 0;
-		long end = (long)size - 1;
+		long end = size - 1;
 		bool is_partial = false;
 
 		if (range_header.len > 0 && range_header.starts_with("bytes="))
@@ -357,16 +355,16 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 				if (start_str.len > 0)
 				{
 					start = start_str.to_long() ?? 0;
-					if (end_str.len > 0) end = end_str.to_long() ?? ((long)size - 1);
+					if (end_str.len > 0) end = end_str.to_long() ?? (size - 1);
 				}
 				else if (end_str.len > 0)
 				{
 					long suffix = end_str.to_long() ?? 0;
-					start = (long)size - suffix;
-					end = (long)size - 1;
+					start = size - suffix;
+					end = size - 1;
 				}
 				if (start < 0) start = 0;
-				if (end >= (long)size) end = (long)size - 1;
+				if (end >= size) end = size - 1;
 				if (start <= end) is_partial = true;
 			}
 		}
@@ -378,7 +376,7 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 
 		if (is_partial)
 		{
-			usz content_len = (usz)(end - start + 1);
+			long content_len = end - start + 1;
 			if (out_status) *out_status = 206;
 			if (out_size) *out_size = content_len;
 			sock.write(string::tformat("HTTP/1.1 206 Partial Content\r\n"
@@ -392,7 +390,7 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 				date_now, mt, content_len, start, end, size, etag))!;
 
 			if (head_only) return;
-			target_file.seek(start, SET)!;
+			target_file.seek(start)!;
 			char[65536] buf;
 			usz remaining = content_len;
 			while (remaining > 0)
@@ -450,7 +448,7 @@ fn String human_size(long size)
 	return string::tformat("%.1fGB", d);
 }
 
-fn void? send_dir_listing(TcpSocket* sock, String rel_path, String raw_path, bool accept_gzip, int* out_status, usz* out_size)
+fn void? send_dir_listing(TcpSocket* sock, String rel_path, String raw_path, bool accept_gzip, int* out_status, long* out_size)
 {
 	@pool()
 	{

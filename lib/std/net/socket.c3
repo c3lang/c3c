@@ -4,10 +4,10 @@ import std::io, std::os, std::time, libc;
 struct Socket (InStream, OutStream)
 {
 	NativeSocket sock;
-	Socklen_t ai_addrlen;
+	Socklen_t addrlen;
 	// TODO proper way to get the size of sockaddr_storage
 	// https://learn.microsoft.com/en-us/previous-versions/windows/desktop/legacy/ms740504(v=vs.85)
-	char[128] ai_addr_storage;
+	char[128] addr_storage;
 }
 
 macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
@@ -81,9 +81,9 @@ fn ulong? poll_ms(Poll[] polls, long timeout_ms)
 
 macro Socket new_socket(fd, ai)
 {
-	Socket sock = { .sock = fd, .ai_addrlen = ai.ai_addrlen };
-	assert(sock.ai_addr_storage.len >= ai.ai_addrlen, "storage %d < addrlen %d", sock.ai_addr_storage.len, ai.ai_addrlen);
-	mem::copy(&sock.ai_addr_storage, (void*)ai.ai_addr, (sz)ai.ai_addrlen);
+	Socket sock = { .sock = fd, .addrlen = ai.ai_addrlen };
+	assert(sock.addr_storage.len >= ai.ai_addrlen, "storage %d < addrlen %d", sock.addr_storage.len, ai.ai_addrlen);
+	mem::copy(&sock.addr_storage, (void*)ai.ai_addr, (sz)ai.ai_addrlen);
 	return sock;
 }
 
