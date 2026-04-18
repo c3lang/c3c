@@ -376,7 +376,7 @@ macro Lexer.unread(self, n)
 		case n > 1:
 			if (&self.reader.seek)
 			{
-				self.reader.seek(-n, CURSOR)!!;
+				self.reader.seek(-n, FROM_CURSOR)!!;
 				break;
 			}
 			for (; n > 0; n--) self.reader.pushback_byte()!!;

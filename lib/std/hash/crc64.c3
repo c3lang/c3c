@@ -13,7 +13,7 @@ fn void Crc64.init(&self, uint seed = 0)
 	self.result = seed;
 }
 
-fn void Crc64.updatec(&self, char c)
+fn void Crc64.update_byte(&self, char c)
 {
 	self.result = (self.result << 8) ^ CRC64_TABLE[(char)((self.result >> 56) ^ c)];
 }

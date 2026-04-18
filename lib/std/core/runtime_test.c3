@@ -142,7 +142,7 @@ fn void mute_output() @local
 	File* stderr = io::stderr();
 	*stderr = test_context.fake_stdout;
 	*stdout = test_context.fake_stdout;
-	(void)test_context.fake_stdout.set_cursor(0)!!;
+	(void)test_context.fake_stdout.seek(0)!!;
 }
 
 fn void unmute_output(bool has_error) @local
@@ -165,7 +165,7 @@ fn void unmute_output(bool has_error) @local
 	{
 		test_context.fake_stdout.write_byte('\n')!!;
 		test_context.fake_stdout.write_byte('\0')!!;
-		test_context.fake_stdout.set_cursor(0)!!;
+		test_context.fake_stdout.seek(0)!!;
 
 		io::printfn("\n========== TEST LOG ============");
 		io::printfn("%s\n", test_context.current_test_name);

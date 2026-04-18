@@ -109,7 +109,7 @@ fn long? ByteBuffer.cursor(&self) @dynamic
 	return self.read_idx;
 }
 
-fn void? ByteBuffer.set_cursor(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
+fn void? ByteBuffer.seek(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
 {
 	switch (whence)
 	{
@@ -124,12 +124,6 @@ fn void? ByteBuffer.set_cursor(&self, long offset, SeekOrigin whence = FROM_STAR
 			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION~;
 			self.read_idx = self.write_idx - (sz)offset;
 	}
-}
-
-fn long? ByteBuffer.seek(&self, long offset, Seek seek) @dynamic
-{
-	self.set_cursor(offset, (SeekOrigin)seek.ordinal)!;
-	return self.cursor();
 }
 
 fn long? ByteBuffer.available(&self) @inline @dynamic

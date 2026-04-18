@@ -364,7 +364,7 @@ fn bool String.ends_with(self, String suffix)
  @pure
  @return `the substring with the prefix removed`
 *>
-fn String String.strip(self, String prefix)
+fn String String.strip_prefix(self, String prefix)
 {
 	if (!prefix.len || !self.starts_with(prefix)) return self;
 	return self[prefix.len..];
@@ -378,7 +378,7 @@ fn String String.strip(self, String prefix)
  @pure
  @return `the substring with the suffix removed`
 *>
-fn String String.strip_end(self, String suffix)
+fn String String.strip_suffix(self, String suffix)
 {
 	if (!suffix.len || !self.ends_with(suffix)) return self;
 	// Note that this is the safe way if we want to support zero length.
@@ -970,7 +970,7 @@ fn String? from_utf32(Allocator allocator, Char32[] utf32)
 	sz len = conv::utf8len_for_utf32(utf32);
 	char* data = alloc::malloc_try(allocator, len + 1)!;
 	defer catch alloc::free(allocator, data);
-	conv::utf32to8_unsafe(utf32, data, $unaligned: false, $bitswap: false);
+	conv::utf32to8_unsafe(utf32, data, $unaligned: false, $byteswap: false);
 	data[len] = 0;
 	return (String)data[:len];
 }
@@ -985,13 +985,13 @@ fn String? from_utf32_bytes(Allocator allocator, char[] utf32, bool swap_endiane
 	switch
 	{
 		case is_aligned && !swap_endianess:
-			conv::utf32to8_unsafe(unaligned, data, $unaligned: false, $bitswap: false);
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: false, $byteswap: false);
 		case !is_aligned && !swap_endianess:
-			conv::utf32to8_unsafe(unaligned, data, $unaligned: true, $bitswap: false);
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: true, $byteswap: false);
 		case is_aligned && swap_endianess:
-			conv::utf32to8_unsafe(unaligned, data, $unaligned: false, $bitswap: true);
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: false, $byteswap: true);
 		default:
-			conv::utf32to8_unsafe(unaligned, data, $unaligned: true, $bitswap: true);
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: true, $byteswap: true);
 	}
 	data[len] = 0;
 	return (String)data[:len];
@@ -1002,7 +1002,7 @@ fn String? from_utf16(Allocator allocator, Char16[] utf16)
 	sz len = conv::utf8len_for_utf16(utf16);
 	char* data = alloc::malloc_try(allocator, len + 1)!;
 	defer catch alloc::free(allocator, data);
-	conv::utf16to8_unsafe(utf16, data, $unaligned: false, $bitswap: false)!;
+	conv::utf16to8_unsafe(utf16, data, $unaligned: false, $byteswap: false)!;
 	data[len] = 0;
 	return (String)data[:len];
 }
@@ -1018,13 +1018,13 @@ fn String? from_utf16_bytes(Allocator allocator, char[] utf16, bool swap_endiane
 	switch
 	{
 		case is_aligned && !swap_endianess:
-			conv::utf16to8_unsafe(unaligned, data, $unaligned: false, $bitswap: false)!;
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: false, $byteswap: false)!;
 		case !is_aligned && !swap_endianess:
-			conv::utf16to8_unsafe(unaligned, data, $unaligned: true, $bitswap: false)!;
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: true, $byteswap: false)!;
 		case is_aligned && swap_endianess:
-			conv::utf16to8_unsafe(unaligned, data, $unaligned: false, $bitswap: true)!;
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: false, $byteswap: true)!;
 		default:
-			conv::utf16to8_unsafe(unaligned, data, $unaligned: true, $bitswap: true)!;
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: true, $byteswap: true)!;
 	}
 	data[len] = 0;
 	return (String)data[:len];

@@ -75,12 +75,12 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			{
 				c = clock::now();
 			}
-			Poll poll_request = { sockfd, SUBSCRIBE_ANY_WRITE, (PollEvent)0 };
+			Poll poll_request = { sockfd, ANY_WRITE, (PollEvent)0 };
 			if (!poll((&poll_request)[:1], timeout_left)!)
 			{
 				return CONNECTION_TIMED_OUT~;
 			}
-			if (poll_request.revents & POLL_EVENT_WRITE)
+			if (poll_request.revents & WRITE)
 			{
 				sockfd.set_non_blocking(false)!;
 				return new_socket(sockfd, ai);

@@ -36,14 +36,6 @@ constdef PollSubscribe : ushort
 	WRITE        = os::POLLWRNORM,
 }
 
-const PollSubscribe SUBSCRIBE_ANY_READ     = (PollSubscribe)os::POLLIN;
-const PollSubscribe SUBSCRIBE_PRIO_READ    = (PollSubscribe)os::POLLPRI;
-const PollSubscribe SUBSCRIBE_OOB_READ     = (PollSubscribe)os::POLLRDBAND;
-const PollSubscribe SUBSCRIBE_READ         = (PollSubscribe)os::POLLRDNORM;
-const PollSubscribe SUBSCRIBE_ANY_WRITE    = (PollSubscribe)os::POLLOUT;
-const PollSubscribe SUBSCRIBE_OOB_WRITE    = (PollSubscribe)os::POLLWRBAND;
-const PollSubscribe SUBSCRIBE_WRITE        = (PollSubscribe)os::POLLWRNORM;
-
 constdef PollEvent : ushort
 {
 	READ_PRIO  = os::POLLPRI,
@@ -55,15 +47,6 @@ constdef PollEvent : ushort
 	ERROR      = os::POLLERR,
 	INVALID    = os::POLLNVAL,
 }
-
-const PollEvent POLL_EVENT_READ_PRIO  = (PollEvent)os::POLLPRI;
-const PollEvent POLL_EVENT_READ_OOB   = (PollEvent)os::POLLRDBAND;
-const PollEvent POLL_EVENT_READ       = (PollEvent)os::POLLRDNORM;
-const PollEvent POLL_EVENT_WRITE_OOB  = (PollEvent)os::POLLWRBAND;
-const PollEvent POLL_EVENT_WRITE      = (PollEvent)os::POLLWRNORM;
-const PollEvent POLL_EVENT_DISCONNECT = (PollEvent)os::POLLHUP;
-const PollEvent POLL_EVENT_ERROR      = (PollEvent)os::POLLERR;
-const PollEvent POLL_EVENT_INVALID    = (PollEvent)os::POLLNVAL;
 
 struct Poll
 {

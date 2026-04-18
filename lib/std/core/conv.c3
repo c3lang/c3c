@@ -98,10 +98,10 @@ fn void char32_to_utf16_unsafe(Char32 c, Char16** output)
  @param [inout] available : `amount of UTF16 data available.`
  @param [inout] output : `the resulting utf8 buffer to write to.`
 *>
-macro void? char16_to_utf8_unsafe(Char16 *ptr, sz *available, char** output, bool $unaligned, bool $bitswap)
+macro void? char16_to_utf8_unsafe(Char16 *ptr, sz *available, char** output, bool $unaligned, bool $byteswap)
 {
 	Char16 high = $unaligned ??? mem::load(ptr, $align:1) : *ptr;
-	$if $bitswap:
+	$if $byteswap:
 		high = bswap(high);
 	$endif
 	if (high & UTF16_SURROGATE_GENERIC_MASK != UTF16_SURROGATE_GENERIC_VALUE)
@@ -117,7 +117,7 @@ macro void? char16_to_utf8_unsafe(Char16 *ptr, sz *available, char** output, boo
 	if (*available == 1) return string::INVALID_UTF16~;
 
 	Char16 low = ptr[1];
-	$if $bitswap:
+	$if $byteswap:
 		low = bswap(low);
 	$endif
 	// Unmatched high surrogate, invalid
@@ -461,13 +461,13 @@ fn sz? utf8to32(String utf8, Char32[] utf32_buffer)
  @param [in] utf16 : `The UTF16 array containing the data to convert.`
  @param [out] utf8_buffer : `the (sufficiently large) buffer to hold the UTF16 data.`
 *>
-macro void? utf16to8_unsafe(Char16[] utf16, char* utf8_buffer, $unaligned, $bitswap)
+macro void? utf16to8_unsafe(Char16[] utf16, char* utf8_buffer, $unaligned, $byteswap)
 {
 	sz len16 = utf16.len;
 	for (sz i = 0; i < len16;)
 	{
 		sz available = len16 - i;
-		char16_to_utf8_unsafe(&utf16[i], &available, &utf8_buffer, $unaligned, $bitswap) @inline!;
+		char16_to_utf8_unsafe(&utf16[i], &available, &utf8_buffer, $unaligned, $byteswap) @inline!;
 		i += available;
 	}
 }
@@ -520,15 +520,15 @@ fn void? utf8to16_unsafe(String utf8, Char16* utf16_buffer)
  @param [in] utf32 : `The UTF32 buffer containing the data to convert.`
  @param [out] utf8_buffer : `the (sufficiently large) buffer to hold the UTF8 data.`
  @param $unaligned : `If data should be loaded unaligned`
- @param $bitswap : `If the result should be bitswapped`
+ @param $byteswap : `If the result should be byteswapped`
 *>
-macro void utf32to8_unsafe(Char32[] utf32, char* utf8_buffer, $unaligned, $bitswap)
+macro void utf32to8_unsafe(Char32[] utf32, char* utf8_buffer, $unaligned, $byteswap)
 {
 	char* start = utf8_buffer;
 	foreach (&ucref : utf32)
 	{
 		Char32 uc = $unaligned ??? mem::load(ucref, $align: 1) : *ucref;
-		$if $bitswap:
+		$if $byteswap:
 			uc = bswap(uc);
 		$endif
 		char32_to_utf8_unsafe(uc, &utf8_buffer) @inline;

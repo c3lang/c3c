@@ -3,15 +3,14 @@ import std::math;
 
 
 
-alias SetCursorFn = fn void?(void*, long offset, SeekOrigin whence = START);
+alias SeekFn = fn void?(void*, long offset, SeekOrigin whence = FROM_START);
 
 
 interface InStream
 {
 	fn void? close() @optional;
 	fn long? cursor() @optional;
-	fn void? set_cursor(long offset, SeekOrigin whence = FROM_START) @optional;
-	fn long? seek(long offset, Seek seek) @optional;
+	fn void? seek(long offset, SeekOrigin whence = FROM_START) @optional;
 	fn long len() @optional;
 	fn long? size() @optional;
 	fn long? available() @optional;
@@ -35,19 +34,12 @@ interface OutStream
 fn long? available(InStream s)
 {
 	if (&s.available) return s.available();
-	if (&s.set_cursor && &s.cursor)
+	if (&s.seek && &s.cursor)
 	{
 		long curr = s.cursor()!;
-		s.set_cursor(0, FROM_END)!;
+		s.seek(0, FROM_END)!;
 		long len = s.cursor()!;
-		s.set_cursor(curr)!;
-		return len - curr;
-	}
-	if (&s.seek)
-	{
-		long curr = s.seek(0, Seek.CURSOR)!;
-		long len = s.seek(0, Seek.END)!;
-		s.seek(curr, Seek.SET)!;
+		s.seek(curr)!;
 		return len - curr;
 	}
 	return io::UNSUPPORTED_OPERATION~;
@@ -194,12 +186,7 @@ macro sz? write_using_write_byte(s, char[] bytes)
 
 macro void? pushback_using_seek(s)
 {
-	if (&s.set_cursor)
-	{
-		s.set_cursor(-1, FROM_CURSOR)!;
-		return;
-	}
-	s.seek(-1, CURSOR)!;
+	s.seek(-1, FROM_CURSOR)!;
 }
 
 fn long? copy_to(InStream in, OutStream dst, char[] buffer = {})
@@ -628,7 +615,7 @@ macro void? skip(stream, sz bytes)
 	if (!bytes) return;
 	$switch:
 		$case $typeof(stream) == InStream:
-			if (!&stream.seek && !&stream.set_cursor)
+			if (!&stream.seek)
 			{
 				for (sz i = 0; i < bytes; i++)
 				{
@@ -636,16 +623,9 @@ macro void? skip(stream, sz bytes)
 				}
 				return;
 			}
-			if (!&stream.set_cursor)
-			{
-				stream.seek(bytes, CURSOR)!;
-				return;
-			}
-			stream.set_cursor(bytes, FROM_CURSOR)!;
-		$case $defined(stream.set_cursor):
-			stream.set_cursor(bytes, FROM_CURSOR)!;
+			stream.seek(bytes, FROM_CURSOR)!;
 		$case $defined(stream.seek):
-			stream.seek(bytes, CURSOR)!;
+			stream.seek(bytes, FROM_CURSOR)!;
 		$default:
 			for (sz i = 0; i < bytes; i++)
 			{

@@ -128,8 +128,8 @@ fn void test_deflate_compress_stream()
 
 		deflate::compress_stream(mem, &in_stream, &out_f)!!;
 
-		long file_len = out_f.seek(0, Seek.CURSOR)!!;
-		out_f.seek(0, Seek.SET)!!;
+		long file_len = out_f.cursor()!!;
+		out_f.seek(0)!!;
 
 		char[] compressed = mem::malloc(file_len)[:file_len];
 		defer free(compressed.ptr);
@@ -166,7 +166,7 @@ fn void test_deflate_decompress_stream()
 		defer { (void)f.close(); (void)file::delete("unittest_stream_deflate.bin"); }
 
 		f.write(compressed)!!;
-		f.seek(0, Seek.SET)!!;
+		f.seek(0)!!;
 
 		// Decompress using stream
 		File out_f = file::open("unittest_stream_out.bin", "wb+")!!;
@@ -174,10 +174,10 @@ fn void test_deflate_decompress_stream()
 
 		deflate::decompress_stream(&f, &out_f)!!;
 
-		long out_size = out_f.seek(0, Seek.CURSOR)!!;
+		long out_size = out_f.cursor()!!;
 		assert(out_size == original.len, "Length mismatch in streaming decompression");
 
-		out_f.seek(0, Seek.SET)!!;
+		out_f.seek(0,)!!;
 		char[] result = mem::malloc(out_size)[:out_size];
 		defer free(result.ptr);
 		out_f.read(result)!!;

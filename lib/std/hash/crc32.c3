@@ -13,7 +13,7 @@ fn void Crc32.init(&self, uint seed = 0)
 	self.result = ~seed;
 }
 
-fn void Crc32.updatec(&self, char c)
+fn void Crc32.update_byte(&self, char c)
 {
 	self.result = (self.result >> 8) ^ CRC32_TABLE[(self.result ^ c) & 0xFF];
 }

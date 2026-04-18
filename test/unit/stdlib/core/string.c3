@@ -50,27 +50,27 @@ fn void test_print_null()
 fn void test_strip()
 {
 	String s = "ofke";
-	assert(s.strip("of") == "ke");
-	assert(s.strip("ofke") == "");
-	assert(s.strip("ofkes") == "ofke");
-	assert(s.strip("ofkf") == "ofke");
-	assert(s.strip("") == "ofke");
+	assert(s.strip_prefix("of") == "ke");
+	assert(s.strip_prefix("ofke") == "");
+	assert(s.strip_prefix("ofkes") == "ofke");
+	assert(s.strip_prefix("ofkf") == "ofke");
+	assert(s.strip_prefix("") == "ofke");
 	s = "";
-	assert(s.strip("") == "");
-	assert(s.strip("o") == "");
+	assert(s.strip_prefix("") == "");
+	assert(s.strip_prefix("o") == "");
 }
 
 fn void test_strip_end()
 {
 	String s = "ofke";
-	assert(s.strip_end("ke") == "of");
-	assert(s.strip_end("ofke") == "");
-	assert(s.strip_end("ofkes") == "ofke");
-	assert(s.strip_end("ofkf") == "ofke");
-	assert(s.strip_end("") == "ofke");
+	assert(s.strip_suffix("ke") == "of");
+	assert(s.strip_suffix("ofke") == "");
+	assert(s.strip_suffix("ofkes") == "ofke");
+	assert(s.strip_suffix("ofkf") == "ofke");
+	assert(s.strip_suffix("") == "ofke");
 	s = "";
-	assert(s.strip_end("") == "");
-	assert(s.strip_end("o") == "");
+	assert(s.strip_suffix("") == "");
+	assert(s.strip_suffix("o") == "");
 }
 
 fn void test_ends_with()

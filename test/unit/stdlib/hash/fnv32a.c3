@@ -15,7 +15,7 @@ fn void test_fnv32a()
 
 	// update_char
 	hash.init();
-	foreach (c : input) hash.update_char(c);
+	foreach (c : input) hash.update_byte(c);
 	assert ((uint)hash == want, "got: %d, want: %d", hash, want);
 
 	// encode

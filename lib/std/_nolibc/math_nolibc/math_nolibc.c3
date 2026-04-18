@@ -3,9 +3,9 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 const double TOINT = 1 / math::DOUBLE_EPSILON;
 const double TOINT15 = 1.5 / math::DOUBLE_EPSILON;
 const float TOINTF = (float)(1 / math::FLOAT_EPSILON);
-const double S1PI2 @private = math::PI_2; /* 0x3FF921FB, 0x54442D18 */
+const double S1PI2 @private = math::HALF_PI; /* 0x3FF921FB, 0x54442D18 */
 const double S2PI2 @private = math::PI; /* 0x400921FB, 0x54442D18 */
-const double S3PI2 @private = math::PI + math::PI_2; /* 0x4012D97C, 0x7F3321D2 */
+const double S3PI2 @private = math::PI + math::HALF_PI; /* 0x4012D97C, 0x7F3321D2 */
 const double S4PI2 @private = math::PI + math::PI; /* 0x401921FB, 0x54442D18 */
 
 // Shared between expf, exp2f and powf.

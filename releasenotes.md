@@ -67,8 +67,13 @@
 - Add `remove_unordered_at` to ElasticArray.
 - Changed `json` to support two flavors of JSON: JSON and JSONC.
 - Changed `json` API: `parse` -> `load`, `parse_string` -> `parse`.
-- `conv::detect_bom`, convert utf16/utf32 from bytes with bitswap / unaligned data.
+- `conv::detect_bom`, convert utf16/utf32 from bytes with byteswap / unaligned data.
 - Mergesort added.
+- `set_cursor` is renamed `seek`, and the old `seek` is removed.
+- `std::math` name changes: `HALF_PI` => `HALF_PI`, `QUARTER_PI` => `QUARTER_PI`, `DIV_PI` => `INV_PI` etc, `cosec` => `csc`, `cotan` => `cot`, `muladd` => `mad`
+- `std::time` name changes: `diff_hour` => `diff_hours`. `DateTime.set_date` => `DateTime.set`, `datetime::from_date_*` => `datetime::at_*`
+- `std::hash` method name convention changes: `updatec` / `update_char` => `update_byte`.
+- `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

@@ -25,7 +25,7 @@ fn void Fnv64a.update(&self, char[] data)
 	*self = h;
 }
 
-macro void Fnv64a.update_char(&self, char c)
+macro void Fnv64a.update_byte(&self, char c)
 {
 	*self = update(*self, c);
 }

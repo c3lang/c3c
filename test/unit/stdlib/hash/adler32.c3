@@ -21,7 +21,7 @@ fn void test_adler32_a()
 
 	Adler32 adl;
 	adl.init();
-	adl.updatec('a');
+	adl.update_byte('a');
 
 	uint final = adl.final();
 	test::@check(final == EXPECTED, "Actual Adler32: 0x%x == 0x%x", final, EXPECTED);

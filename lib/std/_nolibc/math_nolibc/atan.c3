@@ -245,7 +245,7 @@ fn double _atan2(double y, double x) @weak @cname("atan2") @nostrip
 		}
 	}
 	// when x = 0
-	if (ix | lx == 0) return m & 1 ? -math::PI_2 : math::PI_2;
+	if (ix | lx == 0) return m & 1 ? -math::HALF_PI : math::HALF_PI;
 	/* when x is INF */
 	if (ix == 0x7ff00000)
 	{
@@ -253,10 +253,10 @@ fn double _atan2(double y, double x) @weak @cname("atan2") @nostrip
 		{
 			switch (m)
 			{
-				case 0: return math::PI_4;   /* atan(+INF,+INF) */
-				case 1: return -math::PI_4;   /* atan(-INF,+INF) */
-				case 2: return math::PI_4 + math::PI_2; /* atan(+INF,-INF) */
-				case 3: return - (math::PI_4 + math::PI_2); /* atan(-INF,-INF) */
+				case 0: return math::QUARTER_PI;   /* atan(+INF,+INF) */
+				case 1: return -math::QUARTER_PI;   /* atan(-INF,+INF) */
+				case 2: return math::QUARTER_PI + math::HALF_PI; /* atan(+INF,-INF) */
+				case 3: return - (math::QUARTER_PI + math::HALF_PI); /* atan(-INF,-INF) */
 			}
 			unreachable();
 		}
@@ -270,7 +270,7 @@ fn double _atan2(double y, double x) @weak @cname("atan2") @nostrip
 		unreachable();
 	}
 	/* |y/x| > 0x1p64 */
-	if (ix + (64 << 20) < iy || iy == 0x7ff00000) return m & 1 ? -math::PI_2 : math::PI_2;
+	if (ix + (64 << 20) < iy || iy == 0x7ff00000) return m & 1 ? -math::HALF_PI : math::HALF_PI;
 
 	/* z = atan(|y/x|) without spurious underflow */
 	double z = ((m & 2) && iy + (64 << 20) < ix) ? 0 : _atan(math::abs(y/x));
@@ -326,7 +326,7 @@ fn float _atan2f(float y, float x) @weak @cname("atan2f") @nostrip
 		unreachable();
 	}
 	/* when x = 0 */
-	if (ix == 0) return m & 1 ? -(float)math::PI_2 : (float)math::PI_2;
+	if (ix == 0) return m & 1 ? -(float)math::HALF_PI : (float)math::HALF_PI;
 	/* when x is INF */
 	if (ix == 0x7f800000)
 	{
@@ -334,10 +334,10 @@ fn float _atan2f(float y, float x) @weak @cname("atan2f") @nostrip
 		{
 			switch (m)
 			{
-				case 0: return (float)math::PI_4; /* atan(+INF,+INF) */
-				case 1: return (float)-math::PI_4; /* atan(-INF,+INF) */
-				case 2: return (float)(math::PI_4 + math::PI_2);  /*atan(+INF,-INF)*/
-				case 3: return -(float)(math::PI_4 + math::PI_2); /*atan(-INF,-INF)*/
+				case 0: return (float)math::QUARTER_PI; /* atan(+INF,+INF) */
+				case 1: return (float)-math::QUARTER_PI; /* atan(-INF,+INF) */
+				case 2: return (float)(math::QUARTER_PI + math::HALF_PI);  /*atan(+INF,-INF)*/
+				case 3: return -(float)(math::QUARTER_PI + math::HALF_PI); /*atan(-INF,-INF)*/
 			}
 			unreachable();
 		}
@@ -351,7 +351,7 @@ fn float _atan2f(float y, float x) @weak @cname("atan2f") @nostrip
 		unreachable();
 	}
 	/* |y/x| > 0x1p26 */
-	if (ix + 26 << 23 < iy || iy == 0x7f800000) return m & 1 ? -(float)math::PI_2 : (float)math::PI_2;
+	if (ix + 26 << 23 < iy || iy == 0x7f800000) return m & 1 ? -(float)math::HALF_PI : (float)math::HALF_PI;
 
 	/* z = atan(|y/x|) with correct underflow */
 	/*|y/x| < 0x1p-26, x < 0 */

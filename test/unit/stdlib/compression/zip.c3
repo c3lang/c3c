@@ -458,27 +458,31 @@ fn void test_zip_reader_pos_and_seek()
 		assert(reader.pos == 3, "Expected pos 3");
 		assert(reader.available()!! == 7, "Expected 7 bytes available");
 
-		assert(reader.seek(2, Seek.CURSOR)!! == 5, "Expected seek to 5");
+		reader.seek(2, FROM_CURSOR)!!;
+		assert(reader.cursor()!! == 5, "Expected seek to 5");
 		assert(reader.pos == 5, "Expected pos 5 after seek");
 		assert(reader.available()!! == 5, "Expected 5 bytes available after seek");
 
 		assert(reader.read(buf[..])!! == 3);
 		assert((String)buf[..] == "567", "Expected '567'");
 
-		assert(reader.seek(1, Seek.SET)!! == 1, "Expected seek to 1");
+		reader.seek(1)!!;
+		assert(reader.cursor()!! == 1, "Expected seek to 1");
 		assert(reader.read(buf[..])!! == 3);
 		assert((String)buf[..] == "123", "Expected '123'");
 
-		assert(reader.seek(-2, Seek.END)!! == 8, "Expected seek to 8");
+		reader.seek(-2, FROM_END)!!;
+		assert(reader.cursor()!! == 8, "Expected seek to 8");
 		assert(reader.read(buf[..])!! == 2);
 		assert((String)buf[:2] == "89", "Expected '89'");
 		assert(reader.available()!! == 0, "Expected 0 bytes available at end");
 
 		// Edge case: Negative seek SET
-		assert(!@ok(reader.seek(-1, Seek.SET)), "Negative seek SET should fail");
+		assert(!@ok(reader.seek(-1)), "Negative seek SET should fail");
 
 		// Edge case: Seek past end
-		assert(reader.seek(100, Seek.SET)!! == 10, "Seek past end should cap at size");
+		reader.seek(100)!!;
+		assert(reader.cursor()!! == 10, "Seek past end should cap at size");
 		assert(reader.pos == 10, "Pos should be 10");
 	};
 }

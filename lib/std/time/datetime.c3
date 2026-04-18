@@ -13,10 +13,10 @@ fn DateTime now()
  @require sec >= 0 && sec < 60
  @require us >= 0 && us <= 999_999
 *>
-fn DateTime from_date(int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0)
+fn DateTime at(int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0)
 {
 	DateTime dt @noinit;
-	dt.set_date(year, month, day, hour, min, sec, us) @inline;
+	dt.set(year, month, day, hour, min, sec, us) @inline;
 	return dt;
 }
 
@@ -28,9 +28,9 @@ fn DateTime from_date(int year, Month month = JANUARY, int day = 1, int hour = 0
  @require us >= 0 && us <= 999_999
  @require gmt_offset >= -12 * 3600 && gmt_offset <= 14 * 3600
 *>
-fn TzDateTime from_date_tz(int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0, int gmt_offset = 0)
+fn TzDateTime at_tz(int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0, int gmt_offset = 0)
 {
-	return from_date(year, month, day, hour, min, sec, us).with_gmt_offset(gmt_offset);
+	return at(year, month, day, hour, min, sec, us).with_gmt_offset(gmt_offset);
 }
 
 fn TzDateTime DateTime.to_local(&self)
@@ -124,7 +124,7 @@ fn bool TzDateTime.eq(self, TzDateTime other) @operator(==) @inline
  @require sec >= 0 && sec < 60
  @require us >= 0 && us <= 999_999
 *>
-fn void DateTime.set_date(&self, int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0)
+fn void DateTime.set(&self, int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0)
 {
 	Tm tm;
 	tm.tm_sec = sec;
@@ -165,7 +165,7 @@ fn DateTime DateTime.add_weeks(&self, int weeks) => from_time(self.time.add_week
 fn DateTime DateTime.add_years(&self, int years)
 {
 	if (!years) return *self;
-	return from_date(self.year + years, self.month, self.day, self.hour, self.min, self.sec, self.usec);
+	return at(self.year + years, self.month, self.day, self.hour, self.min, self.sec, self.usec);
 }
 
 fn DateTime DateTime.add_months(&self, int months)
@@ -190,7 +190,7 @@ fn DateTime DateTime.add_months(&self, int months)
 			year += month / 12;
 			month %= 12;
 	}
-	return from_date(year, Month::from_ordinal(month), self.day, self.hour, self.min, self.sec, self.usec);
+	return at(year, Month::from_ordinal(month), self.day, self.hour, self.min, self.sec, self.usec);
 }
 
 

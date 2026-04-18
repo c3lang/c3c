@@ -17,9 +17,9 @@ fn void bytestream()
 	OutStream ws = &w;
 	ws.write("helloworld")!!;
 	assert(w.str_view() == "helloworld");
-	s.seek(0, SET)!!;
+	s.seek(0)!!;
 	io::copy_to(s, ws)!!;
-	s.seek(1, SET)!!;
+	s.seek(1)!!;
 	s.write_to(ws)!!;
 	assert(w.str_view() == "helloworldabcbc");
 }

@@ -181,7 +181,7 @@ fn sz? GzipWriter.write(&self, char[] bytes) @dynamic
 
 fn void? GzipWriter.write_byte(&self, char c) @dynamic
 {
-	self.hasher.updatec(c);
+	self.hasher.update_byte(c);
 	self.total_in++;
 	return self.deflater.write_byte(c);
 }
@@ -268,7 +268,7 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 	{
 		self.inflater.close()!;
 
-		if (try self.source.seek(0, Seek.CURSOR))
+		if (try self.source.seek(0, FROM_CURSOR))
 		{
 			uint crc_stored = io::read_le_uint(self.source)!;
 			uint isize_stored = io::read_le_uint(self.source)!;
@@ -297,10 +297,10 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 			self.total_out = 0;
 			self.free_metadata(self.allocator);
 
-			self.source.seek(-2, Seek.CURSOR)!;
+			self.source.seek(-2, FROM_CURSOR)!;
 			return self.read(bytes);
 		}
-		self.source.seek(-2, Seek.CURSOR)!;
+		self.source.seek(-2, FROM_CURSOR)!;
 	}
 
 	return 0;

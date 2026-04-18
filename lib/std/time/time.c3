@@ -103,7 +103,7 @@ fn double Time.to_seconds(time) => (long)time / (double)SEC;
 fn Duration Time.diff_us(time, Time other) @operator(-) => (Duration)((long)time - (long)other);
 fn double Time.diff_sec(time, Time other) => (long)time.diff_us(other) / (double)SEC;
 fn double Time.diff_min(time, Time other) => (long)time.diff_us(other) / (double)MIN;
-fn double Time.diff_hour(time, Time other) => (long)time.diff_us(other) / (double)HOUR;
+fn double Time.diff_hours(time, Time other) => (long)time.diff_us(other) / (double)HOUR;
 fn double Time.diff_days(time, Time other) => (long)time.diff_us(other) / (double)DAY;
 fn double Time.diff_weeks(time, Time other) => (long)time.diff_us(other) / (double)WEEK;
 

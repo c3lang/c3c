@@ -72,16 +72,7 @@ fn void? File.reopen(&self, String filename, String mode)
 <*
  @require self.file != null
 *>
-fn long? File.seek(&self, long offset, Seek seek_mode = Seek.SET) @dynamic
-{
-	os::native_fseek(self.file, offset, (SeekOrigin)seek_mode.ordinal)!;
-	return os::native_ftell(self.file);
-}
-
-<*
- @require self.file != null
-*>
-fn void? File.set_cursor(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
+fn void? File.seek(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
 {
 	return os::native_fseek(self.file, offset, whence);
 }
@@ -147,8 +138,8 @@ fn void? File.close(&self) @inline @dynamic @maydiscard
 fn long? File.size(&self) @dynamic
 {
 	long curr = self.cursor()!;
-	defer (void)self.set_cursor(curr);
-	self.set_cursor(0, FROM_END)!;
+	defer (void)self.seek(curr);
+	self.seek(0, FROM_END)!;
 	return self.cursor()!;
 }
 
