@@ -67,6 +67,7 @@
 - Add `remove_unordered_at` to ElasticArray.
 - Changed `json` to support two flavors of JSON: JSON and JSONC.
 - Changed `json` API: `parse` -> `load`, `parse_string` -> `parse`.
+- Mergesort added.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
