@@ -294,5 +294,5 @@ import std::encoding::xml::dom;
 
 fn bool my_filter(XmlNode* node)
 {
-	return node.kind == XmlEventKind.START_ELEMENT && (node.attr("match") ?? "") == "yes";
+	return node.kind == START_ELEMENT && (node.attr("match") ?? "") == "yes";
 }
