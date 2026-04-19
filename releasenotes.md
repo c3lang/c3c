@@ -45,6 +45,7 @@
 - Type property `is_eq` is renamed `has_equals`.
 - Type function `tagof` is renamed `get_tag`.
 - Add `untypedlist` as a usable type #2647.
+- `??` and `?:` has new precedence and binds tighter than `+` and `-`
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

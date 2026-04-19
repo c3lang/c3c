@@ -1386,16 +1386,17 @@ typedef enum
 {
 	PREC_NONE,
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, +=, etc
-	PREC_TERNARY,           // ?: ? ??
+	PREC_TERNARY,           // ?:
 	PREC_OR,                // || |||
 	PREC_AND,               // && &&&
 	PREC_RELATIONAL,        // < > <= >= == !=
 	PREC_ADDITIVE,          // + - +++
+	PREC_ORELSE,			// ?: ??
 	PREC_BIT,               // ^ | &
 	PREC_SHIFT,             // << >>
 	PREC_MULTIPLICATIVE,    // * / %
 	PREC_UNARY,             // ! - + ~ * & prefix ++/-- (type)
-	PREC_CALL,              // . () [] postfix ++ -- !! !
+	PREC_CALL,              // . () [] postfix ++ -- !! ! ~
 	PREC_PRIMARY,
 } Precedence;
 

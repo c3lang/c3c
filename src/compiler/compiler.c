@@ -1192,17 +1192,17 @@ void print_syntax(BuildOptions *options)
 	{
 		puts("precedence     | operators");
 		puts("---------------+----------");
-		puts(" 1. Macro      | @        ");
-		puts(" 2. Call       | . () [] !! postfix ++/-- postfix !");
-		puts(" 3. Unary      | ! - + ~ * & prefix ++/-- (cast)");
-		puts(" 4. Mult       | * / %");
-		puts(" 5. Shift      | << >>");
-		puts(" 6. Bitwise    | ^ | &");
+		puts(" 1. Call       | . () [] postfix ++/-- postfix ! !! ~");
+		puts(" 2. Unary      | ! - + ~ * & prefix !! ++/-- (cast)");
+		puts(" 3. Mult       | * / %");
+		puts(" 4. Shift      | << >>");
+		puts(" 5. Bitwise    | ^ | &");
+		puts(" 6. Or-else    | ?: ??");
 		puts(" 7. Additive   | + - +++");
 		puts(" 8. Relational | < > <= >= == !=");
 		puts(" 9. And        | && &&&");
 		puts("10. Or         | || |||");
-		puts("11. Ternary    | ?: ?? ???");
+		puts("11. Ternary    | ? ???");
 		puts("12. Assign     | = *= /= %= -= += |= &= ^= <<= >>= +++=");
 	}
 

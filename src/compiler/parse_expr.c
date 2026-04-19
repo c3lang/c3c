@@ -810,7 +810,7 @@ static Expr *parse_elvis_expr(ParseContext *c, Expr *left_side, SourceLoc *lhs_s
 	expr_ternary->ternary_expr.cond = exprid(left_side);
 	advance_and_verify(c, TOKEN_ELVIS);
 	expr_ternary->ternary_expr.then_expr = 0;
-	ASSIGN_EXPRID_OR_RET(expr_ternary->ternary_expr.else_expr, parse_precedence(c, PREC_TERNARY), poisoned_expr);
+	ASSIGN_EXPRID_OR_RET(expr_ternary->ternary_expr.else_expr, parse_precedence(c, PREC_ORELSE), poisoned_expr);
 	RANGE_EXTEND_PREV(expr_ternary);
 	return expr_ternary;
 }
@@ -982,7 +982,7 @@ static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceLoc *lhs_start
 
 	Expr *right_side;
 	// Assignment operators have precedence right -> left.
-	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_TERNARY), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_ORELSE), poisoned_expr);
 
 	Expr *expr = expr_new_binary(make_loc(*lhs_start), left_side, right_side, BINARYOP_ELSE);
 
@@ -2044,8 +2044,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_ANY] = { parse_type_identifier, NULL, PREC_NONE },
 
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
-		[TOKEN_QUESTQUEST] = { NULL, parse_orelse, PREC_TERNARY },
-		[TOKEN_ELVIS] = { NULL, parse_elvis_expr, PREC_TERNARY },
+		[TOKEN_QUESTQUEST] = { NULL, parse_orelse, PREC_ORELSE },
+		[TOKEN_ELVIS] = { NULL, parse_elvis_expr, PREC_ORELSE },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },

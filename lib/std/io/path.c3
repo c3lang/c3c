@@ -199,7 +199,7 @@ fn sz? start_of_base_name(String str, PathEnv path_env) @local
 {
 	if (!str.len) return 0;
 	sz? start_slash = str.rindex_of_char('/');
-	if (path_env != PathEnv.WIN32) return start_slash + 1 ?? 0;
+	if (path_env != PathEnv.WIN32) return (start_slash + 1) ?? 0;
 	if (try index = str.rindex_of_char('\\'))
 	{
 		if (try start_slash && start_slash > index) return start_slash + 1;
