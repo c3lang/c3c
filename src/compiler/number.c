@@ -2,6 +2,8 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
+#include <math.h>
+
 #include "compiler_internal.h"
 
 #define FLOAT32_LIMIT 340282346638528859811704183484516925440.0000000000000000
@@ -499,7 +501,10 @@ void expr_const_to_scratch_buffer(const ExprConst *expr)
 			scratch_buffer_append(expr->typeid->name);
 			return;
 		case CONST_REFLECTION:
-			UNREACHABLE_VOID
+			scratch_buffer_append("mirror(");
+			scratch_buffer_append(span_to_string(expr->reflection->loc));
+			scratch_buffer_append(")");
+			return;
 		case CONST_MEMBER:
 			scratch_buffer_append(expr->member.decl->name);
 			return;
