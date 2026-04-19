@@ -33,6 +33,8 @@ import std::collections, std::io;
 
 faultdef XML_SYNTAX, XML_STACK_OVERFLOW, XML_TAG_MISMATCH, XML_INVALID_REF;
 
+const usz DEFAULT_STACK_SIZE = 4096;
+
 enum XmlEventKind
 {
 	START_ELEMENT,
@@ -51,11 +53,12 @@ struct XmlEvent
 }
 
 <* Loads and parses an XML document from a stream into a DOM tree. *>
-fn XmlDocument*? load(Allocator allocator, InStream stream)
+fn XmlDocument*? load(Allocator allocator, InStream stream, usz stack_size = DEFAULT_STACK_SIZE)
 {
 	XmlReader reader;
-	char[4096] stack;
-	reader.init(stream, &stack[0], (usz)stack.len, allocator)!;
+	char[] stack = alloc::alloc_array(allocator, char, stack_size);
+	defer alloc::free(allocator, stack.ptr);
+	reader.init(stream, stack.ptr, stack.len, allocator)!;
 	defer reader.destroy();
 
 	XmlDocument* document = alloc::new(allocator, XmlDocument);
@@ -164,23 +167,23 @@ fn XmlDocument*? load(Allocator allocator, InStream stream)
 }
 
 <* Loads and parses an XML document from a stream into a DOM tree using the temp allocator. *>
-fn XmlDocument*? tload(InStream stream)
+fn XmlDocument*? tload(InStream stream, usz stack_size = DEFAULT_STACK_SIZE)
 {
-	return load(tmem, stream);
+	return load(tmem, stream, stack_size);
 }
 
 <* Parses an XML document from a string. *>
-fn XmlDocument*? parse(Allocator allocator, String s)
+fn XmlDocument*? parse(Allocator allocator, String s, usz stack_size = DEFAULT_STACK_SIZE)
 {
 	ByteReader reader;
 	reader.init(s);
-	return load(allocator, &reader);
+	return load(allocator, &reader, stack_size);
 }
 
 <* Parses an XML document from a string using the temp allocator. *>
-fn XmlDocument*? tparse(String s)
+fn XmlDocument*? tparse(String s, usz stack_size = DEFAULT_STACK_SIZE)
 {
-	return parse(tmem, s);
+	return parse(tmem, s, stack_size);
 }
 
 
