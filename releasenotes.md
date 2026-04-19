@@ -47,6 +47,7 @@
 - Add `untypedlist` as a usable type #2647.
 - `??` and `?:` has new precedence and binds tighter than `+` and `-`
 - Added the `tags` property for types and `$reflect`.
+- Allow taking the type of an interface method.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

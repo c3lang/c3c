@@ -1079,7 +1079,15 @@ Decl *sema_resolve_type_method(SemaContext *context, CanonicalType *type, const 
 	if (!decl_ok(type_decl)) return poisoned_decl;
 	Methods *methods = type_decl->method_table;
 	Decl *found = methods ? declptrzero(decltable_get(&methods->method_table, method_name)) : NULL;
-	if (found || !type_decl->is_substruct) return found;
+	if (found) return found;
+	if (type->type_kind == TYPE_INTERFACE)
+	{
+		FOREACH (Decl *, m, type_decl->interface_methods)
+		{
+			if (m->name == method_name) return m;
+		}
+	}
+	if (!type_decl->is_substruct) return NULL;
 	if (!sema_analyse_decl(context, type_decl)) return poisoned_decl;
 	switch (type->type_kind)
 	{

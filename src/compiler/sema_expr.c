@@ -3550,6 +3550,10 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 
 		}
 		case DECL_FUNC:
+			if (decl->func_decl.attr_interface_method && !struct_var)
+			{
+				RETURN_SEMA_ERROR(expr, "An interface method must be called as a method, it can't be used as a free function.");
+			}
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
 			return sema_expr_analyse_func_call(context, expr, decl, struct_var, optional, no_match_ref);
@@ -9332,6 +9336,10 @@ static inline const char *sema_addr_may_take_of_ident(Expr *inner)
 			expr_poison(inner);
 			return NULL;
 		case DECL_FUNC:
+			if (decl->func_decl.attr_interface_method)
+			{
+				return "You may not take the address of an interface method.";
+			}
 			if (decl->func_decl.attr_test)
 			{
 				return "You may not take the address of a '@test' function.";
