@@ -408,8 +408,8 @@ module std::encoding::xml::stream;
 import std::encoding::xml::internal @public;
 import std::io;
 
-alias ReadFn = fn sz?(void*, char[]);
-alias ReadByteFn = fn char?(void*);
+alias ReadFn = $typeof(InStream.read);
+alias ReadByteFn = $typeof(InStream.read_byte);
 
 struct XmlReader
 {
@@ -580,8 +580,8 @@ fn XmlEvent? XmlReader.next_event(&self)
 	}
 }
 
-alias WriteFn = fn sz?(void*, char[]);
-alias WriteByteFn = fn void?(void*, char);
+alias WriteFn = $typeof(OutStream.write);
+alias WriteByteFn = $typeof(OutStream.write_byte);
 
 struct XmlWriter (OutStream)
 {
