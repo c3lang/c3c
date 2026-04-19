@@ -83,6 +83,7 @@ const char *kw_std__core;
 const char *kw_std__core__types;
 const char *kw_std__core__runtime;
 const char *kw_std__io;
+const char *kw_tags;
 const char *kw_type;
 const char *kw_typekind;
 const char *kw_winmain;
@@ -177,6 +178,7 @@ void symtab_init(uint32_t capacity)
 	kw_set = KW_DEF("set");
 	kw_size = KW_DEF("size");
 	kw_std = KW_DEF("std");
+	kw_tags = KW_DEF("tags");
 	kw_compiler_rt = KW_DEF("compiler_rt");
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
@@ -211,6 +213,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_QNAME] = kw_qname;
 	type_property_list[TYPE_PROPERTY_RETURNS] = KW_DEF("returns");
 	type_property_list[TYPE_PROPERTY_SIZE] = kw_size;
+	type_property_list[TYPE_PROPERTY_TAGS] = kw_tags;
 	type_property_list[TYPE_PROPERTY_GET_TAG] = kw_get_tag;
 	type_property_list[TYPE_PROPERTY_HAS_TAG] = kw_has_tag;
 	type_property_list[TYPE_PROPERTY_VALUES] = KW_DEF("values");

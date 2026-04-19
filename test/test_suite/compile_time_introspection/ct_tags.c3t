@@ -1,0 +1,21 @@
+// #target: macos-x64
+module test;
+
+import std;
+struct Foo @tag("hello", 1) @tag("hellofe", 1)
+{
+	int a @tag("abc", 1);
+}
+fn void main()
+{
+	String[] s = Foo::tags;
+	String[] s2 = $reflect(Foo.a).tags;
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [6 x i8] c"hello\00", align 1
+@.str.1 = private unnamed_addr constant [8 x i8] c"hellofe\00", align 1
+@.__const = private unnamed_addr constant [2 x %"char[]"] [%"char[]" { ptr @.str, i64 5 }, %"char[]" { ptr @.str.1, i64 7 }], align 16
+@.str.2 = private unnamed_addr constant [4 x i8] c"abc\00", align 1
+@.__const.3 = private unnamed_addr constant [1 x %"char[]"] [%"char[]" { ptr @.str.2, i64 3 }], align 16

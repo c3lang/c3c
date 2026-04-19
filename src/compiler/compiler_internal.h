@@ -2078,6 +2078,7 @@ extern const char *kw_std__core;
 extern const char *kw_std__core__types;
 extern const char *kw_std__core__runtime;
 extern const char *kw_std__io;
+extern const char *kw_tags;
 extern const char *kw_typekind;
 extern const char *kw_FILE_NOT_FOUND;
 extern const char *kw_IoError;

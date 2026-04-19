@@ -206,6 +206,7 @@ static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *l
 INLINE bool sema_expr_analyse_ptr_add(SemaContext *context, Expr *expr, Expr *left, Expr *right, CanonicalType *left_type, CanonicalType *right_type, Type *cast_to_iptr, bool *failed_ref);
 static Type *defer_iptr_cast(Expr *maybe_pointer);
 static bool sema_may_subscript_or_access(SemaContext *context, Expr *expr, const char *fail_reason, bool *failed_ref);
+static inline bool sema_create_const_tags(SemaContext *context, Expr *expr_tags, ResolvedAttrData *resolved_attr);
 
 // -- implementations
 
@@ -5545,6 +5546,10 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 			expr_rewrite_const_string(expr, member->name ? member->name : "");
 			return true;
 		}
+		if (name == kw_tags)
+		{
+			return sema_create_const_tags(context, expr, member->attrs_resolved);
+		}
 		if (name == kw_members)
 		{
 			sema_create_const_membersof(expr, type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
@@ -5776,6 +5781,28 @@ static inline bool sema_create_const_paramsof(Expr *expr, Type *type)
 }
 
 
+static inline bool sema_create_const_tags(SemaContext *context, Expr *expr_tags, ResolvedAttrData *resolved_attr)
+{
+	SourceLocId loc = expr_tags->loc;
+	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, loc);
+	unsigned values = vec_size(resolved_attr->tags);
+	Expr **element_values = values > 0 ? VECNEW(Expr*, values) : NULL;
+	for (ArraySize i = 0; i < values; i++)
+	{
+		Attr *attr = resolved_attr->tags[i];
+		const char *name = attr->exprs[0]->const_expr.bytes.ptr;
+		Expr *expr = expr_new(EXPR_CONST, loc);
+		expr_rewrite_const_string(expr, name);
+		vec_add(element_values, expr);
+	}
+	initializer->initializer_list = element_values;
+	expr_tags->expr_kind = EXPR_COMPOUND_LITERAL;
+	expr_tags->expr_compound_literal.initializer = initializer;
+	expr_tags->expr_compound_literal.type_info = type_info_new_base(type_get_slice(type_string), loc);
+	expr_tags->resolve_status = RESOLVE_NOT_DONE;
+	return sema_analyse_expr_rvalue(context, expr_tags);
+}
+
 static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize alignment, AlignSize offset)
 {
 	Decl **members = NULL;
@@ -5811,7 +5838,7 @@ static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize
 			.member.offset = no_offset ? ~(AlignSize)0 : offset + decl->offset,
 			.member.align = alignment
 		};
-		expr_rewrite_const_reflect(reflect, expr_element);
+		expr_rewrite_const_reflect(reflect, expr_element); // NOLINT
 		vec_add(member_exprs, reflect);
 	}
 	expr_rewrite_const_untyped_list(expr, member_exprs);
@@ -6035,6 +6062,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_RETURNS:
 		case TYPE_PROPERTY_GET_TAG:
 		case TYPE_PROPERTY_VALUES:
+		case TYPE_PROPERTY_TAGS:
 			// Not supported by dynamic typeid
 		case TYPE_PROPERTY_NONE:
 			return false;
@@ -6269,6 +6297,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 			return type_is_func_ptr(type);
 		case TYPE_PROPERTY_GET_TAG:
 		case TYPE_PROPERTY_HAS_TAG:
+		case TYPE_PROPERTY_TAGS:
 			return true;
 		case TYPE_PROPERTY_CNAME:
 			return !type_is_builtin(original_type->canonical->type_kind);
@@ -6373,6 +6402,14 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			if (!sema_resolve_type_decl(context, type)) return false;
 			sema_expr_rewrite_to_type_nameof(expr, type, 2);
 			return true;
+
+		case TYPE_PROPERTY_TAGS:
+			if (!type_is_user_defined(type))
+			{
+				RETURN_SEMA_ERROR(expr, "'tags' is not defined for builtin types like %s.", type_quoted_error_string(type));
+			}
+			if (!sema_resolve_type_decl(context, type)) return false;
+			return sema_create_const_tags(context, expr, type->decl->attrs_resolved);
 		case TYPE_PROPERTY_GET_TAG:
 			if (!type_is_user_defined(type))
 			{
