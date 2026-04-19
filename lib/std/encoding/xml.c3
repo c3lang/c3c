@@ -697,23 +697,23 @@ fn void? XmlWriter.close(&self) @dynamic
 *>
 module std::encoding::xml::internal @private;
 
-constdef Ret
+enum Ret
 {
-	EEOF        = -5, 	/* Unexpected EOF                             */
-	EREF        = -4,	/* Invalid character or entity reference (&whatever;) */
-	ECLOSE      = -3,	/* Close tag does not match open tag (<Tag> .. </OtherTag>) */
-	ESTACK      = -2,	/* Stack overflow (too deeply nested tags or too long element/attribute name) */
-	ESYN        = -1,	/* Syntax error (unexpected byte)             */
-	OK          =  0,	/* Character consumed, no new token present   */
-	ELEMSTART   =  1,	/* Start of an element:   '<Tag ..'           */
-	CONTENT     =  2,	/* Element content                            */
-	ELEMEND     =  3,	/* End of an element:     '.. />' or '</Tag>' */
-	ATTRSTART   =  4,	/* Attribute:             'Name=..'           */
-	ATTRVAL     =  5,	/* Attribute value                            */
-	ATTREND     =  6,	/* End of attribute       '.."'               */
-	PISTART     =  7,	/* Start of a processing instruction          */
-	PICONTENT   =  8,	/* Content of a PI                            */
-	PIEND       =  9,   /* End of a processing instruction            */
+	EEOF     , 	/* Unexpected EOF                             */
+	EREF     ,	/* Invalid character or entity reference (&whatever;) */
+	ECLOSE   ,	/* Close tag does not match open tag (<Tag> .. </OtherTag>) */
+	ESTACK   ,	/* Stack overflow (too deeply nested tags or too long element/attribute name) */
+	ESYN     ,	/* Syntax error (unexpected byte)             */
+	OK       ,	/* Character consumed, no new token present   */
+	ELEMSTART,	/* Start of an element:   '<Tag ..'           */
+	CONTENT  ,	/* Element content                            */
+	ELEMEND  ,	/* End of an element:     '.. />' or '</Tag>' */
+	ATTRSTART,	/* Attribute:             'Name=..'           */
+	ATTRVAL  ,	/* Attribute value                            */
+	ATTREND  ,	/* End of attribute       '.."'               */
+	PISTART  ,	/* Start of a processing instruction          */
+	PICONTENT,	/* Content of a PI                            */
+	PIEND    ,  /* End of a processing instruction            */
 }
 
 /* When, exactly, are tokens returned?
@@ -1868,8 +1868,6 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 				return OK;
 			}
 			break;
-		default:
-			unreachable();
 	}
 	return ESYN;
 
