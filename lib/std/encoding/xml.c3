@@ -408,20 +408,28 @@ module std::encoding::xml::stream;
 import std::encoding::xml::internal @public;
 import std::io;
 
+alias ReadFn = fn sz?(void*, char[]);
+alias ReadByteFn = fn char?(void*);
+
 struct XmlReader
 {
 	InStream stream;
+	ReadFn read_fn;
+	Allocator allocator;
 	Parser parser;
 	DString buffer;
 	DString tag_stack;
-	Allocator allocator;
+	sz io_buf_pos;
+	sz io_buf_len;
 	Ret peeked_res;
+	char[512] io_buf;
 }
 
 fn void? XmlReader.init(&self, InStream stream, void* stack, usz stacksize, Allocator allocator = tmem)
 {
 	mem::clear(self, XmlReader::size);
 	self.stream = stream;
+	self.read_fn = &stream.read;
 	self.allocator = allocator;
 	internal::init(&self.parser, stack, stacksize);
 	self.buffer.init(allocator, 256);
@@ -434,35 +442,42 @@ fn void XmlReader.destroy(&self)
 	self.tag_stack.free();
 }
 
-fn Ret? XmlReader.low_level_next(&self)
+fn Ret? XmlReader.low_level_next(&self) @inline
 {
-	if (self.peeked_res != Ret.OK)
+	if (self.peeked_res != OK)
 	{
 		Ret res = self.peeked_res;
-		self.peeked_res = Ret.OK;
+		self.peeked_res = OK;
 		return res;
 	}
 	while (true)
 	{
-		char? c_opt = self.stream.read_byte();
-		if (catch err = c_opt)
+		if (self.io_buf_pos >= self.io_buf_len)
 		{
-			return err~;
+			sz n = self.read_fn(self.stream.ptr, &self.io_buf)!;
+			if (n == 0) return io::EOF~;
+			self.io_buf_len = n;
+			self.io_buf_pos = 0;
 		}
-		Ret res = internal::xml_parse_internal(&self.parser, (int)c_opt);
-		if (res < OK)
+
+		while (self.io_buf_pos < self.io_buf_len)
 		{
-			switch (res)
+			char c = self.io_buf[self.io_buf_pos++];
+			Ret res = internal::xml_parse_internal(&self.parser, (int)c);
+			if (res < OK)
 			{
-				case EEOF:   return io::UNEXPECTED_EOF~;
-				case EREF:   return xml::XML_INVALID_REF~;
-				case ECLOSE: return xml::XML_TAG_MISMATCH~;
-				case ESTACK: return xml::XML_STACK_OVERFLOW~;
-				case ESYN:   return xml::XML_SYNTAX~;
-				default: unreachable();
+				switch (res)
+				{
+					case EEOF:   return io::UNEXPECTED_EOF~;
+					case EREF:   return xml::XML_INVALID_REF~;
+					case ECLOSE: return xml::XML_TAG_MISMATCH~;
+					case ESTACK: return xml::XML_STACK_OVERFLOW~;
+					case ESYN:   return xml::XML_SYNTAX~;
+					default: unreachable();
+				}
 			}
+			if (res > OK) return res;
 		}
-		if (res > OK) return res;
 	}
 }
 
@@ -565,40 +580,49 @@ fn XmlEvent? XmlReader.next_event(&self)
 	}
 }
 
+alias WriteFn = fn sz?(void*, char[]);
+alias WriteByteFn = fn void?(void*, char);
+
 struct XmlWriter (OutStream)
 {
 	OutStream stream;
+	WriteFn write_fn;
+	WriteByteFn write_byte_fn;
 	bool in_tag;
 }
 
 fn void XmlWriter.init(&self, OutStream stream)
 {
-	*self = { .stream = stream };
+	*self = {
+		.stream        = stream,
+		.write_fn      = &stream.write,
+		.write_byte_fn = &stream.write_byte
+	};
 }
 
 fn void? XmlWriter.start_doc(&self, String version = "1.0", String encoding = "UTF-8")
 {
-	self.stream.write("<?xml version=\"")!;
-	self.stream.write(version)!;
-	self.stream.write("\" encoding=\"")!;
-	self.stream.write(encoding)!;
-	self.stream.write("\"?>\n")!;
+	self.write_fn(self.stream.ptr, "<?xml version=\"")!;
+	self.write_fn(self.stream.ptr, version)!;
+	self.write_fn(self.stream.ptr, "\" encoding=\"")!;
+	self.write_fn(self.stream.ptr, encoding)!;
+	self.write_fn(self.stream.ptr, "\"?>\n")!;
 }
 
 fn void? XmlWriter.end_doc(&self)
 {
 	if (self.in_tag)
 	{
-		self.stream.write(">")!;
+		self.write_fn(self.stream.ptr, ">")!;
 		self.in_tag = false;
 	}
 }
 
 fn void? XmlWriter.open(&self, String name)
 {
-	if (self.in_tag) self.stream.write(">")!;
-	self.stream.write("<")!;
-	self.stream.write(name)!;
+	if (self.in_tag) self.write_fn(self.stream.ptr, ">")!;
+	self.write_fn(self.stream.ptr, "<")!;
+	self.write_fn(self.stream.ptr, name)!;
 	self.in_tag = true;
 }
 
@@ -608,22 +632,22 @@ fn void? XmlWriter.close_el(&self, String name, bool self_closing = false)
 	{
 		if (self_closing)
 		{
-			self.stream.write(" />")!;
+			self.write_fn(self.stream.ptr, " />")!;
 		}
 		else
 		{
-			self.stream.write(">")!;
-			self.stream.write("</")!;
-			self.stream.write(name)!;
-			self.stream.write(">")!;
+			self.write_fn(self.stream.ptr, ">")!;
+			self.write_fn(self.stream.ptr, "</")!;
+			self.write_fn(self.stream.ptr, name)!;
+			self.write_fn(self.stream.ptr, ">")!;
 		}
 		self.in_tag = false;
 	}
 	else
 	{
-		self.stream.write("</")!;
-		self.stream.write(name)!;
-		self.stream.write(">")!;
+		self.write_fn(self.stream.ptr, "</")!;
+		self.write_fn(self.stream.ptr, name)!;
+		self.write_fn(self.stream.ptr, ">")!;
 	}
 }
 
@@ -636,11 +660,11 @@ fn void? XmlWriter.empty(&self, String name)
 fn void? XmlWriter.attr(&self, String name, String value)
 {
 	assert(self.in_tag);
-	self.stream.write(" ")!;
-	self.stream.write(name)!;
-	self.stream.write("=\"")!;
+	self.write_fn(self.stream.ptr, " ")!;
+	self.write_fn(self.stream.ptr, name)!;
+	self.write_fn(self.stream.ptr, "=\"")!;
 	self.write_escaped(value)!;
-	self.stream.write("\"")!;
+	self.write_fn(self.stream.ptr, "\"")!;
 }
 
 fn void? XmlWriter.write_escaped(&self, String s)
@@ -649,12 +673,12 @@ fn void? XmlWriter.write_escaped(&self, String s)
 	{
 		switch (c)
 		{
-			case '<': self.stream.write("&lt;")!;
-			case '>': self.stream.write("&gt;")!;
-			case '&': self.stream.write("&amp;")!;
-			case '"': self.stream.write("&quot;")!;
-			case '\'': self.stream.write("&apos;")!;
-			default: self.stream.write_byte(c)!;
+			case '<': self.write_fn(self.stream.ptr, "&lt;")!;
+			case '>': self.write_fn(self.stream.ptr, "&gt;")!;
+			case '&': self.write_fn(self.stream.ptr, "&amp;")!;
+			case '"': self.write_fn(self.stream.ptr, "&quot;")!;
+			case '\'': self.write_fn(self.stream.ptr, "&apos;")!;
+			default: self.write_byte_fn(self.stream.ptr, c)!;
 		}
 	}
 }
@@ -663,7 +687,7 @@ fn sz? XmlWriter.write(&self, char[] bytes) @dynamic
 {
 	if (self.in_tag)
 	{
-		self.stream.write(">")!;
+		self.write_fn(self.stream.ptr, ">")!;
 		self.in_tag = false;
 	}
 	self.write_escaped((String)bytes)!;
@@ -680,7 +704,7 @@ fn void? XmlWriter.close(&self) @dynamic
 {
 	if (self.in_tag)
 	{
-		self.stream.write(">")!;
+		self.write_fn(self.stream.ptr, ">")!;
 		self.in_tag = false;
 	}
 	return self.stream.close();
@@ -1075,7 +1099,7 @@ fn void init(Parser* x, void* stack, usz stacksize)
 	x.state = INIT;
 }
 
-fn Ret xml_parse_internal(Parser* x, int _ch)
+fn Ret xml_parse_internal(Parser* x, int _ch) @inline
 {
 	/* Ensure that characters are in the range of 0..255 rather than -126..125.
 	 * All character comparisons are done with positive integers. */
