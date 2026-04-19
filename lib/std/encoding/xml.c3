@@ -431,7 +431,8 @@ fn void XmlReader.destroy(&self)
 	self.tag_stack.free();
 }
 
-fn Ret? XmlReader.low_level_next(&self) {
+fn Ret? XmlReader.low_level_next(&self)
+{
 	if (self.peeked_res != Ret.OK)
 	{
 		Ret res = self.peeked_res;
@@ -522,7 +523,8 @@ fn XmlEvent? XmlReader.next_event(&self)
 			case CONTENT:
 				self.buffer.clear();
 				self.buffer.append(self.parser.data_view());
-				while (true) {
+				while (true)
+				{
 					Ret? next_res_opt = self.low_level_next();
 					if (catch err = next_res_opt)
 					{
@@ -544,7 +546,8 @@ fn XmlEvent? XmlReader.next_event(&self)
 			case PISTART:
 				String name = self.parser.pi_view();
 				self.buffer.clear();
-				while (true) {
+				while (true)
+				{
 					Ret next_res = self.low_level_next()!;
 					if (next_res == PICONTENT)
 					{
@@ -772,12 +775,12 @@ struct Parser
 
 
 	/* PRIVATE */
-	int state;
+	State state;
 	char* stack; /* Stack of element names + attribute/PI name, separated by \0. Also starts with a \0. */
 	usz stacksize, stacklen;
 	uint reflen;
 	uint quote;
-	int nextstate; /* Used for '@' state remembering and for the "string" consuming state */
+	State nextstate; /* Used for '@' state remembering and for the "string" consuming state */
 	uint ignore;
 	char* string;
 }
@@ -791,7 +794,7 @@ fn String Parser.pi_view(&self) @inline => ((ZString)self.pi).str_view();
 <* Returns a view of the contents of the data buffer. *>
 fn String Parser.data_view(&self) @inline => ((ZString)&self.data[0]).str_view();
 
-constdef State : inline int
+enum State : int
 {
 	STRING,
 	ATTR0, ATTR1, ATTR2, ATTR3, ATTR4,
@@ -839,7 +842,8 @@ fn void setchar(char* dest, uint ch)
 
 /* Similar to yxml_setchar(), but will convert ch (any valid unicode point) to
  * UTF-8 and appends a '\0'. dest must have room for at least 5 bytes. */
-fn void setutf8(char* dest, uint ch) {
+fn void setutf8(char* dest, uint ch)
+{
 	switch (ch)
 	{
 		case 0..0x007F:
@@ -945,11 +949,14 @@ fn Ret selfclose(Parser* x, uint ch)
 	if (x.stacklen)
 	{
 		x.elem = (char*)x.stack+x.stacklen-1;
-		while(*(x.elem-1)) { x.elem--; }
+		while (*(x.elem - 1))
+		{
+			x.elem--;
+		}
 		return ELEMEND;
 	}
 	x.elem = (char*)x.stack;
-	x.state = State.MISC3;
+	x.state = MISC3;
 	return ELEMEND;
 }
 
@@ -1028,7 +1035,10 @@ fn Ret refend(Parser* x, Ret ret)
 				ch = (ch*10) + (*r-'0');
 			}
 		}
-		if (*r) { ch = 0; }
+		if (*r)
+		{
+			ch = 0;
+		}
 	}
 	else
 	{
@@ -1059,7 +1069,7 @@ fn void init(Parser* x, void* stack, usz stacksize)
 	x.stacksize = stacksize;
 	*x.stack = 0;
 	x.elem = x.pi = x.attr = (char*)x.stack;
-	x.state = State.INIT;
+	x.state = INIT;
 }
 
 fn Ret xml_parse_internal(Parser* x, int _ch)
@@ -1088,7 +1098,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 	}
 	x.byte++;
 
-	switch ((State)x.state)
+	switch (x.state)
 	{
 		case STRING:
 			if (ch == *x.string)
@@ -1100,12 +1110,14 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			break;
 		case ATTR0:
 			if (isName(ch)) return attrname(x, ch);
-			if (isSP(ch)) {
-				x.state = State.ATTR1;
+			if (isSP(ch))
+			{
+				x.state = ATTR1;
 				return attrnameend(x, ch);
 			}
-			if (ch == (char)'=') {
-				x.state = State.ATTR2;
+			if (ch == (char)'=')
+			{
+				x.state = ATTR2;
 				return attrnameend(x, ch);
 			}
 			break;
@@ -1113,7 +1125,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'=')
 			{
-				x.state = State.ATTR2;
+				x.state = ATTR2;
 				return OK;
 			}
 			break;
@@ -1121,7 +1133,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'\'' || ch == (char)'"')
 			{
-				x.state = State.ATTR3;
+				x.state = ATTR3;
 				x.quote = ch;
 				return OK;
 			}
@@ -1130,12 +1142,12 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isAttValue(x, ch)) return dataattr(x, ch);
 			if (ch == (char)'&')
 			{
-				x.state = State.ATTR4;
+				x.state = ATTR4;
 				return refstart(x, ch);
 			}
 			if (x.quote == ch)
 			{
-				x.state = State.ELEM2;
+				x.state = ELEM2;
 				return attrvalend(x, ch);
 			}
 			break;
@@ -1143,14 +1155,14 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isRef(ch)) return ref(x, ch);
 			if (ch == (char)'\x3b')
 			{
-				x.state = State.ATTR3;
+				x.state = ATTR3;
 				return refattrval(x, ch);
 			}
 			break;
 		case CD0:
 			if (ch == (char)']')
 			{
-				x.state = State.CD1;
+				x.state = CD1;
 				return OK;
 			}
 			if (isChar(ch)) return datacontent(x, ch);
@@ -1158,12 +1170,12 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case CD1:
 			if (ch == (char)']')
 			{
-				x.state = State.CD2;
+				x.state = CD2;
 				return OK;
 			}
 			if (isChar(ch))
 			{
-				x.state = State.CD0;
+				x.state = CD0;
 				return datacd1(x, ch);
 			}
 			break;
@@ -1171,33 +1183,33 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (ch == (char)']') return datacontent(x, ch);
 			if (ch == (char)'>')
 			{
-				x.state = State.MISC2;
+				x.state = MISC2;
 				return OK;
 			}
 			if (isChar(ch))
 			{
-				x.state = State.CD0;
+				x.state = CD0;
 				return datacd2(x, ch);
 			}
 			break;
 		case COMMENT0:
 			if (ch == (char)'-')
 			{
-				x.state = State.COMMENT1;
+				x.state = COMMENT1;
 				return OK;
 			}
 			break;
 		case COMMENT1:
 			if (ch == (char)'-')
 			{
-				x.state = State.COMMENT2;
+				x.state = COMMENT2;
 				return OK;
 			}
 			break;
 		case COMMENT2:
 			if (ch == (char)'-')
 			{
-				x.state = State.COMMENT3;
+				x.state = COMMENT3;
 				return OK;
 			}
 			if (isChar(ch)) return OK;
@@ -1205,12 +1217,12 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case COMMENT3:
 			if (ch == (char)'-')
 			{
-				x.state = State.COMMENT4;
+				x.state = COMMENT4;
 				return OK;
 			}
 			if (isChar(ch))
 			{
-				x.state = State.COMMENT2;
+				x.state = COMMENT2;
 				return OK;
 			}
 			break;
@@ -1224,19 +1236,19 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case DT0:
 			if (ch == (char)'>')
 			{
-				x.state = State.MISC1;
+				x.state = MISC1;
 				return OK;
 			}
 			if (ch == (char)'\'' || ch == (char)'"')
 			{
-				x.state = State.DT1;
+				x.state = DT1;
 				x.quote = ch;
-				x.nextstate = State.DT0;
+				x.nextstate = DT0;
 				return OK;
 			}
 			if (ch == (char)'<')
 			{
-				x.state = State.DT2;
+				x.state = DT2;
 				return OK;
 			}
 			if (isChar(ch)) return OK;
@@ -1252,40 +1264,40 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case DT2:
 			if (ch == (char)'?')
 			{
-				x.state = State.PI0;
-				x.nextstate = State.DT0;
+				x.state = PI0;
+				x.nextstate = DT0;
 				return OK;
 			}
 			if (ch == (char)'!')
 			{
-				x.state = State.DT3;
+				x.state = DT3;
 				return OK;
 			}
 			break;
 		case DT3:
 			if (ch == (char)'-')
 			{
-				x.state = State.COMMENT1;
-				x.nextstate = State.DT0;
+				x.state = COMMENT1;
+				x.nextstate = DT0;
 				return OK;
 			}
 			if (isChar(ch))
 			{
-				x.state = State.DT4;
+				x.state = DT4;
 				return OK;
 			}
 			break;
 		case DT4:
 			if (ch == (char)'\'' || ch == (char)'"')
 			{
-				x.state = State.DT1;
+				x.state = DT1;
 				x.quote = ch;
-				x.nextstate = State.DT4;
+				x.nextstate = DT4;
 				return OK;
 			}
 			if (ch == (char)'>')
 			{
-				x.state = State.DT0;
+				x.state = DT0;
 				return OK;
 			}
 			if (isChar(ch)) return OK;
@@ -1294,17 +1306,17 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isName(ch)) return elemname(x, ch);
 			if (isSP(ch))
 			{
-				x.state = State.ELEM1;
+				x.state = ELEM1;
 				return elemnameend(x, ch);
 			}
 			if (ch == (char)'/')
 			{
-				x.state = State.ELEM3;
+				x.state = ELEM3;
 				return elemnameend(x, ch);
 			}
 			if (ch == (char)'>')
 			{
-				x.state = State.MISC2;
+				x.state = MISC2;
 				return elemnameend(x, ch);
 			}
 			break;
@@ -1312,41 +1324,41 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'/')
 			{
-				x.state = State.ELEM3;
+				x.state = ELEM3;
 				return OK;
 			}
 			if (ch == (char)'>')
 			{
-				x.state = State.MISC2;
+				x.state = MISC2;
 				return OK;
 			}
 			if (isNameStart(ch))
 			{
-				x.state = State.ATTR0;
+				x.state = ATTR0;
 				return attrstart(x, ch);
 			}
 			break;
 		case ELEM2:
 			if (isSP(ch))
 			{
-				x.state = State.ELEM1;
+				x.state = ELEM1;
 				return OK;
 			}
 			if (ch == (char)'/')
 			{
-				x.state = State.ELEM3;
+				x.state = ELEM3;
 				return OK;
 			}
 			if (ch == (char)'>')
 			{
-				x.state = State.MISC2;
+				x.state = MISC2;
 				return OK;
 			}
 			break;
 		case ELEM3:
 			if (ch == (char)'>')
 			{
-				x.state = State.MISC2;
+				x.state = MISC2;
 				return selfclose(x, ch);
 			}
 			break;
@@ -1354,7 +1366,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'=')
 			{
-				x.state = State.ENC1;
+				x.state = ENC1;
 				return OK;
 			}
 			break;
@@ -1362,7 +1374,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'\'' || ch == (char)'"')
 			{
-				x.state = State.ENC2;
+				x.state = ENC2;
 				x.quote = ch;
 				return OK;
 			}
@@ -1370,7 +1382,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case ENC2:
 			if (isAlpha(ch))
 			{
-				x.state = State.ENC3;
+				x.state = ENC3;
 				return OK;
 			}
 			break;
@@ -1378,14 +1390,14 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isEncName(ch)) return OK;
 			if (x.quote == ch)
 			{
-				x.state = State.XMLDECL6;
+				x.state = XMLDECL6;
 				return OK;
 			}
 			break;
 		case ETAG0:
 			if (isNameStart(ch))
 			{
-				x.state = State.ETAG1;
+				x.state = ETAG1;
 				return elemclose(x, ch);
 			}
 			break;
@@ -1393,12 +1405,12 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isName(ch)) return elemclose(x, ch);
 			if (isSP(ch))
 			{
-				x.state = State.ETAG2;
+				x.state = ETAG2;
 				return elemcloseend(x, ch);
 			}
 			if (ch == (char)'>')
 			{
-				x.state = State.MISC2;
+				x.state = MISC2;
 				return elemcloseend(x, ch);
 			}
 			break;
@@ -1406,112 +1418,112 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'>')
 			{
-				x.state = State.MISC2;
+				x.state = MISC2;
 				return OK;
 			}
 			break;
 		case INIT:
 			if (ch == (char)'\xef')
 			{
-				x.state = State.STRING;
-				x.nextstate = State.MISC0;
+				x.state = STRING;
+				x.nextstate = MISC0;
 				x.string = (char*)"\xbb\xbf";
 				return OK;
 			}
 			if (isSP(ch))
 			{
-				x.state = State.MISC0;
+				x.state = MISC0;
 				return OK;
 			}
 			if (ch == (char)'<')
 			{
-				x.state = State.LE0;
+				x.state = LE0;
 				return OK;
 			}
 			break;
 		case LE0:
 			if (ch == (char)'!')
 			{
-				x.state = State.LEE1;
+				x.state = LEE1;
 				return OK;
 			}
 			if (ch == (char)'?')
 			{
-				x.state = State.LEQ0;
+				x.state = LEQ0;
 				return OK;
 			}
 			if (isNameStart(ch))
 			{
-				x.state = State.ELEM0;
+				x.state = ELEM0;
 				return elemstart(x, ch);
 			}
 			break;
 		case LE1:
 			if (ch == (char)'!')
 			{
-				x.state = State.LEE1;
+				x.state = LEE1;
 				return OK;
 			}
 			if (ch == (char)'?')
 			{
-				x.state = State.PI0;
-				x.nextstate = State.MISC1;
+				x.state = PI0;
+				x.nextstate = MISC1;
 				return OK;
 			}
 			if (isNameStart(ch))
 			{
-				x.state = State.ELEM0;
+				x.state = ELEM0;
 				return elemstart(x, ch);
 			}
 			break;
 		case LE2:
 			if (ch == (char)'!')
 			{
-				x.state = State.LEE2;
+				x.state = LEE2;
 				return OK;
 			}
 			if (ch == (char)'?')
 			{
-				x.state = State.PI0;
-				x.nextstate = State.MISC2;
+				x.state = PI0;
+				x.nextstate = MISC2;
 				return OK;
 			}
 			if (ch == (char)'/')
 			{
-				x.state = State.ETAG0;
+				x.state = ETAG0;
 				return OK;
 			}
 			if (isNameStart(ch))
 			{
-				x.state = State.ELEM0;
+				x.state = ELEM0;
 				return elemstart(x, ch);
 			}
 			break;
 		case LE3:
 			if (ch == (char)'!')
 			{
-				x.state = State.COMMENT0;
-				x.nextstate = State.MISC3;
+				x.state = COMMENT0;
+				x.nextstate = MISC3;
 				return OK;
 			}
 			if (ch == (char)'?')
 			{
-				x.state = State.PI0;
-				x.nextstate = State.MISC3;
+				x.state = PI0;
+				x.nextstate = MISC3;
 				return OK;
 			}
 			break;
 		case LEE1:
 			if (ch == (char)'-')
 			{
-				x.state = State.COMMENT1;
-				x.nextstate = State.MISC1;
+				x.state = COMMENT1;
+				x.nextstate = MISC1;
 				return OK;
 			}
 			if (ch == (char)'D')
 			{
-				x.state = State.STRING;
-				x.nextstate = State.DT0;
+				x.state = STRING;
+				x.nextstate = DT0;
 				x.string = (char*)"OCTYPE";
 				return OK;
 			}
@@ -1519,14 +1531,14 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case LEE2:
 			if (ch == (char)'-')
 			{
-				x.state = State.COMMENT1;
-				x.nextstate = State.MISC2;
+				x.state = COMMENT1;
+				x.nextstate = MISC2;
 				return OK;
 			}
 			if (ch == (char)'[')
 			{
-				x.state = State.STRING;
-				x.nextstate = State.CD0;
+				x.state = STRING;
+				x.nextstate = CD0;
 				x.string = (char*)"CDATA[";
 				return OK;
 			}
@@ -1534,14 +1546,14 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case LEQ0:
 			if (ch == (char)'x')
 			{
-				x.state = State.XMLDECL0;
-				x.nextstate = State.MISC1;
+				x.state = XMLDECL0;
+				x.nextstate = MISC1;
 				return pistart(x, ch);
 			}
 			if (isNameStart(ch))
 			{
-				x.state = State.PI1;
-				x.nextstate = State.MISC1;
+				x.state = PI1;
+				x.nextstate = MISC1;
 				return pistart(x, ch);
 			}
 			break;
@@ -1549,7 +1561,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'<')
 			{
-				x.state = State.LE0;
+				x.state = LE0;
 				return OK;
 			}
 			break;
@@ -1557,19 +1569,19 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'<')
 			{
-				x.state = State.LE1;
+				x.state = LE1;
 				return OK;
 			}
 			break;
 		case MISC2:
 			if (ch == (char)'<')
 			{
-				x.state = State.LE2;
+				x.state = LE2;
 				return OK;
 			}
 			if (ch == (char)'&')
 			{
-				x.state = State.MISC2A;
+				x.state = MISC2A;
 				return refstart(x, ch);
 			}
 			if (isChar(ch)) return datacontent(x, ch);
@@ -1578,7 +1590,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isRef(ch)) return ref(x, ch);
 			if (ch == (char)'\x3b')
 			{
-				x.state = State.MISC2;
+				x.state = MISC2;
 				return refcontent(x, ch);
 			}
 			break;
@@ -1586,14 +1598,14 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'<')
 			{
-				x.state = State.LE3;
+				x.state = LE3;
 				return OK;
 			}
 			break;
 		case PI0:
 			if (isNameStart(ch))
 			{
-				x.state = State.PI1;
+				x.state = PI1;
 				return pistart(x, ch);
 			}
 			break;
@@ -1601,19 +1613,19 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isName(ch)) return piname(x, ch);
 			if (ch == (char)'?')
 			{
-				x.state = State.PI4;
+				x.state = PI4;
 				return pinameend(x, ch);
 			}
 			if (isSP(ch))
 			{
-				x.state = State.PI2;
+				x.state = PI2;
 				return pinameend(x, ch);
 			}
 			break;
 		case PI2:
 			if (ch == (char)'?')
 			{
-				x.state = State.PI3;
+				x.state = PI3;
 				return OK;
 			}
 			if (isChar(ch)) return datapi1(x, ch);
@@ -1626,7 +1638,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			}
 			if (isChar(ch))
 			{
-				x.state = State.PI2;
+				x.state = PI2;
 				return datapi2(x, ch);
 			}
 			break;
@@ -1641,7 +1653,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'=')
 			{
-				x.state = State.STD1;
+				x.state = STD1;
 				return OK;
 			}
 			break;
@@ -1649,7 +1661,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'\'' || ch == (char)'"')
 			{
-				x.state = State.STD2;
+				x.state = STD2;
 				x.quote = ch;
 				return OK;
 			}
@@ -1657,15 +1669,15 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case STD2:
 			if (ch == (char)'y')
 			{
-				x.state = State.STRING;
-				x.nextstate = State.STD3;
+				x.state = STRING;
+				x.nextstate = STD3;
 				x.string = (char*)"es";
 				return OK;
 			}
 			if (ch == (char)'n')
 			{
-				x.state = State.STRING;
-				x.nextstate = State.STD3;
+				x.state = STRING;
+				x.nextstate = STD3;
 				x.string = (char*)"o";
 				return OK;
 			}
@@ -1673,7 +1685,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case STD3:
 			if (x.quote == ch)
 			{
-				x.state = State.XMLDECL8;
+				x.state = XMLDECL8;
 				return OK;
 			}
 			break;
@@ -1681,7 +1693,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'=')
 			{
-				x.state = State.VER1;
+				x.state = VER1;
 				return OK;
 			}
 			break;
@@ -1689,9 +1701,9 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'\'' || ch == (char)'"')
 			{
-				x.state = State.STRING;
+				x.state = STRING;
 				x.quote = ch;
-				x.nextstate = State.VER2;
+				x.nextstate = VER2;
 				x.string = (char*)"1.";
 				return OK;
 			}
@@ -1699,7 +1711,7 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case VER2:
 			if (isNum(ch))
 			{
-				x.state = State.VER3;
+				x.state = VER3;
 				return OK;
 			}
 			break;
@@ -1707,63 +1719,63 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isNum(ch)) return OK;
 			if (x.quote == ch)
 			{
-				x.state = State.XMLDECL4;
+				x.state = XMLDECL4;
 				return OK;
 			}
 			break;
 		case XMLDECL0:
 			if (ch == (char)'m')
 			{
-				x.state = State.XMLDECL1;
+				x.state = XMLDECL1;
 				return piname(x, ch);
 			}
 			if (isName(ch))
 			{
-				x.state = State.PI1;
+				x.state = PI1;
 				return piname(x, ch);
 			}
 			if (ch == (char)'?')
 			{
-				x.state = State.PI4;
+				x.state = PI4;
 				return pinameend(x, ch);
 			}
 			if (isSP(ch))
 			{
-				x.state = State.PI2;
+				x.state = PI2;
 				return pinameend(x, ch);
 			}
 			break;
 		case XMLDECL1:
 			if (ch == (char)'l')
 			{
-				x.state = State.XMLDECL2;
+				x.state = XMLDECL2;
 				return piname(x, ch);
 			}
 			if (isName(ch))
 			{
-				x.state = State.PI1;
+				x.state = PI1;
 				return piname(x, ch);
 			}
 			if (ch == (char)'?')
 			{
-				x.state = State.PI4;
+				x.state = PI4;
 				return pinameend(x, ch);
 			}
 			if (isSP(ch))
 			{
-				x.state = State.PI2;
+				x.state = PI2;
 				return pinameend(x, ch);
 			}
 			break;
 		case XMLDECL2:
 			if (isSP(ch))
 			{
-				x.state = State.XMLDECL3;
+				x.state = XMLDECL3;
 				return piabort(x, ch);
 			}
 			if (isName(ch))
 			{
-				x.state = State.PI1;
+				x.state = PI1;
 				return piname(x, ch);
 			}
 			break;
@@ -1771,8 +1783,8 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'v')
 			{
-				x.state = State.STRING;
-				x.nextstate = State.VER0;
+				x.state = STRING;
+				x.nextstate = VER0;
 				x.string = (char*)"ersion";
 				return OK;
 			}
@@ -1780,12 +1792,12 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case XMLDECL4:
 			if (isSP(ch))
 			{
-				x.state = State.XMLDECL5;
+				x.state = XMLDECL5;
 				return OK;
 			}
 			if (ch == (char)'?')
 			{
-				x.state = State.XMLDECL9;
+				x.state = XMLDECL9;
 				return OK;
 			}
 			break;
@@ -1793,20 +1805,20 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'?')
 			{
-				x.state = State.XMLDECL9;
+				x.state = XMLDECL9;
 				return OK;
 			}
 			if (ch == (char)'e')
 			{
-				x.state = State.STRING;
-				x.nextstate = State.ENC0;
+				x.state = STRING;
+				x.nextstate = ENC0;
 				x.string = (char*)"ncoding";
 				return OK;
 			}
 			if (ch == (char)'s')
 			{
-				x.state = State.STRING;
-				x.nextstate = State.STD0;
+				x.state = STRING;
+				x.nextstate = STD0;
 				x.string = (char*)"tandalone";
 				return OK;
 			}
@@ -1814,12 +1826,12 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 		case XMLDECL6:
 			if (isSP(ch))
 			{
-				x.state = State.XMLDECL7;
+				x.state = XMLDECL7;
 				return OK;
 			}
 			if (ch == (char)'?')
 			{
-				x.state = State.XMLDECL9;
+				x.state = XMLDECL9;
 				return OK;
 			}
 			break;
@@ -1827,13 +1839,13 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'?')
 			{
-				x.state = State.XMLDECL9;
+				x.state = XMLDECL9;
 				return OK;
 			}
 			if (ch == (char)'s')
 			{
-				x.state = State.STRING;
-				x.nextstate = State.STD0;
+				x.state = STRING;
+				x.nextstate = STD0;
 				x.string = (char*)"tandalone";
 				return OK;
 			}
@@ -1842,14 +1854,14 @@ fn Ret xml_parse_internal(Parser* x, int _ch)
 			if (isSP(ch)) return OK;
 			if (ch == (char)'?')
 			{
-				x.state = State.XMLDECL9;
+				x.state = XMLDECL9;
 				return OK;
 			}
 			break;
 		case XMLDECL9:
 			if (ch == (char)'>')
 			{
-				x.state = State.MISC1;
+				x.state = MISC1;
 				return OK;
 			}
 			break;
@@ -1880,6 +1892,6 @@ fn usz symlen(Parser* x, char* s) => (usz)((x.stack + x.stacklen) - s);
  */
 fn Ret eof(Parser* x)
 {
-	if (x.state != State.MISC3) return EEOF;
+	if (x.state != MISC3) return EEOF;
 	return OK;
 }
