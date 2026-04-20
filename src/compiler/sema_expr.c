@@ -966,6 +966,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
+		case DECL_CT_EXPAND:
 		case DECL_CT_INCLUDE:
 		case DECL_DECLARRAY:
 		case DECL_TYPEDEF:
@@ -5307,6 +5308,7 @@ static inline bool sema_expr_analyse_reflection_cname(SemaContext *context UNUSE
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
+		case DECL_CT_EXPAND:
 		case DECL_CT_INCLUDE:
 		case DECL_DECLARRAY:
 		case DECL_ERASED:

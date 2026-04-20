@@ -48,6 +48,7 @@
 - `??` and `?:` has new precedence and binds tighter than `+` and `-`
 - Added the `tags` property for types and `$reflect`.
 - Allow taking the type of an interface method.
+- Add `$expand` compile time function to convert strings to code.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

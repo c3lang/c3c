@@ -4499,6 +4499,7 @@ static inline bool sema_check_body_const(SemaContext *context, Ast *body)
 		{
 			case AST_CT_ASSERT:
 			case AST_CT_ECHO_STMT:
+			case AST_CT_EXPAND_STMT:
 			case AST_CT_FOREACH_STMT:
 			case AST_CT_FOR_STMT:
 			case AST_CT_IF_STMT:
@@ -5410,6 +5411,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
+		case DECL_CT_EXPAND:
 		case DECL_CT_INCLUDE:
 		case DECL_DECLARRAY:
 		case DECL_ENUM_CONSTANT:

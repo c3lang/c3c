@@ -679,6 +679,9 @@ RETRY:
 		case AST_DECLS_STMT:
 			MACRO_COPY_DECL_LIST(ast->decls_stmt);
 			break;
+		case AST_CT_EXPAND_STMT:
+			MACRO_COPY_EXPR(ast->expr_stmt);
+			break;
 		case AST_ASM_BLOCK_STMT:
 			if (ast->asm_block_stmt.is_string)
 			{
@@ -1078,6 +1081,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_METHODS(copy->method_table);
 			MACRO_COPY_DECL_LIST(copy->interface_methods);
+			break;
+		case DECL_CT_EXPAND:
+			MACRO_COPY_EXPR(copy->expand_decl);
 			break;
 		case DECL_CT_EXEC:
 			MACRO_COPY_EXPR(copy->exec_decl.filename);

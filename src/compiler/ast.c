@@ -122,6 +122,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_CT_ASSERT: return "a compile time assert";
 		case DECL_CT_ECHO: return "a compile time echo";
 		case DECL_CT_EXEC: return "compile time exec include";
+		case DECL_CT_EXPAND: return "compile time expand";
 		case DECL_CT_INCLUDE: return "an include";
 		case DECL_DECLARRAY: return "a declarray";
 		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPE_ALIAS: return "an alias";
@@ -372,6 +373,7 @@ bool decl_may_be_generic(Decl *decl)
 		case DECL_TYPE_ALIAS:
 		case DECL_UNION:
 		case DECL_VAR:
+		case DECL_CT_EXPAND:
 			return true;
 	}
 	UNREACHABLE

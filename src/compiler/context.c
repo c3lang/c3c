@@ -257,6 +257,7 @@ WEAK_MODULE:
 			case DECL_CT_ASSERT:
 			case DECL_CT_ECHO:
 			case DECL_CT_EXEC:
+			case DECL_CT_EXPAND:
 			case DECL_CT_INCLUDE:
 			case DECL_DECLARRAY:
 			case DECL_ENUM_CONSTANT:
@@ -386,6 +387,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			UNREACHABLE_VOID
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
+		case DECL_CT_EXPAND:
 			vec_add(unit->ct_includes, decl);
 			return;
 		case DECL_CT_ECHO:

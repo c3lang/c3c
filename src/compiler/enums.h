@@ -558,6 +558,7 @@ typedef enum
 	AST_CT_COMPOUND_STMT,
 	AST_CT_ECHO_STMT,
 	AST_CT_ELSE_STMT,
+	AST_CT_EXPAND_STMT,
 	AST_CT_FOREACH_STMT,
 	AST_CT_FOR_STMT,
 	AST_CT_IF_STMT,
@@ -1029,6 +1030,7 @@ typedef enum
 	DECL_CT_ASSERT,
 	DECL_CT_ECHO,
 	DECL_CT_EXEC,
+	DECL_CT_EXPAND,
 	DECL_CT_INCLUDE,
 	DECL_DECLARRAY,
 	DECL_CONTRACT,
@@ -1633,6 +1635,7 @@ typedef enum
 	TOKEN_CT_EVAL,              // $eval
 	TOKEN_CT_ERROR,             // $error
 	TOKEN_CT_EXEC,              // $exec
+	TOKEN_CT_EXPAND,            // $expand
 	TOKEN_CT_FEATURE,           // $feature
 	TOKEN_CT_FOR,               // $for
 	TOKEN_CT_FOREACH,           // $foreach
@@ -2123,14 +2126,14 @@ typedef enum
 // -- AST helper macros
 #define CT_AST \
  AST_CT_ASSERT: case AST_CT_ECHO_STMT: case AST_CT_ELSE_STMT: \
- case AST_CT_FOREACH_STMT: case AST_CT_FOR_STMT: \
+ case AST_CT_FOREACH_STMT: case AST_CT_FOR_STMT: case AST_CT_EXPAND_STMT: \
  case AST_CT_IF_STMT: case AST_CT_SWITCH_STMT: case AST_CT_TYPE_ASSIGN_STMT
 
 // -- Decl helper macros
 #define NON_TYPE_DECLS DECL_IMPORT: case DECL_MACRO: \
 	case DECL_DECLARRAY: case DECL_ATTRIBUTE: case DECL_LABEL: \
 	case DECL_ALIAS: case DECL_CT_ASSERT: case DECL_CT_EXEC: case DECL_FAULT: \
-	case DECL_CT_ECHO: case DECL_CT_INCLUDE: case DECL_GROUP: \
+	case DECL_CT_ECHO: case DECL_CT_INCLUDE: case DECL_GROUP: case DECL_CT_EXPAND: \
 	case DECL_BODYPARAM: case DECL_VAR: case DECL_ENUM_CONSTANT: case DECL_CONTRACT: \
 	case DECL_POISONED: case DECL_ALIAS_PATH: case DECL_GENERIC: case DECL_GENERIC_INSTANCE
 

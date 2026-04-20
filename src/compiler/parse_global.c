@@ -3455,6 +3455,19 @@ static Decl *parse_ct_include(ParseContext *c)
 	return decl;
 }
 
+
+static Decl *parse_expand(ParseContext *c)
+{
+	Decl *decl = decl_new_loc(DECL_CT_EXPAND, NULL, c->span);
+	advance_and_verify(c, TOKEN_CT_EXPAND);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_decl);
+	ASSIGN_EXPR_OR_RET(decl->expand_decl, parse_constant_expr(c), poisoned_decl);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+	CONSUME_EOS_OR_RET(poisoned_decl);
+	return decl;
+}
+
 static Decl *parse_exec(ParseContext *c)
 {
 	Decl *decl = decl_new_loc(DECL_CT_EXEC, NULL, c->span);
@@ -3620,6 +3633,10 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_CT_INCLUDE:
 			if (contracts.has_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_ct_include(c);
+			break;
+		case TOKEN_CT_EXPAND:
+			if (contracts.has_contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_expand(c);
 			break;
 		case TOKEN_CT_EXEC:
 			if (contracts.has_contracts) goto CONTRACT_NOT_ALLOWED;

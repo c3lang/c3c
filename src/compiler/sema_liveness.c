@@ -634,6 +634,7 @@ RETRY:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
+		case DECL_CT_EXPAND:
 		case DECL_CT_INCLUDE:
 		case DECL_GROUP:
 		case DECL_IMPORT:
