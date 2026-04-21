@@ -49,6 +49,7 @@
 - Added the `tags` property for types and `$reflect`.
 - Allow taking the type of an interface method.
 - Add `$expand` compile time function to convert strings to code.
+- Constdef now infers through unary negations.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

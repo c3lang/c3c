@@ -12714,9 +12714,37 @@ RETRY:
 			if (!sema_expr_resolve_ct_eval(context, expr)) return expr_poison(expr);
 			goto RETRY;
 		case EXPR_UNARY:
-			if (to && expr->unary_expr.operator == UNARYOP_TADDR && to->canonical->type_kind == TYPE_POINTER && to->canonical != type_voidptr)
+			if (to)
 			{
-				if (!sema_analyse_inferred_expr(context, type_get_indexed_type(to), expr->unary_expr.expr, NULL)) return expr_poison(expr);
+				Type *canonical = to->canonical;
+				switch (canonical->type_kind)
+				{
+					case TYPE_POINTER:
+						if (canonical == type_voidptr) break;
+						if (expr->unary_expr.operator != UNARYOP_TADDR) break;
+						if (!sema_analyse_inferred_expr(context, type_get_indexed_type(to), expr->unary_expr.expr, NULL)) return expr_poison(expr);
+						break;
+					case TYPE_CONSTDEF:
+						switch (expr->unary_expr.operator)
+						{
+							case UNARYOP_ERROR:
+							case UNARYOP_DEREF:
+							case UNARYOP_ADDR:
+							case UNARYOP_NOT:
+							case UNARYOP_INC:
+							case UNARYOP_DEC:
+							case UNARYOP_TADDR:
+								break;
+							case UNARYOP_NEG:
+							case UNARYOP_PLUS:
+							case UNARYOP_BITNEG:
+								if (!sema_analyse_inferred_expr(context, to, expr->unary_expr.expr, NULL)) return expr_poison(expr);
+								break;
+						}
+						break;;
+					default:
+						break;
+				}
 			}
 			FALLTHROUGH;
 		default:

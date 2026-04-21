@@ -3081,6 +3081,9 @@ INLINE bool type_may_negate(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
+		case TYPE_CONSTDEF:
+			type = type->decl->enums.type_info->type;
+			goto RETRY;
 		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
