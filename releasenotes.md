@@ -78,6 +78,8 @@
 - `std::time` name changes: `diff_hour` => `diff_hours`. `DateTime.set_date` => `DateTime.set`, `datetime::from_date_*` => `datetime::at_*`
 - `std::hash` method name convention changes: `updatec` / `update_char` => `update_byte`.
 - `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
+- Add free list allocator - `FreeListAlloc`.
+- Add buddy allocator - `BuddyAlloc`.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
