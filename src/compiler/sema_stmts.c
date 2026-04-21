@@ -416,7 +416,6 @@ static inline bool assert_create_from_contract(SemaContext *context, Expr *direc
 {
 	Expr *declexpr = directive->contract_expr.decl_exprs;
 	ASSERT(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
-
 	FOREACH(Expr *, expr, declexpr->expression_list)
 	{
 		if (expr->expr_kind == EXPR_DECL) RETURN_SEMA_ERROR(expr, "Only expressions are allowed in contracts.");
@@ -766,7 +765,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			bool success;
 			SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->loc);
 			{
-				success = assert_create_from_contract(context, ensure, &append_id, statement->loc);
+				success = assert_create_from_contract(context, copy_expr_single(ensure), &append_id, statement->loc);
 			}
 			SCOPE_END;
 			if (!success) return false;

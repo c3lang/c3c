@@ -97,6 +97,7 @@
 - EnumSet with more than 128 entries was broken.
 - Handle underflow in zip.
 - Bugs in check for name suggestions on name mismatch.
+- Fix bug where only one ensure would not be inlined correctly. #3162
 
 ## 0.7.11 Change list
 

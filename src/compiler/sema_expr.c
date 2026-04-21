@@ -11815,6 +11815,7 @@ static inline bool sema_expr_analyse_retval(SemaContext *context, Expr *expr)
 		}
 	}
 	ASSERT_SPAN(expr, return_value);
+
 	if (expr_is_runtime_const(return_value))
 	{
 		expr_replace(expr, copy_expr_single(return_value));
