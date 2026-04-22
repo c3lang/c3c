@@ -1636,7 +1636,7 @@ static bool rule_int_to_enum(CastContext *cc, bool is_explicit, bool is_silent)
 		if (int_comp(to_convert, max, BINARYOP_GE))
 		{
 			if (is_silent) return false;
-			RETURN_CAST_ERROR(cc->expr, "The value '%s' exceeds the max ordinal '%u'.", int_to_str(max, 10, false), max_enums - 1);
+			RETURN_CAST_ERROR(cc->expr, "The value '%s' exceeds the max ordinal '%u'.", int_to_str(to_convert, 10, false), max_enums - 1);
 		}
 	}
 	return true;
