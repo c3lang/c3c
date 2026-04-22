@@ -153,7 +153,7 @@ fn bool Object.is_bool(&self) @inline => self.type == bool::typeid;
 fn bool Object.is_string(&self) @inline => self.type == String::typeid;
 fn bool Object.is_float(&self) @inline => self.type == double::typeid;
 fn bool Object.is_int(&self) @inline => self.type == int128::typeid;
-fn bool Object.is_enum(&self) @inline => @kindof(self.type) == ENUM;
+fn bool Object.is_enum(&self) @inline => self.type.kind == ENUM;
 fn bool Object.is_keyable(&self) => self.is_empty() || self.is_map();
 fn bool Object.is_indexable(&self) => self.is_empty() || self.is_array();
 

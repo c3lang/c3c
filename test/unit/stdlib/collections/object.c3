@@ -77,6 +77,7 @@ fn void test_to_value()
 	{
 		Object* enum_obj = object::new_enum(tmem, MyEnum.THIRD);
 		defer enum_obj.free();
+		assert(enum_obj.is_enum());
 
 		MyEnum o = enum_obj.to_value(MyEnum)!!;
 		assert(o == THIRD);
