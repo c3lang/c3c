@@ -29,6 +29,7 @@ typedef struct
 	SourceLocId first_non_require;
 	SourceLocId first_contract;
 	Expr **opt_returns;
+	const char *return_desc;
 	Attr *deprecated;
 } ContractDescription;
 

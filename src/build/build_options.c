@@ -692,6 +692,11 @@ static void parse_command(BuildOptions *options)
 		}
 		return;
 	}
+	if (arg_match("docgen"))
+	{
+		options->command = COMMAND_DOCGEN;
+		return;
+	}
 	FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);
 }
 
@@ -1797,6 +1802,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	}
 	switch (build_options.command)
 	{
+		case COMMAND_DOCGEN:
 		case COMMAND_BUILD:
 		case COMMAND_RUN:
 		case COMMAND_CLEAN_RUN:

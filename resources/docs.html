@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>C3 Docgen Viewer</title>
+	<style>
+		:root {
+			--bg: #1e1e1e;
+			--fg: #d4d4d4;
+			--accent: #007acc;
+			--border: #333;
+			--panel: #252526;
+			color-scheme: dark;
+		}
+
+		.visibility-badge {
+			font-size: 0.7em;
+			padding: 2px 6px;
+			border-radius: 4px;
+			margin-left: 10px;
+			vertical-align: middle;
+			text-transform: uppercase;
+			font-weight: bold;
+			letter-spacing: 0.5px;
+			border: 1px solid currentColor;
+			opacity: 0.8;
+		}
+
+		.vis-public {
+			color: #89d185;
+			border-color: #3d5a3d;
+		}
+
+		.vis-private {
+			color: #f48771;
+			border-color: #5a3d3d;
+		}
+
+		.vis-local {
+			color: #cca700;
+			border-color: #5a5a1d;
+		}
+
+		.search-item-visibility {
+			font-size: 0.8em;
+			color: #888;
+			margin-left: 8px;
+		}
+
+		.hidden-sym {
+			opacity: 0.6;
+		}
+
+		.visibility-badge {
+			font-size: 0.7em;
+			padding: 2px 6px;
+			border-radius: 4px;
+			margin-left: 10px;
+			vertical-align: middle;
+			text-transform: uppercase;
+			font-weight: bold;
+			letter-spacing: 0.5px;
+			border: 1px solid currentColor;
+			opacity: 0.8;
+		}
+
+		.vis-public {
+			color: #89d185;
+			border-color: #3d5a3d;
+		}
+
+		.vis-private {
+			color: #f48771;
+			border-color: #5a3d3d;
+		}
+
+		.vis-local {
+			color: #cca700;
+			border-color: #5a5a1d;
+		}
+
+		.item-visibility {
+			font-size: 0.8em;
+			color: #888;
+			margin-right: 8px;
+			font-family: monospace;
+		}
+
+		.hidden-sym {
+			opacity: 0.6;
+		}
+
+		/* Custom Scrollbar */
+		width: 10px;
+		height: 10px;
+		}
+
+		::-webkit-scrollbar-track {
+			background: var(--panel);
+		}
+
+		::-webkit-scrollbar-thumb {
+			background: #4f4f4f;
+			border-radius: 5px;
+		}
+
+		::-webkit-scrollbar-thumb:hover {
+			background: #666;
+		}
+
+		body {
+			font-family: system-ui, -apple-system, sans-serif;
+			margin: 0;
+			display: flex;
+			height: 100vh;
+			background: var(--bg);
+			color: var(--fg);
+		}
+
+		#sidebar {
+			width: 520px;
+			border-right: 1px solid var(--border);
+			display: flex;
+			flex-direction: column;
+			background: var(--panel);
+		}
+
+		#search-box {
+			padding: 15px;
+			border-bottom: 1px solid var(--border);
+		}
+
+		#search-input {
+			width: 100%;
+			padding: 10px;
+			box-sizing: border-box;
+			background: var(--bg);
+			border: 1px solid var(--border);
+			color: var(--fg);
+			border-radius: 6px;
+			outline: none;
+		}
+
+		#search-input:focus {
+			border-color: var(--accent);
+		}
+
+		#list {
+			flex: 1;
+			overflow-y: auto;
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+
+		.item {
+			padding: 10px 15px;
+			border-bottom: 1px solid var(--border);
+			cursor: pointer;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.item:hover,
+		.item.selected {
+			background: #2a2d2e;
+		}
+
+		.item-name {
+			font-family: monospace;
+			font-size: 0.9em;
+			word-break: break-all;
+		}
+
+		.item-kind {
+			font-size: 0.7em;
+			padding: 3px 8px;
+			border-radius: 12px;
+			background: #4d4d4d;
+			color: white;
+			text-transform: uppercase;
+			font-weight: bold;
+		}
+
+		.kind-function {
+			background: #b5cea8;
+			color: #000;
+		}
+
+		.kind-macro {
+			background: #c586c0;
+			color: #fff;
+		}
+
+		.kind-struct {
+			background: #4ec9b0;
+			color: #000;
+		}
+
+		.kind-enum {
+			background: #4fc1ff;
+			color: #000;
+		}
+
+		.kind-interface {
+			background: #f5a623;
+			color: #000;
+		}
+
+		.kind-variable {
+			background: #9cdcfe;
+			color: #000;
+		}
+
+		#content {
+			flex: 1;
+			padding: 30px;
+			overflow-y: auto;
+		}
+
+		.badge {
+			display: inline-block;
+			padding: 4px 10px;
+			border-radius: 12px;
+			font-size: 1em;
+			margin-right: 6px;
+			font-family: monospace;
+		}
+
+		pre {
+			background: #000;
+			padding: 15px;
+			border-radius: 6px;
+			overflow-x: auto;
+			border: 1px solid var(--border);
+		}
+
+		code {
+			font-family: monospace;
+		}
+
+		.member-list {
+			list-style: none;
+			padding: 0;
+		}
+
+		.member-item {
+			padding: 8px;
+			background: #2d2d2d;
+			margin-bottom: 4px;
+			border-radius: 4px;
+			font-family: monospace;
+			position: relative;
+			border-left: 2px solid #444;
+		}
+
+		.member-group {
+			margin: 8px 0;
+			padding: 8px;
+			border: 1px solid #444;
+			border-radius: 6px;
+			background: #252525;
+			position: relative;
+		}
+
+		.group-label {
+			position: absolute;
+			top: -10px;
+			left: 10px;
+			background: #1e1e1e;
+			padding: 0 6px;
+			font-size: 0.7em;
+			color: #888;
+			text-transform: uppercase;
+			font-weight: bold;
+			letter-spacing: 1px;
+			border: 1px solid #444;
+			border-radius: 3px;
+		}
+
+		.group-union {
+			border-color: #5a3d3d;
+		}
+
+		.group-union>.group-label {
+			color: #f48771;
+			border-color: #5a3d3d;
+		}
+
+		.group-struct {
+			border-color: #3d5a3d;
+		}
+
+		.group-struct>.group-label {
+			color: #89d185;
+			border-color: #3d5a3d;
+		}
+
+		.member-list {
+			list-style: none;
+			padding: 0;
+		}
+
+		.group-list {
+			margin-top: 8px;
+			margin-left: 20px;
+			border-left: 1px dashed #444;
+			padding-left: 10px;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="sidebar">
+		<div style="padding: 12px 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
+			<img src="https://c3-lang.org/logo.svg" alt="C3 Logo" style="height: 28px; width: auto;">
+			<span style="color: #888; font-size: 0.8em;">Documentation</span>
+		</div>
+		<div id="search-box">
+			<input type="text" id="search-input" placeholder="Search API... (e.g. string)">
+			<div id="stats" style="font-size: 0.8em; color: #888; margin-top: 8px;">Loading...</div>
+		</div>
+		<ul id="list"></ul>
+	</div>
+	<div id="content">
+		<h2>Select a declaration to view its details.</h2>
+	</div>
+
+	<script>
+		let allDecls = [];
+		let selectedIndex = -1;
+		let currentRendered = [];
+		let currentFiltered = [];
+
+		const TARGET_FILES = [
+			'docs.json',
+			'docs-linux-x64.json',
+			'docs-windows-x64.json',
+			'docs-macos-x64.json',
+			'docs-macos-aarch64.json',
+			'docs-linux-aarch64.json'
+		];
+
+		async function loadTargetFiles() {
+			let loadedAny = false;
+			for (const file of TARGET_FILES) {
+				try {
+					const res = await fetch(file);
+					if (!res.ok) continue;
+					const data = await res.json();
+					loadedAny = true;
+
+					const targetName = file.replace('docs-', '').replace('.json', '');
+					mergeTargetData(data, targetName);
+				} catch (e) {
+					// ignore fetch failures for missing targets
+				}
+			}
+			return loadedAny;
+		}
+
+		function mergeTargetData(data, targetName) {
+			for (const [moduleName, mod] of Object.entries(data.modules)) {
+				['functions', 'macros', 'types', 'variables'].forEach(cat => {
+					if (mod[cat]) {
+						mod[cat].forEach(decl => {
+							decl.moduleName = moduleName;
+							decl.targetName = targetName === 'docs' ? 'default' : targetName;
+							addOrMergeDeclaration(decl);
+						});
+					}
+				});
+			}
+		}
+
+		function addOrMergeDeclaration(decl) {
+			const cleanDecl = { ...decl };
+			delete cleanDecl.targetName;
+			const declJson = JSON.stringify(cleanDecl);
+
+			let existing = allDecls.find(d => d.uid === decl.uid);
+			if (!existing) {
+				allDecls.push(decl);
+				return;
+			}
+
+			if (!existing.variants) {
+				const cleanExisting = { ...existing };
+				delete cleanExisting.variants;
+				delete cleanExisting.targetName;
+				existing.variants = [{
+					targets: [existing.targetName],
+					decl: existing,
+					json: JSON.stringify(cleanExisting)
+				}];
+			}
+
+			let found = existing.variants.find(v => v.json === declJson);
+			if (found) {
+				found.targets.push(decl.targetName);
+			} else {
+				existing.variants.push({
+					targets: [decl.targetName],
+					decl: decl,
+					json: declJson
+				});
+			}
+		}
+		function bindEvents() {
+			document.getElementById('search-input').addEventListener('input', (e) => {
+				const q = e.target.value.toLowerCase().trim();
+				if (!q) {
+					renderList(allDecls.filter(d => (d.visibility || 'public') === 'public'));
+					return;
+				}
+
+				function getFuzzyScore(text, query) {
+					let textIdx = 0;
+					let queryIdx = 0;
+					let score = 0;
+					let consecutive = 0;
+
+					const tLow = text.toLowerCase();
+					const qLow = query.toLowerCase();
+
+					while (textIdx < tLow.length && queryIdx < qLow.length) {
+						if (tLow[textIdx] === qLow[queryIdx]) {
+							score += 10 + (consecutive * 5);
+							consecutive++;
+							queryIdx++;
+						} else {
+							consecutive = 0;
+							score -= 1;
+						}
+						textIdx++;
+					}
+					return queryIdx === qLow.length ? score : 0;
+				}
+
+				const filtered = allDecls
+					.map(d => {
+						let score = 0;
+						const nameLower = d.name.toLowerCase();
+
+						if (nameLower === q) score = 10000;
+						else if (nameLower.startsWith(q)) score = 5000;
+						else if (nameLower.includes(q)) score = 1000;
+						else score = getFuzzyScore(d.name, q);
+
+						if (score > 0) {
+							if ((d.visibility || 'public') === 'public') score += 20000;
+							if (d.uid.startsWith('std::core')) score += 50;
+							return { d, score };
+						}
+						return null;
+					})
+					.filter(x => x !== null)
+					.sort((a, b) => b.score - a.score || a.d.name.length - b.d.name.length)
+					.map(x => x.d);
+
+				renderList(filtered);
+
+				// Auto-select the first match, no history push (user is still typing)
+				if (filtered.length > 0) {
+					renderDetails(filtered[0]);
+					highlightItem(0);
+				}
+			});
+
+			// Global keydown: arrow keys work regardless of focus; typing anywhere focuses the search box
+			document.addEventListener('keydown', (e) => {
+				const input = document.getElementById('search-input');
+				if (e.key === 'ArrowDown') {
+					e.preventDefault();
+					const next = selectedIndex + 1;
+					// If we've hit the end of the DOM but there are more items, append them
+					if (next >= currentRendered.length && currentRendered.length < currentFiltered.length) {
+						appendToList(Math.min(currentFiltered.length, currentRendered.length + 50));
+					}
+					const clamped = Math.min(next, currentRendered.length - 1);
+					if (clamped >= 0) { highlightItem(clamped); renderDetails(currentRendered[clamped]); }
+				} else if (e.key === 'ArrowUp') {
+					e.preventDefault();
+					const prev = Math.max(selectedIndex - 1, 0);
+					highlightItem(prev);
+					renderDetails(currentRendered[prev]);
+				} else if (e.key === 'Enter' && selectedIndex >= 0) {
+					e.preventDefault();
+					navigateTo(currentRendered[selectedIndex].uid);
+				} else if (e.key === 'Escape') {
+					input.blur();
+				} else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+					// Printable character: redirect to search box if it doesn't already have focus
+					if (document.activeElement !== input) {
+						input.focus();
+					}
+				}
+			});
+
+			// Handle browser back/forward buttons
+			window.addEventListener('popstate', (e) => {
+				if (e.state && e.state.uid) {
+					const target = allDecls.find(d => d.uid === e.state.uid);
+					if (target) renderDetails(target);
+				} else {
+					document.getElementById('content').innerHTML = '<h2>Select a declaration to view its details.</h2>';
+				}
+			});
+		}
+
+		async function init() {
+			try {
+				const loadedAny = await loadTargetFiles();
+				if (!loadedAny) throw new Error("Could not load any docs JSON files (tried docs.json, docs-linux-x64.json, etc)");
+
+				document.getElementById('stats').innerText = `${allDecls.length} declarations loaded.`;
+				renderList(allDecls.filter(d => d.visibility === 'public'));
+
+				// On initial load, navigate to the uid in the URL hash if present
+				const initialHash = location.hash.slice(1);
+				if (initialHash) {
+					const target = allDecls.find(d => d.uid === initialHash);
+					if (target) { renderDetails(target); }
+				}
+
+				bindEvents();
+			} catch (e) {
+				document.getElementById('content').innerHTML = `
+					<h2 style="color: #f48771;">Error loading docs.json</h2>
+					<p>${e.message}</p>
+					<p>Make sure you are serving this via a local web server to avoid CORS issues.</p>
+					<pre>python -m http.server 8080</pre>
+				`;
+				document.getElementById('stats').innerText = "Failed to load.";
+			}
+		}
+
+		function makeListItem(d, index) {
+			const li = document.createElement('li');
+			li.className = 'item' + (d.visibility !== 'public' ? ' hidden-sym' : '');
+			let kindClass = `item-kind`;
+			if (d.kind === 'function') kindClass += ' kind-function';
+			else if (d.kind === 'macro') kindClass += ' kind-macro';
+			else if (d.kind === 'struct') kindClass += ' kind-struct';
+			else if (d.kind === 'enum') kindClass += ' kind-enum';
+			const vis = d.visibility || 'public';
+			const visLabel = vis !== 'public' ? `<span class="item-visibility">[${vis}]</span>` : '';
+
+			li.innerHTML = `
+				<span class="item-name" style="flex: 1; margin-right: 8px;">${d.uid}</span>
+				${visLabel}
+				<span class="${kindClass}">${d.kind}</span>
+			`;
+			li.onclick = () => { highlightItem(index); navigateTo(d.uid); };
+			return li;
+		}
+
+		function appendToList(newLimit) {
+			const list = document.getElementById('list');
+			// Remove the "... and X more" footer before appending
+			const footer = list.querySelector('.list-footer');
+			if (footer) footer.remove();
+
+			for (let i = currentRendered.length; i < newLimit; i++) {
+				const d = currentFiltered[i];
+				currentRendered.push(d);
+				list.appendChild(makeListItem(d, i));
+			}
+
+			// Re-add footer if there are still more items
+			if (currentFiltered.length > currentRendered.length) {
+				const footer = document.createElement('li');
+				footer.className = 'item list-footer';
+				footer.style.justifyContent = 'center';
+				footer.style.color = '#888';
+				footer.innerText = `... and ${currentFiltered.length - currentRendered.length} more`;
+				list.appendChild(footer);
+			}
+		}
+
+		function highlightItem(index) {
+			selectedIndex = index;
+			const list = document.getElementById('list');
+			const items = list.querySelectorAll('.item');
+			items.forEach((el, i) => el.classList.toggle('selected', i === index));
+			if (items[index]) items[index].scrollIntoView({ block: 'nearest' });
+		}
+
+		function renderList(items) {
+			selectedIndex = -1;
+			currentRendered = [];
+			currentFiltered = items;
+			const list = document.getElementById('list');
+			list.innerHTML = '';
+
+			// Lazy DOM rendering: start with first 200, expand on demand via arrow keys
+			const limit = Math.min(items.length, 200);
+			for (let i = 0; i < limit; i++) {
+				const d = items[i];
+				currentRendered.push(d);
+				list.appendChild(makeListItem(d, i));
+			}
+
+			if (items.length > limit) {
+				const footer = document.createElement('li');
+				footer.className = 'item list-footer';
+				footer.style.justifyContent = 'center';
+				footer.style.color = '#888';
+				footer.innerText = `... and ${items.length - limit} more`;
+				list.appendChild(footer);
+			}
+		}
+
+		function escapeHtml(s) {
+			return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		}
+
+		function formatDocText(text) {
+			// Normalize just in case CRLF->LF, then split into lines for processing
+			const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+			let html = '';
+			let inCode = false;
+			let pOpen = false;
+
+			for (const rawLine of lines) {
+				const trimmed = rawLine.trim();
+
+				if (!inCode && trimmed.startsWith('```')) {
+					if (pOpen) { html += '</p>'; pOpen = false; }
+					inCode = true;
+					html += '<pre><code>';
+				} else if (inCode && trimmed === '```') {
+					inCode = false;
+					html += '</code></pre>';
+				} else if (inCode) {
+					// Strip 1 leading space commonly left by C3 doc blocks :/
+					const outLine = rawLine.startsWith(' ') ? rawLine.substring(1) : rawLine;
+					html += escapeHtml(outLine) + '\n';
+				} else {
+					if (trimmed === '') {
+						if (pOpen) { html += '</p>'; pOpen = false; }
+					} else {
+						if (!pOpen) { html += '<p>'; pOpen = true; }
+						else { html += '<br>'; }
+						const outLine = rawLine.startsWith(' ') ? rawLine.substring(1) : rawLine;
+						html += escapeHtml(outLine);
+					}
+				}
+			}
+
+			if (pOpen) html += '</p>';
+			return html;
+		}
+
+		function navigateTo(uid) {
+			const target = allDecls.find(d => d.uid === uid);
+			if (!target) return;
+			// Push to browser history so back/forward work, and update the URL hash for sharing
+			history.pushState({ uid }, '', '#' + uid);
+			renderDetails(target);
+		}
+
+		function filterByModule(moduleName) {
+			const filtered = allDecls.filter(d => d.moduleName === moduleName);
+			document.getElementById('search-input').value = moduleName;
+			renderList(filtered);
+			// Show first match automatically
+			if (filtered.length > 0) renderDetails(filtered[0]);
+		}
+
+		function buildSignature(d) {
+			const lastSep = d.uid.lastIndexOf('::');
+			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
+
+			if (d.kind === 'function' || d.kind === 'macro') {
+				const ret = d.return_type ? d.return_type.name : 'void';
+				const keyword = d.kind === 'macro' ? 'macro' : 'fn';
+
+				const params = (d.members || []).map(m => {
+					const t = m.type ? m.type.name : '...';
+					return `${t} ${m.name}`;
+				}).join(', ');
+
+				return `${keyword} ${ret} ${localName}(${params})`;
+			}
+
+			if (d.kind === 'variable') {
+				const keyword = d.is_const ? 'const' : 'var';
+				const typeName = d.type ? d.type.name : '';
+				return typeName ? `${keyword} ${typeName} ${localName}` : `${keyword} ${localName}`;
+			}
+
+			return null;
+		}
+
+		function buildHeaderHtml(d) {
+			let html = `<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">`;
+			html += `<span style="color: #888; font-size: 1.2em; font-family: monospace;">Module: `;
+			html += `<a href="#" onclick="filterByModule('${d.moduleName}'); return false;"
+						style="color: #888; text-decoration: none; border-bottom: 1px dashed #555;"
+						title="Show only ${d.moduleName}">${d.moduleName}</a>`;
+			html += `</span>`;
+
+			const kindClass = `kind-${d.kind}`;
+			html += `<span class="badge ${kindClass}">${d.kind}</span>`;
+
+			const vis = d.visibility || 'public';
+			if (vis !== 'public') {
+				const visClass = `vis-${vis}`;
+				html += `<span class="visibility-badge ${visClass}">${vis}</span>`;
+			}
+
+			if (d.attributes) {
+				d.attributes.forEach(a => html += `<span class="badge">${a}</span>`);
+			}
+			if (d.custom_attrs) {
+				d.custom_attrs.forEach(a => html += `<span class="badge" style="background: #a361c4;">@${a.name}</span>`);
+			}
+			html += `</div>`;
+
+			const lastSep = d.uid.lastIndexOf('::');
+			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
+			html += `<h1 style="margin: 0; display: flex; align-items: center; gap: 10px;">${localName}</h1>`;
+
+			return html;
+		}
+
+		const BUILTINS = {
+			"ichar": "signed 8-bit integer",
+			"short": "signed 16-bit integer",
+			"int": "signed 32-bit integer",
+			"long": "signed 64-bit integer",
+			"int128": "signed 128-bit integer",
+			"iptr": "signed pointer-sized integer",
+			"isz": "signed pointer-sized integer",
+			"sz": "signed pointer-sized integer",
+			"char": "unsigned 8-bit integer",
+			"ushort": "unsigned 16-bit integer",
+			"uint": "unsigned 32-bit integer",
+			"ulong": "unsigned 64-bit integer",
+			"uint128": "unsigned 128-bit integer",
+			"uptr": "unsigned pointer-sized integer",
+			"usz": "unsigned pointer-sized integer",
+			"bool": "boolean value (true/false)",
+			"float": "32-bit floating point",
+			"double": "64-bit floating point",
+			"void": "no type",
+			"any": "any type",
+			"typeid": "runtime type identifier",
+			"String": "typedef inline char[]",
+			"ZString": "typedef inline char*"
+		};
+
+		function renderTypeName(typeObj) {
+			if (!typeObj) return `<span style="color: #4ec9b0;">void</span>`;
+
+			const baseName = typeObj.name.replace(/\[.*?\]/g, '').replace(/\*/g, '').trim();
+			const tooltip = BUILTINS[baseName];
+
+			if (tooltip) {
+				return `<span style="color: #4ec9b0; border-bottom: 1px dotted #888; cursor: help;" title="built-in: ${tooltip}">${typeObj.name}</span>`;
+			}
+
+			if (typeObj.uid) {
+				return `<a href="#" onclick="navigateTo('${typeObj.uid}'); return false;" style="color: #4ec9b0; text-decoration: none; border-bottom: 1px dashed #4ec9b0;" title="${typeObj.uid}">${typeObj.name}</a>`;
+			}
+
+			return `<span style="color: #4ec9b0;">${typeObj.name}</span>`;
+		}
+
+		function buildTypeInfoHtml(vd) {
+			let typeHtml = '';
+			if (vd.return_type) {
+				typeHtml += `<li><strong>Returns:</strong> <code>${renderTypeName(vd.return_type)}</code></li>`;
+			}
+			if (vd.base_type) {
+				typeHtml += `<li><strong>Base Type:</strong> <code>${renderTypeName(vd.base_type)}</code></li>`;
+			}
+			if (vd.interfaces && vd.interfaces.length > 0) {
+				const ifaces = vd.interfaces.map(i => {
+					if (i.uid) {
+						return `<a href="#" onclick="navigateTo('${i.uid}'); return false;" style="color: #4ec9b0; text-decoration: none; border-bottom: 1px dashed #4ec9b0;" title="${i.uid}">${i.name}</a>`;
+					}
+					return `<code>${i.name}</code>`;
+				}).join(', ');
+				typeHtml += `<li><strong>Implements:</strong> ${ifaces}</li>`;
+			}
+			if (typeHtml) {
+				return `<h3>Type Information</h3><ul>${typeHtml}</ul>`;
+			}
+			return '';
+		}
+
+		function renderMemberList(members, isRoot = false) {
+			if (!members || members.length === 0) return '';
+			let html = `<ul class="member-list ${isRoot ? '' : 'group-list'}">`;
+			members.forEach(m => {
+				if (m.kind === 'union' || m.kind === 'struct') {
+					html += `<li class="member-group group-${m.kind}">`;
+					html += `<div class="group-label">${m.name ? m.name + ' (' + m.kind + ')' : m.kind}</div>`;
+					html += renderMemberList(m.members);
+					html += `</li>`;
+					return;
+				}
+
+				// Method rendering (for interfaces)
+				if (m.params !== undefined) {
+					const retStr = renderTypeName(m.type);
+					const paramSig = m.params.map(p => {
+						const tHTML = renderTypeName(p.type);
+						return `${tHTML} ${p.name}`;
+					}).join(', ');
+
+					html += `<li class="member-item" style="font-family: monospace;">
+						<span style="color: #569cd6;">fn</span>
+						${retStr}
+						<span style="color: #dcdcaa;">${m.name}</span>(<span style="color: #9cdcfe;">${paramSig}</span>)
+					</li>`;
+					return;
+				}
+
+				let typeStr = m.type ? renderTypeName(m.type) : '';
+
+				let bitDesc = '';
+				if (m.bit_range) {
+					bitDesc = ` <span style="color: #888; font-size: 0.8em;">(bits ${m.bit_range[0]}..${m.bit_range[1]})</span>`;
+				}
+
+				html += `<li class="member-item">
+					<span style="color: #9cdcfe;">${m.name}</span>
+					${typeStr ? ': ' + typeStr : ''}
+					${bitDesc}
+				</li>`;
+			});
+			html += `</ul>`;
+			return html;
+		}
+
+		function buildMembersHtml(vd) {
+			if (!vd.members || vd.members.length === 0) return '';
+			return `<h3>Members</h3>` + renderMemberList(vd.members, true);
+		}
+
+		function buildDocsHtml(d) {
+			if (!d.docs) return '';
+
+			let html = '';
+			if (d.docs.deprecated) {
+				html += `<div style="background: #5a1d1d; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
+					<strong>Deprecated:</strong> ${d.docs.deprecated}
+				</div>`;
+			}
+			if (d.docs.return) {
+				html += `<p><strong>Returns:</strong> ${d.docs.return}</p>`;
+			}
+			if (d.docs.text) {
+				html += `<h3>Description</h3><div style="font-size: 1.05em; line-height: 1.6;">${formatDocText(d.docs.text)}</div>`;
+			}
+			return html;
+		}
+
+		function buildVariantHtml(vd, localName, targets, baseDocs) {
+			const sig = buildSignature(vd);
+			const headerText = sig || localName;
+			let html = '';
+
+			if (targets.length > 0) {
+				let targetsStr = targets.join(', ');
+				html += `<div style="font-size: 0.85em; color: #666; font-family: monospace; padding: 1px 4px; border: 1px solid #222; display: inline-block; border-radius: 2px; border-bottom: none; background: #111;">${targetsStr}</div>`;
+				html += `<pre style="font-size: 1.1em; margin: -2px 0 20px 0; background: #111; padding: 14px; border-radius: 6px; border-left: 3px solid var(--accent); white-space: pre-wrap; word-break: break-all;">${headerText}</pre>`;
+			} else {
+				html += `<pre style="font-size: 1.1em; margin: 15px 0 20px 0; background: #111; padding: 14px; border-radius: 6px; border-left: 3px solid var(--accent); white-space: pre-wrap; word-break: break-all;">${headerText}</pre>`;
+			}
+
+			html += buildTypeInfoHtml(vd);
+			html += buildMembersHtml(vd, baseDocs);
+
+			return html;
+		}
+
+		function renderDetails(d) {
+			const lastSep = d.uid.lastIndexOf('::');
+			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
+
+			let html = buildHeaderHtml(d);
+
+			const variantsToRender = (d.variants && d.variants.length > 1)
+				? d.variants.map(v => ({ targets: v.targets, decl: v.decl }))
+				: [{ targets: [], decl: d }];
+
+			for (let variant of variantsToRender) {
+				html += buildVariantHtml(variant.decl, localName, variant.targets, d.docs);
+			}
+
+			html += buildDocsHtml(d);
+
+			document.getElementById('content').innerHTML = html;
+		}
+
+		init();
+	</script>
+</body>
+
+</html>

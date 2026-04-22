@@ -109,6 +109,7 @@ bool command_accepts_files(CompilerCommand command)
 {
 	switch (command)
 	{
+		case COMMAND_DOCGEN:
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_ONLY:
 		case COMMAND_COMPILE_RUN:
@@ -148,6 +149,7 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 			return true;
+		case COMMAND_DOCGEN:
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_ONLY:
 		case COMMAND_DYNAMIC_LIB:
@@ -629,6 +631,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
+	target->docgen = options->command == COMMAND_DOCGEN;
 	target->silent = options->verbosity_level < 0;
 	switch (options->sanitize_mode)
 	{

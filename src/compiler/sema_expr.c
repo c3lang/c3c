@@ -2674,15 +2674,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 		*any_val = *(any_val->inner_expr);
 	}
 	expr->call_expr.function_contracts = 0;
-	DeclId contract_id;
-	if (decl->decl_kind == DECL_FNTYPE)
-	{
-		contract_id = decl->fntype_decl.docs;
-	}
-	else
-	{
-		contract_id = decl->func_decl.docs;
-	}
+	DeclId contract_id = decl->docs;
 
 	if (!sema_has_require(contract_id)) goto SKIP_CONTRACTS;
 	bool is_safe = safe_mode_enabled();
@@ -3010,7 +3002,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	copy_begin();
 	Decl **params = copy_decl_list_macro(decl->func_decl.signature.params);
 	Ast *body = copy_ast_macro(astptr(decl->func_decl.body));
-	Decl *contracts = declptrzero(decl->func_decl.docs);
+	Decl *contracts = declptrzero(decl->docs);
 	Expr **requires = contracts ? contracts->contracts_decl.requires : NULL;
 	Expr **ensures = contracts ? contracts->contracts_decl.ensures : NULL;
 	if (requires) requires = copy_exprlist_macro(requires);

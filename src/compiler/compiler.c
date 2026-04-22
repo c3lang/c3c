@@ -473,6 +473,11 @@ void compiler_compile(void)
 		eprintf("> BEGINLSP\n");
 	}
 	sema_analysis_run();
+	if (compiler.build.docgen)
+	{
+		compiler_docgen(&compiler.build);
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
 	if (compiler.build.lsp_output)
 	{
 		eprintf("> ENDLSP-OK\n");

@@ -562,7 +562,6 @@ typedef struct
 	OperatorOverload operator : 6;
 	Signature signature;
 	AstId body;
-	DeclId docs;
 	union
 	{
 		struct // Function related
@@ -604,7 +603,6 @@ typedef struct
 typedef struct
 {
 	Signature signature;
-	DeclId docs;
 } FnTypeDecl;
 
 
@@ -661,6 +659,7 @@ typedef struct
 	SourceLocId loc;
 	InOutModifier modifier : 4;
 	bool by_ref : 1;
+	const char *description;
 } ContractParam;
 
 typedef struct
@@ -681,6 +680,8 @@ typedef struct
 		Expr **opt_returns;
 		Decl **opt_returns_resolved;
 	};
+	const char *comment;
+	const char *return_desc;
 } ContractsDecl;
 
 typedef struct
@@ -771,6 +772,7 @@ typedef struct Decl_
 		DeclId generic_id;
 		DeclId instance_id;
 	};
+	DeclId docs;
 	struct CompilationUnit_ *unit;
 	union
 	{
@@ -1767,6 +1769,7 @@ struct CompilationUnit_
 	bool benchmark_by_default;
 	bool test_by_default;
 	bool module_generated;
+	DeclId module_doc;
 	Attr **attr_links;
 	Decl **aliases;
 	Decl **ct_asserts;

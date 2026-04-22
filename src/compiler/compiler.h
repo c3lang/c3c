@@ -17,5 +17,6 @@ void symtab_init(uint32_t capacity);
 void symtab_destroy();
 void print_syntax(BuildOptions *options);
 void vendor_fetch(BuildOptions *options);
+void compiler_docgen(BuildTarget *target);
 
 extern const char* c3_suffix_list[3];

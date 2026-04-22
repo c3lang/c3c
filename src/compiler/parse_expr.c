@@ -1856,10 +1856,10 @@ bool parse_joined_strings(ParseContext *c, const char **str_ref, size_t *len_ref
 	size_t len = c->data.strlen;
 	advance_and_verify(c, TOKEN_STRING);
 	// Simple string optimization.
-	if (str_ref && c->tok != TOKEN_STRING)
+	if (str_ref && c->tok != TOKEN_STRING && !(tok_is(c, TOKEN_DOCS_EOL) && peek(c) == TOKEN_STRING))
 	{
 		*str_ref = str;
-		*len_ref = len;
+		if (len_ref) *len_ref = len;
 		return true;
 	}
 	// Now handle multiple strings
@@ -1925,7 +1925,7 @@ ADVANCE:;
 	{
 		*str_ref = scratch_buffer_copy();
 	}
-	*len_ref = len;
+	if (len_ref) *len_ref = len;
 	return true;
 }
 /**
