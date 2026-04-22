@@ -1176,6 +1176,8 @@ const char *arch_to_linker_arch(ArchType arch)
 			return "wasm64";
 		case ARCH_TYPE_XTENSA:
 			return "xtensa";
+		case ARCH_TYPE_AVR:
+			return "avr";
 	}
 	UNREACHABLE;
 }
@@ -1211,6 +1213,7 @@ static char *arch_to_target_triple(ArchOsTarget target, LinuxLibc linux_libc)
 		case LINUX_RISCV64: return linux_libc == LINUX_LIBC_MUSL ? "riscv64-unknown-linux-musl" : "riscv64-unknown-linux-gnu";
 		case ELF_RISCV64: return "riscv64-unknown-elf";
 		case ELF_XTENSA: return "xtensa-unknown-elf";
+		case ELF_AVR: return "avr-unknown-unknown";
 		case WASM32: return "wasm32-unknown-unknown";
 		case WASM64: return "wasm64-unknown-unknown";
 		case ARCH_OS_TARGET_DEFAULT: UNREACHABLE;
@@ -1463,6 +1466,8 @@ static unsigned arch_pointer_bit_width(OsType os, ArchType arch)
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_XTENSA:
 			return 32;
+		case ARCH_TYPE_AVR:
+			return 16;
 		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
@@ -1496,6 +1501,8 @@ static unsigned arch_int_register_bit_width(OsType os, ArchType arch)
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_XTENSA:
 			return 32;
+		case ARCH_TYPE_AVR:
+			return 16;
 		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
@@ -1618,7 +1625,7 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 		case OS_UNSUPPORTED:
 			UNREACHABLE
 		case OS_TYPE_UNKNOWN:
-			if (arch == ARCH_TYPE_MSP430)
+			if (arch == ARCH_TYPE_MSP430 || arch == ARCH_TYPE_AVR)
 			{
 				switch (type)
 				{
@@ -1694,6 +1701,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64LE:
 		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_AVR:
 		case ARCH_TYPE_XTENSA:
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_X86_64:
@@ -1736,6 +1744,7 @@ static unsigned arch_big_endian(ArchType arch)
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_AVR:
 		case ARCH_TYPE_XTENSA:
 			return false;
 		case ARCH_TYPE_ARMB:
@@ -1775,6 +1784,7 @@ static AlignData os_target_alignment_of_float(OsType os, ArchType arch, uint32_t
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_AVR:
 		case ARCH_TYPE_XTENSA:
 			return (AlignData) { bits , bits };
 		case ARCH_TYPE_ARM:
@@ -1935,6 +1945,9 @@ void *llvm_target_machine_create(void)
 		llvm_initialized = true;
 #ifdef XTENSA_ENABLE
 		INITIALIZE_TARGET(Xtensa);
+#endif
+#ifdef AVR_ENABLE
+		INITIALIZE_TARGET(AVR);
 #endif
 #ifndef ARM_DISABLE
 		INITIALIZE_TARGET(ARM);
@@ -2167,6 +2180,12 @@ void target_setup(BuildTarget *build_target)
 		error_exit("Xtensa support is not available with this LLVM version.");
 	}
 #endif
+#ifndef AVR_ENABLE 
+	if (build_target->arch_os_target == ELF_XTENSA)
+	{
+		error_exit("For AVR support please use a compiler compiled with -DAVR_ENABLE");
+	}
+#endif
 
 	compiler.platform.target_triple = arch_to_target_triple(build_target->arch_os_target, build_target->linuxpaths.libc);
 	ASSERT(compiler.platform.target_triple);
@@ -2279,6 +2298,10 @@ void target_setup(BuildTarget *build_target)
 			break;
 		case ARCH_TYPE_XTENSA:
 			compiler.platform.abi = ABI_XTENSA;
+			break;
+		case ARCH_TYPE_AVR:
+			compiler.platform.abi = ABI_AVR;
+			compiler.platform.tls_supported = false;
 			break;
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
