@@ -1,4 +1,3 @@
-#include "build.h"
 #include "build_internal.h"
 #include "compiler/compiler_internal.h"
 
@@ -93,7 +92,7 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 	APPEND_STRING_LIST(&target->cinclude_dirs, "c-include-dirs");
 }
 
-static Library *add_library(JSONObject *json, const char *dir, const char **libs, const int libs_len)
+static Library *add_library(JSONObject *json, const char *dir, const char **libs, unsigned libs_len)
 {
 	check_json_keys(manifest_default_keys, manifest_default_keys_count, NULL, 0, json, "library", "--list-manifest-properties");
 	Library *library = CALLOCS(Library);
@@ -256,7 +255,7 @@ void resolve_libraries(BuildTarget *build_target)
 	static const char *c3lib_suffix = ".c3l";
 	const char **c3_libs = NULL;
 	unsigned libdir_count = vec_size(build_target->libdirs);
-	const int libs_len = vec_size(build_target->libs);
+	unsigned libs_len = vec_size(build_target->libs);
 	if (libdir_count)
 	{
 		FOREACH(const char *, dir, build_target->libdirs)
@@ -272,7 +271,7 @@ void resolve_libraries(BuildTarget *build_target)
 		file_add_wildcard_files(&c3_libs, ".", false, &c3lib_suffix, 1);
 	}
 	Library *libraries[MAX_BUILD_LIB_DIRS * 2];
-	size_t lib_count = 0;
+	int lib_count = 0;
 	FOREACH(const char *, lib, c3_libs)
 	{
 		JSONObject *json;
@@ -288,9 +287,7 @@ void resolve_libraries(BuildTarget *build_target)
 		}
 		if (lib_count == MAX_BUILD_LIB_DIRS * 2) error_exit("Too many libraries added, exceeded %d.", MAX_BUILD_LIB_DIRS * 2);
 		Library *library = add_library(json, lib, build_target->libs, libs_len);
-		
 		if (!library) continue;
-		
 		libraries[lib_count++] = library;
 	}
 	
