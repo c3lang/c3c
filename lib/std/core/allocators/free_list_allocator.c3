@@ -17,8 +17,8 @@ const MIN_CAPACITY         = MIN_BLOCK_SIZE * 4;
 struct FreeListAlloc (Printable)
 {
 	char* data;
-	sz capacity;
-	sz used;
+	ulong capacity;
+	ulong used;
 	FreeNode* root;
 	FreeNode* tail;
 	FallbackAlloc* fallback_root;
@@ -29,7 +29,7 @@ struct FreeListAlloc (Printable)
 bitstruct NodeState : ulong @local
 {
 	// Aligned size of memory block + AllocHeader.
-	sz size : 0..62;
+	ulong size : 0..62;
 	bool is_free : 63..63;
 }
 
@@ -61,7 +61,7 @@ enum AllocStrategy @local
 struct FallbackAlloc @local
 {
 	FallbackAlloc* next;
-	sz size;
+	ulong size;
 	char[*] memory;
 }
 
@@ -77,7 +77,7 @@ fn void FreeListAlloc.init(
 	AllocStrategy strategy = BEST_FIT,
 )
 {
-	self.capacity = mem::aligned_offset(init_capacity, mem::DEFAULT_MEM_ALIGNMENT);
+	self.capacity = (ulong)mem::aligned_offset(init_capacity, mem::DEFAULT_MEM_ALIGNMENT);
 	self.data = (char*)alloc::alloc_with_padding(backing_alloc, AllocHeader, self.capacity)!!;
 	self.backing_alloc = backing_alloc;
 	self.strategy = strategy;
@@ -95,7 +95,7 @@ fn void FreeListAlloc.init(
 fn void*? FreeListAlloc.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	alignment = allocators::alignment_for_allocation(alignment);
-	sz aligned_size = mem::aligned_offset(size + AllocHeader::size, alignment);
+	ulong aligned_size = (ulong)mem::aligned_offset(size + AllocHeader::size, alignment);
 
 	if (aligned_size > self.remain_space())
 	{
@@ -121,7 +121,7 @@ fn void*? FreeListAlloc.acquire(&self, sz size, AllocInitType init_type, sz alig
 	remove_node(&self.root, node);
 
 	// Try to insert a new node, if have enough space.
-	sz diff = node.size - aligned_size;
+	ulong diff = node.size - aligned_size;
 	if (@likely(diff >= MIN_BLOCK_SIZE))
 	{
 		FreeNode* new_node = node_at_offset(node, aligned_size);
@@ -159,18 +159,18 @@ fn void*? FreeListAlloc.resize(&self, void* old_pointer, sz size, sz alignment) 
 {
 	if (@unlikely(!owns_pointer(self, old_pointer)))
 	{
-		return resize_fallback_allocation(self, old_pointer, size);
+		return resize_fallback_allocation(self, old_pointer, (ulong)size);
 	}
 
 	FreeNode* node = (FreeNode*)((AllocHeader*)old_pointer - 1);
-	sz old_size = node.size;
+	ulong old_size = node.size;
 	alignment = allocators::alignment_for_allocation(alignment);
-	sz new_size = mem::aligned_offset(size + AllocHeader::size, alignment);
+	ulong new_size = mem::aligned_offset(size + AllocHeader::size, alignment);
 
 	// Shrink.
 	if (@unlikely(new_size <= old_size))
 	{
-		sz diff = old_size - new_size;
+		ulong diff = old_size - new_size;
 		node.size -= diff;
 		self.used -= diff;
 		if (diff >= MIN_BLOCK_SIZE)
@@ -187,8 +187,8 @@ fn void*? FreeListAlloc.resize(&self, void* old_pointer, sz size, sz alignment) 
 	// Try to extend.
 	if (next < self.tail && next.is_free)
 	{
-		sz diff = mem::aligned_offset(new_size - old_size, alignment);
-		sz new_node_size = next.size - diff;
+		ulong diff = mem::aligned_offset(new_size - old_size, alignment);
+		ulong new_node_size = next.size - diff;
 		FreeNode* new_node = null;
 		// Insert a new node if have enough space.
 		if (new_node_size >= MIN_BLOCK_SIZE)
@@ -265,7 +265,7 @@ fn void FreeListAlloc.reset(&self)
 <*
  Calculates available memory space.
 *>
-fn sz FreeListAlloc.remain_space(&self) @inline
+fn ulong FreeListAlloc.remain_space(&self) @inline
 {
 	return self.capacity - self.used;
 }
@@ -275,7 +275,7 @@ fn sz FreeListAlloc.remain_space(&self) @inline
 *>
 fn sz? FreeListAlloc.to_format(&self, Formatter* fmt) @dynamic
 {
-	sz fallback_used = calc_used_fallback_mem(self);
+	ulong fallback_used = calc_used_fallback_mem(self);
 	String fmt_string = "FreeList allocator state:\n\tmemory total = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB\n\tmemory used  = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB\n\textra allocated = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB";
 
 	if (self.capacity > self.used)
@@ -327,7 +327,7 @@ fn sz? FreeListAlloc.to_format(&self, Formatter* fmt) @dynamic
  Tries to find node based on best fit strategy.
  (node with minimal required space is returned).
 *>
-fn FreeNode* find_node_best_fit(FreeListAlloc* self, sz req_size) @local
+fn FreeNode* find_node_best_fit(FreeListAlloc* self, ulong req_size) @local
 {
 	if (!self.root) return null;
 
@@ -354,7 +354,7 @@ fn FreeNode* find_node_best_fit(FreeListAlloc* self, sz req_size) @local
  Tries to find node based on first fit strategy.
  (first appropriate node is returned).
 *>
-fn FreeNode* find_node_first_fit(FreeListAlloc* self, sz req_size) @local
+fn FreeNode* find_node_first_fit(FreeListAlloc* self, ulong req_size) @local
 {
 	if (!self.root) return null;
 
@@ -378,7 +378,7 @@ fn FreeNode* find_node_first_fit(FreeListAlloc* self, sz req_size) @local
 <*
  Initializes new node and sets its state to 'free'.
 *>
-fn void init_node(FreeNode* node, sz size, FreeNode* prev_phys) @local
+fn void init_node(FreeNode* node, ulong size, FreeNode* prev_phys) @local
 {
 	*node = { };
 	node.is_free = true;
@@ -524,19 +524,16 @@ fn FreeNode* node_next(FreeNode* node) @inline @local
  Calculates position of the node relatively to provided one with provided offset, and returns it.
 
  @require node != null : "Shoudn't be null"
- @require offset > 0 : "Should be bigger than 0"
 *>
-fn FreeNode* node_at_offset(FreeNode* node, sz offset) @inline @local
+fn FreeNode* node_at_offset(FreeNode* node, ulong offset) @inline @local
 {
 	return (FreeNode*)((char*)node + offset);
 }
 
 <*
  Allocates to the separate linked list in case there's not enough space in the FreeList allocator main buffer.
-
- @require size > 0 : "Should be bigger than 0"
 *>
-fn void*? make_fallback_allocation(FreeListAlloc* self, sz size, AllocInitType init_type) @local
+fn void*? make_fallback_allocation(FreeListAlloc* self, ulong size, AllocInitType init_type) @local
 {
 	FallbackAlloc* curr = self.fallback_root;
 	while (curr)
@@ -564,9 +561,8 @@ fn void*? make_fallback_allocation(FreeListAlloc* self, sz size, AllocInitType i
  Tries to find and resize allocation made as a fallback.
 
  @require old_ptr != null : "Shouldn't be null"
- @require new_size > 0 : "Should be bigger than 0"
 *>
-fn void*? resize_fallback_allocation(FreeListAlloc* self, void* old_ptr, sz new_size) @local
+fn void*? resize_fallback_allocation(FreeListAlloc* self, void* old_ptr, ulong new_size) @local
 {
 	FallbackAlloc* curr = self.fallback_root;
 	FallbackAlloc* alloc = null;
@@ -607,9 +603,9 @@ fn void free_fallback_allocations(FreeListAlloc* self) @local
 <*
  Calculates all memory that were allocated as a fallback.
 *>
-fn sz calc_used_fallback_mem(FreeListAlloc* self) @local
+fn ulong calc_used_fallback_mem(FreeListAlloc* self) @local
 {
-	sz res = 0;
+	ulong res = 0;
 	FallbackAlloc* curr = self.fallback_root;
 	while (curr)
 	{
