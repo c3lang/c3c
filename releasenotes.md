@@ -49,6 +49,8 @@
 - Added the `tags` property for types and `$reflect`.
 - Allow taking the type of an interface method.
 - Add `$expand` compile time function to convert strings to code.
+- Constdef now infers through unary negations.
+- Only used libraries are scanned for dependencies. #3144
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
@@ -80,6 +82,7 @@
 - `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
 - Add free list allocator - `FreeListAlloc`.
 - Add buddy allocator - `BuddyAlloc`.
+- `std::collections::object` added `Object.to_value` to convert from an object to a value.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
@@ -98,6 +101,10 @@
 - EnumSet with more than 128 entries was broken.
 - Handle underflow in zip.
 - Bugs in check for name suggestions on name mismatch.
+- Fix bug where only one ensure would not be inlined correctly. #3162
+- Incorrect error message when casting to non-existent enum.
+- Macro `$Type = ...` would not work correctly with `$defined`
+- Fix enum value handling in `Object` (`std::collections::object`) to conform with changes in enums.
 
 ## 0.7.11 Change list
 

@@ -92,13 +92,20 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 	APPEND_STRING_LIST(&target->cinclude_dirs, "c-include-dirs");
 }
 
-static Library *add_library(JSONObject *json, const char *dir)
+static Library *add_library(JSONObject *json, const char *dir, const char **libs, unsigned libs_len)
 {
 	check_json_keys(manifest_default_keys, manifest_default_keys_count, NULL, 0, json, "library", "--list-manifest-properties");
 	Library *library = CALLOCS(Library);
 	library->dir = dir;
 	BuildParseContext context = { dir, NULL };
 	const char *provides = get_mandatory_string(context, json, "provides");
+	
+	if (str_findlist(provides, libs_len, libs) == -1)
+	{
+		DEBUG_LOG("Library '%s' not included as dependency, skipped.", provides);
+		return NULL;
+	}
+	
 	DEBUG_LOG("Added library %s", provides);
 	if (!str_is_valid_lowercase_name(provides))
 	{
@@ -248,6 +255,7 @@ void resolve_libraries(BuildTarget *build_target)
 	static const char *c3lib_suffix = ".c3l";
 	const char **c3_libs = NULL;
 	unsigned libdir_count = vec_size(build_target->libdirs);
+	unsigned libs_len = vec_size(build_target->libs);
 	if (libdir_count)
 	{
 		FOREACH(const char *, dir, build_target->libdirs)
@@ -263,7 +271,7 @@ void resolve_libraries(BuildTarget *build_target)
 		file_add_wildcard_files(&c3_libs, ".", false, &c3lib_suffix, 1);
 	}
 	Library *libraries[MAX_BUILD_LIB_DIRS * 2];
-	size_t lib_count = 0;
+	int lib_count = 0;
 	FOREACH(const char *, lib, c3_libs)
 	{
 		JSONObject *json;
@@ -278,8 +286,11 @@ void resolve_libraries(BuildTarget *build_target)
 			json = read_manifest(lib, file_read_all(manifest_path, &size));
 		}
 		if (lib_count == MAX_BUILD_LIB_DIRS * 2) error_exit("Too many libraries added, exceeded %d.", MAX_BUILD_LIB_DIRS * 2);
-		libraries[lib_count++] = add_library(json, lib);
+		Library *library = add_library(json, lib, build_target->libs, libs_len);
+		if (!library) continue;
+		libraries[lib_count++] = library;
 	}
+	
 	FOREACH(const char *, lib_name, build_target->libs)
 	{
 		add_library_dependency(build_target, find_library(libraries, lib_count, lib_name), libraries, lib_count);

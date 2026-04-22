@@ -91,9 +91,10 @@ fn Object* new_int(Allocator allocator, int128 i)
 	return @alloc_obj(allocator, { .i = i, .allocator = allocator, .type = int128::typeid });
 }
 
+<* @require @kindof(e) == ENUM *>
 macro Object* new_enum(Allocator allocator, e)
 {
-	return @alloc_obj(allocator, { .i = e, .allocator = allocator, .type = @typeid(e) });
+	return @alloc_obj(allocator, { .i = (int128) e.ordinal, .allocator = allocator, .type = @typeid(e) });
 }
 
 fn Object* new_float(Allocator allocator, double f)
@@ -152,8 +153,70 @@ fn bool Object.is_bool(&self) @inline => self.type == bool::typeid;
 fn bool Object.is_string(&self) @inline => self.type == String::typeid;
 fn bool Object.is_float(&self) @inline => self.type == double::typeid;
 fn bool Object.is_int(&self) @inline => self.type == int128::typeid;
+fn bool Object.is_enum(&self) @inline => self.type.kind == ENUM;
 fn bool Object.is_keyable(&self) => self.is_empty() || self.is_map();
 fn bool Object.is_indexable(&self) => self.is_empty() || self.is_array();
+
+macro Object.to_value(&self, $Type, strict = true)
+{
+	$switch:
+		$case types::is_int($Type):
+			if (!strict)
+			{
+				if (self.is_string())
+				{
+					$if $Type::kind == TypeKind.SIGNED_INT:
+						return ($Type)self.s.to_int128();
+					$else
+						return ($Type)self.s.to_uint128();
+					$endif
+				}
+				if (self.is_float())
+				{
+					return ($Type)self.f;
+				}
+			}
+			if (!self.is_int()) return TYPE_MISMATCH~;
+			return ($Type)self.i;
+		$case types::is_float($Type):
+			if (!strict)
+			{
+				if (self.is_int())
+				{
+					return ($Type)self.i;
+				}
+				if (self.is_string())
+				{
+					return ($Type)self.s.to_double();
+				}
+			}
+			if (!self.is_float()) return TYPE_MISMATCH~;
+			return ($Type)self.f;
+		$case $Type == String:
+			if (self.is_string()) return self.s;
+			if (strict) return TYPE_MISMATCH~;
+			return string::format(self.allocator, "%d", self);
+		$case $Type == bool:
+			if (self.is_bool()) return self.b;
+			return TYPE_MISMATCH~;
+		$case $Type == Object*:
+			return self;
+		$case $Type == void*:
+			return self.other;
+		$case $Type::kind == ENUM:
+			if (!strict)
+			{
+				if (self.is_int())
+				{
+					return $Type::from_ordinal(self.i);
+				}
+			}
+			if ($Type::typeid != self.type) return TYPE_MISMATCH~;
+			return $Type::from_ordinal(self.i);
+		$default:
+			$error "Unsupported object type '" +++ $Type::name +++ "'";
+	$endswitch
+}
 
 <*
  @require self.is_keyable()
@@ -212,10 +275,11 @@ macro Object* Object.object_from_value(&self, value) @private
 			return &NULL_OBJECT;
 		$case $defined(String x = value):
 			return new_string(self.allocator, value);
+		$case $Type::kind == ENUM:
+			return new_enum(self.allocator, value);
 		$default:
-			$error "Unsupported object type.";
+			$error "Unsupported object type '" +++ $Type::name +++ "'";
 	$endswitch
-
 }
 
 macro Object* Object.set(&self, String key, value)
@@ -396,22 +460,24 @@ fn String? Object.get_string_at(&self, sz index)
 
 <*
  @require self.is_keyable()
+ @require $EnumType::kind == ENUM
 *>
-macro String? Object.get_enum(&self, $EnumType, String key)
+macro Object.get_enum(&self, $EnumType, String key)
 {
-	Object value = self.get(key)!;
+	Object* value = self.get(key)!;
 	if ($EnumType::typeid != value.type) return TYPE_MISMATCH~;
-	return ($EnumType)value.i;
+	return $EnumType::from_ordinal(value.i);
 }
 
 <*
  @require self.is_indexable()
+ @require $EnumType::kind == ENUM
 *>
-macro String? Object.get_enum_at(&self, $EnumType, sz index)
+macro Object.get_enum_at(&self, $EnumType, sz index)
 {
-	Object value = self.get_at(index);
+	Object* value = self.get_at(index);
 	if ($EnumType::typeid != value.type) return TYPE_MISMATCH~;
-	return ($EnumType)value.i;
+	return $EnumType::from_ordinal(value.i);
 }
 
 <*
