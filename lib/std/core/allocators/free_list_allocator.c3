@@ -29,8 +29,8 @@ struct FreeListAlloc (Printable)
 bitstruct NodeState : ulong @local
 {
 	// Aligned size of memory block + AllocHeader.
-	sz size : 0..62;
-	bool is_free : 63..63;
+	sz size : 0..(sz::size * 8 - 2);
+	bool is_free : (sz::size * 8 - 1)..(sz::size * 8 - 1);
 }
 
 struct FreeNode @local
