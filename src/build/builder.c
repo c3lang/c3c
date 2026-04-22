@@ -669,13 +669,15 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			}
 			target->build_dir = options->build_dir;
 		}
+		set_dir_with_default(&target->script_dir, options->script_dir, ".");
 		set_dir_with_default(&target->exec_dir, options->exec_dir, ".");
 	}
 	else
 	{
 		set_dir_with_default(&target->output_dir, options->output_dir, "out");
 		set_dir_with_default(&target->build_dir, options->build_dir, "build");
-		set_dir_with_default(&target->exec_dir, options->exec_dir, ".");
+		set_dir_with_default(&target->script_dir, options->script_dir, "scripts");
+		set_dir_with_default(&target->exec_dir, options->exec_dir, target->script_dir);
 	}
 
 	set_output_dir_from_options(&target->ir_file_dir, options->llvm_out, "llvm", target_name, target->output_dir);

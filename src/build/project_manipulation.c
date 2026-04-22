@@ -248,6 +248,7 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_BOOL("Runtime safety checks enabled", "safe");
 	TARGET_VIEW_BOOL("Print backtrace on signals", "show-backtrace");
 	TARGET_VIEW_STRING("Exec directory", "exec-dir");
+	TARGET_VIEW_STRING("Script directory", "script-dir");
 	TARGET_VIEW_STRING("Run directory", "run-dir");
 	TARGET_VIEW_BOOL("Compile into single module", "single-module");
 	TARGET_VIEW_BOOL("Output soft-float functions", "soft-float");
@@ -570,6 +571,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_SETTING("Relocation model", "reloc", reloc_models);
 	VIEW_BOOL("Runtime safety checks enabled", "safe");
 	VIEW_BOOL("Print backtrace on signals", "show-backtrace");
+	VIEW_STRING("Script directory", "script-dir");
 	VIEW_STRING("Exec directory", "exec-dir");
 	VIEW_STRING("Run directory", "run-dir");
 	VIEW_BOOL("Compile into single module", "single-module");

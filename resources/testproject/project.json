@@ -15,7 +15,7 @@
   "dependencies": ["clib", "clib2"],
   "cpu-flags": ",,",
   "features": ["ABCD"],
-  "exec": ["scripts/scriptme.c3 myarg"],
+  "exec": ["scriptme.c3 myarg"],
   // c sources
   "targets": {
     "hello_world": {

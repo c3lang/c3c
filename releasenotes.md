@@ -59,7 +59,7 @@
 - Add `compare_to` and `compare_to_ignore_case` to `String`. #3096
 - Add `SortedMap` based on skip lists.
 - Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
-- `BufferedChannel` and `UnbufferedChannel` now pointers, create using `create_unbuffered` and `create_buffered`
+- `BufferedChannel` and `UnbufferedChannel` are now pointers, create using `create_unbuffered` and `create_buffered`
 - `RingList` now conforms to `foreach` and adds additional functions.
 - Ini parser and encoder.
 - Updated `ref::new` argument order.

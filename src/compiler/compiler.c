@@ -1272,6 +1272,30 @@ static int jump_buffer_size()
 	UNREACHABLE
 }
 
+char old_path[PATH_MAX + 1];
+char script_path[PATH_MAX + 1];
+char exec_path[PATH_MAX + 1];
+
+void setup_exec_paths(const char **old_dir_ref, const char **script_dir_ref, const char **exec_dir_ref)
+{
+	getcwd(old_path, PATH_MAX);
+	*old_dir_ref = old_path;
+	*exec_dir_ref = *script_dir_ref = old_path;
+	if (compiler.build.script_dir)
+	{
+		if (!dir_change(compiler.build.script_dir)) error_exit("Failed to open script dir '%s'", compiler.build.script_dir);
+		getcwd(script_path, PATH_MAX);
+		*exec_dir_ref = *script_dir_ref = script_path;
+		dir_change(old_path);
+	}
+	if (compiler.build.exec_dir)
+	{
+		if (!dir_change(compiler.build.exec_dir)) error_exit("Failed to open exec dir '%s'", compiler.build.exec_dir);
+		getcwd(exec_path, PATH_MAX);
+		*exec_dir_ref = exec_path;
+	}
+}
+
 void execute_scripts(void)
 {
 	if (!vec_size(compiler.build.exec)) return;
@@ -1279,14 +1303,11 @@ void execute_scripts(void)
 	{
 		error_exit("This target has 'exec' directives, to run it trust level must be set to '--trust=full'.");
 	}
-	char old_path[PATH_MAX + 1];
-	if (compiler.build.exec_dir)
-	{
-		if (getcwd(old_path, PATH_MAX) && !dir_change(compiler.build.exec_dir))
-		{
-			error_exit("Failed to open exec dir '%s'", compiler.build.exec_dir);
-		}
-	}
+	const char *script_dir;
+	const char *exec_dir;
+	const char *old_dir;
+	setup_exec_paths(&old_dir, &script_dir, &exec_dir);
+	bool same_exec_as_script = str_eq(exec_dir, script_dir);
 	double start = bench_mark();
 	FOREACH(const char *, exec, compiler.build.exec)
 	{
@@ -1296,13 +1317,20 @@ void execute_scripts(void)
 		if (call.len < 3 || call.ptr[call.len - 3] != '.' || call.ptr[call.len - 2] != 'c' ||
 			call.ptr[call.len - 1] != '3')
 		{
+			dir_change(exec_dir);
 			char *res = execute_cmd(exec, false, NULL, 0);
 			if (compiler.build.silent) continue;
 			script = source_file_text_load(exec, res);
 			goto PRINT_SCRIPT;
 		}
 		scratch_buffer_clear();
+		if (!same_exec_as_script)
+		{
+			scratch_buffer_append(script_dir);
+			scratch_buffer_append("/");
+		}
 		scratch_buffer_append_len(call.ptr, call.len);
+		dir_change(exec_dir);
 		script = compile_and_invoke(scratch_buffer_copy(), execs.len ? execs.ptr : "", NULL, 2048);
 PRINT_SCRIPT:;
 		size_t out_len = script->content_len;
