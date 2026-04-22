@@ -50,6 +50,7 @@
 - Allow taking the type of an interface method.
 - Add `$expand` compile time function to convert strings to code.
 - Constdef now infers through unary negations.
+- Only used libraries are scanned for dependencies. #3144
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
