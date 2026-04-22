@@ -10796,6 +10796,7 @@ static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_in
 			if (type_info->kind == TYPE_INFO_CT_IDENTIFIER)
 			{
 				Expr *init = decl->var.init_expr;
+				if (decl->var.defaulted && !init) return NULL;
 				if (init->expr_kind == EXPR_CONST)
 				{
 					ASSERT(init->const_expr.const_kind == CONST_TYPEID);

@@ -99,6 +99,7 @@
 - Bugs in check for name suggestions on name mismatch.
 - Fix bug where only one ensure would not be inlined correctly. #3162
 - Incorrect error message when casting to non-existent enum.
+- Macro `$Type = ...` would not work correctly with `$defined`
 
 ## 0.7.11 Change list
 
