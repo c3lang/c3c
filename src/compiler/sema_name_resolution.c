@@ -1276,7 +1276,7 @@ INLINE bool sema_add_ct_local(SemaContext *context, Decl *decl)
 	ASSERT(decl_is_ct_var(decl));
 
 	Decl *other = sema_find_ct_local(context, decl->name);
-	if (other)
+	if (other && !(other->var.defaulted && !other->var.init_expr))
 	{
 		sema_shadow_error(context, decl, other);
 		decl_poison(decl);

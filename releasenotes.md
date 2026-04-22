@@ -100,6 +100,7 @@
 - Bugs in check for name suggestions on name mismatch.
 - Fix bug where only one ensure would not be inlined correctly. #3162
 - Incorrect error message when casting to non-existent enum.
+- Macro `$Type = ...` would not work correctly with `$defined`
 - Fix enum value handling in `Object` (`std::collections::object`) to conform with changes in enums.
 
 ## 0.7.11 Change list
