@@ -154,7 +154,7 @@ fn void increasing_sizes()
 fn void decreasing_sizes()
 {
 	BuddyAlloc buddy;
-	buddy.init(mem, 2048, 128);
+	buddy.init(mem, 2048, 1024);
 	defer buddy.free();
 	Allocator a = (Allocator)&buddy;
 	char[100] bytes @noinit;

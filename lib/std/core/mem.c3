@@ -12,7 +12,7 @@ const ulong MB = KB * 1024;
 const ulong GB = MB * 1024;
 const ulong TB = GB * 1024;
 
-faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE, POINTER_NOT_OWNED;
+faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
 
 macro bool @constant_is_power_of_2($x) @const @private
 {

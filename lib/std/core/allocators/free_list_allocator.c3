@@ -26,16 +26,16 @@ struct FreeListAlloc (Printable)
 	Allocator backing_alloc;
 }
 
-bitstruct NodeState : sz @local
+bitstruct NodeState : ulong @local
 {
 	// Aligned size of memory block + AllocHeader.
 	sz size : 0..62;
- 	// Embeds 'is_free' inside of 'size' to reduce memory usage.
 	bool is_free : 63..63;
 }
 
 struct FreeNode @local
 {
+ 	// Embeds 'is_free' inside of 'size' to reduce memory usage.
 	inline NodeState _state;
 	FreeNode* prev_phys;
 	// Overwritten on allocation.
@@ -47,6 +47,7 @@ struct FreeNode @local
 
 struct AllocHeader @local
 {
+ 	// Embeds 'is_free' inside of 'size' to reduce memory usage.
 	inline NodeState _state;
 	FreeNode* prev_phys;
 }
@@ -152,7 +153,7 @@ fn void*? FreeListAlloc.acquire(&self, sz size, AllocInitType init_type, sz alig
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
  @require old_pointer != null
  @require size > 0
- @return ? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY, mem::POINTER_NOT_OWNED
+ @return ? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
 fn void*? FreeListAlloc.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
 {
@@ -172,7 +173,7 @@ fn void*? FreeListAlloc.resize(&self, void* old_pointer, sz size, sz alignment) 
 		sz diff = old_size - new_size;
 		node.size -= diff;
 		self.used -= diff;
-		if (diff > MIN_BLOCK_SIZE)
+		if (diff >= MIN_BLOCK_SIZE)
 		{
 			FreeNode* new_node = node_next(node);
 			init_node(new_node, diff, node);
@@ -564,7 +565,6 @@ fn void*? make_fallback_allocation(FreeListAlloc* self, sz size, AllocInitType i
 
  @require old_ptr != null : "Shouldn't be null"
  @require new_size > 0 : "Should be bigger than 0"
- @return ? mem::POINTER_NOT_OWNED
 *>
 fn void*? resize_fallback_allocation(FreeListAlloc* self, void* old_ptr, sz new_size) @local
 {
@@ -581,7 +581,7 @@ fn void*? resize_fallback_allocation(FreeListAlloc* self, void* old_ptr, sz new_
 		curr = curr.next;
 	}
 
-	if (!alloc) return mem::POINTER_NOT_OWNED~;
+	assert(alloc != null, "Pointer originates from a different allocator: %p, not in %p - %p", old_ptr, self.data, self.data + self.capacity);
 
 	alloc = alloc::realloc(self.backing_alloc, alloc, FallbackAlloc::size + new_size);
 	alloc.size = new_size;
