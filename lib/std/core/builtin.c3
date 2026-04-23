@@ -77,6 +77,7 @@ macro sz @bitsizeof(#expr) @builtin @const => @sizeof(#expr) * 8u;
  Compile-time check for whether a set of constants contains a certain expression.
 
  @param $needle : "The expression whose value should be located."
+ @require @_all_const_in{$typeof($needle)}($vasplat) : "All values must be constant"
 *>
 macro bool @in($needle, ...) @builtin @const
 {
@@ -86,6 +87,16 @@ macro bool @in($needle, ...) @builtin @const
 		$if $needle == $vaarg[$x]: return true; $endif
 	$endfor
 	return false;
+}
+
+macro @_all_const_in(...) <NeedleType> @const @local
+{
+	$for int $i = 0; $i < $vacount; $i++:
+		$if $defined(NeedleType a = $vaarg[$i]) &&& !$reflect($vaarg[$i]).is_const:
+			return false;
+		$endif
+	$endfor
+	return true;
 }
 
 <*

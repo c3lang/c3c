@@ -162,7 +162,7 @@ void symtab_init(uint32_t capacity)
 	kw_has_tag = KW_DEF("has_tag");
 	kw_in = KW_DEF("in");
 	kw_inout = KW_DEF("inout");
-	kw_is_ordered = KW_DEF("is_const");
+	kw_is_const = KW_DEF("is_const");
 	kw_is_ordered = KW_DEF("is_ordered");
 	kw_kind = KW_DEF("kind");
 	kw_libc = KW_DEF("libc");

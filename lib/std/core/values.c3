@@ -30,6 +30,15 @@ macro promote_int(x)
 	$endif
 }
 
+macro @all_const(...) @const
+{
+	$for int $i = 0; $i < $vacount; $i++:
+		$if !$reflect($vaarg[$i]).is_const:
+			return false;
+		$endif
+	$endfor
+	return true;
+}
 
 macro promote_int_same(x, y)
 {

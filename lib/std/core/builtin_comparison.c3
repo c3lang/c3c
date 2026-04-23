@@ -130,6 +130,7 @@ macro max(x, ...) @builtin
 
 <*
  @require types::is_numerical($typeof($a))
+ @require values::@all_const($vasplat) : "All values must be constant"
 *>
 macro @max($a, ...) @builtin @const
 {
@@ -146,6 +147,7 @@ macro @max($a, ...) @builtin @const
 
 <*
  @require types::is_numerical($typeof($a))
+ @require values::@all_const($vasplat) : "All values must be constant"
 *>
 macro @min($a, ...) @builtin @const
 {

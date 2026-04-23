@@ -3335,6 +3335,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				case VARDECL_PARAM_EXPR:
 					break;
 				default:
+					if (param->var.va_index > 0) break;
 					goto NOT_CT;
 			}
 		}
