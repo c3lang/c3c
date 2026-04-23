@@ -101,7 +101,7 @@ fn TcpSocketPair*? TcpSocketPair.init(&self)
 
 	$else
 		NativeSocket[2] sockets;
-		sz sockpair_result = os::socketpair(os::AF_UNIX, os::SOCK_STREAM, 0, &sockets);
+		sz sockpair_result = os::socketpair(os::AF_UNIX, os::SOCK_STREAM, (AIProtocol)0, &sockets);
 		if (sockpair_result < 0) return os::socket_error()~;
 
 		Socket send_sock = { .sock = sockets[0] };
