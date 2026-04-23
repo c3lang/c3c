@@ -5489,6 +5489,11 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 	Type *type =  member ? member->type : reflect->type;
 	if (!type) goto FAILED;
 	if (type->type_kind == TYPE_FUNC_RAW) type = type_get_func_ptr(type);
+	if (name == kw_is_const)
+	{
+		expr_rewrite_const_bool(expr, type_bool, expr_is_runtime_const(reflect));
+		return true;
+	}
 	bool normal_storage = sema_resolve_storage_type(context, type) == STORAGE_NORMAL;
 	if (normal_storage && name == kw_is_ordered) return sema_expr_rewrite_to_is_ordered(context, expr, type);
 	if (normal_storage && name == kw_has_equals) return sema_expr_rewrite_to_has_equals(context, expr, type);
@@ -10807,15 +10812,6 @@ static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_in
 			}
 			return decl->type->canonical;
 		}
-		case TYPE_INFO_VATYPE:
-		{
-			if (!context->current_macro) return NULL;
-			Expr *arg_expr = sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr, NULL);
-			if (!expr_ok(arg_expr)) return poisoned_type;
-			if (!sema_analyse_expr(context, arg_expr)) return poisoned_type;
-			if (arg_expr->expr_kind != EXPR_TYPEINFO) return NULL;
-			return arg_expr->type_expr->type->canonical;
-		}
 		case TYPE_INFO_TYPEFROM:
 		case TYPE_INFO_TYPEOF:
 			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return poisoned_type;
@@ -11639,9 +11635,13 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 					case STORAGE_NORMAL:
 						break;
 					default:
-						RETURN_SEMA_ERROR(expr, "The vararg doesn't have a valid runtime type.");
+						if (!sema_cast_const(arg_expr))
+						{
+							RETURN_SEMA_ERROR(expr, "The vararg doesn't have a valid runtime type.");
+						}
+						break;
 				}
-				decl = decl_new_generated_var(arg_expr->type, VARDECL_PARAM, arg_expr->loc);
+				decl = decl_new_generated_var(arg_expr->type, expr_is_runtime_const(arg_expr) ? VARDECL_PARAM_CT : VARDECL_PARAM, arg_expr->loc);
 				decl->var.init_expr = arg_expr;
 				decl->var.va_index = (uint16_t)index;
 				vec_add(context->macro_params, decl);
@@ -11652,33 +11652,9 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 			ASSERT_SPAN(expr, expr->type);
 			return true;
 		}
-		case TOKEN_CT_VAEXPR:
-		{
-			// An expr argument, this means we copy and evaluate.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), NULL), false);
-			expr_replace(expr, copy_expr_single(arg_expr));
-			return sema_analyse_inferred_expr(context, infer_type, expr, no_match_ref);
-		}
-		case TOKEN_CT_VACONST:
-		{
-			// An expr argument, this means we copy and evaluate.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), NULL), false);
-			arg_expr = copy_expr_single(arg_expr);
-			if (!sema_analyse_inferred_expr(context, infer_type, arg_expr, NULL)) return false;
-			if (!sema_cast_const(arg_expr))
-			{
-				if (no_match_ref) goto NO_MATCH;
-				RETURN_SEMA_ERROR(arg_expr, "This argument needs to be a compile time constant.");
-			}
-			expr_replace(expr, arg_expr);
-			return true;
-		}
-		case TOKEN_CT_VATYPE:
 		default:
 			UNREACHABLE
 	}
-NO_MATCH:
-	*no_match_ref = true;
 	return false;
 }
 
@@ -12394,17 +12370,6 @@ IDENT_CHECK:;
 			}
 			return true;
 		case EXPR_CT_ARG:
-			if (expr->ct_arg_expr.type == TOKEN_CT_VAEXPR)
-			{
-				if (!context->current_macro)
-				{
-					RETURN_SEMA_ERROR(expr, "'$vaexpr' can only be used inside of a macro.");
-				}
-				// An expr argument, this means we copy and evaluate.
-				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), NULL), false);
-				expr_replace(expr, copy_expr_single(arg_expr));
-				return sema_analyse_expr_lvalue(context, expr, failed_ref);
-			}
 			break;
 		case EXPR_RECAST:
 		case EXPR_CAST:

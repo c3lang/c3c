@@ -1,9 +1,9 @@
 // #target: macos-x64
 module test;
 import std;
-macro foo(...)
+macro foo(#arg = ...) @safemacro
 {
-	$vaexpr[0] = 2;
+	#arg = 2;
 }
 
 fn void main()

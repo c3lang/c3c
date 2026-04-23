@@ -1421,9 +1421,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_STRINGIFY:
 		case TOKEN_CT_TERNARY:
 		case TOKEN_CT_VAARG:
-		case TOKEN_CT_VACONST:
 		case TOKEN_CT_VACOUNT:
-		case TOKEN_CT_VAEXPR:
 		case TOKEN_FALSE:
 		case TOKEN_INTEGER:
 		case TOKEN_LENGTHOF:

@@ -58,9 +58,7 @@ typedef struct {
 %%
 
 
-"$alignof"      { return(CT_ALIGNOF); }
 "$assert"       { return(CT_ASSERT); }
-"$assignable"   { return(CT_ASSIGNABLE); }
 "$case"         { return(CT_CASE); }
 "$default"      { return(CT_DEFAULT); }
 "$defined"      { return(CT_DEFINED); }
@@ -74,28 +72,20 @@ typedef struct {
 "$eval"         { return(CT_EVAL); }
 "$evaltype"     { return(CT_EVALTYPE); }
 "$exec"         { return(CT_EXEC); }
-"$cnameof"      { return(CT_CNAMEOF); }
 "$feature"      { return(CT_FEATURE); }
 "$for"          { return(CT_FOR); }
 "$foreach"      { return(CT_FOREACH); }
 "$if"           { return(CT_IF); }
-"$is_const"     { return(CT_IS_CONST); }
 "$include"      { return(CT_INCLUDE); }
-"$nameof"       { return(CT_NAMEOF); }
-"$offsetof"     { return(CT_OFFSETOF); }
-"$qnameof"      { return(CT_QNAMEOF); }
-"$sizeof"       { return(CT_SIZEOF); }
+"$expand"       { return(CT_EXPAND); }
+"$reflect"      { return(CT_REFLECT); }
 "$stringify"    { return(CT_STRINGIFY); }
 "$switch"       { return(CT_SWITCH); }
 "$typefrom"     { return(CT_TYPEFROM); }
 "$typeof"       { return(CT_TYPEOF); }
 "$vaarg"        { return(CT_VAARG); }
-"$vaconst"      { return(CT_VACONST); }
 "$vacount"      { return(CT_VACOUNT); }
-"$vaexpr"       { return(CT_VAEXPR); }
-"$varef"        { return(CT_VAREF); }
 "$vasplat"      { return(CT_VASPLAT); }
-"$vatype"       { return(CT_VATYPE); }
 "@pure"         { return(AT_PURE); }
 "@inline"       { return(AT_INLINE); }
 "@noinline"     { return(AT_NOINLINE); }
@@ -155,7 +145,7 @@ typedef struct {
 "int128"		{ return(INT128); }
 "interface"     { return(INTERFACE); }
 "iptr"          { return(IPTR); }
-"sz"           { return(sz); }
+"sz"            { return(SZ); }
 "long"			{ return(LONG); }
 "macro"         { return(MACRO); }
 "module"        { return(MODULE); }

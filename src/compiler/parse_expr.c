@@ -647,6 +647,7 @@ static Expr *parse_splat(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSE
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_SPLAT);
 	advance_and_verify(c, TOKEN_ELLIPSIS);
 	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
@@ -720,7 +721,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceLoc *lhs_star
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	const char *end = c->lexer.lexing_start - 1;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_CT_ARG && inner->ct_arg_expr.type == TOKEN_CT_VAEXPR))
+	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_CT_ARG))
 	{
 		Expr *expr = expr_new(EXPR_STRINGIFY, start_span);
 		expr->inner_expr = inner;
@@ -1311,14 +1312,13 @@ static Expr *parse_ct_feature(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 }
 
 /**
- * ct_arg ::= VACOUNT | (VAARG | VAREF | VAEXPR | VACONST) '(' expr ')'
+ * ct_arg ::= VACOUNT | VAARG '(' expr ')'
  */
 static Expr *parse_ct_arg(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ARG);
 	TokenType type = expr->ct_arg_expr.type = c->tok;
-	ASSERT(type != TOKEN_CT_VATYPE);
 	advance(c);
 	if (type != TOKEN_CT_VACOUNT)
 	{
@@ -2119,8 +2119,5 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VACONST] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VACOUNT] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAEXPR] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VATYPE] = { parse_type_expr, NULL, PREC_NONE },
 };

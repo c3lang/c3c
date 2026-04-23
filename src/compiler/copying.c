@@ -982,7 +982,6 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 			return copy;
 		case TYPE_INFO_TYPEFROM:
 		case TYPE_INFO_TYPEOF:
-		case TYPE_INFO_VATYPE:
 			ASSERT(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->unresolved_type_expr = copy_expr(c, source->unresolved_type_expr);
 			return copy;

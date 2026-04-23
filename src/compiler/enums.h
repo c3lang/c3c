@@ -1649,10 +1649,7 @@ typedef enum
 	TOKEN_CT_TYPEFROM,          // $typefrom
 	TOKEN_CT_TYPEOF,            // $typeof
 	TOKEN_CT_VACOUNT,           // $vacount
-	TOKEN_CT_VATYPE,            // $vatype
-	TOKEN_CT_VACONST,           // $vaconst,
 	TOKEN_CT_VAARG,             // $vaarg,
-	TOKEN_CT_VAEXPR,            // $vaexpr,
 	TOKEN_CT_VASPLAT,           // $vasplat,
 	TOKEN_LAST_KEYWORD = TOKEN_CT_VASPLAT,
 	TOKEN_DOCS_START,           // <*
@@ -1700,7 +1697,6 @@ typedef enum
 	TYPE_INFO_IDENTIFIER,
 	TYPE_INFO_CT_IDENTIFIER,
 	TYPE_INFO_TYPEOF,
-	TYPE_INFO_VATYPE,
 	TYPE_INFO_TYPEFROM,
 	TYPE_INFO_ARRAY,
 	TYPE_INFO_VECTOR,
@@ -2168,7 +2164,7 @@ static_assert(EXPR_LAST < 128, "Too many expression types");
   case TOKEN_SZ: case TOKEN_FLOAT128: case TOKEN_TYPEID: case TOKEN_FAULT: case TOKEN_ANY
 #define TYPE_TOKENS NON_VOID_TYPE_TOKENS: case TOKEN_VOID
 #define CT_TYPE_TOKENS TOKEN_CT_TYPE_IDENT: case TOKEN_CT_TYPEOF: \
-	case TOKEN_CT_VATYPE: case TOKEN_CT_TYPEFROM
+	case TOKEN_CT_TYPEFROM
 #define TYPELIKE_TOKENS TYPE_TOKENS: case TOKEN_TYPE_IDENT: case CT_TYPE_TOKENS
 
 // -- Types helper macros

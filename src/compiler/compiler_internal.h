@@ -2102,6 +2102,7 @@ extern const char *kw_get_tag;
 extern const char *kw_has_tag;
 extern const char *kw_in;
 extern const char *kw_inout;
+extern const char *kw_is_const;
 extern const char *kw_is_ordered;
 extern const char *kw_has_equals;
 extern const char *kw_kind;

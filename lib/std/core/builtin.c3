@@ -81,9 +81,9 @@ macro sz @bitsizeof(#expr) @builtin @const => @sizeof(#expr) * 8u;
 macro bool @in($needle, ...) @builtin @const
 {
 	$for var $x = 0; $x < $vacount; $x++:
-		$assert $defined($needle == $vaconst[$x])
-			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof($needle), $typeof($vaconst[$x]);
-		$if $needle == $vaconst[$x]: return true; $endif
+		$assert $defined($needle == $vaarg[$x])
+			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof($needle), $typeof($vaarg[$x]);
+		$if $needle == $vaarg[$x]: return true; $endif
 	$endfor
 	return false;
 }

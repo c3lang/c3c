@@ -4755,7 +4755,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 					expr_rewrite_const_typeid(init, type);
 				}
 				// If this isn't a type, it's an error.
-				if (!expr_is_const_typeid(init))
+				if (!sema_cast_const(init) || !expr_is_const_typeid(init))
 				{
 					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);

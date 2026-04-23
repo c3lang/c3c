@@ -430,15 +430,6 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
-	if (try_consume(c, TOKEN_CT_VATYPE))
-	{
-		TypeInfo *type_info = type_info_new(TYPE_INFO_VATYPE, make_loc(c->prev_span));
-		CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_type_info);
-		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
-		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_type_info);
-		RANGE_EXTEND_PREV(type_info);
-		return type_info;
-	}
 	SourceLoc range = c->span;
 	Path *path;
 	if (!parse_path_prefix(c, &path)) return poisoned_type_info;
@@ -1589,8 +1580,6 @@ static bool parse_next_is_typed_parameter(ParseContext *c, ParameterParseKind pa
 		case TOKEN_CT_TYPEOF:
 		case TOKEN_CT_TYPEFROM:
 			return true;
-		case TOKEN_CT_VATYPE:
-			return parse_kind == PARAM_PARSE_LAMBDA || parse_kind == PARAM_PARSE_CALL;
 		case TOKEN_CT_TYPE_IDENT:
 			if (parse_kind == PARAM_PARSE_LAMBDA) return true;
 			if (parse_kind != PARAM_PARSE_CALL) return false;

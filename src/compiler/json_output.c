@@ -136,9 +136,6 @@ void print_type(FILE *file, TypeInfo *type)
 			loc_to_scratch(type->unresolved_type_expr->loc);
 			PRINTF("$typeof(%s)", scratch_buffer_to_string());
 			break;
-		case TYPE_INFO_VATYPE:
-			PRINTF("$vatype[...]");
-			break;
 		case TYPE_INFO_TYPEFROM:
 			PRINTF("$typefrom(...)");
 			break;
