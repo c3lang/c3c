@@ -315,7 +315,8 @@
 
 <body>
 	<div id="sidebar">
-		<div style="padding: 12px 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
+		<div
+			style="padding: 12px 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
 			<img src="https://c3-lang.org/logo.svg" alt="C3 Logo" style="height: 28px; width: auto;">
 			<span style="color: #888; font-size: 0.8em;">Documentation</span>
 		</div>
@@ -854,9 +855,26 @@
 					<strong>Deprecated:</strong> ${d.docs.deprecated}
 				</div>`;
 			}
-			if (d.docs.return) {
-				html += `<p><strong>Returns:</strong> ${d.docs.return}</p>`;
+
+			if (d.docs.params && d.docs.params.length > 0) {
+				html += `<h3>Parameters</h3><ul class="member-list group-list" style="margin-bottom: 20px;">`;
+				d.docs.params.forEach(p => {
+					let modStr = p.modifier ? `<span class="visibility-badge" style="margin: 0 5px 0 0; border-color: #555; color: #aaa;">${p.modifier}</span>` : '';
+					if (p.by_ref) modStr += `<span class="visibility-badge" style="margin: 0 5px 0 0; border-color: #555; color: #aaa;">ref</span>`;
+
+					html += `<li class="member-item">
+						<span style="color: #9cdcfe; font-family: monospace; font-weight: bold;">${p.name}</span>
+						${modStr}
+						<div style="margin-top: 4px; color: #ccc;">${p.description || ''}</div>
+					</li>`;
+				});
+				html += `</ul>`;
 			}
+
+			if (d.docs.return) {
+				html += `<h3>Returns</h3><p style="font-size: 1.05em; margin-bottom: 20px;">${d.docs.return}</p>`;
+			}
+
 			if (d.docs.text) {
 				html += `<h3>Description</h3><div style="font-size: 1.05em; line-height: 1.6;">${formatDocText(d.docs.text)}</div>`;
 			}
