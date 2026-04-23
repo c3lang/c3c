@@ -1794,6 +1794,26 @@ struct CompilationUnit_
 	} llvm;
 };
 
+typedef struct
+{
+	const char *comment;
+	SourceLocId comment_span;
+	unsigned comment_len;
+	Expr **requires;
+	Expr **ensures;
+	ContractParam *params;
+	bool pure;
+	bool has_contracts;
+	SourceLocId first;
+	SourceLocId first_non_require;
+	SourceLocId first_contract;
+	Expr **opt_returns;
+	const char *return_desc;
+	Attr *deprecated;
+} ContractDescription;
+
+#define EMPTY_CONTRACT ((ContractDescription){ NULL })
+
 typedef struct ParseContext_
 {
 	TokenData data;
@@ -1802,6 +1822,7 @@ typedef struct ParseContext_
 	SourceLoc prev_span;
 	CompilationUnit *unit;
 	Lexer lexer;
+	ContractDescription contracts;
 } ParseContext;
 
 typedef struct

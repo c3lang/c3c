@@ -263,6 +263,8 @@ typedef struct BuildOptions_
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
+	bool docgen_json_out;
+	bool docgen_append;
 	bool fetch_accept_license;
 	bool msvc_show_versions;
 	const char *msvc_version_override;
@@ -401,6 +403,8 @@ typedef struct
 	bool test_output;
 	bool lsp_output;
 	bool docgen;
+	bool docgen_json_out;
+	bool docgen_append;
 	bool output_headers;
 	bool output_ast;
 	bool lex_only;

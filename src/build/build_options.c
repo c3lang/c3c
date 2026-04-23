@@ -1076,6 +1076,16 @@ static void parse_option(BuildOptions *options)
 				options->verbosity_level = -1;
 				return;
 			}
+			if (match_longopt("json"))
+			{
+				options->docgen_json_out = true;
+				return;
+			}
+			if (match_longopt("append"))
+			{
+				options->docgen_append = true;
+				return;
+			}
 			if (match_longopt("version"))
 			{
 				print_version();

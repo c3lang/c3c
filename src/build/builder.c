@@ -632,6 +632,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
 	target->docgen = options->command == COMMAND_DOCGEN;
+	target->docgen_json_out = options->docgen_json_out;
+	target->docgen_append = options->docgen_append;
 	target->silent = options->verbosity_level < 0;
 	switch (options->sanitize_mode)
 	{

@@ -7,12 +7,34 @@
 	<title>C3 Docgen Viewer</title>
 	<style>
 		:root {
-			--bg: #1e1e1e;
-			--fg: #d4d4d4;
-			--accent: #007acc;
-			--border: #333;
-			--panel: #252526;
+			--bg: #090a0b;
+			--fg: #e7e5e4;
+			--accent: #2563EB;
+			--accent-purple: #7C3AED;
+			--border: #292524;
+			--panel: rgb(23, 24, 28);
+			--color-white: rgb(230, 230, 230);
+			--color-blue-500: #3b82f6;
+			--color-red-400: #f87171;
+			--color-orange-400: #fb923c;
+			--color-green-500: #22c55e;
 			color-scheme: dark;
+		}
+
+		.text-blue-500 {
+			color: var(--color-blue-500);
+		}
+
+		.text-red-400 {
+			color: var(--color-red-400);
+		}
+
+		.text-orange-400 {
+			color: var(--color-orange-400);
+		}
+
+		.text-green-500 {
+			color: var(--color-green-500);
 		}
 
 		.visibility-badge {
@@ -29,18 +51,18 @@
 		}
 
 		.vis-public {
-			color: #89d185;
-			border-color: #3d5a3d;
+			color: var(--color-green-500);
+			border-color: rgba(34, 197, 94, 0.3);
 		}
 
 		.vis-private {
-			color: #f48771;
-			border-color: #5a3d3d;
+			color: var(--color-red-400);
+			border-color: rgba(248, 113, 113, 0.3);
 		}
 
 		.vis-local {
-			color: #cca700;
-			border-color: #5a5a1d;
+			color: var(--color-orange-400);
+			border-color: rgba(251, 146, 60, 0.3);
 		}
 
 		.search-item-visibility {
@@ -53,48 +75,17 @@
 			opacity: 0.6;
 		}
 
-		.visibility-badge {
-			font-size: 0.7em;
-			padding: 2px 6px;
-			border-radius: 4px;
-			margin-left: 10px;
-			vertical-align: middle;
-			text-transform: uppercase;
-			font-weight: bold;
-			letter-spacing: 0.5px;
-			border: 1px solid currentColor;
-			opacity: 0.8;
-		}
-
-		.vis-public {
-			color: #89d185;
-			border-color: #3d5a3d;
-		}
-
-		.vis-private {
-			color: #f48771;
-			border-color: #5a3d3d;
-		}
-
-		.vis-local {
-			color: #cca700;
-			border-color: #5a5a1d;
-		}
-
 		.item-visibility {
 			font-size: 0.8em;
 			color: #888;
-			margin-right: 8px;
+			/* margin-left: 8px; */
 			font-family: monospace;
 		}
 
-		.hidden-sym {
-			opacity: 0.6;
-		}
-
 		/* Custom Scrollbar */
-		width: 10px;
-		height: 10px;
+		::-webkit-scrollbar {
+			width: 10px;
+			height: 10px;
 		}
 
 		::-webkit-scrollbar-track {
@@ -120,7 +111,9 @@
 		}
 
 		#sidebar {
-			width: 520px;
+			min-width: 320px;
+			width: fit-content;
+			max-width: 800px;
 			border-right: 1px solid var(--border);
 			display: flex;
 			flex-direction: column;
@@ -172,7 +165,10 @@
 		.item-name {
 			font-family: monospace;
 			font-size: 0.9em;
-			word-break: break-all;
+			white-space: nowrap;
+			flex: 1;
+			flex-shrink: 0;
+			margin-right: 8px;
 		}
 
 		.item-kind {
@@ -186,17 +182,27 @@
 		}
 
 		.kind-function {
-			background: #b5cea8;
+			background: #d2a8ff;
 			color: #000;
 		}
 
 		.kind-macro {
-			background: #c586c0;
-			color: #fff;
+			background: #ff79c6;
+			color: #000;
 		}
 
 		.kind-struct {
-			background: #4ec9b0;
+			background: #ffa657;
+			color: #000;
+		}
+
+		.kind-union {
+			background: #ff8c42;
+			color: #000;
+		}
+
+		.kind-bitstruct {
+			background: #f8d486;
 			color: #000;
 		}
 
@@ -210,9 +216,118 @@
 			color: #000;
 		}
 
-		.kind-variable {
+		.kind-module {
+			background: #79b9f6;
+			color: #000;
+		}
+
+		.kind-variable,
+		.kind-const,
+		.kind-constdef {
 			background: #9cdcfe;
 			color: #000;
+		}
+
+		/* C3 Syntax Highlighting Classes (GitHub Dark Theme) */
+		.c3-struct,
+		.c3-union,
+		.c3-enum,
+		.c3-bitstruct,
+		.c3-typedef,
+		.c3-type_alias,
+		.c3-interface,
+		.c3-faultdef,
+		.c3-type {
+			color: #ffa657;
+		}
+
+		.c3-module {
+			color: #79c0ff;
+		}
+
+		.c3-macro {
+			color: #d2a8ff;
+		}
+
+		.c3-keyword {
+			color: #ff7b72;
+		}
+
+		.c3-function {
+			color: #d2a8ff;
+		}
+
+		.c3-variable,
+		.c3-const,
+		.c3-constdef {
+			color: #79c0ff;
+		}
+
+		.c3-string {
+			color: #a5d6ff;
+		}
+
+		.c3-attribute {
+			color: #8b949e;
+		}
+
+		.c3-comment {
+			color: #8b949e;
+		}
+
+		.c3-number {
+			color: #79c0ff;
+		}
+
+		/* General Utility Classes */
+		.secondary-text {
+			color: #888;
+			font-size: 0.8em;
+		}
+
+		.error-text {
+			color: #f48771;
+		}
+
+		.monospace {
+			font-family: monospace;
+		}
+
+		.help-cursor {
+			cursor: help;
+		}
+
+		.bold {
+			font-weight: bold;
+		}
+
+		.built-in-type {
+			border-bottom: 1px dotted #888;
+		}
+
+		.type-link {
+			text-decoration: none;
+			border-bottom: 1px dashed #4ec9b0;
+		}
+
+		.item-kind-function,
+		.item-kind-macro {
+			background: rgba(210, 168, 255, 0.07);
+		}
+
+		.item-kind-struct,
+		.item-kind-union,
+		.item-kind-bitstruct,
+		.item-kind-enum,
+		.item-kind-interface {
+			background: rgba(255, 166, 87, 0.07);
+		}
+
+		.item-kind-variable,
+		.item-kind-const,
+		.item-kind-constdef,
+		.item-kind-module {
+			background: rgba(121, 192, 255, 0.07);
 		}
 
 		#content {
@@ -238,6 +353,21 @@
 			border: 1px solid var(--border);
 		}
 
+		.header-pre {
+			font-size: 1.1em;
+			margin: 15px 0 20px 0;
+			background: #111;
+			padding: 14px;
+			border-radius: 6px;
+			border-left: 3px solid var(--accent);
+			white-space: pre-wrap;
+			word-break: break-all;
+		}
+
+		.header-pre.compact {
+			margin-top: -2px;
+		}
+
 		code {
 			font-family: monospace;
 		}
@@ -255,6 +385,398 @@
 			font-family: monospace;
 			position: relative;
 			border-left: 2px solid #444;
+			cursor: pointer;
+		}
+
+		.member-item:hover {
+			background: #3e3e3e !important;
+		}
+
+		.member-item-selected {
+			background: #3e3e3e !important;
+			border-left-color: var(--accent) !important;
+		}
+
+		.member-item-not-selected {
+			background: transparent;
+			border: none;
+			padding-left: 0;
+		}
+
+		.member-link {
+			text-decoration: none;
+			font-size: 0.9em;
+		}
+
+		.member-link.current {
+			color: #fff;
+		}
+
+		.sidebar-section-title {
+			text-transform: capitalize;
+			margin-top: 15px;
+			font-size: 0.9em;
+			color: #aaa;
+			padding: 8px 15px;
+			border-bottom: 1px solid var(--border);
+		}
+
+		.sidebar-member-list {
+			padding-left: 10px;
+			margin-left: 10px;
+			border-left: 1px solid #333;
+		}
+
+		.module-contents-container {
+			margin-top: 30px;
+		}
+
+		.header-container {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			flex-wrap: wrap;
+			margin-bottom: 8px;
+		}
+
+		.module-breadcrumb {
+			color: #888;
+			font-size: 1.2em;
+			font-family: monospace;
+		}
+
+		.module-link {
+			color: #888;
+			text-decoration: none;
+			border-bottom: 1px dashed #555;
+		}
+
+		.header-title {
+			margin: 0;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.interface-link {
+			color: #4ec9b0;
+			text-decoration: none;
+			border-bottom: 1px dashed #4ec9b0;
+		}
+
+		.deprecated-box {
+			background: #5a1d1d;
+			padding: 10px;
+			border-radius: 4px;
+			margin-bottom: 20px;
+		}
+
+		.doc-text {
+			margin-top: 4px;
+			color: #ccc;
+		}
+
+		.sidebar-header-link {
+			text-decoration: none;
+			color: inherit;
+			display: block;
+		}
+
+		.sidebar-header {
+			padding: 16px 15px;
+			border-bottom: 1px solid var(--border);
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			cursor: pointer;
+			background: linear-gradient(135deg, #000 0%, #7C3AED 100%);
+			color: white;
+		}
+
+		.sidebar-header .secondary-text {
+			color: rgba(225, 225, 225, 0.7);
+			font-weight: 600;
+		}
+
+		.logo {
+			height: 28px;
+			width: auto;
+		}
+
+		.search-stats {
+			font-size: 0.8em;
+			color: #888;
+			margin-top: 8px;
+		}
+
+		.sidebar-nav-container {
+			position: relative;
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+
+		.module-list-container {
+			flex: 1;
+			overflow-y: auto;
+			position: relative;
+		}
+
+		.scroll-indicator {
+			position: absolute;
+			left: 0;
+			right: 0;
+			height: 50px;
+			pointer-events: none;
+			z-index: 10;
+			transition: opacity 0.2s;
+			opacity: 0;
+			display: flex;
+			justify-content: center;
+		}
+
+		.scroll-indicator::after {
+			content: '';
+			position: absolute;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 0;
+			height: 0;
+			border-left: 6px solid transparent;
+			border-right: 6px solid transparent;
+			opacity: 0.8;
+		}
+
+		.scroll-indicator-top {
+			top: 0;
+			background: linear-gradient(to top, transparent 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0.9) 100%);
+		}
+
+		.scroll-indicator-top::after {
+			top: 8px;
+			border-bottom: 6px solid var(--accent);
+		}
+
+		.scroll-indicator-bottom {
+			bottom: 0;
+			background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+		}
+
+		.scroll-indicator-bottom::after {
+			bottom: 8px;
+			border-top: 6px solid var(--accent);
+		}
+
+		.search-results-overlay {
+			background: var(--panel);
+			display: none;
+			flex: 1;
+			overflow-y: auto;
+			position: relative;
+			z-index: 20;
+		}
+
+		.main-content {
+			flex: 1;
+			min-width: 0;
+		}
+
+		.right-sidebar {
+			width: 350px;
+			border-left: 1px solid var(--border);
+			background: var(--panel);
+			display: none;
+			flex-direction: column;
+			position: relative;
+		}
+
+		.right-sidebar-title {
+			padding: 15px;
+			border-bottom: 1px solid var(--border);
+			font-weight: bold;
+			color: var(--accent);
+			font-family: monospace;
+			font-size: 0.9em;
+			word-break: break-all;
+		}
+
+		.right-sidebar-content {
+			flex: 1;
+			overflow-y: auto;
+			padding: 15px;
+		}
+
+		.doc-section-list {
+			margin-bottom: 20px !important;
+		}
+
+		.doc-returns {
+			font-size: 1.05em;
+			margin-bottom: 20px;
+		}
+
+		.doc-description {
+			font-size: 1.05em;
+			line-height: 1.6;
+		}
+
+		.targets-badge {
+			font-size: 0.85em;
+			color: #666;
+			font-family: monospace;
+			padding: 1px 4px;
+			border: 1px solid #222;
+			display: inline-block;
+			border-radius: 2px;
+			border-bottom: none;
+			background: #111;
+		}
+
+		.variant-separator {
+			border: 0;
+			border-top: 1px solid var(--border);
+			margin: 40px 0;
+			opacity: 0.5;
+		}
+
+		.module-list-ul {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+
+		.module-list-ul li {
+			padding: 8px 15px;
+			cursor: pointer;
+		}
+
+		.module-list-ul li:nth-child(even) {
+			background: rgba(255, 255, 255, 0.03);
+		}
+
+		.module-list-ul li:hover {
+			background: rgba(255, 255, 255, 0.1) !important;
+		}
+
+		.module-list-ul li.selected {
+			background: rgba(255, 255, 255, 0.1) !important;
+			border-left: 2px solid var(--accent);
+		}
+
+		.overview-title {
+			margin-bottom: 8px;
+		}
+
+		.overview-subtitle {
+			color: #888;
+			margin-bottom: 30px;
+		}
+
+		.overview-groups {
+			column-width: 350px;
+			column-gap: 50px;
+			margin-top: 30px;
+		}
+
+		.module-group {
+			margin-bottom: 35px;
+			break-inside: auto;
+		}
+
+		.module-group-title {
+			font-family: monospace;
+			font-size: 1.1em;
+			font-weight: bold;
+			color: var(--color-blue-500);
+			border-bottom: 1px solid var(--border);
+			padding-bottom: 8px;
+			margin-bottom: 12px;
+			text-transform: uppercase;
+			letter-spacing: 1px;
+			break-after: avoid;
+		}
+
+		.module-group-list {
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+		}
+
+		.module-row {
+			cursor: pointer;
+			padding: 4px 8px;
+			border-radius: 4px;
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+		}
+
+		.module-row:hover {
+			background: rgba(255, 255, 255, 0.05);
+		}
+
+		.module-row-name {
+			font-family: monospace;
+			font-size: 1.05em;
+			color: var(--color-blue-500);
+			font-weight: bold;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.module-tooltip {
+			position: fixed;
+			background: var(--panel);
+			border: 1px solid var(--color-blue-500);
+			padding: 16px 24px;
+			border-radius: 8px;
+			z-index: 2000;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+			max-width: 500px;
+			max-height: calc(100vh - 60px);
+			overflow-y: auto;
+			scrollbar-width: none;
+			width: auto;
+			display: none;
+			pointer-events: none;
+			font-size: 0.95em;
+			line-height: 1.5;
+		}
+
+		.module-tooltip.show {
+			display: block;
+		}
+
+		.module-tooltip.top-left {
+			top: 30px;
+			left: 30px;
+		}
+
+		.module-tooltip.top-right {
+			top: 30px;
+			right: 30px;
+		}
+
+		.module-tooltip.bottom-left {
+			bottom: 30px;
+			left: 30px;
+		}
+
+		.module-tooltip.bottom-right {
+			bottom: 30px;
+			right: 30px;
+		}
+
+		.module-tooltip-title {
+			color: var(--color-blue-500);
+			font-weight: bold;
+			font-family: monospace;
+			margin-bottom: 8px;
+			font-size: 1.1em;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+			padding-bottom: 4px;
 		}
 
 		.member-group {
@@ -299,10 +821,7 @@
 			border-color: #3d5a3d;
 		}
 
-		.member-list {
-			list-style: none;
-			padding: 0;
-		}
+
 
 		.group-list {
 			margin-top: 8px;
@@ -314,20 +833,31 @@
 </head>
 
 <body>
+	<div id="module-tooltip" class="module-tooltip"></div>
 	<div id="sidebar">
-		<div
-			style="padding: 12px 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
-			<img src="https://c3-lang.org/logo.svg" alt="C3 Logo" style="height: 28px; width: auto;">
-			<span style="color: #888; font-size: 0.8em;">Documentation</span>
-		</div>
+		<a href="#" onclick="event.preventDefault(); navigateTo('');" class="sidebar-header-link">
+			<div class="sidebar-header">
+				<img src="https://c3-lang.org/logo.svg" alt="C3 Logo" class="logo">
+				<span class="secondary-text">Documentation</span>
+			</div>
+		</a>
 		<div id="search-box">
-			<input type="text" id="search-input" placeholder="Search API... (e.g. string)">
-			<div id="stats" style="font-size: 0.8em; color: #888; margin-top: 8px;">Loading...</div>
+			<input type="text" id="search-input" placeholder="Start typing to search...">
 		</div>
-		<ul id="list"></ul>
+		<div class="sidebar-nav-container">
+			<div id="mod-indicator-top" class="scroll-indicator scroll-indicator-top"></div>
+			<div id="module-list" class="module-list-container"></div>
+			<div id="mod-indicator-bottom" class="scroll-indicator scroll-indicator-bottom"></div>
+			<ul id="list" class="search-results-overlay"></ul>
+		</div>
 	</div>
-	<div id="content">
-		<h2>Select a declaration to view its details.</h2>
+
+	<div id="content" class="main-content"></div>
+
+	<div id="right-sidebar" class="right-sidebar">
+		<div id="ctx-indicator-top" class="scroll-indicator scroll-indicator-top"></div>
+		<div id="right-sidebar-content" class="right-sidebar-content"></div>
+		<div id="ctx-indicator-bottom" class="scroll-indicator scroll-indicator-bottom"></div>
 	</div>
 
 	<script>
@@ -336,35 +866,63 @@
 		let currentRendered = [];
 		let currentFiltered = [];
 
-		const TARGET_FILES = [
-			'docs.json',
-			'docs-linux-x64.json',
-			'docs-windows-x64.json',
-			'docs-macos-x64.json',
-			'docs-macos-aarch64.json',
-			'docs-linux-aarch64.json'
-		];
+		function showTooltip(uid, event) {
+			const target = allDecls.find(d => d.uid === uid);
+			let docText = target && target.docs && target.docs.text ? target.docs.text : '';
+			if (!docText) return;
+
+			const tooltip = document.getElementById('module-tooltip');
+
+			// Position in opposite corner
+			const x = event.clientX;
+			const y = event.clientY;
+			const vw = window.innerWidth;
+			const vh = window.innerHeight;
+
+			tooltip.className = 'module-tooltip'; // Reset
+			if (x < vw / 2) {
+				tooltip.classList.add(y < vh / 2 ? 'bottom-right' : 'top-right');
+			} else {
+				tooltip.classList.add(y < vh / 2 ? 'bottom-left' : 'top-left');
+			}
+
+			tooltip.innerHTML = `
+				<div class="module-tooltip-title">${uid}</div>
+				<div class="module-tooltip-content">${formatDocText(docText)}</div>
+			`;
+			tooltip.classList.add('show');
+		}
+
+		function hideTooltip() {
+			document.getElementById('module-tooltip').classList.remove('show');
+		}
+
+		const EMBEDDED_JSON_LIST = [];
+		/*DATA_START*/
+		/*DATA_END*/
 
 		async function loadTargetFiles() {
-			let loadedAny = false;
-			for (const file of TARGET_FILES) {
-				try {
-					const res = await fetch(file);
-					if (!res.ok) continue;
-					const data = await res.json();
-					loadedAny = true;
-
-					const targetName = file.replace('docs-', '').replace('.json', '');
-					mergeTargetData(data, targetName);
-				} catch (e) {
-					// ignore fetch failures for missing targets
+			if (EMBEDDED_JSON_LIST.length > 0) {
+				for (const item of EMBEDDED_JSON_LIST) {
+					mergeTargetData(item.data, item.target);
 				}
+				return true;
 			}
-			return loadedAny;
+			return false;
 		}
 
 		function mergeTargetData(data, targetName) {
 			for (const [moduleName, mod] of Object.entries(data.modules)) {
+				addOrMergeDeclaration({
+					name: moduleName,
+					kind: 'module',
+					uid: moduleName,
+					visibility: 'public',
+					docs: mod.docs,
+					moduleName: moduleName,
+					targetName: targetName === 'docs' ? 'default' : targetName
+				});
+
 				['functions', 'macros', 'types', 'variables'].forEach(cat => {
 					if (mod[cat]) {
 						mod[cat].forEach(decl => {
@@ -401,7 +959,9 @@
 
 			let found = existing.variants.find(v => v.json === declJson);
 			if (found) {
-				found.targets.push(decl.targetName);
+				if (!found.targets.includes(decl.targetName)) {
+					found.targets.push(decl.targetName);
+				}
 			} else {
 				existing.variants.push({
 					targets: [decl.targetName],
@@ -410,138 +970,113 @@
 				});
 			}
 		}
-		function bindEvents() {
-			document.getElementById('search-input').addEventListener('input', (e) => {
-				const q = e.target.value.toLowerCase().trim();
-				if (!q) {
-					renderList(allDecls.filter(d => (d.visibility || 'public') === 'public'));
-					return;
-				}
 
-				function getFuzzyScore(text, query) {
-					let textIdx = 0;
-					let queryIdx = 0;
-					let score = 0;
-					let consecutive = 0;
+		function renderModules() {
+			const modules = allDecls.filter(d => d.kind === 'module').sort((a, b) => a.uid.localeCompare(b.uid));
+			const container = document.getElementById('module-list');
+			let html = '<h3 class="sidebar-section-title">Modules</h3>';
+			html += '<ul class="module-list-ul">';
+			modules.forEach(m => {
+				html += `<li class="item" data-mod="${m.uid}" onclick="closeSearch(); navigateTo('${m.uid}', true)">
+					<span class="item-name c3-module">${m.uid}</span>
+				</li>`;
+			});
+			html += '</ul>';
+			container.innerHTML = html;
+		}
 
-					const tLow = text.toLowerCase();
-					const qLow = query.toLowerCase();
+		function renderModuleOverview() {
+			document.querySelectorAll('.module-list-ul li').forEach(li => li.classList.remove('selected'));
+			const content = document.getElementById('content');
+			content.scrollTop = 0;
+			const moduleNames = [...new Set(allDecls.map(d => d.moduleName))].sort();
 
-					while (textIdx < tLow.length && queryIdx < qLow.length) {
-						if (tLow[textIdx] === qLow[queryIdx]) {
-							score += 10 + (consecutive * 5);
-							consecutive++;
-							queryIdx++;
-						} else {
-							consecutive = 0;
-							score -= 1;
-						}
-						textIdx++;
-					}
-					return queryIdx === qLow.length ? score : 0;
-				}
-
-				const filtered = allDecls
-					.map(d => {
-						let score = 0;
-						const nameLower = d.name.toLowerCase();
-
-						if (nameLower === q) score = 10000;
-						else if (nameLower.startsWith(q)) score = 5000;
-						else if (nameLower.includes(q)) score = 1000;
-						else score = getFuzzyScore(d.name, q);
-
-						if (score > 0) {
-							if ((d.visibility || 'public') === 'public') score += 20000;
-							if (d.uid.startsWith('std::core')) score += 50;
-							return { d, score };
-						}
-						return null;
-					})
-					.filter(x => x !== null)
-					.sort((a, b) => b.score - a.score || a.d.name.length - b.d.name.length)
-					.map(x => x.d);
-
-				renderList(filtered);
-
-				// Auto-select the first match, no history push (user is still typing)
-				if (filtered.length > 0) {
-					renderDetails(filtered[0]);
-					highlightItem(0);
-				}
+			// Group modules by top-level namespace
+			const groups = {};
+			moduleNames.forEach(m => {
+				const parts = m.split('::');
+				const top = parts[0];
+				if (!groups[top]) groups[top] = [];
+				groups[top].push(m);
 			});
 
-			// Global keydown: arrow keys work regardless of focus; typing anywhere focuses the search box
-			document.addEventListener('keydown', (e) => {
-				const input = document.getElementById('search-input');
-				if (e.key === 'ArrowDown') {
-					e.preventDefault();
-					const next = selectedIndex + 1;
-					// If we've hit the end of the DOM but there are more items, append them
-					if (next >= currentRendered.length && currentRendered.length < currentFiltered.length) {
-						appendToList(Math.min(currentFiltered.length, currentRendered.length + 50));
-					}
-					const clamped = Math.min(next, currentRendered.length - 1);
-					if (clamped >= 0) { highlightItem(clamped); renderDetails(currentRendered[clamped]); }
-				} else if (e.key === 'ArrowUp') {
-					e.preventDefault();
-					const prev = Math.max(selectedIndex - 1, 0);
-					highlightItem(prev);
-					renderDetails(currentRendered[prev]);
-				} else if (e.key === 'Enter' && selectedIndex >= 0) {
-					e.preventDefault();
-					navigateTo(currentRendered[selectedIndex].uid);
-				} else if (e.key === 'Escape') {
-					input.blur();
-				} else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
-					// Printable character: redirect to search box if it doesn't already have focus
-					if (document.activeElement !== input) {
-						input.focus();
-					}
-				}
+			let html = `
+				<h1 class="overview-title">Project Overview</h1>
+				<p class="overview-subtitle">Modules grouped by namespace.</p>
+				<div class="overview-groups">
+			`;
+
+			Object.entries(groups).sort().forEach(([top, mods]) => {
+				html += `
+					<div class="module-group">
+						<div class="module-group-title">${top}</div>
+						<div class="module-group-list">
+				`;
+				mods.forEach(m => {
+					const display = m.startsWith(top + '::') ? m.slice(top.length + 2) : m;
+
+					html += `
+						<div class="module-row"
+							 onclick="hideTooltip(); navigateTo('${m}')"
+							 onmouseenter="showTooltip('${m}', event)"
+							 onmouseleave="hideTooltip()">
+							<span class="module-row-name">${display}</span>
+						</div>
+					`;
+				});
+				html += `
+						</div>
+					</div>
+				`;
 			});
 
-			// Handle browser back/forward buttons
-			window.addEventListener('popstate', (e) => {
-				if (e.state && e.state.uid) {
-					const target = allDecls.find(d => d.uid === e.state.uid);
-					if (target) renderDetails(target);
-				} else {
-					document.getElementById('content').innerHTML = '<h2>Select a declaration to view its details.</h2>';
-				}
-			});
+			html += '</div>';
+			content.innerHTML = html;
+			document.getElementById('right-sidebar').style.display = 'none';
 		}
 
 		async function init() {
 			try {
 				const loadedAny = await loadTargetFiles();
-				if (!loadedAny) throw new Error("Could not load any docs JSON files (tried docs.json, docs-linux-x64.json, etc)");
+				if (!loadedAny) throw new Error("Documentation JSON payload is missing.");
 
-				document.getElementById('stats').innerText = `${allDecls.length} declarations loaded.`;
-				renderList(allDecls.filter(d => d.visibility === 'public'));
+				renderModules();
 
 				// On initial load, navigate to the uid in the URL hash if present
-				const initialHash = location.hash.slice(1);
+				const initialHash = decodeURIComponent(location.hash.slice(1));
 				if (initialHash) {
 					const target = allDecls.find(d => d.uid === initialHash);
-					if (target) { renderDetails(target); }
+					if (target) { renderDetails(target); } else { renderModuleOverview(); }
+				} else {
+					renderModuleOverview();
 				}
 
 				bindEvents();
 			} catch (e) {
 				document.getElementById('content').innerHTML = `
-					<h2 style="color: #f48771;">Error loading docs.json</h2>
-					<p>${e.message}</p>
-					<p>Make sure you are serving this via a local web server to avoid CORS issues.</p>
-					<pre>python -m http.server 8080</pre>
+					<h2 class="error-text">Error: Documentation data missing</h2>
+					<p class="error-text monospace">${e.message}</p>
+					<p>Make sure you run <code>c3c docgen</code> to properly generate and embed the documentation data within this file.</p>
 				`;
 				document.getElementById('stats').innerText = "Failed to load.";
 			}
 		}
 
+		function closeSearch() {
+			const input = document.getElementById('search-input');
+			input.value = '';
+			const list = document.getElementById('list');
+			list.style.display = 'none';
+			document.getElementById('module-list').style.display = 'block';
+			list.innerHTML = '';
+			selectedIndex = -1;
+			currentRendered = [];
+			currentFiltered = [];
+		}
+
 		function makeListItem(d, index) {
 			const li = document.createElement('li');
-			li.className = 'item' + (d.visibility !== 'public' ? ' hidden-sym' : '');
+			li.className = `item item-kind-${d.kind || 'other'}` + (d.visibility !== 'public' ? ' hidden-sym' : '');
 			let kindClass = `item-kind`;
 			if (d.kind === 'function') kindClass += ' kind-function';
 			else if (d.kind === 'macro') kindClass += ' kind-macro';
@@ -551,11 +1086,10 @@
 			const visLabel = vis !== 'public' ? `<span class="item-visibility">[${vis}]</span>` : '';
 
 			li.innerHTML = `
-				<span class="item-name" style="flex: 1; margin-right: 8px;">${d.uid}</span>
-				${visLabel}
+				<span class="item-name c3-${d.kind}">${d.uid} ${visLabel}</span>
 				<span class="${kindClass}">${d.kind}</span>
 			`;
-			li.onclick = () => { highlightItem(index); navigateTo(d.uid); };
+			li.onclick = () => { closeSearch(); navigateTo(d.uid); };
 			return li;
 		}
 
@@ -585,7 +1119,7 @@
 		function highlightItem(index) {
 			selectedIndex = index;
 			const list = document.getElementById('list');
-			const items = list.querySelectorAll('.item');
+			const items = list.querySelectorAll('.item:not(.list-footer)');
 			items.forEach((el, i) => el.classList.toggle('selected', i === index));
 			if (items[index]) items[index].scrollIntoView({ block: 'nearest' });
 		}
@@ -596,9 +1130,11 @@
 			currentFiltered = items;
 			const list = document.getElementById('list');
 			list.innerHTML = '';
+			list.style.display = 'block';
+			document.getElementById('module-list').style.display = 'none';
 
-			// Lazy DOM rendering: start with first 200, expand on demand via arrow keys
-			const limit = Math.min(items.length, 200);
+			// Lazy DOM rendering: start with first 50, expand on demand via arrow keys
+			const limit = Math.min(items.length, 50);
 			for (let i = 0; i < limit; i++) {
 				const d = items[i];
 				currentRendered.push(d);
@@ -620,8 +1156,8 @@
 		}
 
 		function formatDocText(text) {
-			// Normalize just in case CRLF->LF, then split into lines for processing
 			const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
 
 			let html = '';
 			let inCode = false;
@@ -638,7 +1174,7 @@
 					inCode = false;
 					html += '</code></pre>';
 				} else if (inCode) {
-					// Strip 1 leading space commonly left by C3 doc blocks :/
+					// Remove 1 leading space often present in C3 doc blocks
 					const outLine = rawLine.startsWith(' ') ? rawLine.substring(1) : rawLine;
 					html += escapeHtml(outLine) + '\n';
 				} else {
@@ -657,20 +1193,177 @@
 			return html;
 		}
 
-		function navigateTo(uid) {
+		function navigateTo(uid, skipSidebarScroll = false) {
+			closeSearch();
+			if (!uid) {
+				history.pushState({ uid: null }, '', window.location.pathname);
+				renderModuleOverview();
+				return;
+			}
 			const target = allDecls.find(d => d.uid === uid);
-			if (!target) return;
-			// Push to browser history so back/forward work, and update the URL hash for sharing
-			history.pushState({ uid }, '', '#' + uid);
-			renderDetails(target);
+			if (target) {
+				history.pushState({ uid: uid }, '', '#' + uid);
+				renderDetails(target, skipSidebarScroll);
+			}
 		}
 
-		function filterByModule(moduleName) {
-			const filtered = allDecls.filter(d => d.moduleName === moduleName);
-			document.getElementById('search-input').value = moduleName;
-			renderList(filtered);
-			// Show first match automatically
-			if (filtered.length > 0) renderDetails(filtered[0]);
+		function bindEvents() {
+			document.getElementById('search-input').addEventListener('input', (e) => {
+				const rawQ = e.target.value.toLowerCase().trim();
+				const q = rawQ.replace(/\s+/g, '');
+				const listEl = document.getElementById('list');
+
+				if (!q) {
+					listEl.style.display = 'none';
+					document.getElementById('module-list').style.display = 'block';
+					// Restore center overview if no item is currently selected via hash
+					if (!location.hash.slice(1)) renderModuleOverview();
+					return;
+				}
+
+				listEl.style.display = 'block';
+				document.getElementById('module-list').style.display = 'none';
+
+				function getFuzzyScore(text, query) {
+					let textIdx = 0;
+					let queryIdx = 0;
+					let score = 0;
+					let consecutive = 0;
+
+					const tLow = text.toLowerCase();
+					const qLow = query;
+
+					while (textIdx < tLow.length && queryIdx < qLow.length) {
+						if (tLow[textIdx] === qLow[queryIdx]) {
+							score += 10 + (consecutive * 5);
+							consecutive++;
+							queryIdx++;
+						} else {
+							consecutive = 0;
+							score -= 1;
+						}
+						textIdx++;
+					}
+					return queryIdx === qLow.length ? score : 0;
+				}
+
+				const filtered = allDecls
+					.map(d => {
+						let score = 0;
+						const nameLower = d.name.toLowerCase();
+						const uidLower = d.uid.toLowerCase();
+
+						if (nameLower === rawQ) score = 10000;
+						else if (nameLower.startsWith(rawQ)) score = 5000;
+						else if (nameLower.includes(rawQ)) score = 1000;
+						else score = getFuzzyScore(d.uid, q);
+
+						if (score > 0) {
+							if ((d.visibility || 'public') === 'public') score += 20000;
+							if (d.kind === 'module') score += 100000; // Prioritize modules
+							if (d.uid.startsWith('std::core')) score += 50;
+							return { d, score };
+						}
+						return null;
+					})
+					.filter(x => x !== null)
+					.sort((a, b) => b.score - a.score || a.d.name.length - b.d.name.length)
+					.map(x => x.d);
+
+				renderList(filtered);
+
+				// Auto-select the first match, no history push (user is still typing)
+				if (filtered.length > 0) {
+					renderDetails(filtered[0]);
+					highlightItem(0);
+				}
+			});
+
+			// Global keydown: arrow keys work regardless of focus; typing anywhere focuses the search box
+			document.addEventListener('keydown', (e) => {
+				const input = document.getElementById('search-input');
+				const list = document.getElementById('list');
+				const isSearching = list.style.display !== 'none';
+
+				if ((e.key === 'ArrowDown' || e.key === 'PageDown') && isSearching) {
+					e.preventDefault();
+					const step = e.key === 'PageDown' ? 10 : 1;
+					const next = selectedIndex + step;
+					if (next >= currentRendered.length && currentRendered.length < currentFiltered.length) {
+						appendToList(Math.min(currentFiltered.length, currentRendered.length + 50));
+					}
+					const clamped = Math.min(next, currentRendered.length - 1);
+					if (clamped >= 0) { highlightItem(clamped); renderDetails(currentRendered[clamped]); }
+				} else if ((e.key === 'ArrowUp' || e.key === 'PageUp') && isSearching) {
+					e.preventDefault();
+					const step = e.key === 'PageUp' ? 10 : 1;
+					const prev = Math.max(selectedIndex - step, 0);
+					highlightItem(prev);
+					renderDetails(currentRendered[prev]);
+				} else if ((e.key === 'Enter' || e.key === 'Escape') && isSearching) {
+					e.preventDefault();
+					if (selectedIndex >= 0) {
+						const uid = currentRendered[selectedIndex].uid;
+						closeSearch();
+						navigateTo(uid);
+					} else {
+						closeSearch();
+					}
+				} else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+					if (document.activeElement !== input) {
+						input.focus();
+					}
+				}
+			});
+
+			document.getElementById('list').addEventListener('scroll', (e) => {
+				const list = e.target;
+				if (list.scrollHeight - list.scrollTop - list.clientHeight < 100) {
+					if (currentRendered.length < currentFiltered.length) {
+						appendToList(Math.min(currentFiltered.length, currentRendered.length + 50));
+					}
+				}
+			});
+
+			const modContainer = document.getElementById('module-list');
+			const updateModIndicators = () => {
+				const top = document.getElementById('mod-indicator-top');
+				const bottom = document.getElementById('mod-indicator-bottom');
+				top.style.opacity = modContainer.scrollTop > 10 ? '1' : '0';
+				const remaining = modContainer.scrollHeight - modContainer.scrollTop - modContainer.clientHeight;
+				bottom.style.opacity = remaining > 10 ? '1' : '0';
+			};
+			modContainer.addEventListener('scroll', updateModIndicators);
+			// Initial check
+			setTimeout(updateModIndicators, 100);
+
+			// Handle browser back/forward buttons
+			window.addEventListener('popstate', (e) => {
+				const uid = (e.state && e.state.uid) || window.location.hash.slice(1);
+				if (uid) {
+					const target = allDecls.find(d => d.uid === uid);
+					if (target) renderDetails(target);
+					else renderModuleOverview();
+				} else {
+					renderModuleOverview();
+				}
+			});
+		}
+
+
+		function renderParams(params) {
+			return (params || []).map(m => {
+				if (m.kind === 'body_param') {
+					const bodyParams = renderParams(m.params);
+					return `<span class="c3-keyword">@body</span>(${bodyParams})`;
+				}
+				const name = m.name ? `<span class="c3-variable">${m.is_ref ? '&' : ''}${m.name}</span>` : (m.is_ref ? '&' : '');
+				const type = renderTypeName(m.type);
+				let res = `${name} : ${type}`;
+				if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
+				if (m.default_value) res += ` = <span class="c3-string">${m.default_value}</span>`;
+				return res;
+			}).join(', ');
 		}
 
 		function buildSignature(d) {
@@ -678,32 +1371,34 @@
 			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
 
 			if (d.kind === 'function' || d.kind === 'macro') {
-				const ret = d.return_type ? d.return_type.name : 'void';
 				const keyword = d.kind === 'macro' ? 'macro' : 'fn';
+				const params = renderParams(d.members);
+				const ret = d.docs && d.docs.return ? renderTypeName({ name: d.docs.return }) : 'void';
+				const attrs = (d.attributes || []).map(a => `<span class="c3-attribute">${a}</span>`).join(' ');
+				return `<span class="c3-keyword">${keyword}</span> ${ret} <span class="c3-function">${localName}</span>(${params})${attrs ? ' ' + attrs : ''}`;
+			}
 
-				const params = (d.members || []).map(m => {
-					const t = m.type ? m.type.name : '...';
-					return `${t} ${m.name}`;
-				}).join(', ');
-
-				return `${keyword} ${ret} ${localName}(${params})`;
+			if (d.kind === 'type_alias' && d.return_type) {
+				const ret = renderTypeName(d.return_type);
+				const params = renderParams(d.members);
+				return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = <span class="c3-keyword">fn</span> ${ret}(${params})`;
 			}
 
 			if (d.kind === 'variable') {
 				const keyword = d.is_const ? 'const' : 'var';
-				const typeName = d.type ? d.type.name : '';
-				return typeName ? `${keyword} ${typeName} ${localName}` : `${keyword} ${localName}`;
+				const typeStr = d.type ? renderTypeName(d.type) : '';
+				return `<span class="c3-keyword">${keyword}</span> ${typeStr} <span class="c3-variable">${localName}</span>`;
 			}
 
 			return null;
 		}
 
 		function buildHeaderHtml(d) {
-			let html = `<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">`;
-			html += `<span style="color: #888; font-size: 1.2em; font-family: monospace;">Module: `;
-			html += `<a href="#" onclick="filterByModule('${d.moduleName}'); return false;"
-						style="color: #888; text-decoration: none; border-bottom: 1px dashed #555;"
-						title="Show only ${d.moduleName}">${d.moduleName}</a>`;
+			let html = `<div class="header-container">`;
+			html += `<span class="module-breadcrumb">Module: `;
+			html += `<a href="#" onclick="navigateTo('${d.moduleName}'); return false;"
+						class="module-link"
+						title="Go to module ${d.moduleName}">${d.moduleName}</a>`;
 			html += `</span>`;
 
 			const kindClass = `kind-${d.kind}`;
@@ -719,13 +1414,13 @@
 				d.attributes.forEach(a => html += `<span class="badge">${a}</span>`);
 			}
 			if (d.custom_attrs) {
-				d.custom_attrs.forEach(a => html += `<span class="badge" style="background: #a361c4;">@${a.name}</span>`);
+				d.custom_attrs.forEach(a => html += `<span class="badge c3-attribute">@${a.name}</span>`);
 			}
 			html += `</div>`;
 
 			const lastSep = d.uid.lastIndexOf('::');
 			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
-			html += `<h1 style="margin: 0; display: flex; align-items: center; gap: 10px;">${localName}</h1>`;
+			html += `<h1 class="header-title">${localName}</h1>`;
 
 			return html;
 		}
@@ -757,20 +1452,37 @@
 		};
 
 		function renderTypeName(typeObj) {
-			if (!typeObj) return `<span style="color: #4ec9b0;">void</span>`;
+			if (!typeObj) return `<span class="c3-type">void</span>`;
 
-			const baseName = typeObj.name.replace(/\[.*?\]/g, '').replace(/\*/g, '').trim();
-			const tooltip = BUILTINS[baseName];
+			const name = typeObj.name;
+			const baseName = name.replace(/\[.*?\]/g, '').replace(/[\*\?]/g, '').trim();
+			let tooltip = BUILTINS[baseName];
 
 			if (tooltip) {
-				return `<span style="color: #4ec9b0; border-bottom: 1px dotted #888; cursor: help;" title="built-in: ${tooltip}">${typeObj.name}</span>`;
+				if (name !== baseName) {
+					let prefix = '';
+					let suffix = name.substring(baseName.length);
+					const mods = suffix.match(/\[<.*?>\]|\[.*?\]|\*|\?/g) || [];
+					for (let i = mods.length - 1; i >= 0; i--) {
+						const mod = mods[i];
+						if (mod === '*') prefix += 'pointer to ';
+						else if (mod === '?') prefix += 'optional ';
+						else if (mod === '[]') prefix += 'slice of ';
+						else if (mod === '[*]') prefix += 'inferred array of ';
+						else if (mod === '[<*>]') prefix += 'inferred vector of ';
+						else if (mod.startsWith('[<')) prefix += 'vector of ';
+						else prefix += 'array of ';
+					}
+					tooltip = prefix + tooltip;
+				}
+				return `<span class="c3-type built-in-type help-cursor" title="built-in: ${tooltip}">${typeObj.name}</span>`;
 			}
 
 			if (typeObj.uid) {
-				return `<a href="#" onclick="navigateTo('${typeObj.uid}'); return false;" style="color: #4ec9b0; text-decoration: none; border-bottom: 1px dashed #4ec9b0;" title="${typeObj.uid}">${typeObj.name}</a>`;
+				return `<a href="#" onclick="navigateTo('${typeObj.uid}'); return false;" class="c3-type type-link" title="${typeObj.uid}">${typeObj.name}</a>`;
 			}
 
-			return `<span style="color: #4ec9b0;">${typeObj.name}</span>`;
+			return `<span class="c3-type">${typeObj.name}</span>`;
 		}
 
 		function buildTypeInfoHtml(vd) {
@@ -784,7 +1496,7 @@
 			if (vd.interfaces && vd.interfaces.length > 0) {
 				const ifaces = vd.interfaces.map(i => {
 					if (i.uid) {
-						return `<a href="#" onclick="navigateTo('${i.uid}'); return false;" style="color: #4ec9b0; text-decoration: none; border-bottom: 1px dashed #4ec9b0;" title="${i.uid}">${i.name}</a>`;
+						return `<a href="#" onclick="navigateTo('${i.uid}'); return false;" class="interface-link" title="${i.uid}">${i.name}</a>`;
 					}
 					return `<code>${i.name}</code>`;
 				}).join(', ');
@@ -811,37 +1523,31 @@
 				// Method rendering (for interfaces)
 				if (m.params !== undefined) {
 					const retStr = renderTypeName(m.type);
-					const paramSig = m.params.map(p => {
-						const tHTML = renderTypeName(p.type);
-						return `${tHTML} ${p.name}`;
-					}).join(', ');
+					const paramSig = renderParams(m.params);
 
-					html += `<li class="member-item" style="font-family: monospace;">
-						<span style="color: #569cd6;">fn</span>
+					html += `<li class="member-item monospace">
+						<span class="c3-keyword">fn</span>
 						${retStr}
-						<span style="color: #dcdcaa;">${m.name}</span>(<span style="color: #9cdcfe;">${paramSig}</span>)
+						<span class="c3-function">${m.name}</span>(${paramSig})
 					</li>`;
 					return;
 				}
 
-				let typeStr = m.type ? renderTypeName(m.type) : '';
-
 				let bitDesc = '';
 				if (m.bit_range) {
-					bitDesc = ` <span style="color: #888; font-size: 0.8em;">(bits ${m.bit_range[0]}..${m.bit_range[1]})</span>`;
+					bitDesc = ` <span class="secondary-text">(bits ${m.bit_range[0]}..${m.bit_range[1]})</span>`;
 				}
 
-				html += `<li class="member-item">
-					<span style="color: #9cdcfe;">${m.name}</span>
-					${typeStr ? ': ' + typeStr : ''}
-					${bitDesc}
+				html += `<li class="member-item monospace">
+					<span class="c3-variable">${m.name}</span>
+					: ${renderTypeName(m.type)}${bitDesc}
 				</li>`;
 			});
 			html += `</ul>`;
 			return html;
 		}
 
-		function buildMembersHtml(vd) {
+		function buildMembersHtml(vd, baseDocs) {
 			if (!vd.members || vd.members.length === 0) return '';
 			return `<h3>Members</h3>` + renderMemberList(vd.members, true);
 		}
@@ -851,32 +1557,35 @@
 
 			let html = '';
 			if (d.docs.deprecated) {
-				html += `<div style="background: #5a1d1d; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
+				html += `<div class="deprecated-box">
 					<strong>Deprecated:</strong> ${d.docs.deprecated}
 				</div>`;
 			}
 
 			if (d.docs.params && d.docs.params.length > 0) {
-				html += `<h3>Parameters</h3><ul class="member-list group-list" style="margin-bottom: 20px;">`;
+				html += `<h3>Parameters</h3><ul class="member-list group-list doc-section-list">`;
 				d.docs.params.forEach(p => {
-					let modStr = p.modifier ? `<span class="visibility-badge" style="margin: 0 5px 0 0; border-color: #555; color: #aaa;">${p.modifier}</span>` : '';
-					if (p.by_ref) modStr += `<span class="visibility-badge" style="margin: 0 5px 0 0; border-color: #555; color: #aaa;">ref</span>`;
+					let modStr = p.modifier ? `<span class="visibility-badge">${p.modifier}</span>` : '';
+					if (p.by_ref) modStr += `<span class="visibility-badge">ref</span>`;
 
 					html += `<li class="member-item">
-						<span style="color: #9cdcfe; font-family: monospace; font-weight: bold;">${p.name}</span>
-						${modStr}
-						<div style="margin-top: 4px; color: #ccc;">${p.description || ''}</div>
+						<div class="monospace">${modStr}${renderTypeName(p.type)} <span class="c3-variable bold">${p.name}</span></div>
+						<div class="doc-text">${p.description || ''}</div>
 					</li>`;
 				});
 				html += `</ul>`;
 			}
 
 			if (d.docs.return) {
-				html += `<h3>Returns</h3><p style="font-size: 1.05em; margin-bottom: 20px;">${d.docs.return}</p>`;
+				html += `<h3>Returns</h3><p class="doc-returns">${d.docs.return}</p>`;
 			}
 
 			if (d.docs.text) {
-				html += `<h3>Description</h3><div style="font-size: 1.05em; line-height: 1.6;">${formatDocText(d.docs.text)}</div>`;
+				if (d.kind === 'module') {
+					html += `<h3>Description</h3><pre class="header-pre" style="white-space: pre-wrap;">${escapeHtml(d.docs.text)}</pre>`;
+				} else {
+					html += `<h3>Description</h3><div class="doc-description">${formatDocText(d.docs.text)}</div>`;
+				}
 			}
 			return html;
 		}
@@ -886,13 +1595,13 @@
 			const headerText = sig || localName;
 			let html = '';
 
-			if (targets.length > 0) {
-				let targetsStr = targets.join(', ');
-				html += `<div style="font-size: 0.85em; color: #666; font-family: monospace; padding: 1px 4px; border: 1px solid #222; display: inline-block; border-radius: 2px; border-bottom: none; background: #111;">${targetsStr}</div>`;
-				html += `<pre style="font-size: 1.1em; margin: -2px 0 20px 0; background: #111; padding: 14px; border-radius: 6px; border-left: 3px solid var(--accent); white-space: pre-wrap; word-break: break-all;">${headerText}</pre>`;
-			} else {
-				html += `<pre style="font-size: 1.1em; margin: 15px 0 20px 0; background: #111; padding: 14px; border-radius: 6px; border-left: 3px solid var(--accent); white-space: pre-wrap; word-break: break-all;">${headerText}</pre>`;
+			const targetsStr = (targets || []).join(', ');
+			if (targetsStr) {
+				html += `<div class="targets-badge">${targetsStr}</div>`;
 			}
+
+			const isCompact = !baseDocs || (!baseDocs.text && !baseDocs.return && (!baseDocs.params || baseDocs.params.length === 0));
+			html += `<pre class="header-pre ${isCompact ? 'compact' : ''}">${headerText}</pre>`;
 
 			html += buildTypeInfoHtml(vd);
 			html += buildMembersHtml(vd, baseDocs);
@@ -900,7 +1609,7 @@
 			return html;
 		}
 
-		function renderDetails(d) {
+		function renderDetails(d, skipSidebarScroll = false) {
 			const lastSep = d.uid.lastIndexOf('::');
 			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
 
@@ -910,13 +1619,109 @@
 				? d.variants.map(v => ({ targets: v.targets, decl: v.decl }))
 				: [{ targets: [], decl: d }];
 
-			for (let variant of variantsToRender) {
-				html += buildVariantHtml(variant.decl, localName, variant.targets, d.docs);
+			for (let i = 0; i < variantsToRender.length; i++) {
+				const variant = variantsToRender[i];
+				if (d.kind !== 'module') {
+					if (i > 0) html += '<hr class="variant-separator">';
+					html += buildVariantHtml(variant.decl, localName, variant.targets, d.docs);
+				}
 			}
 
 			html += buildDocsHtml(d);
 
+			const content = document.getElementById('content');
+			content.scrollTop = 0;
+			const rightSidebar = document.getElementById('right-sidebar');
+			const rightSidebarContent = document.getElementById('right-sidebar-content');
+
+			const renderModuleContext = (moduleName, isSidebar = false) => {
+				const modMembers = allDecls.filter(m => m.moduleName === moduleName && m.kind !== 'module');
+				let ctxHtml = '';
+				if (modMembers.length > 0) {
+					const groups = {};
+					modMembers.forEach(m => {
+						const k = m.kind || 'other';
+						if (!groups[k]) groups[k] = [];
+						groups[k].push(m);
+					});
+
+					const sortedKinds = Object.keys(groups).sort();
+					if (!isSidebar) ctxHtml += '<div class="overview-groups">';
+
+					for (const k of sortedKinds) {
+						const title = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ') + 's';
+
+						if (isSidebar) {
+							ctxHtml += `<h3 class="sidebar-section-title">${title}</h3>`;
+							ctxHtml += `<ul class="member-list group-list sidebar-member-list">`;
+							groups[k].sort((a, b) => a.uid.localeCompare(b.uid)).forEach(m => {
+								const mLocal = m.uid.slice(m.uid.lastIndexOf('::') + 2);
+								const isCurrent = m.uid === d.uid;
+								ctxHtml += `<li class="member-item ${isCurrent ? 'member-item-selected' : 'member-item-not-selected'}" onclick="navigateTo('${m.uid}')">
+									<a href="#" onclick="event.preventDefault(); event.stopPropagation(); navigateTo('${m.uid}');" class="member-link ${isCurrent ? 'current' : ''} c3-${m.kind}">${mLocal}</a>
+								</li>`;
+							});
+							ctxHtml += `</ul>`;
+						} else {
+							ctxHtml += `<div class="module-group">
+								<div class="module-group-title">${title}</div>
+								<div class="module-group-list">`;
+							groups[k].sort((a, b) => a.uid.localeCompare(b.uid)).forEach(m => {
+								const mLocal = m.uid.slice(m.uid.lastIndexOf('::') + 2);
+								const visBadge = m.visibility && m.visibility !== 'public' ? `<span class="item-visibility">[${m.visibility}]</span>` : '';
+								const hiddenClass = m.visibility && m.visibility !== 'public' ? ' hidden-sym' : '';
+								ctxHtml += `
+									<div class="module-row${hiddenClass}"
+										 onclick="hideTooltip(); navigateTo('${m.uid}')"
+										 onmouseenter="showTooltip('${m.uid}', event)"
+										 onmouseleave="hideTooltip()">
+										<span class="module-row-name c3-${m.kind}">${mLocal} ${visBadge}</span>
+									</div>`;
+							});
+							ctxHtml += `</div></div>`;
+						}
+					}
+					if (!isSidebar) ctxHtml += '</div>';
+				}
+				return ctxHtml;
+			};
+
+			const updateCtxIndicators = () => {
+				const top = document.getElementById('ctx-indicator-top');
+				const bottom = document.getElementById('ctx-indicator-bottom');
+				top.style.opacity = rightSidebarContent.scrollTop > 10 ? '1' : '0';
+				const remaining = rightSidebarContent.scrollHeight - rightSidebarContent.scrollTop - rightSidebarContent.clientHeight;
+				bottom.style.opacity = remaining > 10 ? '1' : '0';
+			};
+
+			if (d.kind === 'module') {
+				rightSidebar.style.display = 'none';
+				html += `<div class="module-contents-container"><h1 class="overview-title">Module: ${d.name}</h1>${renderModuleContext(d.name, false)}</div>`;
+			} else {
+				rightSidebar.style.display = 'flex';
+				rightSidebarContent.innerHTML = renderModuleContext(d.moduleName, true);
+				rightSidebarContent.addEventListener('scroll', updateCtxIndicators);
+				setTimeout(updateCtxIndicators, 100);
+
+				const selected = rightSidebarContent.querySelector('.member-item-selected');
+				if (selected) {
+					selected.scrollIntoView({ block: 'center', behavior: 'instant' });
+				}
+			}
+
 			document.getElementById('content').innerHTML = html;
+
+			// Sync left sidebar
+			const modName = d.kind === 'module' ? d.uid : d.moduleName;
+			document.querySelectorAll('.module-list-ul li').forEach(li => {
+				const isMatch = li.getAttribute('data-mod') === modName;
+				li.classList.toggle('selected', isMatch);
+				if (isMatch) {
+					if (!skipSidebarScroll) {
+						li.scrollIntoView({ block: 'center', behavior: 'instant' });
+					}
+				}
+			});
 		}
 
 		init();

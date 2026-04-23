@@ -20,6 +20,17 @@ static void write_decl_uid(FILE *file, Module *module, Decl *decl);
 static void emit_type_name_to_scratch(TypeInfo *type);
 static void print_doc_type(FILE *file, Module *module, TypeInfo *type);
 static void emit_params_json(FILE *file, Module *module, Decl **params);
+static void write_expr_source_json(FILE *file, Expr *expr)
+{
+	if (!expr)
+	{
+		fputs("null", file);
+		return;
+	}
+	scratch_buffer_clear();
+	loc_to_scratch(expr->loc);
+	json_write_string(file, scratch_buffer_to_string());
+}
 
 static void get_unit_lists(CompilationUnit *unit, DocCategory cat, Decl ***lists)
 {
@@ -78,6 +89,54 @@ static const char *get_inout_modifier_name(InOutModifier mod)
 	}
 }
 
+static void emit_param_json(FILE *file, Module *module, Decl *p)
+{
+	fprintf(file, "{\"name\": \"%s\"", p->name ? p->name : "");
+	if (p->decl_kind == DECL_BODYPARAM)
+	{
+		fputs(", \"kind\": \"body_param\", \"params\": ", file);
+		emit_params_json(file, module, p->body_params);
+	}
+	else
+	{
+		fputs(", \"type\": ", file);
+		print_doc_type(file, module, p->var.type_info ? type_infoptr(p->var.type_info) : NULL);
+		if (p->var.init_expr)
+		{
+			fputs(", \"default_value\": ", file);
+			write_expr_source_json(file, p->var.init_expr);
+		}
+		if (p->is_maybe_unused || p->is_must_use || p->var.no_alias)
+		{
+			fputs(", \"attributes\": [", file);
+			bool first_attr = true;
+			if (p->is_maybe_unused)
+			{
+				fputs("\"@unused\"", file);
+				first_attr = false;
+			}
+			if (p->is_must_use)
+			{
+				if (!first_attr) fputs(", ", file);
+				fputs("\"@used\"", file);
+				first_attr = false;
+			}
+			if (p->var.no_alias)
+			{
+				if (!first_attr) fputs(", ", file);
+				fputs("\"@noalias\"", file);
+				first_attr = false;
+			}
+			fputs("]", file);
+		}
+		if (p->var.self_addr)
+		{
+			fputs(", \"is_ref\": true", file);
+		}
+	}
+	fputs("}", file);
+}
+
 static void emit_params_json(FILE *file, Module *module, Decl **params)
 {
 	fputs("[", file);
@@ -85,12 +144,10 @@ static void emit_params_json(FILE *file, Module *module, Decl **params)
 	for (unsigned i = 0; i < vec_size(params); i++)
 	{
 		Decl *p = params[i];
-		if (!p || !p->name) continue;
+		if (!p) continue;
 		if (!first) fputs(", ", file);
 		first = false;
-		fprintf(file, "{\"name\": \"%s\", \"type\": ", p->name);
-		print_doc_type(file, module, p->var.type_info ? type_infoptr(p->var.type_info) : NULL);
-		fputs("}", file);
+		emit_param_json(file, module, p);
 	}
 	fputs("]", file);
 }
@@ -122,10 +179,52 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 	if (type->type && type->type->name)
 	{
 		scratch_buffer_append(type->type->name);
+		if (type->optional && !strstr(type->type->name, "?")) scratch_buffer_append("?");
+		return;
 	}
-	else if (type->kind == TYPE_INFO_IDENTIFIER || type->kind == TYPE_INFO_CT_IDENTIFIER)
+	if (type->kind == TYPE_INFO_IDENTIFIER || type->kind == TYPE_INFO_CT_IDENTIFIER)
 	{
 		scratch_buffer_append(type->unresolved.name);
+	}
+	else if (type->kind == TYPE_INFO_POINTER)
+	{
+		emit_type_name_to_scratch(type->pointer);
+		scratch_buffer_append("*");
+	}
+	else if (type->kind == TYPE_INFO_ARRAY || type->kind == TYPE_INFO_INFERRED_ARRAY)
+	{
+		emit_type_name_to_scratch(type->array.base);
+		scratch_buffer_append("[");
+		if (type->array.len)
+		{
+			loc_to_scratch(type->array.len->loc);
+		}
+		scratch_buffer_append("]");
+	}
+	else if (type->kind == TYPE_INFO_VECTOR || type->kind == TYPE_INFO_INFERRED_VECTOR)
+	{
+		emit_type_name_to_scratch(type->array.base);
+		scratch_buffer_append("[<");
+		if (type->array.len)
+		{
+			loc_to_scratch(type->array.len->loc);
+		}
+		scratch_buffer_append(">]");
+	}
+	else if (type->kind == TYPE_INFO_SLICE)
+	{
+		emit_type_name_to_scratch(type->array.base);
+		scratch_buffer_append("[*]");
+	}
+	if (type->optional) scratch_buffer_append("?");
+}
+
+static void emit_decl_uid_json(FILE *file, Decl *d)
+{
+	if (d && d->name && d->unit && d->unit->module)
+	{
+		fputs(", \"uid\": ", file);
+		write_decl_uid(file, d->unit->module, d);
 	}
 }
 
@@ -142,38 +241,47 @@ static void print_doc_type(FILE *file, Module *module, TypeInfo *type)
 	fputs(scratch_buffer_to_string(), file);
 	fputs("\"", file);
 
-	if (type->type)
+	TypeInfo *base_info = type;
+	while (base_info && (base_info->kind == TYPE_INFO_POINTER || base_info->kind == TYPE_INFO_ARRAY || base_info->kind == TYPE_INFO_INFERRED_ARRAY || base_info->kind == TYPE_INFO_SLICE || base_info->kind == TYPE_INFO_VECTOR || base_info->kind == TYPE_INFO_INFERRED_VECTOR))
 	{
-		Type *t = type->type;
+		if (base_info->kind == TYPE_INFO_POINTER)
+			base_info = base_info->pointer;
+		else
+			base_info = base_info->array.base;
+	}
+
+	Type *t = base_info ? base_info->type : NULL;
+	while (t && (t->type_kind == TYPE_POINTER || t->type_kind == TYPE_ARRAY || t->type_kind == TYPE_SLICE || t->type_kind == TYPE_VECTOR || t->type_kind == TYPE_SIMD_VECTOR || t->type_kind == TYPE_OPTIONAL))
+	{
+		if (t->type_kind == TYPE_POINTER)
+			t = t->pointer;
+		else if (t->type_kind == TYPE_OPTIONAL)
+			t = t->optional;
+		else
+			t = t->array.base;
+	}
+
+	if (t)
+	{
 		if (t->type_kind == TYPE_INTERFACE || t->type_kind == TYPE_STRUCT || t->type_kind == TYPE_UNION || t->type_kind == TYPE_ENUM || t->type_kind == TYPE_BITSTRUCT || (t->type_kind >= TYPE_TYPEDEF && t->type_kind <= TYPE_ALIAS) || t->type_kind == TYPE_MEMBER)
 		{
-			Decl *d = t->decl;
-			if (d && d->name && d->unit && d->unit->module)
-			{
-				fputs(", \"uid\": ", file);
-				write_decl_uid(file, d->unit->module, d);
-			}
+			emit_decl_uid_json(file, t->decl);
 		}
 	}
-	else if ((type->kind == TYPE_INFO_IDENTIFIER || type->kind == TYPE_INFO_CT_IDENTIFIER) && module)
+	else if (base_info && (base_info->kind == TYPE_INFO_IDENTIFIER || base_info->kind == TYPE_INFO_CT_IDENTIFIER) && module)
 	{
-		Decl *d = htable_get(&module->symbols, (void *)type->unresolved.name);
+		Decl *d = htable_get(&module->symbols, (void *)base_info->unresolved.name);
 		if (!d && all_modules)
 		{
 			// Search in other modules if not found locally
 			for (unsigned i = 0; i < vec_size(all_modules); i++)
 			{
 				if (all_modules[i] == module) continue;
-				d = htable_get(&all_modules[i]->symbols, (void *)type->unresolved.name);
+				d = htable_get(&all_modules[i]->symbols, (void *)base_info->unresolved.name);
 				if (d) break;
 			}
 		}
-
-		if (d && d->name && d->unit && d->unit->module)
-		{
-			fputs(", \"uid\": ", file);
-			write_decl_uid(file, d->unit->module, d);
-		}
+		emit_decl_uid_json(file, d);
 	}
 	fputs("}", file);
 }
@@ -216,8 +324,36 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 {
 	if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
 	{
-		emit_params_json(file, module, decl->func_decl.signature.params);
+		fputs("[", file);
+		bool first = true;
+		for (unsigned i = 0; i < vec_size(decl->func_decl.signature.params); i++)
+		{
+			Decl *p = decl->func_decl.signature.params[i];
+			if (!p) continue;
+			if (!first) fputs(", ", file);
+			first = false;
+			emit_param_json(file, module, p);
+		}
+		if (decl->decl_kind == DECL_MACRO && decl->func_decl.body_param)
+		{
+			Decl *p = declptr(decl->func_decl.body_param);
+			if (p)
+			{
+				if (!first) fputs(", ", file);
+				emit_param_json(file, module, p);
+			}
+		}
+		fputs("]", file);
 		return;
+	}
+	if (decl->decl_kind == DECL_TYPE_ALIAS && decl->type_alias_decl.is_func)
+	{
+		Decl *fntype = decl->type_alias_decl.decl;
+		if (fntype && fntype->decl_kind == DECL_FNTYPE)
+		{
+			emit_params_json(file, module, fntype->fntype_decl.signature.params);
+			return;
+		}
 	}
 
 	fputs("[", file);
@@ -232,9 +368,7 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 				if (!p || !p->name) continue;
 				if (!first) fputs(", ", file);
 				first = false;
-				fprintf(file, "{\"name\": \"%s\", \"type\": ", p->name);
-				print_doc_type(file, module, p->var.type_info ? type_infoptr(p->var.type_info) : NULL);
-				fputs("}", file);
+				emit_param_json(file, module, p);
 			}
 		}
 
@@ -268,20 +402,8 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 				fputs("null", file);
 
 			// Emit the parameter list so the HTML can reconstruct the full signature
-			fputs(", \"params\": [", file);
-			Decl **params = p->func_decl.signature.params;
-			bool first_param = true;
-			for (unsigned j = 0; j < vec_size(params); j++)
-			{
-				Decl *param = params[j];
-				if (!param || !param->name) continue;
-				if (!first_param) fputs(", ", file);
-				first_param = false;
-				fprintf(file, "{\"name\": \"%s\", \"type\": ", param->name);
-				print_doc_type(file, module, param->var.type_info ? type_infoptr(param->var.type_info) : NULL);
-				fputs("}", file);
-			}
-			fputs("]", file);
+			fputs(", \"params\": ", file);
+			emit_params_json(file, module, p->func_decl.signature.params);
 
 			fputs("}", file);
 		}
@@ -359,17 +481,21 @@ static void emit_normal_attrs(FILE *file, Decl *decl)
 
 	if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
 	{
-		EMIT_ATTR(decl->func_decl.attr_inline, "inline")
-		EMIT_ATTR(decl->func_decl.attr_noinline, "noinline")
-		EMIT_ATTR(decl->func_decl.attr_naked, "naked")
-		EMIT_ATTR(decl->func_decl.attr_benchmark, "benchmark")
-		EMIT_ATTR(decl->func_decl.attr_test, "test")
-		EMIT_ATTR(decl->func_decl.attr_winmain, "winmain")
-		EMIT_ATTR(decl->func_decl.attr_optional, "optional")
-		EMIT_ATTR(decl->func_decl.attr_init, "init")
-		EMIT_ATTR(decl->func_decl.attr_finalizer, "finalizer")
+		if (decl->decl_kind == DECL_FUNC)
+		{
+			EMIT_ATTR(decl->func_decl.attr_inline, "inline")
+			EMIT_ATTR(decl->func_decl.attr_noinline, "noinline")
+			EMIT_ATTR(decl->func_decl.attr_naked, "naked")
+			EMIT_ATTR(decl->func_decl.attr_benchmark, "benchmark")
+			EMIT_ATTR(decl->func_decl.attr_test, "test")
+			EMIT_ATTR(decl->func_decl.attr_winmain, "winmain")
+			EMIT_ATTR(decl->func_decl.attr_optional, "optional")
+			EMIT_ATTR(decl->func_decl.attr_init, "init")
+			EMIT_ATTR(decl->func_decl.attr_finalizer, "finalizer")
+		}
 		EMIT_ATTR(decl->func_decl.signature.attrs.noreturn, "noreturn")
 		EMIT_ATTR(decl->func_decl.signature.attrs.nodiscard, "nodiscard")
+		EMIT_ATTR(decl->func_decl.signature.attrs.always_const, "const")
 	}
 
 	if (has_attrs) fputs("]", file);
@@ -494,6 +620,8 @@ static const char *get_decl_kind_name(DeclKind kind)
 			return "interface";
 		case DECL_VAR:
 			return "variable";
+		case DECL_FAULT:
+			return "faultdef";
 		default:
 			return "other";
 	}
@@ -550,6 +678,23 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl)
 			fputs(",\n", file);
 			fputs("\t\t\t\t\"is_safemacro\": ", file);
 			fputs(decl->func_decl.signature.is_safemacro ? "true" : "false", file);
+			fputs(",\n", file);
+		}
+	}
+	else if (decl->decl_kind == DECL_TYPE_ALIAS && decl->type_alias_decl.is_func)
+	{
+		Decl *fntype = decl->type_alias_decl.decl;
+		if (fntype && fntype->decl_kind == DECL_FNTYPE)
+		{
+			fputs("\t\t\t\t\"return_type\": ", file);
+			if (fntype->fntype_decl.signature.rtype)
+			{
+				print_doc_type(file, module, type_infoptr(fntype->fntype_decl.signature.rtype));
+			}
+			else
+			{
+				fputs("null", file);
+			}
 			fputs(",\n", file);
 		}
 	}
@@ -661,26 +806,44 @@ static bool category_has_content(Module *module, DocCategory cat)
 
 void compiler_docgen(BuildTarget *target)
 {
-	const char *out_name;
+	bool json_only = compiler.build.docgen_json_out;
+	bool append = compiler.build.docgen_append;
+	const char *out_name = json_only ? "stdout" : "docs.html";
+
+	const char *data_start_marker = "/*DATA_START*/";
+	const char *data_end_marker = "/*DATA_END*/";
 	const char *target_str = (target && target->arch_os_target != ARCH_OS_TARGET_DEFAULT)
 	                             ? arch_os_target[target->arch_os_target]
-	                             : NULL;
+	                             : "default";
 
-	if (target_str)
+	char *existing = NULL;
+	size_t existing_len = 0;
+	if (!json_only && append && file_exists(out_name))
 	{
-		scratch_buffer_clear();
-		scratch_buffer_printf("docs-%s.json", target_str);
-		out_name = scratch_buffer_copy();
-	}
-	else
-	{
-		out_name = "docs.json";
+		existing = file_read_all(out_name, &existing_len);
 	}
 
-	FILE *file = fopen(out_name, "w");
+	FILE *file = json_only ? stdout : fopen(out_name, "wb");
 	if (!file)
 	{
 		error_exit("Could not open output file %s", out_name);
+	}
+
+	if (!json_only)
+	{
+		if (existing)
+		{
+			char *pos = strstr(existing, data_end_marker);
+			if (!pos) error_exit("Could not find /*DATA_END*/ in existing docs.html for append.");
+			fwrite(existing, 1, pos - existing, file);
+		}
+		else
+		{
+			char *pos = (char *)strstr((const char *)docs_html, data_start_marker);
+			if (!pos) error_exit("Internal error: Could not find /*DATA_START*/ in the docs.html template.");
+			fwrite(docs_html, 1, (pos - (const char *)docs_html) + strlen(data_start_marker), file);
+		}
+		fprintf(file, "\n\t\tEMBEDDED_JSON_LIST.push({ target: \"%s\", data: ", target_str);
 	}
 
 	fputs("{\n", file);
@@ -791,20 +954,24 @@ void compiler_docgen(BuildTarget *target)
 		fputs("\n    }", file);
 	}
 	fputs("\n  }\n}\n", file);
-	fclose(file);
 
-	// Emit docs.html alongside the JSON output
-	FILE *html_file = fopen("docs.html", "wb");
-	if (html_file)
+	if (!json_only)
 	{
-		fwrite(docs_html, 1, docs_html_len, html_file);
-		fclose(html_file);
-	}
-	else
-	{
-		printf("Warning: could not write docs.html\n");
+		fputs(" });\n\t\t", file);
+		if (existing)
+		{
+			char *pos = strstr(existing, data_end_marker);
+			fwrite(pos, 1, strlen(pos), file);
+		}
+		else
+		{
+			char *pos = (char *)strstr((const char *)docs_html, data_end_marker);
+			if (!pos) error_exit("Internal error: Could not find /*DATA_END*/ in the docs.html template.");
+			fwrite(pos, 1, docs_html_len - (pos - (const char *)docs_html), file);
+		}
+		fclose(file);
+		printf("Documentation generated to %s\n", out_name);
 	}
 
-	printf("Documentation generated to %s\n", out_name);
 	exit_compiler(COMPILER_SUCCESS_EXIT);
 }
