@@ -3,66 +3,70 @@ import std::io;
 import std::collections;
 import std::encoding::xml;
 
-fn void test_writer_simple() {
+fn void test_writer_simple()
+{
 	char[256] buf;
 	ByteWriter bw;
 	bw.init_with_buffer(buf[..]);
 
-	XmlWriter w;
+	XmlSerializer w;
 	w.init(&bw);
 
-	w.open("root")!!;
-	w.attr("attr", "val")!!;
-	w.open("child")!!;
-	io::fprint(&w, "Hello & World")!!;
-	w.close_el("child")!!;
-	w.close_el("root")!!;
+	w.start_element("root")!!;
+	w.add_attribute("attr", "val")!!;
+	w.start_element("child")!!;
+	w.add_content("Hello & World")!!;
+	w.end_element("child")!!;
+	w.end_element("root")!!;
 
 	String expected = `<root attr="val"><child>Hello &amp; World</child></root>`;
 	test::eq(bw.str_view(), expected);
 }
 
-fn void test_writer_self_closing() {
+fn void test_writer_self_closing()
+{
 	char[256] buf;
 	ByteWriter bw;
 	bw.init_with_buffer(buf[..]);
 
-	XmlWriter w;
+	XmlSerializer w;
 	w.init(&bw);
 
-	w.open("root")!!;
-	w.empty("empty")!!;
-	w.close_el("root")!!;
+	w.start_element("root")!!;
+	w.add_empty_element("empty")!!;
+	w.end_element("root")!!;
 
 	String expected = `<root><empty /></root>`;
 	test::eq(bw.str_view(), expected);
 }
 
-fn void test_writer_escaping() {
+fn void test_writer_escaping()
+{
 	char[256] buf;
 	ByteWriter bw;
 	bw.init_with_buffer(buf[..]);
 
-	XmlWriter w;
+	XmlSerializer w;
 	w.init(&bw);
 
-	w.open("root")!!;
-	w.attr("a", "<\"&'>")!!;
-	io::fprint(&w, "<\"&'>")!!;
-	w.close_el("root")!!;
+	w.start_element("root")!!;
+	w.add_attribute("a", "<\"&'>")!!;
+	w.add_content("<\"&'>")!!;
+	w.end_element("root")!!;
 
 	String expected = `<root a="&lt;&quot;&amp;&apos;&gt;">&lt;&quot;&amp;&apos;&gt;</root>`;
 	test::eq(bw.str_view(), expected);
 }
 
-fn void test_reader_simple() {
+fn void test_reader_simple()
+{
 	String xml_str = `<root a="v"><child>text</child></root>`;
 	ByteReader br;
 	br.init(xml_str);
 
 	char[1024] stack;
 	XmlReader r;
-	r.init(&br, &stack, stack.len)!!;
+	r.init(&br, &stack)!!;
 
 	XmlEvent ev @noinit;
 
@@ -91,21 +95,25 @@ fn void test_reader_simple() {
 	test::eq(ev.kind, XmlEventKind.END_ELEMENT);
 	test::eq(ev.name, "root");
 
-	if (catch err = r.next_event()) {
+	if (catch err = r.next_event())
+	{
 		test::eq(err, io::EOF);
-	} else {
+	}
+	else
+	{
 		assert(false, "Expected EOF");
 	}
 }
 
-fn void test_reader_pi_and_ref() {
+fn void test_reader_pi_and_ref()
+{
 	String xml_str = `<?pi data?><a>&lt;</a>`;
 	ByteReader br;
 	br.init(xml_str);
 
 	char[1024] stack;
 	XmlReader r;
-	r.init(&br, &stack, stack.len)!!;
+	r.init(&br, &stack)!!;
 
 	XmlEvent ev @noinit;
 
@@ -135,7 +143,7 @@ fn void test_reader_errors() {
 		br.init(xml_str);
 		char[1024] stack;
 		XmlReader r;
-		r.init(&br, &stack, stack.len)!!;
+		r.init(&br, &stack)!!;
 		r.next_event()!!; // <a>
 		if (catch err = r.next_event()) {
 			test::eq(err, xml::XML_TAG_MISMATCH);
@@ -151,11 +159,14 @@ fn void test_reader_errors() {
 		br.init(xml_str);
 		char[1024] stack;
 		XmlReader r;
-		r.init(&br, &stack, stack.len)!!;
+		r.init(&br, &stack)!!;
 		r.next_event()!!; // <root
-		if (catch err = r.next_event()) {
+		if (catch err = r.next_event())
+		{
 			test::eq(err, xml::XML_SYNTAX);
-		} else {
+		}
+		else
+		{
 			assert(false, "Expected SYNTAX error");
 		}
 	}
@@ -167,7 +178,7 @@ fn void test_reader_errors() {
 		br.init(xml_str);
 		char[1024] stack;
 		XmlReader r;
-		r.init(&br, &stack, stack.len)!!;
+		r.init(&br, &stack)!!;
 		r.next_event()!!; // <root>
 		if (catch err = r.next_event()) {
 			test::eq(err, xml::XML_SYNTAX);
@@ -217,11 +228,11 @@ fn void test_dom_advanced()
 	XmlDocument* doc = xml::parse(mem, xml_str)!!;
 	defer doc.free();
 
-	XmlNode* book = doc.root.find("book");
+	XmlNode* book = doc.root.find("book") ?? null;
 	test::ne(book, null);
 	test::eq(book.attr("id")!!, "1");
 
-	XmlNode* title = book.find("title");
+	XmlNode* title = book.find("title") ?? null;
 	test::ne(title, null);
 	test::eq(title.text()!!, "C3");
 }
@@ -232,7 +243,7 @@ fn void test_dom_modification()
 	XmlDocument* doc = xml::parse(mem, xml_str)!!;
 	defer doc.free();
 
-	XmlNode* item = doc.root.find("item");
+	XmlNode* item = doc.root.find("item") ?? null;
 	test::ne(item, null);
 	
 	// Test set_text
@@ -242,6 +253,28 @@ fn void test_dom_modification()
 	// Test set_attr
 	item.set_attr("status", "updated");
 	test::eq(item.attr("status")!!, "updated");
+}
+
+fn void test_document_write2()
+{
+	String xml_str = `<root><child>text</child></root>`;
+	XmlDocument* doc = xml::parse(mem, xml_str)!!;
+	defer doc.free();
+
+	char[256] buf;
+	ByteWriter bw;
+	bw.init_with_buffer(buf[..]);
+
+	XmlSerializer w;
+	w.init(&bw);
+
+	w.start_doc()!!;
+	w.serialize(doc)!!;
+	w.end_doc()!!;
+
+	String output = bw.str_view();
+	test::@check(output.contains("<?xml version=\"1.0\""));
+	test::@check(output.contains("<root><child>text</child></root>"));
 }
 
 fn void test_document_write()
@@ -254,12 +287,7 @@ fn void test_document_write()
 	ByteWriter bw;
 	bw.init_with_buffer(buf[..]);
 
-	XmlWriter w;
-	w.init(&bw);
-
-	w.start_doc()!!;
-	doc.write(&w)!!;
-	w.end_doc()!!;
+	xml::serialize(&bw, doc)!!;
 
 	String output = bw.str_view();
 	test::@check(output.contains("<?xml version=\"1.0\""));
@@ -290,7 +318,7 @@ fn void test_dom_filter()
 
 
 module xml_test;
-import std::encoding::xml::dom;
+import std::encoding::xml;
 
 fn bool my_filter(XmlNode* node)
 {

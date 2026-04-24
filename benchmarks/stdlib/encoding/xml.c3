@@ -67,7 +67,7 @@ fn void xml_parse_hamlet()
 		br.init(hamlet_xml);
 
 		XmlReader r;
-		r.init(&br, &xml_stack[0], (usz)xml_stack.len)!!;
+		r.init(&br, &xml_stack)!!;
 
 		while (true)
 		{
@@ -88,7 +88,7 @@ fn void xml_parse_discogs()
 		br.init(labels_xml);
 
 		XmlReader r;
-		r.init(&br, &xml_stack[0], (usz)xml_stack.len)!!;
+		r.init(&br, &xml_stack)!!;
 
 		while (true)
 		{
@@ -108,18 +108,18 @@ fn void xml_write_simple()
 		ByteWriter bw;
 		bw.tinit(8192);
 
-		XmlWriter w;
+		XmlSerializer w;
 		w.init(&bw);
 
-		w.open("root")!!;
-		w.attr("a", "v")!!;
+		w.start_element("root")!!;
+		w.add_attribute("a", "v")!!;
 		for (int i = 0; i < 100; i++)
 		{
-			w.open("child")!!;
-			io::fprint(&w, "Some test content with escaping: < & >")!!;
-			w.close_el("child")!!;
+			w.start_element("child")!!;
+			w.add_content("Some test content with escaping: < & >")!!;
+			w.end_element("child")!!;
 		}
-		w.close_el("root")!!;
+		w.end_element("root")!!;
 	};
 }
 
@@ -139,7 +139,7 @@ fn void xml_dom_search_hamlet()
 
 	@pool()
 	{
-		List{XmlNode*} speakers;
+		XmlNodeList speakers;
 		speakers.init(tmem);
 		doc.root.find_all("SPEAKER", &speakers);
 	};
@@ -155,9 +155,9 @@ fn void xml_dom_write_hamlet()
 		ByteWriter bw;
 		bw.tinit(512 * 1024);
 
-		XmlWriter w;
+		XmlSerializer w;
 		w.init(&bw);
-		doc.write(&w)!!;
+		(void)w.serialize(doc);
 	};
 }
 
@@ -168,7 +168,7 @@ fn void xml_dom_modify_hamlet()
 
 	@pool()
 	{
-		List{XmlNode*} speakers;
+		XmlNodeList speakers;
 		speakers.init(tmem);
 		doc.root.find_all("SPEAKER", &speakers);
 		foreach (node : speakers)

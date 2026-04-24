@@ -27,26 +27,31 @@ fn int main()
 
 	// 2. Accessing attributes with attr()
 	String api = doc.root.attr("api") ?? "";
-	if (api.len > 0) {
+	if (api.len)
+	{
 		io::printfn("API: %s", api);
 	}
 
 	// 3. Find a node with find()
-	if (XmlNode* book = doc.root.find("book")) {
+	if (try book = doc.root.find("book"))
+	{
 		io::printfn("Found first book: %s", book.name);
-		if (XmlNode* title = book.find("title")) {
+		if (try title = book.find("title"))
+		{
 			io::printfn("First book title: %s", title.text() ?? "N/A");
 		}
 	}
 
 	// 4. Finding all matches with find_all()
-	List{XmlNode*} books;
+	XmlNodeList books;
 	books.init(tmem);
 	doc.root.find_all("book", &books);
 	
 	io::printfn("\nAll books in library (%d found):", books.len());
-	foreach (book : books) {
-		if (XmlNode* title = book.find("title")) {
+	foreach (book : books)
+	{
+		if (try title = book.find("title"))
+		{
 			io::printfn("- %s", title.text() ?? "Unknown");
 		}
 	}

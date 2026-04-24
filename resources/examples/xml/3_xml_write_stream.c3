@@ -9,45 +9,45 @@ import std::encoding::xml;
 
 fn int main() 
 {
-	XmlWriter w;
+	XmlSerializer w;
 	w.init(io::stdout());
 
 	w.start_doc()!!;
-	w.open("shop")!!;
-	w.attr("name", "The C3 Emporium")!!;
-	w.attr("location", "Internet")!!;
+	w.start_element("shop")!!;
+	w.add_attribute("name", "The C3 Emporium")!!;
+	w.add_attribute("location", "Internet")!!;
 
-	w.open("inventory")!!;
+	w.start_element("inventory")!!;
 		// Item 1
-		w.open("item")!!;
-			w.attr("id", "c3-001")!!;
-			w.open("name")!!;
-				io::fprint(&w, "Magic Pointer")!!;
-			w.close_el("name")!!;
-			w.open("price")!!;
-				w.attr("currency", "USD")!!;
-				io::fprint(&w, "49.99")!!;
-			w.close_el("price")!!;
-		w.close_el("item")!!;
+		w.start_element("item")!!;
+			w.add_attribute("id", "c3-001")!!;
+			w.start_element("name")!!;
+				w.add_content("Magic Pointer")!!;
+			w.end_element("name")!!;
+			w.start_element("price")!!;
+				w.add_attribute("currency", "USD")!!;
+				w.add_content("49.99")!!;
+			w.end_element("price")!!;
+		w.end_element("item")!!;
 
 		// Item 2
-		w.open("item")!!;
+		w.start_element("item")!!;
 			w.attr("id", "c3-002")!!;
-			w.open("name")!!;
-				io::fprint(&w, "Heap-Safe Potion")!!;
-			w.close_el("name")!!;
-			w.open("price")!!;
-				w.attr("currency", "ESC")!!;
-				io::fprint(&w, "999.00")!!;
-			w.close_el("price")!!;
+			w.start_element("name")!!;
+				w.add_content("Heap-Safe Potion")!!;
+			w.end_element("name")!!;
+			w.start_element("price")!!;
+				w.add_attribute("currency", "ESC")!!;
+				w.add_content("999.00")!!;
+			w.end_element("price")!!;
 			
 			// Self-closing elements for metadata.
-			w.open("meta")!!;
-			w.empty("in-stock")!!;
-			w.close_el("meta")!!;
-		w.close_el("item")!!;
-	w.close_el("inventory")!!;
-	w.close_el("shop")!!;
+			w.start_element("meta")!!;
+			w.add_empty_element("in-stock")!!;
+			w.end_element("meta")!!;
+		w.end_element("item")!!;
+	w.end_element("inventory")!!;
+	w.end_element("shop")!!;
 	w.end_doc()!!;
 	
 	io::printn(); // or `io::stdout().flush()!!;`

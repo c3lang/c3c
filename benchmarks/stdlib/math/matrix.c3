@@ -28,11 +28,11 @@ fn void initialize() @init
 	set_benchmark_warmup_iterations(10);
 	set_benchmark_max_iterations(100_000);
 
-	set_benchmark_func_iterations($qnameof(mul), 2_800_000);
-	set_benchmark_func_iterations($qnameof(vec_mul), 2_100_000);
-	set_benchmark_func_iterations($qnameof(inverse), 1_700_000);
-	set_benchmark_func_iterations($qnameof(perspective), 2_200_000);
-	set_benchmark_func_iterations($qnameof(lookat), 650_000);
+	set_benchmark_func_iterations($reflect(mul).qname, 2_800_000);
+	set_benchmark_func_iterations($reflect(vec_mul).qname, 2_100_000);
+	set_benchmark_func_iterations($reflect(inverse).qname, 1_700_000);
+	set_benchmark_func_iterations($reflect(perspective).qname, 2_200_000);
+	set_benchmark_func_iterations($reflect(lookat).qname, 650_000);
 }
 
 fn void sink(float f) @noinline

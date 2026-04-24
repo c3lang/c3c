@@ -25,13 +25,13 @@ fn int main()
 	defer speech_counts.free();
 
 	// Search for all <SPEAKER> tags in the document using find_all.
-	List{XmlNode*} speakers;
+	XmlNodeList speakers;
 	speakers.init(tmem);
 	doc.root.find_all("SPEAKER", &speakers);
 
 	foreach (node : speakers) 
 	{
-		if (node.children.len() > 0 && node.children[0].kind == XmlEventKind.TEXT) 
+		if (node.children.len() > 0 && node.children[0].kind == TEXT)
 		{
 			String name = node.children[0].value;
 			// Increment the count for this speaker.

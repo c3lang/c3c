@@ -9,7 +9,6 @@
 module xml_read_stream;
 import std::io;
 import std::encoding::xml;
-import std::encoding::xml::stream;
 
 const String INPUT_FILE  = "resources/examples/xml/hamlet.xml";
 const String OUTPUT_FILE = INPUT_FILE +++ ".modified.xml";
@@ -23,44 +22,44 @@ fn int main()
 	defer out_file.close();
 
 	char[4096] stack;
-	stream::XmlReader r;
-	r.init(&hamlet_file, &stack, stack.len)!!;
+	XmlReader r;
+	r.init(&hamlet_file, &stack)!!;
 
-	stream::XmlWriter w;
+	XmlSerializer w;
 	w.init(&out_file);
 
 	bool in_title = false;
 
 	while (true)
 	{
-		xml::XmlEvent? ev_opt = r.next_event();
+		XmlEvent? ev_opt = r.next_event();
 		if (catch err = ev_opt)
 		{
 			if (err == io::EOF) break;
 			io::printfn("Error parsing XML: %s at line %d", err, r.parser.line);
 			return 1;
 		}
-		xml::XmlEvent ev = ev_opt;
+		XmlEvent ev = ev_opt;
 
 		switch (ev.kind)
 		{
 			case START_ELEMENT:
-				w.open(ev.name)!!;
+				w.start_element(ev.name)!!;
 				in_title = ev.name == "TITLE";
 			case ATTRIBUTE:
-				w.attr(ev.name, ev.value)!!;
+				w.add_attribute(ev.name, ev.value)!!;
 			case TEXT:
 				if (in_title && ev.value.contains("Hamlet"))
 				{
-					io::fprint(&w, ev.value)!!;
-					io::fprint(&w, " (C3 Edition)")!!;
+					w.add_content(ev.value)!!;
+					w.add_content(" (C3 Edition)")!!;
 				}
 				else
 				{
-					io::fprint(&w, ev.value)!!;
+					w.add_content(ev.value)!!;
 				}
 			case END_ELEMENT:
-				w.close_el(ev.name)!!;
+				w.end_element(ev.name)!!;
 				in_title = false;
 			default:
 				break;

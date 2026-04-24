@@ -22,25 +22,26 @@ fn int main()
 	defer doc.free();
 
 	// 2. Locate and modify specific nodes using the new Unified API
-	if (XmlNode* theme = doc.root.find("theme")) 
+	if (try theme = doc.root.find("theme"))
 	{
 		theme.set_text("dark");
 	}
 
-	if (XmlNode* font = doc.root.find("font")) 
+	if (try font = doc.root.find("font"))
 	{
 		font.set_attr("size", "14");
 	}
 
 	// 3. Save the modified tree back to an out stream (stdout).
-	XmlWriter w;
+	XmlSerializer w;
 	w.init(io::stdout());
-	
+
 	io::printn("Modified XML Output:");
 	io::printn("--------------------");
-	
+
+
 	w.start_doc()!!;
-	doc.write(&w)!!;
+	w.serialize(doc)!!;
 	io::printn();
 
 	return 0;

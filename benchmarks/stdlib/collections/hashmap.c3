@@ -23,12 +23,12 @@ fn void bench_setup() @init
 	set_benchmark_max_iterations(DEFAULT_ITERATIONS);
 
 	// TODO: Cannot take the address of a @benchmark function. If we could, we could pass &insert_erase as a fn ptr and use the $qnameof CT eval internally.
-	set_benchmark_func_iterations($qnameof(insert_erase), 2);
-	set_benchmark_func_iterations($qnameof(random_access), 44);
-	set_benchmark_func_iterations($qnameof(random_access_erase), 1032);
-	set_benchmark_func_iterations($qnameof(random_access_string_keys), 2488);
-	set_benchmark_func_iterations($qnameof(hash_speeds_of_many_random_values), 5824);
-	set_benchmark_func_iterations($qnameof(modifying_numbers_init_from_map), 24183);
+	set_benchmark_func_iterations($reflect(insert_erase).qname, 2);
+	set_benchmark_func_iterations($reflect(random_access).qname, 44);
+	set_benchmark_func_iterations($reflect(random_access_erase).qname, 1032);
+	set_benchmark_func_iterations($reflect(random_access_string_keys).qname, 2488);
+	set_benchmark_func_iterations($reflect(hash_speeds_of_many_random_values).qname, 5824);
+	set_benchmark_func_iterations($reflect(modifying_numbers_init_from_map).qname, 24183);
 
     random::seed(&rand, 0x4528_21e6_38d0_1377);
 
@@ -96,26 +96,26 @@ fn void hash_speeds_of_many_random_values() => @pool()
 	int fake_checksum;
 
 	char[] chars = alloc::new_array(tmem, char, $arrsz)[:$arrsz];
-	foreach (&v : chars) *v = (char)random::next(&rand, int.max);
+	foreach (&v : chars) *v = (char)random::next(&rand, int::max);
 
 	ushort[] shorts = alloc::new_array(tmem, ushort, $arrsz)[:$arrsz];
-	foreach (&v : shorts) *v = (ushort)random::next(&rand, int.max);
+	foreach (&v : shorts) *v = (ushort)random::next(&rand, int::max);
 
 	uint[] ints = alloc::new_array(tmem, uint, $arrsz)[:$arrsz];
-	foreach (&v : ints) *v = random::next(&rand, int.max);
+	foreach (&v : ints) *v = random::next(&rand, int::max);
 
 	ulong[] longs = alloc::new_array(tmem, ulong, $arrsz)[:$arrsz];
-	foreach (&v : longs) *v = (ulong)random::next(&rand, int.max);
+	foreach (&v : longs) *v = (ulong)random::next(&rand, int::max);
 
 	uint128[] vwideints = alloc::new_array(tmem, uint128, $arrsz)[:$arrsz];
-	foreach (&v : vwideints) *v = (uint128)random::next(&rand, int.max);
+	foreach (&v : vwideints) *v = (uint128)random::next(&rand, int::max);
 
 	char[48][] zstrs = alloc::new_array(tmem, char[48], $arrsz)[:$arrsz];
 
 	String[] strs = mem::temp_array(String, $arrsz);
 	foreach (x, &v : zstrs)
 	{
-		foreach (&c : (*v)[:random::next(&rand, 48)]) *c = (char)random::next(&rand, char.max);
+		foreach (&c : (*v)[:random::next(&rand, 48)]) *c = (char)random::next(&rand, char::max);
 		strs[x] = ((ZString)&v[0]).str_view();
 	}
 

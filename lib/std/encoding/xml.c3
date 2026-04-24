@@ -21,19 +21,20 @@ What it DOES NOT do (Limitations):
 
 API & Implementation:
 - XmlReader: Low-level streaming parser that works with any InStream.
-- XmlWriter: XML serializer that integrates with any OutStream.
+- XmlSerializer: XML serializer that integrates with any OutStream.
 - XmlDocument: High-level DOM API for loading, searching, and modifying XML.
 - Internal: The `internal::Parser` contains the core ported state-machine.
 
 Examples: https://github.com/c3lang/c3c/tree/master/resources/examples/xml/
 *>
 module std::encoding::xml;
-import std::encoding::xml::dom;
 import std::collections, std::io;
+import std::encoding::xml::internal @public;
 
 faultdef XML_SYNTAX, XML_STACK_OVERFLOW, XML_TAG_MISMATCH, XML_INVALID_REF;
 
-const usz DEFAULT_STACK_SIZE = 4096;
+const sz DEFAULT_STACK_SIZE = 4096;
+alias XmlNodeList = List{XmlNode*};
 
 enum XmlEventKind
 {
@@ -52,23 +53,39 @@ struct XmlEvent
 	String value;
 }
 
-<* Loads and parses an XML document from a stream into a DOM tree. *>
-fn XmlDocument*? load(Allocator allocator, InStream stream, usz stack_size = DEFAULT_STACK_SIZE)
+<*
+ Loads and parses an XML document from a stream into a DOM tree.
+ @require stack_size >= 128 && stack_size < 2 << 29 : "Stack size should be between 128 and 2^30 bytes"
+*>
+fn XmlDocument*? load(Allocator allocator, InStream stream, sz stack_size = DEFAULT_STACK_SIZE)
 {
 	XmlReader reader;
+
 	char[] stack = alloc::alloc_array(allocator, char, stack_size);
 	defer alloc::free(allocator, stack.ptr);
-	reader.init(stream, stack.ptr, stack.len, allocator)!;
+
+	reader.init(stream, stack, allocator)!;
 	defer reader.destroy();
 
 	XmlDocument* document = alloc::new(allocator, XmlDocument);
+	defer catch alloc::free(allocator, document);
 	document.allocator = allocator;
 
 	XmlNode* root = null;
 	XmlNode* current = null;
-	List{XmlNode*} node_stack;
+	XmlNodeList node_stack;
 	node_stack.init(allocator);
 	defer node_stack.free();
+
+	defer catch
+	{
+		if (root)
+		{
+			root.free(allocator);
+			alloc::free(allocator, root);
+		}
+	}
+
 
 	while (true)
 	{
@@ -76,33 +93,18 @@ fn XmlDocument*? load(Allocator allocator, InStream stream, usz stack_size = DEF
 		if (catch err = event_opt)
 		{
 			if (err == io::EOF) break;
-			if (root)
-			{
-				root.free(allocator);
-				alloc::free(allocator, root);
-			}
-			alloc::free(allocator, document);
 			return err~;
 		}
 		XmlEvent event = event_opt;
-
 		switch (event.kind)
 		{
 			case START_ELEMENT:
-				XmlNode* node = alloc::new(allocator, XmlNode);
-				*node = { .kind = START_ELEMENT, .name = event.name.copy(allocator), .doc = document };
-				node.attributes.init(allocator);
-				node.children.init(allocator);
-
-				if (current)
+				XmlNode* node = new_start_node(document, event.name);
+				switch
 				{
-					current.children.push(node);
+					case current != null: current.children.push(node);
+					default: root = node;
 				}
-				else
-				{
-					root = node;
-				}
-
 				node_stack.push(current);
 				current = node;
 
@@ -115,53 +117,35 @@ fn XmlDocument*? load(Allocator allocator, InStream stream, usz stack_size = DEF
 				current.attributes.set(event.name, event.value.copy(allocator));
 
 			case TEXT:
-				XmlNode* node = alloc::new(allocator, XmlNode);
-				*node = { .kind = TEXT, .value = event.value.copy(allocator), .doc = document };
-				node.attributes.init(allocator);
-				node.children.init(allocator);
-				if (current)
+				XmlNode* node = new_text_node(document, event.value);
+				switch
 				{
-					current.children.push(node);
-				}
-				else if (!root)
-				{
+					case current != null: current.children.push(node);
 					// Allow top-level text as a fallback root (Standard XML requires a root element).
-					root = node;
+					case !root: root = node;
 				}
 
 			case PI:
-				XmlNode* node = alloc::new(allocator, XmlNode);
-				*node = { .kind = PI, .name = event.name.copy(allocator), .value = event.value.copy(allocator), .doc = document };
-				node.attributes.init(allocator);
-				node.children.init(allocator);
-				if (current)
+				XmlNode* node = new_pi_node(document, event.name, event.value);
+				switch
 				{
-					current.children.push(node);
-				}
-				else if (!root)
-				{
+					case current != null: current.children.push(node);
 					// Allow PI to be the initial root; will be replaced if a START_ELEMENT follows.
-					root = node;
+					case !root: root = node;
 				}
 
 			case COMMENT:
-				XmlNode* node = alloc::new(allocator, XmlNode);
-				*node = { .kind = COMMENT, .value = event.value.copy(allocator), .doc = document };
-				node.attributes.init(allocator);
-				node.children.init(allocator);
-				if (current)
+				XmlNode* node = new_comment_node(document, event.value);
+				switch
 				{
-					current.children.push(node);
-				}
-				else if (!root)
-				{
+					case current != null: current.children.push(node);
 					// Allow top-level comments as fallback root nodes.
-					root = node;
+					case !root: root = node;
 				}
 		}
 	}
 
-	if (node_stack.len() > 0 || current) return XML_TAG_MISMATCH~;
+	if (node_stack.len() || current) return XML_TAG_MISMATCH~;
 	document.root = root;
 	return document;
 }
@@ -188,9 +172,38 @@ fn XmlDocument*? tparse(String s, usz stack_size = DEFAULT_STACK_SIZE)
 
 
 // ----------------------------------------------------------------------------
-module std::encoding::xml::dom;
-import std::encoding::xml::stream;
-import std::collections, std::collections::map, std::collections::list, std::io;
+
+fn XmlNode* new_text_node(XmlDocument *doc, String text)
+{
+	XmlNode* node = alloc::new(doc.allocator, XmlNode, { .kind = TEXT, .value = text.copy(doc.allocator), .doc = doc });
+	node.attributes.init(doc.allocator);
+	node.children.init(doc.allocator);
+	return node;
+}
+
+fn XmlNode* new_start_node(XmlDocument *doc, String name)
+{
+	XmlNode* node = alloc::new(doc.allocator, XmlNode, { .kind = START_ELEMENT, .name = name.copy(doc.allocator), .doc = doc });
+	node.attributes.init(doc.allocator);
+	node.children.init(doc.allocator);
+	return node;
+}
+
+fn XmlNode* new_pi_node(XmlDocument *doc, String name, String value)
+{
+	XmlNode* node = alloc::new(doc.allocator, XmlNode, { .kind = PI, .name = name.copy(doc.allocator), .value = value.copy(doc.allocator), .doc = doc });
+	node.attributes.init(doc.allocator);
+	node.children.init(doc.allocator);
+	return node;
+}
+
+fn XmlNode* new_comment_node(XmlDocument *doc, String value)
+{
+	XmlNode* node = alloc::new(doc.allocator, XmlNode, { .kind = COMMENT, .value = value.copy(doc.allocator), .doc = doc });
+	node.attributes.init(doc.allocator);
+	node.children.init(doc.allocator);
+	return node;
+}
 
 /**
  * An XML node in the DOM tree.
@@ -201,7 +214,7 @@ struct XmlNode
 	String name;
 	String value;
 	HashMap{String, String} attributes;
-	List{XmlNode*} children;
+	XmlNodeList children;
 	XmlDocument* doc; // Back-pointer to owner document
 }
 
@@ -219,7 +232,7 @@ alias NodeFilter = fn bool(XmlNode* node);
 /**
  * Recursively searches for nodes matching the filter.
  */
-fn void XmlNode.find_by_filter(&self, NodeFilter filter, List{XmlNode*}* results)
+fn void XmlNode.find_by_filter(&self, NodeFilter filter, XmlNodeList* results)
 {
 	if (filter(self)) results.push(self);
 	foreach (child : self.children)
@@ -231,7 +244,7 @@ fn void XmlNode.find_by_filter(&self, NodeFilter filter, List{XmlNode*}* results
 /**
  * Finds all nodes with the given name.
  */
-fn void XmlNode.find_all(&self, String name, List{XmlNode*}* results)
+fn void XmlNode.find_all(&self, String name, XmlNodeList* results)
 {
 	if (self.name == name) results.push(self);
 	foreach (child : self.children)
@@ -243,15 +256,14 @@ fn void XmlNode.find_all(&self, String name, List{XmlNode*}* results)
 /**
  * Finds the first node with the given name (depth-first).
  */
-fn XmlNode* XmlNode.find(&self, String name)
+fn XmlNode*? XmlNode.find(&self, String name)
 {
 	if (self.name == name) return self;
 	foreach (child : self.children)
 	{
-		XmlNode* found = child.find(name);
-		if (found) return found;
+		if (try found = child.find(name)) return found;
 	}
-	return null;
+	return NOT_FOUND~;
 }
 
 /**
@@ -263,7 +275,7 @@ fn String? XmlNode.text(&self)
 	{
 		if (child.kind == TEXT) return child.value;
 	}
-	return io::EOF~;
+	return NOT_FOUND~;
 }
 
 /**
@@ -280,11 +292,7 @@ fn void XmlNode.set_text(&self, String text)
 		}
 	}
 	// Create new text node
-	XmlNode* node = alloc::new(self.doc.allocator, XmlNode);
-	*node = { .kind = TEXT, .value = text.copy(self.doc.allocator), .doc = self.doc };
-	node.attributes.init(self.doc.allocator);
-	node.children.init(self.doc.allocator);
-	self.children.push(node);
+	self.children.push(new_text_node(self.doc, text));
 }
 
 /**
@@ -308,19 +316,16 @@ fn void XmlNode.set_value(&self, String value)
 /**
  * Sets an attribute value.
  */
-fn void XmlNode.set_attr(&self, String key, String value)
+fn void XmlNode.set_attr(&self, String key, String value) @operator([]=)
 {
-	if (self.attributes.has_key(key))
-	{
-		self.attributes.get(key)!!.free(self.doc.allocator);
-	}
+	(void)self.attributes.get(key).free(self.doc.allocator);
 	self.attributes.set(key, value.copy(self.doc.allocator));
 }
 
 /**
  * Gets an attribute value.
  */
-fn String? XmlNode.attr(&self, String key)
+fn String? XmlNode.attr(&self, String key) @operator([])
 {
 	return self.attributes.get(key);
 }
@@ -346,49 +351,6 @@ fn void XmlNode.free(&self, Allocator allocator)
 }
 
 /**
- * Recursively writes the node and its children to an XmlWriter.
- */
-fn void? XmlNode.write(&self, XmlWriter* w)
-{
-	switch (self.kind)
-	{
-		case START_ELEMENT:
-			w.open(self.name)!;
-			self.attributes.@each(; key, val)
-			{
-				w.attr(key, val)!;
-			};
-			foreach (child : self.children)
-			{
-				child.write(w)!;
-			}
-			w.close_el(self.name)!;
-		case TEXT:
-			io::fprint(w, self.value)!;
-		case PI:
-			w.write("<?")!;
-			w.write(self.name)!;
-			w.write(" ")!;
-			w.write(self.value)!;
-			w.write("?>")!;
-		case COMMENT:
-			w.write("<!--")!;
-			w.write(self.value)!;
-			w.write("-->")!;
-		default:
-			break;
-	}
-}
-
-/**
- * Writes the entire document to an XmlWriter.
- */
-fn void? XmlDocument.write(&self, XmlWriter* w)
-{
-	if (self.root) self.root.write(w)!;
-}
-
-/**
  * Frees the document tree and the document container itself.
  */
 fn void XmlDocument.free(XmlDocument* self)
@@ -404,9 +366,6 @@ fn void XmlDocument.free(XmlDocument* self)
 }
 
 // ----------------------------------------------------------------------------
-module std::encoding::xml::stream;
-import std::encoding::xml::internal @public;
-import std::io;
 
 alias ReadFn = $typeof(InStream.read);
 alias ReadByteFn = $typeof(InStream.read_byte);
@@ -425,13 +384,13 @@ struct XmlReader
 	char[512] io_buf;
 }
 
-fn void? XmlReader.init(&self, InStream stream, void* stack, usz stacksize, Allocator allocator = tmem)
+fn void? XmlReader.init(&self, InStream stream, char[] stack, Allocator allocator = tmem)
 {
 	mem::clear(self, XmlReader::size);
 	self.stream = stream;
 	self.read_fn = &stream.read;
 	self.allocator = allocator;
-	internal::init(&self.parser, stack, stacksize);
+	internal::init(&self.parser, stack);
 	self.buffer.init(allocator, 256);
 	self.tag_stack.init(allocator, 256);
 }
@@ -583,7 +542,7 @@ fn XmlEvent? XmlReader.next_event(&self)
 alias WriteFn = $typeof(OutStream.write);
 alias WriteByteFn = $typeof(OutStream.write_byte);
 
-struct XmlWriter (OutStream)
+struct XmlSerializer
 {
 	OutStream stream;
 	WriteFn write_fn;
@@ -591,7 +550,16 @@ struct XmlWriter (OutStream)
 	bool in_tag;
 }
 
-fn void XmlWriter.init(&self, OutStream stream)
+fn void? serialize(OutStream stream, XmlDocument* doc)
+{
+	XmlSerializer w;
+	w.init(stream);
+	w.start_doc()!;
+	w.serialize(doc)!;
+	w.end_doc()!;
+}
+
+fn void XmlSerializer.init(&self, OutStream stream)
 {
 	*self = {
 		.stream        = stream,
@@ -600,16 +568,16 @@ fn void XmlWriter.init(&self, OutStream stream)
 	};
 }
 
-fn void? XmlWriter.start_doc(&self, String version = "1.0", String encoding = "UTF-8")
+fn void? XmlSerializer.start_doc(&self, String version = "1.0", String encoding = "UTF-8")
 {
-	self.write_fn(self.stream.ptr, "<?xml version=\"")!;
+	self.write_fn(self.stream.ptr, `<?xml version="`)!;
 	self.write_fn(self.stream.ptr, version)!;
-	self.write_fn(self.stream.ptr, "\" encoding=\"")!;
+	self.write_fn(self.stream.ptr, `" encoding="`)!;
 	self.write_fn(self.stream.ptr, encoding)!;
-	self.write_fn(self.stream.ptr, "\"?>\n")!;
+	self.write_fn(self.stream.ptr, `?>` "\n")!;
 }
 
-fn void? XmlWriter.end_doc(&self)
+fn void? XmlSerializer.end_doc(&self)
 {
 	if (self.in_tag)
 	{
@@ -618,7 +586,7 @@ fn void? XmlWriter.end_doc(&self)
 	}
 }
 
-fn void? XmlWriter.open(&self, String name)
+fn void? XmlSerializer.start_element(&self, String name)
 {
 	if (self.in_tag) self.write_fn(self.stream.ptr, ">")!;
 	self.write_fn(self.stream.ptr, "<")!;
@@ -626,7 +594,7 @@ fn void? XmlWriter.open(&self, String name)
 	self.in_tag = true;
 }
 
-fn void? XmlWriter.close_el(&self, String name, bool self_closing = false)
+fn void? XmlSerializer.end_element(&self, String name, bool self_closing = false)
 {
 	if (self.in_tag)
 	{
@@ -651,23 +619,24 @@ fn void? XmlWriter.close_el(&self, String name, bool self_closing = false)
 	}
 }
 
-fn void? XmlWriter.empty(&self, String name)
+
+fn void? XmlSerializer.add_empty_element(&self, String name)
 {
-	self.open(name)!;
-	self.close_el(name, true)!;
+	self.start_element(name)!;
+	self.end_element(name, true)!;
 }
 
-fn void? XmlWriter.attr(&self, String name, String value)
+fn void? XmlSerializer.add_attribute(&self, String name, String value)
 {
 	assert(self.in_tag);
 	self.write_fn(self.stream.ptr, " ")!;
 	self.write_fn(self.stream.ptr, name)!;
-	self.write_fn(self.stream.ptr, "=\"")!;
-	self.write_escaped(value)!;
-	self.write_fn(self.stream.ptr, "\"")!;
+	self.write_fn(self.stream.ptr, `="`)!;
+	self.add_content_escaped(value)!;
+	self.write_fn(self.stream.ptr, `"`)!;
 }
 
-fn void? XmlWriter.write_escaped(&self, String s)
+fn void? XmlSerializer.add_content_escaped(&self, String s)
 {
 	foreach (c : s)
 	{
@@ -683,32 +652,59 @@ fn void? XmlWriter.write_escaped(&self, String s)
 	}
 }
 
-fn sz? XmlWriter.write(&self, char[] bytes) @dynamic
+fn void? XmlSerializer.add_content(&self, char[] bytes)
 {
 	if (self.in_tag)
 	{
 		self.write_fn(self.stream.ptr, ">")!;
 		self.in_tag = false;
 	}
-	self.write_escaped((String)bytes)!;
-	return bytes.len;
+	self.add_content_escaped((String)bytes)!;
 }
 
-fn void? XmlWriter.write_byte(&self, char c) @dynamic
+/**
+ * Recursively writes the node and its children to an XmlSerializer.
+ */
+fn void? XmlSerializer.serialize_node(&self, XmlNode* node)
 {
-	char[1] b = { c };
-	self.write(b[..])!;
-}
-
-fn void? XmlWriter.close(&self) @dynamic
-{
-	if (self.in_tag)
+	switch (node.kind)
 	{
-		self.write_fn(self.stream.ptr, ">")!;
-		self.in_tag = false;
+		case START_ELEMENT:
+			self.start_element(node.name)!;
+			node.attributes.@each(; key, val)
+			{
+				self.add_attribute(key, val)!;
+			};
+			foreach (child : node.children)
+			{
+				self.serialize_node(child)!;
+			}
+			self.end_element(node.name)!;
+		case TEXT:
+			self.add_content(node.value)!;
+		case PI:
+			self.add_content("<?")!;
+			self.add_content(node.name)!;
+			self.add_content(" ")!;
+			self.add_content(node.value)!;
+			self.add_content("?>")!;
+		case COMMENT:
+			self.add_content("<!--")!;
+			self.add_content(node.value)!;
+			self.add_content("-->")!;
+		default:
+			break;
 	}
-	return self.stream.close();
 }
+
+/**
+ * Writes the entire document to an XmlSerializer.
+ */
+fn void? XmlSerializer.serialize(&self, XmlDocument* doc)
+{
+	if (doc.root) self.serialize_node(doc.root)!;
+}
+
 
 
 <*
@@ -1088,14 +1084,14 @@ fn Ret refend(Parser* x, Ret ret)
 fn Ret refcontent(Parser* x, uint ch) => refend(x, CONTENT);
 fn Ret refattrval(Parser* x, uint ch) => refend(x, ATTRVAL);
 
-fn void init(Parser* x, void* stack, usz stacksize)
+fn void init(Parser* x, char[] stack)
 {
-	mem::clear(x, Parser::size);
+	*x = {};
 	x.line = 1;
-	x.stack = (char*)stack;
-	x.stacksize = stacksize;
+	x.stack = stack;
+	x.stacksize = stack.len;
 	*x.stack = 0;
-	x.elem = x.pi = x.attr = (char*)x.stack;
+	x.elem = x.pi = x.attr = x.stack;
 	x.state = INIT;
 }
 

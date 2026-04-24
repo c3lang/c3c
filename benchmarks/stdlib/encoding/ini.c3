@@ -38,12 +38,12 @@ fn void bench_setup() @init
     set_benchmark_warmup_iterations(3);
     set_benchmark_max_iterations(100_000);
 
-    set_benchmark_func_iterations($qnameof(parse_small),   100_000);
-    set_benchmark_func_iterations($qnameof(encode_small),  100_000);
-    set_benchmark_func_iterations($qnameof(parse_medium),   10_000);
-    set_benchmark_func_iterations($qnameof(encode_medium),  10_000);
-    set_benchmark_func_iterations($qnameof(parse_large),     1_000);
-    set_benchmark_func_iterations($qnameof(encode_large),    1_000);
+    set_benchmark_func_iterations($reflect(parse_small).qname,   100_000);
+    set_benchmark_func_iterations($reflect(encode_small).qname,  100_000);
+    set_benchmark_func_iterations($reflect(parse_medium).qname,   10_000);
+    set_benchmark_func_iterations($reflect(encode_medium).qname,  10_000);
+    set_benchmark_func_iterations($reflect(parse_large).qname,     1_000);
+    set_benchmark_func_iterations($reflect(encode_large).qname,    1_000);
 
     // Medium: 20 sections × 20 keys (~6 KB)
     DString med;

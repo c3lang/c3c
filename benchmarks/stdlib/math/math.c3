@@ -21,12 +21,12 @@ fn void initialize() @init
 	set_benchmark_warmup_iterations(5);
 	set_benchmark_max_iterations(100_000);
 
-	set_benchmark_func_iterations($qnameof(sin), 4_500_000);
-	set_benchmark_func_iterations($qnameof(cos), 4_500_000);
-	set_benchmark_func_iterations($qnameof(sqrt), 4_500_000);
-	set_benchmark_func_iterations($qnameof(log10), 3_800_000);
-	set_benchmark_func_iterations($qnameof(pow), 3_500_000);
-	set_benchmark_func_iterations($qnameof(atan2), 3_100_000);
+	set_benchmark_func_iterations($reflect(sin).qname, 4_500_000);
+	set_benchmark_func_iterations($reflect(cos).qname, 4_500_000);
+	set_benchmark_func_iterations($reflect(sqrt).qname, 4_500_000);
+	set_benchmark_func_iterations($reflect(log10).qname, 3_800_000);
+	set_benchmark_func_iterations($reflect(pow).qname, 3_500_000);
+	set_benchmark_func_iterations($reflect(atan2).qname, 3_100_000);
 }
 
 fn void sink(double d) @noinline

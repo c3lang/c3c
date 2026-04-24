@@ -32,7 +32,7 @@ fn int main()
 	defer doc.free();
 
 	// Finding nodes using our custom filter.
-	List{XmlNode*} critical_tasks;
+	XmlNodeList critical_tasks;
 	critical_tasks.init(tmem);
 	
 	doc.root.find_by_filter(&is_critical_task, &critical_tasks);
@@ -40,7 +40,7 @@ fn int main()
 	io::printfn("Found %d critical tasks:", critical_tasks.len());
 	foreach (task : critical_tasks)
 	{
-		if (XmlNode* name_node = task.find("name"))
+		if (try name_node = task.find("name"))
 		{
 			io::printfn("- %s (ID: %s)", name_node.text() ?? "N/A", task.attr("id") ?? "?");
 		}
