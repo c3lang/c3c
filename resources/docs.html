@@ -17,6 +17,8 @@
 			--color-red-400: #f87171;
 			--color-orange-400: #fb923c;
 			--color-green-500: #22c55e;
+			--color-blue-300: #93c5fd;
+			--color-blue-400: #60a5fa;
 			color-scheme: dark;
 		}
 
@@ -64,6 +66,27 @@
 		.vis-local {
 			color: var(--color-orange-400);
 			border-color: rgba(251, 146, 60, 0.3);
+		}
+
+		.generic-badge {
+			color: var(--color-green-500);
+			border: 1px solid rgba(34, 197, 94, 0.3);
+			font-size: 0.9em;
+			padding: 2px 6px;
+			border-radius: 4px;
+			vertical-align: middle;
+			text-transform: uppercase;
+			font-weight: bold;
+			letter-spacing: 0.5px;
+			opacity: 0.8;
+			margin-right: 5px;
+		}
+
+		.generic-params-header {
+			font-family: monospace;
+			font-size: 1.1em;
+			opacity: 0.8;
+			color: #d2a8ff;
 		}
 
 		.item-visibility,
@@ -529,7 +552,7 @@
 			height: 50px;
 			pointer-events: none;
 			z-index: 10;
-			transition: opacity 0.2s;
+			transition: opacity 0.1s;
 			opacity: 0;
 			display: flex;
 			justify-content: center;
@@ -605,7 +628,7 @@
 			color: white;
 			justify-content: center;
 			align-items: center;
-			box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 			cursor: pointer;
 			z-index: 2000;
 			border: none;
@@ -616,6 +639,7 @@
 			.right-sidebar {
 				display: none !important;
 			}
+
 			#sidebar {
 				width: 250px;
 			}
@@ -631,14 +655,21 @@
 				transform: translateX(-100%);
 				width: 85vw;
 			}
+
 			#sidebar.mobile-open {
 				transform: translateX(0);
 			}
+
 			.main-content {
 				padding: 15px;
 			}
+
 			#mobile-toggle {
 				display: flex;
+			}
+
+			.resizer {
+				display: none;
 			}
 		}
 
@@ -654,7 +685,8 @@
 			transition: background 0.2s;
 		}
 
-		.resizer:hover, .resizer.dragging {
+		.resizer:hover,
+		.resizer.dragging {
 			background: rgba(37, 99, 235, 0.3);
 		}
 
@@ -696,6 +728,32 @@
 			line-height: 1.6;
 		}
 
+		.inline-code {
+			background: rgba(255, 255, 255, 0.05);
+			padding: 2px 5px;
+			border-radius: 4px;
+			font-family: monospace;
+			font-size: 0.95em;
+			border: 1px solid rgba(255, 255, 255, 0.05);
+		}
+
+		.bullet-item {
+			margin-left: 15px;
+			margin-bottom: 4px;
+			display: block;
+		}
+
+		.doc-description h1,
+		.doc-description h2,
+		.doc-description h3,
+		.doc-description h4,
+		.doc-description h5,
+		.doc-description h6 {
+			margin-top: 25px;
+			margin-bottom: 10px;
+			color: var(--accent);
+		}
+
 		.targets-badge {
 			font-size: 0.85em;
 			color: #666;
@@ -722,21 +780,24 @@
 		}
 
 		.module-list-ul li {
-			padding: 8px 15px;
+			padding: 6px 15px 6px 13px;
 			cursor: pointer;
-		}
-
-		.module-list-ul li:nth-child(even) {
-			background: rgba(255, 255, 255, 0.03);
+			border-left: 2px solid transparent;
+			transition: background 0.15s, border-color 0.15s;
 		}
 
 		.module-list-ul li:hover {
-			background: rgba(255, 255, 255, 0.1) !important;
+			background: rgba(255, 255, 255, 0.07) !important;
 		}
 
 		.module-list-ul li.selected {
 			background: rgba(255, 255, 255, 0.1) !important;
-			border-left: 2px solid var(--accent);
+		}
+
+		.module-group-sep {
+			height: 1px;
+			background: rgba(255, 255, 255, 0.06);
+			margin: 4px 15px;
 		}
 
 		.overview-title {
@@ -1097,12 +1158,18 @@
 		}
 
 		function isSymbolVisible(d) {
+			if (d.isGenericInstance) return false;
 			if (d.kind === 'module') return true;
 			const vis = d.visibility || 'public';
 			if (vis === 'public') return true;
 			if (vis === 'private' && filters.private) return true;
 			if (vis === 'local' && filters.local) return true;
 			return false;
+		}
+
+		function getLocalName(uid) {
+			const idx = uid.lastIndexOf('::');
+			return idx >= 0 ? uid.slice(idx + 2) : uid;
 		}
 
 		const BUILTINS = {
@@ -1199,6 +1266,8 @@
 					uid: moduleName,
 					visibility: 'public',
 					docs: mod.docs,
+					is_generic: mod.is_generic,
+					generic_parameters: mod.generic_parameters,
 					moduleName: moduleName,
 					targetName: targetName === 'docs' ? 'default' : targetName
 				});
@@ -1208,6 +1277,7 @@
 						mod[cat].forEach(decl => {
 							decl.moduleName = moduleName;
 							decl.targetName = targetName === 'docs' ? 'default' : targetName;
+							decl.isGenericInstance = !!decl.is_instantiation;
 							addOrMergeDeclaration(decl);
 						});
 					}
@@ -1251,16 +1321,75 @@
 			}
 		}
 
+		function getSubtleColor(text) {
+			let hash = 0;
+			for (let i = 0; i < text.length; i++) {
+				hash = text.charCodeAt(i) + ((hash << 5) - hash);
+			}
+			const h = Math.abs(hash) % 360;
+			return `hsl(${h}, 20%, 75%)`;
+		}
+
+		function formatHierarchicalName(name, sep, opacityParent = 0.4, colorLast = 'var(--color-blue-300)') {
+			const parts = name.split(sep);
+			if (parts.length <= 1) return `<span style="color: ${colorLast};">${name}</span>`;
+
+			let html = '';
+			for (let i = 0; i < parts.length; i++) {
+				const isLast = i === parts.length - 1;
+				const opacity = isLast ? 1.0 : opacityParent;
+				const color = isLast ? colorLast : getSubtleColor(parts[i]);
+				const suffix = isLast ? '' : sep;
+				html += `<span style="opacity: ${opacity}; color: ${color};">${parts[i]}${suffix}</span>`;
+			}
+			return html;
+		}
+
 		function renderModules() {
 			const modules = allDecls.filter(d => d.kind === 'module').sort((a, b) => a.uid.localeCompare(b.uid));
 			const container = document.getElementById('module-list');
+
+			// Build a nested tree: { uid, children: { name -> node } }
+			const root = {};
+			modules.forEach(m => {
+				const parts = m.uid.split('::');
+				let node = root;
+				for (let i = 0; i < parts.length; i++) {
+					const part = parts[i];
+					if (!node[part]) node[part] = { uid: parts.slice(0, i + 1).join('::'), children: {} };
+					node = node[part].children;
+				}
+			});
+
+			function renderNode(nodeMap, depth) {
+				let html = '';
+				Object.entries(nodeMap).sort(([a], [b]) => a.localeCompare(b)).forEach(([name, node]) => {
+					const hasChildren = Object.keys(node.children).length > 0;
+					const color = getSubtleColor(name);
+					const paddingLeft = 12 + depth * 14;
+
+					if (depth === 0) {
+						html += `<li data-mod="${node.uid}" onclick="closeSearch(); navigateTo('${node.uid}', true)"
+							style="padding: 8px 15px 3px 12px; cursor:pointer; font-size:0.72em;
+							       text-transform:uppercase; letter-spacing:0.09em; font-weight:700; opacity:0.55;">
+							<span style="color:${color};">${name}</span>
+						</li>`;
+					} else {
+						const nameHtml = formatHierarchicalName(node.uid, '::', 0.2);
+						html += `<li class="item" data-mod="${node.uid}"
+							style="padding: 3px 15px 3px 12px;"
+							onclick="closeSearch(); navigateTo('${node.uid}', true)">
+							<span class="item-name c3-module" style="white-space:nowrap;">${nameHtml}</span>
+						</li>`;
+					}
+					if (hasChildren) html += renderNode(node.children, depth + 1);
+				});
+				return html;
+			}
+
 			let html = '<h3 class="sidebar-section-title">Modules</h3>';
 			html += '<ul class="module-list-ul">';
-			modules.forEach(m => {
-				html += `<li class="item" data-mod="${m.uid}" onclick="closeSearch(); navigateTo('${m.uid}', true)">
-					<span class="item-name c3-module">${m.uid}</span>
-				</li>`;
-			});
+			html += renderNode(root, 0);
 			html += '</ul>';
 			container.innerHTML = html;
 		}
@@ -1298,13 +1427,14 @@
 				`;
 				mods.forEach(m => {
 					const display = m.startsWith(top + '::') ? m.slice(top.length + 2) : m;
+					const displayHtml = formatHierarchicalName(display, '::');
 
 					html += `
 						<div class="module-row"
 							 onclick="hideTooltip(); navigateTo('${m}')"
 							 onmouseenter="showTooltip('${m}', event)"
 							 onmouseleave="hideTooltip()">
-							<span class="module-row-name">${display}</span>
+							<span class="module-row-name">${displayHtml}</span>
 						</div>
 					`;
 				});
@@ -1444,13 +1574,121 @@
 			return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		}
 
+		const C3_KEYWORDS = new Set([
+			'asm', 'assert', 'break', 'case', 'cast', 'catch', 'const', 'continue', 'default', 'defer', 'do', 'else',
+			'enum', 'extern', 'false', 'fn', 'for', 'if', 'import', 'inline', 'local', 'macro', 'module', 'next',
+			'null', 'operator', 'private', 'public', 'return', 'static', 'struct', 'switch', 'true', 'typeid',
+			'using', 'var', 'while', 'bitstruct', 'fault', 'interface', 'union', 'try', 'foreach', 'nextcase', 'typedef', 'alias'
+		]);
+
+		const C3_TOKEN_TYPES = [
+			{ name: 'comment', regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
+			{ name: 'string', regex: /"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/g },
+			{ name: 'number', regex: /\b(0x[0-9a-fA-F]+|0b[01]+|\d+(\.\d+)?)\b/g },
+			{ name: 'word', regex: /@?\b[\w:]+\b/g }
+		];
+
+		let symbolMapCache = null;
+		function getSymbolMap() {
+			if (!symbolMapCache && allDecls.length > 0) {
+				symbolMapCache = {};
+				const counts = {};
+				allDecls.forEach(d => {
+					if (!d.name) return;
+					counts[d.name] = (counts[d.name] || 0) + 1;
+					if (!symbolMapCache[d.name]) symbolMapCache[d.name] = { kind: d.kind, uid: d.uid };
+				});
+				for (const name in counts) {
+					if (counts[name] > 1) symbolMapCache[name].ambiguous = true;
+				}
+			}
+			return symbolMapCache || {};
+		}
+
+		function highlightC3(code) {
+			const matches = [];
+			C3_TOKEN_TYPES.forEach(token => {
+				token.regex.lastIndex = 0;
+				let m;
+				while ((m = token.regex.exec(code)) !== null) {
+					matches.push({ start: m.index, end: m.index + m[0].length, name: token.name, text: m[0] });
+				}
+			});
+
+			matches.sort((a, b) => (a.start - b.start) || (b.end - a.end));
+
+			const symbols = getSymbolMap();
+			let result = '', lastIdx = 0;
+
+			for (const m of matches) {
+				if (m.start < lastIdx) continue;
+				result += escapeHtml(code.substring(lastIdx, m.start));
+
+				let cls = '', url = '', text = m.text;
+
+				if (m.name === 'word') {
+					if (C3_KEYWORDS.has(text)) {
+						cls = 'c3-keyword';
+					} else if (BUILTINS[text]) {
+						cls = 'c3-type';
+					} else {
+						const charBefore = m.start > 0 ? code[m.start - 1] : '';
+						const isFieldAccess = charBefore === '.';
+						const lastSep = text.lastIndexOf('::');
+
+						if (lastSep >= 0) {
+							const found = allDecls.find(d => d.uid === text || d.uid.endsWith('::' + text));
+							if (found) { cls = `c3-${found.kind}`; url = '#' + found.uid; }
+						} else if (!isFieldAccess) {
+							const symbol = symbols[text];
+							if (symbol) {
+								cls = `c3-${symbol.kind}`;
+								if (/^[A-Z]/.test(text) || text.startsWith('@')) url = '#' + symbol.uid;
+							}
+						}
+					}
+				} else {
+					cls = `c3-${m.name}`;
+				}
+
+				const escaped = escapeHtml(text);
+				let html = cls ? `<span class="${cls}">${escaped}</span>` : escaped;
+				if (url) html = `<a href="${url}" onclick="navigateTo('${url.slice(1)}'); return false;" class="type-link" style="border-bottom: none;">${html}</a>`;
+
+				result += html;
+				lastIdx = m.end;
+			}
+			return result + escapeHtml(code.substring(lastIdx));
+		}
+
+		function parseMarkdownInline(text) {
+			// First escape to be safe
+			let escaped = escapeHtml(text);
+
+			// 1. Inline code `code` (using highlightC3 for types/links)
+			escaped = escaped.replace(/`([^`]+)`/g, (m, p1) => `<code class="inline-code">${highlightC3(p1)}</code>`);
+
+			// 2. Bold **text** or __text__
+			escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+			escaped = escaped.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+
+			// 3. Italic *text* or _text_
+			escaped = escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+			escaped = escaped.replace(/_([^_]+)_/g, '<em>$1</em>');
+
+			// 4. Links [text](url)
+			escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="type-link">$1</a>');
+
+			return escaped;
+		}
+
 		function formatDocText(text) {
 			const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-
 
 			let html = '';
 			let inCode = false;
 			let pOpen = false;
+			let codeLines = [];
 
 			for (const rawLine of lines) {
 				const trimmed = rawLine.trim();
@@ -1458,22 +1696,30 @@
 				if (!inCode && trimmed.startsWith('```')) {
 					if (pOpen) { html += '</p>'; pOpen = false; }
 					inCode = true;
-					html += '<pre><code>';
+					codeLines = [];
 				} else if (inCode && trimmed === '```') {
 					inCode = false;
-					html += '</code></pre>';
+					html += '<pre><code>' + highlightC3(codeLines.join('\n')) + '</code></pre>';
 				} else if (inCode) {
-					// Remove 1 leading space often present in C3 doc blocks. Hack
 					const outLine = rawLine.startsWith(' ') ? rawLine.substring(1) : rawLine;
-					html += escapeHtml(outLine) + '\n';
+					codeLines.push(outLine);
 				} else {
 					if (trimmed === '') {
 						if (pOpen) { html += '</p>'; pOpen = false; }
+					} else if (/^#{1,6}\s/.test(trimmed)) {
+						if (pOpen) { html += '</p>'; pOpen = false; }
+						const level = trimmed.indexOf(' ');
+						const headerText = trimmed.substring(level + 1);
+						html += `<h${level}>${parseMarkdownInline(headerText)}</h${level}>`;
+					} else if (/^([-*+])\s/.test(trimmed)) {
+						if (pOpen) { html += '</p>'; pOpen = false; }
+						const itemText = trimmed.substring(2);
+						html += `<div class="bullet-item">• ${parseMarkdownInline(itemText)}</div>`;
 					} else {
 						if (!pOpen) { html += '<p>'; pOpen = true; }
 						else { html += '<br>'; }
 						const outLine = rawLine.startsWith(' ') ? rawLine.substring(1) : rawLine;
-						html += escapeHtml(outLine);
+						html += parseMarkdownInline(outLine);
 					}
 				}
 			}
@@ -1502,11 +1748,18 @@
 		}
 
 		function setupResizers() {
-			const setup = (resizerId, sidebarId, isLeft) => {
+			const setup = (resizerId, sidebarId, isLeft, storageKey) => {
 				const resizer = document.getElementById(resizerId);
 				const sidebar = (typeof sidebarId === 'string') ? document.getElementById(sidebarId) : sidebarId;
-				let startX, startWidth;
 
+				if (window.innerWidth > 600) {
+					const savedWidth = localStorage.getItem(storageKey);
+					if (savedWidth) {
+						sidebar.style.width = savedWidth + 'px';
+					}
+				}
+
+				let startX, startWidth;
 				resizer.addEventListener('mousedown', (e) => {
 					startX = e.clientX;
 					startWidth = sidebar.offsetWidth;
@@ -1524,6 +1777,7 @@
 						resizer.classList.remove('dragging');
 						document.body.style.cursor = 'default';
 						document.body.style.userSelect = 'auto';
+						localStorage.setItem(storageKey, sidebar.offsetWidth);
 						document.removeEventListener('mousemove', onMouseMove);
 						document.removeEventListener('mouseup', onMouseUp);
 					};
@@ -1533,8 +1787,8 @@
 				});
 			};
 
-			setup('left-resizer', 'sidebar', true);
-			setup('right-resizer', document.getElementById('right-sidebar'), false);
+			setup('left-resizer', 'sidebar', true, 'c3-doc-sidebar-width');
+			setup('right-resizer', document.getElementById('right-sidebar'), false, 'c3-doc-right-sidebar-width');
 		}
 
 		function toggleMobileMenu() {
@@ -1545,6 +1799,23 @@
 
 		function bindEvents() {
 			setupResizers();
+
+			// Middle-click opens in a new tab
+			document.addEventListener('auxclick', (e) => {
+				if (e.button !== 1) return;
+
+				const el = e.target.closest('[data-uid],[data-mod],[onclick]');
+				if (!el) return;
+				let uid = el.dataset.uid || el.dataset.mod;
+				if (!uid && el.hasAttribute('onclick')) {
+					const match = el.getAttribute('onclick').match(/navigateTo\('([^']+)'\)/);
+					if (match) uid = match[1];
+				}
+				if (!uid) return;
+				e.preventDefault();
+				window.open('#' + encodeURIComponent(uid), '_blank');
+			});
+
 			document.getElementById('search-input').addEventListener('input', (e) => {
 				hideTooltip();
 				const rawQ = e.target.value.toLowerCase().trim();
@@ -1705,8 +1976,7 @@
 		}
 
 		function buildSignature(d) {
-			const lastSep = d.uid.lastIndexOf('::');
-			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
+			const localName = getLocalName(d.uid);
 
 			if (d.kind === 'function' || d.kind === 'macro') {
 				const keyword = d.kind === 'macro' ? 'macro' : 'fn';
@@ -1737,6 +2007,9 @@
 			html += `<a href="#" onclick="navigateTo('${d.moduleName}'); return false;"
 						class="module-link"
 						title="Go to module ${d.moduleName}">${d.moduleName}</a>`;
+			if (d.generic_parameters && d.generic_parameters.length > 0) {
+				html += `<span class="generic-params-header" style="margin-left: 10px;">&lt;${d.generic_parameters.join(', ')}&gt;</span>`;
+			}
 			html += `</span>`;
 
 			const kindClass = `kind-${d.kind}`;
@@ -1748,6 +2021,10 @@
 				html += `<span class="visibility-badge ${visClass}">${vis}</span>`;
 			}
 
+			if (d.is_generic && d.kind !== 'variable' && d.kind !== 'constdef') {
+				html += `<span class="generic-badge">generic</span>`;
+			}
+
 			if (d.attributes) {
 				d.attributes.forEach(a => html += `<span class="badge">${a}</span>`);
 			}
@@ -1756,8 +2033,7 @@
 			}
 			html += `</div>`;
 
-			const lastSep = d.uid.lastIndexOf('::');
-			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
+			const localName = getLocalName(d.uid);
 			html += `<div style="margin-bottom: 25px;">`;
 			html += `<h1 class="header-title">${localName}</h1>`;
 
@@ -1880,11 +2156,7 @@
 			}
 			if (d.docs.text) {
 				html += `<h3>Description</h3>`;
-				if (d.kind === 'module') {
-					html += `<pre class="header-pre" style="white-space: pre-wrap;">${escapeHtml(d.docs.text)}</pre>`;
-				} else {
-					html += `<div class="doc-description">${formatDocText(d.docs.text)}</div>`;
-				}
+				html += `<div class="doc-description">${formatDocText(d.docs.text)}</div>`;
 			}
 			return html;
 		}
@@ -1915,8 +2187,7 @@
 		}
 
 		function renderDetails(d, skipSidebarScroll = false) {
-			const lastSep = d.uid.lastIndexOf('::');
-			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
+			const localName = getLocalName(d.uid);
 
 			let html = d.kind === 'module' ? '' : buildHeaderHtml(d, d);
 
@@ -1961,7 +2232,7 @@
 					if (!isSidebar) {
 						let maxLen = 0;
 						modMembers.forEach(m => {
-							const mLocal = m.uid.slice(m.uid.lastIndexOf('::') + 2);
+							const mLocal = getLocalName(m.uid);
 							if (mLocal.length > maxLen) maxLen = mLocal.length;
 						});
 						// 9px per char approx + badges space, thank the AI for this :/
@@ -1978,10 +2249,11 @@
 							ctxHtml += `<h3 class="sidebar-section-title">${title}</h3>`;
 							ctxHtml += `<ul class="member-list group-list sidebar-member-list">`;
 							groups[k].sort((a, b) => a.uid.localeCompare(b.uid)).forEach(m => {
-								const mLocal = m.uid.slice(m.uid.lastIndexOf('::') + 2);
+								const mLocal = getLocalName(m.uid);
+								const nameHtml = formatHierarchicalName(mLocal, '.', 0.5, 'inherit');
 								const isCurrent = m.uid === d.uid;
 								ctxHtml += `<li class="member-item ${isCurrent ? 'member-item-selected' : 'member-item-not-selected'}" onclick="navigateTo('${m.uid}')">
-									<a href="#" onclick="event.preventDefault(); event.stopPropagation(); navigateTo('${m.uid}');" class="member-link ${isCurrent ? 'current' : ''} c3-${m.kind}">${mLocal}</a>
+									<a href="#" onclick="event.preventDefault(); event.stopPropagation(); navigateTo('${m.uid}');" class="member-link ${isCurrent ? 'current' : ''} c3-${m.kind}">${nameHtml}</a>
 								</li>`;
 							});
 							ctxHtml += `</ul>`;
@@ -1990,7 +2262,8 @@
 								<div class="module-group-title">${title}</div>
 								<div class="module-group-list">`;
 							groups[k].sort((a, b) => a.uid.localeCompare(b.uid)).forEach(m => {
-								const mLocal = m.uid.slice(m.uid.lastIndexOf('::') + 2);
+								const mLocal = getLocalName(m.uid);
+								const nameHtml = formatHierarchicalName(mLocal, '.', 0.5, 'inherit');
 								const visBadge = m.visibility && m.visibility !== 'public' ? `<span class="item-visibility">[${m.visibility}]</span>` : '';
 								const hiddenClass = m.visibility && m.visibility !== 'public' ? ' hidden-sym' : '';
 								ctxHtml += `
@@ -1998,7 +2271,7 @@
 										 onclick="hideTooltip(); navigateTo('${m.uid}')"
 										 onmouseenter="showTooltip('${m.uid}', event)"
 										 onmouseleave="hideTooltip()">
-										<span class="module-row-name c3-${m.kind}">${mLocal} ${visBadge}</span>
+										<span class="module-row-name c3-${m.kind}">${nameHtml} ${visBadge}</span>
 									</div>`;
 							});
 							ctxHtml += `</div></div>`;
@@ -2020,7 +2293,19 @@
 			if (d.kind === 'module') {
 				rightSidebar.style.display = 'none';
 				html += `<div class="module-contents-container" style="max-width: 95%;">`;
-				html += `<h1 class="overview-title">Module: ${d.name}</h1>`;
+
+				if (d.is_generic) {
+					let params = (d.generic_parameters && d.generic_parameters.length > 0)
+						? ` <span style="color: #d2a8ff;">&lt;${d.generic_parameters.join(', ')}&gt;</span>`
+						: '';
+					html += `<h1 class="overview-title" style="font-family: monospace; font-size: 1.8em; margin-bottom: 30px;">
+						<span style="color: #ff7b72;">module</span> ${d.name}${params};
+						<span class="generic-badge" style="font-size: 0.7em; vertical-align: middle; margin-left: 15px; opacity: 1;">generic</span>
+					</h1>`;
+				} else {
+					html += `<h1 class="overview-title">Module: ${d.name}</h1>`;
+				}
+
 				html += buildDocsBodyHtml(d);
 				html += renderModuleContext(d.name, false);
 				html += `</div>`;
