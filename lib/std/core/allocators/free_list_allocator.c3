@@ -14,7 +14,7 @@ const MIN_CAPACITY         = MIN_BLOCK_SIZE * 4;
  When the allocator exhausts its memory or fragmentation becomes too high, it falls back to its backing allocator. Fallback allocations are automatically freed when the allocator is destroyed; the user must not free them manually.
  Fallback allocations can also be resized.
 *>
-struct FreeListAlloc (Printable)
+struct FreeListAlloc (Allocator, Printable)
 {
 	char* data;
 	sz capacity;

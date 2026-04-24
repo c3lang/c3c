@@ -14,7 +14,7 @@ const MIN_BLOCK_SIZE = 16;
  It may use slightly more memory than other allocators because it can only store allocations sized as powers of two.
  When the allocator exhausts its memory, it falls back to its backing allocator. Fallback allocations are automatically freed when the allocator is destroyed; the user must not free them manually. Fallback allocations can also be resized.
 *>
-struct BuddyAlloc
+struct BuddyAlloc (Allocator, Printable)
 {
 	BuddyBlock* head;
 	BuddyBlock* tail;
