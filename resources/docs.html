@@ -14,40 +14,42 @@
 			--border: #292524;
 			--panel: rgb(23, 24, 28);
 			--color-white: rgb(230, 230, 230);
-			--color-blue-500: #3b82f6;
 			--color-red-400: #f87171;
 			--color-orange-400: #fb923c;
 			--color-green-500: #22c55e;
 			color-scheme: dark;
 		}
 
-		.text-blue-500 {
-			color: var(--color-blue-500);
-		}
-
-		.text-red-400 {
-			color: var(--color-red-400);
-		}
-
-		.text-orange-400 {
-			color: var(--color-orange-400);
-		}
-
-		.text-green-500 {
-			color: var(--color-green-500);
+		.badge {
+			display: inline-block;
+			padding: 3px 12px;
+			border-radius: 12px;
+			font-size: 1em;
+			margin-right: 6px;
+			font-family: monospace;
+			background: linear-gradient(180deg, #2a2d2e 0%, #1a1c1d 100%);
+			border: 1px solid #3e4244;
+			color: #eee;
+			box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+			vertical-align: middle;
 		}
 
 		.visibility-badge {
 			font-size: 0.7em;
 			padding: 2px 6px;
 			border-radius: 4px;
-			margin-left: 10px;
 			vertical-align: middle;
 			text-transform: uppercase;
 			font-weight: bold;
 			letter-spacing: 0.5px;
 			border: 1px solid currentColor;
 			opacity: 0.8;
+			margin-right: 5px;
+		}
+
+		/* Add extra space after the last badge in a sequence */
+		.visibility-badge + :not(.visibility-badge) {
+			margin-left: 10px;
 		}
 
 		.vis-public {
@@ -65,21 +67,14 @@
 			border-color: rgba(251, 146, 60, 0.3);
 		}
 
-		.search-item-visibility {
+		.item-visibility, .search-item-visibility {
 			font-size: 0.8em;
 			color: #888;
-			margin-left: 8px;
+			font-family: monospace;
 		}
 
 		.hidden-sym {
 			opacity: 0.6;
-		}
-
-		.item-visibility {
-			font-size: 0.8em;
-			color: #888;
-			/* margin-left: 8px; */
-			font-family: monospace;
 		}
 
 		/* Custom Scrollbar */
@@ -336,14 +331,7 @@
 			overflow-y: auto;
 		}
 
-		.badge {
-			display: inline-block;
-			padding: 4px 10px;
-			border-radius: 12px;
-			font-size: 1em;
-			margin-right: 6px;
-			font-family: monospace;
-		}
+
 
 		pre {
 			background: #000;
@@ -351,6 +339,12 @@
 			border-radius: 6px;
 			overflow-x: auto;
 			border: 1px solid var(--border);
+		}
+
+		.header-type-info a {
+			color: #aaa;
+			text-decoration: underline;
+			text-decoration-color: #444;
 		}
 
 		.header-pre {
@@ -427,8 +421,9 @@
 			border-left: 1px solid #333;
 		}
 
-		.module-contents-container {
-			margin-top: 30px;
+		.module-contents-container { 
+			padding: 40px; 
+			overflow-x: auto;
 		}
 
 		.header-container {
@@ -674,21 +669,92 @@
 		}
 
 		.overview-groups {
-			column-width: 350px;
-			column-gap: 50px;
+			column-width: 300px;
+			column-gap: 40px;
+			column-fill: auto;
+			max-height: 80vh;
 			margin-top: 30px;
 		}
 
+		.variant-info-flex {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 60px;
+			margin-top: 20px;
+			margin-bottom: 30px;
+			align-items: flex-start;
+			justify-content: flex-start;
+		}
+
+		.info-column {
+			flex: 1;
+			min-width: 350px;
+			max-width: 900px;
+		}
+
+		.contract-table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 10px;
+			font-size: 0.95em;
+		}
+
+		.contract-table th {
+			text-align: left;
+			color: #888;
+			font-weight: normal;
+			border-bottom: 1px solid #333;
+			padding: 8px;
+			text-transform: uppercase;
+			font-size: 0.8em;
+			letter-spacing: 1px;
+		}
+
+		.contract-table td {
+			padding: 10px 8px;
+			border-bottom: 1px solid #222;
+			vertical-align: top;
+		}
+
+		.contract-table tr:last-child td {
+			border-bottom: none;
+		}
+
+		.col-mod { width: 80px; }
+		.col-type { width: 180px; }
+		.col-name { width: 150px; }
+
+		.arg-mod-badge {
+			font-size: 0.75em;
+			padding: 2px 5px;
+			border-radius: 3px;
+			background: #222;
+			color: #aaa;
+			text-transform: uppercase;
+			font-weight: bold;
+			margin-right: 4px;
+		}
+
+		.arg-mod-in { color: var(--color-green-500); border: 1px solid rgba(34, 197, 94, 0.2); }
+		.arg-mod-out { color: var(--color-red-400); border: 1px solid rgba(248, 113, 113, 0.2); }
+		.arg-mod-ref { color: var(--color-orange-400); border: 1px solid rgba(251, 146, 60, 0.2); }
+
+		.info-column h3 {
+			margin-top: 0 !important;
+		}
+
 		.module-group {
-			margin-bottom: 35px;
+			margin-bottom: 30px;
 			break-inside: auto;
+			display: block;
+			width: 100%;
 		}
 
 		.module-group-title {
 			font-family: monospace;
 			font-size: 1.1em;
 			font-weight: bold;
-			color: var(--color-blue-500);
+			color: #888; /* Fallback */
 			border-bottom: 1px solid var(--border);
 			padding-bottom: 8px;
 			margin-bottom: 12px;
@@ -696,6 +762,21 @@
 			letter-spacing: 1px;
 			break-after: avoid;
 		}
+
+		/* Category Specific Colors */
+		.group-function .module-group-title { color: #d2a8ff; }
+		.group-macro .module-group-title { color: #d2a8ff; }
+		.group-struct .module-group-title, 
+		.group-union .module-group-title,
+		.group-enum .module-group-title,
+		.group-bitstruct .module-group-title,
+		.group-typedef .module-group-title,
+		.group-type_alias .module-group-title { color: #ffa657; }
+		.group-faultdef .module-group-title { color: #f48771; }
+		.group-variable .module-group-title,
+		.group-const .module-group-title,
+		.group-constdef .module-group-title { color: #79c0ff; }
+		.group-interface .module-group-title { color: #ffa657; }
 
 		.module-group-list {
 			display: flex;
@@ -719,7 +800,6 @@
 		.module-row-name {
 			font-family: monospace;
 			font-size: 1.05em;
-			color: var(--color-blue-500);
 			font-weight: bold;
 			white-space: nowrap;
 			overflow: hidden;
@@ -729,7 +809,7 @@
 		.module-tooltip {
 			position: fixed;
 			background: var(--panel);
-			border: 1px solid var(--color-blue-500);
+			border: 1px solid var(--accent);
 			padding: 16px 24px;
 			border-radius: 8px;
 			z-index: 2000;
@@ -770,7 +850,7 @@
 		}
 
 		.module-tooltip-title {
-			color: var(--color-blue-500);
+			color: var(--accent);
 			font-weight: bold;
 			font-family: monospace;
 			margin-bottom: 8px;
@@ -779,56 +859,6 @@
 			padding-bottom: 4px;
 		}
 
-		.member-group {
-			margin: 8px 0;
-			padding: 8px;
-			border: 1px solid #444;
-			border-radius: 6px;
-			background: #252525;
-			position: relative;
-		}
-
-		.group-label {
-			position: absolute;
-			top: -10px;
-			left: 10px;
-			background: #1e1e1e;
-			padding: 0 6px;
-			font-size: 0.7em;
-			color: #888;
-			text-transform: uppercase;
-			font-weight: bold;
-			letter-spacing: 1px;
-			border: 1px solid #444;
-			border-radius: 3px;
-		}
-
-		.group-union {
-			border-color: #5a3d3d;
-		}
-
-		.group-union>.group-label {
-			color: #f48771;
-			border-color: #5a3d3d;
-		}
-
-		.group-struct {
-			border-color: #3d5a3d;
-		}
-
-		.group-struct>.group-label {
-			color: #89d185;
-			border-color: #3d5a3d;
-		}
-
-
-
-		.group-list {
-			margin-top: 8px;
-			margin-left: 20px;
-			border-left: 1px dashed #444;
-			padding-left: 10px;
-		}
 	</style>
 </head>
 
@@ -865,6 +895,45 @@
 		let selectedIndex = -1;
 		let currentRendered = [];
 		let currentFiltered = [];
+
+		const BUILTINS = {
+			"ichar": "signed 8-bit integer",
+			"short": "signed 16-bit integer",
+			"int": "signed 32-bit integer",
+			"long": "signed 64-bit integer",
+			"int128": "signed 128-bit integer",
+			"iptr": "signed pointer-sized integer",
+			"isz": "signed pointer-sized integer",
+			"sz": "signed pointer-sized integer",
+			"char": "unsigned 8-bit integer",
+			"ushort": "unsigned 16-bit integer",
+			"uint": "unsigned 32-bit integer",
+			"ulong": "unsigned 64-bit integer",
+			"uint128": "unsigned 128-bit integer",
+			"uptr": "unsigned pointer-sized integer",
+			"usz": "unsigned pointer-sized integer",
+			"bool": "boolean value (true/false)",
+			"float": "32-bit floating point",
+			"double": "64-bit floating point",
+			"void": "no type",
+			"any": "any type",
+			"typeid": "runtime type identifier",
+			"String": "typedef inline char[]",
+			"ZString": "typedef inline char*"
+		};
+
+		const KIND_PRIORITY = {
+			'function': 1,
+			'macro': 2,
+			'struct': 3,
+			'union': 4,
+			'bitstruct': 5,
+			'enum': 6,
+			'faultdef': 7,
+			'type_alias': 8,
+			'constdef': 9,
+			'global': 10
+		};
 
 		function showTooltip(uid, event) {
 			const target = allDecls.find(d => d.uid === uid);
@@ -1373,7 +1442,7 @@
 			if (d.kind === 'function' || d.kind === 'macro') {
 				const keyword = d.kind === 'macro' ? 'macro' : 'fn';
 				const params = renderParams(d.members);
-				const ret = d.docs && d.docs.return ? renderTypeName({ name: d.docs.return }) : 'void';
+				const ret = d.return_type ? renderTypeName(d.return_type) : 'void';
 				const attrs = (d.attributes || []).map(a => `<span class="c3-attribute">${a}</span>`).join(' ');
 				return `<span class="c3-keyword">${keyword}</span> ${ret} <span class="c3-function">${localName}</span>(${params})${attrs ? ' ' + attrs : ''}`;
 			}
@@ -1393,7 +1462,7 @@
 			return null;
 		}
 
-		function buildHeaderHtml(d) {
+		function buildHeaderHtml(d, vd) {
 			let html = `<div class="header-container">`;
 			html += `<span class="module-breadcrumb">Module: `;
 			html += `<a href="#" onclick="navigateTo('${d.moduleName}'); return false;"
@@ -1420,36 +1489,32 @@
 
 			const lastSep = d.uid.lastIndexOf('::');
 			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
+			html += `<div style="margin-bottom: 25px;">`;
 			html += `<h1 class="header-title">${localName}</h1>`;
+			
+			if (vd) {
+				let typeInfo = '';
+				if (vd.return_type) {
+					typeInfo += ` <span style="font-size: 0.8em; opacity: 0.7;">Returns:</span> ${renderTypeName(vd.return_type)}`;
+				}
+				if (vd.base_type) {
+					typeInfo += ` (base: ${renderTypeName(vd.base_type)})`;
+				}
+				if (vd.interfaces && vd.interfaces.length > 0) {
+					const ifaces = vd.interfaces.map(i => {
+						if (i.uid) return `<a href="#" onclick="navigateTo('${i.uid}'); return false;">${i.name}</a>`;
+						return i.name;
+					}).join(', ');
+					typeInfo += ` <span style="font-size: 0.8em; opacity: 0.8; font-family: sans-serif;">implements ${ifaces}</span>`;
+				}
+				if (typeInfo) {
+					html += `<span class="header-type-info">${typeInfo}</span>`;
+				}
+			}
+			html += `</div>`;
 
 			return html;
 		}
-
-		const BUILTINS = {
-			"ichar": "signed 8-bit integer",
-			"short": "signed 16-bit integer",
-			"int": "signed 32-bit integer",
-			"long": "signed 64-bit integer",
-			"int128": "signed 128-bit integer",
-			"iptr": "signed pointer-sized integer",
-			"isz": "signed pointer-sized integer",
-			"sz": "signed pointer-sized integer",
-			"char": "unsigned 8-bit integer",
-			"ushort": "unsigned 16-bit integer",
-			"uint": "unsigned 32-bit integer",
-			"ulong": "unsigned 64-bit integer",
-			"uint128": "unsigned 128-bit integer",
-			"uptr": "unsigned pointer-sized integer",
-			"usz": "unsigned pointer-sized integer",
-			"bool": "boolean value (true/false)",
-			"float": "32-bit floating point",
-			"double": "64-bit floating point",
-			"void": "no type",
-			"any": "any type",
-			"typeid": "runtime type identifier",
-			"String": "typedef inline char[]",
-			"ZString": "typedef inline char*"
-		};
 
 		function renderTypeName(typeObj) {
 			if (!typeObj) return `<span class="c3-type">void</span>`;
@@ -1485,106 +1550,71 @@
 			return `<span class="c3-type">${typeObj.name}</span>`;
 		}
 
-		function buildTypeInfoHtml(vd) {
-			let typeHtml = '';
-			if (vd.return_type) {
-				typeHtml += `<li><strong>Returns:</strong> <code>${renderTypeName(vd.return_type)}</code></li>`;
-			}
-			if (vd.base_type) {
-				typeHtml += `<li><strong>Base Type:</strong> <code>${renderTypeName(vd.base_type)}</code></li>`;
-			}
-			if (vd.interfaces && vd.interfaces.length > 0) {
-				const ifaces = vd.interfaces.map(i => {
-					if (i.uid) {
-						return `<a href="#" onclick="navigateTo('${i.uid}'); return false;" class="interface-link" title="${i.uid}">${i.name}</a>`;
+
+
+		function buildMembersHtml(vd, baseDocs) {
+			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
+			const title = isFunction ? 'Arguments' : 'Fields';
+			
+			if (!vd.members || vd.members.length === 0) return '';
+
+			let html = `<h3>${title}</h3>`;
+			html += `<table class="contract-table">
+				<thead>
+					<tr>
+						${isFunction ? '<th class="col-mod">Contract</th>' : ''}
+						<th class="col-type">Type</th>
+						<th class="col-name">Name</th>
+						<th>Description</th>
+					</tr>
+				</thead>
+				<tbody>`;
+
+			vd.members.forEach(m => {
+				// Find matching doc param if any
+				const docParam = (baseDocs && baseDocs.params) ? baseDocs.params.find(p => p.name === m.name) : null;
+				
+				let modHtml = '';
+				if (isFunction) {
+					if (docParam) {
+						if (docParam.modifier) modHtml += `<span class="arg-mod-badge arg-mod-${docParam.modifier}">${docParam.modifier}</span>`;
+						if (docParam.by_ref) modHtml += `<span class="arg-mod-badge arg-mod-ref">ref</span>`;
 					}
-					return `<code>${i.name}</code>`;
-				}).join(', ');
-				typeHtml += `<li><strong>Implements:</strong> ${ifaces}</li>`;
-			}
-			if (typeHtml) {
-				return `<h3>Type Information</h3><ul>${typeHtml}</ul>`;
-			}
-			return '';
-		}
-
-		function renderMemberList(members, isRoot = false) {
-			if (!members || members.length === 0) return '';
-			let html = `<ul class="member-list ${isRoot ? '' : 'group-list'}">`;
-			members.forEach(m => {
-				if (m.kind === 'union' || m.kind === 'struct') {
-					html += `<li class="member-group group-${m.kind}">`;
-					html += `<div class="group-label">${m.name ? m.name + ' (' + m.kind + ')' : m.kind}</div>`;
-					html += renderMemberList(m.members);
-					html += `</li>`;
-					return;
-				}
-
-				// Method rendering (for interfaces)
-				if (m.params !== undefined) {
-					const retStr = renderTypeName(m.type);
-					const paramSig = renderParams(m.params);
-
-					html += `<li class="member-item monospace">
-						<span class="c3-keyword">fn</span>
-						${retStr}
-						<span class="c3-function">${m.name}</span>(${paramSig})
-					</li>`;
-					return;
+					modHtml = modHtml || '<span class="secondary-text">—</span>';
 				}
 
 				let bitDesc = '';
 				if (m.bit_range) {
-					bitDesc = ` <span class="secondary-text">(bits ${m.bit_range[0]}..${m.bit_range[1]})</span>`;
+					bitDesc = `<br><span class="secondary-text" style="font-size: 0.8em;">bits ${m.bit_range[0]}..${m.bit_range[1]}</span>`;
 				}
 
-				html += `<li class="member-item monospace">
-					<span class="c3-variable">${m.name}</span>
-					: ${renderTypeName(m.type)}${bitDesc}
-				</li>`;
+				const desc = (docParam && docParam.description) ? docParam.description : '';
+
+				html += `<tr>
+					${isFunction ? `<td>${modHtml}</td>` : ''}
+					<td class="monospace">${renderTypeName(m.type)}${bitDesc}</td>
+					<td class="monospace bold c3-${m.kind || 'variable'}">${m.name}</td>
+					<td class="doc-text">${desc}</td>
+				</tr>`;
 			});
-			html += `</ul>`;
+
+			html += `</tbody></table>`;
 			return html;
 		}
 
-		function buildMembersHtml(vd, baseDocs) {
-			if (!vd.members || vd.members.length === 0) return '';
-			return `<h3>Members</h3>` + renderMemberList(vd.members, true);
-		}
 
-		function buildDocsHtml(d) {
-			if (!d.docs) return '';
-
+		function buildDocsBodyHtml(d) {
+			if (!d || !d.docs) return '';
 			let html = '';
 			if (d.docs.deprecated) {
-				html += `<div class="deprecated-box">
-					<strong>Deprecated:</strong> ${d.docs.deprecated}
-				</div>`;
+				html += `<div class="deprecated-box"><strong>Deprecated:</strong> ${d.docs.deprecated}</div>`;
 			}
-
-			if (d.docs.params && d.docs.params.length > 0) {
-				html += `<h3>Parameters</h3><ul class="member-list group-list doc-section-list">`;
-				d.docs.params.forEach(p => {
-					let modStr = p.modifier ? `<span class="visibility-badge">${p.modifier}</span>` : '';
-					if (p.by_ref) modStr += `<span class="visibility-badge">ref</span>`;
-
-					html += `<li class="member-item">
-						<div class="monospace">${modStr}${renderTypeName(p.type)} <span class="c3-variable bold">${p.name}</span></div>
-						<div class="doc-text">${p.description || ''}</div>
-					</li>`;
-				});
-				html += `</ul>`;
-			}
-
-			if (d.docs.return) {
-				html += `<h3>Returns</h3><p class="doc-returns">${d.docs.return}</p>`;
-			}
-
 			if (d.docs.text) {
+				html += `<h3>Description</h3>`;
 				if (d.kind === 'module') {
-					html += `<h3>Description</h3><pre class="header-pre" style="white-space: pre-wrap;">${escapeHtml(d.docs.text)}</pre>`;
+					html += `<pre class="header-pre" style="white-space: pre-wrap;">${escapeHtml(d.docs.text)}</pre>`;
 				} else {
-					html += `<h3>Description</h3><div class="doc-description">${formatDocText(d.docs.text)}</div>`;
+					html += `<div class="doc-description">${formatDocText(d.docs.text)}</div>`;
 				}
 			}
 			return html;
@@ -1603,8 +1633,14 @@
 			const isCompact = !baseDocs || (!baseDocs.text && !baseDocs.return && (!baseDocs.params || baseDocs.params.length === 0));
 			html += `<pre class="header-pre ${isCompact ? 'compact' : ''}">${headerText}</pre>`;
 
-			html += buildTypeInfoHtml(vd);
-			html += buildMembersHtml(vd, baseDocs);
+			html += '<div class="variant-info-flex">';
+			
+			const membersInfo = buildMembersHtml(vd, baseDocs);
+			if (membersInfo) html += `<div class="info-column">${membersInfo}</div>`;
+			
+			html += '</div>';
+
+			html += buildDocsBodyHtml(vd);
 
 			return html;
 		}
@@ -1613,21 +1649,23 @@
 			const lastSep = d.uid.lastIndexOf('::');
 			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
 
-			let html = buildHeaderHtml(d);
+			let html = d.kind === 'module' ? '' : buildHeaderHtml(d, d);
 
 			const variantsToRender = (d.variants && d.variants.length > 1)
 				? d.variants.map(v => ({ targets: v.targets, decl: v.decl }))
 				: [{ targets: [], decl: d }];
 
-			for (let i = 0; i < variantsToRender.length; i++) {
-				const variant = variantsToRender[i];
-				if (d.kind !== 'module') {
+			if (d.kind !== 'module') {
+				html += `<div>`;
+				for (let i = 0; i < variantsToRender.length; i++) {
+					const variant = variantsToRender[i];
 					if (i > 0) html += '<hr class="variant-separator">';
 					html += buildVariantHtml(variant.decl, localName, variant.targets, d.docs);
 				}
+				html += `</div>`;
 			}
 
-			html += buildDocsHtml(d);
+
 
 			const content = document.getElementById('content');
 			content.scrollTop = 0;
@@ -1645,8 +1683,22 @@
 						groups[k].push(m);
 					});
 
-					const sortedKinds = Object.keys(groups).sort();
-					if (!isSidebar) ctxHtml += '<div class="overview-groups">';
+					const sortedKinds = Object.keys(groups).sort((a, b) => {
+						const pa = KIND_PRIORITY[a] || 99;
+						const pb = KIND_PRIORITY[b] || 99;
+						if (pa !== pb) return pa - pb;
+						return a.localeCompare(b);
+					});
+					if (!isSidebar) {
+						let maxLen = 0;
+						modMembers.forEach(m => {
+							const mLocal = m.uid.slice(m.uid.lastIndexOf('::') + 2);
+							if (mLocal.length > maxLen) maxLen = mLocal.length;
+						});
+						// 9px per char approx + badges space
+						const idealWidth = Math.max(250, Math.min(600, maxLen * 9 + 60));
+						ctxHtml += `<div class="overview-groups" style="column-width: ${idealWidth}px;">`;
+					}
 
 					for (const k of sortedKinds) {
 						const title = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ') + 's';
@@ -1663,7 +1715,7 @@
 							});
 							ctxHtml += `</ul>`;
 						} else {
-							ctxHtml += `<div class="module-group">
+							ctxHtml += `<div class="module-group group-${k}">
 								<div class="module-group-title">${title}</div>
 								<div class="module-group-list">`;
 							groups[k].sort((a, b) => a.uid.localeCompare(b.uid)).forEach(m => {
@@ -1696,7 +1748,11 @@
 
 			if (d.kind === 'module') {
 				rightSidebar.style.display = 'none';
-				html += `<div class="module-contents-container"><h1 class="overview-title">Module: ${d.name}</h1>${renderModuleContext(d.name, false)}</div>`;
+				html += `<div class="module-contents-container" style="max-width: 95%;">`;
+				html += `<h1 class="overview-title">Module: ${d.name}</h1>`;
+				html += buildDocsBodyHtml(d);
+				html += renderModuleContext(d.name, false);
+				html += `</div>`;
 			} else {
 				rightSidebar.style.display = 'flex';
 				rightSidebarContent.innerHTML = renderModuleContext(d.moduleName, true);
