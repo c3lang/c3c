@@ -104,6 +104,7 @@
 - Incorrect error message when casting to non-existent enum.
 - Macro `$Type = ...` would not work correctly with `$defined`
 - Fix enum value handling in `Object` (`std::collections::object`) to conform with changes in enums.
+- Compiler assert in certain cases with ?? and void returns. #3168
 
 ## 0.7.11 Change list
 
