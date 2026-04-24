@@ -30,7 +30,7 @@
 			background: linear-gradient(180deg, #2a2d2e 0%, #1a1c1d 100%);
 			border: 1px solid #3e4244;
 			color: #eee;
-			box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+			box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 			vertical-align: middle;
 		}
 
@@ -47,8 +47,7 @@
 			margin-right: 5px;
 		}
 
-		/* Add extra space after the last badge in a sequence */
-		.visibility-badge + :not(.visibility-badge) {
+		.visibility-badge+ :not(.visibility-badge) {
 			margin-left: 10px;
 		}
 
@@ -67,7 +66,8 @@
 			border-color: rgba(251, 146, 60, 0.3);
 		}
 
-		.item-visibility, .search-item-visibility {
+		.item-visibility,
+		.search-item-visibility {
 			font-size: 0.8em;
 			color: #888;
 			font-family: monospace;
@@ -77,7 +77,6 @@
 			opacity: 0.6;
 		}
 
-		/* Custom Scrollbar */
 		::-webkit-scrollbar {
 			width: 10px;
 			height: 10px;
@@ -106,13 +105,15 @@
 		}
 
 		#sidebar {
-			min-width: 320px;
-			width: fit-content;
-			max-width: 800px;
+			min-width: 180px;
+			width: 20vw;
+			max-width: 450px;
 			border-right: 1px solid var(--border);
 			display: flex;
 			flex-direction: column;
 			background: var(--panel);
+			position: relative;
+			flex-shrink: 0;
 		}
 
 		#search-box {
@@ -157,12 +158,18 @@
 			background: #2a2d2e;
 		}
 
+		.item,
+		.member-item {
+			scroll-margin: 80px 0;
+		}
+
 		.item-name {
 			font-family: monospace;
 			font-size: 0.9em;
 			white-space: nowrap;
 			flex: 1;
-			flex-shrink: 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
 			margin-right: 8px;
 		}
 
@@ -223,7 +230,6 @@
 			color: #000;
 		}
 
-		/* C3 Syntax Highlighting Classes (GitHub Dark Theme) */
 		.c3-struct,
 		.c3-union,
 		.c3-enum,
@@ -274,7 +280,6 @@
 			color: #79c0ff;
 		}
 
-		/* General Utility Classes */
 		.secondary-text {
 			color: #888;
 			font-size: 0.8em;
@@ -355,7 +360,7 @@
 			border-radius: 6px;
 			border-left: 3px solid var(--accent);
 			white-space: pre-wrap;
-			word-break: break-all;
+			word-break: break-word;
 		}
 
 		.header-pre.compact {
@@ -421,9 +426,8 @@
 			border-left: 1px solid #333;
 		}
 
-		.module-contents-container { 
-			padding: 40px; 
-			overflow-x: auto;
+		.module-contents-container {
+			padding: 40px;
 		}
 
 		.header-container {
@@ -578,12 +582,88 @@
 		}
 
 		.right-sidebar {
-			width: 350px;
+			width: 20vw;
+			min-width: 180px;
+			max-width: 450px;
 			border-left: 1px solid var(--border);
 			background: var(--panel);
 			display: none;
 			flex-direction: column;
 			position: relative;
+			flex-shrink: 0;
+		}
+
+		#mobile-toggle {
+			display: none;
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+			width: 50px;
+			height: 50px;
+			border-radius: 25px;
+			background: var(--accent);
+			color: white;
+			justify-content: center;
+			align-items: center;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+			cursor: pointer;
+			z-index: 2000;
+			border: none;
+			font-size: 1.5em;
+		}
+
+		@media (max-width: 1000px) {
+			.right-sidebar {
+				display: none !important;
+			}
+			#sidebar {
+				width: 250px;
+			}
+		}
+
+		@media (max-width: 600px) {
+			#sidebar {
+				position: fixed;
+				left: 0;
+				top: 0;
+				bottom: 0;
+				z-index: 1000;
+				transform: translateX(-100%);
+				width: 85vw;
+			}
+			#sidebar.mobile-open {
+				transform: translateX(0);
+			}
+			.main-content {
+				padding: 15px;
+			}
+			#mobile-toggle {
+				display: flex;
+			}
+		}
+
+
+
+		.resizer {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			width: 6px;
+			cursor: col-resize;
+			z-index: 100;
+			transition: background 0.2s;
+		}
+
+		.resizer:hover, .resizer.dragging {
+			background: rgba(37, 99, 235, 0.3);
+		}
+
+		.sidebar-resizer {
+			right: -3px;
+		}
+
+		.right-sidebar-resizer {
+			left: -3px;
 		}
 
 		.right-sidebar-title {
@@ -671,8 +751,6 @@
 		.overview-groups {
 			column-width: 300px;
 			column-gap: 40px;
-			column-fill: auto;
-			max-height: 80vh;
 			margin-top: 30px;
 		}
 
@@ -714,15 +792,33 @@
 			padding: 10px 8px;
 			border-bottom: 1px solid #222;
 			vertical-align: top;
+			word-break: break-word;
 		}
 
 		.contract-table tr:last-child td {
 			border-bottom: none;
 		}
 
-		.col-mod { width: 80px; }
-		.col-type { width: 180px; }
-		.col-name { width: 150px; }
+		.col-mod {
+			width: 1%;
+			white-space: nowrap;
+			word-break: normal;
+		}
+
+		.col-type {
+			width: 1%;
+			white-space: nowrap;
+			min-width: 50px;
+			word-break: normal;
+			padding-right: 20px !important;
+		}
+
+		.col-name {
+			width: 1%;
+			white-space: nowrap;
+			word-break: normal;
+			padding-right: 20px !important;
+		}
 
 		.arg-mod-badge {
 			font-size: 0.75em;
@@ -735,9 +831,20 @@
 			margin-right: 4px;
 		}
 
-		.arg-mod-in { color: var(--color-green-500); border: 1px solid rgba(34, 197, 94, 0.2); }
-		.arg-mod-out { color: var(--color-red-400); border: 1px solid rgba(248, 113, 113, 0.2); }
-		.arg-mod-ref { color: var(--color-orange-400); border: 1px solid rgba(251, 146, 60, 0.2); }
+		.arg-mod-in {
+			color: var(--color-green-500);
+			border: 1px solid rgba(34, 197, 94, 0.2);
+		}
+
+		.arg-mod-out {
+			color: var(--color-red-400);
+			border: 1px solid rgba(248, 113, 113, 0.2);
+		}
+
+		.arg-mod-ref {
+			color: var(--color-orange-400);
+			border: 1px solid rgba(251, 146, 60, 0.2);
+		}
 
 		.info-column h3 {
 			margin-top: 0 !important;
@@ -754,7 +861,7 @@
 			font-family: monospace;
 			font-size: 1.1em;
 			font-weight: bold;
-			color: #888; /* Fallback */
+			color: #888;
 			border-bottom: 1px solid var(--border);
 			padding-bottom: 8px;
 			margin-bottom: 12px;
@@ -763,20 +870,36 @@
 			break-after: avoid;
 		}
 
-		/* Category Specific Colors */
-		.group-function .module-group-title { color: #d2a8ff; }
-		.group-macro .module-group-title { color: #d2a8ff; }
-		.group-struct .module-group-title, 
+		.group-function .module-group-title {
+			color: #d2a8ff;
+		}
+
+		.group-macro .module-group-title {
+			color: #d2a8ff;
+		}
+
+		.group-struct .module-group-title,
 		.group-union .module-group-title,
 		.group-enum .module-group-title,
 		.group-bitstruct .module-group-title,
 		.group-typedef .module-group-title,
-		.group-type_alias .module-group-title { color: #ffa657; }
-		.group-faultdef .module-group-title { color: #f48771; }
+		.group-type_alias .module-group-title {
+			color: #ffa657;
+		}
+
+		.group-faultdef .module-group-title {
+			color: #f48771;
+		}
+
 		.group-variable .module-group-title,
 		.group-const .module-group-title,
-		.group-constdef .module-group-title { color: #79c0ff; }
-		.group-interface .module-group-title { color: #ffa657; }
+		.group-constdef .module-group-title {
+			color: #79c0ff;
+		}
+
+		.group-interface .module-group-title {
+			color: #ffa657;
+		}
 
 		.module-group-list {
 			display: flex;
@@ -823,6 +946,7 @@
 			pointer-events: none;
 			font-size: 0.95em;
 			line-height: 1.5;
+			opacity: 0.9;
 		}
 
 		.module-tooltip.show {
@@ -859,20 +983,70 @@
 			padding-bottom: 4px;
 		}
 
+		.sidebar-filters {
+			padding: 0 15px 12px 15px;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			border-bottom: 1px solid var(--border);
+		}
+
+		.filter-label {
+			font-size: 0.7em;
+			color: #666;
+			text-transform: uppercase;
+			font-weight: bold;
+			letter-spacing: 0.5px;
+		}
+
+		.filter-chip {
+			cursor: pointer;
+			font-size: 0.7em;
+			padding: 2px 8px;
+			border-radius: 4px;
+			background: #1a1c1d;
+			border: 1px solid var(--border);
+			color: #888;
+			font-weight: 600;
+			transition: all 0.2s;
+			user-select: none;
+		}
+
+		.filter-chip:hover {
+			border-color: #444;
+			color: #aaa;
+		}
+
+		.filter-chip.active {
+			background: rgba(37, 99, 235, 0.15);
+			border-color: var(--accent);
+			color: var(--accent);
+		}
+
+		.filter-chip.active:hover {
+			background: rgba(37, 99, 235, 0.25);
+		}
 	</style>
 </head>
 
 <body>
+	<button id="mobile-toggle" onclick="toggleMobileMenu()">☰</button>
 	<div id="module-tooltip" class="module-tooltip"></div>
 	<div id="sidebar">
+		<div class="resizer sidebar-resizer" id="left-resizer"></div>
 		<a href="#" onclick="event.preventDefault(); navigateTo('');" class="sidebar-header-link">
 			<div class="sidebar-header">
 				<img src="https://c3-lang.org/logo.svg" alt="C3 Logo" class="logo">
 				<span class="secondary-text">Documentation</span>
 			</div>
 		</a>
-		<div id="search-box">
+		<div id="search-box" style="border-bottom: none;">
 			<input type="text" id="search-input" placeholder="Start typing to search...">
+		</div>
+		<div class="sidebar-filters">
+			<span class="filter-label">Show:</span>
+			<div id="filter-private" class="filter-chip" onclick="toggleFilter('private')">Private</div>
+			<div id="filter-local" class="filter-chip" onclick="toggleFilter('local')">Local</div>
 		</div>
 		<div class="sidebar-nav-container">
 			<div id="mod-indicator-top" class="scroll-indicator scroll-indicator-top"></div>
@@ -885,6 +1059,7 @@
 	<div id="content" class="main-content"></div>
 
 	<div id="right-sidebar" class="right-sidebar">
+		<div class="resizer right-sidebar-resizer" id="right-resizer"></div>
 		<div id="ctx-indicator-top" class="scroll-indicator scroll-indicator-top"></div>
 		<div id="right-sidebar-content" class="right-sidebar-content"></div>
 		<div id="ctx-indicator-bottom" class="scroll-indicator scroll-indicator-bottom"></div>
@@ -895,6 +1070,40 @@
 		let selectedIndex = -1;
 		let currentRendered = [];
 		let currentFiltered = [];
+		let filters = {
+			private: localStorage.getItem('c3-doc-filter-private') === 'true',
+			local: localStorage.getItem('c3-doc-filter-local') === 'true'
+		};
+
+		function toggleFilter(kind) {
+			filters[kind] = !filters[kind];
+			localStorage.setItem(`c3-doc-filter-${kind}`, filters[kind]);
+			document.getElementById(`filter-${kind}`).classList.toggle('active', filters[kind]);
+
+			// Re-run search if currently searching
+			const searchInput = document.getElementById('search-input');
+			if (searchInput.value.trim()) {
+				searchInput.dispatchEvent(new Event('input'));
+			} else {
+				// Otherwise refresh the current view
+				const hash = decodeURIComponent(location.hash.slice(1));
+				if (hash) {
+					const target = allDecls.find(d => d.uid === hash);
+					if (target) renderDetails(target, true);
+				} else {
+					renderModuleOverview();
+				}
+			}
+		}
+
+		function isSymbolVisible(d) {
+			if (d.kind === 'module') return true;
+			const vis = d.visibility || 'public';
+			if (vis === 'public') return true;
+			if (vis === 'private' && filters.private) return true;
+			if (vis === 'local' && filters.local) return true;
+			return false;
+		}
 
 		const BUILTINS = {
 			"ichar": "signed 8-bit integer",
@@ -942,17 +1151,19 @@
 
 			const tooltip = document.getElementById('module-tooltip');
 
-			// Position in opposite corner
+			// Position in opposite corner; edit: now on the upper opposite x axis
 			const x = event.clientX;
 			const y = event.clientY;
 			const vw = window.innerWidth;
 			const vh = window.innerHeight;
 
-			tooltip.className = 'module-tooltip'; // Reset
+			tooltip.className = 'module-tooltip';
 			if (x < vw / 2) {
-				tooltip.classList.add(y < vh / 2 ? 'bottom-right' : 'top-right');
+				// tooltip.classList.add(y < vh / 2 ? 'bottom-right' : 'top-right');
+				tooltip.classList.add('top-right');
 			} else {
-				tooltip.classList.add(y < vh / 2 ? 'bottom-left' : 'top-left');
+				// tooltip.classList.add(y < vh / 2 ? 'bottom-left' : 'top-left');
+				tooltip.classList.add('top-left');
 			}
 
 			tooltip.innerHTML = `
@@ -1069,10 +1280,14 @@
 				groups[top].push(m);
 			});
 
+			const numModules = moduleNames.length;
+			const maxCols = Math.max(1, Math.min(4, Math.ceil(numModules / 12)));
+			const containerMaxWidth = maxCols * 350; // 300px width + 50px gap/buffer looks good
+
 			let html = `
 				<h1 class="overview-title">Project Overview</h1>
 				<p class="overview-subtitle">Modules grouped by namespace.</p>
-				<div class="overview-groups">
+				<div class="overview-groups" style="column-count: ${maxCols}; max-width: ${containerMaxWidth}px;">
 			`;
 
 			Object.entries(groups).sort().forEach(([top, mods]) => {
@@ -1106,6 +1321,11 @@
 
 		async function init() {
 			try {
+				// Initialize filter UI based on saved state
+				Object.keys(filters).forEach(kind => {
+					document.getElementById(`filter-${kind}`).classList.toggle('active', filters[kind]);
+				});
+
 				const loadedAny = await loadTargetFiles();
 				if (!loadedAny) throw new Error("Documentation JSON payload is missing.");
 
@@ -1202,7 +1422,7 @@
 			list.style.display = 'block';
 			document.getElementById('module-list').style.display = 'none';
 
-			// Lazy DOM rendering: start with first 50, expand on demand via arrow keys
+			// Lazy DOM rendering: start with first 50, expand on demand via scrolling, arrow keys or PAGE_UP/PAGE_DOWN
 			const limit = Math.min(items.length, 50);
 			for (let i = 0; i < limit; i++) {
 				const d = items[i];
@@ -1243,7 +1463,7 @@
 					inCode = false;
 					html += '</code></pre>';
 				} else if (inCode) {
-					// Remove 1 leading space often present in C3 doc blocks
+					// Remove 1 leading space often present in C3 doc blocks. Hack
 					const outLine = rawLine.startsWith(' ') ? rawLine.substring(1) : rawLine;
 					html += escapeHtml(outLine) + '\n';
 				} else {
@@ -1264,6 +1484,11 @@
 
 		function navigateTo(uid, skipSidebarScroll = false) {
 			closeSearch();
+			// Close mobile menu if open
+			const sidebar = document.getElementById('sidebar');
+			if (sidebar && sidebar.classList.contains('mobile-open')) {
+				toggleMobileMenu();
+			}
 			if (!uid) {
 				history.pushState({ uid: null }, '', window.location.pathname);
 				renderModuleOverview();
@@ -1276,8 +1501,52 @@
 			}
 		}
 
+		function setupResizers() {
+			const setup = (resizerId, sidebarId, isLeft) => {
+				const resizer = document.getElementById(resizerId);
+				const sidebar = (typeof sidebarId === 'string') ? document.getElementById(sidebarId) : sidebarId;
+				let startX, startWidth;
+
+				resizer.addEventListener('mousedown', (e) => {
+					startX = e.clientX;
+					startWidth = sidebar.offsetWidth;
+					resizer.classList.add('dragging');
+					document.body.style.cursor = 'col-resize';
+					document.body.style.userSelect = 'none';
+
+					const onMouseMove = (e) => {
+						const delta = e.clientX - startX;
+						const newWidth = isLeft ? startWidth + delta : startWidth - delta;
+						sidebar.style.width = `${newWidth}px`;
+					};
+
+					const onMouseUp = () => {
+						resizer.classList.remove('dragging');
+						document.body.style.cursor = 'default';
+						document.body.style.userSelect = 'auto';
+						document.removeEventListener('mousemove', onMouseMove);
+						document.removeEventListener('mouseup', onMouseUp);
+					};
+
+					document.addEventListener('mousemove', onMouseMove);
+					document.addEventListener('mouseup', onMouseUp);
+				});
+			};
+
+			setup('left-resizer', 'sidebar', true);
+			setup('right-resizer', document.getElementById('right-sidebar'), false);
+		}
+
+		function toggleMobileMenu() {
+			const sidebar = document.getElementById('sidebar');
+			const isOpen = sidebar.classList.toggle('mobile-open');
+			document.getElementById('mobile-toggle').innerText = isOpen ? '✕' : '☰';
+		}
+
 		function bindEvents() {
+			setupResizers();
 			document.getElementById('search-input').addEventListener('input', (e) => {
+				hideTooltip();
 				const rawQ = e.target.value.toLowerCase().trim();
 				const q = rawQ.replace(/\s+/g, '');
 				const listEl = document.getElementById('list');
@@ -1328,6 +1597,7 @@
 						else score = getFuzzyScore(d.uid, q);
 
 						if (score > 0) {
+							if (!isSymbolVisible(d)) return null;
 							if ((d.visibility || 'public') === 'public') score += 20000;
 							if (d.kind === 'module') score += 100000; // Prioritize modules
 							if (d.uid.startsWith('std::core')) score += 50;
@@ -1403,7 +1673,6 @@
 				bottom.style.opacity = remaining > 10 ? '1' : '0';
 			};
 			modContainer.addEventListener('scroll', updateModIndicators);
-			// Initial check
 			setTimeout(updateModIndicators, 100);
 
 			// Handle browser back/forward buttons
@@ -1491,7 +1760,7 @@
 			const localName = lastSep >= 0 ? d.uid.slice(lastSep + 2) : d.uid;
 			html += `<div style="margin-bottom: 25px;">`;
 			html += `<h1 class="header-title">${localName}</h1>`;
-			
+
 			if (vd) {
 				let typeInfo = '';
 				if (vd.return_type) {
@@ -1555,7 +1824,7 @@
 		function buildMembersHtml(vd, baseDocs) {
 			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
 			const title = isFunction ? 'Arguments' : 'Fields';
-			
+
 			if (!vd.members || vd.members.length === 0) return '';
 
 			let html = `<h3>${title}</h3>`;
@@ -1573,7 +1842,7 @@
 			vd.members.forEach(m => {
 				// Find matching doc param if any
 				const docParam = (baseDocs && baseDocs.params) ? baseDocs.params.find(p => p.name === m.name) : null;
-				
+
 				let modHtml = '';
 				if (isFunction) {
 					if (docParam) {
@@ -1591,9 +1860,9 @@
 				const desc = (docParam && docParam.description) ? docParam.description : '';
 
 				html += `<tr>
-					${isFunction ? `<td>${modHtml}</td>` : ''}
-					<td class="monospace">${renderTypeName(m.type)}${bitDesc}</td>
-					<td class="monospace bold c3-${m.kind || 'variable'}">${m.name}</td>
+					${isFunction ? `<td class="col-mod">${modHtml}</td>` : ''}
+					<td class="col-type monospace">${renderTypeName(m.type)}${bitDesc}</td>
+					<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name}</td>
 					<td class="doc-text">${desc}</td>
 				</tr>`;
 			});
@@ -1634,10 +1903,10 @@
 			html += `<pre class="header-pre ${isCompact ? 'compact' : ''}">${headerText}</pre>`;
 
 			html += '<div class="variant-info-flex">';
-			
+
 			const membersInfo = buildMembersHtml(vd, baseDocs);
 			if (membersInfo) html += `<div class="info-column">${membersInfo}</div>`;
-			
+
 			html += '</div>';
 
 			html += buildDocsBodyHtml(vd);
@@ -1673,7 +1942,7 @@
 			const rightSidebarContent = document.getElementById('right-sidebar-content');
 
 			const renderModuleContext = (moduleName, isSidebar = false) => {
-				const modMembers = allDecls.filter(m => m.moduleName === moduleName && m.kind !== 'module');
+				const modMembers = allDecls.filter(m => m.moduleName === moduleName && m.kind !== 'module' && isSymbolVisible(m));
 				let ctxHtml = '';
 				if (modMembers.length > 0) {
 					const groups = {};
@@ -1695,9 +1964,11 @@
 							const mLocal = m.uid.slice(m.uid.lastIndexOf('::') + 2);
 							if (mLocal.length > maxLen) maxLen = mLocal.length;
 						});
-						// 9px per char approx + badges space
-						const idealWidth = Math.max(250, Math.min(600, maxLen * 9 + 60));
-						ctxHtml += `<div class="overview-groups" style="column-width: ${idealWidth}px;">`;
+						// 9px per char approx + badges space, thank the AI for this :/
+						const idealWidth = Math.max(280, Math.min(600, maxLen * 9 + 60));
+						const maxCols = Math.max(1, Math.min(4, Math.ceil(modMembers.length / 15)));
+						const containerMaxWidth = maxCols * idealWidth + (maxCols - 1) * 40;
+						ctxHtml += `<div class="overview-groups" style="column-width: ${idealWidth}px; column-count: ${maxCols}; max-width: ${containerMaxWidth}px;">`;
 					}
 
 					for (const k of sortedKinds) {
@@ -1761,7 +2032,7 @@
 
 				const selected = rightSidebarContent.querySelector('.member-item-selected');
 				if (selected) {
-					selected.scrollIntoView({ block: 'center', behavior: 'instant' });
+					selected.scrollIntoView({ block: 'nearest', behavior: 'instant' });
 				}
 			}
 
@@ -1774,7 +2045,7 @@
 				li.classList.toggle('selected', isMatch);
 				if (isMatch) {
 					if (!skipSidebarScroll) {
-						li.scrollIntoView({ block: 'center', behavior: 'instant' });
+						li.scrollIntoView({ block: 'nearest', behavior: 'instant' });
 					}
 				}
 			});
