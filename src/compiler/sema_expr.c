@@ -6636,6 +6636,7 @@ static bool sema_expr_analyse_type_property(SemaContext *context, Expr *expr, bo
 	{
 		return sema_expr_rewrite_to_type_property(context, expr, canonical, property, parent_type);
 	}
+	if (missing_ref) return *missing_ref = true, false;
 	RETURN_SEMA_ERROR_AT(expr->type_property_expr.token_span, "'%s' is not a valid property for %s.", name, type_quoted_error_string(parent_type));
 }
 /**
