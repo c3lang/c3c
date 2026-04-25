@@ -69,7 +69,7 @@ static void usage(bool full)
 	print_cmd("compile-test <file1> [<file2> ...]", "Compile files into a benchmark-executable and run unit tests.");
 	print_cmd("static-lib <file1> [<file2> ...]", "Compile files without a project into a static library.");
 	print_cmd("dynamic-lib <file1> [<file2> ...]", "Compile files without a project into a dynamic library.");
-	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
+	print_cmd("vendor-fetch [-e|--extract] [-f|--force] [-t|--target] <lib>...","Fetch one or more libraries from the vendor collection.");
 	print_cmd("project <subcommand> ...", "Manipulate or view project files.");
 	print_cmd("fetch-sdk <windows|macos|android> ...", "Fetches the SDK required for cross-compiling.");
 	PRINTF("");
@@ -317,7 +317,7 @@ static void project_usage()
 	PRINTF("Project Subcommands:");
 	print_cmd("view", "view the current projects structure.");
 	print_cmd("add-target <name>  <target_type>  [sources...]", "add a new target to the project.");
-	print_cmd("fetch", "fetch missing project libraries.");
+	print_cmd("fetch [-e|--extract] [-f|--force] [-t|--target]", "fetch missing project libraries.");
 }
 
 static void project_view_usage()
@@ -423,6 +423,26 @@ static void parse_project_subcommand(BuildOptions *options)
 	if (arg_match("fetch"))
 	{
 		options->project_options.command = SUBCOMMAND_FETCH;
+		while (!at_end() && next_is_opt()) {
+			next_arg();
+			if (!options->vendor_extract && (match_shortopt("e") || match_longopt("extract"))) {
+				options->vendor_extract = true;
+				continue;
+			}
+		 	if (!options->vendor_force && (match_shortopt("f") || match_longopt("force"))) {
+				options->vendor_force = true;
+				continue;
+			}
+			if (!options->project_options.target_name && (match_shortopt("t") || match_longopt("target"))) {
+				if (at_end() || next_is_opt()) error_exit("Expected a target name");
+				
+				options->project_options.target_name = next_arg();
+				
+				continue;
+			}
+			error_exit("Invalid options after fetch");
+			return;
+		}
 		return;
 	}
 
@@ -498,6 +518,26 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("vendor-fetch"))
 	{
 		options->command = COMMAND_VENDOR_FETCH;
+		while (!at_end() && next_is_opt()) {
+			next_arg();
+			if (!options->vendor_extract && (match_shortopt("e") || match_longopt("extract"))) {
+				options->vendor_extract = true;
+				continue;
+			}
+		 	if (!options->vendor_force && (match_shortopt("f") || match_longopt("force"))) {
+				options->vendor_force = true;
+				continue;
+			}
+			if (!options->project_options.target_name && (match_shortopt("t") || match_longopt("target"))) {
+				if (at_end() || next_is_opt()) error_exit("Expected a target name");
+				
+				options->project_options.target_name = next_arg();
+				
+				continue;
+			}
+			error_exit("Invalid options after vendor-fetch");
+			return;
+		}
 		while (!at_end() && !next_is_opt())
 		{
 			const char *lib = next_arg();

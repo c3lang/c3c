@@ -202,6 +202,8 @@ typedef struct BuildOptions_
 	const char *target_select;
 	const char *path;
 	const char *vendor_download_path;
+	bool vendor_extract;
+	bool vendor_force;
 	const char *template;
 	const char **unchecked_directories;
 	LinkerType linker_type;

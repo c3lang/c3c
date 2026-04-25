@@ -117,8 +117,12 @@ run_cli_tests() {
     else
         echo "Testing vendor-fetch..."
         cd "$ROOT_DIR/resources"
-        if ! "$C3C_BIN" vendor-fetch raylib; then
+        if ! "$C3C_BIN" vendor-fetch -e raylib; then
             echo "::warning::vendor-fetch failed. Skipping dependent tests."
+            return
+        fi
+        if [ ! -d "raylib.c3l" ]; then
+            echo "::warning::vendor-fetch -e did not create extracted directory."
             return
         fi
 

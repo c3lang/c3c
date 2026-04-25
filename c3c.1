@@ -127,7 +127,7 @@ Analyze files and generate C headers for public methods.
 .RE
 .PP
 .B c3c vendor-fetch
-\fIlibrary\fR ...
+[\fB-e\fR|\fB--extract\fR] [\fB-f\fR|\fB--force\fR] [\fB-t\fR|\fB--target\fR] \fIlib\fR ...
 .RS
 Fetch one or more libraries from the vendor collection.
 .RE
@@ -173,6 +173,23 @@ Add this library to the compilation.
 \fIdir\fR
 .RS
 Use this as the base directory for the current command.
+.RE
+.PP
+.B -t, --target
+.RS
+For \fBvendor-fetch\fR, allow to specify \fBtarget\fR for fetching dependencies.
+.RE
+.PP
+.B -e, --extract
+.RS
+For \fBvendor-fetch\fR, extract downloaded \fB.c3l\fR archives into a directory named
+\fB<library>.c3l\fR.
+.RE
+.PP
+.B -f, --force
+.RS
+For \fBvendor-fetch\fR, force to download \fB.c3l\fR archives into a directory named
+\fB<library>.c3l\fR when extract option is passed.
 .RE
 .PP
 .B --template

@@ -1,9 +1,14 @@
 #pragma once
 #include "../utils/json.h"
+#include "../build/build.h"
 
-const char** get_project_dependency_directories();
-const char** get_project_dependencies();
+JSONObject *project_json_load(const char **filename_ref);
+
+const char** get_project_dependency_directories(JSONObject *json, const char *filename);
+const char** get_project_dependencies(JSONObject *json);
 
 static void print_vec(const char *header, const char **vec, bool opt, const char *delim);
-void add_libraries_to_project_file(const char** libs, const char* target_name);
+void add_libraries_to_project_file(const char** libs, const char* target_name, JSONObject *project_json, const char* filename);
+JSONObject* get_target_in_project_json(JSONObject *project_json, const char* target_name);
 const char* vendor_fetch_single(const char* lib, const char* path, bool progress);
+void vendor_fetch(BuildOptions *options);

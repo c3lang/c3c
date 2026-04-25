@@ -981,13 +981,57 @@ bool use_ansi(void)
 #endif
 }
 
-
 const char * vendor_fetch_single(const char* lib, const char* path, bool progress) 
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
 	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
 	const char *error = download_file("https://github.com", resource, destination, progress);
 	return error;	
+}
+
+static const char *vendor_extract_archive(const char *archive, const char *extract_dir)
+{
+	FILE *zip = fopen(archive, "rb");
+	if (!zip)
+	{
+		return str_printf("Failed to open downloaded archive '%s': %s", archive, strerror(errno));
+	}
+
+	char *extract_dir_copy = strdup(extract_dir);
+	if (!dir_make_recursive(extract_dir_copy))
+	{
+		fclose(zip);
+		return str_printf("Failed to create extraction directory '%s'.", extract_dir);
+	}
+
+	ZipDirIterator iterator;
+	ZipFile file;
+	const char *error = zip_dir_iterator(zip, &iterator);
+	if (error)
+	{
+		fclose(zip);
+		return error;
+	}
+
+	while (iterator.current_file < iterator.files)
+	{
+		error = zip_dir_iterator_next(&iterator, &file);
+		if (error)
+		{
+			fclose(zip);
+			return error;
+		}
+		if (file.uncompressed_size == 0 || file.name[0] == '.') continue;
+		error = zip_file_write(zip, &file, extract_dir, true);
+		if (error)
+		{
+			fclose(zip);
+			return error;
+		}
+	}
+
+	fclose(zip);
+	return NULL;
 }
 
 
@@ -999,20 +1043,28 @@ void vendor_fetch(BuildOptions *options)
 				   "Please ensure libcurl is installed on your system.");
 	}
 	bool ansi = use_ansi();
-
+	
+	const char *filename;
+	JSONObject *project_json = project_json_load(&filename);	
+	
 	if (str_eq(options->path, DEFAULT_PATH))
 	{
-		// check if there is a project JSON file
-		if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
-		{
-			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = (int)vec_size(deps_dirs);
-			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-		}
+		const char** deps_dirs =  get_project_dependency_directories(project_json, filename);
+		int num_lib = (int)vec_size(deps_dirs);
+		if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 	}
-
-	unsigned count = 0;
-	const char** fetched_libraries = NULL;
+	
+	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
+	if (libraries_json && libraries_json->type != J_ARRAY)
+	{
+		error_exit("Project field 'dependencies' must be an array.");
+	}
+	
+	if (options->project_options.target_name)
+	{
+		(void)get_target_in_project_json(project_json, options->project_options.target_name);
+	}
+	
 	int total_libraries = (int)vec_size(options->libraries_to_fetch);
 	
 	if (total_libraries == 0)
@@ -1058,42 +1110,101 @@ void vendor_fetch(BuildOptions *options)
 		file_delete_dir(tmp_dir);
 		return;
 	}
+	
+	unsigned count = 0;
+	const char** fetched_libraries = NULL;
+	const char** failed_libraries = NULL;
 
+	//  c3c project fetch cmd only pull missing dependencies
+	const bool is_project_fetch_cmd = options->project_options.command == SUBCOMMAND_FETCH;
+	
 	for(int i = 0; i < total_libraries; i++)
 	{
 		const char *lib = options->libraries_to_fetch[i];
+		const char *archive_path = file_append_path(options->vendor_download_path, str_printf("%s.c3l", lib));
+		if (file_exists(archive_path)) {
+			if (options->vendor_force) {
+				if (file_is_dir(archive_path)) file_delete_dir(archive_path);
+				else if (!file_delete_file(archive_path))
+				{
+					error_exit("Failed to remove archive: '%s'.", archive_path);
+				}
+			}
+			else {
+				if (!is_project_fetch_cmd) {
+					printf(
+					    "Cannot install '%s': '%s' already exists.\n"
+					    "\tRemove it first or use -f/--force to overwrite it.\n",
+					    lib,
+					    archive_path
+					);
+					vec_add(failed_libraries, lib);
+				}
+				continue;
+			} 
+		}
 		printf("Fetching library '%s'...\n", lib);
 		(void)fflush(stdout);
 		const char *error = vendor_fetch_single(lib, options->vendor_download_path, ansi);
 
+		if (!error && options->vendor_extract)
+		{
+			const char *extract_tmp_dir = str_printf("%s.temp.c3l", archive_path);
+			error = vendor_extract_archive(archive_path, extract_tmp_dir);
+			if (!error)
+			{
+				if (!file_delete_file(archive_path))
+				{
+					error = str_printf("Failed to remove downloaded archive '%s'.", archive_path);
+				}
+				else if (rename(extract_tmp_dir, archive_path) != 0)
+				{
+					error = str_printf("Failed to finalize extracted library '%s': %s", lib, strerror(errno));
+				}
+			}
+			if (error) file_delete_dir(extract_tmp_dir);
+		}
+
 		if (!error)
 		{
 			vec_add(fetched_libraries, lib);
+			
+			if (ansi) printf("\033[32mFetch complete.\033[0m\t\t\n");
+			else printf("Fetch complete.\n");
+			
 			count++;
 		}
 		else
 		{
+			vec_add(failed_libraries, lib);
 			if (ansi)
 			{
 				printf("\033[2K\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
 			}
 			else
 			{
-				printf("Failed: '%s'\n", error);
+				printf("Failed to fetch library '%s': %s\n",  lib, error);
 			}
 			(void)fflush(stdout);
 		}
 	}
 
 	if (ansi && total_libraries > 1) printf("\033[2K");
-
+	
 	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
+	if (!is_project_fetch_cmd && count > 0) add_libraries_to_project_file(fetched_libraries, options->project_options.target_name, project_json, filename);
 
-	if (count == 0)	error_exit("Error: Failed to download any libraries.");
-	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
-
-	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
+	if (vec_size(failed_libraries) > 0)
+	{	
+		scratch_buffer_clear();
+		FOREACH_IDX(i, const char *, lib, failed_libraries)
+		{
+				if (i > 0) scratch_buffer_append(", ");
+				scratch_buffer_append(lib);
+		}
+		const char *error = str_printf("Failed to download libraries: %s", scratch_buffer_to_string());
+		error_exit(ansi ? "\033[2K\033[31m%s\033[0m\n" : "%s", error);
+	}
 }
 
 
