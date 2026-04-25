@@ -17,7 +17,7 @@
 			--color-red-400: #f87171;
 			--color-orange-400: #fb923c;
 			--color-green-500: #22c55e;
-			--color-blue-300: #93c5fd;
+			--color-blue-300: #b1d4fb;
 			--color-blue-400: #60a5fa;
 			color-scheme: dark;
 		}
@@ -269,16 +269,18 @@
 			color: #79c0ff;
 		}
 
-		.c3-macro {
+		.c3-function,
+		.c3-method {
+			color: #d2a8ff;
+		}
+
+		.c3-macro,
+		.c3-macro_method {
 			color: #d2a8ff;
 		}
 
 		.c3-keyword {
 			color: #ff7b72;
-		}
-
-		.c3-function {
-			color: #d2a8ff;
 		}
 
 		.c3-variable,
@@ -400,14 +402,15 @@
 		}
 
 		.member-item {
-			padding: 8px;
+			padding: 1px;
 			background: #2d2d2d;
-			margin-bottom: 4px;
+			margin-bottom: 1px;
 			border-radius: 4px;
 			font-family: monospace;
 			position: relative;
 			border-left: 2px solid #444;
 			cursor: pointer;
+			break-inside: avoid;
 		}
 
 		.member-item:hover {
@@ -794,10 +797,18 @@
 			background: rgba(255, 255, 255, 0.1) !important;
 		}
 
-		.module-group-sep {
-			height: 1px;
-			background: rgba(255, 255, 255, 0.06);
-			margin: 4px 15px;
+		.module-list-header {
+			padding: 8px 15px 3px 12px;
+			cursor: pointer;
+			font-size: 0.72em;
+			text-transform: uppercase;
+			letter-spacing: 0.09em;
+			font-weight: 700;
+			opacity: 0.55;
+		}
+
+		.module-list-item {
+			padding: 3px 15px 3px 12px;
 		}
 
 		.overview-title {
@@ -912,8 +923,8 @@
 		}
 
 		.module-group {
-			margin-bottom: 30px;
 			break-inside: auto;
+			margin-bottom: 25px;
 			display: block;
 			width: 100%;
 		}
@@ -929,6 +940,7 @@
 			text-transform: uppercase;
 			letter-spacing: 1px;
 			break-after: avoid;
+			break-inside: avoid;
 		}
 
 		.group-function .module-group-title {
@@ -970,7 +982,7 @@
 
 		.module-row {
 			cursor: pointer;
-			padding: 4px 8px;
+			padding: 1px 8px;
 			border-radius: 4px;
 			display: flex;
 			flex-direction: column;
@@ -1199,16 +1211,20 @@
 		};
 
 		const KIND_PRIORITY = {
+			'module': 0,
 			'function': 1,
-			'macro': 2,
-			'struct': 3,
-			'union': 4,
-			'bitstruct': 5,
-			'enum': 6,
-			'faultdef': 7,
-			'type_alias': 8,
-			'constdef': 9,
-			'global': 10
+			'method': 2,
+			'macro': 3,
+			'macro_method': 4,
+			'struct': 5,
+			'union': 6,
+			'bitstruct': 7,
+			'enum': 8,
+			'fault': 9,
+			'interface': 10,
+			'typedef': 11,
+			'variable': 12,
+			'constdef': 13
 		};
 
 		function showTooltip(uid, event) {
@@ -1272,7 +1288,7 @@
 					targetName: targetName === 'docs' ? 'default' : targetName
 				});
 
-				['functions', 'macros', 'types', 'variables'].forEach(cat => {
+				['functions', 'methods', 'macros', 'macro_methods', 'types', 'variables'].forEach(cat => {
 					if (mod[cat]) {
 						mod[cat].forEach(decl => {
 							decl.moduleName = moduleName;
@@ -1330,7 +1346,7 @@
 			return `hsl(${h}, 20%, 75%)`;
 		}
 
-		function formatHierarchicalName(name, sep, opacityParent = 0.4, colorLast = 'var(--color-blue-300)') {
+		function formatHierarchicalName(name, sep, opacityParent = 0.6, colorLast = 'var(--color-blue-300)') {
 			const parts = name.split(sep);
 			if (parts.length <= 1) return `<span style="color: ${colorLast};">${name}</span>`;
 
@@ -1348,8 +1364,8 @@
 		function renderModules() {
 			const modules = allDecls.filter(d => d.kind === 'module').sort((a, b) => a.uid.localeCompare(b.uid));
 			const container = document.getElementById('module-list');
+			const realModules = new Set(modules.map(m => m.uid));
 
-			// Build a nested tree: { uid, children: { name -> node } }
 			const root = {};
 			modules.forEach(m => {
 				const parts = m.uid.split('::');
@@ -1365,20 +1381,14 @@
 				let html = '';
 				Object.entries(nodeMap).sort(([a], [b]) => a.localeCompare(b)).forEach(([name, node]) => {
 					const hasChildren = Object.keys(node.children).length > 0;
-					const color = getSubtleColor(name);
-					const paddingLeft = 12 + depth * 14;
+					const isReal = realModules.has(node.uid);
 
-					if (depth === 0) {
-						html += `<li data-mod="${node.uid}" onclick="closeSearch(); navigateTo('${node.uid}', true)"
-							style="padding: 8px 15px 3px 12px; cursor:pointer; font-size:0.72em;
-							       text-transform:uppercase; letter-spacing:0.09em; font-weight:700; opacity:0.55;">
-							<span style="color:${color};">${name}</span>
-						</li>`;
-					} else {
-						const nameHtml = formatHierarchicalName(node.uid, '::', 0.2);
-						html += `<li class="item" data-mod="${node.uid}"
-							style="padding: 3px 15px 3px 12px;"
-							onclick="closeSearch(); navigateTo('${node.uid}', true)">
+					if (isReal) {
+						const color = getSubtleColor(name);
+						const nameHtml = formatHierarchicalName(node.uid, '::');
+						html += `<li class="item module-list-item" data-mod="${node.uid}"
+							onclick="closeSearch(); navigateTo('${node.uid}', true)"
+							style="cursor: pointer;">
 							<span class="item-name c3-module" style="white-space:nowrap;">${nameHtml}</span>
 						</li>`;
 					}
@@ -1408,15 +1418,18 @@
 				if (!groups[top]) groups[top] = [];
 				groups[top].push(m);
 			});
-
 			const numModules = moduleNames.length;
-			const maxCols = Math.max(1, Math.min(4, Math.ceil(numModules / 12)));
-			const containerMaxWidth = maxCols * 350; // 300px width + 50px gap/buffer looks good
+			const availWidth = content.clientWidth - 80;
+			const colWidth = 320;
+			const maxColsThatFit = Math.max(1, Math.floor(availWidth / colWidth));
+
+			const targetItemsPerCol = 18;
+			const finalCols = Math.max(1, Math.min(maxColsThatFit, Math.ceil(numModules / targetItemsPerCol)));
 
 			let html = `
 				<h1 class="overview-title">Project Overview</h1>
 				<p class="overview-subtitle">Modules grouped by namespace.</p>
-				<div class="overview-groups" style="column-count: ${maxCols}; max-width: ${containerMaxWidth}px;">
+				<div class="overview-groups" style="column-count: ${finalCols}; column-width: 280px; max-width: 100%; height: auto;">
 			`;
 
 			Object.entries(groups).sort().forEach(([top, mods]) => {
@@ -1800,10 +1813,7 @@
 		function bindEvents() {
 			setupResizers();
 
-			// Middle-click opens in a new tab
-			document.addEventListener('auxclick', (e) => {
-				if (e.button !== 1) return;
-
+			const openInNewTab = (e) => {
 				const el = e.target.closest('[data-uid],[data-mod],[onclick]');
 				if (!el) return;
 				let uid = el.dataset.uid || el.dataset.mod;
@@ -1813,19 +1823,29 @@
 				}
 				if (!uid) return;
 				e.preventDefault();
+				e.stopPropagation();
 				window.open('#' + encodeURIComponent(uid), '_blank');
+			};
+
+			// Middle-click
+			document.addEventListener('auxclick', (e) => {
+				if (e.button === 1) openInNewTab(e);
 			});
+
+			// Ctrl/Cmd + Click
+			document.addEventListener('click', (e) => {
+				if (e.ctrlKey || e.metaKey) openInNewTab(e);
+			}, { capture: true });
 
 			document.getElementById('search-input').addEventListener('input', (e) => {
 				hideTooltip();
 				const rawQ = e.target.value.toLowerCase().trim();
-				const q = rawQ.replace(/\s+/g, '');
+				const words = rawQ.split(/\s+/).filter(w => w.length > 0);
 				const listEl = document.getElementById('list');
 
-				if (!q) {
+				if (words.length === 0) {
 					listEl.style.display = 'none';
 					document.getElementById('module-list').style.display = 'block';
-					// Restore center overview if no item is currently selected via hash
 					if (!location.hash.slice(1)) renderModuleOverview();
 					return;
 				}
@@ -1834,47 +1854,99 @@
 				document.getElementById('module-list').style.display = 'none';
 
 				function getFuzzyScore(text, query) {
-					let textIdx = 0;
-					let queryIdx = 0;
-					let score = 0;
-					let consecutive = 0;
+					const tLow = text.toLowerCase(), qLow = query.toLowerCase();
+					let textIdx = 0, matches = 0, score = 0, consecutive = 0;
+					let firstIdx = -1;
 
-					const tLow = text.toLowerCase();
-					const qLow = query;
-
-					while (textIdx < tLow.length && queryIdx < qLow.length) {
-						if (tLow[textIdx] === qLow[queryIdx]) {
-							score += 10 + (consecutive * 5);
-							consecutive++;
-							queryIdx++;
+					for (let i = 0; i < qLow.length; i++) {
+						const char = qLow[i];
+						const idx = tLow.indexOf(char, textIdx);
+						if (idx !== -1) {
+							if (firstIdx === -1) firstIdx = idx;
+							const gap = idx - textIdx;
+							score += 10;
+							if (gap === 0) {
+								score += (consecutive * 5);
+								consecutive++;
+							} else {
+								consecutive = 0;
+								score -= Math.min(5, gap);
+							}
+							textIdx = idx + 1;
+							matches++;
 						} else {
 							consecutive = 0;
-							score -= 1;
+							score -= 2;
 						}
-						textIdx++;
 					}
-					return queryIdx === qLow.length ? score : 0;
+
+					if (matches < qLow.length - 1 || matches < 2) return 0;
+
+					// Density check: matched characters must be relatively close
+					const spread = textIdx - firstIdx;
+					const density = matches / spread;
+
+					// If density is too low and it's not a very strong match, reject
+					if (density < 0.4 && matches < qLow.length) return 0;
+
+					return Math.max(1, score);
 				}
+
+				const KIND_MAP = {
+					'mod':      ['module'],
+					'module':   ['module'],
+					'fn':       ['function', 'method'],
+					'func':     ['function', 'method'],
+					'function': ['function', 'method'],
+					'macro':    ['macro', 'macro_method'],
+					'struct':   ['struct'],
+					'enum':     ['enum'],
+					'union':    ['union'],
+					'var':      ['variable', 'const', 'constdef'],
+					'const':    ['variable', 'const', 'constdef']
+				};
 
 				const filtered = allDecls
 					.map(d => {
-						let score = 0;
-						const nameLower = d.name.toLowerCase();
-						const uidLower = d.uid.toLowerCase();
+						const nameLow = (d.name || '').toLowerCase();
+						const uidLow = d.uid.toLowerCase();
+						let totalScore = 0, matchedAll = true, keywordMatch = false;
 
-						if (nameLower === rawQ) score = 10000;
-						else if (nameLower.startsWith(rawQ)) score = 5000;
-						else if (nameLower.includes(rawQ)) score = 1000;
-						else score = getFuzzyScore(d.uid, q);
+						for (const w of words) {
+							let wordScore = 0;
 
-						if (score > 0) {
-							if (!isSymbolVisible(d)) return null;
-							if ((d.visibility || 'public') === 'public') score += 20000;
-							if (d.kind === 'module') score += 100000; // Prioritize modules
-							if (d.uid.startsWith('std::core')) score += 50;
-							return { d, score };
+							// Check if word is a kind keyword matching this item
+							const targetKinds = KIND_MAP[w];
+							if (targetKinds && targetKinds.includes(d.kind)) {
+								wordScore = 50000;
+								keywordMatch = true;
+							} else if (nameLow === w || nameLow === '@' + w) {
+								wordScore = 10000;
+							} else if (nameLow.startsWith(w)) {
+								wordScore = 5000;
+							} else if (uidLow === w) {
+								wordScore = 4000;
+							} else if (uidLow.startsWith(w)) {
+								wordScore = 3000;
+							} else if (uidLow.includes(w)) {
+								wordScore = 1000;
+							} else if (w.length > 2) {
+								wordScore = getFuzzyScore(d.uid, w);
+							}
+
+							if (wordScore <= 0) { matchedAll = false; break; }
+							totalScore += wordScore;
 						}
-						return null;
+
+						if (!matchedAll || !isSymbolVisible(d)) return null;
+
+						let finalScore = totalScore;
+						if ((d.visibility || 'public') === 'public') finalScore += 20000;
+						if (keywordMatch) finalScore += 50000;
+						if (d.kind === 'module' && finalScore >= 1000) finalScore += 10000;
+						if (d.uid.startsWith('std::core')) finalScore += 50;
+
+						return { d, score: finalScore };
 					})
 					.filter(x => x !== null)
 					.sort((a, b) => b.score - a.score || a.d.name.length - b.d.name.length)
@@ -2042,7 +2114,7 @@
 				if (vd.return_type) {
 					typeInfo += ` <span style="font-size: 0.8em; opacity: 0.7;">Returns:</span> ${renderTypeName(vd.return_type)}`;
 				}
-				if (vd.base_type) {
+				if (vd.base_type && vd.base_type.name) {
 					typeInfo += ` (base: ${renderTypeName(vd.base_type)})`;
 				}
 				if (vd.interfaces && vd.interfaces.length > 0) {
@@ -2186,6 +2258,102 @@
 			return html;
 		}
 
+		function updateCtxIndicators() {
+			const rightSidebarContent = document.getElementById('right-sidebar-content');
+			const top = document.getElementById('ctx-indicator-top');
+			const bottom = document.getElementById('ctx-indicator-bottom');
+			if (!rightSidebarContent || !top || !bottom) return;
+			top.style.opacity = rightSidebarContent.scrollTop > 10 ? '1' : '0';
+			const remaining = rightSidebarContent.scrollHeight - rightSidebarContent.scrollTop - rightSidebarContent.clientHeight;
+			bottom.style.opacity = remaining > 10 ? '1' : '0';
+		}
+
+		function renderModuleContext(moduleName, isSidebar = false, currentUid = null) {
+			const content = document.getElementById('content');
+			const modMembers = allDecls.filter(m => m.moduleName === moduleName && m.kind !== 'module' && isSymbolVisible(m));
+			let ctxHtml = '';
+			if (modMembers.length > 0) {
+				const catGroups = {};
+				modMembers.forEach(m => {
+					const k = m.kind || 'other';
+					if (!catGroups[k]) catGroups[k] = [];
+					catGroups[k].push(m);
+				});
+
+				const sortedKinds = Object.keys(catGroups).sort((a, b) => {
+					const pa = KIND_PRIORITY[a] || 99;
+					const pb = KIND_PRIORITY[b] || 99;
+					if (pa !== pb) return pa - pb;
+					return a.localeCompare(b);
+				});
+
+				if (!isSidebar) {
+					let maxLen = 0;
+					modMembers.forEach(m => {
+						const mLocal = getLocalName(m.uid);
+						if (mLocal.length > maxLen) maxLen = mLocal.length;
+					});
+					const idealWidth = Math.max(280, Math.min(600, maxLen * 9 + 60));
+					const availWidth = content.clientWidth - 80;
+					const colWidth = idealWidth + 40;
+					const maxColsThatFit = Math.max(1, Math.floor(availWidth / colWidth));
+					const targetItemsPerCol = 20;
+					const finalCols = Math.max(1, Math.min(maxColsThatFit, Math.ceil(modMembers.length / targetItemsPerCol)));
+
+					ctxHtml += `<div class="overview-groups" style="column-count: ${finalCols}; column-width: ${idealWidth}px; max-width: 100%; height: auto;">`;
+				}
+
+				for (const k of sortedKinds) {
+					const title = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ') + 's';
+
+					if (isSidebar) {
+						ctxHtml += `<h3 class="sidebar-section-title">${title}</h3>`;
+						ctxHtml += `<ul class="member-list group-list sidebar-member-list">`;
+						catGroups[k].sort((a, b) => a.uid.localeCompare(b.uid)).forEach(m => {
+							const mLocal = getLocalName(m.uid);
+							const nameHtml = formatHierarchicalName(mLocal, '.', 0.5, 'inherit');
+							const isCurrent = m.uid === currentUid;
+							ctxHtml += `<li class="member-item ${isCurrent ? 'member-item-selected' : 'member-item-not-selected'}" onclick="navigateTo('${m.uid}')">
+								<a href="#" onclick="event.preventDefault(); event.stopPropagation(); navigateTo('${m.uid}');" class="member-link ${isCurrent ? 'current' : ''} c3-${m.kind}">${nameHtml}</a>
+							</li>`;
+						});
+						ctxHtml += `</ul>`;
+					} else {
+						ctxHtml += `<div class="module-group group-${k}">
+							<div class="module-group-title">${title}</div>
+							<div class="module-group-list">`;
+						let lastParent = null;
+						catGroups[k].sort((a, b) => a.uid.localeCompare(b.uid)).forEach(m => {
+							const mLocal = getLocalName(m.uid);
+							if (k === 'method' || k === 'macro_method') {
+								const dotIndex = mLocal.lastIndexOf('.');
+								if (dotIndex !== -1) {
+									const currentParent = mLocal.substring(0, dotIndex);
+									if (lastParent !== null && lastParent !== currentParent) {
+										ctxHtml += `<div style="height: 0.2em; width: 100%;"></div>`;
+									}
+									lastParent = currentParent;
+								}
+							}
+							const nameHtml = formatHierarchicalName(mLocal, '.', 0.5, 'inherit');
+							const visBadge = m.visibility && m.visibility !== 'public' ? `<span class="item-visibility">[${m.visibility}]</span>` : '';
+							const hiddenClass = m.visibility && m.visibility !== 'public' ? ' hidden-sym' : '';
+							ctxHtml += `
+								<div class="module-row${hiddenClass}"
+									 onclick="hideTooltip(); navigateTo('${m.uid}')"
+									 onmouseenter="showTooltip('${m.uid}', event)"
+									 onmouseleave="hideTooltip()">
+									<span class="module-row-name c3-${m.kind}">${nameHtml} ${visBadge}</span>
+								</div>`;
+						});
+						ctxHtml += `</div></div>`;
+					}
+				}
+				if (!isSidebar) ctxHtml += '</div>';
+			}
+			return ctxHtml;
+		}
+
 		function renderDetails(d, skipSidebarScroll = false) {
 			const localName = getLocalName(d.uid);
 
@@ -2205,94 +2373,14 @@
 				html += `</div>`;
 			}
 
-
-
 			const content = document.getElementById('content');
 			content.scrollTop = 0;
 			const rightSidebar = document.getElementById('right-sidebar');
 			const rightSidebarContent = document.getElementById('right-sidebar-content');
 
-			const renderModuleContext = (moduleName, isSidebar = false) => {
-				const modMembers = allDecls.filter(m => m.moduleName === moduleName && m.kind !== 'module' && isSymbolVisible(m));
-				let ctxHtml = '';
-				if (modMembers.length > 0) {
-					const groups = {};
-					modMembers.forEach(m => {
-						const k = m.kind || 'other';
-						if (!groups[k]) groups[k] = [];
-						groups[k].push(m);
-					});
-
-					const sortedKinds = Object.keys(groups).sort((a, b) => {
-						const pa = KIND_PRIORITY[a] || 99;
-						const pb = KIND_PRIORITY[b] || 99;
-						if (pa !== pb) return pa - pb;
-						return a.localeCompare(b);
-					});
-					if (!isSidebar) {
-						let maxLen = 0;
-						modMembers.forEach(m => {
-							const mLocal = getLocalName(m.uid);
-							if (mLocal.length > maxLen) maxLen = mLocal.length;
-						});
-						// 9px per char approx + badges space, thank the AI for this :/
-						const idealWidth = Math.max(280, Math.min(600, maxLen * 9 + 60));
-						const maxCols = Math.max(1, Math.min(4, Math.ceil(modMembers.length / 15)));
-						const containerMaxWidth = maxCols * idealWidth + (maxCols - 1) * 40;
-						ctxHtml += `<div class="overview-groups" style="column-width: ${idealWidth}px; column-count: ${maxCols}; max-width: ${containerMaxWidth}px;">`;
-					}
-
-					for (const k of sortedKinds) {
-						const title = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ') + 's';
-
-						if (isSidebar) {
-							ctxHtml += `<h3 class="sidebar-section-title">${title}</h3>`;
-							ctxHtml += `<ul class="member-list group-list sidebar-member-list">`;
-							groups[k].sort((a, b) => a.uid.localeCompare(b.uid)).forEach(m => {
-								const mLocal = getLocalName(m.uid);
-								const nameHtml = formatHierarchicalName(mLocal, '.', 0.5, 'inherit');
-								const isCurrent = m.uid === d.uid;
-								ctxHtml += `<li class="member-item ${isCurrent ? 'member-item-selected' : 'member-item-not-selected'}" onclick="navigateTo('${m.uid}')">
-									<a href="#" onclick="event.preventDefault(); event.stopPropagation(); navigateTo('${m.uid}');" class="member-link ${isCurrent ? 'current' : ''} c3-${m.kind}">${nameHtml}</a>
-								</li>`;
-							});
-							ctxHtml += `</ul>`;
-						} else {
-							ctxHtml += `<div class="module-group group-${k}">
-								<div class="module-group-title">${title}</div>
-								<div class="module-group-list">`;
-							groups[k].sort((a, b) => a.uid.localeCompare(b.uid)).forEach(m => {
-								const mLocal = getLocalName(m.uid);
-								const nameHtml = formatHierarchicalName(mLocal, '.', 0.5, 'inherit');
-								const visBadge = m.visibility && m.visibility !== 'public' ? `<span class="item-visibility">[${m.visibility}]</span>` : '';
-								const hiddenClass = m.visibility && m.visibility !== 'public' ? ' hidden-sym' : '';
-								ctxHtml += `
-									<div class="module-row${hiddenClass}"
-										 onclick="hideTooltip(); navigateTo('${m.uid}')"
-										 onmouseenter="showTooltip('${m.uid}', event)"
-										 onmouseleave="hideTooltip()">
-										<span class="module-row-name c3-${m.kind}">${nameHtml} ${visBadge}</span>
-									</div>`;
-							});
-							ctxHtml += `</div></div>`;
-						}
-					}
-					if (!isSidebar) ctxHtml += '</div>';
-				}
-				return ctxHtml;
-			};
-
-			const updateCtxIndicators = () => {
-				const top = document.getElementById('ctx-indicator-top');
-				const bottom = document.getElementById('ctx-indicator-bottom');
-				top.style.opacity = rightSidebarContent.scrollTop > 10 ? '1' : '0';
-				const remaining = rightSidebarContent.scrollHeight - rightSidebarContent.scrollTop - rightSidebarContent.clientHeight;
-				bottom.style.opacity = remaining > 10 ? '1' : '0';
-			};
-
 			if (d.kind === 'module') {
 				rightSidebar.style.display = 'none';
-				html += `<div class="module-contents-container" style="max-width: 95%;">`;
+				html += `<div class="module-contents-container">`;
 
 				if (d.is_generic) {
 					let params = (d.generic_parameters && d.generic_parameters.length > 0)
@@ -2307,11 +2395,11 @@
 				}
 
 				html += buildDocsBodyHtml(d);
-				html += renderModuleContext(d.name, false);
+				html += renderModuleContext(d.name, false, d.uid);
 				html += `</div>`;
 			} else {
 				rightSidebar.style.display = 'flex';
-				rightSidebarContent.innerHTML = renderModuleContext(d.moduleName, true);
+				rightSidebarContent.innerHTML = renderModuleContext(d.moduleName, true, d.uid);
 				rightSidebarContent.addEventListener('scroll', updateCtxIndicators);
 				setTimeout(updateCtxIndicators, 100);
 

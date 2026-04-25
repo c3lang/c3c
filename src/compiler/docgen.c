@@ -7,13 +7,15 @@
 typedef enum
 {
 	DOC_CAT_FUNCTIONS,
+	DOC_CAT_METHODS,
 	DOC_CAT_MACROS,
+	DOC_CAT_MACRO_METHODS,
 	DOC_CAT_TYPES,
 	DOC_CAT_VARIABLES,
 	DOC_CAT_COUNT
 } DocCategory;
 
-static const char *category_names[DOC_CAT_COUNT] = {"functions", "macros", "types", "variables"};
+static const char *category_names[DOC_CAT_COUNT] = {"functions", "methods", "macros", "macro_methods", "types", "variables"};
 static Module **all_modules = NULL;
 
 static void write_decl_uid(FILE *file, Module *module, Decl *decl);
@@ -40,10 +42,14 @@ static void get_unit_lists(CompilationUnit *unit, DocCategory cat, Decl ***lists
 	{
 		case DOC_CAT_FUNCTIONS:
 			lists[i++] = unit->functions;
+			break;
+		case DOC_CAT_METHODS:
 			lists[i++] = unit->methods;
 			break;
 		case DOC_CAT_MACROS:
 			lists[i++] = unit->macros;
+			break;
+		case DOC_CAT_MACRO_METHODS:
 			lists[i++] = unit->macro_methods;
 			break;
 		case DOC_CAT_TYPES:
@@ -218,6 +224,38 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 	{
 		emit_type_name_to_scratch(type->array.base);
 		scratch_buffer_append("[*]");
+	}
+	else if (type->kind == TYPE_INFO_GENERIC)
+	{
+		emit_type_name_to_scratch(type->generic.base);
+		scratch_buffer_append("{");
+		unsigned param_count = vec_size(type->generic.params);
+		for (unsigned i = 0; i < param_count; i++)
+		{
+			if (i > 0) scratch_buffer_append(", ");
+			Expr *param = type->generic.params[i];
+			if (param->expr_kind == EXPR_TYPEINFO)
+			{
+				emit_type_name_to_scratch(param->type_expr);
+			}
+			else
+			{
+				loc_to_scratch(param->loc);
+			}
+		}
+		scratch_buffer_append("}");
+	}
+	else if (type->kind == TYPE_INFO_TYPEOF)
+	{
+		scratch_buffer_append("typeof(");
+		if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
+		scratch_buffer_append(")");
+	}
+	else if (type->kind == TYPE_INFO_TYPEFROM)
+	{
+		scratch_buffer_append("$typefrom(");
+		if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
+		scratch_buffer_append(")");
 	}
 	if (type->optional) scratch_buffer_append("?");
 }
@@ -607,13 +645,15 @@ static void emit_doc_comments(FILE *file, Decl *decl)
 	fputs("}", file);
 }
 
-static const char *get_decl_kind_name(DeclKind kind)
+static const char *get_decl_kind_name(Decl *decl)
 {
-	switch (kind)
+	switch (decl->decl_kind)
 	{
 		case DECL_FUNC:
+			if (decl->func_decl.type_parent) return "method";
 			return "function";
 		case DECL_MACRO:
+			if (decl->func_decl.type_parent) return "macro_method";
 			return "macro";
 		case DECL_STRUCT:
 			return "struct";
@@ -624,19 +664,18 @@ static const char *get_decl_kind_name(DeclKind kind)
 		case DECL_BITSTRUCT:
 			return "bitstruct";
 		case DECL_TYPEDEF:
-			return "typedef";
 		case DECL_TYPE_ALIAS:
-			return "type_alias";
-		case DECL_CONSTDEF:
-			return "constdef";
+			return "typedef";
+		case DECL_FAULT:
+			return "fault";
 		case DECL_INTERFACE:
 			return "interface";
+		case DECL_CONSTDEF:
+			return "constdef";
 		case DECL_VAR:
 			return "variable";
-		case DECL_FAULT:
-			return "faultdef";
 		default:
-			return "other";
+			return "unknown";
 	}
 }
 
@@ -647,7 +686,7 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 	json_write_string(file, decl->name);
 	fputs(",", file);
 	fputs("\"kind\":\"", file);
-	fputs(get_decl_kind_name(decl->decl_kind), file);
+	fputs(get_decl_kind_name(decl), file);
 	fputs("\",", file);
 	fputs("\"uid\":", file);
 	write_decl_uid(file, module, decl);
@@ -759,8 +798,10 @@ static DocCategory get_category_for_decl(Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_FUNC:
+			if (decl->func_decl.type_parent) return DOC_CAT_METHODS;
 			return DOC_CAT_FUNCTIONS;
 		case DECL_MACRO:
+			if (decl->func_decl.type_parent) return DOC_CAT_MACRO_METHODS;
 			return DOC_CAT_MACROS;
 		case DECL_STRUCT:
 		case DECL_UNION:
