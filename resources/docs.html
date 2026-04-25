@@ -1260,20 +1260,6 @@
 			document.getElementById('module-tooltip').classList.remove('show');
 		}
 
-		const EMBEDDED_JSON_LIST = [];
-		/*DATA_START*/
-		/*DATA_END*/
-
-		async function loadTargetFiles() {
-			if (EMBEDDED_JSON_LIST.length > 0) {
-				for (const item of EMBEDDED_JSON_LIST) {
-					mergeTargetData(item.data, item.target);
-				}
-				return true;
-			}
-			return false;
-		}
-
 		function mergeTargetData(data, targetName) {
 			for (const [moduleName, mod] of Object.entries(data.modules)) {
 				addOrMergeDeclaration({
@@ -1299,6 +1285,54 @@
 					}
 				});
 			}
+		}
+
+		async function init() {
+			if (EMBEDDED_JSON_LIST.length > 0) {
+				for (const item of EMBEDDED_JSON_LIST) {
+					mergeTargetData(item.data, item.target);
+				}
+			} else {
+				try {
+					const response = await fetch('docs.json');
+					if (response.ok) {
+						const data = await response.json();
+						mergeTargetData(data, 'default');
+					}
+				} catch (e) {
+					console.error("Could not load docs.json", e);
+				}
+			}
+
+			if (allDecls.length === 0) {
+				document.getElementById('content').innerHTML = '<div style="padding:40px; color:#aaa;">No documentation data found.</div>';
+				return;
+			}
+
+			allDecls.forEach(d => {
+				d.visibility = d.visibility || 'public';
+			});
+
+			renderModules();
+			bindEvents();
+
+			const hash = location.hash.slice(1);
+			if (hash) {
+				navigateTo(decodeURIComponent(hash), false);
+			} else {
+				renderModuleOverview();
+			}
+
+			window.addEventListener('popstate', (e) => {
+				const uid = (e.state && e.state.uid) || decodeURIComponent(location.hash.slice(1));
+				if (uid) {
+					const target = allDecls.find(d => d.uid === uid);
+					if (target) renderDetails(target, true);
+					else renderModuleOverview();
+				} else {
+					renderModuleOverview();
+				}
+			});
 		}
 
 		function addOrMergeDeclaration(decl) {
@@ -1462,37 +1496,7 @@
 			document.getElementById('right-sidebar').style.display = 'none';
 		}
 
-		async function init() {
-			try {
-				// Initialize filter UI based on saved state
-				Object.keys(filters).forEach(kind => {
-					document.getElementById(`filter-${kind}`).classList.toggle('active', filters[kind]);
-				});
 
-				const loadedAny = await loadTargetFiles();
-				if (!loadedAny) throw new Error("Documentation JSON payload is missing.");
-
-				renderModules();
-
-				// On initial load, navigate to the uid in the URL hash if present
-				const initialHash = decodeURIComponent(location.hash.slice(1));
-				if (initialHash) {
-					const target = allDecls.find(d => d.uid === initialHash);
-					if (target) { renderDetails(target); } else { renderModuleOverview(); }
-				} else {
-					renderModuleOverview();
-				}
-
-				bindEvents();
-			} catch (e) {
-				document.getElementById('content').innerHTML = `
-					<h2 class="error-text">Error: Documentation data missing</h2>
-					<p class="error-text monospace">${e.message}</p>
-					<p>Make sure you run <code>c3c docgen</code> to properly generate and embed the documentation data within this file.</p>
-				`;
-				document.getElementById('stats').innerText = "Failed to load.";
-			}
-		}
 
 		function closeSearch() {
 			const input = document.getElementById('search-input');
@@ -2017,19 +2021,9 @@
 			};
 			modContainer.addEventListener('scroll', updateModIndicators);
 			setTimeout(updateModIndicators, 100);
-
-			// Handle browser back/forward buttons
-			window.addEventListener('popstate', (e) => {
-				const uid = (e.state && e.state.uid) || window.location.hash.slice(1);
-				if (uid) {
-					const target = allDecls.find(d => d.uid === uid);
-					if (target) renderDetails(target);
-					else renderModuleOverview();
-				} else {
-					renderModuleOverview();
-				}
-			});
 		}
+
+
 
 
 		function renderParams(params) {
@@ -2423,7 +2417,11 @@
 				}
 			});
 		}
-
+	</script>
+	<script>
+		const EMBEDDED_JSON_LIST = [];
+		/*DATA_START*/
+		/*DATA_END*/
 		init();
 	</script>
 </body>
