@@ -52,7 +52,8 @@
 - Constdef now infers through unary negations.
 - Only used libraries are scanned for dependencies. #3144
 - `$vaconst`, `$vaexpr` and `$vatype` removed.
- 
+- Improve error message on unsupported typeid runtime access at runtime. #3170
+
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
 - Add `List.remove_unordered_at`.

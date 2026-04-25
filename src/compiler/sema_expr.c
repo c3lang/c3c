@@ -6639,6 +6639,11 @@ static bool sema_expr_analyse_type_property(SemaContext *context, Expr *expr, bo
 	if (missing_ref) return *missing_ref = true, false;
 	RETURN_SEMA_ERROR_AT(expr->type_property_expr.token_span, "'%s' is not a valid property for %s.", name, type_quoted_error_string(parent_type));
 }
+
+static inline bool sema_kw_is_non_runtime_type_property(const char *kw)
+{
+	return type_property_by_name(kw) != TYPE_PROPERTY_NONE;
+}
 /**
  * Analyse "x.y"
  */
@@ -6851,6 +6856,10 @@ CHECK_DEEPER:
 			{
 				vec_add(compiler.context.types_with_failed_methods, type);
 				goto MISSING_REF;
+			}
+			if (type == type_typeid && sema_kw_is_non_runtime_type_property(kw))
+			{
+				RETURN_SEMA_ERROR(expr, "The type property '%s' is only available at compile time, but this expression is evaluated at runtime. If possible, try making the expression constant.", kw);
 			}
 			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on %s", kw, type_quoted_error_string(parent->type));
 		}
