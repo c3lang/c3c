@@ -14,7 +14,7 @@
 *
 ********************************************************************************************/
 module raylib_audio_module;
-import raylib55;
+import raylib6;
 
 const int MAX_BUNNIES       = 50000;    // 50K bunnies limit
 

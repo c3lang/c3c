@@ -117,7 +117,7 @@ run_cli_tests() {
     else
         echo "Testing vendor-fetch..."
         cd "$ROOT_DIR/resources"
-        if ! "$C3C_BIN" vendor-fetch raylib; then
+        if ! "$C3C_BIN" vendor-fetch raylib6; then
             echo "::warning::vendor-fetch failed. Skipping dependent tests."
             return
         fi
@@ -126,7 +126,7 @@ run_cli_tests() {
             echo "::warning::Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
             return
         fi
-        "$C3C_BIN" compile --lib raylib --print-linking examples/raylib/raylib_arkanoid.c3
+        "$C3C_BIN" compile --lib raylib6 --print-linking examples/raylib/raylib_arkanoid.c3
     fi
 }
 

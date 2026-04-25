@@ -9,7 +9,7 @@
  */
 
 module arkanoid;
-import raylib55, std::math;
+import raylib6, std::math;
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 450;
