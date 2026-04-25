@@ -82,6 +82,7 @@
 - `std::hash` method name convention changes: `updatec` / `update_char` => `update_byte`.
 - `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
 - `std::collections::object` added `Object.to_value` to convert from an object to a value.
+- `std::encoding::xml` added for XML parsing and serialization.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

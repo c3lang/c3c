@@ -28,17 +28,17 @@ fn void initialize_bench() @init
 	common_4kib = common_1mib[:4096];
 
 	static String[] function_prefixes = {
-		$qnameof(md5_16)[..^4],
-		$qnameof(sha1_16)[..^4],
-		$qnameof(sha2_256_16)[..^4],
-		$qnameof(sha2_512_16)[..^4],
-		//$qnameof(blake2s_256_16)[..^4],
-		//$qnameof(blake2b_256_16)[..^4],
-		$qnameof(blake3_16)[..^4],
-		$qnameof(ripemd_160_16)[..^4],
-		$qnameof(whirlpool_16)[..^4],
-		$qnameof(streebog_256_16)[..^4],
-		$qnameof(streebog_512_16)[..^4],
+		$reflect(md5_16).qname[..^4],
+		$reflect(sha1_16).qname[..^4],
+		$reflect(sha2_256_16).qname[..^4],
+		$reflect(sha2_512_16).qname[..^4],
+		//$reflect(blake2s_256_16).qname[..^4],
+		//$reflect(blake2b_256_16).qname[..^4],
+		$reflect(blake3_16).qname[..^4],
+		$reflect(ripemd_160_16).qname[..^4],
+		$reflect(whirlpool_16).qname[..^4],
+		$reflect(streebog_256_16).qname[..^4],
+		$reflect(streebog_512_16).qname[..^4],
 	};
 
 	static Pair{ String, uint }[] to_iters = {

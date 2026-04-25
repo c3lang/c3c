@@ -18,10 +18,10 @@ fn void initialize_bench() @init
 	set_benchmark_warmup_iterations(2);
 	set_benchmark_max_iterations(10);
 
-	set_benchmark_func_iterations($qnameof(deflate_compress_small), SMALL_ITERATIONS);
-	set_benchmark_func_iterations($qnameof(deflate_decompress_small), SMALL_ITERATIONS);
-	set_benchmark_func_iterations($qnameof(deflate_compress_large), LARGE_ITERATIONS);
-	set_benchmark_func_iterations($qnameof(deflate_decompress_large), LARGE_ITERATIONS);
+	set_benchmark_func_iterations($reflect(deflate_compress_small).qname, SMALL_ITERATIONS);
+	set_benchmark_func_iterations($reflect(deflate_decompress_small).qname, SMALL_ITERATIONS);
+	set_benchmark_func_iterations($reflect(deflate_compress_large).qname, LARGE_ITERATIONS);
+	set_benchmark_func_iterations($reflect(deflate_decompress_large).qname, LARGE_ITERATIONS);
 }
 
 // =======================================================================================

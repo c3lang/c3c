@@ -11,8 +11,8 @@ fn void initialize_bench() @init
     input = mem::alloc_array(char, BUFSZ);
     input[:BUFSZ] = 0xA5;
     input_slice = input[:BUFSZ];
-	set_benchmark_func_iterations($qnameof(compared_with_sha256), 66);
-	set_benchmark_func_iterations($qnameof(compared_with_whirlpool), 75);
+	set_benchmark_func_iterations($reflect(compared_with_sha256).qname, 66);
+	set_benchmark_func_iterations($reflect(compared_with_whirlpool).qname, 75);
 }
 
 fn void teardown_bench() @finalizer
