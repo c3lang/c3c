@@ -10350,14 +10350,11 @@ static inline bool sema_expr_analyse_force_unwrap(SemaContext *context, Expr *ex
 
 static inline bool sema_expr_analyse_typeid(SemaContext *context, Expr *expr)
 {
-	if (!sema_resolve_type_info(context, expr->typeid_expr, RESOLVE_TYPE_DEFAULT)) return expr_poison(expr);
+	if (!sema_resolve_type_info(context, expr->typeid_expr, RESOLVE_TYPE_ALLOW_INFER)) return expr_poison(expr);
 	Type *type = expr->type_expr->type;
-	switch (type->type_kind)
+	if (type_is_ct_only(type) && !type_is_infer_type(type))
 	{
-		case CT_TYPES:
-			RETURN_SEMA_ERROR(expr->typeid_expr, "Cannot get typeid of %s: this type exists only at compile time. Only runtime types have a typeid.", type_quoted_error_string(type));
-		default:
-			break;
+		RETURN_SEMA_ERROR(expr->typeid_expr, "Cannot get typeid of %s: this type exists only at compile time. Only runtime types have a typeid.", type_quoted_error_string(type));
 	}
 	expr->expr_kind = EXPR_CONST;
 	expr->resolve_status = RESOLVE_DONE;

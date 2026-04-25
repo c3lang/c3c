@@ -11,7 +11,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind);
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info);
-static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner);
+static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner, ResolveTypeKind resolve_kind);
 static int compare_function(Signature *sig, FunctionPrototype *proto);
 
 static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
@@ -21,7 +21,7 @@ static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_in
 	{
 		return type_info_poison(type_info);
 	}
-	if (!sema_check_ptr_type(context, type_info, type_info->pointer->type)) return type_info_poison(type_info);
+	if (!sema_check_ptr_type(context, type_info, type_info->pointer->type, resolve_kind)) return type_info_poison(type_info);
 
 	// Construct the type after resolving the underlying type.
 	type_info->type = type_get_ptr(type_info->pointer->type);
@@ -458,7 +458,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	return true;
 }
 
-static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner)
+static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner, ResolveTypeKind resolve_kind)
 {
 	CanonicalType *type = inner->canonical;
 	switch (type->type_kind)
@@ -466,6 +466,7 @@ static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info
 		case CT_TYPES:
 			if (type_is_infer_type(type))
 			{
+				if (resolve_kind & RESOLVE_TYPE_ALLOW_INFER) return true;
 				RETURN_SEMA_ERROR(type_info, "A pointer to a type of inferred length is not supported.");
 			}
 			RETURN_SEMA_ERROR(type_info, "Pointers to %s are not supported.", type_quoted_error_string(inner));
@@ -557,7 +558,7 @@ APPEND_QUALIFIERS:;
 		case TYPE_COMPRESSED_NONE:
 			break;
 		case TYPE_COMPRESSED_PTR:
-			if (!sema_check_ptr_type(context, type_info, type)) return type_info_poison(type_info);
+			if (!sema_check_ptr_type(context, type_info, type, resolve_kind)) return type_info_poison(type_info);
 			type = type_get_ptr(type);
 			break;
 		case TYPE_COMPRESSED_SUB:
@@ -568,11 +569,11 @@ APPEND_QUALIFIERS:;
 			type = type_get_ptr(type);
 			break;
 		case TYPE_COMPRESSED_PTRPTR:
-			if (!sema_check_ptr_type(context, type_info, type)) return type_info_poison(type_info);
+			if (!sema_check_ptr_type(context, type_info, type, resolve_kind)) return type_info_poison(type_info);
 			type = type_get_ptr(type_get_ptr(type));
 			break;
 		case TYPE_COMPRESSED_PTRSUB:
-			if (!sema_check_ptr_type(context, type_info, type)) return type_info_poison(type_info);
+			if (!sema_check_ptr_type(context, type_info, type, resolve_kind)) return type_info_poison(type_info);
 			type = type_get_slice(type_get_ptr(type));
 			break;
 		case TYPE_COMPRESSED_SUBSUB:
@@ -811,4 +812,3 @@ Type *sema_resolve_type_get_func(Signature *signature, CallABI abi)
 		index = (index + 1) & mask;
 	}
 }
-

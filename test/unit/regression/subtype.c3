@@ -89,3 +89,50 @@ fn void is_subtype()
 	assert(!bar.is_subtype_of(double::typeid));
 	assert(!baz.is_subtype_of(bar));
 }
+
+alias CharPtr = char*;
+
+fn void grouped_typeid_cases()
+{
+	switch (CharPtr::typeid)
+	{
+		case String::typeid:
+			assert(false);
+		case ZString::typeid:
+			assert(false);
+		case (char*)::typeid:
+			assert(true);
+		default:
+			assert(false);
+	}
+
+	$switch (char[*]*)::typeid:
+	$case String::typeid:
+		assert(false);
+	$case ZString::typeid:
+		assert(false);
+	$case char[*]::typeid:
+		assert(false);
+	$case (char*)::typeid:
+		assert(false);
+	$case (char[*]*)::typeid:
+		assert(true);
+	$default:
+		assert(false);
+	$endswitch
+
+	$switch char[*]::typeid:
+	$case String::typeid:
+		assert(false);
+	$case ZString::typeid:
+		assert(false);
+	$case (char[*]*)::typeid:
+		assert(false);
+	$case (char*)::typeid:
+		assert(false);
+	$case char[*]::typeid:
+		assert(true);
+	$default:
+		assert(false);
+	$endswitch
+}

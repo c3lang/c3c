@@ -875,6 +875,10 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left, SourceLoc *lhs_spa
 				*sourcelocptr(expr->loc) = extend_loc_with_token(&span, sourcelocptr(expr->loc));
 				return expr;
 			}
+			if (tok_is(c, TOKEN_SCOPE))
+			{
+				return parse_type_property_expr(c, expr);
+			}
 			// Create a cast expr
 			if (rules[c->tok].prefix)
 			{

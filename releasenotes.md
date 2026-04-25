@@ -107,6 +107,7 @@
 - Macro `$Type = ...` would not work correctly with `$defined`
 - Fix enum value handling in `Object` (`std::collections::object`) to conform with changes in enums.
 - Compiler assert in certain cases with ?? and void returns. #3168
+- Fix parsing and typeid handling for grouped and inferred type case labels in `$switch`/`$case`, including `(char*)::typeid`, `(char[*]*)::typeid` and `char[*]::typeid`.
 
 ## 0.7.11 Change list
 
