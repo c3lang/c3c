@@ -346,6 +346,11 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	scratch_buffer_clear();
 	const char *file_str = filename->const_expr.bytes.ptr;
 	bool c3_script = str_has_suffix(file_str, ".c3");
+	const char *old_dir;
+	const char *script_dir;
+	const char *exec_dir;
+
+	setup_exec_paths(&old_dir, &script_dir, &exec_dir);
 	if (!c3_script)
 	{
 		scratch_buffer_append(file_str);
@@ -361,32 +366,30 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		}
 	}
 	File *file;
-	char old_path_buffer[PATH_MAX]; // NOLINT
-	char *old_path = NULL;
-	if (compiler.build.script_dir)
-	{
-		old_path = getcwd(old_path_buffer, PATH_MAX);
-		if (!dir_change(compiler.build.script_dir))
-		{
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open script dir '%s'", compiler.build.script_dir);
-		}
-	}
 	if (c3_script)
 	{
-		file = compile_and_invoke(file_str, scratch_buffer_copy(), stdin_string, 0);
+		const char *args = scratch_buffer_copy();
+		if (!str_eq(script_dir, exec_dir))
+		{
+			scratch_buffer_clear();
+			scratch_buffer_append(script_dir);
+			scratch_buffer_append("/");
+			scratch_buffer_append(file_str);
+			file_str = scratch_buffer_copy();
+		}
+		dir_change(exec_dir);
+		file = compile_and_invoke(file_str, args, stdin_string, 0);
 	}
 	else
 	{
+		dir_change(exec_dir);
 		char *output = execute_cmd(scratch_buffer_to_string(), false, stdin_string, 0);
 		file = source_file_text_load(scratch_buffer_to_string(), output);
 	}
-	if (old_path)
+	success = dir_change(old_dir);
+	if (!success)
 	{
-		success = dir_change(old_path);
-		if (!success)
-		{
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open run dir '%s'", compiler.build.script_dir);
-		}
+		RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to return to the original directory after changing to exec dir '%s'", compiler.build.exec_dir);
 	}
 	if (compiler.context.includes_used++ > MAX_INCLUDE_DIRECTIVES)
 	{

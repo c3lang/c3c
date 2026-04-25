@@ -115,7 +115,8 @@ static void usage(bool full)
 		print_opt("--output-dir <dir>", "Override general output directory.");
 		print_opt("--build-dir <dir>", "Override build output directory.");
 		print_opt("--obj-out <dir>", "Override object file output directory.");
-		print_opt("--script-dir <dir>", "Override the base directory for $exec.");
+		print_opt("--script-dir <dir>", "Override the base directory where scripts are searched.");
+		print_opt("--exec-dir <dir>", "Override the base directory for $exec and exec.");
 		print_opt("--llvm-out <dir>", "Override llvm output directory for '--emit-llvm'.");
 		print_opt("--asm-out <dir> ", "Override asm output directory for '--emit-asm'.");
 		print_opt("--header-output <dir>", "Override header file output directory when building libraries.");
@@ -1535,6 +1536,12 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --script-dir needs a directory.");
 				options->script_dir = next_arg();
+								return;
+			}
+			if (match_longopt("exec-dir"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --exec-dir needs a directory.");
+				options->exec_dir = next_arg();
 				return;
 			}
 			if (match_longopt("llvm-out"))
@@ -1741,6 +1748,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.files = NULL,
 		.build_dir = NULL,
 		.output_dir = NULL,
+		.exec_dir = NULL,
 		.script_dir = NULL,
 	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)

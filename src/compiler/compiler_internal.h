@@ -2385,6 +2385,7 @@ const char *get_exe_extension(void);
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
 void unit_register_external_symbol(SemaContext *context, Decl *decl);
+void setup_exec_paths(const char **old_dir_ref, const char **script_dir_ref, const char **exec_dir_ref);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
 bool unit_add_alias(CompilationUnit *unit, Decl *alias);
