@@ -39,3 +39,16 @@ fn void wasm_initialize() @cname("_initialize") @wasm
 	// The linker synthesizes this to call constructors.
 	__wasm_call_ctors();
 }
+
+module std::core::runtime @if(env::EMSCRIPTEN);
+
+extern fn void __wasm_call_ctors();
+fn void wasm_emscripten_initialize() @cname("_initialize") @wasm
+{
+	__wasm_call_ctors();
+}
+
+fn CInt atexit(void* func) @weak @cname("atexit")
+{
+	return 0;
+}

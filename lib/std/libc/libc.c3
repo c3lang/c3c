@@ -63,8 +63,8 @@ const CInt SIGFPE = 8;
 const CInt SIGSEGV = 11;
 const CInt SIGTERM = 15;
 
-alias Time_t = $typefrom(env::WIN32 ? long::typeid : CLong::typeid);
-alias Off_t = $typefrom(env::WIN32 ? int::typeid : sz::typeid);
+alias Time_t = $typefrom(env::WIN32 || env::EMSCRIPTEN ? long::typeid : CLong::typeid);
+alias Off_t = $typefrom(env::WIN32 || env::EMSCRIPTEN ? long::typeid : sz::typeid);
 
 module libc @if(env::LIBC);
 
@@ -118,7 +118,7 @@ extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
 extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32 && !env::NETBSD);
-extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::OPENBSD);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::OPENBSD && !env::EMSCRIPTEN);
 extern fn void* malloc(usz size);
 extern fn void* memchr(void* str, CInt c, usz n);
 extern fn CInt memcmp(void* buf1, void* buf2, usz count);
@@ -144,7 +144,7 @@ extern fn void rewind(CFile stream);
 extern fn CInt scanf(ZString format, ...);
 extern fn void setbuf(CFile stream, char* buffer);
 extern fn int setenv(ZString name, ZString value, CInt overwrite);
-extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::OPENBSD);
+extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::OPENBSD && !env::EMSCRIPTEN);
 extern fn void setvbuf(CFile stream, char* buf, CInt type, usz size);
 extern fn SignalFunction signal(CInt sig, SignalFunction function);
 extern fn CInt snprintf(char* buffer, usz size, ZString format, ...);
@@ -196,7 +196,7 @@ const CInt STDIN_FD = 0;
 const CInt STDOUT_FD = 1;
 const CInt STDERR_FD = 2;
 
-module libc @if(env::LINUX || env::ANDROID);
+module libc @if(env::LINUX || env::ANDROID || env::EMSCRIPTEN);
 extern CFile __stdin @cname("stdin");
 extern CFile __stdout @cname("stdout");
 extern CFile __stderr @cname("stderr");
@@ -206,6 +206,24 @@ extern fn void* aligned_alloc(usz align, usz size);
 macro CFile stdin() => __stdin;
 macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
+
+// WebAssembly doesn't natively support setjmp/longjmp.
+// Emscripten emulates them using JS exceptions, but this requires running
+// LLVM's `wasm-emscripten-sjlj` lowering pass to instrument caller functions
+// so they can actually catch the JS throw.
+//
+// Since c3c doesn't currently inject this pass into the LLVM pipeline,
+// binding directly to __wasm_setjmp or emscripten_longjmp will crash
+// with `unreachable` when the JS exception unwinds.
+//
+// For now, longjmp is stubbed to just exit cleanly.
+// See: https://emscripten.org/docs/porting/setjmp-longjmp.html
+// See: https://llvm.org/docs/ExceptionHandling.html#setjmp-longjmp-exception-handling-in-webassembly
+module libc @if(env::EMSCRIPTEN);
+import std::os;
+fn int setjmp(JmpBuf* ptr) => 0;
+fn void longjmp(JmpBuf* ptr, int i) => os::exit(i);
+
 
 module libc @if(env::NETBSD || env::OPENBSD);
 extern fn int fcntl(CInt socket, int cmd, ...);
@@ -246,7 +264,7 @@ macro CFile stdin() => __acrt_iob_func(STDIN_FD);
 macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
 macro CFile stderr() => __acrt_iob_func(STDERR_FD);
 
-module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::ANDROID && !env::DARWIN && !env::BSD_FAMILY);
+module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::ANDROID && !env::DARWIN && !env::BSD_FAMILY && !env::EMSCRIPTEN);
 macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
@@ -264,6 +282,7 @@ fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip
 {
 	unreachable("setjmp unavailable");
 }
+
 
 fn void* malloc(usz size) @weak @cname("malloc") @nostrip
 {
@@ -714,7 +733,148 @@ constdef Errno : inline CInt @if(env::WIN32)
 }
 
 
-constdef Errno : inline CInt @if(!env::WIN32 && !env::DARWIN && !env::NETBSD)
+constdef Errno : inline CInt @if(env::EMSCRIPTEN)
+{
+	OK                       = 0, // No error occurred. System call completed successfully.
+	E2BIG                    = 1, // Argument list too long.
+	EACCES                   = 2, // Permission denied.
+	EADDRINUSE               = 3, // Address in use.
+	EADDRNOTAVAIL            = 4, // Address not available.
+	EAFNOSUPPORT             = 5, // Address family not supported.
+	EAGAIN                   = 6, // Resource unavailable, or operation would block.
+	EWOULDBLOCK              = 6, // Operation would block
+	EALREADY                 = 7, // Connection already in progress.
+	EBADF                    = 8, // Bad file descriptor.
+	EBADMSG                  = 9, // Bad message.
+	EBUSY                    = 10, // Device or resource busy.
+	ECANCELED                = 11, // Operation canceled.
+	ECHILD                   = 12, // No child processes.
+	ECONNABORTED             = 13, // Connection aborted.
+	ECONNREFUSED             = 14, // Connection refused.
+	ECONNRESET               = 15, // Connection reset.
+	EDEADLK                  = 16, // Resource deadlock would occur.
+	EDEADLOCK                = 16, // Resource deadlock would occur
+	EDESTADDRREQ             = 17, // Destination address required.
+	EDOM                     = 18, // Mathematics argument out of domain of function.
+	EDQUOT                   = 19, // Reserved.
+	EEXIST                   = 20, // File exists.
+	EFAULT                   = 21, // Bad address.
+	EFBIG                    = 22, // File too large.
+	EHOSTUNREACH             = 23, // Host is unreachable.
+	EIDRM                    = 24, // Identifier removed.
+	EILSEQ                   = 25, // Illegal byte sequence.
+	EINPROGRESS              = 26, // Operation in progress.
+	EINTR                    = 27, // Interrupted function.
+	EINVAL                   = 28, // Invalid argument.
+	EIO                      = 29, // I/O error.
+	EISCONN                  = 30, // Socket is connected.
+	EISDIR                   = 31, // Is a directory.
+	ELOOP                    = 32, // Too many levels of symbolic links.
+	EMFILE                   = 33, // File descriptor value too large.
+	EMLINK                   = 34, // Too many links.
+	EMSGSIZE                 = 35, // Message too long.
+	EMULTIHOP                = 36, // Reserved.
+	ENAMETOOLONG             = 37, // Filename too long.
+	ENETDOWN                 = 38, // Network is down.
+	ENETRESET                = 39, // Connection aborted by network.
+	ENETUNREACH              = 40, // Network unreachable.
+	ENFILE                   = 41, // Too many files open in system.
+	ENOBUFS                  = 42, // No buffer space available.
+	ENODEV                   = 43, // No such device.
+	ENOENT                   = 44, // No such file or directory.
+	ENOEXEC                  = 45, // Executable file format error.
+	ENOLCK                   = 46, // No locks available.
+	ENOLINK                  = 47, // Reserved.
+	ENOMEM                   = 48, // Not enough space.
+	ENOMSG                   = 49, // No message of the desired type.
+	ENOPROTOOPT              = 50, // Protocol not available.
+	ENOSPC                   = 51, // No space left on device.
+	ENOSYS                   = 52, // Function not supported.
+	ENOTCONN                 = 53, // The socket is not connected.
+	ENOTDIR                  = 54, // Not a directory or a symbolic link to a directory.
+	ENOTEMPTY                = 55, // Directory not empty.
+	ENOTRECOVERABLE          = 56, // State not recoverable.
+	ENOTSOCK                 = 57, // Not a socket.
+	ENOTTY                   = 59, // Inappropriate I/O control operation.
+	ENXIO                    = 60, // No such device or address.
+	EOVERFLOW                = 61, // Value too large to be stored in data type.
+	EOWNERDEAD               = 62, // Previous owner died.
+	EPERM                    = 63, // Operation not permitted.
+	EPIPE                    = 64, // Broken pipe.
+	EPROTO                   = 65, // Protocol error.
+	EPROTONOSUPPORT          = 66, // Protocol not supported.
+	EPROTOTYPE               = 67, // Protocol wrong type for socket.
+	ERANGE                   = 68, // Result too large.
+	EROFS                    = 69, // Read-only file system.
+	ESPIPE                   = 70, // Invalid seek.
+	ESRCH                    = 71, // No such process.
+	ESTALE                   = 72, // Reserved.
+	ETIMEDOUT                = 73, // Connection timed out.
+	ETXTBSY                  = 74, // Text file busy.
+	EXDEV                    = 75, // Cross-device link.
+	ENOTCAPABLE              = 76, // Extension: Capabilities insufficient.
+	ENOSTR                   = 100, // Not a STREAM
+	EBFONT                   = 101, // Format of font file is unknown
+	EBADSLT                  = 102, // Invalid slot
+	EBADRQC                  = 103, // Invalid request code
+	ENOANO                   = 104, // No anode
+	ENOTBLK                  = 105, // Block device required
+	ECHRNG                   = 106, // Channel number out of range
+	EL3HLT                   = 107, // Level 3 halted
+	EL3RST                   = 108, // Level 3 reset
+	ELNRNG                   = 109, // Link number out of range
+	EUNATCH                  = 110, // Protocol driver not attached
+	ENOCSI                   = 111, // No CSI structure available
+	EL2HLT                   = 112, // Level 2 halted
+	EBADE                    = 113, // Invalid exchange
+	EBADR                    = 114, // Invalid request descriptor
+	EXFULL                   = 115, // Exchange full
+	ENODATA                  = 116, // No data available
+	ETIME                    = 117, // Timer expired
+	ENOSR                    = 118, // Out of streams resources
+	ENONET                   = 119, // Machine is not on the network
+	ENOPKG                   = 120, // Package not installed
+	EREMOTE                  = 121, // Object is remote
+	EADV                     = 122, // Advertise error
+	ESRMNT                   = 123, // Srmount error
+	ECOMM                    = 124, // Communication error on send
+	EDOTDOT                  = 125, // RFS specific error
+	ENOTUNIQ                 = 126, // Name not unique on network
+	EBADFD                   = 127, // File descriptor in bad state
+	EREMCHG                  = 128, // Remote address changed
+	ELIBACC                  = 129, // Can not access a needed shared library
+	ELIBBAD                  = 130, // Accessing a corrupted shared library
+	ELIBSCN                  = 131, // .lib section in a.out corrupted
+	ELIBMAX                  = 132, // Attempting to link in too many shared libraries
+	ELIBEXEC                 = 133, // Cannot exec a shared library directly
+	ERESTART                 = 134, // Interrupted system call should be restarted
+	ESTRPIPE                 = 135, // Streams pipe error
+	EUSERS                   = 136, // Too many users
+	ESOCKTNOSUPPORT          = 137, // Socket type not supported
+	ENOTSUP                  = 138, // Not supported.
+	EOPNOTSUPP               = ENOTSUP, // Operation not supported on socket.
+	EPFNOSUPPORT             = 139, // Protocol family not supported
+	ESHUTDOWN                = 140, // Cannot send after transport endpoint shutdown
+	ETOOMANYREFS             = 141, // Too many references: cannot splice
+	EHOSTDOWN                = 142, // Host is down
+	EUCLEAN                  = 143, // Structure needs cleaning
+	ENOTNAM                  = 144, // Not a XENIX named type file
+	ENAVAIL                  = 145, // No XENIX semaphores available
+	EISNAM                   = 146, // Is a named type file
+	EREMOTEIO                = 147, // Remote I/O error
+	ENOMEDIUM                = 148, // No medium found
+	EMEDIUMTYPE              = 149, // Wrong medium type
+	ENOKEY                   = 150, // Required key not available
+	EKEYEXPIRED              = 151, // Key has expired
+	EKEYREVOKED              = 152, // Key has been revoked
+	EKEYREJECTED             = 153, // Key was rejected by service
+	ERFKILL                  = 154, // Operation not possible due to RF-kill
+	EHWPOISON                = 155, // Memory page has hardware error
+	EL2NSYNC                 = 156, // Level 2 not synchronized
+}
+
+
+constdef Errno : inline CInt @if(!env::WIN32 && !env::DARWIN && !env::NETBSD && !env::EMSCRIPTEN)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted

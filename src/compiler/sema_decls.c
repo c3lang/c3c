@@ -4264,7 +4264,13 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	if ((type == MAIN_TYPE_RAW || (type == MAIN_TYPE_NO_ARGS && !is_win32)) && is_int_return)
 	{
 		// Int return is pass-through at the moment.
-		decl->is_export = true;
+		// For Emscripten: LLVM's Emscripten ABI renames `main` to `__original_main`
+		// and generates its own `main` wrapper for argc/argv. If we also set is_export,
+		// both get exported as "main" causing a duplicate export error.
+		// So for Emscripten we set extname but skip is_export.
+		bool is_emscripten = compiler.platform.os == OS_TYPE_EMSCRIPTEN;
+		if (!is_emscripten) decl->is_export = true;
+
 		decl->has_extname = true;
 		decl->extname = kw_main;
 		function = decl;

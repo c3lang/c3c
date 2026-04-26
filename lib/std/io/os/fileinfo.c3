@@ -1,9 +1,9 @@
 module std::io::os;
 import libc, std::os, std::io;
 
-fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY) => @pool()
+fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY || env::EMSCRIPTEN) => @pool()
 {
-	$if env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY:
+	$if env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY || env::EMSCRIPTEN:
 		int res = libc::stat(path.zstr_tcopy(), stat);
 	$else
 		unreachable("Stat unimplemented");
@@ -37,7 +37,7 @@ fn long? native_file_size(String path) @if(env::WIN32) => @pool()
 	return (long)size.quadPart;
 }
 
-fn long? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::LINUX && !env::ANDROID && !env::BSD_FAMILY)
+fn long? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::LINUX && !env::ANDROID && !env::BSD_FAMILY && !env::EMSCRIPTEN)
 {
 	File f = file::open(path, "r")!;
 	defer (void)f.close();
@@ -45,7 +45,7 @@ fn long? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::
 	return f.cursor();
 }
 
-fn long? native_file_size(String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY)
+fn long? native_file_size(String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY  || env::EMSCRIPTEN)
 {
 	Stat stat;
 	native_stat(&stat, path)!;
@@ -61,6 +61,7 @@ fn bool native_file_or_dir_exists(String path)
 		$case env::OPENBSD:
 		$case env::LINUX:
 		$case env::ANDROID:
+		$case env::EMSCRIPTEN:
 			Stat stat;
 			return @ok(native_stat(&stat, path));
 		$case env::WIN32:
@@ -87,6 +88,7 @@ fn bool native_is_file(String path)
 		$case env::OPENBSD:
 		$case env::LINUX:
 		$case env::ANDROID:
+		$case env::EMSCRIPTEN:
 			Stat stat;
 			return @ok(native_stat(&stat, path)) && libc_S_ISTYPE(stat.st_mode, libc::S_IFREG);
 		$default:
@@ -98,7 +100,7 @@ fn bool native_is_file(String path)
 
 fn bool native_is_dir(String path)
 {
-	$if env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY:
+	$if env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY || env::EMSCRIPTEN:
 		Stat stat;
 		return @ok(native_stat(&stat, path)) && libc_S_ISTYPE(stat.st_mode, libc::S_IFDIR);
 	$else
@@ -124,9 +126,10 @@ fn Time_t? native_get_modified_time(String path) => @pool()
 		$case env::LINUX:
 		$case env::ANDROID:
 		$case env::NETBSD:
+		$case env::EMSCRIPTEN:
 			Stat stat;
 			native_stat(&stat, path)!;
-			return stat.st_mtime;
+			return (Time_t)stat.st_mtime;
 		$case env::BSD_FAMILY:
 			Stat stat;
 			native_stat(&stat, path)!;

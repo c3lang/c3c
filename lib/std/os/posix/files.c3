@@ -32,7 +32,7 @@ extern fn ZString getcwd(char* pwd, usz len);
 extern fn CInt pipe(CInt[2]* pipes);
 extern fn CFile fdopen(CInt fd, ZString mode);
 extern fn CInt access(ZString path, CInt mode);
-extern fn void closedir(DIRPtr);
+extern fn CInt closedir(DIRPtr);
 extern fn Posix_dirent* readdir(DIRPtr) @cname(readdir_cname());
 extern fn DIRPtr opendir(ZString) @cname(env::NETBSD ??? "__opendir30" : "opendir");
 

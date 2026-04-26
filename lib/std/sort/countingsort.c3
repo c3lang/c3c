@@ -12,9 +12,9 @@ macro void countingsort(list, key_fn = ...) @builtin
 	var list_length = @kindof(list) == SLICE ??? list.len : lengthof(*list);
 	var $ListType = @kindof(list) == SLICE ??? $typeof(list) : $typeof(*list);
 	$if $defined(key_fn):
-		csort{$ListType, $typeof(key_fn)}(list, 0, list_length, key_fn, ~(uint)0);
+		csort{$ListType, $typeof(key_fn)}(list, 0, list_length, key_fn, (sz)0x7FFFFFFF);
 	$else
-		csort{$ListType, void*}(list, 0, list_length, ~(uint)0);
+		csort{$ListType, void*}(list, 0, list_length, (sz)0x7FFFFFFF);
 	$endif
 }
 

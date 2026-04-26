@@ -53,6 +53,7 @@
 - Only used libraries are scanned for dependencies. #3144
 - `$vaconst`, `$vaexpr` and `$vatype` removed.
 - Improve error message on unsupported typeid runtime access at runtime. #3170
+- Added support for Emscripten.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
@@ -107,6 +108,8 @@
 - Macro `$Type = ...` would not work correctly with `$defined`
 - Fix enum value handling in `Object` (`std::collections::object`) to conform with changes in enums.
 - Compiler assert in certain cases with ?? and void returns. #3168
+- Bug in compiler-rt for i128 shift.
+- LinkedBlockingQueue.push_timeout did not work correctly.
 
 ## 0.7.11 Change list
 

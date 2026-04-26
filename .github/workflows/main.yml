@@ -131,7 +131,7 @@ jobs:
       - run: |
           mkdir -p apt-cache/partial
           for i in 1 2 3; do sudo apt-get update && break || sleep 2; done
-          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf && break || sleep 2; done
+          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev && break || sleep 2; done
           sudo chown -R $USER:$USER apt-cache
       - name: CMake Build
         run: |
@@ -153,6 +153,39 @@ jobs:
         with:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
+
+  test-emscripten-32bit:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug]
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: c3-linux-${{matrix.build_type}}
+          path: bin
+
+      - name: Extract C3
+        run: |
+          tar -xzf bin/c3-linux-${{matrix.build_type}}.tar.gz -C bin
+          # The package_build.sh seems to create a 'c3' directory inside the tar
+          chmod +x bin/c3/c3c
+
+      - name: Setup Emscripten
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git
+          cd emsdk
+          ./emsdk install latest
+          ./emsdk activate latest
+          echo "$GITHUB_WORKSPACE/emsdk" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/emsdk/upstream/emscripten" >> $GITHUB_PATH
+
+      - name: Run Emscripten Tests
+        run: ./scripts/tools/emscripten_tests.sh "./bin/c3/c3c"
 
   build-linux-musl-static:
     runs-on: ubuntu-latest
@@ -465,7 +498,7 @@ jobs:
           context: ./docker
           build-args: |
             LLVM_VERSION=${{ matrix.llvm_version }}
-            UBUNTU_VERSION=22.04
+            UBUNTU_VERSION=24.04
             CMAKE_VERSION=3.20.0
           tags: c3c-builder:latest
           outputs: type=docker,dest=/tmp/c3c-builder.tar

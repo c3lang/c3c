@@ -127,7 +127,13 @@ macro fault file_seek_errno() @local
 }
 
 
-struct Utimbuf @if(!env::WIN32)
+struct Utimbuf @if(env::EMSCRIPTEN && !env::WIN32)
+{
+	long actime;
+	long modtime;
+}
+
+struct Utimbuf @if(!env::EMSCRIPTEN && !env::WIN32)
 {
 	Time_t actime;
 	Time_t modtime;
@@ -154,7 +160,11 @@ fn void? native_set_modified_time(String filename, Time_t time) => @stack_mem(25
 
 		if (!set_file_time(h, null, null, &ft)) return io::GENERAL_ERROR~;
 	$else
-		Utimbuf times = { time, time };
+		$if env::EMSCRIPTEN:
+			Utimbuf times = { (long)time, (long)time };
+		$else
+			Utimbuf times = { (Time_t)time, (Time_t)time };
+		$endif
 		if (utime(filename.zstr_copy(smem), &times)) return io::GENERAL_ERROR~;
 	$endif
 }

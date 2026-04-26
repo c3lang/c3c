@@ -1,4 +1,4 @@
-module std::time::os @if(env::POSIX);
+module std::time::os @if(env::POSIX && !env::EMSCRIPTEN);
 import libc, std::os::posix;
 
 fn Time native_timestamp()

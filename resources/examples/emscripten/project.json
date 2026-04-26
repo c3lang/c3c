@@ -1,0 +1,16 @@
+{
+	"sources": [ "src/**" ],
+	"build-dir": "build",
+	"output": "build",
+	"targets": {
+		"emscripten": {
+			"name": "index.js",
+			"type": "executable",
+			"target": "emscripten",
+			"link-args": [
+				"-sEXPORTED_RUNTIME_METHODS=HEAPU8"
+			]
+		}
+	},
+	"opt": "O1"
+}

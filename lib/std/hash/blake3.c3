@@ -565,8 +565,8 @@ fn void Blake3Output.root_bytes(&self, sz seek, char[] into)
 //
 //
 macro uint @popcnt(#x) @local => (uint)#x.popcount();
-macro uint @highest_one(#x) @local => 63u ^ (uint)#x.clz();
-macro sz @round_down_to_power_of_2(#x) @local => (sz)1 << @highest_one(#x | 1u);
+macro uint @highest_one(#x) @local => (uint)(@bitsizeof(#x) - 1) ^ (uint)#x.clz();
+macro sz @round_down_to_power_of_2(#x) @local => (sz)1 << @highest_one((usz)#x | (usz)1);
 
 macro left_subtree_len(sz input_len) @local
 	=> @round_down_to_power_of_2((input_len - 1) / CHUNK_SIZE) * CHUNK_SIZE;

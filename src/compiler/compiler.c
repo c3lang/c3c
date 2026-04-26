@@ -214,8 +214,14 @@ static const char *exe_name(void)
 		case WINDOWS_X64:
 		case MINGW_X64:
 			return str_cat(name, ".exe");
+		case EMSCRIPTEN_WASM32:
+			if (str_has_suffix(name, ".js") || str_has_suffix(name, ".html") || str_has_suffix(name, ".wasm")) return name;
+			return str_cat(name, ".js"); // .js produces JS glue + .wasm bundle (matches emcc default)
+		case WASM32:
+		case WASM64:
+			if (str_has_suffix(name, ".wasm")) return name;
+			return str_cat(name, ".wasm");
 		default:
-			if (arch_is_wasm(compiler.platform.arch)) return str_cat(name, ".wasm");
 			return name;
 	}
 }
@@ -730,8 +736,9 @@ void compiler_compile(void)
 		{
 			const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
 			if (!file_executable_in_path(cc)) system_linker_available = false;
+			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && !strstr(cc, "emcc")) system_linker_available = false;
 		}
-		bool use_system_linker = system_linker_available && compiler.build.arch_os_target == default_target;
+		bool use_system_linker = system_linker_available && (compiler.build.arch_os_target == default_target || compiler.platform.os == OS_TYPE_EMSCRIPTEN);
 		switch (compiler.build.linker_type)
 		{
 			case LINKER_TYPE_CC:
@@ -811,6 +818,27 @@ void compiler_compile(void)
 			if (!full_path)
 			{
 				error_exit("The binary '%s' was unexpectedly not found.", scratch_buffer_to_string());
+			}
+			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN)
+			{
+				if (str_has_suffix(name, ".js"))
+				{
+					OUTF("Emscripten target detected. To run, use 'node %s'.\n", name);
+				}
+				else if (str_has_suffix(name, ".html"))
+				{
+					OUTF("Emscripten target detected. To run, use 'emrun %s'.\n", name);
+				}
+				else
+				{
+					OUTF("Emscripten target detected. Not auto-running.\n");
+				}
+				return;
+			}
+			if (arch_is_wasm(compiler.platform.arch))
+			{
+				OUTF("WASM target detected. Not auto-running (use wasmtime, wasmer, or similar).\n");
+				return;
 			}
 			OUTF("Launching %s", name);
 			FOREACH(const char *, arg, compiler.build.args)
@@ -1265,9 +1293,14 @@ static int jump_buffer_size()
 			// Early GCC
 			return 39;
 		case WASM32:
+		case EMSCRIPTEN_WASM32:
+			REMINDER("WASM setjmp size depends on the linked libc. Padded to 156+ bytes to safely cover Emscripten and WASI.");
+			// 39 * 4 bytes = 156 bytes
+			return 39;
 		case WASM64:
-			REMINDER("WASM setjmp size is unknown");
-			return 512;
+			REMINDER("WASM setjmp size depends on the linked libc. Padded to 156+ bytes to safely cover Emscripten and WASI.");
+			// 20 * 8 bytes = 160 bytes
+			return 20;
 	}
 	UNREACHABLE
 }
@@ -1843,6 +1876,7 @@ const char *default_c_compiler(void)
 	}
 	return cc = "cl.exe";
 #else
+	if (compiler.platform.os == OS_TYPE_EMSCRIPTEN) return cc = "emcc";
 	return cc = "cc";
 #endif
 }

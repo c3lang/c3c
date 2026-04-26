@@ -6,7 +6,7 @@ import std::core::mem::allocators @public;
 import std::os::posix, std::os::win32, std::math, std::io;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
-const DEFAULT_MEM_ALIGNMENT = env::WASM ? 16 : (void*::alignment) * 2;
+const DEFAULT_MEM_ALIGNMENT = env::EMSCRIPTEN ? 8 : (env::WASM ? 16 : (void*::alignment) * 2);
 const ulong KB = 1024;
 const ulong MB = KB * 1024;
 const ulong GB = MB * 1024;

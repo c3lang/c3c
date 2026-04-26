@@ -26,6 +26,7 @@ fn void? fill(char[] buffer, bool timeout = false)
 		$case env::ANDROID:
 		$case env::FREEBSD:
 		$case env::NETBSD:
+		$case env::EMSCRIPTEN:
 			$if (@in(env::ARCH_TYPE, ARM, ARMB, AARCH64, X86, X86_64)):
 				sz result = (sz)$$syscall(entropy_syscall_id(), (uptr)buffer.ptr, (uptr)buffer.len, 0);
 				if (result < 0 && result != Errno.EINTR) return SECURE_RANDOM_UNAVAILABLE~;   /* it's possible for signal handlers to interrupt this call */
@@ -144,5 +145,10 @@ fn void? unix_fallback(char[] buffer, bool timeout = false)
 *>
 extern fn void arc4random_buf(void* buf, sz nbytes) @if (env::OPENBSD || env::DARWIN);
 
+/*
+ NOTE: `getentropy` for emscripten might be a better option
+ https://github.com/emscripten-core/emscripten/pull/12240
+ https://github.com/emscripten-core/emscripten/blob/main/system/lib/libc/musl/src/misc/getentropy.c
+*/
 
 // ============================================================================

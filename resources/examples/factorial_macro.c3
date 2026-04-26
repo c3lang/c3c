@@ -7,7 +7,7 @@ macro int factorial($n)
 	$endif
 }
 
-extern fn void printf(char *fmt, ...);
+extern fn int printf(char *fmt, ...);
 
 fn void main()
 {

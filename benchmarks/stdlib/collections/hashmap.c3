@@ -199,10 +199,10 @@ fn void random_access_string_keys() => @pool()
 	HashMap { String, ulong } v;
 	v.tinit();
 
-	usz pseudo_checksum = 0;
+	sz pseudo_checksum = 0;
 	String[] saved = mem::temp_array(String, 5_000);
 
-	for (usz i = 0; i < saved.len; ++i)
+	for (sz i = 0; i < saved.len; ++i)
 	{
 		ulong hash = i.hash();
 		String b64key = base64::tencode(@as_char_view(hash));
@@ -215,7 +215,7 @@ fn void random_access_string_keys() => @pool()
 	@start_benchmark();
 	for (usz i = 0; i < saved.len; ++i)
 	{
-		pseudo_checksum += v[ saved[random::next(&rand, saved.len)] ]!! % 512;
+		pseudo_checksum += (sz)v[ saved[random::next(&rand, saved.len)] ]!! % 512;
 	}
 	@end_benchmark();
 
