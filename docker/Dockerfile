@@ -10,7 +10,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN for i in 1 2 3; do apt-get update && break || sleep 2; done && \
     apt-get install -y --fix-missing \
     wget gnupg software-properties-common lsb-release \
-    zlib1g zlib1g-dev python3 ninja-build curl g++ libcurl4-openssl-dev git && \
+    zlib1g zlib1g-dev python3 ninja-build curl g++ libcurl4-openssl-dev git \
+    libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev && \
     CODENAME=$(lsb_release -cs) && \
     ARCH=$(uname -m) && \
     wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-${ARCH}.sh && \

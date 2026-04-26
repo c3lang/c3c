@@ -131,7 +131,7 @@ jobs:
       - run: |
           mkdir -p apt-cache/partial
           for i in 1 2 3; do sudo apt-get update && break || sleep 2; done
-          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf && break || sleep 2; done
+          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev && break || sleep 2; done
           sudo chown -R $USER:$USER apt-cache
       - name: CMake Build
         run: |
