@@ -39,25 +39,19 @@ fn void? ByteReader.pushback_byte(&self) @dynamic
 	self.index--;
 }
 
-fn long? ByteReader.seek(&self, long offset, Seek seek) @dynamic
-{
-	self.set_cursor(offset, (SeekOrigin)seek.ordinal)!;
-	return self.cursor();
-}
-
 fn long? ByteReader.cursor(&self) @dynamic
 {
 	return self.index;
 }
 
-fn void? ByteReader.set_cursor(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
+fn void? ByteReader.seek(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
 {
 	long new_index;
 	switch (whence)
 	{
-		case FROM_START: new_index = offset;
+		case FROM_START:  new_index = offset;
 		case FROM_CURSOR: new_index = self.index + offset;
-		case FROM_END: new_index = self.bytes.len + offset;
+		case FROM_END:    new_index = self.bytes.len + offset;
 	}
 	if (new_index < 0 || new_index > self.bytes.len) return INVALID_POSITION~;
 	self.index = (sz)new_index;

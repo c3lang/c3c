@@ -12,9 +12,9 @@ fn float _exp2f(float x) @cname("exp2f") @weak @nostrip
 		switch
 		{
 			// |x| >= 128 or x is nan.
-			case bitcast(x, uint) == bitcast(-float.inf, uint):
+			case bitcast(x, uint) == bitcast(-float::inf, uint):
 				return 0;
-			case abstop >= _top12f(float.inf):
+			case abstop >= _top12f(float::inf):
 				return x + x;
 			case x > 0:
 				return __math_oflowf(0);
@@ -96,9 +96,9 @@ fn double _exp2(double x) @cname("exp2") @weak @nostrip
 		{
 			switch
 			{
-				case u == bitcast(-double.inf, ulong):
+				case u == bitcast(-double::inf, ulong):
 					return 0.0;
-				case abstop >= _top12d(double.inf):
+				case abstop >= _top12d(double::inf):
 					return 1.0 + x;
 				case !(u >> 63):
 					return __math_oflow(0);

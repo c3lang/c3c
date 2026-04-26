@@ -101,7 +101,7 @@ fn Type*? RingList.first_ref(&self)
 fn Type? RingList.last(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
-	return self.buf[self.tail];
+	return self.buf[(self.tail ?: self.buf.len) - 1];
 }
 
 <*
@@ -110,7 +110,7 @@ fn Type? RingList.last(&self)
 fn Type*? RingList.last_ref(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
-	return &self.buf[self.tail];
+	return &self.buf[(self.tail ?: self.buf.len) - 1];
 }
 
 <*

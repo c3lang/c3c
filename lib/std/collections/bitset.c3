@@ -3,11 +3,11 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 <*
  @require SIZE > 0 : "The size of the bitset in bits must be at least 1"
- @require SIZE / (uint.sizeof * 8) < uint.max
+ @require SIZE / (uint::size * 8) < uint::max
 *>
 module std::collections::bitset <SIZE>;
 
-const BITS = uint.sizeof * 8;
+const BITS = uint::size * 8;
 const SZ = (SIZE + BITS - 1) / BITS;
 
 struct BitSet
@@ -171,12 +171,12 @@ fn void BitSet.set_bool(&self, sz i, bool value) @operator([]=) @inline
 }
 
 <*
- @require Type.kindof == UNSIGNED_INT
+ @require Type::kind == UNSIGNED_INT
 *>
 module std::collections::growablebitset <Type>;
 import std::collections::list;
 
-const BITS = Type.sizeof * 8;
+const BITS = Type::size * 8;
 
 alias GrowableBitSetList = List{Type};
 

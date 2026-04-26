@@ -1,5 +1,5 @@
 <*
- @require Type.is_ordered : "The type must be ordered"
+ @require Type::is_ordered : "The type must be ordered"
 *>
 module std::collections::range <Type>;
 import std::io;
@@ -26,7 +26,7 @@ fn bool Range.contains(&self, Type value) @inline
 *>
 fn Type Range.get(&self, sz index) @operator([])
 {
-	return (Type)(self.start + (sz)index);
+	return (Type)(self.start + (Type)index);
 }
 
 fn sz? Range.to_format(&self, Formatter* formatter) @dynamic
@@ -61,5 +61,5 @@ fn sz? ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
 *>
 fn Type ExclusiveRange.get(&self, sz index) @operator([])
 {
-	return (Type)(self.start + index);
+	return (Type)(self.start + (Type)index);
 }

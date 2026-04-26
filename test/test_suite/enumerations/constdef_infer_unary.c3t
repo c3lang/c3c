@@ -1,0 +1,14 @@
+module test;
+import std;
+
+constdef Foo
+{
+	ABC, DEF
+}
+
+fn void main()
+{
+	Foo f1 = ~ABC;
+	Foo f3 = +ABC;
+	Foo f2 = -ABC;
+}

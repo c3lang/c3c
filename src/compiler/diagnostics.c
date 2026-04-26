@@ -96,8 +96,6 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 	char number_buffer_elided[20];
 	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
 	snprintf(number_buffer_elided, 20, "%%%dd: %%.*s|\n", max_line_length);
-	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
-	snprintf(number_buffer_elided, 20, "%%%dd: %%.*s|\n", max_line_length);
 
 	// Insert end in case it's not yet there.
 

@@ -123,7 +123,7 @@ fn CodePage? by_name(String charset_name) => @pool()
 {
 	String name = charset_name.treplace("_","-");
 	name.convert_to_lower();
-	foreach (page : CodePage.values)
+	foreach (page : CodePage::values)
 	{
 		if (page.name == charset_name) return page;
 	}

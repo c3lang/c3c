@@ -775,7 +775,7 @@ struct StreamBitReader @private
 	sz buf_len;
 	ulong bit_buf;
 	int nbits;
-	SetCursorFn set_cursor_fn;
+	SeekFn seek_fn;
 }
 
 enum InflaterState @private
@@ -794,17 +794,20 @@ enum InflaterState @private
 
 fn void StreamBitReader.init(&self, InStream reader, char[] buffer)
 {
-	*self = { .stream = reader, .buffer = buffer, .set_cursor_fn = &reader.set_cursor };
+	*self = { .stream = reader, .buffer = buffer, .seek_fn = &reader.seek };
 }
 
 fn void StreamBitReader.close(&self)
 {
-	if (!self.set_cursor_fn) return;
+	if (!self.seek_fn) return;
 	long seek_back = (long)self.buf_len - (long)self.buf_pos + (long)(self.nbits / 8);
 	if (seek_back > 0)
 	{
-		(void)self.set_cursor_fn(self.stream, -seek_back, FROM_CURSOR);
+		(void)self.seek_fn(self.stream, -seek_back, FROM_CURSOR);
 	}
+	self.buf_len = 0;
+	self.buf_pos = 0;
+	self.nbits = 0;
 }
 
 fn void? StreamBitReader.refill(&self) @inline
@@ -890,7 +893,7 @@ fn void BitWriter.write_bits(&self, uint value, int count)
 			if (new_cap < 1024) new_cap = 1024;
 			while (new_cap <= self.len)
 			{
-				if (new_cap > sz.max / 2)
+				if (new_cap > sz::max / 2)
 				{
 					new_cap = self.len + 1;
 					break;

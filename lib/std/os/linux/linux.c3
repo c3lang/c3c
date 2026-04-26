@@ -186,16 +186,16 @@ fn ulong? elf_module_image_base(String path) @local
 	bool is_little_endian = file.read_byte()! == 1;
 	// Actually, not supported.
 	if (!is_little_endian) return backtrace::IMAGE_NOT_FOUND~;
-	file.set_cursor(0)!;
+	file.seek(0)!;
 	if (is_64)
 	{
 		Elf64_Ehdr file_header;
 		io::read_any(&file, &file_header)!;
-		if (file_header.e_ehsize != Elf64_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND~;
+		if (file_header.e_ehsize != Elf64_Ehdr::size) return backtrace::IMAGE_NOT_FOUND~;
 		for (sz i = 0; i < file_header.e_phnum; i++)
 		{
 			Elf64_Phdr header;
-			file.set_cursor((long)file_header.e_phoff + (long)file_header.e_phentsize * i)!;
+			file.seek((long)file_header.e_phoff + (long)file_header.e_phentsize * i)!;
 			io::read_any(&file, &header)!;
 			if (header.p_type == PT_PHDR) return header.p_vaddr - header.p_offset;
 		}
@@ -203,11 +203,11 @@ fn ulong? elf_module_image_base(String path) @local
 	}
 	Elf32_Ehdr file_header;
 	io::read_any(&file, &file_header)!;
-	if (file_header.e_ehsize != Elf32_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND~;
+	if (file_header.e_ehsize != Elf32_Ehdr::size) return backtrace::IMAGE_NOT_FOUND~;
 	for (sz i = 0; i < file_header.e_phnum; i++)
 	{
 		Elf32_Phdr header;
-		file.set_cursor(file_header.e_phoff + (long)file_header.e_phentsize * i)!;
+		file.seek(file_header.e_phoff + (long)file_header.e_phentsize * i)!;
 		io::read_any(&file, &header)!;
 		if (header.p_type == PT_PHDR) return (ulong)header.p_vaddr - header.p_offset;
 	}

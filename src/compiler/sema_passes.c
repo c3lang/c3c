@@ -304,6 +304,7 @@ static bool exec_arg_append_to_scratch(Expr *arg)
 		case CONST_SLICE:
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 			return false;
 	}
 	UNREACHABLE
@@ -345,6 +346,11 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	scratch_buffer_clear();
 	const char *file_str = filename->const_expr.bytes.ptr;
 	bool c3_script = str_has_suffix(file_str, ".c3");
+	const char *old_dir;
+	const char *script_dir;
+	const char *exec_dir;
+
+	setup_exec_paths(&old_dir, &script_dir, &exec_dir);
 	if (!c3_script)
 	{
 		scratch_buffer_append(file_str);
@@ -360,38 +366,66 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		}
 	}
 	File *file;
-	char old_path_buffer[PATH_MAX]; // NOLINT
-	char *old_path = NULL;
-	if (compiler.build.script_dir)
-	{
-		old_path = getcwd(old_path_buffer, PATH_MAX);
-		if (!dir_change(compiler.build.script_dir))
-		{
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open script dir '%s'", compiler.build.script_dir);
-		}
-	}
 	if (c3_script)
 	{
-		file = compile_and_invoke(file_str, scratch_buffer_copy(), stdin_string, 0);
+		const char *args = scratch_buffer_copy();
+		if (!str_eq(script_dir, exec_dir))
+		{
+			scratch_buffer_clear();
+			scratch_buffer_append(script_dir);
+			scratch_buffer_append("/");
+			scratch_buffer_append(file_str);
+			file_str = scratch_buffer_copy();
+		}
+		dir_change(exec_dir);
+		file = compile_and_invoke(file_str, args, stdin_string, 0);
 	}
 	else
 	{
+		dir_change(exec_dir);
 		char *output = execute_cmd(scratch_buffer_to_string(), false, stdin_string, 0);
 		file = source_file_text_load(scratch_buffer_to_string(), output);
 	}
-	if (old_path)
+	success = dir_change(old_dir);
+	if (!success)
 	{
-		success = dir_change(old_path);
-		if (!success)
-		{
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open run dir '%s'", compiler.build.script_dir);
-		}
+		RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to return to the original directory after changing to exec dir '%s'", compiler.build.exec_dir);
 	}
 	if (compiler.context.includes_used++ > MAX_INCLUDE_DIRECTIVES)
 	{
 		RETURN_PRINT_ERROR_AT(NULL, decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDE_DIRECTIVES);
 	}
 	compiler.exec_time += bench_mark() - bench;
+	return parse_include_file(file, unit);
+}
+
+
+static Decl **sema_interpret_expand(CompilationUnit *unit, Decl *decl)
+{
+	SemaContext context;
+	sema_context_init(&context, unit);
+	FOREACH(Attr *, attr, decl->attributes)
+	{
+		if (attr->attr_kind != ATTRIBUTE_IF)
+		{
+			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$expand'.");
+		}
+	}
+	Expr *string = decl->expand_decl;
+	bool success = sema_analyse_ct_expr(&context, string);
+	sema_context_destroy(&context);
+	if (!success) return NULL;
+	if (!expr_is_const_string(string))
+	{
+		RETURN_PRINT_ERROR_AT(NULL, string, "Expected a constant string for '$expand'.");
+	}
+	scratch_buffer_clear();
+	SourceLoc* loc = sourcelocptr(string->loc);
+	scratch_buffer_printf("%s.%d", unit->file->full_path, loc->row, loc->col);
+	File *file = source_file_text_load(scratch_buffer_to_string(), str_copy(string->const_expr.bytes.ptr, string->const_expr.bytes.len));
+	ParseContext parse_context = { .tok = TOKEN_INVALID_TOKEN };
+	ParseContext *c = &parse_context;
+	c->unit = unit;
 	return parse_include_file(file, unit);
 }
 
@@ -407,6 +441,9 @@ INLINE void register_includes(CompilationUnit *unit, Decl **decls)
 				break;
 			case DECL_CT_INCLUDE:
 				include_decls = sema_load_include(unit, include);
+				break;
+			case DECL_CT_EXPAND:
+				include_decls = sema_interpret_expand(unit, include);
 				break;
 			default:
 				UNREACHABLE_VOID

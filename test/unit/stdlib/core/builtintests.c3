@@ -135,7 +135,7 @@ fn void test_hash()
 	ZString z = "abc";
 	assert(x.hash() == y.hash());
 	assert(z.hash() == x.hash());
-	assert(int.typeid.hash());
+	assert(int::typeid.hash());
 }
 
 fn void test_hash_repeat()
@@ -173,7 +173,7 @@ fn void test_hash_repeat()
 	assert((bool){}.hash() == (bool){}.hash());
 	assert((bool[<100>]){}.hash() == (bool[<100>]){}.hash());
 	assert((bool[100]){}.hash() == (bool[100]){}.hash());
-	assert(int.typeid.hash() == int.typeid.hash());
+	assert(int::typeid.hash() == int::typeid.hash());
 }
 
 fn void test_hash_vector() @test @if($feature(SLOW_TESTS))
@@ -205,8 +205,8 @@ fn void test_builtin_string_hashing() => @pool()
 
 fn void test_ct_clz()
 {
-	assert(@clz((ulong)0) == ulong.sizeof * 8);
-	assert(@clz((char)1) == (char.sizeof * 8) - 1);
+	assert(@clz((ulong)0) == ulong::size * 8);
+	assert(@clz((char)1) == (char::size * 8) - 1);
 	assert(@clz((uint)0x8000_0000) == 0);
 	assert(@clz((ushort)0x0100) == 7);
 	assert(@clz((long)-1) == 0);
@@ -319,7 +319,7 @@ fn void test_hash_vector_internal() <Type>
 	int[] $lens = {1, 2, 4, 7, 8, 13, 16, 23, 32, 43, 64, 103};
 	$foreach $vec_len : $lens:
 	{
-		$if $vec_len * Type.sizeof * 8  <= $$MAX_VECTOR_SIZE:
+		$if $vec_len * Type::size * 8  <= $$MAX_VECTOR_SIZE:
 		{
 			Type[<$vec_len>] vec1, vec2;
 			for (int val = 0; val < $vec_len; val++)
@@ -329,7 +329,7 @@ fn void test_hash_vector_internal() <Type>
 				$else
 				{
 					Type tval = (Type)val;
-					vec1[val] = (tval | (tval << ((Type.sizeof - 1) * 8)));
+					vec1[val] = (tval | (tval << ((Type::size - 1) * 8)));
 				}
 				$endif
 			}
@@ -340,7 +340,7 @@ fn void test_hash_vector_internal() <Type>
 				$if Type == bool:
 					vec2[val] = !vec2[val];
 				$else
-					vec2[val] ^= ((Type)0b0010_0000 << ((Type.sizeof - 1) * 8));
+					vec2[val] ^= ((Type)0b0010_0000 << ((Type::size - 1) * 8));
 				$endif
 
 				assert(vec1.hash() != vec2.hash());
@@ -348,7 +348,7 @@ fn void test_hash_vector_internal() <Type>
 				$if Type == bool:
 					vec2[val] = !vec2[val];
 				$else
-					vec2[val] ^= ((Type)0b0010_0000 << ((Type.sizeof - 1) * 8));
+					vec2[val] ^= ((Type)0b0010_0000 << ((Type::size - 1) * 8));
 				$endif
 			}
 		}
@@ -369,15 +369,15 @@ fn void test_fault_short_name_rt() @test
 
 	if (catch excuse = maybe)
 	{
-		test::eq(excuse.nameof, "builtins::SOME_FAULT");
+		test::eq(excuse.description, "builtins::SOME_FAULT");
 		test::eq(excuse.short_name(), "SOME_FAULT");
 	}
 }
 
 fn void test_fault_short_name_comp() @test
 {
-	test::eq(SOME_FAULT.nameof, "builtins::SOME_FAULT");
-	test::eq(io::FILE_NOT_FOUND.nameof, "io::FILE_NOT_FOUND");
+	test::eq(SOME_FAULT.description, "builtins::SOME_FAULT");
+	test::eq(io::FILE_NOT_FOUND.description, "io::FILE_NOT_FOUND");
 
 	test::eq(SOME_FAULT.@short_name(), "SOME_FAULT");
 }

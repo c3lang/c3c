@@ -30,6 +30,7 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		case CONST_FAULT:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 		case CONST_REF:
 			return -1;
 		case CONST_POINTER:
@@ -176,6 +177,7 @@ RETRY:;
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 		case CONST_REF:
 			RETURN_SEMA_ERROR(expr, "Concatenating %s with %s is not possible at compile time.",
 			                  type_quoted_error_string(left->type), type_to_error_string(right->type));
@@ -329,6 +331,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_TYPEID:
 		case CONST_REF:
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 			CHECK_ON_DEFINED(failed_ref);
 			RETURN_SEMA_ERROR(left, "Only bytes, strings and list-like constants can be concatenated.");
 		case CONST_BYTES:
@@ -375,6 +378,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 		case CONST_REF:
 			return sema_expr_const_append(context, concat_expr, left, right);
 		case CONST_BYTES:
@@ -474,7 +478,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 					}
 					FOREACH(ConstInitializer *, element, init->init_array.elements)
 					{
-						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
+						ASSERT_SPAN(single_expr, element->kind == CONST_INIT_ARRAY_VALUE);
 						ConstInitializer *inner_element = element->init_array_value.element;
 						Expr *inner_expr = untyped_exprs[offset + element->init_array_value.index];
 						switch (inner_element->kind)

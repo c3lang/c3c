@@ -1,5 +1,15 @@
 module std::core::string::conv;
+import std::bits;
 
+enum UnicodeBom
+{
+	NO_BOM,
+	UTF8,
+	UTF16_LE,
+	UTF16_BE,
+	UTF32_LE,
+	UTF32_BE
+}
 const uint UTF16_SURROGATE_OFFSET @private = 0x10000;
 const uint UTF16_SURROGATE_GENERIC_MASK @private = 0xF800;
 const uint UTF16_SURROGATE_GENERIC_VALUE @private = 0xD800;
@@ -8,6 +18,20 @@ const uint UTF16_SURROGATE_CODEPOINT_MASK @private = 0x03FF;
 const uint UTF16_SURROGATE_BITS @private = 10;
 const uint UTF16_SURROGATE_LOW_VALUE @private = 0xDC00;
 const uint UTF16_SURROGATE_HIGH_VALUE @private = 0xD800;
+
+fn UnicodeBom detect_bom(char[] input)
+{
+	if (input.len < 2) return NO_BOM;
+	switch (input)
+	{
+		case x'FEFF0000': return UTF32_LE;
+		case x'FEFF' : return UTF16_BE;
+		case x'FFFE' : return UTF16_LE;
+		case x'EFBBBF': return UTF8;
+		case x'0000FEFF': return UTF32_LE;
+		default: return NO_BOM;
+	}
+}
 
 <*
  @param c : `The utf32 codepoint to convert`
@@ -74,9 +98,12 @@ fn void char32_to_utf16_unsafe(Char32 c, Char16** output)
  @param [inout] available : `amount of UTF16 data available.`
  @param [inout] output : `the resulting utf8 buffer to write to.`
 *>
-fn void? char16_to_utf8_unsafe(Char16 *ptr, sz *available, char** output)
+macro void? char16_to_utf8_unsafe(Char16 *ptr, sz *available, char** output, bool $unaligned, bool $byteswap)
 {
-	Char16 high = *ptr;
+	Char16 high = $unaligned ??? mem::load(ptr, $align:1) : *ptr;
+	$if $byteswap:
+		high = bswap(high);
+	$endif
 	if (high & UTF16_SURROGATE_GENERIC_MASK != UTF16_SURROGATE_GENERIC_VALUE)
 	{
 		char32_to_utf8_unsafe(high, output);
@@ -90,7 +117,9 @@ fn void? char16_to_utf8_unsafe(Char16 *ptr, sz *available, char** output)
 	if (*available == 1) return string::INVALID_UTF16~;
 
 	Char16 low = ptr[1];
-
+	$if $byteswap:
+		low = bswap(low);
+	$endif
 	// Unmatched high surrogate, invalid
 	if (low & UTF16_SURROGATE_MASK != UTF16_SURROGATE_LOW_VALUE) return string::INVALID_UTF16~;
 
@@ -105,7 +134,7 @@ fn void? char16_to_utf8_unsafe(Char16 *ptr, sz *available, char** output)
  @param c : `The utf32 codepoint to convert`
  @param [inout] output : `the resulting buffer`
 *>
-fn sz char32_to_utf8_unsafe(Char32 c, char** output)
+macro sz char32_to_utf8_unsafe(Char32 c, char** output)
 {
 	switch
 	{
@@ -199,6 +228,34 @@ fn sz utf8_codepoints(String utf8)
 	return len;
 }
 
+
+<*
+ Calculate the UTF8 length required to encode an UTF32 array.
+ @param [in] utf32 : `the utf32 data to calculate from`
+ @require utf32.len % 4 == 0 : "Data must be an even 4 bytes"
+ @return `the length of the resulting UTF8 array`
+*>
+fn sz utf8len_for_utf32_bytes(char[] utf32, bool swap_endianness)
+{
+	Char32[] unaligned = ((Char32*)utf32.ptr)[:utf32.len / 4];
+	if (@unlikely(swap_endianness))
+	{
+		sz len;
+		foreach (&c : unaligned)
+		{
+			Char32 uc = mem::load(c, $align:1);
+			len += utf8_len_for_char32(bswap(uc));
+		}
+		return len;
+	}
+	sz len;
+	foreach (&c : unaligned)
+	{
+		len += utf8_len_for_char32(mem::load(c, $align:1));
+	}
+	return len;
+}
+
 <*
  Calculate the UTF8 length required to encode an UTF32 array.
  @param [in] utf32 : `the utf32 data to calculate from`
@@ -209,17 +266,56 @@ fn sz utf8len_for_utf32(Char32[] utf32)
 	sz len;
 	foreach (Char32 uc : utf32)
 	{
-		switch (true)
+		len += utf8_len_for_char32(uc);
+	}
+	return len;
+}
+
+macro sz utf8_len_for_char32(Char32 uc) @local
+{
+	switch
+	{
+		case uc <= 0x7f: return 1;
+		case uc <= 0x7ff: return 2;
+		case uc <= 0xffff: return 3;
+		default: return 4;
+	}
+}
+
+macro sz utf8_len_for_char16(Char16 c) @local
+{
+	switch
+	{
+		case c & UTF16_SURROGATE_GENERIC_MASK == UTF16_SURROGATE_GENERIC_VALUE: return 4;
+		case c <= 0x7f: return 1;
+		case c <= 0x7ff: return 2;
+		default: return 3;
+	}
+}
+
+<*
+ Calculate the UTF8 length required to encode an UTF16 array.
+ @param [in] utf16 : `the utf16 data to calculate from`
+ @require utf16.len % 2 == 0 : "Data must be an even 2 bytes"
+ @return `the length of the resulting UTF8 array`
+*>
+fn sz utf8len_for_utf16_bytes(char[] utf16, bool swap_endianness)
+{
+	Char16[] unaligned = ((Char16*)utf16.ptr)[:utf16.len / 2];
+	if (@unlikely(swap_endianness))
+	{
+		sz len;
+		foreach (&c : unaligned)
 		{
-			case uc <= 0x7f:
-				len++;
-			case uc <= 0x7ff:
-				len += 2;
-			case uc <= 0xffff:
-				len += 3;
-			default:
-				len += 4;
+			Char16 uc = mem::load(c, $align:1);
+			len += utf8_len_for_char16(bswap(uc));
 		}
+		return len;
+	}
+	sz len;
+	foreach (&c : unaligned)
+	{
+		len += utf8_len_for_char16(mem::load(c, $align:1));
 	}
 	return len;
 }
@@ -232,26 +328,9 @@ fn sz utf8len_for_utf32(Char32[] utf32)
 fn sz utf8len_for_utf16(Char16[] utf16)
 {
 	sz len;
-	sz len16 = utf16.len;
-	for (sz i = 0; i < len16; i++)
+	foreach (c : utf16)
 	{
-		Char16 c = utf16[i];
-		if (c & UTF16_SURROGATE_GENERIC_MASK != UTF16_SURROGATE_GENERIC_VALUE)
-		{
-			if (c <= 0x7f)
-			{
-				len++;
-				continue;
-			}
-			if (c <= 0x7ff)
-			{
-				len += 2;
-				continue;
-			}
-			len += 3;
-			continue;
-		}
-		len += 4;
+		len += utf8_len_for_char16(c);
 	}
 	return len;
 }
@@ -315,6 +394,40 @@ fn sz? utf32to8(Char32[] utf32, char[] utf8_buffer)
 }
 
 <*
+ Convert an UTF32 array to an UTF8 array.
+
+ @param [in] utf32
+ @param [out] utf8_buffer
+ @require utf32.len % 4 == 0 : "Length must be a multiple of 4"
+ @return `the number of bytes written.`
+*>
+fn sz? utf32_bytes_to8(char[] utf32, char[] utf8_buffer, bool swap_endianess)
+{
+	char[] buffer = utf8_buffer;
+	Char32[] unaligned = ((Char32*)utf32.ptr)[:utf32.len / 4];
+	if (swap_endianess)
+	{
+		foreach (&uc : unaligned)
+		{
+			sz used = char32_to_utf8(bswap(mem::load(uc, $align:1)), buffer) @inline!;
+			buffer = buffer[used..];
+		}
+	}
+	else
+	{
+		if (((uptr)unaligned.ptr) % 4 == 0) return utf32to8(unaligned, utf8_buffer);
+		foreach (&uc : unaligned)
+		{
+			sz used = char32_to_utf8(mem::load(uc, $align:1), buffer) @inline!;
+			buffer = buffer[used..];
+		}
+	}
+	// Zero terminate if there is space.
+	if (buffer.len > 0) buffer[0] = 0;
+	return utf8_buffer.len - buffer.len;
+}
+
+<*
  Convert an UTF8 array to an UTF32 array.
 
  @param [in] utf8
@@ -348,13 +461,13 @@ fn sz? utf8to32(String utf8, Char32[] utf32_buffer)
  @param [in] utf16 : `The UTF16 array containing the data to convert.`
  @param [out] utf8_buffer : `the (sufficiently large) buffer to hold the UTF16 data.`
 *>
-fn void? utf16to8_unsafe(Char16[] utf16, char* utf8_buffer)
+macro void? utf16to8_unsafe(Char16[] utf16, char* utf8_buffer, $unaligned, $byteswap)
 {
 	sz len16 = utf16.len;
 	for (sz i = 0; i < len16;)
 	{
 		sz available = len16 - i;
-		char16_to_utf8_unsafe(&utf16[i], &available, &utf8_buffer) @inline!;
+		char16_to_utf8_unsafe(&utf16[i], &available, &utf8_buffer, $unaligned, $byteswap) @inline!;
 		i += available;
 	}
 }
@@ -406,12 +519,18 @@ fn void? utf8to16_unsafe(String utf8, Char16* utf16_buffer)
 
  @param [in] utf32 : `The UTF32 buffer containing the data to convert.`
  @param [out] utf8_buffer : `the (sufficiently large) buffer to hold the UTF8 data.`
+ @param $unaligned : `If data should be loaded unaligned`
+ @param $byteswap : `If the result should be byteswapped`
 *>
-fn void utf32to8_unsafe(Char32[] utf32, char* utf8_buffer)
+macro void utf32to8_unsafe(Char32[] utf32, char* utf8_buffer, $unaligned, $byteswap)
 {
 	char* start = utf8_buffer;
-	foreach (Char32 uc : utf32)
+	foreach (&ucref : utf32)
 	{
+		Char32 uc = $unaligned ??? mem::load(ucref, $align: 1) : *ucref;
+		$if $byteswap:
+			uc = bswap(uc);
+		$endif
 		char32_to_utf8_unsafe(uc, &utf8_buffer) @inline;
 	}
 }

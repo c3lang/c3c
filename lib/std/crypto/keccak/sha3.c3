@@ -150,21 +150,24 @@ macro char[*] hmac($hash_bits, sz $tag_size, char[] key, char[] data)
 *>
 macro void hmac_into($hash_bits, char[] into, char[] key, char[] data)
 {
-	sz $block_size = keccak::rate($hash_bits);
-	char[$block_size] k_prime;
-	if (key.len > $block_size)
+	(fn void(char[] into, char[] key, char[] data)
 	{
-		hash_into($hash_bits, k_prime[:$hash_bits / 8], key);
-	}
-	else
-	{
-		k_prime[:key.len] = key[..];
-	}
-	char[$block_size] _ipad @noinit; _ipad[..] = IPAD; array::@zip_into(_ipad[..], k_prime, fn (a, b) => a ^ b);
-	char[$block_size] _opad @noinit; _opad[..] = OPAD; array::@zip_into(_opad[..], k_prime, fn (a, b) => a ^ b);
+		sz $block_size = keccak::rate($hash_bits);
+		char[$block_size] k_prime;
+		if (key.len > $block_size)
+		{
+			hash_into($hash_bits, k_prime[:$hash_bits / 8], key);
+		}
+		else
+		{
+			k_prime[:key.len] = key[..];
+		}
+		char[$block_size] _ipad @noinit; _ipad[..] = IPAD; array::@zip_into(_ipad[..], k_prime, fn (a, b) => a ^ b);
+		char[$block_size] _opad @noinit; _opad[..] = OPAD; array::@zip_into(_opad[..], k_prime, fn (a, b) => a ^ b);
 
-	char[$hash_bits / 8] intermediate_ipad = simple_hmac($hash_bits, _ipad[..], data);
-	simple_hmac_into($hash_bits, into, _opad[..], intermediate_ipad[..]);
+		char[$hash_bits / 8] intermediate_ipad = simple_hmac($hash_bits, _ipad[..], data);
+		simple_hmac_into($hash_bits, into, _opad[..], intermediate_ipad[..]);
+	})(into, key, data);
 }
 
 <*
@@ -182,6 +185,6 @@ struct Sha3 <HASH_BITS> @mustinit
 *>
 fn void Sha3.init(&self)
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.k.init(runtime_delimiter: DEFAULT_DELIMITER);
 }

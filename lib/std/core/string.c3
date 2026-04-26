@@ -1,5 +1,7 @@
 module std::core::string;
 import std::io, std::math;
+import std::core::string::conv;
+
 
 typedef String @constinit @if(!$defined(String)) = inline char[];
 <*
@@ -362,7 +364,7 @@ fn bool String.ends_with(self, String suffix)
  @pure
  @return `the substring with the prefix removed`
 *>
-fn String String.strip(self, String prefix)
+fn String String.strip_prefix(self, String prefix)
 {
 	if (!prefix.len || !self.starts_with(prefix)) return self;
 	return self[prefix.len..];
@@ -376,7 +378,7 @@ fn String String.strip(self, String prefix)
  @pure
  @return `the substring with the suffix removed`
 *>
-fn String String.strip_end(self, String suffix)
+fn String String.strip_suffix(self, String suffix)
 {
 	if (!suffix.len || !self.ends_with(suffix)) return self;
 	// Note that this is the safe way if we want to support zero length.
@@ -423,7 +425,7 @@ fn String[] String.split(self, Allocator allocator, String delimiter, sz max = 0
 		if (i == capacity)
 		{
 			capacity *= 2;
-			holder = alloc::realloc(allocator, holder, String.sizeof * capacity);
+			holder = alloc::realloc(allocator, holder, String::size * capacity);
 		}
 		holder[i++] = res;
 	}
@@ -642,13 +644,13 @@ fn sz? String.rindex_of_char(self, char character)
 fn sz? String.index_of(self, String substr)
 {
 	sz needed = substr.len;
-	if (needed > 0 && self.len >= needed)
+	if (!needed || self.len < needed) return NOT_FOUND~;
+	if (needed == 1) return self.index_of_char(substr[0]) @inline;
+
+	char first = substr[0];
+	foreach (i, c: self[..^needed])
 	{
-		char first = substr[0];
-		foreach (i, c: self[..^needed])
-		{
-			if (c == first && self[i : needed] == substr) return i;
-		}
+		if (c == first && self[i : needed] == substr) return i;
 	}
 	return NOT_FOUND~;
 }
@@ -968,7 +970,29 @@ fn String? from_utf32(Allocator allocator, Char32[] utf32)
 	sz len = conv::utf8len_for_utf32(utf32);
 	char* data = alloc::malloc_try(allocator, len + 1)!;
 	defer catch alloc::free(allocator, data);
-	conv::utf32to8_unsafe(utf32, data);
+	conv::utf32to8_unsafe(utf32, data, $unaligned: false, $byteswap: false);
+	data[len] = 0;
+	return (String)data[:len];
+}
+
+fn String? from_utf32_bytes(Allocator allocator, char[] utf32, bool swap_endianess)
+{
+	sz len = conv::utf8len_for_utf32_bytes(utf32, swap_endianess);
+	char* data = alloc::malloc_try(allocator, len + 1)!;
+	defer catch alloc::free(allocator, data);
+	bool is_aligned = (uptr)utf32.ptr % 4 == 0;
+	Char32[] unaligned = ((Char32*)utf32.ptr)[:utf32.len / 4];
+	switch
+	{
+		case is_aligned && !swap_endianess:
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: false, $byteswap: false);
+		case !is_aligned && !swap_endianess:
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: true, $byteswap: false);
+		case is_aligned && swap_endianess:
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: false, $byteswap: true);
+		default:
+			conv::utf32to8_unsafe(unaligned, data, $unaligned: true, $byteswap: true);
+	}
 	data[len] = 0;
 	return (String)data[:len];
 }
@@ -978,7 +1002,30 @@ fn String? from_utf16(Allocator allocator, Char16[] utf16)
 	sz len = conv::utf8len_for_utf16(utf16);
 	char* data = alloc::malloc_try(allocator, len + 1)!;
 	defer catch alloc::free(allocator, data);
-	conv::utf16to8_unsafe(utf16, data)!;
+	conv::utf16to8_unsafe(utf16, data, $unaligned: false, $byteswap: false)!;
+	data[len] = 0;
+	return (String)data[:len];
+}
+
+fn String? from_utf16_bytes(Allocator allocator, char[] utf16, bool swap_endianess)
+{
+	sz len = conv::utf8len_for_utf16_bytes(utf16, swap_endianess);
+	char* data = alloc::malloc_try(allocator, len + 1)!;
+	defer catch alloc::free(allocator, data);
+
+	bool is_aligned = (uptr)utf16.ptr % 2 == 0;
+	Char16[] unaligned = ((Char16*)utf16.ptr)[:utf16.len / 2];
+	switch
+	{
+		case is_aligned && !swap_endianess:
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: false, $byteswap: false)!;
+		case !is_aligned && !swap_endianess:
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: true, $byteswap: false)!;
+		case is_aligned && swap_endianess:
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: false, $byteswap: true)!;
+		default:
+			conv::utf16to8_unsafe(unaligned, data, $unaligned: true, $byteswap: true)!;
+	}
 	data[len] = 0;
 	return (String)data[:len];
 }
@@ -1014,7 +1061,6 @@ fn sz String.utf8_codepoints(s)
 
  Furthermore it will skip any spaces before and after the number.
 
- @param $Type : "The type to convert to"
  @param base : "The base to convert to"
  @require base > 0 && base <= 16 : "Unsupported base"
  @return? MALFORMED_INTEGER : "When the value has some illegal character"
@@ -1022,7 +1068,7 @@ fn sz String.utf8_codepoints(s)
  @return? EMPTY_STRING : "If the string was empty"
  @return? NEGATIVE_VALUE : "If the type was unsigned, and the value had a - prefix"
 *>
-macro String.to_integer(self, $Type, int base = 10)
+fn IntType? to_integer(String self, int base = 10) <IntType>
 {
 	sz len = self.len;
 	sz index = 0;
@@ -1033,20 +1079,23 @@ macro String.to_integer(self, $Type, int base = 10)
 	switch (self[index])
 	{
 		case '-':
-			if ($Type.min == 0) return NEGATIVE_VALUE~;
-			is_negative = true;
-			index++;
+			$if IntType::min == 0:
+				return NEGATIVE_VALUE~;
+			$else
+				is_negative = true;
+				index++;
+			$endif
 		case '+':
 			index++;
 		default:
 			break;
 	}
 	if (len == index) return MALFORMED_INTEGER~;
-	$Type base_used = ($Type)base;
+	IntType base_used = (IntType)base;
 	if (self[index] == '0' && base == 10)
 	{
 		index++;
-		if (index == len) return ($Type)0;
+		if (index == len) return (IntType)0;
 		switch (self[index])
 		{
 			case 'x':
@@ -1066,7 +1115,7 @@ macro String.to_integer(self, $Type, int base = 10)
 		}
 		if (len == index) return MALFORMED_INTEGER~;
 	}
-	$Type value = 0;
+	IntType value = 0;
 	while (index != len)
 	{
 		char c = self[index++];
@@ -1082,26 +1131,26 @@ macro String.to_integer(self, $Type, int base = 10)
 		{
 			if (is_negative)
 			{
-				value = value.overflow_mul(base_used).overflow_sub(($Type)c) ?? INTEGER_OVERFLOW~!;
+				value = value.overflow_mul(base_used).overflow_sub((IntType)c) ?? INTEGER_OVERFLOW~!;
 				break;
 			}
-			value = value.overflow_mul(base_used).overflow_add(($Type)c) ?? INTEGER_OVERFLOW~!;
+			value = value.overflow_mul(base_used).overflow_add((IntType)c) ?? INTEGER_OVERFLOW~!;
 		};
 	}
 	return value;
 }
 
-fn int128? String.to_int128(self, int base = 10) => self.to_integer(int128, base);
-fn long? String.to_long(self, int base = 10) => self.to_integer(long, base);
-fn int? String.to_int(self, int base = 10) => self.to_integer(int, base);
-fn short? String.to_short(self, int base = 10) => self.to_integer(short, base);
-fn ichar? String.to_ichar(self, int base = 10) => self.to_integer(ichar, base);
+fn int128? String.to_int128(self, int base = 10) => to_integer{int128}(self, base) @inline;
+fn long? String.to_long(self, int base = 10) => to_integer{long}(self, base) @inline;
+fn int? String.to_int(self, int base = 10) => to_integer{int}(self, base) @inline;
+fn short? String.to_short(self, int base = 10) => to_integer{short}(self, base) @inline;
+fn ichar? String.to_ichar(self, int base = 10) => to_integer{ichar}(self, base) @inline;
 
-fn uint128? String.to_uint128(self, int base = 10) => self.to_integer(uint128, base);
-fn ulong? String.to_ulong(self, int base = 10) => self.to_integer(ulong, base);
-fn uint? String.to_uint(self, int base = 10) => self.to_integer(uint, base);
-fn ushort? String.to_ushort(self, int base = 10) => self.to_integer(ushort, base);
-fn char? String.to_uchar(self, int base = 10) => self.to_integer(char, base);
+fn uint128? String.to_uint128(self, int base = 10) => to_integer{uint128}(self, base) @inline;
+fn ulong? String.to_ulong(self, int base = 10) => to_integer{ulong}(self, base) @inline;
+fn uint? String.to_uint(self, int base = 10) => to_integer{uint}(self, base) @inline;
+fn ushort? String.to_ushort(self, int base = 10) => to_integer{ushort}(self, base) @inline;
+fn char? String.to_char(self, int base = 10) => to_integer{char}(self, base) @inline;
 
 fn double? String.to_double(self) => self.to_real(double);
 fn float? String.to_float(self) => self.to_real(float);
@@ -1211,17 +1260,28 @@ fn String? Splitter.next(&self)
 		{
 			if (self.type != TOKENIZE_ALL) return NO_MORE_ELEMENT~;
 			self.current++;
-			return self.string[current - 1:0];
+			return self.string[current:0];
 		}
-		String remaining = self.string[current..];
-		sz? next = remaining.index_of(self.split);
+
+		sz? next;
+		if (self.split.len == 1)
+		{
+			next = self.string.index_of_char_from(self.split[0], current) @inline;
+		}
+		else
+		{
+			next = self.string[current..].index_of(self.split) @inline + current;
+		}
+
 		if (try next)
 		{
-			self.current = current + next + self.split.len;
-			if (!next && self.type == TOKENIZE) continue;
-			return remaining[:next];
+			String res = self.string[current : next - current];
+			self.current = next + self.split.len;
+			if (!res.len && self.type == TOKENIZE) continue;
+			return res;
 		}
+
 		self.current = len + 1;
-		return remaining;
+		return self.string[current..];
 	}
 }

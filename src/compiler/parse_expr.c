@@ -480,7 +480,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 		Expr *expr = NULL;
 		SourceLoc start_span = c->span;
 
-		if (peek(c) == TOKEN_COLON && token_is_param_name(c->tok))
+		if (peek(c) == TOKEN_COLON && (token_is_param_name(c->tok) || tok_is(c, TOKEN_CT_EVAL)))
 		{
 			// Create the parameter expr
 			expr = expr_new_loc(EXPR_NAMED_ARGUMENT, &start_span);
@@ -498,6 +498,13 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 			goto DONE;
 		}
 		ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
+		if (expr->expr_kind == EXPR_CT_EVAL && try_consume(c, TOKEN_COLON))
+		{
+			Expr *inner = expr;
+			expr = expr_new_loc(EXPR_NAMED_EVAL_ARGUMENT, &start_span);
+			expr->eval_named_argument_expr.name = inner;
+			ASSIGN_EXPR_OR_RET(expr->eval_named_argument_expr.value, parse_expr(c), false);
+		}
 DONE:
 		vec_add(*result, expr);
 		if (!try_consume(c, TOKEN_COMMA))
@@ -640,11 +647,45 @@ static Expr *parse_splat(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSE
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_SPLAT);
 	advance_and_verify(c, TOKEN_ELLIPSIS);
 	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
+static Expr *parse_type_property_expr(ParseContext *c, Expr *type)
+{
+	advance_and_verify(c, TOKEN_SCOPE);
+	if (try_consume(c, TOKEN_TYPEID))
+	{
+		TypeInfo *info = type->type_expr;
+		if (info->resolve_status == RESOLVE_DONE)
+		{
+			type->expr_kind = EXPR_CONST;
+			type->const_expr.const_kind = CONST_TYPEID;
+			type->const_expr.typeid = info->type;
+			type->type = type_typeid;
+		}
+		else
+		{
+			type->expr_kind = EXPR_TYPEID;
+		}
+		RANGE_EXTEND_PREV(type);
+		return type;
+	}
+	Expr *expr = expr_new(EXPR_TYPE_PROPERTY, type->loc);
+	expr->type_property_expr.type = type;
+	expr->type_property_expr.token_span = make_loc(c->span);
+	expr->type_property_expr.property = symstr(c);
+	if (try_consume(c, TOKEN_IDENT))
+	{
+		RANGE_EXTEND_PREV(expr);
+		return expr;
+	}
+	PRINT_ERROR_HERE("A type property, like 'name' or 'size' was expected after '::'");
+	return poisoned_expr;
+}
+
 /**
- * type_expr ::= type initializer_list?
+ * type_expr ::= type (`::` IDENT)?
  */
 static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
@@ -657,8 +698,7 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start U
 	if (type->resolve_status == RESOLVE_DONE) expr->resolve_status = RESOLVE_DONE;
 	if (tok_is(c, TOKEN_SCOPE))
 	{
-		PRINT_ERROR_HERE("A type is never followed by '::', did you mean '.'?");
-		return poisoned_expr;
+		return parse_type_property_expr(c, expr);
 	}
 	return expr;
 }
@@ -681,7 +721,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceLoc *lhs_star
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	const char *end = c->lexer.lexing_start - 1;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_CT_ARG && inner->ct_arg_expr.type == TOKEN_CT_VAEXPR))
+	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_CT_ARG))
 	{
 		Expr *expr = expr_new(EXPR_STRINGIFY, start_span);
 		expr->inner_expr = inner;
@@ -771,7 +811,7 @@ static Expr *parse_elvis_expr(ParseContext *c, Expr *left_side, SourceLoc *lhs_s
 	expr_ternary->ternary_expr.cond = exprid(left_side);
 	advance_and_verify(c, TOKEN_ELVIS);
 	expr_ternary->ternary_expr.then_expr = 0;
-	ASSIGN_EXPRID_OR_RET(expr_ternary->ternary_expr.else_expr, parse_precedence(c, PREC_TERNARY), poisoned_expr);
+	ASSIGN_EXPRID_OR_RET(expr_ternary->ternary_expr.else_expr, parse_precedence(c, PREC_ORELSE), poisoned_expr);
 	RANGE_EXTEND_PREV(expr_ternary);
 	return expr_ternary;
 }
@@ -943,7 +983,7 @@ static Expr *parse_orelse(ParseContext *c, Expr *left_side, SourceLoc *lhs_start
 
 	Expr *right_side;
 	// Assignment operators have precedence right -> left.
-	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_TERNARY), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(right_side, parse_precedence(c, PREC_ORELSE), poisoned_expr);
 
 	Expr *expr = expr_new_binary(make_loc(*lhs_start), left_side, right_side, BINARYOP_ELSE);
 
@@ -1204,30 +1244,23 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 	return defined;
 
 }
+
 /**
- * ct_sizeof ::= CT_SIZEOF '(' expr ')'
+ * ct_refect ::= CT_REFLECT '(' expr ')'
  *
  * Note that this is transformed to $typeof(expr).sizeof.
  */
-static Expr *parse_ct_sizeof(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
+static Expr *parse_ct_reflect(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *access = expr_new_loc(EXPR_ACCESS_UNRESOLVED, &c->span);
+	Expr *expr = expr_new_loc(EXPR_CT_REFLECT, &c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->loc);
-	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->loc);
-	type_info->optional = try_consume(c, TOKEN_BANG);
-	type_info->unresolved_type_expr = inner;
-	typeof_expr->type_expr = type_info;
-	access->access_unresolved_expr.parent = typeof_expr;
-	Expr *ident = expr_new_loc(EXPR_UNRESOLVED_IDENTIFIER, &c->span);
-	ident->unresolved_ident_expr.ident = type_property_list[TYPE_PROPERTY_SIZEOF];
-	access->access_unresolved_expr.child = ident;
-	RANGE_EXTEND_PREV(access);
-	return access;
+
+	RANGE_EXTEND_PREV(expr);
+	return expr;
 }
 
 
@@ -1266,58 +1299,26 @@ static Expr *parse_lengthof(ParseContext *c, Expr *left, SourceLoc *lhs_start UN
 	return expr;
 }
 
-/**
- * ct_call ::= (CT_ALIGNOF | CT_FEATURE | CT_EXTNAMEOF | CT_OFFSETOF | CT_NAMEOF | CT_QNAMEOF) '(' flat_path ')'
- * flat_path ::= expr ('.' primary) | '[' expr ']')*
- */
-static Expr *parse_ct_call(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
+static Expr *parse_ct_feature(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CALL);
-	expr->ct_call_expr.token_type = c->tok;
+	Expr *expr = expr_new_loc(EXPR_CT_FEATURE, &c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(Expr* internal, parse_precedence(c, PREC_PRIMARY), poisoned_expr);
-	DesignatorElement **elements = NULL;
-	if (!parse_param_path(c, &elements)) return poisoned_expr;
-	expr->ct_call_expr.main_var = internal;
-	expr->ct_call_expr.flat_path = elements;
+	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
-
-static Expr *parse_ct_kindof(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
-{
-	ASSERT(!left && "Unexpected left hand side");
-	Expr *access = expr_new_loc(EXPR_ACCESS_UNRESOLVED, &c->span);
-	advance(c);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->loc);
-	TypeInfo *type_info = type_info_new(TYPE_INFO_TYPEOF, inner->loc);
-	type_info->optional = try_consume(c, TOKEN_BANG);
-	type_info->unresolved_type_expr = inner;
-	typeof_expr->type_expr = type_info;
-	access->access_unresolved_expr.parent = typeof_expr;
-	Expr *ident = expr_new_loc(EXPR_UNRESOLVED_IDENTIFIER, &c->span);
-	ident->unresolved_ident_expr.ident = type_property_list[TYPE_PROPERTY_KINDOF];
-	access->access_unresolved_expr.child = ident;
-	RANGE_EXTEND_PREV(access);
-	return access;
-}
-
 /**
- * ct_arg ::= VACOUNT | (VAARG | VAREF | VAEXPR | VACONST) '(' expr ')'
+ * ct_arg ::= VACOUNT | VAARG '(' expr ')'
  */
 static Expr *parse_ct_arg(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ARG);
 	TokenType type = expr->ct_arg_expr.type = c->tok;
-	ASSERT(type != TOKEN_CT_VATYPE);
 	advance(c);
 	if (type != TOKEN_CT_VACOUNT)
 	{
@@ -2009,8 +2010,7 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	if (type->resolve_status == RESOLVE_DONE) expr->resolve_status = RESOLVE_DONE;
 	if (tok_is(c, TOKEN_SCOPE))
 	{
-		PRINT_ERROR_HERE("A type is never followed by '::', did you mean '.'?");
-		return poisoned_expr;
+		return parse_type_property_expr(c, expr);
 	}
 	return expr;
 }
@@ -2040,11 +2040,12 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_VOID] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_TYPEID] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FAULT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_UNTYPEDLIST] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ANY] = { parse_type_identifier, NULL, PREC_NONE },
 
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
-		[TOKEN_QUESTQUEST] = { NULL, parse_orelse, PREC_TERNARY },
-		[TOKEN_ELVIS] = { NULL, parse_elvis_expr, PREC_TERNARY },
+		[TOKEN_QUESTQUEST] = { NULL, parse_orelse, PREC_ORELSE },
+		[TOKEN_ELVIS] = { NULL, parse_elvis_expr, PREC_ORELSE },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
@@ -2108,24 +2109,15 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_AT_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_ELLIPSIS] = { parse_splat, NULL, PREC_NONE },
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
-		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_defined, NULL, PREC_NONE },
 		[TOKEN_CT_EMBED] = { parse_ct_embed, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
-		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_FEATURE] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_KINDOF] = { parse_ct_kindof, NULL, PREC_NONE },
-		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
+		[TOKEN_CT_FEATURE] = { parse_ct_feature, NULL, PREC_NONE },
+		[TOKEN_CT_REFLECT] = { parse_ct_reflect, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_CT_TERNARY] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VACONST] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VACOUNT] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAEXPR] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VATYPE] = { parse_type_expr, NULL, PREC_NONE },
 };

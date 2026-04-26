@@ -191,14 +191,14 @@ bool parse_attach_contracts(Decl *generics, ContractDescription *contracts)
 	{
 		if (contracts->has_contracts)
 		{
-			print_error_at(contracts->first_contract, "Contracts can only be used with '@generic' declarations and modules.");
+			print_error_at(contracts->first_contract, "Contracts can only be used with generic declarations and modules.");
 			return false;
 		}
 		return true;
 	}
 	if (contracts->first_non_require)
 	{
-		print_error_at(contracts->first_non_require, "Invalid constraint - only '@require' is valid for '@generic' declarations and modules.");
+		print_error_at(contracts->first_non_require, "Invalid constraint - only '@require' is valid for generic declarations and modules.");
 		return false;
 	}
 	FOREACH(Expr *, e, contracts->requires) vec_add(generics->generic_decl.requires, e);
@@ -427,15 +427,6 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_type_info);
 		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_type_info);
-		RANGE_EXTEND_PREV(type_info);
-		return type_info;
-	}
-	if (try_consume(c, TOKEN_CT_VATYPE))
-	{
-		TypeInfo *type_info = type_info_new(TYPE_INFO_VATYPE, make_loc(c->prev_span));
-		CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_type_info);
-		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
-		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_type_info);
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
@@ -764,6 +755,12 @@ static inline TypeInfo *parse_optional_type_maybe_generic(ParseContext *c, bool 
 		info->optional = true;
 		if (info->resolve_status == RESOLVE_DONE)
 		{
+			if (info->type == type_untypedlist)
+			{
+				RANGE_EXTEND_PREV(info);
+				PRINT_ERROR_AT(info, "%s cannot be used as an optional type, since it is compile-time only.", type_quoted_error_string(info->type));
+				return poisoned_type_info;
+			}
 			info->type = type_get_optional(info->type);
 		}
 		RANGE_EXTEND_PREV(info);
@@ -1583,8 +1580,6 @@ static bool parse_next_is_typed_parameter(ParseContext *c, ParameterParseKind pa
 		case TOKEN_CT_TYPEOF:
 		case TOKEN_CT_TYPEFROM:
 			return true;
-		case TOKEN_CT_VATYPE:
-			return parse_kind == PARAM_PARSE_LAMBDA || parse_kind == PARAM_PARSE_CALL;
 		case TOKEN_CT_TYPE_IDENT:
 			if (parse_kind == PARAM_PARSE_LAMBDA) return true;
 			if (parse_kind != PARAM_PARSE_CALL) return false;
@@ -3449,6 +3444,19 @@ static Decl *parse_ct_include(ParseContext *c)
 	return decl;
 }
 
+
+static Decl *parse_expand(ParseContext *c)
+{
+	Decl *decl = decl_new_loc(DECL_CT_EXPAND, NULL, c->span);
+	advance_and_verify(c, TOKEN_CT_EXPAND);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_decl);
+	ASSIGN_EXPR_OR_RET(decl->expand_decl, parse_constant_expr(c), poisoned_decl);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+	CONSUME_EOS_OR_RET(poisoned_decl);
+	return decl;
+}
+
 static Decl *parse_exec(ParseContext *c)
 {
 	Decl *decl = decl_new_loc(DECL_CT_EXEC, NULL, c->span);
@@ -3614,6 +3622,10 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_CT_INCLUDE:
 			if (contracts.has_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_ct_include(c);
+			break;
+		case TOKEN_CT_EXPAND:
+			if (contracts.has_contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_expand(c);
 			break;
 		case TOKEN_CT_EXEC:
 			if (contracts.has_contracts) goto CONTRACT_NOT_ALLOWED;

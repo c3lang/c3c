@@ -7,5 +7,5 @@ struct Test
 }
 fn void main()
 {
-	TestProto z = mem::alloc(Test?); // #error:  "$Type.kindof != OPTIONAL" violated: 'Expected a non-optional type'.
+	TestProto z = mem::alloc(Test?); // #error:  "$Type::kind != OPTIONAL" violated: 'Expected a non-optional type'.
 }

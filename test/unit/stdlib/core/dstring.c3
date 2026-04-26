@@ -10,6 +10,14 @@ fn void test_replace()
 	assert(hello.str_view() == "Hello world where are yoooo? Are yoooo here too?");
 }
 
+fn void test_append_string_repeat()
+{
+	DString hello = dstring::new(mem, "Hello world:");
+	defer hello.free();
+	hello.append_repeat("abc", 10);
+	test::eq(hello.str_view(), "Hello world:abcabcabcabcabcabcabcabcabcabc");
+}
+
 fn void test_reverse()
 {
 	DString a;

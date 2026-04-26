@@ -348,13 +348,12 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		// Generate a nice error message for zero.
 		RETURN_SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
 	}
-	if (expected_members > 0 && count > 0 && count != expected_members)
+	if (expected_members > 0 && count != expected_members)
 	{
 		RETURN_SEMA_ERROR(elements[0], "Too %s (%u) elements in initializer, expected %u.", count > expected_members ? "many" : "few", count, expected_members);
 	}
 
 	bool optional = false;
-	bool is_vector = type_flat_is_vector(assigned);
 	bool inner_is_inferred = type_len_is_inferred(inner_type);
 	Type *inferred_element = NULL;
 	if (!sema_resolve_type_structure(context, inner_type)) return false;
@@ -366,65 +365,24 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 			if (no_match_ref) goto NO_MATCH;
 			RETURN_SEMA_ERROR(element, "Too many elements in initializer, expected only %d.", expected_members);
 		}
-		if (is_vector)
+
+		if (!sema_analyse_expr_rhs(context, inner_type, element, true, no_match_ref, false)) return false;
+		if (inner_is_inferred)
 		{
-			if (!sema_analyse_inferred_expr(context, inner_type, element, no_match_ref)) return false;
-			Type *element_type = element->type;
-			Type *element_flat = type_flatten(element_type);
-			if (type_kind_is_real_vector(element_flat->type_kind)
-				&& type_flatten(type_get_indexed_type(element_type)) == type_flatten(inner_type))
+			if (inferred_element)
 			{
-				unsigned len = element_flat->array.len;
-				if (!inferred_len && i + len > expected_members)
+				if (!cast_implicit_checked(context, element, inferred_element, false, no_match_ref))
 				{
-					RETURN_SEMA_ERROR(element, "Too many elements in initializer when expanding, expected only %d.", expected_members);
-				}
-				Expr *expr_two = expr_new_expr(EXPR_TWO, element);
-				Decl *decl = decl_new_generated_var(element_type, VARDECL_LOCAL, element->loc);
-				Expr *decl_expr = expr_generate_decl(decl, element);
-				expr_two->two_expr.first = decl_expr;
-				Expr *sub = expr_new_expr(EXPR_SUBSCRIPT, element);
-				sub->subscript_expr.expr = exprid(expr_variable(decl));
-				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_sz, 0));
-				expr_two->two_expr.last = sub;
-				if (!sema_analyse_expr_rhs(context, inner_type, expr_two, true, NULL, false)) return false;
-				elements[i] = expr_two;
-				for (unsigned j = 1; j < len; j++)
-				{
-					sub = expr_new_expr(EXPR_SUBSCRIPT, element);
-					sub->subscript_expr.expr = exprid(expr_variable(decl));
-					sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->loc, type_sz, 1));
-					vec_insert_at(elements, i + j, sub);
-					if (!sema_analyse_expr_rhs(context, inner_type, sub, true, NULL, false)) return false;
-				}
-				initializer->initializer_list = elements;
-				count += len - 1;
-				i += len - 1;
-				optional = optional || IS_OPTIONAL(element);
-				continue;
-			}
-			if (!cast_implicit_checked(context, element, inner_type, false, no_match_ref)) return false;
-			optional = optional || IS_OPTIONAL(element);
-		}
-		else
-		{
-			if (!sema_analyse_expr_rhs(context, inner_type, element, true, no_match_ref, false)) return false;
-			if (inner_is_inferred)
-			{
-				if (inferred_element)
-				{
-					if (!cast_implicit_checked(context, element, inferred_element, false, no_match_ref))
-					{
-						if (!no_match_ref) SEMA_NOTE(elements[0], "Type inferred from here.");
-						return false;
-					}
-				}
-				else
-				{
-					inferred_element = element->type;
+					if (!no_match_ref) SEMA_NOTE(elements[0], "Type inferred from here.");
+					return false;
 				}
 			}
+			else
+			{
+				inferred_element = element->type;
+			}
 		}
+
 		optional = optional || IS_OPTIONAL(element);
 	}
 	if (inner_is_inferred)
@@ -657,7 +615,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	}
 
 	// 5. If not, then we see if we have an array.
-	if (flattened->type_kind == TYPE_UNTYPED_LIST ||
+	if (flattened->type_kind == TYPE_UNTYPEDLIST ||
 		flattened->type_kind == TYPE_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_ARRAY ||
 		flattened->type_kind == TYPE_FLEXIBLE_ARRAY ||
@@ -860,7 +818,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 				return true;
 			}
 			break;
-		case TYPE_UNTYPED_LIST:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -924,6 +882,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_REFLECTION:
 			if (no_match_ref) goto NO_MATCH;
 			RETURN_SEMA_ERROR(expr, "You cannot use %s with an initializer list.", type_quoted_error_string(to));
 		default:

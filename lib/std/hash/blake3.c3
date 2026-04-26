@@ -11,7 +11,7 @@ import std::thread;
 const BLOCK_SIZE = 64;
 const CHUNK_SIZE = 1024;
 const KEY_SIZE = 32;
-const KEY_SIZE_WORDS = KEY_SIZE / uint.sizeof;
+const KEY_SIZE_WORDS = KEY_SIZE / uint::size;
 const OUT_SIZE = 32;
 const MAX_DEPTH = 54;
 
@@ -228,7 +228,7 @@ fn void Blake3.init(&self, char[] key = {}, char explicit_flags = 0)
 
 	if (key.len)
 	{
-		foreach (i, &w : self.key) *w = mem::load((uint*)&key[i * $sizeof(self.key[0])], 1);
+		foreach (i, &w : self.key) *w = mem::load((uint*)&key[i * @sizeof(self.key[0])], 1);
 		if (!explicit_flags) explicit_flags = Blake3Flags.KEYED_HASH;
 	}
 	else

@@ -244,6 +244,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_CT_ASSERT:
 			case DECL_CT_ECHO:
 			case DECL_CT_EXEC:
+			case DECL_CT_EXPAND:
 			case DECL_CT_INCLUDE:
 			case DECL_FNTYPE:
 			case DECL_IMPORT:

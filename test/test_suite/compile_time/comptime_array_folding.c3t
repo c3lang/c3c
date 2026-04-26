@@ -36,8 +36,8 @@ const TestUnion BCD = ABC[0];
 
 macro int get_tag_value($Type)
 {
-    $if $Type.has_tagof("foo"):
-        return $Type.tagof("foo")[0].value;
+    $if $Type::has_tag("foo"):
+        return $Type::get_tag("foo")[0].value;
     $else
     return -1;
     $endif

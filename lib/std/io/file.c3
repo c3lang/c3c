@@ -55,7 +55,7 @@ fn Time? last_modified(String filename)
 	return (Time)(seconds * (Time_t)time::SEC);
 }
 
-fn void? delete(String filename)
+fn void? delete(String filename) @maydiscard
 {
 	return os::native_remove(filename) @inline;
 }
@@ -72,16 +72,7 @@ fn void? File.reopen(&self, String filename, String mode)
 <*
  @require self.file != null
 *>
-fn long? File.seek(&self, long offset, Seek seek_mode = Seek.SET) @dynamic
-{
-	os::native_fseek(self.file, offset, (SeekOrigin)seek_mode.ordinal)!;
-	return os::native_ftell(self.file);
-}
-
-<*
- @require self.file != null
-*>
-fn void? File.set_cursor(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
+fn void? File.seek(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
 {
 	return os::native_fseek(self.file, offset, whence);
 }
@@ -121,7 +112,7 @@ fn void? File.write_byte(&self, char c) @dynamic
 <*
  @param [&inout] self
 *>
-fn void? File.close(&self) @inline @dynamic
+fn void? File.close(&self) @inline @dynamic @maydiscard
 {
 	if (self.file && libc::fclose(self.file))
 	{
@@ -147,8 +138,8 @@ fn void? File.close(&self) @inline @dynamic
 fn long? File.size(&self) @dynamic
 {
 	long curr = self.cursor()!;
-	defer (void)self.set_cursor(curr);
-	self.set_cursor(0, FROM_END)!;
+	defer (void)self.seek(curr);
+	self.seek(0, FROM_END)!;
 	return self.cursor()!;
 }
 
@@ -221,7 +212,7 @@ fn char[]? load(Allocator allocator, String filename)
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
 	long len = file.size()!;
-	if (len > sz.max) return io::OUT_OF_SPACE~;
+	if (len > sz::max) return io::OUT_OF_SPACE~;
 	char* data = alloc::malloc_try(allocator, (sz)len)!;
 	defer catch alloc::free(allocator, data);
 	sz read = 0;

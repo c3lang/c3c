@@ -15,6 +15,24 @@ fn void testrun() @test
 	assert(t.join()!! == 10);
 }
 
+fn void testrun_stack_size() @test
+{
+	Thread t;
+	a = 0;
+	t.create(fn int(void* arg) { a++; return 0; }, null, { .stack_size = 8 * 1024 * 1024 })!!;
+	assert(t.join()!! == 0);
+	assert(a == 1);
+}
+
+
+fn void testrun_set_priority() @test @if(env::POSIX || env::WIN32)
+{
+	Thread t;
+	t.create(fn int(void* arg) { thread::sleep_ms(400); return 0; }, null)!!;
+	assert(t.set_priority(LOW));
+	assert(t.join()!! == 0);
+}
+
 
 Mutex m_global;
 

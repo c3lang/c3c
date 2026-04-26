@@ -132,7 +132,7 @@ fn void Sha512.init(&self)
 
 <*
 	@param [in] data
-	@require data.len <= ulong.max
+	@require data.len <= long::max
 *>
 fn void Sha512.update(&self, char[] data)
 {

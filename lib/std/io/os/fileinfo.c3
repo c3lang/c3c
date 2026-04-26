@@ -41,7 +41,7 @@ fn long? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::
 {
 	File f = file::open(path, "r")!;
 	defer (void)f.close();
-	f.set_cursor(0, FROM_END)!;
+	f.seek(0, FROM_END)!;
 	return f.cursor();
 }
 

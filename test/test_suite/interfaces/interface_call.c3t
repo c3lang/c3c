@@ -1,0 +1,25 @@
+// #target: macos-x64
+module test;
+import std;
+
+interface Foo
+{
+	fn int write(int bar);
+}
+
+fn int main()
+{
+	String st = $typeof(Foo.write)::name;
+	return 0;
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [19 x i8] c"fn int(void*, int)\00", align 1
+
+define i32 @main() #0 {
+entry:
+  %st = alloca %"char[]", align 8
+  store %"char[]" { ptr @.str, i64 18 }, ptr %st, align 8
+  ret i32 0
+}

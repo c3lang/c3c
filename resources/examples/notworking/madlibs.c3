@@ -5,7 +5,7 @@ fn void main()
 {
     printn("Enter a story template, terminated by an empty line:");
     String story = "";
-    while (try String line = stdin().readline(mem).strip())
+    while (try String line = stdin().readline(mem).trim())
     {
 
         story = story.append(line);

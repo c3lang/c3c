@@ -10,6 +10,6 @@ fn int main()
 	Bar b;
 	(Foo)b;
 	(int)b;
-	($typefrom(Bar.inner))b;
+	($typefrom(Bar::inner))b;
 	return 0;
 }

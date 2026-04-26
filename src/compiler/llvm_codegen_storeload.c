@@ -20,7 +20,7 @@ LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, 
 		if (!is_power_of_two(len))
 		{
 			ByteSize size = llvm_store_size(c, type);
-			if (size < aligned_offset(alignment, size))
+			if (size < aligned_offset(size, alignment))
 			{
 				unsigned npot = next_highest_power_of_2(len);
 				static LLVMValueRef vec[MAX_VECTOR_WIDTH];

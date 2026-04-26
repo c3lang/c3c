@@ -37,7 +37,7 @@ struct QueueItem @private
  @require threads > 0 && threads < 0x1000 : `Threads should be greater than 0 and less than 0x1000`
  @require queue_size < 0x10000 : `Queue size must be less than 65536`
 *>
-fn void? FixedThreadPool.init(&self, sz threads, sz queue_size = 0)
+fn void? FixedThreadPool.init(&self, sz threads, sz queue_size = 0, ThreadSettings thread_settings = {})
 {
 	if (queue_size == 0) queue_size = threads * 32;
 	defer catch @ok(self.destroy());
@@ -56,7 +56,7 @@ fn void? FixedThreadPool.init(&self, sz threads, sz queue_size = 0)
 	defer catch self.collect.destroy();
 	foreach (&thread : self.pool)
 	{
-		thread.create(&process_work, self)!;
+		thread.create(&process_work, self, thread_settings)!;
 		// The thread resources will be cleaned up when the thread exits.
 		thread.detach()!;
 	}

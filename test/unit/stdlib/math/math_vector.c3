@@ -53,7 +53,7 @@ fn void test_vec3_transform() @test
 {
 	float[<3>] v = { 1.0f, 0.0f, 0.0f };
 	float[<3>] axis = { 0.0f, 0.0f, 1.0f };
-	float[<3>] rotated = v.rotate_axis(axis, math::PI_2);
+	float[<3>] rotated = v.rotate_axis(axis, math::HALF_PI);
 	assert(math::is_approx_rel(rotated[0] * rotated[0] + rotated[1] * rotated[1], 1.0f, EPSILON_F));
 	assert(math::is_approx_rel(rotated[2], 0.0f, EPSILON_F));
 	float[<3>] perp = v.perpendicular();

@@ -12,7 +12,7 @@ static inline void mangle_type_param(Type *type, bool mangled)
 		scratch_buffer_append(type->name);
 	}
 }
-static bool sema_generate_parameter_suffix_to_scratch(Expr **params, bool mangled)
+static void sema_generate_parameter_suffix_to_scratch(Expr **params, bool mangled)
 {
 	scratch_buffer_clear();
 	scratch_buffer_append(mangled ? "$" : "{");
@@ -95,7 +95,6 @@ static bool sema_generate_parameter_suffix_to_scratch(Expr **params, bool mangle
 		}
 	}
 	scratch_buffer_append(mangled ? "$" : "}");
-	return true;
 }
 
 
@@ -190,7 +189,7 @@ FOUND:;
 		Decl **copied_cond = NULL;
 		if (!suffix)
 		{
-			if (!sema_generate_parameter_suffix_to_scratch(params, false)) return poisoned_decl;
+			sema_generate_parameter_suffix_to_scratch(params, false);
 			suffix = scratch_buffer_interned();
 		}
 		instance->instance_decl.name_suffix = suffix;
@@ -417,7 +416,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 			ASSERT(expr_is_const(param));
 		}
 	}
-	if (!sema_generate_parameter_suffix_to_scratch(params, true)) return poisoned_decl;
+	sema_generate_parameter_suffix_to_scratch(params, true);
 	const char *suffix = scratch_buffer_interned();
 	return sema_generate_parameterized_identifier(context, generic, alias, params, NULL, NULL, suffix, invocation_loc, loc);
 }

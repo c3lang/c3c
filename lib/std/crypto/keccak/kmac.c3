@@ -108,7 +108,7 @@ struct KmacXOF <SECURITY_LEVEL> @mustinit
 *>
 fn void KmacXOF.init(&self, char[] key, String customizer = "")
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.k.is_xof_mode = true;
 	self.k.init(key, customizer: customizer);
 }
@@ -132,7 +132,7 @@ struct Kmac <SECURITY_LEVEL> @mustinit
 *>
 fn void Kmac.init(&self, char[] key, String customizer = "")
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.c.init(KMAC, customizer);
 
 	self.c.update(nist::encoded_rate_bytes(SECURITY_LEVEL));

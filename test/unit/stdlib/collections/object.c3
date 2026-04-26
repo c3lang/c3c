@@ -27,17 +27,87 @@ fn void test_general()
 fn void test_to_format_int()
 {
 	{
-		Object* int_object = object::new_int(16, mem);
+		Object* int_object = object::new_int(mem, 16);
 		defer int_object.free();
 		String s = string::format(mem, "%s", int_object);
 		defer free(s);
 		assert(s == "16");
 	}
 	{
-		Object* int_object = object::new_int(-16, mem);
+		Object* int_object = object::new_int(mem, -16);
 		defer int_object.free();
 		String s = string::format(mem, "%s", int_object);
 		defer free(s);
 		assert(s == "-16");
+	}
+}
+
+fn void test_to_value()
+{
+	{
+		Object* int_obj = object::new_int(tmem, 99);
+		defer int_obj.free();
+
+		char c = int_obj.to_value(char)!!;
+		assert(c == 99);
+	}
+	{
+		Object* float_obj = object::new_float(tmem, 99.17);
+		defer float_obj.free();
+
+		float f = float_obj.to_value(float)!!;
+		assert(f == 99.17f);
+	}
+	{
+		Object* str_obj = object::new_string(tmem, "222");
+		defer str_obj.free();
+
+		int i = str_obj.to_value(int, strict: false)!!;
+		assert(i == 222);
+
+		if (catch e = str_obj.to_value(int)) 
+		{
+			assert(e == TYPE_MISMATCH);
+		} 
+		else 
+		{
+			assert(false, "Should be an error when strict is true.");
+		}
+	}
+	{
+		Object* enum_obj = object::new_enum(tmem, MyEnum.THIRD);
+		defer enum_obj.free();
+		assert(enum_obj.is_enum());
+
+		MyEnum o = enum_obj.to_value(MyEnum)!!;
+		assert(o == THIRD);
+	}
+}
+
+enum MyEnum : (String value)
+{
+    FIRST {"first"},
+    SECOND {"second"},
+    THIRD {"third"}
+}
+import std::io;
+
+fn void test_enum()
+{
+	{
+		Object* enum_obj = object::new_enum(tmem, MyEnum.FIRST);
+		defer enum_obj.free();
+
+		assert(enum_obj.to_value(MyEnum)!! == MyEnum.FIRST);
+	}
+	{
+		Object* obj = object::new_obj(tmem);
+		defer obj.free();
+
+		obj.set("Hello", MyEnum.THIRD);
+
+		MyEnum o = obj.get_enum(MyEnum, "Hello")!!;
+
+		assert(o == THIRD);
 	}
 }

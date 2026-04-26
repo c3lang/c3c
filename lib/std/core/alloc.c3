@@ -173,32 +173,32 @@ macro void free_aligned(Allocator allocator, void* ptr)
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
  @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
 *>
 macro new(Allocator allocator, $Type, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
-		$Type* val = malloc(allocator, $Type.sizeof);
+		$Type* val = malloc(allocator, $Type::size);
 		*val = #init;
 		return val;
 	$else
-		return ($Type*)calloc(allocator, $Type.sizeof);
+		return ($Type*)calloc(allocator, $Type::size);
 	$endif
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
  @require !$defined(#init) ||| $defined($Type a = #init) : "#init must be an initializer for the type"
 *>
 macro new_try(Allocator allocator, $Type, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
-		$Type* val = malloc_try(allocator, $Type.sizeof)!;
+		$Type* val = malloc_try(allocator, $Type::size)!;
 		*val = #init;
 		return val;
 	$else
-		return ($Type*)calloc_try(allocator, $Type.sizeof);
+		return ($Type*)calloc_try(allocator, $Type::size);
 	$endif
 }
 
@@ -211,37 +211,37 @@ macro new_try(Allocator allocator, $Type, #init = ...) @nodiscard @safemacro
 macro new_aligned(Allocator allocator, $Type, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
-		$Type* val = malloc_aligned(allocator, $Type.sizeof, $Type.alignof)!;
+		$Type* val = malloc_aligned(allocator, $Type::size, $Type::alignment)!;
 		*val = #init;
 		return val;
 	$else
-		return ($Type*)calloc_aligned(allocator, $Type.sizeof, $Type.alignof);
+		return ($Type*)calloc_aligned(allocator, $Type::size, $Type::alignment);
 	$endif
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT
  @require padding >= 0 : "Invalid padding size"
 *>
 macro new_with_padding(Allocator allocator, $Type, sz padding) @nodiscard
 {
-	return ($Type*)calloc_try(allocator, $Type.sizeof + padding);
+	return ($Type*)calloc_try(allocator, $Type::size + padding);
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
 *>
 macro alloc(Allocator allocator, $Type) @nodiscard
 {
-	return ($Type*)malloc(allocator, $Type.sizeof);
+	return ($Type*)malloc(allocator, $Type::size);
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
 *>
 macro alloc_try(Allocator allocator, $Type) @nodiscard
 {
-	return ($Type*)malloc_try(allocator, $Type.sizeof);
+	return ($Type*)malloc_try(allocator, $Type::size);
 }
 
 <*
@@ -250,22 +250,22 @@ macro alloc_try(Allocator allocator, $Type) @nodiscard
 *>
 macro alloc_aligned(Allocator allocator, $Type) @nodiscard
 {
-	return ($Type*)malloc_aligned(allocator, $Type.sizeof, $Type.alignof);
+	return ($Type*)malloc_aligned(allocator, $Type::size, $Type::alignment);
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT
  @require padding >= 0 : "Invalid padding size"
 *>
 macro alloc_with_padding(Allocator allocator, $Type, sz padding) @nodiscard
 {
-	return ($Type*)malloc_try(allocator, $Type.sizeof + padding);
+	return ($Type*)malloc_try(allocator, $Type::size + padding);
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
  @require elements >= 0 : "Elements may not be negative"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro new_array(Allocator allocator, $Type, sz elements) @nodiscard
 {
@@ -273,13 +273,13 @@ macro new_array(Allocator allocator, $Type, sz elements) @nodiscard
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
  @require elements >= 0 : "Elements may not be negative"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro new_array_try(Allocator allocator, $Type, sz elements) @nodiscard
 {
-	return (($Type*)calloc_try(allocator, $Type.sizeof * elements))[:elements];
+	return (($Type*)calloc_try(allocator, $Type::size * elements))[:elements];
 }
 
 <*
@@ -287,17 +287,17 @@ macro new_array_try(Allocator allocator, $Type, sz elements) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @require elements >= 0 : "Elements may not be negative"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro new_array_aligned(Allocator allocator, $Type, sz elements) @nodiscard
 {
-	return (($Type*)calloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
+	return (($Type*)calloc_aligned(allocator, $Type::size * elements, $Type::alignment))[:elements]!!;
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
  @require elements >= 0 : "Elements may not be negative"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro alloc_array(Allocator allocator, $Type, sz elements) @nodiscard
 {
@@ -309,27 +309,27 @@ macro alloc_array(Allocator allocator, $Type, sz elements) @nodiscard
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @require elements >= 0 : "Elements may not be negative"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro alloc_array_aligned(Allocator allocator, $Type, sz elements) @nodiscard
 {
-	return (($Type*)malloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
+	return (($Type*)malloc_aligned(allocator, $Type::size * elements, $Type::alignment))[:elements]!!;
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
  @require elements >= 0 : "Elements may not be negative"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro alloc_array_try(Allocator allocator, $Type, sz elements) @nodiscard
 {
-	return (($Type*)malloc_try(allocator, $Type.sizeof * elements))[:elements];
+	return (($Type*)malloc_try(allocator, $Type::size * elements))[:elements];
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
  @require elements >= 0 : "Elements may not be negative"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro realloc_array(Allocator allocator, void* ptr, $Type, sz elements) @nodiscard
 {
@@ -341,21 +341,21 @@ macro realloc_array(Allocator allocator, void* ptr, $Type, sz elements) @nodisca
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
 
  @require elements >= 0 : "Elements may not be negative"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro realloc_array_aligned(Allocator allocator, void* ptr, $Type, sz elements) @nodiscard
 {
-	return (($Type*)realloc_aligned(allocator, ptr, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
+	return (($Type*)realloc_aligned(allocator, ptr, $Type::size * elements, $Type::alignment))[:elements]!!;
 }
 
 <*
- @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ @require $Type::alignment <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
  @require elements >= 0 : "Elements may not be negative"
- @require !@catch($Type.sizeof.overflow_mul(elements)) : "Resulting array size would overflow sz.max"
+ @require !@catch($Type::size.overflow_mul(elements)) : "Resulting array size would overflow sz::max"
 *>
 macro realloc_array_try(Allocator allocator, void* ptr, $Type, sz elements) @nodiscard
 {
-	return (($Type*)realloc_try(allocator, ptr, $Type.sizeof * elements))[:elements];
+	return (($Type*)realloc_try(allocator, ptr, $Type::size * elements))[:elements];
 }
 
 <*
@@ -364,7 +364,7 @@ macro realloc_array_try(Allocator allocator, void* ptr, $Type, sz elements) @nod
  @param [&inout] allocator : "The allocator to use to clone"
  @param value : "The value to clone"
  @return "A pointer to the cloned value"
- @require $alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'clone_aligned' instead"
+ @require @alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'clone_aligned' instead"
 *>
 macro clone(Allocator allocator, value) @nodiscard
 {
@@ -376,7 +376,7 @@ macro clone(Allocator allocator, value) @nodiscard
  @param slice : "The slice to clone"
  @return "A pointer to the cloned slice"
 
- @require $kindof(slice) == SLICE || $kindof(slice) == ARRAY
+ @require @kindof(slice) == SLICE || @kindof(slice) == ARRAY
 *>
 macro clone_slice(Allocator allocator, slice) @nodiscard
 {
@@ -385,7 +385,7 @@ macro clone_slice(Allocator allocator, slice) @nodiscard
 	var $Type = $typeof(slice[0]);
 
 	$Type[] new_arr = new_array(allocator, $Type, slice.len);
-	mem::copy(new_arr.ptr, &slice[0], slice.len * $Type.sizeof);
+	mem::copy(new_arr.ptr, &slice[0], slice.len * $Type::size);
 
 	return new_arr;
 }
@@ -404,7 +404,7 @@ macro clone_aligned(Allocator allocator, value) @nodiscard
 
 fn any clone_any(Allocator allocator, any value) @nodiscard
 {
-	sz size = value.type.sizeof;
+	sz size = value.type.size;
 	void* data = malloc(allocator, size);
 	mem::copy(data, value.ptr, size);
 	return any_make(data, value.type);

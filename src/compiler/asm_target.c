@@ -1117,6 +1117,8 @@ void init_asm(PlatformTarget *target)
 		case ARCH_TYPE_WASM32:
 			init_asm_wasm(target);
 			return;
+		case ARCH_TYPE_AVR:
+			error_exit("AVR asm support not yet available.");
 		case ARCH_TYPE_XTENSA:
 			error_exit("Xtensa asm support not yet available.");
 		case ARCH_TYPE_UNKNOWN:

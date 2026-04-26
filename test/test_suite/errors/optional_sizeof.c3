@@ -14,17 +14,17 @@ macro test2()
 
 fn void a()
 {
-	String s = $typeof(test()).qnameof; // #error: This expression lacks
+	String s = $typeof(test())::qname; // #error: This expression lacks
 }
 
 fn void b()
 {
-	$sizeof(test()); // #error: This expression lacks
+	$reflect(test()).size; // #error: There is no property 'size' available for the reflected expression
 }
 
 fn void c()
 {
-	$sizeof(test2() ?? 1);
+	@sizeof(test2() ?? 1);
 }
 
 fn void? d()

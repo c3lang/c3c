@@ -3,15 +3,14 @@ import std::math;
 
 
 
-alias SetCursorFn = fn void?(void*, long offset, SeekOrigin whence = START);
+alias SeekFn = fn void?(void*, long offset, SeekOrigin whence = FROM_START);
 
 
 interface InStream
 {
 	fn void? close() @optional;
 	fn long? cursor() @optional;
-	fn void? set_cursor(long offset, SeekOrigin whence = FROM_START) @optional;
-	fn long? seek(long offset, Seek seek) @optional;
+	fn void? seek(long offset, SeekOrigin whence = FROM_START) @optional;
 	fn long len() @optional;
 	fn long? size() @optional;
 	fn long? available() @optional;
@@ -35,19 +34,12 @@ interface OutStream
 fn long? available(InStream s)
 {
 	if (&s.available) return s.available();
-	if (&s.set_cursor && &s.cursor)
+	if (&s.seek && &s.cursor)
 	{
 		long curr = s.cursor()!;
-		s.set_cursor(0, FROM_END)!;
+		s.seek(0, FROM_END)!;
 		long len = s.cursor()!;
-		s.set_cursor(curr)!;
-		return len - curr;
-	}
-	if (&s.seek)
-	{
-		long curr = s.seek(0, Seek.CURSOR)!;
-		long len = s.seek(0, Seek.END)!;
-		s.seek(curr, Seek.SET)!;
+		s.seek(curr)!;
 		return len - curr;
 	}
 	return io::UNSUPPORTED_OPERATION~;
@@ -79,17 +71,17 @@ macro bool @is_not_outstream_if_ptr(#expr) @const
 *>
 macro sz? read_any(stream, any ref)
 {
-	return read_all(stream, ((char*)ref)[:ref.type.sizeof]);
+	return read_all(stream, ((char*)ref)[:ref.type.size]);
 }
 
 <*
  @param [&in] ref : "the object to write."
  @require @is_outstream(stream)
- @ensure return == ref.type.sizeof
+ @ensure return == ref.type.size
 *>
 macro sz? write_any(stream, any ref)
 {
-	return write_all(stream, ((char*)ref)[:ref.type.sizeof]);
+	return write_all(stream, ((char*)ref)[:ref.type.size]);
 }
 
 <*
@@ -113,7 +105,7 @@ macro char[]? read_fully(Allocator allocator, stream)
 	// Efficient path if it is possible to pre-allocate
 	if (try len = available(stream))
 	{
-		if (len > sz.max) return mem::INVALID_ALLOC_SIZE~;
+		if (len > sz::max) return mem::INVALID_ALLOC_SIZE~;
 		char* data = alloc::malloc_try(allocator, (sz)len)!;
 		defer catch alloc::free(allocator, data);
 		sz read = 0;
@@ -194,12 +186,7 @@ macro sz? write_using_write_byte(s, char[] bytes)
 
 macro void? pushback_using_seek(s)
 {
-	if (&s.set_cursor)
-	{
-		s.set_cursor(-1, FROM_CURSOR)!;
-		return;
-	}
-	s.seek(-1, CURSOR)!;
+	s.seek(-1, FROM_CURSOR)!;
 }
 
 fn long? copy_to(InStream in, OutStream dst, char[] buffer = {})
@@ -240,16 +227,16 @@ const char[*] MAX_VARS @private = { [1] = 2, [2] = 3, [4] = 5, [8] = 10, [16] = 
 
 <*
  @require @is_instream(stream)
- @require $kindof(x_ptr) == POINTER && $typeof(x_ptr).inner.kindof.is_int()
+ @require @kindof(x_ptr) == POINTER && @kindof(*x_ptr).is_int()
 *>
 macro sz? read_varint(stream, x_ptr)
 {
-	return read_varint_generic{$typeof(stream), $typeof(x_ptr).inner}(stream, x_ptr);
+	return read_varint_generic{$typeof(stream), $typeof(x_ptr)::inner}(stream, x_ptr);
 }
 
 fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @private
 {
-	const MAX = MAX_VARS[Type.sizeof];
+	const MAX = MAX_VARS[Type::size];
 	Type x;
 	uint shift;
 	sz n;
@@ -266,7 +253,7 @@ fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @p
 		{
 			if (i + 1 == MAX && c > 1) break;
 			x |= (Type)c << shift;
-			$if Type.kindof == SIGNED_INT:
+			$if Type::kind == SIGNED_INT:
 				x = x & 1 == 0 ? x >> 1 : ~(x >> 1);
 			$endif
 			*ptr = x;
@@ -281,7 +268,7 @@ fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @p
 
 <*
  @require @is_outstream(stream)
- @require $kindof(x).is_int()
+ @require @kindof(x).is_int()
 *>
 macro sz? write_varint(stream, x)
 {
@@ -290,7 +277,7 @@ macro sz? write_varint(stream, x)
 
 fn sz? write_varint_generic(VarOutStream stream, Type x) <VarOutStream, Type> @private
 {
-	const MAX = MAX_VARS[Type.sizeof];
+	const MAX = MAX_VARS[Type::size];
 	char[MAX] buffer @noinit;
 	sz i;
 	while (x >= 0x80)
@@ -628,7 +615,7 @@ macro void? skip(stream, sz bytes)
 	if (!bytes) return;
 	$switch:
 		$case $typeof(stream) == InStream:
-			if (!&stream.seek && !&stream.set_cursor)
+			if (!&stream.seek)
 			{
 				for (sz i = 0; i < bytes; i++)
 				{
@@ -636,16 +623,9 @@ macro void? skip(stream, sz bytes)
 				}
 				return;
 			}
-			if (!&stream.set_cursor)
-			{
-				stream.seek(bytes, CURSOR)!;
-				return;
-			}
-			stream.set_cursor(bytes, FROM_CURSOR)!;
-		$case $defined(stream.set_cursor):
-			stream.set_cursor(bytes, FROM_CURSOR)!;
+			stream.seek(bytes, FROM_CURSOR)!;
 		$case $defined(stream.seek):
-			stream.seek(bytes, CURSOR)!;
+			stream.seek(bytes, FROM_CURSOR)!;
 		$default:
 			for (sz i = 0; i < bytes; i++)
 			{

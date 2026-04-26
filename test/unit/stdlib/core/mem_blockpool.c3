@@ -20,7 +20,7 @@ fn void test_basic_allocation() @test
 	int *ptr1 = pool.alloc();
 	test::eq(pool.used, 1);
 	int *ptr2 = pool.alloc();
-	assert(((sz) ptr2) - ((sz) ptr1) >= int.sizeof);
+	assert(((sz) ptr2) - ((sz) ptr1) >= int::size);
 	assert(pool.used == 2);
 }
 
@@ -52,7 +52,7 @@ fn void test_large_allocation() @test
 
 	Foo *ptr1 = pool.alloc();
 	Foo *ptr2 = pool.alloc();
-	assert(((sz) ptr2) - ((sz) ptr1) >= Foo.sizeof);
+	assert(((sz) ptr2) - ((sz) ptr1) >= Foo::size);
 	assert(pool.used == 2);
 	pool.dealloc(ptr1);
 	pool.dealloc(ptr2);
@@ -66,7 +66,7 @@ fn void test_basic_capacity() @test
 
 	int *ptr1 = pool.alloc();
 	int *ptr2 = pool.alloc();
-	assert(((sz) ptr2) - ((sz) ptr1) >= int.sizeof);
+	assert(((sz) ptr2) - ((sz) ptr1) >= int::size);
 	assert(pool.used == 2);
 }
 

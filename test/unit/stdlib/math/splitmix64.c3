@@ -17,7 +17,7 @@ fn void simple_next()
 	};
 	foreach (e : EXPECTED_0) test::eq(sm64.next_long(), e);
 
-	sm64 = (ulong)long.max;
+	sm64 = (ulong)long::max;
 	const ulong[] EXPECTED_MAX = {
 		3055647633038352039,
 		17441316833444690247,
@@ -26,7 +26,7 @@ fn void simple_next()
 	};
 	foreach (e : EXPECTED_MAX) test::eq(sm64.next_long(), e);
 
-	sm64 = (ulong)long.min;
+	sm64 = (ulong)long::min;
 	const ulong[] EXPECTED_MIN = {
 		5196802822362493915,
 		14154714916085338130,

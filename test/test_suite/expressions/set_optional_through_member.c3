@@ -6,6 +6,6 @@ bitstruct Foo : long
 fn int main()
 {
 	Foo? d = { 1, 11 };
-	Foo.membersof[0].set(d, 3); // #error: You cannot assign to an optional value.
+	Foo::members[0].set(d, 3); // #error: You cannot assign to an optional value.
 	return 0;
 }

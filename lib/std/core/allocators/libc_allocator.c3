@@ -2,8 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem::allocators @if(env::LIBC);
-import std::io;
-import libc;
+import std::io, libc;
 
 <*
  The LibcAllocator is a wrapper around malloc to conform to the Allocator interface.
@@ -127,12 +126,12 @@ fn void*? LibcAllocator.acquire(&self, sz bytes, AllocInitType init_type, sz ali
 {
 	if (init_type == ZERO)
 	{
-		void* data = alignment ? @aligned_alloc(fn void*(sz bytes) => libc::calloc(bytes, 1), bytes, alignment)!! : libc::calloc(bytes, 1);
+		void* data = alignment ? allocators::@aligned_alloc(fn void*(sz bytes) => libc::calloc(bytes, 1), bytes, alignment)!! : libc::calloc(bytes, 1);
 		return data ?: mem::OUT_OF_MEMORY~;
 	}
 	else
 	{
-		void* data = alignment ? @aligned_alloc(libc::malloc, bytes, alignment)!! : libc::malloc(bytes);
+		void* data = alignment ? allocators::@aligned_alloc(libc::malloc, bytes, alignment)!! : libc::malloc(bytes);
 		if (!data) return mem::OUT_OF_MEMORY~;
 		$if env::TESTING:
 			for (sz i = 0; i < bytes; i++) ((char*)data)[i] = 0xAA;
@@ -146,7 +145,7 @@ fn void*? LibcAllocator.resize(&self, void* old_ptr, sz new_bytes, sz alignment)
 {
 	if (alignment)
 	{
-		void* data = @aligned_realloc(fn void*(sz bytes) => libc::malloc((usz)bytes), libc::free, old_ptr, new_bytes, alignment)!!;
+		void* data = allocators::@aligned_realloc(fn void*(sz bytes) => libc::malloc((usz)bytes), libc::free, old_ptr, new_bytes, alignment)!!;
 		return data ?: mem::OUT_OF_MEMORY~;
 	}
 	return libc::realloc(old_ptr, (usz)new_bytes) ?: mem::OUT_OF_MEMORY~;
@@ -157,7 +156,7 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 {
 	if (aligned)
 	{
-		@aligned_free(libc::free, old_ptr)!!;
+		allocators::@aligned_free(libc::free, old_ptr)!!;
 	}
 	else
 	{

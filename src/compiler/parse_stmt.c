@@ -22,7 +22,7 @@ INLINE bool next_is_end_parens(ParseContext *c)
 static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 {
 	Ast *ast = ast_calloc();
-	ast->loc = type->loc;
+	ast->loc = copy_loc(type->loc);
 	ast->ast_kind = AST_DECLARE_STMT;
 	ASSIGN_DECL_OR_RET(ast->declare_stmt, parse_local_decl_after_type(c, type), poisoned_ast);
 	Decl *decl = ast->declare_stmt;
@@ -1117,6 +1117,20 @@ static inline Ast *parse_return_stmt(ParseContext *c)
 }
 
 /**
+ * ct_expand_stmt :: CT_EXPAND '(' expr ')'
+ */
+static inline Ast* parse_ct_expand_stmt(ParseContext  *c)
+{
+	Ast *ast = ast_new_curr(c, AST_CT_EXPAND_STMT);
+	advance_and_verify(c, TOKEN_CT_EXPAND);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
+	ASSIGN_EXPR_OR_RET(ast->expand_stmt, parse_expr(c), poisoned_ast);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
+	CONSUME_EOS_OR_RET(poisoned_ast);
+	return ast;
+}
+
+/**
  * ct_foreach_stmt ::= CT_FOREACH CT_IDENT (',' CT_IDENT)? ':' expr ':' statement* CT_ENDFOREACH
  */
 static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
@@ -1371,6 +1385,8 @@ Ast *parse_stmt(ParseContext *c)
 			return parse_ct_assert_stmt(c);
 		case TOKEN_CT_ERROR:
 			return parse_ct_error_stmt(c);
+		case TOKEN_CT_EXPAND:
+			return parse_ct_expand_stmt(c);
 		case TOKEN_CT_IF:
 			return parse_ct_if_stmt(c);
 		case TOKEN_CT_SWITCH:
@@ -1391,7 +1407,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_BUILTIN:
 		case TOKEN_BYTES:
 		case TOKEN_CHAR_LITERAL:
-		case TOKEN_CT_ALIGNOF:
 		case TOKEN_CT_AND:
 		case TOKEN_CT_CONCAT:
 		case TOKEN_CT_CONCAT_ASSIGN:
@@ -1399,21 +1414,14 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_DEFINED:
 		case TOKEN_CT_EMBED:
 		case TOKEN_CT_EVAL:
-		case TOKEN_CT_EXTNAMEOF:
 		case TOKEN_CT_FEATURE:
 		case TOKEN_CT_IDENT:
-		case TOKEN_CT_KINDOF:
-		case TOKEN_CT_NAMEOF:
-		case TOKEN_CT_OFFSETOF:
 		case TOKEN_CT_OR:
-		case TOKEN_CT_TERNARY:
-		case TOKEN_CT_QNAMEOF:
-		case TOKEN_CT_SIZEOF:
+		case TOKEN_CT_REFLECT:
 		case TOKEN_CT_STRINGIFY:
+		case TOKEN_CT_TERNARY:
 		case TOKEN_CT_VAARG:
-		case TOKEN_CT_VACONST:
 		case TOKEN_CT_VACOUNT:
-		case TOKEN_CT_VAEXPR:
 		case TOKEN_FALSE:
 		case TOKEN_INTEGER:
 		case TOKEN_LENGTHOF:

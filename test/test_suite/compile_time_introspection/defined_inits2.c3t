@@ -10,5 +10,5 @@ fn int main(String[] args)
 
 macro test($Type, ...)
 {
-    return $defined($Type t = $vaexpr[0]);
+    return $defined($Type t = $vaarg[0]);
 }

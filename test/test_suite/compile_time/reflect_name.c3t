@@ -1,0 +1,16 @@
+module test;
+import std;
+
+fn void testme()
+{
+}
+fn void main()
+{
+	int a;
+	$assert($reflect(testme).name == "testme");
+	$assert($reflect(testme).qname == "test::testme");
+	$assert($reflect(testme).cname == "test.testme");
+	$assert($reflect(a).name == "a");
+	$assert($reflect(a).qname == "a");
+	$assert(!$defined($reflect(a).cname));
+}

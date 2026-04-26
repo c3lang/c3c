@@ -3,12 +3,12 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 
 <*
- @require Enum.kindof == TypeKind.ENUM : "Only enums may be used with an enumset"
+ @require Enum::kind == TypeKind.ENUM : "Only enums may be used with an enumset"
 *>
 module std::collections::enumset <Enum>;
 import std::io;
 
-const ENUM_COUNT @private = Enum.values.len;
+const ENUM_COUNT @private = Enum::values.len;
 alias EnumSetType @private = $typefrom(type_for_enum_elements(ENUM_COUNT));
 
 const IS_CHAR_ARRAY = ENUM_COUNT > 128;
@@ -17,7 +17,7 @@ typedef EnumSet (Printable) = EnumSetType;
 fn void EnumSet.add(&self, Enum v)
 {
 	$if IS_CHAR_ARRAY:
-		(*self)[(usz)v.ordinal / 8] |= (char)(1u << ((usz)v.ordinal % 8));
+		((EnumSetType*)self).[(usz)v.ordinal / 8] |= (char)(1u << ((usz)v.ordinal % 8));
 	$else
 		*self = (EnumSet)((EnumSetType)*self | 1u << (EnumSetType)v.ordinal);
 	$endif
@@ -32,7 +32,7 @@ fn bool EnumSet.remove(&self, Enum v)
 {
 	$if IS_CHAR_ARRAY:
 		if (!self.has(v) @inline) return false;
-		(*self)[(usz)v.ordinal / 8] &= (char)~(1u << ((usz)v.ordinal % 8));
+		((EnumSetType*)self).[(usz)v.ordinal / 8] &= (char)~(1u << ((usz)v.ordinal % 8));
 		return true;
 	$else
 		EnumSetType old = (EnumSetType)*self;
@@ -45,7 +45,7 @@ fn bool EnumSet.remove(&self, Enum v)
 fn bool EnumSet.has(&self, Enum v)
 {
 	$if IS_CHAR_ARRAY:
-		return (bool)(((*self)[(usz)v.ordinal / 8] << ((usz)v.ordinal % 8)) & 0x01);
+		return (bool)((((EnumSetType*)self).[(usz)v.ordinal / 8] >> ((usz)v.ordinal % 8)) & 0x01);
 	$else
 		return ((EnumSetType)*self & (1u << (EnumSetType)v.ordinal)) != 0;
 	$endif
@@ -54,7 +54,7 @@ fn bool EnumSet.has(&self, Enum v)
 fn void EnumSet.add_all(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		foreach (i, c : s) (*self)[i] |= c;
+		foreach (i, c : s) ((EnumSetType*)self).[i] |= c;
 	$else
 		*self = (EnumSet)((EnumSetType)*self | (EnumSetType)s);
 	$endif
@@ -63,7 +63,7 @@ fn void EnumSet.add_all(&self, EnumSet s)
 fn void EnumSet.retain_all(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		foreach (i, c : s) (*self)[i] &= c;
+		foreach (i, c : (EnumSetType)s) ((EnumSetType*)self).[i] &= c;
 	$else
 		*self = (EnumSet)((EnumSetType)*self & (EnumSetType)s);
 	$endif
@@ -72,7 +72,7 @@ fn void EnumSet.retain_all(&self, EnumSet s)
 fn void EnumSet.remove_all(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		foreach (i, c : s) (*self)[i] &= ~c;
+		foreach (i, c : (EnumSetType)s) ((EnumSetType*)self).[i] &= ~c;
 	$else
 		*self = (EnumSet)((EnumSetType)*self & ~(EnumSetType)s);
 	$endif
@@ -115,9 +115,9 @@ fn EnumSet EnumSet.diff_of(&self, EnumSet s)
 fn EnumSet EnumSet.xor_of(&self, EnumSet s)
 {
 	$if IS_CHAR_ARRAY:
-		EnumSet copy = *self;
+		EnumSetType copy = *(EnumSetType*)self;
 		foreach (i, c : s) copy[i] ^= c;
-		return copy;
+		return (EnumSet)copy;
 	$else
 		return (EnumSet)((EnumSetType)*self ^ (EnumSetType)s);
 	$endif
@@ -127,7 +127,7 @@ fn sz? EnumSet.to_format(&set, Formatter* formatter) @dynamic
 {
 	sz n = formatter.print("[")!;
 	bool found;
-	foreach (value : Enum.values)
+	foreach (value : Enum::values)
 	{
 		if (!set.has(value)) continue;
 		if (found) n += formatter.print(", ")!;
@@ -142,16 +142,16 @@ macro typeid type_for_enum_elements(sz $elements) @local
 {
 	$switch:
 		$case ($elements > 128):
-			return char[($elements + 7) / 8].typeid;
+			return char[($elements + 7) / 8]::typeid;
 		$case ($elements > 64):
-			return uint128.typeid;
+			return uint128::typeid;
 		$case ($elements > 32 || $$C_INT_SIZE > 32):
-			return ulong.typeid;
+			return ulong::typeid;
 		$case ($elements > 16 || $$C_INT_SIZE > 16):
-			return uint.typeid;
+			return uint::typeid;
 		$case ($elements > 8 || $$C_INT_SIZE > 8):
-			return ushort.typeid;
+			return ushort::typeid;
 		$default:
-			return char.typeid;
+			return char::typeid;
 	$endswitch
 }

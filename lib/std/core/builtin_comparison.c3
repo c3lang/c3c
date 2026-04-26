@@ -127,17 +127,19 @@ macro max(x, ...) @builtin
 }
 
 
+
 <*
  @require types::is_numerical($typeof($a))
+ @require values::@all_const($vasplat) : "All values must be constant"
 *>
 macro @max($a, ...) @builtin @const
 {
 	$if $vacount == 1:
-		return $a > $vaconst[0] ? $a : $vaconst[0];
+		return $a > $vaarg[0] ? $a : $vaarg[0];
 	$else
 		var $result = $a;
 		$for var $x = 0; $x < $vacount; ++$x:
-			$if $vaconst[$x] > $result: $result = $vaconst[$x]; $endif
+			$if $vaarg[$x] > $result: $result = $vaarg[$x]; $endif
 		$endfor
 		return $result;
 	$endif
@@ -145,15 +147,16 @@ macro @max($a, ...) @builtin @const
 
 <*
  @require types::is_numerical($typeof($a))
+ @require values::@all_const($vasplat) : "All values must be constant"
 *>
 macro @min($a, ...) @builtin @const
 {
 	$if $vacount == 1:
-		return $a < $vaconst[0] ? $a : $vaconst[0];
+		return $a < $vaarg[0] ? $a : $vaarg[0];
 	$else
 		var $result = $a;
 		$for var $x = 0; $x < $vacount; ++$x:
-			$if $vaconst[$x] < $result: $result = $vaconst[$x]; $endif
+			$if $vaarg[$x] < $result: $result = $vaarg[$x]; $endif
 		$endfor
 		return $result;
 	$endif

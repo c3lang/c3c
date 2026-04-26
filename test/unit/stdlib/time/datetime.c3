@@ -3,7 +3,7 @@ import std::time;
 
 fn void test_parse_and_add()
 {
-	DateTime d = datetime::from_date(1973, APRIL, 27);
+	DateTime d = datetime::at(1973, APRIL, 27);
 	assert(d.year == 1973);
 	assert(d.month == APRIL);
 	assert(d.day == 27);
@@ -51,7 +51,7 @@ fn void test_parse_and_add()
 
 fn void datetime_eq()
 {
-	DateTime d = datetime::from_date(1973, APRIL, 27, 12, 23, 55, 34);
+	DateTime d = datetime::at(1973, APRIL, 27, 12, 23, 55, 34);
 	DateTime d2 = d;
 
 	assert(d == d2);
@@ -71,8 +71,8 @@ fn void tzdatetime_eq()
 	int offset1_hours = 7;
 	int offset2_hours = -1;
 
-	TzDateTime d1 = datetime::from_date_tz(2022, OCTOBER, 15, 9, 07, 45, gmt_offset: offset1_hours * 3600);
-	TzDateTime d2 = datetime::from_date_tz(2022, OCTOBER, 15, 1, 07, 45, gmt_offset: offset2_hours * 3600);
+	TzDateTime d1 = datetime::at_tz(2022, OCTOBER, 15, 9, 07, 45, gmt_offset: offset1_hours * 3600);
+	TzDateTime d2 = datetime::at_tz(2022, OCTOBER, 15, 1, 07, 45, gmt_offset: offset2_hours * 3600);
 
 	assert(d1 == d2);
 
@@ -82,8 +82,8 @@ fn void tzdatetime_eq()
 	offset1_hours = 12;
 	offset2_hours = -10;
 
-	d1 = datetime::from_date_tz(2022, OCTOBER, 15, 20, 15, 31, gmt_offset: offset1_hours * 3600);
-	d2 = datetime::from_date_tz(2022, OCTOBER, 14, 22, 15, 31, gmt_offset: offset2_hours * 3600);
+	d1 = datetime::at_tz(2022, OCTOBER, 15, 20, 15, 31, gmt_offset: offset1_hours * 3600);
+	d2 = datetime::at_tz(2022, OCTOBER, 14, 22, 15, 31, gmt_offset: offset2_hours * 3600);
 	assert(d1 == d2);
 }
 
@@ -95,8 +95,8 @@ fn void test_timezone()
 	int target_offset_hours = -4;
 	int target_offset = target_offset_hours * 3600;
 
-	DateTime d1 = datetime::from_date(2022, OCTOBER, 15);
-	TzDateTime d2 = datetime::from_date_tz(2022, OCTOBER, 15, gmt_offset: offset);
+	DateTime d1 = datetime::at(2022, OCTOBER, 15);
+	TzDateTime d2 = datetime::at_tz(2022, OCTOBER, 15, gmt_offset: offset);
 
 	DateTime dt;
 	TzDateTime tz;

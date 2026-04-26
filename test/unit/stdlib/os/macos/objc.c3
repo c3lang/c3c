@@ -74,7 +74,7 @@ fn void test_event_mask()
 	assert(keyUpMask == (1ul << 11));
 	assert(smartMagnifyMask == (1ul << 32));
 	assert(directTouchMask == (1ul << 37));
-	assert(anyMask == ulong.max);
+	assert(anyMask == ulong::max);
 
 	NSEventMask combined = NSEventMask.KEY_DOWN | NSEventMask.FLAGS_CHANGED;
 	assert(combined == ((1ul << 10) | (1ul << 12)));
@@ -165,13 +165,13 @@ fn void test_nsuinteger_nsinteger_architecture()
 {
 	if (env::ARCH_64_BIT)
 	{
-		assert(NSUInteger.sizeof == ulong.sizeof);
-		assert(NSInteger.sizeof == long.sizeof);
+		assert(NSUInteger::size == ulong::size);
+		assert(NSInteger::size == long::size);
 	}
 	else
 	{
-		assert(NSUInteger.sizeof == uint.sizeof);
-		assert(NSInteger.sizeof == int.sizeof);
+		assert(NSUInteger::size == uint::size);
+		assert(NSInteger::size == int::size);
 	}
 }
 
@@ -184,7 +184,7 @@ fn void test_event_mask_64bit_values()
 	assert(smartMagnify == (1ul << 32));
 	assert(directTouch == (1ul << 37));
 
-	assert(NSEventMask.sizeof == ulong.sizeof);
+	assert(NSEventMask::size == ulong::size);
 }
 
 fn void test_application_terminate_reply()

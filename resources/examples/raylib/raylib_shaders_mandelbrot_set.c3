@@ -1,5 +1,5 @@
 module shader_mandelbrot_set;
-import raylib55, std::math;
+import raylib6, std::math;
 /*******************************************************************************************
 *
 *   raylib [shaders] example - mandelbrot set

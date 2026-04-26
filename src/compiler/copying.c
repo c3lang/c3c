@@ -297,6 +297,9 @@ INLINE Expr *copy_const_expr(CopyStruct *c, Expr *expr)
 		case CONST_UNTYPED_LIST:
 			expr->const_expr.untyped_list = copy_expr_list(c, expr->const_expr.untyped_list);
 			break;
+		case CONST_REFLECTION:
+			expr->const_expr.reflection = copy_expr(c, expr->const_expr.reflection);
+			break;
 		case CONST_MEMBER:
 			fixup_decl(c, &expr->const_expr.member.decl);
 			break;
@@ -313,6 +316,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR(expr->two_expr.first);
 			MACRO_COPY_EXPR(expr->two_expr.last);
 			return expr;
+		case EXPR_TYPE_PROPERTY:
+			MACRO_COPY_EXPR(expr->type_property_expr.type);
+			return expr;
 		case EXPR_CONTRACT:
 			MACRO_COPY_EXPR(expr->contract_expr.decl_exprs);
 			return expr;
@@ -324,6 +330,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_NAMED_ARGUMENT:
 			MACRO_COPY_EXPR(expr->named_argument_expr.value);
+			return expr;
+		case EXPR_NAMED_EVAL_ARGUMENT:
+			MACRO_COPY_EXPR(expr->eval_named_argument_expr.name);
+			MACRO_COPY_EXPR(expr->eval_named_argument_expr.value);
 			return expr;
 		case EXPR_EMBED:
 			MACRO_COPY_EXPR(expr->embed_expr.len);
@@ -381,9 +391,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);
-			return expr;
-		case EXPR_CT_CALL:
-			MACRO_COPY_EXPR(expr->ct_call_expr.main_var);
 			return expr;
 		case EXPR_TRY:
 			MACRO_COPY_EXPR(expr->try_expr.optional);
@@ -499,6 +506,8 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_LENGTHOF:
 		case EXPR_MAYBE_DEREF:
+		case EXPR_CT_REFLECT:
+		case EXPR_CT_FEATURE:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
 		case EXPR_MAKE_ANY:
@@ -669,6 +678,9 @@ RETRY:
 			break;
 		case AST_DECLS_STMT:
 			MACRO_COPY_DECL_LIST(ast->decls_stmt);
+			break;
+		case AST_CT_EXPAND_STMT:
+			MACRO_COPY_EXPR(ast->expr_stmt);
 			break;
 		case AST_ASM_BLOCK_STMT:
 			if (ast->asm_block_stmt.is_string)
@@ -970,7 +982,6 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 			return copy;
 		case TYPE_INFO_TYPEFROM:
 		case TYPE_INFO_TYPEOF:
-		case TYPE_INFO_VATYPE:
 			ASSERT(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->unresolved_type_expr = copy_expr(c, source->unresolved_type_expr);
 			return copy;
@@ -1069,6 +1080,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_METHODS(copy->method_table);
 			MACRO_COPY_DECL_LIST(copy->interface_methods);
+			break;
+		case DECL_CT_EXPAND:
+			MACRO_COPY_EXPR(copy->expand_decl);
 			break;
 		case DECL_CT_EXEC:
 			MACRO_COPY_EXPR(copy->exec_decl.filename);

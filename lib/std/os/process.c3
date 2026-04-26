@@ -65,9 +65,9 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 {
 	Win32_DWORD flags = win32::CREATE_UNICODE_ENVIRONMENT;
 	Win32_PROCESS_INFORMATION process_info;
-	Win32_SECURITY_ATTRIBUTES sa_attr = { Win32_SECURITY_ATTRIBUTES.sizeof, null, 1 };
+	Win32_SECURITY_ATTRIBUTES sa_attr = { Win32_SECURITY_ATTRIBUTES::size, null, 1 };
 	Win32_STARTUPINFOW start_info = {
-		.cb = Win32_STARTUPINFOW.sizeof,
+		.cb = Win32_STARTUPINFOW::size,
 	};
 
 	if (options & NO_WINDOW) flags |= win32::CREATE_NO_WINDOW;
@@ -400,7 +400,7 @@ fn void? Process.terminate(&self)
 }
 
 <*
- @require size <= Win32_DWORD.max
+ @require size <= Win32_DWORD::max
 *>
 fn sz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer, sz size) @if(env::WIN32) @local
 {
@@ -490,7 +490,7 @@ fn sz? Process.write_stdin(&self, char[] buffer)
 }
 fn void? create_named_pipe_helper(void** rd, void **wr) @local @if(env::WIN32)
 {
-	Win32_SECURITY_ATTRIBUTES sa_attr = { Win32_SECURITY_ATTRIBUTES.sizeof, null, 1 };
+	Win32_SECURITY_ATTRIBUTES sa_attr = { Win32_SECURITY_ATTRIBUTES::size, null, 1 };
 
 	tlocal long index = 0;
 	long unique = index++;

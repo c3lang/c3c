@@ -96,13 +96,11 @@ static const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_ALIAS:
 		case TYPE_ENUM:
 		case TYPE_CONSTDEF:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_OPTIONAL:
-		case TYPE_TYPEINFO:
+		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
-		case TYPE_MEMBER:
 		case TYPE_POISONED:
 			UNREACHABLE
 		case TYPE_ANY:
@@ -138,7 +136,6 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 	}
 	switch (type->type_kind)
 	{
-		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -149,14 +146,10 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 		case TYPE_FUNC_RAW:
 		case TYPE_ALIAS:
 		case TYPE_ENUM:
+		case CT_TYPES:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_CONSTDEF:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
 		case TYPE_OPTIONAL:
-		case TYPE_TYPEINFO:
-		case TYPE_WILDCARD:
-		case TYPE_MEMBER:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_INTERFACE:
@@ -391,6 +384,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 			UNREACHABLE_VOID
 	}
 	PRINT("/* CONST EXPR */\n");
@@ -476,6 +470,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_MEMBER_SET:
 			break;
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 			break;
 		case EXPR_NOP:
 			break;
@@ -658,14 +653,12 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		case TYPE_FUNC_RAW:
 		case TYPE_BITSTRUCT:
 		case TYPE_ALIAS:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_OPTIONAL:
 		case TYPE_WILDCARD:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
+		case SPECIAL_TYPES:
 			UNREACHABLE_VOID
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
@@ -814,6 +807,7 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 		case AST_CT_ASSERT:
 			break;
 		case AST_CT_ECHO_STMT:
+		case AST_CT_EXPAND_STMT:
 			break;
 		case AST_CT_COMPOUND_STMT:
 		case AST_CT_ELSE_STMT:

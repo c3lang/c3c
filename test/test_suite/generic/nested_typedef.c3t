@@ -18,8 +18,8 @@ struct Foo2
 {
 	Bar2{int} y;
 }
-fn int test() @if(Foo.sizeof > 2) => 1;
-fn int test2() @if(Foo2.sizeof > 2) => 1;
+fn int test() @if(Foo::size > 2) => 1;
+fn int test2() @if(Foo2::size > 2) => 1;
 fn void main() {}
 
 /* #expect: test.ll

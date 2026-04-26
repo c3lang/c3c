@@ -6,18 +6,18 @@ module std::crypto::ed25519;
 import std::hash::sha512;
 
 alias Ed25519PrivateKey = char[32];
-alias Ed25519PublicKey = char[Ed25519PrivateKey.len];
-alias Ed25519Signature = char[2 * Ed25519PublicKey.len];
+alias Ed25519PublicKey = char[Ed25519PrivateKey::len];
+alias Ed25519Signature = char[2 * Ed25519PublicKey::len];
 
 <*
  Generate a public key from a private key.
 
  @param [in] private_key : "32 bytes of cryptographically secure random data"
- @require private_key.len == Ed25519PrivateKey.len
+ @require private_key.len == Ed25519PrivateKey::len
 *>
 fn Ed25519PublicKey public_keygen(char[] private_key)
 {
-	return pack(&&unproject(&&(BASE * expand_private_key(private_key)[:FBaseInt.len])));
+	return pack(&&unproject(&&(BASE * expand_private_key(private_key)[:FBaseInt::len])));
 }
 
 <*
@@ -26,8 +26,8 @@ fn Ed25519PublicKey public_keygen(char[] private_key)
  @param [in] message
  @param [in] private_key
  @param [in] public_key
- @require private_key.len == Ed25519PrivateKey.len
- @require public_key.len == Ed25519PublicKey.len
+ @require private_key.len == Ed25519PrivateKey::len
+ @require public_key.len == Ed25519PublicKey::len
 *>
 fn Ed25519Signature sign(char[] message, char[] private_key, char[] public_key)
 {
@@ -38,23 +38,23 @@ fn Ed25519Signature sign(char[] message, char[] private_key, char[] public_key)
 	Sha512 sha @noinit;
 	sha.init();
 
-	sha.update(exp[FBaseInt.len..]);
+	sha.update(exp[FBaseInt::len..]);
 	sha.update(message);
 
 	FBaseInt k = from_bytes(&&sha.final());
 
-	r[:F25519Int.len] = pack(&&unproject(&&(BASE * k[..])))[..];
+	r[:F25519Int::len] = pack(&&unproject(&&(BASE * k[..])))[..];
 
 	sha.init();
 
-	sha.update(r[:F25519Int.len]);
+	sha.update(r[:F25519Int::len]);
 	sha.update(public_key);
 	sha.update(message);
 
 	FBaseInt z = from_bytes(&&sha.final());
-	FBaseInt e = from_bytes(exp[:FBaseInt.len]);
+	FBaseInt e = from_bytes(exp[:FBaseInt::len]);
 
-	r[F25519Int.len..] = (z * e + k)[..];
+	r[F25519Int::len..] = (z * e + k)[..];
 
 	return r;
 }
@@ -65,14 +65,14 @@ fn Ed25519Signature sign(char[] message, char[] private_key, char[] public_key)
  @param [in] message
  @param [in] signature
  @param [in] public_key
- @require signature.len == Ed25519Signature.len
- @require public_key.len == Ed25519PublicKey.len
+ @require signature.len == Ed25519Signature::len
+ @require public_key.len == Ed25519PublicKey::len
 *>
 fn bool verify(char[] message, char[] signature, char[] public_key)
 {
 	char ok = 1;
 
-	F25519Int lhs = pack(&&unproject(&&(BASE * signature[F25519Int.len..])));
+	F25519Int lhs = pack(&&unproject(&&(BASE * signature[F25519Int::len..])));
 
 	Unpacking unp_p = unpack_on_curve((F25519Int*)public_key);
 	Projection p = project(&unp_p.point);
@@ -81,7 +81,7 @@ fn bool verify(char[] message, char[] signature, char[] public_key)
 	Sha512 sha @noinit;
 	sha.init();
 
-	sha.update(signature[:F25519Int.len]);
+	sha.update(signature[:F25519Int::len]);
 	sha.update(public_key);
 	sha.update(message);
 
@@ -89,7 +89,7 @@ fn bool verify(char[] message, char[] signature, char[] public_key)
 
 	p = p * z[..];
 
-	Unpacking unp_q = unpack_on_curve((F25519Int*)signature[:F25519Int.len]);
+	Unpacking unp_q = unpack_on_curve((F25519Int*)signature[:F25519Int::len]);
 	Projection q = project(&unp_q.point);
 	ok &= unp_q.on_curve;
 
@@ -113,15 +113,15 @@ const Projection BASE @private =
  Compute the pruned SHA-512 hash of a private key.
 
  @param [in] private_key
- @require private_key.len == Ed25519PrivateKey.len
+ @require private_key.len == Ed25519PrivateKey::len
 *>
 fn char[sha512::HASH_SIZE] expand_private_key(char[] private_key) @local
 {
 	char[*] r = sha512::hash(private_key);
 
 	r[0] &= 0b11111000;
-	r[FBaseInt.len - 1] &= 0b01111111;
-	r[FBaseInt.len - 1] |= 0b01000000;
+	r[FBaseInt::len - 1] &= 0b01111111;
+	r[FBaseInt::len - 1] |= 0b01000000;
 
 	return r;
 }
@@ -505,13 +505,13 @@ fn F25519Int F25519Int.mul(&s, F25519Int* n) @operator(*)
 	F25519Int r @noinit;
 
 	uint c;
-	for (sz i = 0; i < F25519Int.len; i++)
+	foreach (i, &ref : r)
 	{
 		c >>= 8;
 		for (sz j; j <= i; j++) c += (*s)[j] * (*n)[i - j];
 		// Reduce using 2^256 = 2*19 mod p
-		for (sz j = i + 1; j < F25519Int.len; j++) c += (*s)[j] * (*n)[^j - i] * 2u * 19u;
-		r[i] = (char)c;
+		for (sz j = i + 1; j < F25519Int::len; j++) c += (*s)[j] * (*n)[^j - i] * 2u * 19u;
+		*ref = (char)c;
 	}
 
 	r.reduce_carry(c >> 7);

@@ -14,13 +14,13 @@ const LOG10E = 0.434294481903251827651128918916605082; // log10(e)
 const LN2 = 0.693147180559945309417232121458176568; // ln(2)
 const LN10 = 2.30258509299404568401799145468436421; // ln(10)
 const PI = 3.14159265358979323846264338327950288419716939937510; // pi
-const PI_2 = 1.57079632679489661923132169163975144; // pi / 2
-const PI_4 = 0.785398163397448309615660845819875721; // pi / 4
-const DIV_PI = 0.318309886183790671537767526745028724; // 1 / pi
-const DIV_2_PI = 0.636619772367581343075535053490057448; // 2 / pi
-const DIV_2_SQRTPI = 1.12837916709551257389615890312154517;   // 2/sqrt(pi)
+const HALF_PI = 1.57079632679489661923132169163975144; // pi / 2
+const QUARTER_PI = 0.785398163397448309615660845819875721; // pi / 4
+const INV_PI = 0.318309886183790671537767526745028724; // 1 / pi
+const TWO_OVER_PI = 0.636619772367581343075535053490057448; // 2 / pi
+const TWO_OVER_SQRT_PI = 1.12837916709551257389615890312154517;   // 2/sqrt(pi)
 const SQRT2 = 1.41421356237309504880168872420969808; // sqrt(2)
-const double DIV_1_SQRT2 = 0.707106781186547524400844362104849039; // 1 / sqrt(2)
+const double INV_SQRT2 = 0.707106781186547524400844362104849039; // 1 / sqrt(2)
 
 const HALF_MAX = 6.5504e+4;
 const HALF_MIN = 6.103515625e-5;
@@ -127,12 +127,12 @@ macro bool is_approx_rel(x, y, eps)
 }
 
 <*
- @require $kindof(x).is_int() : `The input must be an integer`
+ @require @kindof(x).is_int() : `The input must be an integer`
 *>
 macro sign(x)
 {
 	var $Type = $typeof(x);
-	$if $Type.kindof == UNSIGNED_INT:
+	$if $Type::kind == UNSIGNED_INT:
 		return ($Type)(x > 0);
 	$else
 		return ($Type)(x > 0) - ($Type)(x < 0);
@@ -190,7 +190,7 @@ macro atan2(x, y)
 
 <*
  @require values::@is_int(x) || values::@is_float(x) : "Expected an integer or floating point value"
- @require $kindof(sinp) == POINTER : "Expected sinp to be a pointer"
+ @require @kindof(sinp) == POINTER : "Expected sinp to be a pointer"
  @require @typematch(sinp, cosp) : "Expected sinp and cosp to have the same type"
  @require $defined(*sinp = x) : "Expected x and *sinp/*cosp to have the same type"
 *>
@@ -280,7 +280,7 @@ macro ceil(x) => $$ceil(x);
 <*
  Ceil for compile time evaluation.
 
- @require $kindof($input) == FLOAT : "Only float and double may be used"
+ @require @kindof($input) == FLOAT : "Only float and double may be used"
 *>
 macro @ceil($input) @const => $$ceil($input);
 
@@ -310,14 +310,16 @@ macro copysign(mag, sgn) => $$copysign(values::promote_int_same(mag, sgn), ($typ
 macro cos(x) => $$cos(values::promote_int(x));
 
 <*
+ Cosecant
+
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro cosec(x) => 1 / sin(x);
+macro csc(x) => 1 / sin(x);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro cosech(x) => 2 / (exp(x) - exp(-x));
+macro csch(x) => 2 / (exp(x) - exp(-x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
@@ -327,12 +329,12 @@ macro cosh(x) => $$cosh(values::promote_int(x));
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro cotan(x) => cos(x) / sin(x);
+macro cot(x) => cos(x) / sin(x);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro cotanh(x) => (exp(2.0 * x) + 1.0) / (exp(2.0 * x) - 1.0);
+macro coth(x) => (exp(2.0 * x) + 1.0) / (exp(2.0 * x) - 1.0);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
@@ -355,6 +357,8 @@ macro exp10(x) => $$exp10(values::promote_int(x));
 macro floor(x) => $$floor(values::promote_int(x));
 
 <*
+ Fused multiply-add. Also consider mad if looser guarantees on fusing the operation is desired.
+
  @require values::@is_promotable_to_floatlike(a) : `The input must be a number or float vector`
  @require values::@is_promotable_to_floatlike(b) : `The input must be a number or float vector`
  @require values::@is_promotable_to_floatlike(c) : `The input must be a number or float vector`
@@ -447,10 +451,12 @@ macro min(x, y, ...)
 }
 
 <*
+ Multiply and add - possibly fused
+
  @require types::@is_float(a) : `The input must be a floating point value`
  @require types::@has_same(a, b, c) : `The input types must be equal`
 *>
-macro muladd(a, b, c) => $$fmuladd(a, b, c);
+macro mad(a, b, c) => $$fmuladd(a, b, c);
 
 <*
  @require values::@is_floatlike(x) : `The input must be a floating point value or float vector`
@@ -632,7 +638,7 @@ macro float float.clamp(float x, float lower, float upper) => $$max(lower, $$min
 macro float float.copysign(float mag, float sgn) => $$copysign(mag, sgn);
 macro float float.floor(float x) => $$floor(x);
 macro float float.fma(float a, float b, float c) => $$fma(a, b, c);
-macro float float.muladd(float a, float b, float c) => $$fmuladd(a, b, c);
+macro float float.mad(float a, float b, float c) => $$fmuladd(a, b, c);
 macro float float.nearbyint(float x) => $$nearbyint(x);
 macro float float.pow(float x, exp) => pow(x, exp);
 macro float float.rint(float x) => $$rint(x);
@@ -647,7 +653,7 @@ macro double double.clamp(double x, double lower, double upper) => $$max(lower, 
 macro double double.copysign(double mag, double sgn) => $$copysign(mag, sgn);
 macro double double.floor(double x) => $$floor(x);
 macro double double.fma(double a, double b, double c) => $$fma(a, b, c);
-macro double double.muladd(double a, double b, double c) => $$fmuladd(a, b, c);
+macro double double.mad(double a, double b, double c) => $$fmuladd(a, b, c);
 macro double double.nearbyint(double x) => $$nearbyint(x);
 macro double double.pow(double x, exp) => pow(x, exp);
 macro double double.rint(double x) => $$rint(x);
@@ -812,10 +818,10 @@ macro next_power_of_2(x)
 	v |= v >> 2;
 	v |= v >> 4;
 
-	$if ($sizeof(x) >= 2):  v |= v >> 8;  $endif;
-	$if ($sizeof(x) >= 4):  v |= v >> 16; $endif;
-	$if ($sizeof(x) >= 8):  v |= v >> 32; $endif;
-	$if ($sizeof(x) >= 16): v |= v >> 64; $endif;
+	$if (@sizeof(x) >= 2):  v |= v >> 8;  $endif;
+	$if (@sizeof(x) >= 4):  v |= v >> 16; $endif;
+	$if (@sizeof(x) >= 8):  v |= v >> 32; $endif;
+	$if (@sizeof(x) >= 16): v |= v >> 64; $endif;
 
 	return v + ($Type)1;
 }
@@ -838,10 +844,10 @@ macro @next_power_of_2($x)
 	$v |= $v >> 2;
 	$v |= $v >> 4;
 
-	$if ($sizeof($x) >= 2):  $v |= $v >> 8;  $endif;
-	$if ($sizeof($x) >= 4):  $v |= $v >> 16; $endif;
-	$if ($sizeof($x) >= 8):  $v |= $v >> 32; $endif;
-	$if ($sizeof($x) >= 16): $v |= $v >> 64; $endif;
+	$if (@sizeof($x) >= 2):  $v |= $v >> 8;  $endif;
+	$if (@sizeof($x) >= 4):  $v |= $v >> 16; $endif;
+	$if (@sizeof($x) >= 8):  $v |= $v >> 32; $endif;
+	$if (@sizeof($x) >= 16): $v |= $v >> 64; $endif;
 
 	return $v + 1;
 }
@@ -1006,12 +1012,12 @@ macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
 macro overflow_mul(a, b, out) => $$overflow_mul(a, b, out);
 
 <*
- @require types::is_vector($Type) || ($Type.kindof == ARRAY &&& types::is_numerical($typefrom($Type.inner)))
+ @require types::is_vector($Type) || ($Type::kind == ARRAY &&& types::is_numerical($typefrom($Type::inner)))
 *>
 macro iota($Type)
 {
 	$Type $val = {};
-	$for var $i = 0; $i < $Type.len; $i++:
+	$for var $i = 0; $i < $Type::len; $i++:
 		$val[$i] = $i;
 	$endfor
 	return $val;

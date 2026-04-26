@@ -213,6 +213,7 @@ typedef struct
 		ConstInitializer *initializer;
 		ConstInitializer *slice_init;
 		Expr **untyped_list;
+		Expr *reflection;
 		struct
 		{
 			AlignSize offset;
@@ -999,6 +1000,13 @@ typedef struct
 
 typedef struct
 {
+	Expr *type;
+	SourceLocId token_span;
+	const char *property;
+} ExprTypeProperty;
+
+typedef struct
+{
 	Expr *parent;
 	Expr *child;
 	bool is_lvalue;
@@ -1033,6 +1041,12 @@ typedef struct
 	SourceLocId name_span;
 	Expr *value;
 } ExprNamedArgument;
+
+typedef struct
+{
+	Expr *name;
+	Expr *value;
+} ExprEvalNamedArgument;
 
 typedef struct
 {
@@ -1311,13 +1325,13 @@ struct Expr_
 		ExprCtArg ct_arg_expr;
 		Expr** ct_concat;
 		ExprOtherContext expr_other_context;
-		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		Decl *decl_expr;                            // 8
 		Decl *iota_decl_expr;                       // 8
 		ExprDesignatedInit designated_init;         // 16
 		ExprDesignator designator_expr;             // 16
 		ExprNamedArgument named_argument_expr;
+		ExprEvalNamedArgument eval_named_argument_expr;
 		ExprEmbedExpr embed_expr;                   // 16
 		Expr **exec_expr;                           // 8
 		ExprAsmArg expr_asm_arg;                    // 24
@@ -1334,6 +1348,7 @@ struct Expr_
 		Expr *inner_expr;                           // 8
 		ExprMakeAny make_any_expr;
 		ExprMakeSlice make_slice_expr;
+		ExprTypeProperty type_property_expr;
 		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
 		ExprMacroBody macro_body_expr;              // 16
@@ -2044,7 +2059,7 @@ extern Type *type_ichar, *type_short, *type_int, *type_long, *type_sz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
-extern Type *type_typeid, *type_fault, *type_any, *type_typeinfo, *type_member;
+extern Type *type_typeid, *type_fault, *type_any, *type_typeinfo, *type_member, *type_reflection;
 extern Type *type_untypedlist;
 extern Type *type_wildcard;
 extern Type *type_cint;
@@ -2063,6 +2078,7 @@ extern const char *kw_std__core;
 extern const char *kw_std__core__types;
 extern const char *kw_std__core__runtime;
 extern const char *kw_std__io;
+extern const char *kw_tags;
 extern const char *kw_typekind;
 extern const char *kw_FILE_NOT_FOUND;
 extern const char *kw_IoError;
@@ -2077,22 +2093,35 @@ extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
 extern const char *kw_at_simd;
+extern const char *kw_alignment;
+extern const char *kw_cname;
 extern const char *kw_compiler_rt;
+extern const char *kw_description;
+extern const char *kw_get;
+extern const char *kw_get_tag;
+extern const char *kw_has_tag;
 extern const char *kw_in;
 extern const char *kw_inout;
+extern const char *kw_is_const;
+extern const char *kw_is_ordered;
+extern const char *kw_has_equals;
+extern const char *kw_kind;
 extern const char *kw_len;
 extern const char *kw_libc;
 extern const char *kw_main;
+extern const char *kw_members;
 extern const char *kw_mainstub;
 extern const char *kw_memcmp;
 extern const char *kw_name;
-extern const char *kw_nameof;
-extern const char *kw_offsetof;
+extern const char *kw_offset;
 extern const char *kw_ordinal;
 extern const char *kw_out;
 extern const char *kw_ptr;
+extern const char *kw_qname;
 extern const char *kw_return;
 extern const char *kw_self;
+extern const char *kw_set;
+extern const char *kw_size;
 extern const char *kw_std;
 extern const char *kw_type;
 extern const char *kw_winmain;
@@ -2356,6 +2385,7 @@ const char *get_exe_extension(void);
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
 void unit_register_external_symbol(SemaContext *context, Decl *decl);
+void setup_exec_paths(const char **old_dir_ref, const char **script_dir_ref, const char **exec_dir_ref);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
 bool unit_add_alias(CompilationUnit *unit, Decl *alias);
@@ -2448,6 +2478,7 @@ INLINE bool expr_is_const_string(Expr *expr);
 INLINE bool expr_is_const_initializer(Expr *expr);
 INLINE bool expr_is_const_untyped_list(Expr *expr);
 INLINE bool expr_is_const_member(Expr *expr);
+INLINE bool expr_is_const_reflection(Expr *expr);
 
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
@@ -2466,7 +2497,7 @@ bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op);
 
 Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index);
-bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
+bool expr_const_in_range(const ExprConst *left, const ExprConst *left_to, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 void expr_contract_array(ExprConst *expr_const, ConstKind contract_type);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
@@ -3052,6 +3083,9 @@ INLINE bool type_may_negate(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->decl->distinct->type;
 			goto RETRY;
+		case TYPE_CONSTDEF:
+			type = type->decl->enums.type_info->type;
+			goto RETRY;
 		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
@@ -3088,9 +3122,11 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 {
 	switch (type->type_kind)
 	{
+		case TYPE_REFLECTION:
+			return "a reflection reference";
 		case TYPE_MEMBER:
 			return "a member reference";
-		case TYPE_UNTYPED_LIST:
+		case TYPE_UNTYPEDLIST:
 			return "an untyped list";
 		case TYPE_TYPEINFO:
 			return "a typeinfo";
@@ -3719,6 +3755,11 @@ INLINE bool expr_is_deref(Expr *expr)
 	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_DEREF;
 }
 
+INLINE bool expr_is_named_param(Expr *expr)
+{
+	return expr->expr_kind == EXPR_NAMED_ARGUMENT || expr->expr_kind == EXPR_NAMED_EVAL_ARGUMENT;
+}
+
 INLINE bool expr_is_addr(Expr *expr)
 {
 	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_ADDR;
@@ -3838,6 +3879,14 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 			expr->named_argument_expr.name_span = loc;
 			expr_set_loc(expr->named_argument_expr.value, loc);
 			return;
+		case EXPR_NAMED_EVAL_ARGUMENT:
+			expr_set_loc(expr->eval_named_argument_expr.name, loc);
+			expr_set_loc(expr->eval_named_argument_expr.value, loc);
+			return;
+		case EXPR_TYPE_PROPERTY:
+			expr_set_loc(expr->type_property_expr.type, loc);
+			expr->type_property_expr.token_span = loc;
+			return;
 		case EXPR_CONST:
 			switch (expr->const_expr.const_kind)
 			{
@@ -3884,6 +3933,7 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_RECAST:
 		case EXPR_LENGTHOF:
 		case EXPR_MAYBE_DEREF:
+		case EXPR_CT_REFLECT:
 			expr_set_loc(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
@@ -3903,7 +3953,7 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_CT_ARG:
-		case EXPR_CT_CALL:
+		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:
@@ -4064,6 +4114,13 @@ INLINE SourceLocId make_loc(SourceLoc loc)
 	return sourcelocid(copy);
 }
 
+INLINE SourceLocId copy_loc(SourceLocId loc)
+{
+	SourceLoc *copy = sourceloc_calloc();
+	*copy = *sourcelocptr(loc);
+	return sourcelocid(copy);
+}
+
 INLINE Decl *decl_new_loc(DeclKind decl_kind, const char *name, SourceLoc loc) { return decl_new(decl_kind, name, make_loc(loc)); }
 
 INLINE void ast_append(AstId **succ, Ast *next)
@@ -4196,6 +4253,15 @@ INLINE void expr_rewrite_const_fault(Expr *expr, Decl *fault)
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type_fault;
 	expr->const_expr = (ExprConst) { .fault = fault, .const_kind = CONST_FAULT };
+	expr->resolve_status = RESOLVE_DONE;
+}
+
+INLINE void expr_rewrite_const_reflect(Expr *expr, Expr *reflect)
+{
+	ASSERT(reflect->resolve_status == RESOLVE_DONE);
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type_reflection;
+	expr->const_expr = (ExprConst) { .reflection = reflect, .const_kind = CONST_REFLECTION };
 	expr->resolve_status = RESOLVE_DONE;
 }
 
@@ -4631,6 +4697,12 @@ INLINE bool expr_is_const_member(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_MEMBER;
+}
+
+INLINE bool expr_is_const_reflection(Expr *expr)
+{
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_REFLECTION;
 }
 
 INLINE bool check_module_name(Path *path)

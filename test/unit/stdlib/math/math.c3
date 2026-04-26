@@ -5,7 +5,7 @@ import std::core::test;
 
 fn void test_sincos() @test
 {
-	$assert(@typeid(math::sincos(1.0)) == double[<2>].typeid);
+	$assert(@typeid(math::sincos(1.0)) == double[<2>]::typeid);
 	test::eq_approx(math::sincos(math::PI / 6).x, 0.5, 4);
 	test::eq_approx(math::sincos(math::PI / 6).y, 0.866025, 5);
 	test::eq_approx(math::sincos(math::PI / 4).x, 0.707107, 5);
@@ -23,7 +23,7 @@ fn void test_sincos() @test
 }
 fn void test_sincosf() @test
 {
-	$assert(@typeid(math::sincos(1.0f)) == float[<2>].typeid);
+	$assert(@typeid(math::sincos(1.0f)) == float[<2>]::typeid);
 	test::eq_approx(math::sincos((float)(math::PI / 6)).x, 0.5, 4);
 	test::eq_approx(math::sincos((float)(math::PI / 6)).y, 0.866025, 5);
 	test::eq_approx(math::sincos((float)(math::PI / 4)).x, 0.707107, 5);
@@ -69,7 +69,7 @@ fn void test_abs() @test
 fn void test_acos() @test
 {
 	int [<5>] in = { 231, -231, 1, 0, -1 };
-	double [<3>] out = { 0.0, math::PI_2, math::PI };
+	double [<3>] out = { 0.0, math::HALF_PI, math::PI };
 	double [<6>] in2 = { 0.9, 0.6, 0.1, -0.1, -0.6, -0.9 };
 	double [<6>] out2 = { 0.45102681179626236, 0.9272952180016123, 1.4706289056333368, 1.6709637479564565, 2.214297435588181, 2.6905658417935308 };
 	assert($typeof(math::acos(in[0])) == double);
@@ -132,7 +132,7 @@ fn void test_acosh() @test
 fn void test_asin() @test
 {
 	int [<5>] in = { 231, -231, 1, 0, -1 };
-	double [<3>] out = { math::PI_2, 0.0, -math::PI_2 };
+	double [<3>] out = { math::HALF_PI, 0.0, -math::HALF_PI };
 	double [<6>] in2 = { 0.98, 0.6, 0.1, -0.1, -0.6, -0.98 };
 	double [<6>] out2 = { 1.3704614844717768, 0.6435011087932844, 0.1001674211615598, -0.1001674211615598, -0.6435011087932844, -1.3704614844717768 };
 	assert($typeof(math::asin(in[0])) == double);
@@ -184,7 +184,7 @@ fn void test_asinh() @test
 fn void test_atan() @test
 {
 	int [<9>] in = { 231, 3, 2, 1, 0, -1, -2, -3, -231 };
-	double [<9>] out = { 1.5664673495078372, 1.2490457723982544, 1.1071487177940904, math::PI_4, 0.0, -math::PI_4, -1.1071487177940904, -1.2490457723982544, -1.5664673495078372 };
+	double [<9>] out = { 1.5664673495078372, 1.2490457723982544, 1.1071487177940904, math::QUARTER_PI, 0.0, -math::QUARTER_PI, -1.1071487177940904, -1.2490457723982544, -1.5664673495078372 };
 	double [<6>] in2 = { 0.6, 0.4, 0.1, -0.1, -0.4, -0.6 };
 	double [<6>] out2 = { 0.5404195002705842, 0.3805063771123649, 0.09966865249116204, -0.09966865249116204, -0.3805063771123649, -0.5404195002705842 };
 	assert($typeof(math::atan(in[0])) == double);
@@ -612,9 +612,9 @@ fn void test_sin() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
 	double [<5>] out = { -0.99568418975810324, 0.84147098480789651 , 0.0, -0.84147098480789651, 0.99568418975810324 };
-	float [<2>] in2 = { math::PI_2, -math::PI_2 };
+	float [<2>] in2 = { math::HALF_PI, -math::HALF_PI };
 	float [<2>] out2 =  { 1.0f, -1.0f };
-	double [<2>] in3 = { math::PI_2, -math::PI_2 };
+	double [<2>] in3 = { math::HALF_PI, -math::HALF_PI };
 	double [<2>] out3 =  { 1.0, -1.0 };
 	assert($typeof(math::sin(in[0])) == double);
 	assert($typeof(math::sin((float)in[0])) == float);
@@ -641,9 +641,9 @@ fn void test_tan() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
 	double [<5>] out = { -10.7286365246191129, 1.5574077246549022 , 0.0, -1.5574077246549022, 10.7286365246191129 };
-	float [<2>] in2 = { math::PI_4, -math::PI_4 };
+	float [<2>] in2 = { math::QUARTER_PI, -math::QUARTER_PI };
 	float [<2>] out2 =  { 1.0f, -1.0f };
-	double [<2>] in3 = { math::PI_4, -math::PI_4 };
+	double [<2>] in3 = { math::QUARTER_PI, -math::QUARTER_PI };
 	double [<2>] out3 =  { 1.0, -1.0 };
 	assert($typeof(math::tan(in[0])) == double);
 	assert($typeof(math::tan((float)in[0])) == float);

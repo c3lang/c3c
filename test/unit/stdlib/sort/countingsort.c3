@@ -68,7 +68,7 @@ fn void countingsort_with_lambda()
 
 	foreach (tc : tcases)
 	{
-		sort::countingsort(tc, fn uint(int a) => ((uint)(a + int.min)));
+		sort::countingsort(tc, fn uint(int a) => ((uint)(a + int::min)));
 		assert(check::int_ascending_sort(tc));
 	}
 }

@@ -34,7 +34,7 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_CONST: return "const";
 		case EXPR_TYPECALL: return "typecall";
 		case EXPR_CT_ARG: return "ct_arg";
-		case EXPR_CT_CALL: return "ct_call";
+		case EXPR_CT_FEATURE: return "ct_feature";
 		case EXPR_CT_DEFINED: return "ct_defined";
 		case EXPR_CT_EVAL: return "ct_eval";
 		case EXPR_CT_IDENT: return "ct_ident";
@@ -68,6 +68,7 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_MEMBER_GET: return "member_get";
 		case EXPR_MEMBER_SET: return "member_set";
 		case EXPR_NAMED_ARGUMENT: return "named_argument";
+		case EXPR_NAMED_EVAL_ARGUMENT: return "named_eval_argument";
 		case EXPR_NOP: return "nop";
 		case EXPR_OPERATOR_CHARS: return "operator_chars";
 		case EXPR_OPTIONAL: return "optional";
@@ -172,6 +173,7 @@ bool expr_is_zero(Expr *expr)
 		case CONST_REF:
 			return !expr->const_expr.global_ref;
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 			return false;
 	}
 	UNREACHABLE
@@ -269,6 +271,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_OPTIONAL:
@@ -315,6 +318,7 @@ RETRY:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_DEFINED:
+		case EXPR_CT_REFLECT:
 		case EXPR_LAMBDA:
 		case EXPR_DECL:
 		case EXPR_CALL:
@@ -480,7 +484,7 @@ RETRY:
 		case EXPR_COMPILER_CONST:
 			// Not foldable
 			return false;
-		case EXPR_CT_CALL:
+		case EXPR_CT_FEATURE:
 		case EXPR_TYPEINFO:
 		case EXPR_HASH_IDENT:
 		case EXPR_POISONED:
@@ -488,6 +492,7 @@ RETRY:
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_CONTRACT:
 			UNREACHABLE
 	}
@@ -692,10 +697,11 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_REFLECTION:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE_VOID
-		case TYPE_UNTYPED_LIST:
+		case TYPE_UNTYPEDLIST:
 			expr->const_expr.const_kind = CONST_UNTYPED_LIST;
 			expr->const_expr.untyped_list = NULL;
 			expr->resolve_status = RESOLVE_DONE;
@@ -731,6 +737,7 @@ Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index)
 		case CONST_TYPEID:
 		case CONST_REF:
 		case CONST_MEMBER:
+		case CONST_REFLECTION:
 			UNREACHABLE
 		case CONST_BYTES:
 		case CONST_STRING:
@@ -832,9 +839,10 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CONST:
 		case EXPR_TYPECALL:
 		case EXPR_CT_ARG:
-		case EXPR_CT_CALL:
+		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
+		case EXPR_CT_REFLECT:
 		case EXPR_IDENTIFIER:
 		case EXPR_LAMBDA:
 		case EXPR_NOP:
@@ -889,6 +897,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_HASH_IDENT:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_POST_UNARY:

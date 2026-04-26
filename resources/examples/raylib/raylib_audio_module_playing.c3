@@ -14,7 +14,7 @@
 *
 ********************************************************************************************/
 module raylib_audio_module;
-import raylib55;
+import raylib6;
 
 const MAX_CIRCLES = 64;
 

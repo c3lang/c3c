@@ -120,6 +120,7 @@ set(C3_OPTIONS
         C3_LLD_DIR
         C3_ENABLE_CLANGD_LSP
         LLVM_CRT_LIBRARY_DIR
+        C3_AVR_ENABLE
 )
 
 set(C3_USE_MIMALLOC OFF)
@@ -512,14 +513,19 @@ add_executable(c3c
         ${CMAKE_BINARY_DIR}/git_hash.h
 )
 
-if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+# Building C3 with AVR Support
+if(C3_AVR_ENABLE)
+	target_compile_definitions(c3c PRIVATE AVR_ENABLE)
+endif()
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     # We are inside of a git repository so rebuilding the hash every time something changes.
     add_custom_command(
             OUTPUT ${CMAKE_BINARY_DIR}/git_hash.h
             COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_LIST_DIR}/git_hash.cmake"
-            DEPENDS "${CMAKE_CURRENT_LIST_DIR}/.git")
+            DEPENDS "${CMAKE_CURRENT_LIST_DIR}/.git/HEAD")
 else()
-    # We are NOT inside of a git repository. Building the has only once.
+    # We are NOT inside of a git repository. Building the hash only once.
     add_custom_command(
             OUTPUT ${CMAKE_BINARY_DIR}/git_hash.h
             COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_LIST_DIR}/git_hash.cmake")

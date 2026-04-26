@@ -30,7 +30,7 @@ fn void test2()
 struct Foo { int a; }
 macro void test3m()
 {
-	var $foo = Foo.membersof;
+	var $foo = Foo::members;
 	var h = $foo[0]; // #error: compile time type
 }
 fn void test3()

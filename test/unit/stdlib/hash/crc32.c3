@@ -21,7 +21,7 @@ fn void test_crc32_a()
 
 	Crc32 crc;
 	crc.init();
-	crc.updatec('a');
+	crc.update_byte('a');
 
 	uint final = crc.final();
 	test::@check(final == EXPECTED, "Actual crc32: 0x%x == 0x%x", final, EXPECTED);

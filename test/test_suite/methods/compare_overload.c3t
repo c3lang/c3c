@@ -22,7 +22,7 @@ fn bool Foo.less_ir(self, int i) @operator_r(<)
 	return i < self.a;
 }
 
-$assert Foo.is_ordered;
+$assert Foo::is_ordered;
 fn void main()
 {
 	Foo a = { 1 };

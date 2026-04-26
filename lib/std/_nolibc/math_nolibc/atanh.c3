@@ -25,9 +25,9 @@ fn double _atanh(double x) @weak @cname("atanh") @nostrip
 		     	uint lx = x.low_word();
 		     	if ((ix - 0x3ff00000 | lx) == 0)
 			{
-			   	return sign ? -double.inf : double.inf;
+			   	return sign ? -double::inf : double::inf;
 			}
-			return double.nan;
+			return double::nan;
 		/* x<2**-28 */
 		case ix < 0x3e300000 && (1e300 + x) > 0.0:
 		     	return x;
@@ -73,9 +73,9 @@ fn float _atanhf(float x) @weak @cname("atanhf") @nostrip
 		case ix >= 0x3f800000:
 		     	if (ix == 0x3f800000)
 			{
-			   	return sign ? -float.inf : float.inf;
+			   	return sign ? -float::inf : float::inf;
 			}
-			return float.nan;
+			return float::nan;
 		/* x<2**-28 */
 		case ix < 0x31800000 && (1e30 + x) > 0.f:
 		     	return x;

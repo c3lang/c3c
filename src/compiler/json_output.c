@@ -80,6 +80,7 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_CT_ASSERT: return "$assert";
 		case DECL_CT_ECHO: return "$echo";
 		case DECL_CT_EXEC: return "$exec";
+		case DECL_CT_EXPAND: return "$expand";
 		case DECL_CT_INCLUDE: return "$include";
 		case DECL_ALIAS: return "alias";
 		case DECL_TYPEDEF: return "typedef";
@@ -134,9 +135,6 @@ void print_type(FILE *file, TypeInfo *type)
 			scratch_buffer_clear();
 			loc_to_scratch(type->unresolved_type_expr->loc);
 			PRINTF("$typeof(%s)", scratch_buffer_to_string());
-			break;
-		case TYPE_INFO_VATYPE:
-			PRINTF("$vatype[...]");
 			break;
 		case TYPE_INFO_TYPEFROM:
 			PRINTF("$typefrom(...)");

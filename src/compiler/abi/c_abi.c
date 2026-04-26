@@ -20,15 +20,6 @@ ABIArgInfo *abi_arg_ignore(void)
 	return &info;
 }
 
-bool abi_type_is_integer(AbiType type)
-{
-	return !abi_type_is_type(type) || type_is_integer(type.type);
-}
-
-bool abi_type_is_float(AbiType type)
-{
-	return abi_type_is_type(type) && type_is_float(type.type);
-}
 
 TypeSize abi_type_size(AbiType type)
 {
@@ -321,6 +312,7 @@ void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs)
 			c_abi_func_create_wasm(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_XTENSA:
+		case ABI_AVR:
 			c_abi_func_create_default(proto, params, param_count, vaarg_params, vaarg_count);
 			return;
 		case ABI_UNKNOWN:

@@ -30,7 +30,7 @@ struct QueueItem @private
 <*
  @require !self.initialized : "ThreadPool must not be already initialized"
 *>
-fn void? ThreadPool.init(&self)
+fn void? ThreadPool.init(&self, ThreadSettings thread_settings = {})
 {
 	defer catch self.destroy();
 	*self = { .num_threads = SIZE, .initialized = true };
@@ -39,7 +39,7 @@ fn void? ThreadPool.init(&self)
 	self.collect.init()!;
 	foreach (&thread : self.pool)
 	{
-		thread.create(&process_work, self)!;
+		thread.create(&process_work, self, thread_settings)!;
 		// The thread resources will be cleaned up when the thread exits.
 		thread.detach()!;
 	}

@@ -4,10 +4,10 @@ import std::io, std::os, std::time, libc;
 struct Socket (InStream, OutStream)
 {
 	NativeSocket sock;
-	Socklen_t ai_addrlen;
+	Socklen_t addrlen;
 	// TODO proper way to get the size of sockaddr_storage
 	// https://learn.microsoft.com/en-us/previous-versions/windows/desktop/legacy/ms740504(v=vs.85)
-	char[128] ai_addr_storage;
+	char[128] addr_storage;
 }
 
 macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
@@ -36,14 +36,6 @@ constdef PollSubscribe : ushort
 	WRITE        = os::POLLWRNORM,
 }
 
-const PollSubscribe SUBSCRIBE_ANY_READ     = (PollSubscribe)os::POLLIN;
-const PollSubscribe SUBSCRIBE_PRIO_READ    = (PollSubscribe)os::POLLPRI;
-const PollSubscribe SUBSCRIBE_OOB_READ     = (PollSubscribe)os::POLLRDBAND;
-const PollSubscribe SUBSCRIBE_READ         = (PollSubscribe)os::POLLRDNORM;
-const PollSubscribe SUBSCRIBE_ANY_WRITE    = (PollSubscribe)os::POLLOUT;
-const PollSubscribe SUBSCRIBE_OOB_WRITE    = (PollSubscribe)os::POLLWRBAND;
-const PollSubscribe SUBSCRIBE_WRITE        = (PollSubscribe)os::POLLWRNORM;
-
 constdef PollEvent : ushort
 {
 	READ_PRIO  = os::POLLPRI,
@@ -56,15 +48,6 @@ constdef PollEvent : ushort
 	INVALID    = os::POLLNVAL,
 }
 
-const PollEvent POLL_EVENT_READ_PRIO  = (PollEvent)os::POLLPRI;
-const PollEvent POLL_EVENT_READ_OOB   = (PollEvent)os::POLLRDBAND;
-const PollEvent POLL_EVENT_READ       = (PollEvent)os::POLLRDNORM;
-const PollEvent POLL_EVENT_WRITE_OOB  = (PollEvent)os::POLLWRBAND;
-const PollEvent POLL_EVENT_WRITE      = (PollEvent)os::POLLWRNORM;
-const PollEvent POLL_EVENT_DISCONNECT = (PollEvent)os::POLLHUP;
-const PollEvent POLL_EVENT_ERROR      = (PollEvent)os::POLLERR;
-const PollEvent POLL_EVENT_INVALID    = (PollEvent)os::POLLNVAL;
-
 struct Poll
 {
 	NativeSocket socket;
@@ -74,7 +57,7 @@ struct Poll
 
 <*
  @param [inout] polls
- @param timeout : "duration to poll (clamped to CInt.max ms), or POLL_FOREVER."
+ @param timeout : "duration to poll (clamped to Cint::max ms), or POLL_FOREVER."
 *>
 fn ulong? poll(Poll[] polls, Duration timeout)
 {
@@ -83,11 +66,11 @@ fn ulong? poll(Poll[] polls, Duration timeout)
 
 <*
  @param [inout] polls
- @param timeout_ms : "duration to poll in ms or -1. Clamped to CInt.max"
+ @param timeout_ms : "duration to poll in ms or -1. Clamped to Cint::max"
 *>
 fn ulong? poll_ms(Poll[] polls, long timeout_ms)
 {
-	if (timeout_ms > CInt.max) timeout_ms = CInt.max;
+	if (timeout_ms > CInt::max) timeout_ms = CInt::max;
 	$if env::WIN32:
 		CInt result = win32::wsaPoll((Win32_LPWSAPOLLFD)polls.ptr, (Win32_ULONG)polls.len, (CInt)timeout_ms);
 	$else
@@ -98,9 +81,9 @@ fn ulong? poll_ms(Poll[] polls, long timeout_ms)
 
 macro Socket new_socket(fd, ai)
 {
-	Socket sock = { .sock = fd, .ai_addrlen = ai.ai_addrlen };
-	assert(sock.ai_addr_storage.len >= ai.ai_addrlen, "storage %d < addrlen %d", sock.ai_addr_storage.len, ai.ai_addrlen);
-	mem::copy(&sock.ai_addr_storage, (void*)ai.ai_addr, (sz)ai.ai_addrlen);
+	Socket sock = { .sock = fd, .addrlen = ai.ai_addrlen };
+	assert(sock.addr_storage.len >= ai.ai_addrlen, "storage %d < addrlen %d", sock.addr_storage.len, ai.ai_addrlen);
+	mem::copy(&sock.addr_storage, (void*)ai.ai_addr, (sz)ai.ai_addrlen);
 	return sock;
 }
 
@@ -129,14 +112,14 @@ fn void? Socket.set_oobinline(&self, bool value) => self.set_option(OOBINLINE, v
 fn void? Socket.set_option(&self, SocketOption option, bool value)
 {
 	CInt flag = (CInt)value;
-	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
+	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt::size);
 	if (errcode != 0) return SOCKOPT_FAILED~;
 }
 
 fn bool? Socket.get_option(&self, SocketOption option)
 {
 	CInt flag;
-	Socklen_t socklen = CInt.sizeof;
+	Socklen_t socklen = CInt::size;
 	int errcode = os::getsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, &socklen);
 	if (errcode != 0) return SOCKOPT_FAILED~;
 	return (bool)flag;

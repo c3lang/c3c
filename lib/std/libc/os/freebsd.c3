@@ -3,7 +3,7 @@ module libc @if(env::FREEBSD);
 // Checked for x86_64
 
 alias Blksize_t = int;
-alias Nlink_t = $typefrom(env::X86_64 ? ulong.typeid : CUInt.typeid);
+alias Nlink_t = $typefrom(env::X86_64 ? ulong::typeid : CUInt::typeid);
 alias Dev_t = ulong;
 alias Ino_t = ulong;
 alias Mode_t = ushort;
@@ -64,3 +64,6 @@ extern fn CInt get_nprocs_conf();
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
 
+const SCHED_OTHER = 2;
+const SCHED_FIFO  = 1;
+const SCHED_RR    = 3;

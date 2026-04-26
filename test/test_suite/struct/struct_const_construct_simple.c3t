@@ -7,7 +7,7 @@ struct Foo
     long bar;
 }
 
-usz x @private = Foo.sizeof;
+usz x @private = Foo::size;
 
 Foo foo1 @private = { 1, 2 };
 Foo foo2 @private = { .foo = 2 };

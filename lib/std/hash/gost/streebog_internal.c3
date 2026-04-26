@@ -10,11 +10,11 @@ module std::hash::streebog @private;
 
 const sz BLOCK_SIZE = 64;
 
-const ulong[8] ZERO_512 @align(ulong.sizeof) = {};
+const ulong[8] ZERO_512 @align(ulong::size) = {};
 
-const ulong[8] STAGE2_512 @align(ulong.sizeof) = { [0] = 512ul, [1..7] = 0 };
+const ulong[8] STAGE2_512 @align(ulong::size) = { [0] = 512ul, [1..7] = 0 };
 
-const ulong[8][12] ITERATION_CONSTANTS @align(ulong.sizeof) = {
+const ulong[8][12] ITERATION_CONSTANTS @align(ulong::size) = {
 	{ 0xdd806559f2a64507, 0x05767436cc744d23, 0xa2422a08a460d315, 0x4b7ce09192676901, 0x714eb88d7585c4fc, 0x2f6a76432e45d016, 0xebcb2f81c0657c1f, 0xb1085bda1ecadae9 },
 	{ 0xe679047021b19bb7, 0x55dda21bd7cbcd56, 0x5cb561c2db0aa7ca, 0x9ab5176b12d69958, 0x61d55e0f16b50131, 0xf3feea720a232b98, 0x4fe39d460f70b5d7, 0x6fa3b58aa99d2f1a },
 	{ 0x991e96f50aba0ab2, 0xc2b6f443867adb31, 0xc1c93a376062db09, 0xd3e20fe490359eb1, 0xf2ea7514b1297b7b, 0x06f15e5f529c1f8b, 0x0a39fc286a3d8435, 0xf574dcac2bce2fc7 },
@@ -29,7 +29,7 @@ const ulong[8][12] ITERATION_CONSTANTS @align(ulong.sizeof) = {
 	{ 0x48bc924af11bd720, 0xfaf417d5d9b21b99, 0xe71da4aa88e12852, 0x5d80ef9d1891cc86, 0xf82012d430219f9b, 0xcda43c32bcdf1d77, 0xd21380b00449b17a, 0x378ee767f11631ba }
 };
 
-const ulong[256][8] TR @align(ulong.sizeof) = {
+const ulong[256][8] TR @align(ulong::size) = {
 	{
 		0xd01f715b5c7ef8e6, 0x16fa240980778325, 0xa8a42e857ee049c8, 0x6ac1068fa186465b, 0x6e417bd7a2e9320b, 0x665c8167a437daab, 0x7666681aa89617f6, 0x4b959163700bdcf5,
 		0xf14be6b78df36248, 0xc585bd689a625cff, 0x9557d7fca67d82cb, 0x89f0b969af6dd366, 0xb0833d48749f6c35, 0xa1998c23b1ecbc7c, 0x8d70c431ac02a736, 0xd6dfbc2fd0a8b69e,

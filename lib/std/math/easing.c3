@@ -42,8 +42,8 @@ fn float linear_out(float t, float b, float c, float d) @inline => c * t / d + b
 fn float linear_inout(float t, float b, float c, float d) @inline => c * t / d + b;
 
 // Sine Easing functions
-fn float sine_in(float t, float b, float c, float d) @inline => -c * math::cos(t / d * (float)math::PI_2) + c + b;
-fn float sine_out(float t, float b, float c, float d) @inline => c * math::sin(t / d * (float)math::PI_2) + b;
+fn float sine_in(float t, float b, float c, float d) @inline => -c * math::cos(t / d * (float)math::HALF_PI) + c + b;
+fn float sine_out(float t, float b, float c, float d) @inline => c * math::sin(t / d * (float)math::HALF_PI) + b;
 fn float sine_inout(float t, float b, float c, float d) @inline => (-c / 2) * (math::cos((float)math::PI * t / d) - 1) + b;
 
 // Circular Easing functions

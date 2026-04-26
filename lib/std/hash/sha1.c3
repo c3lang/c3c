@@ -46,7 +46,7 @@ fn void Sha1.init(&self)
 
 <*
  @param [in] data
- @require data.len <= uint.max
+ @require data.len <= uint::max
 *>
 fn void Sha1.update(&self, char[] data)
 {

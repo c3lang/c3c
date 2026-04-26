@@ -463,7 +463,7 @@ macro bool BigInt.greater_than(&self, BigInt other)
 	for (pos = len - 1; pos >= 0 && self.data[pos] == other.data[pos]; pos--);
 	return pos >= 0 && self.data[pos] > other.data[pos];
 }
-macro bool BigInt.less_than(&self, BigInt other)
+macro bool BigInt.less_than(&self, BigInt other) @operator(<)
 {
 	if (self.is_negative() && !other.is_negative()) return true;
 	if (!self.is_negative() && other.is_negative()) return false;
@@ -492,7 +492,7 @@ macro bool BigInt.greater_or_equal(&self, BigInt other)
 	return self.greater_than(other) || self.equals(other);
 }
 
-macro bool BigInt.less_or_equal(&self, BigInt)
+macro bool BigInt.less_or_equal(&self, BigInt other)
 {
 	return self.less_than(other) || self.equals(other);
 }

@@ -6,8 +6,8 @@ typedef Duration = long;
 typedef Clock = ulong;
 typedef NanoDuration (Printable) = long;
 
-const Time FAR_FUTURE = (Time)long.max;
-const Time FAR_PAST = (Time)long.min;
+const Time FAR_FUTURE = (Time)long::max;
+const Time FAR_PAST = (Time)long::min;
 
 const NanoDuration NANO_DURATION_ZERO = (NanoDuration)0;
 const Duration US            = (Duration)1;
@@ -19,7 +19,7 @@ const Duration DAY           = (Duration)24 * HOUR;
 const Duration WEEK          = (Duration)7 * DAY;
 const Duration MONTH         = (Duration)30 * DAY;
 const Duration YEAR          = (Duration)36525 * DAY / 100;
-const Duration FOREVER       = (Duration)long.max;
+const Duration FOREVER       = (Duration)long::max;
 const Duration DURATION_ZERO = (Duration)0;
 
 fn Duration us(long l) @inline => l * US;
@@ -103,7 +103,7 @@ fn double Time.to_seconds(time) => (long)time / (double)SEC;
 fn Duration Time.diff_us(time, Time other) @operator(-) => (Duration)((long)time - (long)other);
 fn double Time.diff_sec(time, Time other) => (long)time.diff_us(other) / (double)SEC;
 fn double Time.diff_min(time, Time other) => (long)time.diff_us(other) / (double)MIN;
-fn double Time.diff_hour(time, Time other) => (long)time.diff_us(other) / (double)HOUR;
+fn double Time.diff_hours(time, Time other) => (long)time.diff_us(other) / (double)HOUR;
 fn double Time.diff_days(time, Time other) => (long)time.diff_us(other) / (double)DAY;
 fn double Time.diff_weeks(time, Time other) => (long)time.diff_us(other) / (double)WEEK;
 

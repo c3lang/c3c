@@ -34,21 +34,21 @@ fn void main()
     any y = &z;
     typeid g = y.type;
     typeid h = x.type;
-    if (y.type == int.typeid)
+    if (y.type == int::typeid)
     {
         printf("y int match\n");
     }
-    if (x.type == int.typeid)
+    if (x.type == int::typeid)
     {
         printf("x int match\n");
     }
     y = &&1.0;
     x = &x;
-    if (y.type == int.typeid)
+    if (y.type == int::typeid)
     {
         printf("y int match\n");
     }
-    if (x.type == int.typeid)
+    if (x.type == int::typeid)
     {
         printf("x int match\n");
     }

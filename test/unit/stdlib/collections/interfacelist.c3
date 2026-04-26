@@ -66,7 +66,7 @@ fn void remove_with_predicate() => @pool()
 	assert(to_ints(l) == {1, 1234, 10, -1290987, 3});
 	l.remove_if(fn (val) => val.test() < 5);
 	assert(to_ints(l) == {1234, 10});
-	l.remove_if(fn (val) => val.type == Test2.typeid);
+	l.remove_if(fn (val) => val.type == Test2::typeid);
 	assert(to_ints(l) == {1234});
 }
 
@@ -120,7 +120,7 @@ fn int[] to_ints(TestL l) => @map(tmem, l.array_view(), fn int(Test x) => x.test
 import std::core::array @public;
 macro @map(Allocator alloc, array, operation)
 {
-	var res = alloc::alloc_array(alloc, $typeof(operation).returns, lengthof(array));
+	var res = alloc::alloc_array(alloc, $typeof(operation)::returns, lengthof(array));
 	foreach (i, val : array) res[i] = operation(val);
 	return res;
 }

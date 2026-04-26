@@ -4,11 +4,11 @@ fn void test_cgfloat_type()
 {
 	if (env::ARCH_64_BIT)
 	{
-		assert(CGFloat.sizeof == double.sizeof);
+		assert(CGFloat::size == double::size);
 	}
 	else
 	{
-		assert(CGFloat.sizeof == float.sizeof);
+		assert(CGFloat::size == float::size);
 	}
 }
 
@@ -31,8 +31,8 @@ fn void test_cgsize()
 	assert(size.width == 100.0);
 	assert(size.height == 200.0);
 
-	assert(@typeid(size.width) == CGFloat.typeid);
-	assert(@typeid(size.height) == CGFloat.typeid);
+	assert(@typeid(size.width) == CGFloat::typeid);
+	assert(@typeid(size.height) == CGFloat::typeid);
 
 	CGSize negSize = { .width = -50.0, .height = -75.0 };
 	assert(negSize.width == -50.0);
@@ -63,14 +63,14 @@ fn void test_geometry_struct_sizes()
 {
 	if (env::ARCH_64_BIT)
 	{
-		assert(CGPoint.sizeof == 16);  // 2 * double (8 bytes each)
-		assert(CGSize.sizeof == 16);   // 2 * double
-		assert(CGRect.sizeof == 32);   // CGPoint + CGSize
+		assert(CGPoint::size == 16);  // 2 * double (8 bytes each)
+		assert(CGSize::size == 16);   // 2 * double
+		assert(CGRect::size == 32);   // CGPoint + CGSize
 	}
 	else
 	{
-		assert(CGPoint.sizeof == 8);   // 2 * float (4 bytes each)
-		assert(CGSize.sizeof == 8);    // 2 * float
-		assert(CGRect.sizeof == 16);   // CGPoint + CGSize
+		assert(CGPoint::size == 8);   // 2 * float (4 bytes each)
+		assert(CGSize::size == 8);    // 2 * float
+		assert(CGRect::size == 16);   // CGPoint + CGSize
 	}
 }

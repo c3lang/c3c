@@ -28,11 +28,11 @@ fn void initialize() @init
 	set_benchmark_warmup_iterations(10);
 	set_benchmark_max_iterations(100_000);
 
-	set_benchmark_func_iterations($qnameof(mul), 1_350_000);
-	set_benchmark_func_iterations($qnameof(rotate), 600_000);
-	set_benchmark_func_iterations($qnameof(normalize), 2_600_000);
-	set_benchmark_func_iterations($qnameof(slerp), 1_500_000);
-	set_benchmark_func_iterations($qnameof(to_matrix), 1_500_000);
+	set_benchmark_func_iterations($reflect(mul).qname, 1_350_000);
+	set_benchmark_func_iterations($reflect(rotate).qname, 600_000);
+	set_benchmark_func_iterations($reflect(normalize).qname, 2_600_000);
+	set_benchmark_func_iterations($reflect(slerp).qname, 1_500_000);
+	set_benchmark_func_iterations($reflect(to_matrix).qname, 1_500_000);
 }
 
 fn void sink(float f) @noinline

@@ -69,7 +69,7 @@ fn void? CsvReader.skip_row(self) @maydiscard => @pool()
 	(void)io::treadline(self.stream);
 }
 
-macro void? @each_row(InStream stream, String separator = ",", int max_rows = int.max; @body(String[] row)) @maydiscard
+macro void? @each_row(InStream stream, String separator = ",", int max_rows = int::max; @body(String[] row)) @maydiscard
 {
 	while (max_rows--)
 	{
@@ -86,7 +86,7 @@ macro void? @each_row(InStream stream, String separator = ",", int max_rows = in
 	}
 }
 
-macro void? CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @maydiscard
+macro void? CsvReader.@each_row(self, int rows = int::max; @body(String[] row)) @maydiscard
 {
 	return @each_row(self.stream, self.separator, rows; row)
 	{

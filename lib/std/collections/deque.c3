@@ -20,7 +20,7 @@ struct Deque (Printable)
 
 <*
  @require capacity > 0 : "Capacity should be greater than 0"
- @require capacity < sz.max / Type.sizeof : "Capacity too great"
+ @require capacity < sz::max / Type::size : "Capacity too great"
 *>
 fn void Deque.init(&self, Allocator allocator, sz capacity = DEFAULT_CAPACITY)
 {
@@ -32,7 +32,7 @@ fn void Deque.init(&self, Allocator allocator, sz capacity = DEFAULT_CAPACITY)
 
 <*
  @require capacity > 0 : "Capacity should be greater than 0"
- @require capacity < sz.max / Type.sizeof : "Capacity too great"
+ @require capacity < sz::max / Type::size : "Capacity too great"
 *>
 fn void Deque.tinit(&self, sz capacity = DEFAULT_CAPACITY)
 {
@@ -158,7 +158,7 @@ fn void Deque.reserve(&self, sz added)
 	sz req_capacity = self.capacity + diff;
 
 	assert(req_capacity > 0);
-	assert(self.capacity < sz.max / 2);
+	assert(self.capacity < sz::max / 2);
 
 	sz new_capacity = self.capacity * 2;
 	while (new_capacity < req_capacity)
@@ -177,7 +177,7 @@ fn void Deque.shrink(&self)
 {
 	self.normalize();
 	self.capacity = self.size;
-	self.entries = alloc::realloc(self.allocator, self.entries, self.capacity * Type.sizeof);
+	self.entries = alloc::realloc(self.allocator, self.entries, self.capacity * Type::size);
 }
 
 <*
@@ -186,29 +186,24 @@ fn void Deque.shrink(&self)
 *>
 fn void Deque.normalize(&self)
 {
-	if (self.size < 1 || self.start < 1) return
+	if (self.size < 1 || self.start < 1) return;
+	// Simple case [ _, _, 1, 2, 3]
+	if (self.start + self.size <= self.capacity)
+	{
+		self.entries[:self.size] = self.entries[self.start:self.size];
+		self.start = 0;
+		return;
+	}
 	@pool()
 	{
-		Type[] tbuf = mem::temp_array(Type, self.size);
-
-		sz right = self.capacity - self.start;
-		sz back_idx = next_back_idx(self);
-
-		if (right < self.start)
-		{
-			tbuf[0:right] = self.entries[self.start:right];
-			tbuf[right:back_idx] = self.entries[0:back_idx];
-			self.entries[0:tbuf.len] = tbuf[..];
-			self.start = 0;
-		}
-		else
-		{
-			sz len = back_idx - self.start;
-			tbuf[..] = self.entries[self.start:len];
-			self.entries[0:tbuf.len] = tbuf[..];
-			self.start = 0;
-		}
+		Type[] tbuf = mem::temp_array(Type, self.start);
+		tbuf[..] = self.entries[0:self.start];
+		sz after_start = self.capacity - self.start;
+		self.entries[:after_start] = self.entries[self.start:after_start];
+		self.entries[after_start:self.start] = tbuf[..];
+		self.start = 0;
 	};
+
 }
 
 <*
@@ -250,6 +245,8 @@ fn bool Deque.is_empty(Deque* self) @inline
 *>
 fn void Deque.swap(&self, sz i, sz j)
 {
+	i = wrap_add(self.start, i, self.capacity);
+	j = wrap_add(self.start, j, self.capacity);
 	@swap(self.entries[i], self.entries[j]);
 }
 
@@ -348,7 +345,7 @@ fn sz? Deque.to_format(&self, Formatter* fmt) @dynamic
 
 fn void _grow(Deque* self, sz new_capacity) @private
 {
-	self.entries = alloc::realloc(self.allocator, self.entries, Type.sizeof * new_capacity);
+	self.entries = alloc::realloc(self.allocator, self.entries, Type::size * new_capacity);
 	sz old_capacity = self.capacity;
 
 	if (self.start + self.size > old_capacity)

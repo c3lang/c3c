@@ -6,7 +6,7 @@ faultdef UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
 faultdef TRIE_FULL;
 
 <*
- @require Token.kindof == ENUM && $typefrom(Token.inner).kindof == UNSIGNED_INT
+ @require Token::kind == ENUM && Token::inner.kind == UNSIGNED_INT
  @require $defined((Token){}.token)
  @require $defined((Comment){}.start) && $defined((Comment){}.end)
  *>
@@ -54,17 +54,17 @@ fn void? Lexer.init(&self, InStream reader, Ident ident, Allocator using = mem)
 {
 	TokenTrie trie;
 	ushort max_token;
-	foreach (i, tok : Token.values)
+	foreach (i, tok : Token::values)
 	{
 		String name = tok.token;
-		assert(name.len > 0 && name.len <= ushort.max);
+		assert(name.len > 0 && name.len <= ushort::max);
 		trie.set(name, (Token)i)!;
 		max_token = max(max_token, (ushort)name.len);
 	}
-	foreach (tok : Comment.values)
+	foreach (tok : Comment::values)
 	{
 		String end = tok.end;
-		assert(end.len > 0 && end.len <= ushort.max);
+		assert(end.len > 0 && end.len <= ushort::max);
 		max_token = max(max_token, (ushort)end.len);
 	}
 	char* buf = alloc::malloc_try(using, max_token)!;
@@ -100,7 +100,7 @@ fn Kind? Lexer.next(&self)
 	}
 	if (try tok = self.parse_token())
 	{
-		foreach (comment : Comment.values)
+		foreach (comment : Comment::values)
 		{
 			if (comment.start == tok)
 			{
@@ -376,7 +376,7 @@ macro Lexer.unread(self, n)
 		case n > 1:
 			if (&self.reader.seek)
 			{
-				self.reader.seek(-n, CURSOR)!!;
+				self.reader.seek(-n, FROM_CURSOR)!!;
 				break;
 			}
 			for (; n > 0; n--) self.reader.pushback_byte()!!;
@@ -454,7 +454,7 @@ fn int main(String[] args)
 	return 0;
 }
 <*
- @require Index.kindof == TypeKind.UNSIGNED_INT
+ @require Index::kind == UNSIGNED_INT
  *>
 module trie <Value, Index>;
 import std::collections::list;
@@ -570,7 +570,7 @@ fn void? TrieNode.set(&self, Trie *t, char[] key, Value value)
 	{
 		sz new_idx = t.nodes.len();
 		assert(new_idx != 0);
-		if (new_idx > Index.max) return faults::TRIE_FULL~;
+		if (new_idx > Index::max) return faults::TRIE_FULL~;
 		idx = (Index)new_idx;
 		self.children[c] = idx;
 		t.nodes.push((TrieNode){});

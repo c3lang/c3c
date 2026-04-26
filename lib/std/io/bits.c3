@@ -19,7 +19,7 @@ fn void BitReader.clear(&self) @inline
 
 <*
  @require nbits <= 8 && nbits > 0
- @require self.len + (sz)nbits <= uint.sizeof * 8
+ @require self.len + (sz)nbits <= uint::size * 8
 *>
 fn char? BitReader.read_bits(&self, int nbits)
 {
@@ -58,7 +58,7 @@ fn void? BitWriter.flush(&self)
 {
 	if (!self.len) return;
 
-	int padding = ($sizeof(self.bits) * 8 - self.len);
+	int padding = (@sizeof(self.bits) * 8 - self.len);
 	uint bits = self.bits << padding;
 	sz n = ((sz)self.len + 7) / 8;
 	char[4] buffer;

@@ -4,13 +4,6 @@
 module std::io;
 import libc;
 
-enum Seek
-{
-	SET,
-	CURSOR,
-	END
-}
-
 enum SeekOrigin
 {
 	FROM_START,

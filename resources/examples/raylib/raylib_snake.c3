@@ -1,5 +1,5 @@
 module snake;
-import raylib55;
+import raylib6, std::math;
 /**
  *
  *   raylib - classic game: snake
@@ -16,7 +16,7 @@ const SQUARE_SIZE = 32;
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 450;
 
-enum SnakeDirection : (RLVector2 dir)
+enum SnakeDirection : (Vec2 dir)
 {
 	RIGHT {{  SQUARE_SIZE,  0 }},
 	DOWN  {{  0,  SQUARE_SIZE }},
@@ -25,15 +25,15 @@ enum SnakeDirection : (RLVector2 dir)
 }
 struct Snake
 {
-	RLVector2 position;
-	RLVector2 size;
+	Vec2 position;
+	Vec2 size;
 	RLColor color;
 }
 
 struct Food
 {
-	RLVector2 position;
-	RLVector2 size;
+	Vec2 position;
+	Vec2 size;
 	bool active;
 	RLColor color;
 }
@@ -46,9 +46,9 @@ bool pause = false;
 Food fruit;
 SnakeDirection snake_direction;
 Snake[SNAKE_LENGTH] snake;
-RLVector2[SNAKE_LENGTH] snake_position;
+Vec2[SNAKE_LENGTH] snake_position;
 bool allow_move = false;
-RLVector2 offset;
+Vec2 offset;
 int counter_tail = 0;
 
 fn void main()
@@ -90,7 +90,7 @@ fn void init_game()
 		*pos = { 0, 0 };
 	}
 
-	fruit = { .size = (RLVector2)SQUARE_SIZE, .color = rl::SKYBLUE, .active = false };
+	fruit = { .size = (Vec2)SQUARE_SIZE, .color = rl::SKYBLUE, .active = false };
 }
 
 fn RLVector2 random_fruit_position()
@@ -116,12 +116,12 @@ fn void update_game()
 
 	if (rl::is_key_pressed(RIGHT) && allow_move)
 	{
-		snake_direction = SnakeDirection.from_ordinal((snake_direction.ordinal + 1) % 4);
+		snake_direction++;
 		allow_move = false;
 	}
 	if (rl::is_key_pressed(LEFT) && allow_move)
 	{
-		snake_direction = SnakeDirection.from_ordinal((snake_direction.ordinal + 3) % 4);
+		snake_direction--;
 		allow_move = false;
 	}
 

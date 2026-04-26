@@ -83,10 +83,10 @@ const IOC_IN =			0x80000000;	/* copy in parameters */
 const IOC_INOUT =		(IOC_IN|IOC_OUT);
 
 macro ulong @ioctl_IO   ($x,$y)		 @const  => (IOC_VOID | (($x)<<8)|y);
-macro ulong @ioctl_IOR  ($x,$y,$Type)   @const  => (IOC_OUT  |((usz)($Type.sizeof&IOCPARM_MASK)<<16)|(($x)<<8)|$y);
-macro ulong @ioctl_IOW  ($x,$y,$Type)   @const  => (IOC_IN   |((usz)($Type.sizeof&IOCPARM_MASK)<<16)|(($x)<<8)|$y);
+macro ulong @ioctl_IOR  ($x,$y,$Type)   @const  => (IOC_OUT  |((usz)($Type::size&IOCPARM_MASK)<<16)|(($x)<<8)|$y);
+macro ulong @ioctl_IOW  ($x,$y,$Type)   @const  => (IOC_IN   |((usz)($Type::size&IOCPARM_MASK)<<16)|(($x)<<8)|$y);
 /* this should be _IORW, but stdio got there first */
-macro ulong @ioctl_IOWR ($x,$y,$Type)   @const  => (IOC_INOUT|((usz)($Type.sizeof&IOCPARM_MASK)<<16)|(($x)<<8)|$y);
+macro ulong @ioctl_IOWR ($x,$y,$Type)   @const  => (IOC_INOUT|((usz)($Type::size&IOCPARM_MASK)<<16)|(($x)<<8)|$y);
 macro ulong @ioctl_ION  ($x,$y,$n)	  @const  => (IOC_INOUT|((($n)&IOCPARM_MASK)<<16)|(($x)<<8)|y);
 
 // https://github.com/bminor/glibc/blob/master/sysdeps/unix/sysv/linux/sys/epoll.h

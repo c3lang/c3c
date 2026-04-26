@@ -2,11 +2,12 @@ module compiler_rt;
 
 macro bitcast(expr, $Type) @local
 {
-	$if $Type.alignof <= $alignof(expr):
+	var $r = $reflect(expr);
+	$if $Type::alignment <= $r.alignment:
 		return *($Type*)&expr;
 	$else
 		$Type x @noinit;
-		$$memcpy(&x, &expr, $sizeof(expr), false, $Type.alignof, $alignof(expr));
+		$$memcpy(&x, &expr, @sizeof(expr), false, $Type::alignment, $r.alignment);
 		return x;
 	$endif
 }
@@ -465,7 +466,7 @@ macro fixuint(a) @private
 	int exponent = (int)((abs >> SIGNIFICANT_BITS) - EXPONENT_BIAS);
 	$Rep significand = (abs & SIGNIFICANT_MASK) | IMPLICIT_BIT;
 	if (sign == -1 || exponent < 0) return 0ULL;
-	if ((uint)exponent >= uint128.sizeof * 8) return ~0ULL;
+	if ((uint)exponent >= uint128::size * 8) return ~0ULL;
 	if (exponent < SIGNIFICANT_BITS) return (uint128)significand >> (SIGNIFICANT_BITS - exponent);
 	return (uint128)significand << (exponent - SIGNIFICANT_BITS);
 }
@@ -509,7 +510,7 @@ macro fixint(a) @private
 	int exponent = (int)((abs >> SIGNIFICANT_BITS) - EXPONENT_BIAS);
 	$Rep significand = (abs & SIGNIFICANT_MASK) | IMPLICIT_BIT;
 	if (exponent < 0) return 0;
-	if ((uint)exponent >= uint128.sizeof * 8) return sign == 1 ? int128.max : int128.min;
+	if ((uint)exponent >= uint128::size * 8) return sign == 1 ? int128::max : int128::min;
 
 	if (exponent < SIGNIFICANT_BITS) return sign * ((int128)significand >> (SIGNIFICANT_BITS - exponent));
 	return sign * ((int128)significand << (exponent - SIGNIFICANT_BITS));

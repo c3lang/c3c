@@ -95,6 +95,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_OPTIONAL:
 			UNREACHABLE_VOID
 		case TYPE_VOID:
@@ -501,6 +502,7 @@ RETRY:
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_OPTIONAL:
 			UNREACHABLE_VOID
 		case TYPE_VOID:
@@ -666,6 +668,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 			case CONST_SLICE:
 			case CONST_TYPEID:
 			case CONST_MEMBER:
+			case CONST_REFLECTION:
 			case CONST_INITIALIZER:
 			case CONST_UNTYPED_LIST:
 			case CONST_BYTES:

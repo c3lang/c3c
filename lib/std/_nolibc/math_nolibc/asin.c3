@@ -46,7 +46,7 @@ fn double _asin(double x) @weak @cname("asin") @nostrip
 				/* asin(1) = +-pi/2 with inexact */
 				return x * PIO2_HI + 0x1p-120f;
 			}
-			return double.nan;
+			return double::nan;
 		/* |x| < 0.5 */
 		case ix < 0x3fe00000:
 		     	/* if 0x1p-1022 <= |x| < 0x1p-26, avoid raising underflow */
@@ -115,7 +115,7 @@ fn float _asinf(float x) @weak @cname("asinf") @nostrip
 				/* asin(+-1) = +-pi/2 with inexact */
 				return x * (float)PIO2 + 0x1p-120f;
 			}
-			return float.nan;
+			return float::nan;
 		/* |x| < 0.5 */
 		case ix < 0x3f000000:
 		     	/* if 0x1p-126 <= |x| < 0x1p-12, avoid raising underflow */

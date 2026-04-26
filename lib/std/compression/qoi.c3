@@ -139,7 +139,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 
 	// allocate memory for encoded data (output)
 	// header + chunk tag and RGB(A) data for each pixel + end of stream
-	sz max_size = Header.sizeof + (sz)pixels + (sz)image_size + END_OF_STREAM.len;
+	sz max_size = Header::size + (sz)pixels + (sz)image_size + END_OF_STREAM.len;
 	char[] output = alloc::alloc_array(allocator, char, max_size); // no need to init
 	defer catch alloc::free(allocator, output);
 
@@ -152,7 +152,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 		.colorspace = desc.colorspace
 	};
 
-	uint pos = Header.sizeof; 	// Current position in output
+	uint pos = Header::size; 	// Current position in output
 	uint loc;					// Current position in image (top-left corner)
 	uint loc_end = image_size - desc.channels; // End of image data
 	char run_length = 0; 		// Length of the current run
@@ -283,7 +283,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels channels = AUTO) @nodiscard
 {
 	// check input data
-	if (data.len < Header.sizeof + END_OF_STREAM.len) return INVALID_DATA~;
+	if (data.len < Header::size + END_OF_STREAM.len) return INVALID_DATA~;
 
 	// get header
 	Header* header = (Header*)data.ptr;
@@ -305,7 +305,7 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	ulong pixels = (ulong)width * (ulong)height;
 	if (pixels > PIXELS_MAX) return TOO_MANY_PIXELS~;
 
-	uint pos = Header.sizeof; 	// Current position in data
+	uint pos = Header::size; 	// Current position in data
 	uint loc;					// Current position in image (top-left corner)
 	char run_length = 0; 		// Length of the current run
 	char tag;					// Current chunk tag
@@ -460,7 +460,7 @@ bitstruct OpRun : char
 macro @extract($Type, char[] data, uint* pos)
 {
 	// slice data, then double cast
-	$Type* chunk = ($Type*)data[*pos : $Type.sizeof].ptr;
-	*pos += $Type.sizeof;
+	$Type* chunk = ($Type*)data[*pos : $Type::size].ptr;
+	*pos += $Type::size;
 	return chunk;
 }

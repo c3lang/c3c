@@ -21,19 +21,19 @@ macro foo_c(...)
 
 macro foo2(...)
 {
-	$vaconst[0];
+	var $a = $vaarg[0]; // #error: Expected a compile time constant value assigned to $a.
 }
 
 macro foo3(...)
 {
-	$vatype[0] a;
+	$typefrom($vaarg[0]) a; // #error: Expected a constant string or typeid value
 }
 fn void main()
 {
 	foo(1, -1, 3141, 999 + 1);
 	int x;
-	foo2(x); // #error: This argument needs to be a compile time constant
-	foo3(3); // #error: The argument was not a type.
+	foo2(x);
+	foo3(3);
 	foo_a(1, -1, 3141, 999 + 1);
 	foo_b(1, -1, 3141, 999 + 1);
 	foo_c(1, -1, 3141, 999 + 1);
