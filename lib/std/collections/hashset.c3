@@ -486,7 +486,7 @@ fn void hashset_resize(HashSet* self, int new_capacity) @private
 	int old_capacity = (int)old_table.len;
 	if (old_capacity == MAXIMUM_CAPACITY)
 	{
-		self.threshold = sz::max;
+		self.threshold = int::max;
 		return;
 	}
 	Entry*[] new_table = alloc::new_array(self.allocator, Entry*, new_capacity);

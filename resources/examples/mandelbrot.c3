@@ -2,7 +2,7 @@ module mandelbrot;
 
 extern fn int atoi(char *s);
 extern fn int printf(char *s, ...);
-extern fn void putchar(int c);
+extern fn int putchar(int c);
 
 fn int main(int argc, char **argv)
 {

@@ -208,6 +208,8 @@ fn bool NativeThread.set_priority(&self, ThreadPriority priority)
 {
 	if (priority == DEFAULT) priority = NORMAL;
 	$switch:
+		$case env::EMSCRIPTEN:
+			return true;
 		$case ANDROID_LINUX:
 			if (priority == REALTIME)
 			{

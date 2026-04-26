@@ -488,7 +488,7 @@ fn void linkedhashset_resize(LinkedHashSet* set, int new_capacity) @private
 
 	if (old_capacity >= int::max / 2)
 	{
-		set.threshold = sz::max;
+		set.threshold = int::max;
 		return;
 	}
 
