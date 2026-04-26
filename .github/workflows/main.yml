@@ -498,7 +498,7 @@ jobs:
           context: ./docker
           build-args: |
             LLVM_VERSION=${{ matrix.llvm_version }}
-            UBUNTU_VERSION=22.04
+            UBUNTU_VERSION=24.04
             CMAKE_VERSION=3.20.0
           tags: c3c-builder:latest
           outputs: type=docker,dest=/tmp/c3c-builder.tar
