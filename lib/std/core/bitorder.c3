@@ -168,7 +168,7 @@ macro write(x, bytes, $Type)
 		$default:
 			ptr = bytes[..].ptr;
 	$endswitch
-	mem::store(($Type*)ptr, ($Type) { .val = x }, 1);
+	mem::store(($typeof(x)*)ptr, bitcast(x, $Type).val, 1);
 }
 
 macro bool is_bitorder($Type)

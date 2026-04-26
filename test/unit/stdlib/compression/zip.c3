@@ -910,7 +910,8 @@ fn void test_zip_extract()
 		}
 
 		ZipArchive read_zip = zip::open(mem, zip_path, "r")!!;
-		if (catch err = read_zip.extract(out_dir)) {
+		if (catch err = read_zip.extract(out_dir))
+		{
 			io::printfn("Extract error occurred: %s", err);
 		}
 		(void)read_zip.close();
