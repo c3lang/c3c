@@ -146,6 +146,35 @@ jobs:
           cd resources/examples/embedded/riscv-qemu
           make C3C_PATH=../../../../build/ run
 
+      - name: Bundle & Upload (Linux)
+        run: |
+          bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-${{matrix.build_type}}" "tar"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-linux-${{matrix.build_type}}
+          path: c3-linux-${{matrix.build_type}}.tar.gz
+
+  test-emscripten-32bit:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug]
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: c3-linux-${{matrix.build_type}}
+          path: bin
+
+      - name: Extract C3
+        run: |
+          tar -xzf bin/c3-linux-${{matrix.build_type}}.tar.gz -C bin
+          # The package_build.sh seems to create a 'c3' directory inside the tar
+          chmod +x bin/c3/c3c
+
       - name: Setup Emscripten
         run: |
           git clone https://github.com/emscripten-core/emsdk.git
@@ -156,15 +185,7 @@ jobs:
           echo "$GITHUB_WORKSPACE/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
       - name: Run Emscripten Tests
-        run: ./scripts/tools/emscripten_tests.sh "./build/c3c"
-
-      - name: Bundle & Upload (Linux)
-        run: |
-          bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-${{matrix.build_type}}" "tar"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: c3-linux-${{matrix.build_type}}
-          path: c3-linux-${{matrix.build_type}}.tar.gz
+        run: ./scripts/tools/emscripten_tests.sh "./bin/c3/c3c"
 
   build-linux-musl-static:
     runs-on: ubuntu-latest
