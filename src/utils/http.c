@@ -216,11 +216,10 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 typedef long long curl_off_t;
 #endif
 
-static void internal_print_progress(const char *label, int percent)
+static void internal_print_progress(const char *label, int percent, int *state)
 {
-	static int last_percent = -1;
-	if (percent == last_percent) return;
-	last_percent = percent;
+	if (percent == *state) return;
+	*state = percent;
 
 	if (percent > 100) percent = 100;
 	int width = 40;
@@ -264,11 +263,12 @@ static void internal_print_progress(const char *label, int percent)
 static int curl_xfer_cb(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
                          curl_off_t ultotal, curl_off_t ulnow)
 {
-	(void)ultotal; (void)ulnow; (void)clientp;
+	(void)ultotal; (void)ulnow;
+	int *state = (int *)clientp;
 	if (dltotal > 0)
 	{
 		int percent = (int)((dlnow * 100) / dltotal);
-		internal_print_progress("Downloading", percent);
+		internal_print_progress("Downloading", percent, state);
 	}
 	return 0;
 }
@@ -299,11 +299,13 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_FAILONERROR, 1L);
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
 	ptr_curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, file);
+	int state = -1;
 
 	if (show_progress)
 	{
 		ptr_curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 0L);
 		ptr_curl_easy_setopt(curl_handle, CURLOPT_XFERINFOFUNCTION, curl_xfer_cb);
+		ptr_curl_easy_setopt(curl_handle, CURLOPT_XFERINFODATA, &state);
 	}
 	else
 	{
