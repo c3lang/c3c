@@ -642,10 +642,17 @@ RETRY:
 		case DECL_MACRO:
 		case DECL_GENERIC:
 		case DECL_GENERIC_INSTANCE:
-		case DECL_DECLARRAY:
 		case DECL_CONTRACT:
 			assert_print_line(decl->loc);
 			error_exit("Unexpected liveness checking of expr decl %d.", decl->decl_kind);
+		case DECL_DECLARRAY:
+		{
+			FOREACH(Decl *, d, decl->decls)
+			{
+				sema_trace_decl_liveness(d);
+			}
+			return;
+		}
 		case DECL_FNTYPE:
 			sema_trace_func_liveness(&decl->fntype_decl.signature);
 			return;

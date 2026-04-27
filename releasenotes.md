@@ -55,6 +55,7 @@
 - Improve error message on unsupported typeid runtime access at runtime. #3170
 - Added support for Emscripten.
 - Replace `$vacount` by `$vaarg.len`, replace `$vasplat` by `...$vaarg`.
+- `$vaarg` behaves as `$vaexpr`.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
@@ -111,6 +112,7 @@
 - Compiler assert in certain cases with ?? and void returns. #3168
 - Bug in compiler-rt for i128 shift.
 - LinkedBlockingQueue.push_timeout did not work correctly.
+- Splat into vaarg macro, where vaarg is not used #2782.
 
 ## 0.7.11 Change list
 

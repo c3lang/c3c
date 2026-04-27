@@ -6312,6 +6312,16 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 	{
 		// Skip vararg
 		if (!val) continue;
+		// Needed for splat
+		if (val->decl_kind == DECL_DECLARRAY)
+		{
+			FOREACH (Decl *, d, val->decls)
+			{
+				llvm_emit_local_decl(c, d, be_value);
+			}
+			continue;
+		}
+		ASSERT_SPAN(val, val->decl_kind == DECL_VAR);
 		if (val->var.no_init && val->var.defaulted) continue;
 		// In case we have a constant, we never do an emit. The value is already folded.
 		switch (val->var.kind)

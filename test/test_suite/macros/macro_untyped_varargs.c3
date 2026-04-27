@@ -16,7 +16,7 @@ macro foo_b(...)
 
 macro foo_c(...)
 {
-	$vaarg[100]; // #error: varargs exist
+	$vaarg[100]; // #error: vaargs exist
 }
 
 macro foo2(...)

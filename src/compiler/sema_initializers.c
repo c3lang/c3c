@@ -587,7 +587,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 
 	if (init_expressions)
 	{
-		expr->initializer_list = init_expressions = sema_expand_vasplat_exprs(context, init_expressions);
+		expr->initializer_list = init_expressions = sema_expand_vasplat_exprs(context, init_expressions, NULL);
 	}
 	unsigned init_expression_count = vec_size(init_expressions);
 

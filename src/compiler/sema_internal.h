@@ -108,7 +108,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
 void sema_add_methods_to_decl_stack(SemaContext *context, Decl *decl);
 
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool call_var_optional, bool *no_match_ref);
-Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref);
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr);
 
 Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner, bool report_missing);
 Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing);
