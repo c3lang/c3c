@@ -92,7 +92,7 @@ macro bool @in($needle, ...) @builtin @const
 macro @_all_const_in(...) <NeedleType> @const @local
 {
 	$for int $i = 0; $i < $vaarg.len; $i++:
-		$if $defined(NeedleType a = $vaarg[$i]) &&& !$defined(NeedleType a = $vaarg[$i]):
+		$if $defined(NeedleType a = $vaarg[$i]) &&& !$defined(NeedleType $a = $vaarg[$i]):
 			return false;
 		$endif
 	$endfor
