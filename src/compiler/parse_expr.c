@@ -448,18 +448,19 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSE
 }
 
 /**
- * vasplat ::= CT_VASPLAT ('[' range_expr ']')?
+ * vasplat ::= ...$vaarg ('[' range_expr ']')?
  */
 Expr *parse_vasplat(ParseContext *c)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_VASPLAT);
-	advance_and_verify(c, TOKEN_CT_VASPLAT);
+	advance_and_verify(c, TOKEN_ELLIPSIS);
+	advance_and_verify(c, TOKEN_CT_VAARG);
 	if (try_consume(c, TOKEN_LBRACKET))
 	{
 		if (!parse_range(c, &expr->vasplat_expr)) return poisoned_expr;
 		if (expr->vasplat_expr.range_type == RANGE_SINGLE_ELEMENT)
 		{
-			PRINT_ERROR_AT(expr, "$vasplat expected a range.");
+			PRINT_ERROR_AT(expr, "...$vaarg expected a range.");
 			return poisoned_expr;
 		}
 		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
@@ -492,7 +493,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 			RANGE_EXTEND_PREV(expr);
 			goto DONE;
 		}
-		if (vasplat && tok_is(c, TOKEN_CT_VASPLAT))
+		if (vasplat && tok_is(c, TOKEN_ELLIPSIS) && peek(c) == TOKEN_CT_VAARG)
 		{
 			ASSIGN_EXPR_OR_RET(expr, parse_vasplat(c), false);
 			goto DONE;
@@ -544,7 +545,7 @@ bool parse_init_list(ParseContext *c, Expr ***result, TokenType param_end, bool 
 			RANGE_EXTEND_PREV(expr);
 			goto DONE;
 		}
-		if (vasplat && tok_is(c, TOKEN_CT_VASPLAT))
+		if (vasplat && tok_is(c, TOKEN_ELLIPSIS) && peek(c) == TOKEN_CT_VAARG)
 		{
 			ASSIGN_EXPR_OR_RET(expr, parse_vasplat(c), false);
 			goto DONE;
@@ -721,7 +722,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceLoc *lhs_star
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	const char *end = c->lexer.lexing_start - 1;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_CT_ARG))
+	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_VAARG))
 	{
 		Expr *expr = expr_new(EXPR_STRINGIFY, start_span);
 		expr->inner_expr = inner;
@@ -1312,20 +1313,27 @@ static Expr *parse_ct_feature(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 }
 
 /**
- * ct_arg ::= VACOUNT | VAARG '(' expr ')'
+ * ct_arg ::= VAARG ('.' len) | ('[' expr ']')
  */
-static Expr *parse_ct_arg(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
+static Expr *parse_vaarg(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_ARG);
-	TokenType type = expr->ct_arg_expr.type = c->tok;
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_VAARG);
 	advance(c);
-	if (type != TOKEN_CT_VACOUNT)
+	if (try_consume(c, TOKEN_DOT))
 	{
-		CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_expr);
-		ASSIGN_EXPRID_OR_RET(expr->ct_arg_expr.arg, parse_expr(c), poisoned_expr);
-		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
+		if (!tok_is(c, TOKEN_IDENT) || symstr(c) != kw_len)
+		{
+			RETURN_PRINT_ERROR_HERE("Expected '.len' after '%@'");
+		}
+		advance(c);
+		expr->expr_kind = EXPR_VACOUNT;
+		RANGE_EXTEND_PREV(expr);
+		return expr;
 	}
+	CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -2118,6 +2126,5 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_TERNARY] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
-		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VACOUNT] = { parse_ct_arg, NULL, PREC_NONE },
+		[TOKEN_CT_VAARG] = { parse_vaarg, NULL, PREC_NONE },
 };

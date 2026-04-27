@@ -32,7 +32,7 @@ macro promote_int(x)
 
 macro @all_const(...) @const
 {
-	$for int $i = 0; $i < $vacount; $i++:
+	$for int $i = 0; $i < $vaarg.len; $i++:
 		$if !$reflect($vaarg[$i]).is_const:
 			return false;
 		$endif

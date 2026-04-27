@@ -69,7 +69,7 @@ fn LinkedHashMap* LinkedHashMap.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPAC
 
 <*
  @param [&inout] allocator : "The allocator to use"
- @require $vacount % 2 == 0 : "There must be an even number of arguments provided for keys and values"
+ @require $vaarg.len % 2 == 0 : "There must be an even number of arguments provided for keys and values"
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Map was already initialized"
@@ -78,14 +78,14 @@ fn LinkedHashMap* LinkedHashMap.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPAC
 macro LinkedHashMap* LinkedHashMap.init_with_key_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
-	$for var $i = 0; $i < $vacount; $i += 2:
+	$for var $i = 0; $i < $vaarg.len; $i += 2:
 		self.set($vaarg[$i], $vaarg[$i + 1]);
 	$endfor
 	return self;
 }
 
 <*
- @require $vacount % 2 == 0 : "There must be an even number of arguments provided for keys and values"
+ @require $vaarg.len % 2 == 0 : "There must be an even number of arguments provided for keys and values"
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Map was already initialized"
@@ -93,7 +93,7 @@ macro LinkedHashMap* LinkedHashMap.init_with_key_values(&self, Allocator allocat
 *>
 macro LinkedHashMap* LinkedHashMap.tinit_with_key_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.init_with_key_values(tmem, $vasplat, capacity: capacity, load_factor: load_factor);
+	return self.init_with_key_values(tmem, ...$vaarg, capacity: capacity, load_factor: load_factor);
 }
 
 <*

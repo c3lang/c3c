@@ -33,7 +33,8 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_COND: return "cond";
 		case EXPR_CONST: return "const";
 		case EXPR_TYPECALL: return "typecall";
-		case EXPR_CT_ARG: return "ct_arg";
+		case EXPR_VAARG: return "vaarg";
+		case EXPR_VACOUNT: return "vacount";
 		case EXPR_CT_FEATURE: return "ct_feature";
 		case EXPR_CT_DEFINED: return "ct_defined";
 		case EXPR_CT_EVAL: return "ct_eval";
@@ -488,7 +489,6 @@ RETRY:
 		case EXPR_TYPEINFO:
 		case EXPR_HASH_IDENT:
 		case EXPR_POISONED:
-		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_NAMED_ARGUMENT:
@@ -838,7 +838,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
 		case EXPR_TYPECALL:
-		case EXPR_CT_ARG:
 		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:

@@ -797,7 +797,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CATCH:
 		case EXPR_COND:
 		case EXPR_POISONED:
-		case EXPR_CT_ARG:
 		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:

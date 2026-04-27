@@ -54,6 +54,7 @@
 - `$vaconst`, `$vaexpr` and `$vatype` removed.
 - Improve error message on unsupported typeid runtime access at runtime. #3170
 - Added support for Emscripten.
+- Replace `$vacount` by `$vaarg.len`, replace `$vasplat` by `...$vaarg`.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

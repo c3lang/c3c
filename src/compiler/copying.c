@@ -375,12 +375,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:
 		case EXPR_OPERATOR_CHARS:
+		case EXPR_VACOUNT:
 			return expr;
 		case EXPR_VASPLAT:
 			copy_range(c, &expr->vasplat_expr);
-			return expr;
-		case EXPR_CT_ARG:
-			MACRO_COPY_EXPRID(expr->ct_arg_expr.arg);
 			return expr;
 		case EXPR_POINTER_OFFSET:
 			MACRO_COPY_EXPRID(expr->pointer_offset_expr.offset);
@@ -508,6 +506,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_MAYBE_DEREF:
 		case EXPR_CT_REFLECT:
 		case EXPR_CT_FEATURE:
+		case EXPR_VAARG:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
 		case EXPR_MAKE_ANY:

@@ -42,12 +42,12 @@ interface Logger
 	fn void log(LogPriority priority, LogCategory category, LogTag tag, String file, String function, int line, String fmt, any[] args);
 }
 
-macro void verbose(String fmt, ..., LogCategory category = default_category) => call_log(VERBOSE, category, fmt, $vasplat);
-macro void debug(String fmt, ..., LogCategory category = default_category) => call_log(DEBUG, category, fmt, $vasplat);
-macro void info(String fmt, ..., LogCategory category = default_category) => call_log(INFO, category, fmt, $vasplat);
-macro void warn(String fmt, ..., LogCategory category = default_category) => call_log(WARN, category, fmt, $vasplat);
-macro void error(String fmt, ..., LogCategory category = default_category) => call_log(ERROR, category, fmt, $vasplat);
-macro void critical(String fmt, ..., LogCategory category = default_category) => call_log(CRITICAL, category, fmt, $vasplat);
+macro void verbose(String fmt, ..., LogCategory category = default_category) => call_log(VERBOSE, category, fmt, ...$vaarg);
+macro void debug(String fmt, ..., LogCategory category = default_category) => call_log(DEBUG, category, fmt, ...$vaarg);
+macro void info(String fmt, ..., LogCategory category = default_category) => call_log(INFO, category, fmt, ...$vaarg);
+macro void warn(String fmt, ..., LogCategory category = default_category) => call_log(WARN, category, fmt, ...$vaarg);
+macro void error(String fmt, ..., LogCategory category = default_category) => call_log(ERROR, category, fmt, ...$vaarg);
+macro void critical(String fmt, ..., LogCategory category = default_category) => call_log(CRITICAL, category, fmt, ...$vaarg);
 
 macro void @category_scope(LogCategory new_category; @body)
 {

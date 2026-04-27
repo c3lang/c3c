@@ -116,7 +116,7 @@ macro void @end_benchmark() @builtin
 
 macro void @kill_benchmark(String format, ...) @builtin
 {
-	@log_benchmark(format, $vasplat);
+	@log_benchmark(format, ...$vaarg);
 	bench_context.stop = true;
 }
 

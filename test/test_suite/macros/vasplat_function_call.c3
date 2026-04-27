@@ -4,7 +4,7 @@ alias IList = List{int};
 fn IList IList.newAbc(&self)
 {
 	IList l;
-	l.init(mem, $vasplat); // #error: can only be used inside
+	l.init(mem, ...$vaarg); // #error: can only be used inside
 	return l;
 }
 

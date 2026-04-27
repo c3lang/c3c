@@ -281,7 +281,7 @@ macro bool @has_same(#a, #b, ...) @const
 	$if $type_a != @typeid(#b):
 		return false;
 	$endif
-	$for var $i = 0; $i < $vacount; $i++:
+	$for var $i = 0; $i < $vaarg.len; $i++:
 		$if @typeid($vaarg[$i]) != $type_a:
 			return false;
 		$endif

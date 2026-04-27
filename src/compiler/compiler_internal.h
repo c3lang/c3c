@@ -1322,7 +1322,6 @@ struct Expr_
 		ExprCatch catch_expr;                       // 24
 		Expr** cond_expr;                           // 8
 		ExprConst const_expr;                       // 32
-		ExprCtArg ct_arg_expr;
 		Expr** ct_concat;
 		ExprOtherContext expr_other_context;
 		ExprIdentifierRaw ct_ident_expr;            // 24
@@ -3934,6 +3933,7 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_LENGTHOF:
 		case EXPR_MAYBE_DEREF:
 		case EXPR_CT_REFLECT:
+		case EXPR_VAARG:
 			expr_set_loc(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
@@ -3952,7 +3952,6 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
-		case EXPR_CT_ARG:
 		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
@@ -3996,6 +3995,7 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_UNARY:
 		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_VASPLAT:
+		case EXPR_VACOUNT:
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TYPECALL:
