@@ -76,7 +76,7 @@ fn LinkedHashSet* LinkedHashSet.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPAC
 macro LinkedHashSet* LinkedHashSet.init_with_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
-	$for var $i = 0; $i < $vacount; $i++:
+	$for var $i = 0; $i < $vaarg.len; $i++:
 		self.add($vaarg[$i]);
 	$endfor
 	return self;
@@ -90,7 +90,7 @@ macro LinkedHashSet* LinkedHashSet.init_with_values(&self, Allocator allocator, 
 *>
 macro LinkedHashSet* LinkedHashSet.tinit_with_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.init_with_values(tmem, $vasplat, capacity: capacity, load_factor: load_factor);
+	return self.init_with_values(tmem, ...$vaarg, capacity: capacity, load_factor: load_factor);
 }
 
 <*

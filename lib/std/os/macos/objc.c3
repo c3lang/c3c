@@ -43,7 +43,7 @@ extern fn ObjcSelector sel_getUid(ZString);
 
 macro msg_send(id, $FunctionType, ZString $selector, ...)
 {
-	return (($FunctionType)&msgSend)((ObjcId)id, sel_getUid($selector), $vasplat);
+	return (($FunctionType)&msgSend)((ObjcId)id, sel_getUid($selector), ...$vaarg);
 }
 
 macro void @autoreleasepool(;@body())

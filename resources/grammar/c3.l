@@ -84,8 +84,8 @@ typedef struct {
 "$typefrom"     { return(CT_TYPEFROM); }
 "$typeof"       { return(CT_TYPEOF); }
 "$vaarg"        { return(CT_VAARG); }
-"$vacount"      { return(CT_VACOUNT); }
-"$vasplat"      { return(CT_VASPLAT); }
+"$vaarg.len"      { return(CT_VACOUNT); }
+"...$vaarg"      { return(CT_VASPLAT); }
 "@pure"         { return(AT_PURE); }
 "@inline"       { return(AT_INLINE); }
 "@noinline"     { return(AT_NOINLINE); }

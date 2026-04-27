@@ -221,6 +221,6 @@ macro le(left, right)
 macro void print_panicf(format, ...) @local
 {
 	runtime::test_context.assert_print_backtrace = false;
-	builtin::panicf(format, $$FILE, $$FUNC, $$LINE, $vasplat);
+	builtin::panicf(format, $$FILE, $$FUNC, $$LINE, ...$vaarg);
 }
 

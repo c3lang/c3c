@@ -77,11 +77,11 @@ macro sz @bitsizeof(#expr) @builtin @const => @sizeof(#expr) * 8u;
  Compile-time check for whether a set of constants contains a certain expression.
 
  @param $needle : "The expression whose value should be located."
- @require @_all_const_in{$typeof($needle)}($vasplat) : "All values must be constant"
+ @require @_all_const_in{$typeof($needle)}(...$vaarg) : "All values must be constant"
 *>
 macro bool @in($needle, ...) @builtin @const
 {
-	$for var $x = 0; $x < $vacount; $x++:
+	$for var $x = 0; $x < $vaarg.len; $x++:
 		$assert $defined($needle == $vaarg[$x])
 			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof($needle), $typeof($vaarg[$x]);
 		$if $needle == $vaarg[$x]: return true; $endif
@@ -91,7 +91,7 @@ macro bool @in($needle, ...) @builtin @const
 
 macro @_all_const_in(...) <NeedleType> @const @local
 {
-	$for int $i = 0; $i < $vacount; $i++:
+	$for int $i = 0; $i < $vaarg.len; $i++:
 		$if $defined(NeedleType a = $vaarg[$i]) &&& !$reflect($vaarg[$i]).is_const:
 			return false;
 		$endif
@@ -163,7 +163,7 @@ macro void always_assert(bool #value, String $fmt = "", ...) @builtin @format(1)
 		$if $fmt == "":
 			abort(@sprintf("Violated assert '%s'.", $stringify(#value)));
 		$else
-			abort(@sprintf("Violated assert '%s': %s", $stringify(#value), $fmt), $vasplat);
+			abort(@sprintf("Violated assert '%s': %s", $stringify(#value), $fmt), ...$vaarg);
 		$endif
 	}
 }
@@ -296,7 +296,7 @@ fn void default_panic(String message, String file, String function, int line) @i
 
 macro void abort(String string = "Unrecoverable error reached", ...) @format(0) @builtin @noreturn
 {
-	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
+	panicf(string, $$FILE, $$FUNC, $$LINE, ...$vaarg);
 	$$trap();
 }
 
@@ -356,7 +356,7 @@ fn void panicf(String fmt, String file, String function, int line, args...)
 macro void unreachable(String string = "Unreachable statement reached.", ...) @builtin @noreturn
 {
 	$if env::COMPILER_SAFE_MODE:
-	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
+	panicf(string, $$FILE, $$FUNC, $$LINE, ...$vaarg);
 	$else
 	$$unreachable();
 	$endif
@@ -368,16 +368,16 @@ macro void unreachable(String string = "Unreachable statement reached.", ...) @b
 *>
 macro void unsupported(String string = "Unsupported function invoked") @builtin @noreturn
 {
-	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
+	panicf(string, $$FILE, $$FUNC, $$LINE, ...$vaarg);
 	$$unreachable();
 }
 
 <*
- @require $defined(uptr[] x = { $vasplat }) : "Arguments must be convertible to uptr"
+ @require $defined(uptr[] x = { ...$vaarg }) : "Arguments must be convertible to uptr"
 *>
 macro uptr @syscall(...) @builtin
 {
-	return $$syscall($vasplat);
+	return $$syscall(...$vaarg);
 }
 
 
@@ -533,7 +533,7 @@ macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write =
 *>
 macro swizzle(v, ...) @builtin
 {
-	return $$swizzle(v, $vasplat);
+	return $$swizzle(v, ...$vaarg);
 }
 
 
@@ -546,7 +546,7 @@ macro swizzle(v, ...) @builtin
 *>
 macro swizzle2(v, v2, ...) @builtin
 {
-	return $$swizzle2(v, v2, $vasplat);
+	return $$swizzle2(v, v2, ...$vaarg);
 }
 
 

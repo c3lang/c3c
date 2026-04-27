@@ -4,7 +4,7 @@ import std::io;
 
 macro test(start, ...)
 {
-    $for var $i = 0; $i < $vacount; $i++:
+    $for var $i = 0; $i < $vaarg.len; $i++:
         var $Type = $vaarg[$i];
         for ($Type i = ($Type)start; i < 5; i+=2)
         {

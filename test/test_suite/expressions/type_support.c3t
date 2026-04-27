@@ -5,7 +5,7 @@ import std::io;
 
 macro print_type_info(...)
 {
-    $for var $i = 0; $i < $vacount; $i++:
+    $for var $i = 0; $i < $vaarg.len; $i++:
         var $Type = $vaarg[$i];
         io::printfn("type: %s", $Type::name);
         io::printfn("%s.sizeof = %d", $Type::name, $Type::size);

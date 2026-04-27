@@ -71,7 +71,8 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 
 static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr, bool report_missing);
-static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr, bool *no_match_ref);
+static inline bool sema_expr_analyse_vacount(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_vaarg(SemaContext *context, Type *infer_type, Expr *expr, bool *no_match_ref);
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_reflect(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_analyse_expr_rhs_param(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
@@ -685,7 +686,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_COMPILER_CONST:
 		case EXPR_COND:
 		case EXPR_CONTRACT:
-		case EXPR_CT_ARG:
 		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
@@ -849,7 +849,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_COMPILER_CONST:
 		case EXPR_COND:
 		case EXPR_CONST:
-		case EXPR_CT_ARG:
 		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
@@ -862,6 +861,8 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_LAST_FAULT:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_MAKE_ANY:
+		case EXPR_MAYBE_DEREF:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NAMED_EVAL_ARGUMENT:
 		case EXPR_NOP:
@@ -882,8 +883,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_MAKE_ANY:
-		case EXPR_MAYBE_DEREF:
 			return false;
 	}
 	UNREACHABLE
@@ -11524,8 +11523,8 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 					success = false;
 				}
 				break;
-			case EXPR_CT_ARG:
-				if (!sema_expr_analyse_ct_arg(context, NULL, main_expr, &failed))
+			case EXPR_VAARG:
+				if (!sema_expr_analyse_vaarg(context, NULL, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
@@ -11566,6 +11565,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_MEMBER_GET:
 			case EXPR_MEMBER_SET:
 			case EXPR_SPLAT:
+			case EXPR_VACOUNT:
 			case EXPR_EXT_TRUNC:
 			case EXPR_INT_TO_BOOL:
 			case EXPR_VECTOR_TO_ARRAY:
@@ -11603,70 +11603,69 @@ FAIL:
 	return true;
 }
 
-static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr, bool *no_match_ref)
+static inline bool sema_expr_analyse_vaarg(SemaContext *context, Type *infer_type, Expr *expr, bool *no_match_ref)
 {
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
-	TokenType type = expr->ct_arg_expr.type;
 	if (!context->macro_has_vaargs)
 	{
-		RETURN_SEMA_ERROR(expr, "'%s' can only be used inside of a macro with untyped vaargs.", token_type_to_string(type));
+		RETURN_SEMA_ERROR(expr, "'$vaarg' can only be used inside of a macro with untyped vaargs.");
 	}
-	switch (type)
+	unsigned index = 0;
+	// A normal argument, this means we only evaluate it once.
+	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, expr->inner_expr, &index), false);
+	index++;
+	ASSERT_SPAN(expr, index < 0x10000);
+	Decl *decl = NULL;
+	// Try to find the original param.
+	FOREACH(Decl *, val, context->macro_params)
 	{
-		case TOKEN_CT_VACOUNT:
-			expr_rewrite_const_int(expr, type_sz, vec_size(context->macro_varargs));
-			return true;
-		case TOKEN_CT_VAARG:
+		if (!val) continue;
+		if (val->var.va_index == index && val->var.kind == VARDECL_PARAM)
 		{
-			unsigned index = 0;
-			// A normal argument, this means we only evaluate it once.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), &index), false);
-
-			index++;
-			ASSERT_SPAN(expr, index < 0x10000);
-			Decl *decl = NULL;
-			// Try to find the original param.
-			FOREACH(Decl *, val, context->macro_params)
-			{
-				if (!val) continue;
-				if (val->var.va_index == index && val->var.kind == VARDECL_PARAM)
-				{
-					decl = val;
-					break;
-				}
-			}
-			// Not found, so generate a new.
-			if (!decl)
-			{
-				if (!sema_analyse_inferred_expr(context, infer_type, arg_expr, no_match_ref)) return false;
-				switch (sema_resolve_storage_type(context, arg_expr->type))
-				{
-					case STORAGE_ERROR:
-						return false;
-					case STORAGE_NORMAL:
-						break;
-					default:
-						if (!sema_cast_const(arg_expr))
-						{
-							RETURN_SEMA_ERROR(expr, "The vararg doesn't have a valid runtime type.");
-						}
-						break;
-				}
-				decl = decl_new_generated_var(arg_expr->type, expr_is_runtime_const(arg_expr) ? VARDECL_PARAM_CT : VARDECL_PARAM, arg_expr->loc);
-				decl->var.init_expr = arg_expr;
-				decl->var.va_index = (uint16_t)index;
-				vec_add(context->macro_params, decl);
-			}
-			// Replace with the identifier.
-			expr->expr_kind = EXPR_IDENTIFIER;
-			expr_resolve_ident(expr, decl);
-			ASSERT_SPAN(expr, expr->type);
-			return true;
+			decl = val;
+			break;
 		}
-		default:
-			UNREACHABLE
 	}
-	return false;
+	// Not found, so generate a new.
+	if (!decl)
+	{
+		if (!sema_analyse_inferred_expr(context, infer_type, arg_expr, no_match_ref)) return false;
+		switch (sema_resolve_storage_type(context, arg_expr->type))
+		{
+			case STORAGE_ERROR:
+				return false;
+			case STORAGE_NORMAL:
+				break;
+			default:
+				if (!sema_cast_const(arg_expr))
+				{
+					RETURN_SEMA_ERROR(expr, "The vararg doesn't have a valid runtime type.");
+				}
+				break;
+		}
+		decl = decl_new_generated_var(arg_expr->type,
+		                              expr_is_runtime_const(arg_expr) ? VARDECL_PARAM_CT : VARDECL_PARAM,
+		                              arg_expr->loc);
+		decl->var.init_expr = arg_expr;
+		decl->var.va_index = (uint16_t) index;
+		vec_add(context->macro_params, decl);
+	}
+	// Replace with the identifier.
+	expr->expr_kind = EXPR_IDENTIFIER;
+	expr_resolve_ident(expr, decl);
+	ASSERT_SPAN(expr, expr->type);
+	return true;
+}
+
+static inline bool sema_expr_analyse_vacount(SemaContext *context, Expr *expr)
+{
+	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
+	if (!context->macro_has_vaargs)
+	{
+		RETURN_SEMA_ERROR(expr, "'$vaarg.len' can only be used inside of a macro with untyped vaargs.");
+	}
+	expr_rewrite_const_int(expr, type_sz, vec_size(context->macro_varargs));
+	return true;
 }
 
 static inline bool sema_expr_analyse_maybe_deref(SemaContext *context, Expr *expr)
@@ -11714,9 +11713,9 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 	{
 		switch (inner->expr_kind)
 		{
-			case EXPR_CT_ARG:
+			case EXPR_VAARG:
 			{
-				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(inner->ct_arg_expr.arg), NULL), false);
+				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, inner->inner_expr, NULL), false);
 				inner = arg_expr;
 				continue;
 			}
@@ -11931,7 +11930,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_EMBED:
 			return sema_expr_analyse_embed(context, expr, false);
 		case EXPR_VASPLAT:
-			RETURN_SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");
+			RETURN_SEMA_ERROR(expr, "'...$vaarg' can only be used inside of macros.");
 		case EXPR_CT_REFLECT:
 			return sema_expr_analyse_ct_reflect(context, expr, NULL);
 		case EXPR_GENERIC_IDENT:
@@ -11940,8 +11939,10 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_lambda(context, NULL, expr);
 		case EXPR_CT_DEFINED:
 			return sema_expr_analyse_ct_defined(context, expr);
-		case EXPR_CT_ARG:
-			return sema_expr_analyse_ct_arg(context, NULL, expr, NULL);
+		case EXPR_VAARG:
+			return sema_expr_analyse_vaarg(context, NULL, expr, NULL);
+		case EXPR_VACOUNT:
+			return sema_expr_analyse_vacount(context, expr);
 		case EXPR_STRINGIFY:
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
 			return true;
@@ -12380,7 +12381,7 @@ IDENT_CHECK:;
 				RETURN_SEMA_ERROR(expr, "You cannot assign to a dereferenced optional.");
 			}
 			return true;
-		case EXPR_CT_ARG:
+		case EXPR_VAARG:
 			break;
 		case EXPR_RECAST:
 		case EXPR_CAST:
@@ -12471,6 +12472,7 @@ IDENT_CHECK:;
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_CT_REFLECT:
 		case EXPR_TYPE_PROPERTY:
+		case EXPR_VACOUNT:
 			break;
 		case EXPR_BITACCESS:
 		case EXPR_SUBSCRIPT_ASSIGN:
@@ -12682,8 +12684,8 @@ RETRY:
 		case EXPR_TERNARY:
 			if (!sema_expr_analyse_ternary(context, to, expr)) return expr_poison(expr);
 			break;
-		case EXPR_CT_ARG:
-			if (!sema_expr_analyse_ct_arg(context, to, expr, no_match_ref)) return expr_poison(expr);
+		case EXPR_VAARG:
+			if (!sema_expr_analyse_vaarg(context, to, expr, no_match_ref)) return expr_poison(expr);
 			break;
 		case EXPR_RETHROW:
 			if (!sema_expr_analyse_rethrow(context, expr, original_type)) return expr_poison(expr);
