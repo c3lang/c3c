@@ -86,7 +86,7 @@ entry:
   store i8 %1, ptr %x, align 1
   %lhs1 = load <2 x double>, ptr %a, align 16
   %rhs2 = load <2 x double>, ptr %b, align 16
-  %cmp3 = fcmp one <2 x double> %lhs1, %rhs2
+  %cmp3 = fcmp une <2 x double> %lhs1, %rhs2
   %2 = call i1 @llvm.vector.reduce.or.v2i1(<2 x i1> %cmp3)
   %3 = zext i1 %2 to i8
   store i8 %3, ptr %y, align 1

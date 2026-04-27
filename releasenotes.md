@@ -113,6 +113,7 @@
 - Bug in compiler-rt for i128 shift.
 - LinkedBlockingQueue.push_timeout did not work correctly.
 - Splat into vaarg macro, where vaarg is not used #2782.
+- Comparison with floats had incorrect codegen, leading to incorrect results for NaN #3175.
 
 ## 0.7.11 Change list
 

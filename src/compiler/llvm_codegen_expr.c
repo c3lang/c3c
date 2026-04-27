@@ -2204,7 +2204,7 @@ static void llvm_emit_vec_comp(GenContext *c, BEValue *result, BEValue *lhs, BEV
 				break;
 			case BINARYOP_VEC_NE:
 				// Unordered?
-				res = LLVMBuildFCmp(c->builder, LLVMRealONE, lhs->value, rhs->value, "neq");
+				res = LLVMBuildFCmp(c->builder, LLVMRealUNE, lhs->value, rhs->value, "neq");
 				break;
 			case BINARYOP_VEC_GE:
 				res = LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs->value, rhs->value, "ge");
@@ -2526,7 +2526,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				LLVMValueRef llvm_value;
 				if (type_is_float(vec_type))
 				{
-					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUEQ, value->value, LLVMConstNull(LLVMTypeOf(value->value)), "not");
+					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealOEQ, value->value, LLVMConstNull(LLVMTypeOf(value->value)), "not");
 				}
 				else
 				{
@@ -2641,7 +2641,7 @@ static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, c
 	}
 
 	LLVMValueRef zero = llvm_get_zero(c, type);
-	LLVMValueRef ok = type_is_integer(type) ? LLVMBuildICmp(c->builder, LLVMIntEQ, value, zero, "zero") : LLVMBuildFCmp(c->builder, LLVMRealUEQ, value, zero, "zero");
+	LLVMValueRef ok = type_is_integer(type) ? LLVMBuildICmp(c->builder, LLVMIntEQ, value, zero, "zero") : LLVMBuildFCmp(c->builder, LLVMRealOEQ, value, zero, "zero");
 	llvm_emit_panic_on_true(c, ok, error, loc, NULL, NULL, NULL);
 }
 
@@ -3584,7 +3584,7 @@ static inline void llvm_emit_fp_vector_compare(GenContext *c, BEValue *be_value,
 	llvm_value_addr(c, rhs);
 	LLVMValueRef left = llvm_load(c, fp_vec, lhs->value, lhs->alignment, "lhs");
 	LLVMValueRef right = llvm_load(c, fp_vec, rhs->value, rhs->alignment, "rhs");
-	LLVMValueRef cmp = LLVMBuildFCmp(c->builder, binary_op == BINARYOP_EQ ? LLVMRealOEQ : LLVMRealONE, left, right, "cmp");
+	LLVMValueRef cmp = LLVMBuildFCmp(c->builder, binary_op == BINARYOP_EQ ? LLVMRealOEQ : LLVMRealUNE, left, right, "cmp");
 	if (binary_op == BINARYOP_EQ)
 	{
 		cmp = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_and, &bool_vec, 1, &cmp, 1);
@@ -3758,7 +3758,7 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *result, BEValue *lhs, B
 			break;
 		case BINARYOP_NE:
 			// Unordered?
-			val = LLVMBuildFCmp(c->builder, LLVMRealONE, lhs_value, rhs_value, "neq");
+			val = LLVMBuildFCmp(c->builder, LLVMRealUNE, lhs_value, rhs_value, "neq");
 			break;
 		case BINARYOP_GE:
 			val = LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs_value, rhs_value, "ge");
