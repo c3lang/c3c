@@ -114,6 +114,7 @@
 - LinkedBlockingQueue.push_timeout did not work correctly.
 - Splat into vaarg macro, where vaarg is not used #2782.
 - Comparison with floats had incorrect codegen, leading to incorrect results for NaN #3175.
+- Zeroing out simd vectors in a struct could in some cases lead to incorrect lowering #3179.
 
 ## 0.7.11 Change list
 

@@ -1,0 +1,51 @@
+// #target: macos-x64
+module test;
+
+enum SomeEnum
+{
+	ON, OFF, WEIRD
+}
+struct Structure
+{
+	SomeEnum test;
+	float[<3>] position;
+}
+
+fn void main()
+{
+
+	Structure hi;
+	hi.test = ON;
+
+	Structure ho;
+	ho.test = OFF;
+
+	Structure spaghettio;
+	spaghettio.test = WEIRD; // I actually quite like spaghetti.
+
+	float[<3>] bar;
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %hi = alloca %Structure, align 4
+  %ho = alloca %Structure, align 4
+  %spaghettio = alloca %Structure, align 4
+  %bar = alloca <3 x float>, align 16
+  store i32 0, ptr %hi, align 4
+  %ptradd = getelementptr inbounds i8, ptr %hi, i64 4
+  store <3 x float> zeroinitializer, ptr %ptradd, align 4
+  store i32 0, ptr %hi, align 4
+  store i32 0, ptr %ho, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %ho, i64 4
+  store <3 x float> zeroinitializer, ptr %ptradd1, align 4
+  store i32 1, ptr %ho, align 4
+  store i32 0, ptr %spaghettio, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %spaghettio, i64 4
+  store <3 x float> zeroinitializer, ptr %ptradd2, align 4
+  store i32 2, ptr %spaghettio, align 4
+  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float undef>, ptr %bar, align 16
+  ret void
+}

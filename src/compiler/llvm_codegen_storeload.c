@@ -182,7 +182,8 @@ LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 		if (type_kind_is_real_vector(type->type_kind))
 		{
 			unsigned len = type->array.len;
-			if (!is_power_of_two(len))
+			ByteSize size = type_size(type);
+			if (!is_power_of_two(size) && is_power_of_two(aligned_offset(size, ref->alignment)))
 			{
 				return llvm_store_raw(c, ref, llvm_emit_const_vector_pot(llvm_get_zero(c, type->array.base), len));
 			}
