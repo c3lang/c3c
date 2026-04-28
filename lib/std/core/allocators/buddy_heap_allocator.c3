@@ -1,20 +1,20 @@
-module buddy_alloc;
+module std::core::mem::allocators;
 import std::io;
 import std::math;
 
-const uint DEFAULT_CAPACITY = 4096;
-const DEFAULT_SPLIT_BOUNDARY = 512;
-const DEFAULT_COALESCE_BOUNDARY = 1024;
-const MIN_BLOCK_SIZE = 16;
+const uint DEFAULT_CAPACITY     @local = 4096;
+const DEFAULT_SPLIT_BOUNDARY    @local = 512;
+const DEFAULT_COALESCE_BOUNDARY @local = 1024;
+const MIN_BLOCK_SIZE            @local = 16;
 
 <*
- Buddy allocator is a type of allocator that splits the backing buffer into multiple regions called buddy blocks.
+ Buddy allocator is an allocator that splits the backing buffer into multiple regions called buddy blocks.
  If the allocator cannot find a sufficiently large block, it will try to coalesce blocks to make space — use the 'coalesce_boundary' parameter to tune the upper boundary for coalescing (this can affect how often the allocator performs split <-> coalesce cycles).
  Otherwise, the block will be split to reduce memory usage — use the 'split_boundary' parameter to control this during initialization.
  It may use slightly more memory than other allocators because it can only store allocations sized as powers of two.
  When the allocator exhausts its memory, it falls back to its backing allocator. Fallback allocations are automatically freed when the allocator is destroyed; the user must not free them manually. Fallback allocations can also be resized.
 *>
-struct BuddyAlloc (Allocator, Printable)
+struct BuddyHeapAllocator (Allocator, Printable)
 {
 	BuddyBlock* head;
 	BuddyBlock* tail;
@@ -22,7 +22,8 @@ struct BuddyAlloc (Allocator, Printable)
 	uint coalesce_boundary;
 	sz init_padding;
 	FallbackAlloc* fallback_head;
-	Allocator backing_alloc;
+	MemoryAllocFn alloc_fn;
+	MemoryFreeFn free_fn;
 }
 
 bitstruct BuddyBlockInner : ulong @local
@@ -39,10 +40,17 @@ struct BuddyBlock @local
 	char[*] memory;
 }
 
+bitstruct FallbackAllocState : ulong @local
+{
+	ushort padding : 0..9;
+	ulong size : 10..63;
+}
+
 struct FallbackAlloc @local
 {
+	// sz size;
+	inline FallbackAllocState _state;
 	FallbackAlloc* next;
-	uint size;
 	char[*] memory;
 }
 
@@ -53,9 +61,10 @@ struct FallbackAlloc @local
  @param split_boundary : "Value in bytes down to which the allocator will split its blocks, recommended value - estimated minimal allocation size"
  @param coalesce_boundary : "Value in bytes up to which the allocator will try to coalesce its blocks, recommended value - estimated most common allocation size"
 *>
-fn void BuddyAlloc.init(
+fn void BuddyHeapAllocator.init(
 	&self,
-	Allocator backing_alloc = mem,
+	MemoryAllocFn alloc_fn,
+	MemoryFreeFn free_fn = dummy_free_fn,
 	uint init_capacity = DEFAULT_CAPACITY,
 	uint coalesce_boundary = DEFAULT_COALESCE_BOUNDARY,
 	uint split_boundary = DEFAULT_SPLIT_BOUNDARY,
@@ -64,7 +73,7 @@ fn void BuddyAlloc.init(
 	uint cap = math::next_power_of_2(init_capacity);
 	self.coalesce_boundary = max(math::next_power_of_2(coalesce_boundary), MIN_BLOCK_SIZE);
 	self.split_boundary = max(math::next_power_of_2(split_boundary), MIN_BLOCK_SIZE);
-	self.head = alloc::alloc_with_padding(backing_alloc, BuddyBlock, cap + mem::DEFAULT_MEM_ALIGNMENT)!!;
+	self.head = (BuddyBlock*)(char*)alloc_fn(BuddyBlock::size + cap + mem::DEFAULT_MEM_ALIGNMENT)!!;
 	BuddyBlock* aligned_head = mem::aligned_pointer(self.head + 1, mem::DEFAULT_MEM_ALIGNMENT);
 	aligned_head--;
 	self.init_padding = (char*)aligned_head - (char*)self.head;
@@ -76,22 +85,23 @@ fn void BuddyAlloc.init(
 	self.tail.size = 0;
 	self.tail.prev_size = cap;
 	self.tail.is_free = false;
-	self.backing_alloc = backing_alloc;
+	self.alloc_fn = alloc_fn;
+	self.free_fn = free_fn;
 	split_block(self.head, self.split_boundary);
 }
 
 <*
  Frees resources of the allocator.
 *>
-fn void BuddyAlloc.free(&self)
+fn void BuddyHeapAllocator.free(&self)
 {
 	if (@likely(self.head != null))
 	{
-		alloc::free(self.backing_alloc, (char*)self.head - self.init_padding);
+		self.free_fn((char*)self.head - self.init_padding);
 	}
-	if (self.fallback_head)
+	if (self.fallback_head != null)
 	{
-		free_fallback_allocations(self);
+		fallback_free_all(self);
 	}
 	*self = { };
 }
@@ -99,7 +109,7 @@ fn void BuddyAlloc.free(&self)
 <*
  Resets the state of the allocator making it available for reuse.
 *>
-fn void BuddyAlloc.reset(&self)
+fn void BuddyHeapAllocator.reset(&self)
 {
 	uint cap = capacity(self);
 	self.head.size = cap;
@@ -115,10 +125,10 @@ fn void BuddyAlloc.reset(&self)
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
  @require size > 0
 *>
-fn void*? BuddyAlloc.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
+fn void*? BuddyHeapAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	uint req_size = calc_required_alloc_size((uint)size, alignment);
-	return _acquire(self, req_size, init_type);
+	return _acquire(self, req_size, init_type, alignment);
 }
 
 <*
@@ -127,7 +137,7 @@ fn void*? BuddyAlloc.acquire(&self, sz size, AllocInitType init_type, sz alignme
 
  @require math::is_power_of_2(size) : "Should be a power of 2"
 *>
-fn void*? _acquire(BuddyAlloc* self, uint size, AllocInitType init_type) @local
+fn void*? _acquire(BuddyHeapAllocator* self, uint size, AllocInitType init_type, sz alignment) @local
 {
 	BuddyBlock* block = find_first_best_fit_block(self, size);
 
@@ -136,7 +146,7 @@ fn void*? _acquire(BuddyAlloc* self, uint size, AllocInitType init_type) @local
 		block = coalesce_top_bottom(self, size);
 		if (!block.is_free)
 		{
-			return make_fallback_allocation(self, size, init_type);
+			return fallback_alloc(self, size, init_type, alignment);
 		}
 	}
 
@@ -158,11 +168,11 @@ fn void*? _acquire(BuddyAlloc* self, uint size, AllocInitType init_type) @local
  @require size > 0
  @return ? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
-fn void*? BuddyAlloc.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
+fn void*? BuddyHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
 {
-	if (@unlikely(!owns_pointer(self, old_pointer)))
+	if (@unlikely(!owns_pointer_in_main_buff(self, old_pointer)))
 	{
-		return resize_fallback_allocation(self, old_pointer, (uint)size);
+		return fallback_realloc(self, old_pointer, (uint)size, alignment);
 	}
 
 	BuddyBlock* old_block = (BuddyBlock*)old_pointer - 1;
@@ -171,7 +181,7 @@ fn void*? BuddyAlloc.resize(&self, void* old_pointer, sz size, sz alignment) @dy
 
 	if (@unlikely(old_size == new_size)) return old_pointer;
 
-	void* new_pointer = _acquire(self, new_size, NO_ZERO)!;
+	void* new_pointer = _acquire(self, new_size, NO_ZERO, alignment)!;
 	mem::copy(new_pointer, old_pointer, min(old_size, new_size) - BuddyBlock::size);
 	self.release(old_pointer, false);
 	
@@ -183,9 +193,12 @@ fn void*? BuddyAlloc.resize(&self, void* old_pointer, sz size, sz alignment) @dy
 
  @require ptr != null
 *>
-fn void BuddyAlloc.release(&self, void* ptr, bool) @dynamic
+fn void BuddyHeapAllocator.release(&self, void* ptr, bool) @dynamic
 {
-	if (@unlikely(!owns_pointer(self, ptr))) return;
+	if (@unlikely(!owns_pointer_in_main_buff(self, ptr)))
+	{
+		return fallback_free(self, ptr);
+	}
 	BuddyBlock* block = (BuddyBlock*)ptr - 1;
 	// Prevent double free.
 	if (@unlikely(block.is_free)) return;
@@ -206,7 +219,7 @@ fn void BuddyAlloc.release(&self, void* ptr, bool) @dynamic
 
  @require math::is_power_of_2(req_size) : "Should be a power of 2"
 *>
-fn BuddyBlock* find_first_best_fit_block(BuddyAlloc* self, uint req_size) @local
+fn BuddyBlock* find_first_best_fit_block(BuddyHeapAllocator* self, uint req_size) @local
 {
 	BuddyBlock* best_block = null;
 	BuddyBlock* block = self.head;
@@ -260,7 +273,7 @@ fn BuddyBlock* find_first_best_fit_block(BuddyAlloc* self, uint req_size) @local
 
  @ensure return != null : "Must return non-null block"
 *>
-fn BuddyBlock* coalesce_top_bottom(BuddyAlloc* self, uint req_size)
+fn BuddyBlock* coalesce_top_bottom(BuddyHeapAllocator* self, uint req_size)
 {
 	BuddyBlock* block = self.head;
 	BuddyBlock* buddy = next_block(block);
@@ -309,7 +322,7 @@ fn BuddyBlock* coalesce_top_bottom(BuddyAlloc* self, uint req_size)
  @require free_block.is_free : "Should be free block"
  @require req_size <= capacity(self) : "Shoudn't exceed capacity"
 *>
-fn void coalesce_bottom_top_free_block(BuddyAlloc* self, BuddyBlock* free_block, uint req_size) @local
+fn void coalesce_bottom_top_free_block(BuddyHeapAllocator* self, BuddyBlock* free_block, uint req_size) @local
 {
 	BuddyBlock* block = null;
 	BuddyBlock* buddy = null;
@@ -337,7 +350,7 @@ fn void coalesce_bottom_top_free_block(BuddyAlloc* self, BuddyBlock* free_block,
  @require math::is_power_of_2(req_size) : "Must be a power of 2"
  @require req_size <= capacity(self) : "Shoudn't exceed capacity"
 *>
-fn BuddyBlock* coalesce_bottom_top(BuddyAlloc* self, BuddyBlock* block, BuddyBlock* buddy, uint req_size) @local
+fn BuddyBlock* coalesce_bottom_top(BuddyHeapAllocator* self, BuddyBlock* block, BuddyBlock* buddy, uint req_size) @local
 {
 	while (block >= self.head && can_coalesce(block, buddy))
 	{
@@ -460,7 +473,7 @@ fn bool test_best_block_priority(BuddyBlock* block, BuddyBlock** best_block, uin
 <*
  Checks if pointer is owned by the allocator.
 *>
-fn bool owns_pointer(BuddyAlloc* self, void* ptr) @inline @local
+fn bool owns_pointer_in_main_buff(BuddyHeapAllocator* self, void* ptr) @inline @local
 {
 	return ptr >= self.head && ptr < self.tail;
 }
@@ -468,83 +481,119 @@ fn bool owns_pointer(BuddyAlloc* self, void* ptr) @inline @local
 <*
  Calculates capacity from 'head' and 'tail' pointers.
 *>
-fn uint capacity(BuddyAlloc* self) @inline @local
+fn uint capacity(BuddyHeapAllocator* self) @inline @local
 {
 	return (uint)((char*)self.tail - (char*)self.head);
 }
 
-// ----- Fallback allocations -----
+// ---- Fallback allocations ----
 
-<*
- Allocates to the separate linked list in case there's no free blocks in the Buddy allocator.
-
- @require size > 0
-*>
-fn void*? make_fallback_allocation(BuddyAlloc* self, uint size, AllocInitType init_type) @local
+fn void*? fallback_alloc(BuddyHeapAllocator* self, sz size, AllocInitType init_type, sz alignment) @local
 {
-	FallbackAlloc* curr = self.fallback_head;
-	while (curr)
+	if (alignment > 0)
 	{
-		curr = curr.next;
+		size = mem::aligned_offset(size + FallbackAlloc::size + alignment, mem::DEFAULT_MEM_ALIGNMENT);
+		char* alloc = (char*)self.alloc_fn(size)!;
+		FallbackAlloc* aligned_alloc = (FallbackAlloc*)mem::aligned_pointer(alloc + FallbackAlloc::size, alignment);
+		aligned_alloc--;
+		assert((char*)aligned_alloc >= alloc, "Alignment failed: %p < %p", aligned_alloc, alloc);
+		ushort padding = (ushort)((char*)aligned_alloc - alloc);
+		aligned_alloc.size = size - padding - FallbackAlloc::size;
+		aligned_alloc.padding = padding;
+		aligned_alloc.next = self.fallback_head;
+		if (init_type == ZERO)
+		{
+			mem::clear(&aligned_alloc.memory, aligned_alloc.size);
+		}
+		self.fallback_head = aligned_alloc;
+		return &aligned_alloc.memory;
 	}
-
-	curr = alloc::alloc_with_padding(self.backing_alloc, FallbackAlloc, size)!;
-	curr.size = size;
-	curr.next = null;
-
-	if (!self.fallback_head)
+	else
 	{
-		self.fallback_head = curr;
+		size = mem::aligned_offset(size + FallbackAlloc::size, mem::DEFAULT_MEM_ALIGNMENT);
+		FallbackAlloc* alloc = (FallbackAlloc*)(char*)self.alloc_fn(size)!;
+		alloc.size = size - FallbackAlloc::size;
+		alloc.padding = 0;
+		alloc.next = self.fallback_head;
+		if (init_type == ZERO)
+		{
+			mem::clear(&alloc.memory, alloc.size);
+		}
+		self.fallback_head = alloc;
+		return &alloc.memory;
 	}
-
-	if (init_type == ZERO)
-	{
-		mem::clear(&curr.memory, size);
-	}
-	
-	return &curr.memory;
 }
 
 <*
- Tries to find and resize allocation made as a fallback.
+ Reallocates allocation made as a fallback.
 
- @require old_ptr != null
- @require new_size > 0
- @return ? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+ @require old_ptr != null : "Shouldn't be null"
+ @require new_size > 0 : "Should be bigger than 0"
 *>
-fn void*? resize_fallback_allocation(BuddyAlloc* self, void* old_ptr, uint new_size) @local
+fn void*? fallback_realloc(BuddyHeapAllocator* self, void* old_ptr, sz new_size, sz alignment) @local
 {
+	FallbackAlloc* block = (FallbackAlloc*)old_ptr - 1;
+	if (block.size >= new_size) return old_ptr;
+	void* new_alloc = fallback_alloc(self, new_size, NO_ZERO, alignment)!;
+	sz max_to_copy = math::min(block.size, (ulong)new_size);
+	mem::copy(new_alloc, old_ptr, max_to_copy);
+	fallback_free(self, old_ptr);
+	return new_alloc;
+}
+
+<*
+ Frees allocation made as a fallback.
+*>
+fn void fallback_free(BuddyHeapAllocator* self, void* ptr) @local
+{
+	if (!self.fallback_head || !ptr)
+	{
+		return;
+	}
+
 	FallbackAlloc* curr = self.fallback_head;
-	FallbackAlloc* alloc = null;
-	
+	FallbackAlloc* prev = curr;
+
 	while (curr)
 	{
-		if (curr == old_ptr)
+		if (&curr.memory == ptr)
 		{
-			alloc = curr;
 			break;
 		}
+		prev = curr;
 		curr = curr.next;
 	}
 
-	assert(alloc != null, "Pointer originates from a different allocator: %p, not in %p - %p", old_ptr, self.head, (char*)self.head + capacity(self));
+	assert(curr != null, "Pointer isn't owned by this allocator");
 
-	alloc = alloc::realloc_try(self.backing_alloc, alloc, FallbackAlloc::size + new_size)!;
-	alloc.size = new_size;
-	
-	return &alloc.memory;
+	// It was the root.
+	if (prev == curr)
+	{
+		self.fallback_head = self.fallback_head.next;
+		curr = (FallbackAlloc*)((char*)curr - curr.padding);
+		self.free_fn(curr);
+		return;
+	}
+	else
+	{
+		FallbackAlloc* next = curr.next;
+		curr = (FallbackAlloc*)((char*)curr - curr.padding);
+		self.free_fn(curr);
+		prev.next = next;
+	}
 }
 
 <*
- Cleanup all fallback allocations.
+ Frees all allocations made as a fallback.
 *>
-fn void free_fallback_allocations(BuddyAlloc* self) @local
+fn void fallback_free_all(BuddyHeapAllocator* self) @local
 {
 	FallbackAlloc* curr = self.fallback_head;
 	while (curr)
 	{
-		FallbackAlloc* next = curr.next; 
-		alloc::free(self.backing_alloc, curr);
+		FallbackAlloc* next = curr.next;
+		curr = (FallbackAlloc*)((char*)curr - curr.padding);
+		self.free_fn(curr);
 		curr = next;
 	}
 	self.fallback_head = null;
@@ -553,13 +602,13 @@ fn void free_fallback_allocations(BuddyAlloc* self) @local
 <*
  Calculates all memory that were allocated as a fallback.
 *>
-fn uint calc_used_fallback_mem(BuddyAlloc* self) @local
+fn uint calc_used_fallback_mem(BuddyHeapAllocator* self) @local
 {
 	uint res = 0;
 	FallbackAlloc* curr = self.fallback_head;
 	while (curr)
 	{
-		res += curr.size;
+		res += (uint)curr.size;
 		curr = curr.next;
 	}
 	return res;
@@ -568,7 +617,7 @@ fn uint calc_used_fallback_mem(BuddyAlloc* self) @local
 <*
  Implements 'Printable' interface.
 *>
-fn sz? BuddyAlloc.to_format(&self, Formatter* fmt) @dynamic
+fn sz? BuddyHeapAllocator.to_format(&self, Formatter* fmt) @dynamic
 {
 	BuddyBlock* block = self.head;
 	BuddyBlock* buddy = next_block(block);

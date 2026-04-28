@@ -1,13 +1,12 @@
 module buddy_alloc_test @test;
-import buddy_alloc;
 import std::collections::list;
 import std::collections::map;
 import std::math, std::io;
 
 fn void mem_zero()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem, 1024, 512, 256);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn, 1024, 512, 256);
 	defer buddy.free();
 	Allocator a = (Allocator)&buddy;
 
@@ -35,8 +34,8 @@ fn void mem_zero()
 
 fn void test_list()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn);
 	defer buddy.free();
 	Allocator a = (Allocator)&buddy;
 
@@ -62,8 +61,8 @@ fn void test_list()
 
 fn void test_map()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn);
 	defer buddy.free();
 	Allocator a = (Allocator)&buddy;
 
@@ -89,8 +88,8 @@ fn void test_map()
 
 fn void test_dstring()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn);
 	defer buddy.free();
 
 	Allocator a = (Allocator)&buddy;
@@ -122,8 +121,8 @@ fn void test_dstring()
 
 fn void increasing_sizes()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem, 4096, 1024, 256);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn, 4096, 1024, 256);
 	defer buddy.free();
 	Allocator a = (Allocator)&buddy;
 
@@ -153,8 +152,8 @@ fn void increasing_sizes()
 
 fn void decreasing_sizes()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem, 2048, 1024);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn, 2048, 1024);
 	defer buddy.free();
 	Allocator a = (Allocator)&buddy;
 	char[100] bytes @noinit;
@@ -181,48 +180,51 @@ fn void decreasing_sizes()
 	alloc::free(a, a4);
 }
 
-fn void test_int128()
+fn void test_aligned_allocations()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem, 8000, 1024, 512);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn, 2048, 1024);
 	defer buddy.free();
 	Allocator a = (Allocator)&buddy;
 
-	int128[] a1 = alloc::alloc_array(a, int128, 8);
-	int128[] a2 = alloc::alloc_array(a, int128, 14);
-	int128[] a3 = alloc::alloc_array(a, int128, 120);
-	int128[] a4 = alloc::alloc_array(a, int128, 64);
+	int128[] a1 = alloc::alloc_array_aligned(a, int128, 15);
+	ushort[] a2 = alloc::alloc_array_aligned(a, ushort, 120);
+	ulong[] a3 = alloc::alloc_array_aligned(a, ulong, 38);
+	char[] a4 = alloc::alloc_array_aligned(a, char, 512);
+	int128[] a5 = alloc::alloc_array_aligned(a, int128, 14);
 
-	int128[] buf = alloc::alloc_array(a, int128, 10);
-	foreach (i, &el : buf[..])
-	{
-		*el = i;
-	}
+	int128[*] buf1 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
+	ushort[*] buf2 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
+	ulong[*] buf3 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
+	char[*] buf4 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
+	int128[*] buf5 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
 
-	io::printn(a1);
+	a1[:buf1.len] = buf1[..];
+	test::eq(a1[:buf1.len], buf1[..]);
 
-	a1[:8] = buf[:8];
-	test::eq(a1[:8], buf[:8]);
+	a2[:buf2.len] = buf2[..];
+	test::eq(a2[:buf2.len], buf2[..]);
 
-	a2[:10] = buf[:10];
-	test::eq(a2[:10], buf[:10]);
+	a3[:buf3.len] = buf3[..];
+	test::eq(a3[:buf3.len], buf3[..]);
 
-	a3[80:10] = buf[:10];
-	test::eq(a3[80:10], buf[:10]);
+	a4[:buf4.len] = buf4[..];
+	test::eq(a4[:buf4.len], buf4[..]);
 
-	a4[40:10] = buf[:10];
-	test::eq(a4[40:10], buf[:10]);
+	a5[:buf5.len] = buf5[..];
+	test::eq(a5[:buf5.len], buf5[..]);
 
 	alloc::free(a, a1);
 	alloc::free(a, a2);
 	alloc::free(a, a3);
 	alloc::free(a, a4);
+	alloc::free(a, a5);
 }
 
 fn void single_alloc_filling_entire_buf()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem, 2048);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn, 2048);
 	defer buddy.free();
 	Allocator a = (Allocator)&buddy;
 
@@ -238,8 +240,8 @@ fn void single_alloc_filling_entire_buf()
 
 fn void more_allocs()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem, 2048, 1024);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn, 2048, 1024);
 	defer buddy.free();
 	Allocator a = (Allocator)&buddy;
 
@@ -274,8 +276,8 @@ fn void more_allocs()
 
 fn void batches_increasing_size()
 {
-	BuddyAlloc buddy;
-	buddy.init(mem, 4096, 1024, 256);
+	BuddyHeapAllocator buddy;
+	buddy.init(&alloc_fn, &free_fn, 4096, 1024, 256);
 	defer buddy.free();
 
 	Allocator a = (Allocator)&buddy;
@@ -326,6 +328,16 @@ fn void batches_increasing_size()
 
 module buddy_alloc_test;
 import std::math::random;
+
+fn char[]? alloc_fn(sz size)
+{
+	return alloc::alloc_array_try(mem, char, size);
+}
+
+fn void free_fn(void* ptr)
+{
+	alloc::free(mem, ptr);
+}
 
 fn void fill_random_ascii(char[] buf)
 {

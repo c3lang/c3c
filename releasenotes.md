@@ -80,8 +80,9 @@
 - `std::time` name changes: `diff_hour` => `diff_hours`. `DateTime.set_date` => `DateTime.set`, `datetime::from_date_*` => `datetime::at_*`
 - `std::hash` method name convention changes: `updatec` / `update_char` => `update_byte`.
 - `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
-- Add free list allocator - `FreeListAlloc`.
-- Add buddy allocator - `BuddyAlloc`.
+- Add bst heap allocator - `BSTHeapAllocator`.
+- Add buddy heap allocator - `BuddyHeapAllocator`.
+- `SimpleHeapAllocator` has been renamed `FreeListHeapAllocator`.
 - `std::collections::object` added `Object.to_value` to convert from an object to a value.
 
 ### Fixes

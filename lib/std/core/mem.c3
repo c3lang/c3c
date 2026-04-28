@@ -656,7 +656,7 @@ macro void @pool(sz reserve = 0; @body) @builtin
 
 module std::core::mem @if(env::FREESTANDING_WASM);
 import std::core::mem::allocators @public;
-SimpleHeapAllocator wasm_allocator @private;
+FreeListHeapAllocator wasm_allocator @private;
 extern int __heap_base;
 
 fn void initialize_wasm_mem() @init(1024) @private

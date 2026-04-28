@@ -1,16 +1,15 @@
-module free_list_alloc_test @test;
-import free_list_alloc;
+module bst_allocator_test @test;
 import std::io;
 import std::collections::list;
 import std::collections::map;
 
 fn void sequential_alloc_free()
 {
-	FreeListAlloc fl;
-	fl.init(mem, 4096, BEST_FIT);
-	defer fl.free();
+	BSTHeapAllocator bst_alloc;
+	bst_alloc.init(&alloc_fn, &free_fn, 4096, BEST_FIT);
+	defer bst_alloc.free();
 
-	Allocator a = (Allocator)&fl;
+	Allocator a = (Allocator)&bst_alloc;
 
 	DString s1;
 	s1.init(a, 8);
@@ -36,10 +35,10 @@ fn void sequential_alloc_free()
 
 fn void mem_zero()
 {
-	FreeListAlloc fl;
-	fl.init(mem);
-	defer fl.free();
-	Allocator a = (Allocator)&fl;
+	BSTHeapAllocator bst_alloc;
+	bst_alloc.init(&alloc_fn, &free_fn);
+	defer bst_alloc.free();
+	Allocator a = (Allocator)&bst_alloc;
 
 	char[] a1 = alloc::new_array(a, char, 256);
 	char[] a2 = alloc::new_array(a, char, 256);
@@ -65,10 +64,10 @@ fn void mem_zero()
 
 fn void test_list()
 {
-	FreeListAlloc fl;
-	fl.init(mem);
-	defer fl.free();
-	Allocator a = (Allocator)&fl;
+	BSTHeapAllocator bst_alloc;
+	bst_alloc.init(&alloc_fn, &free_fn);
+	defer bst_alloc.free();
+	Allocator a = (Allocator)&bst_alloc;
 
 	char[100] bytes @noinit;
 	fill_random_ascii(bytes[..]);
@@ -92,10 +91,10 @@ fn void test_list()
 
 fn void test_map()
 {
-	FreeListAlloc fl;
-	fl.init(mem);
-	defer fl.free();
-	Allocator a = (Allocator)&fl;
+	BSTHeapAllocator bst_alloc;
+	bst_alloc.init(&alloc_fn, &free_fn);
+	defer bst_alloc.free();
+	Allocator a = (Allocator)&bst_alloc;
 
 	HashMap{String, int} m;
 	m.init(a, 8);
@@ -119,10 +118,10 @@ fn void test_map()
 
 fn void test_dstring()
 {
-	FreeListAlloc fl;
-	fl.init(mem);
-	defer fl.free();
-	Allocator a = (Allocator)&fl;
+	BSTHeapAllocator bst_alloc;
+	bst_alloc.init(&alloc_fn, &free_fn);
+	defer bst_alloc.free();
+	Allocator a = (Allocator)&bst_alloc;
 
 	DString s1;
 	s1.init(a, 512);
@@ -151,10 +150,10 @@ fn void test_dstring()
 
 fn void more_allocs()
 {
-	FreeListAlloc fl;
-	fl.init(mem, 2048);
-	defer fl.free();
-	Allocator a = (Allocator)&fl;
+	BSTHeapAllocator bst_alloc;
+	bst_alloc.init(&alloc_fn, &free_fn, 2048);
+	defer bst_alloc.free();
+	Allocator a = (Allocator)&bst_alloc;
 
 	char[100] bytes @noinit;
 	fill_random_ascii(bytes[..]);
@@ -202,10 +201,10 @@ fn void more_allocs()
 
 fn void zeroing_memory()
 {
-	FreeListAlloc fl;
-	fl.init(mem, 1024);
-	defer fl.free();
-	Allocator a = (Allocator)&fl;
+	BSTHeapAllocator bst_alloc;
+	bst_alloc.init(&alloc_fn, &free_fn, 1024);
+	defer bst_alloc.free();
+	Allocator a = (Allocator)&bst_alloc;
 
 	// 256b
 	char[] a1 = alloc::new_array(a, char, 256);
@@ -218,45 +217,53 @@ fn void zeroing_memory()
 	alloc::free(a, a1);
 }
 
-fn void test_int128()
+fn void test_aligned_allocations()
 {
-	FreeListAlloc fl;
-	fl.init(mem, 2048, BEST_FIT);
-	defer fl.free();
-	Allocator a = (Allocator)&fl;
+	BSTHeapAllocator bst_alloc;
+	bst_alloc.init(&alloc_fn, &free_fn, 1024, BEST_FIT);
+	defer bst_alloc.free();
+	Allocator a = (Allocator)&bst_alloc;
 
-	int128[] a1 = alloc::alloc_array(a, int128, 8);
-	int128[] a2 = alloc::alloc_array(a, int128, 14);
-	int128[] a3 = alloc::alloc_array(a, int128, 120);
-	int128[] a4 = alloc::alloc_array(a, int128, 64);
+	int128[] a1 = alloc::alloc_array_aligned(a, int128, 15);
+	ushort[] a2 = alloc::alloc_array_aligned(a, ushort, 120);
+	ulong[] a3 = alloc::alloc_array_aligned(a, ulong, 38);
+	char[] a4 = alloc::alloc_array_aligned(a, char, 512);
+	int128[] a5 = alloc::alloc_array_aligned(a, int128, 14);
 
-	int128[10] buf @noinit;
-	foreach (i, &el : buf[..])
-	{
-		*el = i;
-	}
+	int128[*] buf1 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
+	ushort[*] buf2 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
+	ulong[*] buf3 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
+	char[*] buf4 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
+	int128[*] buf5 = { 1, 2, 3, 4, 6, 7, 8, 9, 10 };
 
-	a1[..] = buf[:8];
-	test::eq(a1[..], buf[:8]);
+	a1[:buf1.len] = buf1[..];
+	test::eq(a1[:buf1.len], buf1[..]);
 
-	a2[:10] = buf[:10];
-	test::eq(a2[:10], buf[:10]);
+	a2[:buf2.len] = buf2[..];
+	test::eq(a2[:buf2.len], buf2[..]);
 
-	a3[100:10] = buf[:10];
-	test::eq(a3[100:10], buf[:10]);
+	a3[:buf3.len] = buf3[..];
+	test::eq(a3[:buf3.len], buf3[..]);
+
+	a4[:buf4.len] = buf4[..];
+	test::eq(a4[:buf4.len], buf4[..]);
+
+	a5[:buf5.len] = buf5[..];
+	test::eq(a5[:buf5.len], buf5[..]);
 
 	alloc::free(a, a1);
 	alloc::free(a, a2);
 	alloc::free(a, a3);
 	alloc::free(a, a4);
+	alloc::free(a, a5);
 }
 
 fn void single_alloc_filling_entire_buf()
 {
-	FreeListAlloc fl;
-	fl.init(mem, 2048, BEST_FIT);
-	defer fl.free();
-	Allocator a = (Allocator)&fl;
+	BSTHeapAllocator bst_alloc;
+	bst_alloc.init(&alloc_fn, &free_fn, 2048, BEST_FIT);
+	defer bst_alloc.free();
+	Allocator a = (Allocator)&bst_alloc;
 
 	char[100] bytes @noinit;
 	fill_random_ascii(bytes[..]);
@@ -270,8 +277,18 @@ fn void single_alloc_filling_entire_buf()
 
 // Helpers.
 
-module free_list_alloc_test;
+module bst_allocator_test;
 import std::math::random;
+
+fn char[]? alloc_fn(sz size)
+{
+	return alloc::alloc_array_try(mem, char, size);
+}
+
+fn void free_fn(void* ptr)
+{
+	alloc::free(mem, ptr);
+}
 
 fn void fill_random_ascii(char[] buf)
 {

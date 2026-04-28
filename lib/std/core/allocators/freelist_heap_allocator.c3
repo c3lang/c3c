@@ -6,13 +6,13 @@ module std::core::mem::allocators;
 import std::math;
 
 <*
- The SimpleHeapAllocator implements a simple heap allocator on top of an allocator function.
+ The FreeListHeapAllocator implements a simple heap allocator on top of an allocator function.
 
  It uses the given allocator function to allocate memory from some source, but never frees it.
  This allocator is intended to be used in environments where there isn't any native libc malloc,
  and it has to be emulated from a memory region, or wrapping linear memory as is the case for plain WASM.
 *>
-struct SimpleHeapAllocator (Allocator)
+struct FreeListHeapAllocator (Allocator)
 {
 	MemoryAllocFn alloc_fn;
 	Header* free_list;
@@ -22,13 +22,13 @@ struct SimpleHeapAllocator (Allocator)
  @require allocator != null  : "An underlying memory provider must be given"
  @require !self.free_list : "The allocator may not be already initialized"
 *>
-fn void SimpleHeapAllocator.init(&self, MemoryAllocFn allocator)
+fn void FreeListHeapAllocator.init(&self, MemoryAllocFn allocator)
 {
 	self.alloc_fn = allocator;
 	self.free_list = null;
 }
 
-fn void*? SimpleHeapAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
+fn void*? FreeListHeapAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	if (init_type == ZERO)
 	{
@@ -37,14 +37,14 @@ fn void*? SimpleHeapAllocator.acquire(&self, sz size, AllocInitType init_type, s
 	return alignment > 0 ? @aligned_alloc_fn(self, simple_alloc_alloc, size, alignment) : simple_alloc_alloc(self, size);
 }
 
-fn void*? SimpleHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
+fn void*? FreeListHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
 {
 	return alignment > 0
 		? @aligned_realloc_fn(self, simple_alloc_calloc, simple_alloc_free, old_pointer, size, alignment)
 		:  simple_alloc_realloc(self, old_pointer, size);
 }
 
-fn void SimpleHeapAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
+fn void FreeListHeapAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
 {
 	if (aligned)
 	{
@@ -59,7 +59,7 @@ fn void SimpleHeapAllocator.release(&self, void* old_pointer, bool aligned) @dyn
 <*
  @require old_pointer && bytes > 0
 *>
-fn void*? simple_alloc_realloc(SimpleHeapAllocator* self, void* old_pointer, sz bytes) @local
+fn void*? simple_alloc_realloc(FreeListHeapAllocator* self, void* old_pointer, sz bytes) @local
 {
 	// Find the block header.
 	Header* block = (Header*)old_pointer - 1;
@@ -71,14 +71,14 @@ fn void*? simple_alloc_realloc(SimpleHeapAllocator* self, void* old_pointer, sz 
 	return new;
 }
 
-fn void*? simple_alloc_calloc(SimpleHeapAllocator* self, sz bytes) @local
+fn void*? simple_alloc_calloc(FreeListHeapAllocator* self, sz bytes) @local
 {
 	void* data = simple_alloc_alloc(self, bytes)!;
 	mem::clear(data, bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
 
-fn void*? simple_alloc_alloc(SimpleHeapAllocator* self, sz bytes) @local
+fn void*? simple_alloc_alloc(FreeListHeapAllocator* self, sz bytes) @local
 {
 	sz aligned_bytes = mem::aligned_offset(bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	if (!self.free_list)
@@ -127,7 +127,7 @@ fn void*? simple_alloc_alloc(SimpleHeapAllocator* self, sz bytes) @local
 	return simple_alloc_alloc(self, aligned_bytes);
 }
 
-fn void? simple_alloc_add_block(SimpleHeapAllocator* self, sz aligned_bytes) @local
+fn void? simple_alloc_add_block(FreeListHeapAllocator* self, sz aligned_bytes) @local
 {
 	assert(mem::aligned_offset(aligned_bytes, mem::DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
 	char[] result = self.alloc_fn(aligned_bytes + Header::size)!;
@@ -138,7 +138,7 @@ fn void? simple_alloc_add_block(SimpleHeapAllocator* self, sz aligned_bytes) @lo
 }
 
 
-fn void simple_alloc_free(SimpleHeapAllocator* self, void* ptr) @local
+fn void simple_alloc_free(FreeListHeapAllocator* self, void* ptr) @local
 {
 	// Empty ptr -> do nothing.
 	if (!ptr) return;
