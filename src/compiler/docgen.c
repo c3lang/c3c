@@ -191,71 +191,72 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 		if (type->optional && !strstr(type->type->name, "?")) scratch_buffer_append("?");
 		return;
 	}
-	if (type->kind == TYPE_INFO_IDENTIFIER || type->kind == TYPE_INFO_CT_IDENTIFIER)
+	switch (type->kind)
 	{
-		scratch_buffer_append(type->unresolved.name);
-	}
-	else if (type->kind == TYPE_INFO_POINTER)
-	{
-		emit_type_name_to_scratch(type->pointer);
-		scratch_buffer_append("*");
-	}
-	else if (type->kind == TYPE_INFO_ARRAY || type->kind == TYPE_INFO_INFERRED_ARRAY)
-	{
-		emit_type_name_to_scratch(type->array.base);
-		scratch_buffer_append("[");
-		if (type->array.len)
-		{
-			loc_to_scratch(type->array.len->loc);
-		}
-		scratch_buffer_append("]");
-	}
-	else if (type->kind == TYPE_INFO_VECTOR || type->kind == TYPE_INFO_INFERRED_VECTOR)
-	{
-		emit_type_name_to_scratch(type->array.base);
-		scratch_buffer_append("[<");
-		if (type->array.len)
-		{
-			loc_to_scratch(type->array.len->loc);
-		}
-		scratch_buffer_append(">]");
-	}
-	else if (type->kind == TYPE_INFO_SLICE)
-	{
-		emit_type_name_to_scratch(type->array.base);
-		scratch_buffer_append("[*]");
-	}
-	else if (type->kind == TYPE_INFO_GENERIC)
-	{
-		emit_type_name_to_scratch(type->generic.base);
-		scratch_buffer_append("{");
-		unsigned param_count = vec_size(type->generic.params);
-		for (unsigned i = 0; i < param_count; i++)
-		{
-			if (i > 0) scratch_buffer_append(", ");
-			Expr *param = type->generic.params[i];
-			if (param->expr_kind == EXPR_TYPEINFO)
+		case TYPE_INFO_CT_IDENTIFIER:
+		case TYPE_INFO_IDENTIFIER:
+			scratch_buffer_append(type->unresolved.name);
+			break;
+		case TYPE_INFO_POINTER:
+			emit_type_name_to_scratch(type->pointer);
+			scratch_buffer_append("*");
+			break;
+		case TYPE_INFO_ARRAY:
+		case TYPE_INFO_INFERRED_ARRAY:
+			emit_type_name_to_scratch(type->array.base);
+			scratch_buffer_append("[");
+			if (type->array.len)
 			{
-				emit_type_name_to_scratch(param->type_expr);
+				loc_to_scratch(type->array.len->loc);
 			}
-			else
+			scratch_buffer_append("]");
+			break;
+		case TYPE_INFO_INFERRED_VECTOR:
+		case TYPE_INFO_VECTOR:
+			emit_type_name_to_scratch(type->array.base);
+			scratch_buffer_append("[<");
+			if (type->array.len)
 			{
-				loc_to_scratch(param->loc);
+				loc_to_scratch(type->array.len->loc);
 			}
-		}
-		scratch_buffer_append("}");
-	}
-	else if (type->kind == TYPE_INFO_TYPEOF)
-	{
-		scratch_buffer_append("typeof(");
-		if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
-		scratch_buffer_append(")");
-	}
-	else if (type->kind == TYPE_INFO_TYPEFROM)
-	{
-		scratch_buffer_append("$typefrom(");
-		if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
-		scratch_buffer_append(")");
+			scratch_buffer_append(">]");
+			break;
+		case TYPE_INFO_SLICE:
+			emit_type_name_to_scratch(type->array.base);
+			scratch_buffer_append("[*]");
+			break;
+		case TYPE_INFO_GENERIC:
+			emit_type_name_to_scratch(type->generic.base);
+			scratch_buffer_append("{");
+			unsigned param_count = vec_size(type->generic.params);
+			for (unsigned i = 0; i < param_count; i++)
+			{
+				if (i > 0) scratch_buffer_append(", ");
+				Expr *param = type->generic.params[i];
+				if (param->expr_kind == EXPR_TYPEINFO)
+				{
+					emit_type_name_to_scratch(param->type_expr);
+				}
+				else
+				{
+					loc_to_scratch(param->loc);
+				}
+			}
+			scratch_buffer_append("}");
+			break;
+		case TYPE_INFO_TYPEOF:
+			scratch_buffer_append("typeof(");
+			if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
+			scratch_buffer_append(")");
+			break;
+		case TYPE_INFO_TYPEFROM:
+			scratch_buffer_append("$typefrom(");
+			if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
+			scratch_buffer_append(")");
+			break;
+		case TYPE_INFO_POISON:
+			scratch_buffer_append("*INVALID*");
+			break;
 	}
 	if (type->optional) scratch_buffer_append("?");
 }
@@ -293,56 +294,90 @@ static void print_doc_type(FILE *file, Module *module, TypeInfo *type)
 	fputs("\"", file);
 
 	TypeInfo *base_info = type;
-	while (base_info && (base_info->kind == TYPE_INFO_POINTER || base_info->kind == TYPE_INFO_ARRAY || base_info->kind == TYPE_INFO_INFERRED_ARRAY || base_info->kind == TYPE_INFO_SLICE || base_info->kind == TYPE_INFO_VECTOR || base_info->kind == TYPE_INFO_INFERRED_VECTOR))
+
+RETRY:
+	switch (base_info->kind)
 	{
-		if (base_info->kind == TYPE_INFO_POINTER)
+		case TYPE_INFO_POISON:
+			break;
+		case TYPE_INFO_POINTER:
 			base_info = base_info->pointer;
-		else
+			goto RETRY;
+		case TYPE_INFO_ARRAY:
+		case TYPE_INFO_INFERRED_ARRAY:
+		case TYPE_INFO_INFERRED_VECTOR:
+		case TYPE_INFO_SLICE:
+		case TYPE_INFO_VECTOR:
 			base_info = base_info->array.base;
+			goto RETRY;
+		case TYPE_INFO_IDENTIFIER:
+		case TYPE_INFO_CT_IDENTIFIER:
+		case TYPE_INFO_TYPEOF:
+		case TYPE_INFO_TYPEFROM:
+		case TYPE_INFO_GENERIC:
+			break;
 	}
 
-	Type *t = base_info ? base_info->type : NULL;
-	while (t && (t->type_kind == TYPE_POINTER || t->type_kind == TYPE_ARRAY || t->type_kind == TYPE_SLICE || t->type_kind == TYPE_VECTOR || t->type_kind == TYPE_SIMD_VECTOR || t->type_kind == TYPE_OPTIONAL))
+	Type *t = base_info->type;
+	if (!t) t = poisoned_type;
+	RETRY2:
+	switch (t->type_kind)
 	{
-		if (t->type_kind == TYPE_POINTER)
+		case TYPE_POINTER:
 			t = t->pointer;
-		else if (t->type_kind == TYPE_OPTIONAL)
-			t = t->optional;
-		else
+			goto RETRY2;
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
 			t = t->array.base;
+			goto RETRY2;
+		case TYPE_OPTIONAL:
+			t = t->optional;
+			goto RETRY2;
+		default:
+			break;
 	}
-
-	if (t)
+	switch (t->type_kind)
 	{
-		if (t->type_kind == TYPE_INTERFACE || t->type_kind == TYPE_STRUCT || t->type_kind == TYPE_UNION || t->type_kind == TYPE_ENUM || t->type_kind == TYPE_BITSTRUCT || (t->type_kind >= TYPE_TYPEDEF && t->type_kind <= TYPE_ALIAS) || t->type_kind == TYPE_MEMBER)
-		{
+		case TYPE_INTERFACE:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ENUM:
+		case TYPE_BITSTRUCT:
+		case TYPE_CONSTDEF:
+		case TYPE_FUNC_RAW:
+		case TYPE_ALIAS:
+		case TYPE_MEMBER:
 			emit_decl_uid_json(file, t->decl);
-		}
-	}
-	else if (base_info && (base_info->kind == TYPE_INFO_IDENTIFIER || base_info->kind == TYPE_INFO_CT_IDENTIFIER) && module)
-	{
-		Decl *d = htable_get(&module->symbols, (void *)base_info->unresolved.name);
-		if (!d && all_modules)
-		{
-			// Search in other modules if not found locally
-			for (unsigned i = 0; i < vec_size(all_modules); i++)
+			break;
+		default:
+			if ((base_info->kind == TYPE_INFO_IDENTIFIER || base_info->kind == TYPE_INFO_CT_IDENTIFIER) && module)
 			{
-				if (all_modules[i] == module) continue;
-				d = htable_get(&all_modules[i]->symbols, (void *)base_info->unresolved.name);
-				if (d) break;
+				Decl *d = htable_get(&module->symbols, (void *)base_info->unresolved.name);
+				if (!d && all_modules)
+				{
+					// Search in other modules if not found locally
+					FOREACH(Module *, m, all_modules)
+					{
+						if (m == module) continue;
+						d = htable_get(&m->symbols, (void *)base_info->unresolved.name);
+						if (d) break;
+					}
+				}
+				emit_decl_uid_json(file, d);
 			}
-		}
-		emit_decl_uid_json(file, d);
+
+			break;
 	}
 	fputs("}", file);
 }
 
 static void emit_doc_struct_members(FILE *file, Decl *decl, bool *first)
 {
-	if (decl->decl_kind != DECL_STRUCT && decl->decl_kind != DECL_UNION && decl->decl_kind != DECL_BITSTRUCT) return;
-	for (unsigned i = 0; i < vec_size(decl->strukt.members); i++)
+	if (!decl_has_members(decl)) return;
+	FOREACH(Decl *, p, decl->strukt.members)
 	{
-		Decl *p = decl->strukt.members[i];
 		if (!p) continue;
 
 		if (p->decl_kind == DECL_VAR)
@@ -356,18 +391,16 @@ static void emit_doc_struct_members(FILE *file, Decl *decl, bool *first)
 				fprintf(file, ",\"bit_range\":[%u,%u]", p->var.start_bit, p->var.end_bit);
 			}
 			fputs("}", file);
+			continue;
 		}
-		else if (p->decl_kind == DECL_STRUCT || p->decl_kind == DECL_UNION)
-		{
-			if (!*first) fputs(",", file);
-			*first = false;
-			fprintf(file, "{\"kind\":\"%s\"", p->decl_kind == DECL_UNION ? "union" : "struct");
-			if (p->name) fprintf(file, ",\"name\":\"%s\"", p->name);
-			fputs(",\"members\":[", file);
-			bool sub_first = true;
-			emit_doc_struct_members(file, p, &sub_first);
-			fputs("]}", file);
-		}
+		if (!*first) fputs(",", file);
+		*first = false;
+		fprintf(file, "{\"kind\":\"%s\"", decl_to_name(p));
+		if (p->name) fprintf(file, ",\"name\":\"%s\"", p->name);
+		fputs(",\"members\":[", file);
+		bool sub_first = true;
+		emit_doc_struct_members(file, p, &sub_first);
+		fputs("]}", file);
 	}
 }
 
@@ -377,9 +410,8 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 	{
 		fputs("[", file);
 		bool first = true;
-		for (unsigned i = 0; i < vec_size(decl->func_decl.signature.params); i++)
+		FOREACH(Decl *, p, decl->func_decl.signature.params)
 		{
-			Decl *p = decl->func_decl.signature.params[i];
 			if (!p) continue;
 			if (!first) fputs(",", file);
 			first = false;
@@ -413,9 +445,8 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 	{
 		if (decl->decl_kind == DECL_ENUM)
 		{
-			for (unsigned i = 0; i < vec_size(decl->enums.parameters); i++)
+			FOREACH(Decl *, p, decl->enums.parameters)
 			{
-				Decl *p = decl->enums.parameters[i];
 				if (!p || !p->name) continue;
 				if (!first) fputs(",", file);
 				first = false;
@@ -423,35 +454,35 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 			}
 		}
 
-		for (unsigned i = 0; i < vec_size(decl->enums.values); i++)
+		FOREACH(Decl *, p, decl->enums.parameters)
 		{
-			Decl *p = decl->enums.values[i];
 			if (!p || !p->name) continue;
 			if (!first) fputs(",", file);
 			first = false;
 			fprintf(file, "{\"name\":\"%s\"}", p->name);
 		}
 	}
-	else if (decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION || decl->decl_kind == DECL_BITSTRUCT)
+	else if (decl_has_members(decl))
 	{
 		emit_doc_struct_members(file, decl, &first);
 	}
 	else if (decl->decl_kind == DECL_INTERFACE)
 	{
-		for (unsigned i = 0; i < vec_size(decl->interface_methods); i++)
+		FOREACH(Decl *, p, decl->interface_methods)
 		{
-			Decl *p = decl->interface_methods[i];
-			if (!p || !p->name) continue;
 			if (!first) fputs(",", file);
 			first = false;
 
 			fputs("{", file);
 			fprintf(file, "\"name\":\"%s\",\"type\":", p->name);
 			if (p->func_decl.signature.rtype)
+			{
 				print_doc_type(file, module, type_infoptr(p->func_decl.signature.rtype));
+			}
 			else
+			{
 				fputs("null", file);
-
+			}
 			// Emit the parameter list so the HTML can reconstruct the full signature
 			fputs(",\"params\":", file);
 			emit_params_json(file, module, p->func_decl.signature.params);
@@ -482,7 +513,7 @@ static void emit_custom_attrs(FILE *file, Decl *decl)
 			{
 				if (j > 0) fputs(",", file);
 				Expr *e = attr->exprs[j];
-				if (e->expr_kind == EXPR_CONST && e->const_expr.const_kind == CONST_STRING)
+				if (expr_is_const_string(e))
 				{
 					json_write_string(file, e->const_expr.bytes.ptr);
 				}
@@ -506,7 +537,9 @@ static void emit_normal_attrs(FILE *file, Decl *decl)
 	if (flag)                                  \
 	{                                          \
 		if (has_attrs)                         \
+		{                                      \
 			fputs(",", file);                  \
+		}                                      \
 		else                                   \
 		{                                      \
 			fputs(",\"attributes\":[", file);  \
@@ -557,7 +590,7 @@ static Decl *get_contract_decl(DeclId id)
 {
 	if (!id) return NULL;
 	Decl *d = declptr(id);
-	if (d && d->decl_kind == DECL_CONTRACT) return d;
+	if (d->decl_kind == DECL_CONTRACT) return d;
 	return NULL;
 }
 
@@ -655,27 +688,8 @@ static const char *get_decl_kind_name(Decl *decl)
 		case DECL_MACRO:
 			if (decl->func_decl.type_parent) return "macro_method";
 			return "macro";
-		case DECL_STRUCT:
-			return "struct";
-		case DECL_UNION:
-			return "union";
-		case DECL_ENUM:
-			return "enum";
-		case DECL_BITSTRUCT:
-			return "bitstruct";
-		case DECL_TYPEDEF:
-		case DECL_TYPE_ALIAS:
-			return "typedef";
-		case DECL_FAULT:
-			return "fault";
-		case DECL_INTERFACE:
-			return "interface";
-		case DECL_CONSTDEF:
-			return "constdef";
-		case DECL_VAR:
-			return "variable";
 		default:
-			return "unknown";
+			return decl_to_name(decl);
 	}
 }
 
@@ -713,73 +727,98 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			fputs("],", file);
 		}
 	}
-	if (decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION || decl->decl_kind == DECL_BITSTRUCT || decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_TYPEDEF || decl->decl_kind == DECL_INTERFACE || decl->decl_kind == DECL_CONSTDEF)
+	if (decl_has_interface(decl))
 	{
-		if (decl->interfaces)
+		unsigned iface_count = vec_size(decl->interfaces);
+		if (iface_count > 0)
 		{
-			unsigned iface_count = vec_size(decl->interfaces);
-			if (iface_count > 0)
+			fputs("\"interfaces\":[", file);
+			for (unsigned i = 0; i < iface_count; i++)
 			{
-				fputs("\"interfaces\":[", file);
-				for (unsigned i = 0; i < iface_count; i++)
-				{
-					if (i > 0) fputs(",", file);
-					print_doc_type(file, module, decl->interfaces[i]);
-				}
-				fputs("],", file);
+				if (i > 0) fputs(",", file);
+				print_doc_type(file, module, decl->interfaces[i]);
 			}
+			fputs("],", file);
 		}
 	}
 
-	if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
+	TypeInfo *base = NULL;
+	switch (decl->decl_kind)
 	{
-		emit_return_type_json(file, module, type_infoptrzero(decl->func_decl.signature.rtype));
-		if (decl->decl_kind == DECL_MACRO)
-		{
-			if (decl->func_decl.signature.is_at_macro) fputs("\"is_at_macro\":true,", file);
-			if (decl->func_decl.signature.is_safemacro) fputs("\"is_safemacro\":true,", file);
-		}
-	}
-	else if (decl->decl_kind == DECL_TYPE_ALIAS && decl->type_alias_decl.is_func)
-	{
-		Decl *fntype = decl->type_alias_decl.decl;
-		if (fntype && fntype->decl_kind == DECL_FNTYPE)
-		{
-			emit_return_type_json(file, module, type_infoptrzero(fntype->fntype_decl.signature.rtype));
-		}
-	}
-	else if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTDEF || decl->decl_kind == DECL_BITSTRUCT || decl->decl_kind == DECL_TYPEDEF || decl->decl_kind == DECL_TYPE_ALIAS)
-	{
-		TypeInfo *base = NULL;
-		if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTDEF)
-			base = decl->enums.type_info;
-		else if (decl->decl_kind == DECL_BITSTRUCT && decl->strukt.parent)
-			base = type_infoptr(decl->strukt.parent);
-		else if (decl->decl_kind == DECL_TYPEDEF)
-			base = decl->distinct;
-		else if (decl->decl_kind == DECL_TYPE_ALIAS)
+		case DECL_FUNC:
+		case DECL_MACRO:
+			emit_return_type_json(file, module, type_infoptrzero(decl->func_decl.signature.rtype));
+			if (decl->decl_kind == DECL_MACRO)
+			{
+				if (decl->func_decl.signature.is_at_macro) fputs("\"is_at_macro\":true,", file);
+				if (decl->func_decl.signature.is_safemacro) fputs("\"is_safemacro\":true,", file);
+			}
+			break;
+		case DECL_TYPE_ALIAS:
+			if (decl->type_alias_decl.is_func)
+			{
+				Decl *fntype = decl->type_alias_decl.decl;
+				if (fntype && fntype->decl_kind == DECL_FNTYPE)
+				{
+					emit_return_type_json(file, module, type_infoptrzero(fntype->fntype_decl.signature.rtype));
+				}
+				break;
+			}
 			base = decl->type_alias_decl.type_info;
-
-		if (base)
-		{
+			goto PRINT_BASE;
+		case DECL_ENUM:
+		case DECL_CONSTDEF:
+			base = decl->enums.type_info;
+			goto PRINT_BASE;
+		case DECL_BITSTRUCT:
+			base = decl->strukt.container_type;
+			goto PRINT_BASE;
+		case DECL_TYPEDEF:
+			base = decl->distinct;
+			goto PRINT_BASE;
+PRINT_BASE:
 			fputs("\"base_type\":", file);
 			print_doc_type(file, module, base);
 			fputs(",", file);
-		}
-	}
-	else if (decl->decl_kind == DECL_VAR)
-	{
-		TypeInfo *base = type_infoptrzero(decl->var.type_info);
-		if (base)
-		{
-			fputs("\"type\":", file);
-			print_doc_type(file, module, base);
-			fputs(",", file);
-		}
-		if (decl->var.kind == VARDECL_CONST)
-		{
-			fputs("\"is_const\":true,", file);
-		}
+			break;
+		case DECL_VAR:
+			base = type_infoptrzero(decl->var.type_info);
+			if (base)
+			{
+				fputs("\"type\":", file);
+				print_doc_type(file, module, base);
+				fputs(",", file);
+			}
+			if (decl->var.kind == VARDECL_CONST)
+			{
+				fputs("\"is_const\":true,", file);
+			}
+			break;
+		case DECL_POISONED:
+		case DECL_ATTRIBUTE:
+		case DECL_BODYPARAM:
+		case DECL_CT_ASSERT:
+		case DECL_CT_ECHO:
+		case DECL_CT_EXEC:
+		case DECL_CT_EXPAND:
+		case DECL_CT_INCLUDE:
+		case DECL_DECLARRAY:
+		case DECL_CONTRACT:
+		case DECL_ALIAS:
+		case DECL_ALIAS_PATH:
+		case DECL_ENUM_CONSTANT:
+		case DECL_ERASED:
+		case DECL_FAULT:
+		case DECL_FNTYPE:
+		case DECL_GROUP:
+		case DECL_GENERIC:
+		case DECL_GENERIC_INSTANCE:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+		case DECL_INTERFACE:
+		case DECL_STRUCT:
+		case DECL_UNION:
+			break;
 	}
 
 	fputs("\"members\":", file);
@@ -833,10 +872,8 @@ static bool category_has_content(Module *module, DocCategory cat)
 		{
 			Decl **list = lists[l];
 			if (!list) continue;
-			unsigned decl_count = vec_size(list);
-			for (unsigned m = 0; m < decl_count; m++)
+			FOREACH(Decl *, decl, list)
 			{
-				Decl *decl = list[m];
 				if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 				if (get_category_for_decl(decl) == cat) return true;
 			}
@@ -850,10 +887,8 @@ static bool category_has_content(Module *module, DocCategory cat)
 			Decl **sub_lists[2] = {gdecl->generic_decl.decls, gdecl->generic_decl.conditional_decls};
 			for (int list_idx = 0; list_idx < 2; list_idx++)
 			{
-				unsigned sub_count = vec_size(sub_lists[list_idx]);
-				for (unsigned m = 0; m < sub_count; m++)
+				FOREACH (Decl *, decl, sub_lists[list_idx])
 				{
-					Decl *decl = sub_lists[list_idx][m];
 					if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 					if (get_category_for_decl(decl) == cat) return true;
 				}
@@ -909,19 +944,16 @@ void compiler_docgen(BuildTarget *target)
 	all_modules = compiler.context.module_list;
 	fputs("\"modules\":{", file);
 
-	unsigned module_count = vec_size(all_modules);
 	bool first_module = true;
-	for (unsigned i = 0; i < module_count; i++)
+	FOREACH(Module *, module, all_modules)
 	{
-		Module *module = all_modules[i];
-
 		DeclId module_doc = 0;
 		unsigned unit_count = vec_size(module->units);
-		for (unsigned j = 0; j < unit_count; j++)
+		FOREACH(CompilationUnit *, unit, module->units)
 		{
-			if (module->units[j]->module_doc)
+			if (unit->module_doc)
 			{
-				module_doc = module->units[j]->module_doc;
+				module_doc = unit->module_doc;
 				break;
 			}
 		}
@@ -982,11 +1014,8 @@ void compiler_docgen(BuildTarget *target)
 				for (int l = 0; l < 3; l++)
 				{
 					Decl **list = lists[l];
-					if (!list) continue;
-					unsigned decl_count = vec_size(list);
-					for (unsigned k = 0; k < decl_count; k++)
+					FOREACH(Decl *, decl, list)
 					{
-						Decl *decl = list[k];
 						if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 						if (!first_in_cat) fputs(",", file);
 						first_in_cat = false;
@@ -1002,10 +1031,8 @@ void compiler_docgen(BuildTarget *target)
 					Decl **sub_lists[2] = {gdecl->generic_decl.decls, gdecl->generic_decl.conditional_decls};
 					for (int list_idx = 0; list_idx < 2; list_idx++)
 					{
-						unsigned sub_count = vec_size(sub_lists[list_idx]);
-						for (unsigned m = 0; m < sub_count; m++)
+						FOREACH(Decl *, decl, sub_lists[list_idx])
 						{
-							Decl *decl = sub_lists[list_idx][m];
 							if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 							if (get_category_for_decl(decl) == cat)
 							{

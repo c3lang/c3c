@@ -117,7 +117,7 @@ static bool add_members_to_decl_stack(SemaContext *context, Decl *decl, FindMemb
 	{
 		if (!add_interface_to_decl_stack(context, decl)) return false;
 	}
-	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
+	if (decl_has_members(decl))
 	{
 		FOREACH(Decl *, member, decl->strukt.members)
 		{

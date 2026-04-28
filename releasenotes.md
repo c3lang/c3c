@@ -56,6 +56,7 @@
 - Added support for Emscripten.
 - Replace `$vacount` by `$vaarg.len`, replace `$vasplat` by `...$vaarg`.
 - `$vaarg` behaves as `$vaexpr`.
+- Added `docgen` command to generate documentation.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

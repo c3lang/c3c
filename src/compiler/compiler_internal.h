@@ -3746,6 +3746,25 @@ INLINE bool decl_is_struct_type(Decl *decl)
 	return (kind == DECL_UNION) | (kind == DECL_STRUCT);
 }
 
+INLINE bool decl_has_interface(Decl *decl)
+{
+	static bool map[DECL_LAST + 1] = {
+		[DECL_UNION] = true,
+		[DECL_STRUCT] = true,
+		[DECL_ENUM] = true,
+		[DECL_CONSTDEF] = true,
+		[DECL_TYPEDEF] = true,
+		[DECL_BITSTRUCT] = true
+	};
+	return map[decl->decl_kind];
+}
+
+INLINE bool decl_has_members(Decl *decl)
+{
+	DeclKind kind = decl->decl_kind;
+	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_BITSTRUCT);
+}
+
 INLINE bool decl_is_user_defined_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;

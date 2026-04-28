@@ -1058,6 +1058,7 @@ typedef enum
 	DECL_TYPE_ALIAS,
 	DECL_UNION,
 	DECL_VAR,
+	DECL_LAST = DECL_VAR
 } DeclKind;
 
 typedef enum
