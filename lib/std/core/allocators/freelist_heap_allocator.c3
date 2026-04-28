@@ -8,82 +8,139 @@ import std::math;
 <*
  The FreeListHeapAllocator implements a simple heap allocator on top of an allocator function.
 
- It uses the given allocator function to allocate memory from some source, but never frees it.
+ It uses the given allocator function to allocate memory from some source.
  This allocator is intended to be used in environments where there isn't any native libc malloc,
  and it has to be emulated from a memory region, or wrapping linear memory as is the case for plain WASM.
 *>
 struct FreeListHeapAllocator (Allocator)
 {
 	MemoryAllocFn alloc_fn;
+	MemoryFreeFn free_fn;
 	Header* free_list;
 }
 
 <*
- @require allocator != null  : "An underlying memory provider must be given"
+ Initializes the allocator structure.
+
+ @require alloc_fn != null  : "An underlying memory provider must be given"
  @require !self.free_list : "The allocator may not be already initialized"
 *>
-fn void FreeListHeapAllocator.init(&self, MemoryAllocFn allocator)
+fn void FreeListHeapAllocator.init(&self, MemoryAllocFn alloc_fn, MemoryFreeFn free_fn = dummy_free_fn)
 {
-	self.alloc_fn = allocator;
+	self.alloc_fn = alloc_fn;
+	self.free_fn = free_fn;
 	self.free_list = null;
 }
 
+<*
+ Frees resources of the allocator.
+*>
+fn void FreeListHeapAllocator.free(&self)
+{
+	if (@unlikely(!self.free_list)) return;
+
+	Header* curr = self.free_list;
+
+	while (curr)
+	{
+		Header* next = curr.next;
+		self.free_fn(curr);
+		curr = next;
+	}
+
+	self.free_list = null;
+}
+
+<*
+ Implements the Allocator interface method.
+
+ @require !alignment || math::is_power_of_2(alignment)
+ @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
+ @require size > 0
+*>
 fn void*? FreeListHeapAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	if (init_type == ZERO)
 	{
-		return alignment > 0 ? @aligned_alloc_fn(self, simple_alloc_calloc, size, alignment) : simple_alloc_calloc(self, size);
+		return alignment > 0 ? @aligned_alloc_fn(self, freelist_alloc_calloc, size, alignment) : freelist_alloc_calloc(self, size);
 	}
-	return alignment > 0 ? @aligned_alloc_fn(self, simple_alloc_alloc, size, alignment) : simple_alloc_alloc(self, size);
+	return alignment > 0 ? @aligned_alloc_fn(self, freelist_alloc_alloc, size, alignment) : freelist_alloc_alloc(self, size);
 }
 
+<*
+ Implements the Allocator interface method.
+
+ @require !alignment || math::is_power_of_2(alignment)
+ @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
+ @require old_pointer != null
+ @require size > 0
+ @return ? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+*>
 fn void*? FreeListHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
 {
 	return alignment > 0
-		? @aligned_realloc_fn(self, simple_alloc_calloc, simple_alloc_free, old_pointer, size, alignment)
-		:  simple_alloc_realloc(self, old_pointer, size);
+		? @aligned_realloc_fn(self, freelist_alloc_calloc, freelist_alloc_free, old_pointer, size, alignment)
+		:  freelist_alloc_realloc(self, old_pointer, size);
 }
 
-fn void FreeListHeapAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
+<*
+ Implements the Allocator interface method.
+
+ @require ptr != null
+*>
+fn void FreeListHeapAllocator.release(&self, void* ptr, bool aligned) @dynamic
 {
 	if (aligned)
 	{
-		@aligned_free_fn(self, simple_alloc_free, old_pointer)!!;
+		@aligned_free_fn(self, freelist_alloc_free, ptr)!!;
 	}
 	else
 	{
-		simple_alloc_free(self, old_pointer);
+		freelist_alloc_free(self, ptr);
 	}
 }
 
 <*
- @require old_pointer && bytes > 0
+ Implements reallocation of the provided pointer to new_size
+
+ @require old_pointer != null : "Shouldn't be null"
+ @require new_size > 0 : "Should be bigger than 0"
 *>
-fn void*? simple_alloc_realloc(FreeListHeapAllocator* self, void* old_pointer, sz bytes) @local
+fn void*? freelist_alloc_realloc(FreeListHeapAllocator* self, void* old_pointer, sz new_size) @local
 {
 	// Find the block header.
 	Header* block = (Header*)old_pointer - 1;
-	if (block.size >= bytes) return old_pointer;
-	void* new = simple_alloc_alloc(self, bytes)!;
-	sz max_to_copy = math::min(block.size, bytes);
+	if (block.size >= new_size) return old_pointer;
+	void* new = freelist_alloc_alloc(self, new_size)!;
+	sz max_to_copy = math::min(block.size, new_size);
 	mem::copy(new, old_pointer, max_to_copy);
-	simple_alloc_free(self, old_pointer);
+	freelist_alloc_free(self, old_pointer);
 	return new;
 }
 
-fn void*? simple_alloc_calloc(FreeListHeapAllocator* self, sz bytes) @local
+<*
+ Allocates memory block and zeroes it out.
+
+ @require bytes > 0 : "Must be bigger than 0"
+*>
+fn void*? freelist_alloc_calloc(FreeListHeapAllocator* self, sz bytes) @local
 {
-	void* data = simple_alloc_alloc(self, bytes)!;
+	void* data = freelist_alloc_alloc(self, bytes)!;
 	mem::clear(data, bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
 
-fn void*? simple_alloc_alloc(FreeListHeapAllocator* self, sz bytes) @local
+<*
+ Finds appropriate memory block for requested amount of bytes.
+
+ @require bytes > 0 : "Must be bigger than 0"
+*>
+fn void*? freelist_alloc_alloc(FreeListHeapAllocator* self, sz bytes) @local
 {
 	sz aligned_bytes = mem::aligned_offset(bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	if (!self.free_list)
 	{
-		simple_alloc_add_block(self, aligned_bytes)!;
+		freelist_alloc_add_block(self, aligned_bytes)!;
 	}
 
 	Header* current = self.free_list;
@@ -123,22 +180,29 @@ fn void*? simple_alloc_alloc(FreeListHeapAllocator* self, sz bytes) @local
 				current = current.next;
 		}
 	}
-	simple_alloc_add_block(self, aligned_bytes)!;
-	return simple_alloc_alloc(self, aligned_bytes);
+	freelist_alloc_add_block(self, aligned_bytes)!;
+	return freelist_alloc_alloc(self, aligned_bytes);
 }
 
-fn void? simple_alloc_add_block(FreeListHeapAllocator* self, sz aligned_bytes) @local
+<*
+ Allocates memory block and inserts it into the free list.
+
+ @require aligned_bytes > 0 : "Must be bigger than 0"
+*>
+fn void? freelist_alloc_add_block(FreeListHeapAllocator* self, sz aligned_bytes) @local
 {
 	assert(mem::aligned_offset(aligned_bytes, mem::DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
 	char[] result = self.alloc_fn(aligned_bytes + Header::size)!;
 	Header* new_block = (Header*)result.ptr;
 	new_block.size = result.len - Header::size;
 	new_block.next = null;
-	simple_alloc_free(self, new_block + 1);
+	freelist_alloc_free(self, new_block + 1);
 }
 
-
-fn void simple_alloc_free(FreeListHeapAllocator* self, void* ptr) @local
+<*
+ Inserts free memory block into the free list.
+*>
+fn void freelist_alloc_free(FreeListHeapAllocator* self, void* ptr) @local
 {
 	// Empty ptr -> do nothing.
 	if (!ptr) return;
