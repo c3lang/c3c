@@ -24,6 +24,6 @@ struct Label
 
 fn void main()
 {
-	Widget {int} y; // #error:  There is no field or method 'Widget{int}.draw'
-	y.draw();
+	Widget {int} y;
+	y.draw(); // #error:  There is no field or method 'Widget{int}.draw'
 }

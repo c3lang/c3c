@@ -99,7 +99,15 @@ int main_real(int argc, const char *argv[])
 		case COMMAND_STATIC_LIB:
 		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_COMPILE_TEST:
-			compile_target(&build_options);
+		case COMMAND_DOCGEN:
+			if (vec_size(build_options.files) > 0)
+			{
+				compile_target(&build_options);
+			}
+			else
+			{
+				compile_file_list(&build_options);
+			}
 			break;
 		case COMMAND_CLEAN:
 			compile_clean(&build_options);
