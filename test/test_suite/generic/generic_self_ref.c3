@@ -10,7 +10,7 @@ struct Widget
 	List {any} children;
 }
 
-fn void Widget{Label}.draw(Widget* self) // #error: This method is already defined for 'Widget{Label}'
+fn void Widget{Label}.draw(Widget{Label}* self)
 {
 	io::printfn("Hello Label");
 }
@@ -24,6 +24,6 @@ struct Label
 
 fn void main()
 {
-	Widget {int} y;
+	Widget {int} y; // #error:  There is no field or method 'Widget{int}.draw'
 	y.draw();
 }

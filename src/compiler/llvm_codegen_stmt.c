@@ -156,6 +156,22 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	// If the variable has a no-init, then set the value to undef.
 	if (decl->var.no_init)
 	{
+		if (safe_mode_enabled())
+		{
+			switch (var_type->type_kind)
+			{
+				case ALL_FLOATS:
+					llvm_value_set_decl_address(c, value, decl);
+					llvm_store_raw(c, value, LLVMConstReal(alloc_type, NAN));
+					break;
+				case TYPE_U8:
+					llvm_value_set_decl_address(c, value, decl);
+					llvm_store_raw(c, value, LLVMConstInt(alloc_type, 0xFF, false));
+					break;
+				default:
+					break;
+			}
+		}
 		llvm_value_set(value, LLVMGetUndef(alloc_type), decl->type);
 		if (is_optional)
 		{

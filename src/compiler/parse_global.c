@@ -1228,7 +1228,7 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	decl->is_export = c->unit->export_by_default;
 	bool is_builtin = false;
 	bool is_cond;
-	bool can_be_generic = decl_may_be_generic(decl);
+	bool can_be_generic = decl_inherits_module_generic(decl);
 	ASSIGN_DECL_OR_RET(Decl *generics, parse_generic_decl(c), false);
 	bool is_method = decl->decl_kind == DECL_FUNC && decl->func_decl.type_parent;
 	bool is_alias = decl->decl_kind == DECL_TYPE_ALIAS;
