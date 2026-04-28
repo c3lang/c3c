@@ -115,6 +115,7 @@
 - Splat into vaarg macro, where vaarg is not used #2782.
 - Comparison with floats had incorrect codegen, leading to incorrect results for NaN #3175.
 - Zeroing out simd vectors in a struct could in some cases lead to incorrect lowering #3179.
+- Incorrect lowering when returning a struct to an optional value on Win64 in some cases #3180.
 
 ## 0.7.11 Change list
 

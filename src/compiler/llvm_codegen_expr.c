@@ -5810,8 +5810,9 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			// If we have a target, then use it.
 			if (target && alignment <= target->alignment)
 			{
-				ASSERT(target->kind == BE_ADDRESS);
+				ASSERT(llvm_value_is_addr(target));
 				arg_values[arg_count++] = target->value;
+				llvm_store_no_fault(c, target);
 				sret_return = true;
 				break;
 			}
