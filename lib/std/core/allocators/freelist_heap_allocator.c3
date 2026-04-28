@@ -25,7 +25,7 @@ struct FreeListHeapAllocator (Allocator)
  @require alloc_fn != null  : "An underlying memory provider must be given"
  @require !self.free_list : "The allocator may not be already initialized"
 *>
-fn void FreeListHeapAllocator.init(&self, MemoryAllocFn alloc_fn, MemoryFreeFn free_fn = dummy_free_fn)
+fn void FreeListHeapAllocator.init(&self, MemoryAllocFn alloc_fn, MemoryFreeFn free_fn = &dummy_free_fn)
 {
 	self.alloc_fn = alloc_fn;
 	self.free_fn = free_fn;

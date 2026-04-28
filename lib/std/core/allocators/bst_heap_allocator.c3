@@ -82,7 +82,7 @@ struct FallbackAlloc @local
 fn void BSTHeapAllocator.init(
 	&self,
 	MemoryAllocFn alloc_fn,
-	MemoryFreeFn free_fn = dummy_free_fn,
+	MemoryFreeFn free_fn = &dummy_free_fn,
 	sz init_capacity = DEFAULT_CAPACITY,
 	BSTAllocStrategy strategy = BEST_FIT,
 )

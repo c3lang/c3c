@@ -66,7 +66,7 @@ struct FallbackAlloc @local
 fn void BuddyHeapAllocator.init(
 	&self,
 	MemoryAllocFn alloc_fn,
-	MemoryFreeFn free_fn = dummy_free_fn,
+	MemoryFreeFn free_fn = &dummy_free_fn,
 	sz init_capacity = DEFAULT_CAPACITY,
 	sz coalesce_boundary = DEFAULT_COALESCE_BOUNDARY,
 	sz split_boundary = DEFAULT_SPLIT_BOUNDARY,
