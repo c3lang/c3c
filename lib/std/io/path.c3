@@ -183,10 +183,14 @@ fn bool Path.equals(self, Path p2) @operator(==)
 *>
 fn Path? Path.append(self, Allocator allocator, String... parts, String extension = "") => @pool()
 {
-	DString dstr = dstring::temp_with_capacity(self.path_string.len + parts.len * 8);
+	sz capacity = self.path_string.len + parts.len;
+	if (extension) capacity += 1 + extension.len;
+	foreach (part : parts) if (part) capacity += part.len;
+	DString dstr = dstring::temp_with_capacity(capacity);
 	dstr.append(self.path_string);
 	foreach (part : parts)
 	{
+		if (!part) continue;
 		if (!is_separator(dstr[^1], self.env)) dstr.append(PREFERRED_SEPARATOR);
 		dstr.append(part);
 	}
