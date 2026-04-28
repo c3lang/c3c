@@ -12,6 +12,9 @@ const MIN_CAPACITY         @local = MIN_BLOCK_SIZE * 4;
  The user can choose between two strategies: best fit and first fit. Best fit minimizes memory fragmentation but is generally slower than the first fit strategy.
  Unlike an arena allocator, it supports deallocation in arbitrary order, making it suitable for frequent deallocations and efficient memory reuse.
  Unlike buddy allocator, this allocator doesn't sort the underlying memory and does not require allocations to be powers of two.
+
+ This allocator is intended to be used in environments where there isn't any native libc malloc,
+ and it has to be emulated from a memory region, or wrapping linear memory as is the case for plain WASM.
 *>
 struct BSTHeapAllocator (Allocator, Printable)
 {
@@ -34,8 +37,8 @@ enum BSTAllocStrategy
 bitstruct NodeState : sz @local
 {
 	// Aligned size of memory block + AllocHeader.
-	sz size : 0..(sz::size * 8 - 2);
-	bool is_free : (sz::size * 8 - 1)..(sz::size * 8 - 1);
+	bool is_free : 0..0;
+	sz size : 1..(bitsizeof(sz) - 1);
 }
 
 struct FreeNode @local
@@ -57,10 +60,10 @@ struct AllocHeader @local
 	FreeNode* prev_phys;
 }
 
-bitstruct FallbackAllocState : ulong @local
+bitstruct FallbackAllocState : sz @local
 {
-	ushort padding : 0..9;
-	ulong size : 10..63;
+	sz padding : 0..9;
+	sz size : 10..(bitsizeof(sz) - 1);
 }
 
 struct FallbackAlloc @local
@@ -526,7 +529,6 @@ fn sz calc_used_main_buff_mem(BSTHeapAllocator* self) @local
 {
 	return calc_used_main_buff_mem_recur(self.root, 0);
 }
-
 fn sz calc_used_main_buff_mem_recur(FreeNode* curr_node, sz res) @local
 {
 	if (!curr_node) return res;
@@ -552,7 +554,7 @@ fn void*? fallback_alloc(BSTHeapAllocator* self, sz size, AllocInitType init_typ
 		FallbackAlloc* aligned_alloc = (FallbackAlloc*)mem::aligned_pointer(alloc + FallbackAlloc::size, alignment);
 		aligned_alloc--;
 		assert((char*)aligned_alloc >= alloc, "Alignment failed: %p < %p", aligned_alloc, alloc);
-		ushort padding = (ushort)((char*)aligned_alloc - alloc);
+		sz padding = (char*)aligned_alloc - alloc;
 		aligned_alloc.size = size - padding - FallbackAlloc::size;
 		aligned_alloc.padding = padding;
 		aligned_alloc.next = self.fallback_root;
@@ -590,7 +592,7 @@ fn void*? fallback_realloc(BSTHeapAllocator* self, void* old_ptr, sz new_size, s
 	FallbackAlloc* block = (FallbackAlloc*)old_ptr - 1;
 	if (block.size >= new_size) return old_ptr;
 	void* new_alloc = fallback_alloc(self, new_size, NO_ZERO, alignment)!;
-	sz max_to_copy = math::min(block.size, (ulong)new_size);
+	sz max_to_copy = math::min(block.size, new_size);
 	mem::copy(new_alloc, old_ptr, max_to_copy);
 	fallback_free(self, old_ptr);
 	return new_alloc;
