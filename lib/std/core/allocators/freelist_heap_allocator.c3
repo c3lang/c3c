@@ -23,6 +23,7 @@ struct FreeListHeapAllocator (Allocator)
  Initializes the allocator structure.
 
  @require alloc_fn != null  : "An underlying memory provider must be given"
+ @require free_fn != null : "Shouldn't be null"
  @require !self.free_list : "The allocator may not be already initialized"
 *>
 fn void FreeListHeapAllocator.init(&self, MemoryAllocFn alloc_fn, MemoryFreeFn free_fn = &dummy_free_fn)

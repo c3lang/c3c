@@ -77,6 +77,8 @@ struct FallbackAlloc @local
 <*
  Initializes bst allocator structure.
 
+ @require alloc_fn != null : "Shouldn't be null"
+ @require free_fn != null : "Shouldn't be null"
  @require init_capacity > MIN_CAPACITY : "Capacity should be greater than minimum capacity"
 *>
 fn void BSTHeapAllocator.init(

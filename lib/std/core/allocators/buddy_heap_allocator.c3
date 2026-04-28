@@ -59,6 +59,8 @@ struct FallbackAlloc @local
 <*
  Initializes the allocator structure.
  
+ @require alloc_fn != null : "Shouldn't be null"
+ @require free_fn != null : "Shouldn't be null"
  @require coalesce_boundary <= init_capacity && split_boundary <= init_capacity : "Can't exceed the capacity"
  @param split_boundary : "Value in bytes down to which the allocator will split its blocks, recommended value - estimated minimal allocation size"
  @param coalesce_boundary : "Value in bytes up to which the allocator will try to coalesce its blocks, recommended value - estimated most common allocation size"
