@@ -21,17 +21,15 @@ void parent_path(StringSlice *slice)
 void sema_analyse_pass_module_hierarchy(Module *module)
 {
 	const char *name = module->name->module;
+
 	StringSlice slice = slice_from_string(name);
 	// foo::bar::baz -> foo::bar
 	parent_path(&slice);
 	// foo -> return, no parent
 	if (!slice.len) return;
 
-
-	unsigned module_count = vec_size(compiler.context.module_list);
-	for (int i = 0; i < module_count; i++)
+	FOREACH(Module *, checked, compiler.context.module_list)
 	{
-		Module *checked = compiler.context.module_list[i];
 		Path *checked_name = checked->name;
 		if (checked_name->len != slice.len) continue;
 		// Found the parent! We're done, we add this parent
@@ -41,7 +39,7 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 			return;
 		}
 	}
-	// No match, so we create a synthetic module.
+	// No match, so we create a synthetic module parent
 	Path *path = path_create_from_string(slice.ptr, slice.len, module->name->loc);
 	DEBUG_LOG("Creating parent module for %s: %s", module->name->module, path->module);
 	Module *parent_module = compiler_find_or_create_module(path);
@@ -346,6 +344,11 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	scratch_buffer_clear();
 	const char *file_str = filename->const_expr.bytes.ptr;
 	bool c3_script = str_has_suffix(file_str, ".c3");
+	const char *old_dir;
+	const char *script_dir;
+	const char *exec_dir;
+
+	setup_exec_paths(&old_dir, &script_dir, &exec_dir);
 	if (!c3_script)
 	{
 		scratch_buffer_append(file_str);
@@ -361,32 +364,30 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		}
 	}
 	File *file;
-	char old_path_buffer[PATH_MAX]; // NOLINT
-	char *old_path = NULL;
-	if (compiler.build.script_dir)
-	{
-		old_path = getcwd(old_path_buffer, PATH_MAX);
-		if (!dir_change(compiler.build.script_dir))
-		{
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open script dir '%s'", compiler.build.script_dir);
-		}
-	}
 	if (c3_script)
 	{
-		file = compile_and_invoke(file_str, scratch_buffer_copy(), stdin_string, 0);
+		const char *args = scratch_buffer_copy();
+		if (!str_eq(script_dir, exec_dir))
+		{
+			scratch_buffer_clear();
+			scratch_buffer_append(script_dir);
+			scratch_buffer_append("/");
+			scratch_buffer_append(file_str);
+			file_str = scratch_buffer_copy();
+		}
+		dir_change(exec_dir);
+		file = compile_and_invoke(file_str, args, stdin_string, 0);
 	}
 	else
 	{
+		dir_change(exec_dir);
 		char *output = execute_cmd(scratch_buffer_to_string(), false, stdin_string, 0);
 		file = source_file_text_load(scratch_buffer_to_string(), output);
 	}
-	if (old_path)
+	success = dir_change(old_dir);
+	if (!success)
 	{
-		success = dir_change(old_path);
-		if (!success)
-		{
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open run dir '%s'", compiler.build.script_dir);
-		}
+		RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to return to the original directory after changing to exec dir '%s'", compiler.build.exec_dir);
 	}
 	if (compiler.context.includes_used++ > MAX_INCLUDE_DIRECTIVES)
 	{
@@ -517,6 +518,7 @@ void sema_analysis_pass_process_methods(Module *module, bool process_generic)
 			}
 			if (sema_analyse_method_register(&context, method))
 			{
+				if (method->decl_kind == DECL_ERASED) continue;
 				if (method->decl_kind == DECL_MACRO)
 				{
 					vec_add(unit->macro_methods, method);

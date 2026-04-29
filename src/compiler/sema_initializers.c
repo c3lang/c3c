@@ -587,7 +587,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 
 	if (init_expressions)
 	{
-		expr->initializer_list = init_expressions = sema_expand_vasplat_exprs(context, init_expressions);
+		expr->initializer_list = init_expressions = sema_expand_vasplat_exprs(context, init_expressions, NULL);
 	}
 	unsigned init_expression_count = vec_size(init_expressions);
 
@@ -1436,7 +1436,7 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 		}
 		if (!decl->name)
 		{
-			ASSERT_SPAN(decl, type_is_union_or_strukt(decl->type) || decl->decl_kind == DECL_BITSTRUCT);
+			ASSERT_SPAN(decl, decl_has_members(decl));
 			// Anonymous struct
 			Decl *found = sema_resolve_element_for_name(context, decl->strukt.members, elements_ref, index, false);
 			// No match, continue...

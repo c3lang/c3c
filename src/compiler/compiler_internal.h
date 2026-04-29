@@ -459,7 +459,6 @@ typedef struct
 typedef struct VarDecl_
 {
 	TypeInfoId type_info;
-	uint16_t va_index;
 	VarDeclKind kind : 8;
 	bool shadow : 1;
 	bool vararg : 1;
@@ -563,7 +562,6 @@ typedef struct
 	OperatorOverload operator : 6;
 	Signature signature;
 	AstId body;
-	DeclId docs;
 	union
 	{
 		struct // Function related
@@ -605,7 +603,6 @@ typedef struct
 typedef struct
 {
 	Signature signature;
-	DeclId docs;
 } FnTypeDecl;
 
 
@@ -662,6 +659,7 @@ typedef struct
 	SourceLocId loc;
 	InOutModifier modifier : 4;
 	bool by_ref : 1;
+	const char *description;
 } ContractParam;
 
 typedef struct
@@ -682,6 +680,8 @@ typedef struct
 		Expr **opt_returns;
 		Decl **opt_returns_resolved;
 	};
+	const char *comment;
+	const char *return_desc;
 } ContractsDecl;
 
 typedef struct
@@ -772,6 +772,7 @@ typedef struct Decl_
 		DeclId generic_id;
 		DeclId instance_id;
 	};
+	DeclId docs;
 	struct CompilationUnit_ *unit;
 	union
 	{
@@ -1322,7 +1323,6 @@ struct Expr_
 		ExprCatch catch_expr;                       // 24
 		Expr** cond_expr;                           // 8
 		ExprConst const_expr;                       // 32
-		ExprCtArg ct_arg_expr;
 		Expr** ct_concat;
 		ExprOtherContext expr_other_context;
 		ExprIdentifierRaw ct_ident_expr;            // 24
@@ -1769,6 +1769,7 @@ struct CompilationUnit_
 	bool benchmark_by_default;
 	bool test_by_default;
 	bool module_generated;
+	DeclId module_doc;
 	Attr **attr_links;
 	Decl **aliases;
 	Decl **ct_asserts;
@@ -1793,6 +1794,26 @@ struct CompilationUnit_
 	} llvm;
 };
 
+typedef struct
+{
+	const char *comment;
+	SourceLocId comment_span;
+	unsigned comment_len;
+	Expr **requires;
+	Expr **ensures;
+	ContractParam *params;
+	bool pure;
+	bool has_contracts;
+	SourceLocId first;
+	SourceLocId first_non_require;
+	SourceLocId first_contract;
+	Expr **opt_returns;
+	const char *return_desc;
+	Attr *deprecated;
+} ContractDescription;
+
+#define EMPTY_CONTRACT ((ContractDescription){ NULL })
+
 typedef struct ParseContext_
 {
 	TokenData data;
@@ -1801,6 +1822,7 @@ typedef struct ParseContext_
 	SourceLoc prev_span;
 	CompilationUnit *unit;
 	Lexer lexer;
+	ContractDescription contracts;
 } ParseContext;
 
 typedef struct
@@ -2102,6 +2124,7 @@ extern const char *kw_get_tag;
 extern const char *kw_has_tag;
 extern const char *kw_in;
 extern const char *kw_inout;
+extern const char *kw_is_const;
 extern const char *kw_is_ordered;
 extern const char *kw_has_equals;
 extern const char *kw_kind;
@@ -2384,6 +2407,7 @@ const char *get_exe_extension(void);
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
 void unit_register_external_symbol(SemaContext *context, Decl *decl);
+void setup_exec_paths(const char **old_dir_ref, const char **script_dir_ref, const char **exec_dir_ref);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive);
 bool unit_add_alias(CompilationUnit *unit, Decl *alias);
@@ -2405,7 +2429,7 @@ const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
 bool decl_is_defaulted_var(Decl *decl);
-bool decl_may_be_generic(Decl *decl);
+bool decl_inherits_module_generic(Decl *decl);
 void decl_append_links_to_global_during_codegen(Decl *decl);
 Decl *decl_template_get_generic(Decl *decl);
 
@@ -2568,7 +2592,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
                                          bool is_unwrapped_var, bool is_declaration, bool *failed_ref);
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr, bool *no_match_ref);
-Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs);
+Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs, Decl ***macro_va_decl_ref);
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
                                     bool *no_match_ref);
@@ -3722,6 +3746,25 @@ INLINE bool decl_is_struct_type(Decl *decl)
 	return (kind == DECL_UNION) | (kind == DECL_STRUCT);
 }
 
+INLINE bool decl_has_interface(Decl *decl)
+{
+	static bool map[DECL_LAST + 1] = {
+		[DECL_UNION] = true,
+		[DECL_STRUCT] = true,
+		[DECL_ENUM] = true,
+		[DECL_CONSTDEF] = true,
+		[DECL_TYPEDEF] = true,
+		[DECL_BITSTRUCT] = true
+	};
+	return map[decl->decl_kind];
+}
+
+INLINE bool decl_has_members(Decl *decl)
+{
+	DeclKind kind = decl->decl_kind;
+	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_BITSTRUCT);
+}
+
 INLINE bool decl_is_user_defined_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
@@ -3932,6 +3975,7 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_LENGTHOF:
 		case EXPR_MAYBE_DEREF:
 		case EXPR_CT_REFLECT:
+		case EXPR_VAARG:
 			expr_set_loc(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
@@ -3950,7 +3994,6 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
-		case EXPR_CT_ARG:
 		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
@@ -3994,6 +4037,7 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_UNARY:
 		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_VASPLAT:
+		case EXPR_VACOUNT:
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TYPECALL:

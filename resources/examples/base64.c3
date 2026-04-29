@@ -117,7 +117,7 @@ fn int? decode(String in, char* out, int* invalid_char_index = null)
 	return j;
 }
 
-extern fn void printf(char *fmt, ...);
+extern fn int printf(char *fmt, ...);
 
 fn void main()
 {

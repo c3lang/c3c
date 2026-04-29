@@ -1,7 +1,7 @@
 module tcpsockpairtest @test;
 import std::net;
 
-fn void test_tcp_sock_pair()
+fn void test_tcp_sock_pair() @if(!env::EMSCRIPTEN) // I think socketpair syscall is not supported on Emscripten
 {
 	tcp::TcpSocketPair sockets;
 	sockets.init()!!;

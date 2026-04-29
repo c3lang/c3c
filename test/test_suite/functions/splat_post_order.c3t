@@ -1,6 +1,6 @@
 macro @foo(..., bool a = true, bool b = false)
 {
-    return @foo2((void*)null, $vasplat, a: a, b: b);
+    return @foo2((void*)null, ...$vaarg, a: a, b: b);
 }
 
 macro @foo2(x, ..., bool a = true, bool b = false)

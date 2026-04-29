@@ -131,7 +131,7 @@ fn void test_deflate_compress_stream()
 		long file_len = out_f.cursor()!!;
 		out_f.seek(0)!!;
 
-		char[] compressed = mem::malloc(file_len)[:file_len];
+		char[] compressed = mem::malloc((sz)file_len)[:(sz)file_len];
 		defer free(compressed.ptr);
 		out_f.read(compressed)!!;
 
@@ -174,10 +174,10 @@ fn void test_deflate_decompress_stream()
 
 		deflate::decompress_stream(&f, &out_f)!!;
 
-		long out_size = out_f.cursor()!!;
+		sz out_size = (sz)out_f.cursor()!!;
 		assert(out_size == original.len, "Length mismatch in streaming decompression");
 
-		out_f.seek(0,)!!;
+		out_f.seek(0)!!;
 		char[] result = mem::malloc(out_size)[:out_size];
 		defer free(result.ptr);
 		out_f.read(result)!!;

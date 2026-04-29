@@ -21,7 +21,7 @@ void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %token SUB_ASSIGN SHL_ASSIGN SHR_ASSIGN AND_ASSIGN
 %token XOR_ASSIGN OR_ASSIGN VAR NUL ELVIS NEXTCASE
 %token MODULE IMPORT TYPEDEF ATTRDEF FAULTDEF EXTERN
-%token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOID USZ sz UPTR IPTR ANY
+%token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOID USZ SZ UPTR IPTR ANY
 %token ICHAR USHORT UINT ULONG BOOL INT128 UINT128 FLOAT16 FLOAT128 BFLOAT16
 %token TYPEID BITSTRUCT STATIC BANGBANG AT_CONST_IDENT HASH_TYPE_IDENT
 %token STRUCT UNION ENUM ELLIPSIS DOTDOT BYTES
@@ -31,11 +31,11 @@ void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %token FN FAULT MACRO CT_IF CT_ENDIF CT_ELSE CT_SWITCH CT_CASE CT_DEFAULT CT_FOR CT_FOREACH CT_ENDFOREACH
 %token CT_ENDFOR CT_ENDSWITCH BUILTIN IMPLIES CT_ECHO CT_ASSERT CT_EVALTYPE CT_VATYPE
 %token TRY CATCH SCOPE DEFER LVEC RVEC OPTELSE CT_TYPEFROM CT_TYPEOF TLOCAL
-%token CT_VASPLAT INLINE DISTINCT CT_VACONST CT_NAMEOF CT_VAREF CT_VACOUNT CT_VAARG
-%token CT_SIZEOF CT_STRINGIFY CT_QNAMEOF CT_OFFSETOF CT_VAEXPR CT_FEATURE
-%token CT_CNAMEOF CT_EVAL CT_DEFINED CT_ALIGNOF ASSERT
+%token CT_VASPLAT INLINE DISTINCT CT_VACOUNT CT_VAARG
+%token CT_SIZEOF CT_STRINGIFY CT_FEATURE
+%token CT_REFLECT CT_EVAL CT_DEFINED ASSERT CT_EXPAND
 %token ASM CHAR_LITERAL REAL TRUE FALSE CT_CONST_IDENT
-%token HASH_CONST_IDENT CT_ASSIGNABLE CT_AND CT_IS_CONST AT_INLINE AT_PURE AT_NOINLINE
+%token HASH_CONST_IDENT CT_ASSIGNABLE CT_AND AT_INLINE AT_PURE AT_NOINLINE
 
 %start translation_unit
 %%
@@ -94,6 +94,7 @@ top_level_decl
 	| ct_error_stmt
 	| ct_echo_stmt
 	| ct_include_stmt
+	| ct_expand_stmt
 	| import_decl
 	| const_declaration
 	| global_declaration
@@ -164,6 +165,10 @@ ct_echo_stmt
 
 ct_include_stmt
 	: CT_INCLUDE constant_expr opt_attributes ';'
+	;
+
+ct_expand_stmt
+	: CT_EXPAND constant_expr opt_attributes ';'
 	;
 
 import_decl
@@ -528,14 +533,6 @@ local_ident_expr
 	| HASH_IDENT
 	;
 
-ct_call
-	: CT_ALIGNOF
-	| CT_CNAMEOF
-	| CT_NAMEOF
-	| CT_OFFSETOF
-	| CT_QNAMEOF
-	;
-
 ct_castable
 	: CT_ASSIGNABLE
 	;
@@ -544,20 +541,7 @@ ct_analyse
 	: CT_EVAL
 	| CT_SIZEOF
 	| CT_STRINGIFY
-	| CT_IS_CONST
-	;
-
-ct_vaarg
-	: CT_VACONST
-	| CT_VAARG
-	| CT_VAREF
-	| CT_VAEXPR
-	;
-
-flat_path
-	: primary_expr param_path
-	| type
-	| primary_expr
+	| CT_REFLECT
 	;
 
 maybe_optional_type
@@ -596,8 +580,7 @@ base_expr_assignable
 	| type '.' access_ident
 	| type '.' CONST_IDENT
 	| '(' expr ')'
-	| ct_call '(' flat_path ')'
-	| ct_vaarg '[' expr ']'
+	| CT_VAARG '[' expr ']'
 	| ct_analyse '(' expression_list ')'
 	| CT_DEFINED '(' arg_list ')'
 	| CT_VACOUNT
@@ -1306,6 +1289,7 @@ statement
 	| ct_echo_stmt
 	| ct_assert_stmt
 	| ct_error_stmt
+	| ct_expand_stmt
 	| ct_if_stmt
 	| ct_switch_stmt
 	| ct_foreach_stmt

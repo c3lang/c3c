@@ -17,7 +17,7 @@
 ********************************************************************************************/
 
 module raylib_camera_platformer;
-import raylib55;
+import raylib6, std::math;
 
 const G = 400;
 const float PLAYER_JUMP_SPD = 350;
@@ -35,7 +35,7 @@ struct Player
 
 struct EnvItem
 {
-	RLRectangle rect;
+	Rect rect;
 	int blocking;
 	RLColor color;
 }
@@ -112,7 +112,7 @@ fn int main()
 			player.position = { 400, 280 };
 		}
 
-		if (rl::is_key_pressed(C)) camera_option = CameraUpdateType.from_ordinal(((int)camera_option + 1) % (int)CameraUpdateType.len);
+		if (rl::is_key_pressed(C)) camera_option++;
 
 		// Call update camera function by its pointer
 		camera_option.func(&camera, &player, &env_items, delta_time, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -126,7 +126,7 @@ fn int main()
 			rl::@mode2d(camera)
 			{
 				foreach (item : env_items) rl::draw_rectangle_rec(item.rect, item.color);
-				RLRectangle player_rect = { player.position.x - 20, player.position.y - 40, 40.0f, 40.0f };
+				Rect player_rect = { player.position.x - 20, player.position.y - 40, 40.0f, 40.0f };
 				rl::draw_rectangle_rec(player_rect, rl::RED);
 				rl::draw_circle_v(player.position, 5.0f, rl::GOLD);
 			};

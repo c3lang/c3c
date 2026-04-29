@@ -74,6 +74,8 @@ const char *token_type_to_string(TokenType type)
 			return "&&";
 		case TOKEN_ARROW:
 			return "->";
+		case TOKEN_BANGBANG:
+			return "!!";
 		case TOKEN_BIT_AND_ASSIGN:
 			return "&=";
 		case TOKEN_BIT_OR_ASSIGN:
@@ -134,8 +136,6 @@ const char *token_type_to_string(TokenType type)
 			return "<<";
 		case TOKEN_SHR:
 			return ">>";
-		case TOKEN_BANGBANG:
-			return "!!";
 
 		// Three character tokens
 		case TOKEN_ELLIPSIS:
@@ -365,18 +365,8 @@ const char *token_type_to_string(TokenType type)
 			return "$if";
 		case TOKEN_CT_INCLUDE:
 			return "$include";
-		case TOKEN_CT_VACOUNT:
-			return "$vacount";
-		case TOKEN_CT_VATYPE:
-			return "$vatype";
-		case TOKEN_CT_VACONST:
-			return "$vaconst";
 		case TOKEN_CT_VAARG:
 			return "$vaarg";
-		case TOKEN_CT_VAEXPR:
-			return "$vaexpr";
-		case TOKEN_CT_VASPLAT:
-			return "$vasplat";
 		case TOKEN_CT_REFLECT:
 			return "$reflect";
 		case TOKEN_CT_SWITCH:
@@ -399,6 +389,6 @@ const char *token_type_to_string(TokenType type)
 
 bool token_is_any_type(TokenType type)
 {
-	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT || type == TOKEN_CT_VATYPE;
+	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT;
 }
 

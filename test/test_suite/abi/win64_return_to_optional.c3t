@@ -1,0 +1,65 @@
+// #target: windows-x64
+module test;
+
+enum PixelFormat
+{
+	ABC
+}
+struct Texture
+{
+    uint id;                // OpenGL texture id
+    int width;              // Texture base width
+    int height;             // Texture base height
+    int mipmaps;            // Mipmap levels, 1 by default
+    PixelFormat format;     // Data format (PixelFormat type)
+}
+extern fn Texture loadTexture(ZString a);
+
+fn void main()
+{
+	Texture? texture;
+	if (catch texture)
+	{
+		texture = loadTexture((ZString) "test.png");
+	}
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %texture = alloca %Texture, align 4
+  %texture.f = alloca i64, align 8
+  %temp_err = alloca i64, align 8
+  store i64 0, ptr %texture.f, align 8
+  call void @llvm.memset.p0.i64(ptr align 4 %texture, i8 0, i64 20, i1 false)
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %optval = load i64, ptr %texture.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %0, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %testblock
+  store i64 %optval, ptr %temp_err, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  store i64 0, ptr %temp_err, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check, %assign_optional
+  %1 = load i64, ptr %temp_err, align 8
+  %i2b = icmp ne i64 %1, 0
+  br i1 %i2b, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_block
+  store i64 0, ptr %texture.f, align 8
+  call void @loadTexture(ptr sret(%Texture) align 4 %texture, ptr @.str)
+  store i64 0, ptr %texture.f, align 8
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then, %end_block
+  ret void
+}

@@ -16,7 +16,7 @@
 ********************************************************************************************/
 
 module raylib_input_gestures;
-import raylib55;
+import raylib6, std::math;
 
 
 const MAX_GESTURE_STRINGS = 20;
@@ -33,7 +33,7 @@ fn int main()
 
 	rl::init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib [core] example - input gestures");
 
-	RLRectangle touch_area = { 220, 10, SCREEN_WIDTH - 230.0f, SCREEN_HEIGHT - 20.0f };
+	Rect touch_area = { 220, 10, SCREEN_WIDTH - 230.0f, SCREEN_HEIGHT - 20.0f };
 
 	int gestures_count = 0;
 	ZString[MAX_GESTURE_STRINGS] gesture_strings;

@@ -156,6 +156,7 @@ const bool NETBSD = LIBC && OS_TYPE == NETBSD;
 const bool BSD_FAMILY = env::FREEBSD || env::OPENBSD || env::NETBSD;
 const bool WASI = LIBC && OS_TYPE == WASI;
 const bool WASM = ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
+const bool EMSCRIPTEN = LIBC && OS_TYPE == EMSCRIPTEN;
 const bool ANDROID = LIBC && OS_TYPE == ANDROID;
 const bool FREESTANDING_PE32 = NO_LIBC && OS_TYPE == WIN32;
 const bool FREESTANDING_MACHO = NO_LIBC && OS_TYPE == MACOS;
@@ -168,7 +169,7 @@ const bool MEMORY_SANITIZER = $$MEMORY_SANITIZER;
 const bool THREAD_SANITIZER = $$THREAD_SANITIZER;
 const bool ANY_SANITIZER = ADDRESS_SANITIZER || MEMORY_SANITIZER || THREAD_SANITIZER;
 const int LANGUAGE_DEV_VERSION = $$LANGUAGE_DEV_VERSION;
-const bool HAS_NATIVE_ERRNO = env::LINUX || env::ANDROID || env::OPENBSD || env::DARWIN || env::WIN32 || env::NETBSD;
+const bool HAS_NATIVE_ERRNO = env::LINUX || env::ANDROID || env::OPENBSD || env::DARWIN || env::WIN32 || env::NETBSD || env::EMSCRIPTEN;
 
 macro bool os_is_darwin() @const
 {
@@ -196,11 +197,11 @@ macro bool os_is_posix() @const
 	$case SOLARIS:
 	$case TVOS:
 	$case WATCHOS:
+	$case EMSCRIPTEN:
 	$case ANDROID:
 		return true;
 	$case WIN32:
 	$case WASI:
-	$case EMSCRIPTEN:
 		return false;
 	$default:
 		$echo("Assuming non-Posix environment");

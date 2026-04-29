@@ -265,8 +265,8 @@ fn int128 __ashlti3(int128 a, uint b) @cname("__ashlti3") @weak @nostrip
 	result.all = (uint128)a;
 	if (b >= 64)
 	{
-		result.low = 0;
 		result.high = result.low << (b - 64);
+		result.low = 0;
 	}
 	else
 	{

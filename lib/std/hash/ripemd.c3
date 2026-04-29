@@ -71,7 +71,7 @@ fn void RipeMd.init(&self)
 fn void RipeMd.update(&self, char[] data)
 {
 	sz $bufsz = @sizeof(self.buffer);
-	sz avail = $bufsz - (self.byte_count & 0x3f);
+	sz avail = $bufsz - (sz)(self.byte_count & 0x3f);
 	self.byte_count += data.len;
 
 	if (avail > data.len)

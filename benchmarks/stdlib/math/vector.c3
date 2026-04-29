@@ -22,10 +22,10 @@ fn void initialize() @init
 	set_benchmark_warmup_iterations(10);
 	set_benchmark_max_iterations(100_000);
 
-	set_benchmark_func_iterations($qnameof(add), 4_500_000);
-	set_benchmark_func_iterations($qnameof(dot), 4_500_000);
-	set_benchmark_func_iterations($qnameof(cross), 2_000_000);
-	set_benchmark_func_iterations($qnameof(normalize), 2_800_000);
+	set_benchmark_func_iterations($reflect(add).qname, 4_500_000);
+	set_benchmark_func_iterations($reflect(dot).qname, 4_500_000);
+	set_benchmark_func_iterations($reflect(cross).qname, 2_000_000);
+	set_benchmark_func_iterations($reflect(normalize).qname, 2_800_000);
 }
 
 fn void sink(float f) @noinline

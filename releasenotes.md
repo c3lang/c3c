@@ -51,6 +51,13 @@
 - Add `$expand` compile time function to convert strings to code.
 - Constdef now infers through unary negations.
 - Only used libraries are scanned for dependencies. #3144
+- `$vaconst`, `$vaexpr` and `$vatype` removed.
+- Improve error message on unsupported typeid runtime access at runtime. #3170
+- Added support for Emscripten.
+- Replace `$vacount` by `$vaarg.len`, replace `$vasplat` by `...$vaarg`.
+- `$vaarg` behaves as `$vaexpr`.
+- Added `docgen` command to generate documentation.
+- Added `jmpabs` x86 CPU feature.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
@@ -60,7 +67,7 @@
 - Add `compare_to` and `compare_to_ignore_case` to `String`. #3096
 - Add `SortedMap` based on skip lists.
 - Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
-- `BufferedChannel` and `UnbufferedChannel` now pointers, create using `create_unbuffered` and `create_buffered`
+- `BufferedChannel` and `UnbufferedChannel` are now pointers, create using `create_unbuffered` and `create_buffered`
 - `RingList` now conforms to `foreach` and adds additional functions.
 - Ini parser and encoder.
 - Updated `ref::new` argument order.
@@ -84,6 +91,9 @@
 - Add buddy heap allocator - `BuddyHeapAllocator`.
 - `SimpleHeapAllocator` has been renamed `FreeListHeapAllocator`.
 - `std::collections::object` added `Object.to_value` to convert from an object to a value.
+- `std::encoding::xml` added for XML parsing and serialization.
+- Fix `Path.append` separator not honoring the specified environment.
+- Add multi part and extension support to `Path.append`.
 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
@@ -106,6 +116,16 @@
 - Incorrect error message when casting to non-existent enum.
 - Macro `$Type = ...` would not work correctly with `$defined`
 - Fix enum value handling in `Object` (`std::collections::object`) to conform with changes in enums.
+- Compiler assert in certain cases with ?? and void returns. #3168
+- Bug in compiler-rt for i128 shift.
+- LinkedBlockingQueue.push_timeout did not work correctly.
+- Splat into vaarg macro, where vaarg is not used #2782.
+- Comparison with floats had incorrect codegen, leading to incorrect results for NaN #3175.
+- Zeroing out simd vectors in a struct could in some cases lead to incorrect lowering #3179.
+- Incorrect lowering when returning a struct to an optional value on Win64 in some cases #3180.
+- Fix bug where a method is considered doubly generic if declared in a generic module for a generic type. #3176
+- Fix exp10 on platforms without exp10 as an LLVM builtin.
+- LLVM 23 compatibility: map `Os`/`Oz` to `O2` pass pipeline, fix `returnaddress` intrinsic signature, add `optsize`/`minsize` function attributes.
 
 ## 0.7.11 Change list
 

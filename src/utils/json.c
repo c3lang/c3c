@@ -511,3 +511,36 @@ void print_json_to_file(JSONObject *obj, FILE *file)
 	print_json(obj, 0, file);
 }
 
+void json_write_string(FILE *file, const char *str)
+{
+	if (!str)
+	{
+		fputs("null", file);
+		return;
+	}
+	fputs("\"", file);
+	while (*str)
+	{
+		switch (*str)
+		{
+			case '"': fputs("\\\"", file); break;
+			case '\\': fputs("\\\\", file); break;
+			case '\n': fputs("\\n", file); break;
+			case '\r': fputs("\\r", file); break;
+			case '\t': fputs("\\t", file); break;
+			default:
+				if ((unsigned char)*str < 32)
+				{
+					fprintf(file, "\\u%04x", *str);
+				}
+				else
+				{
+					fputc(*str, file);
+				}
+				break;
+		}
+		str++;
+	}
+	fputs("\"", file);
+}
+

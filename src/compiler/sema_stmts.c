@@ -529,7 +529,7 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 	// we won't be able to do any constant ensure checks anyway, so skip.
 	if (!sema_cast_const(ret_expr)) return true;
 
-	Decl *contracts = declptrzero(context->current_macro->func_decl.docs);
+	Decl *contracts = declptrzero(context->current_macro->docs);
 	Expr **ensures = contracts ? contracts->contracts_decl.ensures : NULL;
 
 	// We store the old return_expr for retval
@@ -757,7 +757,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		AstId first = 0;
 		AstId *append_id = &first;
 		// Creating an assign statement
-		Decl *contracts = declptrzero(context->call_env.current_function->func_decl.docs);
+		Decl *contracts = declptrzero(context->call_env.current_function->docs);
 		Expr **ensures = contracts ? contracts->contracts_decl.ensures : NULL;
 		context->return_expr = return_expr;
 		FOREACH(Expr *, ensure, ensures)
@@ -797,7 +797,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CATCH:
 		case EXPR_COND:
 		case EXPR_POISONED:
-		case EXPR_CT_ARG:
 		case EXPR_CT_FEATURE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
@@ -3452,7 +3451,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		AstId assert_first = 0;
 		AstId *next = &assert_first;
 		bool has_ensures = false;
-		Decl *contracts = declptrzero(func->func_decl.docs);
+		Decl *contracts = declptrzero(func->docs);
 		if (contracts)
 		{
 			copy_begin();

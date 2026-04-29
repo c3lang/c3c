@@ -96,11 +96,11 @@ macro bool equals(a, b) @builtin
 
 macro min(x, ...) @builtin
 {
-	$if $vacount == 1:
+	$if $vaarg.len == 1:
 		return less(x, $vaarg[0]) ? x : $vaarg[0];
 	$else
 		var result = x;
-		$for var $i = 0; $i < $vacount; $i++:
+		$for var $i = 0; $i < $vaarg.len; $i++:
 			if (less($vaarg[$i], result))
 			{
 				 result = $vaarg[$i];
@@ -112,11 +112,11 @@ macro min(x, ...) @builtin
 
 macro max(x, ...) @builtin
 {
-	$if $vacount == 1:
+	$if $vaarg.len == 1:
 		return greater(x, $vaarg[0]) ? x : $vaarg[0];
 	$else
 		var result = x;
-		$for var $i = 0; $i < $vacount; $i++:
+		$for var $i = 0; $i < $vaarg.len; $i++:
 			if (greater($vaarg[$i], result))
 			{
 				 result = $vaarg[$i];
@@ -127,17 +127,19 @@ macro max(x, ...) @builtin
 }
 
 
+
 <*
  @require types::is_numerical($typeof($a))
+ @require values::@all_const(...$vaarg) : "All values must be constant"
 *>
 macro @max($a, ...) @builtin @const
 {
-	$if $vacount == 1:
-		return $a > $vaconst[0] ? $a : $vaconst[0];
+	$if $vaarg.len == 1:
+		return $a > $vaarg[0] ? $a : $vaarg[0];
 	$else
 		var $result = $a;
-		$for var $x = 0; $x < $vacount; ++$x:
-			$if $vaconst[$x] > $result: $result = $vaconst[$x]; $endif
+		$for var $x = 0; $x < $vaarg.len; ++$x:
+			$if $vaarg[$x] > $result: $result = $vaarg[$x]; $endif
 		$endfor
 		return $result;
 	$endif
@@ -145,15 +147,16 @@ macro @max($a, ...) @builtin @const
 
 <*
  @require types::is_numerical($typeof($a))
+ @require values::@all_const(...$vaarg) : "All values must be constant"
 *>
 macro @min($a, ...) @builtin @const
 {
-	$if $vacount == 1:
-		return $a < $vaconst[0] ? $a : $vaconst[0];
+	$if $vaarg.len == 1:
+		return $a < $vaarg[0] ? $a : $vaarg[0];
 	$else
 		var $result = $a;
-		$for var $x = 0; $x < $vacount; ++$x:
-			$if $vaconst[$x] < $result: $result = $vaconst[$x]; $endif
+		$for var $x = 0; $x < $vaarg.len; ++$x:
+			$if $vaarg[$x] < $result: $result = $vaarg[$x]; $endif
 		$endfor
 		return $result;
 	$endif

@@ -72,7 +72,7 @@ fn HashSet* HashSet.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPACITY, float l
 macro HashSet* HashSet.init_with_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
-	$for var $i = 0; $i < $vacount; $i++:
+	$for var $i = 0; $i < $vaarg.len; $i++:
 		self.add($vaarg[$i]);
 	$endfor
 	return self;
@@ -86,7 +86,7 @@ macro HashSet* HashSet.init_with_values(&self, Allocator allocator, ..., sz capa
 *>
 macro HashSet* HashSet.tinit_with_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.init_with_values(tmem, $vasplat, capacity: capacity, load_factor: load_factor);
+	return self.init_with_values(tmem, ...$vaarg, capacity: capacity, load_factor: load_factor);
 }
 
 <*

@@ -109,6 +109,7 @@ bool command_accepts_files(CompilerCommand command)
 {
 	switch (command)
 	{
+		case COMMAND_DOCGEN:
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_ONLY:
 		case COMMAND_COMPILE_RUN:
@@ -148,6 +149,7 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 			return true;
+		case COMMAND_DOCGEN:
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_ONLY:
 		case COMMAND_DYNAMIC_LIB:
@@ -309,6 +311,7 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 		case OPENBSD_X64:
 		case WINDOWS_AARCH64:
 		case WINDOWS_X64:
+		case EMSCRIPTEN_WASM32:
 		case ARCH_OS_TARGET_DEFAULT:
 			return LINK_LIBC_ON;
 		case WASM32:
@@ -628,6 +631,9 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
+	target->docgen = options->command == COMMAND_DOCGEN;
+	target->docgen_json_out = options->docgen_json_out;
+	target->docgen_append = options->docgen_append;
 	target->silent = options->verbosity_level < 0;
 	switch (options->sanitize_mode)
 	{
@@ -670,12 +676,14 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			target->build_dir = options->build_dir;
 		}
 		set_dir_with_default(&target->script_dir, options->script_dir, ".");
+		set_dir_with_default(&target->exec_dir, options->exec_dir, ".");
 	}
 	else
 	{
 		set_dir_with_default(&target->output_dir, options->output_dir, "out");
 		set_dir_with_default(&target->build_dir, options->build_dir, "build");
 		set_dir_with_default(&target->script_dir, options->script_dir, "scripts");
+		set_dir_with_default(&target->exec_dir, options->exec_dir, target->script_dir);
 	}
 
 	set_output_dir_from_options(&target->ir_file_dir, options->llvm_out, "llvm", target_name, target->output_dir);

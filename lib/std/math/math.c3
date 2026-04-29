@@ -349,7 +349,15 @@ macro exp2(x) => $$exp2(values::promote_int(x));
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro exp10(x) => $$exp10(values::promote_int(x));
+macro exp10(x)
+{
+	$if env::POSIX:
+		return $$exp10(values::promote_int(x));
+	$else
+		var val = values::promote_int(x);
+		return $$exp2(val * ($typeof(val))0x1.a934f0979a371p+1);
+	$endif
+}
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
@@ -422,11 +430,11 @@ macro log10(x) => $$log10(values::promote_int(x));
 *>
 macro max(x, y, ...)
 {
-	$if $vacount == 0:
+	$if $vaarg.len == 0:
 		return $$max(x, y);
 	$else
 		var m = $$max(x, y);
-		$for var $i = 0; $i < $vacount; $i++:
+		$for var $i = 0; $i < $vaarg.len; $i++:
 			m = $$max(m, $vaarg[$i]);
 		$endfor
 		return m;
@@ -439,11 +447,11 @@ macro max(x, y, ...)
 *>
 macro min(x, y, ...)
 {
-	$if $vacount == 0:
+	$if $vaarg.len == 0:
 		return $$min(x, y);
 	$else
 		var m = $$min(x, y);
-		$for var $i = 0; $i < $vacount; $i++:
+		$for var $i = 0; $i < $vaarg.len; $i++:
 			m = $$min(m, $vaarg[$i]);
 		$endfor
 		return m;
@@ -1035,12 +1043,12 @@ macro ulong ulong.muldiv(self, ulong mul, ulong div) => mul_div_helper(self, mul
 <*
  Calculate the least common multiple for the provided arguments.
 
- @require $vacount >= 2 : "At least two arguments are required."
+ @require $vaarg.len >= 2 : "At least two arguments are required."
 *>
 macro lcm(...)
 {
 	$typeof($vaarg[0]) result = $vaarg[0];
-	$for var $i = 1; $i < $vacount; $i++:
+	$for var $i = 1; $i < $vaarg.len; $i++:
 		$if $defined(result.lcm):
 			result = result.lcm($vaarg[$i]);
 		$else
@@ -1053,12 +1061,12 @@ macro lcm(...)
 <*
  Calculate the greatest common divisor for the provided arguments.
 
- @require $vacount >= 2 : "At least two arguments are required."
+ @require $vaarg.len >= 2 : "At least two arguments are required."
 *>
 macro gcd(...)
 {
 	$typeof($vaarg[0]) result = $vaarg[0];
-	$for var $i = 1; $i < $vacount; $i++:
+	$for var $i = 1; $i < $vaarg.len; $i++:
 		$if $defined(result.gcd):
 			result = result.gcd($vaarg[$i]);
 		$else

@@ -1,5 +1,5 @@
 module tetris;
-import raylib55;
+import raylib6;
 /**
  *   raylib - classic game: tetris
  *

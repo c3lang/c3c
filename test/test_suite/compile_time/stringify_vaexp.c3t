@@ -17,7 +17,7 @@ macro @foo1(#expr)
 
 macro @foo2(...)
 {
-	return $stringify($vaexpr[0]);
+	return $stringify($vaarg[0]);
 }
 
 macro @foo3(#expr)

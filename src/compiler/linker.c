@@ -665,7 +665,7 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
 	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
 	add_plain_arg("-dynamic-linker"); add_plain_arg("/system/bin/linker64");
-	
+
 	if (linker_type == LINKER_CC) add_plain_arg("-nostartfiles");
 
 	scratch_buffer_clear();
@@ -840,6 +840,35 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 	}
 }
 
+static void linker_setup_emscripten(const char ***args_ref, Linker linker_type, 
+                                    const char **files_to_link, unsigned file_count)
+{
+	if (linker_type == LINKER_CC)
+	{
+		if (compiler.build.testing)
+		{
+			// minimal 3 linker flags to make the unit test pass
+			// `c3c compile-test -O1 --target emscripten -o test.js test/unit/ && node test.js`
+			add_plain_arg("-pthread");
+			add_plain_arg("-sSTACK_SIZE=128kb");
+			add_plain_arg("-sALLOW_MEMORY_GROWTH");
+		}
+
+		if (compiler.build.benchmarking)
+		{
+			add_plain_arg("-sALLOW_MEMORY_GROWTH");
+		}
+
+		// // In non-optimized builds, we may want to enable some debugging flags for Emscripten
+		// if (compiler.build.optlevel == OPTIMIZATION_NONE)
+		// {
+		// 	add_plain_arg("-sASSERTIONS=1");
+		// 	add_plain_arg("-sSTACK_OVERFLOW_CHECK=1");
+		// }
+
+	}
+}
+
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
                          const char *output_file, Linker linker_type, Linking *linking)
 {
@@ -895,6 +924,8 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_IOS:
 		case OS_TYPE_TVOS:
 		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
+			linker_setup_emscripten(args_ref, linker_type, files_to_link, file_count);
 			break;
 		case OS_TYPE_FREEBSD:
 		case OS_TYPE_OPENBSD:
@@ -1014,6 +1045,7 @@ Linker linker_find_linker_type(void)
 		case OS_TYPE_WIN32:
 			return LINKER_LINK_EXE;
 		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
 			return LINKER_WASM;
 	}
 	UNREACHABLE

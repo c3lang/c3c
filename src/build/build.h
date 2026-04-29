@@ -44,6 +44,7 @@ typedef enum
 	COMMAND_PRINT_SYNTAX,
 	COMMAND_PROJECT,
 	COMMAND_FETCH_SDK,
+	COMMAND_DOCGEN,
 } CompilerCommand;
 
 typedef enum
@@ -262,6 +263,8 @@ typedef struct BuildOptions_
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
+	bool docgen_json_out;
+	bool docgen_append;
 	bool fetch_accept_license;
 	bool msvc_show_versions;
 	const char *msvc_version_override;
@@ -278,6 +281,7 @@ typedef struct BuildOptions_
 	const char *asm_out;
 	const char *header_out;
 	const char *obj_out;
+	const char *exec_dir;
 	const char *script_dir;
 	const char **emit_only;
 	RelocModel reloc_model;
@@ -387,6 +391,7 @@ typedef struct
 	const char *asm_file_dir;
 	const char *header_file_dir;
 	const char *script_dir;
+	const char *exec_dir;
 	const char *run_dir;
 	const char **emit_only;
 	bool is_non_project;
@@ -397,6 +402,9 @@ typedef struct
 	bool benchmark_output;
 	bool test_output;
 	bool lsp_output;
+	bool docgen;
+	bool docgen_json_out;
+	bool docgen_append;
 	bool output_headers;
 	bool output_ast;
 	bool lex_only;

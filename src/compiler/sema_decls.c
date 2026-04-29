@@ -1513,7 +1513,7 @@ static inline bool sema_analyse_fntype(SemaContext *context, Decl *decl, bool *e
 	Signature *sig = &decl->fntype_decl.signature;
 	if (!sema_analyse_function_signature(context, decl, NULL, sig->abi, sig)) return decl_poison(decl);
 	bool pure = false;
-	if (!sema_analyse_doc_header(context, decl->fntype_decl.docs, sig->params, NULL, &pure, sig->variadic == VARIADIC_RAW)) return decl_poison(decl);
+	if (!sema_analyse_doc_header(context, decl->docs, sig->params, NULL, &pure, sig->variadic == VARIADIC_RAW)) return decl_poison(decl);
 	sig->attrs.is_pure = pure;
 	return true;
 }
@@ -3858,7 +3858,7 @@ bool sema_analyse_optional_returns(SemaContext *context, Decl *contracts)
 			decl = decl_flatten(decl);
 			if (decl->decl_kind != DECL_FNTYPE && decl->decl_kind != DECL_FUNC) goto IS_FAULT;
 			if (!sema_analyse_decl(context, decl)) goto FAIL;
-			DeclId contract_id = decl->decl_kind == DECL_FNTYPE ? decl->fntype_decl.docs : decl->func_decl.docs;
+			DeclId contract_id = decl->docs;
 			if (!contract_id) continue;
 			Decl *sub_contracts = declptr(contract_id);
 			if (!sub_contracts->contracts_decl.opt_returns) continue;
@@ -4264,7 +4264,13 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	if ((type == MAIN_TYPE_RAW || (type == MAIN_TYPE_NO_ARGS && !is_win32)) && is_int_return)
 	{
 		// Int return is pass-through at the moment.
-		decl->is_export = true;
+		// For Emscripten: LLVM's Emscripten ABI renames `main` to `__original_main`
+		// and generates its own `main` wrapper for argc/argv. If we also set is_export,
+		// both get exported as "main" causing a duplicate export error.
+		// So for Emscripten we set extname but skip is_export.
+		bool is_emscripten = compiler.platform.os == OS_TYPE_EMSCRIPTEN;
+		if (!is_emscripten) decl->is_export = true;
+
 		decl->has_extname = true;
 		decl->extname = kw_main;
 		function = decl;
@@ -4371,7 +4377,7 @@ CHECK_DONE:
 	}
 	bool pure = false;
 
-	if (!sema_analyse_doc_header(context, decl->func_decl.docs, decl->func_decl.signature.params, NULL,
+	if (!sema_analyse_doc_header(context, decl->docs, decl->func_decl.signature.params, NULL,
 	                             &pure, sig->variadic == VARIADIC_RAW)) return false;
 	decl->func_decl.signature.attrs.is_pure = pure;
 	if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
@@ -4578,7 +4584,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
 	if (!sema_analyse_macro_body(context, body_parameters)) return false;
 	bool pure = false;
-	if (!sema_analyse_doc_header(context, decl->func_decl.docs, sig->params, body_parameters,
+	if (!sema_analyse_doc_header(context, decl->docs, sig->params, body_parameters,
 	                             &pure, sig->variadic == VARIADIC_RAW)) return false;
 	if (decl->func_decl.type_parent)
 	{
@@ -4755,7 +4761,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 					expr_rewrite_const_typeid(init, type);
 				}
 				// If this isn't a type, it's an error.
-				if (!expr_is_const_typeid(init))
+				if (!sema_cast_const(init) || !expr_is_const_typeid(init))
 				{
 					if (check_defined) goto FAIL_CHECK;
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);

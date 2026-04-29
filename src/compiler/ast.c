@@ -337,7 +337,7 @@ bool decl_is_defaulted_var(Decl *decl)
 	return decl->decl_kind == DECL_VAR && decl->var.no_init && decl->var.defaulted;
 }
 
-bool decl_may_be_generic(Decl *decl)
+bool decl_inherits_module_generic(Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
@@ -366,8 +366,6 @@ bool decl_may_be_generic(Decl *decl)
 		case DECL_TYPEDEF:
 		case DECL_ENUM:
 		case DECL_FNTYPE:
-		case DECL_FUNC:
-		case DECL_MACRO:
 		case DECL_INTERFACE:
 		case DECL_STRUCT:
 		case DECL_TYPE_ALIAS:
@@ -375,6 +373,10 @@ bool decl_may_be_generic(Decl *decl)
 		case DECL_VAR:
 		case DECL_CT_EXPAND:
 			return true;
+		case DECL_FUNC:
+		case DECL_MACRO:
+			// Only if it isn't a method
+			return decl->func_decl.type_parent == 0;
 	}
 	UNREACHABLE
 }

@@ -136,9 +136,6 @@ void print_type(FILE *file, TypeInfo *type)
 			loc_to_scratch(type->unresolved_type_expr->loc);
 			PRINTF("$typeof(%s)", scratch_buffer_to_string());
 			break;
-		case TYPE_INFO_VATYPE:
-			PRINTF("$vatype[...]");
-			break;
 		case TYPE_INFO_TYPEFROM:
 			PRINTF("$typefrom(...)");
 			break;
@@ -343,7 +340,7 @@ static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 {
 	PRINT("\t\t{\n");
 	PRINTF("\t\t\t\"name\": \"%s::%s\",\n", module->name->module, func->name);
-	if (emit_docs(file, func->func_decl.docs, 3))
+	if (emit_docs(file, func->docs, 3))
 	{
 		PRINTF(",\n");
 	}
@@ -365,7 +362,7 @@ static inline void emit_macro_data(FILE *file, Module *module, Decl *macro)
 {
 	PRINT("\t\t{\n");
 	PRINTF("\t\t\t\"name\": \"%s::%s\",\n", module->name->module, macro->name);
-	if (emit_docs(file, macro->func_decl.docs, 3))
+	if (emit_docs(file, macro->docs, 3))
 	{
 		PRINTF(",\n");
 	}

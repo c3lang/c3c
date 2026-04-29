@@ -87,4 +87,12 @@ fn int num_cpu()
 	return (int)count;
 }
 
+module std::os @if(env::EMSCRIPTEN);
+import libc;
 
+fn uint num_cpu()
+{
+	uint count = (uint)libc::emscripten_num_logical_cores();
+	if (count < 1) count = 1;
+	return count;
+}

@@ -82,7 +82,7 @@ macro Char16[] @char16(String $string) @builtin
 
 macro String @sprintf(String $format, ...) @builtin @const
 {
-	return $$sprintf($format, $vasplat);
+	return $$sprintf($format, ...$vaarg);
 }
 <*
  Return a temporary ZString created using the formatting function.
