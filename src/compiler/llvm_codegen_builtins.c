@@ -858,7 +858,11 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		{
 			llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
 			llvm_value_rvalue(c, result_value);
+			#if LLVM_VERSION_MAJOR >= 23
+			LLVMValueRef res = llvm_emit_call_intrinsic(c, intrinsic_id.returnaddress, &c->ptr_type, 1, &result_value->value, 1);
+			#else
 			LLVMValueRef res = llvm_emit_call_intrinsic(c, intrinsic_id.returnaddress, NULL, 0, &result_value->value, 1);
+			#endif
 			llvm_value_set(result_value, res, expr->type);
 			return;
 		}
