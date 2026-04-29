@@ -566,7 +566,8 @@ jobs:
             libclang-23-dev \
             zlib1g-dev \
             ninja-build \
-            python3
+            python3 \
+            libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev # for raylib6
 
       - name: CMake Build
         run: |
