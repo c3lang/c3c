@@ -1,7 +1,7 @@
 module std::sort;
 
 <*
- Sort list using the quick sort algorithm.
+ Sort list using the insertion sort algorithm.
 
  @require @list_is_by_ref(list) : "Expected a list passed by reference, or slice passed by value"
  @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
