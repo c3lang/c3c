@@ -176,24 +176,34 @@ fn bool Path.equals(self, Path p2) @operator(==)
 }
 
 <*
- Append the string to the current path.
+ Append one or more strings to the current path.
 
- @param [in] filename
+ @param [in] parts
+ @param extension : "The optional extension to append, automatically inserting a '.' if necessary."
 *>
-fn Path? Path.append(self, Allocator allocator, String filename)
+fn Path? Path.append(self, Allocator allocator, String... parts, String extension = "") => @pool()
 {
-	if (!self.path_string.len) return new(allocator, filename, self.env)!;
-	@pool()
+	sz capacity = self.path_string.len + parts.len;
+	if (extension) capacity += 1 + extension.len;
+	foreach (part : parts) if (part) capacity += part.len;
+	DString dstr = dstring::temp_with_capacity(capacity);
+	dstr.append(self.path_string);
+	char path_separator = self.env == PathEnv.WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
+	foreach (part : parts)
 	{
-		DString dstr = dstring::temp_with_capacity(self.path_string.len + 1 + filename.len);
-		dstr.append(self.path_string);
-		if (!is_separator(self.path_string[^1], self.env)) dstr.append(PREFERRED_SEPARATOR);
-		dstr.append(filename);
-		return new(allocator, dstr.str_view(), self.env);
-	};
+		if (!part) continue;
+		if (dstr.len() && !is_separator(dstr[^1], self.env)) dstr.append(path_separator);
+		dstr.append(part);
+	}
+	if (extension)
+	{
+		if (extension[0] != '.') dstr.append('.');
+		dstr.append(extension);
+	}
+	return new(allocator, dstr.str_view(), self.env);
 }
 
-fn Path? Path.tappend(self, String filename) => self.append(tmem, filename);
+fn Path? Path.tappend(self, String... parts, String extension = "") => self.append(tmem, ...parts, extension: extension);
 
 fn sz? start_of_base_name(String str, PathEnv path_env) @local
 {
