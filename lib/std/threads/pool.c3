@@ -67,7 +67,7 @@ fn void ThreadPool.join(&self)
 *>
 fn void ThreadPool.destroy(&self)
 {
-	self.@shutdown(self.stop_now);
+	@_threadPool_shutdown(self, self.stop_now);
 }
 
 <*
@@ -76,10 +76,10 @@ fn void ThreadPool.destroy(&self)
 *>
 fn void ThreadPool.stop_and_destroy(&self)
 {
-	self.@shutdown(self.stop);
+	@_threadPool_shutdown(self, self.stop);
 }
 
-macro void ThreadPool.@shutdown(&self, #stop) @private
+macro void @_threadPool_shutdown(ThreadPool* self, #stop) @private
 {
 	if (self.initialized)
 	{

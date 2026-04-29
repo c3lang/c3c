@@ -89,7 +89,7 @@ macro @g_n(#n, #h, #m) @local
 }
 
 
-macro Streebog.@stage2(&self, #m) @local
+macro @_streebog_stage2(Streebog* self, #m) @local
 {
 	@g_n(self.n, self.h, #m);
 	@add_512(self.n, STAGE2_512);
@@ -117,7 +117,7 @@ fn void Streebog.update(&self, char[] data)
 		self.index += size;
 		if (size < rest) return;
 
-		self.@stage2(self.message);
+		@_streebog_stage2(self, self.message);
 		data = data[rest..];
 		self.index = 0;
 	}
@@ -126,12 +126,12 @@ fn void Streebog.update(&self, char[] data)
 	{
 		if (aligned)
 		{
-			self.@stage2((ulong*)data.ptr);
+			@_streebog_stage2(self, (ulong*)data.ptr);
 		}
 		else
 		{
 			@as_char_view(self.message)[:BLOCK_SIZE] = data[:BLOCK_SIZE];
-			self.@stage2(self.message);
+			@_streebog_stage2(self, self.message);
 		}
 	}
 	if (data.len)

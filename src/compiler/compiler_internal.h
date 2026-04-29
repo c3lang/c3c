@@ -3759,6 +3759,12 @@ INLINE bool decl_has_interface(Decl *decl)
 	return map[decl->decl_kind];
 }
 
+INLINE bool decl_is_fn_macro(Decl *decl)
+{
+	DeclKind kind = decl->decl_kind;
+	return kind == DECL_FUNC || kind == DECL_MACRO;
+}
+
 INLINE bool decl_has_members(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
