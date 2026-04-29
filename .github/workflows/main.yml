@@ -542,6 +542,44 @@ jobs:
             c3c-builder \
             bash -c "./scripts/tools/ci_tests.sh ./bin/c3c"
 
+  build-linux-llvm23:
+    name: LLVM 23 (apt.llvm.org)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install LLVM 23 from apt.llvm.org
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/llvm.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble main" | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update
+          sudo apt-get install -y \
+            llvm-23-dev \
+            clang-23 \
+            lld-23 \
+            libclang-23-dev \
+            zlib1g-dev \
+            ninja-build \
+            python3
+
+      - name: CMake Build
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=clang-23 \
+            -DCMAKE_CXX_COMPILER=clang++-23 \
+            -DC3_FETCH_LLVM=OFF \
+            -DC3_LINK_DYNAMIC=ON \
+            -DLLVM_DIR=/usr/lib/llvm-23/lib/cmake/llvm
+          cmake --build build
+
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c"
+
   build-nix:
     runs-on: ubuntu-22.04
     strategy:
