@@ -57,6 +57,7 @@
 - Replace `$vacount` by `$vaarg.len`, replace `$vasplat` by `...$vaarg`.
 - `$vaarg` behaves as `$vaexpr`.
 - Added `docgen` command to generate documentation.
+- Added `jmpabs` x86 CPU feature.
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.
@@ -118,7 +119,7 @@
 - Zeroing out simd vectors in a struct could in some cases lead to incorrect lowering #3179.
 - Incorrect lowering when returning a struct to an optional value on Win64 in some cases #3180.
 - Fix bug where a method is considered doubly generic if declared in a generic module for a generic type. #3176
-
+- LLVM 23 compatibility: map `Os`/`Oz` to `O2` pass pipeline, fix `returnaddress` intrinsic signature, add `optsize`/`minsize` function attributes.
 
 ## 0.7.11 Change list
 
