@@ -561,6 +561,7 @@ jobs:
             llvm-23-dev \
             clang-23 \
             lld-23 \
+            liblld-23-dev \
             libclang-23-dev \
             zlib1g-dev \
             ninja-build \
