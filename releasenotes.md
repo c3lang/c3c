@@ -118,7 +118,7 @@
 - Zeroing out simd vectors in a struct could in some cases lead to incorrect lowering #3179.
 - Incorrect lowering when returning a struct to an optional value on Win64 in some cases #3180.
 - Fix bug where a method is considered doubly generic if declared in a generic module for a generic type. #3176
-
+- Fix exp10 on platforms without exp10 as an LLVM builtin.
 
 ## 0.7.11 Change list
 
