@@ -192,7 +192,7 @@ fn Path? Path.append(self, Allocator allocator, String... parts, String extensio
 	foreach (part : parts)
 	{
 		if (!part) continue;
-		if (!is_separator(dstr[^1], self.env)) dstr.append(path_separator);
+		if (dstr.len() && !is_separator(dstr[^1], self.env)) dstr.append(path_separator);
 		dstr.append(part);
 	}
 	if (extension)
