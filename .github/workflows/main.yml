@@ -562,6 +562,7 @@ jobs:
             clang-23 \
             lld-23 \
             liblld-23-dev \
+            libpolly-23-dev \
             libclang-23-dev \
             zlib1g-dev \
             ninja-build \
@@ -570,12 +571,7 @@ jobs:
       - name: CMake Build
         run: |
           cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_C_COMPILER=clang-23 \
-            -DCMAKE_CXX_COMPILER=clang++-23 \
-            -DC3_FETCH_LLVM=OFF \
-            -DC3_LINK_DYNAMIC=ON \
-            -DLLVM_DIR=/usr/lib/llvm-23/lib/cmake/llvm
+            -DCMAKE_BUILD_TYPE=Debug
           cmake --build build
 
       - name: Run Unified Tests
