@@ -1,0 +1,22 @@
+// #target: linux-x64
+module test;
+bitstruct Group : uint { bool a; }
+struct Entity { Group mask; }
+
+fn int main()
+{
+	Entity e =
+	{
+		.mask = (Group) 0xffffffff,
+	};
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %e = alloca %Entity, align 4
+  store i32 -1, ptr %e, align 4
+  ret i32 0
+}

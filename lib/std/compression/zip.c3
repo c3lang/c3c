@@ -88,7 +88,7 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 	if (mode != "r") return INVALID_ARGUMENT~;
 
 	File f = file::open(path, "rb")!;
-	defer (catch err) (void)f.close();
+	defer catch (void)f.close();
 
 	long file_size = f.size()!!;
 
@@ -290,7 +290,7 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 fn ZipArchive? recover(Allocator allocator, String path)
 {
 	File f = file::open(path, "rb")!;
-	defer (catch err) (void)f.close();
+	defer catch (void)f.close();
 
 	ZipArchive archive = {
 		.allocator = allocator,
@@ -299,7 +299,7 @@ fn ZipArchive? recover(Allocator allocator, String path)
 		.mode = "r".copy(allocator)
 	};
 	archive.entries.init(allocator);
-	defer (catch err) (void)archive.close();
+	defer catch (void)archive.close();
 
 	char[4] sig_buf;
 	while (true)

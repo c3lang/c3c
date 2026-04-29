@@ -125,6 +125,7 @@
 - LLVM 23 compatibility: map `Os`/`Oz` to `O2` pass pipeline, fix `returnaddress` intrinsic signature, add `optsize`/`minsize` function attributes.
 - Warning for ignored visibility modifiers was not emitted for macro methods #3071
 - `while (String? x = foo()!)` was accidentally allowed causing a lowering error.
+- Crash casting uint to bitstruct inside struct field assignment #3187
 
 ## 0.7.11 Change list
 
