@@ -1,17 +1,37 @@
 module std::io::path @test;
 
-fn void test_append()
+fn void test_append() => mem::@scoped(tmem)
 {
 	Path p = path::new(mem, "/", POSIX)!!;
 	Path p2 = p.append(mem, "hello")!!;
 	test::eq(p2.str_view(), "/hello");
-	p.free();
-	p2.free();
 	p = path::new(mem, "c:\\", WIN32)!!;
 	p2 = p.append(mem, "hello")!!;
 	assert(p2.str_view() == "c:\\hello");
-	p.free();
-	p2.free();
+
+	p = path::new(mem, "", POSIX)!!;
+	p2 = p.append(mem, "a", "b")!!;
+	test::eq(p2.str_view(), "a/b");
+
+	p = path::new(mem, "", WIN32)!!;
+	p2 = p.append(mem, "a", "b")!!;
+	test::eq(p2.str_view(), "a\\b");
+
+	p = path::new(mem, "/a/", POSIX)!!;
+	p2 = p.append(mem, "b", "c")!!;
+	test::eq(p2.str_view(), "/a/b/c");
+	p2 = p.append(mem, "b", "c", extension: "txt")!!;
+	test::eq(p2.str_view(), "/a/b/c.txt");
+	p2 = p.append(mem, "b", "", "c", "")!!;
+	test::eq(p2.str_view(), "/a/b/c");
+
+	p = path::new(mem, "\\a\\", WIN32)!!;
+	p2 = p.append(mem, "b", "c")!!;
+	test::eq(p2.str_view(), "\\a\\b\\c");
+	p2 = p.append(mem, "b", "c", extension: "txt")!!;
+	test::eq(p2.str_view(), "\\a\\b\\c.txt");
+	p2 = p.append(mem, "b", "", "c", "")!!;
+	test::eq(p2.str_view(), "\\a\\b\\c");
 }
 fn void test_dot()
 {
