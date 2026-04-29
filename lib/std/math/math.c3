@@ -349,7 +349,15 @@ macro exp2(x) => $$exp2(values::promote_int(x));
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
 *>
-macro exp10(x) => $$exp10(values::promote_int(x));
+macro exp10(x)
+{
+	$if env::POSIX:
+		return $$exp10(values::promote_int(x));
+	$else
+		var val = values::promote_int(x);
+		return $$exp2(val * ($typeof(val))0x1.a934f0979a371p+1);
+	$endif
+}
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
