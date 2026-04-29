@@ -188,10 +188,11 @@ fn Path? Path.append(self, Allocator allocator, String... parts, String extensio
 	foreach (part : parts) if (part) capacity += part.len;
 	DString dstr = dstring::temp_with_capacity(capacity);
 	dstr.append(self.path_string);
+	char path_separator = self.env == PathEnv.WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
 	foreach (part : parts)
 	{
 		if (!part) continue;
-		if (!is_separator(dstr[^1], self.env)) dstr.append(PREFERRED_SEPARATOR);
+		if (!is_separator(dstr[^1], self.env)) dstr.append(path_separator);
 		dstr.append(part);
 	}
 	if (extension)

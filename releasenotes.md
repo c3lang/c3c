@@ -87,6 +87,7 @@
 - `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
 - `std::collections::object` added `Object.to_value` to convert from an object to a value.
 - `std::encoding::xml` added for XML parsing and serialization.
+- Fix `Path.append` separator not honoring the specified environment.
 - Add multi part and extension support to `Path.append`.
 
 ### Fixes
