@@ -63,6 +63,7 @@ JSONObject *json_map_get(JSONObject *obj, const char *key);
 void json_map_set(JSONObject *obj, const char *key, JSONObject *value);
 INLINE JSONObject *json_new_object(JSONType type);
 void print_json_to_file(JSONObject *obj, FILE *file);
+void json_write_string(FILE *file, const char *str);
 
 INLINE JSONObject *json_new_string(const char *str)
 {

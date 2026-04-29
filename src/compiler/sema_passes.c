@@ -21,17 +21,15 @@ void parent_path(StringSlice *slice)
 void sema_analyse_pass_module_hierarchy(Module *module)
 {
 	const char *name = module->name->module;
+
 	StringSlice slice = slice_from_string(name);
 	// foo::bar::baz -> foo::bar
 	parent_path(&slice);
 	// foo -> return, no parent
 	if (!slice.len) return;
 
-
-	unsigned module_count = vec_size(compiler.context.module_list);
-	for (int i = 0; i < module_count; i++)
+	FOREACH(Module *, checked, compiler.context.module_list)
 	{
-		Module *checked = compiler.context.module_list[i];
 		Path *checked_name = checked->name;
 		if (checked_name->len != slice.len) continue;
 		// Found the parent! We're done, we add this parent
@@ -41,7 +39,7 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 			return;
 		}
 	}
-	// No match, so we create a synthetic module.
+	// No match, so we create a synthetic module parent
 	Path *path = path_create_from_string(slice.ptr, slice.len, module->name->loc);
 	DEBUG_LOG("Creating parent module for %s: %s", module->name->module, path->module);
 	Module *parent_module = compiler_find_or_create_module(path);
@@ -520,6 +518,7 @@ void sema_analysis_pass_process_methods(Module *module, bool process_generic)
 			}
 			if (sema_analyse_method_register(&context, method))
 			{
+				if (method->decl_kind == DECL_ERASED) continue;
 				if (method->decl_kind == DECL_MACRO)
 				{
 					vec_add(unit->macro_methods, method);

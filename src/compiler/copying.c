@@ -1045,6 +1045,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	}
 
 	copy_reg_ref(c, decl, copy);
+	MACRO_COPY_DECLID(copy->docs);
 	if (decl->resolved_attributes)
 	{
 		copy->attrs_resolved = copy_attrs_resolved(c, copy->attrs_resolved);
@@ -1132,12 +1133,10 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_FNTYPE:
 			copy_signature_deep(c, &copy->fntype_decl.signature);
-			MACRO_COPY_ASTID(copy->fntype_decl.docs);
 			break;
 		case DECL_FUNC:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPEID(copy->func_decl.type_parent);
-			MACRO_COPY_DECLID(copy->func_decl.docs);
 			copy_signature_deep(c, &copy->func_decl.signature);
 			MACRO_COPY_ASTID(copy->func_decl.body);
 			break;
@@ -1202,7 +1201,6 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_ALIAS_PATH:
 			break;
 		case DECL_MACRO:
-			MACRO_COPY_DECLID(copy->func_decl.docs);
 			MACRO_COPY_TYPEID(decl->func_decl.type_parent);
 			copy_signature_deep(c, &copy->func_decl.signature);
 			MACRO_COPY_ASTID(decl->func_decl.body);

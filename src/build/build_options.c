@@ -692,6 +692,11 @@ static void parse_command(BuildOptions *options)
 		}
 		return;
 	}
+	if (arg_match("docgen"))
+	{
+		options->command = COMMAND_DOCGEN;
+		return;
+	}
 	FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);
 }
 
@@ -1069,6 +1074,16 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("quiet"))
 			{
 				options->verbosity_level = -1;
+				return;
+			}
+			if (match_longopt("json"))
+			{
+				options->docgen_json_out = true;
+				return;
+			}
+			if (match_longopt("append"))
+			{
+				options->docgen_append = true;
 				return;
 			}
 			if (match_longopt("version"))
@@ -1797,6 +1812,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	}
 	switch (build_options.command)
 	{
+		case COMMAND_DOCGEN:
 		case COMMAND_BUILD:
 		case COMMAND_RUN:
 		case COMMAND_CLEAN_RUN:

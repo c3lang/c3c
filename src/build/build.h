@@ -44,6 +44,7 @@ typedef enum
 	COMMAND_PRINT_SYNTAX,
 	COMMAND_PROJECT,
 	COMMAND_FETCH_SDK,
+	COMMAND_DOCGEN,
 } CompilerCommand;
 
 typedef enum
@@ -262,6 +263,8 @@ typedef struct BuildOptions_
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
+	bool docgen_json_out;
+	bool docgen_append;
 	bool fetch_accept_license;
 	bool msvc_show_versions;
 	const char *msvc_version_override;
@@ -399,6 +402,9 @@ typedef struct
 	bool benchmark_output;
 	bool test_output;
 	bool lsp_output;
+	bool docgen;
+	bool docgen_json_out;
+	bool docgen_append;
 	bool output_headers;
 	bool output_ast;
 	bool lex_only;

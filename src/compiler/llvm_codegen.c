@@ -939,6 +939,8 @@ static void llvm_codegen_setup()
 	attribute_id.nounwind = lookup_attribute("nounwind");
 	attribute_id.nsz = lookup_attribute("nsz");
 	attribute_id.optnone = lookup_attribute("optnone");
+	attribute_id.optsize = lookup_attribute("optsize");
+	attribute_id.minsize = lookup_attribute("minsize");
 	attribute_id.readonly = lookup_attribute("readonly");
 	attribute_id.reassoc = lookup_attribute("reassoc");
 	attribute_id.sanitize_address = lookup_attribute("sanitize_address");
@@ -1304,6 +1306,15 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	if (compiler.build.feature.sanitize_thread && !decl->func_decl.attr_nosanitize_thread)
 	{
 		llvm_attribute_add(c, function, attribute_id.sanitize_thread, -1);
+	}
+	if (compiler.build.optsize == SIZE_OPTIMIZATION_SMALL)
+	{
+		llvm_attribute_add(c, function, attribute_id.optsize, -1);
+	}
+	else if (compiler.build.optsize == SIZE_OPTIMIZATION_TINY)
+	{
+		llvm_attribute_add(c, function, attribute_id.minsize, -1);
+		llvm_attribute_add(c, function, attribute_id.optsize, -1);
 	}
 
 	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi));

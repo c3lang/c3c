@@ -1436,7 +1436,7 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 		}
 		if (!decl->name)
 		{
-			ASSERT_SPAN(decl, type_is_union_or_strukt(decl->type) || decl->decl_kind == DECL_BITSTRUCT);
+			ASSERT_SPAN(decl, decl_has_members(decl));
 			// Anonymous struct
 			Decl *found = sema_resolve_element_for_name(context, decl->strukt.members, elements_ref, index, false);
 			// No match, continue...

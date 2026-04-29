@@ -181,6 +181,7 @@ static const char *x86_feature_name[] = {
 	[X86_FEAT_FSGSBASE] = "fsgsbase",
 	[X86_FEAT_FXSR] = "fxsr",
 	[X86_FEAT_INVPCID] = "invpcid",
+	[X86_FEAT_JMPABS] = "jmpabs",
 	[X86_FEAT_KL] = "kl",
 	[X86_FEAT_WIDEKL] = "widekl",
 	[X86_FEAT_LWP] = "lwp",
@@ -753,6 +754,7 @@ static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature featu
 		case X86_FEAT_FXSR:
 		case X86_FEAT_HRESET:
 		case X86_FEAT_INVPCID:
+		case X86_FEAT_JMPABS:
 		case X86_FEAT_LWP:
 		case X86_FEAT_LZCNT:
 		case X86_FEAT_MWAITX:
