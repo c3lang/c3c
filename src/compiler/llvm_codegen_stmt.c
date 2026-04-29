@@ -162,7 +162,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			{
 				case ALL_FLOATS:
 					llvm_value_set_decl_address(c, value, decl);
-					llvm_store_raw(c, value, LLVMConstReal(alloc_type, NAN));
+					llvm_store_raw(c, value, LLVMConstRealOfString(alloc_type, "nan"));
 					break;
 				case TYPE_U8:
 					llvm_value_set_decl_address(c, value, decl);
