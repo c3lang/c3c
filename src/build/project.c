@@ -138,6 +138,7 @@ const char* project_target_keys[][2] = {
 		{"output", "Output location, relative to project file."},
 		{"panic-msg", "Turn panic message output on or off."},
 		{"panicfn", "Override the panic function."},
+		{"preset", "Use a preset configuration from a library, format 'library:preset'."},
 		{"quiet", "Silence unnecessary output."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"riscv-abi", "RiscV ABI: int-only, float, double."},
@@ -588,6 +589,155 @@ static void duplicate_prop(const char ***prop_ref)
 	}
 	*prop_ref = copy;
 }
+
+static void parse_preset_ref(const char *ref, const char **lib_name, const char **preset_name)
+{
+	const char *colon = strchr(ref, ':');
+	if (!colon || colon == ref || colon[1] == '\0')
+	{
+		error_exit("Error reading project: invalid preset reference '%s', expected 'library:preset'.", ref);
+	}
+	*lib_name = str_copy(ref, colon - ref);
+	*preset_name = str_copy(colon + 1, strlen(colon + 1));
+}
+
+static JSONObject* read_manifest_from_path(const char *lib_path, const char **manifest_path_ref)
+{
+	const char *manifest_path = file_append_path(lib_path, "manifest.json");
+	if (file_exists(manifest_path))
+	{
+		size_t size;
+		char *data = file_read_all(manifest_path, &size);
+		if (data)
+		{
+			JsonParser parser;
+			json_init_string(&parser, data);
+			JSONObject *json = json_parse(&parser);
+			if (json && !parser.error_message)
+			{
+				*manifest_path_ref = manifest_path;
+				return json;
+			}
+		}
+	}
+	return NULL;
+}
+
+static JSONObject* read_manifest_from_zip(const char *lib_path, const char **manifest_path_ref)
+{
+	FILE *f = fopen(lib_path, "rb");
+	if (!f) return NULL;
+
+	ZipDirIterator iterator;
+	if (zip_dir_iterator(f, &iterator))
+	{
+		fclose(f);
+		return NULL;
+	}
+
+	ZipFile file;
+	bool found = false;
+	while (iterator.current_file < iterator.files)
+	{
+		if (zip_dir_iterator_next(&iterator, &file)) break;
+		if (strcmp(file.name, "manifest.json") == 0)
+		{
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+	{
+		fclose(f);
+		return NULL;
+	}
+
+	char *manifest_data;
+	if (zip_file_read(f, &file, (void**)&manifest_data))
+	{
+		fclose(f);
+		return NULL;
+	}
+
+	JsonParser parser;
+	json_init_string(&parser, manifest_data);
+	JSONObject *json = json_parse(&parser);
+	fclose(f);
+
+	if (json && !parser.error_message)
+	{
+		*manifest_path_ref = lib_path;
+		return json;
+	}
+	return NULL;
+}
+
+static JSONObject* resolve_preset(BuildTarget *target, const char *preset_ref, const char **manifest_path_ref)
+{
+	const char *lib_name;
+	const char *preset_name;
+	parse_preset_ref(preset_ref, &lib_name, &preset_name);
+
+	bool found_dep = false;
+	FOREACH(const char *, dep, target->libs)
+	{
+		if (str_eq(dep, lib_name))
+		{
+			found_dep = true;
+			break;
+		}
+	}
+	if (!found_dep)
+	{
+		error_exit("Error reading project: preset '%s' references library '%s' which is not listed in 'dependencies'.", preset_ref, lib_name);
+	}
+
+	JSONObject *manifest = NULL;
+	FOREACH(const char *, dir, target->libdirs)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_printf("%s/%s.c3l", dir, lib_name);
+		const char *lib_path = scratch_buffer_copy();
+
+		manifest = read_manifest_from_path(lib_path, manifest_path_ref);
+		if (manifest) break;
+
+		manifest = read_manifest_from_zip(lib_path, manifest_path_ref);
+		if (manifest) break;
+	}
+
+	if (!manifest)
+	{
+		error_exit("Error reading project: could not find manifest for library '%s' needed by preset '%s'.", lib_name, preset_ref);
+	}
+
+	BuildParseContext manifest_context = { *manifest_path_ref, NULL };
+	const char *provides = get_optional_string(manifest_context, manifest, "provides");
+	if (!provides || !str_eq(provides, lib_name))
+	{
+		error_exit("Error reading %s: library manifest 'provides' ('%s') does not match preset library name '%s'.", *manifest_path_ref, provides ? provides : "(missing)", lib_name);
+	}
+
+	JSONObject *presets = json_map_get(manifest, "presets");
+	if (!presets || presets->type != J_OBJECT)
+	{
+		error_exit("Error reading %s: library '%s' does not define any presets.", *manifest_path_ref, lib_name);
+	}
+
+	JSONObject *preset = json_map_get(presets, preset_name);
+	if (!preset)
+	{
+		error_exit("Error reading %s: preset '%s' not found in library '%s'.", *manifest_path_ref, preset_name, lib_name);
+	}
+	if (preset->type != J_OBJECT)
+	{
+		error_exit("Error reading %s: preset '%s' in library '%s' is not a JSON object.", *manifest_path_ref, preset_name, lib_name);
+	}
+
+	return preset;
+}
+
 static void project_add_target(BuildParseContext context, Project *project, BuildTarget *default_target, JSONObject *json,
                                const char *type, TargetType target_type)
 {
@@ -608,6 +758,15 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->linker_libdirs);
 	duplicate_prop(&target->linker_libs);
 	duplicate_prop(&target->link_args);
+
+	const char *preset_ref = get_optional_string(context, json, "preset");
+	if (preset_ref)
+	{
+		const char *manifest_path = NULL;
+		JSONObject *preset_json = resolve_preset(target, preset_ref, &manifest_path);
+		BuildParseContext preset_context = { manifest_path, str_printf("preset '%s'", preset_ref) };
+		load_into_build_target(preset_context, preset_json, target);
+	}
 
 	vec_add(project->targets, target);
 	target->name = context.target;

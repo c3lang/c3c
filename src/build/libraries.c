@@ -12,6 +12,7 @@ const char *manifest_default_keys[][2] = {
 		{"dependencies", "List of C3 libraries to also include."},
 		{"exec", "Scripts run for all platforms."},
 		{"linklib-dir", "Set the directory where to find linked libraries."},
+		{"presets", "Predefined target configurations for users of this library."},
 		{"provides", "The library name"},
 		{"targets", "The map of supported platforms"},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
