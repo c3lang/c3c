@@ -406,7 +406,7 @@ static void emit_doc_struct_members(FILE *file, Decl *decl, bool *first)
 
 static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 {
-	if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
+	if (decl_is_fn_macro(decl))
 	{
 		fputs("[", file);
 		bool first = true;
@@ -441,25 +441,12 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 
 	fputs("[", file);
 	bool first = true;
-	if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTDEF)
+	if (decl->decl_kind == DECL_ENUM)
 	{
-		if (decl->decl_kind == DECL_ENUM)
+		FOREACH_IDX(i, Decl *, p, decl->enums.parameters)
 		{
-			FOREACH(Decl *, p, decl->enums.parameters)
-			{
-				if (!p || !p->name) continue;
-				if (!first) fputs(",", file);
-				first = false;
-				emit_param_json(file, module, p);
-			}
-		}
-
-		FOREACH(Decl *, p, decl->enums.parameters)
-		{
-			if (!p || !p->name) continue;
-			if (!first) fputs(",", file);
-			first = false;
-			fprintf(file, "{\"name\":\"%s\"}", p->name);
+			if (i) fputs(",", file);
+			emit_param_json(file, module, p);
 		}
 	}
 	else if (decl_has_members(decl))
