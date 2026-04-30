@@ -4,9 +4,9 @@
 module std::collections::object;
 import std::collections::map, std::collections::list, std::io;
 
-const Object TRUE_OBJECT = { .b = true, .type = bool::typeid };
-const Object FALSE_OBJECT = { .b = false, .type = bool::typeid };
-const Object NULL_OBJECT = { .type = void*::typeid };
+const Object TRUE_OBJECT = { .b = true, .type = bool };
+const Object FALSE_OBJECT = { .b = false, .type = bool };
+const Object NULL_OBJECT = { .type = void* };
 
 struct Object (Printable)
 {
@@ -78,7 +78,7 @@ fn sz? Object.to_format(&self, Formatter* formatter) @dynamic
 
 fn Object* new_obj(Allocator allocator)
 {
-	return @alloc_obj(allocator, { .allocator = allocator, .type = void::typeid });
+	return @alloc_obj(allocator, { .allocator = allocator, .type = void });
 }
 
 fn Object* new_null()
@@ -88,7 +88,7 @@ fn Object* new_null()
 
 fn Object* new_int(Allocator allocator, int128 i)
 {
-	return @alloc_obj(allocator, { .i = i, .allocator = allocator, .type = int128::typeid });
+	return @alloc_obj(allocator, { .i = i, .allocator = allocator, .type = int128 });
 }
 
 <* @require @kindof(e) == ENUM *>
@@ -99,12 +99,12 @@ macro Object* new_enum(Allocator allocator, e)
 
 fn Object* new_float(Allocator allocator, double f)
 {
-	return @alloc_obj(allocator, { .f = f, .allocator = allocator, .type = double::typeid });
+	return @alloc_obj(allocator, { .f = f, .allocator = allocator, .type = double });
 }
 
 fn Object* new_string(Allocator allocator, String s)
 {
-	return @alloc_obj(allocator, { .s = s.copy(allocator), .allocator = allocator, .type = String::typeid });
+	return @alloc_obj(allocator, { .s = s.copy(allocator), .allocator = allocator, .type = String });
 }
 
 
@@ -146,13 +146,13 @@ fn void Object.free(&self)
 }
 
 fn bool Object.is_null(&self) @inline => self == &NULL_OBJECT;
-fn bool Object.is_empty(&self) @inline => self.type == void::typeid;
-fn bool Object.is_map(&self) @inline => self.type == ObjectInternalMap::typeid;
-fn bool Object.is_array(&self) @inline => self.type == ObjectInternalList::typeid;
-fn bool Object.is_bool(&self) @inline => self.type == bool::typeid;
-fn bool Object.is_string(&self) @inline => self.type == String::typeid;
-fn bool Object.is_float(&self) @inline => self.type == double::typeid;
-fn bool Object.is_int(&self) @inline => self.type == int128::typeid;
+fn bool Object.is_empty(&self) @inline => self.type == void;
+fn bool Object.is_map(&self) @inline => self.type == ObjectInternalMap;
+fn bool Object.is_array(&self) @inline => self.type == ObjectInternalList;
+fn bool Object.is_bool(&self) @inline => self.type == bool;
+fn bool Object.is_string(&self) @inline => self.type == String;
+fn bool Object.is_float(&self) @inline => self.type == double;
+fn bool Object.is_int(&self) @inline => self.type == int128;
 fn bool Object.is_enum(&self) @inline => self.type.kind == ENUM;
 fn bool Object.is_keyable(&self) => self.is_empty() || self.is_map();
 fn bool Object.is_indexable(&self) => self.is_empty() || self.is_array();
@@ -211,7 +211,7 @@ macro Object.to_value(&self, $Type, strict = true)
 					return $Type::from_ordinal(self.i);
 				}
 			}
-			if ($Type::typeid != self.type) return TYPE_MISMATCH~;
+			if ($Type != self.type) return TYPE_MISMATCH~;
 			return $Type::from_ordinal(self.i);
 		$default:
 			$error "Unsupported object type '" +++ $Type::name +++ "'";
@@ -225,7 +225,7 @@ fn void object_init_map_if_needed(Object* self) @private
 {
 	if (self.is_empty())
 	{
-		self.type = ObjectInternalMap::typeid;
+		self.type = ObjectInternalMap;
 		self.map.init(self.allocator);
 	}
 }
@@ -237,7 +237,7 @@ fn void object_init_array_if_needed(Object* self) @private
 {
 	if (self.is_empty())
 	{
-		self.type = ObjectInternalList::typeid;
+		self.type = ObjectInternalList;
 		self.array.init(self.allocator);
 	}
 }
@@ -265,13 +265,13 @@ macro Object* _object_from_value(Object* self, value) @private
 			return new_int(self.allocator, value);
 		$case types::is_float($Type):
 			return new_float(self.allocator, value);
-		$case $Type::typeid == String::typeid:
+		$case $Type == String:
 			return new_string(self.allocator, value);
-		$case $Type::typeid == bool::typeid:
+		$case $Type == bool:
 			return new_bool(value);
-		$case $Type::typeid == Object*::typeid:
+		$case $Type == Object*:
 			return value;
-		$case $Type::typeid == void*::typeid:
+		$case $Type == void*:
 			return &NULL_OBJECT;
 		$case $defined(String x = value):
 			return new_string(self.allocator, value);
@@ -465,7 +465,7 @@ fn String? Object.get_string_at(&self, sz index)
 macro Object.get_enum(&self, $EnumType, String key)
 {
 	Object* value = self.get(key)!;
-	if ($EnumType::typeid != value.type) return TYPE_MISMATCH~;
+	if ($EnumType != value.type) return TYPE_MISMATCH~;
 	return $EnumType::from_ordinal(value.i);
 }
 
@@ -476,7 +476,7 @@ macro Object.get_enum(&self, $EnumType, String key)
 macro Object.get_enum_at(&self, $EnumType, sz index)
 {
 	Object* value = self.get_at(index);
-	if ($EnumType::typeid != value.type) return TYPE_MISMATCH~;
+	if ($EnumType != value.type) return TYPE_MISMATCH~;
 	return $EnumType::from_ordinal(value.i);
 }
 

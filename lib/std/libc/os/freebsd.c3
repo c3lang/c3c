@@ -3,7 +3,7 @@ module libc @if(env::FREEBSD);
 // Checked for x86_64
 
 alias Blksize_t = int;
-alias Nlink_t = $typefrom(env::X86_64 ? ulong::typeid : CUInt::typeid);
+alias Nlink_t = $typefrom(env::X86_64 ? ulong : CUInt);
 alias Dev_t = ulong;
 alias Ino_t = ulong;
 alias Mode_t = ushort;

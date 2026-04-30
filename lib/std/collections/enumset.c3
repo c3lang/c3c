@@ -142,16 +142,16 @@ macro typeid type_for_enum_elements(sz $elements) @local
 {
 	$switch:
 		$case ($elements > 128):
-			return char[($elements + 7) / 8]::typeid;
+			return char[($elements + 7) / 8];
 		$case ($elements > 64):
-			return uint128::typeid;
+			return uint128;
 		$case ($elements > 32 || $$C_INT_SIZE > 32):
-			return ulong::typeid;
+			return ulong;
 		$case ($elements > 16 || $$C_INT_SIZE > 16):
-			return uint::typeid;
+			return uint;
 		$case ($elements > 8 || $$C_INT_SIZE > 8):
-			return ushort::typeid;
+			return ushort;
 		$default:
-			return char::typeid;
+			return char;
 	$endswitch
 }

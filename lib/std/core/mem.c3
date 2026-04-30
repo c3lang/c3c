@@ -615,7 +615,7 @@ fn void temp_pop(PoolState old_state)
 <*
  @require pool_size >= 64
  @require realloc_size >= 64
- @require allocator.type != TempAllocator::typeid : "You may not create a temp allocator with a TempAllocator as the backing allocator."
+ @require allocator.type != TempAllocator : "You may not create a temp allocator with a TempAllocator as the backing allocator."
  @require min_size > TempAllocator::size + 64 : "Min size must meaningfully hold the data + some bytes"
 *>
 macro void @pool_init(Allocator allocator, sz pool_size,

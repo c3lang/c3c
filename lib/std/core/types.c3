@@ -80,7 +80,7 @@ macro any_to_int(any v, $Type)
 
 fn bool typeid.is_subtype_of(self, typeid other)
 {
-	while (self != void::typeid)
+	while (self != void)
 	{
 		if (self == other) return true;
 		self = self.parent;
@@ -90,7 +90,6 @@ fn bool typeid.is_subtype_of(self, typeid other)
 
 macro bool is_subtype_of($Type, $OtherType)
 {
-	var $typeid = $Type::typeid;
 	$switch $Type:
 		$case $OtherType: return true;
 		$default: return false;
@@ -173,7 +172,7 @@ macro typeid flat_type($Type) @const
 	$if $Type::kind == TYPEDEF || $Type::kind == CONSTDEF:
 		return flat_type($Type::inner);
 	$else
-		return $Type::typeid;
+		return $Type;
 	$endif
 }
 
@@ -261,7 +260,7 @@ macro typeid inner_type($Type) @const
 	$if $Type::kind == TYPEDEF || $Type::kind == CONSTDEF:
 		return inner_type($Type::inner);
 	$else
-		return $Type::typeid;
+		return $Type;
 	$endif
 }
 
@@ -272,7 +271,7 @@ macro TypeKind inner_kind($Type) @const
 
 macro bool is_same($TypeA, $TypeB) @const
 {
-	return $TypeA::typeid == $TypeB::typeid;
+	return $TypeA == $TypeB;
 }
 
 macro bool @has_same(#a, #b, ...) @const
@@ -312,25 +311,25 @@ macro lower_to_atomic_compatible_type($Type) @const
 		$case BOOL:
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
-	        return $Type::typeid;
+	        return $Type;
 		$case TYPEDEF:
 		$case CONSTDEF:
 			return lower_to_atomic_compatible_type($Type::inner);
 		$case FLOAT:
 			$switch $Type:
 				$case float16:
-					return ushort::typeid;
+					return ushort;
 				$case float: 
-					return uint::typeid;
+					return uint;
 				$case double:
-					return ulong::typeid;
+					return ulong;
 				$case float128:
-					return uint128::typeid;
+					return uint128;
 				$default: 
-					return void::typeid;
+					return void;
 			$endswitch
 		$default:
-			return void::typeid;
+			return void;
   $endswitch
 }
 

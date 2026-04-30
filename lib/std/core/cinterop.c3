@@ -29,7 +29,7 @@ alias CULongLong = $typefrom(unsigned_int_from_bitsize($$C_LONG_LONG_SIZE));
 alias CSChar = ichar;
 alias CUChar = char;
 
-alias CChar = $typefrom($$C_CHAR_IS_SIGNED ? ichar::typeid : char::typeid);
+alias CChar = $typefrom($$C_CHAR_IS_SIGNED ? ichar : char);
 
 enum CBool : char
 {
@@ -41,11 +41,11 @@ enum CBool : char
 macro typeid signed_int_from_bitsize(sz $bitsize) @private
 {
 	$switch $bitsize:
-		$case 128: return int128::typeid;
-		$case 64: return long::typeid;
-		$case 32: return int::typeid;
-		$case 16: return short::typeid;
-		$case 8: return ichar::typeid;
+		$case 128: return int128;
+		$case 64: return long;
+		$case 32: return int;
+		$case 16: return short;
+		$case 8: return ichar;
 		$default: $error("Invalid bitsize");
 	$endswitch
 }
@@ -53,11 +53,11 @@ macro typeid signed_int_from_bitsize(sz $bitsize) @private
 macro typeid unsigned_int_from_bitsize(sz $bitsize) @private
 {
 	$switch $bitsize:
-		$case 128: return uint128::typeid;
-		$case 64: return ulong::typeid;
-		$case 32: return uint::typeid;
-		$case 16: return ushort::typeid;
-		$case 8: return char::typeid;
+		$case 128: return uint128;
+		$case 64: return ulong;
+		$case 32: return uint;
+		$case 16: return ushort;
+		$case 8: return char;
 		$default: $error("Invalid bitsize");
 	$endswitch
 }

@@ -93,7 +93,7 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 fn FloatType? float_from_any(any arg) @private
 {
 	$if env::F128_SUPPORT:
-		if (arg.type == float128::typeid) return (FloatType)*((float128*)arg.ptr);
+		if (arg.type == float128) return (FloatType)*((float128*)arg.ptr);
 	$endif
 	if (arg.type.kind == TYPEDEF || arg.type.kind == CONSTDEF)
 	{
@@ -788,7 +788,7 @@ fn sz? formatter_out_hex_buffer(Formatter* self, any arg) @private @inline
 		case ichar[]:
 			out = *(char[]*)arg;
 		default:
-			if (arg.type.kind == ARRAY && (arg.type.inner == char::typeid || arg.type.inner == ichar::typeid))
+			if (arg.type.kind == ARRAY && (arg.type.inner == char || arg.type.inner == ichar))
 			{
 				out = ((char*)arg.ptr)[:arg.type.size];
 				break;
@@ -831,7 +831,7 @@ fn sz? formatter_out_unknown(Formatter* self, String category, any arg) @private
 fn sz? formatter_out_collection(Formatter* self, any arg, String open, String close) @private
 {
 	typeid inner = arg.type.inner;
-	if (inner == void::typeid) inner = char::typeid;
+	if (inner == void) inner = char;
 	sz size = inner.size;
 
 	sz alen;
@@ -909,7 +909,7 @@ fn sz? formatter_out_str(Formatter* self, any arg) @private
 					return formatter_ftoa(self, float_from_any(arg)) ?? formatter_out_substr(self, "ERR");
 				case FUNC:
 				case POINTER:
-					if (arg.type.kind == POINTER && arg.type.inner != void::typeid)
+					if (arg.type.kind == POINTER && arg.type.inner != void)
 					{
 						void** pointer = arg.ptr;
 						any deref = any_make(*pointer, arg.type.inner);
@@ -944,15 +944,15 @@ fn sz? formatter_out_str(Formatter* self, any arg) @private
 			return formatter_out_unknown(self, "bitstruct", arg);
 		case CONSTDEF:
 		case TYPEDEF:
-			if (arg.type == String::typeid)
+			if (arg.type == String)
 			{
 				return formatter_out_substr(self, *(String*)arg);
 			}
-			if (arg.type == ZString::typeid)
+			if (arg.type == ZString)
 			{
 				return formatter_out_substr(self, *(ZString*)arg ? ((ZString*)arg).str_view() : "(null)");
 			}
-			if (arg.type == DString::typeid)
+			if (arg.type == DString)
 			{
 				return formatter_out_substr(self, *(DString*)arg ? ((DString*)arg).str_view() : "(null)");
 			}

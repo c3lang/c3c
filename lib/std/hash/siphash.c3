@@ -46,7 +46,7 @@ alias hash = siphash::hash { uint128, 4, 8 };
 
   Read more: https://en.wikipedia.org/wiki/SipHash
 
- @require OutType::typeid == uint128::typeid || OutType::typeid == ulong::typeid : "Module OutType must be either uint128 or ulong."
+ @require OutType == uint128 || OutType == ulong : "Module OutType must be either uint128 or ulong."
 *>
 module std::hash::siphash <OutType, BLOCK_ROUNDS, FINALIZE_ROUNDS>;
 
@@ -78,7 +78,7 @@ fn void SipHash.init(&self, uint128 key)
 		0x7465_6462_7974_6573 ^ key_64[1],
 	};
 
-	$if OutType::typeid == uint128::typeid :
+	$if OutType == uint128 :
 		self.v[1] ^= 0xEE;
 	$endif
 }
@@ -116,7 +116,7 @@ fn OutType SipHash.final(&self)
 
 	self.update(last[(self.m_idx < 7 ? self.m_idx : 7)..]);
 
-	$if OutType::typeid == uint128::typeid :
+	$if OutType == uint128 :
 		self.v[2] ^= 0xEE;
 	$else
 		self.v[2] ^= 0xFF;
@@ -126,7 +126,7 @@ fn OutType SipHash.final(&self)
 		siphash_round(self);
 	$endfor
 
-	$if OutType::typeid == ulong::typeid :
+	$if OutType == ulong :
 		return self.v[0] ^ self.v[1] ^ self.v[2] ^ self.v[3];
 	$else
 		ulong lo = self.v[0] ^ self.v[1] ^ self.v[2] ^ self.v[3];

@@ -202,10 +202,10 @@ macro bool @is_array_or_slice_of_char(#bytes) @const
 	$switch $Type::kind:
 		$case POINTER:
 			typeid $inner = $Type::inner;
-			return $inner.kind == ARRAY &&& $inner.inner == char::typeid;
+			return $inner.kind == ARRAY &&& $inner.inner == char;
 		$case ARRAY:
 		$case SLICE:
-			return $Type::inner == char::typeid;
+			return $Type::inner == char;
 		$default:
 			return false;
 	$endswitch
@@ -217,9 +217,9 @@ macro bool @is_arrayptr_or_slice_of_char(#bytes) @const
 	$switch $Type::kind:
 		$case POINTER:
 			typeid $inner = $Type::inner;
-			return $inner.kind == ARRAY &&& $inner.inner == char::typeid;
+			return $inner.kind == ARRAY &&& $inner.inner == char;
 		$case SLICE:
-			return $Type::inner == char::typeid;
+			return $Type::inner == char;
 		$default:
 			return false;
 	$endswitch
