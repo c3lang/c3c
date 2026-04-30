@@ -34,6 +34,40 @@ static void write_expr_source_json(FILE *file, Expr *expr)
 	json_write_string(file, scratch_buffer_to_string());
 }
 
+static void write_const_value_json(FILE *file, Expr *expr)
+{
+	if (!expr || expr->expr_kind != EXPR_CONST)
+	{
+		fputs("null", file);
+		return;
+	}
+	switch (expr->const_expr.const_kind)
+	{
+		case CONST_INTEGER:
+			scratch_buffer_clear();
+			scratch_buffer_append(i128_to_string(expr->const_expr.ixx.i, 10,
+			                                     type_kind_is_signed(expr->const_expr.ixx.type), false));
+			json_write_string(file, scratch_buffer_to_string());
+			break;
+		case CONST_FLOAT:
+			scratch_buffer_clear();
+			scratch_buffer_append_double(expr->const_expr.fxx.f);
+			json_write_string(file, scratch_buffer_to_string());
+			break;
+		case CONST_STRING:
+			json_write_string(file, expr->const_expr.bytes.ptr);
+			break;
+		case CONST_BOOL:
+			json_write_string(file, expr->const_expr.b ? "true" : "false");
+			break;
+		default:
+			scratch_buffer_clear();
+			loc_to_scratch(expr->loc);
+			json_write_string(file, scratch_buffer_to_string());
+			break;
+	}
+}
+
 static void get_unit_lists(CompilationUnit *unit, DocCategory cat, Decl ***lists)
 {
 	lists[0] = lists[1] = lists[2] = NULL;
@@ -320,7 +354,7 @@ RETRY:
 
 	Type *t = base_info->type;
 	if (!t) t = poisoned_type;
-	RETRY2:
+RETRY2:
 	switch (t->type_kind)
 	{
 		case TYPE_POINTER:
@@ -441,12 +475,42 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 
 	fputs("[", file);
 	bool first = true;
-	if (decl->decl_kind == DECL_ENUM)
+	if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTDEF)
 	{
-		FOREACH_IDX(i, Decl *, p, decl->enums.parameters)
+		if (decl->decl_kind == DECL_ENUM)
 		{
-			if (i) fputs(",", file);
-			emit_param_json(file, module, p);
+			FOREACH_IDX(i, Decl *, p, decl->enums.parameters)
+			{
+				if (!first) fputs(",", file);
+				first = false;
+				emit_param_json(file, module, p);
+			}
+		}
+		FOREACH_IDX(i, Decl *, p, decl->enums.values)
+		{
+			if (!first) fputs(",", file);
+			first = false;
+			fputs("{\"name\":\"", file);
+			fputs(p->name ? p->name : "", file);
+			fputs("\"", file);
+			fputs(",\"type\":", file);
+			fputs("{\"name\":\"", file);
+			fputs(decl->name ? decl->name : "", file);
+			fputs("\"", file);
+			emit_decl_uid_json(file, decl);
+			fputs("}", file);
+			if (p->enum_constant.value)
+			{
+				fputs(",\"value\":", file);
+				write_const_value_json(file, p->enum_constant.value);
+			}
+			else if (decl->decl_kind == DECL_ENUM)
+			{
+				fputs(",\"value\":\"", file);
+				fprintf(file, "%u", p->enum_constant.inner_ordinal);
+				fputs("\"", file);
+			}
+			fputs("}", file);
 		}
 	}
 	else if (decl_has_members(decl))
@@ -520,19 +584,19 @@ static void emit_normal_attrs(FILE *file, Decl *decl)
 {
 	bool has_attrs = false;
 
-#define EMIT_ATTR(flag, name)                  \
-	if (flag)                                  \
-	{                                          \
-		if (has_attrs)                         \
-		{                                      \
-			fputs(",", file);                  \
-		}                                      \
-		else                                   \
-		{                                      \
-			fputs(",\"attributes\":[", file);  \
-			has_attrs = true;                  \
-		}                                      \
-		fputs("\"@" name "\"", file);          \
+#define EMIT_ATTR(flag, name)                 \
+	if (flag)                                 \
+	{                                         \
+		if (has_attrs)                        \
+		{                                     \
+			fputs(",", file);                 \
+		}                                     \
+		else                                  \
+		{                                     \
+			fputs(",\"attributes\":[", file); \
+			has_attrs = true;                 \
+		}                                     \
+		fputs("\"@" name "\"", file);         \
 	}
 
 	EMIT_ATTR(decl->is_packed, "packed")
@@ -763,7 +827,7 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 		case DECL_TYPEDEF:
 			base = decl->distinct;
 			goto PRINT_BASE;
-PRINT_BASE:
+		PRINT_BASE:
 			fputs("\"base_type\":", file);
 			print_doc_type(file, module, base);
 			fputs(",", file);
@@ -874,7 +938,7 @@ static bool category_has_content(Module *module, DocCategory cat)
 			Decl **sub_lists[2] = {gdecl->generic_decl.decls, gdecl->generic_decl.conditional_decls};
 			for (int list_idx = 0; list_idx < 2; list_idx++)
 			{
-				FOREACH (Decl *, decl, sub_lists[list_idx])
+				FOREACH(Decl *, decl, sub_lists[list_idx])
 				{
 					if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 					if (get_category_for_decl(decl) == cat) return true;

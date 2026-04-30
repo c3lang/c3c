@@ -2165,7 +2165,8 @@
 
 		function buildMembersHtml(vd, baseDocs) {
 			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
-			const title = isFunction ? 'Arguments' : 'Fields';
+			let title = isFunction ? 'Arguments' : 'Fields';
+			if (vd.kind === 'enum' || vd.kind === 'constdef') title = 'Values';
 
 			if (!vd.members || vd.members.length === 0) return '';
 
@@ -2199,13 +2200,17 @@
 					bitDesc = `<br><span class="secondary-text" style="font-size: 0.8em;">bits ${m.bit_range[0]}..${m.bit_range[1]}</span>`;
 				}
 
-				const desc = (docParam && docParam.description) ? docParam.description : '';
+				let desc = (docParam && docParam.description) ? docParam.description : '';
+				if (m.value !== undefined && m.value !== null) {
+					if (desc) desc += '<br>';
+					desc += `<span class="c3-number">${escapeHtml(String(m.value))}</span>`;
+				}
 
 				html += `<tr>
-					${isFunction ? `<td class="col-mod">${modHtml}</td>` : ''}
-					<td class="col-type monospace">${renderTypeName(m.type)}${bitDesc}</td>
-					<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name}</td>
-					<td class="doc-text">${desc}</td>
+				${isFunction ? `<td class="col-mod">${modHtml}</td>` : ''}
+				<td class="col-type monospace">${renderTypeName(m.type)}${bitDesc}</td>
+				<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name}</td>
+				<td class="doc-text">${desc}</td>
 				</tr>`;
 			});
 
