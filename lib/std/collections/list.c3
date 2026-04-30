@@ -343,7 +343,7 @@ fn sz List.remove_using_test(&self, ElementTest filter, any context)
 	sz old_size = self.size;
 	defer
 	{
-		if (old_size != self.size) self._update_size_change(old_size, self.size);
+		if (old_size != self.size) list_update_size_change(self, old_size, self.size);
 	}
 	return list_common::list_remove_using_test(self, filter, false, context);
 }
@@ -354,7 +354,7 @@ fn sz List.retain_using_test(&self, ElementTest filter, any context)
 {
 	sz old_size = self.size;
 	defer {
-		if (old_size != self.size) self._update_size_change(old_size, self.size);
+		if (old_size != self.size) list_update_size_change(self, old_size, self.size);
 	}
 	return list_common::list_remove_using_test(self, filter, true, context);
 }
@@ -423,7 +423,7 @@ fn void List.reserve(&self, sz added)
 	list_ensure_capacity(self, new_capacity);
 }
 
-fn void List._update_size_change(&self,sz old_size, sz new_size)
+fn void list_update_size_change(List* self,sz old_size, sz new_size) @private
 {
 	if (old_size == new_size) return;
 	$if env::ADDRESS_SANITIZER:
@@ -441,7 +441,7 @@ fn void List._update_size_change(&self,sz old_size, sz new_size)
 fn sz list_set_size(List* self, sz new_size) @inline @private
 {
 	sz old_size = self.size;
-	self._update_size_change(old_size, new_size);
+	list_update_size_change(self, old_size, new_size);
 	self.size = new_size;
 	return old_size;
 }
@@ -449,7 +449,7 @@ fn sz list_set_size(List* self, sz new_size) @inline @private
 macro void list_pre_free(List* self) @private
 {
 	if (!self.capacity) return;
-	self._update_size_change(self.size, self.capacity);
+	list_update_size_change(self, self.size, self.capacity);
 }
 
 <*
@@ -457,7 +457,7 @@ macro void list_pre_free(List* self) @private
 *>
 macro void list_post_alloc(List* self) @private
 {
-	self._update_size_change(self.capacity, self.size);
+	list_update_size_change(self, self.capacity, self.size);
 }
 
 // Functions for equatable types
@@ -534,7 +534,7 @@ fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 fn sz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	sz old_size = self.size;
-	defer if (old_size != self.size) self._update_size_change(old_size, self.size);
+	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
 	return list_common::list_remove_item(self, value);
 }
 
@@ -544,7 +544,7 @@ fn void List.remove_all_from(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
 {
 	if (!other_list.size) return;
 	sz old_size = self.size;
-	defer if (old_size != self.size) self._update_size_change(old_size, self.size);
+	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
 	foreach (v : other_list) self.remove_item(v);
 }
 
@@ -562,7 +562,7 @@ fn sz List.compact_count(&self) @if(ELEMENT_IS_POINTER)
 fn sz List.compact(&self) @if(ELEMENT_IS_POINTER)
 {
 	sz old_size = self.size;
-	defer if (old_size != self.size) self._update_size_change(old_size, self.size);
+	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
 	return list_common::list_compact(self);
 }
 
