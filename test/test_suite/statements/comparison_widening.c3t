@@ -22,9 +22,7 @@ entry:
   %1 = load i8, ptr %a, align 1
   %zext = zext i8 %1 to i32
   %gt = icmp sgt i32 %0, %zext
-  %check = icmp sge i32 %zext, 0
-  %siui-gt = and i1 %check, %gt
-  %ternary = select i1 %siui-gt, i8 1, i8 0
+  %ternary = select i1 %gt, i8 1, i8 0
   store i8 %ternary, ptr %c, align 1
   %2 = load i32, ptr %b, align 4
   %i2b = icmp ne i32 %2, 0

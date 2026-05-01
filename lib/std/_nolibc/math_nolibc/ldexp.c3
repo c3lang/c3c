@@ -28,7 +28,7 @@ fn double ldexp(double x, int exp) @cname("ldexp")
     }
 
     // set new exponent
-    hx = ((ulong)hx & 0x800fffff) | ((ulong)hexp << 20);
+    hx = (uint)(((ulong)hx & 0x800fffff) | ((ulong)hexp << 20));
     {
         ulong rep = ((ulong)hx << 32) | x.low_word();
         return bitcast(rep, double);

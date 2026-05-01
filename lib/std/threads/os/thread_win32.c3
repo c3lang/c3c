@@ -353,7 +353,7 @@ fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time) 
 
 fn void? NativeThread.create(&thread, ThreadFn func, void* args, ThreadSettings settings)
 {
-	NativeThread t = (NativeThread)win32::createThread(null, settings.stack_size, func, args, settings.stack_size > 0 ? win32::STACK_SIZE_PARAM_IS_A_RESERVATION : 0, null);
+	NativeThread t = (NativeThread)win32::createThread(null, (usz)settings.stack_size, func, args, settings.stack_size > 0 ? win32::STACK_SIZE_PARAM_IS_A_RESERVATION : 0, null);
 	if (!t) return thread::INIT_FAILED~;
 	*thread = t;
 	if (settings.priority != DEFAULT) t.set_priority(settings.priority);

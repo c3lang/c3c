@@ -838,8 +838,8 @@ entry:
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %4 = load i32, ptr %i, align 4
-  %gt = icmp ugt i32 10, %4
-  br i1 %gt, label %loop.body, label %loop.exit
+  %lt = icmp ult i32 %4, 10
+  br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %ptradd = getelementptr inbounds i8, ptr %1, i64 24
@@ -975,14 +975,14 @@ loop.exit:                                        ; preds = %loop.cond
   %6 = load ptr, ptr %s1, align 8
   %7 = load i8, ptr %6, align 1
   %zext = zext i8 %7 to i32
-  %eq2 = icmp eq i32 0, %zext
+  %eq2 = icmp eq i32 %zext, 0
   br i1 %eq2, label %if.then, label %if.else6
 
 if.then:                                          ; preds = %loop.exit
   %8 = load ptr, ptr %s2, align 8
   %9 = load i8, ptr %8, align 1
   %zext3 = zext i8 %9 to i32
-  %eq4 = icmp eq i32 0, %zext3
+  %eq4 = icmp eq i32 %zext3, 0
   br i1 %eq4, label %if.then5, label %if.else
 
 if.then5:                                         ; preds = %if.then
@@ -995,7 +995,7 @@ if.else6:                                         ; preds = %loop.exit
   %10 = load ptr, ptr %s2, align 8
   %11 = load i8, ptr %10, align 1
   %zext7 = zext i8 %11 to i32
-  %eq8 = icmp eq i32 0, %zext7
+  %eq8 = icmp eq i32 %zext7, 0
   br i1 %eq8, label %if.then9, label %if.else10
 
 if.then9:                                         ; preds = %if.else6

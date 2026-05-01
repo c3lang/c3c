@@ -56,13 +56,13 @@ fn Backtrace? backtrace_line_parse(Allocator allocator, String obj, String addr2
 		String[] parts = addr2line.trim().split(mem, " at ");
 		if (parts.len != 2) return NOT_FOUND~;
 
-		uint line   = 0;
+		int line = 0;
 		String source = "";
 		if (!parts[1].contains("?") && parts[1].contains(":"))
 		{
 			sz index = parts[1].rindex_of_char(':')!;
 			source = parts[1][:index];
-			line   = parts[1][index + 1..].to_uint()!;
+			line = parts[1][index + 1..].to_int()!;
 		}
 		return {
 			.function    = parts[0].copy(allocator),

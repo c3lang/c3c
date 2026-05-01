@@ -207,7 +207,7 @@ fn void h_prime(char[] digest, char[] input) @local
 
 	// In an overlapping fashion, walk the storage buffer and place a hash of the partial
 	//   previous value as the stored value of the next.
-	uint r = (uint)((digest.len + 31) >> 5) - 2u;
+	int r = (int)((digest.len + 31) >> 5) - 2u;
 	sz in = 0;
 	sz out = 32;
 	for (sz i = 1; i < r; i++, in += 32, out += 32)
@@ -215,7 +215,7 @@ fn void h_prime(char[] digest, char[] input) @local
 		digest[out:blake2::SIZE_512] = blake2::b_512(digest[in:blake2::SIZE_512])[..];
 	}
 
-	hash_out_len = digest.len - (sz)(32u * r);
+	hash_out_len = digest.len - (sz)(32 * r);
 	if (hash_out_len == 0) return;
 
 	Blake2b k @noinit;

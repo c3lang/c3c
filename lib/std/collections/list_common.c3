@@ -22,7 +22,7 @@ macro list_to_array($Type, self, Allocator allocator)
 macro void list_reverse(self)
 {
 	if (self.size < 2) return;
-	sz half = self.size / 2U;
+	sz half = self.size / 2;
 	sz end = self.size - 1;
 	for (sz i = 0; i < half; i++)
 	{

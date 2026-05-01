@@ -402,7 +402,7 @@ fn HashMapKeyIterator HashMap.key_iter(&self)
 
 // --- private methods
 
-fn void hashmap_add_entry(HashMap* map, uint hash, Key key, Value value, uint bucket_index) @private
+fn void hashmap_add_entry(HashMap* map, uint hash, Key key, Value value, int bucket_index) @private
 {
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
@@ -527,7 +527,7 @@ fn bool hashmap_remove_entry_for_key(HashMap* map, Key key) @private
 	return false;
 }
 
-fn void hashmap_create_entry(HashMap* map, uint hash, Key key, Value value, uint bucket_index) @private
+fn void hashmap_create_entry(HashMap* map, uint hash, Key key, Value value, int bucket_index) @private
 {
 	Entry *e = map.table[bucket_index];
 	$if COPY_KEYS:
