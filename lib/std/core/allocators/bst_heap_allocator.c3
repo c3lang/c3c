@@ -21,7 +21,6 @@ struct BSTHeapAllocator (Allocator, Printable)
 	char* data;
 	sz capacity;
 	FreeNode* root;
-	FreeNode* tail;
 	FallbackAlloc* fallback_root;
 	BSTAllocStrategy strategy;
 	MemoryAllocFn alloc_fn;
@@ -36,8 +35,8 @@ enum BSTAllocStrategy
 
 bitstruct NodeState : sz @local
 {
-	// Aligned size of memory block + AllocHeader.
 	bool is_free : 0..0;
+	// Aligned size of memory block + AllocHeader.
 	sz size : 1..(bitsizeof(sz) - 1);
 }
 
@@ -68,7 +67,6 @@ bitstruct FallbackAllocState : sz @local
 
 struct FallbackAlloc @local
 {
-	// sz size;
 	inline FallbackAllocState _state;
 	FallbackAlloc* next;
 	char[*] memory;
@@ -95,7 +93,6 @@ fn void BSTHeapAllocator.init(
 	self.alloc_fn = alloc_fn;
 	self.free_fn = free_fn;
 	self.strategy = strategy;
-	self.tail = (FreeNode*)(self.data + self.capacity);
 	self.reset();
 }
 
@@ -183,9 +180,10 @@ fn void*? BSTHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignmen
 	}
 
 	FreeNode* next = node_next(node);
+	FreeNode* tail = tail_ref(self);
 
 	// Try to extend.
-	if (next < self.tail && next.is_free)
+	if (next < tail && next.is_free)
 	{
 		sz diff = mem::aligned_offset(new_size - old_size, alignment);
 		sz new_node_size = next.size - diff;
@@ -232,6 +230,11 @@ fn void BSTHeapAllocator.release(&self, void* ptr, bool) @dynamic
 	// Prevent double free.
 	if (@unlikely(free_node.is_free)) return;
 
+	// Zero previously allocated memory.
+	free_node.parent = null;
+	free_node.left = null;
+	free_node.right = null;
+
 	// Order of this lines should be preserved.
 	free_node = coalesce_nodes_around(self, free_node);
 	insert_node(&self.root, free_node);
@@ -264,54 +267,73 @@ fn void BSTHeapAllocator.reset(&self)
 
 <*
  Implements 'Printable' interface.
+
+ @require self.root != null : "Must be initialized"
+ @require tail_ref(self) != null : "Must be initialized"
 *>
 fn sz? BSTHeapAllocator.to_format(&self, Formatter* fmt) @dynamic
 {
-	sz main_buff_used = calc_used_main_buff_mem(self);
+	sz total = fmt.print("Binary tree allocator info:")!;
+	sz main_buff_used = 0;
+
+	if (!self.root) {
+		total += fmt.print("[Empty Buffer]")!;
+		return total;
+	};
+
+	FreeNode* curr = (FreeNode*)self.data;
+	FreeNode* tail = tail_ref(self);
+	String usage_s;
+
+	while (curr && curr < tail)
+	{
+		if (!curr.is_free)
+		{
+			usage_s = "used";
+			main_buff_used += curr.size;
+		}
+		else
+		{
+			usage_s = "free";
+		}
+		total += fmt.printf("\n\t[%s : %sB]", usage_s, curr.size)!;
+		curr = node_next(curr);
+	}
+
+	total += fmt.print("\n--- Block report finished ---\n")!;
+	total += print_total_usage(self, fmt, main_buff_used)!;
+
+	return total;
+}
+
+<*
+ Print total memory usage statistics.
+*>
+fn sz? print_total_usage(BSTHeapAllocator* self, Formatter* fmt, sz main_buff_used) @local
+{
 	sz fallback_used = calc_used_fallback_mem(self);
-	String fmt_string = "BST heap allocator state:\n\tmemory total = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB\n\tmemory used  = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB\n\textra allocated = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB";
+	sz main_buff_remain = self.capacity - main_buff_used;
+	String fmt_string = "Total usage:\n\tmemory total  = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB\n\tmemory used   = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB\n\tmemory remain = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB\n\textra allocated = %.0fB / %.2fKiB / %.3fMiB / %.4fGiB";
 
-	if (self.capacity > main_buff_used)
-	{
-		return fmt.printf(
-			fmt_string,
-			(float)self.capacity,
-			self.capacity / (float)mem::KB,
-			self.capacity / (float)mem::MB,
-			self.capacity / (float)mem::GB,
-			(float)main_buff_used,
-			main_buff_used / (float)mem::KB,
-			main_buff_used / (float)mem::MB,
-			main_buff_used / (float)mem::GB,
-			(float)fallback_used,
-			fallback_used / (float)mem::KB,
-			fallback_used / (float)mem::MB,
-			fallback_used / (float)mem::GB,
-		);
-	}
-	else
-	{
-		float bytes = (float)self.capacity;
-		float kib = self.capacity / (float)mem::KB;
-		float mib = self.capacity / (float)mem::MB;
-		float gib = self.capacity / (float)mem::GB;
-
-		return fmt.printf(
-			fmt_string,
-			bytes,
-			kib,
-			mib,
-			gib,
-			bytes,
-			kib,
-			mib,
-			gib,
-			(float)fallback_used,
-			fallback_used / (float)mem::KB,
-			fallback_used / (float)mem::MB,
-			fallback_used / (float)mem::GB,
-		);
-	}
+	return fmt.printf(
+		fmt_string,
+		(float)self.capacity,
+		self.capacity / (float)mem::KB,
+		self.capacity / (float)mem::MB,
+		self.capacity / (float)mem::GB,
+		(float)main_buff_used,
+		main_buff_used / (float)mem::KB,
+		main_buff_used / (float)mem::MB,
+		main_buff_used / (float)mem::GB,
+		(float)main_buff_remain,
+		main_buff_remain / (float)mem::KB,
+		main_buff_remain / (float)mem::MB,
+		main_buff_remain / (float)mem::GB,
+		(float)fallback_used,
+		fallback_used / (float)mem::KB,
+		fallback_used / (float)mem::MB,
+		fallback_used / (float)mem::GB,
+	);
 }
 
 // ------ Private API ------
@@ -325,9 +347,10 @@ fn FreeNode* find_node_best_fit(BSTHeapAllocator* self, sz req_size) @local
 	if (!self.root) return null;
 
 	FreeNode* it_curr = self.root;
+	FreeNode* tail = tail_ref(self);
 	FreeNode* best_node = null;
 
-	while (it_curr && it_curr < self.tail)
+	while (it_curr && it_curr < tail)
 	{
 		if (it_curr.size >= req_size)
 		{
@@ -352,8 +375,9 @@ fn FreeNode* find_node_first_fit(BSTHeapAllocator* self, sz req_size) @local
 	if (!self.root) return null;
 
 	FreeNode* curr = self.root;
+	FreeNode* tail = tail_ref(self);
 
-	while (curr && curr < self.tail)
+	while (curr && curr < tail)
 	{
 		if (curr.size >= req_size)
 		{
@@ -463,9 +487,10 @@ fn void remove_node(FreeNode** root, FreeNode* node_to_remove) @local
 fn FreeNode* coalesce_nodes_around(BSTHeapAllocator* self, FreeNode* node) @local
 {
 	FreeNode* next = node_next(node);
+	FreeNode* tail = tail_ref(self);
 	bool was_merge = false;
 
-	if (next < self.tail && next.is_free)
+	if (next < tail && next.is_free)
 	{
 		node.size += next.size;
 		remove_node(&self.root, next);
@@ -484,7 +509,7 @@ fn FreeNode* coalesce_nodes_around(BSTHeapAllocator* self, FreeNode* node) @loca
 	if (was_merge)
 	{
 		next = node_next(node);
-		if (next < self.tail)
+		if (next < tail)
 		{
 			next.prev_phys = node;
 		}
@@ -525,24 +550,11 @@ fn FreeNode* node_at_offset(FreeNode* node, sz offset) @inline @local
 }
 
 <*
- Calculates all memory that were allocated as in the main buffer.
+ Returns a tail node of the allocator, which serves as a memory buffer boundary.
 *>
-fn sz calc_used_main_buff_mem(BSTHeapAllocator* self) @local
+fn FreeNode* tail_ref(BSTHeapAllocator* self) @inline @local
 {
-	return calc_used_main_buff_mem_recur(self.root, 0);
-}
-fn sz calc_used_main_buff_mem_recur(FreeNode* curr_node, sz res) @local
-{
-	if (!curr_node) return res;
-
-	if (!curr_node.is_free)
-	{
-		res += curr_node.size;
-	}
-
-	res += calc_used_main_buff_mem_recur(curr_node.left, res);
-	res += calc_used_main_buff_mem_recur(curr_node.right, res);
-	return res;
+	return (FreeNode*)(self.data + self.capacity);
 }
 
 // ---- Fallback allocations ----

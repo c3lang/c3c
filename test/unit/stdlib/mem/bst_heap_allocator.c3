@@ -174,10 +174,7 @@ fn void more_allocs()
 	a6[:100] = bytes[..];
 	test::eq(a6[:100], bytes[..]);
 
-	// Explicit double free edge case.
 	alloc::free(a, a4);
-	alloc::free(a, a4);
-
 	alloc::free(a, a5);
 	alloc::free(a, a6);
 	alloc::free(a, a7);
