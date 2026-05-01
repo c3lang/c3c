@@ -417,9 +417,9 @@ fn void List.reserve(&self, sz added)
 	sz new_size = self.size + added;
 	if (self.capacity >= new_size) return;
 
-	assert(new_size < sz::max / 2U);
-	sz new_capacity = self.capacity ? 2U * self.capacity : 16U;
-	while (new_capacity < new_size) new_capacity *= 2U;
+	assert(new_size < sz::max / 2);
+	sz new_capacity = self.capacity ? 2 * self.capacity : 16;
+	while (new_capacity < new_size) new_capacity *= 2;
 	list_ensure_capacity(self, new_capacity);
 }
 

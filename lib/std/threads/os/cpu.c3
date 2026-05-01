@@ -62,7 +62,7 @@ fn int native_cpu()
 
 	libc::sysctl(&mib, 2, &ncpu, &len, null, 0);
 
-	return (int)max(1, ncpu);
+	return (int)max(1u, ncpu);
 }
 
 module std::thread::cpu @if(env::LINUX);

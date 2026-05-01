@@ -28,13 +28,13 @@ fn void xoshiro_variants()
 	{
 		// Original Xoshiro128pp test
 		Xoshiro128pp x = { { 1, 2, 3, 4 } };
-		test::eq(0x281, x.next_int());
-		test::eq(0x180387, x.next_int());
-		test::eq(0xc0183387, x.next_int());
+		test::eq(0x281u, x.next_int());
+		test::eq(0x180387u, x.next_int());
+		test::eq(0xc0183387u, x.next_int());
 		x = { { ~1u, ~2u, ~3u, ~4u } };
-		test::eq(0xfffffcfd, x.next_int());
-		test::eq(0x17fbf8, x.next_int());
-		test::eq(0x40183386, x.next_int());
+		test::eq(0xfffffcfdu, x.next_int());
+		test::eq(0x17fbf8u, x.next_int());
+		test::eq(0x40183386u, x.next_int());
 		// =================================
 
 		x = { { 3871345877, 3193868661, 420689323, 819476962 } };

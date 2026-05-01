@@ -5,5 +5,5 @@ fn void main()
 	int i = (char)x; // Ok
 	char c;
 	short s1 = (long)c; // Ok
-	short s2 = (long)i; // #error: 'int' cannot implicitly be converted
+	short s2 = (long)i; // #error:  'int' cannot implicitly be narrowed to 'short', but you may use a cast
 }

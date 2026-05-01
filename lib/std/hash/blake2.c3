@@ -75,8 +75,9 @@ macro common_compress(instance, $rounds, $iv, $sigma, block) @local
 
 macro _add_ctr(instance, sz amount) @local
 {
-	instance.t[0] += ($typeof(instance.t[0]))amount;
-	instance.t[1] += ($typeof(instance.t[0]))(instance.t[0] < amount); // adds 1 on overflow of [0]
+	var $Type = $typeof(instance.t[0]);
+	instance.t[0] += ($Type)amount;
+	instance.t[1] += ($Type)(instance.t[0] < ($Type)amount); // adds 1 on overflow of [0]
 }
 
 macro common_init(instance, $ParamType, $iv, sz out_len, char[] key = {}, char[] salt = {}, char[] personal = {}) @local

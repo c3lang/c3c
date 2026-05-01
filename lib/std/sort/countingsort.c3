@@ -224,9 +224,9 @@ macro void _csort(ListType list, sz low, sz high, sz byte_idx, KeyFn key_fn = ..
 			sz	end_offset   = ranges[i + 1];
 
 			$if $defined(key_fn):
-				csort(list, low + start_offset, low + end_offset, key_fn, byte_idx - 1u);
+				csort(list, low + start_offset, low + end_offset, key_fn, byte_idx - 1);
 			$else
-				csort(list, low + start_offset, low + end_offset, byte_idx - 1u);
+				csort(list, low + start_offset, low + end_offset, byte_idx - 1);
 			$endif
 		}
 	}

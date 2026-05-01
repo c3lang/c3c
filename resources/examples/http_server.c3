@@ -392,14 +392,14 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 			if (head_only) return;
 			target_file.seek(start)!;
 			char[65536] buf;
-			usz remaining = content_len;
+			sz remaining = content_len;
 			while (remaining > 0)
 			{
-				sz to_read = (sz)min(remaining, (usz)buf.len);
+				sz to_read = min(remaining, buf.len);
 				sz bytes_read = target_file.read(buf[0 : to_read])!;
 				if (bytes_read == 0) break;
 				if (catch sock.write(buf[:bytes_read])) return;
-				remaining -= (usz)bytes_read;
+				remaining -= bytes_read;
 			}
 		}
 		else

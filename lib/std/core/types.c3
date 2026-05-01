@@ -36,42 +36,44 @@ macro any_to_int(any v, $Type)
 		case short:
 			short s = *(short*)v.ptr;
 			if (is_mixed_signed && s < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
-			if (s > max || s < min) return VALUE_OUT_OF_RANGE~;
+			if ($Type::size <= 2 &&& ((int)s > (int)max || (int)s < (int)min)) return VALUE_OUT_OF_RANGE~;
 			return ($Type)s;
 		case int:
 			int i = *(int*)v.ptr;
 			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
+			if ($Type::size <= 4 &&& ((long)i > (long)max || (long)i < (long)min)) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		case long:
 			long l = *(long*)v.ptr;
 			if (is_mixed_signed && l < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
-			if (l > max || l < min) return VALUE_OUT_OF_RANGE~;
+			if ($Type::size <= 8 &&& ((int128)l > (int128)max || (int128)l < (int128)min)) return VALUE_OUT_OF_RANGE~;
 			return ($Type)l;
 		case int128:
 			int128 i = *(int128*)v.ptr;
 			if (is_mixed_signed && i < 0) return VALUE_OUT_OF_UNSIGNED_RANGE~;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
+			$if $Type != uint128:
+				if ((int128)i > (int128)max || (int128)i < (int128)min) return VALUE_OUT_OF_RANGE~;
+			$endif
 			return ($Type)i;
 		case char:
 			char c = *(char*)v.ptr;
-			if (c > max) return VALUE_OUT_OF_RANGE~;
+			if ($Type::size == 1 && (int)c > (int)max) return VALUE_OUT_OF_RANGE~;
 			return ($Type)c;
 		case ushort:
 			ushort s = *(ushort*)v.ptr;
-			if (s > max || s < min) return VALUE_OUT_OF_RANGE~;
+			if ($Type::size <= 2 && (int)s > (int)max) return VALUE_OUT_OF_RANGE~;
 			return ($Type)s;
 		case uint:
 			uint i = *(uint*)v.ptr;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
+			if ($Type::size <= 4 && (long)i > (long)max) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		case ulong:
 			ulong l = *(ulong*)v.ptr;
-			if (l > max || l < min) return VALUE_OUT_OF_RANGE~;
+			if ($Type::size <= 8 && (int128)l > (int128)max) return VALUE_OUT_OF_RANGE~;
 			return ($Type)l;
 		case uint128:
 			uint128 i = *(uint128*)v.ptr;
-			if (i > max || i < min) return VALUE_OUT_OF_RANGE~;
+			if (i > (uint128)max) return VALUE_OUT_OF_RANGE~;
 			return ($Type)i;
 		default:
 			unreachable();
@@ -311,7 +313,7 @@ macro lower_to_atomic_compatible_type($Type) @const
 		$case BOOL:
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
-	        return $Type;
+			return $Type;
 		$case TYPEDEF:
 		$case CONSTDEF:
 			return lower_to_atomic_compatible_type($Type::inner);

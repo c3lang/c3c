@@ -9133,19 +9133,6 @@ NEXT:
 	left_type = type_flat_distinct_inline(left_type)->canonical;
 	right_type = type_flat_distinct_inline(right_type)->canonical;
 
-	// 2. Handle the case of signed comparisons.
-	//    This happens when either side has a definite integer type
-	//    and those are either signed or unsigned.
-	//    If either side is compint, then this does not happen.
-	if ((type_is_unsigned(left_type) && type_is_signed(right_type))
-		|| (type_is_signed(left_type) && type_is_unsigned(right_type)))
-	{
-		// 2a. Resize so that both sides have the same bit width. This will always work.
-		cast_to_int_to_max_bit_size(left, right, left_type, right_type);
-		goto DONE;
-	}
-
-
 	// 3. In the normal case, treat this as a binary op, finding the max type.
 	Type *max = type_find_max_type(left_type, right_type, left, right);
 
@@ -9216,8 +9203,6 @@ NEXT:
 		RETURN_SEMA_ERROR(expr, "%s does not support comparisons.",
 						  type_quoted_error_string(left->type));
 	}
-
-DONE:
 
 	// 7. Do constant folding.
 	if (expr_both_const_foldable(left, right, BINARYOP_EQ))

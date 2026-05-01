@@ -7,10 +7,10 @@ import std::os::posix, std::os::win32, std::math, std::io;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = env::EMSCRIPTEN ? 8 : (env::WASM ? 16 : (void*::alignment) * 2);
-const ulong KB = 1024;
-const ulong MB = KB * 1024;
-const ulong GB = MB * 1024;
-const ulong TB = GB * 1024;
+const long KB = 1024;
+const long MB = KB * 1024;
+const long GB = MB * 1024;
+const long TB = GB * 1024;
 
 faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
 

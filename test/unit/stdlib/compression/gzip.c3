@@ -128,9 +128,9 @@ fn void gzip_streaming_reader() @test
 fn void gzip_streaming_round_trip() @test
 {
 	// Large'ish data to verify buffer boundaries
-	usz size = 65536;
+	sz size = 65536;
 	char[] data = alloc::alloc_array(tmem, char, size);
-	for (usz i = 0; i < size; i++) data[i] = (char)(i & 0xFF);
+	for (sz i = 0; i < size; i++) data[i] = (char)(i & 0xFF);
 
 	ByteWriter bw;
 	bw.tinit();

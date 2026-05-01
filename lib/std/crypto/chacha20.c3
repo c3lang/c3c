@@ -22,7 +22,7 @@ const char[] MAGIC = "expand 32-byte k";
  Once a single ChaCha20 context has processed this many bytes, a new nonce MUST be used,
  unless the static `permit_overflow` runtime module variable is set to true.
 *>
-const CHACHA20_NONCE_REUSE_LIMIT = 64 * (1ull << 32);
+const CHACHA20_NONCE_REUSE_LIMIT = 64 * (1L << 32);
 
 <*
  SECURITY WARNING:

@@ -1126,7 +1126,7 @@ fn IntType? to_integer(String self, int base = 10) <IntType>
 			case c < 'a' || c > 'f':          return MALFORMED_INTEGER~;
 			default:                          c -= 'a' - 10;
 		}
-		if (c >= base_used) return MALFORMED_INTEGER~;
+		if (c >= (int)base_used) return MALFORMED_INTEGER~;
 		do
 		{
 			if (is_negative)

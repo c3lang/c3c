@@ -8,7 +8,7 @@
 module std::hash::streebog;
 
 
-constdef StreebogLength : inline uint
+constdef StreebogLength : inline int
 {
 	SIZE_256 = 32,
 	SIZE_512 = 64,
@@ -20,7 +20,7 @@ struct Streebog
 	ulong[8]    n;
 	ulong[8]    s;
 	ulong[8]    message;
-	sz 	    index;
+	sz 	        index;
 	sz			hash_size;
 }
 

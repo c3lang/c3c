@@ -58,6 +58,7 @@
 - `$vaarg` behaves as `$vaexpr`.
 - Added `docgen` command to generate documentation.
 - Added `jmpabs` x86 CPU feature.
+- Implicit unsigned <-> signed integer conversions removed. 
 
 ### Stdlib changes
 - `std::collections::RingBuffer` has been renamed `RingList`.

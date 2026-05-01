@@ -348,7 +348,7 @@ fn sz? formatter_floatformat(Formatter* self, FloatFormatting formatting, double
 		uint carry = 0;
 		uint* b;
 		int sh = math::min(9, -e2);
-		int need = (int)(1 + (p + math::DOUBLE_MANT_DIG / 3u + 8) / 9);
+		int need = (int)(1 + (p + math::DOUBLE_MANT_DIG / 3 + 8) / 9);
 		for (uint* d = a; d < z; d++)
 		{
 			uint rm = *d & ((1u << sh) - 1u);
@@ -366,7 +366,7 @@ fn sz? formatter_floatformat(Formatter* self, FloatFormatting formatting, double
 	int e;
 	if (a < z)
 	{
-		for (int i = 10, e = (int)(9 * (r - a)); *a >= i; i *= 10, e++);
+		for (int i = 10, e = (int)(9 * (r - a)); *a >= (uint)i; i *= 10, e++);
 	}
 
 	// Perform rounding: j is precision after the radix (possibly neg)

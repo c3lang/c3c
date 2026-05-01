@@ -389,6 +389,25 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 	return true;
 }
 
+bool may_convert_int_float(CanonicalType *from, CanonicalType *to)
+{
+	assert(from->canonical == from && to->canonical == to);
+	if (from == to) return true;
+	if (type_is_float(from))
+	{
+		return type_size(from) <= type_size(to);
+	}
+	if (type_is_signed(from))
+	{
+		if (!type_is_signed(to)) return false;
+		return type_size(from) <= type_size(to);
+	}
+	if (type_is_signed(to))
+	{
+		return type_size(from) < type_size(to);
+	}
+	return type_size(from) <= type_size(to);
+}
 
 /**
  * Check whether an expression may narrow.
@@ -503,10 +522,7 @@ RETRY:
 			goto RETRY;
 		}
 		case EXPR_EXT_TRUNC:
-			if (type_size(type) >= type_size(expr->type))
-			{
-				return NULL;
-			}
+			if (may_convert_int_float(type_no_optional(expr->type)->canonical, type)) return NULL;
 			// Otherwise just look through it.
 			expr = expr->ext_trunc_expr.inner;
 			goto RETRY;
@@ -569,8 +585,8 @@ RETRY:
 			break;
 	}
 CHECK_SIZE:
-	if (type_size(expr->type) > type_size(type)) return expr;
-	return NULL;
+	if (may_convert_int_float(type_no_optional(expr->type)->canonical, type)) return NULL;
+	return expr;
 }
 
 
@@ -1390,7 +1406,6 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		return false;
 	}
 
-
 	// If const, check in range.
 	if (is_const && expr_const_will_overflow(&expr->const_expr, cc->to->type_kind))
 	{
@@ -1416,16 +1431,17 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		// Otherwise require a cast.
 		if (expr_is_const_number(expr))
 		{
-			RETURN_CAST_ERROR(expr, "The value of the expression (%s) is out of range and cannot implicitly be converted to %s, but you may use a cast.",
+			RETURN_CAST_ERROR(expr, "The value of the expression (%s) is out of range and cannot implicitly be narrowed to %s, but you may use a cast.",
 				expr_const_to_error_string(&expr->const_expr),
 				type_quoted_error_string(cc->to_type));
 		}
 		if (expr_is_pointer_diff(expr))
 		{
-			RETURN_CAST_ERROR(expr, "A pointer diff has the type %s which cannot implicitly be converted to %s. You can use an explicit cast if you know the conversion is safe.",
+			RETURN_CAST_ERROR(expr, "A pointer diff has the type %s which cannot implicitly be narrowed to %s. You can use an explicit cast if you know the conversion is safe.",
 					   type_quoted_error_string(expr->type), type_quoted_error_string(cc->to_type));
 		}
-		RETURN_CAST_ERROR(expr, "%s cannot implicitly be converted to %s, but you may use a cast.",
+
+		RETURN_CAST_ERROR(expr, "%s cannot implicitly be narrowed to %s, but you may use a cast.",
 		           type_quoted_error_string(expr->type), type_quoted_error_string(cc->to_type));
 	}
 	return true;
