@@ -4,7 +4,7 @@
 module std::core::builtin;
 
 <*
- @require types::@comparable_value(a) && types::@comparable_value(b)
+ @require $defined(a < b) ||| $defined(a.less(b)) ||| $defined(a.compare_to(b))
 *>
 macro bool less(a, b) @builtin
 {
@@ -19,7 +19,7 @@ macro bool less(a, b) @builtin
 }
 
 <*
- @require types::@comparable_value(a) && types::@comparable_value(b)
+ @require $defined(a < b) ||| $defined(a.less(b)) ||| $defined(a.compare_to(b))
 *>
 macro bool less_eq(a, b) @builtin
 {
@@ -34,7 +34,7 @@ macro bool less_eq(a, b) @builtin
 }
 
 <*
- @require types::@comparable_value(a) && types::@comparable_value(b)
+ @require $defined(a < b) ||| $defined(a.less(b)) ||| $defined(a.compare_to(b))
 *>
 macro bool greater(a, b) @builtin
 {
@@ -49,7 +49,7 @@ macro bool greater(a, b) @builtin
 }
 
 <*
- @require types::@comparable_value(a) && types::@comparable_value(b)
+ @require $defined(a < b) ||| $defined(a.less(b)) ||| $defined(a.compare_to(b))
 *>
 macro int compare_to(a, b) @builtin
 {
@@ -63,7 +63,7 @@ macro int compare_to(a, b) @builtin
 	$endswitch
 }
 <*
- @require types::@comparable_value(a) && types::@comparable_value(b)
+ @require $defined(a < b) ||| $defined(a.less(b)) ||| $defined(a.compare_to(b))
 *>
 macro bool greater_eq(a, b) @builtin
 {
@@ -78,7 +78,7 @@ macro bool greater_eq(a, b) @builtin
 }
 
 <*
- @require types::@equatable_value(a) && types::@equatable_value(b) : `values must be equatable`
+ @require $defined(a == b) ||| $defined(a.equals(b)) ||| $defined(a.less(b)) ||| $defined(a.compare_to(b)) : `values must be equatable`
 *>
 macro bool equals(a, b) @builtin
 {
