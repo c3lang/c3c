@@ -2207,10 +2207,10 @@
 				}
 
 				html += `<tr>
-				${isFunction ? `<td class="col-mod">${modHtml}</td>` : ''}
-				<td class="col-type monospace">${renderTypeName(m.type)}${bitDesc}</td>
-				<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name}</td>
-				<td class="doc-text">${desc}</td>
+					${isFunction ? `<td class="col-mod">${modHtml}</td>` : ''}
+					<td class="col-type monospace">${renderTypeName(m.type)}${bitDesc}</td>
+					<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name}</td>
+					<td class="doc-text">${desc}</td>
 				</tr>`;
 			});
 
