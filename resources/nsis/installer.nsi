@@ -1,4 +1,6 @@
 ﻿Unicode true
+SetCompressor lzma
+RequestExecutionLevel user
 
 !include "MUI2.nsh"
 
@@ -9,16 +11,17 @@ Name "C3 Compiler"
 
 OutFile "${INSTALLER_NAME}"
 InstallDir "$LOCALAPPDATA\c3"
-RequestExecutionLevel user
-SetCompressor lzma
 
 !define MUI_ABORTWARNING
 !define MUI_ICON "logo.ico"
+
+!define MUI_FINISHPAGE_NOAUTOCLOSE
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "..\..\LICENSE"
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
+Page Custom ShowMSVCLicensePage LeaveMSVCLicensePage
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 
@@ -55,17 +58,22 @@ Section "Add to PATH" SecPath
   ${EndIf}
 SectionEnd
 
+; needed by MSVC setup script and page
+Var MSVCChoice
+
 Section "Setup MSVC SDK" SecMSVC
-  ExecWait '"$INSTDIR\c3c.exe" fetch-sdk windows --accept-license' $0
-  
-  ${If} $0 == 0
-    DetailPrint "SDK successfully initialized."
-  ${Else}
-    DetailPrint "Error: c3c.exe exited with code $0"
-    MessageBox MB_OK|MB_ICONSTOP \
-      "The MSVC SDK setup failed (Error Code: $0). Please check your connection and try again."
+  ${If} $MSVCChoice == "0"
+    DetailPrint "MSVC License declined. Skipping SDK setup."
+    Return
   ${EndIf}
+  
+  DetailPrint "MSVC License accepted. Fetching SDK..."
+
+  nsExec::Exec '"$INSTDIR\c3c.exe" fetch-sdk windows --accept-license'
+  Pop $0
 SectionEnd
+
+!include "MSVCLicense.nsh"
 
 Section "Uninstall"
   Delete "$INSTDIR\LICENSE"
