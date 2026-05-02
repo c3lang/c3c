@@ -22,6 +22,7 @@ static void write_decl_uid(FILE *file, Module *module, Decl *decl);
 static void emit_type_name_to_scratch(TypeInfo *type);
 static void print_doc_type(FILE *file, Module *module, TypeInfo *type);
 static void emit_params_json(FILE *file, Module *module, Decl **params);
+static void emit_doc_comments(FILE *file, Decl *decl);
 static void write_expr_source_json(FILE *file, Expr *expr)
 {
 	if (!expr)
@@ -492,24 +493,20 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 			first = false;
 			fputs("{\"name\":\"", file);
 			fputs(p->name ? p->name : "", file);
-			fputs("\"", file);
-			fputs(",\"type\":", file);
-			fputs("{\"name\":\"", file);
-			fputs(decl->name ? decl->name : "", file);
-			fputs("\"", file);
-			emit_decl_uid_json(file, decl);
-			fputs("}", file);
-			if (p->enum_constant.value)
+			fputs("\",\"kind\":\"enum_value\"", file);
+			if (decl->decl_kind == DECL_CONSTDEF && p->enum_constant.value)
 			{
 				fputs(",\"value\":", file);
 				write_const_value_json(file, p->enum_constant.value);
 			}
-			else if (decl->decl_kind == DECL_ENUM)
+			else
 			{
 				fputs(",\"value\":\"", file);
 				fprintf(file, "%u", p->enum_constant.inner_ordinal);
 				fputs("\"", file);
 			}
+			fputs(",", file);
+			emit_doc_comments(file, p);
 			fputs("}", file);
 		}
 	}

@@ -2165,11 +2165,63 @@
 
 		function buildMembersHtml(vd, baseDocs) {
 			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
-			let title = isFunction ? 'Arguments' : 'Fields';
-			if (vd.kind === 'enum' || vd.kind === 'constdef') title = 'Values';
+			const isEnum = vd.kind === 'enum' || vd.kind === 'constdef';
 
 			if (!vd.members || vd.members.length === 0) return '';
 
+			if (isEnum) {
+				const enumValues = vd.members.filter(m => m.kind === 'enum_value');
+				const schemaParams = vd.members.filter(m => m.kind !== 'enum_value');
+
+				let html = '';
+
+				if (enumValues.length > 0) {
+					html += `<h3>Values</h3>`;
+					html += `<table class="contract-table">
+						<thead><tr>
+							<th class="col-name">Name</th>
+							<th class="col-type">Value</th>
+							<th>Description</th>
+						</tr></thead><tbody>`;
+
+					enumValues.forEach(m => {
+						const desc = (m.docs && m.docs.text) ? formatDocText(m.docs.text) : '';
+						const val = m.value !== undefined && m.value !== null
+							? `<span class="c3-number">${escapeHtml(String(m.value))}</span>`
+							: '<span class="secondary-text">auto</span>';
+						html += `<tr>
+							<td class="col-name monospace bold c3-constdef">${escapeHtml(m.name)}</td>
+							<td class="col-type monospace">${val}</td>
+							<td class="doc-text">${desc}</td>
+						</tr>`;
+					});
+					html += `</tbody></table>`;
+				}
+
+				if (schemaParams.length > 0) {
+					html += `<h3>Associated Values</h3>`;
+					html += `<table class="contract-table">
+						<thead><tr>
+							<th class="col-type">Type</th>
+							<th class="col-name">Name</th>
+							<th>Description</th>
+						</tr></thead><tbody>`;
+					schemaParams.forEach(m => {
+						const docParam = (baseDocs && baseDocs.params) ? baseDocs.params.find(p => p.name === m.name) : null;
+						const desc = (docParam && docParam.description) ? docParam.description : '';
+						html += `<tr>
+							<td class="col-type monospace">${renderTypeName(m.type)}</td>
+							<td class="col-name monospace bold c3-variable">${escapeHtml(m.name)}</td>
+							<td class="doc-text">${desc}</td>
+						</tr>`;
+					});
+					html += `</tbody></table>`;
+				}
+
+				return html;
+			}
+
+			let title = isFunction ? 'Arguments' : 'Fields';
 			let html = `<h3>${title}</h3>`;
 			html += `<table class="contract-table">
 				<thead>
