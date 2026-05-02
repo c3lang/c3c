@@ -78,8 +78,8 @@ jobs:
 
       - name: Compile Installer
         run: |
-          $outName = "resources/nsis/c3-windows-setup-${{ matrix.build_type }}.exe"
-          makensis -DINSTALLER_NAME="$outName" resources/nsis/installer.nsi
+          set "OUT_FILE=c3-windows-setup-${{ matrix.build_type }}.exe"
+          makensis /DINSTALLER_NAME="%OUT_FILE%" resources/nsis/installer.nsi
 
       - uses: actions/upload-artifact@v7
         with:
