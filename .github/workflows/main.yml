@@ -722,10 +722,12 @@ jobs:
       - name: Prepare Assets
         run: |
           for config in Release Debug; do
-            for platform in windows macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64; do
+            for platform in windows macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup; do
               # Windows and macOS produce zip, others tar.gz
               if [ "$platform" = "windows" ] || [ "$platform" = "macos" ]; then
                 ext="zip"
+              elif [ "$platform" = "windows-setup" ]; then
+                ext="exe"
               else
                 ext="tar.gz"
               fi
@@ -736,17 +738,6 @@ jobs:
               dst="${dst}.${ext}"
 
               mv "$src" "$dst" || true
-
-              if [ "$platform" = "windows" ]; then
-                setup_src="c3-windows-setup-${config}/c3-windows-setup-${config}.exe"
-                setup_dst="c3-windows-setup"
-                [ "$config" = "Debug" ] && setup_dst="${setup_dst}-debug"
-                setup_dst="${setup_dst}.exe"
-
-                if [ -f "$setup_src" ]; then
-                  mv "$setup_src" "$setup_dst"
-                fi
-              fi
             done
           done
 
