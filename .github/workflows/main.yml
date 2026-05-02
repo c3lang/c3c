@@ -738,7 +738,7 @@ jobs:
               mv "$src" "$dst" || true
 
               if [ "$platform" = "windows" ]; then
-                setup_src="resources/nsis/c3-windows-setup-${config}.exe"
+                setup_src="c3-windows-setup-${config}/c3-windows-setup-${config}.exe"
                 setup_dst="c3-windows-setup"
                 [ "$config" = "Debug" ] && setup_dst="${setup_dst}-debug"
                 setup_dst="${setup_dst}.exe"
