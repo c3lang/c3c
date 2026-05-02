@@ -71,6 +71,21 @@ jobs:
           name: c3-windows-${{ matrix.build_type }}
           path: c3-windows-${{ matrix.build_type }}.zip
 
+      - name: Install NSIS
+        uses: repolevedavaj/install-nsis@v1.1.0
+        with:
+          nsis-version: '3.12'
+
+      - name: Compile Installer
+        run: |
+          $outName = "resources/nsis/c3-windows-setup-${{ matrix.build_type }}.exe"
+          makensis -DINSTALLER_NAME="$outName" resources/nsis/installer.nsi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-setup-${{ matrix.build_type }}
+          path: resources/nsis/c3-windows-setup-${{ matrix.build_type }}.exe
+
   build-msys2:
     runs-on: windows-latest
     timeout-minutes: 30
@@ -721,6 +736,17 @@ jobs:
               dst="${dst}.${ext}"
 
               mv "$src" "$dst" || true
+
+              if [ "$platform" = "windows" ]; then
+                setup_src="resources/nsis/c3-windows-setup-${config}.exe"
+                setup_dst="c3-windows-setup"
+                [ "$config" = "Debug" ] && setup_dst="${setup_dst}-debug"
+                setup_dst="${setup_dst}.exe"
+
+                if [ -f "$setup_src" ]; then
+                  mv "$setup_src" "$setup_dst"
+                fi
+              fi
             done
           done
 
@@ -745,4 +771,4 @@ jobs:
           prerelease: true
           allowUpdates: true
           removeArtifacts: true
-          artifacts: "*.zip,*.tar.gz"
+          artifacts: "*.zip,*.tar.gz,*.exe"
