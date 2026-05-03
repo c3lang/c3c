@@ -130,7 +130,7 @@ set(C3_OPTIONS
         C3_LLD_DIR
         C3_ENABLE_CLANGD_LSP
         LLVM_CRT_LIBRARY_DIR
-        C3_AVR_ENABLE
+        C3_AVR_DISABLE
 )
 
 set(C3_USE_MIMALLOC OFF)
@@ -525,9 +525,10 @@ add_executable(c3c
         ${CMAKE_BINARY_DIR}/docs_template.h
 )
 
-# Building C3 with AVR Support
-if(C3_AVR_ENABLE)
-	target_compile_definitions(c3c PRIVATE AVR_ENABLE)
+# Building C3 with llvm toolchains that don't have AVR Support
+if(C3_AVR_DISABLE)
+    message(STATUS "AVR support is disabled")
+	target_compile_definitions(c3c PRIVATE AVR_DISABLE)
 endif()
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
