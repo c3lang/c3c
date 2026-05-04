@@ -2190,8 +2190,8 @@
 		function buildSignature(d) {
 			const localName = getLocalName(d.uid);
 
-			if (d.kind === 'function' || d.kind === 'macro' || d.kind === 'method') {
-				const keyword = d.kind === 'macro' ? 'macro' : 'fn';
+			if (d.kind === 'function' || d.kind === 'macro' || d.kind === 'method' || d.kind === 'macro_method') {
+				const keyword = (d.kind === 'macro' || d.kind === 'macro_method') ? 'macro' : 'fn';
 				const params = renderParams(d.members);
 				const ret = d.return_type ? renderTypeName(d.return_type) : 'void';
 				const attrs = (d.attributes || []).map(a => `<span class="c3-attribute">${a}</span>`).join(' ');
