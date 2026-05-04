@@ -2334,9 +2334,27 @@
 
 
 		function buildMembersHtml(vd, baseDocs) {
-			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
 			if (!vd.members || vd.members.length === 0) return '';
 
+			function getDesc(m) {
+				const docParam = (baseDocs && baseDocs.params && m.name) ? baseDocs.params.find(p => p.name === m.name) : null;
+				let desc = (docParam && docParam.description) ? docParam.description : '';
+				if (!desc && m.docs && m.docs.text) {
+					desc = window.marked ? marked.parse(m.docs.text) : escapeHtml(m.docs.text);
+				}
+				return desc;
+			}
+
+			function hasAnyDescription(members) {
+				for (const m of members) {
+					if (getDesc(m)) return true;
+					if (m.members && hasAnyDescription(m.members)) return true;
+				}
+				return false;
+			}
+
+			const anyDesc = hasAnyDescription(vd.members);
+			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
 			let html = '';
 
 			function renderRow(m, isFunc, isValueRow, depth = 0) {
@@ -2356,10 +2374,7 @@
 					bitDesc = `<br><span class="secondary-text" style="font-size: 0.8em;">bits ${m.bit_range[0]}..${m.bit_range[1]}</span>`;
 				}
 
-				let desc = (docParam && docParam.description) ? docParam.description : '';
-				if (!desc && m.docs && m.docs.text) {
-					desc = window.marked ? marked.parse(m.docs.text) : escapeHtml(m.docs.text);
-				}
+				let desc = getDesc(m);
 				let padding = depth > 0 ? `padding-left: ${depth * 16 + 8}px;` : '';
 
 				if (m.kind === 'struct' || m.kind === 'union' || m.kind === 'bitstruct') {
@@ -2367,13 +2382,16 @@
 					let nameStr = m.name ? ` <span class="c3-variable">${m.name}</span>` : '';
 					rowHtml += `<tr>`;
 					rowHtml += `<td class="col-type monospace" colspan="2" style="${padding}"><span class="c3-keyword">${kindName}</span>${nameStr} {</td>`;
-					rowHtml += `<td class="doc-text">${desc}</td></tr>`;
+					rowHtml += `<td class="doc-text">${desc}</td>`;
+					rowHtml += `</tr>`;
 					if (m.members) {
 						m.members.forEach(sub_m => {
 							rowHtml += renderRow(sub_m, false, isValueRow, depth + 1);
 						});
 					}
-					rowHtml += `<tr><td class="col-type monospace" colspan="2" style="${padding}">}</td><td class="doc-text"></td></tr>`;
+					rowHtml += `<tr><td class="col-type monospace" colspan="2" style="${padding}">}</td>`;
+					rowHtml += `<td class="doc-text"></td>`;
+					rowHtml += `</tr>`;
 					return rowHtml;
 				}
 
@@ -2413,7 +2431,7 @@
 						let typeName = p.type ? renderTypeName(p.type) : '';
 						html += `<th class="col-type" style="text-transform: none;">${typeName} ${escapeHtml(p.name)}</th>`;
 					});
-					html += `<th>Description</th>`;
+					html += `<th>${anyDesc ? 'Description' : ''}</th>`;
 					html += `</tr></thead><tbody>`;
 					values.forEach((m, index) => {
 						let ordinal = m.value;
@@ -2434,14 +2452,7 @@
 							html += `<td class="col-type monospace"><span class="c3-number">${escapeHtml(String(v))}</span></td>`;
 						});
 						
-						let desc = '';
-						if (baseDocs && baseDocs.params && m.name) {
-							let docParam = baseDocs.params.find(dp => dp.name === m.name);
-							if (docParam && docParam.description) desc = docParam.description;
-						}
-						if (!desc && m.docs && m.docs.text) {
-							desc = window.marked ? marked.parse(m.docs.text) : escapeHtml(m.docs.text);
-						}
+						let desc = getDesc(m);
 						html += `<td class="doc-text">${desc}</td>`;
 						
 						html += `</tr>`;
@@ -2454,7 +2465,7 @@
 					<thead><tr>
 						<th class="col-name">Name</th>
 						<th class="col-type">Value</th>
-						<th>Description</th>
+						<th>${anyDesc ? 'Description' : ''}</th>
 					</tr></thead><tbody>`;
 				vd.members.forEach(m => { html += renderRow(m, false, true); });
 				html += `</tbody></table>`;
@@ -2467,7 +2478,7 @@
 						${isFunction ? '<th class="col-mod">Contract</th>' : ''}
 						<th class="col-type">Type</th>
 						<th class="col-name">Name</th>
-						<th>Description</th>
+						<th>${anyDesc ? 'Description' : ''}</th>
 					</tr></thead><tbody>`;
 				vd.members.forEach(m => { html += renderRow(m, isFunction, false); });
 				html += `</tbody></table>`;
