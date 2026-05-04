@@ -2170,7 +2170,8 @@
 
 
 		function renderParams(params) {
-			return (params || []).map(m => {
+			const dMembers = params || [];
+			return dMembers.map(m => {
 				if (m.kind === 'body_param') {
 					const bodyParams = renderParams(m.params);
 					return `<span class="c3-keyword">@body</span>(${bodyParams})`;
@@ -2184,7 +2185,11 @@
 				if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
 				if (m.default_value) res += ` = <span class="c3-variable">${m.default_value}</span>`;
 				return res;
-			}).join(', ');
+			}).reduce((acc, current, index) => {
+				if (index === 0) return current;
+				const isBody = dMembers[index].kind === 'body_param';
+				return acc + (isBody ? '; ' : ', ') + current;
+			}, '');
 		}
 
 		function buildSignature(d) {

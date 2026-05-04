@@ -33,7 +33,15 @@ static void write_expr_source_json(FILE *file, Expr *expr)
 	}
 	scratch_buffer_clear();
 	loc_to_scratch(expr->loc);
-	json_write_string(file, scratch_buffer_to_string());
+	const char *str = scratch_buffer_to_string();
+	if (strlen(str) > 512)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append_len(str, 512);
+		scratch_buffer_append("... (truncated)");
+		str = scratch_buffer_to_string();
+	}
+	json_write_string(file, str);
 }
 
 static void write_const_value_json(FILE *file, Expr *expr)
@@ -58,7 +66,15 @@ static void write_const_value_json(FILE *file, Expr *expr)
 			case CONST_REF:
 				scratch_buffer_clear();
 				expr_const_to_scratch_buffer(&expr->const_expr);
-				json_write_string(file, scratch_buffer_to_string());
+				const char *str = scratch_buffer_to_string();
+				if (strlen(str) > 512)
+				{
+					scratch_buffer_clear();
+					scratch_buffer_append_len(str, 512);
+					scratch_buffer_append("... (truncated)");
+					str = scratch_buffer_to_string();
+				}
+				json_write_string(file, str);
 				return;
 			default:
 				break;
