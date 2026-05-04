@@ -61,7 +61,6 @@
 - Implicit unsigned <-> signed integer conversions removed. 
 
 ### Stdlib changes
-- `std::collections::RingBuffer` has been renamed `RingList`.
 - Add `List.remove_unordered_at`.
 - PanicFn now takes an `int` for row.
 - Add `std::collections::Deque`.
@@ -69,7 +68,7 @@
 - Add `SortedMap` based on skip lists.
 - Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
 - `BufferedChannel` and `UnbufferedChannel` are now pointers, create using `create_unbuffered` and `create_buffered`
-- `RingList` now conforms to `foreach` and adds additional functions.
+- `RingBuffer` now conforms to `foreach` and adds additional functions.
 - Ini parser and encoder.
 - Updated `ref::new` argument order.
 - Support setting thread stack size.
