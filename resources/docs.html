@@ -56,6 +56,7 @@
 			--badge-fg: #eeeeee;
 			--text-muted: #aaaaaa;
 			--text-muted-2: #888888;
+			--table-border: #222;
 		}
 
 		[data-theme="light"] {
@@ -108,6 +109,7 @@
 			--badge-fg: #475569;
 			--text-muted: #334155;
 			--text-muted-2: #1e293b;
+			--table-border: rgba(34, 34, 34, 0.1);
 		}
 
 		.badge {
@@ -954,8 +956,8 @@
 		}
 
 		.contract-table td {
-			padding: 10px 8px;
-			border-bottom: 1px solid #222;
+			padding: 4px 8px;
+			border-bottom: 1px solid var(--table-border);
 			vertical-align: top;
 			word-break: break-word;
 		}
@@ -983,6 +985,13 @@
 			white-space: nowrap;
 			word-break: normal;
 			padding-right: 20px !important;
+		}
+
+		.tree-pipe {
+			color: #555;
+			margin-right: 4px;
+			user-select: none;
+			font-weight: normal;
 		}
 
 		.arg-mod-badge {
@@ -2369,19 +2378,24 @@
 					modHtml = modHtml || '<span class="secondary-text">—</span>';
 				}
 
-				let bitDesc = '';
-				if (m.bit_range) {
-					bitDesc = `<br><span class="secondary-text" style="font-size: 0.8em;">bits ${m.bit_range[0]}..${m.bit_range[1]}</span>`;
+				let desc = getDesc(m);
+				let prefix = '';
+				if (depth > 0) {
+					for (let i = 0; i < depth; i++) {
+						prefix += '<span class="tree-pipe">|</span> ';
+					}
 				}
 
-				let desc = getDesc(m);
-				let padding = depth > 0 ? `padding-left: ${depth * 16 + 8}px;` : '';
+				let bitDesc = '';
+				if (m.bit_range) {
+					bitDesc = `<br>${prefix}<span class="secondary-text" style="font-size: 0.8em;">bits ${m.bit_range[0]}..${m.bit_range[1]}</span>`;
+				}
 
 				if (m.kind === 'struct' || m.kind === 'union' || m.kind === 'bitstruct') {
 					let kindName = m.kind;
 					let nameStr = m.name ? ` <span class="c3-variable">${m.name}</span>` : '';
 					rowHtml += `<tr>`;
-					rowHtml += `<td class="col-type monospace" colspan="2" style="${padding}"><span class="c3-keyword">${kindName}</span>${nameStr} {</td>`;
+					rowHtml += `<td class="col-type monospace" colspan="2">${prefix}<span class="c3-keyword">${kindName}</span>${nameStr}</td>`;
 					rowHtml += `<td class="doc-text">${desc}</td>`;
 					rowHtml += `</tr>`;
 					if (m.members) {
@@ -2389,9 +2403,6 @@
 							rowHtml += renderRow(sub_m, false, isValueRow, depth + 1);
 						});
 					}
-					rowHtml += `<tr><td class="col-type monospace" colspan="2" style="${padding}">}</td>`;
-					rowHtml += `<td class="doc-text"></td>`;
-					rowHtml += `</tr>`;
 					return rowHtml;
 				}
 
@@ -2401,7 +2412,7 @@
 						valStr = `<span class="c3-number">${escapeHtml(String(m.value))}</span>`;
 					}
 					rowHtml += `<tr>
-						<td class="col-name monospace bold c3-enum_constant">${m.name || ''}</td>
+						<td class="col-name monospace bold c3-enum_constant">${prefix}${m.name || ''}</td>
 						<td class="col-type monospace">${valStr}</td>
 						<td class="doc-text">${desc}</td>
 					</tr>`;
@@ -2409,7 +2420,7 @@
 					let typeStr = m.type ? renderTypeName(m.type) : '';
 					rowHtml += `<tr>
 						${isFunc ? `<td class="col-mod">${modHtml}</td>` : ''}
-						<td class="col-type monospace" style="${padding}">${typeStr}${bitDesc}</td>
+						<td class="col-type monospace">${prefix}${typeStr}${bitDesc}</td>
 						<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name || ''}</td>
 						<td class="doc-text">${desc}</td>
 					</tr>`;
