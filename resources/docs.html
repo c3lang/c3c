@@ -2175,11 +2175,14 @@
 					const bodyParams = renderParams(m.params);
 					return `<span class="c3-keyword">@body</span>(${bodyParams})`;
 				}
-				const name = m.name ? `<span class="c3-variable">${m.is_ref ? '&' : ''}${m.name}</span>` : (m.is_ref ? '&' : '');
+				if (m.name === 'self') {
+					return `<span class="c3-variable">${m.is_ref ? '&' : ''}self</span>`;
+				}
 				const type = renderTypeName(m.type);
-				let res = `${name} : ${type}`;
+				const name = m.name ? ` <span class="c3-variable">${m.is_ref ? '&' : ''}${m.name}</span>` : '';
+				let res = `${type}${name}`;
 				if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
-				if (m.default_value) res += ` = <span class="c3-string">${m.default_value}</span>`;
+				if (m.default_value) res += ` = <span class="c3-variable">${m.default_value}</span>`;
 				return res;
 			}).join(', ');
 		}
@@ -2187,7 +2190,7 @@
 		function buildSignature(d) {
 			const localName = getLocalName(d.uid);
 
-			if (d.kind === 'function' || d.kind === 'macro') {
+			if (d.kind === 'function' || d.kind === 'macro' || d.kind === 'method') {
 				const keyword = d.kind === 'macro' ? 'macro' : 'fn';
 				const params = renderParams(d.members);
 				const ret = d.return_type ? renderTypeName(d.return_type) : 'void';
@@ -2201,10 +2204,29 @@
 				return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = <span class="c3-keyword">fn</span> ${ret}(${params})`;
 			}
 
-			if (d.kind === 'variable') {
-				const keyword = d.is_const ? 'const' : 'var';
+			if (d.kind === 'variable' || d.kind === 'constant') {
+				const keyword = d.kind === 'constant' || d.is_const ? 'const' : 'var';
 				const typeStr = d.type ? renderTypeName(d.type) : '';
-				return `<span class="c3-keyword">${keyword}</span> ${typeStr} <span class="c3-variable">${localName}</span>`;
+				let res = `<span class="c3-keyword">${keyword}</span> ${typeStr} <span class="c3-variable">${localName}</span>`;
+				if (d.value) {
+					res += ` = <span class="c3-number">${d.value}</span>`;
+				}
+				return res;
+			}
+
+			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'alias' || d.kind === 'fault' || d.kind === 'constdef') {
+				let res = `<span class="c3-keyword">${d.kind}</span> <span class="c3-type">${localName}</span>`;
+				if (d.base_type && d.base_type.name) {
+					res += ` : ${renderTypeName(d.base_type)}`;
+				}
+				if (d.associated_values && d.associated_values.length > 0) {
+					const assoc = d.associated_values.map(v => {
+						const type = renderTypeName(v.type);
+						return `${type} <span class="c3-variable">${v.name}</span>`;
+					}).join(', ');
+					res += ` (${assoc})`;
+				}
+				return res;
 			}
 
 			return null;
@@ -2308,29 +2330,15 @@
 
 		function buildMembersHtml(vd, baseDocs) {
 			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
-			let title = isFunction ? 'Arguments' : 'Fields';
-			if (vd.kind === 'enum' || vd.kind === 'constdef') title = 'Values';
-
 			if (!vd.members || vd.members.length === 0) return '';
 
-			let html = `<h3>${title}</h3>`;
-			html += `<table class="contract-table">
-				<thead>
-					<tr>
-						${isFunction ? '<th class="col-mod">Contract</th>' : ''}
-						<th class="col-type">Type</th>
-						<th class="col-name">Name</th>
-						<th>Description</th>
-					</tr>
-				</thead>
-				<tbody>`;
+			let html = '';
 
-			vd.members.forEach(m => {
-				// Find matching doc param if any
-				const docParam = (baseDocs && baseDocs.params) ? baseDocs.params.find(p => p.name === m.name) : null;
-
+			function renderRow(m, isFunc, isValueRow, depth = 0) {
+				let rowHtml = '';
+				const docParam = (baseDocs && baseDocs.params && m.name) ? baseDocs.params.find(p => p.name === m.name) : null;
 				let modHtml = '';
-				if (isFunction) {
+				if (isFunc) {
 					if (docParam) {
 						if (docParam.modifier) modHtml += `<span class="arg-mod-badge arg-mod-${docParam.modifier}">${docParam.modifier}</span>`;
 						if (docParam.by_ref) modHtml += `<span class="arg-mod-badge arg-mod-ref">ref</span>`;
@@ -2344,20 +2352,122 @@
 				}
 
 				let desc = (docParam && docParam.description) ? docParam.description : '';
-				if (m.value !== undefined && m.value !== null) {
-					if (desc) desc += '<br>';
-					desc += `<span class="c3-number">${escapeHtml(String(m.value))}</span>`;
+				if (!desc && m.docs && m.docs.text) {
+					desc = window.marked ? marked.parse(m.docs.text) : escapeHtml(m.docs.text);
+				}
+				let padding = depth > 0 ? `padding-left: ${depth * 16 + 8}px;` : '';
+
+				if (m.kind === 'struct' || m.kind === 'union' || m.kind === 'bitstruct') {
+					let kindName = m.kind;
+					let nameStr = m.name ? ` <span class="c3-variable">${m.name}</span>` : '';
+					rowHtml += `<tr>`;
+					rowHtml += `<td class="col-type monospace" colspan="2" style="${padding}"><span class="c3-keyword">${kindName}</span>${nameStr} {</td>`;
+					rowHtml += `<td class="doc-text">${desc}</td></tr>`;
+					if (m.members) {
+						m.members.forEach(sub_m => {
+							rowHtml += renderRow(sub_m, false, isValueRow, depth + 1);
+						});
+					}
+					rowHtml += `<tr><td class="col-type monospace" colspan="2" style="${padding}">}</td><td class="doc-text"></td></tr>`;
+					return rowHtml;
 				}
 
-				html += `<tr>
-					${isFunction ? `<td class="col-mod">${modHtml}</td>` : ''}
-					<td class="col-type monospace">${renderTypeName(m.type)}${bitDesc}</td>
-					<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name}</td>
-					<td class="doc-text">${desc}</td>
-				</tr>`;
-			});
+				if (isValueRow) {
+					let valStr = '';
+					if (m.value !== undefined && m.value !== null && m.value !== '') {
+						valStr = `<span class="c3-number">${escapeHtml(String(m.value))}</span>`;
+					}
+					rowHtml += `<tr>
+						<td class="col-name monospace bold c3-enum_constant">${m.name || ''}</td>
+						<td class="col-type monospace">${valStr}</td>
+						<td class="doc-text">${desc}</td>
+					</tr>`;
+				} else {
+					let typeStr = m.type ? renderTypeName(m.type) : '';
+					rowHtml += `<tr>
+						${isFunc ? `<td class="col-mod">${modHtml}</td>` : ''}
+						<td class="col-type monospace" style="${padding}">${typeStr}${bitDesc}</td>
+						<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name || ''}</td>
+						<td class="doc-text">${desc}</td>
+					</tr>`;
+				}
+				return rowHtml;
+			}
 
-			html += `</tbody></table>`;
+			if (vd.kind === 'enum') {
+				const params = vd.associated_values || [];
+				const values = vd.members || [];
+				
+				if (values.length > 0) {
+					html += `<h3>Values</h3>`;
+					html += `<table class="contract-table">
+						<thead><tr>
+							<th class="col-name">Name</th>
+							<th class="col-type">Ordinal</th>`;
+					params.forEach(p => {
+						let typeName = p.type ? renderTypeName(p.type) : '';
+						html += `<th class="col-type" style="text-transform: none;">${typeName} ${escapeHtml(p.name)}</th>`;
+					});
+					html += `<th>Description</th>`;
+					html += `</tr></thead><tbody>`;
+					values.forEach((m, index) => {
+						let ordinal = m.value;
+						let assoc_vals = [];
+						if (params.length > 0) {
+							ordinal = index;
+							assoc_vals = m.value || [];
+						} else {
+							ordinal = m.value !== undefined && m.value !== null ? m.value : index;
+						}
+						
+						html += `<tr>
+							<td class="col-name monospace bold c3-enum_constant">${m.name || ''}</td>
+							<td class="col-type monospace"><span class="c3-number">${escapeHtml(String(ordinal))}</span></td>`;
+						params.forEach((p, i) => {
+							let v = assoc_vals[i];
+							if (v === undefined || v === null) v = '';
+							html += `<td class="col-type monospace"><span class="c3-number">${escapeHtml(String(v))}</span></td>`;
+						});
+						
+						let desc = '';
+						if (baseDocs && baseDocs.params && m.name) {
+							let docParam = baseDocs.params.find(dp => dp.name === m.name);
+							if (docParam && docParam.description) desc = docParam.description;
+						}
+						if (!desc && m.docs && m.docs.text) {
+							desc = window.marked ? marked.parse(m.docs.text) : escapeHtml(m.docs.text);
+						}
+						html += `<td class="doc-text">${desc}</td>`;
+						
+						html += `</tr>`;
+					});
+					html += `</tbody></table>`;
+				}
+			} else if (vd.kind === 'constdef') {
+				html += `<h3>Values</h3>`;
+				html += `<table class="contract-table">
+					<thead><tr>
+						<th class="col-name">Name</th>
+						<th class="col-type">Value</th>
+						<th>Description</th>
+					</tr></thead><tbody>`;
+				vd.members.forEach(m => { html += renderRow(m, false, true); });
+				html += `</tbody></table>`;
+
+			} else {
+				let title = isFunction ? 'Arguments' : 'Fields';
+				html += `<h3>${title}</h3>`;
+				html += `<table class="contract-table">
+					<thead><tr>
+						${isFunction ? '<th class="col-mod">Contract</th>' : ''}
+						<th class="col-type">Type</th>
+						<th class="col-name">Name</th>
+						<th>Description</th>
+					</tr></thead><tbody>`;
+				vd.members.forEach(m => { html += renderRow(m, isFunction, false); });
+				html += `</tbody></table>`;
+			}
+
 			return html;
 		}
 
@@ -2446,7 +2556,9 @@
 				}
 
 				for (const k of sortedKinds) {
-					const title = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ') + 's';
+					let title = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ');
+					if (title.endsWith('s')) title += 'es';
+					else title += 's';
 
 					if (isSidebar) {
 						ctxHtml += `<h3 class="sidebar-section-title">${title}</h3>`;

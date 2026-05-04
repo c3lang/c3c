@@ -22,6 +22,8 @@ static void write_decl_uid(FILE *file, Module *module, Decl *decl);
 static void emit_type_name_to_scratch(TypeInfo *type);
 static void print_doc_type(FILE *file, Module *module, TypeInfo *type);
 static void emit_params_json(FILE *file, Module *module, Decl **params);
+static void emit_doc_comments(FILE *file, Decl *decl);
+
 static void write_expr_source_json(FILE *file, Expr *expr)
 {
 	if (!expr)
@@ -36,36 +38,33 @@ static void write_expr_source_json(FILE *file, Expr *expr)
 
 static void write_const_value_json(FILE *file, Expr *expr)
 {
-	if (!expr || expr->expr_kind != EXPR_CONST)
+	if (!expr)
 	{
 		fputs("null", file);
 		return;
 	}
-	switch (expr->const_expr.const_kind)
+	if (expr->expr_kind == EXPR_CONST)
 	{
-		case CONST_INTEGER:
-			scratch_buffer_clear();
-			scratch_buffer_append(i128_to_string(expr->const_expr.ixx.i, 10,
-			                                     type_kind_is_signed(expr->const_expr.ixx.type), false));
-			json_write_string(file, scratch_buffer_to_string());
-			break;
-		case CONST_FLOAT:
-			scratch_buffer_clear();
-			scratch_buffer_append_double(expr->const_expr.fxx.f);
-			json_write_string(file, scratch_buffer_to_string());
-			break;
-		case CONST_STRING:
-			json_write_string(file, expr->const_expr.bytes.ptr);
-			break;
-		case CONST_BOOL:
-			json_write_string(file, expr->const_expr.b ? "true" : "false");
-			break;
-		default:
-			scratch_buffer_clear();
-			loc_to_scratch(expr->loc);
-			json_write_string(file, scratch_buffer_to_string());
-			break;
+		switch (expr->const_expr.const_kind)
+		{
+			case CONST_INTEGER:
+			case CONST_FLOAT:
+			case CONST_BOOL:
+			case CONST_STRING:
+			case CONST_ENUM:
+			case CONST_FAULT:
+			case CONST_TYPEID:
+			case CONST_POINTER:
+			case CONST_REF:
+				scratch_buffer_clear();
+				expr_const_to_scratch_buffer(&expr->const_expr);
+				json_write_string(file, scratch_buffer_to_string());
+				return;
+			default:
+				break;
+		}
 	}
+	write_expr_source_json(file, expr);
 }
 
 static void get_unit_lists(CompilationUnit *unit, DocCategory cat, Decl ***lists)
@@ -472,20 +471,10 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 			return;
 		}
 	}
-
 	fputs("[", file);
 	bool first = true;
 	if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTDEF)
 	{
-		if (decl->decl_kind == DECL_ENUM)
-		{
-			FOREACH_IDX(i, Decl *, p, decl->enums.parameters)
-			{
-				if (!first) fputs(",", file);
-				first = false;
-				emit_param_json(file, module, p);
-			}
-		}
 		FOREACH_IDX(i, Decl *, p, decl->enums.values)
 		{
 			if (!first) fputs(",", file);
@@ -499,17 +488,24 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 			fputs("\"", file);
 			emit_decl_uid_json(file, decl);
 			fputs("}", file);
-			if (p->enum_constant.value)
+			if (decl->decl_kind == DECL_ENUM && vec_size(decl->enums.parameters) > 0)
+			{
+				fputs(",\"value\":", file);
+				fputs("[", file);
+				FOREACH_IDX(j, Expr *, expr, p->enum_constant.associated)
+				{
+					if (j > 0) fputs(",", file);
+					write_const_value_json(file, expr);
+				}
+				fputs("]", file);
+			}
+			else if (p->enum_constant.value)
 			{
 				fputs(",\"value\":", file);
 				write_const_value_json(file, p->enum_constant.value);
 			}
-			else if (decl->decl_kind == DECL_ENUM)
-			{
-				fputs(",\"value\":\"", file);
-				fprintf(file, "%u", p->enum_constant.inner_ordinal);
-				fputs("\"", file);
-			}
+			fputs(",", file);
+			emit_doc_comments(file, p);
 			fputs("}", file);
 		}
 	}
@@ -843,6 +839,12 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			if (decl->var.kind == VARDECL_CONST)
 			{
 				fputs("\"is_const\":true,", file);
+				if (decl->var.init_expr)
+				{
+					fputs("\"value\":", file);
+					write_const_value_json(file, decl->var.init_expr);
+					fputs(",", file);
+				}
 			}
 			break;
 		case DECL_POISONED:
@@ -872,6 +874,22 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			break;
 	}
 
+	if (decl->decl_kind == DECL_ENUM)
+	{
+		if (vec_size(decl->enums.parameters) > 0)
+		{
+			fputs("\"associated_values\":", file);
+			fputs("[", file);
+			bool first_param = true;
+			FOREACH_IDX(i, Decl *, p, decl->enums.parameters)
+			{
+				if (!first_param) fputs(",", file);
+				first_param = false;
+				emit_param_json(file, module, p);
+			}
+			fputs("],", file);
+		}
+	}
 	fputs("\"members\":", file);
 	emit_doc_members(file, module, decl);
 	fputs(",", file);
