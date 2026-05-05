@@ -151,13 +151,13 @@ fn XmlDocument*? load(Allocator allocator, InStream stream, sz stack_size = DEFA
 }
 
 <* Loads and parses an XML document from a stream into a DOM tree using the temp allocator. *>
-fn XmlDocument*? tload(InStream stream, usz stack_size = DEFAULT_STACK_SIZE)
+fn XmlDocument*? tload(InStream stream, sz stack_size = DEFAULT_STACK_SIZE)
 {
 	return load(tmem, stream, stack_size);
 }
 
 <* Parses an XML document from a string. *>
-fn XmlDocument*? parse(Allocator allocator, String s, usz stack_size = DEFAULT_STACK_SIZE)
+fn XmlDocument*? parse(Allocator allocator, String s, sz stack_size = DEFAULT_STACK_SIZE)
 {
 	ByteReader reader;
 	reader.init(s);
@@ -165,7 +165,7 @@ fn XmlDocument*? parse(Allocator allocator, String s, usz stack_size = DEFAULT_S
 }
 
 <* Parses an XML document from a string using the temp allocator. *>
-fn XmlDocument*? tparse(String s, usz stack_size = DEFAULT_STACK_SIZE)
+fn XmlDocument*? tparse(String s, sz stack_size = DEFAULT_STACK_SIZE)
 {
 	return parse(tmem, s, stack_size);
 }

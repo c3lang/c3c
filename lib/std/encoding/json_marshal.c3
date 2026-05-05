@@ -116,7 +116,7 @@ fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 			stream.write(value ? "true" : "false")!;
 		$case CONSTDEF:
 		$case TYPEDEF:
-			$switch (TypeElement::typeid):
+			$switch (TypeElement):
 				$case String:
 					@pool() { stream.write(value.tescape(false))!; };
 				$default:
@@ -128,7 +128,7 @@ fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 			stream.write(value.description)!;
 			stream.write_byte('"')!;
 		$default:
-			$if TypeElement::typeid == String::typeid:
+			$if TypeElement == String:
 				@pool() { stream.write(value.tescape(false))!; };
 			$else
 				$error "Unsupported type";

@@ -578,7 +578,7 @@ module std::core::array @private;
 
 macro typeid @predicate_fn(#array) @const
 {
-	return $typeof(fn bool ($typeof(#array[0]) a, sz index = 0) => true)::typeid;
+	return $typeof(fn bool ($typeof(#array[0]) a, sz index = 0) => true);
 }
 
 macro typeid @reduce_fn(#array, #identity) @const

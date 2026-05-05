@@ -1324,7 +1324,8 @@ static Expr *parse_vaarg(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSE
 	{
 		if (!tok_is(c, TOKEN_IDENT) || symstr(c) != kw_len)
 		{
-			RETURN_PRINT_ERROR_HERE("Expected '.len' after '%@'");
+			PRINT_ERROR_HERE("Expected '.len' after '$vaarg'");
+			return poisoned_expr;
 		}
 		advance(c);
 		expr->expr_kind = EXPR_VACOUNT;

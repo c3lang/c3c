@@ -1183,13 +1183,16 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		// 3d. We expect an initialization for the last declaration.
 		if (!init)
 		{
-			SEMA_ERROR(last, "Expected a declaration with initializer.");
-			return false;
+			RETURN_SEMA_ERROR(last, "Expected a declaration with initializer.");
 		}
 		// 3e. Expect that it isn't an optional
 		if (IS_OPTIONAL(init))
 		{
 			return sema_error_failed_cast(context, last, last->type, cast_to_bool ? type_bool : init->type);
+		}
+		if (IS_OPTIONAL(decl))
+		{
+			RETURN_SEMA_ERROR(decl, "Expected a non-optional variable.");
 		}
 		if (cast_to_bool)
 		{

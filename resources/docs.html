@@ -7,19 +7,109 @@
 	<title>C3 Docgen Viewer</title>
 	<style>
 		:root {
-			--bg: #090a0b;
-			--fg: #e7e5e4;
-			--accent: #2563EB;
-			--accent-purple: #7C3AED;
-			--border: #292524;
-			--panel: rgb(23, 24, 28);
-			--color-white: rgb(230, 230, 230);
+			--bg: #1e2029;
+			--fg: #e2e8f0;
+			--accent: #3b82f6;
+			--accent-purple: #8b5cf6;
+			--border: #323542;
+			--panel: #242631;
+			--color-white: #ffffff;
 			--color-red-400: #f87171;
 			--color-orange-400: #fb923c;
 			--color-green-500: #22c55e;
-			--color-blue-300: #b1d4fb;
+			--color-blue-300: #93c5fd;
 			--color-blue-400: #60a5fa;
+			--subtle-l: 70%;
+			--scroll-fade-0: transparent;
+			--scroll-fade-1: rgba(0, 0, 0, 0.4);
+			--scroll-fade-2: rgba(0, 0, 0, 0.9);
 			color-scheme: dark;
+			--hl-type: #7ee787;
+			--hl-module: #d39dd6;
+			--hl-func: #d2a8ff;
+			--hl-keyword: #ff7b72;
+			--hl-var: #ffa657;
+			--hl-const: #79c0ff;
+			--hl-str: #a5d6ff;
+			--hl-comment: #8b949e;
+			--hl-num: #79c0ff;
+			--hl-text: #000000;
+			--item-hover: rgba(255, 255, 255, 0.05);
+			--item-selected: rgba(59, 130, 246, 0.15);
+			--pre-bg: #111111;
+			--pre-bg-outer: #000000;
+			--member-bg: #2d2d2d;
+			--member-border: #444444;
+			--member-hover: #3e3e3e;
+			--filter-bg: #1a1c1d;
+			--filter-fg: #888888;
+			--filter-border-hover: #444444;
+			--filter-fg-hover: #aaaaaa;
+			--scrollbar-thumb: #4f4f4f;
+			--scrollbar-thumb-hover: #666666;
+			--sidebar-header-fg: #ffffff;
+			--type-bg: rgba(126, 231, 135, 0.07);
+			--var-bg: rgba(121, 192, 255, 0.07);
+			--badge-bg-start: #2a2d2e;
+			--badge-bg-end: #1a1c1d;
+			--badge-border: #3e4244;
+			--badge-fg: #eeeeee;
+			--text-muted: #aaaaaa;
+			--text-muted-2: #888888;
+			--table-border: #222;
+		}
+
+		[data-theme="light"] {
+			--bg: #fafafa;
+			--fg: #1f2937;
+			--accent: #3b82f6;
+			--accent-purple: #8b5cf6;
+			--border: #e5e7eb;
+			--panel: #ffffff;
+			--color-white: #ffffff;
+			--color-red-400: #ef4444;
+			--color-orange-400: #f97316;
+			--color-green-500: #22c55e;
+			--color-blue-300: #93c5fd;
+			--color-blue-400: #60a5fa;
+			--subtle-l: 40%;
+			--scroll-fade-0: transparent;
+			--scroll-fade-1: rgba(255, 255, 255, 0.8);
+			--scroll-fade-2: #ffffff;
+			color-scheme: light;
+			--hl-type: #116329;
+			--hl-module: #8250df;
+			--hl-func: #8250df;
+			--hl-keyword: #cf222e;
+			--hl-var: #953800;
+			--hl-const: #0550ae;
+			--hl-str: #0a3069;
+			--hl-comment: #6e7781;
+			--hl-num: #0550ae;
+			--hl-text: #ffffff;
+			--item-hover: rgba(0, 0, 0, 0.05);
+			--item-selected: rgba(59, 130, 246, 0.1);
+			--pre-bg: #f3f4f6;
+			--pre-bg-outer: #f9fafb;
+			--member-bg: #f8fafc;
+			--member-border: #cbd5e1;
+			--member-hover: #e2e8f0;
+			--filter-bg: #f1f5f9;
+			--filter-fg: #64748b;
+			--filter-border-hover: #cbd5e1;
+			--filter-fg-hover: #475569;
+			--scrollbar-thumb: #cbd5e1;
+			--scrollbar-thumb-hover: #94a3b8;
+			--sidebar-header-fg: #1f2937;
+			--type-bg: rgba(17, 99, 41, 0.07);
+			--var-bg: rgba(5, 80, 174, 0.07);
+			--badge-bg-start: #f1f5f9;
+			--badge-bg-end: #e2e8f0;
+			--badge-border: #cbd5e1;
+			--badge-fg: #475569;
+			--text-muted: #334155;
+			--text-muted-2: #1e293b;
+			--table-border: rgba(34, 34, 34, 0.1);
 		}
 
 		.badge {
@@ -29,9 +119,9 @@
 			font-size: 1em;
 			margin-right: 6px;
 			font-family: monospace;
-			background: linear-gradient(180deg, #2a2d2e 0%, #1a1c1d 100%);
-			border: 1px solid #3e4244;
-			color: #eee;
+			background: linear-gradient(180deg, var(--badge-bg-start) 0%, var(--badge-bg-end) 100%);
+			border: 1px solid var(--badge-border);
+			color: var(--badge-fg);
 			box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 			vertical-align: middle;
 		}
@@ -86,13 +176,13 @@
 			font-family: monospace;
 			font-size: 1.1em;
 			opacity: 0.8;
-			color: #d2a8ff;
+			color: var(--hl-func);
 		}
 
 		.item-visibility,
 		.search-item-visibility {
 			font-size: 0.8em;
-			color: #888;
+			color: var(--filter-fg);
 			font-family: monospace;
 		}
 
@@ -110,12 +200,12 @@
 		}
 
 		::-webkit-scrollbar-thumb {
-			background: #4f4f4f;
+			background: var(--scrollbar-thumb);
 			border-radius: 5px;
 		}
 
 		::-webkit-scrollbar-thumb:hover {
-			background: #666;
+			background: var(--scrollbar-thumb-hover);
 		}
 
 		body {
@@ -168,17 +258,22 @@
 		}
 
 		.item {
-			padding: 10px 15px;
-			border-bottom: 1px solid var(--border);
+			padding: 10px 15px 10px 12px;
+			border-left: 3px solid transparent;
+			/* border-bottom: 1px solid var(--border); */
 			cursor: pointer;
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
 		}
 
-		.item:hover,
+		.item:hover {
+			background: var(--item-hover);
+		}
+
 		.item.selected {
-			background: #2a2d2e;
+			background: var(--item-selected);
+			border-left-color: var(--accent);
 		}
 
 		.item,
@@ -201,56 +296,56 @@
 			padding: 3px 8px;
 			border-radius: 12px;
 			background: #4d4d4d;
-			color: white;
+			color: var(--sidebar-header-fg);
 			text-transform: uppercase;
 			font-weight: bold;
 		}
 
 		.kind-function {
-			background: #d2a8ff;
-			color: #000;
+			background: var(--hl-func);
+			color: var(--hl-text);
 		}
 
 		.kind-macro {
-			background: #ff79c6;
-			color: #000;
+			background: var(--hl-func);
+			color: var(--hl-text);
 		}
 
 		.kind-struct {
-			background: #ffa657;
-			color: #000;
+			background: var(--hl-type);
+			color: var(--hl-text);
 		}
 
 		.kind-union {
-			background: #ff8c42;
-			color: #000;
+			background: var(--hl-type);
+			color: var(--hl-text);
 		}
 
 		.kind-bitstruct {
-			background: #f8d486;
-			color: #000;
+			background: var(--hl-type);
+			color: var(--hl-text);
 		}
 
 		.kind-enum {
-			background: #4fc1ff;
-			color: #000;
+			background: var(--hl-type);
+			color: var(--hl-text);
 		}
 
 		.kind-interface {
-			background: #f5a623;
-			color: #000;
+			background: var(--hl-type);
+			color: var(--hl-text);
 		}
 
 		.kind-module {
-			background: #79b9f6;
-			color: #000;
+			background: var(--hl-module);
+			color: var(--hl-text);
 		}
 
 		.kind-variable,
 		.kind-const,
 		.kind-constdef {
-			background: #9cdcfe;
-			color: #000;
+			background: var(--hl-const);
+			color: var(--hl-text);
 		}
 
 		.c3-struct,
@@ -262,51 +357,51 @@
 		.c3-interface,
 		.c3-faultdef,
 		.c3-type {
-			color: #ffa657;
+			color: var(--hl-type);
 		}
 
 		.c3-module {
-			color: #79c0ff;
+			color: var(--hl-module);
 		}
 
 		.c3-function,
 		.c3-method {
-			color: #d2a8ff;
+			color: var(--hl-func);
 		}
 
 		.c3-macro,
 		.c3-macro_method {
-			color: #d2a8ff;
+			color: var(--hl-func);
 		}
 
 		.c3-keyword {
-			color: #ff7b72;
+			color: var(--hl-keyword);
 		}
 
 		.c3-variable,
 		.c3-const,
 		.c3-constdef {
-			color: #79c0ff;
+			color: var(--hl-const);
 		}
 
 		.c3-string {
-			color: #a5d6ff;
+			color: var(--hl-str);
 		}
 
 		.c3-attribute {
-			color: #8b949e;
+			color: var(--hl-comment);
 		}
 
 		.c3-comment {
-			color: #8b949e;
+			color: var(--hl-comment);
 		}
 
 		.c3-number {
-			color: #79c0ff;
+			color: var(--hl-const);
 		}
 
 		.secondary-text {
-			color: #888;
+			color: var(--filter-fg);
 			font-size: 0.8em;
 		}
 
@@ -345,14 +440,14 @@
 		.item-kind-bitstruct,
 		.item-kind-enum,
 		.item-kind-interface {
-			background: rgba(255, 166, 87, 0.07);
+			background: var(--type-bg);
 		}
 
 		.item-kind-variable,
 		.item-kind-const,
 		.item-kind-constdef,
 		.item-kind-module {
-			background: rgba(121, 192, 255, 0.07);
+			background: var(--var-bg);
 		}
 
 		#content {
@@ -364,7 +459,7 @@
 
 
 		pre {
-			background: #000;
+			background: var(--pre-bg-outer);
 			padding: 15px;
 			border-radius: 6px;
 			overflow-x: auto;
@@ -372,7 +467,7 @@
 		}
 
 		.header-type-info a {
-			color: #aaa;
+			color: var(--filter-fg-hover);
 			text-decoration: underline;
 			text-decoration-color: #444;
 		}
@@ -380,7 +475,7 @@
 		.header-pre {
 			font-size: 1.1em;
 			margin: 15px 0 20px 0;
-			background: #111;
+			background: var(--pre-bg);
 			padding: 14px;
 			border-radius: 6px;
 			border-left: 3px solid var(--accent);
@@ -403,23 +498,23 @@
 
 		.member-item {
 			padding: 1px;
-			background: #2d2d2d;
+			background: var(--member-bg);
 			margin-bottom: 1px;
 			border-radius: 4px;
 			font-family: monospace;
 			position: relative;
-			border-left: 2px solid #444;
+			border-left: 2px solid var(--member-border);
 			cursor: pointer;
 			break-inside: avoid;
 		}
 
 		.member-item:hover {
-			background: #3e3e3e !important;
+			background: var(--member-hover) !important;
 		}
 
 		.member-item-selected {
-			background: #3e3e3e !important;
-			border-left-color: var(--accent) !important;
+			background: var(--member-hover) !important;
+			/* border-left-color: var(--accent) !important; */
 		}
 
 		.member-item-not-selected {
@@ -434,14 +529,14 @@
 		}
 
 		.member-link.current {
-			color: #fff;
+			color: var(--sidebar-header-fg);
 		}
 
 		.sidebar-section-title {
 			text-transform: capitalize;
 			margin-top: 15px;
 			font-size: 0.9em;
-			color: #aaa;
+			color: var(--filter-fg-hover);
 			padding: 8px 15px;
 			border-bottom: 1px solid var(--border);
 		}
@@ -465,13 +560,13 @@
 		}
 
 		.module-breadcrumb {
-			color: #888;
+			color: var(--filter-fg);
 			font-size: 1.2em;
 			font-family: monospace;
 		}
 
 		.module-link {
-			color: #888;
+			color: var(--filter-fg);
 			text-decoration: none;
 			border-bottom: 1px dashed #555;
 		}
@@ -498,7 +593,7 @@
 
 		.doc-text {
 			margin-top: 4px;
-			color: #ccc;
+			color: var(--fg); opacity: 0.9;
 		}
 
 		.sidebar-header-link {
@@ -514,12 +609,13 @@
 			align-items: center;
 			gap: 12px;
 			cursor: pointer;
-			background: linear-gradient(135deg, #000 0%, #7C3AED 100%);
-			color: white;
+			background: linear-gradient(135deg, var(--bg) 0%, var(--panel) 100%);
+			color: var(--sidebar-header-fg);
 		}
 
 		.sidebar-header .secondary-text {
-			color: rgba(225, 225, 225, 0.7);
+			color: var(--sidebar-header-fg);
+			opacity: 0.8;
 			font-weight: 600;
 		}
 
@@ -530,7 +626,7 @@
 
 		.search-stats {
 			font-size: 0.8em;
-			color: #888;
+			color: var(--filter-fg);
 			margin-top: 8px;
 		}
 
@@ -575,7 +671,7 @@
 
 		.scroll-indicator-top {
 			top: 0;
-			background: linear-gradient(to top, transparent 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0.9) 100%);
+			background: linear-gradient(to top, var(--scroll-fade-0) 0%, var(--scroll-fade-1) 50%, var(--scroll-fade-2) 100%);
 		}
 
 		.scroll-indicator-top::after {
@@ -585,7 +681,7 @@
 
 		.scroll-indicator-bottom {
 			bottom: 0;
-			background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+			background: linear-gradient(to top, var(--scroll-fade-2) 0%, var(--scroll-fade-1) 50%, var(--scroll-fade-0) 100%);
 		}
 
 		.scroll-indicator-bottom::after {
@@ -628,7 +724,7 @@
 			height: 50px;
 			border-radius: 25px;
 			background: var(--accent);
-			color: white;
+			color: var(--sidebar-header-fg);
 			justify-content: center;
 			align-items: center;
 			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -675,7 +771,6 @@
 				display: none;
 			}
 		}
-
 
 
 		.resizer {
@@ -732,7 +827,7 @@
 		}
 
 		.inline-code {
-			background: rgba(255, 255, 255, 0.05);
+			background: var(--item-hover);
 			padding: 2px 5px;
 			border-radius: 4px;
 			font-family: monospace;
@@ -766,7 +861,7 @@
 			display: inline-block;
 			border-radius: 2px;
 			border-bottom: none;
-			background: #111;
+			background: var(--pre-bg);
 		}
 
 		.variant-separator {
@@ -786,15 +881,15 @@
 			padding: 6px 15px 6px 13px;
 			cursor: pointer;
 			border-left: 2px solid transparent;
-			transition: background 0.15s, border-color 0.15s;
+			/* transition: background 0.15s, border-color 0.15s; */
 		}
 
 		.module-list-ul li:hover {
-			background: rgba(255, 255, 255, 0.07) !important;
+			background: var(--item-hover) !important;
 		}
 
 		.module-list-ul li.selected {
-			background: rgba(255, 255, 255, 0.1) !important;
+			background: var(--item-selected) !important;
 		}
 
 		.module-list-header {
@@ -804,7 +899,7 @@
 			text-transform: uppercase;
 			letter-spacing: 0.09em;
 			font-weight: 700;
-			opacity: 0.55;
+			color: var(--fg); opacity: 0.9;
 		}
 
 		.module-list-item {
@@ -816,7 +911,7 @@
 		}
 
 		.overview-subtitle {
-			color: #888;
+			color: var(--fg); opacity: 0.9;
 			margin-bottom: 30px;
 		}
 
@@ -851,7 +946,7 @@
 
 		.contract-table th {
 			text-align: left;
-			color: #888;
+			color: var(--filter-fg);
 			font-weight: normal;
 			border-bottom: 1px solid #333;
 			padding: 8px;
@@ -861,8 +956,8 @@
 		}
 
 		.contract-table td {
-			padding: 10px 8px;
-			border-bottom: 1px solid #222;
+			padding: 4px 8px;
+			border-bottom: 1px solid var(--table-border);
 			vertical-align: top;
 			word-break: break-word;
 		}
@@ -892,12 +987,19 @@
 			padding-right: 20px !important;
 		}
 
+		.tree-pipe {
+			color: #555;
+			margin-right: 4px;
+			user-select: none;
+			font-weight: normal;
+		}
+
 		.arg-mod-badge {
 			font-size: 0.75em;
 			padding: 2px 5px;
 			border-radius: 3px;
 			background: #222;
-			color: #aaa;
+			color: var(--filter-fg-hover);
 			text-transform: uppercase;
 			font-weight: bold;
 			margin-right: 4px;
@@ -933,7 +1035,7 @@
 			font-family: monospace;
 			font-size: 1.1em;
 			font-weight: bold;
-			color: #888;
+			color: var(--filter-fg);
 			border-bottom: 1px solid var(--border);
 			padding-bottom: 8px;
 			margin-bottom: 12px;
@@ -944,11 +1046,11 @@
 		}
 
 		.group-function .module-group-title {
-			color: #d2a8ff;
+			color: var(--hl-func);
 		}
 
 		.group-macro .module-group-title {
-			color: #d2a8ff;
+			color: var(--hl-func);
 		}
 
 		.group-struct .module-group-title,
@@ -967,7 +1069,7 @@
 		.group-variable .module-group-title,
 		.group-const .module-group-title,
 		.group-constdef .module-group-title {
-			color: #79c0ff;
+			color: var(--hl-const);
 		}
 
 		.group-interface .module-group-title {
@@ -990,7 +1092,7 @@
 		}
 
 		.module-row:hover {
-			background: rgba(255, 255, 255, 0.05);
+			background: var(--item-hover);
 		}
 
 		.module-row-name {
@@ -1077,17 +1179,17 @@
 			font-size: 0.7em;
 			padding: 2px 8px;
 			border-radius: 4px;
-			background: #1a1c1d;
+			background: var(--filter-bg);
 			border: 1px solid var(--border);
-			color: #888;
+			color: var(--filter-fg);
 			font-weight: 600;
 			transition: all 0.2s;
 			user-select: none;
 		}
 
 		.filter-chip:hover {
-			border-color: #444;
-			color: #aaa;
+			border-color: var(--filter-border-hover);
+			color: var(--filter-fg-hover);
 		}
 
 		.filter-chip.active {
@@ -1099,7 +1201,7 @@
 		.filter-chip.active:hover {
 			background: rgba(37, 99, 235, 0.25);
 		}
-	</style>
+</style>
 </head>
 
 <body>
@@ -1107,12 +1209,13 @@
 	<div id="module-tooltip" class="module-tooltip"></div>
 	<div id="sidebar">
 		<div class="resizer sidebar-resizer" id="left-resizer"></div>
-		<a href="#" onclick="event.preventDefault(); navigateTo('');" class="sidebar-header-link">
-			<div class="sidebar-header">
-				<img src="https://c3-lang.org/logo.svg" alt="C3 Logo" class="logo">
-				<span class="secondary-text">Documentation</span>
+		<div class="sidebar-header" onclick="navigateTo('');">
+			<img src="https://c3-lang.org/assets/logo.svg" alt="C3 Logo" class="logo">
+			<span class="secondary-text">Documentation</span>
+			<div onclick="event.stopPropagation(); toggleTheme();" title="Toggle Light/Dark Theme" style="margin-left: auto; padding: 4px 8px; font-size: 1.25em; border-radius: 4px; transition: background 0.2s ease; display: flex; align-items: center; justify-content: center;">
+				<div id="theme-toggle-btn" style="color: var(--sidebar-header-fg);">☼</div>
 			</div>
-		</a>
+		</div>
 		<div id="search-box" style="border-bottom: none;">
 			<input type="text" id="search-input" placeholder="Start typing to search...">
 		</div>
@@ -1139,6 +1242,53 @@
 	</div>
 
 	<script>
+
+		function getPaletteKey() {
+			for (let i = 0; i < localStorage.length; i++) {
+				const key = localStorage.key(i);
+				if (key && key.endsWith('.__palette')) {
+					return key;
+				}
+			}
+			return '/.__palette';
+		}
+
+		function getSavedTheme() {
+			try {
+				const key = getPaletteKey();
+				const val = localStorage.getItem(key);
+				if (val) {
+					const parsed = JSON.parse(val);
+					if (parsed && parsed.color && parsed.color.scheme === 'default') return 'light';
+				}
+			} catch (e) {}
+			return 'dark';
+		}
+
+		function saveTheme(theme) {
+			const key = getPaletteKey();
+			const isLight = theme === 'light';
+			const palette = isLight
+				? {"index":1,"color":{"media":"(prefers-color-scheme: light)","scheme":"default","primary":"indigo","accent":"indigo"}}
+				: {"index":2,"color":{"media":"(prefers-color-scheme: dark)","scheme":"slate","primary":"indigo","accent":"indigo"}};
+			localStorage.setItem(key, JSON.stringify(palette));
+		}
+
+		function toggleTheme() {
+			const current = document.documentElement.getAttribute('data-theme') || 'dark';
+			const next = current === 'dark' ? 'light' : 'dark';
+			document.documentElement.setAttribute('data-theme', next);
+			saveTheme(next);
+			document.getElementById('theme-toggle-btn').innerText = next === 'dark' ? '☾' : '☼';
+		}
+		
+		// Set initial theme
+		const savedTheme = getSavedTheme();
+		document.documentElement.setAttribute('data-theme', savedTheme);
+		window.addEventListener('DOMContentLoaded', () => {
+			document.getElementById('theme-toggle-btn').innerText = savedTheme === 'dark' ? '☾' : '☼';
+		});
+
 		let allDecls = [];
 		let selectedIndex = -1;
 		let currentRendered = [];
@@ -1288,6 +1438,8 @@
 		}
 
 		async function init() {
+			document.getElementById('filter-private').classList.toggle('active', filters.private);
+			document.getElementById('filter-local').classList.toggle('active', filters.local);
 			if (EMBEDDED_JSON_LIST.length > 0) {
 				for (const item of EMBEDDED_JSON_LIST) {
 					mergeTargetData(item.data, item.target);
@@ -1377,10 +1529,10 @@
 				hash = text.charCodeAt(i) + ((hash << 5) - hash);
 			}
 			const h = Math.abs(hash) % 360;
-			return `hsl(${h}, 20%, 75%)`;
+			return `hsl(${h}, 40%, var(--subtle-l, 70%))`;
 		}
 
-		function formatHierarchicalName(name, sep, opacityParent = 0.6, colorLast = 'var(--color-blue-300)') {
+		function formatHierarchicalName(name, sep, opacityParent = 0.8, colorLast = 'var(--hl-module)') {
 			const parts = name.split(sep);
 			if (parts.length <= 1) return `<span style="color: ${colorLast};">${name}</span>`;
 
@@ -2027,25 +2179,33 @@
 
 
 		function renderParams(params) {
-			return (params || []).map(m => {
+			const dMembers = params || [];
+			return dMembers.map(m => {
 				if (m.kind === 'body_param') {
 					const bodyParams = renderParams(m.params);
 					return `<span class="c3-keyword">@body</span>(${bodyParams})`;
 				}
-				const name = m.name ? `<span class="c3-variable">${m.is_ref ? '&' : ''}${m.name}</span>` : (m.is_ref ? '&' : '');
+				if (m.name === 'self') {
+					return `<span class="c3-variable">${m.is_ref ? '&' : ''}self</span>`;
+				}
 				const type = renderTypeName(m.type);
-				let res = `${name} : ${type}`;
+				const name = m.name ? ` <span class="c3-variable">${m.is_ref ? '&' : ''}${m.name}</span>` : '';
+				let res = `${type}${name}`;
 				if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
-				if (m.default_value) res += ` = <span class="c3-string">${m.default_value}</span>`;
+				if (m.default_value) res += ` = <span class="c3-variable">${m.default_value}</span>`;
 				return res;
-			}).join(', ');
+			}).reduce((acc, current, index) => {
+				if (index === 0) return current;
+				const isBody = dMembers[index].kind === 'body_param';
+				return acc + (isBody ? '; ' : ', ') + current;
+			}, '');
 		}
 
 		function buildSignature(d) {
 			const localName = getLocalName(d.uid);
 
-			if (d.kind === 'function' || d.kind === 'macro') {
-				const keyword = d.kind === 'macro' ? 'macro' : 'fn';
+			if (d.kind === 'function' || d.kind === 'macro' || d.kind === 'method' || d.kind === 'macro_method') {
+				const keyword = (d.kind === 'macro' || d.kind === 'macro_method') ? 'macro' : 'fn';
 				const params = renderParams(d.members);
 				const ret = d.return_type ? renderTypeName(d.return_type) : 'void';
 				const attrs = (d.attributes || []).map(a => `<span class="c3-attribute">${a}</span>`).join(' ');
@@ -2058,10 +2218,29 @@
 				return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = <span class="c3-keyword">fn</span> ${ret}(${params})`;
 			}
 
-			if (d.kind === 'variable') {
-				const keyword = d.is_const ? 'const' : 'var';
+			if (d.kind === 'variable' || d.kind === 'constant') {
+				const keyword = d.kind === 'constant' || d.is_const ? 'const' : 'var';
 				const typeStr = d.type ? renderTypeName(d.type) : '';
-				return `<span class="c3-keyword">${keyword}</span> ${typeStr} <span class="c3-variable">${localName}</span>`;
+				let res = `<span class="c3-keyword">${keyword}</span> ${typeStr} <span class="c3-variable">${localName}</span>`;
+				if (d.value) {
+					res += ` = <span class="c3-number">${d.value}</span>`;
+				}
+				return res;
+			}
+
+			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'alias' || d.kind === 'fault' || d.kind === 'constdef') {
+				let res = `<span class="c3-keyword">${d.kind}</span> <span class="c3-type">${localName}</span>`;
+				if (d.base_type && d.base_type.name) {
+					res += ` : ${renderTypeName(d.base_type)}`;
+				}
+				if (d.associated_values && d.associated_values.length > 0) {
+					const assoc = d.associated_values.map(v => {
+						const type = renderTypeName(v.type);
+						return `${type} <span class="c3-variable">${v.name}</span>`;
+					}).join(', ');
+					res += ` (${assoc})`;
+				}
+				return res;
 			}
 
 			return null;
@@ -2164,29 +2343,34 @@
 
 
 		function buildMembersHtml(vd, baseDocs) {
-			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
-			const title = isFunction ? 'Arguments' : 'Fields';
-
 			if (!vd.members || vd.members.length === 0) return '';
 
-			let html = `<h3>${title}</h3>`;
-			html += `<table class="contract-table">
-				<thead>
-					<tr>
-						${isFunction ? '<th class="col-mod">Contract</th>' : ''}
-						<th class="col-type">Type</th>
-						<th class="col-name">Name</th>
-						<th>Description</th>
-					</tr>
-				</thead>
-				<tbody>`;
+			function getDesc(m) {
+				const docParam = (baseDocs && baseDocs.params && m.name) ? baseDocs.params.find(p => p.name === m.name) : null;
+				let desc = (docParam && docParam.description) ? docParam.description : '';
+				if (!desc && m.docs && m.docs.text) {
+					desc = window.marked ? marked.parse(m.docs.text) : escapeHtml(m.docs.text);
+				}
+				return desc;
+			}
 
-			vd.members.forEach(m => {
-				// Find matching doc param if any
-				const docParam = (baseDocs && baseDocs.params) ? baseDocs.params.find(p => p.name === m.name) : null;
+			function hasAnyDescription(members) {
+				for (const m of members) {
+					if (getDesc(m)) return true;
+					if (m.members && hasAnyDescription(m.members)) return true;
+				}
+				return false;
+			}
 
+			const anyDesc = hasAnyDescription(vd.members);
+			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
+			let html = '';
+
+			function renderRow(m, isFunc, isValueRow, depth = 0) {
+				let rowHtml = '';
+				const docParam = (baseDocs && baseDocs.params && m.name) ? baseDocs.params.find(p => p.name === m.name) : null;
 				let modHtml = '';
-				if (isFunction) {
+				if (isFunc) {
 					if (docParam) {
 						if (docParam.modifier) modHtml += `<span class="arg-mod-badge arg-mod-${docParam.modifier}">${docParam.modifier}</span>`;
 						if (docParam.by_ref) modHtml += `<span class="arg-mod-badge arg-mod-ref">ref</span>`;
@@ -2194,22 +2378,123 @@
 					modHtml = modHtml || '<span class="secondary-text">—</span>';
 				}
 
-				let bitDesc = '';
-				if (m.bit_range) {
-					bitDesc = `<br><span class="secondary-text" style="font-size: 0.8em;">bits ${m.bit_range[0]}..${m.bit_range[1]}</span>`;
+				let desc = getDesc(m);
+				let prefix = '';
+				if (depth > 0) {
+					for (let i = 0; i < depth; i++) {
+						prefix += '<span class="tree-pipe">|</span> ';
+					}
 				}
 
-				const desc = (docParam && docParam.description) ? docParam.description : '';
+				let bitDesc = '';
+				if (m.bit_range) {
+					bitDesc = `<br>${prefix}<span class="secondary-text" style="font-size: 0.8em;">bits ${m.bit_range[0]}..${m.bit_range[1]}</span>`;
+				}
 
-				html += `<tr>
-					${isFunction ? `<td class="col-mod">${modHtml}</td>` : ''}
-					<td class="col-type monospace">${renderTypeName(m.type)}${bitDesc}</td>
-					<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name}</td>
-					<td class="doc-text">${desc}</td>
-				</tr>`;
-			});
+				if (m.kind === 'struct' || m.kind === 'union' || m.kind === 'bitstruct') {
+					let kindName = m.kind;
+					let nameStr = m.name ? ` <span class="c3-variable">${m.name}</span>` : '';
+					rowHtml += `<tr>`;
+					rowHtml += `<td class="col-type monospace" colspan="2">${prefix}<span class="c3-keyword">${kindName}</span>${nameStr}</td>`;
+					rowHtml += `<td class="doc-text">${desc}</td>`;
+					rowHtml += `</tr>`;
+					if (m.members) {
+						m.members.forEach(sub_m => {
+							rowHtml += renderRow(sub_m, false, isValueRow, depth + 1);
+						});
+					}
+					return rowHtml;
+				}
 
-			html += `</tbody></table>`;
+				if (isValueRow) {
+					let valStr = '';
+					if (m.value !== undefined && m.value !== null && m.value !== '') {
+						valStr = `<span class="c3-number">${escapeHtml(String(m.value))}</span>`;
+					}
+					rowHtml += `<tr>
+						<td class="col-name monospace bold c3-enum_constant">${prefix}${m.name || ''}</td>
+						<td class="col-type monospace">${valStr}</td>
+						<td class="doc-text">${desc}</td>
+					</tr>`;
+				} else {
+					let typeStr = m.type ? renderTypeName(m.type) : '';
+					rowHtml += `<tr>
+						${isFunc ? `<td class="col-mod">${modHtml}</td>` : ''}
+						<td class="col-type monospace">${prefix}${typeStr}${bitDesc}</td>
+						<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name || ''}</td>
+						<td class="doc-text">${desc}</td>
+					</tr>`;
+				}
+				return rowHtml;
+			}
+
+			if (vd.kind === 'enum') {
+				const params = vd.associated_values || [];
+				const values = vd.members || [];
+				
+				if (values.length > 0) {
+					html += `<h3>Values</h3>`;
+					html += `<table class="contract-table">
+						<thead><tr>
+							<th class="col-name">Name</th>
+							<th class="col-type">Ordinal</th>`;
+					params.forEach(p => {
+						let typeName = p.type ? renderTypeName(p.type) : '';
+						html += `<th class="col-type" style="text-transform: none;">${typeName} ${escapeHtml(p.name)}</th>`;
+					});
+					html += `<th>${anyDesc ? 'Description' : ''}</th>`;
+					html += `</tr></thead><tbody>`;
+					values.forEach((m, index) => {
+						let ordinal = m.value;
+						let assoc_vals = [];
+						if (params.length > 0) {
+							ordinal = index;
+							assoc_vals = m.value || [];
+						} else {
+							ordinal = m.value !== undefined && m.value !== null ? m.value : index;
+						}
+						
+						html += `<tr>
+							<td class="col-name monospace bold c3-enum_constant">${m.name || ''}</td>
+							<td class="col-type monospace"><span class="c3-number">${escapeHtml(String(ordinal))}</span></td>`;
+						params.forEach((p, i) => {
+							let v = assoc_vals[i];
+							if (v === undefined || v === null) v = '';
+							html += `<td class="col-type monospace"><span class="c3-number">${escapeHtml(String(v))}</span></td>`;
+						});
+						
+						let desc = getDesc(m);
+						html += `<td class="doc-text">${desc}</td>`;
+						
+						html += `</tr>`;
+					});
+					html += `</tbody></table>`;
+				}
+			} else if (vd.kind === 'constdef') {
+				html += `<h3>Values</h3>`;
+				html += `<table class="contract-table">
+					<thead><tr>
+						<th class="col-name">Name</th>
+						<th class="col-type">Value</th>
+						<th>${anyDesc ? 'Description' : ''}</th>
+					</tr></thead><tbody>`;
+				vd.members.forEach(m => { html += renderRow(m, false, true); });
+				html += `</tbody></table>`;
+
+			} else {
+				let title = isFunction ? 'Arguments' : 'Fields';
+				html += `<h3>${title}</h3>`;
+				html += `<table class="contract-table">
+					<thead><tr>
+						${isFunction ? '<th class="col-mod">Contract</th>' : ''}
+						<th class="col-type">Type</th>
+						<th class="col-name">Name</th>
+						<th>${anyDesc ? 'Description' : ''}</th>
+					</tr></thead><tbody>`;
+				vd.members.forEach(m => { html += renderRow(m, isFunction, false); });
+				html += `</tbody></table>`;
+			}
+
 			return html;
 		}
 
@@ -2298,7 +2583,9 @@
 				}
 
 				for (const k of sortedKinds) {
-					const title = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ') + 's';
+					let title = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ');
+					if (title.endsWith('s')) title += 'es';
+					else title += 's';
 
 					if (isSidebar) {
 						ctxHtml += `<h3 class="sidebar-section-title">${title}</h3>`;
@@ -2378,10 +2665,10 @@
 
 				if (d.is_generic) {
 					let params = (d.generic_parameters && d.generic_parameters.length > 0)
-						? ` <span style="color: #d2a8ff;">&lt;${d.generic_parameters.join(', ')}&gt;</span>`
+						? ` <span style="color: var(--hl-func);">&lt;${d.generic_parameters.join(', ')}&gt;</span>`
 						: '';
 					html += `<h1 class="overview-title" style="font-family: monospace; font-size: 1.8em; margin-bottom: 30px;">
-						<span style="color: #ff7b72;">module</span> ${d.name}${params};
+						<span style="color: var(--hl-keyword);">module</span> ${d.name}${params};
 						<span class="generic-badge" style="font-size: 0.7em; vertical-align: middle; margin-left: 15px; opacity: 1;">generic</span>
 					</h1>`;
 				} else {
@@ -2419,6 +2706,7 @@
 		}
 	</script>
 	<script>
+
 		const EMBEDDED_JSON_LIST = [];
 		/*DATA_START*/
 		/*DATA_END*/

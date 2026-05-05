@@ -1,12 +1,12 @@
 module ringbuffer_test @test;
-import std::collections::ringlist;
+import std::collections::ringbuffer;
 import std::io;
 import std::math;
 
 fn void push_pop()
 {
 	const sz COUNT = 10;
-	RingList{int, COUNT} rlist;
+	RingBuffer{int, COUNT} rlist;
 	rlist.init();
 
 	assert (rlist.is_empty());
@@ -44,7 +44,7 @@ fn void push_pop()
 fn void front()
 {
 	const sz COUNT = 6;
-	RingList{int, COUNT} rlist;
+	RingBuffer{int, COUNT} rlist;
 	int[*] values = { 0, 1, 2, 3, 4 };
 	rlist.init_from_values(values[..]);
 
@@ -62,7 +62,7 @@ fn void front()
 fn void push_pop_ranges()
 {
 	const sz COUNT = 20;
-	RingList{int, COUNT} rlist;
+	RingBuffer{int, COUNT} rlist;
 	rlist.init();
 
 	int[COUNT] push_range;
@@ -95,7 +95,7 @@ fn void into_slice() => @pool()
 {
 	 {
 		const sz COUNT = 8;
-		RingList{int, COUNT} rlist;
+		RingBuffer{int, COUNT} rlist;
 		int[*] values = { 1, 2, 3, 4, 5, 6, 7 };
 		rlist.init_from_values(values[..]);
 		test::eq(string::tformat("%s", rlist), "[1, 2, 3, 4, 5, 6, 7]");
@@ -114,7 +114,7 @@ fn void into_slice() => @pool()
 
 	{
 		const sz COUNT = 5;
-		RingList{int, COUNT} rlist;
+		RingBuffer{int, COUNT} rlist;
 		int[*] values = { 1, 2, 3, 4, 5, 6, 7 };
 		rlist.init_from_values(values[..]);
 		int[] rlist_slice = rlist.copy_to_array(tmem)!!;
@@ -126,7 +126,7 @@ fn void into_slice() => @pool()
 
 fn void to_format_edge_cases()
 {
-    RingList{int, 5} rlist;
+    RingBuffer{int, 5} rlist;
     rlist.init();
     test::eq(string::tformat("%s", rlist), "[]");
 
@@ -140,7 +140,7 @@ fn void to_format_edge_cases()
 fn void more_elements()
 {
 	const sz COUNT = math::@next_power_of_2(8000);
-	RingList{int, COUNT} rlist;
+	RingBuffer{int, COUNT} rlist;
 	for (int i = 0; i < COUNT + COUNT; ++i)
 	{
 		rlist.push(i);
@@ -163,7 +163,7 @@ fn void more_elements()
 fn void for_each_and_clear()
 {
 	const COUNT = 10;
-	RingList{int, COUNT} rlist;
+	RingBuffer{int, COUNT} rlist;
 	int[COUNT - 1] push_values = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
 	rlist.init_from_values(push_values[..]);
 

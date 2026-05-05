@@ -63,8 +63,8 @@ const CInt SIGFPE = 8;
 const CInt SIGSEGV = 11;
 const CInt SIGTERM = 15;
 
-alias Time_t = $typefrom(env::WIN32 || env::EMSCRIPTEN ? long::typeid : CLong::typeid);
-alias Off_t = $typefrom(env::WIN32 || env::EMSCRIPTEN ? long::typeid : sz::typeid);
+alias Time_t = $typefrom(env::WIN32 || env::EMSCRIPTEN ? long : CLong);
+alias Off_t = $typefrom(env::WIN32 || env::EMSCRIPTEN ? long : sz);
 
 module libc @if(env::LIBC);
 
@@ -395,7 +395,7 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
-macro bool libc_S_ISTYPE(value, mask) @builtin => (value & S_IFMT) == mask;
+macro bool libc_S_ISTYPE(value, mask) @builtin => ((uint)value & (uint)S_IFMT) == ((uint)mask);
 const S_IFMT   = 0o170000; // type of file mask
 const S_IFIFO  = 0o010000; // named pipe (fifo)
 const S_IFCHR  = 0o020000; // character special

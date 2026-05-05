@@ -7,10 +7,10 @@ import std::os::posix, std::os::win32, std::math, std::io;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = env::EMSCRIPTEN ? 8 : (env::WASM ? 16 : (void*::alignment) * 2);
-const ulong KB = 1024;
-const ulong MB = KB * 1024;
-const ulong GB = MB * 1024;
-const ulong TB = GB * 1024;
+const long KB = 1024;
+const long MB = KB * 1024;
+const long GB = MB * 1024;
+const long TB = GB * 1024;
 
 faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
 
@@ -615,7 +615,7 @@ fn void temp_pop(PoolState old_state)
 <*
  @require pool_size >= 64
  @require realloc_size >= 64
- @require allocator.type != TempAllocator::typeid : "You may not create a temp allocator with a TempAllocator as the backing allocator."
+ @require allocator.type != TempAllocator : "You may not create a temp allocator with a TempAllocator as the backing allocator."
  @require min_size > TempAllocator::size + 64 : "Min size must meaningfully hold the data + some bytes"
 *>
 macro void @pool_init(Allocator allocator, sz pool_size,

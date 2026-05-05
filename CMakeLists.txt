@@ -81,7 +81,17 @@ if(MSVC)
     # Suppresses the LNK4098 mismatch warning in Debug builds
     set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:libcmtd /NODEFAULTLIB:msvcrtd")
 else()
-    add_compile_options(-gdwarf-3 -fno-exceptions)
+    add_compile_options(-fno-exceptions)
+    if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        add_compile_options(-gdwarf-3)
+    else()
+        if (APPLE)
+            add_link_options("-Wl,-S")
+        else()
+            # This covers Linux, BSD, and MinGW on Windows
+            add_link_options("-s")
+        endif()
+    endif()
 
     #add_compile_options(-fsanitize=address,undefined)
     #add_link_options(-fsanitize=address,undefined)
@@ -120,7 +130,7 @@ set(C3_OPTIONS
         C3_LLD_DIR
         C3_ENABLE_CLANGD_LSP
         LLVM_CRT_LIBRARY_DIR
-        C3_AVR_ENABLE
+        C3_AVR_DISABLE
 )
 
 set(C3_USE_MIMALLOC OFF)
@@ -205,7 +215,7 @@ if(C3_WITH_LLVM)
             set(C3_LLVM_RELEASE_PATH "download/${C3_LLVM_TAG}")
         endif()
 
-        set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/${C3_LLVM_RELEASE_PATH}/${C3_LLVM_ARTIFACT_NAME}.tar.gz")
+        set(C3_LLVM_URL "https://github.com/c3lang/llvm-for-c3/releases/${C3_LLVM_RELEASE_PATH}/${C3_LLVM_ARTIFACT_NAME}.tar.xz")
 
         message(STATUS "Fetching ${C3_LLVM_TYPE} LLVM artifact for ${C3_LLVM_PLATFORM}...")
         message(STATUS "URL: ${C3_LLVM_URL}")
@@ -515,9 +525,10 @@ add_executable(c3c
         ${CMAKE_BINARY_DIR}/docs_template.h
 )
 
-# Building C3 with AVR Support
-if(C3_AVR_ENABLE)
-	target_compile_definitions(c3c PRIVATE AVR_ENABLE)
+# Building C3 with llvm toolchains that don't have AVR Support
+if(C3_AVR_DISABLE)
+    message(STATUS "AVR support is disabled")
+	target_compile_definitions(c3c PRIVATE AVR_DISABLE)
 endif()
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")

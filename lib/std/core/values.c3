@@ -44,9 +44,9 @@ macro promote_int_same(x, y)
 {
 	$if @is_int(x):
 		$switch:
-		$case @is_vector(y) &&& $typeof(y)::inner == float::typeid:
+		$case @is_vector(y) &&& $typeof(y)::inner == float:
 			return (float)x;
-		$case $typeof(y)::typeid == float::typeid:
+		$case $typeof(y) == float:
 			return (float)x;
 		$default:
 			return (double)x;

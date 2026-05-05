@@ -1,7 +1,7 @@
 <*
  @require types::is_int($typeof(CAPACITY)) && CAPACITY > 0 : "Capacity must be bigger than 0"
 *>
-module std::collections::ringlist <Type, CAPACITY>;
+module std::collections::ringbuffer <Type, CAPACITY>;
 import std::io, std::math;
 
 <*
@@ -11,19 +11,19 @@ import std::io, std::math;
  tail - points to the next write location (push).
  head - points to the current read location (pop).
 *>
-struct RingList (Printable)
+struct RingBuffer (Printable)
 {
 	Type[CAPACITY] buf;
 	sz head;
 	sz tail;
 }
 
-fn void RingList.init(&self) @inline
+fn void RingBuffer.init(&self) @inline
 {
 	*self = { };
 }
 
-fn void RingList.init_from_values(&self, Type[] values)
+fn void RingBuffer.init_from_values(&self, Type[] values)
 {
 	*self = { };
 	self.push_all(values);
@@ -32,7 +32,7 @@ fn void RingList.init_from_values(&self, Type[] values)
 <*
  Pushes a new element to the end of the ring list.
 *>
-fn void RingList.push(&self, Type element)
+fn void RingBuffer.push(&self, Type element)
 {
 	self.buf[self.tail] = element;
 	@wrap_inc(self.tail);
@@ -42,7 +42,7 @@ fn void RingList.push(&self, Type element)
 <*
  Pops the element from the start of the ring list.
 *>
-fn Type? RingList.pop_first(&self)
+fn Type? RingBuffer.pop_first(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return _pop(self);
@@ -53,7 +53,7 @@ fn Type? RingList.pop_first(&self)
 
  @param [in] array : "Array to push elements from"
 *>
-fn void RingList.push_all(&self, Type[] array)
+fn void RingBuffer.push_all(&self, Type[] array)
 {
 	foreach (e : array) self.push(e);
 }
@@ -66,7 +66,7 @@ fn void RingList.push_all(&self, Type[] array)
  @param [out] target : "Slice into which data will be read"
  @return "The resulting slice"
 *>
-fn Type[] RingList.pop_first_into(&self, Type[] target)
+fn Type[] RingBuffer.pop_first_into(&self, Type[] target)
 {
 	if (@unlikely(self.is_empty())) return target[:0];
 	sz len = min(target.len, self.len());
@@ -80,7 +80,7 @@ fn Type[] RingList.pop_first_into(&self, Type[] target)
 <*
  Returns the element at the start of the ring list.
 *>
-fn Type? RingList.first(&self)
+fn Type? RingBuffer.first(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return self.buf[self.head];
@@ -89,7 +89,7 @@ fn Type? RingList.first(&self)
 <*
  Returns a reference to the element at the start of the ring list.
 *>
-fn Type*? RingList.first_ref(&self)
+fn Type*? RingBuffer.first_ref(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return &self.buf[self.head];
@@ -98,7 +98,7 @@ fn Type*? RingList.first_ref(&self)
 <*
  Returns the element at the end of the ring list.
 *>
-fn Type? RingList.last(&self)
+fn Type? RingBuffer.last(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return self.buf[(self.tail ?: self.buf.len) - 1];
@@ -107,7 +107,7 @@ fn Type? RingList.last(&self)
 <*
  Returns a reference to the element at the end of the ring list.
 *>
-fn Type*? RingList.last_ref(&self)
+fn Type*? RingBuffer.last_ref(&self)
 {
 	if (@unlikely(self.is_empty())) return NO_MORE_ELEMENT~;
 	return &self.buf[(self.tail ?: self.buf.len) - 1];
@@ -116,7 +116,7 @@ fn Type*? RingList.last_ref(&self)
 <*
  @require index >= 0 && index < self.len() : `Access out of bounds`
 *>
-fn Type RingList.get(&self, sz index) @operator([]) @inline
+fn Type RingBuffer.get(&self, sz index) @operator([]) @inline
 {
 	sz idx = wrap_add(self.head, index);
 	return self.buf[idx];
@@ -125,7 +125,7 @@ fn Type RingList.get(&self, sz index) @operator([]) @inline
 <*
  @require index >= 0 && index < self.len() : `Access out of bounds`
 *>
-fn Type* RingList.get_ref(&self, sz index) @operator(&[]) @inline
+fn Type* RingBuffer.get_ref(&self, sz index) @operator(&[]) @inline
 {
 	sz idx = wrap_add(self.head, index);
 	return &self.buf[idx];
@@ -134,7 +134,7 @@ fn Type* RingList.get_ref(&self, sz index) @operator(&[]) @inline
 <*
  @require index >= 0 && index < self.len() : `Access out of bounds`
 *>
-fn void RingList.set(&self, sz index, Type value) @operator([]=) @inline
+fn void RingBuffer.set(&self, sz index, Type value) @operator([]=) @inline
 {
 	sz idx = wrap_add(self.head, index);
 	self.buf[idx] = value;
@@ -143,7 +143,7 @@ fn void RingList.set(&self, sz index, Type value) @operator([]=) @inline
 <*
  Calculates count of elements in ring list.
 *>
-fn sz RingList.len(&self) @operator(len)
+fn sz RingBuffer.len(&self) @operator(len)
 {
 	return self.head > self.tail ? self.tail + CAPACITY - self.head : self.tail - self.head;
 }
@@ -151,7 +151,7 @@ fn sz RingList.len(&self) @operator(len)
 <*
  Tells if the ring list is currently empty.
 *>
-fn bool RingList.is_empty(&self) @inline
+fn bool RingBuffer.is_empty(&self) @inline
 {
 	return self.head == self.tail;
 }
@@ -159,7 +159,7 @@ fn bool RingList.is_empty(&self) @inline
 <*
  Tells if the ring list is currently full, it is full 1 slot behind actually being full or we can't detect it.
 *>
-fn bool RingList.is_full(&self) @inline
+fn bool RingBuffer.is_full(&self) @inline
 {
 	return self.head > 0 ? self.tail == self.head - 1 : self.tail == CAPACITY - 1;
 }
@@ -168,7 +168,7 @@ fn bool RingList.is_full(&self) @inline
  Reset the ring list's length and offset to zero, letting it write new elements over
  old memory, in effect clearing the accessible contents.
 *>
-fn void RingList.clear(&self) @inline
+fn void RingBuffer.clear(&self) @inline
 {
 	self.head = 0;
 	self.tail = 0;
@@ -178,7 +178,7 @@ fn void RingList.clear(&self) @inline
  Allocates a slice and copies the contents from the ring list in push order.
  The user is responsible for freeing the memory.
 *>
-fn Type[]? RingList.copy_to_array(&self, Allocator alloc)
+fn Type[]? RingBuffer.copy_to_array(&self, Allocator alloc)
 {
 	if (@unlikely(self.is_empty())) return {};
 
@@ -195,7 +195,7 @@ fn Type[]? RingList.copy_to_array(&self, Allocator alloc)
 	return slice;
 }
 
-fn sz? RingList.to_format(&self, Formatter* formatter) @dynamic
+fn sz? RingBuffer.to_format(&self, Formatter* formatter) @dynamic
 {
 	if (self.tail >= self.head)
     {
@@ -222,7 +222,7 @@ fn sz? RingList.to_format(&self, Formatter* formatter) @dynamic
 
  @require self.len() > 0 : "Should be bigger than zero"
 *>
-fn Type _pop(RingList* self) @local
+fn Type _pop(RingBuffer* self) @local
 {
 	defer @wrap_inc(self.head);
 	return self.buf[self.head];

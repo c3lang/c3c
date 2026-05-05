@@ -543,7 +543,7 @@ fn void hashset_put_all_for_create(HashSet* set, HashSet* other_set) @private
 fn void hashset_put_for_create(HashSet* set, Value value) @private
 {
 	uint hash = rehash(value.hash());
-	uint i = index_for(hash, set.table.len);
+	int i = index_for(hash, set.table.len);
 	for (Entry *e = set.table[i]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(value, e.value))
@@ -560,7 +560,7 @@ fn void hashset_free_internal(HashSet* self, void* ptr) @inline @private
 	alloc::free(self.allocator, ptr);
 }
 
-fn void hashset_create_entry(HashSet* set, uint hash, Value value, uint bucket_index) @private
+fn void hashset_create_entry(HashSet* set, uint hash, Value value, int bucket_index) @private
 {
 	Entry* entry = alloc::new(set.allocator, Entry, {
 		.hash = hash,
@@ -579,7 +579,7 @@ fn bool hashset_remove_entry_for_value(HashSet* set, Value value) @private
 {
 	if (!set.count) return false;
 	uint hash = rehash(value.hash());
-	uint i = index_for(hash, set.table.len);
+	int i = index_for(hash, set.table.len);
 	Entry* prev = set.table[i];
 	Entry* e = prev;
 	while (e)

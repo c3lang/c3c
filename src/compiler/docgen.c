@@ -22,6 +22,23 @@ static void write_decl_uid(FILE *file, Module *module, Decl *decl);
 static void emit_type_name_to_scratch(TypeInfo *type);
 static void print_doc_type(FILE *file, Module *module, TypeInfo *type);
 static void emit_params_json(FILE *file, Module *module, Decl **params);
+static void emit_doc_comments(FILE *file, Decl *decl);
+
+static void truncate_string_middle(const char *str)
+{
+	size_t len = strlen(str);
+	if (len <= 512)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(str);
+		return;
+	}
+	scratch_buffer_clear();
+	scratch_buffer_append_len(str, 256);
+	scratch_buffer_append("\n...\n");
+	scratch_buffer_append(str + len - 256);
+}
+
 static void write_expr_source_json(FILE *file, Expr *expr)
 {
 	if (!expr)
@@ -31,7 +48,44 @@ static void write_expr_source_json(FILE *file, Expr *expr)
 	}
 	scratch_buffer_clear();
 	loc_to_scratch(expr->loc);
+	char *str = strdup(scratch_buffer_to_string());
+	truncate_string_middle(str);
+	free(str);
 	json_write_string(file, scratch_buffer_to_string());
+}
+
+static void write_const_value_json(FILE *file, Expr *expr)
+{
+	if (!expr)
+	{
+		fputs("null", file);
+		return;
+	}
+	if (expr->expr_kind == EXPR_CONST)
+	{
+		switch (expr->const_expr.const_kind)
+		{
+			case CONST_INTEGER:
+			case CONST_FLOAT:
+			case CONST_BOOL:
+			case CONST_STRING:
+			case CONST_ENUM:
+			case CONST_FAULT:
+			case CONST_TYPEID:
+			case CONST_POINTER:
+			case CONST_REF:
+				scratch_buffer_clear();
+				expr_const_to_scratch_buffer(&expr->const_expr);
+				char *str = strdup(scratch_buffer_to_string());
+				truncate_string_middle(str);
+				free(str);
+				json_write_string(file, scratch_buffer_to_string());
+				return;
+			default:
+				break;
+		}
+	}
+	write_expr_source_json(file, expr);
 }
 
 static void get_unit_lists(CompilationUnit *unit, DocCategory cat, Decl ***lists)
@@ -320,7 +374,7 @@ RETRY:
 
 	Type *t = base_info->type;
 	if (!t) t = poisoned_type;
-	RETRY2:
+RETRY2:
 	switch (t->type_kind)
 	{
 		case TYPE_POINTER:
@@ -406,7 +460,7 @@ static void emit_doc_struct_members(FILE *file, Decl *decl, bool *first)
 
 static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 {
-	if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
+	if (decl_is_fn_macro(decl))
 	{
 		fputs("[", file);
 		bool first = true;
@@ -438,28 +492,42 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 			return;
 		}
 	}
-
 	fputs("[", file);
 	bool first = true;
 	if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTDEF)
 	{
-		if (decl->decl_kind == DECL_ENUM)
+		FOREACH_IDX(i, Decl *, p, decl->enums.values)
 		{
-			FOREACH(Decl *, p, decl->enums.parameters)
-			{
-				if (!p || !p->name) continue;
-				if (!first) fputs(",", file);
-				first = false;
-				emit_param_json(file, module, p);
-			}
-		}
-
-		FOREACH(Decl *, p, decl->enums.parameters)
-		{
-			if (!p || !p->name) continue;
 			if (!first) fputs(",", file);
 			first = false;
-			fprintf(file, "{\"name\":\"%s\"}", p->name);
+			fputs("{\"name\":\"", file);
+			fputs(p->name ? p->name : "", file);
+			fputs("\"", file);
+			fputs(",\"type\":", file);
+			fputs("{\"name\":\"", file);
+			fputs(decl->name ? decl->name : "", file);
+			fputs("\"", file);
+			emit_decl_uid_json(file, decl);
+			fputs("}", file);
+			if (decl->decl_kind == DECL_ENUM && vec_size(decl->enums.parameters) > 0)
+			{
+				fputs(",\"value\":", file);
+				fputs("[", file);
+				FOREACH_IDX(j, Expr *, expr, p->enum_constant.associated)
+				{
+					if (j > 0) fputs(",", file);
+					write_const_value_json(file, expr);
+				}
+				fputs("]", file);
+			}
+			else if (p->enum_constant.value)
+			{
+				fputs(",\"value\":", file);
+				write_const_value_json(file, p->enum_constant.value);
+			}
+			fputs(",", file);
+			emit_doc_comments(file, p);
+			fputs("}", file);
 		}
 	}
 	else if (decl_has_members(decl))
@@ -533,19 +601,19 @@ static void emit_normal_attrs(FILE *file, Decl *decl)
 {
 	bool has_attrs = false;
 
-#define EMIT_ATTR(flag, name)                  \
-	if (flag)                                  \
-	{                                          \
-		if (has_attrs)                         \
-		{                                      \
-			fputs(",", file);                  \
-		}                                      \
-		else                                   \
-		{                                      \
-			fputs(",\"attributes\":[", file);  \
-			has_attrs = true;                  \
-		}                                      \
-		fputs("\"@" name "\"", file);          \
+#define EMIT_ATTR(flag, name)                 \
+	if (flag)                                 \
+	{                                         \
+		if (has_attrs)                        \
+		{                                     \
+			fputs(",", file);                 \
+		}                                     \
+		else                                  \
+		{                                     \
+			fputs(",\"attributes\":[", file); \
+			has_attrs = true;                 \
+		}                                     \
+		fputs("\"@" name "\"", file);         \
 	}
 
 	EMIT_ATTR(decl->is_packed, "packed")
@@ -776,7 +844,7 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 		case DECL_TYPEDEF:
 			base = decl->distinct;
 			goto PRINT_BASE;
-PRINT_BASE:
+		PRINT_BASE:
 			fputs("\"base_type\":", file);
 			print_doc_type(file, module, base);
 			fputs(",", file);
@@ -792,6 +860,12 @@ PRINT_BASE:
 			if (decl->var.kind == VARDECL_CONST)
 			{
 				fputs("\"is_const\":true,", file);
+				if (decl->var.init_expr)
+				{
+					fputs("\"value\":", file);
+					write_const_value_json(file, decl->var.init_expr);
+					fputs(",", file);
+				}
 			}
 			break;
 		case DECL_POISONED:
@@ -821,6 +895,22 @@ PRINT_BASE:
 			break;
 	}
 
+	if (decl->decl_kind == DECL_ENUM)
+	{
+		if (vec_size(decl->enums.parameters) > 0)
+		{
+			fputs("\"associated_values\":", file);
+			fputs("[", file);
+			bool first_param = true;
+			FOREACH_IDX(i, Decl *, p, decl->enums.parameters)
+			{
+				if (!first_param) fputs(",", file);
+				first_param = false;
+				emit_param_json(file, module, p);
+			}
+			fputs("],", file);
+		}
+	}
 	fputs("\"members\":", file);
 	emit_doc_members(file, module, decl);
 	fputs(",", file);
@@ -887,7 +977,7 @@ static bool category_has_content(Module *module, DocCategory cat)
 			Decl **sub_lists[2] = {gdecl->generic_decl.decls, gdecl->generic_decl.conditional_decls};
 			for (int list_idx = 0; list_idx < 2; list_idx++)
 			{
-				FOREACH (Decl *, decl, sub_lists[list_idx])
+				FOREACH(Decl *, decl, sub_lists[list_idx])
 				{
 					if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 					if (get_category_for_decl(decl) == cat) return true;

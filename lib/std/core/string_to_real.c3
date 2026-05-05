@@ -376,7 +376,7 @@ macro double? hexfloat(char[] chars, int $bits, int $emin, int sign)
 		else
 		{
 			got_digit = true;
-			int d = c > '9' ? ((c | 32) + 10 - 'a') : (c - '0');
+			uint d = c > '9' ? ((c | 32) + 10 - 'a') : (c - '0');
 			switch
 			{
 				case dc < 8:
@@ -446,7 +446,7 @@ macro double? hexfloat(char[] chars, int $bits, int $emin, int sign)
 	return math::scalbn(y, (int)e2);
 }
 
-macro String.to_real(chars, $Type) @private
+macro _string_to_real(String chars, $Type) @private
 {
 	int sign = 1;
 	$switch $Type:

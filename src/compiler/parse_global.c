@@ -1232,7 +1232,7 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	bool is_cond;
 	bool can_be_generic = decl_inherits_module_generic(decl);
 	ASSIGN_DECL_OR_RET(Decl *generics, parse_generic_decl(c), false);
-	bool is_method = decl->decl_kind == DECL_FUNC && decl->func_decl.type_parent;
+	bool is_method = decl_is_fn_macro(decl) && decl->func_decl.type_parent;
 	bool is_alias = decl->decl_kind == DECL_TYPE_ALIAS;
 	if (is_alias) can_be_weak = true;
 	if (!parse_attributes(c, &decl->attributes, &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, is_method ? "for method declarations" : NULL, can_be_weak ? &is_weak : NULL)) return false;

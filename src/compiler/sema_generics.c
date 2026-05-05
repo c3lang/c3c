@@ -245,7 +245,7 @@ FOUND:;
 		FOREACH(Decl *, decl, copied)
 		{
 			if (decl->unit->module->stage < ANALYSIS_METHODS_REGISTER) continue;
-			if (decl->decl_kind != DECL_FUNC && decl->decl_kind != DECL_MACRO) continue;
+			if (!decl_is_fn_macro(decl)) continue;
 			if (!decl->func_decl.type_parent) continue;
 			SemaContext gen_context;
 			sema_context_init(&gen_context, decl->unit);

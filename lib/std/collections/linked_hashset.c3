@@ -510,7 +510,7 @@ fn void linkedhashset_resize(LinkedHashSet* set, int new_capacity) @private
 		do
 		{
 			LinkedEntry* next = e.next;
-			if ((e.hash & old_capacity) == 0)
+			if ((e.hash & (uint)old_capacity) == 0)
 			{
 				if (!lo_tail)
 				{

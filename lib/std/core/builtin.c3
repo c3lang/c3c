@@ -110,7 +110,7 @@ macro @_all_const_in(...) <NeedleType> @const @local
 *>
 macro anycast(any v, $Type) @builtin
 {
-	if (v.type != $Type::typeid) return TYPE_MISMATCH~;
+	if (v.type != $Type) return TYPE_MISMATCH~;
 	return ($Type*)v.ptr;
 }
 
@@ -120,7 +120,7 @@ macro anycast(any v, $Type) @builtin
 *>
 macro any.to(self, $Type)
 {
-	if (self.type != $Type::typeid) return TYPE_MISMATCH~;
+	if (self.type != $Type) return TYPE_MISMATCH~;
 	return *($Type*)self.ptr;
 }
 
@@ -144,7 +144,7 @@ macro @addr(#val) @builtin
 
 macro typeid @typeid(#value) @const @builtin
 {
-	return $typeof(#value)::typeid;
+	return $typeof(#value);
 }
 
 
@@ -435,7 +435,7 @@ macro bitcast(expr, $Type) @builtin
 *>
 macro enum_by_name($Type, String enum_name) @builtin
 {
-	typeid x = $Type::typeid;
+	typeid x = $Type;
 	foreach (i, name : x.names)
 	{
 		if (name == enum_name) return $Type::from_ordinal(i);

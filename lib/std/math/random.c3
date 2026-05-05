@@ -45,7 +45,7 @@ macro int next(random, int range)
 	{
 		x = random.next_int() & mask;
 	}
-	while (x > range);
+	while ((long)x > (long)range);
 	return (int)x;
 }
 

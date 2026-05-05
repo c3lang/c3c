@@ -17,7 +17,7 @@ fn bool test22(uint x)
 
 fn bool test3(uint x)
 {
-    return x == -1; // #error: Comparing an unsigned value with a negative constant
+    return x == -1; // #error:  The value '-1' is out of range for 'uint'
 }
 
 fn bool test4(uint x)
@@ -37,12 +37,12 @@ fn bool test55(uint x)
 
 fn bool test6(uint x)
 {
-    return -1 == x; // #error: an unsigned value with a negative constant
+    return -1 == x; // #error:  The value '-1' is out of range for 'uint'
 }
 
 macro obfuscate(x, $foo)
 {
-    return $foo == x;
+    return $foo == x; // #error:  The value '-1' is out of range for 'uint'
 }
 
 fn bool test7(uint x)

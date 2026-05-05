@@ -58,9 +58,10 @@
 - `$vaarg` behaves as `$vaexpr`.
 - Added `docgen` command to generate documentation.
 - Added `jmpabs` x86 CPU feature.
+- Implicit unsigned <-> signed integer conversions removed.
+- Added C3 Compiler setup installer for Windows
 
 ### Stdlib changes
-- `std::collections::RingBuffer` has been renamed `RingList`.
 - Add `List.remove_unordered_at`.
 - PanicFn now takes an `int` for row.
 - Add `std::collections::Deque`.
@@ -68,7 +69,7 @@
 - Add `SortedMap` based on skip lists.
 - Add `OneShotChannel` to `std::thread::channel` for single-send/single-receive thread synchronization.
 - `BufferedChannel` and `UnbufferedChannel` are now pointers, create using `create_unbuffered` and `create_buffered`
-- `RingList` now conforms to `foreach` and adds additional functions.
+- `RingBuffer` now conforms to `foreach` and adds additional functions.
 - Ini parser and encoder.
 - Updated `ref::new` argument order.
 - Support setting thread stack size.
@@ -126,6 +127,9 @@
 - Fix bug where a method is considered doubly generic if declared in a generic module for a generic type. #3176
 - Fix exp10 on platforms without exp10 as an LLVM builtin.
 - LLVM 23 compatibility: map `Os`/`Oz` to `O2` pass pipeline, fix `returnaddress` intrinsic signature, add `optsize`/`minsize` function attributes.
+- Warning for ignored visibility modifiers was not emitted for macro methods #3071
+- `while (String? x = foo()!)` was accidentally allowed causing a lowering error.
+- Crash casting uint to bitstruct inside struct field assignment #3187
 
 ## 0.7.11 Change list
 

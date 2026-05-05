@@ -449,7 +449,7 @@ called `hello_world` or `hello_world.exe`depending on platform.
 2. Install CMake
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory: `cd c3c`.
-5. Set up the CMake build: `cmake --preset windows-vs-2022-release`
+5. Set up the CMake build: `cmake --preset windows-vs-2022-release -D C3_FETCH_LLVM=ON`
 6. Build: `cmake --build --preset windows-vs-2022-release`
 
 You should now have a `c3c` executable in `build\Release`.
@@ -464,7 +464,7 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
 > **Debug Build:**
 > To avoid LLVM library conflicts, configure and build using the debug preset instead:
 > ```bash
-> cmake --preset windows-vs-2022-debug
+> cmake --preset windows-vs-2022-debug -D C3_FETCH_LLVM=ON
 > cmake --build --preset windows-vs-2022-debug
 > ```
 > *(Your executable will be located in `build-debug\Debug`)*

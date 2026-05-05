@@ -200,7 +200,7 @@ fn void InterfaceList.add_all(&self, InterfaceList* other_list)
 fn void InterfaceList.reverse(&self)
 {
 	if (self.size < 2) return;
-	sz half = self.size / 2U;
+	sz half = self.size / 2;
 	sz end = self.size - 1;
 	for (sz i = 0; i < half; i++)
 	{
@@ -461,9 +461,9 @@ fn void interfacelist_ensure_capacity(InterfaceList* self, sz added = 1) @inline
 	sz new_size = self.size + added;
 	if (self.capacity >= new_size) return;
 
-	assert(new_size < sz::max / 2U);
-	sz new_capacity = self.capacity ? 2U * self.capacity : 16U;
-	while (new_capacity < new_size) new_capacity *= 2U;
+	assert(new_size < sz::max / 2);
+	sz new_capacity = self.capacity ? 2 * self.capacity : 16;
+	while (new_capacity < new_size) new_capacity *= 2;
 	self.reserve(new_capacity);
 }
 
