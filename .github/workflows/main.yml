@@ -73,6 +73,21 @@ jobs:
           name: c3-windows-${{ matrix.build_type }}
           path: c3-windows-${{ matrix.build_type }}.zip
 
+      - name: Install NSIS
+        uses: repolevedavaj/install-nsis@v1.1.0
+        with:
+          nsis-version: '3.12'
+
+      - name: Compile Installer
+        run: |
+          set "OUT_FILE=c3-windows-setup-${{ matrix.build_type }}.exe"
+          makensis /DINSTALLER_NAME="%OUT_FILE%" resources/nsis/installer.nsi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-setup-${{ matrix.build_type }}
+          path: resources/nsis/c3-windows-setup-${{ matrix.build_type }}.exe
+
   build-msys2:
     runs-on: windows-latest
     timeout-minutes: 30
@@ -709,10 +724,12 @@ jobs:
       - name: Prepare Assets
         run: |
           for config in Release Debug; do
-            for platform in windows macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64; do
+            for platform in windows macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup; do
               # Windows and macOS produce zip, others tar.gz
               if [ "$platform" = "windows" ] || [ "$platform" = "macos" ]; then
                 ext="zip"
+              elif [ "$platform" = "windows-setup" ]; then
+                ext="exe"
               else
                 ext="tar.gz"
               fi
@@ -747,4 +764,4 @@ jobs:
           prerelease: true
           allowUpdates: true
           removeArtifacts: true
-          artifacts: "*.zip,*.tar.gz"
+          artifacts: "*.zip,*.tar.gz,*.exe"
