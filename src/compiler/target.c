@@ -2417,6 +2417,14 @@ void target_setup(BuildTarget *build_target)
 	}
 	ASSERT(compiler.platform.reloc_model != RELOC_DEFAULT);
 
+	// llvm fallback value
+	#if LLVM_AVAILABLE
+	if (!compiler.platform.cpu && build_target->arch_os_target == default_target && compiler.platform.arch == target_host_arch())
+	{
+		compiler.platform.cpu = LLVMGetHostCPUName();
+	}
+	#endif
+	
 		// TODO remove
 	type_setup(&compiler.platform);
 
