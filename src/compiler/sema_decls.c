@@ -4201,7 +4201,14 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 	Decl *d = sema_find_symbol(context, kw_main_invoker);
 	if (!d)
 	{
-		SEMA_ERROR(decl, "Missing main forwarding function '%s'.", kw_main_invoker);
+		if (compiler.build.use_stdlib == USE_STDLIB_OFF)
+		{
+			SEMA_ERROR(decl, "With the standard library disabled and the forwarding macro '%s' not implemented, you may need to use a main function type that doesn't require "
+	"forwarding, such as 'fn int main()'.", kw_main_invoker);
+			return poisoned_decl;
+		}
+		SEMA_ERROR(decl, "The stdlib seems to be missing the forwarding main macro '%s'; either provide an implementation or "
+				   "use a simpler main function type that doesn't require forwarding, such as 'fn int main()'.", kw_main_invoker);
 		return poisoned_decl;
 	}
 	Expr *invoker = expr_new(EXPR_IDENTIFIER, decl->loc);
