@@ -1062,12 +1062,22 @@ void compiler_docgen(BuildTarget *target)
 		first_module = false;
 
 		fprintf(file, "\"%s\":{", module->name->module);
-		bool is_module_generic = vec_size(module->generic_sections) > 0;
+		Decl *module_generic = NULL;
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			if (unit->default_generic_section)
+			{
+				module_generic = unit->default_generic_section;
+				break;
+			}
+		}
+
+		bool is_module_generic = module_generic != NULL;
 		fprintf(file, "\"is_generic\":%s", is_module_generic ? "true" : "false");
 		if (is_module_generic)
 		{
 			fputs(",\"generic_parameters\":[", file);
-			GenericDecl *g = &module->generic_sections[0]->generic_decl;
+			GenericDecl *g = &module_generic->generic_decl;
 			for (unsigned j = 0; j < vec_size(g->parameters); j++)
 			{
 				if (j > 0) fputs(",", file);
