@@ -428,6 +428,39 @@ if(C3_WITH_LLVM)
 
     message(STATUS "Linking to llvm libs ${llvm_libs}")
     message(STATUS "Linking to lld libs ${lld_libs}")
+
+    if (MSVC)
+        # LLVM artifacts may contain absolute paths to diaguids.lib from a different VS version.
+        # Find the local diaguids.lib and replace the paths in LLVM targets.
+        find_library(DIA_SDK_LIB NAMES diaguids.lib
+            HINTS
+                "$ENV{VSINSTALLDIR}/DIA SDK/lib/amd64"
+                "$ENV{VCINSTALLDIR}/../DIA SDK/lib/amd64"
+        )
+        if (NOT DIA_SDK_LIB)
+            set(_vswhere "C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe")
+            if (EXISTS "${_vswhere}")
+                execute_process(
+                    COMMAND "${_vswhere}" -latest -property installationPath
+                    OUTPUT_VARIABLE _vs_install_dir
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                )
+                find_library(DIA_SDK_LIB NAMES diaguids.lib HINTS "${_vs_install_dir}/DIA SDK/lib/amd64")
+            endif()
+        endif()
+
+        if (DIA_SDK_LIB)
+            foreach(_tgt ${llvm_libs})
+                if (TARGET ${_tgt})
+                    get_target_property(_link_libs ${_tgt} INTERFACE_LINK_LIBRARIES)
+                    if (_link_libs AND _link_libs MATCHES "diaguids\\.lib")
+                        list(TRANSFORM _link_libs REPLACE ".*diaguids\\.lib$" "${DIA_SDK_LIB}")
+                        set_target_properties(${_tgt} PROPERTIES INTERFACE_LINK_LIBRARIES "${_link_libs}")
+                    endif()
+                endif()
+            endforeach()
+        endif()
+    endif()
 endif()
 
 add_library(miniz STATIC dependencies/miniz/miniz.c)
