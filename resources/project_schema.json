@@ -77,6 +77,10 @@
             "description": "Executable or library type for the target.",
             "enum": ["executable", "static-lib", "dynamic-lib"]
           },
+          "preset": {
+            "type": "string",
+            "description": "Reference a preset configuration from a library dependency, format: 'library:preset'."
+          },
           "dependencies": {
             "type": "array",
             "description": "Additional libraries for this target.",
