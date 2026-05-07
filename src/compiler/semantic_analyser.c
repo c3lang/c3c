@@ -196,18 +196,6 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_METHODS_REGISTER_GENERIC:
 				sema_analysis_pass_process_methods(module, true);
 				break;
-			case ANALYSIS_METHODS_INCLUDES:
-				sema_analysis_pass_process_methods(module, false);
-				break;
-			case ANALYSIS_METHODS_INCLUDES_GENERIC:
-				sema_analysis_pass_process_methods(module, true);
-				break;
-			case ANALYSIS_METHODS_CONDITIONAL:
-				sema_analysis_pass_process_methods(module, false);
-				break;
-			case ANALYSIS_METHODS_CONDITIONAL_GENERIC:
-				sema_analysis_pass_process_methods(module, true);
-				break;
 			case ANALYSIS_POST_REGISTER:
 				break;
 			case ANALYSIS_DECLS:

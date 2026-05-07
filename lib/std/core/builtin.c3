@@ -77,13 +77,13 @@ macro sz @bitsizeof(#expr) @builtin @const => @sizeof(#expr) * 8u;
  Compile-time check for whether a set of constants contains a certain expression.
 
  @param $needle : "The expression whose value should be located."
- @require @_all_const_in{$typeof($needle)}(...$vaarg) : "All values must be constant"
+ @require @_all_const_in{$Typeof($needle)}(...$vaarg) : "All values must be constant"
 *>
 macro bool @in($needle, ...) @builtin @const
 {
 	$for var $x = 0; $x < $vaarg.len; $x++:
 		$assert $defined($needle == $vaarg[$x])
-			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof($needle), $typeof($vaarg[$x]);
+			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $Typeof($needle), $Typeof($vaarg[$x]);
 		$if $needle == $vaarg[$x]: return true; $endif
 	$endfor
 	return false;
@@ -105,12 +105,12 @@ macro @_all_const_in(...) <NeedleType> @const @local
  @param v : `the any to convert to the given type.`
  @param $Type : `the type to convert to`
  @return `The any.ptr converted to its type.`
- @ensure $typeof(return) == $Type*
+ @ensure $Typeof(return) == $Type*
  @return? TYPE_MISMATCH
 *>
 macro anycast(any v, $Type) @builtin
 {
-	if (v.type != $Type::typeid) return TYPE_MISMATCH~;
+	if (v.type != $Type) return TYPE_MISMATCH~;
 	return ($Type*)v.ptr;
 }
 
@@ -120,7 +120,7 @@ macro anycast(any v, $Type) @builtin
 *>
 macro any.to(self, $Type)
 {
-	if (self.type != $Type::typeid) return TYPE_MISMATCH~;
+	if (self.type != $Type) return TYPE_MISMATCH~;
 	return *($Type*)self.ptr;
 }
 
@@ -144,7 +144,7 @@ macro @addr(#val) @builtin
 
 macro typeid @typeid(#value) @const @builtin
 {
-	return $typeof(#value)::typeid;
+	return $Typeof(#value);
 }
 
 
@@ -189,14 +189,14 @@ macro bool may_member_eq($Type) @builtin @const
  Compare two structs of the same type memberwise, using each member's `==` overload.
  Importantly, this comparison _ignores_ an existing `==` overload for the struct type itself.
 
- @require may_member_eq($typeof(left)) : "Only structs with members that are trivially equatable with `==` are supported."
+ @require may_member_eq($Typeof(left)) : "Only structs with members that are trivially equatable with `==` are supported."
  @require @kindof(left) != POINTER && @kindof(right) != POINTER : "You cannot compare structures by reference. Dereference them first."
- @require $typeof(left) == $typeof(right) : "Both input structures must be the same type."
+ @require $Typeof(left) == $Typeof(right) : "Both input structures must be the same type."
 *>
 macro bool member_eq(left, right) @builtin
 {
 	bool res = true;
-	$foreach $member : $typeof(left)::members:
+	$foreach $member : $Typeof(left)::members:
 		res = res && ($member.get(left) == $member.get(right));
 	$endforeach
 	return res;
@@ -412,7 +412,7 @@ macro any.as_inner(&self)
  @param $Type : "the type to cast to"
 
  @require @sizeof(expr) == $Type::size  : "Cannot bitcast between types of different size."
- @ensure $typeof(return) == $Type*
+ @ensure $Typeof(return) == $Type*
 *>
 macro bitcast(expr, $Type) @builtin
 {
@@ -430,12 +430,12 @@ macro bitcast(expr, $Type) @builtin
  @param $Type : `The type of the enum`
  @param [in] enum_name : `The name of the enum to search for`
  @require $Type::kind == ENUM : `Only enums may be used`
- @ensure $typeof(return) == $Type*
+ @ensure $Typeof(return) == $Type*
  @return? NOT_FOUND
 *>
 macro enum_by_name($Type, String enum_name) @builtin
 {
-	typeid x = $Type::typeid;
+	typeid x = $Type;
 	foreach (i, name : x.names)
 	{
 		if (name == enum_name) return $Type::from_ordinal(i);
@@ -484,7 +484,7 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 
 <*
  @require values::@is_int(#value) || values::@is_bool(#value)
- @require $defined($typeof(#value) v = expected)
+ @require $defined($Typeof(#value) v = expected)
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro @expect(#value, expected, $probability = 1.0) @builtin
@@ -493,7 +493,7 @@ macro @expect(#value, expected, $probability = 1.0) @builtin
 	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value == expected;
 	$case $probability == 1.0:
-	return $$expect(#value, ($typeof(#value))expected);
+	return $$expect(#value, ($Typeof(#value))expected);
 	$default:
 	return $$expect_with_probability(#value, expected, $probability);
 	$endswitch
@@ -553,7 +553,7 @@ macro swizzle2(v, v2, ...) @builtin
 <*
  Returns the count of leading zero bits from an integer at compile-time.
 
- @require types::is_int($typeof($value)) : "Input value must be an integer"
+ @require types::is_int($Typeof($value)) : "Input value must be an integer"
  @require @sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
 *>
 macro int @clz($value) @builtin @const

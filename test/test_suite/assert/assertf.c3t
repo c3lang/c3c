@@ -18,14 +18,17 @@ fn void main()
   %indirectarg = alloca %"any[]", align 8
   store i64 0, ptr %i, align 8
   br label %loop.cond
+
 loop.cond:                                        ; preds = %assert_ok, %entry
   %0 = load i64, ptr %i, align 8
-  %gt = icmp ugt i64 100000000, %0
-  br i1 %gt, label %loop.body, label %loop.exit
+  %lt = icmp ult i64 %0, 100000000
+  br i1 %lt, label %loop.body, label %loop.exit
+
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %i, align 8
-  %neq = icmp ne i64 2, %1
+  %neq = icmp ne i64 %1, 2
   br i1 %neq, label %assert_ok, label %assert_fail
+
 assert_fail:                                      ; preds = %loop.body
   %2 = insertvalue %any undef, ptr %i, 0
   %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1

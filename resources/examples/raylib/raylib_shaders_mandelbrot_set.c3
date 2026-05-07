@@ -152,7 +152,7 @@ fn int main()
 		if (update_shader)
 		{
 			// As we zoom in, increase the number of max iterations to get more detail
-			// Aproximate formula, but it works-ish
+			// Approximate formula, but it works-ish
 			max_iterations = (int)(math::sqrt(2.0f * math::sqrt(math::abs(1.0f - math::sqrt(37.5f * zoom)))) * max_iterations_multiplier);
 
 			// Update the shader uniform values!

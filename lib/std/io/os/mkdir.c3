@@ -11,7 +11,7 @@ macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 	{
 	$switch:
 		$case env::POSIX:
-			if (!posix::mkdir(path.str_view().zstr_tcopy(), permissions == NORMAL ? 0o777 : 0o700)) return true;
+			if (!posix::mkdir(path.zstr_tcopy(), permissions == NORMAL ? 0o777 : 0o700)) return true;
 			switch (libc::errno())
 			{
 				case EACCES:
@@ -31,7 +31,7 @@ macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 			}
 		$case env::WIN32:
 				// TODO security attributes
-				if (win32::createDirectoryW(path.str_view().to_temp_utf16()!!, null)) return true;
+				if (win32::createDirectoryW(path.to_temp_utf16()!!, null)) return true;
 				switch (win32::getLastError())
 				{
 					case win32::ERROR_ACCESS_DENIED:

@@ -37,7 +37,7 @@ module std::os @if(env::NETBSD);
 import std::os::netbsd;
 import libc;
 
-fn uint num_cpu()
+fn int num_cpu()
 {
 	int[2] nm;
 	usz len = 4;
@@ -46,7 +46,7 @@ fn uint num_cpu()
 	nm = { netbsd::CTL_HW, netbsd::HW_NCPU };
 	libc::sysctl(&nm, 2, &count, &len, null, 0);
 	if (count < 1) count = 1;
-	return count;
+	return (int)count;
 }
 
 module std::os @if(env::OPENBSD);
@@ -62,7 +62,7 @@ fn int num_cpu()
 	nm = { openbsd::CTL_HW, openbsd::HW_NCPUONLINE };
 	if (libc::sysctl(&nm, 2, &count, &len, null, 0) == 0 && count >= 1)
 	{
-		return count;
+		return (int)count;
 	}
 
 	nm = { openbsd::CTL_HW, openbsd::HW_NCPU };
@@ -90,9 +90,9 @@ fn int num_cpu()
 module std::os @if(env::EMSCRIPTEN);
 import libc;
 
-fn uint num_cpu()
+fn int num_cpu()
 {
 	uint count = (uint)libc::emscripten_num_logical_cores();
 	if (count < 1) count = 1;
-	return count;
+	return (int)count;
 }

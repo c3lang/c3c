@@ -17,8 +17,8 @@ fn void main()
 
     $foreach $x : { 123, "abc", 1177, "hello" }:
     {
-        $typeof($x) z = $x;
-        $switch $typeof($x):
+        $Typeof($x) z = $x;
+        $switch $Typeof($x):
         $case int:
             printf("Bar %d\n", $x);
         $default:

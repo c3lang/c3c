@@ -28,11 +28,11 @@ fn void Adler32.update(&self, char[] data)
 {
 	// Safe chunking constant which is optimized for L1 cache on most systems 32768 (32 KB).
 	// 0x8000 ~ (2^32 / 65521 / 2).
-	// The division is done so that we are guarenteed to never overflow.
-	const uint SAFE_CHUNKING_SIZE = 0x8000;
+	// The division is done so that we are guaranteed to never overflow.
+	const SAFE_CHUNKING_SIZE = 0x8000;
 
 	// In order
-	const uint UNROLL_SIZE = 8;
+	const UNROLL_SIZE = 8;
 
 	uint a = self.a;
 	uint b = self.b;
@@ -86,8 +86,8 @@ fn void Adler32.update(&self, char[] data)
 		}
 	}
 
-	// No need to explicitely modulo after loop end with ADLER32_CONST.
-	// As a and b are guarenteed to be under ADLER32_CONST.
+	// No need to explicitly modulo after loop end with ADLER32_CONST.
+	// As a and b are guaranteed to be under ADLER32_CONST.
 
 	// Do assert on debug.
 	assert(a < ADLER32_CONST);

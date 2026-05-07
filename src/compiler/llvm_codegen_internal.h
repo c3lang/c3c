@@ -292,6 +292,8 @@ typedef struct
 	unsigned nounwind;        // No exceptions
 	unsigned nsz;             // no signed zeros
 	unsigned optnone;         // No optimization
+	unsigned optsize;
+	unsigned minsize;
 	unsigned readonly;        // No reads on pointer
 	unsigned reassoc;         // allow reassociateion
 	unsigned sanitize_address; // enable address sanitizer (address)

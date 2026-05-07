@@ -6,8 +6,7 @@ tlocal char[1024] buf;
 fn String random_name()
 {
 	String filename = string::tformat("c3_test_file_%x", rand(0xFFFFFFF));
-	Path temp_dir = path::temp_directory(tmem).tappend(filename)!!;
-	return temp_dir.str_view();
+	return path::temp_directory(tmem).tappend(filename)!!;
 }
 
 fn void map_read_only() @test

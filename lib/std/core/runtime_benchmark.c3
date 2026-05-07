@@ -29,8 +29,8 @@ struct BenchContext
 	HashMap { String, int } module_warmup;
 	Clock clock;
 	NanoDuration nano_seconds;
-	long cycle_start;
-	long cycle_stop;
+	ulong cycle_start;
+	ulong cycle_stop;
 	DString log;
 	bool is_warming;
 	int this_iteration;
@@ -249,7 +249,7 @@ fn bool run_benchmarks(String[] args, BenchmarkUnit[] benchmarks)
 		ctx.is_warming = false;
 
 		NanoDuration running_timer;
-		long total_clocks;
+		ulong total_clocks;
 
 		char[] perc_str = { [0..19] = ' ', [20] = 0 };
 		int perc = 0;

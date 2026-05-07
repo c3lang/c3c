@@ -1249,7 +1249,7 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 /**
  * ct_refect ::= CT_REFLECT '(' expr ')'
  *
- * Note that this is transformed to $typeof(expr).sizeof.
+ * Note that this is transformed to $Typeof(expr).sizeof.
  */
 static Expr *parse_ct_reflect(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
@@ -1324,7 +1324,8 @@ static Expr *parse_vaarg(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSE
 	{
 		if (!tok_is(c, TOKEN_IDENT) || symstr(c) != kw_len)
 		{
-			RETURN_PRINT_ERROR_HERE("Expected '.len' after '%@'");
+			PRINT_ERROR_HERE("Expected '.len' after '$vaarg'");
+			return poisoned_expr;
 		}
 		advance(c);
 		expr->expr_kind = EXPR_VACOUNT;

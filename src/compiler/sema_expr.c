@@ -172,7 +172,7 @@ static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKi
 static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent);
 static inline bool sema_expr_replace_with_enum_array(SemaContext *context, Expr *enum_array_expr, Decl *enum_decl);
 static inline bool sema_expr_replace_with_enum_name_array(SemaContext *context, Expr *enum_array_expr, Decl *enum_decl);
-static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, int level);
+static inline bool sema_expr_rewrite_to_type_nameof(SemaContext *context, Expr *expr, Type *type, int level);
 
 static inline bool sema_create_const_kind(SemaContext *context, Expr *expr, Type *type);
 static inline bool sema_create_const_len(Expr *expr, Type *type, Type *flat);
@@ -2360,7 +2360,7 @@ SPLAT_NORMAL:;
 				{
 					if (!expr_is_runtime_const(ct_param))
 					{
-						SEMA_ERROR(ct_param, "All vaargs must be contant values.");
+						SEMA_ERROR(ct_param, "All vaargs must be constant values.");
 						RETURN_NOTE_FUNC_DEFINITION;
 					}
 
@@ -4624,7 +4624,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 		{
 			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
 			{
-				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing wih []? E.g. you wrote '*foo[..]' instead '(*foo)[..]'.");
+				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing with []? E.g. you wrote '*foo[..]' instead '(*foo)[..]'.");
 			}
 			RETURN_SEMA_ERROR(start, "Omitting end index is not allowed for pointers or flexible array members.");
 		}
@@ -6409,13 +6409,9 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr_rewrite_const_int(expr, type_sz, type_size(type));
 			return true;
 		case TYPE_PROPERTY_NAME:
-			if (!sema_resolve_type_decl(context, type)) return false;
-			sema_expr_rewrite_to_type_nameof(expr, type, 0);
-			return true;
+			return sema_expr_rewrite_to_type_nameof(context, expr, type, 0);
 		case TYPE_PROPERTY_QNAME:
-			if (!sema_resolve_type_decl(context, type)) return false;
-			sema_expr_rewrite_to_type_nameof(expr, type, 1);
-			return true;
+			return sema_expr_rewrite_to_type_nameof(context, expr, type, 1);
 		case TYPE_PROPERTY_ALIGNMENT:
 		{
 			AlignSize align;
@@ -6425,10 +6421,8 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		}
 		case TYPE_PROPERTY_CNAME:
 			ASSERT_SPAN(expr, !type_is_builtin(type->type_kind));
-			if (!sema_resolve_type_decl(context, type)) return false;
-			sema_expr_rewrite_to_type_nameof(expr, type, 2);
+			return sema_expr_rewrite_to_type_nameof(context, expr, type, 2);
 			return true;
-
 		case TYPE_PROPERTY_TAGS:
 			if (!type_is_user_defined(type))
 			{
@@ -9139,19 +9133,6 @@ NEXT:
 	left_type = type_flat_distinct_inline(left_type)->canonical;
 	right_type = type_flat_distinct_inline(right_type)->canonical;
 
-	// 2. Handle the case of signed comparisons.
-	//    This happens when either side has a definite integer type
-	//    and those are either signed or unsigned.
-	//    If either side is compint, then this does not happen.
-	if ((type_is_unsigned(left_type) && type_is_signed(right_type))
-		|| (type_is_signed(left_type) && type_is_unsigned(right_type)))
-	{
-		// 2a. Resize so that both sides have the same bit width. This will always work.
-		cast_to_int_to_max_bit_size(left, right, left_type, right_type);
-		goto DONE;
-	}
-
-
 	// 3. In the normal case, treat this as a binary op, finding the max type.
 	Type *max = type_find_max_type(left_type, right_type, left, right);
 
@@ -9222,8 +9203,6 @@ NEXT:
 		RETURN_SEMA_ERROR(expr, "%s does not support comparisons.",
 						  type_quoted_error_string(left->type));
 	}
-
-DONE:
 
 	// 7. Do constant folding.
 	if (expr_both_const_foldable(left, right, BINARYOP_EQ))
@@ -10731,13 +10710,20 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 }
 
 
-static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, int level)
+static inline bool sema_expr_rewrite_to_type_nameof(SemaContext *context, Expr *expr, Type *type, int level)
 {
-	if (type_is_func_ptr(type)) type = type->pointer->function.prototype->raw_type;
+	if (type_is_func_ptr(type))
+	{
+		if (!sema_resolve_type_decl(context, type)) return false;
+		type = type->pointer->function.prototype->raw_type;
+	}
+
 	if (level == 2)
 	{
+		if (!sema_resolve_type_decl(context, type)) return false;
 		if (type_is_user_defined(type))
 		{
+
 			scratch_buffer_set_extern_decl_name(type->decl, true);
 			expr_rewrite_const_string(expr, scratch_buffer_copy());
 		}
@@ -10745,13 +10731,13 @@ static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, int 
 		{
 			expr_rewrite_const_string(expr, type->name);
 		}
-		return;
+		return true;
 	}
 
 	if (!level || type_is_builtin(type->type_kind))
 	{
 		expr_rewrite_const_string(expr, type->name);
-		return;
+		return true;
 	}
 	scratch_buffer_clear();
 
@@ -10763,6 +10749,7 @@ static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, int 
 	}
 	scratch_buffer_append(type->name);
 	expr_rewrite_const_string(expr, scratch_buffer_copy());
+	return true;
 }
 
 static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_info)
@@ -11726,7 +11713,7 @@ static inline bool sema_expr_resolve_ct_eval(SemaContext *context, Expr *expr)
 	if (!result) return false;
 	if (result->expr_kind == EXPR_TYPEINFO)
 	{
-		RETURN_SEMA_ERROR(result, "Evaluation to a type requires the use of '$typefrom' rather than '$eval'.");
+		RETURN_SEMA_ERROR(result, "Evaluation to a type requires the use of '$Typefrom' rather than '$eval'.");
 	}
 	expr_replace(expr, result);
 	return true;

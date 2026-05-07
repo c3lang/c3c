@@ -35,7 +35,7 @@ fn void string_to_ichar() @test
 	int valid = 0;
     foreach (str : m2())
     {
-        char? x = string::to_integer{ichar}(str);
+        ichar? x = string::to_integer{ichar}(str);
         if (try x) valid++;
     }
     assert(valid == 129);

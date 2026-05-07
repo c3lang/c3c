@@ -7,10 +7,10 @@ import std::os::posix, std::os::win32, std::math, std::io;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = env::EMSCRIPTEN ? 8 : (env::WASM ? 16 : (void*::alignment) * 2);
-const ulong KB = 1024;
-const ulong MB = KB * 1024;
-const ulong GB = MB * 1024;
-const ulong TB = GB * 1024;
+const long KB = 1024;
+const long MB = KB * 1024;
+const long GB = MB * 1024;
+const long TB = GB * 1024;
 
 faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
 
@@ -71,7 +71,7 @@ macro masked_load(ptr, bool[<*>] mask, passthru)
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
- @ensure $typeof(return) == $typeof(*ptr)
+ @ensure $Typeof(return) == $Typeof(*ptr)
 *>
 macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, sz $alignment)
 {
@@ -212,7 +212,7 @@ macro @volatile_load(#x) @builtin
 *>
 macro @volatile_store(#x, value) @builtin
 {
-	return $$volatile_store(&#x, ($typeof(#x))value);
+	return $$volatile_store(&#x, ($Typeof(#x))value);
 }
 
 <*
@@ -242,7 +242,7 @@ macro load(ptr, sz $align, bool $volatile = false)
 *>
 macro store(ptr, value, sz $align, bool $volatile = false)
 {
-	return $$unaligned_store(ptr, ($typeof(*ptr))value, $align, $volatile);
+	return $$unaligned_store(ptr, ($Typeof(*ptr))value, $align, $volatile);
 }
 
 <*
@@ -268,7 +268,7 @@ enum AtomicOrdering : int
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
  @require $ordering != AtomicOrdering.RELEASE : "Release ordering is not valid for load."
  @require $ordering != AtomicOrdering.ACQUIRE_RELEASE : "Acquire release is not valid for load."
- @require types::may_load_atomic($typeof(#x)) : "Only integer, float and pointers may be used."
+ @require types::may_load_atomic($Typeof(#x)) : "Only integer, float and pointers may be used."
 *>
 macro @atomic_load(#x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
@@ -283,7 +283,7 @@ macro @atomic_load(#x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = fa
 
  @require $ordering != AtomicOrdering.ACQUIRE : "Acquire ordering is not valid for store."
  @require $ordering != AtomicOrdering.ACQUIRE_RELEASE : "Acquire release is not valid for store."
- @require types::may_load_atomic($typeof(#x)) : "Only integer, float and pointers may be used."
+ @require types::may_load_atomic($Typeof(#x)) : "Only integer, float and pointers may be used."
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
  @require $defined(#x = value) : "The value doesn't match the variable"
 *>
@@ -448,7 +448,7 @@ macro void set_inline(void* dst, char val, sz $len, sz $dst_align = 0, bool $is_
 macro bool equals(a, b, sz len = -1, sz $align = 0)
 {
 	$if !$align:
-		$align = $typeof(a[0])::alignment;
+		$align = $Typeof(a[0])::alignment;
 	$endif
 	void* x @noinit;
 	void* y @noinit;
@@ -615,7 +615,7 @@ fn void temp_pop(PoolState old_state)
 <*
  @require pool_size >= 64
  @require realloc_size >= 64
- @require allocator.type != TempAllocator::typeid : "You may not create a temp allocator with a TempAllocator as the backing allocator."
+ @require allocator.type != TempAllocator : "You may not create a temp allocator with a TempAllocator as the backing allocator."
  @require min_size > TempAllocator::size + 64 : "Min size must meaningfully hold the data + some bytes"
 *>
 macro void @pool_init(Allocator allocator, sz pool_size,
@@ -714,7 +714,7 @@ macro @clone_aligned(value) @builtin @nodiscard
 macro @tclone(value) @builtin @nodiscard
 {
 	$if @alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT:
-		return tnew($typeof(value), value);
+		return tnew($Typeof(value), value);
 	$else
 		return alloc::clone_aligned(tmem, value);
 	$endif
@@ -1015,7 +1015,7 @@ fn void* trealloc(void* ptr, sz size, sz alignment = mem::DEFAULT_MEM_ALIGNMENT)
 *>
 macro @unaligned_addr(#arg) @builtin
 {
-	return (UnalignedRef{$typeof(#arg), @alignof(#arg)})&#arg;
+	return (UnalignedRef{$Typeof(#arg), @alignof(#arg)})&#arg;
 }
 
 module std::core::mem @if(env::NO_LIBC);

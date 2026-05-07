@@ -1126,7 +1126,7 @@ fn IntType? to_integer(String self, int base = 10) <IntType>
 			case c < 'a' || c > 'f':          return MALFORMED_INTEGER~;
 			default:                          c -= 'a' - 10;
 		}
-		if (c >= base_used) return MALFORMED_INTEGER~;
+		if (c >= (int)base_used) return MALFORMED_INTEGER~;
 		do
 		{
 			if (is_negative)
@@ -1152,8 +1152,8 @@ fn uint? String.to_uint(self, int base = 10) => to_integer{uint}(self, base) @in
 fn ushort? String.to_ushort(self, int base = 10) => to_integer{ushort}(self, base) @inline;
 fn char? String.to_char(self, int base = 10) => to_integer{char}(self, base) @inline;
 
-fn double? String.to_double(self) => self.to_real(double);
-fn float? String.to_float(self) => self.to_real(float);
+fn double? String.to_double(self) => _string_to_real(self, double);
+fn float? String.to_float(self) => _string_to_real(self, float);
 
 
 <*

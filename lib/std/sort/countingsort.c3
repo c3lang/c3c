@@ -10,9 +10,9 @@ module std::sort;
 macro void countingsort(list, key_fn = ...) @builtin
 {
 	var list_length = @kindof(list) == SLICE ??? list.len : lengthof(*list);
-	var $ListType = @kindof(list) == SLICE ??? $typeof(list) : $typeof(*list);
+	var $ListType = @kindof(list) == SLICE ??? $Typeof(list) : $Typeof(*list);
 	$if $defined(key_fn):
-		csort{$ListType, $typeof(key_fn)}(list, 0, list_length, key_fn, (sz)0x7FFFFFFF);
+		csort{$ListType, $Typeof(key_fn)}(list, 0, list_length, key_fn, (sz)0x7FFFFFFF);
 	$else
 		csort{$ListType, void*}(list, 0, list_length, (sz)0x7FFFFFFF);
 	$endif
@@ -23,9 +23,9 @@ macro void insertionsort_indexed(list, start, end, cmp = ..., context = ...) @bu
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if @kindof(list) == SLICE:
-		isort{$typeof((list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (sz)start, (sz)end, used_cmp, used_ctx);
+		isort{$Typeof((list)), $Typeof(used_cmp), $Typeof(used_ctx)}(list, (sz)start, (sz)end, used_cmp, used_ctx);
 	$else
-		isort{$typeof((*list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (sz)start, (sz)end, used_cmp, used_ctx);
+		isort{$Typeof((*list)), $Typeof(used_cmp), $Typeof(used_ctx)}(list, (sz)start, (sz)end, used_cmp, used_ctx);
 	$endif
 
 }
@@ -35,9 +35,9 @@ macro void quicksort_indexed(list, start, end, cmp = ..., context = ...) @builti
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if @kindof(list) == SLICE:
-		qsort{$typeof((list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (sz)start, (sz)(end-1), used_cmp, used_ctx);
+		qsort{$Typeof((list)), $Typeof(used_cmp), $Typeof(used_ctx)}(list, (sz)start, (sz)(end-1), used_cmp, used_ctx);
 	$else
-		qsort{$typeof((*list)), $typeof(used_cmp), $typeof(used_ctx)}(list, (sz)start, (sz)(end-1), used_cmp, used_ctx);
+		qsort{$Typeof((*list)), $Typeof(used_cmp), $Typeof(used_ctx)}(list, (sz)start, (sz)(end-1), used_cmp, used_ctx);
 	$endif
 }
 
@@ -46,13 +46,13 @@ module std::sort <Type, KeyFn> @local;
 alias Counts @private = sz[256];
 alias Ranges @private = sz[257];
 alias Indexs @private = char[256];
-alias ElementType = $typeof((Type){}[0]);
+alias ElementType = $Typeof((Type){}[0]);
 
 const bool NO_KEY_FN @private = KeyFn::kind != FUNC;
-const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $defined($typefrom(KeyFn::params[0].type) x = (ElementType){});
+const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $defined($Typefrom(KeyFn::params[0].type) x = (ElementType){});
 const bool LIST_HAS_REF @private = $defined(&(Type){}[0]);
 
-alias KeyFnReturnType @if(!NO_KEY_FN) = $typefrom(KeyFn::returns) ;
+alias KeyFnReturnType @if(!NO_KEY_FN) = KeyFn::returns ;
 alias KeyFnReturnType @if(NO_KEY_FN) = ElementType;
 alias CmpCallback @if(KEY_BY_VALUE && NO_KEY_FN) = fn int(ElementType, ElementType) ;
 alias CmpCallback @if(!KEY_BY_VALUE && NO_KEY_FN) = fn int(ElementType*, ElementType*);
@@ -60,7 +60,7 @@ alias CmpCallback @if(KEY_BY_VALUE && !NO_KEY_FN) = fn int(ElementType, ElementT
 alias CmpCallback @if(!KEY_BY_VALUE && !NO_KEY_FN) = fn int(ElementType*, ElementType*, KeyFn);
 
 const bool IS_SLICE = Type::kind == SLICE;
-alias ListType = $typefrom(IS_SLICE ??? Type : Type*);
+alias ListType = IS_SLICE ??? Type : Type*;
 macro list_get(ListType l, i) @if(!IS_SLICE) => (*l)[i];
 macro list_get(ListType l, i) @if(IS_SLICE) => l[i];
 macro list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];
@@ -224,9 +224,9 @@ macro void _csort(ListType list, sz low, sz high, sz byte_idx, KeyFn key_fn = ..
 			sz	end_offset   = ranges[i + 1];
 
 			$if $defined(key_fn):
-				csort(list, low + start_offset, low + end_offset, key_fn, byte_idx - 1u);
+				csort(list, low + start_offset, low + end_offset, key_fn, byte_idx - 1);
 			$else
-				csort(list, low + start_offset, low + end_offset, byte_idx - 1u);
+				csort(list, low + start_offset, low + end_offset, byte_idx - 1);
 			$endif
 		}
 	}

@@ -56,7 +56,7 @@ fn int main(String[] args)
 	}
 
 	Path cwd = path::tcwd()!!;
-	io::printfn("Serving %s on http://0.0.0.0:%d", cwd.str_view(), port);
+	io::printfn("Serving %s on http://0.0.0.0:%d", cwd, port);
 
 	pool::ThreadPool{THREAD_COUNT} worker_pool;
 	if (catch err = worker_pool.init())
@@ -166,7 +166,7 @@ fn void? handle(TcpSocket conn)
 	bool is_dir = false;
 	@pool()
 	{
-		Path dir_check_path = path::temp(rel)!!;
+		Path dir_check_path = path::tnew(rel)!!;
 		is_dir = path::is_dir(dir_check_path);
 	};
 
@@ -392,14 +392,14 @@ fn void? send_file(TcpSocket* sock, String path_str, String range_header, String
 			if (head_only) return;
 			target_file.seek(start)!;
 			char[65536] buf;
-			usz remaining = content_len;
+			sz remaining = content_len;
 			while (remaining > 0)
 			{
-				sz to_read = (sz)min(remaining, (usz)buf.len);
+				sz to_read = min(remaining, buf.len);
 				sz bytes_read = target_file.read(buf[0 : to_read])!;
 				if (bytes_read == 0) break;
 				if (catch sock.write(buf[:bytes_read])) return;
-				remaining -= (usz)bytes_read;
+				remaining -= bytes_read;
 			}
 		}
 		else
@@ -452,7 +452,7 @@ fn void? send_dir_listing(TcpSocket* sock, String rel_path, String raw_path, boo
 {
 	@pool()
 	{
-		Path dir_path = path::temp(rel_path)!!;
+		Path dir_path = path::tnew(rel_path)!!;
 		PathList? files = path::ls(tmem, dir_path);
 		if (catch files)
 		{

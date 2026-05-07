@@ -89,7 +89,7 @@ bitstruct UInt128LE : uint128 @littleendian
 
 <*
  @require $defined(*bytes) : "Pointer must be possible to dereference"
- @require types::is_intlike($typeof(*bytes)) : "Type must be an integer or int vector"
+ @require types::is_intlike($Typeof(*bytes)) : "Type must be an integer or int vector"
 *>
 macro load_be(bytes)
 {
@@ -102,7 +102,7 @@ macro load_be(bytes)
 
 <*
  @require $defined(*bytes) : "Pointer must be possible to dereference"
- @require types::is_intlike($typeof(*bytes)) : "Type must be an integer or int vector"
+ @require types::is_intlike($Typeof(*bytes)) : "Type must be an integer or int vector"
 *>
 macro load_le(bytes)
 {
@@ -114,26 +114,26 @@ macro load_le(bytes)
 }
 
 <*
- @require types::is_intlike($typeof(value)) : "Type must be an integer or int vector"
+ @require types::is_intlike($Typeof(value)) : "Type must be an integer or int vector"
 *>
 macro void store_be(void* dst, value)
 {
 	$if env::BIG_ENDIAN:
-		mem::store(($typeof(value)*)dst, value, $align: 1);
+		mem::store(($Typeof(value)*)dst, value, $align: 1);
 	$else
-		mem::store(($typeof(value)*)dst, bswap(value), $align: 1);
+		mem::store(($Typeof(value)*)dst, bswap(value), $align: 1);
 	$endif
 }
 
 <*
- @require types::is_intlike($typeof(value)) : "Type must be an integer or int vector"
+ @require types::is_intlike($Typeof(value)) : "Type must be an integer or int vector"
 *>
 macro void store_le(void* dst, value)
 {
 	$if env::BIG_ENDIAN:
-		mem::store(($typeof(value)*)dst, bswap(value), $align: 1);
+		mem::store(($Typeof(value)*)dst, bswap(value), $align: 1);
 	$else
-		mem::store(($typeof(value)*)dst, value, $align: 1);
+		mem::store(($Typeof(value)*)dst, value, $align: 1);
 	$endif
 }
 
@@ -157,7 +157,7 @@ macro read(bytes, $Type)
 <*
  @require @is_arrayptr_or_slice_of_char(bytes) : "argument must be a pointer to an array or a slice of char"
  @require is_bitorder($Type) : "type must be a bitorder integer"
- @require $defined(*bytes) ||| $defined(bytes[:$Type::size]) : "Data is not sufficent to hold value"
+ @require $defined(*bytes) ||| $defined(bytes[:$Type::size]) : "Data is not sufficient to hold value"
 *>
 macro write(x, bytes, $Type)
 {
@@ -168,7 +168,7 @@ macro write(x, bytes, $Type)
 		$default:
 			ptr = bytes[..].ptr;
 	$endswitch
-	mem::store(($typeof(x)*)ptr, bitcast(x, $Type).val, 1);
+	mem::store(($Typeof(x)*)ptr, bitcast(x, $Type).val, 1);
 }
 
 macro bool is_bitorder($Type)
@@ -198,14 +198,14 @@ macro bool is_bitorder($Type)
 
 macro bool @is_array_or_slice_of_char(#bytes) @const
 {
-    var $Type = $typeof(#bytes);
+    var $Type = $Typeof(#bytes);
 	$switch $Type::kind:
 		$case POINTER:
 			typeid $inner = $Type::inner;
-			return $inner.kind == ARRAY &&& $inner.inner == char::typeid;
+			return $inner.kind == ARRAY &&& $inner.inner == char;
 		$case ARRAY:
 		$case SLICE:
-			return $Type::inner == char::typeid;
+			return $Type::inner == char;
 		$default:
 			return false;
 	$endswitch
@@ -213,13 +213,13 @@ macro bool @is_array_or_slice_of_char(#bytes) @const
 
 macro bool @is_arrayptr_or_slice_of_char(#bytes) @const
 {
-	var $Type = $typeof(#bytes);
+	var $Type = $Typeof(#bytes);
 	$switch $Type::kind:
 		$case POINTER:
 			typeid $inner = $Type::inner;
-			return $inner.kind == ARRAY &&& $inner.inner == char::typeid;
+			return $inner.kind == ARRAY &&& $inner.inner == char;
 		$case SLICE:
-			return $Type::inner == char::typeid;
+			return $Type::inner == char;
 		$default:
 			return false;
 	$endswitch

@@ -11,14 +11,14 @@ module std::compression::deflate;
 import std::io, std::math, std::bits, std::sort, std::collections::list;
 import std::thread;
 
-const uint MIN_MATCH = 3;
-const uint MAX_MATCH = 258;
+const int MIN_MATCH = 3;
+const int MAX_MATCH = 258;
 const uint WINDOW_SIZE = 32768;
 const uint HASH_SIZE = 32768;
 const uint HASH_MASK = HASH_SIZE - 1;
-const uint MAX_CHAIN = 16;
-const uint GOOD_MATCH = 32;
-const uint NICE_MATCH = 128;
+const int MAX_CHAIN = 16;
+const int GOOD_MATCH = 32;
+const int NICE_MATCH = 128;
 
 faultdef
 	CORRUPTED_DATA,
@@ -885,7 +885,7 @@ fn void BitWriter.write_bits(&self, uint value, int count)
 {
 	self.buffer |= (ulong)(value & ((1u << count) - 1u)) << self.nbits;
 	self.nbits += count;
-	while (self.nbits >= 8u)
+	while (self.nbits >= 8)
 	{
 		if (self.len >= self.data.len)
 		{
@@ -1170,7 +1170,7 @@ fn ushort? Huffman.decode_stream(&self, StreamBitReader* reader) @inline
 		int b = reader.read_bits(1)!;
 		code |= (uint)b;
 		int count = self.counts[len];
-		if (code < first + count) return self.symbols[index + (int)code - first];
+		if ((int)code < first + count) return self.symbols[index + (int)code - first];
 		index += count; first += count; first <<= 1; code <<= 1;
 	}
 	return CORRUPTED_DATA~;
@@ -1248,15 +1248,15 @@ fn void? Inflater.step(&self)
 					int repeat_count = self.reader.read_bits(2)! + 3;
 					char prev = self.lit_dist_lengths[self.dyn_i - 1];
 					if (self.dyn_i + repeat_count > self.dyn_num_lengths || self.dyn_i + repeat_count > 320) return CORRUPTED_DATA~;
-					for (uint k = 0; k < repeat_count; k++) self.lit_dist_lengths[self.dyn_i++] = prev;
+					for (int k = 0; k < repeat_count; k++) self.lit_dist_lengths[self.dyn_i++] = prev;
 				case 17:
 					int zero_len = self.reader.read_bits(3)! + 3;
 					if (self.dyn_i + zero_len > self.dyn_num_lengths || self.dyn_i + zero_len > 320) return CORRUPTED_DATA~;
-					for (uint k = 0; k < zero_len; k++) self.lit_dist_lengths[self.dyn_i++] = 0;
+					for (int k = 0; k < zero_len; k++) self.lit_dist_lengths[self.dyn_i++] = 0;
 				case 18:
 					int zero_len = self.reader.read_bits(7)! + 11;
 					if (self.dyn_i + zero_len > self.dyn_num_lengths || self.dyn_i + zero_len > 320) return CORRUPTED_DATA~;
-					for (uint k = 0; k < zero_len; k++) self.lit_dist_lengths[self.dyn_i++] = 0;
+					for (int k = 0; k < zero_len; k++) self.lit_dist_lengths[self.dyn_i++] = 0;
 			}
 			if (self.dyn_i >= self.dyn_num_lengths)
 			{

@@ -1183,13 +1183,16 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		// 3d. We expect an initialization for the last declaration.
 		if (!init)
 		{
-			SEMA_ERROR(last, "Expected a declaration with initializer.");
-			return false;
+			RETURN_SEMA_ERROR(last, "Expected a declaration with initializer.");
 		}
 		// 3e. Expect that it isn't an optional
 		if (IS_OPTIONAL(init))
 		{
 			return sema_error_failed_cast(context, last, last->type, cast_to_bool ? type_bool : init->type);
+		}
+		if (IS_OPTIONAL(decl))
+		{
+			RETURN_SEMA_ERROR(decl, "Expected a non-optional variable.");
 		}
 		if (cast_to_bool)
 		{
@@ -1958,7 +1961,7 @@ static inline bool sema_check_for_dead_code(SemaContext *context, Ast *statement
 	{
 		context->active_scope.allow_dead_code = true;
 		bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
-		if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.loc, "This code is preventing it from exectuting");
+		if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.loc, "This code is preventing it from executing");
 		return warn;
 	}
 	return true;

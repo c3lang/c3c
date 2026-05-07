@@ -41,7 +41,7 @@ fn void initialize_bench() @init
 		$reflect(streebog_512_16).qname[..^4],
 	};
 
-	static Pair{ String, uint }[] to_iters = {
+	static Pair{ String, int }[] to_iters = {
 		{ "_4kib", 16384 },
 		{ "_1mib", 80 },
 	};

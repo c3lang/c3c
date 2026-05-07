@@ -88,7 +88,7 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 	if (mode != "r") return INVALID_ARGUMENT~;
 
 	File f = file::open(path, "rb")!;
-	defer (catch err) (void)f.close();
+	defer catch (void)f.close();
 
 	long file_size = f.size()!!;
 
@@ -161,13 +161,13 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 			{
 				if (n == Zip64Locator::size && locator.signature.val == ZIP64_LOCATOR_SIG)
 				{
-					if (locator.offset_eocd.val > (ulong)sz::max) return io::OVERFLOW~;
+					if (locator.offset_eocd.val > sz::max) return io::OVERFLOW~;
 					archive.file.seek(locator.offset_eocd.val)!;
 					Zip64EOCD eocd64;
 					io::read_any(archive.file, &eocd64)!;
 					if (eocd64.signature.val == ZIP64_EOCD_SIG)
 					{
-						if (eocd64.offset_cd.val > (ulong)sz::max) return io::OVERFLOW~;
+						if (eocd64.offset_cd.val > sz::max) return io::OVERFLOW~;
 						archive.file.seek(eocd64.offset_cd.val)!!;
 						num_entries = (sz)eocd64.count_total.val;
 					}
@@ -290,7 +290,7 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 fn ZipArchive? recover(Allocator allocator, String path)
 {
 	File f = file::open(path, "rb")!;
-	defer (catch err) (void)f.close();
+	defer catch (void)f.close();
 
 	ZipArchive archive = {
 		.allocator = allocator,
@@ -299,7 +299,7 @@ fn ZipArchive? recover(Allocator allocator, String path)
 		.mode = "r".copy(allocator)
 	};
 	archive.entries.init(allocator);
-	defer (catch err) (void)archive.close();
+	defer catch (void)archive.close();
 
 	char[4] sig_buf;
 	while (true)
@@ -518,11 +518,11 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 	{
 		ZipEntry entry = self.stat_at(i) ?? ENTRY_NOT_FOUND~!;
 		String out_path_str;
-		if (try tmp = path::temp(output_dir))
+		if (try tmp = path::tnew(output_dir))
 		{
 			if (try combined = tmp.tappend(entry.name))
 			{
-				out_path_str = combined.str_view();
+				out_path_str = combined;
 			}
 			else
 			{
@@ -540,11 +540,11 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 		}
 		else
 		{
-			if (try tmp = path::temp(out_path_str))
+			if (try tmp = path::tnew(out_path_str))
 			{
 				if (try parent = tmp.parent())
 				{
-					(void)path::mkdir(parent.str_view(), true);
+					(void)path::mkdir(parent, true);
 				}
 			}
 
@@ -586,11 +586,11 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 		}
 		if (!entry.is_directory) continue;
 
-		if (try tmp = path::temp(output_dir))
+		if (try tmp = path::tnew(output_dir))
 		{
 			if (try combined = tmp.tappend(entry.name))
 			{
-				String out_path_str = (String)combined.str_view();
+				String out_path_str = combined;
 				file::set_modified_time(out_path_str, (Time_t)entry.time().to_seconds())!;
 			}
 		}
@@ -790,7 +790,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 
 
 	self.file.flush()!;
-	if (entry.offset > (ulong)sz::max) return io::OVERFLOW~;
+	if (entry.offset > sz::max) return io::OVERFLOW~;
 	self.file.seek(entry.offset)!;
 	ZipLFH lfh;
 	io::read_any(self.file, &lfh)!;

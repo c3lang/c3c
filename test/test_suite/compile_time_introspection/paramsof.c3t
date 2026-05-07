@@ -6,12 +6,12 @@ fn void testme(int a, double b)
 
 fn void main()
 {
-	ReflectedParam[*] z = $typeof(testme)::params;
+	ReflectedParam[*] z = $Typeof(testme)::params;
 	foreach (r : z)
 	{
 		io::printn(r);
 	}
-	$foreach $r : $typeof(testme)::params:
+	$foreach $r : $Typeof(testme)::params:
 		io::printn($r.name);
 		io::printn($r.type.name);
 	$endforeach

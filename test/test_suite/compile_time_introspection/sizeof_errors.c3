@@ -8,7 +8,7 @@ fn void a()
 
 fn void b()
 {
-    int x = $typefrom("Bazz")::size; // #error: 'Bazz' could not be found, did you spell it rig
+    int x = $Typefrom("Bazz")::size; // #error: 'Bazz' could not be found, did you spell it rig
 }
 
 
@@ -19,17 +19,17 @@ fn void e()
 
 fn void f()
 {
-    int x = $typefrom("bar::Bazy")::size; // #error: 'bar::Bazy' could not be found
+    int x = $Typefrom("bar::Bazy")::size; // #error: 'bar::Bazy' could not be found
 }
 
 fn void g()
 {
-    int x = $typefrom("bar::")::size; // #error: could not be resolved to a valid symbol
+    int x = $Typefrom("bar::")::size; // #error: could not be resolved to a valid symbol
 }
 
 fn void k()
 {
-    int v = $typefrom("int").x.size; // #error: 'x'.
+    int v = $Typefrom("int").x.size; // #error: 'x'.
 }
 
 fn void l()

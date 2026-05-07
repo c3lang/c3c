@@ -314,7 +314,7 @@ fn Projection Projection.mul(&s, char[] n) @operator(*)
 
 		Projection t = r + s;
 
-		char bit = n[i >> 3] >> (i & 7) & 1u;
+		char bit = n[i >> 3] >> (i & 7) & 1;
 		r.x = f25519_select(&r.x, &t.x, bit);
 		r.y = f25519_select(&r.y, &t.y, bit);
 		r.z = f25519_select(&r.z, &t.z, bit);
@@ -631,7 +631,7 @@ fn FBaseInt from_bytes(char[] bytes)
 	for (sz i = rem - 1; i >= 0; i--)
 	{
 		r <<= 1;
-		r[0] |= bytes[i >> 3] >> (i & 7u) & 1u;
+		r[0] |= bytes[i >> 3] >> (i & 7) & 1;
 		r = r.sub_l(&ORDER);
 	}
 
@@ -730,7 +730,7 @@ fn FBaseInt FBaseInt.mul(&s, FBaseInt* n) @operator(*)
 	for (sz i = 252; i >= 0; i--)
 	{
 		r = (r << 1).sub_l(&ORDER);
-		r = fbase_select(&r, &&(r + s), (*n)[i >> 3] >> (i & 7u) & 1u);
+		r = fbase_select(&r, &&(r + s), (*n)[i >> 3] >> (i & 7) & 1);
 	}
 
 	return r;

@@ -702,7 +702,7 @@ fn void test()
 
 define zeroext i8 @lexer_test.is_ident_char(i64 %0, i8 zeroext %1) #0 {
 entry:
-  %eq = icmp eq i64 0, %0
+  %eq = icmp eq i64 %0, 0
   br i1 %eq, label %and.rhs, label %and.phi
 
 and.rhs:                                          ; preds = %entry
@@ -720,8 +720,8 @@ and.phi:                                          ; preds = %and.rhs, %entry
   br i1 %val, label %or.phi, label %or.rhs
 
 or.rhs:                                           ; preds = %and.phi
-  %lt = icmp ult i64 0, %0
-  br i1 %lt, label %and.rhs1, label %and.phi6
+  %gt = icmp ugt i64 %0, 0
+  br i1 %gt, label %and.rhs1, label %and.phi6
 
 and.rhs1:                                         ; preds = %or.rhs
   %zext2 = zext i8 %1 to i64

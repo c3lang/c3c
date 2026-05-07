@@ -128,7 +128,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_ALIAS: case DECL_ALIAS_PATH: case DECL_TYPE_ALIAS: return "an alias";
 		case DECL_TYPEDEF: return "a distinct type";
 		case DECL_ENUM: return "an enum";
-		case DECL_CONSTDEF: return "a set of constants";
+		case DECL_CONSTDEF: return "a constdef";
 		case DECL_ENUM_CONSTANT: return "an enum value";
 		case DECL_ERASED: return "an erased declaration";
 		case DECL_FAULT: return "a fault";
@@ -451,7 +451,7 @@ bool decl_is_externally_visible(Decl *decl)
 
 
 /*
- * Is this declartion a global of some sort?
+ * Is this declaration a global of some sort?
  * In other words a static, thread local, global constant or a global
  */
 bool decl_is_global(Decl *ident)

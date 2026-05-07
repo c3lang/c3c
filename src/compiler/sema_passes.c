@@ -179,7 +179,7 @@ void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl)
 	SemaContext context;
 	sema_context_init(&context, unit);
 	if (decl->is_templated) context.generic_instance = declptr(decl->instance_id);
-	if (!decl->is_templated && (decl->decl_kind == DECL_MACRO || decl->decl_kind == DECL_FUNC))
+	if (!decl->is_templated && decl_is_fn_macro(decl))
 	{
 		if (sema_check_if_implicit_generic(&context, decl))
 		{

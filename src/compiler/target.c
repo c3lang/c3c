@@ -181,6 +181,7 @@ static const char *x86_feature_name[] = {
 	[X86_FEAT_FSGSBASE] = "fsgsbase",
 	[X86_FEAT_FXSR] = "fxsr",
 	[X86_FEAT_INVPCID] = "invpcid",
+	[X86_FEAT_JMPABS] = "jmpabs",
 	[X86_FEAT_KL] = "kl",
 	[X86_FEAT_WIDEKL] = "widekl",
 	[X86_FEAT_LWP] = "lwp",
@@ -753,6 +754,7 @@ static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature featu
 		case X86_FEAT_FXSR:
 		case X86_FEAT_HRESET:
 		case X86_FEAT_INVPCID:
+		case X86_FEAT_JMPABS:
 		case X86_FEAT_LWP:
 		case X86_FEAT_LZCNT:
 		case X86_FEAT_MWAITX:
@@ -1955,7 +1957,7 @@ void *llvm_target_machine_create(void)
 #ifdef XTENSA_ENABLE
 		INITIALIZE_TARGET(Xtensa);
 #endif
-#ifdef AVR_ENABLE
+#ifndef AVR_DISABLE
 		INITIALIZE_TARGET(AVR);
 #endif
 #ifndef ARM_DISABLE
@@ -2188,12 +2190,6 @@ void target_setup(BuildTarget *build_target)
 	if (build_target->arch_os_target == ELF_XTENSA)
 	{
 		error_exit("Xtensa support is not available with this LLVM version.");
-	}
-#endif
-#ifndef AVR_ENABLE 
-	if (build_target->arch_os_target == ELF_XTENSA)
-	{
-		error_exit("For AVR support please use a compiler compiled with -DAVR_ENABLE");
 	}
 #endif
 

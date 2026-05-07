@@ -3,7 +3,7 @@ module std::test;
 macro foo() {}
 fn void testa()
 {
-	$typeof(foo) a; // #error: A macro has no defined type.
+	$Typeof(foo) a; // #error: A macro has no defined type.
 }
 
 fn void testb()
@@ -14,7 +14,7 @@ fn void testb()
 enum Abc { ABC }
 fn void testc()
 {
-	$typeof(Abc::from_ordinal) a; // #error: A type function has no defined type
+	$Typeof(Abc::from_ordinal) a; // #error: A type function has no defined type
 }
 fn void main()
 {}

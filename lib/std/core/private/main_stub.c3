@@ -9,7 +9,7 @@ macro sz _strlen(ptr) @private
 
 macro int @main_no_args(#m, int, char**)
 {
-	$if $typeof(#m()) == void:
+	$if $Typeof(#m()) == void:
 		#m();
 		return 0;
 	$else
@@ -21,7 +21,7 @@ macro int @main_args(#m, int argc, char** argv)
 {
 	String[] list = args_to_strings(argc, argv);
 	defer free(list.ptr);
-	$if $typeof(#m(list)) == void:
+	$if $Typeof(#m(list)) == void:
 		#m(list);
 		return 0;
 	$else
@@ -91,7 +91,7 @@ macro void release_wargs(String[] list) @private
 macro int @win_main_no_args(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	win32_set_utf8_codepage();
-	$if $typeof(#m()) == void:
+	$if $Typeof(#m()) == void:
 		#m();
 		return 0;
 	$else
@@ -104,7 +104,7 @@ macro int @win_main_args(#m, void* handle, void* prev_handle, Char16* cmd_line, 
 	win32_set_utf8_codepage();
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
-	$if $typeof(#m(args)) == void:
+	$if $Typeof(#m(args)) == void:
 		#m(args);
 		return 0;
 	$else
@@ -117,7 +117,7 @@ macro int @win_main(#m, void* handle, void* prev_handle, Char16* cmd_line, int s
 	win32_set_utf8_codepage();
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
-	$if $typeof(#m(handle, prev_handle, args, show_cmd)) == void:
+	$if $Typeof(#m(handle, prev_handle, args, show_cmd)) == void:
 		#m(handle, prev_handle, args, show_cmd);
 		return 0;
 	$else
@@ -131,7 +131,7 @@ macro int @wmain_main(#m, int argc, Char16** argv)
 	win32_set_utf8_codepage();
 	String[] args = wargs_strings(argc, argv);
 	defer release_wargs(args);
-	$if $typeof(#m(args)) == void:
+	$if $Typeof(#m(args)) == void:
 		#m(args);
 		return 0;
 	$else
@@ -142,7 +142,7 @@ macro int @wmain_main(#m, int argc, Char16** argv)
 macro int @wmain_main_no_args(#m, int argc, Char16** argv)
 {
 	win32_set_utf8_codepage();
-	$if $typeof(#m()) == void:
+	$if $Typeof(#m()) == void:
 		#m();
 		return 0;
 	$else

@@ -189,12 +189,19 @@ bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm, LLVMPasses *passe
 		case LLVM_O3:
 			level = llvm::OptimizationLevel::O3;
 			break;
+#if LLVM_VERSION_MAJOR >= 23
+		case LLVM_Os:
+		case LLVM_Oz:
+			level = llvm::OptimizationLevel::O2;
+			break;
+#else
 		case LLVM_Os:
 			level = llvm::OptimizationLevel::Os;
 			break;
 		case LLVM_Oz:
 			level = llvm::OptimizationLevel::Oz;
 			break;
+#endif
 		default:
 			exit(-1);
 	}

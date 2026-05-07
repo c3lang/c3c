@@ -1535,14 +1535,27 @@ static inline bool sema_analyse_type_alias(SemaContext *context, Decl *decl, boo
 		decl->type->canonical = type_get_func_ptr(fn_decl->type);
 		return true;
 	}
-	TypeInfo *info = decl->type_alias_decl.type_info;
-	info->in_def = true;
-	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
-	if (type_is_optional(info->type))
+	Expr *info = decl->type_alias_decl.type_expr;
+	if (!sema_analyse_expr(context, info)) return false;
+	Type *type = NULL;
+	if (info->expr_kind == EXPR_TYPEINFO)
 	{
-		RETURN_SEMA_ERROR(info, "You cannot create an alias for an optional type like %s.", type_quoted_error_string(info->type));
+		type = info->type_expr->type;
 	}
-	switch (sema_resolve_storage_type(context, info->type))
+	else
+	{
+		if (info->type->canonical != type_typeid) RETURN_SEMA_ERROR(decl, "An upper-case alias must always alias a type.");
+		if (!sema_cast_const(info) || !expr_is_const_typeid(info))
+		{
+			RETURN_SEMA_ERROR(info, "A type alias requires a type or a constant typeid. This is a runtime value.");
+		}
+		type = info->const_expr.typeid;
+	}
+	if (type_is_optional(type))
+	{
+		RETURN_SEMA_ERROR(info, "You cannot create an alias for an optional type like %s.", type_quoted_error_string(type));
+	}
+	switch (sema_resolve_storage_type(context, type))
 	{
 		case STORAGE_ERROR:
 			return false;
@@ -1554,9 +1567,9 @@ static inline bool sema_analyse_type_alias(SemaContext *context, Decl *decl, boo
 			RETURN_SEMA_ERROR(info, "You cannot create an alias for the wildcard type.");
 		case STORAGE_COMPILE_TIME:
 			RETURN_SEMA_ERROR(info, "You cannot create an alias for %s as it is a compile time type.",
-							  type_invalid_storage_type_name(info->type));
+							  type_invalid_storage_type_name(type));
 	}
-	decl->type->canonical = info->type->canonical;
+	decl->type->canonical = type->canonical;
 	// Do we need anything else?
 	return true;
 }
@@ -1578,7 +1591,6 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 
 	// Infer the underlying type normally.
 	TypeInfo *info = decl->distinct;
-	info->in_def = true;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
 	if (!sema_resolve_type_decl(context, info->type)) return false;
 	Type *inner_type = info->type;
@@ -4201,7 +4213,14 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 	Decl *d = sema_find_symbol(context, kw_main_invoker);
 	if (!d)
 	{
-		SEMA_ERROR(decl, "Missing main forwarding function '%s'.", kw_main_invoker);
+		if (compiler.build.use_stdlib == USE_STDLIB_OFF)
+		{
+			SEMA_ERROR(decl, "With the standard library disabled and the forwarding macro '%s' not implemented, you may need to use a main function type that doesn't require "
+	"forwarding, such as 'fn int main()'.", kw_main_invoker);
+			return poisoned_decl;
+		}
+		SEMA_ERROR(decl, "The stdlib seems to be missing the forwarding main macro '%s'; either provide an implementation or "
+				   "use a simpler main function type that doesn't require forwarding, such as 'fn int main()'.", kw_main_invoker);
 		return poisoned_decl;
 	}
 	Expr *invoker = expr_new(EXPR_IDENTIFIER, decl->loc);

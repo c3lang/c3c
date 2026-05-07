@@ -1,6 +1,6 @@
 module std::compression::qoi;
 
-const uint PIXELS_MAX = 400_000_000;
+const int PIXELS_MAX = 400_000_000;
 
 <*
  Colorspace.
@@ -34,8 +34,8 @@ constdef QOIChannels : inline char
 *>
 struct QOIDesc
 {
-	uint width;
-	uint height;
+	int width;
+	int height;
 	QOIChannels channels;
 	QOIColorspace colorspace;
 }
@@ -130,11 +130,11 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 	// check info in desc
 	if (desc.width == 0 || desc.height == 0) return INVALID_PARAMETERS~;
 	if (desc.channels == AUTO) return INVALID_PARAMETERS~;
-	uint pixels = desc.width * desc.height;
+	long pixels = (long)desc.width * desc.height;
 	if (pixels > PIXELS_MAX) return TOO_MANY_PIXELS~;
 	
 	// check input data size
-	uint image_size = pixels * desc.channels;
+	int image_size = (int)pixels * desc.channels;
 	if (image_size != input.len) return INVALID_DATA~;
 
 	// allocate memory for encoded data (output)
@@ -146,15 +146,15 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 	// write header
 	*(Header*)output.ptr = {
 		.be_magic = bswap('qoif'),
-		.be_width = bswap(desc.width),
-		.be_height = bswap(desc.height),
+		.be_width = (uint)bswap(desc.width),
+		.be_height = (uint)bswap(desc.height),
 		.channels = desc.channels,
 		.colorspace = desc.colorspace
 	};
 
-	uint pos = Header::size; 	// Current position in output
-	uint loc;					// Current position in image (top-left corner)
-	uint loc_end = image_size - desc.channels; // End of image data
+	int pos = Header::size; 	// Current position in output
+	int loc;					// Current position in image (top-left corner)
+	int loc_end = image_size - desc.channels; // End of image data
 	char run_length = 0; 		// Length of the current run
 	
 	Pixel[64] palette; // Zero-initialized by default
@@ -172,7 +172,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 
 		// get current pixel
 		p[:3] = input[loc:3]; // cutesy slices :3
-		if (desc.channels == RGBA) p.a = input[loc + 3u];
+		if (desc.channels == RGBA) p.a = input[loc + 3];
 
 		// check if we can run the previous pixel
 		if (prev == p)
@@ -292,21 +292,21 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	if (bswap(header.be_magic) != 'qoif') return INVALID_DATA~;
 
 	// copy header data to desc
-	uint width = desc.width = bswap(header.be_width);
-	uint height = desc.height = bswap(header.be_height);
+	int width = desc.width = (int)bswap(header.be_width);
+	int height = desc.height = (int)bswap(header.be_height);
 	QOIChannels desc_channels = desc.channels = header.channels;
 	desc.colorspace = header.colorspace;
 	if (desc_channels == AUTO) return INVALID_DATA~; // Channels must be specified in the header
 
 	// check width and height
-	if (width == 0 || height == 0) return INVALID_DATA~;
+	if (width <= 0 || height <= 0) return INVALID_DATA~;
 
 	// check pixel count
-	ulong pixels = (ulong)width * (ulong)height;
+	long pixels = (long)width * (long)height;
 	if (pixels > PIXELS_MAX) return TOO_MANY_PIXELS~;
 
-	uint pos = Header::size; 	// Current position in data
-	uint loc;					// Current position in image (top-left corner)
+	int pos = Header::size; 	// Current position in data
+	int loc;					// Current position in image (top-left corner)
 	char run_length = 0; 		// Length of the current run
 	char tag;					// Current chunk tag
 
@@ -457,7 +457,7 @@ bitstruct OpRun : char
 
 // Macro used to locate chunks in data buffers.
 // Can be used both for reading and writing.
-macro @extract($Type, char[] data, uint* pos)
+macro @extract($Type, char[] data, int* pos)
 {
 	// slice data, then double cast
 	$Type* chunk = ($Type*)data[*pos : $Type::size].ptr;

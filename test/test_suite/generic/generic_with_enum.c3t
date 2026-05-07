@@ -5,7 +5,7 @@ const Z = FOO;
 
 struct Foo
 {
-    $typeof(FOO) z;
+    $Typeof(FOO) z;
 }
 module tester;
 import test;

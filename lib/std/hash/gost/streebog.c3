@@ -8,7 +8,7 @@
 module std::hash::streebog;
 
 
-constdef StreebogLength : inline uint
+constdef StreebogLength : inline int
 {
 	SIZE_256 = 32,
 	SIZE_512 = 64,
@@ -20,13 +20,13 @@ struct Streebog
 	ulong[8]    n;
 	ulong[8]    s;
 	ulong[8]    message;
-	sz 	    index;
+	sz 	        index;
 	sz			hash_size;
 }
 
 
 <*
- @require $defined(data[0]) &&& $typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
+ @require $defined(data[0]) &&& $Typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
 *>
 macro char[*] hash(StreebogLength $hash_size, data)
 {
@@ -89,7 +89,7 @@ macro @g_n(#n, #h, #m) @local
 }
 
 
-macro Streebog.@stage2(&self, #m) @local
+macro @_streebog_stage2(Streebog* self, #m) @local
 {
 	@g_n(self.n, self.h, #m);
 	@add_512(self.n, STAGE2_512);
@@ -117,7 +117,7 @@ fn void Streebog.update(&self, char[] data)
 		self.index += size;
 		if (size < rest) return;
 
-		self.@stage2(self.message);
+		@_streebog_stage2(self, self.message);
 		data = data[rest..];
 		self.index = 0;
 	}
@@ -126,12 +126,12 @@ fn void Streebog.update(&self, char[] data)
 	{
 		if (aligned)
 		{
-			self.@stage2((ulong*)data.ptr);
+			@_streebog_stage2(self, (ulong*)data.ptr);
 		}
 		else
 		{
 			@as_char_view(self.message)[:BLOCK_SIZE] = data[:BLOCK_SIZE];
-			self.@stage2(self.message);
+			@_streebog_stage2(self, self.message);
 		}
 	}
 	if (data.len)

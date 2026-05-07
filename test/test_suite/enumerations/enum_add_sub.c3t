@@ -13,11 +13,11 @@ enum Bar : BarInt
 fn int main()
 {
 	Foo a;
-	$assert $typeof(a++)::typeid == Foo::typeid;
+	$assert $Typeof(a++)::typeid == Foo::typeid;
 	Abc b;
-	$assert $typeof(b++)::typeid == Abc::typeid;
+	$assert $Typeof(b++)::typeid == Abc::typeid;
 	Bar c;
-	$assert $typeof(c++)::typeid == Bar::typeid;
+	$assert $Typeof(c++)::typeid == Bar::typeid;
 	return 0;
 }
 

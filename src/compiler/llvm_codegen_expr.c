@@ -1451,8 +1451,15 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 		llvm_store_zero(c, ref);
 		return;
 	}
-	ASSERT(initializer->kind == CONST_INIT_STRUCT);
 	llvm_store_no_fault(c, ref);
+	if (initializer->kind == CONST_INIT_VALUE)
+	{
+		BEValue value;
+		llvm_emit_expr(c, &value, initializer->init_value);
+		llvm_store(c, ref, &value);
+		return;
+	}
+	ASSERT(initializer->kind == CONST_INIT_STRUCT);
 	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
@@ -3189,65 +3196,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 		lhs_signed = type_is_signed(lhs_type);
 		rhs_signed = type_is_signed(rhs_type);
 	}
-	if (lhs_signed != rhs_signed)
-	{
-		// Swap sides if needed.
-		if (!lhs_signed)
-		{
-			Type *temp = lhs_type;
-			lhs_type = rhs_type;
-			rhs_type = temp;
-			(void)rhs_type;
-			lhs_signed = true;
-			rhs_signed = false;
-			LLVMValueRef temp_val = lhs_value;
-			lhs_value = rhs_value;
-			rhs_value = temp_val;
-			switch (binary_op)
-			{
-				case BINARYOP_GE:
-					binary_op = BINARYOP_LE;
-					break;
-				case BINARYOP_GT:
-					binary_op = BINARYOP_LT;
-					break;
-				case BINARYOP_LE:
-					binary_op = BINARYOP_GE;
-					break;
-				case BINARYOP_LT:
-					binary_op = BINARYOP_GT;
-					break;
-				default:
-					break;
-			}
-		}
-	}
-
-	ASSERT(LLVMTypeOf(lhs_value) == LLVMTypeOf(rhs_value));
-
-	if (lhs_signed && !rhs_signed && !vector_type && llvm_is_const(lhs_value) && type_size(lhs_type) <= 8)
-	{
-		long long val = LLVMConstIntGetSExtValue(lhs_value);
-		if (val < 0)
-		{
-			switch (binary_op)
-			{
-				case BINARYOP_EQ:
-				case BINARYOP_GE:
-				case BINARYOP_GT:
-					llvm_value_set(result, llvm_const_int(c, type_bool, 0), type_bool);
-					return;
-				case BINARYOP_NE:
-				case BINARYOP_LE:
-				case BINARYOP_LT:
-					llvm_value_set(result, llvm_const_int(c, type_bool, 1), type_bool);
-					return;
-				default:
-					UNREACHABLE_VOID
-			}
-		}
-		lhs_signed = false;
-	}
+	ASSERT(lhs_signed == rhs_signed);
 
 	if (!lhs_signed)
 	{
@@ -3315,58 +3264,9 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 			UNREACHABLE_VOID
 	}
 
-	// If right side is also signed then this is fine.
-	if (rhs_signed)
-	{
-		if (vector_type)
-		{
-			llvm_convert_vector_comparison(c, result, comp_value, lhs_type, binary_op == BINARYOP_EQ);
-			return;
-		}
-		llvm_value_set(result, comp_value, type_bool);
-		return;
-	}
-
-	// Otherwise, special handling for left side signed, right side unsigned.
-	LLVMValueRef zero = llvm_get_zero(c, lhs_type);
-	switch (binary_op)
-	{
-		case BINARYOP_EQ:
-			// Only true if lhs >= 0
-			check_value = LLVMBuildICmp(c->builder, LLVMIntSGE, lhs_value, zero, "check");
-			comp_value = LLVMBuildAnd(c->builder, check_value, comp_value, "siui-eq");
-			break;
-		case BINARYOP_NE:
-			// Always true if lhs < 0
-			check_value = LLVMBuildICmp(c->builder, LLVMIntSLT, lhs_value, zero, "check");
-			comp_value = LLVMBuildOr(c->builder, check_value, comp_value, "siui-ne");
-			break;
-		case BINARYOP_GE:
-			// Only true if rhs >= 0 when regarded as a signed integer
-			check_value = LLVMBuildICmp(c->builder, LLVMIntSGE, rhs_value, zero, "check");
-			comp_value = LLVMBuildAnd(c->builder, check_value, comp_value, "siui-ge");
-			break;
-		case BINARYOP_GT:
-			// Only true if rhs >= 0 when regarded as a signed integer
-			check_value = LLVMBuildICmp(c->builder, LLVMIntSGE, rhs_value, zero, "check");
-			comp_value = LLVMBuildAnd(c->builder, check_value, comp_value, "siui-gt");
-			break;
-		case BINARYOP_LE:
-			// Always true if rhs < 0 when regarded as a signed integer
-			check_value = LLVMBuildICmp(c->builder, LLVMIntSLT, rhs_value, zero, "check");
-			comp_value = LLVMBuildOr(c->builder, check_value, comp_value, "siui-le");
-			break;
-		case BINARYOP_LT:
-			// Always true if rhs < 0 when regarded as a signed integer
-			check_value = LLVMBuildICmp(c->builder, LLVMIntSLT, rhs_value, zero, "check");
-			comp_value = LLVMBuildOr(c->builder, check_value, comp_value, "siui-lt");
-			break;
-		default:
-			UNREACHABLE_VOID
-	}
 	if (vector_type)
 	{
-		llvm_convert_vector_comparison(c, result, comp_value, lhs_type, BINARYOP_EQ == binary_op);
+		llvm_convert_vector_comparison(c, result, comp_value, lhs_type, binary_op == BINARYOP_EQ);
 		return;
 	}
 	llvm_value_set(result, comp_value, type_bool);

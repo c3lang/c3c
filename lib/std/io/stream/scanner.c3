@@ -50,13 +50,13 @@ fn char[]? Scanner.scan(&self, String pattern = "\n")
 	if (self.read_idx == 0)
 	{
 		// First read.
-		self.read_idx = self.refill(self.buf)!;
+		self.read_idx = _scanner_refill(self, self.buf)!;
 		self.pattern_idx = 0;
 	}
 	assert(self.read_idx >= self.pattern_idx);
 	sz n = self.read_idx - self.pattern_idx;
 	char[] buf = self.buf[self.pattern_idx:n];
-	if (try i = self.find(buf, pattern))
+	if (try i = _scanner_find(self, buf, pattern))
 	{
 		self.pattern_idx += i + pattern.len;
 		return buf[:i];
@@ -72,22 +72,22 @@ fn char[]? Scanner.scan(&self, String pattern = "\n")
 	self.pattern_idx = 0;
 
 	buf = self.buf[n..];
-	sz p = self.refill(buf)!;
+	sz p = _scanner_refill(self, buf)!;
 	self.read_idx = n + p;
 
 	buf = buf[:p];
-	sz i = self.find(buf, pattern)!;
+	sz i = _scanner_find(self, buf, pattern)!;
 	self.pattern_idx = n + i + pattern.len;
 
 	return self.buf[:n + i];
 }
 
-macro sz? Scanner.find(&self, buf, pattern) @private
+macro sz? _scanner_find(Scanner* self, buf, pattern) @private
 {
 	return ((String)buf).index_of(pattern);
 }
 
-macro sz? Scanner.refill(&self, buf) @private
+macro sz? _scanner_refill(Scanner* self, buf) @private
 {
 	sz? n = self.wrapped_stream.read(buf);
 	if (catch err = n)

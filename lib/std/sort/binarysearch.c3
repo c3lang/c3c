@@ -13,14 +13,14 @@ macro sz binarysearch(list, element, cmp = ..., context = ...) @builtin
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
-	return _binarysearch{$typeof(list), $typeof(element), $typeof(used_cmp), $typeof(used_ctx)}(list, element, used_cmp, used_ctx);
+	return _binarysearch{$Typeof(list), $Typeof(element), $Typeof(used_cmp), $Typeof(used_ctx)}(list, element, used_cmp, used_ctx);
 }
 
 fn sz _binarysearch(ListType list, ElementType element, CmpFnType cmp, ContextType context) <ListType, ElementType, CmpFnType, ContextType> @noinline @local
 {
 	sz i;
-	var $no_cmp = $typeof(cmp) == TypeNotSet;
-	var $has_context = $typeof(context) != TypeNotSet;
+	var $no_cmp = $Typeof(cmp) == TypeNotSet;
+	var $has_context = $Typeof(context) != TypeNotSet;
 
 	$if @kindof(list) == SLICE:
 		sz len = lengthof(list);

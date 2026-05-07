@@ -15,7 +15,7 @@ const DEFAULT_ITERATIONS = 700_000;
 
 Lcg64Random rand;
 
-HashMap { int, int } modifying_numbers_random;
+HashMap { uint, uint } modifying_numbers_random;
 
 fn void bench_setup() @init
 {
@@ -93,7 +93,7 @@ fn void generic_hash_speeds()
 fn void hash_speeds_of_many_random_values() => @pool()
 {
 	var $arrsz = 10_000;
-	int fake_checksum;
+	uint fake_checksum;
 
 	char[] chars = alloc::new_array(tmem, char, $arrsz)[:$arrsz];
 	foreach (&v : chars) *v = (char)random::next(&rand, int::max);
@@ -102,7 +102,7 @@ fn void hash_speeds_of_many_random_values() => @pool()
 	foreach (&v : shorts) *v = (ushort)random::next(&rand, int::max);
 
 	uint[] ints = alloc::new_array(tmem, uint, $arrsz)[:$arrsz];
-	foreach (&v : ints) *v = random::next(&rand, int::max);
+	foreach (&v : ints) *v = (uint)random::next(&rand, int::max);
 
 	ulong[] longs = alloc::new_array(tmem, ulong, $arrsz)[:$arrsz];
 	foreach (&v : longs) *v = (ulong)random::next(&rand, int::max);
@@ -132,7 +132,7 @@ fn void hash_speeds_of_many_random_values() => @pool()
 
 fn void modifying_numbers_init_from_map() => @pool()
 {
-	HashMap { int, int } v;
+	HashMap { uint, uint } v;
 	v.tinit_from_map(&modifying_numbers_random);
 	v.free();
 }
@@ -140,7 +140,7 @@ fn void modifying_numbers_init_from_map() => @pool()
 
 fn void insert_erase() => @pool()
 {
-	uint iters = 1_000_000;
+	int iters = 1_000_000;
 	HashMap { int, int } v;
 	v.tinit();
 
@@ -156,13 +156,13 @@ fn void insert_erase() => @pool()
 
 fn void random_access() => @pool()
 {
-	HashMap { int, int } v;
+	HashMap { uint, uint } v;
 	v.tinit();
 
-	int bound = 10_000;
-	sz pseudo_checksum = 0;
+	uint bound = 10_000;
+	long pseudo_checksum = 0;
 
-	for (int i = 0; i < bound; ++i) v[i] = i;
+	for (uint i = 0; i < bound; i++) v[i] = i;
 
 	@start_benchmark();
 	for (int i = 0; i < 1_000_000; ++i) pseudo_checksum += (v[i.hash() % (uint)bound] ?? 0);
@@ -174,19 +174,19 @@ fn void random_access() => @pool()
 
 fn void random_access_erase() => @pool()
 {
-	HashMap { int, int } v;
+	HashMap { uint, uint } v;
 	v.tinit();
 
 	uint bound = 10_000;
 
-	for (uint i = 0; i < bound; ++i) v[i] = i;
+	for (uint i = 0; i < bound; i++) v[i] = i;
 
 	@start_benchmark();
-	for (uint i = 0; i < bound; ++i)
+	for (uint i = 0; i < bound; i++)
 	{
 		v[i.hash() % bound] = i;   // supplant an entry
 
-		v.remove(random::next(&rand, bound));   // remove a random entry
+		v.remove((uint)random::next(&rand, (int)bound));   // remove a random entry
 	}
 	@end_benchmark();
 
