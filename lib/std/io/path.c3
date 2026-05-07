@@ -9,9 +9,12 @@ typedef PathCommon = inline String;
 typedef PathWin = inline PathCommon;
 typedef PathPosix = inline PathCommon;
 
-const char PREFERRED_SEPARATOR_WIN32 = '\\';
-const char PREFERRED_SEPARATOR_POSIX = '/';
-const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
+constdef PathSeparator : inline char
+{
+	WIN32 = '\\',
+	POSIX = '/'
+}
+const PathSeparator PREFERRED_SEPARATOR = env::WIN32 ? WIN32 : POSIX;
 
 alias PathList = List { Path };
 
@@ -25,10 +28,10 @@ fn Path? cwd(Allocator allocator)
 	};
 }
 
-enum PathEnv
+enum PathEnv : (PathSeparator separator)
 {
-	WIN32,
-	POSIX
+	WIN32 { WIN32 },
+	POSIX { POSIX }
 }
 
 fn bool is_dir(Path path) => os::native_is_dir(path);
@@ -200,7 +203,7 @@ fn bool? String.is_absolute_path(self) => @pool()
 
 fn bool? PathPosix.is_absolute(self)
 {
-	return self.len > 0 && self[0] == PREFERRED_SEPARATOR_POSIX;
+	return self.len > 0 && self[0] == PathSeparator.POSIX;
 }
 
 fn bool? PathWin.is_absolute(self)
@@ -353,7 +356,7 @@ fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 	}
 	sz path_len = path_str.len;
 	if (path_start == path_len) return path_str;
-	char path_separator = path_env == WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
+	PathSeparator path_separator = path_env.separator;
 	sz len = path_start;
 	bool has_root = is_separator(path_str[path_start], path_env);
 	if (has_root)
@@ -554,6 +557,10 @@ macro bool is_reserved_path_char(char c, PathEnv path_env = DEFAULT_ENV)
 		? RESERVED_PATH_CHAR_WIN32[c]
 		: RESERVED_PATH_CHAR_POSIX[c];
 }
+
+
+// --- Non public
+
 fn bool? _mkdir(Path path, bool recursive = false, MkdirPermissions permissions = NORMAL) @private
 {
 	if (!path.len) return INVALID_PATH~;
@@ -587,7 +594,7 @@ macro _append_path(self, Allocator allocator, String[] parts, String extension, 
 		foreach (part : parts)
 		{
 			if (!part) continue;
-			if (dstr.len() && !is_separator(dstr[^1], path_env)) dstr.append(path_env == WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX);
+			if (dstr.len() && !is_separator(dstr[^1], path_env)) dstr.append(path_env.separator);
 			dstr.append(part);
 		}
 		if (extension)
