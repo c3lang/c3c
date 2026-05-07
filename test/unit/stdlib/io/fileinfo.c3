@@ -36,7 +36,7 @@ fn void test_native_get_modified_time() @if(env::LINUX || env::DARWIN || env::AN
 {
 	String filename = string::tformat("c3_test_file_%x", rand(0xFFFFFFF));
 	Path temp_dir = path::temp_directory(tmem).tappend(filename)!!;
-	String temp_file = temp_dir.str_view();
+	String temp_file = (String)temp_dir;
 	
 	file::save(temp_file, "test")!!;
 	defer (void)file::delete(temp_file);

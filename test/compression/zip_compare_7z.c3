@@ -60,7 +60,7 @@ fn int main(String[] args)
 
 fn int process_dir(String dir, bool recursive, String output_dir)
 {
-	PathList? files = path::ls(tmem, path::temp(dir)!!);
+	PathList? files = path::ls(tmem, path::tnew(dir)!!);
 	if (catch excuse = files)
 	{
 		io::printfn("Could not open directory: %s (Excuse: %s)", dir, excuse);
@@ -72,7 +72,7 @@ fn int process_dir(String dir, bool recursive, String output_dir)
 		String name = p.basename();
 		if (name == "." || name == "..") continue;
 
-		String zip_path = path::temp(dir)!!.tappend(name)!!.str_view();
+		String zip_path = path::tnew(dir)!!.tappend(name)!!.str_view();
 
 		if (file::is_dir(zip_path))
 		{
@@ -115,14 +115,14 @@ fn int verify_one(String zip_path, String output_dir)
 	Path extract_root;
 	if (output_dir)
 	{
-		extract_root = path::temp(output_dir)!!;
+		extract_root = path::tnew(output_dir)!!;
 	}
 	else
 	{
 		extract_root = path::temp_directory(tmem)!!;
 	}
 
-	String name = (String)path::temp(zip_path)!!.basename();
+	String name = (String)path::tnew(zip_path)!!.basename();
 
 	Path temp_c3 = extract_root.tappend(name.tconcat("_c3"))!!;
 	Path temp_7z = extract_root.tappend(name.tconcat("_7z"))!!;

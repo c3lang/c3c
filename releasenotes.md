@@ -94,7 +94,8 @@
 - `std::encoding::xml` added for XML parsing and serialization.
 - Fix `Path.append` separator not honoring the specified environment.
 - Add multi part and extension support to `Path.append`.
-
+- The `Path` API now is split into `PathPosix` and `PathWin`, `Path` is implicitly castable to `String` and loses the `str_view()` method. Use `path::tnew` instead of `path::temp` for a temporary path.
+ 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
 - Attributes `@allow_deprecated`, `@constinit`, `@noalias`, `@nostrip`, and `@optional` would erroneously accept parameters. #3098
