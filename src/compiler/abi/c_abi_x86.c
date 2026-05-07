@@ -165,7 +165,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, ParamInfo param)
 	// 2. Void is ignored
 	if (type_is_void(type)) return abi_arg_ignore();
 
-	// 3. In the case of a vector or regcall, a homogenous aggregate
+	// 3. In the case of a vector or regcall, a homogeneous aggregate
 	//    should be passed directly in a register.
 	Type *base = NULL;
 	unsigned elements = 0;

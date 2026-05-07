@@ -1961,7 +1961,7 @@ static inline bool sema_check_for_dead_code(SemaContext *context, Ast *statement
 	{
 		context->active_scope.allow_dead_code = true;
 		bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
-		if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.loc, "This code is preventing it from exectuting");
+		if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.loc, "This code is preventing it from executing");
 		return warn;
 	}
 	return true;

@@ -303,7 +303,7 @@ fn bool NativeThread.equals(thread, NativeThread other)
 
 <*
  @return "the return value of the thread"
- @return? thread::THREAD_NOT_FOUND : "If the thread was not running"
+ @return? thread::THREAD_NOT_FOUND : "If the thread was not found"
 *>
 fn int? NativeThread.join(thread) @maydiscard
 {

@@ -10,7 +10,7 @@ module std::sort;
 
  @param list : "The list to sort"
  @param cmp : "The comparison function"
- @param context : "The context to use with the comparion function as needed"
+ @param context : "The context to use with the comparison function as needed"
  @param buffer_allocator : "The allocator to use for allocating a buffer used by merge. Defaults to tmem."
 *>
 macro void mergesort(list, cmp = ..., context = ..., buffer_allocator = tmem) @builtin

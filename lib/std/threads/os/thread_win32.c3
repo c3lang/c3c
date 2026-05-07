@@ -316,7 +316,7 @@ fn bool timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout)
 fn void NativeConditionVariable.wait(&cond, NativeMutex* mtx) @inline
 {
 	bool res = timedwait(cond, mtx, win32::INFINITE) @inline;
-	assert(res, "Timed wait exited despite inifite time");
+	assert(res, "Timed wait exited despite infinite time");
 }
 
 <*
