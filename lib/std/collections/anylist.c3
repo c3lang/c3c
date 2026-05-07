@@ -8,7 +8,7 @@ alias AnyPredicate = InterfacePredicate {any};
 alias AnyTest = InterfaceTest {any};
 
 <*
- The AnyList contains a heterogenous set of types. Anything placed in the
+ The AnyList contains a heterogeneous set of types. Anything placed in the
  list will shallowly copied in order to be stored as an `any`. This means
  that the list will copy and free its elements.
 

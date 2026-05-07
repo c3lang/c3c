@@ -20,7 +20,7 @@ ABIArgInfo *win64_classify(Regs *regs, ParamInfo param, bool is_return, bool is_
 
 	Type *base = NULL;
 	unsigned elements = 0;
-	if (is_vector_call && type_is_homogenous_aggregate(type, &base, &elements))
+	if (is_vector_call && type_is_homogeneous_aggregate(type, &base, &elements))
 	{
 		// Enough registers AND return / builtin / vector
 		if (regs->float_regs >= elements &&
@@ -77,7 +77,7 @@ ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, ParamInfo param, ABIArgInfo *in
 	Type *base = NULL;
 	unsigned elements = 0;
 	Type *type = type_lowering(param.type);
-	if (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_SIMD_VECTOR && type_is_homogenous_aggregate(type, &base, &elements))
+	if (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_SIMD_VECTOR && type_is_homogeneous_aggregate(type, &base, &elements))
 	{
 		if (regs->float_regs >= elements)
 		{

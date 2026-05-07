@@ -451,7 +451,7 @@ bool decl_is_externally_visible(Decl *decl)
 
 
 /*
- * Is this declartion a global of some sort?
+ * Is this declaration a global of some sort?
  * In other words a static, thread local, global constant or a global
  */
 bool decl_is_global(Decl *ident)

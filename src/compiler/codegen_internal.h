@@ -12,7 +12,7 @@ typedef enum IntrospectIndex
 	INTROSPECT_INDEX_TOTAL,
 } IntrospectIndex;
 
-bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements);
+bool type_is_homogeneous_aggregate(Type *type, Type **base, unsigned *elements);
 static inline bool abi_type_is_type(AbiType type);
 
 static inline bool abi_type_is_valid(AbiType type);

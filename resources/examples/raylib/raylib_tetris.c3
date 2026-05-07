@@ -50,7 +50,7 @@ int piece_position_y = 0;
 RLColor fading_color;
 //int fallingSpeed;           // In frames
 
-bool begin_play = true;      // This var is only true at the begining of the game, used for the first matrix creations
+bool begin_play = true;      // This var is only true at the beginning of the game, used for the first matrix creations
 bool piece_active = false;
 bool detection = false;
 bool line_to_delete = false;
@@ -226,7 +226,7 @@ fn void update_game()
 			// Check if the piece has collided with another piece or with the boundings
 			resolve_falling_movement(&detection, &piece_active);
 
-			// Check if we fullfilled a line and if so, erase the line and pull down the the lines above
+			// Check if we fulfilled a line and if so, erase the line and pull down the the lines above
 			check_completion(&line_to_delete);
 
 			gravity_movement_counter = 0;
@@ -278,7 +278,7 @@ fn void draw_game()
 		SCREEN_WIDTH / 2 - (GRID_HORIZONTAL_SIZE * SQUARE_SIZE / 2) - 50,
 		SCREEN_HEIGHT / 2 - ((GRID_VERTICAL_SIZE - 1) * SQUARE_SIZE / 2) + SQUARE_SIZE * 2
 	};
-	offset.y -= 50;     // NOTE: Harcoded position!
+	offset.y -= 50;     // NOTE: Hardcoded position!
 
 	int controller = offset.x;
 

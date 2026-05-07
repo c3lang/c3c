@@ -516,7 +516,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	{
 		if (!is_structlike && type_is_inferred(flattened))
 		{
-			RETURN_SEMA_ERROR(initializer, "Inferring size when having non-top inferrence is not supported.");
+			RETURN_SEMA_ERROR(initializer, "Inferring size when having non-top inference is not supported.");
 		}
 		type = assigned;
 	}

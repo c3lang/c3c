@@ -22,7 +22,7 @@ fn ulong wyr3(char* in, sz len) @inline
 //   tables even faster. Therefore, a 16-byte input limit is imposed on all calls to the hash function.
 //
 <*
-@require input.len <= 16 : `wyhash2 is not useable for inputs over 16 bytes in length.`
+@require input.len <= 16 : `wyhash2 is not usable for inputs over 16 bytes in length.`
 *>
 fn ulong hash(char[] input, ulong seed = 0)
 {

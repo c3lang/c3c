@@ -105,7 +105,7 @@ static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param)
 	// Homogeneous Floating-point Aggregates (HFAs) need to be expanded.
 	Type *base = NULL;
 	unsigned members = 0;
-	if (type_is_homogenous_aggregate(type, &base, &members))
+	if (type_is_homogeneous_aggregate(type, &base, &members))
 	{
 		ASSERT(members < 128);
 		if (members > 1)
@@ -181,7 +181,7 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo param, bool variadic)
 
 	Type *base = NULL;
 	unsigned members = 0;
-	if (type_is_homogenous_aggregate(type, &base, &members) &&
+	if (type_is_homogeneous_aggregate(type, &base, &members) &&
 		!(compiler.platform.arch == ARCH_TYPE_AARCH64_32 && variadic))
 	{
 		return abi_arg_new_direct(param);

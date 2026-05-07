@@ -110,7 +110,7 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 		if (math::abs(1.0 - cd) < conv.epsilon) return front * (f - 1.0);
 	}
 
-	return double::nan; // Not convered.
+	return double::nan; // Not converged.
 }
 
 <*
@@ -287,7 +287,7 @@ fn double inverse_erf(double x)
 	double ans;
 	if (x <= 0.85)
 	{
-		double r = 0.180625 - 0.25 * x *x;
+		double r = 0.180625 - 0.25 * x * x;
 		double z1 = ((((((A7 * r + A6) * r + A5) * r + A4) * r + A3) * r + A2) * r + A1) * r + A0;
 		double z2 = ((((((B7 * r + B6) * r + B5) * r + B4) * r + B3) * r + B2) * r + B1) * r + B0;
 		ans = (x * z1) / z2;
