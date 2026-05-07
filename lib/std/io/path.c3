@@ -45,7 +45,7 @@ macro void? chdir(path)
 	$if $Typeof(path) == String:
 		@pool()
 		{
-			return os::native_chdir(temp(path));
+			return os::native_chdir(tnew(path));
 		};
 	$else
 		return os::native_chdir(path) @inline;

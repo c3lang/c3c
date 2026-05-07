@@ -582,7 +582,7 @@ function updateHidden(cb) { gTable.classList.toggle("show-hidden", cb.checked); 
 
 			long mod_raw = 0;
 			String date_str = "-";
-			Time? mod = file::last_modified(entry.str_view());
+			Time? mod = file::last_modified(entry);
 			if (try mod)
 			{
 				mod_raw = (long)mod;
