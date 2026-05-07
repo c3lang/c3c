@@ -28,17 +28,15 @@ struct BuddyHeapAllocator (Allocator, Printable)
 	MemoryFreeFn free_fn;
 }
 
-bitstruct BuddyBlockInner : sz @local
-{
-	// Embedding 'is_free' inside other state for efficient memory usage.
-	bool is_free : 0..0;
-	sz size : 1..(bitsizeof(sz) / 2 - 1);
-	sz prev_size : (bitsizeof(sz) / 2)..(bitsizeof(sz) - 1);
-}
-
 struct BuddyBlock @local
 {
-	inline BuddyBlockInner _inner_state;
+	bitstruct : sz
+	{
+		// Embedding 'is_free' inside other state for efficient memory usage.
+		bool is_free : 0..0;
+		sz size : 1..(bitsizeof(sz) - 1);
+	}
+	sz prev_size;
 	char[*] memory;
 }
 
