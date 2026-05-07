@@ -89,7 +89,7 @@ jobs:
             7z x EnVar-Plugin.zip -o"C:\Program Files (x86)\NSIS" -y
           fi
           export PATH="/c/Program Files (x86)/NSIS/Bin:/c/Program Files (x86)/NSIS:$PATH"
-          makensis /DINSTALLER_NAME="c3-windows-setup-${{ matrix.build_type }}.exe" resources/nsis/installer.nsi
+          MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-${{ matrix.build_type }}.exe" resources/nsis/installer.nsi
 
       - uses: actions/upload-artifact@v7
         with:
