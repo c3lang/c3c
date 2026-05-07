@@ -595,7 +595,7 @@ macro _append_path(self, Allocator allocator, String[] parts, String extension, 
 			if (extension[0] != '.') dstr.append('.');
 			dstr.append(extension);
 		}
-		return ($Typeof(self))normalize(dstr.str_view(), DEFAULT_ENV).copy(allocator);
+		return ($Typeof(self))normalize(dstr.str_view(), path_env).copy(allocator);
 	};
 
 }
