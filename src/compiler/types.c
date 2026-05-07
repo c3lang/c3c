@@ -1471,7 +1471,7 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 {
 	Decl *decl = decl_new(DECL_TYPE_ALIAS, name, 0);
 	decl->resolve_status = RESOLVE_DONE;
-	decl->type_alias_decl.type_info = type_info_new_base(canonical, 0);
+	decl->type_alias_decl.type_expr = expr_new_const_typeid(0, canonical);
 	decl->unit = compiler.context.core_unit;
 	decl->is_export = true;
 	*location = (Type) {

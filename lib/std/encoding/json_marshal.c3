@@ -120,7 +120,7 @@ fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 				$case String:
 					@pool() { stream.write(value.tescape(false))!; };
 				$default:
-					var $Inner = $typefrom(TypeElement::inner);
+					var $Inner = TypeElement::inner;
 					return serialize_value{$Inner}(stream, ($Inner)value);
 			$endswitch
 		$case ENUM:

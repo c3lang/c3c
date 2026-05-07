@@ -361,7 +361,6 @@ struct TypeInfo_
 	ResolveStatus resolve_status : 3;
 	TypeInfoKind kind : 6;
 	bool optional : 1;
-	bool in_def : 1;
 	bool is_simd : 1;
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
@@ -636,11 +635,10 @@ typedef struct
 typedef struct
 {
 	bool is_func : 1;
-	bool is_redef : 1;
 	union
 	{
 		Decl *decl;
-		TypeInfo *type_info;
+		Expr *type_expr;
 	};
 } TypeAliasDecl;
 

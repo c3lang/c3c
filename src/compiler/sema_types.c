@@ -416,7 +416,9 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 	if (decl->decl_kind != DECL_TYPE_ALIAS) return false;
 	if (decl->resolve_status == RESOLVE_DONE) return false;
 	if (decl->type_alias_decl.is_func) return false;
-	type_info = decl->type_alias_decl.type_info;
+	Expr *expr = decl->type_alias_decl.type_expr;
+	if (expr->expr_kind != EXPR_TYPEINFO) return false;
+	type_info = expr->type_expr;
 	goto RETRY;
 }
 
