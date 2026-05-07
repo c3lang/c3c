@@ -190,3 +190,8 @@ macro void*? @aligned_realloc_fn(context, #calloc_fn, #free_fn, void* old_pointe
 	$endif
 	return new_data;
 }
+
+<*
+ Noop free function used for heap allocator implementations (FreeListHeapAllocator, BSTHeapAllocator, BuddyHeapAllocator).
+*>
+fn void dummy_free_fn(void*) {}
