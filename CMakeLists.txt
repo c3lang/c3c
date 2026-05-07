@@ -804,6 +804,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
 endif()
 
 install(TARGETS c3c DESTINATION bin)
+install(CODE "file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/lib/c3/std\")")
 install(DIRECTORY lib/ DESTINATION lib/c3)
 
 # Man page install (OSX/Linux only)
