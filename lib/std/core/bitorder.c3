@@ -157,7 +157,7 @@ macro read(bytes, $Type)
 <*
  @require @is_arrayptr_or_slice_of_char(bytes) : "argument must be a pointer to an array or a slice of char"
  @require is_bitorder($Type) : "type must be a bitorder integer"
- @require $defined(*bytes) ||| $defined(bytes[:$Type::size]) : "Data is not sufficent to hold value"
+ @require $defined(*bytes) ||| $defined(bytes[:$Type::size]) : "Data is not sufficient to hold value"
 *>
 macro write(x, bytes, $Type)
 {

@@ -186,7 +186,7 @@ struct GrowableBitSet
 }
 
 <*
- @param initial_capacity : "The initial capcity of the underlying list"
+ @param initial_capacity : "The initial capacity of the underlying list"
  @param [&inout] allocator : "The allocator to use"
 
  @require initial_capacity > 0 : "The initial capacity must be at least 1"
@@ -198,7 +198,7 @@ fn GrowableBitSet* GrowableBitSet.init(&self, Allocator allocator, sz initial_ca
 }
 
 <*
- @param initial_capacity : "The initial capcity of the underlying list"
+ @param initial_capacity : "The initial capacity of the underlying list"
 
  @require initial_capacity > 0 : "The initial capacity must be at least 1"
 *>
