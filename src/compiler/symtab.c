@@ -108,6 +108,7 @@ void symtab_init(uint32_t capacity)
 
 	size_t size = capacity * sizeof(SymtabEntry*);
 	symtab.bucket = malloc(size);
+	if (!symtab.bucket) error_exit("Out of memory initializing symtab.");
 	// Touch all pages to improve perf(!)
 	memset(symtab.bucket, 0, size);
 

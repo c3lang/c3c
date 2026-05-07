@@ -465,6 +465,14 @@ endif()
 
 add_library(miniz STATIC dependencies/miniz/miniz.c)
 
+if (CMAKE_C_COMPILER_ID MATCHES "GNU")
+    set_source_files_properties(
+        dependencies/miniz/miniz.c
+        PROPERTIES
+        COMPILE_OPTIONS "-fno-analyzer"
+    )
+endif()
+
 add_executable(c3c
         src/build/builder.c
         src/build/build_options.c

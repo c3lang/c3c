@@ -867,7 +867,7 @@ char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string
 	if (!success)
 	{
 		if (ignore_failure) return "";
-		if (strlen(result))
+		if (result && strlen(result))
 		{
 			eprintf("+-- Command output --------------------+\n");
 			eprintf("%s\n", result);
@@ -897,6 +897,7 @@ bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_stri
 		free((char*)cmd);
 		cmd = scratch_buffer_to_string();
 		FILE *f = fopen("__c3temp.bin", "w");
+		if (!f) return false;
 		fputs(stdin_string, f);
 		fclose(f);
 	}

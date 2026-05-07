@@ -182,7 +182,7 @@ bool parse_stdin(void)
 			.dir_path = "",
 	};
 #define BUF_SIZE 65536
-	char buffer[BUF_SIZE];
+	char buffer[BUF_SIZE] = {0};
 	size_t capacity = BUF_SIZE;
 	size_t len = 0;
 	char *data = buffer;
@@ -197,6 +197,7 @@ bool parse_stdin(void)
 			if (buffer == data)
 			{
 				data = malloc(capacity);
+				if (!data) error_exit("Out of memory parsing stdin.");
 				memcpy(data, buffer, len);
 			}
 			else
@@ -207,7 +208,7 @@ bool parse_stdin(void)
 		}
 		data[len++] = (char)c;
 	}
-	buffer[len] = 0;
+	data[len] = 0;
 	char *stdin_data = MALLOC(len + 1);
 	memcpy(stdin_data, data, len + 1);
 	if (data != buffer) free(data);
