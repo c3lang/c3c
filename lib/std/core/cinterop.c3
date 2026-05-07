@@ -18,18 +18,18 @@ $assert C_SHORT_SIZE <= C_INT_SIZE;
 $assert C_INT_SIZE <= C_LONG_SIZE;
 $assert C_LONG_SIZE <= C_LONG_LONG_SIZE;
 
-alias CShort = $typefrom(signed_int_from_bitsize($$C_SHORT_SIZE));
-alias CUShort = $typefrom(unsigned_int_from_bitsize($$C_SHORT_SIZE));
-alias CInt = $typefrom(signed_int_from_bitsize($$C_INT_SIZE));
-alias CUInt = $typefrom(unsigned_int_from_bitsize($$C_INT_SIZE));
-alias CLong = $typefrom(signed_int_from_bitsize($$C_LONG_SIZE));
-alias CULong = $typefrom(unsigned_int_from_bitsize($$C_LONG_SIZE));
-alias CLongLong = $typefrom(signed_int_from_bitsize($$C_LONG_LONG_SIZE));
-alias CULongLong = $typefrom(unsigned_int_from_bitsize($$C_LONG_LONG_SIZE));
+alias CShort = signed_int_from_bitsize($$C_SHORT_SIZE);
+alias CUShort = unsigned_int_from_bitsize($$C_SHORT_SIZE);
+alias CInt = signed_int_from_bitsize($$C_INT_SIZE);
+alias CUInt = unsigned_int_from_bitsize($$C_INT_SIZE);
+alias CLong = signed_int_from_bitsize($$C_LONG_SIZE);
+alias CULong = unsigned_int_from_bitsize($$C_LONG_SIZE);
+alias CLongLong = signed_int_from_bitsize($$C_LONG_LONG_SIZE);
+alias CULongLong = unsigned_int_from_bitsize($$C_LONG_LONG_SIZE);
 alias CSChar = ichar;
 alias CUChar = char;
 
-alias CChar = $typefrom($$C_CHAR_IS_SIGNED ? ichar : char);
+alias CChar = $$C_CHAR_IS_SIGNED ??? ichar : char;
 
 enum CBool : char
 {

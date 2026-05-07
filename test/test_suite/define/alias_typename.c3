@@ -1,2 +1,6 @@
-alias ShouldNotBeUppercase = FOO; // #error: A constant may not have a type name
-alias ShouldNotBeUppercase2 = abc; // #error: An identifier may not be aliased
+typeid abc;
+const FOO = 1;
+const typeid BAR = int;
+alias IsFine = BAR;
+alias ShouldNotBeUppercase = FOO; // #error: An upper-case alias must always alias a type.
+alias ShouldNotBeUppercase2 = abc; // #error: A type alias requires a type or a constant typeid. This is a runtime value.

@@ -1183,7 +1183,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 				MACRO_COPY_DECL(copy->type_alias_decl.decl);
 				break;
 			}
-			MACRO_COPY_TYPE(copy->type_alias_decl.type_info);
+			MACRO_COPY_EXPR(copy->type_alias_decl.type_expr);
 			break;
 		case DECL_TYPEDEF:
 			copy_decl_type(copy);

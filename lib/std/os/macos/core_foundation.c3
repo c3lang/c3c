@@ -13,7 +13,7 @@ struct CFRange
 	CFIndex length;
 }
 
-alias CGFloat = $typefrom(env::ARCH_64_BIT ??? double : float);
+alias CGFloat = env::ARCH_64_BIT ??? double : float;
 
 struct CGPoint
 {

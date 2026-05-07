@@ -60,6 +60,7 @@
 - Added `jmpabs` x86 CPU feature.
 - Implicit unsigned <-> signed integer conversions removed.
 - Added C3 Compiler setup installer for Windows
+- `alias Foo = int::typeid` now works.
 
 ### Stdlib changes
 - Add `List.remove_unordered_at`.

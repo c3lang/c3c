@@ -2,7 +2,7 @@ module std::sort <Type, CmpFn, Context> @private;
 
 alias ElementType = $typeof(((Type){})[0]);
 const bool IS_SLICE = Type::kind == SLICE;
-alias ListType = $typefrom(IS_SLICE ??? Type : Type*);
+alias ListType = IS_SLICE ??? Type : Type*;
 macro ElementType list_get(ListType l, i) @if(!IS_SLICE) => (*l)[i];
 macro ElementType list_get(ListType l, i) @if(IS_SLICE) => l[i];
 macro ElementType* list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];

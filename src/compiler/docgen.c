@@ -832,7 +832,14 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 				}
 				break;
 			}
-			base = decl->type_alias_decl.type_info;
+			if (decl->type_alias_decl.type_expr->expr_kind != EXPR_TYPEINFO)
+			{
+				Expr *expr = decl->type_alias_decl.type_expr;
+				base = type_info_new(TYPE_INFO_TYPEFROM, expr->loc);
+				base->unresolved_type_expr = expr;
+				goto PRINT_BASE;
+			}
+			base = decl->type_alias_decl.type_expr->type_expr;
 			goto PRINT_BASE;
 		case DECL_ENUM:
 		case DECL_CONSTDEF:

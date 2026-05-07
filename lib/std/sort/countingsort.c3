@@ -52,7 +52,7 @@ const bool NO_KEY_FN @private = KeyFn::kind != FUNC;
 const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $defined($typefrom(KeyFn::params[0].type) x = (ElementType){});
 const bool LIST_HAS_REF @private = $defined(&(Type){}[0]);
 
-alias KeyFnReturnType @if(!NO_KEY_FN) = $typefrom(KeyFn::returns) ;
+alias KeyFnReturnType @if(!NO_KEY_FN) = KeyFn::returns ;
 alias KeyFnReturnType @if(NO_KEY_FN) = ElementType;
 alias CmpCallback @if(KEY_BY_VALUE && NO_KEY_FN) = fn int(ElementType, ElementType) ;
 alias CmpCallback @if(!KEY_BY_VALUE && NO_KEY_FN) = fn int(ElementType*, ElementType*);
@@ -60,7 +60,7 @@ alias CmpCallback @if(KEY_BY_VALUE && !NO_KEY_FN) = fn int(ElementType, ElementT
 alias CmpCallback @if(!KEY_BY_VALUE && !NO_KEY_FN) = fn int(ElementType*, ElementType*, KeyFn);
 
 const bool IS_SLICE = Type::kind == SLICE;
-alias ListType = $typefrom(IS_SLICE ??? Type : Type*);
+alias ListType = IS_SLICE ??? Type : Type*;
 macro list_get(ListType l, i) @if(!IS_SLICE) => (*l)[i];
 macro list_get(ListType l, i) @if(IS_SLICE) => l[i];
 macro list_get_ref(ListType l, i) @if(!IS_SLICE) => &(*l)[i];
