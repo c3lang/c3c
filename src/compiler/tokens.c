@@ -372,9 +372,9 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_CT_SWITCH:
 			return "$switch";
 		case TOKEN_CT_TYPEFROM:
-			return "$typefrom";
+			return "$Typefrom";
 		case TOKEN_CT_TYPEOF:
-			return "$typeof";
+			return "$Typeof";
 		case TOKEN_CT_STRINGIFY:
 			return "$stringify";
 		case TOKEN_CT_ECHO:

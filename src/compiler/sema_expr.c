@@ -11713,7 +11713,7 @@ static inline bool sema_expr_resolve_ct_eval(SemaContext *context, Expr *expr)
 	if (!result) return false;
 	if (result->expr_kind == EXPR_TYPEINFO)
 	{
-		RETURN_SEMA_ERROR(result, "Evaluation to a type requires the use of '$typefrom' rather than '$eval'.");
+		RETURN_SEMA_ERROR(result, "Evaluation to a type requires the use of '$Typefrom' rather than '$eval'.");
 	}
 	expr_replace(expr, result);
 	return true;

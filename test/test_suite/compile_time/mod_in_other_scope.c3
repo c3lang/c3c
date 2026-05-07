@@ -7,7 +7,7 @@ macro void @foo(#a)
 
 macro void @bar(#a)
 {
-	$typeof(#a) x;
+	$Typeof(#a) x;
 }
 fn int main()
 {

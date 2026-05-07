@@ -758,7 +758,7 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 		if (may_cast_explicit)
 		{
 			RETURN_CAST_ERROR(expr,
-			                  "Implicitly casting %s to the inner type %s is not permitted, but you may do an explicit cast by placing '($typefrom(%s.typeid))' before the expression.",
+			                  "Implicitly casting %s to the inner type %s is not permitted, but you may do an explicit cast by placing '($Typefrom(%s.typeid))' before the expression.",
 			                  type_quoted_error_string(type_no_optional(expr->type)),
 			                  type_quoted_error_string(to),
 			                  type_to_error_string(type_no_optional(to)));

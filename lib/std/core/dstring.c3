@@ -219,7 +219,7 @@ fn void DString.append_char_repeat(&self, char c, sz times)
 macro void DString.append_repeat(&self, c, sz times)
 {
 	if (times == 0) return;
-	$switch $typeof(c):
+	$switch $Typeof(c):
 		$case String:
 			self.append_string_repeat(c, times);
 		$case char:
@@ -429,7 +429,7 @@ fn void DString.delete(&self, sz start, sz len = 1)
 
 macro void DString.append(&self, value)
 {
-	var $Type = $typeof(value);
+	var $Type = $Typeof(value);
 	$switch $Type:
 		$case char:
 		$case ichar:
@@ -457,7 +457,7 @@ macro void DString.append(&self, value)
 *>
 macro void DString.append_inline(&self, value)
 {
-	var $Type = $typeof(value);
+	var $Type = $Typeof(value);
 	$switch $Type:
 		$case char:
 		$case ichar:
@@ -589,7 +589,7 @@ fn sz DString.insert_utf32_at(&self, sz index, Char32[] chars)
 
 macro void DString.insert_at(&self, sz index, value)
 {
-	var $Type = $typeof(value);
+	var $Type = $Typeof(value);
 	$switch $Type:
 		$case char:
 		$case ichar:

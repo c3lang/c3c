@@ -45,7 +45,7 @@ fn Path? tcwd() => cwd(tmem) @inline;
 *>
 macro void? chdir(path)
 {
-	$if $typeof(path) == String:
+	$if $Typeof(path) == String:
 		@pool()
 		{
 			return os::native_chdir(temp(path));
@@ -70,7 +70,7 @@ fn Path? public_share_directory(Allocator allocator) => os::native_user_director
 
 fn void? delete(Path path) => os::native_remove(path.str_view()) @inline;
 
-macro bool @is_pathlike(#path) @const => $typeof(#path) == String ||| $typeof(#path) == Path;
+macro bool @is_pathlike(#path) @const => $Typeof(#path) == String ||| $Typeof(#path) == Path;
 
 macro bool is_separator(char c, PathEnv path_env = DEFAULT_ENV)
 {
@@ -106,7 +106,7 @@ enum MkdirPermissions
 *>
 macro bool? mkdir(path, bool recursive = false, MkdirPermissions permissions = NORMAL)
 {
-	$if $typeof(path) == String:
+	$if $Typeof(path) == String:
 		@pool() { return _mkdir(temp(path), recursive, permissions); };
 	$else
 		return _mkdir(path, recursive, permissions);
@@ -124,7 +124,7 @@ macro bool? mkdir(path, bool recursive = false, MkdirPermissions permissions = N
 *>
 macro bool? rmdir(path)
 {
-	$if $typeof(path) == String:
+	$if $Typeof(path) == String:
 		@pool() { return _rmdir(temp(path)); };
 	$else
 		return _rmdir(path);

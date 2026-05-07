@@ -50,7 +50,7 @@ fn void _round(sz r, NumType[] m, char[16][] s, NumType[] v) <NumType> @local @i
 
 macro common_compress(instance, $rounds, $iv, $sigma, block) @local
 {
-	$typeof(instance.h[0])[16] m, v;
+	$Typeof(instance.h[0])[16] m, v;
 
 	((char*)&m)[:@sizeof(block)] = block[..];
 
@@ -65,7 +65,7 @@ macro common_compress(instance, $rounds, $iv, $sigma, block) @local
 	v[15] = $iv[7] ^ instance.f[1];
 
 	$for sz $i = 0; $i < $rounds; $i++:
-		_round{$typeof(instance.h[0])}($i, m[..], $sigma[..], v[..]);
+		_round{$Typeof(instance.h[0])}($i, m[..], $sigma[..], v[..]);
 	$endfor
 
 	$for sz $i = 0; $i < 8; $i++:
@@ -75,7 +75,7 @@ macro common_compress(instance, $rounds, $iv, $sigma, block) @local
 
 macro _add_ctr(instance, sz amount) @local
 {
-	var $Type = $typeof(instance.t[0]);
+	var $Type = $Typeof(instance.t[0]);
 	instance.t[0] += ($Type)amount;
 	instance.t[1] += ($Type)(instance.t[0] < ($Type)amount); // adds 1 on overflow of [0]
 }
@@ -141,7 +141,7 @@ macro common_final(instance, char[] into) @local
 {
 	_add_ctr(instance, instance.buflen);
 
-	var $max = $typeof(instance.h[0])::max;
+	var $max = $Typeof(instance.h[0])::max;
 	if (instance.last_node) instance.f[1] = $max;
 	instance.f[0] = $max;
 
@@ -209,7 +209,7 @@ struct Blake2bParam @packed @local
 }
 
 <*
- @require $defined(data[0]) &&& $typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
+ @require $defined(data[0]) &&& $Typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
 *>
 macro blake2b_hash($out_len, data, char[] key = {}, char[] salt = {})
 {
@@ -322,7 +322,7 @@ struct Blake2sParam @packed @local
 }
 
 <*
- @require $defined(data[0]) &&& $typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
+ @require $defined(data[0]) &&& $Typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
 *>
 macro blake2s_hash($out_len, data, char[] key = {}, char[] salt = {})
 {

@@ -13,9 +13,9 @@ macro void quicksort(list, cmp = ..., context = ...) @builtin
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if @kindof(list) == SLICE:
-		qsort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (sz)list.len - 1, used_cmp, used_ctx);
+		qsort{$Typeof(list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, 0, (sz)list.len - 1, used_cmp, used_ctx);
 	$else
-		qsort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (sz)lengthof(*list) - 1, used_cmp, used_ctx);
+		qsort{$Typeof(*list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, 0, (sz)lengthof(*list) - 1, used_cmp, used_ctx);
 	$endif
 }
 
@@ -34,9 +34,9 @@ macro quickselect(list, sz k, cmp = ..., context = ...) @builtin
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if @kindof(list) == SLICE:
-		return qselect{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (sz)list.len - 1, k, used_cmp, used_ctx);
+		return qselect{$Typeof(list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, 0, (sz)list.len - 1, k, used_cmp, used_ctx);
 	$else
-		return qselect{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, (sz)lengthof(*list) - 1, k, used_cmp, used_ctx);
+		return qselect{$Typeof(*list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, 0, (sz)lengthof(*list) - 1, k, used_cmp, used_ctx);
 	$endif
 }
 
@@ -119,9 +119,9 @@ fn ElementType? qselect(ListType list, sz low, sz high, sz k, CmpFn cmp, Context
 
 macro sz @partition(ListType list, sz l, sz h, CmpFn cmp, Context context)
 {
-	var $has_cmp = $typeof(cmp) != sort::TypeNotSet;
-	var $has_context = $typeof(context) != sort::TypeNotSet;
-	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn::params[0].type) v = list_get(list, 0));
+	var $has_cmp = $Typeof(cmp) != sort::TypeNotSet;
+	var $has_context = $Typeof(context) != sort::TypeNotSet;
+	var $cmp_by_value = $has_cmp &&& $defined($Typefrom(CmpFn::params[0].type) v = list_get(list, 0));
 
 	ElementType pivot = list_get(list, l);
 	while (l < h)

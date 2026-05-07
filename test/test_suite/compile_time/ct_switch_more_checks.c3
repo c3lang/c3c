@@ -4,7 +4,7 @@ import std::io;
 fn void foo()
 {
 	int a;
-	$switch $typeof(a):
+	$switch $Typeof(a):
 		$case int..float: // #error: $case ranges are only allowed for integers
 			io::printn("Hello");
 		$default:
@@ -15,7 +15,7 @@ fn void foo()
 fn void foo2()
 {
 	int a;
-	$switch $typeof(a):
+	$switch $Typeof(a):
 		$case true..false: // #error: $case ranges are only allowed
 			io::printn("Hello");
 		$default:

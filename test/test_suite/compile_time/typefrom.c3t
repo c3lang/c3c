@@ -6,7 +6,7 @@ module test;
 fn int main()
 {
 	var $foo = double::typeid;
-	$typefrom($foo) a = 123.0;
+	$Typefrom($foo) a = 123.0;
 	return (int)a;
 }
 

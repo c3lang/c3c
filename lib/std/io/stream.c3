@@ -231,7 +231,7 @@ const char[*] MAX_VARS @private = { [1] = 2, [2] = 3, [4] = 5, [8] = 10, [16] = 
 *>
 macro sz? read_varint(stream, x_ptr)
 {
-	return read_varint_generic{$typeof(stream), $typeof(x_ptr)::inner}(stream, x_ptr);
+	return read_varint_generic{$Typeof(stream), $Typeof(x_ptr)::inner}(stream, x_ptr);
 }
 
 fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @private
@@ -272,7 +272,7 @@ fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @p
 *>
 macro sz? write_varint(stream, x)
 {
-	return write_varint_generic{$typeof(stream), $typeof(x)}(stream, x);
+	return write_varint_generic{$Typeof(stream), $Typeof(x)}(stream, x);
 }
 
 fn sz? write_varint_generic(VarOutStream stream, Type x) <VarOutStream, Type> @private
@@ -614,7 +614,7 @@ macro void? skip(stream, sz bytes)
 {
 	if (!bytes) return;
 	$switch:
-		$case $typeof(stream) == InStream:
+		$case $Typeof(stream) == InStream:
 			if (!&stream.seek)
 			{
 				for (sz i = 0; i < bytes; i++)

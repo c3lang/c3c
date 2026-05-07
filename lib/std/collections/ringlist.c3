@@ -1,5 +1,5 @@
 <*
- @require types::is_int($typeof(CAPACITY)) && CAPACITY > 0 : "Capacity must be bigger than 0"
+ @require types::is_int($Typeof(CAPACITY)) && CAPACITY > 0 : "Capacity must be bigger than 0"
 *>
 module std::collections::ringbuffer <Type, CAPACITY>;
 import std::io, std::math;

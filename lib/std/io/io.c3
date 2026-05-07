@@ -61,7 +61,7 @@ faultdef
 *>
 macro String? readline(Allocator allocator, stream = io::stdin(), sz limit = 0)
 {
-	return readline_impl{$typeof(stream)}(allocator, stream, limit);
+	return readline_impl{$Typeof(stream)}(allocator, stream, limit);
 }
 
 <*
@@ -109,7 +109,7 @@ fn String? readline_impl(Allocator allocator, Stream stream, sz limit) <Stream> 
 *>
 macro sz? readline_to_stream(out_stream, in_stream = io::stdin(), sz limit = 0)
 {
-	return readline_to_stream_impl{$typeof(in_stream), $typeof(out_stream)}(out_stream, in_stream, limit);
+	return readline_to_stream_impl{$Typeof(in_stream), $Typeof(out_stream)}(out_stream, in_stream, limit);
 }
 
 fn sz? readline_to_stream_impl(OStream out_stream, IStream in_stream, sz limit) <IStream, OStream> @private
@@ -170,7 +170,7 @@ fn sz? readline_to_stream_impl(OStream out_stream, IStream in_stream, sz limit) 
 *>
 macro sz? fprint(out, x)
 {
-	var $Type = $typeof(x);
+	var $Type = $Typeof(x);
 	$switch $Type:
 		$case String: return out.write(x);
 		$case ZString: return out.write(x.str_view());
@@ -231,7 +231,7 @@ macro sz? fprintn(out, x = "")
 	sz len = fprint(out, x)!;
 	out.write_byte('\n')!;
 	$switch:
-		$case $typeof(out) == OutStream:
+		$case $Typeof(out) == OutStream:
 			if (&out.flush) out.flush()!;
 		$case $defined(out.flush):
 			out.flush()!;

@@ -10,11 +10,11 @@ int b;
 fn void main()
 {
     printf("%s\n", Foo::qname);
-    printf("%s\n", $typefrom("Foo")::qname);
+    printf("%s\n", $Typefrom("Foo")::qname);
     printf("%s\n", Foo::name);
-    printf("%s\n", $typefrom("mymodule::Foo")::name);
+    printf("%s\n", $Typefrom("mymodule::Foo")::name);
     printf("%s\n", Foo::cname);
-    printf("%s\n", $typefrom("Foo")::cname);
+    printf("%s\n", $Typefrom("Foo")::cname);
 
     printf("%s\n", $reflect(b).qname);
     printf("%s\n", $reflect($eval("b")).qname);

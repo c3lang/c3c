@@ -76,7 +76,7 @@ faultdef OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST, NO_INTERSECTION;
 macro deg_to_rad(degrees)
 {
 	var val = values::promote_int(degrees);
-	return val * ($typeof(val))(PI / 180);
+	return val * ($Typeof(val))(PI / 180);
 }
 
 <*
@@ -85,11 +85,11 @@ macro deg_to_rad(degrees)
 macro rad_to_deg(radians)
 {
 	var val = values::promote_int(radians);
-	return val * ($typeof(val))(180 / PI);
+	return val * ($Typeof(val))(180 / PI);
 }
 
 <*
- @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
+ @require types::is_numerical($Typeof(x)) : `The input must be a numerical value or numerical vector`
 *>
 macro abs(x) => $$abs(x);
 
@@ -104,7 +104,7 @@ macro @abs($x) => $x >= 0 ??? $x : -$x;
 *>
 macro bool is_approx(x, y, eps)
 {
-	return fn bool($typeof(x) a, $typeof(y) b, $typeof(eps) eps)
+	return fn bool($Typeof(x) a, $Typeof(y) b, $Typeof(eps) eps)
 	{
 		if (a == b) return true;
 		if (is_nan(a) || is_nan(b)) return false;
@@ -118,7 +118,7 @@ macro bool is_approx(x, y, eps)
 *>
 macro bool is_approx_rel(x, y, eps)
 {
-	return fn bool($typeof(x) a, $typeof(y) b, $typeof(eps) eps)
+	return fn bool($Typeof(x) a, $Typeof(y) b, $Typeof(eps) eps)
 	{
 		if (a == b) return true;
 		if (is_nan(a) || is_nan(b)) return false;
@@ -131,7 +131,7 @@ macro bool is_approx_rel(x, y, eps)
 *>
 macro sign(x)
 {
-	var $Type = $typeof(x);
+	var $Type = $Typeof(x);
 	$if $Type::kind == UNSIGNED_INT:
 		return ($Type)(x > 0);
 	$else
@@ -144,7 +144,7 @@ macro sign(x)
 *>
 macro erf(x)
 {
-	$if $typeof(x) == float:
+	$if $Typeof(x) == float:
 		return _erff(x);
 	$else
 		return _erf(x);
@@ -156,7 +156,7 @@ macro erf(x)
 *>
 macro tgamma(x)
 {
-	$if $typeof(x) == float:
+	$if $Typeof(x) == float:
 		return _tgammaf(x);
 	$else
 		return _tgamma(x);
@@ -168,7 +168,7 @@ macro tgamma(x)
 *>
 macro lgamma(x)
 {
-	$if $typeof(x) == float:
+	$if $Typeof(x) == float:
 		return _lgammaf(x);
 	$else
 		return _lgamma(x);
@@ -181,7 +181,7 @@ macro lgamma(x)
 *>
 macro atan2(x, y)
 {
-	$if $typeof(x) == float &&& $typeof(y) == float:
+	$if $Typeof(x) == float &&& $Typeof(y) == float:
 		return _atan2f(x, y);
 	$else
 		return _atan2(x, y);
@@ -196,7 +196,7 @@ macro atan2(x, y)
 *>
 macro void sincos_ref(x, sinp, cosp)
 {
-	$if $typeof(sinp) == float*:
+	$if $Typeof(sinp) == float*:
 		_sincosf(x, sinp, cosp);
 	$else
 		_sincos(x, sinp, cosp);
@@ -211,7 +211,7 @@ macro void sincos_ref(x, sinp, cosp)
 *>
 macro sincos(x)
 {
-	$if $typeof(x) == float:
+	$if $Typeof(x) == float:
 		float[<2>] v @noinit;
 		_sincosf(x, &v[0], &v[1]);
 	$else
@@ -226,7 +226,7 @@ macro sincos(x)
 *>
 macro atanh(x)
 {
-	$if $typeof(x) == float:
+	$if $Typeof(x) == float:
 		return _atanhf(x);
 	$else
 		return _atanh(x);
@@ -243,7 +243,7 @@ macro acos(x) => $$acos(values::promote_int(x));
 *>
 macro acosh(x)
 {
-	$if $typeof(x) == float:
+	$if $Typeof(x) == float:
 		return _acoshf(x);
 	$else
 		return _acosh(x);
@@ -260,7 +260,7 @@ macro asin(x) => $$asin(values::promote_int(x));
 *>
 macro asinh(x)
 {
-	$if $typeof(x) == float:
+	$if $Typeof(x) == float:
 		return _asinhf(x);
 	$else
 		return _asinh(x);
@@ -292,17 +292,17 @@ macro @ceil($input) @const => $$ceil($input);
  @param upper : "the upper bounds"
  @return "lower if x < lower, upper if x > upper, otherwise return x."
 
- @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
+ @require types::is_numerical($Typeof(x)) : `The input must be a numerical value or numerical vector`
  @require $defined(x = lower) : `The lower bound must be convertible to the value type.`
  @require $defined(x = upper) : `The upper bound must be convertible to the value type.`
 *>
-macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))upper));
+macro clamp(x, lower, upper) => $$max(($Typeof(x))lower, $$min(x, ($Typeof(x))upper));
 
 <*
  @require values::@is_promotable_to_floatlike(mag) : `The input must be a number value or float vector`
- @require $defined(($typeof(values::promote_int(mag)))mag) : `It's not possible to cast the sign to the type of the magnitude`
+ @require $defined(($Typeof(values::promote_int(mag)))mag) : `It's not possible to cast the sign to the type of the magnitude`
 *>
-macro copysign(mag, sgn) => $$copysign(values::promote_int_same(mag, sgn), ($typeof(values::promote_int_same(mag, sgn)))sgn);
+macro copysign(mag, sgn) => $$copysign(values::promote_int_same(mag, sgn), ($Typeof(values::promote_int_same(mag, sgn)))sgn);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number value or float vector`
@@ -355,7 +355,7 @@ macro exp10(x)
 		return $$exp10(values::promote_int(x));
 	$else
 		var val = values::promote_int(x);
-		return $$exp2(val * ($typeof(val))0x1.a934f0979a371p+1);
+		return $$exp2(val * ($Typeof(val))0x1.a934f0979a371p+1);
 	$endif
 }
 
@@ -413,7 +413,7 @@ macro @intlog2($x)
 		return 0;
 	$endif
 
-	$typeof($x) $z = 0;
+	$Typeof($x) $z = 0;
 	$for var $y = $x; $y > 0; $y >>= 1, ++$z: $endfor
 
 	return $z - 1;
@@ -425,7 +425,7 @@ macro @intlog2($x)
 macro log10(x) => $$log10(values::promote_int(x));
 
 <*
- @require types::is_numerical($typeof(x)) : `The input must be a floating point value or float vector`
+ @require types::is_numerical($Typeof(x)) : `The input must be a floating point value or float vector`
  @require @typematch(x, y) : `The input types must be equal`
 *>
 macro max(x, y, ...)
@@ -442,8 +442,8 @@ macro max(x, y, ...)
 }
 
 <*
- @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
- @require types::is_same($typeof(x), $typeof(y)) : `The input types must be equal`
+ @require types::is_numerical($Typeof(x)) : `The input must be a numerical value or numerical vector`
+ @require types::is_same($Typeof(x), $Typeof(y)) : `The input types must be equal`
 *>
 macro min(x, y, ...)
 {
@@ -473,12 +473,12 @@ macro nearbyint(x) => $$nearbyint(x);
 
 <*
  @require values::@is_promotable_to_floatlike(x) : `The input must be a number or a float vector`
- @require $defined($typeof(values::promote_int(x)) v = exp) || values::@is_int(exp) : `The input must be an integer, castable to the type of x`
+ @require $defined($Typeof(values::promote_int(x)) v = exp) || values::@is_int(exp) : `The input must be an integer, castable to the type of x`
 *>
 macro pow(x, exp)
 {
-	$if types::is_floatlike($typeof(exp)):
-		return $$pow(values::promote_int_same(x, exp), ($typeof(values::promote_int_same(x, exp)))exp);
+	$if types::is_floatlike($Typeof(exp)):
+		return $$pow(values::promote_int_same(x, exp), ($Typeof(values::promote_int_same(x, exp)))exp);
 	$else
 		return $$pow_int(values::promote_int(x), (int)exp);
 	$endif
@@ -489,7 +489,7 @@ macro pow(x, exp)
 *>
 macro frexp(x, int* e)
 {
-	$switch $typeof(x):
+	$switch $Typeof(x):
 	$case float:
 	$case float16:
 		return _frexpf((float)x, e);
@@ -503,7 +503,7 @@ macro frexp(x, int* e)
 *>
 macro int signbit(x)
 {
-	$switch $typeof(x):
+	$switch $Typeof(x):
 	$case float:
 	$case float16:
 		return (int)(bitcast((float)x, uint) >> 31);
@@ -528,7 +528,7 @@ macro round(x) => $$round(x);
 *>
 macro round_to_decimals(x, int decimal_places)
 {
-  var div = $$pow_int(($typeof(x))10, decimal_places);
+  var div = $$pow_int(($Typeof(x))10, decimal_places);
   return $$round(div * x) / div;
 }
 
@@ -582,7 +582,7 @@ macro tanh(x) => $$tanh(values::promote_int(x));
 *>
 macro bool is_finite(x)
 {
-	$switch $typeof(x):
+	$switch $Typeof(x):
 		$case float:
 		$case float16:
 			return bitcast((float)x, uint) & 0x7fffffff < 0x7f800000;
@@ -596,7 +596,7 @@ macro bool is_finite(x)
 *>
 macro bool is_nan(x)
 {
-	$switch $typeof(x):
+	$switch $Typeof(x):
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff > 0x7f800000;
@@ -610,7 +610,7 @@ macro bool is_nan(x)
 *>
 macro bool is_inf(x)
 {
-	$switch $typeof(x):
+	$switch $Typeof(x):
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff == 0x7f800000;
@@ -754,7 +754,7 @@ macro int128? int128.overflow_mul(int128 x, int128 y) => overflow_mul_helper(x, 
 <*
  @require values::@is_int(x) : `The input must be an integer`
 *>
-macro bool is_odd(x) => (bool)(x & ($typeof(x))1);
+macro bool is_odd(x) => (bool)(x & ($Typeof(x))1);
 
 <*
  @require values::@is_int(x) : `The input must be an integer`
@@ -792,7 +792,7 @@ macro bool int128.is_even(int128 x) => is_even(x);
 macro bool int128.is_odd(int128 x) => is_odd(x);
 
 <*
- @require types::is_underlying_int($typeof(x)) : `is_power_of_2 may only be used on integer types`
+ @require types::is_underlying_int($Typeof(x)) : `is_power_of_2 may only be used on integer types`
 *>
 macro bool is_power_of_2(x)
 {
@@ -801,7 +801,7 @@ macro bool is_power_of_2(x)
 
 <*
  Compile time version.
- @require types::is_underlying_int($typeof($x)) : `is_power_of_2 may only be used on integer types`
+ @require types::is_underlying_int($Typeof($x)) : `is_power_of_2 may only be used on integer types`
 *>
 macro bool @is_power_of_2($x)
 {
@@ -811,12 +811,12 @@ macro bool @is_power_of_2($x)
 <*
  Returns the next power of two that is greater than or equal to x.
 
- @require types::is_int($typeof(x)) : "Input must be an integer type"
+ @require types::is_int($Typeof(x)) : "Input must be an integer type"
  @require x >= 0 : "Input must be non-negative"
 *>
 macro next_power_of_2(x)
 {
-	var $Type = $typeof(x);
+	var $Type = $Typeof(x);
 	if (x <= 1) return ($Type)1;
 	if (x == 2) return ($Type)2;
 
@@ -838,7 +838,7 @@ macro next_power_of_2(x)
  Compile time version.
  Returns the next power of two that is greater than or equal to x.
 
- @require types::is_int($typeof($x)) : "Input must be an integer type"
+ @require types::is_int($Typeof($x)) : "Input must be an integer type"
  @require $x >= 0 : "Input must be non-negative"
 *>
 macro @next_power_of_2($x)
@@ -846,7 +846,7 @@ macro @next_power_of_2($x)
 	$if $x <= 1: return 1; $endif
 	$if $x == 2: return 2; $endif
 
-	$typeof($x) $v = $x - 1;
+	$Typeof($x) $v = $x - 1;
 
 	$v |= $v >> 1;
 	$v |= $v >> 2;
@@ -973,21 +973,21 @@ fn float _frexpf(float x, int* e)
 
 macro overflow_add_helper(x, y) @local
 {
-	$typeof(x) res @noinit;
+	$Typeof(x) res @noinit;
 	if ($$overflow_add(x, y, &res)) return OVERFLOW~;
 	return res;
 }
 
 macro overflow_sub_helper(x, y) @local
 {
-	$typeof(x) res @noinit;
+	$Typeof(x) res @noinit;
 	if ($$overflow_sub(x, y, &res)) return OVERFLOW~;
 	return res;
 }
 
 macro overflow_mul_helper(x, y) @local
 {
-	$typeof(x) res @noinit;
+	$Typeof(x) res @noinit;
 	if ($$overflow_mul(x, y, &res)) return OVERFLOW~;
 	return res;
 }
@@ -1020,7 +1020,7 @@ macro bool overflow_sub(a, b, out) => $$overflow_sub(a, b, out);
 macro overflow_mul(a, b, out) => $$overflow_mul(a, b, out);
 
 <*
- @require types::is_vector($Type) || ($Type::kind == ARRAY &&& types::is_numerical($typefrom($Type::inner)))
+ @require types::is_vector($Type) || ($Type::kind == ARRAY &&& types::is_numerical($Typefrom($Type::inner)))
 *>
 macro iota($Type)
 {
@@ -1047,7 +1047,7 @@ macro ulong ulong.muldiv(self, ulong mul, ulong div) => mul_div_helper(self, mul
 *>
 macro lcm(...)
 {
-	$typeof($vaarg[0]) result = $vaarg[0];
+	$Typeof($vaarg[0]) result = $vaarg[0];
 	$for var $i = 1; $i < $vaarg.len; $i++:
 		$if $defined(result.lcm):
 			result = result.lcm($vaarg[$i]);
@@ -1065,7 +1065,7 @@ macro lcm(...)
 *>
 macro gcd(...)
 {
-	$typeof($vaarg[0]) result = $vaarg[0];
+	$Typeof($vaarg[0]) result = $vaarg[0];
 	$for var $i = 1; $i < $vaarg.len; $i++:
 		$if $defined(result.gcd):
 			result = result.gcd($vaarg[$i]);
@@ -1079,15 +1079,15 @@ macro gcd(...)
 module std::math @private;
 
 <*
- @require types::is_int($typeof(a)) : `The input must be an integer`
- @require types::is_int($typeof(b)) : `The input must be an integer`
+ @require types::is_int($Typeof(a)) : `The input must be an integer`
+ @require types::is_int($Typeof(b)) : `The input must be an integer`
 *>
 macro _gcd(a, b)
 {
 	if (a == 0) return b;
 	if (b == 0) return a;
 
-	var $Type = $typeof(a);
+	var $Type = $Typeof(a);
 	$Type r, aa, ab;
 	aa = abs(a);
 	ab = abs(b);
@@ -1105,6 +1105,6 @@ macro lerp(x, y, amount) => x + (y - x) * amount;
 
 macro mul_div_helper(val, mul, div)
 {
-	var $Type = $typeof(val);
+	var $Type = $Typeof(val);
 	return ($Type)(($Type)mul * (val / ($Type)div) + ($Type)mul * (val % ($Type)div) / ($Type)div);
 }

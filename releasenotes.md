@@ -61,6 +61,7 @@
 - Implicit unsigned <-> signed integer conversions removed.
 - Added C3 Compiler setup installer for Windows
 - `alias Foo = int::typeid` now works.
+- `$typeof` => `$Typeof`, `$typefrom` => `$Typefrom`.
 
 ### Stdlib changes
 - Add `List.remove_unordered_at`.

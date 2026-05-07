@@ -6,11 +6,11 @@ alias Foo = fn void();
 
 macro @test(#foo)
 {
-	$switch $typeof(#foo):
+	$switch $Typeof(#foo):
 	$case Foo:
 	io::printn("Hello");
 	$default:
-	io::printn($typeof(#foo)::name);
+	io::printn($Typeof(#foo)::name);
 	$endswitch
 }
 fn void tester() {}

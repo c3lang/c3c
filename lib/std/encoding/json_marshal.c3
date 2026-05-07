@@ -24,7 +24,7 @@ macro bool may_serialize($Type) @const
 		$case ARRAY:
 		$case VECTOR:
 		$case SLICE:
-			return may_serialize($typeof(($Type){}[0]));
+			return may_serialize($Typeof(($Type){}[0]));
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
 		$case FLOAT:
@@ -44,7 +44,7 @@ macro bool may_serialize($Type) @const
  @param allocator: "The allocator to use for the result"
  @param value: "The struct value to marshal"
  @require @kindof(value) == STRUCT
- @require may_serialize($typeof(value)) : "Expected a serializable type"
+ @require may_serialize($Typeof(value)) : "Expected a serializable type"
  @return "The JSON string representation"
 *>
 macro String marshal(Allocator allocator, value) => @pool()
@@ -61,11 +61,11 @@ macro String marshal(Allocator allocator, value) => @pool()
  @param stream: "The steam to serialize to"
  @param value: "The struct value to marshal"
  @require @kindof(value) == STRUCT
- @require may_serialize($typeof(value)) : "Expected a serializable type"
+ @require may_serialize($Typeof(value)) : "Expected a serializable type"
 *>
 macro void? marshal_to(OutStream stream, value)
 {
-	return serialize{$typeof(value)}(stream, value);
+	return serialize{$Typeof(value)}(stream, value);
 }
 
 module std::encoding::json @private;
@@ -104,9 +104,9 @@ fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 			return serialize{TypeElement}(stream, value);
 		$case ARRAY:
 		$case VECTOR:
-			return serialize_slice{$typeof(value[0])}(stream, &value);
+			return serialize_slice{$Typeof(value[0])}(stream, &value);
 		$case SLICE:
-			return serialize_slice{$typeof(value[0])}(stream, value);
+			return serialize_slice{$Typeof(value[0])}(stream, value);
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
 			io::fprintf(stream, "%d", value)!;

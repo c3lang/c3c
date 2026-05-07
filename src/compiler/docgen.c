@@ -304,7 +304,7 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 			scratch_buffer_append(")");
 			break;
 		case TYPE_INFO_TYPEFROM:
-			scratch_buffer_append("$typefrom(");
+			scratch_buffer_append("$Typefrom(");
 			if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
 			scratch_buffer_append(")");
 			break;

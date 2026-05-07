@@ -1645,8 +1645,8 @@ typedef enum
 	TOKEN_CT_REFLECT,           // $reflect
 	TOKEN_CT_STRINGIFY,         // $stringify
 	TOKEN_CT_SWITCH,            // $switch
-	TOKEN_CT_TYPEFROM,          // $typefrom
-	TOKEN_CT_TYPEOF,            // $typeof
+	TOKEN_CT_TYPEFROM,          // $Typefrom
+	TOKEN_CT_TYPEOF,            // $Typeof
 	TOKEN_CT_VAARG,             // $vaarg,
 	TOKEN_LAST_KEYWORD = TOKEN_CT_VAARG,
 	TOKEN_DOCS_START,           // <*

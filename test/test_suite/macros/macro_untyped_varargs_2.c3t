@@ -16,9 +16,9 @@ macro foo2(...)
 {
 	$for var $i = 0; $i < $vaarg.len; $i++:
 		{
-			$typefrom($vaarg[$i]) x;
+			$Typefrom($vaarg[$i]) x;
 		}
-		io::printfn("%s", $typefrom($vaarg[$i])::name);
+		io::printfn("%s", $Typefrom($vaarg[$i])::name);
 	$endfor;
 }
 
@@ -33,7 +33,7 @@ macro foo3(...)
 
 macro @foo4(#arg1 = ..., #arg2 = ...)
 {
-	$typeof(#arg1) a = #arg1;
+	$Typeof(#arg1) a = #arg1;
 	#arg1 = #arg2;
 	#arg2 = a;
 }

@@ -11,10 +11,10 @@ fn void main2()
 
 fn void main3()
 {
-    $typefrom("int")::cname; // #error: 'cname' is not a valid property for 'int'
+    $Typefrom("int")::cname; // #error: 'cname' is not a valid property for 'int'
 }
 
 fn void main4()
 {
-    $typefrom("foo::int")::cname; // #error: Unexpected path in
+    $Typefrom("foo::int")::cname; // #error: Unexpected path in
 }
