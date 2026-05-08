@@ -339,7 +339,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 	Expr **args = call->arguments;
 	Expr **varargs = call->varargs;
 	size_t num_args = vec_size(args);
-	size_t num_varargs = vec_size(args);
+	size_t num_varargs = vec_size(varargs);
 	size_t total_num_args = num_args + num_varargs;
 
 	CValue *c_args = (CValue*)malloc(sizeof(CValue) * total_num_args);
