@@ -329,6 +329,56 @@ static VariableId c_emit_temp(GenContext *c, CValue *value, Type *type)
 	*value = (CValue) { .var = c_create_variable(c), .kind = CV_VALUE, .type = type_lowering(type) };
 	return c->id_gen;
 }
+
+static void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
+
+static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	ExprCall *call = &expr->call_expr;
+
+	Expr **args = call->arguments;
+	Expr **varargs = call->varargs;
+	size_t num_args = vec_size(args);
+	size_t num_varargs = vec_size(args);
+	size_t total_num_args = num_args + num_varargs;
+
+	CValue *c_args = (CValue*)malloc(sizeof(CValue) * total_num_args);
+
+	for(size_t i = 0; i < num_args; i++)
+	{
+		c_emit_expr(c, &c_args[i], args[i]);
+	}
+	for(size_t i = 0; i < num_varargs; i++)
+	{
+		c_emit_expr(c, &c_args[i + num_args], varargs[i]);
+	}
+
+	if(!call->is_func_ref)
+	{
+		Expr *function = exprptr(call->function);
+		c_emit_expr(c, value, function);
+	}
+	else
+	{
+		Decl *function_decl = declptr(call->func_ref);
+		if(!call->no_return)
+		{
+			Type *return_type = typeget(function_decl->type->function.signature->rtype);
+			PRINTF("%s ___var_%d = ", c_type_name(c, return_type), c_emit_temp(c, value, return_type));
+		}
+		PRINT(function_decl->name);
+	}
+
+	PRINT("(");
+	for(size_t i = 0; i < total_num_args; i++)
+	{
+		if(i != 0) PRINT(", ");
+		PRINTF("___var_%d", c_args[i].var);
+	}
+	PRINT(");\n");
+	free(c_args);
+}
+
 static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Type *t = type_lowering(expr->type);
@@ -434,7 +484,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_BUILTIN_ACCESS:
 			break;
 		case EXPR_CALL:
-			break;
+			c_emit_call_expr(c, value, expr);
+			return;
 		case EXPR_CATCH:
 			break;
 		case EXPR_COND:
