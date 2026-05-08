@@ -329,6 +329,9 @@ static VariableId c_emit_temp(GenContext *c, CValue *value, Type *type)
 	*value = (CValue) { .var = c_create_variable(c), .kind = CV_VALUE, .type = type_lowering(type) };
 	return c->id_gen;
 }
+
+static void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
+
 static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Type *t = type_lowering(expr->type);
@@ -399,6 +402,20 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 	}
 	PRINT("/* CONST EXPR */\n");
 }
+static void c_emit_ptr_access_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	CValue inner_value;
+	c_emit_expr(c, &inner_value, expr->inner_expr);
+	value->var = c_create_variable(c);
+	const char *type_name = c_type_name(c, expr->type);
+	PRINTF("%s ___var_%d = *(%s*)&___var_%d;\n", type_name, value->var, type_name, inner_value.var);
+}
+static void c_emit_identifier_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	Decl *decl = expr->ident_expr;
+	value->var = c_create_variable(c);
+	PRINTF("%s ___var_%d = ___var_%d;\n", c_type_name(c, decl->type), value->var, decl->backend_id);
+}
 static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	switch (expr->expr_kind)
@@ -407,7 +424,10 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_ENUM_FROM_ORD:
+			break;
 		case EXPR_PTR_ACCESS:
+			c_emit_ptr_access_expr(c, value, expr);
+			return;
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
@@ -465,7 +485,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_FORCE_UNWRAP:
 			break;
 		case EXPR_IDENTIFIER:
-			break;
+			c_emit_identifier_expr(c, value, expr);
+			return;
 		case EXPR_INITIALIZER_LIST:
 			break;
 		case EXPR_LAMBDA:
