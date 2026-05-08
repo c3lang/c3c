@@ -43,11 +43,11 @@ macro print_fields($Type)
 fn void hello(int a, double b, int[4] d, args...) {}
 fn void test(int x)
 {
-	print_args($typeof(&test));
-	print_args($typeof(&hell));
-	print_args($typeof(&hello));
-	io::printn($typeof(&test)::returns.name);
-	io::printn($typeof(&hell)::returns.name);
+	print_args($Typeof(&test));
+	print_args($Typeof(&hell));
+	print_args($Typeof(&hello));
+	io::printn($Typeof(&test)::returns.name);
+	io::printn($Typeof(&hell)::returns.name);
 	print_fields(Foo);
 	print_fields(Bar);
 	print_fields(Bark);

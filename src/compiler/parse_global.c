@@ -1963,7 +1963,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			{
 				bool is_cond;
 				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL)) return false;
-				member->is_cond = true;
+				member->is_cond = is_cond;
 				if (!parse_struct_body(c, member)) return decl_poison(parent);
 			}
 			member->docs = decl_from_contract_description(&contracts);
@@ -2009,7 +2009,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			advance(c);
 			bool is_cond;
 			if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL)) return false;
-			member->is_cond = true;
+			member->is_cond = is_cond;
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
 			{
@@ -2396,42 +2396,12 @@ static inline Decl *parse_alias_type(ParseContext *c)
 	// 2. Now parse the type which we know is here.
 
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_decl);
-	TypeInfo *type_info;
-	switch (expr->expr_kind)
-	{
-		case EXPR_TYPEINFO:
-			type_info = expr->type_expr;
-			break;
-		case EXPR_UNRESOLVED_IDENTIFIER:
-			if (expr->unresolved_ident_expr.is_const)
-			{
-				print_error_at(decl->loc, "A constant may not have a type name alias, it must have an all caps name.");
-			}
-			else
-			{
-				print_error_at(decl->loc, "An identifier may not be aliased with type name, it must start with a lower case letter.");
-			}
-			return poisoned_decl;
-		case EXPR_TERNARY:
-		case EXPR_CALL:
-			PRINT_ERROR_AT(expr, "Expected a type to alias here, if you are providing a constant typeid-expression, e.g. 'FOO > 32 ??? long : int', then you need to wrap the expression in '$typefrom'");
-			return poisoned_decl;
-		default:
-			PRINT_ERROR_AT(expr, "Expected the name of the type to alias here.");
-			return poisoned_decl;
-	}
-	ASSERT(!tok_is(c, TOKEN_LBRACE));
 
-	decl->type_alias_decl.type_info = type_info;
+	decl->type_alias_decl.type_expr = expr;
 	decl->type_alias_decl.is_func = false;
 	decl->decl_kind = DECL_TYPE_ALIAS;
 	decl_add_type(decl, TYPE_ALIAS);
 	decl->docs = decl_from_contract_description(&c->contracts);
-	if (type_info->kind == TYPE_INFO_IDENTIFIER && type_info->resolve_status == RESOLVE_NOT_DONE
-		&& type_info->unresolved.name == decl->name)
-	{
-		decl->type_alias_decl.is_redef = true;
-	}
 	if (!parse_attach_contracts(decl_template_get_generic(decl), &c->contracts)) return poisoned_decl;
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);

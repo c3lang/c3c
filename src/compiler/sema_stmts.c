@@ -509,11 +509,6 @@ static inline bool sema_check_return_matches_opt_returns(SemaContext *context, E
 		if (opt == fault) return true;
 	}
 	// No match
-	FOREACH(Decl *, opt, context->call_env.opt_returns)
-	{
-		assert(opt->decl_kind == DECL_FAULT);
-		if (opt == fault) return true;
-	}
 	RETURN_SEMA_ERROR(ret_expr, "This value does not match declared optional returns, it needs to be declared with the other optional returns.");
 }
 
@@ -1096,6 +1091,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 				context->active_scope.is_poisoned = true;
 				return false;
 			}
+			return true;
 		default:
 			break;
 	}
@@ -1961,7 +1957,7 @@ static inline bool sema_check_for_dead_code(SemaContext *context, Ast *statement
 	{
 		context->active_scope.allow_dead_code = true;
 		bool warn = SEMA_WARN(statement, dead_code, "This code will never execute.");
-		if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.loc, "This code is preventing it from exectuting");
+		if (compiler.build.warnings.dead_code > WARNING_SILENT) sema_note_prev_at(context->active_scope.end_jump.loc, "This code is preventing it from executing");
 		return warn;
 	}
 	return true;
@@ -3067,7 +3063,7 @@ bool sema_analyse_ct_expand_stmt(SemaContext *context, Ast *stmt)
 	if (!expr_is_const_string(string)) RETURN_SEMA_ERROR(string, "Expected a constant string to '$expand'.");
 	scratch_buffer_clear();
 	SourceLoc* loc = sourcelocptr(string->loc);
-	scratch_buffer_printf("%s.%d", context->unit->file->full_path, loc->row, loc->col);
+	scratch_buffer_printf("%s.%d.%d", context->unit->file->full_path, loc->row, loc->col);
 	File *file = source_file_text_load(scratch_buffer_to_string(), str_copy(string->const_expr.bytes.ptr, string->const_expr.bytes.len));
 	Ast *result = parse_include_file_stmts(file, context->unit);
 	stmt->ast_kind = AST_NOP_STMT;

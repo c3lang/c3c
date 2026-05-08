@@ -1,7 +1,7 @@
 
 macro test(foo)
 {
-	$typeof(foo) x = foo;
+	$Typeof(foo) x = foo;
 }
 
 fn void main()

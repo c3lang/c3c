@@ -354,13 +354,13 @@ fn void update_status(sz index, Path filename, TestOutput* output)
 	if (context.no_terminal)
 	{
 		output.has_output = true;
-		if (filename.str_view().len == 0) io::fprint((OutStream)&output.buffer, "Passed.")!!;
+		if (filename.len == 0) io::fprint((OutStream)&output.buffer, "Passed.")!!;
 		return;
 	}
 
 	Mutex.@in_lock(&context.print_mutex)
 	{
-		bool has_entry = filename.str_view().len != 0;
+		bool has_entry = filename.len != 0;
 		const String[8] PARTS = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
 		int progress_bar_width = 25;
 		sz total = context.total_test_files;
@@ -408,7 +408,7 @@ fn void? collect_files(Path file_path, List{Path}* files)
 	PathList entries = path::ls(tmem, file_path)!!;
 	foreach (f : entries)
 	{
-		Path current_file = file_path.append(tmem, f.str_view())!;
+		Path current_file = file_path.append(tmem, f)!;
 		switch
 		{
 			case path::is_dir(current_file): collect_files(current_file, files)!;
@@ -452,7 +452,7 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 		default:
 			io::fprintfn((OutStream)&output.buffer,
 				"FAILED - Unexpected file name '%s', expected a file with a '.c3' or '.c3t' suffix.",
-				file_path.str_view())!!;
+				file_path)!!;
 			return false;
 	}
 
@@ -527,7 +527,7 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 
 	List{String} cmdline;
 	cmdline.init(tmem, 32);
-	cmdline.push(context.compiler_path.str_view());
+	cmdline.push(context.compiler_path);
 
 	cmdline.push_all({"compile-only", "--test","--max-mem", "512"});
 
@@ -536,12 +536,12 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 		cmdline.push_all({"--stdlib", context.stdlib});
 	}
 
-	cmdline.push_all({"--llvm-out", test_dir.str_view() });
-	cmdline.push_all({"--build-dir", test_dir.tappend("build").str_view()!! });
+	cmdline.push_all({"--llvm-out", test_dir });
+	cmdline.push_all({"--build-dir", test_dir.tappend("build")!! });
 
 	foreach (file : settings.input_files)
 	{
-		cmdline.push(test_dir.tappend(file.name).str_view()!!);
+		cmdline.push(test_dir.tappend(file.name)!!);
 	}
 
 	if (!single)
@@ -610,13 +610,13 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 	foreach (file : settings.output_files)
 	{
 		Path expected_file = test_dir.tappend(file.name)!!;
-		if (!file::exists(expected_file.str_view()))
+		if (!file::exists(expected_file))
 		{
 			io::fprintfn((OutStream)&output.buffer, "FAILED - Did not compile file %s.", file.name)!!;
 			return false;
 		}
 
-		File file_ll = file::open(expected_file.str_view(), "rb")!!;
+		File file_ll = file::open(expected_file, "rb")!!;
 		defer (void)file_ll.close();
 
 		String? next = file.expected_lines.pop_first();
@@ -739,10 +739,7 @@ fn int main(String[] args)
 						"Stdlib directory '%s' cannot be found.",
 						context.stdlib);
 				}
-				context.stdlib = context.start_cwd
-					.tappend(context.stdlib)
-					.absolute(mem)!!
-					.str_view();
+				context.stdlib = context.start_cwd.tappend(context.stdlib).absolute(mem)!!;
 			case "--threads":
 				if (i == args.len - 1 || args[i + 1].starts_with("-"))
 				{
@@ -817,9 +814,9 @@ fn int main(String[] args)
 	PathList entries = path::ls(mem, context.test_root)!!;
 	foreach (f : entries)
 	{
-		if (f.str_view().starts_with("_c3test_"))
+		if (f.starts_with("_c3test_"))
 		{
-			path::rmtree(context.test_root.tappend(f.str_view())!!)!!;
+			path::rmtree(context.test_root.tappend(f)!!)!!;
 		}
 	}
 

@@ -12,7 +12,7 @@ macro cubic_hermite3(v1, tangent1, v2, tangent2, amount)
 		+ (amount_pow3 - amount_pow2) * tangent2;
 }
 
-fn TowardsType towards(TowardsType v, TowardsType target, $typefrom(TowardsType::inner) max_distance) <TowardsType>
+fn TowardsType towards(TowardsType v, TowardsType target, $Typefrom(TowardsType::inner) max_distance) <TowardsType>
 {
 	TowardsType delta = target - v;
 	var square @safeinfer = delta.length_sq();
@@ -22,7 +22,7 @@ fn TowardsType towards(TowardsType v, TowardsType target, $typefrom(TowardsType:
 	return v + delta * max_distance / math::sqrt(square);
 }
 
-fn ClampType clamp_length(ClampType v, $typefrom(ClampType::inner) min, $typefrom(ClampType::inner) max) <ClampType>
+fn ClampType clamp_length(ClampType v, $Typefrom(ClampType::inner) min, $Typefrom(ClampType::inner) max) <ClampType>
 {
 	var length @safeinfer = v.length_sq();
 	if (length > 0)
@@ -39,13 +39,13 @@ macro rotate(v, angle)
 {
 	var c = math::cos(angle);
 	var s = math::sin(angle);
-	return ($typeof(v)) { v[0] * c - v[1] * s, v[0] * s + v[1] * c };
+	return ($Typeof(v)) { v[0] * c - v[1] * s, v[0] * s + v[1] * c };
 }
 
 macro perpendicular3(v)
 {
 	var min = math::abs(v[0]);
-	$typeof(v) cardinal_axis = { 1, 0, 0 };
+	$Typeof(v) cardinal_axis = { 1, 0, 0 };
 
 	if (var vy = math::abs(v[1]), vy < min)
 	{
@@ -75,14 +75,14 @@ macro cross3(v1, v2)
 
 macro transform2(v, mat)
 {
-	return ($typeof(v)) {
+	return ($Typeof(v)) {
 		mat.m00 * v[0] + mat.m10 * v[1] + mat.m30 ,
 		mat.m01 * v[0] + mat.m11 * v[1] + mat.m31 };
 }
 
 macro transform3(v, mat)
 {
-	return ($typeof(v)){
+	return ($Typeof(v)){
 		mat.m00 * v[0] + mat.m10 * v[1] + mat.m20 * v[2] + mat.m30,
 		mat.m01 * v[0] + mat.m11 * v[1] + mat.m21 * v[2] + mat.m31,
 		mat.m02 * v[0] + mat.m12 * v[1] + mat.m22 * v[2] + mat.m32
@@ -112,7 +112,7 @@ macro rotate_axis_angle(v, axis, angle)
 	var w = axis * math::sin(angle);
 	var wv = w.cross(v);
 	var wwv = w.cross(wv);
-	wv *= math::cos(($typeof(v))angle) * 2;
+	wv *= math::cos(($Typeof(v))angle) * 2;
 	wwv *= 2;
 
 	return v + wv + wwv;
@@ -125,7 +125,7 @@ macro rejection3(v1, v2)
 
 macro project3(v, model, proj, viewport)
 {
-	var $Element = $typeof(v)::inner;
+	var $Element = $Typeof(v)::inner;
 	$Element[<4>] tmp = { ...v, 1 };
 	tmp = model * tmp;
 	tmp = proj * tmp;
@@ -138,7 +138,7 @@ macro unproject3(v, model, proj, viewport)
 {
 	var mat_view_inverse = (proj * model).inverse()!!;
 
-	var $Element = $typeof(v)::inner;
+	var $Element = $Typeof(v)::inner;
 
 	$Element[<4>] tmp = {
 		2 * (v.x - viewport.x) / viewport.z - 1,
@@ -162,7 +162,7 @@ macro barycentric3(p, a, b, c)
 	var denom = d00 * d11 - d01 * d01;
 	var y = (d11 * d20 - d01 * d21) / denom;
 	var z = (d00 * d21 - d01 * d20) / denom;
-	return ($typeof(p)){ 1 - y - z, y, z };
+	return ($Typeof(p)){ 1 - y - z, y, z };
 }
 
 macro refract3(v, n, r)
@@ -176,13 +176,13 @@ macro refract3(v, n, r)
 
 macro equals(v1, v2)
 {
-	var epsilon = ($typeof(v1)::inner.kind == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($typeof(v1))1);
+	var epsilon = ($Typeof(v1)::inner.kind == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($Typeof(v1))1);
 	return math::abs(v1 - v2).comp_le(epsilon).and();
 }
 
 macro not_equals(v1, v2)
 {
-	var epsilon = ($typeof(v1)::inner.kind == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($typeof(v1))1);
+	var epsilon = ($Typeof(v1)::inner.kind == FLOAT ??? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON) * math::max(math::abs(v1), math::abs(v2), ($Typeof(v1))1);
 
 	return math::abs(v1 - v2).comp_gt(epsilon).or();
 }

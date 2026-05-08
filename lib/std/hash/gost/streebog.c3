@@ -26,7 +26,7 @@ struct Streebog
 
 
 <*
- @require $defined(data[0]) &&& $typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
+ @require $defined(data[0]) &&& $Typeof(data[0]) == char : "Input data must be a char slice, char array, or string value."
 *>
 macro char[*] hash(StreebogLength $hash_size, data)
 {

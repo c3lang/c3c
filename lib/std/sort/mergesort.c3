@@ -10,7 +10,7 @@ module std::sort;
 
  @param list : "The list to sort"
  @param cmp : "The comparison function"
- @param context : "The context to use with the comparion function as needed"
+ @param context : "The context to use with the comparison function as needed"
  @param buffer_allocator : "The allocator to use for allocating a buffer used by merge. Defaults to tmem."
 *>
 macro void mergesort(list, cmp = ..., context = ..., buffer_allocator = tmem) @builtin
@@ -18,9 +18,9 @@ macro void mergesort(list, cmp = ..., context = ..., buffer_allocator = tmem) @b
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
 	$if @kindof(list) == SLICE:
-		msort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, buffer_allocator);
+		msort{$Typeof(list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, used_cmp, used_ctx, buffer_allocator);
 	$else
-		msort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, used_cmp, used_ctx, buffer_allocator);
+		msort{$Typeof(*list), $Typeof(used_cmp), $Typeof(used_ctx)}(list, used_cmp, used_ctx, buffer_allocator);
 	$endif
 }
 
@@ -55,9 +55,9 @@ fn void msort_split(ListType list, ElementType[] buff, sz left, sz right, CmpFn 
 *>
 fn void merge(ListType list, ElementType[] buff, sz left, sz mid, sz right, CmpFn cmp, Context context)
 {
-	var $has_cmp = $typeof(cmp) != TypeNotSet;
-	var $has_context = $typeof(context) != TypeNotSet;
-	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn::params[0].type) v = list_get(list, 0));
+	var $has_cmp = $Typeof(cmp) != TypeNotSet;
+	var $has_context = $Typeof(context) != TypeNotSet;
+	var $cmp_by_value = $has_cmp &&& $defined($Typefrom(CmpFn::params[0].type) v = list_get(list, 0));
 
 	sz i = left;
 	sz j = mid;

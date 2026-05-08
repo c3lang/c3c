@@ -4,7 +4,7 @@ extern fn int printf(char* message, ...);
 
 macro void @swap(&a, &b)
 {
-    $typeof(*a) temp = *a;
+    $Typeof(*a) temp = *a;
     *a = *b;
     *b = temp;
 }

@@ -7,8 +7,8 @@ alias Callback2 = fn int(int y);
 
 macro test2(y)
 {
-	var $Type = $typeof(y);
-	return fn $Type($typeof(y) x) { return x * x; };
+	var $Type = $Typeof(y);
+	return fn $Type($Typeof(y) x) { return x * x; };
 }
 
 macro test($Type)

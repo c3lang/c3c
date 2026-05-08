@@ -14,7 +14,7 @@ macro test2()
 
 fn void a()
 {
-	String s = $typeof(test())::qname; // #error: This expression lacks
+	String s = $Typeof(test())::qname; // #error: This expression lacks
 }
 
 fn void b()
@@ -29,7 +29,7 @@ fn void c()
 
 fn void? d()
 {
-	$typeof(test2()!) g; // #error: This expression lacks a concrete type
+	$Typeof(test2()!) g; // #error: This expression lacks a concrete type
 }
 
 macro e()

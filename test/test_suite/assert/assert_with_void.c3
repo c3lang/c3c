@@ -10,7 +10,7 @@ fn void main()
 
 macro deep_print(a)
 {
-    var $Type = $typeof(a);
+    var $Type = $Typeof(a);
     $switch $Type::kind:
         $case ARRAY:
         $case SLICE:
@@ -23,7 +23,7 @@ macro deep_print(a)
             io::print("]");
         $case STRUCT:
             io::print("{");
-            $foreach $i, $m : $typeof(a)::members:
+            $foreach $i, $m : $Typeof(a)::members:
                 if ($i > 0) io::print(", ");
                 deep_print($m.get(a));
             $endforeach

@@ -95,7 +95,7 @@ fn Path? get_config_dir(Allocator allocator) => @pool()
 			String home_dir = tget_var("HOME")!;
 			const DIR = ".config";
 		$endif
-		return path::temp(home_dir).append(allocator, DIR);
+		return path::tnew(home_dir).append(allocator, DIR);
 	$endif
 }
 

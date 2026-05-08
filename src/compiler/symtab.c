@@ -504,7 +504,7 @@ void stable_init(STable *table, uint32_t initial_size)
 	ASSERT(initial_size && "Size must be larger than 0");
 	assert (is_power_of_two(initial_size) && "Must be a power of two");
 
-	SEntry *entries = CALLOC(initial_size * sizeof(Entry));
+	SEntry *entries = CALLOC(initial_size * sizeof(SEntry));
 	table->count = 0;
 	table->capacity = initial_size;
 	table->max_load = initial_size * TABLE_MAX_LOAD;
@@ -513,7 +513,7 @@ void stable_init(STable *table, uint32_t initial_size)
 
 void stable_clear(STable *table)
 {
-	memset(table->entries, 0, table->capacity * sizeof(Entry));
+	memset(table->entries, 0, table->capacity * sizeof(SEntry));
 	table->count = 0;
 }
 

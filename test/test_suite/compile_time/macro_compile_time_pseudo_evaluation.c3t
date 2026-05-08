@@ -7,7 +7,7 @@ macro foo(int a)
 	return a;
 }
 
-$typeof(baz(2)) y;
+$Typeof(baz(2)) y;
 const ABC = @sizeof(baz(2));
 
 macro baz(int x) => foo(x);

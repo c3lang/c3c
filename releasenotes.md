@@ -60,6 +60,12 @@
 - Added `jmpabs` x86 CPU feature.
 - Implicit unsigned <-> signed integer conversions removed.
 - Added C3 Compiler setup installer for Windows
+- `alias Foo = int::typeid` now works.
+- `$typeof` => `$Typeof`, `$typefrom` => `$Typefrom`.
+- Bitstruct with backing char[n] would occasionally be incorrectly stored.
+- fmuladd lowering crashes on `a + -(b * c)` with fastmath.
+- Constant folding `-30 % -7` would incorrectly yield "2".
+- Parsing << in asm would not be correctly handled.
 
 ### Stdlib changes
 - Add `List.remove_unordered_at`.
@@ -95,7 +101,8 @@
 - `std::encoding::xml` added for XML parsing and serialization.
 - Fix `Path.append` separator not honoring the specified environment.
 - Add multi part and extension support to `Path.append`.
-
+- The `Path` API now is split into `PathPosix` and `PathWin`, `Path` is implicitly castable to `String` and loses the `str_view()` method. Use `path::tnew` instead of `path::temp` for a temporary path.
+ 
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
 - Attributes `@allow_deprecated`, `@constinit`, `@noalias`, `@nostrip`, and `@optional` would erroneously accept parameters. #3098
@@ -471,7 +478,7 @@
 - Return of Thread/Mutex/CondVar `destroy()` is now "@maydiscard" and should be ignored. It will return void in 0.8.0.
 - Return of Mutex `unlock()` and `lock()` is now "@maydiscard" and should be ignored. They will return void in 0.8.0.
 - Return of ConditionVariable `signal()` `broadcast()` and `wait()` are now "@maydiscard". They will return void in 0.8.0.
-- Return of Thread `detatch()` is now "@maydiscard". It will return void in 0.8.0.
+- Return of Thread `detach()` is now "@maydiscard". It will return void in 0.8.0.
 - Buffered/UnbufferedChannel, and both ThreadPools have `@maydiscard` on a set of functions. They will return void in 0.8.0.
 - Pthread bindings correctly return Errno instead of CInt.
 - Return of Thread `join()` is now "@maydiscard".
@@ -591,7 +598,7 @@
 - Add ??? and +++= to list-precedence.
 - Fix issues with linking when using symbol aliases. #2519
 - Splatting optional compile-time macro parameter from inside lambda expression does not work #2532.
-- Compiler segfault when getting a nonexistant member from an unnamed struct #2533.
+- Compiler segfault when getting a nonexistent member from an unnamed struct #2533.
 - Correctly mention aliased type when method is not implemented #2534.
 - Regression: Not printing backtrace when tests fail for MacOS #2536.
 - Name property would be used even under `c3c test` #2587.
@@ -1415,7 +1422,7 @@
 - Fix bug where `a > 0 ? f() : g()` could cause a compiler crash if both returned `void!`.
 - `@builtin` was not respected for generic modules #1617.
 - Fix issue writing a single byte in the WriteBuffer
-- A distinct inline pointer type can now participate in pointer arithmetics.
+- A distinct inline pointer type can now participate in pointer arithmetic.
 - Support &a[0] returning the distinct type when applying it to a distinct of a pointer.
 - Fix error when calling `HashMap.remove` on uninitialized `HashMap`.
 - Fix issue with resolved try-unwrap in defer.
@@ -1517,7 +1524,7 @@
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
 - Add read/write to stream with big endian ints.
-- Move accidently hidden "wrap_bytes".
+- Move accidentally hidden "wrap_bytes".
 - Added CBool #1530.
 - Added encoding/base32 module.
 

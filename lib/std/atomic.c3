@@ -99,7 +99,7 @@ import std::math;
 
 macro bool @is_native_atomic_value(#value) @private
 {
-	return is_native_atomic_type($typeof(#value));
+	return is_native_atomic_type($Typeof(#value));
 }
 
 macro bool is_native_atomic_type($Type)
@@ -139,7 +139,7 @@ macro bool is_native_atomic_type($Type)
 macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
-		$alignment = $typeof(*ptr)::size;
+		$alignment = $Typeof(*ptr)::size;
 	$endif
 	return $$atomic_fetch_add(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
@@ -159,7 +159,7 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
-		$alignment = $typeof(*ptr)::size;
+		$alignment = $Typeof(*ptr)::size;
 	$endif
 	return $$atomic_fetch_sub(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
@@ -182,12 +182,12 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	
-	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
+	var $StorageType = types::lower_to_atomic_compatible_type($Typeof(*ptr));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
 
-	$typeof(*ptr) old_value;
-	$typeof(*ptr) new_value;
+	$Typeof(*ptr) old_value;
+	$Typeof(*ptr) new_value;
 
 	$StorageType storage_old_value;
 	$StorageType storage_new_value;
@@ -195,7 +195,7 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	do
 	{
 		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
-		old_value = bitcast(storage_old_value, $typeof(*ptr));
+		old_value = bitcast(storage_old_value, $Typeof(*ptr));
 		new_value = old_value * y;
 		storage_new_value = bitcast(new_value, $StorageType);
 	}
@@ -222,12 +222,12 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	
-	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
+	var $StorageType = types::lower_to_atomic_compatible_type($Typeof(*ptr));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
 
-	$typeof(*ptr) old_value;
-	$typeof(*ptr) new_value;
+	$Typeof(*ptr) old_value;
+	$Typeof(*ptr) new_value;
 
 	$StorageType storage_old_value;
 	$StorageType storage_new_value;
@@ -235,7 +235,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	do
 	{
 		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
-		old_value = bitcast(storage_old_value, $typeof(*ptr));
+		old_value = bitcast(storage_old_value, $Typeof(*ptr));
 		new_value = old_value / y;
 		storage_new_value = bitcast(new_value, $StorageType);
 	}
@@ -303,8 +303,8 @@ macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
- @require types::is_int($typeof(*ptr)) : "Only integer pointers may be used."
- @require types::is_int($typeof(y)) : "The value for shift right must be an integer"
+ @require types::is_int($Typeof(*ptr)) : "Only integer pointers may be used."
+ @require types::is_int($Typeof(y)) : "The value for shift right must be an integer"
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
@@ -314,12 +314,12 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	
-	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
+	var $StorageType = types::lower_to_atomic_compatible_type($Typeof(*ptr));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
 
-	$typeof(*ptr) old_value;
-	$typeof(*ptr) new_value;
+	$Typeof(*ptr) old_value;
+	$Typeof(*ptr) new_value;
 
 	$StorageType storage_old_value;
 	$StorageType storage_new_value;
@@ -328,7 +328,7 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	do
 	{
 		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
-		old_value = bitcast(storage_old_value, $typeof(*ptr));
+		old_value = bitcast(storage_old_value, $Typeof(*ptr));
 		new_value = storage_old_value >> storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
 	}
@@ -345,8 +345,8 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
- @require types::is_int($typeof(*ptr)) : "Only integer pointers may be used."
- @require types::is_int($typeof(y)) : "The value for shift left must be an integer"
+ @require types::is_int($Typeof(*ptr)) : "Only integer pointers may be used."
+ @require types::is_int($Typeof(y)) : "The value for shift left must be an integer"
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
@@ -356,12 +356,12 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	    $load_ordering = SEQ_CONSISTENT;
 	$endif
 	
-	var $StorageType = types::lower_to_atomic_compatible_type($typeof(*ptr));
+	var $StorageType = types::lower_to_atomic_compatible_type($Typeof(*ptr));
 
 	$StorageType* storage_ptr = ($StorageType*)ptr;
 
-	$typeof(*ptr) old_value;
-	$typeof(*ptr) new_value;
+	$Typeof(*ptr) old_value;
+	$Typeof(*ptr) new_value;
 
 	$StorageType storage_old_value;
 	$StorageType storage_new_value;
@@ -370,7 +370,7 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	do
 	{
 		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
-		old_value = bitcast(storage_old_value, $typeof(*ptr));
+		old_value = bitcast(storage_old_value, $Typeof(*ptr));
 		new_value = storage_old_value << storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
 	}
@@ -386,14 +386,14 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
- @require types::flat_kind($typeof(*ptr)) == BOOL : "Only bool pointers may be used."
+ @require types::flat_kind($Typeof(*ptr)) == BOOL : "Only bool pointers may be used."
 
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	$typeof(*ptr) old_value;
-	$typeof(*ptr) new_value = true;
+	$Typeof(*ptr) old_value;
+	$Typeof(*ptr) new_value = true;
 	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
 	    $load_ordering = SEQ_CONSISTENT;
@@ -414,13 +414,13 @@ macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
- @require types::flat_kind($typeof(*ptr)) == BOOL : "Only bool pointers may be used."
+ @require types::flat_kind($Typeof(*ptr)) == BOOL : "Only bool pointers may be used."
  @require $ordering != NOT_ATOMIC && $ordering != UNORDERED : "Acquire ordering is not valid."
 *>
 macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	$typeof(*ptr) old_value;
-	$typeof(*ptr) new_value = false;
+	$Typeof(*ptr) old_value;
+	$Typeof(*ptr) new_value = false;
 	var $load_ordering = $ordering;
 	$if $ordering == RELEASE || $ordering == ACQUIRE_RELEASE:
 	    $load_ordering = SEQ_CONSISTENT;
@@ -448,7 +448,7 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
-		$alignment = $typeof(*ptr)::size;
+		$alignment = $Typeof(*ptr)::size;
 	$endif
 	return $$atomic_fetch_max(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }
@@ -467,7 +467,7 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, sz $alignment = 0)
 {
 	$if $alignment == 0:
-		$alignment = $typeof(*ptr)::size;
+		$alignment = $Typeof(*ptr)::size;
 	$endif
 	return $$atomic_fetch_min(ptr, y, $volatile, $ordering.ordinal, $alignment);
 }

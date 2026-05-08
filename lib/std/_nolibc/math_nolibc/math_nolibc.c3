@@ -245,13 +245,13 @@ macro double __math_oflow(ulong sign) => __math_xflow(sign, 0x1p-767);
 
 macro __math_xflow(sign, v)
 {
-	$typeof(v) temp @noinit;
+	$Typeof(v) temp @noinit;
 	@volatile_store(temp, (sign ? -v : v) * v);
 	return temp;
 }
 
 macro force_eval_add(x, v)
 {
-	$typeof(x) temp @noinit;
+	$Typeof(x) temp @noinit;
 	@volatile_store(temp, x + v);
 }

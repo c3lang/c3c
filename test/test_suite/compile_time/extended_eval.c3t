@@ -8,9 +8,9 @@ fn void main()
 {
 	int $foo = 1;
 	$eval("$foo") = 2;
-	$typefrom("int") x;
+	$Typefrom("int") x;
 	var $Type = double;
-	$typefrom("$Type") y;
+	$Typefrom("$Type") y;
 	$eval("@abc")(x);
 	x = 0;
 	$eval("test::@abc")(x);

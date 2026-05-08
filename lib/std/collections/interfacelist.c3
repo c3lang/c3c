@@ -11,7 +11,7 @@ alias InterfacePredicate = fn bool(Type value);
 alias InterfaceTest = fn bool(Type type, Type context);
 
 <*
- The InterfaceList contains a heterogenous set of types implementing an interface. anything placed in the
+ The InterfaceList contains a heterogeneous set of types implementing an interface. anything placed in the
  list will shallowly copied in order to be stored as the interface. This means
  that the list will copy and free its elements.
 

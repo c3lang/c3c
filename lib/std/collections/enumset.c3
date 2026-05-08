@@ -9,7 +9,7 @@ module std::collections::enumset <Enum>;
 import std::io;
 
 const ENUM_COUNT @private = Enum::values.len;
-alias EnumSetType @private = $typefrom(type_for_enum_elements(ENUM_COUNT));
+alias EnumSetType @private = type_for_enum_elements(ENUM_COUNT);
 
 const IS_CHAR_ARRAY = ENUM_COUNT > 128;
 typedef EnumSet (Printable) = EnumSetType;

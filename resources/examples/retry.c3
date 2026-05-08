@@ -12,7 +12,7 @@ fn int? eventually_succeed()
 
 macro @retry(#function, int retries = 3)
 {
-	var $Type = $typeof(#function);
+	var $Type = $Typeof(#function);
     fault e;
     do
     {

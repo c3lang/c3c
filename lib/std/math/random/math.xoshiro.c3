@@ -20,10 +20,10 @@ enum XorshiftType @private
 
 macro void @xorshift_seed_from_input(#xorshift_instance, sz $bits, seed)
 {
-	$switch $typeof(seed):
+	$switch $Typeof(seed):
 		$case char[]:
 			if (!seed.len) return #xorshift_instance.set_seed_long(0);
-			#xorshift_instance.state = random::make_seed($typeof(#xorshift_instance.state), seed);
+			#xorshift_instance.state = random::make_seed($Typeof(#xorshift_instance.state), seed);
 		$default:
 			$switch:
 				$case $bits == 64:
@@ -64,7 +64,7 @@ alias Xoroshiro1024pp = Xoroshiro{1024, XorshiftType.PLUS_PLUS};
 // =================================================================
 <*
  @require @in(BIT_SIZE, 128, 256, 512) : "You must use a supported state size for Xoshiro permutations."
- @require $typeof(OPERATION) == XorshiftType && @in(OPERATION, PLUS, PLUS_PLUS, STAR_STAR) : "You must use a supported operation type for Xoshiro permutations."
+ @require $Typeof(OPERATION) == XorshiftType && @in(OPERATION, PLUS, PLUS_PLUS, STAR_STAR) : "You must use a supported operation type for Xoshiro permutations."
 *>
 module std::math::random::xoshiro <BIT_SIZE, OPERATION> @private;
 
@@ -101,7 +101,7 @@ fn uint Xoshiro.next(&self) @if (BIT_SIZE == 128) => xoshiro(self);
 
 macro xoshiro(Xoshiro* self) @local
 {
-	$typeof(self.state[0]) result;
+	$Typeof(self.state[0]) result;
 	$if OPERATION == STAR_STAR:   // same for all types of xoshiro
 		result = (self.state[1] * 5u).rotl(7) * 9u;
 	$else
@@ -151,7 +151,7 @@ macro xoshiro(Xoshiro* self) @local
 // =================================================================
 <*
  @require @in(BIT_SIZE, 64, 128, 1024) : "You must use a supported state size for Xoroshiro permutations."
- @require $typeof(OPERATION) == XorshiftType && @in(OPERATION, ...XorshiftType::values) : "OPERATION must be a value of the XorshiftType enum."
+ @require $Typeof(OPERATION) == XorshiftType && @in(OPERATION, ...XorshiftType::values) : "OPERATION must be a value of the XorshiftType enum."
 *>
 module std::math::random::xoroshiro <BIT_SIZE, OPERATION> @private;
 

@@ -26,7 +26,7 @@ macro foo2(...)
 
 macro foo3(...)
 {
-	$typefrom($vaarg[0]) a; // #error: Expected a constant string or typeid value
+	$Typefrom($vaarg[0]) a; // #error: Expected a constant string or typeid value
 }
 fn void main()
 {

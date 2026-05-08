@@ -361,7 +361,6 @@ struct TypeInfo_
 	ResolveStatus resolve_status : 3;
 	TypeInfoKind kind : 6;
 	bool optional : 1;
-	bool in_def : 1;
 	bool is_simd : 1;
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
@@ -636,11 +635,10 @@ typedef struct
 typedef struct
 {
 	bool is_func : 1;
-	bool is_redef : 1;
 	union
 	{
 		Decl *decl;
-		TypeInfo *type_info;
+		Expr *type_expr;
 	};
 } TypeAliasDecl;
 
@@ -2313,8 +2311,6 @@ Real i128_to_float_signed(Int128 op);
 bool i128_is_zero(Int128 op);
 uint32_t i128_clz(const Int128 *op);
 uint32_t i128_ctz(const Int128 *op);
-UNUSED int i128_lsb(const Int128 *op);
-UNUSED int i128_msb(const Int128 *op);
 Int128 i128_from_signed(int64_t i);
 UNUSED Int128 i128_from_unsigned(uint64_t i);
 UNUSED bool i128_get_bit(const Int128 *op, int bit);

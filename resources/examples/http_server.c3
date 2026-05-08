@@ -56,7 +56,7 @@ fn int main(String[] args)
 	}
 
 	Path cwd = path::tcwd()!!;
-	io::printfn("Serving %s on http://0.0.0.0:%d", cwd.str_view(), port);
+	io::printfn("Serving %s on http://0.0.0.0:%d", cwd, port);
 
 	pool::ThreadPool{THREAD_COUNT} worker_pool;
 	if (catch err = worker_pool.init())
@@ -166,7 +166,7 @@ fn void? handle(TcpSocket conn)
 	bool is_dir = false;
 	@pool()
 	{
-		Path dir_check_path = path::temp(rel)!!;
+		Path dir_check_path = path::tnew(rel)!!;
 		is_dir = path::is_dir(dir_check_path);
 	};
 
@@ -452,7 +452,7 @@ fn void? send_dir_listing(TcpSocket* sock, String rel_path, String raw_path, boo
 {
 	@pool()
 	{
-		Path dir_path = path::temp(rel_path)!!;
+		Path dir_path = path::tnew(rel_path)!!;
 		PathList? files = path::ls(tmem, dir_path);
 		if (catch files)
 		{
@@ -582,7 +582,7 @@ function updateHidden(cb) { gTable.classList.toggle("show-hidden", cb.checked); 
 
 			long mod_raw = 0;
 			String date_str = "-";
-			Time? mod = file::last_modified(entry.str_view());
+			Time? mod = file::last_modified(entry);
 			if (try mod)
 			{
 				mod_raw = (long)mod;

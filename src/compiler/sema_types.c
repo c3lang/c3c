@@ -307,7 +307,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 
 
 
-// $typeof(...)
+// $Typeof(...)
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 {
 	Expr *expr = type_info->unresolved_type_expr;
@@ -396,9 +396,9 @@ INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, Res
 			type_info->type = info->type;
 			return true;
 		case STORAGE_WILDCARD:
-			RETURN_SEMA_ERROR(expr, "$typefrom failed to resolve \"%.*s\" to a definite type.", (int)len, bytes);
+			RETURN_SEMA_ERROR(expr, "$Typefrom failed to resolve \"%.*s\" to a definite type.", (int)len, bytes);
 		case STORAGE_COMPILE_TIME:
-			RETURN_SEMA_ERROR(expr, "$typefrom does not support compile-time types.");
+			RETURN_SEMA_ERROR(expr, "$Typefrom does not support compile-time types.");
 	}
 	UNREACHABLE
 }
@@ -416,7 +416,9 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 	if (decl->decl_kind != DECL_TYPE_ALIAS) return false;
 	if (decl->resolve_status == RESOLVE_DONE) return false;
 	if (decl->type_alias_decl.is_func) return false;
-	type_info = decl->type_alias_decl.type_info;
+	Expr *expr = decl->type_alias_decl.type_expr;
+	if (expr->expr_kind != EXPR_TYPEINFO) return false;
+	type_info = expr->type_expr;
 	goto RETRY;
 }
 

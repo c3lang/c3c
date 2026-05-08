@@ -3,7 +3,7 @@ module test;
 
 macro int test(int[2][2]* y)
 {
-	$typeof(*y) z = *y;
+	$Typeof(*y) z = *y;
 	return z[1][1];
 }
 
