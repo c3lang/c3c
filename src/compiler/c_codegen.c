@@ -168,7 +168,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			Type *base = type;
 			type = type->pointer;
-			//TODO
+			TODO
 			/*
 			FunctionPrototype *proto = type->function.prototype;
 			c_emit_type_decl(c, proto->param_infos->type);
@@ -374,8 +374,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			PRINT("\"");
 			if(t->type_kind == TYPE_SLICE)
 			{
-				unsigned byte_len = expr->const_expr.bytes.len;
-				PRINTF(", %llu }", byte_len);
+				PRINTF(", %zu }", expr->const_expr.bytes.len);
 			}
 			PRINT(";\n");
 			return;
