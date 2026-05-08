@@ -62,6 +62,7 @@
 - Added C3 Compiler setup installer for Windows
 - `alias Foo = int::typeid` now works.
 - `$typeof` => `$Typeof`, `$typefrom` => `$Typefrom`.
+- Bitstruct with backing char[n] would occasionally be incorrectly stored.
 
 ### Stdlib changes
 - Add `List.remove_unordered_at`.

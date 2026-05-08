@@ -1093,11 +1093,11 @@ static inline void llvm_emit_update_bitstruct_array(GenContext *c,
 		value = llvm_bswap_non_integral(c, value, bit_size);
 	}
 	ASSERT(bit_size > 0 && bit_size <= 128);
-	int start_byte = start_bit / 8;
-	int end_byte = end_bit / 8;
-	int start_mod = start_bit % 8;
-	int end_mod = end_bit % 8;
-	ByteSize member_type_bitsize = type_size(member_type) * 8;
+	int start_byte = (int)start_bit / 8;
+	int end_byte = (int)end_bit / 8;
+	int start_mod = (int)start_bit % 8;
+	int end_mod = (int)end_bit % 8;
+	ByteSize member_type_bitsize = (ByteSize)type_size(member_type) * 8;
 	for (int i = start_byte; i <= end_byte; i++)
 	{
 		AlignSize alignment;
@@ -1120,7 +1120,7 @@ static inline void llvm_emit_update_bitstruct_array(GenContext *c,
 			if (i == end_byte && end_mod != 7)
 			{
 				res = llvm_emit_and_raw(c, res, llvm_const_low_bitmask(c, c->byte_type, 8, end_mod + 1));
-				mask = llvm_emit_or_raw(c, mask, llvm_const_high_bitmask(c, c->byte_type, 8, 7 - (int)end_bit));
+				mask = llvm_emit_or_raw(c, mask, llvm_const_high_bitmask(c, c->byte_type, 8, 7 - (int)end_mod));
 			}
 			// Load the current value.
 			LLVMValueRef current = llvm_load(c, c->byte_type, byte_ptr, alignment, "");
@@ -1147,7 +1147,7 @@ static inline void llvm_emit_update_bitstruct_array(GenContext *c,
 			// Clear the lower bits.
 			current = llvm_emit_and_raw(c, current, LLVMBuildNot(c->builder, mask, ""));
 			// Use *or* with the bottom bits from "value":
-			llvm_emit_or_raw(c, current, value);
+			current = llvm_emit_or_raw(c, current, value);
 			// And store it back.
 			llvm_store_to_ptr_raw_aligned(c, byte_ptr, current, alignment);
 			continue;
@@ -4389,8 +4389,6 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 
 	// Emit success and to end.
 	bool emit_no_err = llvm_emit_br(c, no_err_block);
-
-	POP_CATCH();
 
 	// Emit panic
 	llvm_emit_block(c, panic_block);
