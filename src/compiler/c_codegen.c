@@ -188,6 +188,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			}
 			if(prototype->param_vacount > 0)
 			{
+				if(prototype->param_count > 0)scratch_buffer_printf(", ");
 				scratch_buffer_printf("va_list");
 			}
 			scratch_buffer_printf(")");
