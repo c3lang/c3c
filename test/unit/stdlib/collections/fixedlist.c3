@@ -1,10 +1,11 @@
-module elastic_array_test @test;
-import std::collections::elastic_array;
+module fixedlist_test @test;
+import std::collections::fixedlist;
 
-alias IntList = ElasticArray{int, 10};
-alias PtrList = ElasticArray{void*, 10};
+alias IntList = FixedList{int, 10};
+alias PtrList = FixedList{void*, 10};
 
-fn void basic() {
+fn void basic()
+{
 	IntList test;
 	test.push_all({ 1, 2, 3 });
 	assert(test.pop_first()!! == 1);
@@ -151,7 +152,7 @@ fn void retain_using_test()
 	assert(test.array_view() == (int[]){11, 10, 20});
 }
 
-module elastic_array_test;
+module fixedlist_test;
 
 fn bool filter(int* i)
 {
