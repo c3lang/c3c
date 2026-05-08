@@ -6552,7 +6552,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					INTROSPECT_TYPE_CONSTDEF, INTROSPECT_TYPE_BITSTRUCT,
 					INTROSPECT_TYPE_OPTIONAL,
 				};
-				for (int i = 0; i < 8; i++)
+				for (int i = 0; i < 9; i++)
 				{
 					llvm_emit_int_comp_raw(c,
 										   &check,

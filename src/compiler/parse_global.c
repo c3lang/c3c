@@ -1963,7 +1963,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			{
 				bool is_cond;
 				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL)) return false;
-				member->is_cond = true;
+				member->is_cond = is_cond;
 				if (!parse_struct_body(c, member)) return decl_poison(parent);
 			}
 			member->docs = decl_from_contract_description(&contracts);
@@ -2009,7 +2009,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			advance(c);
 			bool is_cond;
 			if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL)) return false;
-			member->is_cond = true;
+			member->is_cond = is_cond;
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
 			{

@@ -288,6 +288,7 @@ static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 			CONSUME_OR_RET(TOKEN_RBRACKET, false);
 			return true;
 		case TOKEN_SHL:
+			advance(c);
 			asm_arg->offset_type = ASM_SCALE_SHL;
 			if (!parse_asm_offset(c, asm_arg)) return false;
 			CONSUME_OR_RET(TOKEN_RBRACKET, false);

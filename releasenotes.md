@@ -64,6 +64,8 @@
 - `$typeof` => `$Typeof`, `$typefrom` => `$Typefrom`.
 - Bitstruct with backing char[n] would occasionally be incorrectly stored.
 - fmuladd lowering crashes on `a + -(b * c)` with fastmath.
+- Constant folding `-30 % -7` would incorrectly yield "2".
+- Parsing << in asm would not be correctly handled.
 
 ### Stdlib changes
 - Add `List.remove_unordered_at`.
