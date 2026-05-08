@@ -2,9 +2,9 @@ module std::core::mem::allocators;
 import std::io;
 import std::math;
 
-const DEFAULT_CAPACITY	   @local = 4096;
-const MIN_BLOCK_SIZE       @local = mem::DEFAULT_MEM_ALIGNMENT + FreeNode::size;
-const MIN_CAPACITY         @local = MIN_BLOCK_SIZE * 4;
+const DEFAULT_CAPACITY @local = 4096;
+const MIN_BLOCK_SIZE @local   = mem::DEFAULT_MEM_ALIGNMENT + FreeNode::size;
+const MIN_CAPACITY @local     = MIN_BLOCK_SIZE * 4;
 
 <*
  Binary search tree heap allocator is an allocator that preallocates a large block of memory and embeds a binary search tree to enable efficient searching for available blocks.
@@ -16,18 +16,18 @@ const MIN_CAPACITY         @local = MIN_BLOCK_SIZE * 4;
  This allocator is intended to be used in environments where there isn't any native libc malloc,
  and it has to be emulated from a memory region, or wrapping linear memory as is the case for plain WASM.
 *>
-struct BSTHeapAllocator (Allocator, Printable)
+struct BstHeapAllocator (Allocator, Printable)
 {
 	char* data;
 	sz capacity;
 	FreeNode* root;
 	FallbackAlloc* fallback_root;
-	BSTAllocStrategy strategy;
+	BstAllocStrategy strategy;
 	MemoryAllocFn alloc_fn;
 	MemoryFreeFn free_fn;
 }
 
-enum BSTAllocStrategy
+enum BstAllocStrategy
 {
 	BEST_FIT,
 	FIRST_FIT,
@@ -75,25 +75,23 @@ struct FallbackAlloc @local
 <*
  Initializes bst allocator structure.
 
- @require alloc_fn != null : "Shouldn't be null"
- @require free_fn != null : "Shouldn't be null"
- @require init_capacity > MIN_CAPACITY : "Capacity should be greater than minimum capacity"
+ @param alloc_fn : "The allocator function"
+ @param free_fn : "The free function to release allocated memory"
+
+ @require alloc_fn != null : "The alloc function must be provided"
+ @require start_capacity >= MIN_CAPACITY : "Capacity should be greater or equal to minimum capacity"
 *>
-fn void BSTHeapAllocator.init(
-	&self,
-	MemoryAllocFn alloc_fn,
-	MemoryFreeFn free_fn = &dummy_free_fn,
-	sz init_capacity = DEFAULT_CAPACITY,
-	BSTAllocStrategy strategy = BEST_FIT,
-)
+fn BstHeapAllocator* BstHeapAllocator.init(&self, MemoryAllocFn alloc_fn, MemoryFreeFn free_fn = null,
+	sz start_capacity = DEFAULT_CAPACITY, BstAllocStrategy strategy = BEST_FIT)
 {
-	init_capacity = mem::aligned_offset(init_capacity, mem::DEFAULT_MEM_ALIGNMENT);
-	self.data = (char*)alloc_fn(AllocHeader::size + init_capacity)!!;
-	self.capacity = init_capacity; 
+	start_capacity = mem::aligned_offset(start_capacity, mem::DEFAULT_MEM_ALIGNMENT);
+	self.data = alloc_fn(AllocHeader::size + start_capacity)!!;
+	self.capacity = start_capacity;
 	self.alloc_fn = alloc_fn;
-	self.free_fn = free_fn;
+	self.free_fn = free_fn ?: &dummy_free_fn;
 	self.strategy = strategy;
 	self.reset();
+	return self;
 }
 
 <*
@@ -103,7 +101,7 @@ fn void BSTHeapAllocator.init(
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
  @require size > 0
 *>
-fn void*? BSTHeapAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
+fn void*? BstHeapAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
 {
 	alignment = allocators::alignment_for_allocation(alignment);
 	sz aligned_size = mem::aligned_offset(size + AllocHeader::size, alignment);
@@ -153,7 +151,7 @@ fn void*? BSTHeapAllocator.acquire(&self, sz size, AllocInitType init_type, sz a
  @require size > 0
  @return ? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
-fn void*? BSTHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
+fn void*? BstHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
 {
 	if (@unlikely(!owns_pointer_in_main_buff(self, old_pointer)))
 	{
@@ -219,7 +217,7 @@ fn void*? BSTHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignmen
 
  @require ptr != null : "Shouldn't be null"
 *>
-fn void BSTHeapAllocator.release(&self, void* ptr, bool) @dynamic
+fn void BstHeapAllocator.release(&self, void* ptr, bool) @dynamic
 {
 	if (!owns_pointer_in_main_buff(self, ptr))
 	{
@@ -243,7 +241,7 @@ fn void BSTHeapAllocator.release(&self, void* ptr, bool) @dynamic
 <*
  Frees resources of the allocator.
 *>
-fn void BSTHeapAllocator.free(&self)
+fn void BstHeapAllocator.free(&self)
 {
 	if (@likely(self.data != null))
 	{
@@ -259,7 +257,7 @@ fn void BSTHeapAllocator.free(&self)
 <*
  Resets the state of the allocator making it available for reuse.
 *>
-fn void BSTHeapAllocator.reset(&self)
+fn void BstHeapAllocator.reset(&self)
 {
 	self.root = (FreeNode*)self.data;
 	init_node(self.root, self.capacity, null);
@@ -268,18 +266,18 @@ fn void BSTHeapAllocator.reset(&self)
 <*
  Implements 'Printable' interface.
 
- @require self.root != null : "Must be initialized"
  @require tail_ref(self) != null : "Must be initialized"
 *>
-fn sz? BSTHeapAllocator.to_format(&self, Formatter* fmt) @dynamic
+fn sz? BstHeapAllocator.to_format(&self, Formatter* fmt) @dynamic
 {
 	sz total = fmt.print("Binary tree allocator info:")!;
 	sz main_buff_used = 0;
 
-	if (!self.root) {
+	if (!self.root)
+	{
 		total += fmt.print("[Empty Buffer]")!;
 		return total;
-	};
+	}
 
 	FreeNode* curr = (FreeNode*)self.data;
 	FreeNode* tail = tail_ref(self);
@@ -309,7 +307,7 @@ fn sz? BSTHeapAllocator.to_format(&self, Formatter* fmt) @dynamic
 <*
  Print total memory usage statistics.
 *>
-fn sz? print_total_usage(BSTHeapAllocator* self, Formatter* fmt, sz main_buff_used) @local
+fn sz? print_total_usage(BstHeapAllocator* self, Formatter* fmt, sz main_buff_used) @local
 {
 	sz fallback_used = calc_used_fallback_mem(self);
 	sz main_buff_remain = self.capacity - main_buff_used;
@@ -342,7 +340,7 @@ fn sz? print_total_usage(BSTHeapAllocator* self, Formatter* fmt, sz main_buff_us
  Tries to find node based on best fit strategy.
  (node with minimal required space is returned).
 *>
-fn FreeNode* find_node_best_fit(BSTHeapAllocator* self, sz req_size) @local
+fn FreeNode* find_node_best_fit(BstHeapAllocator* self, sz req_size) @local
 {
 	if (!self.root) return null;
 
@@ -370,7 +368,7 @@ fn FreeNode* find_node_best_fit(BSTHeapAllocator* self, sz req_size) @local
  Tries to find node based on first fit strategy.
  (first appropriate node is returned).
 *>
-fn FreeNode* find_node_first_fit(BSTHeapAllocator* self, sz req_size) @local
+fn FreeNode* find_node_first_fit(BstHeapAllocator* self, sz req_size) @local
 {
 	if (!self.root) return null;
 
@@ -379,14 +377,8 @@ fn FreeNode* find_node_first_fit(BSTHeapAllocator* self, sz req_size) @local
 
 	while (curr && curr < tail)
 	{
-		if (curr.size >= req_size)
-		{
-			return curr;
-		}
-		else
-		{
-			curr = curr.right;
-		}
+		if (curr.size >= req_size) return curr;
+		curr = curr.right;
 	}
 
 	return null;
@@ -484,7 +476,7 @@ fn void remove_node(FreeNode** root, FreeNode* node_to_remove) @local
  @return "Returns node that was possibly moved to new address"
  @require node != null : "Shoudn't be null"
 *>
-fn FreeNode* coalesce_nodes_around(BSTHeapAllocator* self, FreeNode* node) @local
+fn FreeNode* coalesce_nodes_around(BstHeapAllocator* self, FreeNode* node) @local
 {
 	FreeNode* next = node_next(node);
 	FreeNode* tail = tail_ref(self);
@@ -523,7 +515,7 @@ fn FreeNode* coalesce_nodes_around(BSTHeapAllocator* self, FreeNode* node) @loca
 
  @require ptr != null : "Shoudn't be null"
 *>
-fn bool owns_pointer_in_main_buff(BSTHeapAllocator* self, void* ptr) @inline @local
+fn bool owns_pointer_in_main_buff(BstHeapAllocator* self, void* ptr) @inline @local
 {
 	return ptr >= self.data && ptr < (self.data + self.capacity);
 }
@@ -552,14 +544,14 @@ fn FreeNode* node_at_offset(FreeNode* node, sz offset) @inline @local
 <*
  Returns a tail node of the allocator, which serves as a memory buffer boundary.
 *>
-fn FreeNode* tail_ref(BSTHeapAllocator* self) @inline @local
+fn FreeNode* tail_ref(BstHeapAllocator* self) @inline @local
 {
 	return (FreeNode*)(self.data + self.capacity);
 }
 
 // ---- Fallback allocations ----
 
-fn void*? fallback_alloc(BSTHeapAllocator* self, sz size, AllocInitType init_type, sz alignment) @local
+fn void*? fallback_alloc(BstHeapAllocator* self, sz size, AllocInitType init_type, sz alignment) @local
 {
 	if (alignment > 0)
 	{
@@ -601,7 +593,7 @@ fn void*? fallback_alloc(BSTHeapAllocator* self, sz size, AllocInitType init_typ
  @require old_ptr != null : "Shouldn't be null"
  @require new_size > 0 : "Should be bigger than 0"
 *>
-fn void*? fallback_realloc(BSTHeapAllocator* self, void* old_ptr, sz new_size, sz alignment) @local
+fn void*? fallback_realloc(BstHeapAllocator* self, void* old_ptr, sz new_size, sz alignment) @local
 {
 	FallbackAlloc* block = (FallbackAlloc*)old_ptr - 1;
 	if (block.size >= new_size) return old_ptr;
@@ -615,7 +607,7 @@ fn void*? fallback_realloc(BSTHeapAllocator* self, void* old_ptr, sz new_size, s
 <*
  Frees allocation made as a fallback.
 *>
-fn void fallback_free(BSTHeapAllocator* self, void* ptr) @local
+fn void fallback_free(BstHeapAllocator* self, void* ptr) @local
 {
 	if (!self.fallback_root || !ptr)
 	{
@@ -657,7 +649,7 @@ fn void fallback_free(BSTHeapAllocator* self, void* ptr) @local
 <*
  Frees all allocations made as a fallback.
 *>
-fn void fallback_free_all(BSTHeapAllocator* self) @local
+fn void fallback_free_all(BstHeapAllocator* self) @local
 {
 	FallbackAlloc* curr = self.fallback_root;
 	while (curr)
@@ -673,7 +665,7 @@ fn void fallback_free_all(BSTHeapAllocator* self) @local
 <*
  Calculates all memory that were allocated as a fallback.
 *>
-fn sz calc_used_fallback_mem(BSTHeapAllocator* self) @local
+fn sz calc_used_fallback_mem(BstHeapAllocator* self) @local
 {
 	sz res = 0;
 	FallbackAlloc* curr = self.fallback_root;

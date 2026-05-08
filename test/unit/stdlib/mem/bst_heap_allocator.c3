@@ -5,7 +5,7 @@ import std::collections::map;
 
 fn void sequential_alloc_free()
 {
-	BSTHeapAllocator bst_alloc;
+	BstHeapAllocator bst_alloc;
 	bst_alloc.init(&alloc_fn, &free_fn, 4096, BEST_FIT);
 	defer bst_alloc.free();
 
@@ -35,7 +35,7 @@ fn void sequential_alloc_free()
 
 fn void mem_zero()
 {
-	BSTHeapAllocator bst_alloc;
+	BstHeapAllocator bst_alloc;
 	bst_alloc.init(&alloc_fn, &free_fn);
 	defer bst_alloc.free();
 	Allocator a = (Allocator)&bst_alloc;
@@ -64,7 +64,7 @@ fn void mem_zero()
 
 fn void test_list()
 {
-	BSTHeapAllocator bst_alloc;
+	BstHeapAllocator bst_alloc;
 	bst_alloc.init(&alloc_fn, &free_fn);
 	defer bst_alloc.free();
 	Allocator a = (Allocator)&bst_alloc;
@@ -91,7 +91,7 @@ fn void test_list()
 
 fn void test_map()
 {
-	BSTHeapAllocator bst_alloc;
+	BstHeapAllocator bst_alloc;
 	bst_alloc.init(&alloc_fn, &free_fn);
 	defer bst_alloc.free();
 	Allocator a = (Allocator)&bst_alloc;
@@ -118,7 +118,7 @@ fn void test_map()
 
 fn void test_dstring()
 {
-	BSTHeapAllocator bst_alloc;
+	BstHeapAllocator bst_alloc;
 	bst_alloc.init(&alloc_fn, &free_fn);
 	defer bst_alloc.free();
 	Allocator a = (Allocator)&bst_alloc;
@@ -150,7 +150,7 @@ fn void test_dstring()
 
 fn void more_allocs()
 {
-	BSTHeapAllocator bst_alloc;
+	BstHeapAllocator bst_alloc;
 	bst_alloc.init(&alloc_fn, &free_fn, 2048);
 	defer bst_alloc.free();
 	Allocator a = (Allocator)&bst_alloc;
@@ -198,7 +198,7 @@ fn void more_allocs()
 
 fn void zeroing_memory()
 {
-	BSTHeapAllocator bst_alloc;
+	BstHeapAllocator bst_alloc;
 	bst_alloc.init(&alloc_fn, &free_fn, 1024);
 	defer bst_alloc.free();
 	Allocator a = (Allocator)&bst_alloc;
@@ -216,7 +216,7 @@ fn void zeroing_memory()
 
 fn void test_aligned_allocations()
 {
-	BSTHeapAllocator bst_alloc;
+	BstHeapAllocator bst_alloc;
 	bst_alloc.init(&alloc_fn, &free_fn, 1024, BEST_FIT);
 	defer bst_alloc.free();
 	Allocator a = (Allocator)&bst_alloc;
@@ -257,7 +257,7 @@ fn void test_aligned_allocations()
 
 fn void single_alloc_filling_entire_buf()
 {
-	BSTHeapAllocator bst_alloc;
+	BstHeapAllocator bst_alloc;
 	bst_alloc.init(&alloc_fn, &free_fn, 2048, BEST_FIT);
 	defer bst_alloc.free();
 	Allocator a = (Allocator)&bst_alloc;

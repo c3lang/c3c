@@ -94,14 +94,14 @@
 - `std::time` name changes: `diff_hour` => `diff_hours`. `DateTime.set_date` => `DateTime.set`, `datetime::from_date_*` => `datetime::at_*`
 - `std::hash` method name convention changes: `updatec` / `update_char` => `update_byte`.
 - `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
-- Add bst heap allocator - `BSTHeapAllocator`.
-- Add buddy heap allocator - `BuddyHeapAllocator`.
-- `SimpleHeapAllocator` has been renamed `FreeListHeapAllocator`.
 - `std::collections::object` added `Object.to_value` to convert from an object to a value.
 - `std::encoding::xml` added for XML parsing and serialization.
 - Fix `Path.append` separator not honoring the specified environment.
 - Add multi part and extension support to `Path.append`.
 - The `Path` API now is split into `PathPosix` and `PathWin`, `Path` is implicitly castable to `String` and loses the `str_view()` method. Use `path::tnew` instead of `path::temp` for a temporary path.
+- Add bst heap allocator - `BstHeapAllocator`.
+- Add buddy heap allocator - `BuddyHeapAllocator`.
+- `SimpleHeapAllocator` has been renamed `FreelistHeapAllocator`.
  
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095

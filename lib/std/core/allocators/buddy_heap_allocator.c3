@@ -6,6 +6,7 @@ const DEFAULT_CAPACITY          @local = 4096;
 const DEFAULT_SPLIT_BOUNDARY    @local = 512;
 const DEFAULT_COALESCE_BOUNDARY @local = 1024;
 const MIN_BLOCK_SIZE            @local = 16;
+const MIN_CAPACITY              @local = 256;
 
 <*
  Buddy allocator is an allocator that splits the backing buffer into multiple regions called buddy blocks.
@@ -57,22 +58,18 @@ struct FallbackAlloc @local
 <*
  Initializes the allocator structure.
  
- @require alloc_fn != null : "Shouldn't be null"
- @require free_fn != null : "Shouldn't be null"
- @require coalesce_boundary <= init_capacity && split_boundary <= init_capacity : "Can't exceed the capacity"
  @param split_boundary : "Value in bytes down to which the allocator will split its blocks, recommended value - estimated minimal allocation size"
  @param coalesce_boundary : "Value in bytes up to which the allocator will try to coalesce its blocks, recommended value - estimated most common allocation size"
+
+ @require alloc_fn != null : "Shouldn't be null"
+ @require start_capacity >= MIN_CAPACITY && start_capacity <= sz::max / 2 : "Capacity is out of range"
+ @require coalesce_boundary <= start_capacity && split_boundary <= start_capacity : "Can't exceed the capacity"
 *>
-fn void BuddyHeapAllocator.init(
-	&self,
-	MemoryAllocFn alloc_fn,
-	MemoryFreeFn free_fn = &dummy_free_fn,
-	sz init_capacity = DEFAULT_CAPACITY,
-	sz coalesce_boundary = DEFAULT_COALESCE_BOUNDARY,
-	sz split_boundary = DEFAULT_SPLIT_BOUNDARY,
-)
+fn void BuddyHeapAllocator.init(&self, MemoryAllocFn alloc_fn, MemoryFreeFn free_fn = null,
+	sz start_capacity = DEFAULT_CAPACITY, sz coalesce_boundary = DEFAULT_COALESCE_BOUNDARY,
+	sz split_boundary = DEFAULT_SPLIT_BOUNDARY)
 {
-	sz cap = math::next_power_of_2(init_capacity);
+	sz cap = math::next_power_of_2(start_capacity);
 	self.coalesce_boundary = max(math::next_power_of_2(coalesce_boundary), MIN_BLOCK_SIZE);
 	self.split_boundary = max(math::next_power_of_2(split_boundary), MIN_BLOCK_SIZE);
 	self.head = (BuddyBlock*)(char*)alloc_fn(BuddyBlock::size + cap + mem::DEFAULT_MEM_ALIGNMENT)!!;
@@ -88,7 +85,7 @@ fn void BuddyHeapAllocator.init(
 	self.tail.prev_size = cap;
 	self.tail.is_free = false;
 	self.alloc_fn = alloc_fn;
-	self.free_fn = free_fn;
+	self.free_fn = free_fn ?: &dummy_free_fn;
 	split_block(self.head, self.split_boundary);
 }
 
