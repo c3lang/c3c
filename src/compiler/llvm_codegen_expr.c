@@ -3881,7 +3881,7 @@ INLINE FmulTransformation llvm_get_fmul_transformation(Expr *lhs, Expr *rhs)
 	if (expr_is_neg(lhs) && expr_is_mult(lhs->unary_expr.expr)) return FMUL_LHS_NEG_MULT;
 	// x + y * z
 	if (expr_is_mult(rhs)) return FMUL_RHS_MULT;
-	// x - (y * z)
+	// x + -(y * z)
 	if (expr_is_neg(rhs) && expr_is_mult(rhs->unary_expr.expr)) return FMUL_RHS_NEG_MULT;
 	return FMUL_NONE;
 }
@@ -3942,15 +3942,14 @@ INLINE bool llvm_emit_fmuladd_maybe(GenContext *c, BEValue *be_value, Expr *expr
 
 			if (expr_is_neg(lhs))
 			{
-				// -x - (y * z) => -(x + y * z)
 				args[2] = llvm_emit_expr_to_rvalue(c, lhs->unary_expr.expr);
 				negate_result = true;
 			}
 			else
 			{
-				// x - (y * z) => x + (-y) * z
+				// x + -(y * z) => x + y * -z
 				args[1] = LLVMBuildFNeg(c->builder, args[1], "");
-				args[2] = llvm_emit_expr_to_rvalue(c, lhs->unary_expr.expr);
+				args[2] = llvm_emit_expr_to_rvalue(c, lhs);
 			}
 			break;
 		default:

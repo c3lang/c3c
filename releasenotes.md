@@ -63,6 +63,7 @@
 - `alias Foo = int::typeid` now works.
 - `$typeof` => `$Typeof`, `$typefrom` => `$Typefrom`.
 - Bitstruct with backing char[n] would occasionally be incorrectly stored.
+- fmuladd lowering crashes on `a + -(b * c)` with fastmath.
 
 ### Stdlib changes
 - Add `List.remove_unordered_at`.
