@@ -28,8 +28,16 @@ fn void testrun_stack_size() @test
 fn void testrun_set_priority() @test @if(env::POSIX || env::WIN32)
 {
 	Thread t;
-	t.create(fn int(void* arg) { thread::sleep_ms(400); return 0; }, null)!!;
+	a = 0;
+	t.create(fn int(void* arg) {
+		for (int i = 0; i < 500; i++) {
+			if (@atomic_load(a)) break;
+			thread::sleep_ms(1);
+		}
+		return 0;
+	}, null)!!;
 	assert(t.set_priority(LOW));
+	@atomic_store(a, 1);
 	assert(t.join()!! == 0);
 }
 

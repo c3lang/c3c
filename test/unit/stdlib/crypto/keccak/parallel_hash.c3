@@ -38,7 +38,7 @@ fn void known_vectors_256()
 	/* tcId 171 */ test::@check(parallel_hash::thash(256, 264 / 8, input2, 7, customizer: "%1") == x'1d2a7c1b811ff3f61f7686c3ca30223c2d8fc21423b32918953925c2462e47be54');
 }
 
-fn void variably_streamed() @if ($feature(SLOW_TESTS))
+fn void variably_streamed()
 {
 	Lcg64Random rand;
 	random::seed(&rand, 0x1337_83fb_ba1a_11e1);
@@ -48,7 +48,7 @@ fn void variably_streamed() @if ($feature(SLOW_TESTS))
 	static char[] expected = x'96eb2677296e3150f53a07011b56732c41bdb1130fbf66b8a3002fcf42a20328';
 	static sz block_size = 15;
 	static char[32] result;
-	foreach (i : math::iota(sz[2048]))
+	foreach (i : math::iota(sz[128]))
 	{
 		char[] scroll = input;
 		ParallelHash{256} p;
