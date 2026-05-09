@@ -23,7 +23,11 @@ fn void push_destroy() @test
 		pool.init()!!;
 		defer pool.destroy();
 		pool.push(&do_work, &y);
-		thread::sleep(time::ms(50));
+		for (sz j = 0; j < 500; j++)
+		{
+			if (@atomic_load(x) == @atomic_load(y)) break;
+			thread::sleep(time::ms(1));
+		}
 		test::eq(@atomic_load(x), @atomic_load(y));
 	}
 }
@@ -67,7 +71,7 @@ fn int do_work(void* arg)
 fn int do_wait(void* arg)
 {
 	sz value = (sz)(iptr)arg;
-	for (sz i = 0; i < value; i++) thread::sleep(time::ms(50));
+	for (sz i = 0; i < value; i++) thread::sleep(time::ms(10));
 	@atomic_store(x, @atomic_load(x) + (int)value);
 	return 0;
 }
