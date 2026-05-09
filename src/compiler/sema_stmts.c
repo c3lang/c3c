@@ -3463,7 +3463,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		bool is_naked = func->func_decl.attr_naked;
 		if (!is_naked) sema_append_contract_asserts(assert_first, body);
 		ASSERT(rtype);
-		Type *canonical_rtype = (rtype->type_kind == TYPE_OPTIONAL ? rtype->optional : rtype)->canonical;
+		Type *canonical_rtype = type_no_optional(rtype)->canonical;
 		if (!is_naked && has_ensures && type_is_void(canonical_rtype))
 		{
 			AstId* append_pos = &body->compound_stmt.first_stmt;

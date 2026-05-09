@@ -94,6 +94,7 @@ const char *kw_IoError;
 
 void symtab_destroy()
 {
+	free(symtab.bucket);
 }
 
 
@@ -106,7 +107,7 @@ void symtab_init(uint32_t capacity)
 	symtab.bucket_mask = capacity - 1;
 
 	size_t size = capacity * sizeof(SymtabEntry*);
-	symtab.bucket = MALLOC(size);
+	symtab.bucket = cmalloc(size);
 	// Touch all pages to improve perf(!)
 	memset(symtab.bucket, 0, size);
 

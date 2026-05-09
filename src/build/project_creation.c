@@ -300,7 +300,7 @@ void create_project(BuildOptions *build_options)
 		build_options->project_name = get_cwd_project_name();
 		if (!check_name(build_options->project_name))
 		{
-			error_exit("The current directory is not a valid project name.");
+			error_exit("The parent directory (which is '%s') is not a valid project name.", build_options->project_name);
 		}
 		goto CREATE;
 	}
