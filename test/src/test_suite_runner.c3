@@ -425,24 +425,29 @@ fn void? collect_files(Path file_path, List{Path}* files)
 }
 
 /* ----------------------- Core test logic ------------------------------ */
+tlocal int tlocal_worker_id = -1;
+
 fn bool test_file(Path file_path, TestOutput* output, sz index)
 {
 	if (global_should_quit.load()) return false;
 	context.test_count.add(1);
 	update_status(index, file_path, output);
 
-	bool single;
-	int thread_id = context.thread_id_counter.add(1);
-
- 	Path test_dir = context.test_root.tappend(string::tformat("_c3test_%d", thread_id))!!;
-
-	(void)path::rmtree(test_dir);
-	defer @catch(path::rmtree(test_dir));
-
-	if (@catch(path::mkdir(test_dir)))
+	if (tlocal_worker_id == -1)
 	{
-		io::fprintfn((OutStream)&output.buffer, "FAILED - Failed to create temp test directory '%s'.", test_dir)!!;
-		os::exit(1);
+		tlocal_worker_id = context.thread_id_counter.add(1);
+	}
+
+	bool single;
+	Path test_dir = context.test_root.tappend(string::tformat("_c3test_%d", tlocal_worker_id))!!;
+
+	if (!path::is_dir(test_dir))
+	{
+		if (@catch(path::mkdir(test_dir)))
+		{
+			io::fprintfn((OutStream)&output.buffer, "FAILED - Failed to create temp test directory '%s'.", test_dir)!!;
+			os::exit(1);
+		}
 	}
 
 	switch (file_path.extension() ?? "")
