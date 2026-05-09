@@ -30,7 +30,8 @@ fn void testrun_set_priority() @test @if(env::POSIX || env::WIN32)
 	Thread t;
 	a = 0;
 	t.create(fn int(void* arg) {
-		for (int i = 0; i < 500; i++) {
+		for (int i = 0; i < 500; i++) 
+		{
 			if (@atomic_load(a)) break;
 			thread::sleep_ms(1);
 		}
