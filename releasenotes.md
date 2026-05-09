@@ -134,6 +134,8 @@
 - Warning for ignored visibility modifiers was not emitted for macro methods #3071
 - `while (String? x = foo()!)` was accidentally allowed causing a lowering error.
 - Crash casting uint to bitstruct inside struct field assignment #3187
+- Vec2/Vec3 transform missed matrix translation.
+- Matrix rotation ignored matrix itself.
 
 ## 0.7.11 Change list
 
