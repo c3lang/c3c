@@ -454,7 +454,25 @@ fn void remove_node(FreeNode** root, FreeNode* node_to_remove) @local
 
 	if (*root == node_to_remove)
 	{
-		*root = null;
+		if (!node_to_remove.left)
+		{
+			*root = node_to_remove.right;
+		}
+		else if (!node_to_remove.right)
+		{
+			*root = node_to_remove.left;
+		}
+		else
+		{
+			*root = find_node_succeessor(node_to_remove);
+		}
+
+		// Root should not have parent if its not null.
+		if (*root)
+		{
+			(*root).parent = null;
+		}
+
 		return;
 	}
 
@@ -462,12 +480,72 @@ fn void remove_node(FreeNode** root, FreeNode* node_to_remove) @local
 
 	if (node_to_remove == parent.left)
 	{
-		parent.left = null;
+		if (!node_to_remove.left)
+		{
+			parent.left = node_to_remove.right;
+			if (parent.left)
+			{
+				parent.left.parent = parent;
+			}
+		}
+		else if (!node_to_remove.right)
+		{
+			parent.left = node_to_remove.left;
+			if (parent.left)
+			{
+				parent.left.parent = parent;
+			}
+		}
+		else
+		{
+			FreeNode* successor = find_node_succeessor(node_to_remove);
+			parent.left = successor;
+			if (successor) {
+				successor.parent = parent;
+			}
+		}
 	}
 	else
 	{
-		parent.right = null;
+		if (!node_to_remove.left)
+		{
+			parent.right = node_to_remove.right;
+			if (parent.right)
+			{
+				parent.right.parent = parent;
+			}
+		}
+		else if (!node_to_remove.right)
+		{
+			parent.right = node_to_remove.left;
+			if (parent.right)
+			{
+				parent.right.parent = parent;
+			}
+		}
+		else
+		{
+			FreeNode* successor = find_node_succeessor(node_to_remove);
+			parent.right = successor;
+			if (successor) {
+				successor.parent = parent;
+			}
+		}
 	}
+}
+
+<*
+ Gets the smallest node in the right subtree.
+ Used in remove_node.
+*>
+fn FreeNode* find_node_succeessor(FreeNode* node) @inline @local
+{
+	node = node.right;
+	while (node && node.left)
+	{
+		node = node.left;
+	}
+	return node;
 }
 
 <*
