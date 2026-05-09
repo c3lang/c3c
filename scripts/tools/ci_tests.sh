@@ -276,7 +276,7 @@ run_unit_tests() {
 
     UNIT_TEST_ARGS="-O1"
     if [[ "$OS_MODE" != "bsd" ]]; then
-        UNIT_TEST_ARGS="$UNIT_TEST_ARGS -D SLOW_TESTS"
+        UNIT_TEST_ARGS="$UNIT_TEST_ARGS -D SLOW_TESTS -D RUN_PROCESS_TESTS"
     fi
     "$C3C_BIN" compile-test unit $UNIT_TEST_ARGS
 
