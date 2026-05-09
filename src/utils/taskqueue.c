@@ -45,8 +45,7 @@ void taskqueue_run(int threads, Task **task_list)
 		}
 		return;
 	}
-	pthread_t *pthreads = malloc(sizeof(pthread_t) * (unsigned)threads);
-	if (!pthreads) error_exit("Out of memory starting task queue.");
+	pthread_t *pthreads = MALLOC(sizeof(pthread_t) * (unsigned)threads);
 	TaskQueue queue = { .queue = task_list };
 	pthread_attr_t attr;
 	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");
@@ -65,7 +64,7 @@ void taskqueue_run(int threads, Task **task_list)
 	{
 		if (pthread_join(pthreads[i], NULL) != 0) error_exit("Failed to join thread.");
 	}
-	free(pthreads);
+
 	pthread_mutex_destroy(&queue.lock);
 }
 
@@ -102,8 +101,7 @@ SHUTDOWN:
 void taskqueue_run(int threads, Task **task_list)
 {
 	ASSERT(threads > 0);
-	HANDLE *handles = malloc(sizeof(HANDLE) * (unsigned)threads);
-	if (!handles) error_exit("Out of memory starting task queue.");
+	HANDLE *handles = MALLOC(sizeof(HANDLE) * (unsigned)threads);
 	TaskQueue queue = { .queue = task_list };
 	InitializeCriticalSection(&queue.lock);
 	for (int i = 0; i < threads; i++)
@@ -117,7 +115,7 @@ void taskqueue_run(int threads, Task **task_list)
 	{
 		CloseHandle(handles[i]);
 	}
-	free((void*)handles);
+
 	DeleteCriticalSection(&queue.lock);
 }
 

@@ -20,10 +20,10 @@ static inline bool abi_type_is_valid(AbiType type);
 
 static inline LoweredType *type_lowering(Type *type)
 {
-	while (type)
+	while (1)
 	{
+		ASSERT(type);
 		type = type->canonical;
-		if (!type) break;
 		switch (type->type_kind)
 		{
 			case TYPE_ALIAS:
@@ -90,15 +90,15 @@ static inline LoweredType *type_lowering(Type *type)
 				return type;
 		}
 	}
-	return type_void;
+	UNREACHABLE
 }
 
 static inline LoweredType *type_lowering_abi(Type *type)
 {
-	while (type)
+	while (1)
 	{
+		ASSERT(type);
 		type = type->canonical;
-		if (!type) break;
 		switch (type->type_kind)
 		{
 			case TYPE_ALIAS:
@@ -164,12 +164,13 @@ static inline LoweredType *type_lowering_abi(Type *type)
 				return type;
 		}
 	}
-	return type_void;
+	UNREACHABLE
 }
 
 static inline bool abi_type_match(AbiType type, Type *other_type)
 {
-	other_type = other_type ? other_type->canonical : NULL;
+	ASSERT(other_type);
+	other_type = other_type->canonical;
 	if (type.abi_type & 0x01)
 	{
 		switch (type.abi_type)
@@ -206,7 +207,7 @@ static inline bool abi_type_match(AbiType type, Type *other_type)
 		}
 		UNREACHABLE
 	}
-	return other_type && type.type == other_type->canonical;
+	return type.type == other_type->canonical;
 }
 
 static inline bool abi_type_is_integer(AbiType type)

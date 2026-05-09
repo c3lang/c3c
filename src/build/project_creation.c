@@ -298,7 +298,7 @@ void create_project(BuildOptions *build_options)
 	if (str_eq(build_options->project_name, "."))
 	{
 		build_options->project_name = get_cwd_project_name();
-		if (!build_options->project_name || !check_name(build_options->project_name))
+		if (!check_name(build_options->project_name))
 		{
 			error_exit("The current directory is not a valid project name.");
 		}
@@ -427,7 +427,7 @@ static bool check_name(const char *name)
 static char* get_cwd_project_name()
 {
 	char full_path[PATH_MAX];
-	if (!getcwd(full_path, PATH_MAX)) return NULL;
+	if (!getcwd(full_path, PATH_MAX)) error_exit("Failed to get current working directory.");
 	size_t len = strlen(full_path);
 	for (size_t i = len - 1; i > 0; i--)
 	{

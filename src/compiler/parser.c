@@ -182,7 +182,7 @@ bool parse_stdin(void)
 			.dir_path = "",
 	};
 #define BUF_SIZE 65536
-	char buffer[BUF_SIZE] = {0};
+	char buffer[BUF_SIZE];
 	size_t capacity = BUF_SIZE;
 	size_t len = 0;
 	char *data = buffer;
@@ -196,9 +196,8 @@ bool parse_stdin(void)
 			capacity *= 2;
 			if (buffer == data)
 			{
-				data = malloc(capacity);
-				if (!data) error_exit("Out of memory parsing stdin.");
-				memcpy(data, buffer, len);
+				data = cmalloc(capacity);
+				memcpy(data, buffer, len); // GCC -fanalyzer doesn't like this - use of uninitialized value ‘&buffer’ here
 			}
 			else
 			{
