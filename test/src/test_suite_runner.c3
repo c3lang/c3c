@@ -529,7 +529,16 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 	cmdline.init(tmem, 32);
 	cmdline.push(context.compiler_path);
 
-	cmdline.push_all({"compile-only", "--test","--max-mem", "512"});
+	cmdline.push_all({"compile-only",
+		"-O0",
+		"--test",
+		"--max-mem", "512",
+		"--no-obj",
+		"--threads", "1"});
+	if (settings.output_files.is_empty())
+	{
+		cmdline.push("--strip-unused=yes");
+	}
 
 	if (context.stdlib)
 	{
@@ -557,8 +566,6 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 		cmdline.push(settings.arch);
 	}
 
-	cmdline.push("-O0");
-
 	if (settings.no_deprecation)
 	{
 		cmdline.push("--warn-deprecation=no");
@@ -570,7 +577,6 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 	{
 		cmdline.push(opt);
 	}
-
 
 	if (global_should_quit.load()) return false;
 	Process compilation = process::spawn(cmdline.array_view(), NO_WINDOW | INHERIT_ENV)!!;
