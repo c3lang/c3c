@@ -1,5 +1,5 @@
 module test;
-import std::collections::elastic_array;
+import std::collections::fixedlist;
 fn void a()
 {
 	List {int} x; // #error: Did you mean the struct 'List' in module std::collections::list? If so please add
@@ -22,7 +22,7 @@ fn void d()
 
 fn void d2()
 {
-	elastic_array::type_is_overaligned(); // #error: 'type_is_overaligned' is a generic macro, did you forget the parameters '{ ... }'
+	fixedlist::type_is_overaligned(); // #error: 'type_is_overaligned' is a generic macro, did you forget the parameters '{ ... }'
 }
 
 fn void e()
@@ -32,12 +32,12 @@ fn void e()
 
 fn void f()
 {
-	ElasticArray x; // #error: 'ElasticArray' is a generic struct, did you forget the parameters '{ ... }'?
+	FixedList x; // #error: 'FixedList' is a generic struct, did you forget the parameters '{ ... }'?
 }
 
 fn void g()
 {
-	(ElasticArray){}; // #error: 'ElasticArray' is a generic struct, did you forget the parameters '{ ... }'?
+	(FixedList){}; // #error: 'FixedList' is a generic struct, did you forget the parameters '{ ... }'?
 }
 
 fn int main(String[] args)

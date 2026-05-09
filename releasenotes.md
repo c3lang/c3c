@@ -62,6 +62,10 @@
 - Added C3 Compiler setup installer for Windows
 - `alias Foo = int::typeid` now works.
 - `$typeof` => `$Typeof`, `$typefrom` => `$Typefrom`.
+- Bitstruct with backing char[n] would occasionally be incorrectly stored.
+- fmuladd lowering crashes on `a + -(b * c)` with fastmath.
+- Constant folding `-30 % -7` would incorrectly yield "2".
+- Parsing << in asm would not be correctly handled.
 
 ### Stdlib changes
 - Add `List.remove_unordered_at`.
@@ -80,7 +84,7 @@
 - Make `DString.append_repeat` polymorphic adding `append_string_repeat` and `append_char_repeat`.
 - Add `DString.append_inline` for optimized uses.
 - Ordering of `object::new_*` arguments are now "allocator first".
-- Add `remove_unordered_at` to ElasticArray.
+- Add `remove_unordered_at` to FixedList.
 - Changed `json` to support two flavors of JSON: JSON and JSONC.
 - Changed `json` API: `parse` -> `load`, `parse_string` -> `parse`.
 - `conv::detect_bom`, convert utf16/utf32 from bytes with byteswap / unaligned data.
