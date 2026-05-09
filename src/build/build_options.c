@@ -731,14 +731,14 @@ static void print_version(void)
 	PRINTF("Git Hash:                  %s", GIT_HASH);
 
 #if LLVM_AVAILABLE && TB_AVAILABLE
-    PRINTF("Backends:                  LLVM; TB");
+	PRINTF("Backends:                  LLVM; TB");
 #elif LLVM_AVAILABLE
-    PRINTF("Backends:                  LLVM");
+	PRINTF("Backends:                  LLVM");
 #elif TB_AVAILABLE
-    PRINTF("Backends:                  TB");
+	PRINTF("Backends:                  TB");
 #else
 
-    PRINTF("No backends available");
+	PRINTF("No backends available");
 #endif
 
 #if LLVM_AVAILABLE
@@ -758,14 +758,22 @@ static void parse_option(BuildOptions *options)
 		case 'h':
 			if (match_shortopt("hh"))
 			{
-				if (options->command == COMMAND_DOCGEN) docgen_usage();
-				else usage(true);
+				if (options->command == COMMAND_DOCGEN)
+				{
+					docgen_usage();
+					exit_compiler(COMPILER_SUCCESS_EXIT);
+				}
+				usage(true);
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			if (match_shortopt("h"))
 			{
-				if (options->command == COMMAND_DOCGEN) docgen_usage();
-				else usage(false);
+				if (options->command == COMMAND_DOCGEN)
+				{
+					docgen_usage();
+					exit_compiler(COMPILER_SUCCESS_EXIT);
+				}
+				usage(false);
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			break;
@@ -1716,8 +1724,12 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("help"))
 			{
-				if (options->command == COMMAND_DOCGEN) docgen_usage();
-				else usage(true);
+				if (options->command == COMMAND_DOCGEN)
+				{
+					docgen_usage();
+					exit_compiler(COMPILER_SUCCESS_EXIT);
+				}
+				usage(true);
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			break;
