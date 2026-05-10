@@ -136,7 +136,7 @@
 - Crash casting uint to bitstruct inside struct field assignment #3187
 - Vec2/Vec3 transform missed matrix translation.
 - Matrix rotation ignored matrix itself.
-- Fix BigInt shr.
+- Fix BigInt shr, to_format, and others.
 - Fix ends in TDist.quantile, FDist.pdf, ChiSquaredDist.pdf
 - Fix to easing expo_in and bounce_inout.
 

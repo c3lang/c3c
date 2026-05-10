@@ -527,8 +527,8 @@ fn sz? BigInt.to_format(&self, Formatter* format) @dynamic
 	uint[280] chunks @noinit;
 	int chunk_count;
 
-	const ulong BASE10_9 = 1000000000;
-	foreach_r (d : self.data[:self.len])
+	const ulong BASE10_9 = 1000_000_000;
+	foreach_r (d : a.data[:a.len])
 	{
 		ulong carry = d;
 		for (int i = 0; i < chunk_count; i++)
@@ -628,7 +628,7 @@ fn BigInt BigInt.mod_pow(&self, BigInt exp, BigInt mod)
 	int count = 0;
 
 	// perform squaring and multiply exponentiation
-	for (int pos = 0; pos < exp.len; pos++)
+	for OUTER: (int pos = 0; pos < exp.len; pos++)
 	{
 		uint mask = 0x01;
 		for (int index = 0; index < 32; index++)
@@ -652,7 +652,7 @@ fn BigInt BigInt.mod_pow(&self, BigInt exp, BigInt mod)
 				return result_num;
 			}
 			count++;
-			if (count == total_bits) break;
+			if (count == total_bits) break OUTER;
 		}
 	}
 
@@ -881,6 +881,7 @@ fn BigInt BigInt.lcm(&self, BigInt other)
 
 <*
  @require bits >> 5 < MAX_LEN : "Required bits > maxlength"
+ @require bits > 0 : "Must be more than 0 bits"
 *>
 fn void BigInt.randomize_bits(&self, Random random, int bits)
 {
@@ -996,7 +997,7 @@ fn void multi_byte_divide(BigInt* self, BigInt* other, BigInt* quotient, BigInt*
 
 	int remainder_len = self.len + 1;
 
-	uint mask = 0x80000000;
+	uint mask = 0x8000_0000;
 	uint val = other.data[other.len - 1];
 	int shift = 0;
 	int result_pos = 0;
@@ -1033,18 +1034,18 @@ fn void multi_byte_divide(BigInt* self, BigInt* other, BigInt* quotient, BigInt*
 		{
 			done = true;
 
-			if (q_hat == 0x10000000 || (q_hat * second_divisor_byte) > (r_hat << 32 + r[pos - 2]))
+			if (q_hat == 0x1_0000_0000 || (q_hat * second_divisor_byte) > (r_hat << 32 + r[pos - 2]))
 			{
 				q_hat--;
 				r_hat += first_divisor_byte;
 
-				if (r_hat < 0x10000000) done = false;
+				if (r_hat < 0x1_0000_0000) done = false;
 			}
 		}
 
 		for (int h = 0; h < divisor_len; h++)
 		{
-			dividend_part[h] = r[pos - h];
+			dividend_part[divisor_len - 1 - h] = r[pos - h];
 		}
 
 		BigInt kk = { dividend_part, divisor_len };
