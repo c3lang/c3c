@@ -109,21 +109,25 @@ macro uint blk0(Long16* block, i) @local
 	$endif
 }
 
-macro @r1(#ra, #rb, #rc, #rd, #re, uint w) {
-	#re = #ra.rotl(5) + ((#rb & (#rc ^ #rd)) ^ #rd) + w + 0x5A827999 + #re;
-	#rb = #rb.rotl(30);
+macro void r1(uint v, uint* ref, uint x, uint y, uint* z, uint w) {
+	uint old = *ref;
+	*z += ((old & (x ^ y)) ^ y) + w + 0x5A827999 + v.rotl(5);
+	*ref = old.rotl(30);
 }
-macro @r2(#ra, #rb, #rc, #rd, #re, uint w) {
-	#re = #ra.rotl(5) + (#rb ^ #rc ^ #rd) + w + 0x6ED9EBA1 + #re;
-	#rb = #rb.rotl(30);
+macro void r2(uint v, uint* ref, uint x, uint y, uint* z, uint w) {
+	uint old = *ref;
+	*z += (old ^ x ^ y) + w + 0x6ED9EBA1 + v.rotl(5);
+	*ref = old.rotl(30);
 }
-macro @r3(#ra, #rb, #rc, #rd, #re, uint w) {
-	#re = #ra.rotl(5) + ((#rb & #rc) | (#rd & (#rb | #rc))) + w + 0x8F1BBCDC + #re;
-	#rb = #rb.rotl(30);
+macro void r3(uint v, uint* ref, uint x, uint y, uint* z, uint w) {
+	uint old = *ref;
+	*z += (((old | x) & y) | (old & x)) + w + 0x8F1BBCDC + v.rotl(5);
+	*ref = old.rotl(30);
 }
-macro @r4(#ra, #rb, #rc, #rd, #re, uint w) {
-	#re = #ra.rotl(5) + (#rb ^ #rc ^ #rd) + w + 0xCA62C1D6 + #re;
-	#rb = #rb.rotl(30);
+macro void r4(uint v, uint* ref, uint x, uint y, uint* z, uint w) {
+	uint old = *ref;
+	*z += (old ^ x ^ y) + w + 0xCA62C1D6 + v.rotl(5);
+	*ref = old.rotl(30);
 }
 
 <*
@@ -140,50 +144,47 @@ fn void sha1_transform(uint[5]* state, char* buffer) @local
 	$for uint $i; $i < 20; $i++:
 		$if $i < 16:
 			$switch $i % 5:
-				$case 0: @r1(a,b,c,d,e, blk0(&block, $i));
-				$case 1: @r1(e,a,b,c,d, blk0(&block, $i));
-				$case 2: @r1(d,e,a,b,c, blk0(&block, $i));
-				$case 3: @r1(c,d,e,a,b, blk0(&block, $i));
-				$case 4: @r1(b,c,d,e,a, blk0(&block, $i));
+				$case 0: r1(a, &b, c, d, &e, blk0(&block, $i));
+				$case 1: r1(e, &a, b, c, &d, blk0(&block, $i));
+				$case 2: r1(d, &e, a, b, &c, blk0(&block, $i));
+				$case 3: r1(c, &d, e, a, &b, blk0(&block, $i));
+				$case 4: r1(b, &c, d, e, &a, blk0(&block, $i));
 			$endswitch
 		$else
 			$switch $i % 5:
-				$case 0: @r1(a,b,c,d,e, blk(&block, $i));
-				$case 1: @r1(e,a,b,c,d, blk(&block, $i));
-				$case 2: @r1(d,e,a,b,c, blk(&block, $i));
-				$case 3: @r1(c,d,e,a,b, blk(&block, $i));
-				$case 4: @r1(b,c,d,e,a, blk(&block, $i));
+				$case 0: r1(a, &b, c, d, &e, blk(&block, $i));
+				$case 1: r1(e, &a, b, c, &d, blk(&block, $i));
+				$case 2: r1(d, &e, a, b, &c, blk(&block, $i));
+				$case 3: r1(c, &d, e, a, &b, blk(&block, $i));
+				$case 4: r1(b, &c, d, e, &a, blk(&block, $i));
 			$endswitch
 		$endif
 	$endfor
-
 	$for uint $i = 20; $i < 40; $i++:
 		$switch $i % 5:
-			$case 0: @r2(a,b,c,d,e, blk(&block, $i));
-			$case 1: @r2(e,a,b,c,d, blk(&block, $i));
-			$case 2: @r2(d,e,a,b,c, blk(&block, $i));
-			$case 3: @r2(c,d,e,a,b, blk(&block, $i));
-			$case 4: @r2(b,c,d,e,a, blk(&block, $i));
+			$case 0: r2(a, &b, c, d, &e, blk(&block, $i));
+			$case 1: r2(e, &a, b, c, &d, blk(&block, $i));
+			$case 2: r2(d, &e, a, b, &c, blk(&block, $i));
+			$case 3: r2(c, &d, e, a, &b, blk(&block, $i));
+			$case 4: r2(b, &c, d, e, &a, blk(&block, $i));
 		$endswitch
 	$endfor
-
 	$for uint $i = 40; $i < 60; $i++:
 		$switch $i % 5:
-			$case 0: @r3(a,b,c,d,e, blk(&block, $i));
-			$case 1: @r3(e,a,b,c,d, blk(&block, $i));
-			$case 2: @r3(d,e,a,b,c, blk(&block, $i));
-			$case 3: @r3(c,d,e,a,b, blk(&block, $i));
-			$case 4: @r3(b,c,d,e,a, blk(&block, $i));
+			$case 0: r3(a, &b, c, d, &e, blk(&block, $i));
+			$case 1: r3(e, &a, b, c, &d, blk(&block, $i));
+			$case 2: r3(d, &e, a, b, &c, blk(&block, $i));
+			$case 3: r3(c, &d, e, a, &b, blk(&block, $i));
+			$case 4: r3(b, &c, d, e, &a, blk(&block, $i));
 		$endswitch
 	$endfor
-
 	$for uint $i = 60; $i < 80; $i++:
 		$switch $i % 5:
-			$case 0: @r4(a,b,c,d,e, blk(&block, $i));
-			$case 1: @r4(e,a,b,c,d, blk(&block, $i));
-			$case 2: @r4(d,e,a,b,c, blk(&block, $i));
-			$case 3: @r4(c,d,e,a,b, blk(&block, $i));
-			$case 4: @r4(b,c,d,e,a, blk(&block, $i));
+			$case 0: r4(a, &b, c, d, &e, blk(&block, $i));
+			$case 1: r4(e, &a, b, c, &d, blk(&block, $i));
+			$case 2: r4(d, &e, a, b, &c, blk(&block, $i));
+			$case 3: r4(c, &d, e, a, &b, blk(&block, $i));
+			$case 4: r4(b, &c, d, e, &a, blk(&block, $i));
 		$endswitch
 	$endfor
 
