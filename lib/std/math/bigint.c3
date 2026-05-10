@@ -86,6 +86,7 @@ fn BigInt* BigInt.init_with_array(&self, uint[] values)
 fn BigInt*? BigInt.init_string_radix(&self, String value, int radix)
 {
 	sz len = value.len;
+	if (!len) return string::MALFORMED_INTEGER~;
 	sz limit = value[0] == '-' ? 1 : 0;
 	*self = ZERO;
 	BigInt multiplier = ONE;
@@ -436,7 +437,7 @@ fn BigInt BigInt.shr(self, int shift) @operator(>>)
 	return self;
 }
 
-fn void BigInt.shr_this(self, int shift) @operator(>>=)
+fn void BigInt.shr_this(&self, int shift) @operator(>>=)
 {
 	self.len = shift_right(&self.data, self.len, shift);
 }
