@@ -165,6 +165,7 @@ static const char *sanitize_modes[4] = {
 JSONObject *project_json_load(const char **filename_ref);
 Project *project_load(const char **filename_ref);
 BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target);
+JSONObject *read_library_manifest_for_path(const char *lib_path, const char **manifest_path_ref);
 
 const char *get_string(BuildParseContext context, JSONObject *table, const char *key, const char *default_value);
 int get_valid_bool(BuildParseContext context, JSONObject *json, const char *key, int default_val);

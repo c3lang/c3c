@@ -601,78 +601,6 @@ static void parse_preset_ref(const char *ref, const char **lib_name, const char 
 	*preset_name = str_copy(colon + 1, strlen(colon + 1));
 }
 
-static JSONObject* read_manifest_from_path(const char *lib_path, const char **manifest_path_ref)
-{
-	const char *manifest_path = file_append_path(lib_path, "manifest.json");
-	if (file_exists(manifest_path))
-	{
-		size_t size;
-		char *data = file_read_all(manifest_path, &size);
-		if (data)
-		{
-			JsonParser parser;
-			json_init_string(&parser, data);
-			JSONObject *json = json_parse(&parser);
-			if (json && !parser.error_message)
-			{
-				*manifest_path_ref = manifest_path;
-				return json;
-			}
-		}
-	}
-	return NULL;
-}
-
-static JSONObject* read_manifest_from_zip(const char *lib_path, const char **manifest_path_ref)
-{
-	FILE *f = fopen(lib_path, "rb");
-	if (!f) return NULL;
-
-	ZipDirIterator iterator;
-	if (zip_dir_iterator(f, &iterator))
-	{
-		fclose(f);
-		return NULL;
-	}
-
-	ZipFile file;
-	bool found = false;
-	while (iterator.current_file < iterator.files)
-	{
-		if (zip_dir_iterator_next(&iterator, &file)) break;
-		if (strcmp(file.name, "manifest.json") == 0)
-		{
-			found = true;
-			break;
-		}
-	}
-
-	if (!found)
-	{
-		fclose(f);
-		return NULL;
-	}
-
-	char *manifest_data;
-	if (zip_file_read(f, &file, (void**)&manifest_data))
-	{
-		fclose(f);
-		return NULL;
-	}
-
-	JsonParser parser;
-	json_init_string(&parser, manifest_data);
-	JSONObject *json = json_parse(&parser);
-	fclose(f);
-
-	if (json && !parser.error_message)
-	{
-		*manifest_path_ref = lib_path;
-		return json;
-	}
-	return NULL;
-}
-
 static JSONObject* resolve_preset(BuildTarget *target, const char *preset_ref, const char **manifest_path_ref)
 {
 	const char *lib_name;
@@ -694,29 +622,38 @@ static JSONObject* resolve_preset(BuildTarget *target, const char *preset_ref, c
 	}
 
 	JSONObject *manifest = NULL;
-	FOREACH(const char *, dir, target->libdirs)
+	static const char *c3lib_suffix = ".c3l";
+	const char **c3_libs = NULL;
+	if (vec_size(target->libdirs))
 	{
-		scratch_buffer_clear();
-		scratch_buffer_printf("%s/%s.c3l", dir, lib_name);
-		const char *lib_path = scratch_buffer_copy();
+		FOREACH(const char *, dir, target->libdirs)
+		{
+			file_add_wildcard_files(&c3_libs, dir, false, &c3lib_suffix, 1);
+		}
+	}
+	else
+	{
+		file_add_wildcard_files(&c3_libs, ".", false, &c3lib_suffix, 1);
+	}
 
-		manifest = read_manifest_from_path(lib_path, manifest_path_ref);
-		if (manifest) break;
-
-		manifest = read_manifest_from_zip(lib_path, manifest_path_ref);
-		if (manifest) break;
+	FOREACH(const char *, lib_path, c3_libs)
+	{
+		const char *manifest_path = NULL;
+		JSONObject *candidate = read_library_manifest_for_path(lib_path, &manifest_path);
+		if (!candidate) continue;
+		BuildParseContext manifest_context = { manifest_path, NULL };
+		const char *provides = get_optional_string(manifest_context, candidate, "provides");
+		if (provides && str_eq(provides, lib_name))
+		{
+			manifest = candidate;
+			*manifest_path_ref = manifest_path;
+			break;
+		}
 	}
 
 	if (!manifest)
 	{
 		error_exit("Error reading project: could not find manifest for library '%s' needed by preset '%s'.", lib_name, preset_ref);
-	}
-
-	BuildParseContext manifest_context = { *manifest_path_ref, NULL };
-	const char *provides = get_optional_string(manifest_context, manifest, "provides");
-	if (!provides || !str_eq(provides, lib_name))
-	{
-		error_exit("Error reading %s: library manifest 'provides' ('%s') does not match preset library name '%s'.", *manifest_path_ref, provides ? provides : "(missing)", lib_name);
 	}
 
 	JSONObject *presets = json_map_get(manifest, "presets");
@@ -759,11 +696,20 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->linker_libs);
 	duplicate_prop(&target->link_args);
 
-	const char *preset_ref = get_optional_string(context, json, "preset");
+	BuildParseContext target_context = { context.file, str_printf("%s %s", type, context.target) };
+	const char *preset_ref = get_optional_string(target_context, json, "preset");
 	if (preset_ref)
 	{
+		// Target-local dependencies and dependency-search-paths are needed to find the preset.
+		// Other target-local settings are intentionally loaded after the preset so they override it.
+		const char **default_libdirs = target->libdirs;
+		const char **default_libs = target->libs;
+		APPEND_STRING_LIST(&target->libdirs, "dependency-search-paths");
+		APPEND_STRING_LIST(&target->libs, "dependencies");
 		const char *manifest_path = NULL;
 		JSONObject *preset_json = resolve_preset(target, preset_ref, &manifest_path);
+		target->libdirs = default_libdirs;
+		target->libs = default_libs;
 		BuildParseContext preset_context = { manifest_path, str_printf("preset '%s'", preset_ref) };
 		load_into_build_target(preset_context, preset_json, target);
 	}
@@ -779,8 +725,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", context.file, target->name);
 		}
 	}
-	context.target = str_printf("%s %s", type, context.target);
-	load_into_build_target(context, json, target);
+	load_into_build_target(target_context, json, target);
 }
 
 static void project_add_targets(const char *filename, Project *project, JSONObject *project_data)
