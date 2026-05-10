@@ -139,6 +139,11 @@
 - Fix BigInt shr, to_format, and others.
 - Fix ends in TDist.quantile, FDist.pdf, ChiSquaredDist.pdf
 - Fix to easing expo_in and bounce_inout.
+- `deque` with shrinking a zero sized list caused infinite loop.
+- Printing an enummap yielded the wrong character count.
+- Incorrect contract in `FixedList` allowed insert out of range.
+- Fix double-free in InterfaceList.
+- Object.set_at was incorrect.
 
 ## 0.7.11 Change list
 

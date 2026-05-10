@@ -153,7 +153,6 @@ fn Type? InterfaceList.pop_first_retained(&self)
 fn Type? InterfaceList.copy_pop_first(&self, Allocator allocator)
 {
 	if (!self.size) return NO_MORE_ELEMENT~;
-	defer self.free_element(self.entries[self.size]);
 	defer self.remove_at(0);
 	return (Type)alloc::clone_any(allocator, self.entries[0]);
 }
@@ -174,8 +173,8 @@ fn Type? InterfaceList.tcopy_pop_first(&self) => self.copy_pop_first(tmem);
 *>
 fn void InterfaceList.remove_at(&self, sz index)
 {
-	if (!--self.size || index == self.size) return;
 	self.free_element(self.entries[index]);
+	if (!--self.size || index == self.size) return;
 	self.entries[index .. self.size - 1] = self.entries[index + 1 .. self.size];
 }
 
@@ -365,7 +364,7 @@ fn sz? InterfaceList.to_format(&self, Formatter* formatter) @dynamic
 			sz n = formatter.print("[")!;
 			foreach (i, element : self.entries[:self.size])
 			{
-				if (i != 0) formatter.print(", ")!;
+				if (i != 0) n += formatter.print(", ")!;
 				n += formatter.printf("%s", element)!;
 			}
 			n += formatter.print("]")!;
@@ -440,7 +439,7 @@ fn void InterfaceList.reserve(&self, sz min_capacity)
 
  @param index : "The index where to set the value."
  @param value : "The value to set"
- @require index <= self.size || index >= 0 : "Index out of range"
+ @require index <= self.size && index >= 0 : "Index out of range"
  @require $defined(Type t = &value) : "Value must implement the interface"
 *>
 macro void InterfaceList.set(&self, sz index, value)
@@ -474,7 +473,7 @@ fn void interfacelist_append(InterfaceList* self, Type element) @local
 }
 
 <*
- @require index <= self.size || index >= 0 : "Index out of range"
+ @require index <= self.size && index >= 0 : "Index out of range"
 *>
 fn void interfacelist_insert_at(InterfaceList* self, sz index, Type value) @local
 {

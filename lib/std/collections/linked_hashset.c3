@@ -99,7 +99,7 @@ macro LinkedHashSet* LinkedHashSet.tinit_with_values(&self, ..., sz capacity = D
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
- @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
+ @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 fn LinkedHashSet* LinkedHashSet.init_from_values(&self, Allocator allocator, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -113,7 +113,7 @@ fn LinkedHashSet* LinkedHashSet.init_from_values(&self, Allocator allocator, Val
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
- @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
+ @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 fn LinkedHashSet* LinkedHashSet.tinit_from_values(&self, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -566,24 +566,6 @@ fn sz? LinkedHashSet.to_format(&self, Formatter* f) @dynamic
 	return len + f.print(" }");
 }
 
-fn void linked_hashset_transfer(LinkedHashSet* set, LinkedEntry*[] new_table) @private
-{
-	LinkedEntry*[] src = set.table;
-	int new_capacity = (int)new_table.len;
-	foreach (LinkedEntry *e : src)
-	{
-		if (!e) continue;
-		do
-		{
-			LinkedEntry* next = e.next;
-			int i = index_for(e.hash, new_capacity);
-			e.next = new_table[i];
-			new_table[i] = e;
-			e = next;
-		}
-		while (e);
-	}
-}
 
 fn void linkedhashset_put_for_create(LinkedHashSet* set, Value value) @private
 {
