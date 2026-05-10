@@ -96,7 +96,7 @@ fn PathList? ls(Allocator allocator, Path dir, bool no_dirs = false, bool no_sym
 {
 	PathList list;
 	list.init(allocator);
-	_ls_collect(allocator, &list, dir, (Path)"", no_dirs, no_symlinks, mask, recursive, relative || recursive, rebase)!;
+	_ls_collect(allocator, &list, dir, (Path)"", no_dirs, no_symlinks, mask, recursive, relative, rebase)!;
 	return list;
 }
 

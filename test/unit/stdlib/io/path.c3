@@ -464,6 +464,17 @@ fn void test_ls_options() => mem::@scoped(tmem)
 	assert(found_alpha);
 	assert(found_gamma);
 
+	files = path::ls(mem, root, recursive: true, relative: false)!!;
+	found_alpha = false;
+	found_gamma = false;
+	foreach (entry : files)
+	{
+		found_alpha = found_alpha || entry == root.tappend("alpha.c3")!!;
+		found_gamma = found_gamma || entry == root.tappend("sub", "gamma.c3")!!;
+	}
+	assert(found_alpha);
+	assert(found_gamma);
+
 	files = path::ls(mem, root, recursive: true, relative: true, rebase: path::tnew("rebased")!!)!!;
 	found_alpha = false;
 	found_gamma = false;
