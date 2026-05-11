@@ -94,12 +94,12 @@ union Long16 @local
 	uint[16] l;
 }
 
-macro uint blk(Long16* block, i) @local
+macro uint schedule(Long16* block, uint i) @local
 {
 	return (block.l[i & 15u] = (block.l[(i + 13u) & 15u] ^ block.l[(i + 8u) & 15u]
 		^ block.l[(i + 2u) & 15u] ^ block.l[i & 15u]).rotl(1u));
 }
-macro uint blk0(Long16* block, i) @local
+macro uint schedule0(Long16* block, uint i) @local
 {
 	$if env::BIG_ENDIAN:
 		return block.l[i];
@@ -140,52 +140,44 @@ fn void sha1_transform(uint[5]* state, char* buffer) @local
 	uint a = (*state)[0]; uint b = (*state)[1];
 	uint c = (*state)[2]; uint d = (*state)[3]; uint e = (*state)[4];
 
-	$for uint $i; $i < 20; $i++:
-		$if $i < 16:
-			$switch $i % 5:
-				$case 0: r1(a, &b, c, d, &e, blk0(&block, $i));
-				$case 1: r1(e, &a, b, c, &d, blk0(&block, $i));
-				$case 2: r1(d, &e, a, b, &c, blk0(&block, $i));
-				$case 3: r1(c, &d, e, a, &b, blk0(&block, $i));
-				$case 4: r1(b, &c, d, e, &a, blk0(&block, $i));
-			$endswitch
-		$else
-			$switch $i % 5:
-				$case 0: r1(a, &b, c, d, &e, blk(&block, $i));
-				$case 1: r1(e, &a, b, c, &d, blk(&block, $i));
-				$case 2: r1(d, &e, a, b, &c, blk(&block, $i));
-				$case 3: r1(c, &d, e, a, &b, blk(&block, $i));
-				$case 4: r1(b, &c, d, e, &a, blk(&block, $i));
-			$endswitch
-		$endif
-	$endfor
-	$for uint $i = 20; $i < 40; $i++:
-		$switch $i % 5:
-			$case 0: r2(a, &b, c, d, &e, blk(&block, $i));
-			$case 1: r2(e, &a, b, c, &d, blk(&block, $i));
-			$case 2: r2(d, &e, a, b, &c, blk(&block, $i));
-			$case 3: r2(c, &d, e, a, &b, blk(&block, $i));
-			$case 4: r2(b, &c, d, e, &a, blk(&block, $i));
-		$endswitch
-	$endfor
-	$for uint $i = 40; $i < 60; $i++:
-		$switch $i % 5:
-			$case 0: r3(a, &b, c, d, &e, blk(&block, $i));
-			$case 1: r3(e, &a, b, c, &d, blk(&block, $i));
-			$case 2: r3(d, &e, a, b, &c, blk(&block, $i));
-			$case 3: r3(c, &d, e, a, &b, blk(&block, $i));
-			$case 4: r3(b, &c, d, e, &a, blk(&block, $i));
-		$endswitch
-	$endfor
-	$for uint $i = 60; $i < 80; $i++:
-		$switch $i % 5:
-			$case 0: r4(a, &b, c, d, &e, blk(&block, $i));
-			$case 1: r4(e, &a, b, c, &d, blk(&block, $i));
-			$case 2: r4(d, &e, a, b, &c, blk(&block, $i));
-			$case 3: r4(c, &d, e, a, &b, blk(&block, $i));
-			$case 4: r4(b, &c, d, e, &a, blk(&block, $i));
-		$endswitch
-	$endfor
+	for (uint i; i < 15; i += 5)
+	{
+		r1(a, &b, c, d, &e, schedule0(&block, i));
+		r1(e, &a, b, c, &d, schedule0(&block, i + 1));
+		r1(d, &e, a, b, &c, schedule0(&block, i + 2));
+		r1(c, &d, e, a, &b, schedule0(&block, i + 3));
+		r1(b, &c, d, e, &a, schedule0(&block, i + 4));
+	}
+	r1(a, &b, c, d, &e, schedule0(&block, 15));
+	r1(e, &a, b, c, &d, schedule(&block,  16));
+	r1(d, &e, a, b, &c, schedule(&block,  17));
+	r1(c, &d, e, a, &b, schedule(&block,  18));
+	r1(b, &c, d, e, &a, schedule(&block,  19));
+
+	for (uint i = 20; i < 40; i += 5)
+	{
+		r2(a, &b, c, d, &e, schedule(&block, i));
+		r2(e, &a, b, c, &d, schedule(&block, i + 1));
+		r2(d, &e, a, b, &c, schedule(&block, i + 2));
+		r2(c, &d, e, a, &b, schedule(&block, i + 3));
+		r2(b, &c, d, e, &a, schedule(&block, i + 4));
+	}
+	for (uint i = 40; i < 60; i += 5)
+	{
+		r3(a, &b, c, d, &e, schedule(&block, i));
+		r3(e, &a, b, c, &d, schedule(&block, i + 1));
+		r3(d, &e, a, b, &c, schedule(&block, i + 2));
+		r3(c, &d, e, a, &b, schedule(&block, i + 3));
+		r3(b, &c, d, e, &a, schedule(&block, i + 4));
+	}
+	for (uint i = 60; i < 80; i += 5)
+	{
+		r4(a, &b, c, d, &e, schedule(&block, i));
+		r4(e, &a, b, c, &d, schedule(&block, i + 1));
+		r4(d, &e, a, b, &c, schedule(&block, i + 2));
+		r4(c, &d, e, a, &b, schedule(&block, i + 3));
+		r4(b, &c, d, e, &a, schedule(&block, i + 4));
+	}
 
 	(*state)[0] += a; (*state)[1] += b; (*state)[2] += c; (*state)[3] += d; (*state)[4] += e;
 	@volatile_store(a, 0u); @volatile_store(b, 0u); @volatile_store(c, 0u);
