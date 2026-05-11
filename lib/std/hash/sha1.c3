@@ -69,7 +69,7 @@ fn char[HASH_BYTES] Sha1.final(&self)
 	{
 		finalcount[i] = (char)((self.count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
-	self.update((char[]){ 0o200 });
+	self.update((char[]){ 0x80 });
 
 	char[63] padding;
 	uint cur_bits = self.count[0] & 504u;
@@ -82,6 +82,8 @@ fn char[HASH_BYTES] Sha1.final(&self)
 	{
 		digest[i] = (char)((self.state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
+	@volatile_store(*self, ($Typeof(*self)){});
+	@volatile_store(finalcount, ($Typeof(finalcount)){});
 	return digest;
 }
 
@@ -107,27 +109,27 @@ macro uint schedule0(Long16* block, uint i) @local
 
 macro void r1(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 {
-	var old = *ref;
-	*z += ((old & (x ^ y)) ^ y) + w + 0x5A827999 + v.rotl(5);
-	*ref = old.rotl(30);
+	uint last = *ref;
+	*z += ((last & (x ^ y)) ^ y) + w + 0x5A827999 + v.rotl(5);
+	*ref = last.rotl(30);
 }
 macro void r2(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 {
-	var old = *ref;
-	*z += (old ^ x ^ y) + w + 0x6ED9EBA1 + v.rotl(5);
-	*ref = old.rotl(30);
+	uint last = *ref;
+	*z += (last ^ x ^ y) + w + 0x6ED9EBA1 + v.rotl(5);
+	*ref = last.rotl(30);
 }
 macro void r3(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 {
-	var old = *ref;
-	*z += (((old | x) & y) | (old & x)) + w + 0x8F1BBCDC + v.rotl(5);
-	*ref = old.rotl(30);
+	uint last = *ref;
+	*z += (((last | x) & y) | (last & x)) + w + 0x8F1BBCDC + v.rotl(5);
+	*ref = last.rotl(30);
 }
 macro void r4(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 {
-	var old = *ref;
-	*z += (old ^ x ^ y) + w + 0xCA62C1D6 + v.rotl(5);
-	*ref = old.rotl(30);
+	uint last = *ref;
+	*z += (last ^ x ^ y) + w + 0xCA62C1D6 + v.rotl(5);
+	*ref = last.rotl(30);
 }
 
 <*
@@ -144,10 +146,10 @@ fn void sha1_transform(uint[5]* state, char* buffer) @local
 	for (uint i; i < 15; i += 5)
 	{
 		r1(a, &b, c, d, &e, schedule0(&block, i));
-		r1(e, &a, b, c, &d, schedule0(&block, i + 1));
-		r1(d, &e, a, b, &c, schedule0(&block, i + 2));
-		r1(c, &d, e, a, &b, schedule0(&block, i + 3));
-		r1(b, &c, d, e, &a, schedule0(&block, i + 4));
+		r1(e, &a, b, c, &d, schedule0(&block, i+1));
+		r1(d, &e, a, b, &c, schedule0(&block, i+2));
+		r1(c, &d, e, a, &b, schedule0(&block, i+3));
+		r1(b, &c, d, e, &a, schedule0(&block, i+4));
 	}
 	r1(a, &b, c, d, &e, schedule0(&block, 15));
 	r1(e, &a, b, c, &d, schedule(&block, 16));
@@ -180,6 +182,8 @@ fn void sha1_transform(uint[5]* state, char* buffer) @local
 		r4(b, &c, d, e, &a, schedule(&block, i+4));
 	}
 
-	(*state)[0] += a; (*state)[1] += b; (*state)[2] += c;
-	(*state)[3] += d; (*state)[4] += e;
+	(*state)[0] += a; (*state)[1] += b; (*state)[2] += c; (*state)[3] += d; (*state)[4] += e;
+	@volatile_store(a, 0u); @volatile_store(b, 0u); @volatile_store(c, 0u);
+	@volatile_store(d, 0u); @volatile_store(e, 0u);
+	@volatile_store(block, ($Typeof(block)){});
 }
