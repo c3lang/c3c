@@ -107,25 +107,25 @@ macro uint schedule0(Long16* block, uint i) @local
 	$endif
 }
 
-macro void r1(uint v, uint* ref, uint x, uint y, uint* z, uint w) {
-	uint old = *ref;
-	*z += ((old & (x ^ y)) ^ y) + w + 0x5A827999 + v.rotl(5);
-	*ref = old.rotl(30);
+macro void r1(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
+{
+	*z += ((*ref & (x ^ y)) ^ y) + w + 0x5A827999 + v.rotl(5);
+	*ref = (*ref).rotl(30);
 }
-macro void r2(uint v, uint* ref, uint x, uint y, uint* z, uint w) {
-	uint old = *ref;
-	*z += (old ^ x ^ y) + w + 0x6ED9EBA1 + v.rotl(5);
-	*ref = old.rotl(30);
+macro void r2(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
+{
+	*z += (*ref ^ x ^ y) + w + 0x6ED9EBA1 + v.rotl(5);
+	*ref = (*ref).rotl(30);
 }
-macro void r3(uint v, uint* ref, uint x, uint y, uint* z, uint w) {
-	uint old = *ref;
-	*z += (((old | x) & y) | (old & x)) + w + 0x8F1BBCDC + v.rotl(5);
-	*ref = old.rotl(30);
+macro void r3(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
+{
+	*z += (((*ref | x) & y) | (*ref & x)) + (w) + 0x8F1BBCDC + v.rotl(5);
+	*ref = (*ref).rotl(30);
 }
-macro void r4(uint v, uint* ref, uint x, uint y, uint* z, uint w) {
-	uint old = *ref;
-	*z += (old ^ x ^ y) + w + 0xCA62C1D6 + v.rotl(5);
-	*ref = old.rotl(30);
+macro void r4(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
+{
+	*z += (*ref ^ x ^ y) + w + 0xCA62C1D6 + v.rotl(5);
+	*ref = (*ref).rotl(30);
 }
 
 <*
