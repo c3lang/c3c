@@ -223,6 +223,8 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_STRING("Additional C compiler flags", "cflags");
 	TARGET_VIEW_STRING("C compiler flags (override)", "cflags-override");
 	TARGET_VIEW_STRING("CPU name", "cpu");
+	TARGET_VIEW_STRING("CPU flags", "cpu-flags");
+	TARGET_VIEW_STRING("CPU flags (override)", "cpu-flags-override");
 	TARGET_VIEW_SETTING("Debug level", "debug-info", debug_levels);
 	TARGET_VIEW_STRING_ARRAY("Additional scripts to run", "exec", ", ");
 	TARGET_VIEW_STRING_ARRAY("Scripts to run (override)", "exec", ", ");
@@ -255,6 +257,8 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_BOOL("Strip unused code/globals", "strip-unused");
 	TARGET_VIEW_INTEGER("Preferred symtab size", "symtab");
 	TARGET_VIEW_STRING("Target", "target");
+	TARGET_VIEW_SETTING("RISC-V CPU level", "riscv-cpu", riscv_cpu_set);
+	TARGET_VIEW_SETTING("RISC-V ABI", "riscv-abi", riscv_abi);
 	TARGET_VIEW_STRING("Test function override", "testfn");
 	TARGET_VIEW_BOOL("Integers panic on wrapping", "trap-on-wrap");
 	TARGET_VIEW_BOOL("Include standard library", "use-stdlib");
@@ -551,6 +555,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING("Android API version", "android-api");
 	VIEW_STRING("Android NDK directory", "android-ndk");
 	VIEW_STRING("CPU name", "cpu");
+	VIEW_STRING("CPU flags", "cpu-flags");
 	VIEW_SETTING("Debug level", "debug-info", debug_levels);
 	VIEW_STRING_ARRAY("Scripts to run", "exec", ", ");
 	VIEW_STRING_ARRAY("Enabled features", "features", ", ");
@@ -579,6 +584,8 @@ void view_project(BuildOptions *build_options)
 	VIEW_BOOL("Strip unused code/globals", "strip-unused");
 	VIEW_INTEGER("Preferred symtab size", "symtab");
 	VIEW_STRING("Target", "target");
+	VIEW_SETTING("RISC-V CPU level", "riscv-cpu", riscv_cpu_set);
+	VIEW_SETTING("RISC-V ABI", "riscv-abi", riscv_abi);
 	VIEW_STRING("Test function override", "testfn");
 	VIEW_BOOL("Integers panic on wrapping", "trap-on-wrap");
 	VIEW_BOOL("Include standard library", "use-stdlib");
