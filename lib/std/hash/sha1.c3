@@ -82,8 +82,6 @@ fn char[HASH_BYTES] Sha1.final(&self)
 	{
 		digest[i] = (char)((self.state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
-	@volatile_store(*self, ($Typeof(*self)){});
-	@volatile_store(finalcount, ($Typeof(finalcount)){});
 	return digest;
 }
 
@@ -109,23 +107,27 @@ macro uint schedule0(Long16* block, uint i) @local
 
 macro void r1(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 {
-	*z += ((*ref & (x ^ y)) ^ y) + w + 0x5A827999 + v.rotl(5);
-	*ref = (*ref).rotl(30);
+	var old = *ref;
+	*z += ((old & (x ^ y)) ^ y) + w + 0x5A827999 + v.rotl(5);
+	*ref = old.rotl(30);
 }
 macro void r2(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 {
-	*z += (*ref ^ x ^ y) + w + 0x6ED9EBA1 + v.rotl(5);
-	*ref = (*ref).rotl(30);
+	var old = *ref;
+	*z += (old ^ x ^ y) + w + 0x6ED9EBA1 + v.rotl(5);
+	*ref = old.rotl(30);
 }
 macro void r3(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 {
-	*z += (((*ref | x) & y) | (*ref & x)) + w + 0x8F1BBCDC + v.rotl(5);
-	*ref = (*ref).rotl(30);
+	var old = *ref;
+	*z += (((old | x) & y) | (old & x)) + w + 0x8F1BBCDC + v.rotl(5);
+	*ref = old.rotl(30);
 }
 macro void r4(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 {
-	*z += (*ref ^ x ^ y) + w + 0xCA62C1D6 + v.rotl(5);
-	*ref = (*ref).rotl(30);
+	var old = *ref;
+	*z += (old ^ x ^ y) + w + 0xCA62C1D6 + v.rotl(5);
+	*ref = old.rotl(30);
 }
 
 <*
@@ -178,8 +180,6 @@ fn void sha1_transform(uint[5]* state, char* buffer) @local
 		r4(b, &c, d, e, &a, schedule(&block, i+4));
 	}
 
-	(*state)[0] += a; (*state)[1] += b; (*state)[2] += c; (*state)[3] += d; (*state)[4] += e;
-	@volatile_store(a, 0u); @volatile_store(b, 0u); @volatile_store(c, 0u);
-	@volatile_store(d, 0u); @volatile_store(e, 0u);
-	@volatile_store(block, ($Typeof(block)){});
+	(*state)[0] += a; (*state)[1] += b; (*state)[2] += c;
+	(*state)[3] += d; (*state)[4] += e;
 }
