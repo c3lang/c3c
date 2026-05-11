@@ -111,6 +111,13 @@
               "type": "string"
             }
           },
+          "features": {
+            "type": "array",
+            "description": "Feature flags enabled for this target.",
+            "items": {
+              "type": "string"
+            }
+          },
           "opt": {
             "type": "string",
             "description": "Optimization setting.",
