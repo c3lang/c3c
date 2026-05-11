@@ -62,10 +62,6 @@
 - Added C3 Compiler setup installer for Windows
 - `alias Foo = int::typeid` now works.
 - `$typeof` => `$Typeof`, `$typefrom` => `$Typefrom`.
-- Bitstruct with backing char[n] would occasionally be incorrectly stored.
-- fmuladd lowering crashes on `a + -(b * c)` with fastmath.
-- Constant folding `-30 % -7` would incorrectly yield "2".
-- Parsing << in asm would not be correctly handled.
 
 ### Stdlib changes
 - Add `List.remove_unordered_at`.
@@ -144,6 +140,10 @@
 - Incorrect contract in `FixedList` allowed insert out of range.
 - Fix double-free in InterfaceList.
 - Object.set_at was incorrect.
+- Bitstruct with backing char[n] would occasionally be incorrectly stored.
+- fmuladd lowering crashes on `a + -(b * c)` with fastmath.
+- Constant folding `-30 % -7` would incorrectly yield "2".
+- Parsing << in asm would not be correctly handled.
 
 ## 0.7.11 Change list
 
