@@ -89,7 +89,7 @@ macro LinkedHashMap* LinkedHashMap.init_with_key_values(&self, Allocator allocat
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Map was already initialized"
- @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
+ @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 macro LinkedHashMap* LinkedHashMap.tinit_with_key_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -416,7 +416,6 @@ fn void linkedhashmap_add_entry(LinkedHashMap* map, uint hash, Key key, Value va
 	if (map.tail)
 	{
 		map.tail.after = entry;
-		entry.before = map.tail;
 	}
 	else
 	{
@@ -515,46 +514,12 @@ fn sz? LinkedHashMap.to_format(&self, Formatter* f) @dynamic
 	return len + f.print(" }");
 }
 
-fn void linkedhashmap_transfer(LinkedHashMap* map, LinkedEntry*[] new_table) @private
-{
-	LinkedEntry*[] src = map.table;
-	int new_capacity = (int)new_table.len;
-	foreach (LinkedEntry *e : src)
-	{
-		if (!e) continue;
-		do
-		{
-			LinkedEntry* next = e.next;
-			int i = index_for(e.hash, new_capacity);
-			e.next = new_table[i];
-			new_table[i] = e;
-			e = next;
-		}
-		while (e);
-	}
-}
-
 fn void linkedhashmap_put_all_for_create(LinkedHashMap* map, LinkedHashMap* other_map) @private
 {
 	if (!other_map.count) return;
 	other_map.@each(; Key key, Value value) {
 		map.set(key, value);
 	};
-}
-
-fn void linkedhashmap_put_for_create(LinkedHashMap* map, Key key, Value value) @private
-{
-	uint hash = rehash(key.hash());
-	int i = index_for(hash, map.table.len);
-	for (LinkedEntry *e = map.table[i]; e != null; e = e.next)
-	{
-		if (e.hash == hash && equals(key, e.key))
-		{
-			e.value = value;
-			return;
-		}
-	}
-	linkedhashmap_create_entry(map, hash, key, value, i);
 }
 
 fn void linkedhashmap_free_internal(LinkedHashMap* map, void* ptr) @inline @private
@@ -610,17 +575,6 @@ fn bool linkedhashmap_remove_entry_for_key(LinkedHashMap* map, Key key) @private
 		e = e.next;
 	}
 	return false;
-}
-
-fn void linkedhashmap_create_entry(LinkedHashMap* map, uint hash, Key key, Value value, int bucket_index) @private
-{
-	LinkedEntry *e = map.table[bucket_index];
-	$if COPY_KEYS:
-		key = key.copy(map.allocator);
-	$endif
-	LinkedEntry* entry = alloc::new(map.allocator, LinkedEntry, { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] });
-	map.table[bucket_index] = entry;
-	map.count++;
 }
 
 fn void linkedhashmap_free_entry(LinkedHashMap* self, LinkedEntry *entry) @local

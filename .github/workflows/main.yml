@@ -29,12 +29,9 @@ env:
 jobs:
 
   build-msvc:
+    name: Windows (x64) MSVC
     runs-on: windows-2025
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [ Release, Debug ]
     defaults:
       run:
         shell: cmd
@@ -43,17 +40,31 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: build/_deps
-          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
 
       # set up the environment for Ninja
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
 
-      - name: CMake Build
+      - name: CMake Build (Release)
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DC3_FETCH_LLVM=ON
-          cmake --build build --config ${{ matrix.build_type }}
+          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
+          cmake --build build-release --config Release
+
+      - name: Bundle (Windows Release)
+        shell: bash
+        run: ./scripts/tools/package_build.sh "./build-release/c3c.exe" "c3-windows-Release" "zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-Release
+          path: c3-windows-Release.zip
+
+      - name: CMake Build (Debug)
+        run: |
+          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
+          cmake --build build-debug --config Debug
 
       # We remove the GNU link tool so C3C picks up the MSVC link.exe
       - name: Remove GNU Link
@@ -62,16 +73,16 @@ jobs:
 
       - name: Run Unified Tests
         shell: bash
-        run: ./scripts/tools/ci_tests.sh "./build/c3c.exe"
+        run: ./scripts/tools/ci_tests.sh "./build-debug/c3c.exe"
 
-      - name: Bundle (Windows)
+      - name: Bundle (Windows Debug)
         shell: bash
-        run: ./scripts/tools/package_build.sh "./build/c3c.exe" "c3-windows-${{ matrix.build_type }}" "zip"
+        run: ./scripts/tools/package_build.sh "./build-debug/c3c.exe" "c3-windows-Debug" "zip"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: c3-windows-${{ matrix.build_type }}
-          path: c3-windows-${{ matrix.build_type }}.zip
+          name: c3-windows-Debug
+          path: c3-windows-Debug.zip
 
       - name: Cache NSIS
         id: cache-nsis
@@ -80,7 +91,7 @@ jobs:
           path: C:\Program Files (x86)\NSIS
           key: ${{ runner.os }}-nsis-3.12
 
-      - name: Setup NSIS & Compile Installer
+      - name: Setup NSIS & Compile Installers
         shell: bash
         run: |
           if [ "${{ steps.cache-nsis.outputs.cache-hit }}" != "true" ]; then
@@ -89,15 +100,22 @@ jobs:
             7z x EnVar-Plugin.zip -o"C:\Program Files (x86)\NSIS" -y
           fi
           export PATH="/c/Program Files (x86)/NSIS/Bin:/c/Program Files (x86)/NSIS:$PATH"
-          MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-${{ matrix.build_type }}.exe" resources/nsis/installer.nsi
+          MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-Release.exe" /DBUILD_DIR=build-release resources/nsis/installer.nsi
+          MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-Debug.exe" /DBUILD_DIR=build-debug resources/nsis/installer.nsi
 
       - uses: actions/upload-artifact@v7
         with:
-          name: c3-windows-setup-${{ matrix.build_type }}
-          path: resources/nsis/c3-windows-setup-${{ matrix.build_type }}.exe
+          name: c3-windows-setup-Release
+          path: resources/nsis/c3-windows-setup-Release.exe
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-setup-Debug
+          path: resources/nsis/c3-windows-setup-Debug.exe
 
   build-msys2:
-    runs-on: windows-latest
+    name: Windows (x64) ${{ matrix.sys }}
+    runs-on: windows-2025
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -138,11 +156,8 @@ jobs:
 
 
   build-linux:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [Release, Debug]
+    name: Linux (x64) Ubuntu
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
       - name: Get current date context
@@ -158,30 +173,45 @@ jobs:
           for i in 1 2 3; do sudo apt-get update && break || sleep 2; done
           for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev && break || sleep 2; done
           sudo chown -R $USER:$USER apt-cache
-      - name: CMake Build
+
+      - name: CMake Build (Release)
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DC3_FETCH_LLVM=ON
-          cmake --build build
+          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
+          cmake --build build-release
+
+      - name: Bundle & Upload (Linux Release)
+        run: |
+          bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-linux-Release" "tar"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-linux-Release
+          path: c3-linux-Release.tar.gz
+
+      - name: CMake Build (Debug)
+        run: |
+          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
+          cmake --build build-debug
+
       - name: Run Unified Tests
-        run: ./scripts/tools/ci_tests.sh "./build/c3c"
+        run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
 
       - name: Embedded/QEMU Tests
         run: |
-          # Added `opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf` to the apt-get install command above
           cd resources/examples/embedded/riscv-qemu
-          make C3C_PATH=../../../../build/ run
+          make C3C_PATH=../../../../build-debug/ run
 
-      - name: Bundle & Upload (Linux)
+      - name: Bundle & Upload (Linux Debug)
         run: |
-          bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-${{matrix.build_type}}" "tar"
+          bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-linux-Debug" "tar"
       - uses: actions/upload-artifact@v7
         with:
-          name: c3-linux-${{matrix.build_type}}
-          path: c3-linux-${{matrix.build_type}}.tar.gz
+          name: c3-linux-Debug
+          path: c3-linux-Debug.tar.gz
 
   test-emscripten-32bit:
+    name: Emscripten
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -197,7 +227,7 @@ jobs:
       - name: Extract C3
         run: |
           tar -xzf bin/c3-linux-${{matrix.build_type}}.tar.gz -C bin
-          # The package_build.sh seems to create a 'c3' directory inside the tar
+          # The package_build.sh creates a 'c3' directory inside the tar
           chmod +x bin/c3/c3c
 
       - name: Setup Emscripten
@@ -213,13 +243,10 @@ jobs:
         run: ./scripts/tools/emscripten_tests.sh "./bin/c3/c3c"
 
   build-linux-musl-static:
-    runs-on: ubuntu-latest
+    name: Linux (x64) musl Static
+    runs-on: ubuntu-24.04
     container:
       image: alpine:3.23
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [Release, Debug]
     steps:
       - name: Prepare Git
         run: |
@@ -230,7 +257,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          V=${{env.LLVM_RELEASE_VERSION_LINUX_MUSL}}
           apk update
           apk add \
             build-base bash cmake ninja python3 linux-headers \
@@ -240,42 +266,54 @@ jobs:
             curl-dev openssl-dev brotli-dev libpsl-dev libidn2-dev \
             libunistring-dev nghttp2-dev nghttp3-dev c-ares-dev
 
-      - name: CMake Build (static musl)
+      - name: CMake Build (static musl Release)
         run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          cmake -B build-release -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
             -DC3_FETCH_LLVM=ON \
             -DC3_LINK_DYNAMIC=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DCMAKE_EXE_LINKER_FLAGS="-static -static-libstdc++ -static-libgcc"
-          cmake --build build
+          cmake --build build-release
+
+      - name: Bundle (Release)
+        run: bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-linux-static-Release" "tar"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-linux-static-Release
+          path: c3-linux-static-Release.tar.gz
+
+      - name: CMake Build (static musl Debug)
+        run: |
+          cmake -B build-debug -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DC3_FETCH_LLVM=ON \
+            -DC3_LINK_DYNAMIC=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libstdc++ -static-libgcc"
+          cmake --build build-debug
 
       - name: Verify Static
         run: |
-          ldd build/c3c || true
-          file build/c3c
-          build/c3c --version
+          ldd build-debug/c3c || true
+          file build-debug/c3c
+          build-debug/c3c --version
 
       - name: Run Unified Tests
-        if: matrix.build_type == 'Debug'
-        run: ./scripts/tools/ci_tests.sh "./build/c3c"
+        run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
 
-      - name: Bundle
-        run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-static-${{ matrix.build_type }}" "tar"
-
+      - name: Bundle (Debug)
+        run: bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-linux-static-Debug" "tar"
       - uses: actions/upload-artifact@v7
         with:
-          name: c3-linux-static-${{ matrix.build_type }}
-          path: c3-linux-static-${{ matrix.build_type }}.tar.gz
+          name: c3-linux-static-Debug
+          path: c3-linux-static-Debug.tar.gz
 
   build-linux-alpine:
-    runs-on: ubuntu-latest
+    name: Linux (x64) Alpine Dynamic
+    runs-on: ubuntu-24.04
     container:
       image: alpine:3.23
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [Release, Debug]
     steps:
       - name: Prepare Git
         run: |
@@ -320,193 +358,239 @@ jobs:
               lld${V}-libs && break || sleep 2; \
           done
 
-      - name: CMake Build
+      - name: CMake Build (Release)
         run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          cmake -B build-release -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
             -DC3_FETCH_LLVM=OFF \
             -DLLVM_ENABLE_LIBXML2=OFF \
             -DC3_LINK_DYNAMIC=ON
-          cmake --build build
+          cmake --build build-release
 
-      - name: Run Unified Tests
-        run: ./scripts/tools/ci_tests.sh "./build/c3c"
-      - name: Bundle & Upload (Alpine)
-        run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-linux-musl-${{ matrix.build_type }}" "tar"
+      - name: Bundle & Upload (Alpine Release)
+        run: bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-linux-musl-Release" "tar"
       - uses: actions/upload-artifact@v7
         with:
-          name: c3-linux-musl-${{ matrix.build_type }}
-          path: c3-linux-musl-${{ matrix.build_type }}.tar.gz
+          name: c3-linux-musl-Release
+          path: c3-linux-musl-Release.tar.gz
+
+      - name: CMake Build (Debug)
+        run: |
+          cmake -B build-debug -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DC3_FETCH_LLVM=OFF \
+            -DLLVM_ENABLE_LIBXML2=OFF \
+            -DC3_LINK_DYNAMIC=ON
+          cmake --build build-debug
+
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
+
+      - name: Bundle & Upload (Alpine Debug)
+        run: bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-linux-musl-Debug" "tar"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-linux-musl-Debug
+          path: c3-linux-musl-Debug.tar.gz
 
   build-mac:
+    name: macOS (aarch64)
     runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [Release, Debug]
     steps:
       - uses: actions/checkout@v6
-      - name: CMake Build
+      - name: CMake Build (Release)
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DC3_FETCH_LLVM=ON
-          cmake --build build
-      - name: Run Unified Tests
-        run: ./scripts/tools/ci_tests.sh "./build/c3c"
+          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
+          cmake --build build-release
 
-      - name: Build Lib (Mac)
-        run: |
-          cd resources/testproject
-          ../../build/c3c build hello_world_lib -vv --trust=full
-
-      - name: Bundle & Upload (Mac)
-        run: bash ./scripts/tools/package_build.sh "./build/c3c" "c3-macos-${{matrix.build_type}}" "zip"
+      - name: Bundle & Upload (Mac Release)
+        run: bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-macos-Release" "zip"
       - uses: actions/upload-artifact@v7
         with:
-          name: c3-macos-${{matrix.build_type}}
-          path: c3-macos-${{matrix.build_type}}.zip
+          name: c3-macos-Release
+          path: c3-macos-Release.zip
+
+      - name: CMake Build (Debug)
+        run: |
+          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
+          cmake --build build-debug
+
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
+
+      - name: Build Lib (Mac Debug)
+        run: |
+          cd resources/testproject
+          ../../build-debug/c3c build hello_world_lib -vv --trust=full
+
+      - name: Bundle & Upload (Mac Debug)
+        run: bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-macos-Debug" "zip"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-macos-Debug
+          path: c3-macos-Debug.zip
 
   build-openbsd:
-    runs-on: ubuntu-latest
+    name: OpenBSD (x64) ${{ matrix.version }}
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Release, Debug]
         version: ['7.8']
     steps:
       - uses: actions/checkout@v6
 
-      - name: Build, Test and Package in OpenBSD
+      - name: Setup OpenBSD VM
         uses: cross-platform-actions/action@master
         with:
           operating_system: openbsd
           version: ${{ matrix.version }}
           cpu_count: 4
           memory: 6G
-          run: |
-            # Install dependencies
-            for i in 1 2 3; do
-              sudo pkg_add ninja cmake llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash && break || sleep 5
-            done
 
-            export MALLOC_OPTIONS=j
+      - name: Install Dependencies
+        shell: cpa.sh {0}
+        run: |
+          for i in 1 2 3; do
+            sudo pkg_add ninja cmake llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash && break || sleep 5
+          done
 
-            # Setup RAM Disk
-            sudo mkdir -p /mnt/ram
-            sudo mount_mfs -s $((2 * 1024 * 1024 * 2)) swap /mnt/ram
-            sudo chown -R $(id -u):$(id -g) /mnt/ram
-            export TMPDIR=/mnt/ram
+      - name: Build (Release)
+        shell: cpa.sh {0}
+        run: |
+          export MALLOC_OPTIONS=j
+          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-release
 
-            # Copy source to RAM disk and switch to it
-            cp -rp . /mnt/ram/
-            cd /mnt/ram
+      - name: Build (Debug)
+        shell: cpa.sh {0}
+        run: |
+          export MALLOC_OPTIONS=j
+          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-debug
 
-            # Build
-            cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-            cmake --build build
+      - name: Run Tests
+        shell: cpa.sh {0}
+        run: |
+          export MALLOC_OPTIONS=j
+          ulimit -d $(ulimit -Hd) || true
+          ./scripts/tools/ci_tests.sh build-debug/c3c
 
-            # Run Unified Tests
-            chmod +x scripts/tools/ci_tests.sh
-            ulimit -d $(ulimit -Hd) || true
-            ./scripts/tools/ci_tests.sh "./build/c3c"
+      - name: Package
+        shell: cpa.sh {0}
+        run: |
+          export MALLOC_OPTIONS=j
+          ./scripts/tools/package_build.sh "./build-release/c3c" "c3-openbsd-Release" "tar"
+          ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-openbsd-Debug" "tar"
 
-            # Package
-            chmod +x scripts/tools/package_build.sh
-            ./scripts/tools/package_build.sh "./build/c3c" "c3-openbsd-${{matrix.build_type}}" "tar"
-
-            # Move results back to workspace for GitHub rsync/upload
-            mkdir -p "$GITHUB_WORKSPACE"/build
-            cp build/c3c "$GITHUB_WORKSPACE"/build/
-            cp *.tar.gz "$GITHUB_WORKSPACE"/
-
-      - uses: actions/upload-artifact@v7
+      - name: Upload Artifacts (Release)
+        uses: actions/upload-artifact@v7
         with:
-          name: c3-openbsd-${{matrix.build_type}}
-          path: c3-openbsd-${{matrix.build_type}}.tar.gz
+          name: c3-openbsd-Release
+          path: c3-openbsd-Release.tar.gz
+
+      - name: Upload Artifacts (Debug)
+        uses: actions/upload-artifact@v7
+        with:
+          name: c3-openbsd-Debug
+          path: c3-openbsd-Debug.tar.gz
 
   build-netbsd:
-    runs-on: ubuntu-latest
+    name: NetBSD (x64) ${{ matrix.version }}
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Release, Debug]
         version: ['10.1']
     steps:
       - uses: actions/checkout@v6
 
-      - name: Build, Test and Package in NetBSD
+      - name: Setup NetBSD VM
         uses: cross-platform-actions/action@master
         with:
           operating_system: netbsd
           version: ${{ matrix.version }}
           cpu_count: 4
           memory: 6G
-          run: |
-            # Install dependencies, select best mirror
-            export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
-            sudo mkdir -p /usr/pkg/etc/pkgin
-            MIRROR_PATH="pub/pkgsrc/packages/NetBSD/amd64/10.1/All"
-            WORKING_MIRRORS=""
-            echo "Testing mirrors..."
-            for m in "http://cdn.NetBSD.org/$MIRROR_PATH" "http://ftp.jaist.ac.jp/$MIRROR_PATH" "http://ftp.NetBSD.org/$MIRROR_PATH" "http://ftp.fr.NetBSD.org/$MIRROR_PATH" "https://mirror.planetunix.net/$MIRROR_PATH"; do
-              if curl -s -f -I -L --connect-timeout 5 --max-time 10 "$m/pkg_summary.bz2" > /dev/null; then
-                echo "OK: $m"
-                WORKING_MIRRORS="${WORKING_MIRRORS}${m}/\n"
-              fi
-            done
 
-            if [ -n "$WORKING_MIRRORS" ]; then
-              printf "$WORKING_MIRRORS" | sudo tee /usr/pkg/etc/pkgin/repositories.conf
-            else
-              echo "No mirrors responded, using main site as fallback."
-              echo "http://ftp.NetBSD.org/$MIRROR_PATH/" | sudo tee /usr/pkg/etc/pkgin/repositories.conf
+      - name: Install Dependencies
+        shell: cpa.sh {0}
+        run: |
+          # Install dependencies, select best mirror
+          export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+          sudo mkdir -p /usr/pkg/etc/pkgin
+          MIRROR_PATH="pub/pkgsrc/packages/NetBSD/amd64/10.1/All"
+          WORKING_MIRRORS=""
+          echo "Testing mirrors..."
+          for m in "http://cdn.NetBSD.org/$MIRROR_PATH" "http://ftp.jaist.ac.jp/$MIRROR_PATH" "http://ftp.NetBSD.org/$MIRROR_PATH" "http://ftp.fr.NetBSD.org/$MIRROR_PATH" "https://mirror.planetunix.net/$MIRROR_PATH"; do
+            if curl -s -f -I -L --connect-timeout 5 --max-time 10 "$m/pkg_summary.bz2" > /dev/null; then
+              echo "OK: $m"
+              WORKING_MIRRORS="${WORKING_MIRRORS}${m}/\n"
             fi
+          done
 
-            for i in 1 2 3; do
-              sudo pkgin -y update && \
-              sudo pkgin -y install cmake gcc14 ninja-build bash \
-                "llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
-                "clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
-                "lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" && break || sleep 5
-            done
+          if [ -n "$WORKING_MIRRORS" ]; then
+            printf "$WORKING_MIRRORS" | sudo tee /usr/pkg/etc/pkgin/repositories.conf
+          else
+            echo "No mirrors responded, using main site as fallback."
+            echo "http://ftp.NetBSD.org/$MIRROR_PATH/" | sudo tee /usr/pkg/etc/pkgin/repositories.conf
+          fi
 
-            export CC=clang
-            export CXX=clang++
+          for i in 1 2 3; do
+            sudo pkgin -y update && \
+            sudo pkgin -y install cmake gcc14 ninja-build bash \
+              "llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
+              "clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
+              "lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" && break || sleep 5
+          done
 
-            # Setup RAM Disk
-            sudo mkdir -p /mnt/ram
-            sudo mount_tmpfs -s 2G tmpfs /mnt/ram
-            sudo chown -R $(id -u):$(id -g) /mnt/ram
-            export TMPDIR=/mnt/ram
+      - name: Build (Release)
+        shell: cpa.sh {0}
+        run: |
+          export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+          export CC=clang
+          export CXX=clang++
 
-            # Copy source to RAM disk and switch to it
-            cp -rp . /mnt/ram/
-            cd /mnt/ram
+          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-release
 
-            # Build
-            cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-            cmake --build build
+      - name: Build (Debug)
+        shell: cpa.sh {0}
+        run: |
+          export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+          export CC=clang
+          export CXX=clang++
+          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-debug
 
-            # Run Unified Tests
-            chmod +x scripts/tools/ci_tests.sh
-            ./scripts/tools/ci_tests.sh "./build/c3c"
+      - name: Run Tests
+        shell: cpa.sh {0}
+        run: |
+          export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+          ./scripts/tools/ci_tests.sh build-debug/c3c
 
-            # Package
-            chmod +x scripts/tools/package_build.sh
-            ./scripts/tools/package_build.sh "./build/c3c" "c3-netbsd-${{matrix.build_type}}" "tar"
+      - name: Package
+        shell: cpa.sh {0}
+        run: |
+          export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+          ./scripts/tools/package_build.sh "./build-release/c3c" "c3-netbsd-Release" "tar"
+          ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-netbsd-Debug" "tar"
 
-            # Move results back to workspace for GitHub rsync/upload
-            mkdir -p "$GITHUB_WORKSPACE"/build
-            cp build/c3c "$GITHUB_WORKSPACE"/build/
-            cp *.tar.gz "$GITHUB_WORKSPACE"/
-
-      - uses: actions/upload-artifact@v7
+      - name: Upload Artifacts (Release)
+        uses: actions/upload-artifact@v7
         with:
-          name: c3-netbsd-${{matrix.build_type}}
-          path: c3-netbsd-${{matrix.build_type}}.tar.gz
+          name: c3-netbsd-Release
+          path: c3-netbsd-Release.tar.gz
+
+      - name: Upload Artifacts (Debug)
+        uses: actions/upload-artifact@v7
+        with:
+          name: c3-netbsd-Debug
+          path: c3-netbsd-Debug.tar.gz
 
   build-with-docker:
     name: LLVM ${{ matrix.llvm_version }} Compatibility
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -568,7 +652,8 @@ jobs:
             bash -c "./scripts/tools/ci_tests.sh ./bin/c3c"
 
   build-linux-llvm23:
-    name: LLVM 23 (apt.llvm.org)
+    if: false
+    name: Linux (x64) LLVM 23
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     continue-on-error: true
@@ -604,6 +689,7 @@ jobs:
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
   build-nix:
+    name: Nix (${{ matrix.nixpkgs }})
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -625,10 +711,10 @@ jobs:
         nix build -L "$CHECK_NAME"
 
   build-android:
+    name: Android (${{ matrix.architecture }})
     strategy:
       fail-fast: false
       matrix:
-        build_type: [ Release, Debug ]
         architecture: [ aarch64, x86_64 ]
         include:
           - architecture: aarch64
@@ -695,25 +781,40 @@ jobs:
             /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static && break || sleep 10; \
           done
 
-      - name: build
+      - name: build (Release)
         run: |
-          cmake -Bbuild -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
-          cmake --build build
+          cmake -B build-release -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-release
 
-      - name: Run Unified Tests
-        if: matrix.build_type == 'Debug'
-        run: bash ./scripts/tools/ci_tests.sh "./build/c3c" "android"
-
-      - name: bundle_output
+      - name: Bundle Release
         run: |
           chmod +x ./scripts/tools/package_build.sh
-          bash ./scripts/tools/package_build.sh "./build/c3c" "c3-android-${{matrix.architecture}}-${{matrix.build_type}}" "tar"
+          bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-android-${{matrix.architecture}}-Release" "tar"
 
-      - name: upload artifacts
+      - name: upload artifacts (Release)
         uses: actions/upload-artifact@v7
         with:
-          name: c3-android-${{matrix.architecture}}-${{matrix.build_type}}
-          path: c3-android-${{matrix.architecture}}-${{matrix.build_type}}.tar.gz
+          name: c3-android-${{matrix.architecture}}-Release
+          path: c3-android-${{matrix.architecture}}-Release.tar.gz
+
+      - name: build (Debug)
+        run: |
+          cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-debug
+
+      - name: Run Unified Tests
+        run: bash ./scripts/tools/ci_tests.sh "./build-debug/c3c" "android"
+
+      - name: Bundle Debug
+        run: |
+          chmod +x ./scripts/tools/package_build.sh
+          bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-android-${{matrix.architecture}}-Debug" "tar"
+
+      - name: upload artifacts (Debug)
+        uses: actions/upload-artifact@v7
+        with:
+          name: c3-android-${{matrix.architecture}}-Debug
+          path: c3-android-${{matrix.architecture}}-Debug.tar.gz
 
   release:
     runs-on: ubuntu-slim

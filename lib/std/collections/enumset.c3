@@ -19,7 +19,7 @@ fn void EnumSet.add(&self, Enum v)
 	$if IS_CHAR_ARRAY:
 		((EnumSetType*)self).[(usz)v.ordinal / 8] |= (char)(1u << ((usz)v.ordinal % 8));
 	$else
-		*self = (EnumSet)((EnumSetType)*self | 1u << (EnumSetType)v.ordinal);
+		*self = (EnumSet)((EnumSetType)*self | (EnumSetType)1 << v.ordinal);
 	$endif
 }
 
@@ -36,7 +36,7 @@ fn bool EnumSet.remove(&self, Enum v)
 		return true;
 	$else
 		EnumSetType old = (EnumSetType)*self;
-		EnumSetType new = old & ~(1u << (EnumSetType)v.ordinal);
+		EnumSetType new = old & ~((EnumSetType)1 << v.ordinal);
 		*self = (EnumSet)new;
 		return old != new;
 	$endif
@@ -47,7 +47,7 @@ fn bool EnumSet.has(&self, Enum v)
 	$if IS_CHAR_ARRAY:
 		return (bool)((((EnumSetType*)self).[(usz)v.ordinal / 8] >> ((usz)v.ordinal % 8)) & 0x01);
 	$else
-		return ((EnumSetType)*self & (1u << (EnumSetType)v.ordinal)) != 0;
+		return ((EnumSetType)*self & ((EnumSetType)1 << v.ordinal)) != 0;
 	$endif
 }
 

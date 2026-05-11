@@ -124,7 +124,7 @@ fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] 
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Map was already initialized"
- @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
+ @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 fn HashMap* HashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -529,7 +529,6 @@ fn bool hashmap_remove_entry_for_key(HashMap* map, Key key) @private
 
 fn void hashmap_create_entry(HashMap* map, uint hash, Key key, Value value, int bucket_index) @private
 {
-	Entry *e = map.table[bucket_index];
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
 	$endif
