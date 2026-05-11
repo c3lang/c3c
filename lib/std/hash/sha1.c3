@@ -119,7 +119,7 @@ macro void r2(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 }
 macro void r3(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
 {
-	*z += (((*ref | x) & y) | (*ref & x)) + (w) + 0x8F1BBCDC + v.rotl(5);
+	*z += (((*ref | x) & y) | (*ref & x)) + w + 0x8F1BBCDC + v.rotl(5);
 	*ref = (*ref).rotl(30);
 }
 macro void r4(uint v, uint* ref, uint x, uint y, uint* z, uint w) @local
