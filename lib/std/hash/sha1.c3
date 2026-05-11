@@ -70,18 +70,17 @@ fn char[HASH_BYTES] Sha1.final(&self)
 		finalcount[i] = (char)((self.count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
 	self.update((char[]){ 0x80 });
-
-	char[63] padding;
-	uint cur_bits = self.count[0] & 504u;
-	uint pad_bytes = (cur_bits < 448u ? 448u - cur_bits : 504u + 448u - cur_bits) >> 3;
-	self.update(padding[:pad_bytes]);
+	while ((self.count[0] & 504u) != 448u)
+	{
+		self.update((char[]){ 0 });
+	}
 	self.update(&finalcount);
-
 	char[HASH_BYTES] digest;
 	for (int i = 0; i < HASH_BYTES; i++)
 	{
 		digest[i] = (char)((self.state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
+
 	@volatile_store(*self, ($Typeof(*self)){});
 	@volatile_store(finalcount, ($Typeof(finalcount)){});
 	return digest;
