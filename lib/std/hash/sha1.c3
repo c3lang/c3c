@@ -83,9 +83,8 @@ fn char[HASH_BYTES] Sha1.final(&self)
 		digest[i] = (char)((self.state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
 
-	// Clear mem
-	*self = {};
-	finalcount = {};
+	@volatile_store(*self, ($Typeof(*self)){});
+	@volatile_store(finalcount, ($Typeof(finalcount)){});
 	return digest;
 }
 
@@ -188,8 +187,8 @@ fn void sha1_transform(uint[5]* state, char* buffer) @local
 		$endswitch
 	$endfor
 
-	(*state)[0] += a; (*state)[1] += b; (*state)[2] += c;
-	(*state)[3] += d; (*state)[4] += e;
-	a = b = c = d = e = 0;
-	block = {};
+	(*state)[0] += a; (*state)[1] += b; (*state)[2] += c; (*state)[3] += d; (*state)[4] += e;
+	@volatile_store(a, 0u); @volatile_store(b, 0u); @volatile_store(c, 0u);
+	@volatile_store(d, 0u); @volatile_store(e, 0u);
+	@volatile_store(block, ($Typeof(block)){});
 }
