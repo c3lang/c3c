@@ -104,3 +104,6 @@ test_suite_runner
 *.patch
 *.rej
 *.orig
+
+
+__cmake_systeminformation
