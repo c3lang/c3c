@@ -62,7 +62,6 @@ fn void Sha1.update(&self, char[] data)
 	self.buffer[j:len - i] = data[i..];
 }
 
-
 fn char[HASH_BYTES] Sha1.final(&self)
 {
 	char[8] finalcount;
@@ -71,18 +70,18 @@ fn char[HASH_BYTES] Sha1.final(&self)
 		finalcount[i] = (char)((self.count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
 	self.update((char[]){ 0o200 });
-	while ((self.count[0] & 504u) != 448u)
-	{
-		self.update((char[]){ 0 });
-	}
 
+	char[63] padding;
+	uint cur_bits = self.count[0] & 504u;
+	uint pad_bytes = (cur_bits < 448u ? 448u - cur_bits : 504u + 448u - cur_bits) >> 3;
+	self.update(padding[:pad_bytes]);
 	self.update(&finalcount);
+
 	char[HASH_BYTES] digest;
 	for (int i = 0; i < HASH_BYTES; i++)
 	{
 		digest[i] = (char)((self.state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
-
 	@volatile_store(*self, ($Typeof(*self)){});
 	@volatile_store(finalcount, ($Typeof(finalcount)){});
 	return digest;
@@ -149,34 +148,34 @@ fn void sha1_transform(uint[5]* state, char* buffer) @local
 		r1(b, &c, d, e, &a, schedule0(&block, i + 4));
 	}
 	r1(a, &b, c, d, &e, schedule0(&block, 15));
-	r1(e, &a, b, c, &d, schedule(&block,  16));
-	r1(d, &e, a, b, &c, schedule(&block,  17));
-	r1(c, &d, e, a, &b, schedule(&block,  18));
-	r1(b, &c, d, e, &a, schedule(&block,  19));
+	r1(e, &a, b, c, &d, schedule(&block, 16));
+	r1(d, &e, a, b, &c, schedule(&block, 17));
+	r1(c, &d, e, a, &b, schedule(&block, 18));
+	r1(b, &c, d, e, &a, schedule(&block, 19));
 
 	for (uint i = 20; i < 40; i += 5)
 	{
 		r2(a, &b, c, d, &e, schedule(&block, i));
-		r2(e, &a, b, c, &d, schedule(&block, i + 1));
-		r2(d, &e, a, b, &c, schedule(&block, i + 2));
-		r2(c, &d, e, a, &b, schedule(&block, i + 3));
-		r2(b, &c, d, e, &a, schedule(&block, i + 4));
+		r2(e, &a, b, c, &d, schedule(&block, i+1));
+		r2(d, &e, a, b, &c, schedule(&block, i+2));
+		r2(c, &d, e, a, &b, schedule(&block, i+3));
+		r2(b, &c, d, e, &a, schedule(&block, i+4));
 	}
 	for (uint i = 40; i < 60; i += 5)
 	{
 		r3(a, &b, c, d, &e, schedule(&block, i));
-		r3(e, &a, b, c, &d, schedule(&block, i + 1));
-		r3(d, &e, a, b, &c, schedule(&block, i + 2));
-		r3(c, &d, e, a, &b, schedule(&block, i + 3));
-		r3(b, &c, d, e, &a, schedule(&block, i + 4));
+		r3(e, &a, b, c, &d, schedule(&block, i+1));
+		r3(d, &e, a, b, &c, schedule(&block, i+2));
+		r3(c, &d, e, a, &b, schedule(&block, i+3));
+		r3(b, &c, d, e, &a, schedule(&block, i+4));
 	}
 	for (uint i = 60; i < 80; i += 5)
 	{
 		r4(a, &b, c, d, &e, schedule(&block, i));
-		r4(e, &a, b, c, &d, schedule(&block, i + 1));
-		r4(d, &e, a, b, &c, schedule(&block, i + 2));
-		r4(c, &d, e, a, &b, schedule(&block, i + 3));
-		r4(b, &c, d, e, &a, schedule(&block, i + 4));
+		r4(e, &a, b, c, &d, schedule(&block, i+1));
+		r4(d, &e, a, b, &c, schedule(&block, i+2));
+		r4(c, &d, e, a, &b, schedule(&block, i+3));
+		r4(b, &c, d, e, &a, schedule(&block, i+4));
 	}
 
 	(*state)[0] += a; (*state)[1] += b; (*state)[2] += c; (*state)[3] += d; (*state)[4] += e;
