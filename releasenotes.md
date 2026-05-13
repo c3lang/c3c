@@ -144,6 +144,7 @@
 - fmuladd lowering crashes on `a + -(b * c)` with fastmath.
 - Constant folding `-30 % -7` would incorrectly yield "2".
 - Parsing << in asm would not be correctly handled.
+- Incorrect lowering for `float[<3>]` when placed aligned in a struct.
 
 ## 0.7.11 Change list
 
