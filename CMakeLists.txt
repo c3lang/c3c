@@ -10,7 +10,7 @@ endif()
 
 # Grab the version
 file(READ "src/version.h" ver)
-if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)(.[0-9]+)?\"")
+if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)(_[0-9]+)?\"")
     message(FATAL_ERROR "Compiler version could not be parsed from version.h")
 endif()
 
