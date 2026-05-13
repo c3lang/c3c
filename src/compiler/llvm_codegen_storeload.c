@@ -18,7 +18,7 @@ LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, 
 	{
 		unsigned len = LLVMGetVectorSize(LLVMTypeOf(value));
 
-		if (!is_power_of_two(len) && LLVMIsAAllocaInst(pointer))
+		if (!is_power_of_two(len) && LLVMIsAAllocaInst(pointer) && LLVMGetTypeKind(LLVMGetAllocatedType(pointer)) == LLVMVectorTypeKind)
 		{
 			ByteSize size = llvm_store_size(c, type);
 			if (size < aligned_offset(size, alignment))
