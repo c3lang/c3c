@@ -4,6 +4,15 @@
 
 #include "llvm_codegen_internal.h"
 
+INLINE bool llvm_should_expand_vector_store(GenContext *c, ArraySize len, LLVMValueRef pointer, AlignSize alignment, LLVMTypeRef type)
+{
+	ByteSize size = llvm_store_size(c, type);
+	return !is_power_of_two(len)
+		&& LLVMIsAAllocaInst(pointer)
+		&& LLVMGetTypeKind(LLVMGetAllocatedType(pointer)) == LLVMVectorTypeKind
+		&& size < aligned_offset(size, alignment);
+}
+
 LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
 {
 	ASSERT(alignment > 0);
@@ -17,25 +26,20 @@ LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, 
 	if (LLVMGetTypeKind(type) == LLVMVectorTypeKind)
 	{
 		unsigned len = LLVMGetVectorSize(LLVMTypeOf(value));
-
-		if (!is_power_of_two(len) && LLVMIsAAllocaInst(pointer) && LLVMGetTypeKind(LLVMGetAllocatedType(pointer)) == LLVMVectorTypeKind)
+		if (llvm_should_expand_vector_store(c, len, pointer, alignment, type))
 		{
-			ByteSize size = llvm_store_size(c, type);
-			if (size < aligned_offset(size, alignment))
+			unsigned npot = next_highest_power_of_2(len);
+			static LLVMValueRef vec[MAX_VECTOR_WIDTH];
+			LLVMTypeRef mask_type = llvm_get_type(c, type_uint);
+			for (unsigned i = 0; i < len; i++)
 			{
-				unsigned npot = next_highest_power_of_2(len);
-				static LLVMValueRef vec[MAX_VECTOR_WIDTH];
-				LLVMTypeRef mask_type = llvm_get_type(c, type_uint);
-				for (unsigned i = 0; i < len; i++)
-				{
-					vec[i] = LLVMConstInt(mask_type, i, 0);
-				}
-				for (unsigned i = len; i < npot; i++)
-				{
-					vec[i] = LLVMGetPoison(mask_type);
-				}
-				value = LLVMBuildShuffleVector(c->builder, value, LLVMGetPoison(type), LLVMConstVector(vec, npot), "expandvec");
+				vec[i] = LLVMConstInt(mask_type, i, 0);
 			}
+			for (unsigned i = len; i < npot; i++)
+			{
+				vec[i] = LLVMGetPoison(mask_type);
+			}
+			value = LLVMBuildShuffleVector(c->builder, value, LLVMGetPoison(type), LLVMConstVector(vec, npot), "expandvec");
 		}
 	}
 	LLVMValueRef ref = LLVMBuildStore(c->builder, value, pointer);
@@ -183,8 +187,7 @@ LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 		if (type_kind_is_real_vector(type->type_kind))
 		{
 			unsigned len = type->array.len;
-			ByteSize size = type_size(type);
-			if (!is_power_of_two(size) && is_power_of_two(aligned_offset(size, ref->alignment)))
+			if (llvm_should_expand_vector_store(c, len, ref->value, ref->alignment, llvm_get_type(c, type)))
 			{
 				return llvm_store_raw(c, ref, llvm_emit_const_vector_pot(llvm_get_zero(c, type->array.base), len));
 			}
