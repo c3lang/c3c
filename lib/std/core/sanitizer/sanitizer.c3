@@ -63,18 +63,18 @@ extern fn void* __sanitizer_double_ended_contiguous_container_find_bad_address(
 	void* container_end, void* storage_end);
 
 extern fn void __sanitizer_print_stack_trace();
-extern fn void __sanitizer_symbolize_pc(void* pc, ZString fmt, char* out_buf, usz out_buf_size);
-extern fn void __sanitizer_symbolize_global(void* data_ptr, ZString fmt, char* out_buf, usz out_buf_size);
+extern fn void __sanitizer_symbolize_pc(void* pc, ZString fmt, char* out_buf, sz out_buf_size);
+extern fn void __sanitizer_symbolize_global(void* data_ptr, ZString fmt, char* out_buf, sz out_buf_size);
 extern fn void __sanitizer_set_death_callback(VoidFn callback);
-extern fn void __sanitizer_weak_hook_memcmp(void* called_pc, void* s1, void* s2, usz n, CInt result);
-extern fn void __sanitizer_weak_hook_strncmp(void* called_pc, ZString s1, ZString s2, usz n, CInt result);
-extern fn void __sanitizer_weak_hook_strncasecmp(void* called_pc, ZString s1, ZString s2, usz n, CInt result);
+extern fn void __sanitizer_weak_hook_memcmp(void* called_pc, void* s1, void* s2, sz n, CInt result);
+extern fn void __sanitizer_weak_hook_strncmp(void* called_pc, ZString s1, ZString s2, sz n, CInt result);
+extern fn void __sanitizer_weak_hook_strncasecmp(void* called_pc, ZString s1, ZString s2, sz n, CInt result);
 extern fn void __sanitizer_weak_hook_strcmp(void* called_pc, ZString s1, ZString s2, CInt result);
 extern fn void __sanitizer_weak_hook_strcasecmp(void* called_pc, ZString s1, ZString s2, CInt result);
 extern fn void __sanitizer_weak_hook_strstr(void* called_pc, ZString s1, ZString s2, char* result);
 extern fn void __sanitizer_weak_hook_strcasestr(void* called_pc, ZString s1, ZString s2, char* result);
-extern fn void __sanitizer_weak_hook_memmem(void* called_pc, void* s1, usz len1, void* s2, usz len2, void* result);
-extern fn void __sanitizer_print_memory_profile(usz top_percent, usz max_number_of_contexts);
-extern fn void __sanitizer_start_switch_fiber(void** fake_stack_save, void* bottom, usz size);
-extern fn void __sanitizer_finish_switch_fiber(void* fake_stack_save, void** bottom_old, usz* size_old);
-extern fn CInt __sanitizer_get_module_and_offset_for_pc(void* pc, char* module_path, usz module_path_len, void** pc_offset);
+extern fn void __sanitizer_weak_hook_memmem(void* called_pc, void* s1, sz len1, void* s2, sz len2, void* result);
+extern fn void __sanitizer_print_memory_profile(sz top_percent, sz max_number_of_contexts);
+extern fn void __sanitizer_start_switch_fiber(void** fake_stack_save, void* bottom, sz size);
+extern fn void __sanitizer_finish_switch_fiber(void* fake_stack_save, void** bottom_old, sz* size_old);
+extern fn CInt __sanitizer_get_module_and_offset_for_pc(void* pc, char* module_path, sz module_path_len, void** pc_offset);

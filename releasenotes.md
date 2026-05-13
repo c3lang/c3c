@@ -14,9 +14,9 @@
 - Removed `@structlike` attribute.
 - Removed deprecated `@extern` attribute.
 - `:` in contracts before description is now mandatory.
-- Removed deprecated `Enum.associated` (use `Enum.membersof`).
-- Removed deprecated `Enum.elements` (use `Enum.len`).
-- Removed deprecated `foo_function.params` (use `foo_function.paramsof`).
+- Removed deprecated `Enum.associated` (use `Enum::members`).
+- Removed deprecated `Enum.elements` (use `Enum::len`).
+- Removed deprecated `foo_function.params` (use `$reflect(foo_function).params`).
 - Removed deprecated `$is_const`.
 - Removed deprecated `$assignable`.
 - Enums now no longer directly support `+` and `-` – use ordinals instead.
@@ -86,7 +86,7 @@
 - `conv::detect_bom`, convert utf16/utf32 from bytes with byteswap / unaligned data.
 - Mergesort added.
 - `set_cursor` is renamed `seek`, and the old `seek` is removed.
-- `std::math` name changes: `HALF_PI` => `HALF_PI`, `QUARTER_PI` => `QUARTER_PI`, `DIV_PI` => `INV_PI` etc, `cosec` => `csc`, `cotan` => `cot`, `muladd` => `mad`
+- `std::math` name changes: `HALF_PI` => `PI_2`, `PI_4` => `QUARTER_PI`, `DIV_PI` => `INV_PI` etc, `cosec` => `csc`, `cotan` => `cot`, `muladd` => `mad`
 - `std::time` name changes: `diff_hour` => `diff_hours`. `DateTime.set_date` => `DateTime.set`, `datetime::from_date_*` => `datetime::at_*`
 - `std::hash` method name convention changes: `updatec` / `update_char` => `update_byte`.
 - `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
@@ -144,6 +144,7 @@
 - fmuladd lowering crashes on `a + -(b * c)` with fastmath.
 - Constant folding `-30 % -7` would incorrectly yield "2".
 - Parsing << in asm would not be correctly handled.
+- Incorrect lowering for `float[<3>]` when placed aligned in a struct.
 
 ## 0.7.11 Change list
 
