@@ -738,6 +738,23 @@ jobs:
       LANG: en_US.UTF-8
       TZ: UTC
     steps:
+      - name: select termux mirror
+        run: |
+          for m in \
+            "https://termux.mentality.rip/termux-main" \
+            "https://ftp.agdsn.de/termux/termux-main" \
+            "https://linux.domainesia.com/applications/termux/termux-main"
+          do
+            echo "Trying mirror: $m"
+            printf "deb %s stable main\n" "$m" > "${PREFIX}/etc/apt/sources.list"
+            if /entrypoint.sh pkg update -y; then
+              echo "Selected mirror: $m"
+              exit 0
+            fi
+          done
+    
+          echo "All mirrors failed"
+          exit 1
       - name: prepare termux
         run: |
           ln -sf ${PREFIX}/etc/termux/mirrors/default ${PREFIX}/etc/termux/chosen_mirrors
