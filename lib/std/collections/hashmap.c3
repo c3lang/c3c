@@ -227,7 +227,7 @@ macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
 		return val;
 	}
 	uint hash = rehash(key.hash());
-	sz index = index_for(hash, map.table.len);
+	int index = index_for(hash, map.table.len);
 	for (Entry *e = map.table[index]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e.value;
