@@ -240,7 +240,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			c_emit_type_decl(c, type->array.base);
 			int id = ++c->typename;
-			PRINTF("typedef struct { %s* ptr; void* typeid; } __c3_slice%d;\n", c_type_name(c, type->array.base), id);
+			PRINTF("typedef struct { %s* ptr; size_t size; } __c3_slice%d;\n", c_type_name(c, type->array.base), id);
 			scratch_buffer_clear();
 			scratch_buffer_printf(" __c3_slice%d", id);
 			htable_set(&c->gen_decl, type, scratch_buffer_copy());
@@ -355,7 +355,12 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			PRINTF("bool ___var_%d = %s;\n", c_emit_temp(c, value, t), expr->const_expr.b ? "true" : "false");
 			return;
 		case CONST_STRING:
-			PRINTF("%s ___var_%d = \"", c_type_name(c, t), c_emit_temp(c, value, t));
+			PRINTF("%s ___var_%d = ", c_type_name(c, t), c_emit_temp(c, value, t));
+			if(t->type_kind == TYPE_SLICE)
+			{
+				PRINT("{ ");
+			}
+			PRINT("\"");
 			for (ArraySize i = 0; i < expr->const_expr.bytes.len; i++)
 			{
 				char b = expr->const_expr.bytes.ptr[i];
@@ -366,7 +371,12 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 				}
 				PRINTF("\\%d%d%d", b / 64, (b % 64) / 8, b % 8);
 			}
-			PRINT("\";\n");
+			PRINT("\"");
+			if(t->type_kind == TYPE_SLICE)
+			{
+				PRINTF(", %zu }", expr->const_expr.bytes.len);
+			}
+			PRINT(";\n");
 			return;
 		case CONST_FAULT:
 		case CONST_ENUM:
