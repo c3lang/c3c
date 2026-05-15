@@ -374,7 +374,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			PRINT("\"");
 			if(t->type_kind == TYPE_SLICE)
 			{
-				PRINTF(", %zu }", expr->const_expr.bytes.len);
+				PRINTF(", %llu }", (unsigned long long)expr->const_expr.bytes.len);
 			}
 			PRINT(";\n");
 			return;
