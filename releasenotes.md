@@ -6,8 +6,10 @@
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
+- Add `values::expand` to turn strings containing expressions into values.
 
 ### Fixes
+- `@volatile_store` on arrays were sometimes incorrectly lowered.
 
 ## 0.8.0 Change list
 
