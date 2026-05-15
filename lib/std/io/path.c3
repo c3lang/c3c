@@ -526,9 +526,9 @@ fn bool? traverse(Path path, TraverseCallback callback, any data)
 fn bool PathCommon.has_suffix(self, String str) => self.ends_with(str);
 
 fn PathWin PathWin.copy(self, Allocator allocator) => (PathWin)((String)self).copy(allocator);
-fn PathWin PathWin.tcopy(self, Allocator allocator) => self.copy(tmem) @inline;
+fn PathWin PathWin.tcopy(self) => self.copy(tmem) @inline;
 fn PathPosix PathPosix.copy(self, Allocator allocator) => (PathPosix)((String)self).copy(allocator);
-fn PathPosix PathPosix.tcopy(self, Allocator allocator) => self.copy(tmem) @inline;
+fn PathPosix PathPosix.tcopy(self) => self.copy(tmem) @inline;
 
 fn void PathCommon.free(self, Allocator allocator) => alloc::free(allocator, self.ptr);
 
