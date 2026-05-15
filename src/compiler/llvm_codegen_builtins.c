@@ -131,7 +131,13 @@ INLINE void llvm_emit_volatile_store(GenContext *c, BEValue *result_value, Expr 
 	llvm_value_deref(c, &value);
 	BEValue store_value = *result_value;
 	LLVMValueRef store = llvm_store(c, &value, &store_value);
-	if (store) LLVMSetVolatile(store, true);
+	if (!store) return;
+	if (LLVMIsAMemCpyInst(store))
+	{
+		LLVMMemCpySetVolatile(store, LLVMConstAllOnes(c->bool_type));
+		return;
+	}
+	LLVMSetVolatile(store, true);
 }
 
 INLINE void llvm_emit_volatile_load(GenContext *c, BEValue *result_value, Expr *expr)
