@@ -1,8 +1,12 @@
 # C3C Release Notes
 
 ## 0.8.1 Change list
+
 ### Changes / improvements
+
 ### Stdlib changes
+- Add math::TAU / math::TWO_PI
+
 ### Fixes
 
 ## 0.8.0 Change list
