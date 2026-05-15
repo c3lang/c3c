@@ -122,7 +122,7 @@ fn void*? BstHeapAllocator.acquire(&self, sz size, AllocInitType init_type, sz a
 		return fallback_alloc(self, aligned_size, init_type, alignment);
 	}
 
-	remove_node(&self.root, node);
+	remove_node(self, node);
 
 	// Try to insert a new node, if have enough space.
 	sz diff = node.size - aligned_size;
@@ -130,7 +130,7 @@ fn void*? BstHeapAllocator.acquire(&self, sz size, AllocInitType init_type, sz a
 	{
 		FreeNode* new_node = node_at_offset(node, aligned_size);
 		init_node(new_node, diff, node);
-		insert_node(&self.root, new_node);
+		insert_node(self, new_node);
 		node.size = aligned_size;
 	}
 
@@ -172,7 +172,7 @@ fn void*? BstHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignmen
 		{
 			FreeNode* new_node = node_next(node);
 			init_node(new_node, diff, node);
-			insert_node(&self.root, new_node);
+			insert_node(self, new_node);
 		}
 		return old_pointer;
 	}
@@ -192,14 +192,14 @@ fn void*? BstHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignmen
 			node.size += diff;
 			new_node = node_next(node);
 			init_node(new_node, new_node_size, node);
-			remove_node(&self.root, next);
-			insert_node(&self.root, new_node);
+			remove_node(self, next);
+			insert_node(self, new_node);
 		}
 		// Or just consume all space of the next node.
 		else
 		{
 			node.size += next.size;
-			remove_node(&self.root, next);
+			remove_node(self, next);
 		}
 		return old_pointer;
 	}
@@ -225,17 +225,21 @@ fn void BstHeapAllocator.release(&self, void* ptr, bool) @dynamic
 	}
 
 	FreeNode* free_node = (FreeNode*)((AllocHeader*)ptr - 1);
+
+	// This is because 'mem::malloc_try' will do this:
+	// mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
+	// So this will write into one of our links in the debug mode.
+	$if env::TESTING:
+	zero_node_links(free_node);
+	$endif
+
 	// Prevent double free.
 	if (@unlikely(free_node.is_free)) return;
 
-	// Zero previously allocated memory.
-	free_node.parent = null;
-	free_node.left = null;
-	free_node.right = null;
-
 	// Order of this lines should be preserved.
 	free_node = coalesce_nodes_around(self, free_node);
-	insert_node(&self.root, free_node);
+	zero_node_links(free_node);
+	insert_node(self, free_node);
 }
 
 <*
@@ -396,11 +400,26 @@ fn void init_node(FreeNode* node, sz size, FreeNode* prev_phys) @local
 }
 
 <*
+ Zeroes node's tree pointers.
+*>
+fn void zero_node_links(FreeNode* node) @local
+{
+	node.left = null;
+	node.right = null;
+	node.parent = null;
+}
+
+<*
  BST insertion.
  Inserts the node into the tree of free nodes, making it available for future allocations.
+ Implementation must call 'init_node' or 'zero_node_links' before this call to zero tree links.
+
+ @require new_node.left == null && new_node.right == null && new_node.parent == null : "Links should be null before insertion"
 *>
-fn void insert_node(FreeNode** root, FreeNode* new_node) @local
+fn void insert_node(BstHeapAllocator* self, FreeNode* new_node) @local
 {
+	FreeNode** root = &self.root;
+
 	new_node.is_free = true;
 
 	if (!*root)
@@ -443,13 +462,15 @@ fn void insert_node(FreeNode** root, FreeNode* new_node) @local
 }
 
 <*
- BST removal.
+ Bst removal.
  Removes the node from the tree of free nodes, so its memory can be provided to the user.
 
  @require node_to_remove != null : "Shoudn't be null"
 *>
-fn void remove_node(FreeNode** root, FreeNode* node_to_remove) @local
+fn void remove_node(BstHeapAllocator* self, FreeNode* node_to_remove) @local
 {
+	FreeNode** root = &self.root;
+
 	node_to_remove.is_free = false;
 
 	if (*root == node_to_remove)
@@ -464,7 +485,38 @@ fn void remove_node(FreeNode** root, FreeNode* node_to_remove) @local
 		}
 		else
 		{
-			*root = find_node_succeessor(node_to_remove);
+			FreeNode* successor = find_node_successor(node_to_remove);
+
+	        // Detach successor from its old position
+	        if (successor != node_to_remove.right)
+	        {
+	            FreeNode* succ_parent = successor.parent;
+	            // successor has no left child
+	            succ_parent.left = successor.right;
+	            if (successor.right)
+	            {
+	                successor.right.parent = succ_parent;
+	            }
+	            // The right subtree for successor is still node_to_remove.right
+	            successor.right = node_to_remove.right;
+	            if (successor.right)
+	            {
+	                successor.right.parent = successor;
+	            }
+	        }
+	        else
+	        {
+	            // successor == node_to_remove.right
+	            // So successor's right child should be successor.right (original)
+	            successor.right = successor.right;
+	        }
+
+	        successor.left = node_to_remove.left;
+	        successor.left.parent = successor;
+
+	        successor.parent = null;
+	        *root = successor;
+			return;
 		}
 
 		// Root should not have parent if its not null.
@@ -498,11 +550,32 @@ fn void remove_node(FreeNode** root, FreeNode* node_to_remove) @local
 		}
 		else
 		{
-			FreeNode* successor = find_node_succeessor(node_to_remove);
-			parent.left = successor;
-			if (successor) {
-				successor.parent = parent;
+			// Two children: use inorder successor
+			FreeNode* successor = find_node_successor(node_to_remove);
+
+			// Detach successor from its old position
+			if (successor != node_to_remove.right)
+			{
+			    FreeNode* succ_parent = successor.parent;
+			    succ_parent.left = successor.right;
+			    if (successor.right)
+			    {
+			        successor.right.parent = succ_parent;
+			    }
 			}
+
+			// Attach successor in place of node_to_remove
+			successor.left = node_to_remove.left;
+			successor.left.parent = successor;
+
+			successor.right = node_to_remove.right;
+			if (successor.right)
+			{
+			    successor.right.parent = successor;
+			}
+
+			successor.parent = parent;
+			parent.left = successor;		
 		}
 	}
 	else
@@ -525,11 +598,32 @@ fn void remove_node(FreeNode** root, FreeNode* node_to_remove) @local
 		}
 		else
 		{
-			FreeNode* successor = find_node_succeessor(node_to_remove);
-			parent.right = successor;
-			if (successor) {
-				successor.parent = parent;
+			// Two children: use inorder successor
+			FreeNode* successor = find_node_successor(node_to_remove);
+
+			// Detach successor from its old position
+			if (successor != node_to_remove.right)
+			{
+			    FreeNode* succ_parent = successor.parent;
+			    succ_parent.left = successor.right;
+			    if (successor.right)
+			    {
+			        successor.right.parent = succ_parent;
+			    }
 			}
+
+			// Attach successor in place of node_to_remove
+			successor.left = node_to_remove.left;
+			successor.left.parent = successor;
+
+			successor.right = node_to_remove.right;
+			if (successor.right)
+			{
+			    successor.right.parent = successor;
+			}
+
+			successor.parent = parent;
+			parent.right = successor;
 		}
 	}
 }
@@ -537,8 +631,10 @@ fn void remove_node(FreeNode** root, FreeNode* node_to_remove) @local
 <*
  Gets the smallest node in the right subtree.
  Used in remove_node.
+
+ @ensure return != null : "Return value can't be null"
 *>
-fn FreeNode* find_node_succeessor(FreeNode* node) @inline @local
+fn FreeNode* find_node_successor(FreeNode* node) @inline @local
 {
 	node = node.right;
 	while (node && node.left)
@@ -563,7 +659,7 @@ fn FreeNode* coalesce_nodes_around(BstHeapAllocator* self, FreeNode* node) @loca
 	if (next < tail && next.is_free)
 	{
 		node.size += next.size;
-		remove_node(&self.root, next);
+		remove_node(self, next);
 		was_merge = true;
 	}
 
@@ -572,7 +668,7 @@ fn FreeNode* coalesce_nodes_around(BstHeapAllocator* self, FreeNode* node) @loca
 	{
 		prev.size += node.size;
 		node = prev;
-		remove_node(&self.root, prev);
+		remove_node(self, prev);
 		was_merge = true;
 	}
 
