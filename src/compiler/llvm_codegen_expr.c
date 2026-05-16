@@ -1260,7 +1260,8 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 		ASSERT(member->backend_ref);
 		AlignSize align = LLVMGetAlignment(member->backend_ref);
 		AlignSize alignment;
-		LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, member->backend_ref, member->type, be_value, align, &alignment);
+		ByteSize size = llvm_abi_size(c, llvm_get_type(c, member->type));
+		LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, member->backend_ref, be_value, align, &alignment, size);
 		llvm_value_set_address(c, be_value, ptr, member->type, alignment);
 		return;
 	}
@@ -2936,7 +2937,7 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 		{
 			// Move pointer
 			AlignSize alignment;
-			start_pointer = llvm_emit_array_gep_raw_index(c, parent.value, type->array.base, &start, type_abi_alignment(parent.type), &alignment);
+			start_pointer = llvm_emit_array_gep_raw_index(c, parent.value, &start, type_abi_alignment(parent.type), &alignment, type_size(type->array.base));
 			break;
 		}
 		case TYPE_SLICE:
@@ -4940,11 +4941,11 @@ BEValue llvm_emit_array_gep_index(GenContext *c, BEValue *parent, BEValue *index
 	ASSERT(llvm_value_is_addr(parent));
 	Type *element = type_lowering(parent->type->array.base);
 	AlignSize alignment;
-	LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, element, index, parent->alignment, &alignment);
+	LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, index, parent->alignment, &alignment, type_size(element));
 	return (BEValue) { .value = ptr, .type = element, .kind = BE_ADDRESS, .alignment = alignment };
 }
 
-LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, Type *element_type, BEValue *index, AlignSize array_alignment, AlignSize *alignment)
+LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, BEValue *index, AlignSize array_alignment, AlignSize *alignment, ByteSize element_size)
 {
 	LLVMValueRef index_val = llvm_load_value(c, index);
 	Type *index_type = index->type;
@@ -4953,9 +4954,8 @@ LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, Type
 	{
 		index_val = llvm_zext_trunc(c, index_val, c->size_type);
 	}
-	ByteSize size = type_size(element_type);
-	*alignment = type_min_alignment(size, array_alignment);
-	return llvm_emit_pointer_inbounds_gep_raw(c, ptr, index_val, size);
+	*alignment = type_min_alignment(element_size, array_alignment);
+	return llvm_emit_pointer_inbounds_gep_raw(c, ptr, index_val, element_size);
 }
 
 BEValue llvm_emit_array_gep(GenContext *c, BEValue *parent, ArrayIndex index)
@@ -4970,7 +4970,7 @@ LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, Type *elem
 {
 	BEValue index_value;
 	llvm_value_set(&index_value, llvm_const_size(c, index), type_sz);
-	return llvm_emit_array_gep_raw_index(c, ptr, element_type, &index_value, array_alignment, alignment);
+	return llvm_emit_array_gep_raw_index(c, ptr, &index_value, array_alignment, alignment, type_size(element_type));
 }
 
 LLVMValueRef llvm_emit_ptradd_raw(GenContext *c, LLVMValueRef ptr, LLVMValueRef offset, ByteSize mult)

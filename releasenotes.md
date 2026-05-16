@@ -10,6 +10,7 @@
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
+- NPOT vectors as associated variables were incorrectly lowered on load. #3228
 
 ## 0.8.0 Change list
 
