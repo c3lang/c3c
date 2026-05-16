@@ -1,5 +1,16 @@
 # C3C Release Notes
 
+## 0.8.1 Change list
+
+### Changes / improvements
+
+### Stdlib changes
+- Add math::TAU / math::TWO_PI
+- Add `values::expand` to turn strings containing expressions into values.
+
+### Fixes
+- `@volatile_store` on arrays were sometimes incorrectly lowered.
+
 ## 0.8.0 Change list
 
 ### Changes / improvements
@@ -14,9 +25,9 @@
 - Removed `@structlike` attribute.
 - Removed deprecated `@extern` attribute.
 - `:` in contracts before description is now mandatory.
-- Removed deprecated `Enum.associated` (use `Enum.membersof`).
-- Removed deprecated `Enum.elements` (use `Enum.len`).
-- Removed deprecated `foo_function.params` (use `foo_function.paramsof`).
+- Removed deprecated `Enum.associated` (use `Enum::members`).
+- Removed deprecated `Enum.elements` (use `Enum::len`).
+- Removed deprecated `foo_function.params` (use `$reflect(foo_function).params`).
 - Removed deprecated `$is_const`.
 - Removed deprecated `$assignable`.
 - Enums now no longer directly support `+` and `-` – use ordinals instead.
@@ -62,10 +73,6 @@
 - Added C3 Compiler setup installer for Windows
 - `alias Foo = int::typeid` now works.
 - `$typeof` => `$Typeof`, `$typefrom` => `$Typefrom`.
-- Bitstruct with backing char[n] would occasionally be incorrectly stored.
-- fmuladd lowering crashes on `a + -(b * c)` with fastmath.
-- Constant folding `-30 % -7` would incorrectly yield "2".
-- Parsing << in asm would not be correctly handled.
 
 ### Stdlib changes
 - Add `List.remove_unordered_at`.
@@ -90,7 +97,7 @@
 - `conv::detect_bom`, convert utf16/utf32 from bytes with byteswap / unaligned data.
 - Mergesort added.
 - `set_cursor` is renamed `seek`, and the old `seek` is removed.
-- `std::math` name changes: `HALF_PI` => `HALF_PI`, `QUARTER_PI` => `QUARTER_PI`, `DIV_PI` => `INV_PI` etc, `cosec` => `csc`, `cotan` => `cot`, `muladd` => `mad`
+- `std::math` name changes: `HALF_PI` => `PI_2`, `PI_4` => `QUARTER_PI`, `DIV_PI` => `INV_PI` etc, `cosec` => `csc`, `cotan` => `cot`, `muladd` => `mad`
 - `std::time` name changes: `diff_hour` => `diff_hours`. `DateTime.set_date` => `DateTime.set`, `datetime::from_date_*` => `datetime::at_*`
 - `std::hash` method name convention changes: `updatec` / `update_char` => `update_byte`.
 - `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
@@ -134,6 +141,21 @@
 - Warning for ignored visibility modifiers was not emitted for macro methods #3071
 - `while (String? x = foo()!)` was accidentally allowed causing a lowering error.
 - Crash casting uint to bitstruct inside struct field assignment #3187
+- Vec2/Vec3 transform missed matrix translation.
+- Matrix rotation ignored matrix itself.
+- Fix BigInt shr, to_format, and others.
+- Fix ends in TDist.quantile, FDist.pdf, ChiSquaredDist.pdf
+- Fix to easing expo_in and bounce_inout.
+- `deque` with shrinking a zero sized list caused infinite loop.
+- Printing an enummap yielded the wrong character count.
+- Incorrect contract in `FixedList` allowed insert out of range.
+- Fix double-free in InterfaceList.
+- Object.set_at was incorrect.
+- Bitstruct with backing char[n] would occasionally be incorrectly stored.
+- fmuladd lowering crashes on `a + -(b * c)` with fastmath.
+- Constant folding `-30 % -7` would incorrectly yield "2".
+- Parsing << in asm would not be correctly handled.
+- Incorrect lowering for `float[<3>]` when placed aligned in a struct.
 
 ## 0.7.11 Change list
 

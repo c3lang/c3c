@@ -196,9 +196,6 @@ fn void FixedList.push_front(&self, Type type) @inline
 	self.insert_at(0, type);
 }
 
-<*
- @require self.size < MAX_SIZE : `List would exceed max size`
-*>
 fn void? FixedList.push_front_try(&self, Type type) @inline
 {
 	return self.insert_at_try(0, type);
@@ -228,7 +225,7 @@ fn void FixedList.insert_at(&self, sz index, Type type)
 }
 
 <*
- @require index <= self.size && index >= 0 : "Index was out of range"
+ @require index < self.size && index >= 0 : "Index was out of range"
 *>
 fn void FixedList.set_at(&self, sz index, Type type)
 {
@@ -275,7 +272,7 @@ fn sz FixedList.len(&self) @operator(len) @inline
 }
 
 <*
- @require index <= self.size && index >= 0 : "Index was out of range"
+ @require index < self.size && index >= 0 : "Index was out of range"
 *>
 fn Type FixedList.get(&self, sz index) @inline
 {
@@ -321,13 +318,16 @@ macro Type FixedList.@item_at(&self, sz index) @operator([])
 	return self.entries[index];
 }
 
+<*
+ @require index < self.size && index >= 0 : "Index was out of range"
+*>
 fn Type* FixedList.get_ref(&self, sz index) @operator(&[]) @inline
 {
 	return &self.entries[index];
 }
 
 <*
- @require index <= self.size && index >= 0 : "Index was out of range"
+ @require index < self.size && index >= 0 : "Index was out of range"
 *>
 fn void FixedList.set(&self, sz index, Type value) @operator([]=)
 {

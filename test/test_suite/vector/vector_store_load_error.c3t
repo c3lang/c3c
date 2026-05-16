@@ -1,0 +1,43 @@
+// #target: macos-x64
+module test;
+import std;
+
+struct Player
+{
+    float[<3>] position;
+    int entity_type_id;
+    float[<3>] camera_position;
+    float fov_y_degrees;
+    int[] inventory;
+}
+
+fn int main()
+{
+	float[<3>] x;
+    Player player;
+    player.fov_y_degrees = 70.0f;
+    player.camera_position = {};
+    assert(player.fov_y_degrees == 70.0f);
+    x = {};
+    return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca <3 x float>, align 16
+  %player = alloca %Player, align 8
+  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float undef>, ptr %x, align 16
+  call void @llvm.memset.p0.i64(ptr align 8 %player, i8 0, i64 48, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %player, i64 28
+  store float 7.000000e+01, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %player, i64 16
+  store <3 x float> zeroinitializer, ptr %ptradd1, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %player, i64 28
+  %0 = load float, ptr %ptradd2, align 4
+  %eq = fcmp oeq float %0, 7.000000e+01
+  call void @llvm.assume(i1 %eq)
+  store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float undef>, ptr %x, align 16
+  ret i32 0
+}

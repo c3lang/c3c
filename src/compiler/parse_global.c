@@ -2959,7 +2959,7 @@ static inline Decl *parse_func_definition(ParseContext *c, FunctionParse parse_k
 	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
 	{
-		RETURN_PRINT_ERROR_AT(false, func, "Function names may not use '@'.");
+		RETURN_PRINT_ERROR_AT(poisoned_decl, func, "Function names may not use '@'.");
 	}
 	if (!parse_fn_parameter_list(c, &(func->func_decl.signature))) return poisoned_decl;
 	if (!parse_attributes_for_global(c, func)) return poisoned_decl;

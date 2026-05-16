@@ -399,7 +399,7 @@ fn void linked_list_unlink(LinkedList* self, Node* x) @private
 }
 
 
-macro bool LinkedList.eq(&self, other) @operator(==) @if(ELEMENT_IS_EQUATABLE)
+macro bool LinkedList.eq(&self, LinkedList other) @operator(==) @if(ELEMENT_IS_EQUATABLE)
 {
 	Node* node1 = self._first;
 	Node* node2 = other._first;
@@ -411,7 +411,6 @@ macro bool LinkedList.eq(&self, other) @operator(==) @if(ELEMENT_IS_EQUATABLE)
 		node1 = node1.next;
 		node2 = node2.next;
 	}
-	return true;
 }
 
 fn LinkedListArrayView LinkedList.array_view(&self)

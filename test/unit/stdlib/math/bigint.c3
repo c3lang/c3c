@@ -17,15 +17,72 @@ fn void init_with_array()
 fn void test_parse16()
 {
 	BigInt bi @noinit;
-    assert(bi.init_string_radix("c", 16)!!.equals(bigint::from_int(12)));
+	assert(bi.init_string_radix("c", 16)!!.equals(bigint::from_int(12)));
 }
 
 fn void test_zero()
 {
-    assert(bigint::from_int(0).to_string(tmem) == "0");
-    BigInt bi;
-    bi.init_string_radix("00", 16)!!;
-    assert(bi.to_string(tmem) == "0");
+	assert(bigint::from_int(0).to_string(tmem) == "0");
+	BigInt bi;
+	bi.init_string_radix("00", 16)!!;
+	assert(bi.to_string(tmem) == "0");
+}
+
+fn void test_negative_print()
+{
+	assert(bigint::from_int(-1).to_string(tmem) == "-1");
+}
+
+fn void test_multi_byte_divide()
+{
+	// Test 1: exact division, quotient fits in one limb
+	// (2^32+1) * (2^32-1) = 2^64-1
+	// So (2^64-1) / (2^32+1) = 2^32-1, remainder 0
+	BigInt a; a.init_with_u128(18446744073709551615ull); // 2^64 - 1
+	BigInt b; b.init_with_u128(4294967297ull);           // 2^32 + 1
+
+	BigInt q = a;
+	q.div_this(b);
+	BigInt r = a;
+	r.mod_this(b);
+
+	assert(q.equals(from_int(4294967295)));  // 2^32 - 1
+	assert(r.is_zero());
+
+	// Test 2: 2^64 / (2^32+1)
+	// 2^64 = (2^32+1)(2^32-1) + 1, so quotient = 2^32-1, remainder = 1
+	BigInt a2; a2.init_with_u128(1ull << 64);  // 2^64
+	BigInt b2; b2.init_with_u128(4294967297ull);
+
+	BigInt q2 = a2;
+	q2.div_this(b2);
+	BigInt r2 = a2;
+	r2.mod_this(b2);
+
+	assert(q2.equals(from_int(4294967295)));  // 2^32 - 1
+	assert(r2.equals(from_int(1)));
+
+	// Test 3: small exact multiple — 2*(2^32+1) / (2^32+1) = 2
+	BigInt a3; a3.init_with_u128(8589934594ull);  // 2 * (2^32+1)
+	BigInt b3; b3.init_with_u128(4294967297ull);
+
+	BigInt q3 = a3;
+	q3.div_this(b3);
+
+	assert(q3.equals(from_int(2)));
+	BigInt r3 = a3;
+	r3.mod_this(b3);
+	assert(r3.is_zero());
+
+	// Test 4: self-consistency — (a * b) / b == a
+	BigInt x; x.init_with_u128(123456789012345ull);
+	BigInt divisor; divisor.init_with_u128(4294967311ull); // prime > 2^32
+	BigInt product = x.mult(divisor);
+
+	BigInt qc = product;
+	qc.div_this(divisor);
+	assert(qc.equals(x));
+
 }
 
 fn void test_plus()
