@@ -10,7 +10,7 @@ macro bool? native_rmdir(Path path)
 	{
 	$switch:
 		$case env::POSIX:
-			if (!posix::rmdir(path.str_view().zstr_tcopy())) return true;
+			if (!posix::rmdir(path.zstr_tcopy())) return true;
 			switch (libc::errno())
 			{
 				case EBUSY: return io::BUSY~;
@@ -26,7 +26,7 @@ macro bool? native_rmdir(Path path)
 				default: return io::GENERAL_ERROR~;
 			}
 		$case env::WIN32:
-			if (win32::removeDirectoryW(path.str_view().to_temp_utf16()!!)) return true;
+			if (win32::removeDirectoryW(path.to_temp_utf16()!!)) return true;
 			switch (win32::getLastError())
 			{
 				case win32::ERROR_ACCESS_DENIED:

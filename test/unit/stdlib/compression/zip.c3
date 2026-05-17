@@ -906,7 +906,7 @@ fn void test_zip_extract()
 
 		defer {
 			(void)file::delete(zip_path);
-			if (file::exists(out_dir)) (void)path::rmtree(path::temp(out_dir)!!);
+			if (file::exists(out_dir)) (void)path::rmtree(path::tnew(out_dir)!!);
 		}
 
 		ZipArchive read_zip = zip::open(mem, zip_path, "r")!!;

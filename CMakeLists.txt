@@ -10,7 +10,7 @@ endif()
 
 # Grab the version
 file(READ "src/version.h" ver)
-if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)\"")
+if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)(_[0-9]+)?\"")
     message(FATAL_ERROR "Compiler version could not be parsed from version.h")
 endif()
 
@@ -130,7 +130,7 @@ set(C3_OPTIONS
         C3_LLD_DIR
         C3_ENABLE_CLANGD_LSP
         LLVM_CRT_LIBRARY_DIR
-        C3_AVR_ENABLE
+        C3_AVR_DISABLE
 )
 
 set(C3_USE_MIMALLOC OFF)
@@ -428,9 +428,50 @@ if(C3_WITH_LLVM)
 
     message(STATUS "Linking to llvm libs ${llvm_libs}")
     message(STATUS "Linking to lld libs ${lld_libs}")
+
+    if (MSVC)
+        # LLVM artifacts may contain absolute paths to diaguids.lib from a different VS version.
+        # Find the local diaguids.lib and replace the paths in LLVM targets.
+        find_library(DIA_SDK_LIB NAMES diaguids.lib
+            HINTS
+                "$ENV{VSINSTALLDIR}/DIA SDK/lib/amd64"
+                "$ENV{VCINSTALLDIR}/../DIA SDK/lib/amd64"
+        )
+        if (NOT DIA_SDK_LIB)
+            set(_vswhere "C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe")
+            if (EXISTS "${_vswhere}")
+                execute_process(
+                    COMMAND "${_vswhere}" -latest -property installationPath
+                    OUTPUT_VARIABLE _vs_install_dir
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                )
+                find_library(DIA_SDK_LIB NAMES diaguids.lib HINTS "${_vs_install_dir}/DIA SDK/lib/amd64")
+            endif()
+        endif()
+
+        if (DIA_SDK_LIB)
+            foreach(_tgt ${llvm_libs})
+                if (TARGET ${_tgt})
+                    get_target_property(_link_libs ${_tgt} INTERFACE_LINK_LIBRARIES)
+                    if (_link_libs AND _link_libs MATCHES "diaguids\\.lib")
+                        list(TRANSFORM _link_libs REPLACE ".*diaguids\\.lib$" "${DIA_SDK_LIB}")
+                        set_target_properties(${_tgt} PROPERTIES INTERFACE_LINK_LIBRARIES "${_link_libs}")
+                    endif()
+                endif()
+            endforeach()
+        endif()
+    endif()
 endif()
 
 add_library(miniz STATIC dependencies/miniz/miniz.c)
+
+if (CMAKE_C_COMPILER_ID MATCHES "GNU")
+    set_source_files_properties(
+        dependencies/miniz/miniz.c
+        PROPERTIES
+        COMPILE_OPTIONS "-fno-analyzer"
+    )
+endif()
 
 add_executable(c3c
         src/build/builder.c
@@ -525,9 +566,10 @@ add_executable(c3c
         ${CMAKE_BINARY_DIR}/docs_template.h
 )
 
-# Building C3 with AVR Support
-if(C3_AVR_ENABLE)
-	target_compile_definitions(c3c PRIVATE AVR_ENABLE)
+# Building C3 with llvm toolchains that don't have AVR Support
+if(C3_AVR_DISABLE)
+    message(STATUS "AVR support is disabled")
+	target_compile_definitions(c3c PRIVATE AVR_DISABLE)
 endif()
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
@@ -770,6 +812,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
 endif()
 
 install(TARGETS c3c DESTINATION bin)
+install(CODE "file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/lib/c3/std\")")
 install(DIRECTORY lib/ DESTINATION lib/c3)
 
 # Man page install (OSX/Linux only)

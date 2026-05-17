@@ -8,7 +8,7 @@ interface Foo
 fn void test2()
 {
 	int* b;
-	$typeof(Foo.write) c = b; // #error:  You cannot cast 'int*' to 'fn int(void*,int)'
+	$Typeof(Foo.write) c = b; // #error:  You cannot cast 'int*' to 'fn int(void*,int)'
 }
 fn void test()
 {

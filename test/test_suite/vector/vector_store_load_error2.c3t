@@ -1,0 +1,30 @@
+// #target: macos-x64
+module test;
+import std;
+
+struct Player
+{
+    float[<3>] position;
+    float y;
+    int[] inventory;
+}
+
+fn int main()
+{
+    Player player;
+    player.y = 1;
+    player.position = {};
+    return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %player = alloca %Player, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %player, i8 0, i64 32, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %player, i64 12
+  store float 1.000000e+00, ptr %ptradd, align 4
+  store <3 x float> zeroinitializer, ptr %player, align 8
+  ret i32 0
+}

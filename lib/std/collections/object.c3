@@ -255,11 +255,11 @@ fn void object_set_object(Object* self, String key, Object* new_object) @private
 
 <*
  @require self.allocator != null : "This object is not properly initialized, was it really created using 'new'"
- @require $typeof(value) != void* ||| value == null : "void pointers cannot be stored in an object"
+ @require $Typeof(value) != void* ||| value == null : "void pointers cannot be stored in an object"
 *>
 macro Object* _object_from_value(Object* self, value) @private
 {
-	var $Type = $typeof(value);
+	var $Type = $Typeof(value);
 	$switch:
 		$case types::is_int($Type):
 			return new_int(self.allocator, value);
@@ -292,10 +292,10 @@ macro Object* Object.set(&self, String key, value)
 <*
  @require self.is_indexable()
 *>
-macro Object* Object.set_at(&self, sz index, String key, value)
+macro Object* Object.set_at(&self, sz index, value)
 {
 	Object* val = _object_from_value(self, value);
-	self.set_object_at(key, index, val);
+	self.set_object_at(index, val);
 	return val;
 }
 

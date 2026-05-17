@@ -22,7 +22,7 @@ macro bool @is_sortable(#list) @const
 			return false;
 		$case !$defined(lengthof(*#list)):
 			return false;
-		$case $defined(&(*#list)[0]) &&& $typeof(&(*#list)[0]) != $typeof((*#list)[0])*:
+		$case $defined(&(*#list)[0]) &&& $Typeof(&(*#list)[0]) != $Typeof((*#list)[0])*:
 			return false;
 		$default:
 			return true;
@@ -38,7 +38,7 @@ macro bool @is_any_sortable(#list) @const
 			return @is_sortable(#list);
 		$default:
 			return $defined(#list[0]) &&& $defined(lengthof(#list))
-				&&& !($defined(&#list[0]) &&& $typeof(&#list[0]) != $typeof(#list[0])*);
+				&&& !($defined(&#list[0]) &&& $Typeof(&#list[0]) != $Typeof(#list[0])*);
 	$endswitch
 }
 
@@ -56,7 +56,7 @@ macro bool @is_valid_cmp_fn(#cmp = ..., #list = ..., #context = ...) @const
 	$if !$defined(#cmp):
 		return true;
 	$else
-		var $Type = $typeof(#cmp);
+		var $Type = $Typeof(#cmp);
 		var $no_context = !$defined(#context);
 		$switch:
 			$case $Type::kind != FUNC ||| $Type::returns.kind != SIGNED_INT: return false;
@@ -87,7 +87,7 @@ macro bool @is_any_valid_cmp_fn(#cmp = ..., #list = ..., #context = ...) @const
 	$if !$defined(#cmp):
 		return true;
 	$else
-		var $Type = $typeof(#cmp);
+		var $Type = $Typeof(#cmp);
 		var $no_context = !$defined(#context);
 		$switch:
 			$case $Type::kind != FUNC ||| $Type::returns.kind != SIGNED_INT: return false;
@@ -123,7 +123,7 @@ macro bool @is_cmp_key_fn(#key_fn = ..., #list = ...) @const
 	$else
 		$switch:
 			$case @kindof(#key_fn) != FUNC: return false;
-			$case $typeof(#key_fn)::returns.kind != UNSIGNED_INT: return false;
+			$case $Typeof(#key_fn)::returns.kind != UNSIGNED_INT: return false;
 			$default:
 				$if @kindof(#list) == SLICE:
 					$switch:

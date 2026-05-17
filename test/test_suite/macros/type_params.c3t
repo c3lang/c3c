@@ -11,7 +11,7 @@ fn void test()
     int x = foo(int);
     var $Foo = double;
     double d = foo($Foo);
-    double d2 = foo($typeof(d));
+    double d2 = foo($Typeof(d));
     short z = foo(Bar);
 }
 

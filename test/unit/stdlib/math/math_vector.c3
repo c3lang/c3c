@@ -8,8 +8,8 @@ fn void test_vec2_init() @test
 {
 	float[<2>] v1 = { 1.0f, 2.0f };
 	double[<2>] v2 = { 1.0, 2.0 };
-	$assert $typeof(v1[0]) == float;
-	$assert $typeof(v2[0]) == double;
+	$assert $Typeof(v1[0]) == float;
+	$assert $Typeof(v2[0]) == double;
 	assert(v1[0] == 1.0f && v1[1] == 2.0f);
 	assert(v2[0] == 1.0 && v2[1] == 2.0);
 }
@@ -59,6 +59,20 @@ fn void test_vec3_transform() @test
 	float[<3>] perp = v.perpendicular();
 	assert(math::is_approx_rel(v.dot(perp), 0.0f, EPSILON_F));
 	assert(math::is_approx_rel(perp.length_sq(), v.length_sq(), EPSILON_F));
+}
+
+fn void test_v3_transform3() @test
+{
+	Vec3 v = { 0, 0, 0 };
+	Vec3 v2 = v.transform(matrix::IDENTITY4.translate({1,2,3}));
+	assert(v2.equals({1,2,3}));
+}
+
+fn void test_v2_transform2() @test
+{
+	Vec2 v = { 0, 0 };
+	Vec2 v2 = v.transform(matrix::IDENTITY4.translate({1,2,3}));
+	assert(v2.equals({1,2}));
 }
 
 fn void test_cubic_hermite_start() @test
@@ -200,12 +214,12 @@ fn void test_type_consistency() @test
 {
 	float[<2>] vf = { 1.0f, 2.0f };
 	double[<2>] vd = { 1.0, 2.0 };
-	$assert $typeof(vf.length_sq()) == float;
-	$assert $typeof(vd.length_sq()) == double;
+	$assert $Typeof(vf.length_sq()) == float;
+	$assert $Typeof(vd.length_sq()) == double;
 	float[<3>] v3f = { 1.0f, 2.0f, 3.0f };
 	double[<3>] v3d = { 1.0, 2.0, 3.0 };
-	$assert $typeof(v3f.cross(v3f)[0]) == float;
-	$assert $typeof(v3d.cross(v3d)[0]) == double;
+	$assert $Typeof(v3f.cross(v3f)[0]) == float;
+	$assert $Typeof(v3d.cross(v3d)[0]) == double;
 }
 
 fn void test_rejection() @test

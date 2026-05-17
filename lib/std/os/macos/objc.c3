@@ -20,8 +20,8 @@ macro bool ObjcClass.equals(ObjcClass a, ObjcClass b) => a == b;
 fn ObjcId alloc(ObjcClass cls) => objc::msg_send(cls, SendVoid, "alloc");
 fn void release(ObjcId id) => objc::msg_send(id, SendVoid, "release");
 
-alias NSUInteger = $typefrom(env::ARCH_64_BIT ??? ulong : uint);
-alias NSInteger = $typefrom(env::ARCH_64_BIT ??? long : int);
+alias NSUInteger = env::ARCH_64_BIT ??? ulong : uint;
+alias NSInteger = env::ARCH_64_BIT ??? long : int;
 
 macro ObjcClass? class_by_name(ZString c)
 {

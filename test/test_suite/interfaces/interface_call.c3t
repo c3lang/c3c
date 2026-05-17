@@ -9,7 +9,7 @@ interface Foo
 
 fn int main()
 {
-	String st = $typeof(Foo.write)::name;
+	String st = $Typeof(Foo.write)::name;
 	return 0;
 }
 

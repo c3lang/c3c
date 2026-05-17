@@ -81,8 +81,8 @@ typedef struct {
 "$reflect"      { return(CT_REFLECT); }
 "$stringify"    { return(CT_STRINGIFY); }
 "$switch"       { return(CT_SWITCH); }
-"$typefrom"     { return(CT_TYPEFROM); }
-"$typeof"       { return(CT_TYPEOF); }
+"$Typefrom"     { return(CT_TYPEFROM); }
+"$Typeof"       { return(CT_TYPEOF); }
 "$vaarg"        { return(CT_VAARG); }
 "$vaarg.len"      { return(CT_VACOUNT); }
 "...$vaarg"      { return(CT_VASPLAT); }

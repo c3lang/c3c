@@ -12,7 +12,7 @@ typedef enum IntrospectIndex
 	INTROSPECT_INDEX_TOTAL,
 } IntrospectIndex;
 
-bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements);
+bool type_is_homogeneous_aggregate(Type *type, Type **base, unsigned *elements);
 static inline bool abi_type_is_type(AbiType type);
 
 static inline bool abi_type_is_valid(AbiType type);
@@ -22,6 +22,7 @@ static inline LoweredType *type_lowering(Type *type)
 {
 	while (1)
 	{
+		ASSERT(type);
 		type = type->canonical;
 		switch (type->type_kind)
 		{
@@ -89,12 +90,14 @@ static inline LoweredType *type_lowering(Type *type)
 				return type;
 		}
 	}
+	UNREACHABLE
 }
 
 static inline LoweredType *type_lowering_abi(Type *type)
 {
 	while (1)
 	{
+		ASSERT(type);
 		type = type->canonical;
 		switch (type->type_kind)
 		{
@@ -161,10 +164,12 @@ static inline LoweredType *type_lowering_abi(Type *type)
 				return type;
 		}
 	}
+	UNREACHABLE
 }
 
 static inline bool abi_type_match(AbiType type, Type *other_type)
 {
+	ASSERT(other_type);
 	other_type = other_type->canonical;
 	if (type.abi_type & 0x01)
 	{

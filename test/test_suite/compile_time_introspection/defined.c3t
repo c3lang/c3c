@@ -38,11 +38,11 @@ fn void main()
         x++;
         $counter++;
     $endif
-    $if $defined($typefrom("Foo").$eval("ab")):
+    $if $defined($Typefrom("Foo").$eval("ab")):
         x++;
         $counter++;
     $endif
-    $if $defined($typefrom("mymodule::Foo").$eval("bob")):
+    $if $defined($Typefrom("mymodule::Foo").$eval("bob")):
         x++;
         $counter++;
     $endif

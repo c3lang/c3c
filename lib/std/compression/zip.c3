@@ -518,11 +518,11 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 	{
 		ZipEntry entry = self.stat_at(i) ?? ENTRY_NOT_FOUND~!;
 		String out_path_str;
-		if (try tmp = path::temp(output_dir))
+		if (try tmp = path::tnew(output_dir))
 		{
 			if (try combined = tmp.tappend(entry.name))
 			{
-				out_path_str = combined.str_view();
+				out_path_str = combined;
 			}
 			else
 			{
@@ -540,11 +540,11 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 		}
 		else
 		{
-			if (try tmp = path::temp(out_path_str))
+			if (try tmp = path::tnew(out_path_str))
 			{
 				if (try parent = tmp.parent())
 				{
-					(void)path::mkdir(parent.str_view(), true);
+					(void)path::mkdir(parent, true);
 				}
 			}
 
@@ -586,11 +586,11 @@ fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @
 		}
 		if (!entry.is_directory) continue;
 
-		if (try tmp = path::temp(output_dir))
+		if (try tmp = path::tnew(output_dir))
 		{
 			if (try combined = tmp.tappend(entry.name))
 			{
-				String out_path_str = (String)combined.str_view();
+				String out_path_str = combined;
 				file::set_modified_time(out_path_str, (Time_t)entry.time().to_seconds())!;
 			}
 		}

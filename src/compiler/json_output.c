@@ -134,10 +134,10 @@ void print_type(FILE *file, TypeInfo *type)
 		case TYPE_INFO_TYPEOF:
 			scratch_buffer_clear();
 			loc_to_scratch(type->unresolved_type_expr->loc);
-			PRINTF("$typeof(%s)", scratch_buffer_to_string());
+			PRINTF("$Typeof(%s)", scratch_buffer_to_string());
 			break;
 		case TYPE_INFO_TYPEFROM:
-			PRINTF("$typefrom(...)");
+			PRINTF("$Typefrom(...)");
 			break;
 		case TYPE_INFO_ARRAY:
 			print_type(file, type->array.base);

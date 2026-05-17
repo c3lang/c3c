@@ -641,6 +641,8 @@ static inline int64_t scan_hex_literal(Lexer *lexer, int positions)
 	return hex;
 }
 
+// Scan utf8 sequence
+
 static inline int64_t scan_utf8(Lexer *lexer, unsigned char c)
 {
 	int utf8_bytes;

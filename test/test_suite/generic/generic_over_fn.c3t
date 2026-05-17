@@ -10,8 +10,8 @@ import test_generic;
 
 macro quicksort(list, cmp = null)
 {
-    var $Type = $typeof(list);
-    var $CmpType = $typeof(cmp);
+    var $Type = $Typeof(list);
+    var $CmpType = $Typeof(cmp);
     sz len = lengthof(list);
     test_generic::sort{$Type, $CmpType}(list, 0, len - 1, cmp);
 }

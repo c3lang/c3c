@@ -2,7 +2,7 @@ extern fn void printf(char *, ...);
 
 macro bitcast($Target, value)
 {
-    $typeof(value) temp = value;
+    $Typeof(value) temp = value;
     $Target* result = ($Target*)(&temp);
     return *result;
 }

@@ -1,4 +1,4 @@
-﻿Unicode true
+Unicode true
 SetCompressor lzma
 RequestExecutionLevel user
 
@@ -30,17 +30,21 @@ Page Custom ShowMSVCLicensePage LeaveMSVCLicensePage
 
 !insertmacro MUI_LANGUAGE "English"
 
+!ifndef BUILD_DIR
+  !define BUILD_DIR "build"
+!endif
+
 Section "C3 Compiler"
   SectionIn RO
   SetOutPath "$INSTDIR"
   File "..\..\LICENSE"
   File "..\..\README.md"
   File "..\..\releasenotes.md"
-  File "..\..\build\c3c.exe"
-  File /nonfatal "..\..\build\c3c.pdb"
+  File "..\..\${BUILD_DIR}\c3c.exe"
+  File /nonfatal "..\..\${BUILD_DIR}\c3c.pdb"
 
   SetOutPath "$INSTDIR\c3c_rt"
-  File /nonfatal /r "..\..\build\c3c_rt\*"
+  File /nonfatal /r "..\..\${BUILD_DIR}\c3c_rt\*"
 
   SetOutPath "$INSTDIR\lib"
   File /r "..\..\lib\*"

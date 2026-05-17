@@ -4,7 +4,7 @@ import std::io;
 
 fn void test(int x)
 {
-	$typeof(&$$FUNCTION) ptr = &$$FUNCTION;
+	$Typeof(&$$FUNCTION) ptr = &$$FUNCTION;
 	io::printfn("%d", x);
 	if (x > 0) ptr(x - 1);
 }

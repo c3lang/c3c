@@ -392,11 +392,11 @@ fn Matrix4x4 Matrix4x4.rotate(&self, Real angle, Real[<3>] axis)
 	Real yz = y * z;
 	Real zz = z * z;
 
-	return { .m = {
+	return self.mul({ .m = {
 		xx * c + ct, xy * c + z * s, xz * c - y * s, 0,
 		xy * c - z * s, yy * c + ct, yz * c + x * s, 0,
 		xz * c +y * s, yz * c - x * s, zz * c + ct, 0,
-		0, 0, 0, 1 } };
+		0, 0, 0, 1 } });
 }
 
 // r in radians

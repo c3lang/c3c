@@ -1183,7 +1183,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 				MACRO_COPY_DECL(copy->type_alias_decl.decl);
 				break;
 			}
-			MACRO_COPY_TYPE(copy->type_alias_decl.type_info);
+			MACRO_COPY_EXPR(copy->type_alias_decl.type_expr);
 			break;
 		case DECL_TYPEDEF:
 			copy_decl_type(copy);
@@ -1192,31 +1192,31 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE(copy->distinct);
 			break;
 		case DECL_CT_ECHO:
-			MACRO_COPY_AST(decl->ct_echo_decl);
+			MACRO_COPY_AST(copy->ct_echo_decl);
 			break;
 		case DECL_CT_ASSERT:
-			MACRO_COPY_AST(decl->ct_assert_decl);
+			MACRO_COPY_AST(copy->ct_assert_decl);
 			break;
 		case DECL_IMPORT:
 		case DECL_ALIAS_PATH:
 			break;
 		case DECL_MACRO:
-			MACRO_COPY_TYPEID(decl->func_decl.type_parent);
+			MACRO_COPY_TYPEID(copy->func_decl.type_parent);
 			copy_signature_deep(c, &copy->func_decl.signature);
-			MACRO_COPY_ASTID(decl->func_decl.body);
-			MACRO_COPY_DECLID(decl->func_decl.body_param);
+			MACRO_COPY_ASTID(copy->func_decl.body);
+			MACRO_COPY_DECLID(copy->func_decl.body_param);
 			break;
 		case DECL_ATTRIBUTE:
-			MACRO_COPY_DECL_LIST(decl->attr_decl.params);
-			decl->attr_decl.attrs = copy_attributes(c, decl->attr_decl.attrs);
+			MACRO_COPY_DECL_LIST(copy->attr_decl.params);
+			copy->attr_decl.attrs = copy_attributes(c, copy->attr_decl.attrs);
 			break;
 		case DECL_ALIAS:
-			if (decl->resolve_status == RESOLVE_DONE)
+			if (copy->resolve_status == RESOLVE_DONE)
 			{
-				fixup_decl(c, &decl->define_decl.alias);
+				fixup_decl(c, &copy->define_decl.alias);
 				break;
 			}
-			MACRO_COPY_EXPR(decl->define_decl.alias_expr);
+			MACRO_COPY_EXPR(copy->define_decl.alias_expr);
 			break;
 	}
 	return copy;

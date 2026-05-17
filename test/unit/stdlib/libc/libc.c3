@@ -16,7 +16,7 @@ fn void abs() @test
 	CInt x = 21;
 	assert(libc::abs(x) == 21);
 	assert(libc::abs(-x) == 21);
-	$assert $typeof(libc::abs(x)) == CInt;
+	$assert $Typeof(libc::abs(x)) == CInt;
 }
 
 fn void asctime() @test
@@ -72,7 +72,7 @@ fn void atexit() @test
 fn void atof() @test
 {
 	assert(libc::atof("123.45") == 123.45);
-	$assert $typeof(libc::atof("123.45")) == double;
+	$assert $Typeof(libc::atof("123.45")) == double;
 	assert(libc::atof("-3.14") == -3.14);
 	assert(libc::atof("x") == 0.0);
 	assert(libc::atof("") == 0.0);
@@ -81,7 +81,7 @@ fn void atof() @test
 fn void atoi() @test
 {
 	assert(libc::atoi("123") == 123);
-	$assert $typeof(libc::atoi("123")) == CInt;
+	$assert $Typeof(libc::atoi("123")) == CInt;
 	assert(libc::atoi("-3.14") == -3);
 	assert(libc::atoi("x") == 0);
 	assert(libc::atoi("") == 0);
@@ -91,7 +91,7 @@ fn void atoll() @test
 {
 	assert(libc::atoll("123") == 123);
 	assert(libc::atoll("-3.14") == -3);
-	$assert $typeof(libc::atoll("-3.14")) == CLongLong;
+	$assert $Typeof(libc::atoll("-3.14")) == CLongLong;
 	assert(libc::atoll("x") == 0);
 	assert(libc::atoll("") == 0);
 }

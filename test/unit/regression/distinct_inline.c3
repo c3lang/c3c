@@ -9,11 +9,11 @@ typedef Other = inline int;
 typedef Other2 = inline Other;
 fn void test_binary()
 {
-	assert($typeof((Foo)1 + 1)::typeid == Foo::typeid);
-	assert($typeof((Foo)1 + (Bar)1)::typeid == Foo::typeid);
-	assert($typeof((Baz)1 + (Bar)1)::typeid == Foo::typeid);
-	assert($typeof((Def)1 + (Bar)1)::typeid == Foo::typeid);
-	assert($typeof((Other2)1 + (Def)1)::typeid == int::typeid);
+	assert($Typeof((Foo)1 + 1)::typeid == Foo::typeid);
+	assert($Typeof((Foo)1 + (Bar)1)::typeid == Foo::typeid);
+	assert($Typeof((Baz)1 + (Bar)1)::typeid == Foo::typeid);
+	assert($Typeof((Def)1 + (Bar)1)::typeid == Foo::typeid);
+	assert($Typeof((Other2)1 + (Def)1)::typeid == int::typeid);
 }
 
 typedef DistinctInt = inline int;

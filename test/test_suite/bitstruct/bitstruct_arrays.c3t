@@ -340,7 +340,7 @@ entry:
   %0 = load i8, ptr %xx, align 1
   %1 = and i8 %0, -8
   %2 = or i8 %1, 3
-  store i8 %1, ptr %xx, align 1
+  store i8 %2, ptr %xx, align 1
   %3 = load i8, ptr %xx, align 1
   %zext = zext i8 %3 to i32
   %shl = shl i32 %zext, 29
@@ -366,7 +366,7 @@ entry:
   %9 = load i8, ptr %xx, align 1
   %10 = and i8 %9, -8
   %11 = or i8 %10, %8
-  store i8 %10, ptr %xx, align 1
+  store i8 %11, ptr %xx, align 1
   %12 = load i8, ptr %xx, align 1
   %zext9 = zext i8 %12 to i32
   %shl10 = shl i32 %zext9, 29
@@ -406,7 +406,7 @@ entry:
   %23 = load i8, ptr %ptradd29, align 1
   %24 = and i8 %23, -2
   %25 = or i8 %24, %22
-  store i8 %24, ptr %ptradd29, align 1
+  store i8 %25, ptr %ptradd29, align 1
   %26 = load i8, ptr %xx, align 1
   %zext31 = zext i8 %26 to i32
   %shl32 = shl i32 %zext31, 29
@@ -446,7 +446,7 @@ entry:
   %37 = load i8, ptr %ptradd51, align 1
   %38 = and i8 %37, -2
   %39 = or i8 %38, %36
-  store i8 %38, ptr %ptradd51, align 1
+  store i8 %39, ptr %ptradd51, align 1
   %40 = load i8, ptr %xx, align 1
   %zext53 = zext i8 %40 to i32
   %shl54 = shl i32 %zext53, 29
@@ -486,7 +486,7 @@ entry:
   %51 = load i8, ptr %ptradd73, align 1
   %52 = and i8 %51, -2
   %53 = or i8 %52, %50
-  store i8 %52, ptr %ptradd73, align 1
+  store i8 %53, ptr %ptradd73, align 1
   %54 = load i8, ptr %xx, align 1
   %zext75 = zext i8 %54 to i32
   %shl76 = shl i32 %zext75, 29
@@ -527,7 +527,7 @@ entry:
   %66 = load i8, ptr %ptradd96, align 1
   %67 = and i8 %66, -2
   %68 = or i8 %67, %65
-  store i8 %67, ptr %ptradd96, align 1
+  store i8 %68, ptr %ptradd96, align 1
   %69 = load i8, ptr %xx, align 1
   %zext98 = zext i8 %69 to i32
   %shl99 = shl i32 %zext98, 29
@@ -568,7 +568,7 @@ entry:
   %81 = load i8, ptr %ptradd119, align 1
   %82 = and i8 %81, -2
   %83 = or i8 %82, %80
-  store i8 %82, ptr %ptradd119, align 1
+  store i8 %83, ptr %ptradd119, align 1
   %84 = load i8, ptr %xx, align 1
   %zext121 = zext i8 %84 to i32
   %shl122 = shl i32 %zext121, 29
@@ -608,7 +608,7 @@ entry:
   %95 = load i8, ptr %ptradd141, align 1
   %96 = and i8 %95, -2
   %97 = or i8 %96, %94
-  store i8 %96, ptr %ptradd141, align 1
+  store i8 %97, ptr %ptradd141, align 1
   %98 = load i8, ptr %xx, align 1
   %zext143 = zext i8 %98 to i32
   %shl144 = shl i32 %zext143, 29
@@ -648,7 +648,7 @@ entry:
   %109 = load i8, ptr %ptradd163, align 1
   %110 = and i8 %109, -2
   %111 = or i8 %110, %108
-  store i8 %110, ptr %ptradd163, align 1
+  store i8 %111, ptr %ptradd163, align 1
   %112 = load i8, ptr %xx, align 1
   %zext165 = zext i8 %112 to i32
   %shl166 = shl i32 %zext165, 29
@@ -773,7 +773,7 @@ entry:
   %23 = load i8, ptr %ptradd34, align 1
   %24 = and i8 %23, -4
   %25 = or i8 %24, %22
-  store i8 %24, ptr %ptradd34, align 1
+  store i8 %25, ptr %ptradd34, align 1
   %26 = load i8, ptr %xx, align 1
   %zext36 = zext i8 %26 to i32
   %lshrl37 = lshr i32 %zext36, 1
@@ -814,7 +814,7 @@ entry:
   %37 = load i8, ptr %ptradd57, align 1
   %38 = and i8 %37, -4
   %39 = or i8 %38, %36
-  store i8 %38, ptr %ptradd57, align 1
+  store i8 %39, ptr %ptradd57, align 1
   %40 = load i8, ptr %xx, align 1
   %zext59 = zext i8 %40 to i32
   %lshrl60 = lshr i32 %zext59, 1
@@ -855,7 +855,7 @@ entry:
   %51 = load i8, ptr %ptradd80, align 1
   %52 = and i8 %51, -4
   %53 = or i8 %52, %50
-  store i8 %52, ptr %ptradd80, align 1
+  store i8 %53, ptr %ptradd80, align 1
   %54 = load i8, ptr %xx, align 1
   %zext82 = zext i8 %54 to i32
   %lshrl83 = lshr i32 %zext82, 1
@@ -897,7 +897,7 @@ entry:
   %66 = load i8, ptr %ptradd104, align 1
   %67 = and i8 %66, -4
   %68 = or i8 %67, %65
-  store i8 %67, ptr %ptradd104, align 1
+  store i8 %68, ptr %ptradd104, align 1
   %69 = load i8, ptr %xx, align 1
   %zext106 = zext i8 %69 to i32
   %lshrl107 = lshr i32 %zext106, 1
@@ -939,7 +939,7 @@ entry:
   %81 = load i8, ptr %ptradd128, align 1
   %82 = and i8 %81, -4
   %83 = or i8 %82, %80
-  store i8 %82, ptr %ptradd128, align 1
+  store i8 %83, ptr %ptradd128, align 1
   %84 = load i8, ptr %xx, align 1
   %zext130 = zext i8 %84 to i32
   %lshrl131 = lshr i32 %zext130, 1
@@ -980,7 +980,7 @@ entry:
   %95 = load i8, ptr %ptradd151, align 1
   %96 = and i8 %95, -4
   %97 = or i8 %96, %94
-  store i8 %96, ptr %ptradd151, align 1
+  store i8 %97, ptr %ptradd151, align 1
   %98 = load i8, ptr %xx, align 1
   %zext153 = zext i8 %98 to i32
   %lshrl154 = lshr i32 %zext153, 1
@@ -1021,7 +1021,7 @@ entry:
   %109 = load i8, ptr %ptradd174, align 1
   %110 = and i8 %109, -4
   %111 = or i8 %110, %108
-  store i8 %110, ptr %ptradd174, align 1
+  store i8 %111, ptr %ptradd174, align 1
   %112 = load i8, ptr %xx, align 1
   %zext176 = zext i8 %112 to i32
   %lshrl177 = lshr i32 %zext176, 1

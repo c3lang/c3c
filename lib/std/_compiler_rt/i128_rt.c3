@@ -430,7 +430,7 @@ macro float_from_u128($Type, uint128 a) @private
 macro fixuint(a) @private
 {
 	var $Rep;
-	$switch $typeof(a):
+	$switch $Typeof(a):
 		$case double:
 			$Rep = ulong;
 			const EXPONENT_BITS = 11;
@@ -474,7 +474,7 @@ macro fixuint(a) @private
 macro fixint(a) @private
 {
 	var $Rep;
-	$switch $typeof(a):
+	$switch $Typeof(a):
 		$case double:
 			$Rep = ulong;
 			const EXPONENT_BITS = 11;

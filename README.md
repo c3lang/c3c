@@ -1,5 +1,5 @@
 # C3 Language
-<img src="https://c3-lang.org/logo.svg" align="right" height="120" />
+<img src="https://c3-lang.org/assets/logo.svg" align="right" height="120" />
 
 C3 is a programming language that builds on the syntax and semantics of the C language,
 with the goal of evolving it while still retaining familiarity for C programmers.
@@ -152,9 +152,9 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.7.11**.
+The current stable version of the compiler is **version 0.8.0**.
 
-The upcoming 0.8.0 release will introduce breaking changes, including the removal of deprecated functionality and a major transition from unsigned to signed sizes by default.
+The upcoming 0.8.1 release will further refine the standard library.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
 If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues)

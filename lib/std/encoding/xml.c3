@@ -367,8 +367,8 @@ fn void XmlDocument.free(XmlDocument* self)
 
 // ----------------------------------------------------------------------------
 
-alias ReadFn = $typeof(InStream.read);
-alias ReadByteFn = $typeof(InStream.read_byte);
+alias ReadFn = $Typeof(InStream.read);
+alias ReadByteFn = $Typeof(InStream.read_byte);
 
 struct XmlReader
 {
@@ -539,8 +539,8 @@ fn XmlEvent? XmlReader.next_event(&self)
 	}
 }
 
-alias WriteFn = $typeof(OutStream.write);
-alias WriteByteFn = $typeof(OutStream.write_byte);
+alias WriteFn = $Typeof(OutStream.write);
+alias WriteByteFn = $Typeof(OutStream.write_byte);
 
 struct XmlSerializer
 {
