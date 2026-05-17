@@ -89,7 +89,7 @@ macro bool is_win32_separator(char c) =>  c == '/' || c == '\\';
  @param no_symlinks : `Exclude symbolic links from the result, where supported by the platform`
  @param mask : `Optional pattern. Supports one '*' wildcard, for example "*.c3" or "foo*bar"`
  @param recursive : `If true, recursively include entries in subdirectories`
- @param relative : `If true, return paths relative to dir. Defaults to true to preserve the known ls behaviour`
+ @param relative : `If true, return paths relative to dir. Defaults to true`
  @param rebase : `If non-empty, prepend this path to each returned entry`
 *>
 fn PathList? ls(Allocator allocator, Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "", bool recursive = false, bool relative = true, Path rebase = (Path)"")
@@ -596,21 +596,24 @@ fn bool? _rmdir(Path path) @private
 fn void? _ls_collect(Allocator allocator, PathList* result, Path base, Path rel_dir, bool no_dirs, bool no_symlinks, String mask, bool recursive, bool relative, Path rebase) @private
 {
 	$if $defined(os::native_ls):
-		Path scan_dir = rel_dir ? base.tappend(rel_dir)! : base;
-		PathList entries = os::native_ls(scan_dir, false, no_symlinks, "", tmem)!;
-		foreach (entry : entries)
+		@pool()
 		{
-			Path rel = rel_dir ? rel_dir.tappend(entry)! : entry;
-			Path full = scan_dir.tappend(entry)!;
-			bool is_directory = is_dir(full);
-			if (!(is_directory && no_dirs) && _path_match(rel, entry, mask))
+			Path scan_dir = rel_dir ? base.tappend(rel_dir)! : base;
+			PathList entries = os::native_ls(scan_dir, false, no_symlinks, "", tmem)!;
+			foreach (entry : entries)
 			{
-				Path item = relative ? rel : full;
-				if (rebase) item = rebase.tappend(item)!;
-				result.push(item.copy(allocator));
+				Path rel = rel_dir ? rel_dir.tappend(entry)! : entry;
+				Path full = scan_dir.tappend(entry)!;
+				bool is_directory = is_dir(full);
+				if (!(is_directory && no_dirs) && _path_match(rel, entry, mask))
+				{
+					Path item = relative ? rel : full;
+					if (rebase) item = rebase.tappend(item)!;
+					result.push(item.copy(allocator));
+				}
+				if (recursive && is_directory) _ls_collect(allocator, result, base, rel, no_dirs, no_symlinks, mask, recursive, relative, rebase)!;
 			}
-			if (recursive && is_directory) _ls_collect(allocator, result, base, rel, no_dirs, no_symlinks, mask, recursive, relative, rebase)!;
-		}
+		};
 	$else
 		return io::UNSUPPORTED_OPERATION~;
 	$endif
