@@ -428,3 +428,61 @@ $else
     assert(path::for_posix(mem, ".").absolute(mem, )!! == path::tcwd()!!);
 $endif
 }
+
+fn void test_ls_options() => mem::@scoped(tmem)
+{
+	Path root = path::temp_directory(mem).tappend("c3_ls_test")!!;
+	if (path::exists(root)) (void)path::rmtree(root);
+	path::mkdir(root, recursive: true)!!;
+	defer (void)path::rmtree(root);
+	path::mkdir(root.tappend("alpha.c3")!!, recursive: true)!!;
+	path::mkdir(root.tappend("beta.txt")!!, recursive: true)!!;
+	path::mkdir(root.tappend("sub", "gamma.c3")!!, recursive: true)!!;
+
+	PathList files = path::ls(mem, root, mask: "*.c3")!!;
+	bool found_alpha;
+	bool found_beta;
+	bool found_gamma;
+	foreach (entry : files)
+	{
+		found_alpha = found_alpha || entry == path::tnew("alpha.c3")!!;
+		found_beta = found_beta || entry == path::tnew("beta.txt")!!;
+		found_gamma = found_gamma || entry == path::tnew("sub/gamma.c3")!!;
+	}
+	assert(found_alpha);
+	assert(!found_beta);
+	assert(!found_gamma);
+
+	files = path::ls(mem, root, mask: "*.c3", recursive: true)!!;
+	found_alpha = false;
+	found_gamma = false;
+	foreach (entry : files)
+	{
+		found_alpha = found_alpha || entry == path::tnew("alpha.c3")!!;
+		found_gamma = found_gamma || entry == path::tnew("sub/gamma.c3")!!;
+	}
+	assert(found_alpha);
+	assert(found_gamma);
+
+	files = path::ls(mem, root, recursive: true, relative: false)!!;
+	found_alpha = false;
+	found_gamma = false;
+	foreach (entry : files)
+	{
+		found_alpha = found_alpha || entry == root.tappend("alpha.c3")!!;
+		found_gamma = found_gamma || entry == root.tappend("sub", "gamma.c3")!!;
+	}
+	assert(found_alpha);
+	assert(found_gamma);
+
+	files = path::ls(mem, root, recursive: true, relative: true, rebase: path::tnew("rebased")!!)!!;
+	found_alpha = false;
+	found_gamma = false;
+	foreach (entry : files)
+	{
+		found_alpha = found_alpha || entry == path::tnew("rebased/alpha.c3")!!;
+		found_gamma = found_gamma || entry == path::tnew("rebased/sub/gamma.c3")!!;
+	}
+	assert(found_alpha);
+	assert(found_gamma);
+}

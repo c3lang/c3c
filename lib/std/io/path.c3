@@ -80,13 +80,24 @@ macro bool is_separator(char c, PathEnv path_env = DEFAULT_ENV)
 macro bool is_posix_separator(char c) => c == '/';
 macro bool is_win32_separator(char c) =>  c == '/' || c == '\\';
 
-fn PathList? ls(Allocator allocator, Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "")
+<*
+ List directory contents.
+
+ @param allocator : `The allocator for the returned list and paths`
+ @param dir : `The directory to list`
+ @param no_dirs : `Exclude directories from the result`
+ @param no_symlinks : `Exclude symbolic links from the result, where supported by the platform`
+ @param mask : `Optional pattern. Supports one '*' wildcard, for example "*.c3" or "foo*bar"`
+ @param recursive : `If true, recursively include entries in subdirectories`
+ @param relative : `If true, return paths relative to dir. Defaults to true`
+ @param rebase : `If non-empty, prepend this path to each returned entry`
+*>
+fn PathList? ls(Allocator allocator, Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "", bool recursive = false, bool relative = true, Path rebase = (Path)"")
 {
-	$if $defined(os::native_ls):
-		return os::native_ls(dir, no_dirs, no_symlinks, mask, allocator);
-	$else
-		return io::UNSUPPORTED_OPERATION~;
-	$endif
+	PathList list;
+	list.init(allocator);
+	_ls_collect(allocator, &list, dir, (Path)"", no_dirs, no_symlinks, mask, recursive, relative, rebase)!;
+	return list;
 }
 
 enum MkdirPermissions
@@ -580,6 +591,45 @@ fn bool? _rmdir(Path path) @private
 {
 	if (!path) return INVALID_PATH~;
 	return os::native_rmdir(path);
+}
+
+fn void? _ls_collect(Allocator allocator, PathList* result, Path base, Path rel_dir, bool no_dirs, bool no_symlinks, String mask, bool recursive, bool relative, Path rebase) @private
+{
+	$if $defined(os::native_ls):
+		@pool()
+		{
+			Path scan_dir = rel_dir ? base.tappend(rel_dir)! : base;
+			PathList entries = os::native_ls(scan_dir, false, no_symlinks, "", tmem)!;
+			foreach (entry : entries)
+			{
+				Path rel = rel_dir ? rel_dir.tappend(entry)! : entry;
+				Path full = scan_dir.tappend(entry)!;
+				bool is_directory = is_dir(full);
+				if (!(is_directory && no_dirs) && _path_match(rel, entry, mask))
+				{
+					Path item = relative ? rel : full;
+					if (rebase) item = rebase.tappend(item)!;
+					result.push(item.copy(allocator));
+				}
+				if (recursive && is_directory) _ls_collect(allocator, result, base, rel, no_dirs, no_symlinks, mask, recursive, relative, rebase)!;
+			}
+		};
+	$else
+		return io::UNSUPPORTED_OPERATION~;
+	$endif
+}
+
+fn bool _path_match(Path rel, Path name, String mask) @private
+{
+	if (!mask) return true;
+	if (try star = mask.index_of_char('*'))
+	{
+		String prefix = mask[:star];
+		String suffix = mask[star + 1..];
+		return rel.len >= prefix.len + suffix.len && rel.starts_with(prefix) && rel.ends_with(suffix)
+			|| name.len >= prefix.len + suffix.len && name.starts_with(prefix) && name.ends_with(suffix);
+	}
+	return rel == mask || name == mask;
 }
 
 macro _append_path(self, Allocator allocator, String[] parts, String extension, PathEnv path_env) @local => @pool()
