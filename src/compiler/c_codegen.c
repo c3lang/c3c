@@ -168,25 +168,34 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			Type *base = type;
 			type = type->pointer;
-			TODO
-			/*
-			FunctionPrototype *proto = type->function.prototype;
-			c_emit_type_decl(c, proto->param_infos->type);
-			FOREACH (ParamInfo, t, proto->param_infos)
-			{
-				c_emit_type_decl(c, t.type);
-			}
+			FunctionPrototype* prototype = type->function.prototype;
 			int id = ++c->typename;
-			PRINTF("typedef %s(*__c3_fn%d)(", c_type_name(c, proto->return_info.type), id);
-			FOREACH_IDX(i, ParamInfo, t, proto->param_infos)
+
+			c_emit_type_decl(c, prototype->return_result);
+
+			for (size_t i = 0; i < prototype->param_count; i++)
 			{
-				if (i != 0) PRINT(",");
-				PRINT(c_type_name(c, t.type));
+				c_emit_type_decl(c, prototype->abi_args[i]->original_type);
 			}
-			PRINT(");\n");
+
 			scratch_buffer_clear();
-			scratch_buffer_printf("__c3_fn%d", id);
-			htable_set(&c->gen_decl, base, scratch_buffer_copy());*/
+			const char* typename = c_type_name(c, prototype->return_result);
+			scratch_buffer_printf("%s(*__c3_func_ptr%d)(", typename, id);
+			for (size_t i = 0; i < prototype->param_count; i++)
+			{
+				if (i > 0) scratch_buffer_printf(", ");
+				scratch_buffer_printf("%s", c_type_name(c, prototype->abi_args[i]->original_type));
+			}
+			if (prototype->param_vacount > 0)
+			{
+				if (prototype->param_count > 0) scratch_buffer_printf(", ");
+				scratch_buffer_printf("va_list");
+			}
+			scratch_buffer_printf(")");
+
+			PRINTF("%s;\n", scratch_buffer_copy());
+			htable_set(&c->gen_decl, base, scratch_buffer_copy());
+			
 			return true;
 		}
 		case TYPE_STRUCT:
