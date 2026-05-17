@@ -173,7 +173,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 
 			c_emit_type_decl(c, prototype->return_result);
 
-			for(size_t i = 0; i < prototype->param_count; i++)
+			for (size_t i = 0; i < prototype->param_count; i++)
 			{
 				c_emit_type_decl(c, prototype->abi_args[i]->original_type);
 			}
@@ -181,14 +181,14 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			scratch_buffer_clear();
 			const char* typename = c_type_name(c, prototype->return_result);
 			scratch_buffer_printf("%s(*__c3_func_ptr%d)(", typename, id);
-			for(size_t i = 0; i < prototype->param_count; i++)
+			for (size_t i = 0; i < prototype->param_count; i++)
 			{
-				if(i > 0)scratch_buffer_printf(", ");
+				if (i > 0)scratch_buffer_printf(", ");
 				scratch_buffer_printf("%s", c_type_name(c, prototype->abi_args[i]->original_type));
 			}
-			if(prototype->param_vacount > 0)
+			if (prototype->param_vacount > 0)
 			{
-				if(prototype->param_count > 0)scratch_buffer_printf(", ");
+				if (prototype->param_count > 0)scratch_buffer_printf(", ");
 				scratch_buffer_printf("va_list");
 			}
 			scratch_buffer_printf(")");
