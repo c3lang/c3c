@@ -331,6 +331,8 @@ static VariableId c_emit_temp(GenContext *c, CValue *value, Type *type)
 }
 
 static void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
+static void c_emit_ignored_expr(GenContext *c, Expr *expr);
+static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value);
 
 static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 {
@@ -402,6 +404,34 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 	}
 	PRINT("/* CONST EXPR */\n");
 }
+static void c_emit_cond_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	Expr **list = expr->cond_expr;
+	size_t size = vec_size(list);
+	assert(size);
+	size_t last = size - 1;
+	for (size_t i = 0; i < last; i++)
+	{
+		c_emit_ignored_expr(c, list[i]);
+	}
+	c_emit_expr(c, value, list[last]);
+}
+static void c_emit_expression_list_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	Expr **list = expr->expression_list;
+	size_t size = vec_size(list);
+	assert(size);
+	size_t last = size - 1;
+	for (size_t i = 0; i < last; i++)
+	{
+		c_emit_ignored_expr(c, list[i]);
+		// In the llvm backend, there is a possibility of an early return here
+		// in the event the builder is not the global builder.
+		// This is not ever the case here, so this function acts the same as
+		// c_emit_cond_expr
+	}
+	c_emit_expr(c, value, list[last]);
+}
 static void c_emit_ptr_access_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	CValue inner_value;
@@ -415,6 +445,72 @@ static void c_emit_identifier_expr(GenContext *c, CValue *value, Expr *expr)
 	Decl *decl = expr->ident_expr;
 	value->var = c_create_variable(c);
 	PRINTF("%s ___var_%d = ___var_%d;\n", c_type_name(c, decl->type), value->var, decl->backend_id);
+}
+
+static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	ExprBinary *binary = &expr->binary_expr;
+	CValue left_value, right_value;
+	c_emit_expr(c, &left_value, exprptr(binary->left));
+	c_emit_expr(c, &right_value, exprptr(binary->right));
+
+	const char *operator_string;
+	
+	assert(expr->type);
+	const char *type_string = c_type_name(c, expr->type);
+
+	value->var = c_create_variable(c);
+
+	switch(binary->operator){
+		case BINARYOP_ERROR: UNREACHABLE_VOID;
+		case BINARYOP_MULT: operator_string = "*"; break;
+		case BINARYOP_SUB: operator_string = "-"; break;
+		case BINARYOP_ADD: operator_string = "+"; break;
+		case BINARYOP_DIV: operator_string = "/"; break;
+		case BINARYOP_MOD: operator_string = "%"; break;
+		case BINARYOP_SHR: operator_string = ">>"; break;
+		case BINARYOP_SHL: operator_string = "<<"; break;
+		case BINARYOP_BIT_OR: operator_string = "|"; break;
+		case BINARYOP_BIT_XOR: operator_string = "^"; break;
+		case BINARYOP_BIT_AND: operator_string = "&"; break;
+		case BINARYOP_AND: operator_string = "&&"; break;
+		case BINARYOP_OR: operator_string = "||"; break;
+		case BINARYOP_ELSE: TODO // Its the ?? operator for optionals
+		case BINARYOP_CT_AND:
+		case BINARYOP_CT_OR:
+		case BINARYOP_CT_CONCAT:
+		case BINARYOP_CT_CONCAT_ASSIGN:
+			// Handled elsewhere.
+			UNREACHABLE_VOID
+		case BINARYOP_GT: operator_string = ">"; break;
+		case BINARYOP_GE: operator_string = ">="; break;
+		case BINARYOP_LT: operator_string = "<"; break;
+		case BINARYOP_LE: operator_string = "<="; break;
+		case BINARYOP_NE: operator_string = "!="; break;
+		case BINARYOP_EQ: operator_string = "=="; break;
+		case BINARYOP_VEC_GT:
+		case BINARYOP_VEC_GE:
+		case BINARYOP_VEC_LT:
+		case BINARYOP_VEC_LE:
+		case BINARYOP_VEC_NE:
+		case BINARYOP_VEC_EQ:
+			// These will probably be special functions that
+			// the backend calls
+			TODO
+		case BINARYOP_ASSIGN: operator_string = "="; break;
+		case BINARYOP_ADD_ASSIGN: operator_string = "+="; break;
+		case BINARYOP_BIT_AND_ASSIGN: operator_string = "&="; break;
+		case BINARYOP_BIT_OR_ASSIGN: operator_string = "|="; break;
+		case BINARYOP_BIT_XOR_ASSIGN: operator_string = ""; break;
+		case BINARYOP_DIV_ASSIGN: operator_string = "^="; break;
+		case BINARYOP_MOD_ASSIGN: operator_string = "%="; break;
+		case BINARYOP_MULT_ASSIGN: operator_string = "*="; break;
+		case BINARYOP_SHR_ASSIGN: operator_string = ">>="; break;
+		case BINARYOP_SHL_ASSIGN: operator_string = "<<="; break;
+		case BINARYOP_SUB_ASSIGN: operator_string = "-="; break;
+	};
+
+	PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", type_string, value->var, left_value.var, operator_string, right_value.var);
 }
 static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 {
@@ -454,7 +550,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 			break;
 		case EXPR_BINARY:
-			break;
+			c_emit_binary_expr(c, value, expr);
+			return;
 		case EXPR_BITACCESS:
 			break;
 		case EXPR_BITASSIGN:
@@ -468,12 +565,15 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_CATCH:
 			break;
 		case EXPR_COND:
+			c_emit_cond_expr(c, value, expr);
+			return;
 			break;
 		case EXPR_CONST:
 			c_emit_const_expr(c, value, expr);
 			return;
 		case EXPR_DECL:
-			break;
+			c_emit_local_decl(c, expr->decl_expr, value);
+			return;
 		case EXPR_DEFAULT_ARG:
 			break;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -481,7 +581,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_DESIGNATOR:
 			break;
 		case EXPR_EXPRESSION_LIST:
-			break;
+			c_emit_expression_list_expr(c, value, expr);
+			return;
 		case EXPR_FORCE_UNWRAP:
 			break;
 		case EXPR_IDENTIFIER:
