@@ -1093,11 +1093,11 @@ static inline void llvm_emit_update_bitstruct_array(GenContext *c,
 		value = llvm_bswap_non_integral(c, value, bit_size);
 	}
 	ASSERT(bit_size > 0 && bit_size <= 128);
-	int start_byte = start_bit / 8;
-	int end_byte = end_bit / 8;
-	int start_mod = start_bit % 8;
-	int end_mod = end_bit % 8;
-	ByteSize member_type_bitsize = type_size(member_type) * 8;
+	int start_byte = (int)start_bit / 8;
+	int end_byte = (int)end_bit / 8;
+	int start_mod = (int)start_bit % 8;
+	int end_mod = (int)end_bit % 8;
+	ByteSize member_type_bitsize = (ByteSize)type_size(member_type) * 8;
 	for (int i = start_byte; i <= end_byte; i++)
 	{
 		AlignSize alignment;
@@ -1120,7 +1120,7 @@ static inline void llvm_emit_update_bitstruct_array(GenContext *c,
 			if (i == end_byte && end_mod != 7)
 			{
 				res = llvm_emit_and_raw(c, res, llvm_const_low_bitmask(c, c->byte_type, 8, end_mod + 1));
-				mask = llvm_emit_or_raw(c, mask, llvm_const_high_bitmask(c, c->byte_type, 8, 7 - (int)end_bit));
+				mask = llvm_emit_or_raw(c, mask, llvm_const_high_bitmask(c, c->byte_type, 8, 7 - (int)end_mod));
 			}
 			// Load the current value.
 			LLVMValueRef current = llvm_load(c, c->byte_type, byte_ptr, alignment, "");
@@ -1147,7 +1147,7 @@ static inline void llvm_emit_update_bitstruct_array(GenContext *c,
 			// Clear the lower bits.
 			current = llvm_emit_and_raw(c, current, LLVMBuildNot(c->builder, mask, ""));
 			// Use *or* with the bottom bits from "value":
-			llvm_emit_or_raw(c, current, value);
+			current = llvm_emit_or_raw(c, current, value);
 			// And store it back.
 			llvm_store_to_ptr_raw_aligned(c, byte_ptr, current, alignment);
 			continue;
@@ -1260,7 +1260,8 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 		ASSERT(member->backend_ref);
 		AlignSize align = LLVMGetAlignment(member->backend_ref);
 		AlignSize alignment;
-		LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, member->backend_ref, member->type, be_value, align, &alignment);
+		ByteSize size = llvm_abi_size(c, llvm_get_type(c, member->type));
+		LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, member->backend_ref, be_value, align, &alignment, size);
 		llvm_value_set_address(c, be_value, ptr, member->type, alignment);
 		return;
 	}
@@ -2936,7 +2937,7 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 		{
 			// Move pointer
 			AlignSize alignment;
-			start_pointer = llvm_emit_array_gep_raw_index(c, parent.value, type->array.base, &start, type_abi_alignment(parent.type), &alignment);
+			start_pointer = llvm_emit_array_gep_raw_index(c, parent.value, &start, type_abi_alignment(parent.type), &alignment, type_size(type->array.base));
 			break;
 		}
 		case TYPE_SLICE:
@@ -3881,7 +3882,7 @@ INLINE FmulTransformation llvm_get_fmul_transformation(Expr *lhs, Expr *rhs)
 	if (expr_is_neg(lhs) && expr_is_mult(lhs->unary_expr.expr)) return FMUL_LHS_NEG_MULT;
 	// x + y * z
 	if (expr_is_mult(rhs)) return FMUL_RHS_MULT;
-	// x - (y * z)
+	// x + -(y * z)
 	if (expr_is_neg(rhs) && expr_is_mult(rhs->unary_expr.expr)) return FMUL_RHS_NEG_MULT;
 	return FMUL_NONE;
 }
@@ -3942,15 +3943,14 @@ INLINE bool llvm_emit_fmuladd_maybe(GenContext *c, BEValue *be_value, Expr *expr
 
 			if (expr_is_neg(lhs))
 			{
-				// -x - (y * z) => -(x + y * z)
 				args[2] = llvm_emit_expr_to_rvalue(c, lhs->unary_expr.expr);
 				negate_result = true;
 			}
 			else
 			{
-				// x - (y * z) => x + (-y) * z
+				// x + -(y * z) => x + y * -z
 				args[1] = LLVMBuildFNeg(c->builder, args[1], "");
-				args[2] = llvm_emit_expr_to_rvalue(c, lhs->unary_expr.expr);
+				args[2] = llvm_emit_expr_to_rvalue(c, lhs);
 			}
 			break;
 		default:
@@ -4389,8 +4389,6 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 
 	// Emit success and to end.
 	bool emit_no_err = llvm_emit_br(c, no_err_block);
-
-	POP_CATCH();
 
 	// Emit panic
 	llvm_emit_block(c, panic_block);
@@ -4943,11 +4941,11 @@ BEValue llvm_emit_array_gep_index(GenContext *c, BEValue *parent, BEValue *index
 	ASSERT(llvm_value_is_addr(parent));
 	Type *element = type_lowering(parent->type->array.base);
 	AlignSize alignment;
-	LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, element, index, parent->alignment, &alignment);
+	LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, index, parent->alignment, &alignment, type_size(element));
 	return (BEValue) { .value = ptr, .type = element, .kind = BE_ADDRESS, .alignment = alignment };
 }
 
-LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, Type *element_type, BEValue *index, AlignSize array_alignment, AlignSize *alignment)
+LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, BEValue *index, AlignSize array_alignment, AlignSize *alignment, ByteSize element_size)
 {
 	LLVMValueRef index_val = llvm_load_value(c, index);
 	Type *index_type = index->type;
@@ -4956,9 +4954,8 @@ LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, Type
 	{
 		index_val = llvm_zext_trunc(c, index_val, c->size_type);
 	}
-	ByteSize size = type_size(element_type);
-	*alignment = type_min_alignment(size, array_alignment);
-	return llvm_emit_pointer_inbounds_gep_raw(c, ptr, index_val, size);
+	*alignment = type_min_alignment(element_size, array_alignment);
+	return llvm_emit_pointer_inbounds_gep_raw(c, ptr, index_val, element_size);
 }
 
 BEValue llvm_emit_array_gep(GenContext *c, BEValue *parent, ArrayIndex index)
@@ -4973,7 +4970,7 @@ LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, Type *elem
 {
 	BEValue index_value;
 	llvm_value_set(&index_value, llvm_const_size(c, index), type_sz);
-	return llvm_emit_array_gep_raw_index(c, ptr, element_type, &index_value, array_alignment, alignment);
+	return llvm_emit_array_gep_raw_index(c, ptr, &index_value, array_alignment, alignment, type_size(element_type));
 }
 
 LLVMValueRef llvm_emit_ptradd_raw(GenContext *c, LLVMValueRef ptr, LLVMValueRef offset, ByteSize mult)
@@ -6555,7 +6552,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 					INTROSPECT_TYPE_CONSTDEF, INTROSPECT_TYPE_BITSTRUCT,
 					INTROSPECT_TYPE_OPTIONAL,
 				};
-				for (int i = 0; i < 8; i++)
+				for (int i = 0; i < 9; i++)
 				{
 					llvm_emit_int_comp_raw(c,
 										   &check,

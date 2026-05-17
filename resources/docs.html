@@ -5,6 +5,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>C3 Docgen Viewer</title>
+	<link rel="icon" href="https://c3-lang.org/assets/favicon.svg">
 	<style>
 		:root {
 			--bg: #1e2029;
@@ -2209,7 +2210,10 @@
 				const params = renderParams(d.members);
 				const ret = d.return_type ? renderTypeName(d.return_type) : 'void';
 				const attrs = (d.attributes || []).map(a => `<span class="c3-attribute">${a}</span>`).join(' ');
-				return `<span class="c3-keyword">${keyword}</span> ${ret} <span class="c3-function">${localName}</span>(${params})${attrs ? ' ' + attrs : ''}`;
+				const genericSuffix = (d.generic_parameters && d.generic_parameters.length > 0)
+					? ` <span class="c3-type">&lt;${d.generic_parameters.join(', ')}&gt;</span>`
+					: '';
+				return `<span class="c3-keyword">${keyword}</span> ${ret} <span class="c3-function">${localName}</span>(${params})${genericSuffix}${attrs ? ' ' + attrs : ''}`;
 			}
 
 			if (d.kind === 'type_alias' && d.return_type) {

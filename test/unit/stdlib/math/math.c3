@@ -59,7 +59,7 @@ fn void test_abs() @test
 	assert(math::abs(y) == 123.0);
 	float z = -21.0f;
 	assert(math::abs(z) == 21.0f);
-	$assert $typeof(math::abs(z)) == float;
+	$assert $Typeof(math::abs(z)) == float;
 	int[<3>] xx = { -1, -1000, 1000 };
 	assert(math::abs(xx) == (int[<3>]) { 1, 1000, 1000 });
 	double[<3>] yy = { -1, -0.5, 1000 };
@@ -72,9 +72,9 @@ fn void test_acos() @test
 	double [<3>] out = { 0.0, math::HALF_PI, math::PI };
 	double [<6>] in2 = { 0.9, 0.6, 0.1, -0.1, -0.6, -0.9 };
 	double [<6>] out2 = { 0.45102681179626236, 0.9272952180016123, 1.4706289056333368, 1.6709637479564565, 2.214297435588181, 2.6905658417935308 };
-	assert($typeof(math::acos(in[0])) == double);
-	assert($typeof(math::acos((float)in[0])) == float);
-	assert($typeof(math::acos((double)in[0])) == double);
+	assert($Typeof(math::acos(in[0])) == double);
+	assert($Typeof(math::acos((float)in[0])) == float);
+	assert($Typeof(math::acos((double)in[0])) == double);
 	for (int i = 0; i < 2; i++)
 	{
 		double x = math::acos(in[i]);
@@ -108,9 +108,9 @@ fn void test_acosh() @test
 {
 	int [<5>] in = { 0, -1, 1, 2, 231 };
 	double [<3>] out = { 0.0, 1.3169578969248166, 6.135560205979194 };
-	assert($typeof(math::acosh(in[0])) == double);
-	assert($typeof(math::acosh((float)in[0])) == float);
-	assert($typeof(math::acosh((double)in[0])) == double);
+	assert($Typeof(math::acosh(in[0])) == double);
+	assert($Typeof(math::acosh((float)in[0])) == float);
+	assert($Typeof(math::acosh((double)in[0])) == double);
 	for (int i = 0; i < 2; i++)
 	{
 		assert(math::is_nan(math::acosh(in[i])), "acosh(%d)=%f is not nan", in[i]);
@@ -135,9 +135,9 @@ fn void test_asin() @test
 	double [<3>] out = { math::HALF_PI, 0.0, -math::HALF_PI };
 	double [<6>] in2 = { 0.98, 0.6, 0.1, -0.1, -0.6, -0.98 };
 	double [<6>] out2 = { 1.3704614844717768, 0.6435011087932844, 0.1001674211615598, -0.1001674211615598, -0.6435011087932844, -1.3704614844717768 };
-	assert($typeof(math::asin(in[0])) == double);
-	assert($typeof(math::asin((float)in[0])) == float);
-	assert($typeof(math::asin((double)in[0])) == double);
+	assert($Typeof(math::asin(in[0])) == double);
+	assert($Typeof(math::asin((float)in[0])) == float);
+	assert($Typeof(math::asin((double)in[0])) == double);
 	for (int i = 0; i < 2; i++)
 	{
 		assert(math::is_nan(math::asin(in[i])), "asin(%d)=%f is not nan", in[i]);
@@ -167,9 +167,9 @@ fn void test_asinh() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
 	double [<5>] out = { 6.135569576118435, 0.881373587019543, 0.0, -0.881373587019543, -6.135569576118435 };
-	assert($typeof(math::asinh(in[0])) == double);
-	assert($typeof(math::asinh((float)in[0])) == float);
-	assert($typeof(math::asinh((double)in[0])) == double);
+	assert($Typeof(math::asinh(in[0])) == double);
+	assert($Typeof(math::asinh((float)in[0])) == float);
+	assert($Typeof(math::asinh((double)in[0])) == double);
 	for (int i = 0; i < 5; i++)
 	{	
 		double x = math::asinh(in[i]);
@@ -187,9 +187,9 @@ fn void test_atan() @test
 	double [<9>] out = { 1.5664673495078372, 1.2490457723982544, 1.1071487177940904, math::QUARTER_PI, 0.0, -math::QUARTER_PI, -1.1071487177940904, -1.2490457723982544, -1.5664673495078372 };
 	double [<6>] in2 = { 0.6, 0.4, 0.1, -0.1, -0.4, -0.6 };
 	double [<6>] out2 = { 0.5404195002705842, 0.3805063771123649, 0.09966865249116204, -0.09966865249116204, -0.3805063771123649, -0.5404195002705842 };
-	assert($typeof(math::atan(in[0])) == double);
-	assert($typeof(math::atan((float)in[0])) == float);
-	assert($typeof(math::atan((double)in[0])) == double);
+	assert($Typeof(math::atan(in[0])) == double);
+	assert($Typeof(math::atan((float)in[0])) == float);
+	assert($Typeof(math::atan((double)in[0])) == double);
 	for (int i = 0; i < 9; i++)
 	{
 		double x = math::atan(in[i]);
@@ -213,9 +213,9 @@ fn void test_atanh() @test
 	int [<4>] in = { 231, -231, 1, -1 };
 	double [<6>] in2 = {0.8, 0.5, 0.3, -0.3, -0.5, -0.8 };
 	double [<6>] out = { 1.0986122886681098, 0.5493061443340548, 0.30951960420311175, -0.30951960420311175, -0.5493061443340548, -1.0986122886681098 };
-	assert($typeof(math::atanh(in[0])) == double);
-	assert($typeof(math::atanh((float)in[0])) == float);
-	assert($typeof(math::atanh((double)in[0])) == double);
+	assert($Typeof(math::atanh(in[0])) == double);
+	assert($Typeof(math::atanh((float)in[0])) == float);
+	assert($Typeof(math::atanh((double)in[0])) == double);
 	for (int i = 0; i < 2; i++)
 	{
 		assert(math::is_nan(math::atanh(in[i])), "atanh(%d) is not nan", in[i]);
@@ -308,7 +308,7 @@ fn void test_ceil() @test
 	assert(math::ceil(d) == 1);
 	d = -0.9;
 	assert(math::ceil(d) == 0);
-	$assert $typeof(math::ceil(d)) == double;
+	$assert $Typeof(math::ceil(d)) == double;
 	float f = -123.1f;
 	assert(math::ceil(f) == -123.0f);
 	f = 123.1f;
@@ -317,7 +317,7 @@ fn void test_ceil() @test
 	assert(math::ceil(f) == 1.0f);
 	f = -0.9f;
 	assert(math::ceil(f) == 0.0f);
-	$assert $typeof(math::ceil(f)) == float;
+	$assert $Typeof(math::ceil(f)) == float;
 	double[<5>] vec = { -123.1, 123.1, 0.1, -0.9, 0 };
 	assert(math::ceil(vec) == (double[<5>]) { -123, 124, 1, 0, 0 });
 }
@@ -342,9 +342,9 @@ fn void test_cos() @test
 	float [<2>] out2 =  { -1.0f, 1.0f };
 	double [<2>] in3 = { math::PI, 0.0 };
 	double [<2>] out3 =  { -1.0, 1.0 };
-	assert($typeof(math::cos(in[0])) == double);
-	assert($typeof(math::cos((float)in[0])) == float);
-	assert($typeof(math::cos((double)in[0])) == double);
+	assert($Typeof(math::cos(in[0])) == double);
+	assert($Typeof(math::cos((float)in[0])) == float);
+	assert($Typeof(math::cos((double)in[0])) == double);
 	for (int i = 0; i < 5; i++)
 	{	
 		double x = math::cos(in[i]);
@@ -371,9 +371,9 @@ fn void test_exp() @test
 	float[<6>] out2 =  {6.049647464412946f, 1.8221188003905089f, 1.4918246976412703f, 0.6703200460356393f, 0.44932896411722156f, 0.16529888822158656f };
 	double[<6>] in3 = { 1.8, 0.6, 0.4, -0.4, -0.8, -1.8 };
 	double[<6>] out3 =  {6.049647464412946, 1.8221188003905089, 1.4918246976412703, 0.6703200460356393, 0.44932896411722156, 0.16529888822158656 };
-	assert($typeof(math::exp(in[0])) == double);
-	assert($typeof(math::exp((float)in[0])) == float);
-	assert($typeof(math::exp((double)in[0])) == double);
+	assert($Typeof(math::exp(in[0])) == double);
+	assert($Typeof(math::exp((float)in[0])) == float);
+	assert($Typeof(math::exp((double)in[0])) == double);
 	for (int i = 0; i < 5; i++)
 	{	
 		double x = math::exp(in[i]);
@@ -400,9 +400,9 @@ fn void test_exp2() @test
 	float[<5>] out2 = { 4.0, 2.0, 1.0, 0.5, 0.25 };
 	double[<5>] in3 = { 2.0, 1.0, 0.0, -1.0, -2.0 };
 	double[<5>] out3 = { 4.0, 2.0, 1.0, 0.5, 0.25 };
-	assert($typeof(math::exp2(in[0])) == double);
-	assert($typeof(math::exp2((float)in[0])) == float);
-	assert($typeof(math::exp2((double)in[0])) == double);
+	assert($Typeof(math::exp2(in[0])) == double);
+	assert($Typeof(math::exp2((float)in[0])) == float);
+	assert($Typeof(math::exp2((double)in[0])) == double);
 	for (int i = 0; i < 5; i++)
 	{	
 		double x = math::exp2(in[i]);
@@ -429,9 +429,9 @@ fn void test_exp10() @test
 	float[<5>] out2 = { 100.0, 10.0 , 1.0, 0.1, 0.01 };
 	double[<5>] in3 = { 2, 1, 0, -1, -2 };
 	double[<5>] out3 = { 100.0, 10.0 , 1.0, 0.1, 0.01 };
-	assert($typeof(math::exp10(in[0])) == double);
-	assert($typeof(math::exp10((float)in[0])) == float);
-	assert($typeof(math::exp10((double)in[0])) == double);
+	assert($Typeof(math::exp10(in[0])) == double);
+	assert($Typeof(math::exp10((float)in[0])) == float);
+	assert($Typeof(math::exp10((double)in[0])) == double);
 	for (int i = 0; i < 5; i++)
 	{	
 		double x = math::exp10(in[i]);
@@ -460,7 +460,7 @@ fn void test_floor() @test
 	assert(math::floor(d) == 0);
 	d = -0.1;
 	assert(math::floor(d) == -1);
-	$assert $typeof(math::floor(d)) == double;
+	$assert $Typeof(math::floor(d)) == double;
 	float f = -123.1f;
 	assert(math::floor(f) == -124.0f);
 	f = 123.1f;
@@ -469,7 +469,7 @@ fn void test_floor() @test
 	assert(math::floor(f) == 0.0f);
 	f = -0.1f;
 	assert(math::floor(f) == -1.0f);
-	$assert $typeof(math::floor(f)) == float;
+	$assert $Typeof(math::floor(f)) == float;
 	double[<5>] vec = { -123.1, 123.1, 0.9, -0.1, 0 };
 	assert(math::floor(vec) == (double[<5>]) { -124, 123, 0, -1, 0 });
 }
@@ -484,15 +484,15 @@ fn void test_log() @test
 	double[<4>] bx = { 1.0 / math::E, 1.0 / (math::E * math::E), 1.0 / (math::E * math::E), 1.0 / math::E };
 	double[<4>] in3 = { math::E * math::E, math::E, 1.0 / math::E, 1.0 / (math::E * math::E) };
 	double[<4>] out3 =  { -2.0, -0.5, 0.5, 2.0 };
-	assert($typeof(math::log(in[0], in[0])) == double);
-	assert($typeof(math::log(in[0], (float)in[0])) == float);
-	assert($typeof(math::log((float)in[0], in[0])) == float);
-	assert($typeof(math::log(in[0], (double)in[0])) == double);
-	assert($typeof(math::log((double)in[0], in[0])) == double);
-	assert($typeof(math::log((float)in[0], (float)in[0])) == float);
-	assert($typeof(math::log((float)in[0], (double)in[0])) == double);
-	assert($typeof(math::log((double)in[0], (float)in[0])) == double);
-	assert($typeof(math::log((double)in[0], (double)in[0])) == double);
+	assert($Typeof(math::log(in[0], in[0])) == double);
+	assert($Typeof(math::log(in[0], (float)in[0])) == float);
+	assert($Typeof(math::log((float)in[0], in[0])) == float);
+	assert($Typeof(math::log(in[0], (double)in[0])) == double);
+	assert($Typeof(math::log((double)in[0], in[0])) == double);
+	assert($Typeof(math::log((float)in[0], (float)in[0])) == float);
+	assert($Typeof(math::log((float)in[0], (double)in[0])) == double);
+	assert($Typeof(math::log((double)in[0], (float)in[0])) == double);
+	assert($Typeof(math::log((double)in[0], (double)in[0])) == double);
 	for (int i = 0; i < 8; i++)
 	{
 		int base = (i < 4) ? 10 : 8;
@@ -554,9 +554,9 @@ fn void test_pow() @test
 	float[<5>] out2 = { 1.0f / (math::E * math::E), 1.0f / math::E, 1.0f, math::E, math::E * math::E };
 	double[<2>] base3 = { -1.0 / math::E, 1.0 / math::E };
 	double[<5>] out3 = { 1.0 / (math::E * math::E), 1.0 / math::E, 1.0, math::E, math::E * math::E };
-	assert($typeof(math::pow(e[1], e[1])) == double);
-	assert($typeof(math::pow((float)e[1], e[1])) == float);
-	assert($typeof(math::pow((double)e[1], e[1])) == double);
+	assert($Typeof(math::pow(e[1], e[1])) == double);
+	assert($Typeof(math::pow((float)e[1], e[1])) == float);
+	assert($Typeof(math::pow((double)e[1], e[1])) == double);
 	for (int i = 0; i < 10; i++)
 	{
 		for (int j = 0; j < 2; j++)
@@ -604,7 +604,7 @@ fn void test_sign() @test
 	assert(math::sign(y) == 0);
 	y = (uint)-21;
 	assert(math::sign(y) == 1);
-	assert($typeof(math::sign(y)) == uint);
+	assert($Typeof(math::sign(y)) == uint);
 }
 
 
@@ -616,9 +616,9 @@ fn void test_sin() @test
 	float [<2>] out2 =  { 1.0f, -1.0f };
 	double [<2>] in3 = { math::HALF_PI, -math::HALF_PI };
 	double [<2>] out3 =  { 1.0, -1.0 };
-	assert($typeof(math::sin(in[0])) == double);
-	assert($typeof(math::sin((float)in[0])) == float);
-	assert($typeof(math::sin((double)in[0])) == double);
+	assert($Typeof(math::sin(in[0])) == double);
+	assert($Typeof(math::sin((float)in[0])) == float);
+	assert($Typeof(math::sin((double)in[0])) == double);
 	for (int i = 0; i < 5; i++)
 	{	
 		double x = math::sin(in[i]);
@@ -645,9 +645,9 @@ fn void test_tan() @test
 	float [<2>] out2 =  { 1.0f, -1.0f };
 	double [<2>] in3 = { math::QUARTER_PI, -math::QUARTER_PI };
 	double [<2>] out3 =  { 1.0, -1.0 };
-	assert($typeof(math::tan(in[0])) == double);
-	assert($typeof(math::tan((float)in[0])) == float);
-	assert($typeof(math::tan((double)in[0])) == double);
+	assert($Typeof(math::tan(in[0])) == double);
+	assert($Typeof(math::tan((float)in[0])) == float);
+	assert($Typeof(math::tan((double)in[0])) == double);
 	for (int i = 0; i < 5; i++)
 	{	
 		double x = math::tan(in[i]);
@@ -676,7 +676,7 @@ fn void test_trunc() @test
 	assert(math::trunc(d) == 0);
 	d = -0.9;
 	assert(math::trunc(d) == 0);
-	$assert $typeof(math::trunc(d)) == double;
+	$assert $Typeof(math::trunc(d)) == double;
 	float f = -123.9f;
 	assert(math::trunc(f) == -123.0f);
 	f = 123.9f;
@@ -685,7 +685,7 @@ fn void test_trunc() @test
 	assert(math::trunc(f) == 0.0f);
 	f = -0.9f;
 	assert(math::trunc(f) == -0.0f);
-	$assert $typeof(math::trunc(f)) == float;
+	$assert $Typeof(math::trunc(f)) == float;
 	double[<5>] vec = { -123.9, 123.9, 0.9, -0.9, 0 };
 	assert(math::trunc(vec) == (double[<5>]) { -123, 123, 0, 0, 0 });
 }

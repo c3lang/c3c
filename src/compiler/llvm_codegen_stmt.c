@@ -795,7 +795,7 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 	c->current_block = NULL;
 	llvm_emit_block(c, switch_block);
 	AlignSize align;
-	LLVMValueRef index = llvm_emit_array_gep_raw_index(c, jump_table, type_voidptr, switch_value, type_abi_alignment(type_voidptr), &align);
+	LLVMValueRef index = llvm_emit_array_gep_raw_index(c, jump_table, switch_value, type_abi_alignment(type_voidptr), &align, type_size(type_voidptr));
 	LLVMValueRef addr = llvm_load(c, c->ptr_type, index, align, "target");
 	LLVMValueRef instr = LLVMBuildIndirectBr(c->builder, addr, case_count);
 	c->current_block = NULL;

@@ -368,7 +368,7 @@ macro realloc_array_try(Allocator allocator, void* ptr, $Type, sz elements) @nod
 *>
 macro clone(Allocator allocator, value) @nodiscard
 {
-	return new(allocator, $typeof(value), value);
+	return new(allocator, $Typeof(value), value);
 }
 
 <*
@@ -382,7 +382,7 @@ macro clone_slice(Allocator allocator, slice) @nodiscard
 {
 	if (!lengthof(slice)) return {};
 
-	var $Type = $typeof(slice[0]);
+	var $Type = $Typeof(slice[0]);
 
 	$Type[] new_arr = new_array(allocator, $Type, slice.len);
 	mem::copy(new_arr.ptr, &slice[0], slice.len * $Type::size);
@@ -399,7 +399,7 @@ macro clone_slice(Allocator allocator, slice) @nodiscard
 *>
 macro clone_aligned(Allocator allocator, value) @nodiscard
 {
-	return new_aligned(allocator, $typeof(value), value)!!;
+	return new_aligned(allocator, $Typeof(value), value)!!;
 }
 
 fn any clone_any(Allocator allocator, any value) @nodiscard

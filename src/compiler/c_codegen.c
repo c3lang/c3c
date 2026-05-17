@@ -249,7 +249,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			c_emit_type_decl(c, type->array.base);
 			int id = ++c->typename;
-			PRINTF("typedef struct { %s* ptr; void* typeid; } __c3_slice%d;\n", c_type_name(c, type->array.base), id);
+			PRINTF("typedef struct { %s* ptr; size_t size; } __c3_slice%d;\n", c_type_name(c, type->array.base), id);
 			scratch_buffer_clear();
 			scratch_buffer_printf(" __c3_slice%d", id);
 			htable_set(&c->gen_decl, type, scratch_buffer_copy());
@@ -338,6 +338,9 @@ static VariableId c_emit_temp(GenContext *c, CValue *value, Type *type)
 	*value = (CValue) { .var = c_create_variable(c), .kind = CV_VALUE, .type = type_lowering(type) };
 	return c->id_gen;
 }
+
+static void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
+
 static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Type *t = type_lowering(expr->type);
@@ -364,7 +367,12 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			PRINTF("bool ___var_%d = %s;\n", c_emit_temp(c, value, t), expr->const_expr.b ? "true" : "false");
 			return;
 		case CONST_STRING:
-			PRINTF("%s ___var_%d = \"", c_type_name(c, t), c_emit_temp(c, value, t));
+			PRINTF("%s ___var_%d = ", c_type_name(c, t), c_emit_temp(c, value, t));
+			if(t->type_kind == TYPE_SLICE)
+			{
+				PRINT("{ ");
+			}
+			PRINT("\"");
 			for (ArraySize i = 0; i < expr->const_expr.bytes.len; i++)
 			{
 				char b = expr->const_expr.bytes.ptr[i];
@@ -375,7 +383,12 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 				}
 				PRINTF("\\%d%d%d", b / 64, (b % 64) / 8, b % 8);
 			}
-			PRINT("\";\n");
+			PRINT("\"");
+			if(t->type_kind == TYPE_SLICE)
+			{
+				PRINTF(", %llu }", (unsigned long long)expr->const_expr.bytes.len);
+			}
+			PRINT(";\n");
 			return;
 		case CONST_FAULT:
 		case CONST_ENUM:
@@ -398,6 +411,20 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 	}
 	PRINT("/* CONST EXPR */\n");
 }
+static void c_emit_ptr_access_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	CValue inner_value;
+	c_emit_expr(c, &inner_value, expr->inner_expr);
+	value->var = c_create_variable(c);
+	const char *type_name = c_type_name(c, expr->type);
+	PRINTF("%s ___var_%d = *(%s*)&___var_%d;\n", type_name, value->var, type_name, inner_value.var);
+}
+static void c_emit_identifier_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	Decl *decl = expr->ident_expr;
+	value->var = c_create_variable(c);
+	PRINTF("%s ___var_%d = ___var_%d;\n", c_type_name(c, decl->type), value->var, decl->backend_id);
+}
 static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	switch (expr->expr_kind)
@@ -406,7 +433,10 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_ENUM_FROM_ORD:
+			break;
 		case EXPR_PTR_ACCESS:
+			c_emit_ptr_access_expr(c, value, expr);
+			return;
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
@@ -464,7 +494,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_FORCE_UNWRAP:
 			break;
 		case EXPR_IDENTIFIER:
-			break;
+			c_emit_identifier_expr(c, value, expr);
+			return;
 		case EXPR_INITIALIZER_LIST:
 			break;
 		case EXPR_LAMBDA:

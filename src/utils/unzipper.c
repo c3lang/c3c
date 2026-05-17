@@ -215,11 +215,14 @@ const char *zip_file_read(FILE *zip, ZipFile *file, void **buffer_ptr)
 		switch (inflate(&strm, Z_NO_FLUSH))
 		{
 			case Z_STREAM_ERROR:
+				inflateEnd(&strm);
 				return "Unexpected inflate error";
 			case Z_NEED_DICT:
 			case Z_DATA_ERROR:
+				inflateEnd(&strm);
 				return "Inflate data error";
 			case Z_MEM_ERROR:
+				inflateEnd(&strm);
 				return "Inflate memory error";
 			case Z_STREAM_END:
 				goto END;
@@ -288,7 +291,11 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 	z_stream strm = { .zalloc = Z_NULL, .zfree = Z_NULL, .opaque = Z_NULL, .avail_in = 0, .next_in = Z_NULL };
 
 	// Use inflateInit2 with negative window bits to indicate raw data
-	if (inflateInit2(&strm, -MAX_WBITS) != Z_OK) return "Failed to init zlib";
+	if (inflateInit2(&strm, -MAX_WBITS) != Z_OK)
+	{
+		fclose(f);
+		return "Failed to init zlib";
+	}
 
 	// Inflate compressed data
 	long compressed_left = file->compressed_size;
@@ -313,13 +320,16 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 			switch (inflate(&strm, Z_NO_FLUSH))
 			{
 				case Z_STREAM_ERROR:
+					inflateEnd(&strm);
 					fclose(f);
 					return "Unexpected inflate error";
 				case Z_NEED_DICT:
 				case Z_DATA_ERROR:
+					inflateEnd(&strm);
 					fclose(f);
 					return "Inflate data error";
 				case Z_MEM_ERROR:
+					inflateEnd(&strm);
 					fclose(f);
 					return "Inflate memory error";
 				case Z_STREAM_END:
@@ -333,6 +343,7 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 
 			if (to_write > 0 && to_write != fwrite(file_out_buffer, 1, to_write, f))
 			{
+				inflateEnd(&strm);
 				fclose(f);
 				return "Failed to write";
 			}

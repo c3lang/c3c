@@ -33,7 +33,7 @@ macro bool is_struct_with_default_print($Type)
 *>
 macro sz? struct_to_format(value, Formatter* f, bool $force_dump)
 {
-	var $Type = $typeof(value);
+	var $Type = $Typeof(value);
 	sz total = f.print("{ ")!;
 	$foreach $i, $member : $Type::members:
 		$if $i > 0:

@@ -29,7 +29,7 @@ alias ErrorCallback = fn void (ZString);
  @param addr : "Start of memory region."
  @param size : "Size of memory region."
 *>
-macro void poison_memory_region(void* addr, usz size)
+macro void poison_memory_region(void* addr, sz size)
 {
 	$if env::ADDRESS_SANITIZER:
 		__asan_poison_memory_region(addr, size);
@@ -50,7 +50,7 @@ macro void poison_memory_region(void* addr, usz size)
  @param addr : "Start of memory region."
  @param size : "Size of memory region."
 *>
-macro void unpoison_memory_region(void* addr, usz size)
+macro void unpoison_memory_region(void* addr, sz size)
 {
 	$if env::ADDRESS_SANITIZER:
 		__asan_unpoison_memory_region(addr, size);
@@ -81,7 +81,7 @@ macro bool address_is_poisoned(void* addr)
  @param size : "Start of memory region."
  @return "Address of first poisoned byte."
 *>
-macro void* region_is_poisoned(void* beg, usz size)
+macro void* region_is_poisoned(void* beg, sz size)
 {
 	$if env::ADDRESS_SANITIZER:
 		return __asan_region_is_poisoned(beg, size);
@@ -102,10 +102,10 @@ fn void set_error_report_callback(ErrorCallback callback)
 
 module std::core::sanitizer::asan @if(env::ADDRESS_SANITIZER);
 
-extern fn void __asan_poison_memory_region(void* addr, usz size);
-extern fn void __asan_unpoison_memory_region(void* addr, usz size);
+extern fn void __asan_poison_memory_region(void* addr, sz size);
+extern fn void __asan_unpoison_memory_region(void* addr, sz size);
 extern fn CInt __asan_address_is_poisoned(void* addr);
-extern fn void* __asan_region_is_poisoned(void* beg, usz size);
+extern fn void* __asan_region_is_poisoned(void* beg, sz size);
 extern fn void __asan_describe_address(void* addr);
 extern fn CInt __asan_report_present();
 extern fn void* __asan_get_report_pc();
@@ -116,9 +116,9 @@ extern fn CInt __asan_get_report_access_type();
 extern fn usz __asan_get_report_access_size();
 extern fn ZString __asan_get_report_description();
 extern fn ZString __asan_locate_address(void* addr, char* name, usz name_size, void** region_address, usz* region_size);
-extern fn usz __asan_get_alloc_stack(void* addr, void** trace, usz size, CInt* thread_id);
-extern fn usz __asan_get_free_stack(void* addr, void** trace, usz size, CInt* thread_id);
-extern fn void __asan_get_shadow_mapping(usz* shadow_scale, usz* shadow_offset);
+extern fn usz __asan_get_alloc_stack(void* addr, void** trace, sz size, CInt* thread_id);
+extern fn usz __asan_get_free_stack(void* addr, void** trace, sz size, CInt* thread_id);
+extern fn void __asan_get_shadow_mapping(usz* shadow_scale, sz* shadow_offset);
 extern fn void __asan_set_error_report_callback(ErrorCallback callback);
 extern fn void __asan_print_accumulated_stats();
 extern fn void* __asan_get_current_fake_stack();

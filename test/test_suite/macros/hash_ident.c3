@@ -18,7 +18,7 @@ fn void main()
     int x = 0;
     @cofefe(x += 1);
     @cofefe(xx());
-    $typeof($x += 1) xx;
+    $Typeof($x += 1) xx;
     $assert $x == 1;
     @cofefe(y += 1); // #error: 'y' could not be found
 }

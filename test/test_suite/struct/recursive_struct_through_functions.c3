@@ -12,12 +12,12 @@ fn Bar bar()
 
 struct Bar
 {
-	$typeof(foo().foo) bar; // #error: Recursive definition of 'bar'
+	$Typeof(foo().foo) bar; // #error: Recursive definition of 'bar'
 }
 
 struct Foo
 {
-	$typeof(bar().bar) foo;
+	$Typeof(bar().bar) foo;
 }
 
 fn void main()

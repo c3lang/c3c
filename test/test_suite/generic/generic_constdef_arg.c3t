@@ -11,6 +11,6 @@ constdef Simple : inline uint
 
 fn int main(String[] args)
 {
-	ElasticArray{uint, Simple._COUNT} hello;
+	FixedList{uint, Simple._COUNT} hello;
 	return 0;
 }

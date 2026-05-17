@@ -2360,7 +2360,7 @@ SPLAT_NORMAL:;
 				{
 					if (!expr_is_runtime_const(ct_param))
 					{
-						SEMA_ERROR(ct_param, "All vaargs must be contant values.");
+						SEMA_ERROR(ct_param, "All vaargs must be constant values.");
 						RETURN_NOTE_FUNC_DEFINITION;
 					}
 
@@ -4624,7 +4624,7 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 		{
 			if (indexed_type->type_kind == TYPE_POINTER && type_is_any_arraylike(indexed_type->pointer))
 			{
-				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing wih []? E.g. you wrote '*foo[..]' instead '(*foo)[..]'.");
+				RETURN_SEMA_ERROR(start, "Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing with []? E.g. you wrote '*foo[..]' instead '(*foo)[..]'.");
 			}
 			RETURN_SEMA_ERROR(start, "Omitting end index is not allowed for pointers or flexible array members.");
 		}
@@ -11713,7 +11713,7 @@ static inline bool sema_expr_resolve_ct_eval(SemaContext *context, Expr *expr)
 	if (!result) return false;
 	if (result->expr_kind == EXPR_TYPEINFO)
 	{
-		RETURN_SEMA_ERROR(result, "Evaluation to a type requires the use of '$typefrom' rather than '$eval'.");
+		RETURN_SEMA_ERROR(result, "Evaluation to a type requires the use of '$Typefrom' rather than '$eval'.");
 	}
 	expr_replace(expr, result);
 	return true;

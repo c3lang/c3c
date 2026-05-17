@@ -62,7 +62,7 @@ fn void read_write_any()
 	String filename = string::tformat("c3_test_file_%x", rand(0xFFFFFFF));
 	Path temp_dir = path::temp_directory(tmem).tappend(filename)!!;
 
-	String name = temp_dir.str_view();
+	String name = temp_dir;
     File file = file::open(name, "wb")!!;
 
 	io::write_any(&file, &data)!!;

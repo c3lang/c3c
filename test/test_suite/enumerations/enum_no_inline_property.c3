@@ -7,6 +7,6 @@ constdef MyEnum : inline short
 
 fn int main(String[] args)
 {
-	$typefrom("MyEnum").oops;  // #error: No method or inner struct/union 'MyEnum.oops'
+	$Typefrom("MyEnum").oops;  // #error: No method or inner struct/union 'MyEnum.oops'
 	return 0;
 }

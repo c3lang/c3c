@@ -320,6 +320,7 @@ $endif
 		TrackingAllocator mem;
 
 		mem.init(context.stored.allocator);
+		Clock start_time = clock::now();
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			// We might arrive here from a different thread
@@ -339,10 +340,11 @@ $endif
 			if (context.check_leaks) allocators::thread_allocator = context.stored.allocator;
 
 			unmute_output(false); // all good, discard output
+			NanoDuration duration = start_time.to_now();
 			if (mem.has_leaks())
 			{
 				if (context.is_quiet_mode) io::printf("\n%s ", context.current_test_name);
-				io::print(context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
+				io::printf(context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m] (%s)" : "[FAIL] (%s)", duration.tunit_str(true));
 				io::printn(" LEAKS DETECTED!");
 				mem.print_report();
 			}
@@ -350,7 +352,7 @@ $endif
 			{
 				if (!context.is_quiet_mode)
 				{
-					io::printfn(context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
+					io::printfn(context.has_ansi_codes ? "[\e[0;32mPASS\e[0m] (%s)" : "[PASS] (%s)", duration.tunit_str(true));
 				}
 				tests_passed++;
 			}

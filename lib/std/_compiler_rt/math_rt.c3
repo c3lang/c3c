@@ -8,7 +8,7 @@ const float TOINTF = (float)(1 / FLOAT_EPSILON);
 
 macro force_eval_add(x, v)
 {
-	$typeof(x) temp @noinit;
+	$Typeof(x) temp @noinit;
 	@volatile_store(temp, x + v);
 }
 

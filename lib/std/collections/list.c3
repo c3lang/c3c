@@ -99,7 +99,7 @@ fn sz? List.to_format(&self, Formatter* formatter) @dynamic
 			sz n = formatter.print("[")!;
 			foreach (i, element : self.entries[:self.size])
 			{
-				if (i != 0) formatter.print(", ")!;
+				if (i != 0) n += formatter.print(", ")!;
 				n += formatter.printf("%s", element)!;
 			}
 			n += formatter.print("]")!;

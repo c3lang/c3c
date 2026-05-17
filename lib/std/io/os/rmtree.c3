@@ -2,13 +2,13 @@ module std::io::os @if(env::POSIX);
 import std::io, std::os, libc;
 
 <*
- @require dir.str_view().len > 0
+ @require dir.len > 0
 *>
 fn void? native_rmtree(Path dir)
 {
 	@pool()
 	{
-		DIRPtr directory = posix::opendir(dir.str_view().zstr_tcopy());
+		DIRPtr directory = posix::opendir(dir.zstr_tcopy());
 		defer if (directory) posix::closedir(directory);
 		if (!directory) return path::is_dir(dir) ? io::CANNOT_READ_DIR~ : io::FILE_NOT_DIR~;
 		Posix_dirent* entry;
@@ -24,7 +24,7 @@ fn void? native_rmtree(Path dir)
 					native_rmtree(new_path)!;
 					continue;
 				}
-				if (libc::remove(new_path.str_view().zstr_tcopy()))
+				if (libc::remove(new_path.zstr_tcopy()))
 				{
 					// TODO improve
 					return io::GENERAL_ERROR~;
@@ -41,7 +41,7 @@ import std::io, std::time, std::os;
 fn void? native_rmtree(Path path)
 {
 	Win32_WIN32_FIND_DATAW find_data;
-	String s = path.str_view().tconcat("\\*");
+	String s = path.tconcat("\\*");
 	Win32_HANDLE find = win32::findFirstFileW(s.to_temp_utf16(), &find_data)!;
 
 	if (find == win32::INVALID_HANDLE_VALUE) return io::CANNOT_READ_DIR~;
@@ -59,7 +59,7 @@ fn void? native_rmtree(Path path)
 			}
 			else
 			{
-				win32::deleteFileW(file_path.str_view().to_temp_wstring()!!);
+				win32::deleteFileW(file_path.to_temp_wstring()!!);
 			}
 		};
 	} while (win32::findNextFileW(find, &find_data) != 0);

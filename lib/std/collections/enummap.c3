@@ -22,7 +22,7 @@ fn sz? EnumMap.to_format(&self, Formatter* formatter) @dynamic
 	sz n = formatter.print("{ ")!;
 	foreach (i, &value : self.values)
 	{
-		if (i != 0) formatter.print(", ")!;
+		if (i != 0) n += formatter.print(", ")!;
 		n += formatter.printf("%s: %s", Enum::from_ordinal(i), *value)!;
 	}
 	n += formatter.print(" }")!;

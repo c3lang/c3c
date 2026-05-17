@@ -55,10 +55,10 @@ macro sz? index_of(array, element)
 *>
 macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 {
-	if (xlen < 1) xlen = $typeof((*array_ptr)[0])::len + xlen;
-	if (ylen < 1) ylen = $typeof((*array_ptr))::len + ylen;
-	var $ElementType = $typeof((*array_ptr)[0][0]);
-	return (Slice2d{$ElementType}) { ($ElementType*)array_ptr, $typeof((*array_ptr)[0])::len, y, ylen, x, xlen };
+	if (xlen < 1) xlen = $Typeof((*array_ptr)[0])::len + xlen;
+	if (ylen < 1) ylen = $Typeof((*array_ptr))::len + ylen;
+	var $ElementType = $Typeof((*array_ptr)[0][0]);
+	return (Slice2d{$ElementType}) { ($ElementType*)array_ptr, $Typeof((*array_ptr)[0])::len, y, ylen, x, xlen };
 }
 
 
@@ -94,7 +94,7 @@ macro sz? rindex_of(array, element)
 *>
 macro concat(Allocator allocator, arr1, arr2) @nodiscard
 {
-	var $Type = $typeof(arr1[0]);
+	var $Type = $Typeof(arr1[0]);
 	$Type[] result = alloc::alloc_array(allocator, $Type, arr1.len + arr2.len);
 	if (arr1.len > 0)
 	{
@@ -147,11 +147,11 @@ macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
  @param #operation : "The reduction/folding lambda function or function pointer to apply."
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require $defined($typefrom(@reduce_fn(array, identity)) $func = #operation) : "Invalid lambda or function pointer type"
+ @require $defined($Typefrom(@reduce_fn(array, identity)) $func = #operation) : "Invalid lambda or function pointer type"
 *>
 macro @reduce(array, identity, #operation)
 {
-	$typefrom(@reduce_fn(array, identity)) $func = #operation;
+	$Typefrom(@reduce_fn(array, identity)) $func = #operation;
 	foreach (index, element : array) identity = $func(identity, element, index);
 	return identity;
 }
@@ -167,11 +167,11 @@ macro @reduce(array, identity, #operation)
 
  @require @is_valid_list(array) : "Expected a valid list"
  @require $defined(array[0] + array[0]) : "Array element type must implement the '+' operator"
- @require $defined($typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
+ @require $defined($Typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
 *>
 macro @sum(array, identity_value = 0)
 {
-	return @reduce(array, ($typeof(array[0]))identity_value, fn (acc, e, u) => acc + e);
+	return @reduce(array, ($Typeof(array[0]))identity_value, fn (acc, e, u) => acc + e);
 }
 
 <*
@@ -185,11 +185,11 @@ macro @sum(array, identity_value = 0)
 
  @require @is_valid_list(array) : "Expected a valid list"
  @require $defined(array[0] * array[0]) : "Array element type must implement the '*' operator"
- @require $defined($typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
+ @require $defined($Typeof(array[0]) t = identity_value) : "The identity type must be assignable to the array element type"
 *>
 macro @product(array, identity_value = 1)
 {
-	return @reduce(array, ($typeof(array[0]))identity_value, fn (acc, e, u) => acc * e);
+	return @reduce(array, ($Typeof(array[0]))identity_value, fn (acc, e, u) => acc * e);
 }
 
 <*
@@ -214,14 +214,14 @@ macro @product(array, identity_value = 1)
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+ @require $defined($Typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro sz[] @indices_of(Allocator allocator, array, #predicate)
 {
 	sz[] results = alloc::new_array(allocator, sz, lengthof(array));
 	sz matches;
 
-	$typefrom(@predicate_fn(array)) $predicate = #predicate;
+	$Typefrom(@predicate_fn(array)) $predicate = #predicate;
 	foreach (index, element : array)
 	{
 		if ($predicate(element, index)) results[matches++] = index;
@@ -237,7 +237,7 @@ macro sz[] @indices_of(Allocator allocator, array, #predicate)
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+ @require $defined($Typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro sz[] @tindices_of(array, #predicate)
 {
@@ -262,11 +262,11 @@ macro sz[] @tindices_of(array, #predicate)
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+ @require $defined($Typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro @filter(Allocator allocator, array, #predicate) @nodiscard
 {
-	var $InnerType = $typeof(array[0]);
+	var $InnerType = $Typeof(array[0]);
 
 	sz[] matched_indices = @indices_of(allocator, array, #predicate);
 	defer alloc::free(allocator, matched_indices.ptr);   // can free this upon leaving this call
@@ -287,7 +287,7 @@ macro @filter(Allocator allocator, array, #predicate) @nodiscard
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+ @require $defined($Typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro @tfilter(array, #predicate) @nodiscard
 {
@@ -303,11 +303,11 @@ macro @tfilter(array, #predicate) @nodiscard
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+ @require $defined($Typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro bool @any(array, #predicate)
 {
-	$typefrom(@predicate_fn(array)) $predicate = #predicate;
+	$Typefrom(@predicate_fn(array)) $predicate = #predicate;
 	foreach (index, element : array) if ($predicate(element, index)) return true;
 	return false;
 }
@@ -321,11 +321,11 @@ macro bool @any(array, #predicate)
  @param #predicate
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
+ @require $defined($Typefrom(@predicate_fn(array)) p = #predicate)
 *>
 macro bool @all(array, #predicate)
 {
-	$typefrom(@predicate_fn(array)) $predicate = #predicate;
+	$Typefrom(@predicate_fn(array)) $predicate = #predicate;
 	foreach (index, element : array) if (!$predicate(element, index)) return false;
 	return true;
 }
@@ -342,7 +342,7 @@ macro bool @all(array, #predicate)
 *>
 macro even(Allocator allocator, array)
 {
-	return unlace_impl{$typeof(array[0])}(allocator, array[:lengthof(array)]);
+	return unlace_impl{$Typeof(array[0])}(allocator, array[:lengthof(array)]);
 }
 
 
@@ -357,7 +357,7 @@ macro even(Allocator allocator, array)
 *>
 macro odd(Allocator allocator, array)
 {
-	return unlace_impl{$typeof(array[0])}(allocator, lengthof(array) > 1 ? array[1..] : ($typeof(array[0])[]){});
+	return unlace_impl{$Typeof(array[0])}(allocator, lengthof(array) > 1 ? array[1..] : ($Typeof(array[0])[]){});
 }
 
 <*
@@ -387,8 +387,8 @@ fn Type[] unlace_impl(Allocator allocator, Type[] array) <Type> @private
  @param [out] right : "Stores a copy of all odd-index array elements."
 
  @require @is_valid_list(array) : "Expected a valid list"
- @require $typeof(left) == $typeof(array[0])[]*
- @require $typeof(right) == $typeof(array[0])[]*
+ @require $Typeof(left) == $Typeof(array[0])[]*
+ @require $Typeof(right) == $Typeof(array[0])[]*
 *>
 macro unlace(Allocator allocator, array, left, right)
 {
@@ -449,7 +449,7 @@ macro unlace(Allocator allocator, array, left, right)
  @param [&inout] allocator : "The allocator to use."
  @param [in] left : "The left-side array. These items will be placed as the First in each Pair"
  @param [in] right : "The right-side array. These items will be placed as the Second in each Pair"
- @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
+ @param #operation : "The function to apply. Must have a signature of `$Typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
  @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping."
 
  @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
@@ -458,13 +458,13 @@ macro unlace(Allocator allocator, array, left, right)
 *>
 macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) @nodiscard
 {
-	var $LeftType = $typeof(left[0]);
-	var $RightType = $typeof(right[0]);
+	var $LeftType = $Typeof(left[0]);
+	var $RightType = $Typeof(right[0]);
 
 	var $Type = Pair { $LeftType, $RightType };
 	bool $is_op = $defined(#operation);
 	$if $is_op:
-		$Type = $typeof(#operation)::returns;
+		$Type = $Typeof(#operation)::returns;
 	$endif
 
 	sz left_len = lengthof(left);
@@ -500,7 +500,7 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 	foreach (idx, &item : result)
 	{
 		$if $is_op:
-			var $LambdaType = $typeof(fn $Type ($LeftType a, $RightType b) => ($Type){});
+			var $LambdaType = $Typeof(fn $Type ($LeftType a, $RightType b) => ($Type){});
 			$LambdaType $operation = ($LambdaType)#operation;
 			$LeftType lval = idx >= left_len ? left_fill : left[idx];
 			$RightType rval = idx >= right_len ? right_fill : right[idx];
@@ -521,7 +521,7 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 
  @param [in] left : "The left-side array. These items will be placed as the First in each Pair"
  @param [in] right : "The right-side array. These items will be placed as the Second in each Pair"
- @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
+ @param #operation : "The function to apply. Must have a signature of `$Typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
  @param fill_with : "The value used to fill or pad the shorter iterable to the length of the longer one while zipping."
 
  @require @is_valid_list(left) &&& @is_valid_list(right) : "Left and right sides must be integer indexable"
@@ -557,16 +557,16 @@ macro @tzip(left, right, #operation = ..., fill_with = ...) @nodiscard
 
  @param [inout] left : `Slice to store results of applied functor/operation.`
  @param [in] right : `Slice to apply in the functor/operation.`
- @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
+ @param #operation : "The function to apply. Must have a signature of `$Typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
 
  @require @is_valid_list(left) : "Expected a valid list"
  @require @is_valid_list(right) : "Expected a valid list"
  @require lengthof(right) >= lengthof(left) : `Right side length must be >= the destination (left) side length; consider using a sub-array of data for the assignment.`
- @require $defined($typefrom(@zip_into_fn(left, right)) x = #operation) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
+ @require $defined($Typefrom(@zip_into_fn(left, right)) x = #operation) : "The functor must use the same types as the `left` and `right` inputs, and return a value of the `left` type."
 *>
 macro @zip_into(left, right, #operation)
 {
-	$typefrom(@zip_into_fn(left, right)) $operation = #operation;
+	$Typefrom(@zip_into_fn(left, right)) $operation = #operation;
 
 	foreach (i, &v : left) *v = $operation(left[i], right[i]);
 }
@@ -578,17 +578,17 @@ module std::core::array @private;
 
 macro typeid @predicate_fn(#array) @const
 {
-	return $typeof(fn bool ($typeof(#array[0]) a, sz index = 0) => true);
+	return $Typeof(fn bool ($Typeof(#array[0]) a, sz index = 0) => true);
 }
 
 macro typeid @reduce_fn(#array, #identity) @const
 {
-	return @typeid(fn $typeof(#identity) ($typeof(#identity) i, $typeof(#array[0]) a, sz index = 0) => i);
+	return @typeid(fn $Typeof(#identity) ($Typeof(#identity) i, $Typeof(#array[0]) a, sz index = 0) => i);
 }
 
 macro typeid @zip_into_fn(#left, #right) @const
 {
-	return @typeid(fn $typeof(#left[0]) ($typeof(#left[0]) l, $typeof(#right[0]) r) => l);
+	return @typeid(fn $Typeof(#left[0]) ($Typeof(#left[0]) l, $Typeof(#right[0]) r) => l);
 }
 
 macro bool @is_valid_operation(#left, #right, #operation = ...) @const
@@ -616,6 +616,6 @@ macro bool @is_valid_fill(left, right, fill_with = ...)
 		sz left_len = lengthof(left);
 		sz right_len = lengthof(right);
 		if (left_len == right_len) return true;
-		return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
+		return left_len > right_len ? $defined(($Typeof(right[0]))fill_with) : $defined(($Typeof(left[0]))fill_with);
 	$endif
 }

@@ -5,7 +5,7 @@ macro transpose4x4_mat(a, b, c, d)
 {
     Matrix4x4{float} mat;
 
-    mat.m[0..3] = *a[..]; // #error: Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing wih []?
+    mat.m[0..3] = *a[..]; // #error: Omitting the end index is not allowed for pointers, did you perhaps forget to dereference the pointer before slicing with []?
     mat.m[4..7] = *b[..];
     mat.m[8..11] = *c[..];
     mat.m[12..15] = *d[..];

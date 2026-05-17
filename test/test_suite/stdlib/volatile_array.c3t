@@ -1,0 +1,24 @@
+// #target: macos-x64
+module test;
+import std;
+fn void main()
+{
+	int[8] x, y;
+	@volatile_store(y, @volatile_load(x));
+	@volatile_store(y, x);
+}
+
+/* #expect: test.ll
+
+entry:
+  %x = alloca [8 x i32], align 16
+  %y = alloca [8 x i32], align 16
+  %value = alloca [8 x i32], align 16
+  call void @llvm.memset.p0.i64(ptr align 16 %x, i8 0, i64 32, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 16 %y, i8 0, i64 32, i1 false)
+  %0 = load volatile [8 x i32], ptr %x, align 4
+  store volatile [8 x i32] %0, ptr %y, align 16
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %value, ptr align 16 %x, i32 32, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 16 %value, i32 32, i1 true)
+  ret void
+}

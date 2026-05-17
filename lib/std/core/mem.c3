@@ -71,7 +71,7 @@ macro masked_load(ptr, bool[<*>] mask, passthru)
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
- @ensure $typeof(return) == $typeof(*ptr)
+ @ensure $Typeof(return) == $Typeof(*ptr)
 *>
 macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, sz $alignment)
 {
@@ -212,7 +212,7 @@ macro @volatile_load(#x) @builtin
 *>
 macro @volatile_store(#x, value) @builtin
 {
-	return $$volatile_store(&#x, ($typeof(#x))value);
+	return $$volatile_store(&#x, ($Typeof(#x))value);
 }
 
 <*
@@ -242,7 +242,7 @@ macro load(ptr, sz $align, bool $volatile = false)
 *>
 macro store(ptr, value, sz $align, bool $volatile = false)
 {
-	return $$unaligned_store(ptr, ($typeof(*ptr))value, $align, $volatile);
+	return $$unaligned_store(ptr, ($Typeof(*ptr))value, $align, $volatile);
 }
 
 <*
@@ -268,7 +268,7 @@ enum AtomicOrdering : int
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
  @require $ordering != AtomicOrdering.RELEASE : "Release ordering is not valid for load."
  @require $ordering != AtomicOrdering.ACQUIRE_RELEASE : "Acquire release is not valid for load."
- @require types::may_load_atomic($typeof(#x)) : "Only integer, float and pointers may be used."
+ @require types::may_load_atomic($Typeof(#x)) : "Only integer, float and pointers may be used."
 *>
 macro @atomic_load(#x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
@@ -283,7 +283,7 @@ macro @atomic_load(#x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = fa
 
  @require $ordering != AtomicOrdering.ACQUIRE : "Acquire ordering is not valid for store."
  @require $ordering != AtomicOrdering.ACQUIRE_RELEASE : "Acquire release is not valid for store."
- @require types::may_load_atomic($typeof(#x)) : "Only integer, float and pointers may be used."
+ @require types::may_load_atomic($Typeof(#x)) : "Only integer, float and pointers may be used."
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
  @require $defined(#x = value) : "The value doesn't match the variable"
 *>
@@ -448,7 +448,7 @@ macro void set_inline(void* dst, char val, sz $len, sz $dst_align = 0, bool $is_
 macro bool equals(a, b, sz len = -1, sz $align = 0)
 {
 	$if !$align:
-		$align = $typeof(a[0])::alignment;
+		$align = $Typeof(a[0])::alignment;
 	$endif
 	void* x @noinit;
 	void* y @noinit;
@@ -714,7 +714,7 @@ macro @clone_aligned(value) @builtin @nodiscard
 macro @tclone(value) @builtin @nodiscard
 {
 	$if @alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT:
-		return tnew($typeof(value), value);
+		return tnew($Typeof(value), value);
 	$else
 		return alloc::clone_aligned(tmem, value);
 	$endif
@@ -1015,7 +1015,7 @@ fn void* trealloc(void* ptr, sz size, sz alignment = mem::DEFAULT_MEM_ALIGNMENT)
 *>
 macro @unaligned_addr(#arg) @builtin
 {
-	return (UnalignedRef{$typeof(#arg), @alignof(#arg)})&#arg;
+	return (UnalignedRef{$Typeof(#arg), @alignof(#arg)})&#arg;
 }
 
 module std::core::mem @if(env::NO_LIBC);

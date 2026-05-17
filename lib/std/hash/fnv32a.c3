@@ -8,7 +8,7 @@ typedef Fnv32a = uint;
 const FNV32A_START @private = (Fnv32a)0x811c9dc5;
 const FNV32A_MUL @private = (Fnv32a)0x01000193;
 
-macro void update(h, char x) @private => *h = (*h ^ ($typeof(*h))x) * FNV32A_MUL;
+macro void update(h, char x) @private => *h = (*h ^ ($Typeof(*h))x) * FNV32A_MUL;
 
 fn void Fnv32a.init(&self)
 {

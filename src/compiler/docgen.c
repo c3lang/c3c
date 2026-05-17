@@ -304,7 +304,7 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 			scratch_buffer_append(")");
 			break;
 		case TYPE_INFO_TYPEFROM:
-			scratch_buffer_append("$typefrom(");
+			scratch_buffer_append("$Typefrom(");
 			if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
 			scratch_buffer_append(")");
 			break;
@@ -832,7 +832,14 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 				}
 				break;
 			}
-			base = decl->type_alias_decl.type_info;
+			if (decl->type_alias_decl.type_expr->expr_kind != EXPR_TYPEINFO)
+			{
+				Expr *expr = decl->type_alias_decl.type_expr;
+				base = type_info_new(TYPE_INFO_TYPEFROM, expr->loc);
+				base->unresolved_type_expr = expr;
+				goto PRINT_BASE;
+			}
+			base = decl->type_alias_decl.type_expr->type_expr;
 			goto PRINT_BASE;
 		case DECL_ENUM:
 		case DECL_CONSTDEF:
@@ -1062,12 +1069,22 @@ void compiler_docgen(BuildTarget *target)
 		first_module = false;
 
 		fprintf(file, "\"%s\":{", module->name->module);
-		bool is_module_generic = vec_size(module->generic_sections) > 0;
+		Decl *module_generic = NULL;
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			if (unit->default_generic_section)
+			{
+				module_generic = unit->default_generic_section;
+				break;
+			}
+		}
+
+		bool is_module_generic = module_generic != NULL;
 		fprintf(file, "\"is_generic\":%s", is_module_generic ? "true" : "false");
 		if (is_module_generic)
 		{
 			fputs(",\"generic_parameters\":[", file);
-			GenericDecl *g = &module->generic_sections[0]->generic_decl;
+			GenericDecl *g = &module_generic->generic_decl;
 			for (unsigned j = 0; j < vec_size(g->parameters); j++)
 			{
 				if (j > 0) fputs(",", file);

@@ -2,12 +2,12 @@
 fn void test()
 {
 	typeid x;
-	$typefrom(2 > 1 ? int::typeid : double::typeid) xf;
-	$typefrom(x) a; // #error: Expected a constant
+	$Typefrom(2 > 1 ? int::typeid : double::typeid) xf;
+	$Typefrom(x) a; // #error: Expected a constant
 }
 
 fn void test2()
 {
 	var $x = 1;
-	$typefrom($x) a; // #error: Expected a constant
+	$Typefrom($x) a; // #error: Expected a constant
 }

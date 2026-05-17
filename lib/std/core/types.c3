@@ -368,7 +368,7 @@ macro bool implements_copy($Type) @const
 
 macro bool @equatable_value(#value) @const
 {
-	return is_equatable_type($typeof(#value));
+	return is_equatable_type($Typeof(#value));
 }
 
 macro bool @comparable_value(#value) @const
