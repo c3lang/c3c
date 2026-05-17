@@ -1077,7 +1077,7 @@ static Expr *parse_overload_from_token(ParseContext *c, TokenType token)
 /**
  * attribute ::= (AT_IDENT | path_prefix? AT_TYPE_IDENT) attr_params?
  * attr_params ::= '(' attr_param (',' attr_param)* ')'
- * attr_param ::= const_expr | '&' '[' ']' | '[' ']' '='? | '-' | '+' | '/' | '%' | '==' | '<=>' | '<<' | '>>' | '|' | '&' | '^' | '~'
+ * attr_param ::= const_expr | '&' '[' ']' | '[' ']' '='? | '-' | '+' | '/' | '%' | '==' | '<' | '<<' | '>>' | '|' | '&' | '^' | '~'
  */
 bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 {
