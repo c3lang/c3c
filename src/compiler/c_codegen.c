@@ -330,7 +330,6 @@ static VariableId c_emit_temp(GenContext *c, CValue *value, Type *type)
 	return c->id_gen;
 }
 
-static void c_emit_stmt(GenContext *c, Ast* ast);
 static void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
 
 static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
