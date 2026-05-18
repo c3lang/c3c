@@ -407,10 +407,10 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 static void c_emit_cond_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Expr **list = expr->cond_expr;
-	size_t size = vec_size(list);
+	unsigned size = vec_size(list);
 	assert(size);
-	size_t last = size - 1;
-	for (size_t i = 0; i < last; i++)
+	unsigned last = size - 1;
+	for (unsigned i = 0; i < last; i++)
 	{
 		c_emit_ignored_expr(c, list[i]);
 	}
@@ -419,10 +419,10 @@ static void c_emit_cond_expr(GenContext *c, CValue *value, Expr *expr)
 static void c_emit_expression_list_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Expr **list = expr->expression_list;
-	size_t size = vec_size(list);
+	unsigned size = vec_size(list);
 	assert(size);
-	size_t last = size - 1;
-	for (size_t i = 0; i < last; i++)
+	unsigned last = size - 1;
+	for (unsigned i = 0; i < last; i++)
 	{
 		c_emit_ignored_expr(c, list[i]);
 		// In the llvm backend, there is a possibility of an early return here
@@ -454,7 +454,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 	c_emit_expr(c, &left_value, exprptr(binary->left));
 	c_emit_expr(c, &right_value, exprptr(binary->right));
 
-	const char *operator_string;
+	const char *operator_string = NULL;
 	
 	assert(expr->type);
 	const char *type_string = c_type_name(c, expr->type);
@@ -510,6 +510,7 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 		case BINARYOP_SUB_ASSIGN: operator_string = "-="; break;
 	};
 
+	assert(operator_string);
 	PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", type_string, value->var, left_value.var, operator_string, right_value.var);
 }
 static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
