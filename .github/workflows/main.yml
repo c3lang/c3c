@@ -43,7 +43,7 @@ jobs:
           key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
 
       # set up the environment for Ninja
-      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: x64
 
