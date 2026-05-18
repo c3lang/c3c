@@ -13,6 +13,7 @@
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
 - NPOT vectors as associated variables were incorrectly lowered on load. #3228
 - `.get_tag` and `.has_tag` did not work properly for globals and locals.
+- Segmentation fault during library fetch when the "dependencies" key is missing in project.json. #3233
 
 ## 0.8.0 Change list
 
