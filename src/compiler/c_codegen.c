@@ -344,16 +344,16 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 
 	CValue *c_args = (CValue*)malloc(sizeof(CValue) * total_num_args);
 
-	for(size_t i = 0; i < num_args; i++)
+	for (size_t i = 0; i < num_args; i++)
 	{
 		c_emit_expr(c, &c_args[i], args[i]);
 	}
-	for(size_t i = 0; i < num_varargs; i++)
+	for (size_t i = 0; i < num_varargs; i++)
 	{
 		c_emit_expr(c, &c_args[i + num_args], varargs[i]);
 	}
 
-	if(!call->is_func_ref)
+	if (!call->is_func_ref)
 	{
 		Expr *function = exprptr(call->function);
 		c_emit_expr(c, value, function);
@@ -361,7 +361,7 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 	else
 	{
 		Decl *function_decl = declptr(call->func_ref);
-		if(!call->no_return)
+		if (!call->no_return)
 		{
 			Type *return_type = typeget(function_decl->type->function.signature->rtype);
 			PRINTF("%s ___var_%d = ", c_type_name(c, return_type), c_emit_temp(c, value, return_type));
@@ -370,9 +370,9 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 	}
 
 	PRINT("(");
-	for(size_t i = 0; i < total_num_args; i++)
+	for (size_t i = 0; i < total_num_args; i++)
 	{
-		if(i != 0) PRINT(", ");
+		if (i != 0) PRINT(", ");
 		PRINTF("___var_%d", c_args[i].var);
 	}
 	PRINT(");\n");
@@ -406,7 +406,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			return;
 		case CONST_STRING:
 			PRINTF("%s ___var_%d = ", c_type_name(c, t), c_emit_temp(c, value, t));
-			if(t->type_kind == TYPE_SLICE)
+			if (t->type_kind == TYPE_SLICE)
 			{
 				PRINT("{ ");
 			}
@@ -422,7 +422,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 				PRINTF("\\%d%d%d", b / 64, (b % 64) / 8, b % 8);
 			}
 			PRINT("\"");
-			if(t->type_kind == TYPE_SLICE)
+			if (t->type_kind == TYPE_SLICE)
 			{
 				PRINTF(", %llu }", (unsigned long long)expr->const_expr.bytes.len);
 			}
