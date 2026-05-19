@@ -23,6 +23,17 @@
             }
         },
         {
+            "name": "windows-vs-2026-release",
+            "generator": "Visual Studio 18 2026",
+            "displayName": "Windows x64 Visual Studio 18 2026",
+            "inherits": "windows-base",
+            "binaryDir": "build",
+            "cacheVariables": {
+                "CMAKE_CONFIGURATION_TYPES": "Release;RelWithDebInfo",
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
             "name": "windows-vs-2022-debug",
             "generator": "Visual Studio 17 2022",
             "displayName": "Windows x64 Visual Studio 17 2022 (Debug)",
@@ -32,9 +43,26 @@
                 "CMAKE_CONFIGURATION_TYPES": "Debug",
                 "CMAKE_BUILD_TYPE": "Debug"
             }
+        },
+        {
+            "name": "windows-vs-2026-debug",
+            "generator": "Visual Studio 18 2026",
+            "displayName": "Windows x64 Visual Studio 18 2026 (Debug)",
+            "inherits": "windows-base",
+            "binaryDir": "build-debug",
+            "cacheVariables": {
+                "CMAKE_CONFIGURATION_TYPES": "Debug",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         }
     ],
     "buildPresets": [
+        {
+            "name": "windows-vs-2026-debug",
+            "displayName": "Debug",
+            "configurePreset": "windows-vs-2026-debug",
+            "configuration": "Debug"
+        },
         {
             "name": "windows-vs-2022-debug",
             "displayName": "Debug",
@@ -48,9 +76,21 @@
             "configuration": "Release"
         },
         {
+            "name": "windows-vs-2026-release",
+            "displayName": "Release",
+            "configurePreset": "windows-vs-2026-release",
+            "configuration": "Release"
+        },
+        {
             "name": "windows-vs-2022-release-with-debug-info",
             "displayName": "RelWithDebInfo",
             "configurePreset": "windows-vs-2022-release",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "windows-vs-2026-release-with-debug-info",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "windows-vs-2026-release",
             "configuration": "RelWithDebInfo"
         }
     ]
