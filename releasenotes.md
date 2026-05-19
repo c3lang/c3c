@@ -15,6 +15,7 @@
 - `.get_tag` and `.has_tag` did not work properly for globals and locals.
 - Vectors stored in unions lowered incorrectly causing an assert #3234
 - Segmentation fault during library fetch when the "dependencies" key is missing in project.json. #3233
+- `.tags` would crash if no attribute with arguments were present.
 
 ## 0.8.0 Change list
 

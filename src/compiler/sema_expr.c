@@ -5828,7 +5828,7 @@ static inline bool sema_create_const_tags(SemaContext *context, Expr *expr_tags,
 {
 	SourceLocId loc = expr_tags->loc;
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, loc);
-	unsigned values = vec_size(resolved_attr->tags);
+	unsigned values = resolved_attr ? vec_size(resolved_attr->tags) : 0;
 	Expr **element_values = values > 0 ? VECNEW(Expr*, values) : NULL;
 	for (ArraySize i = 0; i < values; i++)
 	{
