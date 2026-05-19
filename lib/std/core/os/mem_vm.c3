@@ -266,30 +266,36 @@ fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = 
 	Win32_HANDLE h_file = (Win32_HANDLE)win32::_get_osfhandle(fd);
 	if (h_file == (void*)uptr::max) return io::FILE_NOT_VALID~;
 
-	Win32_Protect protect = PAGE_READONLY;
-	Win32_FileMapAccess map_access = FILE_MAP_READ;
-	if (access == WRITE || access == READWRITE)
-	{
-		if (shared)
-		{
-			protect = PAGE_READWRITE;
-			map_access = FILE_MAP_WRITE;
-		}
-		else
-		{
-			protect = PAGE_WRITECOPY;
-			map_access = FILE_MAP_COPY;
-		}
-	}
+	bool is_write = access == WRITE || access == READWRITE;
+	Win32_Protect protect = is_write ? (shared ? PAGE_READWRITE : PAGE_WRITECOPY) : PAGE_READONLY;
+	Win32_FileMapAccess map_access = is_write ? (shared ? FILE_MAP_WRITE : FILE_MAP_COPY) : FILE_MAP_READ;
 
 	Win32_HANDLE h_map = win32::createFileMappingW(h_file, null, protect, 0, 0, null);
-	if (!h_map) return UNKNOWN_ERROR~;
+	if (!h_map)
+	{
+		switch (win32::getLastError())
+		{
+			case win32::ERROR_ACCESS_DENIED:     return io::NO_PERMISSION~;
+			case win32::ERROR_INVALID_HANDLE:    return io::FILE_NOT_VALID~;
+			case win32::ERROR_NOT_ENOUGH_MEMORY: return mem::OUT_OF_MEMORY~;
+			default:                             return UNKNOWN_ERROR~;
+		}
+	}
 	defer (void)win32::closeHandle(h_map);
 
 	Win32_DWORD offset_high = (Win32_DWORD)(offset >> 32);
 	Win32_DWORD offset_low = (Win32_DWORD)(offset & 0xFFFFFFFF);
 	void* ptr = win32::mapViewOfFile(h_map, map_access, offset_high, offset_low, (Win32_SIZE_T)size);
-	if (!ptr) return UNKNOWN_ERROR~;
+	if (!ptr)
+	{
+		switch (win32::getLastError())
+		{
+			case win32::ERROR_INVALID_PARAMETER: return INVALID_ARGS~;
+			case win32::ERROR_ACCESS_DENIED:     return io::NO_PERMISSION~;
+			case win32::ERROR_NOT_ENOUGH_MEMORY: return mem::OUT_OF_MEMORY~;
+			default:                             return UNKNOWN_ERROR~;
+		}
+	}
 
 	return ptr;
 }
