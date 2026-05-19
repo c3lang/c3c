@@ -59,7 +59,6 @@ fn FileMmap? mmap_file(File file, sz offset = 0, sz len = 0, VirtualMemoryAccess
 	
 	// adjust map length (both the region start and the region end might be not aligned)
 	sz map_len = len + page_offset; // when region start not aligned
-	map_len = vm::aligned_alloc_size(map_len); // when region end not aligned
 
 	void* ptr = vm::mmap_file(file.fd(), map_len, map_offset, access, shared)!;
 

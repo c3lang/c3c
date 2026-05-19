@@ -1,4 +1,4 @@
-module std::io::file @if(env::LIBC &&& env::POSIX);
+module std::io::file @if(env::LIBC &&& (env::POSIX || env::WIN32));
 import std::math, libc, std::io::path;
 
 tlocal char[1024] buf;
