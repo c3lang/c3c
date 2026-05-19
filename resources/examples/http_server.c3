@@ -175,9 +175,9 @@ fn void? handle(TcpSocket conn)
 			}
 
 			String raw_path = parsed_req.path;
+			if (env::WIN32)	raw_path = raw_path.treplace("\\", "/");
 
-			String sep = env::WIN32 ? "/\\" : "/";
-			Splitter segments = raw_path.tokenize(sep);
+			Splitter segments = raw_path.tokenize("/");
 			while (try seg = segments.next())
 			{
 				if (seg == "..")
@@ -428,18 +428,16 @@ fn void? send_file(TcpSocket* sock, String path_str, ParsedRequest* req, int* ou
 
 		if (req.method == "HEAD") return;
 
-		$if (env::POSIX):
-			if (content_len > 64*1024)
+		if (content_len > 64*1024)
+		{
+			if (try map = file::mmap_file(target_file))
 			{
-				if (try map = file::mmap_file(target_file))
-				{
-					defer (void)map.destroy();
-					char* ptr = (char*)map.vm.ptr;
-					sock.write(ptr[(sz)start : (sz)content_len])!;
-					return;
-				}
+				defer (void)map.destroy();
+				char* ptr = (char*)map.vm.ptr;
+				sock.write(ptr[(sz)start : (sz)content_len])!;
+				return;
 			}
-		$endif
+		}
 
 		target_file.seek(start)!;
 		LimitReader lr;

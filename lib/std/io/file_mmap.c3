@@ -1,4 +1,4 @@
-module std::io::file::mmap @if(env::LIBC &&& env::POSIX);
+module std::io::file::mmap @if(env::LIBC &&& (env::POSIX || env::WIN32));
 import std::core::mem::vm, std::io::file;
 
 struct FileMmap
@@ -30,7 +30,7 @@ fn void? FileMmap.destroy(&self) @maydiscard
 	if (err2) return err2~;
 }
 
-module std::io::file @if(env::LIBC &&& env::POSIX);
+module std::io::file @if(env::LIBC &&& (env::POSIX || env::WIN32));
 
 <*
  Maps a region of an already-opened file into memory
