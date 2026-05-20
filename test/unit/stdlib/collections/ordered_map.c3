@@ -1,10 +1,10 @@
-module linked_map_test @test;
+module ordered_map_test @test;
 import std::collections::list;
 import std::collections::map;
 import std::sort;
 import std::io;
 
-alias TestLinkedHashMap = LinkedHashMap{String, sz};
+alias TestOrderedMap = OrderedMap{String, sz};
 
 struct MapTest
 {
@@ -13,9 +13,9 @@ struct MapTest
 }
 alias ListMap = List{MapTest};
 
-fn void linked_map_basic()
+fn void ordered_map_basic()
 {
-	TestLinkedHashMap m;
+	TestOrderedMap m;
 	assert(!m.is_initialized());
 	m.tinit();
 	assert(m.is_initialized());
@@ -41,9 +41,9 @@ fn void linked_map_basic()
 	}
 }
 
-fn void linked_map_insertion_order()
+fn void ordered_map_insertion_order()
 {
-	TestLinkedHashMap m;
+	TestOrderedMap m;
 	m.tinit();
 
 	String[] keys = { "first", "second", "third", "fourth" };
@@ -72,9 +72,9 @@ fn void linked_map_insertion_order()
 	};
 }
 
-fn void linked_map_init_with_values()
+fn void ordered_map_init_with_values()
 {
-	TestLinkedHashMap m;
+	TestOrderedMap m;
 	m.tinit_with_key_values("a", 1, "b", 2, "c", 3);
 
 	assert(m.len() == 3);
@@ -92,9 +92,9 @@ fn void linked_map_init_with_values()
 	};
 }
 
-fn void linked_map_remove()
+fn void ordered_map_remove()
 {
-	TestLinkedHashMap m;
+	TestOrderedMap m;
 	assert(!@ok(m.remove("A")));
 	m.tinit();
 	assert(!@ok(m.remove("A")));
@@ -115,16 +115,16 @@ fn void linked_map_remove()
 	};
 }
 
-fn void linked_map_copy()
+fn void ordered_map_copy()
 {
-	TestLinkedHashMap hash_map;
+	TestOrderedMap hash_map;
 	hash_map.tinit();
 
 	hash_map.set("aa", 1);
 	hash_map.set("b", 2);
 	hash_map.set("bb", 1);
 
-	TestLinkedHashMap hash_map_copy;
+	TestOrderedMap hash_map_copy;
 	hash_map_copy.tinit_from_map(&hash_map);
 
 	assert(hash_map_copy.len() == hash_map.len());
@@ -139,13 +139,13 @@ fn void linked_map_copy()
 	assert(index == 3); // check if @each worked
 }
 
-fn void linked_map_iterators()
+fn void ordered_map_iterators()
 {
-	TestLinkedHashMap m;
+	TestOrderedMap m;
 	m.tinit_with_key_values("a", 1, "b", 2, "c", 3);
 	
 	sz count = 0;
-	LinkedHashMapIterator{String, sz} iter = m.iter();
+	OrderedMapIterator{String, sz} iter = m.iter();
 	while (iter.next())
 	{
 		count++;
@@ -157,7 +157,7 @@ fn void linked_map_iterators()
 
 	count = 0;
 
-	LinkedHashMapKeyIterator{String, sz} key_iter = m.key_iter();
+	OrderedMapKeyIterator{String, sz} key_iter = m.key_iter();
 	while (key_iter.next())
 	{
 		count++;
@@ -167,7 +167,7 @@ fn void linked_map_iterators()
 
 	count = 0;
 	sz sum = 0;
-	LinkedHashMapValueIterator{String, sz} value_iter = m.value_iter();
+	OrderedMapValueIterator{String, sz} value_iter = m.value_iter();
 	
 	while (value_iter.next())
 	{
@@ -178,7 +178,7 @@ fn void linked_map_iterators()
 	assert(sum == 6);
 }
 
-alias FooLinkedMap = LinkedHashMap{char, Foobar};
+alias FooOrderedMap = OrderedMap{char, Foobar};
 enum Foobar : char
 {
 	FOO,
@@ -192,9 +192,9 @@ constdef Foobar2 : inline int
 	DEF = 5,
 }
 
-fn void linked_map_inline_enum()
+fn void ordered_map_inline_enum()
 {
-	FooLinkedMap x;
+	FooOrderedMap x;
 	x.tinit();
 	x[Foobar.BAZ.ordinal] = FOO;
 	x[Foobar2.ABC] = BAR;
@@ -202,9 +202,9 @@ fn void linked_map_inline_enum()
 	x.free();
 }
 
-fn void linked_map_clear()
+fn void ordered_map_clear()
 {
-	TestLinkedHashMap m;
+	TestOrderedMap m;
 	m.tinit_with_key_values("a", 1, "b", 2, "c", 3);
 
 	assert(m.len() == 3);
