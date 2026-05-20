@@ -3,6 +3,7 @@
 ## 0.8.1 Change list
 
 ### Changes / improvements
+- Add `$$PROJECT_PATH`.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI

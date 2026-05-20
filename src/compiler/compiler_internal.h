@@ -2064,6 +2064,7 @@ typedef struct
 	int generic_depth;
 	double exec_time;
 	double script_time;
+	const char *base_dir;
 } CompilerState;
 
 extern CompilerState compiler;

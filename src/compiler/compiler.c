@@ -7,6 +7,7 @@
 #include "../utils/json.h"
 #include <compiler_tests/benchmark.h>
 #include "../utils/whereami.h"
+
 #if LLVM_AVAILABLE
 #include "c3_llvm.h"
 #endif
@@ -51,7 +52,9 @@ void compiler_init(BuildOptions *build_options)
 	{
 		error_exit("Failed to change path to '%s'.", build_options->path);
 	}
-
+	char buffer[1024];
+	const char *project_path = getcwd(buffer, 1024);
+	compiler.base_dir = project_path ? str_dup(project_path) : ".";
 	if (!build_options->is_project)
 	{
 		FOREACH(const char *, dir, build_options->unchecked_directories)
@@ -1633,6 +1636,7 @@ void compile()
 	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);
 	setup_string_define("BUILD_HASH", GIT_HASH);
 	setup_string_define("BUILD_DATE", compiler_date_to_iso());
+	setup_string_define("PROJECT_PATH", compiler.build.project_dir ? compiler.build.project_dir : compiler.base_dir);
 	Expr *expr_names = expr_new(EXPR_CONST, 0);
 	Expr *expr_emails = expr_new(EXPR_CONST, 0);
 	expr_names->const_expr.const_kind = CONST_UNTYPED_LIST;
