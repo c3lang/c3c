@@ -184,9 +184,10 @@ const int project_deprecated_target_keys_count = ELEMENTLEN(project_deprecated_t
 // Json -> target / default target
 static void load_into_build_target(BuildParseContext context, JSONObject *json, BuildTarget *target)
 {
-	if (context.target)
+	if (context.target || context.is_preset)
 	{
-		check_json_keys(project_target_keys, project_target_keys_count, project_deprecated_target_keys, project_deprecated_target_keys_count, json, context.target, "--list-project-properties");
+		check_json_keys(project_target_keys, project_target_keys_count, project_deprecated_target_keys, project_deprecated_target_keys_count,
+		                json, context.target ? context.target : "preset", "--list-project-properties");
 	}
 	else
 	{
@@ -358,7 +359,8 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	                                                         target->feature.panic_level);
 
 	// Overridden name
-	target->output_name = get_optional_string(context, json, "name");
+	const char* name = get_optional_string(context, json, "name");
+	if (name) target->output_name = name;
 
 	// Single module
 	target->single_module = (SingleModule) get_valid_bool(context, json, "single-module", target->single_module);
@@ -593,12 +595,20 @@ static void duplicate_prop(const char ***prop_ref)
 static void parse_preset_ref(const char *ref, const char **lib_name, const char **preset_name)
 {
 	const char *colon = strchr(ref, ':');
-	if (!colon || colon == ref || colon[1] == '\0')
+	if (!colon || colon == ref || colon[1] == '\0' || strchr(colon + 1, ':'))
 	{
 		error_exit("Error reading project: invalid preset reference '%s', expected 'library:preset'.", ref);
 	}
 	*lib_name = str_copy(ref, colon - ref);
 	*preset_name = str_copy(colon + 1, strlen(colon + 1));
+	if (!str_is_valid_lowercase_name(*lib_name))
+	{
+		error_exit("Error reading project: invalid library name '%s' in preset reference '%s' – it should only contain alphanumerical letters and '_'.", *lib_name, ref);
+	}
+	if (!str_is_valid_lowercase_name(*preset_name))
+	{
+		error_exit("Error reading project: invalid preset name '%s' in preset reference '%s' – it should only contain alphanumerical letters and '_'.", *preset_name, ref);
+	}
 }
 
 static JSONObject* resolve_preset(BuildTarget *target, const char *preset_ref, const char **manifest_path_ref)
@@ -710,7 +720,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 		JSONObject *preset_json = resolve_preset(target, preset_ref, &manifest_path);
 		target->libdirs = default_libdirs;
 		target->libs = default_libs;
-		BuildParseContext preset_context = { manifest_path, str_printf("preset '%s'", preset_ref) };
+		BuildParseContext preset_context = { manifest_path, str_printf("preset '%s'", preset_ref), true };
 		load_into_build_target(preset_context, preset_json, target);
 	}
 

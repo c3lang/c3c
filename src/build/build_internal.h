@@ -11,6 +11,7 @@ typedef struct
 {
 	const char *file;
 	const char *target;
+	bool is_preset;
 } BuildParseContext;
 
 typedef struct

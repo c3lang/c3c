@@ -88,7 +88,8 @@
           },
           "preset": {
             "type": "string",
-            "description": "Reference a preset configuration from a library dependency, format: 'library:preset'."
+            "description": "Reference a preset configuration from a library dependency, format: 'library:preset'.",
+            "pattern": "^[a-z][a-z0-9_]{0,126}:[a-z][a-z0-9_]{0,126}$"
           },
           "dependencies": {
             "type": "array",
