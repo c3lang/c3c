@@ -153,7 +153,7 @@ fn void x86_initialize_cpu_features()
 {
 	uint max_level = x86_cpuid(0).eax;
 	CpuId feat = x86_cpuid(1);
-	CpuId leaf7 = max_level >= 8 ? x86_cpuid(7) : {};
+	CpuId leaf7 = max_level >= 7 ? x86_cpuid(7) : {};
 	CpuId leaf7s1 = leaf7.eax >= 1 ? x86_cpuid(7, 1) : {};
 	CpuId ext1 = x86_cpuid(0x80000000).eax >= 0x80000001 ? x86_cpuid(0x80000001) : {};
 	CpuId ext8 = x86_cpuid(0x80000000).eax >= 0x80000008 ? x86_cpuid(0x80000008) : {};

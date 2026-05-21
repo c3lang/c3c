@@ -24,6 +24,9 @@
 - Realloc could cause data corruption in DynamicArenaAllocator.
 - OnStackAllocator would not correctly clear memory on calloc.
 - Vmem temp allocator would not correctly free all vmem on destroy.
+- Wasm memory allocation could overallocate unnecessarily.
+- VirtualMemory contract off by one error.
+- CPU detect of leaf7 on x86 incorrect.
 
 ## 0.8.0 Change list
 
