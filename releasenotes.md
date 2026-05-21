@@ -34,6 +34,7 @@
 - CVaList would behave different incorrectly for types larger than 8 bytes on some platforms.
 - UTF32 BOM detection was broken.
 - Sort from DString.less was inconsistent.
+- Fix io::skip using 'read' vs 'read_byte', causing an error.
  
 ## 0.8.0 Change list
 
