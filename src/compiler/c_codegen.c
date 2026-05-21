@@ -343,6 +343,53 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
 static void c_emit_ignored_expr(GenContext *c, Expr *expr);
 static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value);
 
+static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	ExprCall *call = &expr->call_expr;
+
+	Expr **args = call->arguments;
+	Expr **varargs = call->varargs;
+	size_t num_args = vec_size(args);
+	size_t num_varargs = vec_size(varargs);
+	size_t total_num_args = num_args + num_varargs;
+
+	CValue *c_args = (CValue*)malloc(sizeof(CValue) * total_num_args);
+
+	for (size_t i = 0; i < num_args; i++)
+	{
+		c_emit_expr(c, &c_args[i], args[i]);
+	}
+	for (size_t i = 0; i < num_varargs; i++)
+	{
+		c_emit_expr(c, &c_args[i + num_args], varargs[i]);
+	}
+
+	if (!call->is_func_ref)
+	{
+		Expr *function = exprptr(call->function);
+		c_emit_expr(c, value, function);
+	}
+	else
+	{
+		Decl *function_decl = declptr(call->func_ref);
+		if (!call->no_return)
+		{
+			Type *return_type = typeget(function_decl->type->function.signature->rtype);
+			PRINTF("%s ___var_%d = ", c_type_name(c, return_type), c_emit_temp(c, value, return_type));
+		}
+		PRINT(function_decl->name);
+	}
+
+	PRINT("(");
+	for (size_t i = 0; i < total_num_args; i++)
+	{
+		if (i != 0) PRINT(", ");
+		PRINTF("___var_%d", c_args[i].var);
+	}
+	PRINT(");\n");
+	free(c_args);
+}
+
 static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Type *t = type_lowering(expr->type);
@@ -370,7 +417,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			return;
 		case CONST_STRING:
 			PRINTF("%s ___var_%d = ", c_type_name(c, t), c_emit_temp(c, value, t));
-			if(t->type_kind == TYPE_SLICE)
+			if (t->type_kind == TYPE_SLICE)
 			{
 				PRINT("{ ");
 			}
@@ -386,7 +433,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 				PRINTF("\\%d%d%d", b / 64, (b % 64) / 8, b % 8);
 			}
 			PRINT("\"");
-			if(t->type_kind == TYPE_SLICE)
+			if (t->type_kind == TYPE_SLICE)
 			{
 				PRINTF(", %llu }", (unsigned long long)expr->const_expr.bytes.len);
 			}
@@ -571,7 +618,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_BUILTIN_ACCESS:
 			break;
 		case EXPR_CALL:
-			break;
+			c_emit_call_expr(c, value, expr);
+			return;
 		case EXPR_CATCH:
 			break;
 		case EXPR_COND:
