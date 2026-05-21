@@ -103,6 +103,8 @@ extern fn CInt _waccess(WString path, CInt mode);
 
 extern fn WString _wfullpath(WString absPath, WString relPath, usz maxLength);
 
+extern fn int _setmode(int fd, int mode);
+
 /*
 extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @cname("GetCurrentDirectoryW");
 extern bool _win32_CreateSymbolicLinkW(WString symlink_file, WString target_file, ulong flags) @cname("CreateSymbolicLinkW");
