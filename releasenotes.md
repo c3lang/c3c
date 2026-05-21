@@ -11,6 +11,7 @@
 - Enhanced `path::ls` functionality, like searching for wildcard.
 - `LinkedHashMap` renamed `OrderedMap`, `LinkedHashSet` renamed `OrderedSet`. Old names are deprecated.
 - Added initial cpudetect on Linux / MacOS Aarch64.
+- Enable libc::errno for FreeBSD.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
