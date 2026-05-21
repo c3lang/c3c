@@ -46,7 +46,7 @@ interface Allocator
 }
 
 alias MemoryAllocFn = fn char[]?(sz);
-
+alias MemoryFreeFn = fn void(void*);
 
 <*
  @require size >= 0 : "Invalid memory size"

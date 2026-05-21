@@ -116,6 +116,9 @@
 - Fix `Path.append` separator not honoring the specified environment.
 - Add multi part and extension support to `Path.append`.
 - The `Path` API now is split into `PathPosix` and `PathWin`, `Path` is implicitly castable to `String` and loses the `str_view()` method. Use `path::tnew` instead of `path::temp` for a temporary path.
+- Add bst heap allocator - `BstHeapAllocator`.
+- Add buddy heap allocator - `BuddyHeapAllocator`.
+- `SimpleHeapAllocator` has been renamed `FreelistHeapAllocator`.
  
 ### Fixes
 - Slice comparison lowering would not work correctly in macros in some cases. #3095
