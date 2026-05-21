@@ -10,6 +10,7 @@
 - Add `values::expand` to turn strings containing expressions into values.
 - Enhanced `path::ls` functionality, like searching for wildcard.
 - `LinkedHashMap` renamed `OrderedMap`, `LinkedHashSet` renamed `OrderedSet`. Old names are deprecated.
+- Added initial cpudetect on Linux / MacOS Aarch64.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
