@@ -95,6 +95,7 @@ fn void? release(void* ptr, sz size)
 				}
 			}
 		$case env::WIN32:
+			if (win32::unmapViewOfFile(ptr)) return;
 			if (win32::virtualFree(ptr, 0, MEM_RELEASE)) return;
 			switch (win32::getLastError())
 			{
@@ -247,6 +248,56 @@ fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = 
 		case ENXIO:     return io::FILE_NOT_FOUND~;
 		default:        return UNKNOWN_ERROR~;
 	}
+}
+
+<*
+ Map a portion of an already-opened file into memory.
+
+ @param fd : "File descriptor"
+ @param size : "Number of bytes to map, will be rounded up to page size"
+ @param offset : "Byte offset in file, must be page size aligned"
+ @param access : "The initial access permissions"
+ @param shared : "if True changes are shared/written back, else private (copy-on-write)"
+ @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
+ @return "Pointer to the mapped region"
+*>
+fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::WIN32)
+{
+	Win32_HANDLE h_file = (Win32_HANDLE)win32::_get_osfhandle(fd);
+	if (h_file == (void*)uptr::max) return io::FILE_NOT_VALID~;
+
+	bool is_write = access == WRITE || access == READWRITE;
+	Win32_Protect protect = is_write ? (shared ? PAGE_READWRITE : PAGE_WRITECOPY) : PAGE_READONLY;
+	Win32_FileMapAccess map_access = is_write ? (shared ? FILE_MAP_WRITE : FILE_MAP_COPY) : FILE_MAP_READ;
+
+	Win32_HANDLE h_map = win32::createFileMappingW(h_file, null, protect, 0, 0, null);
+	if (!h_map)
+	{
+		switch (win32::getLastError())
+		{
+			case win32::ERROR_ACCESS_DENIED:     return io::NO_PERMISSION~;
+			case win32::ERROR_INVALID_HANDLE:    return io::FILE_NOT_VALID~;
+			case win32::ERROR_NOT_ENOUGH_MEMORY: return mem::OUT_OF_MEMORY~;
+			default:                             return UNKNOWN_ERROR~;
+		}
+	}
+	defer (void)win32::closeHandle(h_map);
+
+	Win32_DWORD offset_high = (Win32_DWORD)(offset >> 32);
+	Win32_DWORD offset_low = (Win32_DWORD)(offset & 0xFFFFFFFF);
+	void* ptr = win32::mapViewOfFile(h_map, map_access, offset_high, offset_low, (Win32_SIZE_T)size);
+	if (!ptr)
+	{
+		switch (win32::getLastError())
+		{
+			case win32::ERROR_INVALID_PARAMETER: return INVALID_ARGS~;
+			case win32::ERROR_ACCESS_DENIED:     return io::NO_PERMISSION~;
+			case win32::ERROR_NOT_ENOUGH_MEMORY: return mem::OUT_OF_MEMORY~;
+			default:                             return UNKNOWN_ERROR~;
+		}
+	}
+
+	return ptr;
 }
 
 <*
