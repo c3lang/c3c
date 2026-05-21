@@ -22,7 +22,7 @@ bitstruct IntBE : int @bigendian
 	int val : 0..31;
 }
 
-bitstruct UIntBE : int @bigendian
+bitstruct UIntBE : uint @bigendian
 {
 	uint val : 0..31;
 }
@@ -62,7 +62,7 @@ bitstruct IntLE : int @littleendian
 	int val : 0..31;
 }
 
-bitstruct UIntLE : int @littleendian
+bitstruct UIntLE : uint @littleendian
 {
 	uint val : 0..31;
 }

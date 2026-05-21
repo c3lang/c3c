@@ -29,7 +29,11 @@
 - VirtualMemory contract off by one error.
 - CPU detect of leaf7 on x86 incorrect.
 - Fixed project benchmark target parsing. #3237
-
+- Incorrect type on `UIntLE` and `UIntBE`.
+- CVaList would behave different incorrectly for types larger than 8 bytes on some platforms.
+- UTF32 BOM detection was broken.
+- Sort from DString.less was inconsistent.
+ 
 ## 0.8.0 Change list
 
 ### Changes / improvements

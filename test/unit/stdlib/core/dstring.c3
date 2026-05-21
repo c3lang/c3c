@@ -167,7 +167,58 @@ fn void test_cmp()
 	str2.clear();
 	str2.append("hello you..");
 	assert(str.len() == str2.len());
-	assert(!str.less(str2));
+	assert(str.less(str2));
+}
+
+
+fn void test_less_lexicographic()
+{
+	// Case 1: equal-length strings that differ at a non-zero index.
+	DString abc = dstring::new(mem, "abc");
+	defer abc.free();
+	DString abd = dstring::new(mem, "abd");
+	defer abd.free();
+	assert(abc.less(abd), "lexicographic: \"abc\" < \"abd\" (differs at i=2, 'c' < 'd')");
+	assert(!abd.less(abc), "lexicographic: \"abd\" is not less than \"abc\"");
+
+	// Case 2: different lengths — order must be by characters first, length only as tiebreaker.
+	DString z = dstring::new(mem, "z");
+	defer z.free();
+	DString aa = dstring::new(mem, "aa");
+	defer aa.free();
+	assert(aa.less(z), "lexicographic: \"aa\" < \"z\" ('a' < 'z'), even though len(\"aa\") > len(\"z\")");
+	assert(!z.less(aa), "lexicographic: \"z\" is not less than \"aa\"");
+
+	// Case 3: identical strings are not strictly less than themselves.
+	DString eq1 = dstring::new(mem, "hello");
+	defer eq1.free();
+	DString eq2 = dstring::new(mem, "hello");
+	defer eq2.free();
+	assert(!eq1.less(eq2), "\"hello\" < \"hello\" must be false (equal, not less)");
+	assert(!eq2.less(eq1), "\"hello\" < \"hello\" must be false (equal, not less)");
+
+	// Case 4: proper prefix — common prefix equal, shorter is less.
+	DString prefix = dstring::new(mem, "abc");
+	defer prefix.free();
+	DString longer = dstring::new(mem, "abcd");
+	defer longer.free();
+	assert(prefix.less(longer), "lexicographic: \"abc\" < \"abcd\" (common prefix, then shorter < longer)");
+	assert(!longer.less(prefix), "lexicographic: \"abcd\" is not less than \"abc\"");
+
+	// Case 5: empty DString against null DString — neither is strictly less than the other.
+	DString empty = dstring::new(mem, "");
+	defer empty.free();
+	DString null_str = (DString)null;
+	assert(!empty.less(null_str), "empty < null must be false");
+	assert(!null_str.less(empty), "null < empty must be false");
+
+	// Case 6: a sanity-check on the case the original test_cmp got backwards.
+	DString hw = dstring::new(mem, "hello world");
+	defer hw.free();
+	DString hy = dstring::new(mem, "hello you..");
+	defer hy.free();
+	assert(hw.less(hy), "lexicographic: \"hello world\" < \"hello you..\" ('w' < 'y' at index 6)");
+	assert(!hy.less(hw), "lexicographic: \"hello you..\" is not less than \"hello world\"");
 }
 
 fn void test_join()

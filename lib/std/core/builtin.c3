@@ -308,6 +308,7 @@ fn void default_panic(String message, String file, String function, int line) @i
 		if (in_panic)
 		{
 			io::eprintn("Panic inside of panic.");
+			$$trap();
 			return;
 		}
 		in_panic = true;
