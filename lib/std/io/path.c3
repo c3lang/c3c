@@ -9,9 +9,12 @@ typedef PathCommon = inline String;
 typedef PathWin = inline PathCommon;
 typedef PathPosix = inline PathCommon;
 
-const char PREFERRED_SEPARATOR_WIN32 = '\\';
-const char PREFERRED_SEPARATOR_POSIX = '/';
-const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
+constdef PathSeparator : inline char
+{
+	WIN32 = '\\',
+	POSIX = '/'
+}
+const PathSeparator PREFERRED_SEPARATOR = env::WIN32 ? WIN32 : POSIX;
 
 alias PathList = List { Path };
 
@@ -25,10 +28,10 @@ fn Path? cwd(Allocator allocator)
 	};
 }
 
-enum PathEnv
+enum PathEnv : (PathSeparator separator)
 {
-	WIN32,
-	POSIX
+	WIN32 { WIN32 },
+	POSIX { POSIX }
 }
 
 fn bool is_dir(Path path) => os::native_is_dir(path);
@@ -45,7 +48,7 @@ macro void? chdir(path)
 	$if $Typeof(path) == String:
 		@pool()
 		{
-			return os::native_chdir(temp(path));
+			return os::native_chdir(tnew(path));
 		};
 	$else
 		return os::native_chdir(path) @inline;
@@ -77,13 +80,24 @@ macro bool is_separator(char c, PathEnv path_env = DEFAULT_ENV)
 macro bool is_posix_separator(char c) => c == '/';
 macro bool is_win32_separator(char c) =>  c == '/' || c == '\\';
 
-fn PathList? ls(Allocator allocator, Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "")
+<*
+ List directory contents.
+
+ @param allocator : `The allocator for the returned list and paths`
+ @param dir : `The directory to list`
+ @param no_dirs : `Exclude directories from the result`
+ @param no_symlinks : `Exclude symbolic links from the result, where supported by the platform`
+ @param mask : `Optional pattern. Supports one '*' wildcard, for example "*.c3" or "foo*bar"`
+ @param recursive : `If true, recursively include entries in subdirectories`
+ @param relative : `If true, return paths relative to dir. Defaults to true`
+ @param rebase : `If non-empty, prepend this path to each returned entry`
+*>
+fn PathList? ls(Allocator allocator, Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "", bool recursive = false, bool relative = true, Path rebase = (Path)"")
 {
-	$if $defined(os::native_ls):
-		return os::native_ls(dir, no_dirs, no_symlinks, mask, allocator);
-	$else
-		return io::UNSUPPORTED_OPERATION~;
-	$endif
+	PathList list;
+	list.init(allocator);
+	_ls_collect(allocator, &list, dir, (Path)"", no_dirs, no_symlinks, mask, recursive, relative, rebase)!;
+	return list;
 }
 
 enum MkdirPermissions
@@ -200,7 +214,7 @@ fn bool? String.is_absolute_path(self) => @pool()
 
 fn bool? PathPosix.is_absolute(self)
 {
-	return self.len > 0 && self[0] == PREFERRED_SEPARATOR_POSIX;
+	return self.len > 0 && self[0] == PathSeparator.POSIX;
 }
 
 fn bool? PathWin.is_absolute(self)
@@ -353,7 +367,7 @@ fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 	}
 	sz path_len = path_str.len;
 	if (path_start == path_len) return path_str;
-	char path_separator = path_env == WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
+	PathSeparator path_separator = path_env.separator;
 	sz len = path_start;
 	bool has_root = is_separator(path_str[path_start], path_env);
 	if (has_root)
@@ -523,9 +537,9 @@ fn bool? traverse(Path path, TraverseCallback callback, any data)
 fn bool PathCommon.has_suffix(self, String str) => self.ends_with(str);
 
 fn PathWin PathWin.copy(self, Allocator allocator) => (PathWin)((String)self).copy(allocator);
-fn PathWin PathWin.tcopy(self, Allocator allocator) => self.copy(tmem) @inline;
+fn PathWin PathWin.tcopy(self) => self.copy(tmem) @inline;
 fn PathPosix PathPosix.copy(self, Allocator allocator) => (PathPosix)((String)self).copy(allocator);
-fn PathPosix PathPosix.tcopy(self, Allocator allocator) => self.copy(tmem) @inline;
+fn PathPosix PathPosix.tcopy(self) => self.copy(tmem) @inline;
 
 fn void PathCommon.free(self, Allocator allocator) => alloc::free(allocator, self.ptr);
 
@@ -554,6 +568,10 @@ macro bool is_reserved_path_char(char c, PathEnv path_env = DEFAULT_ENV)
 		? RESERVED_PATH_CHAR_WIN32[c]
 		: RESERVED_PATH_CHAR_POSIX[c];
 }
+
+
+// --- Non public
+
 fn bool? _mkdir(Path path, bool recursive = false, MkdirPermissions permissions = NORMAL) @private
 {
 	if (!path.len) return INVALID_PATH~;
@@ -575,6 +593,45 @@ fn bool? _rmdir(Path path) @private
 	return os::native_rmdir(path);
 }
 
+fn void? _ls_collect(Allocator allocator, PathList* result, Path base, Path rel_dir, bool no_dirs, bool no_symlinks, String mask, bool recursive, bool relative, Path rebase) @private
+{
+	$if $defined(os::native_ls):
+		@pool()
+		{
+			Path scan_dir = rel_dir ? base.tappend(rel_dir)! : base;
+			PathList entries = os::native_ls(scan_dir, false, no_symlinks, "", tmem)!;
+			foreach (entry : entries)
+			{
+				Path rel = rel_dir ? rel_dir.tappend(entry)! : entry;
+				Path full = scan_dir.tappend(entry)!;
+				bool is_directory = is_dir(full);
+				if (!(is_directory && no_dirs) && _path_match(rel, entry, mask))
+				{
+					Path item = relative ? rel : full;
+					if (rebase) item = rebase.tappend(item)!;
+					result.push(item.copy(allocator));
+				}
+				if (recursive && is_directory) _ls_collect(allocator, result, base, rel, no_dirs, no_symlinks, mask, recursive, relative, rebase)!;
+			}
+		};
+	$else
+		return io::UNSUPPORTED_OPERATION~;
+	$endif
+}
+
+fn bool _path_match(Path rel, Path name, String mask) @private
+{
+	if (!mask) return true;
+	if (try star = mask.index_of_char('*'))
+	{
+		String prefix = mask[:star];
+		String suffix = mask[star + 1..];
+		return rel.len >= prefix.len + suffix.len && rel.starts_with(prefix) && rel.ends_with(suffix)
+			|| name.len >= prefix.len + suffix.len && name.starts_with(prefix) && name.ends_with(suffix);
+	}
+	return rel == mask || name == mask;
+}
+
 macro _append_path(self, Allocator allocator, String[] parts, String extension, PathEnv path_env) @local => @pool()
 {
 	sz capacity = self.len + parts.len;
@@ -587,7 +644,7 @@ macro _append_path(self, Allocator allocator, String[] parts, String extension, 
 		foreach (part : parts)
 		{
 			if (!part) continue;
-			if (dstr.len() && !is_separator(dstr[^1], path_env)) dstr.append(path_env == WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX);
+			if (dstr.len() && !is_separator(dstr[^1], path_env)) dstr.append(path_env.separator);
 			dstr.append(part);
 		}
 		if (extension)
@@ -595,7 +652,7 @@ macro _append_path(self, Allocator allocator, String[] parts, String extension, 
 			if (extension[0] != '.') dstr.append('.');
 			dstr.append(extension);
 		}
-		return ($Typeof(self))normalize(dstr.str_view(), DEFAULT_ENV).copy(allocator);
+		return ($Typeof(self))normalize(dstr.str_view(), path_env).copy(allocator);
 	};
 
 }

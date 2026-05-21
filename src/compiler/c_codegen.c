@@ -168,25 +168,34 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			Type *base = type;
 			type = type->pointer;
-			TODO
-			/*
-			FunctionPrototype *proto = type->function.prototype;
-			c_emit_type_decl(c, proto->param_infos->type);
-			FOREACH (ParamInfo, t, proto->param_infos)
-			{
-				c_emit_type_decl(c, t.type);
-			}
+			FunctionPrototype* prototype = type->function.prototype;
 			int id = ++c->typename;
-			PRINTF("typedef %s(*__c3_fn%d)(", c_type_name(c, proto->return_info.type), id);
-			FOREACH_IDX(i, ParamInfo, t, proto->param_infos)
+
+			c_emit_type_decl(c, prototype->return_result);
+
+			for (size_t i = 0; i < prototype->param_count; i++)
 			{
-				if (i != 0) PRINT(",");
-				PRINT(c_type_name(c, t.type));
+				c_emit_type_decl(c, prototype->abi_args[i]->original_type);
 			}
-			PRINT(");\n");
+
 			scratch_buffer_clear();
-			scratch_buffer_printf("__c3_fn%d", id);
-			htable_set(&c->gen_decl, base, scratch_buffer_copy());*/
+			const char* typename = c_type_name(c, prototype->return_result);
+			scratch_buffer_printf("%s(*__c3_func_ptr%d)(", typename, id);
+			for (size_t i = 0; i < prototype->param_count; i++)
+			{
+				if (i > 0) scratch_buffer_printf(", ");
+				scratch_buffer_printf("%s", c_type_name(c, prototype->abi_args[i]->original_type));
+			}
+			if (prototype->param_vacount > 0)
+			{
+				if (prototype->param_count > 0) scratch_buffer_printf(", ");
+				scratch_buffer_printf("va_list");
+			}
+			scratch_buffer_printf(")");
+
+			PRINTF("%s;\n", scratch_buffer_copy());
+			htable_set(&c->gen_decl, base, scratch_buffer_copy());
+			
 			return true;
 		}
 		case TYPE_STRUCT:
@@ -240,7 +249,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			if (prev) return false;
 			c_emit_type_decl(c, type->array.base);
 			int id = ++c->typename;
-			PRINTF("typedef struct { %s* ptr; void* typeid; } __c3_slice%d;\n", c_type_name(c, type->array.base), id);
+			PRINTF("typedef struct { %s* ptr; size_t size; } __c3_slice%d;\n", c_type_name(c, type->array.base), id);
 			scratch_buffer_clear();
 			scratch_buffer_printf(" __c3_slice%d", id);
 			htable_set(&c->gen_decl, type, scratch_buffer_copy());
@@ -329,6 +338,11 @@ static VariableId c_emit_temp(GenContext *c, CValue *value, Type *type)
 	*value = (CValue) { .var = c_create_variable(c), .kind = CV_VALUE, .type = type_lowering(type) };
 	return c->id_gen;
 }
+
+static void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
+static void c_emit_ignored_expr(GenContext *c, Expr *expr);
+static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value);
+
 static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Type *t = type_lowering(expr->type);
@@ -355,7 +369,12 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			PRINTF("bool ___var_%d = %s;\n", c_emit_temp(c, value, t), expr->const_expr.b ? "true" : "false");
 			return;
 		case CONST_STRING:
-			PRINTF("%s ___var_%d = \"", c_type_name(c, t), c_emit_temp(c, value, t));
+			PRINTF("%s ___var_%d = ", c_type_name(c, t), c_emit_temp(c, value, t));
+			if(t->type_kind == TYPE_SLICE)
+			{
+				PRINT("{ ");
+			}
+			PRINT("\"");
 			for (ArraySize i = 0; i < expr->const_expr.bytes.len; i++)
 			{
 				char b = expr->const_expr.bytes.ptr[i];
@@ -366,7 +385,12 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 				}
 				PRINTF("\\%d%d%d", b / 64, (b % 64) / 8, b % 8);
 			}
-			PRINT("\";\n");
+			PRINT("\"");
+			if(t->type_kind == TYPE_SLICE)
+			{
+				PRINTF(", %llu }", (unsigned long long)expr->const_expr.bytes.len);
+			}
+			PRINT(";\n");
 			return;
 		case CONST_FAULT:
 		case CONST_ENUM:
@@ -389,6 +413,115 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 	}
 	PRINT("/* CONST EXPR */\n");
 }
+static void c_emit_cond_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	Expr **list = expr->cond_expr;
+	unsigned size = vec_size(list);
+	assert(size);
+	unsigned last = size - 1;
+	for (unsigned i = 0; i < last; i++)
+	{
+		c_emit_ignored_expr(c, list[i]);
+	}
+	c_emit_expr(c, value, list[last]);
+}
+static void c_emit_expression_list_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	Expr **list = expr->expression_list;
+	unsigned size = vec_size(list);
+	assert(size);
+	unsigned last = size - 1;
+	for (unsigned i = 0; i < last; i++)
+	{
+		c_emit_ignored_expr(c, list[i]);
+		// In the llvm backend, there is a possibility of an early return here
+		// in the event the builder is not the global builder.
+		// This is not ever the case here, so this function acts the same as
+		// c_emit_cond_expr
+	}
+	c_emit_expr(c, value, list[last]);
+}
+static void c_emit_ptr_access_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	CValue inner_value;
+	c_emit_expr(c, &inner_value, expr->inner_expr);
+	value->var = c_create_variable(c);
+	const char *type_name = c_type_name(c, expr->type);
+	PRINTF("%s ___var_%d = *(%s*)&___var_%d;\n", type_name, value->var, type_name, inner_value.var);
+}
+static void c_emit_identifier_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	Decl *decl = expr->ident_expr;
+	value->var = c_create_variable(c);
+	PRINTF("%s ___var_%d = ___var_%d;\n", c_type_name(c, decl->type), value->var, decl->backend_id);
+}
+
+static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	ExprBinary *binary = &expr->binary_expr;
+	CValue left_value, right_value;
+	c_emit_expr(c, &left_value, exprptr(binary->left));
+	c_emit_expr(c, &right_value, exprptr(binary->right));
+
+	const char *operator_string = NULL;
+	
+	assert(expr->type);
+	const char *type_string = c_type_name(c, expr->type);
+
+	value->var = c_create_variable(c);
+
+	switch(binary->operator){
+		case BINARYOP_ERROR: UNREACHABLE_VOID;
+		case BINARYOP_MULT: operator_string = "*"; break;
+		case BINARYOP_SUB: operator_string = "-"; break;
+		case BINARYOP_ADD: operator_string = "+"; break;
+		case BINARYOP_DIV: operator_string = "/"; break;
+		case BINARYOP_MOD: operator_string = "%"; break;
+		case BINARYOP_SHR: operator_string = ">>"; break;
+		case BINARYOP_SHL: operator_string = "<<"; break;
+		case BINARYOP_BIT_OR: operator_string = "|"; break;
+		case BINARYOP_BIT_XOR: operator_string = "^"; break;
+		case BINARYOP_BIT_AND: operator_string = "&"; break;
+		case BINARYOP_AND: operator_string = "&&"; break;
+		case BINARYOP_OR: operator_string = "||"; break;
+		case BINARYOP_ELSE: TODO // Its the ?? operator for optionals
+		case BINARYOP_CT_AND:
+		case BINARYOP_CT_OR:
+		case BINARYOP_CT_CONCAT:
+		case BINARYOP_CT_CONCAT_ASSIGN:
+			// Handled elsewhere.
+			UNREACHABLE_VOID
+		case BINARYOP_GT: operator_string = ">"; break;
+		case BINARYOP_GE: operator_string = ">="; break;
+		case BINARYOP_LT: operator_string = "<"; break;
+		case BINARYOP_LE: operator_string = "<="; break;
+		case BINARYOP_NE: operator_string = "!="; break;
+		case BINARYOP_EQ: operator_string = "=="; break;
+		case BINARYOP_VEC_GT:
+		case BINARYOP_VEC_GE:
+		case BINARYOP_VEC_LT:
+		case BINARYOP_VEC_LE:
+		case BINARYOP_VEC_NE:
+		case BINARYOP_VEC_EQ:
+			// These will probably be special functions that
+			// the backend calls
+			TODO
+		case BINARYOP_ASSIGN: operator_string = "="; break;
+		case BINARYOP_ADD_ASSIGN: operator_string = "+="; break;
+		case BINARYOP_BIT_AND_ASSIGN: operator_string = "&="; break;
+		case BINARYOP_BIT_OR_ASSIGN: operator_string = "|="; break;
+		case BINARYOP_BIT_XOR_ASSIGN: operator_string = ""; break;
+		case BINARYOP_DIV_ASSIGN: operator_string = "^="; break;
+		case BINARYOP_MOD_ASSIGN: operator_string = "%="; break;
+		case BINARYOP_MULT_ASSIGN: operator_string = "*="; break;
+		case BINARYOP_SHR_ASSIGN: operator_string = ">>="; break;
+		case BINARYOP_SHL_ASSIGN: operator_string = "<<="; break;
+		case BINARYOP_SUB_ASSIGN: operator_string = "-="; break;
+	};
+
+	assert(operator_string);
+	PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", type_string, value->var, left_value.var, operator_string, right_value.var);
+}
 static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	switch (expr->expr_kind)
@@ -397,7 +530,10 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_ENUM_FROM_ORD:
+			break;
 		case EXPR_PTR_ACCESS:
+			c_emit_ptr_access_expr(c, value, expr);
+			return;
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
@@ -424,7 +560,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 			break;
 		case EXPR_BINARY:
-			break;
+			c_emit_binary_expr(c, value, expr);
+			return;
 		case EXPR_BITACCESS:
 			break;
 		case EXPR_BITASSIGN:
@@ -438,12 +575,15 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_CATCH:
 			break;
 		case EXPR_COND:
+			c_emit_cond_expr(c, value, expr);
+			return;
 			break;
 		case EXPR_CONST:
 			c_emit_const_expr(c, value, expr);
 			return;
 		case EXPR_DECL:
-			break;
+			c_emit_local_decl(c, expr->decl_expr, value);
+			return;
 		case EXPR_DEFAULT_ARG:
 			break;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -451,11 +591,13 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_DESIGNATOR:
 			break;
 		case EXPR_EXPRESSION_LIST:
-			break;
+			c_emit_expression_list_expr(c, value, expr);
+			return;
 		case EXPR_FORCE_UNWRAP:
 			break;
 		case EXPR_IDENTIFIER:
-			break;
+			c_emit_identifier_expr(c, value, expr);
+			return;
 		case EXPR_INITIALIZER_LIST:
 			break;
 		case EXPR_LAMBDA:

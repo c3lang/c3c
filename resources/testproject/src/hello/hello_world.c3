@@ -12,6 +12,7 @@ fn int main()
     io::printn(env::AUTHORS);
     printf("Author emails:");
     io::printn(env::AUTHOR_EMAILS);
+    io::printfn("Project dir: %s", env::PROJECT_PATH);
 
     (void)io::printfn("Home dir: %s", path::home_directory(tmem));
     (void)io::printfn("Desktop dir: %s", path::desktop_directory(tmem));

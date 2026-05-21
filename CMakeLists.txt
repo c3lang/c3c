@@ -10,7 +10,7 @@ endif()
 
 # Grab the version
 file(READ "src/version.h" ver)
-if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)\"")
+if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)(_[0-9]+)?\"")
     message(FATAL_ERROR "Compiler version could not be parsed from version.h")
 endif()
 
@@ -465,6 +465,14 @@ endif()
 
 add_library(miniz STATIC dependencies/miniz/miniz.c)
 
+if (CMAKE_C_COMPILER_ID MATCHES "GNU")
+    set_source_files_properties(
+        dependencies/miniz/miniz.c
+        PROPERTIES
+        COMPILE_OPTIONS "-fno-analyzer"
+    )
+endif()
+
 add_executable(c3c
         src/build/builder.c
         src/build/build_options.c
@@ -804,6 +812,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
 endif()
 
 install(TARGETS c3c DESTINATION bin)
+install(CODE "file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/lib/c3/std\")")
 install(DIRECTORY lib/ DESTINATION lib/c3)
 
 # Man page install (OSX/Linux only)

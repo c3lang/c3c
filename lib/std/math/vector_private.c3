@@ -76,16 +76,16 @@ macro cross3(v1, v2)
 macro transform2(v, mat)
 {
 	return ($Typeof(v)) {
-		mat.m00 * v[0] + mat.m10 * v[1] + mat.m30 ,
-		mat.m01 * v[0] + mat.m11 * v[1] + mat.m31 };
+		mat.m00 * v[0] + mat.m01 * v[1] + mat.m03 ,
+		mat.m10 * v[0] + mat.m11 * v[1] + mat.m13 };
 }
 
 macro transform3(v, mat)
 {
 	return ($Typeof(v)){
-		mat.m00 * v[0] + mat.m10 * v[1] + mat.m20 * v[2] + mat.m30,
-		mat.m01 * v[0] + mat.m11 * v[1] + mat.m21 * v[2] + mat.m31,
-		mat.m02 * v[0] + mat.m12 * v[1] + mat.m22 * v[2] + mat.m32
+		mat.m00 * v[0] + mat.m01 * v[1] + mat.m02 * v[2] + mat.m03,
+		mat.m10 * v[0] + mat.m11 * v[1] + mat.m12 * v[2] + mat.m13,
+		mat.m20 * v[0] + mat.m21 * v[1] + mat.m22 * v[2] + mat.m23
 	};
 }
 

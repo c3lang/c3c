@@ -85,7 +85,7 @@ fn float quad_inout(float t, float b, float c, float d) @inline
 }
 
 // Exponential Easing functions
-fn float expo_in(float t, float b, float c, float d) @inline => t ? b : c * math::pow(2.0f, 10 * (t / d - 1)) + b;
+fn float expo_in(float t, float b, float c, float d) @inline => t ? c * math::pow(2.0f, 10 * (t / d - 1)) + b : b;
 fn float expo_out(float t, float b, float c, float d) @inline
 {
 	return (t == d) ? b + c : c * (-math::pow(2.0f, -10 * t / d) + 1) + b;
@@ -150,7 +150,7 @@ fn float bounce_inout(float t, float b, float c, float d) @inline
 {
 	return t < d / 2
 		? bounce_in(t * 2, 0, c, d) * 0.5f + b
-		: bounce_out(t * 2 - d, 0, c, d) * 0.5f + b;
+		: bounce_out(t * 2 - d, 0, c, d) * 0.5f + c * 0.5f + b;
 }
 
 // Elastic Easing functions

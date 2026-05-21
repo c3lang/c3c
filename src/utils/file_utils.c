@@ -51,7 +51,7 @@ uint16_t *win_utf8to16(const char *value UNUSED)
 	{
 		error_exit("Failed to convert name '%s'.", value);
 	}
-	uint16_t *wide = malloc(needed * sizeof(uint16_t));
+	uint16_t *wide = cmalloc(needed * sizeof(uint16_t));
 	if (MultiByteToWideChar(CP_UTF8, 0, value, len + 1, wide, needed) <= 0)
 	{
 		error_exit("Failed to convert name '%s'.", value);
@@ -72,7 +72,7 @@ char *win_utf16to8(const uint16_t *wname UNUSED)
 	{
 		error_exit("Failed to convert wide name.");
 	}
-	char *chars = malloc(needed);
+	char *chars = cmalloc(needed);
 	if (WideCharToMultiByte(CP_UTF8, 0, wname, len + 1, chars, needed, NULL, NULL) <= 0)
 	{
 		error_exit("Failed to convert wide name.");
@@ -867,7 +867,7 @@ char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string
 	if (!success)
 	{
 		if (ignore_failure) return "";
-		if (strlen(result))
+		if (result && strlen(result))
 		{
 			eprintf("+-- Command output --------------------+\n");
 			eprintf("%s\n", result);
@@ -897,6 +897,7 @@ bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_stri
 		free((char*)cmd);
 		cmd = scratch_buffer_to_string();
 		FILE *f = fopen("__c3temp.bin", "w");
+		if (!f) error_exit("Failed to create temporary file '__c3temp.bin' for stdin.");
 		fputs(stdin_string, f);
 		fclose(f);
 	}

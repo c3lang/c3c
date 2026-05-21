@@ -775,7 +775,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
 {
-
 	*target = default_build_target;
 	target->source_dirs = NULL;
 	target->name = options->output_name;
@@ -790,17 +789,21 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	// Parse it
 	const char *filename;
 	Project *project = project_load(&filename);
-	
+	char buffer[1024];
+	const char *project_path = NULL;
 	if (options->is_project)
 	{
+		project_path = getcwd(buffer, 1024);
 		FOREACH(const char *, dir, options->unchecked_directories)
 		{
 			(void)check_dir(dir);
 		}
 	}
 
+
 	*target = *project_select_target(filename, project, options->target_select);
 
+	if (project_path) target->project_dir = str_dup(project_path);
 	update_build_target_from_options(target, options);
 	if (target->build_dir && !file_exists(target->build_dir))
 	{

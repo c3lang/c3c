@@ -1,0 +1,32 @@
+// #target: macos-x64
+// #opt: --fp-math=relaxed
+module test;
+fn void main()
+{
+	double a = 1;
+	double b = 3;
+	double c = 5;
+	double x = a + b * c;
+	double y = a + -(b * c);
+	double z = -a + -(b * c);
+}
+
+/* #expect: test.ll
+
+
+  %0 = load double, ptr %a, align 8
+  %1 = load double, ptr %b, align 8
+  %2 = load double, ptr %c, align 8
+  %3 = call
+  store double %3, ptr %x, align 8
+  %4 = load double, ptr %b, align 8
+  %5 = load double, ptr %c, align 8
+  %6 = fneg
+  %7 = load double, ptr %a, align 8
+  %8 = call
+  store double %8, ptr %y, align 8
+  %9 = load double, ptr %b, align 8
+  %10 = load double, ptr %c, align 8
+  %11 = load double, ptr %a, align 8
+  %12 = call
+  %13 = fneg

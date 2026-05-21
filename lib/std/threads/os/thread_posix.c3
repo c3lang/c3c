@@ -257,10 +257,7 @@ fn void? NativeThread.create(&thread, ThreadFn thread_fn, void* arg, ThreadSetti
 	{
 		if (posix::pthread_attr_init(&attr)) return thread::INIT_FAILED~;
 		attr_ptr = &attr;
-		if (settings.stack_size > 0)
-		{
-			if (posix::pthread_attr_setstacksize(attr_ptr, (usz)settings.stack_size)) return thread::INVALID_THREAD_SETTINGS~;
-		}
+		if (posix::pthread_attr_setstacksize(attr_ptr, (usz)settings.stack_size)) return thread::INVALID_THREAD_SETTINGS~;
 	}
 	$if ANDROID_LINUX:
 		os::sem_init(&thread.sem, 0, 0);

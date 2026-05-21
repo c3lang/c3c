@@ -1077,7 +1077,7 @@ static Expr *parse_overload_from_token(ParseContext *c, TokenType token)
 /**
  * attribute ::= (AT_IDENT | path_prefix? AT_TYPE_IDENT) attr_params?
  * attr_params ::= '(' attr_param (',' attr_param)* ')'
- * attr_param ::= const_expr | '&' '[' ']' | '[' ']' '='? | '-' | '+' | '/' | '%' | '==' | '<=>' | '<<' | '>>' | '|' | '&' | '^' | '~'
+ * attr_param ::= const_expr | '&' '[' ']' | '[' ']' '='? | '-' | '+' | '/' | '%' | '==' | '<' | '<<' | '>>' | '|' | '&' | '^' | '~'
  */
 bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 {
@@ -1963,7 +1963,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			{
 				bool is_cond;
 				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL)) return false;
-				member->is_cond = true;
+				member->is_cond = is_cond;
 				if (!parse_struct_body(c, member)) return decl_poison(parent);
 			}
 			member->docs = decl_from_contract_description(&contracts);
@@ -2009,7 +2009,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			advance(c);
 			bool is_cond;
 			if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL)) return false;
-			member->is_cond = true;
+			member->is_cond = is_cond;
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
 			{
@@ -2959,7 +2959,7 @@ static inline Decl *parse_func_definition(ParseContext *c, FunctionParse parse_k
 	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
 	{
-		RETURN_PRINT_ERROR_AT(false, func, "Function names may not use '@'.");
+		RETURN_PRINT_ERROR_AT(poisoned_decl, func, "Function names may not use '@'.");
 	}
 	if (!parse_fn_parameter_list(c, &(func->func_decl.signature))) return poisoned_decl;
 	if (!parse_attributes_for_global(c, func)) return poisoned_decl;

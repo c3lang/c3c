@@ -314,7 +314,7 @@ UNUSED bool i128_get_bit(const Int128 *op, int bit)
 	{
 		return (op->high >> (bit - 64)) & 1;
 	}
-	return (op->low >> (64 - bit)) & 1;
+	return (op->low >> bit) & 1;
 }
 
 bool i128_is_zero(Int128 op)
@@ -474,16 +474,6 @@ uint32_t i128_clz(const Int128 *op)
 	return op->high ? clz64(op->high) : clz64(op->low) + 64;
 }
 
-UNUSED int i128_lsb(const Int128 *op)
-{
-	return (int)(127 - i128_ctz(op));
-}
-
-UNUSED int i128_msb(const Int128 *op)
-{
-	return (int)(127 - i128_clz(op));
-}
-
 Real i128_to_float(Int128 op)
 {
 	return (Real)op.low + (Real)ldexp((double)op.high, 64);
@@ -544,7 +534,7 @@ Int128 i128_srem(Int128 op1, Int128 op2)
 	if (topbit1) op1 = i128_neg(op1);
 	if (topbit2) op2 = i128_neg(op2);
 	Int128 res = i128_urem(op1, op2);
-	if (topbit2 ^ topbit1)
+	if (topbit1)
 	{
 		return i128_neg(res);
 	}
@@ -875,10 +865,6 @@ Int int_shr64(Int op1, uint64_t op2)
 
 Int int_shl64(Int op, uint64_t op2)
 {
-	if (type_kind_is_unsigned(op.type))
-	{
-		return (Int){ i128_extend(i128_shl64(op.i, op2), op.type), op.type };
-	}
 	return (Int){ i128_extend(i128_shl64(op.i, op2), op.type), op.type };
 }
 

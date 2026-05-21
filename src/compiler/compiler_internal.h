@@ -2064,6 +2064,7 @@ typedef struct
 	int generic_depth;
 	double exec_time;
 	double script_time;
+	const char *base_dir;
 } CompilerState;
 
 extern CompilerState compiler;
@@ -2311,8 +2312,6 @@ Real i128_to_float_signed(Int128 op);
 bool i128_is_zero(Int128 op);
 uint32_t i128_clz(const Int128 *op);
 uint32_t i128_ctz(const Int128 *op);
-UNUSED int i128_lsb(const Int128 *op);
-UNUSED int i128_msb(const Int128 *op);
 Int128 i128_from_signed(int64_t i);
 UNUSED Int128 i128_from_unsigned(uint64_t i);
 UNUSED bool i128_get_bit(const Int128 *op, int bit);
