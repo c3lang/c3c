@@ -16,6 +16,7 @@
 - Vectors stored in unions lowered incorrectly causing an assert #3234
 - Segmentation fault during library fetch when the "dependencies" key is missing in project.json. #3233
 - `.tags` would crash if no attribute with arguments were present.
+- Fixed project benchmark target parsing. #3237
 
 ## 0.8.0 Change list
 
