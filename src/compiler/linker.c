@@ -898,7 +898,6 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			{
 				add_plain_arg("/DLL");
 				add_concat_quote_arg("/IMPLIB:", static_lib_name());
-				if (compiler.build.no_entry) add_plain_arg("/NOENTRY");
 			}
 		case LINKER_CC:
 			break;
