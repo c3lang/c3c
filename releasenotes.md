@@ -20,6 +20,10 @@
 - `.tags` would crash if no attribute with arguments were present.
 - `Rect.merge_point` would sometimes result in a point outside of the rect.
 - Possible array overflow in `SortedMap`.
+- Possible memory overwrite in BackingArenaAllocator on realloc.
+- Realloc could cause data corruption in DynamicArenaAllocator.
+- OnStackAllocator would not correctly clear memory on calloc.
+- Vmem temp allocator would not correctly free all vmem on destroy.
 
 ## 0.8.0 Change list
 
