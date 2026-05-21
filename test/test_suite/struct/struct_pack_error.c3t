@@ -22,7 +22,7 @@ struct Client
     ClientState state;
     MsgHeader header;
     ushort service_id;
-    ElasticArray{ulong, 1} subscribers;
+    FixedList{ulong, 1} subscribers;
 }
 
 Client[10] clients;
@@ -35,9 +35,9 @@ fn void main()
 
 /* #expect: test.ll
 
-%Client = type <{ i32, %MsgHeader, i16, [2 x i8], %"ElasticArray{ulong, 1}" }>
+%Client = type <{ i32, %MsgHeader, i16, [2 x i8], %"FixedList{ulong, 1}" }>
 %MsgHeader = type { i64 }
-%"ElasticArray{ulong, 1}" = type { i64, [1 x i64] }
+%"FixedList{ulong, 1}" = type { i64, [1 x i64] }
 
 define void @test.main() #0 {
 entry:

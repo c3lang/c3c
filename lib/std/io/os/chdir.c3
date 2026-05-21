@@ -7,7 +7,7 @@ macro void? native_chdir(Path path)
 	{
 		$switch:
 			$case env::POSIX:
-				if (posix::chdir(path.str_view().zstr_tcopy()))
+				if (posix::chdir(path.zstr_tcopy()))
 				{
 					switch (libc::errno())
 					{
@@ -21,7 +21,7 @@ macro void? native_chdir(Path path)
 				}
 			$case env::WIN32:
 				// TODO improve with better error handling.
-				if (win32::setCurrentDirectoryW(path.str_view().to_temp_utf16()!!)) return;
+				if (win32::setCurrentDirectoryW(path.to_temp_utf16()!!)) return;
 				return io::GENERAL_ERROR~;
 			$default:
 				return io::UNSUPPORTED_OPERATION~;

@@ -196,8 +196,8 @@ bool parse_stdin(void)
 			capacity *= 2;
 			if (buffer == data)
 			{
-				data = malloc(capacity);
-				memcpy(data, buffer, len);
+				data = cmalloc(capacity);
+				memcpy(data, buffer, len); // GCC -fanalyzer doesn't like this - use of uninitialized value ‘&buffer’ here
 			}
 			else
 			{
@@ -207,7 +207,7 @@ bool parse_stdin(void)
 		}
 		data[len++] = (char)c;
 	}
-	buffer[len] = 0;
+	data[len] = 0;
 	char *stdin_data = MALLOC(len + 1);
 	memcpy(stdin_data, data, len + 1);
 	if (data != buffer) free(data);

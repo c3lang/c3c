@@ -21,6 +21,11 @@ macro bool @is_promotable_to_float(#value) @const => types::is_promotable_to_flo
 macro bool @is_vector(#value) @const => types::is_vector($Typeof(#value));
 macro bool @is_same_vector_type(#value1, #value2) @const => types::is_same_vector_type($Typeof(#value1), $Typeof(#value2));
 
+macro @expand(String $value)
+{
+	$expand(@sprintf("return %s;", $value));
+}
+
 macro promote_int(x)
 {
 	$if @is_int(x):

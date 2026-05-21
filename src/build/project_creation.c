@@ -427,7 +427,7 @@ static bool check_name(const char *name)
 static char* get_cwd_project_name()
 {
 	char full_path[PATH_MAX];
-	if (!getcwd(full_path, PATH_MAX)) return NULL;
+	if (!getcwd(full_path, PATH_MAX)) error_exit("Failed to get current working directory.");
 	size_t len = strlen(full_path);
 	for (size_t i = len - 1; i > 0; i--)
 	{

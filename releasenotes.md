@@ -1,5 +1,33 @@
 # C3C Release Notes
 
+## 0.8.1 Change list
+
+### Changes / improvements
+- Add `$$PROJECT_PATH`, accessible through `env::PROJECT_PATH`.
+
+### Stdlib changes
+- Add math::TAU / math::TWO_PI
+- Add `values::expand` to turn strings containing expressions into values.
+- Enhanced `path::ls` functionality, like searching for wildcard.
+- `LinkedHashMap` renamed `OrderedMap`, `LinkedHashSet` renamed `OrderedSet`. Old names are deprecated.
+
+### Fixes
+- `@volatile_store` on arrays were sometimes incorrectly lowered.
+- NPOT vectors as associated variables were incorrectly lowered on load. #3228
+- `.get_tag` and `.has_tag` did not work properly for globals and locals.
+- Vectors stored in unions lowered incorrectly causing an assert #3234
+- Segmentation fault during library fetch when the "dependencies" key is missing in project.json. #3233
+- `.tags` would crash if no attribute with arguments were present.
+- `Rect.merge_point` would sometimes result in a point outside of the rect.
+- Possible array overflow in `SortedMap`.
+- Possible memory overwrite in BackingArenaAllocator on realloc.
+- Realloc could cause data corruption in DynamicArenaAllocator.
+- OnStackAllocator would not correctly clear memory on calloc.
+- Vmem temp allocator would not correctly free all vmem on destroy.
+- Wasm memory allocation could overallocate unnecessarily.
+- VirtualMemory contract off by one error.
+- CPU detect of leaf7 on x86 incorrect.
+
 ## 0.8.0 Change list
 
 ### Changes / improvements
@@ -14,9 +42,9 @@
 - Removed `@structlike` attribute.
 - Removed deprecated `@extern` attribute.
 - `:` in contracts before description is now mandatory.
-- Removed deprecated `Enum.associated` (use `Enum.membersof`).
-- Removed deprecated `Enum.elements` (use `Enum.len`).
-- Removed deprecated `foo_function.params` (use `foo_function.paramsof`).
+- Removed deprecated `Enum.associated` (use `Enum::members`).
+- Removed deprecated `Enum.elements` (use `Enum::len`).
+- Removed deprecated `foo_function.params` (use `$reflect(foo_function).params`).
 - Removed deprecated `$is_const`.
 - Removed deprecated `$assignable`.
 - Enums now no longer directly support `+` and `-` – use ordinals instead.
@@ -80,13 +108,13 @@
 - Make `DString.append_repeat` polymorphic adding `append_string_repeat` and `append_char_repeat`.
 - Add `DString.append_inline` for optimized uses.
 - Ordering of `object::new_*` arguments are now "allocator first".
-- Add `remove_unordered_at` to ElasticArray.
+- Add `remove_unordered_at` to FixedList.
 - Changed `json` to support two flavors of JSON: JSON and JSONC.
 - Changed `json` API: `parse` -> `load`, `parse_string` -> `parse`.
 - `conv::detect_bom`, convert utf16/utf32 from bytes with byteswap / unaligned data.
 - Mergesort added.
 - `set_cursor` is renamed `seek`, and the old `seek` is removed.
-- `std::math` name changes: `HALF_PI` => `HALF_PI`, `QUARTER_PI` => `QUARTER_PI`, `DIV_PI` => `INV_PI` etc, `cosec` => `csc`, `cotan` => `cot`, `muladd` => `mad`
+- `std::math` name changes: `HALF_PI` => `PI_2`, `PI_4` => `QUARTER_PI`, `DIV_PI` => `INV_PI` etc, `cosec` => `csc`, `cotan` => `cot`, `muladd` => `mad`
 - `std::time` name changes: `diff_hour` => `diff_hours`. `DateTime.set_date` => `DateTime.set`, `datetime::from_date_*` => `datetime::at_*`
 - `std::hash` method name convention changes: `updatec` / `update_char` => `update_byte`.
 - `std::string` name changes: `strip` => `strip_prefix`, `strip_end` => `strip_suffix`.
@@ -130,6 +158,21 @@
 - Warning for ignored visibility modifiers was not emitted for macro methods #3071
 - `while (String? x = foo()!)` was accidentally allowed causing a lowering error.
 - Crash casting uint to bitstruct inside struct field assignment #3187
+- Vec2/Vec3 transform missed matrix translation.
+- Matrix rotation ignored matrix itself.
+- Fix BigInt shr, to_format, and others.
+- Fix ends in TDist.quantile, FDist.pdf, ChiSquaredDist.pdf
+- Fix to easing expo_in and bounce_inout.
+- `deque` with shrinking a zero sized list caused infinite loop.
+- Printing an enummap yielded the wrong character count.
+- Incorrect contract in `FixedList` allowed insert out of range.
+- Fix double-free in InterfaceList.
+- Object.set_at was incorrect.
+- Bitstruct with backing char[n] would occasionally be incorrectly stored.
+- fmuladd lowering crashes on `a + -(b * c)` with fastmath.
+- Constant folding `-30 % -7` would incorrectly yield "2".
+- Parsing << in asm would not be correctly handled.
+- Incorrect lowering for `float[<3>]` when placed aligned in a struct.
 
 ## 0.7.11 Change list
 

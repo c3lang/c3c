@@ -224,7 +224,11 @@ fn Rectangle Rectangle.merge_point(self, Num[<2>] point)
 {
 	Num[<2>] min = math::min(self.min(), point);
 	Num[<2>] max = math::max(self.max(), point);
-	return { .origin = min, .size = max - min };
+	Num[<2>] size = max - min;
+	bool[<2>] size_comp = (size + min).comp_lt(max);
+	if (size_comp.x) size.x = size.x.nexthigher();
+	if (size_comp.y) size.y = size.y.nexthigher();
+	return { .origin = min, .size = size };
 }
 
 <*

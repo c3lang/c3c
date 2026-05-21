@@ -287,7 +287,7 @@ macro void? VirtualMemory.commit(self, sz offset, sz len)
  @require mem::ptr_is_page_aligned(self.ptr + offset) : "The offset should be page aligned"
  @require mem::ptr_is_page_aligned(self.ptr + offset + len) : "The length must be page aligned"
  @require offset < self.size : "Offset out of range"
- @require offset + len < self.size : "Length out of range"
+ @require offset + len <= self.size : "Length out of range"
  @return? UPDATE_FAILED, ACCESS_DENIED, UNALIGNED_ADDRESS, RANGE_OVERFLOW, UNKNOWN_ERROR
 *>
 macro void? VirtualMemory.protect(self, sz offset, sz len, VirtualMemoryAccess access)
@@ -303,7 +303,7 @@ macro void? VirtualMemory.protect(self, sz offset, sz len, VirtualMemoryAccess a
  @require mem::ptr_is_page_aligned(self.ptr + offset) : "The offset should be page aligned"
  @require mem::ptr_is_page_aligned(self.ptr + offset + len) : "The length must be page aligned"
  @require offset < self.size : "Offset out of range"
- @require offset + len < self.size : "Length out of range"
+ @require offset + len <= self.size : "Length out of range"
  @return? UPDATE_FAILED
 *>
 fn void? VirtualMemory.decommit(self, sz offset, sz len, bool block = true)

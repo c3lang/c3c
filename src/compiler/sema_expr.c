@@ -3734,7 +3734,7 @@ NOT_FOUND:
 		expr_rewrite_const_bool(expr, type_bool, false);
 		return true;
 	}
-	RETURN_SEMA_ERROR(expr, "The tag '%s' is not defined, always check with '.has_tagof'.", tagname);
+	RETURN_SEMA_ERROR(expr, "The tag '%s' is not defined, always check with '.has_tag(...)'.", tagname);
 }
 
 INLINE bool sema_call_may_not_have_attributes(SemaContext *context, Expr *expr)
@@ -5553,6 +5553,10 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 			expr->type_call_expr = (ExprTypeCall) { .type = member, .property = TYPE_PROPERTY_HAS_TAG };
 			return true;
 		}
+		if (name == kw_tags)
+		{
+			return sema_create_const_tags(context, expr, member->attrs_resolved);
+		}
 		if (name == kw_set)
 		{
 			expr->expr_kind = EXPR_MEMBER_SET;
@@ -5572,10 +5576,6 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 			expr_rewrite_const_string(expr, member->name ? member->name : "");
 			return true;
 		}
-		if (name == kw_tags)
-		{
-			return sema_create_const_tags(context, expr, member->attrs_resolved);
-		}
 		if (name == kw_members)
 		{
 			sema_create_const_membersof(expr, type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
@@ -5592,6 +5592,23 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		if (!sema_expr_analyse_reflection_cname(context, expr, decl)) goto FAILED;
 		return true;
 	}
+	if (name == kw_get_tag)
+	{
+		expr->expr_kind = EXPR_TYPECALL;
+		expr->type_call_expr = (ExprTypeCall) { .type = decl, .property = TYPE_PROPERTY_GET_TAG };
+		return true;
+	}
+	if (name == kw_has_tag)
+	{
+		expr->expr_kind = EXPR_TYPECALL;
+		expr->type_call_expr = (ExprTypeCall) { .type = decl, .property = TYPE_PROPERTY_HAS_TAG };
+		return true;
+	}
+	if (name == kw_tags)
+	{
+		return sema_create_const_tags(context, expr, decl->attrs_resolved);
+	}
+
 FAILED:
 	if (missing_ref) goto MISSING_REF;
 	RETURN_SEMA_ERROR(expr, "There is no property '%s' available for the reflected expression.", name);
@@ -5811,7 +5828,7 @@ static inline bool sema_create_const_tags(SemaContext *context, Expr *expr_tags,
 {
 	SourceLocId loc = expr_tags->loc;
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, loc);
-	unsigned values = vec_size(resolved_attr->tags);
+	unsigned values = resolved_attr ? vec_size(resolved_attr->tags) : 0;
 	Expr **element_values = values > 0 ? VECNEW(Expr*, values) : NULL;
 	for (ArraySize i = 0; i < values; i++)
 	{

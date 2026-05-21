@@ -176,8 +176,8 @@ void llvm_emit_constructors_and_destructors(GenContext *c)
 	{
 
 		LLVMValueRef c3_dynamic = LLVMGetNamedGlobal(c->module, "$c3_dynamic");
-		LLVMValueRef dtor_global = llvm_emit_macho_xtor(c, c->constructors, "c3ctor", ".c3_ctor_retain");
-		LLVMValueRef ctor_global = llvm_emit_macho_xtor(c, c->destructors, "c3dtor", ".c3_dtor_retain");
+		LLVMValueRef ctor_global = llvm_emit_macho_xtor(c, c->constructors, "c3ctor", ".c3_ctor_retain");
+		LLVMValueRef dtor_global = llvm_emit_macho_xtor(c, c->destructors, "c3dtor", ".c3_dtor_retain");
 
 		LLVMValueRef runtime_start = LLVMGetNamedFunction(c->module, "__c3_runtime_startup");
 		int len = 0;
@@ -274,7 +274,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			AlignSize expected_align = llvm_abi_alignment(c, element_type_llvm);
 			ConstInitializer **elements = const_init->init_array.elements;
 			ASSERT(vec_size(elements) > 0 && "Array should always have gotten at least one element.");
-			if (elements > 0 && type->type_kind == TYPE_FLEXIBLE_ARRAY) was_modified = true;
+			if (vec_size(elements) > 0 && type->type_kind == TYPE_FLEXIBLE_ARRAY) was_modified = true;
 			ArrayIndex current_index = 0;
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
@@ -284,7 +284,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			{
 				ASSERT(element->kind == CONST_INIT_ARRAY_VALUE);
 				ArrayIndex element_index = element->init_array_value.index;
-				IndexDiff diff = element_index - current_index;
+				IndexDiff diff = (IndexDiff)(element_index - current_index);
 				if (alignment && expected_align != alignment)
 				{
 					pack = true;
@@ -311,7 +311,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				current_index = element_index + 1;
 			}
 
-			IndexDiff end_diff = (ArrayIndex)type->array.len - current_index;
+			IndexDiff end_diff = (IndexDiff)((ArrayIndex)type->array.len - current_index);
 			if (end_diff > 0)
 			{
 				vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, end_diff, &was_modified));

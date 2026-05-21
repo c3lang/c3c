@@ -46,9 +46,12 @@ const char** get_project_dependencies()
 	JSONObject *project_json = project_json_load(&filename);
 	JSONObject *dependencies_json = json_map_get(project_json, "dependencies");
 
-	FOREACH(JSONObject *, element, dependencies_json->elements)
+	if (dependencies_json)
 	{
-		vec_add(dependencies, element->str);
+		FOREACH(JSONObject *, element, dependencies_json->elements)
+		{
+			vec_add(dependencies, element->str);
+		}
 	}
 	return dependencies;
 }
@@ -364,6 +367,11 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 
 	// TODO! check if target is specified and exists (NULL at the moment)
 	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
+	if (!libraries_json)
+	{
+		libraries_json = json_new_object(J_ARRAY);
+		json_map_set(project_json, "dependencies", libraries_json);
+	}
 
 	const char** dependencies = NULL;
 	FOREACH(JSONObject *, element, libraries_json->elements)

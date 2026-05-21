@@ -443,7 +443,7 @@ fn void SortedMap.clear(&self)
 		alloc::free(self.allocator, node);
 		node = next;
 	}
-	self.head.forward[..self.current_level] = null;
+	self.head.forward[0:self.current_level] = null;
 	self.count = 0;
 	self.current_level = 0;
 }
