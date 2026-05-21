@@ -156,7 +156,7 @@ constdef Win32_CODEPAGE : Win32_UINT
 	UTF8                     = 65001, // Unicode (UTF-8)
 }
 
-constdef Win32DwMode : Win32_DWORD
+constdef DwMode : Win32_DWORD
 {
 	ENABLE_ECHO_INPUT = 0x0004,
 	ENABLE_INSERT_MODE = 0x0020,
@@ -175,7 +175,7 @@ const Win32_DWORD STD_ERROR_HANDLE  = 0xFFFFFFF4; // ((DWORD)-12)
 extern fn Win32_BOOL setConsoleOutputCP(Win32_CODEPAGE wCodePageId) @cname("SetConsoleOutputCP");
 extern fn Win32_BOOL setConsoleCP(Win32_CODEPAGE wCodePageId) @cname("SetConsoleCP");
 
-extern fn Win32_BOOL setConsoleMode(Win32_HANDLE handle, Win32DwMode mode) @cname("SetConsoleMode");
-extern fn Win32_BOOL getConsoleMode(Win32_HANDLE handle, Win32DwMode* mode) @cname("GetConsoleMode");
+extern fn Win32_BOOL setConsoleMode(Win32_HANDLE handle, DwMode mode) @cname("SetConsoleMode");
+extern fn Win32_BOOL getConsoleMode(Win32_HANDLE handle, DwMode* mode) @cname("GetConsoleMode");
 extern fn Win32_HANDLE getStdHandle(Win32_DWORD handle) @cname("GetStdHandle");
 extern fn Win32_BOOL getNumberOfConsoleInputEvents(Win32_HANDLE hHandle, Win32_DWORD* lpCount) @cname("GetNumberOfConsoleInputEvents");
