@@ -920,6 +920,54 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 	}*/
 }
 
+/*
+	TODO:
+	When implementing continue/break and the labeled varients, some data
+	will need to be pushed about what the labels will be called
+	These labels will then need to be emitted here
+*/
+static void c_emit_for_stmt(GenContext *c, Ast *stmt)
+{
+	// We emit a while loop because thats more flexible
+	AstForStmt *for_stmt = &stmt->for_stmt;
+	CValue initializer_expr, condition_expr;
+	if (for_stmt->init) c_emit_expr(c, &initializer_expr, exprptr(for_stmt->init));
+	if (for_stmt->cond) c_emit_expr(c, &condition_expr, exprptr(for_stmt->cond));
+
+	PRINTF("while (___var_%d)\n{\n", condition_expr.var);
+	c_emit_stmt(c, astptrzero(for_stmt->body));
+	if (for_stmt->incr)
+	{
+		CValue in_loop_incr;
+		c_emit_expr(c, &in_loop_incr, exprptr(for_stmt->incr));
+		PRINTF("___var_%d = ___var_%d;\n", initializer_expr.var, in_loop_incr.var);
+	}
+	if (for_stmt->cond)
+	{
+		CValue in_loop_cond;
+		c_emit_expr(c, &in_loop_cond, exprptr(for_stmt->cond));
+		PRINTF("___var_%d = ___var_%d;\n", condition_expr.var, in_loop_cond.var);
+	}
+
+	PRINT("}\n");
+
+}
+
+static void c_emit_if_stmt(GenContext *c, Ast *stmt)
+{
+	AstIfStmt *if_stmt = &stmt->if_stmt;
+	CValue condition;
+	c_emit_expr(c, &condition, exprptr(if_stmt->cond));
+
+	PRINTF("if (___var_%d)\n", condition.var);
+	c_emit_stmt(c, astptrzero(if_stmt->then_body));
+	if (if_stmt->else_body)
+	{
+		PRINT("else");
+		c_emit_stmt(c, astptrzero(if_stmt->else_body));
+	}
+}
+
 static void c_emit_stmt(GenContext *c, Ast *stmt)
 {
 	if (!stmt) return;
@@ -976,12 +1024,13 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 			c_emit_expr_stmt(c, stmt);
 			return;
 		case AST_FOR_STMT:
-			PRINT("/* FOR */\n");
-			break;
+			c_emit_for_stmt(c, stmt);
+			return;
 		case AST_FOREACH_STMT:
 			break;
 		case AST_IF_STMT:
-			break;
+			c_emit_if_stmt(c, stmt);
+			return;
 		case AST_NOP_STMT:
 			PRINT(";\n");
 			return;
