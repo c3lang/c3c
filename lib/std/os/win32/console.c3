@@ -156,5 +156,26 @@ constdef Win32_CODEPAGE : Win32_UINT
 	UTF8                     = 65001, // Unicode (UTF-8)
 }
 
+constdef DwMode : Win32_DWORD
+{
+	ENABLE_ECHO_INPUT = 0x0004,
+	ENABLE_INSERT_MODE = 0x0020,
+	ENABLE_LINE_INPUT = 0x0002,
+	ENABLE_MOUSE_INPUT = 0x0010,
+	ENABLE_PROCESSED_INPUT = 0x0001,
+	ENABLE_QUICK_EDIT_MODE = 0x0040,
+	ENABLE_WINDOW_INPUT = 0x0008,
+	ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200,
+}
+
+const Win32_DWORD STD_INPUT_HANDLE  = 0xFFFFFFF6; // ((DWORD)-10)
+const Win32_DWORD STD_OUTPUT_HANDLE = 0xFFFFFFF5; // ((DWORD)-11)
+const Win32_DWORD STD_ERROR_HANDLE  = 0xFFFFFFF4; // ((DWORD)-12)
+
 extern fn Win32_BOOL setConsoleOutputCP(Win32_CODEPAGE wCodePageId) @cname("SetConsoleOutputCP");
 extern fn Win32_BOOL setConsoleCP(Win32_CODEPAGE wCodePageId) @cname("SetConsoleCP");
+
+extern fn Win32_BOOL setConsoleMode(Win32_HANDLE handle, DwMode mode) @cname("SetConsoleMode");
+extern fn Win32_BOOL getConsoleMode(Win32_HANDLE handle, DwMode* mode) @cname("GetConsoleMode");
+extern fn Win32_HANDLE getStdHandle(Win32_DWORD handle) @cname("GetStdHandle");
+extern fn Win32_BOOL getNumberOfConsoleInputEvents(Win32_HANDLE hHandle, Win32_DWORD* lpCount) @cname("GetNumberOfConsoleInputEvents");
