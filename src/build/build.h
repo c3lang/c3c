@@ -385,6 +385,7 @@ typedef struct
 	const char *echo_prefix;
 	const char **link_args;
 	const char *build_dir;
+	const char *project_dir;
 	const char *object_file_dir;
 	const char *output_dir;
 	const char *ir_file_dir;

@@ -3,11 +3,13 @@
 ## 0.8.1 Change list
 
 ### Changes / improvements
+- Add `$$PROJECT_PATH`, accessible through `env::PROJECT_PATH`.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
 - Add `values::expand` to turn strings containing expressions into values.
 - Enhanced `path::ls` functionality, like searching for wildcard.
+- `LinkedHashMap` renamed `OrderedMap`, `LinkedHashSet` renamed `OrderedSet`. Old names are deprecated.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
@@ -16,6 +18,15 @@
 - Vectors stored in unions lowered incorrectly causing an assert #3234
 - Segmentation fault during library fetch when the "dependencies" key is missing in project.json. #3233
 - `.tags` would crash if no attribute with arguments were present.
+- `Rect.merge_point` would sometimes result in a point outside of the rect.
+- Possible array overflow in `SortedMap`.
+- Possible memory overwrite in BackingArenaAllocator on realloc.
+- Realloc could cause data corruption in DynamicArenaAllocator.
+- OnStackAllocator would not correctly clear memory on calloc.
+- Vmem temp allocator would not correctly free all vmem on destroy.
+- Wasm memory allocation could overallocate unnecessarily.
+- VirtualMemory contract off by one error.
+- CPU detect of leaf7 on x86 incorrect.
 - Fixed project benchmark target parsing. #3237
 
 ## 0.8.0 Change list

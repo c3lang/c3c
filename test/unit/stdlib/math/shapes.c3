@@ -111,6 +111,15 @@ fn void test_merge_point()
 	assert(e.max() == {10,10});
 }
 
+fn void test_merge_point2()
+{
+	// This could violate constraints if not correctly implemented.
+	Rect r = { .origin = {-6.5519170761108398437500000, -3.9174928665161132812500000 },
+				.size = {29.1038341522216796875000000, 17.4623012542724609375000000 }};
+	r.merge_point({8, 15});
+
+}
+
 fn void test_clamp_point()
 {
 	Rect r = { 0, 0, 10, 10 };

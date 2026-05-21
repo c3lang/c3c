@@ -154,5 +154,6 @@ fn void*? OnStackAllocator.acquire(&self, sz size, AllocInitType init_type, sz a
 	self.used = end;
 	OnStackAllocatorHeader* header = mem - OnStackAllocatorHeader::size;
 	header.size = size;
+	if (init_type == ZERO) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }
