@@ -315,3 +315,25 @@ fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace)
 	}
 	return list;
 }
+
+const uint STDIN  = 0;
+const uint STDOUT = 1;
+const uint STDERR = 2;
+
+<*
+  @require $vacount == sc.nparams : `The number of parameters is incorrect`
+*>
+macro uptr? Syscall.call(Syscall sc, ...)
+{
+	return $$syscall(sc.id, $vasplat);
+}
+
+macro uptr? @syscall(Syscall sc, ...)
+{
+	return sc.call($vasplat);
+}
+
+fn uptr? print(String msg)
+{
+	return Syscall.WRITE.call(STDOUT, (uptr)msg.ptr, msg.len);
+}
