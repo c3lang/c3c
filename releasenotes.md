@@ -27,6 +27,7 @@
 - Wasm memory allocation could overallocate unnecessarily.
 - VirtualMemory contract off by one error.
 - CPU detect of leaf7 on x86 incorrect.
+- Fixed project benchmark target parsing. #3237
 
 ## 0.8.0 Change list
 
