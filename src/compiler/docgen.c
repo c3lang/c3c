@@ -773,6 +773,36 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 	fputs("\"uid\":", file);
 	write_decl_uid(file, module, decl);
 	fputs(",", file);
+	if (decl->loc)
+	{
+		SourceLoc *loc_info = sourcelocptr(decl->loc);
+		if (loc_info && loc_info->file_id)
+		{
+			File *f = source_file_by_id(loc_info->file_id);
+			if (f && f->full_path)
+			{
+				fputs("\"file\":", file);
+				scratch_buffer_clear();
+				const char *path = f->full_path;
+				// Strip cwd prefix to get a relative path
+				char cwd_buf[PATH_MAX + 1];
+				const char *cwd = getcwd(cwd_buf, sizeof(cwd_buf));
+				if (cwd)
+				{
+					// Normalize backslashes (Windows) to forward slashes
+					for (char *p = cwd_buf; *p; p++) if (*p == '\\') *p = '/';
+					size_t cwd_len = strlen(cwd);
+					if (strncmp(path, cwd, cwd_len) == 0 && path[cwd_len] == '/')
+					{
+						path = path + cwd_len + 1;
+					}
+				}
+				scratch_buffer_printf("%s:%u:%u", path, loc_info->row, loc_info->col);
+				json_write_string(file, scratch_buffer_to_string());
+				fputs(",", file);
+			}
+		}
+	}
 	if (decl->visibility != VISIBLE_PUBLIC)
 	{
 		fprintf(file, "\"visibility\":\"%s\",", get_visibility_name(decl->visibility));

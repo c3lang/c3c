@@ -2541,6 +2541,33 @@
 
 			html += buildDocsBodyHtml(vd);
 
+			if (vd.file) {
+				const match = vd.file.match(/^(.*):(\d+):(\d+)$/);
+				const filePath = match ? match[1] : vd.file;
+				const lineStr = match ? match[2] : '';
+
+				let href = '';
+				const locHref = window.location.href;
+				if (locHref.includes('c3-lang.org') || locHref.includes('c3lang.org')) {
+					href = `https://github.com/c3lang/c3c/blob/master/${filePath}`;
+					if (lineStr) href += `#L${lineStr}`;
+				} else {
+					// Handle absolute paths (Windows or Unix)
+					if (filePath.match(/^[a-zA-Z]:/) || filePath.startsWith('/')) {
+						href = 'file:///' + filePath.replace(/^\//, '');
+					} else {
+						href = filePath;
+					}
+				}
+
+				html += `<div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--border);">
+					<a href="${href}" target="_blank" style="font-size: 0.9em; color: var(--filter-fg); text-decoration: none;">
+						<span style="opacity: 0.7;">Defined in: </span>
+						<span style="color: var(--accent);">${filePath}${lineStr ? ':' + lineStr : ''}</span>
+					</a>
+				</div>`;
+			}
+
 			return html;
 		}
 
