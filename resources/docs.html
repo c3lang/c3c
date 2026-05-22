@@ -1210,10 +1210,12 @@
 	<div id="module-tooltip" class="module-tooltip"></div>
 	<div id="sidebar">
 		<div class="resizer sidebar-resizer" id="left-resizer"></div>
-		<div class="sidebar-header" onclick="navigateTo('');">
-			<img src="https://c3-lang.org/assets/logo.svg" alt="C3 Logo" class="logo">
-			<span class="secondary-text">Documentation</span>
-			<div onclick="event.stopPropagation(); toggleTheme();" title="Toggle Light/Dark Theme" style="margin-left: auto; padding: 4px 8px; font-size: 1.25em; border-radius: 4px; transition: background 0.2s ease; display: flex; align-items: center; justify-content: center;">
+		<div class="sidebar-header" style="cursor: default;">
+			<a href="https://c3-lang.org/docs" title="C3 Documentation" style="display: flex;">
+				<img src="https://c3-lang.org/assets/logo.svg" alt="C3 Logo" class="logo">
+			</a>
+			<span class="secondary-text" onclick="navigateTo('');" style="cursor: pointer; font-weight: 500; transition: color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color=''" title="View Project Overview">Project Overview</span>
+			<div onclick="event.stopPropagation(); toggleTheme();" title="Toggle Light/Dark Theme" style="cursor: pointer; margin-left: auto; padding: 4px 8px; font-size: 1.25em; border-radius: 4px; transition: background 0.2s ease; display: flex; align-items: center; justify-content: center;">
 				<div id="theme-toggle-btn" style="color: var(--sidebar-header-fg);">☼</div>
 			</div>
 		</div>
