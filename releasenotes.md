@@ -40,6 +40,7 @@
 - Removed broken `StringIterator.get`.
 - Fix to refcount behaviour, preventing issue on release.
 - `File.close` should always invalidate the pointer on close, even on failures.
+- Overlong conversions to unicode for `%c` at boundaries.
 
 ## 0.8.0 Change list
 
