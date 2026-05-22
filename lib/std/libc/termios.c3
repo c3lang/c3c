@@ -1,4 +1,4 @@
-module libc::termios @if(env::LIBC &&& env::POSIX);
+module libc::termios;
 
 fn int send_break(Fd fd, int duration) => tcsendbreak(fd, duration);
 fn int drain(Fd fd) => tcdrain(fd);
@@ -13,9 +13,8 @@ fn int Termios.set_attr(&self, Fd fd, Tcactions optional_actions) => tcsetattr(f
 
 module libc::termios @if(!env::LIBC ||| !env::POSIX);
 
-typedef Cc = char;
 typedef Speed = CUInt;
-typedef Tcflags = CUInt;
+typedef Tcactions = CInt;
 
 struct Termios
 {
@@ -27,7 +26,7 @@ fn CInt tcgetattr(Fd fd, Termios* self)
 	unreachable("tcgetattr unavailable");
 }
 
-fn CInt tcsetattr(Fd fd, CInt optional_actions, Termios* self)
+fn CInt tcsetattr(Fd fd, Tcactions optional_actions, Termios* self)
 {
 	unreachable("tcsetattr unavailable");
 }
@@ -71,54 +70,3 @@ fn CInt cfsetispeed(Termios* self, Speed speed)
 {
 	unreachable("cfsetispeed unavailable");
 }
-
-fn int sendBreak(Fd fd, int duration)
-{
-	unreachable("sendBreak unavailable");
-}
-
-fn int drain(Fd fd)
-{
-	unreachable("drain unavailable");
-}
-
-fn int flush(Fd fd, int queue_selector)
-{
-	unreachable("flush unavailable");
-}
-
-fn int flow(Fd fd, int action)
-{
-	unreachable("flow unavailable");
-}
-
-fn Speed Termios.getOSpeed(Termios* self)
-{
-	unreachable("Termios.getOSpeed unavailable");
-}
-
-fn Speed Termios.getISpeed(Termios* self)
-{
-	unreachable("Termios.getISpeed unavailable");
-}
-
-fn int Termios.setOSpeed(Termios* self, Speed speed)
-{
-	unreachable("Termios.setOSpeed unavailable");
-}
-
-fn int Termios.setISpeed(Termios* self, Speed speed)
-{
-	unreachable("Termios.setISpeed unavailable");
-}
-
-fn int Termios.getAttr(Termios* self, Fd fd)
-{
-	unreachable("Termios.getAttr unavailable");
-}
-
-fn int Termios.setAttr(Termios* self, Fd fd, int optional_actions)
-{
-	unreachable("Termios.setAttr unavailable");
-}
-
