@@ -39,6 +39,7 @@
 - `String.to_integer` incorrectly accepted some invalid characters for hex.
 - Removed broken `StringIterator.get`.
 - Fix to refcount behaviour, preventing issue on release.
+- `File.close` should always invalidate the pointer on close, even on failures.
 
 ## 0.8.0 Change list
 
