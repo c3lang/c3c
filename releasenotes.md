@@ -12,6 +12,7 @@
 - `LinkedHashMap` renamed `OrderedMap`, `LinkedHashSet` renamed `OrderedSet`. Old names are deprecated.
 - Added initial cpudetect on Linux / MacOS Aarch64.
 - Enable libc::errno for FreeBSD.
+- Change how `Rect` handles points/intersections along its borders.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
