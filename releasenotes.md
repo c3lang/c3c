@@ -38,6 +38,7 @@
 - `Slice2d.slice` incorrectly handled slices with x/y offset and 0/negative length together.
 - `String.to_integer` incorrectly accepted some invalid characters for hex.
 - Removed broken `StringIterator.get`.
+- Fix to refcount behaviour, preventing issue on release.
 
 ## 0.8.0 Change list
 
