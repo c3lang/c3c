@@ -2235,7 +2235,7 @@
 				return res;
 			}
 
-			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'alias' || d.kind === 'fault' || d.kind === 'constdef') {
+			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'alias' || d.kind === 'fault' || d.kind === 'constdef' || d.kind === 'interface') {
 				let res = `<span class="c3-keyword">${d.kind}</span> <span class="c3-type">${localName}</span>`;
 				if (d.base_type && d.base_type.name) {
 					res += ` : ${renderTypeName(d.base_type)}`;
@@ -2425,10 +2425,20 @@
 					</tr>`;
 				} else {
 					let typeStr = m.type ? renderTypeName(m.type) : '';
+					let nameStr = m.name || '';
+					let attrHtml = '';
+					if (vd.kind === 'interface') {
+						let paramsStr = m.params ? renderParams(m.params) : '';
+						nameStr += '(' + paramsStr + ')';
+						if (m.is_optional) {
+							attrHtml = `<span class="c3-keyword">@optional</span>`;
+						}
+					}
 					rowHtml += `<tr>
 						${isFunc ? `<td class="col-mod">${modHtml}</td>` : ''}
 						<td class="col-type monospace">${prefix}${typeStr}${bitDesc}</td>
-						<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name || ''}</td>
+						<td class="col-name monospace bold c3-${vd.kind === 'interface' ? 'function' : (m.kind || 'variable')}">${nameStr}</td>
+						${vd.kind === 'interface' ? `<td class="col-mod monospace">${attrHtml}</td>` : ''}
 						<td class="doc-text">${desc}</td>
 					</tr>`;
 				}
@@ -2489,13 +2499,14 @@
 				html += `</tbody></table>`;
 
 			} else {
-				let title = isFunction ? 'Arguments' : 'Fields';
+				let title = isFunction ? 'Arguments' : (vd.kind === 'interface' ? 'Methods' : 'Fields');
 				html += `<h3>${title}</h3>`;
 				html += `<table class="contract-table">
 					<thead><tr>
 						${isFunction ? '<th class="col-mod">Contract</th>' : ''}
 						<th class="col-type">Type</th>
 						<th class="col-name">Name</th>
+						${vd.kind === 'interface' ? '<th class="col-mod">Attribute</th>' : ''}
 						<th>${anyDesc ? 'Description' : ''}</th>
 					</tr></thead><tbody>`;
 				vd.members.forEach(m => { html += renderRow(m, isFunction, false); });

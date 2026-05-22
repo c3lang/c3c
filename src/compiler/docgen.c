@@ -552,8 +552,22 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 				fputs("null", file);
 			}
 			// Emit the parameter list so the HTML can reconstruct the full signature
-			fputs(",\"params\":", file);
-			emit_params_json(file, module, p->func_decl.signature.params);
+			fputs(",\"params\":[", file);
+			bool first_param = true;
+			for (unsigned i = 1; i < vec_size(p->func_decl.signature.params); i++)
+			{
+				Decl *param = p->func_decl.signature.params[i];
+				if (!param) continue;
+				if (!first_param) fputs(",", file);
+				first_param = false;
+				emit_param_json(file, module, param);
+			}
+			fputs("]", file);
+
+			if (p->func_decl.attr_optional)
+			{
+				fputs(",\"is_optional\":true", file);
+			}
 
 			fputs("}", file);
 		}
