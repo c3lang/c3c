@@ -867,12 +867,12 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			if (decl->var.kind == VARDECL_CONST)
 			{
 				fputs("\"is_const\":true,", file);
-				if (decl->var.init_expr)
-				{
-					fputs("\"value\":", file);
-					write_const_value_json(file, decl->var.init_expr);
-					fputs(",", file);
-				}
+			}
+			if (decl->var.init_expr)
+			{
+				fputs("\"value\":", file);
+				write_const_value_json(file, decl->var.init_expr);
+				fputs(",", file);
 			}
 			break;
 		case DECL_POISONED:

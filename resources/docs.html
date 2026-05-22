@@ -2222,10 +2222,13 @@
 				return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = <span class="c3-keyword">fn</span> ${ret}(${params})`;
 			}
 
-			if (d.kind === 'variable' || d.kind === 'constant') {
-				const keyword = d.kind === 'constant' || d.is_const ? 'const' : 'var';
+			if (d.kind === 'constant' || d.kind === 'global variable') {
+				let keywordHtml = '';
+				if (d.kind === 'constant' || d.is_const) {
+					keywordHtml = '<span class="c3-keyword">const</span> ';
+				}
 				const typeStr = d.type ? renderTypeName(d.type) : '';
-				let res = `<span class="c3-keyword">${keyword}</span> ${typeStr} <span class="c3-variable">${localName}</span>`;
+				let res = `${keywordHtml}${typeStr ? typeStr + ' ' : ''}<span class="c3-variable">${localName}</span>`;
 				if (d.value) {
 					res += ` = <span class="c3-number">${d.value}</span>`;
 				}
