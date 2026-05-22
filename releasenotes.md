@@ -35,7 +35,10 @@
 - UTF32 BOM detection was broken.
 - Sort from DString.less was inconsistent.
 - Fix io::skip using 'read' vs 'read_byte', causing an error.
- 
+- `Slice2d.slice` incorrectly handled slices with x/y offset and 0/negative length together.
+- `String.to_integer` incorrectly accepted some invalid characters for hex.
+- Removed broken `StringIterator.get`.
+
 ## 0.8.0 Change list
 
 ### Changes / improvements

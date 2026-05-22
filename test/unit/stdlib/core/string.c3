@@ -118,6 +118,25 @@ fn void test_trim_right()
 	assert("".trim_right() == "");
 }
 
+// Regression test for String.trim_charset edge cases.
+// The buggy implementation used an inclusive `self[start..len - 1]` slice, which
+// underflows or inverts the range when start >= len (i.e., empty input or input
+// that consists entirely of trimmed characters).
+fn void test_trim_charset_edge_cases()
+{
+	// Empty input: must produce empty, not panic on `self[0..-1]`.
+	assert("".trim_charset() == "");
+
+	// All-whitespace inputs: must produce empty, not panic on `self[len..len-1]`.
+	assert("   ".trim_charset() == "");
+	assert("\t".trim_charset() == "");
+	assert("\t\n\r ".trim_charset() == "");
+
+	// Sanity: the non-edge case still works.
+	assert(" hello ".trim_charset() == "hello");
+	assert("hello".trim_charset() == "hello");
+}
+
 fn void test_split()
 {
 	String test = "abc|b||c|";
