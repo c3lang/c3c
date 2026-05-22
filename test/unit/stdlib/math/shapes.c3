@@ -1,13 +1,26 @@
 module std::math::rectangle @test;
 import std::math;
-fn void test_intersects()
+fn void test_intersections()
 {
 	Rect a = { 0, 0, 10, 10 };
 	Rect b = { 5, 5, 10, 10 };
 	Rect c = { 10, 10, 10, 10 };
+	Rect d = { -10, -10, 10, 10 };
 
+	assert(a.contains_point(a.min()));
+	assert(!a.contains_point(a.max()));
+	assert(a.contains_rect(a));
+	assert(a.intersects(a));
 	assert(a.intersects(b));
 	assert(!a.intersects(c));
+	assert(!a.intersects(d));
+
+	Rect r = a.intersection(b)!!;
+	assert(r.min() == {5,5});
+	assert(r.max() == {10,10});
+
+	assert(!@ok(a.intersection(c)));
+	assert(!@ok(a.intersection(d)));
 }
 
 fn void test_merge()
@@ -20,16 +33,6 @@ fn void test_merge()
 	assert(r.max() == {15,15});
 	r = a.merge(a);
 	assert(r.min() == {0,0});
-	assert(r.max() == {10,10});
-}
-
-fn void test_intersection()
-{
-	Rect a = { 0, 0, 10, 10 };
-	Rect b = { 5, 5, 10, 10 };
-
-	Rect r = a.intersection(b)!!;
-	assert(r.min() == {5,5});
 	assert(r.max() == {10,10});
 }
 

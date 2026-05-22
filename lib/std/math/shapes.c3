@@ -79,11 +79,21 @@ fn bool Rectangle.is_empty(self)
 <*
  Check if a point is contained in the rectangle.
 
- @return "true if the point is inside or on the border of the rectangle"
+ @return "true if the point is inside of the rectangle"
 *>
 fn bool Rectangle.contains_point(self, Num[<2>] point)
 {
-	return self.origin.comp_le(point).and() & (self.origin + self.size).comp_ge(point).and();
+	return self.origin.comp_le(point).and() && (self.origin + self.size).comp_gt(point).and();
+}
+
+<*
+ Check if a point is contained in the rectangle.
+
+ @return "true if the point is inside or on the border of the rectangle"
+*>
+fn bool Rectangle.contains_point_inclusive(self, Num[<2>] point)
+{
+	return self.origin.comp_le(point).and() && (self.origin + self.size).comp_ge(point).and();
 }
 
 <*
@@ -93,7 +103,7 @@ fn bool Rectangle.contains_point(self, Num[<2>] point)
 *>
 fn bool Rectangle.contains_rect(self, Rectangle other)
 {
-	return self.contains_point(other.origin) && self.contains_point(other.max());
+	return self.origin.comp_le(other.origin).and() && self.max().comp_ge(other.max()).and();
 }
 
 <*
@@ -218,7 +228,7 @@ fn Rectangle Rectangle.expand(self, Num amount)
  @param point : "The point to expand the rectangle with"
  @return "The resulting rectangle"
 
- @ensure return.contains_point(point)
+ @ensure return.contains_point_inclusive(point)
 *>
 fn Rectangle Rectangle.merge_point(self, Num[<2>] point)
 {
@@ -235,7 +245,7 @@ fn Rectangle Rectangle.merge_point(self, Num[<2>] point)
  Clamps a point to lie inside a rectangle.
 
  @return "The resulting point"
- @ensure self.contains_point(return)
+ @ensure self.contains_point_inclusive(return)
 *>
 fn Num[<2>] Rectangle.clamp_point(self, Num[<2>] point)
 {
