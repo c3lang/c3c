@@ -168,10 +168,6 @@ constdef DwMode : Win32_DWORD
 	ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200,
 }
 
-const Win32_DWORD STD_INPUT_HANDLE  = 0xFFFFFFF6; // ((DWORD)-10)
-const Win32_DWORD STD_OUTPUT_HANDLE = 0xFFFFFFF5; // ((DWORD)-11)
-const Win32_DWORD STD_ERROR_HANDLE  = 0xFFFFFFF4; // ((DWORD)-12)
-
 extern fn Win32_BOOL setConsoleOutputCP(Win32_CODEPAGE wCodePageId) @cname("SetConsoleOutputCP");
 extern fn Win32_BOOL setConsoleCP(Win32_CODEPAGE wCodePageId) @cname("SetConsoleCP");
 

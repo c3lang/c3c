@@ -39,6 +39,10 @@ struct Win32_WIN32_FIND_DATAW
 	Win32_WORD          wFinderFlags;
 }
 
+const Win32_DWORD STD_INPUT_HANDLE  = 0xFFFFFFF6; // ((DWORD)-10)
+const Win32_DWORD STD_OUTPUT_HANDLE = 0xFFFFFFF5; // ((DWORD)-11)
+const Win32_DWORD STD_ERROR_HANDLE  = 0xFFFFFFF4; // ((DWORD)-12)
+
 alias Win32_LPWIN32_FIND_DATAW = Win32_WIN32_FIND_DATAW*;
 
 extern fn Win32_BOOL closeHandle(Win32_HANDLE) @cname("CloseHandle");
@@ -104,6 +108,19 @@ extern fn CInt _waccess(WString path, CInt mode);
 extern fn WString _wfullpath(WString absPath, WString relPath, usz maxLength);
 
 extern fn int _setmode(int fd, int mode);
+
+<*
+	Copies data from a named or anonymous pipe into a buffer without removing it from the pipe.
+	It also returns information about data in the pipe.
+*>
+extern fn Win32_BOOL peekNamedPipe(
+	Win32_HANDLE  hNamedPipe,
+	Win32_LPVOID  lpBuffer,
+	Win32_DWORD   nBufferSize,
+	Win32_LPDWORD lpBytesRead = null,
+	Win32_LPDWORD lpTotalBytesAvail = null,
+	Win32_LPDWORD lpBytesLeftThisMessage = null
+) @cname("PeekNamedPipe");
 
 /*
 extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @cname("GetCurrentDirectoryW");
