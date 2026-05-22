@@ -190,33 +190,32 @@ $endif
 fn void test_partial_inherit_stdin() @test
 {
 	// Test partial inherit — inherit stdin, capture stdout/stderr
-    String[] command;
-    $if env::WIN32:
-        command = { "cmd.exe", "/c", "echo Hello" };
-    $else
-        command = { "echo", "Hello" };
-    $endif
+	String[] command;
+	$if env::WIN32:
+		command = { "cmd.exe", "/c", "echo Hello" };
+	$else
+		command = { "echo", "Hello" };
+	$endif
+	
+	Process process = process::spawn(command, stdio: {
+		.stdin  = inherit(),
+		.stdout = capture(),
+	})!!;
+	defer process.destroy();
+	
+	process.join()!!;
+	
+	// stdin_file should be null
+	assert(process.stdin_file == null, "Expected null file when using inherit");
 
-    Process process = process::spawn(command, stdio: {
-        .stdin  = inherit(),
-        .stdout = capture(),
-    })!!;
-    defer process.destroy();
-
-    process.join()!!;
-
-    // stdin_file should be null
-    assert(process.stdin_file == null, "Expected null file when using inherit");
-
-    char[64] buffer;
-    sz bytes = process.read_stdout(&buffer[0], buffer.len)!!;
-    assert(bytes > 0, "Expected captured stdout with inherited stdin");
+	char[64] buffer;
+	sz bytes = process.read_stdout(&buffer[0], buffer.len)!!;
+	assert(bytes > 0, "Expected captured stdout with inherited stdin");
 }
 
 fn void test_pipe_bind_stdout_to_stdin() @test @if(env::POSIX)
 {
 	// Test pipe binding between two processes (A | B)
-
 	CInt[2] pipe;
 
 	const int F_SETFD = 2;
@@ -225,59 +224,58 @@ fn void test_pipe_bind_stdout_to_stdin() @test @if(env::POSIX)
 	os::fcntl((NativeSocket)pipe[0], F_SETFD, FD_CLOEXEC);
 	os::fcntl((NativeSocket)pipe[1], F_SETFD, FD_CLOEXEC);
 
-    // ls | grep
-    Process a = process::spawn({"ls"}, stdio: {
-        .stdout = bind(pipe[1]),
-    })!!;
+	// ls | grep
+	Process a = process::spawn({"ls"}, stdio: {
+		.stdout = bind(pipe[1]),
+	})!!;
 
-    Process b = process::spawn({"grep", "."}, stdio: {
-        .stdin  = bind(pipe[0]),
-        .stdout = capture(),
-    })!!;
+	Process b = process::spawn({"grep", "."}, stdio: {
+		.stdin  = bind(pipe[0]),
+		.stdout = capture(),
+	})!!;
 
 	libc::close(pipe[0]);
 	libc::close(pipe[1]);
 
-    a.join()!!;
-    b.join()!!;
+	a.join()!!;
+	b.join()!!;
 
-    char[4096] buffer;
-    sz bytes = b.read_stdout(&buffer[0], buffer.len)!!;
-    assert(bytes > 0, "Expected output from piped grep");
+	char[64] buf;
+	sz bytes = b.read_stdout(&buf[0], buf.len)!!;
+	assert(bytes > 0, "Expected output from piped grep");
 
-    a.destroy();
-    b.destroy();
+	a.destroy();
+	b.destroy();
 }
 
 fn void test_pipe_bind_stdout_to_stdin() @test @if(env::WIN32)
 {
-	// Test pipe binding between two processes (A | B) on Windows
-
+    // Test pipe binding between two processes (A | B) on Windows
 	Win32_SECURITY_ATTRIBUTES sa = { Win32_SECURITY_ATTRIBUTES::size, null, 1 };
-    Win32_HANDLE rd, wr;
-    win32::createPipe(&rd, &wr, &sa, 0);
-    win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0);
-    win32::setHandleInformation(wr, win32::HANDLE_FLAG_INHERIT, 0);
+	Win32_HANDLE rd, wr;
+	win32::createPipe(&rd, &wr, &sa, 0);
+	win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0);
 
-    Process a = process::spawn({"cmd.exe", "/c", "echo Hello"}, stdio: {
-        .stdout = bind(wr),
-    })!!;
+	Process a = process::spawn({"cmd.exe", "/c", "echo Hello"}, stdio: {
+		.stdout = bind(wr),
+	})!!;
+	win32::closeHandle(wr);
+	win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 1);
 
-    Process b = process::spawn({"cmd.exe", "/c", "findstr ."}, stdio: {
-        .stdin  = bind(rd),
-        .stdout = capture(),
-    })!!;
+	Process b = process::spawn({"cmd.exe", "/c", "findstr .*"}, INHERIT_ENV, stdio: {
+		.stdin = bind(rd),
+	})!!;
 
-    win32::closeHandle(rd);
-    win32::closeHandle(wr);
+	win32::closeHandle(rd);
 
-    a.join()!!;
-    b.join()!!;
+	a.join()!!;
+	b.join()!!;
 
-    char[4096] buffer;
-    sz bytes = b.read_stdout(&buffer[0], buffer.len)!!;
-    assert(bytes > 0, "Expected output from piped findstr");
+	char[64] buf;
+	sz bytes = b.read_stdout(&buf[0], buf.len)!!;
+	assert(bytes > 0, "Expected output from piped findstr");
+	test::eq((String)buf[:7] , "Hello\r\n");
 
-    a.destroy();
-    b.destroy();
+	a.destroy();
+	b.destroy();
 }
