@@ -11,6 +11,7 @@
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
 - Added `FixedList.is_full()` method
+- `Rect.contains_point` is now exclusive on the maximum edge.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374
