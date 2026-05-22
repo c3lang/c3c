@@ -43,6 +43,7 @@
 - `File.close` should always invalidate the pointer on close, even on failures.
 - Overlong conversions to unicode for `%c` at boundaries.
 - Do not rely on implicit allocation for getcwd.
+- Skipping symlinks wasn't properly implemented for Win32.
 
 ## 0.8.0 Change list
 
