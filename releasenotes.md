@@ -42,6 +42,7 @@
 - Fix to refcount behaviour, preventing issue on release.
 - `File.close` should always invalidate the pointer on close, even on failures.
 - Overlong conversions to unicode for `%c` at boundaries.
+- Do not rely on implicit allocation for getcwd.
 
 ## 0.8.0 Change list
 
