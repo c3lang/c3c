@@ -893,6 +893,7 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			base = decl->strukt.container_type;
 			goto PRINT_BASE;
 		case DECL_TYPEDEF:
+			if (decl->is_substruct) fputs("\"is_inline\":true,", file);
 			base = decl->distinct;
 			goto PRINT_BASE;
 		PRINT_BASE:

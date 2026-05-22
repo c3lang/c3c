@@ -2218,17 +2218,27 @@
 				return `<span class="c3-keyword">${keyword}</span> ${ret} <span class="c3-function">${localName}</span>(${params})${genericSuffix}${attrs ? ' ' + attrs : ''}`;
 			}
 
-			if (d.kind === 'type_alias' && d.return_type) {
-				const ret = renderTypeName(d.return_type);
-				const params = renderParams(d.members);
-				return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = <span class="c3-keyword">fn</span> ${ret}(${params})`;
+			if (d.kind === 'alias') {
+				if (d.return_type) {
+					const ret = renderTypeName(d.return_type);
+					const params = renderParams(d.members);
+					return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = <span class="c3-keyword">fn</span> ${ret}(${params})`;
+				} else if (d.base_type) {
+					const baseTypeStr = renderTypeName(d.base_type);
+					return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = ${baseTypeStr}`;
+				} else {
+					return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span>`;
+				}
+			}
+
+			if (d.kind === 'distinct type') {
+				const inlineHtml = d.is_inline ? '<span class="c3-keyword">inline</span> ' : '';
+				const baseTypeStr = d.base_type ? renderTypeName(d.base_type) : '';
+				return `<span class="c3-keyword">typedef</span> <span class="c3-type">${localName}</span> = ${inlineHtml}${baseTypeStr}`;
 			}
 
 			if (d.kind === 'constant' || d.kind === 'global variable') {
-				let keywordHtml = '';
-				if (d.kind === 'constant' || d.is_const) {
-					keywordHtml = '<span class="c3-keyword">const</span> ';
-				}
+				const keywordHtml = (d.kind === 'constant' || d.is_const) ? '<span class="c3-keyword">const</span> ' : '';
 				const typeStr = d.type ? renderTypeName(d.type) : '';
 				let res = `${keywordHtml}${typeStr ? typeStr + ' ' : ''}<span class="c3-variable">${localName}</span>`;
 				if (d.value) {
@@ -2237,7 +2247,7 @@
 				return res;
 			}
 
-			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'alias' || d.kind === 'fault' || d.kind === 'constdef' || d.kind === 'interface') {
+			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'fault' || d.kind === 'constdef' || d.kind === 'interface') {
 				let res = `<span class="c3-keyword">${d.kind}</span> <span class="c3-type">${localName}</span>`;
 				if (d.base_type && d.base_type.name) {
 					res += ` : ${renderTypeName(d.base_type)}`;
