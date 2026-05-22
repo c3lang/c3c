@@ -239,7 +239,7 @@ static void write_decl_uid(FILE *file, Module *module, Decl *decl)
 static void emit_type_name_to_scratch(TypeInfo *type)
 {
 	if (!type) return;
-	if (type->type && type->type->name)
+	if (type->kind != TYPE_INFO_TYPEOF && type->kind != TYPE_INFO_TYPEFROM && type->type && type->type->name)
 	{
 		scratch_buffer_append(type->type->name);
 		if (type->optional && !strstr(type->type->name, "?")) scratch_buffer_append("?");
@@ -299,7 +299,7 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 			scratch_buffer_append("}");
 			break;
 		case TYPE_INFO_TYPEOF:
-			scratch_buffer_append("typeof(");
+			scratch_buffer_append("$Typeof(");
 			if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
 			scratch_buffer_append(")");
 			break;
