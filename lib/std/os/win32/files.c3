@@ -39,10 +39,6 @@ struct Win32_WIN32_FIND_DATAW
 	Win32_WORD          wFinderFlags;
 }
 
-const Win32_DWORD STD_INPUT_HANDLE  = 0xFFFFFFF6; // ((DWORD)-10)
-const Win32_DWORD STD_OUTPUT_HANDLE = 0xFFFFFFF5; // ((DWORD)-11)
-const Win32_DWORD STD_ERROR_HANDLE  = 0xFFFFFFF4; // ((DWORD)-12)
-
 alias Win32_LPWIN32_FIND_DATAW = Win32_WIN32_FIND_DATAW*;
 
 extern fn Win32_BOOL closeHandle(Win32_HANDLE) @cname("CloseHandle");
