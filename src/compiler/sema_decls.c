@@ -444,6 +444,7 @@ RETRY:;
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_POISONED:
+		case TYPE_UNTYPEDLIST:
 		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
 			UNREACHABLE
@@ -1066,6 +1067,7 @@ RETRY:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
+		case TYPE_UNTYPEDLIST:
 		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
 			return true;
@@ -2996,6 +2998,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			break;
 		case TYPE_ALIAS:
 		case TYPE_OPTIONAL:
+		case TYPE_UNTYPEDLIST:
 		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
 			UNREACHABLE
@@ -5244,6 +5247,7 @@ RETRY:
 		case ALL_FLOATS:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_WILDCARD:
 		case SPECIAL_TYPES:
 			return true;

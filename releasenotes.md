@@ -44,6 +44,7 @@
 - Overlong conversions to unicode for `%c` at boundaries.
 - Do not rely on implicit allocation for getcwd.
 - Skipping symlinks wasn't properly implemented for Win32.
+- Compiler would crash when getting the `kind`, `qname`, or `alignment` of an `untypedlist`
 
 ## 0.8.0 Change list
 

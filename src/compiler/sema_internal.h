@@ -286,6 +286,7 @@ static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *
 			return is_distinct ? STORAGE_UNKNOWN : STORAGE_VOID;
 		case TYPE_WILDCARD:
 			return STORAGE_WILDCARD;
+		case TYPE_UNTYPEDLIST:
 		case SPECIAL_TYPES:
 		case TYPE_FUNC_RAW:
 			return STORAGE_COMPILE_TIME;

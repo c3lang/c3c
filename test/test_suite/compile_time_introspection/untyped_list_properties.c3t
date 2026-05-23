@@ -1,0 +1,3 @@
+$echo untypedlist::kind;
+$echo untypedlist::qname;
+$echo untypedlist::alignment;
