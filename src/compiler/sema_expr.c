@@ -4452,11 +4452,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 				RETURN_SEMA_ERROR(subscripted, "Cannot index '%s' from the end, since there is no 'len' overload.", type_to_error_string(subscripted->type));
 			}
 			if (!sema_analyse_expr_rvalue(context, current_expr)) return false;
-			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_PARAM, current_expr->loc);
-			Expr *decl = expr_generate_decl(temp, expr_copy(current_expr));
-			expr_rewrite_two(current_expr, decl, expr_variable(temp));
-			if (!sema_analyse_expr_rvalue(context, current_expr)) return false;
-			Expr *var_for_len = expr_variable(temp);
+			Expr *var_for_len = expr_copy(current_expr);
 			Expr *len_expr = expr_new(EXPR_CALL, expr->loc);
 			if (!sema_insert_method_call(context, len_expr, len, var_for_len, NULL, false)) return false;
 			if (!sema_analyse_expr_rvalue(context, len_expr)) return false;

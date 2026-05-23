@@ -1,0 +1,42 @@
+// #target: linux-x64
+module test;
+struct Test
+{
+	sz count;
+	int[2] vals;
+}
+
+fn sz Test.len(&self) @operator(len) => self.count;
+
+fn int* Test.get_ref(&self, sz idx) @operator(&[]) => &self.vals[idx];
+fn int Test.get(&self, sz idx) @operator([]) => self.vals[idx];
+
+extern fn int printf(ZString, ...);
+
+fn void main()
+{
+	Test t = {2, {1, 2}};
+	printf("%d %d %p %p\n", t[^1], t[t.len() - 1], &t[^1], &t[t.len() - 1]);
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %t = alloca %Test, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %t, ptr align 8 @.__const, i32 16, i1 false)
+  %0 = call i64 @test.Test.len(ptr %t)
+  %sub = sub i64 %0, 1
+  %1 = call i32 @test.Test.get(ptr %t, i64 %sub)
+  %2 = call i64 @test.Test.len(ptr %t)
+  %sub1 = sub i64 %2, 1
+  %3 = call i32 @test.Test.get(ptr %t, i64 %sub1)
+  %4 = call i64 @test.Test.len(ptr %t)
+  %sub2 = sub i64 %4, 1
+  %5 = call ptr @test.Test.get_ref(ptr %t, i64 %sub2)
+  %6 = call i64 @test.Test.len(ptr %t)
+  %sub3 = sub i64 %6, 1
+  %7 = call ptr @test.Test.get_ref(ptr %t, i64 %sub3)
+  %8 = call i32 (ptr, ...) @printf(ptr @.str, i32 %1, i32 %3, ptr %5, ptr %7)
+  ret void
+}
