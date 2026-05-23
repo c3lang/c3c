@@ -1,3 +1,3 @@
-$echo untypedlist::kind;
-$echo untypedlist::qname;
-$echo untypedlist::alignment;
+$assert untypedlist::kind == UNTYPEDLIST;
+$assert untypedlist::qname == "untypedlist";
+$assert untypedlist::alignment == 1;
