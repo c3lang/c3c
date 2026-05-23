@@ -39,9 +39,10 @@ constdef Win32_FreeType : Win32_DWORD
 
 constdef Win32_FileMapAccess : Win32_DWORD
 {
-	FILE_MAP_COPY  = 0x0001,
-	FILE_MAP_WRITE = 0x0002,
-	FILE_MAP_READ  = 0x0004,
+	FILE_MAP_COPY    = 0x0001,
+	FILE_MAP_WRITE   = 0x0002,
+	FILE_MAP_READ    = 0x0004,
+	FILE_MAP_EXECUTE = 0x0008,
 }
 
 extern fn Win32_LPVOID virtualAlloc(Win32_LPVOID lpAddress, Win32_SIZE_T dwSize, Win32_AllocationType flAllocationType, Win32_Protect flProtect) @cname("VirtualAlloc");

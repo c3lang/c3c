@@ -113,3 +113,25 @@ fn void map_from_filename() @test
 	}
 }
 
+fn void test_vm_mmap_invalid_args() @test
+{
+	String fname = random_name();
+	char[] msg = "Hello, world";
+	file::save(fname, msg)!!;
+
+	File f = file::open(fname, "r")!!;
+	defer f.close()!!;
+
+	// Size of 0 should fail with INVALID_ARGS
+	if (catch err = vm::mmap_file(f.fd(), 0, 0, vm::VirtualMemoryAccess.READ))
+	{
+		assert(err == vm::INVALID_ARGS);
+	}
+
+	// Unaligned offset should fail (on POSIX, offset must be page aligned; on Win32, must be allocation granularity aligned)
+	// We pass 1 (unaligned) which should fail on both platforms.
+	if (catch err = vm::mmap_file(f.fd(), 5, 1, vm::VirtualMemoryAccess.READ))
+	{
+		assert(err == vm::INVALID_ARGS);
+	}
+}

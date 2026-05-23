@@ -233,6 +233,7 @@ fn void? decommit(void* ptr, sz len, bool block = true)
 *>
 fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::POSIX)
 {
+	if (size == 0) return INVALID_ARGS~;
 	CInt flags = shared ? posix::MAP_SHARED : posix::MAP_PRIVATE;
 	void* ptr = posix::mmap(null, (usz)aligned_alloc_size(size), access.to_posix(), flags, fd, offset);
 	if (ptr != posix::MAP_FAILED) return ptr;
@@ -255,20 +256,40 @@ fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = 
 
  @param fd : "File descriptor"
  @param size : "Number of bytes to map, will be rounded up to page size"
- @param offset : "Byte offset in file, must be page size aligned"
+ @param offset : "Byte offset in file, must be aligned to the system allocation granularity"
  @param access : "The initial access permissions"
  @param shared : "if True changes are shared/written back, else private (copy-on-write)"
- @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
+ @return? mem::OUT_OF_MEMORY, UNKNOWN_ERROR, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID
  @return "Pointer to the mapped region"
 *>
 fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::WIN32)
 {
+	if (size == 0) return INVALID_ARGS~;
 	Win32_HANDLE h_file = (Win32_HANDLE)win32::_get_osfhandle(fd);
 	if (h_file == (void*)uptr::max) return io::FILE_NOT_VALID~;
 
-	bool is_write = access == WRITE || access == READWRITE;
-	Win32_Protect protect = is_write ? (shared ? PAGE_READWRITE : PAGE_WRITECOPY) : PAGE_READONLY;
-	Win32_FileMapAccess map_access = is_write ? (shared ? FILE_MAP_WRITE : FILE_MAP_COPY) : FILE_MAP_READ;
+	Win32_Protect protect = access.to_win32();
+	// PAGE_NOACCESS is not accepted by CreateFileMapping (requires at least PAGE_READONLY)
+	if (protect == PAGE_NOACCESS) return INVALID_ARGS~;
+	// PAGE_EXECUTE alone is not valid for CreateFileMapping; the minimum is PAGE_EXECUTE_READ
+	if (protect == PAGE_EXECUTE) protect = PAGE_EXECUTE_READ;
+	if (!shared) switch (protect)
+	{
+		case PAGE_READWRITE:         protect = PAGE_WRITECOPY;
+		case PAGE_EXECUTE_READWRITE: protect = PAGE_EXECUTE_WRITECOPY;
+		default: break;
+	}
+
+	Win32_FileMapAccess map_access = FILE_MAP_READ;
+	switch (protect)
+	{
+		case PAGE_WRITECOPY:         map_access = FILE_MAP_COPY;
+		case PAGE_READWRITE:         map_access = FILE_MAP_WRITE;
+		case PAGE_EXECUTE_READ:      map_access = FILE_MAP_EXECUTE | FILE_MAP_READ;
+		case PAGE_EXECUTE_WRITECOPY: map_access = FILE_MAP_EXECUTE | FILE_MAP_COPY;
+		case PAGE_EXECUTE_READWRITE: map_access = FILE_MAP_EXECUTE | FILE_MAP_WRITE;
+		default: break;
+	}
 
 	Win32_HANDLE h_map = win32::createFileMappingW(h_file, null, protect, 0, 0, null);
 	if (!h_map)
@@ -290,7 +311,8 @@ fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = 
 	{
 		switch (win32::getLastError())
 		{
-			case win32::ERROR_INVALID_PARAMETER: return INVALID_ARGS~;
+			case win32::ERROR_INVALID_PARAMETER:
+			case win32::ERROR_MAPPED_ALIGNMENT:  return INVALID_ARGS~;
 			case win32::ERROR_ACCESS_DENIED:     return io::NO_PERMISSION~;
 			case win32::ERROR_NOT_ENOUGH_MEMORY: return mem::OUT_OF_MEMORY~;
 			default:                             return UNKNOWN_ERROR~;
