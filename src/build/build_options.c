@@ -537,6 +537,7 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_BENCHMARK;
 		options->benchmarking = true;
+		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("test"))

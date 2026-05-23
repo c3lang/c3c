@@ -723,12 +723,12 @@ fn sz? formatter_out_char(Formatter* f, any arg) @private
 	Char32 c = types::any_to_int(arg, uint) ?? 0xFFFD;
 	switch (true)
 	{
-		case c < 0x7f:
+		case c <= 0x7f:
 			f.print_char((char)c)!;
-		case c < 0x7ff:
+		case c <= 0x7ff:
 			f.print_char((char)(0xC0 | c >> 6))!;
 			f.print_char((char)(0x80 | (c & 0x3F)))!;
-		case c < 0xffff:
+		case c <= 0xffff:
 			f.print_char((char)(0xE0 | c >> 12))!;
 			f.print_char((char)(0x80 | (c >> 6 & 0x3F)))!;
 			f.print_char((char)(0x80 | (c & 0x3F)))!;

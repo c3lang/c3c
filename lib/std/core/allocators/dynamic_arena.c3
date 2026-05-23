@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2026 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem::allocators;
@@ -103,7 +103,7 @@ fn void*? DynamicArenaAllocator.resize(&self, void* old_pointer, sz size, sz ali
 		*old_size_ptr = size;
 		if (current_page.current_stack_ptr == old_pointer)
 		{
-			current_page.used = (sz)((old_pointer - DEFAULT_SIZE_PREFIX) - current_page.memory);
+			current_page.used = (sz)(old_pointer + size - current_page.memory);
 		}
 		return old_pointer;
 	}

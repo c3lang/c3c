@@ -76,7 +76,6 @@ fn void BackedArenaAllocator.reset(&self, sz mark)
 	ExtraPage *last_page = self.last_page;
 	while (last_page && last_page.mark > mark)
 	{
-		self.used = last_page.mark;
 		ExtraPage *to_free = last_page;
 		last_page = last_page.prev_page;
 		_free_page(self, to_free)!!;
@@ -120,7 +119,7 @@ fn void*? _realloc_page(BackedArenaAllocator* self, ExtraPage* page, sz size, sz
 	sz page_size = page.pagesize();
 	// Clear on size > original size.
 	void* data = self.acquire(size, NO_ZERO, alignment)!;
-	mem::copy(data, &page.data[0], page_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	mem::copy(data, &page.data[0], math::min(page_size, size), mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	self.backing_allocator.release(real_pointer, page.is_aligned());
 	return data;
 }

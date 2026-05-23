@@ -343,6 +343,53 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr);
 static void c_emit_ignored_expr(GenContext *c, Expr *expr);
 static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value);
 
+static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
+{
+	ExprCall *call = &expr->call_expr;
+
+	Expr **args = call->arguments;
+	Expr **varargs = call->varargs;
+	size_t num_args = vec_size(args);
+	size_t num_varargs = vec_size(varargs);
+	size_t total_num_args = num_args + num_varargs;
+
+	CValue *c_args = (CValue*)malloc(sizeof(CValue) * total_num_args);
+
+	for (size_t i = 0; i < num_args; i++)
+	{
+		c_emit_expr(c, &c_args[i], args[i]);
+	}
+	for (size_t i = 0; i < num_varargs; i++)
+	{
+		c_emit_expr(c, &c_args[i + num_args], varargs[i]);
+	}
+
+	if (!call->is_func_ref)
+	{
+		Expr *function = exprptr(call->function);
+		c_emit_expr(c, value, function);
+	}
+	else
+	{
+		Decl *function_decl = declptr(call->func_ref);
+		if (!call->no_return)
+		{
+			Type *return_type = typeget(function_decl->type->function.signature->rtype);
+			PRINTF("%s ___var_%d = ", c_type_name(c, return_type), c_emit_temp(c, value, return_type));
+		}
+		PRINT(function_decl->name);
+	}
+
+	PRINT("(");
+	for (size_t i = 0; i < total_num_args; i++)
+	{
+		if (i != 0) PRINT(", ");
+		PRINTF("___var_%d", c_args[i].var);
+	}
+	PRINT(");\n");
+	free(c_args);
+}
+
 static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Type *t = type_lowering(expr->type);
@@ -370,7 +417,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			return;
 		case CONST_STRING:
 			PRINTF("%s ___var_%d = ", c_type_name(c, t), c_emit_temp(c, value, t));
-			if(t->type_kind == TYPE_SLICE)
+			if (t->type_kind == TYPE_SLICE)
 			{
 				PRINT("{ ");
 			}
@@ -386,7 +433,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 				PRINTF("\\%d%d%d", b / 64, (b % 64) / 8, b % 8);
 			}
 			PRINT("\"");
-			if(t->type_kind == TYPE_SLICE)
+			if (t->type_kind == TYPE_SLICE)
 			{
 				PRINTF(", %llu }", (unsigned long long)expr->const_expr.bytes.len);
 			}
@@ -571,7 +618,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_BUILTIN_ACCESS:
 			break;
 		case EXPR_CALL:
-			break;
+			c_emit_call_expr(c, value, expr);
+			return;
 		case EXPR_CATCH:
 			break;
 		case EXPR_COND:
@@ -920,6 +968,54 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 	}*/
 }
 
+/*
+	TODO:
+	When implementing continue/break and the labeled varients, some data
+	will need to be pushed about what the labels will be called
+	These labels will then need to be emitted here
+*/
+static void c_emit_for_stmt(GenContext *c, Ast *stmt)
+{
+	// We emit a while loop because thats more flexible
+	AstForStmt *for_stmt = &stmt->for_stmt;
+	CValue initializer_expr, condition_expr;
+	if (for_stmt->init) c_emit_expr(c, &initializer_expr, exprptr(for_stmt->init));
+	if (for_stmt->cond) c_emit_expr(c, &condition_expr, exprptr(for_stmt->cond));
+
+	PRINTF("while (___var_%d)\n{\n", condition_expr.var);
+	c_emit_stmt(c, astptrzero(for_stmt->body));
+	if (for_stmt->incr)
+	{
+		CValue in_loop_incr;
+		c_emit_expr(c, &in_loop_incr, exprptr(for_stmt->incr));
+		PRINTF("___var_%d = ___var_%d;\n", initializer_expr.var, in_loop_incr.var);
+	}
+	if (for_stmt->cond)
+	{
+		CValue in_loop_cond;
+		c_emit_expr(c, &in_loop_cond, exprptr(for_stmt->cond));
+		PRINTF("___var_%d = ___var_%d;\n", condition_expr.var, in_loop_cond.var);
+	}
+
+	PRINT("}\n");
+
+}
+
+static void c_emit_if_stmt(GenContext *c, Ast *stmt)
+{
+	AstIfStmt *if_stmt = &stmt->if_stmt;
+	CValue condition;
+	c_emit_expr(c, &condition, exprptr(if_stmt->cond));
+
+	PRINTF("if (___var_%d)\n", condition.var);
+	c_emit_stmt(c, astptrzero(if_stmt->then_body));
+	if (if_stmt->else_body)
+	{
+		PRINT("else");
+		c_emit_stmt(c, astptrzero(if_stmt->else_body));
+	}
+}
+
 static void c_emit_stmt(GenContext *c, Ast *stmt)
 {
 	if (!stmt) return;
@@ -976,12 +1072,13 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 			c_emit_expr_stmt(c, stmt);
 			return;
 		case AST_FOR_STMT:
-			PRINT("/* FOR */\n");
-			break;
+			c_emit_for_stmt(c, stmt);
+			return;
 		case AST_FOREACH_STMT:
 			break;
 		case AST_IF_STMT:
-			break;
+			c_emit_if_stmt(c, stmt);
+			return;
 		case AST_NOP_STMT:
 			PRINT(";\n");
 			return;

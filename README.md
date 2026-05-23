@@ -379,7 +379,8 @@ For Gentoo-specific issues, please use the [Gentoo Bugzilla](https://bugs.gentoo
 2. Download the zip file: [https://github.com/c3lang/c3c/releases/latest/download/c3-macos.zip](https://github.com/c3lang/c3c/releases/latest/download/c3-macos.zip)
    (debug version [here](https://github.com/c3lang/c3c/releases/latest/download/c3-macos-debug.zip))
 3. Unzip executable and standard lib.
-4. Run `./c3c`.
+4. Because it is not signed, you need to approve it: `xattr -d com.apple.quarantine c3c`
+5. Run `./c3c`.
 
 (*Note that there is a known issue with debug symbol generation on MacOS 13, see [issue #1086](https://github.com/c3lang/c3c/issues/1086))
 

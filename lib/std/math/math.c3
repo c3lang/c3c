@@ -657,7 +657,12 @@ macro float float.roundeven(float x) => $$roundeven(x);
 macro float float.trunc(float x) => $$trunc(x);
 macro float float.to_degrees(float radians) => radians * (float)(180 / PI);
 macro float float.to_radians(float degrees) => degrees * (float)(PI / 180);
-
+macro float float.nexthigher(float value)
+{
+	if (is_nan(value) || is_inf(value)) return value;
+	if (value == 0) return bitcast(1, float);
+	return bitcast(bitcast(value, uint) + 1, float);
+}
 macro double double.ceil(double x) => $$ceil(x);
 macro double double.clamp(double x, double lower, double upper) => $$max(lower, $$min(x, upper));
 macro double double.copysign(double mag, double sgn) => $$copysign(mag, sgn);
@@ -672,6 +677,12 @@ macro double double.roundeven(double x) => $$roundeven(x);
 macro double double.trunc(double x) => $$trunc(x);
 macro double double.to_degrees(double radians) => radians * (180 / PI);
 macro double double.to_radians(double degrees) => degrees * (PI / 180);
+macro double double.nexthigher(double value)
+{
+	if (is_nan(value) || is_inf(value)) return value;
+	if (value == 0) return bitcase(1UL, double);
+	return bitcast(bitcast(value, ulong) + 1, double);
+}
 
 macro char char.sat_add(char x, char y) => $$sat_add(x, y);
 macro char char.sat_sub(char x, char y) => $$sat_sub(x, y);

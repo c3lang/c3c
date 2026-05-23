@@ -5,7 +5,8 @@ module std::collections::set <Value>;
 import std::math;
 import std::io @norecurse;
 
-const LinkedHashSet LINKEDONHEAP = { .allocator = SET_HEAP_ALLOCATOR };
+alias LINKEDONHEAP = ORDEREDONHEAP;
+const OrderedSet ORDEREDONHEAP = { .allocator = SET_HEAP_ALLOCATOR };
 
 struct LinkedEntry
 {
@@ -19,7 +20,8 @@ struct LinkedEntry
 	LinkedEntry* after;
 }
 
-struct LinkedHashSet (Printable)
+alias LinkedHashSet @deprecated("Use OrderedSet") = OrderedSet;
+struct OrderedSet (Printable)
 {
 	LinkedEntry*[] table;
 	Allocator allocator;
@@ -33,7 +35,7 @@ struct LinkedHashSet (Printable)
 	LinkedEntry* tail;
 }
 
-fn sz LinkedHashSet.len(&self) @operator(len) => self.count;
+fn sz OrderedSet.len(&self) @operator(len) => self.count;
 
 <*
  @param [&inout] allocator : "The allocator to use"
@@ -42,7 +44,7 @@ fn sz LinkedHashSet.len(&self) @operator(len) => self.count;
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashSet* LinkedHashSet.init(&self, Allocator allocator, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn OrderedSet* OrderedSet.init(&self, Allocator allocator, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
@@ -61,7 +63,7 @@ fn LinkedHashSet* LinkedHashSet.init(&self, Allocator allocator, sz capacity = D
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashSet* LinkedHashSet.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn OrderedSet* OrderedSet.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init(tmem, capacity, load_factor) @inline;
 }
@@ -73,7 +75,7 @@ fn LinkedHashSet* LinkedHashSet.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPAC
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro LinkedHashSet* LinkedHashSet.init_with_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro OrderedSet* OrderedSet.init_with_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	$for var $i = 0; $i < $vaarg.len; $i++:
@@ -88,20 +90,20 @@ macro LinkedHashSet* LinkedHashSet.init_with_values(&self, Allocator allocator, 
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro LinkedHashSet* LinkedHashSet.tinit_with_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro OrderedSet* OrderedSet.tinit_with_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_with_values(tmem, ...$vaarg, capacity: capacity, load_factor: load_factor);
 }
 
 <*
- @param [in] values : "The values for the LinkedHashSet"
+ @param [in] values : "The values for the OrderedSet"
  @param [&inout] allocator : "The allocator to use"
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashSet* LinkedHashSet.init_from_values(&self, Allocator allocator, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn OrderedSet* OrderedSet.init_from_values(&self, Allocator allocator, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	foreach (v : values) self.add(v);
@@ -109,13 +111,13 @@ fn LinkedHashSet* LinkedHashSet.init_from_values(&self, Allocator allocator, Val
 }
 
 <*
- @param [in] values : "The values for the LinkedHashSet entries"
+ @param [in] values : "The values for the OrderedSet entries"
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashSet* LinkedHashSet.tinit_from_values(&self, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn OrderedSet* OrderedSet.tinit_from_values(&self, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_from_values(tmem, values, capacity, load_factor);
 }
@@ -126,7 +128,7 @@ fn LinkedHashSet* LinkedHashSet.tinit_from_values(&self, Value[] values, sz capa
  @param [&in] set : "The linked hash set we are testing"
  @return "Returns true if it has been initialized, false otherwise"
 *>
-fn bool LinkedHashSet.is_initialized(&set)
+fn bool OrderedSet.is_initialized(&set)
 {
 	return set.allocator && set.allocator.ptr != &dummy;
 }
@@ -136,13 +138,13 @@ fn bool LinkedHashSet.is_initialized(&set)
  @param [&in] other_set : "The set to copy from."
  @require !self.is_initialized() : "Set was already initialized"
 *>
-fn LinkedHashSet* LinkedHashSet.init_from_set(&self, Allocator allocator, LinkedHashSet* other_set)
+fn OrderedSet* OrderedSet.init_from_set(&self, Allocator allocator, OrderedSet* other_set)
 {
 	self.init(allocator, other_set.table.len, other_set.load_factor);
 	LinkedEntry* entry = other_set.head;
 	while (entry) // Save insertion order
 	{
-		linkedhashset_put_for_create(self, entry.value);
+		orderedset_put_for_create(self, entry.value);
 		entry = entry.after;
 	}
 	return self;
@@ -152,7 +154,7 @@ fn LinkedHashSet* LinkedHashSet.init_from_set(&self, Allocator allocator, Linked
  @param [&in] other_set : "The set to copy from."
  @require !set.is_initialized() : "Set was already initialized"
 *>
-fn LinkedHashSet* LinkedHashSet.tinit_from_set(&set, LinkedHashSet* other_set)
+fn OrderedSet* OrderedSet.tinit_from_set(&set, OrderedSet* other_set)
 {
 	return set.init_from_set(tmem, other_set) @inline;
 }
@@ -163,7 +165,7 @@ fn LinkedHashSet* LinkedHashSet.tinit_from_set(&set, LinkedHashSet* other_set)
  @return "true if it is empty"
  @pure
 *>
-fn bool LinkedHashSet.is_empty(&set) @inline
+fn bool OrderedSet.is_empty(&set) @inline
 {
 	return !set.count;
 }
@@ -175,7 +177,7 @@ fn bool LinkedHashSet.is_empty(&set) @inline
  @return "The number of new elements added"
  @ensure total <= list.len
 *>
-fn int LinkedHashSet.add_all(&set, Value[] list)
+fn int OrderedSet.add_all(&set, Value[] list)
 {
 	int total;
 	foreach (v : list)
@@ -190,7 +192,7 @@ fn int LinkedHashSet.add_all(&set, Value[] list)
  @return "The number of new elements added"
  @ensure return <= other.count
 *>
-fn int LinkedHashSet.add_all_from(&set, LinkedHashSet* other)
+fn int OrderedSet.add_all_from(&set, OrderedSet* other)
 {
 	int total;
 	other.@each(;Value value)
@@ -204,7 +206,7 @@ fn int LinkedHashSet.add_all_from(&set, LinkedHashSet* other)
  @param value : "The value to add"
  @return "true if the value didn't exist in the set"
 *>
-fn bool LinkedHashSet.add(&set, Value value)
+fn bool OrderedSet.add(&set, Value value)
 {
 	// If the set isn't initialized, use the defaults to initialize it.
 	switch (set.allocator.ptr)
@@ -222,14 +224,14 @@ fn bool LinkedHashSet.add(&set, Value value)
 	{
 		if (e.hash == hash && equals(value, e.value)) return false;
 	}
-	linkedhashset_add_entry(set, hash, value, index);
+	orderedset_add_entry(set, hash, value, index);
 	return true;
 }
 
 <*
  Iterate over all the values in the set
 *>
-macro LinkedHashSet.@each(set; @body(value))
+macro OrderedSet.@each(set; @body(value))
 {
 	if (!set.count) return;
     LinkedEntry* entry = set.head;
@@ -246,7 +248,7 @@ macro LinkedHashSet.@each(set; @body(value))
  @param value : "The value to check"
  @return "true if it exists in the set"
 *>
-fn bool LinkedHashSet.contains(&set, Value value)
+fn bool OrderedSet.contains(&set, Value value)
 {
 	if (!set.count) return false;
 	uint hash = rehash(value.hash());
@@ -263,17 +265,17 @@ fn bool LinkedHashSet.contains(&set, Value value)
  @param value : "The value to remove"
  @return? NOT_FOUND : "If the entry is not found"
 *>
-fn void? LinkedHashSet.remove(&set, Value value) @maydiscard
+fn void? OrderedSet.remove(&set, Value value) @maydiscard
 {
-	if (!linkedhashset_remove_entry_for_value(set, value)) return NOT_FOUND~;
+	if (!orderedset_remove_entry_for_value(set, value)) return NOT_FOUND~;
 }
 
-fn int LinkedHashSet.remove_all(&set, Value[] values)
+fn int OrderedSet.remove_all(&set, Value[] values)
 {
 	int total;
 	foreach (v : values)
 	{
-		if (linkedhashset_remove_entry_for_value(set, v)) total++;
+		if (orderedset_remove_entry_for_value(set, v)) total++;
 	}
 	return total;
 }
@@ -281,12 +283,12 @@ fn int LinkedHashSet.remove_all(&set, Value[] values)
 <*
  @param [&in] other : "Other set"
 *>
-fn int LinkedHashSet.remove_all_from(&set, LinkedHashSet* other)
+fn int OrderedSet.remove_all_from(&set, OrderedSet* other)
 {
 	int total;
 	other.@each(;Value val)
     {
-		if (linkedhashset_remove_entry_for_value(set, val)) total++;
+		if (orderedset_remove_entry_for_value(set, val)) total++;
     };
     return total;
 }
@@ -294,11 +296,11 @@ fn int LinkedHashSet.remove_all_from(&set, LinkedHashSet* other)
 <*
  Free all memory allocated by the hash set.
 *>
-fn void LinkedHashSet.free(&set)
+fn void OrderedSet.free(&set)
 {
 	if (!set.is_initialized()) return;
 	set.clear();
-	linkedhashset_free_internal(set, set.table.ptr);
+	orderedset_free_internal(set, set.table.ptr);
 	set.table = {};
 }
 
@@ -307,7 +309,7 @@ fn void LinkedHashSet.free(&set)
 
  @ensure set.count == 0
 *>
-fn void LinkedHashSet.clear(&set)
+fn void OrderedSet.clear(&set)
 {
 	if (!set.count) return;
 
@@ -315,7 +317,7 @@ fn void LinkedHashSet.clear(&set)
 	while (entry)
 	{
 		LinkedEntry* next = entry.after;
-		linkedhashset_free_entry(set, entry);
+		orderedset_free_entry(set, entry);
 		entry = next;
 	}
 
@@ -329,11 +331,11 @@ fn void LinkedHashSet.clear(&set)
 	set.tail = null;
 }
 
-fn void LinkedHashSet.reserve(&set, int capacity)
+fn void OrderedSet.reserve(&set, int capacity)
 {
 	if (capacity > set.threshold)
 	{
-		linkedhashset_resize(set, math::next_power_of_2(capacity));
+		orderedset_resize(set, math::next_power_of_2(capacity));
 	}
 }
 
@@ -346,17 +348,17 @@ fn void LinkedHashSet.reserve(&set, int capacity)
  @param [&inout] allocator : "Allocator for the new set"
  @return "A new set containing the union of both sets"
 *>
-fn LinkedHashSet LinkedHashSet.set_union(&self, Allocator allocator, LinkedHashSet* other)
+fn OrderedSet OrderedSet.set_union(&self, Allocator allocator, OrderedSet* other)
 {
 	int new_capacity = math::next_power_of_2(self.count + other.count);
-	LinkedHashSet result;
+	OrderedSet result;
 	result.init(allocator, new_capacity, self.load_factor);
 	result.add_all_from(self);
 	result.add_all_from(other);
 	return result;
 }
 
-fn LinkedHashSet LinkedHashSet.tset_union(&self, LinkedHashSet* other) => self.set_union(tmem, other) @inline;
+fn OrderedSet OrderedSet.tset_union(&self, OrderedSet* other) => self.set_union(tmem, other) @inline;
 
 <*
  Returns the intersection of the two sets (A & B)
@@ -365,14 +367,14 @@ fn LinkedHashSet LinkedHashSet.tset_union(&self, LinkedHashSet* other) => self.s
  @param [&inout] allocator : "Allocator for the new set"
  @return "A new set containing the intersection of both sets"
 *>
-fn LinkedHashSet LinkedHashSet.intersection(&self, Allocator allocator, LinkedHashSet* other)
+fn OrderedSet OrderedSet.intersection(&self, Allocator allocator, OrderedSet* other)
 {
-	LinkedHashSet result;
+	OrderedSet result;
 	result.init(allocator, (int)math::min(self.table.len, other.table.len), self.load_factor);
 
 	// Iterate through the smaller set for efficiency
-	LinkedHashSet* smaller = self.count <= other.count ? self : other;
-	LinkedHashSet* larger = self.count > other.count ? self : other;
+	OrderedSet* smaller = self.count <= other.count ? self : other;
+	OrderedSet* larger = self.count > other.count ? self : other;
 
 	smaller.@each(;Value value)
     {
@@ -382,7 +384,7 @@ fn LinkedHashSet LinkedHashSet.intersection(&self, Allocator allocator, LinkedHa
 	return result;
 }
 
-fn LinkedHashSet LinkedHashSet.tintersection(&self, LinkedHashSet* other) => self.intersection(tmem, other) @inline;
+fn OrderedSet OrderedSet.tintersection(&self, OrderedSet* other) => self.intersection(tmem, other) @inline;
 
 <*
  Return this set - other, so (A & ~B)
@@ -391,9 +393,9 @@ fn LinkedHashSet LinkedHashSet.tintersection(&self, LinkedHashSet* other) => sel
  @param [&inout] allocator : "Allocator for the new set"
  @return "A new set containing elements in this set but not in the other"
 *>
-fn LinkedHashSet LinkedHashSet.difference(&self, Allocator allocator, LinkedHashSet* other)
+fn OrderedSet OrderedSet.difference(&self, Allocator allocator, OrderedSet* other)
 {
-	LinkedHashSet result;
+	OrderedSet result;
 	result.init(allocator, self.table.len, self.load_factor);
 	self.@each(;Value value)
 	{
@@ -405,7 +407,7 @@ fn LinkedHashSet LinkedHashSet.difference(&self, Allocator allocator, LinkedHash
 	return result;
 }
 
-fn LinkedHashSet LinkedHashSet.tdifference(&self, LinkedHashSet* other) => self.difference(tmem, other) @inline;
+fn OrderedSet OrderedSet.tdifference(&self, OrderedSet* other) => self.difference(tmem, other) @inline;
 
 <*
  Return (A ^ B)
@@ -414,9 +416,9 @@ fn LinkedHashSet LinkedHashSet.tdifference(&self, LinkedHashSet* other) => self.
  @param [&inout] allocator : "Allocator for the new set"
  @return "A new set containing elements in this set or the other, but not both"
 *>
-fn LinkedHashSet LinkedHashSet.symmetric_difference(&self, Allocator allocator, LinkedHashSet* other)
+fn OrderedSet OrderedSet.symmetric_difference(&self, Allocator allocator, OrderedSet* other)
 {
-	LinkedHashSet result;
+	OrderedSet result;
 	result.init(allocator, self.table.len, self.load_factor);
 	result.add_all_from(self);
 	other.@each(;Value value)
@@ -429,7 +431,7 @@ fn LinkedHashSet LinkedHashSet.symmetric_difference(&self, Allocator allocator, 
 	return result;
 }
 
-fn LinkedHashSet LinkedHashSet.tsymmetric_difference(&self, LinkedHashSet* other) => self.symmetric_difference(tmem, other) @inline;
+fn OrderedSet OrderedSet.tsymmetric_difference(&self, OrderedSet* other) => self.symmetric_difference(tmem, other) @inline;
 
 <*
  Check if this hash set is a subset of another set.
@@ -437,7 +439,7 @@ fn LinkedHashSet LinkedHashSet.tsymmetric_difference(&self, LinkedHashSet* other
  @param [&in] other : "The other set to check against"
  @return "True if all elements of this set are in the other set"
 *>
-fn bool LinkedHashSet.is_subset(&self, LinkedHashSet* other)
+fn bool OrderedSet.is_subset(&self, OrderedSet* other)
 {
 	if (self.count == 0) return true;
 	if (self.count > other.count) return false;
@@ -450,7 +452,7 @@ fn bool LinkedHashSet.is_subset(&self, LinkedHashSet* other)
 
 // --- private methods
 
-fn void linkedhashset_add_entry(LinkedHashSet* set, uint hash, Value value, int bucket_index) @private
+fn void orderedset_add_entry(OrderedSet* set, uint hash, Value value, int bucket_index) @private
 {
 	LinkedEntry* entry = alloc::new(set.allocator, LinkedEntry, {
 		.hash = hash,
@@ -477,11 +479,11 @@ fn void linkedhashset_add_entry(LinkedHashSet* set, uint hash, Value value, int 
 
 	if (set.count++ >= set.threshold)
 	{
-		linkedhashset_resize(set, set.table.len * 2);
+		orderedset_resize(set, set.table.len * 2);
 	}
 }
 
-fn void linkedhashset_resize(LinkedHashSet* set, int new_capacity) @private
+fn void orderedset_resize(OrderedSet* set, int new_capacity) @private
 {
 	LinkedEntry*[] old_table = set.table;
 	int old_capacity = old_table.len;
@@ -551,10 +553,10 @@ fn void linkedhashset_resize(LinkedHashSet* set, int new_capacity) @private
 		}
 	}
 
-	linkedhashset_free_internal(set, old_table.ptr);
+	orderedset_free_internal(set, old_table.ptr);
 }
 
-fn sz? LinkedHashSet.to_format(&self, Formatter* f) @dynamic
+fn sz? OrderedSet.to_format(&self, Formatter* f) @dynamic
 {
 	sz len;
 	len += f.print("{ ")!;
@@ -567,7 +569,7 @@ fn sz? LinkedHashSet.to_format(&self, Formatter* f) @dynamic
 }
 
 
-fn void linkedhashset_put_for_create(LinkedHashSet* set, Value value) @private
+fn void orderedset_put_for_create(OrderedSet* set, Value value) @private
 {
 	uint hash = rehash(value.hash());
 	int i = index_for(hash, set.table.len);
@@ -579,15 +581,15 @@ fn void linkedhashset_put_for_create(LinkedHashSet* set, Value value) @private
 			return;
 		}
 	}
-	linkedhashset_create_entry(set, hash, value, i);
+	orderedset_create_entry(set, hash, value, i);
 }
 
-fn void linkedhashset_free_internal(LinkedHashSet* set, void* ptr) @inline @private
+fn void orderedset_free_internal(OrderedSet* set, void* ptr) @inline @private
 {
 	alloc::free(set.allocator, ptr);
 }
 
-fn void linkedhashset_create_entry(LinkedHashSet* set, uint hash, Value value, int bucket_index) @private
+fn void orderedset_create_entry(OrderedSet* set, uint hash, Value value, int bucket_index) @private
 {
 	LinkedEntry* entry = alloc::new(set.allocator, LinkedEntry, {
 		.hash = hash,
@@ -614,7 +616,7 @@ fn void linkedhashset_create_entry(LinkedHashSet* set, uint hash, Value value, i
 	set.count++;
 }
 
-fn bool linkedhashset_remove_entry_for_value(LinkedHashSet* set, Value value) @private
+fn bool orderedset_remove_entry_for_value(OrderedSet* set, Value value) @private
 {
 	if (!set.count) return false;
 
@@ -655,7 +657,7 @@ fn bool linkedhashset_remove_entry_for_value(LinkedHashSet* set, Value value) @p
 			}
 
 			set.count--;
-			linkedhashset_free_entry(set, e);
+			orderedset_free_entry(set, e);
 			return true;
 		}
 		prev = e;
@@ -664,21 +666,22 @@ fn bool linkedhashset_remove_entry_for_value(LinkedHashSet* set, Value value) @p
 	return false;
 }
 
-fn void linkedhashset_free_entry(LinkedHashSet* set, LinkedEntry *entry) @private
+fn void orderedset_free_entry(OrderedSet* set, LinkedEntry *entry) @private
 {
 	alloc::free(set.allocator, entry);
 }
 
-struct LinkedHashSetIterator
+alias LinkedHashSetIterator @deprecated("Use OrderedSetIterator") = OrderedSetIterator;
+struct OrderedSetIterator
 {
-	LinkedHashSet* set;
+	OrderedSet* set;
 	LinkedEntry* current;
 	bool started;
 }
 
-fn LinkedHashSetIterator LinkedHashSet.iter(&set) => { .set = set, .current = set.head, .started = false };
+fn OrderedSetIterator OrderedSet.iter(&set) => { .set = set, .current = set.head, .started = false };
 
-fn bool LinkedHashSetIterator.next(&self)
+fn bool OrderedSetIterator.next(&self)
 {
 	if (!self.started)
 	{
@@ -692,18 +695,18 @@ fn bool LinkedHashSetIterator.next(&self)
 	return self.current != null;
 }
 
-fn Value*? LinkedHashSetIterator.get(&self)
+fn Value*? OrderedSetIterator.get(&self)
 {
 	return self.current ? &self.current.value : NOT_FOUND~;
 }
 
-fn bool LinkedHashSetIterator.has_next(&self)
+fn bool OrderedSetIterator.has_next(&self)
 {
 	if (!self.started) return self.set.head != null;
 	return self.current && self.current.after != null;
 }
 
-fn sz LinkedHashSetIterator.len(&self) @operator(len)
+fn sz OrderedSetIterator.len(&self) @operator(len)
 {
     return self.set.count;
 }

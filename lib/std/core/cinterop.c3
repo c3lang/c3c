@@ -69,7 +69,7 @@ typedef CVaList = void*;
 macro CVaList.next(&self, $Type)
 {
 	void *ptr = mem::aligned_pointer((void*)*self, max($Type::alignment, 8));
-	defer *self = (CVaList)(ptr + 1);
+	defer *self = (CVaList)(ptr + $Type.size);
 	return *($Type*)ptr;
 }
 

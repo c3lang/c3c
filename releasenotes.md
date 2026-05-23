@@ -3,11 +3,16 @@
 ## 0.8.1 Change list
 
 ### Changes / improvements
+- Add `$$PROJECT_PATH`, accessible through `env::PROJECT_PATH`.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
 - Add `values::expand` to turn strings containing expressions into values.
 - Enhanced `path::ls` functionality, like searching for wildcard.
+- `LinkedHashMap` renamed `OrderedMap`, `LinkedHashSet` renamed `OrderedSet`. Old names are deprecated.
+- Added initial cpudetect on Linux / MacOS Aarch64.
+- Enable libc::errno for FreeBSD.
+- Checking filesize on Win32 now correctly reports errors. Getting the filesize now rejects directories.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
@@ -16,6 +21,29 @@
 - Vectors stored in unions lowered incorrectly causing an assert #3234
 - Segmentation fault during library fetch when the "dependencies" key is missing in project.json. #3233
 - `.tags` would crash if no attribute with arguments were present.
+- `Rect.merge_point` would sometimes result in a point outside of the rect.
+- Possible array overflow in `SortedMap`.
+- Possible memory overwrite in BackingArenaAllocator on realloc.
+- Realloc could cause data corruption in DynamicArenaAllocator.
+- OnStackAllocator would not correctly clear memory on calloc.
+- Vmem temp allocator would not correctly free all vmem on destroy.
+- Wasm memory allocation could overallocate unnecessarily.
+- VirtualMemory contract off by one error.
+- CPU detect of leaf7 on x86 incorrect.
+- Fixed project benchmark target parsing. #3237
+- Incorrect type on `UIntLE` and `UIntBE`.
+- CVaList would behave different incorrectly for types larger than 8 bytes on some platforms.
+- UTF32 BOM detection was broken.
+- Sort from DString.less was inconsistent.
+- Fix io::skip using 'read' vs 'read_byte', causing an error.
+- `Slice2d.slice` incorrectly handled slices with x/y offset and 0/negative length together.
+- `String.to_integer` incorrectly accepted some invalid characters for hex.
+- Removed broken `StringIterator.get`.
+- Fix to refcount behaviour, preventing issue on release.
+- `File.close` should always invalidate the pointer on close, even on failures.
+- Overlong conversions to unicode for `%c` at boundaries.
+- Do not rely on implicit allocation for getcwd.
+- Skipping symlinks wasn't properly implemented for Win32.
 
 ## 0.8.0 Change list
 

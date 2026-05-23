@@ -619,7 +619,7 @@ macro void? skip(stream, sz bytes)
 			{
 				for (sz i = 0; i < bytes; i++)
 				{
-					stream.read()!;
+					stream.read_byte()!;
 				}
 				return;
 			}
@@ -629,7 +629,7 @@ macro void? skip(stream, sz bytes)
 		$default:
 			for (sz i = 0; i < bytes; i++)
 			{
-				stream.read()!;
+				stream.read_byte()!;
 			}
 	$endswitch
 }

@@ -117,6 +117,7 @@ run_cli_tests() {
         cd "$MY_WORK_DIR"
         "$C3C_BIN" init-lib mylib
         "$C3C_BIN" init myproject
+        (cd myproject && "$C3C_BIN" benchmark myproject --suppress-run)
         rm -rf mylib.c3l myproject
     )
 
