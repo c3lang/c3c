@@ -2473,7 +2473,7 @@ bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);
-bool expr_may_addr(Expr *expr);
+bool expr_may_ref(Expr *expr);
 bool expr_in_int_range(Expr *expr, int64_t low, int64_t high);
 bool expr_is_unwrapped_ident(Expr *expr);
 bool expr_is_zero(Expr *expr);

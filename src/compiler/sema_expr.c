@@ -760,7 +760,7 @@ FAILED_REF:
 	return false;
 }
 
-static bool expr_may_ref(Expr *expr)
+bool expr_may_ref(Expr *expr)
 {
 	switch (expr->expr_kind)
 	{

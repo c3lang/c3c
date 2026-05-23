@@ -1729,7 +1729,7 @@ SKIP_OVERLOAD:;
 	}
 	else
 	{
-		if (expr_may_addr(enumerator))
+		if (expr_may_ref(enumerator))
 		{
 			is_addr = true;
 			expr_insert_addr(enumerator);
