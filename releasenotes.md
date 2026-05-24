@@ -44,6 +44,7 @@
 - Overlong conversions to unicode for `%c` at boundaries.
 - Do not rely on implicit allocation for getcwd.
 - Skipping symlinks wasn't properly implemented for Win32.
+- Reverse indexing a value that overloads indexing would index an anonymous copy of the value.
 
 ## 0.8.0 Change list
 
