@@ -45,6 +45,7 @@
 - Do not rely on implicit allocation for getcwd.
 - Skipping symlinks wasn't properly implemented for Win32.
 - Reverse indexing a value that overloads indexing would index an anonymous copy of the value.
+- Fix case where member.set would hit an assert.
 
 ## 0.8.0 Change list
 
