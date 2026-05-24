@@ -3811,6 +3811,7 @@ static inline bool sema_call_analyse_member_set(SemaContext *context, Expr *expr
 	access->type = type_add_optional(decl->type, IS_OPTIONAL(inner));
 	access->resolve_status = RESOLVE_DONE;
 	expr->expr_kind = EXPR_BINARY;
+	expr->resolve_status = RESOLVE_RUNNING;
 	expr->binary_expr = (ExprBinary) { .left =  exprid(access), .right = exprid(arg), .operator = BINARYOP_ASSIGN };
 	return sema_expr_analyse_binary(context, NULL, expr, NULL);
 }
@@ -4451,11 +4452,20 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 				if (failed_ref) return *failed_ref = true, false;
 				RETURN_SEMA_ERROR(subscripted, "Cannot index '%s' from the end, since there is no 'len' overload.", type_to_error_string(subscripted->type));
 			}
+			bool addr = expr_may_ref(current_expr);
+			if (addr)
+			{
+				expr_insert_addr(current_expr);
+			}
 			if (!sema_analyse_expr_rvalue(context, current_expr)) return false;
 			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_PARAM, current_expr->loc);
 			Expr *decl = expr_generate_decl(temp, expr_copy(current_expr));
 			expr_rewrite_two(current_expr, decl, expr_variable(temp));
 			if (!sema_analyse_expr_rvalue(context, current_expr)) return false;
+			if (addr)
+			{
+				if (!sema_expr_rewrite_insert_deref(context, current_expr)) return false;
+			}
 			Expr *var_for_len = expr_variable(temp);
 			Expr *len_expr = expr_new(EXPR_CALL, expr->loc);
 			if (!sema_insert_method_call(context, len_expr, len, var_for_len, NULL, false)) return false;
