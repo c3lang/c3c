@@ -824,6 +824,7 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
+		case TYPE_UNTYPEDLIST:
 		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
 			UNREACHABLE;
@@ -852,7 +853,6 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 			}
 			return alignment;
 		}
-		case TYPE_UNTYPEDLIST:
 		case TYPE_VOID:
 			return 1;
 		case TYPE_OPTIONAL:

@@ -1,3 +1,4 @@
 $assert untypedlist::kind == UNTYPEDLIST;
 $assert untypedlist::qname == "untypedlist";
-$assert untypedlist::alignment == 1;
+$assert(!$defined(untypedlist::alignment));
+$assert(!$defined(untypedlist::size));
