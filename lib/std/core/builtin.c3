@@ -180,7 +180,7 @@ macro bool may_member_eq($Type) @builtin @const
 	$foreach $member : $Type::members:
 		// Using |= here instead of `return false;` prevents this macro from generating many runtime return lines,
 		//   especially in the case that many of the struct fields meet this condition.
-		$ret = $ret ||| !$defined($member.get($a) == $member.get($b));
+		$ret = $ret ||| !$defined($a.$member == $b.$member);
 	$endforeach
 	return !$ret;
 }
@@ -197,7 +197,7 @@ macro bool member_eq(left, right) @builtin
 {
 	bool res = true;
 	$foreach $member : $Typeof(left)::members:
-		res = res && ($member.get(left) == $member.get(right));
+		res = res && (left.$member == right.$member);
 	$endforeach
 	return res;
 }
