@@ -606,7 +606,10 @@ void compiler_compile(void)
 					OUTF("Object file %s created.\n", compiler.obj_output);
 					break;
 				}
-				OUTF("Object files written to %s.\n", compiler.build.object_file_dir);
+				if (compiler.build.emit_object_files)
+				{
+					OUTF("Object files written to %s.\n", compiler.build.object_file_dir);
+				}
 				break;
 			case TARGET_TYPE_PREPARE:
 				break;
