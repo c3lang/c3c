@@ -2,8 +2,12 @@
  @require types::is_float(Num) || types::is_int(Num) : "Only integer or floating point rectangles are supported"
 *>
 module std::math::geometry::rectangle <Num>;
+import std::io;
+import std::math;
 
-union Rectangle
+alias Bounds @local = BoundingBox {Num};
+
+union Rectangle (Printable)
 {
 	struct
 	{
@@ -103,6 +107,16 @@ fn bool Rectangle.contains_rect(self, Rectangle other)
 }
 
 <*
+ Checks if the rectangle fully contains another bounding box.
+
+ @return "true if the rectangle fully contains the other bounding box"
+*>
+fn bool Rectangle.contains_bounds(self, Bounds other)
+{
+	return self.min().comp_le(other.min).and() && self.max().comp_ge(other.max).and();
+}
+
+<*
  Test if rectangles overlap.
 
  @param other : "The rectangle to compare with"
@@ -118,6 +132,17 @@ fn bool Rectangle.intersects(self, Rectangle other)
 		&& a.y < b.y + b.w;
 }
 
+<*
+ Test if a bounding box overlaps the rectangle.
+
+ @param other : "The bounding box to compare with"
+ @return "true if the bounding box overlaps"
+*>
+fn bool Rectangle.intersects_bounds(self, Bounds other)
+{
+	return self.origin.comp_lt(other.max).and() && self.max().comp_gt(other.min).and();
+}
+
 // Geometry operations
 
 <*
@@ -129,6 +154,20 @@ fn Rectangle Rectangle.merge(self, Rectangle other)
 {
 	Num[<2>] min = math::min(self.min(), other.min());
 	Num[<2>] max = math::max(self.max(), other.max());
+	return { .origin = min, .size = max - min };
+}
+
+<*
+ Merge a rectangle and bounding box into a rectangle large enough to contain both.
+
+ @ensure return.contains_rect(self) && return.contains_bounds(other)
+
+ @return "The smallest rectangle containing both"
+*>
+fn Rectangle Rectangle.merge_bounds(self, Bounds other)
+{
+	Num[<2>] min = math::min(self.min(), other.min);
+	Num[<2>] max = math::max(self.max(), other.max);
 	return { .origin = min, .size = max - min };
 }
 
@@ -239,4 +278,74 @@ fn Rectangle Rectangle.merge_point(self, Num[<2>] point)
 fn Num[<2>] Rectangle.clamp_point(self, Num[<2>] point)
 {
 	return math::min(self.max(), math::max(self.min(), point));
+}
+
+<*
+ Moves the rectangle by offset.
+
+ @return "The resulting rectangle"
+*>
+fn Rectangle Rectangle.offset(self, Num[<2>] offset) @operator_s(+) => { .origin = self.origin + offset, .size = self.size };
+
+<*
+ Moves the rectangle by subtracting offset.
+
+ @return "The resulting rectangle"
+*>
+fn Rectangle Rectangle.offset_sub(self, Num[<2>] offset) @operator_s(-) => { .origin = self.origin - offset, .size = self.size };
+
+<*
+ Moves the rectangle by offset.
+
+ @return "The resulting rectangle"
+*>
+fn Rectangle Rectangle.offset_self(&self, Num[<2>] offset) @operator(+=)
+{
+	self.origin += offset;
+	return *self;
+}
+
+<*
+ Moves the rectangle by subtracting offset.
+
+ @return "The resulting rectangle"
+*>
+fn Rectangle Rectangle.offset_self_sub(&self, Num[<2>] offset) @operator(-=)
+{
+	self.origin -= offset;
+	return *self;
+}
+
+// Conversions
+
+<*
+ Check if two rectangles are equal.
+
+ @return "true if both are equal"
+*>
+fn bool Rectangle.equals(self, Rectangle other) @operator_s(==)
+{
+	return self.v == other.v;
+}
+
+<*
+ Check if a rectangles is equal to a bounding box.
+
+ @return "true if both are equal"
+*>
+fn bool Rectangle.equals_bounds(self, Bounds other) @operator_s(==)
+{
+	return self.min() == other.min && self.max() == other.max;
+}
+
+<*
+ Converts the bounding box into a Rect.
+
+ @return "The Rect"
+*>
+fn Bounds Rectangle.to_bounds(self) => { .min = self.min(), .max = self.max() };
+
+fn sz? Rectangle.to_format(&self, Formatter* formatter) @dynamic
+{
+	return formatter.printf("[%f, %f, %f, %f]", self.origin.x, self.origin.y, self.size.x, self.size.y);
 }

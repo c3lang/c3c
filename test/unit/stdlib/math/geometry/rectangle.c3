@@ -123,9 +123,26 @@ fn void test_merge_point2()
 
 }
 
+fn void test_offset()
+{
+	Rect b = { 0, 0, 10, 10 };
+	Rect e = b + { 10, 5 };
+	assert(e.v == {10,5,10,10});
+	e = b - { 10, 5 };
+	assert(e.v == {-10,-5,10,10});
+}
+
 fn void test_clamp_point()
 {
 	Rect r = { 0, 0, 10, 10 };
 	assert(r.clamp_point({-5,5}) == {0,5});
 	assert(r.clamp_point({0,15}) == {0,10});
+}
+
+fn void test_conversion()
+{
+	Bounds b = { { -10, -10 }, { 10, 10 } };
+	Rect r = { -10, -10, 20, 20 };
+	assert(b == r);
+	assert(b.to_rect().v == r.v);
 }
