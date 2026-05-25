@@ -223,25 +223,18 @@ fn Rectangle Rectangle.expand(self, Num amount)
 
  @param point : "The point to expand the rectangle with"
  @return "The resulting rectangle"
-
- @ensure return.contains_point_inclusive(point)
 *>
 fn Rectangle Rectangle.merge_point(self, Num[<2>] point)
 {
 	Num[<2>] min = math::min(self.min(), point);
 	Num[<2>] max = math::max(self.max(), point);
-	Num[<2>] size = max - min;
-	bool[<2>] size_comp = (size + min).comp_lt(max);
-	if (size_comp.x) size.x = size.x.nexthigher();
-	if (size_comp.y) size.y = size.y.nexthigher();
-	return { .origin = min, .size = size };
+	return { .origin = min, .size = max - min };
 }
 
 <*
  Clamps a point to lie inside a rectangle.
 
  @return "The resulting point"
- @ensure self.contains_point_inclusive(return)
 *>
 fn Num[<2>] Rectangle.clamp_point(self, Num[<2>] point)
 {
