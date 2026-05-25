@@ -14,6 +14,7 @@
 - Enable libc::errno for FreeBSD.
 - Checking filesize on Win32 now correctly reports errors. Getting the filesize now rejects directories.
 - `Rect.contains_point` is now exclusive on the maximum edge.
+- Add `Bounds` - a rectangular region stored as a `min` and `max` value, with all operations being inclusive along the boundary edge.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
