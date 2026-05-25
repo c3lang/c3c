@@ -47,6 +47,7 @@
 - Skipping symlinks wasn't properly implemented for Win32.
 - Reverse indexing a value that overloads indexing would index an anonymous copy of the value.
 - Fix case where member.set would hit an assert.
+- Same type casts would not become rvalues.
 
 ## 0.8.0 Change list
 

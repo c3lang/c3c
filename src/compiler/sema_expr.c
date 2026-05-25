@@ -7297,7 +7297,16 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 	{
 		if (!cast_explicit(context, inner, target_type)) return expr_poison(expr);
 	}
-	expr_replace(expr, inner);
+	if (!expr_is_simple(inner, false) || !expr_is_simple(inner, true))
+	{
+		expr->expr_kind = EXPR_RVALUE;
+		expr->type = inner->type;
+		expr->inner_expr = inner;
+	}
+	else
+	{
+		expr_replace(expr, inner);
+	}
 	return true;
 }
 
