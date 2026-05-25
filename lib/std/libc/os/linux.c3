@@ -256,7 +256,7 @@ constdef Speed : CUInt
 	MAX_BAUD = B4000000,
 }
 
-constdef Cc : inline char
+constdef Control_Char : inline CInt
 {
 	VINTR    = 0,
 	VQUIT    = 1,
@@ -302,7 +302,10 @@ extern fn Speed cfgetispeed(Termios* self);
 extern fn CInt cfsetospeed(Termios* self, Speed speed);
 extern fn CInt cfsetispeed(Termios* self, Speed speed);
 
+alias Cc = char;
+
 const CInt NCCS = 32;
+
 struct Termios
 {
 	Tc_iflags c_iflag;
