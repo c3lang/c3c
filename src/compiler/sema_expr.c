@@ -6720,6 +6720,10 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	Decl *decl;
 	Expr *current_parent;
 	bool optional;
+	const char *kw = NULL;
+	Type *type = NULL;
+	Type *flat_type = NULL;
+	TypeKind flat_kind = 0;
 	if (identifier->resolve_status == RESOLVE_DONE && expr_is_const_reflection(identifier))
 	{
 		Expr *reflect = identifier->const_expr.reflection;
@@ -6738,7 +6742,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 		current_parent = parent;
 		goto FOUND_MEMBER_REFLECT;
 	}
-	const char *kw = identifier->unresolved_ident_expr.ident;
+	kw = identifier->unresolved_ident_expr.ident;
 
 
 	switch (parent->expr_kind)
@@ -6801,9 +6805,9 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	// 8. Depending on parent type, we have some hard coded types
 	current_parent = parent;
 
-	Type *type = type_no_optional(parent->type)->canonical;
-	Type *flat_type = type_flatten(type);
-	TypeKind flat_kind = flat_type->type_kind;
+	type = type_no_optional(parent->type)->canonical;
+	flat_type = type_flatten(type);
+	flat_kind = flat_type->type_kind;
 	if (kw_type == kw)
 	{
 		if (type_is_any_raw(flat_type))
