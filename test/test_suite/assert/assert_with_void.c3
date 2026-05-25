@@ -25,7 +25,7 @@ macro deep_print(a)
             io::print("{");
             $foreach $i, $m : $Typeof(a)::members:
                 if ($i > 0) io::print(", ");
-                deep_print($m.get(a));
+                deep_print(a.$m);
             $endforeach
             io::print("}");
         $default:

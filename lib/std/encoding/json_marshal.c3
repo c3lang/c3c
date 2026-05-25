@@ -87,7 +87,7 @@ fn void? serialize(OutStream stream, Type value) <Type>
 		stream.write($member.name)!;
 		stream.write(`":`)!;
 
-		serialize_value{$member.type}(stream, $member.get(value))!;
+		serialize_value{$member.type}(stream, value.$member)!;
 	$endforeach
 	stream.write_byte('}')!;
 }

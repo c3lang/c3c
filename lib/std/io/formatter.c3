@@ -44,9 +44,9 @@ macro sz? struct_to_format(value, Formatter* f, bool $force_dump)
 		$endif
 		$if ($force_dump &&& ($member.kind == STRUCT || $member.kind == BITSTRUCT)) |||
 			is_struct_with_default_print($member.type):
-			total += struct_to_format($member.get(value), f, $force_dump)!;
+			total += struct_to_format(value.$member, f, $force_dump)!;
 		$else
-			total += f.printf("%s", $member.get(value))!;
+			total += f.printf("%s", value.$member)!;
 		$endif
 	$endforeach
 	return total + f.print(" }");

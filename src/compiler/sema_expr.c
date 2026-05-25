@@ -380,6 +380,7 @@ Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner,
 			case CT_EVAL_IDENTIFIER:
 				RETURN_VAL_SEMA_ERROR(poisoned_expr, inner, "'$eval' expects a constant string as the argument.");
 			case CT_EVAL_IMPLICIT_IDENTIFIER:
+				if (inner->resolve_status == RESOLVE_DONE && expr_is_const_reflection(inner)) return inner;
 				RETURN_VAL_SEMA_ERROR(poisoned_expr, inner, "A constant string was expected as the argument.");
 			default:
 				UNREACHABLE
@@ -3645,8 +3646,9 @@ INLINE bool sema_expr_analyse_lookup(SemaContext *context, Expr *expr, Expr *tag
 	if (!sema_analyse_expr_rvalue(context, key)) return false;
 	ArrayIndex index;
 
-	Expr *ident = sema_expr_resolve_access_child(context, args[0], NULL);
+	Expr *ident = sema_expr_resolve_access_child(context, args[0], NULL, false);
 	if (!ident) return false;
+	if (ident->expr_kind != EXPR_UNRESOLVED_IDENTIFIER) RETURN_SEMA_ERROR(expr, "This is not a field.");
 	const char *child = ident->unresolved_ident_expr.ident;
 	FOREACH_IDX(i, Decl *, param, decl->enums.parameters)
 	{
@@ -3754,9 +3756,8 @@ INLINE bool sema_call_may_not_have_attributes(SemaContext *context, Expr *expr)
 	return true;
 }
 
-INLINE bool sema_analyse_member_get_set_common(SemaContext *context, Decl *decl, Expr *inner, TypeKind *target_kind, ArrayIndex *index_ref)
+INLINE bool sema_analyse_member_in_type(SemaContext *context, Decl *decl, Expr *inner, TypeKind *target_kind, ArrayIndex *index_ref)
 {
-	if (!sema_analyse_expr_rvalue(context, inner)) return false;
 	Type *type = type_flatten(inner->type);
 	Decl **members;
 	switch ((*target_kind = type->type_kind))
@@ -3786,6 +3787,11 @@ INLINE bool sema_analyse_member_get_set_common(SemaContext *context, Decl *decl,
 		RETURN_SEMA_ERROR(inner, "The member does not belong to the type %s.", type_quoted_error_string(inner->type));
 	}
 	return true;
+}
+INLINE bool sema_analyse_member_get_set_common(SemaContext *context, Decl *decl, Expr *inner, TypeKind *target_kind, ArrayIndex *index_ref)
+{
+	if (!sema_analyse_expr_rvalue(context, inner)) return false;
+	return sema_analyse_member_in_type(context, decl, inner, target_kind, index_ref);
 }
 
 static inline bool sema_call_analyse_member_set(SemaContext *context, Expr *expr)
@@ -4981,7 +4987,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
  * 5. .$ident -> resolve as `$eval($ident)`
  * 6. .$Type -> It is a child to resolve as CT type param
  */
- Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing)
+ Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing, bool allow_reflect)
 {
 	 SourceLocId loc = child->loc;
 	 bool in_hash = false;
@@ -5011,6 +5017,7 @@ RETRY:
 				return NULL;
 			}
 			expr_replace(child, result);
+			if (result->resolve_status == RESOLVE_DONE && expr_is_const_reflection(result)) return child;
 			goto RETRY;
 		}
 		case EXPR_TYPEINFO:
@@ -5569,6 +5576,8 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		}
 		if (name == kw_set)
 		{
+			if (compiler.build.warnings.deprecation == WARNING_ERROR) RETURN_SEMA_ERROR(expr, "Use of deprecated $field.set(...), use a.$field instead");
+			SEMA_DEPRECATED(expr, "Use of deprecated $field.set(...), use a.$field instead");
 			expr->expr_kind = EXPR_MEMBER_SET;
 			expr->member_get_expr = member;
 			expr->type = type_void;
@@ -5576,6 +5585,8 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		}
 		if (name == kw_get)
 		{
+			if (compiler.build.warnings.deprecation == WARNING_ERROR) RETURN_SEMA_ERROR(expr, "Use of deprecated $field.get(...), use a.$field instead.");
+			SEMA_DEPRECATED(expr, "Use of deprecated $field.get(...), use a.$field instead.");
 			expr->expr_kind = EXPR_MEMBER_GET;
 			expr->member_get_expr = member;
 			expr->type = type_void;
@@ -6704,11 +6715,32 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	if (child->expr_kind == EXPR_TYPEINFO) RETURN_SEMA_ERROR(child, "A type can't appear here.");
 
 	// 3. Find the actual token.
-	Expr *identifier = sema_expr_resolve_access_child(context, child, missing_ref);
+	Expr *identifier = sema_expr_resolve_access_child(context, child, missing_ref, true);
 	if (!identifier) return false;
+	Decl *member;
+	Decl *decl;
+	Expr *current_parent;
+	bool optional;
+	if (identifier->resolve_status == RESOLVE_DONE && expr_is_const_reflection(identifier))
+	{
+		Expr *reflect = identifier->const_expr.reflection;
+		if (!expr_is_const_member(reflect)) RETURN_SEMA_ERROR(identifier, "Expected a member reference.");
+		optional = IS_OPTIONAL(parent);
+		Type *parent_type = type_no_optional(parent->type)->canonical;
+		if (parent_type->type_kind == TYPE_POINTER)
+		{
+			if (!sema_expr_rewrite_insert_deref(context, parent)) return false;
+		}
+		member = reflect->const_expr.member.decl;
+		TypeKind target_kind;
+		ArrayIndex index;
+		if (!sema_analyse_member_in_type(context, member, parent, &target_kind, &index)) return false;
+		decl = parent_type->decl;
+		current_parent = parent;
+		goto FOUND_MEMBER_REFLECT;
+	}
 	const char *kw = identifier->unresolved_ident_expr.ident;
 
-	Decl *decl;
 
 	switch (parent->expr_kind)
 	{
@@ -6751,7 +6783,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	if (!sema_may_subscript_or_access(context, parent, "have neither methods nor fields", missing_ref)) return false;
 
 	// 6. Copy failability
-	bool optional = IS_OPTIONAL(parent);
+	optional = IS_OPTIONAL(parent);
 
 	ASSERT_SPAN(expr, expr->expr_kind == EXPR_ACCESS_UNRESOLVED);
 	ASSERT_SPAN(expr, parent->resolve_status == RESOLVE_DONE);
@@ -6768,7 +6800,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	}
 
 	// 8. Depending on parent type, we have some hard coded types
-	Expr *current_parent = parent;
+	current_parent = parent;
 
 	Type *type = type_no_optional(parent->type)->canonical;
 	Type *flat_type = type_flatten(type);
@@ -6911,9 +6943,10 @@ CHECK_DEEPER:
 	// 10. Dump all members and methods into a decl stack.
 	decl = type->decl;
 
-	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_INTERFACES_AND_FIELDS);
+	member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_INTERFACES_AND_FIELDS);
 	if (!decl_ok(member)) return false;
 
+FOUND_MEMBER_REFLECT:
 	if (member && decl->decl_kind == DECL_ENUM && member->decl_kind == DECL_VAR && sema_cast_const(parent))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
@@ -7265,7 +7298,16 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 	{
 		if (!cast_explicit(context, inner, target_type)) return expr_poison(expr);
 	}
-	expr_replace(expr, inner);
+	if (!expr_is_simple(inner, false) || !expr_is_simple(inner, true))
+	{
+		expr->expr_kind = EXPR_RVALUE;
+		expr->type = inner->type;
+		expr->inner_expr = inner;
+	}
+	else
+	{
+		expr_replace(expr, inner);
+	}
 	return true;
 }
 
@@ -10671,7 +10713,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 		*member_ref = NULL;
 		return true;
 	}
-	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, is_missing);
+	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, is_missing, false);
 	if (!field) return false;
 	if (field->expr_kind != EXPR_UNRESOLVED_IDENTIFIER) RETURN_SEMA_ERROR(field, "Expected an identifier here.");
 	const char *kw = field->unresolved_ident_expr.ident;
