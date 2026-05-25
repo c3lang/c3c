@@ -77,6 +77,16 @@ fn bool Rectangle.is_empty(self)
 // Spatial queries
 
 <*
+ Checks if the rectangle fully contains another rectangle.
+
+ @return "true if the rectangle fully contains the other rectangle"
+*>
+fn bool Rectangle.contains(self, Rectangle other)
+{
+	return self.origin.comp_le(other.origin).and() && self.max().comp_ge(other.max()).and();
+}
+
+<*
  Check if a point is contained in the rectangle.
 
  @return "true if the point is inside of the rectangle"
@@ -94,16 +104,6 @@ fn bool Rectangle.contains_point(self, Num[<2>] point)
 fn bool Rectangle.contains_point_inclusive(self, Num[<2>] point)
 {
 	return self.origin.comp_le(point).and() && (self.origin + self.size).comp_ge(point).and();
-}
-
-<*
- Checks if the rectangle fully contains another rectangle.
-
- @return "true if the rectangle fully contains the other rectangle"
-*>
-fn bool Rectangle.contains(self, Rectangle other)
-{
-	return self.origin.comp_le(other.origin).and() && self.max().comp_ge(other.max()).and();
 }
 
 <*
@@ -168,6 +168,19 @@ fn Rectangle Rectangle.merge_bounds(self, Bounds other)
 {
 	Num[<2>] min = math::min(self.min(), other.min);
 	Num[<2>] max = math::max(self.max(), other.max);
+	return { .origin = min, .size = max - min };
+}
+
+<*
+ Expands the rectangle minimally to include a point.
+
+ @param point : "The point to expand the rectangle with"
+ @return "The resulting rectangle"
+*>
+fn Rectangle Rectangle.merge_point(self, Num[<2>] point)
+{
+	Num[<2>] min = math::min(self.min(), point);
+	Num[<2>] max = math::max(self.max(), point);
 	return { .origin = min, .size = max - min };
 }
 
@@ -255,19 +268,6 @@ fn Rectangle Rectangle.inset_clamped(self, Num amount)
 fn Rectangle Rectangle.expand(self, Num amount)
 {
 	return { .origin = self.origin - amount, .size = self.size + amount * 2};
-}
-
-<*
- Expands the rectangle minimally to include a point.
-
- @param point : "The point to expand the rectangle with"
- @return "The resulting rectangle"
-*>
-fn Rectangle Rectangle.merge_point(self, Num[<2>] point)
-{
-	Num[<2>] min = math::min(self.min(), point);
-	Num[<2>] max = math::max(self.max(), point);
-	return { .origin = min, .size = max - min };
 }
 
 <*
