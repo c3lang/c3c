@@ -9,7 +9,7 @@ fn void test_intersections()
 
 	assert(a.contains_point(a.min()));
 	assert(!a.contains_point(a.max()));
-	assert(a.contains_rect(a));
+	assert(a.contains(a));
 	assert(a.intersects(a));
 	assert(a.intersects(b));
 	assert(!a.intersects(c));

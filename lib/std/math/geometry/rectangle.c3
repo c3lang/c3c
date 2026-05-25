@@ -101,7 +101,7 @@ fn bool Rectangle.contains_point_inclusive(self, Num[<2>] point)
 
  @return "true if the rectangle fully contains the other rectangle"
 *>
-fn bool Rectangle.contains_rect(self, Rectangle other)
+fn bool Rectangle.contains(self, Rectangle other)
 {
 	return self.origin.comp_le(other.origin).and() && self.max().comp_ge(other.max()).and();
 }
@@ -160,7 +160,7 @@ fn Rectangle Rectangle.merge(self, Rectangle other)
 <*
  Merge a rectangle and bounding box into a rectangle large enough to contain both.
 
- @ensure return.contains_rect(self) && return.contains_bounds(other)
+ @ensure return.contains(self) && return.contains_bounds(other)
 
  @return "The smallest rectangle containing both"
 *>
@@ -248,7 +248,7 @@ fn Rectangle Rectangle.inset_clamped(self, Num amount)
  @require amount >= 0 : "Expected a positive or zero amount"
  @require amount * 2 + self.width >= 0 : "The amount would make the width negative"
  @require amount * 2 + self.height >= 0 : "The amount would make the height negative"
- @ensure return.contains_rect(self)
+ @ensure return.contains(self)
 
  @return "The resulting rectangle"
 *>
