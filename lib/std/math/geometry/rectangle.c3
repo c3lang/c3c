@@ -1,11 +1,7 @@
-module std::math;
-
-alias Rect = Rectangle {float};
-
 <*
  @require types::is_float(Num) || types::is_int(Num) : "Only integer or floating point rectangles are supported"
 *>
-module std::math::rectangle <Num>;
+module std::math::geometry::rectangle <Num>;
 
 union Rectangle
 {
