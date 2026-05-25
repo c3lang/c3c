@@ -129,24 +129,6 @@ fn bool BoundingBox.intersects_rect(self, Rect other)
 // Geometry operations
 
 <*
- Return the bounding box intersecting both bounding boxes.
-
- @param other : "The other bounding box to form the intersection with"
-
- @return? math::NO_INTERSECTION : "If the bounding boxes do not intersect"
- @return "The resulting intersection between the two"
-*>
-fn BoundingBox? BoundingBox.intersection(self, BoundingBox other)
-{
-	Num[<2>] min = math::max(self.min, other.min);
-	Num[<2>] max = math::min(self.max, other.max);
-
-	if (min.x > max.x || min.y > max.y) return math::NO_INTERSECTION~;
-
-	return { min, max };
-}
-
-<*
  Merge two bounding boxes into one enough to contain both.
 
  @ensure return.contains(self) && return.contains(other)
@@ -182,6 +164,24 @@ fn BoundingBox BoundingBox.merge_point(self, Vec point) => {
 	math::min(self.min, point),
 	math::max(self.max, point),
 };
+
+<*
+ Return the bounding box intersecting both bounding boxes.
+
+ @param other : "The other bounding box to form the intersection with"
+
+ @return? math::NO_INTERSECTION : "If the bounding boxes do not intersect"
+ @return "The resulting intersection between the two"
+*>
+fn BoundingBox? BoundingBox.intersection(self, BoundingBox other)
+{
+	Num[<2>] min = math::max(self.min, other.min);
+	Num[<2>] max = math::min(self.max, other.max);
+
+	if (min.x > max.x || min.y > max.y) return math::NO_INTERSECTION~;
+
+	return { min, max };
+}
 
 // Modification
 
