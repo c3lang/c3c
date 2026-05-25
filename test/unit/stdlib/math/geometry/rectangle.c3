@@ -123,6 +123,15 @@ fn void test_merge_point2()
 
 }
 
+fn void test_offset()
+{
+	Rect b = { 0, 0, 10, 10 };
+	Rect e = b + { 10, 5 };
+	assert(e.v == {10,5,10,10});
+	e = b - { 10, 5 };
+	assert(e.v == {-10,-5,10,10});
+}
+
 fn void test_clamp_point()
 {
 	Rect r = { 0, 0, 10, 10 };
@@ -214,4 +223,12 @@ fn void test_int_merge_point()
 	RectInt r4 = { 0, 0, 2, 47 };
 	RectInt e4 = r4.merge_point({5, 2});
 	assert(e4.max() == {5, 47});
+}
+
+fn void test_conversion()
+{
+	Bounds b = { { -10, -10 }, { 10, 10 } };
+	Rect r = { -10, -10, 20, 20 };
+	assert(b == r);
+	assert(b.to_rect().v == r.v);
 }
