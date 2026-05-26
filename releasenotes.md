@@ -55,6 +55,7 @@
 - `@return? bar!` didn't work if the identifier matched a macro.
 - Copying compile time strings during compile time folding with strings containing 0 would sometimes get truncated. #3267
 - Pem parsing did not correctly handle empty body, nor when the first line was too short.
+- Additional pem parsing bugs on malformed data handled.
 
 ## 0.8.0 Change list
 

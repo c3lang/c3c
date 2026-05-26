@@ -110,6 +110,18 @@ fn void decode_short_pre_eb_line()
 	test::@error(pem::decode(tmem, input), pem::INVALID_PRE_EB);
 }
 
+fn void decode_headers_only_no_body()
+{
+	String input = "-----BEGIN X-----\nkey: value\n-----END X-----\n";
+	test::@error(pem::decode(tmem, input), pem::MISSING_BODY);
+}
+
+fn void decode_multiline_header_runs_to_eb()
+{
+	String input = "-----BEGIN X-----\nkey: value\n continuation\n-----END X-----\n";
+	test::@error(pem::decode(tmem, input), pem::MISSING_BODY);
+}
+
 
 // =============================================================================================
 // These PEM blobs aren't 'real' in the sense that they're completely public. Tbh I kinda swiped
