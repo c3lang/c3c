@@ -359,7 +359,7 @@ static bool sema_expr_analyse_str_replace(SemaContext *context, Expr *expr, Expr
 			break;
 		}
 	}
-	expr_rewrite_const_string(expr, scratch_buffer_copy());
+	expr_rewrite_const_string_from_scratch(expr);
 	return true;
 }
 

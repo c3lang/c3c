@@ -2506,7 +2506,9 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v);
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
 INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
-void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string);
+INLINE void expr_rewrite_const_string_from_scratch(Expr *expr_to_rewrite);
+void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string, ArrayIndex len);
+void expr_rewrite_const_string_from_raw(Expr *expr_to_rewrite, const char *string);
 void expr_rewrite_const_ref(Expr *expr_to_rewrite, Decl *decl);
 
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
@@ -4777,3 +4779,8 @@ const char *default_c_compiler(void);
 void print_build_env(void);
 void print_asm(PlatformTarget *target);
 const char *os_type_to_string(OsType os);
+
+INLINE void expr_rewrite_const_string_from_scratch(Expr *expr_to_rewrite)
+{
+	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), scratch_buffer.len);
+}
