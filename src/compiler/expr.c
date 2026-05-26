@@ -1080,7 +1080,7 @@ void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string, ArrayI
 
 void expr_rewrite_const_string_from_raw(Expr *expr_to_rewrite, const char *string)
 {
-	return expr_rewrite_const_string(expr_to_rewrite, string, (ArrayIndex)strlen(string));
+	expr_rewrite_const_string(expr_to_rewrite, string, (ArrayIndex)strlen(string));
 }
 
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op)
