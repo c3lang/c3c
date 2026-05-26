@@ -179,8 +179,9 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 
 	// The Pre-Encapsulation-Boundary must be of the format: -----BEGIN TAG-----, where "TAG" can be any upper-case identifier [A-Z_ -/]
 	String pre_eb = lines[0];
-	if (pre_eb[0:11] != PRE_EB_PREFIX || pre_eb[^5..] != EB_DELIMITER) return INVALID_PRE_EB~;
-	String tag = pre_eb[PRE_EB_PREFIX.len..^6];
+	const PREFIX_LEN = PRE_EB_PREFIX.len;
+	if (pre_eb.len < PREFIX_LEN || pre_eb[0:PREFIX_LEN] != PRE_EB_PREFIX || pre_eb[^5..] != EB_DELIMITER) return INVALID_PRE_EB~;
+	String tag = pre_eb[PREFIX_LEN..^6];
 	if (!tag.len || !tag.trim().len) return MISSING_TAG~;
 	foreach (c : tag) if (!TAG_SET.contains(c)) return INVALID_TAG~;
 	result.tag = tag.copy(allocator);
@@ -206,15 +207,17 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 	*lines_io = lines[endl+1..];   // update the iterated slice of lines from the calling context - see: `decode`
 	lines = lines[1:endl-1];
 
+	if (!lines) return MISSING_BODY~;
+
 	// while there's a colon+space in the current line, we should assume that this is a key-value header pair
-	while (lines[0].contains(": "))
+	while (lines && lines[0].contains(": "))
 	{
 		if (!HEADER_KEY_SET.contains(lines[0][0])) return INVALID_HEADER~;   // not a multiline header? error out if the first char is not appropriate
 		String[] marker = lines;   // temporary marker
 		sz span = 1;   // how many lines this header spans
 
 		// Search for multi-line key-value pairs, indicated by a whitespace character beginning the current line.
-		for (lines = lines[1..]; lines[0].len > 0 && ascii::WHITESPACE_SET.contains(lines[0][0]); lines = lines[1..], span++);
+		for (lines = lines[1..]; lines && lines[0] && ascii::WHITESPACE_SET.contains(lines[0][0]); lines = lines[1..], span++);
 		foreach (&line : marker[:span]) *line = (*line).trim();   // always trim on both sides
 
 		String full_header = string::tjoin(marker[:span], " ");   // join the lines with a single space
@@ -231,14 +234,15 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 	}
 
 	// if any headers were present, the line after the headers MUST BE EMPTY
-	if (result.headers.len() > 0)
+	if (result.headers.len())
 	{
+		if (!lines) return MISSING_BODY~;
 		if (lines[0].trim().len > 0) return INVALID_FORMAT~;   // but we are forgiving about whitespace here
 		lines = lines[1..];
 	}
 
 	// Here, we assume lines[0] is the start of base64 data. This means there must be at least 1 line, of course.
-	if (lines.len < 1) return MISSING_BODY~;
+	if (!lines) return MISSING_BODY~;
 
 	// ... While the PEM format specifies a 64-character width on all but the last line of the base64 body,
 	//   this parser doesn't need to be particular about that as long as the base64 is ok

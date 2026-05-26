@@ -6,6 +6,7 @@
 - Add `$$PROJECT_PATH`, accessible through `env::PROJECT_PATH`.
 - Deprecate `$field.get(a)` and `$field.set(a, b)`. Replaced by `a.$field` and `a.$field = b`.
 - Add json pretty print
+- Add `a.$eval($field)` as a variant of `a.$field`.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
@@ -55,6 +56,8 @@
 - `Codepage.by_name` would not use normalized name.
 - `@return? bar!` didn't work if the identifier matched a macro.
 - Copying compile time strings during compile time folding with strings containing 0 would sometimes get truncated. #3267
+- Pem parsing did not correctly handle empty body, nor when the first line was too short.
+- Additional pem parsing bugs on malformed data handled.
 
 ## 0.8.0 Change list
 
