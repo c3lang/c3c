@@ -302,36 +302,16 @@
 			font-weight: bold;
 		}
 
-		.kind-function {
-			background: var(--hl-func);
-			color: var(--hl-text);
-		}
-
+		.kind-function,
 		.kind-macro {
 			background: var(--hl-func);
 			color: var(--hl-text);
 		}
 
-		.kind-struct {
-			background: var(--hl-type);
-			color: var(--hl-text);
-		}
-
-		.kind-union {
-			background: var(--hl-type);
-			color: var(--hl-text);
-		}
-
-		.kind-bitstruct {
-			background: var(--hl-type);
-			color: var(--hl-text);
-		}
-
-		.kind-enum {
-			background: var(--hl-type);
-			color: var(--hl-text);
-		}
-
+		.kind-struct,
+		.kind-union,
+		.kind-bitstruct,
+		.kind-enum,
 		.kind-interface {
 			background: var(--hl-type);
 			color: var(--hl-text);
@@ -366,10 +346,7 @@
 		}
 
 		.c3-function,
-		.c3-method {
-			color: var(--hl-func);
-		}
-
+		.c3-method,
 		.c3-macro,
 		.c3-macro_method {
 			color: var(--hl-func);
@@ -381,7 +358,8 @@
 
 		.c3-variable,
 		.c3-const,
-		.c3-constdef {
+		.c3-constdef,
+		.c3-number {
 			color: var(--hl-const);
 		}
 
@@ -389,16 +367,9 @@
 			color: var(--hl-str);
 		}
 
-		.c3-attribute {
-			color: var(--hl-comment);
-		}
-
+		.c3-attribute,
 		.c3-comment {
 			color: var(--hl-comment);
-		}
-
-		.c3-number {
-			color: var(--hl-const);
 		}
 
 		.secondary-text {
@@ -1184,7 +1155,7 @@
 			border: 1px solid var(--border);
 			color: var(--filter-fg);
 			font-weight: 600;
-			transition: all 0.2s;
+			transition: border-color 0.2s, color 0.2s, background-color 0.2s;
 			user-select: none;
 		}
 
