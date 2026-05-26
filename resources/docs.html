@@ -1490,7 +1490,28 @@
 			});
 		}
 
+		function preprocessDecl(decl) {
+			if (!decl) return;
+			const fixMembers = (members) => {
+				if (!members) return;
+				members.forEach(m => {
+					if (m.is_vararg && m.type && m.type.name && m.type.name.endsWith('[]')) {
+						m.type.name = m.type.name.slice(0, -2) + '...';
+					}
+					if (m.members) fixMembers(m.members);
+					if (m.params) fixMembers(m.params);
+				});
+			};
+			fixMembers(decl.members);
+			if (decl.variants) {
+				decl.variants.forEach(v => {
+					if (v.decl) preprocessDecl(v.decl);
+				});
+			}
+		}
+
 		function addOrMergeDeclaration(decl) {
+			preprocessDecl(decl);
 			const cleanDecl = { ...decl };
 			delete cleanDecl.targetName;
 			const declJson = JSON.stringify(cleanDecl);

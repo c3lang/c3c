@@ -196,6 +196,10 @@ static void emit_param_json(FILE *file, Module *module, Decl *p)
 		{
 			fputs(",\"is_ref\":true", file);
 		}
+		if (p->var.vararg)
+		{
+			fputs(",\"is_vararg\":true", file);
+		}
 	}
 	fputs("}", file);
 }
