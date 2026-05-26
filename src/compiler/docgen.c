@@ -312,6 +312,29 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 			scratch_buffer_append("*INVALID*");
 			break;
 	}
+	switch (type->subtype)
+	{
+		case TYPE_COMPRESSED_NONE:
+			break;
+		case TYPE_COMPRESSED_PTR:
+			scratch_buffer_append("*");
+			break;
+		case TYPE_COMPRESSED_SUB:
+			scratch_buffer_append("[]");
+			break;
+		case TYPE_COMPRESSED_SUBPTR:
+			scratch_buffer_append("[]*");
+			break;
+		case TYPE_COMPRESSED_PTRPTR:
+			scratch_buffer_append("**");
+			break;
+		case TYPE_COMPRESSED_PTRSUB:
+			scratch_buffer_append("*[]");
+			break;
+		case TYPE_COMPRESSED_SUBSUB:
+			scratch_buffer_append("[][]");
+			break;
+	}
 	if (type->optional) scratch_buffer_append("?");
 }
 
