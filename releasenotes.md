@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Add `$$PROJECT_PATH`, accessible through `env::PROJECT_PATH`.
 - Deprecate `$field.get(a)` and `$field.set(a, b)`. Replaced by `a.$field` and `a.$field = b`.
+- Add `a.$eval($field)` as a variant of `a.$field`.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
