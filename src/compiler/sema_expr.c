@@ -6720,25 +6720,28 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	Decl *decl;
 	Expr *current_parent;
 	bool optional;
+	const char *kw;
+	Type *underlying_type;
 	if (identifier->resolve_status == RESOLVE_DONE && expr_is_const_reflection(identifier))
 	{
 		Expr *reflect = identifier->const_expr.reflection;
 		if (!expr_is_const_member(reflect)) RETURN_SEMA_ERROR(identifier, "Expected a member reference.");
 		optional = IS_OPTIONAL(parent);
-		Type *parent_type = type_no_optional(parent->type)->canonical;
-		if (parent_type->type_kind == TYPE_POINTER)
+		underlying_type = type_no_optional(parent->type)->canonical;
+		if (underlying_type->type_kind == TYPE_POINTER)
 		{
 			if (!sema_expr_rewrite_insert_deref(context, parent)) return false;
 		}
 		member = reflect->const_expr.member.decl;
+		kw = member->name;
 		TypeKind target_kind;
 		ArrayIndex index;
 		if (!sema_analyse_member_in_type(context, member, parent, &target_kind, &index)) return false;
-		decl = parent_type->decl;
+		decl = underlying_type->decl;
 		current_parent = parent;
 		goto FOUND_MEMBER_REFLECT;
 	}
-	const char *kw = identifier->unresolved_ident_expr.ident;
+	kw = identifier->unresolved_ident_expr.ident;
 
 
 	switch (parent->expr_kind)
@@ -6788,7 +6791,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	ASSERT_SPAN(expr, parent->resolve_status == RESOLVE_DONE);
 
 	// 7. Is this a pointer? If so we insert a deref.
-	Type *underlying_type = type_no_optional(parent->type)->canonical;
+	underlying_type = type_no_optional(parent->type)->canonical;
 	while (times_to_deref > 0 && underlying_type->type_kind == TYPE_POINTER && underlying_type != type_voidptr)
 	{
 		times_to_deref--;
