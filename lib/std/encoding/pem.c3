@@ -179,8 +179,9 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 
 	// The Pre-Encapsulation-Boundary must be of the format: -----BEGIN TAG-----, where "TAG" can be any upper-case identifier [A-Z_ -/]
 	String pre_eb = lines[0];
-	if (pre_eb[0:11] != PRE_EB_PREFIX || pre_eb[^5..] != EB_DELIMITER) return INVALID_PRE_EB~;
-	String tag = pre_eb[PRE_EB_PREFIX.len..^6];
+	const PREFIX_LEN = PRE_EB_PREFIX.len;
+	if (pre_eb.len < PREFIX_LEN || pre_eb[0:PREFIX_LEN] != PRE_EB_PREFIX || pre_eb[^5..] != EB_DELIMITER) return INVALID_PRE_EB~;
+	String tag = pre_eb[PREFIX_LEN..^6];
 	if (!tag.len || !tag.trim().len) return MISSING_TAG~;
 	foreach (c : tag) if (!TAG_SET.contains(c)) return INVALID_TAG~;
 	result.tag = tag.copy(allocator);
@@ -205,6 +206,8 @@ fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 	// Now that the inner portion is decapsulated, tag is, strip off the boundaries.
 	*lines_io = lines[endl+1..];   // update the iterated slice of lines from the calling context - see: `decode`
 	lines = lines[1:endl-1];
+
+	if (!lines) return MISSING_BODY~;
 
 	// while there's a colon+space in the current line, we should assume that this is a key-value header pair
 	while (lines[0].contains(": "))
