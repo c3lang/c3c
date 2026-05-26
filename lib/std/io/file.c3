@@ -114,6 +114,7 @@ fn void? File.write_byte(&self, char c) @dynamic
 *>
 fn void? File.close(&self) @inline @dynamic @maydiscard
 {
+	defer self.file = null;
 	if (self.file && libc::fclose(self.file))
 	{
 		switch (libc::errno())
@@ -132,7 +133,6 @@ fn void? File.close(&self) @inline @dynamic @maydiscard
 			default: return io::UNKNOWN_ERROR~;
 		}
 	}
-	self.file = null;
 }
 
 fn long? File.size(&self) @dynamic

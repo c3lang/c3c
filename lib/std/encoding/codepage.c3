@@ -125,7 +125,7 @@ fn CodePage? by_name(String charset_name) => @pool()
 	name.convert_to_lower();
 	foreach (page : CodePage::values)
 	{
-		if (page.name == charset_name) return page;
+		if (page.name == name) return page;
 	}
 	return NOT_FOUND~;
 }

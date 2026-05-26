@@ -24,11 +24,11 @@ fn UnicodeBom detect_bom(char[] input)
 	if (input.len < 2) return NO_BOM;
 	switch (input)
 	{
-		case x'FEFF0000': return UTF32_LE;
+		case x'FFFE0000': return UTF32_LE;
 		case x'FEFF' : return UTF16_BE;
 		case x'FFFE' : return UTF16_LE;
 		case x'EFBBBF': return UTF8;
-		case x'0000FEFF': return UTF32_LE;
+		case x'0000FEFF': return UTF32_BE;
 		default: return NO_BOM;
 	}
 }

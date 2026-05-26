@@ -269,3 +269,204 @@ fn void x86_initialize_cpu_features()
 	add_feature_if_bit(XSAVES, leaf_d.eax, 3);
 
 }
+
+module std::core::cpudetect @if(env::AARCH64);
+
+enum Aarch64Feature
+{
+	AES,
+	ASIMD,           // Advanced SIMD (NEON) — mandatory on ARMv8-A
+	BF16,
+	BTI,
+	CRC32,
+	DIT,
+	DOTPROD,
+	DPB,             // FEAT_DPB / DCPOP
+	DPB2,            // FEAT_DPB2
+	EBF16,
+	F32MM,
+	F64MM,
+	FCMA,
+	FLAGM,
+	FLAGM2,
+	FP,              // Floating point — mandatory on ARMv8-A
+	FP16,            // Half-precision FP (FPHP)
+	FP16FML,         // FEAT_FHM
+	FRINTTS,
+	I8MM,
+	JSCVT,
+	LRCPC,
+	LRCPC2,
+	LRCPC3,
+	LSE,             // Large System Extensions (ATOMICS)
+	MEMTAG,          // MTE
+	MOPS,
+	PMULL,
+	RPRES,
+	RDM,
+	RNG,
+	SHA1,
+	SHA2,
+	SHA3,
+	SHA512,
+	SM3,
+	SM4,
+	SME,
+	SME2,
+	SME_F64F64,
+	SME_I16I64,
+	SSBS,
+	SVE,
+	SVE2,
+	SVE2_AES,
+	SVE2_BITPERM,
+	SVE2_SHA3,
+	SVE2_SM4,
+	SVE_BF16,
+	SVE_I8MM,
+	WFXT,
+}
+
+uint128 aarch64_features;
+
+<* Check whether a given CPU feature is set. *>
+macro bool has_cpu_flag(Aarch64Feature f) => (cpudetect::aarch64_features & (1ULL << f.ordinal)) != 0;
+
+fn void add_feature_if_bit(Aarch64Feature feature, ulong reg, int bit)
+{
+	if (reg & 1UL << bit) aarch64_features |= 1ULL << feature.ordinal;
+}
+
+fn void aarch64_initialize_cpu_features()
+{
+	$switch:
+		$case env::LINUX:
+		$case env::ANDROID:
+			ulong hwcap = getauxval(AT_HWCAP);
+			ulong hwcap2 = getauxval(AT_HWCAP2);
+			// HWCAP — https://raw.githubusercontent.com/torvalds/linux/master/arch/arm64/include/uapi/asm/hwcap.h
+			add_feature_if_bit(FP,       hwcap, 0);
+			add_feature_if_bit(ASIMD,    hwcap, 1);
+			add_feature_if_bit(AES,      hwcap, 3);
+			add_feature_if_bit(PMULL,    hwcap, 4);
+			add_feature_if_bit(SHA1,     hwcap, 5);
+			add_feature_if_bit(SHA2,     hwcap, 6);
+			add_feature_if_bit(CRC32,    hwcap, 7);
+			add_feature_if_bit(LSE,      hwcap, 8);
+			add_feature_if_bit(FP16,     hwcap, 9);
+			add_feature_if_bit(RDM,      hwcap, 12);
+			add_feature_if_bit(JSCVT,    hwcap, 13);
+			add_feature_if_bit(FCMA,     hwcap, 14);
+			add_feature_if_bit(LRCPC,    hwcap, 15);
+			add_feature_if_bit(DPB,      hwcap, 16);
+			add_feature_if_bit(SHA3,     hwcap, 17);
+			add_feature_if_bit(SM3,      hwcap, 18);
+			add_feature_if_bit(SM4,      hwcap, 19);
+			add_feature_if_bit(DOTPROD,  hwcap, 20);
+			add_feature_if_bit(SHA512,   hwcap, 21);
+			add_feature_if_bit(SVE,      hwcap, 22);
+			add_feature_if_bit(FP16FML,  hwcap, 23);
+			add_feature_if_bit(DIT,      hwcap, 24);
+			add_feature_if_bit(LRCPC2,   hwcap, 26);
+			add_feature_if_bit(FLAGM,    hwcap, 27);
+			add_feature_if_bit(SSBS,     hwcap, 28);
+			// HWCAP2
+			add_feature_if_bit(DPB2,         hwcap2, 0);
+			add_feature_if_bit(SVE2,         hwcap2, 1);
+			add_feature_if_bit(SVE2_AES,     hwcap2, 2);
+			add_feature_if_bit(SVE2_BITPERM, hwcap2, 4);
+			add_feature_if_bit(SVE2_SHA3,    hwcap2, 5);
+			add_feature_if_bit(SVE2_SM4,     hwcap2, 6);
+			add_feature_if_bit(FLAGM2,       hwcap2, 7);
+			add_feature_if_bit(FRINTTS,      hwcap2, 8);
+			add_feature_if_bit(SVE_I8MM,     hwcap2, 9);
+			add_feature_if_bit(F32MM,        hwcap2, 10);
+			add_feature_if_bit(F64MM,        hwcap2, 11);
+			add_feature_if_bit(SVE_BF16,     hwcap2, 12);
+			add_feature_if_bit(I8MM,         hwcap2, 13);
+			add_feature_if_bit(BF16,         hwcap2, 14);
+			add_feature_if_bit(RNG,          hwcap2, 16);
+			add_feature_if_bit(BTI,          hwcap2, 17);
+			add_feature_if_bit(MEMTAG,       hwcap2, 18);
+			add_feature_if_bit(RPRES,        hwcap2, 21);
+			add_feature_if_bit(SME,          hwcap2, 23);
+			add_feature_if_bit(SME_I16I64,   hwcap2, 24);
+			add_feature_if_bit(SME_F64F64,   hwcap2, 25);
+			add_feature_if_bit(WFXT,         hwcap2, 31);
+			add_feature_if_bit(EBF16,        hwcap2, 32);
+			add_feature_if_bit(SME2,         hwcap2, 37);
+			add_feature_if_bit(MOPS,         hwcap2, 43);
+			add_feature_if_bit(LRCPC3,       hwcap2, 46);
+		$case env::DARWIN:
+			// Add guaranteed features.
+			aarch64_features |= 1ULL << Aarch64Feature.FP.ordinal;
+			aarch64_features |= 1ULL << Aarch64Feature.ASIMD.ordinal;
+			add_feature_if_sysctl(AES,        "hw.optional.arm.FEAT_AES");
+			add_feature_if_sysctl(PMULL,      "hw.optional.arm.FEAT_PMULL");
+			add_feature_if_sysctl(SHA1,       "hw.optional.arm.FEAT_SHA1");
+			add_feature_if_sysctl(SHA2,       "hw.optional.arm.FEAT_SHA256");
+			add_feature_if_sysctl(SHA3,       "hw.optional.arm.FEAT_SHA3");
+			add_feature_if_sysctl(SHA512,     "hw.optional.arm.FEAT_SHA512");
+			add_feature_if_sysctl(SM3,        "hw.optional.arm.FEAT_SM3");
+			add_feature_if_sysctl(SM4,        "hw.optional.arm.FEAT_SM4");
+			add_feature_if_sysctl(CRC32,      "hw.optional.arm.FEAT_CRC32");
+
+			add_feature_if_sysctl(FP16FML,    "hw.optional.arm.FEAT_FHM");
+			add_feature_if_sysctl(DOTPROD,    "hw.optional.arm.FEAT_DotProd");
+			add_feature_if_sysctl(RDM,        "hw.optional.arm.FEAT_RDM");
+			add_feature_if_sysctl(LSE,        "hw.optional.arm.FEAT_LSE");
+			add_feature_if_sysctl(FRINTTS,    "hw.optional.arm.FEAT_FRINTTS");
+			add_feature_if_sysctl(LRCPC,      "hw.optional.arm.FEAT_LRCPC");
+			add_feature_if_sysctl(LRCPC2,     "hw.optional.arm.FEAT_LRCPC2");
+			add_feature_if_sysctl(FCMA,       "hw.optional.arm.FEAT_FCMA");
+			add_feature_if_sysctl(JSCVT,      "hw.optional.arm.FEAT_JSCVT");
+			add_feature_if_sysctl(DPB,        "hw.optional.arm.FEAT_DPB");
+			add_feature_if_sysctl(DPB2,       "hw.optional.arm.FEAT_DPB2");
+
+			add_feature_if_sysctl(BF16,       "hw.optional.arm.FEAT_BF16");
+			add_feature_if_sysctl(EBF16,      "hw.optional.arm.FEAT_EBF16");
+			add_feature_if_sysctl(I8MM,       "hw.optional.arm.FEAT_I8MM");
+			add_feature_if_sysctl(WFXT,       "hw.optional.arm.FEAT_WFxT");
+			add_feature_if_sysctl(RPRES,      "hw.optional.arm.FEAT_RPRES");
+
+			add_feature_if_sysctl(DIT,        "hw.optional.arm.FEAT_DIT");
+			add_feature_if_sysctl(FP16,       "hw.optional.arm.FEAT_FP16");
+			add_feature_if_sysctl(SSBS,       "hw.optional.arm.FEAT_SSBS");
+			add_feature_if_sysctl(BTI,        "hw.optional.arm.FEAT_BTI");
+			add_feature_if_sysctl(MEMTAG,     "hw.optional.arm.FEAT_MTE");
+
+			add_feature_if_sysctl(SME_F64F64, "hw.optional.arm.FEAT_SME_F64F64");
+			add_feature_if_sysctl(SME_I16I64, "hw.optional.arm.FEAT_SME_I16I64");
+			add_feature_if_sysctl(SME,        "hw.optional.arm.FEAT_SME");
+			add_feature_if_sysctl(SME2,       "hw.optional.arm.FEAT_SME2");
+		$default:
+			// Unsupported OS — features remain zero.
+			break;
+	$endswitch
+}
+
+
+module std::core::cpudetect @if(env::AARCH64 && (env::LINUX || env::ANDROID));
+
+const ulong AT_HWCAP = 16;
+const ulong AT_HWCAP2 = 26;
+
+extern fn ulong getauxval(ulong type);
+
+
+module std::core::cpudetect @if(env::AARCH64 && env::DARWIN);
+
+extern fn CInt sysctlbyname(ZString name, void* oldp, usz* oldlenp, void* newp, usz newlen);
+
+fn bool sysctl_bool(ZString name) @local
+{
+	int value;
+	usz size = int::size;
+	if (sysctlbyname(name, &value, &size, null, 0) != 0) return false;
+	return value != 0;
+}
+
+fn void add_feature_if_sysctl(Aarch64Feature feature, ZString name)
+{
+	if (sysctl_bool(name)) aarch64_features |= 1ULL << feature.ordinal;
+}

@@ -4,13 +4,19 @@
 
 ### Changes / improvements
 - Add `$$PROJECT_PATH`, accessible through `env::PROJECT_PATH`.
+- Deprecate `$field.get(a)` and `$field.set(a, b)`. Replaced by `a.$field` and `a.$field = b`.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
 - Add `values::expand` to turn strings containing expressions into values.
 - Enhanced `path::ls` functionality, like searching for wildcard.
 - `LinkedHashMap` renamed `OrderedMap`, `LinkedHashSet` renamed `OrderedSet`. Old names are deprecated.
-
+- Added initial cpudetect on Linux / MacOS Aarch64.
+- Enable libc::errno for FreeBSD.
+- Checking filesize on Win32 now correctly reports errors. Getting the filesize now rejects directories.
+- `ini::parse` and related takes an `error_line` argument to identify the line with error.
+- JSON marshaling will return INVALID_NUMBER when encountering a inf or NaN for a float.
+ 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
 - NPOT vectors as associated variables were incorrectly lowered on load. #3228
@@ -27,6 +33,29 @@
 - Wasm memory allocation could overallocate unnecessarily.
 - VirtualMemory contract off by one error.
 - CPU detect of leaf7 on x86 incorrect.
+- Fixed project benchmark target parsing. #3237
+- Incorrect type on `UIntLE` and `UIntBE`.
+- CVaList would behave different incorrectly for types larger than 8 bytes on some platforms.
+- UTF32 BOM detection was broken.
+- Sort from DString.less was inconsistent.
+- Fix io::skip using 'read' vs 'read_byte', causing an error.
+- `Slice2d.slice` incorrectly handled slices with x/y offset and 0/negative length together.
+- `String.to_integer` incorrectly accepted some invalid characters for hex.
+- Removed broken `StringIterator.get`.
+- Fix to refcount behaviour, preventing issue on release.
+- `File.close` should always invalidate the pointer on close, even on failures.
+- Overlong conversions to unicode for `%c` at boundaries.
+- Do not rely on implicit allocation for getcwd.
+- Skipping symlinks wasn't properly implemented for Win32.
+- Reverse indexing a value that overloads indexing would index an anonymous copy of the value.
+- Fix case where member.set would hit an assert.
+- Same type casts would not become rvalues.
+- Hex decoding would leak memory on failure.
+- `Codepage.by_name` would not use normalized name.
+- `@return? bar!` didn't work if the identifier matched a macro.
+- Copying compile time strings during compile time folding with strings containing 0 would sometimes get truncated. #3267
+- Pem parsing did not correctly handle empty body, nor when the first line was too short.
+- Additional pem parsing bugs on malformed data handled.
 
 ## 0.8.0 Change list
 

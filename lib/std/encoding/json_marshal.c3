@@ -21,10 +21,6 @@ macro bool may_serialize($Type) @const
 				$endif
 			$endforeach
 			return true;
-		$case ARRAY:
-		$case VECTOR:
-		$case SLICE:
-			return may_serialize($Typeof(($Type){}[0]));
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
 		$case FLOAT:
@@ -33,6 +29,9 @@ macro bool may_serialize($Type) @const
 			return true;
 		$case TYPEDEF:
 		$case CONSTDEF:
+		$case ARRAY:
+		$case VECTOR:
+		$case SLICE:
 			return may_serialize($Type::inner);
 		$default:
 			return false;
@@ -40,6 +39,7 @@ macro bool may_serialize($Type) @const
 }
 <*
  Marshal a struct with primitive fields and nested structs to JSON.
+ The struct may not contain a float which is inf or NaN.
 
  @param allocator: "The allocator to use for the result"
  @param value: "The struct value to marshal"
@@ -62,6 +62,7 @@ macro String marshal(Allocator allocator, value) => @pool()
  @param value: "The struct value to marshal"
  @require @kindof(value) == STRUCT
  @require may_serialize($Typeof(value)) : "Expected a serializable type"
+ @return? io::fprintf!, INVALID_NUMBER
 *>
 macro void? marshal_to(OutStream stream, value)
 {
@@ -69,7 +70,7 @@ macro void? marshal_to(OutStream stream, value)
 }
 
 module std::encoding::json @private;
-import std::io;
+import std::io, std::math;
 
 fn void? serialize(OutStream stream, Type value) <Type>
 {
@@ -87,7 +88,7 @@ fn void? serialize(OutStream stream, Type value) <Type>
 		stream.write($member.name)!;
 		stream.write(`":`)!;
 
-		serialize_value{$member.type}(stream, $member.get(value))!;
+		serialize_value{$member.type}(stream, value.$member)!;
 	$endforeach
 	stream.write_byte('}')!;
 }
@@ -96,6 +97,8 @@ fn void? serialize(OutStream stream, Type value) <Type>
  Marshal a primitive value to an output stream.
 
  @param value: "The value to marshal"
+ @return? INVALID_NUMBER : "If the float value is NaN or inf"
+ @return? io::fprintf! : "If there is an IO error"
 *>
 fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 {
@@ -111,12 +114,14 @@ fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 		$case UNSIGNED_INT:
 			io::fprintf(stream, "%d", value)!;
 		$case FLOAT:
+			if (math::is_nan(value) || math::is_inf(value)) return INVALID_NUMBER~;
 			io::fprintf(stream, "%g", value)!;
 		$case BOOL:
 			stream.write(value ? "true" : "false")!;
 		$case CONSTDEF:
 		$case TYPEDEF:
 			$switch (TypeElement):
+				// Special handling of String
 				$case String:
 					@pool() { stream.write(value.tescape(false))!; };
 				$default:
@@ -128,11 +133,7 @@ fn void? serialize_value(OutStream stream, TypeElement value) <TypeElement>
 			stream.write(value.description)!;
 			stream.write_byte('"')!;
 		$default:
-			$if TypeElement == String:
-				@pool() { stream.write(value.tescape(false))!; };
-			$else
-				$error "Unsupported type";
-			$endif
+			$error "Unsupported type";
 	$endswitch
 }
 

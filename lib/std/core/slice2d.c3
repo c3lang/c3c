@@ -163,7 +163,7 @@ macro void Slice2d.set_xy(self, x, y, Type value)
 *>
 fn Slice2d Slice2d.slice(&self, sz x = 0, sz xlen = 0, sz y = 0, sz ylen = 0)
 {
-	if (xlen < 1) xlen = self.xlen + xlen;
-	if (ylen < 1) ylen = self.ylen + ylen;
-	return { self.ptr, self.inner_len, y + self.ystart, ylen, x + self.xstart, xlen };
+	if (xlen < 1) xlen = self.xlen - x + xlen;
+	if (ylen < 1) ylen = self.ylen - y + ylen;
+	return { self.ptr, self.inner_len, y + self.ystart, ylen, x + self.xstart, xlen};
 }

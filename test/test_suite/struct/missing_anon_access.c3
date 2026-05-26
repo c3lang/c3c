@@ -6,6 +6,7 @@ struct Test
 fn void main()
 {
 	Test t;
-	Test::members[0].get(t).x;
-	Test::members[0].get(t).y; // #error: here is no field or method 'Test.(anon).y'
+	var $member = Test::members[0];
+	t.$member.x;
+	t.$member.y; // #error: here is no field or method 'Test.(anon).y'
 }
