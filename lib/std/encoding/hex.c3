@@ -19,9 +19,13 @@ fn String encode(Allocator allocator, char[] code)
 	return (String)data[:encode_bytes_into(data, code)];
 }
 
+<*
+  @require code.len % 2 == 0 : "code is not of even length"
+*>
 fn char[]? decode(Allocator allocator, char[] code)
 {
 	char[] data = alloc::alloc_array(allocator, char, decode_len(code.len));
+	defer catch alloc::free(allocator, data);
 	return data[:decode_bytes_into(data, code)!];
 }
 

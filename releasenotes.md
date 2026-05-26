@@ -14,6 +14,7 @@
 - Added initial cpudetect on Linux / MacOS Aarch64.
 - Enable libc::errno for FreeBSD.
 - Checking filesize on Win32 now correctly reports errors. Getting the filesize now rejects directories.
+- `ini::parse` and related takes an `error_line` argument to identify the line with error.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
@@ -48,6 +49,9 @@
 - Reverse indexing a value that overloads indexing would index an anonymous copy of the value.
 - Fix case where member.set would hit an assert.
 - Same type casts would not become rvalues.
+- Hex decoding would leak memory on failure.
+- `Codepage.by_name` would not use normalized name.
+- `@return? bar!` didn't work if the identifier matched a macro.
 
 ## 0.8.0 Change list
 
