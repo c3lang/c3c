@@ -23,6 +23,7 @@ const String EB_DELIMITER @local = "-----";
 const String PRE_EB_PREFIX @local = EB_DELIMITER +++ "BEGIN ";
 <* All PEM blobs will terminate with this Encapsulation Boundary prefix. *>
 const String POST_EB_PREFIX @local = EB_DELIMITER +++ "END ";
+const DEFAULT_WIDTH = 64;
 
 alias PemHeader = String[2];
 
@@ -57,7 +58,7 @@ struct Pem
 	<* A flexible 'tag' value used within the Encapsulation Boundary to denote the type of the PEM. *>
 	String tag;
 	<* A set of optional headers used to provide more context or information about the body of the PEM object. *>
-	LinkedHashMap{String, String} headers;
+	OrderedMap{String, String} headers;
 	<* The core boy data of the PEM itself - the main values to be transmitted in this format. *>
 	char[] data;
 }
@@ -127,6 +128,13 @@ fn void Pem.free(&self)
 	mem::zero_volatile(@as_char_view(*self));
 }
 
+<*
+ @param [in] key
+ @param [in] value
+
+ @require key.len > 0 : "Key was empty"
+ @require value.len > 0 : "Value was empty"
+*>
 fn void Pem.add_header(&self, String key, String value)
 {
 	(void)self.headers[key].free(self.allocator);
@@ -168,12 +176,18 @@ fn Pem[]? decode(Allocator allocator, String input) => @pool()
 fn Pem? _decode_single(Allocator allocator, String[]* lines_io) @local
 {
 	String[] lines = *lines_io;   // copy to local var
+	if (!lines) return INVALID_FORMAT~;
+
 	Pem result = { .allocator = allocator };
 	result.headers.init(allocator);
 	defer catch result.free();
 
 	// Remove any preceding whitespace-only lines.
-	while (lines[0].trim().len == 0) lines = lines[1..];
+	while (lines[0].trim().len == 0)
+	{
+		lines = lines[1..];
+		if (!lines) return INVALID_FORMAT~;
+	}
 
 	if (lines.len < 3) return INVALID_FORMAT~;   // at least 3 lines (pre-EB, body, post-EB) are always required
 
@@ -272,31 +286,19 @@ fn String? encode_pem(Pem pem, Allocator allocator, bool use_crlf = false)
 	@pool()
 	{
 		out.appendf(PRE_EB_PREFIX +++ "%s" +++ EB_DELIMITER +++ "%s", pem.tag, line_ending);
-		foreach KEY_ITER: (key : pem.headers.tkeys())
+		pem.headers.@each_entry(;entry)
 		{
-			if (!key.len) return HEADER_KEY_REQUIRED~;
-			String value = pem.headers[key]!!;
-			if (!value.len) return HEADER_VALUE_REQUIRED~;
-			sz first_line_length = 64 - 2 - key.len;
-			if (value.len <= first_line_length)
-			{
-				out.appendf("%s: %s%s", key, value, line_ending);
-				continue KEY_ITER;
-			}
-			out.appendf("%s: %s%s", key, value[:first_line_length].trim(), line_ending);
-			value = value[first_line_length..];
-			while (value.len > 0)
-			{
-				out.appendf(" %s%s", (value.len >= 63 ? value[:63] : value[..]).trim(), line_ending);
-				value = value.len >= 63 ? value[63..] : {};
-			}
-		}
+			if (!entry.key) return HEADER_KEY_REQUIRED~;
+			if (!entry.value) return HEADER_VALUE_REQUIRED~;
+			out.appendf("%s: %s%s", entry.key, entry.value, line_ending);
+		};
 		if (pem.headers.len() > 0) out.append(line_ending);
 		String body = base64::tencode(pem.data);
 		while (body.len > 0)
 		{
-			out.appendf("%s%s", body.len >= 64 ? body[:64] : body[..], line_ending);
-			body = body.len >= 64 ? body[64..] : {};
+			out.append(body.len >= DEFAULT_WIDTH ? body[:DEFAULT_WIDTH] : body[..]);
+			out.append(line_ending);
+			body = body.len >= DEFAULT_WIDTH ? body[DEFAULT_WIDTH..] : {};
 		}
 		out.appendf(POST_EB_PREFIX +++ "%s" +++ EB_DELIMITER +++ "%s", pem.tag, line_ending);
 	};
