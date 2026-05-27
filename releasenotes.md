@@ -17,7 +17,9 @@
 - Checking filesize on Win32 now correctly reports errors. Getting the filesize now rejects directories.
 - `ini::parse` and related takes an `error_line` argument to identify the line with error.
 - JSON marshaling will return INVALID_NUMBER when encountering a inf or NaN for a float.
- 
+- JSON decoding will reject `1.` literals.
+- JSON handling of UTF16 surrogate pairs fixed.
+
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
 - NPOT vectors as associated variables were incorrectly lowered on load. #3228
