@@ -6312,9 +6312,10 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 				default:
 					return false;
 			}
-		case TYPE_PROPERTY_KIND:
 		case TYPE_PROPERTY_SIZE:
 		case TYPE_PROPERTY_ALIGNMENT:
+			return type->type_kind != TYPE_UNTYPEDLIST;
+		case TYPE_PROPERTY_KIND:
 		case TYPE_PROPERTY_NAME:
 		case TYPE_PROPERTY_QNAME:
 		case TYPE_PROPERTY_PARENT:
@@ -8929,6 +8930,7 @@ BoolErr sema_type_can_check_equality_with_overload(SemaContext *context, Type *t
 		case TYPE_VOID:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_OPTIONAL:
+		case TYPE_UNTYPEDLIST:
 		case SPECIAL_TYPES:
 			return false;
 		case TYPE_UNION:
@@ -8979,6 +8981,7 @@ BoolErr sema_type_can_order_with_overload(SemaContext *context, Type *type)
 		case TYPE_VOID:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_OPTIONAL:
+		case TYPE_UNTYPEDLIST:
 		case SPECIAL_TYPES:
 			return false;
 		case TYPE_UNION:

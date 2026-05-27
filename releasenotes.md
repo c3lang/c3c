@@ -57,6 +57,8 @@
 - Copying compile time strings during compile time folding with strings containing 0 would sometimes get truncated. #3267
 - Pem parsing did not correctly handle empty body, nor when the first line was too short.
 - Additional pem parsing bugs on malformed data handled.
+- Compiler would crash when getting the `kind`, `qname`, or `alignment` of an `untypedlist`.
+- `untypedlist` incorrectly had `size` property.
 
 ## 0.8.0 Change list
 
