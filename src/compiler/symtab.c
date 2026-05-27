@@ -107,7 +107,7 @@ void symtab_init(uint32_t capacity)
 	symtab.bucket_mask = capacity - 1;
 
 	size_t size = capacity * sizeof(SymtabEntry*);
-	symtab.bucket = malloc(size);
+	symtab.bucket = cmalloc(size);
 	// Touch all pages to improve perf(!)
 	memset(symtab.bucket, 0, size);
 

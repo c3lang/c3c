@@ -8,7 +8,8 @@ module std::collections::map <Key, Value>;
 import std::math;
 import std::io @norecurse;
 
-const LinkedHashMap LINKEDONHEAP = { .allocator = MAP_HEAP_ALLOCATOR };
+const OrderedMap ORDEREDONHEAP = { .allocator = MAP_HEAP_ALLOCATOR };
+alias LINKEDONHEAP = ORDEREDONHEAP;
 
 struct LinkedEntry
 {
@@ -23,7 +24,8 @@ struct LinkedEntry
 	LinkedEntry* after;
 }
 
-struct LinkedHashMap (Printable)
+alias LinkedHashMap @deprecated("Use OrderedMap") = OrderedMap;
+struct OrderedMap (Printable)
 {
 	LinkedEntry*[] table;
 	Allocator allocator;
@@ -75,7 +77,7 @@ fn LinkedHashMap* LinkedHashMap.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPAC
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro LinkedHashMap* LinkedHashMap.init_with_key_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro OrderedMap* OrderedMap.init_with_key_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	$for var $i = 0; $i < $vaarg.len; $i += 2:
@@ -89,23 +91,23 @@ macro LinkedHashMap* LinkedHashMap.init_with_key_values(&self, Allocator allocat
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Map was already initialized"
- @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
+ @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro LinkedHashMap* LinkedHashMap.tinit_with_key_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro OrderedMap* OrderedMap.tinit_with_key_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_with_key_values(tmem, ...$vaarg, capacity: capacity, load_factor: load_factor);
 }
 
 <*
- @param [in] keys : "The keys for the LinkedHashMap entries"
- @param [in] values : "The values for the LinkedHashMap entries"
+ @param [in] keys : "The keys for the OrderedMap entries"
+ @param [in] values : "The values for the OrderedMap entries"
  @param [&inout] allocator : "The allocator to use"
  @require keys.len == values.len : "Both keys and values arrays must be the same length"
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashMap* LinkedHashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] keys, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn OrderedMap* OrderedMap.init_from_keys_and_values(&self, Allocator allocator, Key[] keys, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	foreach (i, key : keys)
@@ -116,15 +118,15 @@ fn LinkedHashMap* LinkedHashMap.init_from_keys_and_values(&self, Allocator alloc
 }
 
 <*
- @param [in] keys : "The keys for the LinkedHashMap entries"
- @param [in] values : "The values for the LinkedHashMap entries"
+ @param [in] keys : "The keys for the OrderedMap entries"
+ @param [in] values : "The values for the OrderedMap entries"
  @require keys.len == values.len : "Both keys and values arrays must be the same length"
  @require capacity > 0 : "The capacity must be 1 or higher"
  @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Map was already initialized"
  @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashMap* LinkedHashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn OrderedMap* OrderedMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_from_keys_and_values(tmem, keys, values, capacity, load_factor);
 }
@@ -135,7 +137,7 @@ fn LinkedHashMap* LinkedHashMap.tinit_from_keys_and_values(&self, Key[] keys, Va
  @param [&in] map : "The hash map we are testing"
  @return "Returns true if it has been initialized, false otherwise"
 *>
-fn bool LinkedHashMap.is_initialized(&map)
+fn bool OrderedMap.is_initialized(&map)
 {
 	return map.allocator && map.allocator.ptr != &dummy;
 }
@@ -145,10 +147,10 @@ fn bool LinkedHashMap.is_initialized(&map)
  @param [&in] other_map : "The map to copy from."
  @require !self.is_initialized() : "Map was already initialized"
 *>
-fn LinkedHashMap* LinkedHashMap.init_from_map(&self, Allocator allocator, LinkedHashMap* other_map)
+fn OrderedMap* OrderedMap.init_from_map(&self, Allocator allocator, OrderedMap* other_map)
 {
 	self.init(allocator, other_map.table.len, other_map.load_factor);
-	linkedhashmap_put_all_for_create(self, other_map);
+	orderedmap_put_all_for_create(self, other_map);
 	return self;
 }
 
@@ -156,19 +158,19 @@ fn LinkedHashMap* LinkedHashMap.init_from_map(&self, Allocator allocator, Linked
  @param [&in] other_map : "The map to copy from."
  @require !map.is_initialized() : "Map was already initialized"
 *>
-fn LinkedHashMap* LinkedHashMap.tinit_from_map(&map, LinkedHashMap* other_map)
+fn OrderedMap* OrderedMap.tinit_from_map(&map, OrderedMap* other_map)
 {
 	return map.init_from_map(tmem, other_map) @inline;
 }
 
-fn bool LinkedHashMap.is_empty(&map) @inline
+fn bool OrderedMap.is_empty(&map) @inline
 {
 	return !map.count;
 }
 
-fn sz LinkedHashMap.len(&map) @inline => map.count;
+fn sz OrderedMap.len(&map) @inline => map.count;
 
-fn Value*? LinkedHashMap.get_ref(&map, Key key)
+fn Value*? OrderedMap.get_ref(&map, Key key)
 {
 	if (!map.count) return NOT_FOUND~;
 	uint hash = rehash(key.hash());
@@ -179,7 +181,7 @@ fn Value*? LinkedHashMap.get_ref(&map, Key key)
 	return NOT_FOUND~;
 }
 
-fn LinkedEntry*? LinkedHashMap.get_entry(&map, Key key)
+fn LinkedEntry*? OrderedMap.get_entry(&map, Key key)
 {
 	if (!map.count) return NOT_FOUND~;
 	uint hash = rehash(key.hash());
@@ -195,7 +197,7 @@ fn LinkedEntry*? LinkedHashMap.get_entry(&map, Key key)
 
  @require $defined(Value val = #expr)
 *>
-macro Value LinkedHashMap.@get_or_set(&map, Key key, Value #expr)
+macro Value OrderedMap.@get_or_set(&map, Key key, Value #expr)
 {
 	if (!map.count)
 	{
@@ -214,11 +216,11 @@ macro Value LinkedHashMap.@get_or_set(&map, Key key, Value #expr)
 	return val;
 }
 
-fn Value? LinkedHashMap.get(&map, Key key) @operator([]) => *map.get_ref(key) @inline;
+fn Value? OrderedMap.get(&map, Key key) @operator([]) => *map.get_ref(key) @inline;
 
-fn bool LinkedHashMap.has_key(&map, Key key) => @ok(map.get_ref(key));
+fn bool OrderedMap.has_key(&map, Key key) => @ok(map.get_ref(key));
 
-fn bool LinkedHashMap.set(&map, Key key, Value value) @operator([]=)
+fn bool OrderedMap.set(&map, Key key, Value value) @operator([]=)
 {
 	// If the map isn't initialized, use the defaults to initialize it.
 	switch (map.allocator.ptr)
@@ -240,16 +242,16 @@ fn bool LinkedHashMap.set(&map, Key key, Value value) @operator([]=)
 			return true;
 		}
 	}
-	linkedhashmap_add_entry(map, hash, key, value, index);
+	orderedmap_add_entry(map, hash, key, value, index);
 	return false;
 }
 
-fn void? LinkedHashMap.remove(&map, Key key) @maydiscard
+fn void? OrderedMap.remove(&map, Key key) @maydiscard
 {
-	if (!linkedhashmap_remove_entry_for_key(map, key)) return NOT_FOUND~;
+	if (!orderedmap_remove_entry_for_key(map, key)) return NOT_FOUND~;
 }
 
-fn void LinkedHashMap.clear(&map)
+fn void OrderedMap.clear(&map)
 {
 	if (!map.count) return;
 
@@ -257,7 +259,7 @@ fn void LinkedHashMap.clear(&map)
 	while (entry)
 	{
 		LinkedEntry* next = entry.after;
-		linkedhashmap_free_entry(map, entry);
+		orderedmap_free_entry(map, entry);
 		entry = next;
 	}
 
@@ -271,20 +273,20 @@ fn void LinkedHashMap.clear(&map)
 	map.tail = null;
 }
 
-fn void LinkedHashMap.free(&map)
+fn void OrderedMap.free(&map)
 {
 	if (!map.is_initialized()) return;
 	map.clear();
-	linkedhashmap_free_internal(map, map.table.ptr);
+	orderedmap_free_internal(map, map.table.ptr);
 	map.table = {};
 }
 
-fn Key[] LinkedHashMap.tkeys(&self)
+fn Key[] OrderedMap.tkeys(&self)
 {
 	return self.keys(tmem) @inline;
 }
 
-fn Key[] LinkedHashMap.keys(&self, Allocator allocator)
+fn Key[] OrderedMap.keys(&self, Allocator allocator)
 {
 	if (!self.count) return {};
 
@@ -304,7 +306,7 @@ fn Key[] LinkedHashMap.keys(&self, Allocator allocator)
 	return list;
 }
 
-macro LinkedHashMap.@each(map; @body(key, value))
+macro OrderedMap.@each(map; @body(key, value))
 {
 	map.@each_entry(; LinkedEntry* entry)
 	{
@@ -312,7 +314,7 @@ macro LinkedHashMap.@each(map; @body(key, value))
 	};
 }
 
-macro LinkedHashMap.@each_entry(map; @body(entry))
+macro OrderedMap.@each_entry(map; @body(entry))
 {
 	LinkedEntry* entry = map.head;
 	while (entry)
@@ -322,9 +324,9 @@ macro LinkedHashMap.@each_entry(map; @body(entry))
 	}
 }
 
-fn Value[] LinkedHashMap.tvalues(&map) => map.values(tmem) @inline;
+fn Value[] OrderedMap.tvalues(&map) => map.values(tmem) @inline;
 
-fn Value[] LinkedHashMap.values(&self, Allocator allocator)
+fn Value[] OrderedMap.values(&self, Allocator allocator)
 {
 	if (!self.count) return {};
 	Value[] list = alloc::alloc_array(allocator, Value, self.count);
@@ -338,7 +340,7 @@ fn Value[] LinkedHashMap.values(&self, Allocator allocator)
 	return list;
 }
 
-fn bool LinkedHashMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
+fn bool OrderedMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
 {
 	if (!map.count) return false;
 
@@ -351,13 +353,13 @@ fn bool LinkedHashMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
 	return false;
 }
 
-fn LinkedHashMapIterator LinkedHashMap.iter(&self) => { .map = self, .current = self.head, .started = false };
+fn OrderedMapIterator OrderedMap.iter(&self) => { .map = self, .current = self.head, .started = false };
 
-fn LinkedHashMapValueIterator LinkedHashMap.value_iter(&self) => { .map = self, .current = self.head, .started = false };
+fn OrderedMapValueIterator OrderedMap.value_iter(&self) => { .map = self, .current = self.head, .started = false };
 
-fn LinkedHashMapKeyIterator LinkedHashMap.key_iter(&self) => { .map = self, .current = self.head, .started = false };
+fn OrderedMapKeyIterator OrderedMap.key_iter(&self) => { .map = self, .current = self.head, .started = false };
 
-fn bool LinkedHashMapIterator.next(&self)
+fn bool OrderedMapIterator.next(&self)
 {
 	if (!self.started)
 	{
@@ -371,22 +373,22 @@ fn bool LinkedHashMapIterator.next(&self)
 	return self.current != null;
 }
 
-fn LinkedEntry*? LinkedHashMapIterator.get(&self)
+fn LinkedEntry*? OrderedMapIterator.get(&self)
 {
 	return self.current ? self.current : NOT_FOUND~;
 }
 
-fn Value*? LinkedHashMapValueIterator.get(&self)
+fn Value*? OrderedMapValueIterator.get(&self)
 {
 	return self.current ? &self.current.value : NOT_FOUND~;
 }
 
-fn Key*? LinkedHashMapKeyIterator.get(&self)
+fn Key*? OrderedMapKeyIterator.get(&self)
 {
 	return self.current ? &self.current.key : NOT_FOUND~;
 }
 
-fn bool LinkedHashMapIterator.has_next(&self)
+fn bool OrderedMapIterator.has_next(&self)
 {
 	if (!self.started) return self.map.head != null;
 	return self.current && self.current.after != null;
@@ -394,7 +396,7 @@ fn bool LinkedHashMapIterator.has_next(&self)
 
 // --- private methods
 
-fn void linkedhashmap_add_entry(LinkedHashMap* map, uint hash, Key key, Value value, int bucket_index) @private
+fn void orderedmap_add_entry(OrderedMap* map, uint hash, Key key, Value value, int bucket_index) @private
 {
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
@@ -416,7 +418,6 @@ fn void linkedhashmap_add_entry(LinkedHashMap* map, uint hash, Key key, Value va
 	if (map.tail)
 	{
 		map.tail.after = entry;
-		entry.before = map.tail;
 	}
 	else
 	{
@@ -426,11 +427,11 @@ fn void linkedhashmap_add_entry(LinkedHashMap* map, uint hash, Key key, Value va
 
 	if (map.count++ >= map.threshold)
 	{
-		linkedhashmap_resize(map, map.table.len * 2);
+		orderedmap_resize(map, map.table.len * 2);
 	}
 }
 
-fn void linkedhashmap_resize(LinkedHashMap* map, int new_capacity) @private
+fn void orderedmap_resize(OrderedMap* map, int new_capacity) @private
 {
 	LinkedEntry*[] old_table = map.table;
 	int old_capacity = old_table.len;
@@ -500,10 +501,10 @@ fn void linkedhashmap_resize(LinkedHashMap* map, int new_capacity) @private
 		}
 	}
 
-	linkedhashmap_free_internal(map, old_table.ptr);
+	orderedmap_free_internal(map, old_table.ptr);
 }
 
-fn sz? LinkedHashMap.to_format(&self, Formatter* f) @dynamic
+fn sz? OrderedMap.to_format(&self, Formatter* f) @dynamic
 {
 	sz len;
 	len += f.print("{ ")!;
@@ -515,26 +516,7 @@ fn sz? LinkedHashMap.to_format(&self, Formatter* f) @dynamic
 	return len + f.print(" }");
 }
 
-fn void linkedhashmap_transfer(LinkedHashMap* map, LinkedEntry*[] new_table) @private
-{
-	LinkedEntry*[] src = map.table;
-	int new_capacity = (int)new_table.len;
-	foreach (LinkedEntry *e : src)
-	{
-		if (!e) continue;
-		do
-		{
-			LinkedEntry* next = e.next;
-			int i = index_for(e.hash, new_capacity);
-			e.next = new_table[i];
-			new_table[i] = e;
-			e = next;
-		}
-		while (e);
-	}
-}
-
-fn void linkedhashmap_put_all_for_create(LinkedHashMap* map, LinkedHashMap* other_map) @private
+fn void orderedmap_put_all_for_create(OrderedMap* map, OrderedMap* other_map) @private
 {
 	if (!other_map.count) return;
 	other_map.@each(; Key key, Value value) {
@@ -542,27 +524,12 @@ fn void linkedhashmap_put_all_for_create(LinkedHashMap* map, LinkedHashMap* othe
 	};
 }
 
-fn void linkedhashmap_put_for_create(LinkedHashMap* map, Key key, Value value) @private
-{
-	uint hash = rehash(key.hash());
-	int i = index_for(hash, map.table.len);
-	for (LinkedEntry *e = map.table[i]; e != null; e = e.next)
-	{
-		if (e.hash == hash && equals(key, e.key))
-		{
-			e.value = value;
-			return;
-		}
-	}
-	linkedhashmap_create_entry(map, hash, key, value, i);
-}
-
-fn void linkedhashmap_free_internal(LinkedHashMap* map, void* ptr) @inline @private
+fn void orderedmap_free_internal(OrderedMap* map, void* ptr) @inline @private
 {
 	alloc::free(map.allocator, ptr);
 }
 
-fn bool linkedhashmap_remove_entry_for_key(LinkedHashMap* map, Key key) @private
+fn bool orderedmap_remove_entry_for_key(OrderedMap* map, Key key) @private
 {
 	if (!map.count) return false;
 
@@ -603,7 +570,7 @@ fn bool linkedhashmap_remove_entry_for_key(LinkedHashMap* map, Key key) @private
 			}
 
 			map.count--;
-			linkedhashmap_free_entry(map, e);
+			orderedmap_free_entry(map, e);
 			return true;
 		}
 		prev = e;
@@ -612,38 +579,30 @@ fn bool linkedhashmap_remove_entry_for_key(LinkedHashMap* map, Key key) @private
 	return false;
 }
 
-fn void linkedhashmap_create_entry(LinkedHashMap* map, uint hash, Key key, Value value, int bucket_index) @private
-{
-	LinkedEntry *e = map.table[bucket_index];
-	$if COPY_KEYS:
-		key = key.copy(map.allocator);
-	$endif
-	LinkedEntry* entry = alloc::new(map.allocator, LinkedEntry, { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] });
-	map.table[bucket_index] = entry;
-	map.count++;
-}
-
-fn void linkedhashmap_free_entry(LinkedHashMap* self, LinkedEntry *entry) @local
+fn void orderedmap_free_entry(OrderedMap* self, LinkedEntry *entry) @local
 {
 	$if COPY_KEYS:
 		alloc::free(self.allocator, entry.key);
 	$endif
-	linkedhashmap_free_internal(self, entry);
+	orderedmap_free_internal(self, entry);
 }
 
+alias LinkedHashMapLiterator @deprecated("Use OrderedMapIterator") = OrderedMapIterator;
 
-struct LinkedHashMapIterator
+struct OrderedMapIterator
 {
-	LinkedHashMap* map;
+	OrderedMap* map;
 	LinkedEntry* current;
 	bool started;
 }
+alias LinkedHashMapValueIterator @deprecated("Use OrderedMapValueIterator") = OrderedMapValueIterator;
+alias LinkedHashMapKeyIterator @deprecated("Use OrderedMapKeyIterator") = OrderedMapKeyIterator;
 
-typedef LinkedHashMapValueIterator = inline LinkedHashMapIterator;
-typedef LinkedHashMapKeyIterator = inline LinkedHashMapIterator;
+typedef OrderedMapValueIterator = inline OrderedMapIterator;
+typedef OrderedMapKeyIterator = inline OrderedMapIterator;
 
-fn sz LinkedHashMapValueIterator.len(self) @operator(len) => self.map.count;
-fn sz LinkedHashMapKeyIterator.len(self) @operator(len) => self.map.count;
-fn sz LinkedHashMapIterator.len(self) @operator(len) => self.map.count;
+fn sz OrderedMapValueIterator.len(self) @operator(len) => self.map.count;
+fn sz OrderedMapKeyIterator.len(self) @operator(len) => self.map.count;
+fn sz OrderedMapIterator.len(self) @operator(len) => self.map.count;
 
 int dummy @local;

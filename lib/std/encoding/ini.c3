@@ -13,8 +13,6 @@ enum DuplicateKeyBehavior
 	ERROR,
 }
 
-
-
 // ---------------------------------------------------------------------------
 // Parsing
 // ---------------------------------------------------------------------------
@@ -35,17 +33,17 @@ enum DuplicateKeyBehavior
  @param allow_hash_comments    : "Treat # as a comment char (default: true)"
  @param allow_inline_comments  : "Strip trailing inline comments from values (default: false)."
  @param on_duplicate_keys      : "What to do on duplicate keys (default: OVERWRITE)"
+ @param [out] error_line       : "Reference to write the line with error to (default: null)"
 
  @return "The data as an Object"
  @return? INVALID_SECTION      : "If a section is invalid"
  @return? INVALID_KEY          : "If a key is invalid"
  @return? DUPLICATE_KEY        : "If a key appears more than once"
+ @return? io::readline!
 *>
-fn Object*? load(
-	Allocator allocator, InStream stream,
-	char delimiter = '=', bool trim_values = true, bool allow_global_keys = true,
-	bool allow_hash_comments = true, bool allow_inline_comments = false,
-	DuplicateKeyBehavior on_duplicate_keys = OVERWRITE) => @pool()
+fn Object*? load(Allocator allocator, InStream stream, char delimiter = '=', bool trim_values = true,
+                 bool allow_global_keys = true, bool allow_hash_comments = true, bool allow_inline_comments = false,
+                 DuplicateKeyBehavior on_duplicate_keys = OVERWRITE, int* error_line = null) => @pool()
 {
 	Object* ini = object::new_obj(allocator);
 	defer catch ini.free();
@@ -56,8 +54,10 @@ fn Object*? load(
 	String current_section = GLOBAL;
 
 	// Split on "\n"; trim() on each line also strips \r for Windows \r\n files.
-	while (try line = io::treadline(stream))
+	int current_line;
+	while (String line @noinit, !@try_catch(line, io::treadline(stream), io::EOF)!)
 	{
+		if (error_line) *error_line = ++current_line;
 		String s = line.trim();
 		if (!s.len) continue;
 		switch (s[0])
@@ -85,7 +85,7 @@ fn Object*? load(
 		if (!allow_global_keys && current_section == GLOBAL) return INVALID_KEY~;
 
 		String key = s[:delimiter_index].trim();
-
+		if (!key.len) return INVALID_KEY~;
 		// Extract raw value, strip inline comments if enabled, then optionally trim.
 		String raw = s[delimiter_index + 1..];
 		if (allow_inline_comments)
@@ -94,7 +94,7 @@ fn Object*? load(
 			{
 				raw = raw[:p];
 			}
-			else if (allow_hash_comments)
+			if (allow_hash_comments)
 			{
 				if (try p = raw.index_of(" #")) raw = raw[:p];
 			}
@@ -112,13 +112,35 @@ fn Object*? load(
 	return ini;
 }
 
-fn Object*? load_temp(
-	InStream stream,
-	char delimiter = '=', bool trim_values = true, bool allow_global_keys = true,
-	bool allow_hash_comments = true, bool allow_inline_comments = false,
-	DuplicateKeyBehavior on_duplicate_keys = OVERWRITE)
+<*
+ Parse an INI-formatted stream into an Object.
+
+ The returned Object is a map whose keys are section names (or ini::GLOBAL
+ for keys that appear before any section header). Each value is itself an
+ Object map from key strings to string Objects.
+
+ This function will forward to ini::load with a temp allocator.
+
+ @param stream                 : "The stream to read from"
+ @param delimiter              : "Key/value separator: '=' or ':' (default: '=')"
+ @param trim_values            : "Strip surrounding whitespace from values (default: true)"
+ @param allow_global_keys      : "Keys before the first section (default: true)"
+ @param allow_hash_comments    : "Treat # as a comment char (default: true)"
+ @param allow_inline_comments  : "Strip trailing inline comments from values (default: false)."
+ @param on_duplicate_keys      : "What to do on duplicate keys (default: OVERWRITE)"
+ @param [out] error_line       : "Reference to write the line with error to (default: null)"
+
+ @return "The data as an Object"
+ @return? INVALID_SECTION      : "If a section is invalid"
+ @return? INVALID_KEY          : "If a key is invalid"
+ @return? DUPLICATE_KEY        : "If a key appears more than once"
+*>
+fn Object*? load_temp(InStream stream, char delimiter = '=', bool trim_values = true, bool allow_global_keys = true,
+                      bool allow_hash_comments = true, bool allow_inline_comments = false,
+                      DuplicateKeyBehavior on_duplicate_keys = OVERWRITE, int* error_line = null)
 {
-    return load(tmem, stream, delimiter, trim_values, allow_global_keys, allow_hash_comments, allow_inline_comments, on_duplicate_keys);
+    return load(tmem, stream, delimiter, trim_values, allow_global_keys, allow_hash_comments, allow_inline_comments,
+                on_duplicate_keys, error_line);
 }
 
 <*
@@ -137,30 +159,52 @@ fn Object*? load_temp(
  @param allow_hash_comments    : "Treat # as a comment char (default: true)"
  @param allow_inline_comments  : "Strip trailing inline comments from values (default: false)."
  @param on_duplicate_keys      : "What to do on duplicate keys (default: OVERWRITE)"
+ @param [out] error_line       : "Reference to write the line with error to (default: null)"
 
  @return "The data as an Object"
  @return? INVALID_SECTION      : "If a section is invalid"
  @return? INVALID_KEY          : "If a key is invalid"
  @return? DUPLICATE_KEY        : "If a key appears more than once"
 *>
-fn Object*? parse(
-	Allocator allocator, String string,
-	char delimiter = '=', bool trim_values = true, bool allow_global_keys = true,
-	bool allow_hash_comments = true, bool allow_inline_comments = false,
-	DuplicateKeyBehavior on_duplicate_keys = OVERWRITE) => @pool()
+fn Object*? parse(Allocator allocator, String string, char delimiter = '=', bool trim_values = true,
+                  bool allow_global_keys = true, bool allow_hash_comments = true, bool allow_inline_comments = false,
+                  DuplicateKeyBehavior on_duplicate_keys = OVERWRITE, int* error_line = null) => @pool()
 {
 	ByteReader reader;
 	reader.init(string);
-	return load(allocator, &reader, delimiter, trim_values, allow_global_keys, allow_hash_comments, allow_inline_comments, on_duplicate_keys);
+	return load(allocator, &reader, delimiter, trim_values, allow_global_keys, allow_hash_comments,
+	            allow_inline_comments, on_duplicate_keys, error_line);
 }
 
-fn Object*? tparse(
-	String string,
-	char delimiter = '=', bool trim_values = true, bool allow_global_keys = true,
-	bool allow_hash_comments = true, bool allow_inline_comments = false,
-	DuplicateKeyBehavior on_duplicate_keys = OVERWRITE)
+<*
+ Parse an INI-formatted stream into an Object.
+
+ The returned Object is a map whose keys are section names (or ini::GLOBAL
+ for keys that appear before any section header). Each value is itself an
+ Object map from key strings to string Objects.
+
+ This function will call ini::parse with the temp allocator.
+
+ @param string                 : "The string to read from"
+ @param delimiter              : "Key/value separator: '=' or ':' (default: '=')"
+ @param trim_values            : "Strip surrounding whitespace from values (default: true)"
+ @param allow_global_keys      : "Keys before the first section (default: true)"
+ @param allow_hash_comments    : "Treat # as a comment char (default: true)"
+ @param allow_inline_comments  : "Strip trailing inline comments from values (default: false)."
+ @param on_duplicate_keys      : "What to do on duplicate keys (default: OVERWRITE)"
+ @param [out] error_line       : "Reference to write the line with error to (default: null)"
+
+ @return "The data as an Object"
+ @return? INVALID_SECTION      : "If a section is invalid"
+ @return? INVALID_KEY          : "If a key is invalid"
+ @return? DUPLICATE_KEY        : "If a key appears more than once"
+*>
+fn Object*? tparse(String string, char delimiter = '=', bool trim_values = true, bool allow_global_keys = true,
+                   bool allow_hash_comments = true, bool allow_inline_comments = false,
+                   DuplicateKeyBehavior on_duplicate_keys = OVERWRITE, int* error_line = null)
 {
-    return parse(tmem, string, delimiter, trim_values, allow_global_keys, allow_hash_comments, allow_inline_comments, on_duplicate_keys);
+    return parse(tmem, string, delimiter, trim_values, allow_global_keys, allow_hash_comments,
+                 allow_inline_comments, on_duplicate_keys, error_line);
 }
 
 // ---------------------------------------------------------------------------
@@ -172,11 +216,13 @@ fn Object*? tparse(
 
  Expects obj to be a map of section-name -> Object map of key -> string Object,
  as produced by parse().  Section order is not guaranteed.
- @param [&inout] allocator : "The allocator to use for allocating the resulting string"
+ @param [&inout] allocator     : "The allocator to use for allocating the resulting string"
+ @param obj                    : "An Object map of section-name → Object map of key → String Object"
  @param delimiter              : "Key/value separator: '=' or ':' (default: '=')"
  @param pad_delimiter          : "Surround delimiter with spaces when encoding: 'k = v' vs 'k=v' (default: true)"
 
- @return "The encoded string"
+ @require obj.is_map() : "Expected a map of section to keys"
+ @return "The encoded string, allocated using the allocator"
 *>
 fn String encode(Allocator allocator, Object* obj, char delimiter = '=', bool pad_delimiter = true) => @pool()
 {
@@ -191,10 +237,13 @@ fn String encode(Allocator allocator, Object* obj, char delimiter = '=', bool pa
  Expects obj to be a map of section-name -> Object map of key -> string Object,
  as produced by parse().  Section order is not guaranteed.
  @param stream                 : "The stream to write to"
+ @param obj                    : "An Object map of section-name → Object map of key → String Object"
  @param delimiter              : "Key/value separator: '=' or ':' (default: '=')"
  @param pad_delimiter          : "Surround delimiter with spaces when encoding: 'k = v' vs 'k=v' (default: true)"
 
- @return "The encoded string"
+ @require obj.is_map() : "Expected a map of section to keys"
+ @return "The number of bytes written"
+ @return? io::fprintfn! : "If a stream write fails"
 *>
 fn long? save(OutStream stream, Object* obj, char delimiter = '=', bool pad_delimiter = true)
 {
@@ -227,6 +276,21 @@ fn long? save(OutStream stream, Object* obj, char delimiter = '=', bool pad_deli
 	return len;
 }
 
+<*
+ Serialize an INI Object back to INI text.
+
+ Expects obj to be a map of section-name -> Object map of key -> string Object,
+ as produced by parse().  Section order is not guaranteed.
+
+ This function returns a temporary string.
+
+ @param obj                    : "An Object map of section-name → Object map of key → String Object"
+ @param delimiter              : "Key/value separator: '=' or ':' (default: '=')"
+ @param pad_delimiter          : "Surround delimiter with spaces when encoding: 'k = v' vs 'k=v' (default: true)"
+
+ @require obj.is_map() : "Expected a map of section to keys"
+ @return "The encoded string, allocated on the temp allocator"
+*>
 fn String tencode(Object* obj, char delimiter = '=', bool pad_delimiter = true)
 {
 	DString d;

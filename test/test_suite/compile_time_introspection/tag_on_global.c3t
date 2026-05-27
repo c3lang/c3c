@@ -1,0 +1,28 @@
+// #target: macos-x64
+module test;
+
+int a @tag("hello", "world") = 2;
+
+fn void main()
+{
+	String y = $reflect(a).get_tag("hello");
+	int b @tag("world", "hello") = 3;
+	String x = $reflect(b).get_tag("world");
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [6 x i8] c"world\00", align 1
+@.str.1 = private unnamed_addr constant [6 x i8] c"hello\00", align 1
+
+define void @test.main() #0 {
+entry:
+  %y = alloca %"char[]", align 8
+  %b = alloca i32, align 4
+  %x = alloca %"char[]", align 8
+  store %"char[]" { ptr @.str, i64 5 }, ptr %y, align 8
+  store i32 3, ptr %b, align 4
+  store %"char[]" { ptr @.str.1, i64 5 }, ptr %x, align 8
+  ret void
+}
+

@@ -1,6 +1,8 @@
 
 // For hacking the C API
 #include <llvm/IR/PassManager.h>
+#include <llvm-c/Core.h>
+
 #include "c3_llvm.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Object/Archive.h"
@@ -381,6 +383,13 @@ LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)
 	llvm::Constant *Val = llvm::unwrap<llvm::Constant>(ConstantVal);
 	const llvm::APInt &i = Val->getUniqueInteger();
 	return llvm::wrap(llvm::Constant::getIntegerValue(Val->getType(), i.byteSwap()));
+}
+
+void LLVMMemCpySetVolatile(LLVMValueRef memcpy, LLVMValueRef val)
+{
+	llvm::MemCpyInst *inst = llvm::dyn_cast_or_null<llvm::MemCpyInst>(llvm::unwrap(memcpy));
+	assert(inst);
+	inst->setVolatile(llvm::unwrap<llvm::Constant>(val));
 }
 
 bool llvm_link_elf(const char **args, int arg_count, const char** error_string)

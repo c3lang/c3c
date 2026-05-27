@@ -1,8 +1,6 @@
 module std::core::mem::allocators @if(env::POSIX || env::WIN32);
 import std::math, std::os::posix, libc, std::bits;
 
-
-
 // Virtual Memory allocator
 
 faultdef VMEM_RESERVE_FAILED;

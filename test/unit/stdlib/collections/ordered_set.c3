@@ -1,11 +1,11 @@
-module linked_set_test @test;
+module ordered_set_test @test;
 import std::collections::set;
 
-alias TestLinkedHashSet = LinkedHashSet{String};
+alias TestOrderedSet = OrderedSet{String};
 
-fn void linked_set_basic()
+fn void ordered_set_basic()
 {
-	TestLinkedHashSet set;
+	TestOrderedSet set;
 	assert(!set.is_initialized());
 	set.tinit();
 	assert(set.is_initialized());
@@ -30,9 +30,9 @@ fn void linked_set_basic()
 	}
 }
 
-fn void linked_set_insertion_order()
+fn void ordered_set_insertion_order()
 {
-	TestLinkedHashSet set;
+	TestOrderedSet set;
 	set.tinit();
 	
 	String[] values = { "first", "second", "third", "fourth" };
@@ -62,9 +62,9 @@ fn void linked_set_insertion_order()
 	};
 }
 
-fn void linked_set_init_with_values()
+fn void ordered_set_init_with_values()
 {
-	TestLinkedHashSet set;
+	TestOrderedSet set;
 	set.tinit_with_values("a", "b", "c");
 	
 	assert(set.len() == 3);
@@ -82,9 +82,9 @@ fn void linked_set_init_with_values()
 	};
 }
 
-fn void linked_set_remove()
+fn void ordered_set_remove()
 {
-	TestLinkedHashSet set;
+	TestOrderedSet set;
 	assert(!@ok(set.remove("A")));
 	set.tinit();
 	assert(!@ok(set.remove("A")));
@@ -105,16 +105,16 @@ fn void linked_set_remove()
 	};
 }
 
-fn void linked_set_copy()
+fn void ordered_set_copy()
 {
-	TestLinkedHashSet original;
+	TestOrderedSet original;
 	original.tinit();
 
 	original.add("aa");
 	original.add("b");
 	original.add("bb");
 
-	TestLinkedHashSet copy;
+	TestOrderedSet copy;
 	copy.tinit_from_set(&original);
 
 	assert(copy.len() == original.len());
@@ -128,14 +128,14 @@ fn void linked_set_copy()
 	};
 }
 
-fn void linked_set_iterators()
+fn void ordered_set_iterators()
 {
-	TestLinkedHashSet set;
+	TestOrderedSet set;
 	set.tinit_with_values("a", "b", "c");
 	
 	// Test entry iterator
 	sz count = 0;
-	LinkedHashSetIterator{String} iter = set.iter();
+	OrderedSetIterator{String} iter = set.iter();
 	while (iter.next())
 	{
 		count++;
@@ -152,9 +152,9 @@ fn void linked_set_iterators()
 	assert(count == 3);
 }
 
-fn void linked_set_clear()
+fn void ordered_set_clear()
 {
-	TestLinkedHashSet set;
+	TestOrderedSet set;
 	set.tinit_with_values("a", "b", "c");
 	
 	assert(set.len() == 3);
@@ -168,16 +168,16 @@ fn void linked_set_clear()
 	assert(set.contains("x"));
 }
 
-fn void linked_set_operations()
+fn void ordered_set_operations()
 {
-	TestLinkedHashSet set1;
+	TestOrderedSet set1;
 	set1.tinit_with_values("a", "b", "c");
 	
-	TestLinkedHashSet set2;
+	TestOrderedSet set2;
 	set2.tinit_with_values("b", "c", "d");
 	
 	// Test union
-	TestLinkedHashSet union_set = set1.tset_union(&set2);
+	TestOrderedSet union_set = set1.tset_union(&set2);
 	defer union_set.free();
 	assert(union_set.contains("a"));
 	assert(union_set.contains("b"));
@@ -194,7 +194,7 @@ fn void linked_set_operations()
 	};
 	
 	// Test intersection
-	TestLinkedHashSet intersect_set = set1.tintersection(&set2);
+	TestOrderedSet intersect_set = set1.tintersection(&set2);
 	defer intersect_set.free();
 	assert(intersect_set.contains("b"));
 	assert(intersect_set.contains("c"));
@@ -203,7 +203,7 @@ fn void linked_set_operations()
 	assert(intersect_set.len() == 2);
 	
 	// Test difference
-	TestLinkedHashSet diff_set = set1.tdifference(&set2);
+	TestOrderedSet diff_set = set1.tdifference(&set2);
 	defer diff_set.free();
 	assert(diff_set.contains("a"));
 	assert(!diff_set.contains("b"));
@@ -212,7 +212,7 @@ fn void linked_set_operations()
 	assert(diff_set.len() == 1);
 	
 	// Test subset
-	TestLinkedHashSet subset;
+	TestOrderedSet subset;
 	subset.tinit_with_values("b", "c");
 	assert(subset.is_subset(&set1));
 	assert(!set1.is_subset(&subset));
@@ -220,7 +220,7 @@ fn void linked_set_operations()
 
 alias IntLinkedSet = LinkedHashSet{int};
 
-fn void linked_set_edge_cases()
+fn void ordered_set_edge_cases()
 {
 	// Test empty set
 	IntLinkedSet empty;
@@ -257,9 +257,9 @@ fn void linked_set_edge_cases()
 	}
 }
 
-fn void linked_set_string_values()
+fn void ordered_set_string_values()
 {
-	TestLinkedHashSet set;
+	TestOrderedSet set;
 	set.tinit();
 	defer set.free();
 	
@@ -290,9 +290,9 @@ fn void linked_set_string_values()
 	};
 }
 
-fn void linked_set_is_initialized()
+fn void ordered_set_is_initialized()
 {
-	TestLinkedHashSet test;
+	TestOrderedSet test;
 	assert(!test.is_initialized());
 	test.tinit();
 	assert(test.is_initialized());

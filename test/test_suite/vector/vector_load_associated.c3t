@@ -1,0 +1,34 @@
+// #target: linux-x64
+module test;
+import std::io;
+
+enum Foo : (int[<3>] x)
+{
+    A { {0, 0, 0} },
+    B { {1, 0, 0} },
+    C { {0, 1, 0} }
+}
+
+fn void main()
+{
+	Foo f;
+	int[<3>] x = f.x;
+}
+
+/* #expect: test.ll
+
+@"test.Foo$x" = linkonce constant [3 x <3 x i32>] [<3 x i32> zeroinitializer, <3 x i32> <i32 1, i32 0, i32 0>, <3 x i32> <i32 0, i32 1, i32 0>], comdat, align 16
+
+define void @test.main() #0 {
+entry:
+  %f = alloca i32, align 4
+  %x = alloca <3 x i32>, align 16
+  store i32 0, ptr %f, align 4
+  %0 = load i32, ptr %f, align 4
+  %ptroffset = getelementptr inbounds [16 x i8], ptr @"test.Foo$x", i32 %0
+  %1 = load <4 x i32>, ptr %ptroffset, align 16
+  %extractvec = shufflevector <4 x i32> %1, <4 x i32> poison, <3 x i32> <i32 0, i32 1, i32 2>
+  %expandvec = shufflevector <3 x i32> %extractvec, <3 x i32> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
+  store <4 x i32> %expandvec, ptr %x, align 16
+  ret void
+}

@@ -228,19 +228,6 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			Int b = { .i.low = right->ptr, .type = TYPE_U64 };
 			return int_comp(a, b, op);
 		}
-		case CONST_STRING:
-			if (left->bytes.len != right->bytes.len)
-			{
-				is_eq = false;
-				goto RETURN;
-			}
-			if (right->bytes.ptr == left->bytes.ptr)
-			{
-				is_eq = true;
-				goto RETURN;
-			}
-			is_eq = !strncmp(left->bytes.ptr, right->bytes.ptr, left->bytes.len);
-			goto RETURN;
 		case CONST_TYPEID:
 			is_eq = left->typeid == right->typeid;
 			goto RETURN;
@@ -272,6 +259,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			}
 		}
 		case CONST_BYTES:
+		case CONST_STRING:
 			if (left->bytes.len != right->bytes.len)
 			{
 				is_eq = false;

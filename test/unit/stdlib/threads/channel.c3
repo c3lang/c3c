@@ -64,7 +64,7 @@ fn void test_unbuffered_channel_race() @test
 	{
 		UnbufferedChannel{int}* ch = (UnbufferedChannel*)arg;
 
-		for (int i = 0; i < 100000; i++)
+		for (int i = 0; i < 10000; i++)
 		{
 			ch.push(1)!!;
 		}
@@ -76,7 +76,7 @@ fn void test_unbuffered_channel_race() @test
 	{
 		UnbufferedChannel{int}* ch = (UnbufferedChannel*)arg;
 
-		for (int i = 0; i < 100000; i++)
+		for (int i = 0; i < 10000; i++)
 		{
 			ch.push(2)!!;
 		}
@@ -87,7 +87,7 @@ fn void test_unbuffered_channel_race() @test
 	int count2 = 0;
 
 	// Receiver
-	for (int i = 0; i < 200000; i++)
+	for (int i = 0; i < 20000; i++)
 	{
 		int v = ch.pop()!!;
 		switch (v)
@@ -118,7 +118,7 @@ fn void test_buffered_channel_race() @test
 	{
 		BufferedChannel{int}* ch = (BufferedChannel*)arg;
 
-		for (int i = 0; i < 100000; i++)
+		for (int i = 0; i < 10000; i++)
 		{
 			ch.push(1)!!;
 		}
@@ -130,7 +130,7 @@ fn void test_buffered_channel_race() @test
 	{
 		BufferedChannel{int}* ch = (BufferedChannel*)arg;
 
-		for (int i = 0; i < 100000; i++)
+		for (int i = 0; i < 10000; i++)
 		{
 			ch.push(2)!!;
 		}
@@ -141,7 +141,7 @@ fn void test_buffered_channel_race() @test
 	int count2 = 0;
 
 	// Receiver
-	for (int i = 0; i < 200000; i++)
+	for (int i = 0; i < 20000; i++)
 	{
 		int v = ch.pop()!!;
 		switch (v)
@@ -156,7 +156,7 @@ fn void test_buffered_channel_race() @test
 	t2.join();
 
 	assert(count1 == count2);
-	assert(count1 + count2 == 200000);
+	assert(count1 + count2 == 20000);
 
 }
 

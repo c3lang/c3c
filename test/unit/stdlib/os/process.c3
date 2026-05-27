@@ -1,5 +1,5 @@
 // Currently disabled as they somewhat mess up the test output.
-module std::os::process @test @if(!env::EMSCRIPTEN);
+module std::os::process @test @if(!env::EMSCRIPTEN && $feature(RUN_PROCESS_TESTS));
 import std::os, std::io, std::net::os, std::time::clock, libc;
 
 fn void test_inherit_stdio_stdout()

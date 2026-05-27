@@ -61,6 +61,20 @@ fn void test_vec3_transform() @test
 	assert(math::is_approx_rel(perp.length_sq(), v.length_sq(), EPSILON_F));
 }
 
+fn void test_v3_transform3() @test
+{
+	Vec3 v = { 0, 0, 0 };
+	Vec3 v2 = v.transform(matrix::IDENTITY4.translate({1,2,3}));
+	assert(v2.equals({1,2,3}));
+}
+
+fn void test_v2_transform2() @test
+{
+	Vec2 v = { 0, 0 };
+	Vec2 v2 = v.transform(matrix::IDENTITY4.translate({1,2,3}));
+	assert(v2.equals({1,2}));
+}
+
 fn void test_cubic_hermite_start() @test
 {
 	double[<3>] v1 = {1,2,3};

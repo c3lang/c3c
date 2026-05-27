@@ -72,6 +72,7 @@ static void usage(bool full)
 	print_cmd("vendor-fetch <library> ...", "Fetches one or more libraries from the vendor collection.");
 	print_cmd("project <subcommand> ...", "Manipulate or view project files.");
 	print_cmd("fetch-sdk <windows|macos|android> ...", "Fetches the SDK required for cross-compiling.");
+	print_cmd("docgen [<path1> <path2> ...]", "Generate documentation for the project, or specific files and directories.");
 	PRINTF("");
 	full ? PRINTF("Options:") : PRINTF("Common options:");
 	print_opt("-h -hh --help", "Print the help, -h for the normal options, -hh for the full help.");
@@ -310,6 +311,22 @@ static void fetch_sdk_usage_dispatch(const char *target)
 	}
 }
 
+static void docgen_usage()
+{
+	PRINTF("Usage: %s docgen [<options>] [<path1> <path2> ...]", args[0]);
+	PRINTF("");
+	PRINTF("Generates documentation for the current project, or specific files and directories.");
+	PRINTF("");
+	PRINTF("Options:");
+	print_opt("--json", "Output JSON to stdout.");
+	print_opt("--append", "Append to existing 'docs.html'.");
+	print_opt("--target <target>", "Generate documentation for a specific target.");
+	print_opt("--use-stdlib=<yes|no>", "Include the standard library (default: yes).");
+	PRINTF("");
+	PRINTF("Other normal build options apply.");
+	PRINTF("");
+}
+
 static void project_usage()
 {
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
@@ -520,6 +537,7 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_BENCHMARK;
 		options->benchmarking = true;
+		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("test"))
@@ -714,14 +732,14 @@ static void print_version(void)
 	PRINTF("Git Hash:                  %s", GIT_HASH);
 
 #if LLVM_AVAILABLE && TB_AVAILABLE
-    PRINTF("Backends:                  LLVM; TB");
+	PRINTF("Backends:                  LLVM; TB");
 #elif LLVM_AVAILABLE
-    PRINTF("Backends:                  LLVM");
+	PRINTF("Backends:                  LLVM");
 #elif TB_AVAILABLE
-    PRINTF("Backends:                  TB");
+	PRINTF("Backends:                  TB");
 #else
 
-    PRINTF("No backends available");
+	PRINTF("No backends available");
 #endif
 
 #if LLVM_AVAILABLE
@@ -741,11 +759,21 @@ static void parse_option(BuildOptions *options)
 		case 'h':
 			if (match_shortopt("hh"))
 			{
+				if (options->command == COMMAND_DOCGEN)
+				{
+					docgen_usage();
+					exit_compiler(COMPILER_SUCCESS_EXIT);
+				}
 				usage(true);
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			if (match_shortopt("h"))
 			{
+				if (options->command == COMMAND_DOCGEN)
+				{
+					docgen_usage();
+					exit_compiler(COMPILER_SUCCESS_EXIT);
+				}
 				usage(false);
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
@@ -1697,6 +1725,11 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("help"))
 			{
+				if (options->command == COMMAND_DOCGEN)
+				{
+					docgen_usage();
+					exit_compiler(COMPILER_SUCCESS_EXIT);
+				}
 				usage(true);
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}

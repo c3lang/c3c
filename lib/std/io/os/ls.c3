@@ -42,7 +42,8 @@ fn PathList? native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		defer win32::findClose(find);
 		do
 		{
-			if (no_dirs && (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)) continue;
+			if (no_dirs && find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY) continue;
+			if (no_symlinks && find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_REPARSE_POINT) continue;
 			@pool()
 			{
 				String filename = string::tfrom_wstring((WString)&find_data.cFileName)!;

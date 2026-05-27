@@ -160,7 +160,7 @@ fn void Deque.reserve(&self, sz added)
 	assert(req_capacity > 0);
 	assert(self.capacity < sz::max / 2);
 
-	sz new_capacity = self.capacity * 2;
+	sz new_capacity = max(self.capacity * 2, std::collections::deque::DEFAULT_CAPACITY);
 	while (new_capacity < req_capacity)
 	{
 		new_capacity *= 2;

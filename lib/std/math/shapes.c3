@@ -36,7 +36,7 @@ fn Num[<2>] Rectangle.min(self) @inline
 <*
  Returns the maximum corner (origin + size)
 
- @return "the maximum corner"
+ @return "The maximum corner"
 *>
 fn Num[<2>] Rectangle.max(self) @inline
 {
@@ -64,10 +64,10 @@ fn Num Rectangle.area(self)
 }
 
 <*
- Return error if the rectangle is empty.
+ Check if the rectangle is empty.
 
  @require self.size.min() >= 0 : "Invalid rectangle with negative size"
- @return "True is the rectangle is empty"
+ @return "True if the rectangle is empty"
 *>
 fn bool Rectangle.is_empty(self)
 {
@@ -77,7 +77,7 @@ fn bool Rectangle.is_empty(self)
 // Spatial queries
 
 <*
- Check if a point is contained in a rectangle
+ Check if a point is contained in the rectangle.
 
  @return "true if the point is inside or on the border of the rectangle"
 *>
@@ -85,7 +85,6 @@ fn bool Rectangle.contains_point(self, Num[<2>] point)
 {
 	return self.origin.comp_le(point).and() & (self.origin + self.size).comp_ge(point).and();
 }
-
 
 <*
  Checks if the rectangle fully contains another rectangle.
@@ -113,13 +112,12 @@ fn bool Rectangle.intersects(self, Rectangle other)
 		&& a.y < b.y + b.w;
 }
 
-
 // Geometry operations
 
 <*
- Merge two rectangles into a rectangle enough to contain both rectangles.
+ Merge two rectangles into a rectangle large enough to contain both rectangles.
 
- @return "the smallest rectangle containing both rectangles"
+ @return "The smallest rectangle containing both rectangles"
 *>
 fn Rectangle Rectangle.merge(self, Rectangle other)
 {
@@ -150,7 +148,8 @@ fn Rectangle? Rectangle.intersection(self, Rectangle other)
 
 <*
  Expands the rectangle to have integral boundaries.
- @return "the resulting rectangle"
+
+ @return "The resulting rectangle"
 *>
 fn Rectangle Rectangle.integral_outer(self) @if(types::is_float(Num))
 {
@@ -162,7 +161,8 @@ fn Rectangle Rectangle.integral_outer(self) @if(types::is_float(Num))
 
 <*
  Shrinks the rectangle to have integral boundaries.
- @return "the resulting rectangle"
+
+ @return "The resulting rectangle"
 *>
 fn Rectangle Rectangle.integral_inner(self) @if(types::is_float(Num))
 {
@@ -177,7 +177,7 @@ fn Rectangle Rectangle.integral_inner(self) @if(types::is_float(Num))
 
  @require amount >= 0 : "Expected a positive or zero amount"
  @require (self.size - amount * 2).min() >= 0 : "Inset must result in a zero or positive size"
- @return "the resulting rectangle"
+ @return "The resulting rectangle"
 *>
 fn Rectangle Rectangle.inset(self, Num amount)
 {
@@ -188,7 +188,7 @@ fn Rectangle Rectangle.inset(self, Num amount)
  Shrinks the rectangle by amount from all sides, clamping to zero size if necessary.
 
  @require amount >= 0 : "Expected a positive or zero amount"
- @return "the resulting rectangle"
+ @return "The resulting rectangle"
 *>
 fn Rectangle Rectangle.inset_clamped(self, Num amount)
 {
@@ -205,7 +205,7 @@ fn Rectangle Rectangle.inset_clamped(self, Num amount)
  @require amount * 2 + self.height >= 0 : "The amount would make the height negative"
  @ensure return.contains_rect(self)
 
- @return "the resulting rectangle"
+ @return "The resulting rectangle"
 *>
 fn Rectangle Rectangle.expand(self, Num amount)
 {
@@ -216,7 +216,7 @@ fn Rectangle Rectangle.expand(self, Num amount)
  Expands the rectangle minimally to include a point.
 
  @param point : "The point to expand the rectangle with"
- @return "the resulting rectangle"
+ @return "The resulting rectangle"
 
  @ensure return.contains_point(point)
 *>
@@ -224,13 +224,17 @@ fn Rectangle Rectangle.merge_point(self, Num[<2>] point)
 {
 	Num[<2>] min = math::min(self.min(), point);
 	Num[<2>] max = math::max(self.max(), point);
-	return { .origin = min, .size = max - min };
+	Num[<2>] size = max - min;
+	bool[<2>] size_comp = (size + min).comp_lt(max);
+	if (size_comp.x) size.x = size.x.nexthigher();
+	if (size_comp.y) size.y = size.y.nexthigher();
+	return { .origin = min, .size = size };
 }
 
 <*
  Clamps a point to lie inside a rectangle.
 
- @return "the resulting point"
+ @return "The resulting point"
  @ensure self.contains_point(return)
 *>
 fn Num[<2>] Rectangle.clamp_point(self, Num[<2>] point)

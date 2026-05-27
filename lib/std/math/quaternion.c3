@@ -62,10 +62,10 @@ fn QuaternionNumber QuaternionNumber.transform(self, Matrix4x4{Real} transform)
 	Real[<4>] v = self.v;
 	Real[<16>] m = transform.m;
 	return {
-		m[0]  * v.x + m[1]  * v.y + m[2]  * v.z + m[3]  * v.w,
-		m[4]  * v.x + m[5]  * v.y + m[6]  * v.z + m[7]  * v.w,
-		m[8]  * v.x + m[9]  * v.y + m[10] * v.z + m[11] * v.w,
-		m[12] * v.x + m[13] * v.y + m[14] * v.z + m[15] * v.w,
+		m[0] * v.x + m[4] * v.y + m[8]  * v.z + m[12] * v.w,
+		m[1] * v.x + m[5] * v.y + m[9]  * v.z + m[13] * v.w,
+		m[2] * v.x + m[6] * v.y + m[10] * v.z + m[14] * v.w,
+		m[3] * v.x + m[7] * v.y + m[11] * v.z + m[15] * v.w,
 	};
 }
 
@@ -87,9 +87,9 @@ fn QuaternionNumber QuaternionNumber.slerp(self, QuaternionNumber q2, Real amoun
 	if (cos_half_theta >= 1) return self;
 
 	Real[<4>] q1v = self.v;
-	if (cos_half_theta > 0.95f) return { .v = q1v.lerp(q2v, amount) };
+	if (cos_half_theta > 0.95f) return { .v = q1v.lerp(q2v, amount).normalize() };
 
-	Real half_theta = math::cos(cos_half_theta);
+	Real half_theta = math::acos(cos_half_theta);
 	Real sin_half_theta = math::sqrt(1 - cos_half_theta * cos_half_theta);
 	if (math::abs(sin_half_theta) < 0.001f)
 	{

@@ -93,14 +93,14 @@ fn void encode_and_decode_leak_check()
 // See: https://github.com/P-H-C/phc-string-format/blob/e8fbd333dcc9a8b0843fac6b33371cf157e91a48/phc-sf-spec.md
 fn void phc_string_format__encode()
 {
-	const String EXPECTED =   "$argon2id$v=19$m=65536,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno";
-	const String EXPECTED_2 = "$argon2id$v=19$m=65536,t=2,p=1,keyid=abase64value$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno";
+	const String EXPECTED =   "$argon2id$v=19$m=256,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$ssLWukxto5vwyYyUiohiiW+SNsr/N/HTsp9v0rooRJ8";
+	const String EXPECTED_2 = "$argon2id$v=19$m=256,t=2,p=1,keyid=abase64value$gZiV/M1gPc22ElAH/Jh1Hw$ssLWukxto5vwyYyUiohiiW+SNsr/N/HTsp9v0rooRJ8";
 
 	Argon2Options opts = {
 		.algorithm = ARGON2_ID,
 		.key = "pepper",
 		.salt = x'8198 95fc cd60 3dcd b612 5007 fc98 751f',
-		.mem_size = 65536,
+		.mem_size = 256,
 		.lanes = 1,
 		.iterations = 2,
 	};

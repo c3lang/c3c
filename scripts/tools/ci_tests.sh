@@ -6,7 +6,7 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-set -ex
+set -e
 
 # --- Setup Paths & Environment ---
 
@@ -50,74 +50,85 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Copy necessary test data to the temp directory
-cp -r "$REAL_ROOT_DIR/resources" "$WORK_DIR/resources"
-cp -r "$REAL_ROOT_DIR/test"      "$WORK_DIR/test"
-
-# ROOT_DIR points to the temp workspace.
-ROOT_DIR="$WORK_DIR"
-
-# Move to the temp resources dir to match original script behavior
-cd "$ROOT_DIR/resources"
+# ROOT_DIR points to the actual source repository
+ROOT_DIR="$REAL_ROOT_DIR"
 
 # --- Tests ---
 
+# Helper to run c3c with the correct workspace isolation
+run_c3c() {
+    "$C3C_BIN" --output-dir "$MY_WORK_DIR" --build-dir "$MY_WORK_DIR" --obj-out "$MY_WORK_DIR" "$@"
+}
+
 run_examples() {
+    local MY_WORK_DIR="$WORK_DIR/examples"
+    mkdir -p "$MY_WORK_DIR"
+
     echo "--- Running Standard Examples ---"
-    "$C3C_BIN" compile examples/base64.c3
-    "$C3C_BIN" compile examples/binarydigits.c3
-    "$C3C_BIN" compile examples/brainfk.c3
-    "$C3C_BIN" compile examples/factorial_macro.c3
-    "$C3C_BIN" compile examples/fasta.c3
-    "$C3C_BIN" compile examples/gameoflife.c3
-    "$C3C_BIN" compile examples/hash.c3
-    "$C3C_BIN" compile examples/http_server.c3
-    "$C3C_BIN" compile-only examples/levenshtein.c3
-    "$C3C_BIN" compile examples/load_world.c3
-    "$C3C_BIN" compile-only examples/map.c3
-    "$C3C_BIN" compile examples/mandelbrot.c3
-    "$C3C_BIN" compile examples/plus_minus.c3
-    "$C3C_BIN" compile examples/nbodies.c3
-    "$C3C_BIN" compile examples/spectralnorm.c3
-    "$C3C_BIN" compile examples/swap.c3
-    "$C3C_BIN" compile examples/contextfree/boolerr.c3
-    "$C3C_BIN" compile examples/contextfree/dynscope.c3
-    "$C3C_BIN" compile examples/contextfree/guess_number.c3
-    "$C3C_BIN" compile examples/contextfree/multi.c3
-    "$C3C_BIN" compile examples/contextfree/cleanup.c3
-    
-    "$C3C_BIN" compile-run examples/hello_world_many.c3
-    "$C3C_BIN" compile-run examples/time.c3
-    "$C3C_BIN" compile-run examples/fannkuch-redux.c3
-    "$C3C_BIN" compile-run examples/contextfree/boolerr.c3
-    "$C3C_BIN" compile-run examples/load_world.c3
-    "$C3C_BIN" compile-run examples/process.c3
-    "$C3C_BIN" compile-run examples/ls.c3
-    "$C3C_BIN" compile-run examples/args.c3 -- foo -bar "baz baz"
+    cd "$ROOT_DIR/resources"
+
+    run_c3c compile examples/base64.c3
+    run_c3c compile examples/binarydigits.c3
+    run_c3c compile examples/brainfk.c3
+    run_c3c compile examples/factorial_macro.c3
+    run_c3c compile examples/fasta.c3
+    run_c3c compile examples/gameoflife.c3
+    run_c3c compile examples/hash.c3
+    run_c3c compile examples/http_server.c3
+    run_c3c compile-only examples/levenshtein.c3
+    run_c3c compile examples/load_world.c3
+    run_c3c compile-only examples/map.c3
+    run_c3c compile examples/mandelbrot.c3
+    run_c3c compile examples/plus_minus.c3
+    run_c3c compile examples/nbodies.c3
+    run_c3c compile examples/spectralnorm.c3
+    run_c3c compile examples/swap.c3
+    run_c3c compile examples/contextfree/boolerr.c3
+    run_c3c compile examples/contextfree/dynscope.c3
+    run_c3c compile examples/contextfree/guess_number.c3
+    run_c3c compile examples/contextfree/multi.c3
+    run_c3c compile examples/contextfree/cleanup.c3
+
+    run_c3c compile-run examples/hello_world_many.c3
+    run_c3c compile-run examples/time.c3
+    run_c3c compile-run examples/fannkuch-redux.c3
+    run_c3c compile-run examples/contextfree/boolerr.c3
+    run_c3c compile-run examples/load_world.c3
+    run_c3c compile-run examples/process.c3
+    run_c3c compile-run examples/ls.c3
+    run_c3c compile-run examples/args.c3 -- foo -bar "baz baz"
 
     if [[ "$OS_MODE" == "linux" ]]; then
-        "$C3C_BIN" compile-run --linker=builtin linux_stack.c3 || echo "Warning: linux_stack builtin linker skipped"
-        "$C3C_BIN" compile-run linux_stack.c3
+        run_c3c compile-run --linker=builtin linux_stack.c3 || echo "Warning: linux_stack builtin linker skipped"
+        run_c3c compile-run linux_stack.c3
     fi
-    
-    "$C3C_BIN" compile --no-entry --test -g --threads 1 --target macos-x64 examples/constants.c3
+
+    run_c3c compile --no-entry --test -g --threads 1 --target macos-x64 examples/constants.c3
 }
 
 run_cli_tests() {
+    local MY_WORK_DIR="$WORK_DIR/cli"
+    mkdir -p "$MY_WORK_DIR"
+
     echo "--- Running CLI Tests (init/vendor) ---"
-    
+
     # Test init
-    "$C3C_BIN" init-lib mylib
-    "$C3C_BIN" init myproject
-    rm -rf mylib.c3l myproject
+    (
+        cd "$MY_WORK_DIR"
+        "$C3C_BIN" init-lib mylib
+        "$C3C_BIN" init myproject
+        (cd myproject && "$C3C_BIN" benchmark myproject --suppress-run)
+        rm -rf mylib.c3l myproject
+    )
 
     # Test vendor-fetch
     if [ -n "$SKIP_NETWORK_TESTS" ]; then
         echo "Skipping vendor-fetch (network tests disabled)"
     else
         echo "Testing vendor-fetch..."
-        cd "$ROOT_DIR/resources"
-        if ! "$C3C_BIN" vendor-fetch raylib6; then
+        cd "$MY_WORK_DIR"
+        mkdir -p lib
+        if ! "$C3C_BIN" --stdlib "$ROOT_DIR/lib" vendor-fetch raylib6; then
             echo "::warning::vendor-fetch failed. Skipping dependent tests."
             return
         fi
@@ -126,63 +137,69 @@ run_cli_tests() {
             echo "::warning::Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
             return
         fi
-        "$C3C_BIN" compile --lib raylib6 --print-linking examples/raylib/raylib_arkanoid.c3
+        run_c3c compile --stdlib "$ROOT_DIR/lib" --libdir "$MY_WORK_DIR" --lib raylib6 --print-linking "$ROOT_DIR/resources/examples/raylib/raylib_arkanoid.c3"
     fi
 }
 
 run_dynlib_tests() {
+    local MY_WORK_DIR="$WORK_DIR/dynlib"
+    mkdir -p "$MY_WORK_DIR"
+
     echo "--- Running Dynamic Lib Tests ---"
     # Skip openbsd and android
     if [[ "$SYSTEM_NAME" == *"OpenBSD"* ]] || [[ "$OS_MODE" == "android" ]]; then return; fi
 
-    cd "$ROOT_DIR/resources/examples/dynlib-test"
-    "$C3C_BIN" -vv dynamic-lib add.c3
+    cd "$MY_WORK_DIR"
+    run_c3c -vv dynamic-lib "$ROOT_DIR/resources/examples/dynlib-test/add.c3" -o add
 
     if [[ "$OS_MODE" == "windows" ]]; then
-        "$C3C_BIN" -vv compile-run test.c3 -l ./add.lib
+        run_c3c -vv compile-run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.lib"
     elif [[ "$OS_MODE" == "mac" ]]; then
-        "$C3C_BIN" -vv compile-run test.c3 -l ./add.dylib
-    else 
-        if [ -f add.so ]; then mv add.so libadd.so; fi
-        cc test.c -L. -ladd -Wl,-rpath=.
+        run_c3c -vv compile-run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.dylib"
+    else
+        if [ -f "add.so" ]; then mv "add.so" "libadd.so"; fi
+        cc "$ROOT_DIR/resources/examples/dynlib-test/test.c" -L. -ladd -Wl,-rpath=. -o a.out
         ./a.out
-        "$C3C_BIN" compile-run test.c3 -L . -l add -z -Wl,-rpath=.
+        run_c3c compile-run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -L . -l add -z -Wl,-rpath=.
     fi
 }
 
 run_staticlib_tests() {
+    local MY_WORK_DIR="$WORK_DIR/staticlib"
+    mkdir -p "$MY_WORK_DIR"
+
     echo "--- Running Static Lib Tests ---"
-    cd "$ROOT_DIR/resources/examples/staticlib-test"
-    
+    cd "$MY_WORK_DIR"
+
     if [[ "$OS_MODE" == "windows" ]]; then
-        "$C3C_BIN" -vv static-lib add.c3
-        "$C3C_BIN" -vv compile-run test.c3 -l ./add.lib
+        run_c3c -vv static-lib "$ROOT_DIR/resources/examples/staticlib-test/add.c3" -o add
+        run_c3c -vv compile-run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -l "add.lib"
     else
-        "$C3C_BIN" -vv static-lib add.c3 -o libadd
+        run_c3c -vv static-lib "$ROOT_DIR/resources/examples/staticlib-test/add.c3" -o libadd
         if [[ "$SYSTEM_NAME" == *"NetBSD"* ]]; then ranlib libadd.a; fi
 
-        OUTPUT_BIN="a.out"
         if [[ "$SYSTEM_NAME" == *"OpenBSD"* ]]; then
-             cc test.c -L. -ladd -lexecinfo -lm -lpthread -o "$OUTPUT_BIN"
+             cc "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -lexecinfo -lm -lpthread -o a.out
         elif [[ "$SYSTEM_NAME" == "Linux" ]]; then
-             # Fix: Linux (and i mean specifically the docker container run) needs dl (for backtrace)
-             # math and pthread linked manually for static libs
-             cc test.c -L. -ladd -ldl -lm -lpthread -o "$OUTPUT_BIN"
+             cc "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -ldl -lm -lpthread -o a.out
         else
              # Mac / NetBSD
-             cc test.c -L. -ladd -o "$OUTPUT_BIN"
+             cc "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -o a.out
         fi
-        ./"$OUTPUT_BIN"
-        "$C3C_BIN" compile-run test.c3 -L . -l add
+        ./a.out
+        run_c3c compile-run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
     fi
 }
 
 run_testproject() {
+    local MY_WORK_DIR="$WORK_DIR/testproject"
+    mkdir -p "$MY_WORK_DIR"
+
     echo "--- Running Test Project ---"
     cd "$ROOT_DIR/resources/testproject"
 
     ARGS="--trust=full"
-    
+
     if [[ "$OS_MODE" == "linux" || "$OS_MODE" == "mac" ]]; then
         ARGS="$ARGS --linker=builtin"
 
@@ -191,24 +208,30 @@ run_testproject() {
         fi
     fi
 
-    "$C3C_BIN" run -vv $ARGS
-    "$C3C_BIN" clean
+    run_c3c run -vv $ARGS
+    run_c3c clean
 
     if [[ "$OS_MODE" == "windows" ]]; then
         echo "Running Test Project (hello_world_win32)..."
-        "$C3C_BIN" -vv --emit-llvm run hello_world_win32 $ARGS
-        "$C3C_BIN" clean
-        "$C3C_BIN" -vv build hello_world_win32_lib $ARGS
+        run_c3c -vv --emit-llvm run hello_world_win32 $ARGS
+        run_c3c clean
+        run_c3c -vv build hello_world_win32_lib $ARGS
     fi
 }
 
 run_wasm_compile() {
+    local MY_WORK_DIR="$WORK_DIR/wasm"
+    mkdir -p "$MY_WORK_DIR"
+
     echo "--- Running WASM Compile Check ---"
     cd "$ROOT_DIR/resources/testfragments"
-    "$C3C_BIN" compile --target wasm32 -g0 --no-entry -Os wasm4.c3
+    run_c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
 }
 
 run_http_server_tests() {
+    local MY_WORK_DIR="$WORK_DIR/http"
+    mkdir -p "$MY_WORK_DIR"
+
     echo "--- Running HTTP Server Integration Tests ---"
 
     if [ -n "$SKIP_NETWORK_TESTS" ]; then
@@ -221,30 +244,27 @@ run_http_server_tests() {
         return
     fi
 
-    # Windows runners might hang when backgrounding processes or not have curl,
-    # so we allow it to fail gracefully but still execute if possible.
-
     cd "$ROOT_DIR/resources/examples"
-    "$C3C_BIN" compile -O1 http_server.c3
+    run_c3c compile -O1 http_server.c3
 
-    OUTPUT_BIN="./http_server"
+    OUTPUT_BIN="$MY_WORK_DIR/http_server"
     if [[ "$OS_MODE" == "windows" ]]; then
-        OUTPUT_BIN="./http_server.exe"
+        OUTPUT_BIN="$MY_WORK_DIR/http_server.exe"
     fi
 
     PORT=$(( 8085 + $RANDOM % 10000 ))
     echo "Starting server on port $PORT..."
-    "$OUTPUT_BIN" -p $PORT -r . &
+    "$OUTPUT_BIN" -p $PORT -r "$ROOT_DIR/resources/examples" &
     SERVER_PID=$!
 
-    sleep 1 # Wait for the server to start?
+    sleep 1
 
     # Test root path (directory listing)
     echo "Testing GET /"
     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/")
     if [ "$HTTP_STATUS" != "200" ]; then
         echo "::error::HTTP GET / failed with status $HTTP_STATUS."
-        kill $SERVER_PID || true
+        kill $SERVER_PID 2>/dev/null || true
         exit 1
     fi
 
@@ -253,7 +273,7 @@ run_http_server_tests() {
     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/http_server.c3")
     if [ "$HTTP_STATUS" != "200" ]; then
         echo "::error::HTTP GET /http_server.c3 failed with status $HTTP_STATUS."
-        kill $SERVER_PID || true
+        kill $SERVER_PID 2>/dev/null || true
         exit 1
     fi
 
@@ -262,34 +282,88 @@ run_http_server_tests() {
     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/does_not_exist_404_test")
     if [ "$HTTP_STATUS" != "404" ]; then
         echo "::error::HTTP GET /does_not_exist_404_test expected 404, but got $HTTP_STATUS."
-        kill $SERVER_PID || true
+        kill $SERVER_PID 2>/dev/null || true
         exit 1
     fi
 
     echo "HTTP Server Integration Tests passed."
-    kill $SERVER_PID || true
+    kill $SERVER_PID 2>/dev/null || true
 }
 
 run_unit_tests() {
+    local MY_WORK_DIR="$WORK_DIR/unit"
+    mkdir -p "$MY_WORK_DIR"
+
     echo "--- Running Unit Tests ---"
     cd "$ROOT_DIR/test"
 
     UNIT_TEST_ARGS="-O1"
     if [[ "$OS_MODE" != "bsd" ]]; then
-        UNIT_TEST_ARGS="$UNIT_TEST_ARGS -D SLOW_TESTS"
+        UNIT_TEST_ARGS="$UNIT_TEST_ARGS -D SLOW_TESTS -D RUN_PROCESS_TESTS"
     fi
-    "$C3C_BIN" compile-test unit $UNIT_TEST_ARGS
+    run_c3c compile-test unit $UNIT_TEST_ARGS
 
     echo "--- Running Test Suite Runner ---"
-    "$C3C_BIN" compile-run -O1 src/test_suite_runner.c3 -- "$C3C_BIN" test_suite/ --no-terminal
+    (
+        cd "$MY_WORK_DIR"
+        run_c3c compile-run -O1 "$ROOT_DIR/test/src/test_suite_runner.c3" -- "$C3C_BIN" "$ROOT_DIR/test/test_suite/" --no-terminal
+    )
 }
 
 # --- Execution ---
-run_examples
-run_cli_tests
-run_dynlib_tests
-run_staticlib_tests
-run_testproject
-run_wasm_compile
-run_http_server_tests
+
+PIDS=()
+
+# Function to run a suite and capture its output in the background
+run_parallel() {
+    local name=$1
+    local func=$2
+    local MY_WORK_DIR="$WORK_DIR/$name"
+    local log="$WORK_DIR/$name.log"
+
+    (
+        set +e
+        # Inner subshell handles the actual test execution with 'set -e'
+        ( set -e; $func ) > "$log" 2>&1
+        local status=$?
+
+        if [ $status -eq 0 ]; then
+            echo "SUCCESS: $name"
+        else
+            echo "FAILED: $name (see log below)"
+            echo "--------------------------------------------------------------------------------"
+            cat "$log"
+            echo "--------------------------------------------------------------------------------"
+            echo "Directory listing for $MY_WORK_DIR:"
+            ls -R "$MY_WORK_DIR" || true
+            echo "--------------------------------------------------------------------------------"
+            exit 1
+        fi
+    ) &
+    PIDS+=($!)
+}
+
+# Run everything except Unit Tests in parallel
+run_parallel examples run_examples
+run_parallel cli run_cli_tests
+run_parallel dynlib run_dynlib_tests
+run_parallel staticlib run_staticlib_tests
+run_parallel testproject run_testproject
+run_parallel wasm run_wasm_compile
+run_parallel http run_http_server_tests
+
+# Wait for background tasks
+exit_code=0
+for p in "${PIDS[@]}"; do
+    wait "$p" || exit_code=1
+done
+
+if [ $exit_code -ne 0 ]; then
+    echo "::error::One or more parallel test suites failed."
+    exit 1
+fi
+
+# Run unit tests last in the foreground
 run_unit_tests
+
+echo ">>> All CI Tests Passed Successfully!"
