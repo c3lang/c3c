@@ -9917,6 +9917,17 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 	Type *result_type = type_add_optional(subscript_expr->type, is_optional_result);
 	expr_insert_addr(increased);
 	Expr *index = exprptr(subscript_expr->subscript_assign_expr.index);
+	switch (sema_resolve_storage_type(context, index->type))
+	{
+		case STORAGE_ERROR:
+		case STORAGE_VOID:
+		case STORAGE_COMPILE_TIME:
+		case STORAGE_WILDCARD:
+		case STORAGE_UNKNOWN:
+			RETURN_SEMA_ERROR(index, "You cannot index using %s.", type_invalid_storage_type_name(index->type));
+		case STORAGE_NORMAL:
+			break;
+	}
 	Decl *temp_val = decl_new_generated_var(increased->type, VARDECL_LOCAL, increased->loc);
 	Decl *index_val = decl_new_generated_var(index->type, VARDECL_LOCAL, index->loc);
 	Decl *value_val = decl_new_generated_var(return_type, VARDECL_LOCAL, main->loc);

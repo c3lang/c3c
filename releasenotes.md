@@ -62,6 +62,7 @@
 - `untypedlist` incorrectly had `size` property.
 - JSON handling of UTF16 surrogate pairs fixed.
 - `base32`, `base64` and `codepage` would leak memory on encode/decode errors.
+- Indexing into a type with a `$reflect` value would sometimes cause a crash.
 
 ## 0.8.0 Change list
 
