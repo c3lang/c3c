@@ -96,9 +96,13 @@ static const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_ALIAS:
 		case TYPE_ENUM:
 		case TYPE_CONSTDEF:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
 		case TYPE_OPTIONAL:
+		case SPECIAL_TYPES:
+		case TYPE_WILDCARD:
+		case TYPE_POISONED:
 		case TYPE_UNTYPEDLIST:
-		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_ANY:
 			return "__c3_any__";
