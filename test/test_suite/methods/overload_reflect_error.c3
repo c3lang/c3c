@@ -17,5 +17,5 @@ fn void main()
   stones.push(100);
   stones[0] *= 3;
   Foo z;
-  z[$reflect(1)] += 5;
+  z[$reflect(1)] += 5; // #error: You cannot index using a reflection reference
 }

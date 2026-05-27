@@ -1313,6 +1313,12 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	if (decl_needs_prefix(decl))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
+		if (decl->decl_kind == DECL_ERASED)
+		{
+			SEMA_ERROR(expr, "Matching identifier is not available due to '@if' being evaluated to false.");
+			SEMA_NOTE(decl, "The definition was here.");
+			return false;
+		}
 		if (decl->unit->module != context->unit->module && !expr->unresolved_ident_expr.path)
 		{
 			const char *message;
