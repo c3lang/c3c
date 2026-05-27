@@ -18,7 +18,6 @@
 - `ini::parse` and related takes an `error_line` argument to identify the line with error.
 - JSON marshaling will return INVALID_NUMBER when encountering a inf or NaN for a float.
 - JSON decoding will reject `1.` literals.
-- JSON handling of UTF16 surrogate pairs fixed.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
@@ -61,6 +60,8 @@
 - Additional pem parsing bugs on malformed data handled.
 - Compiler would crash when getting the `kind`, `qname`, or `alignment` of an `untypedlist`.
 - `untypedlist` incorrectly had `size` property.
+- JSON handling of UTF16 surrogate pairs fixed.
+- `base32`, `base64` and `codepage` would leak memory on encode/decode errors.
 
 ## 0.8.0 Change list
 
