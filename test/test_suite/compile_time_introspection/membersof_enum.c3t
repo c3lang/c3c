@@ -13,7 +13,7 @@ fn int main()
 	var $member0 = Foo::members[0];
 	var $member1 = Foo::members[1];
 	$assert Foo.ABC.$member0 == "Hello";
-	$assert Foo.DEF.$member0 == "World";
+	$assert Foo.DEF.$eval(Foo::members[0]) == "World";
 	$assert Foo.ABC.$member1 == 3;
 	$assert Foo.DEF.$member1 == -100;
 	$assert Foo::members[0].type == String;

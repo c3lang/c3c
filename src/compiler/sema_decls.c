@@ -3871,7 +3871,7 @@ bool sema_analyse_optional_returns(SemaContext *context, Decl *contracts)
 					goto IS_FAULT;;
 			}
 			decl = decl_flatten(decl);
-			if (decl->decl_kind != DECL_FNTYPE && decl->decl_kind != DECL_FUNC) goto IS_FAULT;
+			if (decl->decl_kind != DECL_FNTYPE && decl->decl_kind != DECL_FUNC && decl->decl_kind != DECL_MACRO) goto IS_FAULT;
 			if (!sema_analyse_decl(context, decl)) goto FAIL;
 			DeclId contract_id = decl->docs;
 			if (!contract_id) continue;
