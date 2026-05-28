@@ -198,8 +198,8 @@ fn void test_partial_inherit_stdin() @test
 	$endif
 	
 	Process process = process::spawn(command, stdio: {
-		.stdin  = inherit(),
-		.stdout = capture(),
+		.stdin  = INHERIT,
+		.stdout = CAPTURE,
 	})!!;
 	defer process.destroy();
 	
