@@ -228,12 +228,12 @@ fn void? decommit(void* ptr, sz len, bool block = true)
  @param offset : "Byte offset in file, must be page size aligned"
  @param access : "The initial access permissions"
  @param shared : "if True then MAP_SHARED else MAP_PRIVATE"
+ @require size > 0 : "Size must be greater than zero"
  @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
  @return "Pointer to the mapped region"
 *>
 fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::POSIX)
 {
-	if (size == 0) return INVALID_ARGS~;
 	CInt flags = shared ? posix::MAP_SHARED : posix::MAP_PRIVATE;
 	void* ptr = posix::mmap(null, (usz)aligned_alloc_size(size), access.to_posix(), flags, fd, offset);
 	if (ptr != posix::MAP_FAILED) return ptr;
@@ -259,12 +259,12 @@ fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = 
  @param offset : "Byte offset in file, must be aligned to the system allocation granularity"
  @param access : "The initial access permissions"
  @param shared : "if True changes are shared/written back, else private (copy-on-write)"
+ @require size > 0 : "Size must not be zero."
  @return? mem::OUT_OF_MEMORY, UNKNOWN_ERROR, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID
  @return "Pointer to the mapped region"
 *>
 fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::WIN32)
 {
-	if (size == 0) return INVALID_ARGS~;
 	Win32_HANDLE h_file = (Win32_HANDLE)win32::_get_osfhandle(fd);
 	if (h_file == (void*)uptr::max) return io::FILE_NOT_VALID~;
 
