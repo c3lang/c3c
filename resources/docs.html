@@ -1826,22 +1826,32 @@
 		}
 
 		function parseMarkdownInline(text) {
-			// First escape to be safe
-			let escaped = escapeHtml(text);
+			// 1. Extract raw inline code blocks first to prevent them from being escaped or formatted by other markdown rules
+			const codes = [];
+			let processed = text.replace(/`([^`]+)`/g, (m, p1) => {
+				const placeholder = `\x00CODE_${codes.length}\x00`;
+				codes.push(`<code class="inline-code">${highlightC3(p1)}</code>`);
+				return placeholder;
+			});
 
-			// 1. Inline code `code` (using highlightC3 for types/links)
-			escaped = escaped.replace(/`([^`]+)`/g, (m, p1) => `<code class="inline-code">${highlightC3(p1)}</code>`);
+			// 2. Escape HTML for the rest of the text
+			let escaped = escapeHtml(processed);
 
-			// 2. Bold **text** or __text__
+			// 3. Bold **text** or __text__
 			escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 			escaped = escaped.replace(/__([^_]+)__/g, '<strong>$1</strong>');
 
-			// 3. Italic *text* or _text_
+			// 4. Italic *text* or _text_
 			escaped = escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 			escaped = escaped.replace(/_([^_]+)_/g, '<em>$1</em>');
 
-			// 4. Links [text](url)
+			// 5. Links [text](url)
 			escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="type-link">$1</a>');
+
+			// 6. Restore the preserved inline code blocks
+			for (let i = 0; i < codes.length; i++) {
+				escaped = escaped.replace(`\x00CODE_${i}\x00`, codes[i]);
+			}
 
 			return escaped;
 		}
