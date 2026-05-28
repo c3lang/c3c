@@ -105,6 +105,19 @@ extern fn WString _wfullpath(WString absPath, WString relPath, usz maxLength);
 
 extern fn int _setmode(int fd, int mode);
 
+<*
+ Copies data from a named or anonymous pipe into a buffer without removing it from the pipe.
+ It also returns information about data in the pipe.
+*>
+extern fn Win32_BOOL peekNamedPipe(
+	Win32_HANDLE  hNamedPipe,
+	Win32_LPVOID  lpBuffer,
+	Win32_DWORD   nBufferSize,
+	Win32_LPDWORD lpBytesRead = null,
+	Win32_LPDWORD lpTotalBytesAvail = null,
+	Win32_LPDWORD lpBytesLeftThisMessage = null
+) @cname("PeekNamedPipe");
+
 /*
 extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @cname("GetCurrentDirectoryW");
 extern bool _win32_CreateSymbolicLinkW(WString symlink_file, WString target_file, ulong flags) @cname("CreateSymbolicLinkW");
