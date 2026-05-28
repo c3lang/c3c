@@ -930,7 +930,7 @@
 		.contract-table td {
 			padding: 4px 8px;
 			border-bottom: 1px solid var(--table-border);
-			vertical-align: top;
+			vertical-align: middle;
 			word-break: break-word;
 		}
 
@@ -2191,6 +2191,10 @@
 					return `<span class="c3-keyword">@body</span>(${bodyParams})`;
 				}
 				if (m.name === 'self') {
+					if (m.type) {
+						const selfType = renderTypeName(m.type);
+						return `${selfType} <span class="c3-variable">${m.is_ref ? '&' : ''}self</span>`;
+					}
 					return `<span class="c3-variable">${m.is_ref ? '&' : ''}self</span>`;
 				}
 				const type = renderTypeName(m.type);
@@ -2384,14 +2388,18 @@
 			}
 
 			const anyDesc = hasAnyDescription(vd.members);
-			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
+			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || vd.kind === 'method' || vd.kind === 'macro_method' || (vd.kind === 'type_alias' && vd.return_type);
+			const hasAnyContract = isFunction && baseDocs && baseDocs.params && vd.members.some(m => {
+				const dp = baseDocs.params.find(p => p.name === m.name);
+				return dp && (dp.modifier || dp.by_ref);
+			});
 			let html = '';
 
 			function renderRow(m, isFunc, isValueRow, depth = 0) {
 				let rowHtml = '';
 				const docParam = (baseDocs && baseDocs.params && m.name) ? baseDocs.params.find(p => p.name === m.name) : null;
 				let modHtml = '';
-				if (isFunc) {
+				if (isFunc && hasAnyContract) {
 					if (docParam) {
 						if (docParam.modifier) modHtml += `<span class="arg-mod-badge arg-mod-${docParam.modifier}">${docParam.modifier}</span>`;
 						if (docParam.by_ref) modHtml += `<span class="arg-mod-badge arg-mod-ref">ref</span>`;
@@ -2449,7 +2457,7 @@
 						}
 					}
 					rowHtml += `<tr>
-						${isFunc ? `<td class="col-mod">${modHtml}</td>` : ''}
+						${isFunc && hasAnyContract ? `<td class="col-mod">${modHtml}</td>` : ''}
 						<td class="col-type monospace">${prefix}${typeStr}${bitDesc}</td>
 						<td class="col-name monospace bold c3-${vd.kind === 'interface' ? 'function' : (m.kind || 'variable')}">${nameStr}</td>
 						${vd.kind === 'interface' ? `<td class="col-mod monospace">${attrHtml}</td>` : ''}
@@ -2517,7 +2525,7 @@
 				html += `<h3>${title}</h3>`;
 				html += `<table class="contract-table">
 					<thead><tr>
-						${isFunction ? '<th class="col-mod">Contract</th>' : ''}
+						${hasAnyContract ? '<th class="col-mod">Contract</th>' : ''}
 						<th class="col-type">Type</th>
 						<th class="col-name">Name</th>
 						${vd.kind === 'interface' ? '<th class="col-mod">Attribute</th>' : ''}
