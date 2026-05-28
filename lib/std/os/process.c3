@@ -23,14 +23,14 @@ struct Process
 	CFile stdout_file;
 	CFile stderr_file;
 	
+	Win32_HANDLE hProcess @if(env::WIN32);
 	Win32_HANDLE hStdInput @if(env::WIN32);
 	Win32_HANDLE hEventOutput @if(env::WIN32);
 	Win32_HANDLE hEventError @if(env::WIN32);
 
 	Pid_t child @if(!env::WIN32);
-	Win32_HANDLE hProcess @if(env::WIN32);	
-
 	int return_status @if(env::POSIX);
+
 	bool is_alive;
 }
 
@@ -41,33 +41,38 @@ constdef SpawnOptions
 	ASYNC_OUTPUT        = 1 << 2,
 	NO_WINDOW           = 1 << 3,
 	NO_PATH_SEARCH      = 1 << 4,
+	INHERIT_STDIO @deprecated = 1 << 5
 }
 
+const INHERIT_STDIO_MASK @local = 1 << 5;
+
 alias RawFd = env::WIN32 ? Win32_HANDLE : CInt;
-enum StdioKind { CAPTURE, INHERIT, BIND }
-struct StdioSpec
+
+enum ProcessStdioAction
 {
-	StdioKind kind;
+	CAPTURE,
+	INHERIT,
+	BIND
+}
+
+struct ProcessStdio
+{
+	ProcessStdioAction kind;
 	RawFd fd;
 }
 
-macro StdioSpec capture() => { .kind = CAPTURE };
-macro StdioSpec inherit() => { .kind = INHERIT };
-macro StdioSpec bind(RawFd fd) => { .kind = BIND, .fd = fd };
+const ProcessStdio CAPTURE = { .kind = CAPTURE };
+const ProcessStdio INHERIT = { .kind = INHERIT };
+macro ProcessStdio bind(RawFd fd) => { .kind = BIND, .fd = fd };
 
-struct StdioHandles
+struct ProcessStdioSet
 {
-	StdioSpec stdin;
-	StdioSpec stdout;
-	StdioSpec stderr;
+	ProcessStdio stdin;
+	ProcessStdio stdout;
+	ProcessStdio stderr;
 }
 
-const StdioHandles INHERIT_STDIO = {
-	.stdin  = { .kind = INHERIT },
-	.stdout = { .kind = INHERIT },
-	.stderr = { .kind = INHERIT },
-};
-
+const ProcessStdioSet INHERIT_STDIO = { .stdin.kind = INHERIT, .stdout.kind = INHERIT, .stderr.kind = INHERIT };
 
 fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions options = {}, String[] environment = {})
 {
@@ -79,7 +84,7 @@ fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions
 	return (String)buffer[:len - 1];
 }
 
-fn int? run(String[] command_line, SpawnOptions options = {}, String[] environment = {}, StdioHandles stdio = {})
+fn int? run(String[] command_line, SpawnOptions options = {}, String[] environment = {}, ProcessStdioSet stdio = {})
 {
 	Process process = process::spawn(command_line, options, environment, stdio)!;
 	defer (void)process.destroy();
@@ -89,7 +94,7 @@ fn int? run(String[] command_line, SpawnOptions options = {}, String[] environme
 <*
  @require !environment || !(options & INHERIT_ENV)
 *>
-fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] environment = {}, StdioHandles stdio = {}) @if(env::WIN32)
+fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] environment = {}, ProcessStdioSet stdio = {}) @if(env::WIN32)
 {
 	Win32_DWORD flags = win32::CREATE_UNICODE_ENVIRONMENT;
 	Win32_PROCESS_INFORMATION process_info;
@@ -101,13 +106,12 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 
 	if (options & NO_WINDOW) flags |= win32::CREATE_NO_WINDOW;
 
-	CFile stdin;
-	CFile stdout;
-	CFile stderr;
-	void* rd = null;
-	void* wr = null;
-	void *event_output = null;
-	void *event_error = null;
+	// Backwards compatibility
+	if (options & INHERIT_STDIO_MASK) stdio = { INHERIT, INHERIT, INHERIT };
+
+	CFile stdin, stdout, stderr;
+	void* rd, wr;
+	void* event_output, event_error;
 
 	switch (stdio.stdin.kind)
 	{
@@ -126,7 +130,7 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 			start_info.hStdInput = stdio.stdin.fd;
 		case INHERIT:
 			start_info.hStdInput = win32::getStdHandle(win32::STD_INPUT_HANDLE);
-    }
+	}
 
 	switch (stdio.stdout.kind)
 	{
@@ -154,19 +158,18 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 			start_info.hStdOutput = stdio.stdout.fd;
 		case INHERIT:
 			start_info.hStdOutput = win32::getStdHandle(win32::STD_OUTPUT_HANDLE);
-    }
+	}
 
-	switch (stdio.stderr.kind)
+	if (options & STDERR_TO_STDOUT)
 	{
-		case CAPTURE:
-			do
-			{
-				if (options & STDERR_TO_STDOUT)
-				{
-					stderr = stdout;
-					start_info.hStdError = start_info.hStdOutput;
-					break;
-				}
+		stderr = stdout;
+		start_info.hStdError = start_info.hStdOutput;
+	}
+	else
+	{
+		switch (stdio.stderr.kind)
+		{
+			case CAPTURE:
 				if (options & ASYNC_OUTPUT)
 				{
 					create_named_pipe_helper(&rd, &wr)!;
@@ -185,19 +188,19 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 					if (!stderr) return FAILED_TO_OPEN_STDERR~;
 				}
 				start_info.hStdError = wr;
-			};
-		case BIND:
-			start_info.hStdError = stdio.stderr.fd;
-		case INHERIT:
-			start_info.hStdError = win32::getStdHandle(win32::STD_ERROR_HANDLE);
-    }
-	
-	@stack_mem(2048; Allocator mem)
+			case BIND:
+				start_info.hStdError = stdio.stderr.fd;
+			case INHERIT:
+				start_info.hStdError = win32::getStdHandle(win32::STD_ERROR_HANDLE);
+		}
+	}
+
+	@stack_mem(2048; Allocator smem)
 	{
 		WString used_environment = null;
 		if (!(options & INHERIT_ENV))
 		{
-			DString env = dstring::new_with_capacity(mem, 64);
+			DString env = dstring::new_with_capacity(smem, 64);
 			if (!environment.len)
 			{
 				env.append("\0");
@@ -208,7 +211,7 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 				env.append("\0");
 			}
 			env.append("\0");
-			used_environment = env.str_view().to_wstring(mem)!;
+			used_environment = env.str_view().to_wstring(smem)!;
 		}
 	
 		if (!win32::createProcessW(
@@ -227,14 +230,16 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 	// We don't need the handle of the primary thread in the called process.
 	win32::closeHandle(process_info.hThread);
 
-	if (stdio.stdout.kind == CAPTURE) { win32::closeHandle(start_info.hStdOutput); }
-	if (stdio.stderr.kind == CAPTURE &&
-		start_info.hStdOutput != start_info.hStdError) win32::closeHandle(start_info.hStdError);
+	if (stdio.stdout.kind == CAPTURE) win32::closeHandle(start_info.hStdOutput);
+	if (stdio.stderr.kind == CAPTURE && start_info.hStdOutput != start_info.hStdError)
+	{
+		win32::closeHandle(start_info.hStdError);
+	}
 
 		
 	return {
 		.hProcess = process_info.hProcess,
-		.hStdInput = (stdio.stdin.kind == CAPTURE) ? start_info.hStdInput : null,
+		.hStdInput = stdio.stdin.kind == CAPTURE ? start_info.hStdInput : null,
 		.hEventOutput = event_output,
 		.hEventError = event_error,
 		.stdin_file = stdin,
@@ -250,7 +255,7 @@ fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] env
 <*
  @require !environment || !(options & INHERIT_ENV)
 *>
-fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] environment = {}, StdioHandles stdio = {}) @if(env::POSIX)
+fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] environment = {}, ProcessStdioSet stdio = {}) @if(env::POSIX)
 {
 	CInt[2] stdinfd;
 	CInt[2] stdoutfd;
@@ -262,6 +267,10 @@ fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] en
 	Posix_spawn_file_actions_t actions;
 	if (posix::spawn_file_actions_init(&actions)) return FAILED_TO_INITIALIZE_ACTIONS~;
 	defer posix::spawn_file_actions_destroy(&actions);
+
+	// Backwards compatibility
+	if (options & INHERIT_STDIO_MASK) stdio = { INHERIT, INHERIT, INHERIT };
+
 
 	// We should set FD_CLOEXEC to prevent leaking pipe handles between concurrent spawns
 	const int F_SETFD = 2;
@@ -277,6 +286,7 @@ fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] en
 		case BIND:
 			if (posix::spawn_file_actions_adddup2(&actions, stdio.stdin.fd, libc::STDIN_FD)) return FAILED_TO_BIND_STDIN~;
 		case INHERIT:
+			break;
 	}
 
 	switch (stdio.stdout.kind)
@@ -295,6 +305,7 @@ fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] en
 		case BIND:
 			if (posix::spawn_file_actions_adddup2(&actions, stdio.stdout.fd, libc::STDOUT_FD)) return FAILED_TO_BIND_STDOUT~;
 		case INHERIT:
+			break;
 	}
 
 	if (options & STDERR_TO_STDOUT)
@@ -307,8 +318,8 @@ fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] en
 		{
 			case CAPTURE:
 				if (posix::pipe(&stderrfd)) return FAILED_TO_OPEN_STDERR~;
-			    os::fcntl((NativeSocket)stderrfd[0], F_SETFD, FD_CLOEXEC);
-			    os::fcntl((NativeSocket)stderrfd[1], F_SETFD, FD_CLOEXEC);
+				os::fcntl((NativeSocket)stderrfd[0], F_SETFD, FD_CLOEXEC);
+				os::fcntl((NativeSocket)stderrfd[1], F_SETFD, FD_CLOEXEC);
 				
 				if (options & ASYNC_OUTPUT)
 				{
@@ -319,6 +330,7 @@ fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] en
 			case BIND:
 				if (posix::spawn_file_actions_adddup2(&actions, stdio.stderr.fd, libc::STDERR_FD)) return FAILED_TO_BIND_STDERR~;
 			case INHERIT:
+				break;
 		}
 	}
 
@@ -338,14 +350,24 @@ fn Process? spawn(String[] command_line, SpawnOptions options = { }, String[] en
 	};
 
 	// Only set up file handles for when stdio is captured
-	if (stdio.stdin.kind  == CAPTURE) { libc::close(stdinfd[0]);  stdin  = libc::fdopen(stdinfd[1],  "wb"); }
-	if (stdio.stdout.kind == CAPTURE) { libc::close(stdoutfd[1]); stdout = libc::fdopen(stdoutfd[0], "rb"); }
-	if (stdio.stderr.kind == CAPTURE) {
+	if (stdio.stdin.kind  == CAPTURE)
+	{
+		libc::close(stdinfd[0]);
+		stdin = libc::fdopen(stdinfd[1],  "wb");
+	}
+	if (stdio.stdout.kind == CAPTURE)
+	{
+		libc::close(stdoutfd[1]);
+		stdout = libc::fdopen(stdoutfd[0], "rb");
+	}
+	if (stdio.stderr.kind == CAPTURE)
+	{
 		if (options & STDERR_TO_STDOUT)
 		{
 			stderr = stdout;
 		}
-		else {
+		else
+		{
 			libc::close(stderrfd[1]);
 			stderr = libc::fdopen(stderrfd[0], "rb");
 		}
@@ -411,11 +433,8 @@ fn CInt? Process.join(&self) @if(env::WIN32)
 fn bool Process.destroy(&self)
 {
 	if (self.stdin_file) libc::fclose(self.stdin_file);
-	if (self.stdout_file)
-	{
-		libc::fclose(self.stdout_file);
-		if (self.stdout_file != self.stderr_file) libc::fclose(self.stderr_file);
-	}
+	if (self.stdout_file) libc::fclose(self.stdout_file);
+    if (self.stderr_file && self.stderr_file != self.stdout_file) libc::fclose(self.stderr_file);
 	self.stdin_file = self.stdout_file = self.stderr_file = null;
 	$if env::WIN32:
 		if (self.hProcess) win32::closeHandle(self.hProcess);
