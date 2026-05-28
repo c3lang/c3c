@@ -321,7 +321,7 @@ static void docgen_usage()
 	print_opt("--json", "Output JSON to stdout.");
 	print_opt("--append", "Append to existing 'docs.html'.");
 	print_opt("--target <target>", "Generate documentation for a specific target.");
-	print_opt("--use-stdlib=<yes|no>", "Include the standard library (default: yes).");
+	print_opt("--emit-stdlib=<yes|no>", "Document the standard library. (default: yes)");
 	PRINTF("");
 	PRINTF("Other normal build options apply.");
 	PRINTF("");
