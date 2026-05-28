@@ -54,7 +54,7 @@ fn void encode_multi()
 
 fn void encode_single_with_headers()
 {
-	String result = pem::encode(tmem, SINGLE_DATA, "CERTIFICATE", {"My-Header", "Example"}, {"This-is-a-longer-header", "with some extra content that will bleed over to the next line."}, {"Last", "Header is single-line."})!!;
+	String result = pem::encode(tmem, SINGLE_DATA, "CERTIFICATE", {"My-Header", "Example"}, {"This-is-a-longer-header", "with some extra content that could bleed over to the next line."}, {"Last", "Header is single-line."})!!;
 	test::@check(result == SINGLE_WITH_HEADERS, "Got:\n%s\n\nExpected:\n%s\n\n", result, SINGLE_WITH_HEADERS);
 }
 
@@ -98,6 +98,103 @@ fn void decode_errors()
 }
 
 
+fn void decode_empty_body_between_eb()
+{
+	String input = "-----BEGIN X-----\n-----END X-----\n";
+	test::@error(pem::decode(tmem, input), pem::MISSING_BODY);
+}
+
+fn void decode_short_pre_eb_line()
+{
+	String input = "x\ny\nz";
+	test::@error(pem::decode(tmem, input), pem::INVALID_PRE_EB);
+}
+
+fn void decode_headers_only_no_body()
+{
+	String input = "-----BEGIN X-----\nkey: value\n-----END X-----\n";
+	test::@error(pem::decode(tmem, input), pem::MISSING_BODY);
+}
+
+fn void decode_multiline_header_runs_to_eb()
+{
+	String input = "-----BEGIN X-----\nkey: value\n continuation\n-----END X-----\n";
+	test::@error(pem::decode(tmem, input), pem::MISSING_BODY);
+}
+
+
+fn void decode_empty_input()       => test::@error(pem::decode(tmem, ""),       pem::INVALID_FORMAT);
+fn void decode_whitespace_only()   => test::@error(pem::decode(tmem, "   "),    pem::INVALID_FORMAT);
+fn void decode_blank_lines_only()  => test::@error(pem::decode(tmem, "\n\n\n"), pem::INVALID_FORMAT);
+
+
+macro String @rep_str(String s, sz n)
+{
+	DString d;
+	d.append_repeat(s, n);
+	return d.str_view();
+}
+
+fn void encode_decode_roundtrip_short_key_short_value()
+{
+	String key = "Short";
+	String value = "tiny";
+	String encoded = pem::encode(tmem, SINGLE_DATA, "CERT", { key, value })!!;
+	Pem[] decoded = pem::decode(tmem, encoded)!!;
+	test::@check(decoded.len == 1);
+	test::@check(decoded[0].headers.has_key(key));
+	test::@check(decoded[0].headers[key]!! == value);
+}
+
+fn void encode_decode_roundtrip_short_key_long_value()
+{
+	String key = "Short";
+	String value = @rep_str("abcdefghij", 20);
+	String encoded = pem::encode(tmem, SINGLE_DATA, "CERT", { key, value })!!;
+	Pem[] decoded = pem::decode(tmem, encoded)!!;
+	test::@check(decoded.len == 1);
+	test::@check(decoded[0].headers.has_key(key));
+	test::@check(decoded[0].headers[key]!! == value,
+		"Expected '%s', got '%s'", value, decoded[0].headers[key]!!);
+}
+
+fn void encode_decode_roundtrip_long_key_short_value()
+{
+	String key = @rep_str("x", 70);
+	String value = "hello";
+	String encoded = pem::encode(tmem, SINGLE_DATA, "CERT", { key, value })!!;
+	Pem[] decoded = pem::decode(tmem, encoded)!!;
+	test::@check(decoded.len == 1);
+	test::@check(decoded[0].headers.has_key(key));
+	test::@check(decoded[0].headers[key]!! == value,
+		"Expected '%s', got '%s'", value, decoded[0].headers[key]!!);
+}
+
+fn void encode_decode_roundtrip_long_key_long_value()
+{
+	String key = @rep_str("x", 70);
+	String value = @rep_str("abcdefghij", 20);
+	String encoded = pem::encode(tmem, SINGLE_DATA, "CERT", { key, value })!!;
+	Pem[] decoded = pem::decode(tmem, encoded)!!;
+	test::@check(decoded.len == 1);
+	test::@check(decoded[0].headers.has_key(key));
+	test::@check(decoded[0].headers[key]!! == value,
+		"Expected '%s', got '%s'", value, decoded[0].headers[key]!!);
+}
+
+fn void encode_decode_roundtrip_boundary_key()
+{
+	String key = @rep_str("k", 60);
+	String value = "boundary-value";
+	String encoded = pem::encode(tmem, SINGLE_DATA, "CERT", { key, value })!!;
+	io::printn(encoded);
+	Pem[] decoded = pem::decode(tmem, encoded)!!;
+	test::@check(decoded.len == 1);
+	test::@check(decoded[0].headers.has_key(key));
+	test::@check(decoded[0].headers[key]!! == value,
+		"Expected '%s', got '%s'", value, decoded[0].headers[key]!!);
+}
+
 // =============================================================================================
 // These PEM blobs aren't 'real' in the sense that they're completely public. Tbh I kinda swiped
 //   them from another public repository, and the underlying CN is Superfish, Inc. If these were
@@ -130,7 +227,7 @@ A-Multiline: Header
  And another line to back it up
 Non-Multi: line header!
 I'm-trying: to confuse things: when parsing
-	     	   	the content of this file
+				the content of this file
 done: now
 
 MIICxjBABgkqhkiG9w0BBQ0wMzAbBgkqhkiG9w0BBQwwDgQIDHHhyAEZQoICAggA
@@ -213,8 +310,7 @@ VHw7/lTXWsJkBcQM+g/svyqV4xKHDAixPms2SUwJyKjvEgV+CQok4F/T
 const String SINGLE_WITH_HEADERS =
 `-----BEGIN CERTIFICATE-----
 My-Header: Example
-This-is-a-longer-header: with some extra content that will bleed
- over to the next line.
+This-is-a-longer-header: with some extra content that could bleed over to the next line.
 Last: Header is single-line.
 
 MIIC9TCCAl6gAwIBAgIJANL8E4epRNznMA0GCSqGSIb3DQEBBQUAMFsxGDAWBgNV

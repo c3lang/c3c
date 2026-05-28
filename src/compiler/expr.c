@@ -1068,15 +1068,19 @@ void expr_rewrite_const_ref(Expr *expr_to_rewrite, Decl *decl)
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 }
 
-void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string)
+void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string, ArrayIndex len)
 {
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 	expr_to_rewrite->const_expr.const_kind = CONST_STRING;
 	expr_to_rewrite->const_expr.bytes.ptr = (char *)string;
-	ArraySize len = (ArraySize)strlen(string);
 	expr_to_rewrite->const_expr.bytes.len = len;
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
 	expr_to_rewrite->type = type_string;
+}
+
+void expr_rewrite_const_string_from_raw(Expr *expr_to_rewrite, const char *string)
+{
+	expr_rewrite_const_string(expr_to_rewrite, string, (ArrayIndex)strlen(string));
 }
 
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op)

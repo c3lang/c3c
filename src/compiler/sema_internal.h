@@ -88,7 +88,7 @@ void sema_analysis_pass_lambda(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
 void sema_trace_liveness(void);
 
-Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing, bool allow_reflect);
+Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing, bool *was_reflect);
 
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr, bool *failed_ref);
 
@@ -110,7 +110,7 @@ void sema_add_methods_to_decl_stack(SemaContext *context, Decl *decl);
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool call_var_optional, bool *no_match_ref);
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr);
 
-Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner, bool report_missing);
+Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner, bool report_missing, bool *was_reflect);
 Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_string, Expr **args, unsigned num_args);
@@ -286,6 +286,7 @@ static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *
 			return is_distinct ? STORAGE_UNKNOWN : STORAGE_VOID;
 		case TYPE_WILDCARD:
 			return STORAGE_WILDCARD;
+		case TYPE_UNTYPEDLIST:
 		case SPECIAL_TYPES:
 		case TYPE_FUNC_RAW:
 			return STORAGE_COMPILE_TIME;

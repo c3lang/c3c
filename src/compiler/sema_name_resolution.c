@@ -1038,6 +1038,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
+		case TYPE_UNTYPEDLIST:
 			return true;
 		case TYPE_OPTIONAL:
 			return sema_resolve_type_decl(context, type->optional);

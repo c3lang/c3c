@@ -23,6 +23,7 @@ const char DEFAULT_PAD = '=';
 fn String? encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = alloc::alloc_array(allocator, char, encode_len(src.len, padding));
+	defer catch alloc::free(allocator, dst);
 	return encode_into(dst, src, padding, alphabet);
 }
 
@@ -37,6 +38,7 @@ fn String? encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, B
 fn char[]? decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = alloc::alloc_array(allocator, char, decode_len(src.len, padding));
+	defer catch alloc::free(allocator, dst);
 	return decode_into(dst, src, padding, alphabet);
 }
 
