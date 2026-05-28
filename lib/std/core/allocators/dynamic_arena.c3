@@ -185,6 +185,7 @@ fn void*? DynamicArenaAllocator.acquire(&self, sz size, AllocInitType init_type,
 		page.used = new_used;
 		assert(start + size == page.memory + page.used);
 		ptr = start;
+		page.current_stack_ptr = ptr;
 		DynamicArenaChunk* chunk = (DynamicArenaChunk*)ptr - 1;
 		chunk.size = size;
 	};

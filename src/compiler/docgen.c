@@ -20,7 +20,7 @@ static Module **all_modules = NULL;
 
 static void write_decl_uid(FILE *file, Module *module, Decl *decl);
 static void emit_type_name_to_scratch(TypeInfo *type);
-static void print_doc_type(FILE *file, Module *module, TypeInfo *type);
+static void print_doc_type(FILE *file, Module *module, TypeInfo *type, bool is_vararg);
 static void emit_params_json(FILE *file, Module *module, Decl **params);
 static void emit_doc_comments(FILE *file, Decl *decl);
 
@@ -162,7 +162,7 @@ static void emit_param_json(FILE *file, Module *module, Decl *p)
 		if (p->var.type_info)
 		{
 			fputs(",\"type\":", file);
-			print_doc_type(file, module, type_infoptr(p->var.type_info));
+			print_doc_type(file, module, type_infoptr(p->var.type_info), p->var.vararg);
 		}
 		if (p->var.init_expr)
 		{
@@ -195,6 +195,10 @@ static void emit_param_json(FILE *file, Module *module, Decl *p)
 		if (p->var.self_addr)
 		{
 			fputs(",\"is_ref\":true", file);
+		}
+		if (p->var.vararg)
+		{
+			fputs(",\"is_vararg\":true", file);
 		}
 	}
 	fputs("}", file);
@@ -239,7 +243,7 @@ static void write_decl_uid(FILE *file, Module *module, Decl *decl)
 static void emit_type_name_to_scratch(TypeInfo *type)
 {
 	if (!type) return;
-	if (type->type && type->type->name)
+	if (type->kind != TYPE_INFO_TYPEOF && type->kind != TYPE_INFO_TYPEFROM && type->type && type->type->name)
 	{
 		scratch_buffer_append(type->type->name);
 		if (type->optional && !strstr(type->type->name, "?")) scratch_buffer_append("?");
@@ -299,7 +303,7 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 			scratch_buffer_append("}");
 			break;
 		case TYPE_INFO_TYPEOF:
-			scratch_buffer_append("typeof(");
+			scratch_buffer_append("$Typeof(");
 			if (type->unresolved_type_expr) loc_to_scratch(type->unresolved_type_expr->loc);
 			scratch_buffer_append(")");
 			break;
@@ -310,6 +314,29 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 			break;
 		case TYPE_INFO_POISON:
 			scratch_buffer_append("*INVALID*");
+			break;
+	}
+	switch (type->subtype)
+	{
+		case TYPE_COMPRESSED_NONE:
+			break;
+		case TYPE_COMPRESSED_PTR:
+			scratch_buffer_append("*");
+			break;
+		case TYPE_COMPRESSED_SUB:
+			scratch_buffer_append("[]");
+			break;
+		case TYPE_COMPRESSED_SUBPTR:
+			scratch_buffer_append("[]*");
+			break;
+		case TYPE_COMPRESSED_PTRPTR:
+			scratch_buffer_append("**");
+			break;
+		case TYPE_COMPRESSED_PTRSUB:
+			scratch_buffer_append("*[]");
+			break;
+		case TYPE_COMPRESSED_SUBSUB:
+			scratch_buffer_append("[][]");
 			break;
 	}
 	if (type->optional) scratch_buffer_append("?");
@@ -329,12 +356,12 @@ static void emit_return_type_json(FILE *file, Module *module, TypeInfo *rtype)
 	if (rtype)
 	{
 		fputs("\"return_type\":", file);
-		print_doc_type(file, module, rtype);
+		print_doc_type(file, module, rtype, false);
 		fputs(",", file);
 	}
 }
 
-static void print_doc_type(FILE *file, Module *module, TypeInfo *type)
+static void print_doc_type(FILE *file, Module *module, TypeInfo *type, bool is_vararg)
 {
 	if (!type)
 	{
@@ -344,7 +371,20 @@ static void print_doc_type(FILE *file, Module *module, TypeInfo *type)
 	fputs("{\"name\":\"", file);
 	scratch_buffer_clear();
 	emit_type_name_to_scratch(type);
-	fputs(scratch_buffer_to_string(), file);
+	const char *name = scratch_buffer_to_string();
+	if (is_vararg)
+	{
+		size_t len = strlen(name);
+		if (len >= 2 && strcmp(name + len - 2, "[]") == 0)
+		{
+			if (len < 4 || strcmp(name + len - 4, "[][]") != 0)
+			{
+				scratch_buffer_append("[]");
+				name = scratch_buffer_to_string();
+			}
+		}
+	}
+	fputs(name, file);
 	fputs("\"", file);
 
 	TypeInfo *base_info = type;
@@ -439,7 +479,7 @@ static void emit_doc_struct_members(FILE *file, Decl *decl, bool *first)
 			if (!*first) fputs(",", file);
 			*first = false;
 			fprintf(file, "{\"name\":\"%s\",\"type\":", p->name ? p->name : "");
-			print_doc_type(file, decl->unit ? decl->unit->module : NULL, p->var.type_info ? type_infoptr(p->var.type_info) : NULL);
+			print_doc_type(file, decl->unit ? decl->unit->module : NULL, p->var.type_info ? type_infoptr(p->var.type_info) : NULL, false);
 			if (decl->decl_kind == DECL_BITSTRUCT && p->var.kind == VARDECL_BITMEMBER)
 			{
 				fprintf(file, ",\"bit_range\":[%u,%u]", p->var.start_bit, p->var.end_bit);
@@ -545,15 +585,29 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 			fprintf(file, "\"name\":\"%s\",\"type\":", p->name);
 			if (p->func_decl.signature.rtype)
 			{
-				print_doc_type(file, module, type_infoptr(p->func_decl.signature.rtype));
+				print_doc_type(file, module, type_infoptr(p->func_decl.signature.rtype), false);
 			}
 			else
 			{
 				fputs("null", file);
 			}
 			// Emit the parameter list so the HTML can reconstruct the full signature
-			fputs(",\"params\":", file);
-			emit_params_json(file, module, p->func_decl.signature.params);
+			fputs(",\"params\":[", file);
+			bool first_param = true;
+			for (unsigned i = 1; i < vec_size(p->func_decl.signature.params); i++)
+			{
+				Decl *param = p->func_decl.signature.params[i];
+				if (!param) continue;
+				if (!first_param) fputs(",", file);
+				first_param = false;
+				emit_param_json(file, module, param);
+			}
+			fputs("]", file);
+
+			if (p->func_decl.attr_optional)
+			{
+				fputs(",\"is_optional\":true", file);
+			}
 
 			fputs("}", file);
 		}
@@ -773,6 +827,36 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 	fputs("\"uid\":", file);
 	write_decl_uid(file, module, decl);
 	fputs(",", file);
+	if (decl->loc)
+	{
+		SourceLoc *loc_info = sourcelocptr(decl->loc);
+		if (loc_info && loc_info->file_id)
+		{
+			File *f = source_file_by_id(loc_info->file_id);
+			if (f && f->full_path)
+			{
+				fputs("\"file\":", file);
+				scratch_buffer_clear();
+				const char *path = f->full_path;
+				// Strip cwd prefix to get a relative path
+				char cwd_buf[PATH_MAX + 1];
+				const char *cwd = getcwd(cwd_buf, sizeof(cwd_buf));
+				if (cwd)
+				{
+					// Normalize backslashes (Windows) to forward slashes
+					for (char *p = cwd_buf; *p; p++) if (*p == '\\') *p = '/';
+					size_t cwd_len = strlen(cwd);
+					if (strncmp(path, cwd, cwd_len) == 0 && path[cwd_len] == '/')
+					{
+						path = path + cwd_len + 1;
+					}
+				}
+				scratch_buffer_printf("%s:%u:%u", path, loc_info->row, loc_info->col);
+				json_write_string(file, scratch_buffer_to_string());
+				fputs(",", file);
+			}
+		}
+	}
 	if (decl->visibility != VISIBLE_PUBLIC)
 	{
 		fprintf(file, "\"visibility\":\"%s\",", get_visibility_name(decl->visibility));
@@ -804,7 +888,7 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			for (unsigned i = 0; i < iface_count; i++)
 			{
 				if (i > 0) fputs(",", file);
-				print_doc_type(file, module, decl->interfaces[i]);
+				print_doc_type(file, module, decl->interfaces[i], false);
 			}
 			fputs("],", file);
 		}
@@ -849,11 +933,12 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			base = decl->strukt.container_type;
 			goto PRINT_BASE;
 		case DECL_TYPEDEF:
+			if (decl->is_substruct) fputs("\"is_inline\":true,", file);
 			base = decl->distinct;
 			goto PRINT_BASE;
 		PRINT_BASE:
 			fputs("\"base_type\":", file);
-			print_doc_type(file, module, base);
+			print_doc_type(file, module, base, false);
 			fputs(",", file);
 			break;
 		case DECL_VAR:
@@ -861,18 +946,18 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			if (base)
 			{
 				fputs("\"type\":", file);
-				print_doc_type(file, module, base);
+				print_doc_type(file, module, base, false);
 				fputs(",", file);
 			}
 			if (decl->var.kind == VARDECL_CONST)
 			{
 				fputs("\"is_const\":true,", file);
-				if (decl->var.init_expr)
-				{
-					fputs("\"value\":", file);
-					write_const_value_json(file, decl->var.init_expr);
-					fputs(",", file);
-				}
+			}
+			if (decl->var.init_expr)
+			{
+				fputs("\"value\":", file);
+				write_const_value_json(file, decl->var.init_expr);
+				fputs(",", file);
 			}
 			break;
 		case DECL_POISONED:
@@ -1044,6 +1129,8 @@ void compiler_docgen(BuildTarget *target)
 	bool first_module = true;
 	FOREACH(Module *, module, all_modules)
 	{
+		if (target->emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(module)) continue;
+
 		DeclId module_doc = 0;
 		unsigned unit_count = vec_size(module->units);
 		FOREACH(CompilationUnit *, unit, module->units)

@@ -20,7 +20,7 @@ typedef uint16_t StructIndex;
 typedef uint32_t AlignSize;
 typedef uint64_t ArraySize;
 typedef uint64_t BitSize;
-typedef uint16_t FileId;
+typedef uint32_t FileId;
 
 #define INT5_MAX         15
 #define INT12_MAX        2047
@@ -57,7 +57,7 @@ typedef uint16_t FileId;
 #define UINT128_MAX ((Int128) { UINT64_MAX, UINT64_MAX })
 #define INT128_MAX ((Int128) { INT64_MAX, UINT64_MAX })
 #define INT128_MIN ((Int128) { (uint64_t)INT64_MIN, 0 })
-#define STDIN_FILE_ID 0xFFFF
+#define STDIN_FILE_ID (~(FileId)0)
 #define ABI_TYPE_EMPTY ((AbiType) { .type = NULL })
 #define RANGE_EXTEND_PREV(x)  do { *sourcelocptr((x)->loc) = extend_loc_with_token(sourcelocptr((x)->loc), &c->prev_span); } while (0)
 #define PRINT_ERROR_AT(_node, ...) print_error_at((_node)->loc, __VA_ARGS__)
@@ -2473,7 +2473,7 @@ bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 Expr *expr_variable(Decl *decl);
 Expr *expr_negate_expr(Expr *expr);
-bool expr_may_addr(Expr *expr);
+bool expr_may_ref(Expr *expr);
 bool expr_in_int_range(Expr *expr, int64_t low, int64_t high);
 bool expr_is_unwrapped_ident(Expr *expr);
 bool expr_is_zero(Expr *expr);
@@ -2506,7 +2506,9 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v);
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
 INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
-void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string);
+INLINE void expr_rewrite_const_string_from_scratch(Expr *expr_to_rewrite);
+void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string, ArrayIndex len);
+void expr_rewrite_const_string_from_raw(Expr *expr_to_rewrite, const char *string);
 void expr_rewrite_const_ref(Expr *expr_to_rewrite, Decl *decl);
 
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
@@ -2535,6 +2537,7 @@ void scratch_buffer_append_module(Module *module, bool is_export);
 Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
 Decl *module_find_symbol_in_unit(Module *module, CompilationUnit *unit, const char *symbol);
+bool module_is_stdlib(Module *module);
 
 bool parse_file(File *file);
 Decl **parse_include_file(File *file, CompilationUnit *unit);
@@ -4777,3 +4780,8 @@ const char *default_c_compiler(void);
 void print_build_env(void);
 void print_asm(PlatformTarget *target);
 const char *os_type_to_string(OsType os);
+
+INLINE void expr_rewrite_const_string_from_scratch(Expr *expr_to_rewrite)
+{
+	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), scratch_buffer.len);
+}

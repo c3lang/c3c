@@ -302,36 +302,16 @@
 			font-weight: bold;
 		}
 
-		.kind-function {
-			background: var(--hl-func);
-			color: var(--hl-text);
-		}
-
+		.kind-function,
 		.kind-macro {
 			background: var(--hl-func);
 			color: var(--hl-text);
 		}
 
-		.kind-struct {
-			background: var(--hl-type);
-			color: var(--hl-text);
-		}
-
-		.kind-union {
-			background: var(--hl-type);
-			color: var(--hl-text);
-		}
-
-		.kind-bitstruct {
-			background: var(--hl-type);
-			color: var(--hl-text);
-		}
-
-		.kind-enum {
-			background: var(--hl-type);
-			color: var(--hl-text);
-		}
-
+		.kind-struct,
+		.kind-union,
+		.kind-bitstruct,
+		.kind-enum,
 		.kind-interface {
 			background: var(--hl-type);
 			color: var(--hl-text);
@@ -366,10 +346,7 @@
 		}
 
 		.c3-function,
-		.c3-method {
-			color: var(--hl-func);
-		}
-
+		.c3-method,
 		.c3-macro,
 		.c3-macro_method {
 			color: var(--hl-func);
@@ -381,7 +358,8 @@
 
 		.c3-variable,
 		.c3-const,
-		.c3-constdef {
+		.c3-constdef,
+		.c3-number {
 			color: var(--hl-const);
 		}
 
@@ -389,16 +367,9 @@
 			color: var(--hl-str);
 		}
 
-		.c3-attribute {
-			color: var(--hl-comment);
-		}
-
+		.c3-attribute,
 		.c3-comment {
 			color: var(--hl-comment);
-		}
-
-		.c3-number {
-			color: var(--hl-const);
 		}
 
 		.secondary-text {
@@ -959,7 +930,7 @@
 		.contract-table td {
 			padding: 4px 8px;
 			border-bottom: 1px solid var(--table-border);
-			vertical-align: top;
+			vertical-align: middle;
 			word-break: break-word;
 		}
 
@@ -1184,7 +1155,7 @@
 			border: 1px solid var(--border);
 			color: var(--filter-fg);
 			font-weight: 600;
-			transition: all 0.2s;
+			transition: border-color 0.2s, color 0.2s, background-color 0.2s;
 			user-select: none;
 		}
 
@@ -1210,10 +1181,12 @@
 	<div id="module-tooltip" class="module-tooltip"></div>
 	<div id="sidebar">
 		<div class="resizer sidebar-resizer" id="left-resizer"></div>
-		<div class="sidebar-header" onclick="navigateTo('');">
-			<img src="https://c3-lang.org/assets/logo.svg" alt="C3 Logo" class="logo">
-			<span class="secondary-text">Documentation</span>
-			<div onclick="event.stopPropagation(); toggleTheme();" title="Toggle Light/Dark Theme" style="margin-left: auto; padding: 4px 8px; font-size: 1.25em; border-radius: 4px; transition: background 0.2s ease; display: flex; align-items: center; justify-content: center;">
+		<div class="sidebar-header" style="cursor: default;">
+			<a href="https://c3-lang.org/docs" title="C3 Documentation" style="display: flex;">
+				<img src="https://c3-lang.org/assets/logo.svg" alt="C3 Logo" class="logo">
+			</a>
+			<span class="secondary-text" onclick="navigateTo('');" style="cursor: pointer; font-weight: 500; transition: color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color=''" title="View Project Overview">Project Overview</span>
+			<div onclick="event.stopPropagation(); toggleTheme();" title="Toggle Light/Dark Theme" style="cursor: pointer; margin-left: auto; padding: 4px 8px; font-size: 1.25em; border-radius: 4px; transition: background 0.2s ease; display: flex; align-items: center; justify-content: center;">
 				<div id="theme-toggle-btn" style="color: var(--sidebar-header-fg);">☼</div>
 			</div>
 		</div>
@@ -1488,7 +1461,28 @@
 			});
 		}
 
+		function preprocessDecl(decl) {
+			if (!decl) return;
+			const fixMembers = (members) => {
+				if (!members) return;
+				members.forEach(m => {
+					if (m.is_vararg && m.type && m.type.name && m.type.name.endsWith('[]')) {
+						m.type.name = m.type.name.slice(0, -2) + '...';
+					}
+					if (m.members) fixMembers(m.members);
+					if (m.params) fixMembers(m.params);
+				});
+			};
+			fixMembers(decl.members);
+			if (decl.variants) {
+				decl.variants.forEach(v => {
+					if (v.decl) preprocessDecl(v.decl);
+				});
+			}
+		}
+
 		function addOrMergeDeclaration(decl) {
+			preprocessDecl(decl);
 			const cleanDecl = { ...decl };
 			delete cleanDecl.targetName;
 			const declJson = JSON.stringify(cleanDecl);
@@ -1832,22 +1826,32 @@
 		}
 
 		function parseMarkdownInline(text) {
-			// First escape to be safe
-			let escaped = escapeHtml(text);
+			// 1. Extract raw inline code blocks first to prevent them from being escaped or formatted by other markdown rules
+			const codes = [];
+			let processed = text.replace(/`([^`]+)`/g, (m, p1) => {
+				const placeholder = `\x00CODE_${codes.length}\x00`;
+				codes.push(`<code class="inline-code">${highlightC3(p1)}</code>`);
+				return placeholder;
+			});
 
-			// 1. Inline code `code` (using highlightC3 for types/links)
-			escaped = escaped.replace(/`([^`]+)`/g, (m, p1) => `<code class="inline-code">${highlightC3(p1)}</code>`);
+			// 2. Escape HTML for the rest of the text
+			let escaped = escapeHtml(processed);
 
-			// 2. Bold **text** or __text__
+			// 3. Bold **text** or __text__
 			escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 			escaped = escaped.replace(/__([^_]+)__/g, '<strong>$1</strong>');
 
-			// 3. Italic *text* or _text_
+			// 4. Italic *text* or _text_
 			escaped = escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 			escaped = escaped.replace(/_([^_]+)_/g, '<em>$1</em>');
 
-			// 4. Links [text](url)
+			// 5. Links [text](url)
 			escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="type-link">$1</a>');
+
+			// 6. Restore the preserved inline code blocks
+			for (let i = 0; i < codes.length; i++) {
+				escaped = escaped.replace(`\x00CODE_${i}\x00`, codes[i]);
+			}
 
 			return escaped;
 		}
@@ -2187,6 +2191,10 @@
 					return `<span class="c3-keyword">@body</span>(${bodyParams})`;
 				}
 				if (m.name === 'self') {
+					if (m.type) {
+						const selfType = renderTypeName(m.type);
+						return `${selfType} <span class="c3-variable">${m.is_ref ? '&' : ''}self</span>`;
+					}
 					return `<span class="c3-variable">${m.is_ref ? '&' : ''}self</span>`;
 				}
 				const type = renderTypeName(m.type);
@@ -2216,23 +2224,36 @@
 				return `<span class="c3-keyword">${keyword}</span> ${ret} <span class="c3-function">${localName}</span>(${params})${genericSuffix}${attrs ? ' ' + attrs : ''}`;
 			}
 
-			if (d.kind === 'type_alias' && d.return_type) {
-				const ret = renderTypeName(d.return_type);
-				const params = renderParams(d.members);
-				return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = <span class="c3-keyword">fn</span> ${ret}(${params})`;
+			if (d.kind === 'alias') {
+				if (d.return_type) {
+					const ret = renderTypeName(d.return_type);
+					const params = renderParams(d.members);
+					return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = <span class="c3-keyword">fn</span> ${ret}(${params})`;
+				} else if (d.base_type) {
+					const baseTypeStr = renderTypeName(d.base_type);
+					return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span> = ${baseTypeStr}`;
+				} else {
+					return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span>`;
+				}
 			}
 
-			if (d.kind === 'variable' || d.kind === 'constant') {
-				const keyword = d.kind === 'constant' || d.is_const ? 'const' : 'var';
+			if (d.kind === 'distinct type') {
+				const inlineHtml = d.is_inline ? '<span class="c3-keyword">inline</span> ' : '';
+				const baseTypeStr = d.base_type ? renderTypeName(d.base_type) : '';
+				return `<span class="c3-keyword">typedef</span> <span class="c3-type">${localName}</span> = ${inlineHtml}${baseTypeStr}`;
+			}
+
+			if (d.kind === 'constant' || d.kind === 'global variable') {
+				const keywordHtml = (d.kind === 'constant' || d.is_const) ? '<span class="c3-keyword">const</span> ' : '';
 				const typeStr = d.type ? renderTypeName(d.type) : '';
-				let res = `<span class="c3-keyword">${keyword}</span> ${typeStr} <span class="c3-variable">${localName}</span>`;
+				let res = `${keywordHtml}${typeStr ? typeStr + ' ' : ''}<span class="c3-variable">${localName}</span>`;
 				if (d.value) {
 					res += ` = <span class="c3-number">${d.value}</span>`;
 				}
 				return res;
 			}
 
-			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'alias' || d.kind === 'fault' || d.kind === 'constdef') {
+			if (d.kind === 'enum' || d.kind === 'struct' || d.kind === 'union' || d.kind === 'bitstruct' || d.kind === 'fault' || d.kind === 'constdef' || d.kind === 'interface') {
 				let res = `<span class="c3-keyword">${d.kind}</span> <span class="c3-type">${localName}</span>`;
 				if (d.base_type && d.base_type.name) {
 					res += ` : ${renderTypeName(d.base_type)}`;
@@ -2367,14 +2388,18 @@
 			}
 
 			const anyDesc = hasAnyDescription(vd.members);
-			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || (vd.kind === 'type_alias' && vd.return_type);
+			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || vd.kind === 'method' || vd.kind === 'macro_method' || (vd.kind === 'type_alias' && vd.return_type);
+			const hasAnyContract = isFunction && baseDocs && baseDocs.params && vd.members.some(m => {
+				const dp = baseDocs.params.find(p => p.name === m.name);
+				return dp && (dp.modifier || dp.by_ref);
+			});
 			let html = '';
 
 			function renderRow(m, isFunc, isValueRow, depth = 0) {
 				let rowHtml = '';
 				const docParam = (baseDocs && baseDocs.params && m.name) ? baseDocs.params.find(p => p.name === m.name) : null;
 				let modHtml = '';
-				if (isFunc) {
+				if (isFunc && hasAnyContract) {
 					if (docParam) {
 						if (docParam.modifier) modHtml += `<span class="arg-mod-badge arg-mod-${docParam.modifier}">${docParam.modifier}</span>`;
 						if (docParam.by_ref) modHtml += `<span class="arg-mod-badge arg-mod-ref">ref</span>`;
@@ -2422,10 +2447,20 @@
 					</tr>`;
 				} else {
 					let typeStr = m.type ? renderTypeName(m.type) : '';
+					let nameStr = m.name || '';
+					let attrHtml = '';
+					if (vd.kind === 'interface') {
+						let paramsStr = m.params ? renderParams(m.params) : '';
+						nameStr += '(' + paramsStr + ')';
+						if (m.is_optional) {
+							attrHtml = `<span class="c3-keyword">@optional</span>`;
+						}
+					}
 					rowHtml += `<tr>
-						${isFunc ? `<td class="col-mod">${modHtml}</td>` : ''}
+						${isFunc && hasAnyContract ? `<td class="col-mod">${modHtml}</td>` : ''}
 						<td class="col-type monospace">${prefix}${typeStr}${bitDesc}</td>
-						<td class="col-name monospace bold c3-${m.kind || 'variable'}">${m.name || ''}</td>
+						<td class="col-name monospace bold c3-${vd.kind === 'interface' ? 'function' : (m.kind || 'variable')}">${nameStr}</td>
+						${vd.kind === 'interface' ? `<td class="col-mod monospace">${attrHtml}</td>` : ''}
 						<td class="doc-text">${desc}</td>
 					</tr>`;
 				}
@@ -2486,13 +2521,14 @@
 				html += `</tbody></table>`;
 
 			} else {
-				let title = isFunction ? 'Arguments' : 'Fields';
+				let title = isFunction ? 'Arguments' : (vd.kind === 'interface' ? 'Methods' : 'Fields');
 				html += `<h3>${title}</h3>`;
 				html += `<table class="contract-table">
 					<thead><tr>
-						${isFunction ? '<th class="col-mod">Contract</th>' : ''}
+						${hasAnyContract ? '<th class="col-mod">Contract</th>' : ''}
 						<th class="col-type">Type</th>
 						<th class="col-name">Name</th>
+						${vd.kind === 'interface' ? '<th class="col-mod">Attribute</th>' : ''}
 						<th>${anyDesc ? 'Description' : ''}</th>
 					</tr></thead><tbody>`;
 				vd.members.forEach(m => { html += renderRow(m, isFunction, false); });
@@ -2537,6 +2573,33 @@
 			html += '</div>';
 
 			html += buildDocsBodyHtml(vd);
+
+			if (vd.file) {
+				const match = vd.file.match(/^(.*):(\d+):(\d+)$/);
+				const filePath = match ? match[1] : vd.file;
+				const lineStr = match ? match[2] : '';
+
+				let href = '';
+				const locHref = window.location.href;
+				if (locHref.includes('c3-lang.org') || locHref.includes('c3lang.org')) {
+					href = `https://github.com/c3lang/c3c/blob/master/${filePath}`;
+					if (lineStr) href += `#L${lineStr}`;
+				} else {
+					// Handle absolute paths (Windows or Unix)
+					if (filePath.match(/^[a-zA-Z]:/) || filePath.startsWith('/')) {
+						href = 'file:///' + filePath.replace(/^\//, '');
+					} else {
+						href = filePath;
+					}
+				}
+
+				html += `<div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--border);">
+					<a href="${href}" target="_blank" style="font-size: 0.9em; color: var(--filter-fg); text-decoration: none;">
+						<span style="opacity: 0.7;">Defined in: </span>
+						<span style="color: var(--accent);">${filePath}${lineStr ? ':' + lineStr : ''}</span>
+					</a>
+				</div>`;
+			}
 
 			return html;
 		}

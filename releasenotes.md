@@ -4,6 +4,8 @@
 
 ### Changes / improvements
 - Add `$$PROJECT_PATH`, accessible through `env::PROJECT_PATH`.
+- Deprecate `$field.get(a)` and `$field.set(a, b)`. Replaced by `a.$field` and `a.$field = b`.
+- Add `a.$eval($field)` as a variant of `a.$field`.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
@@ -12,6 +14,10 @@
 - `LinkedHashMap` renamed `OrderedMap`, `LinkedHashSet` renamed `OrderedSet`. Old names are deprecated.
 - Added initial cpudetect on Linux / MacOS Aarch64.
 - Enable libc::errno for FreeBSD.
+- Checking filesize on Win32 now correctly reports errors. Getting the filesize now rejects directories.
+- `ini::parse` and related takes an `error_line` argument to identify the line with error.
+- JSON marshaling will return INVALID_NUMBER when encountering a inf or NaN for a float.
+- JSON decoding will reject `1.` literals.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
@@ -35,7 +41,33 @@
 - UTF32 BOM detection was broken.
 - Sort from DString.less was inconsistent.
 - Fix io::skip using 'read' vs 'read_byte', causing an error.
- 
+- `Slice2d.slice` incorrectly handled slices with x/y offset and 0/negative length together.
+- `String.to_integer` incorrectly accepted some invalid characters for hex.
+- Removed broken `StringIterator.get`.
+- Fix to refcount behaviour, preventing issue on release.
+- `File.close` should always invalidate the pointer on close, even on failures.
+- Overlong conversions to unicode for `%c` at boundaries.
+- Do not rely on implicit allocation for getcwd.
+- Skipping symlinks wasn't properly implemented for Win32.
+- Reverse indexing a value that overloads indexing would index an anonymous copy of the value.
+- Fix case where member.set would hit an assert.
+- Same type casts would not become rvalues.
+- Hex decoding would leak memory on failure.
+- `Codepage.by_name` would not use normalized name.
+- `@return? bar!` didn't work if the identifier matched a macro.
+- Copying compile time strings during compile time folding with strings containing 0 would sometimes get truncated. #3267
+- Pem parsing did not correctly handle empty body, nor when the first line was too short.
+- Additional pem parsing bugs on malformed data handled.
+- Compiler would crash when getting the `kind`, `qname`, or `alignment` of an `untypedlist`.
+- `untypedlist` incorrectly had `size` property.
+- JSON handling of UTF16 surrogate pairs fixed.
+- `base32`, `base64` and `codepage` would leak memory on encode/decode errors.
+- Indexing into a type with a `$reflect` value would sometimes cause a crash.
+- Using a faultdef hidden behind `@if` would cause a crash.
+- Taking the type of a macro method would cause a crash.
+- Cap array size to avoid overflow when making multidimensional arrays that are too large.
+- DynamicArenaAllocator would incorrectly handle some reuse cases.
+
 ## 0.8.0 Change list
 
 ### Changes / improvements

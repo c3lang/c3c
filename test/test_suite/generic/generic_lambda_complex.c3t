@@ -71,7 +71,7 @@ fn void? TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 							};
 							break OUTER;
 						$default:
-							$if $defined($m.get(self.data).as_stream):
+							$if $defined(self.data.$m.as_stream):
 								tag = {
 									.kind = TEMPLATE,
 									.template = self.data.$eval($m.name).as_stream(),

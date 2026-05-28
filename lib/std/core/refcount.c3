@@ -64,7 +64,7 @@ fn void Ref.release(&self)
 {
 	assert(self.refcount != null, "Reference already released");
     assert(self.refcount.load(RELAXED) >= 0, "Overrelease of refcount");
-	if (self.refcount.sub(1, RELAXED) == 0)
+	if (self.refcount.sub(1, RELEASE) == 0)
 	{
 		thread::fence(ACQUIRE);
 		$if $defined(Type.dealloc):
@@ -122,7 +122,7 @@ macro void release(refcounted)
 {
 	if (!refcounted) return;
 	assert(refcounted.refcount.load(RELAXED) >= 0, "Overrelease of refcount");
-	if (refcounted.refcount.sub(1, RELAXED) == 0)
+	if (refcounted.refcount.sub(1, RELEASE) == 0)
 	{
 		thread::fence(ACQUIRE);
 		$if $defined(refcounted.dealloc):

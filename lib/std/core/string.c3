@@ -1051,9 +1051,6 @@ fn sz String.utf8_codepoints(s)
 	return len;
 }
 
-
-
-
 <*
  Convert a number to a given base. If the base is not given, then
  it will be inferred from the number if the string starts with 0x 0o or 0b and the
@@ -1118,14 +1115,7 @@ fn IntType? to_integer(String self, int base = 10) <IntType>
 	IntType value = 0;
 	while (index != len)
 	{
-		char c = self[index++];
-		switch
-		{
-			case base_used < 10 || c < 'A':   c -= '0';
-			case c <= 'F':                    c -= 'A' - 10;
-			case c < 'a' || c > 'f':          return MALFORMED_INTEGER~;
-			default:                          c -= 'a' - 10;
-		}
+		char c = ascii::HEX_VALUE[self[index++]];
 		if (c >= (int)base_used) return MALFORMED_INTEGER~;
 		do
 		{
