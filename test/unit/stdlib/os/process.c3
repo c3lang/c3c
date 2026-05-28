@@ -231,7 +231,7 @@ fn void test_pipe_bind_stdout_to_stdin() @test @if(env::POSIX)
 
 	Process b = process::spawn({"grep", "."}, stdio: {
 		.stdin  = bind(pipe[0]),
-		.stdout = capture(),
+		.stdout = CAPTURE,
 	})!!;
 
 	libc::close(pipe[0]);
