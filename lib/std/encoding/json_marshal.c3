@@ -10,7 +10,8 @@
 module std::encoding::json;
 import std::io;
 
-enum Indent	:	(String chars) {
+enum Indent	:	(String chars)
+{
 	NONE		{""},
 	TAB			{"\t"},
 	SPACE_1		{" "},
@@ -83,23 +84,21 @@ macro void? marshal_to(OutStream stream, value, Indent indent = NONE)
 module std::encoding::json @private;
 import std::io, std::math;
 
-fn void? write_indent(OutStream stream, Indent indent, usz indent_depth)
+fn void? write_indent(OutStream stream, Indent indent, int indent_depth)
 {
-	for (usz i = 0; i < indent_depth; i++)
+	if (indent == NONE) return;
+	for (int i = 0; i < indent_depth; i++)
 	{
-		if (indent != NONE)
-		{
-			stream.write(indent.chars)!;
-		}
+		stream.write(indent.chars)!;
 	}
 }
 
-fn void? serialize(OutStream stream, Type value, Indent indent = NONE, usz indent_depth = 0) <Type>
+fn void? serialize(OutStream stream, Type value, Indent indent = NONE, int indent_depth = 0) <Type>
 {
 	bool pretty_print = indent != NONE;
 	stream.write_byte('{')!;
 
-	$if  Type::members.len > 0:
+	$if  Type::members.len:
 		if (pretty_print) stream.write_byte('\n')!;
 	$endif
 
@@ -119,7 +118,7 @@ fn void? serialize(OutStream stream, Type value, Indent indent = NONE, usz inden
 
 		serialize_value{$member.type}(stream, value.$member, indent, indent_depth + 1)!;
 	$endforeach
-	$if Type::members.len > 0:
+	$if Type::members.len:
 		if (pretty_print)
 		{
 			stream.write_byte('\n')!;
@@ -136,7 +135,7 @@ fn void? serialize(OutStream stream, Type value, Indent indent = NONE, usz inden
  @return? INVALID_NUMBER : "If the float value is NaN or inf"
  @return? io::fprintf! : "If there is an IO error"
 *>
-fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NONE, usz indent_depth = 0) <TypeElement>
+fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NONE, int indent_depth = 0) <TypeElement>
 {
 	$switch TypeElement::kind:
 		$case STRUCT:
@@ -176,11 +175,11 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 <*
  Marshal a slice of primitive values to JSON.
 *>
-fn void? serialize_slice(OutStream stream, SliceType[] slice, Indent indent = NONE, usz indent_depth = 0) <SliceType>
+fn void? serialize_slice(OutStream stream, SliceType[] slice, Indent indent = NONE, int indent_depth = 0) <SliceType>
 {
 	bool pretty_print = indent != NONE;
 	stream.write_byte('[')!;
-	if (slice.len > 0 && pretty_print) stream.write_byte('\n')!;
+	if (slice && pretty_print) stream.write_byte('\n')!;
 
 	foreach (i, element : slice)
 	{
@@ -192,7 +191,7 @@ fn void? serialize_slice(OutStream stream, SliceType[] slice, Indent indent = NO
 		if (pretty_print) write_indent(stream, indent, indent_depth + 1)!;
 		serialize_value{SliceType}(stream, element, indent, indent_depth + 1)!;
 	}
-	if (slice.len > 0 && pretty_print)
+	if (slice && pretty_print)
 	{
 		stream.write_byte('\n')!;
 		write_indent(stream, indent, indent_depth)!;
