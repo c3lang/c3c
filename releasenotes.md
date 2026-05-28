@@ -65,6 +65,7 @@
 - Indexing into a type with a `$reflect` value would sometimes cause a crash.
 - Using a faultdef hidden behind `@if` would cause a crash.
 - Taking the type of a macro method would cause a crash.
+- Cap array size to avoid overflow when making multidimensional arrays that are too large.
 
 ## 0.8.0 Change list
 

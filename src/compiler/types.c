@@ -461,6 +461,7 @@ TypeSize type_size(Type *type)
 			return type->size = t.uptr.canonical->builtin.bytesize;
 		case VECTORS:
 		case TYPE_ARRAY:
+			if (type_size(type->array.base) > (ArraySize)MAX_ARRAY_SIZE / type->array.len) return type->size = MAX_ARRAY_SIZE + 1;
 			return type->size = type_size(type->array.base) * type->array.len;
 		case TYPE_SLICE:
 			return type->size = size_slice;
