@@ -1080,6 +1080,16 @@ static bool category_has_content(Module *module, DocCategory cat)
 	return false;
 }
 
+static bool module_is_stdlib(Module *module)
+{
+	if (module->name->len < 3) return false;
+	if (module->name->len == 3 && strcmp(module->name->module, "std") == 0) return true;
+	if (module->name->len > 5 && memcmp(module->name->module, "std::", 5) == 0) return true;
+	if (module->name->len == 4 && strcmp(module->name->module, "libc") == 0) return true;
+	if (module->name->len > 6 && memcmp(module->name->module, "libc::", 6) == 0) return true;
+	return false;
+}
+
 void compiler_docgen(BuildTarget *target)
 {
 	bool json_only = compiler.build.docgen_json_out;
@@ -1129,6 +1139,8 @@ void compiler_docgen(BuildTarget *target)
 	bool first_module = true;
 	FOREACH(Module *, module, all_modules)
 	{
+		if (target->emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(module)) continue;
+
 		DeclId module_doc = 0;
 		unsigned unit_count = vec_size(module->units);
 		FOREACH(CompilationUnit *, unit, module->units)
