@@ -1932,3 +1932,13 @@ void print_build_env(void)
 	printf("env::WIN32        : %s\n", compiler.platform.os == OS_TYPE_WIN32 ? "true" : "false");
 	printf("env::LIBC         : %s\n", link_libc() ? "true" : "false");
 }
+
+bool module_is_stdlib(Module *module)
+{
+	if (module->name->len < 3) return false;
+	if (module->name->len == 3 && strcmp(module->name->module, "std") == 0) return true;
+	if (module->name->len > 5 && memcmp(module->name->module, "std::", 5) == 0) return true;
+	if (module->name->len == 4 && strcmp(module->name->module, "libc") == 0) return true;
+	if (module->name->len > 6 && memcmp(module->name->module, "libc::", 6) == 0) return true;
+	return false;
+}

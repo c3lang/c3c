@@ -2537,6 +2537,7 @@ void scratch_buffer_append_module(Module *module, bool is_export);
 Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
 Decl *module_find_symbol_in_unit(Module *module, CompilationUnit *unit, const char *symbol);
+bool module_is_stdlib(Module *module);
 
 bool parse_file(File *file);
 Decl **parse_include_file(File *file, CompilationUnit *unit);
