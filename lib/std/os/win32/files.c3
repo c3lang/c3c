@@ -106,8 +106,8 @@ extern fn WString _wfullpath(WString absPath, WString relPath, usz maxLength);
 extern fn int _setmode(int fd, int mode);
 
 <*
-	Copies data from a named or anonymous pipe into a buffer without removing it from the pipe.
-	It also returns information about data in the pipe.
+ Copies data from a named or anonymous pipe into a buffer without removing it from the pipe.
+ It also returns information about data in the pipe.
 *>
 extern fn Win32_BOOL peekNamedPipe(
 	Win32_HANDLE  hNamedPipe,
