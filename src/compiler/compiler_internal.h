@@ -20,7 +20,7 @@ typedef uint16_t StructIndex;
 typedef uint32_t AlignSize;
 typedef uint64_t ArraySize;
 typedef uint64_t BitSize;
-typedef uint16_t FileId;
+typedef uint32_t FileId;
 
 #define INT5_MAX         15
 #define INT12_MAX        2047
@@ -57,7 +57,7 @@ typedef uint16_t FileId;
 #define UINT128_MAX ((Int128) { UINT64_MAX, UINT64_MAX })
 #define INT128_MAX ((Int128) { INT64_MAX, UINT64_MAX })
 #define INT128_MIN ((Int128) { (uint64_t)INT64_MIN, 0 })
-#define STDIN_FILE_ID 0xFFFF
+#define STDIN_FILE_ID (~(FileId)0)
 #define ABI_TYPE_EMPTY ((AbiType) { .type = NULL })
 #define RANGE_EXTEND_PREV(x)  do { *sourcelocptr((x)->loc) = extend_loc_with_token(sourcelocptr((x)->loc), &c->prev_span); } while (0)
 #define PRINT_ERROR_AT(_node, ...) print_error_at((_node)->loc, __VA_ARGS__)
