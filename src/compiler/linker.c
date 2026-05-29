@@ -586,11 +586,12 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	}
 	add_plain_arg("--eh-frame-hdr");
 	if (!link_libc()) return;
-	const char *crt_begin_dir = find_linux_crt_begin();
+	bool is_musl = compiler.build.linuxpaths.libc == LINUX_LIBC_MUSL;
+	const char *crt_begin_dir = is_musl ? NULL : find_linux_crt_begin();
 	const char *crt_dir = find_linux_crt();
 
 	if (is_exe && strip_unused()) add_plain_arg("--gc-sections");
-	if (!crt_begin_dir || !crt_dir)
+	if (!crt_dir || (!is_musl && !crt_begin_dir))
 	{
 		error_exit("Failed to find the C runtime at link time.");
 	}
@@ -607,19 +608,19 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	{
 		add_concat_file_arg(crt_dir, "crti.o");
 		if (!is_dylib) add_concat_file_arg(crt_dir, "Scrt1.o");
-		add_concat_file_arg(crt_begin_dir, "crtbeginS.o");
-		add_concat_file_arg(crt_begin_dir, "crtendS.o");
+		if (!is_musl) add_concat_file_arg(crt_begin_dir, "crtbeginS.o");
+		if (!is_musl) add_concat_file_arg(crt_begin_dir, "crtendS.o");
 	}
 	else
 	{
 		add_concat_file_arg(crt_dir, "crti.o");
 		if (!is_dylib) add_concat_file_arg(crt_dir, "crt1.o");
-		add_concat_file_arg(crt_begin_dir, "crtbegin.o");
-		add_concat_file_arg(crt_begin_dir, "crtend.o");
+		if (!is_musl) add_concat_file_arg(crt_begin_dir, "crtbegin.o");
+		if (!is_musl) add_concat_file_arg(crt_begin_dir, "crtend.o");
 	}
 	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
-	add_concat_quote_arg("-L", crt_begin_dir);
+	if (!is_musl) add_concat_quote_arg("-L", crt_begin_dir);
 
 	if (compiler.platform.arch == ARCH_TYPE_RISCV64 || compiler.platform.arch == ARCH_TYPE_RISCV32)
 	{
@@ -637,8 +638,11 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 
 	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
 	linking_add_link(&compiler.linking, "pthread");
-	linking_add_link(&compiler.linking, "gcc");
-	linking_add_link(&compiler.linking, "gcc_s");
+	if (!is_musl)
+	{
+		linking_add_link(&compiler.linking, "gcc");
+		linking_add_link(&compiler.linking, "gcc_s");
+	}
 	linking_add_link(&compiler.linking, "c");
 	add_plain_arg("-L/usr/lib/");
 	add_plain_arg("-L/lib/");
