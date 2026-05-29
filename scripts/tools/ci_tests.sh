@@ -25,6 +25,48 @@ SYSTEM_NAME="$(uname -s)"
 if [ -n "$2" ]; then
     OS_MODE="$2"
 else
+
+
+
+
+const fs = require("fs");
+const path = require("path");
+
+function removeComments(jsonText) {
+  return jsonText
+    // Remove single-line comments
+    .replace(/\/\/.*$/gm, "")
+    // Remove multi-line comments
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    // Remove extra empty lines
+    .replace(/^\s*[\r\n]/gm, "");
+}
+
+function cleanProjectJsonFiles(dir) {
+  const files = fs.readdirSync(dir);
+
+  files.forEach((file) => {
+    const fullPath = path.join(dir, file);
+    const stat = fs.statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      cleanProjectJsonFiles(fullPath);
+    } else if (file === "project.json") {
+      const content = fs.readFileSync(fullPath, "utf8");
+
+      const cleaned = removeComments(content);
+
+      fs.writeFileSync(fullPath, cleaned);
+
+      console.log(`Cleaned: ${fullPath}`);
+    }
+  });
+}
+
+// Start from current folder
+cleanProjectJsonFiles(process.cwd());
+
+console.log("All project.json comments removed.");
     case "$SYSTEM_NAME" in
         CYGWIN*|MINGW*|MSYS*) OS_MODE="windows" ;;
         Darwin*)              OS_MODE="mac" ;;
