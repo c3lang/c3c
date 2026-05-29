@@ -1206,13 +1206,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		case BUILTIN_ATOMIC_LOAD:
 		{
-			ASSERT(arg_count == 3);
-			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_BOOL, BA_INTEGER}, 3)) return false;
+			ASSERT(arg_count == 4);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_BOOL, BA_INTEGER, BA_INTEGER}, 4)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
 			if (!sema_cast_const(args[1])) RETURN_SEMA_ERROR(args[1], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[2])) return false;
+			if (arg_count == 4) if (!sema_check_alignment_expression(context, args[3], true)) return false;
 			switch (args[2]->const_expr.ixx.i.low)
 			{
 				case ATOMIC_ACQUIRE_RELEASE:
@@ -1360,7 +1361,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_ATOMIC_STORE:
 		{
-			ASSERT(arg_count == 4);
+			ASSERT(arg_count == 5);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
 			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_BOOL, BA_INTEGER}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
@@ -1371,6 +1372,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
+			if (!sema_check_alignment_expression(context, args[4], true)) return false;
 			switch (args[3]->const_expr.ixx.i.low)
 			{
 				case ATOMIC_ACQUIRE_RELEASE:
@@ -1511,12 +1513,11 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_OVERFLOW_MUL:
 		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_PREFETCH:
-		case BUILTIN_ATOMIC_LOAD:
 		case BUILTIN_UNALIGNED_LOAD:
 		case BUILTIN_SELECT:
 		case BUILTIN_MATRIX_TRANSPOSE:
 			return 3;
-		case BUILTIN_ATOMIC_STORE:
+		case BUILTIN_ATOMIC_LOAD:
 		case BUILTIN_MASKED_STORE:
 		case BUILTIN_MASKED_LOAD:
 		case BUILTIN_GATHER:
@@ -1524,6 +1525,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_STR_REPLACE:
 		case BUILTIN_UNALIGNED_STORE:
 			return 4;
+		case BUILTIN_ATOMIC_STORE:
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 		case BUILTIN_ATOMIC_FETCH_ADD:
 		case BUILTIN_ATOMIC_FETCH_INC_WRAP:
