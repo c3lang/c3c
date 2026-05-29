@@ -1,0 +1,31 @@
+// Fix compiler error message for keyword block parameter names
+
+function validateBlockParameterName(name) {
+  const reservedKeywords = [
+    "if",
+    "else",
+    "for",
+    "while",
+    "return",
+    "class",
+    "function",
+    "const",
+    "let",
+    "var"
+  ];
+
+  if (reservedKeywords.includes(name)) {
+    throw new SyntaxError(
+      `Invalid block parameter name "${name}": reserved keyword cannot be used as a block parameter.`
+    );
+  }
+
+  return true;
+}
+
+// Example usage
+try {
+  validateBlockParameterName("if");
+} catch (err) {
+  console.error(err.message);
+}
