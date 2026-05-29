@@ -72,6 +72,9 @@
 - DynamicArenaAllocator would incorrectly handle some reuse cases.
 - `__atomic_compare_exchange` had an incorrect implementation.
 - `channel::create_unbuffered` would not correctly zero out memory, potentially yielding unpredictable result.
+- `lock_timeout` on Posix would sleep the entire sleep before retrying, and it would fail if it managed to sleep.
+- `stack_size` setting for threads was ignored on Posix.
+- Setting thread priority on Win32 was off by one.
 
 ## 0.8.0 Change list
 

@@ -107,7 +107,7 @@ macro void @_threadPool_shutdown(ThreadPool* self, #stop) @private
 
 <*
  Push a new job to the pool.
- Returns whether the queue is full, in which case the job is ignored.
+ Blocks the current thread if the queue is full.
 *>
 fn void ThreadPool.push(&self, ThreadFn func, void* arg)
 {
