@@ -16,7 +16,7 @@ struct Atomic <Type>
 *>
 macro Type Atomic.load(&self, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	return $$atomic_load(&self.data, false, $ordering.ordinal);
+	return $$atomic_load(&self.data, false, $ordering.ordinal, 0);
 }
 <*
  Stores data atomically, by default this uses SEQ_CONSISTENT ordering.
@@ -26,7 +26,7 @@ macro Type Atomic.load(&self, AtomicOrdering $ordering = SEQ_CONSISTENT)
 *>
 macro void Atomic.store(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
-	$$atomic_store(&self.data, value, false, $ordering.ordinal);
+	$$atomic_store(&self.data, value, false, $ordering.ordinal, 0);
 }
 
 macro Type Atomic.add(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
@@ -194,7 +194,7 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 
 	do
 	{
-		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal, 0);
 		old_value = bitcast(storage_old_value, $Typeof(*ptr));
 		new_value = old_value * y;
 		storage_new_value = bitcast(new_value, $StorageType);
@@ -234,7 +234,7 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	
 	do
 	{
-		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal, 0);
 		old_value = bitcast(storage_old_value, $Typeof(*ptr));
 		new_value = old_value / y;
 		storage_new_value = bitcast(new_value, $StorageType);
@@ -327,7 +327,7 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	
 	do
 	{
-		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal, 0);
 		old_value = bitcast(storage_old_value, $Typeof(*ptr));
 		new_value = storage_old_value >> storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
@@ -369,7 +369,7 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	
 	do
 	{
-		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal);
+		storage_old_value = $$atomic_load(storage_ptr, false, $load_ordering.ordinal, 0);
 		old_value = bitcast(storage_old_value, $Typeof(*ptr));
 		new_value = storage_old_value << storage_y;
 		storage_new_value = bitcast(new_value, $StorageType);
@@ -400,7 +400,7 @@ macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$endif
 	do
 	{
-		old_value = $$atomic_load(ptr, false, $load_ordering.ordinal);
+		old_value = $$atomic_load(ptr, false, $load_ordering.ordinal, 0);
 	}
 	while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $load_ordering) != old_value);
 
@@ -427,7 +427,7 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 	$endif
 	do
 	{
-		old_value = $$atomic_load(ptr, false, $load_ordering.ordinal);
+		old_value = $$atomic_load(ptr, false, $load_ordering.ordinal, 0);
 	}
 	while (mem::compare_exchange(ptr, old_value, new_value, $ordering, $load_ordering) != old_value);
 

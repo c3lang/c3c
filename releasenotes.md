@@ -7,6 +7,7 @@
 - Deprecate `$field.get(a)` and `$field.set(a, b)`. Replaced by `a.$field` and `a.$field = b`.
 - Add `a.$eval($field)` as a variant of `a.$field`.
 - Add json pretty print.
+- `$$atomic_store` and `$$atomic_load` takes an alignment parameter.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
@@ -69,6 +70,7 @@
 - Taking the type of a macro method would cause a crash.
 - Cap array size to avoid overflow when making multidimensional arrays that are too large.
 - DynamicArenaAllocator would incorrectly handle some reuse cases.
+- `__atomic_compare_exchange` had an incorrect implementation.
 
 ## 0.8.0 Change list
 

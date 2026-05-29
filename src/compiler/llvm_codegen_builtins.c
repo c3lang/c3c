@@ -155,6 +155,9 @@ INLINE void llvm_emit_atomic_store(GenContext *c, BEValue *result_value, Expr *e
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
 	llvm_value_deref(c, &value);
 	BEValue store_value = *result_value;
+	Expr *alignment = expr->call_expr.arguments[4];
+	int64_t align = alignment->const_expr.ixx.i.low;
+	if (align != 0) value.alignment = align;
 	LLVMValueRef store = llvm_store(c, &value, &store_value);
 	if (store)
 	{
@@ -259,7 +262,10 @@ INLINE void llvm_emit_atomic_load(GenContext *c, BEValue *result_value, Expr *ex
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
 	llvm_value_rvalue(c, result_value);
 	Type *type = result_value->type->pointer;
-	LLVMValueRef val = llvm_load(c, llvm_get_type(c, type), result_value->value, type_abi_alignment(type), "");
+	Expr *alignment = expr->call_expr.arguments[3];
+	int64_t align = alignment->const_expr.ixx.i.low;
+	if (align == 0) align = type_abi_alignment(type);
+	LLVMValueRef val = llvm_load(c, llvm_get_type(c, type), result_value->value, align, "");
 	if (expr->call_expr.arguments[1]->const_expr.b) LLVMSetVolatile(val, true);
 	LLVMSetOrdering(val,  llvm_atomic_ordering(expr->call_expr.arguments[2]->const_expr.ixx.i.low));
 	llvm_value_set(result_value, val, type);
