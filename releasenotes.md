@@ -7,6 +7,7 @@
 - Deprecate `$field.get(a)` and `$field.set(a, b)`. Replaced by `a.$field` and `a.$field = b`.
 - Add `a.$eval($field)` as a variant of `a.$field`.
 - Add json pretty print.
+- `$$atomic_store` and `$$atomic_load` takes an alignment parameter.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
