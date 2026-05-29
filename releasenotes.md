@@ -19,7 +19,8 @@
 - `ini::parse` and related takes an `error_line` argument to identify the line with error.
 - JSON marshaling will return INVALID_NUMBER when encountering a inf or NaN for a float.
 - JSON decoding will reject `1.` literals.
-
+- `spawn` now allows binding I/O and using different settings per pipe.
+ 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
 - NPOT vectors as associated variables were incorrectly lowered on load. #3228
