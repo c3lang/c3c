@@ -12,7 +12,7 @@ fn void test_inherit_stdio_stdout()
         command = { "echo", "Hello with inherit_stdio" };
     $endif
     
-    Process process = process::spawn(command, stdio: INHERIT_STDIO)!!;
+    Process process = process::spawn(command, INHERIT_STDIO)!!;
     defer process.destroy();
     
     // Join the process
@@ -38,7 +38,7 @@ fn void test_inherit_stdio_stderr()
         command = { "sh", "-c", "echo Error >&2" };
     $endif
     
-    Process process = process::spawn(command, stdio: INHERIT_STDIO)!!;
+    Process process = process::spawn(command, INHERIT_STDIO)!!;
     defer process.destroy();
     
     process.join()!!;
@@ -74,7 +74,7 @@ fn void test_inherit_stdio_comparison()
     assert(bytes_read1 > 0, "Expected output without inherit_stdio");
     
     // Now with inherit_stdio
-    Process process2 = process::spawn(command, stdio: INHERIT_STDIO)!!;
+    Process process2 = process::spawn(command, INHERIT_STDIO)!!;
     defer process2.destroy();
     
     process2.join()!!;
@@ -94,7 +94,7 @@ fn void test_inherit_stdio_exit_code()
         command = { "true" };
     $endif
     
-    Process process = process::spawn(command, stdio: INHERIT_STDIO)!!;
+    Process process = process::spawn(command, INHERIT_STDIO)!!;
     defer process.destroy();
     
     CInt exit_code = process.join()!!;
@@ -118,7 +118,7 @@ fn void test_inherit_stdio_redirect()
     $endif
     
     // Create a subprocess that inherits stdio
-    Process process = process::spawn(command, stdio: INHERIT_STDIO)!!;
+    Process process = process::spawn(command, INHERIT_STDIO)!!;
     defer process.destroy();
     
     // Wait for process to complete
@@ -197,10 +197,7 @@ fn void test_partial_inherit_stdin() @test
 		command = { "echo", "Hello" };
 	$endif
 	
-	Process process = process::spawn(command, stdio: {
-		.stdin  = INHERIT,
-		.stdout = CAPTURE,
-	})!!;
+	Process process = process::spawn(command, in: process::INHERIT)!!;
 	defer process.destroy();
 	
 	process.join()!!;
@@ -225,14 +222,9 @@ fn void test_pipe_bind_stdout_to_stdin() @test @if(env::POSIX)
 	os::fcntl((NativeSocket)pipe[1], F_SETFD, FD_CLOEXEC);
 
 	// ls | grep
-	Process a = process::spawn({"ls"}, stdio: {
-		.stdout = bind(pipe[1]),
-	})!!;
+	Process a = process::spawn({"ls"}, out: bind(pipe[1]))!!;
 
-	Process b = process::spawn({"grep", "."}, stdio: {
-		.stdin  = bind(pipe[0]),
-		.stdout = CAPTURE,
-	})!!;
+	Process b = process::spawn({"grep", "."}, in: bind(pipe[0]), out: process::CAPTURE)!!;
 
 	libc::close(pipe[0]);
 	libc::close(pipe[1]);
@@ -256,15 +248,11 @@ fn void test_pipe_bind_stdout_to_stdin() @test @if(env::WIN32)
 	win32::createPipe(&rd, &wr, &sa, 0);
 	win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 0);
 
-	Process a = process::spawn({"cmd.exe", "/c", "echo Hello"}, stdio: {
-		.stdout = bind(wr),
-	})!!;
+	Process a = process::spawn({"cmd.exe", "/c", "echo Hello"}, out: bind(wr))!!;
 	win32::closeHandle(wr);
 	win32::setHandleInformation(rd, win32::HANDLE_FLAG_INHERIT, 1);
 
-	Process b = process::spawn({"cmd.exe", "/c", "findstr .*"}, INHERIT_ENV, stdio: {
-		.stdin = bind(rd),
-	})!!;
+	Process b = process::spawn({"cmd.exe", "/c", "findstr .*"}, INHERIT_ENV, in: bind(rd))!!;
 
 	win32::closeHandle(rd);
 
