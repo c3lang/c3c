@@ -108,7 +108,7 @@ set(C3_LLD_DIR              ""                          CACHE STRING "Use custom
 set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
 set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
 set(C3_FETCH_LLVM           OFF                         CACHE BOOL   "Automatically download LLVM artifacts")
-set(C3_LLVM_TAG             "llvm_22.1.8"               CACHE STRING "Tag/Branch to download LLVM from")
+set(C3_LLVM_TAG             "latest"                    CACHE STRING "Tag/Branch to download LLVM from")
 set(LLVM_CRT_LIBRARY_DIR    ""                          CACHE STRING "Use custom llvm's compiler-rt directory")
 set(TCC_LIB_PATH            "/usr/lib/tcc/libtcc1.a"    CACHE STRING "Use custom libtcc1.a path")
 
