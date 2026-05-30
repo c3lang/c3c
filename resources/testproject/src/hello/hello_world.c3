@@ -1,5 +1,5 @@
 module hello_world;
-import std, bar, clib, clib2;
+import std, bar, clib, clib2, clib3;
 
 fn int test_doubler(int x) @if(env::WIN32) => x * x;
 extern fn int test_doubler(int) @if(!env::WIN32);
@@ -23,5 +23,7 @@ fn int main()
 	if ($feature(ABCD)) io::printn("ABCD");
 	clib::hello_from_c();
 	clib2::hello_from_c_zip();
+	if ($feature(CLIB3_PRESET_TEST)) clib3::hello_from_preset_feature();
+	if ($feature(CLIB3_LOCAL_TEST)) clib3::hello_from_local_feature();
     return 0;
 }

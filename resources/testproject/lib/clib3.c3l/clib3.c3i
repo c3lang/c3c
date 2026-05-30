@@ -1,0 +1,4 @@
+module clib3;
+
+extern fn void hello_from_preset_feature();
+extern fn void hello_from_local_feature();
