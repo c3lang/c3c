@@ -369,7 +369,7 @@ fn bool NativeThread.set_priority(&self, ThreadPriority priority)
 		win32::THREAD_PRIORITY_ABOVE_NORMAL,
 		win32::THREAD_PRIORITY_TIME_CRITICAL
 	};
-	return (bool)win32::setThreadPriority(*self, TABLE[priority.ordinal - 1]);
+	return (bool)win32::setThreadPriority(*self, TABLE[priority.ordinal]);
 }
 
 fn void NativeThread.detach(thread) @inline
