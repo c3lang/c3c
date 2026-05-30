@@ -311,9 +311,25 @@ static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 
 static const char *find_bsd_crt(void)
 {
+	if (compiler.build.bsd_sysroot)
+	{
+		const char *sysroot_usr_lib = file_append_path(compiler.build.bsd_sysroot, "usr/lib");
+		if (file_exists(file_append_path(sysroot_usr_lib, "crt1.o")) || file_exists(file_append_path(sysroot_usr_lib, "crt0.o")))
+		{
+			return sysroot_usr_lib;
+		}
+		if (file_exists(file_append_path(compiler.build.bsd_sysroot, "crt1.o")) || file_exists(file_append_path(compiler.build.bsd_sysroot, "crt0.o")))
+		{
+			return compiler.build.bsd_sysroot;
+		}
+		return NULL;
+	}
 	if (file_exists("/usr/lib/crt1.o") || file_exists("/usr/lib/crt0.o"))
 	{
-		return "/usr/lib/";
+		if (file_exists("/usr/lib/crtbegin.o") || file_exists("/usr/lib/crtend.o"))
+		{
+			return "/usr/lib/";
+		}
 	}
 	return NULL;
 }
@@ -740,11 +756,25 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 		if (compiler.build.debug_info == DEBUG_INFO_FULL) add_plain_arg("-rdynamic");
 		return;
 	}
+	if (compiler.build.bsd_sysroot)
+	{
+		add_plain_arg(str_printf("--sysroot=%s", compiler.build.bsd_sysroot));
+	}
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
 	add_plain_arg("--eh-frame-hdr");
 	if (!link_libc()) return;
 	const char *crt_dir = find_bsd_crt();
-	if (!crt_dir) error_exit("Failed to find the C runtime at link time.");
+	if (!crt_dir)
+	{
+		if (!compiler.build.bsd_sysroot)
+		{
+			error_exit("Cross-compiling to a BSD target requires a BSD sysroot. Please specify it using --bsd-sysroot.");
+		}
+		else
+		{
+			error_exit("Failed to find BSD C runtime at link time in the specified --bsd-sysroot: %s", compiler.build.bsd_sysroot);
+		}
+	}
 	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE) add_plain_arg("--gc-sections");
 	bool is_openbsd = compiler.platform.os == OS_TYPE_OPENBSD;
 	bool is_netbsd = compiler.platform.os == OS_TYPE_NETBSD;
@@ -774,7 +804,14 @@ static void linker_setup_bsd(const char ***args_ref, Linker linker_type, bool is
 		if (!is_openbsd) add_concat_file_arg(crt_dir, "crtn.o");
 	}
 	add_concat_quote_arg("-L", crt_dir);
-	add_plain_arg("-L/usr/lib/");
+	if (compiler.build.bsd_sysroot)
+	{
+		add_concat_quote_arg("-L", file_append_path(compiler.build.bsd_sysroot, "usr/lib"));
+	}
+	else
+	{
+		add_plain_arg("-L/usr/lib/");
+	}
 	switch (compiler.platform.os)
 	{
 		case OS_TYPE_NETBSD:
