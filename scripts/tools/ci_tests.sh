@@ -228,6 +228,59 @@ run_wasm_compile() {
     run_c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
 }
 
+run_bsd_cross_compile() {
+    # Skip if running in a container, Nix, or non-standard targets (android, native bsd) to avoid redundant uncached downloads
+    if [ -f /etc/alpine-release ] || [ -f /.dockerenv ] || [ -n "$NIX_BUILD_TOP" ]; then
+        echo "Skipping BSD cross-compilation test in container/Nix environment."
+        return
+    fi
+    if [[ "$OS_MODE" != "linux" && "$OS_MODE" != "mac" && "$OS_MODE" != "windows" ]]; then
+        echo "Skipping BSD cross-compilation test on target $OS_MODE."
+        return
+    fi
+
+    local MY_WORK_DIR="$WORK_DIR/bsd_cross"
+    mkdir -p "$MY_WORK_DIR"
+
+    echo "--- Running BSD Cross-Compile Check ---"
+
+    local SYSROOT_DIR="$REAL_ROOT_DIR/.cache/freebsd-sysroot"
+    local CACHE_TXZ="$REAL_ROOT_DIR/.cache/base.txz"
+    if [ ! -d "$SYSROOT_DIR" ]; then
+        echo "Preparing FreeBSD sysroot..."
+        mkdir -p "$REAL_ROOT_DIR/.cache"
+        if [ ! -f "$CACHE_TXZ" ]; then
+            echo "Downloading FreeBSD base.txz..."
+            if command -v wget &> /dev/null; then
+                wget -q -O "$CACHE_TXZ" https://download.freebsd.org/releases/amd64/15.0-RELEASE/base.txz
+            else
+                curl -sSL -o "$CACHE_TXZ" https://download.freebsd.org/releases/amd64/15.0-RELEASE/base.txz
+            fi
+        fi
+        echo "Extracting sysroot files to .cache/freebsd-sysroot..."
+        mkdir -p "$SYSROOT_DIR"
+        if [[ "$OS_MODE" == "windows" ]]; then
+            # Windows tar cannot create POSIX symlinks and exits with code 2 for those failures.
+            # We tolerate this: the actual .a/.o files we need are still extracted correctly.
+            # We redirect stderr to /dev/null to avoid polluting the GitHub Actions log with symlink warnings.
+            tar -xf "$CACHE_TXZ" -C "$SYSROOT_DIR" ./usr/lib ./lib ./libexec/ld-elf.so.1 2> /dev/null || true
+        else
+            tar -xf "$CACHE_TXZ" -C "$SYSROOT_DIR" ./usr/lib ./lib ./libexec/ld-elf.so.1
+        fi
+        # Verify the critical linker inputs were actually extracted regardless of symlink failures.
+        if [ ! -f "$SYSROOT_DIR/usr/lib/libc.a" ] || [ ! -f "$SYSROOT_DIR/usr/lib/crt1.o" ]; then
+            echo "ERROR: FreeBSD sysroot extraction failed - libc.a or crt1.o missing from $SYSROOT_DIR"
+            exit 1
+        fi
+    fi
+
+    cd "$MY_WORK_DIR"
+    echo 'import std; fn void main() { io::printn("Hello BSD"); }' > main.c3
+
+    run_c3c compile --target freebsd-x64 --bsd-sysroot "$SYSROOT_DIR" main.c3
+    echo "BSD cross-compilation successfully linked executable."
+}
+
 run_http_server_tests() {
     local MY_WORK_DIR="$WORK_DIR/http"
     mkdir -p "$MY_WORK_DIR"
@@ -350,6 +403,7 @@ run_parallel dynlib run_dynlib_tests
 run_parallel staticlib run_staticlib_tests
 run_parallel testproject run_testproject
 run_parallel wasm run_wasm_compile
+run_parallel bsd_cross run_bsd_cross_compile
 run_parallel http run_http_server_tests
 
 # Wait for background tasks

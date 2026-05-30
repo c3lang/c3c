@@ -528,6 +528,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(linuxpaths.crtbegin);
 	OVERRIDE_IF_SET(android.ndk_path);
 	OVERRIDE_IF_SET(android.api_version);
+	OVERRIDE_IF_SET(bsd_sysroot);
 
 	if (options->cpu_flags)
 	{
