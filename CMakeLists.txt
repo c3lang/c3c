@@ -173,6 +173,10 @@ if(C3_ENABLE_CLANGD_LSP)
 endif(C3_ENABLE_CLANGD_LSP)
 
 if(C3_WITH_LLVM)
+    add_library(ZLIB::ZLIB INTERFACE IMPORTED GLOBAL)
+    set_target_properties(ZLIB::ZLIB PROPERTIES INTERFACE_LINK_LIBRARIES miniz)
+    set(ZLIB_FOUND TRUE CACHE INTERNAL "")
+
     if(C3_FETCH_LLVM)
         # 1. Determine local platform ID
         if (WIN32)
@@ -463,7 +467,7 @@ if(C3_WITH_LLVM)
     endif()
 endif()
 
-add_library(miniz STATIC dependencies/miniz/miniz.c)
+add_library(miniz STATIC dependencies/miniz/miniz.c dependencies/miniz/zlib_compat.c)
 
 if (CMAKE_C_COMPILER_ID MATCHES "GNU")
     set_source_files_properties(
