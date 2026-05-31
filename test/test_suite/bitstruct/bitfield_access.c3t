@@ -161,12 +161,12 @@ entry:
   %10 = load i8, ptr %ptradd, align 1
   %zext11 = zext i8 %10 to i32
   %shl12 = shl i32 %zext11, 3
-  %11 = or i32 %shl12, %lshrl
+  %11 = or i32 %lshrl, %shl12
   %ptradd13 = getelementptr inbounds i8, ptr %xx, i64 2
   %12 = load i8, ptr %ptradd13, align 1
   %zext14 = zext i8 %12 to i32
   %shl15 = shl i32 %zext14, 11
-  %13 = or i32 %shl15, %11
+  %13 = or i32 %11, %shl15
   %14 = and i32 262143, %13
   call void (ptr, ...) @printf(ptr @.str.6, i32 %14)
   ret void

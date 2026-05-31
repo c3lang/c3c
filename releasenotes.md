@@ -75,6 +75,7 @@
 - `lock_timeout` on Posix would sleep the entire sleep before retrying, and it would fail if it managed to sleep.
 - `stack_size` setting for threads was ignored on Posix.
 - Setting thread priority on Win32 was off by one.
+- Non-power-of-two-sized member of @bigendian bitstruct backed by char array wasn't working #3283.
 
 ## 0.8.0 Change list
 
