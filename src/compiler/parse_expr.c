@@ -1035,6 +1035,11 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 	{
 		if (!parse_next_may_be_type_or_ident(c))
 		{
+			if (token_is_keyword_ident(c->tok) && c->span.row == c->prev_span.row)
+			{
+				PRINT_ERROR_HERE("'%s' is a keyword, and can't be used as a parameter name.", symstr(c));
+				return poisoned_expr;
+			}
 			PRINT_ERROR_LAST("Expected an ending ')'. Did you forget a ')' before this ';'?");
 			return poisoned_expr;
 		}
