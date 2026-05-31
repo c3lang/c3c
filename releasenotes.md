@@ -8,6 +8,7 @@
 - Add `a.$eval($field)` as a variant of `a.$field`.
 - Add json pretty print.
 - `$$atomic_store` and `$$atomic_load` takes an alignment parameter.
+- `$vaarg[^1]` is supported. #3276
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI

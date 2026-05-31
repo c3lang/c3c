@@ -474,6 +474,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPRID(expr->slice_expr.expr);
 			copy_range(c, &expr->slice_expr.range);
 			return expr;
+		case EXPR_VAARG:
+			MACRO_COPY_EXPRID(expr->vaarg_index.expr);
+			return expr;
 		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_SUBSCRIPT:
 			MACRO_COPY_EXPRID(expr->subscript_expr.expr);
@@ -506,7 +509,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_MAYBE_DEREF:
 		case EXPR_CT_REFLECT:
 		case EXPR_CT_FEATURE:
-		case EXPR_VAARG:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
 		case EXPR_MAKE_ANY:

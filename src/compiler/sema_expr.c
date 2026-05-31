@@ -270,9 +270,10 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
  *
  * @return a poisoned expr if it fails
  */
-Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr)
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *index)
 {
 	unsigned args = vec_size(context->macro_varargs);
+	Expr *index_expr = exprptr(index->expr);
 	if (!sema_analyse_expr_rvalue(context, index_expr)) return poisoned_expr;
 	if (!type_is_integer(index_expr->type))
 	{
@@ -287,12 +288,17 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr)
 	{
 		RETURN_VAL_SEMA_ERROR(poisoned_expr, index_expr, "The index cannot be negative.");
 	}
-	Int int_max = { .i = { .low = args }, .type = TYPE_U32 };
+	Int int_max = { .i = { .low = 0xFFFFF }, .type = TYPE_U32 };
 	if (int_comp(index_val, int_max, BINARYOP_GE))
 	{
-		RETURN_VAL_SEMA_ERROR(poisoned_expr, index_expr, "Only %u vaarg%s exist.", args, args == 1 ? "" : "s");
+		goto OUT_OF_RANGE;
 	}
-	return context->macro_varargs[(size_t)index_val.i.low];
+	int idx = index_val.i.low;
+	if (index->start_from_end) idx = (int)args - idx;
+	if (idx < 0 || idx >= args) goto OUT_OF_RANGE;
+	return context->macro_varargs[idx];
+OUT_OF_RANGE:
+	RETURN_VAL_SEMA_ERROR(poisoned_expr, index_expr, "Only %u vaarg%s exist.", args, args == 1 ? "" : "s");
 }
 
 Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing)
@@ -11716,7 +11722,7 @@ static inline bool sema_expr_analyse_vaarg(SemaContext *context, Type *infer_typ
 		RETURN_SEMA_ERROR(expr, "'$vaarg' can only be used inside of a macro with untyped vaargs.");
 	}
 	// A normal argument, this means we only evaluate it once.
-	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, expr->inner_expr), false);
+	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, &expr->vaarg_index), false);
 	arg_expr = copy_expr_single(arg_expr);
 	if (!sema_analyse_inferred_expr(context, infer_type, arg_expr, no_match_ref)) return false;
 	expr_replace(expr, arg_expr);
@@ -11781,7 +11787,7 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 		{
 			case EXPR_VAARG:
 			{
-				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, inner->inner_expr), false);
+				ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, &inner->vaarg_index), false);
 				inner = arg_expr;
 				continue;
 			}

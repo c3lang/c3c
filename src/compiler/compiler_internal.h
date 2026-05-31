@@ -1346,6 +1346,7 @@ struct Expr_
 		Expr *inner_expr;                           // 8
 		ExprMakeAny make_any_expr;
 		ExprMakeSlice make_slice_expr;
+		SubscriptIndex vaarg_index;
 		ExprTypeProperty type_property_expr;
 		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
@@ -3981,8 +3982,10 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_LENGTHOF:
 		case EXPR_MAYBE_DEREF:
 		case EXPR_CT_REFLECT:
-		case EXPR_VAARG:
 			expr_set_loc(expr->inner_expr, loc);
+			return;
+		case EXPR_VAARG:
+			exprid_set_loc(expr->vaarg_index.expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_ACCESS_RESOLVED:
