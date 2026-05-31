@@ -11262,7 +11262,15 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		case CALL_ENV_FUNCTION_STATIC:
 			if (context->current_macro)
 			{
-				scratch_buffer_append(context->current_macro->name);
+				if (context->current_macro->name[0] == '@')
+				{
+					scratch_buffer_append_char('$');
+					scratch_buffer_append(&context->current_macro->name[1]);
+				}
+				else
+				{
+					scratch_buffer_append(context->current_macro->name);
+				}
 			}
 			else
 			{

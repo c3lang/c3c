@@ -80,6 +80,7 @@
 - Non-power-of-two-sized member of @bigendian bitstruct backed by char array wasn't working #3283.
 - Binary bitwise operations were not considered simple.
 - `$expand` was incorrectly made generic in generic modules. #3274
+- Mangle lambdas in macros without `@` to ensure they work correctly on elf #3217.
 
 ## 0.8.0 Change list
 
