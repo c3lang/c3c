@@ -603,11 +603,11 @@ static void parse_preset_ref(const char *ref, const char **lib_name, const char 
 	*preset_name = str_copy(colon + 1, strlen(colon + 1));
 	if (!str_is_valid_lowercase_name(*lib_name))
 	{
-		error_exit("Error reading project: invalid library name '%s' in preset reference '%s' – it should only contain alphanumerical letters and '_'.", *lib_name, ref);
+		error_exit("Error reading project: invalid library name '%s' in preset reference '%s' - it should only contain alphanumerical letters and '_'.", *lib_name, ref);
 	}
 	if (!str_is_valid_lowercase_name(*preset_name))
 	{
-		error_exit("Error reading project: invalid preset name '%s' in preset reference '%s' – it should only contain alphanumerical letters and '_'.", *preset_name, ref);
+		error_exit("Error reading project: invalid preset name '%s' in preset reference '%s' - it should only contain alphanumerical letters and '_'.", *preset_name, ref);
 	}
 }
 
