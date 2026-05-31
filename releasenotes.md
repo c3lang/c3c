@@ -79,6 +79,7 @@
 - Setting thread priority on Win32 was off by one.
 - Non-power-of-two-sized member of @bigendian bitstruct backed by char array wasn't working #3283.
 - Binary bitwise operations were not considered simple.
+- `$expand` was incorrectly made generic in generic modules. #3274
 
 ## 0.8.0 Change list
 
