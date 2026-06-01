@@ -83,7 +83,8 @@
 - Mangle lambdas in macros without `@` to ensure they work correctly on elf #3217.
 - `DString.replace("", "X");` would crash.
 - `DString.read_from_stream` would not return the correct length when `available` was not supported by the stream.
-
+- `@str_camelcase` would yield same result as `@str_pascalcase`. #3287
+ 
 ## 0.8.0 Change list
 
 ### Changes / improvements
