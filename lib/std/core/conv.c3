@@ -116,7 +116,7 @@ macro void? char16_to_utf8_unsafe(Char16 *ptr, sz *available, char** output, boo
 	// Unmatched high surrogate is an error
 	if (*available == 1) return string::INVALID_UTF16~;
 
-	Char16 low = ptr[1];
+	Char16 low = $unaligned ??? mem::load(ptr + 1, $align:1) : ptr[1];
 	$if $byteswap:
 		low = bswap(low);
 	$endif
