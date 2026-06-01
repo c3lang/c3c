@@ -88,6 +88,7 @@
 - `char16_to_utf8_unsafe` would not load low byte unaligned when required.
 - Not all invalid UTF8 was detected.
 - UTF16 length detection was incorrect for utf16 with surrogate pairs.
+- Initializing a variable which has the type of an optional struct using a const value would fail codegen. #3288
 
 ## 0.8.0 Change list
 

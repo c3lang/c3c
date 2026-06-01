@@ -1456,6 +1456,13 @@ static bool llvm_should_use_const_copy(ConstInitializer *const_init)
 }
 static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializer *const_init, bool top)
 {
+	// If optional, make into a plain address and store empty fault.
+	if (ref->kind == BE_ADDRESS_OPTIONAL)
+	{
+		llvm_store_no_fault(c, ref);
+		ref->kind = BE_ADDRESS;
+	}
+
 	if (type_kind_is_real_vector(const_init->type->type_kind))
 	{
 		LLVMValueRef val = llvm_emit_const_initializer(c, const_init, !top);
