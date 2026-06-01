@@ -289,7 +289,8 @@ macro sz utf8_len_for_char16(Char16 c) @local
 {
 	switch
 	{
-		case c & UTF16_SURROGATE_GENERIC_MASK == UTF16_SURROGATE_GENERIC_VALUE: return 4;
+		case c & UTF16_SURROGATE_MASK == UTF16_SURROGATE_HIGH_VALUE: return 4;
+		case c & UTF16_SURROGATE_MASK == UTF16_SURROGATE_LOW_VALUE: return 0;
 		case c <= 0x7f: return 1;
 		case c <= 0x7ff: return 2;
 		default: return 3;
