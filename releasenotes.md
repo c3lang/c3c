@@ -93,6 +93,9 @@
 - Parsing a malformed hex float would not correctly get reported.
 - Parsing an integer with traing space would incorrectly be reported as an error.
 - `String.escape` used the incorrect default for stripping quotes.
+- mem::equals would not correctly compare slices of with element size > 1.
+- `AsciiCharset.contains` incorrectly handled char > 127.
+- Reuse of recently freed DynamicArenaAllocator allocations failed.
 
 ## 0.8.0 Change list
 
