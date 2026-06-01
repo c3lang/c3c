@@ -3721,7 +3721,7 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 	Expr **args = expr->call_expr.arguments;
 	unsigned arg_count = vec_size(args);
 	bool is_has = tag->type_call_expr.property == TYPE_PROPERTY_HAS_TAG;
-	const char *name = is_has ? "has_tagof" : "tagof";
+	const char *name = is_has ? "has_tag" : "get_tag";
 	if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected a single string argument to '%s'.", name);
 	Expr *key = args[0];
 	if (!sema_analyse_expr_rvalue(context, key)) return false;
@@ -6494,7 +6494,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_GET_TAG:
 			if (!type_is_user_defined(type))
 			{
-				RETURN_SEMA_ERROR(expr, "'tagof' is not defined for builtin types like %s.", type_quoted_error_string(type));
+				RETURN_SEMA_ERROR(expr, "'get_tag' is not defined for builtin types like %s.", type_quoted_error_string(type));
 			}
 			FALLTHROUGH;
 		case TYPE_PROPERTY_HAS_TAG:

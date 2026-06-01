@@ -10,6 +10,7 @@
 - `$$atomic_store` and `$$atomic_load` takes an alignment parameter.
 - `$vaarg[^1]` is supported. #3276
 - Improve error message when a keyword is used a block parameter. #3275
+- Correct tag method error messages from `tagof`/`has_tagof` to `get_tag` and `has_tag` 
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
