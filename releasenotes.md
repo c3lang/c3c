@@ -84,7 +84,8 @@
 - `DString.replace("", "X");` would crash.
 - `DString.read_from_stream` would not return the correct length when `available` was not supported by the stream.
 - `@str_camelcase` would yield same result as `@str_pascalcase`. #3287
- 
+- `conv::utf8to32` would not zero terminate in when the zero would be at the end of the buffer.
+
 ## 0.8.0 Change list
 
 ### Changes / improvements

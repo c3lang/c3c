@@ -449,7 +449,7 @@ fn sz? utf8to32(String utf8, Char32[] utf32_buffer)
 		ptr[len32++] = uc;
 	}
 	// Zero terminate if possible
-	if (len32 + 1 < buf_len) ptr[len32] = 0;
+	if (len32 < buf_len) ptr[len32] = 0;
 	return len32;
 }
 
