@@ -75,11 +75,34 @@ fn void DString.replace(&self, String needle, String replacement)
 {
 	StringData* data = self.data();
 	sz needle_len = needle.len;
-	if (!data || data.len < needle_len) return;
+	if (!data)
+	{
+		if (needle_len > 0) return;
+		if (!replacement) return;
+		self.append(replacement);
+		return;
+	}
+	if (data.len < needle_len) return;
 	sz replace_len = replacement.len;
 	if (needle_len == 1 && replace_len == 1)
 	{
 		self.replace_char(needle[0], replacement[0]);
+		return;
+	}
+	if (needle_len == 0)
+	{
+		if (!replace_len) return;
+		@pool()
+		{
+			String str = self.tcopy_str();
+			self.clear();
+			self.append_string(replacement);
+			foreach (i, c : str)
+			{
+				self.append_char(c);
+				self.append_string(replacement);
+			}
+		};
 		return;
 	}
 	@pool()

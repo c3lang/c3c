@@ -2,6 +2,7 @@ module std::core::dstring2 @test;
 
 const TEST_STRING = "hello world";
 
+
 fn void test_replace()
 {
 	DString hello = dstring::new(mem, "Hello world where are you? Are you here too?");
@@ -10,9 +11,32 @@ fn void test_replace()
 	assert(hello.str_view() == "Hello world where are yoooo? Are yoooo here too?");
 }
 
+fn void test_replace_empty()
+{
+	DString hello = dstring::new(mem, "abc");
+	defer hello.free();
+	hello.replace("", "X");
+	assert(hello.str_view() == "XaXbXcX");
+}
+
+fn void test_replace_empty_in_empty()
+{
+	DString hello = dstring::new(mem, "");
+	defer hello.free();
+	hello.replace("", "X");
+	test::eq(hello.str_view(), "X");
+}
+
+fn void test_replace_empty_in_empty2()
+{
+	DString hello;
+	hello.replace("", "X");
+	test::eq(hello.str_view(), "X");
+}
+
 fn void test_append_string_repeat()
 {
-	DString hello = dstring::new(mem, "Hello world:");
+	DString hello = dstring::new(tmem, "Hello world:");
 	defer hello.free();
 	hello.append_repeat("abc", 10);
 	test::eq(hello.str_view(), "Hello world:abcabcabcabcabcabcabcabcabcabc");

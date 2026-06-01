@@ -81,6 +81,7 @@
 - Binary bitwise operations were not considered simple.
 - `$expand` was incorrectly made generic in generic modules. #3274
 - Mangle lambdas in macros without `@` to ensure they work correctly on elf #3217.
+- `DString.replace("", "X");` would crash.
 
 ## 0.8.0 Change list
 
