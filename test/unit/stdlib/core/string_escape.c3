@@ -99,7 +99,7 @@ fn void test_escape_content()
 
 fn void test_escape_default_quotes_with_explicit_allocator()
 {
-    String result = "hello".escape(mem, strip_quotes: false);
+    String result = "hello".escape(mem);
     defer result.free(mem);
     assert(result == `"hello"`, "escape(mem) = %s, expected quoted output", result);
 }
