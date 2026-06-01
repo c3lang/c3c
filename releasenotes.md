@@ -89,6 +89,8 @@
 - Not all invalid UTF8 was detected.
 - UTF16 length detection was incorrect for utf16 with surrogate pairs.
 - Initializing a variable which has the type of an optional struct using a const value would fail codegen. #3288
+- Parsing a malformed hex float would not correctly get reported.
+- Parsing an integer with traing space would incorrectly be reported as an error.
 
 ## 0.8.0 Change list
 
