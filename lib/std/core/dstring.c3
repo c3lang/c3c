@@ -735,6 +735,7 @@ fn sz? DString.read_from_stream(&self, InStream reader)
 		// Read into the rest of the buffer
 		sz read = reader.read(data.chars[data.len..(data.capacity - 1)])!;
 		data.len += read;
+		total_read += read;
 		// Ok, we reached the end.
 		if (read < 16) return total_read;
 		// Otherwise go another round
