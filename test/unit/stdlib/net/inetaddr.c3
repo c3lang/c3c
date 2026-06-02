@@ -48,24 +48,13 @@ fn void test_ipv6()
 	assert(foo.ip6.val == 42541956123769884636017138956568135816);
 }
 
-// ----- Classifier regressions -----
-//
-// The IPv4 helpers in inetaddr.c3 look at one-byte fields (ipv4.a/b/c/d),
-// so they classify correctly today.  The IPv6 helpers compare the 16-bit
-// segment ipv6.a (e.g. 0xff02) to one-byte prefix constants (e.g. 0xff),
-// which can never match, so every IPv6 classifier currently returns false
-// for real addresses.  These tests pin the intended semantics; the IPv6
-// half is expected to fail until the segment-vs-byte bug is fixed.
-
 fn void test_is_loopback()
 {
-	// IPv4 — currently correct
 	assert(net::ipv4_from_str("127.0.0.1")!!.is_loopback());
 	assert(net::ipv4_from_str("127.255.255.254")!!.is_loopback());
 	assert(!net::ipv4_from_str("128.0.0.1")!!.is_loopback());
 	assert(!net::ipv4_from_str("10.0.0.1")!!.is_loopback());
 
-	// IPv6 — ::1 is the IPv6 loopback
 	assert(net::ipv6_from_str("::1")!!.is_loopback());
 	assert(!net::ipv6_from_str("::2")!!.is_loopback());
 	assert(!net::ipv6_from_str("::")!!.is_loopback());
@@ -121,7 +110,6 @@ fn void test_is_site_local()
 	assert(!net::ipv4_from_str("192.167.1.1")!!.is_site_local());
 	assert(!net::ipv4_from_str("192.169.1.1")!!.is_site_local());
 
-	// IPv6: fec0::/10 (deprecated, but the helper still recognises it)
 	assert(net::ipv6_from_str("fec0::1")!!.is_site_local());
 	assert(net::ipv6_from_str("fef0::1")!!.is_site_local());
 	assert(net::ipv6_from_str("feff::1")!!.is_site_local());
