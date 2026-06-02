@@ -20,7 +20,7 @@ faultdef INVALID_ESCAPE_SEQUENCE, UNTERMINATED_STRING, INVALID_HEX_ESCAPE, INVAL
  @param strip_quotes : "Do not include beginning and end quotes, defaults to false"
  @return "The escaped string with surrounding quotes, can safely be cast to ZString"
 *>
-fn String String.escape(String s, Allocator allocator, bool strip_quotes = true)
+fn String String.escape(String s, Allocator allocator, bool strip_quotes = false)
 {
 	// Conservative allocation: most strings need minimal escaping
 	sz initial_capacity = s.len + s.len / 5 + 2; // ~1.2x + quotes

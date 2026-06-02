@@ -41,6 +41,12 @@ fn void string_to_ichar() @test
 	assert(valid == 129);
 }
 
+fn void to_integer_accepts_trailing_blanks() @test
+{
+	assert("123 ".to_long()!! == 123);
+	assert("123\t".to_long()!! == 123);
+	assert("  -123 \t".to_long()!! == -123);
+}
 
 fn void to_integer_rejects_non_digit_chars_in_hex_base() @test
 {

@@ -10,6 +10,7 @@
 - `$$atomic_store` and `$$atomic_load` takes an alignment parameter.
 - `$vaarg[^1]` is supported. #3276
 - Improve error message when a keyword is used a block parameter. #3275
+- Correct tag method error messages from `tagof`/`has_tagof` to `get_tag` and `has_tag` 
 - Error visibility modifiers on enum/constdef members
 
 ### Stdlib changes
@@ -84,6 +85,19 @@
 - Mangle lambdas in macros without `@` to ensure they work correctly on elf #3217.
 - `DString.replace("", "X");` would crash.
 - `DString.read_from_stream` would not return the correct length when `available` was not supported by the stream.
+- `@str_camelcase` would yield same result as `@str_pascalcase`. #3287
+- `conv::utf8to32` would not zero terminate in when the zero would be at the end of the buffer.
+- `char16_to_utf8_unsafe` would not load low byte unaligned when required.
+- Not all invalid UTF8 was detected.
+- UTF16 length detection was incorrect for utf16 with surrogate pairs.
+- Initializing a variable which has the type of an optional struct using a const value would fail codegen. #3288
+- Parsing a malformed hex float would not correctly get reported.
+- Parsing an integer with trailing space would incorrectly be reported as an error.
+- `String.escape` used the incorrect default for stripping quotes.
+- mem::equals would not correctly compare slices of with element size > 1.
+- `AsciiCharset.contains` incorrectly handled char > 127.
+- Reuse of recently freed DynamicArenaAllocator allocations failed.
+- Crash in codegen in some cases when RHS of a `&&` or `||` was unreachable at lowering.
 
 ## 0.8.0 Change list
 

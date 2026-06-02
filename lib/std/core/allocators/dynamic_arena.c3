@@ -81,8 +81,8 @@ fn void DynamicArenaAllocator.release(&self, void* ptr, bool) @dynamic
 	if (ptr == current_page.current_stack_ptr)
 	{
 		current_page.used = (sz)((ptr - DEFAULT_SIZE_PREFIX) - current_page.memory);
+		current_page.current_stack_ptr = null;
 	}
-	current_page.current_stack_ptr = null;
 }
 
 <*

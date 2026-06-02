@@ -453,8 +453,8 @@ macro bool equals(a, b, sz len = -1, sz $align = 0)
 	void* x @noinit;
 	void* y @noinit;
 	$if values::@inner_kind(a) == TypeKind.SLICE:
-		len = a.len;
-		if (len != b.len) return false;
+		if (a.len != b.len) return false;
+		len = a.len * @sizeof(a[0]);
 		x = a.ptr;
 		y = b.ptr;
 	$else
