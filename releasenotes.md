@@ -97,6 +97,7 @@
 - `AsciiCharset.contains` incorrectly handled char > 127.
 - Reuse of recently freed DynamicArenaAllocator allocations failed.
 - Crash in codegen in some cases when RHS of a `&&` or `||` was unreachable at lowering.
+- Visibility modifiers were incorrectly allowed on enum/constdef members.
 
 ## 0.8.0 Change list
 
