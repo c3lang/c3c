@@ -3129,7 +3129,7 @@ static void llvm_emit_logical_and_or(GenContext *c, BEValue *be_value, Expr *exp
 
 	if (rhs_end_block)
 	{
-		llvm_emit_br(c, phi_block);
+		if (!llvm_emit_br(c, phi_block)) rhs_end_block = NULL;
 	}
 
 	// Generate phi
