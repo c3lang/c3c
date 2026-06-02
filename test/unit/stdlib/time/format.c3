@@ -33,6 +33,36 @@ fn void test_with_tz()
 	}
 }
 
+fn void test_negative_half_hour_tz()
+{
+	FormatTzTestSpec[*] tests = {
+		// Colon form (RFC3339Z / RFC3339ZMS) — exercises temp_numeric_tzsuffix_colon.
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5).with_gmt_offset(-3 * 3600 - 30 * 60),
+			RFC3339Z, "2006-01-02T15:04:05-03:30" },                          // Newfoundland
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5).with_gmt_offset(-9 * 3600 - 30 * 60),
+			RFC3339Z, "2006-01-02T15:04:05-09:30" },                          // Marquesas
+
+		// Positive half-hour control (must work today AND after the fix).
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5).with_gmt_offset(5 * 3600 + 30 * 60),
+			RFC3339Z, "2006-01-02T15:04:05+05:30" },                          // IST
+
+		// No-colon form (RFC1123Z / RFC822Z) — exercises temp_numeric_tzsuffix.
+		{ datetime::at(2020, JANUARY, 1, 0, 0, 0).with_gmt_offset(-3 * 3600 - 30 * 60),
+			RFC1123Z, "Wed, 01 Jan 2020 00:00:00 -0330" },
+		{ datetime::at(2020, JANUARY, 1, 0, 0, 0).with_gmt_offset(-9 * 3600 - 30 * 60),
+			RFC822Z,  "01 Jan 20 00:00 -0930" },
+		{ datetime::at(2020, JANUARY, 1, 0, 0, 0).with_gmt_offset(5 * 3600 + 30 * 60),
+			RFC1123Z, "Wed, 01 Jan 2020 00:00:00 +0530" },                    // positive control
+	};
+
+	foreach (test : tests)
+	{
+		String candidate = test.first.format(mem, test.second);
+		defer free(candidate);
+		assert(candidate == test.third, "got: '%s', expected: '%s'", candidate, test.third);
+	}
+}
+
 fn void test_without_tz()
 {
 	FormatTestSpec[*] tests = {

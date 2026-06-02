@@ -1,5 +1,5 @@
 module std::time::datetime @if(env::LIBC);
-import std::io;
+import std::io, std::math;
 
 enum DateTimeFormat
 {
@@ -96,7 +96,7 @@ fn sz? TzDateTime.to_format(&self, Formatter* f) @dynamic
 fn String temp_numeric_tzsuffix(int gmt_offset) @private @inline
 {
 	if (gmt_offset == 0) return "-0000";
-	return string::tformat("%+03d%02d", gmt_offset / 3600, (gmt_offset % 3600) / 60);
+	return string::tformat("%+03d%02d", gmt_offset / 3600, math::abs(gmt_offset % 3600) / 60);
 }
 
 <*
@@ -106,5 +106,5 @@ fn String temp_numeric_tzsuffix(int gmt_offset) @private @inline
 fn String temp_numeric_tzsuffix_colon(int gmt_offset) @private @inline
 {
 	if (gmt_offset == 0) return "-00:00";
-	return string::tformat("%+03d:%02d", gmt_offset / 3600, (gmt_offset % 3600) / 60);
+	return string::tformat("%+03d:%02d", gmt_offset / 3600, math::abs(gmt_offset % 3600) / 60);
 }

@@ -98,7 +98,11 @@
 - Reuse of recently freed DynamicArenaAllocator allocations failed.
 - Crash in codegen in some cases when RHS of a `&&` or `||` was unreachable at lowering.
 - Visibility modifiers were incorrectly allowed on enum/constdef members.
-
+- Datetime format could not handle negative offsets with non-zero minutes.
+- NormalDist.random could occasionally return inf.
+- Url parser would fail on `foo@bar.com`.
+- Url parser would drop the port on `http://[::1]:8080`.
+ 
 ## 0.8.0 Change list
 
 ### Changes / improvements
