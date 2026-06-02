@@ -1,0 +1,30 @@
+// #file: file1.c3
+constdef MyConstdef : inline uint @tag("constdef_tag", 1) {
+	AAA @tag("constdef_member_tag", 2) = 3
+}
+
+enum MyEnum : uint (String name @tag("member_tag", -1)) {
+	BBB @tag("enum_member_tag", -2) { "bbb" }
+}
+
+fn void main()
+{
+	$assert($reflect(MyConstdef.AAA).has_tag("constdef_member_tag"));
+	$assert(!$reflect(MyConstdef.AAA).has_tag("nonexistent"));
+	$assert($reflect(MyConstdef.AAA).get_tag("constdef_member_tag") == 2);
+	$assert($reflect(MyConstdef.AAA).name == "AAA");
+	$assert($reflect(MyConstdef.AAA).tags.len == 1);
+	$assert($reflect(MyConstdef.AAA).tags[0] == "constdef_member_tag");
+
+	$assert($reflect(MyEnum.BBB).has_tag("enum_member_tag"));
+	$assert(!$reflect(MyEnum.BBB).has_tag("nonexistent"));
+	$assert($reflect(MyEnum.BBB).get_tag("enum_member_tag") == -2);
+	$assert($reflect(MyEnum.BBB).name == "BBB");
+	$assert($reflect(MyEnum.BBB).tags.len == 1);
+	$assert($reflect(MyEnum.BBB).tags[0] == "enum_member_tag");
+
+	$assert(MyEnum::members[0].name == "name");
+	$assert(MyEnum::members[0].has_tag("member_tag"));
+	$assert(MyEnum::members[0].get_tag("member_tag") == -1);
+	$assert(MyEnum::members[0].tags.len == 1);
+}

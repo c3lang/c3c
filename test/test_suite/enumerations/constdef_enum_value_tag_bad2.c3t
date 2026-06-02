@@ -1,0 +1,4 @@
+// #file: file2.c3
+enum BadEnum1 : uint (String name @tag("test", 1) @align(8)) { // #error: '@align' is not a valid enum value attribute.
+	FOO { "foo" }
+}

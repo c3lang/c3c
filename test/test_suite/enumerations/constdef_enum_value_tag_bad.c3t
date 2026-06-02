@@ -1,0 +1,5 @@
+// #file: file3.c3
+enum BadEnum : uint (String name @if) { // #error: '@if' cannot be used here.
+	FOO { "foo" }
+}
+

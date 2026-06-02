@@ -1632,10 +1632,8 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 {
 	ASSERT(param->decl_kind == DECL_VAR && param->var.kind == VARDECL_PARAM && param->var.type_info);
-	if (vec_size(param->attributes))
-	{
-		RETURN_SEMA_ERROR(param->attributes[0], "There are no valid attributes for associated values.");
-	}
+	bool erase_decl = false;
+	if (!sema_analyse_attributes(context, param, param->attributes, ATTR_ENUM_VALUE, &erase_decl)) return false;
 	TypeInfo *type_info = type_infoptrzero(param->var.type_info);
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 	ASSERT(!param->var.vararg);
@@ -3253,7 +3251,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_SAFEINFER] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_SIMD] = 0,
-			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_LOCAL | ATTR_GLOBAL,
+			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_LOCAL | ATTR_GLOBAL | ATTR_ENUM_VALUE,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL),

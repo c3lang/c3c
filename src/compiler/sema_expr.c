@@ -1225,7 +1225,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 		if (!sema_display_deprecated_warning_on_use(context, enum_constant, expr->loc)) return expr_poison(expr), true;
 	}
 	expr->type = decl->type;
-	if (enum_constant->enum_constant.is_raw)
+	if (enum_constant->enum_constant.is_raw && /* !$reflect() */ !context->call_env.in_no_eval)
 	{
 		expr_replace(expr, copy_expr_single(enum_constant->enum_constant.value));
 		if (!sema_analyse_expr_rvalue(context, expr)) expr_poison(expr);
@@ -5627,6 +5627,33 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		}
 	}
 
+	if (reflect->const_expr.const_kind == CONST_ENUM)
+	{
+		Decl *enum_const = reflect->const_expr.enum_val;
+		if (!sema_analyse_decl(context, enum_const)) return false;
+		if (name == kw_has_tag)
+		{
+			expr->expr_kind = EXPR_TYPECALL;
+			expr->type_call_expr = (ExprTypeCall) { .type = enum_const, .property = TYPE_PROPERTY_HAS_TAG };
+			return true;
+		}
+		if (name == kw_get_tag)
+		{
+			expr->expr_kind = EXPR_TYPECALL;
+			expr->type_call_expr = (ExprTypeCall) { .type = enum_const, .property = TYPE_PROPERTY_GET_TAG };
+			return true;
+		}
+		if (name == kw_tags)
+		{
+			return sema_create_const_tags(context, expr, enum_const->attrs_resolved);
+		}
+		if (name == kw_name)
+		{
+			expr_rewrite_const_string_from_raw(expr, enum_const->name);
+			return true;
+		}
+		goto FAILED;
+	}
 	if (reflect->expr_kind != EXPR_IDENTIFIER) goto FAILED;
 	Decl *decl = reflect->ident_expr;
 	if (name == kw_name) return sema_expr_analyse_reflection_name(context, expr, decl, false), true;
