@@ -207,6 +207,9 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_KIND] = kw_kind;
 	type_property_list[TYPE_PROPERTY_MEMBERS] = kw_members;
 	type_property_list[TYPE_PROPERTY_METHODS] = KW_DEF("methods");
+	type_property_list[TYPE_PROPERTY_INTERFACES] = KW_DEF("interfaces");
+	type_property_list[TYPE_PROPERTY_ALL_INTERFACES] = KW_DEF("all_interfaces");
+	type_property_list[TYPE_PROPERTY_SATISFIES] = KW_DEF("satisfies");
 	type_property_list[TYPE_PROPERTY_NAME] = kw_name;
 	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");
 	type_property_list[TYPE_PROPERTY_NAN] = KW_DEF("nan");
@@ -723,4 +726,3 @@ Decl *pathtable_get(PathTable *table, const char *short_path, const char *name)
 	} while (entry);
 	return NULL;
 }
-

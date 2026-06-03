@@ -182,6 +182,8 @@ static inline bool sema_create_const_max(Expr *expr, Type *type, Type *flat);
 
 static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize alignment, AlignSize offset);
 static inline bool sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type);
+static inline bool sema_create_const_interfacesof(SemaContext *context, Expr *expr, Type *type);
+static inline bool sema_create_const_all_interfacesof(SemaContext *context, Expr *expr, Type *type);
 
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
 static inline bool expr_both_const_foldable(Expr *left, Expr *right, BinaryOp op);
@@ -3703,6 +3705,63 @@ FOUND:;
 	return sema_analyse_expr_rvalue(context, expr);
 }
 
+
+static inline bool sema_method_conforms_to_interface_method(Decl *method, Decl *interface_method)
+{
+	if (!method || method->decl_kind != DECL_FUNC || !method->func_decl.attr_dynamic) return false;
+
+	Signature interface_sig = interface_method->func_decl.signature;
+	Signature method_sig = method->func_decl.signature;
+
+	// check return type
+	if (typeget(interface_sig.rtype)->canonical != typeget(method_sig.rtype)->canonical) return false;
+
+	Decl **interface_params = interface_sig.params;
+	Decl **method_params = method_sig.params;
+
+	unsigned interface_param_count = vec_size(interface_params);
+
+	// check params
+	if (interface_param_count != vec_size(method_params)) return false;
+
+	FOREACH_IDX(i, Decl *, param, method_params)
+	{
+		if (i == 0) /* &self */ continue;
+		if (param->type->canonical != interface_params[i]->type->canonical) return false;
+	}
+	return true;
+}
+
+static inline bool sema_type_conforms_to_interface_method(SemaContext *context, Type *type, Decl *interface_method, bool *result_ref)
+{
+	if (!sema_resolve_type_decl(context, type)) return false;
+	Decl **store = sema_decl_stack_store();
+	sema_add_methods_to_decl_stack(context, type->decl);
+	// try to resolve method by interface method name on current type
+	Decl *method = sema_decl_stack_resolve_symbol(interface_method->name);
+	// check signature
+	*result_ref = sema_method_conforms_to_interface_method(method, interface_method);
+	sema_decl_stack_restore(store);
+	return true;
+}
+
+static inline bool sema_expr_analyse_satisfies(SemaContext *context, Expr *expr, Expr *tag)
+{
+	Expr **args = expr->call_expr.arguments;
+	if (vec_size(args) != 1) RETURN_SEMA_ERROR(expr, "Expected a single interface method argument to 'satisfies'.");
+	Expr *arg = args[0];
+	if (!sema_analyse_expr(context, arg)) return false;
+	if (arg->expr_kind != EXPR_IDENTIFIER || arg->ident_expr->decl_kind != DECL_FUNC || !arg->ident_expr->func_decl.attr_interface_method)
+	{
+		RETURN_SEMA_ERROR(arg, "Expected an interface method argument to 'satisfies'.");
+	}
+	bool conforms;
+	Type *type = tag->type_call_expr.type->type->canonical;
+	if (!sema_type_conforms_to_interface_method(context, type, arg->ident_expr, &conforms)) return false;
+	expr_rewrite_const_bool(expr, type_bool, conforms);
+	return true;
+}
+
 static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 {
 	Expr *tag = exprptr(expr->call_expr.function);
@@ -3715,6 +3774,8 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_from_ordinal(context, expr, tag);
 		case TYPE_PROPERTY_LOOKUP_FIELD:
 			return sema_expr_analyse_lookup(context, expr, tag);
+		case TYPE_PROPERTY_SATISFIES:
+			return sema_expr_analyse_satisfies(context, expr, tag);
 		default:
 			break;
 	}
@@ -6006,6 +6067,58 @@ CONTINUE:
 	return true;
 }
 
+static inline bool sema_create_const_interfacesof(SemaContext *context, Expr *expr, Type *type)
+{
+	if (!sema_resolve_type_decl(context, type)) return false;
+	Expr **interface_exprs = NULL;
+	FOREACH(TypeInfo *, interface, type->decl->interfaces)
+	{
+		if (!sema_resolve_type_info(context, interface, RESOLVE_TYPE_NO_CHECK_DISTINCT)) return false;
+		Expr *interface_expr = expr_new(EXPR_CONST, expr->loc);
+		expr_rewrite_const_typeid(interface_expr, interface->type);
+		vec_add(interface_exprs, interface_expr);
+	}
+	expr_rewrite_const_untyped_list(expr, interface_exprs);
+	return true;
+}
+
+static inline bool sema_collect_all_interfaces(SemaContext *context, Expr *expr, Decl *decl, Expr ***interface_exprs_ref, Decl ***seen_ref)
+{
+	FOREACH(TypeInfo *, interface, decl->interfaces)
+	{
+		if (!sema_resolve_type_info(context, interface, RESOLVE_TYPE_NO_CHECK_DISTINCT)) return false;
+		Decl *interface_decl = interface->type->decl;
+		bool seen = false;
+		FOREACH(Decl *, existing, *seen_ref)
+		{
+			if (existing == interface_decl)
+			{
+				seen = true;
+				break;
+			}
+		}
+		if (!seen)
+		{
+			vec_add(*seen_ref, interface_decl);
+			Expr *interface_expr = expr_new(EXPR_CONST, expr->loc);
+			expr_rewrite_const_typeid(interface_expr, interface->type);
+			vec_add(*interface_exprs_ref, interface_expr);
+			if (!sema_collect_all_interfaces(context, expr, interface_decl, interface_exprs_ref, seen_ref)) return false;
+		}
+	}
+	return true;
+}
+
+static inline bool sema_create_const_all_interfacesof(SemaContext *context, Expr *expr, Type *type)
+{
+	if (!sema_resolve_type_decl(context, type)) return false;
+	Expr **interface_exprs = NULL;
+	Decl **seen = NULL;
+	if (!sema_collect_all_interfaces(context, expr, type->decl, &interface_exprs, &seen)) return false;
+	expr_rewrite_const_untyped_list(expr, interface_exprs);
+	return true;
+}
+
 
 static inline bool sema_create_const_max(Expr *expr, Type *type, Type *flat)
 {
@@ -6134,6 +6247,9 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_HAS_TAG:
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_HAS_EQUALS:
+		case TYPE_PROPERTY_INTERFACES:
+		case TYPE_PROPERTY_ALL_INTERFACES:
+		case TYPE_PROPERTY_SATISFIES:
 		case TYPE_PROPERTY_IS_ORDERED:
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
 		case TYPE_PROPERTY_LOOKUP_FIELD:
@@ -6379,6 +6495,10 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 				default:
 					return true;
 			}
+		case TYPE_PROPERTY_INTERFACES:
+		case TYPE_PROPERTY_ALL_INTERFACES:
+		case TYPE_PROPERTY_SATISFIES:
+			return type_is_user_defined(original_type->canonical);
 		case TYPE_PROPERTY_PARAMS:
 		case TYPE_PROPERTY_RETURNS:
 			return type_is_func_ptr(type);
@@ -6460,6 +6580,10 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		}
 		case TYPE_PROPERTY_METHODS:
 			return sema_create_const_methodsof(context, expr, type);
+		case TYPE_PROPERTY_INTERFACES:
+			return sema_create_const_interfacesof(context, expr, type);
+		case TYPE_PROPERTY_ALL_INTERFACES:
+			return sema_create_const_all_interfacesof(context, expr, type);
 		case TYPE_PROPERTY_PARAMS:
 			return sema_create_const_paramsof(expr, flat);
 		case TYPE_PROPERTY_RETURNS:
@@ -6510,6 +6634,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			goto TYPE_CALL;
 		case TYPE_PROPERTY_FROM_ORDINAL:
 		case TYPE_PROPERTY_LOOKUP_FIELD:
+		case TYPE_PROPERTY_SATISFIES:
 			goto TYPE_CALL;
 		case TYPE_PROPERTY_NONE:
 			return false;
