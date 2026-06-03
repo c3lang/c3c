@@ -36,23 +36,18 @@ fn void test_with_tz()
 fn void test_negative_half_hour_tz()
 {
 	FormatTzTestSpec[*] tests = {
-		// Colon form (RFC3339Z / RFC3339ZMS) — exercises temp_numeric_tzsuffix_colon.
 		{ datetime::at(2006, JANUARY, 2, 15, 4, 5).with_gmt_offset(-3 * 3600 - 30 * 60),
-			RFC3339Z, "2006-01-02T15:04:05-03:30" },                          // Newfoundland
+			RFC3339Z, "2006-01-02T15:04:05-03:30" },
 		{ datetime::at(2006, JANUARY, 2, 15, 4, 5).with_gmt_offset(-9 * 3600 - 30 * 60),
-			RFC3339Z, "2006-01-02T15:04:05-09:30" },                          // Marquesas
-
-		// Positive half-hour control (must work today AND after the fix).
+			RFC3339Z, "2006-01-02T15:04:05-09:30" },
 		{ datetime::at(2006, JANUARY, 2, 15, 4, 5).with_gmt_offset(5 * 3600 + 30 * 60),
-			RFC3339Z, "2006-01-02T15:04:05+05:30" },                          // IST
-
-		// No-colon form (RFC1123Z / RFC822Z) — exercises temp_numeric_tzsuffix.
+			RFC3339Z, "2006-01-02T15:04:05+05:30" },
 		{ datetime::at(2020, JANUARY, 1, 0, 0, 0).with_gmt_offset(-3 * 3600 - 30 * 60),
 			RFC1123Z, "Wed, 01 Jan 2020 00:00:00 -0330" },
 		{ datetime::at(2020, JANUARY, 1, 0, 0, 0).with_gmt_offset(-9 * 3600 - 30 * 60),
 			RFC822Z,  "01 Jan 20 00:00 -0930" },
 		{ datetime::at(2020, JANUARY, 1, 0, 0, 0).with_gmt_offset(5 * 3600 + 30 * 60),
-			RFC1123Z, "Wed, 01 Jan 2020 00:00:00 +0530" },                    // positive control
+			RFC1123Z, "Wed, 01 Jan 2020 00:00:00 +0530" },
 	};
 
 	foreach (test : tests)

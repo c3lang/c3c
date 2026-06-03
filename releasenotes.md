@@ -28,6 +28,7 @@
 - Correctly return error on native_fwrite and native_fread. 
 - Prevent infinite spin on `io::read_fully`, `File.load_buffer`, `File.load` and `File.save`.
 - `io::write_all` now retries on incomplete writes.
+- `GrowableBitSet.max_bit_set` added.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
@@ -114,6 +115,8 @@
 - `//` would count newlines twice when parsing JSONC.
 - `Path::for_posix(".a/..")` was not parsed correctly.
 - `SortedMap.clear` and `SortedMap.free` would work incorrectly on map initialized with ONHEAP.
+- `GrowableBitSet` would yield the wrong length.
+- `GrowableBitSet` would not work correctly on backing types bigger than uint.
 
 ## 0.8.0 Change list
 
