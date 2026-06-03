@@ -139,6 +139,27 @@ fn void test_inherit_stdio_redirect()
     assert(stderr_bytes == 0, "Should read 0 bytes from stderr");
 }
 
+// Regression: run_capture_stdout unconditionally strips the last byte (`[:len-1]`),
+// so a program whose stdout doesn't end with '\n' loses its final character.
+// `printf hello` writes exactly 5 bytes with no trailing newline — pre-fix this
+// returns "hell" instead of "hello".
+fn void test_run_capture_stdout_no_trailing_newline() @test @if(env::POSIX)
+{
+	char[64] buffer;
+	String result = process::run_capture_stdout(&buffer, {"printf", "hello"})!!;
+	assert(result == "hello", "got '%s', expected 'hello'", result);
+}
+
+// Positive control — a command whose stdout DOES end with '\n' should still
+// have the newline stripped after the fix (matching bash $(...) convention).
+fn void test_run_capture_stdout_strips_trailing_newline() @test @if(env::POSIX)
+{
+	char[64] buffer;
+	// `echo hello` writes "hello\n"
+	String result = process::run_capture_stdout(&buffer, {"echo", "hello"})!!;
+	assert(result == "hello", "got '%s', expected 'hello'", result);
+}
+
 fn void test_pipe_cloexec_leak() @test @if(env::POSIX)
 {
 	// Process A reads from stdin and exits when its stdin pipe closes

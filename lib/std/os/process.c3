@@ -73,7 +73,7 @@ fn String? run_capture_stdout(char[] buffer, String[] command_line, SpawnOptions
 	process.join()!;
 	sz len = process.read_stdout(buffer.ptr, buffer.len)!;
 	if (len == 0) return "";
-	return (String)buffer[:len - 1];
+	return (String)buffer[:len];
 }
 
 fn int? run(String[] command_line, SpawnOptions options = {}, String[] environment = {},
