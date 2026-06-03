@@ -65,6 +65,7 @@ fn DString temp(String s = "") => new(tmem, s) @inline;
 fn void DString.replace_char(self, char ch, char replacement)
 {
 	StringData* data = self.data();
+	if (!data) return;
 	foreach (&c : data.chars[:data.len])
 	{
 		if (*c == ch) *c = replacement;
@@ -327,7 +328,7 @@ fn bool DString.equals(self, DString other_string)
 	if (!str2) return str1.len == 0;
 	sz str1_len = str1.len;
 	if (str1_len != str2.len) return false;
-	for (int i = 0; i < str1_len; i++)
+	for (sz i = 0; i < str1_len; i++)
 	{
 		if (str1.chars[i] != str2.chars[i]) return false;
 	}

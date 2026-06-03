@@ -119,6 +119,8 @@
 - `GrowableBitSet` would not work correctly on backing types bigger than uint.
 - `DString.replace` would not work correctly in some cases.
 - `ByteWriter.ensure_capacity` did realloc unnecessarily when the data exactly matched capacity.
+- `DString.equals` used `int` rather than `sz` for len comparison.
+- `DString.replace_char` would crash on empty DString.
 
 ## 0.8.0 Change list
 

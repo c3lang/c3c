@@ -422,3 +422,37 @@ fn void test_operators()
 	assert(*c == 'e');
 }
 
+fn void test_replace_char_null_dstring()
+{
+	DString s;
+	s.replace_char('a', 'b');
+	assert(s.str_view() == "");
+}
+
+fn void test_replace_char_basic()
+{
+	DString s = dstring::new(mem, "abracadabra");
+	defer s.free();
+	s.replace_char('a', '*');
+	assert(s.str_view() == "*br*c*d*br*");
+}
+
+fn void test_replace_char_no_match()
+{
+	DString s = dstring::new(mem, "hello");
+	defer s.free();
+	s.replace_char('z', 'Q');
+	assert(s.str_view() == "hello");
+}
+
+fn void test_null_dstring_consistency()
+{
+	DString s;
+	assert(s.len() == 0);
+	assert(s.capacity() == 0);
+	assert(s.str_view() == "");
+	s.chop(0);
+	s.clear();
+	s.free();
+}
+
