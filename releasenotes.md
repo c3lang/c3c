@@ -118,6 +118,7 @@
 - `GrowableBitSet` would yield the wrong length.
 - `GrowableBitSet` would not work correctly on backing types bigger than uint.
 - `DString.replace` would not work correctly in some cases.
+- `ByteWriter.ensure_capacity` did realloc unnecessarily when the data exactly matched capacity.
 
 ## 0.8.0 Change list
 
