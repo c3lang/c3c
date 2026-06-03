@@ -62,11 +62,15 @@ fn TcpServerSocket? listen_to(AddrInfo* ai, int backlog, SocketOption... options
 	$if env::WIN32:
 		os::start_wsa()!;
 	$endif
-	net::@loop_over_ai(ai; NativeSocket sockfd, AddrInfo* ai_candidate)
+	net::@loop_over_addresses(ai; NativeSocket sockfd, AddrInfo* ai_candidate, bool *retain_socket)
 	{
 		net::apply_sockoptions(sockfd, options)!;
 		bool err = os::bind(sockfd, ai_candidate.ai_addr, ai_candidate.ai_addrlen) || os::listen(sockfd, backlog);
-		if (!err) return (TcpServerSocket)net::new_socket(sockfd, ai_candidate);
+		if (!err)
+		{
+			*retain_socket = true;
+			return (TcpServerSocket)net::new_socket(sockfd, ai_candidate);
+		}
 	};
 	return os::socket_error()~;
 }

@@ -24,7 +24,8 @@
 - JSON marshaling will return INVALID_NUMBER when encountering a inf or NaN for a float.
 - JSON decoding will reject `1.` literals.
 - `spawn` now allows binding I/O and using different settings per pipe.
- 
+- `@loop_over_ai` would leak fds, deprecated and replaced by `@loop_over_addresses`.
+
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
 - NPOT vectors as associated variables were incorrectly lowered on load. #3228
@@ -102,8 +103,8 @@
 - NormalDist.random could occasionally return inf.
 - Url parser would fail on `foo@bar.com`.
 - Url parser would drop the port on `http://[::1]:8080`.
-- Ipv6 classification - is_link_local etc, was incorrect.
- 
+- Ipv6 classification - is_link_local etc, was incorrect
+
 ## 0.8.0 Change list
 
 ### Changes / improvements
