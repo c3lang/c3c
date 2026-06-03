@@ -112,6 +112,7 @@
 - process::run_capture_stdout would remove the last character, even when it wasn't `\n`.
 - Add missing `__powisf2` to compiler_rt.
 - `//` would count newlines twice when parsing JSONC.
+- `Path::for_posix(".a/..")` was not parsed correctly.
 
 ## 0.8.0 Change list
 

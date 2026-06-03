@@ -434,14 +434,10 @@ fn String? normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 					// If this .. at the start, or after ../? If so, we just copy ..
 					if (len == path_start ||
 						(len - path_start >= 3 && path_str[len - 1] == path_separator
-						&& path_str[len - 3] == '.' && path_str[len - 3] == '.' &&
+						&& path_str[len - 3] == '.' && path_str[len - 2] == '.' &&
 						(len - 3 == 0 || path_str[len - 4] == path_separator)))
 					{
-						if (i != len)
-						{
-							path_str[len] = '.';
-							path_str[len + 1] = '.';
-						}
+						if (i != len) path_str[len:2] = ".."[:2];
 						len += 2;
 						if (len < path_len) path_str[len++] = path_separator;
 						i += 2;
