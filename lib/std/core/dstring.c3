@@ -111,27 +111,29 @@ fn void DString.replace(&self, String needle, String replacement)
 		self.clear();
 		sz len = str.len;
 		sz match = 0;
-		foreach (i, c : str)
+		sz run_start = 0;
+		for (sz i = 0; i < len; i++)
 		{
-			if (c == needle[match])
+			if (str[i] == needle[match])
 			{
 				match++;
 				if (match == needle_len)
 				{
+					sz match_start = i - needle_len + 1;
+					if (match_start > run_start) self.append_string(str[run_start:match_start - run_start]);
 					self.append_string(replacement);
+					run_start = i + 1;
 					match = 0;
-					continue;
 				}
 				continue;
 			}
 			if (match > 0)
 			{
-				self.append_string(str[i - match:match]);
+				i -= match;
 				match = 0;
 			}
-			self.append_char(c) @inline;
 		}
-		if (match > 0) self.append_string(str[^match:match]);
+		if (run_start < len) self.append_string(str[run_start..]);
 	};
 }
 

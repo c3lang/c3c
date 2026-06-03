@@ -117,6 +117,7 @@
 - `SortedMap.clear` and `SortedMap.free` would work incorrectly on map initialized with ONHEAP.
 - `GrowableBitSet` would yield the wrong length.
 - `GrowableBitSet` would not work correctly on backing types bigger than uint.
+- `DString.replace` would not work correctly in some cases.
 
 ## 0.8.0 Change list
 
