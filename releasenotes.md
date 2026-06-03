@@ -25,6 +25,9 @@
 - JSON decoding will reject `1.` literals.
 - `spawn` now allows binding I/O and using different settings per pipe.
 - `@loop_over_ai` would leak fds, deprecated and replaced by `@loop_over_addresses`.
+- Correctly return error on native_fwrite and native_fread. 
+- Prevent infinite spin on `io::read_fully`, `File.load_buffer`, `File.load` and `File.save`.
+- `io::write_all` now retries on incomplete writes.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.

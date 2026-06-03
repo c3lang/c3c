@@ -95,6 +95,20 @@ macro sz? read_all(stream, char[] buffer)
 	return n;
 }
 
+macro char[]? read_buffer_to_end(stream, char[] buffer)
+{
+	sz len = buffer.len;
+	if (!len) return buffer[:0];
+	sz read = 0;
+	while (read < len)
+	{
+		sz bytes_read = stream.read(buffer[read:len - read])!;
+		read += bytes_read;
+		if (!bytes_read) return buffer[:read];
+	}
+	return buffer[:len];
+}
+
 <*
  This function will read to the end of the stream.
 
@@ -108,12 +122,7 @@ macro char[]? read_fully(Allocator allocator, stream)
 		if (len > sz::max) return mem::INVALID_ALLOC_SIZE~;
 		char* data = alloc::malloc_try(allocator, (sz)len)!;
 		defer catch alloc::free(allocator, data);
-		sz read = 0;
-		while (read < len)
-		{
-			read += stream.read(data[read:len - read])!;
-		}
-		return data[:len];
+		return read_buffer_to_end(stream, data[:len]);
 	}
 	ByteWriter writer;
 	writer.init(allocator);
@@ -123,14 +132,24 @@ macro char[]? read_fully(Allocator allocator, stream)
 
 
 <*
+ Write an entire buffer.
+
  @require @is_outstream(stream)
+ @return? OutStream.write!, INCOMPLETE_WRITE
 *>
 macro sz? write_all(stream, char[] buffer)
 {
-	if (buffer.len == 0) return 0;
-	sz n = stream.write(buffer)!;
-	if (n != buffer.len) return INCOMPLETE_WRITE~;
-	return n;
+	sz len = buffer.len;
+	if (!len) return 0;
+	sz written;
+	while (written < len)
+	{
+		sz write = stream.write(buffer[written..])!;
+		if (!write) break;
+		written += write;
+	}
+	if (written != buffer.len) return INCOMPLETE_WRITE~;
+	return written;
 }
 
 <*
