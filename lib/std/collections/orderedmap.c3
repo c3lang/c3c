@@ -212,7 +212,7 @@ macro Value OrderedMap.@get_or_set(&map, Key key, Value #expr)
 		if (e.hash == hash && equals(key, e.key)) return e.value;
 	}
 	Value val = #expr;
-	map.add_entry(hash, key, val, index);
+	orderedmap_add_entry(map, hash, key, val, index);
 	return val;
 }
 
