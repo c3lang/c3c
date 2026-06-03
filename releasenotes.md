@@ -104,6 +104,8 @@
 - Url parser would fail on `foo@bar.com`.
 - Url parser would drop the port on `http://[::1]:8080`.
 - Ipv6 classification - is_link_local etc, was incorrect
+- env::get/set_var for Win32 would appear to fail when succeeding.
+- env::get_var had a race condition on Win32.
 
 ## 0.8.0 Change list
 
