@@ -157,7 +157,7 @@ fn void test_run_capture_stdout_strips_trailing_newline() @test @if(env::POSIX)
 	char[64] buffer;
 	// `echo hello` writes "hello\n"
 	String result = process::run_capture_stdout(&buffer, {"echo", "hello"})!!;
-	assert(result == "hello", "got '%s', expected 'hello'", result);
+	assert(result == "hello\n", "got '%s', expected 'hello\\n'", result);
 }
 
 fn void test_pipe_cloexec_leak() @test @if(env::POSIX)
