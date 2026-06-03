@@ -113,6 +113,7 @@
 - Add missing `__powisf2` to compiler_rt.
 - `//` would count newlines twice when parsing JSONC.
 - `Path::for_posix(".a/..")` was not parsed correctly.
+- `SortedMap.clear` and `SortedMap.free` would work incorrectly on map initialized with ONHEAP.
 
 ## 0.8.0 Change list
 

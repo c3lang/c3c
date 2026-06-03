@@ -471,6 +471,28 @@ fn void onheap_auto_init()
 	m.free();
 }
 
+fn void onheap_free_without_set()
+{
+	IntStringMap m = sortedmap::ONHEAP;
+	assert(!m.is_initialized());
+	m.free();
+}
+
+fn void onheap_clear_without_set()
+{
+	IntStringMap m = sortedmap::ONHEAP;
+	assert(!m.is_initialized());
+	m.clear();
+	assert(!m.is_initialized());
+}
+
+fn void zero_init_free()
+{
+	IntStringMap m;
+	assert(!m.is_initialized());
+	m.free();
+}
+
 fn void printable()
 {
 	IntStringMap m;
