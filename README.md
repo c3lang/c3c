@@ -493,7 +493,7 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
 
 4. Build the compiler:
    ```bash
-   cmake --build build
+   cmake --build build -j
    ```
 
 5. You should now have a `c3c` executable in the `build` directory. You can test it by compiling an example:
@@ -501,7 +501,7 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
    ./build/c3c compile resources/examples/hash.c3
    ```
 
-   *(Optional) To install the compiler globally: `sudo cmake --install build`*
+   *(Optional) To install the compiler globally: `sudo cmake --install build`* or to a PATH accessible location: `cmake --install build --prefix ~/.local`
 
 #### Compiling on NixOS
 
