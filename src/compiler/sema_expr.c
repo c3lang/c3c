@@ -2093,7 +2093,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 	Expr *last = NULL;
 	ArrayIndex needed = (ArrayIndex)func_param_count - (callee->struct_var ? 1 : 0);
 	// Do we need to store decls separately?
-	Decl ***macro_va_decl_ref = callee->macro && variadic == VARIADIC_RAW ? &callee->macro_va_decls : NULL;
+	Decl ***macro_va_decl_ref_maybe = callee->macro && variadic == VARIADIC_RAW ? &callee->macro_va_decls : NULL;
 	for (ArrayIndex i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
@@ -2183,7 +2183,7 @@ SPLAT_NORMAL:;
 			{
 				RETURN_SEMA_ERROR(arg, "A non-constant zero size splat cannot be used with raw varargs.");
 			}
-			new_args = sema_splat_arraylike_insert(context, args, inner, len, i, macro_va_decl_ref);
+			new_args = sema_splat_arraylike_insert(context, args, inner, len, i, i >= vaarg_index ? macro_va_decl_ref_maybe : NULL);
 		AFTER_SPLAT:;
 			if (!new_args) return false;
 			args = new_args;
