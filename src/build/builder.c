@@ -528,6 +528,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(linuxpaths.crtbegin);
 	OVERRIDE_IF_SET(android.ndk_path);
 	OVERRIDE_IF_SET(android.api_version);
+	OVERRIDE_IF_SET(bsd_sysroot);
 
 	if (options->cpu_flags)
 	{
@@ -629,6 +630,37 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 #endif
 	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
+
+	bool is_static = false;
+	for (size_t i = 0; i < options->linker_arg_count; i++)
+	{
+		const char *arg = options->linker_args[i];
+		if (strcmp(arg, "-static") == 0 || strcmp(arg, "--static") == 0 || strcmp(arg, "static") == 0)
+		{
+			is_static = true;
+			break;
+		}
+	}
+
+	if (target->linuxpaths.libc == LINUX_LIBC_MUSL && default_libc == LINUX_LIBC_GNU)
+	{
+		if (is_static)
+		{
+			if (target->linker_type != LINKER_TYPE_BUILTIN)
+			{
+				WARNING("Static linking against musl on a glibc system should use the built-in linker to avoid linking host libraries. Consider adding `--linker=builtin`.");
+			}
+		}
+		else
+		{
+			WARNING("Dynamically linking against musl on a glibc system produces non-portable binaries. Consider using `-z -static --linker=builtin`.");
+		}
+	}
+	else if (target->linuxpaths.libc == LINUX_LIBC_GNU && is_static)
+	{
+		WARNING("Statically linking against glibc produces binaries that still require glibc shared libraries at runtime for NSS/dns lookups. Consider targeting musl instead using `-linux-libc=musl --linker=builtin`.");
+	}
+
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
 	target->docgen = options->command == COMMAND_DOCGEN;

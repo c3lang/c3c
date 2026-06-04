@@ -71,6 +71,11 @@ jobs:
         shell: bash
         run: rm -f /usr/bin/link
 
+      - name: Cache FreeBSD Sysroot
+        uses: actions/cache@v5
+        with:
+          path: .cache
+          key: ${{ runner.os }}-freebsd-sysroot-15.0
       - name: Run Unified Tests
         shell: bash
         run: ./scripts/tools/ci_tests.sh "./build-debug/c3c.exe"
@@ -151,6 +156,11 @@ jobs:
         run: |
           cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_LINKER=lld -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DC3_LINK_DYNAMIC=OFF -DLLVM_DIR=${{matrix.prefix}}/lib/cmake/llvm -DC3_LLD_DIR=${{matrix.prefix}}/lib/
           cmake --build build
+      - name: Cache FreeBSD Sysroot
+        uses: actions/cache@v5
+        with:
+          path: .cache
+          key: ${{ runner.os }}-freebsd-sysroot-15.0
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
@@ -192,6 +202,11 @@ jobs:
           cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
           cmake --build build-debug
 
+      - name: Cache FreeBSD Sysroot
+        uses: actions/cache@v5
+        with:
+          path: .cache
+          key: ${{ runner.os }}-freebsd-sysroot-15.0
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
 
@@ -415,6 +430,11 @@ jobs:
           cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
           cmake --build build-debug
 
+      - name: Cache FreeBSD Sysroot
+        uses: actions/cache@v5
+        with:
+          path: .cache
+          key: ${{ runner.os }}-freebsd-sysroot-15.0
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
 
@@ -602,7 +622,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and cache Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./docker
           build-args: |
@@ -795,6 +815,7 @@ jobs:
       - name: setup
         run: |
           for i in 1 2; do \
+            /entrypoint.sh pkg update -y && \
             /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static && break || sleep 10; \
           done
 

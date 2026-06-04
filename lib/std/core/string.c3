@@ -1088,8 +1088,11 @@ fn IntType? to_integer(String self, int base = 10) <IntType>
 			break;
 	}
 	if (len == index) return MALFORMED_INTEGER~;
+	char curr = self[index];
+	// + / - followed by ' '
+	if (curr.is_blank()) return MALFORMED_INTEGER~;
 	IntType base_used = (IntType)base;
-	if (self[index] == '0' && base == 10)
+	if (curr == '0' && base == 10)
 	{
 		index++;
 		if (index == len) return (IntType)0;
@@ -1115,7 +1118,14 @@ fn IntType? to_integer(String self, int base = 10) <IntType>
 	IntType value = 0;
 	while (index != len)
 	{
-		char c = ascii::HEX_VALUE[self[index++]];
+		curr = self[index++];
+		// Handle ending space.
+		if (curr.is_blank())
+		{
+			while (index != len) if (!self[index++].is_blank()) return MALFORMED_INTEGER~;
+			break;
+		}
+		char c = ascii::HEX_VALUE[curr];
 		if (c >= (int)base_used) return MALFORMED_INTEGER~;
 		do
 		{

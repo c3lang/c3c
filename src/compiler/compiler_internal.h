@@ -20,7 +20,7 @@ typedef uint16_t StructIndex;
 typedef uint32_t AlignSize;
 typedef uint64_t ArraySize;
 typedef uint64_t BitSize;
-typedef uint16_t FileId;
+typedef uint32_t FileId;
 
 #define INT5_MAX         15
 #define INT12_MAX        2047
@@ -57,7 +57,7 @@ typedef uint16_t FileId;
 #define UINT128_MAX ((Int128) { UINT64_MAX, UINT64_MAX })
 #define INT128_MAX ((Int128) { INT64_MAX, UINT64_MAX })
 #define INT128_MIN ((Int128) { (uint64_t)INT64_MIN, 0 })
-#define STDIN_FILE_ID 0xFFFF
+#define STDIN_FILE_ID (~(FileId)0)
 #define ABI_TYPE_EMPTY ((AbiType) { .type = NULL })
 #define RANGE_EXTEND_PREV(x)  do { *sourcelocptr((x)->loc) = extend_loc_with_token(sourcelocptr((x)->loc), &c->prev_span); } while (0)
 #define PRINT_ERROR_AT(_node, ...) print_error_at((_node)->loc, __VA_ARGS__)
@@ -1346,6 +1346,7 @@ struct Expr_
 		Expr *inner_expr;                           // 8
 		ExprMakeAny make_any_expr;
 		ExprMakeSlice make_slice_expr;
+		SubscriptIndex vaarg_index;
 		ExprTypeProperty type_property_expr;
 		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
@@ -2537,6 +2538,7 @@ void scratch_buffer_append_module(Module *module, bool is_export);
 Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
 Decl *module_find_symbol_in_unit(Module *module, CompilationUnit *unit, const char *symbol);
+bool module_is_stdlib(Module *module);
 
 bool parse_file(File *file);
 Decl **parse_include_file(File *file, CompilationUnit *unit);
@@ -3980,8 +3982,10 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_LENGTHOF:
 		case EXPR_MAYBE_DEREF:
 		case EXPR_CT_REFLECT:
-		case EXPR_VAARG:
 			expr_set_loc(expr->inner_expr, loc);
+			return;
+		case EXPR_VAARG:
+			exprid_set_loc(expr->vaarg_index.expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_ACCESS_RESOLVED:

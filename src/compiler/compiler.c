@@ -606,7 +606,10 @@ void compiler_compile(void)
 					OUTF("Object file %s created.\n", compiler.obj_output);
 					break;
 				}
-				OUTF("Object files written to %s.\n", compiler.build.object_file_dir);
+				if (compiler.build.emit_object_files)
+				{
+					OUTF("Object files written to %s.\n", compiler.build.object_file_dir);
+				}
 				break;
 			case TARGET_TYPE_PREPARE:
 				break;
@@ -1931,4 +1934,14 @@ void print_build_env(void)
 	printf("env::POSIX        : %s\n", link_libc() && is_posix(compiler.platform.os) ? "true" : "false");
 	printf("env::WIN32        : %s\n", compiler.platform.os == OS_TYPE_WIN32 ? "true" : "false");
 	printf("env::LIBC         : %s\n", link_libc() ? "true" : "false");
+}
+
+bool module_is_stdlib(Module *module)
+{
+	if (module->name->len < 3) return false;
+	if (module->name->len == 3 && strcmp(module->name->module, "std") == 0) return true;
+	if (module->name->len > 5 && memcmp(module->name->module, "std::", 5) == 0) return true;
+	if (module->name->len == 4 && strcmp(module->name->module, "libc") == 0) return true;
+	if (module->name->len > 6 && memcmp(module->name->module, "libc::", 6) == 0) return true;
+	return false;
 }

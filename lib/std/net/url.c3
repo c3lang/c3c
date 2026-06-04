@@ -94,10 +94,8 @@ fn Url? parse(Allocator allocator, String url_string)
 				String[] userpass = userinfo.tsplit(":", 2);
 				username = userpass[0];
 				if (!username.len) return INVALID_USER~;
-							url.host =
-
 				url.username = decode(allocator, username, HOST) ?? INVALID_USER~!;
-				if (userpass.len) url.password = decode(allocator, userpass[1], USERPASS) ?? INVALID_PASSWORD~!;
+				if (userpass.len > 1) url.password = decode(allocator, userpass[1], USERPASS) ?? INVALID_PASSWORD~!;
 			};
 			authority = authority[userinfo.len + 1 ..];
 		}
@@ -108,9 +106,9 @@ fn Url? parse(Allocator allocator, String url_string)
 		{
 			sz ipv6_end = authority.index_of("]")!;
 			host = authority[0 .. ipv6_end];  // Includes closing bracket
-			if ((ipv6_end + 1) < authority.len && authority[.. ipv6_end] == ":")
+			if ((ipv6_end + 1) < authority.len && authority[ipv6_end + 1] == ':')
 			{
-				url.port = authority[.. ipv6_end + 1].to_int()!;
+				url.port = authority[ipv6_end + 2..].to_int()!;
 			}
 		}
 		else

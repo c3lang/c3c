@@ -234,6 +234,8 @@ static void usage(bool full)
 		print_opt("--android-ndk <dir>", "Set the NDK directory location.");
 		print_opt("--android-api <ver>", "Set Android API version.");
 		PRINTF("");
+		print_opt("--bsd-sysroot <dir>", "Set the BSD sysroot directory.");
+		PRINTF("");
 		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
 	}
 	if (!full)
@@ -321,7 +323,7 @@ static void docgen_usage()
 	print_opt("--json", "Output JSON to stdout.");
 	print_opt("--append", "Append to existing 'docs.html'.");
 	print_opt("--target <target>", "Generate documentation for a specific target.");
-	print_opt("--use-stdlib=<yes|no>", "Include the standard library (default: yes).");
+	print_opt("--emit-stdlib=<yes|no>", "Document the standard library. (default: yes)");
 	PRINTF("");
 	PRINTF("Other normal build options apply.");
 	PRINTF("");
@@ -1706,6 +1708,12 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: android-api needs a version.");
 				options->android.api_version = atoi(next_arg());
+				return;
+			}
+			if (match_longopt("bsd-sysroot"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --bsd-sysroot needs a directory.");
+				options->bsd_sysroot = unchecked_dir(options, next_arg());
 				return;
 			}
 			if (match_longopt("benchmarking"))

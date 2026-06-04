@@ -1,0 +1,10 @@
+struct MyStruct { int a @tag("a", 0); }
+fn void main(String[] args) {
+	$foreach $member : MyStruct::members:
+		$member.has_tag("a", "a"); // #error: Expected a single string argument to 'has_tag'.
+		$member.get_tag("a", "a"); // #error: Expected a single string argument to 'get_tag'.
+	$endforeach
+}
+fn void test_builtin() {
+	int::get_tag("key"); // #error: 'get_tag' is not defined for builtin types like 'int'.
+}

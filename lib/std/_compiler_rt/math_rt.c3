@@ -92,3 +92,17 @@ fn double __powidf2(double a, int b) @cname("__powidf2") @weak @nostrip
 	}
     return recip ? 1 / r : r;
 }
+
+fn float __powisf2(float a, int b) @cname("__powisf2") @weak @nostrip
+{
+	bool recip = b < 0;
+    float r = 1;
+    while (1)
+    {
+        if (b & 1) r *= a;
+        b /= 2;
+        if (b == 0) break;
+        a *= a;
+	}
+    return recip ? 1 / r : r;
+}

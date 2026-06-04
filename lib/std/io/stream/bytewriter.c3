@@ -60,7 +60,7 @@ fn String ByteWriter.str_view(&self) @inline
 
 fn void? ByteWriter.ensure_capacity(&self, sz len) @inline
 {
-	if (self.bytes.len > len) return;
+	if (self.bytes.len >= len) return;
 	if (!self.allocator) return OUT_OF_SPACE~;
 	if (len < 16) len = 16;
 	sz new_capacity = math::next_power_of_2(len);
@@ -70,6 +70,7 @@ fn void? ByteWriter.ensure_capacity(&self, sz len) @inline
 
 fn sz? ByteWriter.write(&self, char[] bytes) @dynamic
 {
+	if (!bytes.len) return 0;
 	self.ensure_capacity(self.index + bytes.len)!;
 	mem::copy(&self.bytes[self.index], bytes.ptr, bytes.len);
 	self.index += bytes.len;
@@ -97,6 +98,7 @@ fn long? ByteWriter.read_from(&self, InStream reader) @dynamic
 			self.ensure_capacity(self.index + (sz)available)!;
 			sz read = reader.read(self.bytes[self.index..])!;
 			self.index += read;
+			if (!read) break;
 		}
 		return (long)self.index - start_index;
 	}

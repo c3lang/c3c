@@ -116,7 +116,7 @@ macro void? char16_to_utf8_unsafe(Char16 *ptr, sz *available, char** output, boo
 	// Unmatched high surrogate is an error
 	if (*available == 1) return string::INVALID_UTF16~;
 
-	Char16 low = ptr[1];
+	Char16 low = $unaligned ??? mem::load(ptr + 1, $align:1) : ptr[1];
 	$if $byteswap:
 		low = bswap(low);
 	$endif
@@ -159,6 +159,8 @@ macro sz char32_to_utf8_unsafe(Char32 c, char** output)
 	}
 }
 
+macro bool is_cont(char c) => c & 0xC0 == 0x80;
+
 <*
  @param [in] ptr : `pointer to the first character to parse`
  @param [inout] size : `Set to max characters to read, set to characters read`
@@ -168,50 +170,51 @@ fn Char32? utf8_to_char32(char* ptr, sz* size)
 {
 	sz max_size = *size;
 	if (max_size < 1) return string::INVALID_UTF8~;
-	char c = (ptr++)[0];
 
-	if ((c & 0x80) == 0)
+	char c0 = ptr[0];
+
+	switch (c0)
 	{
-		*size = 1;
-		return c;
+		case 0..0x7F:
+			*size = 1;
+			return c0;
+		case 0x80..0xDF:
+			if (c0 < 0xC2 || max_size < 2) return string::INVALID_UTF8~;
+			char c1 = ptr[1];
+			if (!is_cont(c1)) return string::INVALID_UTF8~;
+			*size = 2;
+			return ((Char32)(c0 & 0x1F) << 6) | (c1 & 0x3F);
+		case 0xE0..0xEF:
+			if (max_size < 3) return string::INVALID_UTF8~;
+			char c1 = ptr[1];
+			char c2 = ptr[2];
+
+			if (!is_cont(c1) || !is_cont(c2)) return string::INVALID_UTF8~;
+			if (c0 == 0xE0 && c1 < 0xA0) return string::INVALID_UTF8~;
+			if (c0 == 0xED && c1 > 0x9F) return string::INVALID_UTF8~;
+
+			*size = 3;
+			return ((Char32)(c0 & 0x0F) << 12)
+			       | ((Char32)(c1 & 0x3F) << 6)
+			       | (c2 & 0x3F);
+		case 0xF0..0xF4:
+			if (max_size < 4) return string::INVALID_UTF8~;
+			char c1 = ptr[1];
+			char c2 = ptr[2];
+			char c3 = ptr[3];
+
+			if (!is_cont(c1) || !is_cont(c2) || !is_cont(c3)) return string::INVALID_UTF8~;
+			if (c0 == 0xF0 && c1 < 0x90) return string::INVALID_UTF8~;
+			if (c0 == 0xF4 && c1 > 0x8F) return string::INVALID_UTF8~;
+
+			*size = 4;
+			return ((Char32)(c0 & 0x07) << 18)
+			       | ((Char32)(c1 & 0x3F) << 12)
+			       | ((Char32)(c2 & 0x3F) << 6)
+			       | (c3 & 0x3F);
+		default:
+			return string::INVALID_UTF8~;
 	}
-	if ((c & 0xE0) == 0xC0)
-	{
-		if (max_size < 2) return string::INVALID_UTF8~;
-		*size = 2;
-		Char32 uc = (c & 0x1F) << 6;
-		c = *ptr;
-		// Overlong sequence or invalid second.
-		if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8~;
-		return uc + c & 0x3F;
-	}
-	if ((c & 0xF0) == 0xE0)
-	{
-		if (max_size < 3) return string::INVALID_UTF8~;
-		*size = 3;
-		Char32 uc = (c & 0x0F) << 12;
-		c = ptr++[0];
-		if (c & 0xC0 != 0x80) return string::INVALID_UTF8~;
-		uc += (c & 0x3F) << 6;
-		c = ptr++[0];
-		// Overlong sequence or invalid last
-		if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8~;
-		return uc + c & 0x3F;
-	}
-	if (max_size < 4) return string::INVALID_UTF8~;
-	if ((c & 0xF8) != 0xF0) return string::INVALID_UTF8~;
-	*size = 4;
-	Char32 uc = (c & 0x07) << 18;
-	c = ptr++[0];
-	if (c & 0xC0 != 0x80) return string::INVALID_UTF8~;
-	uc += (c & 0x3F) << 12;
-	c = ptr++[0];
-	if (c & 0xC0 != 0x80) return string::INVALID_UTF8~;
-	uc += (c & 0x3F) << 6;
-	c = ptr++[0];
-	// Overlong sequence or invalid last
-	if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8~;
-	return uc + c & 0x3F;
 }
 
 <*
@@ -286,7 +289,8 @@ macro sz utf8_len_for_char16(Char16 c) @local
 {
 	switch
 	{
-		case c & UTF16_SURROGATE_GENERIC_MASK == UTF16_SURROGATE_GENERIC_VALUE: return 4;
+		case c & UTF16_SURROGATE_MASK == UTF16_SURROGATE_HIGH_VALUE: return 4;
+		case c & UTF16_SURROGATE_MASK == UTF16_SURROGATE_LOW_VALUE: return 0;
 		case c <= 0x7f: return 1;
 		case c <= 0x7ff: return 2;
 		default: return 3;
@@ -449,7 +453,7 @@ fn sz? utf8to32(String utf8, Char32[] utf32_buffer)
 		ptr[len32++] = uc;
 	}
 	// Zero terminate if possible
-	if (len32 + 1 < buf_len) ptr[len32] = 0;
+	if (len32 < buf_len) ptr[len32] = 0;
 	return len32;
 }
 

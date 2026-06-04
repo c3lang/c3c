@@ -1,0 +1,44 @@
+// #target: macos-x64
+module test;
+
+enum TokenType : int (String value)
+{
+
+	NOT_EQ     { "<>" },
+	SMALLER    { "<" },
+	SMALLER_EQ { "<=" },
+}
+
+struct Token
+{
+	TokenType type;
+	String value;
+}
+
+Token? b = { .type = SMALLER_EQ };
+
+faultdef EOF, INVALID_NUMBER_TOKEN, INVALID_STRING_TOKEN, UNKNOWN_TOKEN;
+
+fn void main()
+{
+	Token? res = UNKNOWN_TOKEN~;
+	res = { .type = SMALLER_EQ };
+}
+
+/* #expect: test.ll
+
+@test.b.f = unnamed_addr global i64 0, align 8
+@test.b = local_unnamed_addr global %Token { i32 2, %"char[]" zeroinitializer }, align 8
+
+define void @test.main() #0 {
+entry:
+  %res = alloca %Token, align 8
+  %res.f = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.UNKNOWN_TOKEN to i64), ptr %res.f, align 8
+  store i64 0, ptr %res.f, align 8
+  store i32 2, ptr %res, align 8
+  %ptradd = getelementptr inbounds i8, ptr %res, i64 8
+  call void @llvm.memset.p0.i64(ptr align 8 %ptradd, i8 0, i64 16, i1 false)
+  store i64 0, ptr %res.f, align 8
+  ret void
+}

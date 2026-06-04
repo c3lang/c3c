@@ -181,6 +181,7 @@ void type_append_name_to_scratch(Type *type)
 		case TYPE_ANYFAULT:
 		case TYPE_ANY:
 		case ALL_VECTORS:
+		case TYPE_UNTYPEDLIST:
 			scratch_buffer_append(type->name);
 			break;
 		case TYPE_INFERRED_ARRAY:
@@ -460,6 +461,7 @@ TypeSize type_size(Type *type)
 			return type->size = t.uptr.canonical->builtin.bytesize;
 		case VECTORS:
 		case TYPE_ARRAY:
+			if (type_size(type->array.base) > (ArraySize)MAX_ARRAY_SIZE / type->array.len) return type->size = MAX_ARRAY_SIZE + 1;
 			return type->size = type_size(type->array.base) * type->array.len;
 		case TYPE_SLICE:
 			return type->size = size_slice;
@@ -659,6 +661,7 @@ bool type_is_comparable(Type *type)
 		case TYPE_OPTIONAL:
 		case SPECIAL_TYPES:
 		case TYPE_UNION:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_STRUCT:
 			return false;
 		case TYPE_BITSTRUCT:
@@ -822,6 +825,7 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
+		case TYPE_UNTYPEDLIST:
 		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
 			UNREACHABLE;
@@ -1392,6 +1396,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_OPTIONAL:
 		case TYPE_WILDCARD:
 		case TYPE_POISONED:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_VOID:
 		case SPECIAL_TYPES:
 			return false;
@@ -1951,6 +1956,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
 		case TYPE_OPTIONAL:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_WILDCARD:
 		case SPECIAL_TYPES:
 			return false;
@@ -2415,6 +2421,8 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_VECTOR;
 		case TYPE_OPTIONAL:
 			return INTROSPECT_TYPE_OPTIONAL;
+		case TYPE_UNTYPEDLIST:
+			return INTROSPECT_TYPE_UNTYPEDLIST;
 		case SPECIAL_TYPES:
 		case TYPE_WILDCARD:
 			UNREACHABLE
@@ -2436,6 +2444,7 @@ Module *type_base_module(Type *type)
 		case TYPE_ANY:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
+		case TYPE_UNTYPEDLIST:
 		case TYPE_WILDCARD:
 			return NULL;
 		case TYPE_POINTER:

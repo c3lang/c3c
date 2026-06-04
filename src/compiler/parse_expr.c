@@ -1035,6 +1035,11 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 	{
 		if (!parse_next_may_be_type_or_ident(c))
 		{
+			if (token_is_keyword_ident(c->tok) && c->span.row == c->prev_span.row)
+			{
+				PRINT_ERROR_HERE("'%s' is a keyword, and can't be used as a parameter name.", symstr(c));
+				return poisoned_expr;
+			}
 			PRINT_ERROR_LAST("Expected an ending ')'. Did you forget a ')' before this ';'?");
 			return poisoned_expr;
 		}
@@ -1313,7 +1318,7 @@ static Expr *parse_ct_feature(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 }
 
 /**
- * ct_arg ::= VAARG ('.' len) | ('[' expr ']')
+ * ct_arg ::= VAARG ('.' len) | ('[' '^'? expr ']')
  */
 static Expr *parse_vaarg(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
@@ -1333,7 +1338,8 @@ static Expr *parse_vaarg(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSE
 		return expr;
 	}
 	CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	expr->vaarg_index.start_from_end = try_consume(c, TOKEN_BIT_XOR);
+	ASSIGN_EXPRID_OR_RET(expr->vaarg_index.expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;

@@ -2,6 +2,7 @@ module std::core::dstring2 @test;
 
 const TEST_STRING = "hello world";
 
+
 fn void test_replace()
 {
 	DString hello = dstring::new(mem, "Hello world where are you? Are you here too?");
@@ -10,9 +11,96 @@ fn void test_replace()
 	assert(hello.str_view() == "Hello world where are yoooo? Are yoooo here too?");
 }
 
+fn void test_replace_empty()
+{
+	DString hello = dstring::new(mem, "abc");
+	defer hello.free();
+	hello.replace("", "X");
+	assert(hello.str_view() == "XaXbXcX");
+}
+
+fn void test_replace_empty_in_empty()
+{
+	DString hello = dstring::new(mem, "");
+	defer hello.free();
+	hello.replace("", "X");
+	test::eq(hello.str_view(), "X");
+}
+
+fn void test_replace_empty_in_empty2()
+{
+	DString hello;
+	hello.replace("", "X");
+	test::eq(hello.str_view(), "X");
+}
+
+fn void test_replace_overlapping_needle_short()
+{
+	DString s = dstring::new(mem, "aab");
+	defer s.free();
+	s.replace("ab", "X");
+	test::eq(s.str_view(), "aX");
+}
+
+fn void test_replace_overlapping_needle_prefix_repeat()
+{
+	DString s = dstring::new(mem, "aaab");
+	defer s.free();
+	s.replace("aab", "X");
+	test::eq(s.str_view(), "aX");
+}
+
+fn void test_replace_overlapping_needle_three_a()
+{
+	DString s = dstring::new(mem, "aaaab");
+	defer s.free();
+	s.replace("aab", "X");
+	test::eq(s.str_view(), "aaX");
+}
+
+fn void test_replace_after_failed_match_restart()
+{
+	DString s = dstring::new(mem, "abaababc");
+	defer s.free();
+	s.replace("abc", "X");
+	test::eq(s.str_view(), "abaabX");
+}
+
+fn void test_replace_consecutive_non_overlap()
+{
+	DString s = dstring::new(mem, "abab");
+	defer s.free();
+	s.replace("ab", "X");
+	test::eq(s.str_view(), "XX");
+}
+
+fn void test_replace_no_match()
+{
+	DString s = dstring::new(mem, "hello world");
+	defer s.free();
+	s.replace("xyz", "Q");
+	test::eq(s.str_view(), "hello world");
+}
+
+fn void test_replace_at_end()
+{
+	DString s = dstring::new(mem, "foobar");
+	defer s.free();
+	s.replace("bar", "BAZ");
+	test::eq(s.str_view(), "fooBAZ");
+}
+
+fn void test_replace_at_start()
+{
+	DString s = dstring::new(mem, "foobar");
+	defer s.free();
+	s.replace("foo", "BAZ");
+	test::eq(s.str_view(), "BAZbar");
+}
+
 fn void test_append_string_repeat()
 {
-	DString hello = dstring::new(mem, "Hello world:");
+	DString hello = dstring::new(tmem, "Hello world:");
 	defer hello.free();
 	hello.append_repeat("abc", 10);
 	test::eq(hello.str_view(), "Hello world:abcabcabcabcabcabcabcabcabcabc");
@@ -332,5 +420,39 @@ fn void test_operators()
 
 	char* c = &str[1];
 	assert(*c == 'e');
+}
+
+fn void test_replace_char_null_dstring()
+{
+	DString s;
+	s.replace_char('a', 'b');
+	assert(s.str_view() == "");
+}
+
+fn void test_replace_char_basic()
+{
+	DString s = dstring::new(mem, "abracadabra");
+	defer s.free();
+	s.replace_char('a', '*');
+	assert(s.str_view() == "*br*c*d*br*");
+}
+
+fn void test_replace_char_no_match()
+{
+	DString s = dstring::new(mem, "hello");
+	defer s.free();
+	s.replace_char('z', 'Q');
+	assert(s.str_view() == "hello");
+}
+
+fn void test_null_dstring_consistency()
+{
+	DString s;
+	assert(s.len() == 0);
+	assert(s.capacity() == 0);
+	assert(s.str_view() == "");
+	s.chop(0);
+	s.clear();
+	s.free();
 }
 

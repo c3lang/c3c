@@ -133,6 +133,7 @@ fn CodePage? by_name(String charset_name) => @pool()
 fn String? decode(Allocator allocator, char[] src, CodePage code_page)
 {
 	char[] dst = alloc::alloc_array(allocator, char, decode_len(src, code_page));
+	defer catch alloc::free(allocator, dst);
 	return decode_into(dst, src, code_page);
 }
 
@@ -163,6 +164,7 @@ fn String? decode_into(char[] dst, char[] src, CodePage code_page)
 fn char[]? encode(Allocator allocator, char[] src, CodePage code_page, char replacement = REPLACEMENT_CHAR)
 {
 	char[] dst = alloc::alloc_array(allocator, char, encode_len(src));
+	defer catch alloc::free(allocator, dst);
 	return encode_into(dst, src, code_page, replacement);
 }
 

@@ -1624,7 +1624,6 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 		{
 			return;
 		}
-		sema_warning_at(loc, "The code here was detected to always panic at runtime.");
 		always_panic = true;
 	}
 	if (llvm_is_global_eval(c) || !c->current_block) return;

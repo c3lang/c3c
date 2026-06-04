@@ -18,12 +18,8 @@ struct UnbufferedChannelImpl @private
 
 fn UnbufferedChannel*? create_unbuffered(Allocator allocator)
 {
-	UnbufferedChannelImpl* channel = alloc::alloc(allocator, UnbufferedChannelImpl);
+	UnbufferedChannelImpl* channel = alloc::new(allocator, UnbufferedChannelImpl, { .allocator = allocator });
 	defer catch (void)alloc::free(allocator, channel);
-
-	channel.allocator = allocator;
-	channel.send_waiting = 0;
-	channel.read_waiting = 0;
 
 	channel.mu.init()!;
 	defer catch channel.mu.destroy();

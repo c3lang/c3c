@@ -108,15 +108,17 @@ fn void growable_set_get()
 	bs.set(0);
 	assert(bs.get(0), "Get should be true");
 	assert(bs.cardinality() == 1, "Cardinality should be 1");
-	assert(bs.len() == 1, "Len should be 1");
+	assert(bs.len() == 8, "Len (capacity) should be 8 after first word grew, got %d", bs.len());
+	assert(bs.max_bit_set() == 1, "max_bit_set should be 1, got %d", bs.max_bit_set());
 
 	assert(!bs.get(2000), "Get 2000 should be false");
 	bs[2000] = true;
 	assert(bs.get(2000), "Get 2000 should be true");
 	assert(bs.cardinality() == 2, "Cardinality should be 2");
 
-	assert(bs.data.len() == 251, "Len should be 251");
-	assert(bs.len() == 2001, "Len should be 2001");
+	assert(bs.data.len() == 251, "Data word count should be 251");
+	assert(bs.len() == 2008, "Len (capacity) should be 251 * 8 = 2008, got %d", bs.len());
+	assert(bs.max_bit_set() == 2001, "max_bit_set should be 2001, got %d", bs.max_bit_set());
 
 	List2 found;
 	foreach (i, x : bs)
@@ -138,4 +140,43 @@ fn void growable_set_get()
 	bs[2000] = false;
 	assert(!bs.get(2000), "Get should be false");
 	assert(bs.cardinality() == 0, "Cardinality should be 0");
+}
+
+alias GrowableBitSetUInt = GrowableBitSet{uint};
+
+fn void growable_len_after_unset()
+{
+	GrowableBitSetUInt bs;
+	bs.tinit();
+
+	bs.set(100);
+	bs.set(10);
+	assert(bs.len() == 128, "got %d", bs.len());
+	assert(bs.max_bit_set() == 101, "got %d", bs.max_bit_set());
+
+	bs.unset(100);
+	assert(bs.get(10));
+	assert(!bs.get(100));
+	assert(bs.len() == 128, "got %d", bs.len());
+	assert(bs.max_bit_set() == 11, "got %d", bs.max_bit_set());
+}
+
+fn void growable_len_all_cleared()
+{
+	GrowableBitSetUInt bs;
+	bs.tinit();
+
+	bs.set(50);
+	bs.unset(50);
+	assert(bs.len() == 64, "got %d", bs.len());
+	assert(bs.max_bit_set() == 0, "got %d", bs.max_bit_set());
+	assert(bs.cardinality() == 0);
+}
+
+fn void growable_len_empty()
+{
+	GrowableBitSetUInt bs;
+	bs.tinit();
+	assert(bs.len() == 0, "got %d", bs.len());
+	assert(bs.max_bit_set() == 0, "got %d", bs.max_bit_set());
 }

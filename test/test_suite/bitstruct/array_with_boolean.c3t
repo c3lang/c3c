@@ -40,7 +40,7 @@ entry:
   %2 = load i8, ptr %ptradd, align 1
   %zext2 = zext i8 %2 to i32
   %shl3 = shl i32 %zext2, 5
-  %3 = or i32 %shl3, %lshrl
+  %3 = or i32 %lshrl, %shl3
   %shl4 = shl i32 %3, 26
   %ashr5 = ashr i32 %shl4, 26
   %ptradd6 = getelementptr inbounds i8, ptr %xx, i64 1
@@ -51,7 +51,7 @@ entry:
   %5 = load i8, ptr %ptradd9, align 1
   %zext10 = zext i8 %5 to i32
   %shl11 = shl i32 %zext10, 7
-  %6 = or i32 %shl11, %lshrl8
+  %6 = or i32 %lshrl8, %shl11
   %shl12 = shl i32 %6, 22
   %ashr13 = ashr i32 %shl12, 22
   %ptradd14 = getelementptr inbounds i8, ptr %xx, i64 2

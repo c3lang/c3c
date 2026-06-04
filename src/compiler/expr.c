@@ -860,6 +860,9 @@ bool expr_is_simple(Expr *expr, bool to_float)
 					FALLTHROUGH;
 				case BINARYOP_MOD:
 				case BINARYOP_ELSE:
+				case BINARYOP_BIT_AND:
+				case BINARYOP_BIT_OR:
+				case BINARYOP_BIT_XOR:
 					return exprid_is_simple(expr->binary_expr.left, to_float) && exprid_is_simple(expr->binary_expr.right, to_float);
 				case BINARYOP_AND:
 				case BINARYOP_OR:

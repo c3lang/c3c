@@ -403,6 +403,10 @@ macro double? hexfloat(char[] chars, int $bits, int $emin, int sign)
 		long e2val = String.to_long((String)chars[index + 1..]) ?? MALFORMED_FLOAT~!;
 		e2 = e2val;
 	}
+	else if (index != chars.len)
+    {
+    	return MALFORMED_FLOAT~;
+    }
 	e2 += 4 * rp - 32;
 	if (!x) return sign * 0.0;
 	if (e2 > -$emin) return FLOAT_OUT_OF_RANGE~;

@@ -1416,7 +1416,7 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 {
 	DesignatorElement *element = (*elements_ref)[*index];
 
-	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, NULL, false);
+	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, NULL, NULL);
 	if (!field) return poisoned_decl;
 
 	if (field->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)

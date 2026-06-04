@@ -12,6 +12,37 @@ fn void test_comments()
 	test::eq(string::tformat("%s", x), `{"a":23}`);
 }
 
+
+fn void tparse_respects_flavor()
+{
+	// JSON-strict should reject the trailing comma.
+	test::@error(json::tparse(`[1,]`, JSON), json::UNEXPECTED_CHARACTER);
+	// JSONC default still accepts it.
+	json::tparse(`[1,]`)!!;
+}
+
+fn void parse_unicode_surrogate_pair()
+{
+	// U+1F600 GRINNING FACE = "\uD83D\uDE00"
+	Object* o = json::tparse(`"\uD83D\uDE00"`)!!;
+	test::@check(o.s == "\xF0\x9F\x98\x80");   // valid 4-byte UTF-8
+}
+
+fn void parse_lone_surrogate_rejected()
+{
+	test::@error(json::tparse(`"\uD83D"`), json::INVALID_ESCAPE_SEQUENCE);   // lone high
+	test::@error(json::tparse(`"\uDE00"`), json::INVALID_ESCAPE_SEQUENCE);   // lone low
+	test::@error(json::tparse(`"\uD83Dx"`), json::INVALID_ESCAPE_SEQUENCE);  // high not followed by \u
+}
+
+fn void parse_number_requires_fractional_digit()
+{
+	test::@error(json::tparse(`1.`),  json::INVALID_NUMBER);
+	test::@error(json::tparse(`1.e5`), json::INVALID_NUMBER);
+	json::tparse(`1.5`)!!;   // sanity
+	json::tparse(`1.5e2`)!!;
+}
+
 fn void test_comments_unsupported()
 {
 	Object*? x = json::parse(tmem, `{ "a":
