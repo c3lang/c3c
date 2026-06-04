@@ -122,6 +122,7 @@
 - `DString.equals` used `int` rather than `sz` for len comparison.
 - `DString.replace_char` would crash on empty DString.
 - `io::read_varint` and `io::write_varint`: handling for signed integers were broken.
+- `io::write_tiny_bytearray` and `io::write_short_bytearray` could have incomplete writes.
 
 ## 0.8.0 Change list
 
