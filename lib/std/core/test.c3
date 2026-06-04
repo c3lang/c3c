@@ -12,22 +12,22 @@ faultdef DIVISION_BY_ZERO;
 
 fn double? divide(int a, int b)
 {
-	if (b == 0) return MathError.DIVISION_BY_ZERO~;
+	if (b == 0) return DIVISION_BY_ZERO~;
 	return (double)(a) / (double)(b);
 }
 
-fn void? test_div() @test
+fn void test_div() @test
 {
-	test::eq(2, divide(6, 3)!);
+	test::eq(2, divide(6, 3)!!);
 	test::ne(1, 2);
 	test::ge(3, 3);
-	test::gt(2, divide(3, 3)!);
+	test::gt(2, divide(3, 3)!!);
 	test::lt(2, 3);
 	test::le(2, 3);
-	test::eq_approx(m::divide(1, 3)!, 0.333, places: 3);
-	test::@check(2 == 2, "divide: %d", divide(6, 3)!);
+	test::eq_approx(m::divide(1, 3)!!, 0.333, places: 3);
+	test::@check(2 == 2, "divide: %d", divide(6, 3)!!);
 	test::@error(m::divide(3, 0));
-	test::@error(m::divide(3, 0), MathError.DIVISION_BY_ZERO);
+	test::@error(m::divide(3, 0), DIVISION_BY_ZERO);
 }
 
 ```

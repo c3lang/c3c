@@ -207,7 +207,7 @@ fn void h_prime(char[] digest, char[] input) @local
 
 	// In an overlapping fashion, walk the storage buffer and place a hash of the partial
 	//   previous value as the stored value of the next.
-	int r = (int)((digest.len + 31) >> 5) - 2u;
+	int r = (int)((digest.len + 31) >> 5) - 2;
 	sz in = 0;
 	sz out = 32;
 	for (sz i = 1; i < r; i++, in += 32, out += 32)

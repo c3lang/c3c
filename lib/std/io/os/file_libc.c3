@@ -61,7 +61,12 @@ fn long? native_ftell(CFile file) @inline
 
 fn sz? native_fwrite(CFile file, char[] buffer) @inline
 {
-	return (sz)libc::fwrite(buffer.ptr, 1u, (usz)buffer.len, file);
+	sz len = (sz)libc::fwrite(buffer.ptr, 1u, (usz)buffer.len, file);
+	if (!len && buffer.len)
+	{
+		if (libc::ferror(file)) return file_open_errno()~;
+	}
+	return len;
 }
 
 fn void? native_fputc(CInt c, CFile stream) @inline
@@ -71,12 +76,17 @@ fn void? native_fputc(CInt c, CFile stream) @inline
 
 fn sz? native_fread(CFile file, char[] buffer) @inline
 {
-	return (sz)libc::fread(buffer.ptr, 1u, (usz)buffer.len, file);
+	sz len = (sz)libc::fread(buffer.ptr, 1u, (usz)buffer.len, file);
+	if (!len && buffer.len)
+	{
+		if (libc::ferror(file)) return file_open_errno()~;
+	}
+	return len;
 }
 
 fn void? native_fflush(CFile file) @inline @maydiscard
 {
-	if (libc::fflush(file) != 0) return io::GENERAL_ERROR~;
+	if (libc::fflush(file) != 0) return file_open_errno()~;
 }
 
 macro fault file_open_errno() @local

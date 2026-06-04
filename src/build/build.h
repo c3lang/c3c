@@ -189,6 +189,7 @@ typedef struct BuildOptions_
 		const char *ndk_path;
 		int api_version;
 	} android;
+	const char *bsd_sysroot;
 	int build_threads;
 	const char *echo_prefix;
 	const char **libraries_to_fetch;
@@ -515,6 +516,7 @@ typedef struct
 		const char *ndk_path;
 		int api_version;
 	} android;
+	const char *bsd_sysroot;
 } BuildTarget;
 
 static const char *x86_cpu_set[8] = {

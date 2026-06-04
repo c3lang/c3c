@@ -1,0 +1,5 @@
+// #file: constdef_value_visibility.c3
+constdef TypeName
+{
+	AAA @local, // #error: '@local' cannot be used here.
+}

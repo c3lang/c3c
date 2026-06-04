@@ -435,7 +435,7 @@ fn bool SortedMap.is_empty(&self) @inline => !self.count;
 
 fn void SortedMap.clear(&self)
 {
-	if (!self.allocator) return;
+	if (!self.is_initialized()) return;
 	SkipNode* node = self.head.forward[0];
 	while (node)
 	{
@@ -450,6 +450,7 @@ fn void SortedMap.clear(&self)
 
 fn void SortedMap.free(&self)
 {
+	if (!self.is_initialized()) return;
 	self.clear();
 	alloc::free(self.allocator, self.head);
 	self.head = null;

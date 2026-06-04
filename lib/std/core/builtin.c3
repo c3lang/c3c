@@ -180,7 +180,7 @@ macro bool may_member_eq($Type) @builtin @const
 	$foreach $member : $Type::members:
 		// Using |= here instead of `return false;` prevents this macro from generating many runtime return lines,
 		//   especially in the case that many of the struct fields meet this condition.
-		$ret = $ret ||| !$defined($member.get($a) == $member.get($b));
+		$ret = $ret ||| !$defined($a.$member == $b.$member);
 	$endforeach
 	return !$ret;
 }
@@ -197,7 +197,7 @@ macro bool member_eq(left, right) @builtin
 {
 	bool res = true;
 	$foreach $member : $Typeof(left)::members:
-		res = res && ($member.get(left) == $member.get(right));
+		res = res && (left.$member == right.$member);
 	$endforeach
 	return res;
 }
@@ -676,7 +676,7 @@ macro String @str_lower(String $str) @builtin => $$str_lower($str);
 macro uint @str_hash(String $str) @builtin => $$str_hash($str);
 macro String @str_pascalcase(String $str) @builtin => $$str_pascalcase($str);
 macro String @str_snakecase(String $str) @builtin => $$str_snakecase($str);
-macro String @str_camelcase(String $str) @builtin => @str_capitalize($$str_pascalcase($str));
+macro String @str_camelcase(String $str) @builtin => @str_uncapitalize($$str_pascalcase($str));
 macro String @str_constantcase(String $str) @builtin => @str_upper($$str_snakecase($str));
 macro String @str_replace(String $str, String $pattern, String $replace, uint $limit = 0) @builtin => $$str_replace($str, $pattern, $replace, $limit);
 macro String @str_capitalize(String $str) @builtin

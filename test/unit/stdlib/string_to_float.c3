@@ -31,3 +31,11 @@ fn void test_double() @test
 	test::@error("+".to_double(), string::MALFORMED_FLOAT);
 	test::@error("-".to_double(), string::MALFORMED_FLOAT);
 }
+
+fn void test_hex_float_rejects_trailing_garbage() @test
+{
+	test::@error("0x1g".to_float(), string::MALFORMED_FLOAT);
+	test::@error("0x1.8z2".to_float(), string::MALFORMED_FLOAT);
+	test::@error("0x1g".to_double(), string::MALFORMED_FLOAT);
+	test::@error("0x1.8z2".to_double(), string::MALFORMED_FLOAT);
+}

@@ -80,6 +80,7 @@ const char *project_default_keys[][2] = {
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
+		{"bsd-sysroot", "Set the BSD sysroot directory."},
 
 };
 
@@ -171,6 +172,7 @@ const char* project_target_keys[][2] = {
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
+		{"bsd-sysroot", "Set the BSD sysroot directory."},
 
 };
 
@@ -501,6 +503,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 
 	// android-api
 	target->android.api_version = (int)get_valid_integer(context, json, "android-api", false);
+
+	// bsd-sysroot
+	target->bsd_sysroot = get_string(context, json, "bsd-sysroot", target->bsd_sysroot);
 
 	// linux-libc
 	LinuxLibc linux_libc = GET_SETTING(LinuxLibc, "linux-libc", linuxlibc, "`gnu`, `musl` or `host`.");

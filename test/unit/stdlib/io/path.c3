@@ -262,6 +262,17 @@ fn void test_path_normalized() => mem::@scoped(tmem)
 	assert(path::for_windows(mem, `\\server\foo\.`)!! == `\\server\foo\`);
 	assert(path::for_windows(mem, `\\server\foo\`)!! == `\\server\foo\`);
 
+	assert(path::for_posix(mem, `.a/..`)!! == `.`);
+	assert(path::for_posix(mem, `.x/..`)!! == `.`);
+	assert(path::for_posix(mem, `.a/.b/..`)!! == `.a`);
+	assert(path::for_posix(mem, `.a/.b/../..`)!! == `.`);
+	assert(path::for_posix(mem, `.a/b/../..`)!! == `.`);
+	assert(path::for_posix(mem, `/.a/..`)!! == `/`);
+	assert(path::for_posix(mem, `foo/.a/..`)!! == `foo`);
+	assert(path::for_windows(mem, `.a/..`)!! == `.`);
+	assert(path::for_windows(mem, `.a\.b\..`)!! == `.a`);
+	assert(path::for_windows(mem, `/.a/..`)!! == `\`);
+	assert(path::for_windows(mem, `foo\.a\..`)!! == `foo`);
 }
 
 fn void test_extension() => mem::@scoped(tmem)

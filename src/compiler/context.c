@@ -76,19 +76,14 @@ bool context_set_module_from_filename(ParseContext *context)
 	File *file = context->unit->file;
 	if (!filename_to_module_in_buffer(file->full_path))
 	{
-		print_error(context,
-		            "The filename '%s' could not be converted to a valid module name, try using an explicit module name.",
-		            file->full_path);
-		return false;
+		error_exit("ERROR: The filename '%s' could not be converted to a valid module name, please rename it or use an explicit module name.", file->full_path);
 	}
 
 	TokenType type = TOKEN_IDENT;
 	const char *module_name = scratch_buffer_interned_as(&type);
 	if (type != TOKEN_IDENT)
 	{
-		print_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
-		                     "try using an explicit module name.", file->full_path);
-		return false;
+		error_exit("ERROR: Generating a filename from the file '%s' resulted in a name that is a reserved keyword, please rename it or use an explicit module name.", file->full_path);
 	}
 	Path *path = CALLOCS(Path);
 	path->loc = make_loc(context->span);

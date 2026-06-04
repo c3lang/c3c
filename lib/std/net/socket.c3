@@ -10,6 +10,11 @@ struct Socket (InStream, OutStream)
 	char[128] addr_storage;
 }
 
+<*
+ Loop over sockets. Caller must close unused sockets
+
+ @deprecated "use @loop_over_addresses"
+*>
 macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 {
 	while (ai)
@@ -18,6 +23,24 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 		if (sockfd.is_valid())
 		{
 			@body(sockfd, ai);
+		}
+		ai = ai.ai_next;
+	}
+}
+
+<*
+ Loop over sockets. Caller should set *retain_socket = true, when creating a new socket.
+*>
+macro void @loop_over_addresses(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai, bool* retain_socket))
+{
+	while (ai)
+	{
+		NativeSocket sockfd = os::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+		bool retain_socket = false;
+		defer if (!retain_socket) (void)sockfd.close();
+		if (sockfd.is_valid())
+		{
+			@body(sockfd, ai, &retain_socket);
 		}
 		ai = ai.ai_next;
 	}

@@ -272,7 +272,7 @@ enum AtomicOrdering : int
 *>
 macro @atomic_load(#x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
-	return $$atomic_load(&#x, $volatile, $ordering.ordinal);
+	return $$atomic_load(&#x, $volatile, $ordering.ordinal, $reflect(#x).alignment);
 }
 
 <*
@@ -287,9 +287,9 @@ macro @atomic_load(#x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = fa
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
  @require $defined(#x = value) : "The value doesn't match the variable"
 *>
-macro void @atomic_store(#x, value, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
+macro void @atomic_store(#x, value, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false, $alignment = 0) @builtin
 {
-	$$atomic_store(&#x, value, $volatile, $ordering.ordinal);
+	$$atomic_store(&#x, value, $volatile, $ordering.ordinal, $alignment ?: $reflect(#x).alignment);
 }
 
 <*
@@ -453,8 +453,8 @@ macro bool equals(a, b, sz len = -1, sz $align = 0)
 	void* x @noinit;
 	void* y @noinit;
 	$if values::@inner_kind(a) == TypeKind.SLICE:
-		len = a.len;
-		if (len != b.len) return false;
+		if (a.len != b.len) return false;
+		len = a.len * @sizeof(a[0]);
 		x = a.ptr;
 		y = b.ptr;
 	$else

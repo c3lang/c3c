@@ -125,7 +125,7 @@ fn CodePage? by_name(String charset_name) => @pool()
 	name.convert_to_lower();
 	foreach (page : CodePage::values)
 	{
-		if (page.name == charset_name) return page;
+		if (page.name == name) return page;
 	}
 	return NOT_FOUND~;
 }
@@ -133,6 +133,7 @@ fn CodePage? by_name(String charset_name) => @pool()
 fn String? decode(Allocator allocator, char[] src, CodePage code_page)
 {
 	char[] dst = alloc::alloc_array(allocator, char, decode_len(src, code_page));
+	defer catch alloc::free(allocator, dst);
 	return decode_into(dst, src, code_page);
 }
 
@@ -163,6 +164,7 @@ fn String? decode_into(char[] dst, char[] src, CodePage code_page)
 fn char[]? encode(Allocator allocator, char[] src, CodePage code_page, char replacement = REPLACEMENT_CHAR)
 {
 	char[] dst = alloc::alloc_array(allocator, char, encode_len(src));
+	defer catch alloc::free(allocator, dst);
 	return encode_into(dst, src, code_page, replacement);
 }
 

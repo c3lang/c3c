@@ -4,6 +4,14 @@
 
 ### Changes / improvements
 - Add `$$PROJECT_PATH`, accessible through `env::PROJECT_PATH`.
+- Deprecate `$field.get(a)` and `$field.set(a, b)`. Replaced by `a.$field` and `a.$field = b`.
+- Add `a.$eval($field)` as a variant of `a.$field`.
+- Add json pretty print.
+- `$$atomic_store` and `$$atomic_load` takes an alignment parameter.
+- `$vaarg[^1]` is supported. #3276
+- Improve error message when a keyword is used a block parameter. #3275
+- Correct tag method error messages from `tagof`/`has_tagof` to `get_tag` and `has_tag` 
+- Don't resume parsing when implicit module names yield invalid names.
 
 ### Stdlib changes
 - Add math::TAU / math::TWO_PI
@@ -13,8 +21,18 @@
 - Added initial cpudetect on Linux / MacOS Aarch64.
 - Enable libc::errno for FreeBSD.
 - Checking filesize on Win32 now correctly reports errors. Getting the filesize now rejects directories.
+- `ini::parse` and related takes an `error_line` argument to identify the line with error.
+- JSON marshaling will return INVALID_NUMBER when encountering a inf or NaN for a float.
+- JSON decoding will reject `1.` literals.
+- `spawn` now allows binding I/O and using different settings per pipe.
+- `@loop_over_ai` would leak fds, deprecated and replaced by `@loop_over_addresses`.
+- Correctly return error on native_fwrite and native_fread. 
+- Prevent infinite spin on `io::read_fully`, `File.load_buffer`, `File.load` and `File.save`.
+- `io::write_all` now retries on incomplete writes.
+- `GrowableBitSet.max_bit_set` added.
 - `Rect.contains_point` is now exclusive on the maximum edge.
 - Add `Bounds` - a rectangular region stored as a `min` and `max` value, with all operations being inclusive along the boundary edge.
+ 
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
@@ -46,6 +64,70 @@
 - Overlong conversions to unicode for `%c` at boundaries.
 - Do not rely on implicit allocation for getcwd.
 - Skipping symlinks wasn't properly implemented for Win32.
+- Reverse indexing a value that overloads indexing would index an anonymous copy of the value.
+- Fix case where member.set would hit an assert.
+- Same type casts would not become rvalues.
+- Hex decoding would leak memory on failure.
+- `Codepage.by_name` would not use normalized name.
+- `@return? bar!` didn't work if the identifier matched a macro.
+- Copying compile time strings during compile time folding with strings containing 0 would sometimes get truncated. #3267
+- Pem parsing did not correctly handle empty body, nor when the first line was too short.
+- Additional pem parsing bugs on malformed data handled.
+- Compiler would crash when getting the `kind`, `qname`, or `alignment` of an `untypedlist`.
+- `untypedlist` incorrectly had `size` property.
+- JSON handling of UTF16 surrogate pairs fixed.
+- `base32`, `base64` and `codepage` would leak memory on encode/decode errors.
+- Indexing into a type with a `$reflect` value would sometimes cause a crash.
+- Using a faultdef hidden behind `@if` would cause a crash.
+- Taking the type of a macro method would cause a crash.
+- Cap array size to avoid overflow when making multidimensional arrays that are too large.
+- DynamicArenaAllocator would incorrectly handle some reuse cases.
+- `__atomic_compare_exchange` had an incorrect implementation.
+- `channel::create_unbuffered` would not correctly zero out memory, potentially yielding unpredictable result.
+- `lock_timeout` on Posix would sleep the entire sleep before retrying, and it would fail if it managed to sleep.
+- `stack_size` setting for threads was ignored on Posix.
+- Setting thread priority on Win32 was off by one.
+- Non-power-of-two-sized member of @bigendian bitstruct backed by char array wasn't working #3283.
+- Binary bitwise operations were not considered simple.
+- `$expand` was incorrectly made generic in generic modules. #3274
+- Mangle lambdas in macros without `@` to ensure they work correctly on elf #3217.
+- `DString.replace("", "X");` would crash.
+- `DString.read_from_stream` would not return the correct length when `available` was not supported by the stream.
+- `@str_camelcase` would yield same result as `@str_pascalcase`. #3287
+- `conv::utf8to32` would not zero terminate in when the zero would be at the end of the buffer.
+- `char16_to_utf8_unsafe` would not load low byte unaligned when required.
+- Not all invalid UTF8 was detected.
+- UTF16 length detection was incorrect for utf16 with surrogate pairs.
+- Initializing a variable which has the type of an optional struct using a const value would fail codegen. #3288
+- Parsing a malformed hex float would not correctly get reported.
+- Parsing an integer with trailing space would incorrectly be reported as an error.
+- `String.escape` used the incorrect default for stripping quotes.
+- mem::equals would not correctly compare slices of with element size > 1.
+- `AsciiCharset.contains` incorrectly handled char > 127.
+- Reuse of recently freed DynamicArenaAllocator allocations failed.
+- Crash in codegen in some cases when RHS of a `&&` or `||` was unreachable at lowering.
+- Visibility modifiers were incorrectly allowed on enum/constdef members.
+- Datetime format could not handle negative offsets with non-zero minutes.
+- NormalDist.random could occasionally return inf.
+- Url parser would fail on `foo@bar.com`.
+- Url parser would drop the port on `http://[::1]:8080`.
+- Ipv6 classification - is_link_local etc, was incorrect
+- env::get/set_var for Win32 would appear to fail when succeeding.
+- env::get_var had a race condition on Win32.
+- process::run_capture_stdout would remove the last character, even when it wasn't `\n`.
+- Add missing `__powisf2` to compiler_rt.
+- `//` would count newlines twice when parsing JSONC.
+- `Path::for_posix(".a/..")` was not parsed correctly.
+- `SortedMap.clear` and `SortedMap.free` would work incorrectly on map initialized with ONHEAP.
+- `GrowableBitSet` would yield the wrong length.
+- `GrowableBitSet` would not work correctly on backing types bigger than uint.
+- `DString.replace` would not work correctly in some cases.
+- `ByteWriter.ensure_capacity` did realloc unnecessarily when the data exactly matched capacity.
+- `DString.equals` used `int` rather than `sz` for len comparison.
+- `DString.replace_char` would crash on empty DString.
+- `io::read_varint` and `io::write_varint`: handling for signed integers were broken.
+- `io::write_tiny_bytearray` and `io::write_short_bytearray` could have incomplete writes.
+- Splatting a partially raw array into a macro would miscompile. #3302
 
 ## 0.8.0 Change list
 
