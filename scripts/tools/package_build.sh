@@ -39,6 +39,15 @@ cp -r "$ROOT_DIR/lib" c3/
 cp "$ROOT_DIR/README.md" c3/
 cp "$ROOT_DIR/releasenotes.md" c3/
 
+# Download MANUAL.md
+if command -v curl &> /dev/null; then
+    curl -sSfL -o c3/MANUAL.md https://c3-lang.org/all.md || echo "Warning: failed to download MANUAL.md via curl"
+elif command -v wget &> /dev/null; then
+    wget -qO c3/MANUAL.md https://c3-lang.org/all.md || echo "Warning: failed to download MANUAL.md via wget"
+else
+    echo "Warning: Neither curl nor wget found, MANUAL.md will be missing"
+fi
+
 # Copy binaries
 cp "$C3C_BIN" c3/
 if [[ -f "$BUILD_DIR/c3c.pdb" ]]; then cp "$BUILD_DIR/c3c.pdb" c3/; fi

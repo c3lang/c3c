@@ -104,6 +104,7 @@ jobs:
             curl -L -o EnVar-Plugin.zip "https://github.com/GsNSIS/EnVar/releases/download/v0.3.1/EnVar-Plugin.zip"
             7z x EnVar-Plugin.zip -o"C:\Program Files (x86)\NSIS" -y
           fi
+          curl -sSfL -o MANUAL.md https://c3-lang.org/all.md
           export PATH="/c/Program Files (x86)/NSIS/Bin:/c/Program Files (x86)/NSIS:$PATH"
           MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-Release.exe" /DBUILD_DIR=build-release resources/nsis/installer.nsi
           MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-Debug.exe" /DBUILD_DIR=build-debug resources/nsis/installer.nsi
