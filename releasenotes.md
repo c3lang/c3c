@@ -30,6 +30,9 @@
 - Prevent infinite spin on `io::read_fully`, `File.load_buffer`, `File.load` and `File.save`.
 - `io::write_all` now retries on incomplete writes.
 - `GrowableBitSet.max_bit_set` added.
+- `Rect.contains_point` is now exclusive on the maximum edge.
+- Add `Bounds` - a rectangular region stored as a `min` and `max` value, with all operations being inclusive along the boundary edge.
+ 
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
