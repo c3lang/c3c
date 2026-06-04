@@ -19,7 +19,7 @@ on:
 
 env:
   LLVM_RELEASE_VERSION: 22.x
-  LLVM_RELEASE_VERSION_LINUX_MUSL: 20
+  LLVM_RELEASE_VERSION_LINUX_MUSL: 21
   LLVM_RELEASE_VERSION_OPENBSD: 20
   LLVM_RELEASE_VERSION_NETBSD: 19
   LLVM_DEV_VERSION: 22
@@ -361,14 +361,12 @@ jobs:
           for i in 1 2 3; do apk update && break || sleep 2; done
           for i in 1 2 3; do \
             apk add \
-              build-base bash cmake ninja python3 linux-headers \
+              build-base bash cmake ninja \
               tar zstd \
-              zlib-dev curl-dev libffi-dev \
+              curl-dev \
               llvm${V}-dev \
               llvm${V}-static \
               llvm${V}-gtest \
-              clang${V}-dev \
-              clang${V}-static \
               lld${V}-dev \
               lld${V}-libs && break || sleep 2; \
           done
