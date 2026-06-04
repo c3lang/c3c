@@ -121,6 +121,7 @@
 - `ByteWriter.ensure_capacity` did realloc unnecessarily when the data exactly matched capacity.
 - `DString.equals` used `int` rather than `sz` for len comparison.
 - `DString.replace_char` would crash on empty DString.
+- `io::read_varint` and `io::write_varint`: handling for signed integers were broken.
 
 ## 0.8.0 Change list
 
