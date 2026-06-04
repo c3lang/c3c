@@ -603,12 +603,12 @@ void compiler_compile(void)
 			case TARGET_TYPE_OBJECT_FILES:
 				if (compiler.obj_output)
 				{
-					OUTF("Object file %s created.\n", compiler.obj_output);
+					OUTF("Object file '%s' created.\n", compiler.obj_output);
 					break;
 				}
 				if (compiler.build.emit_object_files)
 				{
-					OUTF("Object files written to %s.\n", compiler.build.object_file_dir);
+					OUTF("Object files written to '%s'.\n", compiler.build.object_file_dir);
 				}
 				break;
 			case TARGET_TYPE_PREPARE:
@@ -619,11 +619,11 @@ void compiler_compile(void)
 	}
 	if (compiler.build.emit_llvm)
 	{
-		OUTF("LLVM files written to %s.\n", compiler.build.ir_file_dir);
+		OUTF("LLVM files written to '%s'.\n", compiler.build.ir_file_dir);
 	}
 	if (compiler.build.emit_asm)
 	{
-		OUTF("Asm files written to %s.\n", compiler.build.asm_file_dir);
+		OUTF("Asm files written to '%s'.\n", compiler.build.asm_file_dir);
 	}
 	free_arenas();
 
