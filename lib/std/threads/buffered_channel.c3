@@ -53,12 +53,14 @@ fn void BufferedChannel.destroy(&self)
 	alloc::free(channel.allocator, channel);
 }
 
-fn void? BufferedChannel.push(&self, Type val)
+fn void? BufferedChannel.push(&self, Type val, bool non_blocking = false)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
 	channel.mu.lock();
 	defer channel.mu.unlock();
+
+	if (non_blocking && channel.elems == channel.size && !channel.closed) return thread::CHANNEL_BLOCKED~;
 
 	// if channel is full -> wait
 	while (channel.elems == channel.size && !channel.closed)
@@ -91,15 +93,17 @@ fn void? BufferedChannel.push(&self, Type val)
 	}
 }
 
-fn Type? BufferedChannel.pop(&self)
+fn Type? BufferedChannel.pop(&self, bool non_blocking = false)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
 	channel.mu.lock();
 	defer channel.mu.unlock();
 
+	if (non_blocking && !channel.elems && !channel.closed) return thread::CHANNEL_EMPTY~;
+
 	// if chan is empty -> wait for sender
-	while (channel.elems == 0 && !channel.closed)
+	while (!channel.elems && !channel.closed)
 	{
 		channel.read_waiting++;
 		channel.read_cond.wait(&channel.mu);

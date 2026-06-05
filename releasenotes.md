@@ -30,7 +30,9 @@
 - Prevent infinite spin on `io::read_fully`, `File.load_buffer`, `File.load` and `File.save`.
 - `io::write_all` now retries on incomplete writes.
 - `GrowableBitSet.max_bit_set` added.
-
+- Added `UnboundedChannel`.
+- `BufferedChannel` and `UnbufferedChannel` gets non-blocking push/pop.
+ 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
 - NPOT vectors as associated variables were incorrectly lowered on load. #3228

@@ -39,12 +39,14 @@ fn void UnbufferedChannel.destroy(&self)
 	alloc::free(channel.allocator, channel);
 }
 
-fn void? UnbufferedChannel.push(&self, Type val)
+fn void? UnbufferedChannel.push(&self, Type val, bool non_blocking = false)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
 	channel.mu.lock();
 	defer channel.mu.unlock();
+
+	if (non_blocking && channel.has_value && !channel.closed) return thread::CHANNEL_BLOCKED~;
 
 	// if channel is full -> wait
 	while (channel.has_value && !channel.closed)
@@ -68,12 +70,13 @@ fn void? UnbufferedChannel.push(&self, Type val)
 	}
 }
 
-fn Type? UnbufferedChannel.pop(&self)
+fn Type? UnbufferedChannel.pop(&self, bool non_blocking = false)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
 	channel.mu.lock();
 	defer channel.mu.unlock();
+	if (non_blocking && !channel.has_value && !channel.closed) return thread::CHANNEL_EMPTY~;
 
 	// if chan is empty -> wait for sender
 	while (!channel.has_value && !channel.closed)
