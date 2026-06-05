@@ -1,0 +1,11 @@
+enum MyEnum : uint (String name)
+{
+	BBB { "bbb" }
+}
+
+fn int main()
+{
+	$assert(MyEnum::members[0].name == "name");
+	MyEnum::members[0].has_tag("tagname");
+	return 0;
+}
