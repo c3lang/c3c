@@ -105,6 +105,7 @@ jobs:
             7z x EnVar-Plugin.zip -o"C:\Program Files (x86)\NSIS" -y
           fi
           curl -sSfL -o MANUAL.md https://c3-lang.org/all.md
+          curl -sSfL -o c3fmt.exe https://github.com/lmichaudel/c3fmt/releases/latest/download/c3fmt-windows.exe
           export PATH="/c/Program Files (x86)/NSIS/Bin:/c/Program Files (x86)/NSIS:$PATH"
           MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-Release.exe" /DBUILD_DIR=build-release resources/nsis/installer.nsi
           MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-Debug.exe" /DBUILD_DIR=build-debug resources/nsis/installer.nsi
