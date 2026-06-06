@@ -131,6 +131,7 @@
 - Json marshalling of floats would lose precision.
 - Crash when initializing a bitstruct from an untyped list.
 - Shifting a vector by a non-numeric type would cause a crash rather than a compiler error.
+- Recursive macros were not detected when going by way of a lambda.
 
 ## 0.8.0 Change list
 

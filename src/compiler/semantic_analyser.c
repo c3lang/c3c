@@ -326,7 +326,7 @@ static bool setup_main_runner(Decl *run_function)
 	Decl *main = sema_create_runner_main(&context, run_function);
 	if (!decl_ok(main)) return false;
 	if (!sema_analyse_decl(&context, main)) return false;
-	if (!sema_analyse_function_body(&context, main)) return false;
+	if (!sema_analyse_function_body(&context, main, 0)) return false;
 	sema_context_destroy(&context);
 	compiler.context.main = main;
 	main->unit->main_function = main;

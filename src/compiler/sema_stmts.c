@@ -3379,7 +3379,7 @@ bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **require
 	return true;
 }
 
-bool sema_analyse_function_body(SemaContext *context, Decl *func)
+bool sema_analyse_function_body(SemaContext *context, Decl *func, unsigned macro_depth_start)
 {
 	// Stop if it's already poisoned.
 	if (!decl_ok(func)) return false;
@@ -3399,7 +3399,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	// Pull out the prototype
 	FunctionPrototype *prototype = func->type->function.prototype;
 	ASSERT_SPAN(func, prototype);
-
+	context->macro_call_depth = macro_depth_start;
 	// Set up the context for analysis
 	context->original_module = NULL;
 	CallEnv env = {
@@ -3412,7 +3412,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	context->call_env = env;
 
 	Type *rtype = context->rtype = typeget(signature->rtype);
-	context->macro_call_depth = 0;
+	bool is_lambda = func->func_decl.is_lambda;
 	DynamicScope new_scope = {
 		.depth = 0,
 		.label_start = 0,
@@ -3436,7 +3436,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		{
 			if (!sema_add_local(context, param)) return false;
 		}
-		if (func->func_decl.is_lambda)
+		if (is_lambda)
 		{
 			// If we're a lambda we need to pass on the compile time values that will
 			// be baked into the function.

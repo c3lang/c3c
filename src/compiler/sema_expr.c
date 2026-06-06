@@ -11338,7 +11338,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		decl->resolve_status = RESOLVE_DONE;
 		SemaContext lambda_context;
 		sema_context_init(&lambda_context, context->unit);
-		if (sema_analyse_function_body(&lambda_context, decl))
+		if (sema_analyse_function_body(&lambda_context, decl, context->macro_call_depth))
 		{
 			vec_add(unit->lambdas, decl);
 		}
