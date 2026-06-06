@@ -195,7 +195,7 @@ macro Object.to_value(&self, $Type, strict = true)
 		$case $Type == String:
 			if (self.is_string()) return self.s;
 			if (strict) return TYPE_MISMATCH~;
-			return string::format(self.allocator, "%d", self);
+			return string::format(self.allocator ?: tmem, "%s", self);
 		$case $Type == bool:
 			if (self.is_bool()) return self.b;
 			return TYPE_MISMATCH~;
