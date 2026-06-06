@@ -150,7 +150,7 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 			io::fprintf(stream, "%d", value)!;
 		$case FLOAT:
 			if (math::is_nan(value) || math::is_inf(value)) return INVALID_NUMBER~;
-			io::fprintf(stream, "%g", value)!;
+			io::fprintf(stream, "%.17g", (double)value)!;
 		$case BOOL:
 			stream.write(value ? "true" : "false")!;
 		$case CONSTDEF:

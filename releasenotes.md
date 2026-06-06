@@ -128,6 +128,14 @@
 - `io::write_tiny_bytearray` and `io::write_short_bytearray` could have incomplete writes.
 - Splatting a partially raw array into a macro would miscompile. #3302
 - Getting the tag for an enum parameter caused a crash. #3307
+- Json marshalling of floats would lose precision.
+- Crash when initializing a bitstruct from an untyped list.
+- Shifting a vector by a non-numeric type would cause a crash rather than a compiler error.
+- Recursive macros were not detected when going by way of a lambda.
+- Compile time concatenation with an empty slice was lacking checks, causing a compiler crash.
+- Fix zip slip vulnerability.
+- Fixed issues with `Object.to_value`.
+- `DString.len` was incorrectly marked `@dynamic`.
 
 ## 0.8.0 Change list
 

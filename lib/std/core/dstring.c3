@@ -172,7 +172,7 @@ fn sz DString.capacity(self)
 	return self.data().capacity;
 }
 
-fn sz DString.len(&self) @dynamic @operator(len)
+fn sz DString.len(&self) @operator(len)
 {
 	if (!*self) return 0;
 	return self.data().len;

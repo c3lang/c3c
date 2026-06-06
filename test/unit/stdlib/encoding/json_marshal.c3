@@ -158,7 +158,7 @@ fn void test_comprehensive_marshaling() @test
     // Verify primitive types
     assert(parsed.get_string("text")!! == "Hello \"World\"");
     assert(parsed.get_int("integer")!! == 42);
-    assert(parsed.get_float("single_precision")!! == 3.14f);
+    assert((float)parsed.get_float("single_precision")!! == 3.14f);
     assert(parsed.get_bool("flag")!! == true);
 
     // Verify enums (marshaled as strings)
@@ -171,7 +171,7 @@ fn void test_comprehensive_marshaling() @test
     assert(owner.get_string("name")!! == "John Doe");
     assert(owner.get_int("age")!! == 30);
     assert(owner.get_bool("is_active")!! == true);
-    assert(owner.get_float("height")!! == 5.9f);
+    assert((float)owner.get_float("height")!! == 5.9f);
     assert(owner.get_string("status")!! == "ACTIVE");
 
     Object* location = parsed.get("location")!!;
@@ -193,8 +193,8 @@ fn void test_comprehensive_marshaling() @test
 
     Object* ratings = parsed.get("ratings")!!;
     assert(ratings.get_len() == 3);
-    assert(ratings.get_float_at(0)!! == 4.5f);
-    assert(ratings.get_float_at(2)!! == 4.9f);
+    assert((float)ratings.get_float_at(0)!! == 4.5f);
+    assert((float)ratings.get_float_at(2)!! == 4.9f);
 
     Object* flags = parsed.get("flags")!!;
     assert(flags.get_len() == 3);
@@ -348,4 +348,54 @@ fn void nested_tab_indent_output() @test
 	};
 	String json = json::marshal(tmem, nested, TAB);
 	assert(json == "{\n\t\"user\": {\n\t\t\"username\": \"admin\",\n\t\t\"created_at\": 611667900\n\t},\n\t\"stars\": [\n\t\t1,\n\t\t2\n\t]\n}");
+}
+
+struct DoublePrecision
+{
+	double x;
+}
+
+struct FloatPrecision
+{
+	float x;
+}
+
+fn void double_roundtrip_pi() @test
+{
+	DoublePrecision v = { .x = 3.141592653589793 };
+	String json = json::marshal(tmem, v);
+	Object* parsed = json::tparse(json)!!;
+	assert(parsed.get_float("x")!! == 3.141592653589793);
+}
+
+fn void double_roundtrip_max_significant() @test
+{
+	DoublePrecision v = { .x = 1.2345678901234567 };
+	String json = json::marshal(tmem, v);
+	Object* parsed = json::tparse(json)!!;
+	assert(parsed.get_float("x")!! == 1.2345678901234567);
+}
+
+fn void double_roundtrip_small() @test
+{
+	DoublePrecision v = { .x = 1.7976931348623157e-300 };
+	String json = json::marshal(tmem, v);
+	Object* parsed = json::tparse(json)!!;
+	assert(parsed.get_float("x")!! == 1.7976931348623157e-300);
+}
+
+fn void double_roundtrip_negative() @test
+{
+	DoublePrecision v = { .x = -2.2250738585072014e-308 };
+	String json = json::marshal(tmem, v);
+	Object* parsed = json::tparse(json)!!;
+	assert(parsed.get_float("x")!! == -2.2250738585072014e-308);
+}
+
+fn void float_roundtrip_precise() @test
+{
+	FloatPrecision v = { .x = 1.23456789f };
+	String json = json::marshal(tmem, v);
+	Object* parsed = json::tparse(json)!!;
+	assert((float)parsed.get_float("x")!! == 1.23456789f);
 }
