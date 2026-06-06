@@ -130,6 +130,7 @@
 - Getting the tag for an enum parameter caused a crash. #3307
 - Json marshalling of floats would lose precision.
 - Crash when initializing a bitstruct from an untyped list.
+- Shifting a vector by a non-numeric type would cause a crash rather than a compiler error.
 
 ## 0.8.0 Change list
 
