@@ -8788,7 +8788,7 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 		if (!type_is_integer(flat_left)) goto FAIL;
 	}
 
-	if (!type_is_numeric(flat_right)) RETURN_SEMA_ERROR(right, "Expected a numeric type here.");
+	if (!type_is_numeric(flat_right)) goto FAIL;
 
 	if (!sema_expr_check_shift_rhs(context, expr, left, flat_left, right, flat_right, failed_ref, false)) return false;
 
