@@ -128,6 +128,7 @@
 - `io::write_tiny_bytearray` and `io::write_short_bytearray` could have incomplete writes.
 - Splatting a partially raw array into a macro would miscompile. #3302
 - Getting the tag for an enum parameter caused a crash. #3307
+- Json marshalling of floats would lose precision.
 
 ## 0.8.0 Change list
 
