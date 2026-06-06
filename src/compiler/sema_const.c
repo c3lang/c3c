@@ -228,6 +228,9 @@ static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Exp
 static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *list, Expr *element)
 {
 	Type *array_type = type_flatten(list->type);
+	bool is_slice = list->const_expr.const_kind == CONST_SLICE;
+	Type *indexed = type_get_indexed_type(is_slice ? list->type : list->const_expr.initializer->type);
+	if (!cast_implicit(context, element, indexed, false)) return false;
 	if (expr_is_empty_const_slice(list))
 	{
 		// Create a single length array
@@ -238,13 +241,10 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 		expr_replace(expr, list);
 		return true;
 	}
-	bool is_slice = list->const_expr.const_kind == CONST_SLICE;
+	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	ASSERT(!type_is_inferred(array_type));
 	bool is_vector = type_kind_is_real_vector(array_type->type_kind);
-	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	unsigned len = sema_len_from_const(list) + 1;
-	Type *indexed = type_get_indexed_type(init->type);
-	if (!cast_implicit(context, element, indexed, false)) return false;
 	Type *new_inner_type = is_vector ? type_get_vector(indexed, array_type->type_kind, len) : type_get_array(indexed, len);
 	Type *new_outer_type = list->type;
 	if (!is_slice)

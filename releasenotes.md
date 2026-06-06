@@ -132,6 +132,7 @@
 - Crash when initializing a bitstruct from an untyped list.
 - Shifting a vector by a non-numeric type would cause a crash rather than a compiler error.
 - Recursive macros were not detected when going by way of a lambda.
+- Compile time concatenation with an empty slice was lacking checks, causing a compiler crash.
 
 ## 0.8.0 Change list
 
