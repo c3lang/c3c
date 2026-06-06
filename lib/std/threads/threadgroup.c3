@@ -1,15 +1,13 @@
-module std::thread::experimental::threadgroup <Work, Result>;
-import std::thread, std::os;
+module std::thread::experimental::threadgroup <Task, Result>;
+import std::thread, std::os, std::collections::list;
 // WARNING! This is experimental and does not have proper stability guarantees,
 // as such, it will change in upcoming releases. This is just a preview.
 // Do not use in production!
 
-alias ThreadWorkFn = fn Result?(Work work, void* context);
+alias ThreadTaskFn = fn Result(Task task, void* context);
 alias ThreadInitFn = fn void(void* init_context);
 alias ThreadFinalizerFn = fn void(void* finalizer_context, void* init_context);
-alias OutChannel = UnboundedChannel{ThreadGroupResult};
-
-const bool NO_RESULT = Result == void;
+alias OutChannel = UnboundedChannel{ThreadTaskResult};
 
 enum ThreadGroupState : char
 {
@@ -19,24 +17,16 @@ enum ThreadGroupState : char
 	STOPPING
 }
 
-struct ThreadGroupResult
-{
-	fault excuse;
-	Work work;
-	Result result @if(!NO_RESULT);
-}
 
-fn Result? ThreadGroupResult.get(&self)
+struct ThreadTaskResult
 {
-	if (self.excuse) return self.excuse~;
-	$if !NO_RESULT:
-		return self.result;
-	$endif
+	Task task;
+	Result result @if(!NO_RESULT);
 }
 
 struct ThreadGroup
 {
-	ThreadWorkFn work_fn;
+	ThreadTaskFn task_fn;
 	void* context;
 	ThreadInitFn init_fn;
 	void* init_context;
@@ -47,22 +37,23 @@ struct ThreadGroup
     ConditionVariable done;
 	union
 	{
-		UnbufferedChannel{Work}* unbuffered;
-		BufferedChannel{Work}* buffered;
+		UnbufferedChannel{Task}* unbuffered;
+		BufferedChannel{Task}* buffered;
+		UnboundedChannel{Task}* unbounded;
 	}
 	OutChannel* outbound;
     Thread[] threads;
 	sz pending;
 	ThreadSettings thread_settings;
+    ThreadGroupQueueType queue_type;
 	ThreadGroupState state;
-	bool is_buffered;
 }
 
 <*
  @param [&inout] allocator
- @param thread_count : "Number of threads for the work group, 0 for max(cpus - 1, 2)"
- @param queue_capacity : "Queue size"
- @param work_fn : "Work function to run"
+ @param thread_count : "Number of threads for the task group, 0 for max(cpus - 1, 2)"
+ @param queue_capacity : "Queue size, if 0 - uses an unbounded queue"
+ @param task_fn : "Task function to run"
  @param context : "Any common context to use"
  @param thread_settings : "Thread settings to apply"
 
@@ -71,7 +62,7 @@ struct ThreadGroup
  @require queue_capacity >= 0 : "Queue capacity must be 0 or higher"
  @require self.state == NO_INIT : "Cannot initialize it again"
 *>
-fn void? ThreadGroup.init(&self, Allocator allocator, ThreadWorkFn work_fn, sz queue_capacity = 64, int thread_count = 0, void* context = null, ThreadSettings thread_settings = {})
+fn void? ThreadGroup.init(&self, Allocator allocator, ThreadTaskFn task_fn, int thread_count = 0, sz queue_capacity = 0, void* context = null, ThreadSettings thread_settings = {})
 {
 	if (thread_count < 1)
 	{
@@ -86,7 +77,7 @@ fn void? ThreadGroup.init(&self, Allocator allocator, ThreadWorkFn work_fn, sz q
 	defer catch self.destroy();
 
 	*self = {
-		.work_fn = work_fn,
+		.task_fn = task_fn,
 		.context = context,
 		.allocator = allocator,
 	};
@@ -95,33 +86,26 @@ fn void? ThreadGroup.init(&self, Allocator allocator, ThreadWorkFn work_fn, sz q
 	self.done.init()!;
 	defer catch self.done.destroy();
 
-	if (queue_capacity > 0)
+	switch (queue_capacity)
 	{
-		self.is_buffered = true;
-		self.buffered = channel::create_buffered{Work}(allocator, queue_capacity)!;
-	}
-	else
-	{
-		self.unbuffered = channel::create_unbuffered{Work}(allocator)!;
+		case 0:
+			self.queue_type = UNBOUNDED;
+			self.unbounded = channel::create_unbounded{Task}(allocator)!;
+		case 1:
+			self.queue_type = SINGLE;
+			self.unbuffered = channel::create_unbuffered{Task}(allocator)!;
+		default:
+			self.queue_type = BOUNDED;
+			self.buffered = channel::create_buffered{Task}(allocator, queue_capacity)!;
 	}
 
 	// Rollback on error:
-	defer catch
-	{
-		if (self.is_buffered)
-		{
-			self.buffered.destroy();
-		}
-		else
-		{
-			self.unbuffered.destroy();
-		}
-	}
+	defer catch _thread_group_destroy_input_channel(self);
 
 	self.threads = alloc::new_array(allocator, Thread, thread_count);
 	defer catch alloc::free(allocator, self.threads);
 
-	self.outbound = channel::create_unbounded{ThreadGroupResult}(allocator)!;
+	self.outbound = channel::create_unbounded{ThreadTaskResult}(allocator)!;
 }
 
 <*
@@ -166,80 +150,119 @@ fn void? ThreadGroup.start(&self)
 <*
   @require self.state != NO_INIT : "Expected the thread group initialized"
 *>
-fn void? ThreadGroup.add_blocking(&self, Work work)
+fn void? ThreadGroup.add_task(&self, Task task)
 {
-	defer catch _thread_work_group_work_done(self);
-	return _thread_group_push(self, work, non_blocking: false);
+	defer catch _thread_group_task_done(self);
+	return _thread_group_push(self, task, non_blocking: false);
 }
 
 <*
   @require self.state != NO_INIT : "Expected the thread group initialized"
 *>
-fn void? ThreadGroup.try_add(&self, Work work)
+fn void? ThreadGroup.try_add_task(&self, Task task)
 {
-	if (catch err = _thread_group_push(self, work, non_blocking: true))
+	if (catch err = _thread_group_push(self, task, non_blocking: true))
 	{
-		_thread_work_group_work_done(self);
+		_thread_group_task_done(self);
 		if (err == thread::CHANNEL_BLOCKED) return thread::THREAD_QUEUE_FULL~;
 		return err~;
 	}
 }
 
-<*
-  @require self.state != NO_INIT : "Expected the thread group initialized"
-*>
-macro void? _thread_group_push(ThreadGroup* self, Work work, bool non_blocking) @private
-{
-	_thread_work_group_add_pending(self);
-	if (self.state == INIT) non_blocking = true;
-	return self.is_buffered ? self.buffered.push(work, non_blocking: non_blocking) : self.unbuffered.push(work, non_blocking: non_blocking);
-}
 
 <*
   @require self.state != NO_INIT : "Expected the thread group initialized"
 *>
-fn void? ThreadGroup.add_or_run(&self, Work work)
+fn void? ThreadGroup.add_task_or_run(&self, Task task)
 {
-	if (catch err = _thread_group_push(self, work, non_blocking: true))
+	if (catch err = _thread_group_push(self, task, non_blocking: true))
 	{
-		defer _thread_work_group_work_done(self);
+		defer _thread_group_task_done(self);
 		if (err == thread::CHANNEL_BLOCKED)
 		{
-			_execute_work(self.outbound, work, self.work_fn, self.context);
+			_thread_group_execute_work(self.outbound, task, self.task_fn, self.context);
 			return;
 		}
 		return err~;
 	}
 }
 
-fn ThreadGroupResult? ThreadGroup.next_result(&self)
+fn ThreadTaskResult? ThreadGroup.try_pop_result(&self)
 {
-	return self.outbound.pop(non_blocking: true);
+	return self.outbound.try_pop();
 }
 
-fn ThreadGroupResult? ThreadGroup.wait_until_result(&self)
+fn ThreadTaskResult? ThreadGroup.pop_result(&self)
 {
-	return self.outbound.pop(non_blocking: false);
+	return self.outbound.pop();
 }
+
+<*
+ @require self.state != NO_INIT : "The thread group is not initialized"
+*>
+fn List{ThreadTaskResult} ThreadGroup.drain(&self, Allocator allocator)
+{
+	List{ThreadTaskResult} list;
+	list.init(allocator);
+	while (try res = self.try_pop_result())
+	{
+		list.push(res);
+	}
+	return list;
+}
+
+<*
+ @require self.state != NO_INIT : "The thread group is not initialized"
+*>
+fn List{Result} ThreadGroup.drain_values(&self, Allocator allocator) @if(!NO_RESULT)
+{
+	List{Result} list;
+	list.init(allocator);
+	while (try res = self.try_pop_result().result)
+	{
+		list.push(res);
+	}
+	return list;
+}
+
+
 <*
  @require self.state == RUNNING : "Expected the thread group to be running"
 *>
-fn void ThreadGroup.join(&self, bool run_on_caller = false)
+fn List{ThreadTaskResult} ThreadGroup.collect(&self, Allocator allocator, bool caller_help_finish = false)
 {
-	if (run_on_caller)
+	self.join(caller_help_finish);
+	return self.drain(allocator);
+}
+
+<*
+ @require self.state == RUNNING : "Expected the thread group to be running"
+*>
+fn List{Result} ThreadGroup.collect_values(&self, Allocator allocator, bool caller_help_finish = false) @if(!NO_RESULT)
+{
+	self.join(caller_help_finish);
+	return self.drain_values(allocator);
+}
+
+<*
+ @require self.state == RUNNING : "Expected the thread group to be running"
+*>
+fn void ThreadGroup.join(&self, bool caller_help_finish = false)
+{
+	if (caller_help_finish)
 	{
 		while (true)
 		{
-			if (!_thread_work_group_has_pending(self)) return;
-			Work? work = _thread_work_group_try_pop(self);
-			if (catch err = work)
+			if (!_thread_group_has_pending(self)) return;
+			Task? task = _thread_group_try_pop(self);
+			if (catch err = task)
 			{
 				if (err != thread::CHANNEL_EMPTY) break;
 				thread::yield();
 				continue;
 			}
-			_execute_work(self.outbound, work, self.work_fn, self.context);
-			_thread_work_group_work_done(self);
+			_thread_group_execute_work(self.outbound, task, self.task_fn, self.context);
+			_thread_group_task_done(self);
 		}
 	}
 
@@ -247,6 +270,14 @@ fn void ThreadGroup.join(&self, bool run_on_caller = false)
 	{
 		while (self.pending != 0) self.done.wait(&self.mx);
 	};
+}
+
+<*
+ @require self.state == RUNNING : "Expected the thread group to be running"
+*>
+fn void ThreadGroup.drop_results(&self)
+{
+	self.outbound.clear();
 }
 
 fn void ThreadGroup.destroy(&self, bool caller_help_finish = false)
@@ -257,13 +288,11 @@ fn void ThreadGroup.destroy(&self, bool caller_help_finish = false)
 
 	self.state = STOPPING;
 
-	if (self.is_buffered)
+	switch (self.queue_type)
 	{
-		self.buffered.close();
-	}
-	else
-	{
-		self.unbuffered.close();
+		case BOUNDED: self.buffered.close();
+		case SINGLE: self.unbuffered.close();
+		case UNBOUNDED: self.unbounded.close();
 	}
 
 	self.outbound.close();
@@ -272,14 +301,7 @@ fn void ThreadGroup.destroy(&self, bool caller_help_finish = false)
 	{
 		thread.join();
 	}
-	if (self.is_buffered)
-	{
-		self.buffered.destroy();
-	}
-	else
-	{
-		self.unbuffered.destroy();
-	}
+	_thread_group_destroy_input_channel(self);
 	self.outbound.destroy();
 	alloc::free(self.allocator, self.threads);
 	self.done.destroy();
@@ -287,7 +309,7 @@ fn void ThreadGroup.destroy(&self, bool caller_help_finish = false)
 	self.state = NO_INIT;
 }
 
-fn void _thread_work_group_add_pending(ThreadGroup* self) @private
+fn void _thread_group_add_pending(ThreadGroup* self) @private
 {
 	self.mx.@in_lock()
 	{
@@ -295,7 +317,7 @@ fn void _thread_work_group_add_pending(ThreadGroup* self) @private
 	};
 }
 
-fn void _thread_work_group_work_done(ThreadGroup* self) @private
+fn void _thread_group_task_done(ThreadGroup* self) @private
 {
 	self.mx.@in_lock()
 	{
@@ -303,7 +325,7 @@ fn void _thread_work_group_work_done(ThreadGroup* self) @private
 	};
 }
 
-fn bool _thread_work_group_has_pending(ThreadGroup* self) @private
+fn bool _thread_group_has_pending(ThreadGroup* self) @private
 {
 	self.mx.@in_lock()
 	{
@@ -311,47 +333,86 @@ fn bool _thread_work_group_has_pending(ThreadGroup* self) @private
 	};
 }
 
-fn Work? _thread_work_group_try_pop(ThreadGroup* self) @private
+fn Task? _thread_group_try_pop(ThreadGroup* self) @private
 {
-	return self.is_buffered ? self.buffered.pop(non_blocking: true) : self.unbuffered.pop(non_blocking: true);
+	switch (self.queue_type)
+	{
+		case BOUNDED: return self.buffered.try_pop();
+		case SINGLE: return self.unbuffered.try_pop();
+		case UNBOUNDED: return self.unbounded.try_pop();
+	}
 }
 
-macro _execute_work(OutChannel* buffer, Work work, ThreadWorkFn work_fn, void* context) @private
+fn void _thread_group_destroy_input_channel(ThreadGroup* self) @inline
+{
+	switch (self.queue_type)
+	{
+		case BOUNDED: self.buffered.destroy();
+		case SINGLE: self.unbuffered.destroy();
+		case UNBOUNDED: self.unbounded.destroy();
+	}
+}
+
+macro _thread_group_execute_work(OutChannel* buffer, Task task, ThreadTaskFn task_fn, void* context) @private
 {
 	$if NO_RESULT:
-		(void)buffer.push({ .excuse = @catch(work_fn(work, context)), .work = work });
+		(void)buffer.push({ .task = task });
 	$else
-		Result? res = work_fn(work, context);
-		if (catch err = res)
-		{
-			(void)buffer.push({ .excuse = err, .work = work });
-		}
-		else
-		{
-			(void)buffer.push({ .result = res, .work = work });
-		}
+		(void)buffer.push({ .result = task_fn(task, context), .task = task});
 	$endif
 }
+
 fn int _thread_worker_main(void* arg) @private
 {
 	ThreadGroup* self = arg;
 	ThreadInitFn init_fn = self.init_fn;
-	ThreadWorkFn work_fn = self.work_fn;
+	ThreadTaskFn task_fn = self.task_fn;
 	void *context = self.context;
 	ThreadFinalizerFn finalizer_fn = self.finalizer_fn;
 	void *init_context = self.init_context;
 	void *finalizer_context = self.finalizer_context;
 	OutChannel* out = self.outbound;
 	allocators::auto_create_temp = true;
+
 	if (init_fn) init_fn(init_context);
 	while (true)
 	{
-		Work? work_item = self.is_buffered ? self.buffered.pop() : self.unbuffered.pop();
-		if (catch work_item) break;
-		_execute_work(out, work_item, work_fn, context);
-		_thread_work_group_work_done(self);
+		Task? task @noinit;
+		switch (self.queue_type)
+		{
+			case SINGLE: task = self.unbuffered.pop();
+			case BOUNDED: task = self.buffered.pop();
+			case UNBOUNDED: task = self.unbounded.pop();
+		}
+		if (catch task) break;
+		_thread_group_execute_work(out, task, task_fn, context);
+		_thread_group_task_done(self);
 	}
 	if (finalizer_fn) finalizer_fn(finalizer_context, init_context);
 	allocators::destroy_temp_allocators();
 	return 0;
+}
+
+enum ThreadGroupQueueType : char @private
+{
+	SINGLE,
+	BOUNDED,
+	UNBOUNDED
+}
+
+const bool NO_RESULT @private = Result == void;
+
+<*
+  @require self.state != NO_INIT : "Expected the thread group initialized"
+*>
+macro void? _thread_group_push(ThreadGroup* self, Task task, bool non_blocking) @private
+{
+	_thread_group_add_pending(self);
+	if (self.state == INIT) non_blocking = true;
+	switch (self.queue_type)
+	{
+		case BOUNDED: return non_blocking ? self.buffered.try_push(task) : self.buffered.push(task);
+		case SINGLE: return non_blocking ? self.unbuffered.try_push(task) : self.unbuffered.push(task);
+		case UNBOUNDED: return self.unbounded.push(task);
+	}
 }

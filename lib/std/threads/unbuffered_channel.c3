@@ -39,14 +39,12 @@ fn void UnbufferedChannel.destroy(&self)
 	alloc::free(channel.allocator, channel);
 }
 
-fn void? UnbufferedChannel.push(&self, Type val, bool non_blocking = false)
+fn void? UnbufferedChannel.push(&self, Type val)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
 	channel.mu.lock();
 	defer channel.mu.unlock();
-
-	if (non_blocking && channel.has_value && !channel.closed) return thread::CHANNEL_BLOCKED~;
 
 	// if channel is full -> wait
 	while (channel.has_value && !channel.closed)
@@ -56,6 +54,66 @@ fn void? UnbufferedChannel.push(&self, Type val, bool non_blocking = false)
 		channel.send_waiting--;
 	}
 
+	return _unbuffered_channel_push_in_lock(channel, val);
+}
+
+fn void? UnbufferedChannel.try_push(&self, Type val)
+{
+	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
+
+	channel.mu.lock();
+	defer channel.mu.unlock();
+
+	if (channel.has_value && !channel.closed) return thread::CHANNEL_BLOCKED~;
+
+	return _unbuffered_channel_push_in_lock(channel, val);
+}
+
+fn Type? UnbufferedChannel.pop(&self)
+{
+	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
+
+	channel.mu.lock();
+	defer channel.mu.unlock();
+
+	// if chan is empty -> wait for sender
+	while (!channel.has_value && !channel.closed)
+	{
+		channel.read_waiting++;
+		channel.read_cond.wait(&channel.mu);
+		channel.read_waiting--;
+	}
+
+	return _unbuffered_channel_pop_in_lock(channel);
+}
+
+fn Type? UnbufferedChannel.try_pop(&self)
+{
+	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
+
+	channel.mu.lock();
+	defer channel.mu.unlock();
+	if (!channel.has_value && !channel.closed) return thread::CHANNEL_EMPTY~;
+
+	return _unbuffered_channel_pop_in_lock(channel);
+}
+
+fn void UnbufferedChannel.close(&self)
+{
+	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
+
+	channel.mu.lock();
+
+	channel.closed = true;
+
+	channel.read_cond.broadcast();
+	channel.send_cond.broadcast();
+	channel.mu.unlock();
+
+}
+
+fn void? _unbuffered_channel_push_in_lock(UnbufferedChannelImpl* channel, Type val) @private @inline
+{
 	// check if channel is closed
 	if (channel.closed) return thread::CHANNEL_CLOSED~;
 
@@ -70,22 +128,8 @@ fn void? UnbufferedChannel.push(&self, Type val, bool non_blocking = false)
 	}
 }
 
-fn Type? UnbufferedChannel.pop(&self, bool non_blocking = false)
+fn Type? _unbuffered_channel_pop_in_lock(UnbufferedChannelImpl* channel) @private @inline
 {
-	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
-
-	channel.mu.lock();
-	defer channel.mu.unlock();
-	if (non_blocking && !channel.has_value && !channel.closed) return thread::CHANNEL_EMPTY~;
-
-	// if chan is empty -> wait for sender
-	while (!channel.has_value && !channel.closed)
-	{
-		channel.read_waiting++;
-		channel.read_cond.wait(&channel.mu);
-		channel.read_waiting--;
-	}
-
 	// check if chan is closed and empty
 	if (channel.closed && !channel.has_value)
 	{
@@ -104,18 +148,4 @@ fn Type? UnbufferedChannel.pop(&self, bool non_blocking = false)
 	}
 
 	return ret;
-}
-
-fn void UnbufferedChannel.close(&self)
-{
-	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
-
-	channel.mu.lock();
-
-	channel.closed = true;
-
-	channel.read_cond.broadcast();
-	channel.send_cond.broadcast();
-	channel.mu.unlock();
-
 }
