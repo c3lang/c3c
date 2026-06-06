@@ -149,15 +149,18 @@ fn void? ThreadGroup.start(&self)
 
 <*
   @require self.state != NO_INIT : "Expected the thread group initialized"
+  @require self.state != STOPPING : "The thread group is stopping"
+  @require self.state == RUNNING || self.queue_type == UNBOUNDED : "Adding a task bounded/single queue requires start() first"
 *>
-fn void? ThreadGroup.add_task(&self, Task task)
+fn void ThreadGroup.add_task(&self, Task task)
 {
 	defer catch _thread_group_task_done(self);
-	return _thread_group_push(self, task, non_blocking: false);
+	_thread_group_push(self, task, non_blocking: false)!!;
 }
 
 <*
   @require self.state != NO_INIT : "Expected the thread group initialized"
+  @require self.state != STOPPING : "The thread group is stopping"
 *>
 fn void? ThreadGroup.try_add_task(&self, Task task)
 {
@@ -172,8 +175,9 @@ fn void? ThreadGroup.try_add_task(&self, Task task)
 
 <*
   @require self.state != NO_INIT : "Expected the thread group initialized"
+  @require self.state != STOPPING : "The thread group is stopping"
 *>
-fn void? ThreadGroup.add_task_or_run(&self, Task task)
+fn void ThreadGroup.add_task_or_run(&self, Task task)
 {
 	if (catch err = _thread_group_push(self, task, non_blocking: true))
 	{
@@ -183,15 +187,23 @@ fn void? ThreadGroup.add_task_or_run(&self, Task task)
 			_thread_group_execute_work(self.outbound, task, self.task_fn, self.context);
 			return;
 		}
-		return err~;
+		err~!!;
 	}
 }
 
+<*
+ @require self.state != NO_INIT : "Expected the thread group initialized"
+ @return "Get the next result if one exists"
+*>
 fn ThreadTaskResult? ThreadGroup.try_pop_result(&self)
 {
 	return self.outbound.try_pop();
 }
 
+<*
+ @require self.state != NO_INIT : "Expected the thread group initialized"
+ @return "Get the next result if one exists, blocking until it arrives"
+*>
 fn ThreadTaskResult? ThreadGroup.pop_result(&self)
 {
 	return self.outbound.pop();
@@ -408,7 +420,6 @@ const bool NO_RESULT @private = Result == void;
 macro void? _thread_group_push(ThreadGroup* self, Task task, bool non_blocking) @private
 {
 	_thread_group_add_pending(self);
-	if (self.state == INIT) non_blocking = true;
 	switch (self.queue_type)
 	{
 		case BOUNDED: return non_blocking ? self.buffered.try_push(task) : self.buffered.push(task);
