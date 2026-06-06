@@ -129,6 +129,7 @@
 - Splatting a partially raw array into a macro would miscompile. #3302
 - Getting the tag for an enum parameter caused a crash. #3307
 - Json marshalling of floats would lose precision.
+- Crash when initializing a bitstruct from an untyped list.
 
 ## 0.8.0 Change list
 

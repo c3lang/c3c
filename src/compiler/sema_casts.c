@@ -674,6 +674,7 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 			return;
 		}
 		case TYPE_STRUCT:
+		case TYPE_BITSTRUCT:
 			break;
 		default:
 			UNREACHABLE_VOID
