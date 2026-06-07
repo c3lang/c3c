@@ -33,10 +33,14 @@ const char *manifest_target_keys[][2] = {
 		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
 		{"dependencies", "List of C3 libraries to also include for this target."},
+		{"dependencies-override", "C3 library dependencies for this target, overriding previous settings."},
 		{"exec", "Scripts to also run for the target."},
+		{"exec-override", "Scripts to run for this target, overriding previous settings."},
 		{"features", "Optional feature-specific library configuration, keyed by feature name."},
-		{"linked-libraries", "Libraries linked by the linker for this target, overriding global settings."},
+		{"linked-libraries", "Libraries linked by the linker for this target."},
+		{"linked-libraries-override", "Libraries linked by the linker for this target, overriding previous settings."},
 		{"link-args", "Linker arguments for this target."},
+		{"link-args-override", "Linker arguments for this target, overriding previous settings."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"wincrt", "Windows CRT linking: none, static, dynamic."}
 };
@@ -49,7 +53,7 @@ const char *manifest_deprecated_target_keys[] = { "none" };
 const int manifest_deprecated_target_key_count = ELEMENTLEN(manifest_deprecated_target_keys);
 
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
-                                        JSONObject *json);
+                                        JSONObject *json, bool append_only);
 
 static inline void parse_library_type(Library *library, LibraryTarget ***target_group, JSONObject *object)
 {
@@ -70,26 +74,31 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 		}
 		library_target->arch_os = target;
 		vec_add(*target_group, library_target);
-		parse_library_target(library, library_target, key, member);
+		parse_library_target(library, library_target, key, member, false);
 		if (library_target->win_crt == WIN_CRT_DEFAULT) library_target->win_crt = library->win_crt;
 	}
 }
 
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
-                                        JSONObject *json)
+                                        JSONObject *json, bool append_only)
 {
 	BuildParseContext context = { library->dir, target_name };
-	target->link_flags = get_string_array(context, json, "link-args", false);
-
-	target->linked_libs = get_string_array(context, json, "linked-libraries", false);
-	target->dependencies = get_string_array(context, json, "dependencies", false);
-	target->execs = get_string_array(context, json, "exec", false);
-	target->cc = get_string(context, json, "cc", library->cc);
-	target->cflags = get_cflags(context, json, library->cflags);
-	target->source_dirs = library->source_dirs;
-	target->csource_dirs = library->csource_dirs;
-	target->cinclude_dirs = library->cinclude_dirs;
-	target->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	if (!append_only)
+	{
+		target->source_dirs = library->source_dirs;
+		target->csource_dirs = library->csource_dirs;
+		target->cinclude_dirs = library->cinclude_dirs;
+		target->cc = library->cc;
+		target->cflags = library->cflags;
+	}
+	APPEND_STRING_LIST(&target->link_flags, "link-args");
+	APPEND_STRING_LIST(&target->linked_libs, "linked-libraries");
+	APPEND_STRING_LIST(&target->dependencies, "dependencies");
+	APPEND_STRING_LIST(&target->execs, "exec");
+	target->cc = get_string(context, json, "cc", target->cc);
+	target->cflags = get_cflags(context, json, target->cflags);
+	int win_crt = get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	if (win_crt >= 0) target->win_crt = (WinCrtLinking)win_crt;
 	APPEND_STRING_LIST(&target->source_dirs, "sources");
 	APPEND_STRING_LIST(&target->csource_dirs, "c-sources");
 	APPEND_STRING_LIST(&target->cinclude_dirs, "c-include-dirs");
@@ -170,7 +179,7 @@ static void apply_library_features(BuildTarget *build_target, Library *library, 
 			error_exit("Invalid definition for feature '%s' in %s, expected a map of library settings.", feature, library->dir);
 		}
 		check_json_keys(manifest_target_keys, manifest_target_keys_count, manifest_deprecated_target_keys, manifest_deprecated_target_key_count, feature_json, feature, "--list-manifest-properties");
-		parse_library_target(library, target, feature, feature_json);
+		parse_library_target(library, target, feature, feature_json, true);
 	}
 }
 
