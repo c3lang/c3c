@@ -90,3 +90,37 @@ fn void check_roundtrip(String utf8, String charset) => @pool()
 		"roundtrip failed: got=%s, want=%s", got, utf8);
 }
 
+fn void test_encode_codepoint_above_all_entries() @test
+{
+	String utf8 = "\U0001F600";
+	char[] bytes = codepage::encode(tmem, utf8[..], US_ASCII)!!;
+	test::eq(bytes.len, 1);
+	test::eq(bytes[0], codepage::REPLACEMENT_CHAR);
+}
+
+fn void test_encode_codepoint_above_all_entries_iso8859_1() @test
+{
+	String utf8 = "\U0001F600";
+	char[] bytes = codepage::encode(tmem, utf8[..], ISO_8859_1)!!;
+	test::eq(bytes.len, 1);
+	test::eq(bytes[0], codepage::REPLACEMENT_CHAR);
+}
+
+fn void test_encode_mixed_in_range_and_above() @test
+{
+	String utf8 = "A\U0001F600B";
+	char[] bytes = codepage::encode(tmem, utf8[..], US_ASCII)!!;
+	test::eq(bytes.len, 3);
+	test::eq(bytes[0], (char)'A');
+	test::eq(bytes[1], codepage::REPLACEMENT_CHAR);
+	test::eq(bytes[2], (char)'B');
+}
+
+fn void test_encode_custom_replacement() @test
+{
+	String utf8 = "\U0001F600";
+	char[] bytes = codepage::encode(tmem, utf8[..], US_ASCII, '?')!!;
+	test::eq(bytes.len, 1);
+	test::eq(bytes[0], (char)'?');
+}
+

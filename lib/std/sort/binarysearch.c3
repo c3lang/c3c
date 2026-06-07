@@ -2,7 +2,7 @@ module std::sort;
 
 <*
 Perform a binary search over the sorted array and return the index
-in [0, array.len) where x would be inserted or cmp(i) is true and cmp(j) is true for j in [i, array.len).
+in [0..array.len] where x would be inserted or cmp(i) is true and cmp(j) is true for j in [i..array.len - 1).
 
  @require @list_is_by_ref(list) : "Expected a list passed by reference or a slice"
  @require @is_sortable(list) : "The list must be sortable"

@@ -201,19 +201,20 @@ fn char[]? encode_into(char[] dst, char[] src, CodePage code_page, char replacem
 		i += rem;
 
 		// Binary search for codepoint in low 24 bits of each entry.
-		// Returned index is between [0..from_map.len).
+		// Returned index is between [0, from_map.len].
 		sz index = sort::binarysearch(from_map[..], (uint)codepoint, fn int(uint lhs, uint rhs) => (int)(lhs & MASK) - (int)(rhs & MASK));
 
-		uint entry = from_map[index];
-		if ((entry & MASK) == (uint)codepoint)
+		if (index < from_map.len)
 		{
-		    char b = (char)(entry >> 24);
-		    dst[out++] = b;
+			uint entry = from_map[index];
+			if (index > from_map.len, (entry & MASK) == (uint)codepoint)
+			{
+				char b = (char)(entry >> 24);
+				dst[out++] = b;
+			}
+			continue;
 		}
-		else
-		{
-		    dst[out++] = replacement;
-		}
+		dst[out++] = replacement;
 	}
 
 	return dst[:out];
