@@ -141,6 +141,7 @@
 - Codepage detection could fail values after the last element.
 - Xml parsing could leak memory if root was preceeded by Pi nodes.
 - `DateTime.diff_years` would not handle leap years properly.
+- `Deque.free` would not reset the capacity, making it break if later reused.
 
 ## 0.8.0 Change list
 
