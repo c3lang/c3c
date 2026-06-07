@@ -32,7 +32,8 @@
 - `GrowableBitSet.max_bit_set` added.
 - Added `UnboundedChannel`.
 - `BufferedChannel` and `UnbufferedChannel` gets non-blocking push/pop.
- 
+- `Formatter` would overflow in cases like `%2147483648d`.
+
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
 - NPOT vectors as associated variables were incorrectly lowered on load. #3228
