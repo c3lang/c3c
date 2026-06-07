@@ -144,6 +144,7 @@
 - `Deque.free` would not reset the capacity, making it break if later reused.
 - `Formatter` would overflow in cases like `%2147483648d`.
 - Distributions would drop convergence control setting on recursion.
+- In some rare cases `available()` could leave the stream in an unexpected state.
 
 ## 0.8.0 Change list
 

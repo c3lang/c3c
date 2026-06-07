@@ -37,9 +37,9 @@ fn long? available(InStream s)
 	if (&s.seek && &s.cursor)
 	{
 		long curr = s.cursor()!;
+		defer (void)s.seek(curr);
 		s.seek(0, FROM_END)!;
 		long len = s.cursor()!;
-		s.seek(curr)!;
 		return len - curr;
 	}
 	return io::UNSUPPORTED_OPERATION~;
