@@ -137,6 +137,7 @@
 - Fixed issues with `Object.to_value`.
 - `DString.len` was incorrectly marked `@dynamic`.
 - Qoi decoder wasn't correctly signaling all invalid data.
+- Casting a constant string to a float vector was buggy, causing a compiler crash.
 
 ## 0.8.0 Change list
 

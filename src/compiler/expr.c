@@ -965,6 +965,20 @@ Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v)
 	return expr;
 }
 
+Expr *expr_new_const_float(SourceLocId loc, Type *type, Real v)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_CONST;
+	expr->loc = loc;
+	expr->type = type;
+	TypeKind kind = type_flatten(type)->type_kind;
+	expr->const_expr.fxx.f = v;
+	expr->const_expr.fxx.type = kind;
+	expr->const_expr.const_kind = CONST_FLOAT;
+	expr->resolve_status = RESOLVE_DONE;
+	return expr;
+}
+
 Expr *expr_new_const_typeid(SourceLocId loc, Type *type)
 {
 	Expr *expr = expr_calloc();

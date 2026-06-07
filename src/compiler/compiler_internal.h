@@ -2455,6 +2455,7 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
 Expr *expr_new(ExprKind kind, SourceLocId start);
 Expr *expr_new_loc(ExprKind kind, SourceLoc *start);
 Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v);
+Expr *expr_new_const_float(SourceLocId loc, Type *type, Real v);
 Expr *expr_new_const_bool(int loc, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceLocId loc, Type *type);
 Expr *expr_new_const_string(SourceLocId loc, const char *string);
