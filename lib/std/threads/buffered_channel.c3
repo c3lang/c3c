@@ -82,7 +82,7 @@ fn void? BufferedChannel.try_push(&self, Type val)
 	return _buffered_channel_push_in_lock(channel, val);
 }
 
-fn Type? BufferedChannel.pop(&self, bool non_blocking = false)
+fn Type? BufferedChannel.pop(&self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
@@ -99,7 +99,7 @@ fn Type? BufferedChannel.pop(&self, bool non_blocking = false)
 	return _buffered_channel_pop_in_lock(channel);
 }
 
-fn Type? BufferedChannel.try_pop(&self, bool non_blocking = false)
+fn Type? BufferedChannel.try_pop(&self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 

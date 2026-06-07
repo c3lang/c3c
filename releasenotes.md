@@ -136,6 +136,7 @@
 - Fix zip slip vulnerability.
 - Fixed issues with `Object.to_value`.
 - `DString.len` was incorrectly marked `@dynamic`.
+- Qoi decoder wasn't correctly signaling all invalid data.
 
 ## 0.8.0 Change list
 

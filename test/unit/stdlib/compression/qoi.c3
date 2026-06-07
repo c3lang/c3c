@@ -36,3 +36,56 @@ fn void test_qoi_all()
         free(read);
     };
 }
+
+fn void test_qoi_decode_truncated_chunks()
+{
+	@pool()
+	{
+		char[12] pixels = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120 };
+		QOIDesc enc_desc = { .width = 4, .height = 1, .channels = RGB, .colorspace = SRGB };
+		char[] encoded = qoi::encode(mem, pixels[..], &enc_desc)!!;
+		defer free(encoded);
+
+		for (sz cut = 1; cut < encoded.len; cut++)
+		{
+			char[] partial = encoded[..encoded.len - cut - 1];
+			QOIDesc dec_desc;
+			test::@error(qoi::decode(mem, partial, &dec_desc), qoi::INVALID_DATA);
+		}
+	};
+}
+
+fn void test_qoi_decode_header_lies_about_size()
+{
+	@pool()
+	{
+		char[22] data;
+		data[0] = 'q'; data[1] = 'o'; data[2] = 'i'; data[3] = 'f';
+		data[4] = 0; data[5] = 0; data[6] = 0; data[7] = 100;
+		data[8] = 0; data[9] = 0; data[10] = 0; data[11] = 100;
+		data[12] = 3;
+		data[13] = 0;
+		data[14] = 0; data[15] = 0; data[16] = 0; data[17] = 0;
+		data[18] = 0; data[19] = 0; data[20] = 0; data[21] = 1;
+
+		QOIDesc dec_desc;
+		test::@error(qoi::decode(mem, data[..], &dec_desc), qoi::INVALID_DATA);
+	};
+}
+
+fn void test_qoi_decode_chunk_truncation()
+{
+	@pool()
+	{
+		char[15] data;
+		data[0] = 'q'; data[1] = 'o'; data[2] = 'i'; data[3] = 'f';
+		data[4] = 0; data[5] = 0; data[6] = 0; data[7] = 1;
+		data[8] = 0; data[9] = 0; data[10] = 0; data[11] = 1;
+		data[12] = 4;
+		data[13] = 0;
+		data[14] = 0xFE;
+
+		QOIDesc dec_desc;
+		test::@error(qoi::decode(mem, data[..], &dec_desc), qoi::INVALID_DATA);
+	};
+}
