@@ -152,7 +152,6 @@ enum StartupState
 	INIT,
 	RUN_CTORS,
 	READ_DYLIB,
-	RUN_DYLIB_CTORS,
 	RUN_DTORS,
 	SHUTDOWN
 }
@@ -222,18 +221,12 @@ struct TypeId
 
 fn void dl_reg_callback(MachHeader* mh, sz vmaddr_slide)
 {
-	sz size;
-	assert(runtime_state == INIT || runtime_state == READ_DYLIB, "State was %s", runtime_state);
+	assert(runtime_state == INIT, "State was %s", runtime_state);
 	foreach (&dm : find_segment_section_body(mh, vmaddr_slide, "__DATA", "__c3_dynamic", DynamicMethod))
 	{
 		TypeId* type = dm.type;
 		dm.next = type.dtable;
 		type.dtable = dm;
-		DynamicMethod* m = dm;
-		while (m)
-		{
-			m = m.next;
-		}
 	}
 	foreach (&cb : find_segment_section_body(mh, vmaddr_slide, "__DATA", "__c3dtor", Callback))
 	{
@@ -243,15 +236,4 @@ fn void dl_reg_callback(MachHeader* mh, sz vmaddr_slide)
 	{
 		append_xxlizer(&ctor_first, cb);
 	}
-	if (runtime_state != READ_DYLIB) return;
-	runtime_state = RUN_DYLIB_CTORS;
-	Callback* ctor = ctor_first;
-	ctor_first = null;
-	while (ctor)
-	{
-		ctor.xtor();
-		ctor = ctor.next;
-	}
-	assert(runtime_state == RUN_DYLIB_CTORS);
-	runtime_state = READ_DYLIB;
 }
