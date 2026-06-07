@@ -139,6 +139,7 @@
 - Qoi decoder wasn't correctly signaling all invalid data.
 - Casting a constant string to a float vector was buggy, causing a compiler crash.
 - Codepage detection could fail values after the last element.
+- Xml parsing could leak memory if root was preceeded by Pi nodes.
 
 ## 0.8.0 Change list
 
