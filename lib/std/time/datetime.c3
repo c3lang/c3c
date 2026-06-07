@@ -249,7 +249,10 @@ fn int DateTime.diff_years(&self, DateTime from)
 		case year_diff < 0: return -from.diff_years(*self);
 		case year_diff == 0: return 0;
 	}
-	if (self.year_day < from.year_day) year_diff--;
+	if (self.month < from.month || (self.month == from.month && self.day < from.day))
+	{
+		return year_diff - 1;
+	}
 	return year_diff;
 }
 
