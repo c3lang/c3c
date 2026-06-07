@@ -32,8 +32,6 @@
 - `GrowableBitSet.max_bit_set` added.
 - Added `UnboundedChannel`.
 - `BufferedChannel` and `UnbufferedChannel` gets non-blocking push/pop.
-- `Formatter` would overflow in cases like `%2147483648d`.
-- Distributions would drop convergence control setting on recursion.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
@@ -144,6 +142,8 @@
 - Xml parsing could leak memory if root was preceeded by Pi nodes.
 - `DateTime.diff_years` would not handle leap years properly.
 - `Deque.free` would not reset the capacity, making it break if later reused.
+- `Formatter` would overflow in cases like `%2147483648d`.
+- Distributions would drop convergence control setting on recursion.
 
 ## 0.8.0 Change list
 
