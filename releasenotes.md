@@ -33,6 +33,7 @@
 - Added `UnboundedChannel`.
 - `BufferedChannel` and `UnbufferedChannel` gets non-blocking push/pop.
 - `Formatter` would overflow in cases like `%2147483648d`.
+- Distributions would drop convergence control setting on recursion.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
