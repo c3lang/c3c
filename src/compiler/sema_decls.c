@@ -3946,17 +3946,31 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 			continue;
 		}
 		Decl *param = NULL;
+		const char **param_names = VECNEW(const char*, 16);
 		FOREACH(Decl *, other_param, params)
 		{
 			param = other_param;
+			vec_add(param_names, param->name);
 			if (param && param->name == param_contract->name) goto NEXT;
 		}
 		FOREACH(Decl *, extra, extra_params)
 		{
 			param = extra;
+			vec_add(param_names, param->name);
 			if (param && param->name == param_contract->name) goto NEXT;
 		}
-		RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you misspell it?", param_contract->name);
+		const char *matches[2];
+
+		int match_count = str_find_closest(param_contract->name, param_names, matches);
+		switch (match_count)
+		{
+			case 1:
+				RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you perhaps want '%s'?", param_contract->name, matches[0]);
+			case 2:
+				RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you perhaps want '%s' or '%s'?", param_contract->name, matches[0], matches[1]);
+			default:
+				RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you misspell it?", param_contract->name);
+		}
 	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
