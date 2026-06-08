@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Usage: ./ci_tests.sh <path_to_c3c_binary> [optional_os_mode_override]
 
+# Toggle to show output of successful parallel tasks (true: show, false: hide)
+SHOW_SUCCESS_LOGS="${SHOW_SUCCESS_LOGS:-true}"
+
 if [ $# -lt 1 ]; then
     echo "Usage: ./ci_tests.sh <path_to_c3c_binary> [os_mode]"
     exit 1
@@ -382,6 +385,11 @@ run_parallel() {
 
         if [ $status -eq 0 ]; then
             echo "SUCCESS: $name"
+            if [ "$SHOW_SUCCESS_LOGS" = "true" ]; then
+                echo "--------------------------------------------------------------------------------"
+                cat "$log"
+                echo "--------------------------------------------------------------------------------"
+            fi
         else
             echo "FAILED: $name (see log below)"
             echo "--------------------------------------------------------------------------------"
