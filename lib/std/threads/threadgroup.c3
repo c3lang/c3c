@@ -1,29 +1,53 @@
 module std::thread::experimental::threadgroup <Task, Result>;
-import std::thread, std::os, std::collections::list;
+import std::thread, std::os, std::collections::list, std::atomic;
+
 // WARNING! This is experimental and does not have proper stability guarantees,
 // as such, it will change in upcoming releases. This is just a preview.
 // Do not use in production!
 
-alias ThreadTaskFn = fn Result(Task task, void* context);
-alias ThreadInitFn = fn void(void* init_context);
-alias ThreadFinalizerFn = fn void(void* finalizer_context, void* init_context);
-alias OutChannel = UnboundedChannel{ThreadTaskResult};
 
+<* Function type for the task body. Called once per submitted task by a worker thread. *>
+alias ThreadTaskFn = fn Result(Task task, void* context);
+<* Function type for per-thread setup. Called once when each worker thread starts. *>
+alias ThreadInitFn = fn void(void* init_context);
+<* Function type for per-thread teardown. Called once when each worker thread exits. *>
+alias ThreadFinalizerFn = fn void(void* finalizer_context, void* init_context);
+
+alias ThreadGroupOutChannel = UnboundedChannel{ThreadTaskResult};
+
+<*
+ Lifecycle state of a ThreadGroup.
+*>
 enum ThreadGroupState : char
 {
+	<* The ThreadGroup struct has not been initialized. *>
 	NO_INIT,
+	<* init() has succeeded; start() has not been called yet. *>
 	INIT,
+	<* start() has been called; workers are running. *>
 	RUNNING,
+	<* destroy() is in progress, no further tasks may be added. *>
 	STOPPING
 }
 
-
+<*
+ The outcome of one task. The `task` field holds the input that was submitted,
+ allowing callers to pair each result back to the task that produced it.
+*>
 struct ThreadTaskResult
 {
+	<* The task that produced this result. *>
 	Task task;
+	<* The value returned by the task function. *>
 	Result result @if(!NO_RESULT);
 }
 
+<*
+ ThreadGroup is a worker-pool abstraction. Submit Tasks via add_task; the workers
+ invoke the configured task function on each and produce a Result. Each result is
+ returned wrapped in a ThreadTaskResult so the caller can pair it with the originating
+ Task. Drain the results with try_pop_result / pop_result / collect / collect_values.
+*>
 struct ThreadGroup
 {
 	ThreadTaskFn task_fn;
@@ -41,19 +65,22 @@ struct ThreadGroup
 		BufferedChannel{Task}* buffered;
 		UnboundedChannel{Task}* unbounded;
 	}
-	OutChannel* outbound;
+	ThreadGroupOutChannel* outbound;
     Thread[] threads;
-	sz pending;
+    Atomic{sz} pending;
 	ThreadSettings thread_settings;
     ThreadGroupQueueType queue_type;
 	ThreadGroupState state;
 }
 
 <*
- @param [&inout] allocator
+ Initialize a ThreadGroup. The group must be started with start() before tasks
+ are processed. Must be paired with destroy().
+
+ @param [&inout] allocator : "The allocator to use internally for creating queues"
+ @param task_fn : "Task function to run"
  @param thread_count : "Number of threads for the task group, 0 for max(cpus - 1, 2)"
  @param queue_capacity : "Queue size, if 0 - uses an unbounded queue"
- @param task_fn : "Task function to run"
  @param context : "Any common context to use"
  @param thread_settings : "Thread settings to apply"
 
@@ -72,7 +99,6 @@ fn void? ThreadGroup.init(&self, Allocator allocator, ThreadTaskFn task_fn, int 
 			thread_count = 2;
 		$endif
 	}
-	self.allocator = allocator;
 	defer try self.state = INIT;
 	defer catch self.destroy();
 
@@ -80,6 +106,7 @@ fn void? ThreadGroup.init(&self, Allocator allocator, ThreadTaskFn task_fn, int 
 		.task_fn = task_fn,
 		.context = context,
 		.allocator = allocator,
+		.thread_settings = thread_settings,
 	};
 	self.mx.init()!;
 	defer catch self.mx.destroy();
@@ -109,6 +136,11 @@ fn void? ThreadGroup.init(&self, Allocator allocator, ThreadTaskFn task_fn, int 
 }
 
 <*
+ Register a function to run once on every worker thread before it processes any tasks.
+
+ @param thread_init_fn : "The function to invoke once on each worker at startup"
+ @param init_context : "Pointer passed to thread_init_fn"
+
  @require self.state == INIT : "Expected the thread group initialized but not running"
 *>
 fn void ThreadGroup.set_init_fn(&self, ThreadInitFn thread_init_fn, void* init_context)
@@ -118,6 +150,10 @@ fn void ThreadGroup.set_init_fn(&self, ThreadInitFn thread_init_fn, void* init_c
 }
 
 <*
+ Set the OS-level thread settings (stack size, priority, etc.) used by start().
+
+ @param settings : "The settings to apply to each worker thread"
+
  @require self.state == INIT : "Expected the thread group initialized but not running"
 *>
 fn void ThreadGroup.set_thread_settings(&self, ThreadSettings settings)
@@ -126,6 +162,11 @@ fn void ThreadGroup.set_thread_settings(&self, ThreadSettings settings)
 }
 
 <*
+ Register a function to run once on every worker thread after the last task completes.
+
+ @param thread_finalizer_fn : "The function to invoke once on each worker at exit"
+ @param finalizer_context : "Pointer passed to thread_finalizer_fn"
+
  @require self.state == INIT : "Expected the thread group initialized but not running"
 *>
 fn void ThreadGroup.set_finalizer_fn(&self, ThreadFinalizerFn thread_finalizer_fn, void* finalizer_context)
@@ -135,6 +176,10 @@ fn void ThreadGroup.set_finalizer_fn(&self, ThreadFinalizerFn thread_finalizer_f
 }
 
 <*
+ Startup the threads running this ThreadGroup.
+
+ @return? Thread.create! : "If the OS fails to spawn a worker thread"
+
  @require self.state == INIT : "Expected the thread group initialized but not running"
 *>
 fn void? ThreadGroup.start(&self)
@@ -148,9 +193,15 @@ fn void? ThreadGroup.start(&self)
 }
 
 <*
-  @require self.state != NO_INIT : "Expected the thread group initialized"
-  @require self.state != STOPPING : "The thread group is stopping"
-  @require self.state == RUNNING || self.queue_type == UNBOUNDED : "Adding a task bounded/single queue requires start() first"
+ Add a task. If the queue is full, block.
+
+ This function cannot be used on bounded queues unless the ThreadGroup is already running.
+
+ @param task : "The task to enqueue"
+
+ @require self.state != NO_INIT : "Expected the thread group initialized"
+ @require self.state != STOPPING : "The thread group is stopping"
+ @require self.state == RUNNING || self.queue_type == UNBOUNDED : "Adding a task to a bounded/single queue requires start() first"
 *>
 fn void ThreadGroup.add_task(&self, Task task)
 {
@@ -159,8 +210,13 @@ fn void ThreadGroup.add_task(&self, Task task)
 }
 
 <*
-  @require self.state != NO_INIT : "Expected the thread group initialized"
-  @require self.state != STOPPING : "The thread group is stopping"
+ Add a task. If the queue is full, return an excuse.
+
+ @param task : "The task to enqueue"
+ @return? thread::THREAD_QUEUE_FULL : "If the queue was full"
+
+ @require self.state != NO_INIT : "Expected the thread group initialized"
+ @require self.state != STOPPING : "The thread group is stopping"
 *>
 fn void? ThreadGroup.try_add_task(&self, Task task)
 {
@@ -172,10 +228,13 @@ fn void? ThreadGroup.try_add_task(&self, Task task)
 	}
 }
 
-
 <*
-  @require self.state != NO_INIT : "Expected the thread group initialized"
-  @require self.state != STOPPING : "The thread group is stopping"
+ Add a task. If the queue is full, run the task on the current thread instead.
+
+ @param task : "The task to enqueue"
+
+ @require self.state != NO_INIT : "Expected the thread group initialized"
+ @require self.state != STOPPING : "The thread group is stopping"
 *>
 fn void ThreadGroup.add_task_or_run(&self, Task task)
 {
@@ -192,8 +251,13 @@ fn void ThreadGroup.add_task_or_run(&self, Task task)
 }
 
 <*
+ Pop the task + result, if available, otherwise return with thread::CHANNEL_EMPTY.
+
+ @return "The next result if one exists"
+ @return? thread::CHANNEL_EMPTY : "If there was no result waiting"
+ @return? thread::CHANNEL_CLOSED : "If the group is destroyed"
+
  @require self.state != NO_INIT : "Expected the thread group initialized"
- @return "Get the next result if one exists"
 *>
 fn ThreadTaskResult? ThreadGroup.try_pop_result(&self)
 {
@@ -201,8 +265,13 @@ fn ThreadTaskResult? ThreadGroup.try_pop_result(&self)
 }
 
 <*
+ Pop the task + result, if available – blocking if there is no result available yet. Returns an excuse
+ if the ThreadGroup is destroyed while waiting for a result.
+
+ @return "The next result, blocking until it arrives"
+ @return? thread::CHANNEL_CLOSED : "If the group is destroyed before a result is available"
+
  @require self.state != NO_INIT : "Expected the thread group initialized"
- @return "Get the next result if one exists, blocking until it arrives"
 *>
 fn ThreadTaskResult? ThreadGroup.pop_result(&self)
 {
@@ -210,6 +279,11 @@ fn ThreadTaskResult? ThreadGroup.pop_result(&self)
 }
 
 <*
+ Collect the tasks + result in a list, without waiting to ensure that all pending tasks are completed.
+
+ @param [&inout] allocator : "Allocator for the returned list"
+ @return "A list containing the task + result for each task"
+
  @require self.state != NO_INIT : "The thread group is not initialized"
 *>
 fn List{ThreadTaskResult} ThreadGroup.drain(&self, Allocator allocator)
@@ -224,6 +298,11 @@ fn List{ThreadTaskResult} ThreadGroup.drain(&self, Allocator allocator)
 }
 
 <*
+ Collect all available results in a list, without waiting for all pending tasks to complete.
+
+ @param [&inout] allocator : "Allocator for the returned list"
+ @return "A list containing the results for each task"
+
  @require self.state != NO_INIT : "The thread group is not initialized"
 *>
 fn List{Result} ThreadGroup.drain_values(&self, Allocator allocator) @if(!NO_RESULT)
@@ -237,8 +316,13 @@ fn List{Result} ThreadGroup.drain_values(&self, Allocator allocator) @if(!NO_RES
 	return list;
 }
 
-
 <*
+ Wait for all pending tasks to finish and return the tasks + result as a list.
+
+ @param [&inout] allocator : "Allocator for the returned list"
+ @param caller_help_finish : "If true, the calling thread also pulls tasks from the queue while waiting"
+ @return "A list containing the task + result for each task"
+
  @require self.state == RUNNING : "Expected the thread group to be running"
 *>
 fn List{ThreadTaskResult} ThreadGroup.collect(&self, Allocator allocator, bool caller_help_finish = false)
@@ -248,6 +332,12 @@ fn List{ThreadTaskResult} ThreadGroup.collect(&self, Allocator allocator, bool c
 }
 
 <*
+ Wait for all pending tasks to finish and return the values as a List.
+
+ @param [&inout] allocator : "Allocator for the returned list"
+ @param caller_help_finish : "If true, the calling thread also pulls tasks from the queue while waiting"
+ @return "A list containing the results for each task"
+
  @require self.state == RUNNING : "Expected the thread group to be running"
 *>
 fn List{Result} ThreadGroup.collect_values(&self, Allocator allocator, bool caller_help_finish = false) @if(!NO_RESULT)
@@ -257,6 +347,10 @@ fn List{Result} ThreadGroup.collect_values(&self, Allocator allocator, bool call
 }
 
 <*
+ Wait for all pending tasks to finish.
+
+ @param caller_help_finish : "If true, the calling thread also pulls tasks from the queue while waiting"
+
  @require self.state == RUNNING : "Expected the thread group to be running"
 *>
 fn void ThreadGroup.join(&self, bool caller_help_finish = false)
@@ -265,7 +359,7 @@ fn void ThreadGroup.join(&self, bool caller_help_finish = false)
 	{
 		while (true)
 		{
-			if (!_thread_group_has_pending(self)) return;
+			if (!self.pending.load()) return;
 			Task? task = _thread_group_try_pop(self);
 			if (catch err = task)
 			{
@@ -280,11 +374,14 @@ fn void ThreadGroup.join(&self, bool caller_help_finish = false)
 
 	self.mx.@in_lock()
 	{
-		while (self.pending != 0) self.done.wait(&self.mx);
+		while (self.pending.load() > 0) self.done.wait(&self.mx);
 	};
 }
 
 <*
+ Discard any results that have been produced but not yet consumed via pop_result/drain.
+ Does not affect pending tasks — those will still run.
+
  @require self.state == RUNNING : "Expected the thread group to be running"
 *>
 fn void ThreadGroup.drop_results(&self)
@@ -292,6 +389,11 @@ fn void ThreadGroup.drop_results(&self)
 	self.outbound.clear();
 }
 
+<*
+ Finish any pending tasks, then clean up all resources. Any results not yet consumed are discarded.
+
+ @param caller_help_finish : "If true, the calling thread also pulls tasks from the queue while waiting"
+*>
 fn void ThreadGroup.destroy(&self, bool caller_help_finish = false)
 {
 	if (self.state == NO_INIT || self.state == STOPPING) return;
@@ -321,28 +423,16 @@ fn void ThreadGroup.destroy(&self, bool caller_help_finish = false)
 	self.state = NO_INIT;
 }
 
-fn void _thread_group_add_pending(ThreadGroup* self) @private
-{
-	self.mx.@in_lock()
-	{
-		self.pending++;
-	};
-}
-
 fn void _thread_group_task_done(ThreadGroup* self) @private
 {
-	self.mx.@in_lock()
+	sz old = self.pending.sub(1);
+	if (old == 1)
 	{
-		if (--self.pending == 0) self.done.broadcast();
-	};
-}
-
-fn bool _thread_group_has_pending(ThreadGroup* self) @private
-{
-	self.mx.@in_lock()
-	{
-		return self.pending != 0;
-	};
+		self.mx.@in_lock()
+		{
+			self.done.broadcast();
+		};
+	}
 }
 
 fn Task? _thread_group_try_pop(ThreadGroup* self) @private
@@ -355,7 +445,7 @@ fn Task? _thread_group_try_pop(ThreadGroup* self) @private
 	}
 }
 
-fn void _thread_group_destroy_input_channel(ThreadGroup* self) @inline
+fn void _thread_group_destroy_input_channel(ThreadGroup* self) @inline @private
 {
 	switch (self.queue_type)
 	{
@@ -365,7 +455,7 @@ fn void _thread_group_destroy_input_channel(ThreadGroup* self) @inline
 	}
 }
 
-macro _thread_group_execute_work(OutChannel* buffer, Task task, ThreadTaskFn task_fn, void* context) @private
+macro _thread_group_execute_work(ThreadGroupOutChannel* buffer, Task task, ThreadTaskFn task_fn, void* context) @private
 {
 	$if NO_RESULT:
 		(void)buffer.push({ .task = task });
@@ -383,7 +473,7 @@ fn int _thread_worker_main(void* arg) @private
 	ThreadFinalizerFn finalizer_fn = self.finalizer_fn;
 	void *init_context = self.init_context;
 	void *finalizer_context = self.finalizer_context;
-	OutChannel* out = self.outbound;
+	ThreadGroupOutChannel* out = self.outbound;
 	allocators::auto_create_temp = true;
 
 	if (init_fn) init_fn(init_context);
@@ -419,7 +509,7 @@ const bool NO_RESULT @private = Result == void;
 *>
 macro void? _thread_group_push(ThreadGroup* self, Task task, bool non_blocking) @private
 {
-	_thread_group_add_pending(self);
+	self.pending.add(1);
 	switch (self.queue_type)
 	{
 		case BOUNDED: return non_blocking ? self.buffered.try_push(task) : self.buffered.push(task);
