@@ -501,7 +501,8 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
    ./build/c3c compile resources/examples/hash.c3
    ```
 
-   *(Optional) To install the compiler globally: `sudo cmake --install build`* or to a PATH accessible location: `cmake --install build --prefix ~/.local`
+   *(Optional) Install globally: `sudo cmake --install build`*
+   *Or install to `~/.local`: `cmake --install build --prefix ~/.local`*
 
 #### Compiling on NixOS
 
