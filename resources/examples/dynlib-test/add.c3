@@ -1,4 +1,4 @@
-import std;
+import std, libc;
 struct Foo(Printable)
 {
 	int a;
@@ -24,6 +24,10 @@ fn void record(char c)
 fn void init_a() @init(100) { record('A'); }
 fn void init_b() @init(200) { record('B'); init_value = 42; }
 
+fn void init_x() @init
+{
+	libc::puts("Init x");
+}
 fn void shutdown() @finalizer
 {
 	io::printn("add: finalizer ran");
