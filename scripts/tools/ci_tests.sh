@@ -155,6 +155,19 @@ run_dynlib_tests() {
     cd "$MY_WORK_DIR"
     run_c3c -vv dynamic-lib "$ROOT_DIR/resources/examples/dynlib-test/add.c3" -o add
 
+    # Regression: two independently built C3 dynamic libraries loaded into one
+    # (non-C3) host via dlopen. Each carries its own runtime, so the second's
+    # startup must initialise only its own image -- this used to crash on macOS.
+    if [[ "$OS_MODE" == "mac" || "$OS_MODE" == "linux" ]]; then
+        run_c3c -vv dynamic-lib "$ROOT_DIR/resources/examples/dynlib-test/add2.c3" -o add2
+        if [[ "$OS_MODE" == "mac" ]]; then
+            cc "$ROOT_DIR/resources/examples/dynlib-test/test_multi.c" -o multi
+        else
+            cc "$ROOT_DIR/resources/examples/dynlib-test/test_multi.c" -ldl -o multi
+        fi
+        ./multi
+    fi
+
     if [[ "$OS_MODE" == "windows" ]]; then
         run_c3c -vv compile-run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.lib"
     elif [[ "$OS_MODE" == "mac" ]]; then
