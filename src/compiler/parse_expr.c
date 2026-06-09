@@ -721,6 +721,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceLoc *lhs_star
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
 	const char *end = c->lexer.lexing_start - 1;
+	while (end > start && *end != ')') end--;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_VAARG))
 	{
