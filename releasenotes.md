@@ -32,6 +32,7 @@
 - `GrowableBitSet.max_bit_set` added.
 - Added `UnboundedChannel`.
 - `BufferedChannel` and `UnbufferedChannel` gets non-blocking push/pop.
+- `FixedThreadPool` and `ThreadPool` deprecated.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
