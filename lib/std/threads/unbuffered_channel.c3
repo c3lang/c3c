@@ -54,18 +54,19 @@ fn void? UnbufferedChannel.push(&self, Type val)
 		channel.send_waiting--;
 	}
 
-	// check if channel is closed
-	if (channel.closed) return thread::CHANNEL_CLOSED~;
+	return _unbuffered_channel_push_in_lock(channel, val);
+}
 
-	// save value to buf
-	channel.val = val;
-	channel.has_value = true;
+fn void? UnbufferedChannel.try_push(&self, Type val)
+{
+	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
-	// if someone is waiting -> awake him
-	if (channel.read_waiting > 0)
-	{
-		channel.read_cond.signal();
-	}
+	channel.mu.lock();
+	defer channel.mu.unlock();
+
+	if (channel.has_value && !channel.closed) return thread::CHANNEL_BLOCKED~;
+
+	return _unbuffered_channel_push_in_lock(channel, val);
 }
 
 fn Type? UnbufferedChannel.pop(&self)
@@ -83,6 +84,52 @@ fn Type? UnbufferedChannel.pop(&self)
 		channel.read_waiting--;
 	}
 
+	return _unbuffered_channel_pop_in_lock(channel);
+}
+
+fn Type? UnbufferedChannel.try_pop(&self)
+{
+	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
+
+	channel.mu.lock();
+	defer channel.mu.unlock();
+	if (!channel.has_value && !channel.closed) return thread::CHANNEL_EMPTY~;
+
+	return _unbuffered_channel_pop_in_lock(channel);
+}
+
+fn void UnbufferedChannel.close(&self)
+{
+	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
+
+	channel.mu.lock();
+
+	channel.closed = true;
+
+	channel.read_cond.broadcast();
+	channel.send_cond.broadcast();
+	channel.mu.unlock();
+
+}
+
+fn void? _unbuffered_channel_push_in_lock(UnbufferedChannelImpl* channel, Type val) @private @inline
+{
+	// check if channel is closed
+	if (channel.closed) return thread::CHANNEL_CLOSED~;
+
+	// save value to buf
+	channel.val = val;
+	channel.has_value = true;
+
+	// if someone is waiting -> awake him
+	if (channel.read_waiting > 0)
+	{
+		channel.read_cond.signal();
+	}
+}
+
+fn Type? _unbuffered_channel_pop_in_lock(UnbufferedChannelImpl* channel) @private @inline
+{
 	// check if chan is closed and empty
 	if (channel.closed && !channel.has_value)
 	{
@@ -101,18 +148,4 @@ fn Type? UnbufferedChannel.pop(&self)
 	}
 
 	return ret;
-}
-
-fn void UnbufferedChannel.close(&self)
-{
-	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
-
-	channel.mu.lock();
-
-	channel.closed = true;
-
-	channel.read_cond.broadcast();
-	channel.send_cond.broadcast();
-	channel.mu.unlock();
-
 }

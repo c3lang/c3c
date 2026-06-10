@@ -226,6 +226,7 @@ fn void Deque.free(&self)
 	alloc::free(self.allocator, self.entries);
 	self.entries = null;
 	self.clear();
+	self.capacity = 0;
 }
 
 // --- Utilities ---

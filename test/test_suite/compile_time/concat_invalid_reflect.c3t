@@ -1,0 +1,5 @@
+fn int main()
+{
+	const A = (ichar[]) { } +++ $reflect(x'1234'); // #error: 'reflection_ref' to 'ichar'
+	return 0;
+}

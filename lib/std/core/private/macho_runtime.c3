@@ -92,7 +92,7 @@ fn Section64*? find_section(SegmentCommand64* command, char* sectname)
 	return NOT_FOUND~;
 }
 
-macro find_segment_section_body(MachHeader* header, char* segname, char* sectname, $Type)
+macro find_segment_section_body(MachHeader* header, sz vmaddr_slide, char* segname, char* sectname, $Type)
 {
 
 	Section64*? section = find_section(find_segment(header, segname), sectname);
@@ -100,13 +100,18 @@ macro find_segment_section_body(MachHeader* header, char* segname, char* sectnam
 	{
 		return ($Type[]){};
 	}
-	$Type* ptr = (void*)header + section.offset;
+	$Type* ptr = (void*)(uptr)(section.addr + (ulong)vmaddr_slide);
 	return ptr[:section.size / $Type::size];
 }
 
-alias DyldCallback = fn void (MachHeader* mh, sz vmaddr_slide);
+extern char __dso_handle;
 
-extern fn void _dyld_register_func_for_add_image(DyldCallback);
+fn sz image_slide(MachHeader* header)
+{
+	SegmentCommand64*? text = find_segment(header, "__TEXT");
+	if (catch text) return 0;
+	return (sz)((uptr)header - (uptr)text.vmaddr);
+}
 
 
 struct DlInfo
@@ -147,7 +152,6 @@ enum StartupState
 	INIT,
 	RUN_CTORS,
 	READ_DYLIB,
-	RUN_DYLIB_CTORS,
 	RUN_DTORS,
 	SHUTDOWN
 }
@@ -161,7 +165,8 @@ fn void runtime_startup() @public @export("__c3_runtime_startup")
 {
 	if (runtime_state != NOT_STARTED) return;
 	runtime_state = INIT;
-	_dyld_register_func_for_add_image(&dl_reg_callback);
+	MachHeader* self = (MachHeader*)&__dso_handle;
+	dl_reg_callback(self, image_slide(self));
 	assert(runtime_state == INIT);
 	runtime_state = RUN_CTORS;
 	Callback* ctor = ctor_first;
@@ -216,36 +221,19 @@ struct TypeId
 
 fn void dl_reg_callback(MachHeader* mh, sz vmaddr_slide)
 {
-	sz size;
-	assert(runtime_state == INIT || runtime_state == READ_DYLIB, "State was %s", runtime_state);
-	foreach (&dm : find_segment_section_body(mh, "__DATA", "__c3_dynamic", DynamicMethod))
+	assert(runtime_state == INIT, "State was %s", runtime_state);
+	foreach (&dm : find_segment_section_body(mh, vmaddr_slide, "__DATA", "__c3_dynamic", DynamicMethod))
 	{
 		TypeId* type = dm.type;
 		dm.next = type.dtable;
 		type.dtable = dm;
-		DynamicMethod* m = dm;
-		while (m)
-		{
-			m = m.next;
-		}
 	}
-	foreach (&cb : find_segment_section_body(mh, "__DATA", "__c3dtor", Callback))
+	foreach (&cb : find_segment_section_body(mh, vmaddr_slide, "__DATA", "__c3dtor", Callback))
 	{
 		append_xxlizer(&dtor_first, cb);
 	}
-	foreach (&cb : find_segment_section_body(mh, "__DATA", "__c3ctor", Callback))
+	foreach (&cb : find_segment_section_body(mh, vmaddr_slide, "__DATA", "__c3ctor", Callback))
 	{
 		append_xxlizer(&ctor_first, cb);
 	}
-	if (runtime_state != READ_DYLIB) return;
-	runtime_state = RUN_DYLIB_CTORS;
-	Callback* ctor = ctor_first;
-	ctor_first = null;
-	while (ctor)
-	{
-		ctor.xtor();
-		ctor = ctor.next;
-	}
-	assert(runtime_state == RUN_DYLIB_CTORS);
-	runtime_state = READ_DYLIB;
 }

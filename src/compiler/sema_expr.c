@@ -8788,6 +8788,8 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 		if (!type_is_integer(flat_left)) goto FAIL;
 	}
 
+	if (!type_is_numeric(flat_right)) goto FAIL;
+
 	if (!sema_expr_check_shift_rhs(context, expr, left, flat_left, right, flat_right, failed_ref, false)) return false;
 
 	// Fold constant expressions.
@@ -11336,7 +11338,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		decl->resolve_status = RESOLVE_DONE;
 		SemaContext lambda_context;
 		sema_context_init(&lambda_context, context->unit);
-		if (sema_analyse_function_body(&lambda_context, decl))
+		if (sema_analyse_function_body(&lambda_context, decl, context->macro_call_depth))
 		{
 			vec_add(unit->lambdas, decl);
 		}

@@ -23,7 +23,8 @@ faultdef
 	ENCRYPTED_FILE,
 	PASSWORD_NEEDED,
 	PASSWORD_MISMATCH,
-	UNSUPPORTED_METHOD;
+	UNSUPPORTED_METHOD,
+	INVALID_PATH;
 
 <*
  Describes a single entry within a ZIP archive.
@@ -514,85 +515,48 @@ fn void? ZipArchive.close(&self)
 *>
 fn void? ZipArchive.extract(&self, String output_dir, String password = "") => @pool()
 {
+	Path dir = path::tnew(output_dir)!;
 	for (sz i = 0; i < self.count(); i++)
 	{
 		ZipEntry entry = self.stat_at(i) ?? ENTRY_NOT_FOUND~!;
-		String out_path_str;
-		if (try tmp = path::tnew(output_dir))
-		{
-			if (try combined = tmp.tappend(entry.name))
-			{
-				out_path_str = combined;
-			}
-			else
-			{
-				return IO_ERROR~;
-			}
-		}
-		else
-		{
-			return IO_ERROR~;
-		}
+
+		// Check for Zip Slip attack
+		if (entry.name.starts_with("/") || entry.name.starts_with("\\")) return INVALID_PATH~;
+		if (entry.name.len >= 2 && entry.name[1] == ':') return INVALID_PATH~;
+
+		Path out_file = dir.tappend(entry.name) ?? INVALID_PATH~!;
+
+		// Zip Slip check 2: Should start with the path
+		if (!out_file.starts_with(dir)) return INVALID_PATH~;
+		// Should end with a separator directly after.
+		if (out_file.len > dir.len && !path::is_separator(out_file[dir.len]))  return INVALID_PATH~;
 
 		if (entry.is_directory)
 		{
-			(void)path::mkdir(out_path_str, true);
+			(void)path::mkdir(out_file, true);
+			continue;
 		}
-		else
-		{
-			if (try tmp = path::tnew(out_path_str))
-			{
-				if (try parent = tmp.parent())
-				{
-					(void)path::mkdir(parent, true);
-				}
-			}
+		if (try parent = out_file.parent()) (void)path::mkdir(parent, true);
 
-			ZipEntryReader reader = self.open_reader(entry.name, password)!;
-			defer (void)reader.close();
+		ZipEntryReader reader = self.open_reader(entry.name, password)!;
+		defer (void)reader.close();
 
-			File f = file::open(out_path_str, "wb")!;
-			defer (void)f.close();
-			char[65536] buf;
-			while (true)
-			{
-				sz? res = reader.read(&buf);
-				if (catch excuse = res)
-				{
-					if (excuse == io::EOF) break;
-					return excuse~;
-				}
-				sz n = res;
-				if (n == 0) break;
-				f.write(buf[:n])!;
-			}
-			f.close()!;
-
-			file::set_modified_time(out_path_str, (Time_t)entry.time().to_seconds())!;
-		}
+		File f = file::open(out_file, "wb")!;
+		defer (void)f.close();
+		char[65536] buffer;
+		io::copy_to(&reader, &f, &buffer)!;
+		file::set_modified_time(out_file, (Time_t)entry.time().to_seconds())!;
 	}
 
 	// Set directory timestamps (reverse order for subdirectories)
 	for (sz i = self.count(); i > 0; i--)
 	{
-		ZipEntry entry;
-		if (try res = self.stat_at(i - 1))
-		{
-			entry = res;
-		}
-		else
-		{
-			continue;
-		}
+		ZipEntry? entry = self.stat_at(i - 1);
+		if (catch entry) continue;
 		if (!entry.is_directory) continue;
-
-		if (try tmp = path::tnew(output_dir))
+		if (try out_file = dir.tappend(entry.name))
 		{
-			if (try combined = tmp.tappend(entry.name))
-			{
-				String out_path_str = combined;
-				file::set_modified_time(out_path_str, (Time_t)entry.time().to_seconds())!;
-			}
+			file::set_modified_time(out_file, (Time_t)entry.time().to_seconds())!;
 		}
 	}
 }

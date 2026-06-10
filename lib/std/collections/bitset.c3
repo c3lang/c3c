@@ -277,7 +277,7 @@ fn sz GrowableBitSet.len(&self) @operator(len)
 }
 
 <*
- @return "Index of highest bit that is set."
+ @return "Number of bits needed to represent the set, i.e. highest set bit index + 1, or 0 if empty."
 *>
 fn sz GrowableBitSet.max_bit_set(&self)
 {

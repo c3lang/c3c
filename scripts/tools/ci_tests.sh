@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Usage: ./ci_tests.sh <path_to_c3c_binary> [optional_os_mode_override]
 
+# Toggle to show output of successful parallel tasks (true: show, false: hide)
+SHOW_SUCCESS_LOGS="${SHOW_SUCCESS_LOGS:-true}"
+
 if [ $# -lt 1 ]; then
     echo "Usage: ./ci_tests.sh <path_to_c3c_binary> [os_mode]"
     exit 1
@@ -151,6 +154,19 @@ run_dynlib_tests() {
 
     cd "$MY_WORK_DIR"
     run_c3c -vv dynamic-lib "$ROOT_DIR/resources/examples/dynlib-test/add.c3" -o add
+
+    # Regression: two independently built C3 dynamic libraries loaded into one
+    # (non-C3) host via dlopen. Each carries its own runtime, so the second's
+    # startup must initialise only its own image -- this used to crash on macOS.
+    if [[ "$OS_MODE" == "mac" || "$OS_MODE" == "linux" ]]; then
+        run_c3c -vv dynamic-lib "$ROOT_DIR/resources/examples/dynlib-test/add2.c3" -o add2
+        if [[ "$OS_MODE" == "mac" ]]; then
+            cc "$ROOT_DIR/resources/examples/dynlib-test/test_multi.c" -o multi
+        else
+            cc "$ROOT_DIR/resources/examples/dynlib-test/test_multi.c" -ldl -o multi
+        fi
+        ./multi
+    fi
 
     if [[ "$OS_MODE" == "windows" ]]; then
         run_c3c -vv compile-run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.lib"
@@ -394,6 +410,11 @@ run_parallel() {
 
         if [ $status -eq 0 ]; then
             echo "SUCCESS: $name"
+            if [ "$SHOW_SUCCESS_LOGS" = "true" ]; then
+                echo "--------------------------------------------------------------------------------"
+                cat "$log"
+                echo "--------------------------------------------------------------------------------"
+            fi
         else
             echo "FAILED: $name (see log below)"
             echo "--------------------------------------------------------------------------------"

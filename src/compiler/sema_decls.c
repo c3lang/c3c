@@ -1636,6 +1636,8 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 	{
 		RETURN_SEMA_ERROR(param->attributes[0], "There are no valid attributes for associated values.");
 	}
+	param->resolved_attributes = true;
+	param->attrs_resolved = NULL;
 	TypeInfo *type_info = type_infoptrzero(param->var.type_info);
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 	ASSERT(!param->var.vararg);

@@ -79,11 +79,7 @@ fn XmlDocument*? load(Allocator allocator, InStream stream, sz stack_size = DEFA
 
 	defer catch
 	{
-		if (root)
-		{
-			root.free(allocator);
-			alloc::free(allocator, root);
-		}
+		if (root) root.free(allocator);
 	}
 
 
@@ -102,8 +98,11 @@ fn XmlDocument*? load(Allocator allocator, InStream stream, sz stack_size = DEFA
 				XmlNode* node = new_start_node(document, event.name);
 				switch
 				{
-					case current != null: current.children.push(node);
-					default: root = node;
+					case current != null:
+						current.children.push(node);
+					default:
+						if (root) root.free(allocator);
+						root = node;
 				}
 				node_stack.push(current);
 				current = node;
@@ -123,6 +122,7 @@ fn XmlDocument*? load(Allocator allocator, InStream stream, sz stack_size = DEFA
 					case current != null: current.children.push(node);
 					// Allow top-level text as a fallback root (Standard XML requires a root element).
 					case !root: root = node;
+					default: node.free(allocator);
 				}
 
 			case PI:
@@ -132,6 +132,7 @@ fn XmlDocument*? load(Allocator allocator, InStream stream, sz stack_size = DEFA
 					case current != null: current.children.push(node);
 					// Allow PI to be the initial root; will be replaced if a START_ELEMENT follows.
 					case !root: root = node;
+					default: node.free(allocator);
 				}
 
 			case COMMENT:
@@ -141,6 +142,7 @@ fn XmlDocument*? load(Allocator allocator, InStream stream, sz stack_size = DEFA
 					case current != null: current.children.push(node);
 					// Allow top-level comments as fallback root nodes.
 					case !root: root = node;
+					default: node.free(allocator);
 				}
 		}
 	}
@@ -345,9 +347,9 @@ fn void XmlNode.free(&self, Allocator allocator)
 	foreach (child : self.children)
 	{
 		child.free(allocator);
-		alloc::free(allocator, child);
 	}
 	self.children.free();
+	alloc::free(allocator, self);
 }
 
 /**
@@ -360,7 +362,6 @@ fn void XmlDocument.free(XmlDocument* self)
 	if (self.root)
 	{
 		self.root.free(allocator);
-		alloc::free(allocator, self.root);
 	}
 	alloc::free(allocator, self);
 }

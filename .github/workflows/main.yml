@@ -19,7 +19,7 @@ on:
 
 env:
   LLVM_RELEASE_VERSION: 22.x
-  LLVM_RELEASE_VERSION_LINUX_MUSL: 20
+  LLVM_RELEASE_VERSION_LINUX_MUSL: 21
   LLVM_RELEASE_VERSION_OPENBSD: 20
   LLVM_RELEASE_VERSION_NETBSD: 19
   LLVM_DEV_VERSION: 22
@@ -104,6 +104,8 @@ jobs:
             curl -L -o EnVar-Plugin.zip "https://github.com/GsNSIS/EnVar/releases/download/v0.3.1/EnVar-Plugin.zip"
             7z x EnVar-Plugin.zip -o"C:\Program Files (x86)\NSIS" -y
           fi
+          curl -sSfL -o MANUAL.md https://c3-lang.org/all.md
+          curl -sSfL -o c3fmt.exe https://github.com/lmichaudel/c3fmt/releases/latest/download/c3fmt-windows.exe
           export PATH="/c/Program Files (x86)/NSIS/Bin:/c/Program Files (x86)/NSIS:$PATH"
           MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-Release.exe" /DBUILD_DIR=build-release resources/nsis/installer.nsi
           MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-Debug.exe" /DBUILD_DIR=build-debug resources/nsis/installer.nsi
@@ -361,14 +363,12 @@ jobs:
           for i in 1 2 3; do apk update && break || sleep 2; done
           for i in 1 2 3; do \
             apk add \
-              build-base bash cmake ninja python3 linux-headers \
+              build-base bash cmake ninja \
               tar zstd \
-              zlib-dev curl-dev libffi-dev \
+              curl-dev \
               llvm${V}-dev \
               llvm${V}-static \
               llvm${V}-gtest \
-              clang${V}-dev \
-              clang${V}-static \
               lld${V}-dev \
               lld${V}-libs && break || sleep 2; \
           done
@@ -456,7 +456,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['7.8']
+        version: ['7.9']
     steps:
       - uses: actions/checkout@v6
 
@@ -471,6 +471,14 @@ jobs:
       - name: Install Dependencies
         shell: cpa.sh {0}
         run: |
+          echo "Testing OpenBSD mirrors..."
+          for m in "https://cloudflare.cdn.openbsd.org/pub/OpenBSD" "https://cdn.openbsd.org/pub/OpenBSD" "https://mirror.planetunix.net/pub/OpenBSD" "https://ftp.usa.openbsd.org/pub/OpenBSD"; do
+            if curl -s -f -I -L --connect-timeout 5 --max-time 10 "${m}/${{ matrix.version }}/packages/amd64/" > /dev/null; then
+              echo "Selected mirror: ${m}"
+              echo "${m}" | sudo tee /etc/installurl
+              break
+            fi
+          done
           for i in 1 2 3; do
             sudo pkg_add ninja cmake llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash && break || sleep 5
           done

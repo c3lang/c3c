@@ -319,60 +319,69 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 	sz image_size = (sz)pixels * channels;
 	char[] image = alloc::alloc_array(allocator, char, image_size);
 	defer catch alloc::free(allocator, image);
-
+	sz data_end = data.len - END_OF_STREAM.len;
 	for (loc = 0; loc < image_size; loc += channels)
 	{
-		// get chunk tag
-		tag = data[pos];
-
-		// check for chunk type
-		switch
+		if (run_length > 0)
 		{
-			case run_length > 0:
-				run_length--;
-
-			case tag == OP_RGB:
-				OpRGB* op = @extract(OpRGB, data, &pos);
-				p = { op.red, op.green, op.blue, p.a };
-				palette[p.hash()] = p;
-
-			case tag == OP_RGBA:
-				OpRGBA* op = @extract(OpRGBA, data, &pos);
-				p = { op.red, op.green, op.blue, op.alpha };
-				palette[p.hash()] = p;
-				
-			case tag >> 6 == OP_INDEX:
-				OpIndex* op = @extract(OpIndex, data, &pos);
-				p = palette[op.index];
-
-			case tag >> 6 == OP_DIFF:
-				OpDiff* op = @extract(OpDiff, data, &pos);
-				p.r += op.diff_red - 2u;
-				p.g += op.diff_green - 2u;
-				p.b += op.diff_blue - 2u;
-				palette[p.hash()] = p;
-
-			case tag >> 6 == OP_LUMA:
-				OpLuma* op = @extract(OpLuma, data, &pos);
-				int diff_green = (int)op.diff_green - 32;
-				p.r += (char)((int)op.diff_red_minus_green - 8 + diff_green);
-				p.g += (char)(diff_green);
-				p.b += (char)((int)op.diff_blue_minus_green - 8 + diff_green);
-				palette[p.hash()] = p;
-
-			case tag >> 6 == OP_RUN:
-				OpRun* op = @extract(OpRun, data, &pos);
-				run_length = op.run;
+			run_length--;
 		}
+		else
+		{
+			if (pos >= data_end) return INVALID_DATA~;
+			// get chunk tag
+			tag = data[pos];
 
+			// check for chunk type
+			switch
+			{
+				case tag == OP_RGB:
+					OpRGB* op = @extract(OpRGB, data, &pos);
+					p = { op.red, op.green, op.blue, p.a };
+					palette[p.hash()] = p;
+
+				case tag == OP_RGBA:
+					OpRGBA* op = @extract(OpRGBA, data, &pos);
+					p = { op.red, op.green, op.blue, op.alpha };
+					palette[p.hash()] = p;
+
+				case tag >> 6 == OP_INDEX:
+					OpIndex* op = @extract(OpIndex, data, &pos);
+					p = palette[op.index];
+
+				case tag >> 6 == OP_DIFF:
+					OpDiff* op = @extract(OpDiff, data, &pos);
+					p.r += op.diff_red - 2u;
+					p.g += op.diff_green - 2u;
+					p.b += op.diff_blue - 2u;
+					palette[p.hash()] = p;
+
+				case tag >> 6 == OP_LUMA:
+					OpLuma* op = @extract(OpLuma, data, &pos);
+					int diff_green = (int)op.diff_green - 32;
+					p.r += (char)((int)op.diff_red_minus_green - 8 + diff_green);
+					p.g += (char)(diff_green);
+					p.b += (char)((int)op.diff_blue_minus_green - 8 + diff_green);
+					palette[p.hash()] = p;
+
+				case tag >> 6 == OP_RUN:
+					OpRun* op = @extract(OpRun, data, &pos);
+					run_length = op.run;
+			}
+		}
 		// draw the pixel
-		if (channels == RGBA) { image[loc:4] = p.rgba[..]; } else { image[loc:3] = p.rgb[..]; }
+		if (channels == RGBA)
+		{
+			image[loc:4] = p.rgba[..];
+		}
+		else
+		{
+			image[loc:3] = p.rgb[..];
+		}
 	}
-	
+	if (pos != data_end || data[pos:END_OF_STREAM.len] != END_OF_STREAM[..]) return INVALID_DATA~;
 	return image;
 }
-
-
 
 // ***************************************************************************
 // ***                                                                     ***

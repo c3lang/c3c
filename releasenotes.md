@@ -30,6 +30,9 @@
 - Prevent infinite spin on `io::read_fully`, `File.load_buffer`, `File.load` and `File.save`.
 - `io::write_all` now retries on incomplete writes.
 - `GrowableBitSet.max_bit_set` added.
+- Added `UnboundedChannel`.
+- `BufferedChannel` and `UnbufferedChannel` gets non-blocking push/pop.
+- `FixedThreadPool` and `ThreadPool` deprecated.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.
@@ -125,6 +128,24 @@
 - `io::read_varint` and `io::write_varint`: handling for signed integers were broken.
 - `io::write_tiny_bytearray` and `io::write_short_bytearray` could have incomplete writes.
 - Splatting a partially raw array into a macro would miscompile. #3302
+- Getting the tag for an enum parameter caused a crash. #3307
+- Json marshalling of floats would lose precision.
+- Crash when initializing a bitstruct from an untyped list.
+- Shifting a vector by a non-numeric type would cause a crash rather than a compiler error.
+- Recursive macros were not detected when going by way of a lambda.
+- Compile time concatenation with an empty slice was lacking checks, causing a compiler crash.
+- Fix zip slip vulnerability.
+- Fixed issues with `Object.to_value`.
+- `DString.len` was incorrectly marked `@dynamic`.
+- Qoi decoder wasn't correctly signaling all invalid data.
+- Casting a constant string to a float vector was buggy, causing a compiler crash.
+- Codepage detection could fail values after the last element.
+- Xml parsing could leak memory if root was preceeded by Pi nodes.
+- `DateTime.diff_years` would not handle leap years properly.
+- `Deque.free` would not reset the capacity, making it break if later reused.
+- `Formatter` would overflow in cases like `%2147483648d`.
+- Distributions would drop convergence control setting on recursion.
+- In some rare cases `available()` could leave the stream in an unexpected state.
 
 ## 0.8.0 Change list
 

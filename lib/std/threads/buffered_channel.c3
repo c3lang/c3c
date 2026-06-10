@@ -67,28 +67,19 @@ fn void? BufferedChannel.push(&self, Type val)
 		channel.send_cond.wait(&channel.mu);
 		channel.send_waiting--;
 	}
+	return _buffered_channel_push_in_lock(channel, val);
+}
 
-	// check if channel is closed
-	if (channel.closed) return thread::CHANNEL_CLOSED~;
+fn void? BufferedChannel.try_push(&self, Type val)
+{
+	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
-	// save value to buf
-	channel.buf[channel.sendx] = val;
+	channel.mu.lock();
+	defer channel.mu.unlock();
 
-	// move pointer
-	channel.sendx++;
-	if (channel.sendx == channel.size)
-	{
-		channel.sendx = 0;
-	}
+	if (channel.elems == channel.size && !channel.closed) return thread::CHANNEL_BLOCKED~;
 
-	// channelge elems counter
-	channel.elems++;
-
-	// if someone is waiting -> awake him
-	if (channel.read_waiting > 0)
-	{
-		channel.read_cond.signal();
-	}
+	return _buffered_channel_push_in_lock(channel, val);
 }
 
 fn Type? BufferedChannel.pop(&self)
@@ -99,15 +90,45 @@ fn Type? BufferedChannel.pop(&self)
 	defer channel.mu.unlock();
 
 	// if chan is empty -> wait for sender
-	while (channel.elems == 0 && !channel.closed)
+	while (!channel.elems && !channel.closed)
 	{
 		channel.read_waiting++;
 		channel.read_cond.wait(&channel.mu);
 		channel.read_waiting--;
 	}
+	return _buffered_channel_pop_in_lock(channel);
+}
 
+fn Type? BufferedChannel.try_pop(&self)
+{
+	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
+
+	channel.mu.lock();
+	defer channel.mu.unlock();
+
+	if (!channel.elems && !channel.closed) return thread::CHANNEL_EMPTY~;
+
+	return _buffered_channel_pop_in_lock(channel);
+}
+
+fn void BufferedChannel.close(&self)
+{
+	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
+
+	channel.mu.lock();
+
+	channel.closed = true;
+
+	channel.read_cond.broadcast();
+	channel.send_cond.broadcast();
+	channel.mu.unlock();
+}
+
+
+fn Type? _buffered_channel_pop_in_lock(BufferedChannelImpl* channel) @inline @private
+{
 	// check if chan is closed and empty
-	if (channel.closed && channel.elems == 0)
+	if (channel.closed && !channel.elems)
 	{
 		return thread::CHANNEL_CLOSED~;
 	}
@@ -134,16 +155,27 @@ fn Type? BufferedChannel.pop(&self)
 	return ret;
 }
 
-fn void BufferedChannel.close(&self)
+fn void? _buffered_channel_push_in_lock(BufferedChannelImpl* channel, Type val) @inline @private
 {
-	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
+	// check if channel is closed
+	if (channel.closed) return thread::CHANNEL_CLOSED~;
 
-	channel.mu.lock();
+	// save value to buf
+	channel.buf[channel.sendx] = val;
 
-	channel.closed = true;
+	// move pointer
+	channel.sendx++;
+	if (channel.sendx == channel.size)
+	{
+		channel.sendx = 0;
+	}
 
-	channel.read_cond.broadcast();
-	channel.send_cond.broadcast();
-	channel.mu.unlock();
+	// channelge elems counter
+	channel.elems++;
 
+	// if someone is waiting -> awake him
+	if (channel.read_waiting > 0)
+	{
+		channel.read_cond.signal();
+	}
 }

@@ -53,7 +53,7 @@ macro int next(random, int range)
  Get a random in the range [min, max], both included.
 
  @require is_random(random)
- @require max >= min
+ @require max >= min && (long)max - min < int::max : "Invalid range"
 *>
 macro int next_in_range(random, int min, int max)
 {

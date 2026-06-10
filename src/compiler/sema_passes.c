@@ -724,7 +724,7 @@ bool analyse_func_body(SemaContext *context, Decl *decl)
 	// Don't analyse functions that are benchmarks.
 	if (decl->func_decl.attr_benchmark && !compiler.build.benchmarking) return true;
 
-	if (!sema_analyse_function_body(context, decl)) return decl_poison(decl);
+	if (!sema_analyse_function_body(context, decl, 0)) return decl_poison(decl);
 	return true;
 }
 
