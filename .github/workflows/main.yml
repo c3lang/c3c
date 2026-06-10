@@ -471,6 +471,14 @@ jobs:
       - name: Install Dependencies
         shell: cpa.sh {0}
         run: |
+          echo "Testing OpenBSD mirrors..."
+          for m in "https://cloudflare.cdn.openbsd.org/pub/OpenBSD" "https://cdn.openbsd.org/pub/OpenBSD" "https://mirror.planetunix.net/pub/OpenBSD" "https://ftp.usa.openbsd.org/pub/OpenBSD"; do
+            if curl -s -f -I -L --connect-timeout 5 --max-time 10 "${m}/${{ matrix.version }}/packages/amd64/" > /dev/null; then
+              echo "Selected mirror: ${m}"
+              echo "${m}" | sudo tee /etc/installurl
+              break
+            fi
+          done
           for i in 1 2 3; do
             sudo pkg_add ninja cmake llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash && break || sleep 5
           done
