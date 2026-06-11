@@ -4301,7 +4301,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		goto REGISTER_MAIN;
 	}
 	if (is_win32 && sub_type != MAIN_SUBTYPE_WINMAIN) sub_type = MAIN_SUBTYPE_WMAIN;
-	compiler.build.win.use_win_subsystem = sub_type == MAIN_SUBTYPE_WINMAIN;
+	if (sub_type == MAIN_SUBTYPE_WINMAIN) compiler.build.win.subsystem = "WINDOWS";
 	function = sema_create_synthetic_main(context, decl, type, sub_type);
 	if (!decl_ok(function)) return false;
 REGISTER_MAIN:

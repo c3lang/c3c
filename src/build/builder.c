@@ -516,6 +516,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(max_stack_object_size);
 	OVERRIDE_IF_SET(max_macro_iterations);
 	OVERRIDE_IF_SET(win.def);
+	OVERRIDE_IF_SET(win.subsystem);
 	OVERRIDE_IF_SET(no_entry);
 	OVERRIDE_IF_SET(echo_prefix);
 

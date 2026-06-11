@@ -52,7 +52,7 @@ static const char *ld_target(ArchType arch_type)
 
 static void linker_setup_windows(const char ***args_ref, Linker linker_type, const char *output_file)
 {
-	add_plain_arg(compiler.build.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
+	add_concat_arg("/SUBSYSTEM:", compiler.build.win.subsystem);
 	if (link_libc()) linking_add_link(&compiler.linking, "dbghelp");
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
