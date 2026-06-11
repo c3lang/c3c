@@ -8,6 +8,7 @@
 ### Stdlib changes
 
 ### Fixes
+- `$stringify` would sometimes include parens.
 
 ## 0.8.1 Change list
 
