@@ -1545,7 +1545,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("win-subsystem"))
 			{
-				if (at_end() || next_is_opt()) error_exit("error: --win-subsysem needs a subsystem name.");
+				if (at_end() || next_is_opt()) error_exit("error: --win-subsystem needs a subsystem name.");
 				options->win.subsystem = next_arg();
 				return;
 			}
