@@ -720,7 +720,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left, SourceLoc *lhs_star
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
-	const char *end = c->lexer.lexing_start - 1;
+	const char *end = c->span.offset + c->lexer.file_begin;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	if (inner->expr_kind == EXPR_HASH_IDENT || (inner->expr_kind == EXPR_VAARG))
 	{
