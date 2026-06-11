@@ -3,7 +3,10 @@
 ## 0.8.2 Change list
 
 ### Changes / improvements
+- `@weak` now works with all declarations.
+
 ### Stdlib changes
+
 ### Fixes
 
 ## 0.8.1 Change list
