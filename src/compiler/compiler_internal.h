@@ -1346,6 +1346,7 @@ struct Expr_
 		Expr *inner_expr;                           // 8
 		ExprMakeAny make_any_expr;
 		ExprMakeSlice make_slice_expr;
+		SubscriptIndex vaarg_index;
 		ExprTypeProperty type_property_expr;
 		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
@@ -2460,6 +2461,7 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
 Expr *expr_new(ExprKind kind, SourceLocId start);
 Expr *expr_new_loc(ExprKind kind, SourceLoc *start);
 Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v);
+Expr *expr_new_const_float(SourceLocId loc, Type *type, Real v);
 Expr *expr_new_const_bool(int loc, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceLocId loc, Type *type);
 Expr *expr_new_const_string(SourceLocId loc, const char *string);
@@ -3987,8 +3989,10 @@ static inline void expr_set_loc(Expr *expr, SourceLocId loc)
 		case EXPR_LENGTHOF:
 		case EXPR_MAYBE_DEREF:
 		case EXPR_CT_REFLECT:
-		case EXPR_VAARG:
 			expr_set_loc(expr->inner_expr, loc);
+			return;
+		case EXPR_VAARG:
+			exprid_set_loc(expr->vaarg_index.expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_ACCESS_RESOLVED:

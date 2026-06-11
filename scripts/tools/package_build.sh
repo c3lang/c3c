@@ -39,6 +39,43 @@ cp -r "$ROOT_DIR/lib" c3/
 cp "$ROOT_DIR/README.md" c3/
 cp "$ROOT_DIR/releasenotes.md" c3/
 
+# Download MANUAL.md
+if command -v curl &> /dev/null; then
+    curl -sSfL -o c3/MANUAL.md https://c3-lang.org/all.md || echo "Warning: failed to download MANUAL.md via curl"
+elif command -v wget &> /dev/null; then
+    wget -qO c3/MANUAL.md https://c3-lang.org/all.md || echo "Warning: failed to download MANUAL.md via wget"
+else
+    echo "Warning: Neither curl nor wget found, MANUAL.md will be missing"
+fi
+
+# Download c3fmt
+C3FMT_URL=""
+C3FMT_NAME=""
+if [[ "$OUT_NAME" == *windows* || "$C3C_BIN" == *.exe ]]; then
+    C3FMT_URL="https://github.com/lmichaudel/c3fmt/releases/latest/download/c3fmt-windows.exe"
+    C3FMT_NAME="c3fmt.exe"
+elif [[ "$OUT_NAME" == *linux* ]]; then
+    C3FMT_URL="https://github.com/lmichaudel/c3fmt/releases/latest/download/c3fmt-linux"
+    C3FMT_NAME="c3fmt"
+elif [[ "$OUT_NAME" == *macos* || "$OUT_NAME" == *mac* ]]; then
+    C3FMT_URL="https://github.com/lmichaudel/c3fmt/releases/latest/download/c3fmt-macos"
+    C3FMT_NAME="c3fmt"
+fi
+
+if [[ -n "$C3FMT_URL" ]]; then
+    echo ">>> Downloading c3fmt from $C3FMT_URL"
+    if command -v curl &> /dev/null; then
+        curl -sSfL -o "c3/$C3FMT_NAME" "$C3FMT_URL" || echo "Warning: failed to download c3fmt"
+    elif command -v wget &> /dev/null; then
+        wget -qO "c3/$C3FMT_NAME" "$C3FMT_URL" || echo "Warning: failed to download c3fmt"
+    else
+        echo "Warning: Neither curl nor wget found, c3fmt will be missing"
+    fi
+    if [[ -f "c3/$C3FMT_NAME" && "$C3FMT_NAME" == "c3fmt" ]]; then
+        chmod +x "c3/$C3FMT_NAME"
+    fi
+fi
+
 # Copy binaries
 cp "$C3C_BIN" c3/
 if [[ -f "$BUILD_DIR/c3c.pdb" ]]; then cp "$BUILD_DIR/c3c.pdb" c3/; fi

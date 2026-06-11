@@ -1,0 +1,13 @@
+module test;
+
+macro foo(...)
+{
+	$echo $vaarg[^2];
+}
+
+
+
+fn void main()
+{
+	foo(1, 2, 3);
+}

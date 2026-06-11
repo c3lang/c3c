@@ -457,3 +457,46 @@ fn void test_url_idempotence()
 	assert(url_string == parsed_string);
 }
 
+fn void test_parse_username_only()
+{
+	Url url = url::parse(mem, "https://alice@example.com/dashboard")!!;
+	defer url.free();
+
+	assert(url.scheme == "https", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.username == "alice", "got '%s'", url.username);
+	assert(url.password == "", "got '%s'", url.password);
+	assert(url.path == "/dashboard", "got '%s'", url.path);
+}
+
+fn void test_parse_username_only_with_escape()
+{
+	Url url = url::parse(mem, "https://alice%20smith@example.com/")!!;
+	defer url.free();
+
+	assert(url.username == "alice smith", "got '%s'", url.username);
+	assert(url.password == "", "got '%s'", url.password);
+}
+
+fn void test_parse_ipv6_with_port()
+{
+	Url url = url::parse(mem, "http://[::1]:8080/index")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "[::1]", "got '%s'", url.host);
+	assert(url.port == 8080, "got '%d'", url.port);
+	assert(url.path == "/index", "got '%s'", url.path);
+}
+
+fn void test_parse_ipv6_with_port_full()
+{
+	Url url = url::parse(mem, "https://[2001:db8::7]:443/c=GB?objectClass=one")!!;
+	defer url.free();
+
+	assert(url.scheme == "https", "got '%s'", url.scheme);
+	assert(url.host == "[2001:db8::7]", "got '%s'", url.host);
+	assert(url.port == 443, "got '%d'", url.port);
+	assert(url.path == "/c=GB", "got '%s'", url.path);
+	assert(url.query == "objectClass=one", "got '%s'", url.query);
+}

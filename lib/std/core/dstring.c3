@@ -65,6 +65,7 @@ fn DString temp(String s = "") => new(tmem, s) @inline;
 fn void DString.replace_char(self, char ch, char replacement)
 {
 	StringData* data = self.data();
+	if (!data) return;
 	foreach (&c : data.chars[:data.len])
 	{
 		if (*c == ch) *c = replacement;
@@ -75,11 +76,34 @@ fn void DString.replace(&self, String needle, String replacement)
 {
 	StringData* data = self.data();
 	sz needle_len = needle.len;
-	if (!data || data.len < needle_len) return;
+	if (!data)
+	{
+		if (needle_len > 0) return;
+		if (!replacement) return;
+		self.append(replacement);
+		return;
+	}
+	if (data.len < needle_len) return;
 	sz replace_len = replacement.len;
 	if (needle_len == 1 && replace_len == 1)
 	{
 		self.replace_char(needle[0], replacement[0]);
+		return;
+	}
+	if (needle_len == 0)
+	{
+		if (!replace_len) return;
+		@pool()
+		{
+			String str = self.tcopy_str();
+			self.clear();
+			self.append_string(replacement);
+			foreach (i, c : str)
+			{
+				self.append_char(c);
+				self.append_string(replacement);
+			}
+		};
 		return;
 	}
 	@pool()
@@ -88,27 +112,29 @@ fn void DString.replace(&self, String needle, String replacement)
 		self.clear();
 		sz len = str.len;
 		sz match = 0;
-		foreach (i, c : str)
+		sz run_start = 0;
+		for (sz i = 0; i < len; i++)
 		{
-			if (c == needle[match])
+			if (str[i] == needle[match])
 			{
 				match++;
 				if (match == needle_len)
 				{
+					sz match_start = i - needle_len + 1;
+					if (match_start > run_start) self.append_string(str[run_start:match_start - run_start]);
 					self.append_string(replacement);
+					run_start = i + 1;
 					match = 0;
-					continue;
 				}
 				continue;
 			}
 			if (match > 0)
 			{
-				self.append_string(str[i - match:match]);
+				i -= match;
 				match = 0;
 			}
-			self.append_char(c) @inline;
 		}
-		if (match > 0) self.append_string(str[^match:match]);
+		if (run_start < len) self.append_string(str[run_start..]);
 	};
 }
 
@@ -146,7 +172,7 @@ fn sz DString.capacity(self)
 	return self.data().capacity;
 }
 
-fn sz DString.len(&self) @dynamic @operator(len)
+fn sz DString.len(&self) @operator(len)
 {
 	if (!*self) return 0;
 	return self.data().len;
@@ -302,7 +328,7 @@ fn bool DString.equals(self, DString other_string)
 	if (!str2) return str1.len == 0;
 	sz str1_len = str1.len;
 	if (str1_len != str2.len) return false;
-	for (int i = 0; i < str1_len; i++)
+	for (sz i = 0; i < str1_len; i++)
 	{
 		if (str1.chars[i] != str2.chars[i]) return false;
 	}
@@ -712,6 +738,7 @@ fn sz? DString.read_from_stream(&self, InStream reader)
 		// Read into the rest of the buffer
 		sz read = reader.read(data.chars[data.len..(data.capacity - 1)])!;
 		data.len += read;
+		total_read += read;
 		// Ok, we reached the end.
 		if (read < 16) return total_read;
 		// Otherwise go another round

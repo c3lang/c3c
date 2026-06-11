@@ -178,3 +178,38 @@ fn void clear()
 	deque.clear();
 	test::eq(deque.remain_space(), math::next_power_of_2(RESERVED));
 }
+
+fn void free_then_push_does_not_corrupt()
+{
+	Deque{int} deque;
+	deque.init(mem, 16);
+	for (int i = 0; i < 4; i++) deque.push(i);
+	deque.free();
+
+	deque.init(mem, 16);
+	defer deque.free();
+
+	deque.push(100);
+	deque.push(200);
+	deque.push(300);
+
+	test::eq(deque.len(), 3);
+	test::eq(deque[0], 100);
+	test::eq(deque[1], 200);
+	test::eq(deque[2], 300);
+}
+
+fn void free_then_push_without_reinit()
+{
+	Deque{int} deque;
+	deque.init(mem, 16);
+	for (int i = 0; i < 4; i++) deque.push(i);
+	deque.free();
+
+	deque.push(42);
+
+	test::eq(deque.len(), 1);
+	test::eq(deque[0], 42);
+
+	deque.free();
+}

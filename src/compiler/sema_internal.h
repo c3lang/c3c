@@ -65,7 +65,7 @@ void sema_context_destroy(SemaContext *context);
 unsigned sema_context_push_ct_stack(SemaContext *context);
 void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state);
 
-bool sema_analyse_function_body(SemaContext *context, Decl *func);
+bool sema_analyse_function_body(SemaContext *context, Decl *func, unsigned macro_depth_start);
 bool sema_analyse_contracts(SemaContext *context, Decl *contracts, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
@@ -108,7 +108,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
 void sema_add_methods_to_decl_stack(SemaContext *context, Decl *decl);
 
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool call_var_optional, bool *no_match_ref);
-Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr);
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *range);
 
 Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner, bool report_missing, bool *was_reflect);
 Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing);

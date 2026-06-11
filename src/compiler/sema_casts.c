@@ -674,6 +674,7 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 			return;
 		}
 		case TYPE_STRUCT:
+		case TYPE_BITSTRUCT:
 			break;
 		default:
 			UNREACHABLE_VOID
@@ -2402,8 +2403,17 @@ static void expr_rewrite_bytes_to_const_initializer(Expr *expr, Type *target_typ
 	ConstInitializer **inits = MALLOC(sizeof(ConstInitializer*) * expr->const_expr.bytes.len);
 	for (int i = 0; i < expr->const_expr.bytes.len; i++)
 	{
-		Expr *int_expr = expr_new_const_int(expr->loc, base, (unsigned char)expr->const_expr.bytes.ptr[i]);
-		ConstInitializer *init = const_init_new_value(int_expr);
+		Expr *conv_expr;
+		if (type_is_float(base))
+		{
+			conv_expr = expr_new_const_float(expr->loc, base, (Real)(unsigned char)expr->const_expr.bytes.ptr[i]);
+		}
+		else
+		{
+			conv_expr = expr_new_const_int(expr->loc, base, (unsigned char)expr->const_expr.bytes.ptr[i]);
+		}
+
+		ConstInitializer *init = const_init_new_value(conv_expr);
 		inits[i] = init;
 	}
 	ASSERT(inits);

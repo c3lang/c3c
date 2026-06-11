@@ -34,10 +34,10 @@ declare -A DISTRO_IMAGES=(
 	[debian]="debian:bookworm-slim|apt-get update -qq && apt-get install -y -qq gcc bash"
 	[fedora]="fedora:latest|dnf install -y -q gcc bash"
 	[alpine]="alpine:3.23|apk add --no-cache gcc musl-dev bash"
-	[arch]="archlinux:latest|pacman -Sy --noconfirm gcc bash"
+	[arch]="archlinux:latest|pacman -Sy --noconfirm gcc bash libx11 libxrandr libxinerama libxi libxxf86vm libxcursor"
 	[opensuse]="opensuse/tumbleweed:latest|zypper install -y gcc glibc-devel bash"
 	[rocky]="rockylinux:9|dnf install -y -q gcc bash"
-	[void]="ghcr.io/void-linux/void-linux:latest-full-x86_64|xbps-install -Suy xbps && xbps-install -Sy gcc bash"
+	[void]="ghcr.io/void-linux/void-linux:latest-full-x86_64|xbps-install -Suy xbps && xbps-install -Sy gcc bash libX11-devel libXrandr-devel libXinerama-devel libXi-devel libXxf86vm-devel libXcursor-devel"
 )
 
 # Resolve which distros to test

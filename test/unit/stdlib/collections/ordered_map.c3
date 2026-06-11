@@ -115,6 +115,36 @@ fn void ordered_map_remove()
 	};
 }
 
+fn void ordered_map_get_or_set()
+{
+	TestOrderedMap m;
+	m.tinit();
+	defer m.free();
+
+	sz v1 = m.@get_or_set("a", 10);
+	assert(v1 == 10);
+	assert(m.len() == 1);
+	assert(m.get("a")!! == 10);
+
+	m.set("b", 20);
+	sz v2 = m.@get_or_set("b", 99);
+	assert(v2 == 20);
+	assert(m.len() == 2);
+	assert(m.get("b")!! == 20);
+
+	sz v3 = m.@get_or_set("c", 30);
+	assert(v3 == 30);
+	assert(m.len() == 3);
+
+	String[] expected_order = { "a", "b", "c" };
+	sz index = 0;
+	m.@each(; String key, sz value)
+	{
+		assert(key == expected_order[index]);
+		index++;
+	};
+}
+
 fn void ordered_map_copy()
 {
 	TestOrderedMap hash_map;

@@ -1233,9 +1233,8 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	bool can_be_generic = decl_inherits_module_generic(decl);
 	ASSIGN_DECL_OR_RET(Decl *generics, parse_generic_decl(c), false);
 	bool is_method = decl_is_fn_macro(decl) && decl->func_decl.type_parent;
-	bool is_alias = decl->decl_kind == DECL_TYPE_ALIAS;
-	if (is_alias) can_be_weak = true;
-	if (!parse_attributes(c, &decl->attributes, &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, is_method ? "for method declarations" : NULL, can_be_weak ? &is_weak : NULL)) return false;
+	bool is_enum_const = decl->decl_kind == DECL_ENUM_CONSTANT;
+	if (!parse_attributes(c, &decl->attributes, is_enum_const ? NULL : &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, is_method ? "for method declarations" : NULL, &is_weak)) return false;
 	if (generics)
 	{
 		if (!can_be_generic)
@@ -1255,13 +1254,9 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 		decl->is_template = true;
 	}
 	decl->is_cond = is_cond;
-	if (is_weak)
+	if (is_weak || c->unit->is_interface_file)
 	{
 		decl->is_weak_link = true;
-		decl->is_weak = true;
-	}
-	else if (c->unit->is_interface_file)
-	{
 		decl->is_weak = true;
 	}
 	decl->is_autoimport = is_builtin;

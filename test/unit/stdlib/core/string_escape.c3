@@ -97,6 +97,13 @@ fn void test_escape_content()
     }
 }
 
+fn void test_escape_default_quotes_with_explicit_allocator()
+{
+    String result = "hello".escape(mem);
+    defer result.free(mem);
+    assert(result == `"hello"`, "escape(mem) = %s, expected quoted output", result);
+}
+
 fn void test_unescape()
 {
     foreach (test : unescape_tests)

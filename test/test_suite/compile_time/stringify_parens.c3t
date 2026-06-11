@@ -1,0 +1,22 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+fn void main()
+{
+    io::printfn($stringify(asd) );
+    io::printfn($stringify(asd  ) );
+    io::printfn($stringify(((((asd))))));
+    io::printfn($stringify( (1 + 1) ));
+    io::printfn($stringify("()"));
+    io::printfn($stringify(")))" ) );
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [4 x i8] c"asd\00", align 1
+@.str.1 = private unnamed_addr constant [6 x i8] c"asd  \00", align 1
+@.str.2 = private unnamed_addr constant [12 x i8] c"((((asd))))\00", align 1
+@.str.3 = private unnamed_addr constant [10 x i8] c" (1 + 1) \00", align 1
+@.str.4 = private unnamed_addr constant [5 x i8] c"\22()\22\00", align 1
+@.str.5 = private unnamed_addr constant [7 x i8] c"\22)))\22 \00", align 1

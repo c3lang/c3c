@@ -676,7 +676,7 @@ macro String @str_lower(String $str) @builtin => $$str_lower($str);
 macro uint @str_hash(String $str) @builtin => $$str_hash($str);
 macro String @str_pascalcase(String $str) @builtin => $$str_pascalcase($str);
 macro String @str_snakecase(String $str) @builtin => $$str_snakecase($str);
-macro String @str_camelcase(String $str) @builtin => @str_capitalize($$str_pascalcase($str));
+macro String @str_camelcase(String $str) @builtin => @str_uncapitalize($$str_pascalcase($str));
 macro String @str_constantcase(String $str) @builtin => @str_upper($$str_snakecase($str));
 macro String @str_replace(String $str, String $pattern, String $replace, uint $limit = 0) @builtin => $$str_replace($str, $pattern, $replace, $limit);
 macro String @str_capitalize(String $str) @builtin

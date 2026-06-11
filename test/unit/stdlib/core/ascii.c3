@@ -45,6 +45,12 @@ fn void asciicharset_contains()
 	test::@check(ALPHANUMERIC_WHITESPACE.contains(' '));
 }
 
+fn void asciicharset_contains_rejects_non_ascii()
+{
+	test::@check(!ALPHANUMERIC_WHITESPACE.contains((char)128));
+	test::@check(!ALPHANUMERIC_WHITESPACE.contains((char)200));
+}
+
 fn void asciicharset_create_set()
 {
 	var $s = @create_set("abc");

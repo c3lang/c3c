@@ -118,6 +118,22 @@ fn void test_dynamic_arena_release_nontop_keeps_live() @test
 	}
 }
 
+fn void test_dynamic_arena_release_nontop_does_not_block_top_reclaim() @test
+{
+	DynamicArenaAllocator dyn;
+	dyn.init(mem, 4096);
+	defer dyn.free();
+
+	char* a = alloc::malloc(&dyn, 32);
+	char* b = alloc::malloc(&dyn, 32);
+	sz used_after_b = dyn.page.used;
+
+	alloc::free(&dyn, a);
+	alloc::free(&dyn, b);
+
+	assert(dyn.page.used < used_after_b, "freeing non-top a prevented later top b from being reclaimed");
+}
+
 fn void test_dynamic_arena_fast_path_after_reset() @test
 {
 	DynamicArenaAllocator dyn;

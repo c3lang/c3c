@@ -76,19 +76,14 @@ bool context_set_module_from_filename(ParseContext *context)
 	File *file = context->unit->file;
 	if (!filename_to_module_in_buffer(file->full_path))
 	{
-		print_error(context,
-		            "The filename '%s' could not be converted to a valid module name, try using an explicit module name.",
-		            file->full_path);
-		return false;
+		error_exit("ERROR: The filename '%s' could not be converted to a valid module name, please rename it or use an explicit module name.", file->full_path);
 	}
 
 	TokenType type = TOKEN_IDENT;
 	const char *module_name = scratch_buffer_interned_as(&type);
 	if (type != TOKEN_IDENT)
 	{
-		print_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
-		                     "try using an explicit module name.", file->full_path);
-		return false;
+		error_exit("ERROR: Generating a filename from the file '%s' resulted in a name that is a reserved keyword, please rename it or use an explicit module name.", file->full_path);
 	}
 	Path *path = CALLOCS(Path);
 	path->loc = make_loc(context->span);
@@ -154,7 +149,7 @@ void decl_register(CompilationUnit *unit, Decl *decl)
 	Decl *replaced_symbol = NULL;
 	if ((old = htable_set(&unit->local_symbols, (void*)decl->name, decl)))
 	{
-		if (old->decl_kind != decl->decl_kind || old->decl_kind == DECL_TYPE_ALIAS) goto SHADOW_LOCAL;
+		if (old->decl_kind != decl->decl_kind) goto SHADOW_LOCAL;
 		// If we have a weak symbol we can replace it
 		if (decl_old_should_be_removed(old, decl))
 		{
@@ -194,7 +189,7 @@ WEAK_LOCAL:
 	if ((old = htable_set(&unit->module->symbols, (void*)decl->name, decl)))
 	{
 		if (old->visibility == VISIBLE_LOCAL && decl->visibility == VISIBLE_LOCAL) return;
-		if (old->decl_kind != decl->decl_kind || old->decl_kind == DECL_TYPE_ALIAS) goto SHADOW_MODULE;
+		if (old->decl_kind != decl->decl_kind) goto SHADOW_MODULE;
 		// If we have a weak symbol we can replace it
 		if (decl_old_should_be_removed(old, decl))
 		{

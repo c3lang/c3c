@@ -152,9 +152,9 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.8.0**.
+The current stable version of the compiler is **version 0.8.1**.
 
-The upcoming 0.8.1 release will further refine the standard library.
+The upcoming 0.8.2 release will further refine the standard library.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
 If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues)
@@ -493,7 +493,7 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
 
 4. Build the compiler:
    ```bash
-   cmake --build build
+   cmake --build build -j
    ```
 
 5. You should now have a `c3c` executable in the `build` directory. You can test it by compiling an example:
@@ -501,7 +501,8 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
    ./build/c3c compile resources/examples/hash.c3
    ```
 
-   *(Optional) To install the compiler globally: `sudo cmake --install build`*
+   *(Optional) Install globally: `sudo cmake --install build`*
+   *Or install to `~/.local`: `cmake --install build --prefix ~/.local`*
 
 #### Compiling on NixOS
 

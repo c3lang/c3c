@@ -149,11 +149,12 @@ fn int simple_atoi(char* buf, sz maxlen, sz* len_ptr) @inline @private
 	{
 		char c = buf[len];
 		if (!c.is_digit()) break;
-		i = i * 10 + c - '0';
 		len++;
+		if (i < 0) continue;
+		i = i * 10 + c - '0';
 	}
 	*len_ptr = len;
-	return i;
+	return i < 0 ? int::max : i;
 }
 
 fn sz? formatter_out_substr(Formatter* f, String str) @private

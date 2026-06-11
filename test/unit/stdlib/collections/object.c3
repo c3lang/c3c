@@ -86,9 +86,9 @@ fn void test_to_value()
 
 enum MyEnum : (String value)
 {
-    FIRST {"first"},
-    SECOND {"second"},
-    THIRD {"third"}
+	FIRST {"first"},
+	SECOND {"second"},
+	THIRD {"third"}
 }
 import std::io;
 
@@ -110,4 +110,34 @@ fn void test_enum()
 
 		assert(o == THIRD);
 	}
+}
+fn void test_to_value_string_non_strict()
+{
+	Object* int_obj = object::new_int(tmem, 42);
+	test::eq(int_obj.to_value(String, strict: false)!!, "42");
+
+	int_obj = object::new_int(tmem, -7);
+	test::eq(int_obj.to_value(String, strict: false)!!, "-7");
+
+	Object* float_obj = object::new_float(tmem, 3.14);
+	test::eq(float_obj.to_value(String, strict: false)!!, "3.14");
+
+	Object* bool_obj = object::new_bool(true);
+	test::eq(bool_obj.to_value(String, strict: false)!!, "true");
+
+	bool_obj = object::new_bool(false);
+	test::eq(bool_obj.to_value(String, strict: false)!!, "false");
+
+	Object* str_obj = object::new_string(tmem, "hello");
+	test::eq(str_obj.to_value(String, strict: false)!!, "hello");
+
+	test::eq(str_obj.to_value(String, strict: true)!!, "hello");
+
+}
+
+fn void test_to_value_string_strict_mismatch()
+{
+	Object* int_obj = object::new_int(tmem, 42);
+	fault res = @catch(int_obj.to_value(String, strict: true));
+	assert(res);
 }

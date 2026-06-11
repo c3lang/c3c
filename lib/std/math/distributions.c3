@@ -153,8 +153,8 @@ fn double NormalDist.quantile(&self, double p) @dynamic
 fn double NormalDist.random(&self, Random rand) @dynamic
 {
 	// Box-Muller transform.
-	double u1 = random::next_double(rand);
-	double u2 = random::next_double(rand);
+	double u1 = 1 - random::next_double(rand);
+	double u2 = 1 - random::next_double(rand);
 	double z = math::sqrt(-2.0 * math::ln(u1)) * math::cos(2.0 * math::PI * u2);
 	return self.mu + self.sigma * z;
 }

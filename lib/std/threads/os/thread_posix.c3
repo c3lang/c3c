@@ -89,7 +89,10 @@ fn void? NativeMutex.lock_timeout(&self, long ms)
 	{
 		if (!ms) break;
 		long sleep = min(5, ms);
-		if (!libc::nanosleep(&&time::ms(ms).to_timespec(), null)) return thread::LOCK_TIMEOUT~;
+		if (libc::nanosleep(&&time::ms(sleep).to_timespec(), null))
+		{
+			return libc::errno() == EINTR ? thread::INTERRUPTED~ : thread::LOCK_TIMEOUT~;
+		}
 		ms -= sleep;
 	}
 	switch (result)
@@ -263,7 +266,7 @@ fn void? NativeThread.create(&thread, ThreadFn thread_fn, void* arg, ThreadSetti
 		os::sem_init(&thread.sem, 0, 0);
 		defer os::sem_destroy(&thread.sem);
 	$endif
-	if (posix::pthread_create(&thread.pthread, null, &callback, thread) != 0)
+	if (posix::pthread_create(&thread.pthread, attr_ptr, &callback, thread) != 0)
 	{
 		return thread::INIT_FAILED~;
 	}

@@ -16,12 +16,16 @@ fn Socket? connect_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @pr
 	$if env::WIN32:
 		os::start_wsa()!;
 	$endif
-	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
+	@loop_over_addresses(addrinfo; NativeSocket sockfd, AddrInfo* ai, bool* retain_socket)
 	{
 		apply_sockoptions(sockfd, options)!;
 		int errcode = os::connect(sockfd, ai.ai_addr, ai.ai_addrlen);
 		// Keep the first successful connection.
-		if (!errcode) return new_socket(sockfd, ai);
+		if (!errcode)
+		{
+			*retain_socket = true;
+			return new_socket(sockfd, ai);
+		}
 	};
 	return os::socket_error()~;
 }
@@ -48,7 +52,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 		os::start_wsa()!;
 	$endif
 	Clock c;
-	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
+	@loop_over_addresses(addrinfo; NativeSocket sockfd, AddrInfo* ai, bool* retain_socket)
 	{
 		apply_sockoptions(sockfd, options)!;
 		sockfd.set_non_blocking(true)!;
@@ -57,6 +61,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 		{
 			// It worked, restore blocking.
 			sockfd.set_non_blocking(false)!;
+			*retain_socket = true;
 			return new_socket(sockfd, ai);
 		}
 		if (last_error_is_delayed_connect())
@@ -83,6 +88,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			if (poll_request.revents & WRITE)
 			{
 				sockfd.set_non_blocking(false)!;
+				*retain_socket = true;
 				return new_socket(sockfd, ai);
 			}
 		}
@@ -95,7 +101,7 @@ fn Socket? connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] option
 	$if env::WIN32:
 		os::start_wsa()!;
 	$endif
-	@loop_over_ai(addrinfo; NativeSocket sockfd, AddrInfo* ai)
+	@loop_over_addresses(addrinfo; NativeSocket sockfd, AddrInfo* ai, bool* retain_socket)
 	{
 		apply_sockoptions(sockfd, options)!;
 		sockfd.set_non_blocking(true)!;
@@ -103,8 +109,10 @@ fn Socket? connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] option
 		if (!errcode || last_error_is_delayed_connect())
 		{
 			// Keep the first successful connection.
+			*retain_socket = true;
 			return new_socket(sockfd, ai);
 		}
+
 	};
 	return os::socket_error()~;
 }

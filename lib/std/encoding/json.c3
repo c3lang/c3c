@@ -277,7 +277,6 @@ fn JsonTokenType? advance(JsonContext* context) @local
 						if (ch == '\n')
 						{
 							context.line++;
-							pushback(context, ch);
 							continue WS;
 						}
 					}

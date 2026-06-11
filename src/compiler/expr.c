@@ -860,6 +860,9 @@ bool expr_is_simple(Expr *expr, bool to_float)
 					FALLTHROUGH;
 				case BINARYOP_MOD:
 				case BINARYOP_ELSE:
+				case BINARYOP_BIT_AND:
+				case BINARYOP_BIT_OR:
+				case BINARYOP_BIT_XOR:
 					return exprid_is_simple(expr->binary_expr.left, to_float) && exprid_is_simple(expr->binary_expr.right, to_float);
 				case BINARYOP_AND:
 				case BINARYOP_OR:
@@ -958,6 +961,20 @@ Expr *expr_new_const_int(SourceLocId loc, Type *type, uint64_t v)
 	expr->const_expr.ixx.type = kind;
 	expr->const_expr.is_character = false;
 	expr->const_expr.const_kind = CONST_INTEGER;
+	expr->resolve_status = RESOLVE_DONE;
+	return expr;
+}
+
+Expr *expr_new_const_float(SourceLocId loc, Type *type, Real v)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_CONST;
+	expr->loc = loc;
+	expr->type = type;
+	TypeKind kind = type_flatten(type)->type_kind;
+	expr->const_expr.fxx.f = v;
+	expr->const_expr.fxx.type = kind;
+	expr->const_expr.const_kind = CONST_FLOAT;
 	expr->resolve_status = RESOLVE_DONE;
 	return expr;
 }
