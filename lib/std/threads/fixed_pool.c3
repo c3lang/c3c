@@ -7,7 +7,7 @@ import std::thread;
 
 alias ThreadPoolFn = fn void(any[] args);
 
-struct FixedThreadPool
+struct FixedThreadPool @deprecated
 {
 	Mutex mu;
 	QueueItem[] queue;

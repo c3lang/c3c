@@ -3260,7 +3260,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_WASM] = ATTR_FUNC,
-			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_ALIAS,
+			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_ALIAS | ATTR_TYPEDEF | ATTR_ENUM,
 			[ATTRIBUTE_WEAKLINK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
 	};
@@ -5335,7 +5335,7 @@ bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacem
 			if (replaced_type != replacement_type) goto TYPE_MISMATCH;
 			break;
 		default:
-			UNREACHABLE_VOID
+			break;
 	}
 	return true;
 VAR_MISMATCH:
