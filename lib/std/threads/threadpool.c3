@@ -91,13 +91,13 @@ fn void? ThreadPool.init(&self, Allocator allocator, int max_threads, sz queue_c
 *>
 fn void? ThreadPool.prewarm(&self, int count)
 {
-    self.mx.@in_lock()
-    {
-        while (self.alive_count < count && self.alive_count < self.max_threads)
-        {
-            _thread_pool_spawn_worker_in_lock(self)!;
-        }
-    };
+	self.mx.@in_lock()
+	{
+		while (self.alive_count < count && self.alive_count < self.max_threads)
+		{
+			_thread_pool_spawn_worker_in_lock(self)!;
+		}
+	};
 }
 
 <*
