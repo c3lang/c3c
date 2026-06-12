@@ -45,6 +45,7 @@
 - `BufferedChannel` and `UnbufferedChannel` get non-blocking push/pop.
 - `FixedThreadPool` and `ThreadPool` deprecated.
 - Added `array::contains_slice`.
+- Added `array::index_of_slice`.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.

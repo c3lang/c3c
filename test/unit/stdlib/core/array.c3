@@ -60,6 +60,15 @@ fn void find()
 	test::@error(array::index_of(a, 4), NOT_FOUND);
 }
 
+fn void find_slice()
+{
+	int[10] a = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+	test::eq(array::index_of_slice(a, (int[]) { 3, 4, 5 })!!, 3);
+	test::eq(array::index_of_slice(a, (int[]) { 0, 1 })!!, 0);
+	test::eq(array::index_of_slice(a, (int[]) { 9 })!!, 9);
+	test::@error(array::index_of_slice(a, (int[]) { 9, 8 }), NOT_FOUND);
+}
+
 fn void find_subarray()
 {
 	int[] a = { 1, 2, 3 };
