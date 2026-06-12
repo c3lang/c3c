@@ -6,7 +6,7 @@ alias AtomicUint = Atomic{uint};
 alias AtomicFloat = Atomic{float};
 AtomicUint a;
 AtomicFloat fa;
-Atomic{long} cas_counter;
+Atomic{int} cas_counter;
 
 fn void add() @test
 {
@@ -215,7 +215,7 @@ fn void cas_contended() @test
 		t.create(fn int(void* arg) {
 			for (int i = 0; i < 1000; i++)
 			{
-				long cur = cas_counter.load();
+				int cur = cas_counter.load();
 				while (!cas_counter.compare_exchange(&cur, cur + 1)) {}
 			}
 			return 0;
