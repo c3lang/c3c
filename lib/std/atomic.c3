@@ -29,6 +29,18 @@ macro void Atomic.store(&self, Type value, AtomicOrdering $ordering = SEQ_CONSIS
 	$$atomic_store(&self.data, value, false, $ordering.ordinal, 0);
 }
 
+<*
+ Atomically compare the value with `*expected` if equal, replace it with `desired`
+ and return true. Otherwise write the current value into `*expected` and return false.
+*>
+macro bool Atomic.compare_exchange(&self, Type* expected, Type desired, AtomicOrdering $success = SEQ_CONSISTENT, AtomicOrdering $failure = SEQ_CONSISTENT)
+{
+    Type witnessed = mem::compare_exchange(&self.data, *expected, desired, $success, $failure);
+    if (witnessed == *expected) return true;
+    *expected = witnessed;   // CAS failed: hand back what was actually there
+    return false;
+}
+
 macro Type Atomic.add(&self, Type value, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
 	return atomic::fetch_add(&self.data, value, $ordering);

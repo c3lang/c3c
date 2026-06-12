@@ -6,6 +6,7 @@
 - `@weak` now works with all declarations.
 
 ### Stdlib changes
+- `Atomic.compare_exchange` added.
 
 ### Fixes
 - `$stringify` would sometimes include parens.
