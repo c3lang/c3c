@@ -42,6 +42,15 @@ fn void contains()
 	assert(!array::contains(a, 15));
 }
 
+fn void contains_slice()
+{
+	int[10] a = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+	assert(array::contains_slice(a, (int[]) { 3, 4, 5 }));
+	assert(array::contains_slice(a, (int[]) { 7 }));
+	assert(!array::contains_slice(a, (int[]) { 9, 8 }));
+	assert(!array::contains_slice(a, (int[]) { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }));
+}
+
 fn void find()
 {
 	int[3] a = { 1, 2, 3 };

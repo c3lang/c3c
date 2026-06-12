@@ -20,6 +20,30 @@ macro bool contains(array, element)
 
 
 <*
+ Returns true if the array contains slice, else false
+
+ @param [in] array
+ @param [in] needle
+ @require @kindof(array) == SLICE || @kindof(array) == ARRAY
+ @require @kindof(needle) == SLICE || @kindof(needle) == ARRAY
+ @require @typematch(array[0], needle[0]) : "array and slice must have the same type"
+*>
+macro bool contains_slice(array, needle)
+{
+	sz needed = needle.len;
+	if (!needed || array.len < needed) return false;
+	if (needed == 1) return contains(array, needle[0]) @inline;
+	
+	var first = needle[0];
+	foreach (i, e: array[..^needed])
+	{
+		if (e == first && array[i : needed] == needle) return true;
+	}
+	return false;
+}
+
+
+<*
  Return the first index of element found in the array, searching from the start.
 
  @param [in] array
