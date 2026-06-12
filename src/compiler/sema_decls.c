@@ -4301,7 +4301,21 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		goto REGISTER_MAIN;
 	}
 	if (is_win32 && sub_type != MAIN_SUBTYPE_WINMAIN) sub_type = MAIN_SUBTYPE_WMAIN;
-	if (sub_type == MAIN_SUBTYPE_WINMAIN) compiler.build.win.subsystem = "WINDOWS";
+	if (compiler.build.win.subsystem == WIN_SUBSYSTEM_DEFAULT)
+	{
+		compiler.build.win.subsystem = (sub_type == MAIN_SUBTYPE_WINMAIN) ? WIN_SUBSYSTEM_WINDOWS : WIN_SUBSYSTEM_CONSOLE;
+	}
+	else
+	{
+		if (compiler.build.win.subsystem == WIN_SUBSYSTEM_WINDOWS && sub_type != MAIN_SUBTYPE_WINMAIN)
+		{
+			RETURN_SEMA_ERROR(decl, "The WINDOWS subsystem requires a WinMain function.");
+		}
+		if (compiler.build.win.subsystem != WIN_SUBSYSTEM_WINDOWS && sub_type == MAIN_SUBTYPE_WINMAIN)
+		{
+			RETURN_SEMA_ERROR(decl, "The WinMain function requires the WINDOWS subsystem.");
+		}
+	}
 	function = sema_create_synthetic_main(context, decl, type, sub_type);
 	if (!decl_ok(function)) return false;
 REGISTER_MAIN:

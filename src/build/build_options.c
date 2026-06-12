@@ -222,7 +222,7 @@ static void usage(bool full)
 		print_opt("--wincrt=<option>", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).");
 		print_opt("--windef <file>", "Use Windows 'def' file for function exports instead of 'dllexport'.");
 		print_opt("--win-vs-dirs <dir>;<dir>", "Override Windows VS detection.");
-		print_opt("--win-subsystem <subsystem>", "Set the target Windows subsystem.");
+		print_opt("--win-subsystem=<subsystem>", "Windows subsystem: CONSOLE (default), WINDOWS (default if @winmain present), NATIVE, POSIX, BOOT_APPLICATION, EFI_APPLICATION, EFI_BOOT_SERVICE_DRIVER, EFI_ROM or EFI_RUNTIME_DRIVER.");
 		PRINTF("");
 		print_opt("--macos-sdk <dir>", "Set the directory for the MacOS SDK for cross compilation.");
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
@@ -1543,10 +1543,9 @@ static void parse_option(BuildOptions *options)
 				options->win.vs_dirs = next_arg();
 				return;
 			}
-			if (match_longopt("win-subsystem"))
+			if ((argopt = match_argopt("win-subsystem")))
 			{
-				if (at_end() || next_is_opt()) error_exit("error: --win-subsystem needs a subsystem name.");
-				options->win.subsystem = next_arg();
+				options->win.subsystem = parse_opt_select(WinSubsystem, argopt, win_subsystem);
 				return;
 			}
 			if ((argopt = match_argopt("sanitize")))
