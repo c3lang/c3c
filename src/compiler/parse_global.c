@@ -1254,9 +1254,13 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 		decl->is_template = true;
 	}
 	decl->is_cond = is_cond;
-	if (is_weak || c->unit->is_interface_file)
+	if (is_weak)
 	{
 		decl->is_weak_link = true;
+		decl->is_weak = true;
+	}
+	else if (c->unit->is_interface_file)
+	{
 		decl->is_weak = true;
 	}
 	decl->is_autoimport = is_builtin;
