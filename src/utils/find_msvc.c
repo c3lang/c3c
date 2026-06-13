@@ -54,7 +54,9 @@ WindowsSDK get_windows_paths()
 	scratch_buffer_printf("%s\\lib", vs_path);
 	out.vs_library_path = scratch_buffer_copy();
 
-	if (!getenv("INCLUDE"))
+	// Always detect and set cl_path regardless of whether INCLUDE is already set.
+	// If INCLUDE is already set (e.g. by setup-msvc-dev), we still need the correct
+	// cl.exe path for the target architecture when compiling C sources (clib).
 	{
 		// Detect host architecture for the compiler binary path
 		const char *host_arch = "x64";
@@ -67,7 +69,10 @@ WindowsSDK get_windows_paths()
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s\\bin\\Host%s\\%s\\cl.exe", vs_path, host_arch, host_arch);
 		out.cl_path = scratch_buffer_copy();
+	}
 
+	if (!getenv("INCLUDE"))
+	{
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s\\include;", vs_path);
 		scratch_buffer_printf("%s\\cppwinrt;", windows_sdk_include_root);
