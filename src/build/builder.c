@@ -47,6 +47,8 @@ LinuxLibc default_libc = LINUX_LIBC_GNU;
 #define LINUX_LIBC
 LinuxLibc default_libc = LINUX_LIBC_MUSL;
 		#endif
+	#elif defined(_WIN32) || defined(_MSC_VER)
+ArchOsTarget default_target = WINDOWS_AARCH64;
 	#else
 ArchOsTarget default_target = ELF_AARCH64;
 	#endif
