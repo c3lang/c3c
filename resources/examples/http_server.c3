@@ -5,7 +5,6 @@
 *>
 module http_server;
 import std, libc;
-import std::net::tcp;
 
 const int THREAD_COUNT = 64;
 const int TCP_BACKLOG = 128;
