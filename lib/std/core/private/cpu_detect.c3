@@ -401,19 +401,19 @@ fn void aarch64_initialize_cpu_features()
 			// FP and ASIMD are mandatory on ARMv8-A
 			aarch64_features |= 1ULL << Aarch64Feature.FP.ordinal;
 			aarch64_features |= 1ULL << Aarch64Feature.ASIMD.ordinal;
-			add_feature_if_bit(CRC32,   isProcessorFeaturePresent(33), 0);
-			add_feature_if_bit(LSE,     isProcessorFeaturePresent(34), 0);
-			add_feature_if_bit(FP16,    isProcessorFeaturePresent(36), 0);
-			add_feature_if_bit(DOTPROD, isProcessorFeaturePresent(43), 0);
-			add_feature_if_bit(JSCVT,   isProcessorFeaturePresent(44), 0);
-			add_feature_if_bit(FCMA,    isProcessorFeaturePresent(45), 0);
-			add_feature_if_bit(LRCPC,   isProcessorFeaturePresent(46), 0);
-			add_feature_if_bit(BF16,    isProcessorFeaturePresent(48), 0);
-			add_feature_if_bit(I8MM,    isProcessorFeaturePresent(49), 0);
-			add_feature_if_bit(RNG,     isProcessorFeaturePresent(50), 0);
-			add_feature_if_bit(FLAGM,   isProcessorFeaturePresent(52), 0);
-			add_feature_if_bit(FLAGM2,  isProcessorFeaturePresent(53), 0);
-			add_feature_if_bit(SVE,     isProcessorFeaturePresent(54), 0);
+			add_feature_if_bit(CRC32,   (ulong)isProcessorFeaturePresent(33), 0);
+			add_feature_if_bit(LSE,     (ulong)isProcessorFeaturePresent(34), 0);
+			add_feature_if_bit(FP16,    (ulong)isProcessorFeaturePresent(36), 0);
+			add_feature_if_bit(DOTPROD, (ulong)isProcessorFeaturePresent(43), 0);
+			add_feature_if_bit(JSCVT,   (ulong)isProcessorFeaturePresent(44), 0);
+			add_feature_if_bit(FCMA,    (ulong)isProcessorFeaturePresent(45), 0);
+			add_feature_if_bit(LRCPC,   (ulong)isProcessorFeaturePresent(46), 0);
+			add_feature_if_bit(BF16,    (ulong)isProcessorFeaturePresent(48), 0);
+			add_feature_if_bit(I8MM,    (ulong)isProcessorFeaturePresent(49), 0);
+			add_feature_if_bit(RNG,     (ulong)isProcessorFeaturePresent(50), 0);
+			add_feature_if_bit(FLAGM,   (ulong)isProcessorFeaturePresent(52), 0);
+			add_feature_if_bit(FLAGM2,  (ulong)isProcessorFeaturePresent(53), 0);
+			add_feature_if_bit(SVE,     (ulong)isProcessorFeaturePresent(54), 0);
 		$case env::DARWIN:
 			// Add guaranteed features.
 			aarch64_features |= 1ULL << Aarch64Feature.FP.ordinal;
