@@ -22,6 +22,10 @@ void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* 
 				goto OK;
 			}
 		}
+		if (target_name && strncmp(target_name, "preset '", strlen("preset '")) == 0)
+		{
+			error_exit("Unknown parameter '%s' in '%s'. You can use '%s' to list all valid properties.", key, target_name, option);
+		}
 		WARNING("Unknown parameter '%s' in '%s'", key, target_name);
 		failed = true;
 		OK:;
