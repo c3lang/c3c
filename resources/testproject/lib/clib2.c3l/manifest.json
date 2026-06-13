@@ -13,6 +13,7 @@
       "cflags-override": "-fPIE"
     },
     "windows-x64": {},
+    "windows-aarch64": {},
     "android-aarch64": {},
     "android-x86_64": {},
   }

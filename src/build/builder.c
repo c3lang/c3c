@@ -6,7 +6,9 @@
 
 void load_library_files(void) {}
 
-#if defined(_M_X64) || defined(_M_AMD64)
+#if defined(_M_ARM64)
+ArchOsTarget default_target = WINDOWS_AARCH64;
+#elif defined(_M_X64) || defined(_M_AMD64)
 ArchOsTarget default_target = WINDOWS_X64;
 #elif defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
 	#if defined(__MACH__)
