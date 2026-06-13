@@ -7,6 +7,8 @@
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.
+- Added `array::contains_slice` and `array::index_of_slice`.
+- `String.index_of` and `rindex_of` will now accept finding empty strings.
 
 ### Fixes
 - `$stringify` would sometimes include parens.
