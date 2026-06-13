@@ -458,7 +458,6 @@ fn void aarch64_initialize_cpu_features()
 			add_feature_if_sysctl(SME2,       "hw.optional.arm.FEAT_SME2");
 		$default:
 			// Unsupported OS — features remain zero.
-			break;
 	$endswitch
 }
 
