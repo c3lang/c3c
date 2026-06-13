@@ -1023,7 +1023,7 @@ bool use_ansi(void)
 
 const char * vendor_fetch_single(const char* lib, const char* path, bool progress) 
 {
-	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
+	const char *resource = str_printf("/toidicakhia/c3-vendor/releases/download/latest/%s.c3l", lib);
 	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
 	const char *error = download_file("https://github.com", resource, destination, progress);
 	return error;	
@@ -1058,7 +1058,7 @@ void vendor_fetch(BuildOptions *options)
 	{
 		const char *tmp_dir = dir_make_temp_dir();
 		const char *tmp_file = file_append_path(tmp_dir, "vendor_list.json");
-		const char *error = download_file("https://api.github.com", "/repos/c3lang/vendor/contents/libraries/", tmp_file, false);
+		const char *error = download_file("https://api.github.com", "/repos/toidicakhia/c3-vendor/contents/libraries/", tmp_file, false);
 		if (error)
 		{
 			error_exit("Failed to fetch library list: %s", error);
