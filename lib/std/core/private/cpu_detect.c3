@@ -401,19 +401,19 @@ fn void aarch64_initialize_cpu_features()
 			// FP and ASIMD are mandatory on ARMv8-A
 			aarch64_features |= 1ULL << Aarch64Feature.FP.ordinal;
 			aarch64_features |= 1ULL << Aarch64Feature.ASIMD.ordinal;
-			add_feature_if_bit(CRC32,   IsProcessorFeaturePresent(33), 0);
-			add_feature_if_bit(LSE,     IsProcessorFeaturePresent(34), 0);
-			add_feature_if_bit(FP16,    IsProcessorFeaturePresent(36), 0);
-			add_feature_if_bit(DOTPROD, IsProcessorFeaturePresent(43), 0);
-			add_feature_if_bit(JSCVT,   IsProcessorFeaturePresent(44), 0);
-			add_feature_if_bit(FCMA,    IsProcessorFeaturePresent(45), 0);
-			add_feature_if_bit(LRCPC,   IsProcessorFeaturePresent(46), 0);
-			add_feature_if_bit(BF16,    IsProcessorFeaturePresent(48), 0);
-			add_feature_if_bit(I8MM,    IsProcessorFeaturePresent(49), 0);
-			add_feature_if_bit(RNG,     IsProcessorFeaturePresent(50), 0);
-			add_feature_if_bit(FLAGM,   IsProcessorFeaturePresent(52), 0);
-			add_feature_if_bit(FLAGM2,  IsProcessorFeaturePresent(53), 0);
-			add_feature_if_bit(SVE,     IsProcessorFeaturePresent(54), 0);
+			add_feature_if_bit(CRC32,   isProcessorFeaturePresent(33), 0);
+			add_feature_if_bit(LSE,     isProcessorFeaturePresent(34), 0);
+			add_feature_if_bit(FP16,    isProcessorFeaturePresent(36), 0);
+			add_feature_if_bit(DOTPROD, isProcessorFeaturePresent(43), 0);
+			add_feature_if_bit(JSCVT,   isProcessorFeaturePresent(44), 0);
+			add_feature_if_bit(FCMA,    isProcessorFeaturePresent(45), 0);
+			add_feature_if_bit(LRCPC,   isProcessorFeaturePresent(46), 0);
+			add_feature_if_bit(BF16,    isProcessorFeaturePresent(48), 0);
+			add_feature_if_bit(I8MM,    isProcessorFeaturePresent(49), 0);
+			add_feature_if_bit(RNG,     isProcessorFeaturePresent(50), 0);
+			add_feature_if_bit(FLAGM,   isProcessorFeaturePresent(52), 0);
+			add_feature_if_bit(FLAGM2,  isProcessorFeaturePresent(53), 0);
+			add_feature_if_bit(SVE,     isProcessorFeaturePresent(54), 0);
 		$case env::DARWIN:
 			// Add guaranteed features.
 			aarch64_features |= 1ULL << Aarch64Feature.FP.ordinal;
@@ -473,7 +473,7 @@ extern fn ulong getauxval(ulong type);
 
 module std::core::cpudetect @if(env::AARCH64 && env::WIN32);
 
-extern fn int IsProcessorFeaturePresent(ulong feature) @cname("IsProcessorFeaturePresent");
+extern fn int isProcessorFeaturePresent(ulong feature) @cname("isProcessorFeaturePresent");
 
 
 module std::core::cpudetect @if(env::AARCH64 && env::DARWIN);
