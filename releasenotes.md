@@ -7,6 +7,8 @@
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.
+- Added `array::contains_slice` and `array::index_of_slice`.
+- `String.index_of` and `rindex_of` will now accept finding empty strings.
 
 ### Fixes
 - `$stringify` would sometimes include parens.
@@ -44,8 +46,6 @@
 - Added `UnboundedChannel`.
 - `BufferedChannel` and `UnbufferedChannel` get non-blocking push/pop.
 - `FixedThreadPool` and `ThreadPool` deprecated.
-- Added `array::contains_slice`.
-- Added `array::index_of_slice`.
 
 ### Fixes
 - `@volatile_store` on arrays were sometimes incorrectly lowered.

@@ -49,17 +49,20 @@ macro sz? index_of(array, element)
 
  @param [in] array
  @param [in] needle
+ @return "the first index of the element"
+ @return? NOT_FOUND
+
  @require @kindof(array) == SLICE || @kindof(array) == ARRAY
  @require @kindof(needle) == SLICE || @kindof(needle) == ARRAY
  @require @typematch(array[0], needle[0]) : "array and slice must have the same type"
  @ensure return >= 0
- @return "the first index of the element"
- @return? NOT_FOUND
+ @ensure needle.len == 0 && return == 0 || return < array.len
 *>
 macro sz? index_of_slice(array, needle)
 {
 	sz needed = needle.len;
-	if (!needed || array.len < needed) return NOT_FOUND~;
+	if (!needed) return 0;
+	if (array.len < needed) return NOT_FOUND~;
 	if (needed == 1) return index_of(array, needle[0]) @inline;
 
 	var first = needle[0];
