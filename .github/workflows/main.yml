@@ -901,6 +901,10 @@ jobs:
         run: |
           cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
           cmake --build build-debug --config Debug
+          
+      - name: Run Unified Tests
+        shell: bash
+        run: ./scripts/tools/ci_tests.sh "./build-debug/c3c.exe"
 
       - name: Verify binary (Debug)
         run: build-debug\c3c.exe --version
