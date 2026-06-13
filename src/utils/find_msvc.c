@@ -51,13 +51,21 @@ WindowsSDK get_windows_paths()
 	}
 
 	scratch_buffer_clear();
-	scratch_buffer_printf("%s\\lib\\x64", vs_path);
+	scratch_buffer_printf("%s\\lib", vs_path);
 	out.vs_library_path = scratch_buffer_copy();
 
 	if (!getenv("INCLUDE"))
 	{
+		// Detect host architecture for the compiler binary path
+		const char *host_arch = "x64";
+		const char *proc_arch = getenv("PROCESSOR_ARCHITECTURE");
+		if (proc_arch)
+		{
+			if (strcmp(proc_arch, "ARM64") == 0) host_arch = "arm64";
+			else if (strcmp(proc_arch, "x86") == 0) host_arch = "x86";
+		}
 		scratch_buffer_clear();
-		scratch_buffer_printf("%s\\bin\\Hostx64\\x64\\cl.exe", vs_path);
+		scratch_buffer_printf("%s\\bin\\Host%s\\%s\\cl.exe", vs_path, host_arch, host_arch);
 		out.cl_path = scratch_buffer_copy();
 
 		scratch_buffer_clear();

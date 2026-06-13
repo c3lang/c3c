@@ -148,11 +148,19 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	{
 		if (compiler.build.win.vs_dirs)
 		{
+			const char *arch_suffix = "x64";
+			switch (compiler.platform.arch)
+			{
+				case ARCH_TYPE_ARM: arch_suffix = "arm"; break;
+				case ARCH_TYPE_AARCH64: arch_suffix = "arm64"; break;
+				case ARCH_TYPE_X86: arch_suffix = "x86"; break;
+				default: break;
+			}
 			const char *c = strstr(compiler.build.win.vs_dirs, ";");
 			int len = (int)(c - compiler.build.win.vs_dirs);
 			if (!c || !len) error_exit("''win-vs-dirs' override was invalid.");
-			char *um = str_printf("%.*s\\um\\x64", len, compiler.build.win.vs_dirs);
-			char *ucrt = str_printf("%.*s\\ucrt\\x64", len, compiler.build.win.vs_dirs);
+			char *um = str_printf("%.*s\\um\\%s", len, compiler.build.win.vs_dirs, arch_suffix);
+			char *ucrt = str_printf("%.*s\\ucrt\\%s", len, compiler.build.win.vs_dirs, arch_suffix);
 			c++;
 			if (!file_is_dir(um) || !file_is_dir(ucrt) || !file_is_dir(c))
 			{
@@ -167,14 +175,24 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 			WindowsSDK *windows_sdk = windows_get_sdk();
 			if (!windows_sdk) error_exit("Windows applications cannot be cross compiled without --win-sdk.");
 
-			if (!file_is_dir(windows_sdk->vs_library_path)) error_exit("Failed to find windows sdk.");
+			const char *arch_suffix = "x64";
+			switch (compiler.platform.arch)
+			{
+				case ARCH_TYPE_ARM: arch_suffix = "arm"; break;
+				case ARCH_TYPE_AARCH64: arch_suffix = "arm64"; break;
+				case ARCH_TYPE_X86: arch_suffix = "x86"; break;
+				default: break;
+			}
 
-			char *um = str_printf("%s\\um\\x64", windows_sdk->windows_sdk_path);
-			char *ucrt = str_printf("%s\\ucrt\\x64", windows_sdk->windows_sdk_path);
+			char *vs_lib = str_printf("%s\\%s", windows_sdk->vs_library_path, arch_suffix);
+			if (!file_is_dir(vs_lib)) error_exit("Failed to find windows sdk.");
+
+			char *um = str_printf("%s\\um\\%s", windows_sdk->windows_sdk_path, arch_suffix);
+			char *ucrt = str_printf("%s\\ucrt\\%s", windows_sdk->windows_sdk_path, arch_suffix);
 
 			add_concat_quote_arg("/LIBPATH:", um);
 			add_concat_quote_arg("/LIBPATH:", ucrt);
-			add_concat_quote_arg("/LIBPATH:", windows_sdk->vs_library_path);
+			add_concat_quote_arg("/LIBPATH:", vs_lib);
 		}
 	}
 
