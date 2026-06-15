@@ -86,9 +86,9 @@
             "description": "Override the default file extension for the build output. Must start with '.'.",
             "pattern": "^\\..*"
           },
-          "preset": {
+          "template": {
             "type": "string",
-            "description": "Reference a preset configuration from a library dependency, format: 'library:preset'.",
+            "description": "Reference a template configuration from a library dependency, format: 'library:template'.",
             "pattern": "^[a-z][a-z0-9_]{0,126}:[a-z][a-z0-9_]{0,126}$"
           },
           "dependencies": {

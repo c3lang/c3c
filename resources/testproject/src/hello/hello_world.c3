@@ -23,7 +23,7 @@ fn int main()
 	if ($feature(ABCD)) io::printn("ABCD");
 	clib::hello_from_c();
 	clib2::hello_from_c_zip();
-	if ($feature(CLIB3_PRESET_TEST)) clib3::hello_from_preset_feature();
+	if ($feature(CLIB3_TEMPLATE_TEST)) clib3::hello_from_template_feature();
 	if ($feature(CLIB3_LOCAL_TEST)) clib3::hello_from_local_feature();
     return 0;
 }

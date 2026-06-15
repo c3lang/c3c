@@ -139,7 +139,7 @@ const char* project_target_keys[][2] = {
 		{"output", "Output location, relative to project file."},
 		{"panic-msg", "Turn panic message output on or off."},
 		{"panicfn", "Override the panic function."},
-		{"preset", "Use a preset configuration from a library, format 'library:preset'."},
+		{"template", "Use a template configuration from a library, format 'library:template'."},
 		{"quiet", "Silence unnecessary output."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"riscv-abi", "RiscV ABI: int-only, float, double."},
@@ -186,10 +186,10 @@ const int project_deprecated_target_keys_count = ELEMENTLEN(project_deprecated_t
 // Json -> target / default target
 static void load_into_build_target(BuildParseContext context, JSONObject *json, BuildTarget *target)
 {
-	if (context.target || context.is_preset)
+	if (context.target || context.is_template)
 	{
 		check_json_keys(project_target_keys, project_target_keys_count, project_deprecated_target_keys, project_deprecated_target_keys_count,
-		                json, context.target ? context.target : "preset", "--list-project-properties");
+		                json, context.target ? context.target : "template", "--list-project-properties");
 	}
 	else
 	{
@@ -597,30 +597,30 @@ static void duplicate_prop(const char ***prop_ref)
 	*prop_ref = copy;
 }
 
-static void parse_preset_ref(const char *ref, const char **lib_name, const char **preset_name)
+static void parse_template_ref(const char *ref, const char **lib_name, const char **template_name)
 {
 	const char *colon = strchr(ref, ':');
 	if (!colon || colon == ref || colon[1] == '\0' || strchr(colon + 1, ':'))
 	{
-		error_exit("Error reading project: invalid preset reference '%s', expected 'library:preset'.", ref);
+		error_exit("Error reading project: invalid template reference '%s', expected 'library:template'.", ref);
 	}
 	*lib_name = str_copy(ref, colon - ref);
-	*preset_name = str_copy(colon + 1, strlen(colon + 1));
+	*template_name = str_copy(colon + 1, strlen(colon + 1));
 	if (!str_is_valid_lowercase_name(*lib_name))
 	{
-		error_exit("Error reading project: invalid library name '%s' in preset reference '%s' - it should only contain alphanumerical letters and '_'.", *lib_name, ref);
+		error_exit("Error reading project: invalid library name '%s' in template reference '%s' - it should only contain alphanumerical letters and '_'.", *lib_name, ref);
 	}
-	if (!str_is_valid_lowercase_name(*preset_name))
+	if (!str_is_valid_lowercase_name(*template_name))
 	{
-		error_exit("Error reading project: invalid preset name '%s' in preset reference '%s' - it should only contain alphanumerical letters and '_'.", *preset_name, ref);
+		error_exit("Error reading project: invalid template name '%s' in template reference '%s' - it should only contain alphanumerical letters and '_'.", *template_name, ref);
 	}
 }
 
-static JSONObject* resolve_preset(BuildTarget *target, const char *preset_ref, const char **manifest_path_ref)
+static JSONObject* resolve_template(BuildTarget *target, const char *template_ref, const char **manifest_path_ref)
 {
 	const char *lib_name;
-	const char *preset_name;
-	parse_preset_ref(preset_ref, &lib_name, &preset_name);
+	const char *template_name;
+	parse_template_ref(template_ref, &lib_name, &template_name);
 
 	bool found_dep = false;
 	FOREACH(const char *, dep, target->libs)
@@ -633,7 +633,7 @@ static JSONObject* resolve_preset(BuildTarget *target, const char *preset_ref, c
 	}
 	if (!found_dep)
 	{
-		error_exit("Error reading project: preset '%s' references library '%s' which is not listed in 'dependencies'.", preset_ref, lib_name);
+		error_exit("Error reading project: template '%s' references library '%s' which is not listed in 'dependencies'.", template_ref, lib_name);
 	}
 
 	JSONObject *manifest = NULL;
@@ -668,26 +668,26 @@ static JSONObject* resolve_preset(BuildTarget *target, const char *preset_ref, c
 
 	if (!manifest)
 	{
-		error_exit("Error reading project: could not find manifest for library '%s' needed by preset '%s'.", lib_name, preset_ref);
+		error_exit("Error reading project: could not find manifest for library '%s' needed by template '%s'.", lib_name, template_ref);
 	}
 
-	JSONObject *presets = json_map_get(manifest, "presets");
-	if (!presets || presets->type != J_OBJECT)
+	JSONObject *templates = json_map_get(manifest, "templates");
+	if (!templates || templates->type != J_OBJECT)
 	{
-		error_exit("Error reading %s: library '%s' does not define any presets.", *manifest_path_ref, lib_name);
+		error_exit("Error reading %s: library '%s' does not define any templates.", *manifest_path_ref, lib_name);
 	}
 
-	JSONObject *preset = json_map_get(presets, preset_name);
-	if (!preset)
+	JSONObject *template = json_map_get(templates, template_name);
+	if (!template)
 	{
-		error_exit("Error reading %s: preset '%s' not found in library '%s'.", *manifest_path_ref, preset_name, lib_name);
+		error_exit("Error reading %s: template '%s' not found in library '%s'.", *manifest_path_ref, template_name, lib_name);
 	}
-	if (preset->type != J_OBJECT)
+	if (template->type != J_OBJECT)
 	{
-		error_exit("Error reading %s: preset '%s' in library '%s' is not a JSON object.", *manifest_path_ref, preset_name, lib_name);
+		error_exit("Error reading %s: template '%s' in library '%s' is not a JSON object.", *manifest_path_ref, template_name, lib_name);
 	}
 
-	return preset;
+	return template;
 }
 
 static void project_add_target(BuildParseContext context, Project *project, BuildTarget *default_target, JSONObject *json,
@@ -712,21 +712,21 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->link_args);
 
 	BuildParseContext target_context = { context.file, str_printf("%s %s", type, context.target) };
-	const char *preset_ref = get_optional_string(target_context, json, "preset");
-	if (preset_ref)
+	const char *template_ref = get_optional_string(target_context, json, "template");
+	if (template_ref)
 	{
-		// Target-local dependencies and dependency-search-paths are needed to find the preset.
-		// Other target-local settings are intentionally loaded after the preset so they override it.
+		// Target-local dependencies and dependency-search-paths are needed to find the template.
+		// Other target-local settings are intentionally loaded after the template so they override it.
 		const char **default_libdirs = target->libdirs;
 		const char **default_libs = target->libs;
 		APPEND_STRING_LIST(&target->libdirs, "dependency-search-paths");
 		APPEND_STRING_LIST(&target->libs, "dependencies");
 		const char *manifest_path = NULL;
-		JSONObject *preset_json = resolve_preset(target, preset_ref, &manifest_path);
+		JSONObject *template_json = resolve_template(target, template_ref, &manifest_path);
 		target->libdirs = default_libdirs;
 		target->libs = default_libs;
-		BuildParseContext preset_context = { manifest_path, str_printf("preset '%s'", preset_ref), true };
-		load_into_build_target(preset_context, preset_json, target);
+		BuildParseContext template_context = { manifest_path, str_printf("template '%s'", template_ref), true };
+		load_into_build_target(template_context, template_json, target);
 	}
 
 	vec_add(project->targets, target);

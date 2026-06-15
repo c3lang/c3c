@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-void hello_from_preset_feature(void)
+void hello_from_template_feature(void)
 {
-    printf("Hello from clib3 preset feature!\n");
+    printf("Hello from clib3 template feature!\n");
 }

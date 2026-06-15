@@ -13,7 +13,7 @@ const char *manifest_default_keys[][2] = {
 		{"exec", "Scripts run for all platforms."},
 		{"features", "Optional feature-specific library configuration, keyed by feature name."},
 		{"linklib-dir", "Set the directory where to find linked libraries."},
-		{"presets", "Predefined target configurations for users of this library."},
+		{"templates", "Predefined target configurations for users of this library."},
 		{"provides", "The library name"},
 		{"targets", "The map of supported platforms"},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},

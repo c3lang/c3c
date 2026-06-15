@@ -26,9 +26,9 @@
       ],
       "reloc": "PIE",
     },
-    "hello_world_preset_feature": {
+    "hello_world_template_feature": {
       "type": "executable",
-      "preset": "clib3:native_feature",
+      "template": "clib3:native_feature",
       "cc" : "cc",
       "c-sources": [
         "./csource/**"
@@ -44,9 +44,9 @@
       ],
       "reloc": "PIE",
     },
-    "hello_world_preset_local_feature": {
+    "hello_world_template_local_feature": {
       "type": "executable",
-      "preset": "clib3:native_local_feature",
+      "template": "clib3:native_local_feature",
       "cc" : "cc",
       "c-sources": [
         "./csource/**"

@@ -1,15 +1,15 @@
 {
   "provides": "clib3",
-  "presets": {
+  "templates": {
     "native_feature": {
-      "features": ["CLIB3_PRESET_TEST"]
+      "features": ["CLIB3_TEMPLATE_TEST"]
     },
     "native_local_feature": {
       "features": ["CLIB3_LOCAL_TEST"]
     }
   },
   "features": {
-    "CLIB3_PRESET_TEST": {
+    "CLIB3_TEMPLATE_TEST": {
       "c-sources": ["feature.c"]
     },
     "CLIB3_LOCAL_TEST": {

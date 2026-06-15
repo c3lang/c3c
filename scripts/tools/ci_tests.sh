@@ -227,16 +227,16 @@ run_testproject() {
     run_c3c run -vv $ARGS
     run_c3c clean
 
-    echo "Running Test Project (library preset feature)..."
-    run_c3c -vv run hello_world_preset_feature $ARGS
+    echo "Running Test Project (library template feature)..."
+    run_c3c -vv run hello_world_template_feature $ARGS
     run_c3c clean
 
     echo "Running Test Project (library feature)..."
     run_c3c -vv run hello_world_library_feature $ARGS
     run_c3c clean
 
-    echo "Running Test Project (library preset with alternate feature)..."
-    run_c3c -vv run hello_world_preset_local_feature $ARGS
+    echo "Running Test Project (library template with alternate feature)..."
+    run_c3c -vv run hello_world_template_local_feature $ARGS
     run_c3c clean
 
     if [[ "$OS_MODE" == "windows" ]]; then
