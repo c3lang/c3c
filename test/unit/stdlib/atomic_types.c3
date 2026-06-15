@@ -6,6 +6,7 @@ alias AtomicUint = Atomic{uint};
 alias AtomicFloat = Atomic{float};
 AtomicUint a;
 AtomicFloat fa;
+Atomic{int} cas_counter;
 
 fn void add() @test
 {
@@ -184,4 +185,45 @@ fn void fsub() @test
 		assert(t.join()!! == 0);
 	}
 	assert(fa.load() == 0, "Threads returned %f, expected %f", fa.load(), 0);
+}
+
+fn void cas_success() @test
+{
+	Atomic{int} v;
+	v.store(5);
+	int expected = 5;
+	test::eq(true, v.compare_exchange(&expected, 10));
+	test::eq(10, v.load());
+}
+
+fn void cas_fail_writeback() @test
+{
+	Atomic{int} v;
+	v.store(7);
+	int expected = 5;
+	test::eq(false, v.compare_exchange(&expected, 10));
+	test::eq(7, expected);
+	test::eq(7, v.load());
+}
+
+fn void cas_contended() @test
+{
+	Thread[100] ts;
+	cas_counter.store(0);
+	foreach (&t : ts)
+	{
+		t.create(fn int(void* arg) {
+			for (int i = 0; i < 1000; i++)
+			{
+				int cur = cas_counter.load();
+				while (!cas_counter.compare_exchange(&cur, cur + 1)) {}
+			}
+			return 0;
+		}, null)!!;
+	}
+	foreach (&t : ts)
+	{
+		assert(t.join()!! == 0);
+	}
+	assert(cas_counter.load() == ts.len * 1000, "Counter was %d, expected %d", cas_counter.load(), ts.len * 1000);
 }

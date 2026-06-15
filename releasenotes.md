@@ -1,16 +1,29 @@
 # C3C Release Notes
 
+## 0.8.2 Change list
+
+### Changes / improvements
+- `@weak` now works with all declarations.
+
+### Stdlib changes
+- `Atomic.compare_exchange` added.
+- Added `array::contains_slice` and `array::index_of_slice`.
+- `String.index_of` and `rindex_of` will now accept finding empty strings.
+
+### Fixes
+- `$stringify` would sometimes include parens.
+
 ## 0.8.1 Change list
 
 ### Changes / improvements
 - Add `$$PROJECT_PATH`, accessible through `env::PROJECT_PATH`.
 - Deprecate `$field.get(a)` and `$field.set(a, b)`. Replaced by `a.$field` and `a.$field = b`.
 - Add `a.$eval($field)` as a variant of `a.$field`.
-- Add json pretty print.
-- `$$atomic_store` and `$$atomic_load` takes an alignment parameter.
+- Add JSON pretty print.
+- `$$atomic_store` and `$$atomic_load` take an alignment parameter.
 - `$vaarg[^1]` is supported. #3276
-- Improve error message when a keyword is used a block parameter. #3275
-- Correct tag method error messages from `tagof`/`has_tagof` to `get_tag` and `has_tag` 
+- Improve error message when a keyword is used as a block parameter. #3275
+- Correct tag method error messages from `tagof`/`has_tagof` to `get_tag` and `has_tag`
 - Don't resume parsing when implicit module names yield invalid names.
 
 ### Stdlib changes
@@ -22,16 +35,16 @@
 - Enable libc::errno for FreeBSD.
 - Checking filesize on Win32 now correctly reports errors. Getting the filesize now rejects directories.
 - `ini::parse` and related takes an `error_line` argument to identify the line with error.
-- JSON marshaling will return INVALID_NUMBER when encountering a inf or NaN for a float.
+- JSON marshaling will return INVALID_NUMBER when encountering an inf or NaN for a float.
 - JSON decoding will reject `1.` literals.
 - `spawn` now allows binding I/O and using different settings per pipe.
 - `@loop_over_ai` would leak fds, deprecated and replaced by `@loop_over_addresses`.
-- Correctly return error on native_fwrite and native_fread. 
+- Correctly return error on native_fwrite and native_fread.
 - Prevent infinite spin on `io::read_fully`, `File.load_buffer`, `File.load` and `File.save`.
 - `io::write_all` now retries on incomplete writes.
 - `GrowableBitSet.max_bit_set` added.
 - Added `UnboundedChannel`.
-- `BufferedChannel` and `UnbufferedChannel` gets non-blocking push/pop.
+- `BufferedChannel` and `UnbufferedChannel` get non-blocking push/pop.
 - `FixedThreadPool` and `ThreadPool` deprecated.
 
 ### Fixes
@@ -71,7 +84,7 @@
 - `Codepage.by_name` would not use normalized name.
 - `@return? bar!` didn't work if the identifier matched a macro.
 - Copying compile time strings during compile time folding with strings containing 0 would sometimes get truncated. #3267
-- Pem parsing did not correctly handle empty body, nor when the first line was too short.
+- Pem parsing did not correctly handle an empty body, nor when the first line was too short.
 - Additional pem parsing bugs on malformed data handled.
 - Compiler would crash when getting the `kind`, `qname`, or `alignment` of an `untypedlist`.
 - `untypedlist` incorrectly had `size` property.
@@ -83,7 +96,7 @@
 - Cap array size to avoid overflow when making multidimensional arrays that are too large.
 - DynamicArenaAllocator would incorrectly handle some reuse cases.
 - `__atomic_compare_exchange` had an incorrect implementation.
-- `channel::create_unbuffered` would not correctly zero out memory, potentially yielding unpredictable result.
+- `channel::create_unbuffered` would not correctly zero out memory, potentially yielding unpredictable results.
 - `lock_timeout` on Posix would sleep the entire sleep before retrying, and it would fail if it managed to sleep.
 - `stack_size` setting for threads was ignored on Posix.
 - Setting thread priority on Win32 was off by one.
@@ -94,7 +107,7 @@
 - `DString.replace("", "X");` would crash.
 - `DString.read_from_stream` would not return the correct length when `available` was not supported by the stream.
 - `@str_camelcase` would yield same result as `@str_pascalcase`. #3287
-- `conv::utf8to32` would not zero terminate in when the zero would be at the end of the buffer.
+- `conv::utf8to32` would not zero terminate when the zero would be at the end of the buffer.
 - `char16_to_utf8_unsafe` would not load low byte unaligned when required.
 - Not all invalid UTF8 was detected.
 - UTF16 length detection was incorrect for utf16 with surrogate pairs.
@@ -102,7 +115,7 @@
 - Parsing a malformed hex float would not correctly get reported.
 - Parsing an integer with trailing space would incorrectly be reported as an error.
 - `String.escape` used the incorrect default for stripping quotes.
-- mem::equals would not correctly compare slices of with element size > 1.
+- mem::equals would not correctly compare slices with element size > 1.
 - `AsciiCharset.contains` incorrectly handled char > 127.
 - Reuse of recently freed DynamicArenaAllocator allocations failed.
 - Crash in codegen in some cases when RHS of a `&&` or `||` was unreachable at lowering.
@@ -125,7 +138,7 @@
 - `ByteWriter.ensure_capacity` did realloc unnecessarily when the data exactly matched capacity.
 - `DString.equals` used `int` rather than `sz` for len comparison.
 - `DString.replace_char` would crash on empty DString.
-- `io::read_varint` and `io::write_varint`: handling for signed integers were broken.
+- `io::read_varint` and `io::write_varint`: handling for signed integers was broken.
 - `io::write_tiny_bytearray` and `io::write_short_bytearray` could have incomplete writes.
 - Splatting a partially raw array into a macro would miscompile. #3302
 - Getting the tag for an enum parameter caused a crash. #3307

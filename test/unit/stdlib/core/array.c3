@@ -42,6 +42,15 @@ fn void contains()
 	assert(!array::contains(a, 15));
 }
 
+fn void contains_slice()
+{
+	int[10] a = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+	assert(array::contains_slice(a, (int[]) { 3, 4, 5 }));
+	assert(array::contains_slice(a, (int[]) { 7 }));
+	assert(!array::contains_slice(a, (int[]) { 9, 8 }));
+	assert(!array::contains_slice(a, (int[]) { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }));
+}
+
 fn void find()
 {
 	int[3] a = { 1, 2, 3 };
@@ -49,6 +58,15 @@ fn void find()
 	test::eq(array::index_of(a, 1)!!, 0);
 	test::eq(array::index_of(a, 3)!!, 2);
 	test::@error(array::index_of(a, 4), NOT_FOUND);
+}
+
+fn void find_slice()
+{
+	int[10] a = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+	test::eq(array::index_of_slice(a, (int[]) { 3, 4, 5 })!!, 3);
+	test::eq(array::index_of_slice(a, (int[]) { 0, 1 })!!, 0);
+	test::eq(array::index_of_slice(a, (int[]) { 9 })!!, 9);
+	test::@error(array::index_of_slice(a, (int[]) { 9, 8 }), NOT_FOUND);
 }
 
 fn void find_subarray()

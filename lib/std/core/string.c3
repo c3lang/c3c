@@ -635,18 +635,19 @@ fn sz? String.rindex_of_char(self, char character)
 
  @param [in] self
  @param [in] substr
- @pure
- @ensure return < self.len
- @require substr.len > 0 : "The string must be len 1 or more"
  @return "the index of the substring"
  @return? NOT_FOUND : "if the substring cannot be found"
+
+ @pure
+ @ensure (!substr && return == 0) || return < self.len
 *>
 fn sz? String.index_of(self, String substr)
 {
-	sz needed = substr.len;
-	if (!needed || self.len < needed) return NOT_FOUND~;
-	if (needed == 1) return self.index_of_char(substr[0]) @inline;
 
+	sz needed = substr.len;
+	if (!needed) return 0;
+	if (self.len < needed) return NOT_FOUND~;
+	if (needed == 1) return self.index_of_char(substr[0]) @inline;
 	char first = substr[0];
 	foreach (i, c: self[..^needed])
 	{
@@ -660,16 +661,17 @@ fn sz? String.index_of(self, String substr)
 
  @param [in] self
  @param [in] substr
- @pure
- @ensure return < self.len
- @require substr.len > 0 : "The substring must be len 1 or more"
  @return "the index of the substring"
  @return? NOT_FOUND : "if the substring cannot be found"
+
+ @pure
+ @ensure (substr.len == 0 && return == self.len) || return < self.len
 *>
 fn sz? String.rindex_of(self, String substr)
 {
 	sz needed = substr.len;
-	if (needed > 0 && self.len >= needed)
+	if (needed == 0) return self.len;
+	if (self.len >= needed)
 	{
 		char first = substr[0];
 		foreach_r (i, c: self[..^needed])

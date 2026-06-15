@@ -9,14 +9,19 @@ import std::collections::pair, std::io;
  @require @kindof(array) == SLICE || @kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
 *>
-macro bool contains(array, element)
-{
-	foreach (&item : array)
-	{
-		if (*item == element) return true;
-	}
-	return false;
-}
+macro bool contains(array, element) => @ok(index_of(array, element));
+
+
+<*
+ Returns true if the array contains slice, else false
+
+ @param [in] array
+ @param [in] needle
+ @require @kindof(array) == SLICE || @kindof(array) == ARRAY
+ @require @kindof(needle) == SLICE || @kindof(needle) == ARRAY
+ @require @typematch(array[0], needle[0]) : "array and slice must have the same type"
+*>
+macro bool contains_slice(array, needle) => @ok(index_of_slice(array, needle));
 
 
 <*
@@ -35,6 +40,35 @@ macro sz? index_of(array, element)
 	foreach (i, &e : array)
 	{
 		if (*e == element) return i;
+	}
+	return NOT_FOUND~;
+}
+
+<*
+ Return the first index of slice found in the array, searching from the start.
+
+ @param [in] array
+ @param [in] needle
+ @return "the first index of the element"
+ @return? NOT_FOUND
+
+ @require @kindof(array) == SLICE || @kindof(array) == ARRAY
+ @require @kindof(needle) == SLICE || @kindof(needle) == ARRAY
+ @require @typematch(array[0], needle[0]) : "array and slice must have the same type"
+ @ensure return >= 0
+ @ensure needle.len == 0 && return == 0 || return < array.len
+*>
+macro sz? index_of_slice(array, needle)
+{
+	sz needed = needle.len;
+	if (!needed) return 0;
+	if (array.len < needed) return NOT_FOUND~;
+	if (needed == 1) return index_of(array, needle[0]) @inline;
+
+	var first = needle[0];
+	foreach (i, e: array[..^needed])
+	{
+		if (e == first && array[i : needed] == needle) return i;
 	}
 	return NOT_FOUND~;
 }

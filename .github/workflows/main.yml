@@ -862,9 +862,61 @@ jobs:
           name: c3-android-${{matrix.architecture}}-Debug
           path: c3-android-${{matrix.architecture}}-Debug.tar.gz
 
+  build-msvc-arm64:
+    name: Windows (aarch64) MSVC
+    runs-on: windows-11-arm
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/cache@v5
+        with:
+          path: build/_deps
+          key: win-arm64-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
+
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: arm64
+
+      - name: CMake Build (Release)
+        run: |
+          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
+          cmake --build build-release --config Release
+
+      - name: Verify binary (Release)
+        run: build-release\c3c.exe --version
+
+      - name: Bundle (Windows aarch64 Release)
+        shell: bash
+        run: ./scripts/tools/package_build.sh "./build-release/c3c.exe" "c3-windows-aarch64-Release" "zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-aarch64-Release
+          path: c3-windows-aarch64-Release.zip
+
+      - name: CMake Build (Debug)
+        run: |
+          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
+          cmake --build build-debug --config Debug
+
+      - name: Verify binary (Debug)
+        run: build-debug\c3c.exe --version
+
+      - name: Bundle (Windows aarch64 Debug)
+        shell: bash
+        run: ./scripts/tools/package_build.sh "./build-debug/c3c.exe" "c3-windows-aarch64-Debug" "zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-aarch64-Debug
+          path: c3-windows-aarch64-Debug.zip
+
   release:
     runs-on: ubuntu-slim
-    needs: [build-msvc, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd, build-android, build-linux-musl-static]
+    needs: [build-msvc, build-msvc-arm64, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd, build-android, build-linux-musl-static]
     if: github.ref == 'refs/heads/master' || endsWith(github.ref, '.x')
     permissions:
       contents: write
@@ -879,9 +931,9 @@ jobs:
       - name: Prepare Assets
         run: |
           for config in Release Debug; do
-            for platform in windows macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup; do
+            for platform in windows windows-aarch64 macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup; do
               # Windows and macOS produce zip, others tar.gz
-              if [ "$platform" = "windows" ] || [ "$platform" = "macos" ]; then
+              if [ "$platform" = "windows" ] || [ "$platform" = "windows-aarch64" ] || [ "$platform" = "macos" ]; then
                 ext="zip"
               elif [ "$platform" = "windows-setup" ]; then
                 ext="exe"
