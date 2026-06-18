@@ -1791,6 +1791,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.riscv_abi = RISCV_ABI_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
+		.win.subsystem = WIN_SUBSYSTEM_DEFAULT,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.custom_libc = CUSTOM_LIBC_NOT_SET,
