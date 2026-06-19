@@ -1030,7 +1030,7 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 	{
 		const char *closest[2];
-		int matches = str_find_closest(expr->unresolved_ident_expr.ident, suggestion_keywords.base_types, closest);
+		int matches = str_find_closest(expr->unresolved_ident_expr.ident, compiler.suggestion_keywords.base_types, closest);
 
 		if (matches == 1)
 		{

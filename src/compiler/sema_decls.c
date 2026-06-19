@@ -3948,22 +3948,50 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 			continue;
 		}
 		Decl *param = NULL;
-		const char **param_names = VECNEW(const char*, 16);
+		const char *matches[2];
+		matches[0] = matches[1] = NULL;
+		int match_count = 0;
+		int best_distance = MAX(1, (int)((int)strlen(param_contract->name) / 3));
+
 		FOREACH(Decl *, other_param, params)
 		{
 			param = other_param;
-			vec_add(param_names, param->name);
 			if (param && param->name == param_contract->name) goto NEXT;
-		}
-		FOREACH(Decl *, extra, extra_params)
-		{
-			param = extra;
-			vec_add(param_names, param->name);
-			if (param && param->name == param_contract->name) goto NEXT;
-		}
-		const char *matches[2];
 
-		int match_count = str_find_closest(param_contract->name, param_names, matches);
+			int dist = damerau_levenshtein_distance(param_contract->name, (int)strlen(param_contract->name), param->name, (int)strlen(param->name));
+			
+			if (dist < best_distance)
+			{
+				matches[0] = param->name;
+				best_distance = dist;
+				match_count = 1;
+				continue;
+			}
+			if (dist == best_distance && match_count < 2)
+			{
+				matches[match_count++] = param->name;
+			}
+		}
+		FOREACH(Decl *, extra_param, extra_params)
+		{
+			param = extra_param;
+			if (param && param->name == param_contract->name) goto NEXT;
+
+			int dist = damerau_levenshtein_distance(param_contract->name, (int)strlen(param_contract->name), param->name, (int)strlen(param->name));
+			
+			if (dist < best_distance)
+			{
+				matches[0] = param->name;
+				best_distance = dist;
+				match_count = 1;
+				continue;
+			}
+			if (dist == best_distance && match_count < 2)
+			{
+				matches[match_count++] = param->name;
+			}
+		}
+	
 		switch (match_count)
 		{
 			case 1:

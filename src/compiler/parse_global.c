@@ -3655,7 +3655,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 				if (peek(c) != TOKEN_SCOPE)
 				{
 					const char *closest[2];
-					int matches = str_find_closest(symstr(c), suggestion_keywords.top_level_keywords, closest);
+					int matches = str_find_closest(symstr(c), compiler.suggestion_keywords.top_level_keywords, closest);
 
 					if (matches == 1)
 					{

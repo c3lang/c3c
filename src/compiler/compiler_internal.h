@@ -2066,6 +2066,7 @@ typedef struct
 	PlatformTarget platform;
 	Linking linking;
 	GlobalContext context;
+	SuggestionKeywords suggestion_keywords;
 	const char *obj_output;
 	int generic_depth;
 	double exec_time;
@@ -2079,7 +2080,6 @@ extern Decl *poisoned_decl;
 extern Expr *poisoned_expr;
 extern Type *poisoned_type;
 extern TypeInfo *poisoned_type_info;
-extern SuggestionKeywords suggestion_keywords;
 
 extern Type *type_bool, *type_void, *type_voidptr;
 extern Type *type_float16, *type_bfloat, *type_float, *type_double, *type_f128;

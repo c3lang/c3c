@@ -17,9 +17,7 @@
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
 
-
 CompilerState compiler;
-SuggestionKeywords suggestion_keywords;
 
 Vmem ast_arena;
 Vmem expr_arena;
@@ -45,35 +43,6 @@ static const char *out_name(void)
 }
 
 #define START_VMEM_SIZE (sizeof(size_t) == 4 ? 1024 : 4096)
-
-static void suggestion_init()
-{
-	suggestion_keywords.base_types = VECNEW(const char *, 32);
-	suggestion_keywords.top_level_keywords = VECNEW(const char *, 32);
-
-	for (TokenType i = TOKEN_FIRST_KEYWORD; i <= TOKEN_LAST_KEYWORD; i++)
-	{
-		TokenType type = i;
-
-		switch (type)
-		{
-			case TYPE_TOKENS:
-	  			vec_add(suggestion_keywords.base_types, token_type_to_string(type));
-				break;
-			default:
-				break;
-		}
-
-		switch (type)
-		{
-			case TOP_LEVEL_KEYWORD_TOKENS:
-	  			vec_add(suggestion_keywords.top_level_keywords, token_type_to_string(type));
-				break;
-			default:
-				break;
-		}
-	}
-}
 
 
 void compiler_init(BuildOptions *build_options)
@@ -102,8 +71,6 @@ void compiler_init(BuildOptions *build_options)
 	compiler_link_time = -1;
 
 	INFO_LOG("Version: %s", COMPILER_VERSION);
-
-	suggestion_init();
 
 	GlobalContext new_context = { .in_panic_mode = false };
 	compiler.context = new_context;
