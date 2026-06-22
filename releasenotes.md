@@ -12,6 +12,8 @@
 
 ### Fixes
 - `$stringify` would sometimes include parens.
+- Regression when destroying a BackedArenaAllocator in some cases #3332.
+- `"a::b:c:d:e:f:0"` was not parsed as a valid ipv6 string.
 
 ## 0.8.1 Change list
 

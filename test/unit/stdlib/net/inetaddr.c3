@@ -48,6 +48,23 @@ fn void test_ipv6()
 	assert(foo.ip6.val == 42541956123769884636017138956568135816);
 }
 
+fn void test_ipv6_parse()
+{
+	assert(net::ipv6_from_str("a::b:c:d:e:f:0")!!.to_tstring() == "000a:0000:000b:000c:000d:000e:000f:0000");
+	assert(net::ipv6_from_str("1:2:3:4:5:6:7::")!!.to_tstring() == "0001:0002:0003:0004:0005:0006:0007:0000");
+	assert(net::ipv6_from_str("::2:3:4:5:6:7:8")!!.to_tstring() == "0000:0002:0003:0004:0005:0006:0007:0008");
+	assert(net::ipv6_from_str("1:2:3:4:5:6::8")!!.to_tstring() == "0001:0002:0003:0004:0005:0006:0000:0008");
+	assert(net::ipv6_from_str("1:2:3:4:5:6:7:8")!!.to_tstring() == "0001:0002:0003:0004:0005:0006:0007:0008");
+
+	assert(@catch(net::ipv6_from_str("1:2:3:4:5:6:7:8:9")));
+	assert(@catch(net::ipv6_from_str("1:2:3:4:5:6:7")));
+	assert(@catch(net::ipv6_from_str("1:2:3:4:5:6:7:8::")));
+	assert(@catch(net::ipv6_from_str("1::2:3:4:5:6:7:8")));
+	assert(@catch(net::ipv6_from_str("1::2::3")));
+	assert(@catch(net::ipv6_from_str("12345::1")));
+	assert(@catch(net::ipv6_from_str("xyz::1")));
+}
+
 fn void test_is_loopback()
 {
 	assert(net::ipv4_from_str("127.0.0.1")!!.is_loopback());
