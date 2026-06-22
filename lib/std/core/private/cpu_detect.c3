@@ -439,6 +439,33 @@ fn void aarch64_initialize_cpu_features()
 			add_feature_if_sysctl(SME_I16I64, "hw.optional.arm.FEAT_SME_I16I64");
 			add_feature_if_sysctl(SME,        "hw.optional.arm.FEAT_SME");
 			add_feature_if_sysctl(SME2,       "hw.optional.arm.FEAT_SME2");
+		$case env::WIN32:
+			// Windows ARMV8 features
+			aarch64_features |= 1ULL << Aarch64Feature.FP.ordinal;
+			aarch64_features |= 1ULL << Aarch64Feature.ASIMD.ordinal;
+			add_feature_if_windows(AES,        PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(PMULL,      PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SHA1,       PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SHA2,       PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(CRC32,      PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(LSE,        PF_ARM_V81_ATOMIC_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(DOTPROD,    PF_ARM_V82_DP_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(JSCVT,      PF_ARM_V83_JSCVT_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(LRCPC,      PF_ARM_V83_LRCPC_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SHA3,       PF_ARM_SHA3_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SHA512,     PF_ARM_SHA512_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(FP16,       PF_ARM_V82_FP16_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(I8MM,       PF_ARM_V82_I8MM_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(BF16,       PF_ARM_V86_BF16_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(EBF16,      PF_ARM_V86_EBF16_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SVE,        PF_ARM_SVE_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SVE2,       PF_ARM_SVE2_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SVE_BF16,   PF_ARM_SVE_BF16_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SVE_I8MM,   PF_ARM_SVE_I8MM_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SME,        PF_ARM_SME_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SME2,       PF_ARM_SME2_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SME_F64F64, PF_ARM_SME_F64F64_INSTRUCTIONS_AVAILABLE);
+			add_feature_if_windows(SME_I16I64, PF_ARM_SME_I16I64_INSTRUCTIONS_AVAILABLE);
 		$default:
 			// Unsupported OS — features remain zero.
 			break;
@@ -469,4 +496,36 @@ fn bool sysctl_bool(ZString name) @local
 fn void add_feature_if_sysctl(Aarch64Feature feature, ZString name)
 {
 	if (sysctl_bool(name)) aarch64_features |= 1ULL << feature.ordinal;
+}
+
+
+module std::core::cpudetect @if(env::AARCH64 && env::WIN32);
+// windows feature bits = https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-isprocessorfeaturepresent
+const uint PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE   = 30;
+const uint PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE    = 31;
+const uint PF_ARM_V81_ATOMIC_INSTRUCTIONS_AVAILABLE  = 34; 
+const uint PF_ARM_V82_DP_INSTRUCTIONS_AVAILABLE      = 43; 
+const uint PF_ARM_V83_JSCVT_INSTRUCTIONS_AVAILABLE   = 44; 
+const uint PF_ARM_V83_LRCPC_INSTRUCTIONS_AVAILABLE   = 45;
+const uint PF_ARM_SVE_INSTRUCTIONS_AVAILABLE         = 46;
+const uint PF_ARM_SVE2_INSTRUCTIONS_AVAILABLE        = 47;
+const uint PF_ARM_SVE_BF16_INSTRUCTIONS_AVAILABLE    = 52;
+const uint PF_ARM_SVE_EBF16_INSTRUCTIONS_AVAILABLE   = 53;
+const uint PF_ARM_SVE_I8MM_INSTRUCTIONS_AVAILABLE    = 57;
+const uint PF_ARM_SHA3_INSTRUCTIONS_AVAILABLE        = 64;
+const uint PF_ARM_SHA512_INSTRUCTIONS_AVAILABLE      = 65;
+const uint PF_ARM_V82_I8MM_INSTRUCTIONS_AVAILABLE    = 66;
+const uint PF_ARM_V82_FP16_INSTRUCTIONS_AVAILABLE    = 67;
+const uint PF_ARM_V86_BF16_INSTRUCTIONS_AVAILABLE    = 68;
+const uint PF_ARM_V86_EBF16_INSTRUCTIONS_AVAILABLE   = 69;
+const uint PF_ARM_SME_INSTRUCTIONS_AVAILABLE         = 70;
+const uint PF_ARM_SME2_INSTRUCTIONS_AVAILABLE        = 71;
+const uint PF_ARM_SME_F64F64_INSTRUCTIONS_AVAILABLE  = 85;
+const uint PF_ARM_SME_I16I64_INSTRUCTIONS_AVAILABLE  = 86;
+
+extern fn bool isProcessorFeaturePresent(uint processorFeature) @cname("IsProcessorFeaturePresent");
+
+fn void add_feature_if_windows(Aarch64Feature feature, uint win_feature)
+{
+	if (isProcessorFeaturePresent(win_feature)) aarch64_features |= 1ULL << feature.ordinal;
 }
