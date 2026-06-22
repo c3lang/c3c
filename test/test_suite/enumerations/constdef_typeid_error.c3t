@@ -1,0 +1,14 @@
+module main;
+
+constdef Origin : inline sz[<2>]
+{
+	HI = { 0, 0 },
+}
+
+Origin meow;
+
+fn int main()
+{
+	meow.y = 0;
+	return 0;
+}
