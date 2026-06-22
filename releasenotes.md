@@ -15,6 +15,7 @@
 - Regression when destroying a BackedArenaAllocator in some cases #3332.
 - `"a::b:c:d:e:f:0"` was not parsed as a valid ipv6 string.
 - `constdef` vector with alias incorrectly lowered #3335.
+- Compiler asserts on concatenating a struct to an untypedlist #3326.
 
 ## 0.8.1 Change list
 
