@@ -370,20 +370,67 @@ static void print_doc_type(FILE *file, Module *module, TypeInfo *type, bool is_v
 	}
 	fputs("{\"name\":\"", file);
 	scratch_buffer_clear();
-	emit_type_name_to_scratch(type);
-	const char *name = scratch_buffer_to_string();
-	if (is_vararg)
+	if (is_vararg && type->type)
 	{
-		size_t len = strlen(name);
-		if (len >= 2 && strcmp(name + len - 2, "[]") == 0)
+		int declared_dims = 0;
+		for (TypeInfo *ti = type; ti; )
 		{
-			if (len < 4 || strcmp(name + len - 4, "[][]") != 0)
+			switch (ti->kind)
 			{
-				scratch_buffer_append("[]");
-				name = scratch_buffer_to_string();
+				case TYPE_INFO_POINTER:
+					ti = ti->pointer;
+					break;
+				case TYPE_INFO_SLICE:
+					declared_dims++;
+					ti = ti->array.base;
+					break;
+				case TYPE_INFO_ARRAY:
+				case TYPE_INFO_INFERRED_ARRAY:
+				case TYPE_INFO_INFERRED_VECTOR:
+				case TYPE_INFO_VECTOR:
+					ti = ti->array.base;
+					break;
+				case TYPE_INFO_IDENTIFIER:
+				case TYPE_INFO_CT_IDENTIFIER:
+					if (ti->subtype == TYPE_COMPRESSED_SUB || ti->subtype == TYPE_COMPRESSED_SUBPTR || ti->subtype == TYPE_COMPRESSED_PTRSUB)
+					{
+						declared_dims += 1;
+					}
+					else if (ti->subtype == TYPE_COMPRESSED_SUBSUB)
+					{
+						declared_dims += 2;
+					}
+					ti = NULL;
+					break;
+				default:
+					ti = NULL;
+					break;
 			}
 		}
+
+		int resolved_dims = 0;
+		Type *rt = type->type;
+		while (rt && rt->type_kind == TYPE_SLICE)
+		{
+			resolved_dims++;
+			rt = rt->array.base;
+		}
+
+		Type *t = type->type;
+		if (resolved_dims > declared_dims && t->type_kind == TYPE_SLICE)
+		{
+			t = t->array.base;
+		}
+		scratch_buffer_append(t->name);
+		scratch_buffer_append("...");
 	}
+	else
+	{
+		emit_type_name_to_scratch(type);
+		if (is_vararg) scratch_buffer_append("...");
+	}
+
+	const char *name = scratch_buffer_to_string();
 	fputs(name, file);
 	fputs("\"", file);
 
