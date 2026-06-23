@@ -392,13 +392,20 @@ static void print_doc_type(FILE *file, Module *module, TypeInfo *type, bool is_v
 					break;
 				case TYPE_INFO_IDENTIFIER:
 				case TYPE_INFO_CT_IDENTIFIER:
-					if (ti->subtype == TYPE_COMPRESSED_SUB || ti->subtype == TYPE_COMPRESSED_SUBPTR || ti->subtype == TYPE_COMPRESSED_PTRSUB)
+					switch (ti->subtype)
 					{
-						declared_dims += 1;
-					}
-					else if (ti->subtype == TYPE_COMPRESSED_SUBSUB)
-					{
-						declared_dims += 2;
+						case TYPE_COMPRESSED_SUB:
+						case TYPE_COMPRESSED_SUBPTR:
+						case TYPE_COMPRESSED_PTRSUB:
+							declared_dims += 1;
+							break;
+						case TYPE_COMPRESSED_SUBSUB:
+							declared_dims += 2;
+							break;
+						case TYPE_COMPRESSED_NONE:
+						case TYPE_COMPRESSED_PTR:
+						case TYPE_COMPRESSED_PTRPTR:
+							break;
 					}
 					ti = NULL;
 					break;
