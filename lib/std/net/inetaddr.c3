@@ -98,7 +98,7 @@ fn InetAddress? ipv6_from_str(String s)
 			// Check that this is the first ::
 			if (found_zero) return INVALID_IP_STRING~;
 			// Also check that the zeroed section is at least 2
-			if (zero_segment_len < 2) return INVALID_IP_STRING~;
+			if (zero_segment_len < 1) return INVALID_IP_STRING~;
 			// Skip (will be zero by default
 			index += zero_segment_len;
 			found_zero = true;
