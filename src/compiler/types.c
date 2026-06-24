@@ -1086,6 +1086,7 @@ Type *type_get_ptr_recurse(Type *ptr_type)
 Type *type_get_ptr(Type *ptr_type)
 {
 	ASSERT(ptr_type->type_kind != TYPE_FUNC_RAW);
+	ASSERT(ptr_type->type_kind != TYPE_UNTYPEDLIST);
 	ASSERT(!type_is_optional(ptr_type));
 	return type_generate_ptr(ptr_type, false);
 }
