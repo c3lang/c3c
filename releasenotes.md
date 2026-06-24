@@ -16,6 +16,7 @@
 - `"a::b:c:d:e:f:0"` was not parsed as a valid ipv6 string.
 - `constdef` vector with alias incorrectly lowered #3335.
 - Compiler asserts on concatenating a struct to an untypedlist #3326.
+- `untypedlist` was not detected as invalid in enum associated value type or as a pointer #3342.
 
 ## 0.8.1 Change list
 
