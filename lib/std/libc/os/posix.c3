@@ -12,11 +12,22 @@ extern fn void* dlopen(ZString path, int flags);
 extern fn CInt dlclose(void*);
 extern fn void* dlsym(void* handle, ZString symbol);
 
-const int RTLD_LAZY = 0x1;
-const int RTLD_NOW = 0x2;
-const int RTLD_LOCAL = 0x4;
-const int RTLD_GLOBAL = 0x8;
-const int RTLD_NODELETE = 0x1000;
+const int RTLD_LAZY     = 0x1;
+const int RTLD_NOW      = 0x2;   // (bionic ILP32 is 0, but assuming LP64 Android)
+const int RTLD_LOCAL    = env::DARWIN ? 0x4 : (env::NETBSD ? 0x200 : 0);
+const int RTLD_GLOBAL   = env::DARWIN ? 0x8 : 0x100;
+const int RTLD_NODELETE = env::DARWIN ? 0x80 : (env::OPENBSD ? 0x400 : 0x1000);
+
+const int RTLD_NOLOAD   @if(!env::OPENBSD)                = env::DARWIN ? 0x10 : ((env::FREEBSD || env::NETBSD) ? 0x2000 : 0x4);
+const int RTLD_DEEPBIND @if(env::LINUX)                   = 0x8;
+const int RTLD_TRACE    @if(env::FREEBSD || env::OPENBSD) = 0x200;
+const int RTLD_FIRST    @if(env::DARWIN)                  = 0x100;
+
+const void* RTLD_NEXT      = (void*)(uptr)-1;
+const void* RTLD_DEFAULT   = (env::DARWIN || env::BSD_FAMILY) ? (void*)(uptr)-2 : null;
+
+const void* RTLD_SELF      @if(env::DARWIN || env::BSD_FAMILY) = (void*)(uptr)-3;
+const void* RTLD_MAIN_ONLY @if(env::DARWIN)                    = (void*)(uptr)-5;
 
 alias Pid_t = int;
 alias Uid_t = uint;
