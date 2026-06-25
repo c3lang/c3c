@@ -2,7 +2,7 @@
 module testing;
 
 fn void start() @export("_start") @naked @nostrip {
-        asm {
+        asm @align {
                 syscall;
         }
 }

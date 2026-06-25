@@ -623,7 +623,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_OPTIONAL:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_OPTIONAL, type->optional, 0, NULL, false);
 		case TYPE_FLEXIBLE_ARRAY:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, 0, NULL, false);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base->canonical, 0, NULL, false);
 		case VECTORS:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_VECTOR, type->array.base, type->array.len, NULL, false);
 		case TYPE_ARRAY:
@@ -637,11 +637,11 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_POINTER:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_POINTER, type->pointer, 0, NULL, false);
 		case TYPE_TYPEDEF:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type_inline(type), 0, NULL, false);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type_inline(type)->canonical, 0, NULL, false);
 		case TYPE_ENUM:
 			return llvm_get_introspection_for_enum(c, type);
 		case TYPE_CONSTDEF:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_CONSTDEF, type_inline(type), vec_size(type->decl->enums.values), NULL, false);
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_CONSTDEF, type_inline(type)->canonical, vec_size(type->decl->enums.values), NULL, false);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return llvm_get_introspection_for_struct_union(c, type);
@@ -658,7 +658,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_BITSTRUCT:
 		{
 			LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
-			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_BITSTRUCT, type->decl->strukt.container_type->type, 0, NULL, false);
+			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_BITSTRUCT, type->decl->strukt.container_type->type->canonical, 0, NULL, false);
 		}
 		case TYPE_ALIAS:
 			return llvm_get_typeid(c, type->canonical);

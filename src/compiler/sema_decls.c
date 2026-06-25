@@ -1638,8 +1638,12 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 	}
 	param->resolved_attributes = true;
 	param->attrs_resolved = NULL;
-	TypeInfo *type_info = type_infoptrzero(param->var.type_info);
+	TypeInfo *type_info = type_infoptr(param->var.type_info);
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+	if (sema_resolve_storage_type(context, type_info->type) != STORAGE_NORMAL)
+	{
+		RETURN_SEMA_ERROR(type_info, "An associated value must be a runtime type, not %s.", type_invalid_storage_type_name(type_info->type));
+	}
 	ASSERT(!param->var.vararg);
 	param->type = type_info->type;
 	ASSERT(param->name);
@@ -3260,7 +3264,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_WASM] = ATTR_FUNC,
-			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_ALIAS,
+			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_ALIAS | ATTR_TYPEDEF | ATTR_ENUM,
 			[ATTRIBUTE_WEAKLINK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
 	};
@@ -5349,7 +5353,7 @@ bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacem
 			if (replaced_type != replacement_type) goto TYPE_MISMATCH;
 			break;
 		default:
-			UNREACHABLE_VOID
+			break;
 	}
 	return true;
 VAR_MISMATCH:

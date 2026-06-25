@@ -643,12 +643,16 @@ static inline TypeInfo *parse_type_with_base_maybe_generic(ParseContext *c, Type
 							break;
 						}
 					}
+					RANGE_EXTEND_PREV(type_info);
 					if (type_info->resolve_status == RESOLVE_DONE)
 					{
+						if (type_info->type == type_untypedlist)
+						{
+							RETURN_PRINT_ERROR_AT(poisoned_type_info, type_info, "It's not possible to create a pointer to an untyped list.");
+						}
 						ASSERT(type_info->type);
 						type_info->type = type_get_ptr(type_info->type);
 					}
-					RANGE_EXTEND_PREV(type_info);
 					break;
 				}
 				break;
@@ -1234,9 +1238,7 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	ASSIGN_DECL_OR_RET(Decl *generics, parse_generic_decl(c), false);
 	bool is_method = decl_is_fn_macro(decl) && decl->func_decl.type_parent;
 	bool is_enum_const = decl->decl_kind == DECL_ENUM_CONSTANT;
-	bool is_alias = decl->decl_kind == DECL_TYPE_ALIAS;
-	if (is_alias) can_be_weak = true;
-	if (!parse_attributes(c, &decl->attributes, is_enum_const ? NULL : &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, is_method ? "for method declarations" : NULL, can_be_weak ? &is_weak : NULL)) return false;
+	if (!parse_attributes(c, &decl->attributes, is_enum_const ? NULL : &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, is_method ? "for method declarations" : NULL, &is_weak)) return false;
 	if (generics)
 	{
 		if (!can_be_generic)
