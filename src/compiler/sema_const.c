@@ -395,12 +395,14 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 			return sema_concat_bytes_and_other(context, concat_expr, left, right);
 		case CONST_UNTYPED_LIST:
 			break;
-		case CONST_SLICE:
 		case CONST_INITIALIZER:
-			if (indexed_type && cast_implicit_silent(context, right, indexed_type, false))
+			if (!indexed_type && type_is_union_or_strukt(right->const_expr.initializer->type))
 			{
 				return sema_expr_const_append(context, concat_expr, left, right);
 			}
+			FALLTHROUGH;
+		case CONST_SLICE:
+			if (indexed_type && cast_implicit_silent(context, right, indexed_type, false)) return sema_expr_const_append(context, concat_expr, left, right);
 			break;
 	}
 	if (indexed_type && !cast_implicit_silent(context, right, type_get_inferred_array(indexed_type), false))

@@ -23,6 +23,6 @@ entry:
   store i64 %1, ptr %ptradd, align 8
   store i32 0, ptr %x, align 4
   %2 = load i32, ptr %x, align 4
-  call void asm sideeffect alignstack "movl $$1, ($0)\0A", "r,~{flags},~{dirflag},~{fspr}"(i32 %2)
+  call void asm sideeffect "movl $$1, ($0)\0A", "r,~{flags},~{dirflag},~{fspr}"(i32 %2)
   ret i32 0
 }

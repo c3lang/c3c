@@ -122,16 +122,18 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 module std::core::mem::allocator @if(!env::WIN32 && !env::POSIX && env::LIBC);
 import libc;
 
+fn void* coerced_malloc(sz bytes) @local @inline => libc::malloc((usz)bytes);
+
 fn void*? LibcAllocator.acquire(&self, sz bytes, AllocInitType init_type, sz alignment) @dynamic
 {
 	if (init_type == ZERO)
 	{
-		void* data = alignment ? allocators::@aligned_alloc(fn void*(sz bytes) => libc::calloc(bytes, 1), bytes, alignment)!! : libc::calloc(bytes, 1);
+		void* data = alignment ? allocators::@aligned_alloc(fn void*(sz bytes) => libc::calloc((usz)bytes, 1), bytes, alignment)!! : libc::calloc((usz)bytes, 1);
 		return data ?: mem::OUT_OF_MEMORY~;
 	}
 	else
 	{
-		void* data = alignment ? allocators::@aligned_alloc(libc::malloc, bytes, alignment)!! : libc::malloc(bytes);
+		void* data = alignment ? allocators::@aligned_alloc(coerced_malloc, bytes, alignment)!! : coerced_malloc(bytes);
 		if (!data) return mem::OUT_OF_MEMORY~;
 		$if env::TESTING:
 			for (sz i = 0; i < bytes; i++) ((char*)data)[i] = 0xAA;
@@ -145,7 +147,7 @@ fn void*? LibcAllocator.resize(&self, void* old_ptr, sz new_bytes, sz alignment)
 {
 	if (alignment)
 	{
-		void* data = allocators::@aligned_realloc(fn void*(sz bytes) => libc::malloc((usz)bytes), libc::free, old_ptr, new_bytes, alignment)!!;
+		void* data = allocators::@aligned_realloc(coerced_malloc, libc::free, old_ptr, new_bytes, alignment)!!;
 		return data ?: mem::OUT_OF_MEMORY~;
 	}
 	return libc::realloc(old_ptr, (usz)new_bytes) ?: mem::OUT_OF_MEMORY~;

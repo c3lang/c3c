@@ -472,6 +472,7 @@ static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
+		case TYPE_UNTYPEDLIST:
 			if (type_is_infer_type(type))
 			{
 				RETURN_SEMA_ERROR(type_info, "A pointer to a type of inferred length is not supported.");
