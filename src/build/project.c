@@ -485,8 +485,8 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->win.def = get_string(context, json, "windef", target->win.def);
 
 	// win-subsystem
-	WinSubsystem win_subsystem_val = GET_SETTING(WinSubsystem, "win-subsystem", win_subsystem, "`CONSOLE`, `WINDOWS`, `NATIVE`, `POSIX`, `BOOT_APPLICATION`, "
-			"`EFI_APPLICATION`, `EFI_BOOT_SERVICE_DRIVER`, `EFI_ROM`, or `EFI_RUNTIME_DRIVER`");
+	WinSubsystem win_subsystem_val = GET_SETTING(WinSubsystem, "win-subsystem", win_subsystem, "`console`, `windows`, `native`, `posix`, `boot`, "
+			"`efi-app`, `efi-boot`, `efi-rom`, or `efi-runtime`");
 	if (win_subsystem_val != WIN_SUBSYSTEM_DEFAULT) target->win.subsystem = win_subsystem_val;
 
 	// macossdk

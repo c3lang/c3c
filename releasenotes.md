@@ -3,6 +3,8 @@
 ## 0.8.2 Change list
 
 ### Changes / improvements
+- Allow setting Windows subsystem directly.
+
 ### Stdlib changes
 ### Fixes
 

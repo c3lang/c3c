@@ -222,7 +222,7 @@ static void usage(bool full)
 		print_opt("--wincrt=<option>", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).");
 		print_opt("--windef <file>", "Use Windows 'def' file for function exports instead of 'dllexport'.");
 		print_opt("--win-vs-dirs <dir>;<dir>", "Override Windows VS detection.");
-		print_opt("--win-subsystem=<subsystem>", "Windows subsystem: CONSOLE (default), WINDOWS (default if @winmain present), NATIVE, POSIX, BOOT_APPLICATION, EFI_APPLICATION, EFI_BOOT_SERVICE_DRIVER, EFI_ROM or EFI_RUNTIME_DRIVER.");
+		print_opt("--win-subsystem=<subsystem>", "Windows subsystem: console (default), windows (default if @winmain present), native, posix, boot, efi-app, efi-boot, efi-rom or efi-runtime.");
 		PRINTF("");
 		print_opt("--macos-sdk <dir>", "Set the directory for the MacOS SDK for cross compilation.");
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
