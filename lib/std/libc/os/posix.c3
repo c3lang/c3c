@@ -43,12 +43,12 @@ struct Sigaction
 		SigActionFunction   sa_sigaction;
 	}
 
-    CInt       sa_flags @if(env::DARWIN || env::BSD_FAMILY );
-    Sigset_t   sa_mask  @if(env::DARWIN || env::BSD_FAMILY);
+	CInt       sa_flags @if(env::BSD_FAMILY);
+	Sigset_t   sa_mask  @if(env::BSD_FAMILY);
 
-    Sigset_t   sa_mask     @if(env::LINUX || env::ANDROID || env::EMSCRIPTEN);
-    CInt       sa_flags    @if(env::LINUX || env::EMSCRIPTEN);
-    void*      sa_restorer @if(env::LINUX || env::ANDROID || env::EMSCRIPTEN);
+	Sigset_t   sa_mask     @if(env::LINUX || env::DARWIN  || env::ANDROID || env::EMSCRIPTEN);
+	CInt       sa_flags    @if(env::LINUX || env::DARWIN  || env::EMSCRIPTEN);
+	void*      sa_restorer @if(env::LINUX || env::ANDROID || env::EMSCRIPTEN);
 }
 
 extern fn CInt setpriority(CInt which, CInt who, CInt prio);
