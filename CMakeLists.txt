@@ -745,7 +745,7 @@ if (WIN32)
     target_link_libraries(c3c PRIVATE Winhttp.lib)
 endif()
 
-if(MSVC) # increase stack to 8gb for windows-arm64 msvc 
+if(MSVC) # increase stack for Windows ARM64 MSVC to 8MB 
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:8388608")
 elseif(MINGW)
     message("Increase stack for msys")
