@@ -133,7 +133,7 @@ jobs:
 
   build-msys2:
     name: Windows (${{ matrix.arch }}) ${{ matrix.sys }}
-    runs-on: ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -174,7 +174,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .cache
-          key: ${{ runner.os }}-freebsd-sysroot-15.0
+          key: ${{ runner.os }}-${{ matrix.arch }}-freebsd-sysroot-15.0
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
@@ -893,9 +893,9 @@ jobs:
           for config in Release Debug; do
             for platform in windows-x64 windows-aarch64 macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup-x64 windows-setup-aarch64; do
               # Windows and macOS produce zip, others tar.gz
-              if [[ "$platform" == "windows-*" ]] || [ "$platform" = "macos" ]; then
+              if [[ "$platform" == windows-* ]] || [ "$platform" = "macos" ]; then
                 ext="zip"
-              elif [[ "$platform" == "windows-setup-*" ]]; then
+              elif [[ "$platform" == windows-setup-* ]]; then
                 ext="exe"
               else
                 ext="tar.gz"
