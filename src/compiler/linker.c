@@ -50,9 +50,35 @@ static const char *ld_target(ArchType arch_type)
 	UNREACHABLE
 }
 
+static const char *win_subsystem_name(WinSubsystem subsystem)
+{
+	switch (subsystem)
+	{
+		case WIN_SUBSYSTEM_WINDOWS:
+			return "WINDOWS";
+		case WIN_SUBSYSTEM_NATIVE:
+			return "NATIVE";
+		case WIN_SUBSYSTEM_POSIX:
+			return "POSIX";
+		case WIN_SUBSYSTEM_BOOT_APPLICATION:
+			return "BOOT_APPLICATION";
+		case WIN_SUBSYSTEM_EFI_APPLICATION:
+			return "EFI_APPLICATION";
+		case WIN_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER:
+			return "EFI_BOOT_SERVICE_DRIVER";
+		case WIN_SUBSYSTEM_EFI_ROM:
+			return "EFI_ROM";
+		case WIN_SUBSYSTEM_EFI_RUNTIME_DRIVER:
+			return "EFI_RUNTIME_DRIVER";
+		case WIN_SUBSYSTEM_CONSOLE:
+		default:
+			return "CONSOLE";
+	}
+}
+
 static void linker_setup_windows(const char ***args_ref, Linker linker_type, const char *output_file)
 {
-	add_plain_arg(compiler.build.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
+	add_concat_arg("/SUBSYSTEM:", win_subsystem_name(compiler.build.win.subsystem));
 	if (link_libc()) linking_add_link(&compiler.linking, "dbghelp");
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
