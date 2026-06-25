@@ -76,6 +76,7 @@ fn void BackedArenaAllocator.reset(&self, sz mark)
 	ExtraPage *last_page = self.last_page;
 	while (last_page && last_page.mark > mark)
 	{
+		self.used = last_page.mark;
 		ExtraPage *to_free = last_page;
 		last_page = last_page.prev_page;
 		_free_page(self, to_free)!!;

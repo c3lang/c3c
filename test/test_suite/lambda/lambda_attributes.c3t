@@ -10,7 +10,7 @@ IntFn lambda_naked @export = fn () @naked { asm("ret"); };
 ; Function Attrs: naked nounwind uwtable
 define i32 @"test.$global$lambda2"() #0 {
 entry:
-  call void asm sideeffect alignstack "ret", "~{dirflag},~{fpsr},~{flags}"()
+  call void asm sideeffect "ret", "~{dirflag},~{fpsr},~{flags}"()
   unreachable
 }
 

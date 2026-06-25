@@ -1462,7 +1462,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 										   clobbers,
 										   strlen(clobbers),
 										   ast->asm_block_stmt.is_volatile,
-										   true,
+										   ast->asm_block_stmt.is_aligned,
 										   LLVMInlineAsmDialectATT,
 										   /* can throw */ false
 										   );

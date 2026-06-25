@@ -1,0 +1,13 @@
+module main;
+
+struct Foo
+{
+	int x, y;
+}
+
+fn void main()
+{
+	untypedlist $list = {};
+	$list +++= (Foo){1, 2};
+	$list +++= (Foo){};
+}

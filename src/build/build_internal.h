@@ -44,6 +44,18 @@ static const char *wincrt_linking[5] = {
 	[WIN_CRT_STATIC_DEBUG] = "static-debug",
 };
 
+static const char *win_subsystem[9] = {
+	[WIN_SUBSYSTEM_CONSOLE] = "console",
+	[WIN_SUBSYSTEM_WINDOWS] = "windows",
+	[WIN_SUBSYSTEM_NATIVE] = "native",
+	[WIN_SUBSYSTEM_POSIX] = "posix",
+	[WIN_SUBSYSTEM_BOOT_APPLICATION] = "boot",
+	[WIN_SUBSYSTEM_EFI_APPLICATION] = "efi-app",
+	[WIN_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER] = "efi-boot",
+	[WIN_SUBSYSTEM_EFI_ROM] = "efi-rom",
+	[WIN_SUBSYSTEM_EFI_RUNTIME_DRIVER] = "efi-runtime"
+};
+
 static const char *optsizes[3] = {
 	[SIZE_OPTIMIZATION_NONE] = "none",
 	[SIZE_OPTIMIZATION_SMALL] = "small",

@@ -171,6 +171,7 @@ typedef struct BuildOptions_
 		const char *sdk;
 		const char *def;
 		const char *vs_dirs;
+		WinSubsystem subsystem;
 		WinCrtLinking crt_linking;
 	} win;
 	struct
@@ -502,8 +503,8 @@ typedef struct
 		const char *sdk;
 		const char *def;
 		const char *vs_dirs;
+		WinSubsystem subsystem;
 		WinCrtLinking crt_linking;
-		bool use_win_subsystem;
 	} win;
 	struct
 	{
@@ -580,6 +581,7 @@ static BuildTarget default_build_target = {
 		.feature.panic_level = PANIC_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.win.def = NULL,
+		.win.subsystem = WIN_SUBSYSTEM_DEFAULT,
 		.linuxpaths.libc = LINUX_LIBC_NOT_SET,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 		.switchjump_max_size = DEFAULT_SWITCH_JUMP_MAX_SIZE,

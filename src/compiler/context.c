@@ -123,7 +123,7 @@ INLINE void weak_visibility_mismatch(Decl *weak_symbol, Decl *other_symbol)
 
 INLINE bool decl_old_should_be_removed(Decl *old, Decl *decl)
 {
-	return old->is_weak && (!decl->is_weak || !decl->unit->is_interface_file);
+	return old->is_weak && !decl->is_weak;
 }
 void decl_register(CompilationUnit *unit, Decl *decl)
 {

@@ -643,12 +643,16 @@ static inline TypeInfo *parse_type_with_base_maybe_generic(ParseContext *c, Type
 							break;
 						}
 					}
+					RANGE_EXTEND_PREV(type_info);
 					if (type_info->resolve_status == RESOLVE_DONE)
 					{
+						if (type_info->type == type_untypedlist)
+						{
+							RETURN_PRINT_ERROR_AT(poisoned_type_info, type_info, "It's not possible to create a pointer to an untyped list.");
+						}
 						ASSERT(type_info->type);
 						type_info->type = type_get_ptr(type_info->type);
 					}
-					RANGE_EXTEND_PREV(type_info);
 					break;
 				}
 				break;
@@ -1254,9 +1258,13 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 		decl->is_template = true;
 	}
 	decl->is_cond = is_cond;
-	if (is_weak || c->unit->is_interface_file)
+	if (is_weak)
 	{
 		decl->is_weak_link = true;
+		decl->is_weak = true;
+	}
+	else if (c->unit->is_interface_file)
+	{
 		decl->is_weak = true;
 	}
 	decl->is_autoimport = is_builtin;

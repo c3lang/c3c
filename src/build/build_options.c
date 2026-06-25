@@ -222,6 +222,7 @@ static void usage(bool full)
 		print_opt("--wincrt=<option>", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).");
 		print_opt("--windef <file>", "Use Windows 'def' file for function exports instead of 'dllexport'.");
 		print_opt("--win-vs-dirs <dir>;<dir>", "Override Windows VS detection.");
+		print_opt("--win-subsystem=<subsystem>", "Windows subsystem: console (default), windows (default if @winmain present), native, posix, boot, efi-app, efi-boot, efi-rom or efi-runtime.");
 		PRINTF("");
 		print_opt("--macos-sdk <dir>", "Set the directory for the MacOS SDK for cross compilation.");
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
@@ -1542,6 +1543,11 @@ static void parse_option(BuildOptions *options)
 				options->win.vs_dirs = next_arg();
 				return;
 			}
+			if ((argopt = match_argopt("win-subsystem")))
+			{
+				options->win.subsystem = parse_opt_select(WinSubsystem, argopt, win_subsystem);
+				return;
+			}
 			if ((argopt = match_argopt("sanitize")))
 			{
 				options->sanitize_mode = parse_opt_select(SanitizeMode, argopt, sanitize_modes);
@@ -1785,6 +1791,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.riscv_abi = RISCV_ABI_DEFAULT,
 		.memory_environment = MEMORY_ENV_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
+		.win.subsystem = WIN_SUBSYSTEM_DEFAULT,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.custom_libc = CUSTOM_LIBC_NOT_SET,

@@ -1638,8 +1638,12 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 	}
 	param->resolved_attributes = true;
 	param->attrs_resolved = NULL;
-	TypeInfo *type_info = type_infoptrzero(param->var.type_info);
+	TypeInfo *type_info = type_infoptr(param->var.type_info);
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+	if (sema_resolve_storage_type(context, type_info->type) != STORAGE_NORMAL)
+	{
+		RETURN_SEMA_ERROR(type_info, "An associated value must be a runtime type, not %s.", type_invalid_storage_type_name(type_info->type));
+	}
 	ASSERT(!param->var.vararg);
 	param->type = type_info->type;
 	ASSERT(param->name);
@@ -4342,8 +4346,22 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		function = decl;
 		goto REGISTER_MAIN;
 	}
-	if (is_win32 && sub_type != MAIN_SUBTYPE_WINMAIN) sub_type = MAIN_SUBTYPE_WMAIN;
-	compiler.build.win.use_win_subsystem = sub_type == MAIN_SUBTYPE_WINMAIN;
+	if (is_win32)
+	{
+		if (sub_type != MAIN_SUBTYPE_WINMAIN) sub_type = MAIN_SUBTYPE_WMAIN;
+		switch (compiler.build.win.subsystem)
+		{
+			case WIN_SUBSYSTEM_DEFAULT:
+				compiler.build.win.subsystem = (sub_type == MAIN_SUBTYPE_WINMAIN) ? WIN_SUBSYSTEM_WINDOWS : WIN_SUBSYSTEM_CONSOLE;
+				break;
+			case WIN_SUBSYSTEM_WINDOWS:
+				if (sub_type != MAIN_SUBTYPE_WINMAIN) RETURN_SEMA_ERROR(decl, "The 'windows' subsystem requires a WinMain-style function.");
+				break;
+			default:
+				if (sub_type == MAIN_SUBTYPE_WINMAIN) RETURN_SEMA_ERROR(decl, "A WinMain-style function expected subsystem to be 'windows'.");
+				break;
+		}
+	}
 	function = sema_create_synthetic_main(context, decl, type, sub_type);
 	if (!decl_ok(function)) return false;
 REGISTER_MAIN:
