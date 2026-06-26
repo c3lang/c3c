@@ -16,14 +16,23 @@ static WindowsSDK *sdk = NULL;
 
 #if PLATFORM_WINDOWS
 
-WindowsSDK get_windows_paths(void);
+WindowsSDK get_windows_paths(const char* target);
 
 static WindowsSDK loaded;
 WindowsSDK *windows_get_sdk(void)
 {
 	if (!sdk)
 	{
-		loaded = get_windows_paths();
+		const char* target = NULL;
+		switch (compiler.platform.arch)
+		{
+			case ARCH_TYPE_ARM: target = "arm"; break;
+			case ARCH_TYPE_AARCH64: target = "arm64"; break;
+			case ARCH_TYPE_X86_64: target = "x64"; break;
+			case ARCH_TYPE_X86: target = "x86"; break;
+			default: break;
+		}
+		loaded = get_windows_paths(target);
 		if (loaded.windows_sdk_path && loaded.vs_library_path)
 		{
 			sdk = &loaded;
