@@ -126,3 +126,89 @@ fn void test_clamp_point()
 	assert(r.clamp_point({-5,5}) == {0,5});
 	assert(r.clamp_point({0,15}) == {0,10});
 }
+
+alias RectInt = Rectangle {int};
+alias Point = int[<2>];
+
+fn void test_int_intersects()
+{
+	RectInt a = { 0, 0, 10, 10 };
+	RectInt b = { 5, 5, 10, 10 };
+	RectInt c = { 10, 10, 10, 10 };
+
+	assert(a.intersects(b));
+	assert(!a.intersects(c));
+}
+
+fn void test_int_merge()
+{
+	RectInt a = { 0, 0, 10, 10 };
+	RectInt b = { 5, 5, 10, 10 };
+
+	RectInt r = a.merge(b);
+	assert(r.min() == {0,0});
+	assert(r.max() == {15,15});
+	r = a.merge(a);
+	assert(r.min() == {0,0});
+	assert(r.max() == {10,10});
+}
+
+fn void test_int_intersection()
+{
+	RectInt a = { 0, 0, 10, 10 };
+	RectInt b = { 5, 5, 10, 10 };
+
+	RectInt r = a.intersection(b)!!;
+	assert(r.min() == {5,5});
+	assert(r.max() == {10,10});
+}
+
+fn void test_int_inset()
+{
+	RectInt a = { 0, 0, 10, 10 };
+	RectInt i = a.inset(2);
+
+	test::eq(i.origin, (Point){2,2});
+	test::eq(i.size, (Point){6,6});
+}
+
+fn void test_int_inset_clamped()
+{
+	RectInt a = { 0, 0, 2, 2 };
+	RectInt i = a.inset_clamped(3);
+	test::eq(i.origin, (Point){1, 1});
+	assert(i.size == {0, 0});
+
+	a = { 0, 0, 1, 2 };
+	i = a.inset_clamped(3);
+	test::eq(i.origin, (Point){0,1});
+	assert(i.size == {0,0});
+}
+
+fn void test_int_expand()
+{
+	RectInt a = { 0, 0, 2, 2 };
+	RectInt e = a.expand(4);
+
+	assert(e.origin == {-4,-4});
+	assert(e.size == {10,10});
+}
+
+fn void test_int_merge_point()
+{
+	RectInt r1 = { 0, 0, 10, 10 };
+	RectInt e1 = r1.merge_point({20, 5});
+	assert(e1.max() == {20, 10});
+
+	RectInt r2 = { 0, 0, 5, 5 };
+	RectInt e2 = r2.merge_point({5, 25});
+	assert(e2.max() == {5, 25});
+
+	RectInt r3 = { 0, 0, 15, 9 };
+	RectInt e3 = r3.merge_point({10, 18});
+	assert(e3.max() == {15, 18});
+
+	RectInt r4 = { 0, 0, 2, 47 };
+	RectInt e4 = r4.merge_point({5, 2});
+	assert(e4.max() == {5, 47});
+}
