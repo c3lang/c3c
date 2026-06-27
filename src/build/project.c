@@ -139,7 +139,7 @@ const char* project_target_keys[][2] = {
 		{"output", "Output location, relative to project file."},
 		{"panic-msg", "Turn panic message output on or off."},
 		{"panicfn", "Override the panic function."},
-		{"template", "Use a template configuration from a library, format 'library:template'."},
+		{"template", "Use a template configuration from a library, format 'library/template'."},
 		{"quiet", "Silence unnecessary output."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"riscv-abi", "RiscV ABI: int-only, float, double."},
@@ -599,13 +599,13 @@ static void duplicate_prop(const char ***prop_ref)
 
 static void parse_template_ref(const char *ref, const char **lib_name, const char **template_name)
 {
-	const char *colon = strchr(ref, ':');
-	if (!colon || colon == ref || colon[1] == '\0' || strchr(colon + 1, ':'))
+	const char *sep = strchr(ref, '/');
+	if (!sep || sep == ref || sep[1] == '\0' || strchr(sep + 1, '/'))
 	{
-		error_exit("Error reading project: invalid template reference '%s', expected 'library:template'.", ref);
+		error_exit("Error reading project: invalid template reference '%s', expected 'library/template'.", ref);
 	}
-	*lib_name = str_copy(ref, colon - ref);
-	*template_name = str_copy(colon + 1, strlen(colon + 1));
+	*lib_name = str_copy(ref, sep - ref);
+	*template_name = str_copy(sep + 1, strlen(sep + 1));
 	if (!str_is_valid_lowercase_name(*lib_name))
 	{
 		error_exit("Error reading project: invalid library name '%s' in template reference '%s' - it should only contain alphanumerical letters and '_'.", *lib_name, ref);

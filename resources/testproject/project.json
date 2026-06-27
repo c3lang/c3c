@@ -28,7 +28,7 @@
     },
     "hello_world_template_feature": {
       "type": "executable",
-      "template": "clib3:native_feature",
+      "template": "clib3/native_feature",
       "cc" : "cc",
       "c-sources": [
         "./csource/**"
@@ -46,7 +46,7 @@
     },
     "hello_world_template_local_feature": {
       "type": "executable",
-      "template": "clib3:native_local_feature",
+      "template": "clib3/native_local_feature",
       "cc" : "cc",
       "c-sources": [
         "./csource/**"
