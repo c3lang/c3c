@@ -4,6 +4,8 @@
 
 ### Changes / improvements
 - `@weak` now works with all declarations.
+- Add `@align` for asm blocks to stack align them. Stack alignment is no longer default.
+- Allow setting Windows subsystem directly.
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.

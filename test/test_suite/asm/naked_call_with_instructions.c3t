@@ -31,7 +31,7 @@ fn ulong to_ulong2(char[8]* buf)
 
 define i64 @test.to_ulong(ptr %0) #1 {
 entry:
-  call void asm sideeffect alignstack "movq %rdi, -8(%rsp)\0Amovq -8(%rsp), %rax\0Amovq (%rax), %rax\0Aret \0A", "~{rax},~{flags},~{dirflag},~{fspr}"()
+  call void asm sideeffect "movq %rdi, -8(%rsp)\0Amovq -8(%rsp), %rax\0Amovq (%rax), %rax\0Aret \0A", "~{rax},~{flags},~{dirflag},~{fspr}"()
   unreachable
 }
 attributes #1 = { naked noinline nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
