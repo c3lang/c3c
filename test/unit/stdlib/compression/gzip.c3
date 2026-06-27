@@ -320,3 +320,57 @@ fn void gzip_truncated_header() @test
 	}
 	assert(false, "expected IO_ERROR for truncated header");
 }
+
+struct PipeReader (InStream) @local
+{
+	char[] data;
+	usz pos;
+}
+
+fn sz? PipeReader.read(&self, char[] buffer) @dynamic
+{
+	if (self.pos >= self.data.len) return 0;
+	usz remaining = self.data.len - self.pos;
+	usz n = buffer.len < remaining ? buffer.len : remaining;
+	buffer[:n] = self.data[self.pos:n];
+	self.pos += n;
+	return (sz)n;
+}
+
+fn char? PipeReader.read_byte(&self) @dynamic
+{
+	if (self.pos >= self.data.len) return io::EOF~;
+	return self.data[self.pos++];
+}
+
+fn void? PipeReader.seek(&self, long offset, SeekOrigin origin = FROM_START) @dynamic
+{
+	return io::UNSUPPORTED_OPERATION~;
+}
+
+fn void gzip_corrupt_footer_seekable() @test
+{
+	@pool()
+	{
+		DString ds; ds.tinit();
+		for (int i = 0; i < 20; i++) ds.append("The quick brown fox jumps over the lazy dog. ");
+		char[] gz = gzip::compress(tmem, (char[])ds.str_view())!!;
+		gz[^8] ^= 0xFF;
+		test::@error(gzip::uncompress_bytes(tmem, gz), gzip::CORRUPT_DATA);
+	};
+}
+
+fn void gzip_corrupt_footer_non_seekable() @test @if(false) // Enable this when fixing it
+{
+	@pool()
+	{
+		DString ds;
+		for (int i = 0; i < 20; i++) ds.append("The quick brown fox jumps over the lazy dog. ");
+		char[] gz = gzip::compress(tmem, (char[])ds.str_view())!!;
+		gz[^8] ^= 0xFF;
+
+		PipeReader pr = { .data = gz };
+		ByteWriter bw; bw.tinit();
+		test::@error(gzip::uncompress_stream(&bw, &pr), gzip::CORRUPT_DATA);
+	};
+}

@@ -131,8 +131,8 @@ fn void? do_uncompress(GzipReader* reader, OutStream writer) @private
 struct GzipWriter (OutStream)
 {
 	OutStream next;
-	deflate::Deflater deflater;
-	crc32::Crc32 hasher;
+	Deflater deflater;
+	Crc32 hasher;
 	usz total_in;
 }
 
@@ -204,8 +204,8 @@ struct GzipMetadata
 struct GzipReader (InStream)
 {
 	InStream source;
-	deflate::Inflater* inflater;
-	crc32::Crc32 hasher;
+	Inflater* inflater;
+	Crc32 hasher;
 	usz total_out;
 	bool header_read;
 	bool footer_verified;
@@ -343,7 +343,7 @@ fn void? GzipReader.read_header(&self) @dynamic
 			if (c == '\0') break;
 			name_bw.write_byte(c)!;
 		}
-		self.metadata.filename = codepage::decode(self.allocator, name_bw.array_view(), CodePage.ISO_8859_1)!;
+		self.metadata.filename = codepage::decode(self.allocator, name_bw.array_view(), ISO_8859_1)!;
 	}
 
 	if (self.metadata.header.flg.comment)
@@ -357,7 +357,7 @@ fn void? GzipReader.read_header(&self) @dynamic
 			if (c == '\0') break;
 			comment_bw.write_byte(c)!;
 		}
-		self.metadata.comment = codepage::decode(self.allocator, comment_bw.array_view(), CodePage.ISO_8859_1)!;
+		self.metadata.comment = codepage::decode(self.allocator, comment_bw.array_view(), ISO_8859_1)!;
 	}
 
 	if (self.metadata.header.flg.hcrc)
@@ -392,7 +392,7 @@ fn char? GzipReader.read_byte(&self) @dynamic
 fn void? encode_latin1(OutStream writer, String s)
 {
 	@pool() {
-		writer.write(codepage::encode(tmem, s, CodePage.ISO_8859_1)!)!;
+		writer.write(codepage::encode(tmem, s, ISO_8859_1)!)!;
 		writer.write_byte('\0')!;
 	};
 }
