@@ -34,6 +34,14 @@ Page Custom ShowMSVCLicensePage LeaveMSVCLicensePage
   !define BUILD_DIR "build"
 !endif
 
+Function .onInit
+  SetRegView 64
+FunctionEnd
+
+Function un.onInit
+  SetRegView 64
+FunctionEnd
+
 Section "C3 Compiler"
   SectionIn RO
   SetOutPath "$INSTDIR"
@@ -50,7 +58,7 @@ Section "C3 Compiler"
 
   SetOutPath "$INSTDIR\lib"
   File /r "..\..\lib\*"
-  WriteUninstaller "$INSTDIR\\Uninstall.exe"
+  WriteUninstaller "$INSTDIR\Uninstall.exe"
 SectionEnd
 
 Section "Add to PATH" SecPath
