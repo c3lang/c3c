@@ -892,11 +892,11 @@ jobs:
         run: |
           for config in Release Debug; do
             for platform in windows-x64 windows-aarch64 macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup-x64 windows-setup-aarch64; do
-              # Windows and macOS produce zip, others tar.gz
-              if [[ "$platform" == windows-* ]] || [ "$platform" = "macos" ]; then
-                ext="zip"
-              elif [[ "$platform" == windows-setup-* ]]; then
+              if [[ "$platform" == windows-setup-* ]]; then
                 ext="exe"
+              # Windows and macOS produce zip, others tar.gz
+              elif [[ "$platform" == windows-* ]] || [ "$platform" = "macos" ]; then
+                ext="zip"
               else
                 ext="tar.gz"
               fi
