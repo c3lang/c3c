@@ -18,8 +18,6 @@
 #define DEFAULT_SWITCH_JUMP_MAX_SIZE (0x3FFF)
 #define DEFAULT_PATH "."
 
-typedef struct JSONObject_ JSONObject;
-
 typedef enum
 {
 	COMMAND_MISSING = 0,
@@ -360,7 +358,6 @@ typedef struct Library__
 	const char **csource_dirs;
 	const char **cinclude_dirs;
 	WinCrtLinking win_crt;
-	JSONObject *features;
 	LibraryTarget *target_used;
 	LibraryTarget **targets;
 } Library;

@@ -227,18 +227,6 @@ run_testproject() {
     run_c3c run -vv $ARGS
     run_c3c clean
 
-    echo "Running Test Project (library template feature)..."
-    run_c3c -vv run hello_world_template_feature $ARGS
-    run_c3c clean
-
-    echo "Running Test Project (library feature)..."
-    run_c3c -vv run hello_world_library_feature $ARGS
-    run_c3c clean
-
-    echo "Running Test Project (library template with alternate feature)..."
-    run_c3c -vv run hello_world_template_local_feature $ARGS
-    run_c3c clean
-
     if [[ "$OS_MODE" == "windows" ]]; then
         echo "Running Test Project (hello_world_win32)..."
         run_c3c -vv --emit-llvm run hello_world_win32 $ARGS

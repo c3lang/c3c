@@ -11,7 +11,6 @@ const char *manifest_default_keys[][2] = {
 		{"cflags", "C compiler flags."},
 		{"dependencies", "List of C3 libraries to also include."},
 		{"exec", "Scripts run for all platforms."},
-		{"features", "Optional feature-specific library configuration, keyed by feature name."},
 		{"linklib-dir", "Set the directory where to find linked libraries."},
 		{"templates", "Predefined target configurations for users of this library."},
 		{"provides", "The library name"},
@@ -33,14 +32,9 @@ const char *manifest_target_keys[][2] = {
 		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
 		{"dependencies", "List of C3 libraries to also include for this target."},
-		{"dependencies-override", "C3 library dependencies for this target, overriding previous settings."},
 		{"exec", "Scripts to also run for the target."},
-		{"exec-override", "Scripts to run for this target, overriding previous settings."},
-		{"features", "Optional feature-specific library configuration, keyed by feature name."},
-		{"linked-libraries", "Libraries linked by the linker for this target."},
-		{"linked-libraries-override", "Libraries linked by the linker for this target, overriding previous settings."},
+		{"linked-libraries", "Libraries linked by the linker for this target, overriding global settings."},
 		{"link-args", "Linker arguments for this target."},
-		{"link-args-override", "Linker arguments for this target, overriding previous settings."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"wincrt", "Windows CRT linking: none, static, dynamic."}
 };
@@ -53,7 +47,7 @@ const char *manifest_deprecated_target_keys[] = { "none" };
 const int manifest_deprecated_target_key_count = ELEMENTLEN(manifest_deprecated_target_keys);
 
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
-                                        JSONObject *json, bool append_only);
+                                        JSONObject *json);
 
 static inline void parse_library_type(Library *library, LibraryTarget ***target_group, JSONObject *object)
 {
@@ -74,31 +68,26 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 		}
 		library_target->arch_os = target;
 		vec_add(*target_group, library_target);
-		parse_library_target(library, library_target, key, member, false);
+		parse_library_target(library, library_target, key, member);
 		if (library_target->win_crt == WIN_CRT_DEFAULT) library_target->win_crt = library->win_crt;
 	}
 }
 
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
-                                        JSONObject *json, bool append_only)
+                                        JSONObject *json)
 {
 	BuildParseContext context = { library->dir, target_name };
-	if (!append_only)
-	{
-		target->source_dirs = library->source_dirs;
-		target->csource_dirs = library->csource_dirs;
-		target->cinclude_dirs = library->cinclude_dirs;
-		target->cc = library->cc;
-		target->cflags = library->cflags;
-	}
-	APPEND_STRING_LIST(&target->link_flags, "link-args");
-	APPEND_STRING_LIST(&target->linked_libs, "linked-libraries");
-	APPEND_STRING_LIST(&target->dependencies, "dependencies");
-	APPEND_STRING_LIST(&target->execs, "exec");
-	target->cc = get_string(context, json, "cc", target->cc);
-	target->cflags = get_cflags(context, json, target->cflags);
-	int win_crt = get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
-	if (win_crt >= 0) target->win_crt = (WinCrtLinking)win_crt;
+	target->link_flags = get_string_array(context, json, "link-args", false);
+
+	target->linked_libs = get_string_array(context, json, "linked-libraries", false);
+	target->dependencies = get_string_array(context, json, "dependencies", false);
+	target->execs = get_string_array(context, json, "exec", false);
+	target->cc = get_string(context, json, "cc", library->cc);
+	target->cflags = get_cflags(context, json, library->cflags);
+	target->source_dirs = library->source_dirs;
+	target->csource_dirs = library->csource_dirs;
+	target->cinclude_dirs = library->cinclude_dirs;
+	target->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
 	APPEND_STRING_LIST(&target->source_dirs, "sources");
 	APPEND_STRING_LIST(&target->csource_dirs, "c-sources");
 	APPEND_STRING_LIST(&target->cinclude_dirs, "c-include-dirs");
@@ -132,11 +121,6 @@ static Library *add_library(JSONObject *json, const char *dir, const char **libs
 	library->cc = get_optional_string(context, json, "cc");
 	library->cflags = get_cflags(context, json, NULL);
 	library->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
-	library->features = json_map_get(json, "features");
-	if (library->features && library->features->type != J_OBJECT)
-	{
-		error_exit("Invalid 'features' in %s, expected a map of feature names to library settings.", library->dir);
-	}
 	APPEND_STRING_LIST(&library->source_dirs, "sources");
 	APPEND_STRING_LIST(&library->csource_dirs, "c-sources");
 	APPEND_STRING_LIST(&library->cinclude_dirs, "c-include-dirs");
@@ -152,35 +136,6 @@ static Library *find_library(Library **libs, size_t lib_count, const char *name)
 	}
 	error_exit("Required library '%s' could not be found. You can add additional library search paths using '--libdir' in case you forgot one.", name);
 	UNREACHABLE
-}
-
-static bool build_target_has_feature(BuildTarget *build_target, const char *feature)
-{
-	FOREACH(const char *, enabled_feature, build_target->feature_list)
-	{
-		if (str_eq(enabled_feature, feature)) return true;
-	}
-	return false;
-}
-
-static void apply_library_features(BuildTarget *build_target, Library *library, LibraryTarget *target)
-{
-	if (!library->features) return;
-	FOREACH_IDX(i, JSONObject *, feature_json, library->features->members)
-	{
-		const char *feature = library->features->keys[i];
-		if (!str_is_valid_constant(feature))
-		{
-			error_exit("Invalid feature name '%s' in %s, expected an all-uppercase constant name.", feature, library->dir);
-		}
-		if (!build_target_has_feature(build_target, feature)) continue;
-		if (feature_json->type != J_OBJECT)
-		{
-			error_exit("Invalid definition for feature '%s' in %s, expected a map of library settings.", feature, library->dir);
-		}
-		check_json_keys(manifest_target_keys, manifest_target_keys_count, manifest_deprecated_target_keys, manifest_deprecated_target_key_count, feature_json, feature, "--list-manifest-properties");
-		parse_library_target(library, target, feature, feature_json, true);
-	}
 }
 
 static void add_library_dependency(BuildTarget *build_target, Library *library, Library **library_list, size_t lib_count)
@@ -200,7 +155,6 @@ static void add_library_dependency(BuildTarget *build_target, Library *library, 
 		error_exit("Library '%s' cannot be used with arch/os '%s'.", library->provides, arch_os_target[build_target->arch_os_target]);
 	}
 	library->target_used = target_found;
-	apply_library_features(build_target, library, target_found);
 	FOREACH(const char *, dependency, library->dependencies)
 	{
 		add_library_dependency(build_target, find_library(library_list, lib_count, dependency), library_list, lib_count);

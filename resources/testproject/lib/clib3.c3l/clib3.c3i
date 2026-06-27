@@ -1,4 +1,0 @@
-module clib3;
-
-extern fn void hello_from_template_feature();
-extern fn void hello_from_local_feature();

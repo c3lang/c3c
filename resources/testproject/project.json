@@ -12,7 +12,7 @@
     "src"
   ],
   "dependency-search-paths": [ "./lib" ],
-  "dependencies": ["clib", "clib2", "clib3"],
+  "dependencies": ["clib", "clib2"],
   "cpu-flags": ",,",
   "features": ["ABCD"],
   "exec": ["scriptme.c3 myarg"],
@@ -20,33 +20,6 @@
   "targets": {
     "hello_world": {
       "type": "executable",
-      "cc" : "cc",
-      "c-sources": [
-        "./csource/**"
-      ],
-      "reloc": "PIE",
-    },
-    "hello_world_template_feature": {
-      "type": "executable",
-      "template": "clib3/native_feature",
-      "cc" : "cc",
-      "c-sources": [
-        "./csource/**"
-      ],
-      "reloc": "PIE",
-    },
-    "hello_world_library_feature": {
-      "type": "executable",
-      "features": ["CLIB3_LOCAL_TEST"],
-      "cc" : "cc",
-      "c-sources": [
-        "./csource/**"
-      ],
-      "reloc": "PIE",
-    },
-    "hello_world_template_local_feature": {
-      "type": "executable",
-      "template": "clib3/native_local_feature",
       "cc" : "cc",
       "c-sources": [
         "./csource/**"
