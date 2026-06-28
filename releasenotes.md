@@ -6,7 +6,8 @@
 - `@weak` now works with all declarations.
 - Add `@align` for asm blocks to stack align them. Stack alignment is no longer default.
 - Allow setting Windows subsystem directly.
-- Add `bitoffset` and `bitsize` to bitstruct members. #3219
+- Add `bitoffset` and `bitsize` reflection properties to bitstruct members. #3219
+- Add `is_anonymous` and `is_nested` to struct/union/bitstruct types and to members. #3223
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.

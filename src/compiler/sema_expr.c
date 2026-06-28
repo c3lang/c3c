@@ -5577,6 +5577,16 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 	}
 	if (member)
 	{
+		if (name == kw_is_anonymous)
+		{
+			expr_rewrite_const_bool(expr, type_bool, member->name == NULL || str_eq("", member->name));
+			return type;
+		}
+		if (name == kw_is_nested)
+		{
+			expr_rewrite_const_bool(expr, type_bool, decl_has_members(member));
+			return type;
+		}
 		if (name == kw_get_tag)
 		{
 			expr->expr_kind = EXPR_TYPECALL;
@@ -6150,6 +6160,8 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_HAS_EQUALS:
 		case TYPE_PROPERTY_IS_ORDERED:
+		case TYPE_PROPERTY_IS_ANONYMOUS:
+		case TYPE_PROPERTY_IS_NESTED:
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
 		case TYPE_PROPERTY_LOOKUP_FIELD:
 		case TYPE_PROPERTY_MEMBERS:
@@ -6371,6 +6383,17 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 		case TYPE_PROPERTY_NAMES:
 		case TYPE_PROPERTY_VALUES:
 			return type->type_kind == TYPE_ENUM || original_type->canonical->type_kind == TYPE_CONSTDEF;
+		case TYPE_PROPERTY_IS_ANONYMOUS:
+		case TYPE_PROPERTY_IS_NESTED:
+			switch (type->type_kind)
+			{
+				case TYPE_STRUCT:
+				case TYPE_UNION:
+				case TYPE_BITSTRUCT:
+					return true;
+				default:
+					return false;
+			}
 		case TYPE_PROPERTY_MEMBERS:
 			switch (type->type_kind)
 			{
@@ -6423,6 +6446,12 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->const_expr.fxx = (Float) { INFINITY, flat->type_kind };
 			expr->type = type;
 			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		case TYPE_PROPERTY_IS_ANONYMOUS:
+			expr_rewrite_const_bool(expr, type_bool, flat->decl->strukt.parent != 0);
+			return true;
+		case TYPE_PROPERTY_IS_NESTED:
+			expr_rewrite_const_bool(expr, type_bool, flat == NULL);
 			return true;
 		case TYPE_PROPERTY_IS_ORDERED:
 			return sema_expr_rewrite_to_is_ordered(context, expr, type);
