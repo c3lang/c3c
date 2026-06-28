@@ -5463,6 +5463,7 @@ static inline bool sema_expr_analyse_reflection_offset(Expr *expr, Expr *reflect
 {
 	if (expr_is_const_member(reflect))
 	{
+		if (reflect->const_expr.member.decl->var.kind == VARDECL_BITMEMBER) return false;
 		AlignSize offset = reflect->const_expr.member.offset;
 		if (offset != ~(AlignSize)0)
 		{
@@ -5622,7 +5623,21 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		}
 		if (name == kw_members)
 		{
-			sema_create_const_membersof(expr, type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
+			sema_create_const_membersof(expr, type->canonical, reflect->const_expr.member.align, reflect->const_expr.member.offset);
+			return true;
+		}
+		if (name == kw_bitoffset)
+		{
+			if (member->decl_kind != DECL_VAR || member->var.kind != VARDECL_BITMEMBER) goto FAILED;
+			AlignSize base_offset = reflect->const_expr.member.offset;
+			if (base_offset == ~(AlignSize)0) base_offset = 0;
+			expr_rewrite_const_int(expr, type_sz, member->var.start_bit + base_offset * 8);
+			return true;
+		}
+		if (name == kw_bitsize)
+		{
+			if (member->decl_kind != DECL_VAR || member->var.kind != VARDECL_BITMEMBER) goto FAILED;
+			expr_rewrite_const_int(expr, type_sz, member->var.end_bit - member->var.start_bit + 1);
 			return true;
 		}
 	}

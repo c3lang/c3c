@@ -6,6 +6,7 @@
 - `@weak` now works with all declarations.
 - Add `@align` for asm blocks to stack align them. Stack alignment is no longer default.
 - Allow setting Windows subsystem directly.
+- Add `bitoffset` and `bitsize` to bitstruct members. #3219
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.

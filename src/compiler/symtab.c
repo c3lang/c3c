@@ -51,6 +51,8 @@ const char *kw_at_require;
 const char *kw_at_return;
 const char *kw_at_simd;
 const char *kw_alignment;
+const char *kw_bitoffset;
+const char *kw_bitsize;
 const char *kw_cname;
 const char *kw_description;
 const char *kw_get;
@@ -154,6 +156,8 @@ void symtab_init(uint32_t capacity)
 
 	type = TOKEN_IDENT;
 	kw_alignment = KW_DEF("alignment");
+	kw_bitoffset = KW_DEF("bitoffset");
+	kw_bitsize = KW_DEF("bitsize");
 	kw_cname = KW_DEF("cname");
 	kw_description = KW_DEF("description");
 	kw_get = KW_DEF("get");
@@ -192,9 +196,7 @@ void symtab_init(uint32_t capacity)
 
 	type_property_list[TYPE_PROPERTY_MAX] = builtin_list[BUILTIN_MAX] = KW_DEF("max");
 	type_property_list[TYPE_PROPERTY_MIN] = builtin_list[BUILTIN_MIN] = KW_DEF("min");
-
 	type_property_list[TYPE_PROPERTY_LEN] = kw_len = KW_DEF("len");
-
 	type_property_list[TYPE_PROPERTY_ALIGNMENT] = kw_alignment;
 	type_property_list[TYPE_PROPERTY_CNAME] = kw_cname;
 	type_property_list[TYPE_PROPERTY_FROM_ORDINAL] = KW_DEF("from_ordinal");

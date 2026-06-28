@@ -2117,6 +2117,8 @@ extern const char *kw_at_require;
 extern const char *kw_at_return;
 extern const char *kw_at_simd;
 extern const char *kw_alignment;
+extern const char *kw_bitoffset;
+extern const char *kw_bitsize;
 extern const char *kw_cname;
 extern const char *kw_compiler_rt;
 extern const char *kw_description;
