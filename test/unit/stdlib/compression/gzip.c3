@@ -360,7 +360,7 @@ fn void gzip_corrupt_footer_seekable() @test
 	};
 }
 
-fn void gzip_corrupt_footer_non_seekable() @test @if(false) // Enable this when fixing it
+fn void gzip_corrupt_footer_non_seekable() @test
 {
 	@pool()
 	{
