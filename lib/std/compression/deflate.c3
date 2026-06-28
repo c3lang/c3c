@@ -806,21 +806,10 @@ fn void StreamBitReader.close(&self)
 {
 	if (!self.seek_fn) return;
 	long seek_back = (long)self.buf_len - (long)self.buf_pos + (long)(self.nbits / 8);
-	if (seek_back > 0)
-	{
-		if (try self.seek_fn(self.stream, -seek_back, FROM_CURSOR))
-		{
-			self.buf_len = 0;
-			self.buf_pos = 0;
-			self.nbits = 0;
-		}
-	}
-	else
-	{
-		self.buf_len = 0;
-		self.buf_pos = 0;
-		self.nbits = 0;
-	}
+	if (seek_back > 0 && @catch(self.seek_fn(self.stream, -seek_back, FROM_CURSOR))) return;
+	self.buf_len = 0;
+	self.buf_pos = 0;
+	self.nbits = 0;
 }
 
 fn sz StreamBitReader.copy_unused_input(&self, char[] dest)

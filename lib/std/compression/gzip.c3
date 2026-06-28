@@ -234,16 +234,8 @@ fn sz? read_source(GzipReader* self, char[] bytes) @private
 
 fn void? GzipReader.init(&self, InStream reader, Allocator allocator = tmem)
 {
-	self.source = reader;
-	self.allocator = allocator;
+	*self = { .source = reader, .allocator = allocator };
 	self.hasher.init();
-	self.total_out = 0;
-	self.header_read = false;
-	self.footer_verified = false;
-	self.metadata = {};
-	self.inflater = null;
-	self.unused_pos = 0;
-	self.unused_len = 0;
 }
 
 fn void GzipReader.free_metadata(&self, Allocator allocator)
@@ -286,21 +278,9 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 
 	if (!self.footer_verified)
 	{
-		bool seekable = false;
-		if (try self.source.seek(0, FROM_CURSOR))
-		{
-			seekable = true;
-		}
-
 		self.unused_pos = 0;
-		if (!seekable)
-		{
-			self.unused_len = self.inflater.copy_unused_input(self.bit_buf[:8192]);
-		}
-		else
-		{
-			self.unused_len = 0;
-		}
+		self.unused_len = @catch(self.source.seek(0, FROM_CURSOR))
+			? self.inflater.copy_unused_input(self.bit_buf[:8192]) : 0;
 
 		self.inflater.close()!;
 
@@ -357,7 +337,7 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 	return 0;
 }
 
-fn void? GzipReader.read_header(&self) @dynamic
+fn void? GzipReader.read_header(&self)
 {
 	ByteWriter h;
 	h.tinit();
@@ -385,37 +365,9 @@ fn void? GzipReader.read_header(&self) @dynamic
 		h.write(self.metadata.extra)!;
 	}
 
-	if (self.metadata.header.flg.name)
-	{
-		ByteWriter name_bw;
-		name_bw.tinit();
-		while (true)
-		{
-			char[1] c_buf;
-			if (read_source(self, c_buf[..])! != 1) return IO_ERROR~;
-			char c = c_buf[0];
-			h.write_byte(c)!;
-			if (c == '\0') break;
-			name_bw.write_byte(c)!;
-		}
-		self.metadata.filename = codepage::decode(self.allocator, name_bw.array_view(), ISO_8859_1)!;
-	}
+	if (self.metadata.header.flg.name) self.metadata.filename = read_null_terminated(self, &h)!;
 
-	if (self.metadata.header.flg.comment)
-	{
-		ByteWriter comment_bw;
-		comment_bw.tinit();
-		while (true)
-		{
-			char[1] c_buf;
-			if (read_source(self, c_buf[..])! != 1) return IO_ERROR~;
-			char c = c_buf[0];
-			h.write_byte(c)!;
-			if (c == '\0') break;
-			comment_bw.write_byte(c)!;
-		}
-		self.metadata.comment = codepage::decode(self.allocator, comment_bw.array_view(), ISO_8859_1)!;
-	}
+	if (self.metadata.header.flg.comment) self.metadata.comment = read_null_terminated(self, &h)!;
 
 	if (self.metadata.header.flg.hcrc)
 	{
@@ -441,7 +393,6 @@ fn void? GzipReader.close(&self) @dynamic
 		alloc::free(self.allocator, self.bit_buf);
 		self.bit_buf = null;
 	}
-	return;
 }
 
 fn char? GzipReader.read_byte(&self) @dynamic
@@ -450,6 +401,22 @@ fn char? GzipReader.read_byte(&self) @dynamic
 	sz n = self.read(b[..])!;
 	if (n == 0) return io::EOF~;
 	return b[0];
+}
+
+fn String? read_null_terminated(GzipReader* self, ByteWriter* h) @private
+{
+	ByteWriter bw;
+	bw.tinit();
+	while (true)
+	{
+		char[1] c_buf;
+		if (read_source(self, c_buf[..])! != 1) return IO_ERROR~;
+		char c = c_buf[0];
+		h.write_byte(c)!;
+		if (c == '\0') break;
+		bw.write_byte(c)!;
+	}
+	return codepage::decode(self.allocator, bw.array_view(), ISO_8859_1);
 }
 
 fn void? encode_latin1(OutStream writer, String s)
