@@ -14,7 +14,7 @@
  Streaming and concatenation support added by Manu Linares.
 *>
 module std::compression::gzip;
-import std::io, std::hash::crc32, std::compression::deflate, std::encoding::codepage;
+import std::io, std::hash::crc32, std::compression::deflate, std::encoding::codepage, std::math;
 
 faultdef CORRUPT_HEADER, CORRUPT_DATA, UNSUPPORTED_METHOD, IO_ERROR;
 
@@ -212,6 +212,24 @@ struct GzipReader (InStream)
 	GzipMetadata metadata;
 	char* bit_buf;
 	Allocator allocator;
+	sz unused_pos;
+	sz unused_len;
+}
+
+fn sz? read_source(GzipReader* self, char[] bytes) @private
+{
+	sz copied = 0;
+	if (self.unused_pos < self.unused_len)
+	{
+		copied = math::min(bytes.len, self.unused_len - self.unused_pos);
+		mem::copy(bytes.ptr, self.bit_buf + self.unused_pos, copied);
+		self.unused_pos += copied;
+	}
+	if (copied < bytes.len)
+	{
+		copied += self.source.read(bytes[copied..])!;
+	}
+	return copied;
 }
 
 fn void? GzipReader.init(&self, InStream reader, Allocator allocator = tmem)
@@ -224,6 +242,8 @@ fn void? GzipReader.init(&self, InStream reader, Allocator allocator = tmem)
 	self.footer_verified = false;
 	self.metadata = {};
 	self.inflater = null;
+	self.unused_pos = 0;
+	self.unused_len = 0;
 }
 
 fn void GzipReader.free_metadata(&self, Allocator allocator)
@@ -266,27 +286,40 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 
 	if (!self.footer_verified)
 	{
-		self.inflater.close()!;
-
+		bool seekable = false;
 		if (try self.source.seek(0, FROM_CURSOR))
 		{
-			uint crc_stored = io::read_le_uint(self.source)!;
-			uint isize_stored = io::read_le_uint(self.source)!;
-
-			if (crc_stored != self.hasher.final()) return CORRUPT_DATA~;
-			if (isize_stored != (uint)(self.total_out & uint::max)) return CORRUPT_DATA~;
+			seekable = true;
 		}
+
+		self.unused_pos = 0;
+		if (!seekable)
+		{
+			self.unused_len = self.inflater.copy_unused_input(self.bit_buf[:8192]);
+		}
+		else
+		{
+			self.unused_len = 0;
+		}
+
+		self.inflater.close()!;
+
+		char[8] footer;
+		if (read_source(self, footer[..])! != 8) return CORRUPT_DATA~;
+		uint crc_stored = ((UIntLE*)&footer[0]).val;
+		uint isize_stored = ((UIntLE*)&footer[4]).val;
+
+		if (crc_stored != self.hasher.final()) return CORRUPT_DATA~;
+		if (isize_stored != (uint)(self.total_out & uint::max)) return CORRUPT_DATA~;
 
 		self.footer_verified = true;
 
-		alloc::free(self.allocator, self.bit_buf);
 		alloc::free(self.allocator, self.inflater);
 		self.inflater = null;
-		self.bit_buf = null;
 	}
 
 	char[2] magic;
-	sz? next_magic = self.source.read(magic[..]);
+	sz? next_magic = read_source(self, magic[..]);
 	if (try nm = next_magic && nm == 2)
 	{
 		if (magic[0] == GZIP_ID1 && magic[1] == GZIP_ID2)
@@ -297,10 +330,28 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 			self.total_out = 0;
 			self.free_metadata(self.allocator);
 
-			self.source.seek(-2, FROM_CURSOR)!;
+			if (self.unused_pos >= 2)
+			{
+				self.unused_pos -= 2;
+			}
+			else
+			{
+				self.bit_buf[0] = magic[0];
+				self.bit_buf[1] = magic[1];
+				self.unused_pos = 0;
+				self.unused_len = 2;
+			}
 			return self.read(bytes);
 		}
-		self.source.seek(-2, FROM_CURSOR)!;
+
+		if (self.unused_pos >= 2)
+		{
+			self.unused_pos -= 2;
+		}
+		else
+		{
+			(void)self.source.seek(-2, FROM_CURSOR);
+		}
 	}
 
 	return 0;
@@ -312,7 +363,7 @@ fn void? GzipReader.read_header(&self) @dynamic
 	h.tinit();
 
 	char[GzipHeader::size] h_bytes;
-	sz n = self.source.read(h_bytes[..])!;
+	sz n = read_source(self, h_bytes[..])!;
 	if (n != GzipHeader::size) return IO_ERROR~;
 	h.write(h_bytes[..])!;
 
@@ -324,11 +375,13 @@ fn void? GzipReader.read_header(&self) @dynamic
 
 	if (self.metadata.header.flg.extra)
 	{
-		ushort xlen = io::read_le_ushort(self.source)!;
+		char[2] xlen_bytes;
+		if (read_source(self, xlen_bytes[..])! != 2) return IO_ERROR~;
+		ushort xlen = ((UShortLE*)&xlen_bytes[0]).val;
 		io::write_le_ushort(&h, xlen)!;
 
 		self.metadata.extra = alloc::alloc_array(self.allocator, char, xlen);
-		self.source.read(self.metadata.extra)!;
+		read_source(self, self.metadata.extra)!;
 		h.write(self.metadata.extra)!;
 	}
 
@@ -338,7 +391,9 @@ fn void? GzipReader.read_header(&self) @dynamic
 		name_bw.tinit();
 		while (true)
 		{
-			char c = self.source.read_byte()!;
+			char[1] c_buf;
+			if (read_source(self, c_buf[..])! != 1) return IO_ERROR~;
+			char c = c_buf[0];
 			h.write_byte(c)!;
 			if (c == '\0') break;
 			name_bw.write_byte(c)!;
@@ -352,7 +407,9 @@ fn void? GzipReader.read_header(&self) @dynamic
 		comment_bw.tinit();
 		while (true)
 		{
-			char c = self.source.read_byte()!;
+			char[1] c_buf;
+			if (read_source(self, c_buf[..])! != 1) return IO_ERROR~;
+			char c = c_buf[0];
 			h.write_byte(c)!;
 			if (c == '\0') break;
 			comment_bw.write_byte(c)!;
@@ -364,7 +421,9 @@ fn void? GzipReader.read_header(&self) @dynamic
 	{
 		uint crc_hash = crc32::hash(h.array_view());
 		ushort crc16 = (ushort)(crc_hash & 0xFFFF);
-		ushort hcrc = io::read_le_ushort(self.source)!;
+		char[2] hcrc_bytes;
+		if (read_source(self, hcrc_bytes[..])! != 2) return CORRUPT_HEADER~;
+		ushort hcrc = ((UShortLE*)&hcrc_bytes[0]).val;
 		if (crc16 != hcrc) return CORRUPT_HEADER~;
 	}
 }
@@ -374,9 +433,13 @@ fn void? GzipReader.close(&self) @dynamic
 	self.free_metadata(self.allocator);
 	if (self.inflater)
 	{
-		alloc::free(self.allocator, self.bit_buf);
 		alloc::free(self.allocator, self.inflater);
 		self.inflater = null;
+	}
+	if (self.bit_buf)
+	{
+		alloc::free(self.allocator, self.bit_buf);
+		self.bit_buf = null;
 	}
 	return;
 }
