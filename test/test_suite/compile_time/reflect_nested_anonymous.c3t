@@ -1,0 +1,59 @@
+// #target: macos-x64
+module test;
+import std;
+
+struct MyStruct
+{
+	struct inner_struct
+	{
+		int x;
+	}
+	struct
+	{
+		int y;
+	}
+}
+
+fn void main()
+{
+
+
+	MyStruct val;
+	bool a = MyStruct::members[0].is_nested;
+	bool b = MyStruct::members[0].is_anonymous;
+	bool c = MyStruct::members[0].is_nested;
+	bool d = MyStruct::members[1].is_anonymous;
+	bool e = $Typeof(val.inner_struct)::is_anonymous;
+	bool f = MyStruct::members[1].type.is_anonymous;
+	bool g = $Typeof(val.inner_struct)::is_nested;
+	bool h = MyStruct::members[1].is_nested;
+	bool i = MyStruct::is_nested;
+}
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %val = alloca %MyStruct, align 4
+  %a = alloca i8, align 1
+  %b = alloca i8, align 1
+  %c = alloca i8, align 1
+  %d = alloca i8, align 1
+  %e = alloca i8, align 1
+  %f = alloca i8, align 1
+  %g = alloca i8, align 1
+  %h = alloca i8, align 1
+  %i = alloca i8, align 1
+  store i32 0, ptr %val, align 4
+  %ptradd = getelementptr inbounds i8, ptr %val, i64 4
+  store i32 0, ptr %ptradd, align 4
+  store i8 1, ptr %a, align 1
+  store i8 0, ptr %b, align 1
+  store i8 1, ptr %c, align 1
+  store i8 1, ptr %d, align 1
+  store i8 1, ptr %e, align 1
+  store i8 1, ptr %f, align 1
+  store i8 0, ptr %g, align 1
+  store i8 1, ptr %h, align 1
+  store i8 0, ptr %i, align 1
+  ret void
+}

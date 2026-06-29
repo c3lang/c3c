@@ -5463,6 +5463,7 @@ static inline bool sema_expr_analyse_reflection_offset(Expr *expr, Expr *reflect
 {
 	if (expr_is_const_member(reflect))
 	{
+		if (reflect->const_expr.member.decl->var.kind == VARDECL_BITMEMBER) return false;
 		AlignSize offset = reflect->const_expr.member.offset;
 		if (offset != ~(AlignSize)0)
 		{
@@ -5576,6 +5577,16 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 	}
 	if (member)
 	{
+		if (name == kw_is_anonymous)
+		{
+			expr_rewrite_const_bool(expr, type_bool, member->name == NULL || str_eq("", member->name));
+			return type;
+		}
+		if (name == kw_is_nested)
+		{
+			expr_rewrite_const_bool(expr, type_bool, decl_has_members(member));
+			return type;
+		}
 		if (name == kw_get_tag)
 		{
 			expr->expr_kind = EXPR_TYPECALL;
@@ -5622,7 +5633,21 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		}
 		if (name == kw_members)
 		{
-			sema_create_const_membersof(expr, type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
+			sema_create_const_membersof(expr, type->canonical, reflect->const_expr.member.align, reflect->const_expr.member.offset);
+			return true;
+		}
+		if (name == kw_bitoffset)
+		{
+			if (member->decl_kind != DECL_VAR || member->var.kind != VARDECL_BITMEMBER) goto FAILED;
+			AlignSize base_offset = reflect->const_expr.member.offset;
+			if (base_offset == ~(AlignSize)0) base_offset = 0;
+			expr_rewrite_const_int(expr, type_sz, member->var.start_bit + base_offset * 8);
+			return true;
+		}
+		if (name == kw_bitsize)
+		{
+			if (member->decl_kind != DECL_VAR || member->var.kind != VARDECL_BITMEMBER) goto FAILED;
+			expr_rewrite_const_int(expr, type_sz, member->var.end_bit - member->var.start_bit + 1);
 			return true;
 		}
 	}
@@ -6135,6 +6160,8 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_HAS_EQUALS:
 		case TYPE_PROPERTY_IS_ORDERED:
+		case TYPE_PROPERTY_IS_ANONYMOUS:
+		case TYPE_PROPERTY_IS_NESTED:
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
 		case TYPE_PROPERTY_LOOKUP_FIELD:
 		case TYPE_PROPERTY_MEMBERS:
@@ -6356,6 +6383,17 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 		case TYPE_PROPERTY_NAMES:
 		case TYPE_PROPERTY_VALUES:
 			return type->type_kind == TYPE_ENUM || original_type->canonical->type_kind == TYPE_CONSTDEF;
+		case TYPE_PROPERTY_IS_ANONYMOUS:
+		case TYPE_PROPERTY_IS_NESTED:
+			switch (type->type_kind)
+			{
+				case TYPE_STRUCT:
+				case TYPE_UNION:
+				case TYPE_BITSTRUCT:
+					return true;
+				default:
+					return false;
+			}
 		case TYPE_PROPERTY_MEMBERS:
 			switch (type->type_kind)
 			{
@@ -6408,6 +6446,12 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->const_expr.fxx = (Float) { INFINITY, flat->type_kind };
 			expr->type = type;
 			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		case TYPE_PROPERTY_IS_ANONYMOUS:
+			expr_rewrite_const_bool(expr, type_bool, flat->decl->strukt.parent != 0);
+			return true;
+		case TYPE_PROPERTY_IS_NESTED:
+			expr_rewrite_const_bool(expr, type_bool, flat == NULL);
 			return true;
 		case TYPE_PROPERTY_IS_ORDERED:
 			return sema_expr_rewrite_to_is_ordered(context, expr, type);
