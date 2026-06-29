@@ -30,7 +30,7 @@ WindowsSDK *windows_get_sdk(void)
 			case ARCH_TYPE_AARCH64: target = "arm64"; break;
 			case ARCH_TYPE_X86_64: target = "x64"; break;
 			case ARCH_TYPE_X86: target = "x86"; break;
-			default: break;
+			default: error_exit("Unsupported target architecture for MSVC.");
 		}
 		loaded = get_windows_paths(target);
 		if (loaded.windows_sdk_path && loaded.vs_library_path)
@@ -50,13 +50,19 @@ WindowsSDK *windows_get_sdk(void)
 
 #endif
 
-const char *windows_cross_compile_library(void)
+const char *windows_cross_compile_library(const char *arch)
 {
 	const char *local = find_rel_exe_dir("msvc_sdk");
-	if (local && file_is_dir((char *)local)) return local;
+	if (local)
+	{
+		if (file_is_dir(file_append_path(local, arch))) return local;
+	}
 
 	char *msvc_sdk = getenv("C3_MSVC_SDK");
-	if (msvc_sdk && file_is_dir(msvc_sdk)) return msvc_sdk;
+	if (msvc_sdk)
+	{
+		if (file_is_dir(file_append_path(msvc_sdk, arch))) return msvc_sdk;
+	}
 
 #if PLATFORM_WINDOWS
 	char *app_data = getenv("LOCALAPPDATA");
@@ -65,7 +71,7 @@ const char *windows_cross_compile_library(void)
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s/c3/msvc_sdk", app_data);
 		const char *path = scratch_buffer_to_string();
-		if (file_is_dir(path)) return path;
+		if (file_is_dir(file_append_path(path, arch))) return path;
 	}
 #else
 	char *cache_home = getenv("XDG_CACHE_HOME");
@@ -74,7 +80,7 @@ const char *windows_cross_compile_library(void)
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s/c3/msvc_sdk", cache_home);
 		const char *path = scratch_buffer_to_string();
-		if (file_is_dir(path)) return path;
+		if (file_is_dir(file_append_path(path, arch))) return path;
 	}
 
 	char *home = getenv("HOME");
@@ -83,7 +89,7 @@ const char *windows_cross_compile_library(void)
 		scratch_buffer_clear();
 		scratch_buffer_printf("%s/.cache/c3/msvc_sdk", home);
 		const char *path = scratch_buffer_to_string();
-		if (file_is_dir(path)) return path;
+		if (file_is_dir(file_append_path(path, arch))) return path;
 	}
 #endif
 	return NULL;

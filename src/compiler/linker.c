@@ -130,12 +130,18 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 
 	if (!compiler.build.win.sdk && !compiler.build.win.vs_dirs)
 	{
-		const char *path = windows_cross_compile_library();
+		const char *path = suffix ? windows_cross_compile_library(suffix) : NULL;
 		if (!path && !windows_get_sdk())
 		{
-			BuildOptions options = { .verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0 };
+			const char **auto_archs = NULL;
+			if (suffix) vec_add(auto_archs, suffix);
+			BuildOptions options = {
+				.verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0,
+				.fetch_accept_license = false,
+				.fetch_sdk_archs = auto_archs,
+			};
 			fetch_winsdk(&options);
-			path = windows_cross_compile_library();
+			path = suffix ? windows_cross_compile_library(suffix) : NULL;
 		}
 		// Note that path here may be allocated on the string scratch buffer.
 		if (path)
@@ -154,10 +160,6 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 					// If we only use the msvc cross compile on windows, we
 					// avoid linking with dynamic debug dlls.
 					link_with_dynamic_debug_libc = false;
-				}
-				else
-				{
-					free(full_path);
 				}
 			}
 		}
@@ -197,11 +199,10 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 
 			char *um = str_printf("%s\\um\\%s", windows_sdk->windows_sdk_path, suffix);
 			char *ucrt = str_printf("%s\\ucrt\\%s", windows_sdk->windows_sdk_path, suffix);
-			char *vs_lib = str_printf("%s\\..\\%s", windows_sdk->vs_library_path, suffix);
 
 			add_concat_quote_arg("/LIBPATH:", um);
 			add_concat_quote_arg("/LIBPATH:", ucrt);
-			add_concat_quote_arg("/LIBPATH:", vs_lib);
+			add_concat_quote_arg("/LIBPATH:", windows_sdk->vs_library_path);
 		}
 	}
 
