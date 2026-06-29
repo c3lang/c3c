@@ -6,6 +6,7 @@
 - `@weak` now works with all declarations.
 - Add `@align` for asm blocks to stack align them. Stack alignment is no longer default.
 - Allow setting Windows subsystem directly.
+- Libraries can now expose reusable target configurations via a `templates` map in their manifest, which projects reference from a target using `template: "library/template"`. Properties from the template are loaded first and can be overridden by target-local settings. 
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.
