@@ -97,6 +97,23 @@ macro bool is_subtype_of($Type, $OtherType)
 		$default: return false;
 	$endswitch
 }
+
+macro bool is_nullable($Type)
+{
+    $switch $Type::kind:
+        $case POINTER:
+        $case ANY:
+        $case INTERFACE:
+        $case FUNC:
+            return true;
+        $case TYPEID:
+        $case TYPEDEF:
+            return is_nullable($Type::inner);
+        $default: 
+            return false;
+    $endswitch
+}
+
 macro bool is_numerical($Type)
 {
 	$switch $Type::kind:

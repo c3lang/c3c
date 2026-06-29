@@ -8,6 +8,7 @@ macro sz @alignof(#value) @builtin @const => $reflect(#value).alignment;
 macro sz @sizeof(#value) @builtin @const => $reflect(#value).size;
 macro TypeKind @kindof(#value) @builtin @const => $Typeof(#value)::kind;
 macro bool @typematch(#value1, #value2) @builtin @const => $Typeof(#value1) == $Typeof(#value2);
+macro bool @is_nullable(#value) @const => types::is_nullable($Typeof(#value));
 <*
  Return true if two values have the same type before any conversions.
 *>
