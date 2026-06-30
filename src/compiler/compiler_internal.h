@@ -453,8 +453,6 @@ typedef struct
 	};
 } StructDecl;
 
-
-
 typedef struct VarDecl_
 {
 	TypeInfoId type_info;
@@ -466,6 +464,9 @@ typedef struct VarDecl_
 	bool not_null : 1;
 	bool out_param : 1;
 	bool in_param : 1;
+	bool own_param : 1;
+	bool drop_param : 1;
+	bool init_param : 1;
 	bool is_written : 1;
 	bool is_addr : 1;
 	bool self_addr : 1;
@@ -2123,6 +2124,7 @@ extern const char *kw_bitsize;
 extern const char *kw_cname;
 extern const char *kw_compiler_rt;
 extern const char *kw_description;
+extern const char *kw_drop;
 extern const char *kw_generic_args;
 extern const char *kw_generic_qname;
 extern const char *kw_get;
@@ -2130,6 +2132,7 @@ extern const char *kw_get_tag;
 extern const char *kw_has_tag;
 extern const char *kw_in;
 extern const char *kw_inout;
+extern const char *kw_init;
 extern const char *kw_is_anonymous;
 extern const char *kw_is_const;
 extern const char *kw_is_nested;
@@ -2146,6 +2149,7 @@ extern const char *kw_name;
 extern const char *kw_offset;
 extern const char *kw_ordinal;
 extern const char *kw_out;
+extern const char *kw_own;
 extern const char *kw_ptr;
 extern const char *kw_qname;
 extern const char *kw_return;

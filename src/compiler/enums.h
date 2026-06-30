@@ -1228,6 +1228,9 @@ typedef enum
 	INOUT_IN,
 	INOUT_OUT,
 	INOUT_INOUT,
+	INOUT_INIT,
+	INOUT_OWN,
+	INOUT_DROP,
 } InOutModifier;
 
 typedef enum
