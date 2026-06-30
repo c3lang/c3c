@@ -11,6 +11,7 @@
 - Improve error message on trying to cast char array to String. #3343
 - Add `Foo::is_generic(...)`, `Foo::generic_qname` and `Foo::generic_args`. #2909 #3329
 - Add `own`, `init` and `drop` parameter annotations.
+- `constdef` can now be generic.
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.
