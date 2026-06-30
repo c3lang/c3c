@@ -5,15 +5,26 @@
 #include "../lib.h"
 #include "../../compiler/compiler_internal.h"
 
+#define BASE_URL "https://swcdn.apple.com/content/downloads"
+#define BASE_PKG "CLTools_macOS_SDK.pkg"
+#define SDK_PKG "CLTools_macOSNMOS_SDK.pkg"
+
 typedef struct {
 	Version version;
-	char *base;
+	char *suburl;
 } Sdk;
 
 typedef struct {
 	int major;
 	const char *name;
 } ReleaseInfo;
+
+typedef enum {
+	DOWNLOAD,
+	EXTRACT,
+	COPY,
+	CLEANUP
+} Progress;
 
 static int verbose_level = 0;
 
@@ -43,6 +54,18 @@ static ReleaseInfo releases[] = {
 	{ 0,  "macOS (Unknown)"		}
 };
 
+static const char *progresses[] = {
+	[DOWNLOAD]	= "Downloading SDK",
+	[EXTRACT]	= "Extracting SDK",
+	[COPY]		= "Copying SDK",
+	[CLEANUP]	= "Cleaning up SDK"
+};
+
+static void sdk_progress(Progress progress, int percent)
+{
+	print_progress(progresses[progress], percent, verbose_level);
+}
+
 static bool check_license(bool accept_all)
 {
 	if (accept_all) return true;
@@ -53,7 +76,33 @@ static bool check_license(bool accept_all)
 	return (c == 'y' || c == 'Y' || c == '\n');
 }
 
-static const char *get_release_name(Sdk *sdk)
+static size_t select_sdk(size_t count)
+{
+	char buffer[128];
+
+	for (;;)
+	{
+		printf("Select sdk (%ld): ", count);
+		fflush(stdout);
+
+		fgets(buffer, 128, stdin);
+		const char *trimmed = str_trim(buffer);
+		if (strlen(trimmed) == 0)
+		{
+			return count;
+		}
+
+		const long num = strtol(buffer, NULL, 10);
+		if (num >= 1 && num <= count)
+		{
+			return num;
+		}
+
+		printf("Selection is out of range 1-%ld!\n", count);
+	}
+}
+
+static const char *get_release_name(const Sdk *sdk)
 {
 	const ReleaseInfo *iter = releases;
 	while (iter->major)
@@ -84,9 +133,10 @@ static void list_sdks(Sdk *sdks, size_t count)
 		Sdk *sdk = sdks + i;
 		const char *name = get_release_name(sdk);
 
-		printf("[%2lu] %*s - Version %d.%d\n", i + 1, (int) longest, name,
+		printf("[%2zu] %*s - Version %d.%d\n", i + 1, (int) longest, name,
 			sdk->version.major, sdk->version.minor);
 	}
+	puts("");
 }
 
 void fetch_macsdk(BuildOptions *options)
@@ -108,4 +158,28 @@ void fetch_macsdk(BuildOptions *options)
 	}
 
 	list_sdks(hardcoded, ELEMENTLEN(hardcoded));
+	const size_t select = select_sdk(ELEMENTLEN(hardcoded));
+	const Sdk *sel = hardcoded + (select - 1);
+
+	printf("Selected %s - %d.%d\n", get_release_name(sel),
+		sel->version.major, sel->version.minor);
+
+	int progress = 0;
+	sdk_progress(DOWNLOAD, progress);
+
+	for (int i = 0; i < 2; i++)
+	{
+		const char *files[] = {SDK_PKG, BASE_PKG};
+		const char *dest = file_append_path(tmp_dir_base, files[i]);
+
+		const char *source = str_cat(BASE_URL, sel->suburl);
+		source = str_cat(source, files[i]);
+
+		download_file(source, "", dest, false);
+
+		progress += 10;
+		if (i == 0) sleep(5);
+
+		sdk_progress(DOWNLOAD, progress);
+	}
 }
