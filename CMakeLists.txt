@@ -560,6 +560,7 @@ add_executable(c3c
         src/utils/fetch_sdk/fetch_sdk.c
         src/utils/fetch_sdk/fetch_utils.c
         src/utils/fetch_sdk/windows_sdk.c
+        src/utils/fetch_sdk/macos_sdk.c
         src/utils/fetch_sdk/android_ndk.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
