@@ -1,0 +1,33 @@
+// #target: macos-x64
+module test;
+import std;
+
+alias Foo = List{List{int}};
+fn int main()
+{
+	String s = List{String}::generic_args[0].cname;
+	String name = Foo::generic_qname;
+	bool is_gen1 = Foo::is_generic(List);
+	bool is_gen2 = int::is_generic(List);
+	bool is_gen3 = HashMap{int,int}::is_generic(List);
+	return 0;
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [7 x i8] c"String\00", align 1
+@.str.1 = private unnamed_addr constant [29 x i8] c"std::collections::list::List\00", align 1
+
+entry:
+  %s = alloca %"char[]", align 8
+  %name = alloca %"char[]", align 8
+  %is_gen1 = alloca i8, align 1
+  %is_gen2 = alloca i8, align 1
+  %is_gen3 = alloca i8, align 1
+  store %"char[]" { ptr @.str, i64 6 }, ptr %s, align 8
+  store %"char[]" { ptr @.str.1, i64 28 }, ptr %name, align 8
+  store i8 1, ptr %is_gen1, align 1
+  store i8 0, ptr %is_gen2, align 1
+  store i8 0, ptr %is_gen3, align 1
+  ret i32 0
+}

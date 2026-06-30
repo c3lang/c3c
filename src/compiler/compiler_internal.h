@@ -2122,6 +2122,8 @@ extern const char *kw_bitsize;
 extern const char *kw_cname;
 extern const char *kw_compiler_rt;
 extern const char *kw_description;
+extern const char *kw_generic_args;
+extern const char *kw_generic_qname;
 extern const char *kw_get;
 extern const char *kw_get_tag;
 extern const char *kw_has_tag;

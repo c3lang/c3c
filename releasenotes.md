@@ -9,6 +9,7 @@
 - Add `bitoffset` and `bitsize` reflection properties to bitstruct members. #3219
 - Add `is_anonymous` and `is_nested` to struct/union/bitstruct types and to members. #3223
 - Improve error message on trying to cast char array to String. #3343
+- Add `Foo::is_generic(...)`, `Foo::generic_qname` and `Foo::generic_args`. #2909 #3329
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.

@@ -55,6 +55,8 @@ const char *kw_bitoffset;
 const char *kw_bitsize;
 const char *kw_cname;
 const char *kw_description;
+const char *kw_generic_args;
+const char *kw_generic_qname;
 const char *kw_get;
 const char *kw_get_tag;
 const char *kw_has_tag;
@@ -162,6 +164,8 @@ void symtab_init(uint32_t capacity)
 	kw_bitsize = KW_DEF("bitsize");
 	kw_cname = KW_DEF("cname");
 	kw_description = KW_DEF("description");
+	kw_generic_args = KW_DEF("generic_args");
+	kw_generic_qname = KW_DEF("generic_qname");
 	kw_get = KW_DEF("get");
 	kw_get_tag = KW_DEF("get_tag");
 	kw_has_equals = KW_DEF("has_equals");
@@ -204,6 +208,8 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_ALIGNMENT] = kw_alignment;
 	type_property_list[TYPE_PROPERTY_CNAME] = kw_cname;
 	type_property_list[TYPE_PROPERTY_FROM_ORDINAL] = KW_DEF("from_ordinal");
+	type_property_list[TYPE_PROPERTY_GENERIC_ARGS] = kw_generic_args;
+	type_property_list[TYPE_PROPERTY_GENERIC_QNAME] = kw_generic_qname;
 	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
 	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");
 	type_property_list[TYPE_PROPERTY_HAS_EQUALS] = kw_has_equals;
@@ -211,6 +217,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_IS_NESTED] = kw_is_nested;
 	type_property_list[TYPE_PROPERTY_IS_ORDERED] = kw_is_ordered;
 	type_property_list[TYPE_PROPERTY_IS_SUBSTRUCT] = KW_DEF("is_substruct");
+	type_property_list[TYPE_PROPERTY_IS_GENERIC] = KW_DEF("is_generic");
 	type_property_list[TYPE_PROPERTY_LOOKUP_FIELD] = KW_DEF("lookup_field");
 	type_property_list[TYPE_PROPERTY_KIND] = kw_kind;
 	type_property_list[TYPE_PROPERTY_MEMBERS] = kw_members;
