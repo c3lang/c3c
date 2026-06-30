@@ -3715,12 +3715,12 @@ INLINE bool sema_expr_analyse_is_generic(SemaContext *context, Expr *expr, Expr 
 		RETURN_SEMA_ERROR(type_expr, "'is_generic' requires a generic type name.");
 	}
 	TypeInfo *info = type_expr->type_expr;
-	if (info->kind != TYPE_INFO_IDENTIFIER || info->optional || info->subtype != TYPE_COMPRESSED_NONE)
+	if (info->kind != TYPE_INFO_IDENTIFIER || info->optional || info->subtype != TYPE_COMPRESSED_NONE || info->resolve_status == RESOLVE_DONE)
 	{
 		RETURN_SEMA_ERROR(type_expr, "'is_generic' requires a generic type name.");
 	}
 	bool match = false;
-	Decl *inf = sema_resolve_parameterized_symbol(context, info->unresolved.name, info->unresolved.path, type_expr->loc);
+	Decl *inf = sema_resolve_generic_symbol(context, info->unresolved.name, info->unresolved.path, type_expr->loc);
 	if (!inf) return false;
 	if (!decl || !decl->is_templated) goto NO_MATCH;
 	Decl *generic = declptr(inf->generic_id);

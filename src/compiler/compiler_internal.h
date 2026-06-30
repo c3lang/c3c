@@ -1995,6 +1995,7 @@ typedef struct
 	Module *path_found;
 	bool suppress_error;
 	bool is_parameterized;
+	bool is_generic_parent;
 } NameResolve;
 
 typedef struct
@@ -2623,6 +2624,7 @@ Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
 Decl *sema_find_local(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
 Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
+Decl *sema_resolve_generic_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
 Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
