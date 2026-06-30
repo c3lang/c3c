@@ -1,9 +1,47 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "fetch_utils.h"
+#include "../lib.h"
 #include "../../compiler/compiler_internal.h"
 
+typedef struct {
+	Version version;
+	char *base;
+} Sdk;
+
+typedef struct {
+	int major;
+	const char *name;
+} ReleaseInfo;
+
 static int verbose_level = 0;
+
+static Sdk hardcoded[] = {
+	{ { 12, 4 }, "/46/21/001-89745-A_56FM390IW5/v1um2qppgfdnam2e9cdqcqu2r6k8aa3lis/" },
+	{ { 12, 5 }, "/02/62/071-54303-A_EU2CL1YVT7/943i95dpeyi2ghlnj2mgyq3t202t5gf18b/" },
+	{ { 13, 2 }, "/52/17/002-41708-A_E8MFK7B2PK/6p55tbmh0qttgbt4cy94uuvnacy6tkw435/" },
+	{ { 13, 4 }, "/24/42/002-83793-A_74JRE8GVAT/rlnkct919wgc5c0pjq986z5bb9h62uvni2/" },
+	{ { 14, 2 }, "/03/28/012-92431-A_FKICGWU4EK/eflw1v4c64sgmvux4ljc083cfjj663wu9g/" },
+	{ { 14, 3 }, "/15/62/032-84673-A_7A1TG1RF8Z/xpc8q44ggn2pkn82iwr0fi1zeb9cxi8ath/" },
+	{ { 15, 0 }, "/11/17/042-32697-A_1GOTVNQE4A/hy88qtn1sygbgxswlmbfdepd4pcg52xyrx/" },
+	{ { 15, 3 }, "/14/48/052-59890-A_I0F5YGAY0Y/p9n40hio7892gou31o1v031ng6fnm9sb3c/" },
+	{ { 16, 2 }, "/61/45/072-44426-A_16242I3TPF/74lkhd4yt26hcrwgpibrqtltf7yth9kc5w/" },
+	{ { 16, 4 }, "/52/01/082-41241-A_0747ZN8FHV/dectd075r63pppkkzsb75qk61s0lfee22j/" },
+	{ { 26, 5 }, "/09/08/047-91568-A_Y1CFZWQCD4/4xekpyz43i26dbp4enxfro8eb1q7wiujh5/" },
+	{ { 26, 6 }, "/33/19/140-17812-A_21ZLMMLY4E/zu3xwktttpoe71qiawhzgzvqss6rovawsa/" }
+};
+
+static ReleaseInfo releases[] = {
+	{ 11, "macOS Big Sur" 		},
+	{ 12, "macOS Monterey" 		},
+	{ 13, "macOS Ventura" 		},
+	{ 14, "macOS Sonoma" 		},
+	{ 15, "macOS Sequoia" 		},
+	{ 26, "macOS Tahoe" 		},
+	{ 27, "macOS Golden Gate"	},
+	{ 0,  "macOS (Unknown)"		}
+};
 
 static bool check_license(bool accept_all)
 {
@@ -13,6 +51,42 @@ static bool check_license(bool accept_all)
 	fflush(stdout);
 	char c = (char) getchar();
 	return (c == 'y' || c == 'Y' || c == '\n');
+}
+
+static const char *get_release_name(Sdk *sdk)
+{
+	const ReleaseInfo *iter = releases;
+	while (iter->major)
+	{
+		if (iter->major == sdk->version.major)
+		{
+			return iter->name;
+		}
+
+		iter++;
+	}
+
+	return iter->name;
+}
+
+static void list_sdks(Sdk *sdks, size_t count)
+{
+	size_t longest = 0;
+
+	for (size_t i = 0; i < count; i++) {
+		const char *name = get_release_name(sdks + i);
+		const size_t len = strlen(name);
+
+		if (len > longest) longest = len;
+	}
+
+	for (size_t i = 0; i < count; i++) {
+		Sdk *sdk = sdks + i;
+		const char *name = get_release_name(sdk);
+
+		printf("[%2lu] %*s - Version %d.%d\n", i + 1, (int) longest, name,
+			sdk->version.major, sdk->version.minor);
+	}
 }
 
 void fetch_macsdk(BuildOptions *options)
@@ -32,4 +106,6 @@ void fetch_macsdk(BuildOptions *options)
 	{
 		exit_compiler(EXIT_FAILURE);
 	}
+
+	list_sdks(hardcoded, ELEMENTLEN(hardcoded));
 }
