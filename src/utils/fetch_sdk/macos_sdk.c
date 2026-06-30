@@ -148,7 +148,7 @@ void fetch_macsdk(BuildOptions *options)
 				   "Alternatively, provide the SDK path manually using --macos-sdk.");
 	}
 	verbose_level = options->verbosity_level;
-	const char *tmp_dir_base = dir_make_temp_dir();
+	const char *tmp_dir_base = "/tmp" /* dir_make_temp_dir() */;
 
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
 	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
@@ -173,11 +173,13 @@ void fetch_macsdk(BuildOptions *options)
 		const char *files[] = {SDK_PKG, BASE_PKG};
 		const char *dest = file_append_path(tmp_dir_base, files[i]);
 
+		if (file_exists(dest)) goto done;
+
 		const char *source = str_cat(BASE_URL, sel->suburl);
 		source = str_cat(source, files[i]);
 
 		download_file(source, "", dest, false);
-
+done:
 		progress += 10;
 
 		sdk_progress(DOWNLOAD, progress);
@@ -186,15 +188,20 @@ void fetch_macsdk(BuildOptions *options)
 		XarHeader header = xar_header(pkg);
 		if (strncmp(header.signature, "xar!", 4) != 0)
 		{
-			error_exit("Expected xar! package signature");
+			error_exit("Expected xar! package signature.");
 		}
 		if (header.version > 1)
 		{
-			error_exit("Xar archive is newer version than expected 1");
+			error_exit("Xar archive is newer version than expected 1.");
 		}
 
-		char *toc = xar_toc(&header, pkg);
-		printf("\n%s\n", toc);
+		XarFile payload = xar_open(&header, "Payload");
+		if (payload.file == NULL)
+		{
+			error_exit("Unable to find Payload file in Xar archive.");
+		}
+
+		printf("\n{ %zu, %zu }\n", payload.offset, payload.to_read);
 
 		fclose(pkg);
 	}
