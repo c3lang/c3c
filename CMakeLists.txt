@@ -573,6 +573,8 @@ add_executable(c3c
         src/compiler/sema_const.c
         ${CMAKE_BINARY_DIR}/git_hash.h
         ${CMAKE_BINARY_DIR}/docs_template.h
+src/utils/xar.c
+src/utils/xar.h
 )
 
 # Building C3 with llvm toolchains that don't have AVR Support

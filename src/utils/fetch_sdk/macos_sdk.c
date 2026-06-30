@@ -4,6 +4,7 @@
 #include "fetch_utils.h"
 #include "../lib.h"
 #include "../../compiler/compiler_internal.h"
+#include "utils/xar.h"
 
 #define BASE_URL "https://swcdn.apple.com/content/downloads"
 #define BASE_PKG "CLTools_macOS_SDK.pkg"
@@ -178,8 +179,23 @@ void fetch_macsdk(BuildOptions *options)
 		download_file(source, "", dest, false);
 
 		progress += 10;
-		if (i == 0) sleep(5);
 
 		sdk_progress(DOWNLOAD, progress);
+
+		FILE *pkg = file_open_read(dest);
+		XarHeader header = xar_header(pkg);
+		if (strncmp(header.signature, "xar!", 4) != 0)
+		{
+			error_exit("Expected xar! package signature");
+		}
+		if (header.version > 1)
+		{
+			error_exit("Xar archive is newer version than expected 1");
+		}
+
+		char *toc = xar_toc(&header, pkg);
+		printf("\n%s\n", toc);
+
+		fclose(pkg);
 	}
 }
