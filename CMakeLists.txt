@@ -472,6 +472,7 @@ if(C3_WITH_LLVM)
 endif()
 
 add_library(miniz STATIC dependencies/miniz/miniz.c dependencies/miniz/zlib_compat.c)
+add_library(xz_embedded STATIC dependencies/xz/standalone.c)
 
 if (CMAKE_C_COMPILER_ID MATCHES "GNU")
     set_source_files_properties(
@@ -573,8 +574,12 @@ add_executable(c3c
         src/compiler/sema_const.c
         ${CMAKE_BINARY_DIR}/git_hash.h
         ${CMAKE_BINARY_DIR}/docs_template.h
-src/utils/xar.c
-src/utils/xar.h
+        src/utils/xar.c
+        src/utils/xar.h
+        src/utils/pbzx.c
+        src/utils/pbzx.h
+        src/utils/xz_stream.c
+        src/utils/xz_stream.h
 )
 
 # Building C3 with llvm toolchains that don't have AVR Support
@@ -650,6 +655,9 @@ target_include_directories(c3c PRIVATE
 target_include_directories(miniz PUBLIC
         "${CMAKE_SOURCE_DIR}/dependencies/miniz/")
 
+target_include_directories(xz_embedded PUBLIC
+        "${CMAKE_SOURCE_DIR}/dependencies/xz/")
+
 if (C3_USE_TB)
     file(GLOB tilde-sources
             tilde-backend/src/tb/*.c
@@ -690,7 +698,7 @@ else()
 endif()
 
 if(C3_WITH_LLVM)
-    target_link_libraries(c3c PRIVATE miniz c3c_wrappers)
+    target_link_libraries(c3c PRIVATE miniz xz_embedded c3c_wrappers)
 
     target_include_directories(c3c PRIVATE
             "${CMAKE_SOURCE_DIR}/wrapper/include/")
@@ -700,7 +708,7 @@ if(C3_WITH_LLVM)
 
     target_link_libraries(c3c_wrappers PUBLIC ${lld_libs} ${llvm_libs})
 else()
-    target_link_libraries(c3c PRIVATE miniz ${lld_libs} ${llvm_libs})
+    target_link_libraries(c3c PRIVATE miniz xz_embedded ${lld_libs} ${llvm_libs})
 endif()
 
 # libcurl support

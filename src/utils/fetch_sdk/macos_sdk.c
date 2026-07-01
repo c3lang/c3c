@@ -2,13 +2,17 @@
 #include <string.h>
 
 #include "fetch_utils.h"
+#include "xz.h"
 #include "../lib.h"
 #include "../../compiler/compiler_internal.h"
+#include "utils/pbzx.h"
 #include "utils/xar.h"
 
 #define BASE_URL "https://swcdn.apple.com/content/downloads"
 #define BASE_PKG "CLTools_macOS_SDK.pkg"
 #define SDK_PKG "CLTools_macOSNMOS_SDK.pkg"
+
+#define PROGRESS_UPDATE 14
 
 typedef struct {
 	Version version;
@@ -23,6 +27,7 @@ typedef struct {
 typedef enum {
 	DOWNLOAD,
 	EXTRACT,
+	POPULATE,
 	COPY,
 	CLEANUP
 } Progress;
@@ -58,6 +63,7 @@ static ReleaseInfo releases[] = {
 static const char *progresses[] = {
 	[DOWNLOAD]	= "Downloading SDK",
 	[EXTRACT]	= "Extracting SDK",
+	[POPULATE]	= "Populating SDK",
 	[COPY]		= "Copying SDK",
 	[CLEANUP]	= "Cleaning up SDK"
 };
@@ -83,7 +89,7 @@ static size_t select_sdk(size_t count)
 
 	for (;;)
 	{
-		printf("Select sdk (%ld): ", count);
+		printf("Select sdk (%zu): ", count);
 		fflush(stdout);
 
 		fgets(buffer, 128, stdin);
@@ -147,6 +153,10 @@ void fetch_macsdk(BuildOptions *options)
 		error_exit("Failed to find MacOS SDK.\n"
 				   "Alternatively, provide the SDK path manually using --macos-sdk.");
 	}
+
+	xz_crc32_init();
+	xz_crc64_init();
+
 	verbose_level = options->verbosity_level;
 	const char *tmp_dir_base = "/tmp" /* dir_make_temp_dir() */;
 
@@ -180,11 +190,11 @@ void fetch_macsdk(BuildOptions *options)
 
 		download_file(source, "", dest, false);
 done:
-		progress += 10;
-
-		sdk_progress(DOWNLOAD, progress);
+		progress += PROGRESS_UPDATE;
+		sdk_progress(EXTRACT, progress);
 
 		FILE *pkg = file_open_read(dest);
+		FILE *cpio = fopen(str_cat(dest, ".cpio"), "w");
 		XarHeader header = xar_header(pkg);
 		if (strncmp(header.signature, "xar!", 4) != 0)
 		{
@@ -201,8 +211,15 @@ done:
 			error_exit("Unable to find Payload file in Xar archive.");
 		}
 
-		printf("\n{ %zu, %zu }\n", payload.offset, payload.to_read);
+		if (!pbzx_extract(&payload, cpio))
+		{
+			error_exit("Failed to extract pbzx.");
+		}
+		fclose(cpio);
+		progress += PROGRESS_UPDATE;
+		sdk_progress(POPULATE, progress);
 
 		fclose(pkg);
+		progress += PROGRESS_UPDATE;
 	}
 }

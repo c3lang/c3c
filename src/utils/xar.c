@@ -47,6 +47,7 @@ int uncompress(unsigned char *dest, unsigned long *destLen, const unsigned char
 
 XarFile xar_open(const XarHeader *header, const char *filename)
 {
+
 	unsigned long consumed = header->len;
 	uint8_t *src = calloc_arena(header->compressed_len);
 	uint8_t *dst = calloc_arena(header->len + 1);
@@ -55,6 +56,7 @@ XarFile xar_open(const XarHeader *header, const char *filename)
 	uncompress(dst, &consumed, src, header->compressed_len);
 	dst[consumed] = 0;
 
+	const size_t off = ftell(header->file);
 	const char *start = (char*) dst;
 	while ((start = strstr(start, "<file")))
 	{
@@ -69,7 +71,7 @@ XarFile xar_open(const XarHeader *header, const char *filename)
 		if (str_eq(name, filename))
 		{
 			*name_end = '<';
-			XarFile file = { header->file, 0, 0 };
+			XarFile file = { header->file, off, 0 };
 
 			const char *length = strstr(start, "<length>");
 			length += 8;
@@ -77,7 +79,7 @@ XarFile xar_open(const XarHeader *header, const char *filename)
 
 			const char *offset = strstr(start, "<offset>");
 			offset += 8;
-			file.offset = (int64_t) strtoll(offset, NULL, 10);
+			file.offset += (int64_t) strtoll(offset, NULL, 10);
 
 			return file;
 		}
