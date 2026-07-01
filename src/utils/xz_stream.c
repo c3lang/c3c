@@ -36,7 +36,7 @@ bool xz_stream_decompress(XzStream *stream)
 	if (ret == XZ_MEMLIMIT_ERROR)
 	{
 		error_exit("Xz needs more memory, please increase the number in"
-			"src/utils/fetch_sdk/macos_sdk.c:7");
+			"src/utils/xz_stream.c:7");
 	}
 
 	return ret == XZ_OK || ret == XZ_STREAM_END;

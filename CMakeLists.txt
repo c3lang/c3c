@@ -575,11 +575,10 @@ add_executable(c3c
         ${CMAKE_BINARY_DIR}/git_hash.h
         ${CMAKE_BINARY_DIR}/docs_template.h
         src/utils/xar.c
-        src/utils/xar.h
         src/utils/pbzx.c
-        src/utils/pbzx.h
         src/utils/xz_stream.c
-        src/utils/xz_stream.h
+        src/utils/cpio.c
+        src/utils/byte_buffer.c
 )
 
 # Building C3 with llvm toolchains that don't have AVR Support

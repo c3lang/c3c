@@ -5,6 +5,7 @@
 #include "xz.h"
 #include "../lib.h"
 #include "../../compiler/compiler_internal.h"
+#include "utils/cpio.h"
 #include "utils/pbzx.h"
 #include "utils/xar.h"
 
@@ -12,11 +13,11 @@
 #define BASE_PKG "CLTools_macOS_SDK.pkg"
 #define SDK_PKG "CLTools_macOSNMOS_SDK.pkg"
 
-#define PROGRESS_UPDATE 14
+#define PROGRESS_UPDATE 19
 
 typedef struct {
 	Version version;
-	char *suburl;
+	char *sub_url;
 } Sdk;
 
 typedef struct {
@@ -27,9 +28,9 @@ typedef struct {
 typedef enum {
 	DOWNLOAD,
 	EXTRACT,
-	POPULATE,
-	COPY,
-	CLEANUP
+	FIXUP,
+	CLEANUP,
+	DONE
 } Progress;
 
 static int verbose_level = 0;
@@ -63,9 +64,9 @@ static ReleaseInfo releases[] = {
 static const char *progresses[] = {
 	[DOWNLOAD]	= "Downloading SDK",
 	[EXTRACT]	= "Extracting SDK",
-	[POPULATE]	= "Populating SDK",
-	[COPY]		= "Copying SDK",
-	[CLEANUP]	= "Cleaning up SDK"
+	[FIXUP]		= "Fixing up SDK",
+	[CLEANUP]	= "Cleaning up SDK",
+	[DONE]		= "SDK Installed"
 };
 
 static void sdk_progress(Progress progress, int percent)
@@ -80,7 +81,7 @@ static bool check_license(bool accept_all)
 	       " (Y/n): ");
 	fflush(stdout);
 	char c = (char) getchar();
-	return (c == 'y' || c == 'Y' || c == '\n');
+	return c == 'y' || c == 'Y' || c == '\n';
 }
 
 static size_t select_sdk(size_t count)
@@ -105,7 +106,7 @@ static size_t select_sdk(size_t count)
 			return num;
 		}
 
-		printf("Selection is out of range 1-%ld!\n", count);
+		printf("Selection is out of range 1-%zu!\n", count);
 	}
 }
 
@@ -185,7 +186,7 @@ void fetch_macsdk(BuildOptions *options)
 
 		if (file_exists(dest)) goto done;
 
-		const char *source = str_cat(BASE_URL, sel->suburl);
+		const char *source = str_cat(BASE_URL, sel->sub_url);
 		source = str_cat(source, files[i]);
 
 		download_file(source, "", dest, false);
@@ -194,7 +195,9 @@ done:
 		sdk_progress(EXTRACT, progress);
 
 		FILE *pkg = file_open_read(dest);
-		FILE *cpio = fopen(str_cat(dest, ".cpio"), "w");
+		Cpio cpio;
+		cpio_init(&cpio, "./Library/Developer/CommandLineTools");
+
 		XarHeader header = xar_header(pkg);
 		if (strncmp(header.signature, "xar!", 4) != 0)
 		{
@@ -211,15 +214,23 @@ done:
 			error_exit("Unable to find Payload file in Xar archive.");
 		}
 
-		if (!pbzx_extract(&payload, cpio))
+		if (!pbzx_extract(&payload, &cpio))
 		{
 			error_exit("Failed to extract pbzx.");
 		}
-		fclose(cpio);
-		progress += PROGRESS_UPDATE;
-		sdk_progress(POPULATE, progress);
-
+		cpio_free(&cpio);
 		fclose(pkg);
+
 		progress += PROGRESS_UPDATE;
 	}
+/*
+	sdk_progress(FIXUP, progress);
+	sleep(5);
+
+	progress += PROGRESS_UPDATE;
+	sdk_progress(EXTRACT, progress);
+	sleep(5);
+
+	sdk_progress(DONE, 100);
+	*/
 }

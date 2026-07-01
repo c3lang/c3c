@@ -1,5 +1,6 @@
 #include "pbzx.h"
 
+#include "cpio.h"
 #include "lib.h"
 #include "xz_stream.h"
 
@@ -19,7 +20,7 @@ static uint64_t read_be_uint64(FILE *file)
 	return val | (uint64_t) fgetc(file);
 }
 
-bool pbzx_extract(const XarFile *file, FILE *out)
+bool pbzx_extract(const XarFile *file, Cpio *cpio)
 {
 	fseek(file->file, (long) file->offset, SEEK_SET);
 	char header[5] = { 0 };
@@ -43,7 +44,7 @@ bool pbzx_extract(const XarFile *file, FILE *out)
 
 	uint64_t flg = read_be_uint64(file->file);
 
-	while (flg & (1 << 24)) {
+	while (flg & 1 << 24) {
 		flg = read_be_uint64(file->file);
 		len = read_be_uint64(file->file);
 		bool plain = len == 0x1000000;
@@ -57,7 +58,7 @@ bool pbzx_extract(const XarFile *file, FILE *out)
 		}
 		while (len) {
 			if (plain) {
-				fwrite(in_buf, sizeof(uint8_t), min, out);
+				cpio_push(cpio, in_buf, min);
 			} else {
 				xz_stream_in(&stream, in_buf, min);
 
@@ -71,8 +72,7 @@ bool pbzx_extract(const XarFile *file, FILE *out)
 						goto cleanup;
 					}
 
-					fwrite(out_buf, sizeof(uint8_t), stream.buf.out_pos,
-						out);
+					cpio_push(cpio, out_buf, stream.buf.out_pos);
 				}
 
 				last = min;

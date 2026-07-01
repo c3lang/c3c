@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include <stdio.h>
+#include "cpio.h"
 #include "xar.h"
 
-bool pbzx_extract(const XarFile *file, FILE *out);
+bool pbzx_extract(const XarFile *file, Cpio *cpio);
