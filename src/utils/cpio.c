@@ -42,6 +42,7 @@ void cpio_init(Cpio *cpio, const char *shallowify)
 {
 	byte_buffer_init(&cpio->buffer, (size_t) OUT_SIZE);
 	cpio->shallow = shallowify;
+	cpio->dot_at = strlen(shallowify) - 1;
 	cpio->state = IDLE;
 	cpio->file = (CpioHeader) { 0 };
 }
@@ -139,11 +140,20 @@ void cpio_push(Cpio *cpio, uint8_t *buffer, size_t len)
 				}
 				break;
 			case MAKE_DIR:
-				dir_make(cpio->file.name);
+				if (str_start_with(cpio->file.name, cpio->shallow))
+				{
+					cpio->file.name[cpio->dot_at] = '.';
+					dir_make(cpio->file.name + cpio->dot_at);
+				}
 				cpio->state = IDLE;
 				break;
 			case MAKE_LINK:
-				symlink(cpio->file.link, cpio->file.name);
+				if (str_start_with(cpio->file.name, cpio->shallow))
+				{
+					cpio->file.name[cpio->dot_at] = '.';
+					symlink(cpio->file.link, cpio->file.name +
+						cpio->dot_at);
+				}
 				cpio->state = IDLE;
 				break;
 			case WRITING_FILE:
@@ -158,7 +168,12 @@ void cpio_push(Cpio *cpio, uint8_t *buffer, size_t len)
 
 			if (cpio->to_read == 0)
 			{
-				cpio->out = fopen(cpio->file.name, "w");
+				if (str_start_with(cpio->file.name, cpio->shallow))
+				{
+					cpio->file.name[cpio->dot_at] = '.';
+					cpio->out = fopen(cpio->file.name + cpio->dot_at,
+						"w");
+				}
 				cpio->to_read = cpio->file.size;
 			}
 
@@ -167,14 +182,17 @@ void cpio_push(Cpio *cpio, uint8_t *buffer, size_t len)
 			{
 				const size_t left = MIN(cpio->to_read, BUFSIZ);
 				const size_t read = byte_buffer_read(&cpio->buffer, tmp, left);
-				fwrite(tmp, read, sizeof(uint8_t), cpio->out);
+				if (cpio->out != NULL)
+				{
+					fwrite(tmp, read, sizeof(uint8_t), cpio->out);
+				}
 
 				cpio->to_read -= read;
 			}
 
 			if (cpio->to_read == 0)
 			{
-				fclose(cpio->out);
+				if (cpio->out != NULL) fclose(cpio->out);
 				cpio->state = IDLE;
 			}
 		}

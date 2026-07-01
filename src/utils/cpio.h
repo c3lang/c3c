@@ -20,6 +20,7 @@ typedef struct {
 typedef struct {
 	ByteBuffer buffer;
 	const char *shallow;
+	size_t dot_at;
 
 	int state;
 	CpioHeader file;

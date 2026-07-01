@@ -161,6 +161,11 @@ void fetch_macsdk(BuildOptions *options)
 	verbose_level = options->verbosity_level;
 	const char *tmp_dir_base = "/tmp" /* dir_make_temp_dir() */;
 
+	const char *sdk_output = get_cache_output_path("MacOSX.sdk");
+	dir_change(sdk_output);
+	dir_change("..");
+	/* target MacOSX.sdk will be moved there */
+
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
 	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
 
