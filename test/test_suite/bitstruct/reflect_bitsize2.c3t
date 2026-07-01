@@ -1,0 +1,42 @@
+// #target: macos-x64
+module test;
+import std;
+
+struct Bar
+{
+	int x;
+	bitstruct : uint
+	{
+		uint a : 0..1;
+		bool b : 6;
+		bool c : 10;
+	}
+}
+
+
+fn void dummy(sz x)
+{
+	io::printn(x);
+}
+fn void main()
+{
+	$foreach $member : Bar::members[1].members:
+	{
+		dummy($member.bitoffset);
+		dummy($member.bitsize);
+	}
+	$endforeach
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  call void @test.dummy(i64 32)
+  call void @test.dummy(i64 2)
+  call void @test.dummy(i64 38)
+  call void @test.dummy(i64 1)
+  call void @test.dummy(i64 42)
+  call void @test.dummy(i64 1)
+  ret void
+}

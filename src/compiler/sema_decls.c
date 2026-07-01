@@ -1827,7 +1827,7 @@ ERR:
 	return false;
 }
 
-static bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl, Type *underlying_type)
+static bool sema_analyse_const_enum_constant_val(SemaContext *context, Decl *decl)
 {
 	Expr *value = decl->enum_constant.value;
 	if (!sema_analyse_expr_rhs(context, decl->type, value, false, NULL, true)) return decl_poison(decl);
@@ -1932,7 +1932,7 @@ static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool 
 	{
 		Decl *enum_value = enum_values[i];
 		enum_value->resolve_status = RESOLVE_RUNNING;
-		if (!sema_analyse_const_enum_constant_val(context, enum_value, type)) return decl_poison(decl);
+		if (!sema_analyse_const_enum_constant_val(context, enum_value)) return decl_poison(decl);
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;
@@ -3229,7 +3229,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_PARAM),
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
-			[ATTRIBUTE_JUMP] = 0, // Special, used for switch only
+			[ATTRIBUTE_JUMP] = (AttributeDomain)0, // Special, used for switch only
 			[ATTRIBUTE_LINK] = ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS | ATTR_INTERFACE,
@@ -3258,7 +3258,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
 			[ATTRIBUTE_SAFEINFER] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
-			[ATTRIBUTE_SIMD] = 0,
+			[ATTRIBUTE_SIMD] = (AttributeDomain)0,
 			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_LOCAL | ATTR_GLOBAL,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
@@ -3845,26 +3845,36 @@ bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, Att
 	return true;
 }
 
+// Analyse @return? sections
 bool sema_analyse_optional_returns(SemaContext *context, Decl *contracts)
 {
+	// Avoid recursion.
 	if (contracts->resolve_status != RESOLVE_NOT_DONE) return true;
+
+	// Manually set it to running.
 	contracts->resolve_status = RESOLVE_RUNNING;
 
 	Decl **result = NULL;
 	FOREACH(Expr *, expr, contracts->contracts_decl.opt_returns)
 	{
+		// Case 1 "io::read!"
 		if (expr->expr_kind == EXPR_RETHROW)
 		{
 			Expr *inner = expr->rethrow_expr.inner;
+			// Not an rvalue, so just analyse it.
 			if (!sema_analyse_expr(context, inner)) goto FAIL;
 			Decl *decl;
+			// Should be a function or a function typoe
 			switch (inner->expr_kind)
 			{
 				case EXPR_IDENTIFIER:
+					// This should be a macro or a function
 					decl = inner->ident_expr;
 					break;
 				case EXPR_TYPEINFO:
 				{
+					// If it's a type, then it should be something like
+					// alias Foo = fn void?() which can have contracts.
 					Type *type = inner->type_expr->type;
 					if (type->type_kind != TYPE_ALIAS) goto IS_FAULT;
 					decl = type->decl;
@@ -3878,11 +3888,14 @@ bool sema_analyse_optional_returns(SemaContext *context, Decl *contracts)
 			}
 			decl = decl_flatten(decl);
 			if (decl->decl_kind != DECL_FNTYPE && decl->decl_kind != DECL_FUNC && decl->decl_kind != DECL_MACRO) goto IS_FAULT;
+			// Analyse it and get its contracts
 			if (!sema_analyse_decl(context, decl)) goto FAIL;
 			DeclId contract_id = decl->docs;
 			if (!contract_id) continue;
 			Decl *sub_contracts = declptr(contract_id);
+			// No contracts -> continue
 			if (!sub_contracts->contracts_decl.opt_returns) continue;
+			// Resolve as needed, then add sub contracts.
 			switch (sub_contracts->resolve_status)
 			{
 				case RESOLVE_DONE:
@@ -3895,29 +3908,35 @@ bool sema_analyse_optional_returns(SemaContext *context, Decl *contracts)
 			continue;
 		}
 IS_FAULT:;
+		// Here we expect a fault, like `io::EOF`
 		if (!sema_analyse_expr_rvalue(context, expr)) goto FAIL;
+		// Typedef isn't ok, alias is ok.
 		if (expr->type->canonical != type_fault)
 		{
 			SEMA_ERROR(expr, "Expected a fault here.");
 			goto FAIL;
 		}
+		// Could be something that didn't return a constant fault.
 		if (!expr_is_const_fault(expr))
 		{
 			SEMA_ERROR(expr, "A constant fault is required.");
 			goto FAIL;
 		}
+		// A fault could be null, exclude that
 		Decl *decl = expr->const_expr.fault;
 		if (!decl)
 		{
 			SEMA_ERROR(expr, "A non-null fault is required.");
 			goto FAIL;
 		}
+		// Otherwise add
 		vec_add(result, decl);
 	}
 	contracts->resolve_status = RESOLVE_DONE;
 	contracts->contracts_decl.opt_returns_resolved = result;
 	return true;
 FAIL:
+	// If we fail, clear out the returns.
 	contracts->resolve_status = RESOLVE_DONE;
 	contracts->contracts_decl.opt_returns_resolved = NULL;
 	return false;
@@ -3979,6 +3998,15 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 		{
 			case INOUT_ANY:
 				goto ADDED;
+			case INOUT_OWN:
+				param->var.own_param = true;
+				break;
+			case INOUT_INIT:
+				param->var.init_param = true;
+				break;
+			case INOUT_DROP:
+				param->var.drop_param = true;
+				break;
 			case INOUT_IN:
 				param->var.in_param = true;
 				break;
@@ -3992,7 +4020,7 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 		}
 		if (!may_be_pointer && type->type_kind != TYPE_SLICE)
 		{
-			RETURN_SEMA_ERROR(param_contract, "'in', 'out' and 'inout' may only be added to pointers and slices.");
+			RETURN_SEMA_ERROR(param_contract, "'in', 'out', 'inout', 'init', 'drop' or 'own' may only be added to pointers and slices.");
 		}
 ADDED:;
 	}

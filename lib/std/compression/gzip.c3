@@ -14,7 +14,7 @@
  Streaming and concatenation support added by Manu Linares.
 *>
 module std::compression::gzip;
-import std::io, std::hash::crc32, std::compression::deflate, std::encoding::codepage;
+import std::io, std::hash::crc32, std::compression::deflate, std::encoding::codepage, std::math;
 
 faultdef CORRUPT_HEADER, CORRUPT_DATA, UNSUPPORTED_METHOD, IO_ERROR;
 
@@ -131,8 +131,8 @@ fn void? do_uncompress(GzipReader* reader, OutStream writer) @private
 struct GzipWriter (OutStream)
 {
 	OutStream next;
-	deflate::Deflater deflater;
-	crc32::Crc32 hasher;
+	Deflater deflater;
+	Crc32 hasher;
 	usz total_in;
 }
 
@@ -204,26 +204,38 @@ struct GzipMetadata
 struct GzipReader (InStream)
 {
 	InStream source;
-	deflate::Inflater* inflater;
-	crc32::Crc32 hasher;
+	Inflater* inflater;
+	Crc32 hasher;
 	usz total_out;
 	bool header_read;
 	bool footer_verified;
 	GzipMetadata metadata;
 	char* bit_buf;
 	Allocator allocator;
+	sz unused_pos;
+	sz unused_len;
+}
+
+fn sz? read_source(GzipReader* self, char[] bytes) @private
+{
+	sz copied = 0;
+	if (self.unused_pos < self.unused_len)
+	{
+		copied = math::min(bytes.len, self.unused_len - self.unused_pos);
+		mem::copy(bytes.ptr, self.bit_buf + self.unused_pos, copied);
+		self.unused_pos += copied;
+	}
+	if (copied < bytes.len)
+	{
+		copied += self.source.read(bytes[copied..])!;
+	}
+	return copied;
 }
 
 fn void? GzipReader.init(&self, InStream reader, Allocator allocator = tmem)
 {
-	self.source = reader;
-	self.allocator = allocator;
+	*self = { .source = reader, .allocator = allocator };
 	self.hasher.init();
-	self.total_out = 0;
-	self.header_read = false;
-	self.footer_verified = false;
-	self.metadata = {};
-	self.inflater = null;
 }
 
 fn void GzipReader.free_metadata(&self, Allocator allocator)
@@ -266,27 +278,28 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 
 	if (!self.footer_verified)
 	{
+		self.unused_pos = 0;
+		self.unused_len = @catch(self.source.seek(0, FROM_CURSOR))
+			? self.inflater.copy_unused_input(self.bit_buf[:8192]) : 0;
+
 		self.inflater.close()!;
 
-		if (try self.source.seek(0, FROM_CURSOR))
-		{
-			uint crc_stored = io::read_le_uint(self.source)!;
-			uint isize_stored = io::read_le_uint(self.source)!;
+		char[8] footer;
+		if (read_source(self, footer[..])! != 8) return CORRUPT_DATA~;
+		uint crc_stored = ((UIntLE*)&footer[0]).val;
+		uint isize_stored = ((UIntLE*)&footer[4]).val;
 
-			if (crc_stored != self.hasher.final()) return CORRUPT_DATA~;
-			if (isize_stored != (uint)(self.total_out & uint::max)) return CORRUPT_DATA~;
-		}
+		if (crc_stored != self.hasher.final()) return CORRUPT_DATA~;
+		if (isize_stored != (uint)(self.total_out & uint::max)) return CORRUPT_DATA~;
 
 		self.footer_verified = true;
 
-		alloc::free(self.allocator, self.bit_buf);
 		alloc::free(self.allocator, self.inflater);
 		self.inflater = null;
-		self.bit_buf = null;
 	}
 
 	char[2] magic;
-	sz? next_magic = self.source.read(magic[..]);
+	sz? next_magic = read_source(self, magic[..]);
 	if (try nm = next_magic && nm == 2)
 	{
 		if (magic[0] == GZIP_ID1 && magic[1] == GZIP_ID2)
@@ -297,22 +310,40 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 			self.total_out = 0;
 			self.free_metadata(self.allocator);
 
-			self.source.seek(-2, FROM_CURSOR)!;
+			if (self.unused_pos >= 2)
+			{
+				self.unused_pos -= 2;
+			}
+			else
+			{
+				self.bit_buf[0] = magic[0];
+				self.bit_buf[1] = magic[1];
+				self.unused_pos = 0;
+				self.unused_len = 2;
+			}
 			return self.read(bytes);
 		}
-		self.source.seek(-2, FROM_CURSOR)!;
+
+		if (self.unused_pos >= 2)
+		{
+			self.unused_pos -= 2;
+		}
+		else
+		{
+			(void)self.source.seek(-2, FROM_CURSOR);
+		}
 	}
 
 	return 0;
 }
 
-fn void? GzipReader.read_header(&self) @dynamic
+fn void? GzipReader.read_header(&self)
 {
 	ByteWriter h;
 	h.tinit();
 
 	char[GzipHeader::size] h_bytes;
-	sz n = self.source.read(h_bytes[..])!;
+	sz n = read_source(self, h_bytes[..])!;
 	if (n != GzipHeader::size) return IO_ERROR~;
 	h.write(h_bytes[..])!;
 
@@ -324,47 +355,27 @@ fn void? GzipReader.read_header(&self) @dynamic
 
 	if (self.metadata.header.flg.extra)
 	{
-		ushort xlen = io::read_le_ushort(self.source)!;
+		char[2] xlen_bytes;
+		if (read_source(self, xlen_bytes[..])! != 2) return IO_ERROR~;
+		ushort xlen = ((UShortLE*)&xlen_bytes[0]).val;
 		io::write_le_ushort(&h, xlen)!;
 
 		self.metadata.extra = alloc::alloc_array(self.allocator, char, xlen);
-		self.source.read(self.metadata.extra)!;
+		read_source(self, self.metadata.extra)!;
 		h.write(self.metadata.extra)!;
 	}
 
-	if (self.metadata.header.flg.name)
-	{
-		ByteWriter name_bw;
-		name_bw.tinit();
-		while (true)
-		{
-			char c = self.source.read_byte()!;
-			h.write_byte(c)!;
-			if (c == '\0') break;
-			name_bw.write_byte(c)!;
-		}
-		self.metadata.filename = codepage::decode(self.allocator, name_bw.array_view(), CodePage.ISO_8859_1)!;
-	}
+	if (self.metadata.header.flg.name) self.metadata.filename = read_null_terminated(self, &h)!;
 
-	if (self.metadata.header.flg.comment)
-	{
-		ByteWriter comment_bw;
-		comment_bw.tinit();
-		while (true)
-		{
-			char c = self.source.read_byte()!;
-			h.write_byte(c)!;
-			if (c == '\0') break;
-			comment_bw.write_byte(c)!;
-		}
-		self.metadata.comment = codepage::decode(self.allocator, comment_bw.array_view(), CodePage.ISO_8859_1)!;
-	}
+	if (self.metadata.header.flg.comment) self.metadata.comment = read_null_terminated(self, &h)!;
 
 	if (self.metadata.header.flg.hcrc)
 	{
 		uint crc_hash = crc32::hash(h.array_view());
 		ushort crc16 = (ushort)(crc_hash & 0xFFFF);
-		ushort hcrc = io::read_le_ushort(self.source)!;
+		char[2] hcrc_bytes;
+		if (read_source(self, hcrc_bytes[..])! != 2) return CORRUPT_HEADER~;
+		ushort hcrc = ((UShortLE*)&hcrc_bytes[0]).val;
 		if (crc16 != hcrc) return CORRUPT_HEADER~;
 	}
 }
@@ -374,11 +385,14 @@ fn void? GzipReader.close(&self) @dynamic
 	self.free_metadata(self.allocator);
 	if (self.inflater)
 	{
-		alloc::free(self.allocator, self.bit_buf);
 		alloc::free(self.allocator, self.inflater);
 		self.inflater = null;
 	}
-	return;
+	if (self.bit_buf)
+	{
+		alloc::free(self.allocator, self.bit_buf);
+		self.bit_buf = null;
+	}
 }
 
 fn char? GzipReader.read_byte(&self) @dynamic
@@ -389,10 +403,26 @@ fn char? GzipReader.read_byte(&self) @dynamic
 	return b[0];
 }
 
+fn String? read_null_terminated(GzipReader* self, ByteWriter* h) @private
+{
+	ByteWriter bw;
+	bw.tinit();
+	while (true)
+	{
+		char[1] c_buf;
+		if (read_source(self, c_buf[..])! != 1) return IO_ERROR~;
+		char c = c_buf[0];
+		h.write_byte(c)!;
+		if (c == '\0') break;
+		bw.write_byte(c)!;
+	}
+	return codepage::decode(self.allocator, bw.array_view(), ISO_8859_1);
+}
+
 fn void? encode_latin1(OutStream writer, String s)
 {
 	@pool() {
-		writer.write(codepage::encode(tmem, s, CodePage.ISO_8859_1)!)!;
+		writer.write(codepage::encode(tmem, s, ISO_8859_1)!)!;
 		writer.write_byte('\0')!;
 	};
 }

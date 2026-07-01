@@ -3703,6 +3703,40 @@ FOUND:;
 	return sema_analyse_expr_rvalue(context, expr);
 }
 
+INLINE bool sema_expr_analyse_is_generic(SemaContext *context, Expr *expr, Expr *tag)
+{
+	Expr **args = expr->call_expr.arguments;
+	unsigned arg_count = vec_size(args);
+	Decl *decl = tag->type_call_expr.type;
+	if (arg_count != 1) RETURN_SEMA_ERROR(expr, "'is_generic' requires an argument.");
+	Expr *type_expr = args[0];
+	if (type_expr->expr_kind != EXPR_TYPEINFO)
+	{
+		RETURN_SEMA_ERROR(type_expr, "'is_generic' requires a generic type name.");
+	}
+	TypeInfo *info = type_expr->type_expr;
+	if (info->kind != TYPE_INFO_IDENTIFIER || info->optional || info->subtype != TYPE_COMPRESSED_NONE || info->resolve_status == RESOLVE_DONE)
+	{
+		RETURN_SEMA_ERROR(type_expr, "'is_generic' requires a generic type name.");
+	}
+	bool match = false;
+	Decl *inf = sema_resolve_generic_symbol(context, info->unresolved.name, info->unresolved.path, type_expr->loc);
+	if (!inf) return false;
+	if (!decl || !decl->is_templated) goto NO_MATCH;
+	Decl *generic = declptr(inf->generic_id);
+	Decl *instance = declptr(decl->instance_id);
+	if (decl->unit->module != inf->unit->module) goto NO_MATCH;
+	if (inf->decl_kind != decl->decl_kind) goto NO_MATCH;
+	if (generic->generic_decl.id != instance->instance_decl.id) goto NO_MATCH;
+	// VERY hacky solution, but saves storing the parent.
+	size_t len = strlen(inf->name);
+	if (strncmp(inf->name, decl->name, len) != 0) goto NO_MATCH;
+	match = decl->name[len] == '{';
+NO_MATCH:
+	expr_rewrite_const_bool(expr, type_bool, match);
+	return true;
+}
+
 static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 {
 	Expr *tag = exprptr(expr->call_expr.function);
@@ -3715,6 +3749,8 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_from_ordinal(context, expr, tag);
 		case TYPE_PROPERTY_LOOKUP_FIELD:
 			return sema_expr_analyse_lookup(context, expr, tag);
+		case TYPE_PROPERTY_IS_GENERIC:
+			return sema_expr_analyse_is_generic(context, expr, tag);
 		default:
 			break;
 	}
@@ -5463,6 +5499,7 @@ static inline bool sema_expr_analyse_reflection_offset(Expr *expr, Expr *reflect
 {
 	if (expr_is_const_member(reflect))
 	{
+		if (reflect->const_expr.member.decl->var.kind == VARDECL_BITMEMBER) return false;
 		AlignSize offset = reflect->const_expr.member.offset;
 		if (offset != ~(AlignSize)0)
 		{
@@ -5493,6 +5530,51 @@ INLINE bool sema_expr_rewrite_to_is_ordered(SemaContext *context, Expr *expr, Ty
 			return true;
 	}
 	UNREACHABLE
+}
+
+INLINE bool sema_expr_rewrite_to_generic_args(SemaContext *context, Expr *expr, Type *type)
+{
+	type = type->canonical;
+	Expr **exprs = NULL;
+	if (!type_is_user_defined(type)) goto EMPTY_GENERICS;
+	if (!sema_resolve_type_decl(context, type)) return false;
+	if (!type->decl->is_templated) goto EMPTY_GENERICS;
+	Decl *generic_ptr = declptr(type->decl->instance_id);
+	ASSERT_SPAN(expr, generic_ptr->decl_kind == DECL_GENERIC_INSTANCE);
+	Decl **params = generic_ptr->instance_decl.params;
+
+	FOREACH(Decl *, gen_param, params)
+	{
+		Expr *copy = expr_copy(gen_param->var.init_expr);
+		vec_add(exprs, copy);
+	}
+EMPTY_GENERICS:
+	expr_rewrite_const_untyped_list(expr, exprs);
+	return true;
+}
+
+INLINE bool sema_expr_rewrite_to_generic_qname(SemaContext *context, Expr *expr, Type *type)
+{
+	type = type->canonical;
+	if (!type_is_user_defined(type)) goto EMPTY_GENERICS;
+	if (!sema_resolve_type_decl(context, type)) return false;
+	if (!type->decl->is_templated) goto EMPTY_GENERICS;
+	scratch_buffer_clear();
+	Module *module = type_base_module(type);
+	if (module)
+	{
+		scratch_buffer_append(module->name->module);
+		scratch_buffer_append("::");
+	}
+	uint32_t len = scratch_buffer.len + 1;
+	scratch_buffer_append(type->name);
+	while (scratch_buffer.str[len] != '{') len++;
+	scratch_buffer.len = len;
+	expr_rewrite_const_string_from_scratch(expr);
+	return true;
+EMPTY_GENERICS:
+	expr_rewrite_const_string(expr, "", 0);
+	return true;
 }
 
 INLINE bool sema_expr_rewrite_to_has_equals(SemaContext *context, Expr *expr, Type *type)
@@ -5576,6 +5658,16 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 	}
 	if (member)
 	{
+		if (name == kw_is_anonymous)
+		{
+			expr_rewrite_const_bool(expr, type_bool, member->name == NULL || str_eq("", member->name));
+			return type;
+		}
+		if (name == kw_is_nested)
+		{
+			expr_rewrite_const_bool(expr, type_bool, decl_has_members(member));
+			return type;
+		}
 		if (name == kw_get_tag)
 		{
 			expr->expr_kind = EXPR_TYPECALL;
@@ -5622,7 +5714,21 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		}
 		if (name == kw_members)
 		{
-			sema_create_const_membersof(expr, type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
+			sema_create_const_membersof(expr, type->canonical, reflect->const_expr.member.align, reflect->const_expr.member.offset);
+			return true;
+		}
+		if (name == kw_bitoffset)
+		{
+			if (member->decl_kind != DECL_VAR || member->var.kind != VARDECL_BITMEMBER) goto FAILED;
+			AlignSize base_offset = reflect->const_expr.member.offset;
+			if (base_offset == ~(AlignSize)0) base_offset = 0;
+			expr_rewrite_const_int(expr, type_sz, member->var.start_bit + base_offset * 8);
+			return true;
+		}
+		if (name == kw_bitsize)
+		{
+			if (member->decl_kind != DECL_VAR || member->var.kind != VARDECL_BITMEMBER) goto FAILED;
+			expr_rewrite_const_int(expr, type_sz, member->var.end_bit - member->var.start_bit + 1);
 			return true;
 		}
 	}
@@ -6135,7 +6241,10 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_HAS_EQUALS:
 		case TYPE_PROPERTY_IS_ORDERED:
+		case TYPE_PROPERTY_IS_ANONYMOUS:
+		case TYPE_PROPERTY_IS_NESTED:
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
+		case TYPE_PROPERTY_IS_GENERIC:
 		case TYPE_PROPERTY_LOOKUP_FIELD:
 		case TYPE_PROPERTY_MEMBERS:
 		case TYPE_PROPERTY_METHODS:
@@ -6149,6 +6258,8 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_GET_TAG:
 		case TYPE_PROPERTY_VALUES:
 		case TYPE_PROPERTY_TAGS:
+		case TYPE_PROPERTY_GENERIC_ARGS:
+		case TYPE_PROPERTY_GENERIC_QNAME:
 			// Not supported by dynamic typeid
 		case TYPE_PROPERTY_NONE:
 			return false;
@@ -6356,6 +6467,17 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 		case TYPE_PROPERTY_NAMES:
 		case TYPE_PROPERTY_VALUES:
 			return type->type_kind == TYPE_ENUM || original_type->canonical->type_kind == TYPE_CONSTDEF;
+		case TYPE_PROPERTY_IS_ANONYMOUS:
+		case TYPE_PROPERTY_IS_NESTED:
+			switch (type->type_kind)
+			{
+				case TYPE_STRUCT:
+				case TYPE_UNION:
+				case TYPE_BITSTRUCT:
+					return true;
+				default:
+					return false;
+			}
 		case TYPE_PROPERTY_MEMBERS:
 			switch (type->type_kind)
 			{
@@ -6385,6 +6507,9 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 		case TYPE_PROPERTY_GET_TAG:
 		case TYPE_PROPERTY_HAS_TAG:
 		case TYPE_PROPERTY_TAGS:
+		case TYPE_PROPERTY_GENERIC_ARGS:
+		case TYPE_PROPERTY_GENERIC_QNAME:
+		case TYPE_PROPERTY_IS_GENERIC:
 			return true;
 		case TYPE_PROPERTY_CNAME:
 			return !type_is_builtin(original_type->canonical->type_kind);
@@ -6409,6 +6534,12 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->type = type;
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
+		case TYPE_PROPERTY_IS_ANONYMOUS:
+			expr_rewrite_const_bool(expr, type_bool, flat->decl->strukt.parent != 0);
+			return true;
+		case TYPE_PROPERTY_IS_NESTED:
+			expr_rewrite_const_bool(expr, type_bool, flat == NULL);
+			return true;
 		case TYPE_PROPERTY_IS_ORDERED:
 			return sema_expr_rewrite_to_is_ordered(context, expr, type);
 		case TYPE_PROPERTY_HAS_EQUALS:
@@ -6416,6 +6547,10 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
 			expr_rewrite_const_bool(expr, type_bool, type_is_substruct(flat));
 			return true;
+		case TYPE_PROPERTY_GENERIC_QNAME:
+			return sema_expr_rewrite_to_generic_qname(context, expr, type);
+		case TYPE_PROPERTY_GENERIC_ARGS:
+			return sema_expr_rewrite_to_generic_args(context, expr, type);
 		case TYPE_PROPERTY_INNER:
 			return sema_create_const_inner(context, expr, type);
 		case TYPE_PROPERTY_PARENT:
@@ -6498,6 +6633,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			}
 			FALLTHROUGH;
 		case TYPE_PROPERTY_HAS_TAG:
+		case TYPE_PROPERTY_IS_GENERIC:
 			if (!type_is_user_defined(type))
 			{
 

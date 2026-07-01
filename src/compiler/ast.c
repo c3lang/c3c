@@ -356,7 +356,6 @@ bool decl_inherits_module_generic(Decl *decl)
 		case DECL_GENERIC_INSTANCE:
 		case DECL_IMPORT:
 		case DECL_LABEL:
-		case DECL_CONSTDEF:
 		case DECL_CONTRACT:
 		case DECL_CT_EXPAND:
 			return false;
@@ -364,6 +363,7 @@ bool decl_inherits_module_generic(Decl *decl)
 		case DECL_BITSTRUCT:
 		case DECL_DECLARRAY:
 		case DECL_ALIAS:
+		case DECL_CONSTDEF:
 		case DECL_TYPEDEF:
 		case DECL_ENUM:
 		case DECL_FNTYPE:

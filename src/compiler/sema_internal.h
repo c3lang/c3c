@@ -144,7 +144,7 @@ bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, Att
 void unit_register_optional_global_decl(CompilationUnit *unit, Decl *decl);
 bool analyse_func_body(SemaContext *context, Decl *decl);
 bool sema_check_interfaces(SemaContext *context, Decl *decl);
-bool sema_analyse_optional_returns(SemaContext *context, Decl *contract);
+bool sema_analyse_optional_returns(SemaContext *context, Decl *contracts);
 
 INLINE bool sema_analyse_stmt_chain(SemaContext *context, Ast *statement)
 {
