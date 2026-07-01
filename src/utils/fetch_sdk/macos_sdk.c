@@ -159,12 +159,16 @@ void fetch_macsdk(BuildOptions *options)
 	xz_crc64_init();
 
 	verbose_level = options->verbosity_level;
-	const char *tmp_dir_base = "/tmp" /* dir_make_temp_dir() */;
+	const char *tmp_dir_base = dir_make_temp_dir();
 
-	const char *sdk_output = get_cache_output_path("MacOSX.sdk");
+	char *sdk_output = get_cache_output_path("MacOSX.sdk");
+	dir_make_recursive(sdk_output);
+
 	dir_change(sdk_output);
 	dir_change("..");
+
 	/* target MacOSX.sdk will be moved there */
+	file_delete_dir(sdk_output);
 
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
 	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
@@ -228,14 +232,15 @@ done:
 
 		progress += PROGRESS_UPDATE;
 	}
-/*
 	sdk_progress(FIXUP, progress);
-	sleep(5);
+
+	char *sdk = realpath("SDKs/MacOSX.sdk", NULL);
+	rename(sdk, "MacOSX.sdk");
+	free(sdk);
 
 	progress += PROGRESS_UPDATE;
-	sdk_progress(EXTRACT, progress);
-	sleep(5);
+	sdk_progress(CLEANUP, progress);
+	file_delete_dir("SDKs");
 
 	sdk_progress(DONE, 100);
-	*/
 }
