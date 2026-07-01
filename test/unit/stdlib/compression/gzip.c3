@@ -1,6 +1,6 @@
 module std::compression::gzip_test;
 import std::compression::gzip @public;
-import std::io;
+import std::io, std::math;
 
 fn void gzip_fhcrc() @test
 {
@@ -327,6 +327,15 @@ struct PipeReader (InStream) @local
 	usz pos;
 }
 
+// Delivers up to split_at bytes in one read, then 1 byte at a time.
+// Always returns UNSUPPORTED_OPERATION for seek (simulates a pipe).
+struct SplitAtReader (InStream) @local
+{
+	char[] data;
+	sz pos;
+	sz split_at;
+}
+
 fn sz? PipeReader.read(&self, char[] buffer) @dynamic
 {
 	if (self.pos >= self.data.len) return 0;
@@ -344,6 +353,28 @@ fn char? PipeReader.read_byte(&self) @dynamic
 }
 
 fn void? PipeReader.seek(&self, long offset, SeekOrigin origin = FROM_START) @dynamic
+{
+	return io::UNSUPPORTED_OPERATION~;
+}
+
+fn sz? SplitAtReader.read(&self, char[] buffer) @dynamic
+{
+	if (self.pos >= self.data.len) return 0;
+	sz available = self.data.len - self.pos;
+	sz limit = self.pos < self.split_at ? self.split_at - self.pos : 1;
+	sz n = math::min(buffer.len, math::min(limit, available));
+	buffer[:n] = self.data[self.pos:n];
+	self.pos += n;
+	return (sz)n;
+}
+
+fn char? SplitAtReader.read_byte(&self) @dynamic
+{
+	if (self.pos >= self.data.len) return io::EOF~;
+	return self.data[self.pos++];
+}
+
+fn void? SplitAtReader.seek(&self, long offset, SeekOrigin origin = FROM_START) @dynamic
 {
 	return io::UNSUPPORTED_OPERATION~;
 }
@@ -372,5 +403,28 @@ fn void gzip_corrupt_footer_non_seekable() @test
 		PipeReader pr = { .data = gz };
 		ByteWriter bw; bw.tinit();
 		test::@error(gzip::uncompress_stream(&bw, &pr), gzip::CORRUPT_DATA);
+	};
+}
+
+fn void gzip_concat_nonseekable_9byte_overread() @test @if(false)
+{
+	@pool()
+	{
+		char[] m1 = gzip::compress(tmem, "A")!!;
+		char[] m2 = gzip::compress(tmem, "B")!!;
+
+		char[] combined = alloc::alloc_array(tmem, char, m1.len + m2.len);
+		combined[:m1.len] = m1[..];
+		combined[m1.len..] = m2[..];
+
+		// m1 = [header=10][deflate=N][footer=8]
+		// split_at = 10 + N + 9 forces the BitReader's first fill to capture
+		// the full deflate block plus exactly 9 extra bytes (footer[0..7] + m2[0]).
+		sz deflate_len = m1.len - 18;
+		SplitAtReader sr = { .data = combined, .split_at = 10 + deflate_len + 9 };
+
+		ByteWriter bw; bw.tinit();
+		gzip::uncompress_stream(&bw, &sr)!!;
+		test::eq(bw.array_view(), "AB");
 	};
 }
