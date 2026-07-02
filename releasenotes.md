@@ -17,6 +17,7 @@
 - `Atomic.compare_exchange` added.
 - Added `array::contains_slice` and `array::index_of_slice`.
 - `String.index_of` and `rindex_of` will now accept finding empty strings.
+- Add log::register_dynamic_category, for libraries that wish to define their own categories dynamically.
 
 ### Fixes
 - `$stringify` would sometimes include parens.
