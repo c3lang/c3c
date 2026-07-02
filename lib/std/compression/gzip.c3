@@ -225,9 +225,12 @@ fn sz? read_source(GzipReader* self, char[] bytes) @private
 		mem::copy(bytes.ptr, self.bit_buf + self.unused_pos, copied);
 		self.unused_pos += copied;
 	}
-	if (copied < bytes.len)
+	while (copied < bytes.len)
 	{
-		copied += self.source.read(bytes[copied..])!;
+		sz n;
+		if (@try_catch(n, self.source.read(bytes[copied..]), io::EOF)!) break;
+		if (n == 0) break;
+		copied += n;
 	}
 	return copied;
 }
@@ -250,6 +253,7 @@ fn void GzipReader.free_metadata(&self, Allocator allocator)
 
 fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 {
+	if (!self.source) return io::EOF~;
 	if (self.footer_verified) return 0;
 
 	if (!self.header_read)
@@ -298,11 +302,12 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 		self.inflater = null;
 	}
 
+	sz old_unused_pos = self.unused_pos;
 	char[2] magic;
 	sz? next_magic = read_source(self, magic[..]);
-	if (try nm = next_magic && nm == 2)
+	if (try nm = next_magic && nm > 0)
 	{
-		if (magic[0] == GZIP_ID1 && magic[1] == GZIP_ID2)
+		if (nm == 2 && magic == { GZIP_ID1, GZIP_ID2 })
 		{
 			self.header_read = false;
 			self.footer_verified = false;
@@ -310,27 +315,26 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 			self.total_out = 0;
 			self.free_metadata(self.allocator);
 
-			if (self.unused_pos >= 2)
+			sz remaining = self.unused_len - self.unused_pos;
+			if (remaining > 0)
 			{
-				self.unused_pos -= 2;
+				mem::move(self.bit_buf + 2, self.bit_buf + self.unused_pos, remaining);
 			}
-			else
-			{
-				self.bit_buf[0] = magic[0];
-				self.bit_buf[1] = magic[1];
-				self.unused_pos = 0;
-				self.unused_len = 2;
-			}
+			self.bit_buf[0 : 2] = magic[..];
+			self.unused_pos = 0;
+			self.unused_len = 2 + remaining;
 			return self.read(bytes);
 		}
 
-		if (self.unused_pos >= 2)
+		sz read_from_buf = self.unused_pos - old_unused_pos;
+		if (read_from_buf > 0)
 		{
-			self.unused_pos -= 2;
+			self.unused_pos -= read_from_buf;
 		}
-		else
+		sz read_from_stream = nm - read_from_buf;
+		if (read_from_stream > 0)
 		{
-			(void)self.source.seek(-2, FROM_CURSOR);
+			(void)self.source.seek(-(long)read_from_stream, FROM_CURSOR);
 		}
 	}
 
@@ -393,6 +397,7 @@ fn void? GzipReader.close(&self) @dynamic
 		alloc::free(self.allocator, self.bit_buf);
 		self.bit_buf = null;
 	}
+	self.source = {};
 }
 
 fn char? GzipReader.read_byte(&self) @dynamic
