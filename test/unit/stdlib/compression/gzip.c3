@@ -406,7 +406,7 @@ fn void gzip_corrupt_footer_non_seekable() @test
 	};
 }
 
-fn void gzip_concat_nonseekable_9byte_overread() @test @if(false)
+fn void gzip_concat_nonseekable_9byte_overread() @test
 {
 	@pool()
 	{
@@ -426,5 +426,85 @@ fn void gzip_concat_nonseekable_9byte_overread() @test @if(false)
 		ByteWriter bw; bw.tinit();
 		gzip::uncompress_stream(&bw, &sr)!!;
 		test::eq(bw.array_view(), "AB");
+	};
+}
+
+fn void gzip_seekable_backtrack() @test
+{
+	@pool()
+	{
+		char[] m1 = gzip::compress(tmem, "A")!!;
+		char[] combined = alloc::alloc_array(tmem, char, m1.len + 2);
+		combined[:m1.len] = m1[..];
+		combined[m1.len] = 'X';
+		combined[m1.len + 1] = 'Y';
+
+		ByteReader br = io::wrap_bytes(combined);
+		ByteWriter bw; bw.tinit();
+
+		GzipReader reader;
+		reader.init(&br)!!;
+		defer (void)reader.close();
+
+		char[16] buf;
+		sz n = reader.read(buf[..])!!;
+		test::eq(buf[:n], "A");
+
+		sz n_eof = reader.read(buf[..])!!;
+		test::eq(n_eof, 0);
+
+		char[2] trailing;
+		sz n_trailing = br.read(trailing[..])!!;
+		test::eq(n_trailing, 2);
+		test::eq(trailing[..], "XY");
+	};
+}
+
+fn void gzip_seekable_backtrack_1byte() @test
+{
+	@pool()
+	{
+		char[] m1 = gzip::compress(tmem, "A")!!;
+		char[] combined = alloc::alloc_array(tmem, char, m1.len + 1);
+		combined[:m1.len] = m1[..];
+		combined[m1.len] = 'X';
+
+		ByteReader br = io::wrap_bytes(combined);
+		ByteWriter bw; bw.tinit();
+
+		GzipReader reader;
+		reader.init(&br)!!;
+		defer (void)reader.close();
+
+		char[16] buf;
+		sz n = reader.read(buf[..])!!;
+		test::eq(buf[:n], "A");
+
+		sz n_eof = reader.read(buf[..])!!;
+		test::eq(n_eof, 0);
+
+		char[1] trailing;
+		sz n_trailing = br.read(trailing[..])!!;
+		test::eq(n_trailing, 1);
+		test::eq(trailing[..], "X");
+	};
+}
+
+fn void gzip_read_after_close() @test
+{
+	@pool()
+	{
+		char[] compressed = gzip::compress(tmem, "hello world")!!;
+		ByteReader br = io::wrap_bytes(compressed);
+		GzipReader reader;
+		reader.init(&br)!!;
+
+		char[5] buf;
+		sz n = reader.read(buf[..])!!;
+		test::eq(buf[:n], "hello");
+
+		reader.close()!!;
+
+		test::@error(reader.read(buf[..]), io::EOF);
 	};
 }
