@@ -598,9 +598,9 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 	if (type->backend_debug_type) return type->backend_debug_type;
 
 	return LLVMDIBuilderCreateSubroutineType(c->debug.builder,
-	                                         c->debug.file.debug_file,
-	                                         params,
-	                                         index, 0);
+	                                                         c->debug.file.debug_file,
+	                                                         params,
+	                                                         index, 0);
 }
 
 
@@ -618,7 +618,11 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
-			return type->backend_debug_type = llvm_get_debug_type(c, type_lowering(type));
+		{
+			LLVMMetadataRef inner = llvm_get_debug_type(c, type_lowering(type));
+			if (LLVMDIIsTemporary(inner)) return inner;
+			return type->backend_debug_type = inner;
+		}
 		case TYPE_BOOL:
 			return llvm_debug_simple_type(c, type, DW_ATE_boolean);
 		case TYPE_I8:

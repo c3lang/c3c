@@ -27,6 +27,7 @@
 - Compiler asserts on concatenating a struct to an untypedlist #3326.
 - `untypedlist` was not detected as invalid in enum associated value type or as a pointer #3342.
 - Regression using non-posix libc.
+- Crash with an optional struct recursively defined with a function type. #3358
 
 ## 0.8.1 Change list
 
