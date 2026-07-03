@@ -1,0 +1,21 @@
+module bug;
+
+struct Device { VTable* vt; }
+struct VTable { BeginFn begin; }
+alias  BeginFn = fn Cmd? (Device*);
+struct Cmd { Device* device; int x; }
+
+fn void use_cmd(Cmd* c) { (void)c; }
+
+fn Cmd? make(Device* d)
+{
+	return { .device = d, .x = 1 };
+}
+
+fn void main()
+{
+	Device d;
+	use_cmd(null);
+	Cmd? c = make(&d);
+	(void)c;
+}

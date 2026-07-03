@@ -1537,6 +1537,12 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	cc->to_group = flat_group;
 	bool may_cast = cast_is_allowed(cc, true, true);
 	if (may_cast && is_explicit) return true;
+	if (is_explicit && cc->to_type == type_string && cc->from->type_kind == TYPE_ARRAY && cc->from->array.base == type_char)
+	{
+		if (is_silent) return false;
+		sema_error_at(cc->context, cc->expr->loc, "To convert a %s array to a String, you first have to take its address: '(String)&x'.", type_quoted_error_string(cc->from));
+		return false;
+	}
 	return sema_cast_error(cc, may_cast, is_silent);
 }
 

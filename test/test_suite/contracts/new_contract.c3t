@@ -1,0 +1,7 @@
+<*
+ @param [&init] a
+ @param [&drop] b
+ @param [&own] c
+*>
+fn void test(int* a, int* b, int* c)
+{}
