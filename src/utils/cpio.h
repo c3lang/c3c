@@ -5,7 +5,7 @@
 
 typedef enum {
 	NONE,
-	DIR,
+	DIRECTORY,
 	REGULAR,
 	SYMBOLIC_LINK
 } CpioFile;
@@ -27,6 +27,14 @@ typedef struct {
 
 	size_t to_read;
 	FILE *out;
+
+#ifdef _WIN32
+	char **exclude;
+	size_t exclude_count;
+	bool keep_sdk;
+
+	char *sdk;
+#endif
 } Cpio;
 
 void cpio_init(Cpio *cpio, const char *shallowify);

@@ -44,6 +44,7 @@ void cpio_init(Cpio *cpio, const char *shallowify)
 	cpio->shallow = shallowify;
 	cpio->dot_at = strlen(shallowify) - 1;
 	cpio->state = IDLE;
+	cpio->to_read = 0;
 	cpio->file = (CpioHeader) { 0 };
 }
 
@@ -102,7 +103,7 @@ void cpio_push(Cpio *cpio, uint8_t *buffer, size_t len)
 						case REGULAR:
 							cpio->state = WRITING_FILE;
 							break;
-						case DIR:
+						case DIRECTORY:
 							cpio->state = MAKE_DIR;
 							break;
 						case SYMBOLIC_LINK:
@@ -132,6 +133,21 @@ void cpio_push(Cpio *cpio, uint8_t *buffer, size_t len)
 					byte_buffer_read(&cpio->buffer, (uint8_t*) cpio->file.link,
 						cpio->file.size);
 
+#ifdef _WIN32
+					bool excluded = false;
+					for (int i = 0; i < cpio->exclude_count; i++)
+					{
+						if (str_ends_with(cpio->file.name, cpio->exclude[i]))
+						{
+							if (cpio->keep_sdk) cpio->sdk = str_dup(cpio->file.link);
+							cpio->state = IDLE;
+							excluded = true;
+							break;
+						}
+					}
+
+					if (excluded) break;
+#endif
 					cpio->state = MAKE_LINK;
 				}
 				else
@@ -173,6 +189,8 @@ void cpio_push(Cpio *cpio, uint8_t *buffer, size_t len)
 					cpio->file.name[cpio->dot_at] = '.';
 					cpio->out = fopen(cpio->file.name + cpio->dot_at,
 						"w");
+				} else {
+					cpio->out = NULL;
 				}
 				cpio->to_read = cpio->file.size;
 			}
@@ -210,7 +228,7 @@ static CpioFile get_type(const size_t mode)
 	const size_t masked = mode & C_IFMT;
 	switch (masked) {
 		case C_ISDIR:
-			return DIR;
+			return DIRECTORY;
 		case C_ISLNK:
 			return SYMBOLIC_LINK;
 		case C_ISCTG:

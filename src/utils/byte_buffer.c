@@ -26,7 +26,10 @@ static void shrink(ByteBuffer *self)
 void byte_buffer_init(ByteBuffer *self, size_t max_read)
 {
 	self->max_read = max_read;
+	self->write_idx = 0;
+	self->read_idx = 0;
 	self->bytes.len = 0;
+	self->bytes.ptr = NULL;
 	grow(self, 16);
 }
 

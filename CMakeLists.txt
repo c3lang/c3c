@@ -580,6 +580,7 @@ add_executable(c3c
         src/utils/cpio.c
         src/utils/byte_buffer.c
         src/utils/sucatalog.c
+        src/utils/symlink.c
 )
 
 # Building C3 with llvm toolchains that don't have AVR Support

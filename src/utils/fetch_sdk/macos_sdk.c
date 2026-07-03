@@ -4,16 +4,18 @@
 #include "fetch_utils.h"
 #include "xz.h"
 #include "../lib.h"
-#include "../../compiler/compiler_internal.h"
+#include "build/build.h"
 #include "utils/cpio.h"
 #include "utils/pbzx.h"
 #include "utils/sucatalog.h"
 #include "utils/xar.h"
 
+#include "platform.h"
+
 #define LATEST_SUCATALOG "https://swscan.apple.com/content/catalogs/others/index-26-15-14-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog"
 #define BASE_URL "https://swcdn.apple.com/content/downloads"
 #define BASE_PKG "CLTools_macOS_SDK.pkg"
-#define BASE_PKM "CLTools_macOS_SDK.pkm"
+#define BASE_PKM "CLTools_macOSNMOS_SDK.pkm"
 #define SDK_PKG "CLTools_macOSNMOS_SDK.pkg"
 
 #define FETCH_DYNAMIC -1
@@ -160,7 +162,11 @@ static void list_sdks(Sdk *sdks, size_t count)
 static Version get_version(const char *pkm)
 {
 	/* Let's not flood Apple servers with requests */
+#ifdef _WIN32
+	Sleep(5000);
+#else
 	sleep(5);
+#endif
 
 	download_file(pkm, "", metadata_out, false);
 
@@ -295,6 +301,10 @@ void fetch_macsdk(BuildOptions *options)
 	int progress = 0;
 	sdk_progress(DOWNLOAD, progress);
 
+#ifdef _WIN32
+	char *sdk_path = NULL;
+#endif
+
 	for (int i = 0; i < 2; i++)
 	{
 		const char *files[] = {SDK_PKG, BASE_PKG};
@@ -313,6 +323,17 @@ done:
 		FILE *pkg = file_open_read(dest);
 		Cpio cpio;
 		cpio_init(&cpio, "./Library/Developer/CommandLineTools");
+
+#ifdef _WIN32
+		char* exclude[] = {
+			"MacOSX.sdk",
+			str_printf("MacOSX%d.sdk", sel->version.major)
+		};
+
+		cpio.exclude = exclude;
+		cpio.exclude_count = 2;
+		cpio.keep_sdk = i == 1;
+#endif
 
 		XarHeader header = xar_header(pkg);
 		if (strncmp(header.signature, "xar!", 4) != 0)
@@ -334,6 +355,11 @@ done:
 		{
 			error_exit("Failed to extract pbzx.");
 		}
+
+#ifdef _WIN32
+		if (cpio.keep_sdk) sdk_path = str_dup(cpio.sdk);
+#endif
+
 		cpio_free(&cpio);
 		fclose(pkg);
 
@@ -344,9 +370,12 @@ done:
 	/* target MacOSX.sdk will be moved there */
 	file_delete_dir(sdk_output);
 
+#ifdef _WIN32
+	char *sdk = str_printf(".\\SDKs\\%s", sdk_path);
+#else
 	char *sdk = realpath("SDKs/MacOSX.sdk", NULL);
+#endif
 	rename(sdk, "MacOSX.sdk");
-	free(sdk);
 
 	progress += PROGRESS_UPDATE;
 	sdk_progress(CLEANUP, progress);
