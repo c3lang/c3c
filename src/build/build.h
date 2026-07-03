@@ -272,6 +272,8 @@ typedef struct BuildOptions_
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;
 	const char *fetch_sdk_target;
+	const char *macos_sdk_version_override;
+	bool macos_list_sdks, macos_fetch_sdk_list;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;

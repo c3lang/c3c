@@ -93,35 +93,6 @@ static bool check_license(bool accept_all)
 	return c == 'y' || c == 'Y' || c == '\n';
 }
 
-static int64_t select_sdk(const size_t count)
-{
-	char buffer[128];
-
-	for (;;)
-	{
-		printf("Type a number from range 1-%zu or \"fetch\" for getting "
-			"list dynamically.\nSelect sdk (%zu): ", count, count);
-		fflush(stdout);
-
-		fgets(buffer, 128, stdin);
-		const char *trimmed = str_trim(buffer);
-		if (strlen(trimmed) == 0)
-		{
-			return (int64_t) count;
-		}
-
-		if (str_eq(trimmed, "fetch")) return FETCH_DYNAMIC;
-
-		const long num = strtol(buffer, NULL, 10);
-		if (num >= 1 && num <= count)
-		{
-			return num;
-		}
-
-		printf("Selection is out of range 1-%zu!\n", count);
-	}
-}
-
 static const char *get_release_name(const Sdk *sdk)
 {
 	const ReleaseInfo *iter = releases;
@@ -274,26 +245,51 @@ void fetch_macsdk(BuildOptions *options)
 	sucatalog_out = file_append_path(tmp_dir_base, "sucatalog");
 	metadata_out = file_append_path(tmp_dir_base, BASE_PKM);
 
+	if (options->macos_list_sdks)
+	{
+		list_sdks(hardcoded, ELEMENTLEN(hardcoded));
+		return;
+	}
+
 	if (!check_license(options->fetch_accept_license))
 	{
 		exit_compiler(EXIT_FAILURE);
 	}
 
-	list_sdks(hardcoded, ELEMENTLEN(hardcoded));
-	const Sdk *list = hardcoded;
-	int64_t select = select_sdk(ELEMENTLEN(hardcoded));
+	int64_t select = ELEMENTLEN(hardcoded) - 1;
+	size_t sdk_count = ELEMENTLEN(hardcoded);
+	Sdk *list = hardcoded;
 
-	while (select == FETCH_DYNAMIC)
+	if (options->macos_fetch_sdk_list)
 	{
-		size_t count;
-		Sdk *fetched = get_sdk_list(&count);
-
-		list_sdks(fetched, count);
-		select = select_sdk(count);
-		list = fetched;
+		list = get_sdk_list(&sdk_count);
+		list_sdks(list, sdk_count);
 	}
 
-	const Sdk *sel = list + (select - 1);
+	if (options->macos_sdk_version_override != NULL)
+	{
+		char *picked = str_dup(options->macos_sdk_version_override);
+		const int major = (int) strtol(picked, &picked, 10);
+		picked++;
+		const int minor = (int) strtol(picked, &picked, 10);
+
+		for (int i = 0; i < ELEMENTLEN(hardcoded); i++)
+		{
+			const Sdk *sdk_i = hardcoded + i;
+			if (sdk_i->version.major == major && sdk_i->version.minor == minor)
+			{
+				select = i;
+				break;
+			}
+		}
+
+		if (select == -1)
+		{
+			error_exit("Selected MacOS version not found");
+		}
+	}
+
+	const Sdk *sel = list + select;
 
 	printf("Selected %s - %d.%d\n", get_release_name(sel),
 		sel->version.major, sel->version.minor);
