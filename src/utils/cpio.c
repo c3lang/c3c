@@ -38,6 +38,10 @@ static const char *TRAILER = "TRAILER!!!";
 static CpioFile get_type(size_t mode);
 static size_t parse_oct_num(const char *str, int len);
 
+#ifdef _WIN32
+void win_symlink(char *target, char *linkpath);
+#endif
+
 void cpio_init(Cpio *cpio, const char *shallowify)
 {
 	byte_buffer_init(&cpio->buffer, (size_t) OUT_SIZE);
@@ -167,8 +171,13 @@ void cpio_push(Cpio *cpio, uint8_t *buffer, size_t len)
 				if (str_start_with(cpio->file.name, cpio->shallow))
 				{
 					cpio->file.name[cpio->dot_at] = '.';
+#ifdef _WIN32
+					win_symlink(cpio->file.link, cpio->file.name +
+						cpio->dot_at);
+#else
 					symlink(cpio->file.link, cpio->file.name +
 						cpio->dot_at);
+#endif
 				}
 				cpio->state = IDLE;
 				break;

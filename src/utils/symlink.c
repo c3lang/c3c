@@ -19,7 +19,7 @@ static char *getdir(char *path)
 }
 
 /* Windows doesn't have symlinks. so here it's just copy */
-void symlink(char *target, char *linkpath)
+void win_symlink(char *target, char *linkpath)
 {
 	normalize(target);
 	normalize(linkpath);
