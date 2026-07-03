@@ -7,11 +7,16 @@
 #include "../../compiler/compiler_internal.h"
 #include "utils/cpio.h"
 #include "utils/pbzx.h"
+#include "utils/sucatalog.h"
 #include "utils/xar.h"
 
+#define LATEST_SUCATALOG "https://swscan.apple.com/content/catalogs/others/index-26-15-14-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog"
 #define BASE_URL "https://swcdn.apple.com/content/downloads"
 #define BASE_PKG "CLTools_macOS_SDK.pkg"
+#define BASE_PKM "CLTools_macOS_SDK.pkm"
 #define SDK_PKG "CLTools_macOSNMOS_SDK.pkg"
+
+#define FETCH_DYNAMIC -1
 
 #define PROGRESS_UPDATE 19
 
@@ -34,6 +39,8 @@ typedef enum {
 } Progress;
 
 static int verbose_level = 0;
+static char *sucatalog_out = "";
+static char *metadata_out = "";
 
 static Sdk hardcoded[] = {
 	{ { 12, 4 }, "/46/21/001-89745-A_56FM390IW5/v1um2qppgfdnam2e9cdqcqu2r6k8aa3lis/" },
@@ -84,21 +91,24 @@ static bool check_license(bool accept_all)
 	return c == 'y' || c == 'Y' || c == '\n';
 }
 
-static size_t select_sdk(size_t count)
+static int64_t select_sdk(const size_t count)
 {
 	char buffer[128];
 
 	for (;;)
 	{
-		printf("Select sdk (%zu): ", count);
+		printf("Type a number from range 1-%zu or \"fetch\" for getting "
+			"list dynamically.\nSelect sdk (%zu): ", count, count);
 		fflush(stdout);
 
 		fgets(buffer, 128, stdin);
 		const char *trimmed = str_trim(buffer);
 		if (strlen(trimmed) == 0)
 		{
-			return count;
+			return (int64_t) count;
 		}
+
+		if (str_eq(trimmed, "fetch")) return FETCH_DYNAMIC;
 
 		const long num = strtol(buffer, NULL, 10);
 		if (num >= 1 && num <= count)
@@ -147,6 +157,91 @@ static void list_sdks(Sdk *sdks, size_t count)
 	puts("");
 }
 
+static Version get_version(const char *pkm)
+{
+	/* Let's not flood Apple servers with requests */
+	sleep(5);
+
+	download_file(pkm, "", metadata_out, false);
+
+	size_t size;
+	const char *content = file_read_all(metadata_out, &size);
+
+	content = strstr(content, "<pkg-info");
+
+	char *version = strstr(content, " version=\"");
+	if (!version) return (Version) { 0, 0 };
+
+	version += 10;
+	char *end = strchr(version, '"');
+	*end = 0;
+
+	const int major = (int) strtol(version, &version, 10);
+	version++;
+	const int minor = (int) strtol(version, &version, 10);
+
+	return (Version) { major, minor };
+}
+
+static Sdk get_sdk(const char *array_tag)
+{
+	Sdk sdk = {};
+
+	char *base_pkm = strstr(array_tag, BASE_PKM);
+	char *sdk_pkg = strstr(array_tag, SDK_PKG);
+
+	char *tags[] = {base_pkm, sdk_pkg};
+	for (int i = 0; i < 2; i++)
+	{
+		char *end = strstr(tags[i], "</string>");
+		if (!end) continue;
+
+		*end = 0;
+	}
+
+	char **starts[] = {&base_pkm, &sdk_pkg};
+	for (int i = 0; i < 2; i++)
+	{
+		char **start = starts[i];
+
+		while ((*start)[-1] != '>') (*start)--;
+	}
+
+	sdk.version = get_version(base_pkm);
+
+	char *base_start = sdk_pkg + sizeof(BASE_URL) - 1;
+	char *end = strstr(base_start, SDK_PKG);
+	*end = 0;
+
+	sdk.sub_url = base_start;
+
+	return sdk;
+}
+
+static Sdk *get_sdk_list(size_t *count)
+{
+	printf("Fetching dynamic SDK list takes time, go grab a drink.\n");
+	download_file(LATEST_SUCATALOG, "", sucatalog_out, true);
+	printf("Downloading version information...\n");
+
+	Sdk *sdks = VECNEW(Sdk, 16);
+
+	SuCatalog catalog;
+	sucatalog_init(&catalog, sucatalog_out);
+
+	const char *file_arr;
+	while ((file_arr = sucatalog_next(&catalog)) != NULL)
+	{
+		if (!strstr(file_arr, "CLTools_macOS")) continue;
+
+		const Sdk sdk = get_sdk(file_arr);
+		vec_add(sdks, sdk);
+	}
+
+	*count = vec_size(sdks);
+	return sdks;
+}
+
 void fetch_macsdk(BuildOptions *options)
 {
 	if (!download_available())
@@ -167,11 +262,11 @@ void fetch_macsdk(BuildOptions *options)
 	dir_change(sdk_output);
 	dir_change("..");
 
-	/* target MacOSX.sdk will be moved there */
-	file_delete_dir(sdk_output);
-
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
 	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
+
+	sucatalog_out = file_append_path(tmp_dir_base, "sucatalog");
+	metadata_out = file_append_path(tmp_dir_base, BASE_PKM);
 
 	if (!check_license(options->fetch_accept_license))
 	{
@@ -179,8 +274,20 @@ void fetch_macsdk(BuildOptions *options)
 	}
 
 	list_sdks(hardcoded, ELEMENTLEN(hardcoded));
-	const size_t select = select_sdk(ELEMENTLEN(hardcoded));
-	const Sdk *sel = hardcoded + (select - 1);
+	const Sdk *list = hardcoded;
+	int64_t select = select_sdk(ELEMENTLEN(hardcoded));
+
+	while (select == FETCH_DYNAMIC)
+	{
+		size_t count;
+		Sdk *fetched = get_sdk_list(&count);
+
+		list_sdks(fetched, count);
+		select = select_sdk(count);
+		list = fetched;
+	}
+
+	const Sdk *sel = list + (select - 1);
 
 	printf("Selected %s - %d.%d\n", get_release_name(sel),
 		sel->version.major, sel->version.minor);
@@ -234,6 +341,9 @@ done:
 	}
 	sdk_progress(FIXUP, progress);
 
+	/* target MacOSX.sdk will be moved there */
+	file_delete_dir(sdk_output);
+
 	char *sdk = realpath("SDKs/MacOSX.sdk", NULL);
 	rename(sdk, "MacOSX.sdk");
 	free(sdk);
@@ -243,4 +353,5 @@ done:
 	file_delete_dir("SDKs");
 
 	sdk_progress(DONE, 100);
+	printf("\n");
 }
