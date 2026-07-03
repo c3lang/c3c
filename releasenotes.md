@@ -29,6 +29,7 @@
 - Regression using non-posix libc.
 - Crash with an optional struct recursively defined with a function type. #3358
 - Denormal results were not handle correctly by `String.to_double()`.
+- A float literal with an uppercase 'F' suffix would be a `double` instead of a `float`.
 
 ## 0.8.1 Change list
 

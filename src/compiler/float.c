@@ -104,9 +104,17 @@ static char *err_hex_float_format_invalid = "Hex floating points must end with '
 
 TypeKind float_suffix(char c)
 {
-	if (c == 'd') return TYPE_F64;
-	if (c == 'f') return TYPE_F32;
-	return TYPE_F64;
+	switch (c)
+	{
+		case 'd':
+		case 'D':
+			return TYPE_F64;
+		case 'f':
+		case 'F':
+			return TYPE_F32;
+		default:
+			return TYPE_F64;
+	}
 }
 /**
  * This parses a float from a string. Unfortunately it is limited to parsing doubles as of now.
