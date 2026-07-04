@@ -5380,6 +5380,11 @@ bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacem
 			if (!!replacement->var.type_info != !!replaced->var.type_info) goto VAR_MISMATCH;
 			if (replaced_type != replacement_type) goto TYPE_MISMATCH;
 			break;
+		case DECL_TYPEDEF:
+			replaced_type = replaced->distinct->type;
+			replacement_type = replacement->distinct->type;
+			if (replaced_type != replacement_type) goto TYPE_MISMATCH;
+			break;
 		default:
 			break;
 	}
@@ -5390,7 +5395,7 @@ VAR_MISMATCH:
 	return false;
 TYPE_MISMATCH:
 	SEMA_ERROR(replacement, "The definition for '%s' doesn't match the replaced definition, type mismatch between %s and %s.", replacement->name,
-		type_quoted_error_string(replacement->type), type_quoted_error_string(replaced->type));
+		type_quoted_error_string(replacement_type), type_quoted_error_string(replaced_type));
 	SEMA_NOTE(replaced, "The replaced definition was here.");
 	return false;
 }
