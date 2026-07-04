@@ -155,18 +155,16 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 			stream.write(value ? "true" : "false")!;
 		$case CONSTDEF:
 		$case TYPEDEF:
-			$switch (TypeElement):
+			$switch TypeElement:
 				// Special handling of String
 				$case String:
-					@pool() { stream.write(value.tescape(false))!; };
+					_serialize_string(stream, value)!;
 				$default:
 					var $Inner = TypeElement::inner;
 					return serialize_value{$Inner}(stream, ($Inner)value, indent, indent_depth);
 			$endswitch
 		$case ENUM:
-			stream.write_byte('"')!;
-			stream.write(value.description)!;
-			stream.write_byte('"')!;
+			io::fprintf(stream, `"%s"`, value.description)!;
 		$default:
 			$error "Unsupported type";
 	$endswitch
@@ -198,4 +196,37 @@ fn void? serialize_slice(OutStream stream, SliceType[] slice, Indent indent = NO
 	}
 
 	stream.write_byte(']')!;
+}
+
+macro void? _serialize_string(OutStream stream, String string) @private
+{
+	WriteFn write = &stream.write;
+	WriteByteFn write_byte = &stream.write_byte;
+	write(stream, `"`)!;
+	foreach (c : string)
+	{
+		if (c >= 0x80)
+		{
+			write_byte(stream, c)!;
+			continue;
+		}
+		switch (c)
+		{
+			case '"':  write(stream, `\"`)!;
+			case '\\': write(stream, `\\`)!;
+			case '\b': write(stream, `\b`)!;
+			case '\f': write(stream, `\f`)!;
+			case '\n': write(stream, `\n`)!;
+			case '\r': write(stream, `\r`)!;
+			case '\t': write(stream, `\t`)!;
+			default:
+				if (c >= 32)
+				{
+					write_byte(stream, c)!;
+					continue;
+				}
+				io::fprintf(stream, `\u%04x`, c)!;
+		}
+	}
+	write(stream, `"`)!;
 }

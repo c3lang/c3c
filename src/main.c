@@ -11,6 +11,9 @@
 extern bool SetConsoleCP(uint32_t codepage);
 extern bool SetConsoleOutputCP(uint32_t codepage);
 #endif
+#ifdef __linux__
+#include <signal.h>
+#endif
 
 bool debug_log = false;
 
@@ -27,6 +30,13 @@ static void cleanup()
 	symtab_destroy();
 	memory_release();
 }
+
+#ifdef __linux__
+NORETURN void segfault_handler(int signal)
+{
+	FATAL_ERROR("Segmentation Fault");
+}
+#endif
 
 const char *compiler_exe_name;
 
@@ -45,6 +55,9 @@ int main_real(int argc, const char *argv[])
 	// Set the console input and output codepage to utf8 to handle utf8 text correctly
 	SetConsoleCP(65001);
 	SetConsoleOutputCP(65001);
+#endif
+#ifdef __linux__
+	signal(SIGSEGV, segfault_handler);
 #endif
 	bench_begin();
 

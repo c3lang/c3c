@@ -399,3 +399,92 @@ fn void float_roundtrip_precise() @test
 	Object* parsed = json::tparse(json)!!;
 	assert((float)parsed.get_float("x")!! == 1.23456789f);
 }
+
+struct EscWrap
+{
+	String s;
+}
+
+macro String marshal_str(String s)
+{
+	EscWrap w = { .s = s };
+	return json::marshal(tmem, w);
+}
+
+fn void escape_short_sequences() @test
+{
+	String json = marshal_str("\"\\\b\f\n\r\t");
+	test::eq(json, `{"s":"\"\\\b\f\n\r\t"}`);
+}
+
+fn void escape_low_control_as_u() @test
+{
+	// Control chars below 0x20 without a short escape become \u00xx.
+	char[3] ctrl = { 0x00, 0x01, 0x1f };
+	String json = marshal_str((String)ctrl[..]);
+	test::eq(json, `{"s":"\u0000\u0001\u001f"}`);
+}
+
+fn void escape_ascii_passthrough() @test
+{
+	// Printable ASCII is verbatim, including ' (no \' in JSON) and / (optional).
+	String json = marshal_str("Hello, World! ~ / '");
+	test::eq(json, `{"s":"Hello, World! ~ / '"}`);
+}
+
+fn void escape_del_passthrough() @test
+{
+	// DEL (0x7f) is a valid unescaped JSON character and passes through raw.
+	char[1] del = { 0x7f };
+	String json = marshal_str((String)del[..]);
+	char[9] expected = { '{', '"', 's', '"', ':', '"', 0x7f, '"', '}' };
+	test::eq(json, (String)expected[..]);
+}
+
+fn void escape_bmp_unicode_passthrough() @test
+{
+	// é = U+00E9, € = U+20AC: valid UTF-8, emitted as-is (raw bytes).
+	String json = marshal_str("é€");
+	test::eq(json, `{"s":"é€"}`);
+}
+
+fn void escape_astral_passthrough() @test
+{
+	// 😀 = U+1F600 (4-byte UTF-8) is passed through unchanged.
+	String json = marshal_str("\U0001F600");
+	test::eq(json, `{"s":"😀"}`);
+}
+
+fn void escape_astral_boundaries_passthrough() @test
+{
+	// First and last astral code points survive as raw UTF-8.
+	test::eq(marshal_str("\U00010000"), `{"s":"𐀀"}`);
+	test::eq(marshal_str("\U0010FFFF"), `{"s":"􏿿"}`);
+}
+
+fn void escape_empty_string() @test
+{
+	test::eq(marshal_str(""), `{"s":""}`);
+}
+
+fn void escape_single_quote_not_escaped() @test
+{
+	// JSON has no \' escape; an apostrophe must be emitted literally.
+	test::eq(marshal_str("it's"), `{"s":"it's"}`);
+}
+
+fn void escape_solidus_not_escaped() @test
+{
+	// A forward slash may be escaped but need not be; expect it verbatim.
+	test::eq(marshal_str("a/b"), `{"s":"a/b"}`);
+}
+
+fn void escape_roundtrip_mixed() @test
+{
+	// Short escapes + a control char + BMP + astral, marshalled then parsed back.
+	String original = "Tab\tLF\nQuote\"Back\\Ctrl\x01Uni:é€\U0001F600End";
+	String json = marshal_str(original);
+	Object* parsed = json::tparse(json)!!;
+	test::eq(parsed.get_string("s")!!, original);
+}
+

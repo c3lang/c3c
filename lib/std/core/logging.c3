@@ -6,26 +6,29 @@ const FULL_LOG = env::COMPILER_SAFE_MODE || $feature(FULL_LOG);
 typedef LogCategory = inline char;
 typedef LogTag = char[12];
 
-const LogCategory CATEGORY_APPLICATION  = (LogCategory)0;
-const LogCategory CATEGORY_SYSTEM       = (LogCategory)1;
-const LogCategory CATEGORY_KERNEL       = (LogCategory)2;
-const LogCategory CATEGORY_AUDIO        = (LogCategory)3;
-const LogCategory CATEGORY_VIDEO        = (LogCategory)4;
-const LogCategory CATEGORY_RENDER       = (LogCategory)5;
-const LogCategory CATEGORY_INPUT        = (LogCategory)6;
-const LogCategory CATEGORY_NETWORK      = (LogCategory)7;
-const LogCategory CATEGORY_SOCKET       = (LogCategory)8;
-const LogCategory CATEGORY_SECURITY     = (LogCategory)9;
-const LogCategory CATEGORY_TEST         = (LogCategory)10;
-const LogCategory CATEGORY_ERROR        = (LogCategory)11;
-const LogCategory CATEGORY_ASSERT       = (LogCategory)12;
-const LogCategory CATEGORY_CRASH        = (LogCategory)13;
-const LogCategory CATEGORY_STATS        = (LogCategory)14;
-const LogCategory CATEGORY_CUSTOM_START = (LogCategory)100;
+const LogCategory CATEGORY_APPLICATION   = (LogCategory)0;
+const LogCategory CATEGORY_SYSTEM        = (LogCategory)1;
+const LogCategory CATEGORY_KERNEL        = (LogCategory)2;
+const LogCategory CATEGORY_AUDIO         = (LogCategory)3;
+const LogCategory CATEGORY_VIDEO         = (LogCategory)4;
+const LogCategory CATEGORY_RENDER        = (LogCategory)5;
+const LogCategory CATEGORY_INPUT         = (LogCategory)6;
+const LogCategory CATEGORY_NETWORK       = (LogCategory)7;
+const LogCategory CATEGORY_SOCKET        = (LogCategory)8;
+const LogCategory CATEGORY_SECURITY      = (LogCategory)9;
+const LogCategory CATEGORY_TEST          = (LogCategory)10;
+const LogCategory CATEGORY_ERROR         = (LogCategory)11;
+const LogCategory CATEGORY_ASSERT        = (LogCategory)12;
+const LogCategory CATEGORY_CRASH         = (LogCategory)13;
+const LogCategory CATEGORY_STATS         = (LogCategory)14;
+const LogCategory CATEGORY_DYNAMIC_START = (LogCategory)15;
+<* All categories from 100 and upwards are available for applications *>
+const LogCategory CATEGORY_CUSTOM_START  = (LogCategory)100;
 
 tlocal LogCategory default_category = CATEGORY_APPLICATION;
 tlocal LogTag current_tag;
 
+faultdef NO_MORE_DYNAMIC_CATEGORIES;
 
 enum LogPriority : int
 {
@@ -106,6 +109,24 @@ fn LogPriority get_priority_for_category(LogCategory category)
 	return @atomic_load(config_priorities[category], UNORDERED);
 }
 
+<*
+ Registers a dynamic category, not thread safe.
+
+ @require category_name != "" : "The name cannot be empty"
+ @return? NO_MORE_DYNAMIC_CATEGORIES : "if no more category slots are available"
+*>
+fn LogCategory? register_dynamic_category(String category_name, LogPriority priority)
+{
+	static LogCategory current = CATEGORY_DYNAMIC_START;
+	@in_logger_lock()
+	{
+		if (current == CATEGORY_CUSTOM_START) return NO_MORE_DYNAMIC_CATEGORIES~;
+		config_priorities[current] = priority;
+		category_names[current] = category_name;
+        return current++;
+	};
+}
+
 fn void set_priority_all(LogPriority new_priority)
 {
 	for (int i = 0; i < config_priorities.len; i++)
@@ -115,14 +136,7 @@ fn void set_priority_all(LogPriority new_priority)
 }
 fn void set_logger(Logger logger)
 {
-	init();
-	if (!logger_mutex.is_initialized())
-	{
-		current_logger = logger;
-		current_logfn = &logger.log;
-		return;
-	}
-	logger_mutex.@in_lock()
+	@in_logger_lock()
 	{
 		current_logger = logger;
 		current_logfn = &logger.log;
@@ -147,13 +161,12 @@ fn void call_log_internal(LogPriority prio, LogCategory category, String file, S
 {
 	LogPriority priority = mem::@atomic_load(config_priorities[category], UNORDERED);
 	if (priority > prio) return;
-	init();
-	bool locked = logger_mutex.is_initialized();
-	if (locked) logger_mutex.lock();
-	Logger logger = current_logger;
-	LogFn logfn = current_logfn;
-	defer if (locked) logger_mutex.unlock();
-	logfn(logger.ptr, prio, category, current_tag, file, func, line, fmt, args);
+	@in_logger_lock()
+	{
+		Logger logger = current_logger;
+		LogFn logfn = current_logfn;
+		logfn(logger.ptr, prio, category, current_tag, file, func, line, fmt, args);
+	};
 }
 
 fn String? get_category_name(LogCategory category)
@@ -162,6 +175,9 @@ fn String? get_category_name(LogCategory category)
 	return val ?: NOT_FOUND~;
 }
 
+<*
+ @require name != "" : "The name must be non-empty"
+*>
 fn void set_category_name(LogCategory category, String name)
 {
 	category_names[category] = name;
@@ -188,9 +204,17 @@ fn void MultiLogger.log(&self, LogPriority priority, LogCategory category, LogTa
 	}
 }
 
-
 module std::core::log @private;
 import std::io, std::thread, std::time;
+
+macro @in_logger_lock(;@body)
+{
+	init();
+	bool locked = logger_mutex.is_initialized();
+	if (locked) logger_mutex.lock();
+    defer if (locked) logger_mutex.unlock();
+	@body();
+}
 
 struct StderrLogger (Logger) @if(env::LIBC)
 {
@@ -221,6 +245,7 @@ Logger current_logger = env::LIBC ??? &stderr_logger : &null_logger;
 StderrLogger stderr_logger @if (env::LIBC);
 NullLogger null_logger;
 LogPriority[256] config_priorities = { [0..255] = ERROR, [CATEGORY_APPLICATION] = INFO, [CATEGORY_TEST] = VERBOSE, [CATEGORY_ASSERT] = WARN};
+
 String[256] category_names = {
 	[CATEGORY_APPLICATION] = "APP",
     [CATEGORY_SYSTEM] = "SYSTEM",

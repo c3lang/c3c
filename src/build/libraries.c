@@ -238,7 +238,7 @@ static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const c
 		zip_check_err(lib, zip_dir_iterator_next(&iterator, &file));
 		if (file.uncompressed_size == 0 || file.name[0] == '.') continue;
 		// Copy file.
-		zip_file_write(f, &file, lib_dir, false);
+		zip_check_err(lib, zip_file_write(f, &file, lib_dir, false));
 	}
 DONE:
 	fclose(f);
