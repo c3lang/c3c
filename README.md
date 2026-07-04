@@ -167,7 +167,7 @@ The compiler is currently verified to compile on Windows, MacOS, Linux, OpenBSD,
 | Platform                 | Native C3 compiler available? | Target supported        | Stack trace | Threads  | Sockets  | Inline asm |
 |--------------------------|-------------------------------|-------------------------|-------------|----------|----------|------------|
 | Win32 x64                | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
-| Win32 Aarch64            | Untested                      | Untested                | Untested    | Untested | Untested | Yes*       |
+| Win32 Aarch64            | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | MacOS x64                | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | MacOS Aarch64            | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | iOS Aarch64              | No                            | Untested                | Untested    | Yes      | Yes      | Yes*       |
