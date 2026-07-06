@@ -8334,7 +8334,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 	bool right_is_pointer = right_is_pointer_vector || right_type->type_kind == TYPE_POINTER;
 
 	Type *offset_type = vec_len ? type_get_vector_from_vector(type_sz, left_type) : type_sz;
-
+	bool optional = IS_OPTIONAL(right) || IS_OPTIONAL(left);
 	// 3. ptr - other pointer
 	if (right_is_pointer)
 	{
@@ -8357,7 +8357,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 			return true;
 		}
 		// 3b. Set the type
-		expr->type = offset_type;
+		expr->type = type_add_optional(offset_type, optional);
 		return true;
 	}
 
@@ -8384,7 +8384,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 	}
 
 	// 6. Convert to sz
-	if (!cast_implicit_binary(context, right, offset_type, failed_ref)) return false;
+	if (!cast_implicit_binary(context, right, type_add_optional(offset_type, optional), failed_ref)) return false;
 
 	if (left->expr_kind == EXPR_POINTER_OFFSET)
 	{

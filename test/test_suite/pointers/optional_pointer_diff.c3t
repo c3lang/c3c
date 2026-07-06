@@ -1,0 +1,13 @@
+module bug;
+import std;
+
+fn int main()
+{
+	char[1024] buf;
+	char[] h = buf[128..];
+	char[]? head = buf[512..];
+
+	sz? a = &head - &h;
+	(void)(&head - &h);
+	return 0;
+}
