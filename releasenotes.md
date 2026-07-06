@@ -6,13 +6,13 @@
 - `@weak` now works with all declarations.
 - Add `@align` for asm blocks to stack align them. Stack alignment is no longer default.
 - Allow setting Windows subsystem directly.
-- Libraries can now expose reusable target configurations via a `templates` map in their manifest, which projects reference from a target using `template: "library/template"`. Properties from the template are loaded first and can be overridden by target-local settings. 
 - Add `bitoffset` and `bitsize` reflection properties to bitstruct members. #3219
 - Add `is_anonymous` and `is_nested` to struct/union/bitstruct types and to members. #3223
 - Improve error message on trying to cast char array to String. #3343
 - Add `Foo::is_generic(...)`, `Foo::generic_qname` and `Foo::generic_args`. #2909 #3329
 - Add `own`, `init` and `drop` parameter annotations.
 - `constdef` can now be generic.
+- Libraries can now expose reusable target configurations via a `templates` map in their manifest, which projects reference from a target using `template: "library/template"`. Properties from the template are loaded first and can be overridden by target-local settings.
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.
