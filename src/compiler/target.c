@@ -2307,6 +2307,7 @@ void target_setup(BuildTarget *build_target)
 			break;
 		case ARCH_TYPE_AVR:
 			compiler.platform.abi = ABI_AVR;
+			compiler.platform.cpu = compiler.build.cpu;
 			compiler.platform.tls_supported = false;
 			break;
 		case ARCH_TYPE_WASM32:
