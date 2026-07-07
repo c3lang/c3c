@@ -33,6 +33,7 @@
 - A float literal with an uppercase 'F' suffix would be a `double` instead of a `float`.
 - Json serialization would not correctly handle unicode and `\v`. #3353
 - Semantic checking was incorrect in the case of `&a - &b` where one or both are optional and the result isn't assigned.
+- Regression on MacOS, breaking stack trace.
 
 ## 0.8.1 Change list
 
