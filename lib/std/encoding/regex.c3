@@ -76,6 +76,7 @@ struct Match (Printable)
  @param nmatch : "Maximum number of capture groups to return (including group 0)."
  @param eflags : "Execute flags: NOTBOL and NOTEOL."
  @return "A temp-allocated slice of `Match[nmatch]`."
+ @require nmatch >= 0
 *>
 fn Match[]? Regex.exec(&self, String str, sz nmatch = 1, ExecFlags eflags = {})
 {
@@ -398,6 +399,9 @@ fn void stack_destroy(Stack* s) @local
 	alloc::free(s.allocator, s);
 }
 
+<*
+ @param [&inout] s
+*>
 fn void? stack_push(Stack* s, StackItem value) @local
 {
 	if (s.count < s.size)
@@ -417,19 +421,34 @@ fn void? stack_push(Stack* s, StackItem value) @local
 	}
 }
 
+<*
+ @param [&inout] s
+*>
 fn void? stack_push_int(Stack* s, int v) @local
 {
 	StackItem item; item.int_value = v;
 	stack_push(s, item)!;
 }
 
+<*
+ @param [&inout] s
+*>
 fn void? stack_push_ptr(Stack* s, void* v) @local
 {
 	StackItem item; item.ptr = v;
 	stack_push(s, item)!;
 }
 
+<*
+ @param [&inout] s
+ @require s.count > 0
+*>
 fn int stack_pop_int(Stack* s) @local => s.stack[--s.count].int_value;
+
+<*
+ @param [&inout] s
+ @require s.count > 0
+*>
 fn void* stack_pop_ptr(Stack* s) @local => s.stack[--s.count].ptr;
 
 // ============================================================
@@ -454,6 +473,10 @@ fn AstNode*? ast_new_literal(Allocator arena, int code_min, int code_max, StateI
 	return ast_new_node(arena, LITERAL, lit)!;
 }
 
+<*
+ @param [&in] arg
+ @require min >= 0
+*>
 fn AstNode*? ast_new_iter(Allocator arena, AstNode* arg, int min, int max, bool minimal) @local
 {
 	Iteration* iter = alloc::malloc(arena, Iteration::size);
@@ -3074,6 +3097,10 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 	if (match_eo < 0) return NOMATCH~;
 }
 
+<*
+ @param [&in] preg
+ @require nmatch >= 0
+*>
 fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFlags eflags) @private
 {
 	@pool()
