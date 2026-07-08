@@ -2296,16 +2296,15 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 	@pool()
 	{
 		String regex_nt = regex;
-		// Manu TODO: Ensure pattern is null-terminated for C-style parsing
-		// if (regex.len == 0 || regex.ptr[regex.len] != '\0')
-		// {
-		// 	char* buf = alloc::malloc(tmem, regex.len + 1);
-		// 	if (!buf) return OUT_OF_MEMORY~;
-		// 	mem::copy(buf, regex.ptr, regex.len);
-		// 	buf[regex.len] = '\0';
-		// 	regex_nt = (String)buf[0 : regex.len];
-		// 	// Note: tmem will free this automatically on exit
-		// }
+		// Ensure the pattern is null-terminated: the parser uses *s == '\0' as its stop condition.
+		if (regex.len == 0 || regex.ptr[regex.len] != '\0')
+		{
+			char* buf = alloc::malloc(tmem, regex.len + 1);
+			if (!buf) return OUT_OF_MEMORY~;
+			mem::copy(buf, regex.ptr, regex.len);
+			buf[regex.len] = '\0';
+			regex_nt = (String)buf[0 : regex.len];
+		}
 
 		Stack* stack = stack_new(tmem, 512, 1024000, 128);
 		if (!stack) return OUT_OF_MEMORY~;

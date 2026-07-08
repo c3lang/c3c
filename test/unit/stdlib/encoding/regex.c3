@@ -56,6 +56,36 @@ fn void test_idiomatic_api() @test
 // ============================================================
 //  Some more tests
 
+// Verify compile() doesn't read past pattern.len when the string is not null-terminated.
+// C3 slice operations produce exactly such strings (e.g. "ab"[0:1] has 'b' at ptr[1]).
+fn void test_non_null_terminated_pattern() @test
+{
+	// Slice of a literal: 'b' follows 'a' in memory, so without a guard pattern is "ab".
+	{
+		String pattern = "ab"[0:1];
+		Regex re = regex::compile(pattern)!!;
+		defer re.free();
+		assert(@ok(re.exec("a")));
+		test::eq(re.exec("ab")!![0].str(), "a");
+	}
+
+	// Trailing byte '[' would make the pattern syntactically invalid (EBRACK).
+	{
+		String pattern = "a["[0:1];
+		Regex? r = regex::compile(pattern, EXTENDED);
+		assert(@ok(r));
+		if (@ok(r)) r!!.free();
+	}
+
+	// Stack buffer: '+' immediately after the pattern would turn "a" into "a+".
+	{
+		char[5] buf = { 'a', '+', 'b', 0, 0 };
+		Regex re = regex::compile((String)buf[0:1], EXTENDED)!!;
+		defer re.free();
+		test::eq(re.exec("aaa")!![0].str(), "a");
+	}
+}
+
 fn void test_bracket_negation_max_codepoint() @test
 {
 	Regex re = regex::compile("[^a]", regex::CompileFlags.EXTENDED)!!;
