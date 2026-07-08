@@ -249,7 +249,7 @@ struct Tnfa @local
 	int             end_tag;
 	int             num_states;
 	CompileFlags    cflags;
-	int             have_backrefs;
+	bool            have_backrefs;
 	Allocator       allocator;     // The allocator used to persist the compiled TNFA structures
 }
 
@@ -320,7 +320,7 @@ struct AstNode @local
 {
 	int         type;
 	void*       obj;
-	int         nullable;
+	bool        nullable;
 	int         submatch_id;
 	int         num_submatches;
 	int         num_tags;
@@ -438,7 +438,7 @@ fn AstNode*? ast_new_node(Allocator arena, int type, void* obj) @local
 	AstNode* node = alloc::malloc(arena, AstNode::size);
 	if (!node || !obj) return OUT_OF_MEMORY~;
 
-	*node = { .type = type, .obj = obj, .nullable = -1, .submatch_id = -1 };
+	*node = { .type = type, .obj = obj, .nullable = false, .submatch_id = -1 };
 	return node;
 }
 
@@ -1029,6 +1029,8 @@ fn void? marksub(ParseCtx* ctx, AstNode* node, int subid) @local
 	node.submatch_id = subid;
 	node.num_submatches++;
 	ctx.node = node;
+	// POSIX BRE backreferences are \1–\9 only, so only groups 1–9 can ever be
+	// referenced; tracking groups >= 10 in backref_ok would never be checked.
 	if (subid < 10) ctx.backref_ok |= 1 << subid;
 }
 
@@ -1794,19 +1796,19 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 						Literal* lit = node.obj;
 						if (lit.code_min == BACKREF)
 						{
-							node.nullable = 0;
+							node.nullable = false;
 							node.firstpos = tre_set_one(arena, lit.position, 0, CHAR_MAX_CODEPOINT, 0, null, -1);
 							node.lastpos = tre_set_one(arena, lit.position, 0, CHAR_MAX_CODEPOINT, 0, null, (int)lit.code_max);
 						}
 						else if (lit.code_min < 0)
 						{
-							node.nullable = 1;
+							node.nullable = true;
 							node.firstpos = tre_set_empty(arena);
 							node.lastpos = tre_set_empty(arena);
 						}
 						else
 						{
-							node.nullable = 0;
+							node.nullable = false;
 							node.firstpos = tre_set_one(arena, lit.position, (int)lit.code_min, (int)lit.code_max, lit.class, lit.neg_classes, -1);
 							node.lastpos = tre_set_one(arena, lit.position, (int)lit.code_min, (int)lit.code_max, lit.class, lit.neg_classes, -1);
 						}
@@ -1847,7 +1849,7 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 			case POST_UNION:
 			{
 				Union* uni = node.obj;
-				node.nullable = (uni.left.nullable != 0 || uni.right.nullable != 0) ? 1 : 0;
+				node.nullable = uni.left.nullable || uni.right.nullable;
 				node.firstpos = tre_set_union(arena, uni.left.firstpos, uni.right.firstpos, null, 0);
 				node.lastpos = tre_set_union(arena, uni.left.lastpos, uni.right.lastpos, null, 0);
 			}
@@ -1855,7 +1857,7 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 			case POST_ITERATION:
 			{
 				Iteration* iter = node.obj;
-				node.nullable = (iter.min == 0 || iter.arg.nullable != 0) ? 1 : 0;
+				node.nullable = iter.min == 0 || iter.arg.nullable;
 				node.firstpos = iter.arg.firstpos;
 				node.lastpos = iter.arg.lastpos;
 			}
@@ -1863,7 +1865,7 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 			case POST_CATENATION:
 			{
 				Catenation* cat = node.obj;
-				node.nullable = (cat.left.nullable != 0 && cat.right.nullable != 0) ? 1 : 0;
+				node.nullable = cat.left.nullable && cat.right.nullable;
 
 				if (cat.left.nullable)
 				{
@@ -2393,7 +2395,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		tnfa.num_transitions = (uint)total_trans;
 		tnfa.num_states = num_states;
 		tnfa.cflags = cflags;
-		tnfa.have_backrefs = ctx.max_backref >= 0 ? 1 : 0;
+		tnfa.have_backrefs = ctx.max_backref >= 0;
 
 		if (ctx.node.firstpos)
 		{
@@ -3099,7 +3101,7 @@ fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFl
 
 		RegOff match_end_ofs = -1;
 
-		if (tnfa.have_backrefs != 0)
+		if (tnfa.have_backrefs)
 		{
 			tre_tnfa_run_backtrack(tnfa, string_nt, match_tags, eflags, &match_end_ofs)!;
 		}
