@@ -213,13 +213,16 @@ const int TRE_TAG_MAXIMIZE @private = 1;
 //  Internal: TNFA structures
 // ============================================================
 
+typedef StateId @local @constinit = inline int;
+typedef TagId @local @constinit = inline int;
+
 struct TnfaTransition @local
 {
 	int              code_min;
 	int              code_max;
 	TnfaTransition*  state;
-	int              state_id;
-	int*             tags;
+	StateId          state_id;
+	TagId*           tags;
 	int              assertions;
 	int              u_class_or_backref;  // wctype_t or backref index
 	int*             neg_classes;
@@ -227,9 +230,9 @@ struct TnfaTransition @local
 
 struct SubmatchData @local
 {
-	int  so_tag;
-	int  eo_tag;
-	int* parents;
+	TagId  so_tag;
+	TagId  eo_tag;
+	int*   parents;
 }
 
 struct Tnfa @local
@@ -259,26 +262,26 @@ struct Tnfa @local
 
 struct PosAndTags @local
 {
-	int  position;
-	int  code_min;
-	int  code_max;
-	int* tags;
-	int  assertions;
-	int  backref;
-	int  class;
-	int* neg_classes;
+	StateId  position;
+	int      code_min;
+	int      code_max;
+	TagId*   tags;
+	int      assertions;
+	int      backref;
+	int      class;
+	int*     neg_classes;
 }
 
 struct TreTnfaReach @local
 {
 	TnfaTransition* state;
-	int*            tags;
+	TagId*          tags;
 }
 
 struct TreReachPos @local
 {
-	sz   pos;
-	int** tags;
+	sz      pos;
+	TagId** tags;
 }
 
 struct TreBacktrackItem @local
@@ -286,9 +289,9 @@ struct TreBacktrackItem @local
 	RegOff          pos;
 	char*           str_byte;
 	TnfaTransition* state;
-	int             state_id;
+	StateId         state_id;
 	int             next_c;
-	int*            tags;
+	TagId*          tags;
 }
 
 struct TreBacktrack @local
@@ -298,7 +301,7 @@ struct TreBacktrack @local
 	TreBacktrack*    next;
 }
 
-fn int tre_tag_order(int num_tags, int* tag_directions, int* t1, int* t2) @local
+fn int tre_tag_order(int num_tags, int* tag_directions, TagId* t1, TagId* t2) @local
 {
 	for (int i = 0; i < num_tags; i++)
 	{
@@ -330,11 +333,11 @@ struct AstNode @local
 
 struct Literal @local
 {
-	long code_min;
-	long code_max;
-	int  position;
-	int  class;
-	int* neg_classes;
+	long    code_min;
+	long    code_max;
+	StateId position;
+	int     class;
+	int*    neg_classes;
 }
 
 struct Catenation @local
@@ -442,7 +445,7 @@ fn AstNode*? ast_new_node(Allocator arena, int type, void* obj) @local
 	return node;
 }
 
-fn AstNode*? ast_new_literal(Allocator arena, int code_min, int code_max, int position) @local
+fn AstNode*? ast_new_literal(Allocator arena, int code_min, int code_max, StateId position) @local
 {
 	Literal* lit = alloc::malloc(arena, Literal::size);
 	if (!lit) return OUT_OF_MEMORY~;
@@ -494,15 +497,15 @@ fn AstNode*? ast_new_catenation(Allocator arena, AstNode* left, AstNode* right) 
 
 struct ParseCtx @local
 {
-	Allocator mem;
-	Stack*   stack;
-	AstNode* node;
-	char*    cursor;
-	char*    start;
-	sz       submatch_id;
-	int      position;
-	int      max_backref;
-	uint     backref_ok;
+	Allocator    mem;
+	Stack*       stack;
+	AstNode*     node;
+	char*        cursor;
+	char*        start;
+	sz           submatch_id;
+	StateId      position;
+	int          max_backref;
+	uint         backref_ok;
 	CompileFlags cflags;
 }
 
@@ -1216,10 +1219,10 @@ fn void? tre_parse(ParseCtx* ctx) @local
 	}
 }
 
-fn void? tre_add_tag_left(Allocator arena, AstNode* node, int tag_id) @local => tre_add_tag{true}(arena, node, tag_id);
-fn void? tre_add_tag_right(Allocator arena, AstNode* node, int tag_id) @local => tre_add_tag{false}(arena, node, tag_id);
+fn void? tre_add_tag_left(Allocator arena, AstNode* node, TagId tag_id) @local => tre_add_tag{true}(arena, node, tag_id);
+fn void? tre_add_tag_right(Allocator arena, AstNode* node, TagId tag_id) @local => tre_add_tag{false}(arena, node, tag_id);
 
-fn void? tre_add_tag(Allocator arena, AstNode* node, int tag_id) <TAG_LEFT> @local
+fn void? tre_add_tag(Allocator arena, AstNode* node, TagId tag_id) <TAG_LEFT> @local
 {
 	Catenation* c = alloc::malloc(arena, Catenation::size);
 	if (!c) return OUT_OF_MEMORY~;
@@ -1243,7 +1246,7 @@ fn void? tre_add_tag(Allocator arena, AstNode* node, int tag_id) <TAG_LEFT> @loc
 	node.type = CATENATION;
 }
 
-fn void tre_purge_regset(int* regset, Tnfa* tnfa, int tag) @local
+fn void tre_purge_regset(int* regset, Tnfa* tnfa, TagId tag) @local
 {
 	for (int i = 0; regset[i] >= 0; i++)
 	{
@@ -1271,11 +1274,11 @@ constdef AddTagsSymbol : inline int @local
 
 struct TreTagStates @local
 {
-	int tag;
-	int next_tag;
+	TagId tag;
+	TagId next_tag;
 }
 
-fn void tre_add_minimal_tag(Tnfa* tnfa, int tag, int* minimal_tag, int* num_minimals) @local
+fn void tre_add_minimal_tag(Tnfa* tnfa, TagId tag, int* minimal_tag, int* num_minimals) @local
 {
 	if (*minimal_tag >= 0)
 	{
@@ -1304,8 +1307,8 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 
 	int num_tags = 0;
 	int num_minimals = 0;
-	int tag = 0;
-	int next_tag = 1;
+	TagId tag = 0;
+	TagId next_tag = 1;
 	int minimal_tag = -1;
 	int direction = TRE_TAG_MINIMIZE;
 	AstNode* node = null;
@@ -1467,8 +1470,8 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 						Union* uni = node.obj;
 						AstNode* left = uni.left;
 						AstNode* right = uni.right;
-						int left_tag;
-						int right_tag;
+						TagId left_tag;
+						TagId right_tag;
 
 						if (regset[0] >= 0)
 						{
@@ -1538,7 +1541,7 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 			case AFTER_ITERATION:
 			{
 				int minimal = 0;
-				int enter_tag = 0;
+				TagId enter_tag = 0;
 				node = stack_pop_ptr(stack);
 				if (first_pass)
 				{
@@ -1549,7 +1552,7 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 				else
 				{
 					minimal = stack_pop_int(stack);
-					enter_tag = stack_pop_int(stack);
+					enter_tag = (TagId)stack_pop_int(stack);
 					if (minimal != 0) minimal_tag = enter_tag;
 				}
 
@@ -1562,8 +1565,8 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 
 			case AFTER_CAT_LEFT:
 			{
-				int new_tag = stack_pop_int(stack);
-				next_tag = stack_pop_int(stack);
+				TagId new_tag = (TagId)stack_pop_int(stack);
+				next_tag = (TagId)stack_pop_int(stack);
 				if (new_tag >= 0) tag = new_tag;
 			}
 
@@ -1585,8 +1588,6 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 			case AFTER_UNION_RIGHT:
 			{
 				int added_tags = 0;
-				int tag_left = 0;
-				int tag_right = 0;
 				AstNode* left = stack_pop_ptr(stack);
 				AstNode* right = stack_pop_ptr(stack);
 				node = stack_pop_ptr(stack);
@@ -1597,9 +1598,8 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 					node.num_tags = uni.left.num_tags + uni.right.num_tags + added_tags + ((node.num_submatches > 0) ? 2 : 0);
 				}
 				regset = stack_pop_ptr(stack);
-				tag_left = stack_pop_int(stack);
-				tag_right = stack_pop_int(stack);
-
+				TagId tag_left = (TagId)stack_pop_int(stack);
+				TagId tag_right = (TagId)stack_pop_int(stack);
 				if (node.num_submatches > 0)
 				{
 					if (!first_pass)
@@ -1643,7 +1643,7 @@ fn PosAndTags* tre_set_empty(Allocator arena) @local
 	return new_set;
 }
 
-fn PosAndTags* tre_set_one(Allocator arena, int position, int code_min, int code_max, int class, int* neg_classes, int backref) @local
+fn PosAndTags* tre_set_one(Allocator arena, StateId position, int code_min, int code_max, int class, int* neg_classes, int backref) @local
 {
 	PosAndTags* new_set = alloc::malloc(arena, 2 * PosAndTags::size);
 	if (!new_set) return null;
@@ -1660,7 +1660,7 @@ fn PosAndTags* tre_set_one(Allocator arena, int position, int code_min, int code
 	return new_set;
 }
 
-fn PosAndTags* tre_set_union(Allocator arena, PosAndTags* set1, PosAndTags* set2, int* tags, int assertions) @local
+fn PosAndTags* tre_set_union(Allocator arena, PosAndTags* set1, PosAndTags* set2, TagId* tags, int assertions) @local
 {
 	int s1 = 0;
 	int s2 = 0;
@@ -1682,11 +1682,11 @@ fn PosAndTags* tre_set_union(Allocator arena, PosAndTags* set1, PosAndTags* set2
 			int add_tags = 0;
 			for (add_tags = 0; tags[add_tags] >= 0; add_tags++);
 
-			int* new_tags = alloc::malloc(arena, (sz)(num_tags + add_tags + 1) * int::size);
+			TagId* new_tags = alloc::malloc(arena, (sz)(num_tags + add_tags + 1) * TagId::size);
 			if (!new_tags) return null;
 
-			mem::copy(new_tags, tags, add_tags * int::size);
-			mem::copy(&new_tags[add_tags], set1[i].tags, num_tags * int::size);
+			mem::copy(new_tags, tags, add_tags * TagId::size);
+			mem::copy(&new_tags[add_tags], set1[i].tags, num_tags * TagId::size);
 			new_tags[add_tags + num_tags] = -1;
 
 			new_set[i].tags = new_tags;
@@ -1710,7 +1710,7 @@ constdef NflSymbol : inline int @local
 	POST_ITERATION
 }
 
-fn void? tre_match_empty(Stack* stack, AstNode* node, int* tags, int* assertions, int* num_tags_seen) @local
+fn void? tre_match_empty(Stack* stack, AstNode* node, TagId* tags, int* assertions, int* num_tags_seen) @local
 {
 	if (num_tags_seen) *num_tags_seen = 0;
 
@@ -1739,7 +1739,7 @@ fn void? tre_match_empty(Stack* stack, AstNode* node, int* tags, int* assertions
 							}
 							if (tags[i] < 0)
 							{
-								tags[i] = (int)lit.code_max;
+								tags[i] = (TagId)lit.code_max;
 								tags[i + 1] = -1;
 							}
 						}
@@ -1870,7 +1870,7 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 				if (cat.left.nullable)
 				{
 					int assertions = 0;
-					int[32] tags;
+					TagId[32] tags;
 					tags[0] = -1;
 					tre_match_empty(stack, cat.left, &tags[0], &assertions, null)!;
 					node.firstpos = tre_set_union(arena, cat.right.firstpos, cat.left.firstpos, &tags[0], assertions);
@@ -1883,7 +1883,7 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 				if (cat.right.nullable)
 				{
 					int assertions = 0;
-					int[32] tags;
+					TagId[32] tags;
 					tags[0] = -1;
 					tre_match_empty(stack, cat.right, &tags[0], &assertions, null)!;
 					node.lastpos = tre_set_union(arena, cat.left.lastpos, cat.right.lastpos, &tags[0], assertions);
@@ -2086,12 +2086,12 @@ fn void? tre_copy_ast(Allocator mem, Stack* stack, AstNode* ast, int flags, int*
 					case LITERAL:
 					{
 						Literal* lit = node.obj;
-						int pos = lit.position;
+						StateId pos = lit.position;
 						int min = (int)lit.code_min;
 						int max = (int)lit.code_max;
 						if (!is_special(lit) || is_backref(lit))
 						{
-							pos += *pos_add;
+							pos += (StateId)*pos_add;
 							num_copied++;
 						}
 						else if (is_tag(lit) && (flags & COPY_REMOVE_TAGS) != 0)
@@ -2192,7 +2192,7 @@ fn void? tre_expand_ast(Allocator mem, Stack* stack, AstNode* ast, int* position
 						Literal* lit = node.obj;
 						if (!is_special(lit) || is_backref(lit))
 						{
-							lit.position += pos_add;
+							lit.position += (StateId)pos_add;
 							if (lit.position > max_pos) max_pos = lit.position;
 						}
 					}
@@ -2503,7 +2503,7 @@ fn int decode_utf8(char* s, int* len) @private
 	return (int)cp_opt;
 }
 
-fn void tre_fill_pmatch(sz nmatch, RegMatch* pmatch, CompileFlags cflags, Tnfa* tnfa, int* tags, RegOff match_eo) @local
+fn void tre_fill_pmatch(sz nmatch, RegMatch* pmatch, CompileFlags cflags, Tnfa* tnfa, TagId* tags, RegOff match_eo) @local
 {
 	sz limit = 0;
 	if (match_eo >= 0 && !(cflags & NOSUB))
@@ -2565,7 +2565,7 @@ fn void tre_fill_pmatch(sz nmatch, RegMatch* pmatch, CompileFlags cflags, Tnfa* 
 	}
 }
 
-fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, char* str_byte, TnfaTransition* trans, int next_c, int* tags) @local @inline
+fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, char* str_byte, TnfaTransition* trans, int next_c, TagId* tags) @local @inline
 {
 	TreBacktrack* stack = *pstack;
 	if (!stack.next)
@@ -2574,7 +2574,7 @@ fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, char* str_
 		if (!s_node) return OUT_OF_MEMORY~;
 		s_node.prev = stack;
 		s_node.next = null;
-		s_node.item.tags = alloc::malloc(tmem, tnfa.num_tags * int::size);
+		s_node.item.tags = alloc::malloc(tmem, tnfa.num_tags * TagId::size);
 		if (!s_node.item.tags) return OUT_OF_MEMORY~;
 		stack.next = s_node;
 		*pstack = s_node;
@@ -2596,12 +2596,12 @@ fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, char* str_
 		active.item.tags[i] = tags[i];
 	}
 
-	int* tmp = trans.tags;
+	TagId* tmp = trans.tags;
 	if (tmp)
 	{
 		while (*tmp >= 0)
 		{
-			active.item.tags[*tmp] = pos;
+			active.item.tags[*tmp] = (TagId)pos;
 			tmp++;
 		}
 	}
@@ -2618,7 +2618,7 @@ fn void get_next_wchar(int* prev_c, int* next_c, RegOff* pos, RegOff* pos_add_ne
 	*str_byte += *pos_add_next;
 }
 
-fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, int* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
+fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
 {
 	int prev_c = 0;
 	int next_c = 0;
@@ -2632,7 +2632,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, int* match_tags, Exec
 	RegOff pos_start = -1;
 
 	RegOff match_eo = -1;
-	int* tags = null;
+	TagId* tags = null;
 	TnfaTransition* state = null;
 	int* states_seen = null;
 
@@ -2643,7 +2643,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, int* match_tags, Exec
 
 	if (tnfa.num_tags > 0)
 	{
-		tags = mem::malloc(tnfa.num_tags * int::size);
+		tags = mem::malloc(tnfa.num_tags * TagId::size);
 		if (!tags) return OUT_OF_MEMORY~;
 	}
 	defer if (tags) mem::free(tags);
@@ -2695,7 +2695,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, int* match_tags, Exec
 				next_c_start = next_c;
 				str_byte_start = str_byte;
 
-				int* next_tags = null;
+				TagId* next_tags = null;
 				for (TnfaTransition* trans_i = tnfa.initial; trans_i.state; trans_i++)
 				{
 					if (trans_i.assertions != 0 &&
@@ -2718,7 +2718,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, int* match_tags, Exec
 				{
 					for (; *next_tags >= 0; next_tags++)
 					{
-						tags[*next_tags] = pos;
+						tags[*next_tags] = (TagId)pos;
 					}
 				}
 
@@ -2831,7 +2831,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, int* match_tags, Exec
 					{
 						while (*next_tags >= 0)
 						{
-							tags[*next_tags] = pos;
+							tags[*next_tags] = (TagId)pos;
 							next_tags++;
 						}
 					}
@@ -2887,7 +2887,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, int* match_tags, Exec
 	if (match_eo < 0) return NOMATCH~;
 }
 
-fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, int* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
+fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
 {
 	int prev_c = 0;
 	int next_c = 0;
@@ -2898,10 +2898,10 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, int* match_tags, ExecF
 	int num_states = tnfa.num_states;
 
 	// Allocate all temporary tables cleanly on tmem
-	int* tmp_tags = null;
+	TagId* tmp_tags = null;
 	if (num_tags > 0)
 	{
-		tmp_tags = alloc::calloc(tmem, (sz)num_tags * int::size);
+		tmp_tags = alloc::calloc(tmem, (sz)num_tags * TagId::size);
 		if (!tmp_tags) return OUT_OF_MEMORY~;
 	}
 
@@ -2914,7 +2914,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, int* match_tags, ExecF
 	// Allocate a single flat block for all tags to maximize spatial locality
 	if (num_tags > 0)
 	{
-		int* tags_block = alloc::calloc(tmem, (sz)(num_states * 2 * num_tags) * int::size);
+		TagId* tags_block = alloc::calloc(tmem, (sz)(num_states * 2 * num_tags) * TagId::size);
 		if (!tags_block) return OUT_OF_MEMORY~;
 		for (int i = 0; i < num_states; i++)
 		{
@@ -2965,7 +2965,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, int* match_tags, ExecF
 					{
 						for (int j = 0; tag_i[j] >= 0; j++)
 						{
-							if (tag_i[j] < num_tags) reach_next_i.tags[tag_i[j]] = (int)pos;
+							if (tag_i[j] < num_tags) reach_next_i.tags[tag_i[j]] = (TagId)pos;
 						}
 					}
 
@@ -3023,19 +3023,19 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, int* match_tags, ExecF
 					}
 
 					if (num_tags > 0) mem::copy(tmp_tags, reach_i.tags, (usz)num_tags * int::size);
-					int* tags = trans_i.tags;
+					TagId* tags = trans_i.tags;
 					if (tags)
 					{
 						for (int j = 0; tags[j] >= 0; j++)
 						{
-							if (tags[j] < num_tags) tmp_tags[tags[j]] = (int)pos;
+							if (tags[j] < num_tags) tmp_tags[tags[j]] = (TagId)pos;
 						}
 					}
 
 					if (reach_pos[trans_i.state_id].pos < pos || reach_pos[trans_i.state_id].pos == (sz)-1)
 					{
 						reach_next_i.state = trans_i.state;
-						int* swap_tags = reach_next_i.tags;
+						TagId* swap_tags = reach_next_i.tags;
 						reach_next_i.tags = tmp_tags;
 						tmp_tags = swap_tags;
 
@@ -3053,7 +3053,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, int* match_tags, ExecF
 					{
 						if (tre_tag_order(num_tags, tnfa.tag_directions, tmp_tags, *reach_pos[trans_i.state_id].tags))
 						{
-							int* tmp_iptr = *reach_pos[trans_i.state_id].tags;
+							TagId* tmp_iptr = *reach_pos[trans_i.state_id].tags;
 							*reach_pos[trans_i.state_id].tags = tmp_tags;
 							if (trans_i.state == tnfa.final)
 							{
@@ -3092,10 +3092,10 @@ fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFl
 			string_nt = (String)buf[0 : string.len];
 		}
 
-		int* match_tags = null;
+		TagId* match_tags = null;
 		if (tnfa.num_tags > 0)
 		{
-			match_tags = mem::talloc_array(int, tnfa.num_tags);
+			match_tags = mem::talloc_array(TagId, tnfa.num_tags);
 			match_tags[0 : tnfa.num_tags] = -1;
 		}
 
