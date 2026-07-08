@@ -535,7 +535,7 @@ struct ParseCtx @local
 //  Character class helpers (portable, ASCII-only for now)
 // ============================================================
 
-fn bool is_word_char(int c) @local => c == '_' || ascii::@is_alnum(c);
+fn bool is_word_char(int c) @local => c == '_' || (c >= 0 && c <= 255 && ascii::@is_alnum(c));
 
 fn int hexval(int c) @local
 {
