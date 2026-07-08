@@ -168,17 +168,16 @@ struct RegMatch
 	RegOff rm_eo;
 }
 
-fn sz? Match.to_format(&self, Formatter* formatter) @dynamic => formatter.print(self.str());
-// TODO: do I need to implement .to_constant_string() ???
+fn sz? Match.to_format(&self, Formatter* formatter) @dynamic => formatter.print(self.str_view());
 
-<* Extract the matched substring as a String. could be .str_view() .to_str(), i don't know TODO *>
-fn String Match.str(&self) @inline
+<* Extract the matched substring as a String view. *>
+fn String Match.str_view(&self) @inline
 {
 	if (self.match.rm_so < 0 || self.match.rm_eo < 0) return "";
 	return self.input[self.match.rm_so : (self.match.rm_eo - self.match.rm_so)];
 }
 
-fn bool Match.eq(&self, String other) @operator(==) @inline => self.str() == other;
+fn bool Match.eq(&self, String other) @operator(==) @inline => self.str_view() == other;
 
 
 // ============================================================
@@ -2514,10 +2513,8 @@ fn int decode_utf8(char* s, int* len) @private
 
 	if (catch cp_opt)
 	{
-		// TODO: Should this regex strictly expect valid UTF-8 `String` inputs, or should it fall back
-		// to matching raw byte slices so it can handle arbitrary binary payloads?
-		// for now:
-		// Fallback for invalid UTF-8 (raw Latin-1 bytes in POSIX tests) to match as raw bytes.
+		// Fallback for invalid UTF-8 (e.g. raw Latin-1 bytes in POSIX tests or binary payloads)
+		// to match as raw bytes.
 		*len = 1;
 		return *s & 0xFF;
 	}

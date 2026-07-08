@@ -66,7 +66,7 @@ fn void test_non_null_terminated_pattern() @test
 		Regex re = regex::compile(pattern)!!;
 		defer re.free();
 		assert(@ok(re.exec("a")));
-		test::eq(re.exec("ab")!![0].str(), "a");
+		test::eq(re.exec("ab")!![0].str_view(), "a");
 	}
 
 	// Trailing byte '[' would make the pattern syntactically invalid (EBRACK).
@@ -82,7 +82,7 @@ fn void test_non_null_terminated_pattern() @test
 		char[5] buf = { 'a', '+', 'b', 0, 0 };
 		Regex re = regex::compile((String)buf[0:1], EXTENDED)!!;
 		defer re.free();
-		test::eq(re.exec("aaa")!![0].str(), "a");
+		test::eq(re.exec("aaa")!![0].str_view(), "a");
 	}
 }
 
