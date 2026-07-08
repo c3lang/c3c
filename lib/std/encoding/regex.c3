@@ -17,16 +17,19 @@
 
 **Supported:**
   - POSIX Extended (ERE) and Basic (BRE) regular expressions.
-  - Exact submatch extraction (capture groups).
-  - Backreferences (\1 to \9 in BRE, which falls back to backtracking execution).
-  - Word boundaries (\b, \B, \<, \>) and word/space shorthands (\w, \W, \s, \S, \d, \D).
-  - Hexadecimal character escapes (\xHH and \x{HHHH}).
+  - Capture groups and submatch extraction.
+  - BRE backreferences (\1 to \9) with backtracking execution fallback.
+  - Word boundaries (\b, \B, \<, \>) and shorthands (\w, \W, \s, \S, \d, \D).
+  - Control escapes (\t, \n, \r, \f, \a, \e) and hex escapes (\xHH, \x{HHHH}).
   - Multi-byte UTF-8 character matching.
 
 **Not supported:**
-  - PCRE-specific features: Lookarounds (lookahead/lookbehind), atomic grouping, or possessive quantifiers.
-  - Named capture groups (ex, (?P<name>...)).
-  - POSIX collation elements [[.col.]], or equivalence classes [[=eq=]].
+  - Non-capturing groups (?:...), atomic groups (?>...), or branch resets.
+  - Lookarounds, possessive quantifiers, or PCRE anchors (\A, \z, \Z, \G).
+  - Inline flags ((?i), (?m), etc.) or inline comments ((?#...)).
+  - Named capture groups ((?P<name>...)) or named backreferences (\k<name>).
+  - Unicode character properties (\p{...}, \P{...}).
+  - POSIX collation elements [[.col.]] or equivalence classes [[=eq=]].
 
 *>
 module std::encoding::regex;
@@ -76,7 +79,6 @@ struct Match (Printable)
  @param nmatch : "Maximum number of capture groups to return (including group 0)."
  @param eflags : "Execute flags: NOTBOL and NOTEOL."
  @return "A temp-allocated slice of `Match[nmatch]`."
- @require nmatch >= 0
 *>
 fn Match[]? Regex.exec(&self, String str, sz nmatch = 1, ExecFlags eflags = {})
 {
