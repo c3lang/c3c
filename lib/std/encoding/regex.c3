@@ -2352,7 +2352,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		{
 			tnfa.tag_directions = alloc::calloc(allocator, tnfa.num_tags * int::size);
 			if (!tnfa.tag_directions) return OUT_OF_MEMORY~;
-			for (int i = 0; i < tnfa.num_tags; i++) tnfa.tag_directions[i] = TRE_TAG_MAXIMIZE;
+			tnfa.tag_directions[0 : tnfa.num_tags] = TRE_TAG_MAXIMIZE;
 		}
 		tnfa.end_tag = tnfa.num_tags;
 
@@ -2505,63 +2505,63 @@ fn int decode_utf8(char* s, int* len) @private
 
 fn void tre_fill_pmatch(sz nmatch, RegMatch* pmatch, CompileFlags cflags, Tnfa* tnfa, int* tags, RegOff match_eo) @local
 {
-	sz i = 0;
+	sz limit = 0;
 	if (match_eo >= 0 && !(cflags & NOSUB))
 	{
+		limit = (tnfa.num_submatches < nmatch) ? tnfa.num_submatches : nmatch;
 		SubmatchData* submatch_data = tnfa.submatch_data;
-		while (i < tnfa.num_submatches && i < nmatch)
+
+		foreach (idx, data : submatch_data[0 : limit])
 		{
-			if (submatch_data[i].so_tag == tnfa.end_tag)
+			if (data.so_tag == tnfa.end_tag)
 			{
-				pmatch[i].rm_so = match_eo;
+				pmatch[idx].rm_so = match_eo;
 			}
 			else
 			{
-				pmatch[i].rm_so = (submatch_data[i].so_tag >= 0 && tags) ? tags[submatch_data[i].so_tag] : -1;
+				pmatch[idx].rm_so = (data.so_tag >= 0 && tags) ? tags[data.so_tag] : -1;
 			}
 
-			if (submatch_data[i].eo_tag == tnfa.end_tag)
+			if (data.eo_tag == tnfa.end_tag)
 			{
-				pmatch[i].rm_eo = match_eo;
+				pmatch[idx].rm_eo = match_eo;
 			}
 			else
 			{
-				pmatch[i].rm_eo = (submatch_data[i].eo_tag >= 0 && tags) ? tags[submatch_data[i].eo_tag] : -1;
+				pmatch[idx].rm_eo = (data.eo_tag >= 0 && tags) ? tags[data.eo_tag] : -1;
 			}
 
-			if (pmatch[i].rm_so == -1 || pmatch[i].rm_eo == -1)
+			if (pmatch[idx].rm_so == -1 || pmatch[idx].rm_eo == -1)
 			{
-				pmatch[i].rm_so = -1;
-				pmatch[i].rm_eo = -1;
+				pmatch[idx].rm_so = -1;
+				pmatch[idx].rm_eo = -1;
 			}
-			i++;
 		}
 
-		i = 0;
-		while (i < tnfa.num_submatches && i < nmatch)
+		foreach (idx, data : submatch_data[0 : limit])
 		{
-			int* parents = submatch_data[i].parents;
+			int* parents = data.parents;
 			if (parents != null)
 			{
 				for (int j = 0; parents[j] >= 0; j++)
 				{
-					if (pmatch[i].rm_so < pmatch[parents[j]].rm_so ||
-						pmatch[i].rm_eo > pmatch[parents[j]].rm_eo)
+					if (pmatch[idx].rm_so < pmatch[parents[j]].rm_so ||
+						pmatch[idx].rm_eo > pmatch[parents[j]].rm_eo)
 					{
-						pmatch[i].rm_so = -1;
-						pmatch[i].rm_eo = -1;
+						pmatch[idx].rm_so = -1;
+						pmatch[idx].rm_eo = -1;
 					}
 				}
 			}
-			i++;
 		}
 	}
 
-	while (i < nmatch)
+	if (limit < nmatch)
 	{
-		pmatch[i].rm_so = -1;
-		pmatch[i].rm_eo = -1;
-		i++;
+		foreach (&match : pmatch[limit : nmatch - limit])
+		{
+			*match = { .rm_so = -1, .rm_eo = -1 };
+		}
 	}
 }
 
@@ -2958,7 +2958,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, int* match_tags, ExecF
 					}
 
 					reach_next_i.state = trans_i.state;
-					for (int i = 0; i < num_tags; i++) reach_next_i.tags[i] = -1;
+					reach_next_i.tags[0 : num_tags] = -1;
 
 					int* tag_i = trans_i.tags;
 					if (tag_i)
@@ -3096,7 +3096,7 @@ fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFl
 		if (tnfa.num_tags > 0)
 		{
 			match_tags = mem::talloc_array(int, tnfa.num_tags);
-			for (int i = 0; i < tnfa.num_tags; i++) match_tags[i] = -1;
+			match_tags[0 : tnfa.num_tags] = -1;
 		}
 
 		RegOff match_end_ofs = -1;
