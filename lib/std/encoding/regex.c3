@@ -2311,16 +2311,13 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		if (!stack) return OUT_OF_MEMORY~;
 		defer catch stack_destroy(stack);
 
-		ParseCtx ctx;
-		mem::clear(&ctx, ParseCtx::size);
-		ctx.mem = tmem;
-		ctx.stack = stack;
-		ctx.cursor = regex_nt.ptr;
-		ctx.start = regex_nt.ptr;
-		ctx.cflags = cflags;
-		ctx.submatch_id = 0; // 0 is the whole match
-		ctx.position = 0;
-		ctx.max_backref = -1;
+		ParseCtx ctx = {
+			.mem      = tmem,
+			.stack    = stack,
+			.start    = regex_nt.ptr,
+			.cflags   = cflags,
+			.max_backref = -1, // sentinel: -1 = no backrefs found; used by have_backrefs check
+		};
 
 		tre_parse(&ctx)!;
 
