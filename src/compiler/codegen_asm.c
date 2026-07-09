@@ -115,7 +115,42 @@ static inline void codegen_create_aarch64_arg(AsmInlineBlock *block, unsigned in
 			}
 			return;
 		case ASM_ARG_ADDR:
-			TODO
+			scratch_buffer_append_char('[');
+            if (arg->base)
+            {
+                codegen_create_aarch64_arg(block, input_offset, exprptr(arg->base));
+            }
+            if (arg->offset)
+            {
+                scratch_buffer_append_char(',');
+                if (arg->neg_offset) scratch_buffer_append_char('-');
+                scratch_buffer_append_unsigned_int(arg->offset);
+            }
+            if (arg->idx)
+            {
+                scratch_buffer_append_char(',');
+                codegen_create_aarch64_arg(block, input_offset, exprptr(arg->idx));
+                scratch_buffer_append_char(',');
+                switch (arg->offset_type)
+                {
+                    case ASM_SCALE_1:
+                        scratch_buffer_append("lsl #0");
+                        break;
+                    case ASM_SCALE_2:
+                        scratch_buffer_append("lsl #1");
+                        break;
+                    case ASM_SCALE_4:
+                        scratch_buffer_append("lsl #2");
+                        break;
+                    case ASM_SCALE_8:
+                        scratch_buffer_append("lsl #3");
+                        break;
+                    default:
+                        UNREACHABLE_VOID
+                }
+            }
+			scratch_buffer_append_char(']');
+            return;
 		case ASM_ARG_MEMADDR:
 			TODO
 	}
