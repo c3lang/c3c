@@ -496,3 +496,29 @@ fn void test_large_integer_precision() @test
 	test::eq((long)5000000000, lval);
 	test::eq((ulong)9000000000000, ulval);
 }
+
+fn void test_optional_negative_float() @test
+{
+	String[] args = { "program", "-s", "-10.5" };
+	float scale = 1.0f;
+
+	sz? res = argparse::@parse(args,
+		"s?", "scale?", "Specify scale factor (float)", &scale
+	);
+
+	test::eq(3, res!!);
+	test::eq(-10.5f, scale);
+}
+
+fn void test_optional_negative_integer() @test
+{
+	String[] args = { "program", "-p", "-80" };
+	int port = 8080;
+
+	sz? res = argparse::@parse(args,
+		"p?", "port?", "Specify port", &port
+	);
+
+	test::eq(3, res!!);
+	test::eq(-80, port);
+}
