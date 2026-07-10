@@ -79,6 +79,15 @@ fn void bench_setup() @init
 	set_benchmark_func_iterations($reflect(match_and_compile_complex_c3).qname,       81);
 	set_benchmark_func_iterations($reflect(match_and_compile_complex_glibc).qname,      1);
 
+	set_benchmark_func_iterations($reflect(stress_backtracking_c3).qname,               35_000);
+	set_benchmark_func_iterations($reflect(stress_backtracking_glibc).qname,            35_000);
+	set_benchmark_func_iterations($reflect(stress_overlapping_alternation_c3).qname,    20_000);
+	set_benchmark_func_iterations($reflect(stress_overlapping_alternation_glibc).qname, 20_000);
+	set_benchmark_func_iterations($reflect(stress_massive_alternation_c3).qname,         2_000);
+	set_benchmark_func_iterations($reflect(stress_massive_alternation_glibc).qname,      4_000);
+	set_benchmark_func_iterations($reflect(stress_multi_wildcard_c3).qname,                100);
+	set_benchmark_func_iterations($reflect(stress_multi_wildcard_glibc).qname,           4_000);
+
 	input_small   = repeat_str("a", 100);
 	input_medium  = repeat_str("a", 1000);
 	input_large   = repeat_str("a", 10000);
@@ -278,3 +287,63 @@ fn void match_complex_large_c3() => (void)re_complex.exec(input_large, 0);
 fn void match_complex_large_glibc() => regexec(&glibc_re_complex, input_large, 0, null);
 fn void match_unicode_c3() => (void)re_unicode.exec(input_unicode, 0);
 fn void match_unicode_glibc() => regexec(&glibc_re_unicode, input_unicode, 0, null);
+
+fn void stress_backtracking_c3()
+{
+	Regex re = regex::compile("(a|a+)+b", EXTENDED)!!;
+	(void)re.exec("aaaaaaaaaaaaaaaaaaaaaaaa!", 0);
+	re.free();
+}
+
+fn void stress_backtracking_glibc()
+{
+	RegexT re;
+	regcomp(&re, "(a|a+)+b", regex::CompileFlags.EXTENDED);
+	regexec(&re, "aaaaaaaaaaaaaaaaaaaaaaaa!", 0, null);
+	regfree(&re);
+}
+
+fn void stress_overlapping_alternation_c3()
+{
+	Regex re = regex::compile("([a-zA-Z0-9]+-)*[a-zA-Z0-9]+\\.com", EXTENDED)!!;
+	(void)re.exec("a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-org", 0);
+	re.free();
+}
+
+fn void stress_overlapping_alternation_glibc()
+{
+	RegexT re;
+	regcomp(&re, "([a-zA-Z0-9]+-)*[a-zA-Z0-9]+\\.com", regex::CompileFlags.EXTENDED);
+	regexec(&re, "a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-org", 0, null);
+	regfree(&re);
+}
+
+fn void stress_massive_alternation_c3()
+{
+	Regex re = regex::compile("^(apple|banana|orange|grape|strawberry|melon|peach|cherry|blueberry|raspberry|blackberry|plum|apricot|fig|date|kiwi|mango|papaya|pineapple|pomegranate)*$", EXTENDED)!!;
+	(void)re.exec("applebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaz", 0);
+	re.free();
+}
+
+fn void stress_massive_alternation_glibc()
+{
+	RegexT re;
+	regcomp(&re, "^(apple|banana|orange|grape|strawberry|melon|peach|cherry|blueberry|raspberry|blackberry|plum|apricot|fig|date|kiwi|mango|papaya|pineapple|pomegranate)*$", regex::CompileFlags.EXTENDED);
+	regexec(&re, "applebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaz", 0, null);
+	regfree(&re);
+}
+
+fn void stress_multi_wildcard_c3()
+{
+	Regex re = regex::compile("a*a*a*a*a*b", EXTENDED)!!;
+	(void)re.exec(input_large, 0);
+	re.free();
+}
+
+fn void stress_multi_wildcard_glibc()
+{
+	RegexT re;
+	regcomp(&re, "a*a*a*a*a*b", regex::CompileFlags.EXTENDED);
+	regexec(&re, input_large, 0, null);
+	regfree(&re);
+}
