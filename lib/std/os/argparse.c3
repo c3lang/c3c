@@ -60,9 +60,12 @@ By default, non-boolean variables require an argument (e.g. `--port 8080`). Appe
 
 ### 3. Incremental Counters (`+`)
 Appending `+` to an option name increments the target numeric variable every time the flag is specified.
+
+The parser supports both standard stacked short flags (e.g., `-vvv`) as well as repeated occurrences of flags.
 ```c3
 "v+", "verbose+", "Increase verbosity", &verbosity
-// Passing "-v -v --verbose -v" results in verbosity = 4
+// Passing "-vvv -v" results in verbosity = 4
+// Passing "-vv --verbose -vvv -v" results in verbosity = 7
 ```
 
 ---
@@ -99,7 +102,9 @@ argparse::@parse(args,
 ```
 
 ### 3. Sequential Array Collection
-Passing a pointer to a fixed-size array collects sequential occurrences of that option flag into the array. If the array size is exceeded, the parser returns `argparse::OUT_OF_BOUNDS`.
+Passing a pointer to a fixed-size array collects sequential occurrences of that option flag into the array.
+
+If the array capacity is exceeded, the parser returns `argparse::OUT_OF_BOUNDS`.
 
 ```c3
 String[3] input_files = {};
@@ -633,7 +638,7 @@ macro sz? @parse(#args, ...)
 									$if $meta.is_opt:
 										if (parser.has_value()) @parse_value(parser.consume_value(), $TargetType::typeid, *$vaarg[$curr_j + $assignee_offset])!;
 									$else
-									    @parse_value(parser.consume_value(), $TargetType::typeid, *$vaarg[$curr_j + $assignee_offset])!;
+										@parse_value(parser.consume_value(), $TargetType::typeid, *$vaarg[$curr_j + $assignee_offset])!;
 									$endif
 							$endswitch
 					$endswitch
