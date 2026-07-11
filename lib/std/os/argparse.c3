@@ -40,6 +40,15 @@ fn int main(String[] args)
 }
 ```
 
+### Supported Syntax Conventions
+
+The parser is designed to adhere to standard POSIX and GNU command-line parsing conventions:
+
+* **Long Option Separators**: Values can be passed to long options using either spaces or an equals sign (e.g., `--port 8080` or `--port=8080`).
+* **Short Option Stacking**: Multiple short flags can be stacked together (e.g., `-vh` instead of `-v -h`).
+* **Compact Short Option Values**: A short option requiring an argument can accept its value directly attached to the flag (e.g., `-p8080` instead of `-p 8080`).
+* **Negative Numbers**: Hyphenated numeric values (such as `-10` or `-3.14`) are automatically detected and treated as literal values rather than illegal options.
+
 ---
 
 ## Option Qualifiers
@@ -53,9 +62,29 @@ Any flag designated with `*` acts as a help trigger. When matched, the macro aut
 ```
 
 ### 2. Optional Suffix (`?`)
-By default, non-boolean variables require an argument (e.g. `--port 8080`). Appending `?` to the option name makes its argument optional. If the flag is provided without an argument, boolean targets are set to `true`, and other types retain their defaults or are parsed if a value is present.
+By default, non-boolean options *must* be followed by a value (for example, `--port` expects a trailing number, and omitting it throws a `MISSING_ARGUMENT` error). 
+
+Appending `?` to any option name makes its value optional:
+
+1. **For non-booleans (Strings, Integers, etc.)**: If the flag is specified without a value, the parser skips it without throwing an error, allowing the variable to retain its default initialized value. If a value *is* provided, it is parsed and assigned normally.
+2. **For booleans**: By default, booleans don't accept arguments. Appending `?` allows them to optionally parse explicit values (such as `--verbose=false` or `--verbose=true`), while falling back to `true` if passed as a bare flag.
+
+This is highly useful for flags that enable a feature with a sensible default but can optionally accept a custom override.
+
 ```c3
-"v?", "verbose?", "Toggle verbose output", &verbose
+String log_file = "default.log";
+bool help = false;
+
+sz? result = argparse::@parse(args,
+	"h*", "help*", "Show help manual",                                   &help,
+	"l?", "log?", "Enable logging, optionally specifying a custom file", &log_file
+);
+
+// Running:  ./app --log
+// Result:   log_file remains "default.log"
+
+// Running:  ./app --log custom.log
+// Result:   log_file becomes "custom.log"
 ```
 
 ### 3. Incremental Counters (`+`)
@@ -84,7 +113,9 @@ argparse::@parse(args,
 ```
 
 ### 2. Custom Validation Callbacks
-You can pass a callback function of type `fn void? (String)` as an option assignee. The callback is invoked with the parsed option value. Returning a fault from this function aborts option parsing and propagates the fault out of `@parse`.
+You can pass a callback function of type `fn void? (String)` as an option assignee.
+
+The callback is invoked with the parsed option value. Returning a fault from this function aborts option parsing and propagates the fault out of `@parse`.
 
 ```c3
 fn void? validate_port(String value)
@@ -103,6 +134,8 @@ argparse::@parse(args,
 
 ### 3. Sequential Array Collection
 Passing a pointer to a fixed-size array collects sequential occurrences of that option flag into the array.
+
+To prevent parsing ambiguity with subsequent positional arguments, each item must be preceded by its own option flag. Space-separated multi-value syntax (e.g. `-f file1 file2`) is intentionally unsupported to ensure positional arguments are not eaten by mistake.
 
 If the array capacity is exceeded, the parser returns `argparse::OUT_OF_BOUNDS`.
 
@@ -156,6 +189,43 @@ argparse::@parse(args,
 ### 7. End-of-Options Marker (`--`)
 The standard double-hyphen marker `--` disables option-parsing for any subsequent arguments. All arguments following `--` are treated strictly as positional arguments, even if they begin with a hyphen.
 
+### 8. Subcommand Routing
+If `@parse` is called without specifying a final positional target array, option parsing terminates immediately upon reaching the first raw positional argument. The macro then returns the index of that unhandled argument. 
+
+This enables robust multi-command routing by letting you slice the arguments array at the returned index and pass the slice to subcommand-specific parsers.
+
+```c3
+bool verbose, help;
+
+sz? parse_res = argparse::@parse(args,
+	"h*", "help*", "Show help manual", &help,
+	"v", "verbose", "Verbose mode",    &verbose
+);
+
+if (catch err = parse_res)
+{
+	// If help was requested, append the subcommand "help" before exiting
+	if (err == argparse::HELP_REQUESTED)
+	{
+		io::printfn("\nCommands:");
+		io::printfn("  build       Optimize and compile the project");
+		io::printfn("  run         Execute the project binary");
+		return 0;
+	}
+	return 1;
+}
+
+if (parse_res < args.len)
+{
+	switch (args[parse_res])
+	{
+		case "build": return handle_build(args[parse_res..]);
+		case "run":   return handle_run(args[parse_res..]);
+		default:      io::eprintfn("Unknown command: %s", args[parse_res]); return 1;
+	}
+}
+```
+
 ---
 
 ## Low-Level API: `ArgParser`
@@ -163,32 +233,40 @@ The standard double-hyphen marker `--` disables option-parsing for any subsequen
 For manual or non-standard argument processing, you can bypass the compile-time macro and use the zero-allocation `ArgParser` struct directly.
 
 ```c3
-import std::io;
-import std::os::argparse;
+import std;
 
-fn void parse_manually(String[] args)
+fn void main(String[] args)
 {
 	ArgParser parser;
 	parser.init(args);
 
+	bool verbose = false;
 	bool is_option;
+
 	while (try token = parser.next(&is_option))
 	{
 		if (is_option)
 		{
-			if (token == "p" || token == "port")
+			switch (token)
 			{
-				if (try val = parser.consume_value())
-				{
-					io::printfn("Custom Port: %s", val);
-				}
+				case "h": case "help":
+					io::printfn("Usage: %s [-v | --verbose] [files...]", args[0]);
+					return;
+				case "v": case "verbose":
+					verbose = true;
+				default:
+					io::eprintfn("Error: Unknown option '--%s'.", token);
+					if (parser.has_value()) (void)parser.consume_value();
+					return;
 			}
 		}
 		else
 		{
-			io::printfn("Custom Positional: %s", token);
+			io::printfn("Processing positional: %s", token);
 		}
 	}
+
+	io::printfn("Running with verbose = %b", verbose);
 }
 ```
 *>
