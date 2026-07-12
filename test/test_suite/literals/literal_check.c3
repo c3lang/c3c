@@ -20,4 +20,5 @@ fn void main()
 	$assert(@typeid(-170141183460469231731687303715884105728) == int128::typeid);
 	$assert(@typeid(170141183460469231731687303715884105727) == int128::typeid);
 	$assert(@typeid(170141183460469231731687303715884105728U) == uint128::typeid);
+	$assert(@typeid(1.0F) == float::typeid);
 }

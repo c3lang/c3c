@@ -3715,12 +3715,12 @@ INLINE bool sema_expr_analyse_is_generic(SemaContext *context, Expr *expr, Expr 
 		RETURN_SEMA_ERROR(type_expr, "'is_generic' requires a generic type name.");
 	}
 	TypeInfo *info = type_expr->type_expr;
-	if (info->kind != TYPE_INFO_IDENTIFIER || info->optional || info->subtype != TYPE_COMPRESSED_NONE)
+	if (info->kind != TYPE_INFO_IDENTIFIER || info->optional || info->subtype != TYPE_COMPRESSED_NONE || info->resolve_status == RESOLVE_DONE)
 	{
 		RETURN_SEMA_ERROR(type_expr, "'is_generic' requires a generic type name.");
 	}
 	bool match = false;
-	Decl *inf = sema_resolve_parameterized_symbol(context, info->unresolved.name, info->unresolved.path, type_expr->loc);
+	Decl *inf = sema_resolve_generic_symbol(context, info->unresolved.name, info->unresolved.path, type_expr->loc);
 	if (!inf) return false;
 	if (!decl || !decl->is_templated) goto NO_MATCH;
 	Decl *generic = declptr(inf->generic_id);
@@ -8334,7 +8334,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 	bool right_is_pointer = right_is_pointer_vector || right_type->type_kind == TYPE_POINTER;
 
 	Type *offset_type = vec_len ? type_get_vector_from_vector(type_sz, left_type) : type_sz;
-
+	bool optional = IS_OPTIONAL(right) || IS_OPTIONAL(left);
 	// 3. ptr - other pointer
 	if (right_is_pointer)
 	{
@@ -8357,7 +8357,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 			return true;
 		}
 		// 3b. Set the type
-		expr->type = offset_type;
+		expr->type = type_add_optional(offset_type, optional);
 		return true;
 	}
 
@@ -8384,7 +8384,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 	}
 
 	// 6. Convert to sz
-	if (!cast_implicit_binary(context, right, offset_type, failed_ref)) return false;
+	if (!cast_implicit_binary(context, right, type_add_optional(offset_type, optional), failed_ref)) return false;
 
 	if (left->expr_kind == EXPR_POINTER_OFFSET)
 	{

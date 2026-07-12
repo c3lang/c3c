@@ -3998,6 +3998,15 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 		{
 			case INOUT_ANY:
 				goto ADDED;
+			case INOUT_OWN:
+				param->var.own_param = true;
+				break;
+			case INOUT_INIT:
+				param->var.init_param = true;
+				break;
+			case INOUT_DROP:
+				param->var.drop_param = true;
+				break;
 			case INOUT_IN:
 				param->var.in_param = true;
 				break;
@@ -4011,7 +4020,7 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 		}
 		if (!may_be_pointer && type->type_kind != TYPE_SLICE)
 		{
-			RETURN_SEMA_ERROR(param_contract, "'in', 'out' and 'inout' may only be added to pointers and slices.");
+			RETURN_SEMA_ERROR(param_contract, "'in', 'out', 'inout', 'init', 'drop' or 'own' may only be added to pointers and slices.");
 		}
 ADDED:;
 	}

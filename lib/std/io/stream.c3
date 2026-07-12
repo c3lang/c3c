@@ -4,7 +4,8 @@ import std::math;
 
 
 alias SeekFn = fn void?(void*, long offset, SeekOrigin whence = FROM_START);
-
+alias WriteFn = fn sz?(void*, char[] bytes);
+alias WriteByteFn = fn void?(void*, char c);
 
 interface InStream
 {

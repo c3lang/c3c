@@ -385,6 +385,12 @@ LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)
 	return llvm::wrap(llvm::Constant::getIntegerValue(Val->getType(), i.byteSwap()));
 }
 
+bool LLVMDIIsTemporary(LLVMMetadataRef value)
+{
+	auto *Node = llvm::dyn_cast_or_null<llvm::MDNode>(llvm::unwrap(value));
+	return Node && Node->isTemporary();
+}
+
 void LLVMMemCpySetVolatile(LLVMValueRef memcpy, LLVMValueRef val)
 {
 	llvm::MemCpyInst *inst = llvm::dyn_cast_or_null<llvm::MemCpyInst>(llvm::unwrap(memcpy));

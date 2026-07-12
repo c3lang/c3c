@@ -12,6 +12,7 @@ const char *manifest_default_keys[][2] = {
 		{"dependencies", "List of C3 libraries to also include."},
 		{"exec", "Scripts run for all platforms."},
 		{"linklib-dir", "Set the directory where to find linked libraries."},
+		{"templates", "Predefined target configurations for users of this library."},
 		{"provides", "The library name"},
 		{"targets", "The map of supported platforms"},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
@@ -179,13 +180,54 @@ INLINE JSONObject* read_manifest(const char *lib, const char *manifest_data)
 	JSONObject *json = json_parse(&parser);
 	if (parser.error_message)
 	{
-		error_exit("Error on line %d reading '%s':'%s'", parser.line, lib, parser.error_message);
+		error_exit("Error on line %d reading '%s':%s", parser.line, lib, parser.error_message);
 	}
 	if (!json)
 	{
 		error_exit("Empty 'manifest.json' for library '%s'.", lib);
 	}
 	return json;
+}
+
+JSONObject *read_library_manifest_for_path(const char *lib_path, const char **manifest_path_ref)
+{
+	if (file_is_dir(lib_path))
+	{
+		const char *manifest_path = file_append_path(lib_path, MANIFEST_FILE);
+		if (!file_exists(manifest_path)) return NULL;
+		size_t size;
+		char *manifest_data = file_read_all(manifest_path, &size);
+		*manifest_path_ref = manifest_path;
+		return read_manifest(manifest_path, manifest_data);
+	}
+	if (!file_exists(lib_path)) return NULL;
+
+	FILE *f = fopen(lib_path, "rb");
+	if (!f) return NULL;
+
+	ZipDirIterator iterator;
+	const char *zip_error = zip_dir_iterator(f, &iterator);
+	if (zip_error)
+	{
+		fclose(f);
+		zip_check_err(lib_path, zip_error);
+	}
+
+	ZipFile file;
+	while (iterator.current_file < iterator.files)
+	{
+		zip_check_err(lib_path, zip_dir_iterator_next(&iterator, &file));
+		if (strcmp(file.name, MANIFEST_FILE) == 0)
+		{
+			char *manifest_data;
+			zip_check_err(lib_path, zip_file_read(f, &file, (void**)&manifest_data));
+			fclose(f);
+			*manifest_path_ref = lib_path;
+			return read_manifest(lib_path, manifest_data);
+		}
+	}
+	fclose(f);
+	return NULL;
 }
 
 static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const char *lib, const char **resulting_library)
@@ -238,7 +280,7 @@ static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const c
 		zip_check_err(lib, zip_dir_iterator_next(&iterator, &file));
 		if (file.uncompressed_size == 0 || file.name[0] == '.') continue;
 		// Copy file.
-		zip_file_write(f, &file, lib_dir, false);
+		zip_check_err(lib, zip_file_write(f, &file, lib_dir, false));
 	}
 DONE:
 	fclose(f);

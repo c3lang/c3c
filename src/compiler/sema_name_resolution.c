@@ -932,9 +932,17 @@ NOT_GENERIC:;
 	if (decl_is_user_defined_type(found)
 		|| (found->decl_kind == DECL_VAR && (found->var.kind == VARDECL_PARAM_CT_TYPE || found->var.kind == VARDECL_LOCAL_CT_TYPE)))
 	{
+		if (name_resolve->is_generic_parent)
+		{
+			RETURN_SEMA_ERROR_AT(name_resolve->loc, "'%s' is not a generic type.", name_resolve->symbol);
+		}
 		RETURN_SEMA_ERROR_AT(name_resolve->loc, "'%s' is not a generic type. Did you want an initializer "
 									   "but forgot () around the type? That is, you typed '%s { ... }' but intended '(%s) { ... }'?",
 									   name_resolve->symbol, name_resolve->symbol, name_resolve->symbol);
+	}
+	if (name_resolve->is_generic_parent)
+	{
+		RETURN_SEMA_ERROR_AT(name_resolve->loc, "'%s' is not a generic symbol.", name_resolve->symbol);
 	}
 	RETURN_SEMA_ERROR_AT(name_resolve->loc, "Found '%s', but it is not generic so the { ... } after looks like a mistake?", found->name);
 
@@ -1212,7 +1220,7 @@ Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, 
 }
 
 /**
- * Resolves a symbol, return NULL if an error was found (and signalled),
+ * Resolves a symbol, return NULL if an error was found (and signaled),
  * otherwise the decl.
  */
 Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc)
@@ -1222,6 +1230,26 @@ Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol
 		.loc = loc,
 		.symbol = symbol,
 		.is_parameterized = true
+	};
+	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
+	Decl *found = resolve.found;
+	ASSERT(found);
+	if (!decl_ok(found)) return NULL;
+	return resolve.found;
+}
+
+/**
+ * Resolves a generic symbol, return NULL if an error was found (and signaled),
+ * otherwise the decl.
+ */
+Decl *sema_resolve_generic_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc)
+{
+	NameResolve resolve = {
+		.path = path,
+		.loc = loc,
+		.symbol = symbol,
+		.is_parameterized = true,
+		.is_generic_parent = true
 	};
 	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
 	Decl *found = resolve.found;

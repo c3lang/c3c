@@ -312,15 +312,18 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 	y += frac;
 	y -= bias;
 
-	if (((e2 + math::DOUBLE_MANT_DIG) & int::max) > emax - 5)
+	if ((e2 + math::DOUBLE_MANT_DIG) & int::max > emax - 5)
 	{
 		if (math::abs(y) >= 0x1p53)
 		{
-			if (denormal && bits == math::DOUBLE_MANT_DIG + e2 - $emin) denormal = false;
-			y *= 0.5;
-			e2++;
+			if (denormal && bits == math::DOUBLE_MANT_DIG + e2 - $emin)
+			{
+				denormal = false;
+				y *= 0.5;
+				e2++;
+			}
 		}
-		if (e2 + math::DOUBLE_MANT_DIG > emax || (denormal && frac)) return MALFORMED_FLOAT~;
+		if (e2 + math::DOUBLE_MANT_DIG > emax) return FLOAT_OUT_OF_RANGE~;
 	}
 	return math::scalbn(y, e2);
 }
