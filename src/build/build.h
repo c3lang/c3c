@@ -18,7 +18,6 @@
 #define DEFAULT_SWITCH_JUMP_MAX_SIZE (0x3FFF)
 #define DEFAULT_PATH "."
 
-
 typedef enum
 {
 	COMMAND_MISSING = 0,
