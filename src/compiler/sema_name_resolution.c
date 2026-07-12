@@ -475,7 +475,7 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 	if (matches_subpath(unit->module->name, path))
 	{
 		// 2. If so try to locally get the symbol.
-		if ((name_resolve->found = module_find_symbol(unit->module, symbol))) return true;
+		if ((name_resolve->found = module_find_symbol(unit->module, symbol))) return true;  // NOLINT
 		name_resolve->path_found = unit->module;
 	}
 
@@ -538,7 +538,7 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 
 	Decl *decl;
 
-	if ((decl = sema_find_local(context, symbol)))
+	if ((decl = sema_find_local(context, symbol))) // NOLINT
 	{
 		name_resolve->found = decl;
 		return true;
@@ -547,14 +547,14 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 	CompilationUnit *unit = context->unit;
 
 	// Search in file scope.
-	if ((decl = htable_get(&unit->local_symbols, (void *)symbol)))
+	if ((decl = htable_get(&unit->local_symbols, (void *)symbol))) // NOLINT
 	{
 		name_resolve->found = decl;
 		return true;
 	}
 
 	// Search in the module.
-	if ((decl = module_find_symbol(unit->module, symbol)))
+	if ((decl = module_find_symbol(unit->module, symbol))) // NOLINT
 	{
 		name_resolve->found = decl;
 		return true;
@@ -1127,6 +1127,7 @@ Decl *sema_find_template_symbol(SemaContext *context, const char *symbol, Path *
 		.suppress_error = true,
 		.symbol = symbol,
 		.is_parameterized = true,
+		.path = path,
 	};
 	if (!sema_resolve_symbol_common(context, &resolve)) return poisoned_decl;
 	return resolve.found;
