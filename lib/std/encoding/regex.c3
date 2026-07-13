@@ -49,9 +49,9 @@ struct Regex
 <*
  Compile a POSIX regex pattern into a `Regex`.
 
+ @param allocator : "Allocator used to persist the compiled regex."
  @param pattern  : "The regex pattern string."
  @param cflags   : "Compile flags: EXTENDED | ICASE | NOSUB | NEWLINE."
- @param allocator : "Allocator used to persist the compiled regex. Defaults to the heap allocator."
  @return "The compiled `Regex`, or a compile-error fault (BADPAT, ECOLLATE, ECTYPE, EESCAPE, ESUBREG, EBRACK, EPAREN, EBRACE, BADBR, ERANGE, OUT_OF_MEMORY, BADRPT)."
 *>
 fn Regex? compile(Allocator allocator, String pattern, CompileFlags cflags = {})
@@ -65,33 +65,32 @@ fn Regex? compile(Allocator allocator, String pattern, CompileFlags cflags = {})
  Execute a compiled regex against a string.
 
  Returns a slice of `Match` structures. By default, it automatically detects and
- returns exactly the number of capture groups defined in the pattern (plus group 0)
+ returns exactly the number of capture groups defined in the pattern (plus group 0).
 
  Throws `NOMATCH` if the pattern does not match anywhere in the string, or
  `OUT_OF_MEMORY` on allocation failure.
 
- @param str       : "The input string to search."
- @param nmatch    : "Maximum capture groups to return. Default (0) auto-allocates to match the pattern's capture groups."
- @param eflags    : "Execute flags: NOTBOL and NOTEOL."
- @param allocator : "Allocator used to persist the returned matches. Defaults to the mem allocator."
+ @param allocator     : "Allocator used to persist the returned matches."
+ @param str           : "The input string to search."
+ @param max_captures  : "The maximum number of match slots to return (including the full match at index 0). If 0 (the default), it automatically returns all groups defined in the pattern."
+ @param eflags        : "Execute flags: NOTBOL and NOTEOL."
  @return "A slice of matches."
 *>
-fn Match[]? Regex.exec(&self, Allocator allocator, String str, sz nmatch = 0, ExecFlags eflags = {})
+fn Match[]? Regex.exec(&self, Allocator allocator, String str, sz max_captures = 0, ExecFlags eflags = {})
 {
-	sz actual_nmatch = nmatch;
-	if (actual_nmatch == 0)
+	if (max_captures == 0 || max_captures > self.re_nsub + 1)
 	{
-		actual_nmatch = self.re_nsub + 1;
+		max_captures = self.re_nsub + 1;
 	}
 
-	RegMatch* matches = mem::talloc_array(RegMatch, actual_nmatch);
-	re_exec(self, str, actual_nmatch, matches, eflags)!;
+	RegMatch* matches = mem::talloc_array(RegMatch, max_captures);
+	re_exec(self, str, max_captures, matches, eflags)!;
 
-	Match* matches_ptr = alloc::malloc(allocator, Match::size * actual_nmatch);
+	Match* matches_ptr = alloc::malloc(allocator, Match::size * max_captures);
 	if (!matches_ptr) return OUT_OF_MEMORY~;
-	Match[] res = matches_ptr[0 : actual_nmatch];
+	Match[] res = matches_ptr[0 : max_captures];
 
-	for (sz i = 0; i < actual_nmatch; i++)
+	for (sz i = 0; i < max_captures; i++)
 	{
 		RegOff so = matches[i].rm_so;
 		RegOff eo = matches[i].rm_eo;
@@ -106,9 +105,9 @@ fn Match[]? Regex.exec(&self, Allocator allocator, String str, sz nmatch = 0, Ex
 }
 
 <* Temporary-allocating variant of `exec`. *>
-fn Match[]? Regex.texec(&self, String str, sz nmatch = 0, ExecFlags eflags = {}) @inline
+fn Match[]? Regex.texec(&self, String str, sz max_captures = 0, ExecFlags eflags = {}) @inline
 {
-	return self.exec(tmem, str, nmatch, eflags);
+	return self.exec(tmem, str, max_captures, eflags);
 }
 
 <* Free all resources held by a compiled regex. *>
