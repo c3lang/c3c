@@ -473,7 +473,7 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
 #### Compiling on Linux
 
 1. Install required build dependencies using your distribution's package manager:
-   - **Ubuntu / Debian:** `sudo apt-get install cmake git clang libcurl4-openssl-dev`
+   - **Ubuntu / Debian:** `sudo apt-get install cmake git clang libcurl4-openssl-dev liblld-21`
    - **Fedora:** `sudo dnf install cmake clang git libcurl-devel`
    - **Arch Linux:** `sudo pacman -S curl clang cmake git`
    - **Void Linux:** `sudo xbps-install git cmake clang libcurl-devel`
