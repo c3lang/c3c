@@ -257,6 +257,7 @@ static void fetch_windows_usage()
 	print_opt("--show-versions", "Show available MSVC and Windows SDK versions.");
 	print_opt("--msvc-version <ver>", "Specify a particular MSVC version to fetch.");
 	print_opt("--sdk-version <ver>", "Specify a particular Windows SDK version to fetch.");
+	print_opt("--arch <arch>", "Target architecture to fetch (x64, arm64). May be specified multiple times.");
 	PRINTF("");
 }
 
@@ -619,6 +620,12 @@ static void parse_command(BuildOptions *options)
 				options->msvc_sdk_version_override = next_arg();
 				continue;
 			}
+			if (match_longopt("arch"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --arch needs an architecture (x64, arm64).");
+				vec_add(options->fetch_sdk_archs, next_arg());
+				continue;
+			}
 			if (current_arg[0] == '-' && current_arg[1] == 'v') { options->verbosity_level = 1; continue; }
 			if (match_shortopt("q")) { options->verbosity_level = -1; continue; }
 			if (match_longopt("help") || match_shortopt("h"))
@@ -680,6 +687,13 @@ static void parse_command(BuildOptions *options)
 					if (at_end() || next_is_opt())
 						error_exit("error: sdk-version needs a version.");
 					options->msvc_sdk_version_override = next_arg();
+					continue;
+				}
+				if (match_longopt("arch"))
+				{
+					if (at_end() || next_is_opt())
+						error_exit("error: --arch needs an architecture (x64, arm64).");
+					vec_add(options->fetch_sdk_archs, next_arg());
 					continue;
 				}
 			}

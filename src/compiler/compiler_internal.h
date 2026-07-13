@@ -2706,7 +2706,7 @@ MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
 const char *macos_cross_compile_library(void);
 WindowsSDK *windows_get_sdk(void);
 // This string may be in the scratch buffer
-const char *windows_cross_compile_library(void);
+const char *windows_cross_compile_library(const char *arch);
 
 void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs);
 

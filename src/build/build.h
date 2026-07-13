@@ -273,6 +273,7 @@ typedef struct BuildOptions_
 	const char *fetch_sdk_target;
 	const char *macos_sdk_version_override;
 	bool macos_list_sdks, macos_fetch_sdk_list;
+	const char **fetch_sdk_archs;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;

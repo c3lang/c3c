@@ -1,5 +1,13 @@
 # C3C Release Notes
 
+## 0.8.3 Change list
+
+### Changes / improvements
+- Windows aarch64 is now supported.
+
+### Fixes
+- Generic functions and values incorrectly would not require a prefix. #3374
+
 ## 0.8.2 Change list
 
 ### Changes / improvements

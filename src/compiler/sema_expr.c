@@ -11317,6 +11317,32 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 	                                                     expr->generic_ident_expr.parameters, expr->loc);
 	compiler.generic_depth--;
 	if (!decl_ok(symbol)) return false;
+
+	if (decl_needs_prefix(symbol) && symbol->unit->module != context->unit->module && !parent->unresolved_ident_expr.path)
+	{
+		const char *message;
+		switch (symbol->decl_kind)
+		{
+			case DECL_VAR:
+				message = "Globals";
+				break;
+			case DECL_FUNC:
+				message = "Functions";
+				break;
+			case DECL_MACRO:
+				message = "Macros";
+				break;
+			case DECL_ALIAS:
+				message = "Aliases";
+				break;
+			case DECL_FAULT:
+				message = "Faults";
+				break;
+			default:
+				UNREACHABLE
+		}
+		RETURN_SEMA_ERROR(expr, "%s from other modules must be prefixed with the module name, please use %s::%s(...) instead.", message, symbol->unit->module->short_path, symbol->name);
+	}
 	expr_resolve_ident(expr, symbol);
 	return true;
 }
