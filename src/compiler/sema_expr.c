@@ -11341,12 +11341,7 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 			default:
 				UNREACHABLE
 		}
-		RETURN_SEMA_ERROR(expr, "%s from other modules must be prefixed with the module name, please use %s::%s{...} instead.", message, symbol->unit->module->short_path, symbol->name);
-	}
-
-	if (str_start_with(symbol->name, "to_integer"))
-	{
-		puts("Found");
+		RETURN_SEMA_ERROR(expr, "%s from other modules must be prefixed with the module name, please use %s::%s(...) instead.", message, symbol->unit->module->short_path, symbol->name);
 	}
 	expr_resolve_ident(expr, symbol);
 	return true;
