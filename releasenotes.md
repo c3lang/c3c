@@ -1,16 +1,33 @@
 # C3C Release Notes
 
+## 0.8.3 Change list
+
+### Changes / improvements
+- Windows aarch64 is now supported.
+
+### Fixes
+- Generic functions and values incorrectly would not require a prefix. #3374
+- Arena allocator would error in safe mode when freeing the last memory and the arena was full. #3378
+
 ## 0.8.2 Change list
 
 ### Changes / improvements
 - `@weak` now works with all declarations.
 - Add `@align` for asm blocks to stack align them. Stack alignment is no longer default.
 - Allow setting Windows subsystem directly.
+- Add `bitoffset` and `bitsize` reflection properties to bitstruct members. #3219
+- Add `is_anonymous` and `is_nested` to struct/union/bitstruct types and to members. #3223
+- Improve error message on trying to cast char array to String. #3343
+- Add `Foo::is_generic(...)`, `Foo::generic_qname` and `Foo::generic_args`. #2909 #3329
+- Add `own`, `init` and `drop` parameter annotations.
+- `constdef` can now be generic.
+- Libraries can now expose reusable target configurations via a `templates` map in their manifest, which projects reference from a target using `template: "library/template"`. Properties from the template are loaded first and can be overridden by target-local settings.
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.
 - Added `array::contains_slice` and `array::index_of_slice`.
 - `String.index_of` and `rindex_of` will now accept finding empty strings.
+- Add log::register_dynamic_category, for libraries that wish to define their own categories dynamically.
 
 ### Fixes
 - `$stringify` would sometimes include parens.
@@ -20,6 +37,12 @@
 - Compiler asserts on concatenating a struct to an untypedlist #3326.
 - `untypedlist` was not detected as invalid in enum associated value type or as a pointer #3342.
 - Regression using non-posix libc.
+- Crash with an optional struct recursively defined with a function type. #3358
+- Denormal results were not handle correctly by `String.to_double()`.
+- A float literal with an uppercase 'F' suffix would be a `double` instead of a `float`.
+- Json serialization would not correctly handle unicode and `\v`. #3353
+- Semantic checking was incorrect in the case of `&a - &b` where one or both are optional and the result isn't assigned.
+- Regression on MacOS, breaking stack trace.
 
 ## 0.8.1 Change list
 

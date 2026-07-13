@@ -75,7 +75,21 @@
           "type": {
             "type": "string",
             "description": "Executable or library type for the target.",
-            "enum": ["executable", "static-lib", "dynamic-lib"]
+            "enum": ["executable", "static-lib", "dynamic-lib", "benchmark", "test", "object-files", "prepare"]
+          },
+          "name": {
+            "type": "string",
+            "description": "Override the output name for this target."
+          },
+          "extension": {
+            "type": "string",
+            "description": "Override the default file extension for the build output. Must start with '.'.",
+            "pattern": "^\\..*"
+          },
+          "template": {
+            "type": "string",
+            "description": "Reference a template configuration from a library dependency, format: 'library/template'.",
+            "pattern": "^[a-z][a-z0-9_]{0,126}/[a-z][a-z0-9_]{0,126}$"
           },
           "dependencies": {
             "type": "array",
@@ -97,6 +111,66 @@
             "items": {
               "type": "string"
             }
+          },
+          "features": {
+            "type": "array",
+            "description": "Feature flags enabled for this target.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "opt": {
+            "type": "string",
+            "description": "Optimization setting.",
+            "enum": ["O0", "O1", "O2", "O3", "O4", "O5", "Os", "Oz"]
+          },
+          "cpu": {
+            "type": "string",
+            "description": "CPU name, used for optimizations in the LLVM backend."
+          },
+          "cpu-flags": {
+            "type": "string",
+            "description": "Additional CPU flags to add or remove with the format '+avx,-sse'."
+          },
+          "target": {
+            "type": "string",
+            "description": "Compile for a particular architecture + OS target."
+          },
+          "linker": {
+            "type": "string",
+            "description": "Use 'builtin' for the builtin linker, 'cc' for the system linker or a path to a custom compiler."
+          },
+          "riscv-cpu": {
+            "type": "string",
+            "description": "Set general level of RISC-V CPU.",
+            "enum": ["rvi", "rvimac", "rvimafc", "rvgc", "rvgcv"]
+          },
+          "riscv-abi": {
+            "type": "string",
+            "description": "RISC-V ABI.",
+            "enum": ["int-only", "float", "double"]
+          },
+          "memory-env": {
+            "type": "string",
+            "description": "Memory environment.",
+            "enum": ["normal", "small", "tiny", "none"]
+          },
+          "reloc": {
+            "type": "string",
+            "description": "Relocation model.",
+            "enum": ["none", "pic", "PIC", "pie", "PIE"]
+          },
+          "use-stdlib": {
+            "type": "boolean",
+            "description": "Include the standard library."
+          },
+          "link-libc": {
+            "type": "boolean",
+            "description": "Link libc other default libraries."
+          },
+          "no-entry": {
+            "type": "boolean",
+            "description": "Do not generate or require a main function."
           }
         },
         "required": ["type"]
@@ -111,6 +185,20 @@
       "type": "string",
       "description": "CPU name, used for optimizations in the LLVM backend.",
       "default": "generic"
+    },
+    "cpu-flags": {
+      "type": "string",
+      "description": "Additional CPU flags to add or remove with the format '+avx,-sse'."
+    },
+    "riscv-cpu": {
+      "type": "string",
+      "description": "Set general level of RISC-V CPU.",
+      "enum": ["rvi", "rvimac", "rvimafc", "rvgc", "rvgcv"]
+    },
+    "riscv-abi": {
+      "type": "string",
+      "description": "RISC-V ABI.",
+      "enum": ["int-only", "float", "double"]
     },
     "debug-info": {
       "type": "string",
@@ -193,6 +281,11 @@
       "type": "string",
       "description": "Use the system linker.",
       "default": "cc"
+    },
+    "no-entry": {
+      "type": "boolean",
+      "description": "Do not generate or require a main function.",
+      "default": false
     },
     "use-stdlib": {
       "type": "boolean",

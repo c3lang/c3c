@@ -3212,9 +3212,21 @@ static inline bool parse_contract_param(ParseContext *c, ContractParam **list_re
 		{
 			mod = INOUT_OUT;
 		}
+		else if (modifier == kw_own)
+		{
+			mod = INOUT_OWN;
+		}
+		else if (modifier == kw_init)
+		{
+			mod = INOUT_INIT;
+		}
+		else if (modifier == kw_drop)
+		{
+			mod = INOUT_DROP;
+		}
 		else
 		{
-			RETURN_PRINT_ERROR_LAST("'in', 'out' or 'inout' were expected.");
+			RETURN_PRINT_ERROR_LAST("'in', 'out', 'inout', 'init', 'drop' or 'own' was expected.");
 		}
 		CONSUME_OR_RET(TOKEN_RBRACKET, false);
 	}

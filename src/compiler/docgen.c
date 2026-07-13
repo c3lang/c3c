@@ -138,12 +138,12 @@ static const char *get_inout_modifier_name(InOutModifier mod)
 {
 	switch (mod)
 	{
-		case INOUT_IN:
-			return "in";
-		case INOUT_OUT:
-			return "out";
-		case INOUT_INOUT:
-			return "inout";
+		case INOUT_IN:    return "in";
+		case INOUT_OUT:   return "out";
+		case INOUT_INOUT: return "inout";
+		case INOUT_INIT:  return "init";
+		case INOUT_OWN:   return "own";
+		case INOUT_DROP:  return "drop";
 		default:
 			return NULL;
 	}

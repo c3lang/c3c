@@ -299,6 +299,7 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 
 	// Inflate compressed data
 	long compressed_left = file->compressed_size;
+	strm.avail_out = 0;
 	while (compressed_left)
 	{
 		size_t to_read = ZIP_BUFFER_SIZE < compressed_left ? ZIP_BUFFER_SIZE : compressed_left;
@@ -311,7 +312,7 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 		}
 
 		strm.next_in = internal_buffer;
-		while (strm.avail_in)
+		while (strm.avail_in || strm.avail_out == 0)
 		{
 			strm.avail_out = FILE_OUTBUF_LEN;
 			strm.next_out = file_out_buffer;

@@ -181,8 +181,8 @@ macro sz? fprint(out, x)
 			$else
 				$if is_struct_with_default_print($Type):
 					Formatter formatter;
-                    formatter.init(&out_putstream_fn, &&(OutStream)out);
-                    return struct_to_format(x, &formatter, false);
+					formatter.init(&out_putstream_fn, &&(OutStream)out);
+					return struct_to_format(x, &formatter, false);
 				$else
 					return fprintf(out, "%s", x);
 				$endif
@@ -416,9 +416,9 @@ fn char[]? bprintf(char[] buffer, String format, args...) @maydiscard
 }
 
 // Used to print to a buffer.
-fn void? out_buffer_fn(void *data, char c) @private
+fn void? out_buffer_fn(void* data, char c) @private
 {
-	BufferData *buffer_data = data;
+	BufferData* buffer_data = data;
 	if (buffer_data.written >= buffer_data.buffer.len) return BUFFER_EXCEEDED~;
 	buffer_data.buffer[buffer_data.written++] = c;
 }
@@ -431,7 +431,7 @@ struct BufferData @private
 }
 
 // Only available with LIBC
-module std::io @if (env::LIBC);
+module std::io @if(env::LIBC);
 import libc;
 
 <*

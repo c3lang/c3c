@@ -475,7 +475,7 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 	if (matches_subpath(unit->module->name, path))
 	{
 		// 2. If so try to locally get the symbol.
-		if ((name_resolve->found = module_find_symbol(unit->module, symbol))) return true;
+		if ((name_resolve->found = module_find_symbol(unit->module, symbol))) return true;  // NOLINT
 		name_resolve->path_found = unit->module;
 	}
 
@@ -538,7 +538,7 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 
 	Decl *decl;
 
-	if ((decl = sema_find_local(context, symbol)))
+	if ((decl = sema_find_local(context, symbol))) // NOLINT
 	{
 		name_resolve->found = decl;
 		return true;
@@ -547,14 +547,14 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 	CompilationUnit *unit = context->unit;
 
 	// Search in file scope.
-	if ((decl = htable_get(&unit->local_symbols, (void *)symbol)))
+	if ((decl = htable_get(&unit->local_symbols, (void *)symbol))) // NOLINT
 	{
 		name_resolve->found = decl;
 		return true;
 	}
 
 	// Search in the module.
-	if ((decl = module_find_symbol(unit->module, symbol)))
+	if ((decl = module_find_symbol(unit->module, symbol))) // NOLINT
 	{
 		name_resolve->found = decl;
 		return true;
@@ -900,9 +900,17 @@ NOT_GENERIC:;
 	if (decl_is_user_defined_type(found)
 		|| (found->decl_kind == DECL_VAR && (found->var.kind == VARDECL_PARAM_CT_TYPE || found->var.kind == VARDECL_LOCAL_CT_TYPE)))
 	{
+		if (name_resolve->is_generic_parent)
+		{
+			RETURN_SEMA_ERROR_AT(name_resolve->loc, "'%s' is not a generic type.", name_resolve->symbol);
+		}
 		RETURN_SEMA_ERROR_AT(name_resolve->loc, "'%s' is not a generic type. Did you want an initializer "
 									   "but forgot () around the type? That is, you typed '%s { ... }' but intended '(%s) { ... }'?",
 									   name_resolve->symbol, name_resolve->symbol, name_resolve->symbol);
+	}
+	if (name_resolve->is_generic_parent)
+	{
+		RETURN_SEMA_ERROR_AT(name_resolve->loc, "'%s' is not a generic symbol.", name_resolve->symbol);
 	}
 	RETURN_SEMA_ERROR_AT(name_resolve->loc, "Found '%s', but it is not generic so the { ... } after looks like a mistake?", found->name);
 
@@ -1087,6 +1095,7 @@ Decl *sema_find_template_symbol(SemaContext *context, const char *symbol, Path *
 		.suppress_error = true,
 		.symbol = symbol,
 		.is_parameterized = true,
+		.path = path,
 	};
 	if (!sema_resolve_symbol_common(context, &resolve)) return poisoned_decl;
 	return resolve.found;
@@ -1180,7 +1189,7 @@ Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, 
 }
 
 /**
- * Resolves a symbol, return NULL if an error was found (and signalled),
+ * Resolves a symbol, return NULL if an error was found (and signaled),
  * otherwise the decl.
  */
 Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc)
@@ -1190,6 +1199,26 @@ Decl *sema_resolve_parameterized_symbol(SemaContext *context, const char *symbol
 		.loc = loc,
 		.symbol = symbol,
 		.is_parameterized = true
+	};
+	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
+	Decl *found = resolve.found;
+	ASSERT(found);
+	if (!decl_ok(found)) return NULL;
+	return resolve.found;
+}
+
+/**
+ * Resolves a generic symbol, return NULL if an error was found (and signaled),
+ * otherwise the decl.
+ */
+Decl *sema_resolve_generic_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc)
+{
+	NameResolve resolve = {
+		.path = path,
+		.loc = loc,
+		.symbol = symbol,
+		.is_parameterized = true,
+		.is_generic_parent = true
 	};
 	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
 	Decl *found = resolve.found;
