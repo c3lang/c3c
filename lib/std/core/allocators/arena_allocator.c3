@@ -37,7 +37,7 @@ fn void ArenaAllocator.clear(&self)
 <*
  Given some memory, create an arena allocator on the stack for it.
 
- @param [inout] bytes : `The bytes to use, may be empty.`
+ @param [own] bytes : `The bytes to use, may be empty.`
 
  @return `An arena allocator using the bytes`
 *>
@@ -64,6 +64,7 @@ fn void ArenaAllocator.reset(&self, sz mark) => self.used = mark;
 <*
  Implements the Allocator interface method.
 
+ @param [drop] ptr : "The pointer to release"
  @require ptr != null
 *>
 fn void ArenaAllocator.release(&self, void* ptr, bool) @dynamic
@@ -71,7 +72,7 @@ fn void ArenaAllocator.release(&self, void* ptr, bool) @dynamic
 	assert((uptr)ptr >= (uptr)self.data.ptr, "Pointer originates from a different allocator.");
 	ArenaAllocatorHeader* header = ptr - ArenaAllocatorHeader::size;
 	// Reclaim memory if it's the last element.
-	if (ptr + header.size == &self.data[self.used])
+	if (ptr + header.size == self.data.ptr + self.used)
 	{
 		self.used -= header.size + ArenaAllocatorHeader::size;
 	}
@@ -121,7 +122,7 @@ fn void*? ArenaAllocator.resize(&self, void *old_pointer, sz size, sz alignment)
 	ArenaAllocatorHeader* header = old_pointer - ArenaAllocatorHeader::size;
 	sz old_size = header.size;
 	// Do last allocation and alignment match?
-	if (&self.data[self.used] == old_pointer + old_size && mem::ptr_is_aligned(old_pointer, alignment))
+	if (old_pointer + old_size == self.data.ptr + self.used && mem::ptr_is_aligned(old_pointer, alignment))
 	{
 		if (old_size >= size)
 		{
