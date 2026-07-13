@@ -22,17 +22,20 @@
 
 #define PROGRESS_UPDATE 19
 
-typedef struct {
+typedef struct
+{
 	Version version;
 	char *sub_url;
 } Sdk;
 
-typedef struct {
+typedef struct
+{
 	int major;
 	const char *name;
 } ReleaseInfo;
 
-typedef enum {
+typedef enum
+{
 	DOWNLOAD,
 	EXTRACT,
 	FIXUP,
@@ -89,8 +92,11 @@ static bool check_license(bool accept_all)
 	printf("Do you accept the license? https://www.apple.com/legal/sla/docs/xcode.pdf"
 	       " (Y/n): ");
 	fflush(stdout);
-	char c = (char) getchar();
-	return c == 'y' || c == 'Y' || c == '\n';
+	switch (getchar())
+	{
+		case 'y': case 'Y': case '\n': return true;
+		default: return false;
+	}
 }
 
 static const char *get_release_name(const Sdk *sdk)
@@ -102,10 +108,8 @@ static const char *get_release_name(const Sdk *sdk)
 		{
 			return iter->name;
 		}
-
 		iter++;
 	}
-
 	return iter->name;
 }
 
@@ -113,19 +117,20 @@ static void list_sdks(Sdk *sdks, size_t count)
 {
 	size_t longest = 0;
 
-	for (size_t i = 0; i < count; i++) {
+	for (size_t i = 0; i < count; i++)
+	{
 		const char *name = get_release_name(sdks + i);
 		const size_t len = strlen(name);
-
 		if (len > longest) longest = len;
 	}
 
-	for (size_t i = 0; i < count; i++) {
+	for (size_t i = 0; i < count; i++)
+	{
 		Sdk *sdk = sdks + i;
 		const char *name = get_release_name(sdk);
 
-		printf("[%2zu] %*s - Version %d.%d\n", i + 1, (int) longest, name,
-			sdk->version.major, sdk->version.minor);
+		printf("[%2zu] %*s - Version %d.%d\n", i + 1, (int)longest, name,
+		       sdk->version.major, sdk->version.minor);
 	}
 	puts("");
 }
@@ -140,14 +145,13 @@ static Version get_version(const char *pkm)
 #endif
 
 	download_file(pkm, "", metadata_out, false);
-
 	size_t size;
 	const char *content = file_read_all(metadata_out, &size);
 
 	content = strstr(content, "<pkg-info");
-
+	if (!content) goto FAILED;
 	char *version = strstr(content, " version=\"");
-	if (!version) return (Version) { 0, 0 };
+	if (!version) goto FAILED;
 
 	version += 10;
 	char *end = strchr(version, '"');
@@ -158,6 +162,8 @@ static Version get_version(const char *pkm)
 	const int minor = (int) strtol(version, &version, 10);
 
 	return (Version) { major, minor };
+FAILED:
+	return (Version) { 0, 0 };
 }
 
 static Sdk get_sdk(const char *array_tag)
@@ -166,13 +172,13 @@ static Sdk get_sdk(const char *array_tag)
 
 	char *base_pkm = strstr(array_tag, BASE_PKM);
 	char *sdk_pkg = strstr(array_tag, SDK_PKG);
+	if (!base_pkm || !sdk_pkg) return sdk;
 
 	char *tags[] = {base_pkm, sdk_pkg};
 	for (int i = 0; i < 2; i++)
 	{
 		char *end = strstr(tags[i], "</string>");
 		if (!end) continue;
-
 		*end = 0;
 	}
 
@@ -180,7 +186,6 @@ static Sdk get_sdk(const char *array_tag)
 	for (int i = 0; i < 2; i++)
 	{
 		char **start = starts[i];
-
 		while ((*start)[-1] != '>') (*start)--;
 	}
 
@@ -188,7 +193,7 @@ static Sdk get_sdk(const char *array_tag)
 
 	char *base_start = sdk_pkg + sizeof(BASE_URL) - 1;
 	char *end = strstr(base_start, SDK_PKG);
-	*end = 0;
+	if (end) *end = 0;
 
 	sdk.sub_url = base_start;
 

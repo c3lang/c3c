@@ -23,13 +23,10 @@ static uint64_t read_be_uint64(FILE *file)
 bool pbzx_extract(const XarFile *file, Cpio *cpio)
 {
 	fseek(file->file, (long) file->offset, SEEK_SET);
-	char header[5] = { 0 };
+	char header[5] = {0};
 	fread(header, sizeof(char), 4, file->file);
 
-	if (!str_eq(header, "pbzx"))
-	{
-		error_exit("Expected 'pbzx' header.");
-	}
+	if (!str_eq(header, "pbzx")) error_exit("Expected 'pbzx' header.");
 
 	XzStream stream;
 	bool error = false;
@@ -37,29 +34,31 @@ bool pbzx_extract(const XarFile *file, Cpio *cpio)
 	uint8_t in_buf[IN_SIZE];
 	uint8_t *out_buf = malloc((size_t) OUT_SIZE);
 
-	if (!xz_stream_init(&stream))
-	{
-		error_exit("Failed to initialize XzStream.");
-	}
+	if (!xz_stream_init(&stream)) error_exit("Failed to initialize XzStream.");
 
 	uint64_t flg = read_be_uint64(file->file);
 
-	while (flg & 1 << 24) {
+	while (flg & 1 << 24)
+	{
 		flg = read_be_uint64(file->file);
 		len = read_be_uint64(file->file);
 		bool plain = len == 0x1000000;
 		uint64_t min = MIN(IN_SIZE, len);
 		fread(in_buf, sizeof(uint8_t), min, file->file);
 
-		if (!plain && strncmp((char*) in_buf, "\xfd""7zXZ\0", 6) != 0)
+		if (!plain && strncmp((char *) in_buf, "\xfd""7zXZ\0", 6) != 0)
 		{
 			error = true;
 			goto cleanup;
 		}
-		while (len) {
-			if (plain) {
+		while (len)
+		{
+			if (plain)
+			{
 				cpio_push(cpio, in_buf, min);
-			} else {
+			}
+			else
+			{
 				xz_stream_in(&stream, in_buf, min);
 
 				while (stream.buf.in_pos < stream.buf.in_size)
@@ -82,7 +81,7 @@ bool pbzx_extract(const XarFile *file, Cpio *cpio)
 				fread(in_buf, sizeof(uint8_t), min, file->file);
 			}
 		}
-		if (!plain && strncmp((char*) in_buf + last - 2, "YZ", 2) != 0)
+		if (!plain && strncmp((char *) in_buf + last - 2, "YZ", 2) != 0)
 		{
 			error = true;
 			goto cleanup;

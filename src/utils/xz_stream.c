@@ -5,7 +5,6 @@
 bool xz_stream_init(XzStream *stream)
 {
 	stream->decoder = xz_dec_init(XZ_PREALLOC, 1 << 24);
-
 	return stream->decoder != NULL;
 }
 
@@ -30,8 +29,7 @@ void xz_stream_out(XzStream *stream, uint8_t *buf, size_t len)
 
 bool xz_stream_decompress(XzStream *stream)
 {
-	const enum xz_ret ret = xz_dec_catrun(stream->decoder, &stream->buf,
-		false);
+	const enum xz_ret ret = xz_dec_catrun(stream->decoder, &stream->buf, false);
 
 	if (ret == XZ_MEMLIMIT_ERROR)
 	{
