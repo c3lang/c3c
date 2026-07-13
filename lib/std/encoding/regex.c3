@@ -3,11 +3,11 @@
  **Usage:**
  ```
    // Compile a pattern (returns Regex?)
-   Regex re = regex::compile("(\\w+)@(\\w+)", EXTENDED)!!;
+   Regex re = regex::compile(mem, "(\\w+)@(\\w+)", EXTENDED)!!;
    defer re.free();
 
-   // Execute matching & handle faults using error_string
-   Match[]? res = re.exec("user@domain.com", 3);
+   // Execute matching (automatically captures the whole match + both groups)
+   Match[]? res = re.exec(mem, "user@domain.com");
    if (catch err = res) {
        io::printfn("Error: %s", regex::error_string(err));
        return;
@@ -54,48 +54,85 @@ struct Regex
  @param allocator : "Allocator used to persist the compiled regex. Defaults to the heap allocator."
  @return "The compiled `Regex`, or a compile-error fault (BADPAT, ECOLLATE, ECTYPE, EESCAPE, ESUBREG, EBRACK, EPAREN, EBRACE, BADBR, ERANGE, OUT_OF_MEMORY, BADRPT)."
 *>
-fn Regex? compile(String pattern, CompileFlags cflags = {}, Allocator allocator = mem)
+fn Regex? compile(Allocator allocator, String pattern, CompileFlags cflags = {})
 {
 	Regex preg;
 	re_compile(&preg, pattern, cflags, allocator)!;
 	return preg;
 }
 
-
-struct Match (Printable)
-{
-	String input;
-	RegMatch match;
-}
-
 <*
  Execute a compiled regex against a string.
 
- Returns a slice of `Match` structures allocated from the temp allocator, one entry per
- capture group (index 0 is the whole match). Throws `NOMATCH` if the pattern
- does not match anywhere in the string, or `OUT_OF_MEMORY` on allocation failure.
+ Returns a slice of `Match` structures. By default, it automatically detects and
+ returns exactly the number of capture groups defined in the pattern (plus group 0)
 
- @param str    : "The input string to search."
- @param nmatch : "Maximum number of capture groups to return (including group 0)."
- @param eflags : "Execute flags: NOTBOL and NOTEOL."
- @return "A temp-allocated slice of `Match[nmatch]`."
+ Throws `NOMATCH` if the pattern does not match anywhere in the string, or
+ `OUT_OF_MEMORY` on allocation failure.
+
+ @param str       : "The input string to search."
+ @param nmatch    : "Maximum capture groups to return. Default (0) auto-allocates to match the pattern's capture groups."
+ @param eflags    : "Execute flags: NOTBOL and NOTEOL."
+ @param allocator : "Allocator used to persist the returned matches. Defaults to the mem allocator."
+ @return "A slice of matches."
 *>
-fn Match[]? Regex.exec(&self, String str, sz nmatch = 1, ExecFlags eflags = {})
+fn Match[]? Regex.exec(&self, Allocator allocator, String str, sz nmatch = 0, ExecFlags eflags = {})
 {
-	RegMatch* matches = mem::talloc_array(RegMatch, nmatch);
-	re_exec(self, str, nmatch, matches, eflags)!;
-	Match[] res = mem::talloc_array(Match, nmatch);
-	for (sz i = 0; i < nmatch; i++)
+	sz actual_nmatch = nmatch;
+	if (actual_nmatch == 0)
 	{
-		res[i] = { .input = str, .match.rm_so = matches[i].rm_so, .match.rm_eo = matches[i].rm_eo };
+		actual_nmatch = self.re_nsub + 1;
+	}
+
+	RegMatch* matches = mem::talloc_array(RegMatch, actual_nmatch);
+	re_exec(self, str, actual_nmatch, matches, eflags)!;
+
+	Match* matches_ptr = alloc::malloc(allocator, Match::size * actual_nmatch);
+	if (!matches_ptr) return OUT_OF_MEMORY~;
+	Match[] res = matches_ptr[0 : actual_nmatch];
+
+	for (sz i = 0; i < actual_nmatch; i++)
+	{
+		RegOff so = matches[i].rm_so;
+		RegOff eo = matches[i].rm_eo;
+		String view = "";
+		if (so >= 0 && eo >= 0)
+		{
+			view = str[so : (eo - so)];
+		}
+		res[i] = { .str = view, .match.rm_so = so, .match.rm_eo = eo };
 	}
 	return res;
 }
 
-<*
- Free all resources held by a compiled regex.
-*>
+<* Temporary-allocating variant of `exec`. *>
+fn Match[]? Regex.texec(&self, String str, sz nmatch = 0, ExecFlags eflags = {}) @inline
+{
+	return self.exec(tmem, str, nmatch, eflags);
+}
+
+<* Free all resources held by a compiled regex. *>
 fn void Regex.free(&self) => re_free(self);
+
+alias RegOff @private = int;
+
+struct RegMatch
+{
+	RegOff rm_so;
+	RegOff rm_eo;
+}
+
+struct Match (Printable)
+{
+	String str;
+	RegMatch match;
+}
+
+fn sz? Match.to_format(&self, Formatter* formatter) @dynamic => formatter.print(self.str);
+
+fn String Match.str_view(&self) @inline => self.str;
+
+fn bool Match.eq(&self, String other) @operator(==) @inline => self.str == other;
 
 <*
  Returns a human-readable description for a given regex fault.
@@ -147,7 +184,6 @@ constdef ExecFlags : int
 
 
 faultdef
-	OK,
 	NOMATCH,
 	BADPAT,
 	ECOLLATE,
@@ -161,25 +197,6 @@ faultdef
 	ERANGE,
 	OUT_OF_MEMORY,
 	BADRPT;
-
-alias RegOff @private = int;
-
-struct RegMatch
-{
-	RegOff rm_so;
-	RegOff rm_eo;
-}
-
-fn sz? Match.to_format(&self, Formatter* formatter) @dynamic => formatter.print(self.str_view());
-
-<* Extract the matched substring as a String view. *>
-fn String Match.str_view(&self) @inline
-{
-	if (self.match.rm_so < 0 || self.match.rm_eo < 0) return "";
-	return self.input[self.match.rm_so : (self.match.rm_eo - self.match.rm_so)];
-}
-
-fn bool Match.eq(&self, String other) @operator(==) @inline => self.str_view() == other;
 
 
 // ============================================================
@@ -2072,7 +2089,7 @@ fn void? tre_ast_to_tnfa(Allocator mem, AstNode* node, TnfaTransition* transitio
 	}
 }
 
-const int COPY_REMOVE_TAGS	      @private = 1;
+const int COPY_REMOVE_TAGS        @private = 1;
 const int COPY_MAXIMIZE_FIRST_TAG @private = 2;
 
 enum CopyastSymbol @local
@@ -2326,16 +2343,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 {
 	@pool()
 	{
-		String regex_nt = regex;
-		// Ensure the pattern is null-terminated: the parser uses *s == '\0' as its stop condition.
-		if (regex.len == 0 || regex.ptr[regex.len] != '\0')
-		{
-			char* buf = alloc::malloc(tmem, regex.len + 1);
-			if (!buf) return OUT_OF_MEMORY~;
-			mem::copy(buf, regex.ptr, regex.len);
-			buf[regex.len] = '\0';
-			regex_nt = (String)buf[0 : regex.len];
-		}
+		ZString regex_nt = regex.zstr_copy(tmem);
 
 		Stack* stack = stack_new(tmem, 512, 1024000, 128);
 		if (!stack) return OUT_OF_MEMORY~;
@@ -2344,7 +2352,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		ParseCtx ctx = {
 			.mem      = tmem,
 			.stack    = stack,
-			.start    = regex_nt.ptr,
+			.start    = regex_nt,
 			.cflags   = cflags,
 			.max_backref = -1, // sentinel: -1 = no backrefs found; used by have_backrefs check
 		};
@@ -2645,11 +2653,11 @@ fn void get_next_wchar(int* prev_c, int* next_c, RegOff* pos, RegOff* pos_add_ne
 	*str_byte += *pos_add_next;
 }
 
-fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
+fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
 {
 	int prev_c = 0;
 	int next_c = 0;
-	char* str_byte = string.ptr;
+	char* str_byte = string;
 	RegOff pos = 0;
 	RegOff pos_add_next = 1;
 
@@ -2788,7 +2796,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 
 					if (so >= 0 && eo >= 0)
 					{
-						result = mem::equals(string.ptr + so, string.ptr + pos, bt_len) ? 0 : 1;
+						result = mem::equals(string + so, string + pos, bt_len) ? 0 : 1;
 					}
 					else
 					{
@@ -2808,7 +2816,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 						// Advance position cleanly past backreference and decode the next character
 						pos += bt_len;
 						pos_add_next = 0;
-						str_byte = string.ptr + pos;
+						str_byte = string + pos;
 
 						// Read next char and advance
 						get_next_wchar(&prev_c, &next_c, &pos, &pos_add_next, &str_byte);
@@ -2917,12 +2925,12 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 	if (match_eo < 0) return NOMATCH~;
 }
 
-fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
+fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, ExecFlags eflags, RegOff* match_end_ofs) @local
 {
 	int prev_c = 0;
 	int next_c = 0;
 	int next_len = 0;
-	char* str_ptr = string.ptr;
+	char* str_ptr = string;
 
 	// Set up manual UTF-8 decoding to track consistent raw byte offsets
 	next_c = decode_utf8(str_ptr, &next_len);
@@ -3116,15 +3124,7 @@ fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFl
 		if (!tnfa) return BADPAT~;
 
 		// Ensure target string is null-terminated for backtrack and parallel execution
-		String string_nt = string;
-		if (string.len == 0 || string.ptr[string.len] != '\0')
-		{
-			char* buf = alloc::malloc(tmem, string.len + 1);
-			if (!buf) return OUT_OF_MEMORY~;
-			mem::copy(buf, string.ptr, string.len);
-			buf[string.len] = '\0';
-			string_nt = (String)buf[0 : string.len];
-		}
+		ZString string_nt = string.zstr_copy(tmem);
 
 		TagId* match_tags = null;
 		if (tnfa.num_tags > 0)

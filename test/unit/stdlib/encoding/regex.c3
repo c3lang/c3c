@@ -6,7 +6,7 @@ import std, std::encoding::regex;
 fn void test_idiomatic_api() @test
 {
 	// --- compile: invalid pattern throws a fault ---------------------
-	if (catch err = regex::compile("(unclosed", regex::CompileFlags.EXTENDED))
+	if (catch err = regex::compile(mem, "(unclosed", regex::CompileFlags.EXTENDED))
 	{
 		test::eq(err, regex::EPAREN);
 		test::eq(regex::error_string(err), "Missing ')'");
@@ -17,19 +17,19 @@ fn void test_idiomatic_api() @test
 	}
 
 	// compile: simple literal 
-	Regex re = regex::compile("hello")!!;
+	Regex re = regex::compile(mem, "hello")!!;
 	defer re.free();
 
 	// exec: successful match 
 	String input1 = "say hello world";
-	Match[] m = re.exec(input1)!!;
+	Match[] m = re.texec(input1)!!;
 	// Since Match implements Printable, we can print it directly:
 	io::print(m[0]);  // prints: hello
 
 	test::eq(string::tformat("%s", m[0]), "hello");
 
 	// exec: no match returns NOMATCH fault
-	if (catch err = re.exec("goodbye"))
+	if (catch err = re.texec("goodbye"))
 	{
 		test::eq(err, regex::NOMATCH);
 	}
@@ -39,12 +39,12 @@ fn void test_idiomatic_api() @test
 	}
 
 	// compile + exec: capture groups
-	Regex re2 = regex::compile("(\\w+)@(\\w+\\.\\w+)", regex::CompileFlags.EXTENDED)!!;
+	Regex re2 = regex::compile(mem, "(\\w+)@(\\w+\\.\\w+)", regex::CompileFlags.EXTENDED)!!;
 	defer re2.free();
 
 	// nmatch=3: slot 0=whole match, 1=user, 2=domain
 	String input2 = "contact: user@example.com today";
-	Match[] em = re2.exec(input2, 3)!!;
+	Match[] em = re2.texec(input2, 3)!!;
 	// io::print(em[0]);  // prints: user@example.com
 	// io::print(em[1]);  // prints: user
 	// io::print(em[2]);  // prints: example.com
@@ -63,16 +63,16 @@ fn void test_non_null_terminated_pattern() @test
 	// Slice of a literal: 'b' follows 'a' in memory, so without a guard pattern is "ab".
 	{
 		String pattern = "ab"[0:1];
-		Regex re = regex::compile(pattern)!!;
+		Regex re = regex::compile(mem, pattern)!!;
 		defer re.free();
-		assert(@ok(re.exec("a")));
-		test::eq(re.exec("ab")!![0].str_view(), "a");
+		assert(@ok(re.texec("a")));
+		test::eq(re.texec("ab")!![0].str_view(), "a");
 	}
 
 	// Trailing byte '[' would make the pattern syntactically invalid (EBRACK).
 	{
 		String pattern = "a["[0:1];
-		Regex? r = regex::compile(pattern, EXTENDED);
+		Regex? r = regex::compile(mem, pattern, EXTENDED);
 		assert(@ok(r));
 		if (@ok(r)) r!!.free();
 	}
@@ -80,110 +80,110 @@ fn void test_non_null_terminated_pattern() @test
 	// Stack buffer: '+' immediately after the pattern would turn "a" into "a+".
 	{
 		char[5] buf = { 'a', '+', 'b', 0, 0 };
-		Regex re = regex::compile((String)buf[0:1], EXTENDED)!!;
+		Regex re = regex::compile(mem, (String)buf[0:1], EXTENDED)!!;
 		defer re.free();
-		test::eq(re.exec("aaa")!![0].str_view(), "a");
+		test::eq(re.texec("aaa")!![0].str_view(), "a");
 	}
 }
 
 fn void test_bracket_negation_max_codepoint() @test
 {
-	Regex re = regex::compile("[^a]", regex::CompileFlags.EXTENDED)!!;
+	Regex re = regex::compile(mem, "[^a]", regex::CompileFlags.EXTENDED)!!;
 	defer re.free();
 
 	// In UTF-8, the max codepoint 0x10ffff is exactly the 4 bytes f4, 8f, bf, bf.
 	String input = "\xf4\x8f\xbf\xbf";
 
 	// This character is not 'a', so a negated bracket [^a] must match it.
-	test::@check(!@catch(re.exec(input)));
+	test::@check(!@catch(re.texec(input)));
 }
 
 fn void test_negated_class_sentinel_corruption() @test
 {
-	Regex re1 = regex::compile("[^[:digit:]]", regex::CompileFlags.EXTENDED)!!;
+	Regex re1 = regex::compile(mem, "[^[:digit:]]", regex::CompileFlags.EXTENDED)!!;
 	defer re1.free();
 
-	Regex re2 = regex::compile("a*b*c*d*e*f*g*h*i*j*k*l*", regex::CompileFlags.EXTENDED)!!;
+	Regex re2 = regex::compile(mem, "a*b*c*d*e*f*g*h*i*j*k*l*", regex::CompileFlags.EXTENDED)!!;
 	defer re2.free();
 
-	test::@check(!@catch(re1.exec("a")));
+	test::@check(!@catch(re1.texec("a")));
 }
 
 //  GAP: Escape sequences \b, \B, \w, \W, \s, \S, \d, \D
 fn void test_escape_word_boundary() @test
 {
-	Regex re = regex::compile("\\bfoo\\b", regex::CompileFlags.EXTENDED)!!;
+	Regex re = regex::compile(mem, "\\bfoo\\b", regex::CompileFlags.EXTENDED)!!;
 	defer re.free();
 
-	test::@check(!@catch(re.exec("foo")));
-	test::eq(@catch(re.exec("foobar")), regex::NOMATCH);
-	test::@check(!@catch(re.exec(" foo ")));
+	test::@check(!@catch(re.texec("foo")));
+	test::eq(@catch(re.texec("foobar")), regex::NOMATCH);
+	test::@check(!@catch(re.texec(" foo ")));
 }
 
 fn void test_escape_w() @test
 {
-	Regex re = regex::compile("\\w+", regex::CompileFlags.EXTENDED)!!;
+	Regex re = regex::compile(mem, "\\w+", regex::CompileFlags.EXTENDED)!!;
 	defer re.free();
 
-	test::@check(!@catch(re.exec("hello_world")));
-	test::eq(@catch(re.exec("---")), regex::NOMATCH);
+	test::@check(!@catch(re.texec("hello_world")));
+	test::eq(@catch(re.texec("---")), regex::NOMATCH);
 }
 
 fn void test_escape_W() @test
 {
-	Regex re = regex::compile("\\W", regex::CompileFlags.EXTENDED)!!;
+	Regex re = regex::compile(mem, "\\W", regex::CompileFlags.EXTENDED)!!;
 	defer re.free();
 
-	test::@check(!@catch(re.exec(" ")));
-	test::@check(!@catch(re.exec("!")));
-	test::eq(@catch(re.exec("a")), regex::NOMATCH);
+	test::@check(!@catch(re.texec(" ")));
+	test::@check(!@catch(re.texec("!")));
+	test::eq(@catch(re.texec("a")), regex::NOMATCH);
 }
 
 fn void test_escape_s() @test
 {
-	Regex re = regex::compile("\\s+", regex::CompileFlags.EXTENDED)!!;
+	Regex re = regex::compile(mem, "\\s+", regex::CompileFlags.EXTENDED)!!;
 	defer re.free();
 
-	test::@check(!@catch(re.exec("   ")));
-	test::@check(!@catch(re.exec("\t\n")));
-	test::eq(@catch(re.exec("abc")), regex::NOMATCH);
+	test::@check(!@catch(re.texec("   ")));
+	test::@check(!@catch(re.texec("\t\n")));
+	test::eq(@catch(re.texec("abc")), regex::NOMATCH);
 }
 
 fn void test_escape_S() @test
 {
-	Regex re = regex::compile("\\S+", regex::CompileFlags.EXTENDED)!!;
+	Regex re = regex::compile(mem, "\\S+", regex::CompileFlags.EXTENDED)!!;
 	defer re.free();
 
-	test::@check(!@catch(re.exec("abc")));
-	test::eq(@catch(re.exec("   ")), regex::NOMATCH);
+	test::@check(!@catch(re.texec("abc")));
+	test::eq(@catch(re.texec("   ")), regex::NOMATCH);
 }
 
 fn void test_escape_d() @test
 {
-	Regex re = regex::compile("\\d+", regex::CompileFlags.EXTENDED)!!;
+	Regex re = regex::compile(mem, "\\d+", regex::CompileFlags.EXTENDED)!!;
 	defer re.free();
 
-	test::@check(!@catch(re.exec("123")));
-	test::eq(@catch(re.exec("abc")), regex::NOMATCH);
+	test::@check(!@catch(re.texec("123")));
+	test::eq(@catch(re.texec("abc")), regex::NOMATCH);
 }
 
 fn void test_escape_D() @test
 {
-	Regex re = regex::compile("\\D+", regex::CompileFlags.EXTENDED)!!;
+	Regex re = regex::compile(mem, "\\D+", regex::CompileFlags.EXTENDED)!!;
 	defer re.free();
 
-	test::@check(!@catch(re.exec("abc")));
-	test::eq(@catch(re.exec("123")), regex::NOMATCH);
+	test::@check(!@catch(re.texec("abc")));
+	test::eq(@catch(re.texec("123")), regex::NOMATCH);
 }
 
 //  GAP: BRE backreferences \1
 fn void test_backref() @test
 {
-	Regex re = regex::compile("^\\(a*\\)\\1$")!!;
+	Regex re = regex::compile(mem, "^\\(a*\\)\\1$")!!;
 	defer re.free();
 
-	test::@check(!@catch(re.exec("aa")));
-	test::eq(@catch(re.exec("aaa")), regex::NOMATCH); // "aaa" is odd-length, so it doesn't match ^\(a*\)\1$
+	test::@check(!@catch(re.texec("aa")));
+	test::eq(@catch(re.texec("aaa")), regex::NOMATCH); // "aaa" is odd-length, so it doesn't match ^\(a*\)\1$
 }
 
 //  GAP: tre_fill_pmatch, parent-bounds reset
@@ -192,10 +192,10 @@ fn void test_submatch_parent_bounds() @test
 	// When outer group does not participate, inner group must return -1/-1
 	// Pattern: (a|(b))c  matched against "ac"
 	// group 1 = "a", group 2 = -1 (not used)
-	Regex re = regex::compile("(a|(b))c", regex::CompileFlags.EXTENDED)!!;
+	Regex re = regex::compile(mem, "(a|(b))c", regex::CompileFlags.EXTENDED)!!;
 	defer re.free();
 
-	Match[] m = re.exec("ac", 3)!!;
+	Match[] m = re.texec("ac", 3)!!;
 	test::eq(m[0].match.rm_so, 0);
 	test::eq(m[0].match.rm_eo, 2); // whole match
 	test::eq(m[1].match.rm_so, 0);
@@ -207,35 +207,35 @@ fn void test_submatch_parent_bounds() @test
 //  GAP: Alternation in BRE with \|
 fn void test_bre_alternation() @test
 {
-	Regex re = regex::compile("cat\\|dog")!!;
+	Regex re = regex::compile(mem, "cat\\|dog")!!;
 	defer re.free();
 
-	test::@check(!@catch(re.exec("cat")));
-	test::@check(!@catch(re.exec("dog")));
-	test::eq(@catch(re.exec("bird")), regex::NOMATCH);
+	test::@check(!@catch(re.texec("cat")));
+	test::@check(!@catch(re.texec("dog")));
+	test::eq(@catch(re.texec("bird")), regex::NOMATCH);
 }
 
 //  GAP: eflags REG_NOTBOL / REG_NOTEOL
 fn void test_eflags_notbol() @test
 {
-	Regex re = regex::compile("^abc")!!;
+	Regex re = regex::compile(mem, "^abc")!!;
 	defer re.free();
 
 	// Without flag: matches at start
-	test::@check(!@catch(re.exec("abc")));
+	test::@check(!@catch(re.texec("abc")));
 	// With REG_NOTBOL: ^ should not match at position 0
-	test::eq(@catch(re.exec("abc", 1, regex::ExecFlags.NOTBOL)), regex::NOMATCH);
+	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOTBOL)), regex::NOMATCH);
 }
 
 fn void test_eflags_noteol() @test
 {
-	Regex re = regex::compile("abc$")!!;
+	Regex re = regex::compile(mem, "abc$")!!;
 	defer re.free();
 
 	// Without flag: matches at end
-	test::@check(!@catch(re.exec("abc")));
+	test::@check(!@catch(re.texec("abc")));
 	// With REG_NOTEOL: $ should not match at end
-	test::eq(@catch(re.exec("abc", 1, regex::ExecFlags.NOTEOL)), regex::NOMATCH);
+	test::eq(@catch(re.texec("abc", 1, regex::ExecFlags.NOTEOL)), regex::NOMATCH);
 }
 
 //  GAP: \x hex escape sequences
@@ -243,28 +243,143 @@ fn void test_hex_escape() @test
 {
 	{
 		// \x41 = 'A' - exercises the digit branch (4, 1) of hexval
-		Regex re = regex::compile("\\x41", regex::CompileFlags.EXTENDED)!!;
+		Regex re = regex::compile(mem, "\\x41", regex::CompileFlags.EXTENDED)!!;
 		defer re.free();
-		test::@check(!@catch(re.exec("A")));
-		test::eq(@catch(re.exec("B")), regex::NOMATCH);
+		test::@check(!@catch(re.texec("A")));
+		test::eq(@catch(re.texec("B")), regex::NOMATCH);
 	}
 
 	{
 		// \x6e = 'n' (0x6e=110) - '6' digit branch + 'e' letter branch of hexval
-		Regex re = regex::compile("\\x6e", regex::CompileFlags.EXTENDED)!!;
+		Regex re = regex::compile(mem, "\\x6e", regex::CompileFlags.EXTENDED)!!;
 		defer re.free();
-		test::@check(!@catch(re.exec("n")));
-		test::eq(@catch(re.exec("m")), regex::NOMATCH);
+		test::@check(!@catch(re.texec("n")));
+		test::eq(@catch(re.texec("m")), regex::NOMATCH);
 	}
 
 	{
 		// \x4b = 'K' (0x4b=75) - '4' digit branch + 'b' letter branch of hexval
 		// Also tests uppercase hex input: \x4B (hexval does c|=32 to fold case)
-		Regex re = regex::compile("\\x4B", regex::CompileFlags.EXTENDED)!!;
+		Regex re = regex::compile(mem, "\\x4B", regex::CompileFlags.EXTENDED)!!;
 		defer re.free();
-		test::@check(!@catch(re.exec("K")));
-		test::eq(@catch(re.exec("k")), regex::NOMATCH);
+		test::@check(!@catch(re.texec("K")));
+		test::eq(@catch(re.texec("k")), regex::NOMATCH);
 	}
+}
+
+fn void test_utf8_byte_slicing_parallel() @test
+{
+	// "é" is 2 bytes (0xC3 0xA9).
+	// "𐍈" is 4 bytes (0xF0 0x90 0x8D 0x88).
+	
+	// Test matching a single byte "f" surrounded by 2-byte characters.
+	{
+		Regex re = regex::compile(mem, "f", regex::CompileFlags.EXTENDED)!!;
+		defer re.free();
+		
+		Match[] m = re.texec("éfé", 1)!!;
+		test::eq(m[0].str_view(), "f");
+		test::eq(m[0].match.rm_so, 2); // Starts after 'é' (2 bytes)
+		test::eq(m[0].match.rm_eo, 3); // Ends before the trailing 'é'
+	}
+
+	// Test matching a single byte "x" preceded by two 4-byte characters.
+	{
+		Regex re = regex::compile(mem, "x", regex::CompileFlags.EXTENDED)!!;
+		defer re.free();
+		
+		Match[] m = re.texec("𐍈𐍈x𐍈", 1)!!;
+		test::eq(m[0].str_view(), "x");
+		test::eq(m[0].match.rm_so, 8); // 4 + 4 = 8 bytes before 'x'
+		test::eq(m[0].match.rm_eo, 9);
+	}
+}
+
+fn void test_utf8_backref_matching_backtrack() @test
+{
+	// Test matching a 2-byte backreference ("éé")
+	{
+		Regex re = regex::compile(mem, "\\(.\\)\\1")!!;
+		defer re.free();
+		
+		Match[] m = re.texec("éé", 2)!!;
+		test::eq(m[0].str_view(), "éé");
+		test::eq(m[1].str_view(), "é");
+		test::eq(m[0].match.rm_so, 0);
+		test::eq(m[0].match.rm_eo, 4); // "éé" spans 4 bytes
+	}
+
+	// Test matching a 4-byte backreference ("𐍈𐍈")
+	{
+		Regex re = regex::compile(mem, "\\(.\\)\\1")!!;
+		defer re.free();
+		
+		Match[] m = re.texec("𐍈𐍈", 2)!!;
+		test::eq(m[0].str_view(), "𐍈𐍈");
+		test::eq(m[1].str_view(), "𐍈");
+		test::eq(m[0].match.rm_so, 0);
+		test::eq(m[0].match.rm_eo, 8); // "𐍈𐍈" spans 8 bytes
+	}
+}
+
+
+fn void test_multiple_sequential_and_nested_groups() @test
+{
+	// 1. Multiple sequential capture groups (tests submatch array ordering)
+	{
+		Regex re = regex::compile(mem, "(\\w+)-(\\w+)-(\\w+)", regex::CompileFlags.EXTENDED)!!;
+		defer re.free();
+		
+		Match[] m = re.texec("one-two-three", 4)!!;
+		test::eq(m[0].str_view(), "one-two-three");
+		test::eq(m[1].str_view(), "one");
+		test::eq(m[2].str_view(), "two");
+		test::eq(m[3].str_view(), "three");
+	}
+
+	// 2. Nested capture groups (tests the cleared submatch_id on AST node copy)
+	{
+		Regex re = regex::compile(mem, "(\\w+ (\\w+))", regex::CompileFlags.EXTENDED)!!;
+		defer re.free();
+		
+		Match[] m = re.texec("hello world", 3)!!;
+		test::eq(m[0].str_view(), "hello world");
+		test::eq(m[1].str_view(), "hello world");
+		test::eq(m[2].str_view(), "world");
+	}
+
+	// 3. Multi-byte string with deeply nested capture groups
+	{
+		Regex re = regex::compile(mem, "(é(f)é)", regex::CompileFlags.EXTENDED)!!;
+		defer re.free();
+		
+		Match[] m = re.texec("abcéféxyz", 3)!!;
+		test::eq(m[0].str_view(), "éfé");
+		test::eq(m[1].str_view(), "éfé");
+		test::eq(m[2].str_view(), "f");
+		test::eq(m[2].match.rm_so, 5); // 3 (abc) + 2 (é) = 5
+		test::eq(m[2].match.rm_eo, 6); // 'f' is 1 byte
+	}
+}
+
+fn void test_escaped_multibyte_literal() @test
+{
+	// Test escaped multi-byte character in the pattern
+	Regex re = regex::compile(mem, "\\é", regex::CompileFlags.EXTENDED)!!;
+	defer re.free();
+
+	test::@check(!@catch(re.texec("é")));
+}
+
+fn void test_bracket_multibyte_literals() @test
+{
+	// Anchored pattern to force matching the entire character
+	Regex re = regex::compile(mem, "^[éü]$", regex::CompileFlags.EXTENDED)!!;
+	defer re.free();
+	
+	test::@check(!@catch(re.texec("é")));
+	test::@check(!@catch(re.texec("ü")));
+	test::eq(@catch(re.texec("a")), regex::NOMATCH);
 }
 
 /* ==========================================================
@@ -282,20 +397,20 @@ fn void test_posix_compliance_go_testdata_333_cases() @test
 	{
 		if (tc.expected_fault != NO_ERR && tc.expected_fault != regex::NOMATCH)
 		{
-			test::@error(regex::compile(tc.pattern.tcopy(), tc.cflags), tc.expected_fault);
+			test::@error(regex::compile(mem, tc.pattern.tcopy(), tc.cflags), tc.expected_fault);
 			continue;
 		}
 
-		Regex re = regex::compile(tc.pattern.tcopy(), tc.cflags)!!;
+		Regex re = regex::compile(mem, tc.pattern.tcopy(), tc.cflags)!!;
 		defer re.free();
 
 		if (tc.expected_fault == regex::NOMATCH)
 		{
-			test::@error(re.exec(decode_input_escapes(tc.input).tcopy(), 32), regex::NOMATCH);
+			test::@error(re.texec(decode_input_escapes(tc.input).tcopy(), 32), regex::NOMATCH);
 			continue;
 		}
 
-		Match[] pm = re.exec(decode_input_escapes(tc.input).tcopy(), 32)!!;
+		Match[] pm = re.texec(decode_input_escapes(tc.input).tcopy(), 32)!!;
 		for (sz s = 0; s < tc.expected_spans.len; s++)
 		{
 			int got_so = (s < pm.len) ? pm[s].match.rm_so : -1;

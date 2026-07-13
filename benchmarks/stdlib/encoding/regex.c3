@@ -95,11 +95,11 @@ fn void bench_setup() @init
 
 	input_email = "contact: somemail@c3lang.org today, please send to akjashkd@c3lang.org too.";
 
-	re_simple  = regex::compile(PATTERN_SIMPLE)!!;
-	re_medium  = regex::compile(PATTERN_MEDIUM, EXTENDED)!!;
-	re_complex = regex::compile(PATTERN_COMPLEX, EXTENDED)!!;
-	re_unicode = regex::compile(PATTERN_UNICODE, EXTENDED)!!;
-	re_captures = regex::compile(PATTERN_CAPTURES, EXTENDED)!!;
+	re_simple  = regex::compile(mem, PATTERN_SIMPLE)!!;
+	re_medium  = regex::compile(mem, PATTERN_MEDIUM, EXTENDED)!!;
+	re_complex = regex::compile(mem, PATTERN_COMPLEX, EXTENDED)!!;
+	re_unicode = regex::compile(mem, PATTERN_UNICODE, EXTENDED)!!;
+	re_captures = regex::compile(mem, PATTERN_CAPTURES, EXTENDED)!!;
 
 	int rc;
 	rc = regcomp(&glibc_re_simple, PATTERN_SIMPLE);
@@ -113,25 +113,25 @@ fn void bench_setup() @init
 	rc = regcomp(&glibc_re_captures, PATTERN_CAPTURES, regex::CompileFlags.EXTENDED);
 	assert(rc == 0);
 
-	assert(@ok(re_simple.exec("say hello world")));
+	assert(@ok(re_simple.texec("say hello world")));
 	regexec(&glibc_re_simple, "say hello world", 0, null);
 
-	assert(@ok(re_medium.exec(input_email, 3)));
+	assert(@ok(re_medium.texec(input_email, 3)));
 	RegMatch[3] pm_med;
 	regexec(&glibc_re_medium, input_email, 3, &pm_med);
 
-	assert(@ok(re_captures.exec(input_captures, 6)));
+	assert(@ok(re_captures.texec(input_captures, 6)));
 	RegMatch[6] pm_cap;
 	regexec(&glibc_re_captures, input_captures, 6, &pm_cap);
 
-	if (catch err = re_complex.exec(input_small))
+	if (catch err = re_complex.texec(input_small))
 	{
 		assert(err == regex::NOMATCH);
 	}
 	int rx = regexec(&glibc_re_complex, input_small, 0, null);
 	assert(rx == REG_NOMATCH);
 
-	if (catch err = re_unicode.exec(input_unicode))
+	if (catch err = re_unicode.texec(input_unicode))
 	{
 		assert(err == regex::NOMATCH);
 	}
@@ -159,7 +159,7 @@ import std::encoding::regex;
 
 fn void compile_pattern_simple_c3()
 {
-	Regex re = regex::compile(PATTERN_SIMPLE)!!;
+	Regex re = regex::compile(mem, PATTERN_SIMPLE)!!;
 	re.free();
 }
 
@@ -172,7 +172,7 @@ fn void compile_pattern_simple_glibc()
 
 fn void compile_pattern_medium_c3()
 {
-	Regex re = regex::compile(PATTERN_MEDIUM, EXTENDED)!!;
+	Regex re = regex::compile(mem, PATTERN_MEDIUM, EXTENDED)!!;
 	re.free();
 }
 
@@ -185,7 +185,7 @@ fn void compile_pattern_medium_glibc()
 
 fn void compile_pattern_complex_c3()
 {
-	Regex re = regex::compile(PATTERN_COMPLEX, EXTENDED)!!;
+	Regex re = regex::compile(mem, PATTERN_COMPLEX, EXTENDED)!!;
 	re.free();
 }
 
@@ -200,8 +200,8 @@ fn void compile_pattern_complex_glibc()
 
 fn void match_and_compile_simple_c3()
 {
-	Regex re = regex::compile(PATTERN_SIMPLE)!!;
-	(void)re.exec("say hello world", 0);
+	Regex re = regex::compile(mem, PATTERN_SIMPLE)!!;
+	(void)re.texec("say hello world", 0);
 	re.free();
 }
 
@@ -215,8 +215,8 @@ fn void match_and_compile_simple_glibc()
 
 fn void match_and_compile_medium_c3()
 {
-	Regex re = regex::compile(PATTERN_MEDIUM, EXTENDED)!!;
-	(void)re.exec(input_email, 3);
+	Regex re = regex::compile(mem, PATTERN_MEDIUM, EXTENDED)!!;
+	(void)re.texec(input_email, 3);
 	re.free();
 }
 
@@ -229,15 +229,15 @@ fn void match_and_compile_medium_glibc()
 	Match[] res = mem::talloc_array(Match, 3);
 	for (sz i = 0; i < 3; i++)
 	{
-		res[i] = { .input = input_email, .match.rm_so = pm[i].rm_so, .match.rm_eo = pm[i].rm_eo };
+		res[i] = { .str = input_email, .match.rm_so = pm[i].rm_so, .match.rm_eo = pm[i].rm_eo };
 	}
 	regfree(&re);
 }
 
 fn void match_and_compile_complex_c3()
 {
-	Regex re = regex::compile(PATTERN_COMPLEX, EXTENDED)!!;
-	(void)re.exec(input_large, 0);
+	Regex re = regex::compile(mem, PATTERN_COMPLEX, EXTENDED)!!;
+	(void)re.texec(input_large, 0);
 	re.free();
 }
 
@@ -251,9 +251,9 @@ fn void match_and_compile_complex_glibc()
 
 // Match Benchmarks
 
-fn void match_simple_c3() => (void)re_simple.exec("say hello world", 0);
+fn void match_simple_c3() => (void)re_simple.texec("say hello world", 0);
 fn void match_simple_glibc() => regexec(&glibc_re_simple, "say hello world", 0, null);
-fn void match_medium_c3() => (void)re_medium.exec(input_email, 3);
+fn void match_medium_c3() => (void)re_medium.texec(input_email, 3);
 
 fn void match_medium_glibc()
 {
@@ -262,11 +262,11 @@ fn void match_medium_glibc()
 	Match[] res = mem::talloc_array(Match, 3);
 	for (sz i = 0; i < 3; i++)
 	{
-		res[i] = { .input = input_email, .match.rm_so = pm[i].rm_so, .match.rm_eo = pm[i].rm_eo };
+		res[i] = { .str = input_email, .match.rm_so = pm[i].rm_so, .match.rm_eo = pm[i].rm_eo };
 	}
 }
 
-fn void match_captures_c3() => (void)re_captures.exec(input_captures, 6);
+fn void match_captures_c3() => (void)re_captures.texec(input_captures, 6);
 
 fn void match_captures_glibc()
 {
@@ -275,23 +275,23 @@ fn void match_captures_glibc()
 	Match[] res = mem::talloc_array(Match, 6);
 	for (sz i = 0; i < 6; i++)
 	{
-		res[i] = { .input = input_captures, .match.rm_so = pm[i].rm_so, .match.rm_eo = pm[i].rm_eo };
+		res[i] = { .str = input_captures, .match.rm_so = pm[i].rm_so, .match.rm_eo = pm[i].rm_eo };
 	}
 }
 
-fn void match_complex_small_c3() => (void)re_complex.exec(input_small, 0);
+fn void match_complex_small_c3() => (void)re_complex.texec(input_small, 0);
 fn void match_complex_small_glibc() => regexec(&glibc_re_complex, input_small, 0, null);
-fn void match_complex_medium_c3() => (void)re_complex.exec(input_medium, 0);
+fn void match_complex_medium_c3() => (void)re_complex.texec(input_medium, 0);
 fn void match_complex_medium_glibc() => regexec(&glibc_re_complex, input_medium, 0, null);
-fn void match_complex_large_c3() => (void)re_complex.exec(input_large, 0);
+fn void match_complex_large_c3() => (void)re_complex.texec(input_large, 0);
 fn void match_complex_large_glibc() => regexec(&glibc_re_complex, input_large, 0, null);
-fn void match_unicode_c3() => (void)re_unicode.exec(input_unicode, 0);
+fn void match_unicode_c3() => (void)re_unicode.texec(input_unicode, 0);
 fn void match_unicode_glibc() => regexec(&glibc_re_unicode, input_unicode, 0, null);
 
 fn void stress_backtracking_c3()
 {
-	Regex re = regex::compile("(a|a+)+b", EXTENDED)!!;
-	(void)re.exec("aaaaaaaaaaaaaaaaaaaaaaaa!", 0);
+	Regex re = regex::compile(mem, "(a|a+)+b", EXTENDED)!!;
+	(void)re.texec("aaaaaaaaaaaaaaaaaaaaaaaa!", 0);
 	re.free();
 }
 
@@ -305,8 +305,8 @@ fn void stress_backtracking_glibc()
 
 fn void stress_overlapping_alternation_c3()
 {
-	Regex re = regex::compile("([a-zA-Z0-9]+-)*[a-zA-Z0-9]+\\.com", EXTENDED)!!;
-	(void)re.exec("a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-org", 0);
+	Regex re = regex::compile(mem, "([a-zA-Z0-9]+-)*[a-zA-Z0-9]+\\.com", EXTENDED)!!;
+	(void)re.texec("a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-org", 0);
 	re.free();
 }
 
@@ -320,8 +320,8 @@ fn void stress_overlapping_alternation_glibc()
 
 fn void stress_massive_alternation_c3()
 {
-	Regex re = regex::compile("^(apple|banana|orange|grape|strawberry|melon|peach|cherry|blueberry|raspberry|blackberry|plum|apricot|fig|date|kiwi|mango|papaya|pineapple|pomegranate)*$", EXTENDED)!!;
-	(void)re.exec("applebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaz", 0);
+	Regex re = regex::compile(mem, "^(apple|banana|orange|grape|strawberry|melon|peach|cherry|blueberry|raspberry|blackberry|plum|apricot|fig|date|kiwi|mango|papaya|pineapple|pomegranate)*$", EXTENDED)!!;
+	(void)re.texec("applebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaapplebananaorangegrapekiwimangopapayaz", 0);
 	re.free();
 }
 
@@ -335,8 +335,8 @@ fn void stress_massive_alternation_glibc()
 
 fn void stress_multi_wildcard_c3()
 {
-	Regex re = regex::compile("a*a*a*a*a*b", EXTENDED)!!;
-	(void)re.exec(input_large, 0);
+	Regex re = regex::compile(mem, "a*a*a*a*a*b", EXTENDED)!!;
+	(void)re.texec(input_large, 0);
 	re.free();
 }
 
