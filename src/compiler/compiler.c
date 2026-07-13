@@ -307,7 +307,10 @@ static void free_arenas(void)
 static int compile_cfiles(const char *cc, const char **files, const char *flags, const char **include_dirs,
 						  const char **out_files, const char *output_subdir)
 {
-	if (!cc) cc = default_c_compiler();
+	if (!cc || !file_executable_in_path(cc))
+	{
+		cc = default_c_compiler();
+	}
 	int total = 0;
 	FOREACH(const char *, file, files)
 	{

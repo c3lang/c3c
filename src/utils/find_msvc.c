@@ -12,7 +12,7 @@ static char *find_visual_studio(void);
 static char *find_windows_kit_root(void);
 static char *find_best_version(const char *root, const char *subdir);
 
-WindowsSDK get_windows_paths()
+WindowsSDK get_windows_paths(const char *target)
 {
 	WindowsSDK out = {0};
 
@@ -51,13 +51,14 @@ WindowsSDK get_windows_paths()
 	}
 
 	scratch_buffer_clear();
-	scratch_buffer_printf("%s\\lib\\x64", vs_path);
+	scratch_buffer_printf("%s\\lib\\%s", vs_path, target);
 	out.vs_library_path = scratch_buffer_copy();
 
 	if (!getenv("INCLUDE"))
 	{
+		const char *host = str_eq(target, "arm64") ? "Hostarm64" : str_eq(target, "x86") ? "Hostx86" : "Hostx64";
 		scratch_buffer_clear();
-		scratch_buffer_printf("%s\\bin\\Hostx64\\x64\\cl.exe", vs_path);
+		scratch_buffer_printf("%s\\bin\\%s\\%s\\cl.exe", vs_path, host, target);
 		out.cl_path = scratch_buffer_copy();
 
 		scratch_buffer_clear();

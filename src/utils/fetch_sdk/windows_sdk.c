@@ -389,6 +389,7 @@ static bool check_license(bool accept_all)
 	if (accept_all) return true;
 	printf("Do you accept the license? https://visualstudio.microsoft.com/license-terms/vs2022-ga-diagnosticbuildtools/"
 	       " (Y/n): ");
+	fflush(stdout);
 	char c = (char)getchar();
 	return (c == 'y' || c == 'Y' || c == '\n');
 }
@@ -401,6 +402,28 @@ void fetch_winsdk(BuildOptions *options)
 				   "Alternatively, provide the SDK path manually using --win-sdk.");
 	}
 	verbose_level = options->verbosity_level;
+
+	// Determine which architectures to fetch.
+	// When called from the linker, options->fetch_sdk_archs has one entry for the
+	// target arch.  When called manually via 'fetch-sdk windows' the user can pass
+	// one or more `--arch` flags; if none are given we default to the host architecture.
+	const char **archs = options->fetch_sdk_archs;
+	if (!archs || vec_size(archs) == 0)
+	{
+		archs = NULL;
+#if defined(__aarch64__) || defined(_M_ARM64)
+		vec_add(archs, "arm64");
+#elif defined(__x86_64__) || defined(_M_X64) || defined(_M_AMD64)
+		vec_add(archs, "x64");
+#elif defined(__arm__) || defined(_M_ARM) // ...for completeness although not supported
+		vec_add(archs, "arm");
+#elif defined(__i386__) || defined(_M_IX86)
+		vec_add(archs, "x86");
+#else
+		vec_add(archs, "x64"); // unknown host, fall back to x64 since it's the most widely used
+#endif
+	}
+
 	const char *tmp_dir_base = dir_make_temp_dir();
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
 	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
@@ -459,10 +482,16 @@ void fetch_winsdk(BuildOptions *options)
 
 	if (!options->fetch_accept_license)
 	{
+		char arch_list[256] = "";
+		for (int i = 0; i < (int)vec_size(archs); i++)
+		{
+			if (i > 0) strcat(arch_list, ", ");
+			strcat(arch_list, archs[i]);
+		}
 #if PLATFORM_WINDOWS
-		printf("To target windows-x64 you need the MSVC SDK.\n");
+		printf("To target %s you need the MSVC SDK.\n", arch_list);
 #else
-		printf("To cross-compile to windows-x64 you need the MSVC SDK.\n");
+		printf("To cross-compile to %s you need the MSVC SDK.\n", arch_list);
 #endif
 		printf("Downloading version %s to %s.\n", full_msvc_v, sdk_output);
 	}
@@ -501,13 +530,21 @@ void fetch_winsdk(BuildOptions *options)
 		}
 	}
 
-	const char *msi_names[] = {
-		"Windows SDK for Windows Store Apps Libs-x86_en-us.msi",
-		"Windows SDK Desktop Libs x64-x86_en-us.msi",
-		"Universal CRT Headers Libraries and Sources-x86_en-us.msi"};
+	// Dynamically prepare MSIs list based on requested archs
+	const char **msi_names = NULL;
+	vec_add(msi_names, "Windows SDK for Windows Store Apps Libs-x86_en-us.msi");
+	vec_add(msi_names, "Universal CRT Headers Libraries and Sources-x86_en-us.msi");
+	for (int i = 0; i < (int)vec_size(archs); i++)
+	{
+		char *msi_name = str_printf("Windows SDK Desktop Libs %s-x86_en-us.msi", archs[i]);
+		vec_add(msi_names, msi_name);
+	}
 
-	JSONObject *msi_packages[3] = {NULL};
-	for (int i = 0; i < ELEMENTLEN(msi_names); i++)
+	int msi_count = (int)vec_size(msi_names);
+	JSONObject **msi_packages = NULL;
+	for (int i = 0; i < msi_count; i++) vec_add(msi_packages, (JSONObject *)NULL);
+
+	for (int i = 0; i < msi_count; i++)
 	{
 		FOREACH(JSONObject *, pkg, checked_pkgs)
 		{
@@ -523,34 +560,70 @@ void fetch_winsdk(BuildOptions *options)
 			}
 			if (msi_packages[i]) break;
 		}
+		if (!msi_packages[i] && verbose_level >= 0)
+		{
+			eprintf("Warning: Could not find MSI package '%s' in the manifest.\n", msi_names[i]);
+		}
+		if (msi_packages[i] && verbose_level >= 1)
+		{
+			printf("Found MSI package: %s\n", msi_names[i]);
+		}
 	}
 
 	int progress = 0;
 	if (verbose_level == 0) sdk_progress(progress);
 
-	const char *suffixes[] = {"asan.headers.base", "crt.x64.desktop.base", "crt.x64.store.base", "asan.x64.base"};
-	for (int i = 0; i < ELEMENTLEN(suffixes); i++)
+	// Download MSVC ASan headers base first
 	{
-		char *pid_part = str_printf("microsoft.vc.%s.%s", full_msvc_v, suffixes[i]);
-		JSONObject *best_pkg = find_package_by_id(pkgs, pid_part);
-		if (best_pkg)
+		char *pid_headers = str_printf("microsoft.vc.%s.asan.headers.base", full_msvc_v);
+		JSONObject *headers_pkg = find_package_by_id(pkgs, pid_headers);
+		if (headers_pkg)
 		{
-			JSONObject *payloads_arr = json_map_get(best_pkg, "payloads");
+			JSONObject *payloads_arr = json_map_get(headers_pkg, "payloads");
 			FOREACH_IDX(j, JSONObject *, payload, payloads_arr->elements)
 			{
-				char *zpath = file_append_path(dl_root, str_printf("p%d_%lu.zip", i, (unsigned long)j));
-				if (download_with_verification(json_map_get(payload, "url")->str, pid_part, zpath))
+				char *zpath = file_append_path(dl_root, str_printf("p_headers_%lu.zip", (unsigned long)j));
+				if (download_with_verification(json_map_get(payload, "url")->str, pid_headers, zpath))
 				{
 					extract_msvc_zip(zpath, out_root);
 				}
 			}
 		}
-		progress += 10;
+		progress += 8;
 		sdk_progress(progress);
 	}
 
+	// Dynamic download of CRT and optionally ASan per requested arch
+	for (int i = 0; i < (int)vec_size(archs); i++)
+	{
+		const char *arch = archs[i];
+		const char *arch_suffixes[] = {"crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base"};
+		for (int j = 0; j < ELEMENTLEN(arch_suffixes); j++)
+		{
+			char *suffix = str_printf(arch_suffixes[j], arch);
+			char *pid_part = str_printf("microsoft.vc.%s.%s", full_msvc_v, suffix);
+			JSONObject *best_pkg = find_package_by_id(pkgs, pid_part);
+			if (best_pkg)
+			{
+				JSONObject *payloads_arr = json_map_get(best_pkg, "payloads");
+				FOREACH_IDX(k, JSONObject *, payload, payloads_arr->elements)
+				{
+					char *zpath = file_append_path(dl_root, str_printf("p_%s_%d_%lu.zip", arch, j, (unsigned long)k));
+					if (download_with_verification(json_map_get(payload, "url")->str, pid_part, zpath))
+					{
+						extract_msvc_zip(zpath, out_root);
+					}
+				}
+			}
+			progress += (32 / ((int)vec_size(archs) * (int)ELEMENTLEN(arch_suffixes)));
+			sdk_progress(progress);
+		}
+	}
+	progress = 40;
+	sdk_progress(progress);
+
 	const char **cab_list = NULL;
-	for (int i = 0; i < ELEMENTLEN(msi_names); i++)
+	for (int i = 0; i < msi_count; i++)
 	{
 		if (!msi_packages[i]) continue;
 		JSONObject *pls = json_map_get(msi_packages[i], "payloads");
@@ -568,12 +641,12 @@ void fetch_winsdk(BuildOptions *options)
 			}
 		}
 	NEXT_MSI:
-		progress += 10;
+		progress += (30 / msi_count);
 		sdk_progress(progress);
 	}
 
 	int cabs_done = 0;
-	int cab_count = vec_size(cab_list);
+	int cab_count = (int)vec_size(cab_list);
 	FOREACH(const char *, cab, cab_list)
 	{
 		FOREACH(JSONObject *, pkg, checked_pkgs)
@@ -595,13 +668,13 @@ void fetch_winsdk(BuildOptions *options)
 		if (cab_count > 0) sdk_progress(70 + (20 * cabs_done) / cab_count);
 	}
 
-	for (int i = 0; i < ELEMENTLEN(msi_names); i++)
+	for (int i = 0; i < msi_count; i++)
 	{
 		char *mpath = (char *)file_append_path(dl_root, msi_names[i]);
 		if (file_exists(mpath))
 		{
 			extract_msi(mpath, out_root, dl_root);
-			sdk_progress(90 + (10 * (i + 1)) / ELEMENTLEN(msi_names));
+			sdk_progress(90 + (10 * (i + 1)) / msi_count);
 		}
 	}
 
@@ -630,16 +703,34 @@ void fetch_winsdk(BuildOptions *options)
 		error_exit("Missing library components");
 	}
 
-	char *sdk_x64 = file_append_path(sdk_output, "x64");
-	dir_make_recursive(sdk_x64);
+	// Finalizing and copying files for all requested target architectures
+	for (int i = 0; i < (int)vec_size(archs); i++)
+	{
+		const char *arch = archs[i];
+		char *sdk_arch = file_append_path(sdk_output, arch);
+		dir_make_recursive(sdk_arch);
 
-	copy_to_msvc_sdk(file_append_path(s_ucrt, "x64"), sdk_x64);
-	copy_to_msvc_sdk(file_append_path(s_um, "x64"), sdk_x64);
-	copy_to_msvc_sdk(file_append_path(s_msvc, "x64"), sdk_x64);
+		char *ucrt_path = find_folder_inf(s_ucrt, arch, true);
+		char *um_path = find_folder_inf(s_um, arch, true);
+		char *msvc_path = find_folder_inf(s_msvc, arch, true);
+
+		if (ucrt_path && um_path && msvc_path)
+		{
+			copy_to_msvc_sdk(ucrt_path, sdk_arch);
+			copy_to_msvc_sdk(um_path, sdk_arch);
+			copy_to_msvc_sdk(msvc_path, sdk_arch);
+		}
+		else
+		{
+			if (verbose_level >= 0)
+			{
+				eprintf("Warning: Missing library components for architecture %s (UCRT: %s, UM: %s, MSVC: %s)\n",
+				        arch, ucrt_path ? "OK" : "MISSING", um_path ? "OK" : "MISSING", msvc_path ? "OK" : "MISSING");
+			}
+		}
+	}
 
 	if (verbose_level >= 0) printf("The 'msvc_sdk' directory was successfully generated at %s.\n", sdk_output);
 
 	if (verbose_level == 0) file_delete_dir(tmp_dir_base);
 }
-
-

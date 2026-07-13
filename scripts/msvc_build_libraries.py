@@ -54,7 +54,7 @@ def download_progress(url, check, name, f):
 	data = data.getvalue()
 	digest = hashlib.sha256(data).hexdigest()
 	if check.lower() != digest:
-		exit(f"Hash mismatch for f{pkg}")
+		exit(f"Hash mismatch for {pkg}")
 	return data
 
 # super crappy msi format parser just to find required .cab files
@@ -76,7 +76,28 @@ ap.add_argument("--show-versions", const=True, action="store_const", help="Show 
 ap.add_argument("--accept-license", const=True, action="store_const", help="Automatically accept license")
 ap.add_argument("--msvc-version", help="Get specific MSVC version")
 ap.add_argument("--sdk-version", help="Get specific Windows SDK version")
+ap.add_argument("--arch", nargs="+", help="Target architecture(s) (choices: arm64, x64, arm, x86. Default: arm64 x64)")
 args = ap.parse_args()
+
+
+### parse target architectures
+
+archs = ["arm64", "x64"]
+if args.arch:
+	input_archs = []
+	for a in args.arch:
+		# support space-separated or comma-separated lists
+		input_archs.extend(a.replace(",", " ").split())
+
+	valid_archs = {"arm64", "x64", "arm", "x86"}
+	archs = []
+	for a in input_archs:
+		low = a.lower()
+		if low in valid_archs:
+			if low not in archs:
+				archs.append(low)
+		else:
+			exit(f"Unknown architecture: {a}")
 
 
 ### get main manifest
@@ -124,14 +145,14 @@ if msvc_ver in msvc:
 	msvc_pid = msvc[msvc_ver]
 	msvc_ver = ".".join(msvc_pid.split(".")[4:-2])
 else:
-	exit(f"Unknown MSVC version: f{args.msvc_version}")
+	exit(f"Unknown MSVC version: {args.msvc_version}")
 
 if sdk_ver in sdk_path:
 	sdk_pid = sdk_path[sdk_ver]
 else:
-	exit(f"Unknown Windows SDK version: f{args.sdk_version}")
+	exit(f"Unknown Windows SDK version: {args.sdk_version}")
 
-print(f"Downloading MSVC v{msvc_ver} and Windows SDK v{sdk_ver}")
+print(f"Downloading MSVC v{msvc_ver} and Windows SDK v{sdk_ver} for architectures: {', '.join(archs)}")
 
 
 ### agree to license
@@ -150,13 +171,6 @@ total_download = 0
 
 ### download Windows SDK
 
-archs = [
-	#"arm",
-	#"arm64",
-	"x64",
-	#"x86"
-]
-
 msvc_packages = [
 	f"microsoft.vc.{msvc_ver}.asan.headers.base",
 ]
@@ -164,7 +178,11 @@ msvc_packages = [
 for arch in archs:
 	msvc_packages.append(f"microsoft.vc.{msvc_ver}.crt.{arch}.desktop.base")
 	msvc_packages.append(f"microsoft.vc.{msvc_ver}.crt.{arch}.store.base")
-	msvc_packages.append(f"microsoft.vc.{msvc_ver}.asan.{arch}.base")
+
+	# Only append ASan package if it exists in the manifest
+	asan_pkg = f"microsoft.vc.{msvc_ver}.asan.{arch}.base".lower()
+	if asan_pkg in packages:
+		msvc_packages.append(asan_pkg)
 
 for pkg in msvc_packages:
 	p = first(packages[pkg], lambda p: p.get("language") in (None, "en-US"))
@@ -182,10 +200,12 @@ for pkg in msvc_packages:
 sdk_packages = [
 	# Windows SDK libs
 	"Windows SDK for Windows Store Apps Libs-x86_en-us.msi",
-	"Windows SDK Desktop Libs x64-x86_en-us.msi",
 	# CRT headers & libs
 	"Universal CRT Headers Libraries and Sources-x86_en-us.msi",
 ]
+
+for arch in archs:
+	sdk_packages.append(f"Windows SDK Desktop Libs {arch}-x86_en-us.msi")
 
 with tempfile.TemporaryDirectory() as d:
 	dst = Path(d)
