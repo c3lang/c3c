@@ -694,7 +694,8 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 		}
 		if (*s == '[' && (s[1] == '.' || s[1] == '=')) return ECOLLATE~;
 
-		int min = *s;
+		int len = 0;
+		int min = decode_utf8(s, &len);
 		int max = min;
 		int class = 0;
 
@@ -703,10 +704,10 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 			// Character class [[:name:]], copy name to null-terminated buffer like musl.
 			s += 2;
 			char[32] tmp;
-			int len = 0;
-			while (*s && *s != ':' && len < 30) { tmp[len++] = *s++; }
+			int len_name = 0;
+			while (*s && *s != ':' && len_name < 30) { tmp[len_name++] = *s++; }
 			if (*s != ':' || s[1] != ']') return ECTYPE~;
-			tmp[len] = 0;
+			tmp[len_name] = 0;
 			class = tre_ctype((ZString)&tmp[0]);
 			if (!class) return ECTYPE~;
 			s += 2; // skip :]
@@ -715,14 +716,15 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 		}
 		else
 		{
-			s++;
+			s += len;
 			if (*s == '-' && s[1] != ']')
 			{
 				s++;
 				if (!*s) return EBRACK~;
-				max = (int)*s;
+				int len_max = 0;
+				max = decode_utf8(s, &len_max);
 				if (min > max) return ERANGE~;
-				s++;
+				s += len_max;
 			}
 		}
 
@@ -957,10 +959,11 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 					{
 						// Unknown escape, treat as literal (\| in ERE, \( in BRE opening a group
 						// is handled by tre_parse, so we'd never see it here).
-						int wc = *nx;
+						int len = 0;
+						int wc = decode_utf8(nx, &len);
 						node = make_literal(ctx, wc)!;
 						ctx.position++;
-						ctx.cursor = nx + 1;
+						ctx.cursor = nx + len;
 					}
 			}
 		}
@@ -1036,9 +1039,11 @@ fn void? parse_atom(ParseCtx* ctx, char* s) @local
 
 		default:
 			// Default: normal literal character.
-			node = make_literal(ctx, *s)!;
+			int len = 0;
+			int wc = decode_utf8(s, &len);
+			node = make_literal(ctx, wc)!;
 			ctx.position++;
-			ctx.cursor = s + 1;
+			ctx.cursor = s + len;
 	}
 
 	ctx.node = node;
@@ -2783,7 +2788,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 
 					if (so >= 0 && eo >= 0)
 					{
-						result = mem::equals(string.ptr + so, str_byte - 1, bt_len) ? 0 : 1;
+						result = mem::equals(string.ptr + so, string.ptr + pos, bt_len) ? 0 : 1;
 					}
 					else
 					{
@@ -2799,8 +2804,11 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, String string, TagId* match_tags, Ex
 							break;
 						}
 						states_seen[trans_i.state_id] = empty_br_match;
-						str_byte += (sz)(bt_len - 1);
-						pos += bt_len - 1;
+
+						// Advance position cleanly past backreference and decode the next character
+						pos += bt_len;
+						pos_add_next = 0;
+						str_byte = string.ptr + pos;
 
 						// Read next char and advance
 						get_next_wchar(&prev_c, &next_c, &pos, &pos_add_next, &str_byte);
@@ -2913,6 +2921,13 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 {
 	int prev_c = 0;
 	int next_c = 0;
+	int next_len = 0;
+	char* str_ptr = string.ptr;
+
+	// Set up manual UTF-8 decoding to track consistent raw byte offsets
+	next_c = decode_utf8(str_ptr, &next_len);
+	str_ptr += next_len;
+
 	sz pos = 0;
 	bool notbol = (bool)(eflags & NOTBOL);
 	bool noteol = (bool)(eflags & NOTEOL);
@@ -2954,13 +2969,6 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 	}
 
 	RegOff match_eo = -1;
-
-	// UTF-8 iteration
-	StringIterator it;
-	it.utf8 = string;
-	it.reset();
-	next_c = (int)(it.next() ?? 0);
-
 
 	TreTnfaReach* reach_next_i = reach_next;
 	while (true)
@@ -3014,9 +3022,9 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, String string, TagId* match_tags, Exe
 
 		// Move window forward by decoding next character once
 		prev_c = next_c;
-		next_c = (int)(it.next() ?? 0);
-
-		pos++;
+		pos += next_len;
+		next_c = decode_utf8(str_ptr, &next_len);
+		str_ptr += next_len;
 
 		// Swap reach
 		TreTnfaReach* tmp_reach = reach;
