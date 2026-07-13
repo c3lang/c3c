@@ -76,14 +76,27 @@ fn void Deque.push_all(&self, Type[] elements)
 }
 
 <*
- Push multiple elements to the front of the deque.
+ Push multiple elements to the front of the deque, using push_front repeatedly.
+ This will reverse the ordering of the elements provided.
+ { 2, 3 } -> push_front_all { 0, 1 } => { 1, 0, 2, 3 }
+ Also see: Dequeue.prepend
+
+ @param [in] elements
 *>
 fn void Deque.push_front_all(&self, Type[] elements)
 {
-	foreach (el : elements)
-	{
-		self.push_front(el);
-	}
+	foreach (el : elements) self.push_front(el);
+}
+
+<*
+ Prepend the elements to the queue. { 2, 3 } -> prepend { 0, 1 } => { 0, 1, 2, 3 }
+ Also see: Dequeue.push_front_all.
+
+ @param [in] elements
+*>
+fn void Deque.prepend(&self, Type[] elements)
+{
+	foreach_r (el : elements) self.push_front(el);
 }
 
 <*
