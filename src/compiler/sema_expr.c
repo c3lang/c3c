@@ -8334,7 +8334,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 	bool right_is_pointer = right_is_pointer_vector || right_type->type_kind == TYPE_POINTER;
 
 	Type *offset_type = vec_len ? type_get_vector_from_vector(type_sz, left_type) : type_sz;
-
+	bool optional = IS_OPTIONAL(right) || IS_OPTIONAL(left);
 	// 3. ptr - other pointer
 	if (right_is_pointer)
 	{
@@ -8357,7 +8357,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 			return true;
 		}
 		// 3b. Set the type
-		expr->type = offset_type;
+		expr->type = type_add_optional(offset_type, optional);
 		return true;
 	}
 
@@ -8384,7 +8384,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 	}
 
 	// 6. Convert to sz
-	if (!cast_implicit_binary(context, right, offset_type, failed_ref)) return false;
+	if (!cast_implicit_binary(context, right, type_add_optional(offset_type, optional), failed_ref)) return false;
 
 	if (left->expr_kind == EXPR_POINTER_OFFSET)
 	{
@@ -11317,6 +11317,32 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 	                                                     expr->generic_ident_expr.parameters, expr->loc);
 	compiler.generic_depth--;
 	if (!decl_ok(symbol)) return false;
+
+	if (decl_needs_prefix(symbol) && symbol->unit->module != context->unit->module && !parent->unresolved_ident_expr.path)
+	{
+		const char *message;
+		switch (symbol->decl_kind)
+		{
+			case DECL_VAR:
+				message = "Globals";
+				break;
+			case DECL_FUNC:
+				message = "Functions";
+				break;
+			case DECL_MACRO:
+				message = "Macros";
+				break;
+			case DECL_ALIAS:
+				message = "Aliases";
+				break;
+			case DECL_FAULT:
+				message = "Faults";
+				break;
+			default:
+				UNREACHABLE
+		}
+		RETURN_SEMA_ERROR(expr, "%s from other modules must be prefixed with the module name, please use %s::%s(...) instead.", message, symbol->unit->module->short_path, symbol->name);
+	}
 	expr_resolve_ident(expr, symbol);
 	return true;
 }

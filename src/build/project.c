@@ -140,6 +140,7 @@ const char* project_target_keys[][2] = {
 		{"output", "Output location, relative to project file."},
 		{"panic-msg", "Turn panic message output on or off."},
 		{"panicfn", "Override the panic function."},
+		{"template", "Use a template configuration from a library, format 'library/template'."},
 		{"quiet", "Silence unnecessary output."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"riscv-abi", "RiscV ABI: int-only, float, double."},
@@ -187,9 +188,10 @@ const int project_deprecated_target_keys_count = ELEMENTLEN(project_deprecated_t
 // Json -> target / default target
 static void load_into_build_target(BuildParseContext context, JSONObject *json, BuildTarget *target)
 {
-	if (context.target)
+	if (context.target || context.is_template)
 	{
-		check_json_keys(project_target_keys, project_target_keys_count, project_deprecated_target_keys, project_deprecated_target_keys_count, json, context.target, "--list-project-properties");
+		check_json_keys(project_target_keys, project_target_keys_count, project_deprecated_target_keys, project_deprecated_target_keys_count,
+		                json, context.target ? context.target : "template", "--list-project-properties");
 	}
 	else
 	{
@@ -361,7 +363,8 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	                                                         target->feature.panic_level);
 
 	// Overridden name
-	target->output_name = get_optional_string(context, json, "name");
+	const char* name = get_optional_string(context, json, "name");
+	if (name) target->output_name = name;
 
 	// Single module
 	target->single_module = (SingleModule) get_valid_bool(context, json, "single-module", target->single_module);
@@ -600,6 +603,100 @@ static void duplicate_prop(const char ***prop_ref)
 	}
 	*prop_ref = copy;
 }
+
+static void parse_template_ref(const char *ref, const char **lib_name, const char **template_name)
+{
+	const char *sep = strchr(ref, '/');
+	if (!sep || sep == ref || sep[1] == '\0' || strchr(sep + 1, '/'))
+	{
+		error_exit("Error reading project: invalid template reference '%s', expected 'library/template'.", ref);
+	}
+	*lib_name = str_copy(ref, sep - ref);
+	*template_name = str_copy(sep + 1, strlen(sep + 1));
+	if (!str_is_valid_lowercase_name(*lib_name))
+	{
+		error_exit("Error reading project: invalid library name '%s' in template reference '%s' - it should only contain alphanumerical letters and '_'.", *lib_name, ref);
+	}
+	if (!str_is_valid_lowercase_name(*template_name))
+	{
+		error_exit("Error reading project: invalid template name '%s' in template reference '%s' - it should only contain alphanumerical letters and '_'.", *template_name, ref);
+	}
+}
+
+static JSONObject* resolve_template(BuildTarget *target, const char *template_ref, const char **manifest_path_ref)
+{
+	const char *lib_name;
+	const char *template_name;
+	parse_template_ref(template_ref, &lib_name, &template_name);
+
+	bool found_dep = false;
+	FOREACH(const char *, dep, target->libs)
+	{
+		if (str_eq(dep, lib_name))
+		{
+			found_dep = true;
+			break;
+		}
+	}
+	if (!found_dep)
+	{
+		error_exit("Error reading project: template '%s' references library '%s' which is not listed in 'dependencies'.", template_ref, lib_name);
+	}
+
+	JSONObject *manifest = NULL;
+	static const char *c3lib_suffix = ".c3l";
+	const char **c3_libs = NULL;
+	if (vec_size(target->libdirs))
+	{
+		FOREACH(const char *, dir, target->libdirs)
+		{
+			file_add_wildcard_files(&c3_libs, dir, false, &c3lib_suffix, 1);
+		}
+	}
+	else
+	{
+		file_add_wildcard_files(&c3_libs, ".", false, &c3lib_suffix, 1);
+	}
+
+	FOREACH(const char *, lib_path, c3_libs)
+	{
+		const char *manifest_path = NULL;
+		JSONObject *candidate = read_library_manifest_for_path(lib_path, &manifest_path);
+		if (!candidate) continue;
+		BuildParseContext manifest_context = { manifest_path, NULL };
+		const char *provides = get_optional_string(manifest_context, candidate, "provides");
+		if (provides && str_eq(provides, lib_name))
+		{
+			manifest = candidate;
+			*manifest_path_ref = manifest_path;
+			break;
+		}
+	}
+
+	if (!manifest)
+	{
+		error_exit("Error reading project: could not find manifest for library '%s' needed by template '%s'.", lib_name, template_ref);
+	}
+
+	JSONObject *templates = json_map_get(manifest, "templates");
+	if (!templates || templates->type != J_OBJECT)
+	{
+		error_exit("Error reading %s: library '%s' does not define any templates.", *manifest_path_ref, lib_name);
+	}
+
+	JSONObject *template = json_map_get(templates, template_name);
+	if (!template)
+	{
+		error_exit("Error reading %s: template '%s' not found in library '%s'.", *manifest_path_ref, template_name, lib_name);
+	}
+	if (template->type != J_OBJECT)
+	{
+		error_exit("Error reading %s: template '%s' in library '%s' is not a JSON object.", *manifest_path_ref, template_name, lib_name);
+	}
+
+	return template;
+}
+
 static void project_add_target(BuildParseContext context, Project *project, BuildTarget *default_target, JSONObject *json,
                                const char *type, TargetType target_type)
 {
@@ -621,6 +718,24 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->linker_libs);
 	duplicate_prop(&target->link_args);
 
+	BuildParseContext target_context = { context.file, str_printf("%s %s", type, context.target) };
+	const char *template_ref = get_optional_string(target_context, json, "template");
+	if (template_ref)
+	{
+		// Target-local dependencies and dependency-search-paths are needed to find the template.
+		// Other target-local settings are intentionally loaded after the template so they override it.
+		const char **default_libdirs = target->libdirs;
+		const char **default_libs = target->libs;
+		APPEND_STRING_LIST(&target->libdirs, "dependency-search-paths");
+		APPEND_STRING_LIST(&target->libs, "dependencies");
+		const char *manifest_path = NULL;
+		JSONObject *template_json = resolve_template(target, template_ref, &manifest_path);
+		target->libdirs = default_libdirs;
+		target->libs = default_libs;
+		BuildParseContext template_context = { manifest_path, str_printf("template '%s'", template_ref), true };
+		load_into_build_target(template_context, template_json, target);
+	}
+
 	vec_add(project->targets, target);
 	target->name = context.target;
 	target->type = target_type;
@@ -632,8 +747,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", context.file, target->name);
 		}
 	}
-	context.target = str_printf("%s %s", type, context.target);
-	load_into_build_target(context, json, target);
+	load_into_build_target(target_context, json, target);
 }
 
 static void project_add_targets(const char *filename, Project *project, JSONObject *project_data)

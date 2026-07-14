@@ -1,5 +1,19 @@
 # C3C Release Notes
 
+## 0.8.3 Change list
+
+### Changes / improvements
+- Windows aarch64 is now supported.
+
+### Stdlib changes
+- LinkedList and Deque added a `prepend` method.
+
+### Fixes
+- Generic functions and values incorrectly would not require a prefix. #3374
+- Arena allocator would error in safe mode when freeing the last memory and the arena was full. #3378
+- LinkedList `push_front_all` was appending in the wrong order.
+- `BitSet.len` would yield the size of the underlying type, not the length.
+
 ## 0.8.2 Change list
 
 ### Changes / improvements
@@ -12,6 +26,7 @@
 - Add `Foo::is_generic(...)`, `Foo::generic_qname` and `Foo::generic_args`. #2909 #3329
 - Add `own`, `init` and `drop` parameter annotations.
 - `constdef` can now be generic.
+- Libraries can now expose reusable target configurations via a `templates` map in their manifest, which projects reference from a target using `template: "library/template"`. Properties from the template are loaded first and can be overridden by target-local settings.
 
 ### Stdlib changes
 - `Atomic.compare_exchange` added.
@@ -31,7 +46,9 @@
 - Denormal results were not handle correctly by `String.to_double()`.
 - A float literal with an uppercase 'F' suffix would be a `double` instead of a `float`.
 - Json serialization would not correctly handle unicode and `\v`. #3353
- 
+- Semantic checking was incorrect in the case of `&a - &b` where one or both are optional and the result isn't assigned.
+- Regression on MacOS, breaking stack trace.
+
 ## 0.8.1 Change list
 
 ### Changes / improvements

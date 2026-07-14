@@ -18,7 +18,6 @@
 #define DEFAULT_SWITCH_JUMP_MAX_SIZE (0x3FFF)
 #define DEFAULT_PATH "."
 
-
 typedef enum
 {
 	COMMAND_MISSING = 0,
@@ -272,6 +271,7 @@ typedef struct BuildOptions_
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;
 	const char *fetch_sdk_target;
+	const char **fetch_sdk_archs;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;

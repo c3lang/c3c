@@ -81,7 +81,17 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	add_concat_arg("/SUBSYSTEM:", win_subsystem_name(compiler.build.win.subsystem));
 	if (link_libc()) linking_add_link(&compiler.linking, "dbghelp");
 	if (linker_type == LINKER_CC) return;
-	//add_arg("/MACHINE:X64");
+	add_plain_arg(compiler.platform.arch == ARCH_TYPE_ARM ? "/MACHINE:ARM" : compiler.platform.arch == ARCH_TYPE_AARCH64 ? "/MACHINE:ARM64" 
+		: compiler.platform.arch == ARCH_TYPE_X86 ? "/MACHINE:X86" : "/MACHINE:X64");
+	const char *suffix = NULL;
+	switch (compiler.platform.arch)
+	{
+		case ARCH_TYPE_ARM: suffix = "arm"; break;
+		case ARCH_TYPE_AARCH64: suffix = "arm64"; break;
+		case ARCH_TYPE_X86_64: suffix = "x64"; break;
+		case ARCH_TYPE_X86: suffix = "x86"; break;
+		default: break;
+	}
 	bool is_debug = false;
 	switch (compiler.build.debug_info)
 	{
@@ -120,12 +130,18 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 
 	if (!compiler.build.win.sdk && !compiler.build.win.vs_dirs)
 	{
-		const char *path = windows_cross_compile_library();
+		const char *path = suffix ? windows_cross_compile_library(suffix) : NULL;
 		if (!path && !windows_get_sdk())
 		{
-			BuildOptions options = { .verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0 };
+			const char **auto_archs = NULL;
+			if (suffix) vec_add(auto_archs, suffix);
+			BuildOptions options = {
+				.verbosity_level = (compiler.build.silent || compiler.build.quiet) ? -1 : 0,
+				.fetch_accept_license = false,
+				.fetch_sdk_archs = auto_archs,
+			};
 			fetch_winsdk(&options);
-			path = windows_cross_compile_library();
+			path = suffix ? windows_cross_compile_library(suffix) : NULL;
 		}
 		// Note that path here may be allocated on the string scratch buffer.
 		if (path)
@@ -133,16 +149,6 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 			if (!compiler.build.quiet && !compiler.build.silent)
 			{
 				OUTF("Using MSVC SDK at: %s\n", path);
-			}
-
-			const char *suffix = NULL;
-			switch (compiler.platform.arch)
-			{
-				case ARCH_TYPE_ARM: suffix = "arm"; break;
-				case ARCH_TYPE_AARCH64: suffix = "arm64"; break;
-				case ARCH_TYPE_X86_64: suffix = "x64"; break;
-				case ARCH_TYPE_X86: suffix = "x86"; break;
-				default: break;
 			}
 
 			if (suffix)
@@ -154,10 +160,6 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 					// If we only use the msvc cross compile on windows, we
 					// avoid linking with dynamic debug dlls.
 					link_with_dynamic_debug_libc = false;
-				}
-				else
-				{
-					free(full_path);
 				}
 			}
 		}
@@ -177,8 +179,8 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 			const char *c = strstr(compiler.build.win.vs_dirs, ";");
 			int len = (int)(c - compiler.build.win.vs_dirs);
 			if (!c || !len) error_exit("''win-vs-dirs' override was invalid.");
-			char *um = str_printf("%.*s\\um\\x64", len, compiler.build.win.vs_dirs);
-			char *ucrt = str_printf("%.*s\\ucrt\\x64", len, compiler.build.win.vs_dirs);
+			char *um = str_printf("%.*s\\um\\%s", len, compiler.build.win.vs_dirs, suffix);
+			char *ucrt = str_printf("%.*s\\ucrt\\%s", len, compiler.build.win.vs_dirs, suffix);
 			c++;
 			if (!file_is_dir(um) || !file_is_dir(ucrt) || !file_is_dir(c))
 			{
@@ -195,8 +197,8 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 
 			if (!file_is_dir(windows_sdk->vs_library_path)) error_exit("Failed to find windows sdk.");
 
-			char *um = str_printf("%s\\um\\x64", windows_sdk->windows_sdk_path);
-			char *ucrt = str_printf("%s\\ucrt\\x64", windows_sdk->windows_sdk_path);
+			char *um = str_printf("%s\\um\\%s", windows_sdk->windows_sdk_path, suffix);
+			char *ucrt = str_printf("%s\\ucrt\\%s", windows_sdk->windows_sdk_path, suffix);
 
 			add_concat_quote_arg("/LIBPATH:", um);
 			add_concat_quote_arg("/LIBPATH:", ucrt);
@@ -243,6 +245,12 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	linking_add_link(&compiler.linking, "ws2_32");
 	linking_add_link(&compiler.linking, "legacy_stdio_definitions");
 
+	// Windows ARM64 has setjmpex instead of setjmp and intrinsic_setjmp
+	if (compiler.platform.arch == ARCH_TYPE_AARCH64)
+	{
+		add_plain_arg("/alternatename:_setjmp=_setjmpex");
+		add_plain_arg("/alternatename:__intrinsic_setjmp=_setjmpex");
+	}
 	// Do not link any.
 	if (crt_linking == WIN_CRT_NONE) return;
 

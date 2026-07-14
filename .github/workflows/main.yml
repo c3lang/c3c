@@ -36,11 +36,18 @@ jobs:
       run:
         shell: cmd
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/cache@v5
+      - uses: actions/checkout@v7
+
+      - name: Get current date context
+        id: date
+        run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
+  
+      - uses: actions/cache@v6
         with:
-          path: build/_deps
-          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
+          path: |
+            build-release/_deps
+            build-debug/_deps
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ steps.date.outputs.date }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
 
       # set up the environment for Ninja
       - uses: TheMrMilchmann/setup-msvc-dev@v4
@@ -72,10 +79,11 @@ jobs:
         run: rm -f /usr/bin/link
 
       - name: Cache FreeBSD Sysroot
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .cache
           key: ${{ runner.os }}-freebsd-sysroot-15.0
+
       - name: Run Unified Tests
         shell: bash
         run: ./scripts/tools/ci_tests.sh "./build-debug/c3c.exe"
@@ -91,7 +99,7 @@ jobs:
 
       - name: Cache NSIS
         id: cache-nsis
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: C:\Program Files (x86)\NSIS
           key: ${{ runner.os }}-nsis-3.12
@@ -120,24 +128,124 @@ jobs:
           name: c3-windows-setup-Debug
           path: resources/nsis/c3-windows-setup-Debug.exe
 
+  build-msvc-arm64:
+    name: Windows (aarch64) MSVC
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Get current date context
+        id: date
+        run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
+  
+      - uses: actions/cache@v6
+        with:
+          path: |
+            build-release/_deps
+            build-debug/_deps
+          key: ${{ runner.os }}-aarch64-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ steps.date.outputs.date }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
+          
+      # set up the environment for Ninja
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: arm64
+
+      - name: CMake Build (Release)
+        run: |
+          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
+          cmake --build build-release --config Release
+
+      - name: Bundle (Windows Release)
+        shell: bash
+        run: ./scripts/tools/package_build.sh "./build-release/c3c.exe" "c3-windows-aarch64-Release" "zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-aarch64-Release
+          path: c3-windows-aarch64-Release.zip
+
+      - name: CMake Build (Debug)
+        run: |
+          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
+          cmake --build build-debug --config Debug
+
+      # We remove the GNU link tool so C3C picks up the MSVC link.exe
+      - name: Remove GNU Link
+        shell: bash
+        run: rm -f /usr/bin/link
+
+      - name: Cache FreeBSD Sysroot
+        uses: actions/cache@v6
+        with:
+          path: .cache
+          key: ${{ runner.os }}-aarch64-freebsd-sysroot-15.0
+
+      - name: Run Unified Tests
+        shell: bash
+        run: ./scripts/tools/ci_tests.sh "./build-debug/c3c.exe"
+
+      - name: Bundle (Windows Debug)
+        shell: bash
+        run: ./scripts/tools/package_build.sh "./build-debug/c3c.exe" "c3-windows-aarch64-Debug" "zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-aarch64-Debug
+          path: c3-windows-aarch64-Debug.zip
+
+      - name: Cache NSIS
+        id: cache-nsis
+        uses: actions/cache@v6
+        with:
+          path: C:\Program Files (x86)\NSIS
+          key: ${{ runner.os }}-aarch64-nsis-3.12
+
+      - name: Setup NSIS & Compile Installers
+        shell: bash
+        run: |
+          if [ "${{ steps.cache-nsis.outputs.cache-hit }}" != "true" ]; then
+            choco install nsis -y
+            curl -L -o EnVar-Plugin.zip "https://github.com/GsNSIS/EnVar/releases/download/v0.3.1/EnVar-Plugin.zip"
+            7z x EnVar-Plugin.zip -o"C:\Program Files (x86)\NSIS" -y
+          fi
+          curl -sSfL -o MANUAL.md https://c3-lang.org/all.md
+          export PATH="/c/Program Files (x86)/NSIS/Bin:/c/Program Files (x86)/NSIS:$PATH"
+          MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-aarch64-Release.exe" /DBUILD_DIR=build-release resources/nsis/installer.nsi
+          MSYS_NO_PATHCONV=1 makensis /DINSTALLER_NAME="c3-windows-setup-aarch64-Debug.exe" /DBUILD_DIR=build-debug resources/nsis/installer.nsi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-setup-aarch64-Release
+          path: resources/nsis/c3-windows-setup-aarch64-Release.exe
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: c3-windows-setup-aarch64-Debug
+          path: resources/nsis/c3-windows-setup-aarch64-Debug.exe
+          
   build-msys2:
-    name: Windows (x64) ${{ matrix.sys }}
-    runs-on: windows-2025
+    name: Windows (${{ matrix.arch }}) ${{ matrix.sys }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { sys: MINGW64, prefix: /mingw64 }
-          - { sys: CLANG64, prefix: /clang64 }
+          - { arch: x64, runner: windows-2025, sys: MINGW64, prefix: /mingw64 }
+          - { arch: x64, runner: windows-2025, sys: CLANG64, prefix: /clang64 }
+          - { arch: aarch64, runner: windows-11-arm, sys: CLANGARM64, prefix: /clangarm64 }
     defaults:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{matrix.sys}}
+          msystem: ${{ matrix.sys }}
           update: true
           cache: true
           pacboy: >-
@@ -156,13 +264,13 @@ jobs:
       # static LLVM archives (LNK4217), which the GNU linker (ld) cannot resolve automatically.
       - name: CMake Build
         run: |
-          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_LINKER=lld -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DC3_LINK_DYNAMIC=OFF -DLLVM_DIR=${{matrix.prefix}}/lib/cmake/llvm -DC3_LLD_DIR=${{matrix.prefix}}/lib/
+          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_LINKER=lld -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DC3_LINK_DYNAMIC=OFF -DLLVM_DIR=${{ matrix.prefix }}/lib/cmake/llvm -DC3_LLD_DIR=${{ matrix.prefix }}/lib/
           cmake --build build
       - name: Cache FreeBSD Sysroot
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .cache
-          key: ${{ runner.os }}-freebsd-sysroot-15.0
+          key: ${{ runner.os }}-${{ matrix.arch }}-freebsd-sysroot-15.0
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
@@ -171,12 +279,12 @@ jobs:
     name: Linux (x64) Ubuntu
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Get current date context
         id: date
         run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
       - name: Cache APT archives
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: apt-cache
           key: apt-cache-${{ runner.os }}-${{ steps.date.outputs.date }}
@@ -205,7 +313,7 @@ jobs:
           cmake --build build-debug
 
       - name: Cache FreeBSD Sysroot
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .cache
           key: ${{ runner.os }}-freebsd-sysroot-15.0
@@ -234,7 +342,7 @@ jobs:
       matrix:
         build_type: [Debug]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v8
         with:
@@ -270,7 +378,7 @@ jobs:
           apk add --no-cache git
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -337,7 +445,7 @@ jobs:
           apk add --no-cache git
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Get current date context
         id: date
@@ -350,7 +458,7 @@ jobs:
           ln -sf /var/cache/apk /etc/apk/cache
 
       - name: Cache APK downloaded packages (daily)
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /var/cache/apk
           key: apk-pkgs-${{ runner.os }}-alpine-3.23-${{ steps.date.outputs.date }}
@@ -412,7 +520,7 @@ jobs:
     name: macOS (aarch64)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: CMake Build (Release)
         run: |
           cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
@@ -431,7 +539,7 @@ jobs:
           cmake --build build-debug
 
       - name: Cache FreeBSD Sysroot
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .cache
           key: ${{ runner.os }}-freebsd-sysroot-15.0
@@ -458,7 +566,7 @@ jobs:
       matrix:
         version: ['7.9']
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup OpenBSD VM
         uses: cross-platform-actions/action@master
@@ -531,7 +639,7 @@ jobs:
       matrix:
         version: ['10.1']
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup NetBSD VM
         uses: cross-platform-actions/action@master
@@ -624,10 +732,10 @@ jobs:
       matrix:
         llvm_version: [19, 20]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and cache Docker image
         uses: docker/build-push-action@v7
@@ -687,7 +795,7 @@ jobs:
     continue-on-error: true
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install LLVM 23 from apt.llvm.org
         run: |
@@ -725,7 +833,7 @@ jobs:
         build_type: [ Debug ]
         nixpkgs: [ Lock, Latest ]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -743,7 +851,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        architecture: [ aarch64, x86_64 ]
         include:
           - architecture: aarch64
             runner: ubuntu-24.04-arm
@@ -810,12 +917,12 @@ jobs:
         run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
 
       - name: Cache Termux packages
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /data/data/com.termux/cache/apt/archives/
           key: termux-cache-${{ matrix.architecture }}-${{ steps.date.outputs.date }}
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: fix permissions after checkout
         run: chown -R 1000:1000 .
@@ -861,59 +968,7 @@ jobs:
         with:
           name: c3-android-${{matrix.architecture}}-Debug
           path: c3-android-${{matrix.architecture}}-Debug.tar.gz
-
-  build-msvc-arm64:
-    name: Windows (aarch64) MSVC
-    runs-on: windows-11-arm
-    timeout-minutes: 60
-    defaults:
-      run:
-        shell: cmd
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/cache@v5
-        with:
-          path: build/_deps
-          key: win-arm64-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
-
-      - uses: TheMrMilchmann/setup-msvc-dev@v4
-        with:
-          arch: arm64
-
-      - name: CMake Build (Release)
-        run: |
-          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
-          cmake --build build-release --config Release
-
-      - name: Verify binary (Release)
-        run: build-release\c3c.exe --version
-
-      - name: Bundle (Windows aarch64 Release)
-        shell: bash
-        run: ./scripts/tools/package_build.sh "./build-release/c3c.exe" "c3-windows-aarch64-Release" "zip"
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: c3-windows-aarch64-Release
-          path: c3-windows-aarch64-Release.zip
-
-      - name: CMake Build (Debug)
-        run: |
-          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
-          cmake --build build-debug --config Debug
-
-      - name: Verify binary (Debug)
-        run: build-debug\c3c.exe --version
-
-      - name: Bundle (Windows aarch64 Debug)
-        shell: bash
-        run: ./scripts/tools/package_build.sh "./build-debug/c3c.exe" "c3-windows-aarch64-Debug" "zip"
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: c3-windows-aarch64-Debug
-          path: c3-windows-aarch64-Debug.zip
-
+  
   release:
     runs-on: ubuntu-slim
     needs: [build-msvc, build-msvc-arm64, build-linux, build-mac, build-linux-alpine, build-openbsd, build-netbsd, build-android, build-linux-musl-static]
@@ -925,18 +980,18 @@ jobs:
       RELEASE_NAME: ""
       TAG_NAME: ""
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
 
       - name: Prepare Assets
         run: |
           for config in Release Debug; do
-            for platform in windows windows-aarch64 macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup; do
-              # Windows and macOS produce zip, others tar.gz
-              if [ "$platform" = "windows" ] || [ "$platform" = "windows-aarch64" ] || [ "$platform" = "macos" ]; then
-                ext="zip"
-              elif [ "$platform" = "windows-setup" ]; then
+            for platform in windows windows-aarch64 macos linux linux-musl linux-static openbsd netbsd android-aarch64 android-x86_64 windows-setup windows-setup-aarch64; do
+              if [ "$platform" = "windows-setup" ] || [ "$platform" = "windows-setup-aarch64" ]; then
                 ext="exe"
+              # Windows and macOS produce zip, others tar.gz
+              elif [ "$platform" = "windows" ] || [ "$platform" = "windows-aarch64" ] || [ "$platform" = "macos" ]; then
+                ext="zip"
               else
                 ext="tar.gz"
               fi
