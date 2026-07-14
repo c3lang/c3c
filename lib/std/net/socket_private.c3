@@ -85,12 +85,20 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			{
 				return CONNECTION_TIMED_OUT~;
 			}
-			if (poll_request.revents & WRITE)
+			// Get the actual connect result: 0 = connected, otherwise the error.
+			CInt so_error;
+			Socklen_t optlen = CInt::size;
+			if (os::getsockopt(sockfd, os::SOL_SOCKET, os::SO_ERROR, &so_error, &optlen) != 0)
+			{
+				return os::socket_error()~;
+			}
+			if (so_error == 0)
 			{
 				sockfd.set_non_blocking(false)!;
 				*retain_socket = true;
 				return new_socket(sockfd, ai);
 			}
+			return os::connect_error(so_error)~;
 		}
 	};
 	return os::socket_error()~;
