@@ -52,6 +52,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 		os::start_wsa()!;
 	$endif
 	Clock c;
+	fault last_error = GENERAL_ERROR;
 	@loop_over_addresses(addrinfo; NativeSocket sockfd, AddrInfo* ai, bool* retain_socket)
 	{
 		apply_sockoptions(sockfd, options)!;
@@ -64,7 +65,13 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			*retain_socket = true;
 			return new_socket(sockfd, ai);
 		}
-		if (last_error_is_delayed_connect())
+		if (!last_error_is_delayed_connect())
+		{
+			// A synchronous failure (such as a refused loopback connection): keep
+			// the error now, before the socket is closed and errno is overwritten.
+			last_error = os::socket_error();
+		}
+		else
 		{
 			Duration timeout_left = timeout;
 			if (c)
@@ -101,7 +108,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			return os::connect_error(so_error)~;
 		}
 	};
-	return os::socket_error()~;
+	return last_error~;
 }
 
 fn Socket? connect_async_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @private

@@ -2,9 +2,11 @@ module tcpconntimeouttest @test;
 import std::net, std::time;
 
 // Regression tests: a connect with a non-zero timeout used to fail with
-// io::GENERAL_ERROR for every connection, because the non-blocking connect
-// completion was tested against POLLWRNORM instead of the subscribed POLLOUT.
-// The real result now comes through getsockopt(SO_ERROR).
+// io::GENERAL_ERROR for every connection. The non-blocking completion was
+// tested against POLLWRNORM instead of the subscribed POLLOUT, and a
+// synchronous failure (a refused loopback connection on the BSDs) lost its
+// errno before it was read. The real result now comes through
+// getsockopt(SO_ERROR), or is captured as soon as the connect fails.
 
 fn void test_connect_timeout_refused() @if(env::POSIX && !env::EMSCRIPTEN)
 {
