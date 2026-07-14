@@ -12,6 +12,8 @@
 - Generic functions and values incorrectly would not require a prefix. #3374
 - Arena allocator would error in safe mode when freeing the last memory and the arena was full. #3378
 - LinkedList `push_front_all` was appending in the wrong order.
+- `BitSet.len` would yield the size of the underlying type, not the length.
+- RFC3339 formatting would yield incorrect value for microseconds.
 - Timed `tcp::connect` always failed with `io::GENERAL_ERROR` instead of the real result.
 
 ## 0.8.2 Change list
