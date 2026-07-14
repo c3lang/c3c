@@ -16,6 +16,7 @@ const char *sucatalog_next(SuCatalog *catalog)
 
 	start += 7;
 	char *end = strstr(start, "</array>");
+	if (!end) error_exit("Missing </array> in sucatalog");
 	*end = 0;
 	end += 8;
 

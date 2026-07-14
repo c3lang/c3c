@@ -47,7 +47,6 @@ int uncompress(unsigned char *dest, unsigned long *destLen, const unsigned char
 
 XarFile xar_open(const XarHeader *header, const char *filename)
 {
-
 	unsigned long consumed = header->len;
 	uint8_t *src = calloc_arena(header->compressed_len);
 	uint8_t *dst = calloc_arena(header->len + 1);
@@ -61,11 +60,14 @@ XarFile xar_open(const XarHeader *header, const char *filename)
 	while ((start = strstr(start, "<file")))
 	{
 		char *end = strstr(start, "</file");
+		if (!end) error_exit("Missing </file> in xar TOC");
 		*end = 0;
 
 		const char *name = strstr(start, "<name>");
+		if (!name) error_exit("Missing <name> in xar TOC");
 		name += 6;
 		char *name_end = strstr(name, "</name");
+		if (!name_end) error_exit("Missing </name> in xar TOC");
 		*name_end = 0;
 
 		if (str_eq(name, filename))
@@ -74,10 +76,12 @@ XarFile xar_open(const XarHeader *header, const char *filename)
 			XarFile file = { header->file, off, 0 };
 
 			const char *length = strstr(start, "<length>");
+			if (!length) error_exit("Missing <length> in xar TOC");
 			length += 8;
 			file.to_read = (int64_t) strtoll(length, NULL, 10);
 
 			const char *offset = strstr(start, "<offset>");
+			if (!offset) error_exit("Missing <offset> in xar TOC");
 			offset += 8;
 			file.offset += (int64_t) strtoll(offset, NULL, 10);
 

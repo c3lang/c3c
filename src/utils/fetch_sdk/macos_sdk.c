@@ -147,6 +147,7 @@ static Version get_version(const char *pkm)
 	download_file(pkm, "", metadata_out, false);
 	size_t size;
 	const char *content = file_read_all(metadata_out, &size);
+	if (!content) goto FAILED;
 
 	content = strstr(content, "<pkg-info");
 	if (!content) goto FAILED;
@@ -155,6 +156,7 @@ static Version get_version(const char *pkm)
 
 	version += 10;
 	char *end = strchr(version, '"');
+	if (!end) goto FAILED;;
 	*end = 0;
 
 	const int major = (int) strtol(version, &version, 10);
@@ -190,6 +192,10 @@ static Sdk get_sdk(const char *array_tag)
 	}
 
 	sdk.version = get_version(base_pkm);
+	if (!sdk.version.major && !sdk.version.minor)
+	{
+		error_exit("Unable to parse macOS SDK version");
+	}
 
 	char *base_start = sdk_pkg + sizeof(BASE_URL) - 1;
 	char *end = strstr(base_start, SDK_PKG);
@@ -217,6 +223,7 @@ static Sdk *get_sdk_list(size_t *count)
 		if (!strstr(file_arr, "CLTools_macOS")) continue;
 
 		const Sdk sdk = get_sdk(file_arr);
+		if (!sdk.sub_url) error_exit("Failed to parse macOS SDK information");
 		vec_add(sdks, sdk);
 	}
 

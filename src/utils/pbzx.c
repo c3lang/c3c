@@ -73,13 +73,13 @@ bool pbzx_extract(const XarFile *file, Cpio *cpio)
 
 					cpio_push(cpio, out_buf, stream.buf.out_pos);
 				}
-
-				last = min;
-				len -= min;
-				min = MIN(IN_SIZE, len);
-				if (min == 0) break;
-				fread(in_buf, sizeof(uint8_t), min, file->file);
 			}
+
+			last = min;
+			len -= min;
+			min = MIN(IN_SIZE, len);
+			if (min == 0) break;
+			fread(in_buf, sizeof(uint8_t), min, file->file);
 		}
 		if (!plain && strncmp((char *) in_buf + last - 2, "YZ", 2) != 0)
 		{
