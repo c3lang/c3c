@@ -13,6 +13,7 @@
 - Arena allocator would error in safe mode when freeing the last memory and the arena was full. #3378
 - LinkedList `push_front_all` was appending in the wrong order.
 - `BitSet.len` would yield the size of the underlying type, not the length.
+- RFC3339 formatting would yield incorrect value for microseconds.
 
 ## 0.8.2 Change list
 
