@@ -1079,7 +1079,7 @@ constdef Errno : inline CInt @if(env::OPENBSD)
 	EPROTO                   = 95,
 }
 
-constdef Errno : inline CInt @if(!env::WIN32 && !env::DARWIN && && !env::OPENBSD && !env::NETBSD && !env::EMSCRIPTEN && !env::FREEBSD)
+constdef Errno : inline CInt @if(!env::WIN32 && !env::DARWIN && !env::BSD_FAMILY && !env::EMSCRIPTEN)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
