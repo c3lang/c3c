@@ -153,7 +153,7 @@ fn bool BitSet.get(&self, sz i) @operator([]) @inline
 *>
 fn sz BitSet.len(&self) @operator(len) @inline
 {
-	return SZ * BITS;
+	return SIZE;
 }
 
 <*

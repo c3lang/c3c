@@ -167,7 +167,7 @@ The compiler is currently verified to compile on Windows, MacOS, Linux, OpenBSD,
 | Platform                 | Native C3 compiler available? | Target supported        | Stack trace | Threads  | Sockets  | Inline asm |
 |--------------------------|-------------------------------|-------------------------|-------------|----------|----------|------------|
 | Win32 x64                | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
-| Win32 Aarch64            | Untested                      | Untested                | Untested    | Untested | Untested | Yes*       |
+| Win32 Aarch64            | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | MacOS x64                | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | MacOS Aarch64            | Yes                           | Yes + cross compilation | Yes         | Yes      | Yes      | Yes*       |
 | iOS Aarch64              | No                            | Untested                | Untested    | Yes      | Yes      | Yes*       |
@@ -473,7 +473,7 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
 #### Compiling on Linux
 
 1. Install required build dependencies using your distribution's package manager:
-   - **Ubuntu / Debian:** `sudo apt-get install cmake git clang libcurl4-openssl-dev`
+   - **Ubuntu / Debian:** `sudo apt-get install cmake git clang libcurl4-openssl-dev liblld-21`
    - **Fedora:** `sudo dnf install cmake clang git libcurl-devel`
    - **Arch Linux:** `sudo pacman -S curl clang cmake git`
    - **Void Linux:** `sudo xbps-install git cmake clang libcurl-devel`
