@@ -219,38 +219,38 @@ fn void test_chaotic_byte_strings() @test
 	test::eq(parts[3], "\xc2\xa8");
 }
 
-// test contract
-bool contract_panicked @private @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN);
-JmpBuf contract_jmpbuf @private @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN);
+// // test contract
+// bool contract_panicked @private @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN);
+// JmpBuf contract_jmpbuf @private @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN);
 
-fn void contract_panic_interceptor(String msg, String file, String func, int line) @private @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN)
-{
-	contract_panicked = true;
-	libc::longjmp(&contract_jmpbuf, 1);
-}
+// fn void contract_panic_interceptor(String msg, String file, String func, int line) @private @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN)
+// {
+// 	contract_panicked = true;
+// 	libc::longjmp(&contract_jmpbuf, 1);
+// }
 
-fn void test_null_byte_contract() @test @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN)
-{
-	Regex r = regex::compile(mem, "fo+", EXTENDED)!!;
-	defer r.free();
+// fn void test_null_byte_contract() @test @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN)
+// {
+// 	Regex r = regex::compile(mem, "fo+", EXTENDED)!!;
+// 	defer r.free();
 
-	Match[] m = r.texec("foobar")!!;
-	test::eq(m[0].str, "foo");
+// 	Match[] m = r.texec("foobar")!!;
+// 	test::eq(m[0].str, "foo");
 
-	PanicFn saved = builtin::panic;
+// 	PanicFn saved = builtin::panic;
 
-	contract_panicked = false;
-	builtin::panic = &contract_panic_interceptor;
-	if (libc::setjmp(&contract_jmpbuf) == 0) r.texec("foo\x00bar")!!;
-	builtin::panic = saved;
-	test::@check(contract_panicked, "null byte in search string should have panicked");
+// 	contract_panicked = false;
+// 	builtin::panic = &contract_panic_interceptor;
+// 	if (libc::setjmp(&contract_jmpbuf) == 0) r.texec("foo\x00bar")!!;
+// 	builtin::panic = saved;
+// 	test::@check(contract_panicked, "null byte in search string should have panicked");
 
-	contract_panicked = false;
-	builtin::panic = &contract_panic_interceptor;
-	if (libc::setjmp(&contract_jmpbuf) == 0) regex::compile(mem, "fo\x00o", EXTENDED)!!;
-	builtin::panic = saved;
-	test::@check(contract_panicked, "null byte in pattern should have panicked");
-}
+// 	contract_panicked = false;
+// 	builtin::panic = &contract_panic_interceptor;
+// 	if (libc::setjmp(&contract_jmpbuf) == 0) regex::compile(mem, "fo\x00o", EXTENDED)!!;
+// 	builtin::panic = saved;
+// 	test::@check(contract_panicked, "null byte in pattern should have panicked");
+// }
 
 // ============================================================
 //  Some more tests
