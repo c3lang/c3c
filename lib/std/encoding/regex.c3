@@ -35,6 +35,7 @@
 module std::encoding::regex;
 
 import std::io;
+import std::collections::list;
 
 // API
 
@@ -45,6 +46,9 @@ struct Regex
 	<* internal TNFA pointer *>
 	Tnfa* __tnfa;
 }
+
+<* Free all resources held by a compiled regex. *>
+fn void Regex.free(&self) => re_free(self);
 
 <*
  Compile a POSIX regex pattern into a `Regex`.
@@ -83,23 +87,14 @@ fn Match[]? Regex.exec(&self, Allocator allocator, String str, sz max_captures =
 		max_captures = self.re_nsub + 1;
 	}
 
-	RegMatch* matches = mem::talloc_array(RegMatch, max_captures);
+	RegMatch[] matches = mem::talloc_array(RegMatch, max_captures);
 	re_exec(self, str, max_captures, matches, eflags)!;
 
-	Match* matches_ptr = alloc::malloc(allocator, Match::size * max_captures);
-	if (!matches_ptr) return OUT_OF_MEMORY~;
-	Match[] res = matches_ptr[0 : max_captures];
+	Match[] res = alloc::new_array_try(allocator, Match, max_captures)!;
 
 	for (sz i = 0; i < max_captures; i++)
 	{
-		RegOff so = matches[i].rm_so;
-		RegOff eo = matches[i].rm_eo;
-		String view = "";
-		if (so >= 0 && eo >= 0)
-		{
-			view = str[so : (eo - so)];
-		}
-		res[i] = { .str = view, .match.rm_so = so, .match.rm_eo = eo };
+		res[i] = _build_match(str, matches[i]);
 	}
 	return res;
 }
@@ -110,8 +105,160 @@ fn Match[]? Regex.texec(&self, String str, sz max_captures = 0, ExecFlags eflags
 	return self.exec(tmem, str, max_captures, eflags);
 }
 
-<* Free all resources held by a compiled regex. *>
-fn void Regex.free(&self) => re_free(self);
+<*
+ Check if the regex pattern matches the string anywhere.
+
+ @param str    : "The input string to search."
+ @param eflags : "Execute flags."
+ @return "True if a match is found, false otherwise."
+*>
+fn bool Regex.matches(&self, String str, ExecFlags eflags = {}) =>
+	@ok(re_exec(self, str, 0, null, eflags));
+
+
+<* Find all non-overlapping matches of the regex in the string. *>
+fn Match[]? Regex.find_all(&self, Allocator allocator, String str, ExecFlags eflags = {})
+{
+	List{Match} list;
+	list.init(allocator);
+
+	int offset = 0;
+	ExecFlags current_flags = eflags;
+	while (offset <= str.len)
+	{
+		String sub = str[offset ..];
+		RegMatch match;
+		if (catch err = re_exec(self, sub, 1, &match, current_flags))
+		{
+			if (err == NOMATCH) break;
+			list.free();
+			return err~;
+		}
+
+		if (match.rm_so == -1 || match.rm_eo == -1) break;
+
+		list.push(_build_match(sub, match, offset));
+
+		int step = match.rm_eo;
+		if (step == 0)
+		{
+			int len = 0;
+			if (offset < str.len)
+			{
+				decode_utf8(&str[offset], &len);
+			}
+			step = (len > 0) ? len : 1;
+		}
+		offset += step;
+		current_flags |= NOTBOL;
+	}
+
+	Match[] slice = list.to_aligned_array(allocator);
+	list.free();
+	return slice;
+}
+
+<* Temporary-allocating variant of `find_all`. *>
+fn Match[]? Regex.tfind_all(&self, String str, ExecFlags eflags = {}) @inline
+{
+	return self.find_all(tmem, str, eflags);
+}
+
+<* Replace matches of the pattern in the string with the replacement string. *>
+fn String? Regex.replace(&self, Allocator allocator, String str, String replacement, bool replace_all = true, ExecFlags eflags = {})
+{
+	Match[] matches = self.find_all(allocator, str, eflags)!;
+	defer alloc::free(allocator, matches);
+
+	if (matches.len == 0)
+	{
+		return str.copy(allocator);
+	}
+
+	DString ds;
+	ds.init(allocator);
+
+	sz last_offset = 0;
+	foreach (idx, m : matches)
+	{
+		if (!replace_all && idx > 0) break;
+
+		RegOff match_start = m.match.rm_so;
+		RegOff match_end = m.match.rm_eo;
+
+		if (match_start > last_offset)
+		{
+			ds.append(str[last_offset : match_start - last_offset]);
+		}
+
+		ds.append(replacement);
+		last_offset = match_end;
+	}
+
+	if (last_offset < str.len)
+	{
+		ds.append(str[last_offset ..]);
+	}
+
+	String res = ds.copy_str(allocator);
+	ds.free();
+	return res;
+}
+
+<* Temporary-allocating variant of `replace`. *>
+fn String? Regex.treplace(&self, String str, String replacement, bool replace_all = true, ExecFlags eflags = {}) @inline
+{
+	return self.replace(tmem, str, replacement, replace_all, eflags);
+}
+
+<* Split the string around matches of the pattern. *>
+fn String[]? Regex.split(&self, Allocator allocator, String str, sz max = 0, bool skip_empty = false, ExecFlags eflags = {})
+{
+	Match[] matches = self.find_all(allocator, str, eflags)!;
+	defer alloc::free(allocator, matches);
+
+	sz capacity = matches.len + 1;
+	String[] parts = alloc::new_array_try(allocator, String, capacity)!;
+
+	sz count = 0;
+	sz last_offset = 0;
+
+	foreach (idx, m : matches)
+	{
+		if (max > 0 && count + 1 >= max)
+		{
+			break;
+		}
+
+		RegOff match_start = m.match.rm_so;
+		RegOff match_end = m.match.rm_eo;
+
+		String part = str[last_offset : match_start - last_offset];
+		if (!skip_empty || part.len > 0)
+		{
+			parts[count] = part;
+			count++;
+		}
+		last_offset = match_end;
+	}
+
+	String part = str[last_offset ..];
+	if (!skip_empty || part.len > 0)
+	{
+		parts[count] = part;
+		count++;
+	}
+
+	return parts[0 : count];
+}
+
+
+<* Temporary-allocating variant of `split`. *>
+fn String[]? Regex.tsplit(&self, String str, sz max = 0, bool skip_empty = false, ExecFlags eflags = {}) @inline
+{
+	return self.split(tmem, str, max, skip_empty, eflags);
+}
+
 
 alias RegOff @private = int;
 
@@ -132,6 +279,12 @@ fn sz? Match.to_format(&self, Formatter* formatter) @dynamic => formatter.print(
 fn String Match.str_view(&self) @inline => self.str;
 
 fn bool Match.eq(&self, String other) @operator(==) @inline => self.str == other;
+
+<* Returns the byte offset where this match starts in the original string. -1 if unmatched. *>
+fn int Match.start(&self) @inline => self.match.rm_so;
+
+<* Returns the byte offset just past the end of this match in the original string. -1 if unmatched. *>
+fn int Match.end(&self) @inline => self.match.rm_eo;
 
 <*
  Returns a human-readable description for a given regex fault.
@@ -157,6 +310,22 @@ fn String error_string(fault err)
 	}
 }
 
+fn Match _build_match(String str, RegMatch match, RegOff offset = 0) @private @inline
+{
+	String view = "";
+	RegOff so = match.rm_so;
+	RegOff eo = match.rm_eo;
+	if (so >= 0 && eo >= 0)
+	{
+		view = str[so : (eo - so)];
+	}
+	Match m = {
+		.str = view,
+		.match.rm_so = (so >= 0) ? offset + so : -1,
+		.match.rm_eo = (eo >= 0) ? offset + eo : -1
+	};
+	return m;
+}
 
 // ===============================================================
 //  Public API types
@@ -208,10 +377,10 @@ const int ITERATION  @private = 2;
 const int UNION      @private = 3;
 
 // Special code_min sentinel values for literal nodes
-const long EMPTY      @private = -1;
-const long ASSERTION  @private = -2;
-const long TAG        @private = -3;
-const long BACKREF    @private = -4;
+const int EMPTY      @private = -1;
+const int ASSERTION  @private = -2;
+const int TAG        @private = -3;
+const int BACKREF    @private = -4;
 
 // Assertion bits
 const int ASSERT_AT_BOL         @private = 1;
@@ -256,7 +425,7 @@ struct SubmatchData @local
 struct Tnfa @local
 {
 	TnfaTransition* transitions;
-	uint            num_transitions;
+	int             num_transitions;
 	TnfaTransition* initial;
 	TnfaTransition* final;
 	SubmatchData*   submatch_data;
@@ -298,7 +467,7 @@ struct TreTnfaReach @local
 
 struct TreReachPos @local
 {
-	sz      pos;
+	RegOff  pos;
 	TagId** tags;
 }
 
@@ -351,8 +520,8 @@ struct AstNode @local
 
 struct Literal @local
 {
-	long    code_min;
-	long    code_max;
+	int     code_min;
+	int     code_max;
 	StateId position;
 	int     class;
 	int*    neg_classes;
@@ -387,21 +556,21 @@ union StackItem @local
 
 struct Stack @local
 {
-	Allocator  allocator;
-	int        size;
-	int        max_size;
-	int        increment;
-	int        count;
-	StackItem* stack;
+	Allocator   allocator;
+	int         size;
+	int         max_size;
+	int         increment;
+	int         count;
+	StackItem[] stack;
 }
 
 fn Stack* stack_new(Allocator allocator, int size, int max_size, int increment) @local
 {
-	Stack* s = alloc::malloc(allocator, Stack::size);
+	Stack* s = alloc::new(allocator, Stack);
 	if (!s) return null;
+	s.stack = alloc::new_array_try(allocator, StackItem, size) ?? {};
+	if (!s.stack.ptr) { alloc::free(allocator, s); return null; }
 	s.allocator = allocator;
-	s.stack = alloc::malloc(allocator, (size * StackItem::size));
-	if (!s.stack) { alloc::free(allocator, s); return null; }
 	s.size = size;
 	s.max_size = max_size;
 	s.increment = increment;
@@ -430,8 +599,7 @@ fn void? stack_push(Stack* s, StackItem value) @local
 		if (s.size >= s.max_size) return OUT_OF_MEMORY~;
 		int new_size = s.size + s.increment;
 		if (new_size > s.max_size) new_size = s.max_size;
-		StackItem* nb = alloc::realloc(s.allocator, s.stack, (usz)((sz)new_size * StackItem::size));
-		if (!nb) return OUT_OF_MEMORY~;
+		StackItem[] nb = alloc::realloc_array_try(s.allocator, s.stack, StackItem, new_size)!;
 		s.stack = nb;
 		s.size = new_size;
 		s.stack[s.count++] = value;
@@ -474,19 +642,13 @@ fn void* stack_pop_ptr(Stack* s) @local => s.stack[--s.count].ptr;
 
 fn AstNode*? ast_new_node(Allocator arena, int type, void* obj) @local
 {
-	AstNode* node = alloc::malloc(arena, AstNode::size);
-	if (!node || !obj) return OUT_OF_MEMORY~;
-
-	*node = { .type = type, .obj = obj, .nullable = false, .submatch_id = -1 };
-	return node;
+	if (!obj) return OUT_OF_MEMORY~;
+	return alloc::new_try(arena, AstNode, { .type = type, .obj = obj, .nullable = false, .submatch_id = -1 });
 }
 
 fn AstNode*? ast_new_literal(Allocator arena, int code_min, int code_max, StateId position) @local
 {
-	Literal* lit = alloc::malloc(arena, Literal::size);
-	if (!lit) return OUT_OF_MEMORY~;
-
-	*lit = { .code_min = code_min, .code_max = code_max, .position = position };
+	Literal* lit = alloc::new_try(arena, Literal, { .code_min = code_min, .code_max = code_max, .position = position })!;
 	return ast_new_node(arena, LITERAL, lit)!;
 }
 
@@ -496,10 +658,7 @@ fn AstNode*? ast_new_literal(Allocator arena, int code_min, int code_max, StateI
 *>
 fn AstNode*? ast_new_iter(Allocator arena, AstNode* arg, int min, int max, bool minimal) @local
 {
-	Iteration* iter = alloc::malloc(arena, Iteration::size);
-	if (!iter) return OUT_OF_MEMORY~;
-
-	*iter = { .arg = arg, .min = min, .max = max, .minimal = minimal };
+	Iteration* iter = alloc::new_try(arena, Iteration, { .arg = arg, .min = min, .max = max, .minimal = minimal })!;
 
 	AstNode* node = ast_new_node(arena, ITERATION, iter)!;
 	if (node) node.num_submatches = arg.num_submatches;
@@ -511,10 +670,7 @@ fn AstNode*? ast_binary(Allocator arena, AstNode* left, AstNode* right, int type
 	if (!left) return right;
 	if (!right) return null;
 
-	Type* binary = alloc::malloc(arena, Type::size);
-	if (!binary) return OUT_OF_MEMORY~;
-
-	*binary = { .left = left, .right = right };
+	Type* binary = alloc::new_try(arena, Type, { .left = left, .right = right })!;
 
 	AstNode* node = ast_new_node(arena, type_id, binary)!;
 	if (node) node.num_submatches = left.num_submatches + right.num_submatches;
@@ -768,7 +924,7 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 		}
 	}
 
-	int* nc = null;
+	int[] nc = {};
 	if (negate)
 	{
 		// With REG_NEWLINE, newlines are excluded from negated brackets.
@@ -810,9 +966,8 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 		// Negated classes array.
 		if (neg_len > 0)
 		{
-			nc = alloc::malloc(ctx.mem, (sz)(neg_len + 1) * int::size);
-			if (!nc) return OUT_OF_MEMORY~;
-			mem::copy(nc, &neg_classes[0], neg_len * int::size);
+			nc = alloc::new_array_try(ctx.mem, int, (sz)(neg_len + 1))!;
+			nc[0 : neg_len] = neg_classes[0 : neg_len];
 			nc[neg_len] = 0;
 		}
 	}
@@ -822,8 +977,8 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 
 	for (int i = 0; i < ls_len; i++)
 	{
-		int min = (int)ls[i].code_min;
-		int max = (int)ls[i].code_max;
+		int min = ls[i].code_min;
+		int max = ls[i].code_max;
 		int class = ls[i].class;
 
 		if (negate)
@@ -836,19 +991,17 @@ fn void? parse_bracket(ParseCtx* ctx, char* s) @local
 			negmax = min - 1;
 			min = negmin;
 			max = negmax;
-			negmin = (int)ls[i].code_max + 1;
+			negmin = ls[i].code_max + 1;
 			class = 0;
 		}
 
-		Literal* lit = alloc::malloc(ctx.mem, Literal::size);
-		if (!lit) return OUT_OF_MEMORY~;
-		*lit = {
+		Literal* lit = alloc::new_try(ctx.mem, Literal, {
 			.code_min = min,
 			.code_max = max,
 			.position = ctx.position,
 			.class = class,
 			.neg_classes = nc
-		};
+		})!;
 
 		AstNode* n = ast_new_node(ctx.mem, LITERAL, lit)!;
 		node = ast_new_union(ctx.mem, node, n)!;
@@ -1269,22 +1422,19 @@ fn void? tre_add_tag_right(Allocator arena, AstNode* node, TagId tag_id) @local 
 
 fn void? tre_add_tag(Allocator arena, AstNode* node, TagId tag_id) <TAG_LEFT> @local
 {
-	Catenation* c = alloc::malloc(arena, Catenation::size);
-	if (!c) return OUT_OF_MEMORY~;
-
 	AstNode* tag_node = ast_new_literal(arena, TAG, tag_id, -1)!;
 
-	AstNode* other_node = alloc::malloc(arena, AstNode::size);
-	if (!other_node) return OUT_OF_MEMORY~;
+	AstNode* other_node = alloc::new_try(arena, AstNode)!;
 	*other_node = *node;
 
+	Catenation* c;
 	if (TAG_LEFT)
 	{
-		*c = { .left = tag_node, .right = other_node };
+		c = alloc::new_try(arena, Catenation, { .left = tag_node, .right = other_node })!;
 	}
 	else
 	{
-		*c = { .left = other_node, .right = tag_node };
+		c = alloc::new_try(arena, Catenation, { .left = other_node, .right = tag_node })!;
 	}
 
 	node.obj = c;
@@ -1401,11 +1551,10 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 						tnfa.submatch_data[id].parents = null;
 						if (i > 0)
 						{
-							int* p = alloc::malloc(tnfa.allocator, (sz)(i + 1) * int::size);
-							if (!p) return OUT_OF_MEMORY~;
-							tnfa.submatch_data[id].parents = p;
-							mem::copy(p, parents, (usz)i * int::size);
-							p[i] = -1;
+							int[] pbuf = alloc::new_array_try(tnfa.allocator, int, (sz)(i + 1))!;
+							tnfa.submatch_data[id].parents = pbuf;
+							mem::copy(pbuf, parents, i * int::size);
+							pbuf[i] = -1;
 						}
 					}
 
@@ -1420,7 +1569,7 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 						Literal* lit = node.obj;
 						if (lit.code_min >= 0 || lit.code_min == EMPTY || lit.code_min == ASSERTION || lit.code_min == TAG || lit.code_min == BACKREF)
 						{
-							if (!(lit.code_min < 0) || lit.code_min == (long)BACKREF)
+							if (!(lit.code_min < 0) || lit.code_min == BACKREF)
 							{
 								if (regset[0] >= 0)
 								{
@@ -1680,20 +1829,18 @@ fn void? tre_add_tags(Allocator arena, Stack* stack, AstNode* tree, Tnfa* tnfa) 
 	}
 }
 
-fn PosAndTags* tre_set_empty(Allocator arena) @local
+fn PosAndTags*? tre_set_empty(Allocator arena) @local
 {
-	PosAndTags* new_set = alloc::malloc(arena, 2 * PosAndTags::size);
-	if (!new_set) return null;
-	new_set[0] = { .position = -1 };
-	return new_set;
+	PosAndTags[] buf = alloc::new_array_try(arena, PosAndTags, 2)!;
+	buf[0] = { .position = -1 };
+	return buf;
 }
 
-fn PosAndTags* tre_set_one(Allocator arena, StateId position, int code_min, int code_max, int class, int* neg_classes, int backref) @local
+fn PosAndTags*? tre_set_one(Allocator arena, StateId position, int code_min, int code_max, int class, int* neg_classes, int backref) @local
 {
-	PosAndTags* new_set = alloc::malloc(arena, 2 * PosAndTags::size);
-	if (!new_set) return null;
+	PosAndTags[] buf = alloc::new_array_try(arena, PosAndTags, 2)!;
 
-	new_set[0] = {
+	buf[0] = {
 		.position = position,
 		.code_min = code_min,
 		.code_max = code_max,
@@ -1701,19 +1848,19 @@ fn PosAndTags* tre_set_one(Allocator arena, StateId position, int code_min, int 
 		.neg_classes = neg_classes,
 		.backref = backref
 	};
-	new_set[1] = { .position = -1 };
-	return new_set;
+	buf[1] = { .position = -1 };
+	return buf;
 }
 
-fn PosAndTags* tre_set_union(Allocator arena, PosAndTags* set1, PosAndTags* set2, TagId* tags, int assertions) @local
+fn PosAndTags*? tre_set_union(Allocator arena, PosAndTags* set1, PosAndTags* set2, TagId* tags, int assertions) @local
 {
 	int s1 = 0;
 	int s2 = 0;
 	if (set1) for (s1 = 0; set1[s1].position >= 0; s1++);
 	if (set2) for (s2 = 0; set2[s2].position >= 0; s2++);
 
-	PosAndTags* new_set = alloc::malloc(arena, (sz)(s1 + s2 + 1) * PosAndTags::size);
-	if (!new_set) return null;
+	PosAndTags[] set_buf = alloc::new_array_try(arena, PosAndTags, (sz)(s1 + s2 + 1))!;
+	PosAndTags* new_set = set_buf;
 
 	int i;
 	for (i = 0; i < s1; i++)
@@ -1727,8 +1874,8 @@ fn PosAndTags* tre_set_union(Allocator arena, PosAndTags* set1, PosAndTags* set2
 			int add_tags = 0;
 			for (add_tags = 0; tags[add_tags] >= 0; add_tags++);
 
-			TagId* new_tags = alloc::malloc(arena, (sz)(num_tags + add_tags + 1) * TagId::size);
-			if (!new_tags) return null;
+			TagId[] tag_buf = alloc::new_array_try(arena, TagId, (sz)(num_tags + add_tags + 1))!;
+			TagId* new_tags = tag_buf;
 
 			mem::copy(new_tags, tags, add_tags * TagId::size);
 			mem::copy(&new_tags[add_tags], set1[i].tags, num_tags * TagId::size);
@@ -1771,7 +1918,7 @@ fn void? tre_match_empty(Stack* stack, AstNode* node, TagId* tags, int* assertio
 			case LITERAL:
 			{
 				Literal* lit = node.obj;
-				if (lit.code_min == (int)TAG)
+				if (lit.code_min == TAG)
 				{
 					if (lit.code_max >= 0)
 					{
@@ -1780,7 +1927,7 @@ fn void? tre_match_empty(Stack* stack, AstNode* node, TagId* tags, int* assertio
 							int i = 0;
 							for (i = 0; tags[i] >= 0; i++)
 							{
-								if (tags[i] == (int)lit.code_max) break;
+								if (tags[i] == lit.code_max) break;
 							}
 							if (tags[i] < 0)
 							{
@@ -1791,7 +1938,7 @@ fn void? tre_match_empty(Stack* stack, AstNode* node, TagId* tags, int* assertio
 						if (num_tags_seen) (*num_tags_seen)++;
 					}
 				}
-				else if (lit.code_min == (int)ASSERTION)
+				else if (lit.code_min == ASSERTION)
 				{
 					if (assertions) *assertions |= (int)lit.code_max;
 				}
@@ -1842,20 +1989,20 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 						if (lit.code_min == BACKREF)
 						{
 							node.nullable = false;
-							node.firstpos = tre_set_one(arena, lit.position, 0, CHAR_MAX_CODEPOINT, 0, null, -1);
-							node.lastpos = tre_set_one(arena, lit.position, 0, CHAR_MAX_CODEPOINT, 0, null, (int)lit.code_max);
+							node.firstpos = tre_set_one(arena, lit.position, 0, CHAR_MAX_CODEPOINT, 0, null, -1)!;
+							node.lastpos = tre_set_one(arena, lit.position, 0, CHAR_MAX_CODEPOINT, 0, null, (int)lit.code_max)!;
 						}
 						else if (lit.code_min < 0)
 						{
 							node.nullable = true;
-							node.firstpos = tre_set_empty(arena);
-							node.lastpos = tre_set_empty(arena);
+							node.firstpos = tre_set_empty(arena)!;
+							node.lastpos = tre_set_empty(arena)!;
 						}
 						else
 						{
 							node.nullable = false;
-							node.firstpos = tre_set_one(arena, lit.position, (int)lit.code_min, (int)lit.code_max, lit.class, lit.neg_classes, -1);
-							node.lastpos = tre_set_one(arena, lit.position, (int)lit.code_min, (int)lit.code_max, lit.class, lit.neg_classes, -1);
+							node.firstpos = tre_set_one(arena, lit.position, lit.code_min, lit.code_max, lit.class, lit.neg_classes, -1)!;
+							node.lastpos = tre_set_one(arena, lit.position, lit.code_min, lit.code_max, lit.class, lit.neg_classes, -1)!;
 						}
 					}
 
@@ -1895,8 +2042,8 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 			{
 				Union* uni = node.obj;
 				node.nullable = uni.left.nullable || uni.right.nullable;
-				node.firstpos = tre_set_union(arena, uni.left.firstpos, uni.right.firstpos, null, 0);
-				node.lastpos = tre_set_union(arena, uni.left.lastpos, uni.right.lastpos, null, 0);
+				node.firstpos = tre_set_union(arena, uni.left.firstpos, uni.right.firstpos, null, 0)!;
+				node.lastpos = tre_set_union(arena, uni.left.lastpos, uni.right.lastpos, null, 0)!;
 			}
 
 			case POST_ITERATION:
@@ -1918,7 +2065,7 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 					TagId[32] tags;
 					tags[0] = -1;
 					tre_match_empty(stack, cat.left, &tags[0], &assertions, null)!;
-					node.firstpos = tre_set_union(arena, cat.right.firstpos, cat.left.firstpos, &tags[0], assertions);
+					node.firstpos = tre_set_union(arena, cat.right.firstpos, cat.left.firstpos, &tags[0], assertions)!;
 				}
 				else
 				{
@@ -1931,7 +2078,7 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 					TagId[32] tags;
 					tags[0] = -1;
 					tre_match_empty(stack, cat.right, &tags[0], &assertions, null)!;
-					node.lastpos = tre_set_union(arena, cat.left.lastpos, cat.right.lastpos, &tags[0], assertions);
+					node.lastpos = tre_set_union(arena, cat.left.lastpos, cat.right.lastpos, &tags[0], assertions)!;
 				}
 				else
 				{
@@ -1942,7 +2089,7 @@ fn void? tre_compute_nfl(Allocator arena, Stack* stack, AstNode* tree) @local
 	}
 }
 
-fn void? tre_make_trans(Allocator mem, PosAndTags* p1, PosAndTags* p2, TnfaTransition* transitions, int* counts, int* offs) @local
+fn void? tre_make_trans(Allocator allocator, PosAndTags* p1, PosAndTags* p2, TnfaTransition* transitions, int* counts, int* offs) @local
 {
 	PosAndTags* orig_p2 = p2;
 
@@ -1986,9 +2133,9 @@ fn void? tre_make_trans(Allocator mem, PosAndTags* p1, PosAndTags* p2, TnfaTrans
 				{
 					int size = 0;
 					while (p1.neg_classes[size] != 0) size++;
-					trans.neg_classes = alloc::malloc(mem, (usz)(size + 1) * int::size);
-					if (!trans.neg_classes) return OUT_OF_MEMORY~;
-					mem::copy(trans.neg_classes, p1.neg_classes, (usz)(size + 1) * int::size);
+					int[] nc_buf = alloc::new_array_try(allocator, int, (sz)(size + 1))!;
+					trans.neg_classes = nc_buf;
+					mem::copy(trans.neg_classes, p1.neg_classes, (sz)(size + 1) * int::size);
 					trans.assertions |= ASSERT_CHAR_CLASS_NEG;
 				}
 
@@ -2000,12 +2147,12 @@ fn void? tre_make_trans(Allocator mem, PosAndTags* p1, PosAndTags* p2, TnfaTrans
 
 				if (num_p1_tags + num_p2_tags > 0)
 				{
-					trans.tags = alloc::malloc(mem, (usz)(num_p1_tags + num_p2_tags + 1) * int::size);
-					if (!trans.tags) return OUT_OF_MEMORY~;
+					TagId[] tag_buf = alloc::new_array_try(allocator, TagId, (sz)(num_p1_tags + num_p2_tags + 1))!;
+					trans.tags = tag_buf;
 
 					if (p1.tags)
 					{
-						mem::copy(trans.tags, p1.tags, (usz)num_p1_tags * int::size);
+						mem::copy(trans.tags, p1.tags, num_p1_tags * int::size);
 					}
 
 					int total_tags = num_p1_tags;
@@ -2054,23 +2201,23 @@ fn void? tre_make_trans(Allocator mem, PosAndTags* p1, PosAndTags* p2, TnfaTrans
 
 }
 
-fn void? tre_ast_to_tnfa(Allocator mem, AstNode* node, TnfaTransition* transitions, int* counts, int* offs) @local
+fn void? tre_ast_to_tnfa(Allocator allocator, AstNode* node, TnfaTransition* transitions, int* counts, int* offs) @local
 {
 	switch (node.type)
 	{
 		case UNION:
 		{
 			Union* uni = node.obj;
-			tre_ast_to_tnfa(mem, uni.left, transitions, counts, offs)!;
-			tre_ast_to_tnfa(mem, uni.right, transitions, counts, offs)!;
+			tre_ast_to_tnfa(allocator, uni.left, transitions, counts, offs)!;
+			tre_ast_to_tnfa(allocator, uni.right, transitions, counts, offs)!;
 		}
 
 		case CATENATION:
 		{
 			Catenation* cat = node.obj;
-			tre_make_trans(mem, cat.left.lastpos, cat.right.firstpos, transitions, counts, offs)!;
-			tre_ast_to_tnfa(mem, cat.left, transitions, counts, offs)!;
-			tre_ast_to_tnfa(mem, cat.right, transitions, counts, offs)!;
+			tre_make_trans(allocator, cat.left.lastpos, cat.right.firstpos, transitions, counts, offs)!;
+			tre_ast_to_tnfa(allocator, cat.left, transitions, counts, offs)!;
+			tre_ast_to_tnfa(allocator, cat.right, transitions, counts, offs)!;
 		}
 
 		case ITERATION:
@@ -2078,9 +2225,9 @@ fn void? tre_ast_to_tnfa(Allocator mem, AstNode* node, TnfaTransition* transitio
 			Iteration* iter = node.obj;
 			if (iter.max == -1 || iter.max > 1)
 			{
-				tre_make_trans(mem, iter.arg.lastpos, iter.arg.firstpos, transitions, counts, offs)!;
+				tre_make_trans(allocator, iter.arg.lastpos, iter.arg.firstpos, transitions, counts, offs)!;
 			}
-			tre_ast_to_tnfa(mem, iter.arg, transitions, counts, offs)!;
+			tre_ast_to_tnfa(allocator, iter.arg, transitions, counts, offs)!;
 		}
 
 		case LITERAL:
@@ -2106,15 +2253,15 @@ fn bool is_special(Literal* lit) @local => lit.code_min < 0;
 fn bool is_backref(Literal* lit) @local => lit.code_min == BACKREF;
 fn bool is_tag(Literal* lit) @local => lit.code_min == TAG;
 
-fn void? tre_copy_ast(Allocator mem, Stack* stack, AstNode* ast, int flags, int* pos_add, int* tag_directions, AstNode** copy, int* max_pos) @local
+fn void? tre_copy_ast(Allocator allocator, Stack* stack, AstNode* ast, int flags, StateId* pos_add, int* tag_directions, AstNode** copy, StateId* max_pos) @local
 {
 	int bottom = stack.count;
-	int num_copied = 0;
+	StateId num_copied = 0;
 	int first_tag = 1;
 	AstNode** result = copy;
 
 	stack_push_ptr(stack, ast)!;
-	stack_push_int(stack, (int)CopyastSymbol.COPY_RECURSE)!;
+	stack_push_int(stack, CopyastSymbol.COPY_RECURSE.ordinal)!;
 
 	while (stack.count > bottom)
 	{
@@ -2132,16 +2279,16 @@ fn void? tre_copy_ast(Allocator mem, Stack* stack, AstNode* ast, int flags, int*
 					{
 						Literal* lit = node.obj;
 						StateId pos = lit.position;
-						int min = (int)lit.code_min;
-						int max = (int)lit.code_max;
+						int min = lit.code_min;
+						int max = lit.code_max;
 						if (!is_special(lit) || is_backref(lit))
 						{
-							pos += (StateId)*pos_add;
+							pos += *pos_add;
 							num_copied++;
 						}
 						else if (is_tag(lit) && (flags & COPY_REMOVE_TAGS) != 0)
 						{
-							min = (int)EMPTY;
+							min = EMPTY;
 							max = -1;
 							pos = -1;
 						}
@@ -2150,7 +2297,7 @@ fn void? tre_copy_ast(Allocator mem, Stack* stack, AstNode* ast, int flags, int*
 							if (tag_directions) tag_directions[max] = TRE_TAG_MAXIMIZE;
 							first_tag = 0;
 						}
-						*result = ast_new_literal(mem, min, max, pos)!;
+						*result = ast_new_literal(allocator, min, max, pos)!;
 						Literal* p = (*result).obj;
 						p.class = lit.class;
 						p.neg_classes = lit.neg_classes;
@@ -2160,7 +2307,7 @@ fn void? tre_copy_ast(Allocator mem, Stack* stack, AstNode* ast, int flags, int*
 					case UNION:
 					{
 						Union* uni = node.obj;
-						*result = ast_new_union(mem, uni.left, uni.right)!;
+						*result = ast_new_union(allocator, uni.left, uni.right)!;
 						if (*result == null)
 						{
 							return OUT_OF_MEMORY~;
@@ -2178,7 +2325,7 @@ fn void? tre_copy_ast(Allocator mem, Stack* stack, AstNode* ast, int flags, int*
 					case CATENATION:
 					{
 						Catenation* cat = node.obj;
-						*result = ast_new_catenation(mem, cat.left, cat.right)!;
+						*result = ast_new_catenation(allocator, cat.left, cat.right)!;
 						if (*result == null)
 						{
 							return OUT_OF_MEMORY~;
@@ -2201,7 +2348,7 @@ fn void? tre_copy_ast(Allocator mem, Stack* stack, AstNode* ast, int flags, int*
 						Iteration* iter = node.obj;
 						stack_push_ptr(stack, iter.arg)!;
 						stack_push_int(stack, (int)CopyastSymbol.COPY_RECURSE)!;
-						*result = ast_new_iter(mem, iter.arg, iter.min, iter.max, iter.minimal)!;
+						*result = ast_new_iter(allocator, iter.arg, iter.min, iter.max, iter.minimal)!;
 						iter = (*result).obj;
 						result = &iter.arg;
 					}
@@ -2211,12 +2358,12 @@ fn void? tre_copy_ast(Allocator mem, Stack* stack, AstNode* ast, int flags, int*
 	*pos_add += num_copied;
 }
 
-fn void? tre_expand_ast(Allocator mem, Stack* stack, AstNode* ast, int* position, int* tag_directions) @local
+fn void? tre_expand_ast(Allocator allocator, Stack* stack, AstNode* ast, StateId* position, int* tag_directions) @local
 {
 	int bottom = stack.count;
-	int pos_add = 0;
-	int pos_add_total = 0;
-	int max_pos = 0;
+	StateId pos_add = 0;
+	StateId pos_add_total = 0;
+	StateId max_pos = 0;
 	int iter_depth = 0;
 
 	stack_push_ptr(stack, ast)!;
@@ -2237,7 +2384,7 @@ fn void? tre_expand_ast(Allocator mem, Stack* stack, AstNode* ast, int* position
 						Literal* lit = node.obj;
 						if (!is_special(lit) || is_backref(lit))
 						{
-							lit.position += (StateId)pos_add;
+							lit.position += pos_add;
 							if (lit.position > max_pos) max_pos = lit.position;
 						}
 					}
@@ -2273,14 +2420,14 @@ fn void? tre_expand_ast(Allocator mem, Stack* stack, AstNode* ast, int* position
 			case EXPAND_AFTER_ITER:
 			{
 				Iteration* iter = node.obj;
-				pos_add = stack_pop_int(stack);
-				int pos_add_last = pos_add;
+				pos_add = (StateId)stack_pop_int(stack);
+				StateId pos_add_last = pos_add;
 
 				if (iter.min > 1 || iter.max > 1)
 				{
 					AstNode* seq1 = null;
 					AstNode* seq2 = null;
-					int pos_add_save = pos_add;
+					StateId pos_add_save = pos_add;
 
 					// Build the mandatory sequence (copies of the iteration argument)
 					for (int j = 0; j < iter.min; j++)
@@ -2288,16 +2435,16 @@ fn void? tre_expand_ast(Allocator mem, Stack* stack, AstNode* ast, int* position
 						AstNode* copy = null;
 						int flags = (j + 1 < iter.min) ? COPY_REMOVE_TAGS : COPY_MAXIMIZE_FIRST_TAG;
 						pos_add_save = pos_add;
-						tre_copy_ast(mem, stack, iter.arg, flags, &pos_add, tag_directions, &copy, &max_pos)!;
-						seq1 = seq1 ? ast_new_catenation(mem, seq1, copy)! : copy;
+						tre_copy_ast(allocator, stack, iter.arg, flags, &pos_add, tag_directions, &copy, &max_pos)!;
+						seq1 = seq1 ? ast_new_catenation(allocator, seq1, copy)! : copy;
 					}
 
 					// Build the optional / trailing sequence
 					if (iter.max == -1)
 					{
 						pos_add_save = pos_add;
-						tre_copy_ast(mem, stack, iter.arg, 0, &pos_add, null, &seq2, &max_pos)!;
-						seq2 = ast_new_iter(mem, seq2, 0, -1, false)!;
+						tre_copy_ast(allocator, stack, iter.arg, 0, &pos_add, null, &seq2, &max_pos)!;
+						seq2 = ast_new_iter(allocator, seq2, 0, -1, false)!;
 					}
 					else
 					{
@@ -2305,10 +2452,10 @@ fn void? tre_expand_ast(Allocator mem, Stack* stack, AstNode* ast, int* position
 						{
 							AstNode* copy = null;
 							pos_add_save = pos_add;
-							tre_copy_ast(mem, stack, iter.arg, 0, &pos_add, null, &copy, &max_pos)!;
-							seq2 = seq2 ? ast_new_catenation(mem, copy, seq2)! : copy;
-							AstNode* tmp = ast_new_literal(mem, EMPTY, -1, -1)!;
-							seq2 = ast_new_union(mem, tmp, seq2)!;
+							tre_copy_ast(allocator, stack, iter.arg, 0, &pos_add, null, &copy, &max_pos)!;
+							seq2 = seq2 ? ast_new_catenation(allocator, copy, seq2)! : copy;
+							AstNode* tmp = ast_new_literal(allocator, EMPTY, -1, -1)!;
+							seq2 = ast_new_union(allocator, tmp, seq2)!;
 						}
 					}
 
@@ -2319,7 +2466,7 @@ fn void? tre_expand_ast(Allocator mem, Stack* stack, AstNode* ast, int* position
 					}
 					else if (seq2 != null)
 					{
-						seq1 = ast_new_catenation(mem, seq1, seq2)!;
+						seq1 = ast_new_catenation(allocator, seq1, seq2)!;
 					}
 					if (seq1 == null) return OUT_OF_MEMORY~;
 
@@ -2338,6 +2485,9 @@ fn void? tre_expand_ast(Allocator mem, Stack* stack, AstNode* ast, int* position
 }
 
 
+<*
+ @require !regex.contains_char('\0') : "Regex pattern must not contain embedded null bytes; the pattern compiler is null-terminated internally"
+*>
 fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator allocator = mem) @private
 {
 	@pool()
@@ -2361,9 +2511,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		// Tagging Pass 1: Count
 		tre_add_tags(tmem, stack, ctx.node, null)!;
 
-		// Allocate TNFA and submatch data
-		Tnfa* tnfa = alloc::calloc(allocator, Tnfa::size);
-		if (!tnfa) return OUT_OF_MEMORY~;
+		Tnfa* tnfa = alloc::new_try(allocator, Tnfa)!;
 		tnfa.allocator = allocator;
 		tnfa.num_submatches = ctx.submatch_id; // subid is total groups including group 0
 
@@ -2377,17 +2525,14 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 			}
 		}
 
-		tnfa.submatch_data = alloc::calloc(allocator, tnfa.num_submatches * SubmatchData::size);
-		if (!tnfa.submatch_data) return OUT_OF_MEMORY~;
+		tnfa.submatch_data = alloc::new_array_try(allocator, SubmatchData, tnfa.num_submatches)!;
 
 		tnfa.num_tags = ctx.node.num_tags;
-		tnfa.minimal_tags = alloc::calloc(allocator, (sz)(tnfa.num_tags * 2 + 1) * int::size);
-		if (!tnfa.minimal_tags) return OUT_OF_MEMORY~;
+		tnfa.minimal_tags = alloc::new_array_try(allocator, int, (sz)(tnfa.num_tags * 2 + 1))!;
 
 		if (tnfa.num_tags > 0)
 		{
-			tnfa.tag_directions = alloc::calloc(allocator, tnfa.num_tags * int::size);
-			if (!tnfa.tag_directions) return OUT_OF_MEMORY~;
+			tnfa.tag_directions = alloc::new_array_try(allocator, int, tnfa.num_tags)!;
 			tnfa.tag_directions[0 : tnfa.num_tags] = TRE_TAG_MAXIMIZE;
 		}
 		tnfa.end_tag = tnfa.num_tags;
@@ -2399,9 +2544,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 		tre_expand_ast(tmem, stack, ctx.node, &ctx.position, tnfa.tag_directions)!;
 
 		// Add dummy NUL literal for the final state (as in Musl regcomp.c:2804)
-		Literal* empty_lit = alloc::malloc(tmem, Literal::size);
-		if (!empty_lit) return OUT_OF_MEMORY~;
-		*empty_lit = { .code_min = 0, .code_max = 0, .position = ctx.position++ };
+		Literal* empty_lit = alloc::new_try(tmem, Literal, { .code_min = 0, .code_max = 0, .position = ctx.position++ })!;
 
 		AstNode* final_node = ast_new_node(tmem, LITERAL, empty_lit)!;
 		ctx.node = ast_new_catenation(tmem, ctx.node, final_node)!;
@@ -2411,8 +2554,8 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 
 		// Build transition table
 		int num_states = ctx.position;
-		int* counts = alloc::calloc(tmem, num_states * int::size);
-		int* offs = alloc::calloc(tmem, num_states * int::size);
+		int[] counts = mem::temp_array(int, num_states);
+		int[] offs   = mem::temp_array(int, num_states);
 
 		tre_ast_to_tnfa(tmem, ctx.node, null, counts, offs)!;
 
@@ -2424,11 +2567,10 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 			counts[i] = 0;  // reset for second pass
 		}
 
-		tnfa.transitions = alloc::calloc(allocator, total_trans * TnfaTransition::size);
-		if (!tnfa.transitions) return OUT_OF_MEMORY~;
+		tnfa.transitions = alloc::new_array_try(allocator, TnfaTransition, total_trans)!;
 		tre_ast_to_tnfa(allocator, ctx.node, tnfa.transitions, counts, offs)!;
 
-		tnfa.num_transitions = (uint)total_trans;
+		tnfa.num_transitions = total_trans;
 		tnfa.num_states = num_states;
 		tnfa.cflags = cflags;
 		tnfa.have_backrefs = ctx.max_backref >= 0;
@@ -2438,8 +2580,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 			int i = 0;
 			for (PosAndTags* p = ctx.node.firstpos; p.position >= 0; p++) i++;
 
-			tnfa.initial = alloc::calloc(allocator, (sz)(i + 1) * TnfaTransition::size);
-			if (!tnfa.initial) return OUT_OF_MEMORY~;
+			tnfa.initial = alloc::new_array_try(allocator, TnfaTransition, (sz)(i + 1))!;
 			i = 0;
 			for (PosAndTags* p = ctx.node.firstpos; p.position >= 0; p++)
 			{
@@ -2450,8 +2591,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 				{
 					int j = 0;
 					for (j = 0; p.tags[j] >= 0; j++);
-					tnfa.initial[i].tags = alloc::malloc(allocator, (sz)(j + 1) * int::size);
-					if (!tnfa.initial[i].tags) return OUT_OF_MEMORY~;
+					tnfa.initial[i].tags = alloc::new_array_try(allocator, TagId, (sz)(j + 1))!;
 					mem::copy(tnfa.initial[i].tags, p.tags, (sz)(j + 1) * int::size);
 				}
 				i++;
@@ -2473,7 +2613,7 @@ fn void? re_compile(Regex* preg, String regex, CompileFlags cflags, Allocator al
 }
 
 
-fn bool check_assertions(int assertions, CompileFlags cflags, int prev_c, int next_c, sz pos, bool notbol, bool noteol) @local
+fn bool check_assertions(int assertions, CompileFlags cflags, int prev_c, int next_c, RegOff pos, bool notbol, bool noteol) @local
 {
 	switch
 	{
@@ -2604,12 +2744,11 @@ fn void? bt_stack_push(TreBacktrack** pstack, Tnfa* tnfa, RegOff pos, char* str_
 	TreBacktrack* stack = *pstack;
 	if (!stack.next)
 	{
-		TreBacktrack* s_node = alloc::calloc(tmem, TreBacktrack::size);
-		if (!s_node) return OUT_OF_MEMORY~;
+		TreBacktrack* s_node = alloc::new_try(tmem, TreBacktrack)!;
 		s_node.prev = stack;
 		s_node.next = null;
-		s_node.item.tags = alloc::malloc(tmem, tnfa.num_tags * TagId::size);
-		if (!s_node.item.tags) return OUT_OF_MEMORY~;
+		TagId[] tag_buf = alloc::new_array_try(tmem, TagId, tnfa.num_tags)!;
+		s_node.item.tags = tag_buf;
 		stack.next = s_node;
 		*pstack = s_node;
 	}
@@ -2670,32 +2809,25 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 	TnfaTransition* state = null;
 	int* states_seen = null;
 
-	TreBacktrack* stack = alloc::calloc(tmem, TreBacktrack::size);
-	if (!stack) return OUT_OF_MEMORY~;
+	TreBacktrack* stack = alloc::new_try(tmem, TreBacktrack)!;
 	stack.prev = null;
 	stack.next = null;
 
 	if (tnfa.num_tags > 0)
 	{
-		tags = mem::malloc(tnfa.num_tags * TagId::size);
-		if (!tags) return OUT_OF_MEMORY~;
+		tags = alloc::new_array_try(tmem, TagId, tnfa.num_tags)!;
 	}
-	defer if (tags) mem::free(tags);
 
 	RegMatch* pmatch = null;
 	if (tnfa.num_submatches > 0)
 	{
-		pmatch = mem::malloc(tnfa.num_submatches * RegMatch::size);
-		if (!pmatch) return OUT_OF_MEMORY~;
+		pmatch = alloc::new_array_try(tmem, RegMatch, tnfa.num_submatches)!;
 	}
-	defer if (pmatch) mem::free(pmatch);
 
 	if (tnfa.num_states > 0)
 	{
-		states_seen = mem::malloc(tnfa.num_states * int::size);
-		if (!states_seen) return OUT_OF_MEMORY~;
+		states_seen = alloc::new_array_try(tmem, int, tnfa.num_states)!;
 	}
-	defer if (states_seen) mem::free(states_seen);
 
 	const int M_PROCESS = 0;
 	const int M_BACKTRACK = 1;
@@ -2844,7 +2976,7 @@ fn void? tre_tnfa_run_backtrack(Tnfa* tnfa, ZString string, TagId* match_tags, E
 					if (prev_c >= trans_i.code_min && prev_c <= trans_i.code_max)
 					{
 						if (trans_i.assertions != 0 &&
-							(check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, (sz)pos, (bool)(eflags & NOTBOL), (bool)(eflags & NOTEOL)) || check_char_classes(trans_i, tnfa, prev_c)))
+							(check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, (bool)(eflags & NOTBOL), (bool)(eflags & NOTEOL)) || check_char_classes(trans_i, tnfa, prev_c)))
 						{
 							continue;
 						}
@@ -2935,7 +3067,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 	next_c = decode_utf8(str_ptr, &next_len);
 	str_ptr += next_len;
 
-	sz pos = 0;
+	RegOff pos = 0;
 	bool notbol = (bool)(eflags & NOTBOL);
 	bool noteol = (bool)(eflags & NOTEOL);
 	int num_tags = (match_tags != null) ? tnfa.num_tags : 0;
@@ -2945,33 +3077,29 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 	TagId* tmp_tags = null;
 	if (num_tags > 0)
 	{
-		tmp_tags = alloc::calloc(tmem, (sz)num_tags * TagId::size);
-		if (!tmp_tags) return OUT_OF_MEMORY~;
+		tmp_tags = alloc::new_array_try(tmem, TagId, num_tags)!;
 	}
 
-	TreTnfaReach* reach_next = alloc::calloc(tmem, (sz)(num_states + 1) * TreTnfaReach::size);
-	TreTnfaReach* reach = alloc::calloc(tmem, (sz)(num_states + 1) * TreTnfaReach::size);
-	TreReachPos* reach_pos = alloc::malloc(tmem, (sz)num_states * TreReachPos::size);
-
-	if (!reach_next || !reach || !reach_pos) return OUT_OF_MEMORY~;
+	TreTnfaReach* reach_next = alloc::new_array_try(tmem, TreTnfaReach, (sz)(num_states + 1))!;
+	TreTnfaReach* reach = alloc::new_array_try(tmem, TreTnfaReach, (sz)(num_states + 1))!;
+	TreReachPos* reach_pos = alloc::alloc_array_try(tmem, TreReachPos, num_states)!;
 
 	// Allocate a single flat block for all tags to maximize spatial locality
 	if (num_tags > 0)
 	{
-		TagId* tags_block = alloc::calloc(tmem, (sz)(num_states * 2 * num_tags) * TagId::size);
-		if (!tags_block) return OUT_OF_MEMORY~;
+		TagId* tags_block = alloc::new_array_try(tmem, TagId, (sz)(num_states * 2 * num_tags))!;
 		for (int i = 0; i < num_states; i++)
 		{
 			reach[i].tags = &tags_block[i * num_tags];
 			reach_next[i].tags = &tags_block[(num_states + i) * num_tags];
-			reach_pos[i].pos = (sz)-1;
+			reach_pos[i].pos = -1;
 		}
 	}
 	else
 	{
 		for (int i = 0; i < num_states; i++)
 		{
-			reach_pos[i].pos = (sz)-1;
+			reach_pos[i].pos = -1;
 		}
 	}
 
@@ -2986,7 +3114,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 			TnfaTransition* trans_i = tnfa.initial;
 			while (trans_i && trans_i.state)
 			{
-				if (reach_pos[trans_i.state_id].pos < pos || reach_pos[trans_i.state_id].pos == (sz)-1)
+				if (reach_pos[trans_i.state_id].pos < pos)
 				{
 					if (trans_i.assertions != 0 && check_assertions(trans_i.assertions, tnfa.cflags, prev_c, next_c, pos, notbol, noteol))
 					{
@@ -3008,8 +3136,8 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 
 					if (reach_next_i.state == tnfa.final && (match_eo == -1 || (num_tags > 0 && reach_next_i.tags[0] <= match_tags[0])))
 					{
-						match_eo = (RegOff)pos;
-						if (num_tags > 0) mem::copy(match_tags, reach_next_i.tags, (usz)num_tags * int::size);
+						match_eo = pos;
+						if (num_tags > 0) mem::copy(match_tags, reach_next_i.tags, num_tags * int::size);
 					}
 
 					reach_pos[trans_i.state_id].pos = pos;
@@ -3059,7 +3187,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 						continue;
 					}
 
-					if (num_tags > 0) mem::copy(tmp_tags, reach_i.tags, (usz)num_tags * int::size);
+					if (num_tags > 0) mem::copy(tmp_tags, reach_i.tags, num_tags * int::size);
 					TagId* tags = trans_i.tags;
 					if (tags)
 					{
@@ -3069,7 +3197,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 						}
 					}
 
-					if (reach_pos[trans_i.state_id].pos < pos || reach_pos[trans_i.state_id].pos == (sz)-1)
+					if (reach_pos[trans_i.state_id].pos < pos)
 					{
 						reach_next_i.state = trans_i.state;
 						TagId* swap_tags = reach_next_i.tags;
@@ -3081,8 +3209,8 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 
 						if (reach_next_i.state == tnfa.final && (match_eo == -1 || (num_tags > 0 && reach_next_i.tags[0] <= match_tags[0])))
 						{
-							match_eo = (RegOff)pos;
-							if (num_tags > 0) mem::copy(match_tags, reach_next_i.tags, (usz)num_tags * int::size);
+							match_eo = pos;
+							if (num_tags > 0) mem::copy(match_tags, reach_next_i.tags, num_tags * int::size);
 						}
 						reach_next_i++;
 					}
@@ -3094,8 +3222,8 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 							*reach_pos[trans_i.state_id].tags = tmp_tags;
 							if (trans_i.state == tnfa.final)
 							{
-								match_eo = (RegOff)pos;
-								if (num_tags > 0) mem::copy(match_tags, *reach_pos[trans_i.state_id].tags, (usz)num_tags * int::size);
+								match_eo = pos;
+								if (num_tags > 0) mem::copy(match_tags, *reach_pos[trans_i.state_id].tags, num_tags * int::size);
 							}
 							tmp_tags = tmp_iptr;
 						}
@@ -3114,6 +3242,7 @@ fn void? tre_tnfa_run_parallel(Tnfa* tnfa, ZString string, TagId* match_tags, Ex
 <*
  @param [&in] preg
  @require nmatch >= 0
+ @require !string.contains_char('\0') : "Search string must not contain embedded null bytes; the regex engine is null-terminated internally"
 *>
 fn void? re_exec(Regex* preg, String string, sz nmatch, RegMatch* pmatch, ExecFlags eflags) @private
 {
@@ -3158,7 +3287,7 @@ fn void re_free(Regex* preg) @private
 
 	if (tnfa.transitions)
 	{
-		for (uint i = 0; i < tnfa.num_transitions; i++)
+		for (int i = 0; i < tnfa.num_transitions; i++)
 		{
 			if (tnfa.transitions[i].state)
 			{

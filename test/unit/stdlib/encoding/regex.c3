@@ -1,5 +1,5 @@
 module regex_test;
-import std, std::encoding::regex;
+import std, std::encoding::regex, libc;
 
 // API
 
@@ -51,6 +51,205 @@ fn void test_idiomatic_api() @test
 	test::eq(em[0], "user@example.com");
 	test::eq(em[1], "user");
 	test::eq(em[2], "example.com");
+}
+
+fn void test_regex_utility_apis() @test
+{
+	// --- test find_all / tfind_all and foreach iterator ---
+	Regex re = regex::compile(mem, "a+b", EXTENDED)!!;
+	defer re.free();
+
+	Match[] matches = re.tfind_all("abxxaabxxaaab")!!;
+	test::eq(matches.len, 3);
+	test::eq(matches[0].str, "ab");
+	test::eq(matches[1].str, "aab");
+	test::eq(matches[2].str, "aaab");
+
+	// Test foreach iteration
+	int count = 0;
+	foreach (m : matches)
+	{
+		if (count == 0) test::eq(m.str, "ab");
+		if (count == 1) test::eq(m.str, "aab");
+		if (count == 2) test::eq(m.str, "aaab");
+		count++;
+	}
+	test::eq(count, 3);
+
+	// --- test replace / treplace ---
+	String replaced = re.treplace("abxxaabxxaaab", "REPLACED")!!;
+	test::eq(replaced, "REPLACEDxxREPLACEDxxREPLACED");
+
+	String replaced_first = re.treplace("abxxaabxxaaab", "REPLACED", false)!!;
+	test::eq(replaced_first, "REPLACEDxxaabxxaaab");
+
+	// --- test split / tsplit ---
+	String[] parts = re.tsplit("abxxaabxxaaab")!!;
+	test::eq(parts.len, 4);
+	test::eq(parts[0], "");
+	test::eq(parts[1], "xx");
+	test::eq(parts[2], "xx");
+	test::eq(parts[3], "");
+
+	String[] parts_max = re.tsplit("abxxaabxxaaab", 2)!!;
+	test::eq(parts_max.len, 2);
+	test::eq(parts_max[0], "");
+	test::eq(parts_max[1], "xxaabxxaaab");
+
+	// --- some edge cases: Zero-width / empty matches ---
+	Regex re_empty = regex::compile(mem, "a*", EXTENDED)!!;
+	defer re_empty.free();
+
+	// find_all should find empty matches without infinite loops hopefully unless i did something very wrong
+	Match[] empty_matches = re_empty.tfind_all("b")!!;
+	test::eq(empty_matches.len, 2);
+	test::eq(empty_matches[0].str, "");
+	test::eq(empty_matches[0].start(), 0);
+	test::eq(empty_matches[1].str, "");
+	test::eq(empty_matches[1].start(), 1);
+
+	// Test empty match at the end of a non-null-terminated substring slice followed by a multibyte UTF-8 char.
+	String full_str = "aa✨";
+	String substring = full_str[0 .. 1]; // "aa", not null-terminated (followed by "✨")
+	Match[] sub_matches = re_empty.tfind_all(substring)!!;
+	test::eq(sub_matches.len, 2);
+	test::eq(sub_matches[0].str, "aa");
+	test::eq(sub_matches[0].start(), 0);
+	test::eq(sub_matches[1].str, "");
+	test::eq(sub_matches[1].start(), 2);
+
+	// --- another edge case: Multibyte UTF-8 zero-width stepping ---
+	Regex re_boundary = regex::compile(mem, "\\b", EXTENDED)!!;
+	defer re_boundary.free();
+
+	// "日本語" has 3 characters. Word boundaries should not slice into UTF-8 codepoints.
+	Match[] utf8_matches = re_boundary.tfind_all("日本語")!!;
+	test::eq(utf8_matches.len, 0); // No ASCII word boundaries in Japanese text
+
+	// --- more edge cases: split skip_empty and boundaries ---
+	Regex re_comma = regex::compile(mem, ",", EXTENDED)!!;
+	defer re_comma.free();
+
+	String[] split_empty = re_comma.tsplit(",a,,b,", 0, false)!!;
+	test::eq(split_empty.len, 5);
+	test::eq(split_empty[0], "");
+	test::eq(split_empty[1], "a");
+	test::eq(split_empty[2], "");
+	test::eq(split_empty[3], "b");
+	test::eq(split_empty[4], "");
+
+	String[] split_skip = re_comma.tsplit(",a,,b,", 0, true)!!;
+	test::eq(split_skip.len, 2);
+	test::eq(split_skip[0], "a");
+	test::eq(split_skip[1], "b");
+
+	// --- Edge cases: Zero-width matches on specific multibyte characters "ë¨" and "ðd" ---
+	// "ë" is 2 bytes (\xc3\xab), "¨" is 2 bytes (\xc2\xa8), "ð" is 2 bytes (\xc3\xb0).
+	// Replacing "a*" (which matches empty string everywhere) on "ë¨" or "ðd" must not slice codepoints.
+	String replaced_multibyte = re_empty.treplace("ë¨", "X")!!;
+	test::eq(replaced_multibyte, "XëX¨X");
+
+	String replaced_multibyte_2 = re_empty.treplace("ðd", "X")!!;
+	test::eq(replaced_multibyte_2, "XðXdX");
+
+	// --- Edge cases: Empty string split ---
+	String[] split_vacuous = re_comma.tsplit("")!!;
+	test::eq(split_vacuous.len, 1);
+	test::eq(split_vacuous[0], "");
+
+	// --- Edge cases: Invalid UTF-8 bytes ---
+	// \xff is invalid UTF-8. The engine should fallback to treating it as 1 byte without crashing or hanging.
+	Match[] invalid_utf8_matches = re_empty.tfind_all("\xff\xff")!!;
+	test::eq(invalid_utf8_matches.len, 3);
+	test::eq(invalid_utf8_matches[0].start(), 0);
+	test::eq(invalid_utf8_matches[1].start(), 1);
+	test::eq(invalid_utf8_matches[2].start(), 2);
+
+	// --- matches API tests ---
+	Regex re_match = regex::compile(mem, "a+b", EXTENDED)!!;
+	defer re_match.free();
+	test::@check(re_match.matches("aaab"));
+	test::@check(!re_match.matches("aaac"));
+}
+
+
+fn void test_chaotic_byte_strings() @test
+{
+	// Input: "|\x01ë\xffSEP\xfe\xc3\xabSEP\xf4\x8f\xbf\xbfSEP\xc2\xa8"
+	// Contains: pipe, control char (SOH), valid 2-byte UTF-8 (ë = \xc3\xab), invalid byte (\xff),
+	//           SEP separator, another invalid byte (\xfe), valid UTF-8 ë, SEP,
+	//           max valid codepoint (U+10FFFF = \xf4\x8f\xbf\xbf), SEP, valid 2-byte (¨ = \xc2\xa8).
+	// NOTE: no embedded nulls — the engine uses ZString internally which terminates at \x00.
+	String garbage = "|\x01\xc3\xabSEP\xff\xfe\xc3\xabSEP\xf4\x8f\xbf\xbfSEP\xc2\xa8";
+
+	// Replacement is also garbage: high bytes + valid multibyte char.
+	String chaos_replacement = "\xff\xfe\xc3\xb0";
+
+	Regex sep = regex::compile(mem, "SEP", EXTENDED)!!;
+	defer sep.free();
+
+	// find_all: must return exactly 3 non-overlapping matches on "SEP", no crash, no hang
+	Match[] all_seps = sep.tfind_all(garbage)!!;
+	test::eq(all_seps.len, 3);
+	test::eq(all_seps[0].str, "SEP");
+	test::eq(all_seps[1].str, "SEP");
+	test::eq(all_seps[2].str, "SEP");
+
+	// Verify absolute byte offsets are correct.
+	// "|" (1) + "\x01" (1) + "\xc3\xab" (2) = 4 bytes before first SEP at offset 4
+	test::eq(all_seps[0].start(), 4);
+	test::eq(all_seps[0].end(), 7);
+
+	// replace with chaos replacement
+	String replaced = sep.treplace(garbage, chaos_replacement)!!;
+
+	// Verify the replaced string does not contain "SEP" anymore
+	test::@check(!replaced.contains("SEP"));
+
+	// 3 replacements: each "SEP" (3 bytes) becomes chaos_replacement (4 bytes)
+	sz expected_len = garbage.len - (3 * 3) + (3 * chaos_replacement.len);
+	test::eq(replaced.len, expected_len);
+
+	// split on "SEP": must yield 4 parts, no crashes
+	String[] parts = sep.tsplit(garbage)!!;
+	test::eq(parts.len, 4);
+	test::eq(parts[0], "|\x01\xc3\xab");
+	test::eq(parts[1], "\xff\xfe\xc3\xab");
+	test::eq(parts[2], "\xf4\x8f\xbf\xbf");
+	test::eq(parts[3], "\xc2\xa8");
+}
+
+// test contract
+bool contract_panicked @private @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN);
+JmpBuf contract_jmpbuf @private @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN);
+
+fn void contract_panic_interceptor(String msg, String file, String func, int line) @private @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN)
+{
+	contract_panicked = true;
+	libc::longjmp(&contract_jmpbuf, 1);
+}
+
+fn void test_null_byte_contract() @test @if(env::COMPILER_SAFE_MODE && !env::NO_LIBC && !env::EMSCRIPTEN)
+{
+	Regex r = regex::compile(mem, "fo+", EXTENDED)!!;
+	defer r.free();
+
+	Match[] m = r.texec("foobar")!!;
+	test::eq(m[0].str, "foo");
+
+	PanicFn saved = builtin::panic;
+
+	contract_panicked = false;
+	builtin::panic = &contract_panic_interceptor;
+	if (libc::setjmp(&contract_jmpbuf) == 0) r.texec("foo\x00bar")!!;
+	builtin::panic = saved;
+	test::@check(contract_panicked, "null byte in search string should have panicked");
+
+	contract_panicked = false;
+	builtin::panic = &contract_panic_interceptor;
+	if (libc::setjmp(&contract_jmpbuf) == 0) regex::compile(mem, "fo\x00o", EXTENDED)!!;
+	builtin::panic = saved;
+	test::@check(contract_panicked, "null byte in pattern should have panicked");
 }
 
 // ============================================================
@@ -196,12 +395,12 @@ fn void test_submatch_parent_bounds() @test
 	defer re.free();
 
 	Match[] m = re.texec("ac", 3)!!;
-	test::eq(m[0].match.rm_so, 0);
-	test::eq(m[0].match.rm_eo, 2); // whole match
-	test::eq(m[1].match.rm_so, 0);
-	test::eq(m[1].match.rm_eo, 1); // group 1 = "a"
-	test::eq(m[2].match.rm_so, -1);
-	test::eq(m[2].match.rm_eo, -1); // group 2 unused
+	test::eq(m[0].start(), 0);
+	test::eq(m[0].end(), 2); // whole match
+	test::eq(m[1].start(), 0);
+	test::eq(m[1].end(), 1); // group 1 = "a"
+	test::eq(m[2].start(), -1);
+	test::eq(m[2].end(), -1); // group 2 unused
 }
 
 //  GAP: Alternation in BRE with \|
@@ -279,8 +478,8 @@ fn void test_utf8_byte_slicing_parallel() @test
 		
 		Match[] m = re.texec("éfé", 1)!!;
 		test::eq(m[0].str_view(), "f");
-		test::eq(m[0].match.rm_so, 2); // Starts after 'é' (2 bytes)
-		test::eq(m[0].match.rm_eo, 3); // Ends before the trailing 'é'
+		test::eq(m[0].start(), 2); // Starts after 'é' (2 bytes)
+		test::eq(m[0].end(), 3); // Ends before the trailing 'é'
 	}
 
 	// Test matching a single byte "x" preceded by two 4-byte characters.
@@ -290,8 +489,8 @@ fn void test_utf8_byte_slicing_parallel() @test
 		
 		Match[] m = re.texec("𐍈𐍈x𐍈", 1)!!;
 		test::eq(m[0].str_view(), "x");
-		test::eq(m[0].match.rm_so, 8); // 4 + 4 = 8 bytes before 'x'
-		test::eq(m[0].match.rm_eo, 9);
+		test::eq(m[0].start(), 8); // 4 + 4 = 8 bytes before 'x'
+		test::eq(m[0].end(), 9);
 	}
 }
 
@@ -305,8 +504,8 @@ fn void test_utf8_backref_matching_backtrack() @test
 		Match[] m = re.texec("éé", 2)!!;
 		test::eq(m[0].str_view(), "éé");
 		test::eq(m[1].str_view(), "é");
-		test::eq(m[0].match.rm_so, 0);
-		test::eq(m[0].match.rm_eo, 4); // "éé" spans 4 bytes
+		test::eq(m[0].start(), 0);
+		test::eq(m[0].end(), 4); // "éé" spans 4 bytes
 	}
 
 	// Test matching a 4-byte backreference ("𐍈𐍈")
@@ -317,8 +516,8 @@ fn void test_utf8_backref_matching_backtrack() @test
 		Match[] m = re.texec("𐍈𐍈", 2)!!;
 		test::eq(m[0].str_view(), "𐍈𐍈");
 		test::eq(m[1].str_view(), "𐍈");
-		test::eq(m[0].match.rm_so, 0);
-		test::eq(m[0].match.rm_eo, 8); // "𐍈𐍈" spans 8 bytes
+		test::eq(m[0].start(), 0);
+		test::eq(m[0].end(), 8); // "𐍈𐍈" spans 8 bytes
 	}
 }
 
@@ -357,8 +556,8 @@ fn void test_multiple_sequential_and_nested_groups() @test
 		test::eq(m[0].str_view(), "éfé");
 		test::eq(m[1].str_view(), "éfé");
 		test::eq(m[2].str_view(), "f");
-		test::eq(m[2].match.rm_so, 5); // 3 (abc) + 2 (é) = 5
-		test::eq(m[2].match.rm_eo, 6); // 'f' is 1 byte
+		test::eq(m[2].start(), 5); // 3 (abc) + 2 (é) = 5
+		test::eq(m[2].end(), 6); // 'f' is 1 byte
 	}
 }
 
@@ -413,8 +612,8 @@ fn void test_posix_compliance_go_testdata_333_cases() @test
 		Match[] pm = re.texec(decode_input_escapes(tc.input).tcopy(), 32)!!;
 		for (sz s = 0; s < tc.expected_spans.len; s++)
 		{
-			int got_so = (s < pm.len) ? pm[s].match.rm_so : -1;
-			int got_eo = (s < pm.len) ? pm[s].match.rm_eo : -1;
+			int got_so = (s < pm.len) ? pm[s].start() : -1;
+			int got_eo = (s < pm.len) ? pm[s].end() : -1;
 			test::eq(tc.expected_spans[s].start, got_so);
 			test::eq(tc.expected_spans[s].end, got_eo);
 		}

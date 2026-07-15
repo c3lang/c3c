@@ -144,10 +144,10 @@ fn String repeat_str(String s, sz count)
 	char[] arr = alloc::alloc_array(mem, char, s.len * count + 1);
 	for (sz i = 0; i < count; i++)
 	{
-		mem::copy(arr.ptr + i * s.len, s.ptr, s.len);
+		mem::copy(&arr[i * s.len], s, s.len);
 	}
 	arr[s.len * count] = 0;
-	return (String)arr[..s.len * count];
+	return (String)arr[0 : s.len * count];
 }
 
 // =========================================================================
