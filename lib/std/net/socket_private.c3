@@ -46,6 +46,18 @@ fn bool last_error_is_delayed_connect()
 	$endswitch
 }
 
+fn fault check_for_socket_connect_error(NativeSocket sockfd) @inline
+{
+	CInt so_error;
+	Socklen_t optlen = CInt::size;
+	if (os::getsockopt(sockfd, os::SOL_SOCKET, os::SO_ERROR, &so_error, &optlen) != 0)
+	{
+		return os::socket_error();
+	}
+	if (so_error) return os::connect_error(so_error);
+	return {};
+}
+
 fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options, Duration timeout) @private
 {
 	$if env::WIN32:
@@ -65,13 +77,7 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			*retain_socket = true;
 			return new_socket(sockfd, ai);
 		}
-		if (!last_error_is_delayed_connect())
-		{
-			// A synchronous failure (such as a refused loopback connection): keep
-			// the error now, before the socket is closed and errno is overwritten.
-			last_error = os::socket_error();
-		}
-		else
+		if (last_error_is_delayed_connect())
 		{
 			Duration timeout_left = timeout;
 			if (c)
@@ -92,20 +98,17 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			{
 				return CONNECTION_TIMED_OUT~;
 			}
-			// Get the actual connect result: 0 = connected, otherwise the error.
-			CInt so_error;
-			Socklen_t optlen = CInt::size;
-			if (os::getsockopt(sockfd, os::SOL_SOCKET, os::SO_ERROR, &so_error, &optlen) != 0)
-			{
-				return os::socket_error()~;
-			}
-			if (so_error == 0)
+			last_error = check_for_socket_connect_error(sockfd);
+			if (!last_error)
 			{
 				sockfd.set_non_blocking(false)!;
 				*retain_socket = true;
 				return new_socket(sockfd, ai);
 			}
-			return os::connect_error(so_error)~;
+		}
+		else
+		{
+			last_error = os::socket_error();
 		}
 	};
 	return last_error~;
