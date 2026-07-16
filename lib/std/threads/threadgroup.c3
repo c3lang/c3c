@@ -458,6 +458,7 @@ fn void _thread_group_destroy_input_channel(ThreadGroup* self) @inline @private
 macro _thread_group_execute_work(ThreadGroupOutChannel* buffer, Task task, ThreadTaskFn task_fn, void* context) @private
 {
 	$if NO_RESULT:
+		task_fn(task, context);
 		(void)buffer.push({ .task = task });
 	$else
 		(void)buffer.push({ .result = task_fn(task, context), .task = task});

@@ -15,6 +15,7 @@
 - `BitSet.len` would yield the size of the underlying type, not the length.
 - RFC3339 formatting would yield incorrect value for microseconds.
 - `--obj` will always retain the object files. #3380
+- ThreadGroup with function returning `void` was broken.
 
 ## 0.8.2 Change list
 
