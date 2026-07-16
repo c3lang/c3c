@@ -63,10 +63,11 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 	$if env::WIN32:
 		os::start_wsa()!;
 	$endif
-	Clock c;
+	Clock deadline = clock::now() + timeout;
 	fault last_error = GENERAL_ERROR;
 	@loop_over_addresses(addrinfo; NativeSocket sockfd, AddrInfo* ai, bool* retain_socket)
 	{
+		if (clock::now() > deadline) return CONNECTION_TIMED_OUT~;
 		apply_sockoptions(sockfd, options)!;
 		sockfd.set_non_blocking(true)!;
 		int errcode = os::connect(sockfd, ai.ai_addr, ai.ai_addrlen);
@@ -79,22 +80,10 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 		}
 		if (last_error_is_delayed_connect())
 		{
-			Duration timeout_left = timeout;
-			if (c)
-			{
-				Duration to_remove = c.to_now().to_duration();
-				if (to_remove >= timeout_left)
-				{
-					return CONNECTION_TIMED_OUT~;
-				}
-				timeout_left -= to_remove;
-			}
-			else
-			{
-				c = clock::now();
-			}
+			NanoDuration timeout_left = deadline - clock::now();
+			if (timeout_left <= (NanoDuration)0) return CONNECTION_TIMED_OUT~;
 			Poll poll_request = { sockfd, ANY_WRITE, (PollEvent)0 };
-			if (!poll((&poll_request)[:1], timeout_left)!)
+			if (!poll((&poll_request)[:1], timeout_left.to_duration())!)
 			{
 				return CONNECTION_TIMED_OUT~;
 			}
