@@ -1223,7 +1223,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	{
 		if (!method_parent)
 		{
-			RETURN_SEMA_ERROR(params[0], "Self parameters are only allowed on methods.");
+			RETURN_SEMA_ERROR(params[0], "Self parameters `&` are only allowed on methods. Did you mean perhaps want '*%s'?", params[0]->name);
 		}
 		if (params[0]->var.type_info)
 		{
