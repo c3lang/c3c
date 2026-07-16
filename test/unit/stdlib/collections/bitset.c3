@@ -180,3 +180,27 @@ fn void growable_len_empty()
 	assert(bs.len() == 0, "got %d", bs.len());
 	assert(bs.max_bit_set() == 0, "got %d", bs.max_bit_set());
 }
+
+alias BitSetNonAligned = BitSet {10};
+
+fn void bitset_len_reports_size()
+{
+	BitSetNonAligned bs;
+	assert(bs.len() == 10, "len() should equal SIZE (10), got %d", bs.len());
+}
+
+fn void bitset_foreach_stays_in_bounds()
+{
+	BitSetNonAligned bs;
+	bs.set(2);
+	bs.set(7);
+	int visited;
+	int set_count;
+	foreach (bit : bs)
+	{
+		visited++;
+		if (bit) set_count++;
+	}
+	assert(visited == 10, "foreach should visit SIZE (10) bits, got %d", visited);
+	assert(set_count == 2, "got %d", set_count);
+}

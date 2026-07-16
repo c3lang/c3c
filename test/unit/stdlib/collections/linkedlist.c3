@@ -213,6 +213,22 @@ fn void test_push_all_ordering() => @pool()
 
 	IntList l2 = linkedlist::@tnew{int}({ 23, 45, 66 });
 	l2.push_front_all({ 3, 6 });
+	test::eq(l2.array_view()[0], 6);
+	test::eq(l2.array_view()[1], 3);
+	test::eq(l2.array_view()[2], 23);
+	test::eq(l2.array_view()[3], 45);
+	test::eq(l2.array_view()[4], 66);
+}
+
+fn void test_prepend_ordering() => @pool()
+{
+	IntList l = linkedlist::@tnew{int}({ 23, 45, 66 });
+	test::eq(l.array_view()[0], 23);
+	test::eq(l.array_view()[1], 45);
+	test::eq(l.array_view()[2], 66);
+
+	IntList l2 = linkedlist::@tnew{int}({ 23, 45, 66 });
+	l2.prepend({ 3, 6 });
 	test::eq(l2.array_view()[0], 3);
 	test::eq(l2.array_view()[1], 6);
 	test::eq(l2.array_view()[2], 23);

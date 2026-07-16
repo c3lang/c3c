@@ -588,6 +588,12 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	update_warning(&target->warnings.method_visibility, options->warnings.method_visibility);
 	update_warning(&target->warnings.methods_not_resolved, options->warnings.methods_not_resolved);
 
+	if (options->keep_object_files)
+	{
+		target->emit_object_files = true;
+		target->keep_object_files = true;
+	}
+
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
 
 	for (size_t i = 0; i < options->linker_arg_count; i++)
@@ -620,8 +626,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (!libc_detected)
 	{
 		if (file_exists("/lib/libc.so.6") || file_exists("/usr/lib/libc.so.6") || file_exists("/lib64/libc.so.6") ||
-		    file_exists("/lib/x86_64-linux-gnu/libc.so.6") || file_exists("/usr/lib/x86_64-linux-gnu/libc.so.6") ||
-		    file_exists("/lib/aarch64-linux-gnu/libc.so.6") || file_exists("/usr/lib/aarch64-linux-gnu/libc.so.6"))
+			file_exists("/lib/x86_64-linux-gnu/libc.so.6") || file_exists("/usr/lib/x86_64-linux-gnu/libc.so.6") ||
+			file_exists("/lib/aarch64-linux-gnu/libc.so.6") || file_exists("/usr/lib/aarch64-linux-gnu/libc.so.6"))
 		{
 			default_libc = LINUX_LIBC_GNU;
 		}
@@ -724,7 +730,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_output_dir_from_options(&target->ir_file_dir, options->llvm_out, "llvm", target_name, target->output_dir);
 	set_output_dir_from_options(&target->asm_file_dir, options->asm_out, "asm", target_name, target->output_dir);
 	set_output_dir_from_options(&target->header_file_dir, options->header_out, "headers", target_name, target->output_dir);
-	if (target->type == TARGET_TYPE_OBJECT_FILES)
+	if (target->type == TARGET_TYPE_OBJECT_FILES || target->keep_object_files)
 	{
 		set_output_dir_from_options(&target->object_file_dir, options->obj_out, "obj", target_name, target->output_dir);
 	}
