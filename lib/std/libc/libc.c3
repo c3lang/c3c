@@ -52,6 +52,7 @@ fn void errno_set(Errno e)
 alias TerminateFunction = fn void();
 alias CompareFunction = fn int(void*, void*);
 alias JmpBuf = uptr[$$JMP_BUF_SIZE];
+alias SigJmpBuf = uptr[$$JMP_BUF_SIZE + 1];
 alias Fd = CInt;
 alias Fpos_t @if(env::WIN32) = long;
 alias SignalFunction = fn void(CInt);
@@ -118,7 +119,8 @@ extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
 extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32 && !env::NETBSD);
-extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::OPENBSD && !env::EMSCRIPTEN);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::EMSCRIPTEN);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @cname("__longjmp14") @if(env::NETBSD);
 extern fn void* malloc(usz size);
 extern fn void* memchr(void* str, CInt c, usz n);
 extern fn CInt memcmp(void* buf1, void* buf2, usz count);
@@ -144,9 +146,15 @@ extern fn void rewind(CFile stream);
 extern fn CInt scanf(ZString format, ...);
 extern fn void setbuf(CFile stream, char* buffer);
 extern fn int setenv(ZString name, ZString value, CInt overwrite);
-extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::OPENBSD && !env::EMSCRIPTEN);
+extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN);
+extern fn CInt setjmp(JmpBuf* buffer) @cname("__setjmp14") @if(env::NETBSD);
 extern fn void setvbuf(CFile stream, char* buf, CInt type, usz size);
 extern fn SignalFunction signal(CInt sig, SignalFunction function);
+extern fn CInt siglongjmp(SigJmpBuf* buffer, CInt value) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN);
+extern fn CInt siglongjmp(SigJmpBuf* buffer, CInt value) @cname("__siglongjmp14") @if(env::NETBSD);
+extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN && !env::LINUX);
+extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp14") @if(env::NETBSD);
+extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp") @if(env::LINUX);
 extern fn CInt snprintf(char* buffer, usz size, ZString format, ...);
 extern fn CInt sprintf(char* buffer, ZString format, ...);
 extern fn void srand(uint seed);
@@ -222,15 +230,15 @@ macro CFile stderr() => __stderr;
 module libc @if(env::EMSCRIPTEN);
 import std::os;
 fn int setjmp(JmpBuf* ptr) => 0;
+fn int setsigjmp(JmpBuf* ptr, CInt val) => 0;
 fn void longjmp(JmpBuf* ptr, int i) => os::exit(i);
+fn void siglongjmp(JmpBuf* ptr, CInt i) => os::exit(i);
 
 
 module libc @if(env::NETBSD || env::OPENBSD);
 extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn int _setjmp(void*);
-macro int setjmp(void* ptr) => _setjmp(ptr);
-extern fn void _longjmp(void*, int);
-macro void longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
+extern fn int _sigsetjmp(void*, CInt);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
 extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @if(env::NETBSD);
@@ -278,11 +286,20 @@ fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip
 	unreachable("longjmp unavailable");
 }
 
+fn void siglongjmp(JmpBuf* buffer, CInt value) @weak @cname("siglongjmp") @nostrip
+{
+	unreachable("longjmp unavailable");
+}
+
 fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip
 {
 	unreachable("setjmp unavailable");
 }
 
+fn CInt sigsetjmp(JmpBuf* buffer, CInt save) @weak @cname("sigsetjmp") @nostrip
+{
+	unreachable("sigsetjmp unavailable");
+}
 
 fn void* malloc(usz size) @weak @cname("malloc") @nostrip
 {
