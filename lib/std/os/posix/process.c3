@@ -55,7 +55,7 @@ const CInt __W_CONTINUED = 0xffff;
 const CInt WNOHANG = 1;
 const CInt WUNTRACES = 2;
 
-JmpBuf backtrace_jmpbuf @local;
+tlocal SigJmpBuf backtrace_jmpbuf @local;
 alias BacktraceFn = fn CInt(void** buffer, CInt size);
 
 extern fn CInt backtrace(void** buffer, CInt size) @if(env::OPENBSD || env::NETBSD);
@@ -94,7 +94,7 @@ fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD && !env::NETBSD)
 	// Loop through the return addresses until we hit a signal.
 	// This avoids using the frame address.
 	Sigaction restore_backtrace = {
-		.sa_sigaction = fn void(CInt, void*, void*) { libc::longjmp(&backtrace_jmpbuf, 1); },
+		.sa_sigaction = fn void(CInt, void*, void*) { libc::siglongjmp(&backtrace_jmpbuf, 1); },
 		.sa_flags = libc::SA_SIGINFO
 	};
 	Sigaction sig_bus, sig_segv, sig_ill;
@@ -103,7 +103,7 @@ fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD && !env::NETBSD)
 	libc::sigaction(libc::SIGILL, &restore_backtrace, &sig_ill);
 
 	int i = 0;
-	if (libc::setjmp(&backtrace_jmpbuf) == 0)
+	if (libc::sigsetjmp(&backtrace_jmpbuf, 1) == 0)
 	{
 		for (i = 0; i < size; i++)
 		{
