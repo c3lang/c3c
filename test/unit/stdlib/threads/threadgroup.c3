@@ -13,7 +13,7 @@ fn void void_result_runs_tasks() @test
 {
 	Atomic{int} counter;
 	VoidGroup group;
-	group.init(&allocators::LIBC_ALLOCATOR, &increment_task, thread_count: 4, context: &counter)!!;
+	group.init(mem, &increment_task, thread_count: 4, context: &counter)!!;
 	group.start()!!;
 	for (int i = 0; i < 100; i++) group.add_task(i);
 	group.join();
