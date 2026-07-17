@@ -57,6 +57,11 @@ fn fault socket_error()
 	return convert_error(libc::errno());
 }
 
+fn fault connect_error(CInt error)
+{
+	return convert_error((Errno)error);
+}
+
 macro bool NativeSocket.is_valid(self)
 {
 	return (iptr)self >= 0;

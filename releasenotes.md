@@ -17,6 +17,7 @@
 - RFC3339 formatting would yield incorrect value for microseconds.
 - `--obj` will always retain the object files. #3380
 - ThreadGroup with function returning `void` was broken.
+- Timed `tcp::connect` always failed with `io::GENERAL_ERROR` instead of the real result.
 
 ## 0.8.2 Change list
 
