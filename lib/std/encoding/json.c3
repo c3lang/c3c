@@ -1,436 +1,442 @@
-// Copyright (c) 2023 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by the MIT license
-// a copy of which can be found in the LICENSE_STDLIB file.
 module std::encoding::json;
 import std::io;
 import std::collections::object;
 
 faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED;
 
-int max_depth = 128;
+const int MAX_DEPTH = 64;
 
 enum JsonFlavor
 {
 	JSON,
 	JSONC
 }
-fn Object*? parse(Allocator allocator, String s, JsonFlavor flavor = JSONC)
-{
-	return load(allocator, (ByteReader){}.init(s), flavor);
-}
 
-fn Object*? tparse(String s, JsonFlavor flavor = JSONC)
-{
-	return load(tmem, (ByteReader){}.init(s), flavor);
-}
+<*
+ Parse String contents into a dynamic JSON DOM tree.
 
-fn Object*? load(Allocator allocator, InStream s, JsonFlavor flavor = JSONC)
+ @param allocator : "The allocator to use for the resulting Object tree"
+ @param flavor : "JSON or JSONC comments support"
+ @return "The parsed Object* tree on success."
+ @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "Parsing failure faults."
+*>
+fn Object*? String.parse_json(&self, Allocator allocator, JsonFlavor flavor = JSONC)
 {
-	@stack_mem(512; Allocator smem)
+	@stack_mem(64 ; Allocator smem)
 	{
-		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator, .flavor = flavor };
-		@pool()
-		{
-			return parse_any(&context)!;
+		JsonDeserializer des = {
+			.source = *self,
+			.cursor = 0,
+			.allocator = allocator,
+			.last_string = dstring::new_with_capacity(smem, 64),
+			.flavor = flavor,
+			.depth = 0
 		};
+		return parse_any(&des);
 	};
 }
 
-fn Object*? temp_load(InStream s, JsonFlavor flavor = JSONC)
+<*
+ Parse String contents using temporary allocator `tmem`.
+
+ @param flavor : "JSON or JSONC comments support"
+ @return "The parsed Object* tree on success."
+ @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "Parsing failure faults."
+*>
+fn Object*? String.tparse_json(&self, JsonFlavor flavor = JSONC)
 {
-	return load(tmem, s, flavor);
+	return self.parse_json(tmem, flavor) @inline;
 }
 
-// -- Implementation follows --
+<*
+ Parse InStream fully into a dynamic JSON DOM tree.
 
-enum JsonTokenType @local
+ @param allocator : "The allocator to use for the buffer and Object tree"
+ @param flavor : "JSON or JSONC comments support"
+ @return "The parsed Object* tree on success."
+ @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "Parsing failure faults."
+*>
+fn Object*? InStream.parse_json(&self, Allocator allocator, JsonFlavor flavor = JSONC)
 {
-	NO_TOKEN,
-	LBRACE,
-	LBRACKET,
-	COMMA,
-	COLON,
-	RBRACE,
-	RBRACKET,
-	STRING,
-	NUMBER,
-	TRUE,
-	FALSE,
-	NULL,
-	EOF,
+	String s_str = (String)io::read_fully(allocator, *self)!;
+	defer alloc::free(allocator, s_str);
+	return s_str.parse_json(allocator, flavor);
 }
 
-struct JsonContext @local
+<*
+ Parse InStream fully using temporary allocator `tmem`.
+
+ @param flavor : "JSON or JSONC comments support"
+ @return "The parsed Object* tree on success."
+ @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "Parsing failure faults."
+*>
+fn Object*? InStream.tparse_json(&self, JsonFlavor flavor = JSONC)
 {
-	InStream stream;
+	return self.parse_json(tmem, flavor) @inline;
+}
+
+<*
+ Parse String contents into a dynamic JSON DOM tree using a given allocator.
+
+ @param allocator : "The allocator to use for the resulting Object tree"
+ @param s : "The JSON string to parse"
+ @param flavor : "JSON or JSONC comments support"
+ @return "The parsed Object* tree on success."
+ @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "Parsing failure faults."
+*>
+fn Object*? parse(Allocator allocator, String s, JsonFlavor flavor = JSONC) => s.parse_json(allocator, flavor) @inline;
+
+<*
+ Parse String contents into a dynamic JSON DOM tree using temporary allocator `tmem`.
+
+ @param s : "The JSON string to parse"
+ @param flavor : "JSON or JSONC comments support"
+ @return "The parsed Object* tree on success."
+ @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "Parsing failure faults."
+*>
+fn Object*? tparse(String s, JsonFlavor flavor = JSONC) => s.tparse_json(flavor) @inline;
+
+<*
+ Parse InStream fully into a dynamic JSON DOM tree using a given allocator.
+
+ @param allocator : "The allocator to use for the buffer and Object tree"
+ @param s : "The input stream to read and parse"
+ @param flavor : "JSON or JSONC comments support"
+ @return "The parsed Object* tree on success."
+ @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "Parsing failure faults."
+*>
+fn Object*? load(Allocator allocator, InStream s, JsonFlavor flavor = JSONC) => s.parse_json(allocator, flavor) @inline;
+
+<*
+ Parse InStream fully into a dynamic JSON DOM tree using temporary allocator `tmem`.
+
+ @param s : "The input stream to read and parse"
+ @param flavor : "JSON or JSONC comments support"
+ @return "The parsed Object* tree on success."
+ @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "Parsing failure faults."
+*>
+fn Object*? tload(InStream s, JsonFlavor flavor = JSONC) => s.tparse_json(flavor) @inline;
+
+struct JsonDeserializer @private
+{
+	String source;
+	sz cursor;
 	Allocator allocator;
-	JsonTokenType token;
 	DString last_string;
-	double last_number;
-	int depth;
-	int line;
-	char current;
-	bool reached_end;
-	bool pushed_back;
 	JsonFlavor flavor;
+	int depth;
 }
 
-
-fn Object*? parse_from_token(JsonContext* context, JsonTokenType token) @local
+fn void skip_whitespace(JsonDeserializer* des) @private
 {
-	switch (token)
+	while (des.cursor < des.source.len)
 	{
-		case NO_TOKEN: unreachable();
-		case LBRACE: return parse_map(context);
-		case LBRACKET: return parse_array(context);
-		case COMMA:
-		case RBRACE:
-		case RBRACKET:
-		case COLON: return UNEXPECTED_CHARACTER~;
-		case STRING: return object::new_string(context.allocator, context.last_string.str_view());
-		case NUMBER: return object::new_float(context.allocator, context.last_number);
-		case TRUE: return object::new_bool(true);
-		case FALSE: return object::new_bool(false);
-		case NULL: return object::new_null();
-		case EOF: return io::EOF~;
-	}
-}
-fn Object*? parse_any(JsonContext* context) @local
-{
-	return parse_from_token(context, advance(context));
-}
-
-fn JsonTokenType? lex_number(JsonContext *context, char c) @local
-{
-	@stack_mem(256; Allocator mem)
-	{
-		DString t = dstring::new_with_capacity(mem, 32);
-		bool negate = c == '-';
-		if (negate)
+		char c = des.source[des.cursor];
+		if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
 		{
-			t.append(c);
-			c = read_next(context)!;
-		}
-		bool leading_zero = c == '0';
-		while (c.is_digit())
-		{
-			t.append(c);
-			c = read_next(context)!;
-			if (leading_zero)
-			{
-				if (c.is_digit()) return INVALID_NUMBER~;
-				leading_zero = false;
-			}
-		}
-		if (c == '.')
-		{
-			t.append(c);
-			bool has_digit_after_dot = false;
-			while (c = read_next(context)!, c.is_digit())
-			{
-				has_digit_after_dot = true;
-				t.append(c);
-			}
-			if (!has_digit_after_dot) return INVALID_NUMBER~;
-		}
-		if ((c | 32) == 'e')
-		{
-			t.append(c);
-			c = read_next(context)!;
-			switch (c)
-			{
-				case '-':
-				case '+':
-					t.append(c);
-					c = read_next(context)!;
-			}
-			if (!c.is_digit()) return INVALID_NUMBER~;
-			while (c.is_digit())
-			{
-				t.append(c);
-				c = read_next(context)!;
-			}
-		}
-		pushback(context, c);
-		double? d = t.str_view().to_double() ?? INVALID_NUMBER~;
-		context.last_number = d!;
-		return NUMBER;
-	};
-}
-
-fn Object*? parse_map(JsonContext* context) @local
-{
-	Object* map = object::new_obj(context.allocator);
-	defer catch map.free();
-	JsonTokenType token = advance(context)!;
-	defer context.depth--;
-	if (++context.depth >= max_depth) return json::MAX_DEPTH_REACHED~;
-
-	@stack_mem(256; Allocator mem)
-	{
-		DString temp_key = dstring::new_with_capacity(mem, 32);
-		while (token != RBRACE)
-		{
-			if (token != STRING) return UNEXPECTED_CHARACTER~;
-			DString string = context.last_string;
-			// Copy the key to our temp holder, since our
-			// last_string may be used in parse_any
-			temp_key.clear();
-			temp_key.append(string);
-			parse_expected(context, COLON)!;
-			Object* element = parse_any(context)!;
-			map.set(temp_key.str_view(), element);
-			token = advance(context)!;
-			if (token == COMMA)
-			{
-				token = advance(context)!;
-				if (token == RBRACE && context.flavor == JSON) return UNEXPECTED_CHARACTER~;
-				continue;
-			}
-			if (token != RBRACE) return UNEXPECTED_CHARACTER~;
-		}
-		return map;
-	};
-}
-
-fn Object*? parse_array(JsonContext* context) @local
-{
-	Object* list = object::new_obj(context.allocator);
-	defer catch list.free();
-	defer context.depth--;
-	if (++context.depth >= max_depth) return json::MAX_DEPTH_REACHED~;
-	JsonTokenType token = advance(context)!;
-	while (token != RBRACKET)
-	{
-		Object* element = parse_from_token(context, token)!;
-		list.push(element);
-		token = advance(context)!;
-		if (token == COMMA)
-		{
-			token = advance(context)!;
-			if (token == RBRACKET && context.flavor == JSON) return UNEXPECTED_CHARACTER~;
+			des.cursor++;
 			continue;
 		}
-		if (token != RBRACKET) return UNEXPECTED_CHARACTER~;
-	}
-	return list;
-}
-
-fn void pushback(JsonContext* context, char c) @local
-{
-	if (!context.reached_end)
-	{
-		assert(!context.pushed_back);
-		context.pushed_back = true;
-		context.current = c;
-	}
-}
-
-fn char? read_next(JsonContext* context) @local
-{
-	if (context.reached_end) return '\0';
-	if (context.pushed_back)
-	{
-		context.pushed_back = false;
-		return context.current;
-	}
-	char? c = context.stream.read_byte();
-	if (catch err = c)
-	{
-		if (err == io::EOF)
+		if (des.flavor == JSONC && c == '/' && des.cursor + 1 < des.source.len)
 		{
-			context.reached_end = true;
-			return '\0';
-		}
-		return err~;
-	}
-	if (c == 0)
-	{
-		context.reached_end = true;
-	}
-	return c;
-}
-
-fn JsonTokenType? advance(JsonContext* context) @local
-{
-	char c;
-	// Skip whitespace
-	while WS: ((c = read_next(context)!))
-	{
-		switch (c)
-		{
-			case '\n':
-				context.line++;
-				nextcase;
-			case ' ':
-			case '\t':
-			case '\r':
-			case '\v':
-				continue;
-			case '/':
-				if (context.flavor == JSON) break WS;
-				c = read_next(context)!;
-				if (c == '/')
+			char next = des.source[des.cursor + 1];
+			if (next == '/')
+			{
+				des.cursor += 2;
+				while (des.cursor < des.source.len && des.source[des.cursor] != '\n' && des.source[des.cursor] != '\r')
 				{
-					while (try ch = read_next(context))
-					{
-						if (ch == '\n')
-						{
-							context.line++;
-							continue WS;
-						}
-					}
-					break WS;
-				}
-				if (c != '*')
-				{
-					pushback(context, c);
-					break WS;
-				}
-				while COMMENT: (true)
-				{
-					// Skip to */
-					while ((c = read_next(context)!))
-					{
-						if (c == '\n') context.line++;
-						if (c != '*') continue;
-						// Skip through all the '*'
-						while ((c = read_next(context)!))
-						{
-							if (c == '\n') context.line++;
-							if (c != '*') break;
-						}
-						if (c == '/') break COMMENT;
-					}
+					des.cursor++;
 				}
 				continue;
-			default:
-				break WS;
+			}
+			if (next == '*')
+			{
+				des.cursor += 2;
+				while (des.cursor + 1 < des.source.len)
+				{
+					if (des.source[des.cursor] == '*' && des.source[des.cursor + 1] == '/')
+					{
+						des.cursor += 2;
+						break;
+					}
+					des.cursor++;
+				}
+				continue;
+			}
+		}
+		break;
+	}
+}
+
+fn char? next_char(JsonDeserializer* des) @private @inline
+{
+	skip_whitespace(des);
+	if (des.cursor >= des.source.len) return io::EOF~;
+	return des.source[des.cursor++];
+}
+
+fn char peek_char(JsonDeserializer* des) @private @inline
+{
+	skip_whitespace(des);
+	if (des.cursor >= des.source.len) return '\0';
+	return des.source[des.cursor];
+}
+
+fn void? expect_char(JsonDeserializer* des, char expected) @private
+{
+	char c = next_char(des)!;
+	if (c != expected) return UNEXPECTED_CHARACTER~;
+}
+
+fn uint? parse_hex4_at(String s, sz* i) @private
+{
+	if (*i + 4 > s.len) return INVALID_ESCAPE_SEQUENCE~;
+	uint val;
+	for (sz j = 0; j < 4; j++)
+	{
+		char c = s[*i];
+		(*i)++;
+		if (!c.is_xdigit()) return INVALID_ESCAPE_SEQUENCE~;
+		val = (val << 4u) + (c > '9' ? (c | 32u) - 'a' + 10u : c - '0');
+	}
+	return val;
+}
+
+fn void? decode_escapes_into(String s, DString* out) @private
+{
+	for (sz i = 0; i < s.len; i++)
+	{
+		char c = s[i];
+		if (c == '\\' && i + 1 < s.len)
+		{
+			i++;
+			switch (s[i])
+			{
+				case 'n': out.append('\n');
+				case 'r': out.append('\r');
+				case 't': out.append('\t');
+				case 'b': out.append('\b');
+				case 'f': out.append('\f');
+				case '"': out.append('"');
+				case '\\': out.append('\\');
+				case '/': out.append('/');
+				case 'u':
+					i++;
+					uint val = parse_hex4_at(s, &i)!;
+					switch
+					{
+						case val >= 0xDC00 && val <= 0xDFFF:
+							return INVALID_ESCAPE_SEQUENCE~;
+						case val >= 0xD800 && val <= 0xDBFF:
+							if (i + 2 >= s.len || s[i] != '\\' || s[i + 1] != 'u') return INVALID_ESCAPE_SEQUENCE~;
+							i += 2;
+							uint low = parse_hex4_at(s, &i)!;
+							if (low < 0xDC00 || low > 0xDFFF) return INVALID_ESCAPE_SEQUENCE~;
+							val = 0x10000u + ((val - 0xD800u) << 10u) + (low - 0xDC00u);
+					}
+					out.append_char32(val);
+					i--;
+				default:
+					return INVALID_ESCAPE_SEQUENCE~;
+			}
+		}
+		else
+		{
+			out.append(c);
 		}
 	}
+}
+
+fn String? parse_string(JsonDeserializer* des) @private
+{
+	expect_char(des, '"')!;
+	sz start         = des.cursor;
+	bool has_escapes = false;
+	while (des.cursor < des.source.len)
+	{
+		char c = des.source[des.cursor];
+		if (c == '"')
+		{
+			String res = des.source[start:des.cursor - start];
+			des.cursor++; // consume '"'
+			if (!has_escapes)
+			{
+				return res;
+			}
+			des.last_string.clear();
+			decode_escapes_into(res, &des.last_string)!;
+			return des.last_string.str_view();
+		}
+		if (c == '\\')
+		{
+			has_escapes = true;
+			des.cursor += 2;
+		}
+		else
+		{
+			if (c < 32) return UNEXPECTED_CHARACTER~;
+			des.cursor++;
+		}
+	}
+	return UNEXPECTED_CHARACTER~;
+}
+
+fn double? parse_double(JsonDeserializer* des) @private
+{
+	skip_whitespace(des);
+	sz start = des.cursor;
+	if (des.cursor < des.source.len && (des.source[des.cursor] == '-' || des.source[des.cursor] == '+'))
+	{
+		des.cursor++;
+	}
+	if (des.cursor >= des.source.len || !des.source[des.cursor].is_digit()) return INVALID_NUMBER~;
+	bool leading_zero = des.source[des.cursor] == '0';
+	des.cursor++;
+	if (leading_zero && des.cursor < des.source.len && des.source[des.cursor].is_digit()) return INVALID_NUMBER~;
+
+	while (des.cursor < des.source.len && des.source[des.cursor].is_digit())
+	{
+		des.cursor++;
+	}
+	if (des.cursor < des.source.len && des.source[des.cursor] == '.')
+	{
+		des.cursor++;
+		if (des.cursor >= des.source.len || !des.source[des.cursor].is_digit()) return INVALID_NUMBER~;
+		while (des.cursor < des.source.len && des.source[des.cursor].is_digit())
+		{
+			des.cursor++;
+		}
+	}
+	if (des.cursor < des.source.len && (des.source[des.cursor] | 32) == 'e')
+	{
+		des.cursor++;
+		if (des.cursor < des.source.len && (des.source[des.cursor] == '-' || des.source[des.cursor] == '+'))
+		{
+			des.cursor++;
+		}
+		if (des.cursor >= des.source.len || !des.source[des.cursor].is_digit()) return INVALID_NUMBER~;
+		while (des.cursor < des.source.len && des.source[des.cursor].is_digit())
+		{
+			des.cursor++;
+		}
+	}
+	return des.source[start:des.cursor - start].to_double() ?? INVALID_NUMBER~;
+}
+
+fn bool? parse_bool(JsonDeserializer* des) @private
+{
+	skip_whitespace(des);
+	if (des.cursor + 4 <= des.source.len && des.source[des.cursor:4] == "true")
+	{
+		des.cursor += 4;
+		return true;
+	}
+	if (des.cursor + 5 <= des.source.len && des.source[des.cursor:5] == "false")
+	{
+		des.cursor += 5;
+		return false;
+	}
+	return UNEXPECTED_CHARACTER~;
+}
+
+fn Object*? parse_any(JsonDeserializer* des) @private
+{
+	skip_whitespace(des);
+	char c = peek_char(des);
 	switch (c)
 	{
-		case '\0':
-			return io::EOF~;
 		case '{':
-			return LBRACE;
-		case '}':
-			return RBRACE;
+			return parse_map(des);
 		case '[':
-			return LBRACKET;
-		case ']':
-			return RBRACKET;
-		case ':':
-			return COLON;
-		case ',':
-			return COMMA;
+			return parse_array(des);
 		case '"':
-			return lex_string(context);
+			return object::new_string(des.allocator, parse_string(des)!);
+		case 't':
+			if (parse_bool(des)!) return object::new_bool(true);
+			return UNEXPECTED_CHARACTER~;
+		case 'f':
+			if (!parse_bool(des)!) return object::new_bool(false);
+			return UNEXPECTED_CHARACTER~;
+		case 'n':
+			skip_whitespace(des);
+			if (des.cursor + 4 <= des.source.len && des.source[des.cursor:4] == "null")
+			{
+				des.cursor += 4;
+				return object::new_null();
+			}
+			return UNEXPECTED_CHARACTER~;
 		case '-':
 		case '0'..'9':
-			return lex_number(context, c);
-		case 't':
-			match(context, "rue")!;
-			return TRUE;
-		case 'f':
-			match(context, "alse")!;
-			return FALSE;
-		case 'n':
-			match(context, "ull")!;
-			return NULL;
+			return object::new_float(des.allocator, parse_double(des)!);
 		default:
 			return UNEXPECTED_CHARACTER~;
 	}
 }
 
-fn void? match(JsonContext* context, String str) @local
+fn Object*? parse_map(JsonDeserializer* des) @private
 {
-	foreach (c : str)
-	{
-		char l = read_next(context)!;
-		if (l != c) return UNEXPECTED_CHARACTER~;
-	}
-}
+	if (++des.depth >= MAX_DEPTH) return MAX_DEPTH_REACHED~;
+	defer des.depth--;
 
-fn void? parse_expected(JsonContext* context, JsonTokenType token) @local
-{
-	if (advance(context)! != token) return UNEXPECTED_CHARACTER~;
-}
+	Object* map = object::new_obj(des.allocator);
+	defer catch map.free();
+	expect_char(des, '{')!;
 
-fn uint? parse_hex4(JsonContext* context) @local
-{
-	uint val;
-	for (int i = 0; i < 4; i++)
+	@stack_mem(128 ; Allocator mem)
 	{
-		char c = read_next(context)!;
-		if (!c.is_xdigit()) return INVALID_ESCAPE_SEQUENCE~;
-		val = val << 4u + (c > '9' ? (c | 32u) - 'a' + 10u : c - '0');
-	}
-	return val;
-}
-
-fn JsonTokenType? lex_string(JsonContext* context)
-{
-	context.last_string.clear();
-	while LOOP: (true)
-	{
-		char c = read_next(context)!;
-		switch (c)
+		DString temp_key = dstring::new_with_capacity(mem, 32);
+		bool first       = true;
+		while (peek_char(des) != '}')
 		{
-			case '\0':
-				return io::EOF~;
-			case 1..31:
-				return UNEXPECTED_CHARACTER~;
-			case '"':
-				break LOOP;
-			case '\\':
-				break;
-			default:
-				context.last_string.append(c);
-				continue;
-		}
-		c = read_next(context)!;
-		switch (c)
-		{
-			case '\0':
-				return io::EOF~;
-			case 1..31:
-				return UNEXPECTED_CHARACTER~;
-			case '"':
-			case '\\':
-			case '/':
-				break;
-			case 'b':
-				c = '\b';
-			case 'f':
-				c = '\f';
-			case 'n':
-				c = '\n';
-			case 'r':
-				c = '\r';
-			case 't':
-				c = '\t';
-			case 'u':
-				uint val = parse_hex4(context)!;
-				switch
+			if (!first)
+			{
+				expect_char(des, ',')!;
+				if (peek_char(des) == '}')
 				{
-					case val >= 0xDC00 && val <= 0xDFFF:
-						// Lone surrogate
-						return INVALID_ESCAPE_SEQUENCE~;
-					case val >= 0xD800 && val <= 0xDBFF:
-						// High surrogate read, now look for low surrogate
-						if (read_next(context)! != '\\') return INVALID_ESCAPE_SEQUENCE~;
-						if (read_next(context)! != 'u') return INVALID_ESCAPE_SEQUENCE~;
-						uint low = parse_hex4(context)!;
-						if (low < 0xDC00 || low > 0xDFFF) return INVALID_ESCAPE_SEQUENCE~;
-						val = 0x10000u + (val - 0xD800u) << 10u + (low - 0xDC00u);
+					if (des.flavor == JSON) return UNEXPECTED_CHARACTER~;
+					break;
 				}
-				context.last_string.append_char32(val);
-				continue;
-			default:
-				 return INVALID_ESCAPE_SEQUENCE~;
+			}
+			first = false;
+			String key = parse_string(des)!;
+
+			temp_key.clear();
+			temp_key.append(key);
+
+			expect_char(des, ':')!;
+			Object* val = parse_any(des)!;
+			map.set(temp_key.str_view(), val);
 		}
-		context.last_string.append(c);
+	};
+	expect_char(des, '}')!;
+	return map;
+}
+
+fn Object*? parse_array(JsonDeserializer* des) @private
+{
+	if (++des.depth >= MAX_DEPTH) return MAX_DEPTH_REACHED~;
+	defer des.depth--;
+
+	Object* list = object::new_obj(des.allocator);
+	defer catch list.free();
+	expect_char(des, '[')!;
+
+	bool first = true;
+	while (peek_char(des) != ']')
+	{
+		if (!first)
+		{
+			expect_char(des, ',')!;
+			if (peek_char(des) == ']')
+			{
+				if (des.flavor == JSON) return UNEXPECTED_CHARACTER~;
+				break;
+			}
+		}
+		first = false;
+		Object* val = parse_any(des)!;
+		list.push(val);
 	}
-	return STRING;
+	expect_char(des, ']')!;
+	return list;
 }

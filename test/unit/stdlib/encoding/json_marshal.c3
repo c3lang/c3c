@@ -3,7 +3,6 @@ import std::encoding::json;
 import std::collections::object;
 import std::io;
 
-// Test enums
 enum Status
 {
     ACTIVE,
@@ -18,7 +17,6 @@ enum Priority
     HIGH
 }
 
-// Enum with associated value
 enum State : int
 {
     WAITING,
@@ -26,7 +24,6 @@ enum State : int
     TERMINATED
 }
 
-// Basic structures
 struct Address
 {
     String street;
@@ -43,57 +40,46 @@ struct Person
     Status status;
 }
 
-// Complex structure with all features
 struct ComplexData
 {
-    // Primitive types
     String text;
     int integer;
     float single_precision;
     double double_precision;
     bool flag;
 
-    // Enums
     Status status;
     Priority priority;
     State current_state;
 
-    // Nested struct
     Person owner;
     Address location;
 
-    // Arrays of primitives
     String[] tags;
     int[] numbers;
     float[] ratings;
     bool[] flags;
 
-    // Array of structs
     Address[] offices;
     Person[] team_members;
 
-    // Array of arrays
     int[][] matrix;
     String[][] categories;
 }
 
 fn void test_comprehensive_marshaling() @test
 {
-    // Create a complex data structure with all supported features
     ComplexData data = {
-        // Primitive types
         .text = "Hello \"World\"",
         .integer = 42,
         .single_precision = 3.14,
         .double_precision = 2.718281828,
         .flag = true,
 
-        // Enums
         .status = Status.ACTIVE,
         .priority = Priority.HIGH,
         .current_state = State.RUNNING,
 
-        // Nested structs
         .owner = {
             .name = "John Doe",
             .age = 30,
@@ -107,13 +93,11 @@ fn void test_comprehensive_marshaling() @test
             .zip_code = 10001
         },
 
-        // Arrays of primitives
         .tags = { "important", "urgent", "review" },
         .numbers = { 1, 2, 3, 4, 5 },
         .ratings = { 4.5, 3.8, 4.9 },
         .flags = { true, false, true },
 
-        // Array of structs
         .offices = {
             {
                 .street = "100 Tech Blvd",
@@ -143,115 +127,105 @@ fn void test_comprehensive_marshaling() @test
             }
         },
 
-        // Array of arrays
         .matrix = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 9 } },
         .categories = { { "tech", "programming" }, { "business", "finance" } }
     };
 
-    // Marshal the complex data structure
-    String json = json::marshal(mem, data);
+    String json = json::marshal(mem, data)!!;
     defer free(json);
 
-    // Parse the marshaled JSON back to verify it's valid and correct
     Object* parsed = json::tparse(json)!!;
 
-    // Verify primitive types
-    assert(parsed.get_string("text")!! == "Hello \"World\"");
-    assert(parsed.get_int("integer")!! == 42);
-    assert((float)parsed.get_float("single_precision")!! == 3.14f);
-    assert(parsed.get_bool("flag")!! == true);
+    test::eq(parsed.get_string("text")!!, "Hello \"World\"");
+    test::eq(parsed.get_int("integer")!!, 42);
+    test::eq((float)parsed.get_float("single_precision")!!, 3.14f);
+    test::eq(parsed.get_bool("flag")!!, true);
 
-    // Verify enums (marshaled as strings)
-    assert(parsed.get_string("status")!! == "ACTIVE");
-    assert(parsed.get_string("priority")!! == "HIGH");
-    assert(parsed.get_string("current_state")!! == "RUNNING");
+    test::eq(parsed.get_string("status")!!, "ACTIVE");
+    test::eq(parsed.get_string("priority")!!, "HIGH");
+    test::eq(parsed.get_string("current_state")!!, "RUNNING");
 
-    // Verify nested structs
     Object* owner = parsed.get("owner")!!;
-    assert(owner.get_string("name")!! == "John Doe");
-    assert(owner.get_int("age")!! == 30);
-    assert(owner.get_bool("is_active")!! == true);
-    assert((float)owner.get_float("height")!! == 5.9f);
-    assert(owner.get_string("status")!! == "ACTIVE");
+    test::eq(owner.get_string("name")!!, "John Doe");
+    test::eq(owner.get_int("age")!!, 30);
+    test::eq(owner.get_bool("is_active")!!, true);
+    test::eq((float)owner.get_float("height")!!, 5.9f);
+    test::eq(owner.get_string("status")!!, "ACTIVE");
 
     Object* location = parsed.get("location")!!;
-    assert(location.get_string("street")!! == "123 Main St");
-    assert(location.get_string("city")!! == "New York");
-    assert(location.get_int("zip_code")!! == 10001);
+    test::eq(location.get_string("street")!!, "123 Main St");
+    test::eq(location.get_string("city")!!, "New York");
+    test::eq(location.get_int("zip_code")!!, 10001);
 
-    // Verify arrays of primitives
     Object* tags = parsed.get("tags")!!;
-    assert(tags.get_len() == 3);
-    assert(tags.get_string_at(0)!! == "important");
-    assert(tags.get_string_at(1)!! == "urgent");
-    assert(tags.get_string_at(2)!! == "review");
+    test::eq(tags.get_len(), 3);
+    test::eq(tags.get_string_at(0)!!, "important");
+    test::eq(tags.get_string_at(1)!!, "urgent");
+    test::eq(tags.get_string_at(2)!!, "review");
 
     Object* numbers = parsed.get("numbers")!!;
-    assert(numbers.get_len() == 5);
-    assert(numbers.get_int_at(0)!! == 1);
-    assert(numbers.get_int_at(4)!! == 5);
+    test::eq(numbers.get_len(), 5);
+    test::eq(numbers.get_int_at(0)!!, 1);
+    test::eq(numbers.get_int_at(4)!!, 5);
 
     Object* ratings = parsed.get("ratings")!!;
-    assert(ratings.get_len() == 3);
-    assert((float)ratings.get_float_at(0)!! == 4.5f);
-    assert((float)ratings.get_float_at(2)!! == 4.9f);
+    test::eq(ratings.get_len(), 3);
+    test::eq((float)ratings.get_float_at(0)!!, 4.5f);
+    test::eq((float)ratings.get_float_at(2)!!, 4.9f);
 
     Object* flags = parsed.get("flags")!!;
-    assert(flags.get_len() == 3);
-    assert(flags.get_bool_at(0)!! == true);
-    assert(flags.get_bool_at(1)!! == false);
-    assert(flags.get_bool_at(2)!! == true);
+    test::eq(flags.get_len(), 3);
+    test::eq(flags.get_bool_at(0)!!, true);
+    test::eq(flags.get_bool_at(1)!!, false);
+    test::eq(flags.get_bool_at(2)!!, true);
 
-    // Verify array of structs
     Object* offices = parsed.get("offices")!!;
-    assert(offices.get_len() == 2);
+    test::eq(offices.get_len(), 2);
 
     Object* first_office = offices.get_at(0);
-    assert(first_office.get_string("street")!! == "100 Tech Blvd");
-    assert(first_office.get_string("city")!! == "Austin");
-    assert(first_office.get_int("zip_code")!! == 78701);
+    test::eq(first_office.get_string("street")!!, "100 Tech Blvd");
+    test::eq(first_office.get_string("city")!!, "Austin");
+    test::eq(first_office.get_int("zip_code")!!, 78701);
 
     Object* second_office = offices.get_at(1);
-    assert(second_office.get_string("street")!! == "200 Innovation Dr");
-    assert(second_office.get_string("city")!! == "Seattle");
-    assert(second_office.get_int("zip_code")!! == 98101);
+    test::eq(second_office.get_string("street")!!, "200 Innovation Dr");
+    test::eq(second_office.get_string("city")!!, "Seattle");
+    test::eq(second_office.get_int("zip_code")!!, 98101);
 
     Object* team_members = parsed.get("team_members")!!;
-    assert(team_members.get_len() == 2);
+    test::eq(team_members.get_len(), 2);
 
     Object* alice = team_members.get_at(0);
-    assert(alice.get_string("name")!! == "Alice Smith");
-    assert(alice.get_int("age")!! == 28);
-    assert(alice.get_bool("is_active")!! == true);
-    assert(alice.get_string("status")!! == "ACTIVE");
+    test::eq(alice.get_string("name")!!, "Alice Smith");
+    test::eq(alice.get_int("age")!!, 28);
+    test::eq(alice.get_bool("is_active")!!, true);
+    test::eq(alice.get_string("status")!!, "ACTIVE");
 
     Object* bob = team_members.get_at(1);
-    assert(bob.get_string("name")!! == "Bob Johnson");
-    assert(bob.get_int("age")!! == 35);
-    assert(bob.get_bool("is_active")!! == false);
-    assert(bob.get_string("status")!! == "INACTIVE");
+    test::eq(bob.get_string("name")!!, "Bob Johnson");
+    test::eq(bob.get_int("age")!!, 35);
+    test::eq(bob.get_bool("is_active")!!, false);
+    test::eq(bob.get_string("status")!!, "INACTIVE");
 
-    // Verify array of arrays
     Object* matrix = parsed.get("matrix")!!;
-    assert(matrix.get_len() == 3);
+    test::eq(matrix.get_len(), 3);
 
     Object* first_row = matrix.get_at(0);
-    assert(first_row.get_len() == 3);
-    assert(first_row.get_int_at(0)!! == 1);
-    assert(first_row.get_int_at(1)!! == 2);
-    assert(first_row.get_int_at(2)!! == 3);
+    test::eq(first_row.get_len(), 3);
+    test::eq(first_row.get_int_at(0)!!, 1);
+    test::eq(first_row.get_int_at(1)!!, 2);
+    test::eq(first_row.get_int_at(2)!!, 3);
 
     Object* categories = parsed.get("categories")!!;
-    assert(categories.get_len() == 2);
+    test::eq(categories.get_len(), 2);
 
     Object* first_category = categories.get_at(0);
-    assert(first_category.get_len() == 2);
-    assert(first_category.get_string_at(0)!! == "tech");
-    assert(first_category.get_string_at(1)!! == "programming");
+    test::eq(first_category.get_len(), 2);
+    test::eq(first_category.get_string_at(0)!!, "tech");
+    test::eq(first_category.get_string_at(1)!!, "programming");
 
-    // Verify JSON format
-    assert(json.starts_with("{"));
-    assert(json.ends_with("}"));
+    test::@check(json.starts_with("{"));
+    test::@check(json.ends_with("}"));
 }
 
 struct User
@@ -269,85 +243,65 @@ struct UserStats
 fn void compact_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	String default_json = json::marshal(tmem, user);
-	assert(default_json == `{"username":"admin","created_at":611667900}`);
-	String explicit_json = json::marshal(tmem, user, NONE);
-	assert(explicit_json == `{"username":"admin","created_at":611667900}`);
+	test::eq(json::marshal(tmem, user)!!, `{"username":"admin","created_at":611667900}`);
+	test::eq(json::marshal(tmem, user, NONE)!!, `{"username":"admin","created_at":611667900}`);
 }
 
 fn void space_1_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	String json = json::marshal(tmem, user, SPACE_1);
-	assert(json == "{\n \"username\": \"admin\",\n \"created_at\": 611667900\n}");
+	test::eq(json::marshal(tmem, user, SPACE_1)!!, "{\n \"username\": \"admin\",\n \"created_at\": 611667900\n}");
 }
 
 fn void space_2_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	String json = json::marshal(tmem, user, SPACE_2);
-	assert(json == "{\n  \"username\": \"admin\",\n  \"created_at\": 611667900\n}");
+	test::eq(json::marshal(tmem, user, SPACE_2)!!, "{\n  \"username\": \"admin\",\n  \"created_at\": 611667900\n}");
 }
 
 fn void space_3_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	String json = json::marshal(tmem, user, SPACE_3);
-	assert(json == "{\n   \"username\": \"admin\",\n   \"created_at\": 611667900\n}");
+	test::eq(json::marshal(tmem, user, SPACE_3)!!, "{\n   \"username\": \"admin\",\n   \"created_at\": 611667900\n}");
 }
 
 fn void space_4_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	String json = json::marshal(tmem, user, SPACE_4);
-	assert(json == "{\n    \"username\": \"admin\",\n    \"created_at\": 611667900\n}");
+	test::eq(json::marshal(tmem, user, SPACE_4)!!, "{\n    \"username\": \"admin\",\n    \"created_at\": 611667900\n}");
 }
 
 fn void space_5_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	String json = json::marshal(tmem, user, SPACE_5);
-	assert(json == "{\n     \"username\": \"admin\",\n     \"created_at\": 611667900\n}");
+	test::eq(json::marshal(tmem, user, SPACE_5)!!, "{\n     \"username\": \"admin\",\n     \"created_at\": 611667900\n}");
 }
 
 fn void tab_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	String json = json::marshal(tmem, user, TAB);
-	assert(json == "{\n\t\"username\": \"admin\",\n\t\"created_at\": 611667900\n}");
+	test::eq(json::marshal(tmem, user, TAB)!!, "{\n\t\"username\": \"admin\",\n\t\"created_at\": 611667900\n}");
 }
 
 fn void compact_nested_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	UserStats nested = {
-		.user = user,
-		.stars = { 1, 2 }
-	};
-	String json = json::marshal(tmem, nested, NONE);
-	assert(json == `{"user":{"username":"admin","created_at":611667900},"stars":[1,2]}`);
+	UserStats nested = { .user = user, .stars = { 1, 2 } };
+	test::eq(json::marshal(tmem, nested, NONE)!!, `{"user":{"username":"admin","created_at":611667900},"stars":[1,2]}`);
 }
 
 fn void nested_space_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	UserStats nested = {
-		.user = user,
-		.stars = { 1, 2 }
-	};
-	String json = json::marshal(tmem, nested, SPACE_2);
-	assert(json == "{\n  \"user\": {\n    \"username\": \"admin\",\n    \"created_at\": 611667900\n  },\n  \"stars\": [\n    1,\n    2\n  ]\n}");
+	UserStats nested = { .user = user, .stars = { 1, 2 } };
+	test::eq(json::marshal(tmem, nested, SPACE_2)!!, "{\n  \"user\": {\n    \"username\": \"admin\",\n    \"created_at\": 611667900\n  },\n  \"stars\": [\n    1,\n    2\n  ]\n}");
 }
 
 fn void nested_tab_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	UserStats nested = {
-		.user = user,
-		.stars = { 1, 2 }
-	};
-	String json = json::marshal(tmem, nested, TAB);
-	assert(json == "{\n\t\"user\": {\n\t\t\"username\": \"admin\",\n\t\t\"created_at\": 611667900\n\t},\n\t\"stars\": [\n\t\t1,\n\t\t2\n\t]\n}");
+	UserStats nested = { .user = user, .stars = { 1, 2 } };
+	test::eq(json::marshal(tmem, nested, TAB)!!, "{\n\t\"user\": {\n\t\t\"username\": \"admin\",\n\t\t\"created_at\": 611667900\n\t},\n\t\"stars\": [\n\t\t1,\n\t\t2\n\t]\n}");
 }
 
 struct DoublePrecision
@@ -363,41 +317,36 @@ struct FloatPrecision
 fn void double_roundtrip_pi() @test
 {
 	DoublePrecision v = { .x = 3.141592653589793 };
-	String json = json::marshal(tmem, v);
-	Object* parsed = json::tparse(json)!!;
-	assert(parsed.get_float("x")!! == 3.141592653589793);
+	String json = json::marshal(tmem, v)!!;
+	test::eq(json::tparse(json)!!.get_float("x")!!, 3.141592653589793);
 }
 
 fn void double_roundtrip_max_significant() @test
 {
 	DoublePrecision v = { .x = 1.2345678901234567 };
-	String json = json::marshal(tmem, v);
-	Object* parsed = json::tparse(json)!!;
-	assert(parsed.get_float("x")!! == 1.2345678901234567);
+	String json = json::marshal(tmem, v)!!;
+	test::eq(json::tparse(json)!!.get_float("x")!!, 1.2345678901234567);
 }
 
 fn void double_roundtrip_small() @test
 {
 	DoublePrecision v = { .x = 1.7976931348623157e-300 };
-	String json = json::marshal(tmem, v);
-	Object* parsed = json::tparse(json)!!;
-	assert(parsed.get_float("x")!! == 1.7976931348623157e-300);
+	String json = json::marshal(tmem, v)!!;
+	test::eq(json::tparse(json)!!.get_float("x")!!, 1.7976931348623157e-300);
 }
 
 fn void double_roundtrip_negative() @test
 {
 	DoublePrecision v = { .x = -2.2250738585072014e-308 };
-	String json = json::marshal(tmem, v);
-	Object* parsed = json::tparse(json)!!;
-	assert(parsed.get_float("x")!! == -2.2250738585072014e-308);
+	String json = json::marshal(tmem, v)!!;
+	test::eq(json::tparse(json)!!.get_float("x")!!, -2.2250738585072014e-308);
 }
 
 fn void float_roundtrip_precise() @test
 {
 	FloatPrecision v = { .x = 1.23456789f };
-	String json = json::marshal(tmem, v);
-	Object* parsed = json::tparse(json)!!;
-	assert((float)parsed.get_float("x")!! == 1.23456789f);
+	String json = json::marshal(tmem, v)!!;
+	test::eq((float)json::tparse(json)!!.get_float("x")!!, 1.23456789f);
 }
 
 struct EscWrap
@@ -408,56 +357,46 @@ struct EscWrap
 macro String marshal_str(String s)
 {
 	EscWrap w = { .s = s };
-	return json::marshal(tmem, w);
+	return json::marshal(tmem, w)!!;
 }
 
 fn void escape_short_sequences() @test
 {
-	String json = marshal_str("\"\\\b\f\n\r\t");
-	test::eq(json, `{"s":"\"\\\b\f\n\r\t"}`);
+	test::eq(marshal_str("\"\\\b\f\n\r\t"), "{\"s\":\"\\\"\\\\\\b\\f\\n\\r\\t\"}");
 }
 
 fn void escape_low_control_as_u() @test
 {
 	// Control chars below 0x20 without a short escape become \u00xx.
 	char[3] ctrl = { 0x00, 0x01, 0x1f };
-	String json = marshal_str((String)ctrl[..]);
-	test::eq(json, `{"s":"\u0000\u0001\u001f"}`);
+	test::eq(marshal_str((String)ctrl[..]), `{"s":"\u0000\u0001\u001f"}`);
 }
 
 fn void escape_ascii_passthrough() @test
 {
-	// Printable ASCII is verbatim, including ' (no \' in JSON) and / (optional).
-	String json = marshal_str("Hello, World! ~ / '");
-	test::eq(json, `{"s":"Hello, World! ~ / '"}`);
+	test::eq(marshal_str("Hello, World! ~ / '"), `{"s":"Hello, World! ~ / '"}`);
 }
 
 fn void escape_del_passthrough() @test
 {
-	// DEL (0x7f) is a valid unescaped JSON character and passes through raw.
+	// DEL (0x7f) passes through unescaped.
 	char[1] del = { 0x7f };
-	String json = marshal_str((String)del[..]);
 	char[9] expected = { '{', '"', 's', '"', ':', '"', 0x7f, '"', '}' };
-	test::eq(json, (String)expected[..]);
+	test::eq(marshal_str((String)del[..]), (String)expected[..]);
 }
 
 fn void escape_bmp_unicode_passthrough() @test
 {
-	// é = U+00E9, € = U+20AC: valid UTF-8, emitted as-is (raw bytes).
-	String json = marshal_str("é€");
-	test::eq(json, `{"s":"é€"}`);
+	test::eq(marshal_str("é€"), `{"s":"é€"}`);
 }
 
 fn void escape_astral_passthrough() @test
 {
-	// 😀 = U+1F600 (4-byte UTF-8) is passed through unchanged.
-	String json = marshal_str("\U0001F600");
-	test::eq(json, `{"s":"😀"}`);
+	test::eq(marshal_str("\U0001F600"), `{"s":"😀"}`);
 }
 
 fn void escape_astral_boundaries_passthrough() @test
 {
-	// First and last astral code points survive as raw UTF-8.
 	test::eq(marshal_str("\U00010000"), `{"s":"𐀀"}`);
 	test::eq(marshal_str("\U0010FFFF"), `{"s":"􏿿"}`);
 }
@@ -469,22 +408,232 @@ fn void escape_empty_string() @test
 
 fn void escape_single_quote_not_escaped() @test
 {
-	// JSON has no \' escape; an apostrophe must be emitted literally.
+	// JSON has no \' escape; apostrophe must be emitted literally.
 	test::eq(marshal_str("it's"), `{"s":"it's"}`);
 }
 
 fn void escape_solidus_not_escaped() @test
 {
-	// A forward slash may be escaped but need not be; expect it verbatim.
 	test::eq(marshal_str("a/b"), `{"s":"a/b"}`);
 }
 
 fn void escape_roundtrip_mixed() @test
 {
-	// Short escapes + a control char + BMP + astral, marshalled then parsed back.
 	String original = "Tab\tLF\nQuote\"Back\\Ctrl\x01Uni:é€\U0001F600End";
 	String json = marshal_str(original);
-	Object* parsed = json::tparse(json)!!;
-	test::eq(parsed.get_string("s")!!, original);
+	test::eq(json::tparse(json)!!.get_string("s")!!, original);
+}
+
+struct TestUser
+{
+	String first_name;
+	String last_name;
+}
+
+struct TestScores
+{
+	int rank;
+	int points;
+}
+
+fn void test_unmarshal_lifetime_bug()
+{
+	// Ensures each string field gets its own allocation, not a shared buffer.
+	TestUser user = json::unmarshal(tmem, `{"first_name": "Alice", "last_name": "Bob"}`, TestUser)!!;
+	test::eq(user.first_name, "Alice");
+	test::eq(user.last_name, "Bob");
+}
+
+fn void test_unmarshal_number_desync()
+{
+	// Integers given as 1.0 or 1e2 in JSON must map cleanly to int fields.
+	TestScores scores1 = json::unmarshal(tmem, `{"rank": 1.0, "points": 100}`, TestScores)!!;
+	test::eq(scores1.rank, 1);
+	test::eq(scores1.points, 100);
+
+	TestScores scores2 = json::unmarshal(tmem, `{"rank": 1e2, "points": 100}`, TestScores)!!;
+	test::eq(scores2.rank, 100);
+	test::eq(scores2.points, 100);
+}
+
+
+struct LogEntry
+{
+	Status status;
+	int code;
+}
+
+struct ServerConfig
+{
+	String host;
+	int[] ports;
+	LogEntry log;
+}
+
+fn void test_unmarshal_nested_and_slices()
+{
+	ServerConfig config = json::unmarshal(tmem, `
+	{
+		"host": "localhost",
+		"ports": [80, 443, 8080],
+		"log": {
+			"status": "ACTIVE",
+			"code": 200
+		}
+	}`, ServerConfig)!!;
+
+	test::eq(config.host, "localhost");
+	test::eq(config.ports.len, 3);
+	test::eq(config.ports[0], 80);
+	test::eq(config.ports[1], 443);
+	test::eq(config.ports[2], 8080);
+	test::eq(config.log.status, Status.ACTIVE);
+	test::eq(config.log.code, 200);
+}
+
+fn void test_unmarshal_enum_representations()
+{
+	// Enums can be deserialized from their string name or their ordinal integer.
+	LogEntry entry1 = json::unmarshal(tmem, `{"status": "PENDING", "code": 1}`, LogEntry)!!;
+	test::eq(entry1.status, Status.PENDING);
+
+	// ordinal 1 = INACTIVE in this module's Status enum
+	LogEntry entry2 = json::unmarshal(tmem, `{"status": 1, "code": 2}`, LogEntry)!!;
+	test::eq(entry2.status, Status.INACTIVE);
+}
+
+fn void test_unmarshal_null_and_missing_fields()
+{
+	ServerConfig config = json::unmarshal(tmem, `{"host": "new_host"}`, ServerConfig)!!;
+	test::eq(config.host, "new_host");
+	test::eq(config.ports.len, 0);
+}
+
+fn void test_marshal_unmarshal_roundtrip()
+{
+	ServerConfig original = {
+		.host = "127.0.0.1",
+		.ports = {8080, 9000},
+		.log = { .status = Status.ACTIVE, .code = 201 }
+	};
+
+	String serialized = json::marshal(tmem, original)!!;
+	ServerConfig deserialized = json::unmarshal(tmem, serialized, ServerConfig)!!;
+
+	test::eq(deserialized.host, original.host);
+	test::eq(deserialized.ports.len, original.ports.len);
+	test::eq(deserialized.ports[0], original.ports[0]);
+	test::eq(deserialized.ports[1], original.ports[1]);
+	test::eq(deserialized.log.status, original.log.status);
+	test::eq(deserialized.log.code, original.log.code);
+}
+
+struct EscapeData
+{
+	String text;
+}
+
+fn void test_unmarshal_from_stream()
+{
+	// Uses the InStream overload of unmarshal.
+	ByteReader reader;
+	reader.init(`{"host": "10.0.0.1", "ports": [22, 80], "log": {"status": "ACTIVE", "code": 200}}`);
+
+	ServerConfig config = json::unmarshal(tmem, &reader, ServerConfig)!!;
+
+	test::eq(config.host, "10.0.0.1");
+	test::eq(config.ports.len, 2);
+	test::eq(config.ports[0], 22);
+	test::eq(config.ports[1], 80);
+	test::eq(config.log.status, Status.ACTIVE);
+	test::eq(config.log.code, 200);
+}
+
+fn void test_unmarshal_to_direct_dom()
+{
+	Object* dom = json::tparse(`{"host": "domain.com", "ports": [443], "log": {"status": "PENDING", "code": 500}}`)!!;
+
+	ServerConfig config;
+	json::@unmarshal_to(tmem, dom, config);
+
+	test::eq(config.host, "domain.com");
+	test::eq(config.ports.len, 1);
+	test::eq(config.ports[0], 443);
+	test::eq(config.log.status, Status.PENDING);
+	test::eq(config.log.code, 500);
+}
+
+fn void test_unmarshal_empty_collections()
+{
+	ServerConfig config = json::unmarshal(tmem, `{"host": "", "ports": []}`, ServerConfig)!!;
+	test::eq(config.host, "");
+	test::eq(config.ports.len, 0);
+}
+
+fn void test_unmarshal_escapes()
+{
+	EscapeData data = json::unmarshal(tmem, `{"text": "Line1\nLine2\tTabbed\"Quoted\""}`, EscapeData)!!;
+	test::eq(data.text, "Line1\nLine2\tTabbed\"Quoted\"");
+}
+
+struct SimpleKept
+{
+	int kept;
+}
+
+fn void test_skip_nested_curly_in_string()
+{
+	// A "}" inside an ignored string value must not terminate the object early.
+	SimpleKept res = json::unmarshal(tmem, `{"ignored": {"key": "}"}, "kept": 42}`, SimpleKept)!!;
+	test::eq(res.kept, 42);
+}
+
+fn void test_marshal_top_level_slice()
+{
+	int[] data = {1, 2, 3};
+	String serialized = json::marshal(tmem, data)!!;
+	test::eq(serialized, `[1,2,3]`);
+
+	int[] deserialized = json::unmarshal(tmem, serialized, int[])!!;
+	test::eq(deserialized.len, 3);
+	test::eq(deserialized[0], 1);
+	test::eq(deserialized[1], 2);
+	test::eq(deserialized[2], 3);
+}
+
+struct FloatWrap
+{
+	float val;
+}
+
+fn void test_marshal_invalid_floats()
+{
+	FloatWrap nan_val = { .val = float::nan };
+	FloatWrap inf_val = { .val = float::inf };
+
+	@pool()
+	{
+		DString s;
+		s.tinit();
+		test::@error(json::marshal_to(&s, nan_val), json::INVALID_NUMBER);
+		test::@error(json::marshal_to(&s, inf_val), json::INVALID_NUMBER);
+	};
+}
+
+struct UnsignedWrap
+{
+	uint u32;
+	ulong u64;
+}
+
+fn void test_unsigned_integers()
+{
+	UnsignedWrap wrap = { .u32 = 4294967295, .u64 = 9007199254740991 };
+	String json = json::marshal(tmem, wrap)!!;
+	test::eq(json, `{"u32":4294967295,"u64":9007199254740991}`);
+
+	UnsignedWrap unwrapped = json::unmarshal(tmem, json, UnsignedWrap)!!;
+	test::eq(unwrapped.u32, (uint)4294967295);
+	test::eq(unwrapped.u64, (ulong)9007199254740991);
 }
 

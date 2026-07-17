@@ -1,26 +1,37 @@
-// Copyright (c) 2024 C3 Community. All rights reserved.
-// Use of this source code is governed by the MIT license
-// a copy of which can be found in the LICENSE_STDLIB file.
-
 <*
- JSON marshaling for structs containing primitive types, enums, and nested structs.
- Supports: String, arrays, slices, ints, floats, doubles, bools, constdefs, typedefs, enums (always marshaled as enum names), nested structs
-*>
+ JSON encoding and decoding.
 
+ Parsing: parse a JSON `String` or stream into a dynamic `Object*` DOM tree via `parse`, `tparse`, `load`, and `tload`.
+ Marshaling: convert a C3 struct or array to a JSON string via `marshal` and `marshal_to`.
+ Unmarshaling: convert a JSON `String` or `Object*` DOM back to a native C3 struct via `unmarshal` and `@unmarshal_to`.
+
+ _Supports: structs, arrays, slices, String, ints, floats, bools, enums, constdefs, typedefs, and nested combinations of those._
+*>
 module std::encoding::json;
 import std::io;
+import std::collections::object;
+import std::math;
 
-enum Indent	:	(String chars)
+<*
+ Formatting indentation preference for JSON output.
+*>
+enum Indent : (String chars)
 {
-	NONE		{""},
-	TAB			{"\t"},
-	SPACE_1		{" "},
-	SPACE_2		{"  "},
-	SPACE_3		{"   "},
-	SPACE_4		{"    "},
-	SPACE_5		{"     "}
+	NONE    { "" },
+	TAB     { "\t" },
+	SPACE_1 { " " },
+	SPACE_2 { "  " },
+	SPACE_3 { "   " },
+	SPACE_4 { "    " },
+	SPACE_5 { "     " }
 }
 
+<*
+ Check at compile time if a given type can be serialized to JSON.
+
+ @param $Type : "The type to check"
+ @return "True if the type is serializable, false otherwise"
+*>
 macro bool may_serialize($Type) @const
 {
 	$switch $Type::kind:
@@ -47,44 +58,378 @@ macro bool may_serialize($Type) @const
 			return false;
 	$endswitch
 }
+
 <*
- Marshal a struct with primitive fields and nested structs to JSON.
+ Marshal a struct or array with primitive fields and nested structures to JSON.
  The struct may not contain a float which is inf or NaN.
 
- @param allocator: "The allocator to use for the result"
- @param value: "The struct value to marshal"
- @param indent: "Indentation preference"
- @require @kindof(value) == STRUCT
+ #### Example:
+ ```
+ struct User { String name; int age; }
+ User user = { "Alice", 30 };
+ String json = json::marshal(tmem, user)!;
+ ```
+
+ @param allocator : "The allocator to use for the result"
+ @param value : "The struct or array value to marshal"
+ @param indent : "Indentation preference"
  @require may_serialize($Typeof(value)) : "Expected a serializable type"
- @return "The JSON string representation"
+ @return "The JSON string representation on success."
+ @return? INVALID_NUMBER : "If an invalid float (inf or NaN) is encountered."
 *>
-macro String marshal(Allocator allocator, value, Indent indent = NONE) => @pool()
+macro String? marshal(Allocator allocator, value, Indent indent = NONE) => @pool()
 {
 	DString s;
 	s.tinit();
-	marshal_to(&s, value, indent)!!;
+	marshal_to(&s, value, indent)!;
 	return s.copy_str(allocator);
 }
 
 <*
- Marshal a struct with primitive fields and nested structs to JSON.
+ Marshal a struct or array to JSON, writing directly to an output stream.
 
- @param stream: "The steam to serialize to"
- @param value: "The struct value to marshal"
- @param indent: "Indentation preference"
- @require @kindof(value) == STRUCT
+ #### Example:
+ ```
+ struct User { String name; int age; }
+ User user = { "Alice", 30 };
+ json::marshal_to(&stdout, user)!;
+ ```
+
+ @param stream : "The stream to serialize to"
+ @param value : "The struct or array value to marshal"
+ @param indent : "Indentation preference"
  @require may_serialize($Typeof(value)) : "Expected a serializable type"
- @return? io::fprintf!, INVALID_NUMBER
+ @return "Success."
+ @return? INVALID_NUMBER, io::fprintf! : "If an invalid float (inf or NaN) or stream error occurs."
 *>
 macro void? marshal_to(OutStream stream, value, Indent indent = NONE)
 {
-	return serialize{$Typeof(value)}(stream, value, indent, 0);
+	return serialize_value{$Typeof(value)}(stream, value, indent, 0);
 }
 
-module std::encoding::json @private;
-import std::io, std::math;
+macro void @assign_enum_from_string(#out, String s) @private
+{
+	$foreach $v : $Typeof(#out)::values:
+		if (s == $v.description) { #out = $v; }
+	$endforeach
+}
 
-fn void? write_indent(OutStream stream, Indent indent, int indent_depth)
+macro void? @skip_json_value(JsonDeserializer* des) @private
+{
+	skip_whitespace(des);
+	char c = peek_char(des);
+	if (c == '"')
+	{
+		(void)parse_string(des)!;
+	}
+	else if (c == '{' || c == '[')
+	{
+		char close_char = c == '{' ? '}' : ']';
+		des.cursor++; // consume open
+		int depth      = 1;
+		bool in_string = false;
+		bool escaped   = false;
+		while (des.cursor < des.source.len && depth > 0)
+		{
+			char ch = des.source[des.cursor++];
+			if (in_string)
+			{
+				if (escaped)
+				{
+					escaped = false;
+				}
+				else if (ch == '\\')
+				{
+					escaped = true;
+				}
+				else if (ch == '"')
+				{
+					in_string = false;
+				}
+			}
+			else if (ch == '"')
+			{
+				in_string = true;
+			}
+			else if (ch == c)
+			{
+				depth++;
+			}
+			else if (ch == close_char)
+			{
+				depth--;
+			}
+		}
+	}
+	else
+	{
+		while (des.cursor < des.source.len)
+		{
+			char ch = des.source[des.cursor];
+			if (ch == ',' || ch == '}' || ch == ']' || ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
+			{
+				break;
+			}
+			des.cursor++;
+		}
+	}
+}
+
+macro void? @des_value(JsonDeserializer* des, #out) @private
+{
+	skip_whitespace(des);
+	if (peek_char(des) == 'n')
+	{
+		if (des.cursor + 4 <= des.source.len && des.source[des.cursor:4] == "null")
+		{
+			des.cursor += 4;
+			$switch $Typeof(#out)::kind:
+				$case CONSTDEF:
+				$case TYPEDEF:
+					$switch $Typeof(#out):
+						$case String:
+							#out = "";
+							return;
+					$endswitch
+				$case SLICE:
+					#out = { };
+					return;
+			$endswitch
+			return;
+		}
+	}
+
+	$switch $Typeof(#out)::kind:
+		$case STRUCT:
+			expect_char(des, '{')!;
+			bool first = true;
+			while (peek_char(des) != '}')
+			{
+				if (!first) expect_char(des, ',')!;
+				first = false;
+				String key = parse_string(des)!;
+				expect_char(des, ':')!;
+
+				bool matched = false;
+				$foreach $member : $Typeof(#out)::members:
+					if (!matched && key == $member.name)
+					{
+						@des_value(des, #out.$member)!;
+						matched = true;
+					}
+				$endforeach
+				if (!matched)
+				{
+					@skip_json_value(des)!;
+				}
+			}
+			expect_char(des, '}')!;
+		$case ARRAY:
+		$case SLICE:
+			expect_char(des, '[')!;
+
+			sz start_pos = des.cursor;
+			sz len       = 0;
+			if (peek_char(des) != ']')
+			{
+				len = 1;
+				int depth = 0;
+				while (des.cursor < des.source.len)
+				{
+					char c = des.source[des.cursor];
+					if (c == '[' || c == '{')
+					{
+						depth++;
+					}
+					else if (c == ']' || c == '}')
+					{
+						depth--;
+						if (depth < 0)
+						{
+							break;
+						}
+					}
+					else if (c == ',' && depth == 0)
+					{
+						len++;
+					}
+					des.cursor++;
+				}
+			}
+			des.cursor = start_pos;
+
+			$if $Typeof(#out)::kind == TypeKind.SLICE:
+				#out = alloc::new_array(des.allocator, $Typeof(#out[0]), (usz)len);
+			$endif
+
+			bool first = true;
+			for (sz i = 0; i < len; i++)
+			{
+				if (!first) expect_char(des, ',')!;
+				first = false;
+				@des_value(des, #out[i])!;
+			}
+			expect_char(des, ']')!;
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+			#out = ($Typeof(#out))parse_double(des)!;
+		$case FLOAT:
+			#out = ($Typeof(#out))parse_double(des)!;
+		$case BOOL:
+			#out = parse_bool(des)!;
+		$case CONSTDEF:
+		$case TYPEDEF:
+			$switch $Typeof(#out):
+				$case String:
+					#out = (parse_string(des)!).copy(des.allocator);
+				$default:
+					var $Inner = $Typeof(#out)::inner;
+					@des_value(des, *($Inner*)&#out)!;
+			$endswitch
+		$case ENUM:
+			if (peek_char(des) == '"')
+			{
+				@assign_enum_from_string(#out, parse_string(des)!);
+			}
+			else
+			{
+				#out = $Typeof(#out)::from_ordinal((long)parse_double(des)!);
+			}
+		$default:
+	$endswitch
+}
+
+<*
+ Unmarshal JSON directly into a native C3 variable.
+
+ #### Example:
+ ```
+ struct User { String name; int age; }
+ User user = json::unmarshal(tmem, `{"name":"Alice","age":30}`, User)!;
+ ```
+
+ @param allocator : "The allocator to use for the results (slices, strings)"
+ @param input : "The JSON input (String or InStream)"
+ @param $Type : "The target type to deserialize into"
+ @return "The populated native data structure on success."
+ @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "If JSON parsing fails."
+*>
+macro unmarshal(Allocator allocator, input, $Type)
+{
+	$if $Typeof(input) != String:
+		$if !$defined(input.read_byte):
+			$error "input must be a String or InStream";
+		$endif
+		String source = (String)io::read_fully(allocator, input)!;
+		defer alloc::free(allocator, source);
+	$else
+		String source = input;
+	$endif
+	@stack_mem(256 ; Allocator smem)
+	{
+		JsonDeserializer des = {
+			.source = source,
+			.cursor = 0,
+			.allocator = allocator,
+			.last_string = dstring::new_with_capacity(smem, 64),
+			.flavor = JsonFlavor.JSONC,
+			.depth = 0
+		};
+		$Type result;
+		@des_value(&des, result)!;
+		return result;
+	};
+}
+
+<*
+ Unmarshal a parsed dynamic Object* DOM tree into a typed native C3 variable.
+
+ #### Example:
+ ```
+ struct User { String name; int age; }
+ Object* dom = json::tparse(`{"name":"Alice","age":30}`)!;
+ User user;
+ json::@unmarshal_to(tmem, dom, user);
+ ```
+
+ @param allocator : "The allocator to use for slice allocations"
+ @param obj : "The Object* dynamic DOM tree"
+ @param #out : "The target native variable to populate"
+*>
+macro void @unmarshal_to(Allocator allocator, Object* obj, #out)
+{
+	if (!obj || obj.is_null()) return;
+
+	$switch $Typeof(#out)::kind:
+		$case STRUCT:
+			$foreach $member : $Typeof(#out)::members:
+				if (try field = obj.get($member.name))
+				{
+					if (!field.is_null())
+					{
+						@unmarshal_to(allocator, field, #out.$member);
+					}
+				}
+			$endforeach
+		$case ARRAY:
+		$case SLICE:
+			sz len = obj.get_len();
+			$if $Typeof(#out)::kind == TypeKind.SLICE:
+				#out = alloc::new_array(allocator, $Typeof(#out[0]), (usz)len);
+			$endif
+			for (sz i = 0; i < len; i++)
+			{
+				Object* item = obj.get_at(i);
+				if (item && !item.is_null())
+				{
+					@unmarshal_to(allocator, item, #out[i]);
+				}
+			}
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+			if (obj.is_float())
+			{
+				#out = ($Typeof(#out))obj.f;
+			}
+			else
+			{
+				#out = ($Typeof(#out))obj.i;
+			}
+		$case FLOAT:
+			if (obj.is_int())
+			{
+				#out = ($Typeof(#out))obj.i;
+			}
+			else
+			{
+				#out = ($Typeof(#out))obj.f;
+			}
+		$case BOOL:
+			#out = obj.b;
+		$case CONSTDEF:
+		$case TYPEDEF:
+			$switch $Typeof(#out):
+				$case String:
+					#out = obj.s.copy(allocator);
+				$default:
+					var $Inner = $Typeof(#out)::inner;
+					@unmarshal_to(allocator, obj, *($Inner*)&#out);
+			$endswitch
+		$case ENUM:
+			if (obj.is_string())
+			{
+				@assign_enum_from_string(#out, obj.s);
+			}
+			else
+			{
+				#out = $Typeof(#out)::from_ordinal((long)obj.i);
+			}
+		$default:
+	$endswitch
+}
+
+
+fn void? write_indent(OutStream stream, Indent indent, int indent_depth) @private
 {
 	if (indent == NONE) return;
 	for (int i = 0; i < indent_depth; i++)
@@ -93,25 +438,22 @@ fn void? write_indent(OutStream stream, Indent indent, int indent_depth)
 	}
 }
 
-fn void? serialize(OutStream stream, Type value, Indent indent = NONE, int indent_depth = 0) <Type>
+fn void? serialize(OutStream stream, Type value, Indent indent = NONE, int indent_depth = 0)<Type> @private
 {
 	bool pretty_print = indent != NONE;
 	stream.write_byte('{')!;
 
-	$if  Type::members.len:
+	$if Type::members.len:
 		if (pretty_print) stream.write_byte('\n')!;
 	$endif
 
-	var $first = true;
 	$foreach $i, $member : Type::members:
 		$if $i > 0:
 			stream.write_byte(',')!;
 			if (pretty_print) stream.write_byte('\n')!;
 		$endif
-		$first = false;
 		if (pretty_print) write_indent(stream, indent, indent_depth + 1)!;
 
-		// Add field name (always quoted)
 		stream.write_byte('"')!;
 		stream.write($member.name)!;
 		stream.write(pretty_print ? `": ` : `":`)!;
@@ -128,14 +470,7 @@ fn void? serialize(OutStream stream, Type value, Indent indent = NONE, int inden
 	stream.write_byte('}')!;
 }
 
-<*
- Marshal a primitive value to an output stream.
-
- @param value: "The value to marshal"
- @return? INVALID_NUMBER : "If the float value is NaN or inf"
- @return? io::fprintf! : "If there is an IO error"
-*>
-fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NONE, int indent_depth = 0) <TypeElement>
+fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NONE, int indent_depth = 0)<TypeElement> @private
 {
 	$switch TypeElement::kind:
 		$case STRUCT:
@@ -146,8 +481,9 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 		$case SLICE:
 			return serialize_slice{$Typeof(value[0])}(stream, value, indent, indent_depth);
 		$case SIGNED_INT:
+			write_int(stream, (long)value) @inline !;
 		$case UNSIGNED_INT:
-			io::fprintf(stream, "%d", value)!;
+			write_uint(stream, (ulong)value)!;
 		$case FLOAT:
 			if (math::is_nan(value) || math::is_inf(value)) return INVALID_NUMBER~;
 			io::fprintf(stream, "%.17g", (double)value)!;
@@ -156,9 +492,8 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 		$case CONSTDEF:
 		$case TYPEDEF:
 			$switch TypeElement:
-				// Special handling of String
 				$case String:
-					_serialize_string(stream, value)!;
+					serialize_string(stream, value)!;
 				$default:
 					var $Inner = TypeElement::inner;
 					return serialize_value{$Inner}(stream, ($Inner)value, indent, indent_depth);
@@ -170,10 +505,31 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 	$endswitch
 }
 
-<*
- Marshal a slice of primitive values to JSON.
-*>
-fn void? serialize_slice(OutStream stream, SliceType[] slice, Indent indent = NONE, int indent_depth = 0) <SliceType>
+fn void? write_uint(OutStream stream, ulong value) @private
+{
+	if (value == 0) return stream.write_byte('0');
+	char[24] buf;
+	int i = 24;
+	while (value > 0)
+	{
+		i--;
+		buf[i] = (char)('0' + (value % 10));
+		value /= 10;
+	}
+	stream.write(buf[i:24 - i])!;
+}
+
+fn void? write_int(OutStream stream, long value) @private
+{
+	if (value < 0)
+	{
+		stream.write_byte('-')!;
+		return write_uint(stream, (ulong)-value) @inline;
+	}
+	return write_uint(stream, (ulong)value) @inline;
+}
+
+fn void? serialize_slice(OutStream stream, SliceType[] slice, Indent indent = NONE, int indent_depth = 0)<SliceType> @private
 {
 	bool pretty_print = indent != NONE;
 	stream.write_byte('[')!;
@@ -198,21 +554,22 @@ fn void? serialize_slice(OutStream stream, SliceType[] slice, Indent indent = NO
 	stream.write_byte(']')!;
 }
 
-macro void? _serialize_string(OutStream stream, String string) @private
+macro void? serialize_string(OutStream stream, String string) @private
 {
 	WriteFn write = &stream.write;
-	WriteByteFn write_byte = &stream.write_byte;
 	write(stream, `"`)!;
-	foreach (c : string)
+
+	sz start = 0;
+	foreach (i, c : string)
 	{
-		if (c >= 0x80)
+		if (c != '"' && c != '\\' && c >= 0x20) continue;
+		if (i > start)
 		{
-			write_byte(stream, c)!;
-			continue;
+			write(stream, string[start:i - start])!;
 		}
 		switch (c)
 		{
-			case '"':  write(stream, `\"`)!;
+			case '"': write(stream, `\"`)!;
 			case '\\': write(stream, `\\`)!;
 			case '\b': write(stream, `\b`)!;
 			case '\f': write(stream, `\f`)!;
@@ -220,13 +577,14 @@ macro void? _serialize_string(OutStream stream, String string) @private
 			case '\r': write(stream, `\r`)!;
 			case '\t': write(stream, `\t`)!;
 			default:
-				if (c >= 32)
-				{
-					write_byte(stream, c)!;
-					continue;
-				}
 				io::fprintf(stream, `\u%04x`, c)!;
 		}
+		start = i + 1;
+	}
+
+	if (start < string.len)
+	{
+		write(stream, string[start:string.len - start])!;
 	}
 	write(stream, `"`)!;
 }
