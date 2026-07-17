@@ -52,6 +52,7 @@ fn void errno_set(Errno e)
 alias TerminateFunction = fn void();
 alias CompareFunction = fn int(void*, void*);
 alias JmpBuf = uptr[$$JMP_BUF_SIZE];
+alias SigJmpBuf = uptr[$$JMP_BUF_SIZE + 1];
 alias Fd = CInt;
 alias Fpos_t @if(env::WIN32) = long;
 alias SignalFunction = fn void(CInt);
@@ -118,7 +119,8 @@ extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
 extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32 && !env::NETBSD);
-extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::OPENBSD && !env::EMSCRIPTEN);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::EMSCRIPTEN);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @cname("__longjmp14") @if(env::NETBSD);
 extern fn void* malloc(usz size);
 extern fn void* memchr(void* str, CInt c, usz n);
 extern fn CInt memcmp(void* buf1, void* buf2, usz count);
@@ -144,9 +146,15 @@ extern fn void rewind(CFile stream);
 extern fn CInt scanf(ZString format, ...);
 extern fn void setbuf(CFile stream, char* buffer);
 extern fn int setenv(ZString name, ZString value, CInt overwrite);
-extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::OPENBSD && !env::EMSCRIPTEN);
+extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN);
+extern fn CInt setjmp(JmpBuf* buffer) @cname("__setjmp14") @if(env::NETBSD);
 extern fn void setvbuf(CFile stream, char* buf, CInt type, usz size);
 extern fn SignalFunction signal(CInt sig, SignalFunction function);
+extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN);
+extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @cname("__siglongjmp14") @if(env::NETBSD);
+extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN && !env::LINUX);
+extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp14") @if(env::NETBSD);
+extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp") @if(env::LINUX);
 extern fn CInt snprintf(char* buffer, usz size, ZString format, ...);
 extern fn CInt sprintf(char* buffer, ZString format, ...);
 extern fn void srand(uint seed);
@@ -222,15 +230,13 @@ macro CFile stderr() => __stderr;
 module libc @if(env::EMSCRIPTEN);
 import std::os;
 fn int setjmp(JmpBuf* ptr) => 0;
+fn int sigsetjmp(SigJmpBuf* ptr, CInt val) => 0;
 fn void longjmp(JmpBuf* ptr, int i) => os::exit(i);
+fn void siglongjmp(SigJmpBuf* ptr, CInt i) => os::exit(i);
 
 
 module libc @if(env::NETBSD || env::OPENBSD);
 extern fn int fcntl(CInt socket, int cmd, ...);
-extern fn int _setjmp(void*);
-macro int setjmp(void* ptr) => _setjmp(ptr);
-extern fn void _longjmp(void*, int);
-macro void longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
 extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @if(env::NETBSD);
@@ -278,11 +284,20 @@ fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip
 	unreachable("longjmp unavailable");
 }
 
+fn void siglongjmp(SigJmpBuf* buffer, CInt value) @weak @cname("siglongjmp") @nostrip
+{
+	unreachable("longjmp unavailable");
+}
+
 fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip
 {
 	unreachable("setjmp unavailable");
 }
 
+fn CInt sigsetjmp(SigJmpBuf* buffer, CInt save) @weak @cname("sigsetjmp") @nostrip
+{
+	unreachable("sigsetjmp unavailable");
+}
 
 fn void* malloc(usz size) @weak @cname("malloc") @nostrip
 {
@@ -978,8 +993,108 @@ constdef Errno : inline CInt @if(env::FREEBSD)
 	EINTEGRITY               = 97, // FreeBSD: integrity check failed
 }
 
+constdef Errno : inline CInt @if(env::OPENBSD)
+{
+	OK                       = 0,
+	EPERM                    = 1,  // Operation not permitted
+	ENOENT                   = 2,  // No such file or directory
+	ESRCH                    = 3,  // No such process
+	EINTR                    = 4,  // Interrupted system call
+	EIO                      = 5,  // Input/output error
+	ENXIO                    = 6,  // Device not configured
+	E2BIG                    = 7,  // Argument list too long
+	ENOEXEC                  = 8,  // Exec format error
+	EBADF                    = 9,  // Bad file descriptor
+	ECHILD                   = 10, // No child processes
+	EDEADLK                  = 11, // Resource deadlock avoided
+	ENOMEM                   = 12, // Cannot allocate memory
+	EACCES                   = 13, // Permission denied
+	EFAULT                   = 14, // Bad address
+	ENOTBLK                  = 15, // Block device required
+	EBUSY                    = 16, // Device busy
+	EEXIST                   = 17, // File exists
+	EXDEV                    = 18, // Cross-device link
+	ENODEV                   = 19, // Operation not supported by device
+	ENOTDIR                  = 20, // Not a directory
+	EISDIR                   = 21, // Is a directory
+	EINVAL                   = 22, // Invalid argument
+	ENFILE                   = 23, // Too many open files in system
+	EMFILE                   = 24, // Too many open files
+	ENOTTY                   = 25, // Inappropriate ioctl for device
+	ETXTBSY                  = 26, // Text file busy
+	EFBIG                    = 27, // File too large
+	ENOSPC                   = 28, // No space left on device
+	ESPIPE                   = 29, // Illegal seek
+	EROFS                    = 30, // Read-only file system
+	EMLINK                   = 31, // Too many links
+	EPIPE                    = 32, // Broken pipe
+	EDOM                     = 33, // Numerical argument out of domain
+	ERANGE                   = 34, // Result too large
+	EAGAIN                   = 35, // Resource temporarily unavailable
+	EWOULDBLOCK              = EAGAIN,
+	EINPROGRESS              = 36,
+	EALREADY                 = 37,
+	ENOTSOCK                 = 38,
+	EDESTADDRREQ             = 39,
+	EMSGSIZE                 = 40,
+	EPROTOTYPE               = 41,
+	ENOPROTOOPT              = 42,
+	EPROTONOSUPPORT          = 43,
+	ESOCKTNOSUPPORT          = 44,
+	EOPNOTSUPP               = 45,
+	EPFNOSUPPORT             = 46,
+	EAFNOSUPPORT             = 47,
+	EADDRINUSE               = 48,
+	EADDRNOTAVAIL            = 49,
+	ENETDOWN                 = 50,
+	ENETUNREACH              = 51,
+	ENETRESET                = 52,
+	ECONNABORTED             = 53,
+	ECONNRESET               = 54,
+	ENOBUFS                  = 55,
+	EISCONN                  = 56,
+	ENOTCONN                 = 57,
+	ESHUTDOWN                = 58,
+	ETOOMANYREFS             = 59,
+	ETIMEDOUT                = 60,
+	ECONNREFUSED             = 61,
+	ELOOP                    = 62,
+	ENAMETOOLONG             = 63,
+	EHOSTDOWN                = 64,
+	EHOSTUNREACH             = 65,
+	ENOTEMPTY                = 66,
+	EPROCLIM                 = 67,
+	EUSERS                   = 68,
+	EDQUOT                   = 69,
+	ESTALE                   = 70,
+	EREMOTE                  = 71,
+	EBADRPC                  = 72,
+	ERPCMISMATCH             = 73,
+	EPROGUNAVAIL             = 74,
+	EPROGMISMATCH            = 75,
+	EPROCUNAVAIL             = 76,
+	ENOLCK                   = 77,
+	ENOSYS                   = 78,
+	EFTYPE                   = 79,
+	EAUTH                    = 80,
+	ENEEDAUTH                = 81,
+	EIPSEC                   = 82,
+	ENOATTR                  = 83,
+	EILSEQ                   = 84,
+	ENOMEDIUM                = 85,
+	EMEDIUMTYPE              = 86,
+	EOVERFLOW                = 87,
+	ECANCELED                = 88,
+	EIDRM                    = 89,
+	ENOMSG                   = 90,
+	ENOTSUP                  = 91,
+	EBADMSG                  = 92,
+	ENOTRECOVERABLE          = 93,
+	EOWNERDEAD               = 94,
+	EPROTO                   = 95,
+}
 
-constdef Errno : inline CInt @if(!env::WIN32 && !env::DARWIN && !env::NETBSD && !env::EMSCRIPTEN && !env::FREEBSD)
+constdef Errno : inline CInt @if(!env::WIN32 && !env::DARWIN && !env::BSD_FAMILY && !env::EMSCRIPTEN)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
