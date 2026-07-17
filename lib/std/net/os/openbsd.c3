@@ -72,7 +72,6 @@ const int SO_SNDTIMEO     = 0x1005;   // send timeout
 const int SO_RCVTIMEO     = 0x1006;   // receive timeout
 const int SO_ERROR        = 0x1007;   // get error status and clear
 const int SO_TYPE         = 0x1008;   // get socket type
-const int SO_NETPROC      = 0x1020;   // multiplex; network processing
 const int SO_RTABLE       = 0x1021;   // routing table to be used
 const int SO_PEERCRED     = 0x1022;   // get connect-time credentials
 const int SO_SPLICE       = 0x1023;   // splice data to other socket

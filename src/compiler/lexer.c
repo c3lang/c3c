@@ -368,7 +368,7 @@ EXIT:;
 // --- Number scanning
 
 /**
- * For C3 we use the practice of f<bit-width> u<bit-width> and i<bit-width>
+ * C3 supports Ll uU Ff Dd
  * @param lexer
  * @param is_float
  * @return
@@ -406,9 +406,6 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 			}
 			break;
 		case 'd':
-			c = next(lexer);
-			*is_float = true;
-			break;
 		case 'f':
 			c = next(lexer);
 			*is_float = true;
