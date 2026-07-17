@@ -4,6 +4,7 @@
 
 module std::core::mem::allocators;
 import std::collections, std::io, std::os::backtrace;
+import std::thread;
 
 const MAX_BACKTRACE = 16;
 struct Allocation
@@ -30,6 +31,7 @@ struct TrackingAllocator (Allocator)
 	sz allocs_total;
 	sz usage;
 	sz max_usage;
+	Mutex mutex;
 }
 
 <*
@@ -41,6 +43,7 @@ fn void TrackingAllocator.init(&self, Allocator allocator)
 {
 	*self = { .inner_allocator = allocator };
 	self.map.init(allocator);
+	self.mutex.init()!!;
 }
 
 <*
@@ -49,6 +52,7 @@ fn void TrackingAllocator.init(&self, Allocator allocator)
 fn void TrackingAllocator.free(&self)
 {
 	self.map.free();
+	self.mutex.destroy();
 	*self = {};
 }
 
@@ -57,9 +61,12 @@ fn void TrackingAllocator.free(&self)
 *>
 fn sz TrackingAllocator.allocated(&self) => @pool()
 {
-	sz allocated = 0;
-	foreach (&allocation : self.map.tvalues()) allocated += allocation.size;
-	return allocated;
+	self.mutex.@in_lock()
+	{
+		sz allocated = 0;
+		foreach (&allocation : self.map.tvalues()) allocated += allocation.size;
+		return allocated;
+	};
 }
 
 <*
@@ -77,7 +84,7 @@ fn sz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
 *>
 fn sz TrackingAllocator.max_allocated(&self) => self.max_usage;
 
-fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
+fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator) => self.mutex.@in_lock()
 {
 	return self.map.tvalues();
 }
@@ -87,8 +94,9 @@ fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
 *>
 fn sz TrackingAllocator.allocation_count(&self) => self.map.count;
 
-fn void*? TrackingAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic
+fn void*? TrackingAllocator.acquire(&self, sz size, AllocInitType init_type, sz alignment) @dynamic => self.mutex.@in_lock()
 {
+
 	void* data = self.inner_allocator.acquire(size, init_type, alignment)!;
 	self.allocs_total++;
 	void*[MAX_BACKTRACE] bt;
@@ -100,7 +108,7 @@ fn void*? TrackingAllocator.acquire(&self, sz size, AllocInitType init_type, sz 
 	return data;
 }
 
-fn void*? TrackingAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
+fn void*? TrackingAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic => self.mutex.@in_lock()
 {
 	void* data = self.inner_allocator.resize(old_pointer, size, alignment)!;
 	self.usage -= self.map[(uptr)old_pointer]!!.size;
@@ -115,7 +123,7 @@ fn void*? TrackingAllocator.resize(&self, void* old_pointer, sz size, sz alignme
 	return data;
 }
 
-fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dynamic
+fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dynamic => self.mutex.@in_lock()
 {
 	sz? old_size = self.map[(uptr)old_pointer].size;
 	if (catch self.map.remove((uptr)old_pointer))
@@ -126,109 +134,115 @@ fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dy
 	self.inner_allocator.release(old_pointer, is_aligned);
 }
 
-fn void TrackingAllocator.clear(&self)
+fn void TrackingAllocator.clear(&self) => self.mutex.@in_lock()
 {
 	self.map.clear();
 }
 
-fn bool TrackingAllocator.has_leaks(&self)
+fn bool TrackingAllocator.has_leaks(&self) => self.mutex.@in_lock()
 {
 	return self.map.len() > 0;
 }
 
-fn void TrackingAllocator.print_report(&self) => self.fprint_report(io::stdout())!!;
+fn void TrackingAllocator.print_report(&self)
+{
+	self.fprint_report(io::stdout())!!;
+}
 
 
 fn void? TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 {
-	sz total = 0;
-	sz entries = 0;
-	bool leaks = false;
-
-	Allocation[] allocs = self.map.tvalues();
-	if (allocs.len)
+	self.mutex.@in_lock()
 	{
-		if (!allocs[0].backtrace[0])
-		{
-			io::fprintn(out, "======== Memory Report ========")!;
-			io::fprintn(out, "Size in bytes   Address")!;
-			foreach (i, &allocation : allocs)
-			{
-				entries++;
-				total += allocation.size;
-				io::fprintfn(out, "%13s   %p", allocation.size, allocation.ptr)!;
-			}
-			io::fprintn(out, "===============================")!;
+		sz total = 0;
+		sz entries = 0;
+		bool leaks = false;
 
+		Allocation[] allocs = self.map.tvalues();
+		if (allocs.len)
+		{
+			if (!allocs[0].backtrace[0])
+			{
+				io::fprintn(out, "======== Memory Report ========")!;
+				io::fprintn(out, "Size in bytes   Address")!;
+				foreach (i, &allocation : allocs)
+				{
+					entries++;
+					total += allocation.size;
+					io::fprintfn(out, "%13s   %p", allocation.size, allocation.ptr)!;
+				}
+				io::fprintn(out, "===============================")!;
+
+			}
+			else
+			{
+				io::fprintn(out, "================================== Memory Report ==================================")!;
+				io::fprintn(out, "Size in bytes   Address          Function                       ")!;
+				foreach (i, &allocation : allocs)
+				{
+					entries++;
+					total += allocation.size;
+					BacktraceList backtraces = {};
+					Backtrace trace = backtrace::BACKTRACE_UNKNOWN;
+					if (allocation.backtrace[3])
+					{
+						trace = backtrace::symbolize_backtrace(tmem, allocation.backtrace[3:1]).get(0) ?? backtrace::BACKTRACE_UNKNOWN;
+					}
+					if (trace.function.len)	leaks = true;
+					io::fprintfn(out, "%13s   %p   %s:%d", allocation.size,
+						allocation.ptr, trace.function.len ? trace.function : "???",
+						trace.line ? trace.line : 0)!;
+				}
+				io::fprintn(out, "===================================================================================")!;
+			}
 		}
 		else
 		{
-			io::fprintn(out, "================================== Memory Report ==================================")!;
-			io::fprintn(out, "Size in bytes   Address          Function                       ")!;
+			io::fprintn(out, "* NO ALLOCATIONS FOUND *")!;
+		}
+		io::fprintfn(out, "- Total currently allocated memory:            %d", total)!;
+		io::fprintfn(out, "- Total current allocations:                   %d", entries)!;
+		io::fprintfn(out, "- Total allocations (freed and retained):      %d", self.allocs_total)!;
+		io::fprintfn(out, "- Total allocated memory (freed and retained): %d", self.mem_total)!;
+		io::fprintfn(out, "- Maximum memory usage:                        %d", self.max_usage)!;
+		if (leaks)
+		{
+			io::fprintn(out)!;
+			io::fprintn(out, "Full leak report:")!;
 			foreach (i, &allocation : allocs)
 			{
-				entries++;
-				total += allocation.size;
+				if (!allocation.backtrace[3])
+				{
+					io::fprintfn(out, "Allocation %d (%d bytes) - no backtrace available.", i + 1, allocation.size)!;
+					continue;
+				}
 				BacktraceList backtraces = {};
-				Backtrace trace = backtrace::BACKTRACE_UNKNOWN;
-				if (allocation.backtrace[3])
+				sz end = MAX_BACKTRACE;
+				foreach (j, val : allocation.backtrace)
 				{
-					trace = backtrace::symbolize_backtrace(tmem, allocation.backtrace[3:1]).get(0) ?? backtrace::BACKTRACE_UNKNOWN;
+					if (!val)
+					{
+						end = j;
+						break;
+					}
 				}
-				if (trace.function.len)	leaks = true;
-				io::fprintfn(out, "%13s   %p   %s:%d", allocation.size,
-					allocation.ptr, trace.function.len ? trace.function : "???",
-					trace.line ? trace.line : 0)!;
-			}
-			io::fprintn(out, "===================================================================================")!;
-		}
-	}
-	else
-	{
-		io::fprintn(out, "* NO ALLOCATIONS FOUND *")!;
-	}
-	io::fprintfn(out, "- Total currently allocated memory:            %d", total)!;
-	io::fprintfn(out, "- Total current allocations:                   %d", entries)!;
-	io::fprintfn(out, "- Total allocations (freed and retained):      %d", self.allocs_total)!;
-	io::fprintfn(out, "- Total allocated memory (freed and retained): %d", self.mem_total)!;
-	io::fprintfn(out, "- Maximum memory usage:                        %d", self.max_usage)!;
-	if (leaks)
-	{
-		io::fprintn(out)!;
-		io::fprintn(out, "Full leak report:")!;
-		foreach (i, &allocation : allocs)
-		{
-			if (!allocation.backtrace[3])
-			{
-				io::fprintfn(out, "Allocation %d (%d bytes) - no backtrace available.", i + 1, allocation.size)!;
-				continue;
-			}
-			BacktraceList backtraces = {};
-			sz end = MAX_BACKTRACE;
-			foreach (j, val : allocation.backtrace)
-			{
-				if (!val)
+				BacktraceList list = backtrace::symbolize_backtrace(tmem, allocation.backtrace[3..(end - 1)])!;
+				io::fprintfn(out, "Allocation %d (%d bytes): ", i + 1, allocation.size)!;
+				foreach (trace : list)
 				{
-					end = j;
-					break;
-				}
-			}
-			BacktraceList list = backtrace::symbolize_backtrace(tmem, allocation.backtrace[3..(end - 1)])!;
-			io::fprintfn(out, "Allocation %d (%d bytes): ", i + 1, allocation.size)!;
-			foreach (trace : list)
-			{
-				if (trace.has_file())
-				{
-					io::fprintfn(out, "   %s (in %s:%d)", trace.function, trace.file, trace.line);
+					if (trace.has_file())
+					{
+						io::fprintfn(out, "   %s (in %s:%d)", trace.function, trace.file, trace.line);
 					continue;
+					}
+					if (trace.is_unknown())
+					{
+						io::fprintfn(out, "   ??? (in unknown)");
+						continue;
+					}
+					io::fprintfn(out, "   %s (source unavailable)", trace.function);
 				}
-				if (trace.is_unknown())
-				{
-					io::fprintfn(out, "   ??? (in unknown)");
-					continue;
-				}
-				io::fprintfn(out, "   %s (source unavailable)", trace.function);
 			}
 		}
-	}
+	};
 }
