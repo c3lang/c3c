@@ -230,15 +230,13 @@ macro CFile stderr() => __stderr;
 module libc @if(env::EMSCRIPTEN);
 import std::os;
 fn int setjmp(JmpBuf* ptr) => 0;
-fn int setsigjmp(JmpBuf* ptr, CInt val) => 0;
+fn int sigsetjmp(SigJmpBuf* ptr, CInt val) => 0;
 fn void longjmp(JmpBuf* ptr, int i) => os::exit(i);
-fn void siglongjmp(JmpBuf* ptr, CInt i) => os::exit(i);
+fn void siglongjmp(SigJmpBuf* ptr, CInt i) => os::exit(i);
 
 
 module libc @if(env::NETBSD || env::OPENBSD);
 extern fn int fcntl(CInt socket, int cmd, ...);
-extern fn int _setjmp(void*);
-extern fn int _sigsetjmp(void*, CInt);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
 extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @if(env::NETBSD);
@@ -286,7 +284,7 @@ fn void longjmp(JmpBuf* buffer, CInt value) @weak @cname("longjmp") @nostrip
 	unreachable("longjmp unavailable");
 }
 
-fn void siglongjmp(JmpBuf* buffer, CInt value) @weak @cname("siglongjmp") @nostrip
+fn void siglongjmp(SigJmpBuf* buffer, CInt value) @weak @cname("siglongjmp") @nostrip
 {
 	unreachable("longjmp unavailable");
 }
@@ -296,7 +294,7 @@ fn CInt setjmp(JmpBuf* buffer) @weak @cname("setjmp") @nostrip
 	unreachable("setjmp unavailable");
 }
 
-fn CInt sigsetjmp(JmpBuf* buffer, CInt save) @weak @cname("sigsetjmp") @nostrip
+fn CInt sigsetjmp(SigJmpBuf* buffer, CInt save) @weak @cname("sigsetjmp") @nostrip
 {
 	unreachable("sigsetjmp unavailable");
 }
