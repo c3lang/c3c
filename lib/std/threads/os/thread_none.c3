@@ -42,3 +42,4 @@ fn bool NativeMutex.is_initialized(&self)
 macro void NativeMutex.lock(&mutex) => NOT_IMPLEMENTED~!!;
 macro bool NativeMutex.try_lock(&mutex) => NOT_IMPLEMENTED~!!;
 macro void NativeMutex.unlock(&mutex) => NOT_IMPLEMENTED~!!;
+macro void NativeMutex.destroy(&mutex) => NOT_IMPLEMENTED~!!;
