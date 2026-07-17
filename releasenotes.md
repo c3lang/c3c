@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Windows aarch64 is now supported.
+- Tracking allocator can now accept cross-thread allocations.
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
