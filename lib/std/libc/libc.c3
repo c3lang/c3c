@@ -150,8 +150,8 @@ extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::E
 extern fn CInt setjmp(JmpBuf* buffer) @cname("__setjmp14") @if(env::NETBSD);
 extern fn void setvbuf(CFile stream, char* buf, CInt type, usz size);
 extern fn SignalFunction signal(CInt sig, SignalFunction function);
-extern fn CInt siglongjmp(SigJmpBuf* buffer, CInt value) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN);
-extern fn CInt siglongjmp(SigJmpBuf* buffer, CInt value) @cname("__siglongjmp14") @if(env::NETBSD);
+extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN);
+extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @cname("__siglongjmp14") @if(env::NETBSD);
 extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN && !env::LINUX);
 extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp14") @if(env::NETBSD);
 extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp") @if(env::LINUX);
