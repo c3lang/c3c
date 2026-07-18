@@ -5349,6 +5349,18 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 		vec_add(generic_section->generic_decl.decls, method);
 		method->is_template = true;
 		method->generic_id = decl->generic_id;
+
+		if (generic_section->generic_decl.instances)
+		{
+			Decl *instance = generic_section->generic_decl.instances[0];
+			if (!instance->instance_decl.generated_decls) return false;
+			instance->instance_decl.generated_decls = NULL;
+			const char *decl_string = span_to_string(parent_type_info->loc);
+			RETURN_SEMA_ERROR(instance,
+				"Instantiation of the generic type '%s' happens before methods are "
+				"registered, please try to rearrange the instantiation order.",
+				decl_string);
+		}
 		return false;
 	}
 	if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
