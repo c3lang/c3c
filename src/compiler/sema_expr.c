@@ -6332,10 +6332,25 @@ static inline ConstInitializer *sema_expr_fold_to_struct_member(ConstInitializer
 {
 
 	Decl *struct_union_decl = type_flatten(parent_type)->decl;
-	if (init->kind == CONST_INIT_UNION)
+	switch (init->kind)
 	{
-		if (struct_union_decl->strukt.members[init->init_union.index] != member) return NULL;
-		return init->init_union.element;
+		case CONST_INIT_UNION:
+			if (struct_union_decl->strukt.members[init->init_union.index] != member) return NULL;
+			return init->init_union.element;
+		case CONST_INIT_ZERO:
+		{
+			ConstInitializer *result = CALLOCS(ConstInitializer);
+			result->kind = CONST_INIT_ZERO;
+			result->type = member->type;
+			return result;
+		}
+		case CONST_INIT_STRUCT:
+			break;
+		case CONST_INIT_VALUE:
+		case CONST_INIT_ARRAY:
+		case CONST_INIT_ARRAY_FULL:
+		case CONST_INIT_ARRAY_VALUE:
+			UNREACHABLE
 	}
 	ASSERT(init->kind == CONST_INIT_STRUCT);
 	FOREACH_IDX(i, Decl *, other_member, struct_union_decl->strukt.members)
