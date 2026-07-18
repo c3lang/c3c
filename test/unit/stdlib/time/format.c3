@@ -74,3 +74,46 @@ fn void test_without_tz()
 		assert(candidate == test.third, "got: '%s', expected: '%s'", candidate, test.third);
 	}
 }
+
+// The microseconds field must be printed as positional 6-digit fractional
+// seconds (%06d). A usec value with leading zeros (any sub-100ms fraction)
+// must keep those zeros, otherwise e.g. 5000us (0.005s) renders as ".5000"
+// which reads as 0.5s.
+fn void test_fractional_seconds()
+{
+	FormatTzTestSpec[*] tests = {
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5, 0).with_gmt_offset(0),      RFC3339MS,  "2006-01-02T15:04:05.000000Z" },
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5, 1).with_gmt_offset(0),      RFC3339MS,  "2006-01-02T15:04:05.000001Z" },
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5, 123).with_gmt_offset(0),    RFC3339MS,  "2006-01-02T15:04:05.000123Z" },
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5, 5000).with_gmt_offset(0),   RFC3339MS,  "2006-01-02T15:04:05.005000Z" },
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5, 50000).with_gmt_offset(0),  RFC3339MS,  "2006-01-02T15:04:05.050000Z" },
+		// ZMS variant: leading-zero usec together with a timezone offset.
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5, 5000).with_gmt_offset(25200), RFC3339ZMS, "2006-01-02T15:04:05.005000+07:00" },
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5, 42).with_gmt_offset(25200),   RFC3339ZMS, "2006-01-02T15:04:05.000042+07:00" },
+	};
+
+	foreach (test : tests)
+	{
+		String candidate = test.first.format(mem, test.second);
+		defer free(candidate);
+		assert(candidate == test.third, "got: '%s', expected: '%s'", candidate, test.third);
+	}
+}
+
+// A negative offset smaller than one hour has an hour part of 0; the sign
+// must still come through (the sign should be derived from the whole offset,
+// not just the hour part).
+fn void test_negative_sub_hour_tz()
+{
+	FormatTzTestSpec[*] tests = {
+		{ datetime::at(2006, JANUARY, 2, 15, 4, 5).with_gmt_offset(-30 * 60),   RFC3339Z, "2006-01-02T15:04:05-00:30" },
+		{ datetime::at(2020, JANUARY, 1, 0, 0, 0).with_gmt_offset(-30 * 60),    RFC1123Z, "Wed, 01 Jan 2020 00:00:00 -0030" },
+	};
+
+	foreach (test : tests)
+	{
+		String candidate = test.first.format(mem, test.second);
+		defer free(candidate);
+		assert(candidate == test.third, "got: '%s', expected: '%s'", candidate, test.third);
+	}
+}

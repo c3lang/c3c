@@ -258,6 +258,7 @@ typedef struct BuildOptions_
 	bool lsp_mode;
 	bool no_entry;
 	bool no_obj;
+	bool keep_object_files;
 	bool no_headers;
 	bool read_stdin;
 	bool print_output;
@@ -416,6 +417,7 @@ typedef struct
 	bool emit_llvm;
 	bool emit_asm;
 	bool emit_object_files;
+	bool keep_object_files;
 	bool benchmarking;
 	bool testing;
 	bool silent;

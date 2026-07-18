@@ -4,6 +4,8 @@
 
 ### Changes / improvements
 - Windows aarch64 is now supported.
+- Tracking allocator can now accept cross-thread allocations.
+- Filter test backtraces #3368
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
@@ -13,7 +15,12 @@
 - Arena allocator would error in safe mode when freeing the last memory and the arena was full. #3378
 - LinkedList `push_front_all` was appending in the wrong order.
 - `BitSet.len` would yield the size of the underlying type, not the length.
-
+- RFC3339 formatting would yield incorrect value for microseconds.
+- `--obj` will always retain the object files. #3380
+- ThreadGroup with function returning `void` was broken.
+- Timed `tcp::connect` always failed with `io::GENERAL_ERROR` instead of the real result.
+- Compile time struct with zeroed union member access causes compiler error #3382.
+  
 ## 0.8.2 Change list
 
 ### Changes / improvements

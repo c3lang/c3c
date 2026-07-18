@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+
+struct Test
+{
+	char i;
+	union
+	{
+		struct
+		{
+			char a;
+		}
+	}
+}
+
+fn int main()
+{
+	Test $v = { .i = 5 };
+	char $c = $v.a;
+	char c = $c;
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %c = alloca i8, align 1
+  store i8 0, ptr %c, align 1
+  ret i32 0
+}
