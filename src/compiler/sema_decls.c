@@ -5381,6 +5381,7 @@ bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacem
 			if (replaced_type != replacement_type) goto TYPE_MISMATCH;
 			break;
 		case DECL_TYPEDEF:
+			if (replaced->is_weak_link || replacement->is_weak_link) break;
 			replaced_type = replaced->distinct->type;
 			replacement_type = replacement->distinct->type;
 			if (replaced_type != replacement_type) goto TYPE_MISMATCH;
