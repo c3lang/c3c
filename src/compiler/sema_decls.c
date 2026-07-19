@@ -4,7 +4,7 @@
 
 #include "sema_internal.h"
 
-static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl); // NOLINT
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, Decl *decl);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
@@ -4800,20 +4800,21 @@ INLINE void sema_error_not_constant(SemaContext *context, Decl *target, Expr *in
 	SEMA_ERROR(init, "Expected a compile time constant value assigned to %s.", target->name);
 
 }
+
 /**
  * Analyse $foo and $Foo variables.
  */
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defined)
 {
 	Expr *init;
-	ASSERT(decl->decl_kind == DECL_VAR && "Should only be called on variables.");
+	ASSERT_SPAN(decl, decl->decl_kind == DECL_VAR && "Should only be called on variables.");
 
 	// Grab the optional type_info.
 	TypeInfo *type_info = vartype(decl);
 	switch (decl->var.kind)
 	{
 		case VARDECL_LOCAL_CT_TYPE:
-			// Locally declared compile time type.
+			// Locally declared compile time type, like $Foo
 			if (type_info)
 			{
 				SEMA_ERROR(type_info, "Compile time type variables may not have a type.");
@@ -5086,7 +5087,7 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 		sema_display_deprecated_warning_on_use(context, type->decl, type_info->loc);
 	}
 	Type *init_type;
-	if (decl->var.no_init && (init_type = type_is_must_init(type)) != NULL)
+	if (decl->var.no_init && (init_type = type_is_must_init(type)) != NULL) // NOLINT
 	{
 		if (init_type == type->canonical)
 		{
@@ -5109,7 +5110,6 @@ static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, 
 	if (decl->var.init_expr)
 	{
 		Expr *init = decl->var.init_expr;
-
 		if (!infer_len)
 		{
 			// Pre resolve to avoid problem with recursive definitions.
@@ -5349,6 +5349,18 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 		vec_add(generic_section->generic_decl.decls, method);
 		method->is_template = true;
 		method->generic_id = decl->generic_id;
+
+		if (generic_section->generic_decl.instances)
+		{
+			Decl *instance = generic_section->generic_decl.instances[0];
+			if (!instance->instance_decl.generated_decls) return false;
+			instance->instance_decl.generated_decls = NULL;
+			const char *decl_string = span_to_string(parent_type_info->loc);
+			RETURN_SEMA_ERROR(instance,
+				"Instantiation of the generic type '%s' happens before methods are "
+				"registered, please try to rearrange the instantiation order.",
+				decl_string);
+		}
 		return false;
 	}
 	if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;

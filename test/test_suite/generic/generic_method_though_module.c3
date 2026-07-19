@@ -1,7 +1,7 @@
 module abc;
 import hello;
 
-fn void test() @if(!$defined(Maybe2{int}.hello))
+fn void test() @if(!$defined(Maybe2{int}.hello)) // #error: Instantiation of the generic type 'Maybe2' happens before methods are registered, please try to rearrange the instantiation order.
 {}
 
 fn void main() {

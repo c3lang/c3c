@@ -163,7 +163,7 @@ FOUND:;
 	{
 		DEBUG_LOG("Generate generic instance %s", csuffix);
 		if (compiler.context.errors_found) return poisoned_decl;
-		instance = decl_new(DECL_GENERIC_INSTANCE, csuffix, generic->loc);
+		instance = decl_new(DECL_GENERIC_INSTANCE, csuffix, invocation_loc);
 		FOREACH_IDX(i, const char *, param_name, generic->generic_decl.parameters)
 		{
 			Decl *decl;
