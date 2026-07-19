@@ -500,3 +500,166 @@ fn void test_parse_ipv6_with_port_full()
 	assert(url.path == "/c=GB", "got '%s'", url.path);
 	assert(url.query == "objectClass=one", "got '%s'", url.query);
 }
+
+fn void test_parse_http_authority()
+{
+	Url url = url::parse(mem, "http://example.com")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.path == "", "got '%s'", url.path);
+}
+
+fn void test_parse_http_root()
+{
+	Url url = url::parse(mem, "http://example.com/")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.path == "/", "got '%s'", url.path);
+}
+
+fn void test_parse_http_full()
+{
+	Url url = url::parse(mem, "http://user:password@example.com:8080/path?query=value#fragment")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.port == 8080, "got '%d'", url.port);
+	assert(url.username == "user", "got '%s'", url.username);
+	assert(url.password == "password", "got '%s'", url.password);
+	assert(url.path == "/path", "got '%s'", url.path);
+	assert(url.query == "query=value", "got '%s'", url.query);
+	assert(url.fragment == "fragment", "got '%s'", url.fragment);
+}
+
+fn void test_parse_http_default_port()
+{
+	Url url = url::parse(mem, "http://example.com:80/")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.port == 80, "got '%d'", url.port);
+	assert(url.path == "/", "got '%s'", url.path);
+}
+
+fn void test_parse_http_port()
+{
+	Url url = url::parse(mem, "http://example.com:8080/")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.port == 8080, "got '%d'", url.port);
+	assert(url.path == "/", "got '%s'", url.path);
+}
+
+fn void test_parse_encoded_dot()
+{
+	Url url = url::parse(mem, "http://example.com/%2E/")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.path == "/./", "got '%s'", url.path);
+}
+
+fn void test_parse_dotdot()
+{
+	Url url = url::parse(mem, "http://example.com/..")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.path == "/..", "got '%s'", url.path);
+}
+
+fn void test_parse_query()
+{
+	Url url = url::parse(mem, "http://example.com/?q=string")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.path == "/", "got '%s'", url.path);
+	assert(url.query == "q=string", "got '%s'", url.query);
+}
+
+fn void test_parse_empty_userinfo()
+{
+	Url url = url::parse(mem, "http://@example.com/")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.username == "", "got '%s'", url.username);
+	assert(url.path == "/", "got '%s'", url.path);
+}
+
+fn void test_parse_empty_user_password()
+{
+	Url url = url::parse(mem, "http://:@example.com/")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.username == "", "got '%s'", url.username);
+	assert(url.password == "", "got '%s'", url.password);
+	assert(url.path == "/", "got '%s'", url.path);
+}
+
+fn void test_parse_trailing_dot_host()
+{
+	Url url = url::parse(mem, "http://example.com./")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "example.com.", "got '%s'", url.host);
+	assert(url.path == "/", "got '%s'", url.path);
+}
+
+fn void test_parse_ipv6_loopback()
+{
+	Url url = url::parse(mem, "http://[::1]/")!!;
+	defer url.free();
+
+	assert(url.scheme == "http", "got '%s'", url.scheme);
+	assert(url.host == "[::1]", "got '%s'", url.host);
+	assert(url.path == "/", "got '%s'", url.path);
+}
+
+fn void test_parse_network_path()
+{
+	Url url = url::parse(mem, "//example.com")!!;
+	defer url.free();
+
+	assert(url.scheme == "", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.path == "", "got '%s'", url.path);
+}
+
+fn void test_parse_network_path_userinfo()
+{
+	Url url = url::parse(mem, "//user@example.com/path?a=b")!!;
+	defer url.free();
+
+	assert(url.scheme == "", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.username == "user", "got '%s'", url.username);
+	assert(url.path == "/path", "got '%s'", url.path);
+	assert(url.query == "a=b", "got '%s'", url.query);
+}
+
+fn void test_parse_network_path_port()
+{
+	Url url = url::parse(mem, "//example.com:80")!!;
+	defer url.free();
+
+	assert(url.scheme == "", "got '%s'", url.scheme);
+	assert(url.host == "example.com", "got '%s'", url.host);
+	assert(url.port == 80, "got '%d'", url.port);
+}
