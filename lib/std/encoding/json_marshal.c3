@@ -34,6 +34,10 @@ enum Indent : (String chars)
 *>
 macro bool may_serialize($Type) @const
 {
+	$if $Type == Object*:
+		return true;
+	$endif
+
 	$switch $Type::kind:
 		$case STRUCT:
 			$foreach $member : $Type::members:
@@ -60,7 +64,7 @@ macro bool may_serialize($Type) @const
 }
 
 <*
- Marshal a struct or array with primitive fields and nested structures to JSON.
+ Marshal a struct, array, or dynamic `Object*` DOM tree to a JSON `String`.
  The struct may not contain a float which is inf or NaN.
 
  #### Example:
@@ -86,13 +90,13 @@ macro String? marshal(Allocator allocator, value, Indent indent = NONE) => @pool
 }
 
 <*
- Marshal a struct or array to JSON, writing directly to an output stream.
+ Marshal a struct, array or dynamic Object* to JSON, writing directly to an output stream.
 
  #### Example:
  ```
  struct User { String name; int age; }
  User user = { "Alice", 30 };
- json::marshal_to(&stdout, user)!;
+ json::marshal_to(&io::stdout(), user, TAB)!;
  ```
 
  @param stream : "The stream to serialize to"
@@ -300,7 +304,7 @@ macro void? @des_value(JsonDeserializer* des, #out) @private
 }
 
 <*
- Unmarshal JSON directly into a native C3 variable.
+ Unmarshal JSON directly into a native C3 variable of the specified $Type, returning it on success.
 
  #### Example:
  ```
@@ -342,7 +346,7 @@ macro unmarshal(Allocator allocator, input, $Type)
 }
 
 <*
- Unmarshal a parsed dynamic Object* DOM tree into a typed native C3 variable.
+ Unmarshal a parsed dynamic Object* DOM tree into a typed native C3 variable #out.
 
  #### Example:
  ```
@@ -438,41 +442,85 @@ fn void? write_indent(OutStream stream, Indent indent, int indent_depth) @privat
 	}
 }
 
-fn void? serialize(OutStream stream, Type value, Indent indent = NONE, int indent_depth = 0)<Type> @private
+fn void? serialize_float(OutStream stream, double value) @private
+{
+	if (math::is_nan(value) || math::is_inf(value)) return INVALID_NUMBER~;
+	io::fprintf(stream, "%.17g", value)!;
+}
+
+macro void? @write_array(OutStream stream, sz len, Indent indent, int indent_depth; @body(sz i)) @private
 {
 	bool pretty_print = indent != NONE;
-	stream.write_byte('{')!;
+	stream.write_byte('[')!;
+	if (len > 0 && pretty_print) stream.write_byte('\n')!;
 
-	$if Type::members.len:
-		if (pretty_print) stream.write_byte('\n')!;
-	$endif
-
-	$foreach $i, $member : Type::members:
-		$if $i > 0:
+	for (sz i = 0; i < len; i++)
+	{
+		if (i > 0)
+		{
 			stream.write_byte(',')!;
 			if (pretty_print) stream.write_byte('\n')!;
-		$endif
+		}
 		if (pretty_print) write_indent(stream, indent, indent_depth + 1)!;
+		@body(i);
+	}
+	if (len > 0 && pretty_print)
+	{
+		stream.write_byte('\n')!;
+		write_indent(stream, indent, indent_depth)!;
+	}
 
-		stream.write_byte('"')!;
-		stream.write($member.name)!;
-		stream.write(pretty_print ? `": ` : `":`)!;
+	stream.write_byte(']')!;
+}
 
+fn void? write_entry_prefix(OutStream stream, String key, Indent indent, int indent_depth, bool first) @private
+{
+	bool pretty_print = indent != NONE;
+	if (!first)
+	{
+		stream.write_byte(',')!;
+		if (pretty_print) stream.write_byte('\n')!;
+	}
+	else if (pretty_print)
+	{
+		stream.write_byte('\n')!;
+	}
+	if (pretty_print) write_indent(stream, indent, indent_depth + 1)!;
+	stream.write_byte('"')!;
+	stream.write(key)!;
+	stream.write(pretty_print ? `": ` : `":`)!;
+}
+
+fn void? write_map_suffix(OutStream stream, Indent indent, int indent_depth, bool has_entries) @private
+{
+	bool pretty_print = indent != NONE;
+	if (has_entries && pretty_print)
+	{
+		stream.write_byte('\n')!;
+		write_indent(stream, indent, indent_depth)!;
+	}
+	stream.write_byte('}')!;
+}
+
+fn void? serialize(OutStream stream, Type value, Indent indent = NONE, int indent_depth = 0)<Type> @private
+{
+	stream.write_byte('{')!;
+	$foreach $i, $member : Type::members:
+		write_entry_prefix(stream, $member.name, indent, indent_depth, $i == 0)!;
 		serialize_value{$member.type}(stream, value.$member, indent, indent_depth + 1)!;
 	$endforeach
-	$if Type::members.len:
-		if (pretty_print)
-		{
-			stream.write_byte('\n')!;
-			write_indent(stream, indent, indent_depth)!;
-		}
-	$endif
-	stream.write_byte('}')!;
+	write_map_suffix(stream, indent, indent_depth, Type::members.len > 0)!;
 }
 
 fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NONE, int indent_depth = 0)<TypeElement> @private
 {
 	$switch TypeElement::kind:
+		$case POINTER:
+			$if TypeElement == Object*:
+				return serialize_object(stream, value, indent, indent_depth);
+			$else
+				$error "Unsupported pointer type";
+			$endif
 		$case STRUCT:
 			return serialize{TypeElement}(stream, value, indent, indent_depth);
 		$case ARRAY:
@@ -485,8 +533,7 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 		$case UNSIGNED_INT:
 			write_uint(stream, (ulong)value)!;
 		$case FLOAT:
-			if (math::is_nan(value) || math::is_inf(value)) return INVALID_NUMBER~;
-			io::fprintf(stream, "%.17g", (double)value)!;
+			return serialize_float(stream, (double)value);
 		$case BOOL:
 			stream.write(value ? "true" : "false")!;
 		$case CONSTDEF:
@@ -503,6 +550,48 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 		$default:
 			$error "Unsupported type";
 	$endswitch
+}
+
+fn void? serialize_object(OutStream stream, Object* obj, Indent indent = NONE, int indent_depth = 0) @private
+{
+	if (!obj)
+	{
+		stream.write("null")!;
+		return;
+	}
+
+	switch
+	{
+		case obj.is_null():
+			stream.write("null")!;
+		case obj.is_empty():
+			stream.write("{}")!;
+		case obj.is_bool():
+			stream.write(obj.b ? "true" : "false")!;
+		case obj.is_string():
+			serialize_string(stream, obj.s)!;
+		case obj.is_int():
+			write_int(stream, (long)obj.i)!;
+		case obj.is_float():
+			serialize_float(stream, obj.f)!;
+		case obj.is_enum():
+			write_int(stream, (long)obj.i)!;
+		case obj.is_array():
+			@write_array(stream, obj.get_len(), indent, indent_depth; i)
+			{
+				serialize_object(stream, obj.get_at(i), indent, indent_depth + 1)!;
+			}!;
+		case obj.is_map():
+			stream.write_byte('{')!;
+			bool first = true;
+			obj.@each_entry(; key, val)
+			{
+				write_entry_prefix(stream, key, indent, indent_depth, first)!;
+				first = false;
+				serialize_object(stream, val, indent, indent_depth + 1)!;
+			};
+			write_map_suffix(stream, indent, indent_depth, !first)!;
+	}
 }
 
 fn void? write_uint(OutStream stream, ulong value) @private
@@ -531,27 +620,10 @@ fn void? write_int(OutStream stream, long value) @private
 
 fn void? serialize_slice(OutStream stream, SliceType[] slice, Indent indent = NONE, int indent_depth = 0)<SliceType> @private
 {
-	bool pretty_print = indent != NONE;
-	stream.write_byte('[')!;
-	if (slice && pretty_print) stream.write_byte('\n')!;
-
-	foreach (i, element : slice)
+	@write_array(stream, slice.len, indent, indent_depth; i)
 	{
-		if (i > 0)
-		{
-			stream.write_byte(',')!;
-			if (pretty_print) stream.write_byte('\n')!;
-		}
-		if (pretty_print) write_indent(stream, indent, indent_depth + 1)!;
-		serialize_value{SliceType}(stream, element, indent, indent_depth + 1)!;
-	}
-	if (slice && pretty_print)
-	{
-		stream.write_byte('\n')!;
-		write_indent(stream, indent, indent_depth)!;
-	}
-
-	stream.write_byte(']')!;
+		serialize_value{SliceType}(stream, slice[i], indent, indent_depth + 1)!;
+	}!;
 }
 
 macro void? serialize_string(OutStream stream, String string) @private
