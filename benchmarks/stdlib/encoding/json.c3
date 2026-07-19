@@ -78,6 +78,16 @@ fn void bench_setup() @init
 	set_benchmark_func_iterations($reflect(unmarshal_dom_medium).qname, 3_000);
 	set_benchmark_func_iterations($reflect(unmarshal_dom_large).qname, 150);
 
+	set_benchmark_func_iterations($reflect(marshal_dom_small).qname, 80_000);
+	set_benchmark_func_iterations($reflect(marshal_dom_medium).qname, 2_000);
+	set_benchmark_func_iterations($reflect(marshal_dom_large).qname, 100);
+
+	set_benchmark_func_iterations($reflect(marshal_pretty_medium).qname, 1_800);
+	set_benchmark_func_iterations($reflect(marshal_pretty_large).qname, 90);
+
+	set_benchmark_func_iterations($reflect(marshal_stream_medium).qname, 3_000);
+	set_benchmark_func_iterations($reflect(marshal_stream_large).qname, 150);
+
 	small_records  = make_records(mem, 1);
 	medium_records = make_records(mem, 50);
 	large_records  = make_records(mem, 1000);
@@ -127,4 +137,28 @@ fn void unmarshal_dom_large()
 {
 	Record[] decoded;
 	json::@unmarshal_to(tmem, large_dom, decoded);
+}
+
+// 5. Dynamic DOM Serialization
+fn void marshal_dom_small()  { json::marshal(tmem, small_dom)!!; }
+fn void marshal_dom_medium() { json::marshal(tmem, medium_dom)!!; }
+fn void marshal_dom_large()  { json::marshal(tmem, large_dom)!!; }
+
+// 6. Pretty-Printed Serialization
+fn void marshal_pretty_medium() { json::marshal(tmem, medium_records, Indent.SPACE_4)!!; }
+fn void marshal_pretty_large()  { json::marshal(tmem, large_records, Indent.SPACE_4)!!; }
+
+// 7. Stream-Direct Serialization
+fn void marshal_stream_medium()
+{
+	DString s;
+	s.tinit();
+	json::marshal_to(&s, medium_records)!!;
+}
+
+fn void marshal_stream_large()
+{
+	DString s;
+	s.tinit();
+	json::marshal_to(&s, large_records)!!;
 }
