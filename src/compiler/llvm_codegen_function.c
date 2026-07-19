@@ -641,7 +641,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		LLVMValueRef *entries = VECNEW(LLVMValueRef, len);
 		FOREACH(Decl *, func, funcs)
 		{
-			Type *type = typeget(func->func_decl.type_parent);
+			Type *type = decl_find_method_target(func)->type;
 			Decl *proto = declptrzero(func->func_decl.interface_method);
 			LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, func->name);
 			LLVMValueRef vals[3] = {llvm_get_ref(c, func), proto_ref, llvm_get_typeid(c, type)};
@@ -668,7 +668,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 	LLVMBuilderRef builder = llvm_create_function_entry(c, initializer, &last_block);
 	FOREACH(Decl *, decl, funcs)
 	{
-		Type *type = typeget(decl->func_decl.type_parent);
+		Type *type = decl_find_method_target(decl)->type;
 		scratch_buffer_clear();
 		scratch_buffer_append("$ct.dyn.");
 		scratch_buffer_set_extern_decl_name(decl, false);

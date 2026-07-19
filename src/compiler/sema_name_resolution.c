@@ -954,7 +954,7 @@ Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const ch
 	FOREACH(Decl *, extension, extensions)
 	{
 		if (extension->name != method_name) continue;
-		if (typeget(extension->func_decl.type_parent) == type) return extension;
+		if (decl_find_method_target(extension)->type->canonical == type) return extension;
 	}
 	return NULL;
 }

@@ -305,9 +305,10 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			break;
 		case DECL_MACRO:
 			ASSERT(decl->name);
-			if (decl->func_decl.type_parent)
+			TypeInfo *parent = decl_find_target_if_method(decl);
+			if (parent)
 			{
-				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
+				if (parent->kind == TYPE_INFO_GENERIC)
 				{
 					vec_add(unit->generic_methods_to_register, decl);
 					return;
@@ -322,7 +323,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			ASSERT(decl->name);
 			if (decl->func_decl.type_parent)
 			{
-				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
+				if (decl_find_method_target(decl)->kind == TYPE_INFO_GENERIC)
 				{
 					vec_add(unit->generic_methods_to_register, decl);
 					return;
