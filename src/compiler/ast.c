@@ -509,6 +509,7 @@ bool decl_needs_prefix(Decl *decl)
 	}
 }
 
+
 // Find a particular enum by name.
 Decl *decl_find_enum_constant(Decl *decl, const char *name)
 {
@@ -600,7 +601,7 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 	}
 	if (decl->decl_kind == DECL_FUNC && decl->func_decl.type_parent)
 	{
-		Type *parent = type_infoptr(decl->func_decl.type_parent)->type->canonical;
+		Type *parent = decl_find_method_target(decl)->type->canonical;
 		if (type_is_user_defined(parent))
 		{
 			scratch_buffer_set_extern_decl_name(parent->decl, false);

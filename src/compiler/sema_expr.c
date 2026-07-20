@@ -6074,7 +6074,7 @@ static inline void append_extension_methods(Type *type, Decl **extensions, Expr 
 {
 	FOREACH(Decl *, method, extensions)
 	{
-		if (method->decl_kind == DECL_FUNC && typeget(method->func_decl.type_parent) == type)
+		if (method->decl_kind == DECL_FUNC && decl_find_method_target(method)->type->canonical == type)
 		{
 			vec_add(*method_exprs_ref, create_method_copy(method, loc));
 		}
@@ -10746,7 +10746,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				case CALL_ENV_FUNCTION:
 				{
 					Decl *current_func = context->call_env.current_function;
-					TypeInfo *func_type = type_infoptrzero(current_func->func_decl.type_parent);
+					TypeInfo *func_type = decl_find_target_if_method(current_func);
 					if (func_type)
 					{
 						scratch_buffer_clear();

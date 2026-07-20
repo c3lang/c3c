@@ -2448,6 +2448,8 @@ INLINE bool decl_poison(Decl *decl);
 INLINE bool decl_is_struct_type(Decl *decl);
 INLINE bool decl_is_user_defined_type(Decl *decl);
 INLINE Decl *decl_flatten(Decl *decl);
+INLINE TypeInfo *decl_find_method_target(Decl *decl);
+INLINE TypeInfo *decl_find_target_if_method(Decl *decl);
 static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_var_local(Decl *decl);
@@ -3803,6 +3805,16 @@ INLINE Decl *decl_flatten(Decl *decl)
 		return decl->define_decl.alias;
 	}
 	return decl;
+}
+
+INLINE TypeInfo *decl_find_method_target(Decl *decl)
+{
+	return type_infoptr(decl->func_decl.type_parent);
+}
+
+INLINE TypeInfo *decl_find_target_if_method(Decl *decl)
+{
+	return type_infoptrzero(decl->func_decl.type_parent);
 }
 
 static inline DeclKind decl_from_token(TokenType type)

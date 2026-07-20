@@ -994,7 +994,7 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 		}
 		if (method->func_decl.type_parent)
 		{
-			SEMA_ERROR(type_infoptr(method->func_decl.type_parent), "Interfaces should not be declared as methods.");
+			SEMA_ERROR(decl_find_method_target(method), "Interfaces should not be declared as methods.");
 			return decl_poison(method);
 		}
 		bool erase = false;
@@ -2177,9 +2177,9 @@ static inline bool sema_analyse_operator_unary(SemaContext *context, Decl *metho
 	Decl **params;
 	if (!sema_analyse_operator_common(context, method, &rtype, &params, 1)) return false;
 	if (!rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
-	if (rtype->type->canonical != typeget(method->func_decl.type_parent)->canonical)
+	if (rtype->type->canonical != decl_find_method_target(method)->type->canonical)
 	{
-		RETURN_SEMA_ERROR(rtype, "The return value must be %s but was %s.", type_quoted_error_string(typeget(method->func_decl.type_parent)),
+		RETURN_SEMA_ERROR(rtype, "The return value must be %s but was %s.", type_quoted_error_string(decl_find_method_target(method)->type),
 			type_quoted_error_string(rtype->type));
 	}
 	return true;
@@ -2921,7 +2921,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	}
 
 	// Resolve the parent type.
-	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
+	TypeInfo *parent_type = decl_find_method_target(decl);
 
 	ASSERT(parent_type->resolve_status == RESOLVE_DONE);
 	Type *par_type = parent_type->type->canonical;
@@ -4406,7 +4406,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	}
 CHECK_DONE:
 	decl->type = type_new_func(decl, sig);
-	if (!sema_analyse_function_signature(context, decl, type_infoptrzero(decl->func_decl.type_parent), sig->abi, sig)) return decl_poison(decl);
+	if (!sema_analyse_function_signature(context, decl, decl_find_target_if_method(decl), sig->abi, sig)) return decl_poison(decl);
 	TypeInfo *rtype_info = type_infoptr(sig->rtype);
 	ASSERT(rtype_info);
 	Type *rtype = rtype_info->type->canonical;
@@ -4496,7 +4496,7 @@ ERROR:
 static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 {
 	// Resolve the type of the method.
-	TypeInfo *parent_type_info = type_infoptr(decl->func_decl.type_parent);
+	TypeInfo *parent_type_info = decl_find_method_target(decl);
 	ASSERT(parent_type_info->resolve_status == RESOLVE_DONE);
 	Type *parent_type = parent_type_info->type->canonical;
 
@@ -4644,7 +4644,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	if (*erase_decl) return true;
 
 	Signature *sig = &decl->func_decl.signature;
-	if (!sema_analyse_signature(context, sig, type_infoptrzero(decl->func_decl.type_parent), decl)) return false;
+	if (!sema_analyse_signature(context, sig, decl_find_target_if_method(decl), decl)) return false;
 
 	DeclId body_param = decl->func_decl.body_param;
 	if (!decl->func_decl.signature.is_at_macro && body_param && !sig->is_safemacro)
@@ -5341,7 +5341,7 @@ INLINE Decl *type_is_possible_template(SemaContext *context, TypeInfo *type_info
 }
 bool sema_analyse_method_register(SemaContext *context, Decl *method)
 {
-	TypeInfo *parent_type_info = type_infoptr(method->func_decl.type_parent);
+	TypeInfo *parent_type_info = decl_find_method_target(method);
 	Decl *decl = method->is_templated ? NULL : type_is_possible_template(context, parent_type_info);
 	if (decl)
 	{
@@ -5349,6 +5349,18 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 		vec_add(generic_section->generic_decl.decls, method);
 		method->is_template = true;
 		method->generic_id = decl->generic_id;
+
+		if (generic_section->generic_decl.instances)
+		{
+			Decl *instance = generic_section->generic_decl.instances[0];
+			if (!instance->instance_decl.generated_decls) return false;
+			instance->instance_decl.generated_decls = NULL;
+			const char *decl_string = span_to_string(parent_type_info->loc);
+			RETURN_SEMA_ERROR(instance,
+				"Instantiation of the generic type '%s' happens before methods are "
+				"registered, please try to rearrange the instantiation order.",
+				decl_string);
+		}
 		return false;
 	}
 	if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
