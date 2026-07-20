@@ -401,46 +401,71 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 	}
 }
 
+/*
+ * Parse a lambda "fn void() ..."
+ */
 static Expr *parse_lambda(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSED)
 {
 	ASSERT(!left && "Unexpected left hand side");
+
+	// Create the expr
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_LAMBDA);
+
+	// Step past the "fn"
 	advance_and_verify(c, TOKEN_FN);
+
+	// Start generating a function
 	Decl *func = decl_calloc();
 	func->loc = make_loc(c->prev_span);
 	func->decl_kind = DECL_FUNC;
 	func->visibility = VISIBLE_LOCAL;
 	func->func_decl.generated_lambda = NULL;
 	TypeInfo *return_type = NULL;
+
+	// Two possibilities: "fn ()" and "fn int()"
+	// Handle the typed version:
 	if (!tok_is(c, TOKEN_LPAREN))
 	{
 		ASSIGN_TYPE_OR_RET(return_type, parse_optional_type(c), poisoned_expr);
 	}
+
+	// Start parsing the argument list
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	Decl **decls = NULL;
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
+
+	// Parse parameters
 	if (!parse_parameters(c, &decls, &variadic, &vararg_index, PARAM_PARSE_LAMBDA)) return poisoned_expr;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+
+	// Construct the signature
 	Signature *sig = &func->func_decl.signature;
 	sig->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
 	sig->params = decls;
 	sig->rtype = return_type ? type_infoid(return_type) : 0;
 	sig->variadic = variadic;
+
+	// Parse any attributes
 	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL, "on lambda declarations", NULL)) return poisoned_expr;
 	RANGE_EXTEND_PREV(func);
+
+	// We either have short or regular bodies
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
-		ASSIGN_ASTID_OR_RET(func->func_decl.body,
-							parse_short_body(c, func->func_decl.signature.rtype, false), poisoned_expr);
+		// =>
+		ASSIGN_ASTID_OR_RET(func->func_decl.body, parse_short_body(c, func, true), poisoned_expr);
 	}
 	else if (tok_is(c, TOKEN_LBRACE))
 	{
+		// { }
 		ASSIGN_ASTID_OR_RET(func->func_decl.body, parse_compound_stmt(c), poisoned_expr);
 	}
 	else
 	{
+		// Something else
 		PRINT_ERROR_HERE("Expected the beginning of a block or a short statement.");
+		return poisoned_expr;
 	}
 	expr->lambda_expr = func;
 	RANGE_EXTEND_PREV(expr);

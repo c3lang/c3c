@@ -12,7 +12,7 @@ static inline DeclId *methodentry_find(DeclId *entries, uint32_t capacity, const
 		DeclId decl_id = *entry;
 		if (!decl_id) return entry;
 		Decl *decl = declptr(*entry);
-		if (decl->name == name && typeget(decl->func_decl.type_parent) == type) return entry;
+		if (decl->name == name && decl_find_method_target(decl)->type->canonical == type) return entry;
 		index = (index + 1) & mask;
 	}
 }
@@ -31,7 +31,7 @@ static inline void methodtable_resize(MethodTable *table)
 		if (!id) continue;
 		Decl *decl = declptr(id);
 		table->count++;
-		DeclId *dest = methodentry_find(new_data, new_capacity, decl->name, typeget(decl->func_decl.type_parent));
+		DeclId *dest = methodentry_find(new_data, new_capacity, decl->name, decl_find_method_target(decl)->type->canonical);
 		*dest = id;
 	}
 	table->methods = new_data;
@@ -42,7 +42,8 @@ static inline void methodtable_resize(MethodTable *table)
 DeclId methodtable_set(MethodTable *table, Decl *decl)
 {
 	ASSERT(decl && "Cannot insert NULL");
-	DeclId *entry = methodentry_find(table->methods, table->capacity, decl->name, typeget(decl->func_decl.type_parent));
+	ASSERT(decl->func_decl.type_parent);
+	DeclId *entry = methodentry_find(table->methods, table->capacity, decl->name, decl_find_method_target(decl)->type->canonical);
 	DeclId decl_id = declid(decl);
 	DeclId old_id = *entry;
 	if (old_id) return old_id;

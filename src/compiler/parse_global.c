@@ -2675,8 +2675,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c)
 	attach_deprecation_from_contract(c, &c->contracts, decl);
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
-		ASSIGN_ASTID_OR_RET(decl->func_decl.body,
-							parse_short_body(c, decl->func_decl.signature.rtype, true), poisoned_decl);
+		ASSIGN_ASTID_OR_RET(decl->func_decl.body, parse_short_body(c, decl, false), poisoned_decl);
 		return decl;
 	}
 	ASSIGN_ASTID_OR_RET(decl->func_decl.body, parse_compound_stmt(c), poisoned_decl);
@@ -3000,8 +2999,7 @@ static inline Decl *parse_func_definition(ParseContext *c, FunctionParse parse_k
 
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
-		ASSIGN_ASTID_OR_RET(func->func_decl.body,
-							parse_short_body(c, func->func_decl.signature.rtype, true), poisoned_decl);
+		ASSIGN_ASTID_OR_RET(func->func_decl.body, parse_short_body(c, func, false), poisoned_decl);
 	}
 	else if (tok_is(c, TOKEN_LBRACE))
 	{

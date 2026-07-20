@@ -160,7 +160,7 @@ FOUND_ALIAS:
 static bool sema_check_if_implicit_generic(SemaContext *context, Decl *decl)
 {
 	if (!decl->func_decl.type_parent) return false;
-	TypeInfo *typedecl = type_infoptr(decl->func_decl.type_parent);
+	TypeInfo *typedecl = decl_find_method_target(decl);
 	if (typedecl->resolve_status == RESOLVE_DONE)
 	{
 		CanonicalType *type = typedecl->type->canonical;
@@ -510,7 +510,7 @@ void sema_analysis_pass_process_methods(Module *module, bool process_generic)
 		sema_context_init(&context, unit);
 		FOREACH(Decl *, method, process_generic ? unit->generic_methods_to_register : unit->methods_to_register)
 		{
-			TypeInfo *parent_type_info = type_infoptr(method->func_decl.type_parent);
+			TypeInfo *parent_type_info = decl_find_method_target(method);
 			if (!process_generic && sema_unresolved_type_is_generic(&context, parent_type_info))
 			{
 				vec_add(unit->generic_methods_to_register, method);
