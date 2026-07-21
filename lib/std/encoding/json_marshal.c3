@@ -120,50 +120,16 @@ macro void @assign_enum_from_string(#out, String s) @private
 
 macro void? @skip_json_value(JsonDeserializer* des) @private
 {
-	skip_whitespace(des);
 	char c = peek_char(des);
 	if (c == '"')
 	{
-		(void)parse_string(des)!;
+		parse_string(des)!;
 	}
 	else if (c == '{' || c == '[')
 	{
-		char close_char = c == '{' ? '}' : ']';
-		des.cursor++; // consume open
-		int depth      = 1;
-		bool in_string = false;
-		bool escaped   = false;
-		while (des.cursor < des.source.len && depth > 0)
-		{
-			char ch = des.source[des.cursor++];
-			if (in_string)
-			{
-				if (escaped)
-				{
-					escaped = false;
-				}
-				else if (ch == '\\')
-				{
-					escaped = true;
-				}
-				else if (ch == '"')
-				{
-					in_string = false;
-				}
-			}
-			else if (ch == '"')
-			{
-				in_string = true;
-			}
-			else if (ch == c)
-			{
-				depth++;
-			}
-			else if (ch == close_char)
-			{
-				depth--;
-			}
-		}
+		des.cursor++; // consume open character
+		scan_container(des, false, null)!;
+		des.cursor++; // consume close character
 	}
 	else
 	{
@@ -181,7 +147,6 @@ macro void? @skip_json_value(JsonDeserializer* des) @private
 
 macro void? @des_value(JsonDeserializer* des, #out) @private
 {
-	skip_whitespace(des);
 	if (peek_char(des) == 'n')
 	{
 		if (des.cursor + 4 <= des.source.len && des.source[des.cursor:4] == "null")
@@ -229,49 +194,37 @@ macro void? @des_value(JsonDeserializer* des, #out) @private
 			}
 			expect_char(des, '}')!;
 		$case ARRAY:
+		$case VECTOR:
 		$case SLICE:
-			expect_char(des, '[')!;
-
-			sz start_pos = des.cursor;
-			sz len       = 0;
-			if (peek_char(des) != ']')
-			{
-				len = 1;
-				int depth = 0;
-				while (des.cursor < des.source.len)
-				{
-					char c = des.source[des.cursor];
-					if (c == '[' || c == '{')
-					{
-						depth++;
-					}
-					else if (c == ']' || c == '}')
-					{
-						depth--;
-						if (depth < 0)
-						{
-							break;
-						}
-					}
-					else if (c == ',' && depth == 0)
-					{
-						len++;
-					}
-					des.cursor++;
-				}
-			}
-			des.cursor = start_pos;
+			sz len = scan_array_len(des)!;
 
 			$if $Typeof(#out)::kind == TypeKind.SLICE:
-				#out = alloc::new_array(des.allocator, $Typeof(#out[0]), (usz)len);
+				#out = alloc::new_array(des.allocator, $Typeof(#out[0]), len);
 			$endif
 
 			bool first = true;
-			for (sz i = 0; i < len; i++)
+			sz i = 0;
+			while (peek_char(des) != ']')
 			{
-				if (!first) expect_char(des, ',')!;
+				if (!first)
+				{
+					expect_char(des, ',')!;
+					if (peek_char(des) == ']')
+					{
+						break;
+					}
+				}
 				first = false;
-				@des_value(des, #out[i])!;
+
+				if (i < #out.len)
+				{
+					@des_value(des, #out[i])!;
+					i++;
+				}
+				else
+				{
+					@skip_json_value(des)!;
+				}
 			}
 			expect_char(des, ']')!;
 		$case SIGNED_INT:
@@ -341,8 +294,9 @@ macro unmarshal(Allocator allocator, input, $Type)
 		};
 		$Type result;
 		@des_value(&des, result)!;
-		return result;
-	};
+		skip_whitespace(&des);
+		if (des.cursor < des.source.len) return UNEXPECTED_CHARACTER~;
+		return result;	};
 }
 
 <*
@@ -376,12 +330,14 @@ macro void @unmarshal_to(Allocator allocator, Object* obj, #out)
 				}
 			$endforeach
 		$case ARRAY:
+		$case VECTOR:
 		$case SLICE:
 			sz len = obj.get_len();
 			$if $Typeof(#out)::kind == TypeKind.SLICE:
-				#out = alloc::new_array(allocator, $Typeof(#out[0]), (usz)len);
+				#out = alloc::new_array(allocator, $Typeof(#out[0]), len);
 			$endif
-			for (sz i = 0; i < len; i++)
+			sz limit = len < #out.len ? len : #out.len;
+			for (sz i = 0; i < limit; i++)
 			{
 				Object* item = obj.get_at(i);
 				if (item && !item.is_null())
@@ -525,9 +481,9 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 			return serialize{TypeElement}(stream, value, indent, indent_depth);
 		$case ARRAY:
 		$case VECTOR:
-			return serialize_slice{$Typeof(value[0])}(stream, &value, indent, indent_depth);
+			return serialize_slice{TypeElement::inner}(stream, &value, indent, indent_depth);
 		$case SLICE:
-			return serialize_slice{$Typeof(value[0])}(stream, value, indent, indent_depth);
+			return serialize_slice{TypeElement::inner}(stream, value, indent, indent_depth);
 		$case SIGNED_INT:
 			write_int(stream, (long)value) @inline !;
 		$case UNSIGNED_INT:
@@ -659,4 +615,90 @@ macro void? serialize_string(OutStream stream, String string) @private
 		write(stream, string[start:string.len - start])!;
 	}
 	write(stream, `"`)!;
+}
+
+fn sz? scan_array_len(JsonDeserializer* des) @private
+{
+	expect_char(des, '[')!;
+	sz start_pos = des.cursor;
+	if (peek_char(des) == ']')
+	{
+		return 0;
+	}
+
+	sz last_comma = 0;
+	sz len = scan_container(des, true, &last_comma)!;
+
+	if (last_comma != 0)
+	{
+		JsonDeserializer temp_des = *des;
+		temp_des.cursor = last_comma + 1;
+		skip_whitespace(&temp_des);
+		if (temp_des.cursor == des.cursor)
+		{
+			len--;
+		}
+	}
+
+	des.cursor = start_pos;
+	return len;
+}
+
+fn sz? scan_container(JsonDeserializer* des, bool count_elements, sz* out_last_comma) @private
+{
+	sz len = 1;
+	int depth = 0;
+	bool in_string = false;
+	bool escaped = false;
+
+	while (des.cursor < des.source.len)
+	{
+		if (!in_string)
+		{
+			skip_whitespace(des);
+			if (des.cursor >= des.source.len) break;
+		}
+		char c = des.source[des.cursor];
+		if (in_string)
+		{
+			if (escaped)
+			{
+				escaped = false;
+			}
+			else if (c == '\\')
+			{
+				escaped = true;
+			}
+			else if (c == '"')
+			{
+				in_string = false;
+			}
+		}
+		else if (c == '"')
+		{
+			in_string = true;
+		}
+		else if (c == '[' || c == '{')
+		{
+			depth++;
+		}
+		else if (c == ']' || c == '}')
+		{
+			depth--;
+			if (depth < 0)
+			{
+				break;
+			}
+		}
+		else if (c == ',' && depth == 0)
+		{
+			if (count_elements)
+			{
+				len++;
+				*out_last_comma = des.cursor;
+			}
+		}
+		des.cursor++;
+	}
+	return len;
 }

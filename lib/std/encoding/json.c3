@@ -32,7 +32,10 @@ fn Object*? String.parse_json(&self, Allocator allocator, JsonFlavor flavor = JS
 			.flavor = flavor,
 			.depth = 0
 		};
-		return parse_any(&des);
+		Object* res = parse_any(&des)!;
+		skip_whitespace(&des);
+		if (des.cursor < des.source.len) return UNEXPECTED_CHARACTER~;
+		return res;
 	};
 }
 
@@ -283,9 +286,8 @@ fn String? parse_string(JsonDeserializer* des) @private
 
 fn double? parse_double(JsonDeserializer* des) @private
 {
-	skip_whitespace(des);
 	sz start = des.cursor;
-	if (des.cursor < des.source.len && (des.source[des.cursor] == '-' || des.source[des.cursor] == '+'))
+	if (des.cursor < des.source.len && (des.source[des.cursor] == '-'))
 	{
 		des.cursor++;
 	}
@@ -325,7 +327,6 @@ fn double? parse_double(JsonDeserializer* des) @private
 
 fn bool? parse_bool(JsonDeserializer* des) @private
 {
-	skip_whitespace(des);
 	if (des.cursor + 4 <= des.source.len && des.source[des.cursor:4] == "true")
 	{
 		des.cursor += 4;
@@ -341,7 +342,6 @@ fn bool? parse_bool(JsonDeserializer* des) @private
 
 fn Object*? parse_any(JsonDeserializer* des) @private
 {
-	skip_whitespace(des);
 	char c = peek_char(des);
 	switch (c)
 	{
@@ -358,7 +358,6 @@ fn Object*? parse_any(JsonDeserializer* des) @private
 			if (!parse_bool(des)!) return object::new_bool(false);
 			return UNEXPECTED_CHARACTER~;
 		case 'n':
-			skip_whitespace(des);
 			if (des.cursor + 4 <= des.source.len && des.source[des.cursor:4] == "null")
 			{
 				des.cursor += 4;

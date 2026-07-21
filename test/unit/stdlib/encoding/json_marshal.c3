@@ -637,3 +637,97 @@ fn void test_unsigned_integers()
 	test::eq(unwrapped.u64, (ulong)9007199254740991);
 }
 
+struct SimpleKeptWithComment
+{
+	int kept;
+}
+
+fn void test_skip_nested_comment_in_unmapped_field() @test
+{
+	SimpleKeptWithComment res = json::unmarshal(tmem, `
+	{
+		"ignored": {
+			"key": 1
+			// }
+		},
+		"kept": 42
+	}`, SimpleKeptWithComment)!!;
+	test::eq(res.kept, 42);
+}
+
+struct TagWrapper
+{
+	String[] tags;
+}
+
+fn void test_unmarshal_array_with_special_strings() @test
+{
+	// Commas, brackets, and braces inside string literals must be ignored
+	TagWrapper res = json::unmarshal(tmem, `{"tags": ["foo,bar", "baz [ hello ]", "normal"]}`, TagWrapper)!!;
+	test::eq(res.tags.len, 3);
+	test::eq(res.tags[0], "foo,bar");
+	test::eq(res.tags[1], "baz [ hello ]");
+	test::eq(res.tags[2], "normal");
+}
+
+fn void test_unmarshal_array_with_comments_and_braces() @test
+{
+	// Comments containing braces/brackets/commas must be ignored
+	TagWrapper res = json::unmarshal(tmem, `
+	{
+		"tags": [
+			"foo",
+			// comment with comma, brace { and bracket [
+			"bar"
+		]
+	}`, TagWrapper)!!;
+	test::eq(res.tags.len, 2);
+	test::eq(res.tags[0], "foo");
+	test::eq(res.tags[1], "bar");
+}
+
+fn void test_unmarshal_array_with_trailing_comma() @test
+{
+	// Trailing commas in arrays must not increase len or cause parsing errors
+	TagWrapper res = json::unmarshal(tmem, `{"tags": ["one", "two",]}`, TagWrapper)!!;
+	test::eq(res.tags.len, 2);
+	test::eq(res.tags[0], "one");
+	test::eq(res.tags[1], "two");
+}
+
+fn void test_unmarshal_trailing_garbage_rejected() @test
+{
+	test::@error(json::unmarshal(tmem, `{"username": "admin", "created_at": 123} trailing_garbage`, User), json::UNEXPECTED_CHARACTER);
+}
+
+struct SimpleRank
+{
+	int rank;
+}
+
+fn void test_unmarshal_leading_plus_rejected() @test
+{
+	test::@error(json::unmarshal(tmem, `{"rank": +123}`, SimpleRank), json::INVALID_NUMBER);
+}
+
+struct VectorWrapper
+{
+	int[<4>] vec;
+}
+
+fn void test_unmarshal_vector() @test
+{
+	VectorWrapper res = json::unmarshal(tmem, `{"vec": [10, 20, 30, 40]}`, VectorWrapper)!!;
+	test::eq(res.vec[0], 10);
+	test::eq(res.vec[1], 20);
+	test::eq(res.vec[2], 30);
+	test::eq(res.vec[3], 40);
+}
+
+fn void test_unmarshal_vector_with_oversized_json() @test
+{
+	// Ensures that more elements in the JSON array are safely ignored and do not trigger out-of-bounds panic
+	VectorWrapper res = json::unmarshal(tmem, `{"vec": [10, 20, 30, 40, 50, 60]}`, VectorWrapper)!!;
+	test::eq(res.vec[0], 10);
+	test::eq(res.vec[3], 40);
+}

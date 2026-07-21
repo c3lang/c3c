@@ -181,3 +181,13 @@ fn void test_tload_and_stream_parse()
 	reader.init(`{"value": 42}`);
 	test::eq(json::tload(&reader)!!.get_int("value")!!, 42);
 }
+
+fn void test_trailing_garbage_rejected() @test
+{
+	test::@error(json::parse(tmem, `{"a": 1} trailing_garbage`), json::UNEXPECTED_CHARACTER);
+}
+
+fn void test_leading_plus_rejected() @test
+{
+	test::@error(json::parse(tmem, `+123`), json::UNEXPECTED_CHARACTER);
+}
