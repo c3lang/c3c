@@ -1155,13 +1155,13 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	// Check return type
 	ASSERT(sig->rtype || sig->is_macro);
 	Type *rtype = NULL;
+	ResolveTypeKind resolve_type_kind_infer = is_macro ? RESOLVE_TYPE_ALLOW_INFER : RESOLVE_TYPE_DEFAULT;
+	ResolveTypeKind resolve_type_kind =  is_macro ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD;
 	int format_index = (int)sig->attrs.format - 1;
 	if (sig->rtype)
 	{
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
-		if (!sema_resolve_type_info(context, type_infoptr(sig->rtype),
-		                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
-		                                     : RESOLVE_TYPE_DEFAULT)) return false;
+		if (!sema_resolve_type_info(context, type_infoptr(sig->rtype), resolve_type_kind_infer)) return false;
 		rtype = rtype_info->type;
 		switch (sema_resolve_storage_type(context, rtype))
 		{
@@ -1215,20 +1215,22 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 
 	if (method_parent)
 	{
-		if (!sema_resolve_type_info(context, method_parent,
-		                            is_macro ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
+		if (!sema_resolve_type_info(context, method_parent, resolve_type_kind)) return false;
 	}
 
 	if (params && params[0] && params[0]->var.self_addr)
 	{
-		if (!method_parent)
-		{
-			RETURN_SEMA_ERROR(params[0], "Self parameters `&` are only allowed on methods. Did you mean perhaps want '*%s'?", params[0]->name);
-		}
 		if (params[0]->var.type_info)
 		{
+			if (!method_parent)
+			{
+				TypeInfo *type_info = type_infoptr(params[0]->var.type_info);
+				if (!sema_resolve_type_info(context, type_info, resolve_type_kind)) return false;
+				RETURN_SEMA_ERROR(params[0], "Self parameters `&` are only allowed on methods. Did you perhaps want '%s* %s'?", type_info->type->name, params[0]->name);
+			}
 			RETURN_SEMA_ERROR(type_infoptr(params[0]->var.type_info), "A self parameter should always be untyped, please remove the type here.");
 		}
+		if (!method_parent) RETURN_SEMA_ERROR(params[0], "Self parameters are only allowed on methods.");
 	}
 	// Fill in the type if the first parameter is lacking a type.
 	if (method_parent && params && params[0] && !params[0]->var.type_info)
@@ -1328,9 +1330,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
 		if (type_info)
 		{
-			if (!sema_resolve_type_info(context, type_info,
-			                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
-			                                     : RESOLVE_TYPE_DEFAULT)) return decl_poison(param);
+			if (!sema_resolve_type_info(context, type_info, resolve_type_kind_infer)) return decl_poison(param);
 			param->type = type_info->type;
 			switch (sema_resolve_storage_type(context, type_info->type))
 			{
