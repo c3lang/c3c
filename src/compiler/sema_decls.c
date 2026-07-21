@@ -994,7 +994,7 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 		}
 		if (method->func_decl.type_parent)
 		{
-			SEMA_ERROR(type_infoptr(method->func_decl.type_parent), "Interfaces should not be declared as methods.");
+			SEMA_ERROR(decl_find_method_target(method), "Interfaces should not be declared as methods.");
 			return decl_poison(method);
 		}
 		bool erase = false;
@@ -1155,13 +1155,13 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	// Check return type
 	ASSERT(sig->rtype || sig->is_macro);
 	Type *rtype = NULL;
+	ResolveTypeKind resolve_type_kind_infer = is_macro ? RESOLVE_TYPE_ALLOW_INFER : RESOLVE_TYPE_DEFAULT;
+	ResolveTypeKind resolve_type_kind =  is_macro ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD;
 	int format_index = (int)sig->attrs.format - 1;
 	if (sig->rtype)
 	{
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
-		if (!sema_resolve_type_info(context, type_infoptr(sig->rtype),
-		                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
-		                                     : RESOLVE_TYPE_DEFAULT)) return false;
+		if (!sema_resolve_type_info(context, type_infoptr(sig->rtype), resolve_type_kind_infer)) return false;
 		rtype = rtype_info->type;
 		switch (sema_resolve_storage_type(context, rtype))
 		{
@@ -1215,20 +1215,22 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 
 	if (method_parent)
 	{
-		if (!sema_resolve_type_info(context, method_parent,
-		                            is_macro ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
+		if (!sema_resolve_type_info(context, method_parent, resolve_type_kind)) return false;
 	}
 
 	if (params && params[0] && params[0]->var.self_addr)
 	{
-		if (!method_parent)
-		{
-			RETURN_SEMA_ERROR(params[0], "Self parameters are only allowed on methods.");
-		}
 		if (params[0]->var.type_info)
 		{
+			if (!method_parent)
+			{
+				TypeInfo *type_info = type_infoptr(params[0]->var.type_info);
+				if (!sema_resolve_type_info(context, type_info, resolve_type_kind)) return false;
+				RETURN_SEMA_ERROR(params[0], "Self parameters `&` are only allowed on methods. Did you perhaps want '%s* %s'?", type_info->type->name, params[0]->name);
+			}
 			RETURN_SEMA_ERROR(type_infoptr(params[0]->var.type_info), "A self parameter should always be untyped, please remove the type here.");
 		}
+		if (!method_parent) RETURN_SEMA_ERROR(params[0], "Self parameters are only allowed on methods.");
 	}
 	// Fill in the type if the first parameter is lacking a type.
 	if (method_parent && params && params[0] && !params[0]->var.type_info)
@@ -1328,9 +1330,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
 		if (type_info)
 		{
-			if (!sema_resolve_type_info(context, type_info,
-			                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
-			                                     : RESOLVE_TYPE_DEFAULT)) return decl_poison(param);
+			if (!sema_resolve_type_info(context, type_info, resolve_type_kind_infer)) return decl_poison(param);
 			param->type = type_info->type;
 			switch (sema_resolve_storage_type(context, type_info->type))
 			{
@@ -2177,9 +2177,9 @@ static inline bool sema_analyse_operator_unary(SemaContext *context, Decl *metho
 	Decl **params;
 	if (!sema_analyse_operator_common(context, method, &rtype, &params, 1)) return false;
 	if (!rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
-	if (rtype->type->canonical != typeget(method->func_decl.type_parent)->canonical)
+	if (rtype->type->canonical != decl_find_method_target(method)->type->canonical)
 	{
-		RETURN_SEMA_ERROR(rtype, "The return value must be %s but was %s.", type_quoted_error_string(typeget(method->func_decl.type_parent)),
+		RETURN_SEMA_ERROR(rtype, "The return value must be %s but was %s.", type_quoted_error_string(decl_find_method_target(method)->type),
 			type_quoted_error_string(rtype->type));
 	}
 	return true;
@@ -2921,7 +2921,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	}
 
 	// Resolve the parent type.
-	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
+	TypeInfo *parent_type = decl_find_method_target(decl);
 
 	ASSERT(parent_type->resolve_status == RESOLVE_DONE);
 	Type *par_type = parent_type->type->canonical;
@@ -4406,7 +4406,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	}
 CHECK_DONE:
 	decl->type = type_new_func(decl, sig);
-	if (!sema_analyse_function_signature(context, decl, type_infoptrzero(decl->func_decl.type_parent), sig->abi, sig)) return decl_poison(decl);
+	if (!sema_analyse_function_signature(context, decl, decl_find_target_if_method(decl), sig->abi, sig)) return decl_poison(decl);
 	TypeInfo *rtype_info = type_infoptr(sig->rtype);
 	ASSERT(rtype_info);
 	Type *rtype = rtype_info->type->canonical;
@@ -4496,7 +4496,7 @@ ERROR:
 static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 {
 	// Resolve the type of the method.
-	TypeInfo *parent_type_info = type_infoptr(decl->func_decl.type_parent);
+	TypeInfo *parent_type_info = decl_find_method_target(decl);
 	ASSERT(parent_type_info->resolve_status == RESOLVE_DONE);
 	Type *parent_type = parent_type_info->type->canonical;
 
@@ -4644,7 +4644,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	if (*erase_decl) return true;
 
 	Signature *sig = &decl->func_decl.signature;
-	if (!sema_analyse_signature(context, sig, type_infoptrzero(decl->func_decl.type_parent), decl)) return false;
+	if (!sema_analyse_signature(context, sig, decl_find_target_if_method(decl), decl)) return false;
 
 	DeclId body_param = decl->func_decl.body_param;
 	if (!decl->func_decl.signature.is_at_macro && body_param && !sig->is_safemacro)
@@ -5341,7 +5341,7 @@ INLINE Decl *type_is_possible_template(SemaContext *context, TypeInfo *type_info
 }
 bool sema_analyse_method_register(SemaContext *context, Decl *method)
 {
-	TypeInfo *parent_type_info = type_infoptr(method->func_decl.type_parent);
+	TypeInfo *parent_type_info = decl_find_method_target(method);
 	Decl *decl = method->is_templated ? NULL : type_is_possible_template(context, parent_type_info);
 	if (decl)
 	{
