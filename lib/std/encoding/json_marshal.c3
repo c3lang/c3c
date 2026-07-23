@@ -13,7 +13,7 @@ import std::io, std::collections::object, std::math;
 <*
  Formatting indentation preference for JSON output.
 *>
-enum Indent : (String chars)
+enum JsonIndent : (String chars)
 {
 	NONE    { "" },
 	TAB     { "\t" },
@@ -23,6 +23,9 @@ enum Indent : (String chars)
 	SPACE_4 { "    " },
 	SPACE_5 { "     " }
 }
+
+alias Indent = JsonIndent;
+
 
 <*
  Check at compile time if a given type can be serialized to JSON.
@@ -79,7 +82,7 @@ macro bool may_serialize($Type) @const
  @return "The JSON string representation on success."
  @return? INVALID_NUMBER : "If an invalid float (inf or NaN) is encountered."
 *>
-macro String? marshal(Allocator allocator, value, Indent indent = NONE) => @pool()
+macro String? marshal(Allocator allocator, value, JsonIndent indent = NONE) => @pool()
 {
 	DString s;
 	s.tinit();
@@ -104,7 +107,7 @@ macro String? marshal(Allocator allocator, value, Indent indent = NONE) => @pool
  @return "Success."
  @return? INVALID_NUMBER, io::fprintf! : "If an invalid float (inf or NaN) or stream error occurs."
 *>
-macro void? marshal_to(OutStream stream, value, Indent indent = NONE)
+macro void? marshal_to(OutStream stream, value, JsonIndent indent = NONE)
 {
 	return serialize_value{$Typeof(value)}(stream, value, indent, 0);
 }
@@ -384,7 +387,7 @@ macro void @unmarshal_to(Allocator allocator, Object* obj, #out)
 }
 
 
-fn void? write_indent(OutStream stream, Indent indent, int indent_depth) @private
+fn void? write_indent(OutStream stream, JsonIndent indent, int indent_depth) @private
 {
 	if (indent == NONE) return;
 	for (int i = 0; i < indent_depth; i++)
@@ -399,7 +402,7 @@ fn void? serialize_float(OutStream stream, double value) @private
 	io::fprintf(stream, "%.17g", value)!;
 }
 
-macro void? @write_array(OutStream stream, sz len, Indent indent, int indent_depth; @body(sz i)) @private
+macro void? @write_array(OutStream stream, sz len, JsonIndent indent, int indent_depth; @body(sz i)) @private
 {
 	bool pretty_print = indent != NONE;
 	stream.write_byte('[')!;
@@ -424,7 +427,7 @@ macro void? @write_array(OutStream stream, sz len, Indent indent, int indent_dep
 	stream.write_byte(']')!;
 }
 
-fn void? write_entry_prefix(OutStream stream, String key, Indent indent, int indent_depth, bool first) @private
+fn void? write_entry_prefix(OutStream stream, String key, JsonIndent indent, int indent_depth, bool first) @private
 {
 	bool pretty_print = indent != NONE;
 	switch
@@ -441,7 +444,7 @@ fn void? write_entry_prefix(OutStream stream, String key, Indent indent, int ind
 	stream.write(pretty_print ? `": ` : `":`)!;
 }
 
-fn void? write_map_suffix(OutStream stream, Indent indent, int indent_depth, bool has_entries) @private
+fn void? write_map_suffix(OutStream stream, JsonIndent indent, int indent_depth, bool has_entries) @private
 {
 	bool pretty_print = indent != NONE;
 	if (has_entries && pretty_print)
@@ -452,7 +455,7 @@ fn void? write_map_suffix(OutStream stream, Indent indent, int indent_depth, boo
 	stream.write_byte('}')!;
 }
 
-fn void? serialize(OutStream stream, Type value, Indent indent = NONE, int indent_depth = 0)<Type> @private
+fn void? serialize(OutStream stream, Type value, JsonIndent indent, int indent_depth = 0)<Type> @private
 {
 	stream.write_byte('{')!;
 	$foreach $i, $member : Type::members:
@@ -462,7 +465,7 @@ fn void? serialize(OutStream stream, Type value, Indent indent = NONE, int inden
 	write_map_suffix(stream, indent, indent_depth, Type::members.len > 0)!;
 }
 
-fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NONE, int indent_depth = 0)<TypeElement> @private
+fn void? serialize_value(OutStream stream, TypeElement value, JsonIndent indent, int indent_depth = 0)<TypeElement> @private
 {
 	$switch TypeElement::kind:
 		$case POINTER:
@@ -502,7 +505,7 @@ fn void? serialize_value(OutStream stream, TypeElement value, Indent indent = NO
 	$endswitch
 }
 
-fn void? serialize_object(OutStream stream, Object* obj, Indent indent = NONE, int indent_depth = 0) @private
+fn void? serialize_object(OutStream stream, Object* obj, JsonIndent indent, int indent_depth = 0) @private
 {
 	if (!obj)
 	{
@@ -568,7 +571,7 @@ fn void? write_int(OutStream stream, long value) @private
 	return write_uint(stream, (ulong)value) @inline;
 }
 
-fn void? serialize_slice(OutStream stream, SliceType[] slice, Indent indent = NONE, int indent_depth = 0)<SliceType> @private
+fn void? serialize_slice(OutStream stream, SliceType[] slice, JsonIndent indent, int indent_depth = 0)<SliceType> @private
 {
 	@write_array(stream, slice.len, indent, indent_depth; i)
 	{

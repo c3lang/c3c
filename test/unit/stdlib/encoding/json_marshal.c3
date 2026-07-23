@@ -731,3 +731,40 @@ fn void test_unmarshal_vector_with_oversized_json() @test
 	test::eq(res.vec[0], 10);
 	test::eq(res.vec[3], 40);
 }
+
+struct BigIntRec
+{
+	long id;
+	long ts;
+}
+
+fn void test_unmarshal_large_int_precision() @test
+{
+	BigIntRec r = json::unmarshal(tmem, `{"id": 9007199254740993, "ts": 1600000000123456789}`, BigIntRec)!!;
+	test::eq(r.id, 9007199254740993);
+	test::eq(r.ts, 1600000000123456789);
+}
+
+enum RegColor
+{
+	RED,
+	GREEN,
+	BLUE
+}
+
+struct ColorRec
+{
+	RegColor c;
+}
+
+fn void test_unmarshal_enum_out_of_range_faults() @test
+{
+	if (catch json::unmarshal(tmem, `{"c": 99}`, ColorRec)) return;
+	assert(false, "out-of-range enum ordinal should return a fault, not succeed or panic");
+}
+
+fn void test_unmarshal_unknown_enum_string_faults() @test
+{
+	if (catch json::unmarshal(tmem, `{"c": "PURPLE"}`, ColorRec)) return;
+	assert(false, "unknown enum string should fault, not silently map to the first member");
+}
