@@ -11,24 +11,57 @@ static void sema_trace_decl_liveness(Decl *decl);
 INLINE void sema_trace_type_liveness(Type *type)
 {
 	if (!type) return;
+	if (type->is_live) return;
 RETRY:
-	if (!type_is_user_defined(type))
+	type->is_live = true;
+	switch (type->type_kind)
 	{
-		type = type->canonical;
-		switch (type->type_kind)
-		{
-			case TYPE_POINTER:
-				type = type->pointer;
-				goto RETRY;
-			case TYPE_SLICE:
-			case TYPE_ARRAY:
-			case TYPE_INFERRED_ARRAY:
-			case TYPE_FLEXIBLE_ARRAY:
-				type = type->array.base;
-				goto RETRY;
-			default:
-				return;
-		}
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANY:
+			return;
+		case TYPE_INTERFACE:
+			break;
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+			return;
+		case TYPE_FUNC_PTR:
+		case TYPE_POINTER:
+			type = type->pointer;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+		case TYPE_CONSTDEF:
+		case TYPE_ENUM:
+		case TYPE_FUNC_RAW:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+			break;
+		case TYPE_ALIAS:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_UNTYPEDLIST:
+			return;
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_SIMD_VECTOR:
+		case TYPE_INFERRED_VECTOR:
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+		case TYPE_WILDCARD:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+		case TYPE_REFLECTION:
+			return;
 	}
 	sema_trace_decl_liveness(type->decl);
 }

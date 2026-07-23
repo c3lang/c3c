@@ -321,6 +321,7 @@ typedef struct
 struct Type_
 {
 	TypeKind type_kind;
+	bool is_live;
 	CanonicalType *canonical;
 	const char *name;
 	Type **type_cache;
@@ -3414,7 +3415,7 @@ INLINE bool type_is_user_defined(Type *type)
 {
 	static const bool user_defined_types[TYPE_LAST + 1] = {
 		[TYPE_ENUM]       = true,
-		[TYPE_CONSTDEF] = true,
+		[TYPE_CONSTDEF]   = true,
 		[TYPE_STRUCT]     = true,
 		[TYPE_FUNC_RAW]   = true,
 		[TYPE_UNION]      = true,
