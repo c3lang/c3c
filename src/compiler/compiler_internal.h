@@ -1891,6 +1891,11 @@ struct SemaContext_
 	Decl *generic_instance;
 };
 
+typedef struct SuggestionKeywords_ {
+	const char **base_types;
+	const char **top_level_keywords;
+} SuggestionKeywords;
+
 typedef enum
 {
 	ABI_TYPE_INT_24 = 1,
@@ -2065,6 +2070,7 @@ typedef struct
 	PlatformTarget platform;
 	Linking linking;
 	GlobalContext context;
+	SuggestionKeywords suggestion_keywords;
 	const char *obj_output;
 	int generic_depth;
 	double exec_time;

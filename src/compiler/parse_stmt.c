@@ -1037,6 +1037,18 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	ast->expr_stmt = expr;
 	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 	{
+		const char *closest[2];
+		int matches = str_find_closest(expr->unresolved_ident_expr.ident, compiler.suggestion_keywords.base_types, closest);
+
+		if (matches == 1)
+		{
+			RETURN_PRINT_ERROR_AT(poisoned_ast, expr, "Expected a type here. Did you perhaps want '%s'?", closest[0]);
+		}
+		else if (matches == 2)
+		{
+			RETURN_PRINT_ERROR_AT(poisoned_ast, expr, "Expected a type here. Did you perhaps want '%s' or '%s'?", closest[0], closest[1]);
+		}
+
 		RETURN_PRINT_ERROR_AT(poisoned_ast, expr, "Expected a type here.");
 	}
 	CONSUME_EOS_OR_RET(poisoned_ast);

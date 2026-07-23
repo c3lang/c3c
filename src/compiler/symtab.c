@@ -139,6 +139,36 @@ void symtab_init(uint32_t capacity)
 		ASSERT(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 	}
 
+	SuggestionKeywords suggestion_keywords;
+
+	suggestion_keywords.base_types = VECNEW(const char *, 32);
+	suggestion_keywords.top_level_keywords = VECNEW(const char *, 32);
+
+	for (TokenType i = TOKEN_FIRST_KEYWORD; i <= TOKEN_LAST_KEYWORD; i++)
+	{
+		TokenType type = i;
+
+		switch (type)
+		{
+			case TYPE_TOKENS:
+	  			vec_add(suggestion_keywords.base_types, token_type_to_string(type));
+				break;
+			default:
+				break;
+		}
+
+		switch (type)
+		{
+			case TOP_LEVEL_KEYWORD_TOKENS:
+	  			vec_add(suggestion_keywords.top_level_keywords, token_type_to_string(type));
+				break;
+			default:
+				break;
+		}
+	}
+
+	compiler.suggestion_keywords = suggestion_keywords;
+
 	// Init some constant idents
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
 	TokenType type = TOKEN_CONST_IDENT;

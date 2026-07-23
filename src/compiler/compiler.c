@@ -17,7 +17,6 @@
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
 
-
 CompilerState compiler;
 
 Vmem ast_arena;
@@ -44,6 +43,7 @@ static const char *out_name(void)
 }
 
 #define START_VMEM_SIZE (sizeof(size_t) == 4 ? 1024 : 4096)
+
 
 void compiler_init(BuildOptions *build_options)
 {

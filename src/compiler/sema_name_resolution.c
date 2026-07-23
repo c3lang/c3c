@@ -566,38 +566,6 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 	return sema_find_decl_in_global(context, &compiler.context.symbols, NULL, name_resolve);
 }
 
-#define MAX_TEST 256
-
-int damerau_levenshtein_distance(const char *a, int a_len, const char *b, int b_len)
-{
-	if (!a_len) return b_len;
-	if (!b_len) return a_len;
-	if (a_len >= MAX_TEST || b_len >= MAX_TEST) return MAX_TEST;
-	int score[MAX_TEST][MAX_TEST];
-	memset(score, 0, sizeof(int) * (size_t)MAX_TEST * (size_t)MAX_TEST);
-	for (int i = 0; i <= a_len; i++) score[i][0] = i;
-	for (int i = 0; i <= b_len; i++) score[0][i] = i;
-	for (int i = 0; i < a_len; i++)
-	{
-		for (int j = 0; j < b_len; j++)
-		{
-			int cost = a[i] == b[j] ? 0 : 1;
-			int del = score[i][j + 1] + 1;
-			int insert = score[i + 1][j] + 1;
-			int substitute = score[i][j] + cost;
-			int min = del < insert ? del : insert;
-			score[i + 1][j + 1] = min < substitute ? min : substitute;
-			if (i > 0 && j > 0 && a[i] == b[j - 1] && a[i - 1] == b[j])
-			{
-				int comp = score[i - 1][j - 1] + 1;
-				if (comp < score[i + 1][j + 1]) score[i + 1][j + 1] = comp;
-			}
-		}
-	}
-	return score[a_len][b_len];
-}
-
-
 static void find_closest(const char *name, int name_len, Decl **decls, int *count_ref, Decl* matches[3], int *best_distance_ref)
 {
 	int best_distance = *best_distance_ref;

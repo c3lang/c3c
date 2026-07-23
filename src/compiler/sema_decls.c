@@ -3971,17 +3971,59 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 			continue;
 		}
 		Decl *param = NULL;
+		const char *matches[2];
+		matches[0] = matches[1] = NULL;
+		int match_count = 0;
+		int best_distance = MAX(1, (int)((int)strlen(param_contract->name) / 3));
+
 		FOREACH(Decl *, other_param, params)
 		{
 			param = other_param;
 			if (param && param->name == param_contract->name) goto NEXT;
+
+			int dist = damerau_levenshtein_distance(param_contract->name, (int)strlen(param_contract->name), param->name, (int)strlen(param->name));
+			
+			if (dist < best_distance)
+			{
+				matches[0] = param->name;
+				best_distance = dist;
+				match_count = 1;
+				continue;
+			}
+			if (dist == best_distance && match_count < 2)
+			{
+				matches[match_count++] = param->name;
+			}
 		}
-		FOREACH(Decl *, extra, extra_params)
+		FOREACH(Decl *, extra_param, extra_params)
 		{
-			param = extra;
+			param = extra_param;
 			if (param && param->name == param_contract->name) goto NEXT;
+
+			int dist = damerau_levenshtein_distance(param_contract->name, (int)strlen(param_contract->name), param->name, (int)strlen(param->name));
+			
+			if (dist < best_distance)
+			{
+				matches[0] = param->name;
+				best_distance = dist;
+				match_count = 1;
+				continue;
+			}
+			if (dist == best_distance && match_count < 2)
+			{
+				matches[match_count++] = param->name;
+			}
 		}
-		RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you misspell it?", param_contract->name);
+	
+		switch (match_count)
+		{
+			case 1:
+				RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you perhaps want '%s'?", param_contract->name, matches[0]);
+			case 2:
+				RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you perhaps want '%s' or '%s'?", param_contract->name, matches[0], matches[1]);
+			default:
+				RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you misspell it?", param_contract->name);
+		}
 	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
