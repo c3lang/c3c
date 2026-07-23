@@ -5,9 +5,9 @@
 #include "compiler_internal.h"
 
 
-static inline unsigned check_row(intptr_t line)
+static inline uint32_t check_row(ptrdiff_t line)
 {
-	return line > MAX_SOURCE_LOCATION_LEN ? 0 : (unsigned)line;
+	return line > (ptrdiff_t)MAX_SOURCE_LOCATION_LEN ? MAX_SOURCE_LOCATION_LEN : (uint32_t)line;
 }
 
 // --- Lexing general methods.
@@ -147,7 +147,7 @@ static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, cons
 	va_list list;
 	va_start(list, message);
 	uint32_t current_line = lexer->current_row;
-	if (len > MAX_SOURCE_LOCATION_LEN) len = 0;
+	if (len > MAX_SOURCE_LOCATION_LEN) len = MAX_SOURCE_LOCATION_LEN;
 	SourceLoc location = {
 			.file_id = lexer->file->file_id,
 			.row = current_line,
@@ -188,8 +188,6 @@ static inline bool new_token(Lexer *lexer, TokenType type, const char *string)
 	return true;
 }
 
-
-
 // --- Comment parsing
 
 /**
@@ -197,12 +195,13 @@ static inline bool new_token(Lexer *lexer, TokenType type, const char *string)
  */
 static inline void parse_line_comment(Lexer *lexer)
 {
-	while (!reached_end(lexer) && peek(lexer) != '\n')
+	char c;
+	while ((c = peek(lexer)) != 0 && c != '\n')
 	{
 		next(lexer);
 	}
 	// If we found EOL, then walk past '\n'
-	if (peek(lexer) == '\n') next(lexer);
+	if (c == '\n') next(lexer);
 }
 
 /**
@@ -341,7 +340,7 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 		next(lexer);
 	}
 EXIT:;
-	uint32_t len = (uint32_t)(lexer->current - lexer->lexing_start);
+	ptrdiff_t len = lexer->current - lexer->lexing_start;
 	if (!type)
 	{
 		if (!prefix && len == 1) return new_token(lexer, TOKEN_UNDERSCORE, "_");
@@ -353,9 +352,9 @@ EXIT:;
 	}
 	if (len > MAX_IDENTIFIER_LENGTH)
 	{
-		return add_error_token(lexer, "An identifier cannot be longer than %d characters, but this one was %u characters long.", MAX_IDENTIFIER_LENGTH, len);
+		return add_error_token(lexer, "An identifier cannot be longer than %d characters, but this one was %llu characters long.", MAX_IDENTIFIER_LENGTH, (unsigned long long)len);
 	}
-	const char* interned_string = symtab_add(lexer->lexing_start, len, hash, &type);
+	const char *interned_string = symtab_add(lexer->lexing_start, (uint32_t)len, hash, &type);
 	switch (type)
 	{
 		case TOKEN_RETURN:
@@ -428,6 +427,7 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 	do { if (next(lexer__) == '_' && prev(lexer__) == '_') { \
 		return add_error_token_at_current(lexer__, "Multiple consecutive '_' are not allowed."); \
 	} } while(0)
+
 /**
  * Parsing octals. Here we depart from the (error prone) C style octals with initial zero e.g. 0231
  * Instead we only support 0o prefix like 0o231. Note that lexing here doesn't actually parse the
@@ -920,10 +920,10 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 
 static inline void consume_to_end_quote(Lexer *lexer)
 {
-	char c;
-	while ((c = peek(lexer)) != '\0' && c != '"')
+	char c = peek(lexer);
+	while (c && c != '"')
 	{
-		next(lexer);
+		c = next(lexer);
 	}
 }
 
@@ -1385,7 +1385,6 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 				return add_error_token(lexer, "The 0x%x character may not be placed outside of a string or comment, did you forget a \" somewhere?", (uint8_t)c);
 			}
 			return add_error_token(lexer, "'%c' may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", c);
-
 	}
 }
 
