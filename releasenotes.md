@@ -21,6 +21,7 @@
 - Timed `tcp::connect` always failed with `io::GENERAL_ERROR` instead of the real result.
 - Compile time struct with zeroed union member access causes compiler error #3382.
 - Generic methods checked before the generic type is fully registered.
+- Math function `_erff` invoked C `erf` function instead of `erff` function #3391
   
 ## 0.8.2 Change list
 
