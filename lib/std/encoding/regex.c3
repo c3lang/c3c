@@ -2,17 +2,21 @@
 
  **Usage:**
  ```
-   // Compile a pattern (returns Regex?)
-   Regex re = regex::compile(mem, "(\\w+)@(\\w+)", EXTENDED)!!;
-   defer re.free();
+ fn void main()
+ {
+     Regex re = regex::compile(mem, "(\\w+)@(\\w+)", EXTENDED)!!;
+     defer re.free();
 
-   // Execute matching (automatically captures the whole match + both groups)
-   Match[]? res = re.exec(mem, "user@domain.com");
-   if (catch err = res) {
-       io::printfn("Error: %s", regex::error_string(err));
-       return;
-   }
-   io::printfn("User: %s, Domain: %s", res[1], res[2]);
+     // Capture group extraction
+     if (try Match[] m = re.exec(tmem, "user@domain.com"))
+     {
+         io::printfn("User: %s, Domain: %s", m[1], m[2]);
+     }
+
+     // Convenience helpers
+     bool matched = re.matches("test@domain.com");
+     String replaced = re.treplace("user@domain.com", "admin@domain.com")!!;
+ }
  ```
 
 **Supported:**
