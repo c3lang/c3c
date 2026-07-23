@@ -8,9 +8,7 @@
  _Supports: structs, arrays, slices, String, ints, floats, bools, enums, constdefs, typedefs, and nested combinations of those._
 *>
 module std::encoding::json;
-import std::io;
-import std::collections::object;
-import std::math;
+import std::io, std::collections::object, std::math;
 
 <*
  Formatting indentation preference for JSON output.
@@ -120,28 +118,25 @@ macro void @assign_enum_from_string(#out, String s) @private
 
 macro void? @skip_json_value(JsonDeserializer* des) @private
 {
-	char c = peek_char(des);
-	if (c == '"')
+	switch (peek_char(des))
 	{
-		parse_string(des)!;
-	}
-	else if (c == '{' || c == '[')
-	{
-		des.cursor++; // consume open character
-		scan_container(des, false, null)!;
-		des.cursor++; // consume close character
-	}
-	else
-	{
-		while (des.cursor < des.source.len)
-		{
-			char ch = des.source[des.cursor];
-			if (ch == ',' || ch == '}' || ch == ']' || ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
+		case '"':
+			parse_string(des)!;
+		case '{':
+		case '[':
+			des.cursor++; // consume open character
+			scan_container(des, false, null)!;
+			des.cursor++; // consume close character
+		default:
+			while (des.cursor < des.source.len)
 			{
-				break;
+				char ch = des.source[des.cursor];
+				if (ch == ',' || ch == '}' || ch == ']' || ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r')
+				{
+					break;
+				}
+				des.cursor++;
 			}
-			des.cursor++;
-		}
 	}
 }
 
@@ -432,14 +427,13 @@ macro void? @write_array(OutStream stream, sz len, Indent indent, int indent_dep
 fn void? write_entry_prefix(OutStream stream, String key, Indent indent, int indent_depth, bool first) @private
 {
 	bool pretty_print = indent != NONE;
-	if (!first)
+	switch
 	{
-		stream.write_byte(',')!;
-		if (pretty_print) stream.write_byte('\n')!;
-	}
-	else if (pretty_print)
-	{
-		stream.write_byte('\n')!;
+		case !first:
+			stream.write_byte(',')!;
+			if (pretty_print) stream.write_byte('\n')!;
+		case pretty_print:
+			stream.write_byte('\n')!;
 	}
 	if (pretty_print) write_indent(stream, indent, indent_depth + 1)!;
 	stream.write_byte('"')!;
@@ -621,15 +615,12 @@ fn sz? scan_array_len(JsonDeserializer* des) @private
 {
 	expect_char(des, '[')!;
 	sz start_pos = des.cursor;
-	if (peek_char(des) == ']')
-	{
-		return 0;
-	}
+	if (peek_char(des) == ']') return 0;
 
 	sz last_comma = 0;
 	sz len = scan_container(des, true, &last_comma)!;
 
-	if (last_comma != 0)
+	if (last_comma)
 	{
 		JsonDeserializer temp_des = *des;
 		temp_des.cursor = last_comma + 1;
@@ -651,7 +642,7 @@ fn sz? scan_container(JsonDeserializer* des, bool count_elements, sz* out_last_c
 	bool in_string = false;
 	bool escaped = false;
 
-	while (des.cursor < des.source.len)
+	while OUTER: (des.cursor < des.source.len)
 	{
 		if (!in_string)
 		{
@@ -659,44 +650,28 @@ fn sz? scan_container(JsonDeserializer* des, bool count_elements, sz* out_last_c
 			if (des.cursor >= des.source.len) break;
 		}
 		char c = des.source[des.cursor];
-		if (in_string)
+		switch
 		{
-			if (escaped)
-			{
-				escaped = false;
-			}
-			else if (c == '\\')
-			{
-				escaped = true;
-			}
-			else if (c == '"')
-			{
-				in_string = false;
-			}
-		}
-		else if (c == '"')
-		{
-			in_string = true;
-		}
-		else if (c == '[' || c == '{')
-		{
-			depth++;
-		}
-		else if (c == ']' || c == '}')
-		{
-			depth--;
-			if (depth < 0)
-			{
-				break;
-			}
-		}
-		else if (c == ',' && depth == 0)
-		{
-			if (count_elements)
-			{
-				len++;
-				*out_last_comma = des.cursor;
-			}
+			case in_string:
+				switch
+				{
+					case escaped: escaped = false;
+					case c == '\\': escaped = true;
+					case c == '"': in_string = false;
+				}
+			case c == '"':
+				in_string = true;
+			case c == '[' || c == '{':
+				depth++;
+			case c == ']' || c == '}':
+				depth--;
+				if (depth < 0) break OUTER;
+			case c == ',' && depth == 0:
+				if (count_elements)
+				{
+					len++;
+					*out_last_comma = des.cursor;
+				}
 		}
 		des.cursor++;
 	}
