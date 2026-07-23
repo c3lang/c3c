@@ -1,4 +1,4 @@
-fn String str(int& element) // #error: Self parameters are only allowed on methods
+fn String str(int& element) // #error: Self parameters `&` are only allowed on methods. Did you perhaps want 'int* element'?
 {
 	return "abc";
 }

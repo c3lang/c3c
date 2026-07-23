@@ -42,7 +42,7 @@ Expr *parse_decl_or_expr(ParseContext *c);
 void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);
 Ast *parse_compound_stmt(ParseContext *c);
-Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool is_regular_fn);
+Ast *parse_short_body(ParseContext *c, Decl *func_or_macro, bool is_lambda);
 
 bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos);
 
