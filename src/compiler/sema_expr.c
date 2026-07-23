@@ -6074,7 +6074,7 @@ static inline void append_extension_methods(Type *type, Decl **extensions, Expr 
 {
 	FOREACH(Decl *, method, extensions)
 	{
-		if (method->decl_kind == DECL_FUNC && typeget(method->func_decl.type_parent) == type)
+		if (method->decl_kind == DECL_FUNC && decl_find_method_target(method)->type->canonical == type)
 		{
 			vec_add(*method_exprs_ref, create_method_copy(method, loc));
 		}
@@ -6332,10 +6332,25 @@ static inline ConstInitializer *sema_expr_fold_to_struct_member(ConstInitializer
 {
 
 	Decl *struct_union_decl = type_flatten(parent_type)->decl;
-	if (init->kind == CONST_INIT_UNION)
+	switch (init->kind)
 	{
-		if (struct_union_decl->strukt.members[init->init_union.index] != member) return NULL;
-		return init->init_union.element;
+		case CONST_INIT_UNION:
+			if (struct_union_decl->strukt.members[init->init_union.index] != member) return NULL;
+			return init->init_union.element;
+		case CONST_INIT_ZERO:
+		{
+			ConstInitializer *result = CALLOCS(ConstInitializer);
+			result->kind = CONST_INIT_ZERO;
+			result->type = member->type;
+			return result;
+		}
+		case CONST_INIT_STRUCT:
+			break;
+		case CONST_INIT_VALUE:
+		case CONST_INIT_ARRAY:
+		case CONST_INIT_ARRAY_FULL:
+		case CONST_INIT_ARRAY_VALUE:
+			UNREACHABLE
 	}
 	ASSERT(init->kind == CONST_INIT_STRUCT);
 	FOREACH_IDX(i, Decl *, other_member, struct_union_decl->strukt.members)
@@ -10731,7 +10746,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				case CALL_ENV_FUNCTION:
 				{
 					Decl *current_func = context->call_env.current_function;
-					TypeInfo *func_type = type_infoptrzero(current_func->func_decl.type_parent);
+					TypeInfo *func_type = decl_find_target_if_method(current_func);
 					if (func_type)
 					{
 						scratch_buffer_clear();

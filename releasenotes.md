@@ -19,7 +19,9 @@
 - `--obj` will always retain the object files. #3380
 - ThreadGroup with function returning `void` was broken.
 - Timed `tcp::connect` always failed with `io::GENERAL_ERROR` instead of the real result.
-
+- Compile time struct with zeroed union member access causes compiler error #3382.
+- Generic methods checked before the generic type is fully registered.
+  
 ## 0.8.2 Change list
 
 ### Changes / improvements

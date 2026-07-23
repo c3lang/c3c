@@ -256,7 +256,7 @@ LLVMMetadataRef llvm_debug_create_macro(GenContext *c, Decl *macro)
 	LLVMMetadataRef file = llvm_get_debug_file(c, location->file_id);
 	LLVMMetadataRef macro_type = NULL;
 	return LLVMDIBuilderCreateFunction(c->debug.builder, file, name, namelen, name, namelen,
-	                            file, location->row, macro_type, true, true, location->row, LLVMDIFlagZero, false);
+	                            file, location->row, macro_type, true, true, location->row, LLVMDIFlagPrototyped, false);
 }
 
 DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceLocId location)

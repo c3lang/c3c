@@ -227,9 +227,9 @@ static void write_decl_uid(FILE *file, Module *module, Decl *decl)
 	}
 	fputs("\"", file);
 	fprintf(file, "%s::", module->name->module);
-	if ((decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO) && decl->func_decl.type_parent)
+	if ((decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO))
 	{
-		TypeInfo *parent = type_infoptr(decl->func_decl.type_parent);
+		TypeInfo *parent = decl_find_target_if_method(decl);
 		if (parent)
 		{
 			scratch_buffer_clear();
