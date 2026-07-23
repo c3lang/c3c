@@ -1,6 +1,6 @@
 module regex_benchmarks;
 import std;
-import std::encoding::regex;
+import std::encoding::regex @public;
 
 const String PATTERN_SIMPLE = "hello";
 const String PATTERN_MEDIUM = "(\\w+)@(\\w+\\.\\w+)";
@@ -155,7 +155,8 @@ fn String repeat_str(String s, sz count)
 // =======================================================================================
 module regex_benchmarks @benchmark;
 
-import std::encoding::regex;
+import std::encoding::regex @public;
+
 
 fn void compile_pattern_simple_c3()
 {
@@ -229,7 +230,7 @@ fn void match_and_compile_medium_glibc()
 	Match[] res = mem::talloc_array(Match, 3);
 	for (sz i = 0; i < 3; i++)
 	{
-		res[i] = { .str = input_email, .match.rm_so = pm[i].rm_so, .match.rm_eo = pm[i].rm_eo };
+		res[i] = { .str = input_email, .start = pm[i].rm_so, .end = pm[i].rm_eo };
 	}
 	regfree(&re);
 }
@@ -262,7 +263,7 @@ fn void match_medium_glibc()
 	Match[] res = mem::talloc_array(Match, 3);
 	for (sz i = 0; i < 3; i++)
 	{
-		res[i] = { .str = input_email, .match.rm_so = pm[i].rm_so, .match.rm_eo = pm[i].rm_eo };
+		res[i] = { .str = input_email, .start = pm[i].rm_so, .end = pm[i].rm_eo };
 	}
 }
 
@@ -275,7 +276,7 @@ fn void match_captures_glibc()
 	Match[] res = mem::talloc_array(Match, 6);
 	for (sz i = 0; i < 6; i++)
 	{
-		res[i] = { .str = input_captures, .match.rm_so = pm[i].rm_so, .match.rm_eo = pm[i].rm_eo };
+		res[i] = { .str = input_captures, .start = pm[i].rm_so, .end = pm[i].rm_eo };
 	}
 }
 

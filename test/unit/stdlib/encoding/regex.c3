@@ -104,9 +104,9 @@ fn void test_regex_utility_apis() @test
 	Match[] empty_matches = re_empty.tfind_all("b")!!;
 	test::eq(empty_matches.len, 2);
 	test::eq(empty_matches[0].str, "");
-	test::eq(empty_matches[0].start(), 0);
+	test::eq(empty_matches[0].start, 0);
 	test::eq(empty_matches[1].str, "");
-	test::eq(empty_matches[1].start(), 1);
+	test::eq(empty_matches[1].start, 1);
 
 	// Test empty match at the end of a non-null-terminated substring slice followed by a multibyte UTF-8 char.
 	String full_str = "aa✨";
@@ -114,9 +114,9 @@ fn void test_regex_utility_apis() @test
 	Match[] sub_matches = re_empty.tfind_all(substring)!!;
 	test::eq(sub_matches.len, 2);
 	test::eq(sub_matches[0].str, "aa");
-	test::eq(sub_matches[0].start(), 0);
+	test::eq(sub_matches[0].start, 0);
 	test::eq(sub_matches[1].str, "");
-	test::eq(sub_matches[1].start(), 2);
+	test::eq(sub_matches[1].start, 2);
 
 	// --- another edge case: Multibyte UTF-8 zero-width stepping ---
 	Regex re_boundary = regex::compile(mem, "\\b", EXTENDED)!!;
@@ -161,9 +161,9 @@ fn void test_regex_utility_apis() @test
 	// \xff is invalid UTF-8. The engine should fallback to treating it as 1 byte without crashing or hanging.
 	Match[] invalid_utf8_matches = re_empty.tfind_all("\xff\xff")!!;
 	test::eq(invalid_utf8_matches.len, 3);
-	test::eq(invalid_utf8_matches[0].start(), 0);
-	test::eq(invalid_utf8_matches[1].start(), 1);
-	test::eq(invalid_utf8_matches[2].start(), 2);
+	test::eq(invalid_utf8_matches[0].start, 0);
+	test::eq(invalid_utf8_matches[1].start, 1);
+	test::eq(invalid_utf8_matches[2].start, 2);
 
 	// --- matches API tests ---
 	Regex re_match = regex::compile(mem, "a+b", EXTENDED)!!;
@@ -197,8 +197,8 @@ fn void test_chaotic_byte_strings() @test
 
 	// Verify absolute byte offsets are correct.
 	// "|" (1) + "\x01" (1) + "\xc3\xab" (2) = 4 bytes before first SEP at offset 4
-	test::eq(all_seps[0].start(), 4);
-	test::eq(all_seps[0].end(), 7);
+	test::eq(all_seps[0].start, 4);
+	test::eq(all_seps[0].end, 7);
 
 	// replace with chaos replacement
 	String replaced = sep.treplace(garbage, chaos_replacement)!!;
@@ -265,7 +265,7 @@ fn void test_non_null_terminated_pattern() @test
 		Regex re = regex::compile(mem, pattern)!!;
 		defer re.free();
 		assert(@ok(re.texec("a")));
-		test::eq(re.texec("ab")!![0].str_view(), "a");
+		test::eq(re.texec("ab")!![0].str, "a");
 	}
 
 	// Trailing byte '[' would make the pattern syntactically invalid (EBRACK).
@@ -281,7 +281,7 @@ fn void test_non_null_terminated_pattern() @test
 		char[5] buf = { 'a', '+', 'b', 0, 0 };
 		Regex re = regex::compile(mem, (String)buf[0:1], EXTENDED)!!;
 		defer re.free();
-		test::eq(re.texec("aaa")!![0].str_view(), "a");
+		test::eq(re.texec("aaa")!![0].str, "a");
 	}
 }
 
@@ -395,12 +395,12 @@ fn void test_submatch_parent_bounds() @test
 	defer re.free();
 
 	Match[] m = re.texec("ac", 3)!!;
-	test::eq(m[0].start(), 0);
-	test::eq(m[0].end(), 2); // whole match
-	test::eq(m[1].start(), 0);
-	test::eq(m[1].end(), 1); // group 1 = "a"
-	test::eq(m[2].start(), -1);
-	test::eq(m[2].end(), -1); // group 2 unused
+	test::eq(m[0].start, 0);
+	test::eq(m[0].end, 2); // whole match
+	test::eq(m[1].start, 0);
+	test::eq(m[1].end, 1); // group 1 = "a"
+	test::eq(m[2].start, -1);
+	test::eq(m[2].end, -1); // group 2 unused
 }
 
 //  GAP: Alternation in BRE with \|
@@ -477,9 +477,9 @@ fn void test_utf8_byte_slicing_parallel() @test
 		defer re.free();
 		
 		Match[] m = re.texec("éfé", 1)!!;
-		test::eq(m[0].str_view(), "f");
-		test::eq(m[0].start(), 2); // Starts after 'é' (2 bytes)
-		test::eq(m[0].end(), 3); // Ends before the trailing 'é'
+		test::eq(m[0].str, "f");
+		test::eq(m[0].start, 2); // Starts after 'é' (2 bytes)
+		test::eq(m[0].end, 3); // Ends before the trailing 'é'
 	}
 
 	// Test matching a single byte "x" preceded by two 4-byte characters.
@@ -488,9 +488,9 @@ fn void test_utf8_byte_slicing_parallel() @test
 		defer re.free();
 		
 		Match[] m = re.texec("𐍈𐍈x𐍈", 1)!!;
-		test::eq(m[0].str_view(), "x");
-		test::eq(m[0].start(), 8); // 4 + 4 = 8 bytes before 'x'
-		test::eq(m[0].end(), 9);
+		test::eq(m[0].str, "x");
+		test::eq(m[0].start, 8); // 4 + 4 = 8 bytes before 'x'
+		test::eq(m[0].end, 9);
 	}
 }
 
@@ -502,10 +502,10 @@ fn void test_utf8_backref_matching_backtrack() @test
 		defer re.free();
 		
 		Match[] m = re.texec("éé", 2)!!;
-		test::eq(m[0].str_view(), "éé");
-		test::eq(m[1].str_view(), "é");
-		test::eq(m[0].start(), 0);
-		test::eq(m[0].end(), 4); // "éé" spans 4 bytes
+		test::eq(m[0].str, "éé");
+		test::eq(m[1].str, "é");
+		test::eq(m[0].start, 0);
+		test::eq(m[0].end, 4); // "éé" spans 4 bytes
 	}
 
 	// Test matching a 4-byte backreference ("𐍈𐍈")
@@ -514,10 +514,10 @@ fn void test_utf8_backref_matching_backtrack() @test
 		defer re.free();
 		
 		Match[] m = re.texec("𐍈𐍈", 2)!!;
-		test::eq(m[0].str_view(), "𐍈𐍈");
-		test::eq(m[1].str_view(), "𐍈");
-		test::eq(m[0].start(), 0);
-		test::eq(m[0].end(), 8); // "𐍈𐍈" spans 8 bytes
+		test::eq(m[0].str, "𐍈𐍈");
+		test::eq(m[1].str, "𐍈");
+		test::eq(m[0].start, 0);
+		test::eq(m[0].end, 8); // "𐍈𐍈" spans 8 bytes
 	}
 }
 
@@ -530,10 +530,10 @@ fn void test_multiple_sequential_and_nested_groups() @test
 		defer re.free();
 		
 		Match[] m = re.texec("one-two-three", 4)!!;
-		test::eq(m[0].str_view(), "one-two-three");
-		test::eq(m[1].str_view(), "one");
-		test::eq(m[2].str_view(), "two");
-		test::eq(m[3].str_view(), "three");
+		test::eq(m[0].str, "one-two-three");
+		test::eq(m[1].str, "one");
+		test::eq(m[2].str, "two");
+		test::eq(m[3].str, "three");
 	}
 
 	// 2. Nested capture groups (tests the cleared submatch_id on AST node copy)
@@ -542,9 +542,9 @@ fn void test_multiple_sequential_and_nested_groups() @test
 		defer re.free();
 		
 		Match[] m = re.texec("hello world", 3)!!;
-		test::eq(m[0].str_view(), "hello world");
-		test::eq(m[1].str_view(), "hello world");
-		test::eq(m[2].str_view(), "world");
+		test::eq(m[0].str, "hello world");
+		test::eq(m[1].str, "hello world");
+		test::eq(m[2].str, "world");
 	}
 
 	// 3. Multi-byte string with deeply nested capture groups
@@ -553,11 +553,11 @@ fn void test_multiple_sequential_and_nested_groups() @test
 		defer re.free();
 		
 		Match[] m = re.texec("abcéféxyz", 3)!!;
-		test::eq(m[0].str_view(), "éfé");
-		test::eq(m[1].str_view(), "éfé");
-		test::eq(m[2].str_view(), "f");
-		test::eq(m[2].start(), 5); // 3 (abc) + 2 (é) = 5
-		test::eq(m[2].end(), 6); // 'f' is 1 byte
+		test::eq(m[0].str, "éfé");
+		test::eq(m[1].str, "éfé");
+		test::eq(m[2].str, "f");
+		test::eq(m[2].start, 5); // 3 (abc) + 2 (é) = 5
+		test::eq(m[2].end, 6); // 'f' is 1 byte
 	}
 }
 
@@ -612,8 +612,8 @@ fn void test_posix_compliance_go_testdata_333_cases() @test
 		Match[] pm = re.texec(decode_input_escapes(tc.input).tcopy(), 32)!!;
 		for (sz s = 0; s < tc.expected_spans.len; s++)
 		{
-			int got_so = (s < pm.len) ? pm[s].start() : -1;
-			int got_eo = (s < pm.len) ? pm[s].end() : -1;
+			int got_so = (s < pm.len) ? pm[s].start : -1;
+			int got_eo = (s < pm.len) ? pm[s].end : -1;
 			test::eq(tc.expected_spans[s].start, got_so);
 			test::eq(tc.expected_spans[s].end, got_eo);
 		}
@@ -986,3 +986,55 @@ enum RegexTestCase : int (
 	CASE_332 { EXTENDED, "(a*){2}(x)", "axa", NO_ERR, {{ 0, 2 }, { 1, 1 }, { 1, 2 }} },
 }
 
+fn String sample_upper_transform(Match m)
+{
+	if (m.str == "apple") return "APPLE";
+	if (m.str == "banana") return "BANANA";
+	return "UNKNOWN";
+}
+
+fn void test_replace_fn() @test
+{
+	Regex re = regex::compile(mem, "apple|banana", EXTENDED)!!;
+	defer re.free();
+
+	String out = re.treplace_fn("I like apple and banana", &sample_upper_transform)!!;
+	test::eq(out, "I like APPLE and BANANA");
+
+	String out_first = re.treplace_fn("I like apple and banana", &sample_upper_transform, false)!!;
+	test::eq(out_first, "I like APPLE and banana");
+}
+
+fn void test_first_match() @test
+{
+	Regex re = regex::compile(mem, "\\d+", EXTENDED)!!;
+	defer re.free();
+
+	Match m = re.first_match("abc 123 def 456")!!;
+	test::eq(m.str, "123");
+	test::eq(m.start, 4);
+	test::eq(m.end, 7);
+	test::eq(m, "123");
+
+	if (catch err = re.first_match("no numbers here"))
+	{
+		test::eq(err, regex::NOMATCH);
+	}
+	else
+	{
+		unreachable("Expected NOMATCH");
+	}
+}
+
+fn void test_escape_api() @test
+{
+	String raw = "price is $5.00 (plus 10% * 2)";
+	String escaped = regex::tescape(raw);
+	test::eq(escaped, "price is \\$5\\.00 \\(plus 10% \\* 2\\)");
+
+	Regex re = regex::compile(mem, escaped, EXTENDED)!!;
+	defer re.free();
+
+	Match m = re.first_match("the price is $5.00 (plus 10% * 2) today")!!;
+	test::eq(m.str, raw);
+}

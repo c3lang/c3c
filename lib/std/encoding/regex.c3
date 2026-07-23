@@ -37,7 +37,35 @@ module std::encoding::regex;
 import std::io;
 import std::collections::list;
 
-// API
+constdef CompileFlags
+{
+	EXTENDED = 1 << 0,
+	ICASE    = 1 << 1,
+	NOSUB    = 1 << 2,
+	NEWLINE  = 1 << 3,
+}
+
+constdef ExecFlags
+{
+	NOTBOL = 1 << 0,
+	NOTEOL = 1 << 1,
+}
+
+faultdef
+	NOMATCH,
+	BADPAT,
+	ECOLLATE,
+	ECTYPE,
+	EESCAPE,
+	ESUBREG,
+	EBRACK,
+	EPAREN,
+	EBRACE,
+	BADBR,
+	ERANGE,
+	OUT_OF_MEMORY,
+	BADRPT;
+
 
 struct Regex
 {
@@ -164,9 +192,11 @@ fn Match[]? Regex.tfind_all(&self, String str, ExecFlags eflags = {}) @inline
 	return self.find_all(tmem, str, eflags);
 }
 
-<* Replace matches of the pattern in the string with the replacement string. *>
-fn String? Regex.replace(&self, Allocator allocator, String str, String replacement, bool replace_all = true, ExecFlags eflags = {})
+macro String? @_replace_impl(self, Allocator allocator, String str, #repl, bool replace_all, ExecFlags eflags) @private
 {
+	$if $Typeof(#repl) != String && $Typeof(#repl) != ReplaceFn:
+		$error "repl must be a String or ReplaceFn";
+	$endif
 	Match[] matches = self.find_all(allocator, str, eflags)!;
 	defer alloc::free(allocator, matches);
 
@@ -176,22 +206,27 @@ fn String? Regex.replace(&self, Allocator allocator, String str, String replacem
 	}
 
 	DString ds;
-	ds.init(allocator);
+	ds.init(allocator, str.len);
 
 	sz last_offset = 0;
 	foreach (idx, m : matches)
 	{
 		if (!replace_all && idx > 0) break;
 
-		RegOff match_start = m.match.rm_so;
-		RegOff match_end = m.match.rm_eo;
+		RegOff match_start = m.start;
+		RegOff match_end = m.end;
 
 		if (match_start > last_offset)
 		{
 			ds.append(str[last_offset : match_start - last_offset]);
 		}
 
-		ds.append(replacement);
+		$if ($Typeof(#repl) == String):
+			ds.append(#repl);
+		$else
+			ds.append(#repl(m));
+		$endif
+
 		last_offset = match_end;
 	}
 
@@ -205,11 +240,82 @@ fn String? Regex.replace(&self, Allocator allocator, String str, String replacem
 	return res;
 }
 
+<* Replace matches of the pattern in the string with the replacement string. *>
+fn String? Regex.replace(&self, Allocator allocator, String str, String replacement, bool replace_all = true, ExecFlags eflags = {}) =>
+	@_replace_impl(self, allocator, str, replacement, replace_all, eflags);
+
 <* Temporary-allocating variant of `replace`. *>
-fn String? Regex.treplace(&self, String str, String replacement, bool replace_all = true, ExecFlags eflags = {}) @inline
+fn String? Regex.treplace(&self, String str, String replacement, bool replace_all = true, ExecFlags eflags = {}) @inline =>
+	self.replace(tmem, str, replacement, replace_all, eflags);
+
+alias ReplaceFn = fn String(Match match);
+
+<*
+ Replace matches of the pattern in the string using a callback function.
+
+ @param allocator   : "Allocator used to persist the resulting string."
+ @param str         : "The input string to search and modify."
+ @param func        : "Callback function of type `fn String(Match)` called for each match to return the replacement `String`."
+ @param replace_all : "If true (default), replaces all matches. If false, replaces only the first match."
+ @param eflags      : "Execute flags."
+ @return "The modified string."
+*>
+fn String? Regex.replace_fn(&self, Allocator allocator, String str, ReplaceFn func, bool replace_all = true, ExecFlags eflags = {}) =>
+	@_replace_impl(self, allocator, str, func, replace_all, eflags);
+
+<* Temporary-allocating variant of `replace_fn`. *>
+fn String? Regex.treplace_fn(&self, String str, ReplaceFn func, bool replace_all = true, ExecFlags eflags = {}) @inline =>
+	self.replace_fn(tmem, str, func, replace_all, eflags);
+
+<*
+ Find the first match of the pattern in the string.
+
+ Returns a single `Match` struct for the top-level match.
+ Throws `NOMATCH` if no match is found.
+
+ @param str    : "The input string to search."
+ @param eflags : "Execute flags."
+ @return "A single `Match` struct for the top-level match, or `NOMATCH` if no match is found."
+*>
+fn Match? Regex.first_match(&self, String str, ExecFlags eflags = {})
 {
-	return self.replace(tmem, str, replacement, replace_all, eflags);
+	RegMatch match;
+	re_exec(self, str, 1, &match, eflags)!;
+	if (match.rm_so == -1 || match.rm_eo == -1) return NOMATCH~;
+	return _build_match(str, match);
 }
+
+<*
+ Escapes special regex characters in `pattern` so that the returned string can be matched literally.
+
+ @param allocator : "Allocator used to allocate the escaped string."
+ @param pattern   : "The raw input string to escape."
+ @return "The escaped pattern string."
+*>
+fn String escape(Allocator allocator, String pattern)
+{
+	DString ds;
+	ds.init(allocator, pattern.len * 2);
+	foreach (char c : pattern)
+	{
+		switch (c)
+		{
+			case '.': case '*': case '+': case '?': case '^': case '$':
+			case '(': case ')': case '[': case ']': case '{': case '}':
+			case '|': case '\\':
+				ds.append_char('\\');
+				ds.append_char(c);
+			default:
+				ds.append_char(c);
+		}
+	}
+	String res = ds.copy_str(allocator);
+	ds.free();
+	return res;
+}
+
+<* Temporary-allocating variant of `escape`. *>
+fn String tescape(String pattern) @inline => escape(tmem, pattern);
 
 <* Split the string around matches of the pattern. *>
 fn String[]? Regex.split(&self, Allocator allocator, String str, sz max = 0, bool skip_empty = false, ExecFlags eflags = {})
@@ -230,8 +336,8 @@ fn String[]? Regex.split(&self, Allocator allocator, String str, sz max = 0, boo
 			break;
 		}
 
-		RegOff match_start = m.match.rm_so;
-		RegOff match_end = m.match.rm_eo;
+		RegOff match_start = m.start;
+		RegOff match_end = m.end;
 
 		String part = str[last_offset : match_start - last_offset];
 		if (!skip_empty || part.len > 0)
@@ -252,26 +358,16 @@ fn String[]? Regex.split(&self, Allocator allocator, String str, sz max = 0, boo
 	return parts[0 : count];
 }
 
-
 <* Temporary-allocating variant of `split`. *>
-fn String[]? Regex.tsplit(&self, String str, sz max = 0, bool skip_empty = false, ExecFlags eflags = {}) @inline
-{
-	return self.split(tmem, str, max, skip_empty, eflags);
-}
-
-
-alias RegOff @private = int;
-
-struct RegMatch
-{
-	RegOff rm_so;
-	RegOff rm_eo;
-}
+fn String[]? Regex.tsplit(&self, String str, sz max = 0, bool skip_empty = false, ExecFlags eflags = {}) @inline => self.split(tmem, str, max, skip_empty, eflags);
 
 struct Match (Printable)
 {
 	String str;
-	RegMatch match;
+	<* The byte offset where this match starts in the original string. -1 if unmatched. *>
+	int start;
+	<* Byte index of the first character after the match. -1 if unmatched. *>
+	int end;
 }
 
 fn sz? Match.to_format(&self, Formatter* formatter) @dynamic => formatter.print(self.str);
@@ -279,12 +375,6 @@ fn sz? Match.to_format(&self, Formatter* formatter) @dynamic => formatter.print(
 fn String Match.str_view(&self) @inline => self.str;
 
 fn bool Match.eq(&self, String other) @operator(==) @inline => self.str == other;
-
-<* Returns the byte offset where this match starts in the original string. -1 if unmatched. *>
-fn int Match.start(&self) @inline => self.match.rm_so;
-
-<* Returns the byte offset just past the end of this match in the original string. -1 if unmatched. *>
-fn int Match.end(&self) @inline => self.match.rm_eo;
 
 <*
  Returns a human-readable description for a given regex fault.
@@ -321,56 +411,29 @@ fn Match _build_match(String str, RegMatch match, RegOff offset = 0) @private @i
 	}
 	Match m = {
 		.str = view,
-		.match.rm_so = (so >= 0) ? offset + so : -1,
-		.match.rm_eo = (eo >= 0) ? offset + eo : -1
+		.start = (so >= 0) ? offset + so : -1,
+		.end   = (eo >= 0) ? offset + eo : -1
 	};
 	return m;
 }
 
-// ===============================================================
-//  Public API types
-
-const int RE_DUP_MAX = 255;
-const int CHAR_MAX_CODEPOINT = 0x10ffff;
-
-// Compile flags (cflags)
-constdef CompileFlags : int
-{
-	EXTENDED = 1 << 0,
-	ICASE    = 1 << 1,
-	NOSUB    = 1 << 2,
-	NEWLINE  = 1 << 3,
-}
-
-// Execute flags (eflags)
-constdef ExecFlags : int
-{
-	NOTBOL = 1 << 0,
-	NOTEOL = 1 << 1,
-}
-
-
-
-faultdef
-	NOMATCH,
-	BADPAT,
-	ECOLLATE,
-	ECTYPE,
-	EESCAPE,
-	ESUBREG,
-	EBRACK,
-	EPAREN,
-	EBRACE,
-	BADBR,
-	ERANGE,
-	OUT_OF_MEMORY,
-	BADRPT;
-
-
 // ============================================================
-//  Internal: AST node types
+//  Internal: engine constants
 // ============================================================
 
+alias RegOff @private = int;
+
+struct RegMatch @private
+{
+	RegOff rm_so;
+	RegOff rm_eo;
+}
+
+// Engine limits
+const int RE_DUP_MAX         @private = 255;
+const int CHAR_MAX_CODEPOINT @private = 0x10ffff;
+
+// AST node types
 const int LITERAL    @private = 0;
 const int CATENATION @private = 1;
 const int ITERATION  @private = 2;
