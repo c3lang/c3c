@@ -14,12 +14,6 @@ static inline unsigned check_row(intptr_t line)
 
 static bool lexer_scan_token_inner(Lexer *lexer);
 
-static inline void begin_new_token(Lexer *lexer)
-{
-	lexer->lexing_start = lexer->current;
-	lexer->start_row = lexer->current_row;
-	lexer->start_row_start = lexer->line_start;
-}
 
 // Peek at the current character in the buffer.
 #define peek(lexer_) (*(lexer_)->current)
@@ -33,14 +27,23 @@ static inline void begin_new_token(Lexer *lexer)
 // Is the current character '\0' if so we assume we reached the end.
 #define reached_end(lexer_) ((lexer_)->current[0] == '\0')
 
+// Prime the lexer to start working on a new token.
+static inline void begin_new_token(Lexer *lexer)
+{
+	lexer->lexing_start = lexer->current;
+	lexer->start_row = lexer->current_row;
+	lexer->start_row_start = lexer->line_start;
+}
+
 // Step one character forward and return that character
 INLINE char next(Lexer *lexer)
 {
-	if (*lexer->current == '\n')
+	if ((lexer->current++)[0] == '\n')
 	{
-		lexer->line_start = lexer->current + 1, lexer->current_row++;
+		lexer->line_start = lexer->current;
+		lexer->current_row++;
 	}
-	return (++lexer->current)[0];
+	return lexer->current[0];
 }
 
 // Backtrack the buffer read one step.
@@ -56,7 +59,7 @@ static inline void backtrack(Lexer *lexer)
 // Skip the x next characters.
 static inline void skip(Lexer *lexer, int steps)
 {
-	ASSERT(steps > 0);
+	assert(steps > 0);
 	for (int i = 0; i < steps; i++)
 	{
 		next(lexer);
@@ -1390,13 +1393,13 @@ INLINE void check_bidirectional_markers(Lexer *lexer)
 {
 	// First we check for bidirectional markers.
 	const unsigned char *check = (const unsigned char *)lexer->current;
-	unsigned c;
+	const unsigned char *end = check + lexer->file->content_len;
 	int balance = 0;
 	// Loop until end.
-	while ((c = *(check++)) != '\0')
+	while (end > check && (check = memchr(check, 0xE2, end - check)) != NULL)
 	{
-		if (c != 0xE2) continue;
 		// Possible marker.
+		check++;
 		unsigned char next = check[0];
 		if (next == 0) break;
 		unsigned char type = check[1];
