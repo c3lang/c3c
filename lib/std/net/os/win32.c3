@@ -120,6 +120,11 @@ fn fault socket_error()
 	return convert_error(win32::wsaGetLastError());
 }
 
+fn fault connect_error(CInt error)
+{
+	return convert_error((WSAError)error);
+}
+
 const CUShort POLLIN      = win32::POLLIN;
 const CUShort POLLPRI     = win32::POLLPRI;
 const CUShort POLLOUT     = win32::POLLOUT;

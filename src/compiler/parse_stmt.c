@@ -1590,38 +1590,58 @@ Ast* parse_compound_stmt(ParseContext *c)
 	return ast;
 }
 
-Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool is_regular_fn)
+/*
+ * We're parsing "=> bar();" in the case of a "lambda" but also in case we have the short form
+ * starting with a macro with a body, so "=> @pool() {", we should avoid parsing the ";"
+ * In the lambda case that's part of the expression EOS, in the other case we're simply removing it.
+ */
+Ast *parse_short_body(ParseContext *c, Decl *func_or_method, bool is_lambda)
 {
+	// Advance past the =>
 	advance(c);
+
+	// We create the synthetic compound stmt
 	Ast *ast = ast_new_curr(c, AST_COMPOUND_STMT);
 	AstId *next = &ast->compound_stmt.first_stmt;
 
+	// Create a return and append it.
 	Ast *ret = ast_new_curr(c, AST_RETURN_STMT);
 	ast_append(&next, ret);
-	TypeInfo *rtype = return_type ? type_infoptr(return_type) : NULL;
-	bool is_void_return = rtype && rtype->resolve_status == RESOLVE_DONE && rtype->type->type_kind == TYPE_VOID;
+
+	// Let's grab the rtype to figure out whether it's a plain `void`
+	TypeInfo *rtype = type_infoptrzero(func_or_method->func_decl.signature.rtype);
+	bool is_void_return = rtype && rtype->resolve_status == RESOLVE_DONE && type_is_void(rtype->type);
+
+	// Parse the expression inside.
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
+
+	// Copy the return location to the expression.
 	ret->loc = expr->loc;
+
+	// If we have "@pool() { }", then we parse this in a special way
+	// and discard the `;`
 	if (expr->expr_kind == EXPR_CALL && expr->call_expr.macro_body)
 	{
 		ret->ast_kind = AST_EXPR_STMT;
 		ret->expr_stmt = expr;
-		is_regular_fn = false;
 		expr->call_expr.is_outer_call = true;
-		goto END;
+		return ast;
 	}
+
+	// If it's not a lambda, consume the `;`
+	if (!is_lambda) CONSUME_EOS_OR_RET(poisoned_ast);
+
+	// In the case of void return, we can optimize
+	// it by not having a return.
 	if (is_void_return)
 	{
 		ret->ast_kind = AST_EXPR_STMT;
 		ret->expr_stmt = expr;
-		goto END;
 	}
-	ret->return_stmt.expr = expr;
-END:;
-
-	if (is_regular_fn)
+	else
 	{
-		CONSUME_EOS_OR_RET(poisoned_ast);
+		// Assign the expression to the return.
+		ret->return_stmt.expr = expr;
 	}
 	return ast;
 }

@@ -205,13 +205,19 @@ macro bool member_eq(left, right) @builtin
 fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ignore)
 {
 	bool inside_builtin_panic_skipped = true;
-	for (int i = backtraces_to_ignore; i < backtrace.len(); i++) {
-		switch (backtrace[i].function) {
-			case "std.core.builtin.print_backtrace":
-			case "std.core.builtin.default_panic":
-			case "std.core.builtin.panicf":
+	for (int i = backtraces_to_ignore; i < backtrace.len(); i++)
+	{
+		String function_name = backtrace[i].function;
+		switch
+		{
+			case function_name == "std.os.backtrace.capture_current":
+			case function_name == "std.core.builtin.print_backtrace":
+			case function_name == "std.core.builtin.default_panic":
+			case function_name == "std.core.builtin.panicf":
+			case function_name.starts_with("std.core.runtime.panic_test."):
+			case function_name.starts_with("std.core.runtime.test_panic."):
 				if (inside_builtin_panic_skipped) backtraces_to_ignore++;
-			case "__GI___sigaction":
+			case function_name == "__GI___sigaction":
 				backtraces_to_ignore = i + 1;
 			default:
 				inside_builtin_panic_skipped = false;

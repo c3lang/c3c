@@ -388,6 +388,7 @@ static void compiler_print_bench(void)
 
 void delete_object_files(const char **files, size_t count)
 {
+	if (compiler.build.keep_object_files) return;
 	for (size_t i = 0; i < count; i++)
 	{
 		assert(files);

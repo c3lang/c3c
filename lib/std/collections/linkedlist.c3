@@ -92,9 +92,28 @@ fn void LinkedList.push_front(&self, Type value)
 	self.size++;
 }
 
-fn void LinkedList.push_front_all(&self, Type[] value)
+<*
+ Push multiple elements to the front of the LinkedList, using push_front repeatedly.
+ This will reverse the ordering of the elements provided.
+ { 2, 3 } -> push_front_all { 0, 1 } => { 1, 0, 2, 3 }
+ Also see: LinkedList.prepend
+
+ @param [in] elements
+*>
+fn void LinkedList.push_front_all(&self, Type[] elements)
 {
-	foreach_r (v : value) self.push_front(v);
+	foreach (v : elements) self.push_front(v);
+}
+
+<*
+ Prepend the elements to the queue. { 2, 3 } -> prepend { 0, 1 } => { 0, 1, 2, 3 }
+ Also see: LinkedList.push_front_all.
+
+ @param [in] elements
+*>
+fn void LinkedList.prepend(&self, Type[] elements)
+{
+	foreach_r (v : elements) self.push_front(v);
 }
 
 fn void LinkedList.push(&self, Type value)

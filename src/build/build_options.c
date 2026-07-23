@@ -1354,6 +1354,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("obj"))
 			{
 				options->no_obj = false;
+				options->keep_object_files = true;
 				return;
 			}
 			if (match_longopt("no-headers"))
