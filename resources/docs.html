@@ -1785,8 +1785,10 @@
 						} else if (!isFieldAccess) {
 							const symbol = symbols[text];
 							if (symbol) {
-								cls = `c3-${symbol.kind}`;
-								if (/^[A-Z]/.test(text) || text.startsWith('@')) url = '#' + symbol.uid;
+								if (/^[A-Z]/.test(text) || text.startsWith('@')) {
+									cls = `c3-${symbol.kind}`;
+									url = '#' + symbol.uid;
+								}
 							}
 						}
 					}
@@ -1808,7 +1810,7 @@
 			// 1. Extract raw inline code blocks first to prevent them from being escaped or formatted by other markdown rules
 			const codes = [];
 			let processed = text.replace(/`([^`]+)`/g, (m, p1) => {
-				const placeholder = `\x00CODE_${codes.length}\x00`;
+				const placeholder = `\x00CODEBLOCK${codes.length}\x00`;
 				codes.push(`<code class="inline-code">${highlightC3(p1)}</code>`);
 				return placeholder;
 			});
@@ -1829,7 +1831,7 @@
 
 			// 6. Restore the preserved inline code blocks
 			for (let i = 0; i < codes.length; i++) {
-				escaped = escaped.replace(`\x00CODE_${i}\x00`, codes[i]);
+				escaped = escaped.replace(`\x00CODEBLOCK${i}\x00`, codes[i]);
 			}
 
 			return escaped;
