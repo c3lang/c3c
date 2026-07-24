@@ -314,9 +314,7 @@ void fetch_macsdk(BuildOptions *options)
 	int progress = 0;
 	sdk_progress(DOWNLOAD, progress);
 
-#ifdef _WIN32
-	char *sdk_path = NULL;
-#endif
+	char *sdk_dest_path = NULL;
 
 	for (int i = 0; i < 2; i++)
 	{
@@ -336,17 +334,7 @@ done:
 		FILE *pkg = file_open_read(dest);
 		Cpio cpio;
 		cpio_init(&cpio, "./Library/Developer/CommandLineTools");
-
-#ifdef _WIN32
-		char* exclude[] = {
-			"MacOSX.sdk",
-			str_printf("MacOSX%d.sdk", sel->version.major)
-		};
-
-		cpio.exclude = exclude;
-		cpio.exclude_count = 2;
-		cpio.keep_sdk = i == 1;
-#endif
+		cpio.stage = (CpioStage) i;
 
 		XarHeader header = xar_header(pkg);
 		if (strncmp(header.signature, "xar!", 4) != 0)
@@ -369,9 +357,7 @@ done:
 			error_exit("Failed to extract pbzx.");
 		}
 
-#ifdef _WIN32
-		if (cpio.keep_sdk) sdk_path = str_dup(cpio.sdk);
-#endif
+		if (cpio.stage == SDK_INFO) sdk_dest_path = str_dup(cpio.sdk);
 
 		cpio_free(&cpio);
 		fclose(pkg);
@@ -383,11 +369,7 @@ done:
 	/* target MacOSX.sdk will be moved there */
 	file_delete_dir(sdk_output);
 
-#ifdef _WIN32
-	char *sdk = str_printf(".\\SDKs\\%s", sdk_path);
-#else
-	char *sdk = realpath("SDKs/MacOSX.sdk", NULL);
-#endif
+	char *sdk = str_printf("./SDKs/%s", sdk_dest_path);
 	rename(sdk, "MacOSX.sdk");
 
 	progress += PROGRESS_UPDATE;

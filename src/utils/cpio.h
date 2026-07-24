@@ -10,6 +10,11 @@ typedef enum {
 	SYMBOLIC_LINK
 } CpioFile;
 
+typedef enum {
+	SDK = 0,
+	SDK_INFO
+} CpioStage;
+
 typedef struct {
 	char *name;
 	char *link;
@@ -28,13 +33,8 @@ typedef struct {
 	size_t to_read;
 	FILE *out;
 
-#ifdef _WIN32
-	char **exclude;
-	size_t exclude_count;
-	bool keep_sdk;
-
+	CpioStage stage;
 	char *sdk;
-#endif
 } Cpio;
 
 void cpio_init(Cpio *cpio, const char *shallowify);

@@ -1,6 +1,7 @@
 #include "cpio.h"
 
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "lib.h"
 
@@ -128,21 +129,30 @@ void cpio_push(Cpio *cpio, uint8_t *buffer, size_t len)
 				{
 					byte_buffer_read(&cpio->buffer, (uint8_t*) cpio->file.link, cpio->file.size);
 
-#ifdef _WIN32
-					bool excluded = false;
-					for (int i = 0; i < cpio->exclude_count; i++)
+					if (cpio->stage == SDK)
 					{
-						if (str_ends_with(cpio->file.name, cpio->exclude[i]))
+						const char *start = strstr(cpio->file.name, "MacOSX");
+						if (start)
 						{
-							if (cpio->keep_sdk) cpio->sdk = str_dup(cpio->file.link);
+							start += 6;
+							while (isdigit(*start)) start++;
+							if (*start++ != '.') goto no_match;
+							if (strcmp(start, "sdk") != 0) goto no_match;
+
 							cpio->state = IDLE;
-							excluded = true;
 							break;
 						}
 					}
-
-					if (excluded) break;
-#endif
+					else if (cpio->stage == SDK_INFO)
+					{
+						if (str_ends_with(cpio->file.name, "MacOSX.sdk"))
+						{
+							cpio->sdk = str_dup(cpio->file.link);
+							cpio->state = IDLE;
+							break;
+						}
+					}
+no_match:
 					cpio->state = MAKE_LINK;
 					break;
 				}
