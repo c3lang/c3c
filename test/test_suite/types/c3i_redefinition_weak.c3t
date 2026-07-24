@@ -1,0 +1,4 @@
+// #file: mylib.c3i
+module mylib;
+typedef MyType @weak = void;
+typedef MyType = int[<4>];
