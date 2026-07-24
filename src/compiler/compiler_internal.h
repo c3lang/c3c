@@ -616,7 +616,7 @@ typedef struct
 typedef struct
 {
 	const char **parameters;
-	unsigned id;
+	int id;
 	Expr **requires;
 	Decl **instances;
 	Decl *owner;
@@ -2029,7 +2029,7 @@ typedef struct
 	Ansi ansi;
 	HTable modules;
 	Module *core_module;
-	DeclId generic_id_counter;
+	int generic_id_counter;
 	CompilationUnit *core_unit;
 	Module **module_list;
 	Type **type;

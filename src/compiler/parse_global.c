@@ -17,9 +17,11 @@ static inline Decl *parse_enum_declaration(ParseContext *c);
 static inline Decl *parse_func_definition(ParseContext *c, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
+static inline Path *parse_module_path(ParseContext *c);
 static Decl *parse_ct_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
+static bool consume_type_name(ParseContext *c, const char* type);
 INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind);
 static bool parse_contracts(ParseContext *c, ContractDescription *contracts_ref);
@@ -163,7 +165,10 @@ static inline Path *parse_module_path(ParseContext *c)
 
 // --- Parse import and module
 
-
+/*
+ * We need to unify generic declarations using the parameter names, so that
+ * "struct Foo <Type> { ... }" and "const int ABC <Type> = Type::size" are unified.
+ */
 static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 {
 	unsigned params = vec_size(decl->generic_decl.parameters);
@@ -173,14 +178,11 @@ static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 		if (candidate_params != params) continue;
 		for (unsigned i = 0; i < params; i++)
 		{
-			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i])
-			{
-				goto NEXT;
-			}
+			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i]) goto ON_MISMATCH;
 		}
 		decl->generic_decl.id = d->generic_decl.id;
 		return;
-NEXT:;
+ON_MISMATCH:;
 	}
 	decl->generic_decl.id = ++compiler.context.generic_id_counter;
 }
@@ -204,10 +206,18 @@ bool parse_attach_contracts(Decl *generics, ContractDescription *contracts)
 	FOREACH(Expr *, e, contracts->requires) vec_add(generics->generic_decl.requires, e);
 	return true;
 }
+
+/*
+ * Add the generic declaration to the current unit, the module and unify it's id.
+ */
 void parse_attach_generics(ParseContext *c, Decl *generic_decl)
 {
+	ASSERT_SPAN(generic_decl, generic_decl->decl_kind == DECL_GENERIC);
+	// Add to unit's generics
 	vec_add(c->unit->generic_decls, generic_decl);
+	// Unify it with other declarations of the same
 	unify_generic_decl(c->unit, generic_decl);
+	// Add to all the generic sections of the module
 	vec_add(c->unit->module->generic_sections, generic_decl);
 }
 
@@ -222,6 +232,7 @@ bool parse_module(ParseContext *c)
 		RETURN_PRINT_ERROR_HERE("'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
 	}
 
+	// Give some good error message:
 	if (!tok_is(c, TOKEN_IDENT))
 	{
 		if (token_is_keyword_ident(c->tok))
@@ -236,10 +247,10 @@ bool parse_module(ParseContext *c)
 	}
 
 	Path *path = parse_module_path(c);
-
 	// Expect the module name
 	if (!path)
 	{
+		// Create a fake path to continue
 		path = CALLOCS(Path);
 		path->len = (unsigned)strlen("#invalid");
 		path->module = "#invalid";
@@ -249,22 +260,29 @@ bool parse_module(ParseContext *c)
 		return false;
 	}
 
-	// Is this a generic module?
 	if (!context_set_module(c, path)) return false;
 	Visibility visibility = VISIBLE_PUBLIC;
 	bool weak = false;
 	Attr** attrs = NULL;
 	bool is_cond = false;
 
+	// Is generic attached?
 	ASSIGN_DECL_OR_RET(Decl *generic_decl, parse_generic_decl(c), false);
 
+	// Parse the attributes
 	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond, NULL, &weak)) return false;
+
+	// Attach contracts to the generics
 	if (!parse_attach_contracts(generic_decl, &c->contracts)) return false;
+
+	// Attach generics if they exist
 	if (generic_decl)
 	{
 		parse_attach_generics(c, generic_decl);
 		c->unit->default_generic_section = generic_decl;
 	}
+
+	// Pre-parse attributes
 	FOREACH(Attr *, attr, attrs)
 	{
 		if (attr->is_custom) RETURN_PRINT_ERROR_AT(false, attr, "Custom attributes cannot be used with 'module'.");
@@ -320,7 +338,6 @@ bool parse_module(ParseContext *c)
 	CONSUME_EOS_OR_RET(false);
 	return true;
 }
-
 
 static bool consume_type_name(ParseContext *c, const char* type)
 {
