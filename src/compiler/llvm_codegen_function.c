@@ -299,7 +299,7 @@ static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABI
 	llvm_process_parameter_value(context, decl, info, index);
 	if (llvm_use_debug(context))
 	{
-		llvm_emit_debug_parameter(context, decl, real_index);
+		llvm_emit_debug_parameter(context, decl, real_index, context->debug.function);
 	}
 }
 

@@ -6177,12 +6177,13 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 	if (llvm_use_debug(c) && macro)
 	{
 		SourceLocId span = expr->loc;
-		LLVMMetadataRef macro_def = llvm_debug_create_macro(c, macro);
+		LLVMMetadataRef macro_def = llvm_debug_create_macro(c, macro, expr);
 		LLVMMetadataRef loc = llvm_create_debug_location(c, span);
 
 		updated_val = (DebugScope) { .lexical_block = macro_def, .inline_loc = loc, .outline_loc = old_inline_location };
 		inline_location = &updated_val;
 	}
+	int index = 0;
 	FOREACH(Decl *, val, expr->macro_block.params)
 	{
 		// Skip vararg
@@ -6230,6 +6231,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		{
 			c->debug.block_stack = inline_location;
 			llvm_emit_and_set_decl_alloca(c, val);
+			if (llvm_use_accurate_debug_info(c)) llvm_emit_debug_parameter(c, val, index++, updated_val.lexical_block);
 			llvm_store_decl(c, val, &value);
 			continue;
 		}
