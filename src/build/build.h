@@ -272,6 +272,8 @@ typedef struct BuildOptions_
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;
 	const char *fetch_sdk_target;
+	const char *macos_sdk_version_override;
+	bool macos_list_sdks, macos_fetch_sdk_list;
 	const char **fetch_sdk_archs;
 	int verbosity_level;
 	const char *panicfn;
@@ -603,6 +605,7 @@ extern const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 extern LinuxLibc default_libc;
 
 void fetch_winsdk(BuildOptions *options);
+void fetch_macsdk(BuildOptions *options);
 void fetch_sdk(BuildOptions *options);
 char *fetch_android_ndk(BuildOptions *options);
 BuildOptions parse_arguments(int argc, const char *argv[]);
