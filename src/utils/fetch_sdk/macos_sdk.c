@@ -357,7 +357,11 @@ done:
 			error_exit("Failed to extract pbzx.");
 		}
 
-		if (cpio.stage == SDK_INFO) sdk_dest_path = str_dup(cpio.sdk);
+		if (cpio.stage == SDK_INFO)
+		{
+			if (cpio.sdk == NULL) error_exit("Extraction layout changed");
+			sdk_dest_path = str_dup(cpio.sdk);
+		}
 
 		cpio_free(&cpio);
 		fclose(pkg);
