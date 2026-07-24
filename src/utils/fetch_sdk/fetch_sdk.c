@@ -19,7 +19,7 @@ void fetch_sdk(BuildOptions *options)
 	}
 	else if (str_eq(target, "macos") || str_eq(target, "mac") || str_eq(target, "apple"))
 	{
-		error_exit("macos SDK fetching is not yet implemented.");
+		fetch_macsdk(options);
 	}
 	else
 	{

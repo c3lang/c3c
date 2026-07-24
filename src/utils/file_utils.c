@@ -705,6 +705,18 @@ bool file_delete_file(const char *path)
 #endif
 }
 
+void file_copy_dir(const char *src_path, const char *dst_path)
+{
+#if (_WIN32)
+	// Windows command to copy a directory recursively
+	const char *cmd = "robocopy \"%s\" \"%s\" /E /MT >nul 2>&1";
+#else
+	// UNIX-like command to copy a directory recursively
+	const char *cmd = "cp -rf \"%s\" \"%s\"";
+#endif
+	execute_cmd(str_printf(cmd, src_path, dst_path), true, NULL, 2048);
+}
+
 void file_delete_dir(const char *path)
 {
 #if (_WIN32)
