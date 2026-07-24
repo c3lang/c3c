@@ -86,7 +86,6 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
 	return true;
 }
 
-
 // --- Parse paths
 
 /**
@@ -100,7 +99,7 @@ static inline Path *parse_module_path(ParseContext *c)
 	ASSERT(tok_is(c, TOKEN_IDENT));
 	scratch_buffer_clear();
 	SourceLoc span = c->span;
-	int max_exceeded = 0;
+	size_t max_exceeded = 0;
 	while (1)
 	{
 		const char *string = symstr(c);
@@ -122,7 +121,8 @@ static inline Path *parse_module_path(ParseContext *c)
 		}
 		if (len > MAX_MODULE_NAME)
 		{
-			PRINT_ERROR_LAST("The module name is too long, it's %d characters (%d more than the maximum allowed %d characters).", (int)len, (int)len - MAX_MODULE_NAME, MAX_MODULE_NAME);
+			PRINT_ERROR_LAST("The module name is too long, it's %d characters (%d more than the maximum allowed %d characters).",
+				(int)len, (int)len - MAX_MODULE_NAME, MAX_MODULE_NAME);
 			return NULL;
 		}
 		if (max_exceeded)
@@ -164,7 +164,6 @@ static inline Path *parse_module_path(ParseContext *c)
 // --- Parse import and module
 
 
-static int generic_id = 1;
 static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 {
 	unsigned params = vec_size(decl->generic_decl.parameters);
@@ -183,7 +182,7 @@ static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 		return;
 NEXT:;
 	}
-	decl->generic_decl.id = generic_id++;
+	decl->generic_decl.id = ++compiler.context.generic_id_counter;
 }
 
 bool parse_attach_contracts(Decl *generics, ContractDescription *contracts)
@@ -944,7 +943,7 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern)
 Decl *parse_var_decl(ParseContext *c)
 {
 	// CT variants will naturally be macro only, for runtime variables it is enforced in the semantic
-	// analyser. The runtime variables must have an initializer unlike the CT ones.
+	// analyzer. The runtime variables must have an initializer unlike the CT ones.
 	advance_and_verify(c, TOKEN_VAR);
 	Decl *decl;
 	bool is_cond;
@@ -1525,7 +1524,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 			d->attributes = copy_attributes_single(attributes);
 		}
 	}
-	int generics_id = decl->is_template ? decl->generic_id : -1;
+	int generics_id = decl->is_template ? (int)decl->generic_id : -1;
 	if (generics_id > -1)
 	{
 		FOREACH(Decl *, d, decls)
@@ -2750,10 +2749,9 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	return true;
 }
 
-static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_single_value, bool is_constdef)
+static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_constdef)
 {
 	Decl **values = NULL;
-	bool deprecate_warn = true;
 	SourceLoc start = c->prev_span;
 
 	while (!try_consume(c, TOKEN_RBRACE))
@@ -2777,48 +2775,16 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 		}
 		if (!parse_attributes_for_global(c, enum_const)) return false;
 		attach_deprecation_from_contract(c, &contracts, enum_const);
-		if (is_constdef && try_consume(c, TOKEN_EQ))
+		if (is_constdef)
 		{
-			Expr **args = NULL;
-			if (is_single_value || !tok_is(c, TOKEN_LBRACE))
+			if (try_consume(c, TOKEN_EQ))
 			{
 				ASSIGN_EXPR_OR_RET(Expr *single, parse_constant_expr(c), false);
-				if (is_constdef)
-				{
-					enum_const->enum_constant.value = single;
-					goto NEXT;
-				}
-				vec_add(args, single);
+				enum_const->enum_constant.value = single;
 			}
-			else
-			{
-				CONSUME_OR_RET(TOKEN_LBRACE, false);
-				while (1)
-				{
-					if (try_consume(c, TOKEN_RBRACE)) break;
-					ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), false);
-					vec_add(args, arg);
-					if (tok_is(c, TOKEN_COLON) && arg->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
-					{
-						SourceLoc loc = extend_loc_with_token(sourcelocptr(arg->loc), &c->span);
-						print_error_at_loc(&loc,
-									   "This looks like a designated initializer, but that style of declaration "
-									   "is not supported for declaring enum associated values.");
-						return false;
-					}
-					if (!try_consume(c, TOKEN_COMMA))
-					{
-						if (!try_consume(c, TOKEN_RBRACE))
-						{
-							RETURN_PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
-						}
-						break;
-					}
-				}
-			}
-			enum_const->enum_constant.associated = args;
+
 		}
-		else if (!is_constdef && try_consume(c, TOKEN_LBRACE))
+		else if (try_consume(c, TOKEN_LBRACE))
 		{
 			Expr **args = NULL;
 			while (1)
@@ -2835,26 +2801,19 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 						return false;
 				}
 
-				if (!try_consume(c, TOKEN_COMMA))
-				{
-					if (!try_consume(c, TOKEN_RBRACE))
-					{
-						RETURN_PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
-					}
-					break;
-				}
+				if (try_consume(c, TOKEN_COMMA)) continue;
+				if (!try_consume(c, TOKEN_RBRACE)) RETURN_PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
+				break;
 			}
 			enum_const->enum_constant.associated = args;
 		}
-NEXT:
 		vec_add(values, enum_const);
 		// Allow trailing ','
 		if (!try_consume(c, TOKEN_COMMA))
 		{
 			if (tok_is(c, TOKEN_CONST_IDENT))
 			{
-				PRINT_ERROR_HERE("It looks like you forgot a comma before this identifier.");
-				return false;
+				RETURN_PRINT_ERROR_HERE("It looks like you forgot a comma before this identifier.");
 			}
 			EXPECT_OR_RET(TOKEN_RBRACE, false);
 		}
@@ -2932,13 +2891,12 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	decl->interfaces = interfaces;
 	if (param_list) decl->enums.parameters = param_list;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-	unsigned expected_parameters = vec_size(decl->enums.parameters);
 	Visibility visibility = decl->visibility;
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->loc);
 	if (is_constdef && val_is_inline) decl->is_substruct = true;
-	if (!parse_enum_values(c, &decl->enums.values, visibility, is_constdef || expected_parameters == 1, is_constdef)) return poisoned_decl;
+	if (!parse_enum_values(c, &decl->enums.values, visibility, is_constdef)) return poisoned_decl;
 	return decl;
 }
 
@@ -3504,8 +3462,8 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 {
 	c->contracts = (ContractDescription){ .first = 0 };
 	if (!parse_contracts(c, &c->contracts)) return poisoned_decl;
-	Decl *decl;
 
+	Decl *decl;
 	TokenType tok = c->tok;
 	if (tok != TOKEN_MODULE && !c->unit->module)
 	{
@@ -3589,7 +3547,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			break;
 		case TOKEN_FN:
 			decl = parse_func_definition(c, c->unit->is_interface_file ? FUNC_PARSE_C3I : FUNC_PARSE_REGULAR);
-
 			break;
 		case TOKEN_CT_ASSERT:
 			{

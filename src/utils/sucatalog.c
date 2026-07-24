@@ -11,11 +11,11 @@ void sucatalog_init(SuCatalog *catalog, const char *path)
 
 const char *sucatalog_next(SuCatalog *catalog)
 {
-	const char *start = strstr(catalog->start, "<array>");
+	char *start = (char *)strstr(catalog->start, "<array>");
 	if (!start) return NULL;
 
 	start += 7;
-	char *end = strstr(start, "</array>");
+	char *end = (char *)strstr(start, "</array>");
 	if (!end) error_exit("Missing </array> in sucatalog");
 	*end = 0;
 	end += 8;

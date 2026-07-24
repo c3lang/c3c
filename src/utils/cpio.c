@@ -131,7 +131,7 @@ void cpio_push(Cpio *cpio, uint8_t *buffer, size_t len)
 
 					if (cpio->stage == SDK)
 					{
-						const char *start = strstr(cpio->file.name, "MacOSX");
+						char *start = (char *)strstr(cpio->file.name, "MacOSX");
 						if (start)
 						{
 							start += 6;

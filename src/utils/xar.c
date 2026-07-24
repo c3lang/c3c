@@ -56,17 +56,17 @@ XarFile xar_open(const XarHeader *header, const char *filename)
 	dst[consumed] = 0;
 
 	const size_t off = ftell(header->file);
-	const char *start = (char*) dst;
-	while ((start = strstr(start, "<file")))
+	char *start = (char *)dst;
+	while ((start = (char *)strstr(start, "<file")))
 	{
-		char *end = strstr(start, "</file");
+		char *end = (char *)strstr(start, "</file");
 		if (!end) error_exit("Missing </file> in xar TOC");
 		*end = 0;
 
-		const char *name = strstr(start, "<name>");
+		char *name = (char *)strstr(start, "<name>");
 		if (!name) error_exit("Missing <name> in xar TOC");
 		name += 6;
-		char *name_end = strstr(name, "</name");
+		char *name_end = (char *)strstr(name, "</name");
 		if (!name_end) error_exit("Missing </name> in xar TOC");
 		*name_end = 0;
 
@@ -75,12 +75,12 @@ XarFile xar_open(const XarHeader *header, const char *filename)
 			*name_end = '<';
 			XarFile file = { header->file, off, 0 };
 
-			const char *length = strstr(start, "<length>");
+			char *length = (char *)strstr(start, "<length>");
 			if (!length) error_exit("Missing <length> in xar TOC");
 			length += 8;
 			file.to_read = (int64_t) strtoll(length, NULL, 10);
 
-			const char *offset = strstr(start, "<offset>");
+			char *offset = (char *)strstr(start, "<offset>");
 			if (!offset) error_exit("Missing <offset> in xar TOC");
 			offset += 8;
 			file.offset += (int64_t) strtoll(offset, NULL, 10);

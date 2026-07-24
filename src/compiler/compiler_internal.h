@@ -2029,6 +2029,7 @@ typedef struct
 	Ansi ansi;
 	HTable modules;
 	Module *core_module;
+	DeclId generic_id_counter;
 	CompilationUnit *core_unit;
 	Module **module_list;
 	Type **type;

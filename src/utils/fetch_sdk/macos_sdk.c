@@ -147,12 +147,12 @@ static Version get_version(const char *pkm)
 
 	download_file(pkm, "", metadata_out, false);
 	size_t size;
-	const char *content = file_read_all(metadata_out, &size);
+	char *content = file_read_all(metadata_out, &size);
 	if (!content) goto FAILED;
 
-	content = strstr(content, "<pkg-info");
+	content = (char *)strstr(content, "<pkg-info");
 	if (!content) goto FAILED;
-	char *version = strstr(content, " version=\"");
+	char *version = (char *)strstr(content, " version=\"");
 	if (!version) goto FAILED;
 
 	version += 10;
@@ -173,14 +173,14 @@ static Sdk get_sdk(const char *array_tag)
 {
 	Sdk sdk = {};
 
-	char *base_pkm = strstr(array_tag, BASE_PKM);
-	char *sdk_pkg = strstr(array_tag, SDK_PKG);
+	char *base_pkm = (char *)strstr(array_tag, BASE_PKM);
+	char *sdk_pkg = (char *)strstr(array_tag, SDK_PKG);
 	if (!base_pkm || !sdk_pkg) return sdk;
 
-	char *tags[] = {base_pkm, sdk_pkg};
+	const char *tags[] = {base_pkm, sdk_pkg};
 	for (int i = 0; i < 2; i++)
 	{
-		char *end = strstr(tags[i], "</string>");
+		char *end = (char *)strstr(tags[i], "</string>");
 		if (!end) continue;
 		*end = 0;
 	}
@@ -199,7 +199,7 @@ static Sdk get_sdk(const char *array_tag)
 	}
 
 	char *base_start = sdk_pkg + sizeof(BASE_URL) - 1;
-	char *end = strstr(base_start, SDK_PKG);
+	char *end = (char *)strstr(base_start, SDK_PKG);
 	if (end) *end = 0;
 
 	sdk.sub_url = base_start;
