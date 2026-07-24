@@ -284,10 +284,11 @@ fn String? parse_string(JsonDeserializer* des) @private
 	return UNEXPECTED_CHARACTER~;
 }
 
-fn double? parse_double(JsonDeserializer* des) @private
+fn String? scan_number(JsonDeserializer* des, bool* is_float) @private
 {
+	*is_float = false;
 	sz start = des.cursor;
-	if (des.cursor < des.source.len && (des.source[des.cursor] == '-'))
+	if (des.cursor < des.source.len && des.source[des.cursor] == '-')
 	{
 		des.cursor++;
 	}
@@ -295,13 +296,13 @@ fn double? parse_double(JsonDeserializer* des) @private
 	bool leading_zero = des.source[des.cursor] == '0';
 	des.cursor++;
 	if (leading_zero && des.cursor < des.source.len && des.source[des.cursor].is_digit()) return INVALID_NUMBER~;
-
 	while (des.cursor < des.source.len && des.source[des.cursor].is_digit())
 	{
 		des.cursor++;
 	}
 	if (des.cursor < des.source.len && des.source[des.cursor] == '.')
 	{
+		*is_float = true;
 		des.cursor++;
 		if (des.cursor >= des.source.len || !des.source[des.cursor].is_digit()) return INVALID_NUMBER~;
 		while (des.cursor < des.source.len && des.source[des.cursor].is_digit())
@@ -311,6 +312,7 @@ fn double? parse_double(JsonDeserializer* des) @private
 	}
 	if (des.cursor < des.source.len && (des.source[des.cursor] | 32) == 'e')
 	{
+		*is_float = true;
 		des.cursor++;
 		if (des.cursor < des.source.len && (des.source[des.cursor] == '-' || des.source[des.cursor] == '+'))
 		{
@@ -322,7 +324,34 @@ fn double? parse_double(JsonDeserializer* des) @private
 			des.cursor++;
 		}
 	}
-	return des.source[start:des.cursor - start].to_double() ?? INVALID_NUMBER~;
+	return des.source[start:des.cursor - start];
+}
+
+fn double? parse_double(JsonDeserializer* des) @private
+{
+	bool dummy;
+	return scan_number(des, &dummy)!.to_double() ?? INVALID_NUMBER~;
+}
+
+macro parse_int(JsonDeserializer* des, $Type) @private
+{
+	bool is_float;
+	String tok = scan_number(des, &is_float)!;
+	if (is_float) return ($Type)(tok.to_double() ?? INVALID_NUMBER~);
+	$switch $Type::kind:
+		$case SIGNED_INT:
+			return ($Type)(tok.to_long(10) ?? INVALID_NUMBER~);
+		$case UNSIGNED_INT:
+			return ($Type)(tok.to_ulong(10) ?? INVALID_NUMBER~);
+	$endswitch
+}
+
+fn Object*? parse_number_object(JsonDeserializer* des) @private
+{
+	bool is_float;
+	String tok = scan_number(des, &is_float)!;
+	if (is_float) return object::new_float(des.allocator, tok.to_double() ?? INVALID_NUMBER~);
+	return object::new_int(des.allocator, tok.to_long(10) ?? INVALID_NUMBER~);
 }
 
 fn bool? parse_bool(JsonDeserializer* des) @private
@@ -352,11 +381,8 @@ fn Object*? parse_any(JsonDeserializer* des) @private
 		case '"':
 			return object::new_string(des.allocator, parse_string(des)!);
 		case 't':
-			if (parse_bool(des)!) return object::new_bool(true);
-			return UNEXPECTED_CHARACTER~;
 		case 'f':
-			if (!parse_bool(des)!) return object::new_bool(false);
-			return UNEXPECTED_CHARACTER~;
+			return object::new_bool(parse_bool(des)!);
 		case 'n':
 			if (des.cursor + 4 <= des.source.len && des.source[des.cursor:4] == "null")
 			{
@@ -366,7 +392,7 @@ fn Object*? parse_any(JsonDeserializer* des) @private
 			return UNEXPECTED_CHARACTER~;
 		case '-':
 		case '0'..'9':
-			return object::new_float(des.allocator, parse_double(des)!);
+			return parse_number_object(des)!;
 		default:
 			return UNEXPECTED_CHARACTER~;
 	}

@@ -112,13 +112,6 @@ macro void? marshal_to(OutStream stream, value, JsonIndent indent = NONE)
 	return serialize_value{$Typeof(value)}(stream, value, indent, 0);
 }
 
-macro void @assign_enum_from_string(#out, String s) @private
-{
-	$foreach $v : $Typeof(#out)::values:
-		if (s == $v.description) { #out = $v; }
-	$endforeach
-}
-
 macro void? @skip_json_value(JsonDeserializer* des) @private
 {
 	switch (peek_char(des))
@@ -128,7 +121,7 @@ macro void? @skip_json_value(JsonDeserializer* des) @private
 		case '{':
 		case '[':
 			des.cursor++; // consume open character
-			scan_container(des, false, null)!;
+			scan_container(des)!;
 			des.cursor++; // consume close character
 		default:
 			while (des.cursor < des.source.len)
@@ -194,10 +187,11 @@ macro void? @des_value(JsonDeserializer* des, #out) @private
 		$case ARRAY:
 		$case VECTOR:
 		$case SLICE:
-			sz len = scan_array_len(des)!;
-
 			$if $Typeof(#out)::kind == TypeKind.SLICE:
+				sz len = scan_array_len(des)!;
 				#out = alloc::new_array(des.allocator, $Typeof(#out[0]), len);
+			$else
+				expect_char(des, '[')!;
 			$endif
 
 			bool first = true;
@@ -227,7 +221,7 @@ macro void? @des_value(JsonDeserializer* des, #out) @private
 			expect_char(des, ']')!;
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
-			#out = ($Typeof(#out))parse_double(des)!;
+			#out = parse_int(des, $Typeof(#out))!;
 		$case FLOAT:
 			#out = ($Typeof(#out))parse_double(des)!;
 		$case BOOL:
@@ -244,11 +238,19 @@ macro void? @des_value(JsonDeserializer* des, #out) @private
 		$case ENUM:
 			if (peek_char(des) == '"')
 			{
-				@assign_enum_from_string(#out, parse_string(des)!);
+				String s = parse_string(des)!;
+				$foreach $v : $Typeof(#out)::values:
+					if (s == $v.description) { #out = $v; return; }
+				$endforeach
+				return INVALID_NUMBER~;
 			}
 			else
 			{
-				#out = $Typeof(#out)::from_ordinal((long)parse_double(des)!);
+				long ordinal = (long)parse_double(des)!;
+				$foreach $v : $Typeof(#out)::values:
+					if (ordinal == (long)$v.ordinal) { #out = $v; return; }
+				$endforeach
+				return INVALID_NUMBER~;
 			}
 		$default:
 	$endswitch
@@ -345,23 +347,9 @@ macro void @unmarshal_to(Allocator allocator, Object* obj, #out)
 			}
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
-			if (obj.is_float())
-			{
-				#out = ($Typeof(#out))obj.f;
-			}
-			else
-			{
-				#out = ($Typeof(#out))obj.i;
-			}
+			#out = obj.is_float() ? ($Typeof(#out))obj.f : ($Typeof(#out))obj.i;
 		$case FLOAT:
-			if (obj.is_int())
-			{
-				#out = ($Typeof(#out))obj.i;
-			}
-			else
-			{
-				#out = ($Typeof(#out))obj.f;
-			}
+			#out = obj.is_int() ? ($Typeof(#out))obj.i : ($Typeof(#out))obj.f;
 		$case BOOL:
 			#out = obj.b;
 		$case CONSTDEF:
@@ -376,11 +364,15 @@ macro void @unmarshal_to(Allocator allocator, Object* obj, #out)
 		$case ENUM:
 			if (obj.is_string())
 			{
-				@assign_enum_from_string(#out, obj.s);
+				$foreach $v : $Typeof(#out)::values:
+					if (obj.s == $v.description) { #out = $v; return; }
+				$endforeach
 			}
 			else
 			{
-				#out = $Typeof(#out)::from_ordinal((long)obj.i);
+				$foreach $v : $Typeof(#out)::values:
+					if ((long)obj.i == (long)$v.ordinal) { #out = $v; return; }
+				$endforeach
 			}
 		$default:
 	$endswitch
@@ -619,31 +611,18 @@ fn sz? scan_array_len(JsonDeserializer* des) @private
 	expect_char(des, '[')!;
 	sz start_pos = des.cursor;
 	if (peek_char(des) == ']') return 0;
-
-	sz last_comma = 0;
-	sz len = scan_container(des, true, &last_comma)!;
-
-	if (last_comma)
-	{
-		JsonDeserializer temp_des = *des;
-		temp_des.cursor = last_comma + 1;
-		skip_whitespace(&temp_des);
-		if (temp_des.cursor == des.cursor)
-		{
-			len--;
-		}
-	}
-
+	sz len = scan_container(des)!;
 	des.cursor = start_pos;
 	return len;
 }
 
-fn sz? scan_container(JsonDeserializer* des, bool count_elements, sz* out_last_comma) @private
+fn sz? scan_container(JsonDeserializer* des) @private
 {
 	sz len = 1;
 	int depth = 0;
 	bool in_string = false;
 	bool escaped = false;
+	sz last_comma = 0;
 
 	while OUTER: (des.cursor < des.source.len)
 	{
@@ -668,13 +647,20 @@ fn sz? scan_container(JsonDeserializer* des, bool count_elements, sz* out_last_c
 				depth++;
 			case c == ']' || c == '}':
 				depth--;
-				if (depth < 0) break OUTER;
-			case c == ',' && depth == 0:
-				if (count_elements)
+				if (depth < 0)
 				{
-					len++;
-					*out_last_comma = des.cursor;
+					if (last_comma)
+					{
+						JsonDeserializer temp_des = *des;
+						temp_des.cursor = last_comma + 1;
+						skip_whitespace(&temp_des);
+						if (temp_des.cursor == des.cursor) len--;
+					}
+					break OUTER;
 				}
+			case c == ',' && depth == 0:
+				len++;
+				last_comma = des.cursor;
 		}
 		des.cursor++;
 	}

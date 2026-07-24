@@ -96,10 +96,10 @@ fn void test_temp_string()
 fn void test_valid_numbers()
 {
 	Object* o1 = json::parse(mem, "123")!!;   defer o1.free();
-	test::eq(o1.f, 123.0);
+	test::eq(o1.i, 123);
 
 	Object* o2 = json::parse(mem, "-456")!!;  defer o2.free();
-	test::eq(o2.f, -456.0);
+	test::eq(o2.i, -456);
 
 	Object* o3 = json::parse(mem, "123.456")!!; defer o3.free();
 	test::eq(o3.f, 123.456);
@@ -190,4 +190,26 @@ fn void test_trailing_garbage_rejected() @test
 fn void test_leading_plus_rejected() @test
 {
 	test::@error(json::parse(tmem, `+123`), json::UNEXPECTED_CHARACTER);
+}
+
+fn void parse_boolean_literals() @test
+{
+	Object* t = json::tparse(`true`)!!;
+	test::@check(t.is_bool() && t.b);
+
+	Object* f = json::tparse(`false`)!!;
+	test::@check(f.is_bool() && !f.b);
+
+	Object* arr = json::tparse(`[true, false, true]`)!!;
+	test::eq(arr.get_bool_at(0)!!, true);
+	test::eq(arr.get_bool_at(1)!!, false);
+	test::eq(arr.get_bool_at(2)!!, true);
+}
+
+fn void test_dom_large_int_precision() @test
+{
+	Object* obj = json::parse(mem, `{"id": 9007199254740993}`)!!;
+	defer obj.free();
+	test::@check(obj.get("id")!!.is_int(), "DOM node for integer token should be integer type");
+	test::eq(obj.get("id")!!.i, 9007199254740993);
 }

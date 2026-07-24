@@ -768,3 +768,32 @@ fn void test_unmarshal_unknown_enum_string_faults() @test
 	if (catch json::unmarshal(tmem, `{"c": "PURPLE"}`, ColorRec)) return;
 	assert(false, "unknown enum string should fault, not silently map to the first member");
 }
+
+struct FixedArrayWrap
+{
+	int[3] data;
+}
+
+fn void test_unmarshal_fixed_array() @test
+{
+	FixedArrayWrap res = json::unmarshal(tmem, `{"data": [10, 20, 30]}`, FixedArrayWrap)!!;
+	test::eq(res.data[0], 10);
+	test::eq(res.data[1], 20);
+	test::eq(res.data[2], 30);
+}
+
+fn void test_unmarshal_fixed_array_oversized() @test
+{
+	// Extra JSON elements beyond the fixed array capacity are skipped cleanly.
+	// should we be scrict? TODO
+	FixedArrayWrap res = json::unmarshal(tmem, `{"data": [10, 20, 30, 40, 50]}`, FixedArrayWrap)!!;
+	test::eq(res.data[0], 10);
+	test::eq(res.data[1], 20);
+	test::eq(res.data[2], 30);
+}
+
+fn void test_skip_array_with_trailing_comma() @test
+{
+	SimpleKept res = json::unmarshal(tmem, `{"ignored": [1, 2, 3,], "kept": 99}`, SimpleKept)!!;
+	test::eq(res.kept, 99);
+}
