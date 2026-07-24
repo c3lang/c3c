@@ -9,6 +9,7 @@
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
+- Experimental regex support.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374

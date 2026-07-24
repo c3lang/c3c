@@ -1,6 +1,6 @@
 module regex_benchmarks;
 import std;
-import std::encoding::regex @public;
+import std::encoding::experimental::regex @public;
 
 const String PATTERN_SIMPLE = "hello";
 const String PATTERN_MEDIUM = "(\\w+)@(\\w+\\.\\w+)";
@@ -155,7 +155,7 @@ fn String repeat_str(String s, sz count)
 // =======================================================================================
 module regex_benchmarks @benchmark;
 
-import std::encoding::regex @public;
+import std::encoding::experimental::regex @public;
 
 
 fn void compile_pattern_simple_c3()

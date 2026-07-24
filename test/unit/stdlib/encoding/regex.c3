@@ -1,5 +1,5 @@
 module regex_test;
-import std, std::encoding::regex, libc;
+import std, std::encoding::experimental::regex, libc;
 
 // API
 

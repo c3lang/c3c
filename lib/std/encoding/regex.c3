@@ -1,5 +1,9 @@
 <* POSIX Regex engine based on musl libc (parallel TNFA scheme).
 
+ WARNING: The regex API is not settled, so MAY break arbitrarily between 0.0.1 versions.
+          the implementation is final when the code moves from std::encoding::experimental::regex
+          to std::encoding::regex
+
  **Usage:**
  ```
  fn void main()
@@ -36,7 +40,7 @@
   - POSIX collation elements [[.col.]] or equivalence classes [[=eq=]].
 
 *>
-module std::encoding::regex;
+module std::encoding::experimental::regex;
 
 import std::io;
 import std::collections::list;
