@@ -24,6 +24,8 @@ fn sz? FixedList.to_format(&self, Formatter* formatter) @dynamic
 	return formatter.printf("%s", self.entries[:self.size]);
 }
 
+fn bool FixedList.is_full(&self) @inline => self.size == MAX_SIZE;
+
 <*
  Try to add an element. Will fail if it is full.
 
@@ -31,7 +33,7 @@ fn sz? FixedList.to_format(&self, Formatter* formatter) @dynamic
 *>
 fn void? FixedList.push_try(&self, Type element) @inline
 {
-	if (self.size == MAX_SIZE) return mem::OUT_OF_MEMORY~;
+	if (self.is_full()) return mem::OUT_OF_MEMORY~;
 	self.entries[self.size++] = element;
 }
 
@@ -108,7 +110,7 @@ fn sz FixedList.add_all_to_limit(&self, FixedList* other_list)
 	if (!other_list.size) return 0;
 	foreach (i, &value : other_list)
 	{
-		if (self.size == MAX_SIZE) return other_list.size - i;
+		if (self.is_full()) return other_list.size - i;
 		self.entries[self.size++] = *value;
 	}
 	return 0;
@@ -126,7 +128,7 @@ fn sz FixedList.push_all_to_limit(&self, Type[] array)
 	if (!array.len) return 0;
 	foreach (i, &value : array)
 	{
-		if (self.size == MAX_SIZE) return array.len - i;
+		if (self.is_full()) return array.len - i;
 		self.entries[self.size++] = *value;
 	}
 	return 0;
@@ -206,7 +208,7 @@ fn void? FixedList.push_front_try(&self, Type type) @inline
 *>
 fn void? FixedList.insert_at_try(&self, sz index, Type value)
 {
-	if (self.size == MAX_SIZE) return mem::OUT_OF_MEMORY~;
+	if (self.is_full()) return mem::OUT_OF_MEMORY~;
 	self.insert_at(index, value);
 }
 

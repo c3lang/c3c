@@ -6,9 +6,11 @@
 - Windows aarch64 is now supported.
 - Tracking allocator can now accept cross-thread allocations.
 - Filter test backtraces #3368
+- Improved GDB compatibility for macros.
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
+- Added `FixedList.is_full()` method
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374

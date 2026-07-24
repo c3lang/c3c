@@ -276,7 +276,8 @@ size_t file_clean_buffer(char *buffer, const char *path, size_t file_size)
 	if (file_size == 0) return 0;
 	size_t offset = 0;
 	// Simple UTF16 detection
-	if (buffer[0] == (char)0xFF || buffer[1] == (char)0xFE)
+	if ((buffer[0] == (char)0xFF && buffer[1] == (char)0xFE) ||
+		(buffer[0] == (char)0xFE && buffer[1] == (char)0xFF))
 	{
 		error_exit("The file \"%s\" does not seem to be an UTF8 file, is it perhaps UTF16?\n", path);
 	}
@@ -286,21 +287,25 @@ size_t file_clean_buffer(char *buffer, const char *path, size_t file_size)
 		offset += 3;
 	}
 	// Filter '\r' early.
-	for (size_t i = 0; i < file_size - offset; i++)
+	const char *first = offset ? buffer : memchr(buffer + offset, '\r', file_size - offset);
+	if (first)
 	{
-		char c = buffer[i + offset];
-		if (c == '\r')
+		for (size_t i = first - buffer; i < file_size - offset; i++)
 		{
-			offset++;
-			i--;
-			continue;
+			char c = buffer[i + offset];
+			if (c == '\r')
+			{
+				offset++;
+				i--;
+				continue;
+			}
+			if (offset)
+			{
+				buffer[i] = c;
+			}
 		}
-		if (offset)
-		{
-			buffer[i] = c;
-		}
+		file_size -= offset;
 	}
-	file_size -= offset;
 	buffer[file_size] = '\0';
 	return file_size;
 }
