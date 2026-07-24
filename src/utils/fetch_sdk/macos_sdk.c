@@ -12,7 +12,8 @@
 
 #include "platform.h"
 
-#define LATEST_SUCATALOG "https://swscan.apple.com/content/catalogs/others/index-26-15-14-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog"
+/* Simply append macOS version after index- */
+#define LATEST_SUCATALOG "https://swscan.apple.com/content/catalogs/others/index-27-26-15-14-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog"
 #define BASE_URL "https://swcdn.apple.com/content/downloads"
 #define BASE_PKG "CLTools_macOS_SDK.pkg"
 #define BASE_PKM "CLTools_macOSNMOS_SDK.pkm"
@@ -68,7 +69,7 @@ static ReleaseInfo releases[] = {
 	{ 13, "macOS Ventura" 		},
 	{ 14, "macOS Sonoma" 		},
 	{ 15, "macOS Sequoia" 		},
-	{ 26, "macOS Tahoe" 		},
+	{ 26, "macOS Tahoe" 			},
 	{ 27, "macOS Golden Gate"	},
 	{ 0,  "macOS (Unknown)"		}
 };
@@ -156,7 +157,7 @@ static Version get_version(const char *pkm)
 
 	version += 10;
 	char *end = strchr(version, '"');
-	if (!end) goto FAILED;;
+	if (!end) goto FAILED;
 	*end = 0;
 
 	const int major = (int) strtol(version, &version, 10);
@@ -242,26 +243,20 @@ void fetch_macsdk(BuildOptions *options)
 	xz_crc32_init();
 	xz_crc64_init();
 
+	if (options->macos_list_sdks)
+	{
+		list_sdks(hardcoded, ELEMENTLEN(hardcoded));
+		return;
+	}
+
 	verbose_level = options->verbosity_level;
 	const char *tmp_dir_base = dir_make_temp_dir();
-
-	char *sdk_output = get_cache_output_path("MacOSX.sdk");
-	dir_make_recursive(sdk_output);
-
-	dir_change(sdk_output);
-	dir_change("..");
 
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
 	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
 
 	sucatalog_out = file_append_path(tmp_dir_base, "sucatalog");
 	metadata_out = file_append_path(tmp_dir_base, BASE_PKM);
-
-	if (options->macos_list_sdks)
-	{
-		list_sdks(hardcoded, ELEMENTLEN(hardcoded));
-		return;
-	}
 
 	if (!check_license(options->fetch_accept_license))
 	{
@@ -274,20 +269,23 @@ void fetch_macsdk(BuildOptions *options)
 
 	if (options->macos_fetch_sdk_list)
 	{
+		printf("Warning: using dynamic SDK list may end up installing beta version of the SDK\n");
 		list = get_sdk_list(&sdk_count);
 		list_sdks(list, sdk_count);
+		select = (int64_t) sdk_count - 1;
 	}
 
 	if (options->macos_sdk_version_override != NULL)
 	{
+		select = -1;
 		char *picked = str_dup(options->macos_sdk_version_override);
 		const int major = (int) strtol(picked, &picked, 10);
 		picked++;
 		const int minor = (int) strtol(picked, &picked, 10);
 
-		for (int i = 0; i < ELEMENTLEN(hardcoded); i++)
+		for (int i = 0; i < sdk_count; i++)
 		{
-			const Sdk *sdk_i = hardcoded + i;
+			const Sdk *sdk_i = list + i;
 			if (sdk_i->version.major == major && sdk_i->version.minor == minor)
 			{
 				select = i;
@@ -305,6 +303,13 @@ void fetch_macsdk(BuildOptions *options)
 
 	printf("Selected %s - %d.%d\n", get_release_name(sel),
 		sel->version.major, sel->version.minor);
+
+	/* Prepare dest and work dir */
+	char *sdk_output = get_cache_output_path("MacOSX.sdk");
+	dir_make_recursive(sdk_output);
+
+	dir_change(sdk_output);
+	dir_change("..");
 
 	int progress = 0;
 	sdk_progress(DOWNLOAD, progress);
