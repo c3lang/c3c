@@ -928,7 +928,7 @@ extern fn double _erf(double x) @MathLibc("erf");
 extern fn double _lgamma(double x) @MathLibc("lgamma");
 extern fn double _tgamma(double x) @MathLibc("tgamma");
 
-extern fn float _erff(float x) @MathLibc("erf");
+extern fn float _erff(float x) @MathLibc("erff");
 extern fn float _lgammaf(float x) @MathLibc("lgammaf");
 extern fn float _tgammaf(float x) @MathLibc("tgammaf");
 
