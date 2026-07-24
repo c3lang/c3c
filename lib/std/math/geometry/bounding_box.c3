@@ -5,25 +5,14 @@ module std::math::geometry::bounding_box <Num>;
 import std::io;
 import std::math;
 
-alias Vec @local = Num[<2>];
-alias Rect @local = Rectangle{Num};
-
 <*
  An axis-aligned rectangle defined by its minimum and maximum corners.
 *>
 union BoundingBox (Printable)
 {
-	struct
-	{
-		Vec min, max;
-	}
-	struct
-	{
-		Vec p1, p2;
-	}
-	struct {
-		float x1, y1, x2, y2;
-	}
+	struct { float x1, y1, x2, y2; }
+	struct { Num[<2>] min, max;    }
+	struct { Num[<2>] p1, p2;      }
 	Num[<4>] v;
 }
 
@@ -34,28 +23,28 @@ union BoundingBox (Printable)
 
  @return "The center point"
 *>
-fn Vec BoundingBox.center(self) @inline => (self.min + self.max) / 2;
+fn Num[<2>] BoundingBox.center(self) @inline => (self.min + self.max) / 2;
 
 <*
  Returns the width of the bounding box.
 
  @return "the width"
 *>
-fn float BoundingBox.width(self) @inline => self.max.x - self.min.x;
+fn Num BoundingBox.width(self) @inline => self.max.x - self.min.x;
 
 <*
  Returns the height of the bounding box.
 
  @return "the height"
 *>
-fn float BoundingBox.height(self) @inline => self.max.y - self.min.y;
+fn Num BoundingBox.height(self) @inline => self.max.y - self.min.y;
 
 <*
  Returns the size of the bounding box.
 
  @return "the size"
 *>
-fn Vec BoundingBox.size(self) @inline => { self.width(), self.height() };
+fn Num[<2>] BoundingBox.size(self) @inline => self.max - self.min;
 
 <*
  Returns the area of the bounding box.
@@ -89,7 +78,7 @@ fn bool BoundingBox.contains(self, BoundingBox other)
 
  @return "true if the point is inside or on the border of the bounding box"
 *>
-fn bool BoundingBox.contains_point(self, Vec point)
+fn bool BoundingBox.contains_point(self, Num[<2>] point)
 {
 	return self.min.comp_le(point).and() && self.max.comp_ge(point).and();
 }
@@ -99,7 +88,7 @@ fn bool BoundingBox.contains_point(self, Vec point)
 
  @return "true if the bounding box fully contains the other rectangle"
 *>
-fn bool BoundingBox.contains_rect(self, Rect other)
+fn bool BoundingBox.contains_rect(self, Rectangle{Num} other)
 {
 	return self.min.comp_le(other.min()).and() && self.max.comp_ge(other.max()).and();
 }
@@ -121,7 +110,7 @@ fn bool BoundingBox.intersects(self, BoundingBox other)
  @param other : "The rectangle to compare with"
  @return "true if the rectangle overlaps"
 *>
-fn bool BoundingBox.intersects_rect(self, Rect other)
+fn bool BoundingBox.intersects_rect(self, Rectangle{Num} other)
 {
 	return self.min.comp_le(other.max()).and() && self.max.comp_ge(other.min()).and();
 }
@@ -135,22 +124,22 @@ fn bool BoundingBox.intersects_rect(self, Rect other)
 
  @return "The smallest bounding box containing both"
 *>
-fn BoundingBox BoundingBox.merge(self, BoundingBox other) => {
-	math::min(self.min, other.min),
-	math::max(self.max, other.max),
-};
+fn BoundingBox BoundingBox.merge(self, BoundingBox other)
+{
+	return { .min = math::min(self.min, other.min), .max = math::max(self.max, other.max) };
+}
 
 <*
  Merge a bounding box and rectangle into one enough to contain both.
 
- @ensure return.contains(self) && return.contains(other)
+ @ensure return.contains(self) && return.contains(other.to_bounds())
 
  @return "The smallest bounding box containing both"
 *>
-fn BoundingBox BoundingBox.merge_rect(self, BoundingBox other) => {
-	math::min(self.min, other.min),
-	math::max(self.max, other.max),
-};
+fn BoundingBox BoundingBox.merge_rect(self, Rectangle{Num} other)
+{
+	return { .min = math::min(self.min, other.min()), .max = math::max(self.max, other.max()) };
+}
 
 <*
  Expands the bounding box minimally to include a point.
@@ -160,10 +149,10 @@ fn BoundingBox BoundingBox.merge_rect(self, BoundingBox other) => {
 
  @ensure return.contains_point(point)
 *>
-fn BoundingBox BoundingBox.merge_point(self, Vec point) => {
-	math::min(self.min, point),
-	math::max(self.max, point),
-};
+fn BoundingBox BoundingBox.merge_point(self, Num[<2>] point)
+{
+	return { .min = math::min(self.min, point), .max = math::max(self.max, point) };
+}
 
 <*
  Return the bounding box intersecting both bounding boxes.
@@ -178,9 +167,9 @@ fn BoundingBox? BoundingBox.intersection(self, BoundingBox other)
 	Num[<2>] min = math::max(self.min, other.min);
 	Num[<2>] max = math::min(self.max, other.max);
 
-	if (min.x > max.x || min.y > max.y) return math::NO_INTERSECTION~;
+	if (min.comp_gt(max).or()) return math::NO_INTERSECTION~;
 
-	return { min, max };
+	return { .min = min, .max = max };
 }
 
 // Modification
@@ -191,7 +180,7 @@ fn BoundingBox? BoundingBox.intersection(self, BoundingBox other)
  @return "The resulting point"
  @ensure self.contains_point(return)
 *>
-fn Vec BoundingBox.clamp_point(self, Vec point)
+fn Num[<2>] BoundingBox.clamp_point(self, Num[<2>] point)
 {
 	return math::clamp(point, self.min, self.max);
 }
@@ -204,10 +193,10 @@ fn Vec BoundingBox.clamp_point(self, Vec point)
 
  @return "The resulting bounding box"
 *>
-fn BoundingBox BoundingBox.expand(self, Num amount) => {
-	self.min - amount,
-	self.max + amount,
-};
+fn BoundingBox BoundingBox.expand(self, Num amount)
+{
+	return { .min = self.min - amount, .max = self.max + amount };
+}
 
 <*
  Shrinks the bounding box by amount from all sides.
@@ -218,10 +207,10 @@ fn BoundingBox BoundingBox.expand(self, Num amount) => {
 
  @return "The resulting bounding box"
 *>
-fn BoundingBox BoundingBox.inset(self, Num amount) => {
-	self.min + amount,
-	self.max - amount,
-};
+fn BoundingBox BoundingBox.inset(self, Num amount)
+{
+	return { .min = self.min + amount, .max = self.max - amount };
+}
 
 <*
  Shrinks the bounding box by amount from all sides, clamping to zero size if necessary.
@@ -233,11 +222,8 @@ fn BoundingBox BoundingBox.inset(self, Num amount) => {
 *>
 fn BoundingBox BoundingBox.inset_clamped(self, Num amount)
 {
-	Vec decrease = math::min(self.size() / 2, (Vec)amount);
-	return {
-		self.min + decrease,
-		self.max - decrease,
-	};
+	Num[<2>] decrease = math::min(self.size() / 2, (Num[<2>])amount);
+	return { .min = self.min + decrease, .max = self.max - decrease };
 }
 
 <*
@@ -247,7 +233,7 @@ fn BoundingBox BoundingBox.inset_clamped(self, Num amount)
 *>
 fn BoundingBox BoundingBox.integral_outer(self) @if(types::is_float(Num))
 {
-	return { math::floor(self.min), math::ceil(self.max) };
+	return { .min = math::floor(self.min), .max = math::ceil(self.max) };
 }
 
 <*
@@ -257,9 +243,9 @@ fn BoundingBox BoundingBox.integral_outer(self) @if(types::is_float(Num))
 *>
 fn BoundingBox BoundingBox.integral_inner(self) @if(types::is_float(Num))
 {
-	Vec min = math::ceil(self.min);
-	Vec max = math::floor(self.max);
-	return { min, math::max(min, max) };
+	Num[<2>] min = math::ceil(self.min);
+	Num[<2>] max = math::floor(self.max);
+	return { .min = min, .max = math::max(min, max) };
 }
 
 <*
@@ -267,21 +253,26 @@ fn BoundingBox BoundingBox.integral_inner(self) @if(types::is_float(Num))
 
  @return "The resulting bounding box"
 *>
-fn BoundingBox BoundingBox.offset(self, Vec offset) @operator_s(+) => { self.min + offset, self.max + offset };
+fn BoundingBox BoundingBox.offset(self, Num[<2>] offset) @operator_s(+)
+{
+	return { .min = self.min + offset, .max = self.max + offset };
+}
 
 <*
  Moves the bounding box by subtracting offset.
 
  @return "The resulting bounding box"
 *>
-fn BoundingBox BoundingBox.offset_sub(self, Vec offset) @operator_s(-) => { self.min - offset, self.max - offset };
-
+fn BoundingBox BoundingBox.offset_sub(self, Num[<2>] offset) @operator_s(-)
+{
+	return { .min = self.min - offset, .max = self.max - offset };
+}
 <*
  Moves the bounding box by offset.
 
  @return "The resulting bounding box"
 *>
-fn BoundingBox BoundingBox.offset_self(&self, Vec offset) @operator(+=)
+fn BoundingBox BoundingBox.offset_self(&self, Num[<2>] offset) @operator(+=)
 {
 	self.min += offset;
 	self.max += offset;
@@ -293,7 +284,7 @@ fn BoundingBox BoundingBox.offset_self(&self, Vec offset) @operator(+=)
 
  @return "The resulting bounding box"
 *>
-fn BoundingBox BoundingBox.offset_self_sub(&self, Vec offset) @operator(-=)
+fn BoundingBox BoundingBox.offset_self_sub(&self, Num[<2>] offset) @operator(-=)
 {
 	self.min -= offset;
 	self.max -= offset;
@@ -317,7 +308,7 @@ fn bool BoundingBox.equals(self, BoundingBox other) @operator_s(==)
 
  @return "The rectangle"
 *>
-fn Rect BoundingBox.to_rect(self) => { .origin = self.min, .size = self.size() };
+fn Rectangle{Num} BoundingBox.to_rect(self) => { .origin = self.min, .size = self.size() };
 
 fn sz? BoundingBox.to_format(&self, Formatter* formatter) @dynamic
 {

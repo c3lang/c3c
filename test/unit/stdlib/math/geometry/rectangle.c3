@@ -227,7 +227,7 @@ fn void test_int_merge_point()
 
 fn void test_conversion()
 {
-	Bounds b = { { -10, -10 }, { 10, 10 } };
+	Bounds b = { -10, -10, 10, 10 };
 	Rect r = { -10, -10, 20, 20 };
 	assert(b == r);
 	assert(b.to_rect().v == r.v);
