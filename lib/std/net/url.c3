@@ -100,7 +100,6 @@ fn Url? parse(Allocator allocator, String url_string)
 			{
 				String[] userpass = userinfo.tsplit(":", 2);
 				username = userpass[0];
-				if (!username.len) return INVALID_USER~;
 				url.username = decode(allocator, username, HOST) ?? INVALID_USER~!;
 				if (userpass.len > 1) url.password = decode(allocator, userpass[1], USERPASS) ?? INVALID_PASSWORD~!;
 			};
@@ -185,7 +184,7 @@ fn sz? Url.to_format(&self, Formatter* f) @dynamic
 	if (self.host.len > 0) len += f.print("//")!;
 
 	// Add username and password if they exist
-	if (self.username)
+	if (self.username || self.password)
 	{
 		@stack_mem(64; Allocator smem)
 		{
