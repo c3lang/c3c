@@ -321,6 +321,7 @@ typedef struct
 struct Type_
 {
 	TypeKind type_kind;
+	bool is_live;
 	CanonicalType *canonical;
 	const char *name;
 	Type **type_cache;
@@ -2705,6 +2706,7 @@ bool arch_is_wasm(ArchType type);
 
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
+const char *macos_cross_compile_library(void);
 WindowsSDK *windows_get_sdk(void);
 // This string may be in the scratch buffer
 const char *windows_cross_compile_library(const char *arch);
@@ -3414,7 +3416,7 @@ INLINE bool type_is_user_defined(Type *type)
 {
 	static const bool user_defined_types[TYPE_LAST + 1] = {
 		[TYPE_ENUM]       = true,
-		[TYPE_CONSTDEF] = true,
+		[TYPE_CONSTDEF]   = true,
 		[TYPE_STRUCT]     = true,
 		[TYPE_FUNC_RAW]   = true,
 		[TYPE_UNION]      = true,
