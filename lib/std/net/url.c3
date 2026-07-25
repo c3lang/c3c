@@ -61,6 +61,7 @@ fn Url? parse(Allocator allocator, String url_string)
 	url_string = url_string.trim();
 	if (!url_string) return EMPTY~;
 	Url url = { .allocator = allocator };
+	defer catch url.free();
 
 	// Parse scheme
 	if (try pos = url_string.index_of("://"))
