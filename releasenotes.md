@@ -8,6 +8,7 @@
 - Filter test backtraces #3368
 - Improved GDB compatibility for macros.
 - Fail when "emcc" is unavailable instead of falling back to the built-in wasm linker.
+- Support fetching MacSDK for easy cross compilation.
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
