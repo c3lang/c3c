@@ -5,6 +5,15 @@
 
 #if PLATFORM_POSIX
 #include <sys/wait.h>
+#include <signal.h>
+
+#if __has_include(<spawn.h>) && !defined(__ANDROID__)
+#define HAS_POSIX_SPAWN 1
+#include <spawn.h>
+extern char **environ;
+#else
+#define HAS_POSIX_SPAWN 0
+#endif
 
 pid_t cpid;
 #endif
@@ -14,7 +23,7 @@ pid_t cpid;
 #include <windows.h>
 #endif
 
-#if defined(__linux__)
+#if PLATFORM_POSIX
 void signal_to_subprocess(int sig)
 {
 	kill(cpid, sig);
@@ -114,6 +123,22 @@ int run_subprocess(const char *name, const char **args)
 
 	return exit_status;
 #else
+	const char **args_null = NULL;
+	vec_add(args_null, name);
+	for (uint32_t i = 0; i < vec_size(args); ++i)
+	{
+		vec_add(args_null, args[i]);
+	}
+	vec_add(args_null, NULL);
+
+#if HAS_POSIX_SPAWN
+	int spawn_status = posix_spawnp(&cpid, name, NULL, NULL, (char *const *)args_null, environ);
+	if (spawn_status != 0)
+	{
+		eprintf("Could not spawn child process %s: %s\n", name, strerror(spawn_status));
+		return -1;
+	}
+#else
 	cpid = fork();
 	if (cpid < 0)
 	{
@@ -123,13 +148,6 @@ int run_subprocess(const char *name, const char **args)
 
 	if (cpid == 0)
 	{
-		const char **args_null = NULL;
-		vec_add(args_null, name);
-		for (uint32_t i = 0; i < vec_size(args); ++i)
-		{
-			vec_add(args_null, args[i]);
-		}
-		vec_add(args_null, NULL);
 		if (execvp(name, (char *const *)args_null) < 0)
 		{
 			eprintf("Could not exec child process %s: %s\n", name, strerror(errno));
@@ -137,10 +155,9 @@ int run_subprocess(const char *name, const char **args)
 		}
 		exit(0);
 	}
-
-#if defined(__linux__)
-	signal(SIGINT, signal_to_subprocess);
 #endif
+
+	void (*old_sigint)(int) = signal(SIGINT, signal_to_subprocess);
 	for (;;)
 	{
 		int wstatus = 0;
@@ -149,20 +166,27 @@ int run_subprocess(const char *name, const char **args)
 			if (errno != EINTR)
 			{
 				eprintf("Could not wait on %s (pid %d): %s\n", name, cpid, strerror(errno));
-				return -1;
+				goto cleanup;
 			}
 			continue;
 		}
 
-		if (WIFEXITED(wstatus)) return WEXITSTATUS(wstatus);
+		if (WIFEXITED(wstatus))
+		{
+			int exit_status = WEXITSTATUS(wstatus);
+			signal(SIGINT, old_sigint);
+			return exit_status;
+		}
 
 		if (WIFSIGNALED(wstatus))
 		{
 			eprintf("Program interrupted by signal %d.\n", WTERMSIG(wstatus));
-			return -1;
+			goto cleanup;
 		}
 	}
 
-	return cpid;
+cleanup:
+	signal(SIGINT, old_sigint);
+	return -1;
 #endif
 }
