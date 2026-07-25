@@ -129,6 +129,7 @@ fn Url? parse(Allocator allocator, String url_string)
 			};
 		}
 		url.host = decode(allocator, host, HOST) ?? INVALID_HOST~!;
+		foreach (c : url.host) if (c.is_cntrl()) return INVALID_HOST~;
 		url_string = url_string[authority_end ..];
 	}
 
