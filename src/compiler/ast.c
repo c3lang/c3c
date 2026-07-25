@@ -430,9 +430,10 @@ bool ast_is_compile_time(Ast *ast)
 					UNREACHABLE
 				case VARDECL_LOCAL:
 					return false;
+				case VARDECL_CONST:
+					return !ast->declare_stmt->var.is_addr;
 				case VARDECL_LOCAL_CT:
 				case VARDECL_LOCAL_CT_TYPE:
-				case VARDECL_CONST:
 					return true;
 			}
 			UNREACHABLE
