@@ -414,6 +414,28 @@ bool ast_is_compile_time(Ast *ast)
 	{
 		case AST_NOP_STMT:
 			return true;
+		case AST_DECLARE_STMT:
+			switch (ast->declare_stmt->var.kind)
+			{
+				case VARDECL_GLOBAL:
+				case VARDECL_PARAM:
+				case VARDECL_MEMBER:
+				case VARDECL_BITMEMBER:
+				case VARDECL_PARAM_EXPR:
+				case VARDECL_UNWRAPPED:
+				case VARDECL_ERASE:
+				case VARDECL_REWRAPPED:
+				case VARDECL_PARAM_CT:
+				case VARDECL_PARAM_CT_TYPE:
+					UNREACHABLE
+				case VARDECL_LOCAL:
+					return false;
+				case VARDECL_LOCAL_CT:
+				case VARDECL_LOCAL_CT_TYPE:
+				case VARDECL_CONST:
+					return true;
+			}
+			UNREACHABLE
 		case AST_RETURN_STMT:
 		case AST_BLOCK_EXIT_STMT:
 			if (!ast->return_stmt.expr) return true;
