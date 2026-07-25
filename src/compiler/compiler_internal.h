@@ -40,6 +40,7 @@ typedef uint32_t FileId;
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_INCLUDE_DIRECTIVES 2048
 #define MAX_PARAMS 255
+#define MAX_INTERFACES 127
 #define MAX_VAARGS 512
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15

@@ -32,7 +32,7 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl);
 static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *check_defined);
 
-static inline bool sema_analyse_doc_header(SemaContext *context, DeclId doc, Decl **params, Decl **extra_params, bool *pure_ref, bool is_raw_vaarg);
+static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs, Decl **params, Decl **extra_params, bool *pure_ref, bool is_raw_vaarg);
 
 static const char *attribute_domain_to_string(AttributeDomain domain);
 static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_data, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl);
@@ -46,7 +46,13 @@ static inline bool sema_analyse_type_alias(SemaContext *context, Decl *decl, boo
 static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceLocId loc);
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
+static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool *erase_decl);
 
+/*
+ * Check `@align` - must be integer, 0 < align <= MAX_ALIGNMENT, and be power-of-two
+ */
 static inline bool sema_resolve_align_expr(SemaContext *context, Expr *expr, AlignSize *result)
 {
 	if (!sema_analyse_expr_rvalue(context, expr)) return false;
@@ -70,10 +76,10 @@ static inline bool sema_resolve_align_expr(SemaContext *context, Expr *expr, Ali
 	*result = (AlignSize)align;
 	return true;
 }
-static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
-static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool *erase_decl);
 
+/*
+ * Check `@section`, only some static checking for MACH-O
+ */
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
 	Expr *expr = attr->exprs[0];
@@ -135,26 +141,39 @@ static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, De
 
 /**
  * Look at all the interface declarations, optionally type check the interfaces completely if needed.
+ *
+ * @param context The context
+ * @param decl The declaration to test
+ * @param resolve_interfaces Semantically check the interface(s)
  */
-static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Decl *decl, bool deep)
+static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Decl *decl, bool resolve_interfaces)
 {
 	TypeInfo **interfaces = decl->interfaces;
 	unsigned count = vec_size(interfaces);
+
+	if (count > MAX_INTERFACES) RETURN_SEMA_ERROR(interfaces[0], "The maximum number of interfaces (%d) is exeeded.", MAX_INTERFACES);
+
 	// No interfaces? Then we're done. This is the most common case.
 	if (!count) return true;
 
 	for (unsigned i = 0; i < count; i++)
 	{
 		TypeInfo *inf_info = interfaces[i];
-		// Resolve the name
+
+		// Resolve the name of the interface
 		if (!sema_resolve_type_info(context, inf_info, RESOLVE_TYPE_DEFAULT)) return false;
-		Type *inf_type = inf_info->type->canonical;
+
+		CanonicalType *inf_type = inf_info->type->canonical;
+
+		// Check that it's a proper interface
 		if (inf_type->type_kind != TYPE_INTERFACE)
 		{
 			RETURN_SEMA_ERROR(inf_info, "Expected an interface name, but %s is not an interface.",
 							  type_quoted_error_string(inf_type));
 		}
+
 		// We don't permit duplicates as this would affect the implementation ordering.
+		// O(n^2) more than 1-2 interfaces is EXTREMELY unlikely, and we cap at 127.
 		for (unsigned j = 0; j < i; j++)
 		{
 			if (interfaces[j]->type->canonical == inf_type)
@@ -164,8 +183,8 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 								  inf_type->name);
 			}
 		}
-		// If this is a deep check, then we also resolve the interface itself (this would mean resolving function types)
-		if (deep && !sema_resolve_type_decl(context, inf_type)) return false;
+		// If this is a resolve_interfaces check, then we also resolve the interface itself (this would mean resolving function types)
+		if (resolve_interfaces && !sema_resolve_type_decl(context, inf_type)) return false;
 	}
 	return true;
 }
