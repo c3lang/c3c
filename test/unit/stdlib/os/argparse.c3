@@ -497,6 +497,36 @@ fn void test_large_integer_precision() @test
 	test::eq((ulong)9000000000000, ulval);
 }
 
+fn void test_ulong_above_long_max() @test
+{
+	String[] args = { "program", "-u", "9223372036854775808" };
+	ulong ulval = 0;
+
+	sz? res = argparse::@parse(args,
+		"u", "ulong_val", &ulval
+	);
+
+	test::eq(3, res!!);
+	test::eq((ulong)9223372036854775808, ulval);
+}
+
+fn void test_unsigned_rejects_negative_input() @test
+{
+	String[] args_uint = { "program", "-n", "-1" };
+	uint uval = 0;
+	test::@error(
+		argparse::@parse(args_uint, "n", "num", &uval),
+		argparse::INVALID_VALUE
+	);
+
+	String[] args_ulong = { "program", "-n", "-1" };
+	ulong ulval = 0;
+	test::@error(
+		argparse::@parse(args_ulong, "n", "num", &ulval),
+		argparse::INVALID_VALUE
+	);
+}
+
 fn void test_optional_negative_float() @test
 {
 	String[] args = { "program", "-s", "-10.5" };

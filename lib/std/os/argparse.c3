@@ -272,8 +272,7 @@ fn void main(String[] args)
 *>
 module std::os::argparse;
 
-import std::io;
-import std::os::env;
+import std::io, std::os::env;
 
 faultdef
 	MISSING_ARGUMENT,
@@ -283,6 +282,9 @@ faultdef
 	INVALID_VALUE,
 	INVALID_ENUM_VALUE,
 	END_OF_ARGS;
+
+int option_col_width     = 15;
+int short_only_col_width = 20;
 
 struct ArgParser
 {
@@ -357,10 +359,7 @@ fn String? ArgParser.next(ArgParser* self, bool* is_option)
 		return arg[1:1];
 	}
 
-	if (self.strict_mode)
-	{
-		self.stop_options = true;
-	}
+	if (self.strict_mode) self.stop_options = true;
 	self.index++;
 	return arg;
 }
@@ -408,29 +407,23 @@ fn String? ArgParser.consume_value(ArgParser* self)
 macro void? @parse_value(String val_str, $Type, #assignee) @local
 {
 	$switch ($Type):
-		$case int::typeid:
-		$case short::typeid:
-		$case uint::typeid:
-		$case ushort::typeid:
-			int? parsed = val_str.to_int();
-			if (catch err = parsed) return INVALID_VALUE~;
-			#assignee = ($Type)parsed;
-		$case long::typeid:
-		$case ulong::typeid:
-			long? parsed = val_str.to_long();
-			if (catch err = parsed) return INVALID_VALUE~;
-			#assignee = ($Type)parsed;
-		$case float::typeid:
-			float? parsed = val_str.to_float();
-			if (catch err = parsed) return INVALID_VALUE~;
-			#assignee = parsed;
-		$case double::typeid:
-			double? parsed = val_str.to_double();
-			if (catch err = parsed) return INVALID_VALUE~;
-			#assignee = parsed;
-		$case String::typeid:
+		$case int:
+		$case short:
+			#assignee = ($Type)(val_str.to_int() ?? INVALID_VALUE~!);
+		$case uint:
+		$case ushort:
+			#assignee = ($Type)(val_str.to_uint() ?? INVALID_VALUE~!);
+		$case long:
+			#assignee = val_str.to_long() ?? INVALID_VALUE~!;
+		$case ulong:
+			#assignee = val_str.to_ulong() ?? INVALID_VALUE~!;
+		$case float:
+			#assignee = val_str.to_float() ?? INVALID_VALUE~!;
+		$case double:
+			#assignee = val_str.to_double() ?? INVALID_VALUE~!;
+		$case String:
 			#assignee = val_str;
-		$case bool::typeid:
+		$case bool:
 			#assignee = (val_str == "true" || val_str == "1");
 		$default:
 			$error "Type `" +++ $Type::name +++ "` is unsupported by the standard option parser.";
@@ -472,7 +465,7 @@ macro OptionMeta @clean_option_meta($short_raw, $long_raw) @private
 		$endfor
 	$endif
 
-	return (OptionMeta) {
+	return {
 		.is_help = $is_help,
 		.is_inc = $is_inc,
 		.is_opt = $is_opt,
@@ -622,17 +615,14 @@ macro sz? @parse(#args, ...)
 								OptionMeta $h_meta = @clean_option_meta($h_short, $h_long);
 
 								// Print aligned option strings
-								if ($h_meta.short_clean.len > 0 && $h_meta.long_opt_name.len > 0)
+								switch
 								{
-									io::printf("  -%s, --%-15s ", $h_meta.short_clean, $h_meta.long_opt_name);
-								}
-								else if ($h_meta.short_clean.len > 0)
-								{
-									io::printf("  -%-20s ", $h_meta.short_clean);
-								}
-								else if ($h_meta.long_opt_name.len > 0)
-								{
-									io::printf("      --%-15s ", $h_meta.long_opt_name);
+									case $h_meta.short_clean.len > 0 && $h_meta.long_opt_name.len > 0:
+										io::printf("  -%s, --%-*s ", $h_meta.short_clean, option_col_width, $h_meta.long_opt_name);
+									case $h_meta.short_clean.len > 0:
+										io::printf("  -%-*s ", short_only_col_width, $h_meta.short_clean);
+									case $h_meta.long_opt_name.len > 0:
+										io::printf("      --%-*s ", option_col_width, $h_meta.long_opt_name);
 								}
 
 								$switch:
@@ -650,29 +640,28 @@ macro sz? @parse(#args, ...)
 												foreach (elem : *$vaarg[$curr_h + $h_assignee_offset])
 												{
 													var $ElemType = $Typeof(elem);
-													$if $ElemType == String::typeid:
+													$if $ElemType == String:
 														if (elem.len > 0) print_def = true;
 													$else
 														if (elem != 0) print_def = true;
 													$endif
 												}
 											$default:
-												$if $HType == String::typeid:
+												$if $HType == String:
 													print_def = (*$vaarg[$curr_h + $h_assignee_offset]).len > 0;
 												$endif
 										$endswitch
 
-										if (print_def)
+										switch
 										{
-											$if $HType == String::typeid:
-												io::printfn("%s (default: \"%s\")", $h_desc, *$vaarg[$curr_h + $h_assignee_offset]);
-											$else
-												io::printfn("%s (default: %s)", $h_desc, *$vaarg[$curr_h + $h_assignee_offset]);
-											$endif
-										}
-										else
-										{
-											io::printfn("%s", $h_desc);
+											case print_def:
+												$if $HType == String:
+													io::printfn("%s (default: \"%s\")", $h_desc, *$vaarg[$curr_h + $h_assignee_offset]);
+												$else
+													io::printfn("%s (default: %s)", $h_desc, *$vaarg[$curr_h + $h_assignee_offset]);
+												$endif
+											default:
+												io::printfn("%s", $h_desc);
 										}
 								$endswitch
 							$endfor
@@ -692,7 +681,7 @@ macro sz? @parse(#args, ...)
 									sz idx = array_indexes[$opt_idx]++;
 									if (idx >= (*$vaarg[$curr_j + $assignee_offset]).len) return OUT_OF_BOUNDS~;
 									var $ElementType = $Typeof((*$vaarg[$curr_j + $assignee_offset])[0]);
-									@parse_value(parser.consume_value(), $ElementType::typeid, (*$vaarg[$curr_j + $assignee_offset])[idx])!;
+									@parse_value(parser.consume_value(), $ElementType, (*$vaarg[$curr_j + $assignee_offset])[idx])!;
 
 								$case ENUM:
 									@parse_enum(parser.consume_value(), $TargetType, *$vaarg[$curr_j + $assignee_offset])!;
@@ -714,9 +703,9 @@ macro sz? @parse(#args, ...)
 
 								$default:
 									$if $meta.is_opt:
-										if (parser.has_value()) @parse_value(parser.consume_value(), $TargetType::typeid, *$vaarg[$curr_j + $assignee_offset])!;
+										if (parser.has_value()) @parse_value(parser.consume_value(), $TargetType, *$vaarg[$curr_j + $assignee_offset])!;
 									$else
-										@parse_value(parser.consume_value(), $TargetType::typeid, *$vaarg[$curr_j + $assignee_offset])!;
+										@parse_value(parser.consume_value(), $TargetType, *$vaarg[$curr_j + $assignee_offset])!;
 									$endif
 							$endswitch
 					$endswitch
@@ -733,11 +722,11 @@ macro sz? @parse(#args, ...)
 				var pos_target = $vaarg[$positional_idx];
 				if (positional_index < (*pos_target).len)
 				{
-					(*pos_target)[positional_index++] = opt;
+						(*pos_target)[positional_index++] = opt;
 				}
 				else
 				{
-					return OUT_OF_BOUNDS~;
+						return OUT_OF_BOUNDS~;
 				}
 			$else
 				return parser.index - 1;
@@ -781,7 +770,7 @@ macro sz? @parse(#args, ...)
 								$case ENUM:
 									@parse_enum(val, $TargetType, *$vaarg[$curr_k + $assignee_offset])!;
 								$default:
-									@parse_value(val, $TargetType::typeid, *$vaarg[$curr_k + $assignee_offset])!;
+									@parse_value(val, $TargetType, *$vaarg[$curr_k + $assignee_offset])!;
 							$endswitch
 					$endswitch
 				}
