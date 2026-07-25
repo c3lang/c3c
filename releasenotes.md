@@ -15,6 +15,7 @@
 - `Rect.contains_point` is now exclusive on the maximum edge.
 - Add `Bounds` - a rectangular region stored as a `min` and `max` value, with all operations being inclusive along the boundary edge.
 - Experimental regex support.
+- Improved RFC 3986 compatibility.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374
