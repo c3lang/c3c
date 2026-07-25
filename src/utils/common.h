@@ -30,7 +30,7 @@
 #define DEFAULT_STACK_OBJECT_SIZE 64
 #define MAX_ARRAY_SIZE (2U * 1024U * 1024U * 1024U)
 #define MAX_SOURCE_LOCATION_LEN (1024U * 1024U)
-#define MAX_STRUCT_SIZE (2U * 1024U * 1024U * 1024U)
+#define MAX_STRUCT_SIZE ((ByteSize)(2U * 1024U * 1024U * 1024U))
 #define PROJECT_JSON "project.json"
 #define PROJECT_JSON5 "project.json5"
 

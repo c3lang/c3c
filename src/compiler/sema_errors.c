@@ -13,8 +13,7 @@ void sema_shadow_error(SemaContext *context, Decl *decl, Decl *old)
 bool sema_type_error_on_binop(SemaContext *context, Expr *expr)
 {
 	const char *c = token_type_to_string(binaryop_to_token(expr->binary_expr.operator));
-	SEMA_ERROR(expr, "%s is not defined in the expression %s %s %s.",
-			   c, type_quoted_error_string(exprptr(expr->binary_expr.left)->type),
-			   c, type_quoted_error_string(exprptr(expr->binary_expr.right)->type));
-	return false;
+	RETURN_SEMA_ERROR(expr, "%s is not defined in the expression %s %s %s.",
+		c, type_quoted_error_string(exprptr(expr->binary_expr.left)->type),
+		c, type_quoted_error_string(exprptr(expr->binary_expr.right)->type));
 }

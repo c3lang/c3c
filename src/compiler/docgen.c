@@ -1163,13 +1163,13 @@ void compiler_docgen(BuildTarget *target)
 	{
 		if (existing)
 		{
-			char *pos = strstr(existing, data_end_marker);
+			const char *pos = strstr(existing, data_end_marker);
 			if (!pos) error_exit("Could not find /*DATA_END*/ in existing docs.html for append.");
 			fwrite(existing, 1, pos - existing, file);
 		}
 		else
 		{
-			char *pos = (char *)strstr((const char *)docs_html, data_start_marker);
+			const char *pos = strstr((const char *)docs_html, data_start_marker);
 			if (!pos) error_exit("Internal error: Could not find /*DATA_START*/ in the docs.html template.");
 			fwrite(docs_html, 1, (pos - (const char *)docs_html) + strlen(data_start_marker), file);
 		}
@@ -1303,12 +1303,12 @@ void compiler_docgen(BuildTarget *target)
 		fputs("});", file);
 		if (existing)
 		{
-			char *pos = strstr(existing, data_end_marker);
+			const char *pos = strstr(existing, data_end_marker);
 			fwrite(pos, 1, strlen(pos), file);
 		}
 		else
 		{
-			char *pos = (char *)strstr((const char *)docs_html, data_end_marker);
+			const char *pos = strstr((const char *)docs_html, data_end_marker);
 			if (!pos) error_exit("Internal error: Could not find /*DATA_END*/ in the docs.html template.");
 			fwrite(pos, 1, docs_html_len - (pos - (const char *)docs_html), file);
 		}

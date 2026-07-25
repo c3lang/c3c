@@ -751,7 +751,10 @@ void compiler_compile(void)
 		{
 			const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
 			if (!file_executable_in_path(cc)) system_linker_available = false;
-			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && !strstr(cc, "emcc")) system_linker_available = false;
+			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && (!file_executable_in_path(cc) || !strstr(cc, "emcc")))
+			{
+				error_exit("\"emscripten\" target requires Emscripten to be installed on your system; \"%s\" was not found.", cc);
+			}
 		}
 		bool use_system_linker = system_linker_available && (compiler.build.arch_os_target == default_target || compiler.platform.os == OS_TYPE_EMSCRIPTEN);
 		switch (compiler.build.linker_type)
@@ -1637,7 +1640,7 @@ void compile()
 	setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", compiler.build.testing);
-	setup_int_define("LANGUAGE_DEV_VERSION", 7, type_int);
+	setup_int_define("LANGUAGE_DEV_VERSION", 8, type_int);
 	setup_bool_define("ADDRESS_SANITIZER", compiler.build.feature.sanitize_address);
 	setup_bool_define("MEMORY_SANITIZER", compiler.build.feature.sanitize_memory);
 	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);

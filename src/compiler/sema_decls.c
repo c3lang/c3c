@@ -25,14 +25,14 @@ static inline const char *method_name_by_decl(Decl *method_like);
 
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase_decl);
-static bool sema_analyse_union_members(SemaContext *context, Decl *decl);
+static bool sema_analyse_union_members(SemaContext *context, Decl *union_decl);
 static bool sema_analyse_struct_members(SemaContext *context, Decl *decl);
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl);
-static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member);
+static inline bool sema_check_struct_holes(SemaContext *context, Decl *parent, Decl *member);
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl);
 static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *check_defined);
 
-static inline bool sema_analyse_doc_header(SemaContext *context, DeclId doc, Decl **params, Decl **extra_params, bool *pure_ref, bool is_raw_vaarg);
+static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs, Decl **params, Decl **extra_params, bool *pure_ref, bool is_raw_vaarg);
 
 static const char *attribute_domain_to_string(AttributeDomain domain);
 static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_data, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl);
@@ -46,34 +46,47 @@ static inline bool sema_analyse_type_alias(SemaContext *context, Decl *decl, boo
 static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceLocId loc);
 static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
+static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool *erase_decl);
 
+/*
+ * Check `@align` - must be integer, 0 < align <= MAX_ALIGNMENT, and be power-of-two
+ */
 static inline bool sema_resolve_align_expr(SemaContext *context, Expr *expr, AlignSize *result)
 {
 	if (!sema_analyse_expr_rvalue(context, expr)) return false;
-	if (!expr_is_const_int(expr))
-	{
-		RETURN_SEMA_ERROR(expr, "Expected a constant integer value as argument.");
-	}
+
+	// Must be constant int
+	if (!expr_is_const_int(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant integer value as argument.");
+
+	// Must be <= MAX_ALIGNMENT
 	if (int_ucomp(expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
 	{
 		RETURN_SEMA_ERROR(expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
 	}
+
+	// Must be > 0
 	if (int_ucomp(expr->const_expr.ixx, 0, BINARYOP_LE))
 	{
 		RETURN_SEMA_ERROR(expr, "Alignment must be greater than zero.");
 	}
+
+	// Must be power of two
 	uint64_t align = int_to_u64(expr->const_expr.ixx);
 	if (!is_power_of_two(align))
 	{
 		RETURN_SEMA_ERROR(expr, "Alignment must be a power of two.");
 	}
+
+	// Done
 	*result = (AlignSize)align;
 	return true;
 }
-static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
-static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool *erase_decl);
 
+/*
+ * Check `@section`, only some static checking for MACH-O
+ */
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
 	Expr *expr = attr->exprs[0];
@@ -109,11 +122,10 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 /**
  * Check parameter name uniqueness and that the type is not void.
  */
-static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
-                                                        unsigned current_index)
+static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current, unsigned current_index)
 {
-
 	const char *name = current->name;
+
 	// There is no need to do a check if it is anonymous.
 	if (!name) return true;
 
@@ -122,6 +134,7 @@ static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, De
 	// a hash map would be more expensive to set up.
 	for (int i = 0; i < current_index; i++)
 	{
+		// Does the name match?
 		if (decls[i] && name == decls[i]->name)
 		{
 			SEMA_ERROR(current, "Duplicate parameter name '%s'.", name);
@@ -130,31 +143,47 @@ static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, De
 			return false;
 		}
 	}
+
+	// All ok
 	return true;
 }
 
 /**
  * Look at all the interface declarations, optionally type check the interfaces completely if needed.
+ *
+ * @param context The context
+ * @param decl The declaration to test
+ * @param resolve_interfaces Semantically check the interface(s)
  */
-static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Decl *decl, bool deep)
+static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Decl *decl, bool resolve_interfaces)
 {
 	TypeInfo **interfaces = decl->interfaces;
 	unsigned count = vec_size(interfaces);
+
+	// Let's max out the number of interfaces. Not strictly needed.
+	if (count > MAX_INTERFACES) RETURN_SEMA_ERROR(interfaces[0], "The maximum number of interfaces (%d) is exeeded.", MAX_INTERFACES);
+
 	// No interfaces? Then we're done. This is the most common case.
 	if (!count) return true;
 
 	for (unsigned i = 0; i < count; i++)
 	{
 		TypeInfo *inf_info = interfaces[i];
-		// Resolve the name
+
+		// Resolve the name of the interface
 		if (!sema_resolve_type_info(context, inf_info, RESOLVE_TYPE_DEFAULT)) return false;
-		Type *inf_type = inf_info->type->canonical;
+
+		CanonicalType *inf_type = inf_info->type->canonical;
+
+		// Check that it's a proper interface
 		if (inf_type->type_kind != TYPE_INTERFACE)
 		{
 			RETURN_SEMA_ERROR(inf_info, "Expected an interface name, but %s is not an interface.",
 							  type_quoted_error_string(inf_type));
 		}
+
 		// We don't permit duplicates as this would affect the implementation ordering.
+		// O(n^2) more than 1-2 interfaces is EXTREMELY unlikely, and we cap at 127.
 		for (unsigned j = 0; j < i; j++)
 		{
 			if (interfaces[j]->type->canonical == inf_type)
@@ -164,8 +193,8 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 								  inf_type->name);
 			}
 		}
-		// If this is a deep check, then we also resolve the interface itself (this would mean resolving function types)
-		if (deep && !sema_resolve_type_decl(context, inf_type)) return false;
+		// If this is a resolve_interfaces check, then we also resolve the interface itself (this would mean resolving function types)
+		if (resolve_interfaces && !sema_resolve_type_decl(context, inf_type)) return false;
 	}
 	return true;
 }
@@ -180,7 +209,10 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	// Resolution might already have been completed in some cases due to $checks
 	if (decl->resolve_status == RESOLVE_DONE)
 	{
+		// Broken? Exit
 		if (!decl_ok(decl)) return false;
+
+		// If it has a name, push it on the stack
 		if (decl->name) sema_decl_stack_push(decl);
 		return true;
 	}
@@ -210,6 +242,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		default:
 			UNREACHABLE
 	}
+
 	// Check attributes.
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
 
@@ -219,6 +252,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	// If it has a name, place it in the decl stack to ensure it is unique.
 	if (decl->name)
 	{
+		// Look in the stack for duplicate names
 		Decl *other = sema_decl_stack_resolve_symbol(decl->name);
 		if (other)
 		{
@@ -239,6 +273,8 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		case DECL_VAR:
 		{
 			ASSERT_SPAN(decl, decl->var.kind == VARDECL_MEMBER);
+
+			// Set it to running to detect circular dependencies
 			decl->resolve_status = RESOLVE_RUNNING;
 
 			// Resolve the type
@@ -286,17 +322,32 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	}
 }
 
-static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member)
+/*
+ * Run check to see if a member would have padding where it shouldn't
+ */
+static inline bool sema_check_struct_holes(SemaContext *context, Decl *parent, Decl *member)
 {
+	// Get the underlying type, skipping things like typedef, constdef
 	Type* member_type = type_flatten(member->type);
+
+	// If it's not a union or struct, then we're done
 	if (!type_is_union_or_strukt(member_type)) return true;
-	ASSERT(decl_is_struct_type(member_type->decl));
+
+	ASSERT(member_type->decl->resolve_status == RESOLVE_DONE);
+
+	// If it doesn't have any holes then we're done.
 	if (!member_type->decl->strukt.padded_decl_id) return true;
-	if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = member_type->decl->strukt.padded_decl_id;
-	if (decl->attr_compact)
+
+	// If the parent doesn't already have info about padding (i.e. it already signaled for this)
+	// Then set it here.
+	if (!parent->strukt.padded_decl_id) parent->strukt.padded_decl_id = member_type->decl->strukt.padded_decl_id;
+
+	// If it's compact then it's an error.
+	if (parent->attr_compact)
 	{
 		SEMA_ERROR(member, "%s has padding and can't be used as the type of '%s', because members of a `@compact` type must all have zero padding.", type_quoted_error_string(member_type), member->name);
 		Decl* padded_decl = declptr(member_type->decl->strukt.padded_decl_id);
+
 		if (decl_is_struct_type(padded_decl))
 		{
 			SEMA_NOTE(padded_decl, "The first padding in %s would be added to the end of this type.",
@@ -308,6 +359,8 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 		}
 		return false;
 	}
+
+	// Otherwise just continue.
 	return true;
 }
 
@@ -315,13 +368,13 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 /**
  * Analyse union members, calculating alignment.
  */
-static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
+static bool sema_analyse_union_members(SemaContext *context, Decl *union_decl)
 {
 	AlignSize max_size = 0;
 	ArrayIndex max_alignment_element = 0;
 	AlignSize max_alignment = 0;
 
-	Decl **members = decl->strukt.members;
+	Decl **members = union_decl->strukt.members;
 	unsigned member_count = vec_size(members);
 	ASSERT(member_count > 0);
 
@@ -336,7 +389,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		bool erase_decl = false;
 
 		// Check the member
-		if (!sema_analyse_struct_member(context, decl, member, &erase_decl)) // NOLINT
+		if (!sema_analyse_struct_member(context, union_decl, member, &erase_decl)) // NOLINT
 		{
 			// Failed
 			return decl_poison(member);
@@ -351,33 +404,43 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 			if (i < member_count) goto AGAIN;
 			break;
 		}
+
+		// We need to check for flexible array members, which is not supported in unions.
 		if (member->type->type_kind == TYPE_INFERRED_ARRAY)
 		{
 			decl_poison(member);
 			RETURN_SEMA_ERROR(member, "Flexible array members not allowed in unions.");
 		}
+
+		// Calculate alignment for the member
 		AlignSize member_alignment;
 		if (!sema_set_alignment(context, member->type, &member_alignment, false)) return false;
-		if (!sema_check_struct_holes(context, decl, member)) return false;
+
+		// Detect holes
+		if (!sema_check_struct_holes(context, union_decl, member)) return false;
 
 		ByteSize member_size = type_size(member->type);
 		if (member_size > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Union member '%s' would cause the union to become too large (exceeding 2 GB).", member->name);
 
 		ASSERT(member_size <= MAX_TYPE_SIZE);
-		// Update max alignment
+
+		// Update alignment from `@align` attribute if it exists
 		if (member->alignment > member_alignment) member_alignment = member->alignment;
+
+		// Update max alignment as needed
 		if (member_alignment > max_alignment)
 		{
 			max_alignment = member_alignment;
 			max_alignment_element = (ArrayIndex)i;
 		}
-		// Update max size
+
+		// Update max size as needed
 		if (member_size > max_size)
 		{
-			//max_size_element = i;
 			max_size = (AlignSize)member_size;
 			// If this is bigger than the previous with max
 			// alignment, pick this as the maximum size field.
+			// So given two elements with the same size, pick the one with the greater alignment
 			if (max_alignment_element != (ArrayIndex)i && max_alignment == member_alignment)
 			{
 				max_alignment_element = (ArrayIndex)i;
@@ -386,35 +449,38 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		// Offset is always 0
 		member->offset = 0;
 	}
+	// Because of `@if` we might not have any members left. That's an error.
 	if (!member_count)
 	{
-		RETURN_SEMA_ERROR(decl, "No union members exist after processing attributes, this is not allowed. Please make sure it has at least one member.");
+		RETURN_SEMA_ERROR(union_decl, "No union members exist after processing attributes, this is not allowed. Please make sure it has at least one member.");
 	}
-	ASSERT(decl_ok(decl));
 
-	// 1. If packed, then the alignment is zero, unless previously given
-	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
+
+	ASSERT(decl_ok(union_decl));
+
+	// 1. If packed, then the alignment is 1, unless previously given
+	if (union_decl->is_packed && !union_decl->alignment) union_decl->alignment = 1;
 
 	// 2. otherwise pick the highest of the natural alignment and the given alignment.
-	if (!decl->is_packed && decl->alignment < max_alignment) decl->alignment = max_alignment;
+	if (!union_decl->is_packed && union_decl->alignment < max_alignment) union_decl->alignment = max_alignment;
 
 	// We're only packed if the max alignment is > 1
-	decl->is_packed = decl->is_packed && max_alignment > 1;
+	union_decl->is_packed = union_decl->is_packed && max_alignment > 1;
 
 	// "Representative" type is the one with the maximum alignment.
 	ASSERT(max_alignment_element >= 0);
-	decl->strukt.union_rep = max_alignment_element;
+	union_decl->strukt.union_rep = max_alignment_element;
 
 	// All members share the same alignment
 	FOREACH(Decl *, member, members)
 	{
-		member->alignment = decl->alignment;
+		member->alignment = union_decl->alignment;
 	}
 
 	ASSERT(max_size);
 
 	// The actual size might be larger than the max size due to alignment.
-	AlignSize size = aligned_offset(max_size, decl->alignment);
+	AlignSize size = aligned_offset(max_size, union_decl->alignment);
 
 	ByteSize rep_size = type_size(members[max_alignment_element]->type);
 
@@ -422,25 +488,32 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	// padding – typically used with LLVM lowering.
 	if (size > rep_size)
 	{
-		decl->strukt.padding = (AlignSize)(size - rep_size);
+		union_decl->strukt.padding = (AlignSize)(size - rep_size);
 	}
 
-	decl->strukt.size = size;
+	union_decl->strukt.size = size;
 	return true;
 }
 
+/*
+ * Get the "natural" alignment, that is – the one which C would give it and which LLVM
+ * assumes
+ */
 AlignSize sema_get_max_natural_alignment(Type *type)
 {
 RETRY:;
 	switch (type->type_kind)
 	{
 		case TYPE_OPTIONAL:
+			// Use underlying type
 			type = type->optional;
 			goto RETRY;
 		case TYPE_TYPEDEF:
+			// Use underlying type
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_ALIAS:
+			// Use underlying type
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_POISONED:
@@ -449,9 +522,9 @@ RETRY:;
 		case TYPE_WILDCARD:
 			UNREACHABLE
 		case TYPE_VOID:
+			// Set to 1 to allow void* to be handled easily.
 			return 1;
 		case TYPE_BOOL:
-			return 1;
 		case ALL_INTS:
 		case ALL_FLOATS:
 			return type->builtin.abi_alignment;
@@ -466,12 +539,16 @@ RETRY:;
 			return compiler.platform.align_pointer.align / 8;
 		case TYPE_ENUM:
 		case TYPE_CONSTDEF:
+			// Look at the container type
 			type = enum_inner_type(type);
 			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		{
+			// If packed => 1
 			if (type->decl->is_packed) return 1;
+
+			// Find the max alignment in all elements
 			AlignSize max = 0;
 			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
@@ -716,12 +793,19 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	return true;
 }
 
+/*
+ * Analyse struct or union
+ */
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	// Begin by analysing attributes
 	bool is_union = decl->decl_kind == DECL_UNION;
 	AttributeDomain domain = is_union ? ATTR_UNION : ATTR_STRUCT;
+
+	// Resolve attributes
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
+
+	// If we already had something deprecated, don't show more deprecation
 	if (decl_is_deprecated(decl)) context->call_env.ignore_deprecation = true;
 
 	// If an @if attribute erases it, end here
@@ -742,6 +826,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *er
 	// If we have a name, we need to create a new decl stack
 	Decl** state = decl->name ? sema_decl_stack_store() : NULL;
 
+	// Analyse the members
 	bool success = is_union
 			? sema_analyse_union_members(context, decl)
 			: sema_analyse_struct_members(context, decl);
@@ -3065,58 +3150,45 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 {
 	switch (domain)
 	{
-		case ATTR_MACRO:
-			return "macro";
-		case ATTR_LOCAL:
-			return "local variable";
-		case ATTR_BITSTRUCT:
-			return "bitstruct";
-		case ATTR_INTERFACE:
-			return "interface";
-		case ATTR_MEMBER:
-			return "member";
-		case ATTR_BITSTRUCT_MEMBER:
-			return "bitstruct member";
-		case ATTR_FUNC:
-			return "function";
-		case ATTR_PARAM:
-			return "parameter";
-		case ATTR_ENUM_VALUE:
-			return "enum value";
-		case ATTR_GLOBAL:
-			return "global variable";
-		case ATTR_ENUM:
-			return "enum";
-		case ATTR_STRUCT:
-			return "struct";
-		case ATTR_UNION:
-			return "union";
-		case ATTR_CONST:
-			return "constant";
-		case ATTR_FAULT:
-			return "faultdef";
-		case ATTR_ALIAS:
-			return "alias";
-		case ATTR_CALL:
-			return "call";
-		case ATTR_TYPEDEF:
-			return "typedef";
-		case ATTR_INTERFACE_METHOD:
-			return "interface method";
-		case ATTR_FNTYPE:
-			return "function type";
+		case ATTR_NONE:             UNREACHABLE
+		case ATTR_MACRO:            return "macro";
+		case ATTR_LOCAL:            return "local variable";
+		case ATTR_BITSTRUCT:        return "bitstruct";
+		case ATTR_INTERFACE:        return "interface";
+		case ATTR_MEMBER:           return "member";
+		case ATTR_BITSTRUCT_MEMBER: return "bitstruct member";
+		case ATTR_FUNC:             return "function";
+		case ATTR_PARAM:            return "parameter";
+		case ATTR_ENUM_VALUE:       return "enum value";
+		case ATTR_GLOBAL:           return "global variable";
+		case ATTR_ENUM:             return "enum";
+		case ATTR_STRUCT:           return "struct";
+		case ATTR_UNION:            return "union";
+		case ATTR_CONST:            return "constant";
+		case ATTR_FAULT:            return "faultdef";
+		case ATTR_ALIAS:            return "alias";
+		case ATTR_CALL:             return "call";
+		case ATTR_TYPEDEF:          return "typedef";
+		case ATTR_INTERFACE_METHOD: return "interface method";
+		case ATTR_FNTYPE:           return "function type";
 	}
 	UNREACHABLE
 }
 
 // Helper method
+
+/*
+ * Update the ABI on a function type or function
+ */
 INLINE bool update_abi(Decl *decl, CallABI abi)
 {
+	// If it is a function type, update the ABI on the type
 	if (decl->decl_kind == DECL_FNTYPE)
 	{
 		decl->fntype_decl.signature.abi = abi;
 		return true;
 	}
+	// Otherwise update it on the function
 	decl->func_decl.signature.abi = abi;
 	return true;
 }
@@ -3169,10 +3241,17 @@ static bool update_call_abi_from_string(SemaContext *context, Decl *decl, Expr *
 	RETURN_SEMA_ERROR(expr, "Unknown call convention, only 'cdecl', 'stdcall' and 'veccall' are supported");
 }
 
+/*
+ * Analyse an attribute which has to be an integer constant.
+ */
 INLINE bool sema_analyse_attribute_int_const(SemaContext *context, Expr *expr)
 {
 	ASSERT(expr);
+
+	// Analyse
 	if (!sema_analyse_expr_rvalue(context, expr)) return false;
+
+	// Check type, don't allow typedefs.
 	if (!sema_cast_const(expr) || !expr_is_const_int(expr) || !type_is_integer(expr->type))
 	{
 		RETURN_SEMA_ERROR(expr, "Expected an integer compile time constant value.");
@@ -3180,10 +3259,17 @@ INLINE bool sema_analyse_attribute_int_const(SemaContext *context, Expr *expr)
 	return true;
 }
 
+/*
+ * Analyse an attribute value which must be a string, no other typedef
+ */
 INLINE bool sema_analyse_attribute_string_const(SemaContext *context, Expr *expr)
 {
 	ASSERT(expr);
+
+	// Analyse
 	if (!sema_analyse_expr_rvalue(context, expr)) return false;
+
+	// Check the expression and type
 	if (!sema_cast_const(expr) || !expr_is_const_string(expr) || expr->type != type_string)
 	{
 		RETURN_SEMA_ERROR(expr, "Expected a compile time constant String.");
@@ -3276,10 +3362,14 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	}
 
 	unsigned args = vec_size(attr->exprs);
+
+	// Check that attributes aren't more than 1 on most attributes.
 	if (args > 1 && type != ATTRIBUTE_LINK && type != ATTRIBUTE_TAG && type != ATTRIBUTE_WASM)
 	{
 		RETURN_SEMA_ERROR(attr->exprs[1], "Too many arguments for the attribute.");
 	}
+
+	// Grab the first, because that's the common case
 	Expr *expr = args ? attr->exprs[0] : NULL;
 
 	switch (type)
@@ -3293,10 +3383,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			// These are pseudo-attributes and are processed separately.
 			UNREACHABLE
 		case ATTRIBUTE_DEPRECATED:
-			if (attr_data->deprecated)
-			{
-				RETURN_SEMA_ERROR(attr, "There can't be more than a single '@deprecated' tag.");
-			}
+			if (attr_data->deprecated) RETURN_SEMA_ERROR(attr, "There can't be more than a single '@deprecated' tag.");
 			// We expect an optional string.
 			attr_data->deprecated = "";
 			if (expr)
@@ -3312,11 +3399,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.attr_optional = true;
 			break;
 		case ATTRIBUTE_WINMAIN:
-			if (decl->name != kw_main)
-			{
-				SEMA_ERROR(attr, "'@winmain' can only be used on the 'main' function.");
-				return false;
-			}
+			if (decl->name != kw_main) RETURN_SEMA_ERROR(attr, "'@winmain' can only be used on the 'main' function.");
 			decl->func_decl.attr_winmain = true;
 			break;
 		case ATTRIBUTE_CALLCONV:
@@ -3884,7 +3967,7 @@ bool sema_analyse_optional_returns(SemaContext *context, Decl *contracts)
 					break;
 				}
 				default:
-					goto IS_FAULT;;
+					goto IS_FAULT;
 			}
 			decl = decl_flatten(decl);
 			if (decl->decl_kind != DECL_FNTYPE && decl->decl_kind != DECL_FUNC && decl->decl_kind != DECL_MACRO) goto IS_FAULT;
@@ -4821,7 +4904,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 				goto FAIL;
 			}
 			// Check initialization.
-			if ((init = decl->var.init_expr))
+			if ((init = decl->var.init_expr)) // NOLINT
 			{
 				// Try to fold any constant into an lvalue.
 				if (!sema_analyse_expr(context, init)) goto FAIL;
@@ -4892,7 +4975,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 				break;
 			}
 			// If we don't have a type, resolve the expression.
-			if ((init = decl->var.init_expr))
+			if ((init = decl->var.init_expr)) // NOLINT
 			{
 				if (init->expr_kind == EXPR_TYPEINFO)
 				{

@@ -40,13 +40,14 @@ typedef uint32_t FileId;
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_INCLUDE_DIRECTIVES 2048
 #define MAX_PARAMS 255
+#define MAX_INTERFACES 127
 #define MAX_VAARGS 512
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
 #define MAX_GENERIC_DEPTH 32
 #define MAX_PRIORITY 0xFFFF
-#define MAX_TYPE_SIZE (2U << 30)
+#define MAX_TYPE_SIZE (ByteSize)(2U << 30)
 #define MAX_GLOBAL_DECL_STACK (65536)
 #define MAX_MODULE_NAME 31
 #define MAX_MODULE_PATH 63
@@ -616,7 +617,7 @@ typedef struct
 typedef struct
 {
 	const char **parameters;
-	unsigned id;
+	int id;
 	Expr **requires;
 	Decl **instances;
 	Decl *owner;
@@ -2029,6 +2030,7 @@ typedef struct
 	Ansi ansi;
 	HTable modules;
 	Module *core_module;
+	int generic_id_counter;
 	CompilationUnit *core_unit;
 	Module **module_list;
 	Type **type;
@@ -2444,6 +2446,8 @@ bool decl_inherits_module_generic(Decl *decl);
 void decl_append_links_to_global_during_codegen(Decl *decl);
 Decl *decl_template_get_generic(Decl *decl);
 
+INLINE ResolvedAttrData *decl_get_resolved_attributes(Decl *decl);
+INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl);
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
 INLINE bool decl_is_struct_type(Decl *decl);
@@ -2706,6 +2710,7 @@ bool arch_is_wasm(ArchType type);
 
 const char *macos_sysroot(void);
 MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
+const char *macos_cross_compile_library(void);
 WindowsSDK *windows_get_sdk(void);
 // This string may be in the scratch buffer
 const char *windows_cross_compile_library(const char *arch);
@@ -4804,6 +4809,16 @@ INLINE bool expr_is_valid_index(Expr *expr)
 	return int_fits(expr->const_expr.ixx, TYPE_I64);
 }
 
+INLINE ResolvedAttrData *decl_get_resolved_attributes(Decl *decl)
+{
+	return decl->resolved_attributes ? decl->attrs_resolved : NULL;
+}
+
+INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl)
+{
+	ASSERT_SPAN(decl, decl->resolved_attributes);
+	return decl->attrs_resolved = CALLOCS(ResolvedAttrData);
+}
 
 const char *default_c_compiler(void);
 

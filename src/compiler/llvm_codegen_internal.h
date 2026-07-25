@@ -572,7 +572,7 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTyp
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value);
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr);
-LLVMMetadataRef llvm_debug_create_macro(GenContext *c, Decl *macro);
+LLVMMetadataRef llvm_debug_create_macro(GenContext *c, Decl *macro, Expr *macro_call);
 void llvm_emit_array_to_vector(GenContext *c, BEValue *value, Type *to);
 void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type);
 
@@ -598,7 +598,7 @@ LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 void llvm_emit_debug_function(GenContext *c, Decl *decl);
 void llvm_emit_debug_location(GenContext *c, SourceLocId location);
 LLVMMetadataRef llvm_create_debug_location(GenContext *c, SourceLocId location);
-void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index);
+void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index, LLVMMetadataRef scope);
 void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 
 #define UWTABLE (compiler.build.arch_os_target == MACOS_AARCH64 ? 1 : 2)
