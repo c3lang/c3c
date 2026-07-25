@@ -500,3 +500,13 @@ fn void test_parse_ipv6_with_port_full()
 	assert(url.path == "/c=GB", "got '%s'", url.path);
 	assert(url.query == "objectClass=one", "got '%s'", url.query);
 }
+
+fn void test_parse_host_with_crlf()
+{
+	test::@error(url::parse(mem, "http://example.com\r\n/"), url::INVALID_HOST);
+}
+
+fn void test_parse_host_with_encoded_crlf()
+{
+	test::@error(url::parse(mem, "http://example.com%0d%0a/"), url::INVALID_HOST);
+}
