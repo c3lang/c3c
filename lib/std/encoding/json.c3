@@ -258,27 +258,21 @@ fn String? parse_string(JsonDeserializer* des) @private
 	while (des.cursor < des.source.len)
 	{
 		char c = des.source[des.cursor];
-		if (c == '"')
+		switch (c)
 		{
-			String res = des.source[start:des.cursor - start];
-			des.cursor++; // consume '"'
-			if (!has_escapes)
-			{
-				return res;
-			}
-			des.last_string.clear();
-			decode_escapes_into(res, &des.last_string)!;
-			return des.last_string.str_view();
-		}
-		if (c == '\\')
-		{
-			has_escapes = true;
-			des.cursor += 2;
-		}
-		else
-		{
-			if (c < 32) return UNEXPECTED_CHARACTER~;
-			des.cursor++;
+			case '"':
+				String res = des.source[start:des.cursor - start];
+				des.cursor++; // consume '"'
+				if (!has_escapes) return res;
+				des.last_string.clear();
+				decode_escapes_into(res, &des.last_string)!;
+				return des.last_string.str_view();
+			case '\\':
+				has_escapes = true;
+				des.cursor += 2;
+			default:
+				if (c < 32) return UNEXPECTED_CHARACTER~;
+				des.cursor++;
 		}
 	}
 	return UNEXPECTED_CHARACTER~;
@@ -339,10 +333,8 @@ macro parse_int(JsonDeserializer* des, $Type) @private
 	String tok = scan_number(des, &is_float)!;
 	if (is_float) return ($Type)(tok.to_double() ?? INVALID_NUMBER~);
 	$switch $Type::kind:
-		$case SIGNED_INT:
-			return ($Type)(tok.to_long(10) ?? INVALID_NUMBER~);
-		$case UNSIGNED_INT:
-			return ($Type)(tok.to_ulong(10) ?? INVALID_NUMBER~);
+		$case SIGNED_INT: return ($Type)(tok.to_long(10) ?? INVALID_NUMBER~);
+		$case UNSIGNED_INT: return ($Type)(tok.to_ulong(10) ?? INVALID_NUMBER~);
 	$endswitch
 }
 
@@ -356,17 +348,18 @@ fn Object*? parse_number_object(JsonDeserializer* des) @private
 
 fn bool? parse_bool(JsonDeserializer* des) @private
 {
-	if (des.cursor + 4 <= des.source.len && des.source[des.cursor:4] == "true")
+	String current = des.source[des.cursor..];
+	switch
 	{
-		des.cursor += 4;
-		return true;
+		case current.starts_with("true"):
+			des.cursor += 4;
+			return true;
+		case current.starts_with("false"):
+			des.cursor += 5;
+			return false;
+		default:
+			return UNEXPECTED_CHARACTER~;
 	}
-	if (des.cursor + 5 <= des.source.len && des.source[des.cursor:5] == "false")
-	{
-		des.cursor += 5;
-		return false;
-	}
-	return UNEXPECTED_CHARACTER~;
 }
 
 fn Object*? parse_any(JsonDeserializer* des) @private
