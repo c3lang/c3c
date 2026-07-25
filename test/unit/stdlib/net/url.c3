@@ -663,3 +663,13 @@ fn void test_parse_network_path_port()
 	test::eq(url.host, "example.com");
 	test::eq(url.port, 80);
 }
+
+fn void test_parse_host_with_crlf()
+{
+	test::@error(url::parse(mem, "http://example.com\r\n/"), url::INVALID_HOST);
+}
+
+fn void test_parse_host_with_encoded_crlf()
+{
+	test::@error(url::parse(mem, "http://example.com%0d%0a/"), url::INVALID_HOST);
+}
