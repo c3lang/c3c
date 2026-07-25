@@ -6,9 +6,15 @@
 - Windows aarch64 is now supported.
 - Tracking allocator can now accept cross-thread allocations.
 - Filter test backtraces #3368
+- Improved GDB compatibility for macros.
+- Fail when "emcc" is unavailable instead of falling back to the built-in wasm linker.
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
+- Added `FixedList.is_full()` method
+- `Rect.contains_point` is now exclusive on the maximum edge.
+- Add `Bounds` - a rectangular region stored as a `min` and `max` value, with all operations being inclusive along the boundary edge.
+- Experimental regex support.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374
@@ -21,6 +27,7 @@
 - Timed `tcp::connect` always failed with `io::GENERAL_ERROR` instead of the real result.
 - Compile time struct with zeroed union member access causes compiler error #3382.
 - Generic methods checked before the generic type is fully registered.
+- Math function `_erff` invoked C `erf` function instead of `erff` function #3391
   
 ## 0.8.2 Change list
 

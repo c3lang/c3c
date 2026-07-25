@@ -92,9 +92,9 @@ static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, c
 			name, strlen(name),
 			loc ? c->debug.file.debug_file : NULL,
 			sourceloc_row(loc),
-			type_size(type) * 8,
+			(uint64_t)type_size(type) * 8,
 			(uint32_t)(type_abi_alignment(type) * 8),
-			offset * 8, flags, llvm_get_debug_type_internal(c, type, scope));
+			(uint64_t)offset * 8, flags, llvm_get_debug_type_internal(c, type, scope));
 }
 
 
@@ -183,8 +183,9 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
  * @param c
  * @param parameter
  * @param index
+ * @param scope
  */
-void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
+void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index, LLVMMetadataRef scope)
 {
 	ASSERT(!llvm_is_global_eval(c));
 	const char *name = parameter->name ? parameter->name : ".anon";
@@ -194,7 +195,7 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 
 	parameter->var.backend_debug_ref = LLVMDIBuilderCreateParameterVariable(
 			c->debug.builder,
-			c->debug.function,
+			scope,
 			name,
 			strlen(name),
 			index + 1,
@@ -205,11 +206,10 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 			LLVMDIFlagZero);
 	if (parameter->is_value)
 	{
-		llvm_emit_debug_value(c, parameter->backend_value, parameter->var.backend_debug_ref, row, col, c->debug.function);
+		llvm_emit_debug_value(c, parameter->backend_value, parameter->var.backend_debug_ref, row, col, scope);
 		return;
 	}
-	llvm_emit_debug_declare(c, parameter->backend_ref, parameter->var.backend_debug_ref,
-	                        row, col, c->debug.function);
+	llvm_emit_debug_declare(c, parameter->backend_ref, parameter->var.backend_debug_ref, row, col, scope);
 
 }
 
@@ -248,13 +248,27 @@ static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const 
 
 }
 
-LLVMMetadataRef llvm_debug_create_macro(GenContext *c, Decl *macro)
+
+LLVMMetadataRef llvm_debug_create_macro(GenContext *c, Decl *macro, Expr *call_expr)
 {
 	const char *name = macro->name;
 	size_t namelen = strlen(name);
 	SourceLoc *location = sourceloc_safe(macro->loc);
 	LLVMMetadataRef file = llvm_get_debug_file(c, location->file_id);
-	LLVMMetadataRef macro_type = NULL;
+
+	Signature *sig = &macro->func_decl.signature;
+	LLVMMetadataRef params[MAX_PARAMS + 1];
+	int index = 0;
+	Type *expr_type = call_expr->type;
+	params[index++] = type_is_wildcard(expr_type) ? NULL : llvm_get_debug_type(c, expr_type);
+	FOREACH_IDX(i, Decl *, param, sig->params)
+	{
+		if (!param || param->var.kind != VARDECL_PARAM) continue;
+		Expr *expr = call_expr->macro_block.params[i]->var.init_expr;
+		if (!expr || !expr->type) continue;
+		params[index++] = llvm_get_debug_type(c, expr->type);
+	}
+	LLVMMetadataRef macro_type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, c->debug.file.debug_file, params, index, 0);
 	return LLVMDIBuilderCreateFunction(c->debug.builder, file, name, namelen, name, namelen,
 	                            file, location->row, macro_type, true, true, location->row, LLVMDIFlagPrototyped, false);
 }
