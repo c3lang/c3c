@@ -40,6 +40,7 @@ bool decl_is_deprecated(Decl *decl)
 	return decl->resolved_attributes && decl->attrs_resolved && decl->attrs_resolved->deprecated;
 }
 
+
 // Check if local or parameter $foo/$Foo
 bool decl_is_ct_var(Decl *decl)
 {

@@ -603,6 +603,7 @@ typedef enum
 
 typedef enum FLAG_ATTR
 {
+	ATTR_NONE = 0,
 	ATTR_FUNC = 1 << 0,
 	ATTR_GLOBAL = 1 << 1,
 	ATTR_LOCAL = 1 << 2,

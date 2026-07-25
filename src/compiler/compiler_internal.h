@@ -47,7 +47,7 @@ typedef uint32_t FileId;
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
 #define MAX_GENERIC_DEPTH 32
 #define MAX_PRIORITY 0xFFFF
-#define MAX_TYPE_SIZE (2U << 30)
+#define MAX_TYPE_SIZE (ByteSize)(2U << 30)
 #define MAX_GLOBAL_DECL_STACK (65536)
 #define MAX_MODULE_NAME 31
 #define MAX_MODULE_PATH 63
@@ -2446,6 +2446,8 @@ bool decl_inherits_module_generic(Decl *decl);
 void decl_append_links_to_global_during_codegen(Decl *decl);
 Decl *decl_template_get_generic(Decl *decl);
 
+INLINE ResolvedAttrData *decl_get_resolved_attributes(Decl *decl);
+INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl);
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
 INLINE bool decl_is_struct_type(Decl *decl);
@@ -4805,6 +4807,17 @@ INLINE bool expr_is_valid_index(Expr *expr)
 {
 	ASSERT_SPAN(expr, expr_is_const_int(expr));
 	return int_fits(expr->const_expr.ixx, TYPE_I64);
+}
+
+INLINE ResolvedAttrData *decl_get_resolved_attributes(Decl *decl)
+{
+	return decl->resolved_attributes ? decl->attrs_resolved : NULL;
+}
+
+INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl)
+{
+	ASSERT_SPAN(decl, decl->resolved_attributes);
+	return decl->attrs_resolved = CALLOCS(ResolvedAttrData);
 }
 
 
