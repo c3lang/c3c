@@ -270,6 +270,36 @@ fn void test_ctr_xcrypt() @test
 	}
 }
 
+fn void test_ctr_streaming_matches_oneshot() @test
+{
+	char[] key       = x"2b7e151628aed2a6abf7158809cf4f3c";
+	char[16] iv      = x"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
+	char[] plaintext = x"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710";
+	char[] expected  = x"874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff5ae4df3edbd5d35e5b4f09020db03eab1e031dda2fbe03d1792170a0f3009cee";
+
+	Aes ctx;
+
+	char[64] oneshot;
+	ctx.init(AES128, key, iv, CTR);
+	ctx.encrypt_buffer(plaintext, &oneshot);
+	assert(oneshot[:64] == expected[:64], "one-shot CTR mismatch");
+
+	sz[] chunk_sizes = { 1, 3, 7, 16, 20, 24, 32 };
+	foreach (cs : chunk_sizes)
+	{
+		char[64] out;
+		ctx.init(AES128, key, iv, CTR);
+		for (sz off = 0; off < plaintext.len; off += cs)
+		{
+			sz n = cs;
+			if (off + n > plaintext.len) n = plaintext.len - off;
+			ctx.encrypt_buffer(plaintext[off:n], out[off:n]);
+		}
+		assert(out[:64] == expected[:64],
+			"CTR streaming with chunk size %d desynced vs one-shot; got: %s", cs, (char[])out[:64]);
+	}
+}
+
 fn void test_aes_xcrypt() @test
 {
 	char[64] out;
