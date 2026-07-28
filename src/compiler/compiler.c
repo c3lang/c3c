@@ -1705,7 +1705,7 @@ INLINE void update_feature_flags(void)
 			case OS_TYPE_TVOS:       add_feat("POSIX"); add_feat("DARWIN"); add_feat("TVOS"); break;
 			case OS_TYPE_WATCHOS:    add_feat("POSIX"); add_feat("DARWIN"); add_feat("WATCHOS"); break;
 			case OS_TYPE_WASI:       add_feat("WASI"); break;
-			case OS_TYPE_EMSCRIPTEN: add_feat("EMSCRIPTEN"); break;
+			case OS_TYPE_EMSCRIPTEN: add_feat("POSIX"); add_feat("EMSCRIPTEN"); break;
 			case OS_TYPE_ANDROID:    add_feat("POSIX"); add_feat("ANDROID"); break;
 		}
 	}
