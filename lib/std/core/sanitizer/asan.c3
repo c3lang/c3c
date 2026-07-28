@@ -1,5 +1,5 @@
 // Add this to your code to suppress leak detection or set other default options
-// fn ZString __asan_default_options() @export("__asan_default_options") @if(env::ADDRESS_SANITIZER)
+// fn ZString __asan_default_options() @export("__asan_default_options") @feat(ASAN)
 // {
 //   return "detect_leaks=0";
 // }
@@ -100,7 +100,7 @@ fn void set_error_report_callback(ErrorCallback callback)
 	$endif
 }
 
-module std::core::sanitizer::asan @if(env::ADDRESS_SANITIZER);
+module std::core::sanitizer::asan @feat(ADDRESS_SANITIZER);
 
 extern fn void __asan_poison_memory_region(void* addr, sz size);
 extern fn void __asan_unpoison_memory_region(void* addr, sz size);

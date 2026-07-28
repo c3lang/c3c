@@ -4,6 +4,7 @@ import std::test;
 fn void main()
 {
 	int x = test::abc();
+	int* y = test::abcd();
 }
 
 module std::test;
@@ -14,6 +15,21 @@ macro abc()
 	return A;
 }
 
+macro abcd()
+{
+	const int B = 256;
+	return &B;
+}
+
 /* #expect: scratch.ll
 
-@main.A = internal local_unnamed_addr constant i32 256, align 4
+@main.B = internal constant i32 256, align 4
+
+define void @scratch.main() #0 {
+entry:
+  %x = alloca i32, align 4
+  %y = alloca ptr, align 8
+  store i32 256, ptr %x, align 4
+  store ptr @main.B, ptr %y, align 8
+  ret void
+}

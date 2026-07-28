@@ -40,13 +40,14 @@ typedef uint32_t FileId;
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_INCLUDE_DIRECTIVES 2048
 #define MAX_PARAMS 255
+#define MAX_INTERFACES 127
 #define MAX_VAARGS 512
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
 #define MAX_GENERIC_DEPTH 32
 #define MAX_PRIORITY 0xFFFF
-#define MAX_TYPE_SIZE (2U << 30)
+#define MAX_TYPE_SIZE (ByteSize)(2U << 30)
 #define MAX_GLOBAL_DECL_STACK (65536)
 #define MAX_MODULE_NAME 31
 #define MAX_MODULE_PATH 63
@@ -441,6 +442,8 @@ typedef struct
 			DeclId padded_decl_id;
 			StructIndex union_rep;
 			AlignSize padding : 16;
+			bool is_packed : 1;
+			bool is_compact : 1;
 		};
 		struct
 		{
@@ -719,7 +722,6 @@ typedef struct Decl_
 	ResolveStatus resolve_status : 3;
 	Visibility visibility : 3;
 	bool has_tag : 1;
-	bool is_packed : 1;
 	bool is_extern : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
@@ -739,10 +741,10 @@ typedef struct Decl_
 	bool is_live : 1;
 	bool no_strip : 1;
 	bool is_cond : 1;
+	bool is_feat_cond : 1;
 	bool is_if : 1;
 	bool is_body_checked : 1;
 	bool attr_nopadding : 1;
-	bool attr_compact : 1;
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_constinit : 1;
@@ -1763,6 +1765,7 @@ struct CompilationUnit_
 	Visibility default_visibility;
 	bool default_is_weak;
 	Attr *if_attr;
+	Attr **feat_attributes;
 	Decl *default_generic_section;
 	Decl **generic_decls;
 	Decl **weak_symbols_skipped;
@@ -2445,6 +2448,8 @@ bool decl_inherits_module_generic(Decl *decl);
 void decl_append_links_to_global_during_codegen(Decl *decl);
 Decl *decl_template_get_generic(Decl *decl);
 
+INLINE ResolvedAttrData *decl_get_resolved_attributes(Decl *decl);
+INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl);
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);
 INLINE bool decl_is_struct_type(Decl *decl);
@@ -2579,6 +2584,8 @@ void sema_decl_stack_restore(Decl **state);
 void sema_decl_stack_push(Decl *decl);
 Decl *sema_find_generic_instance(SemaContext *context, Module *module, Decl *generic, Decl *instance, const char *name);
 
+BoolErr sema_remove_due_to_conditionals(Attr **attrs);
+BoolErr sema_remove_due_to_conditional(Attr *attr);
 bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *to);
 bool sema_add_local(SemaContext *context, Decl *decl);
 void sema_unwrap_var(SemaContext *context, Decl *decl);
@@ -4806,6 +4813,16 @@ INLINE bool expr_is_valid_index(Expr *expr)
 	return int_fits(expr->const_expr.ixx, TYPE_I64);
 }
 
+INLINE ResolvedAttrData *decl_get_resolved_attributes(Decl *decl)
+{
+	return decl->resolved_attributes ? decl->attrs_resolved : NULL;
+}
+
+INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl)
+{
+	ASSERT_SPAN(decl, decl->resolved_attributes);
+	return decl->attrs_resolved = CALLOCS(ResolvedAttrData);
+}
 
 const char *default_c_compiler(void);
 

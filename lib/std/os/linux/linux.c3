@@ -1,4 +1,4 @@
-module std::os::linux @if(env::LINUX);
+module std::os::linux @feat(LINUX);
 import libc, std::os, std::io, std::collections::list, std::net::os;
 
 // https://man7.org/linux/man-pages/man3/inet_ntop.3.html

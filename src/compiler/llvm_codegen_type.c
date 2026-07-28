@@ -48,7 +48,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			{
 				vec_add(types, llvm_const_padding_type(c, decl->strukt.padding));
 			}
-			LLVMStructSetBody(type, types, vec_size(types), decl->is_packed);
+			LLVMStructSetBody(type, types, vec_size(types), decl->strukt.is_packed);
 			ASSERT_SPANF(decl, llvm_abi_size(c, type) == type_size(decl->type), "Was %d, expected %d", (int)type_size(decl->type), (int)llvm_abi_size(c, type));
 			return type;
 		}
@@ -71,7 +71,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 				{
 					type_ref[elements++] = llvm_const_padding_type(c, decl->strukt.padding);
 				}
-				LLVMStructSetBody(type, type_ref, elements, decl->is_packed);
+				LLVMStructSetBody(type, type_ref, elements, decl->strukt.is_packed);
 			}
 			else
 			{

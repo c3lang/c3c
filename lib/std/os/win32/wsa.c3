@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32) @link("ws2_32");
+module std::os::win32 @feat(WIN32) @link("ws2_32");
 
 // See https://github.com/wine-mirror/wine/blob/master/include/winsock2.h
 
@@ -130,7 +130,7 @@ const int FIONBIO = -2147195266;
 const int FIONREAD = 1074030207;
 const int SIOCATMARK = 1074033415;
 
-module std::os::win32::wsa @if(env::WIN32);
+module std::os::win32::wsa @feat(WIN32);
 
 constdef WSAError : int
 {

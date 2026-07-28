@@ -254,7 +254,7 @@ fn bool InetAddress.is_multicast_link_local(InetAddress* addr)
 <*
  @require port >= 0 && port <= 0xFFFF : "Invalid port"
 *>
-fn AddrInfo*? addrinfo(String host, int port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET) => @pool()
+fn AddrInfo*? addrinfo(String host, int port, AIFamily ai_family, AISockType ai_socktype) @feat(WIN32, POSIX) => @pool()
 {
 	$if env::WIN32: //fn TcpServerSocket? listen() calls addrinfo() before setting os::start_wsa so we need this here
 		os::start_wsa()!;

@@ -1,4 +1,4 @@
-module std::core::mem::allocators @if(env::POSIX || env::WIN32);
+module std::core::mem::allocators @feat(POSIX, WIN32);
 import std::math, std::os::posix, libc, std::bits;
 
 // Virtual Memory allocator

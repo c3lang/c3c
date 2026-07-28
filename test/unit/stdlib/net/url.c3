@@ -500,3 +500,176 @@ fn void test_parse_ipv6_with_port_full()
 	assert(url.path == "/c=GB", "got '%s'", url.path);
 	assert(url.query == "objectClass=one", "got '%s'", url.query);
 }
+
+fn void test_parse_http_authority()
+{
+	Url url = url::parse(mem, "http://example.com")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.path, "");
+}
+
+fn void test_parse_http_root()
+{
+	Url url = url::parse(mem, "http://example.com/")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.path, "/");
+}
+
+fn void test_parse_http_full()
+{
+	Url url = url::parse(mem, "http://user:password@example.com:8080/path?query=value#fragment")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.port, 8080);
+	test::eq(url.username, "user");
+	test::eq(url.password, "password");
+	test::eq(url.path, "/path");
+	test::eq(url.query, "query=value");
+	test::eq(url.fragment, "fragment");
+}
+
+fn void test_parse_http_default_port()
+{
+	Url url = url::parse(mem, "http://example.com:80/")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.port, 80);
+	test::eq(url.path, "/");
+}
+
+fn void test_parse_http_port()
+{
+	Url url = url::parse(mem, "http://example.com:8080/")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.port, 8080);
+	test::eq(url.path, "/");
+}
+
+fn void test_parse_encoded_dot()
+{
+	Url url = url::parse(mem, "http://example.com/%2E/")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.path, "/./");
+}
+
+fn void test_parse_dotdot()
+{
+	Url url = url::parse(mem, "http://example.com/..")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.path, "/..");
+}
+
+fn void test_parse_query()
+{
+	Url url = url::parse(mem, "http://example.com/?q=string")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.path, "/");
+	test::eq(url.query, "q=string");
+}
+
+fn void test_parse_empty_userinfo()
+{
+	Url url = url::parse(mem, "http://@example.com/")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.username, "");
+	test::eq(url.path, "/");
+}
+
+fn void test_parse_empty_user_password()
+{
+	Url url = url::parse(mem, "http://:@example.com/")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com");
+	test::eq(url.username, "");
+	test::eq(url.password, "");
+	test::eq(url.path, "/");
+}
+
+fn void test_parse_trailing_dot_host()
+{
+	Url url = url::parse(mem, "http://example.com./")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "example.com.");
+	test::eq(url.path, "/");
+}
+
+fn void test_parse_ipv6_loopback()
+{
+	Url url = url::parse(mem, "http://[::1]/")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "http");
+	test::eq(url.host, "[::1]");
+	test::eq(url.path, "/");
+}
+
+fn void test_parse_network_path()
+{
+	Url url = url::parse(mem, "//example.com")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "");
+	test::eq(url.host, "example.com");
+	test::eq(url.path, "");
+}
+
+fn void test_parse_network_path_userinfo()
+{
+	Url url = url::parse(mem, "//user@example.com/path?a=b")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "");
+	test::eq(url.host, "example.com");
+	test::eq(url.username, "user");
+	test::eq(url.path, "/path");
+	test::eq(url.query, "a=b");
+}
+
+fn void test_parse_network_path_port()
+{
+	Url url = url::parse(mem, "//example.com:80")!!;
+	defer url.free();
+
+	test::eq(url.scheme, "");
+	test::eq(url.host, "example.com");
+	test::eq(url.port, 80);
+}
+
+fn void test_parse_host_with_crlf()
+{
+	test::@error(url::parse(mem, "http://example.com\r\n/"), url::INVALID_HOST);
+}
+
+fn void test_parse_host_with_encoded_crlf()
+{
+	test::@error(url::parse(mem, "http://example.com%0d%0a/"), url::INVALID_HOST);
+}

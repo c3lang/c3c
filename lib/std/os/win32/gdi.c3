@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32);
+module std::os::win32 @feat(WIN32);
 
 extern fn Win32_HBRUSH createSolidBrush(Win32_COLORREF) @cname("CreateSolidBrush");
 extern fn Win32_COLORREF setTextColor(Win32_HDC, Win32_COLORREF) @cname("SetTextColor");

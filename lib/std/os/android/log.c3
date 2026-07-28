@@ -1,4 +1,4 @@
-module std::os::android @if(env::ANDROID);
+module std::os::android @feat(ANDROID);
 
 
 enum AndroidLogPriority : (CInt val)

@@ -1,4 +1,4 @@
-module std::os::darwin @if(env::DARWIN) @link("Foundation.framework");
+module std::os::darwin @feat(DARWIN) @link("Foundation.framework");
 import std::os::macos::cf, std::os::macos::objc, std::io;
 
 constdef NSSearchPathDomainMask : NSUInteger

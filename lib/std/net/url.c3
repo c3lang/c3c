@@ -61,13 +61,21 @@ fn Url? parse(Allocator allocator, String url_string)
 	url_string = url_string.trim();
 	if (!url_string) return EMPTY~;
 	Url url = { .allocator = allocator };
+	defer catch url.free();
 
-	// Parse scheme
-	if (try pos = url_string.index_of("://"))
+	// Parse scheme, an authority is only present when introduced by "//"
+	bool has_authority;
+	if (url_string.starts_with("//"))
+	{
+		url_string = url_string[2..];
+		has_authority = true;
+	}
+	else if (try pos = url_string.index_of("://"))
 	{
 		if (!pos) return INVALID_SCHEME~;
 		url.scheme = url_string[:pos].copy(allocator);
 		url_string = url_string[url.scheme.len + 3 ..];
+		has_authority = true;
 	}
 	else if (try pos = url_string.index_of(":"))
 	{
@@ -79,7 +87,7 @@ fn Url? parse(Allocator allocator, String url_string)
 	}
 
 	// Parse host, port
-	if (url.scheme != "urn")
+	if (has_authority)
 	{
 		sz authority_end = url_string.index_of_chars("/?#") ?? url_string.len;
 		String authority = url_string[:authority_end];
@@ -93,7 +101,6 @@ fn Url? parse(Allocator allocator, String url_string)
 			{
 				String[] userpass = userinfo.tsplit(":", 2);
 				username = userpass[0];
-				if (!username.len) return INVALID_USER~;
 				url.username = decode(allocator, username, HOST) ?? INVALID_USER~!;
 				if (userpass.len > 1) url.password = decode(allocator, userpass[1], USERPASS) ?? INVALID_PASSWORD~!;
 			};
@@ -128,6 +135,7 @@ fn Url? parse(Allocator allocator, String url_string)
 			};
 		}
 		url.host = decode(allocator, host, HOST) ?? INVALID_HOST~!;
+		foreach (c : url.host) if (c.is_cntrl()) return INVALID_HOST~;
 		url_string = url_string[authority_end ..];
 	}
 
@@ -174,11 +182,11 @@ fn sz? Url.to_format(&self, Formatter* f) @dynamic
 	{
 		len += f.print(self.scheme)!;
 		len += f.print(":")!;
-		if (self.host.len > 0) len += f.print("//")!;
 	}
+	if (self.host.len > 0) len += f.print("//")!;
 
 	// Add username and password if they exist
-	if (self.username)
+	if (self.username || self.password)
 	{
 		@stack_mem(64; Allocator smem)
 		{

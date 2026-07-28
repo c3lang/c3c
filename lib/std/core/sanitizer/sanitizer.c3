@@ -28,7 +28,7 @@ fn void set_death_callback(VoidFn callback)
 	$endif
 }
 
-module std::core::sanitizer @if (env::ANY_SANITIZER);
+module std::core::sanitizer @feat(ASAN, MSAN, TSAN);
 
 struct __Sanitizer_sandbox_arguments
 {

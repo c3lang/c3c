@@ -1,4 +1,4 @@
-module std::net @if(os::SUPPORTS_INET);
+module std::net @feat(WIN32, POSIX);
 import std::io, std::os, std::time, libc;
 
 struct Socket (InStream, OutStream)
@@ -113,7 +113,7 @@ macro Socket new_socket(fd, ai)
 enum SocketOption : char (CInt value)
 {
 	REUSEADDR                  { os::SO_REUSEADDR },
-	REUSEPORT @if(!env::WIN32) { os::SO_REUSEPORT },
+	REUSEPORT @feat(!WIN32) { os::SO_REUSEPORT },
 	KEEPALIVE                  { os::SO_KEEPALIVE },
 	BROADCAST                  { os::SO_BROADCAST },
 	OOBINLINE                  { os::SO_OOBINLINE },
