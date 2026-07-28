@@ -1,4 +1,4 @@
-module std::io::os @if(env::LIBC);
+module std::io::os @feat(LIBC);
 import libc;
 
 <*
@@ -137,26 +137,27 @@ macro fault file_seek_errno() @local
 }
 
 
-struct Utimbuf @if(env::EMSCRIPTEN && !env::WIN32)
+struct Utimbuf @feat(EMSCRIPTEN)
 {
 	long actime;
 	long modtime;
 }
 
-struct Utimbuf @if(!env::EMSCRIPTEN && !env::WIN32)
+struct Utimbuf @feat(!EMSCRIPTEN) @feat(!WIN32)
 {
 	Time_t actime;
 	Time_t modtime;
 }
-extern fn int utime(char* filename, void* times) @if(!env::WIN32);
+extern fn int utime(char* filename, void* times) @feat(!WIN32);
 
-struct FileTime @if(env::WIN32) {
+struct FileTime @feat(WIN32)
+{
 	uint low;
 	uint high;
 }
-extern fn void* create_file_w(WChar* lpFileName, uint dwDesiredAccess, uint dwShareMode, void* lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, void* hTemplateFile) @cname("CreateFileW") @if(env::WIN32);
-extern fn int set_file_time(void* hFile, void* lpCreationTime, void* lpLastAccessTime, void* lpLastWriteTime) @cname("SetFileTime") @if(env::WIN32);
-extern fn int close_handle(void* hObject) @cname("CloseHandle") @if(env::WIN32);
+extern fn void* create_file_w(WChar* lpFileName, uint dwDesiredAccess, uint dwShareMode, void* lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, void* hTemplateFile) @cname("CreateFileW") @feat(WIN32);
+extern fn int set_file_time(void* hFile, void* lpCreationTime, void* lpLastAccessTime, void* lpLastWriteTime) @cname("SetFileTime") @feat(WIN32);
+extern fn int close_handle(void* hObject) @cname("CloseHandle") @feat(WIN32);
 
 fn void? native_set_modified_time(String filename, Time_t time) => @stack_mem(256; Allocator smem)
 {

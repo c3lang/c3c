@@ -1,4 +1,4 @@
-module std::os::process @if(env::WIN32 || env::POSIX);
+module std::os::process @feat(WIN32, POSIX);
 import std::io, libc, std::os, std::net::os;
 
 // This code is based on https://github.com/sheredom/subprocess.h
@@ -23,13 +23,13 @@ struct Process
 	CFile stdout_file;
 	CFile stderr_file;
 	
-	Win32_HANDLE hProcess @if(env::WIN32);
-	Win32_HANDLE hStdInput @if(env::WIN32);
-	Win32_HANDLE hEventOutput @if(env::WIN32);
-	Win32_HANDLE hEventError @if(env::WIN32);
+	Win32_HANDLE hProcess @feat(WIN32);
+	Win32_HANDLE hStdInput @feat(WIN32);
+	Win32_HANDLE hEventOutput @feat(WIN32);
+	Win32_HANDLE hEventError @feat(WIN32);
 
-	Pid_t child @if(!env::WIN32);
-	int return_status @if(env::POSIX);
+	Pid_t child @feat(!WIN32);
+	int return_status @feat(POSIX);
 
 	bool is_alive;
 }
@@ -89,7 +89,7 @@ fn int? run(String[] command_line, SpawnOptions options = {}, String[] environme
  @require !environment || !(options & INHERIT_ENV)
 *>
 fn Process? spawn(String[] command_line, SpawnOptions options = {}, String[] environment = {},
-                  ProcessStdio in = DEFAULT, ProcessStdio out = DEFAULT, ProcessStdio err = DEFAULT) @if(env::WIN32 || env::POSIX)
+                  ProcessStdio in = DEFAULT, ProcessStdio out = DEFAULT, ProcessStdio err = DEFAULT) @feat(WIN32, POSIX)
 {
 	update_default(&in, &out, &err, !!(options & INHERIT_STDIO));
 
@@ -379,7 +379,7 @@ $endif
 
 
 
-fn CInt? Process.join(&self) @if(env::POSIX)
+fn CInt? Process.join(&self) @feat(POSIX)
 {
 	if (self.stdin_file)
 	{
@@ -407,7 +407,7 @@ fn File Process.stderr(&self)
 	return file::from_handle(self.stderr_file);
 }
 
-fn CInt? Process.join(&self) @if(env::WIN32)
+fn CInt? Process.join(&self) @feat(WIN32)
 {
 	if (self.stdin_file)
 	{
@@ -454,7 +454,7 @@ fn void? Process.terminate(&self)
 <*
  @require size <= Win32_DWORD::max
 *>
-fn sz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer, sz size) @if(env::WIN32) @local
+fn sz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer, sz size) @feat(WIN32) @local
 {
 	CInt fd = libc::fileno(file);
 	Win32_DWORD bytes_read = 0;
@@ -481,7 +481,7 @@ fn sz? read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer,
 	return bytes_read;
 }
 
-fn sz? read_from_file_posix(CFile file, char* buffer, sz size) @if(env::POSIX) @local
+fn sz? read_from_file_posix(CFile file, char* buffer, sz size) @feat(POSIX) @local
 {
 	sz bytes_read = libc::read(libc::fileno(file), buffer, (usz)size);
 	if (bytes_read < 0)
@@ -540,7 +540,7 @@ fn sz? Process.write_stdin(&self, char[] buffer)
 	defer try (void)os::native_fflush(self.stdin_file);
 	return os::native_fwrite(self.stdin_file, buffer);
 }
-fn void? create_named_pipe_helper(void** rd, void **wr) @local @if(env::WIN32)
+fn void? create_named_pipe_helper(void** rd, void **wr) @local @feat(WIN32)
 {
 	Win32_SECURITY_ATTRIBUTES sa_attr = { Win32_SECURITY_ATTRIBUTES::size, null, 1 };
 
@@ -560,7 +560,7 @@ fn void? create_named_pipe_helper(void** rd, void **wr) @local @if(env::WIN32)
 	if (win32::INVALID_HANDLE_VALUE == *wr) return FAILED_TO_CREATE_PIPE~;
 }
 
-fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WIN32) @local
+fn WString convert_command_line_win32(String[] command_line) @inline @feat(WIN32) @local
 {
 	DString str = dstring::temp_with_capacity(512);
 	foreach LINE: (i, s : command_line)
@@ -603,7 +603,7 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 <*
  @require command_line.len > 0
 *>
-fn ZString* copy_command_line(Allocator mem, String[] command_line) @local @inline @if(env::POSIX)
+fn ZString* copy_command_line(Allocator mem, String[] command_line) @local @inline @feat(POSIX)
 {
 	ZString* copy = alloc::alloc_array(mem, ZString, command_line.len + 1);
 	foreach (i, str : command_line)
@@ -614,8 +614,8 @@ fn ZString* copy_command_line(Allocator mem, String[] command_line) @local @inli
 	return copy;
 }
 
-const ZString[1] EMPTY_ENVIRONMENT @if(env::POSIX) = { null };
-fn ZString* copy_env(Allocator mem, String[] environment) @local @inline @if(env::POSIX)
+const ZString[1] EMPTY_ENVIRONMENT @feat(POSIX) = { null };
+fn ZString* copy_env(Allocator mem, String[] environment) @local @inline @feat(POSIX)
 {
 	if (!environment.len) return &EMPTY_ENVIRONMENT;
 	ZString* copy = alloc::alloc_array(mem, ZString, environment.len + 1);

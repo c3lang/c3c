@@ -1,4 +1,4 @@
-module libc @if(env::DARWIN);
+module libc @feat(DARWIN);
 
 alias Dev_t = int;
 alias Mode_t = ushort;
@@ -49,7 +49,7 @@ const SCHED_OTHER = 1;
 const SCHED_FIFO  = 4;
 const SCHED_RR    = 2;
 
-module libc::termios @if(env::LIBC &&& env::DARWIN);
+module libc::termios @feat(DARWIN);
 
 bitstruct Tc_iflags : CULong
 {

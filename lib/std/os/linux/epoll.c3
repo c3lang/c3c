@@ -1,4 +1,4 @@
-module std::os::linux @if(env::LINUX);
+module std::os::linux @feat(LINUX);
 import libc;
 
 // https://github.com/bminor/glibc/blob/master/sysdeps/unix/sysv/linux/sys/epoll.h

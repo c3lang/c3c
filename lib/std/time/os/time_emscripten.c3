@@ -1,4 +1,4 @@
-module std::time::os @if(env::EMSCRIPTEN);
+module std::time::os @feat(EMSCRIPTEN);
 
 // High-resolution monotonic timer (ms since page load, like performance.now()).
 extern fn double emscripten_get_now() @callconv("cdecl");

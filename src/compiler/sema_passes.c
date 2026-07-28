@@ -18,6 +18,7 @@ void parent_path(StringSlice *slice)
 	slice->len = 0;
 }
 
+
 void sema_analyse_pass_module_hierarchy(Module *module)
 {
 	const char *name = module->name->module;
@@ -45,6 +46,30 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 	Module *parent_module = compiler_find_or_create_module(path);
 	module->parent_module = parent_module;
 	sema_analyze_stage(parent_module, ANALYSIS_MODULE_HIERARCHY);
+}
+
+
+void sema_analyse_pass_remove_feat_conditionals(Module *module)
+{
+	FOREACH(CompilationUnit *, unit, module->units)
+	{
+		if (unit->feat_attributes && sema_remove_due_to_conditionals(unit->feat_attributes) == BOOL_TRUE)
+		{
+			vec_resize(unit->module_aliases, 0);
+			vec_resize(unit->imports, 0);
+			vec_resize(unit->global_decls, 0);
+			vec_resize(unit->global_cond_decls, 0);
+			FOREACH(Decl *, decl, module->generic_sections)
+			{
+				if (decl->unit == unit)
+				{
+					vec_resize(decl->generic_decl.conditional_decls, 0);
+					vec_resize(decl->generic_decl.decls, 0);
+				}
+			}
+			vec_resize(unit->ct_includes, 0);
+		}
+	}
 }
 
 void sema_analysis_pass_process_imports(Module *module)
@@ -243,7 +268,7 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	sema_context_init(&context, unit);
 	FOREACH(Attr *, attr, decl->attributes)
 	{
-		if (attr->attr_kind != ATTRIBUTE_IF)
+		if (attr->attr_kind != ATTRIBUTE_IF && attr->attr_kind != ATTRIBUTE_FEAT)
 		{
 			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$include'.");
 		}
@@ -319,7 +344,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	sema_context_init(&context, unit);
 	FOREACH(Attr *, attr, decl->attributes)
 	{
-		if (attr->attr_kind != ATTRIBUTE_IF)
+		if (attr->attr_kind != ATTRIBUTE_IF && attr->attr_kind != ATTRIBUTE_FEAT)
 		{
 			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$exec'.");
 		}
@@ -404,7 +429,7 @@ static Decl **sema_interpret_expand(CompilationUnit *unit, Decl *decl)
 	sema_context_init(&context, unit);
 	FOREACH(Attr *, attr, decl->attributes)
 	{
-		if (attr->attr_kind != ATTRIBUTE_IF)
+		if (attr->attr_kind != ATTRIBUTE_IF && attr->attr_kind != ATTRIBUTE_FEAT)
 		{
 			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$expand'.");
 		}
@@ -491,7 +516,6 @@ void sema_analysis_pass_process_includes(Module *module)
 	DEBUG_LOG("Pass: Process includes for module '%s'.", module->name->module);
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		if (unit->if_attr) continue;
 		// Process all includes
 		sema_process_includes(unit);
 		ASSERT(vec_size(unit->ct_includes) == 0);
@@ -544,7 +568,7 @@ void sema_analysis_pass_process_methods(Module *module, bool process_generic)
 }
 
 
-void sema_analysis_pass_register_conditional_units(Module *module)
+void sema_analysis_pass_register_conditional_units_and_decls(Module *module)
 {
 	DEBUG_LOG("Pass: Register conditional units for %s", module->name->module);
 	FOREACH(CompilationUnit *, unit, module->units)
@@ -558,6 +582,7 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 		SemaContext context;
 		sema_context_init(&context, unit);
 		if (!if_attr) goto CHECK_LINK;
+		SEMA_DEPRECATED(if_attr, "Top declaration '@if' is deprecated, please use '@feat' instead.");
 		if (vec_size(if_attr->exprs) != 1)
 		{
 			PRINT_ERROR_AT(if_attr, "Expected one parameter.");
@@ -637,24 +662,19 @@ FAIL_CONTEXT:
 		sema_context_destroy(&context);
 		break;
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
-}
-
-void sema_analysis_pass_register_conditional_declarations(Module *module)
-{
 	DEBUG_LOG("Pass: Register conditional declarations for module '%s'.", module->name->module);
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		unit->module = module;
 		DEBUG_LOG("Processing %s.", unit->file->name);
-RETRY:;
+		RETRY:;
 		Decl **decls = unit->global_cond_decls;
 		FOREACH(Decl *, decl, decls)
 		{
 			unit_register_optional_global_decl(unit, decl);
 		}
 		vec_resize(decls, 0);
-RETRY_INCLUDES:
+		RETRY_INCLUDES:
 		decls = unit->ct_includes;
 		unit->ct_includes = NULL;
 		register_includes(unit, decls);
@@ -797,12 +817,10 @@ void sema_analysis_pass_decls(Module *module)
 	{
 		SemaContext context;
 		sema_context_init(&context, unit);
-		context.active_scope = (DynamicScope)
-				{
+		context.active_scope = (DynamicScope) {
 					.depth = 0,
 					.label_start = 0,
-					.current_local = 0,
-				};
+					.current_local = 0, };
 		sema_analyse_decls(&context, unit->attributes);
 		sema_analyse_decls(&context, unit->enums);
 		FOREACH(Decl *, decl, unit->types)

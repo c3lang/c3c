@@ -1,4 +1,4 @@
-module std::net::os @if(env::OPENBSD);
+module std::net::os @feat(OPENBSD);
 import libc;
 
 // for most of this, see OpenBSD /usr/include/sys/socket.h

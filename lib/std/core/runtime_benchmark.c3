@@ -1,4 +1,4 @@
-module std::core::runtime @if(env::BENCHMARKING);
+module std::core::runtime @feat(BENCHMARKING);
 import libc, std::time, std::io, std::sort, std::math, std::collections;
 
 const DEFAULT_WARMUP_ITERS @local = 3;

@@ -1,4 +1,4 @@
-module std::thread::os @if(env::WIN32);
+module std::thread::os @feat(WIN32);
 import std::os::win32, std::time;
 import std::thread;
 

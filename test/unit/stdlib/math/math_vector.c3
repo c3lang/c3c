@@ -145,7 +145,7 @@ fn void test_various_project_unproject(Matrix4 view, Matrix4 proj, double[<4>] v
 	assert(res.equals(test));
 
 }
-fn void test_unproject_roundtrip() @test @if(!$feature(OLD_MATRIX))
+fn void test_unproject_roundtrip() @test
 {
 	double[<4>] viewport = {2,3,811,800};
 	Matrix4 proj = matrix::perspective(math::PI / 2, 1, 1, 10);

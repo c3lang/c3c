@@ -17,7 +17,7 @@ const sz BLOCK_SIZE = 1024;
 const char VERSION = 0x13;
 
 <* Whether calls to Argon2 hashing will use parallelization with OS threads. *>
-const bool USE_THREADING = !$feature(ARGON2_FORCE_SEQUENTIAL) && (env::POSIX || env::WIN32);
+const bool USE_THREADING = !$feat(ARGON2_FORCE_SEQUENTIAL) && (env::POSIX || env::WIN32);
 
 <* Used for attempts at automatic C3 SIMD optimization with 256-bit vectors. *>
 typedef SimdVec @local = ulong[<4>] @simd;
@@ -337,7 +337,7 @@ fn void hash_raw(char[] outbuf, char[] input, Argon2Options options) => @pool()
 {
 	char[64 + 2 * uint::size] digest @noinit @align(uint::size);
 
-	$if $feature(ARGON2_FORCE_SEQUENTIAL):
+	$if $feat(ARGON2_FORCE_SEQUENTIAL):
 		$echo "Argon2: forcing the use of sequential lane processing.";
 	$endif
 

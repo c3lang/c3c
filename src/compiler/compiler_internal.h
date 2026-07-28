@@ -442,6 +442,8 @@ typedef struct
 			DeclId padded_decl_id;
 			StructIndex union_rep;
 			AlignSize padding : 16;
+			bool is_packed : 1;
+			bool is_compact : 1;
 		};
 		struct
 		{
@@ -720,7 +722,6 @@ typedef struct Decl_
 	ResolveStatus resolve_status : 3;
 	Visibility visibility : 3;
 	bool has_tag : 1;
-	bool is_packed : 1;
 	bool is_extern : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
@@ -740,10 +741,10 @@ typedef struct Decl_
 	bool is_live : 1;
 	bool no_strip : 1;
 	bool is_cond : 1;
+	bool is_feat_cond : 1;
 	bool is_if : 1;
 	bool is_body_checked : 1;
 	bool attr_nopadding : 1;
-	bool attr_compact : 1;
 	bool resolved_attributes : 1;
 	bool allow_deprecated : 1;
 	bool attr_constinit : 1;
@@ -1764,6 +1765,7 @@ struct CompilationUnit_
 	Visibility default_visibility;
 	bool default_is_weak;
 	Attr *if_attr;
+	Attr **feat_attributes;
 	Decl *default_generic_section;
 	Decl **generic_decls;
 	Decl **weak_symbols_skipped;
@@ -2582,6 +2584,8 @@ void sema_decl_stack_restore(Decl **state);
 void sema_decl_stack_push(Decl *decl);
 Decl *sema_find_generic_instance(SemaContext *context, Module *module, Decl *generic, Decl *instance, const char *name);
 
+BoolErr sema_remove_due_to_conditionals(Attr **attrs);
+BoolErr sema_remove_due_to_conditional(Attr *attr);
 bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *to);
 bool sema_add_local(SemaContext *context, Decl *decl);
 void sema_unwrap_var(SemaContext *context, Decl *decl);

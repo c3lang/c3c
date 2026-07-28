@@ -447,7 +447,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSE
 	sig->variadic = variadic;
 
 	// Parse any attributes
-	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL, "on lambda declarations", NULL)) return poisoned_expr;
+	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL, "on lambda declarations", NULL, NULL)) return poisoned_expr;
 	RANGE_EXTEND_PREV(func);
 
 	// We either have short or regular bodies
@@ -2153,6 +2153,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_EMBED] = { parse_ct_embed, NULL, PREC_NONE },
 		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
 		[TOKEN_CT_FEATURE] = { parse_ct_feature, NULL, PREC_NONE },
+		[TOKEN_CT_FEAT] = { parse_ct_feature, NULL, PREC_NONE },
 		[TOKEN_CT_REFLECT] = { parse_ct_reflect, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_CT_TERNARY] = { NULL, parse_ternary_expr, PREC_TERNARY },

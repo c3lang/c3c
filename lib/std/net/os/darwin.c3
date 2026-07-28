@@ -1,4 +1,4 @@
-module std::net::os @if(env::DARWIN);
+module std::net::os @feat(DARWIN);
 import libc;
 
 const AIFlags AI_NUMERICSERV   = (AIFlags)0x1000;

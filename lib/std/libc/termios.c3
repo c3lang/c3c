@@ -1,4 +1,4 @@
-module libc::termios @if(env::LIBC &&& (env::LINUX ||| env::DARWIN));
+module libc::termios @feat(LINUX, MACOS);
 
 fn int send_break(Fd fd, int duration) => tcsendbreak(fd, duration);
 fn int drain(Fd fd) => tcdrain(fd);

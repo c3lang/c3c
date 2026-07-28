@@ -1,4 +1,4 @@
-module std::os::macos::objc @test @if(env::DARWIN);
+module std::os::macos::objc @test @feat(DARWIN);
 
 fn void test_application_activation_policy()
 {

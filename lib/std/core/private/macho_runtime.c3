@@ -1,4 +1,4 @@
-module std::core::machoruntime @if(env::DARWIN) @private;
+module std::core::machoruntime @feat(DARWIN) @private;
 
 struct SegmentCommand64
 {

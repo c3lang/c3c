@@ -1,7 +1,7 @@
 // #target: macos-x64
-int x @if(false) = 1;
+int x @feat(POSIX & !POSIX) = 1;
 
-int d @if(true) = 5;
+int d @feat(POSIX, !POSIX) = 5;
 
 /* #expect: ct_if.ll
 

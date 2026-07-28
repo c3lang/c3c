@@ -1,4 +1,4 @@
-module libc @if(env::EMSCRIPTEN);
+module libc @feat(EMSCRIPTEN);
 
 alias Blksize_t = CInt;
 alias Nlink_t = CUInt;

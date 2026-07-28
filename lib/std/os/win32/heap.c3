@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32);
+module std::os::win32 @feat(WIN32);
 
 extern fn void* _aligned_malloc(usz size, usz alignment);
 extern fn void* _aligned_realloc(void* memblock, usz size, usz alignment);

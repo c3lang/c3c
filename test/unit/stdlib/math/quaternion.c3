@@ -34,7 +34,7 @@ fn void test_identity()
 	assert(rotation.v == { 0, 0, 0, 1 });
 }
 
-fn void test_rotation_identity() @if(!$feature(OLD_MATRIX))
+fn void test_rotation_identity()
 {
 	Quaternion rotation = quaternion::IDENTITY;
 	Matrix4 identity_matrix = matrix::IDENTITY4;

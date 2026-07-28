@@ -175,6 +175,9 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
 				break;
+			case ANALYSIS_REMOVE_FEATURE_CONDITIONALS:
+				sema_analyse_pass_remove_feat_conditionals(module);
+				break;
 			case ANALYSIS_IMPORTS:
 				sema_analysis_pass_process_imports(module);
 				break;
@@ -184,11 +187,8 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_INCLUDES:
 				sema_analysis_pass_process_includes(module);
 				break;
-			case ANALYSIS_REGISTER_CONDITIONAL_UNITS:
-				sema_analysis_pass_register_conditional_units(module);
-				break;
 			case ANALYSIS_REGISTER_CONDITIONAL_DECLARATIONS:
-				sema_analysis_pass_register_conditional_declarations(module);
+				sema_analysis_pass_register_conditional_units_and_decls(module);
 				break;
 			case ANALYSIS_METHODS_REGISTER:
 				sema_analysis_pass_process_methods(module, false);

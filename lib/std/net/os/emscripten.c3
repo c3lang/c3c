@@ -1,4 +1,4 @@
-module std::net::os @if(env::EMSCRIPTEN);
+module std::net::os @feat(EMSCRIPTEN);
 
 const AIFamily PLATFORM_AF_INET6        = (AIFamily)10;
 const AIFamily PLATFORM_AF_IPX          = (AIFamily)4;

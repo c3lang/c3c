@@ -1,4 +1,4 @@
-module std::net::os @if(env::LINUX);
+module std::net::os @feat(LINUX);
 import libc;
 
 const AIFamily PLATFORM_AF_AX25         = (AIFamily)3;
@@ -10,7 +10,7 @@ const AIFamily PLATFORM_AF_AAL5         = (AIFamily)8;
 const AIFamily PLATFORM_AF_X25          = (AIFamily)9;
 const AIFamily PLATFORM_AF_INET6        = (AIFamily)10;
 
-const PLATFORM_O_NONBLOCK = 0o4000;
+const int PLATFORM_O_NONBLOCK = 0o4000;
 
 // https://github.com/torvalds/linux/blob/master/include/uapi/asm-generic/socket.h
 const int SOL_SOCKET = 1;

@@ -1,4 +1,4 @@
-module std::os::freebsd @if(env::FREEBSD);
+module std::os::freebsd @feat(FREEBSD);
 
 
 

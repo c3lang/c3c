@@ -348,7 +348,7 @@ fn void ParallelHash.update(&self, char[] data, bool sequential = false)
 
  @param [&inout] arg : "The thread context to operate with."
 *>
-fn int threaded_update(void* arg) <SECURITY_LEVEL> @local @if (env::NATIVE_THREADING)
+fn int threaded_update(void* arg) <SECURITY_LEVEL> @local @feat(POSIX, WIN32)
 {
 	WorkerThreadContext* ctx = (WorkerThreadContext*)arg;
 	ParallelHash{SECURITY_LEVEL}* hash_ctx = ctx.context;
