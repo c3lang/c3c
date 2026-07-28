@@ -32,7 +32,7 @@ struct AddrInfo
 }
 
 
-const int PLATFORM_O_NONBLOCK @weak = 0;
+const PLATFORM_O_NONBLOCK @weak = 0;
 
 const AISockType SOCK_STREAM                    = (AISockType)1; // Stream
 const AISockType SOCK_DGRAM                     = (AISockType)2; // Datagram

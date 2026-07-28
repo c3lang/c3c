@@ -22,4 +22,4 @@ const CUShort POLLWRNORM = 0x0100;
 const CUShort POLLWRBAND = 0x0200;
 
 const CInt MSG_PEEK = 0x0002;
-const int PLATFORM_O_NONBLOCK = 0o4000;
+const PLATFORM_O_NONBLOCK = 0o4000;
