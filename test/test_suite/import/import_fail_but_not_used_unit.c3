@@ -5,6 +5,6 @@ fn int main()
 	return 0;
 }
 
-module foo @if($feature(XYZ));
+module foo @feat(XYZ);
 alias bar = module thirdparty;
 import testme;

@@ -1,4 +1,4 @@
-module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
+module std::math::nolibc @feat(NO_LIBC, C3_MATH);
 
 const double TOINT = 1 / math::DOUBLE_EPSILON;
 const double TOINT15 = 1.5 / math::DOUBLE_EPSILON;

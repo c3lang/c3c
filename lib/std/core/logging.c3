@@ -1,7 +1,7 @@
 module std::core::log;
 import std::io, std::thread, std::time, std::math::random;
 
-const FULL_LOG = env::COMPILER_SAFE_MODE || $feature(FULL_LOG);
+const FULL_LOG = env::COMPILER_SAFE_MODE || $feat(FULL_LOG);
 
 typedef LogCategory = inline char;
 typedef LogTag = char[12];
@@ -216,12 +216,12 @@ macro @in_logger_lock(;@body)
 	@body();
 }
 
-struct StderrLogger (Logger) @if(env::LIBC)
+struct StderrLogger (Logger) @feat(LIBC)
 {
 	void* dummy;
 }
 
-fn void StderrLogger.log(&self, LogPriority priority, LogCategory category, LogTag tag, String file, String function, int line, String fmt, any[] args) @dynamic @if(env::LIBC)
+fn void StderrLogger.log(&self, LogPriority priority, LogCategory category, LogTag tag, String file, String function, int line, String fmt, any[] args) @dynamic @feat(LIBC)
 {
 	@stack_mem(256 + 64; Allocator mem)
 	{
@@ -242,7 +242,7 @@ LogFn current_logfn = env::LIBC ??? (LogFn)&StderrLogger.log : (LogFn)&NullLogge
 OnceFlag log_init;
 Mutex logger_mutex;
 Logger current_logger = env::LIBC ??? &stderr_logger : &null_logger;
-StderrLogger stderr_logger @if (env::LIBC);
+StderrLogger stderr_logger @feat(LIBC);
 NullLogger null_logger;
 LogPriority[256] config_priorities = { [0..255] = ERROR, [CATEGORY_APPLICATION] = INFO, [CATEGORY_TEST] = VERBOSE, [CATEGORY_ASSERT] = WARN};
 

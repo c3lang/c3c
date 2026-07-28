@@ -408,6 +408,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
 	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");
+	attribute_list[ATTRIBUTE_FEAT] = KW_DEF("@feat");
 	attribute_list[ATTRIBUTE_FINALIZER] = KW_DEF("@finalizer");
 	attribute_list[ATTRIBUTE_FORMAT] = KW_DEF("@format");
 	attribute_list[ATTRIBUTE_IF] = KW_DEF("@if");

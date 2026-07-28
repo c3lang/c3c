@@ -18,13 +18,19 @@ struct Foo2
 {
 	Bar2{int} y;
 }
-fn int test() @if(Foo::size > 2) => 1;
-fn int test2() @if(Foo2::size > 2) => 1;
-fn void main() {}
+fn int test() <TEST> @if(Foo::size > 2) => 1;
+fn int test2() <TEST2> @if(Foo2::size > 2) => 1;
+fn void main()
+{
+	test{1}();
+	test2{2}();
+}
 
 /* #expect: test.ll
 
 @"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @"$ct.test.Foo2" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
-define i32 @test.test() #0 {
-define i32 @test.test2() #0 {
+
+define weak i32 @"test.test$1$"() #0 {
+define weak i32 @"test.test2$2$"() #0 {
+

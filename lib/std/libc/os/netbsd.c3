@@ -1,4 +1,4 @@
-module libc @if(env::NETBSD);
+module libc @feat(NETBSD);
 
 alias Blksize_t = int;
 alias Nlink_t = uint;

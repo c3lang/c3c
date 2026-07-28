@@ -35,6 +35,7 @@ File *source_file_generate(const char *filename)
 	file->file_id = vec_size(compiler.context.loaded_sources);
 	file->full_path = "<generated>";
 	file->contents = "";
+	file->name = str_dup(filename);
 	file->content_len = 0;
 	vec_add(compiler.context.loaded_sources, file);
 	return file;

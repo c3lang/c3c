@@ -176,7 +176,7 @@ fn void test_hash_repeat()
 	assert(int::typeid.hash() == int::typeid.hash());
 }
 
-fn void test_hash_vector() @test @if($feature(SLOW_TESTS))
+fn void test_hash_vector() @test @feat(SLOW_TESTS)
 {
 	test_hash_vector_internal{char}();
 	test_hash_vector_internal{ichar}();

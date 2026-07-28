@@ -4,7 +4,18 @@
 module std::core::runtime;
 import libc, std::time, std::io, std::sort;
 
-struct ReflectedParam (Printable) @if(!$defined(ReflectedParam))
+macro @enum_lookup($Type, $name, value)
+{
+	$foreach $val : $Type::values:
+		if ($val.$name == value) return $val;
+	$endforeach
+	return NOT_FOUND~;
+}
+
+module std::core;
+import std::io;
+
+struct ReflectedParam (Printable)
 {
 	String name;
 	typeid type;
@@ -22,16 +33,7 @@ struct SliceRaw
 	sz len;
 }
 
-macro @enum_lookup($Type, $name, value)
-{
-	$foreach $val : $Type::values:
-		if ($val.$name == value) return $val;
-	$endforeach
-	return NOT_FOUND~;
-}
-
-
-module std::core::runtime @if(env::FREESTANDING_WASM);
+module std::core::runtime @feat(FREESTANDING_WASM);
 
 extern fn void __wasm_call_ctors();
 fn void wasm_initialize() @cname("_initialize") @wasm
@@ -40,7 +42,7 @@ fn void wasm_initialize() @cname("_initialize") @wasm
 	__wasm_call_ctors();
 }
 
-module std::core::runtime @if(env::EMSCRIPTEN);
+module std::core::runtime @feat(EMSCRIPTEN);
 
 extern fn void __wasm_call_ctors();
 fn void wasm_emscripten_initialize() @cname("_initialize") @wasm

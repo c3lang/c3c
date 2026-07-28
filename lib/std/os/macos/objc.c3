@@ -1,4 +1,4 @@
-module std::os::macos::objc @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
+module std::os::macos::objc @feat(DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
 
 typedef ObjcClass = void*;
 typedef ObjcMethod = void*;
@@ -72,7 +72,7 @@ extern fn ObjcIvar setInstanceVariable(ObjcId id, ZString name, void* value) @cn
 extern fn ObjcClass allocateClassPair(ObjcClass cls, ZString name, uint extraBytes) @cname("objc_allocateClassPair");
 extern fn void registerClassPair(ObjcClass cls) @cname("objc_registerClassPair");
 
-module std::os::macos::objc::ns @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
+module std::os::macos::objc::ns @feat(DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
 import std::os::macos::cf;
 
 

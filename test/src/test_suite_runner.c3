@@ -336,8 +336,8 @@ struct Winsize { ushort ws_row, ws_col, ws_xpixel, ws_ypixel; }
 fn int get_terminal_width()
 {
 	$if env::LINUX || env::DARWIN || env::BSD_FAMILY:
-		const ulong TIOCGWINSZ @if(env::LINUX) = 0x5413;
-		const ulong TIOCGWINSZ @if(env::DARWIN || env::BSD_FAMILY) = 0x40087468;
+		const ulong TIOCGWINSZ @feat(LINUX) = 0x5413;
+		const ulong TIOCGWINSZ @feat(DARWIN, BSD) = 0x40087468;
 
 		Winsize ws;
 		if (libc::ioctl(1, TIOCGWINSZ, &ws) == 0) return (int)ws.ws_col;

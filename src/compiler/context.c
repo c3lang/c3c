@@ -291,11 +291,24 @@ WEAK_MODULE:
 
 }
 
-
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 {
 	ASSERT_SPAN(decl, !decl->is_template);
 	ASSERT_SPAN(decl, !decl->unit || decl->is_templated);
+	if (decl->is_feat_cond)
+	{
+		switch (sema_remove_due_to_conditionals(decl->attributes))
+		{
+			case BOOL_TRUE:
+				decl->decl_kind = DECL_ERASED;
+				return;
+			case BOOL_ERR:
+				decl->decl_kind = DECL_POISONED;
+				return;
+			case BOOL_FALSE:
+				break;
+		}
+	}
 	decl->unit = unit;
 	switch (decl->decl_kind)
 	{

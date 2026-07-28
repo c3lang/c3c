@@ -1,4 +1,4 @@
-module std::thread::os @if (!env::NATIVE_THREADING);
+module std::thread::os @feat(!POSIX & !WIN32);
 import libc;
 
 typedef NativeMutex = int;

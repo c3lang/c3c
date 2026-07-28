@@ -167,7 +167,7 @@ fn void streamed()
 	$endforeach
 }
 
-fn void large() @if ($feature(SLOW_TESTS))
+fn void large() @feat(SLOW_TESTS)
 {
 	static String[] expected = {
 		x'd69335b93325192e516a912e6d19a15cb51c6ed5c15243e7a7fd653c',

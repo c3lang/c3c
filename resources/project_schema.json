@@ -325,7 +325,7 @@
     },
     "features": {
       "type": "array",
-      "description": "List of upper-case constants that can be tested for in the source code using $feature(NAME_OF_FEATURE).",
+      "description": "List of upper-case constants that can be tested for in the source code using $feat(NAME_OF_FEATURE).",
       "items": {
         "type": "string"
       }

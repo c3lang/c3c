@@ -115,7 +115,7 @@ fn void test_mat4_mul()
 	assert(math::round_to_decimals((double[<16>])(mat * mat2).m, 3) == (double[<16>])value.m);
 }
 
-fn void test_mat4_lookat() @if(!$feature(OLD_MATRIX))
+fn void test_mat4_lookat()
 
 {
 	Matrix4 result = {
@@ -139,7 +139,7 @@ fn void test_mat4_lookat() @if(!$feature(OLD_MATRIX))
 	assert(math::round_to_decimals((double[<16>])look_at_f.m, 4) == math::round_to_decimals((double[<16>])result_f.m, 4));
 }
 
-fn void test_frustum() @if(!$feature(OLD_MATRIX))
+fn void test_frustum()
 {
 
 	Mat4 m1 = matrix::frustum(-1, 1, -1, 1, 1, 10);
@@ -170,7 +170,7 @@ fn void test_frustum() @if(!$feature(OLD_MATRIX))
 	assert(math::is_approx(m5.m11, 0.02, 1e-6));
 }
 
-fn void test_mat4_perspective() @if(!$feature(OLD_MATRIX))
+fn void test_mat4_perspective()
 {
 	Mat4 perspective = matrix::perspective(math::deg_to_rad(90f), 1, 1, 10);
 	Mat4 res = { .m00 = 1, .m11 = 1, .m22 = -1.111111, .m32 = -1, .m23 = -1.111111 };
@@ -191,7 +191,7 @@ fn void test_mat4_perspective() @if(!$feature(OLD_MATRIX))
 
 }
 
-fn void test_mat4_ortho() @if(!$feature(OLD_MATRIX))
+fn void test_mat4_ortho()
 {
 	Matrix4 o = matrix::ortho(-1, 1, -1, 1, 1, 10);
 	Matrix4 res = { 1.0,0,0,0, 0,1.0,0,0, 0,0,0.111111,0, -0,0,-1.111111,1 };

@@ -1,4 +1,4 @@
-module std::os::netbsd @if(env::NETBSD);
+module std::os::netbsd @feat(NETBSD);
 
 const CTL_UNSPEC      = 0;   // unused
 const CTL_KERN        = 1;   // "high kernel": proc, limits

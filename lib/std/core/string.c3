@@ -3,7 +3,7 @@ import std::io, std::math;
 import std::core::string::conv;
 
 
-typedef String @constinit @if(!$defined(String)) = inline char[];
+typedef String @constinit @weak = inline char[];
 <*
  ZString is a pointer to a zero terminated array of chars.
 

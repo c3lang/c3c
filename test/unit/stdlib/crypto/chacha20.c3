@@ -408,7 +408,7 @@ fn void scrolling_input_randomly_unaligned()
 	};
 }
 
-fn void scrolling_input_unaligned_permutations_with_random_chunks() @if($feature(SLOW_TESTS))
+fn void scrolling_input_unaligned_permutations_with_random_chunks() @feat(SLOW_TESTS)
 {
 	// Paranoia, honestly... Use a known test vector a couple blocks long, and - no matter the alignment started from - ensure the same result.
 	Lcg64Random rand;

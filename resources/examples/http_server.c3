@@ -9,7 +9,7 @@ import std, libc;
 const int THREAD_COUNT = 64;
 const int TCP_BACKLOG = 128;
 
-fn void ignore_sigpipe() @init(1001) @if(!env::WIN32)
+fn void ignore_sigpipe() @init(1001) @feat(!WIN32)
 {
 	libc::signal(libc::SIGPIPE, fn void(int) {});
 }

@@ -1,4 +1,4 @@
-module std::net::os @if(env::FREEBSD);
+module std::net::os @feat(FREEBSD);
 import libc;
 
 // all of this, see FreeBSD /usr/include/sys/socket.h

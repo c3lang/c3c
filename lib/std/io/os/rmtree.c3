@@ -1,4 +1,4 @@
-module std::io::os @if(env::POSIX);
+module std::io::os @feat(POSIX);
 import std::io, std::os, libc;
 
 <*
@@ -35,7 +35,7 @@ fn void? native_rmtree(Path dir)
 	};
 }
 
-module std::io::os @if(env::WIN32);
+module std::io::os @feat(WIN32);
 import std::io, std::time, std::os;
 
 fn void? native_rmtree(Path path)

@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32);
+module std::os::win32 @feat(WIN32);
 
 import std::io;
 
@@ -123,9 +123,9 @@ struct ExceptionPointers
 alias UnhandledExceptionFilter = fn Win32_LONG (ExceptionPointers* exception_info);
 const EXCEPTION_EXECUTE_HANDLER = 1;
 
-extern fn void debugBreak() @cname("DebugBreak") @if(env::WIN32);
-extern fn bool isDebuggerPresent() @cname("IsDebuggerPresent") @if(env::WIN32);
-extern fn UnhandledExceptionFilter setUnhandledExceptionFilter(UnhandledExceptionFilter filter) @cname("SetUnhandledExceptionFilter") @if(env::WIN32);
+extern fn void debugBreak() @cname("DebugBreak") @feat(WIN32);
+extern fn bool isDebuggerPresent() @cname("IsDebuggerPresent") @feat(WIN32);
+extern fn UnhandledExceptionFilter setUnhandledExceptionFilter(UnhandledExceptionFilter filter) @cname("SetUnhandledExceptionFilter") @feat(WIN32);
 
 UnhandledExceptionFilter previous_filter;
 PanicFn previous_panic;

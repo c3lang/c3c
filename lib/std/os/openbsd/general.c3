@@ -1,4 +1,4 @@
-module std::os::openbsd @if(env::OPENBSD);
+module std::os::openbsd @feat(OPENBSD);
 import libc, std::os, std::collections::list;
 
 

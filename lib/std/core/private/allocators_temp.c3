@@ -51,12 +51,12 @@ fn Allocator create_temp_allocator_on_demand() @private
 	return create_temp_allocator(temp_base_allocator, temp_allocator_size(), temp_allocator_reserve_size, temp_allocator_min_size, temp_allocator_realloc_size);
 }
 
-fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::FREESTANDING_WASM)
+fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @feat(LIBC, FREESTANDING_WASM)
 {
 	auto_create_temp = true;
 }
 
-fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @if(env::LIBC)
+fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @feat(LIBC)
 {
 	destroy_temp_allocators();
 }

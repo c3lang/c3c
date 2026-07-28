@@ -8,8 +8,8 @@ const int EXIT_FAILURE = 1;
 const int EXIT_SUCCESS = 0;
 const int RAND_MAX = 0x7fffffff;
 
-alias WChar @if(env::WIN32) = Char16;
-alias WChar @if(!env::WIN32) = Char32;
+alias WChar @feat(WIN32) = Char16;
+alias WChar @feat(!WIN32) = Char32;
 
 struct DivResult
 {
@@ -23,13 +23,13 @@ struct LongDivResult
 	CLong rem;
 }
 
-struct Fpos_t @if(!env::WIN32)
+struct Fpos_t @feat(!WIN32)
 {
 	long __pos;
 	Mbstate_t __state;
 }
 
-struct Mbstate_t @if(!env::WIN32)
+struct Mbstate_t @feat(!WIN32)
 {
 	int __count;
 	union __value
@@ -54,7 +54,7 @@ alias CompareFunction = fn int(void*, void*);
 alias JmpBuf = uptr[$$JMP_BUF_SIZE];
 alias SigJmpBuf = uptr[$$JMP_BUF_SIZE + 1];
 alias Fd = CInt;
-alias Fpos_t @if(env::WIN32) = long;
+alias Fpos_t @feat(WIN32) = long;
 alias SignalFunction = fn void(CInt);
 
 // Common signals for all targets
@@ -67,12 +67,12 @@ const CInt SIGTERM = 15;
 alias Time_t = env::WIN32 || env::EMSCRIPTEN ? long : CLong;
 alias Off_t = env::WIN32 || env::EMSCRIPTEN ? long : sz;
 
-module libc @if(env::LIBC);
+module libc @feat(LIBC);
 
 extern fn void abort();
 extern fn CInt abs(CInt n);
 extern fn ZString asctime(Tm* timeptr);
-extern fn ZString asctime_r(Tm* timeptr, char* buf) @if(!env::WIN32);
+extern fn ZString asctime_r(Tm* timeptr, char* buf) @feat(!WIN32);
 extern fn CInt atexit(TerminateFunction func);
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
@@ -81,20 +81,20 @@ extern fn void* bsearch(void* key, void* base, usz items, usz size, CompareFunct
 extern fn void* calloc(usz count, usz size);
 extern fn void clearerr(CFile stream);
 extern fn Clock_t clock();
-extern fn CInt close(CInt fd) @if(!env::WIN32);
-extern fn double difftime(Time_t time1, Time_t time2) @if(!env::WIN32);
+extern fn CInt close(CInt fd) @feat(!WIN32);
+extern fn double difftime(Time_t time1, Time_t time2) @feat(!WIN32);
 extern fn DivResult div(CInt numer, CInt denom);
 extern fn void exit(CInt status);
 extern fn void _exit(CInt status) @cname("_Exit");
 extern fn CInt fclose(CFile stream);
-extern fn CFile fdopen(CInt fd, ZString mode) @if(!env::WIN32);
+extern fn CFile fdopen(CInt fd, ZString mode) @feat(!WIN32);
 extern fn CInt feof(CFile stream);
 extern fn CInt ferror(CFile stream);
 extern fn CInt fflush(CFile stream);
 extern fn CInt fgetc(CFile stream);
 extern fn ZString fgets(char* string, CInt n, CFile stream);
-extern fn CInt fgetpos(CFile stream, Fpos_t* pos) @if(!env::NETBSD);
-extern fn Fd fileno(CFile stream) @if(!env::WIN32);
+extern fn CInt fgetpos(CFile stream, Fpos_t* pos) @feat(!NETBSD);
+extern fn Fd fileno(CFile stream) @feat(!WIN32);
 extern fn CFile fopen(ZString filename, ZString mode);
 extern fn CInt fprintf(CFile stream, ZString format, ...);
 extern fn CInt fputc(CInt c, CFile stream);
@@ -103,24 +103,24 @@ extern fn usz fread(void* ptr, usz size, usz nmemb, CFile stream);
 extern fn void free(void*);
 extern fn CFile freopen(ZString filename, ZString mode, CFile stream);
 extern fn CInt fscanf(CFile stream, ZString format, ...);
-extern fn CInt fseek(CFile stream, SeekIndex offset, CInt whence) @if(!env::WIN32);
-extern fn CInt fsetpos(CFile stream, Fpos_t* pos) @if(!env::NETBSD);
-extern fn SeekIndex ftell(CFile stream) @if(!env::WIN32);
+extern fn CInt fseek(CFile stream, SeekIndex offset, CInt whence) @feat(!WIN32);
+extern fn CInt fsetpos(CFile stream, Fpos_t* pos) @feat(!NETBSD);
+extern fn SeekIndex ftell(CFile stream) @feat(!WIN32);
 extern fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream);
 extern fn CInt getc(CFile stream);
 extern fn CInt getchar();
 extern fn ZString getenv(ZString name);
 extern fn ZString gets(char* buffer);
 extern fn Tm* gmtime(Time_t* timer);
-extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @if(!env::WIN32 && !env::NETBSD);
+extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @feat(!WIN32) @feat(!NETBSD);
 extern fn CInt ioctl(CInt fd, ulong request, ...);
-extern fn CInt isatty(Fd fd) @if(!env::WIN32);
+extern fn CInt isatty(Fd fd) @feat(!WIN32);
 extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
-extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32 && !env::NETBSD);
-extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::EMSCRIPTEN);
-extern fn void longjmp(JmpBuf* buffer, CInt value) @cname("__longjmp14") @if(env::NETBSD);
+extern fn Tm* localtime_r(Time_t* timer, Tm* result) @feat(!WIN32) @feat(!NETBSD);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @feat(!NETBSD) @feat(!EMSCRIPTEN);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @cname("__longjmp14") @feat(NETBSD);
 extern fn void* malloc(usz size);
 extern fn void* memchr(void* str, CInt c, usz n);
 extern fn CInt memcmp(void* buf1, void* buf2, usz count);
@@ -128,7 +128,7 @@ extern fn void* memcpy(void* dest, void* src, usz n);
 extern fn void* memmove(void* dest, void* src, usz n);
 extern fn void* memset(void* dest, CInt value, usz n);
 extern fn ZString mktemp(char* template) @cname(env::WIN32 ??? "_mktemp" : "mktemp");
-extern fn Time_t* mktime(Tm* time) @if(!env::WIN32);
+extern fn Time_t* mktime(Tm* time) @feat(!WIN32);
 extern fn void perror(ZString string);
 extern fn CInt printf(ZString format, ...);
 extern fn CInt putc(CInt c, CFile stream);
@@ -137,8 +137,8 @@ extern fn CInt puts(ZString str);
 extern fn void qsort(void* base, usz items, usz size, CompareFunction compare);
 extern fn CInt raise(CInt signal);
 extern fn CInt rand();
-extern fn sz read(Fd fd, void* buf, usz nbyte) @if(!env::WIN32);
-extern fn sz readlink(ZString pathname, char* buf, int bufsize) @if(!env::WIN32);
+extern fn sz read(Fd fd, void* buf, usz nbyte) @feat(!WIN32);
+extern fn sz readlink(ZString pathname, char* buf, int bufsize) @feat(!WIN32);
 extern fn void* realloc(void* ptr, usz size);
 extern fn CInt remove(ZString filename);
 extern fn CInt rename(ZString old_name, ZString new_name);
@@ -146,15 +146,15 @@ extern fn void rewind(CFile stream);
 extern fn CInt scanf(ZString format, ...);
 extern fn void setbuf(CFile stream, char* buffer);
 extern fn int setenv(ZString name, ZString value, CInt overwrite);
-extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN);
-extern fn CInt setjmp(JmpBuf* buffer) @cname("__setjmp14") @if(env::NETBSD);
+extern fn CInt setjmp(JmpBuf* buffer) @feat(!WIN32) @feat(!NETBSD) @feat(!EMSCRIPTEN);
+extern fn CInt setjmp(JmpBuf* buffer) @cname("__setjmp14") @feat(NETBSD);
 extern fn void setvbuf(CFile stream, char* buf, CInt type, usz size);
 extern fn SignalFunction signal(CInt sig, SignalFunction function);
-extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN);
-extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @cname("__siglongjmp14") @if(env::NETBSD);
-extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @if(!env::WIN32 && !env::NETBSD && !env::EMSCRIPTEN && !env::LINUX);
-extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp14") @if(env::NETBSD);
-extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp") @if(env::LINUX);
+extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @feat(!WIN32) @feat(!NETBSD) @feat(!EMSCRIPTEN);
+extern fn void siglongjmp(SigJmpBuf* buffer, CInt value) @cname("__siglongjmp14") @feat(NETBSD);
+extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @feat(!WIN32) @feat(!NETBSD) @feat(!EMSCRIPTEN) @feat(!LINUX);
+extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp14") @feat(NETBSD);
+extern fn CInt sigsetjmp(SigJmpBuf* buffer, CInt savemask) @cname("__sigsetjmp") @feat(LINUX);
 extern fn CInt snprintf(char* buffer, usz size, ZString format, ...);
 extern fn CInt sprintf(char* buffer, ZString format, ...);
 extern fn void srand(uint seed);
@@ -186,17 +186,17 @@ extern fn CULong strtoul(char* str, char** endptr, CInt base);
 extern fn usz strxfrm(char* dest, ZString src, usz n);
 extern fn CInt system(ZString str);
 extern fn ZString tempnam(ZString dir, ZString prefix) @cname(env::WIN32 ??? "_tempnam" : "tempnam") @nodiscard;
-extern fn Time_t timegm(Tm* timeptr) @if(!env::WIN32 && !env::NETBSD);
+extern fn Time_t timegm(Tm* timeptr) @feat(!WIN32) @feat(!NETBSD);
 extern fn ZString tmpnam(char *buffer);
 extern fn CFile tmpfile();
 extern fn CInt ungetc(CInt c, CFile stream);
-extern fn CInt unsetenv(ZString name) @if(!env::NETBSD);
-extern fn sz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
+extern fn CInt unsetenv(ZString name) @feat(!NETBSD);
+extern fn sz write(Fd fd, void* buffer, usz count) @feat(!WIN32);
 
 extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
 extern fn sz getline(char** linep, usz* linecapp, CFile stream);
 extern fn CInt timespec_get(TimeSpec* ts, CInt base);
-extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @if(!env::NETBSD);
+extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @feat(!NETBSD);
 extern fn ZString ctime(Time_t* timer);
 extern fn Time_t time(Time_t* timer);
 
@@ -204,7 +204,7 @@ const CInt STDIN_FD = 0;
 const CInt STDOUT_FD = 1;
 const CInt STDERR_FD = 2;
 
-module libc @if(env::LINUX || env::ANDROID || env::EMSCRIPTEN);
+module libc @feat(LINUX, ANDROID, EMSCRIPTEN);
 extern CFile __stdin @cname("stdin");
 extern CFile __stdout @cname("stdout");
 extern CFile __stderr @cname("stderr");
@@ -227,7 +227,7 @@ macro CFile stderr() => __stderr;
 // For now, longjmp is stubbed to just exit cleanly.
 // See: https://emscripten.org/docs/porting/setjmp-longjmp.html
 // See: https://llvm.org/docs/ExceptionHandling.html#setjmp-longjmp-exception-handling-in-webassembly
-module libc @if(env::EMSCRIPTEN);
+module libc @feat(EMSCRIPTEN);
 import std::os;
 fn int setjmp(JmpBuf* ptr) => 0;
 fn int sigsetjmp(SigJmpBuf* ptr, CInt val) => 0;
@@ -235,47 +235,47 @@ fn void longjmp(JmpBuf* ptr, int i) => os::exit(i);
 fn void siglongjmp(SigJmpBuf* ptr, CInt i) => os::exit(i);
 
 
-module libc @if(env::NETBSD || env::OPENBSD);
+module libc @feat(NETBSD, OPENBSD);
 extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
-extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @if(env::NETBSD);
-extern fn Tm* localtime_r(Time_t* timer, Tm* result) @cname("__localtime_r50") @if(env::NETBSD);
-extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @cname("__nanosleep50") @if(env::NETBSD);
-extern fn CInt fgetpos(CFile stream, Fpos_t* pos) @cname("__fgetpos50") @if(env::NETBSD);
-extern fn CInt fsetpos(CFile stream, Fpos_t* pos) @cname("__fsetpos50") @if(env::NETBSD);
-extern fn Time_t timegm(Tm* timeptr) @cname("__timegm50") @if(env::NETBSD);
-extern fn CInt unsetenv(ZString name) @cname("__unsetenv13") @if(env::NETBSD);
+extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @cname("__gmtime_r50") @feat(NETBSD);
+extern fn Tm* localtime_r(Time_t* timer, Tm* result) @cname("__localtime_r50") @feat(NETBSD);
+extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining) @cname("__nanosleep50") @feat(NETBSD);
+extern fn CInt fgetpos(CFile stream, Fpos_t* pos) @cname("__fgetpos50") @feat(NETBSD);
+extern fn CInt fsetpos(CFile stream, Fpos_t* pos) @cname("__fsetpos50") @feat(NETBSD);
+extern fn Time_t timegm(Tm* timeptr) @cname("__timegm50") @feat(NETBSD);
+extern fn CInt unsetenv(ZString name) @cname("__unsetenv13") @feat(NETBSD);
 macro CFile stdin() { return fdopen(0, "r"); }
 macro CFile stdout() { return fdopen(1, "w"); }
 macro CFile stderr() { return fdopen(2, "w"); }
 
-module libc @if(env::DARWIN || env::FREEBSD);
+module libc @feat(DARWIN, FREEBSD);
 extern CFile __stdinp;
 extern CFile __stdoutp;
 extern CFile __stderrp;
-extern fn usz malloc_size(void* ptr) @if(!env::FREEBSD);
+extern fn usz malloc_size(void* ptr) @feat(!FREEBSD);
 extern fn void* aligned_alloc(usz align, usz size);
 macro CFile stdin() => __stdinp;
 macro CFile stdout() => __stdoutp;
 macro CFile stderr() => __stderrp;
 
-module libc @if(env::FREEBSD);
+module libc @feat(FREEBSD);
 extern fn usz malloc_usable_size(void* ptr);
 macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
 
-module libc @if(env::WIN32);
+module libc @feat(WIN32);
 macro usz malloc_size(void* ptr) => _msize(ptr);
 macro CFile stdin() => __acrt_iob_func(STDIN_FD);
 macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
 macro CFile stderr() => __acrt_iob_func(STDERR_FD);
 
-module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::ANDROID && !env::DARWIN && !env::BSD_FAMILY && !env::EMSCRIPTEN);
+module libc @feat(LIBC) @feat(!WIN32) @feat(!LINUX) @feat(!LINUX) @feat(!ANDROID) @feat(!DARWIN) @feat(!BSD) @feat(!EMSCRIPTEN);
 macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
 
-module libc @if(env::NO_LIBC);
+module libc @feat(NO_LIBC);
 import std::core::mem;
 
 
@@ -453,35 +453,35 @@ struct Tm
 	<* Daylight Savings Time flag *>
 	CInt	tm_isdst;
 	<* offset from UTC in seconds *>
-	TimeOffset tm_gmtoff @if(!env::WIN32);
+	TimeOffset tm_gmtoff @feat(!WIN32);
 	<* timezone abbreviation *>
-	char* tm_zone @if(!env::WIN32);
-	CInt tm_nsec @if(env::WASI);
+	char* tm_zone @feat(!WIN32);
+	CInt tm_nsec @feat(WASI);
 }
 
 struct TimeSpec
 {
 	Time_t s;
-	ulong ns @if(env::WIN32);
-	CLong ns @if(!env::WIN32);
+	ulong ns @feat(WIN32);
+	CLong ns @feat(!WIN32);
 }
 
 
-alias Clock_t @if(env::WIN32) = int;
-alias Clock_t @if(!env::WIN32) = CLong;
+alias Clock_t @feat(WIN32) = int;
+alias Clock_t @feat(!WIN32) = CLong;
 
-alias TimeOffset @if(env::WASI) = int;
-alias TimeOffset @if(!env::WASI) = CLong;
+alias TimeOffset @feat(WASI) = int;
+alias TimeOffset @feat(!WASI) = CLong;
 
 const int TIME_UTC = 1;
 
 
 // This is a best-effort approximation, but the C standard does not enforce
 // that this is a compile-time standard.
-const CLOCKS_PER_SEC @if(env::WIN32) = 1000;
-const CLOCKS_PER_SEC @if(!env::WIN32) = 1000000;
+const CLOCKS_PER_SEC @feat(WIN32) = 1000;
+const CLOCKS_PER_SEC @feat(!WIN32) = 1000000;
 
-constdef Errno : inline CInt @if(env::DARWIN)
+constdef Errno : inline CInt @feat(DARWIN)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
@@ -587,7 +587,7 @@ constdef Errno : inline CInt @if(env::DARWIN)
 	EOPNOTSUPP               = 102, // Operation not supported on socket
 }
 
-constdef Errno : inline CInt @if(env::NETBSD)
+constdef Errno : inline CInt @feat(NETBSD)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
@@ -693,7 +693,7 @@ constdef Errno : inline CInt @if(env::NETBSD)
 }
 
 
-constdef Errno : inline CInt @if(env::WIN32)
+constdef Errno : inline CInt @feat(WIN32)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
@@ -748,7 +748,7 @@ constdef Errno : inline CInt @if(env::WIN32)
 }
 
 
-constdef Errno : inline CInt @if(env::EMSCRIPTEN)
+constdef Errno : inline CInt @feat(EMSCRIPTEN)
 {
 	OK                       = 0, // No error occurred. System call completed successfully.
 	E2BIG                    = 1, // Argument list too long.
@@ -889,7 +889,7 @@ constdef Errno : inline CInt @if(env::EMSCRIPTEN)
 }
 
 
-constdef Errno : inline CInt @if(env::FREEBSD)
+constdef Errno : inline CInt @feat(FREEBSD)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
@@ -993,7 +993,7 @@ constdef Errno : inline CInt @if(env::FREEBSD)
 	EINTEGRITY               = 97, // FreeBSD: integrity check failed
 }
 
-constdef Errno : inline CInt @if(env::OPENBSD)
+constdef Errno : inline CInt @feat(OPENBSD)
 {
 	OK                       = 0,
 	EPERM                    = 1,  // Operation not permitted
@@ -1094,7 +1094,7 @@ constdef Errno : inline CInt @if(env::OPENBSD)
 	EPROTO                   = 95,
 }
 
-constdef Errno : inline CInt @if(!env::WIN32 && !env::DARWIN && !env::BSD_FAMILY && !env::EMSCRIPTEN)
+constdef Errno : inline CInt @feat(!WIN32 & !DARWIN & !BSD & !EMSCRIPTEN)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted

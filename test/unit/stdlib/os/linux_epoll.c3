@@ -1,4 +1,4 @@
-module std::os::linux @test @if (env::LINUX);
+module std::os::linux @test @feat(LINUX);
 import std::net::os;
 import std::os::posix;
 import libc;

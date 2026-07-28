@@ -23,8 +23,8 @@ alias tmem @builtin = current_temp;
 typedef PoolState = TempAllocator*;
 tlocal Allocator current_temp = &LAZY_TEMP;
 tlocal TempAllocator* top_temp;
-bool auto_create_temp @if(env::EMSCRIPTEN) = false;
-tlocal bool auto_create_temp @if(!env::EMSCRIPTEN) = false;
+bool auto_create_temp @feat(EMSCRIPTEN) = false;
+tlocal bool auto_create_temp @feat(!EMSCRIPTEN) = false;
 
 <*
  Push the current pool manually, must be partnered with a `pop_pool(state)`

@@ -296,7 +296,7 @@ fn void ordering()
 	test::ne(tuple_hash::hash(256, 32, "mind", "bending", "hash", "tricks!")[..], tuple_hash::hash(256, 64, "mind", "bending", "hash", "tricks!")[:32]);
 }
 
-fn void large() @if ($feature(SLOW_TESTS))
+fn void large() @feat(SLOW_TESTS)
 {
 	const String[][] EXPECTED = {
 		{

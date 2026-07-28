@@ -1,2 +1,2 @@
-module std::os::linux @if(env::LINUX);
+module std::os::linux @feat(LINUX);
 extern fn usz malloc_usable_size(void* ptr);

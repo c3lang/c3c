@@ -1320,7 +1320,14 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 		if (!sema_analyse_decl(context, decl)) return false;
 		if (decl->decl_kind == DECL_ERASED)
 		{
-			SEMA_ERROR(expr, "Matching identifier is not available due to '@if' being evaluated to false.");
+			if (decl->is_if)
+			{
+				SEMA_ERROR(expr, "Matching identifier is not available due to '@if' being evaluated to false.");
+			}
+			else
+			{
+				SEMA_ERROR(expr, "Matching identifier is not available due to '@feat' being evaluated to false.");
+			}
 			SEMA_NOTE(decl, "The definition was here.");
 			return false;
 		}
@@ -6009,7 +6016,13 @@ static inline bool sema_create_const_paramsof(Expr *expr, Type *type)
 		Expr **values = NULL;
 		vec_add(values, name_expr);
 		vec_add(values, type_expr);
-		Expr *struct_value = sema_create_struct_from_expressions(type_reflected_param->decl, expr->loc, values);
+		Decl *param_ref = type_reflected_param->decl;
+		if (param_ref->is_weak && param_ref->replacement)
+		{
+			param_ref = param_ref->replacement;
+			type_reflected_param = param_ref->type;
+		}
+		Expr *struct_value = sema_create_struct_from_expressions(param_ref, expr->loc, values);
 		vec_add(param_exprs, struct_value);
 	}
 	expr_rewrite_const_untyped_list(expr, param_exprs);
@@ -11446,7 +11459,7 @@ static inline bool sema_expr_analyse_ct_feature(SemaContext *context, Expr *expr
 	expr_rewrite_const_bool(expr, type_bool, value != NULL);
 	return true;
 ERROR:
-	RETURN_SEMA_ERROR(inner, "Expected a feature name here, e.g. $feature(MY_FEATURE).");
+	RETURN_SEMA_ERROR(inner, "Expected a feature name here, e.g. $feat(MY_FEATURE).");
 }
 
 

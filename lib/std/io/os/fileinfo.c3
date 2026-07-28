@@ -1,14 +1,9 @@
 module std::io::os;
 import libc, std::os, std::io;
 
-fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY || env::EMSCRIPTEN) => @pool()
+fn void? native_stat(Stat* stat, String path) @feat(DARWIN, LINUX, ANDROID, BSD, EMSCRIPTEN) => @pool()
 {
-	$if env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY || env::EMSCRIPTEN:
-		int res = libc::stat(path.zstr_tcopy(), stat);
-	$else
-		unreachable("Stat unimplemented");
-		int res = 0;
-	$endif
+	int res = libc::stat(path.zstr_tcopy(), stat);
 	if (res != 0)
 	{
 		switch (libc::errno())
@@ -137,7 +132,7 @@ fn Time_t? native_get_modified_time(String path) => @pool()
 }
 
 
-macro fault file_attr_errno() @local @if(env::WIN32)
+macro fault file_attr_errno() @local @feat(WIN32)
 {
 	switch (win32::getLastError())
 	{
@@ -160,7 +155,7 @@ macro fault file_attr_errno() @local @if(env::WIN32)
 	}
 }
 
-fn void? get_win32_file_attributes(String path, Win32_FILE_ATTRIBUTE_DATA* data_ptr) @local @if(env::WIN32) => @pool()
+fn void? get_win32_file_attributes(String path, Win32_FILE_ATTRIBUTE_DATA* data_ptr) @local @feat(WIN32) => @pool()
 {
 	if (!win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, data_ptr))
 	{
