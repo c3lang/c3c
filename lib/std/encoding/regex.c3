@@ -720,6 +720,7 @@ fn AstNode*? ast_new_node(Allocator arena, int type, void* obj) @local
 fn AstNode*? ast_new_literal(Allocator arena, int code_min, int code_max, StateId position) @local
 {
 	Literal* lit = alloc::new_try(arena, Literal, { .code_min = code_min, .code_max = code_max, .position = position })!;
+	defer catch alloc::free(arena, lit);
 	return ast_new_node(arena, LITERAL, lit)!;
 }
 
@@ -730,6 +731,7 @@ fn AstNode*? ast_new_literal(Allocator arena, int code_min, int code_max, StateI
 fn AstNode*? ast_new_iter(Allocator arena, AstNode* arg, int min, int max, bool minimal) @local
 {
 	Iteration* iter = alloc::new_try(arena, Iteration, { .arg = arg, .min = min, .max = max, .minimal = minimal })!;
+	defer catch alloc::free(arena, iter);
 
 	AstNode* node = ast_new_node(arena, ITERATION, iter)!;
 	if (node) node.num_submatches = arg.num_submatches;
@@ -742,6 +744,7 @@ fn AstNode*? ast_binary(Allocator arena, AstNode* left, AstNode* right, int type
 	if (!right) return null;
 
 	Type* binary = alloc::new_try(arena, Type, { .left = left, .right = right })!;
+	defer catch alloc::free(arena, binary);
 
 	AstNode* node = ast_new_node(arena, type_id, binary)!;
 	if (node) node.num_submatches = left.num_submatches + right.num_submatches;
