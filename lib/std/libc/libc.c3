@@ -270,7 +270,7 @@ macro CFile stdin() => __acrt_iob_func(STDIN_FD);
 macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
 macro CFile stderr() => __acrt_iob_func(STDERR_FD);
 
-module libc @feat(LIBC) @feat(!WIN32) @feat(!LINUX) @feat(!LINUX) @feat(!ANDROID) @feat(!DARWIN) @feat(!BSD) @feat(!EMSCRIPTEN);
+module libc @feat(LIBC) @feat(!WIN32) @feat(!LINUX) @feat(!ANDROID) @feat(!DARWIN) @feat(!BSD) @feat(!EMSCRIPTEN);
 macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }

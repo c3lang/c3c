@@ -2408,6 +2408,7 @@ bool sema_decl_if_cond(SemaContext *context, Decl *decl)
 	}
 	if (!decl->is_templated)
 	{
+		if (compiler.build.warnings.deprecation == WARNING_ERROR) RETURN_SEMA_ERROR(attr, "Top declaration '@if' is deprecated except for generic declarations, please use '@feat' instead.");
 		SEMA_DEPRECATED(attr, "Top declaration '@if' is deprecated except for generic declarations, please use '@feat' instead.");
 	}
 	Expr *expr = attr->exprs[0];

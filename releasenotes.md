@@ -9,8 +9,8 @@
 - Improved GDB compatibility for macros.
 - Fail when "emcc" is unavailable instead of falling back to the built-in wasm linker.
 - Support fetching MacSDK for easy cross compilation.
-- Add `@feat` attribute.
-- Add `$feat` compile time function.
+- Add `@feat` attribute, deprecate `@if` on non-generic top level declarations. 
+- Add `$feat` compile time function. `$feature` is deprecated and replaced by `$feat`. 
  
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
