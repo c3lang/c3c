@@ -1,39 +1,38 @@
-module libc::os @if(env::LIBC);
+module libc::os;
 import std::core::env;
 
 // Linux
-extern fn int* __errno_location() @if(env::LINUX || env::EMSCRIPTEN);
-macro int errno() @if(env::LINUX || env::EMSCRIPTEN) => *__errno_location();
-macro void errno_set(int err) @if(env::LINUX || env::EMSCRIPTEN) => *(__errno_location()) = err;
+extern fn int* __errno_location() @feat(LINUX, EMSCRIPTEN);
+macro int errno()                 @feat(LINUX, EMSCRIPTEN) => *__errno_location();
+macro void errno_set(int err)     @feat(LINUX, EMSCRIPTEN) => *(__errno_location()) = err;
 
 // Android 9
-extern fn int* __errno() @if(env::ANDROID);
-macro int errno() @if(env::ANDROID) => *__errno();
-macro void errno_set(int err) @if(env::ANDROID) => *(__errno()) = err;
+extern fn int* __errno()          @feat(ANDROID);
+macro int errno()                 @feat(ANDROID) => *__errno();
+macro void errno_set(int err)     @feat(ANDROID) => *(__errno()) = err;
 
 // OpenBSD and NetBSD
-extern fn int* __errno() @if(env::OPENBSD || env::NETBSD);
-macro int errno() @if(env::OPENBSD || env::NETBSD) => *__errno();
-macro void errno_set(int err) @if(env::OPENBSD || env::NETBSD) => *(__errno()) = err;
+extern fn int* __errno()          @feat(OPENBSD, NETBSD);
+macro int errno()                 @feat(OPENBSD, NETBSD) => *__errno();
+macro void errno_set(int err)     @feat(OPENBSD, NETBSD) => *(__errno()) = err;
 
 // Darwin
-extern fn int* __error() @if(env::DARWIN || env::FREEBSD);
-macro int errno() @if(env::DARWIN || env::FREEBSD) => *__error();
-macro void errno_set(int err) @if(env::DARWIN || env::FREEBSD) => *(__error()) = err;
+extern fn int* __error()          @feat(DARWIN, FREEBSD);
+macro int errno()                 @feat(DARWIN, FREEBSD) => *__error();
+macro void errno_set(int err)     @feat(DARWIN, FREEBSD) => *(__error()) = err;
 
 // Win32
-macro int errno() @if(env::WIN32)
+macro int errno()                 @feat(WIN32)
 {
 	int holder;
 	_get_errno(&holder);
 	return holder;
 }
-macro void errno_set(int err) @if(env::WIN32) => _set_errno(err);
-extern fn void _get_errno(int* result) @if(env::WIN32);
-extern fn void _set_errno(int err) @if(env::WIN32);
+extern fn void _get_errno(int* result) @feat(WIN32);
+extern fn void _set_errno(int err)     @feat(WIN32);
+macro void errno_set(int err)          @feat(WIN32) => _set_errno(err);
 
 // Default
-module libc::os @if(!env::LIBC || !env::HAS_NATIVE_ERRNO);
 tlocal int _errno_c3 = 0;
-fn void errno_set(int err) => _errno_c3 = err;
-fn int errno() => _errno_c3;
+macro void errno_set(int err) @weak => _errno_c3 = err;
+macro int errno() @weak => _errno_c3;

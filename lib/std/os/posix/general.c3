@@ -1,8 +1,8 @@
-module std::os::posix @if(env::POSIX);
+module std::os::posix @feat(POSIX);
 
 extern ZString* environ;
 
 extern fn CLong sysconf(CInt name);
 
-const CInt _SC_PAGESIZE @if(env::LINUX) = 30;
-const CInt _SC_PAGESIZE @if(env::DARWIN) = 29;
+const CInt _SC_PAGESIZE @feat(LINUX) = 30;
+const CInt _SC_PAGESIZE @feat(DARWIN) = 29;

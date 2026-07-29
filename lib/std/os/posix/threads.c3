@@ -1,4 +1,4 @@
-module std::os::posix @if(env::POSIX);
+module std::os::posix @feat(POSIX);
 import std::thread;
 import libc;
 
@@ -90,16 +90,16 @@ extern fn void pthread_cleanup_push(PosixThreadFn routine, void* routine_arg);
 
 extern fn int sched_yield();
 
-struct Pthread_sched_param { int sched_priority;  char[4] __opaque @if(env::DARWIN); }
+struct Pthread_sched_param { int sched_priority;  char[4] __opaque @feat(DARWIN); }
 
-module std::thread::os @if(env::LINUX || env::ANDROID);
+module std::thread::os @feat(LINUX, ANDROID);
 
 extern fn CInt sem_init(Sem_t* sem, CInt pshared, CUInt value);
 extern fn CInt sem_wait(Sem_t* sem);
 extern fn CInt sem_post(Sem_t* sem);
 extern fn CInt sem_destroy(Sem_t* sem);
 
-module std::thread::os @if(env::POSIX && !env::LINUX && !env::NETBSD);
+module std::thread::os @feat(POSIX) @feat(!LINUX) @feat(!NETBSD);
 typedef Pthread_attr_t = ulong[8];
 typedef Pthread_cond_t = ulong[6];
 typedef Pthread_condattr_t = ulong[8];
@@ -110,12 +110,12 @@ typedef Pthread_once_t = ulong[2];
 typedef Pthread_rwlock_t = ulong[25];
 typedef Pthread_rwlockattr_t = ulong[3];
 
-union Sem_t @if (env::ANDROID)
+union Sem_t @feat(ANDROID)
 {
 	CUInt[4] __private;
 }
 
-module std::thread::os @if(env::LINUX);
+module std::thread::os @feat(LINUX);
 typedef Pthread_attr_t = ulong[7]; // 24 on 32bit
 typedef Pthread_cond_t = ulong[6];
 typedef Pthread_condattr_t = uint;
@@ -126,13 +126,13 @@ typedef Pthread_once_t = int;
 typedef Pthread_rwlock_t = ulong[7]; // 32 on 3bit
 typedef Pthread_rwlockattr_t = uint;
 
-union Sem_t @if (env::LINUX)
+union Sem_t
 {
 	char[32] __size;
 	CLong __align;
 }
 
-module std::thread::os @if(env::NETBSD);
+module std::thread::os @feat(NETBSD);
 typedef Pthread_attr_t = ulong[2];
 typedef Pthread_cond_t = ulong[5];
 typedef Pthread_condattr_t = ulong[2];
@@ -141,7 +141,7 @@ typedef Pthread_mutexattr_t = ulong[2];
 typedef Pthread_rwlock_t = ulong[8];
 typedef Pthread_rwlockattr_t = ulong[2];
 
-typedef Pthread_mutex_t @if(env::X86_64)= ulong[6];
-typedef Pthread_once_t @if(env::X86_64) = ulong[7];
-typedef Pthread_mutex_t @if(!env::X86_64) = ulong[5];
-typedef Pthread_once_t @if(!env::X86_64) = ulong[6];
+typedef Pthread_mutex_t @feat(X86_64)= ulong[6];
+typedef Pthread_once_t @feat(X86_64) = ulong[7];
+typedef Pthread_mutex_t @feat(!X86_64) = ulong[5];
+typedef Pthread_once_t @feat(!X86_64) = ulong[6];

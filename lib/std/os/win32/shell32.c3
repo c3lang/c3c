@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32) @link("shell32");
+module std::os::win32 @feat(WIN32) @link("shell32");
 
 alias Win32_REFKNOWNFOLDERID = Win32_KNOWNFOLDERID*;
 typedef Win32_KNOWNFOLDERID = Win32_GUID;

@@ -1,6 +1,6 @@
 // https://www.cprogramming.com/snippets/source-code/find-the-number-of-cpu-cores-for-windows-mac-or-linux
 
-module std::thread::cpu @if(env::DARWIN);
+module std::thread::cpu @feat(DARWIN);
 import libc;
 
 const CTL_UNSPEC	= 0; /* unused */
@@ -50,7 +50,7 @@ fn int native_cpu()
 	return (int)count;
 }
 
-module std::thread::cpu @if(env::OPENBSD);
+module std::thread::cpu @feat(OPENBSD);
 import std::os::openbsd;
 import libc;
 
@@ -65,7 +65,7 @@ fn int native_cpu()
 	return (int)max(1u, ncpu);
 }
 
-module std::thread::cpu @if(env::LINUX);
+module std::thread::cpu @feat(LINUX);
 import libc;
 
 fn int native_cpu()
@@ -73,7 +73,7 @@ fn int native_cpu()
 	return (int)libc::get_nprocs_conf();
 }
 
-module std::thread::cpu @if(env::WIN32);
+module std::thread::cpu @feat(WIN32);
 import libc;
 
 fn int native_cpu()
@@ -83,10 +83,9 @@ fn int native_cpu()
 	return (int)info.dwNumberOfProcessors;
 }
 
-module std::thread::cpu @if(!env::WIN32 && !env::LINUX && !env::OPENBSD && ! env::DARWIN);
-import libc;
+module std::thread::cpu;
 
 <*
  For environments with an undefined way of fetching the number of CPUs, simply return 1.
 *>
-fn int native_cpu() => 1;
+fn int native_cpu() @weak => 1;

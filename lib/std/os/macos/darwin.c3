@@ -1,4 +1,4 @@
-module std::os::darwin @if(env::DARWIN);
+module std::os::darwin @feat(DARWIN);
 import std::collections::list, std::os;
 
 const CTL_UNSPEC	= 0; /* unused */

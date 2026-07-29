@@ -1,4 +1,4 @@
-module std::net::os @if(env::POSIX && SUPPORTS_INET);
+module std::net::os @feat(POSIX);
 import std::io, libc;
 
 const int F_GETFL = 3;

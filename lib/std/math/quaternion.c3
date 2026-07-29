@@ -222,21 +222,12 @@ macro into_matrix(QuaternionNumber* q, $Type) @private
 	var z = rotation.k;
 	var w = rotation.l;
 
-	$if $feature(OLD_MATRIX):
-	return ($Type) {
-		1 - 2*y*y - 2*z*z,     2*x*y - 2*z*w,     2*x*z + 2*y*w,   0,
-			2*x*y + 2*z*w, 1 - 2*x*x - 2*z*z,     2*y*z - 2*x*w,   0,
-			2*x*z - 2*y*w,     2*y*z + 2*x*w, 1 - 2*x*x - 2*y*y,   0,
-					  0.0,               0.0,               0.0, 1.0,
-	};
-	$else
 	return ($Type) { .m = {
 		1 - 2*y*y - 2*z*z,   2*x*y + 2*z*w,     2*x*z - 2*y*w,   0,
 		2*x*y - 2*z*w,       1 - 2*x*x - 2*z*z, 2*y*z + 2*x*w,   0,
 		2*x*z + 2*y*w,       2*y*z - 2*x*w,     1 - 2*x*x - 2*y*y, 0,
 		0.0,                 0.0,               0.0,             1.0,
 	} };
-	$endif
 }
 
 const QUATERNION_EPSILON @private = Real::kind == FLOAT ? math::FLOAT_VECTOR_EPSILON : math::DOUBLE_VECTOR_EPSILON;

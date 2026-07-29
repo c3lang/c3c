@@ -6,7 +6,7 @@ import std, libc;
 const int THREAD_COUNT = 8;
 
 // Clean up SIGPIPE errors under Unix-like targets
-fn void ignore_sigpipe() @init(1001) @if(!env::WIN32)
+fn void ignore_sigpipe() @init(1001) @feat(!WIN32)
 {
 	// c3fmt off
 	libc::signal(libc::SIGPIPE, fn void (int) {});

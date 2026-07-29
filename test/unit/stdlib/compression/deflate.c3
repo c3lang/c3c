@@ -51,7 +51,7 @@ fn void test_deflate_empty()
 	assert(decompressed.len == 0, "Expected empty decompression");
 }
 
-fn void test_deflate_large_repetitive() @if($feature(SLOW_TESTS))
+fn void test_deflate_large_repetitive() @feat(SLOW_TESTS)
 {
 	// Test larger buffer to trigger reallocs in inflater
 	sz len = 100000;

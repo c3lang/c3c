@@ -1,4 +1,4 @@
-module std::net @if(os::SUPPORTS_INET);
+module std::net @feat(WIN32, POSIX);
 import std::time, libc, std::os;
 import std::core::env;
 import std::net::os;

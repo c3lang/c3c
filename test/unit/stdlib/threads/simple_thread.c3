@@ -25,7 +25,7 @@ fn void testrun_stack_size() @test
 }
 
 
-fn void testrun_set_priority() @test @if(env::POSIX || env::WIN32)
+fn void testrun_set_priority() @test @feat(POSIX, WIN32)
 {
 	Thread t;
 	a = 0;

@@ -1,4 +1,4 @@
-module std::os::posix @if(env::POSIX);
+module std::os::posix @feat(POSIX);
 import libc;
 
 

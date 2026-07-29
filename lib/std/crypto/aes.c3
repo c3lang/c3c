@@ -91,6 +91,10 @@ struct Aes
 	char[256] round_key;
 	<* Internal state *>
 	AesState state;
+	<* CTR position *>
+	int ctr_pos;
+	<* Stored buffer *>
+	char[BLOCKLEN] ctr_buffer;
 }
 alias AesState = char[<16>];
 
@@ -539,41 +543,52 @@ fn void inc_le(char[] iv)
 *>
 fn void ctr_xcrypt_buffer(Aes *aes, char[] in, char[] out, BlckCounter inc = &inc_be)
 {
-	 char[BLOCKLEN] buffer @noinit;
-	 sz len = in.len;
-	 sz i = 0;
+	char[BLOCKLEN] buffer @noinit;
+	sz len = in.len;
+	sz i;
 
-	 // Parallel path for 4 blocks
-	 for (; i + 64 <= len; i += 64)
-	 {
-		 char[64] counters;
-		 for (int b = 0; b < 4; b++)
-		 {
-			 mem::copy(&counters[b * 16], &aes.iv, 16);
-			 // Increment IV for next block
-			 inc(aes.iv[:16]);
-		 }
-		 aes_cipher4(aes, &counters, &aes.round_key) @inline;
-		 char[<64>] c4;
-		 char[<64>] i4;
-		 mem::copy(&c4, &counters, 64);
-		 mem::copy(&i4, &in[i], 64);
-		 c4 ^= i4;
-		 mem::copy(&out[i], &c4, 64);
-	 }
+	// Drain leftover
+	for (;aes.ctr_pos && i < len; i++, aes.ctr_pos = (aes.ctr_pos + 1) & 0xF)
+	{
+		out[i] = in[i] ^ aes.ctr_buffer[aes.ctr_pos];
+	}
 
-	 for (int bi = BLOCKLEN; i < len; i++)
-	 {
-		 if (bi == BLOCKLEN)
-		 {
-			 buffer = aes.iv;
-			 ecb_encrypt_block(aes, &buffer, &buffer);
-			 inc(aes.iv[..]);
-			 bi = 0;
-		 }
-		 out[i] = in[i] ^ buffer[bi];
-		 bi++;
-	 }
+	// Parallel path for 4 blocks
+	for (; i + 64 <= len; i += 64)
+	{
+		char[64] counters;
+		for (int b = 0; b < 4; b++)
+		{
+			mem::copy(&counters[b * 16], &aes.iv, 16);
+			// Increment IV for next block
+			inc(aes.iv[:16]);
+		}
+		aes_cipher4(aes, &counters, &aes.round_key) @inline;
+		char[<64>] c4;
+		char[<64>] i4;
+		mem::copy(&c4, &counters, 64);
+		mem::copy(&i4, &in[i], 64);
+		c4 ^= i4;
+		mem::copy(&out[i], &c4, 64);
+	}
+
+	int bi = BLOCKLEN;
+	for (; i < len; i++, bi++)
+	{
+		if (bi == BLOCKLEN)
+		{
+			buffer = aes.iv;
+			ecb_encrypt_block(aes, &buffer, &buffer);
+			inc(aes.iv[..]);
+			bi = 0;
+		}
+		out[i] = in[i] ^ buffer[bi];
+	}
+	if (bi != BLOCKLEN)
+	{
+		aes.ctr_buffer = buffer;
+		aes.ctr_pos = bi;
+	}
 }
 
 fn void transpose(char[16]* in, ushort[8]* q) @private @inline

@@ -308,7 +308,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		case DECL_UNION:
 			// Extend the nopadding attributes to nested structs.
 			if (parent->attr_nopadding) decl->attr_nopadding = true;
-			if (parent->attr_compact) decl->attr_compact = true;
+			if (parent->strukt.is_compact) decl->strukt.is_compact = true;
 			FALLTHROUGH;
 			// The common case for all inline types:
 		case DECL_BITSTRUCT:
@@ -343,7 +343,7 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *parent, D
 	if (!parent->strukt.padded_decl_id) parent->strukt.padded_decl_id = member_type->decl->strukt.padded_decl_id;
 
 	// If it's compact then it's an error.
-	if (parent->attr_compact)
+	if (parent->strukt.is_compact)
 	{
 		SEMA_ERROR(member, "%s has padding and can't be used as the type of '%s', because members of a `@compact` type must all have zero padding.", type_quoted_error_string(member_type), member->name);
 		Decl* padded_decl = declptr(member_type->decl->strukt.padded_decl_id);
@@ -459,13 +459,13 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *union_decl)
 	ASSERT(decl_ok(union_decl));
 
 	// 1. If packed, then the alignment is 1, unless previously given
-	if (union_decl->is_packed && !union_decl->alignment) union_decl->alignment = 1;
+	if (union_decl->strukt.is_packed && !union_decl->alignment) union_decl->alignment = 1;
 
 	// 2. otherwise pick the highest of the natural alignment and the given alignment.
-	if (!union_decl->is_packed && union_decl->alignment < max_alignment) union_decl->alignment = max_alignment;
+	if (!union_decl->strukt.is_packed && union_decl->alignment < max_alignment) union_decl->alignment = max_alignment;
 
 	// We're only packed if the max alignment is > 1
-	union_decl->is_packed = union_decl->is_packed && max_alignment > 1;
+	union_decl->strukt.is_packed = union_decl->strukt.is_packed && max_alignment > 1;
 
 	// "Representative" type is the one with the maximum alignment.
 	ASSERT(max_alignment_element >= 0);
@@ -546,7 +546,7 @@ RETRY:;
 		case TYPE_UNION:
 		{
 			// If packed => 1
-			if (type->decl->is_packed) return 1;
+			if (type->decl->strukt.is_packed) return 1;
 
 			// Find the max alignment in all elements
 			AlignSize max = 0;
@@ -583,7 +583,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	bool is_unaligned = false;
 	AlignSize size = 0;
 	AlignSize offset = 0;
-	bool is_packed = decl->is_packed;
+	bool is_packed = decl->strukt.is_packed;
 	Decl **struct_members = decl->strukt.members;
 	unsigned member_count = vec_size(struct_members);
 	ASSERT(member_count > 0 && "This analysis should only be called on member_count > 0");
@@ -731,10 +731,10 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	// Set the alignment:
 
 	// 1. If packed, use the alignment given, otherwise set to 1.
-	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
+	if (decl->strukt.is_packed && !decl->alignment) decl->alignment = 1;
 
 	// 2. otherwise pick the highest of the actual alignment and the given alignment.
-	if (!decl->is_packed && decl->alignment < actual_alignment) decl->alignment = actual_alignment;
+	if (!decl->strukt.is_packed && decl->alignment < actual_alignment) decl->alignment = actual_alignment;
 
 	// We must now possibly add the end padding.
 	// First we calculate the actual size
@@ -779,9 +779,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		}
 	}
 
-	decl->is_packed = is_unaligned;
+	decl->strukt.is_packed = is_unaligned;
 	// Strip padding if we are aligned.
-	if (!decl->is_packed && is_naturally_aligned)
+	if (!decl->strukt.is_packed && is_naturally_aligned)
 	{
 		for (unsigned i = 0; i < member_count; i++)
 		{
@@ -1820,7 +1820,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (enums == 1)
 			{
-				RETURN_SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
+				RETURN_SEMA_ERROR(decl, "No enum values left in enum after @if and @feat resolution, there must be at least one.");
 			}
 			vec_erase_at(enum_values, i);
 			enums--;
@@ -1983,7 +1983,7 @@ static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool 
 		{
 			if (enums == 1)
 			{
-				RETURN_SEMA_ERROR(decl, "No constdef values left in constdef after @if resolution, there must be at least one.");
+				RETURN_SEMA_ERROR(decl, "No constdef values left in constdef after @if and @feat resolution, there must be at least one.");
 			}
 			vec_erase_at(enum_values, i);
 			enums--;
@@ -2406,6 +2406,11 @@ bool sema_decl_if_cond(SemaContext *context, Decl *decl)
 	{
 		RETURN_SEMA_ERROR(attr, "Expected an argument to '@if'.");
 	}
+	if (!decl->is_templated)
+	{
+		if (compiler.build.warnings.deprecation == WARNING_ERROR) RETURN_SEMA_ERROR(attr, "Top declaration '@if' is deprecated except for generic declarations, please use '@feat' instead.");
+		SEMA_DEPRECATED(attr, "Top declaration '@if' is deprecated except for generic declarations, please use '@feat' instead.");
+	}
 	Expr *expr = attr->exprs[0];
 	context->call_env.in_if_resolution = attr->loc;
 	bool success = sema_analyse_ct_expr(context, expr);
@@ -2782,8 +2787,7 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 
 	// Attributes needs to be resolved early
 	bool erase_decl = false;
-	if (!sema_analyse_attributes(context, method, method->attributes,
-		method->decl_kind == DECL_MACRO ? ATTR_MACRO : ATTR_FUNC, &erase_decl)) return decl_poison(method);
+	if (!sema_analyse_attributes(context, method, method->attributes, method->decl_kind == DECL_MACRO ? ATTR_MACRO : ATTR_FUNC, &erase_decl)) return decl_poison(method);
 	if (erase_decl)
 	{
 		method->decl_kind = DECL_ERASED;
@@ -3313,6 +3317,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
 			[ATTRIBUTE_FORMAT] = ATTR_FUNC | ATTR_MACRO | ATTR_FNTYPE,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_PARAM),
+			[ATTRIBUTE_FEAT] = (AttributeDomain)~(ATTR_CALL | ATTR_PARAM),
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_JUMP] = (AttributeDomain)0, // Special, used for switch only
@@ -3364,7 +3369,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	unsigned args = vec_size(attr->exprs);
 
 	// Check that attributes aren't more than 1 on most attributes.
-	if (args > 1 && type != ATTRIBUTE_LINK && type != ATTRIBUTE_TAG && type != ATTRIBUTE_WASM)
+	if (args > 1 && type != ATTRIBUTE_LINK && type != ATTRIBUTE_TAG && type != ATTRIBUTE_WASM && type != ATTRIBUTE_FEAT)
 	{
 		RETURN_SEMA_ERROR(attr->exprs[1], "Too many arguments for the attribute.");
 	}
@@ -3546,6 +3551,13 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_NOALIAS:
 			decl->var.no_alias = true;
 			break;
+		case ATTRIBUTE_FEAT:
+			switch (sema_remove_due_to_conditional(attr))
+			{
+				case BOOL_ERR: return false;
+				case BOOL_TRUE: *erase_decl = true; return true;
+				case BOOL_FALSE: return true;
+			}
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
 			if (!sema_analyse_attribute_bool_const(context, expr)) return false;
@@ -3648,7 +3660,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			break;
 		case ATTRIBUTE_COMPACT:
 			decl->attr_nopadding = true;
-			decl->attr_compact = true;
+			decl->strukt.is_compact = true;
 			break;
 		case ATTRIBUTE_SAFEINFER:
 			decl->var.safe_infer = true;
@@ -3744,7 +3756,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->strukt.little_endian = true;
 			break;
 		case ATTRIBUTE_PACKED:
-			decl->is_packed = true;
+			decl->strukt.is_packed = true;
 			break;
 		case ATTRIBUTE_UNUSED:
 			if(decl->is_must_use)
@@ -4184,6 +4196,89 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 		: "Expected zero or 1 parameters for main.");
 	return MAIN_TYPE_ERROR;
 
+}
+
+static inline BoolErr sema_evaluate_feature(Expr *expr)
+{
+	if (expr->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)
+	{
+		RETURN_PRINT_ERROR_AT(BOOL_ERR, expr, "A plain feature name was expected here, like 'FOO'.");
+	}
+	if (!expr->unresolved_ident_expr.is_const)
+	{
+		RETURN_PRINT_ERROR_AT(BOOL_ERR, expr, "An feature name was expected here, features are all uppercase, like 'FOO'.");
+	}
+	if (expr->unresolved_ident_expr.path)
+	{
+		RETURN_PRINT_ERROR_AT(BOOL_ERR, expr, "A feature name cannot have a path, did you want to use `@if` instead?");
+	}
+	const char *name = expr->unresolved_ident_expr.ident;
+	return !htable_get(&compiler.context.features, (void *)name) ? BOOL_FALSE : BOOL_TRUE;
+
+}
+
+static inline BoolErr sema_evaluate_feature_expression(Expr *expr)
+{
+	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator)
+	{
+		switch (sema_evaluate_feature_expression(expr->unary_expr.expr))
+		{
+			case BOOL_ERR: return BOOL_ERR;
+			case BOOL_TRUE: return BOOL_FALSE;
+			case BOOL_FALSE: return BOOL_TRUE;
+		}
+		UNREACHABLE
+	}
+	if (expr->expr_kind == EXPR_BINARY)
+	{
+		switch (expr->binary_expr.operator)
+		{
+			case BINARYOP_BIT_AND:
+			case BINARYOP_BIT_OR:
+			{
+				BoolErr res = sema_evaluate_feature_expression(exprptr(expr->binary_expr.left));
+				if (res == BOOL_ERR) return BOOL_ERR;
+				BoolErr res2 = sema_evaluate_feature_expression(exprptr(expr->binary_expr.right));
+				if (res2 == BOOL_ERR) return BOOL_ERR;
+				if (expr->binary_expr.operator == BINARYOP_BIT_AND)
+				{
+					return res == BOOL_TRUE && res2 == BOOL_TRUE;
+				}
+				return res == BOOL_TRUE || res2 == BOOL_TRUE;
+			}
+			default:
+				break;
+		}
+	}
+	return sema_evaluate_feature(expr);
+}
+
+BoolErr sema_remove_due_to_conditional(Attr *attr)
+{
+	ASSERT(attr->attr_kind == ATTRIBUTE_FEAT);
+	BoolErr res = BOOL_TRUE;
+	FOREACH (Expr *, expr, attr->exprs)
+	{
+		BoolErr res_inner = sema_evaluate_feature_expression(expr);
+		switch (res_inner)
+		{
+			case BOOL_ERR: return BOOL_ERR;
+			case BOOL_TRUE: res = BOOL_FALSE; break;
+			case BOOL_FALSE: break;
+		}
+	}
+	return res;
+}
+
+BoolErr sema_remove_due_to_conditionals(Attr **attrs)
+{
+	FOREACH(Attr *, attr, attrs)
+	{
+		if (attr->attr_kind != ATTRIBUTE_FEAT) continue;
+		BoolErr result = sema_remove_due_to_conditional(attr);
+		if (result != BOOL_FALSE) return result;
+	}
+	return BOOL_FALSE;
 }
 
 Decl *sema_create_runner_main(SemaContext *context, Decl *decl)
@@ -5425,6 +5520,7 @@ INLINE Decl *type_is_possible_template(SemaContext *context, TypeInfo *type_info
 bool sema_analyse_method_register(SemaContext *context, Decl *method)
 {
 	TypeInfo *parent_type_info = decl_find_method_target(method);
+	// Maybe check if method->is_templated happens
 	Decl *decl = method->is_templated ? NULL : type_is_possible_template(context, parent_type_info);
 	if (decl)
 	{
@@ -5455,7 +5551,8 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 		RETURN_SEMA_ERROR(parent_type_info, "Methods can not be associated with '%s'", type_to_error_string(parent_type));
 	}
 
-	return type_add_method(context, parent_type->canonical, method);
+	if (!type_add_method(context, parent_type->canonical, method)) return false;
+	return method->decl_kind != DECL_ERASED;
 }
 
 bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacement)

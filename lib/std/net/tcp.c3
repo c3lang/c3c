@@ -1,4 +1,4 @@
-module std::net::tcp @if(os::SUPPORTS_INET);
+module std::net::tcp @feat(WIN32, POSIX);
 import std::net @public;
 import std::time, libc;
 import std::os::win32;

@@ -1519,7 +1519,6 @@ static inline void type_create_float(const char *name, Type *type, TypeKind kind
 Type *type_create_struct(const char *name, Type **types, const char **names, int count)
 {
 	Decl *decl = decl_new_with_type(symtab_preset(name, TOKEN_TYPE_IDENT), 0, DECL_STRUCT);
-	decl->unit = compiler.context.core_unit;
 	decl->extname = decl->name;
 	AlignSize offset = 0;
 	AlignSize max_align = 0;
@@ -1539,9 +1538,9 @@ Type *type_create_struct(const char *name, Type **types, const char **names, int
 	}
 	decl->strukt.size = aligned_offset(offset, max_align);
 	decl->alignment = max_align;
+	decl->is_weak = true;
 	decl->resolve_status = RESOLVE_DONE;
-	global_context_add_type(decl->type);
-	global_context_add_decl(decl);
+	unit_register_global_decl(compiler.context.core_unit, decl);
 	return decl->type;
 }
 
@@ -1594,7 +1593,6 @@ void type_setup(PlatformTarget *target)
 	type_chars = type_get_slice(type_char);
 	type_wildcard_optional = type_get_optional(type_wildcard);
 	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), 0, DECL_TYPEDEF);
-	string_decl->unit = compiler.context.core_unit;
 	string_decl->resolved_attributes = true;
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
@@ -1603,9 +1601,7 @@ void type_setup(PlatformTarget *target)
 	string_decl->attr_constinit = true;
 	string_decl->resolve_status = RESOLVE_DONE;
 	type_string = string_decl->type;
-
-	global_context_add_type(string_decl->type);
-	global_context_add_decl(string_decl);
+	unit_register_global_decl(compiler.context.core_unit, string_decl);
 
 	Type* types[2] = { type_string, type_typeid };
 	const char* names[2] = { kw_name, kw_type };

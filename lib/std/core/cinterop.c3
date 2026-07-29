@@ -62,8 +62,7 @@ macro typeid unsigned_int_from_bitsize(sz $bitsize) @private
 	$endswitch
 }
 
-const USE_STACK_VALIST = env::ARCH_32_BIT || env::WIN32 || (env::DARWIN && env::AARCH64);
-module std::core::cinterop @if(USE_STACK_VALIST);
+module std::core::cinterop @feat(ARCH_32_BIT, WIN32, DARWIN & AARCH64);
 
 typedef CVaList = void*;
 macro CVaList.next(&self, $Type)
@@ -73,7 +72,7 @@ macro CVaList.next(&self, $Type)
 	return *($Type*)ptr;
 }
 
-module std::core::cinterop @if(env::X86_64 && !env::WIN32);
+module std::core::cinterop @feat(X86_64) @feat(!WIN32);
 
 struct CVaListData
 {

@@ -1,4 +1,4 @@
-module std::net::os @if(env::DARWIN);
+module std::net::os @feat(DARWIN);
 import libc;
 
 const AIFlags AI_NUMERICSERV   = (AIFlags)0x1000;
@@ -46,7 +46,7 @@ const AIFamily PLATFORM_AF_UTUN            = (AIFamily)38;
 const AIFamily PLATFORM_AF_VSOCK           = (AIFamily)40;
 const AIFamily PLATFORM_AF_MAX             = (AIFamily)41;
 
-const int PLATFORM_O_NONBLOCK = 0x04;
+const PLATFORM_O_NONBLOCK = 0x04;
 
 // https://opensource.apple.com/source/xnu/xnu-4570.41.2/bsd/sys/socket.h.auto.html
 const int SOL_SOCKET             = 0xffff;

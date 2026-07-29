@@ -8,7 +8,7 @@ import std::net, std::time;
 // errno before it was read. The real result now comes through
 // getsockopt(SO_ERROR), or is captured as soon as the connect fails.
 
-fn void test_connect_timeout_refused() @if(env::POSIX && !env::EMSCRIPTEN)
+fn void test_connect_timeout_refused() @feat(POSIX) @feat(!EMSCRIPTEN)
 {
 	// Nothing listens on port 1, so the connect must be refused with the real
 	// error -- not masked as io::GENERAL_ERROR.
@@ -20,7 +20,7 @@ fn void test_connect_timeout_refused() @if(env::POSIX && !env::EMSCRIPTEN)
 	assert(false, "connect to a closed port should be refused");
 }
 
-fn void test_connect_timeout_connects() @if(env::POSIX && !env::EMSCRIPTEN)
+fn void test_connect_timeout_connects() @feat(POSIX) @feat(!EMSCRIPTEN)
 {
 	tcp::TcpServerSocket server = tcp::listen("127.0.0.1", 47281, 4, net::SocketOption.REUSEADDR)!!;
 	defer (void)server.close();

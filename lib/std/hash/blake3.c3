@@ -35,7 +35,7 @@ const char[16][7] MESSAGE_SCHEDULE = {
 //   For now, none of these are used until there's a chance to explore BLAKE3's (necessary) vectorization optimizations.
 //
 <* When true, force the use of slow-but-portable BLAKE3 functions. Do not vectorize the hash function. *>
-const FORCE_PORTABLE = true; //$feature(BLAKE3_FORCE_PORTABLE); // this is statically set to TRUE for now
+const FORCE_PORTABLE = true; //$feat(BLAKE3_FORCE_PORTABLE); // this is statically set to TRUE for now
 <* AARCH64: When not big-endian, use Neon. *>
 const USE_NEON = !FORCE_PORTABLE &&& (env::AARCH64 &&& !env::BIG_ENDIAN);
 <* Bundling some architecture booleans into one. *>

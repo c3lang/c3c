@@ -1,4 +1,4 @@
-module std::net::os @if(env::WIN32);
+module std::net::os @feat(WIN32);
 import std::os, std::io, libc, std::thread;
 import std::core::mem;
 import std::os::win32;

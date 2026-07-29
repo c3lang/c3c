@@ -1,4 +1,4 @@
-module std::os::darwin @if(env::DARWIN);
+module std::os::darwin @feat(DARWIN);
 
 alias __Darwin_sigset_t = uint;
 alias __Darwin_size_t = usz;

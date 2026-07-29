@@ -1,4 +1,4 @@
-module std::os::macos::cf @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
+module std::os::macos::cf @feat(DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
 
 typedef CFAllocatorRef = void*;
 typedef CFAllocatorContextRef = void*;

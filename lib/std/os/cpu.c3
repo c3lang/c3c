@@ -1,6 +1,6 @@
 // https://www.cprogramming.com/snippets/source-code/find-the-number-of-cpu-cores-for-windows-mac-or-linux
 
-module std::os @if(env::DARWIN);
+module std::os @feat(DARWIN);
 import std::os::macos;
 
 fn int num_cpu()
@@ -15,7 +15,7 @@ fn int num_cpu()
 	return (int)count;
 }
 
-module std::os @if(env::LINUX || env::ANDROID);
+module std::os @feat(LINUX, ANDROID);
 import std::os::posix;
 
 fn int num_cpu()
@@ -23,7 +23,7 @@ fn int num_cpu()
 	return (int)posix::get_nprocs_conf();
 }
 
-module std::os @if(env::WIN32);
+module std::os @feat(WIN32);
 import std::os::win32;
 
 fn int num_cpu()
@@ -33,7 +33,7 @@ fn int num_cpu()
 	return (int)info.dwNumberOfProcessors;
 }
 
-module std::os @if(env::NETBSD);
+module std::os @feat(NETBSD);
 import std::os::netbsd;
 import libc;
 
@@ -49,7 +49,7 @@ fn int num_cpu()
 	return (int)count;
 }
 
-module std::os @if(env::OPENBSD);
+module std::os @feat(OPENBSD);
 import std::os::openbsd;
 import libc;
 
@@ -71,7 +71,7 @@ fn int num_cpu()
 	return (int)count;
 }
 
-module std::os @if(env::FREEBSD);
+module std::os @feat(FREEBSD);
 import std::os::freebsd;
 import libc;
 
@@ -87,7 +87,7 @@ fn int num_cpu()
 	return (int)count;
 }
 
-module std::os @if(env::EMSCRIPTEN);
+module std::os @feat(EMSCRIPTEN);
 import libc;
 
 fn int num_cpu()

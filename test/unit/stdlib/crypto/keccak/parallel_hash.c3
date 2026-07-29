@@ -124,30 +124,6 @@ fn void the_desperation_pays_off()
 	test::@check(x"ba8dc1d1d979331d3f813603c67f72609ab5e44b94a0b8f9af46514454a2b4f5" == out, "Invalid final ParallelHash128 (non-XOF) value");
 }
 
-// fn void empty()
-// {
-// }
-
-// fn void interval()
-// {
-// }
-
-// fn void streamed()
-// {
-// }
-
-// fn void large() @if ($feature(SLOW_TESTS))
-// {
-// }
-
-// fn void successive_xof_operations_128()
-// {
-// }
-
-// fn void successive_xof_operations_256()
-// {
-// }
-
 // All things equal, a HASH and an XOF result are NOT THE SAME.
 fn void xof_vs_non_xof()
 {

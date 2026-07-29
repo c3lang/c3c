@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32);
+module std::os::win32 @feat(WIN32);
 
 constdef Win32_CODEPAGE : Win32_UINT
 {

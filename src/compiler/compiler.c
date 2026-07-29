@@ -976,6 +976,12 @@ void compile_file_list(BuildOptions *options)
 	compile();
 }
 
+static inline void add_feat(const char *feature_flag)
+{
+	feature_flag = symtab_preset(feature_flag, TOKEN_CONST_IDENT);
+	htable_set(&compiler.context.features, (void *) feature_flag, (void *) feature_flag);
+}
+
 static inline void setup_define(const char *id, Expr *expr)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
@@ -1557,7 +1563,162 @@ const char *compiler_date_to_iso(void)
 	return iso;
 }
 
-void compile()
+INLINE void update_feature_flags(void)
+{
+		FOREACH(const char *, feature_flag, compiler.build.feature_list)
+	{
+		add_feat(feature_flag);
+	}
+
+	if (link_libc()) add_feat("LIBC");
+	if (custom_libc()) add_feat("CUSTOM_LIBC");
+	bool no_libc = !link_libc() && !custom_libc();
+	if (no_libc)
+	{
+		add_feat("NO_LIBC"); add_feat("FREESTANDING");
+		switch (compiler.platform.os)
+		{
+			case OS_TYPE_WIN32:  add_feat("FREESTANDING_PE32"); break;
+			case OS_TYPE_MACOSX: add_feat("FREESTANDING_MACHO"); break;
+			default:
+				if (compiler.platform.arch == ARCH_TYPE_WASM32 || compiler.platform.arch == ARCH_TYPE_WASM64)
+				{
+					add_feat("FREESTANDING_WASM");
+				}
+				else
+				{
+					add_feat("FREESTANDING_ELF");
+				}
+				break;
+		}
+	}
+	if (compiler.platform.big_endian) add_feat("BIG_ENDIAN");
+	if (!compiler.platform.big_endian) add_feat("LITTLE_ENDIAN");
+	if (safe_mode_enabled()) add_feat("SAFE_MODE");
+	if (compiler.build.debug_info == DEBUG_INFO_FULL) add_feat("DEBUG_SYMBOLS");
+	if (compiler.build.show_backtrace != SHOW_BACKTRACE_OFF) add_feat("BACKTRACE");
+	if (compiler.build.benchmarking) add_feat("BENCHMARKING");
+	if (compiler.build.testing) add_feat("TESTING");
+	switch (compiler.platform.width_register)
+	{
+		case 8: add_feat("ARCH_8_BIT"); break;
+		case 16: add_feat("ARCH_16_BIT"); break;
+		case 32: add_feat("ARCH_32_BIT"); break;
+		case 64: add_feat("ARCH_64_BIT"); break;
+		case 128: add_feat("ARCH_128_BIT"); break;
+		default: UNREACHABLE_VOID;
+	}
+
+	switch (compiler.platform.arch)
+	{
+		case ARCH_TYPE_ARM:        add_feat("ARM"); break;
+		case ARCH_TYPE_ARMB:       add_feat("ARMB"); break;
+		case ARCH_TYPE_AARCH64:    add_feat("AARCH64"); break;
+		case ARCH_TYPE_RISCV32:    add_feat("RISCV32"); break;
+		case ARCH_TYPE_RISCV64:    add_feat("RISCV64"); break;
+		case ARCH_TYPE_X86:        add_feat("X86"); break;
+		case ARCH_TYPE_X86_64:     add_feat("X86_64"); break;
+		case ARCH_TYPE_WASM32:     add_feat("WASM"); add_feat("WASM32"); break;
+		case ARCH_TYPE_WASM64:     add_feat("WASM"); add_feat("WASM64"); break;
+		case ARCH_TYPE_XTENSA:     add_feat("XTENSA"); break;
+		case ARCH_TYPE_AARCH64_BE:
+		case ARCH_TYPE_AARCH64_32:
+		case ARCH_TYPE_ARC:
+		case ARCH_TYPE_AVR:
+		case ARCH_TYPE_BPFEL:
+		case ARCH_TYPE_BPFEB:
+		case ARCH_TYPE_HEXAGON:
+		case ARCH_TYPE_MIPS:
+		case ARCH_TYPE_MIPSEL:
+		case ARCH_TYPE_MIPS64:
+		case ARCH_TYPE_MIPS64EL:
+		case ARCH_TYPE_MSP430:
+		case ARCH_TYPE_PPC:
+		case ARCH_TYPE_PPC64:
+		case ARCH_TYPE_PPC64LE:
+		case ARCH_TYPE_R600:
+		case ARCH_TYPE_AMDGCN:
+		case ARCH_TYPE_SPARC:
+		case ARCH_TYPE_SPARCV9:
+		case ARCH_TYPE_SPARCEL:
+		case ARCH_TYPE_SYSTEMZ:
+		case ARCH_TYPE_TCE:
+		case ARCH_TYPE_TCELE:
+		case ARCH_TYPE_THUMB:
+		case ARCH_TYPE_THUMBEB:
+		case ARCH_TYPE_XCORE:
+		case ARCH_TYPE_NVPTX:
+		case ARCH_TYPE_NVPTX64:
+		case ARCH_TYPE_LE32:
+		case ARCH_TYPE_LE64:
+		case ARCH_TYPE_AMDIL:
+		case ARCH_TYPE_AMDIL64:
+		case ARCH_TYPE_HSAIL:
+		case ARCH_TYPE_HSAIL64:
+		case ARCH_TYPE_SPIR:
+		case ARCH_TYPE_SPIR64:
+		case ARCH_TYPE_KALIMBA:
+		case ARCH_TYPE_SHAVE:
+		case ARCH_TYPE_LANAI:
+		case ARCH_TYPE_RSCRIPT32:
+		case ARCH_TYPE_RSCRIPT64:
+		case ARCH_TYPE_UNKNOWN:
+			break;
+	}
+	if (link_libc())
+	{
+		switch (compiler.platform.os)
+		{
+			case OS_TYPE_UNKNOWN:
+			case OS_TYPE_NONE:
+			case OS_TYPE_ANANAS:
+			case OS_TYPE_CLOUD_ABI:
+			case OS_TYPE_DRAGON_FLY:
+			case OS_TYPE_FUCHSIA:
+			case OS_TYPE_KFREEBSD:
+			case OS_TYPE_PS3:
+			case OS_TYPE_HAIKU:
+			case OS_TYPE_MINIX:
+			case OS_TYPE_RTEMS:
+			case OS_TYPE_NACL:
+			case OS_TYPE_CNK:
+			case OS_TYPE_AIX:
+			case OS_TYPE_CUDA:
+			case OS_TYPE_NVOPENCL:
+			case OS_TYPE_AMDHSA:
+			case OS_TYPE_PS4:
+			case OS_TYPE_ELFIAMCU:
+			case OS_TYPE_MESA3D:
+			case OS_TYPE_CONTIKI:
+			case OS_TYPE_AMDPAL:
+			case OS_TYPE_HERMITCORE:
+			case OS_TYPE_HURD:
+			case OS_TYPE_SOLARIS:
+				break;
+			case OS_TYPE_FREEBSD:    add_feat("POSIX"); add_feat("BSD"); add_feat("FREEBSD"); break;
+			case OS_TYPE_IOS:        add_feat("POSIX"); add_feat("DARWIN"); add_feat("IOS"); break;
+			case OS_TYPE_LINUX:      add_feat("POSIX"); add_feat("LINUX"); break;
+			case OS_TYPE_MACOSX:	 add_feat("POSIX"); add_feat("DARWIN"); add_feat("MACOS"); break;
+			case OS_TYPE_NETBSD:     add_feat("POSIX"); add_feat("BSD"); add_feat("NETBSD"); break;
+			case OS_TYPE_OPENBSD:    add_feat("POSIX"); add_feat("BSD"); add_feat("OPENBSD"); break;
+			case OS_TYPE_WIN32:      add_feat("WIN32"); break;
+			case OS_TYPE_TVOS:       add_feat("POSIX"); add_feat("DARWIN"); add_feat("TVOS"); break;
+			case OS_TYPE_WATCHOS:    add_feat("POSIX"); add_feat("DARWIN"); add_feat("WATCHOS"); break;
+			case OS_TYPE_WASI:       add_feat("WASI"); break;
+			case OS_TYPE_EMSCRIPTEN: add_feat("POSIX"); add_feat("EMSCRIPTEN"); break;
+			case OS_TYPE_ANDROID:    add_feat("POSIX"); add_feat("ANDROID"); break;
+		}
+	}
+	if (compiler.platform.int128) add_feat("NATIVE_I128");
+	if (compiler.platform.float128) add_feat("NATIVE_F128");
+	if (compiler.platform.float16) add_feat("NATIVE_F16");
+	if (compiler.build.feature.sanitize_address) add_feat("ASAN");
+	if (compiler.build.feature.sanitize_memory) add_feat("MSAN");
+	if (compiler.build.feature.sanitize_thread) add_feat("TSAN");
+	if (compiler.build.feature.panic_level != PANIC_OFF) add_feat("PRINT_PANIC");
+}
+
+void compile(void)
 {
 	symtab_init(compiler.build.symtab_size);
 	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
@@ -1577,11 +1738,12 @@ void compile()
 	core_path->loc = 0;
 	core_path->len = strlen(kw_std__core);
 	compiler.context.core_module = compiler_find_or_create_module(core_path);
-	CompilationUnit *unit = CALLOCS(CompilationUnit);
-	unit->file = source_file_generate("core_internal.c3");
+	CompilationUnit *unit = unit_create(source_file_generate("core_internal.c3"));
 	unit->module = compiler.context.core_module;
+
 	compiler.context.core_unit = unit;
 	target_setup(&compiler.build);
+	update_feature_flags();
 	if (compiler.context.should_print_environment)
 	{
 		print_build_env();
@@ -1600,12 +1762,6 @@ void compile()
 		expand_csources(lib->parent->dir, lib->csource_dirs, &lib->csources);
 		expand_cinclude_dirs(lib->parent->dir, lib->cinclude_dirs, &lib->cinclude_dirs);
 	}
-	FOREACH(const char *, feature_flag, compiler.build.feature_list)
-	{
-		feature_flag = symtab_preset(feature_flag, TOKEN_CONST_IDENT);
-		htable_set(&compiler.context.features, (void *) feature_flag, (void *) feature_flag);
-	}
-
 	setup_int_define("C_SHORT_SIZE", compiler.platform.width_c_short, type_int);
 	setup_int_define("C_INT_SIZE", compiler.platform.width_c_int, type_int);
 	setup_int_define("C_LONG_SIZE", compiler.platform.width_c_long, type_int);
@@ -1613,21 +1769,12 @@ void compile()
 	setup_int_define("REGISTER_SIZE", compiler.platform.width_register, type_int);
 	setup_int_define("MAX_VECTOR_SIZE", compiler.build.max_vector_size, type_int);
 	setup_bool_define("C_CHAR_IS_SIGNED", compiler.platform.signed_c_char);
-	setup_bool_define("PLATFORM_BIG_ENDIAN", compiler.platform.big_endian);
-	setup_bool_define("PLATFORM_I128_SUPPORTED", compiler.platform.int128);
-	setup_bool_define("PLATFORM_F128_SUPPORTED", compiler.platform.float128);
-	setup_bool_define("PLATFORM_F16_SUPPORTED", compiler.platform.float16);
 	setup_int_define("ARCH_TYPE", (uint64_t)compiler.platform.arch, type_int);
 	setup_int_define("MEMORY_ENVIRONMENT", (uint64_t)compiler.build.memory_environment, type_int);
-	setup_bool_define("COMPILER_LIBC_AVAILABLE", link_libc());
-	setup_bool_define("CUSTOM_LIBC", custom_libc());
+
 	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)compiler.build.optlevel, type_int);
 	setup_int_define("OS_TYPE", (uint64_t)compiler.platform.os, type_int);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)compiler.build.optsize, type_int);
-	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
-	setup_bool_define("DEBUG_SYMBOLS", compiler.build.debug_info == DEBUG_INFO_FULL);
-	setup_bool_define("PANIC_MSG", compiler.build.feature.panic_level != PANIC_OFF);
-	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
 #if LLVM_AVAILABLE
 	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 #else 
@@ -1637,13 +1784,9 @@ void compile()
 	setup_string_define("VERSION", COMPILER_VERSION);
 	setup_bool_define("PRERELEASE", PRERELEASE);
 
-	setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
-	setup_bool_define("TESTING", compiler.build.testing);
 	setup_int_define("LANGUAGE_DEV_VERSION", 8, type_int);
-	setup_bool_define("ADDRESS_SANITIZER", compiler.build.feature.sanitize_address);
-	setup_bool_define("MEMORY_SANITIZER", compiler.build.feature.sanitize_memory);
-	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);
+
 	setup_string_define("BUILD_HASH", GIT_HASH);
 	setup_string_define("BUILD_DATE", compiler_date_to_iso());
 	setup_string_define("PROJECT_PATH", compiler.build.project_dir ? compiler.build.project_dir : compiler.base_dir);
@@ -1938,9 +2081,23 @@ void print_build_env(void)
 	printf("Output name       : %s\n", compiler.build.output_name);
 	printf("System path       : %s\n", getenv("PATH"));
 	printf("Arch/OS target    : %s\n", arch_os_target[compiler.build.arch_os_target]);
-	printf("env::POSIX        : %s\n", link_libc() && is_posix(compiler.platform.os) ? "true" : "false");
-	printf("env::WIN32        : %s\n", compiler.platform.os == OS_TYPE_WIN32 ? "true" : "false");
-	printf("env::LIBC         : %s\n", link_libc() ? "true" : "false");
+	printf("Flags             : ");
+
+	HTEntry **feature_list = compiler.context.features.entries;
+	uint32_t size = compiler.context.features.mask + 1;
+	bool first = true;
+	for (uint32_t i = 0; i < size; i++)
+	{
+		HTEntry *entry = feature_list[i];
+		while (entry)
+		{
+			if (!first) printf(":");
+			first = false;
+			printf("%s", (char *)entry->value);
+			entry = entry->next;
+		}
+	}
+	printf("\n");
 }
 
 bool module_is_stdlib(Module *module)

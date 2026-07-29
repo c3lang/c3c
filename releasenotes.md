@@ -9,7 +9,9 @@
 - Improved GDB compatibility for macros.
 - Fail when "emcc" is unavailable instead of falling back to the built-in wasm linker.
 - Support fetching MacSDK for easy cross compilation.
-
+- Add `@feat` attribute, deprecate `@if` on non-generic top level declarations. 
+- Add `$feat` compile time function. `$feature` is deprecated and replaced by `$feat`. 
+ 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
 - Added `FixedList.is_full()` method
@@ -32,6 +34,8 @@
 - Generic methods checked before the generic type is fully registered.
 - Math function `_erff` invoked C `erf` function instead of `erff` function #3391
 - Defining local constants inside a macro causes it to fail to @const fold. #3397
+- AES CTR would lose sync on data not multiples of 16.
+- In some cases, on macros rethrowing optional values codegen could fail.
 
 ## 0.8.2 Change list
 

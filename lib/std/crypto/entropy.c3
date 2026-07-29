@@ -76,7 +76,7 @@ fn char[]? make(Allocator allocator, sz length, bool timeout = false)
 }
 
 
-module std::crypto::entropy @private @if (env::WIN32);
+module std::crypto::entropy @private @feat(WIN32);
 import std::os::win32, std::thread;
 
 OnceFlag run_once;
@@ -143,7 +143,7 @@ fn void? unix_fallback(char[] buffer, bool timeout = false)
  Import for OpenBSD which fills an existing buffer with high-entropy data.
  See: https://man.openbsd.org/arc4random.3
 *>
-extern fn void arc4random_buf(void* buf, sz nbytes) @if (env::OPENBSD || env::DARWIN);
+extern fn void arc4random_buf(void* buf, sz nbytes) @feat(OPENBSD, DARWIN);
 
 /*
  NOTE: `getentropy` for emscripten might be a better option

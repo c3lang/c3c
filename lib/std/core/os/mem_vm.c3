@@ -232,7 +232,7 @@ fn void? decommit(void* ptr, sz len, bool block = true)
  @return? mem::OUT_OF_MEMORY, RANGE_OVERFLOW, UNKNOWN_ERROR, ACCESS_DENIED, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID, io::WOULD_BLOCK, io::FILE_NOT_FOUND
  @return "Pointer to the mapped region"
 *>
-fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::POSIX)
+fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @feat(POSIX)
 {
 	CInt flags = shared ? posix::MAP_SHARED : posix::MAP_PRIVATE;
 	void* ptr = posix::mmap(null, (usz)aligned_alloc_size(size), access.to_posix(), flags, fd, offset);
@@ -263,7 +263,7 @@ fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = 
  @return? mem::OUT_OF_MEMORY, UNKNOWN_ERROR, INVALID_ARGS, io::NO_PERMISSION, io::FILE_NOT_VALID
  @return "Pointer to the mapped region"
 *>
-fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @if (env::WIN32)
+fn void*? mmap_file(Fd fd, sz size, sz offset = 0, VirtualMemoryAccess access = READ, bool shared = false) @feat(WIN32)
 {
 	Win32_HANDLE h_file = (Win32_HANDLE)win32::_get_osfhandle(fd);
 	if (h_file == (void*)uptr::max) return io::FILE_NOT_VALID~;
@@ -394,7 +394,7 @@ fn void? VirtualMemory.destroy(&self)
 	return release(self.ptr, self.size);
 }
 
-fn CInt VirtualMemoryAccess.to_posix(self) @if(env::POSIX)
+fn CInt VirtualMemoryAccess.to_posix(self) @feat(POSIX)
 {
 	switch (self)
 	{
@@ -409,7 +409,7 @@ fn CInt VirtualMemoryAccess.to_posix(self) @if(env::POSIX)
 	}
 }
 
-fn Win32_Protect VirtualMemoryAccess.to_win32(self) @if(env::WIN32)
+fn Win32_Protect VirtualMemoryAccess.to_win32(self) @feat(WIN32)
 {
 	switch (self)
 	{

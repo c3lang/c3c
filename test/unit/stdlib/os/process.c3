@@ -1,5 +1,5 @@
 // Currently disabled as they somewhat mess up the test output.
-module std::os::process @test @if(!env::EMSCRIPTEN && $feature(RUN_PROCESS_TESTS));
+module std::os::process @test @feat(!EMSCRIPTEN) @feat(RUN_PROCESS_TESTS);
 import std::os, std::io, std::net::os, std::time::clock, libc;
 
 fn void test_inherit_stdio_stdout()
@@ -139,21 +139,21 @@ fn void test_inherit_stdio_redirect()
     assert(stderr_bytes == 0, "Should read 0 bytes from stderr");
 }
 
-fn void test_run_capture_stdout_no_trailing_newline() @test @if(env::POSIX)
+fn void test_run_capture_stdout_no_trailing_newline() @test @feat(POSIX)
 {
 	char[64] buffer;
 	String result = process::run_capture_stdout(&buffer, {"printf", "hello"})!!;
 	assert(result == "hello", "got '%s'", result);
 }
 
-fn void test_run_capture_stdout_strips_trailing_newline() @test @if(env::POSIX)
+fn void test_run_capture_stdout_strips_trailing_newline() @test @feat(POSIX)
 {
 	char[64] buffer;
 	String result = process::run_capture_stdout(&buffer, {"echo", "hello"})!!;
 	assert(result == "hello\n", "got '%s'", result);
 }
 
-fn void test_pipe_cloexec_leak() @test @if(env::POSIX)
+fn void test_pipe_cloexec_leak() @test @feat(POSIX)
 {
 	// Process A reads from stdin and exits when its stdin pipe closes
 	Process a = process::spawn({"cat"})!!;
@@ -224,7 +224,7 @@ fn void test_partial_inherit_stdin() @test
 	assert(bytes > 0, "Expected captured stdout with inherited stdin");
 }
 
-fn void test_pipe_bind_stdout_to_stdin() @test @if(env::POSIX)
+fn void test_pipe_bind_stdout_to_stdin() @test @feat(POSIX)
 {
 	// Test pipe binding between two processes (A | B)
 	CInt[2] pipe;
@@ -254,7 +254,7 @@ fn void test_pipe_bind_stdout_to_stdin() @test @if(env::POSIX)
 	b.destroy();
 }
 
-fn void test_pipe_bind_stdout_to_stdin() @test @if(env::WIN32)
+fn void test_pipe_bind_stdout_to_stdin() @test @feat(WIN32)
 {
     // Test pipe binding between two processes (A | B) on Windows
 	Win32_SECURITY_ATTRIBUTES sa = { Win32_SECURITY_ATTRIBUTES::size, null, 1 };

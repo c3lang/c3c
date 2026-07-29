@@ -1,4 +1,4 @@
-module std::net::os @if(env::LINUX);
+module std::net::os @feat(LINUX);
 import libc;
 
 const AIFamily PLATFORM_AF_AX25         = (AIFamily)3;
