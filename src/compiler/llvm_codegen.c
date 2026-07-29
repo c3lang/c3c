@@ -56,7 +56,9 @@ bool module_should_weaken(Module *module)
 
 static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
+#ifndef __EMSCRIPTEN__
 	ASSERT(LLVMIsMultithreaded());
+#endif
 	memset(context, 0, sizeof(GenContext));
 
 	if (shared_context)
