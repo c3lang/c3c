@@ -1783,7 +1783,6 @@ struct CompilationUnit_
 	Decl **vars;
 	Decl **macros;
 	Decl **methods_to_register;
-	Decl **generic_specializations_to_register;
 	Decl **methods;
 	Decl **macro_methods;
 	Decl **global_decls;
@@ -2048,6 +2047,7 @@ typedef struct
 	HTable features;
 	Module std_module;
 	MethodTable method_extensions;
+	Decl **unregistered_method_specializations;
 	Type **types_with_failed_methods;
 	Decl **method_extension_list;
 	DeclTable symbols;

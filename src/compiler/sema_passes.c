@@ -538,7 +538,7 @@ void sema_analysis_pass_process_methods(Module *module)
 			TypeInfo *parent_type_info = decl_find_method_target(method);
 			if (sema_unresolved_type_is_generic(&context, parent_type_info))
 			{
-				vec_add(unit->generic_specializations_to_register, method);
+				vec_add(compiler.context.unregistered_method_specializations, method);
 				continue;
 			}
 			if (sema_analyse_method_register(&context, method))
@@ -567,33 +567,34 @@ void sema_analysis_pass_process_methods(Module *module)
  * fn int Foo{int}.bar(&self) { ... }
  * That is, the method parent is a generic instantiation.
  */
-void sema_analysis_pass_process_method_specialization(Module *module)
+void sema_analysis_pass_process_method_specialization(void)
 {
-	DEBUG_LOG("Pass: Process methods register for module '%s'.", module->name->module);
-	FOREACH(CompilationUnit *, unit, module->units)
+	DEBUG_LOG("Pass: Process method specializations");
+	SemaContext context;
+	CompilationUnit *unit = NULL;
+	FOREACH(Decl *, method, compiler.context.unregistered_method_specializations)
 	{
-		SemaContext context;
-		sema_context_init(&context, unit);
-		unsigned size_before = vec_size(unit->generic_specializations_to_register);
-		FOREACH(Decl *, method, unit->generic_specializations_to_register)
+		CompilationUnit *method_unit = method->unit;
+		if (method_unit != unit)
 		{
-			if (sema_analyse_method_register(&context, method))
+			if (unit) sema_context_destroy(&context);
+			unit = method_unit;
+			sema_context_init(&context, unit);
+		}
+		if (sema_analyse_method_register(&context, method))
+		{
+			if (method->decl_kind == DECL_MACRO)
 			{
-				if (method->decl_kind == DECL_MACRO)
-				{
-					vec_add(unit->macro_methods, method);
-				}
-				else
-				{
-					vec_add(unit->methods, method);
-				}
+				vec_add(unit->macro_methods, method);
+			}
+			else
+			{
+				vec_add(unit->methods, method);
 			}
 		}
-		ASSERT(size_before == vec_size(unit->generic_specializations_to_register));
-		sema_context_destroy(&context);
-		vec_resize(unit->generic_specializations_to_register, 0);
 	}
-
+	if (unit) sema_context_destroy(&context);
+	vec_resize(compiler.context.unregistered_method_specializations, 0);
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 

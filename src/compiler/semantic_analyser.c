@@ -194,7 +194,8 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 				sema_analysis_pass_process_methods(module);
 				break;
 			case ANALYSIS_METHODS_REGISTER_GENERIC_SPECIALIZATION:
-				sema_analysis_pass_process_method_specialization(module);
+				if (!vec_size(compiler.context.unregistered_method_specializations)) break;
+				sema_analysis_pass_process_method_specialization();
 				break;
 			case ANALYSIS_POST_REGISTER:
 				break;
@@ -269,7 +270,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 		Decl *old;
 		if (decl->visibility < VISIBLE_LOCAL)
 		{
-			if ((old = htable_set(&unit->module->symbols, (void *)decl->name, decl)))
+			if ((old = htable_set(&unit->module->symbols, (void *)decl->name, decl))) // NOLINT
 			{
 				if (old->generic_id != decl->generic_id)
 				{
@@ -280,7 +281,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				}
 			}
 		}
-		if ((old = htable_set(&unit->local_symbols, (void *)decl->name, decl)))
+		if ((old = htable_set(&unit->local_symbols, (void *)decl->name, decl))) // NOLINT
 		{
 			if (old->generic_id != decl->generic_id)
 			{
