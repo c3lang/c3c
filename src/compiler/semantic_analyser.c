@@ -191,10 +191,10 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 				sema_analysis_pass_register_conditional_units_and_decls(module);
 				break;
 			case ANALYSIS_METHODS_REGISTER:
-				sema_analysis_pass_process_methods(module, false);
+				sema_analysis_pass_process_methods(module);
 				break;
-			case ANALYSIS_METHODS_REGISTER_GENERIC:
-				sema_analysis_pass_process_methods(module, true);
+			case ANALYSIS_METHODS_REGISTER_GENERIC_SPECIALIZATION:
+				sema_analysis_pass_process_method_specialization(module);
 				break;
 			case ANALYSIS_POST_REGISTER:
 				break;

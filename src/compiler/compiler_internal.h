@@ -1783,7 +1783,7 @@ struct CompilationUnit_
 	Decl **vars;
 	Decl **macros;
 	Decl **methods_to_register;
-	Decl **generic_methods_to_register;
+	Decl **generic_specializations_to_register;
 	Decl **methods;
 	Decl **macro_methods;
 	Decl **global_decls;

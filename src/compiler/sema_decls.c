@@ -2787,8 +2787,7 @@ static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl
 
 	// Attributes needs to be resolved early
 	bool erase_decl = false;
-	if (!sema_analyse_attributes(context, method, method->attributes,
-		method->decl_kind == DECL_MACRO ? ATTR_MACRO : ATTR_FUNC, &erase_decl)) return decl_poison(method);
+	if (!sema_analyse_attributes(context, method, method->attributes, method->decl_kind == DECL_MACRO ? ATTR_MACRO : ATTR_FUNC, &erase_decl)) return decl_poison(method);
 	if (erase_decl)
 	{
 		method->decl_kind = DECL_ERASED;
@@ -5521,6 +5520,7 @@ INLINE Decl *type_is_possible_template(SemaContext *context, TypeInfo *type_info
 bool sema_analyse_method_register(SemaContext *context, Decl *method)
 {
 	TypeInfo *parent_type_info = decl_find_method_target(method);
+	// Maybe check if method->is_templated happens
 	Decl *decl = method->is_templated ? NULL : type_is_possible_template(context, parent_type_info);
 	if (decl)
 	{
@@ -5551,7 +5551,8 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 		RETURN_SEMA_ERROR(parent_type_info, "Methods can not be associated with '%s'", type_to_error_string(parent_type));
 	}
 
-	return type_add_method(context, parent_type->canonical, method);
+	if (!type_add_method(context, parent_type->canonical, method)) return false;
+	return method->decl_kind != DECL_ERASED;
 }
 
 bool sema_compare_weak_decl(SemaContext *context, Decl *replaced, Decl *replacement)
