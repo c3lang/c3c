@@ -34,6 +34,7 @@
 - Math function `_erff` invoked C `erf` function instead of `erff` function #3391
 - Defining local constants inside a macro causes it to fail to @const fold. #3397
 - AES CTR would lose sync on data not multiples of 16.
+- In some cases, on macros rethrowing optional values codegen could fail.
 
 ## 0.8.2 Change list
 
