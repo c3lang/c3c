@@ -1152,6 +1152,10 @@ fn uint128? String.to_uint128(self, int base = 10) => to_integer{uint128}(self, 
 fn ulong? String.to_ulong(self, int base = 10) => to_integer{ulong}(self, base) @inline;
 fn uint? String.to_uint(self, int base = 10) => to_integer{uint}(self, base) @inline;
 fn ushort? String.to_ushort(self, int base = 10) => to_integer{ushort}(self, base) @inline;
+
+<*
+ Convert the string to a number in the range 0-255.
+*>
 fn char? String.to_char(self, int base = 10) => to_integer{char}(self, base) @inline;
 
 fn double? String.to_double(self) => _string_to_real(self, double);
