@@ -1,8 +1,8 @@
 module hello_world;
 import std, bar, clib, clib2;
 
-fn int test_doubler(int x) @if(env::WIN32) => x * x;
-extern fn int test_doubler(int) @if(!env::WIN32);
+fn int test_doubler(int x) @feat(WIN32) => x * x;
+extern fn int test_doubler(int) @feat(!WIN32);
 extern fn void printf(char *, ...);
 
 fn int main()
@@ -20,7 +20,7 @@ fn int main()
 
     bar::test();
     printf("Hello double: %d\n", test_doubler(11));
-	if ($feature(ABCD)) io::printn("ABCD");
+	if ($feat(ABCD)) io::printn("ABCD");
 	clib::hello_from_c();
 	clib2::hello_from_c_zip();
     return 0;

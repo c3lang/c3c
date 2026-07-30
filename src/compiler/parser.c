@@ -15,18 +15,13 @@
  */
 inline void advance(ParseContext *c)
 {
-	if (tok_is(c, TOKEN_EOF))
-	{
-		return;
-	}
+	if (tok_is(c, TOKEN_EOF)) return;
+
 	c->tok = c->lexer.token_type;
 	c->data = c->lexer.data;
 	c->prev_span = c->span;
 	c->span = c->lexer.tok_span;
-	if (!lexer_next_token(&c->lexer))
-	{
-		exit_compiler(1);
-	}
+	if (!lexer_next_token(&c->lexer)) exit_compiler(1);
 }
 
 bool try_consume(ParseContext *c, TokenType type)
@@ -41,10 +36,7 @@ bool try_consume(ParseContext *c, TokenType type)
 
 bool consume(ParseContext *c, TokenType type, const char *message, ...)
 {
-	if (try_consume(c, type))
-	{
-		return true;
-	}
+	if (try_consume(c, type)) return true;
 
 	va_list args;
 	va_start(args, message);

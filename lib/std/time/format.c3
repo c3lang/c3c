@@ -1,4 +1,4 @@
-module std::time::datetime @if(env::LIBC);
+module std::time::datetime @feat(LIBC);
 import std::io, std::math;
 
 enum DateTimeFormat

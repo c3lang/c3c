@@ -47,7 +47,7 @@ faultdef INVALID_PARAMETERS, FILE_OPEN_FAILED, FILE_WRITE_FAILED, INVALID_DATA, 
 
 
 // Let the user decide if they want to use std::io
-module std::compression::qoi @if(!$feature(QOI_NO_STDIO));
+module std::compression::qoi @feat(!QOI_NO_STDIO);
 import std::io;
 
 <*

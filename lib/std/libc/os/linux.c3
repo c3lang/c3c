@@ -1,4 +1,4 @@
-module libc @if(env::LINUX);
+module libc @feat(LINUX);
 
 // Checked for x86_64, this is notoriously incorrect when comparing with Rust code etc
 
@@ -11,7 +11,7 @@ alias Mode_t = uint;
 alias Ino64_t = ulong;
 alias Blkcnt64_t = long;
 
-struct Stat @if(env::X86_64)
+struct Stat @feat(X86_64)
 {
 	Dev_t st_dev;
 	Ino_t st_ino;
@@ -33,7 +33,7 @@ struct Stat @if(env::X86_64)
 	long[3] __unused;
 }
 
-struct Stat @if(!env::X86_64)
+struct Stat @feat(!X86_64)
 {
 	Dev_t st_dev;
 	Ino_t st_ino;
@@ -70,7 +70,7 @@ const CInt SIGPOLL = 29;
 const CInt SIGPWR = 30;
 const CInt SIGUNUSED = 31;
 
-module libc @if(env::LINUX || env::ANDROID);
+module libc @feat(LINUX, ANDROID);
 
 const PRIO_MIN = -20;
 const PRIO_MAX = 20;
@@ -100,7 +100,7 @@ macro gettid_code() @const
 	$endswitch
 }
 
-module libc::termios @if(env::LIBC &&& env::LINUX);
+module libc::termios @feat(LINUX);
 
 bitstruct Tc_iflags : CUInt
 {

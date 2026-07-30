@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::object;
-import std::collections::map, std::collections::list, std::io;
+import std::collections::map, std::collections::list, std::io, std::encoding;
 
 const Object TRUE_OBJECT = { .b = true, .type = bool };
 const Object FALSE_OBJECT = { .b = false, .type = bool };
@@ -81,6 +81,13 @@ fn Object* new_obj(Allocator allocator)
 	return @alloc_obj(allocator, { .allocator = allocator, .type = void });
 }
 
+fn Object* new_array(Allocator allocator)
+{
+	Object* obj = @alloc_obj(allocator, { .allocator = allocator, .type = ObjectInternalList });
+	obj.array.init(allocator, initial_capacity: 0);
+	return obj;
+}
+
 fn Object* new_null()
 {
 	return &NULL_OBJECT;
@@ -147,14 +154,14 @@ fn void Object.free(&self)
 
 fn bool Object.is_null(&self) @inline => self == &NULL_OBJECT;
 fn bool Object.is_empty(&self) @inline => self.type == void;
-fn bool Object.is_map(&self) @inline => self.type == ObjectInternalMap;
+fn bool Object.is_map(&self) @inline => self.type == ObjectInternalMap || self.type == void;
 fn bool Object.is_array(&self) @inline => self.type == ObjectInternalList;
 fn bool Object.is_bool(&self) @inline => self.type == bool;
 fn bool Object.is_string(&self) @inline => self.type == String;
 fn bool Object.is_float(&self) @inline => self.type == double;
 fn bool Object.is_int(&self) @inline => self.type == int128;
 fn bool Object.is_enum(&self) @inline => self.type.kind == ENUM;
-fn bool Object.is_keyable(&self) => self.is_empty() || self.is_map();
+fn bool Object.is_keyable(&self) => self.is_map();
 fn bool Object.is_indexable(&self) => self.is_empty() || self.is_array();
 
 macro Object.to_value(&self, $Type, strict = true)
@@ -223,7 +230,7 @@ macro Object.to_value(&self, $Type, strict = true)
 *>
 fn void object_init_map_if_needed(Object* self) @private
 {
-	if (self.is_empty())
+	if (self.type == void)
 	{
 		self.type = ObjectInternalMap;
 		self.map.init(self.allocator);
@@ -313,9 +320,20 @@ macro Object* Object.push(&self, value)
 <*
  @require self.is_keyable()
 *>
-fn Object*? Object.get(&self, String key) => self.is_empty() ? NOT_FOUND~ : self.map.get(key);
+fn Object*? Object.get(&self, String key) => (self.type == void) ? NOT_FOUND~ : self.map.get(key);
 
-fn bool Object.has_key(&self, String key) => self.is_map() && self.map.has_key(key);
+<*
+ @return "the number of elements in the object if it is a map or array."
+
+ @require self.is_map() || self.is_array()
+*>
+fn sz Object.len(&self)
+{
+	if (self.is_array()) return self.array.len();
+	return (self.type == void) ? 0 : self.map.len();
+}
+
+fn bool Object.has_key(&self, String key) => (self.type != void) && self.is_map() && self.map.has_key(key);
 
 <*
  Iterate over all key/value pairs in this object when it is a map.
@@ -323,7 +341,7 @@ fn bool Object.has_key(&self, String key) => self.is_map() && self.map.has_key(k
 *>
 macro void Object.@each_entry(&self; @body(String key, Object* value))
 {
-	if (!self.is_map()) return;
+	if (!self.is_map() || self.type == void) return;
 	self.map.@each_entry(; ObjectInternalMapEntry* e)
 	{
 		@body(e.key, e.value);
@@ -547,6 +565,62 @@ fn Object* Object.get_or_create_obj(&self, String key)
 	return container;
 }
 
+<*
+ Unmarshal a parsed dynamic Object* into a typed native C3 value.
+
+ #### Example:
+ ```
+ struct User { String name; int age; }
+ Object* dom = json::tparse(`{"name":"Alice","age":30}`)!;
+ User user;
+ object::unmarshal_to(tmem, dom, &user)!;
+ ```
+
+ **Note** slice allocations are not cleaned up on malformed data, and the
+ unmarshalled data will be partially allocated. `object::recursively_free` can be used
+ to clear such data.
+
+ @param allocator : "The allocator to use for slice allocations"
+ @param obj : "The Object* dynamic DOM tree"
+ @param out_ref : "The struct to unmarshal to"
+
+ @return? encoding::MALFORMED_DATA : "If the the output can't be populated with the object"
+ @require $defined(*out_ref) : "Expected a pointer"
+*>
+macro void? unmarshal_to(Allocator allocator, Object* obj, out_ref)
+{
+	return _unmarshal_to{$Typeof(*out_ref)}(allocator, obj, out_ref);
+}
+
+<*
+ Unmarshal a parsed dynamic Object* into a given type
+
+ #### Example:
+ ```
+ struct User { String name; int age; }
+ Object* dom = json::tparse(`{"name":"Alice","age":30}`)!;
+ User user = object::unmarshal{User}(tmem, dom)!!;
+ ```
+
+ **Note** slice allocations are cleaned up on malformed data, unlike unmarshal_to.
+
+ @param allocator : "The allocator to use for slice allocations"
+ @param obj : "The Object* dynamic DOM tree"
+
+ @return? encoding::MALFORMED_DATA : "If the the output can't be populated with the object"
+*>
+fn Type? unmarshal(Allocator allocator, Object* obj) <Type>
+{
+	Type type;
+	if (catch err = _unmarshal_to{Type}(allocator, obj, &type))
+	{
+		recursively_free{Type}(allocator, &type);
+		return err~;
+	}
+	return type;
+}
+
+
 alias ObjectInternalMap      @private = HashMap {String, Object*};
 alias ObjectInternalList     @private = List {Object*};
 alias ObjectInternalMapEntry @private = Entry {String, Object*};
@@ -558,4 +632,127 @@ macro Object* @alloc_obj(Allocator a, #init) @private
 	$else
 		return alloc::new(a, Object, #init);
 	$endif
+}
+
+fn void? _unmarshal_to(Allocator allocator, Object* obj, ResultType* val) <ResultType> @private
+{
+	if (!obj) return;
+
+	$switch ResultType::kind:
+		$case STRUCT:
+			if (!obj.is_map()) return encoding::MALFORMED_DATA~;
+			if (!obj.len())
+			{
+				*val = {};
+				return;
+			}
+			$foreach $member : ResultType::members:
+				if (try field = obj.get($member.name))
+				{
+					if (!field.is_null())
+					{
+						unmarshal_to(allocator, field, &val.$member)!;
+					}
+				}
+			$endforeach
+		$case ARRAY:
+		$case VECTOR:
+		$case SLICE:
+			var $InnerType = ResultType::inner;
+			$if ResultType::kind == TypeKind.SLICE:
+				if (obj.is_null())
+				{
+					*val = {};
+					return;
+				}
+			$endif
+			if (!obj.is_array()) return encoding::MALFORMED_DATA~;
+			sz len = obj.get_len();
+			$if ResultType::kind == TypeKind.SLICE:
+				*val = alloc::new_array(allocator, $InnerType, len);
+			$endif
+			sz limit = len < val.len ? len : val.len;
+			for (sz i = 0; i < limit; i++)
+			{
+				Object* item = obj.get_at(i);
+				if (item && !item.is_null())
+				{
+					unmarshal_to(allocator, item, &val.[i])!;
+				}
+			}
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+		$case FLOAT:
+			switch
+			{
+				case obj.is_int(): *val = (ResultType)obj.i;
+				case obj.is_float(): *val = (ResultType)obj.f;
+				default: return encoding::MALFORMED_DATA~;
+			}
+		$case BOOL:
+			if (!obj.is_bool()) return encoding::MALFORMED_DATA~;
+			*val = obj.b;
+		$case CONSTDEF:
+		$case TYPEDEF:
+			$switch ResultType:
+				$case String:
+					if (obj.is_null())
+					{
+						*val = {};
+						return;
+					}
+					if (!obj.is_string()) return encoding::MALFORMED_DATA~;
+					*val = obj.s.copy(allocator);
+				$default:
+					var $Inner = ResultType::inner;
+					_unmarshal_to{$Inner}(allocator, obj, ($Inner*)val)!;
+			$endswitch
+		$case ENUM:
+			switch
+			{
+				case obj.is_string():
+					*val = enum_by_name(ResultType, obj.s) ?? encoding::MALFORMED_DATA~!;
+				case obj.is_int():
+					if (obj.i < 0 || obj.i >= ResultType::len) return encoding::MALFORMED_DATA~;
+					*val = (ResultType)obj.i;
+				default:
+					return encoding::MALFORMED_DATA~;
+			}
+		$default:
+	$endswitch
+}
+
+fn void recursively_free(Allocator allocator, FreeType* val) <FreeType>
+{
+	if (val == null || allocator == tmem) return;
+	defer *val = {};
+	$switch FreeType::kind:
+		$case STRUCT:
+			$foreach $member : FreeType::members:
+				recursively_free{$member.type}(allocator, &val.$member);
+			$endforeach
+		$case ARRAY:
+			var $InnerType = FreeType::inner;
+			foreach (&ref : *val)
+			{
+				recursively_free{$InnerType}(allocator, ref);
+			}
+		$case SLICE:
+			var $InnerType = FreeType::inner;
+			foreach (&ref : *val)
+			{
+				recursively_free{$InnerType}(allocator, ref);
+			}
+			alloc::free(allocator, val.ptr);
+		$case CONSTDEF:
+		$case TYPEDEF:
+			$switch FreeType:
+				$case String:
+					alloc::free(allocator, *val);
+				$default:
+					var $Inner = FreeType::inner;
+					recursively_free{$Inner}(allocator, ($Inner*)val);
+			$endswitch
+		$default:
+	$endswitch
 }

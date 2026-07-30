@@ -1,4 +1,4 @@
-module std::thread::os @if(env::POSIX);
+module std::thread::os @feat(POSIX);
 import std::os::posix, std::time, libc;
 import std::thread;
 
@@ -19,8 +19,8 @@ struct NativeThread
 	Pthread_t pthread;
 	ThreadFn thread_fn;
     void* arg;
-    Sem_t sem @if (ANDROID_LINUX);
-    Pid_t tid @if (ANDROID_LINUX);
+    Sem_t sem @feat(ANDROID, LINUX);
+    Pid_t tid @feat(ANDROID, LINUX);
 }
 
 alias NativeOnceFlag = Pthread_once_t;

@@ -227,7 +227,7 @@ fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ig
 	return backtraces_to_ignore;
 }
 
-fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_backtrace = null) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
+fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_backtrace = null) @feat(LINUX, DARWIN, OPENBSD, WIN32) => @stack_mem(0x1100; Allocator smem)
 {
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
@@ -287,7 +287,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 	return true;
 }
 
-fn void default_panic(String message, String file, String function, int line) @if(env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, int line) @feat(LINUX, DARWIN, OPENBSD, WIN32)
 {
 	in_panic = true;
 	$if $defined(io::stderr) && env::PANIC_MSG:
@@ -308,7 +308,7 @@ macro void abort(String string = "Unrecoverable error reached", ...) @format(0) 
 
 bool in_panic @private = false;
 
-fn void default_panic(String message, String file, String function, int line) @if (!env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, int line) @weak
 {
 	$if $defined(io::stderr) && env::PANIC_MSG && !env::EMSCRIPTEN:
 		if (in_panic)
@@ -1087,7 +1087,7 @@ macro String fault.@short_name($self) @const
 	return $name[@str_find($name, "::") + 2..];
 }
 
-module std::core::builtin @if((env::LINUX || env::ANDROID || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
+module std::core::builtin @feat(LINUX, ANDROID, DARWIN) @feat(SAFE_MODE) @feat(DEBUG_SYMBOLS);
 import libc, std::io, std::os::posix;
 
 fn void sig_panic(String message)
@@ -1141,10 +1141,10 @@ fn void sig_illegal_instruction(CInt i, void* p1, void* context)
 	os::fastexit(128 + i);
 }
 
-char[64 * 1024] sig_stack @local @if(env::BACKTRACE && env::LINUX);
+char[64 * 1024] sig_stack @local @feat(BACKTRACE) @feat(LINUX);
 
 // Clean this up
-fn void install_signal_handlers() @init(101) @local @if(env::BACKTRACE)
+fn void install_signal_handlers() @init(101) @local @feat(BACKTRACE)
 {
 	$if env::LINUX && !env::ADDRESS_SANITIZER:
 		Stack_t ss = {

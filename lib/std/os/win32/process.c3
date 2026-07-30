@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32);
+module std::os::win32 @feat(WIN32);
 import std::thread, std::os::backtrace;
 
 const THREAD_PRIORITY_ABOVE_NORMAL = 1;

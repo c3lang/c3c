@@ -1,0 +1,21 @@
+module main;
+
+const G = 1;
+
+macro good() @const
+{
+	return G;
+}
+
+macro bad() @const
+{
+	const N = 1;
+	return N;
+}
+
+fn int main()
+{
+	good();
+	bad();
+	return 0;
+}

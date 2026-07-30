@@ -515,7 +515,7 @@ fn void test_log() @test
 	}
 }
 
-fn void test_ct_intlog2() @test @if($feature(SLOW_TESTS) && !env::OPENBSD)
+fn void test_ct_intlog2() @test @feat(SLOW_TESTS) @feat(!OPENBSD)
 {
 	sz[129] actual;
 	$for var $x = 0; $x <= 128; ++$x :

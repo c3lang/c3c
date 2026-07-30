@@ -1,13 +1,26 @@
 module std::math::rectangle @test;
 import std::math;
-fn void test_intersects()
+fn void test_intersections()
 {
 	Rect a = { 0, 0, 10, 10 };
 	Rect b = { 5, 5, 10, 10 };
 	Rect c = { 10, 10, 10, 10 };
+	Rect d = { -10, -10, 10, 10 };
 
+	assert(a.contains_point(a.min()));
+	assert(!a.contains_point(a.max()));
+	assert(a.contains(a));
+	assert(a.intersects(a));
 	assert(a.intersects(b));
 	assert(!a.intersects(c));
+	assert(!a.intersects(d));
+
+	Rect r = a.intersection(b)!!;
+	assert(r.min() == {5,5});
+	assert(r.max() == {10,10});
+
+	assert(!@ok(a.intersection(c)));
+	assert(!@ok(a.intersection(d)));
 }
 
 fn void test_merge()
@@ -20,16 +33,6 @@ fn void test_merge()
 	assert(r.max() == {15,15});
 	r = a.merge(a);
 	assert(r.min() == {0,0});
-	assert(r.max() == {10,10});
-}
-
-fn void test_intersection()
-{
-	Rect a = { 0, 0, 10, 10 };
-	Rect b = { 5, 5, 10, 10 };
-
-	Rect r = a.intersection(b)!!;
-	assert(r.min() == {5,5});
 	assert(r.max() == {10,10});
 }
 
@@ -118,6 +121,15 @@ fn void test_merge_point2()
 				.size = {29.1038341522216796875000000, 17.4623012542724609375000000 }};
 	r.merge_point({8, 15});
 
+}
+
+fn void test_offset()
+{
+	Rect b = { 0, 0, 10, 10 };
+	Rect e = b + { 10, 5 };
+	assert(e.v == {10,5,10,10});
+	e = b - { 10, 5 };
+	assert(e.v == {-10,-5,10,10});
 }
 
 fn void test_clamp_point()
@@ -211,4 +223,12 @@ fn void test_int_merge_point()
 	RectInt r4 = { 0, 0, 2, 47 };
 	RectInt e4 = r4.merge_point({5, 2});
 	assert(e4.max() == {5, 47});
+}
+
+fn void test_conversion()
+{
+	Bounds b = { -10, -10, 10, 10 };
+	Rect r = { -10, -10, 20, 20 };
+	assert(b == r);
+	assert(b.to_rect().v == r.v);
 }

@@ -1,4 +1,4 @@
-module std::io::os @if(env::NO_LIBC);
+module std::io::os @feat(NO_LIBC);
 import libc;
 
 alias FopenFn = fn void*?(String, String);
@@ -13,17 +13,17 @@ alias RemoveFn = fn void?(String);
 alias FputcFn = fn void?(int, void*);
 alias SetModifiedTimeFn = fn void?(String, Time_t);
 
-FopenFn native_fopen_fn @weak @if(!$defined(native_fopen_fn));
-FcloseFn native_fclose_fn @weak @if(!$defined(native_fclose_fn));
-FreopenFn native_freopen_fn @weak @if(!$defined(native_freopen_fn));
-FseekFn native_fseek_fn @weak @if(!$defined(native_fseek_fn));
-FtellFn native_ftell_fn @weak @if(!$defined(native_ftell_fn));
-FwriteFn native_fwrite_fn @weak @if(!$defined(native_fwrite_fn));
-FreadFn native_fread_fn @weak @if(!$defined(native_fread_fn));
-FflushFn native_fflush_fn @weak @if(!$defined(native_fflush_fn));
-RemoveFn native_remove_fn @weak @if(!$defined(native_remove_fn));
-FputcFn native_fputc_fn @weak @if(!$defined(native_fputc_fn));
-SetModifiedTimeFn native_set_modified_time_fn @weak @if(!$defined(native_set_modified_time_fn));
+FopenFn native_fopen_fn @weak;
+FcloseFn native_fclose_fn @weak;
+FreopenFn native_freopen_fn @weak;
+FseekFn native_fseek_fn @weak;
+FtellFn native_ftell_fn @weak;
+FwriteFn native_fwrite_fn @weak;
+FreadFn native_fread_fn @weak;
+FflushFn native_fflush_fn @weak;
+RemoveFn native_remove_fn @weak;
+FputcFn native_fputc_fn @weak;
+SetModifiedTimeFn native_set_modified_time_fn @weak;
 
 <*
  @require mode.len > 0

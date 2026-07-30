@@ -1,4 +1,4 @@
-module std::os::posix @if(env::POSIX);
+module std::os::posix @feat(POSIX);
 import libc;
 
 alias Mode_t = uint;
@@ -7,22 +7,22 @@ typedef DIRPtr = void*;
 struct Posix_dirent
 {
 	Ino_t d_fileno;
-	Off_t d_off @if(!env::NETBSD);
+	Off_t d_off @feat(!NETBSD);
 	ushort d_reclen;
-	ushort d_namelen @if(env::DARWIN || env::NETBSD);
+	ushort d_namelen @feat(DARWIN, NETBSD);
 	char d_type;
 
-	char d_namelen @if(env::OPENBSD);
-	char[4] d_pad0 @if(env::OPENBSD);
+	char d_namelen @feat(OPENBSD);
+	char[4] d_pad0 @feat(OPENBSD);
 
-	char d_pad0 @if(env::FREEBSD);
-	ushort d_namelen @if(env::FREEBSD);
-	ushort d_pad1 @if(env::FREEBSD);
+	char d_pad0 @feat(FREEBSD);
+	ushort d_namelen @feat(FREEBSD);
+	ushort d_pad1 @feat(FREEBSD);
 
-	char[255+1] name @if(env::FREEBSD || env::OPENBSD);
-	char[511+1] name @if(env::NETBSD);
-	char[1024] name @if(env::DARWIN);
-	char[*] name @if(!env::DARWIN && !env::BSD_FAMILY);
+	char[255+1] name @feat(FREEBSD, OPENBSD);
+	char[511+1] name @feat(NETBSD);
+	char[1024] name @feat(DARWIN);
+	char[*] name @feat(!DARWIN) @feat(!BSD);
 }
 
 extern fn int rmdir(ZString);

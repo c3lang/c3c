@@ -724,7 +724,6 @@ static void emit_normal_attrs(FILE *file, Decl *decl)
 		fputs("\"@" name "\"", file);         \
 	}
 
-	EMIT_ATTR(decl->is_packed, "packed")
 	EMIT_ATTR(decl->is_export, "export")
 	EMIT_ATTR(decl->is_weak, "weak")
 	EMIT_ATTR(decl->is_weak_link, "weaklink")
@@ -735,10 +734,14 @@ static void emit_normal_attrs(FILE *file, Decl *decl)
 	EMIT_ATTR(decl->is_dynamic, "dynamic")
 	EMIT_ATTR(decl->no_strip, "nostrip")
 	EMIT_ATTR(decl->attr_nopadding, "nopadding")
-	EMIT_ATTR(decl->attr_compact, "compact")
 	EMIT_ATTR(decl->attr_constinit, "constinit")
 	EMIT_ATTR(decl->attr_mustinit, "mustinit")
 
+	if (decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION)
+	{
+		EMIT_ATTR(decl->strukt.is_compact, "compact")
+		EMIT_ATTR(decl->strukt.is_packed, "packed")
+	}
 	if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
 	{
 		if (decl->decl_kind == DECL_FUNC)
@@ -1163,13 +1166,13 @@ void compiler_docgen(BuildTarget *target)
 	{
 		if (existing)
 		{
-			char *pos = strstr(existing, data_end_marker);
+			const char *pos = strstr(existing, data_end_marker);
 			if (!pos) error_exit("Could not find /*DATA_END*/ in existing docs.html for append.");
 			fwrite(existing, 1, pos - existing, file);
 		}
 		else
 		{
-			char *pos = (char *)strstr((const char *)docs_html, data_start_marker);
+			const char *pos = strstr((const char *)docs_html, data_start_marker);
 			if (!pos) error_exit("Internal error: Could not find /*DATA_START*/ in the docs.html template.");
 			fwrite(docs_html, 1, (pos - (const char *)docs_html) + strlen(data_start_marker), file);
 		}
@@ -1303,12 +1306,12 @@ void compiler_docgen(BuildTarget *target)
 		fputs("});", file);
 		if (existing)
 		{
-			char *pos = strstr(existing, data_end_marker);
+			const char *pos = strstr(existing, data_end_marker);
 			fwrite(pos, 1, strlen(pos), file);
 		}
 		else
 		{
-			char *pos = (char *)strstr((const char *)docs_html, data_end_marker);
+			const char *pos = strstr((const char *)docs_html, data_end_marker);
 			if (!pos) error_exit("Internal error: Could not find /*DATA_END*/ in the docs.html template.");
 			fwrite(pos, 1, docs_html_len - (pos - (const char *)docs_html), file);
 		}

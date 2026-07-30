@@ -23,7 +23,7 @@ fn void test_whirlpool_test_vector()
 }
 
 
-fn void test_whirlpool_gigahash_zeroes() @if($feature(SLOW_TESTS))
+fn void test_whirlpool_gigahash_zeroes() @feat(SLOW_TESTS)
 {
     char[] c = calloc(257 * (1024*1024))[:(257*1024*1024)];   // 257 MiB
     defer free(c);
@@ -80,7 +80,7 @@ fn void test_whirlpool_pbkdf2_3()
 }
 
 
-fn void test_whirlpool_pbkdf2_4() @if($feature(SLOW_TESTS))
+fn void test_whirlpool_pbkdf2_4() @feat(SLOW_TESTS)
 {
     char[] pw = "i have a secret that i truly truly truly don't want you to be able to find out - it's a really long key and it's used to keep all my cat pictures safe and undisturbed. thank you very much for understanding, and have a great evening";
     char[] salt = "cumin_turmeric_curry";

@@ -1,4 +1,4 @@
-module std::time::os @if(env::DARWIN);
+module std::time::os @feat(DARWIN);
 import std::os::darwin;
 
 fn Clock native_clock()

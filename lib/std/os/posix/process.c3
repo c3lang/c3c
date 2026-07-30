@@ -1,4 +1,4 @@
-module std::os::posix @if(env::POSIX);
+module std::os::posix @feat(POSIX);
 import libc, std::os::darwin;
 
 struct Posix_spawn_file_actions_t
@@ -58,7 +58,7 @@ const CInt WUNTRACES = 2;
 tlocal SigJmpBuf backtrace_jmpbuf @local;
 alias BacktraceFn = fn CInt(void** buffer, CInt size);
 
-extern fn CInt backtrace(void** buffer, CInt size) @if(env::OPENBSD || env::NETBSD);
+extern fn CInt backtrace(void** buffer, CInt size) @feat(OPENBSD, NETBSD);
 
 fn void install_signal_handler(CInt signal, SigActionFunction func)
 {
@@ -78,7 +78,7 @@ fn void install_signal_handler(CInt signal, SigActionFunction func)
     libc::sigaction(signal, &action, &old);
 }
 
-fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD && !env::NETBSD)
+fn CInt backtrace(void** buffer, CInt size) @feat(!OPENBSD & !NETBSD)
 {
 	if (size < 1) return 0;
 	void* handle = libc::dlopen("libc.so.6", libc::RTLD_LAZY|libc::RTLD_NODELETE);
@@ -121,7 +121,7 @@ fn CInt backtrace(void** buffer, CInt size) @if(!env::OPENBSD && !env::NETBSD)
 	return i;
 }
 
-struct PosixUContext_t @if(env::DARWIN)
+struct PosixUContext_t @feat(DARWIN)
 {
 	int                     uc_onstack;
 	__Darwin_sigset_t       uc_sigmask;     /* signal mask used by this context */
@@ -132,18 +132,18 @@ struct PosixUContext_t @if(env::DARWIN)
 }
 
 /* taken from sys/ucontext.h */
-typedef Greg_t     @if(env::LINUX && env::X86_64) = long;
-const REG_RIP      @if(env::LINUX && env::X86_64) = 16;
-struct LibcFPState @if(env::LINUX && env::X86_64) { char[512] __data; } 
+typedef Greg_t     @feat(LINUX) @feat(X86_64) = long;
+const REG_RIP      @feat(LINUX) @feat(X86_64) = 16;
+struct LibcFPState @feat(LINUX) @feat(X86_64) { char[512] __data; }
 
-struct MContext_t @align(16) @if(env::LINUX && env::X86_64)
+struct MContext_t  @feat(LINUX) @feat(X86_64) @align(16)
 {
 	Greg_t[23] gregs;
 	LibcFPState* fpregs;
 	ulong[8] __reserved1;
 }
 
-struct MContext_t @align(16) @if(env::LINUX && env::AARCH64)
+struct MContext_t  @feat(LINUX & AARCH64) @align(16)
 {
 	ulong fault_address;
 	ulong[31] regs;
@@ -153,7 +153,7 @@ struct MContext_t @align(16) @if(env::LINUX && env::AARCH64)
 	char[4096] __reserved;
 }
 
-struct PosixUContext_t @if(env::LINUX && env::X86_64)
+struct PosixUContext_t @feat(LINUX & X86_64)
 {
 	ulong            uc_flags;
 	PosixUContext_t* uc_link;
@@ -164,7 +164,7 @@ struct PosixUContext_t @if(env::LINUX && env::X86_64)
 	ulong[4]		 __ssp;
 }
 
-alias PosixUContext_t @if(!env::DARWIN && !(env::LINUX && env::X86_64) )= void;
+alias PosixUContext_t @feat(!DARWIN) @feat(!LINUX, !X86_64) = void;
 
 macro void* stack_instruction(PosixUContext_t* uc)
 {

@@ -1,7 +1,7 @@
 module test;
 
-attrdef @ReadOnly @if(env::LINUX) = @section(".rodata");
-attrdef @ReadOnly @if(env::WIN32) = @section(".rdata$");
+attrdef @ReadOnly @feat(LINUX) = @section(".rodata");
+attrdef @ReadOnly @feat(WIN32) = @section(".rdata$");
 
 fn void main()
 {

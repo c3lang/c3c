@@ -1,9 +1,9 @@
-module std::os::posix @if(env::POSIX);
+module std::os::posix @feat(POSIX);
 import libc;
 
 extern fn CInt clock_gettime(int type, TimeSpec *time) @cname(env::NETBSD ??? "__clock_gettime50" : "clock_gettime");
 
-module std::os::posix @if(env::OPENBSD);
+module std::os::posix @feat(OPENBSD);
 const CLOCK_REALTIME = 0;
 const CLOCK_PROCESS_CPUTIME_ID = 2;
 const CLOCK_MONOTONIC = 3;
@@ -11,7 +11,7 @@ const CLOCK_THREAD_CPUTIME_ID = 4;
 const CLOCK_UPTIME = 5;
 const CLOCK_BOOTTIME = 6;
 
-module std::os::posix @if(env::FREEBSD);
+module std::os::posix @feat(FREEBSD);
 const CLOCK_REALTIME = 0;
 const CLOCK_VIRTUAL = 1;
 const CLOCK_PROF = 2;
@@ -30,7 +30,7 @@ const CLOCK_BOOTTIME = CLOCK_UPTIME;
 const CLOCK_REALTIME_COARSE = CLOCK_REALTIME_FAST;
 const CLOCK_MONOTONIC_COARSE = CLOCK_MONOTONIC_FAST;
 
-module std::os::posix @if(env::NETBSD);
+module std::os::posix @feat(NETBSD);
 const CLOCK_REALTIME = 0;
 const CLOCK_VIRTUAL = 1;
 const CLOCK_PROF = 2;
@@ -38,12 +38,12 @@ const CLOCK_MONOTONIC = 3;
 const CLOCK_THREAD_CPUTIME_ID = 0x20000000;
 const CLOCK_PROCESS_CPUTIME_ID = 0x40000000;
 
-module std::os::posix @if(env::WASI);
+module std::os::posix @feat(WASI);
 // Not implemented
 const CLOCK_REALTIME = 0;
 const CLOCK_MONOTONIC = 0;
 
-module std::os::posix @if(env::DARWIN);
+module std::os::posix @feat(DARWIN);
 const CLOCK_REALTIME = 0;
 const CLOCK_MONOTONIC = 6;
 const CLOCK_MONOTONIC_RAW = 4;
@@ -53,7 +53,7 @@ const CLOCK_UPTIME_RAW_APPROX = 9;
 const CLOCK_PROCESS_CPUTIME_ID = 12;
 const CLOCK_THREAD_CPUTIME_ID = 16;
 
-module std::os::posix @if(env::LINUX || env::ANDROID);
+module std::os::posix @feat(LINUX, ANDROID);
 const CLOCK_REALTIME = 0;
 const CLOCK_MONOTONIC = 1;
 const CLOCK_PROCESS_CPUTIME_ID = 2;

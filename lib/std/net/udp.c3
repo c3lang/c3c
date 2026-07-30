@@ -1,4 +1,4 @@
-module std::net::udp @if(os::SUPPORTS_INET);
+module std::net::udp @feat(WIN32, POSIX);
 import std::net @public;
 
 typedef UdpSocket = inline Socket;
