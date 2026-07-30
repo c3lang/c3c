@@ -92,9 +92,9 @@ fn void bench_setup() @init
 	medium_records = make_records(mem, 50);
 	large_records  = make_records(mem, 1000);
 
-	small_json  = json::marshal(mem, small_records)!!;
-	medium_json = json::marshal(mem, medium_records)!!;
-	large_json  = json::marshal(mem, large_records)!!;
+	small_json  = json::marshal_try(mem, small_records)!!;
+	medium_json = json::marshal_try(mem, medium_records)!!;
+	large_json  = json::marshal_try(mem, large_records)!!;
 
 	small_dom  = json::parse(mem, small_json)!!;
 	medium_dom = json::parse(mem, medium_json)!!;
@@ -103,12 +103,12 @@ fn void bench_setup() @init
 
 module json_benchmarks @benchmark;
 
-import std::encoding::json;
+import std::encoding::json, std::collections::object;
 
 // 1. Compile-Time Marshaling
-fn void marshal_small()   { json::marshal(tmem, small_records)!!; }
-fn void marshal_medium()  { json::marshal(tmem, medium_records)!!; }
-fn void marshal_large()   { json::marshal(tmem, large_records)!!; }
+fn void marshal_small()   { json::marshal_try(tmem, small_records)!!; }
+fn void marshal_medium()  { json::marshal_try(tmem, medium_records)!!; }
+fn void marshal_large()   { json::marshal_try(tmem, large_records)!!; }
 
 // 2. Compile-Time Unmarshaling
 fn void unmarshal_small()  { json::unmarshal(tmem, small_json, Record[])!!; }
@@ -124,29 +124,29 @@ fn void parse_dom_large()  { json::tparse(large_json)!!; }
 fn void unmarshal_dom_small()
 {
 	Record[] decoded;
-	json::@unmarshal_to(tmem, small_dom, decoded);
+	object::unmarshal_to(tmem, small_dom, &decoded)!!;
 }
 
 fn void unmarshal_dom_medium()
 {
 	Record[] decoded;
-	json::@unmarshal_to(tmem, medium_dom, decoded);
+	object::unmarshal_to(tmem, medium_dom, &decoded)!!;
 }
 
 fn void unmarshal_dom_large()
 {
 	Record[] decoded;
-	json::@unmarshal_to(tmem, large_dom, decoded);
+	object::unmarshal_to(tmem, large_dom, &decoded)!!;
 }
 
 // 5. Dynamic DOM Serialization
-fn void marshal_dom_small()  { json::marshal(tmem, small_dom)!!; }
-fn void marshal_dom_medium() { json::marshal(tmem, medium_dom)!!; }
-fn void marshal_dom_large()  { json::marshal(tmem, large_dom)!!; }
+fn void marshal_dom_small()  { json::marshal_try(tmem, small_dom)!!; }
+fn void marshal_dom_medium() { json::marshal_try(tmem, medium_dom)!!; }
+fn void marshal_dom_large()  { json::marshal_try(tmem, large_dom)!!; }
 
 // 6. Pretty-Printed Serialization
-fn void marshal_pretty_medium() { json::marshal(tmem, medium_records, Indent.SPACE_4)!!; }
-fn void marshal_pretty_large()  { json::marshal(tmem, large_records, Indent.SPACE_4)!!; }
+fn void marshal_pretty_medium() { json::marshal_try(tmem, medium_records, Indent.SPACE_4)!!; }
+fn void marshal_pretty_large()  { json::marshal_try(tmem, large_records, Indent.SPACE_4)!!; }
 
 // 7. Stream-Direct Serialization
 fn void marshal_stream_medium()

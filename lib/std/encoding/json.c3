@@ -4,7 +4,7 @@ import std::collections::object;
 
 faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED;
 
-const int MAX_DEPTH = 64;
+int max_depth = 64;
 
 enum JsonFlavor
 {
@@ -22,7 +22,7 @@ enum JsonFlavor
 *>
 fn Object*? String.parse_json(&self, Allocator allocator, JsonFlavor flavor = JSONC)
 {
-	@stack_mem(64 ; Allocator smem)
+	@stack_mem(256; Allocator smem)
 	{
 		JsonDeserializer des = {
 			.source = *self,
@@ -129,6 +129,8 @@ struct JsonDeserializer @private
 	JsonFlavor flavor;
 	int depth;
 }
+
+alias temp_load @deprecated("Use tload") = tload;
 
 fn void skip_whitespace(JsonDeserializer* des) @private
 {
@@ -393,7 +395,7 @@ fn Object*? parse_any(JsonDeserializer* des) @private
 
 fn Object*? parse_map(JsonDeserializer* des) @private
 {
-	if (++des.depth >= MAX_DEPTH) return MAX_DEPTH_REACHED~;
+	if (++des.depth >= max_depth) return MAX_DEPTH_REACHED~;
 	defer des.depth--;
 
 	Object* map = object::new_obj(des.allocator);
@@ -432,10 +434,10 @@ fn Object*? parse_map(JsonDeserializer* des) @private
 
 fn Object*? parse_array(JsonDeserializer* des) @private
 {
-	if (++des.depth >= MAX_DEPTH) return MAX_DEPTH_REACHED~;
+	if (++des.depth >= max_depth) return MAX_DEPTH_REACHED~;
 	defer des.depth--;
 
-	Object* list = object::new_obj(des.allocator);
+	Object* list = object::new_array(des.allocator);
 	defer catch list.free();
 	expect_char(des, '[')!;
 

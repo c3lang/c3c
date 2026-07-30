@@ -131,7 +131,7 @@ fn void test_comprehensive_marshaling() @test
         .categories = { { "tech", "programming" }, { "business", "finance" } }
     };
 
-    String json = json::marshal(mem, data)!!;
+    String json = json::marshal_try(mem, data)!!;
     defer free(json);
 
     Object* parsed = json::tparse(json)!!;
@@ -243,65 +243,65 @@ struct UserStats
 fn void compact_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	test::eq(json::marshal(tmem, user)!!, `{"username":"admin","created_at":611667900}`);
-	test::eq(json::marshal(tmem, user, NONE)!!, `{"username":"admin","created_at":611667900}`);
+	test::eq(json::marshal_try(tmem, user)!!, `{"username":"admin","created_at":611667900}`);
+	test::eq(json::marshal_try(tmem, user, NONE)!!, `{"username":"admin","created_at":611667900}`);
 }
 
 fn void space_1_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	test::eq(json::marshal(tmem, user, SPACE_1)!!, "{\n \"username\": \"admin\",\n \"created_at\": 611667900\n}");
+	test::eq(json::marshal_try(tmem, user, SPACE_1)!!, "{\n \"username\": \"admin\",\n \"created_at\": 611667900\n}");
 }
 
 fn void space_2_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	test::eq(json::marshal(tmem, user, SPACE_2)!!, "{\n  \"username\": \"admin\",\n  \"created_at\": 611667900\n}");
+	test::eq(json::marshal_try(tmem, user, SPACE_2)!!, "{\n  \"username\": \"admin\",\n  \"created_at\": 611667900\n}");
 }
 
 fn void space_3_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	test::eq(json::marshal(tmem, user, SPACE_3)!!, "{\n   \"username\": \"admin\",\n   \"created_at\": 611667900\n}");
+	test::eq(json::marshal_try(tmem, user, SPACE_3)!!, "{\n   \"username\": \"admin\",\n   \"created_at\": 611667900\n}");
 }
 
 fn void space_4_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	test::eq(json::marshal(tmem, user, SPACE_4)!!, "{\n    \"username\": \"admin\",\n    \"created_at\": 611667900\n}");
+	test::eq(json::marshal_try(tmem, user, SPACE_4)!!, "{\n    \"username\": \"admin\",\n    \"created_at\": 611667900\n}");
 }
 
 fn void space_5_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	test::eq(json::marshal(tmem, user, SPACE_5)!!, "{\n     \"username\": \"admin\",\n     \"created_at\": 611667900\n}");
+	test::eq(json::marshal_try(tmem, user, SPACE_5)!!, "{\n     \"username\": \"admin\",\n     \"created_at\": 611667900\n}");
 }
 
 fn void tab_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
-	test::eq(json::marshal(tmem, user, TAB)!!, "{\n\t\"username\": \"admin\",\n\t\"created_at\": 611667900\n}");
+	test::eq(json::marshal_try(tmem, user, TAB)!!, "{\n\t\"username\": \"admin\",\n\t\"created_at\": 611667900\n}");
 }
 
 fn void compact_nested_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
 	UserStats nested = { .user = user, .stars = { 1, 2 } };
-	test::eq(json::marshal(tmem, nested, NONE)!!, `{"user":{"username":"admin","created_at":611667900},"stars":[1,2]}`);
+	test::eq(json::marshal_try(tmem, nested, NONE)!!, `{"user":{"username":"admin","created_at":611667900},"stars":[1,2]}`);
 }
 
 fn void nested_space_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
 	UserStats nested = { .user = user, .stars = { 1, 2 } };
-	test::eq(json::marshal(tmem, nested, SPACE_2)!!, "{\n  \"user\": {\n    \"username\": \"admin\",\n    \"created_at\": 611667900\n  },\n  \"stars\": [\n    1,\n    2\n  ]\n}");
+	test::eq(json::marshal_try(tmem, nested, SPACE_2)!!, "{\n  \"user\": {\n    \"username\": \"admin\",\n    \"created_at\": 611667900\n  },\n  \"stars\": [\n    1,\n    2\n  ]\n}");
 }
 
 fn void nested_tab_indent_output() @test
 {
 	User user = { .username = "admin", .created_at = 611667900 };
 	UserStats nested = { .user = user, .stars = { 1, 2 } };
-	test::eq(json::marshal(tmem, nested, TAB)!!, "{\n\t\"user\": {\n\t\t\"username\": \"admin\",\n\t\t\"created_at\": 611667900\n\t},\n\t\"stars\": [\n\t\t1,\n\t\t2\n\t]\n}");
+	test::eq(json::marshal_try(tmem, nested, TAB)!!, "{\n\t\"user\": {\n\t\t\"username\": \"admin\",\n\t\t\"created_at\": 611667900\n\t},\n\t\"stars\": [\n\t\t1,\n\t\t2\n\t]\n}");
 }
 
 struct DoublePrecision
@@ -317,35 +317,35 @@ struct FloatPrecision
 fn void double_roundtrip_pi() @test
 {
 	DoublePrecision v = { .x = 3.141592653589793 };
-	String json = json::marshal(tmem, v)!!;
+	String json = json::marshal_try(tmem, v)!!;
 	test::eq(json::tparse(json)!!.get_float("x")!!, 3.141592653589793);
 }
 
 fn void double_roundtrip_max_significant() @test
 {
 	DoublePrecision v = { .x = 1.2345678901234567 };
-	String json = json::marshal(tmem, v)!!;
+	String json = json::marshal_try(tmem, v)!!;
 	test::eq(json::tparse(json)!!.get_float("x")!!, 1.2345678901234567);
 }
 
 fn void double_roundtrip_small() @test
 {
 	DoublePrecision v = { .x = 1.7976931348623157e-300 };
-	String json = json::marshal(tmem, v)!!;
+	String json = json::marshal_try(tmem, v)!!;
 	test::eq(json::tparse(json)!!.get_float("x")!!, 1.7976931348623157e-300);
 }
 
 fn void double_roundtrip_negative() @test
 {
 	DoublePrecision v = { .x = -2.2250738585072014e-308 };
-	String json = json::marshal(tmem, v)!!;
+	String json = json::marshal_try(tmem, v)!!;
 	test::eq(json::tparse(json)!!.get_float("x")!!, -2.2250738585072014e-308);
 }
 
 fn void float_roundtrip_precise() @test
 {
 	FloatPrecision v = { .x = 1.23456789f };
-	String json = json::marshal(tmem, v)!!;
+	String json = json::marshal_try(tmem, v)!!;
 	test::eq((float)json::tparse(json)!!.get_float("x")!!, 1.23456789f);
 }
 
@@ -357,7 +357,7 @@ struct EscWrap
 macro String marshal_str(String s)
 {
 	EscWrap w = { .s = s };
-	return json::marshal(tmem, w)!!;
+	return json::marshal_try(tmem, w)!!;
 }
 
 fn void escape_short_sequences() @test
@@ -517,7 +517,7 @@ fn void test_marshal_unmarshal_roundtrip()
 		.log = { .status = Status.ACTIVE, .code = 201 }
 	};
 
-	String serialized = json::marshal(tmem, original)!!;
+	String serialized = json::marshal_try(tmem, original)!!;
 	ServerConfig deserialized = json::unmarshal(tmem, serialized, ServerConfig)!!;
 
 	test::eq(deserialized.host, original.host);
@@ -554,7 +554,20 @@ fn void test_unmarshal_to_direct_dom()
 	Object* dom = json::tparse(`{"host": "domain.com", "ports": [443], "log": {"status": "PENDING", "code": 500}}`)!!;
 
 	ServerConfig config;
-	json::@unmarshal_to(tmem, dom, config);
+	object::unmarshal_to(tmem, dom, &config)!!;
+
+	test::eq(config.host, "domain.com");
+	test::eq(config.ports.len, 1);
+	test::eq(config.ports[0], 443);
+	test::eq(config.log.status, Status.PENDING);
+	test::eq(config.log.code, 500);
+}
+
+fn void test_unmarshal_to_direct_dom2()
+{
+	Object* dom = json::tparse(`{"host": "domain.com", "ports": [443], "log": {"status": "PENDING", "code": 500}}`)!!;
+
+	ServerConfig config = object::unmarshal{ServerConfig}(tmem, dom)!!;
 
 	test::eq(config.host, "domain.com");
 	test::eq(config.ports.len, 1);
@@ -591,7 +604,7 @@ fn void test_skip_nested_curly_in_string()
 fn void test_marshal_top_level_slice()
 {
 	int[] data = {1, 2, 3};
-	String serialized = json::marshal(tmem, data)!!;
+	String serialized = json::marshal_try(tmem, data)!!;
 	test::eq(serialized, `[1,2,3]`);
 
 	int[] deserialized = json::unmarshal(tmem, serialized, int[])!!;
@@ -629,7 +642,7 @@ struct UnsignedWrap
 fn void test_unsigned_integers()
 {
 	UnsignedWrap wrap = { .u32 = 4294967295, .u64 = 9007199254740991 };
-	String json = json::marshal(tmem, wrap)!!;
+	String json = json::marshal_try(tmem, wrap)!!;
 	test::eq(json, `{"u32":4294967295,"u64":9007199254740991}`);
 
 	UnsignedWrap unwrapped = json::unmarshal(tmem, json, UnsignedWrap)!!;

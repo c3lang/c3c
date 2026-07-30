@@ -1,0 +1,13 @@
+module test_lambda;
+module test_branch;
+import std::io;
+
+typedef Mm512i = inline long[<8>] @simd;
+
+fn void main()
+{
+    Mm512i v, x;
+    v[..] = 7;
+    x[..] = 5;
+    v += x;
+}

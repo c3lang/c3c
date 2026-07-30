@@ -3,7 +3,7 @@
 
  Parsing: parse a JSON `String` or stream into a dynamic `Object*` DOM tree via `parse`, `tparse`, `load`, and `tload`.
  Marshaling: convert a C3 struct or array to a JSON string via `marshal` and `marshal_to`.
- Unmarshaling: convert a JSON `String` or `Object*` DOM back to a native C3 struct via `unmarshal` and `@unmarshal_to`.
+ Unmarshaling: convert a JSON `String` back to a native C3 struct via `unmarshal`.
 
  _Supports: structs, arrays, slices, String, ints, floats, bools, enums, constdefs, typedefs, and nested combinations of those._
 *>
@@ -24,7 +24,7 @@ enum JsonIndent : (String chars)
 	SPACE_5 { "     " }
 }
 
-alias Indent = JsonIndent;
+alias Indent @deprecated("Use JsonIndent") = JsonIndent;
 
 
 <*
@@ -49,6 +49,7 @@ macro bool may_serialize($Type) @const
 			return true;
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
+			return $Type::size <= 8; // Max 64 bit support
 		$case FLOAT:
 		$case BOOL:
 		$case ENUM:
@@ -80,16 +81,30 @@ macro bool may_serialize($Type) @const
  @param indent : "Indentation preference"
  @require may_serialize($Typeof(value)) : "Expected a serializable type"
  @return "The JSON string representation on success."
+*>
+macro String marshal(Allocator allocator, value, JsonIndent indent = NONE) => @pool()
+{
+	return marshal_try(allocator, value, indent) ?? abort();
+}
+
+
+<*
+ Same as `json::marshal` but will give an optional result in case of invalid floats.
+
+ @param allocator : "The allocator to use for the result"
+ @param value : "The struct or array value to marshal"
+ @param indent : "Indentation preference"
+ @require may_serialize($Typeof(value)) : "Expected a serializable type"
+ @return "The JSON string representation on success."
  @return? INVALID_NUMBER : "If an invalid float (inf or NaN) is encountered."
 *>
-macro String? marshal(Allocator allocator, value, JsonIndent indent = NONE) => @pool()
+macro String? marshal_try(Allocator allocator, value, JsonIndent indent = NONE) => @pool()
 {
 	DString s;
 	s.tinit();
 	marshal_to(&s, value, indent)!;
 	return s.copy_str(allocator);
 }
-
 <*
  Marshal a struct, array or dynamic Object* to JSON, writing directly to an output stream.
 
@@ -136,121 +151,127 @@ macro void? @skip_json_value(JsonDeserializer* des) @private
 	}
 }
 
-macro void? @des_value(JsonDeserializer* des, #out) @private
+fn void? deserialize_value(JsonDeserializer* d, OutValue* out) <OutValue> @private
 {
-	if (peek_char(des) == 'n')
+	if (peek_char(d) == 'n')
 	{
-		if (des.cursor + 4 <= des.source.len && des.source[des.cursor:4] == "null")
+		if (d.cursor + 4 <= d.source.len && d.source[d.cursor:4] == "null")
 		{
-			des.cursor += 4;
-			$switch $Typeof(#out)::kind:
+			d.cursor += 4;
+			$switch OutValue::kind:
 				$case CONSTDEF:
 				$case TYPEDEF:
-					$switch $Typeof(#out):
-						$case String:
-							#out = "";
-							return;
-					$endswitch
+					$if OutValue == String:
+						*out = {};
+						return;
+					$else
+						return encoding::MALFORMED_DATA~;
+					$endif
 				$case SLICE:
-					#out = { };
+					*out = { };
 					return;
+				$default:
+					return encoding::MALFORMED_DATA~;
 			$endswitch
-			return;
+
 		}
 	}
 
-	$switch $Typeof(#out)::kind:
+	$switch OutValue::kind:
 		$case STRUCT:
-			expect_char(des, '{')!;
+			expect_char(d, '{')!;
 			bool first = true;
-			while (peek_char(des) != '}')
+			defer catch object::recursively_free{OutValue}(d.allocator, out);
+			while (peek_char(d) != '}')
 			{
-				if (!first) expect_char(des, ',')!;
+				if (!first)
+				{
+					expect_char(d, ',')!;
+					if (peek_char(d) == '}')
+					{
+						if (d.flavor == JSON) return UNEXPECTED_CHARACTER~;
+						break;
+					}
+				}
 				first = false;
-				String key = parse_string(des)!;
-				expect_char(des, ':')!;
+				String key = parse_string(d)!;
+				expect_char(d, ':')!;
 
 				bool matched = false;
-				$foreach $member : $Typeof(#out)::members:
+				$foreach $member : OutValue::members:
 					if (!matched && key == $member.name)
 					{
-						@des_value(des, #out.$member)!;
+						deserialize_value{$member.type}(d, &out.$member)!;
 						matched = true;
 					}
 				$endforeach
-				if (!matched)
-				{
-					@skip_json_value(des)!;
-				}
+				if (!matched) @skip_json_value(d)!;
 			}
-			expect_char(des, '}')!;
+			expect_char(d, '}')!;
 		$case ARRAY:
 		$case VECTOR:
 		$case SLICE:
-			$if $Typeof(#out)::kind == TypeKind.SLICE:
-				sz len = scan_array_len(des)!;
-				#out = alloc::new_array(des.allocator, $Typeof(#out[0]), len);
+			$if OutValue::kind == TypeKind.SLICE:
+				sz len = scan_array_len(d)!;
+				*out = alloc::new_array(d.allocator, OutValue::inner, len);
 			$else
-				expect_char(des, '[')!;
+				expect_char(d, '[')!;
 			$endif
 
 			bool first = true;
 			sz i = 0;
-			while (peek_char(des) != ']')
+			defer catch object::recursively_free{OutValue}(d.allocator, out);
+			while (peek_char(d) != ']')
 			{
 				if (!first)
 				{
-					expect_char(des, ',')!;
-					if (peek_char(des) == ']')
+					expect_char(d, ',')!;
+					if (peek_char(d) == ']')
 					{
+						if (d.flavor == JSON) return UNEXPECTED_CHARACTER~;
 						break;
 					}
 				}
 				first = false;
 
-				if (i < #out.len)
+				if (i < out.len)
 				{
-					@des_value(des, #out[i])!;
+					deserialize_value{OutValue::inner}(d, &out.[i])!;
 					i++;
 				}
 				else
 				{
-					@skip_json_value(des)!;
+					@skip_json_value(d)!;
 				}
 			}
-			expect_char(des, ']')!;
+			expect_char(d, ']')!;
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
-			#out = parse_int(des, $Typeof(#out))!;
+			*out = parse_int(d, OutValue)!;
 		$case FLOAT:
-			#out = ($Typeof(#out))parse_double(des)!;
+			*out = (OutValue)parse_double(d)!;
 		$case BOOL:
-			#out = parse_bool(des)!;
+			*out = parse_bool(d)!;
 		$case CONSTDEF:
 		$case TYPEDEF:
-			$switch $Typeof(#out):
+			$switch OutValue:
 				$case String:
-					#out = (parse_string(des)!).copy(des.allocator);
+					*out = (parse_string(d)!).copy(d.allocator);
 				$default:
-					var $Inner = $Typeof(#out)::inner;
-					@des_value(des, *($Inner*)&#out)!;
+					var $Inner = OutValue::inner;
+					deserialize_value{$Inner}(d, ($Inner*)out)!;
 			$endswitch
 		$case ENUM:
-			if (peek_char(des) == '"')
+			if (peek_char(d) == '"')
 			{
-				String s = parse_string(des)!;
-				$foreach $v : $Typeof(#out)::values:
-					if (s == $v.description) { #out = $v; return; }
-				$endforeach
-				return INVALID_NUMBER~;
+				String s = parse_string(d)!;
+				*out = enum_by_name(OutValue, s) ?? encoding::MALFORMED_DATA~!;
 			}
 			else
 			{
-				long ordinal = (long)parse_double(des)!;
-				$foreach $v : $Typeof(#out)::values:
-					if (ordinal == (long)$v.ordinal) { #out = $v; return; }
-				$endforeach
-				return INVALID_NUMBER~;
+				long ordinal = (long)parse_double(d)!;
+				if (ordinal < 0 || ordinal >= OutValue::len) return encoding::MALFORMED_DATA~;
+				*out = (OutValue)ordinal;
 			}
 		$default:
 	$endswitch
@@ -270,113 +291,42 @@ macro void? @des_value(JsonDeserializer* des, #out) @private
  @param $Type : "The target type to deserialize into"
  @return "The populated native data structure on success."
  @return? UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED : "If JSON parsing fails."
+ @return? encoding::MALFORMED_DATA : "If the JSON does not match the type"
+
+ @require $Typeof(input) == String || $defined(InStream x = input) : "Input must be a String an InStream"
 *>
 macro unmarshal(Allocator allocator, input, $Type)
 {
 	$if $Typeof(input) != String:
-		$if !$defined(input.read_byte):
-			$error "input must be a String or InStream";
-		$endif
 		String source = (String)io::read_fully(allocator, input)!;
 		defer alloc::free(allocator, source);
 	$else
 		String source = input;
 	$endif
+	return _unmarshal{$Type}(allocator, source);
+}
+
+fn Type? _unmarshal(Allocator allocator, String input) <Type> @private
+{
 	@stack_mem(256 ; Allocator smem)
 	{
-		JsonDeserializer des = {
-			.source = source,
+		JsonDeserializer d = {
+			.source = input,
 			.cursor = 0,
 			.allocator = allocator,
 			.last_string = dstring::new_with_capacity(smem, 64),
-			.flavor = JsonFlavor.JSONC,
+			.flavor = JSONC,
 			.depth = 0
 		};
-		$Type result;
-		@des_value(&des, result)!;
-		skip_whitespace(&des);
-		if (des.cursor < des.source.len) return UNEXPECTED_CHARACTER~;
-		return result;	};
+		Type result;
+		defer catch object::recursively_free{Type}(allocator, &result);
+		deserialize_value{Type}(&d, &result)!;
+		skip_whitespace(&d);
+		if (d.cursor < d.source.len) return UNEXPECTED_CHARACTER~;
+		return result;
+	};
 }
 
-<*
- Unmarshal a parsed dynamic Object* DOM tree into a typed native C3 variable #out.
-
- #### Example:
- ```
- struct User { String name; int age; }
- Object* dom = json::tparse(`{"name":"Alice","age":30}`)!;
- User user;
- json::@unmarshal_to(tmem, dom, user);
- ```
-
- @param allocator : "The allocator to use for slice allocations"
- @param obj : "The Object* dynamic DOM tree"
- @param #out : "The target native variable to populate"
-*>
-macro void @unmarshal_to(Allocator allocator, Object* obj, #out)
-{
-	if (!obj || obj.is_null()) return;
-
-	$switch $Typeof(#out)::kind:
-		$case STRUCT:
-			$foreach $member : $Typeof(#out)::members:
-				if (try field = obj.get($member.name))
-				{
-					if (!field.is_null())
-					{
-						@unmarshal_to(allocator, field, #out.$member);
-					}
-				}
-			$endforeach
-		$case ARRAY:
-		$case VECTOR:
-		$case SLICE:
-			sz len = obj.get_len();
-			$if $Typeof(#out)::kind == TypeKind.SLICE:
-				#out = alloc::new_array(allocator, $Typeof(#out[0]), len);
-			$endif
-			sz limit = len < #out.len ? len : #out.len;
-			for (sz i = 0; i < limit; i++)
-			{
-				Object* item = obj.get_at(i);
-				if (item && !item.is_null())
-				{
-					@unmarshal_to(allocator, item, #out[i]);
-				}
-			}
-		$case SIGNED_INT:
-		$case UNSIGNED_INT:
-			#out = obj.is_float() ? ($Typeof(#out))obj.f : ($Typeof(#out))obj.i;
-		$case FLOAT:
-			#out = obj.is_int() ? ($Typeof(#out))obj.i : ($Typeof(#out))obj.f;
-		$case BOOL:
-			#out = obj.b;
-		$case CONSTDEF:
-		$case TYPEDEF:
-			$switch $Typeof(#out):
-				$case String:
-					#out = obj.s.copy(allocator);
-				$default:
-					var $Inner = $Typeof(#out)::inner;
-					@unmarshal_to(allocator, obj, *($Inner*)&#out);
-			$endswitch
-		$case ENUM:
-			if (obj.is_string())
-			{
-				$foreach $v : $Typeof(#out)::values:
-					if (obj.s == $v.description) { #out = $v; return; }
-				$endforeach
-			}
-			else
-			{
-				$foreach $v : $Typeof(#out)::values:
-					if ((long)obj.i == (long)$v.ordinal) { #out = $v; return; }
-				$endforeach
-			}
-		$default:
-	$endswitch
-}
 
 
 fn void? write_indent(OutStream stream, JsonIndent indent, int indent_depth) @private
@@ -447,14 +397,15 @@ fn void? write_map_suffix(OutStream stream, JsonIndent indent, int indent_depth,
 	stream.write_byte('}')!;
 }
 
-fn void? serialize(OutStream stream, Type value, JsonIndent indent, int indent_depth = 0)<Type> @private
+<* @require $defined(MapType::members) *>
+fn void? serialize(OutStream stream, MapType value, JsonIndent indent, int indent_depth = 0) <MapType> @private
 {
 	stream.write_byte('{')!;
-	$foreach $i, $member : Type::members:
+	$foreach $i, $member : MapType::members:
 		write_entry_prefix(stream, $member.name, indent, indent_depth, $i == 0)!;
 		serialize_value{$member.type}(stream, value.$member, indent, indent_depth + 1)!;
 	$endforeach
-	write_map_suffix(stream, indent, indent_depth, Type::members.len > 0)!;
+	write_map_suffix(stream, indent, indent_depth, MapType::members.len > 0)!;
 }
 
 fn void? serialize_value(OutStream stream, TypeElement value, JsonIndent indent, int indent_depth = 0)<TypeElement> @private
@@ -509,24 +460,33 @@ fn void? serialize_object(OutStream stream, Object* obj, JsonIndent indent, int 
 	{
 		case obj.is_null():
 			stream.write("null")!;
-		case obj.is_empty():
-			stream.write("{}")!;
 		case obj.is_bool():
 			stream.write(obj.b ? "true" : "false")!;
 		case obj.is_string():
 			serialize_string(stream, obj.s)!;
 		case obj.is_int():
+			if (obj.i > long::max || obj.i < long::min) return INVALID_NUMBER~;
 			write_int(stream, (long)obj.i)!;
 		case obj.is_float():
 			serialize_float(stream, obj.f)!;
 		case obj.is_enum():
 			write_int(stream, (long)obj.i)!;
 		case obj.is_array():
+			if (!obj.len())
+			{
+				stream.write("[]")!;
+				break;
+			}
 			@write_array(stream, obj.get_len(), indent, indent_depth; i)
 			{
 				serialize_object(stream, obj.get_at(i), indent, indent_depth + 1)!;
 			}!;
 		case obj.is_map():
+			if (!obj.len())
+			{
+				stream.write("{}")!;
+				break;
+			}
 			stream.write_byte('{')!;
 			bool first = true;
 			obj.@each_entry(; key, val)
@@ -536,6 +496,8 @@ fn void? serialize_object(OutStream stream, Object* obj, JsonIndent indent, int 
 				serialize_object(stream, val, indent, indent_depth + 1)!;
 			};
 			write_map_suffix(stream, indent, indent_depth, !first)!;
+		default:
+			unreachable();
 	}
 }
 
@@ -558,7 +520,7 @@ fn void? write_int(OutStream stream, long value) @private
 	if (value < 0)
 	{
 		stream.write_byte('-')!;
-		return write_uint(stream, (ulong)-value) @inline;
+		return write_uint(stream, ~(ulong)value + 1) @inline;
 	}
 	return write_uint(stream, (ulong)value) @inline;
 }
