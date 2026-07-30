@@ -5086,6 +5086,19 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 					sema_error_not_constant(context, decl, init);
 					goto FAIL;
 				}
+				switch (sema_resolve_storage_type(context, init->type))
+				{
+					case STORAGE_ERROR:
+						return false;
+					case STORAGE_NORMAL:
+					case STORAGE_COMPILE_TIME:
+					case STORAGE_UNKNOWN:
+						break;
+					case STORAGE_WILDCARD:
+						RETURN_SEMA_ERROR(init, "This expression has an unknown type.");
+					case STORAGE_VOID:
+						RETURN_SEMA_ERROR(init, "This expression is not a real value, so you cannot assign it to a compile time variable.");
+				}
 				// Update the type.
 				decl->type = init->type;
 				break;

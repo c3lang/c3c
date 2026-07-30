@@ -3403,12 +3403,11 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		is_no_return = true;
 	}
-	if (returns_found == 1 && !implicit_void_return)
+	if ((returns_found == 1 && !implicit_void_return) || (returns_found == 0 && implicit_void_return))
 	{
-		Ast *ret = macro_context.block_returns[0];
+		Ast *ret = returns_found ? macro_context.block_returns[0] : NULL;
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
-		if (!result) goto NOT_CT;
-		if (!expr_is_runtime_const(result)) goto NOT_CT;
+		if (result && !expr_is_runtime_const(result)) goto NOT_CT;
 		FOREACH(Decl *, param, params)
 		{
 			// Skip raw vararg
@@ -3425,6 +3424,12 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		}
 		if (ast_is_compile_time(body))
 		{
+			if (!result)
+			{
+				ASSERT(implicit_void_return);
+				expr_rewrite_const_null(call_expr, type_void);
+				goto EXIT;
+			}
 			expr_replace(call_expr, result);
 			goto EXIT;
 		}

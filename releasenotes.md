@@ -42,6 +42,7 @@
 - Json accepted incorrectly accepted `\v` as whitespace.
 - JSONC parsing on unterminated comments would loop indefinitely.
 - ZII array constdef would cause an assert. #3411
+- Calling a constant void macro inside a macro stops it from being constant. #3410
 
 ## 0.8.2 Change list
 

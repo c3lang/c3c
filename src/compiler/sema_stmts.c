@@ -3121,7 +3121,14 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 	}
 	printf(" ");
 	scratch_buffer_clear();
-	expr_const_to_scratch_buffer(&message->const_expr);
+	if (type_is_void(message->type))
+	{
+		scratch_buffer_append("(void)");
+	}
+	else
+	{
+		expr_const_to_scratch_buffer(&message->const_expr);
+	}
 	puts(scratch_buffer_to_string());
 	statement->ast_kind = AST_NOP_STMT;
 	return true;
