@@ -525,24 +525,24 @@ void sema_analysis_pass_process_includes(Module *module)
 }
 
 
-void sema_analysis_pass_process_methods(Module *module, bool process_generic)
+void sema_analysis_pass_process_methods(Module *module)
 {
 	DEBUG_LOG("Pass: Process methods register for module '%s'.", module->name->module);
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		SemaContext context;
 		sema_context_init(&context, unit);
-		FOREACH(Decl *, method, process_generic ? unit->generic_methods_to_register : unit->methods_to_register)
+		unsigned size_before = vec_size(unit->methods_to_register);
+		FOREACH(Decl *, method, unit->methods_to_register)
 		{
 			TypeInfo *parent_type_info = decl_find_method_target(method);
-			if (!process_generic && sema_unresolved_type_is_generic(&context, parent_type_info))
+			if (sema_unresolved_type_is_generic(&context, parent_type_info))
 			{
-				vec_add(unit->generic_methods_to_register, method);
+				vec_add(compiler.context.unregistered_method_specializations, method);
 				continue;
 			}
 			if (sema_analyse_method_register(&context, method))
 			{
-				if (method->decl_kind == DECL_ERASED) continue;
 				if (method->decl_kind == DECL_MACRO)
 				{
 					vec_add(unit->macro_methods, method);
@@ -554,19 +554,49 @@ void sema_analysis_pass_process_methods(Module *module, bool process_generic)
 			}
 		}
 		sema_context_destroy(&context);
-		if (process_generic)
-		{
-			vec_resize(unit->generic_methods_to_register, 0);
-		}
-		else
-		{
-			vec_resize(unit->methods_to_register, 0);
-		}
+		ASSERT(size_before == vec_size(unit->methods_to_register));
+		vec_resize(unit->methods_to_register, 0);
 	}
 
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
+/*
+ *
+ * A specialization is a generic method like:
+ * fn int Foo{int}.bar(&self) { ... }
+ * That is, the method parent is a generic instantiation.
+ */
+void sema_analysis_pass_process_method_specialization(void)
+{
+	DEBUG_LOG("Pass: Process method specializations");
+	SemaContext context;
+	CompilationUnit *unit = NULL;
+	FOREACH(Decl *, method, compiler.context.unregistered_method_specializations)
+	{
+		CompilationUnit *method_unit = method->unit;
+		if (method_unit != unit)
+		{
+			if (unit) sema_context_destroy(&context);
+			unit = method_unit;
+			sema_context_init(&context, unit);
+		}
+		if (sema_analyse_method_register(&context, method))
+		{
+			if (method->decl_kind == DECL_MACRO)
+			{
+				vec_add(unit->macro_methods, method);
+			}
+			else
+			{
+				vec_add(unit->methods, method);
+			}
+		}
+	}
+	if (unit) sema_context_destroy(&context);
+	vec_resize(compiler.context.unregistered_method_specializations, 0);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
+}
 
 void sema_analysis_pass_register_conditional_units_and_decls(Module *module)
 {

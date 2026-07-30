@@ -10,7 +10,7 @@ fn void test_general()
 	root.set("bar", "baz");
 	assert(root.get_int("foo")!! == 1);
 	assert(root.get_string("bar")!! == "baz");
-	Object* goo = root.set("goo", object::new_obj(mem));
+	Object* goo = root.set("goo", object::new_array(mem));
 	goo.push("hello");
 	goo.push(132);
 	assert(root.get("goo").get_int_at(1)!! == 132);

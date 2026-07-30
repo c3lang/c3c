@@ -321,11 +321,6 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			TypeInfo *parent = decl_find_target_if_method(decl);
 			if (parent)
 			{
-				if (parent->kind == TYPE_INFO_GENERIC)
-				{
-					vec_add(unit->generic_methods_to_register, decl);
-					return;
-				}
 				vec_add(unit->methods_to_register, decl);
 				return;
 			}
@@ -336,11 +331,6 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			ASSERT(decl->name);
 			if (decl->func_decl.type_parent)
 			{
-				if (decl_find_method_target(decl)->kind == TYPE_INFO_GENERIC)
-				{
-					vec_add(unit->generic_methods_to_register, decl);
-					return;
-				}
 				vec_add(unit->methods_to_register, decl);
 				return;
 			}

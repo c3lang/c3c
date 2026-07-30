@@ -9,8 +9,8 @@
 - Improved GDB compatibility for macros.
 - Fail when "emcc" is unavailable instead of falling back to the built-in wasm linker.
 - Support fetching MacSDK for easy cross compilation.
-- Add `@feat` attribute.
-- Add `$feat` compile time function.
+- Add `@feat` attribute, deprecate `@if` on non-generic top level declarations. 
+- Add `$feat` compile time function. `$feature` is deprecated and replaced by `$feat`. 
  
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
@@ -19,6 +19,10 @@
 - Add `Bounds` - a rectangular region stored as a `min` and `max` value, with all operations being inclusive along the boundary edge.
 - Experimental regex support.
 - Improved RFC 3986 compatibility.
+- JSON unmarshaling support, `json::unmarshal` and family.
+- Object unmarshaling support, `object::unmarshal` and family.
+- `json::temp_load` deprecated in favour of `json::tload`.
+- `Object::is_map` now returns true for empty objects.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374
@@ -34,6 +38,9 @@
 - Math function `_erff` invoked C `erf` function instead of `erff` function #3391
 - Defining local constants inside a macro causes it to fail to @const fold. #3397
 - AES CTR would lose sync on data not multiples of 16.
+- In some cases, on macros rethrowing optional values codegen could fail.
+- Json accepted incorrectly accepted `\v` as whitespace.
+- JSONC parsing on unterminated comments would loop indefinitely.
 
 ## 0.8.2 Change list
 

@@ -78,7 +78,8 @@ void sema_analysis_pass_register_global_declarations(Module *module);
 void sema_analysis_pass_process_includes(Module *module);
 void sema_analysis_pass_register_conditional_units_and_decls(Module *module);
 
-void sema_analysis_pass_process_methods(Module *module, bool process_generic);
+void sema_analysis_pass_process_methods(Module *module);
+void sema_analysis_pass_process_method_specialization(void);
 void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
 void sema_analysis_pass_ct_echo(Module *module);
