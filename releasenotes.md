@@ -41,6 +41,7 @@
 - In some cases, on macros rethrowing optional values codegen could fail.
 - Json accepted incorrectly accepted `\v` as whitespace.
 - JSONC parsing on unterminated comments would loop indefinitely.
+- ZII array constdef would cause an assert. #3411
 
 ## 0.8.2 Change list
 

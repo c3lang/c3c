@@ -2111,7 +2111,6 @@ extern const char *kw_std__io;
 extern const char *kw_tags;
 extern const char *kw_typekind;
 extern const char *kw_FILE_NOT_FOUND;
-extern const char *kw_IoError;
 
 extern const char *kw_at_align;
 extern const char *kw_at_deprecated;
@@ -4465,6 +4464,7 @@ INLINE void expr_rewrite_const_integer(Expr *expr, Type *type, Int128 i)
 		.i =  i,
 		.type = type_flatten_to_int(type)->type_kind
 	};
+	ASSERT_SPAN(expr, type_kind_is_any_integer(expr->const_expr.ixx.type));
 	expr->const_expr.is_character = false;
 	expr->const_expr.const_kind = CONST_INTEGER;
 }
@@ -4475,6 +4475,7 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 	expr->type = type;
 	expr->resolve_status = RESOLVE_DONE;
 	TypeKind kind = type_flatten(type)->type_kind;
+	ASSERT_SPAN(expr, type_kind_is_any_integer(kind));
 	expr->const_expr.ixx.i.high = 0;
 	if (type_kind_is_signed(kind))
 	{

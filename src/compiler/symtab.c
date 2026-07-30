@@ -159,7 +159,6 @@ void symtab_init(uint32_t capacity)
 
 	type = TOKEN_TYPE_IDENT;
 	kw_typekind = KW_DEF("TypeKind");
-	kw_IoError = KW_DEF("IoError");
 
 	type = TOKEN_IDENT;
 	kw_alignment = KW_DEF("alignment");

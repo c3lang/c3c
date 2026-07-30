@@ -1,0 +1,25 @@
+module main;
+import std::io;
+
+fn void main()
+{
+	Foo $x;
+	Foo x = $x;
+}
+
+constdef Foo : int[2]
+{
+	X = {1, 2},
+}
+
+/* #expect: main.ll
+
+define void @main.main() #0 {
+entry:
+  %x = alloca [2 x i32], align 4
+  store i32 0, ptr %x, align 4
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  store i32 0, ptr %ptradd, align 4
+  ret void
+}
+

@@ -573,7 +573,8 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			expr->resolve_status = RESOLVE_DONE;
 			break;
 		case TYPE_CONSTDEF:
-			expr_rewrite_const_int(expr, type, 0);
+			expr_rewrite_to_const_zero(expr, type_flatten(type));
+			cast_no_check(expr, type, false);
 			return;
 		case TYPE_ENUM:
 			expr->const_expr.const_kind = CONST_ENUM;
