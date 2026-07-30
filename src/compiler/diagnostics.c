@@ -121,11 +121,11 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		while (current[row_len] != '\n' && current[row_len]) row_len++;
 		if (row_len > max_lines_for_display)
 		{
-			eprintf(number_buffer_elided, row, max_lines_for_display - 1, current);
+			eprintf(number_buffer_elided, (int)row, max_lines_for_display - 1, current);
 		}
 		else
 		{
-			eprintf(number_buffer, row, row_len, current);
+			eprintf(number_buffer, (int)row, row_len, current);
 		}
 		row++;
 	}
