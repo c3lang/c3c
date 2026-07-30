@@ -1,4 +1,4 @@
-module std::core::cpudetect @if(env::X86 || env::X86_64);
+module std::core::cpudetect @feat(X86, X86_64);
 
 struct CpuId
 {
@@ -270,7 +270,7 @@ fn void x86_initialize_cpu_features()
 
 }
 
-module std::core::cpudetect @if(env::AARCH64);
+module std::core::cpudetect @feat(AARCH64);
 
 enum Aarch64Feature
 {
@@ -473,7 +473,7 @@ fn void aarch64_initialize_cpu_features()
 }
 
 
-module std::core::cpudetect @if(env::AARCH64 && (env::LINUX || env::ANDROID));
+module std::core::cpudetect @feat(AARCH64) @feat(LINUX, ANDROID);
 
 const ulong AT_HWCAP = 16;
 const ulong AT_HWCAP2 = 26;
@@ -481,7 +481,7 @@ const ulong AT_HWCAP2 = 26;
 extern fn ulong getauxval(ulong type);
 
 
-module std::core::cpudetect @if(env::AARCH64 && env::DARWIN);
+module std::core::cpudetect @feat(AARCH64) @feat(DARWIN);
 
 extern fn CInt sysctlbyname(ZString name, void* oldp, usz* oldlenp, void* newp, usz newlen);
 
@@ -499,7 +499,7 @@ fn void add_feature_if_sysctl(Aarch64Feature feature, ZString name)
 }
 
 
-module std::core::cpudetect @if(env::AARCH64 && env::WIN32);
+module std::core::cpudetect @feat(AARCH64) @feat(WIN32);
 // windows feature bits = https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-isprocessorfeaturepresent
 const uint PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE   = 30;
 const uint PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE    = 31;

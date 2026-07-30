@@ -1,4 +1,4 @@
-module std::net::os @if(env::NETBSD);
+module std::net::os @feat(NETBSD);
 import libc;
 
 const AIFamily PLATFORM_AF_UNSPEC          = (AIFamily)0;                 // unspecified

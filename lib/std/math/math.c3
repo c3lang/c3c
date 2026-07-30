@@ -901,14 +901,14 @@ extern fn float _atanf(float x) @MathLibc("atanf");
 extern fn double _atan2(double, double) @MathLibc("atan2");
 extern fn float _atan2f(float, float) @MathLibc("atan2f");
 
-extern fn void _sincos(double, double*, double*) @MathLibc("__sincos") @if(env::DARWIN);
-extern fn void _sincosf(float, float*, float*) @MathLibc("__sincosf") @if(env::DARWIN);
+extern fn void _sincos(double, double*, double*) @MathLibc("__sincos") @feat(DARWIN);
+extern fn void _sincosf(float, float*, float*) @MathLibc("__sincosf") @feat(DARWIN);
 
-extern fn void _sincos(double, double*, double*) @MathLibc("sincos") @if(!env::DARWIN && !env::WIN32);
-extern fn void _sincosf(float, float*, float*) @MathLibc("sincosf") @if(!env::DARWIN && !env::WIN32);
+extern fn void _sincos(double, double*, double*) @MathLibc("sincos") @feat(!DARWIN) @feat(!WIN32);
+extern fn void _sincosf(float, float*, float*) @MathLibc("sincosf") @feat(!DARWIN) @feat(!WIN32);
 
-fn void _sincos(double a, double* s, double* c) @cname("sincos") @if(env::WIN32) { *s = sin(a); *c = cos(a); }
-fn void _sincosf(float a, float* s, float* c) @cname("sincosf") @if(env::WIN32)  { *s = sin(a); *c = cos(a); }
+fn void _sincos(double a, double* s, double* c) @cname("sincos") @feat(WIN32) { *s = sin(a); *c = cos(a); }
+fn void _sincosf(float a, float* s, float* c) @cname("sincosf") @feat(WIN32)  { *s = sin(a); *c = cos(a); }
 
 extern fn double _tan(double x) @MathLibc("tan");
 extern fn float _tanf(float x) @MathLibc("tanf");
@@ -928,7 +928,7 @@ extern fn double _erf(double x) @MathLibc("erf");
 extern fn double _lgamma(double x) @MathLibc("lgamma");
 extern fn double _tgamma(double x) @MathLibc("tgamma");
 
-extern fn float _erff(float x) @MathLibc("erf");
+extern fn float _erff(float x) @MathLibc("erff");
 extern fn float _lgammaf(float x) @MathLibc("lgammaf");
 extern fn float _tgammaf(float x) @MathLibc("tgammaf");
 

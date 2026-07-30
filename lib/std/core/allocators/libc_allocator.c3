@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::core::mem::allocators @if(env::LIBC);
+module std::core::mem::allocators @feat(LIBC);
 import std::io, libc;
 
 <*
@@ -10,7 +10,7 @@ import std::io, libc;
 typedef LibcAllocator (Allocator) = uptr;
 const LibcAllocator LIBC_ALLOCATOR = {};
 
-module std::core::mem::allocators @if(env::POSIX);
+module std::core::mem::allocators @feat(POSIX);
 import std::os;
 import libc;
 
@@ -78,7 +78,7 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 	libc::free(old_ptr);
 }
 
-module std::core::mem::allocator @if(env::WIN32);
+module std::core::mem::allocator @feat(WIN32);
 import std::os::win32;
 import libc;
 
@@ -119,7 +119,7 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 	libc::free(old_ptr);
 }
 
-module std::core::mem::allocator @if(!env::WIN32 && !env::POSIX && env::LIBC);
+module std::core::mem::allocator @feat(LIBC) @feat(!WIN32) @feat(!POSIX);
 import libc;
 
 fn void* coerced_malloc(sz bytes) @local @inline => libc::malloc((usz)bytes);

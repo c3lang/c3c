@@ -1,4 +1,4 @@
-module std::core::mem::allocators @if(!(env::POSIX || env::WIN32) || !$feature(VMEM_TEMP));
+module std::core::mem::allocators @feat(!POSIX & !WIN32, !VMEM_TEMP);
 import std::io, std::math;
 
 // This implements the temp allocator.
@@ -328,7 +328,7 @@ fn void*? _realloc_page(TempAllocator* self, TempAllocatorPage* page, sz size, s
 	return data;
 }
 
-module std::core::mem::allocators @if((env::POSIX || env::WIN32) && $feature(VMEM_TEMP));
+module std::core::mem::allocators @feat(POSIX, WIN32) @feat(VMEM_TEMP);
 import std::math;
 
 

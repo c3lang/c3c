@@ -17,9 +17,11 @@ static inline Decl *parse_enum_declaration(ParseContext *c);
 static inline Decl *parse_func_definition(ParseContext *c, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
+static inline Path *parse_module_path(ParseContext *c);
 static Decl *parse_ct_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
+static bool consume_type_name(ParseContext *c, const char* type);
 INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind);
 static bool parse_contracts(ParseContext *c, ContractDescription *contracts_ref);
@@ -86,7 +88,6 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
 	return true;
 }
 
-
 // --- Parse paths
 
 /**
@@ -100,7 +101,7 @@ static inline Path *parse_module_path(ParseContext *c)
 	ASSERT(tok_is(c, TOKEN_IDENT));
 	scratch_buffer_clear();
 	SourceLoc span = c->span;
-	int max_exceeded = 0;
+	size_t max_exceeded = 0;
 	while (1)
 	{
 		const char *string = symstr(c);
@@ -122,7 +123,8 @@ static inline Path *parse_module_path(ParseContext *c)
 		}
 		if (len > MAX_MODULE_NAME)
 		{
-			PRINT_ERROR_LAST("The module name is too long, it's %d characters (%d more than the maximum allowed %d characters).", (int)len, (int)len - MAX_MODULE_NAME, MAX_MODULE_NAME);
+			PRINT_ERROR_LAST("The module name is too long, it's %d characters (%d more than the maximum allowed %d characters).",
+				(int)len, (int)len - MAX_MODULE_NAME, MAX_MODULE_NAME);
 			return NULL;
 		}
 		if (max_exceeded)
@@ -163,8 +165,10 @@ static inline Path *parse_module_path(ParseContext *c)
 
 // --- Parse import and module
 
-
-static int generic_id = 1;
+/*
+ * We need to unify generic declarations using the parameter names, so that
+ * "struct Foo <Type> { ... }" and "const int ABC <Type> = Type::size" are unified.
+ */
 static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 {
 	unsigned params = vec_size(decl->generic_decl.parameters);
@@ -174,16 +178,13 @@ static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 		if (candidate_params != params) continue;
 		for (unsigned i = 0; i < params; i++)
 		{
-			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i])
-			{
-				goto NEXT;
-			}
+			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i]) goto ON_MISMATCH;
 		}
 		decl->generic_decl.id = d->generic_decl.id;
 		return;
-NEXT:;
+ON_MISMATCH:;
 	}
-	decl->generic_decl.id = generic_id++;
+	decl->generic_decl.id = ++compiler.context.generic_id_counter;
 }
 
 bool parse_attach_contracts(Decl *generics, ContractDescription *contracts)
@@ -205,10 +206,18 @@ bool parse_attach_contracts(Decl *generics, ContractDescription *contracts)
 	FOREACH(Expr *, e, contracts->requires) vec_add(generics->generic_decl.requires, e);
 	return true;
 }
+
+/*
+ * Add the generic declaration to the current unit, the module and unify it's id.
+ */
 void parse_attach_generics(ParseContext *c, Decl *generic_decl)
 {
+	ASSERT_SPAN(generic_decl, generic_decl->decl_kind == DECL_GENERIC);
+	// Add to unit's generics
 	vec_add(c->unit->generic_decls, generic_decl);
+	// Unify it with other declarations of the same
 	unify_generic_decl(c->unit, generic_decl);
+	// Add to all the generic sections of the module
 	vec_add(c->unit->module->generic_sections, generic_decl);
 }
 
@@ -223,6 +232,7 @@ bool parse_module(ParseContext *c)
 		RETURN_PRINT_ERROR_HERE("'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
 	}
 
+	// Give some good error message:
 	if (!tok_is(c, TOKEN_IDENT))
 	{
 		if (token_is_keyword_ident(c->tok))
@@ -237,10 +247,10 @@ bool parse_module(ParseContext *c)
 	}
 
 	Path *path = parse_module_path(c);
-
 	// Expect the module name
 	if (!path)
 	{
+		// Create a fake path to continue
 		path = CALLOCS(Path);
 		path->len = (unsigned)strlen("#invalid");
 		path->module = "#invalid";
@@ -250,22 +260,29 @@ bool parse_module(ParseContext *c)
 		return false;
 	}
 
-	// Is this a generic module?
 	if (!context_set_module(c, path)) return false;
 	Visibility visibility = VISIBLE_PUBLIC;
 	bool weak = false;
 	Attr** attrs = NULL;
-	bool is_cond = false;
+	bool is_cond, is_feat_cond;
 
+	// Is generic attached?
 	ASSIGN_DECL_OR_RET(Decl *generic_decl, parse_generic_decl(c), false);
 
-	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond, NULL, &weak)) return false;
+	// Parse the attributes
+	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond, NULL, &weak, &is_feat_cond)) return false;
+
+	// Attach contracts to the generics
 	if (!parse_attach_contracts(generic_decl, &c->contracts)) return false;
+
+	// Attach generics if they exist
 	if (generic_decl)
 	{
 		parse_attach_generics(c, generic_decl);
 		c->unit->default_generic_section = generic_decl;
 	}
+
+	// Pre-parse attributes
 	FOREACH(Attr *, attr, attrs)
 	{
 		if (attr->is_custom) RETURN_PRINT_ERROR_AT(false, attr, "Custom attributes cannot be used with 'module'.");
@@ -278,6 +295,9 @@ bool parse_module(ParseContext *c)
 				vec_add(c->unit->attr_links, attr);
 				continue;
 			}
+			case ATTRIBUTE_FEAT:
+				vec_add(c->unit->feat_attributes, attr);
+				continue;
 			case ATTRIBUTE_IF:
 				if (c->unit->if_attr) RETURN_PRINT_ERROR_AT(false, attr, "'@if' appeared more than once.");
 				c->unit->if_attr = attr;
@@ -321,7 +341,6 @@ bool parse_module(ParseContext *c)
 	CONSUME_EOS_OR_RET(false);
 	return true;
 }
-
 
 static bool consume_type_name(ParseContext *c, const char* type)
 {
@@ -845,8 +864,10 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 	advance(c);
 
 	bool is_cond;
-	if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, "on local variables", NULL)) return poisoned_decl;
+	bool is_feat_cond;
+	if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, "on local variables", NULL, &is_feat_cond)) return poisoned_decl;
 	decl->is_cond = is_cond;
+	decl->is_feat_cond = is_feat_cond;
 	if (tok_is(c, TOKEN_EQ))
 	{
 		if (!decl)
@@ -925,9 +946,10 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern)
 	}
 	else
 	{
-		bool is_cond;
-		if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, "on local declarations", NULL)) return poisoned_decl;
+		bool is_cond, is_feat_cond;
+		if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, "on local declarations", NULL, &is_feat_cond)) return poisoned_decl;
 		decl->is_cond = is_cond;
+		decl->is_feat_cond = is_feat_cond;
 	}
 
 	if (is_extern) return decl;
@@ -944,10 +966,10 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern)
 Decl *parse_var_decl(ParseContext *c)
 {
 	// CT variants will naturally be macro only, for runtime variables it is enforced in the semantic
-	// analyser. The runtime variables must have an initializer unlike the CT ones.
+	// analyzer. The runtime variables must have an initializer unlike the CT ones.
 	advance_and_verify(c, TOKEN_VAR);
 	Decl *decl;
-	bool is_cond;
+	bool is_cond, is_feat_cond;
 	SourceLoc loc;
 	switch (c->tok)
 	{
@@ -957,8 +979,9 @@ Decl *parse_var_decl(ParseContext *c)
 		case TOKEN_IDENT:
 			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL);
 			advance(c);
-			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, "on local declarations", NULL)) return poisoned_decl;
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, "on local declarations", NULL, &is_feat_cond)) return poisoned_decl;
 			decl->is_cond = is_cond;
+			decl->is_feat_cond = is_feat_cond;
 			if (!tok_is(c, TOKEN_EQ))
 			{
 				PRINT_ERROR_HERE("'var' must always have an initial value, or the type cannot be inferred.");
@@ -972,8 +995,8 @@ Decl *parse_var_decl(ParseContext *c)
 			decl = decl_new_var_current(c, NULL, c->tok == TOKEN_CT_IDENT ? VARDECL_LOCAL_CT : VARDECL_LOCAL_CT_TYPE);
 			advance(c);
 			loc = c->span;
-			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, "on local declarations", NULL)) return poisoned_decl;
-			if (is_cond || decl->attributes)
+			if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond, "on local declarations", NULL, &is_feat_cond)) return poisoned_decl;
+			if (is_cond || is_feat_cond || decl->attributes)
 			{
 				print_error_at_loc(&loc, "Attributes are not allowed on compile time variables.");
 				return poisoned_decl;
@@ -1233,12 +1256,12 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	}
 	decl->is_export = c->unit->export_by_default;
 	bool is_builtin = false;
-	bool is_cond;
+	bool is_cond, is_feat_cond;
 	bool can_be_generic = decl_inherits_module_generic(decl);
 	ASSIGN_DECL_OR_RET(Decl *generics, parse_generic_decl(c), false);
 	bool is_method = decl_is_fn_macro(decl) && decl->func_decl.type_parent;
 	bool is_enum_const = decl->decl_kind == DECL_ENUM_CONSTANT;
-	if (!parse_attributes(c, &decl->attributes, is_enum_const ? NULL : &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, is_method ? "for method declarations" : NULL, &is_weak)) return false;
+	if (!parse_attributes(c, &decl->attributes, is_enum_const ? NULL : &visibility, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, is_method ? "for method declarations" : NULL, &is_weak, &is_feat_cond)) return false;
 	if (generics)
 	{
 		if (!can_be_generic)
@@ -1258,6 +1281,7 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 		decl->is_template = true;
 	}
 	decl->is_cond = is_cond;
+	decl->is_feat_cond = is_feat_cond;
 	if (is_weak)
 	{
 		decl->is_weak_link = true;
@@ -1287,11 +1311,13 @@ static inline bool warn_method_visibility(Attr *attr, const char *mod, const cha
 	}
 }
 
+
 static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref, bool use_comma, const char *reject_visibility, bool
-                                        *weak_ref)
+                                        *weak_ref, bool *feat_cond_ref)
 {
 	Visibility visibility = -1; // NOLINT
 	if (cond_ref) *cond_ref = false;
+	if (feat_cond_ref) *feat_cond_ref = false;
 	while (1)
 	{
 		Attr *attr;
@@ -1346,6 +1372,10 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 				case ATTRIBUTE_BUILTIN:
 					parsed_builtin = true;
 					break;
+				case ATTRIBUTE_FEAT:
+					if (!feat_cond_ref) RETURN_PRINT_ERROR_AT(false, attr, "'%s' cannot be used here.", attr->name);
+					*feat_cond_ref = true;
+					break;
 				case ATTRIBUTE_IF:
 					if (!cond_ref) RETURN_PRINT_ERROR_AT(false, attr, "'%s' cannot be used here.", attr->name);
 					*cond_ref = true;
@@ -1366,7 +1396,7 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
 			}
-			if (attr->attr_kind == ATTRIBUTE_TAG) goto ADD;
+			if (attr->attr_kind == ATTRIBUTE_TAG || attr->attr_kind == ATTRIBUTE_FEAT) goto ADD;
 		}
 		const char *name = attr->name;
 		FOREACH(Attr *, other_attr, *attributes_ref)
@@ -1430,9 +1460,9 @@ Decl *parse_generic_decl(ParseContext *c)
  * @return true if parsing succeeded, false if recovery is needed
  */
 bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref, const char *reject_visibility, bool
-                      *weak_ref)
+                      *weak_ref, bool *feat_cond_ref)
 {
-	return parse_attribute_list(c, attributes_ref, visibility_ref, builtin_ref, cond_ref, false, reject_visibility, weak_ref);
+	return parse_attribute_list(c, attributes_ref, visibility_ref, builtin_ref, cond_ref, false, reject_visibility, weak_ref, feat_cond_ref);
 }
 
 /**
@@ -1525,7 +1555,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 			d->attributes = copy_attributes_single(attributes);
 		}
 	}
-	int generics_id = decl->is_template ? decl->generic_id : -1;
+	int generics_id = decl->is_template ? (int)decl->generic_id : -1;
 	if (generics_id > -1)
 	{
 		FOREACH(Decl *, d, decls)
@@ -1567,7 +1597,7 @@ static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
 		if (token_is_some_ident(c->tok)) RETURN_PRINT_ERROR_HERE("Expected a name starting with a lower-case letter.");
 		RETURN_PRINT_ERROR_HERE("Expected a member name here.");
 	}
-	if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL, "on parameter declarations", NULL)) return false;
+	if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL, "on parameter declarations", NULL, NULL)) return false;
 	vec_add(*parameters, param);
 	RANGE_EXTEND_PREV(param);
 	return true;
@@ -1826,7 +1856,7 @@ CHECK_ELLIPSIS:
 		Decl *param = decl_new_var_loc(name, &loc, type, param_kind);
 		param->var.type_info = type ? type_infoid(type) : 0;
 		param->var.self_addr = ref;
-		if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL, "on parameters", NULL)) return false;
+		if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL, "on parameters", NULL, NULL)) return false;
 		if (!no_name)
 		{
 			if (try_consume(c, TOKEN_EQ))
@@ -1964,9 +1994,10 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			}
 			else
 			{
-				bool is_cond;
-				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL)) return false;
+				bool is_cond, is_feat_cond;
+				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL, &is_feat_cond)) return false;
 				member->is_cond = is_cond;
+				member->is_feat_cond = is_feat_cond;
 				if (!parse_struct_body(c, member)) return decl_poison(parent);
 			}
 			member->docs = decl_from_contract_description(&contracts);
@@ -2011,8 +2042,10 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			}
 			advance(c);
 			bool is_cond;
-			if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL)) return false;
+			bool is_feat_cond;
+			if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL, &is_feat_cond)) return false;
 			member->is_cond = is_cond;
+			member->is_feat_cond = is_feat_cond;
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
 			{
@@ -2033,10 +2066,12 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			{
 				// Copy attributes
 				bool is_cond = last_member->is_cond;
+				bool is_feat_cond = last_member->is_feat_cond;
 				for (unsigned i = first_member_index; i < last_index; i++)
 				{
 					Decl *member = members[i];
 					if (is_cond) member->is_cond = true;
+					if (is_feat_cond) member->is_feat_cond = true;
 					ASSERT(!member->attributes);
 					member->attributes = copy_attributes_single(attributes);
 				}
@@ -2161,9 +2196,10 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 				}
 				is_consecutive = true;
 			}
-			bool is_cond = false;
-			if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond, "on bitstruct fields", NULL)) return false;
+			bool is_cond, is_feat_cond;
+			if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond, "on bitstruct fields", NULL, &is_feat_cond)) return false;
 			member_decl->is_cond = is_cond;
+			member_decl->is_feat_cond = is_feat_cond;
 			CONSUME_OR_RET(TOKEN_EOS, false);
 			unsigned index = vec_size(decl->strukt.members);
 			member_decl->var.start_bit = index;
@@ -2182,9 +2218,10 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 		{
 			member_decl->var.end = NULL;
 		}
-		bool is_cond = false;
-		if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond, "on bitstruct fields", NULL)) return false;
+		bool is_cond, is_feat_cond;
+		if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond, "on bitstruct fields", NULL, &is_feat_cond)) return false;
 		member_decl->is_cond = is_cond;
+		member_decl->is_feat_cond = is_feat_cond;
 		CONSUME_EOS_OR_RET(false);
 		if (is_consecutive)
 		{
@@ -2388,7 +2425,7 @@ static inline Decl *parse_alias_type(ParseContext *c)
 		{
 			return poisoned_decl;
 		}
-		if (!parse_attributes(c, &decl_type->attributes, NULL, NULL, NULL, "on the target of an alias (maybe you intended it *before* the '='?)", NULL)) return poisoned_decl;
+		if (!parse_attributes(c, &decl_type->attributes, NULL, NULL, NULL, "on the target of an alias (maybe you intended it *before* the '='?)", NULL, NULL)) return poisoned_decl;
 		attach_deprecation_from_contract(c, &c->contracts, decl_type);
 		RANGE_EXTEND_PREV(decl_type);
 		RANGE_EXTEND_PREV(decl);
@@ -2547,7 +2584,7 @@ static inline Decl *parse_attrdef(ParseContext *c)
 
 	bool is_cond;
 	bool is_builtin = false;
-	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true, "cannot be aliased using 'attrdef'", NULL)) return poisoned_decl;
+	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true, "cannot be aliased using 'attrdef'", NULL, NULL)) return poisoned_decl;
 	decl->attr_decl.attrs = attributes;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -2750,10 +2787,9 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	return true;
 }
 
-static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_single_value, bool is_constdef)
+static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility visibility, bool is_constdef)
 {
 	Decl **values = NULL;
-	bool deprecate_warn = true;
 	SourceLoc start = c->prev_span;
 
 	while (!try_consume(c, TOKEN_RBRACE))
@@ -2777,48 +2813,16 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 		}
 		if (!parse_attributes_for_global(c, enum_const)) return false;
 		attach_deprecation_from_contract(c, &contracts, enum_const);
-		if (is_constdef && try_consume(c, TOKEN_EQ))
+		if (is_constdef)
 		{
-			Expr **args = NULL;
-			if (is_single_value || !tok_is(c, TOKEN_LBRACE))
+			if (try_consume(c, TOKEN_EQ))
 			{
 				ASSIGN_EXPR_OR_RET(Expr *single, parse_constant_expr(c), false);
-				if (is_constdef)
-				{
-					enum_const->enum_constant.value = single;
-					goto NEXT;
-				}
-				vec_add(args, single);
+				enum_const->enum_constant.value = single;
 			}
-			else
-			{
-				CONSUME_OR_RET(TOKEN_LBRACE, false);
-				while (1)
-				{
-					if (try_consume(c, TOKEN_RBRACE)) break;
-					ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), false);
-					vec_add(args, arg);
-					if (tok_is(c, TOKEN_COLON) && arg->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
-					{
-						SourceLoc loc = extend_loc_with_token(sourcelocptr(arg->loc), &c->span);
-						print_error_at_loc(&loc,
-									   "This looks like a designated initializer, but that style of declaration "
-									   "is not supported for declaring enum associated values.");
-						return false;
-					}
-					if (!try_consume(c, TOKEN_COMMA))
-					{
-						if (!try_consume(c, TOKEN_RBRACE))
-						{
-							RETURN_PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
-						}
-						break;
-					}
-				}
-			}
-			enum_const->enum_constant.associated = args;
+
 		}
-		else if (!is_constdef && try_consume(c, TOKEN_LBRACE))
+		else if (try_consume(c, TOKEN_LBRACE))
 		{
 			Expr **args = NULL;
 			while (1)
@@ -2835,26 +2839,19 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 						return false;
 				}
 
-				if (!try_consume(c, TOKEN_COMMA))
-				{
-					if (!try_consume(c, TOKEN_RBRACE))
-					{
-						RETURN_PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
-					}
-					break;
-				}
+				if (try_consume(c, TOKEN_COMMA)) continue;
+				if (!try_consume(c, TOKEN_RBRACE)) RETURN_PRINT_ERROR_HERE("A comma or a closing brace was expected here.");
+				break;
 			}
 			enum_const->enum_constant.associated = args;
 		}
-NEXT:
 		vec_add(values, enum_const);
 		// Allow trailing ','
 		if (!try_consume(c, TOKEN_COMMA))
 		{
 			if (tok_is(c, TOKEN_CONST_IDENT))
 			{
-				PRINT_ERROR_HERE("It looks like you forgot a comma before this identifier.");
-				return false;
+				RETURN_PRINT_ERROR_HERE("It looks like you forgot a comma before this identifier.");
 			}
 			EXPECT_OR_RET(TOKEN_RBRACE, false);
 		}
@@ -2932,13 +2929,12 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	decl->interfaces = interfaces;
 	if (param_list) decl->enums.parameters = param_list;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-	unsigned expected_parameters = vec_size(decl->enums.parameters);
 	Visibility visibility = decl->visibility;
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->loc);
 	if (is_constdef && val_is_inline) decl->is_substruct = true;
-	if (!parse_enum_values(c, &decl->enums.values, visibility, is_constdef || expected_parameters == 1, is_constdef)) return poisoned_decl;
+	if (!parse_enum_values(c, &decl->enums.values, visibility, is_constdef)) return poisoned_decl;
 	return decl;
 }
 
@@ -3504,8 +3500,8 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 {
 	c->contracts = (ContractDescription){ .first = 0 };
 	if (!parse_contracts(c, &c->contracts)) return poisoned_decl;
-	Decl *decl;
 
+	Decl *decl;
 	TokenType tok = c->tok;
 	if (tok != TOKEN_MODULE && !c->unit->module)
 	{
@@ -3589,7 +3585,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			break;
 		case TOKEN_FN:
 			decl = parse_func_definition(c, c->unit->is_interface_file ? FUNC_PARSE_C3I : FUNC_PARSE_REGULAR);
-
 			break;
 		case TOKEN_CT_ASSERT:
 			{

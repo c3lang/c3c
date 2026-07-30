@@ -175,6 +175,9 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_MODULE_HIERARCHY:
 				sema_analyse_pass_module_hierarchy(module);
 				break;
+			case ANALYSIS_REMOVE_FEATURE_CONDITIONALS:
+				sema_analyse_pass_remove_feat_conditionals(module);
+				break;
 			case ANALYSIS_IMPORTS:
 				sema_analysis_pass_process_imports(module);
 				break;
@@ -184,17 +187,15 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_INCLUDES:
 				sema_analysis_pass_process_includes(module);
 				break;
-			case ANALYSIS_REGISTER_CONDITIONAL_UNITS:
-				sema_analysis_pass_register_conditional_units(module);
-				break;
 			case ANALYSIS_REGISTER_CONDITIONAL_DECLARATIONS:
-				sema_analysis_pass_register_conditional_declarations(module);
+				sema_analysis_pass_register_conditional_units_and_decls(module);
 				break;
 			case ANALYSIS_METHODS_REGISTER:
-				sema_analysis_pass_process_methods(module, false);
+				sema_analysis_pass_process_methods(module);
 				break;
-			case ANALYSIS_METHODS_REGISTER_GENERIC:
-				sema_analysis_pass_process_methods(module, true);
+			case ANALYSIS_METHODS_REGISTER_GENERIC_SPECIALIZATION:
+				if (!vec_size(compiler.context.unregistered_method_specializations)) break;
+				sema_analysis_pass_process_method_specialization();
 				break;
 			case ANALYSIS_POST_REGISTER:
 				break;
@@ -269,7 +270,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 		Decl *old;
 		if (decl->visibility < VISIBLE_LOCAL)
 		{
-			if ((old = htable_set(&unit->module->symbols, (void *)decl->name, decl)))
+			if ((old = htable_set(&unit->module->symbols, (void *)decl->name, decl))) // NOLINT
 			{
 				if (old->generic_id != decl->generic_id)
 				{
@@ -280,7 +281,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				}
 			}
 		}
-		if ((old = htable_set(&unit->local_symbols, (void *)decl->name, decl)))
+		if ((old = htable_set(&unit->local_symbols, (void *)decl->name, decl))) // NOLINT
 		{
 			if (old->generic_id != decl->generic_id)
 			{

@@ -1,4 +1,4 @@
-module libc @if(env::OPENBSD);
+module libc @feat(OPENBSD);
 
 // Checked for x86_64
 
@@ -10,7 +10,7 @@ alias Mode_t = uint;
 alias Blkcnt_t = long;
 alias Fflags_t = uint;
 
-struct Stat @if(env::X86_64)
+struct Stat @feat(X86_64)
 {
 	Mode_t st_mode;
 	Dev_t st_dev;
@@ -31,7 +31,7 @@ struct Stat @if(env::X86_64)
 }
 
 // TODO: Investigate if this needs to be fixed
-struct Stat @if(!env::X86_64)
+struct Stat @feat(!X86_64)
 {
 	Dev_t st_dev;
 	Ino_t st_ino;

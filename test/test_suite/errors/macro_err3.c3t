@@ -24,11 +24,11 @@ entry:
   br label %opt_block_cleanup
 
 opt_block_cleanup:                                ; preds = %entry
-  %0 = call i32 (ptr, ...) @printf(ptr @.str.2)
+  %0 = call i32 (ptr, ...) @printf(ptr @.str.1)
   br label %else_block
 
 else_block:                                       ; preds = %opt_block_cleanup
   %1 = call i32 (ptr, ...) @printf(ptr @.str, i32 2)
-  %2 = call i32 (ptr, ...) @printf(ptr @.str.3)
+  %2 = call i32 (ptr, ...) @printf(ptr @.str.2)
   ret void
 }

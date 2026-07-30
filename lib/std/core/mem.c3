@@ -544,7 +544,7 @@ macro void @report_heap_allocs_in_scope($enabled = true; @body())
 *>
 macro void @assert_leak($report = true; @body()) @builtin
 {
-	$if env::COMPILER_SAFE_MODE || $feature(MEMORY_ASSERTS):
+	$if env::COMPILER_SAFE_MODE || $feat(MEMORY_ASSERTS):
 		TrackingAllocator tracker;
 		tracker.init(mem);
 		Allocator old_allocator = mem;
@@ -654,7 +654,7 @@ macro void @pool(sz reserve = 0; @body) @builtin
 	@body();
 }
 
-module std::core::mem @if(env::FREESTANDING_WASM);
+module std::core::mem @feat(FREESTANDING_WASM);
 import std::core::mem::allocators @public;
 SimpleHeapAllocator wasm_allocator @private;
 extern int __heap_base;
@@ -1018,7 +1018,7 @@ macro @unaligned_addr(#arg) @builtin
 	return (UnalignedRef{$Typeof(#arg), @alignof(#arg)})&#arg;
 }
 
-module std::core::mem @if(env::NO_LIBC);
+module std::core::mem @feat(NO_LIBC);
 
 fn CInt __memcmp(void* s1, void* s2, sz n) @weak @export("memcmp")
 {

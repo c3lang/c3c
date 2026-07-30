@@ -1,4 +1,4 @@
-module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
+module std::math::nolibc @feat(NO_LIBC, C3_MATH);
 
 const double LOG_LN2_HI = 6.93147180369123816490e-01;
 const double LOG_LN2_LO = 1.90821492927058770002e-10;

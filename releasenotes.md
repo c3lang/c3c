@@ -6,10 +6,23 @@
 - Windows aarch64 is now supported.
 - Tracking allocator can now accept cross-thread allocations.
 - Filter test backtraces #3368
-
+- Improved GDB compatibility for macros.
+- Fail when "emcc" is unavailable instead of falling back to the built-in wasm linker.
+- Support fetching MacSDK for easy cross compilation.
+- Add `@feat` attribute, deprecate `@if` on non-generic top level declarations. 
+- Add `$feat` compile time function. `$feature` is deprecated and replaced by `$feat`. 
+ 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
 - Added `FixedList.is_full()` method
+- `Rect.contains_point` is now exclusive on the maximum edge.
+- Add `Bounds` - a rectangular region stored as a `min` and `max` value, with all operations being inclusive along the boundary edge.
+- Experimental regex support.
+- Improved RFC 3986 compatibility.
+- JSON unmarshaling support, `json::unmarshal` and family.
+- Object unmarshaling support, `object::unmarshal` and family.
+- `json::temp_load` deprecated in favour of `json::tload`.
+- `Object::is_map` now returns true for empty objects.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374
@@ -22,7 +35,13 @@
 - Timed `tcp::connect` always failed with `io::GENERAL_ERROR` instead of the real result.
 - Compile time struct with zeroed union member access causes compiler error #3382.
 - Generic methods checked before the generic type is fully registered.
-  
+- Math function `_erff` invoked C `erf` function instead of `erff` function #3391
+- Defining local constants inside a macro causes it to fail to @const fold. #3397
+- AES CTR would lose sync on data not multiples of 16.
+- In some cases, on macros rethrowing optional values codegen could fail.
+- Json accepted incorrectly accepted `\v` as whitespace.
+- JSONC parsing on unterminated comments would loop indefinitely.
+
 ## 0.8.2 Change list
 
 ### Changes / improvements

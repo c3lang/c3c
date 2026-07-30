@@ -2389,6 +2389,21 @@ void target_setup(BuildTarget *build_target)
 		if (!compiler.build.macos.sysroot) compiler.build.macos.sysroot = macos_sysroot();
 		const char *sysroot = compiler.build.macos.sysroot ? compiler.build.macos.sysroot : macos_sysroot();
 
+		if (!sysroot)
+		{
+			const char *path = macos_cross_compile_library();
+			if (path)
+			{
+				if (!compiler.build.quiet && !compiler.build.silent)
+				{
+					OUTF("Using macOS SDK at: %s\n", path);
+				}
+
+				sysroot = scratch_buffer_copy();
+				compiler.build.macos.sysroot = sysroot;
+			}
+		}
+
 		compiler.build.macos.sdk = NULL;
 		if (sysroot)
 		{

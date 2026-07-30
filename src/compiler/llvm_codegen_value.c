@@ -189,7 +189,7 @@ void llvm_value_set_decl_address(GenContext *c, BEValue *value, Decl *decl)
 	LLVMValueRef backend_ref = llvm_get_ref(c, decl);
 	llvm_value_set_address(c, value, backend_ref, decl->type, decl->alignment);
 
-	if ((value->optional = llvm_get_opt_ref(c, decl)))
+	if ((value->optional = llvm_get_opt_ref(c, decl))) // NOLINT
 	{
 		value->kind = BE_ADDRESS_OPTIONAL;
 	}

@@ -372,7 +372,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			}
 			Decl *decl = const_init->type->decl;
 			Decl **members = decl->strukt.members;
-			bool is_packed = decl->is_packed;
+			bool is_packed = decl->strukt.is_packed;
 			uint32_t count = vec_size(members);
 			if (decl->decl_kind == DECL_UNION && count) count = 1;
 			LLVMValueRef *entries = NULL;
@@ -417,7 +417,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			}
 			if (was_modified)
 			{
-				return llvm_get_unnamed_struct(c, entries, decl->is_packed);
+				return llvm_get_unnamed_struct(c, entries, decl->strukt.is_packed);
 			}
 			return llvm_get_struct_of_type(c, const_init->type, entries, vec_size(entries));
 		}

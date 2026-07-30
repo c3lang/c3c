@@ -90,12 +90,12 @@ fn bool terminal_has_ansi_codes() @private => @pool()
 	$endif
 }
 
-fn void sig_bus_error(CInt i, void*, void* context) @local @if(env::POSIX)
+fn void sig_bus_error(CInt i, void*, void* context) @local @feat(POSIX)
 {
 	panic_test("Bus error", "Unknown", "Unknown", 1, posix::stack_instruction(context));
 }
 
-fn void sig_segmentation_fault(CInt i, void*, void* context) @local @if(env::POSIX)
+fn void sig_segmentation_fault(CInt i, void*, void* context) @local @feat(POSIX)
 {
 	panic_test("Segmentation fault", "Unknown", "Unknown", 1, posix::stack_instruction(context));
 }

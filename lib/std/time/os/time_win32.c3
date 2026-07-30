@@ -1,4 +1,4 @@
-module std::time::os @if(env::WIN32);
+module std::time::os @feat(WIN32);
 import std::os::win32;
 import std::math;
 

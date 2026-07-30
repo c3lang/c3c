@@ -356,6 +356,8 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	AstId cleanup = ast->return_stmt.cleanup;
 	AstId cleanup_fail = ast->return_stmt.cleanup_fail;
 	AstId err_cleanup = err_cleanup_block && cleanup_fail ? astid(copy_ast_defer(astptr(cleanup_fail))) : 0;
+
+	if (!c->current_block || llvm_basic_block_is_unused(c->current_block)) goto CLEANUP_BLOCK;
 	if (exit->block_return_out && return_value.value)
 	{
 		llvm_store_to_ptr_aligned(c, exit->block_return_out, &return_value, type_alloca_alignment(return_value.type));
@@ -363,6 +365,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 
 	llvm_emit_statement_chain(c, cleanup);
 
+CLEANUP_BLOCK:
 	if (err_cleanup_block)
 	{
 		llvm_emit_br(c, exit->block_return_exit);

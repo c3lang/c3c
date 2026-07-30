@@ -6,8 +6,8 @@ typedef AIProtocol = CInt;
 typedef AISockType = CInt;
 typedef AIFlags = CInt;
 
-alias Socklen_t @if(!env::WIN32) = CUInt;
-alias Socklen_t @if(env::WIN32)  = usz;
+alias Socklen_t @feat(!WIN32) = CUInt;
+alias Socklen_t @feat(WIN32)  = usz;
 
 typedef SockAddrPtr = void*;
 
@@ -18,12 +18,12 @@ struct AddrInfo
 	AISockType ai_socktype;
 	AIProtocol ai_protocol;
 	Socklen_t ai_addrlen;
-	struct @if(env::WIN32 || env::DARWIN || env::ANDROID || env::NETBSD)
+	struct @feat(WIN32, DARWIN, ANDROID, NETBSD)
 	{
 		ZString ai_canonname;
 		SockAddrPtr ai_addr;
 	}
-	struct @if(env::LINUX || env::OPENBSD || env::FREEBSD || env::EMSCRIPTEN)
+	struct @feat(LINUX, OPENBSD, FREEBSD, EMSCRIPTEN)
 	{
 		SockAddrPtr ai_addr;
 		ZString ai_canonname;
@@ -32,7 +32,7 @@ struct AddrInfo
 }
 
 
-const PLATFORM_O_NONBLOCK @if(!$defined(PLATFORM_O_NONBLOCK)) = 0;
+const PLATFORM_O_NONBLOCK @weak = 0;
 
 const AISockType SOCK_STREAM                    = (AISockType)1; // Stream
 const AISockType SOCK_DGRAM                     = (AISockType)2; // Datagram
@@ -63,21 +63,21 @@ const O_NONBLOCK = PLATFORM_O_NONBLOCK;
  @param [out] res
  @require (void*)nodename || (void*)servname : "One the names must be non-null"
 *>
-extern fn CInt getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res) @if(SUPPORTS_INET);
+extern fn CInt getaddrinfo(ZString nodename, ZString servname, AddrInfo* hints, AddrInfo** res) @feat(WIN32, POSIX);
 
 <*
  freeaddrinfo() frees an AddrInfo created by getaddrinfo.
 
  @param [&in] res
 *>
-extern fn void freeaddrinfo(AddrInfo* res) @if(SUPPORTS_INET);
+extern fn void freeaddrinfo(AddrInfo* res) @feat(WIN32, POSIX);
 
 <*
  Set options on a socket.
 
  @param [out] optval
 *>
-extern fn CInt setsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @if(SUPPORTS_INET);
+extern fn CInt setsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t optlen) @feat(WIN32, POSIX);
 
 <*
  Get options on a socket
@@ -85,9 +85,9 @@ extern fn CInt setsockopt(NativeSocket socket, CInt level, CInt optname, void* o
  @param [in] optval
  @param [inout] optlen
 *>
-extern fn CInt getsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t* optlen) @if(SUPPORTS_INET);
+extern fn CInt getsockopt(NativeSocket socket, CInt level, CInt optname, void* optval, Socklen_t* optlen) @feat(WIN32, POSIX);
 
-module std::net::os @if(!env::LIBC || !(env::WIN32 || env::DARWIN || env::LINUX || env::ANDROID || env::OPENBSD || env::NETBSD || env::FREEBSD || env::EMSCRIPTEN));
+module std::net::os @feat(!WIN32 & !DARWIN & !LINUX & !ANDROID & !BSD & !EMSCRIPTEN);
 
 const AIFamily PLATFORM_AF_INET6        = (AIFamily)0;
 const AIFamily PLATFORM_AF_IPX          = (AIFamily)0;

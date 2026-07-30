@@ -276,7 +276,13 @@ static void fetch_macos_usage()
 {
 	PRINTF("Usage: %s fetch-sdk macos [<options>]", args[0]);
 	PRINTF("");
-	PRINTF("Fetches the MacOS SDK (unimplemented).");
+	PRINTF("Fetches the MacOS SDK.");
+	PRINTF("");
+	PRINTF("Options:");
+	print_opt("--accept-license", "Automatically accept the Xcode license.");
+	print_opt("--list", "List currently hardcoded SDKs.");
+	print_opt("--fetch", "Fetch SDKs from Apple.");
+	print_opt("--sdk-version <ver>", "Specify a particular MacOS SDK version to fetch.");
 	PRINTF("");
 }
 
@@ -288,7 +294,7 @@ static void fetch_sdk_usage()
 	PRINTF("");
 	PRINTF("Available targets:");
 	PRINTF("  windows     Fetches the MSVC SDK");
-	PRINTF("  macos       Fetches the MacOS SDK (unimplemented)");
+	PRINTF("  macos       Fetches the MacOS SDK");
 	PRINTF("  android     Fetches the Android NDK");
 	PRINTF("");
 	PRINTF("Use 'c3c fetch-sdk <target> --help' for target specific options.");
@@ -699,6 +705,32 @@ static void parse_command(BuildOptions *options)
 					continue;
 				}
 			}
+			else if (str_eq(options->fetch_sdk_target, "macos") || str_eq(options->fetch_sdk_target, "mac") || str_eq(options->fetch_sdk_target, "apple"))
+			{
+				if (match_longopt("accept-license"))
+				{
+					options->fetch_accept_license = true;
+					continue;
+				}
+				if (match_longopt("list"))
+				{
+					options->macos_list_sdks = true;
+					continue;
+				}
+				if (match_longopt("fetch"))
+				{
+					options->macos_fetch_sdk_list = true;
+					continue;
+				}
+				if (match_longopt("sdk-version"))
+				{
+					if (at_end() || next_is_opt())
+						error_exit("error: sdk-version needs a version.");
+					options->macos_sdk_version_override = next_arg();
+					continue;
+				}
+			}
+
 			if (current_arg[0] == '-' && current_arg[1] == 'v')
 			{
 				options->verbosity_level = 1;

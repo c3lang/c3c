@@ -1,4 +1,4 @@
-module std::time::os @if(env::POSIX && !env::EMSCRIPTEN);
+module std::time::os @feat(POSIX) @feat(!EMSCRIPTEN);
 import libc, std::os::posix;
 
 fn Time native_timestamp()
@@ -8,7 +8,7 @@ fn Time native_timestamp()
 	return (Time)(ts.s * 1_000_000L + ts.ns / 1_000L);
 }
 
-fn Clock native_clock() @if(!env::DARWIN)
+fn Clock native_clock() @feat(!DARWIN)
 {
 	TimeSpec ts;
 	posix::clock_gettime(posix::CLOCK_MONOTONIC, &ts);

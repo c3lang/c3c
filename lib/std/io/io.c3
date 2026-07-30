@@ -431,7 +431,7 @@ struct BufferData @private
 }
 
 // Only available with LIBC
-module std::io @if(env::LIBC);
+module std::io @feat(LIBC);
 import libc;
 
 <*
@@ -478,7 +478,7 @@ fn File* stdin()
 	return &file;
 }
 
-module std::io @if(!env::LIBC);
+module std::io @feat(!LIBC);
 
 File stdin_file;
 File stdout_file;

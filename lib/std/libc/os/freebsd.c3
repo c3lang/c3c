@@ -1,4 +1,4 @@
-module libc @if(env::FREEBSD);
+module libc @feat(FREEBSD);
 
 // Checked for x86_64
 
@@ -10,7 +10,7 @@ alias Mode_t = ushort;
 alias Blkcnt_t = long;
 alias Fflags_t = uint;
 
-struct Stat @if(env::X86_64)
+struct Stat @feat(X86_64)
 {
 	Dev_t st_dev;
 	Ino_t st_ino;
@@ -34,7 +34,7 @@ struct Stat @if(env::X86_64)
 }
 
 // TODO: Investigate if this needs to be fixed
-struct Stat @if(!env::X86_64)
+struct Stat @feat(!X86_64)
 {
 	Dev_t st_dev;
 	Ino_t st_ino;

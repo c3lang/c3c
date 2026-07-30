@@ -25,7 +25,7 @@ macro void mutex_post_signal(void* addr, MutexFlags flags) { $if env::THREAD_SAN
 macro void mutex_pre_divert(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_pre_divert(addr, flags); $endif }
 macro void mutex_post_divert(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_post_divert(addr, flags); $endif }
 
-module std::core::sanitizer::tsan @if(env::THREAD_SANITIZER) @private;
+module std::core::sanitizer::tsan @feat(THREAD_SANITIZER) @private;
 
 extern fn void __tsan_mutex_create(void* addr, CUInt flags);
 extern fn void __tsan_mutex_destroy(void* addr, CUInt flags);

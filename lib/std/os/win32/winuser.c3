@@ -1,4 +1,4 @@
-module std::os::win32 @if(env::WIN32);
+module std::os::win32 @feat(WIN32);
 
 alias Win32_WNDPROC = fn Win32_LRESULT(Win32_HWND, Win32_UINT, Win32_WPARAM, Win32_LPARAM);
 
@@ -97,12 +97,12 @@ const Win32_UINT MB_ICONERROR = MB_ICONHAND;
 const Win32_UINT MB_ICONINFORMATION = MB_ICONASTERISK;
 const Win32_UINT MB_ICONSTOP = MB_ICONHAND;
 
-const GWL_WNDPROC @if(env::ARCH_32_BIT) = -4;
-const GWL_HINSTANCE @if(env::ARCH_32_BIT) = -6;
-const GWL_HWNDPARENT @if(env::ARCH_32_BIT) = -8;
+const GWL_WNDPROC @feat(ARCH_32_BIT) = -4;
+const GWL_HINSTANCE @feat(ARCH_32_BIT) = -6;
+const GWL_HWNDPARENT @feat(ARCH_32_BIT) = -8;
 const GWL_STYLE = -16;
 const GWL_EXSTYLE = -20;
-const GWL_USERDATA @if(env::ARCH_32_BIT) = -21;
+const GWL_USERDATA @feat(ARCH_32_BIT) = -21;
 const GWL_ID = -12;
 const GWLP_WNDPROC = -4;
 const GWLP_HINSTANCE = -6;

@@ -1,6 +1,6 @@
 module std::thread;
 
-module std::thread::threadpool @if (env::POSIX || env::WIN32);
+module std::thread::threadpool @feat(POSIX, WIN32);
 import std::thread;
 
 // Please do not use this one in production.

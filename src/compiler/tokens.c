@@ -355,6 +355,8 @@ const char *token_type_to_string(TokenType type)
 			return "$exec";
 		case TOKEN_CT_EXPAND:
 			return "$expand";
+		case TOKEN_CT_FEAT:
+			return "$feat";
 		case TOKEN_CT_FEATURE:
 			return "$feature";
 		case TOKEN_CT_FOR:

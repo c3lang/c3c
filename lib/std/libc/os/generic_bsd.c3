@@ -1,4 +1,4 @@
-module libc @if(env::DARWIN ||| env::BSD_FAMILY);
+module libc @feat(DARWIN, BSD);
 
 const CInt SIGIOT = 6;
 const CInt SIGEMT = 7;

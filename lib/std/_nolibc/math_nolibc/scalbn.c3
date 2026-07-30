@@ -1,4 +1,4 @@
-module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
+module std::math::nolibc @feat(NO_LIBC, C3_MATH);
 
 fn double _scalbn(double x, int n) @weak @cname("scalbn") @nostrip
 {

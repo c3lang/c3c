@@ -242,7 +242,7 @@ fn void streamed()
 	test::eq(s6_hash, x"0e465ce8ab9a0562e9fab2a0c1f1b429b2d88565d544bc5b7440439104c2f92db8703ca6ad041cd576a718bdc85dd45b16913e9e815bfc741a156c94c9ffd7b61aaed772de53b877000124bf9c667e4d06d6ebf911a55aaaa2f1d84af71280c86bce35a062f25d1c64458b7a94e4a51073651484da4b175c75eb9a23a5b8d92f");
 }
 
-fn void large() @if ($feature(SLOW_TESTS))
+fn void large() @feat(SLOW_TESTS)
 {
 	static String[][] expected = {
 		{

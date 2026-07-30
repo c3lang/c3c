@@ -302,8 +302,7 @@ static void collect_versions(JSONObject *pkgs, JSONObject **msvc_vers_out,
 		JSONObject *id_obj = json_map_get(pkg, "id");
 		if (!id_obj) continue;
 		const char *id = id_obj->str;
-		if (str_start_with(id, "Microsoft.VisualStudio.Component.VC.") &&
-			strstr(id, ".x86.x64"))
+		if (str_start_with(id, "Microsoft.VisualStudio.Component.VC.") && strstr(id, ".x86.x64"))
 		{
 			StringSlice slice = slice_from_string(id);
 			const int id_prefix_segments = 4;

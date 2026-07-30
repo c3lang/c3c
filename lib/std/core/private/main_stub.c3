@@ -48,7 +48,7 @@ macro int @_main_runner(#m, int argc, char** argv)
 	return #m(list) ? 0 : 1;
 }
 
-module std::core::main_stub @if(env::WIN32);
+module std::core::main_stub @feat(WIN32);
 import std::os::win32;
 
 macro win32_set_utf8_codepage() @local

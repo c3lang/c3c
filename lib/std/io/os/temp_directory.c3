@@ -14,10 +14,10 @@ enum NativeSystemDir
 	SCREENSHOTS
 }
 
-module std::io::os @if(env::LIBC);
+module std::io::os @feat(LIBC);
 import std::io, std::os;
 
-fn String? win32_get_known_folder_temp(Win32_REFKNOWNFOLDERID rfid) @private @if(env::WIN32)
+fn String? win32_get_known_folder_temp(Win32_REFKNOWNFOLDERID rfid) @private @feat(WIN32)
 {
 	Win32_PWSTR path;
 	Win32_HRESULT res = win32::shGetKnownFolderPath(rfid, 0x00008000 /* KF_FLAG_CREATE */, null, &path);
@@ -108,7 +108,7 @@ fn Path? native_user_directory(Allocator allocator, NativeSystemDir dir) => @poo
 }
 
 
-fn Path? native_temp_directory(Allocator allocator) @if(!env::WIN32)
+fn Path? native_temp_directory(Allocator allocator) @feat(!WIN32)
 {
 	foreach (String env : { "TMPDIR", "TMP", "TEMP", "TEMPDIR" })
 	{
@@ -118,7 +118,7 @@ fn Path? native_temp_directory(Allocator allocator) @if(!env::WIN32)
 	return path::new(allocator, "/tmp");
 }
 
-fn Path? native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool()
+fn Path? native_temp_directory(Allocator allocator) @feat(WIN32) => @pool()
 {
 	Win32_DWORD len = win32::getTempPathW(0, null);
 	if (!len) return io::GENERAL_ERROR~;
@@ -128,7 +128,7 @@ fn Path? native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool()
 	return path::new(allocator, string::tfrom_utf16(buff[:res]));
 }
 
-module std::io::os @if(env::NO_LIBC);
+module std::io::os @feat(NO_LIBC);
 import std::io::path;
 
 macro Path? native_home_directory(Allocator allocator) => io::PATH_COULD_NOT_BE_FOUND~;
