@@ -2074,7 +2074,8 @@ typedef struct
 	PlatformTarget platform;
 	Linking linking;
 	GlobalContext context;
-	SuggestionKeywords suggestion_keywords;
+	const char **builtin_type_names;
+	const char **top_level_keywords;
 	const char *obj_output;
 	int generic_depth;
 	double exec_time;
@@ -2117,7 +2118,6 @@ extern const char *kw_std__io;
 extern const char *kw_tags;
 extern const char *kw_typekind;
 extern const char *kw_FILE_NOT_FOUND;
-extern const char *kw_IoError;
 
 extern const char *kw_at_align;
 extern const char *kw_at_deprecated;

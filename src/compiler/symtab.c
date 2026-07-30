@@ -99,7 +99,6 @@ const char *kw_typekind;
 const char *kw_winmain;
 const char *kw_wmain;
 const char *kw_FILE_NOT_FOUND;
-const char *kw_IoError;
 
 void symtab_destroy()
 {
@@ -120,6 +119,8 @@ void symtab_init(uint32_t capacity)
 	// Touch all pages to improve perf(!)
 	memset(symtab.bucket, 0, size);
 
+	const char **builtin_types = VECNEW(const char *, 32);
+	const char **top_level_kw = VECNEW(const char *, 32);
 	// Add keywords.
 	for (TokenType i = TOKEN_FIRST_KEYWORD; i <= TOKEN_LAST_KEYWORD; i++)
 	{
@@ -132,6 +133,13 @@ void symtab_init(uint32_t capacity)
 			case TOKEN_RETURN:
 				kw_return = interned;
 				break;
+			case TYPE_TOKENS:
+				vec_add(builtin_types, interned);
+				vec_add(top_level_kw, interned);
+				break;
+			case TOP_LEVEL_KEYWORD_TOKENS:
+				vec_add(top_level_kw, interned);
+				break;
 			default:
 				break;
 		}
@@ -139,35 +147,8 @@ void symtab_init(uint32_t capacity)
 		ASSERT(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 	}
 
-	SuggestionKeywords suggestion_keywords;
-
-	suggestion_keywords.base_types = VECNEW(const char *, 32);
-	suggestion_keywords.top_level_keywords = VECNEW(const char *, 32);
-
-	for (TokenType i = TOKEN_FIRST_KEYWORD; i <= TOKEN_LAST_KEYWORD; i++)
-	{
-		TokenType type = i;
-
-		switch (type)
-		{
-			case TYPE_TOKENS:
-	  			vec_add(suggestion_keywords.base_types, token_type_to_string(type));
-				break;
-			default:
-				break;
-		}
-
-		switch (type)
-		{
-			case TOP_LEVEL_KEYWORD_TOKENS:
-	  			vec_add(suggestion_keywords.top_level_keywords, token_type_to_string(type));
-				break;
-			default:
-				break;
-		}
-	}
-
-	compiler.suggestion_keywords = suggestion_keywords;
+	compiler.builtin_type_names = builtin_types;
+	compiler.top_level_keywords = top_level_kw;
 
 	// Init some constant idents
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
@@ -189,7 +170,6 @@ void symtab_init(uint32_t capacity)
 
 	type = TOKEN_TYPE_IDENT;
 	kw_typekind = KW_DEF("TypeKind");
-	kw_IoError = KW_DEF("IoError");
 
 	type = TOKEN_IDENT;
 	kw_alignment = KW_DEF("alignment");

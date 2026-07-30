@@ -3486,6 +3486,23 @@ END:
 	return decl;
 }
 
+static bool parse_suggest_top_level_kw(ParseContext *c, const char *string)
+{
+	const char *closest[2];
+	int matches = str_find_closest(string, compiler.top_level_keywords, closest);
+
+	if (matches == 1)
+	{
+		PRINT_ERROR_HERE("This is not a valid top level declaration. Did you perhaps want '%s'?", closest[0]);
+		return true;
+	}
+	if (matches == 2)
+	{
+		PRINT_ERROR_HERE("This is not a valid top level declaration. Did you perhaps want '%s' or '%s'?", closest[0], closest[1]);
+		return true;
+	}
+	return false;
+}
 
 /**
  * top_level_statement ::= struct_declaration | enum_declaration | fault_declaration | const_declaration
@@ -3665,26 +3682,14 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			attach_contracts = true;
 			break;
 		case TOKEN_IDENT:
-				if (peek(c) != TOKEN_SCOPE)
-				{
-					const char *closest[2];
-					int matches = str_find_closest(symstr(c), compiler.suggestion_keywords.top_level_keywords, closest);
+			if (peek(c) != TOKEN_SCOPE)
+			{
+				if (parse_suggest_top_level_kw(c, symstr(c))) return poisoned_decl;
+			}
 
-					if (matches == 1)
-					{
-						PRINT_ERROR_HERE("This is not a valid top level declaration. Did you perhaps want '%s'?", closest[0]);
-						return poisoned_decl;
-					} 
-					if (matches == 2)
-					{
-						PRINT_ERROR_HERE("This is not a valid top level declaration. Did you perhaps want '%s' or '%s'?", closest[0], closest[1]);
-						return poisoned_decl;
-					}
-				}
-
-				decl = parse_global_declaration(c);
-				attach_contracts = true;
-				break;
+			decl = parse_global_declaration(c);
+			attach_contracts = true;
+			break;
 		case TOKEN_EOF:
 			PRINT_ERROR_LAST("Expected a top level declaration.");
 			return poisoned_decl;
