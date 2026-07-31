@@ -638,6 +638,7 @@ void sema_analysis_pass_register_conditional_units_and_decls(Module *module)
 				}
 			}
 			vec_resize(unit->ct_includes, 0);
+			sema_context_destroy(&context);
 			continue;
 		}
 CHECK_LINK:

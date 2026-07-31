@@ -241,22 +241,24 @@ static void get_msi_cab_list(const char *msi_path, const char ***cabs)
 	}
 }
 
-static void print_msvc_version(JSONObject *pkg, char out[128])
+// String valid to the next use of scratch_buffer
+static char *print_msvc_version_to_scratch(JSONObject *pkg)
 {
 	const char *id = json_map_get(pkg, "id")->str;
+	if (!id) error_exit("Missing id in MSVC version.");
 	StringSlice slice = slice_from_string(id);
 	const int id_prefix_segments = 4;
-	for (int i = 0; i < id_prefix_segments; i++)
-		slice_next_token(&slice, '.');
-	out[0] = 0;
+	for (int i = 0; i < id_prefix_segments; i++) slice_next_token(&slice, '.');
 	const int max_version_segments = 20;
+	scratch_buffer_clear();
 	for (int i = 0; i < max_version_segments; i++)
 	{
 		StringSlice v = slice_next_token(&slice, '.');
 		if (slice_strcmp(v, "x86")) break;
-		if (i > 0) strcat(out, ".");
-		strncat(out, v.ptr, v.len);
+		if (i > 0) scratch_buffer_append(".");
+		scratch_buffer_append_len(v.ptr, v.len);
 	}
+	return scratch_buffer_to_string();
 }
 
 static void extract_msi(const char *mpath, const char *out_root,
@@ -363,8 +365,7 @@ static void select_versions(BuildOptions *options, JSONObject *msvc_vers, JSONOb
 		bool found = false;
 		FOREACH(const char *, key, msvc_vers->keys)
 		{
-			char full_v[128];
-			print_msvc_version(json_map_get(msvc_vers, key), full_v);
+			const char *full_v = print_msvc_version_to_scratch(json_map_get(msvc_vers, key));
 			if (str_eq(full_v, msvc_key))
 			{
 				msvc_key = (char *)key;
@@ -459,9 +460,7 @@ void fetch_winsdk(BuildOptions *options)
 		printf("Available MSVC versions:\n");
 		FOREACH(const char *, key, msvc_vers->keys)
 		{
-			char full_v[128];
-			print_msvc_version(json_map_get(msvc_vers, key), full_v);
-			printf("  %s (%s)\n", full_v, key);
+			printf("  %s (%s)\n", print_msvc_version_to_scratch(json_map_get(msvc_vers, key)), key);
 		}
 		printf("\nAvailable Windows SDK versions:\n");
 		FOREACH(const char *, key, sdk_paths->keys) { printf("  %s\n", key); }
@@ -472,21 +471,25 @@ void fetch_winsdk(BuildOptions *options)
 	select_versions(options, msvc_vers, sdk_paths, &msvc_key, &sdk_key);
 
 	JSONObject *msvc_pkg_obj = json_map_get(msvc_vers, msvc_key);
-	char full_msvc_v[128];
-	print_msvc_version(msvc_pkg_obj, full_msvc_v);
 
 	char *sdk_output = get_cache_output_path("msvc_sdk");
+
+	char full_msvc_v[128];
+	const char *msvc = print_msvc_version_to_scratch(msvc_pkg_obj);
+	strncpy(full_msvc_v, msvc, 128);
+	full_msvc_v[127] = '\0';
 
 	if (verbose_level >= 1) printf("Selected: MSVC %s, SDK %s\n", full_msvc_v, sdk_key);
 
 	if (!options->fetch_accept_license)
 	{
-		char arch_list[256] = "";
-		for (int i = 0; i < (int)vec_size(archs); i++)
+		scratch_buffer_clear();
+		FOREACH_IDX(i, const char *, arch, archs)
 		{
-			if (i > 0) strcat(arch_list, ", ");
-			strcat(arch_list, archs[i]);
+			if (i > 0) scratch_buffer_append(", ");
+			scratch_buffer_append(arch);
 		}
+		const char *arch_list = scratch_buffer_to_string();
 #if PLATFORM_WINDOWS
 		printf("To target %s you need the MSVC SDK.\n", arch_list);
 #else
@@ -507,7 +510,7 @@ void fetch_winsdk(BuildOptions *options)
 
 	JSONObject **checked_pkgs = NULL;
 	JSONObject *sdk_comp = json_map_get(sdk_paths, sdk_key);
-	JSONObject *deps_obj = json_map_get(sdk_comp, "dependencies");
+	JSONObject *deps_obj = sdk_comp ? json_map_get(sdk_comp, "dependencies") : NULL;
 	if (deps_obj && deps_obj->type == J_OBJECT)
 	{
 		FOREACH(const char *, dep, deps_obj->keys)
