@@ -7,7 +7,7 @@
 
 void parent_path(StringSlice *slice)
 {
-	for (int i = (int)slice->len - 1; i >= 0; i--)
+	for (int i = (int)slice->len - 1; i > 0; i--)
 	{
 		if (slice->ptr[i] == ':')
 		{
@@ -53,7 +53,7 @@ void sema_analyse_pass_remove_feat_conditionals(Module *module)
 {
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		if (unit->feat_attributes && sema_remove_due_to_conditionals(unit->feat_attributes) == BOOL_TRUE)
+		if (unit->feat_attributes && sema_remove_due_to_conditionals(unit->feat_attributes) != BOOL_FALSE)
 		{
 			vec_resize(unit->module_aliases, 0);
 			vec_resize(unit->imports, 0);
@@ -264,8 +264,6 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	{
 		RETURN_PRINT_ERROR_AT(NULL, decl, "'$include' not permitted, trust level must be set to '--trust=include' or '--trust=full' to permit it.");
 	}
-	SemaContext context;
-	sema_context_init(&context, unit);
 	FOREACH(Attr *, attr, decl->attributes)
 	{
 		if (attr->attr_kind != ATTRIBUTE_IF && attr->attr_kind != ATTRIBUTE_FEAT)
@@ -273,6 +271,8 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$include'.");
 		}
 	}
+	SemaContext context;
+	sema_context_init(&context, unit);
 	bool success = sema_analyse_ct_expr(&context, decl->include.filename);
 	sema_context_destroy(&context);
 	if (!success) return NULL;
@@ -340,8 +340,6 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	{
 		RETURN_PRINT_ERROR_AT(NULL, decl, "'$exec' not permitted, trust level must be set to '--trust=full' to permit it.");
 	}
-	SemaContext context;
-	sema_context_init(&context, unit);
 	FOREACH(Attr *, attr, decl->attributes)
 	{
 		if (attr->attr_kind != ATTRIBUTE_IF && attr->attr_kind != ATTRIBUTE_FEAT)
@@ -349,6 +347,8 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$exec'.");
 		}
 	}
+	SemaContext context;
+	sema_context_init(&context, unit);
 	Expr *filename = decl->exec_decl.filename;
 	bool success = sema_analyse_ct_expr(&context, filename);
 	FOREACH(Expr *, arg, decl->exec_decl.args) success &= sema_analyse_ct_expr(&context, arg);
@@ -425,8 +425,6 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 
 static Decl **sema_interpret_expand(CompilationUnit *unit, Decl *decl)
 {
-	SemaContext context;
-	sema_context_init(&context, unit);
 	FOREACH(Attr *, attr, decl->attributes)
 	{
 		if (attr->attr_kind != ATTRIBUTE_IF && attr->attr_kind != ATTRIBUTE_FEAT)
@@ -434,6 +432,8 @@ static Decl **sema_interpret_expand(CompilationUnit *unit, Decl *decl)
 			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$expand'.");
 		}
 	}
+	SemaContext context;
+	sema_context_init(&context, unit);
 	Expr *string = decl->expand_decl;
 	bool success = sema_analyse_ct_expr(&context, string);
 	sema_context_destroy(&context);

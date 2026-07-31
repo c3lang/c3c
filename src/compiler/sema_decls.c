@@ -3558,6 +3558,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				case BOOL_TRUE: *erase_decl = true; return true;
 				case BOOL_FALSE: return true;
 			}
+			UNREACHABLE
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
 			if (!sema_analyse_attribute_bool_const(context, expr)) return false;
@@ -4206,7 +4207,7 @@ static inline BoolErr sema_evaluate_feature(Expr *expr)
 	}
 	if (!expr->unresolved_ident_expr.is_const)
 	{
-		RETURN_PRINT_ERROR_AT(BOOL_ERR, expr, "An feature name was expected here, features are all uppercase, like 'FOO'.");
+		RETURN_PRINT_ERROR_AT(BOOL_ERR, expr, "A feature name was expected here, features are all uppercase, like 'FOO'.");
 	}
 	if (expr->unresolved_ident_expr.path)
 	{
@@ -4257,6 +4258,8 @@ BoolErr sema_remove_due_to_conditional(Attr *attr)
 {
 	ASSERT(attr->attr_kind == ATTRIBUTE_FEAT);
 	BoolErr res = BOOL_TRUE;
+	if (!vec_size(attr->exprs)) RETURN_PRINT_ERROR_AT(BOOL_ERR, attr, "'@feat' needs at least one feature to match.");
+
 	FOREACH (Expr *, expr, attr->exprs)
 	{
 		BoolErr res_inner = sema_evaluate_feature_expression(expr);
