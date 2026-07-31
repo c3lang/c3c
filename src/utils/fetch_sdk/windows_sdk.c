@@ -244,8 +244,11 @@ static void get_msi_cab_list(const char *msi_path, const char ***cabs)
 // String valid to the next use of scratch_buffer
 static char *print_msvc_version_to_scratch(JSONObject *pkg)
 {
-	const char *id = json_map_get(pkg, "id")->str;
-	if (!id) error_exit("Missing id in MSVC version.");
+
+	JSONObject *object = json_map_get(pkg, "id");
+	if (!object) error_exit("Missing id in MSVC version.");
+	if (object->type != J_STRING) error_exit("Invalid id in MSVC version.");
+	const char *id = object->str;
 	StringSlice slice = slice_from_string(id);
 	const int id_prefix_segments = 4;
 	for (int i = 0; i < id_prefix_segments; i++) slice_next_token(&slice, '.');

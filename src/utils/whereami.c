@@ -168,6 +168,12 @@ static int get_executable_path_raw(char *out)
 		do
 		{
 			len = (int)strcspn(path, ":");
+			// Ignore too long paths
+			if (len + 4 >= PATH_MAX)
+			{
+				path += len + 1;
+				continue;
+			}
 			strncat(tmp, path, len);
 			tmp[len] = '/';
 			strcat(tmp, "c3c");
