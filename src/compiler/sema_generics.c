@@ -264,23 +264,28 @@ FOUND:;
 		}
 		FOREACH(Decl *, decl, copied)
 		{
+			if (!decl_ok(decl)) continue;
 			if (decl->unit->module->stage < ANALYSIS_DECLS) continue;
 			SemaContext context_gen;
 			sema_context_init(&context_gen, decl->unit);
 			DynamicScope empty = { .depth = 0 };
 			context_gen.active_scope = empty;
-			sema_analyse_decl(&context_gen, decl);
-			context_gen.generic_instance = instance;
-			sema_analyse_inner_func_ptr(&context_gen, decl);
-			FOREACH(TypeInfo *, info, decl->unit->check_type_variable_array)
+			if (sema_analyse_decl(&context_gen, decl))
 			{
-				sema_check_type_variable_array(&context_gen, info);
+				context_gen.generic_instance = instance;
+				sema_analyse_inner_func_ptr(&context_gen, decl);
+				if (!decl_ok(decl)) continue;
+				FOREACH(TypeInfo *, info, decl->unit->check_type_variable_array)
+				{
+					if (!sema_check_type_variable_array(&context_gen, info)) break;
+				}
 			}
 			sema_context_destroy(&context_gen);
 		}
 		if (compiler.context.errors_found) return poisoned_decl;
 		FOREACH(Decl *, decl, copied)
 		{
+			if (!decl_ok(decl)) continue;
 			if (decl->unit->module->stage < ANALYSIS_FUNCTIONS) continue;
 			SemaContext context_gen;
 			switch (decl->decl_kind)

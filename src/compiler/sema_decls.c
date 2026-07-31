@@ -4202,7 +4202,7 @@ static inline BoolErr sema_evaluate_feature(Expr *expr)
 {
 	if (expr->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)
 	{
-		RETURN_PRINT_ERROR_AT(BOOL_ERR, expr, "A plain feature name was expected here, like 'FOO'.");
+		RETURN_PRINT_ERROR_AT(BOOL_ERR, expr, "One or more feature names were expected here, like '@feat(MY_FEATURE)'. Arbitrary expressions are only valid when using `@if`.");
 	}
 	if (!expr->unresolved_ident_expr.is_const)
 	{
