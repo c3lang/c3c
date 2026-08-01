@@ -1455,12 +1455,16 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_AND:
 		case TOKEN_ARROW:
 		case TOKEN_ATTRDEF:
+		case TOKEN_ATTRGROUP:
+		case TOKEN_ATTRMACRO:
 		case TOKEN_BANGBANG:
 		case TOKEN_BITSTRUCT:
 		case TOKEN_BIT_AND_ASSIGN:
 		case TOKEN_BIT_OR_ASSIGN:
 		case TOKEN_BIT_XOR_ASSIGN:
 		case TOKEN_CONSTDEF:
+		case TOKEN_CONSTSET:
+		case TOKEN_CENUM:
 		case TOKEN_COLON:
 		case TOKEN_COMMA:
 		case TOKEN_CT_CASE:
@@ -1488,6 +1492,9 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_EQEQ:
 		case TOKEN_EXTERN:
 		case TOKEN_FAULTDEF:
+		case TOKEN_EXCUSE:
+		case TOKEN_FAULTSET:
+		case TOKEN_FAULTCONST:
 		case TOKEN_FN:
 		case TOKEN_GREATER:
 		case TOKEN_GREATER_EQ:
@@ -1518,6 +1525,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_SHR_ASSIGN:
 		case TOKEN_STRUCT:
 		case TOKEN_TYPEDEF:
+		case TOKEN_DISTINCT:
 		case TOKEN_UNDERSCORE:
 		case TOKEN_UNION:
 			PRINT_ERROR_HERE("Unexpected '%s' found when expecting a statement.",

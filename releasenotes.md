@@ -11,6 +11,7 @@
 - Support fetching MacSDK for easy cross compilation.
 - Add `@feat` attribute, deprecate `@if` on non-generic top level declarations. 
 - Add `$feat` compile time function. `$feature` is deprecated and replaced by `$feat`. 
+- Experimental support for `constset`, `cenum`, `faultconst`, `faultset`, `excuse`, `attrgroup`, `attrmacro`, `distinct`.
  
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.

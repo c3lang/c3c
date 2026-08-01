@@ -53,8 +53,14 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_ENUM:
 			case TOKEN_ALIAS:
 			case TOKEN_TYPEDEF:
+			case TOKEN_DISTINCT:
 			case TOKEN_ATTRDEF:
+			case TOKEN_ATTRGROUP:
+			case TOKEN_ATTRMACRO:
+			case TOKEN_FAULTSET:
+			case TOKEN_FAULTCONST:
 			case TOKEN_FAULTDEF:
+			case TOKEN_EXCUSE:
 				return;
 			case TOKEN_CONST:
 			case TOKEN_ASM:
@@ -2089,7 +2095,8 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
  */
 static inline Decl *parse_typedef_declaration(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_TYPEDEF);
+	advance(c);
+	//advance_and_verify(c, TOKEN_TYPEDEF);
 
 	Decl *decl = decl_new_with_type(symstr(c), &c->span, DECL_TYPEDEF);
 	decl->docs = decl_from_contract_description(&c->contracts);
@@ -2552,7 +2559,8 @@ static inline Decl *parse_alias_ident(ParseContext *c)
  */
 static inline Decl *parse_attrdef(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_ATTRDEF);
+	advance(c);
+	//advance_and_verify(c, TOKEN_ATTRDEF);
 
 	Decl *decl = decl_new_loc(DECL_ATTRIBUTE, symstr(c), c->span);
 
@@ -2736,7 +2744,8 @@ static inline Decl *parse_fault(ParseContext *c)
  */
 static inline Decl *parse_faultdef_declaration(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_FAULTDEF);
+	advance(c);
+	// advance_and_verify(c, TOKEN_FAULTDEF);
 
 	if (c->lexer.token_type == TOKEN_EOS)
 	{
@@ -2875,9 +2884,10 @@ static bool parse_enum_values(ParseContext *c, Decl*** values_ref, Visibility vi
 static inline Decl *parse_enum_declaration(ParseContext *c)
 {
 	bool is_constdef = false;
-	if (tok_is(c, TOKEN_CONSTDEF))
+	if (tok_is(c, TOKEN_CONSTDEF) || tok_is(c, TOKEN_CONSTSET) || tok_is(c, TOKEN_CENUM))
 	{
-		advance_and_verify(c, TOKEN_CONSTDEF);
+		advance(c);
+		//advance_and_verify(c, TOKEN_CONSTDEF);
 		is_constdef = true;
 	}
 	else
@@ -3579,6 +3589,8 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 				return NULL;
 			}
 			break;
+		case TOKEN_ATTRGROUP:
+		case TOKEN_ATTRMACRO:
 		case TOKEN_ATTRDEF:
 			decl = parse_attrdef(c);
 			attach_contracts = true;
@@ -3639,6 +3651,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			decl = parse_interface_declaration(c);
 			attach_contracts = true;
 			break;
+		case TOKEN_DISTINCT:
 		case TOKEN_TYPEDEF:
 			decl = parse_typedef_declaration(c);
 			attach_contracts = true;
@@ -3657,10 +3670,15 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			break;
 		case TOKEN_ENUM:
 		case TOKEN_CONSTDEF:
+		case TOKEN_CONSTSET:
+		case TOKEN_CENUM:
 			decl = parse_enum_declaration(c);
 			attach_contracts = true;
 			break;
+		case TOKEN_FAULTSET:
+		case TOKEN_FAULTCONST:
 		case TOKEN_FAULTDEF:
+		case TOKEN_EXCUSE:
 			decl = parse_faultdef_declaration(c);
 			attach_contracts = true;
 			break;

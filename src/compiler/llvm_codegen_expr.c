@@ -3174,6 +3174,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 		lhs_signed = type_is_signed(lhs_type);
 		rhs_signed = type_is_signed(rhs_type);
 	}
+	(void)rhs_signed;
 	ASSERT(lhs_signed == rhs_signed);
 
 	if (!lhs_signed)
