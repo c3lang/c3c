@@ -60,7 +60,7 @@ fn void? Vmem.init(&self, sz preferred_size, sz reserve_page_size = 0, VmemOptio
 	}
 	if (catch memory) return VMEM_RESERVE_FAILED~;
 	if (page_size > preferred_size) page_size = preferred_size;
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		asan::poison_memory_region(memory.ptr, memory.size);
 	$endif
 	*self = { .memory = memory,
@@ -139,7 +139,7 @@ fn void*? Vmem.resize(&self, void *old_pointer, sz size, sz alignment) @dynamic
     }
     if (old_size > size)
     {
-        $if env::ADDRESS_SANITIZER:
+        $if $feat(ASAN):
     	    asan::poison_memory_region(old_pointer + size, old_size - size);
     	$endif
     	header.size = size;
@@ -186,7 +186,7 @@ fn void Vmem.free(&self)
 {
 	if (!self.memory.ptr) return;
 	$switch:
-		$case env::ADDRESS_SANITIZER:
+		$case $feat(ASAN):
 			asan::poison_memory_region(self.memory.ptr, self.memory.size);
 		$case env::COMPILER_SAFE_MODE:
     	    ((char*)self.memory.ptr)[0:self.allocated] = 0xAA;
@@ -220,7 +220,7 @@ macro void? protect(Vmem* mem, sz after) @local
 		}
 		mem.last_page = page_after;
 	}
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		asan::unpoison_memory_region(mem.memory.ptr + mem.allocated, after - mem.allocated);
 	$endif
 	mem.allocated = after;
@@ -232,7 +232,7 @@ macro void unprotect(Vmem* mem, sz after) @local
 	sz shift = mem.page_pot;
 	sz last_page = mem.last_page;
 	sz page_after = mem.last_page = (after + mem.pagesize - 1) >> shift;
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		asan::poison_memory_region(mem.memory.ptr + after, mem.allocated - after);
 	$else
 		if (mem.options.scratch_released_data)

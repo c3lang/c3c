@@ -82,13 +82,13 @@ fn void BackedArenaAllocator.reset(&self, sz mark)
 		_free_page(self, to_free)!!;
 	}
 	self.last_page = last_page;
-	$if env::COMPILER_SAFE_MODE || env::ADDRESS_SANITIZER:
+	$if env::COMPILER_SAFE_MODE || $feat(ASAN):
 		if (!last_page)
 		{
 			sz cleaned = self.used - mark;
 			if (cleaned > 0)
 			{
-				$if env::COMPILER_SAFE_MODE && !env::ADDRESS_SANITIZER:
+				$if env::COMPILER_SAFE_MODE && !$feat(ASAN):
 					self.data[mark : cleaned] = 0xAA;
 				$endif
 				asan::poison_memory_region(&self.data[mark], (usz)cleaned);

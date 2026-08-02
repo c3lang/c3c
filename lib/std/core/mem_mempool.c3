@@ -65,7 +65,7 @@ fn FixedBlockPool* FixedBlockPool.init(&self, Allocator allocator, sz block_size
 	self.page_size = capacity * self.block_size;
     assert(self.page_size >= self.block_size, "Total memory would overflow %d %d", block_size, capacity);
 	self.head.buffer = fixedblockpool_allocate_page(self);
-	$if env::COMPILER_SAFE_MODE && env::ADDRESS_SANITIZER:
+	$if env::COMPILER_SAFE_MODE && $feat(ASAN):
 		asan::poison_memory_region(self.head.buffer, self.page_size);
 	$endif
 	self.head.capacity = capacity;
@@ -116,7 +116,7 @@ macro FixedBlockPool* FixedBlockPool.tinit(&self, sz block_size, sz capacity = I
 *>
 fn void FixedBlockPool.free(&self)
 {
-	$if env::COMPILER_SAFE_MODE && env::ADDRESS_SANITIZER:
+	$if env::COMPILER_SAFE_MODE && $feat(ASAN):
 		asan::unpoison_memory_region(self.head.buffer, self.page_size);
 	$endif
 	fixedblockpool_free_page(self, self.head.buffer);
@@ -124,7 +124,7 @@ fn void FixedBlockPool.free(&self)
 
 	while (iter)
 	{
-		$if env::COMPILER_SAFE_MODE && env::ADDRESS_SANITIZER:
+		$if env::COMPILER_SAFE_MODE && $feat(ASAN):
 			asan::unpoison_memory_region(iter.buffer, self.page_size);
 		$endif
 		fixedblockpool_free_page(self, iter.buffer);
@@ -149,7 +149,7 @@ fn void* FixedBlockPool.alloc(&self)
 	if (self.freelist)
 	{
 		FixedBlockPoolEntry* entry = self.freelist;
-		$if env::COMPILER_SAFE_MODE && env::ADDRESS_SANITIZER:
+		$if env::COMPILER_SAFE_MODE && $feat(ASAN):
 			asan::unpoison_memory_region(entry, self.block_size);
 		$endif
 		self.freelist = entry.previous;
@@ -161,7 +161,7 @@ fn void* FixedBlockPool.alloc(&self)
 	if (self.next_free >= end) fixedblockpool_new_node(self);
 	void* ptr = self.next_free;
 	self.next_free += self.block_size;
-	$if env::COMPILER_SAFE_MODE && env::ADDRESS_SANITIZER:
+	$if env::COMPILER_SAFE_MODE && $feat(ASAN):
 		asan::unpoison_memory_region(ptr, self.block_size);
 	$endif
 
@@ -176,7 +176,7 @@ fn void* FixedBlockPool.alloc(&self)
 *>
 fn void FixedBlockPool.dealloc(&self, void* ptr)
 {
-	$if env::COMPILER_SAFE_MODE && !env::ADDRESS_SANITIZER:
+	$if env::COMPILER_SAFE_MODE && !$feat(ASAN):
 		mem::set(ptr, 0xAA, self.block_size);
 	$endif
 
@@ -185,7 +185,7 @@ fn void FixedBlockPool.dealloc(&self, void* ptr)
 	self.freelist = entry;
 	self.used--;
 
-	$if env::COMPILER_SAFE_MODE && env::ADDRESS_SANITIZER:
+	$if env::COMPILER_SAFE_MODE && $feat(ASAN):
 		asan::poison_memory_region(ptr, self.block_size);
 	$endif
 }
@@ -214,7 +214,7 @@ fn void fixedblockpool_new_node(FixedBlockPool* self) @local
 {
 	FixedBlockPoolNode* node = alloc::new(self.allocator, FixedBlockPoolNode);
 	node.buffer = fixedblockpool_allocate_page(self);
-	$if env::COMPILER_SAFE_MODE && env::ADDRESS_SANITIZER:
+	$if env::COMPILER_SAFE_MODE && $feat(ASAN):
 		asan::poison_memory_region(node.buffer, self.page_size);
 	$endif
 	node.capacity = self.grow_capacity;
