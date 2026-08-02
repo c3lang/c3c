@@ -388,6 +388,11 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *union_decl)
 		if (!decl_ok(member)) return false;
 		bool erase_decl = false;
 
+		if (member->decl_kind == DECL_UNION && member->strukt.tag_name != NULL)
+		{
+			RETURN_SEMA_ERROR(member, "Tagged unions may only be placed inside of a struct.");
+		}
+
 		// Check the member
 		if (!sema_analyse_struct_member(context, union_decl, member, &erase_decl)) // NOLINT
 		{
@@ -588,6 +593,8 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	unsigned member_count = vec_size(struct_members);
 	ASSERT(member_count > 0 && "This analysis should only be called on member_count > 0");
 	bool is_naturally_aligned = !is_packed;
+	int tagged_unions_count = 0;
+	unsigned tagged_unions[MAX_TAGGED_UNIONS];
 	for (unsigned i = 0; i < member_count; i++)
 	{
 	AGAIN:;
@@ -595,6 +602,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		// We might have already analysed and poisoned this decl, if so, exit.
 		if (!decl_ok(member)) return decl_poison(decl);
 		bool erase_decl = false;
+
 		// Check the member
 		if (!sema_analyse_struct_member(context, decl, member, &erase_decl)) // NOLINT
 		{
@@ -607,6 +615,15 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 			member_count--;
 			if (i < member_count) goto AGAIN;
 			break;
+		}
+
+		if (member->decl_kind == DECL_UNION && member->strukt.tag_name)
+		{
+			if (tagged_unions_count == MAX_TAGGED_UNIONS)
+			{
+				RETURN_SEMA_ERROR(member, "A struct may only contain %d tagged unions, this one would exceed that maximum.", MAX_TAGGED_UNIONS);
+			}
+			tagged_unions[tagged_unions_count++] = i;
 		}
 
 		Type *member_type = type_flatten(member->type);
@@ -726,6 +743,63 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	if (!member_count)
 	{
 		RETURN_SEMA_ERROR(decl, "No members exist for this struct after processing attributes, creating an invalid empty struct. Please make sure every struct/inner struct has at least one member.");
+	}
+
+	if (tagged_unions_count)
+	{
+		for (int i = 0; i < tagged_unions_count; i++)
+		{
+			unsigned index = tagged_unions[i];
+			Decl *member = struct_members[index];
+			const char *tag_name = member->strukt.tag_name;
+			for (unsigned j = 0; j < member_count; j++)
+			{
+				if (j == index) continue;
+				Decl *candidate = struct_members[j];
+				if (candidate->name != tag_name) continue;
+				ASSERT(candidate->resolve_status == RESOLVE_DONE);
+				Type *t = type_flat_distinct_enum_inline(candidate->type);
+				if (t->type_kind != TYPE_ENUM && !type_is_integer(t))
+				{
+					RETURN_SEMA_ERROR(candidate, "Please use an integer or enum as the tag, %s is not valid.", type_quoted_error_string(candidate->type));
+				}
+				unsigned union_member_count = vec_size(member->strukt.members);
+				if (t->type_kind == TYPE_ENUM)
+				{
+					unsigned enum_vals = vec_size(t->decl->enums.values);
+					if (enum_vals != union_member_count)
+					{
+						SEMA_ERROR(candidate, "This tag as the type %s, which is an enum with %u values, but "
+								   "the union has %u different values, so they do not match.",
+								   type_quoted_error_string(candidate->type), enum_vals, union_member_count);
+						SEMA_NOTE(member, "The tagged union is defined here.");
+						return false;
+					}
+				}
+				else
+				{
+					bool is_signed = type_is_integer_signed(t);
+					int max = (int)union_member_count;
+					switch (type_size(t))
+					{
+						case 1: max = is_signed ? 0x7F : 0xFF; break;
+						case 2: max = is_signed ? 0x7FFFF : 0xFFFF; break;
+						default: break;
+					}
+					if (union_member_count > max)
+					{
+						SEMA_ERROR(candidate, "This tag has the type %s, which can represent %d values, but "
+								   "the union has %u different values, so you would need a larger tag type.",
+								   type_quoted_error_string(candidate->type), max, union_member_count);
+						SEMA_NOTE(member, "The tagged union is defined here.");
+						return false;
+					}
+				}
+				goto NEXT;
+			}
+			RETURN_SEMA_ERROR(member, "The tagged union's tag ('%s') could not be found in the parent struct.", tag_name);
+NEXT:;
+		}
 	}
 
 	// Set the alignment:

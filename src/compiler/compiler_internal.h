@@ -42,6 +42,7 @@ typedef uint32_t FileId;
 #define MAX_PARAMS 255
 #define MAX_INTERFACES 127
 #define MAX_VAARGS 512
+#define MAX_TAGGED_UNIONS 32
 #define MAX_BITSTRUCT 0x1000
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
@@ -438,12 +439,14 @@ typedef struct
 	{
 		struct
 		{
+			const char *tag_name;
 			TypeSize size;
 			DeclId padded_decl_id;
 			StructIndex union_rep;
 			AlignSize padding : 16;
 			bool is_packed : 1;
 			bool is_compact : 1;
+			bool contains_tagged_union : 1;
 		};
 		struct
 		{

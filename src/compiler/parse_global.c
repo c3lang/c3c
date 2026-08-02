@@ -1936,6 +1936,19 @@ INLINE void attach_deprecation_from_contract(ParseContext *c UNUSED, ContractDes
 	contract->deprecated = NULL;
 }
 
+// (tag)
+INLINE bool parse_tagged_union(ParseContext *c, Decl *decl)
+{
+	if (!try_consume(c, TOKEN_LPAREN)) return true;
+	if (!tok_is(c, TOKEN_IDENT))
+	{
+		RETURN_PRINT_ERROR_HERE("Expected the name of a member in the enclosing struct, that should server as the tag for the union.");
+	}
+	decl->strukt.tag_name = symstr(c);
+	advance(c);
+	CONSUME_OR_RET(TOKEN_RPAREN, false);
+	return true;
+}
 /**
  * Expect pointer to after '{'
  *
@@ -1990,6 +2003,9 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			scratch_buffer_append(member->name ? member->name : "$anon");
 			member->type->name = scratch_buffer_interned();
 
+			int tagged_union_members = 0;
+			Decl* tagged_unions[MAX_TAGGED_UNIONS];
+
 			member->strukt.parent = declid(parent);
 			if (decl_kind == DECL_BITSTRUCT)
 			{
@@ -2000,6 +2016,10 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			}
 			else
 			{
+				if (decl_kind == DECL_UNION)
+				{
+					if (!parse_tagged_union(c, member)) return decl_poison(parent);
+				}
 				bool is_cond, is_feat_cond;
 				if (!parse_attributes(c, &member->attributes, NULL, NULL, &is_cond, "on struct and union fields", NULL, &is_feat_cond)) return false;
 				member->is_cond = is_cond;
