@@ -44,7 +44,8 @@
 - JSONC parsing on unterminated comments would loop indefinitely.
 - ZII array constdef would cause an assert. #3411
 - Calling a constant void macro inside a macro stops it from being constant. #3410
-
+- Using io::struct_to_format with `$force_dump = true` failed to compile.
+ 
 ## 0.8.2 Change list
 
 ### Changes / improvements
