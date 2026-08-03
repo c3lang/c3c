@@ -46,6 +46,7 @@ typedef uint32_t FileId;
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
 #define MAX_GENERIC_DEPTH 32
+#define MAX_GENERIC_SUFFIX 1024
 #define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE (ByteSize)(2U << 30)
 #define MAX_GLOBAL_DECL_STACK (65536)
@@ -2048,6 +2049,7 @@ typedef struct
 	Module std_module;
 	MethodTable method_extensions;
 	Decl **unregistered_method_specializations;
+	Decl **unregistered_generic_decls;
 	Type **types_with_failed_methods;
 	Decl **method_extension_list;
 	DeclTable symbols;

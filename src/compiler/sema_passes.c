@@ -562,7 +562,6 @@ void sema_analysis_pass_process_methods(Module *module)
 }
 
 /*
- *
  * A specialization is a generic method like:
  * fn int Foo{int}.bar(&self) { ... }
  * That is, the method parent is a generic instantiation.
@@ -595,6 +594,35 @@ void sema_analysis_pass_process_method_specialization(void)
 	}
 	if (unit) sema_context_destroy(&context);
 	vec_resize(compiler.context.unregistered_method_specializations, 0);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
+}
+
+/*
+ * Late generic declarations are processed here
+ */
+void sema_analysis_pass_process_late_generics(void)
+{
+	DEBUG_LOG("Pass: Process late generics");
+	SemaContext context;
+	CompilationUnit *unit = NULL;
+	Decl **late_generics;
+	while ((late_generics = compiler.context.unregistered_generic_decls) != NULL)
+	{
+		compiler.context.unregistered_generic_decls = NULL;
+		FOREACH(Decl *, generic, late_generics)
+		{
+			if (generic->resolve_status == RESOLVE_DONE) continue;
+			CompilationUnit *generic_unit = generic->unit;
+			if (generic_unit != unit)
+			{
+				if (unit) sema_context_destroy(&context);
+				unit = generic_unit;
+				sema_context_init(&context, unit);
+			}
+			sema_analyse_decl(&context, generic);
+		}
+	}
+	if (unit) sema_context_destroy(&context);
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 

@@ -651,7 +651,16 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		AlignSize member_type_alignment;
 		if (type_is_user_defined(member_type) && member_type->decl->resolve_status == RESOLVE_RUNNING)
 		{
-			SEMA_ERROR(member, "Recursive definition of %s.", type_quoted_error_string(member_type));
+			SEMA_ERROR(member_type->decl, "Recursive definition of %s.", type_quoted_error_string(member_type));
+			TypeInfo *type = type_infoptrzero(member->var.type_info);
+			if (type)
+			{
+				SEMA_NOTE(type, "Used as a member here.");
+			}
+			else
+			{
+				SEMA_NOTE(member, "Used as a member here.");
+			}
 			return decl_poison(decl);
 		}
 		if (!sema_set_alignment(context, member->type, &member_type_alignment, false)) return decl_poison(decl);

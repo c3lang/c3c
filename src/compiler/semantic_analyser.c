@@ -202,6 +202,10 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_DECLS:
 				sema_analysis_pass_decls(module);
 				break;
+			case ANALYSIS_DECLS_CHECK_GENERICS:
+				if (!vec_size(compiler.context.unregistered_generic_decls)) break;
+				sema_analysis_pass_process_late_generics();
+				break;
 			case ANALYSIS_CT_ECHO:
 				sema_analysis_pass_ct_echo(module);
 				break;
