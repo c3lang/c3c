@@ -1679,7 +1679,6 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	// Infer the underlying type normally.
 	TypeInfo *info = decl->distinct;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
-	if (!sema_resolve_type_decl(context, info->type)) return false;
 	Type *inner_type = info->type;
 	// Optional isn't allowed of course.
 	if (type_is_optional(inner_type)) RETURN_SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
@@ -1704,10 +1703,6 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 		AlignSize default_size = type_abi_alignment(inner_type);
 		// Remove "alignment"
 		if (default_size == decl->alignment) decl->distinct_align = NULL;
-	}
-	if (!decl->alignment)
-	{
-		decl->alignment = type_abi_alignment(inner_type);
 	}
 	// Distinct types drop the canonical part.
 	info->type = info->type->canonical;

@@ -860,8 +860,9 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 			type = type->optional;
 			goto RETRY;
 		case TYPE_TYPEDEF:
-			ASSERT(type->decl->alignment);
-			return type->decl->alignment;
+			if (type->decl->alignment) return type->decl->alignment;
+			type = type->decl->distinct->type;
+			goto RETRY;
 		case TYPE_ALIAS:
 			type = type->canonical;
 			goto RETRY;
