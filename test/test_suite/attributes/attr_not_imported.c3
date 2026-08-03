@@ -1,6 +1,6 @@
 module abc;
 
-attrdef @Foo = @inline;
+attrmacro @Foo = @inline;
 
 module bar;
 

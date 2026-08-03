@@ -2555,7 +2555,7 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 }
 
 /**
- * define_attribute ::= 'attrdef' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
+ * define_attribute ::= 'attrmacro' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
  */
 static inline Decl *parse_attrdef(ParseContext *c)
 {
@@ -2592,7 +2592,7 @@ static inline Decl *parse_attrdef(ParseContext *c)
 
 	bool is_cond;
 	bool is_builtin = false;
-	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true, "cannot be aliased using 'attrdef'", NULL, NULL)) return poisoned_decl;
+	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true, "cannot be aliased using 'attrmacro'", NULL, NULL)) return poisoned_decl;
 	decl->attr_decl.attrs = attributes;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;

@@ -2,12 +2,12 @@
 
 module test;
 
-attrdef @Foo = @noreturn, @weaklink;
+attrmacro @Foo = @noreturn, @weaklink;
 
-attrdef @Align(y) = @align(y);
-attrdef @Align16(x) @private = @Align(8 * x), @align(1024);
-attrdef @Test = @noinline;
-attrdef @TestZero;
+attrmacro @Align(y) = @align(y);
+attrmacro @Align16(x) @private = @Align(8 * x), @align(1024);
+attrmacro @Test = @noinline;
+attrmacro @TestZero;
 struct Foo
 {
 	int z;
