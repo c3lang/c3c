@@ -46,7 +46,8 @@
 - ZII array constdef would cause an assert. #3411
 - Calling a constant void macro inside a macro stops it from being constant. #3410
 - Using io::struct_to_format with `$force_dump = true` failed to compile.
- 
+- `$foo += 1` would not do a copy, leading to incorrect update of `$foo`. #3400
+
 ## 0.8.2 Change list
 
 ### Changes / improvements

@@ -7879,7 +7879,7 @@ static bool sema_binary_analyse_ct_op_assign(SemaContext *context, Expr *expr, E
 		RETURN_SEMA_ERROR(expr, "Expected this to result in a constant expression.");
 	}
 
-	left_var->var.init_expr = expr;
+	left_var->var.init_expr = copy_expr_single(expr);
 	left_var->type = expr->type;
 	return true;
 }

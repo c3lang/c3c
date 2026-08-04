@@ -1,0 +1,14 @@
+module main;
+
+fn int main()
+{
+	$for int $i = 5; ($i -= 1);:
+		echo($i);
+	$endfor
+	return 0;
+}
+
+macro void echo($x)
+{
+	$echo @sprintf("[%s: %s]", $Typeof($x), $x);
+}
