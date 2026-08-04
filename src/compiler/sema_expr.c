@@ -12365,7 +12365,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 		case EXPR_MACRO_BODY_EXPANSION:
 			if (!expr->body_expansion_expr.first_stmt)
 			{
-				RETURN_SEMA_ERROR(expr, "'@%s' must be followed by ().", declptr(context->current_macro->func_decl.body_param)->name); // NOLINT
+				RETURN_SEMA_ERROR(expr, "'%s' must be followed by ().", declptr(context->current_macro->func_decl.body_param)->name); // NOLINT
 			}
 			break;
 		case EXPR_TYPECALL:
