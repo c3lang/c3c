@@ -68,7 +68,7 @@ module std::collections::range;
 
 <*
 
- @return a Range from-to (exclusive) inferring the type.
+ @return "a Range from-to (exclusive) inferring the type."
 
  @require $defined(from - to, from = to, ($Typeof(from))1, from + ($Typeof(from))1)
    : "From and to values must support subtraction and addition by 1."
@@ -91,7 +91,7 @@ macro upto(to)
 
 <*
 
- @return an ExclusiveRange from-to (exclusive) inferring the type.
+ @return "an ExclusiveRange from-to (exclusive) inferring the type."
 
  @require $defined(from - to, from = to, ($Typeof(from))1, from + ($Typeof(from))1)
    : "From and to values must support subtraction and addition by 1."
