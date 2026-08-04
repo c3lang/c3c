@@ -11244,8 +11244,7 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 	                                                     parent->unresolved_ident_expr.ident, parent->loc,
 	                                                     expr->generic_ident_expr.parameters, expr->loc);
 	compiler.generic_depth--;
-	if (!decl_ok(symbol)) return false;
-
+	if (!sema_analyse_decl(context, symbol)) return false;
 	if (decl_needs_prefix(symbol) && symbol->unit->module != context->unit->module && !parent->unresolved_ident_expr.path)
 	{
 		const char *message;

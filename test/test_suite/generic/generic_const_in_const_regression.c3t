@@ -1,0 +1,9 @@
+module main;
+
+const X <K> = 2;
+const Y = X{6};
+
+fn int main()
+{
+	return 0;
+}
