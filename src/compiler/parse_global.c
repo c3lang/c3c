@@ -3574,7 +3574,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			if (!parse_module(c)) return poisoned_decl;
 			return NULL;
 		case TOKEN_DOCS_START:
-			PRINT_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
+			PRINT_ERROR_HERE("Multiple doc-comment blocks are not allowed. You can try combining them into a single '<* ... *>'.");
 			return poisoned_decl;
 		case TOKEN_ALIAS:
 			decl = parse_alias(c);

@@ -13,6 +13,7 @@
 - Add `$feat` compile time function. `$feature` is deprecated and replaced by `$feat`. 
 - Experimental support for `constset`, `cenum`, `faultconst`, `faultset`, `excuse`, `attrgroup`, `attrmacro`, `distinct`.
 - Defer resolution of typedef alignment and generics, allowing more recursive definitions.
+- Improve error message on multiple <* *> in a row. #2971
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
