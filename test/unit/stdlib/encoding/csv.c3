@@ -6,9 +6,9 @@ import std::collections;
 
 struct TestCase
 {
-	String   input;
+	String input;
 	String[] want;
-	String   sep;
+	String sep;
 }
 
 fn void line_endings()
@@ -23,9 +23,9 @@ fn void line_endings()
 	foreach (test : test_cases)
 	{
 		CsvReader r;
-		r.init((ByteReader) {}.init(test));
+		r.tinit((ByteReader) { }.init(test), ",", true, true)!!;
 
-		CsvRow row = r.tread_row()!!;
+		CsvRow row = r.read_row()!!;
 
 		test::@check(row.len() == 2, "Line ending was not correctly handled on case %s", test.tescape());
 	}
@@ -34,14 +34,24 @@ fn void line_endings()
 // TODO correct the test
 fn void trailing_newline()
 {
-	String with_trailing = "name,age\r\nAlice,30\r\n";
+	String with_trailing    = "name,age\r\nAlice,30\r\n";
 	String without_trailing = "name,age\r\nAlice,30";
 
 	CsvReader with, without;
-	with.init((ByteReader) {}.init(with_trailing));
-	without.init((ByteReader) {}.init(without_trailing));
+	with.tinit((ByteReader) { }.init(with_trailing))!!;
+	without.tinit((ByteReader) { }.init(without_trailing))!!;
+	sz with_count, without_count;
 
-	test::@check(with.tread_row()!!.len() == without.tread_row()!!.len(), "Incorrectly handled trailing newline");
+	with.@each_row(; row)
+	{
+		with_count++;
+	};
+	without.@each_row(; row)
+	{
+		without_count++;
+	};
+
+	test::@check(with_count == without_count, "Incorrectly handled trailing newline");
 }
 
 fn void string_escape()
@@ -49,11 +59,11 @@ fn void string_escape()
 	String csv = "name,age,occupation\r\nAlice,30,\"Cashier,Waitress\"";
 
 	CsvReader r;
-	r.init((ByteReader){}.init(csv));
+	r.tinit((ByteReader) { }.init(csv))!!;
 
 	r.skip_row();
 
-	test::@check(r.tread_row()!!.len() == 3, "Incorrectly escaped quotes in %s", csv.tescape());
+	test::@check(r.read_row()!!.len() == 3, "Incorrectly escaped quotes in %s", csv.tescape());
 }
 
 fn void unique_header_entries()
@@ -61,49 +71,25 @@ fn void unique_header_entries()
 	String csv = "name,age,gender,age\r\nAlice,30,female,20";
 
 	CsvReader r;
-	r.init((ByteReader) {}.init(csv));
-	CsvRow header = r.tread_row()!!;
-
-	for (sz i = 0; i < header.len() - 1; i++)
-	{
-		for (sz j = i + 1; j < header.len(); j++)
-		{
-			test::@check(header.get_col(i) != header.get_col(j), "Duplicate header entry found");
-		}
-	}
+	test::@error(r.tinit((ByteReader) { }.init(csv)), csv::NON_UNIQUE_ENTRY);
 }
 
 fn void csv_each_row()
 {
 	TestCase[] tests = {
-		{
-			"aaa,bbb,ccc",
-			{"aaa","bbb","ccc"},
-			","
-		},
-		{
-			"aaa;bbb;ccc",
-			{"aaa", "bbb", "ccc"},
-			";"
-		},
-		{
-			"aaa,bbb,ccc\n111,222,333",
-			{"aaa", "bbb", "ccc", "111", "222", "333"},
-			","
-		},
-		{
-			"aaa , bbb\t ,ccc\r\n 111,222,333\r\n",
-			{"aaa ", " bbb\t ", "ccc", " 111", "222", "333"},
-			","
-		},
+		{ "aaa,bbb,ccc", { "aaa", "bbb", "ccc" }, "," },
+		{ "aaa;bbb;ccc", { "aaa", "bbb", "ccc" }, ";" },
+		{ "aaa,bbb,ccc\n111,222,333", { "aaa", "bbb", "ccc", "111", "222", "333" }, "," },
+		{ "aaa , bbb\t ,ccc\r\n 111,222,333\r\n", { "aaa ", " bbb\t ", "ccc", " 111", "222", "333" }, "," },
 	};
 	foreach (t : tests)
 	{
 		String[] want = t.want;
 
 		CsvReader r;
-		r.init((ByteReader){}.init(t.input), t.sep);
-		r.@each_row(; String[] row) {
+		r.tinit((ByteReader) { }.init(t.input), t.sep, false, false)!!;
+		r.@each_row(; String[] row)
+		{
 			foreach (i, s : row)
 			{
 				assert(want.len > 0, "more records than we want");
@@ -116,9 +102,8 @@ fn void csv_each_row()
 	foreach (t : tests)
 	{
 		String[] want = t.want;
-		CsvReader r;
 
-		csv::@each_row((ByteReader){}.init(t.input), t.sep; String[] row)
+		csv::@each_row(tmem, (ByteReader) { }.init(t.input), t.sep ; String[] row)
 		{
 			foreach (i, s : row)
 			{
@@ -133,17 +118,17 @@ fn void csv_each_row()
 
 fn void csv_row()
 {
-	TestCase t = {
-		"aaa,bbb,ccc",
-		{"aaa", "bbb", "ccc"},
-		","
-	};
+	TestCase t = { "aaa,bbb,ccc", { "aaa", "bbb", "ccc" }, "," };
 	CsvReader r;
-	r.init((ByteReader){}.init(t.input), t.sep);
-	CsvRow row = r.tread_row()!!;
+	r.tinit(
+		(ByteReader) { }.init(t.input),
+		t.sep,
+		false,
+	)!!;
+	CsvRow row = r.read_row()!!;
 	assert(row.list.len == t.want.len, "not enough records found");
-	for (int i = 0; i < row.list.len; i++) {
-		assert(row.list[i] == t.want[i],"columns do not match; "
-			"got: '%s', want: '%s'", row.list[i], t.want[i]);
+	for (int i = 0; i < row.list.len; i++)
+	{
+		assert(row.list[i] == t.want[i], "columns do not match; " "got: '%s', want: '%s'", row.list[i], t.want[i]);
 	}
 }

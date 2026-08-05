@@ -7,7 +7,7 @@ struct CsvReader
 {
 	InStream stream;
 	Allocator allocator;
-	String[] headers;
+	CsvRow headers;
 	char[] buffer;
 	sz cursor;
 	sz capacity;
@@ -29,18 +29,18 @@ struct CsvRow (Printable)
 fn CsvReader? tload(
 	InStream stream,
 	String separator = ",",
-	sz buffer_size = 256,
 	bool has_header = true,
-	bool allow_non_spec_line_endings = false
-) => load(tmem, stream, separator, buffer_size, has_header, allow_non_spec_line_endings);
+	bool allow_non_spec_line_endings = false,
+	sz buffer_size = 256
+) => load(tmem, stream, separator, has_header, allow_non_spec_line_endings, buffer_size);
 
 fn CsvReader? load(
 	Allocator allocator,
 	InStream stream,
 	String separator = ",",
-	sz buffer_size = 256,
 	bool has_header = true,
-	bool allow_non_spec_line_endings = false
+	bool allow_non_spec_line_endings = false,
+	sz buffer_size = 256
 )
 {
 	CsvReader reader;
@@ -53,14 +53,8 @@ fn CsvReader? load(
 	reader.allow_non_spec_line_endings = allow_non_spec_line_endings;
 	if (has_header)
 	{
-		reader.headers = reader.parse_row()!.list;
-		for (sz i = 0; i < reader.headers.len - 1; i++)
-		{
-			for (sz j = i + 1; j < reader.headers.len; j++)
-			{
-				if (reader.headers[i] == reader.headers[j]) return NON_UNIQUE_ENTRY~;
-			}
-		}
+		reader.headers = reader.read_row()!;
+		check_duplicate_entries(reader.headers)!;
 	}
 	return reader;
 }
@@ -69,22 +63,22 @@ fn void? CsvReader.tinit(
 	&self,
 	InStream stream,
 	String separator = ",",
-	sz buffer_size = 256,
 	bool has_header = true,
-	bool allow_non_spec_line_endings = false
-) => self.init(tmem, stream, separator, buffer_size, has_header, allow_non_spec_line_endings);
+	bool allow_non_spec_line_endings = false,
+	sz buffer_size = 256
+) => self.init(tmem, stream, separator, has_header, allow_non_spec_line_endings, buffer_size,);
 
 fn void? CsvReader.init(
 	&self,
 	Allocator allocator,
 	InStream stream,
 	String separator = ",",
-	sz buffer_size = 256,
 	bool has_header = true,
-	bool allow_non_spec_line_endings = false
+	bool allow_non_spec_line_endings = false,
+	sz buffer_size = 256
 )
 {
-	*self = load(allocator, stream, separator, buffer_size, has_header, allow_non_spec_line_endings)!;
+	*self = load(allocator, stream, separator, has_header, allow_non_spec_line_endings, buffer_size)!;
 }
 
 fn sz? CsvRow.to_format(&self, Formatter* f) @dynamic
@@ -133,38 +127,53 @@ fn void CsvRow.free(&self)
 
 fn void? CsvReader.skip_row(self) @maydiscard => @pool()
 {
-	(void)self.parse_row()!;
+	(void)self.find_row()!;
 }
 
-macro void? @each_row(InStream stream, String separator = ",", int max_rows = int::max; @body(String[] row)) @maydiscard @deprecated
+fn CsvRow? CsvReader.read_row(&self)
 {
-	while (max_rows--)
-	{
-		@stack_mem(512 ; mem)
-		{
-			String? s = io::readline(mem, stream);
-			if (catch err = s)
-			{
-				if (err == io::EOF) return;
-				return err~;
-			}
-			@body(s.split(mem, separator));
-		};
-	}
+	String row = self.find_row()!;
+
+	return { parse_row_entries(self.allocator, row, self.separator, self.headers.len()), row, self.allocator };
 }
 
-macro void? CsvReader.@each_row(self, int rows = int::max; @body(String[] row)) @maydiscard @deprecated
+macro void? @each_row(
+	Allocator allocator,
+	InStream stream,
+	String separator = ",",
+	int max_rows = int::max; @body(String[] row)
+) @maydiscard
 {
-	return @each_row(self.stream, self.separator, rows ; row)
+	CsvReader r;
+	r.init(allocator, stream, separator, false)!;
+
+	return r.@each_row(max_rows ; row)
 	{
 		@body(row);
 	};
 }
 
+macro void? CsvReader.@each_row(&self, int max_rows = int::max; @body(String[] row)) @maydiscard
+{
+	while (max_rows--)
+	{
+		@stack_mem(512 ; mem)
+		{
+			String? s = self.find_row();
+			if (catch err = s)
+			{
+				if (err == io::EOF) return;
+				return err~;
+			}
+			@body(parse_row_entries(self.allocator, s, self.separator, 0)!);
+		};
+	}
+}
+
 module std::encoding::csv @private;
 import std::io, std::collections::list;
 
-fn CsvRow? CsvReader.parse_row(&self)
+fn String? CsvReader.find_row(&self)
 {
 	DString row;
 	row.init(self.allocator);
@@ -185,6 +194,7 @@ fn CsvRow? CsvReader.parse_row(&self)
 				{
 					row.append_bytes(self.buffer[start:self.capacity - start]);
 					if (!row.len()) return io::EOF~;
+					self.cursor++;
 					break;
 				}
 				return err~;
@@ -219,22 +229,7 @@ fn CsvRow? CsvReader.parse_row(&self)
 		}
 		self.cursor++;
 	}
-
-	return {
-		parse_row_entries(self.allocator, row.copy_str(self.allocator), self.separator, self.headers.len),
-		row.copy_str(self.allocator),
-		self.allocator
-	};
-}
-
-fn sz? CsvReader.refill_buffer(&self)
-{
-	mem::move(self.buffer.ptr, &self.buffer[self.cursor], self.capacity - self.cursor);
-	sz? read = self.stream.read(self.buffer[self.capacity - self.cursor:self.buffer.len - self.capacity + self.cursor]);
-	if (catch err = read) return err~;
-	self.capacity = self.capacity - self.cursor + read;
-	self.cursor = 0;
-	return read;
+	return row.copy_str(self.allocator);
 }
 
 fn String[]? parse_row_entries(Allocator allocator, String s, String separator, sz entry_count = 0)
@@ -293,4 +288,25 @@ fn String[]? parse_row_entries(Allocator allocator, String s, String separator, 
 	if (entry_count && i != entry_count) return INCONSISTANT_ROW_LENGTH~;
 
 	return holder[:i];
+}
+
+fn sz? CsvReader.refill_buffer(&self)
+{
+	mem::move(self.buffer.ptr, &self.buffer[self.cursor], self.capacity - self.cursor);
+	sz? read = self.stream.read(self.buffer[self.capacity - self.cursor:self.buffer.len - self.capacity + self.cursor]);
+	if (catch err = read) return err~;
+	self.capacity = self.capacity - self.cursor + read;
+	self.cursor = 0;
+	return read;
+}
+
+fn void? check_duplicate_entries(CsvRow r)
+{
+	for (sz i = 0; i < r.len() - 1; i++)
+	{
+		for (sz j = i + 1; j < r.len(); j++)
+		{
+			if (r[i] == r[j]) return NON_UNIQUE_ENTRY~;
+		}
+	}
 }
