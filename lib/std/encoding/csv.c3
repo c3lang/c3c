@@ -66,7 +66,14 @@ fn void? CsvReader.tinit(
 	bool has_header = true,
 	bool allow_non_spec_line_endings = false,
 	sz buffer_size = 256
-) => self.init(tmem, stream, separator, has_header, allow_non_spec_line_endings, buffer_size,);
+) => self.init(
+	tmem,
+	stream,
+	separator,
+	has_header,
+	allow_non_spec_line_endings,
+	buffer_size,
+);
 
 fn void? CsvReader.init(
 	&self,
@@ -79,6 +86,13 @@ fn void? CsvReader.init(
 )
 {
 	*self = load(allocator, stream, separator, has_header, allow_non_spec_line_endings, buffer_size)!;
+}
+
+fn void CsvReader.free(&self)
+{
+	if (self.headers.len()) self.headers.free();
+	alloc::free(self.allocator, self.buffer);
+	self.allocator = null;
 }
 
 fn sz? CsvRow.to_format(&self, Formatter* f) @dynamic
@@ -141,11 +155,13 @@ macro void? @each_row(
 	Allocator allocator,
 	InStream stream,
 	String separator = ",",
+	bool allow_non_spec_line_endings,
 	int max_rows = int::max; @body(String[] row)
 ) @maydiscard
 {
 	CsvReader r;
-	r.init(allocator, stream, separator, false)!;
+	r.init(allocator, stream, separator, false, allow_non_spec_line_endings)!;
+	defer r.free();
 
 	return r.@each_row(max_rows ; row)
 	{
@@ -165,7 +181,10 @@ macro void? CsvReader.@each_row(&self, int max_rows = int::max; @body(String[] r
 				if (err == io::EOF) return;
 				return err~;
 			}
-			@body(parse_row_entries(self.allocator, s, self.separator, 0)!);
+			String[] row = parse_row_entries(self.allocator, s, self.separator, 0)!;
+			@body(row);
+			alloc::free(self.allocator, row);
+			alloc::free(self.allocator, s);
 		};
 	}
 }
@@ -200,7 +219,7 @@ fn String? CsvReader.find_row(&self)
 				return err~;
 			}
 		}
-		if (quoted && self.buffer[self.cursor:2] == "\"\"")
+		if (quoted && self.cursor + 2 <= self.capacity && self.buffer[self.cursor:2] == "\"\"")
 		{
 			row.append_bytes(self.buffer[start..self.cursor]);
 			self.cursor += 2;
@@ -215,13 +234,13 @@ fn String? CsvReader.find_row(&self)
 			self.cursor++;
 			continue;
 		}
-		if (self.buffer[self.cursor:2] == "\r\n")
+		if (self.cursor + 2 <= self.capacity && self.buffer[self.cursor:2] == "\r\n")
 		{
 			row.append_bytes(self.buffer[start..self.cursor - 1]);
 			self.cursor += 2;
 			break;
 		}
-		if (self.allow_non_spec_line_endings && self.buffer[self.cursor] == '\r' || self.buffer[self.cursor] == '\n')
+		if (self.allow_non_spec_line_endings && (self.buffer[self.cursor] == '\r' || self.buffer[self.cursor] == '\n'))
 		{
 			row.append_bytes(self.buffer[start..self.cursor - 1]);
 			self.cursor++;
@@ -292,9 +311,11 @@ fn String[]? parse_row_entries(Allocator allocator, String s, String separator, 
 
 fn sz? CsvReader.refill_buffer(&self)
 {
-	mem::move(self.buffer.ptr, &self.buffer[self.cursor], self.capacity - self.cursor);
+	if (self.capacity < self.cursor) self.cursor = self.capacity;
+	if (self.capacity - self.cursor) mem::move(self.buffer.ptr, &self.buffer[self.cursor], self.capacity - self.cursor);
 	sz? read = self.stream.read(self.buffer[self.capacity - self.cursor:self.buffer.len - self.capacity + self.cursor]);
 	if (catch err = read) return err~;
+	if (!read && self.buffer.len) return io::EOF~;
 	self.capacity = self.capacity - self.cursor + read;
 	self.cursor = 0;
 	return read;

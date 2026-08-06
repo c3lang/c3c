@@ -14,24 +14,27 @@ struct TestCase
 fn void line_endings()
 {
 	String[] test_cases = {
-		"name,age\nAlice,30\nBob,25\n",
-		"name,age\r\nAlice,30\r\nBob,25\r\n",
-		"name,age\rAlice,30\rBob,25\r",
-		"name,age\r\nAlice,30\nBob,25\r",
+		"Alice,30\nBob,25\n",
+		"Alice,30\rBob,25\r",
+		"Alice,30\nBob,25\r",
 	};
 
 	foreach (test : test_cases)
 	{
 		CsvReader r;
-		r.tinit((ByteReader) { }.init(test), ",", true, true)!!;
+		r.tinit((ByteReader) { }.init(test), ",", false, false)!!;
 
 		CsvRow row = r.read_row()!!;
+		test::@check(row.len() != 2, "Line ending was not correctly handled on case %s", test.tescape());
+		r.free();
 
+		r.tinit((ByteReader) { }.init(test), ",", false, true)!!;
+
+		row = r.read_row()!!;
 		test::@check(row.len() == 2, "Line ending was not correctly handled on case %s", test.tescape());
 	}
 }
 
-// TODO correct the test
 fn void trailing_newline()
 {
 	String with_trailing    = "name,age\r\nAlice,30\r\n";
@@ -77,17 +80,33 @@ fn void unique_header_entries()
 fn void csv_each_row()
 {
 	TestCase[] tests = {
-		{ "aaa,bbb,ccc", { "aaa", "bbb", "ccc" }, "," },
-		{ "aaa;bbb;ccc", { "aaa", "bbb", "ccc" }, ";" },
-		{ "aaa,bbb,ccc\n111,222,333", { "aaa", "bbb", "ccc", "111", "222", "333" }, "," },
-		{ "aaa , bbb\t ,ccc\r\n 111,222,333\r\n", { "aaa ", " bbb\t ", "ccc", " 111", "222", "333" }, "," },
+		{
+			"aaa,bbb,ccc",
+			{ "aaa", "bbb", "ccc" },
+			"," 
+		},
+		{
+			"aaa;bbb;ccc",
+			{ "aaa", "bbb", "ccc" },
+			";"
+		},
+		{
+			"aaa,bbb,ccc\n111,222,333",
+			{ "aaa", "bbb", "ccc", "111", "222", "333" },
+			","
+		},
+		{
+			"aaa , bbb\t ,ccc\r\n 111,222,333\r\n",
+			{ "aaa ", " bbb\t ", "ccc", " 111", "222", "333" },
+			","
+		},
 	};
 	foreach (t : tests)
 	{
 		String[] want = t.want;
 
 		CsvReader r;
-		r.tinit((ByteReader) { }.init(t.input), t.sep, false, false)!!;
+		r.tinit((ByteReader) { }.init(t.input), t.sep, false, true)!!;
 		r.@each_row(; String[] row)
 		{
 			foreach (i, s : row)
@@ -103,7 +122,7 @@ fn void csv_each_row()
 	{
 		String[] want = t.want;
 
-		csv::@each_row(tmem, (ByteReader) { }.init(t.input), t.sep ; String[] row)
+		csv::@each_row(tmem, (ByteReader) { }.init(t.input), t.sep, true ; String[] row)
 		{
 			foreach (i, s : row)
 			{
