@@ -99,7 +99,6 @@ const char *kw_typekind;
 const char *kw_winmain;
 const char *kw_wmain;
 const char *kw_FILE_NOT_FOUND;
-const char *kw_IoError;
 
 void symtab_destroy()
 {
@@ -120,6 +119,8 @@ void symtab_init(uint32_t capacity)
 	// Touch all pages to improve perf(!)
 	memset(symtab.bucket, 0, size);
 
+	const char **builtin_types = VECNEW(const char *, 32);
+	const char **top_level_kw = VECNEW(const char *, 32);
 	// Add keywords.
 	for (TokenType i = TOKEN_FIRST_KEYWORD; i <= TOKEN_LAST_KEYWORD; i++)
 	{
@@ -132,12 +133,22 @@ void symtab_init(uint32_t capacity)
 			case TOKEN_RETURN:
 				kw_return = interned;
 				break;
+			case TYPE_TOKENS:
+				vec_add(builtin_types, interned);
+				vec_add(top_level_kw, interned);
+				break;
+			case TOP_LEVEL_KEYWORD_TOKENS:
+				vec_add(top_level_kw, interned);
+				break;
 			default:
 				break;
 		}
 		ASSERT(type == i);
 		ASSERT(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 	}
+
+	compiler.builtin_type_names = builtin_types;
+	compiler.top_level_keywords = top_level_kw;
 
 	// Init some constant idents
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)

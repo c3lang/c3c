@@ -1018,6 +1018,24 @@ static inline Ast *parse_ct_type_assign_stmt(ParseContext *c)
 	return stmt;
 }
 
+static bool parse_suggest_type_kw(Expr *expr, const char *symbol)
+{
+	const char *closest[2];
+	int matches = str_find_closest(symbol, compiler.builtin_type_names, closest);
+
+	switch (matches)
+	{
+		case 1:
+			PRINT_ERROR_AT(expr, "Expected a type here. Did you perhaps want '%s'?", closest[0]);
+			return true;
+		case 2:
+			PRINT_ERROR_AT(expr, "Expected a type here. Did you perhaps want '%s' or '%s'?", closest[0], closest[1]);
+			return true;
+		default:
+			return false;
+	}
+}
+
 static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 {
 	if (tok_is(c, TOKEN_CT_TYPE_IDENT) && peek(c) == TOKEN_EQ)
@@ -1037,6 +1055,7 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	ast->expr_stmt = expr;
 	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 	{
+		if (parse_suggest_type_kw(expr, expr->unresolved_ident_expr.ident)) return poisoned_ast;
 		RETURN_PRINT_ERROR_AT(poisoned_ast, expr, "Expected a type here.");
 	}
 	CONSUME_EOS_OR_RET(poisoned_ast);

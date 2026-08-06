@@ -362,6 +362,65 @@ char *str_copy(const char *start, size_t str_len)
 	return dst;
 }
 
+#define MAX_TEST 256
+
+int damerau_levenshtein_distance(const char *a, int a_len, const char *b, int b_len)
+{
+	if (!a_len) return b_len;
+	if (!b_len) return a_len;
+	if (a_len >= MAX_TEST || b_len >= MAX_TEST) return MAX_TEST;
+	int score[MAX_TEST][MAX_TEST];
+	memset(score, 0, sizeof(int) * (size_t)MAX_TEST * (size_t)MAX_TEST);
+	for (int i = 0; i <= a_len; i++) score[i][0] = i;
+	for (int i = 0; i <= b_len; i++) score[0][i] = i;
+	for (int i = 0; i < a_len; i++)
+	{
+		for (int j = 0; j < b_len; j++)
+		{
+			int cost = a[i] == b[j] ? 0 : 1;
+			int del = score[i][j + 1] + 1;
+			int insert = score[i + 1][j] + 1;
+			int substitute = score[i][j] + cost;
+			int min = del < insert ? del : insert;
+			score[i + 1][j + 1] = min < substitute ? min : substitute;
+			if (i > 0 && j > 0 && a[i] == b[j - 1] && a[i - 1] == b[j])
+			{
+				int comp = score[i - 1][j - 1] + 1;
+				if (comp < score[i + 1][j + 1]) score[i + 1][j + 1] = comp;
+			}
+		}
+	}
+	return score[a_len][b_len];
+}
+
+int str_find_closest(const char *a, const char **vec, const char *matches[2])
+{
+	matches[0] = matches[1] = NULL;
+	
+	int count = 0;
+	int a_len = (int)strlen(a);
+	int best_distance = MAX(1, (int)(a_len / 3));
+
+	FOREACH(const char*, b, vec)
+	{
+		int dist = damerau_levenshtein_distance(a, a_len, b, (int)strlen(b));
+		
+		if (dist < best_distance)
+		{
+			matches[0] = b;
+			best_distance = dist;
+			count = 1;
+			continue;
+		}
+		if (dist == best_distance && count < 2)
+		{
+			matches[count++] = b;
+		}
+		
+	}
+	return count;
+}
+
 void scratch_buffer_delete(size_t len)
 {
 	ASSERT(scratch_buffer.len >= len);
