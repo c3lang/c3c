@@ -13,6 +13,7 @@
 - Add `$feat` compile time function. `$feature` is deprecated and replaced by `$feat`. 
 - Experimental support for `constset`, `cenum`, `faultconst`, `faultset`, `excuse`, `attrgroup`, `attrmacro`, `distinct`.
 - Defer resolution of typedef alignment and generics, allowing more recursive definitions.
+- Improve error message on multiple <* *> in a row. #2971
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
@@ -25,6 +26,7 @@
 - Object unmarshaling support, `object::unmarshal` and family.
 - `json::temp_load` deprecated in favour of `json::tload`.
 - `Object::is_map` now returns true for empty objects.
+- Add `range::upto`, `range::inclusive` and `range::exclusive` macros.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374
@@ -46,7 +48,8 @@
 - ZII array constdef would cause an assert. #3411
 - Calling a constant void macro inside a macro stops it from being constant. #3410
 - Using io::struct_to_format with `$force_dump = true` failed to compile.
- 
+- `$foo += 1` would not do a copy, leading to incorrect update of `$foo`. #3400
+
 ## 0.8.2 Change list
 
 ### Changes / improvements

@@ -1,9 +1,9 @@
 
-attrdef @FOO = @test; // #error: Expected an
-attrdef 1 = @test; // #error: Expected an
-attrdef @foo = @test; // #error: Expected an
-attrdef foo = @test; // #error: Expected an
-attrdef $foo = @test; // #error: Expected an
-attrdef #foo = @test; // #error: Expected an
-attrdef "foo" = @test; // #error: Expected an
-attrdef 'f' = @test; // #error: Expected an
+attrmacro @FOO = @test; // #error: Expected an
+attrmacro 1 = @test; // #error: Expected an
+attrmacro @foo = @test; // #error: Expected an
+attrmacro foo = @test; // #error: Expected an
+attrmacro $foo = @test; // #error: Expected an
+attrmacro #foo = @test; // #error: Expected an
+attrmacro "foo" = @test; // #error: Expected an
+attrmacro 'f' = @test; // #error: Expected an

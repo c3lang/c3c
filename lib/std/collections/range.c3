@@ -63,3 +63,40 @@ fn Type ExclusiveRange.get(&self, sz index) @operator([])
 {
 	return (Type)(self.start + (Type)index);
 }
+
+module std::collections::range;
+
+<*
+
+ @return "a Range from-to (exclusive) inferring the type."
+
+ @require $defined(from - to, from = to, ($Typeof(from))1, from + ($Typeof(from))1)
+   : "From and to values must support subtraction and addition by 1."
+*>
+macro inclusive(from, to)
+{
+	return (Range{$Typeof(from)}){ from, to };
+}
+
+<*
+ Return a range starting from 0 up to a value (inclusive) `range::upto(3)` would yield 0, 1, 2, 3
+
+ @require $defined(to - to, ($Typeof(to))0, to + ($Typeof(to))1)
+   : "To value must support subtraction and addition by 1."
+*>
+macro upto(to)
+{
+	return (Range{$Typeof(to)}){ ($Typeof(to))0, to };
+}
+
+<*
+
+ @return "an ExclusiveRange from-to (exclusive) inferring the type."
+
+ @require $defined(from - to, from = to, ($Typeof(from))1, from + ($Typeof(from))1)
+   : "From and to values must support subtraction and addition by 1."
+*>
+macro exclusive(from, to)
+{
+	return (ExclusiveRange{$Typeof(from)}){ from, to };
+}

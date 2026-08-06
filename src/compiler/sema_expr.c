@@ -7879,7 +7879,7 @@ static bool sema_binary_analyse_ct_op_assign(SemaContext *context, Expr *expr, E
 		RETURN_SEMA_ERROR(expr, "Expected this to result in a constant expression.");
 	}
 
-	left_var->var.init_expr = expr;
+	left_var->var.init_expr = copy_expr_single(expr);
 	left_var->type = expr->type;
 	return true;
 }
@@ -11244,8 +11244,7 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 	                                                     parent->unresolved_ident_expr.ident, parent->loc,
 	                                                     expr->generic_ident_expr.parameters, expr->loc);
 	compiler.generic_depth--;
-	if (!decl_ok(symbol)) return false;
-
+	if (!sema_analyse_decl(context, symbol)) return false;
 	if (decl_needs_prefix(symbol) && symbol->unit->module != context->unit->module && !parent->unresolved_ident_expr.path)
 	{
 		const char *message;
@@ -12365,7 +12364,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 		case EXPR_MACRO_BODY_EXPANSION:
 			if (!expr->body_expansion_expr.first_stmt)
 			{
-				RETURN_SEMA_ERROR(expr, "'@%s' must be followed by ().", declptr(context->current_macro->func_decl.body_param)->name); // NOLINT
+				RETURN_SEMA_ERROR(expr, "'%s' must be followed by ().", declptr(context->current_macro->func_decl.body_param)->name); // NOLINT
 			}
 			break;
 		case EXPR_TYPECALL:

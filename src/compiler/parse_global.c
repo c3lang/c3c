@@ -2555,7 +2555,7 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 }
 
 /**
- * define_attribute ::= 'attrdef' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
+ * define_attribute ::= 'attrmacro' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
  */
 static inline Decl *parse_attrdef(ParseContext *c)
 {
@@ -2592,7 +2592,7 @@ static inline Decl *parse_attrdef(ParseContext *c)
 
 	bool is_cond;
 	bool is_builtin = false;
-	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true, "cannot be aliased using 'attrdef'", NULL, NULL)) return poisoned_decl;
+	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true, "cannot be aliased using 'attrmacro'", NULL, NULL)) return poisoned_decl;
 	decl->attr_decl.attrs = attributes;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -3574,7 +3574,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			if (!parse_module(c)) return poisoned_decl;
 			return NULL;
 		case TOKEN_DOCS_START:
-			PRINT_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
+			PRINT_ERROR_HERE("Multiple doc-comment blocks are not allowed. You can try combining them into a single '<* ... *>'.");
 			return poisoned_decl;
 		case TOKEN_ALIAS:
 			decl = parse_alias(c);
