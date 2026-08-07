@@ -23,7 +23,7 @@ static void write_decl_uid(FILE *file, Module *module, Decl *decl);
 static void emit_type_name_to_scratch(TypeInfo *type);
 static void print_doc_type(FILE *file, Module *module, TypeInfo *type, bool is_vararg);
 static void emit_params_json(FILE *file, Module *module, Decl **params);
-static void emit_doc_comments(FILE *file, Decl *decl);
+static bool emit_doc_comments(FILE *file, Decl *decl, bool *first);
 
 static void truncate_string_middle(const char *str)
 {
@@ -155,27 +155,40 @@ static const char *get_inout_modifier_name(InOutModifier mod)
 
 static void emit_param_json(FILE *file, Module *module, Decl *p)
 {
-	fprintf(file, "{\"name\":\"%s\"", p->name ? p->name : "");
+	fputs("{", file);
+	if (p->name && p->name[0])
+	{
+		fputs("\"name\":", file);
+		json_write_string(file, p->name);
+	}
 	if (p->decl_kind == DECL_BODYPARAM)
 	{
-		fputs(",\"kind\":\"body_param\",\"params\":", file);
+		if (p->name && p->name[0]) fputs(",", file);
+		fputs("\"kind\":\"body_param\",\"params\":", file);
 		emit_params_json(file, module, p->body_params);
 	}
 	else
 	{
+		bool first_field = !(p->name && p->name[0]);
 		if (p->var.type_info)
 		{
-			fputs(",\"type\":", file);
+			if (!first_field) fputs(",", file);
+			first_field = false;
+			fputs("\"type\":", file);
 			print_doc_type(file, module, type_infoptr(p->var.type_info), p->var.vararg);
 		}
 		if (p->var.init_expr)
 		{
-			fputs(",\"default_value\":", file);
+			if (!first_field) fputs(",", file);
+			first_field = false;
+			fputs("\"default_value\":", file);
 			write_expr_source_json(file, p->var.init_expr);
 		}
 		if (p->is_maybe_unused || p->is_must_use || p->var.no_alias)
 		{
-			fputs(",\"attributes\":[", file);
+			if (!first_field) fputs(",", file);
+			first_field = false;
+			fputs("\"attributes\":[", file);
 			bool first_attr = true;
 			if (p->is_maybe_unused)
 			{
@@ -192,17 +205,19 @@ static void emit_param_json(FILE *file, Module *module, Decl *p)
 			{
 				if (!first_attr) fputs(",", file);
 				fputs("\"@noalias\"", file);
-				first_attr = false;
 			}
 			fputs("]", file);
 		}
 		if (p->var.self_addr)
 		{
-			fputs(",\"is_ref\":true", file);
+			if (!first_field) fputs(",", file);
+			first_field = false;
+			fputs("\"is_ref\":true", file);
 		}
 		if (p->var.vararg)
 		{
-			fputs(",\"is_vararg\":true", file);
+			if (!first_field) fputs(",", file);
+			fputs("\"is_vararg\":true", file);
 		}
 	}
 	fputs("}", file);
@@ -355,13 +370,14 @@ static void emit_decl_uid_json(FILE *file, Decl *d)
 	}
 }
 
-static void emit_return_type_json(FILE *file, Module *module, TypeInfo *rtype)
+static void emit_return_type_json(FILE *file, Module *module, TypeInfo *rtype, bool *first)
 {
 	if (rtype)
 	{
+		if (!*first) fputs(",", file);
+		*first = false;
 		fputs("\"return_type\":", file);
 		print_doc_type(file, module, rtype, false);
-		fputs(",", file);
 	}
 }
 
@@ -536,7 +552,17 @@ static void emit_doc_struct_members(FILE *file, Decl *decl, bool *first)
 		{
 			if (!*first) fputs(",", file);
 			*first = false;
-			fprintf(file, "{\"name\":\"%s\",\"type\":", p->name ? p->name : "");
+			fputs("{", file);
+			bool member_first = true;
+			if (p->name && p->name[0])
+			{
+				fputs("\"name\":", file);
+				json_write_string(file, p->name);
+				member_first = false;
+			}
+			if (!member_first) fputs(",", file);
+			member_first = false;
+			fputs("\"type\":", file);
 			print_doc_type(file, decl->unit ? decl->unit->module : NULL, p->var.type_info ? type_infoptr(p->var.type_info) : NULL, false);
 			if (decl->decl_kind == DECL_BITSTRUCT && p->var.kind == VARDECL_BITMEMBER)
 			{
@@ -547,8 +573,14 @@ static void emit_doc_struct_members(FILE *file, Decl *decl, bool *first)
 		}
 		if (!*first) fputs(",", file);
 		*first = false;
-		fprintf(file, "{\"kind\":\"%s\"", decl_to_name(p));
-		if (p->name) fprintf(file, ",\"name\":\"%s\"", p->name);
+		fputs("{\"kind\":\"", file);
+		fputs(decl_to_name(p), file);
+		fputs("\"", file);
+		if (p->name && p->name[0])
+		{
+			fputs(",\"name\":", file);
+			json_write_string(file, p->name);
+		}
 		fputs(",\"members\":[", file);
 		bool sub_first = true;
 		emit_doc_struct_members(file, p, &sub_first);
@@ -556,17 +588,23 @@ static void emit_doc_struct_members(FILE *file, Decl *decl, bool *first)
 	}
 }
 
-static void emit_doc_members(FILE *file, Module *module, Decl *decl)
+static bool emit_doc_members_json(FILE *file, Module *module, Decl *decl, bool *first)
 {
 	if (decl_is_fn_macro(decl))
 	{
-		fputs("[", file);
-		bool first = true;
+		unsigned count = 0;
+		FOREACH(Decl *, p, decl->func_decl.signature.params) if (p) count++;
+		if (decl->decl_kind == DECL_MACRO && decl->func_decl.body_param && declptr(decl->func_decl.body_param)) count++;
+		if (!count) return false;
+		if (!*first) fputs(",", file);
+		*first = false;
+		fputs("\"members\":[", file);
+		bool inner_first = true;
 		FOREACH(Decl *, p, decl->func_decl.signature.params)
 		{
 			if (!p) continue;
-			if (!first) fputs(",", file);
-			first = false;
+			if (!inner_first) fputs(",", file);
+			inner_first = false;
 			emit_param_json(file, module, p);
 		}
 		if (decl->decl_kind == DECL_MACRO && decl->func_decl.body_param)
@@ -574,35 +612,50 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 			Decl *p = declptr(decl->func_decl.body_param);
 			if (p)
 			{
-				if (!first) fputs(",", file);
+				if (!inner_first) fputs(",", file);
 				emit_param_json(file, module, p);
 			}
 		}
 		fputs("]", file);
-		return;
+		return true;
 	}
 	if (decl->decl_kind == DECL_TYPE_ALIAS && decl->type_alias_decl.is_func)
 	{
 		Decl *fntype = decl->type_alias_decl.decl;
 		if (fntype && fntype->decl_kind == DECL_FNTYPE)
 		{
-			emit_params_json(file, module, fntype->fntype_decl.signature.params);
-			return;
+			Decl **params = fntype->fntype_decl.signature.params;
+			if (!vec_size(params)) return false;
+			if (!*first) fputs(",", file);
+			*first = false;
+			fputs("\"members\":", file);
+			emit_params_json(file, module, params);
+			return true;
 		}
+		return false;
 	}
 	if (decl->decl_kind == DECL_ATTRIBUTE)
 	{
-		emit_params_json(file, module, decl->attr_decl.params);
-		return;
+		Decl **params = decl->attr_decl.params;
+		if (!vec_size(params)) return false;
+		if (!*first) fputs(",", file);
+		*first = false;
+		fputs("\"members\":", file);
+		emit_params_json(file, module, params);
+		return true;
 	}
-	fputs("[", file);
-	bool first = true;
+	// For types: emit only when there is actual content
 	if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTDEF)
 	{
+		if (!vec_size(decl->enums.values)) return false;
+		if (!*first) fputs(",", file);
+		*first = false;
+		fputs("\"members\":[", file);
+		bool inner_first = true;
 		FOREACH_IDX(i, Decl *, p, decl->enums.values)
 		{
-			if (!first) fputs(",", file);
-			first = false;
+			if (!inner_first) fputs(",", file);
+			inner_first = false;
 			fputs("{\"name\":\"", file);
 			fputs(p->name ? p->name : "", file);
 			fputs("\"", file);
@@ -628,21 +681,35 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 				fputs(",\"value\":", file);
 				write_const_value_json(file, p->enum_constant.value);
 			}
-			fputs(",", file);
-			emit_doc_comments(file, p);
+			bool item_doc_first = false;
+			emit_doc_comments(file, p, &item_doc_first);
 			fputs("}", file);
 		}
+		fputs("]", file);
+		return true;
 	}
-	else if (decl_has_members(decl))
+	if (decl_has_members(decl))
 	{
-		emit_doc_struct_members(file, decl, &first);
+		if (!vec_size(decl->strukt.members)) return false;
+		if (!*first) fputs(",", file);
+		*first = false;
+		fputs("\"members\":[", file);
+		bool struct_first = true;
+		emit_doc_struct_members(file, decl, &struct_first);
+		fputs("]", file);
+		return true;
 	}
-	else if (decl->decl_kind == DECL_INTERFACE)
+	if (decl->decl_kind == DECL_INTERFACE)
 	{
+		if (!vec_size(decl->interface_methods)) return false;
+		if (!*first) fputs(",", file);
+		*first = false;
+		fputs("\"members\":[", file);
+		bool inner_first = true;
 		FOREACH(Decl *, p, decl->interface_methods)
 		{
-			if (!first) fputs(",", file);
-			first = false;
+			if (!inner_first) fputs(",", file);
+			inner_first = false;
 
 			fputs("{", file);
 			fprintf(file, "\"name\":\"%s\",\"type\":", p->name);
@@ -674,16 +741,20 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 
 			fputs("}", file);
 		}
+		fputs("]", file);
+		return true;
 	}
-	fputs("]", file);
+	return false;
 }
 
-static void emit_custom_attrs(FILE *file, Decl *decl)
+static void emit_custom_attrs(FILE *file, Decl *decl, bool *first)
 {
 	if (!decl->resolved_attributes || !decl->attrs_resolved) return;
 	if (vec_size(decl->attrs_resolved->tags) == 0) return;
 
-	fputs(",\"custom_attrs\":[", file);
+	if (!*first) fputs(",", file);
+	*first = false;
+	fputs("\"custom_attrs\":[", file);
 	for (unsigned i = 0; i < vec_size(decl->attrs_resolved->tags); i++)
 	{
 		if (i > 0) fputs(",", file);
@@ -714,7 +785,7 @@ static void emit_custom_attrs(FILE *file, Decl *decl)
 	fputs("]", file);
 }
 
-static void emit_normal_attrs(FILE *file, Decl *decl)
+static void emit_normal_attrs(FILE *file, Decl *decl, bool *first)
 {
 	bool has_attrs = false;
 
@@ -727,7 +798,9 @@ static void emit_normal_attrs(FILE *file, Decl *decl)
 		}                                     \
 		else                                  \
 		{                                     \
-			fputs(",\"attributes\":[", file); \
+			if (!*first) fputs(",", file);    \
+			*first = false;                   \
+			fputs("\"attributes\":[", file);  \
 			has_attrs = true;                 \
 		}                                     \
 		fputs("\"@" name "\"", file);         \
@@ -782,13 +855,9 @@ static Decl *get_contract_decl(DeclId id)
 	return NULL;
 }
 
-static void emit_doc_comments(FILE *file, Decl *decl)
+static bool emit_doc_comments(FILE *file, Decl *decl, bool *first)
 {
-	if (!decl)
-	{
-		fputs("\"docs\":null", file);
-		return;
-	}
+	if (!decl) return false;
 
 	DeclId docs_id = decl->docs;
 	if (!docs_id && decl->decl_kind == DECL_TYPE_ALIAS && decl->type_alias_decl.is_func && decl->type_alias_decl.decl)
@@ -798,50 +867,57 @@ static void emit_doc_comments(FILE *file, Decl *decl)
 	Decl *contract = (decl->decl_kind == DECL_CONTRACT) ? decl : get_contract_decl(docs_id);
 	const char *deprecated = (decl->resolved_attributes && decl->attrs_resolved) ? decl->attrs_resolved->deprecated : NULL;
 
-	if (!contract && !deprecated)
+	bool has_docs = (deprecated != NULL);
+	if (contract)
 	{
-		fputs("\"docs\":null", file);
-		return;
+		if (contract->contracts_decl.comment || contract->contracts_decl.return_desc || contract->contracts_decl.pure || vec_size(contract->contracts_decl.params) > 0)
+		{
+			has_docs = true;
+		}
 	}
 
+	if (!has_docs) return false;
+
+	if (!*first) fputs(",", file);
+	*first = false;
 	fputs("\"docs\":{", file);
-	bool first = true;
+	bool inner_first = true;
 
 	if (deprecated)
 	{
 		fputs("\"deprecated\":", file);
 		json_write_string(file, deprecated);
-		first = false;
+		inner_first = false;
 	}
 
 	if (contract)
 	{
 		if (contract->contracts_decl.comment)
 		{
-			if (!first) fputs(",", file);
+			if (!inner_first) fputs(",", file);
 			fputs("\"text\":", file);
 			json_write_string(file, contract->contracts_decl.comment);
-			first = false;
+			inner_first = false;
 		}
 
 		if (contract->contracts_decl.return_desc)
 		{
-			if (!first) fputs(",", file);
+			if (!inner_first) fputs(",", file);
 			fputs("\"return\":", file);
 			json_write_string(file, contract->contracts_decl.return_desc);
-			first = false;
+			inner_first = false;
 		}
 
 		if (contract->contracts_decl.pure)
 		{
-			if (!first) fputs(",", file);
+			if (!inner_first) fputs(",", file);
 			fputs("\"pure\":true", file);
-			first = false;
+			inner_first = false;
 		}
 
 		if (vec_size(contract->contracts_decl.params) > 0)
 		{
-			if (!first) fputs(",", file);
+			if (!inner_first) fputs(",", file);
 			fputs("\"params\":[", file);
 			bool first_p = true;
 			for (unsigned i = 0; i < vec_size(contract->contracts_decl.params); i++)
@@ -869,9 +945,10 @@ static void emit_doc_comments(FILE *file, Decl *decl)
 	}
 
 	fputs("}", file);
+	return true;
 }
 
-static void emit_attrdef_target_json(FILE *file, Decl *decl)
+static void emit_attrdef_target_json(FILE *file, Decl *decl, bool *first)
 {
 	Attr **attrs = decl->attr_decl.attrs;
 	if (vec_size(attrs) == 0) return;
@@ -897,9 +974,10 @@ static void emit_attrdef_target_json(FILE *file, Decl *decl)
 			scratch_buffer_append(")");
 		}
 	}
+	if (!*first) fputs(",", file);
+	*first = false;
 	fputs("\"target\":", file);
 	json_write_string(file, scratch_buffer_to_string());
-	fputs(",", file);
 }
 
 static const char *get_decl_kind_name(Decl *decl)
@@ -920,15 +998,24 @@ static const char *get_decl_kind_name(Decl *decl)
 static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **generic_params)
 {
 	fputs("{", file);
+	bool first = true;
+
+	if (!first) fputs(",", file);
+	first = false;
 	fputs("\"name\":", file);
 	json_write_string(file, decl->name);
-	fputs(",", file);
+
+	if (!first) fputs(",", file);
+	first = false;
 	fputs("\"kind\":\"", file);
 	fputs(get_decl_kind_name(decl), file);
-	fputs("\",", file);
+	fputs("\"", file);
+
+	if (!first) fputs(",", file);
+	first = false;
 	fputs("\"uid\":", file);
 	write_decl_uid(file, module, decl);
-	fputs(",", file);
+
 	if (decl->loc)
 	{
 		SourceLoc *loc_info = sourcelocptr(decl->loc);
@@ -937,6 +1024,8 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			File *f = source_file_by_id(loc_info->file_id);
 			if (f && f->full_path)
 			{
+				if (!first) fputs(",", file);
+				first = false;
 				fputs("\"file\":", file);
 				scratch_buffer_clear();
 				const char *path = f->full_path;
@@ -955,30 +1044,35 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 				}
 				scratch_buffer_printf("%s:%u:%u", path, loc_info->row, loc_info->col);
 				json_write_string(file, scratch_buffer_to_string());
-				fputs(",", file);
 			}
 		}
 	}
 	if (decl->visibility != VISIBLE_PUBLIC)
 	{
-		fprintf(file, "\"visibility\":\"%s\",", get_visibility_name(decl->visibility));
+		if (!first) fputs(",", file);
+		first = false;
+		fprintf(file, "\"visibility\":\"%s\"", get_visibility_name(decl->visibility));
 	}
 	if (decl->is_template)
 	{
-		fputs("\"is_generic\":true,", file);
+		if (!first) fputs(",", file);
+		first = false;
+		fputs("\"is_generic\":true", file);
 	}
 	if (generic_params)
 	{
 		unsigned param_count = vec_size(generic_params);
 		if (param_count > 0)
 		{
+			if (!first) fputs(",", file);
+			first = false;
 			fputs("\"generic_parameters\":[", file);
 			for (unsigned i = 0; i < param_count; i++)
 			{
 				if (i > 0) fputs(",", file);
 				json_write_string(file, generic_params[i]);
 			}
-			fputs("],", file);
+			fputs("]", file);
 		}
 	}
 	if (decl_has_interface(decl))
@@ -986,13 +1080,15 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 		unsigned iface_count = vec_size(decl->interfaces);
 		if (iface_count > 0)
 		{
+			if (!first) fputs(",", file);
+			first = false;
 			fputs("\"interfaces\":[", file);
 			for (unsigned i = 0; i < iface_count; i++)
 			{
 				if (i > 0) fputs(",", file);
 				print_doc_type(file, module, decl->interfaces[i], false);
 			}
-			fputs("],", file);
+			fputs("]", file);
 		}
 	}
 
@@ -1001,11 +1097,21 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 	{
 		case DECL_FUNC:
 		case DECL_MACRO:
-			emit_return_type_json(file, module, type_infoptrzero(decl->func_decl.signature.rtype));
+			emit_return_type_json(file, module, type_infoptrzero(decl->func_decl.signature.rtype), &first);
 			if (decl->decl_kind == DECL_MACRO)
 			{
-				if (decl->func_decl.signature.is_at_macro) fputs("\"is_at_macro\":true,", file);
-				if (decl->func_decl.signature.is_safemacro) fputs("\"is_safemacro\":true,", file);
+				if (decl->func_decl.signature.is_at_macro)
+				{
+					if (!first) fputs(",", file);
+					first = false;
+					fputs("\"is_at_macro\":true", file);
+				}
+				if (decl->func_decl.signature.is_safemacro)
+				{
+					if (!first) fputs(",", file);
+					first = false;
+					fputs("\"is_safemacro\":true", file);
+				}
 			}
 			break;
 		case DECL_TYPE_ALIAS:
@@ -1014,7 +1120,7 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 				Decl *fntype = decl->type_alias_decl.decl;
 				if (fntype && fntype->decl_kind == DECL_FNTYPE)
 				{
-					emit_return_type_json(file, module, type_infoptrzero(fntype->fntype_decl.signature.rtype));
+					emit_return_type_json(file, module, type_infoptrzero(fntype->fntype_decl.signature.rtype), &first);
 				}
 				break;
 			}
@@ -1035,35 +1141,45 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 			base = decl->strukt.container_type;
 			goto PRINT_BASE;
 		case DECL_TYPEDEF:
-			if (decl->is_substruct) fputs("\"is_inline\":true,", file);
+			if (decl->is_substruct)
+			{
+				if (!first) fputs(",", file);
+				first = false;
+				fputs("\"is_inline\":true", file);
+			}
 			base = decl->distinct;
 			goto PRINT_BASE;
 		PRINT_BASE:
+			if (!first) fputs(",", file);
+			first = false;
 			fputs("\"base_type\":", file);
 			print_doc_type(file, module, base, false);
-			fputs(",", file);
 			break;
 		case DECL_VAR:
 			base = type_infoptrzero(decl->var.type_info);
 			if (base)
 			{
+				if (!first) fputs(",", file);
+				first = false;
 				fputs("\"type\":", file);
 				print_doc_type(file, module, base, false);
-				fputs(",", file);
 			}
 			if (decl->var.kind == VARDECL_CONST)
 			{
-				fputs("\"is_const\":true,", file);
+				if (!first) fputs(",", file);
+				first = false;
+				fputs("\"is_const\":true", file);
 			}
 			if (decl->var.init_expr)
 			{
+				if (!first) fputs(",", file);
+				first = false;
 				fputs("\"value\":", file);
 				write_const_value_json(file, decl->var.init_expr);
-				fputs(",", file);
 			}
 			break;
 		case DECL_ATTRIBUTE:
-			emit_attrdef_target_json(file, decl);
+			emit_attrdef_target_json(file, decl, &first);
 			break;
 		case DECL_POISONED:
 		case DECL_BODYPARAM:
@@ -1095,8 +1211,9 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 	{
 		if (vec_size(decl->enums.parameters) > 0)
 		{
-			fputs("\"associated_values\":", file);
-			fputs("[", file);
+			if (!first) fputs(",", file);
+			first = false;
+			fputs("\"associated_values\":[", file);
 			bool first_param = true;
 			FOREACH_IDX(i, Decl *, p, decl->enums.parameters)
 			{
@@ -1104,17 +1221,13 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 				first_param = false;
 				emit_param_json(file, module, p);
 			}
-			fputs("],", file);
+			fputs("]", file);
 		}
 	}
-	fputs("\"members\":", file);
-	emit_doc_members(file, module, decl);
-	fputs(",", file);
-	fputs("", file);
-	emit_doc_comments(file, decl);
-	emit_custom_attrs(file, decl);
-	emit_normal_attrs(file, decl);
-	fputs("", file);
+	emit_doc_members_json(file, module, decl, &first);
+	emit_doc_comments(file, decl, &first);
+	emit_custom_attrs(file, decl, &first);
+	emit_normal_attrs(file, decl, &first);
 	fputs("}", file);
 }
 
@@ -1276,6 +1389,9 @@ void compiler_docgen(BuildTarget *target)
 		}
 
 		bool is_module_generic = module_generic != NULL;
+		bool mod_first = true;
+		if (!mod_first) fputs(",", file);
+		mod_first = false;
 		fprintf(file, "\"is_generic\":%s", is_module_generic ? "true" : "false");
 		if (is_module_generic)
 		{
@@ -1288,17 +1404,8 @@ void compiler_docgen(BuildTarget *target)
 			}
 			fputs("]", file);
 		}
-		fputs(",", file);
 
-		if (module_doc)
-		{
-
-			emit_doc_comments(file, declptr(module_doc));
-		}
-		else
-		{
-			fputs("\"docs\":null", file);
-		}
+		if (module_doc) emit_doc_comments(file, declptr(module_doc), &mod_first);
 
 		for (int cat = 0; cat < DOC_CAT_COUNT; cat++)
 		{
