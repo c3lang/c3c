@@ -1187,9 +1187,7 @@ static DocCategory get_category_for_decl(Decl *decl)
 	}
 }
 
-typedef void (*DocDeclCallback)(JsonEmitter *e, Module *module, Decl *decl, const char **generic_params, void *userdata);
-
-static bool foreach_doc_decl_in_category(Module *module, DocCategory cat, DocDeclCallback callback, JsonEmitter *e, void *userdata)
+static bool emit_category_decls(JsonEmitter *e, Module *module, DocCategory cat)
 {
 	bool found = false;
 	unsigned unit_count = vec_size(module->units);
@@ -1208,7 +1206,7 @@ static bool foreach_doc_decl_in_category(Module *module, DocCategory cat, DocDec
 				if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 				if (get_category_for_decl(decl) != cat) continue;
 				found = true;
-				if (callback) callback(e, module, decl, NULL, userdata);
+				if (e) emit_decl_json(e, module, decl, NULL);
 				else return true;
 			}
 		}
@@ -1226,7 +1224,7 @@ static bool foreach_doc_decl_in_category(Module *module, DocCategory cat, DocDec
 					if (decl->is_templated || decl->decl_kind == DECL_GENERIC_INSTANCE) continue;
 					if (get_category_for_decl(decl) != cat) continue;
 					found = true;
-					if (callback) callback(e, module, decl, (const char **)gdecl->generic_decl.parameters, userdata);
+					if (e) emit_decl_json(e, module, decl, (const char **)gdecl->generic_decl.parameters);
 					else return true;
 				}
 			}
@@ -1237,12 +1235,7 @@ static bool foreach_doc_decl_in_category(Module *module, DocCategory cat, DocDec
 
 static bool category_has_content(Module *module, DocCategory cat)
 {
-	return foreach_doc_decl_in_category(module, cat, NULL, NULL, NULL);
-}
-
-static void emit_decl_json_cb(JsonEmitter *e, Module *module, Decl *decl, const char **generic_params, void *userdata)
-{
-	emit_decl_json(e, module, decl, generic_params);
+	return emit_category_decls(NULL, module, cat);
 }
 
 void compiler_docgen(BuildTarget *target)
@@ -1354,7 +1347,7 @@ void compiler_docgen(BuildTarget *target)
 			if (!cat_has_content[cat]) continue;
 
 			json_start_array_prop(&emitter, category_names[cat]);
-			foreach_doc_decl_in_category(module, (DocCategory)cat, emit_decl_json_cb, &emitter, NULL);
+			emit_category_decls(&emitter, module, (DocCategory)cat);
 			json_end_array(&emitter);
 		}
 		json_end_object(&emitter);
