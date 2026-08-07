@@ -1324,7 +1324,6 @@
 			"long": "signed 64-bit integer",
 			"int128": "signed 128-bit integer",
 			"iptr": "signed pointer-sized integer",
-			"isz": "signed pointer-sized integer",
 			"sz": "signed pointer-sized integer",
 			"char": "unsigned 8-bit integer",
 			"ushort": "unsigned 16-bit integer",
@@ -1334,11 +1333,16 @@
 			"uptr": "unsigned pointer-sized integer",
 			"usz": "unsigned pointer-sized integer",
 			"bool": "boolean value (true/false)",
+			"float16": "16-bit floating point",
+			"bfloat": "16-bit brain floating point",
 			"float": "32-bit floating point",
 			"double": "64-bit floating point",
+			"float128": "128-bit floating point",
 			"void": "no type",
 			"any": "any type",
+			"fault": "fault type",
 			"typeid": "runtime type identifier",
+			"untypedlist": "untyped list literal",
 			"String": "typedef inline char[]",
 			"ZString": "typedef inline char*"
 		};
@@ -1665,11 +1669,19 @@
 			return li;
 		}
 
+		function createFooter(remaining) {
+			const footer = document.createElement('li');
+			footer.className = 'item list-footer';
+			footer.style.justifyContent = 'center';
+			footer.style.color = '#888';
+			footer.innerText = `... and ${remaining} more`;
+			return footer;
+		}
+
 		function appendToList(newLimit) {
 			const list = document.getElementById('list');
-			// Remove the "... and X more" footer before appending
-			const footer = list.querySelector('.list-footer');
-			if (footer) footer.remove();
+			const existingFooter = list.querySelector('.list-footer');
+			if (existingFooter) existingFooter.remove();
 
 			for (let i = currentRendered.length; i < newLimit; i++) {
 				const d = currentFiltered[i];
@@ -1677,14 +1689,8 @@
 				list.appendChild(makeListItem(d, i));
 			}
 
-			// Re-add footer if there are still more items
 			if (currentFiltered.length > currentRendered.length) {
-				const footer = document.createElement('li');
-				footer.className = 'item list-footer';
-				footer.style.justifyContent = 'center';
-				footer.style.color = '#888';
-				footer.innerText = `... and ${currentFiltered.length - currentRendered.length} more`;
-				list.appendChild(footer);
+				list.appendChild(createFooter(currentFiltered.length - currentRendered.length));
 			}
 		}
 
@@ -1714,12 +1720,7 @@
 			}
 
 			if (items.length > limit) {
-				const footer = document.createElement('li');
-				footer.className = 'item list-footer';
-				footer.style.justifyContent = 'center';
-				footer.style.color = '#888';
-				footer.innerText = `... and ${items.length - limit} more`;
-				list.appendChild(footer);
+				list.appendChild(createFooter(items.length - limit));
 			}
 		}
 
@@ -1727,18 +1728,31 @@
 			return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		}
 
+		// Temporary experimental keyword aliases (remove when deprecated from language)
+		const TEMP_EXPERIMENTAL_KEYWORDS = [
+			'attrgroup', 'attrmacro', 'cenum', 'constset', 'distinct', 'excuse', 'faultconst', 'faultset'
+		];
+
 		const C3_KEYWORDS = new Set([
-			'asm', 'assert', 'break', 'case', 'cast', 'catch', 'const', 'continue', 'default', 'defer', 'do', 'else',
-			'enum', 'extern', 'false', 'fn', 'for', 'if', 'import', 'inline', 'local', 'macro', 'module', 'next',
-			'null', 'operator', 'private', 'public', 'return', 'static', 'struct', 'switch', 'true', 'typeid',
-			'using', 'var', 'while', 'bitstruct', 'fault', 'interface', 'union', 'try', 'foreach', 'nextcase', 'typedef', 'alias'
+			'alias', 'asm', 'assert', 'attrdef', 'bitstruct', 'break', 'case',
+			'cast', 'catch', 'const', 'constdef', 'continue', 'default', 'defer',
+			'do', 'else', 'enum', 'extern', 'false', 'fault', 'faultdef', 'fn',
+			'for', 'foreach', 'foreach_r', 'if', 'import', 'inline', 'interface',
+			'lengthof', 'local', 'macro', 'module', 'next', 'nextcase', 'null', 'operator',
+			'private', 'public', 'return', 'static', 'struct', 'switch', 'tlocal', 'true',
+			'try', 'typedef', 'typeid', 'union', 'using', 'var', 'while',
+			'$assert', '$case', '$default', '$defined', '$echo', '$else', '$embed', '$endfor',
+			'$endforeach', '$endif', '$endswitch', '$eval', '$error', '$exec', '$expand', '$feat',
+			'$feature', '$for', '$foreach', '$if', '$include', '$reflect', '$stringify', '$switch',
+			'$Typefrom', '$Typeof', '$vaarg',
+			...TEMP_EXPERIMENTAL_KEYWORDS
 		]);
 
 		const C3_TOKEN_TYPES = [
 			{ name: 'comment', regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
 			{ name: 'string', regex: /"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/g },
 			{ name: 'number', regex: /\b(0x[0-9a-fA-F]+|0b[01]+|\d+(\.\d+)?)\b/g },
-			{ name: 'word', regex: /@?\b[\w:]+\b/g }
+			{ name: 'word', regex: /[@$]?\b[\w:]+\b/g }
 		];
 
 		let symbolMapCache = null;
@@ -2163,13 +2177,11 @@
 			});
 
 			const modContainer = document.getElementById('module-list');
-			const updateModIndicators = () => {
-				const top = document.getElementById('mod-indicator-top');
-				const bottom = document.getElementById('mod-indicator-bottom');
-				top.style.opacity = modContainer.scrollTop > 10 ? '1' : '0';
-				const remaining = modContainer.scrollHeight - modContainer.scrollTop - modContainer.clientHeight;
-				bottom.style.opacity = remaining > 10 ? '1' : '0';
-			};
+			const updateModIndicators = () => updateScrollIndicators(
+				modContainer,
+				document.getElementById('mod-indicator-top'),
+				document.getElementById('mod-indicator-bottom')
+			);
 			modContainer.addEventListener('scroll', updateModIndicators);
 			setTimeout(updateModIndicators, 100);
 		}
@@ -2234,14 +2246,13 @@
 					return `<span class="c3-keyword">alias</span> <span class="c3-type">${localName}</span>`;
 				}
 			}
-
 			if (d.kind === 'distinct type') {
 				const inlineHtml = d.is_inline ? '<span class="c3-keyword">inline</span> ' : '';
 				const baseTypeStr = d.base_type ? renderTypeName(d.base_type) : '';
 				return `<span class="c3-keyword">typedef</span> <span class="c3-type">${localName}</span> = ${inlineHtml}${baseTypeStr}`;
 			}
 
-			if (d.kind === 'constant' || d.kind === 'global variable') {
+			if (d.kind === 'constant' || d.kind === 'global variable' || d.kind === 'variable') {
 				const keywordHtml = (d.kind === 'constant' || d.is_const) ? '<span class="c3-keyword">const</span> ' : '';
 				const typeStr = d.type ? renderTypeName(d.type) : '';
 				let res = `${keywordHtml}${typeStr ? typeStr + ' ' : ''}<span class="c3-variable">${localName}</span>`;
@@ -2398,7 +2409,7 @@
 			}
 
 			const anyDesc = hasAnyDescription(vd.members);
-			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || vd.kind === 'method' || vd.kind === 'macro_method' || (vd.kind === 'type_alias' && vd.return_type);
+			const isFunction = vd.kind === 'function' || vd.kind === 'macro' || vd.kind === 'method' || vd.kind === 'macro_method';
 			const hasAnyContract = isFunction && baseDocs && baseDocs.params && vd.members.some(m => {
 				const dp = baseDocs.params.find(p => p.name === m.name);
 				return dp && (dp.modifier || dp.by_ref);
@@ -2614,14 +2625,19 @@
 			return html;
 		}
 
+		function updateScrollIndicators(container, topEl, bottomEl) {
+			if (!container || !topEl || !bottomEl) return;
+			topEl.style.opacity = container.scrollTop > 10 ? '1' : '0';
+			const remaining = container.scrollHeight - container.scrollTop - container.clientHeight;
+			bottomEl.style.opacity = remaining > 10 ? '1' : '0';
+		}
+
 		function updateCtxIndicators() {
-			const rightSidebarContent = document.getElementById('right-sidebar-content');
-			const top = document.getElementById('ctx-indicator-top');
-			const bottom = document.getElementById('ctx-indicator-bottom');
-			if (!rightSidebarContent || !top || !bottom) return;
-			top.style.opacity = rightSidebarContent.scrollTop > 10 ? '1' : '0';
-			const remaining = rightSidebarContent.scrollHeight - rightSidebarContent.scrollTop - rightSidebarContent.clientHeight;
-			bottom.style.opacity = remaining > 10 ? '1' : '0';
+			updateScrollIndicators(
+				document.getElementById('right-sidebar-content'),
+				document.getElementById('ctx-indicator-top'),
+				document.getElementById('ctx-indicator-bottom')
+			);
 		}
 
 		function renderModuleContext(moduleName, isSidebar = false, currentUid = null) {
@@ -2758,7 +2774,7 @@
 			} else {
 				rightSidebar.style.display = 'flex';
 				rightSidebarContent.innerHTML = renderModuleContext(d.moduleName, true, d.uid);
-				rightSidebarContent.addEventListener('scroll', updateCtxIndicators);
+				rightSidebarContent.onscroll = updateCtxIndicators;
 				setTimeout(updateCtxIndicators, 100);
 
 				const selected = rightSidebarContent.querySelector('.member-item-selected');
