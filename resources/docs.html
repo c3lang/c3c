@@ -308,6 +308,11 @@
 			color: var(--hl-text);
 		}
 
+		.kind-attribute {
+			background: var(--hl-comment);
+			color: var(--hl-text);
+		}
+
 		.kind-struct,
 		.kind-union,
 		.kind-bitstruct,
@@ -405,6 +410,10 @@
 		.item-kind-function,
 		.item-kind-macro {
 			background: rgba(210, 168, 255, 0.07);
+		}
+
+		.item-kind-attribute {
+			background: rgba(126, 231, 135, 0.07);
 		}
 
 		.item-kind-struct,
@@ -1398,7 +1407,7 @@
 					targetName: targetName === 'docs' ? 'default' : targetName
 				});
 
-				['functions', 'methods', 'macros', 'macro_methods', 'types', 'variables'].forEach(cat => {
+				['functions', 'methods', 'macros', 'attrdefs', 'macro_methods', 'types', 'variables'].forEach(cat => {
 					if (mod[cat]) {
 						mod[cat].forEach(decl => {
 							decl.moduleName = moduleName;
@@ -1642,6 +1651,7 @@
 			let kindClass = `item-kind`;
 			if (d.kind === 'function') kindClass += ' kind-function';
 			else if (d.kind === 'macro') kindClass += ' kind-macro';
+			else if (d.kind === 'attribute') kindClass += ' kind-attribute';
 			else if (d.kind === 'struct') kindClass += ' kind-struct';
 			else if (d.kind === 'enum') kindClass += ' kind-enum';
 			const vis = d.visibility || 'public';
@@ -2041,6 +2051,9 @@
 					'func':     ['function', 'method'],
 					'function': ['function', 'method'],
 					'macro':    ['macro', 'macro_method'],
+					'attrdef':  ['attribute'],
+					'attribute':['attribute'],
+					'attr':     ['attribute'],
 					'struct':   ['struct'],
 					'enum':     ['enum'],
 					'union':    ['union'],
@@ -2182,9 +2195,9 @@
 				if (isUntypedVararg) {
 					return `<span class="c3-variable">${m.name || ''}...</span>`;
 				}
-				const type = renderTypeName(m.type);
-				const name = m.name ? ` <span class="c3-variable">${m.is_ref ? '&' : ''}${m.name}</span>` : '';
-				let res = `${type}${name}`;
+				const type = m.type ? renderTypeName(m.type) : '';
+				const name = m.name ? `<span class="c3-variable">${m.is_ref ? '&' : ''}${m.name}</span>` : '';
+				let res = type ? (name ? `${type} ${name}` : type) : name;
 				if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
 				if (m.default_value) res += ` = <span class="c3-variable">${m.default_value}</span>`;
 				return res;
@@ -2253,6 +2266,12 @@
 				return res;
 			}
 
+			if (d.kind === 'attribute') {
+				const params = (d.members && d.members.length > 0) ? `(${renderParams(d.members)})` : '';
+				const target = d.target ? ` = <span class="c3-attribute">${escapeHtml(d.target)}</span>` : '';
+				return `<span class="c3-keyword">attrdef</span> <span class="c3-macro">${localName}</span>${params}${target}`;
+			}
+
 			return null;
 		}
 
@@ -2296,6 +2315,12 @@
 				let typeInfo = '';
 				if (vd.return_type) {
 					typeInfo += ` <span style="font-size: 0.8em; opacity: 0.7;">Returns:</span> ${renderTypeName(vd.return_type)}`;
+				}
+				if (vd.docs && vd.docs.return) {
+					if (!vd.return_type) {
+						typeInfo += ` <span style="font-size: 0.8em; opacity: 0.7;">Returns:</span>`;
+					}
+					typeInfo += `<span style="font-size: 0.95em" class="doc-text">${vd.return_type ? ' - ' : ' '}${escapeHtml(vd.docs.return)}</span>`;
 				}
 				if (vd.base_type && vd.base_type.name) {
 					typeInfo += ` (base: ${renderTypeName(vd.base_type)})`;

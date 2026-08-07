@@ -9,13 +9,14 @@ typedef enum
 	DOC_CAT_FUNCTIONS,
 	DOC_CAT_METHODS,
 	DOC_CAT_MACROS,
+	DOC_CAT_ATTRDEFS,
 	DOC_CAT_MACRO_METHODS,
 	DOC_CAT_TYPES,
 	DOC_CAT_VARIABLES,
 	DOC_CAT_COUNT
 } DocCategory;
 
-static const char *category_names[DOC_CAT_COUNT] = {"functions", "methods", "macros", "macro_methods", "types", "variables"};
+static const char *category_names[DOC_CAT_COUNT] = {"functions", "methods", "macros", "attrdefs", "macro_methods", "types", "variables"};
 static Module **all_modules = NULL;
 
 static void write_decl_uid(FILE *file, Module *module, Decl *decl);
@@ -102,6 +103,9 @@ static void get_unit_lists(CompilationUnit *unit, DocCategory cat, Decl ***lists
 			break;
 		case DOC_CAT_MACROS:
 			lists[i++] = unit->macros;
+			break;
+		case DOC_CAT_ATTRDEFS:
+			lists[i++] = unit->attributes;
 			break;
 		case DOC_CAT_MACRO_METHODS:
 			lists[i++] = unit->macro_methods;
@@ -586,6 +590,11 @@ static void emit_doc_members(FILE *file, Module *module, Decl *decl)
 			return;
 		}
 	}
+	if (decl->decl_kind == DECL_ATTRIBUTE)
+	{
+		emit_params_json(file, module, decl->attr_decl.params);
+		return;
+	}
 	fputs("[", file);
 	bool first = true;
 	if (decl->decl_kind == DECL_ENUM || decl->decl_kind == DECL_CONSTDEF)
@@ -781,7 +790,12 @@ static void emit_doc_comments(FILE *file, Decl *decl)
 		return;
 	}
 
-	Decl *contract = (decl->decl_kind == DECL_CONTRACT) ? decl : get_contract_decl(decl->docs);
+	DeclId docs_id = decl->docs;
+	if (!docs_id && decl->decl_kind == DECL_TYPE_ALIAS && decl->type_alias_decl.is_func && decl->type_alias_decl.decl)
+	{
+		docs_id = decl->type_alias_decl.decl->docs;
+	}
+	Decl *contract = (decl->decl_kind == DECL_CONTRACT) ? decl : get_contract_decl(docs_id);
 	const char *deprecated = (decl->resolved_attributes && decl->attrs_resolved) ? decl->attrs_resolved->deprecated : NULL;
 
 	if (!contract && !deprecated)
@@ -855,6 +869,37 @@ static void emit_doc_comments(FILE *file, Decl *decl)
 	}
 
 	fputs("}", file);
+}
+
+static void emit_attrdef_target_json(FILE *file, Decl *decl)
+{
+	Attr **attrs = decl->attr_decl.attrs;
+	if (vec_size(attrs) == 0) return;
+
+	scratch_buffer_clear();
+	FOREACH_IDX(i, Attr *, attr, attrs)
+	{
+		if (!attr) continue;
+		if (i > 0) scratch_buffer_append(" ");
+		if (attr->name)
+		{
+			if (attr->name[0] != '@') scratch_buffer_append("@");
+			scratch_buffer_append(attr->name);
+		}
+		if (vec_size(attr->exprs) > 0)
+		{
+			scratch_buffer_append("(");
+			FOREACH_IDX(j, Expr *, e, attr->exprs)
+			{
+				if (j > 0) scratch_buffer_append(", ");
+				if (e) loc_to_scratch(e->loc);
+			}
+			scratch_buffer_append(")");
+		}
+	}
+	fputs("\"target\":", file);
+	json_write_string(file, scratch_buffer_to_string());
+	fputs(",", file);
 }
 
 static const char *get_decl_kind_name(Decl *decl)
@@ -1017,8 +1062,10 @@ static void emit_decl_json(FILE *file, Module *module, Decl *decl, const char **
 				fputs(",", file);
 			}
 			break;
-		case DECL_POISONED:
 		case DECL_ATTRIBUTE:
+			emit_attrdef_target_json(file, decl);
+			break;
+		case DECL_POISONED:
 		case DECL_BODYPARAM:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
@@ -1081,6 +1128,8 @@ static DocCategory get_category_for_decl(Decl *decl)
 		case DECL_MACRO:
 			if (decl->func_decl.type_parent) return DOC_CAT_MACRO_METHODS;
 			return DOC_CAT_MACROS;
+		case DECL_ATTRIBUTE:
+			return DOC_CAT_ATTRDEFS;
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ENUM:
