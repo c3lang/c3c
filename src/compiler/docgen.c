@@ -1235,7 +1235,10 @@ void compiler_docgen(BuildTarget *target)
 	bool first_module = true;
 	FOREACH(Module *, module, all_modules)
 	{
-		if (target->emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(module)) continue;
+		if (target->emit_stdlib == EMIT_STDLIB_OFF &&
+			(module_is_stdlib(module) ||
+			 (module->name->len == 11 && strcmp(module->name->module, "compiler_rt") == 0) ||
+			 (module->name->len > 13 && memcmp(module->name->module, "compiler_rt::", 13) == 0))) continue;
 
 		DeclId module_doc = 0;
 		unsigned unit_count = vec_size(module->units);
