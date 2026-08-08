@@ -29,6 +29,14 @@ fn Type Range.get(&self, sz index) @operator([])
 	return (Type)(self.start + (Type)index);
 }
 
+<*
+	@require $defined(slice[0]) : "Cannot index `slice` parameter"
+*>
+macro Range.slice_from(self, slice)
+{
+	return (&slice[self.start])[:self.end - self.start + 1];
+}
+
 fn sz? Range.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.printf("[%s..%s]", self.start, self.end)!;
@@ -54,6 +62,14 @@ fn bool ExclusiveRange.contains(&self, Type value) @inline
 fn sz? ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.printf("[%s..<%s]", self.start, self.end)!;
+}
+
+<*
+	@require $defined(slice[0]) : "Cannot index `slice` parameter"
+*>
+macro ExclusiveRange.slice_from(self, slice)
+{
+	return (&slice[self.start])[:self.end - self.start];
 }
 
 <*
