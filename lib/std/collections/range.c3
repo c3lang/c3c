@@ -118,3 +118,19 @@ macro exclusive(from, to)
 {
 	return (ExclusiveRange{$Typeof(from)}){ from, to };
 }
+
+<*
+ @require $defined(array[0]) : "Cannot index `array` parameter"
+*>
+macro slice(array, range)
+{
+	$switch $Typeof(range):
+		$case Range{$Typeof(array)::inner}:
+			return (&array[range.start])[:range.end - range.start + 1];
+		$case ExclusiveRange{$Typeof(array)::inner}:
+			return (&array[range.start])[:range.end - range.start];
+		$default:
+			$error("Error, type of range was not Range nor ExclusiveRange, "
+			       "or the inner types of the array and range are not equal.");
+	$endswitch
+}

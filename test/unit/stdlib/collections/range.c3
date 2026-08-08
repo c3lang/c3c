@@ -19,6 +19,10 @@ fn void test_range()
 	assert(!range.contains(3));
 	assert(range.to_array(tmem) == (int[]){ -4, -3, -2, -1, 0, 1, 2 });
 	assert((IntRange){ 2, -4 }.to_array(tmem) == (int[]){});
+
+	range = { 2, 4 };
+	int[] array = { 5, 6, 9, 1, 2, 8, 4 };
+	assert(range::slice(array, range) == { 9, 1, 2 });
 }
 
 fn void test_exrange()
@@ -36,4 +40,8 @@ fn void test_exrange()
 	assert(!range.contains(2));
 	assert(range.to_array(tmem) == (int[]){ -4, -3, -2, -1, 0, 1 });
 	assert((IntExRange){ 2, 2 }.to_array(tmem) == (int[]){});
+
+	range = { 2, 4 };
+	int[] array = { 5, 6, 9, 1, 2, 8, 4 };
+	assert(range::slice(array, range) == { 9, 1 });
 }
