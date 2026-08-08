@@ -622,6 +622,20 @@ macro bool is_inf(x)
 }
 
 <*
+ @require values::@is_promotable_to_float(x) : `The input must be a float`
+*>
+macro bool is_denorm(x)
+{
+	$switch $Typeof(x):
+	$case float:
+	$case float16:
+		return bitcast((float)x, uint) & 0x7fffffff < 0x00800000;
+	$default:
+		return bitcast((double)x, ulong) & (~0UL >> 1) < 0x001UL << 52;
+	$endswitch
+}
+
+<*
  @require values::@is_floatlike(x) : `The input must be a floating point value or float vector`
 *>
 macro trunc(x) => $$trunc(x);
