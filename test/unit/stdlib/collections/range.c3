@@ -17,6 +17,10 @@ fn void test_range()
 	assert(range.contains(-4));
 	assert(range.contains(2));
 	assert(!range.contains(3));
+
+	range = { 2, 4 };
+	int[] array = { 5, 6, 9, 1, 2, 8, 4 };
+	assert(range.slice_from(array) == { 9, 1, 2 });
 }
 
 fn void test_exrange()
@@ -32,5 +36,9 @@ fn void test_exrange()
 	assert(range.contains(-4));
 	assert(range.contains(1));
 	assert(!range.contains(2));
+
+	range = { 2, 4 };
+	int[] array = { 5, 6, 9, 1, 2, 8, 4 };
+	assert(range.slice_from(array) == { 9, 1 });
 }
 
