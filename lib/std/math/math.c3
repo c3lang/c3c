@@ -70,6 +70,15 @@ enum RoundingMode : int
 	TOWARD_NEG_INFINITY
 }
 
+enum FloatClassification : int
+{
+	NORMAL,
+	DENORMAL,
+	ZERO,
+	INFINITY,
+	NAN
+}
+
 faultdef OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST, NO_INTERSECTION;
 
 <*
@@ -633,6 +642,17 @@ macro bool is_denorm(x)
 	$default:
 		return bitcast((double)x, ulong) & (~0UL >> 1) < 0x001UL << 52;
 	$endswitch
+}
+
+<*
+ @require values::@is_promotable_to_float(x) : `The input must be a float`
+*>
+macro FloatClassification classify(x) {
+	if (x == 0) return ZERO;
+	if (is_nan(x)) return NAN;
+	if (is_inf(x)) return INFINITY;
+	if (is_denorm(x)) return DENORMAL;
+	return NORMAL;
 }
 
 <*
