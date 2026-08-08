@@ -647,7 +647,8 @@ macro bool is_denorm(x)
 <*
  @require values::@is_promotable_to_float(x) : `The input must be a float`
 *>
-macro FloatClassification classify(x) {
+macro FloatClassification classify(x)
+{
 	if (x == 0) return ZERO;
 	if (is_nan(x)) return NAN;
 	if (is_inf(x)) return INFINITY;
