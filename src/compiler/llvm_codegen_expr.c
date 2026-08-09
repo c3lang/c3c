@@ -442,11 +442,11 @@ LLVMTypeRef llvm_coerce_expand_hi_offset(GenContext *c, LLVMValueRef *addr, ABIA
 	if (info->coerce_expand.packed)
 	{
 		*align = type_min_alignment(*align, *align + info->coerce_expand.offset_hi);
-		llvm_emit_const_ptradd_inbounds_raw(c, *addr, info->coerce_expand.offset_hi);
+		*addr = llvm_emit_const_ptradd_inbounds_raw(c, *addr, info->coerce_expand.offset_hi);
 		return type2;
 	}
 	*align = type_min_alignment(*align, *align + llvm_store_size(c, type2) * info->coerce_expand.offset_hi);
-	llvm_emit_const_ptradd_inbounds_raw(c, *addr, type_size(info->coerce_expand.hi) * info->coerce_expand.offset_hi);
+	*addr = llvm_emit_const_ptradd_inbounds_raw(c, *addr, type_size(info->coerce_expand.hi) * info->coerce_expand.offset_hi);
 	return type2;
 }
 /**
