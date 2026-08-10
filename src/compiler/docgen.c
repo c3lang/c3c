@@ -910,18 +910,20 @@ static bool emit_doc_comments(JsonEmitter *e, Decl *decl)
 {
 	if (!decl) return false;
 
+	bool is_func_alias = decl->decl_kind == DECL_TYPE_ALIAS && decl->type_alias_decl.is_func;
 	DeclId docs_id = decl->docs;
-	if (!docs_id && decl->decl_kind == DECL_TYPE_ALIAS && decl->type_alias_decl.is_func && decl->type_alias_decl.decl)
+	if (!docs_id && is_func_alias && decl->type_alias_decl.decl)
 	{
 		docs_id = decl->type_alias_decl.decl->docs;
 	}
 	Decl *contract = (decl->decl_kind == DECL_CONTRACT) ? decl : get_contract_decl(docs_id);
 	const char *deprecated = (decl->resolved_attributes && decl->attrs_resolved) ? decl->attrs_resolved->deprecated : NULL;
 
+	bool is_callable = decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO || decl->decl_kind == DECL_FNTYPE || is_func_alias;
 	bool has_docs = (deprecated != NULL);
 	if (contract)
 	{
-		if (contract->contracts_decl.comment || contract->contracts_decl.return_desc || contract->contracts_decl.pure || vec_size(contract->contracts_decl.params) > 0)
+		if (contract->contracts_decl.comment || (is_callable && contract->contracts_decl.return_desc) || contract->contracts_decl.pure || vec_size(contract->contracts_decl.params) > 0)
 		{
 			has_docs = true;
 		}
@@ -943,7 +945,7 @@ static bool emit_doc_comments(JsonEmitter *e, Decl *decl)
 			json_write_prop_string(e, "text", contract->contracts_decl.comment);
 		}
 
-		if (contract->contracts_decl.return_desc)
+		if (is_callable && contract->contracts_decl.return_desc)
 		{
 			json_write_prop_string(e, "return", contract->contracts_decl.return_desc);
 		}
