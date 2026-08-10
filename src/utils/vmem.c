@@ -97,12 +97,7 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	return ptr;
 }
 
-#if defined(__EMSCRIPTEN__)
-// Emscripten/WASM has a strict address space constraint; limit per-arena allocations to 128MB.
-size_t max = 128;
-#else
 size_t max = 0x10000000;
-#endif
 void vmem_set_max_limit(size_t size_in_mb)
 {
 	max = size_in_mb;
