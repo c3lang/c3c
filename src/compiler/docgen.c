@@ -19,10 +19,14 @@ typedef enum
 static const char *category_names[DOC_CAT_COUNT] = {"functions", "methods", "macros", "attrdefs", "macro_methods", "types", "variables"};
 static Module **all_modules = NULL;
 
+#define JSON_MAX_DEPTH 32
+#define TRUNCATE_MAX_LEN 512
+#define TRUNCATE_HALF_LEN (TRUNCATE_MAX_LEN / 2)
+
 typedef struct
 {
 	FILE *file;
-	bool first_stack[32];
+	bool first_stack[JSON_MAX_DEPTH];
 	int depth;
 } JsonEmitter;
 
@@ -45,14 +49,24 @@ static inline void json_comma(JsonEmitter *e)
 static inline void json_start_object_val(JsonEmitter *e)
 {
 	fputs("{", e->file);
-	if (e->depth < 31) e->depth++;
+	if (e->depth >= JSON_MAX_DEPTH - 1)
+	{
+		fflush(e->file);
+		error_exit("\nError: JSON emitter exceeded maximum nesting depth.");
+	}
+	e->depth++;
 	e->first_stack[e->depth] = true;
 }
 
 static inline void json_start_array_val(JsonEmitter *e)
 {
 	fputs("[", e->file);
-	if (e->depth < 31) e->depth++;
+	if (e->depth >= JSON_MAX_DEPTH - 1)
+	{
+		fflush(e->file);
+		error_exit("\nError: JSON emitter exceeded maximum nesting depth.");
+	}
+	e->depth++;
 	e->first_stack[e->depth] = true;
 }
 
@@ -79,7 +93,12 @@ static inline void json_start_object_prop(JsonEmitter *e, const char *key)
 static inline void json_end_object(JsonEmitter *e)
 {
 	fputs("}", e->file);
-	if (e->depth > 0) e->depth--;
+	if (e->depth == 0)
+	{
+		fflush(e->file);
+		error_exit("\nError: JSON emitter depth underflow.");
+	}
+	e->depth--;
 }
 
 static inline void json_start_array_prop(JsonEmitter *e, const char *key)
@@ -97,7 +116,12 @@ static inline void json_start_array(JsonEmitter *e)
 static inline void json_end_array(JsonEmitter *e)
 {
 	fputs("]", e->file);
-	if (e->depth > 0) e->depth--;
+	if (e->depth == 0)
+	{
+		fflush(e->file);
+		error_exit("\nError: JSON emitter depth underflow.");
+	}
+	e->depth--;
 }
 
 static inline void json_write_prop_string(JsonEmitter *e, const char *key, const char *str)
@@ -124,19 +148,44 @@ static void truncate_scratch_buffer_middle(void)
 {
 	const char *str = scratch_buffer_to_string();
 	size_t len = strlen(str);
-	if (len <= 512) return;
+	if (len <= TRUNCATE_MAX_LEN) return;
 
-	char head[257];
-	char tail[257];
-	memcpy(head, str, 256);
-	head[256] = '\0';
-	memcpy(tail, str + len - 256, 256);
-	tail[256] = '\0';
+	size_t head_len = TRUNCATE_HALF_LEN;
+	while (head_len > 0 && ((unsigned char)str[head_len] & 0xC0) == 0x80)
+	{
+		head_len--;
+	}
+	if (head_len < TRUNCATE_HALF_LEN && ((unsigned char)str[head_len] & 0x80) != 0)
+	{
+		unsigned char c = (unsigned char)str[head_len];
+		size_t char_len = 1;
+		if      ((c & 0xE0) == 0xC0) char_len = 2;
+		else if ((c & 0xF0) == 0xE0) char_len = 3;
+		else if ((c & 0xF8) == 0xF0) char_len = 4;
+		if (head_len + char_len <= TRUNCATE_HALF_LEN)
+		{
+			head_len += char_len;
+		}
+	}
+
+	size_t tail_start = len - TRUNCATE_HALF_LEN;
+	while (tail_start < len && ((unsigned char)str[tail_start] & 0xC0) == 0x80)
+	{
+		tail_start++;
+	}
+
+	char head[TRUNCATE_HALF_LEN + 1];
+	char tail[TRUNCATE_HALF_LEN + 1];
+	memcpy(head, str, head_len);
+	head[head_len] = '\0';
+	size_t tail_len = len - tail_start;
+	memcpy(tail, str + tail_start, tail_len);
+	tail[tail_len] = '\0';
 
 	scratch_buffer_clear();
-	scratch_buffer_append_len(head, 256);
+	scratch_buffer_append_len(head, head_len);
 	scratch_buffer_append("\n...\n");
-	scratch_buffer_append_len(tail, 256);
+	scratch_buffer_append_len(tail, tail_len);
 }
 
 static void write_expr_source_json(FILE *file, Expr *expr)
@@ -804,11 +853,8 @@ static void emit_normal_attrs(JsonEmitter *e, Decl *decl)
 			json_start_array_prop(e, "attributes");         \
 			has_attrs = true;                               \
 		}                                                   \
-		else                                                \
-		{                                                   \
-			fputs(",", e->file);                            \
-		}                                                   \
-		fputs("\"@" name "\"", e->file);                    \
+		json_comma(e);                                      \
+		json_write_string(e->file, "@" name);               \
 	}
 
 	EMIT_ATTR(decl->is_export, "export")
