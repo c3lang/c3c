@@ -1,0 +1,12 @@
+module test;
+import foo;
+fn void main()
+{
+	foreach (foo::Foo f : { (Foo)1 })
+	{
+	}
+}
+
+module foo;
+
+typedef Foo = int;
