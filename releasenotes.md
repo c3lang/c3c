@@ -50,6 +50,7 @@
 - Using io::struct_to_format with `$force_dump = true` failed to compile.
 - `$foo += 1` would not do a copy, leading to incorrect update of `$foo`. #3400
 - `foreach (foo::Type t : x)` would not parse properly. #3423
+- Docgen improvements and fixes: emit `attrdef` declarations/docs, include `alias` doc comments, render `@return` contracts, exclude `compiler_rt` when `--emit-stdlib=no`, and omit empty JSON fields for slimmer output #3422.
 
 ## 0.8.2 Change list
 
