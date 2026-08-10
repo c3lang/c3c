@@ -357,6 +357,10 @@ Expr* parse_constant_expr(ParseContext *c)
 	return parse_precedence(c, PREC_ASSIGNMENT + 1);
 }
 
+Expr *parse_type_or_identifier(ParseContext *c)
+{
+	return parse_precedence(c, PREC_PRIMARY);
+}
 /**
  * param_path ::= ('[' expr ']' | '.' IDENT)*
  *

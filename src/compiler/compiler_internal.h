@@ -3845,6 +3845,13 @@ INLINE bool expr_is_named_param(Expr *expr)
 	return expr->expr_kind == EXPR_NAMED_ARGUMENT || expr->expr_kind == EXPR_NAMED_EVAL_ARGUMENT;
 }
 
+INLINE bool expr_is_plain_identifier(Expr *expr)
+{
+	return expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER
+		&& !expr->unresolved_ident_expr.is_const
+		&& !expr->unresolved_ident_expr.path;
+}
+
 INLINE bool expr_is_addr(Expr *expr)
 {
 	return expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_ADDR;

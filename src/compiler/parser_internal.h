@@ -35,6 +35,7 @@ TypeInfo *parse_type(ParseContext *c);
 TypeInfo *parse_optional_type(ParseContext *c);
 TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
+Expr *parse_type_or_identifier(ParseContext *c);
 
 Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern);
 Expr *parse_integer(ParseContext *c, Expr *left, SourceLoc *lhs_start);
