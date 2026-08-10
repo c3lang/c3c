@@ -27,6 +27,7 @@
 - `json::temp_load` deprecated in favour of `json::tload`.
 - `Object::is_map` now returns true for empty objects.
 - Add `range::upto`, `range::inclusive` and `range::exclusive` macros.
+- `DateTime` enable comparison operators.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374
