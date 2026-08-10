@@ -29,6 +29,15 @@ fn Type Range.get(&self, sz index) @operator([])
 	return (Type)(self.start + (Type)index);
 }
 
+fn Type[] Range.to_array(&self, Allocator allocator)
+{
+	sz len = self.len();
+	if (!len) return {};
+	Type[] result = alloc::alloc_array(allocator, Type, len);
+	foreach (i, value : self) result[i] = value;
+	return result;
+}
+
 fn sz? Range.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.printf("[%s..%s]", self.start, self.end)!;
@@ -62,6 +71,15 @@ fn sz? ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
 fn Type ExclusiveRange.get(&self, sz index) @operator([])
 {
 	return (Type)(self.start + (Type)index);
+}
+
+fn Type[] ExclusiveRange.to_array(&self, Allocator allocator)
+{
+	sz len = self.len();
+	if (!len) return {};
+	Type[] result = alloc::alloc_array(allocator, Type, len);
+	foreach (i, value : self) result[i] = value;
+	return result;
 }
 
 module std::collections::range;
