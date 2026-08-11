@@ -15,7 +15,7 @@ Precompiled binaries for the following operating systems are available:
 
 To build the compiler from source instead, see the [instructions for building C3 from source](#building-c3-from-source).
 
-<h3 align="center"><a href="https://c3-lang.org">[Read the C3 Manual]</a></h3>
+<h3 align="center"><a href="https://c3-lang.org">[Read the C3 Manual]</a> <a href="https://learn-c3.org">[Try it out in the browser]</a></h3>
 
 ---
 
@@ -146,8 +146,7 @@ fn void main()
 - Associated enum data
 - No preprocessor
 - Less undefined behaviour and added runtime checks in "safe" mode
-- Limited operator overloading to enable userland dynamic arrays
-- Optional pre and post conditions
+- Optional pre- and post conditions
 
 ### Current status
 
@@ -551,10 +550,10 @@ And honorable mention goes to past sponsors:
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=c3lang%2Fc3c&type=date&legend=top-left">
+<a href="https://star-history.dera.page/#c3lang/c3c&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=c3lang/c3c&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=c3lang/c3c&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=c3lang/c3c&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&legend=top-left" />
  </picture>
 </a>
