@@ -529,7 +529,7 @@ static inline LoopType loop_type_for_cond(Expr *cond, bool do_while)
 	return LOOP_NORMAL;
 }
 
-static void llmv_emit_for_cond(GenContext *c, Expr *cond, LLVMBasicBlockRef cond_block, LLVMBasicBlockRef loop_start_block, LLVMBasicBlockRef exit_block)
+static void llvm_emit_for_cond(GenContext *c, Expr *cond, LLVMBasicBlockRef cond_block, LLVMBasicBlockRef loop_start_block, LLVMBasicBlockRef exit_block)
 {
 	// Emit the block
 	llvm_emit_block(c, cond_block);
@@ -650,7 +650,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	ast->for_stmt.codegen.continue_block = continue_block;
 	ast->for_stmt.codegen.exit_block = exit_block;
 
-	if (start_with_cond) llmv_emit_for_cond(c, cond, cond_block, loop_start_block, exit_block);
+	if (start_with_cond) llvm_emit_for_cond(c, cond, cond_block, loop_start_block, exit_block);
 
 	// Emit the body
 	if (body_block)
@@ -686,7 +686,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 
 	if (!start_with_cond && cond_block)
 	{
-		llmv_emit_for_cond(c, cond, cond_block, loop_start_block, exit_block);
+		llvm_emit_for_cond(c, cond, cond_block, loop_start_block, exit_block);
 	}
 
 	// If the exit block is unused, just skip it.

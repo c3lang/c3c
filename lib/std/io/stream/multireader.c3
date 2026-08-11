@@ -45,24 +45,17 @@ fn void MultiReader.free(&self)
 
 fn sz? MultiReader.read(&self, char[] bytes) @dynamic
 {
-	InStream r = self.readers[self.index];
-	sz? n = r.read(bytes);
-	if (catch err = n)
+	if (!bytes) return 0;
+	while (true)
 	{
-		if (err != io::EOF) return err~;
+		if (self.index >= self.readers.len) return io::EOF~;
+		InStream r = self.readers[self.index];
+		if (sz n = read_buffer(r, bytes)!) return n;
 		self.index++;
-		if (self.index >= self.readers.len)
-		{
-				return io::EOF~;
-		}
-		return self.read(bytes);
 	}
-	return n;
 }
 
 fn char? MultiReader.read_byte(&self) @dynamic
 {
-	char[1] data;
-	self.read(data[..])!;
-	return data[0];
+	return read_byte_using_read(self);
 }
