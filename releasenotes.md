@@ -30,6 +30,7 @@
 - Add `range::upto`, `range::inclusive` and `range::exclusive` macros.
 - Add `io::read_buffer`.
 - `DateTime` enable comparison operators.
+- Add `Range.to_array` and `ExclusiveRange.to_array` methods.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374
