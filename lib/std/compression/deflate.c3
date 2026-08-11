@@ -188,12 +188,7 @@ fn sz? Inflater.read(&self, char[] buffer) @dynamic
 
 fn char? Inflater.read_byte(&self) @dynamic
 {
-	char[1] b;
-	if (try n = self.read(&b) && n > 0)
-	{
-		return b[0];
-	}
-	return io::EOF~;
+	return io::read_byte_using_read(self);
 }
 
 fn void? Inflater.close(&self) @dynamic
@@ -258,15 +253,8 @@ fn void? compress_stream(Allocator allocator, InStream input, OutStream output)
 	char[] buf = alloc::alloc_array(allocator, char, 32768);
 	defer alloc::free(allocator, buf);
 
-	while (true)
+	while (sz n = io::read_buffer(input, buf)!)
 	{
-		sz? n = input.read(buf[..]);
-		if (catch err = n)
-		{
-			if (err == io::EOF) break;
-			return err~;
-		}
-		if (n == 0) break;
 		deflater.write(buf[:n])!;
 	}
 }
