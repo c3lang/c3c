@@ -56,6 +56,7 @@
 - Several uses of InStream didn't properly handle io::EOF.
 - Fixes to memory handling during zip loading.
 - Multireader reading after a final empty read would crash.
+- RISC-V structs with mixed FP and integer fields were corrupted when passed or returned by value. #3428
 
 ## 0.8.2 Change list
 
