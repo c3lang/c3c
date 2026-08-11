@@ -29,6 +29,7 @@
 - `Object::is_map` now returns true for empty objects.
 - Add `range::upto`, `range::inclusive` and `range::exclusive` macros.
 - Add `io::read_buffer`.
+- `DateTime` enable comparison operators.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374

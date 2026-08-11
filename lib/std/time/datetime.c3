@@ -231,7 +231,7 @@ fn bool DateTime.after(&self, DateTime compare) @inline
 	return self.time > compare.time;
 }
 
-fn bool DateTime.before(&self, DateTime compare) @inline
+fn bool DateTime.before(&self, DateTime compare) @operator(<) @inline
 {
 	return self.time < compare.time;
 }
