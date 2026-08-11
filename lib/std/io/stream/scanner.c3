@@ -90,7 +90,7 @@ macro sz? _scanner_find(Scanner* self, buf, pattern) @private
 
 macro sz? _scanner_refill(Scanner* self, buf) @private
 {
-	sz n = read_buffer(self.wrapped_stream, buf)!;
+	sz n = read_buffer_to_end(self.wrapped_stream, buf).len!;
 	return n ?: NOT_FOUND~;
 }
 

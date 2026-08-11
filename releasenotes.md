@@ -57,6 +57,9 @@
 - Fixes to memory handling during zip loading.
 - Multireader reading after a final empty read would crash.
 - RISC-V structs with mixed FP and integer fields were corrupted when passed or returned by value. #3428
+- `io::read_all` didn't handle split data.
+- `Scanner` would not correctly handle chunked data.
+- `Gzip` reader couldn't handle a stream without seek.
 
 ## 0.8.2 Change list
 

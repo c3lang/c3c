@@ -276,7 +276,7 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 	if (!self.footer_verified)
 	{
 		self.unused_pos = 0;
-		self.unused_len = @catch(self.source.seek(0, FROM_CURSOR))
+		self.unused_len = !&self.source.seek || @catch(self.source.seek(0, FROM_CURSOR))
 			? self.inflater.copy_unused_input(self.bit_buf[:8192]) : 0;
 
 		self.inflater.close()!;
