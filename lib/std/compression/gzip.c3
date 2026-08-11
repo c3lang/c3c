@@ -119,10 +119,8 @@ fn void? uncompress_stream(OutStream writer, InStream src)
 fn void? do_uncompress(GzipReader* reader, OutStream writer) @private
 {
 	char[32768] buf;
-	while (true)
+	while (sz n = io::read_buffer(reader, &buf)!)
 	{
-		sz n = reader.read(buf[..])!;
-		if (n == 0) break;
 		writer.write(buf[:n])!;
 	}
 }
@@ -206,7 +204,7 @@ struct GzipReader (InStream)
 	InStream source;
 	Inflater* inflater;
 	Crc32 hasher;
-	usz total_out;
+	long total_out;
 	bool header_read;
 	bool footer_verified;
 	GzipMetadata metadata;
@@ -227,9 +225,8 @@ fn sz? read_source(GzipReader* self, char[] bytes) @private
 	}
 	while (copied < bytes.len)
 	{
-		sz n;
-		if (@try_catch(n, self.source.read(bytes[copied..]), io::EOF)!) break;
-		if (n == 0) break;
+		sz n = io::read_buffer(self.source, bytes[copied..])!;
+		if (!n) break;
 		copied += n;
 	}
 	return copied;
@@ -254,6 +251,7 @@ fn void GzipReader.free_metadata(&self, Allocator allocator)
 fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 {
 	if (!self.source) return io::EOF~;
+	if (!bytes.len) return 0;
 	if (self.footer_verified) return 0;
 
 	if (!self.header_read)
@@ -266,17 +264,12 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 		self.inflater.init(self.source, self.bit_buf[:8192]);
 	}
 
-	sz? n_res = self.inflater.read(bytes);
-	if (catch err = n_res)
-	{
-		return err~;
-	}
+	sz n = io::read_buffer(self.inflater, bytes)!;
 
-	sz n = n_res;
 	if (n > 0)
 	{
 		self.hasher.update(bytes[:n]);
-		self.total_out += (usz)n;
+		self.total_out += n;
 		return n;
 	}
 
@@ -294,7 +287,7 @@ fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 		uint isize_stored = ((UIntLE*)&footer[4]).val;
 
 		if (crc_stored != self.hasher.final()) return CORRUPT_DATA~;
-		if (isize_stored != (uint)(self.total_out & uint::max)) return CORRUPT_DATA~;
+		if (isize_stored != (uint)((ulong)self.total_out & uint::max)) return CORRUPT_DATA~;
 
 		self.footer_verified = true;
 
@@ -402,10 +395,7 @@ fn void? GzipReader.close(&self) @dynamic
 
 fn char? GzipReader.read_byte(&self) @dynamic
 {
-	char[1] b;
-	sz n = self.read(b[..])!;
-	if (n == 0) return io::EOF~;
-	return b[0];
+	return io::read_byte_using_read(self);
 }
 
 fn String? read_null_terminated(GzipReader* self, ByteWriter* h) @private

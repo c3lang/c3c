@@ -37,6 +37,5 @@ fn sz? TeeReader.read(&self, char[] bytes) @dynamic
 fn char? TeeReader.read_byte(&self) @dynamic
 {
 	char[1] data;
-	self.read(data[..])!;
-	return data[0];
+	return self.read(data[..])! ? data[0] : io::EOF~;
 }
