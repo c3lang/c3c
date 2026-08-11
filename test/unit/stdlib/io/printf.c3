@@ -151,3 +151,69 @@ fn void printf_char_utf8_boundaries()
 	assert(s10000.len == 4 && s10000[0] == 0xF0 && s10000[1] == 0x90
 		&& s10000[2] == 0x80 && s10000[3] == 0x80);
 }
+
+fn void printf_returns_padded_length()
+{
+	String[*] formats = {
+		"%d", "%3d", "%5d", "%-5d", "%05d", "%+5d", "% 5d",
+		"%x", "%3x", "%-6x", "%#6x",
+		"%o", "%5o", "%b", "%8b",
+		"%5s", "%-5s", "%8.2f",
+	};
+	foreach (f : formats)
+	{
+		@pool()
+		{
+			DString s;
+			s.tinit();
+			sz reported = s.appendf(f, 42)!!;
+			assert(reported == s.len(),
+				"format '%s' wrote '%s' (%d chars) but reported %d",
+				f, s.str_view(), s.len(), reported);
+		};
+	}
+}
+
+fn void printf_returns_padded_length_negative()
+{
+	// A sign consumes part of the width; the count must still match.
+	String[*] formats = { "%d", "%5d", "%-5d", "%05d", "%6.3d" };
+	foreach (f : formats)
+	{
+		@pool()
+		{
+			DString s;
+			s.tinit();
+			sz reported = s.appendf(f, -42)!!;
+			assert(reported == s.len(),
+				"format '%s' wrote '%s' (%d chars) but reported %d",
+				f, s.str_view(), s.len(), reported);
+		};
+	}
+}
+
+fn void printf_returns_length_when_value_wider_than_width()
+{
+	// Width smaller than the value: no padding, count is just the digits.
+	@pool()
+	{
+		DString s;
+		s.tinit();
+		sz reported = s.appendf("%2d", 123456)!!;
+		assert(s.str_view() == "123456", "got '%s'", s.str_view());
+		assert(reported == 6, "reported %d", reported);
+	};
+}
+
+fn void printf_returns_padded_length_zero_value()
+{
+	// Zero has an empty digit buffer on some paths; padding must still count.
+	@pool()
+	{
+		DString s;
+		s.tinit();
+		sz reported = s.appendf("%4d", 0)!!;
+		assert(s.str_view() == "   0", "got '%s'", s.str_view());
+		assert(reported == 4, "reported %d", reported);
+	};
+}

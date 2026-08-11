@@ -50,6 +50,7 @@ fn char[]? Scanner.scan(&self, String pattern = "\n")
 	if (self.read_idx == 0)
 	{
 		// First read.
+		assert(self.buf);
 		self.read_idx = _scanner_refill(self, self.buf)!;
 		self.pattern_idx = 0;
 	}
@@ -89,13 +90,8 @@ macro sz? _scanner_find(Scanner* self, buf, pattern) @private
 
 macro sz? _scanner_refill(Scanner* self, buf) @private
 {
-	sz? n = self.wrapped_stream.read(buf);
-	if (catch err = n)
-	{
-		if (err == io::EOF) return NOT_FOUND~;
-		return err~;
-	}
-	return n;
+	sz n = read_buffer_to_end(self.wrapped_stream, buf).len!;
+	return n ?: NOT_FOUND~;
 }
 
 fn sz? Scanner.read(&self, char[] bytes) @dynamic

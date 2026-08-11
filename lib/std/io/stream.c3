@@ -1,8 +1,6 @@
 module std::io;
 import std::math;
 
-
-
 alias SeekFn = fn void?(void*, long offset, SeekOrigin whence = FROM_START);
 alias WriteFn = fn sz?(void*, char[] bytes);
 alias WriteByteFn = fn void?(void*, char c);
@@ -87,13 +85,27 @@ macro sz? write_any(stream, any ref)
 
 <*
  @require @is_instream(stream)
+ @return? read_buffer_to_end!
+ @return? UNEXPECTED_EOF : "If the buffer wasn't filled"
 *>
 macro sz? read_all(stream, char[] buffer)
 {
-	if (buffer.len == 0) return 0;
-	sz n = stream.read(buffer)!;
+	sz n = read_buffer_to_end(stream, buffer).len!;
 	if (n != buffer.len) return UNEXPECTED_EOF~;
 	return n;
+}
+
+<*
+ Read into a buffer, where reading an io::EOF returns 0.
+
+ @return "The number of bytes read, 0 if reading yields an io::EOF"
+ @require buffer.len > 0 : "The buffer may not be empty."
+*>
+macro sz? read_buffer(stream, char[] buffer)
+{
+	sz? read = stream.read(buffer);
+	if (catch err = read) return err == io::EOF ? 0 : err~;
+	return read;
 }
 
 macro char[]? read_buffer_to_end(stream, char[] buffer)
@@ -103,7 +115,7 @@ macro char[]? read_buffer_to_end(stream, char[] buffer)
 	sz read = 0;
 	while (read < len)
 	{
-		sz bytes_read = stream.read(buffer[read:len - read])!;
+		sz bytes_read = read_buffer(stream, buffer[read:len - read])!;
 		read += bytes_read;
 		if (!bytes_read) return buffer[:read];
 	}
@@ -190,9 +202,7 @@ macro void? write_byte_using_write(s, char c)
 macro char? read_byte_using_read(s)
 {
 	char[1] buffer;
-	sz read = s.read(&buffer)!;
-	if (read != 1) return io::EOF~;
-	return buffer[0];
+	return read_buffer(s, &buffer)! ? buffer[0] : io::EOF~;
 }
 
 alias ReadByteFn = fn char?();

@@ -1,11 +1,10 @@
 # C3 Language
 <img src="https://c3-lang.org/assets/logo.svg" align="right" height="120" />
 
-C3 is a programming language that builds on the syntax and semantics of the C language,
-with the goal of evolving it while still retaining familiarity for C programmers.
+C3 is a general-purpose programming language for building fast native software:
+applications, games, tools, servers, libraries, and systems.
 
-It's an evolution, not a revolution: the C-like
-for programmers who like C.
+It's an evolution, not a revolution: familiar C syntax and semantics, modernized for everyday development.
 
 Precompiled binaries for the following operating systems are available:
 
@@ -16,7 +15,7 @@ Precompiled binaries for the following operating systems are available:
 
 To build the compiler from source instead, see the [instructions for building C3 from source](#building-c3-from-source).
 
-<h3 align="center"><a href="https://c3-lang.org">[Read the C3 Manual]</a></h3>
+<h3 align="center"><a href="https://c3-lang.org">[Read the C3 Manual]</a> <a href="https://learn-c3.org">[Try it out in the browser]</a></h3>
 
 ---
 
@@ -39,7 +38,7 @@ A non-curated list of user written projects and other resources can be found [he
 - Learning C3 should be easy for a C programmer.
 - Data is inert.
 - Avoid "big ideas" & the "more is better" fallacy.
-- Introduce some higher level conveniences where the value is great.
+- Evolve C into an ergonomic language for modern application development.
 
 C3 owes its inspiration to the [C2 language](http://c2lang.org): to iterate on top of C without trying to be a
 whole new language.
@@ -147,8 +146,7 @@ fn void main()
 - Associated enum data
 - No preprocessor
 - Less undefined behaviour and added runtime checks in "safe" mode
-- Limited operator overloading to enable userland dynamic arrays
-- Optional pre and post conditions
+- Optional pre- and post conditions
 
 ### Current status
 
@@ -552,10 +550,10 @@ And honorable mention goes to past sponsors:
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=c3lang%2Fc3c&type=date&legend=top-left">
+<a href="https://star-history.dera.page/#c3lang/c3c&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=c3lang/c3c&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=c3lang/c3c&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=c3lang/c3c&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=c3lang/c3c&type=date&legend=top-left" />
  </picture>
 </a>

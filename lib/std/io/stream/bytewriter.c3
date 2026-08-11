@@ -96,9 +96,10 @@ fn long? ByteWriter.read_from(&self, InStream reader) @dynamic
 		{
 			if (available > sz::max) return OUT_OF_SPACE~;
 			self.ensure_capacity(self.index + (sz)available)!;
-			sz read = reader.read(self.bytes[self.index..])!;
-			self.index += read;
+			assert(self.bytes.len > self.index);
+			sz read = read_buffer(reader, self.bytes[self.index..])!;
 			if (!read) break;
+			self.index += read;
 		}
 		return (long)self.index - start_index;
 	}
@@ -117,7 +118,8 @@ fn long? ByteWriter.read_from(&self, InStream reader) @dynamic
 			len_to_read = self.bytes.len - self.index;
 		}
 		// Read into the rest of the buffer
-		sz read = reader.read(self.bytes[self.index..])!;
+		assert(self.bytes.len > self.index);
+		sz read = read_buffer(reader, self.bytes[self.index..])!;
 		self.index += read;
 		// Ok, we reached the end.
 		if (read < len_to_read) return (long)self.index - start_index;

@@ -87,6 +87,8 @@ else()
     else()
         if (APPLE)
             add_link_options("-Wl,-S")
+        elseif (EMSCRIPTEN)
+            add_link_options("-Wl,--strip-all")
         else()
             # This covers Linux, BSD, and MinGW on Windows
             add_link_options("-s")
@@ -180,7 +182,9 @@ if(C3_WITH_LLVM)
 
     if(C3_FETCH_LLVM)
         # 1. Determine local platform ID
-        if (WIN32)
+        if (EMSCRIPTEN)
+            set(C3_LLVM_PLATFORM "wasm32-emscripten")
+        elseif (WIN32)
             if (CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
                 set(C3_LLVM_PLATFORM "windows-aarch64")
             else()
@@ -211,7 +215,8 @@ if(C3_WITH_LLVM)
         # 2. Determine if we want Debug or Release
         set(C3_LLVM_SUFFIX "")
         set(C3_LLVM_TYPE "Release")
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        # WebAssembly debug LLVM builds are too large, so force the release LLVM even in Debug mode
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT EMSCRIPTEN)
             set(C3_LLVM_SUFFIX "-dbg")
             set(C3_LLVM_TYPE "Debug")
         endif()
@@ -240,6 +245,9 @@ if(C3_WITH_LLVM)
         set(CMAKE_PREFIX_PATH ${llvm_dir} ${CMAKE_PREFIX_PATH})
         set(LLVM_DIR "${llvm_dir}/lib/cmake/llvm")
         set(LLD_DIR "${llvm_dir}/lib/cmake/lld")
+        if (NOT C3_LLD_INCLUDE_DIR)
+            set(C3_LLD_INCLUDE_DIR "${llvm_dir}/include")
+        endif()
 
         # TEST: For Windows, we might need to add the bin dir to prefix path for find_package to work well
         if (WIN32)
@@ -271,7 +279,7 @@ if(C3_WITH_LLVM)
             list(APPEND LLVM_LIBRARY_DIRS /opt/homebrew/lib)
         endif()
 
-        if (EXISTS /usr/lib)
+        if (EXISTS /usr/lib AND NOT EMSCRIPTEN)
             # Some systems (such as Alpine Linux) seem to put some of the relevant
             # LLVM files in /usr/lib, but this doesn't seem to be included in the
             # value of LLVM_LIBRARY_DIRS.
@@ -590,6 +598,10 @@ if(C3_AVR_DISABLE)
 	target_compile_definitions(c3c PRIVATE AVR_DISABLE)
 endif()
 
+if(EMSCRIPTEN)
+	target_compile_definitions(c3c PRIVATE ARM_DISABLE AARCH64_DISABLE RISCV_DISABLE X86_DISABLE)
+endif()
+
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     # We are inside of a git repository so rebuilding the hash every time something changes.
     add_custom_command(
@@ -816,7 +828,6 @@ else()
         target_compile_options(c3c_wrappers PRIVATE -fno-rtti)
     endif()
     target_compile_options(c3c PRIVATE
-        -pthread
         -Wall
         -Werror
         -Wno-unknown-pragmas
@@ -826,7 +837,10 @@ else()
         -Wno-unused-parameter
         -Wno-char-subscripts
     )
-    target_link_options(c3c PRIVATE -pthread)
+    if (NOT EMSCRIPTEN)
+        target_compile_options(c3c PRIVATE -pthread)
+        target_link_options(c3c PRIVATE -pthread)
+    endif()
 endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
