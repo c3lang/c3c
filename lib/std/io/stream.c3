@@ -1,8 +1,6 @@
 module std::io;
 import std::math;
 
-
-
 alias SeekFn = fn void?(void*, long offset, SeekOrigin whence = FROM_START);
 alias WriteFn = fn sz?(void*, char[] bytes);
 alias WriteByteFn = fn void?(void*, char c);
@@ -87,11 +85,12 @@ macro sz? write_any(stream, any ref)
 
 <*
  @require @is_instream(stream)
+ @return? read_buffer_to_end!
+ @return? UNEXPECTED_EOF : "If the buffer wasn't filled"
 *>
 macro sz? read_all(stream, char[] buffer)
 {
-	if (buffer.len == 0) return 0;
-	sz n = stream.read(buffer)!;
+	sz n = read_buffer_to_end(stream, buffer).len!;
 	if (n != buffer.len) return UNEXPECTED_EOF~;
 	return n;
 }

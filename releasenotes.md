@@ -29,6 +29,7 @@
 - `Object::is_map` now returns true for empty objects.
 - Add `range::upto`, `range::inclusive` and `range::exclusive` macros.
 - Add `io::read_buffer`.
+- `DateTime` enable comparison operators.
 - Add `Range.to_array` and `ExclusiveRange.to_array` methods.
 
 ### Fixes
@@ -58,6 +59,10 @@
 - Fixes to memory handling during zip loading.
 - Multireader reading after a final empty read would crash.
 - RISC-V structs with mixed FP and integer fields were corrupted when passed or returned by value. #3428
+- `io::read_all` didn't handle split data.
+- `Scanner` would not correctly handle chunked data.
+- `Gzip` reader couldn't handle a stream without seek.
+- `io::printf("%3d", 1)` would return the wrong printed length. #3432
 
 ## 0.8.2 Change list
 

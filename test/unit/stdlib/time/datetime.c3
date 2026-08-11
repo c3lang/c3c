@@ -1,6 +1,8 @@
 module datetime_test @test;
 import std::time;
 
+$assert DateTime::is_ordered;
+
 fn void test_parse_and_add()
 {
 	DateTime d = datetime::at(1973, APRIL, 27);
@@ -58,6 +60,10 @@ fn void datetime_eq()
 
 	d2 = d2.add_days(6);
 	assert(d != d2);
+	assert(d < d2);
+	assert(d <= d2);
+	assert(d2 > d);
+	assert(d2 >= d);
 
 	d2 = d2.add_days(-5);
 	assert(d != d2);
