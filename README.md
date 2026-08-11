@@ -1,11 +1,10 @@
 # C3 Language
 <img src="https://c3-lang.org/assets/logo.svg" align="right" height="120" />
 
-C3 is a programming language that builds on the syntax and semantics of the C language,
-with the goal of evolving it while still retaining familiarity for C programmers.
+C3 is a general-purpose programming language for building fast native software:
+applications, games, tools, servers, libraries, and systems.
 
-It's an evolution, not a revolution: the C-like
-for programmers who like C.
+It's an evolution, not a revolution: familiar C syntax and semantics, modernized for everyday development.
 
 Precompiled binaries for the following operating systems are available:
 
@@ -39,7 +38,7 @@ A non-curated list of user written projects and other resources can be found [he
 - Learning C3 should be easy for a C programmer.
 - Data is inert.
 - Avoid "big ideas" & the "more is better" fallacy.
-- Introduce some higher level conveniences where the value is great.
+- Evolve C into an ergonomic language for modern application development.
 
 C3 owes its inspiration to the [C2 language](http://c2lang.org): to iterate on top of C without trying to be a
 whole new language.
