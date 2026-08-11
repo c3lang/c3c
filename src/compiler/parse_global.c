@@ -2580,6 +2580,8 @@ static inline Decl *parse_attrdef(ParseContext *c)
 	Attr **attributes = NULL;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
+	decl->docs = decl_from_contract_description(&c->contracts);
+
 	// Empty
 	if (try_consume(c, TOKEN_EOS)) return decl;
 

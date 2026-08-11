@@ -203,7 +203,7 @@ entry:
   %a = alloca %Double_double_s, align 8
   store double %0, ptr %a, align 8
   %ptradd = getelementptr inbounds i8, ptr %a, i32 8
-  store double %1, ptr %a, align 8
+  store double %1, ptr %ptradd, align 8
   ret void
 }
 
@@ -214,7 +214,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.1, i32 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i32 8
-  %1 = load double, ptr %literal, align 8
+  %1 = load double, ptr %ptradd, align 8
   %2 = insertvalue { double, double } undef, double %0, 0
   %3 = insertvalue { double, double } %2, double %1, 1
   ret { double, double } %3
@@ -226,7 +226,7 @@ entry:
   %a = alloca %Double_float_s, align 8
   store double %0, ptr %a, align 8
   %ptradd = getelementptr inbounds i8, ptr %a, i32 8
-  store float %1, ptr %a, align 8
+  store float %1, ptr %ptradd, align 8
   ret void
 }
 
@@ -237,7 +237,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.2, i32 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i32 8
-  %1 = load float, ptr %literal, align 8
+  %1 = load float, ptr %ptradd, align 8
   %2 = insertvalue { double, float } undef, double %0, 0
   %3 = insertvalue { double, float } %2, float %1, 1
   ret { double, float } %3
@@ -255,7 +255,7 @@ entry:
   %a = alloca %Double_int8_s, align 8
   store double %0, ptr %a, align 8
   %ptradd = getelementptr inbounds i8, ptr %a, i32 8
-  store i8 %1, ptr %a, align 8
+  store i8 %1, ptr %ptradd, align 8
   ret void
 }
 
@@ -266,7 +266,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.3, i32 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i32 8
-  %1 = load i8, ptr %literal, align 8
+  %1 = load i8, ptr %ptradd, align 8
   %2 = insertvalue { double, i8 } undef, double %0, 0
   %3 = insertvalue { double, i8 } %2, i8 %1, 1
   ret { double, i8 } %3
@@ -278,7 +278,7 @@ entry:
   %a = alloca %Double_uint8_s, align 8
   store double %0, ptr %a, align 8
   %ptradd = getelementptr inbounds i8, ptr %a, i32 8
-  store i8 %1, ptr %a, align 8
+  store i8 %1, ptr %ptradd, align 8
   ret void
 }
 
@@ -289,7 +289,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.4, i32 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i32 8
-  %1 = load i8, ptr %literal, align 8
+  %1 = load i8, ptr %ptradd, align 8
   %2 = insertvalue { double, i8 } undef, double %0, 0
   %3 = insertvalue { double, i8 } %2, i8 %1, 1
   ret { double, i8 } %3
@@ -301,7 +301,7 @@ entry:
   %a = alloca %Double_int32_s, align 8
   store double %0, ptr %a, align 8
   %ptradd = getelementptr inbounds i8, ptr %a, i32 8
-  store i32 %1, ptr %a, align 8
+  store i32 %1, ptr %ptradd, align 8
   ret void
 }
 
@@ -312,7 +312,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.5, i32 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i32 8
-  %1 = load i32, ptr %literal, align 8
+  %1 = load i32, ptr %ptradd, align 8
   %2 = insertvalue { double, i32 } undef, double %0, 0
   %3 = insertvalue { double, i32 } %2, i32 %1, 1
   ret { double, i32 } %3
@@ -368,7 +368,7 @@ entry:
   %a = alloca %Doublearr2_s, align 8
   store double %0, ptr %a, align 8
   %ptradd = getelementptr inbounds i8, ptr %a, i32 8
-  store double %1, ptr %a, align 8
+  store double %1, ptr %ptradd, align 8
   ret void
 }
 
@@ -379,7 +379,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.8, i32 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i32 8
-  %1 = load double, ptr %literal, align 8
+  %1 = load double, ptr %ptradd, align 8
   %2 = insertvalue { double, double } undef, double %0, 0
   %3 = insertvalue { double, double } %2, double %1, 1
   ret { double, double } %3
@@ -391,7 +391,7 @@ entry:
   %a = alloca %Doublearr2_tricky1_s, align 8
   store double %0, ptr %a, align 8
   %ptradd = getelementptr inbounds i8, ptr %a, i32 8
-  store double %1, ptr %a, align 8
+  store double %1, ptr %ptradd, align 8
   ret void
 }
 
@@ -402,7 +402,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.9, i32 16, i1 false)
   %0 = load double, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i32 8
-  %1 = load double, ptr %literal, align 8
+  %1 = load double, ptr %ptradd, align 8
   %2 = insertvalue { double, double } undef, double %0, 0
   %3 = insertvalue { double, double } %2, double %1, 1
   ret { double, double } %3
@@ -477,11 +477,11 @@ entry:
   %literal = alloca %Double_int32_s, align 8
   store double %7, ptr %h, align 8
   %ptradd = getelementptr inbounds i8, ptr %h, i32 8
-  store i32 %8, ptr %h, align 8
+  store i32 %8, ptr %ptradd, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.14, i32 16, i1 false)
   %9 = load double, ptr %literal, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %literal, i32 8
-  %10 = load i32, ptr %literal, align 8
+  %10 = load i32, ptr %ptradd1, align 8
   %11 = insertvalue { double, i32 } undef, double %9, 0
   %12 = insertvalue { double, i32 } %11, i32 %10, 1
   ret { double, i32 } %12
@@ -494,11 +494,11 @@ entry:
   %literal = alloca %Double_double_s, align 8
   store double %7, ptr %h, align 8
   %ptradd = getelementptr inbounds i8, ptr %h, i32 8
-  store i32 %8, ptr %h, align 8
+  store i32 %8, ptr %ptradd, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.15, i32 16, i1 false)
   %9 = load double, ptr %literal, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %literal, i32 8
-  %10 = load double, ptr %literal, align 8
+  %10 = load double, ptr %ptradd1, align 8
   %11 = insertvalue { double, double } undef, double %9, 0
   %12 = insertvalue { double, double } %11, double %10, 1
   ret { double, double } %12

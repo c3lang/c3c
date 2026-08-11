@@ -874,6 +874,10 @@ static void init_asm_x86(PlatformTarget* target)
 	// RDSEED
 	reg_instr_clob(target, "rdseed", cc_flag_mask, "w:r16/r32/r64");
 
+	// LGDT, LIDT
+	reg_instr(target, "lgdt", "mem");
+	reg_instr(target, "lidt", "mem");
+
 	target->clobber_name_list = X86ClobberNames;
 	target->extra_clobbers = "~{flags},~{dirflag},~{fspr}";
 	if (target->arch == ARCH_TYPE_X86)

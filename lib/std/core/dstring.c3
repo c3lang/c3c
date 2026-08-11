@@ -723,7 +723,8 @@ fn sz? DString.read_from_stream(&self, InStream reader)
 			if (available > sz::max) available = (ulong)sz::max;
 			self.reserve((sz)available);
 			StringData* data = self.data();
-			sz len = reader.read(data.chars[data.len..(data.capacity - 1)])!;
+			sz len = io::read_buffer(reader, data.chars[data.len..(data.capacity - 1)])!;
+			if (!len) break;
 			total_read += len;
 			data.len += len;
 		}
@@ -736,7 +737,7 @@ fn sz? DString.read_from_stream(&self, InStream reader)
 		self.reserve(16);
 		StringData* data = self.data();
 		// Read into the rest of the buffer
-		sz read = reader.read(data.chars[data.len..(data.capacity - 1)])!;
+		sz read = io::read_buffer(reader, data.chars[data.len..(data.capacity - 1)])!;
 		data.len += read;
 		total_read += read;
 		// Ok, we reached the end.
