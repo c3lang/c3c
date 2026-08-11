@@ -751,7 +751,7 @@ void compiler_compile(void)
 		{
 			const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
 			if (!file_executable_in_path(cc)) system_linker_available = false;
-			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && (!file_executable_in_path(cc) || !strstr(cc, "emcc")))
+			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && compiler.build.linker_type != LINKER_TYPE_BUILTIN && (!file_executable_in_path(cc) || !strstr(cc, "emcc")))
 			{
 				error_exit("\"emscripten\" target requires Emscripten to be installed on your system; \"%s\" was not found.", cc);
 			}
