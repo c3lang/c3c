@@ -14,6 +14,7 @@
 - Experimental support for `constset`, `cenum`, `faultconst`, `faultset`, `excuse`, `attrgroup`, `attrmacro`, `distinct`.
 - Defer resolution of typedef alignment and generics, allowing more recursive definitions.
 - Improve error message on multiple <* *> in a row. #2971
+- Add the `lgdt` and `lidt` instructions to x86 inline assembly.
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
