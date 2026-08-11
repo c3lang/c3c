@@ -60,6 +60,7 @@
 - `io::read_all` didn't handle split data.
 - `Scanner` would not correctly handle chunked data.
 - `Gzip` reader couldn't handle a stream without seek.
+- `io::printf("%3d", 1)` would return the wrong printed length. #3432
 
 ## 0.8.2 Change list
 

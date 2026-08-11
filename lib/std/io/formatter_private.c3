@@ -696,8 +696,8 @@ fn sz? formatter_ntoa_format(Formatter* f, String buf, sz len, bool negative, ui
 			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED~;
 			buf[len++] = ' ';
 	}
-	if (len) formatter_out_reverse(f, buf[:len])!;
-	return len;
+	if (!len) return 0;
+	return formatter_out_reverse(f, buf[:len])!;
 }
 
 
