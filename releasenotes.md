@@ -40,7 +40,6 @@
 - ThreadGroup with function returning `void` was broken.
 - Timed `tcp::connect` always failed with `io::GENERAL_ERROR` instead of the real result.
 - Compile time struct with zeroed union member access causes compiler error #3382.
-- RISC-V structs with mixed FP and integer fields were corrupted when passed or returned by value. #3428
 - Generic methods checked before the generic type is fully registered.
 - Math function `_erff` invoked C `erf` function instead of `erff` function #3391
 - Defining local constants inside a macro causes it to fail to @const fold. #3397
@@ -57,6 +56,7 @@
 - Several uses of InStream didn't properly handle io::EOF.
 - Fixes to memory handling during zip loading.
 - Multireader reading after a final empty read would crash.
+- RISC-V structs with mixed FP and integer fields were corrupted when passed or returned by value. #3428
 
 ## 0.8.2 Change list
 
