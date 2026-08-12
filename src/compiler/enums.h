@@ -273,6 +273,14 @@ typedef enum
 
 typedef enum
 {
+	STACK_PROBE_NOT_SET = -1,
+	STACK_PROBE_NONE = 0,
+	STACK_PROBE_CALL = 1,
+	STACK_PROBE_INLINE = 2,
+} StackProbe;
+
+typedef enum
+{
 	MEMORY_ENV_NOT_SET = -1,
 	MEMORY_ENV_NORMAL = 0,
 	MEMORY_ENV_SMALL = 1,

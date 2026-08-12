@@ -509,6 +509,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_if_updated(target->feature.win_debug, options->win_debug);
 	set_if_updated(target->linuxpaths.libc, options->linux_libc);
 	set_if_updated(target->feature.pass_win64_simd_as_arrays, options->win_64_simd);
+	set_if_updated(target->stack_probe, options->stack_probe);
 
 	OVERRIDE_IF_SET(output_dir);
 	OVERRIDE_IF_SET(panicfn);
@@ -521,6 +522,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
 	OVERRIDE_IF_SET(echo_prefix);
+	OVERRIDE_IF_SET(stack_probe_size);
 
 	OVERRIDE_IF_SET(macos.sysroot);
 	OVERRIDE_IF_SET(win.sdk);
@@ -550,6 +552,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (!target->max_stack_object_size) target->max_stack_object_size = DEFAULT_STACK_OBJECT_SIZE;
 	if (!target->max_macro_iterations) target->max_macro_iterations = DEFAULT_MAX_MACRO_ITERATIONS;
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
+
+	if (target->stack_probe == STACK_PROBE_NOT_SET) target->stack_probe = STACK_PROBE_CALL;
 
 	switch (target->validation_level)
 	{

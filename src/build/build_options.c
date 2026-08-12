@@ -198,6 +198,8 @@ static void usage(bool full)
 		print_opt("--max-vector-size <number>", "Set the maximum vector bit size to allow (default: 4096).");
 		print_opt("--max-stack-object-size <number>", "Set the maximum size of a stack object in KB (default: 128).");
 		print_opt("--max-macro-iterations <number>", "Set the maximum number of iterations in a macro loop (default: 1048575).");
+		print_opt("--stack-probe=<option>", "Set the stack argument probing mode: none, call (default), inline.");
+		print_opt("--stack-probe-size <number>", "Set the stack size threshold for argument probing in bytes (default: 4096).");
 		PRINTF("");
 		print_opt("--print-linking", "Print linker arguments.");
 		PRINTF("");
@@ -1321,6 +1323,26 @@ static void parse_option(BuildOptions *options)
 				options->riscv_abi = parse_opt_select(RiscvAbi, argopt, riscv_abi);
 				return;
 			}
+			if ((argopt = match_argopt("stack-probe")))
+			{
+				options->stack_probe = parse_opt_select(StackProbe, argopt, stack_probe);
+				if (options->stack_probe_size != DEFAULT_STACK_PROBE_SIZE)
+				{
+					PRINTF("WARNING: '--stack-probe-size' has no effect when '--stack-probe=none' is specified.");
+				}
+				return;
+			}
+			if (match_longopt("stack-probe-size"))
+			{
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				if (size < 0) error_exit("Expected a valid integer >= 0 for --stack-probe-size");
+				options->stack_probe_size = size;
+				if (options->stack_probe != STACK_PROBE_NOT_SET)
+				{
+					PRINTF("WARNING: '--stack-probe-size' has no effect when '--stack-probe=none' is specified.");
+				}
+				return;
+			}
 			if (match_longopt("cpu-flags"))
 			{
 				if (at_end()) error_exit("error: --cpu-flags expected a comma-separated list, like '+a,-b,+x'.");
@@ -1855,6 +1877,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
 		.linux_libc = LINUX_LIBC_NOT_SET,
+		.stack_probe = STACK_PROBE_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
 		.output_dir = NULL,

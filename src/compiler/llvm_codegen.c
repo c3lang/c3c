@@ -1243,6 +1243,20 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	LLVMValueRef function = decl->backend_ref;
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
+	if (compiler.build.stack_probe == STACK_PROBE_NONE)
+	{
+		llvm_attribute_add_string(c, function, "no-stack-arg-probe", "", -1);
+	}
+	else if (compiler.build.stack_probe == STACK_PROBE_INLINE) 
+	{
+		llvm_attribute_add_string(c, function, "probe-stack", "inline-asm", -1);
+	}
+	if (compiler.build.stack_probe_size != DEFAULT_STACK_PROBE_SIZE)
+	{
+		char probe_size_str[32];
+		snprintf(probe_size_str, 32, "%u", compiler.build.stack_probe_size);
+		llvm_attribute_add_string(c, function, "stack-probe-size", probe_size_str, -1);
+	}
 	if (c->debug.enable_stacktrace)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
