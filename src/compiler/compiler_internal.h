@@ -3355,7 +3355,7 @@ static bool type_has_inline(Type *type)
 static inline Type *type_inline(Type *type)
 {
 	assert(type_is_distinct_like(type));
-	return type->type_kind == TYPE_TYPEDEF ? type->decl->distinct->type : type->decl->enums.type_info->type;
+	return type->type_kind == TYPE_TYPEDEF ? type->decl->distinct->type->canonical : type->decl->enums.type_info->type->canonical;
 }
 
 
