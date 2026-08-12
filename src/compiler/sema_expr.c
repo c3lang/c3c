@@ -7901,10 +7901,10 @@ static bool sema_binary_analyse_ct_subscript_op_assign(SemaContext *context, Exp
 
 	BinaryOp op = binaryop_assign_base_op(expr->binary_expr.operator);
 	expr->binary_expr = (ExprBinary) { .left = exprid(value), .right = expr->binary_expr.right, .operator = op };
-	if (!sema_expr_analyse_binary(context, NULL, expr, NULL)) return false;
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	if (!sema_expr_analyse_ct_subscript_rhs(context, left_var, expr)) return false;
 	sema_expr_analyse_ct_subscript_set_value(left, left_var, expr);
 	return true;
-
 }
 
 static BoolErr sema_insert_overload_in_op_assign_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator, Type *lhs_type)

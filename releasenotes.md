@@ -64,6 +64,7 @@
 - `Gzip` reader couldn't handle a stream without seek.
 - `io::printf("%3d", 1)` would return the wrong printed length. #3432
 - Crash when using ternary operator with vector type and inline constdef #3433
+- Crash on assign-op to compile-time subscript with non-const result #3419
 
 ## 0.8.2 Change list
 
