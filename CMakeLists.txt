@@ -133,6 +133,7 @@ set(C3_OPTIONS
         C3_LLD_DIR
         C3_ENABLE_CLANGD_LSP
         LLVM_CRT_LIBRARY_DIR
+        C3_ARM_DISABLE
         C3_AVR_DISABLE
 )
 
@@ -591,6 +592,12 @@ add_executable(c3c
         src/utils/sucatalog.c
         src/utils/symlink.c
 )
+
+# Building C3 with llvm toolchains that don't have ARM Support
+if(C3_ARM_DISABLE)
+    message(STATUS "ARM support is disabled")
+	target_compile_definitions(c3c PRIVATE ARM_DISABLE)
+endif()
 
 # Building C3 with llvm toolchains that don't have AVR Support
 if(C3_AVR_DISABLE)
