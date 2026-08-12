@@ -200,6 +200,7 @@ static void usage(bool full)
 		print_opt("--max-macro-iterations <number>", "Set the maximum number of iterations in a macro loop (default: 1048575).");
 		print_opt("--stack-probe=<option>", "Set the stack argument probing mode: none, call (default), inline.");
 		print_opt("--stack-probe-size <number>", "Set the stack size threshold for argument probing in bytes (default: 4096).");
+		print_opt("--stack-protector=<option>", "Set the stack protection level: none, basic (default), strong, all.");
 		PRINTF("");
 		print_opt("--print-linking", "Print linker arguments.");
 		PRINTF("");
@@ -1343,6 +1344,11 @@ static void parse_option(BuildOptions *options)
 				}
 				return;
 			}
+			if ((argopt = match_argopt("stack-protector")))
+			{
+				options->stack_protector = parse_opt_select(StackProtector, argopt, stack_protector);
+				return;
+			}
 			if (match_longopt("cpu-flags"))
 			{
 				if (at_end()) error_exit("error: --cpu-flags expected a comma-separated list, like '+a,-b,+x'.");
@@ -1878,6 +1884,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.loop_vectorization = VECTORIZATION_NOT_SET,
 		.linux_libc = LINUX_LIBC_NOT_SET,
 		.stack_probe = STACK_PROBE_NOT_SET,
+		.stack_protector = STACK_PROTECTOR_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
 		.output_dir = NULL,

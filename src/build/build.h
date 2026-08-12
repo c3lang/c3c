@@ -309,6 +309,7 @@ typedef struct BuildOptions_
 	MemoryEnvironment memory_environment;
 	SanitizeMode sanitize_mode;
 	StackProbe stack_probe;
+	StackProtector stack_protector;
 	uint32_t stack_probe_size;
 	uint32_t max_vector_size;
 	uint32_t max_stack_object_size;
@@ -460,6 +461,7 @@ typedef struct
 	CompilerBackend backend;
 	LinkerType linker_type;
 	StackProbe stack_probe;
+	StackProtector stack_protector;
 	uint32_t stack_probe_size;
 	const char *cpu_flags;
 	uint32_t symtab_size;
@@ -596,6 +598,7 @@ static BuildTarget default_build_target = {
 		.switchjump_max_size = DEFAULT_SWITCH_JUMP_MAX_SIZE,
 		.quiet = false,
 		.stack_probe = STACK_PROBE_NOT_SET,
+		.stack_protector = STACK_PROTECTOR_NOT_SET,
 		.stack_probe_size = DEFAULT_STACK_PROBE_SIZE,
 };
 

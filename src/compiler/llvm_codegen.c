@@ -951,6 +951,8 @@ static void llvm_codegen_setup()
 	attribute_id.sext = lookup_attribute("signext");
 	attribute_id.sret = lookup_attribute("sret");
 	attribute_id.ssp = lookup_attribute("ssp");
+	attribute_id.sspstrong = lookup_attribute("sspstrong");
+	attribute_id.sspreq = lookup_attribute("sspreq");
 	attribute_id.target_features = lookup_attribute("target-features");
 	attribute_id.uwtable = lookup_attribute("uwtable");
 	attribute_id.writeonly = lookup_attribute("writeonly");
@@ -1257,12 +1259,28 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 		snprintf(probe_size_str, 32, "%u", compiler.build.stack_probe_size);
 		llvm_attribute_add_string(c, function, "stack-probe-size", probe_size_str, -1);
 	}
+	if (compiler.build.stack_protector != STACK_PROTECTOR_NONE)
+	{
+		switch (compiler.build.stack_protector)
+		{
+			case STACK_PROTECTOR_BASIC:
+				llvm_attribute_add(c, function, attribute_id.ssp, -1);
+				llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
+				break;
+			case STACK_PROTECTOR_STRONG:
+				llvm_attribute_add(c, function, attribute_id.sspstrong, -1);
+				break;
+			case STACK_PROTECTOR_ALL:
+				llvm_attribute_add(c, function, attribute_id.sspreq, -1);
+				break;
+			default:
+				UNREACHABLE_VOID;
+		}
+	}
 	if (c->debug.enable_stacktrace)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
-		llvm_attribute_add(c, function, attribute_id.ssp, -1);
 	}
-	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
 	int offset = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;
 
