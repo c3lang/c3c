@@ -60,7 +60,6 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_FAULTSET:
 			case TOKEN_FAULTCONST:
 			case TOKEN_FAULTDEF:
-			case TOKEN_EXCUSE:
 				return;
 			case TOKEN_CONST:
 			case TOKEN_ASM:
@@ -3680,11 +3679,16 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_FAULTSET:
 		case TOKEN_FAULTCONST:
 		case TOKEN_FAULTDEF:
-		case TOKEN_EXCUSE:
 			decl = parse_faultdef_declaration(c);
 			attach_contracts = true;
 			break;
 		case TOKEN_IDENT:
+			if (symstr(c) == kw_excuse)
+			{
+				decl = parse_faultdef_declaration(c);
+				attach_contracts = true;
+				break;
+			}
 			decl = parse_global_declaration(c);
 			attach_contracts = true;
 			break;

@@ -229,8 +229,6 @@ const char *token_type_to_string(TokenType type)
 			return "extern";
 		case TOKEN_FALSE:
 			return "false";
-		case TOKEN_EXCUSE:
-			return "excuse";
 		case TOKEN_FAULTDEF:
 			return "faultdef";
 		case TOKEN_FAULTCONST:

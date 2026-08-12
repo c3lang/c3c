@@ -1492,7 +1492,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_EQEQ:
 		case TOKEN_EXTERN:
 		case TOKEN_FAULTDEF:
-		case TOKEN_EXCUSE:
 		case TOKEN_FAULTSET:
 		case TOKEN_FAULTCONST:
 		case TOKEN_FN:

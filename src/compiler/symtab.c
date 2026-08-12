@@ -56,6 +56,7 @@ const char *kw_bitsize;
 const char *kw_cname;
 const char *kw_description;
 const char *kw_drop;
+const char *kw_excuse;
 const char *kw_generic_args;
 const char *kw_generic_qname;
 const char *kw_get;
@@ -167,6 +168,7 @@ void symtab_init(uint32_t capacity)
 	kw_cname = KW_DEF("cname");
 	kw_description = KW_DEF("description");
 	kw_drop = KW_DEF("drop");
+	kw_excuse = KW_DEF("excuse");
 	kw_generic_args = KW_DEF("generic_args");
 	kw_generic_qname = KW_DEF("generic_qname");
 	kw_get = KW_DEF("get");
