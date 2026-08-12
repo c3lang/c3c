@@ -22,7 +22,7 @@ struct OneShotChannelImpl @private
 
  Example:
  ```c3
- OneShotChannel{int}* channel = channel::new_one_shot(mem);
+ OneShotChannel{int}* channel = channel::create_one_shot(mem);
  defer channel.destroy();
 
  Thread thread;
