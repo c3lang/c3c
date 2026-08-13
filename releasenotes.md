@@ -1,5 +1,13 @@
 # C3C Release Notes
 
+## 0.8.4 Change list
+
+### Changes / improvements
+- Improved error message when providing an incorrect name for the panic function.
+
+### Stdlib changes
+### Fixes
+
 ## 0.8.3 Change list
 
 ### Changes / improvements
