@@ -1264,6 +1264,11 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 		snprintf(probe_size_str, 32, "%u", compiler.build.stack_probe_size);
 		llvm_attribute_add_string(c, function, "stack-probe-size", probe_size_str, -1);
 	}
+	if (c->debug.enable_stacktrace)
+	{
+		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
+		if (stack_protector == STACK_PROTECTOR_NOT_SET) stack_protector = STACK_PROTECTOR_BASIC;
+	}
 	switch (stack_protector)
 	{
 		case STACK_PROTECTOR_BASIC:
@@ -1278,10 +1283,6 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 			break;
 		default:
 			break;
-	}
-	if (c->debug.enable_stacktrace)
-	{
-		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
 	}
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
 	int offset = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;

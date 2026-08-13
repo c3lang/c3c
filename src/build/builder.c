@@ -555,7 +555,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
 
 	if (target->stack_probe == STACK_PROBE_NOT_SET) target->stack_probe = STACK_PROBE_CALL;
-	if (target->stack_protector == STACK_PROTECTOR_NOT_SET) target->stack_protector = STACK_PROTECTOR_BASIC;
 
 	switch (target->validation_level)
 	{
