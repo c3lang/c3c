@@ -230,8 +230,6 @@ macro void? protect(Vmem* mem, sz after) @local
 macro void unprotect(Vmem* mem, sz after) @local
 {
 	sz shift = mem.page_pot;
-	sz last_page = mem.last_page;
-	sz page_after = mem.last_page = (after + mem.pagesize - 1) >> shift;
 	$if $feat(ASAN):
 		asan::poison_memory_region(mem.memory.ptr + after, mem.allocated - after);
 	$else
@@ -240,12 +238,17 @@ macro void unprotect(Vmem* mem, sz after) @local
 			mem::set(mem.memory.ptr + after, 0xAA, mem.allocated - after);
 		}
 	$endif
-	if ((mem.options.shrink_on_reset || mem.options.protect_unused_pages) && page_after < last_page)
+	if ((mem.options.shrink_on_reset || mem.options.protect_unused_pages))
 	{
-		sz start = page_after << shift;
-		sz len = (last_page - page_after) << shift;
-		if (mem.options.shrink_on_reset) (void)mem.memory.decommit(start, len, false);
-		if (mem.options.protect_unused_pages) (void)mem.memory.protect(start, len, PROTECTED);
+		sz last_page = mem.last_page;
+		sz page_after = mem.last_page = (after + mem.pagesize - 1) >> shift;
+		if (page_after < last_page)
+		{
+			sz start = page_after << shift;
+			sz len = (last_page - page_after) << shift;
+			if (mem.options.shrink_on_reset) (void)mem.memory.decommit(start, len, false);
+			if (mem.options.protect_unused_pages) (void)mem.memory.protect(start, len, PROTECTED);
+		}
 	}
 	mem.allocated = after;
 }
