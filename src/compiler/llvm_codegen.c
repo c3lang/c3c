@@ -1244,14 +1244,19 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 
 	LLVMValueRef function = decl->backend_ref;
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
+	StackProbe stack_probe = (decl->func_decl.signature.attrs.stack_probe != STACK_PROBE_NOT_SET) ? decl->func_decl.signature.attrs.stack_probe : compiler.build.stack_probe;
+	StackProtector stack_protector = (decl->func_decl.signature.attrs.stack_protector != STACK_PROTECTOR_NOT_SET) ? decl->func_decl.signature.attrs.stack_protector : compiler.build.stack_protector;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
-	if (compiler.build.stack_probe == STACK_PROBE_NONE)
+	switch (stack_probe)
 	{
-		llvm_attribute_add_string(c, function, "no-stack-arg-probe", "", -1);
-	}
-	else if (compiler.build.stack_probe == STACK_PROBE_INLINE) 
-	{
-		llvm_attribute_add_string(c, function, "probe-stack", "inline-asm", -1);
+		case STACK_PROBE_NONE:
+			llvm_attribute_add_string(c, function, "no-stack-arg-probe", "", -1);
+			break;
+		case STACK_PROBE_INLINE:
+			llvm_attribute_add_string(c, function, "probe-stack", "inline-asm", -1);
+			break;
+		default:
+			break;
 	}
 	if (compiler.build.stack_probe_size != DEFAULT_STACK_PROBE_SIZE)
 	{
@@ -1259,23 +1264,20 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 		snprintf(probe_size_str, 32, "%u", compiler.build.stack_probe_size);
 		llvm_attribute_add_string(c, function, "stack-probe-size", probe_size_str, -1);
 	}
-	if (compiler.build.stack_protector != STACK_PROTECTOR_NONE)
+	switch (stack_protector)
 	{
-		switch (compiler.build.stack_protector)
-		{
-			case STACK_PROTECTOR_BASIC:
-				llvm_attribute_add(c, function, attribute_id.ssp, -1);
-				llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
-				break;
-			case STACK_PROTECTOR_STRONG:
-				llvm_attribute_add(c, function, attribute_id.sspstrong, -1);
-				break;
-			case STACK_PROTECTOR_ALL:
-				llvm_attribute_add(c, function, attribute_id.sspreq, -1);
-				break;
-			default:
-				UNREACHABLE_VOID;
-		}
+		case STACK_PROTECTOR_BASIC:
+			llvm_attribute_add(c, function, attribute_id.ssp, -1);
+			llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
+			break;
+		case STACK_PROTECTOR_STRONG:
+			llvm_attribute_add(c, function, attribute_id.sspstrong, -1);
+			break;
+		case STACK_PROTECTOR_ALL:
+			llvm_attribute_add(c, function, attribute_id.sspreq, -1);
+			break;
+		default:
+			break;
 	}
 	if (c->debug.enable_stacktrace)
 	{
