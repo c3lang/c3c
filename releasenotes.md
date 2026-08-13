@@ -6,7 +6,9 @@
 - Improved error message when providing an incorrect name for the panic function.
 
 ### Stdlib changes
+
 ### Fixes
+- Vmem incorrectly handled reserve page sizes.
 
 ## 0.8.3 Change list
 
