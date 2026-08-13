@@ -9,6 +9,7 @@
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
+- `@return` was accepted in doc comments for non-function/macro declarations.
 
 ## 0.8.3 Change list
 
