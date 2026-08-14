@@ -8,6 +8,7 @@
 #define LINES_SHOWN 4
 #define MAX_WIDTH 120
 #define MAX_ERROR_LEN 4096
+#define SHIFT_PADDING 20
 
 static void eprint_escaped_string(const char *message)
 {
@@ -90,12 +91,20 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 				UNREACHABLE_VOID
 		}
 	}
-	unsigned max_line_length = (unsigned)round(log10(location->row)) + 1;
-	unsigned max_lines_for_display = MAX_WIDTH - max_line_length - 2;
+
+	unsigned row_prefix_width = (unsigned)floor(log10(location->row)) + 1;
+	unsigned col_prefix_width = (unsigned)floor(log10(location->col)) + 1;
+
 	char number_buffer[20];
-	char number_buffer_elided[20];
-	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
-	snprintf(number_buffer_elided, 20, "%%%dd: %%.*s|\n", max_line_length);
+	char number_buffer_shifted[20];
+	snprintf(number_buffer, 20, " %%%dd: %%.*s", row_prefix_width);
+	snprintf(number_buffer_shifted, 20, " %%%dd+%%%dd: %%.*s", row_prefix_width, col_prefix_width);
+
+	row_prefix_width++; // add ':'
+	col_prefix_width++; // add '+'
+
+	const unsigned padded_spaces = 2;
+	unsigned display_line_width = MAX_WIDTH - row_prefix_width - padded_spaces;
 
 	// Insert end in case it's not yet there.
 
@@ -114,30 +123,56 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		}
 	}
 	int row_len = -1;
+	bool is_elided = false;
 	while (row <= display_row)
 	{
 		current += row_len + 1;
 		row_len = 0;
 		while (current[row_len] != '\n' && current[row_len]) row_len++;
-		if (row_len > max_lines_for_display)
+
+		is_elided = row_len > display_line_width;
+		const bool is_last_row = row == display_row;
+
+ 		const unsigned line_len = !is_elided ? row_len : display_line_width - (is_last_row ? 3 : 1);
+
+		eprintf(number_buffer, (int)row, line_len, current);
+		if (is_elided)
 		{
-			eprintf(number_buffer_elided, (int)row, max_lines_for_display - 1, current);
+			eprintf(is_last_row ? "..." : "|");
 		}
-		else
-		{
-			eprintf(number_buffer, (int)row, row_len, current);
-		}
+		eprintf("\n");
+
 		row++;
 	}
-	eprintf("  ");
-	for (unsigned i = 0; i < max_line_length; i++)
+
+	unsigned column = location->col;
+	bool needs_shift = column > display_line_width;
+
+	if (needs_shift)
 	{
-		eprintf(" ");
+		row--;
+		current += column - SHIFT_PADDING;
+		row_len = 0;
+		while (current[row_len] != '\n' && current[row_len]) row_len++;
+
+		is_elided = row_len > display_line_width;
+ 		const unsigned line_len = !is_elided ? row_len : display_line_width - col_prefix_width - 3;
+
+		eprintf(number_buffer_shifted, (int)row, (int)column, line_len, current);
+		if (is_elided)
+		{
+			eprintf("...");
+		}
+		eprintf("\n");
 	}
-	unsigned col_location = location->col;
-	if (!col_location || col_location > max_lines_for_display) col_location = 0;
-	unsigned space_to = col_location ? col_location : max_lines_for_display - 1;
-	for (unsigned i = 0; i < space_to - 1; i++)
+	
+	unsigned prefix_width = row_prefix_width + padded_spaces;
+	if (needs_shift) prefix_width += col_prefix_width;
+
+    eprintf("%*s", prefix_width, "");
+    unsigned space_to = (!needs_shift ? column : SHIFT_PADDING) - 1;
+
+	for (unsigned i = 0; i < space_to; i++)
 	{
 		unsigned char c = (unsigned char)current[i];
 		if (c == '\t')
@@ -149,50 +184,72 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 			if (c < 128 || (c & 0xC0) == 0xC0) eprintf(" ");
 		}
 	}
-	unsigned len = location->length;
-	if (!len) len = 1;
-	if (col_location)
+
+	unsigned highlighter_width = display_line_width - space_to - (needs_shift ? col_prefix_width : 0);
+	const bool is_multiline = location->length > row_len && row_len < display_line_width;
+
+	unsigned len = row_len - 1; // exclude '\n'
+	if (!is_multiline)
 	{
-		for (uint32_t i = 0; i < len; i++)
-		{
-			eprintf("^");
-		}
+		len = location->length > highlighter_width ? highlighter_width : location->length;
 	}
+
+	eprintf("^");
+	for (uint32_t i = 1; i < len; i++)
+	{
+		eprintf(is_elided ? "~" : "^");
+	}
+
+	if (is_multiline)
+	{
+		current += row_len + 1;
+
+		unsigned rows_left = 0;
+		const char *loc_end = file->contents + location->offset + location->length;
+		for (; current <= loc_end; current++)
+		{
+    		if (*current == '\n') rows_left++;
+		}
+		rows_left++;
+
+		eprintf(" (+%u lines)", rows_left);
+	}
+	
 	eprintf("\n");
 
 	bool ansi = use_ansi();
-	if (col_location)
+	if (column)
 	{
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
 				if (ansi)
 				{
-					eprintf("(%s:%d:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("(%s:%d:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location->row, column, message);
 				}
 				break;
 			case PRINT_TYPE_NOTE:
 				if (ansi)
 				{
-					eprintf("(%s:%d:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("(%s:%d:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
 				}
 				else
 				{
-					eprintf("(%s:%d:%d) Note: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("(%s:%d:%d) Note: %s\n\n", file->full_path, location->row, column, message);
 				}
 				break;
 			case PRINT_TYPE_WARN:
 				if (ansi)
 				{
-					eprintf("(%s:%d:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("(%s:%d:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d:%d) Warning: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("(%s:%d:%d) Warning: %s\n\n", file->full_path, location->row, column, message);
 				}
 				break;
 			default:
