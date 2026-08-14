@@ -1244,8 +1244,12 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 
 	LLVMValueRef function = decl->backend_ref;
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
-	StackProbe stack_probe = (decl->func_decl.signature.attrs.stack_probe != STACK_PROBE_NOT_SET) ? decl->func_decl.signature.attrs.stack_probe : compiler.build.stack_probe;
-	StackProtector stack_protector = (decl->func_decl.signature.attrs.stack_protector != STACK_PROTECTOR_NOT_SET) ? decl->func_decl.signature.attrs.stack_protector : compiler.build.stack_protector;
+	StackProbe stack_probe = (decl->attrs_resolved && decl->attrs_resolved->stack_probe != STACK_PROBE_NOT_SET) 
+				? decl->attrs_resolved->stack_probe
+				: compiler.build.stack_probe;
+	StackProtector stack_protector = (decl->attrs_resolved && decl->attrs_resolved->stack_protector != STACK_PROTECTOR_NOT_SET) 
+				? decl->attrs_resolved->stack_protector
+				: compiler.build.stack_protector;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
 	switch (stack_probe)
 	{

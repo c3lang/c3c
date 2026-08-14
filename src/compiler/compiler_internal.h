@@ -311,8 +311,6 @@ typedef struct
 	bool always_const : 1;
 	bool is_simd : 1;
 	uint8_t format : 8;
-	StackProbe stack_probe : 4;
-	StackProtector stack_protector : 4;
 } CalleeAttributes;
 
 typedef struct
@@ -411,6 +409,8 @@ typedef struct
 	const char *section;
 	const char *wasm_module;
 	SourceLocId overload;
+	StackProbe stack_probe;
+	StackProtector stack_protector;
 } ResolvedAttrData;
 
 typedef struct

@@ -424,8 +424,6 @@ static Expr *parse_lambda(ParseContext *c, Expr *left, SourceLoc *lhs_span UNUSE
 	func->decl_kind = DECL_FUNC;
 	func->visibility = VISIBLE_LOCAL;
 	func->func_decl.generated_lambda = NULL;
-	func->func_decl.signature.attrs.stack_probe = STACK_PROBE_NOT_SET;
-	func->func_decl.signature.attrs.stack_protector = STACK_PROTECTOR_NOT_SET;
 	TypeInfo *return_type = NULL;
 
 	// Two possibilities: "fn ()" and "fn int()"

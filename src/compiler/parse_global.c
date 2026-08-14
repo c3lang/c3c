@@ -2965,8 +2965,6 @@ static inline Decl *parse_func_definition(ParseContext *c, FunctionParse parse_k
 	func->decl_kind = DECL_FUNC;
 	func->docs = decl_from_contract_description(&c->contracts);
 	func->func_decl.attr_interface_method = parse_kind == FUNC_PARSE_INTERFACE;
-	func->func_decl.signature.attrs.stack_probe = STACK_PROBE_NOT_SET;
-	func->func_decl.signature.attrs.stack_protector = STACK_PROTECTOR_NOT_SET;
 	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
 	{
