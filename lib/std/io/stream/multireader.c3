@@ -6,7 +6,7 @@ module std::io;
  */
 struct MultiReader (InStream)
 {
-	InStream[] readers;
+	CachedInStream[] readers;
 	sz index;
 	Allocator allocator;
 }
@@ -20,8 +20,8 @@ struct MultiReader (InStream)
 *>
 fn MultiReader* MultiReader.init(&self, Allocator allocator, InStream... readers)
 {
-	InStream []copy = alloc::new_array(allocator, InStream, readers.len);
-	copy[..] = readers[..];
+	CachedInStream[] copy = alloc::new_array(allocator, CachedInStream, readers.len);
+	foreach (i, stream : readers) copy[i] = stream.cached_stream();
 	*self = { .readers = copy, .allocator = allocator };
 	return self;
 }
@@ -43,14 +43,13 @@ fn void MultiReader.free(&self)
 	*self = {};
 }
 
-fn sz? MultiReader.read(&self, char[] bytes) @dynamic
+fn sz? MultiReader.read(&self, char[] buffer) @dynamic
 {
-	if (!bytes) return 0;
 	while (true)
 	{
-		if (self.index >= self.readers.len) return io::EOF~;
+		if (self.index >= self.readers.len) return 0;
 		InStream r = self.readers[self.index];
-		if (sz n = read_buffer(r, bytes)!) return n;
+		if (sz n = read_buffer(r, buffer)!) return n;
 		self.index++;
 	}
 }

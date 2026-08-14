@@ -234,16 +234,9 @@ fn void multireader_skips_empty_and_repeats_eof()
 	@assert_drains(&mr, "XY", "MultiReader/empty");
 	// Reading past the end must stay at EOF, not run off the reader array.
 	char[4] buf;
-	test::@error(mr.read(&buf), io::EOF);
-	test::@error(mr.read(&buf), io::EOF);
+	test::eq(mr.read(&buf)!!, 0);
+	test::eq(mr.read(&buf)!!, 0);
 	test::@error(mr.read_byte(), io::EOF);
-	// A zero-length read must not consume a reader.
-	MultiReader mr2;
-	ByteReader z;
-	z.init((char[])"Z");
-	mr2.tinit(&z);
-	assert(mr2.read(buf[0:0])!! == 0);
-	assert(mr2.read(&buf)!! == 1);
 }
 
 fn void teereader_conformance()

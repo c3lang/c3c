@@ -19,9 +19,8 @@ fn ByteReader* ByteReader.init(&self, char[] bytes)
 
 fn sz? ByteReader.read(&self, char[] bytes) @dynamic
 {
-	if (self.index >= self.bytes.len) return io::EOF~;
 	sz len = min(self.bytes.len - self.index, bytes.len);
-	if (len == 0) return 0;
+	if (len < 1) return 0;
 	mem::copy(bytes.ptr, &self.bytes[self.index], len);
 	self.index += len;
 	return len;

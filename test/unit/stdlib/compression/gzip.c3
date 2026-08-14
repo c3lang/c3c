@@ -505,6 +505,6 @@ fn void gzip_read_after_close() @test
 
 		reader.close()!!;
 
-		test::@error(reader.read(buf[..]), io::EOF);
+		test::@error(reader.read(buf[..]), io::CLOSED);
 	};
 }

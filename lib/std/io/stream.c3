@@ -3,6 +3,7 @@ import std::math;
 
 alias SeekFn = fn void?(void*, long offset, SeekOrigin whence = FROM_START);
 alias WriteFn = fn sz?(void*, char[] bytes);
+alias ReadFn = fn sz?(void*, char[] buffer);
 alias WriteByteFn = fn void?(void*, char c);
 
 interface InStream
@@ -13,7 +14,25 @@ interface InStream
 	fn long len() @optional;
 	fn long? size() @optional;
 	fn long? available() @optional;
+
+	<*
+	 Read bytes into the buffer. Will return 0 upon encountering end of the stream/file.
+	 Reading after reaching the end should be idempotent. Reading 0 bytes should not
+	 touch the underlying stream.
+
+	 @param [inout] buffer : "The buffer to read into"
+	 @return "The number of bytes read, or 0 if the end of the stream is reached"
+
+	 @require buffer.len > 0 : "The buffer may not be zero length"
+	*>
 	fn sz? read(char[] buffer);
+	<*
+	 Read a single byte into the buffer. Will return io::EOF upon encountering the
+	 end of the stream/file.
+
+	 @return "A byte, read from the underlying stream"
+	 @return? io::EOF
+	*>
 	fn char? read_byte();
 	fn long? write_to(OutStream out) @optional;
 	fn void? pushback_byte() @optional;
@@ -29,6 +48,21 @@ interface OutStream
 	fn void? write_byte(char c);
 	fn long? read_to(InStream in) @optional;
 }
+
+struct CachedInStream
+{
+	inline InStream stream;
+	ReadFn read_fn;
+}
+
+struct CachedOutStream
+{
+	inline OutStream stream;
+	WriteFn write_fn;
+}
+
+macro CachedOutStream OutStream.cached_stream(self) => { self, &self.write };
+macro CachedInStream InStream.cached_stream(self) => { self, &self.read };
 
 fn long? available(InStream s)
 {
@@ -46,7 +80,7 @@ fn long? available(InStream s)
 
 macro bool @is_instream(#expr) @const
 {
-	return $defined(InStream i = #expr);
+	return $Typeof(#expr) == CachedInStream ||| $defined(InStream i = #expr);
 }
 
 macro bool @is_not_instream_if_ptr(#expr) @const
@@ -56,7 +90,7 @@ macro bool @is_not_instream_if_ptr(#expr) @const
 
 macro bool @is_outstream(#expr) @const
 {
-	return $defined(OutStream s = #expr);
+	return $Typeof(#expr) == CachedOutStream ||| $defined(OutStream s = #expr);
 }
 
 macro bool @is_not_outstream_if_ptr(#expr) @const
@@ -678,4 +712,14 @@ macro void? skip(stream, sz bytes)
 fn ByteReader wrap_bytes(char[] bytes)
 {
 	return { bytes, 0 };
+}
+
+macro sz? CachedOutStream.write(self, char[] bytes)
+{
+	return self.write_fn(self.ptr, bytes);
+}
+
+macro sz? CachedInStream.read(self, char[] buffer)
+{
+	return self.read_fn(self.ptr, buffer);
 }

@@ -129,6 +129,7 @@ macro sz entropy_syscall_id() @const
 *>
 fn void? unix_fallback(char[] buffer, bool timeout = false)
 {
+	if (!buffer) return;
 	File rnd_file = file::open("/dev/urandom", "r") ?? file::open("/dev/random", "r") ?? SECURE_RANDOM_UNAVAILABLE~!;
 	defer (void)rnd_file.close();
 	sz count;

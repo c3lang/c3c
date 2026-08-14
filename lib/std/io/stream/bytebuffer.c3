@@ -64,11 +64,12 @@ fn void? ByteBuffer.write_byte(&self, char c) @dynamic
 
 fn sz? ByteBuffer.read(&self, char[] bytes) @dynamic
 {
+	if (!bytes) return 0;
 	sz readable = self.write_idx - self.read_idx;
-	if (readable == 0)
+	if (!readable)
 	{
 		self.has_last = false;
-		return io::EOF~;
+		return 0;
 	}
 	sz n = min(readable, bytes.len);
 	bytes[:n] = self.bytes[self.read_idx:n];

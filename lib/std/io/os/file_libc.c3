@@ -77,7 +77,7 @@ fn void? native_fputc(CInt c, CFile stream) @inline
 fn sz? native_fread(CFile file, char[] buffer) @inline
 {
 	sz len = (sz)libc::fread(buffer.ptr, 1u, (usz)buffer.len, file);
-	if (!len && buffer.len)
+	if (!len)
 	{
 		if (libc::ferror(file)) return file_open_errno()~;
 	}
