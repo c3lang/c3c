@@ -5,7 +5,7 @@ module std::io;
  */
 struct MultiWriter (OutStream)
 {
-	OutStream[] writers;
+	CachedOutStream[] writers;
 	Allocator allocator;
 }
 
@@ -17,8 +17,8 @@ struct MultiWriter (OutStream)
 *>
 fn MultiWriter* MultiWriter.init(&self, Allocator allocator, OutStream... writers)
 {
-	OutStream[] copy = alloc::new_array(allocator, OutStream, writers.len);
-	copy[..] = writers[..];
+	CachedOutStream[] copy = alloc::new_array(allocator, CachedOutStream, writers.len);
+	foreach (i, stream : writers) copy[i] = stream.cached_stream();
 	*self = { .writers = copy, .allocator = allocator };
 	return self;
 }

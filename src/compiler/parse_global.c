@@ -60,7 +60,6 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_FAULTSET:
 			case TOKEN_FAULTCONST:
 			case TOKEN_FAULTDEF:
-			case TOKEN_EXCUSE:
 				return;
 			case TOKEN_CONST:
 			case TOKEN_ASM:
@@ -204,6 +203,7 @@ bool parse_attach_contracts(Decl *generics, ContractDescription *contracts)
 		}
 		return true;
 	}
+
 	if (contracts->first_non_require)
 	{
 		print_error_at(contracts->first_non_require, "Invalid constraint - only '@require' is valid for generic declarations and modules.");
@@ -2547,7 +2547,6 @@ static inline Decl *parse_alias_ident(ParseContext *c)
 
 	ASSIGN_EXPR_OR_RET(decl->define_decl.alias_expr, parse_expr(c), poisoned_decl);
 
-
 	if (!parse_attach_contracts(decl_template_get_generic(decl), &c->contracts)) return poisoned_decl;
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -3680,11 +3679,16 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_FAULTSET:
 		case TOKEN_FAULTCONST:
 		case TOKEN_FAULTDEF:
-		case TOKEN_EXCUSE:
 			decl = parse_faultdef_declaration(c);
 			attach_contracts = true;
 			break;
 		case TOKEN_IDENT:
+			if (symstr(c) == kw_excuse)
+			{
+				decl = parse_faultdef_declaration(c);
+				attach_contracts = true;
+				break;
+			}
 			decl = parse_global_declaration(c);
 			attach_contracts = true;
 			break;
@@ -3718,7 +3722,14 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 	}
 	if (!decl_ok(decl)) return decl;
 	attach_deprecation_from_contract(c, &c->contracts, decl);
-	if (attach_contracts && c->contracts.has_contracts && !parse_attach_contracts(decl_template_get_generic(decl), &c->contracts)) return poisoned_decl;
+	if (attach_contracts)
+	{
+		if (c->contracts.has_contracts && !parse_attach_contracts(decl_template_get_generic(decl), &c->contracts)) return poisoned_decl;
+		if (c->contracts.opt_returns || c->contracts.return_desc || c->contracts.params)
+		{
+			print_error_at(c->contracts.first_non_require, "'@param', '@return' and '@return?' can only be used with functions and macros.");
+		}
+	}
 	ASSERT(decl);
 	return decl;
 CONTRACT_NOT_ALLOWED:

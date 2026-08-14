@@ -350,9 +350,17 @@ static void assign_panicfn(void)
 	const char *panicfn = compiler.build.panicfn ? compiler.build.panicfn : "std::core::builtin::panic";
 	Path *path;
 	const char *ident;
-	if (sema_splitpathref(panicfn, strlen(panicfn), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
+	if (sema_splitpathref(panicfn, strlen(panicfn), &path, &ident) != TOKEN_IDENT)
 	{
-		error_exit("'%s' is not a valid panic function.", panicfn);
+		error_exit("'%s' does not seem to be the name of a valid panic function.", panicfn);
+	}
+	if (!ident)
+	{
+		error_exit("The name of the panic function, '%s' does not match any identifier found.", panicfn);
+	}
+	if (!path)
+	{
+		error_exit("The name of the panic function '%s' seems to missing the full path, something like 'foo::bar::panic' was expected.", panicfn);
 	}
 	Decl *decl = sema_find_decl_in_modules(compiler.context.module_list, path, ident);
 	if (!decl)

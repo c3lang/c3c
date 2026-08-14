@@ -1,0 +1,15 @@
+module test_asd;
+
+alias Rgba = char[<4>];
+
+constdef Color : inline Rgba
+{
+	A = { 1, 2, 3, 4 }
+}
+
+fn void main()
+{
+	bool cond = true;
+	Rgba raw = { 0, 0, 0, 0 };
+	Rgba c = cond ? raw : Color.A;
+}

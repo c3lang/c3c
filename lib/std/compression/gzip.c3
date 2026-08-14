@@ -250,8 +250,7 @@ fn void GzipReader.free_metadata(&self, Allocator allocator)
 
 fn sz? GzipReader.read(&self, char[] bytes) @dynamic
 {
-	if (!self.source) return io::EOF~;
-	if (!bytes.len) return 0;
+	if (!self.source) return io::CLOSED~;
 	if (self.footer_verified) return 0;
 
 	if (!self.header_read)

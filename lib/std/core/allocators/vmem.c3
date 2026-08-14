@@ -36,10 +36,10 @@ bitstruct VmemOptions : int
 *>
 fn void? Vmem.init(&self, sz preferred_size, sz reserve_page_size = 0, VmemOptions options = { true, true, env::COMPILER_SAFE_MODE }, sz min_size = 0)
 {
-	static sz page_size = 0;
-	if (!page_size) page_size = mem::os_pagesize();
-	if (page_size < reserve_page_size) page_size = reserve_page_size;
-	preferred_size = mem::aligned_offset(preferred_size, page_size);
+	static sz os_page_size = 0;
+	if (!os_page_size) os_page_size = mem::os_pagesize();
+	if (reserve_page_size < os_page_size) reserve_page_size = os_page_size;
+	preferred_size = mem::aligned_offset(preferred_size, reserve_page_size);
 	if (!min_size) min_size = max(preferred_size / 1024, 1);
 	VirtualMemory? memory = mem::OUT_OF_MEMORY~;
 	while (preferred_size >= min_size)
@@ -59,14 +59,14 @@ fn void? Vmem.init(&self, sz preferred_size, sz reserve_page_size = 0, VmemOptio
 		}
 	}
 	if (catch memory) return VMEM_RESERVE_FAILED~;
-	if (page_size > preferred_size) page_size = preferred_size;
+	if (reserve_page_size > preferred_size) reserve_page_size = preferred_size;
 	$if $feat(ASAN):
 		asan::poison_memory_region(memory.ptr, memory.size);
 	$endif
 	*self = { .memory = memory,
 	          .high_water = 0,
-			  .pagesize = page_size,
-			  .page_pot = page_size.ctz(),
+			  .pagesize = reserve_page_size,
+			  .page_pot = reserve_page_size.ctz(),
 			  .options  = options,
 	        };
 }
@@ -230,8 +230,6 @@ macro void? protect(Vmem* mem, sz after) @local
 macro void unprotect(Vmem* mem, sz after) @local
 {
 	sz shift = mem.page_pot;
-	sz last_page = mem.last_page;
-	sz page_after = mem.last_page = (after + mem.pagesize - 1) >> shift;
 	$if $feat(ASAN):
 		asan::poison_memory_region(mem.memory.ptr + after, mem.allocated - after);
 	$else
@@ -240,12 +238,17 @@ macro void unprotect(Vmem* mem, sz after) @local
 			mem::set(mem.memory.ptr + after, 0xAA, mem.allocated - after);
 		}
 	$endif
-	if ((mem.options.shrink_on_reset || mem.options.protect_unused_pages) && page_after < last_page)
+	if ((mem.options.shrink_on_reset || mem.options.protect_unused_pages))
 	{
-		sz start = page_after << shift;
-		sz len = (last_page - page_after) << shift;
-		if (mem.options.shrink_on_reset) (void)mem.memory.decommit(start, len, false);
-		if (mem.options.protect_unused_pages) (void)mem.memory.protect(start, len, PROTECTED);
+		sz last_page = mem.last_page;
+		sz page_after = mem.last_page = (after + mem.pagesize - 1) >> shift;
+		if (page_after < last_page)
+		{
+			sz start = page_after << shift;
+			sz len = (last_page - page_after) << shift;
+			if (mem.options.shrink_on_reset) (void)mem.memory.decommit(start, len, false);
+			if (mem.options.protect_unused_pages) (void)mem.memory.protect(start, len, PROTECTED);
+		}
 	}
 	mem.allocated = after;
 }

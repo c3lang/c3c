@@ -665,7 +665,6 @@ fn sz? ZipEntryReader.read(&self, char[] buffer) @dynamic
 	if (self.method == STORE)
 	{
 		sz n = self.adapter.read(buffer)!;
-		if (n == 0) return io::EOF~;
 		self.pos += n;
 		return n;
 	}
@@ -679,7 +678,6 @@ fn sz? ZipEntryReader.read(&self, char[] buffer) @dynamic
 		}
 
 		sz n = self.inflater.read(buffer)!;
-		if (n == 0) return io::EOF~;
 		self.pos += n;
 		return n;
 	}
@@ -988,8 +986,10 @@ fn sz? ArchiveStreamAdapter.read(&self, char[] buffer) @dynamic
 {
 	if (self.pos >= self.size) return 0;
 
+
 	sz to_read = (sz)math::min((long)buffer.len, self.size - self.pos);
-	if (!to_read) return 0;
+
+	assert(to_read > 0, "Buffer should never be zero");
 
 	long abs_pos = self.start_offset + self.pos;
 	if (abs_pos > sz::max) return io::OVERFLOW~;

@@ -200,7 +200,7 @@ entry:
   ret i32 0, !dbg !65
 }
 
-
+; Function Attrs: nounwind uwtable
 define ptr @test.create_foo(i32 %0, ptr %1, i64 %2, ptr %3, i64 %4) #0 !dbg !66 {
 entry:
   %attach = alloca %Attach_Arg, align 8
@@ -736,17 +736,17 @@ no_match:                                         ; preds = %compare
 !94 = !DIFile(filename: "io.c3"
 !95 = !DISubroutineType(types: !96)
 !96 = !{null, !85}
-!97 = !DILocation(line: 255
+!97 = !DILocation(line:
 !98 = !DILocation(line: 47, column: 2,
-!99 = !DILocation(line: 257, column: 16,
-!100 = !DILocalVariable(name: "
+!99 = !DILocation(line:
+!100 = !DILocalVariable(name:
 !101 = distinct !DISubprogram(name: "fprintn", linkageName: "fprintn", scope:
 !102 = !DISubroutineType(types: !103)
 !103 = !{!47, !104, !85}
 !109 = !DILocation
 !110 = !DILocation
 !111 = !DILocalVariable(name: "x", arg: 2
-!112 = !DILocation(line: 229, column: 24
+!112 = !DILocation
 !113 = !DILocalVariable(name: "len", scope: !101
 !114 = !DILocation
 !115 = !DILocalVariable(name: "out", arg: 1, scope: !116, file: !7

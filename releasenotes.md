@@ -1,5 +1,18 @@
 # C3C Release Notes
 
+## 0.8.4 Change list
+
+### Changes / improvements
+- Improved error message when providing an incorrect name for the panic function.
+
+### Stdlib changes
+- `CachedInStream` and `CachedOutStream` added.
+- `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.
+
+### Fixes
+- Vmem incorrectly handled reserve page sizes.
+- `@return` was accepted in doc comments for non-function/macro declarations.
+
 ## 0.8.3 Change list
 
 ### Changes / improvements
@@ -63,6 +76,8 @@
 - `Scanner` would not correctly handle chunked data.
 - `Gzip` reader couldn't handle a stream without seek.
 - `io::printf("%3d", 1)` would return the wrong printed length. #3432
+- Crash when using ternary operator with vector type and inline constdef #3433
+- Crash on assign-op to compile-time subscript with non-const result #3419
 
 ## 0.8.2 Change list
 
