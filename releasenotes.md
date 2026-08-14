@@ -4,6 +4,9 @@
 
 ### Changes / improvements
 - Improved error message when providing an incorrect name for the panic function.
+- Add `--stack-probe`, `--stack-probe-size` and `--stack-protector` to configure stack probing and stack canary generation. #3437
+- Add `stack-probe` and `stack-protector` project options. #3437
+- Add `@stackprobe(level)`, `@nostackprobe`, `@stackprotector(level)` and `@nostackprotector` attributes on functions and lambdas. #3437
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
