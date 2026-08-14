@@ -34,4 +34,4 @@ entry:
   call void asm sideeffect "movq %rdi, -8(%rsp)\0Amovq -8(%rsp), %rax\0Amovq (%rax), %rax\0Aret \0A", "~{rax},~{flags},~{dirflag},~{fspr}"()
   unreachable
 }
-attributes #1 = { naked noinline nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #1 = { naked noinline nounwind uwtable "no-trapping-math"="true" }
