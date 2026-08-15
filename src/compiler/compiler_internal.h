@@ -2236,7 +2236,7 @@ INLINE bool no_stdlib(void)
 
 INLINE bool compile_asserts(void)
 {
-	return safe_mode_enabled() || compiler.build.testing;
+	return safe_mode_enabled() || compiler.build.build_test;
 }
 
 void assert_print_line(SourceLocId span);

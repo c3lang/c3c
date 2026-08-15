@@ -10845,7 +10845,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 		}
 
 		case BUILTIN_DEF_BENCHMARK_NAMES:
-			if (!compiler.build.benchmarking)
+			if (!compiler.build.build_benchmark)
 			{
 				expr_rewrite_const_empty_slice(expr, type_get_slice(type_string));
 				return true;
@@ -10855,7 +10855,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr->expr_kind = EXPR_BENCHMARK_HOOK;
 			return true;
 		case BUILTIN_DEF_BENCHMARK_FNS:
-			if (!compiler.build.benchmarking)
+			if (!compiler.build.build_benchmark)
 			{
 				expr_rewrite_const_empty_slice(expr, type_get_slice(type_voidptr));
 				return true;
@@ -10865,7 +10865,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr->expr_kind = EXPR_BENCHMARK_HOOK;
 			return true;
 		case BUILTIN_DEF_TEST_NAMES:
-			if (!compiler.build.testing)
+			if (!compiler.build.build_test)
 			{
 				expr_rewrite_const_empty_slice(expr, type_get_slice(type_string));
 				return true;
@@ -10875,7 +10875,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr->expr_kind = EXPR_TEST_HOOK;
 			return true;
 		case BUILTIN_DEF_TEST_FNS:
-			if (!compiler.build.testing)
+			if (!compiler.build.build_test)
 			{
 				expr_rewrite_const_empty_slice(expr, type_get_slice(type_voidptr));
 				return true;

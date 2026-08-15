@@ -410,7 +410,7 @@ static void assign_panicfn(void)
 
 static void assign_testfn(void)
 {
-	if (!compiler.build.testing) return;
+	if (!compiler.build.build_test) return;
 	if (!compiler.build.testfn && no_stdlib())
 	{
 		error_exit("No test function could be found.");
@@ -446,7 +446,7 @@ static void assign_testfn(void)
 
 static void assign_benchfn(void)
 {
-	if (!compiler.build.benchmarking) return;
+	if (!compiler.build.build_benchmark) return;
 	if (!compiler.build.benchfn && no_stdlib())
 	{
 		return;

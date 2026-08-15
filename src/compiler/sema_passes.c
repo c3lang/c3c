@@ -798,10 +798,10 @@ bool analyse_func_body(SemaContext *context, Decl *decl)
 		return decl_poison(decl);
 	}
 	// Don't analyse functions that are tests.
-	if (decl->func_decl.attr_test && !compiler.build.testing) return true;
+	if (decl->func_decl.attr_test && !compiler.build.build_test) return true;
 
 	// Don't analyse functions that are benchmarks.
-	if (decl->func_decl.attr_benchmark && !compiler.build.benchmarking) return true;
+	if (decl->func_decl.attr_benchmark && !compiler.build.build_benchmark) return true;
 
 	if (!sema_analyse_function_body(context, decl, 0)) return decl_poison(decl);
 	return true;

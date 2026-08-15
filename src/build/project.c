@@ -786,9 +786,10 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
  *
  * @param project the project to look in.
  * @param optional_target the selected target, may be NULL.
+ * @param compiler_command the command used.
  * @return the target if one is provided, otherwise the default target.
  */
-BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target)
+BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target, CompilerCommand compiler_command)
 {
 	if (!vec_size(project->targets))
 	{
@@ -796,7 +797,34 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 	}
 	if (!optional_target)
 	{
-		return project->targets[0];
+		BuildTarget *best = NULL;
+		FOREACH(BuildTarget *, target, project->targets)
+		{
+			switch (target->type)
+			{
+				case TARGET_TYPE_BENCHMARK:
+					if (compiler_command == COMMAND_BENCHMARK) return target;
+					if (compiler_command == COMMAND_TEST) continue; // Not compatible
+					break;
+				case TARGET_TYPE_TEST:
+					if (compiler_command == COMMAND_TEST) return target;
+					if (compiler_command == COMMAND_BENCHMARK) continue; // Not compatible
+					break;
+				case TARGET_TYPE_DYNAMIC_LIB:
+				case TARGET_TYPE_STATIC_LIB:
+				case TARGET_TYPE_OBJECT_FILES:
+					if (compiler_command == COMMAND_RUN) continue; // Not compatible
+					return target;
+				case TARGET_TYPE_PREPARE:
+					if (compiler_command == COMMAND_BUILD || compiler_command == COMMAND_DIST) break;
+					if (compiler_command == COMMAND_RUN) break; // Can be used but isn't the default
+					continue; // Only compatible with build and dist
+				case TARGET_TYPE_EXECUTABLE:
+					return target;
+			}
+			if (!best) best = target;
+		}
+		return best ? best : project->targets[0];
 	}
 	FOREACH(BuildTarget *, target, project->targets)
 	{
