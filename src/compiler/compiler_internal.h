@@ -566,6 +566,7 @@ typedef struct
 	unsigned is_wildcard_overload : 1;
 	OperatorOverload operator : 6;
 	Signature signature;
+	DeclId param_struct;
 	AstId body;
 	union
 	{
@@ -608,6 +609,7 @@ typedef struct
 typedef struct
 {
 	Signature signature;
+	DeclId param_struct;
 } FnTypeDecl;
 
 
@@ -2167,6 +2169,7 @@ extern const char *kw_offset;
 extern const char *kw_ordinal;
 extern const char *kw_out;
 extern const char *kw_own;
+extern const char *kw_param_struct;
 extern const char *kw_ptr;
 extern const char *kw_qname;
 extern const char *kw_return;
