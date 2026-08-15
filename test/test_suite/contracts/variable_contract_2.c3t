@@ -1,4 +1,5 @@
 // #safe: yes
+// #target: macos-aarch64
 module test;
 <* @require [a] a < 0 : "test" *>
 fn int test(int x, int a)
