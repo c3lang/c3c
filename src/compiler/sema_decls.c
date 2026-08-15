@@ -4042,6 +4042,18 @@ FAIL:
 	return false;
 }
 
+static inline Decl *contract_find_param_by_name(const char *name, Decl **params, Decl **extra_params)
+{
+	FOREACH(Decl *, param, params)
+	{
+		if (param && param->name == name) return param;
+	}
+	FOREACH(Decl *, param, extra_params)
+	{
+		if (param && param->name == name) return param;
+	}
+	return NULL;
+}
 static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
                                            Decl **params, Decl **extra_params, bool *pure_ref, bool is_raw_vaarg)
 {
@@ -4051,6 +4063,23 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 	if (!sema_analyse_optional_returns(context, contracts)) return false;
 	if (contracts->contracts_decl.pure) *pure_ref = true;
 
+	FOREACH(Expr *, e, contracts->contracts_decl.requires)
+	{
+		const char *name = e->contract_expr.param.name;
+		if (!name) continue;
+		int index = -1;
+		FOREACH_IDX(i, Decl *, param, params)
+		{
+			if (param->name == name)
+			{
+				index = (int)i;
+				break;
+			}
+		}
+		if (index < 0) RETURN_SEMA_ERROR(e, "No parameter with the name '%s' could be found.", name);
+		e->contract_expr.param.found = true;
+		e->contract_expr.param.index = index;
+	}
 	FOREACH_REF(ContractParam, param_contract, contracts->contracts_decl.params)
 	{
 		if (!param_contract->name)
@@ -4070,19 +4099,11 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 			va_param_found = true;
 			continue;
 		}
-		Decl *param = NULL;
-		FOREACH(Decl *, other_param, params)
+		Decl *param = contract_find_param_by_name(param_contract->name, params, extra_params);
+		if (!param)
 		{
-			param = other_param;
-			if (param && param->name == param_contract->name) goto NEXT;
+			RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you misspell it?", param_contract->name);
 		}
-		FOREACH(Decl *, extra, extra_params)
-		{
-			param = extra;
-			if (param && param->name == param_contract->name) goto NEXT;
-		}
-		RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you misspell it?", param_contract->name);
-	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
 		bool may_be_pointer = !type || type_is_pointer(type) || type_is_any_raw(type);

@@ -2710,10 +2710,12 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 	{
 		goto END_CONTRACT;
 	}
+	SourceLocId arg_positions[MAX_PARAMS] = { [0] = 0 };
 	FOREACH_IDX(i, Decl *, param, sig->params)
 	{
 		if (!param || !param->name) continue;
 		Expr *arg = expr->call_expr.arguments[i];
+		if (arg) arg_positions[i] = arg->loc;
 		if (!arg)
 		{
 			assert(i == sig->vararg_index);
@@ -2772,7 +2774,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 	else
 	{
 		contract_depth++;
-		bool contract_success = sema_analyse_contracts(&temp_context, contracts, requires, ensures, &next, expr->loc, NULL);
+		bool contract_success = sema_analyse_contracts(&temp_context, contracts, requires, ensures, &next, expr->loc, NULL, arg_positions);
 		contract_depth--;
 		if (!contract_success) return false;
 	}
@@ -3229,6 +3231,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	unsigned vararg_index = sig->vararg_index;
 	Expr **args = call_expr->call_expr.arguments;
+	SourceLocId arg_positions[MAX_PARAMS] = { [0] = 0 };
 	FOREACH_IDX(i, Decl *, param, params)
 	{
 		if (i == vararg_index)
@@ -3252,6 +3255,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		}
 		param->var.init_expr = args[i];
 		if (!args[i]) continue;
+		arg_positions[i] = args[i]->loc;
 		// Lazy arguments doesn't affect optional arg.
 		if (param->var.kind == VARDECL_PARAM_EXPR) continue;
 		has_optional_arg = has_optional_arg || IS_OPTIONAL(args[i]);
@@ -3287,7 +3291,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	// Handle contracts
 	bool has_ensures = false;
-	if (!sema_analyse_contracts(&macro_context, contracts, requires, ensures, &next, call_expr->loc, &has_ensures)) return false;
+	if (!sema_analyse_contracts(&macro_context, contracts, requires, ensures, &next, call_expr->loc, &has_ensures, arg_positions)) return false;
 	macro_context.macro_has_ensures = has_ensures;
 	sema_append_contract_asserts(assert_first, body);
 

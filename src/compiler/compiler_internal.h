@@ -668,6 +668,15 @@ typedef struct
 
 typedef struct
 {
+	union
+	{
+		const char *name;
+		struct
+		{
+			int index;
+			bool found;
+		};
+	} param;
 	Expr *decl_exprs;
 	const char *comment;
 	const char *expr_string;
@@ -1810,6 +1819,7 @@ typedef struct
 	bool pure;
 	bool has_contracts;
 	SourceLocId first;
+	SourceLocId first_variable_require;
 	SourceLocId first_non_require;
 	SourceLocId first_contract;
 	Expr **opt_returns;
