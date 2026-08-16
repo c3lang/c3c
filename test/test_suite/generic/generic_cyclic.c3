@@ -2,9 +2,9 @@
 module test;
 import bar;
 
-alias BazTest = Baz{Test}; // #error: Recursive definition of 'BazTest'
+alias BazTest = Baz{Test};
 
-struct Test
+struct Test // #error: Recursive definition of 'Test'
 {
 	BazTest t;
 }

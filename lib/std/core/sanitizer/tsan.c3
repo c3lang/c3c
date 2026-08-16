@@ -14,18 +14,18 @@ const MutexFlags MUTEX_RECURSIVE_UNLOCK     = (MutexFlags)1 << 7;
 const MutexFlags MUTEX_TRY_READ_LOCK        = MUTEX_READ_LOCK | MUTEX_TRY_LOCK;
 const MutexFlags MUTEX_TRY_READ_LOCK_FAILED = MUTEX_TRY_READ_LOCK | MUTEX_TRY_LOCK_FAILED;
 
-macro void mutex_create(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_create(addr, flags); $endif }
-macro void mutex_destroy(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_destroy(addr, flags); $endif }
-macro void mutex_pre_lock(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_pre_lock(addr, flags); $endif }
-macro void mutex_post_lock(void* addr, MutexFlags flags, CInt recursion) { $if env::THREAD_SANITIZER: __tsan_mutex_post_lock(addr, flags, recursion); $endif }
-macro CInt mutex_pre_unlock(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: return __tsan_mutex_pre_unlock(addr, flags); $else return 0; $endif }
-macro void mutex_post_unlock(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_post_unlock(addr, flags); $endif }
-macro void mutex_pre_signal(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_pre_signal(addr, flags); $endif }
-macro void mutex_post_signal(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_post_signal(addr, flags); $endif }
-macro void mutex_pre_divert(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_pre_divert(addr, flags); $endif }
-macro void mutex_post_divert(void* addr, MutexFlags flags) { $if env::THREAD_SANITIZER: __tsan_mutex_post_divert(addr, flags); $endif }
+macro void mutex_create(void* addr, MutexFlags flags) { $if $feat(TSAN): __tsan_mutex_create(addr, flags); $endif }
+macro void mutex_destroy(void* addr, MutexFlags flags) { $if $feat(TSAN): __tsan_mutex_destroy(addr, flags); $endif }
+macro void mutex_pre_lock(void* addr, MutexFlags flags) { $if $feat(TSAN): __tsan_mutex_pre_lock(addr, flags); $endif }
+macro void mutex_post_lock(void* addr, MutexFlags flags, CInt recursion) { $if $feat(TSAN): __tsan_mutex_post_lock(addr, flags, recursion); $endif }
+macro CInt mutex_pre_unlock(void* addr, MutexFlags flags) { $if $feat(TSAN): return __tsan_mutex_pre_unlock(addr, flags); $else return 0; $endif }
+macro void mutex_post_unlock(void* addr, MutexFlags flags) { $if $feat(TSAN): __tsan_mutex_post_unlock(addr, flags); $endif }
+macro void mutex_pre_signal(void* addr, MutexFlags flags) { $if $feat(TSAN): __tsan_mutex_pre_signal(addr, flags); $endif }
+macro void mutex_post_signal(void* addr, MutexFlags flags) { $if $feat(TSAN): __tsan_mutex_post_signal(addr, flags); $endif }
+macro void mutex_pre_divert(void* addr, MutexFlags flags) { $if $feat(TSAN): __tsan_mutex_pre_divert(addr, flags); $endif }
+macro void mutex_post_divert(void* addr, MutexFlags flags) { $if $feat(TSAN): __tsan_mutex_post_divert(addr, flags); $endif }
 
-module std::core::sanitizer::tsan @feat(THREAD_SANITIZER) @private;
+module std::core::sanitizer::tsan @feat(TSAN) @private;
 
 extern fn void __tsan_mutex_create(void* addr, CUInt flags);
 extern fn void __tsan_mutex_destroy(void* addr, CUInt flags);

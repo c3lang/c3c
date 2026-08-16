@@ -455,7 +455,6 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
 	ASSERT_SPAN(type_info, type != NULL);
-	if (!sema_analyse_decl(context, type)) return false;
 	type_info->type = type->type;
 	if (compiler.generic_depth == 0) return true;
 	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)

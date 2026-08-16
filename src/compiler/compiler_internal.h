@@ -46,6 +46,7 @@ typedef uint32_t FileId;
 #define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
 #define MAX_GENERIC_DEPTH 32
+#define MAX_GENERIC_SUFFIX 1024
 #define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE (ByteSize)(2U << 30)
 #define MAX_GLOBAL_DECL_STACK (65536)
@@ -565,6 +566,7 @@ typedef struct
 	unsigned is_wildcard_overload : 1;
 	OperatorOverload operator : 6;
 	Signature signature;
+	DeclId param_struct;
 	AstId body;
 	union
 	{
@@ -607,6 +609,7 @@ typedef struct
 typedef struct
 {
 	Signature signature;
+	DeclId param_struct;
 } FnTypeDecl;
 
 
@@ -667,6 +670,15 @@ typedef struct
 
 typedef struct
 {
+	union
+	{
+		const char *name;
+		struct
+		{
+			int index;
+			bool found;
+		};
+	} param;
 	Expr *decl_exprs;
 	const char *comment;
 	const char *expr_string;
@@ -1809,6 +1821,7 @@ typedef struct
 	bool pure;
 	bool has_contracts;
 	SourceLocId first;
+	SourceLocId first_variable_require;
 	SourceLocId first_non_require;
 	SourceLocId first_contract;
 	Expr **opt_returns;
@@ -2048,6 +2061,7 @@ typedef struct
 	Module std_module;
 	MethodTable method_extensions;
 	Decl **unregistered_method_specializations;
+	Decl **unregistered_generic_decls;
 	Type **types_with_failed_methods;
 	Decl **method_extension_list;
 	DeclTable symbols;
@@ -2129,6 +2143,7 @@ extern const char *kw_cname;
 extern const char *kw_compiler_rt;
 extern const char *kw_description;
 extern const char *kw_drop;
+extern const char *kw_excuse;
 extern const char *kw_generic_args;
 extern const char *kw_generic_qname;
 extern const char *kw_get;
@@ -2154,6 +2169,7 @@ extern const char *kw_offset;
 extern const char *kw_ordinal;
 extern const char *kw_out;
 extern const char *kw_own;
+extern const char *kw_param_struct;
 extern const char *kw_ptr;
 extern const char *kw_qname;
 extern const char *kw_return;
@@ -2223,7 +2239,7 @@ INLINE bool no_stdlib(void)
 
 INLINE bool compile_asserts(void)
 {
-	return safe_mode_enabled() || compiler.build.testing;
+	return safe_mode_enabled() || compiler.build.build_test;
 }
 
 void assert_print_line(SourceLocId span);
@@ -3353,7 +3369,7 @@ static bool type_has_inline(Type *type)
 static inline Type *type_inline(Type *type)
 {
 	assert(type_is_distinct_like(type));
-	return type->type_kind == TYPE_TYPEDEF ? type->decl->distinct->type : type->decl->enums.type_info->type;
+	return type->type_kind == TYPE_TYPEDEF ? type->decl->distinct->type->canonical : type->decl->enums.type_info->type->canonical;
 }
 
 
@@ -3841,6 +3857,13 @@ INLINE bool expr_is_deref(Expr *expr)
 INLINE bool expr_is_named_param(Expr *expr)
 {
 	return expr->expr_kind == EXPR_NAMED_ARGUMENT || expr->expr_kind == EXPR_NAMED_EVAL_ARGUMENT;
+}
+
+INLINE bool expr_is_plain_identifier(Expr *expr)
+{
+	return expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER
+		&& !expr->unresolved_ident_expr.is_const
+		&& !expr->unresolved_ident_expr.path;
 }
 
 INLINE bool expr_is_addr(Expr *expr)

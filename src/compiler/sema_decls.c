@@ -651,7 +651,16 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		AlignSize member_type_alignment;
 		if (type_is_user_defined(member_type) && member_type->decl->resolve_status == RESOLVE_RUNNING)
 		{
-			SEMA_ERROR(member, "Recursive definition of %s.", type_quoted_error_string(member_type));
+			SEMA_ERROR(member_type->decl, "Recursive definition of %s.", type_quoted_error_string(member_type));
+			TypeInfo *type = type_infoptrzero(member->var.type_info);
+			if (type)
+			{
+				SEMA_NOTE(type, "Used as a member here.");
+			}
+			else
+			{
+				SEMA_NOTE(member, "Used as a member here.");
+			}
 			return decl_poison(decl);
 		}
 		if (!sema_set_alignment(context, member->type, &member_type_alignment, false)) return decl_poison(decl);
@@ -1679,7 +1688,6 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	// Infer the underlying type normally.
 	TypeInfo *info = decl->distinct;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
-	if (!sema_resolve_type_decl(context, info->type)) return false;
 	Type *inner_type = info->type;
 	// Optional isn't allowed of course.
 	if (type_is_optional(inner_type)) RETURN_SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
@@ -1704,10 +1712,6 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 		AlignSize default_size = type_abi_alignment(inner_type);
 		// Remove "alignment"
 		if (default_size == decl->alignment) decl->distinct_align = NULL;
-	}
-	if (!decl->alignment)
-	{
-		decl->alignment = type_abi_alignment(inner_type);
 	}
 	// Distinct types drop the canonical part.
 	info->type = info->type->canonical;
@@ -4038,6 +4042,18 @@ FAIL:
 	return false;
 }
 
+static inline Decl *contract_find_param_by_name(const char *name, Decl **params, Decl **extra_params)
+{
+	FOREACH(Decl *, param, params)
+	{
+		if (param && param->name == name) return param;
+	}
+	FOREACH(Decl *, param, extra_params)
+	{
+		if (param && param->name == name) return param;
+	}
+	return NULL;
+}
 static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
                                            Decl **params, Decl **extra_params, bool *pure_ref, bool is_raw_vaarg)
 {
@@ -4047,6 +4063,23 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 	if (!sema_analyse_optional_returns(context, contracts)) return false;
 	if (contracts->contracts_decl.pure) *pure_ref = true;
 
+	FOREACH(Expr *, e, contracts->contracts_decl.requires)
+	{
+		const char *name = e->contract_expr.param.name;
+		if (!name) continue;
+		int index = -1;
+		FOREACH_IDX(i, Decl *, param, params)
+		{
+			if (param->name == name)
+			{
+				index = (int)i;
+				break;
+			}
+		}
+		if (index < 0) RETURN_SEMA_ERROR(e, "No parameter with the name '%s' could be found.", name);
+		e->contract_expr.param.found = true;
+		e->contract_expr.param.index = index;
+	}
 	FOREACH_REF(ContractParam, param_contract, contracts->contracts_decl.params)
 	{
 		if (!param_contract->name)
@@ -4066,19 +4099,11 @@ static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs,
 			va_param_found = true;
 			continue;
 		}
-		Decl *param = NULL;
-		FOREACH(Decl *, other_param, params)
+		Decl *param = contract_find_param_by_name(param_contract->name, params, extra_params);
+		if (!param)
 		{
-			param = other_param;
-			if (param && param->name == param_contract->name) goto NEXT;
+			RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you misspell it?", param_contract->name);
 		}
-		FOREACH(Decl *, extra, extra_params)
-		{
-			param = extra;
-			if (param && param->name == param_contract->name) goto NEXT;
-		}
-		RETURN_SEMA_ERROR(param_contract, "There is no parameter '%s', did you misspell it?", param_contract->name);
-	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
 		bool may_be_pointer = !type || type_is_pointer(type) || type_is_any_raw(type);

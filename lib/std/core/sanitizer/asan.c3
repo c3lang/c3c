@@ -31,7 +31,7 @@ alias ErrorCallback = fn void (ZString);
 *>
 macro void poison_memory_region(void* addr, sz size)
 {
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		__asan_poison_memory_region(addr, size);
 	$endif
 }
@@ -52,7 +52,7 @@ macro void poison_memory_region(void* addr, sz size)
 *>
 macro void unpoison_memory_region(void* addr, sz size)
 {
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		__asan_unpoison_memory_region(addr, size);
 	$endif
 }
@@ -64,7 +64,7 @@ macro void unpoison_memory_region(void* addr, sz size)
 *>
 macro bool address_is_poisoned(void* addr)
 {
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		return (bool)__asan_address_is_poisoned(addr);
 	$else
 		return false;
@@ -83,7 +83,7 @@ macro bool address_is_poisoned(void* addr)
 *>
 macro void* region_is_poisoned(void* beg, sz size)
 {
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		return __asan_region_is_poisoned(beg, size);
 	$else
 		return null;
@@ -95,12 +95,12 @@ macro void* region_is_poisoned(void* beg, sz size)
 *>
 fn void set_error_report_callback(ErrorCallback callback)
 {
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		__asan_set_error_report_callback(callback);
 	$endif
 }
 
-module std::core::sanitizer::asan @feat(ADDRESS_SANITIZER);
+module std::core::sanitizer::asan @feat(ASAN);
 
 extern fn void __asan_poison_memory_region(void* addr, sz size);
 extern fn void __asan_unpoison_memory_region(void* addr, sz size);

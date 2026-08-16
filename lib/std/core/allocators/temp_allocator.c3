@@ -99,7 +99,7 @@ fn TempAllocator*? TempAllocator.derive_allocator(&self, sz reserve = 0)
 	sz start = mem::aligned_offset(self.used + reserve, mem::DEFAULT_MEM_ALIGNMENT);
 	void* ptr = &self.data[start];
 	TempAllocator* temp = (TempAllocator*)ptr;
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
         asan::unpoison_memory_region(ptr, TempAllocator::size);
 	$endif
 	temp.last_page = null;
@@ -130,7 +130,7 @@ fn void TempAllocator.reset(&self)
 		temp_allocator_destroy(old);
 	}
 	self.capacity = self.original_capacity;
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		asan::poison_memory_region(&self.data[self.used], self.capacity - self.used);
 	$endif
 	self.derived = null;
@@ -159,8 +159,8 @@ fn void temp_allocator_destroy(TempAllocator* self)
 		alloc::free(self.backing_allocator, self);
 		return;
 	}
-	$if env::COMPILER_SAFE_MODE || env::ADDRESS_SANITIZER:
-    	$if env::COMPILER_SAFE_MODE && !env::ADDRESS_SANITIZER:
+	$if env::COMPILER_SAFE_MODE || $feat(ASAN):
+    	$if env::COMPILER_SAFE_MODE && !$feat(ASAN):
     		self.data[0 : self.used] = 0xAA;
 		$else
             asan::poison_memory_region(&self.data[0], self.used);
@@ -199,7 +199,7 @@ fn void*? TempAllocator.resize(&self, void* pointer, sz size, sz alignment) @dyn
 		{
 			chunk.size += diff;
 			self.used += diff;
-			$if env::ADDRESS_SANITIZER:
+			$if $feat(ASAN):
 				if (diff < 0)
 				{
 					asan::poison_memory_region(pointer + chunk.size, -diff);
@@ -218,7 +218,7 @@ fn void*? TempAllocator.resize(&self, void* pointer, sz size, sz alignment) @dyn
 	if (is_realloc_of_last)
 	{
 		self.used = (sz)((iptr)chunk - (iptr)&self.data);
-		$if env::ADDRESS_SANITIZER:
+		$if $feat(ASAN):
 			asan::poison_memory_region(chunk, TempAllocatorChunk::size + chunk.size);
 		$endif
 	}

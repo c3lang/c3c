@@ -872,23 +872,23 @@ static inline bool parse_foreach_var(ParseContext *c, Ast *foreach)
 	TypeInfo *type = NULL;
 
 	// If we don't get foreach (foo ... or foreach (*foo ... then a type is expected.
-	if (!tok_is(c, TOKEN_IDENT) && !tok_is(c, TOKEN_AMP))
+	bool is_by_ref = try_consume(c, TOKEN_AMP);
+	ASSIGN_EXPR_OR_RET(Expr *expr, parse_type_or_identifier(c), false);
+	Decl *var;
+	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
-		ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), false);
-
-		// Add the optional to the type for nicer error reporting.
-		RANGE_EXTEND_PREV(type);
+		if (is_by_ref) RETURN_PRINT_ERROR_AT(false, expr, "Expected an identifier after '&'.");
+		type = expr->type_expr;
+		is_by_ref = try_consume(c, TOKEN_AMP);
+		var = decl_new_var_loc(symstr(c), &c->span, type, VARDECL_LOCAL);
+		if (!try_consume(c, TOKEN_IDENT)) RETURN_PRINT_ERROR_HERE("Expected an identifier after the type.");
 	}
-	if (try_consume(c, TOKEN_AMP))
+	else
 	{
-		foreach->foreach_stmt.value_by_ref = true;
+		if (!expr_is_plain_identifier(expr)) RETURN_PRINT_ERROR_AT(false, expr, "Expected a plain identifier after '&'.");
+		var = decl_new_var(expr->unresolved_ident_expr.ident, expr->loc, NULL, VARDECL_LOCAL);
 	}
-	Decl *var = decl_new_var_loc(symstr(c), &c->span, type, VARDECL_LOCAL);
-	if (!try_consume(c, TOKEN_IDENT))
-	{
-		if (type) RETURN_PRINT_ERROR_HERE("Expected an identifier after the type.");
-		RETURN_PRINT_ERROR_HERE("Expected an identifier or type.");
-	}
+	if (is_by_ref) foreach->foreach_stmt.value_by_ref = true;
 	foreach->foreach_stmt.variable = declid(var);
 	return true;
 }
@@ -900,7 +900,7 @@ static inline Ast* parse_foreach_stmt(ParseContext *c)
 {
 	Ast *ast = NEW_AST_TOKEN(AST_FOREACH_STMT);
 
-	if (!((ast->foreach_stmt.is_reverse = try_consume(c, TOKEN_FOREACH_R))))
+	if (!((ast->foreach_stmt.is_reverse = try_consume(c, TOKEN_FOREACH_R)))) // NOLINE
 	{
 		advance_and_verify(c, TOKEN_FOREACH);
 	}
@@ -1492,7 +1492,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_EQEQ:
 		case TOKEN_EXTERN:
 		case TOKEN_FAULTDEF:
-		case TOKEN_EXCUSE:
 		case TOKEN_FAULTSET:
 		case TOKEN_FAULTCONST:
 		case TOKEN_FN:

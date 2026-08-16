@@ -367,10 +367,10 @@ fn void test_fault_short_name_rt() @test
 
 	bool? maybe = foo_fault(5);
 
-	if (catch excuse = maybe)
+	if (catch e = maybe)
 	{
-		test::eq(excuse.description, "builtins::SOME_FAULT");
-		test::eq(excuse.short_name(), "SOME_FAULT");
+		test::eq(e.description, "builtins::SOME_FAULT");
+		test::eq(e.short_name(), "SOME_FAULT");
 	}
 }
 

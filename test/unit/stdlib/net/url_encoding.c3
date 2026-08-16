@@ -32,10 +32,10 @@ fn void test_decoding_with_error() => @pool()
 	foreach (test: decode_with_error_tests)
 	{
 		String? actual = url::tdecode(test.in, test.mode);
-		if (catch excuse = actual)
+		if (catch e = actual)
 		{
-			assert(excuse == test.err, "unescape(%s, %s); "
-					"got: %s, want: %s", test.in, test.mode, excuse, test.err);
+			assert(e == test.err, "unescape(%s, %s); "
+					"got: %s, want: %s", test.in, test.mode, e, test.err);
 			continue;
 		}
 		assert(actual == test.out, "unescape(%s, %s); "

@@ -132,11 +132,11 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 	archive.path = path.copy(allocator);
 	archive.mode = mode.copy(allocator);
 
-	if (eocd.comment_len.val > 0)
+	if (eocd.comment_len.val)
 	{
 		char[] comment_data = alloc::alloc_array(allocator, char, (sz)eocd.comment_len.val);
 		defer alloc::free(allocator, comment_data);
-		if (archive.file.read(comment_data)! == (sz)eocd.comment_len.val)
+		if (io::read_buffer(archive.file, comment_data)! == (sz)eocd.comment_len.val)
 		{
 			archive.comment = codepage::decode(allocator, comment_data, CP437)!!;
 		}
@@ -158,20 +158,18 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 		{
 			archive.file.seek(locator_pos)!;
 			Zip64Locator locator;
-			if (try n = archive.file.read(((char*)&locator)[:Zip64Locator::size]))
+			if (try n = io::read_buffer_to_end(archive.file, ((char*)&locator)[:Zip64Locator::size]).len
+				&& n == Zip64Locator::size && locator.signature.val == ZIP64_LOCATOR_SIG)
 			{
-				if (n == Zip64Locator::size && locator.signature.val == ZIP64_LOCATOR_SIG)
+				if (locator.offset_eocd.val > sz::max) return io::OVERFLOW~;
+				archive.file.seek(locator.offset_eocd.val)!;
+				Zip64EOCD eocd64;
+				io::read_any(archive.file, &eocd64)!;
+				if (eocd64.signature.val == ZIP64_EOCD_SIG)
 				{
-					if (locator.offset_eocd.val > sz::max) return io::OVERFLOW~;
-					archive.file.seek(locator.offset_eocd.val)!;
-					Zip64EOCD eocd64;
-					io::read_any(archive.file, &eocd64)!;
-					if (eocd64.signature.val == ZIP64_EOCD_SIG)
-					{
-						if (eocd64.offset_cd.val > sz::max) return io::OVERFLOW~;
-						archive.file.seek(eocd64.offset_cd.val)!!;
-						num_entries = (sz)eocd64.count_total.val;
-					}
+					if (eocd64.offset_cd.val > sz::max) return io::OVERFLOW~;
+					archive.file.seek(eocd64.offset_cd.val)!!;
+					num_entries = (sz)eocd64.count_total.val;
 				}
 			}
 		}
@@ -184,7 +182,8 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 		if (cdh.signature.val != ZIP_CDH_SIG) break;
 
 		char[] raw_name = alloc::alloc_array(allocator, char, cdh.filename_len.val);
-		if (archive.file.read(raw_name)! != (sz)cdh.filename_len.val)
+		defer catch alloc::free(allocator, raw_name);
+		if (raw_name.len && io::read_buffer(archive.file, raw_name)! != (sz)cdh.filename_len.val)
 		{
 			alloc::free(allocator, raw_name);
 			break;
@@ -201,14 +200,18 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 			name = (String)codepage::decode(allocator, raw_name, CP437)!!;
 			alloc::free(allocator, raw_name.ptr);
 		}
+		raw_name = {};
+		defer catch alloc::free(allocator, name);
 
 		char[] extra_field;
 		if (cdh.extra_field_len.val > 0)
 		{
 			extra_field = alloc::alloc_array(allocator, char, cdh.extra_field_len.val);
-			archive.file.read(extra_field)!;
+			defer catch alloc::free(allocator, extra_field);
+			io::read_all(archive.file, extra_field)!;
 		}
 
+		defer alloc::free(allocator, extra_field);
 		archive.file.seek(cdh.comment_len.val, FROM_CURSOR)!;
 
 		long uncompressed_size = cdh.uncompressed_size.val;
@@ -246,7 +249,6 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 				reader.seek(size, FROM_CURSOR)!;
 			}
 		}
-		if (extra_field.len > 0) alloc::free(allocator, extra_field);
 
 		bool is_directory = name.ends_with("/") || name.ends_with("\\");
 		if (!is_directory)
@@ -306,8 +308,7 @@ fn ZipArchive? recover(Allocator allocator, String path)
 	while (true)
 	{
 		long offset = archive.file.cursor()!!;
-		sz n = archive.file.read(sig_buf[..])!;
-		if (n < 4) break;
+		if (io::read_buffer(archive.file, &sig_buf)! < 4) break;
 
 		if (bitorder::read(sig_buf, UIntLE) != ZIP_LFH_SIG)
 		{
@@ -316,11 +317,11 @@ fn ZipArchive? recover(Allocator allocator, String path)
 		}
 
 		ZipLFH lfh;
-		if (archive.file.read(((char*)&lfh.version_needed)[:ZipLFH::size - 4])! != ZipLFH::size - 4) break;
+		if (io::read_buffer(archive.file, ((char*)&lfh.version_needed)[:ZipLFH::size - 4])! != ZipLFH::size - 4) break;
 		lfh.signature.val = ZIP_LFH_SIG;
 
 		char[] raw_name = alloc::alloc_array(allocator, char, lfh.filename_len.val);
-		if (archive.file.read(raw_name)! != (sz)lfh.filename_len.val)
+		if (raw_name && io::read_buffer(archive.file, raw_name)! != raw_name.len)
 		{
 			alloc::free(allocator, raw_name);
 			break;
@@ -664,7 +665,6 @@ fn sz? ZipEntryReader.read(&self, char[] buffer) @dynamic
 	if (self.method == STORE)
 	{
 		sz n = self.adapter.read(buffer)!;
-		if (n == 0) return io::EOF~;
 		self.pos += n;
 		return n;
 	}
@@ -678,7 +678,6 @@ fn sz? ZipEntryReader.read(&self, char[] buffer) @dynamic
 		}
 
 		sz n = self.inflater.read(buffer)!;
-		if (n == 0) return io::EOF~;
 		self.pos += n;
 		return n;
 	}
@@ -700,10 +699,7 @@ fn void? ZipEntryReader.close(&self) @dynamic
 
 fn char? ZipEntryReader.read_byte(&self) @dynamic
 {
-	char[1] b;
-	sz n = self.read(&b)!;
-	if (n == 0) return io::EOF~;
-	return b[0];
+	return io::read_byte_using_read(self);
 }
 
 fn long ZipEntryReader.len(&self) @dynamic
@@ -817,7 +813,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 		@pool()
 		{
 			char[] buf = mem::temp_array(char, salt_len + 2);
-			self.file.read(buf)!;
+			buf = io::read_buffer_to_end(self.file, buf)!;
 
 			if (buf.len < salt_len + 2) return CORRUPTED_DATA~;
 
@@ -828,16 +824,18 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 			if (cipher_len < 0) return CORRUPTED_DATA~;
 
 			char[] cipher = mem::temp_array(char, cipher_len);
-			self.file.read(cipher)!;
+			cipher = io::read_buffer_to_end(self.file, cipher)!;
+			if (cipher.len != cipher_len) return CORRUPTED_DATA~;
 
 			char[] hmac_stored = mem::temp_array(char, 10);
-			self.file.read(hmac_stored)!;
+			hmac_stored = io::read_buffer_to_end(self.file, hmac_stored)!;
+			if (hmac_stored.len != 10) return CORRUPTED_DATA~;
 
 			sz dk_len = key_len * 2 + 2;
 			char[] dk = mem::temp_array(char, dk_len);
 			sha1::pbkdf2(password, salt, 1000, dk);
 
-			char[] aes_key = dk[0:key_len ];
+			char[] aes_key = dk[0:key_len];
 			char[] mac_key = dk[key_len:key_len];
 			char[] pv_derived = dk[key_len*2:2];
 
@@ -988,15 +986,17 @@ fn sz? ArchiveStreamAdapter.read(&self, char[] buffer) @dynamic
 {
 	if (self.pos >= self.size) return 0;
 
+
 	sz to_read = (sz)math::min((long)buffer.len, self.size - self.pos);
-	if (to_read == 0) return 0;
+
+	assert(to_read > 0, "Buffer should never be zero");
 
 	long abs_pos = self.start_offset + self.pos;
 	if (abs_pos > sz::max) return io::OVERFLOW~;
 
 	// Note: ZipArchive shared file handle access is not thread-safe.
 	self.archive.file.seek(abs_pos)!;
-	sz n = self.archive.file.read(buffer[:to_read])!;
+	sz n = io::read_buffer(self.archive.file, buffer[:to_read])!;
 	if (self.aex) self.aes.decrypt_buffer(buffer[:n], buffer[:n]);
 	self.pos += n;
 	return n;
@@ -1004,13 +1004,7 @@ fn sz? ArchiveStreamAdapter.read(&self, char[] buffer) @dynamic
 
 fn char? ArchiveStreamAdapter.read_byte(&self) @dynamic
 {
-	char[1] b;
-	if (try n = self.read(b[..]))
-	{
-		if (n == 0) return io::EOF~;
-		return b[0];
-	}
-	return io::EOF~;
+	return io::read_byte_using_read(self);
 }
 
 struct ZipLFH @packed @private

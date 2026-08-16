@@ -42,8 +42,7 @@ macro sz? struct_to_format(value, Formatter* f, bool $force_dump)
 		$if $member.name != "":
 			total += f.printf("%s: ", $member.name)!;
 		$endif
-		$if ($force_dump &&& ($member.kind == STRUCT || $member.kind == BITSTRUCT)) |||
-			is_struct_with_default_print($member.type):
+		$if ($force_dump &&& ($member.type.kind == STRUCT || $member.type.kind == BITSTRUCT)) ||| is_struct_with_default_print($member.type):
 			total += struct_to_format(value.$member, f, $force_dump)!;
 		$else
 			total += f.printf("%s", value.$member)!;

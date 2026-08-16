@@ -10,7 +10,7 @@ fn void main()
 }
 module other;
 typedef MyInt @constinit = int;
-attrdef @Attr(MyInt x);
+attrmacro @Attr(MyInt x);
 
 /* #expect: test.ll
 

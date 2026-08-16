@@ -159,7 +159,7 @@ entry:
   %a = alloca %Float_float_s, align 4
   store float %0, ptr %a, align 4
   %ptradd = getelementptr inbounds i8, ptr %a, i64 4
-  store float %1, ptr %a, align 4
+  store float %1, ptr %ptradd, align 4
   ret void
 }
 
@@ -170,7 +170,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.1, i32 8, i1 false)
   %0 = load float, ptr %literal, align 4
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
-  %1 = load float, ptr %literal, align 4
+  %1 = load float, ptr %ptradd, align 4
   %2 = insertvalue { float, float } undef, float %0, 0
   %3 = insertvalue { float, float } %2, float %1, 1
   ret { float, float } %3
@@ -190,7 +190,7 @@ entry:
   %a = alloca %Float_int8_s, align 4
   store float %0, ptr %a, align 4
   %ptradd = getelementptr inbounds i8, ptr %a, i64 4
-  store i8 %1, ptr %a, align 4
+  store i8 %1, ptr %ptradd, align 4
   ret void
 }
 
@@ -201,7 +201,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.2, i32 8, i1 false)
   %0 = load float, ptr %literal, align 4
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
-  %1 = load i8, ptr %literal, align 4
+  %1 = load i8, ptr %ptradd, align 4
   %2 = insertvalue { float, i8 } undef, float %0, 0
   %3 = insertvalue { float, i8 } %2, i8 %1, 1
   ret { float, i8 } %3
@@ -213,7 +213,7 @@ entry:
   %a = alloca %Float_uint8_s, align 4
   store float %0, ptr %a, align 4
   %ptradd = getelementptr inbounds i8, ptr %a, i64 4
-  store i8 %1, ptr %a, align 4
+  store i8 %1, ptr %ptradd, align 4
   ret void
 }
 
@@ -224,7 +224,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.3, i32 8, i1 false)
   %0 = load float, ptr %literal, align 4
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
-  %1 = load i8, ptr %literal, align 4
+  %1 = load i8, ptr %ptradd, align 4
   %2 = insertvalue { float, i8 } undef, float %0, 0
   %3 = insertvalue { float, i8 } %2, i8 %1, 1
   ret { float, i8 } %3
@@ -236,7 +236,7 @@ entry:
   %a = alloca %Float_int32_s, align 4
   store float %0, ptr %a, align 4
   %ptradd = getelementptr inbounds i8, ptr %a, i64 4
-  store i32 %1, ptr %a, align 4
+  store i32 %1, ptr %ptradd, align 4
   ret void
 }
 
@@ -247,7 +247,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.4, i32 8, i1 false)
   %0 = load float, ptr %literal, align 4
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
-  %1 = load i32, ptr %literal, align 4
+  %1 = load i32, ptr %ptradd, align 4
   %2 = insertvalue { float, i32 } undef, float %0, 0
   %3 = insertvalue { float, i32 } %2, i32 %1, 1
   ret { float, i32 } %3
@@ -259,7 +259,7 @@ entry:
   %a = alloca %Float_int64_s, align 8
   store float %0, ptr %a, align 8
   %ptradd = getelementptr inbounds i8, ptr %a, i64 8
-  store i64 %1, ptr %a, align 8
+  store i64 %1, ptr %ptradd, align 8
   ret void
 }
 
@@ -270,7 +270,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.5, i32 16, i1 false)
   %0 = load float, ptr %literal, align 8
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
-  %1 = load i64, ptr %literal, align 8
+  %1 = load i64, ptr %ptradd, align 8
   %2 = insertvalue { float, i64 } undef, float %0, 0
   %3 = insertvalue { float, i64 } %2, i64 %1, 1
   ret { float, i64 } %3
@@ -315,7 +315,7 @@ entry:
   %a = alloca %Floatarr2_s, align 4
   store float %0, ptr %a, align 4
   %ptradd = getelementptr inbounds i8, ptr %a, i64 4
-  store float %1, ptr %a, align 4
+  store float %1, ptr %ptradd, align 4
   ret void
 }
 
@@ -326,7 +326,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.7, i32 8, i1 false)
   %0 = load float, ptr %literal, align 4
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
-  %1 = load float, ptr %literal, align 4
+  %1 = load float, ptr %ptradd, align 4
   %2 = insertvalue { float, float } undef, float %0, 0
   %3 = insertvalue { float, float } %2, float %1, 1
   ret { float, float } %3
@@ -338,7 +338,7 @@ entry:
   %a = alloca %Floatarr2_tricky1_s, align 4
   store float %0, ptr %a, align 4
   %ptradd = getelementptr inbounds i8, ptr %a, i64 4
-  store float %1, ptr %a, align 4
+  store float %1, ptr %ptradd, align 4
   ret void
 }
 
@@ -349,7 +349,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.8, i32 8, i1 false)
   %0 = load float, ptr %literal, align 4
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
-  %1 = load float, ptr %literal, align 4
+  %1 = load float, ptr %ptradd, align 4
   %2 = insertvalue { float, float } undef, float %0, 0
   %3 = insertvalue { float, float } %2, float %1, 1
   ret { float, float } %3

@@ -426,7 +426,7 @@ fn void List.reserve(&self, sz added)
 fn void list_update_size_change(List* self,sz old_size, sz new_size) @private
 {
 	if (old_size == new_size) return;
-	$if env::ADDRESS_SANITIZER:
+	$if $feat(ASAN):
 		if (self.allocator.ptr != &allocators::LIBC_ALLOCATOR) return;
 		sanitizer::annotate_contiguous_container(self.entries,
 	                                         &self.entries[self.capacity],

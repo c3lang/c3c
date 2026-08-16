@@ -22,11 +22,11 @@ fn void? LimitReader.close(&self) @dynamic
 }
 
 
-fn sz? LimitReader.read(&self, char[] bytes) @dynamic
+fn sz? LimitReader.read(&self, char[] buffer) @dynamic
 {
-	if (self.limit == 0) return io::EOF~;
-	long m = min(bytes.len, self.limit);
-	long n = self.wrapped_stream.read(bytes[:m])!;
+	long m = min(buffer.len, self.limit);
+	if (!m) return 0;
+	long n = self.wrapped_stream.read(buffer[:m])!;
 	self.limit -= n;
 	return (sz)n;
 }

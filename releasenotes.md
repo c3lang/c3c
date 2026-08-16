@@ -1,5 +1,23 @@
 # C3C Release Notes
 
+## 0.8.4 Change list
+
+### Changes / improvements
+- Improved error message when providing an incorrect name for the panic function.
+- Add the ability to pinpoint a `@require` using the `@require [a] a > 0 : "a must be greater than zero"` syntax. #1804
+- `benchmark` and `test` project targets now work properly with `c3c benchmark` and `c3c test`. 
+- Add `$reflect(foo).param_struct` and `Foo::param_struct` properties. #3099
+- Allow the parse `faultset { ... }`. For `faultset`, `faultconst` and `excuse`.
+
+### Stdlib changes
+- `CachedInStream` and `CachedOutStream` added.
+- `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.
+
+### Fixes
+- Vmem incorrectly handled reserve page sizes.
+- `@return` was accepted in doc comments for non-function/macro declarations.
+- Can not run targeted benchmark function in project #1651.
+
 ## 0.8.3 Change list
 
 ### Changes / improvements
@@ -12,7 +30,10 @@
 - Add `@feat` attribute, deprecate `@if` on non-generic top level declarations. 
 - Add `$feat` compile time function. `$feature` is deprecated and replaced by `$feat`. 
 - Experimental support for `constset`, `cenum`, `faultconst`, `faultset`, `excuse`, `attrgroup`, `attrmacro`, `distinct`.
- 
+- Defer resolution of typedef alignment and generics, allowing more recursive definitions.
+- Improve error message on multiple <* *> in a row. #2971
+- Add the `lgdt` and `lidt` instructions to x86 inline assembly.
+
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
 - Added `FixedList.is_full()` method
@@ -24,6 +45,10 @@
 - Object unmarshaling support, `object::unmarshal` and family.
 - `json::temp_load` deprecated in favour of `json::tload`.
 - `Object::is_map` now returns true for empty objects.
+- Add `range::upto`, `range::inclusive` and `range::exclusive` macros.
+- Add `io::read_buffer`.
+- `DateTime` enable comparison operators.
+- Add `Range.to_array` and `ExclusiveRange.to_array` methods.
 
 ### Fixes
 - Generic functions and values incorrectly would not require a prefix. #3374
@@ -44,6 +69,20 @@
 - JSONC parsing on unterminated comments would loop indefinitely.
 - ZII array constdef would cause an assert. #3411
 - Calling a constant void macro inside a macro stops it from being constant. #3410
+- Using io::struct_to_format with `$force_dump = true` failed to compile.
+- `$foo += 1` would not do a copy, leading to incorrect update of `$foo`. #3400
+- `foreach (foo::Type t : x)` would not parse properly. #3423
+- Docgen improvements and fixes: emit `attrdef` declarations/docs, include `alias` doc comments, render `@return` contracts, exclude `compiler_rt` when `--emit-stdlib=no`, and omit empty JSON fields for slimmer output #3422.
+- Several uses of InStream didn't properly handle io::EOF.
+- Fixes to memory handling during zip loading.
+- Multireader reading after a final empty read would crash.
+- RISC-V structs with mixed FP and integer fields were corrupted when passed or returned by value. #3428
+- `io::read_all` didn't handle split data.
+- `Scanner` would not correctly handle chunked data.
+- `Gzip` reader couldn't handle a stream without seek.
+- `io::printf("%3d", 1)` would return the wrong printed length. #3432
+- Crash when using ternary operator with vector type and inline constdef #3433
+- Crash on assign-op to compile-time subscript with non-const result #3419
 
 ## 0.8.2 Change list
 

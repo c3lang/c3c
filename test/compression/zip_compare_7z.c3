@@ -61,9 +61,9 @@ fn int main(String[] args)
 fn int process_dir(String dir, bool recursive, String output_dir)
 {
 	PathList? files = path::ls(tmem, path::tnew(dir)!!);
-	if (catch excuse = files)
+	if (catch e = files)
 	{
-		io::printfn("Could not open directory: %s (Excuse: %s)", dir, excuse);
+		io::printfn("Could not open directory: %s (Excuse: %s)", dir, e);
 		return 1;
 	}
 
@@ -131,22 +131,22 @@ fn int verify_one(String zip_path, String output_dir)
 	(void)path::mkdir(temp_7z, true);
 
 	ZipArchive? archive = zip::open(mem, zip_path, "r");
-	if (catch excuse = archive)
+	if (catch e = archive)
 	{
-		io::printfn("%sFAIL%s (open: %s)", Ansi.RED, Ansi.RESET, excuse);
+		io::printfn("%sFAIL%s (open: %s)", Ansi.RED, Ansi.RESET, e);
 		return 0;
 	}
 	defer (void)archive.close();
 
 	Time start = time::now();
-	if (catch excuse = archive.extract(temp_c3.str_view()))
+	if (catch e = archive.extract(temp_c3.str_view()))
 	{
-		if (excuse == zip::ENCRYPTED_FILE)
+		if (e == zip::ENCRYPTED_FILE)
 		{
 			io::printf("%sSKIPPED%s (Encrypted)", Ansi.YELLOW, Ansi.RESET);
 			return 2;
 		}
-		io::printfn("%sFAIL%s (extract: %s)", Ansi.RED, Ansi.RESET, excuse);
+		io::printfn("%sFAIL%s (extract: %s)", Ansi.RED, Ansi.RESET, e);
 		return 0;
 	}
 	Duration c3_time = time::now() - start;
@@ -180,7 +180,7 @@ fn bool extract_7z(String zip_path, String output_dir)
 	String out_opt = "-o".tconcat(output_dir);
 	String[] cmd = { "7z", "x", zip_path, out_opt, "-y", "-bb0" };
 	Process? proc = process::spawn(cmd);
-	if (catch excuse = proc) return false;
+	if (catch e = proc) return false;
 	return (int)proc.join()!! == 0;
 }
 
@@ -188,7 +188,7 @@ fn bool compare_dirs(String dir1, String dir2)
 {
 	String[] cmd = { "diff", "-r", dir1, dir2 };
 	Process? proc = process::spawn(cmd, INHERIT_STDIO);
-	if (catch excuse = proc) return false;
+	if (catch e = proc) return false;
 	int res = (int)proc.join()!!;
 	return res == 0;
 }

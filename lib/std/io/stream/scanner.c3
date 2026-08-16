@@ -2,7 +2,7 @@ module std::io;
 
 struct Scanner (InStream)
 {
-	InStream wrapped_stream;
+	CachedInStream wrapped_stream;
 	char[] buf;
 	sz pattern_idx;
 	sz read_idx;
@@ -18,7 +18,7 @@ struct Scanner (InStream)
 *>
 fn void Scanner.init(&self, InStream stream, char[] buffer)
 {
-	*self = { .wrapped_stream = stream, .buf = buffer };
+	*self = { .wrapped_stream = stream.cached_stream(), .buf = buffer };
 }
 
 
@@ -50,6 +50,7 @@ fn char[]? Scanner.scan(&self, String pattern = "\n")
 	if (self.read_idx == 0)
 	{
 		// First read.
+		assert(self.buf);
 		self.read_idx = _scanner_refill(self, self.buf)!;
 		self.pattern_idx = 0;
 	}
@@ -89,26 +90,21 @@ macro sz? _scanner_find(Scanner* self, buf, pattern) @private
 
 macro sz? _scanner_refill(Scanner* self, buf) @private
 {
-	sz? n = self.wrapped_stream.read(buf);
-	if (catch err = n)
-	{
-		if (err == io::EOF) return NOT_FOUND~;
-		return err~;
-	}
-	return n;
+	sz n = read_buffer_to_end(self.wrapped_stream, buf).len!;
+	return n ?: NOT_FOUND~;
 }
 
-fn sz? Scanner.read(&self, char[] bytes) @dynamic
+fn sz? Scanner.read(&self, char[] buffer) @dynamic
 {
 	sz n;
 	if (self.pattern_idx < self.read_idx)
 	{
-		n = min(bytes.len, self.read_idx - self.pattern_idx);
-		bytes[:n] = self.buf[self.pattern_idx:n];
+		n = min(buffer.len, self.read_idx - self.pattern_idx);
+		buffer[:n] = self.buf[self.pattern_idx:n];
 		self.pattern_idx += n;
-		bytes = bytes[n..];
+		buffer = buffer[n..];
 	}
-	n += self.wrapped_stream.read(bytes)!;
+	n += self.wrapped_stream.read(buffer)!;
 	return n;
 }
 

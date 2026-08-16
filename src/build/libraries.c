@@ -87,7 +87,7 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 	target->source_dirs = library->source_dirs;
 	target->csource_dirs = library->csource_dirs;
 	target->cinclude_dirs = library->cinclude_dirs;
-	target->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	target->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 5, "'none', 'static', 'static-debug', 'dynamic' or 'dynamic-debug'.");
 	APPEND_STRING_LIST(&target->source_dirs, "sources");
 	APPEND_STRING_LIST(&target->csource_dirs, "c-sources");
 	APPEND_STRING_LIST(&target->cinclude_dirs, "c-include-dirs");
@@ -120,7 +120,7 @@ static Library *add_library(JSONObject *json, const char *dir, const char **libs
 	library->dependencies = get_optional_string_array(context, json, "dependencies");
 	library->cc = get_optional_string(context, json, "cc");
 	library->cflags = get_cflags(context, json, NULL);
-	library->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	library->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 5, "'none', 'static', 'static-debug', 'dynamic' or 'dynamic-debug'.");
 	APPEND_STRING_LIST(&library->source_dirs, "sources");
 	APPEND_STRING_LIST(&library->csource_dirs, "c-sources");
 	APPEND_STRING_LIST(&library->cinclude_dirs, "c-include-dirs");

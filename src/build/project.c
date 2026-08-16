@@ -77,7 +77,7 @@ const char *project_default_keys[][2] = {
 		{"wincrt", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default)."},
 		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
 		{"win-sdk", "Set the path to Windows system library files for cross compilation."},
-		{"win-subsystem", "Windows subsystem: CONSOLE (default), WINDOWS (default if @winmain present), NATIVE, POSIX, BOOT_APPLICATION, EFI_APPLICATION, EFI_BOOT_SERVICE_DRIVER, EFI_ROM or EFI_RUNTIME_DRIVER."},
+		{"win-subsystem", "Windows subsystem: console (default), windows (default if @winmain present), native, posix, boot, efi-app, efi-boot, efi-rom or efi-runtime."},
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
@@ -171,7 +171,7 @@ const char* project_target_keys[][2] = {
 		{"wincrt", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default)."},
 		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
 		{"win-sdk", "Set the path to Windows system library files for cross compilation."},
-		{"win-subsystem", "Windows subsystem: CONSOLE (default), WINDOWS (default if @winmain present), NATIVE, POSIX, BOOT_APPLICATION, EFI_APPLICATION, EFI_BOOT_SERVICE_DRIVER, EFI_ROM or EFI_RUNTIME_DRIVER."},
+		{"win-subsystem", "Windows subsystem: console (default), windows (default if @winmain present), native, posix, boot, efi-app, efi-boot, efi-rom or efi-runtime."},
 		{"x86-stack-struct-return", "Return structs on the stack for x86."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
@@ -786,9 +786,10 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
  *
  * @param project the project to look in.
  * @param optional_target the selected target, may be NULL.
+ * @param compiler_command the command used.
  * @return the target if one is provided, otherwise the default target.
  */
-BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target)
+BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target, CompilerCommand compiler_command)
 {
 	if (!vec_size(project->targets))
 	{
@@ -796,7 +797,34 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 	}
 	if (!optional_target)
 	{
-		return project->targets[0];
+		BuildTarget *best = NULL;
+		FOREACH(BuildTarget *, target, project->targets)
+		{
+			switch (target->type)
+			{
+				case TARGET_TYPE_BENCHMARK:
+					if (compiler_command == COMMAND_BENCHMARK) return target;
+					if (compiler_command == COMMAND_TEST) continue; // Not compatible
+					break;
+				case TARGET_TYPE_TEST:
+					if (compiler_command == COMMAND_TEST) return target;
+					if (compiler_command == COMMAND_BENCHMARK) continue; // Not compatible
+					break;
+				case TARGET_TYPE_DYNAMIC_LIB:
+				case TARGET_TYPE_STATIC_LIB:
+				case TARGET_TYPE_OBJECT_FILES:
+					if (compiler_command == COMMAND_RUN) continue; // Not compatible
+					return target;
+				case TARGET_TYPE_PREPARE:
+					if (compiler_command == COMMAND_BUILD || compiler_command == COMMAND_DIST) break;
+					if (compiler_command == COMMAND_RUN) break; // Can be used but isn't the default
+					continue; // Only compatible with build and dist
+				case TARGET_TYPE_EXECUTABLE:
+					return target;
+			}
+			if (!best) best = target;
+		}
+		return best ? best : project->targets[0];
 	}
 	FOREACH(BuildTarget *, target, project->targets)
 	{

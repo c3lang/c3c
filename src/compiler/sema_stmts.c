@@ -28,7 +28,7 @@ static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bott
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location);
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map);
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt);
 static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond);
 static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr);
@@ -49,7 +49,6 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceLocId expr_loc, CanonicalType *switch_type, Ast **cases);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
-static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId loc);
 static bool sema_analyse_ensure(SemaContext *context, Expr *directive);
 
 static inline bool sema_analyse_asm_label(SemaContext *context, AsmInlineBlock *block, Ast *label)
@@ -412,7 +411,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 /**
  * Turn a "require" or "ensure" into a contract in the callee.
  */
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location)
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map)
 {
 	Expr *declexpr = directive->contract_expr.decl_exprs;
 	ASSERT(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
@@ -422,7 +421,10 @@ static inline bool assert_create_from_contract(SemaContext *context, Expr *direc
 		if (!sema_analyse_expr_rhs(context, type_bool, expr, false, NULL, false)) return false;
 
 		if (evaluation_location) expr->loc = evaluation_location;
-
+		if (directive->contract_expr.param.found && arg_loc_map)
+		{
+			expr->loc = arg_loc_map[directive->contract_expr.param.index];
+		}
 		const char *comment = directive->contract_expr.comment;
 		if (!comment) comment = directive->contract_expr.expr_string;
 		if (expr_is_const_bool(expr))
@@ -760,7 +762,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			bool success;
 			SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->loc);
 			{
-				success = assert_create_from_contract(context, copy_expr_single(ensure), &append_id, statement->loc);
+				success = assert_create_from_contract(context, copy_expr_single(ensure), &append_id, statement->loc, NULL);
 			}
 			SCOPE_END;
 			if (!success) return false;
@@ -3323,10 +3325,6 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 }
 
 
-static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId loc)
-{
-	return assert_create_from_contract(context, directive, asserts, loc);
-}
 
 static bool sema_analyse_ensure(SemaContext *context, Expr *directive)
 {
@@ -3365,7 +3363,7 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt)
 	ast_prepend(&compound_stmt->compound_stmt.first_stmt, ast);
 }
 
-bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures)
+bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures, SourceLocId* arg_loc_map)
 {
 	context->call_env.opt_returns = NULL;
 	if (has_ensures)
@@ -3375,7 +3373,7 @@ bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **require
 
 	FOREACH(Expr *, require, requires)
 	{
-		if (!sema_analyse_require(context, require, asserts, call_loc)) return false;
+		if (!assert_create_from_contract(context, require, asserts, call_loc, arg_loc_map)) return false;
 	}
 	if (!has_ensures) return true;
 	FOREACH(Expr *, ensure, ensures)
@@ -3464,7 +3462,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func, unsigned macro
 			Expr **requires = copy_exprlist_macro(contracts->contracts_decl.requires);
 			Expr **ensures = copy_exprlist_macro(contracts->contracts_decl.ensures);
 			copy_end();
-			if (!sema_analyse_contracts(context, contracts, requires, ensures, &next, 0, &has_ensures)) return false;
+			if (!sema_analyse_contracts(context, contracts, requires, ensures, &next, 0, &has_ensures, NULL)) return false;
 		}
 		context->call_env.ensures = has_ensures;
 		bool is_naked = func->func_decl.attr_naked;

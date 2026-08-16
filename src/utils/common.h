@@ -123,6 +123,7 @@
 	if (!debug_log) break; \
 	printf("-- INFO: "); printf(_string, ##__VA_ARGS__); printf("\n"); \
   } while (0)
+extern bool debug_log; //for emscripten c3c compilation
 #ifdef NDEBUG
 #define REMINDER(_string, ...) do {} while (0)
 #define DEBUG_LOG(_string, ...) do {} while(0)

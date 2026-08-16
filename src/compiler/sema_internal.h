@@ -66,7 +66,7 @@ unsigned sema_context_push_ct_stack(SemaContext *context);
 void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state);
 
 bool sema_analyse_function_body(SemaContext *context, Decl *func, unsigned macro_depth_start);
-bool sema_analyse_contracts(SemaContext *context, Decl *contracts, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures);
+bool sema_analyse_contracts(SemaContext *context, Decl *contracts, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures, SourceLocId *arg_loc_map);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
 Decl *sema_create_runner_main(SemaContext *context, Decl *decl);
@@ -80,6 +80,7 @@ void sema_analysis_pass_register_conditional_units_and_decls(Module *module);
 
 void sema_analysis_pass_process_methods(Module *module);
 void sema_analysis_pass_process_method_specialization(void);
+void sema_analysis_pass_process_late_generics(void);
 void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
 void sema_analysis_pass_ct_echo(Module *module);

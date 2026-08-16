@@ -36,7 +36,6 @@ typedef enum
 	COMMAND_CLEAN,
 	COMMAND_VENDOR_FETCH,
 	COMMAND_DIST,
-	COMMAND_BENCH,
 	COMMAND_BENCHMARK,
 	COMMAND_TEST,
 	COMMAND_UNIT_TEST,
@@ -323,8 +322,8 @@ typedef struct BuildOptions_
 	bool print_linking;
 	bool print_env;
 	bool print_asm;
-	bool benchmarking;
-	bool testing;
+	bool build_benchmark;
+	bool build_test;
 } BuildOptions;
 
 typedef struct
@@ -420,8 +419,8 @@ typedef struct
 	bool emit_asm;
 	bool emit_object_files;
 	bool keep_object_files;
-	bool benchmarking;
-	bool testing;
+	bool build_benchmark;
+	bool build_test;
 	bool silent;
 	bool quiet;
 	bool read_stdin;

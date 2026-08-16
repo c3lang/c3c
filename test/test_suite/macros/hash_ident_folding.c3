@@ -5,7 +5,7 @@ macro @foo(#x)
 	#x *= 2; // #error: You cannot assign to a constant expression
 }
 
-attrdef @On_Start(x) = @tag("on_start", @foo(x));
+attrmacro @On_Start(x) = @tag("on_start", @foo(x));
 
 fn void some() @On_Start(fn void(int a) { ; })
 {

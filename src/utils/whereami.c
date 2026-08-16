@@ -192,6 +192,15 @@ OK:;
 	return (int)length;
 }
 
+#elif defined(__EMSCRIPTEN__)
+
+static int get_executable_path_raw(char *out)
+{
+	const char *dummy = "/usr/bin/c3c";
+	strcpy(out, dummy);
+	return 12;
+}
+
 #else
 
 #error unsupported platform

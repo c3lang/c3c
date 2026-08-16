@@ -1,6 +1,6 @@
 module abc <Type>;
 
-attrdef @Hello = @inline;
+attrmacro @Hello = @inline;
 faultdef ABC;
 
 module bcd;

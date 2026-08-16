@@ -2,8 +2,8 @@ module std::io;
 
 struct TeeReader (InStream)
 {
-	InStream r;
-	OutStream w;
+	CachedInStream r;
+	CachedOutStream w;
 }
 
 <* Returns a reader that implements InStream and that will write any data read
@@ -12,7 +12,10 @@ struct TeeReader (InStream)
  @param [&inout] r : "Stream r to read from."
  @param [&inout] w : "Stream w to write to what it reads from r."
 *>
-macro TeeReader tee_reader(InStream r, OutStream w) => { r, w };
+macro TeeReader tee_reader(InStream r, OutStream w)
+{
+	return { .r = r.cached_stream(), .w = w.cached_stream() };
+}
 
 <*
  @param [&inout] self
@@ -25,18 +28,16 @@ fn TeeReader* TeeReader.init(&self, InStream r, OutStream w)
 	return self;
 }
 
-fn sz? TeeReader.read(&self, char[] bytes) @dynamic
+fn sz? TeeReader.read(&self, char[] buffer) @dynamic
 {
-	sz nr, nw;
-	nr = self.r.read(bytes)!;
-	nw = self.w.write(bytes[:nr])!;
-	if (nr != nw) return GENERAL_ERROR~;
+	sz nr = self.r.read(buffer)!;
+	if (!nr) return 0;
+	io::write_all(self.w, buffer[:nr])!;
 	return nr;
 }
 
 fn char? TeeReader.read_byte(&self) @dynamic
 {
 	char[1] data;
-	self.read(data[..])!;
-	return data[0];
+	return self.read(data[..])! ? data[0] : io::EOF~;
 }
