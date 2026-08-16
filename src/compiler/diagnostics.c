@@ -93,15 +93,13 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 	}
 
 	unsigned row_prefix_width = (unsigned)floor(log10(location->row)) + 1;
-	unsigned col_prefix_width = (unsigned)floor(log10(location->col)) + 1;
+	char prefix_buffer[16];
+	snprintf(prefix_buffer, 16, " %%%dd: ", row_prefix_width);
 
-	char number_buffer[20];
-	char number_buffer_shifted[20];
-	snprintf(number_buffer, 20, " %%%dd: %%.*s", row_prefix_width);
-	snprintf(number_buffer_shifted, 20, " %%%dd+%%%dd: %%.*s", row_prefix_width, col_prefix_width);
+	const char *elipsis = "...";
+	const unsigned elipsis_len = 4; // with space
 
 	row_prefix_width++; // add ':'
-	col_prefix_width++; // add '+'
 
 	const unsigned padded_spaces = 2;
 	unsigned display_line_width = MAX_WIDTH - row_prefix_width - padded_spaces;
@@ -122,52 +120,36 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 			row++;
 		}
 	}
+
+	unsigned column = location->col;
 	int row_len = -1;
+	
 	bool is_elided = false;
+	bool needs_shift = column > display_line_width;
 	while (row <= display_row)
 	{
+		const bool is_last_row = row == display_row;
+
 		current += row_len + 1;
+		if (needs_shift && is_last_row) current += column - SHIFT_PADDING;
 		row_len = 0;
 		while (current[row_len] != '\n' && current[row_len]) row_len++;
 
 		is_elided = row_len > display_line_width;
-		const bool is_last_row = row == display_row;
+ 		unsigned line_len = !is_elided ? row_len : display_line_width - elipsis_len;
+		if (needs_shift && is_last_row && is_elided) line_len -= elipsis_len;
 
- 		const unsigned line_len = !is_elided ? row_len : display_line_width - (is_last_row ? 3 : 1);
-
-		eprintf(number_buffer, (int)row, line_len, current);
-		if (is_elided)
-		{
-			eprintf(is_last_row ? "..." : "|");
-		}
+		eprintf(prefix_buffer, (int)row);
+		if (needs_shift && is_last_row) eprintf("%s ", elipsis);
+		eprintf("%.*s", line_len, current);
+		if (is_elided) eprintf(" %s", elipsis);
 		eprintf("\n");
 
 		row++;
 	}
 
-	unsigned column = location->col;
-	bool needs_shift = column > display_line_width;
-
-	if (needs_shift)
-	{
-		row--;
-		current += column - SHIFT_PADDING;
-		row_len = 0;
-		while (current[row_len] != '\n' && current[row_len]) row_len++;
-
-		is_elided = row_len > display_line_width;
- 		const unsigned line_len = !is_elided ? row_len : display_line_width - col_prefix_width - 3;
-
-		eprintf(number_buffer_shifted, (int)row, (int)column, line_len, current);
-		if (is_elided)
-		{
-			eprintf("...");
-		}
-		eprintf("\n");
-	}
-	
 	unsigned prefix_width = row_prefix_width + padded_spaces;
-	if (needs_shift) prefix_width += col_prefix_width;
+	if (needs_shift) prefix_width += elipsis_len;
 
     eprintf("%*s", prefix_width, "");
     unsigned space_to = (!needs_shift ? column : SHIFT_PADDING) - 1;
@@ -185,9 +167,10 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		}
 	}
 
-	unsigned highlighter_width = display_line_width - space_to - (needs_shift ? col_prefix_width : 0);
+	unsigned highlighter_width = display_line_width - space_to;
+	if (needs_shift) highlighter_width -= elipsis_len;
+	
 	const bool is_multiline = location->length > row_len && row_len < display_line_width;
-
 	unsigned len = row_len - 1; // exclude '\n'
 	if (!is_multiline)
 	{
