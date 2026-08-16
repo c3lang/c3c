@@ -135,10 +135,12 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		row_len = 0;
 		while (current[row_len] != '\n' && current[row_len]) row_len++;
 
-		is_elided = row_len > display_line_width;
- 		unsigned line_len = !is_elided ? row_len : display_line_width - elipsis_len;
-		if (needs_shift && is_last_row && is_elided) line_len -= elipsis_len;
-
+		unsigned line_width = display_line_width;
+		if (needs_shift && is_last_row) line_width -= elipsis_len;
+		
+		is_elided = row_len > line_width;
+ 		unsigned line_len = !is_elided ? row_len : line_width - elipsis_len;
+		
 		eprintf(prefix_buffer, (int)row);
 		if (needs_shift && is_last_row) eprintf("%s ", elipsis);
 		eprintf("%.*s", line_len, current);
