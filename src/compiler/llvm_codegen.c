@@ -1584,11 +1584,11 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		}
 		if (!gen_contexts) return NULL;
 		GenContext *first = gen_contexts[0];
-		if (compiler.build.benchmarking)
+		if (compiler.build.build_benchmark)
 		{
 			vec_add(gen_contexts, llvm_gen_benchmarks(modules, module_count, context));
 		}
-		if (compiler.build.testing)
+		if (compiler.build.build_test)
 		{
 			vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
 		}
@@ -1608,11 +1608,11 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		if (!result) continue;
 		vec_add(gen_contexts, result);
 	}
-	if (compiler.build.benchmarking)
+	if (compiler.build.build_benchmark)
 	{
 		vec_add(gen_contexts, llvm_gen_benchmarks(modules, module_count, NULL));
 	}
-	if (compiler.build.testing)
+	if (compiler.build.build_test)
 	{
 		vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
 	}
@@ -1681,12 +1681,12 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			if (only_used && !func->is_live) continue;
 			if (func->func_decl.attr_test)
 			{
-				if (!compiler.build.testing) continue;
+				if (!compiler.build.build_test) continue;
 				vec_add(module->tests, func);
 			}
 			if (func->func_decl.attr_benchmark)
 			{
-				if (!compiler.build.benchmarking) continue;
+				if (!compiler.build.build_benchmark) continue;
 				vec_add(module->benchmarks, func);
 			}
 			llvm_emit_function_decl(gen_context, func);
@@ -1731,8 +1731,8 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, decl, unit->functions)
 		{
-			if (decl->func_decl.attr_test && !compiler.build.testing) continue;
-			if (decl->func_decl.attr_benchmark && !compiler.build.benchmarking) continue;
+			if (decl->func_decl.attr_test && !compiler.build.build_test) continue;
+			if (decl->func_decl.attr_benchmark && !compiler.build.build_benchmark) continue;
 			if (only_used && !decl->is_live) continue;
 			if (decl->func_decl.body)
 			{

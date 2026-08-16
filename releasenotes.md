@@ -4,6 +4,10 @@
 
 ### Changes / improvements
 - Improved error message when providing an incorrect name for the panic function.
+- Add the ability to pinpoint a `@require` using the `@require [a] a > 0 : "a must be greater than zero"` syntax. #1804
+- `benchmark` and `test` project targets now work properly with `c3c benchmark` and `c3c test`. 
+- Add `$reflect(foo).param_struct` and `Foo::param_struct` properties. #3099
+- Allow the parse `faultset { ... }`. For `faultset`, `faultconst` and `excuse`.
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
@@ -12,6 +16,7 @@
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
 - `@return` was accepted in doc comments for non-function/macro declarations.
+- Can not run targeted benchmark function in project #1651.
 
 ## 0.8.3 Change list
 

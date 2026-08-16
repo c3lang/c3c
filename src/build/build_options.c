@@ -201,8 +201,8 @@ static void usage(bool full)
 		PRINTF("");
 		print_opt("--print-linking", "Print linker arguments.");
 		PRINTF("");
-		print_opt("--benchmarking", "Run built-in benchmarks.");
-		print_opt("--testing", "Run built-in tests.");
+		print_opt("--benchmarking", "Generate benchmark functions.");
+		print_opt("--testing", "Generate test functions.");
 		PRINTF("");
 		print_opt("--list-attributes", "List all attributes.");
 		print_opt("--list-builtins", "List all builtins.");
@@ -498,13 +498,13 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("compile-benchmark"))
 	{
 		options->command = COMMAND_COMPILE_BENCHMARK;
-		options->benchmarking = true;
+		options->build_benchmark = true;
 		return;
 	}
 	if (arg_match("compile-test"))
 	{
 		options->command = COMMAND_COMPILE_TEST;
-		options->testing = true;
+		options->build_test = true;
 		return;
 	}
 	if (arg_match("compile"))
@@ -546,14 +546,14 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("benchmark"))
 	{
 		options->command = COMMAND_BENCHMARK;
-		options->benchmarking = true;
+		options->build_benchmark = true;
 		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("test"))
 	{
 		options->command = COMMAND_TEST;
-		options->testing = true;
+		options->build_test = true;
 		parse_optional_target(options);
 		return;
 	}
@@ -581,13 +581,7 @@ static void parse_command(BuildOptions *options)
 	}
 	if (arg_match("dist"))
 	{
-		options->command = COMMAND_CLEAN_RUN;
-		parse_optional_target(options);
-		return;
-	}
-	if (arg_match("bench"))
-	{
-		options->command = COMMAND_BENCH;
+		options->command = COMMAND_DIST;
 		parse_optional_target(options);
 		return;
 	}
@@ -1716,8 +1710,8 @@ static void parse_option(BuildOptions *options)
 				options->lsp_mode = true;
 				options->strip_unused = STRIP_UNUSED_OFF;
 				options->test_mode = false;
-				options->benchmarking = true;
-				options->testing = true;
+				options->build_benchmark = true;
+				options->build_test = true;
 				return;
 			}
 			if (match_longopt("test"))
@@ -1771,12 +1765,12 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("benchmarking"))
 			{
-				options->benchmarking = true;
+				options->build_benchmark = true;
 				return;
 			}
 			if (match_longopt("testing"))
 			{
-				options->testing = true;
+				options->build_test = true;
 				return;
 			}
 			if (match_longopt("suppress-run"))
@@ -1913,7 +1907,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		case COMMAND_CLEAN_RUN:
 		case COMMAND_CLEAN:
 		case COMMAND_DIST:
-		case COMMAND_BENCH:
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 			build_options.is_project = true;

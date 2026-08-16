@@ -129,7 +129,7 @@ macro bool is_approx_rel(x, y, eps)
 }
 
 <*
- @require @kindof(x).is_int() : `The input must be an integer`
+ @require [x] values::@is_int(x) : `The input must be an integer`
 *>
 macro sign(x)
 {

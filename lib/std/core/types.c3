@@ -90,14 +90,14 @@ fn bool typeid.is_subtype_of(self, typeid other)
 	return false;
 }
 
-macro bool is_subtype_of($Type, $OtherType)
+macro bool is_subtype_of($Type, $OtherType) @const
 {
 	$switch $Type:
 		$case $OtherType: return true;
 		$default: return false;
 	$endswitch
 }
-macro bool is_numerical($Type)
+macro bool is_numerical($Type) @const
 {
 	$switch $Type::kind:
 		$case TYPEDEF:
@@ -123,7 +123,7 @@ macro bool TypeKind.@is_int($kind) @const
 	return $kind == SIGNED_INT ||| $kind == UNSIGNED_INT;
 }
 
-macro bool is_slice_convertible($Type)
+macro bool is_slice_convertible($Type) @const
 {
 	$switch $Type::kind:
 		$case SLICE:

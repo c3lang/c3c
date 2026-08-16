@@ -129,7 +129,6 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_CLEAN_RUN:
 		case COMMAND_CLEAN:
 		case COMMAND_DIST:
-		case COMMAND_BENCH:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
@@ -165,7 +164,6 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_BUILD:
 		case COMMAND_CLEAN:
 		case COMMAND_DIST:
-		case COMMAND_BENCH:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:
 		case COMMAND_PROJECT:
@@ -361,10 +359,26 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 {
 	switch (options->command)
 	{
-		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_BENCHMARK:
-			target->run_after_compile = !options->suppress_run;
+			switch (target->type)
+			{
+				case TARGET_TYPE_STATIC_LIB:
+				case TARGET_TYPE_DYNAMIC_LIB:
+				case TARGET_TYPE_OBJECT_FILES:
+				case TARGET_TYPE_EXECUTABLE:
+				case TARGET_TYPE_BENCHMARK:
+					break;
+				case TARGET_TYPE_TEST:
+					error_exit("The '%s' target is a test target and not compatible with the benchmark command.", target->name);
+				case TARGET_TYPE_PREPARE:
+					error_exit("The '%s' target is a prepare target and not compatible with the benchmark command.", target->name);
+			}
+BENCHMARK:
+		case COMMAND_COMPILE_BENCHMARK:
 			target->type = TARGET_TYPE_BENCHMARK;
+			options->command = COMMAND_BENCHMARK;
+			options->build_benchmark = true;
+			target->run_after_compile = !options->suppress_run;
 			if (options->benchmark_csv_report) vec_add(target->args, "--csv-report");
 			switch (options->ansi)
 			{
@@ -380,10 +394,27 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 					break;
 			}
 			break;
-		case COMMAND_COMPILE_TEST:
 		case COMMAND_TEST:
+			switch (target->type)
+			{
+				case TARGET_TYPE_STATIC_LIB:
+				case TARGET_TYPE_DYNAMIC_LIB:
+				case TARGET_TYPE_OBJECT_FILES:
+				case TARGET_TYPE_EXECUTABLE:
+				case TARGET_TYPE_TEST:
+					target->type = TARGET_TYPE_TEST;
+					break;
+				case TARGET_TYPE_BENCHMARK:
+					error_exit("The '%s' target is a benchmark target and not compatible with the test command.", target->name);
+				case TARGET_TYPE_PREPARE:
+					error_exit("The '%s' target is a prepare target and not compatible with the test command.", target->name);
+			}
+		case COMMAND_COMPILE_TEST:
+TEST:
+			options->command = COMMAND_TEST;
 			target->run_after_compile = !options->suppress_run;
 			target->type = TARGET_TYPE_TEST;
+			options->build_test = true;
 			switch (options->ansi)
 			{
 				case ANSI_ON:
@@ -412,8 +443,26 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			if (options->test_show_output) vec_add(target->args, "--test-show-output");
 			break;
 		case COMMAND_RUN:
-		case COMMAND_COMPILE_RUN:
 		case COMMAND_CLEAN_RUN:
+			switch (target->type)
+			{
+				case TARGET_TYPE_EXECUTABLE:
+					break;
+				case TARGET_TYPE_STATIC_LIB:
+				case TARGET_TYPE_DYNAMIC_LIB:
+					error_exit("'%s' is a library target and cannot be run.", target->name);
+				case TARGET_TYPE_OBJECT_FILES:
+					error_exit("'%s' is an object file target and cannot be run.", target->name);
+				case TARGET_TYPE_BENCHMARK:
+					goto BENCHMARK;
+				case TARGET_TYPE_TEST:
+					goto TEST;
+				case TARGET_TYPE_PREPARE:
+					options->command = COMMAND_BUILD;
+					goto BUILD;
+			}
+			FALLTHROUGH;
+		case COMMAND_COMPILE_RUN:
 			target->run_after_compile = true;
 			target->delete_after_run = options->run_once;
 			target->args = options->args;
@@ -428,7 +477,31 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case COMMAND_STATIC_LIB:
 			target->type = TARGET_TYPE_STATIC_LIB;
 			break;
-		default:
+		case COMMAND_BUILD:
+		case COMMAND_DIST:
+BUILD:
+			if (target->type == TARGET_TYPE_BENCHMARK)
+			{
+				options->suppress_run = true;
+				goto BENCHMARK;
+			}
+			if (target->type == TARGET_TYPE_TEST)
+			{
+				options->suppress_run = true;
+				goto TEST;
+			}
+			FALLTHROUGH;
+		case COMMAND_MISSING:
+		case COMMAND_COMPILE:
+		case COMMAND_INIT:
+		case COMMAND_INIT_LIB:
+		case COMMAND_CLEAN:
+		case COMMAND_VENDOR_FETCH:
+		case COMMAND_UNIT_TEST:
+		case COMMAND_PRINT_SYNTAX:
+		case COMMAND_PROJECT:
+		case COMMAND_FETCH_SDK:
+		case COMMAND_DOCGEN:
 			target->run_after_compile = false;
 			break;
 	}
@@ -670,8 +743,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		WARNING("Statically linking against glibc produces binaries that still require glibc shared libraries at runtime for NSS/dns lookups. Consider targeting musl instead using `-linux-libc=musl --linker=builtin`.");
 	}
 
-	target->benchmarking = options->benchmarking;
-	target->testing = options->testing;
+	target->build_benchmark = options->build_benchmark;
+	target->build_test = options->build_test;
 	target->docgen = options->command == COMMAND_DOCGEN;
 	target->docgen_json_out = options->docgen_json_out;
 	target->docgen_append = options->docgen_append;
@@ -842,7 +915,7 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	}
 
 
-	*target = *project_select_target(filename, project, options->target_select);
+	*target = *project_select_target(filename, project, options->target_select, options->command);
 
 	if (project_path) target->project_dir = str_dup(project_path);
 	update_build_target_from_options(target, options);

@@ -566,6 +566,7 @@ typedef struct
 	unsigned is_wildcard_overload : 1;
 	OperatorOverload operator : 6;
 	Signature signature;
+	DeclId param_struct;
 	AstId body;
 	union
 	{
@@ -608,6 +609,7 @@ typedef struct
 typedef struct
 {
 	Signature signature;
+	DeclId param_struct;
 } FnTypeDecl;
 
 
@@ -668,6 +670,15 @@ typedef struct
 
 typedef struct
 {
+	union
+	{
+		const char *name;
+		struct
+		{
+			int index;
+			bool found;
+		};
+	} param;
 	Expr *decl_exprs;
 	const char *comment;
 	const char *expr_string;
@@ -1810,6 +1821,7 @@ typedef struct
 	bool pure;
 	bool has_contracts;
 	SourceLocId first;
+	SourceLocId first_variable_require;
 	SourceLocId first_non_require;
 	SourceLocId first_contract;
 	Expr **opt_returns;
@@ -2157,6 +2169,7 @@ extern const char *kw_offset;
 extern const char *kw_ordinal;
 extern const char *kw_out;
 extern const char *kw_own;
+extern const char *kw_param_struct;
 extern const char *kw_ptr;
 extern const char *kw_qname;
 extern const char *kw_return;
@@ -2226,7 +2239,7 @@ INLINE bool no_stdlib(void)
 
 INLINE bool compile_asserts(void)
 {
-	return safe_mode_enabled() || compiler.build.testing;
+	return safe_mode_enabled() || compiler.build.build_test;
 }
 
 void assert_print_line(SourceLocId span);

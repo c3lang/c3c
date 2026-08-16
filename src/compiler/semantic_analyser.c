@@ -410,7 +410,7 @@ static void assign_panicfn(void)
 
 static void assign_testfn(void)
 {
-	if (!compiler.build.testing) return;
+	if (!compiler.build.build_test) return;
 	if (!compiler.build.testfn && no_stdlib())
 	{
 		error_exit("No test function could be found.");
@@ -446,7 +446,7 @@ static void assign_testfn(void)
 
 static void assign_benchfn(void)
 {
-	if (!compiler.build.benchmarking) return;
+	if (!compiler.build.build_benchmark) return;
 	if (!compiler.build.benchfn && no_stdlib())
 	{
 		return;
@@ -596,17 +596,30 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 	return temp_context;
 }
 
+static bool loc_inside_loc(SourceLoc *inner, SourceLoc *outer)
+{
+	if (!inner || !outer) return false;
+	if (inner->offset < outer->offset) return false;
+	if (inner->offset + inner->length > outer->offset + outer->length) return false;
+	return true;
+}
+
 void sema_print_inline(SemaContext *context, SourceLocId original)
 {
 	if (!context) return;
 	InliningSpan *inlined_at = context->inlined_at;
 	SourceLocId last_span = 0;
+	SourceLoc *original_loc = sourcelocptrzero(original);
 	while (inlined_at)
 	{
 		if (inlined_at->loc != original && inlined_at->loc != last_span)
 		{
-			sema_note_prev_at(inlined_at->loc, "Inlined from here.");
-			last_span = inlined_at->loc;
+			SourceLoc *inlined_loc = sourcelocptrzero(inlined_at->loc);
+			if (!loc_inside_loc(original_loc, inlined_loc))
+			{
+				sema_note_prev_at(inlined_at->loc, "Inlined from here.");
+				last_span = inlined_at->loc;
+			}
 		}
 		inlined_at = inlined_at->prev;
 	}

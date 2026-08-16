@@ -161,6 +161,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool *missing_ref);
 static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point);
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr);
+static inline bool sema_create_type_param_struct(SemaContext *context, Expr *expr, Decl *fn_decl);
 
 static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_info);
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr);
@@ -2710,10 +2711,12 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 	{
 		goto END_CONTRACT;
 	}
+	SourceLocId arg_positions[MAX_PARAMS] = { [0] = 0 };
 	FOREACH_IDX(i, Decl *, param, sig->params)
 	{
 		if (!param || !param->name) continue;
 		Expr *arg = expr->call_expr.arguments[i];
+		if (arg) arg_positions[i] = arg->loc;
 		if (!arg)
 		{
 			assert(i == sig->vararg_index);
@@ -2772,7 +2775,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 	else
 	{
 		contract_depth++;
-		bool contract_success = sema_analyse_contracts(&temp_context, contracts, requires, ensures, &next, expr->loc, NULL);
+		bool contract_success = sema_analyse_contracts(&temp_context, contracts, requires, ensures, &next, expr->loc, NULL, arg_positions);
 		contract_depth--;
 		if (!contract_success) return false;
 	}
@@ -3229,6 +3232,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	unsigned vararg_index = sig->vararg_index;
 	Expr **args = call_expr->call_expr.arguments;
+	SourceLocId arg_positions[MAX_PARAMS] = { [0] = 0 };
 	FOREACH_IDX(i, Decl *, param, params)
 	{
 		if (i == vararg_index)
@@ -3252,6 +3256,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		}
 		param->var.init_expr = args[i];
 		if (!args[i]) continue;
+		arg_positions[i] = args[i]->loc;
 		// Lazy arguments doesn't affect optional arg.
 		if (param->var.kind == VARDECL_PARAM_EXPR) continue;
 		has_optional_arg = has_optional_arg || IS_OPTIONAL(args[i]);
@@ -3287,7 +3292,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	// Handle contracts
 	bool has_ensures = false;
-	if (!sema_analyse_contracts(&macro_context, contracts, requires, ensures, &next, call_expr->loc, &has_ensures)) return false;
+	if (!sema_analyse_contracts(&macro_context, contracts, requires, ensures, &next, call_expr->loc, &has_ensures, arg_positions)) return false;
 	macro_context.macro_has_ensures = has_ensures;
 	sema_append_contract_asserts(assert_first, body);
 
@@ -5343,6 +5348,10 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
 	}
+	if (member->decl_kind == DECL_MACRO || member->decl_kind == DECL_FUNC)
+	{
+		if (!sema_analyse_decl(context, member)) return false;
+	}
 	if (member->decl_kind == DECL_VAR || member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT || member->decl_kind == DECL_BITSTRUCT)
 	{
 		expr->expr_kind = EXPR_CONST;
@@ -5690,6 +5699,11 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		expr_rewrite_const_int(expr, type_sz, type_size(type));
 		return true;
 	}
+	if (name == kw_param_struct && reflect->expr_kind == EXPR_IDENTIFIER && reflect->ident_expr->decl_kind == DECL_FUNC)
+	{
+		return sema_create_type_param_struct(context, expr, reflect->ident_expr);
+	}
+
 	if (name == kw_alignment)
 	{
 		switch (sema_expr_analyse_reflection_alignment(context, expr, reflect, member))
@@ -5816,6 +5830,7 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 
 FAILED:
 	if (missing_ref) goto MISSING_REF;
+	if (name == kw_param_struct) RETURN_SEMA_ERROR(expr, "'param_struct' is only a property for functions.");
 	RETURN_SEMA_ERROR(expr, "There is no property '%s' available for the reflected expression.", name);
 MISSING_REF:
 	*missing_ref = true;
@@ -6005,7 +6020,7 @@ static inline bool sema_create_const_min(Expr *expr, Type *type, Type *flat)
 }
 
 
-static inline bool sema_create_const_paramsof(Expr *expr, Type *type)
+static inline bool sema_create_const_type_params(Expr *expr, Type *type)
 {
 	ASSERT_SPAN(expr, type->type_kind == TYPE_FUNC_PTR);
 	type = type->pointer;
@@ -6034,6 +6049,46 @@ static inline bool sema_create_const_paramsof(Expr *expr, Type *type)
 	return true;
 }
 
+static inline bool sema_create_type_param_struct(SemaContext *context, Expr *expr, Decl *fn_decl)
+{
+	ASSERT_SPAN(expr, fn_decl->resolve_status == RESOLVE_DONE);
+	DeclId *ref = fn_decl->decl_kind == DECL_FNTYPE ? &fn_decl->fntype_decl.param_struct : &fn_decl->func_decl.param_struct;
+	if (*ref)
+	{
+		expr_rewrite_const_typeid(expr, declptr(*ref)->type);
+		return true;
+	}
+	Signature *sig = fn_decl->type->function.signature;
+	if (vec_size(sig->params) == 0)
+	{
+		expr_rewrite_const_typeid(expr, type_void);
+		return true;
+	}
+	scratch_buffer_clear();
+	scratch_buffer_append("ReflectParamStruct$");
+	scratch_buffer_append(fn_decl->type->name);
+	Decl *strukt = decl_new_with_type(scratch_buffer_interned(), sourcelocptr(expr->loc), DECL_STRUCT);
+	strukt->unit = fn_decl->type->function.decl->unit;
+	Decl **members = NULL;
+	FOREACH_IDX(i, Decl *, decl, sig->params)
+	{
+		const char *name = decl->name;
+		if (!name)
+		{
+			scratch_buffer_clear();
+			scratch_buffer_append("__anon_");
+			scratch_buffer_append_unsigned_int(i);
+			name = scratch_buffer_interned();
+		}
+		Decl *member = decl_new_var_loc(name, sourcelocptr(decl->loc), type_info_new_base(decl->type, decl->loc), VARDECL_MEMBER);
+		vec_add(members, member);
+	}
+	strukt->strukt.members = members;
+	if (!sema_analyse_decl(context, strukt)) return false;
+	*ref = declid(strukt);
+	expr_rewrite_const_typeid(expr, strukt->type);
+	return true;
+}
 
 static inline bool sema_create_const_tags(SemaContext *context, Expr *expr_tags, ResolvedAttrData *resolved_attr)
 {
@@ -6314,6 +6369,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_NAME:
 		case TYPE_PROPERTY_NAN:
 		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_PARAM_STRUCT:
 		case TYPE_PROPERTY_QNAME:
 		case TYPE_PROPERTY_RETURNS:
 		case TYPE_PROPERTY_GET_TAG:
@@ -6578,6 +6634,7 @@ static bool sema_type_property_is_valid_for_type(CanonicalType *original_type, T
 					return true;
 			}
 		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_PARAM_STRUCT:
 		case TYPE_PROPERTY_RETURNS:
 			return type_is_func_ptr(type);
 		case TYPE_PROPERTY_GET_TAG:
@@ -6672,7 +6729,10 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_METHODS:
 			return sema_create_const_methodsof(context, expr, type);
 		case TYPE_PROPERTY_PARAMS:
-			return sema_create_const_paramsof(expr, flat);
+			return sema_create_const_type_params(expr, flat);
+		case TYPE_PROPERTY_PARAM_STRUCT:
+			ASSERT_SPAN(expr, type->type_kind == TYPE_FUNC_PTR);
+			return sema_create_type_param_struct(context, expr, flat->pointer->decl);
 		case TYPE_PROPERTY_RETURNS:
 			expr_rewrite_const_typeid(expr, type_infoptr(flat->pointer->function.signature->rtype)->type);
 			return true;
@@ -10841,7 +10901,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 		}
 
 		case BUILTIN_DEF_BENCHMARK_NAMES:
-			if (!compiler.build.benchmarking)
+			if (!compiler.build.build_benchmark)
 			{
 				expr_rewrite_const_empty_slice(expr, type_get_slice(type_string));
 				return true;
@@ -10851,7 +10911,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr->expr_kind = EXPR_BENCHMARK_HOOK;
 			return true;
 		case BUILTIN_DEF_BENCHMARK_FNS:
-			if (!compiler.build.benchmarking)
+			if (!compiler.build.build_benchmark)
 			{
 				expr_rewrite_const_empty_slice(expr, type_get_slice(type_voidptr));
 				return true;
@@ -10861,7 +10921,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr->expr_kind = EXPR_BENCHMARK_HOOK;
 			return true;
 		case BUILTIN_DEF_TEST_NAMES:
-			if (!compiler.build.testing)
+			if (!compiler.build.build_test)
 			{
 				expr_rewrite_const_empty_slice(expr, type_get_slice(type_string));
 				return true;
@@ -10871,7 +10931,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr->expr_kind = EXPR_TEST_HOOK;
 			return true;
 		case BUILTIN_DEF_TEST_FNS:
-			if (!compiler.build.testing)
+			if (!compiler.build.build_test)
 			{
 				expr_rewrite_const_empty_slice(expr, type_get_slice(type_voidptr));
 				return true;

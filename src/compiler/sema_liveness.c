@@ -550,8 +550,8 @@ void sema_trace_liveness(void)
 	{
 		sema_trace_decl_liveness(compiler.context.main);
 	}
-	bool keep_tests = compiler.build.testing;
-	bool keep_benchmarks = compiler.build.benchmarking;
+	bool keep_tests = compiler.build.build_test;
+	bool keep_benchmarks = compiler.build.build_benchmark;
 	FOREACH(Decl *, function, compiler.context.method_extension_list)
 	{
 		if (function->decl_kind == DECL_MACRO) continue;
