@@ -1954,9 +1954,7 @@ void *llvm_target_machine_create(void)
 	if (!llvm_initialized)
 	{
 		llvm_initialized = true;
-#ifdef XTENSA_ENABLE
 		INITIALIZE_TARGET(Xtensa);
-#endif
 #ifndef AVR_DISABLE
 		INITIALIZE_TARGET(AVR);
 #endif
@@ -2185,13 +2183,6 @@ void target_setup(BuildTarget *build_target)
 	{
 		error_exit("Failed to find Windows def file: '%s' in path.", build_target->win.def);
 	}
-
-#ifndef XTENSA_ENABLE
-	if (build_target->arch_os_target == ELF_XTENSA)
-	{
-		error_exit("Xtensa support is not available with this LLVM version.");
-	}
-#endif
 
 	compiler.platform.target_triple = arch_to_target_triple(build_target->arch_os_target, build_target->linuxpaths.libc);
 	ASSERT(compiler.platform.target_triple);
