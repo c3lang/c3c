@@ -2746,6 +2746,28 @@ static inline Decl *parse_fault(ParseContext *c)
 	return decl;
 }
 
+static inline Decl *parse_faultdef_multirow(ParseContext *c)
+{
+	Decl **decls = NULL;
+	while (!try_consume(c, TOKEN_EOS))
+	{
+		ASSIGN_DECL_OR_RET(Decl *decl, parse_fault(c), poisoned_decl);
+		vec_add(decls, decl);
+		if (try_consume(c, TOKEN_COMMA)) continue;
+		CONSUME_OR_RET(TOKEN_EOS, poisoned_decl);
+		break;
+	}
+	if (!decls)
+	{
+		PRINT_ERROR_LAST("Expected the name of a fault here.");
+		return poisoned_decl;
+	}
+	Decl *decl = decl_calloc();
+	decl->decl_kind = DECL_GROUP;
+	decl->decl_list = decls;
+	decl->docs = decl_from_contract_description(&c->contracts);
+	return decl;
+}
 /**
  * faultdef_declaration ::= FAULTDEF CONST_IDENT (',' CONST_IDENT)* ','? ';'
  */
@@ -2760,19 +2782,39 @@ static inline Decl *parse_faultdef_declaration(ParseContext *c)
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;
 	}
+	return parse_faultdef_multirow(c);
+}
+
+/**
+ * faultdef_declaration ::= FAULTSET CONST_IDENT ';' | '{' CONST_IDENT (',' CONST_IDENT)* ','? '}'
+ */
+static inline Decl *parse_faultset_declaration(ParseContext *c)
+{
+	advance(c);
+
+	if (c->lexer.token_type == TOKEN_EOS)
+	{
+		ASSIGN_DECL_OR_RET(Decl *decl, parse_fault(c), poisoned_decl);
+		CONSUME_EOS_OR_RET(poisoned_decl);
+		return decl;
+	}
+
+	if (!try_consume(c, TOKEN_LBRACE))
+	{
+		return parse_faultdef_multirow(c);
+	}
+
 	Decl **decls = NULL;
-	while (!try_consume(c, TOKEN_EOS))
+	while (true)
 	{
 		ASSIGN_DECL_OR_RET(Decl *decl, parse_fault(c), poisoned_decl);
 		vec_add(decls, decl);
-		if (try_consume(c, TOKEN_COMMA)) continue;
-		CONSUME_OR_RET(TOKEN_EOS, poisoned_decl);
-		break;
-	}
-	if (!decls)
-	{
-		PRINT_ERROR_LAST("Expected the name of a fault here.");
-		return poisoned_decl;
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
+			break;
+		}
+		if (try_consume(c, TOKEN_RBRACE)) break;
 	}
 	Decl *decl = decl_calloc();
 	decl->decl_kind = DECL_GROUP;
@@ -3699,6 +3741,9 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			break;
 		case TOKEN_FAULTSET:
 		case TOKEN_FAULTCONST:
+			decl = parse_faultset_declaration(c);
+			attach_contracts = true;
+			break;
 		case TOKEN_FAULTDEF:
 			decl = parse_faultdef_declaration(c);
 			attach_contracts = true;
@@ -3706,7 +3751,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_IDENT:
 			if (symstr(c) == kw_excuse)
 			{
-				decl = parse_faultdef_declaration(c);
+				decl = parse_faultset_declaration(c);
 				attach_contracts = true;
 				break;
 			}
