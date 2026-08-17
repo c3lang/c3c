@@ -1238,6 +1238,45 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 
 }
 
+INLINE void llvm_emit_stack_protector_attributes(GenContext *c, LLVMValueRef function, Decl *decl) 
+{
+	ResolvedAttrData *decl_attrs = decl->attrs_resolved;
+	StackProtector stack_protector = (decl_attrs && decl_attrs->stack_protector != STACK_PROTECTOR_NOT_SET) 
+				? decl_attrs->stack_protector
+				: compiler.build.stack_protector;
+	// Fallback to platform/arch defaults if not set
+	if (stack_protector == STACK_PROTECTOR_NOT_SET)
+	{
+		switch (compiler.platform.os)
+		{
+			case OS_TYPE_OPENBSD:
+				stack_protector = STACK_PROTECTOR_STRONG;
+				break;
+			case OS_TYPE_MACOSX:
+			case OS_TYPE_IOS:
+				stack_protector = STACK_PROTECTOR_BASIC;
+				break;
+			default:
+				stack_protector = STACK_PROTECTOR_NONE;
+		}
+	}
+	switch (stack_protector)
+	{
+		case STACK_PROTECTOR_BASIC:
+			llvm_attribute_add(c, function, attribute_id.ssp, -1);
+			llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
+			break;
+		case STACK_PROTECTOR_STRONG:
+			llvm_attribute_add(c, function, attribute_id.sspstrong, -1);
+			break;
+		case STACK_PROTECTOR_ALL:
+			llvm_attribute_add(c, function, attribute_id.sspreq, -1);
+			break;
+		default:
+			break;
+	}
+}
+ 
 void llvm_append_function_attributes(GenContext *c, Decl *decl)
 {
 	FunctionPrototype *prototype = type_get_resolved_prototype(decl->type);
@@ -1247,10 +1286,8 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	StackProbe stack_probe = (decl->attrs_resolved && decl->attrs_resolved->stack_probe != STACK_PROBE_NOT_SET) 
 				? decl->attrs_resolved->stack_probe
 				: compiler.build.stack_probe;
-	StackProtector stack_protector = (decl->attrs_resolved && decl->attrs_resolved->stack_protector != STACK_PROTECTOR_NOT_SET) 
-				? decl->attrs_resolved->stack_protector
-				: compiler.build.stack_protector;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
+	llvm_emit_stack_protector_attributes(c, function, decl);
 	switch (stack_probe)
 	{
 		case STACK_PROBE_NONE:
@@ -1271,22 +1308,6 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	if (c->debug.enable_stacktrace)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
-		if (stack_protector == STACK_PROTECTOR_NOT_SET) stack_protector = STACK_PROTECTOR_BASIC;
-	}
-	switch (stack_protector)
-	{
-		case STACK_PROTECTOR_BASIC:
-			llvm_attribute_add(c, function, attribute_id.ssp, -1);
-			llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
-			break;
-		case STACK_PROTECTOR_STRONG:
-			llvm_attribute_add(c, function, attribute_id.sspstrong, -1);
-			break;
-		case STACK_PROTECTOR_ALL:
-			llvm_attribute_add(c, function, attribute_id.sspreq, -1);
-			break;
-		default:
-			break;
 	}
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
 	int offset = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;
