@@ -152,8 +152,7 @@ fn sz Tree.add_all_from(&self, Tree* other)
 *>
 fn bool Tree.add(&self, Value value)
 {
-	Node* z;
-	bool added = add_and_rebalance(self, value, z);
+	bool added = add_and_rebalance(self, value);
 	if (added) self.count++;
 	return added;
 }
@@ -188,6 +187,8 @@ fn void Tree.clear(&self)
 		}
 		node = next;
 	}
+	self.root = null;
+	self.count = 0;
 }
 
 <*
@@ -227,7 +228,7 @@ fn sz Tree.remove_all_from(&self, Tree* other)
  @param value
  @return ? remove_and_rebalance!
 *>
-fn void? Tree.remove(&self, Value value)
+fn void? Tree.remove(&self, Value value) @maydiscard
 {
 	Node* z = remove_and_rebalance(self, value)!;
 	tree_free_node(self, z);
@@ -382,18 +383,15 @@ fn void rotate_right(Tree* self, Node* y) @private
 	y.parent = x;
 }
 
-fn bool add_and_rebalance(Tree* self, Value value, Node* z) @private
+fn bool add_and_rebalance(Tree* self, Value value) @private
 {
 	Node* x = self.root;
 	Node* y;
+	Node* z;
 
 	while (x)
 	{
-		if (value == x.value)
-		{
-			z = x;
-			return false;
-		}
+		if (value == x.value) return false;
 		y = x;
 		if (value < x.value)
 		{
@@ -426,7 +424,7 @@ fn bool add_and_rebalance(Tree* self, Value value, Node* z) @private
 		if (z.parent == z.parent.parent.left)
 		{
 			y = z.parent.parent.right;
-			if (y.color == NodeColor.RED)
+			if (y && y.color == NodeColor.RED)
 			{
 				z.parent.color = NodeColor.BLACK;
 				y.color = NodeColor.BLACK;
@@ -448,7 +446,7 @@ fn bool add_and_rebalance(Tree* self, Value value, Node* z) @private
 		else
 		{
 			y = z.parent.parent.left;
-			if (y.color == NodeColor.RED)
+			if (y && y.color == NodeColor.RED)
 			{
 				z.parent.color = NodeColor.BLACK;
 				y.color = NodeColor.BLACK;
@@ -533,22 +531,22 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 		{
 			transplant(self, y, y.right);
 			y.right = z.right;
-			y.right.parent = y;
+			if (y.right != null) y.right.parent = y;
 		}
-		else
+		else if (x != null)
 		{
 			x.parent = y;
 		}
 		transplant(self, z, y);
 		y.left = z.left;
-		y.left.parent = y;
+		if (y.left != null) y.left.parent = y;
 		y.color = z.color;
 	}
 
 	// Rebalance after deletion
 	if (y_color == NodeColor.BLACK)
 	{
-		while (x != self.root && x.color == NodeColor.BLACK)
+		while (x != self.root && (x == null || x.color == NodeColor.BLACK))
 		{
 			if (x == x.parent.left)
 			{
@@ -560,14 +558,15 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 					rotate_left(self, x.parent);
 					w = x.parent.right;
 				}
-				if (w.left.color == NodeColor.BLACK && w.right.color == NodeColor.BLACK)
+				if ((w.left == null || w.left.color == NodeColor.BLACK)
+					&& (w.right == null || w.right.color == NodeColor.BLACK))
 				{
 					w.color = NodeColor.RED;
 					x = x.parent;
 				}
 				else
 				{
-					if (w.right.color == NodeColor.BLACK)
+					if (w.right == null || w.right.color == NodeColor.BLACK)
 					{
 						w.left.color = NodeColor.BLACK;
 						w.color = NodeColor.RED;
@@ -576,7 +575,7 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 					}
 					w.color = x.parent.color;
 					x.parent.color = NodeColor.BLACK;
-					w.right.color = NodeColor.BLACK;
+					if (w.right != null) w.right.color = NodeColor.BLACK;
 					rotate_left(self, x.parent);
 					x = self.root;
 				}
@@ -591,14 +590,15 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 					rotate_right(self, x.parent);
 					w = x.parent.left;
 				}
-				if (w.right.color == NodeColor.BLACK && w.left.color == NodeColor.BLACK)
+				if ((w.right == null || w.right.color == NodeColor.BLACK)
+					&& (w.left == null || w.left.color == NodeColor.BLACK))
 				{
 					w.color = NodeColor.RED;
 					x = x.parent;
 				}
 				else
 				{
-					if (w.left.color == NodeColor.BLACK)
+					if (w.left == null || w.left.color == NodeColor.BLACK)
 					{
 						w.right.color = NodeColor.BLACK;
 						w.color = NodeColor.RED;
@@ -607,7 +607,7 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 					}
 					w.color = x.parent.color;
 					x.parent.color = NodeColor.BLACK;
-					w.left.color = NodeColor.BLACK;
+					if (w.left != null) w.left.color = NodeColor.BLACK;
 					rotate_right(self, x.parent);
 					x = self.root;
 				}
