@@ -34,7 +34,7 @@ guard_block:                                      ; preds = %entry
   ret i64 %1
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @test.test2() #0 {
 entry:
   %tok = alloca i32, align 4
@@ -109,7 +109,7 @@ panic_block:                                      ; preds = %switch.default
   unreachable
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @test.main() #0 {
 entry:
   %a = alloca i64, align 8
@@ -152,3 +152,4 @@ expr_block.exit:                                  ; preds = %if.exit, %if.then
   ret void
 }
 
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

@@ -280,7 +280,7 @@ voiderr76:                                        ; preds = %noerr_block74, %gua
   ret i64 0
 }
 
-; Function Attrs: nounwind uwtable(sync)
+; Function Attrs: nounwind ssp uwtable(sync)
 define void @test.main() #0 {
 entry:
   %buffer = alloca %"char[]", align 8
@@ -416,3 +416,5 @@ entry:
   call void @test.main()
   ret i32 0
 }
+
+attributes #0 = { nounwind ssp uwtable(sync) "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

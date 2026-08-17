@@ -7,15 +7,18 @@ IntFn lambda_naked @export = fn () @naked { asm("ret"); };
 
 /* #expect: test.ll
 
-; Function Attrs: naked nounwind uwtable
+; Function Attrs: naked nounwind ssp uwtable
 define i32 @"test.$global$lambda2"() #0 {
 entry:
   call void asm sideeffect "ret", "~{dirflag},~{fpsr},~{flags}"()
   unreachable
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define i32 @"test.$global$lambda1"() #1 {
 entry:
   ret i32 1
 }
+
+attributes #0 = { naked nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #1 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
