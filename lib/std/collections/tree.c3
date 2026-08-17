@@ -269,7 +269,7 @@ macro Tree.@each(tree; @body(value))
 
 fn bool Tree.is_empty(&self) @inline => self.count == 0;
 
-fn sz Tree.size(&self) @inline => self.count;
+fn sz Tree.len(&self) @inline => self.count;
 
 fn Value[] Tree.tvalues(&self) @inline => self.values(tmem);
 
