@@ -1240,9 +1240,8 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 
 INLINE void llvm_emit_stack_protector_attributes(GenContext *c, LLVMValueRef function, Decl *decl) 
 {
-	ResolvedAttrData *decl_attrs = decl->attrs_resolved;
-	StackProtector stack_protector = (decl_attrs && decl_attrs->stack_protector != STACK_PROTECTOR_NOT_SET) 
-				? decl_attrs->stack_protector
+	StackProtector stack_protector = (decl->attrs_resolved && decl->attrs_resolved->stack_protector != STACK_PROTECTOR_NOT_SET) 
+				? decl->attrs_resolved->stack_protector
 				: compiler.build.stack_protector;
 	// Fallback to platform/arch defaults if not set
 	if (stack_protector == STACK_PROTECTOR_NOT_SET)
@@ -1276,18 +1275,12 @@ INLINE void llvm_emit_stack_protector_attributes(GenContext *c, LLVMValueRef fun
 			break;
 	}
 }
- 
-void llvm_append_function_attributes(GenContext *c, Decl *decl)
-{
-	FunctionPrototype *prototype = type_get_resolved_prototype(decl->type);
 
-	LLVMValueRef function = decl->backend_ref;
-	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
+INLINE void llvm_emit_stack_probe_attributes(GenContext *c, LLVMValueRef function, Decl *decl)
+{
 	StackProbe stack_probe = (decl->attrs_resolved && decl->attrs_resolved->stack_probe != STACK_PROBE_NOT_SET) 
 				? decl->attrs_resolved->stack_probe
 				: compiler.build.stack_probe;
-	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
-	llvm_emit_stack_protector_attributes(c, function, decl);
 	switch (stack_probe)
 	{
 		case STACK_PROBE_NONE:
@@ -1305,6 +1298,17 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 		snprintf(probe_size_str, 32, "%u", compiler.build.stack_probe_size);
 		llvm_attribute_add_string(c, function, "stack-probe-size", probe_size_str, -1);
 	}
+}
+ 
+void llvm_append_function_attributes(GenContext *c, Decl *decl)
+{
+	FunctionPrototype *prototype = type_get_resolved_prototype(decl->type);
+
+	LLVMValueRef function = decl->backend_ref;
+	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
+	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
+	llvm_emit_stack_protector_attributes(c, function, decl);
+	llvm_emit_stack_probe_attributes(c, function, decl);
 	if (c->debug.enable_stacktrace)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
