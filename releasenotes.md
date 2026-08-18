@@ -12,6 +12,7 @@
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
 - `@return` was accepted in doc comments for non-function/macro declarations.
+- `@str_pascalcase` (and `@str_camelcase`) treated digits as word separators and dropped them from the output, e.g. `@str_pascalcase("h2ello_world_2")` yielded `"HElloWorld"` instead of `"H2elloWorld2"`. #3287
 
 ## 0.8.3 Change list
 
