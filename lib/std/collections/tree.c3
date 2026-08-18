@@ -510,16 +510,19 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 	Node* z           = find(self, value)!;
 	Node* y           = z;
 	Node* x; // Child that will replace z
+	Node* x_parent;
 	NodeColor y_color = y.color;
 
 	if (z.left == null)
 	{
 		x = z.right;
+		x_parent = z.parent;
 		transplant(self, z, z.right);
 	}
 	else if (z.right == null)
 	{
 		x = z.left;
+		x_parent = z.parent;
 		transplant(self, z, z.left);
 	}
 	else
@@ -527,15 +530,13 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 		y = minimum(z.right);
 		y_color = y.color;
 		x = y.right;
+		x_parent = y;
 		if (y != z.right)
 		{
 			transplant(self, y, y.right);
+			x_parent = y.parent;
 			y.right = z.right;
 			if (y.right != null) y.right.parent = y;
-		}
-		else if (x != null)
-		{
-			x.parent = y;
 		}
 		transplant(self, z, y);
 		y.left = z.left;
@@ -548,21 +549,22 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 	{
 		while (x != self.root && (x == null || x.color == NodeColor.BLACK))
 		{
-			if (x == x.parent.left)
+			if (x == x_parent.left)
 			{
-				Node* w = x.parent.right;
+				Node* w = x_parent.right;
 				if (w.color == NodeColor.RED)
 				{
 					w.color = NodeColor.BLACK;
-					x.parent.color = NodeColor.RED;
-					rotate_left(self, x.parent);
-					w = x.parent.right;
+					x_parent.color = NodeColor.RED;
+					rotate_left(self, x_parent);
+					w = x_parent.right;
 				}
 				if ((w.left == null || w.left.color == NodeColor.BLACK)
 					&& (w.right == null || w.right.color == NodeColor.BLACK))
 				{
 					w.color = NodeColor.RED;
-					x = x.parent;
+					x = x_parent;
+					x_parent = x.parent;
 				}
 				else
 				{
@@ -571,30 +573,31 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 						w.left.color = NodeColor.BLACK;
 						w.color = NodeColor.RED;
 						rotate_right(self, w);
-						w = x.parent.right;
+						w = x_parent.right;
 					}
-					w.color = x.parent.color;
-					x.parent.color = NodeColor.BLACK;
+					w.color = x_parent.color;
+					x_parent.color = NodeColor.BLACK;
 					if (w.right != null) w.right.color = NodeColor.BLACK;
-					rotate_left(self, x.parent);
+					rotate_left(self, x_parent);
 					x = self.root;
 				}
 			}
 			else
 			{
-				Node* w = x.parent.left;
+				Node* w = x_parent.left;
 				if (w.color == NodeColor.RED)
 				{
 					w.color = NodeColor.BLACK;
-					x.parent.color = NodeColor.RED;
-					rotate_right(self, x.parent);
-					w = x.parent.left;
+					x_parent.color = NodeColor.RED;
+					rotate_right(self, x_parent);
+					w = x_parent.left;
 				}
 				if ((w.right == null || w.right.color == NodeColor.BLACK)
 					&& (w.left == null || w.left.color == NodeColor.BLACK))
 				{
 					w.color = NodeColor.RED;
-					x = x.parent;
+					x = x_parent;
+					x_parent = x.parent;
 				}
 				else
 				{
@@ -603,12 +606,12 @@ fn Node*? remove_and_rebalance(Tree* self, Value value) @private
 						w.right.color = NodeColor.BLACK;
 						w.color = NodeColor.RED;
 						rotate_left(self, w);
-						w = x.parent.left;
+						w = x_parent.left;
 					}
-					w.color = x.parent.color;
-					x.parent.color = NodeColor.BLACK;
+					w.color = x_parent.color;
+					x_parent.color = NodeColor.BLACK;
 					if (w.left != null) w.left.color = NodeColor.BLACK;
-					rotate_right(self, x.parent);
+					rotate_right(self, x_parent);
 					x = self.root;
 				}
 			}
