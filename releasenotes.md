@@ -17,6 +17,7 @@
 - Vmem incorrectly handled reserve page sizes.
 - `@return` was accepted in doc comments for non-function/macro declarations.
 - Can not run targeted benchmark function in project #1651.
+- Detection of dead code would get reset after visiting a scope, causing a crash in codegen. #3453.
 
 ## 0.8.3 Change list
 

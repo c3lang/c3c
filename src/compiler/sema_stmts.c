@@ -255,8 +255,8 @@ static inline bool sema_analyse_compound_stmt(SemaContext *context, Ast *stateme
 		ends_with_jump = context->active_scope.end_jump;
 	}
 	SCOPE_END;
-	// If this ends with a jump, then we know we don't need to certain analysis.
-	context->active_scope.end_jump = ends_with_jump;
+	// Overwrite the jump if we didn't have one
+	if (!context->active_scope.end_jump.active) context->active_scope.end_jump = ends_with_jump;
 	return success;
 }
 
