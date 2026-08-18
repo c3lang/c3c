@@ -12,7 +12,7 @@ enum NodeColor @private
 	BLACK
 }
 
-struct Node (Printable)
+struct Node
 {
 	NodeColor color;
 	Node* left;
