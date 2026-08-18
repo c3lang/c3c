@@ -58,7 +58,7 @@ run_unit_tests() {
 
     # Compile the internal unit tests natively to JS output and execute using Node
     "$C3C_BIN" compile-test unit -O1 --target emscripten -o unit_tests.js
-    node unit_tests.js
+    node out/unit_tests.js
 }
 
 run_examples() {
