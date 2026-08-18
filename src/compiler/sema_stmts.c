@@ -2176,6 +2176,9 @@ static bool context_labels_exist_in_scope(SemaContext *context)
 static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 {
 	SET_JUMP_END(context, statement);
+	assert(!statement->nextcase_stmt.is_resolved);
+	statement->nextcase_stmt.is_resolved = true;
+
 	if (!context->next_jump.target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr && !statement->nextcase_stmt.is_default)
 	{
 		if (context->next_switch)
@@ -2204,31 +2207,32 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	// Handle jump to default.
 	Ast **cases = parent->switch_stmt.cases;
+	statement->nextcase_stmt.is_expr = false;
 	if (statement->nextcase_stmt.is_default)
 	{
-		Ast *default_ast = NULL;
-		FOREACH(Ast *, cs, cases)
+		int default_ast = -1;
+		FOREACH_IDX(idx, Ast *, cs, cases)
 		{
 			if (cs->ast_kind == AST_DEFAULT_STMT)
 			{
-				default_ast = cs;
+				default_ast = (int)idx;
 				break;
 			}
 		}
-		if (!default_ast) RETURN_SEMA_ERROR(statement, "There is no 'default' in the switch to jump to.");
+		if (default_ast < 0) RETURN_SEMA_ERROR(statement, "There is no 'default' in the switch to jump to.");
+		statement->nextcase_stmt.switch_stmt = astid(parent);
 		statement->nextcase_stmt.defer_id = context_get_defers(context, parent->switch_stmt.defer, true);
-		statement->nextcase_stmt.case_switch_stmt = astid(default_ast);
-		statement->nextcase_stmt.switch_expr = NULL;
+		statement->nextcase_stmt.case_number = default_ast;
 		return true;
 	}
 
 	Expr *value = exprptrzero(statement->nextcase_stmt.expr);
-	statement->nextcase_stmt.switch_expr = NULL;
+	statement->nextcase_stmt.switch_stmt = astid(parent);
 	if (!value)
 	{
 		ASSERT(context->next_jump.target);
 		statement->nextcase_stmt.defer_id = context_get_defers(context, parent->switch_stmt.defer, true);
-		statement->nextcase_stmt.case_switch_stmt = astid(context->next_jump.target);
+		statement->nextcase_stmt.case_number = context->next_jump.target->case_stmt.index;
 		return true;
 	}
 
@@ -2251,18 +2255,17 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			return false;
 		}
 		Type *type = type_info->type->canonical;
-		FOREACH(Ast *, case_stmt, parent->switch_stmt.cases)
+		FOREACH_IDX(idx, Ast *, case_stmt, parent->switch_stmt.cases)
 		{
 			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
 			Expr *expr = exprptr(case_stmt->case_stmt.expr);
 			if (sema_cast_const(expr) && expr->const_expr.typeid == type)
 			{
-				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
+				statement->nextcase_stmt.case_number = (int)idx;
 				return true;
 			}
 		}
-		SEMA_ERROR(type_info, "There is no case for type '%s'.", type_to_error_string(type_info->type));
-		return false;
+		RETURN_SEMA_ERROR(type_info, "There is no case for type '%s'.", type_to_error_string(type_info->type));
 	}
 
 	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_fault;
@@ -2273,7 +2276,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	if (sema_cast_const(value))
 	{
-		FOREACH(Ast *, case_stmt, parent->switch_stmt.cases)
+		FOREACH_IDX(idx, Ast *, case_stmt, parent->switch_stmt.cases)
 		{
 			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
 			Expr *from = exprptr(case_stmt->case_stmt.expr);
@@ -2282,15 +2285,15 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &exprptr(case_stmt->case_stmt.to_expr)->const_expr : const_expr;
 			if (expr_const_in_range(&value->const_expr, &value->const_expr, const_expr, to_const_expr))
 			{
-				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
+				statement->nextcase_stmt.case_number = (int)idx;
 				return true;
 			}
 		}
 		RETURN_SEMA_ERROR(value, "There is no 'case %s' in the switch, please check if a case is missing or if this value is incorrect.", expr_const_to_error_string(&value->const_expr));
 	}
 VARIABLE_JUMP:
-	statement->nextcase_stmt.case_switch_stmt = astid(parent);
-	statement->nextcase_stmt.switch_expr = value;
+	statement->nextcase_stmt.is_expr = true;
+	statement->nextcase_stmt.nextcase_value = value;
 	return true;
 }
 
