@@ -19,9 +19,9 @@ on:
 
 env:
   LLVM_RELEASE_VERSION: 22.x
-  LLVM_RELEASE_VERSION_LINUX_MUSL: 21
-  LLVM_RELEASE_VERSION_OPENBSD: 20
-  LLVM_RELEASE_VERSION_NETBSD: 19
+  LLVM_RELEASE_VERSION_LINUX_MUSL: 22
+  LLVM_RELEASE_VERSION_OPENBSD: 21
+  LLVM_RELEASE_VERSION_NETBSD: 21
   LLVM_DEV_VERSION: 22
   # CACHE_INVALIDATION_SEED: '%Y-%m-%d' # Daily
   CACHE_INVALIDATION_SEED: '%G-%V-1'   # Weekly
@@ -371,7 +371,7 @@ jobs:
     name: Linux (x64) musl Static
     runs-on: ubuntu-24.04
     container:
-      image: alpine:3.23
+      image: alpine:3.24
     steps:
       - name: Prepare Git
         run: |
@@ -438,7 +438,7 @@ jobs:
     name: Linux (x64) Alpine Dynamic
     runs-on: ubuntu-24.04
     container:
-      image: alpine:3.23
+      image: alpine:3.24
     steps:
       - name: Prepare Git
         run: |
@@ -730,7 +730,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm_version: [19, 20]
+        llvm_version: [20, 21]
     steps:
       - uses: actions/checkout@v7
 
@@ -788,7 +788,7 @@ jobs:
             bash -c "./scripts/tools/ci_tests.sh ./bin/c3c"
 
   build-linux-llvm23:
-    if: false
+    if: true
     name: Linux (x64) LLVM 23
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -799,21 +799,20 @@ jobs:
 
       - name: Install LLVM 23 from apt.llvm.org
         run: |
-          sudo mkdir -p /etc/apt/keyrings
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/llvm.gpg
-          echo "deb [signed-by=/etc/apt/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble main" | sudo tee /etc/apt/sources.list.d/llvm.list
           sudo apt-get update
+          sudo apt-get install -y wget lsb-release gnupg software-properties-common
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+
+          sudo ./llvm.sh 23 all
+
           sudo apt-get install -y \
-            llvm-23-dev \
-            clang-23 \
-            lld-23 \
             liblld-23-dev \
             libpolly-23-dev \
-            libclang-23-dev \
             zlib1g-dev \
             ninja-build \
             python3 \
-            libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev # for raylib6
+            libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev
 
       - name: CMake Build
         run: |
