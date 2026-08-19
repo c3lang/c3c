@@ -4,11 +4,15 @@
 
 #include "compiler_internal.h"
 #include <math.h>
+#include <stdio.h>
 
 #define LINES_SHOWN 4
 #define MAX_WIDTH 120
 #define MAX_ERROR_LEN 4096
-#define SHIFT_PADDING 20
+#define TAB_WIDTH 4
+#define SHIFT_PADDING TAB_WIDTH * 5
+
+#define TAB_REM(i) (TAB_WIDTH - ((i) % TAB_WIDTH))
 
 static void eprint_escaped_string(const char *message)
 {
@@ -40,6 +44,55 @@ static void eprint_escaped_string(const char *message)
 		}
 	}
 	(void)fputc('"', stderr);
+}
+
+static int utf8_seq_len(unsigned char c)
+{
+	if (c < 0x80) return 1;
+	if (c < 0xE0) return 2;
+	if (c < 0xF0) return 3;
+	return 4;
+}
+
+static void width_of(char c, unsigned column, unsigned *w, unsigned *l)
+{
+	if (c == '\t')
+	{
+		*w = TAB_REM(column);
+		*l = 1;
+		return;
+	}
+
+	*l = utf8_seq_len(c);
+	//! There are unicode chars that have a visual width of 2
+	*w = 1;
+}
+
+static int render_line(char *dst, const unsigned vlen, const char *src)
+{
+	unsigned len = 0;
+	unsigned width = 0;
+
+	unsigned w = 0;
+	unsigned l = 0;
+	while (width < vlen)
+	{
+		width_of(*src, width, &w, &l);
+		
+		if (*src == '\t')
+		{
+			memset(dst + len, ' ', w);
+			len += w;
+		}
+		else
+		{
+			memcpy(dst + len, src, l);
+			len += l;
+		}
+		width += w;
+		src += l;
+	}
+	return (int)len;
 }
 
 static void print_error_type_at(SourceLoc *location, const char *message, PrintType print_type)
@@ -92,14 +145,16 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		}
 	}
 
+	// Fit a line of full unicode characters
+	char render_buffer[MAX_WIDTH * 4];
+	
 	unsigned row_prefix_width = (unsigned)floor(log10(location->row)) + 1;
 	char prefix_buffer[16];
 	snprintf(prefix_buffer, 16, " %%%dd: ", row_prefix_width);
+	row_prefix_width++; // add ':'
 
 	const char *elipsis = "...";
 	const unsigned elipsis_len = 4; // with space
-
-	row_prefix_width++; // add ':'
 
 	const unsigned padded_spaces = 2;
 	unsigned display_line_width = MAX_WIDTH - row_prefix_width - padded_spaces;
@@ -121,85 +176,105 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		}
 	}
 
-	unsigned column = location->col;
-	int row_len = -1;
-	
+	const char *loc_pos = file->contents + location->offset;
+	const char *loc_end = file->contents + location->offset + location->length;
+	unsigned column = location->col;	
+
+	const char *row_offset = current;
+	unsigned row_width = 0;
 	bool is_elided = false;
 	bool needs_shift = column > display_line_width;
+
 	while (row <= display_row)
 	{
 		const bool is_last_row = row == display_row;
+		current = row_offset;
 
-		current += row_len + 1;
-		if (needs_shift && is_last_row) current += column - SHIFT_PADDING;
-		row_len = 0;
-		while (current[row_len] != '\n' && current[row_len]) row_len++;
+		if (needs_shift && is_last_row)
+		{
+			current = loc_pos;
+			for (int i = SHIFT_PADDING; i > 0; --i)
+			{
+				do { current--; }
+				while ((*current & 0xC0) == 0x80);
+			}
+			row_offset = current;
+		}
 
-		unsigned line_width = display_line_width;
-		if (needs_shift && is_last_row) line_width -= elipsis_len;
-		
-		is_elided = row_len > line_width;
- 		unsigned line_len = !is_elided ? row_len : line_width - elipsis_len;
-		
-		eprintf(prefix_buffer, (int)row);
-		if (needs_shift && is_last_row) eprintf("%s ", elipsis);
-		eprintf("%.*s", line_len, current);
-		if (is_elided) eprintf(" %s", elipsis);
-		eprintf("\n");
+		row_width = 0;
+		while (*row_offset != '\n' && *row_offset)
+		{
+			unsigned w, l;
+			width_of(*row_offset, row_width, &w, &l);
+			row_width += w;
+			row_offset += l;
+		}
+
+		unsigned render_line_width = display_line_width;
+		if (needs_shift && is_last_row) render_line_width -= elipsis_len;		
+		is_elided = row_width > render_line_width;
+ 		render_line_width = !is_elided ? row_width : render_line_width - elipsis_len;
+
+		char *render_offset = render_buffer;
+		render_offset += sprintf(render_offset, prefix_buffer, (int)row);
+		if (needs_shift && is_last_row)
+		{
+			render_offset += sprintf(render_offset, "%s ", elipsis);
+		}
+		render_offset += render_line(render_offset, render_line_width, current);
+		if (is_elided)
+		{
+			render_offset += sprintf(render_offset, " %s", elipsis);
+		}
+		eprintf("%.*s\n", render_offset - render_buffer, render_buffer);
 
 		row++;
+		row_offset++; // skip '\n'
 	}
 
 	unsigned prefix_width = row_prefix_width + padded_spaces;
 	if (needs_shift) prefix_width += elipsis_len;
-
-    eprintf("%*s", prefix_width, "");
-    unsigned space_to = (!needs_shift ? column : SHIFT_PADDING) - 1;
-
-	for (unsigned i = 0; i < space_to; i++)
-	{
-		unsigned char c = (unsigned char)current[i];
-		if (c == '\t')
-		{
-			eprintf("\t");
-		}
-		else
-		{
-			if (c < 128 || (c & 0xC0) == 0xC0) eprintf(" ");
-		}
-	}
-
-	unsigned highlighter_width = display_line_width - space_to;
-	if (needs_shift) highlighter_width -= elipsis_len;
+	display_line_width = MAX_WIDTH - prefix_width;
 	
-	const bool is_multiline = location->length > row_len && row_len < display_line_width;
-	unsigned len = row_len - 1; // exclude '\n'
-	if (!is_multiline)
-	{
-		len = location->length > highlighter_width ? highlighter_width : location->length;
-	}
+	eprintf("%*s", prefix_width, "");
 
-	eprintf("^");
-	for (uint32_t i = 1; i < len; i++)
+	unsigned space_width = 0;
+	while (current < loc_pos)
 	{
-		eprintf(is_elided ? "~" : "^");
+		unsigned w, l;
+		width_of(*current, space_width, &w, &l);
+		space_width += w;
+		current += l;		
+		eprintf("%*s", w, "");
+	}
+	
+	const bool is_multiline = location->length > (row_offset - current) && row_width < display_line_width;
+	unsigned highlighter_width = is_elided ? display_line_width  : row_width;
+	highlighter_width -= space_width;
+	
+	// The char at the start of a loc is currently, always ascii
+	eprintf("^");
+	current++;
+	
+	unsigned i = 1;
+	while (current < loc_end && i < highlighter_width)
+	{
+		unsigned w, l;
+		width_of(*current, i, &w, &l);
+		i += w;
+		current += l;
+		while (w-- > 0) eprintf(is_elided ? "~" : "^");
 	}
 
 	if (is_multiline)
 	{
-		current += row_len + 1;
-
-		unsigned rows_left = 0;
-		const char *loc_end = file->contents + location->offset + location->length;
-		for (; current <= loc_end; current++)
+		unsigned rows_left = 1;
+		while (row_offset++ < loc_end)
 		{
-    		if (*current == '\n') rows_left++;
+			if (*row_offset == '\n') rows_left++;
 		}
-		rows_left++;
-
 		eprintf(" (+%u lines)", rows_left);
 	}
-	
 	eprintf("\n");
 
 	bool ansi = use_ansi();
