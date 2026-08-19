@@ -1038,3 +1038,59 @@ fn void test_escape_api() @test
 	Match m = re.first_match("the price is $5.00 (plus 10% * 2) today")!!;
 	test::eq(m.str, raw);
 }
+
+fn void test_regex_memory_and_allocations() @test
+{
+	@assert_leak()
+	{
+		Regex re = regex::compile(mem, "([a-zA-Z0-9_-]+)@([a-zA-Z0-9_.-]+)", EXTENDED)!!;
+		defer re.free();
+
+		Match[] matches = re.exec(mem, "user@domain.com and admin@server.org")!!;
+		defer alloc::free(mem, matches);
+
+		test::eq(matches[0].str, "user@domain.com");
+	};
+
+	{
+		TrackingAllocator tracker;
+		tracker.init(mem);
+		defer tracker.free();
+
+		Allocator a = &tracker;
+
+		Regex re = regex::compile(a, "\\b(fn|struct|enum|while|for)\\b", EXTENDED)!!;
+
+		test::@check(tracker.allocation_count() > 0);
+		test::@check(tracker.allocated() > 0);
+
+		re.free();
+
+		test::eq(tracker.allocated(), 0);
+		test::@check(!tracker.has_leaks());
+	}
+
+	{
+		TrackingAllocator heap_tracker;
+		heap_tracker.init(mem);
+		defer heap_tracker.free();
+
+		Allocator a = &heap_tracker;
+
+		Regex re = regex::compile(a, "a+b", EXTENDED)!!;
+		sz heap_after_compile = heap_tracker.allocated();
+
+		@pool()
+		{
+			for (int i = 0; i < 10000; i++)
+			{
+				(void)re.texec("aaaaab");
+			}
+		};
+
+		test::eq(heap_tracker.allocated(), heap_after_compile);
+
+		re.free();
+		test::eq(heap_tracker.allocated(), 0);
+	}
+}
