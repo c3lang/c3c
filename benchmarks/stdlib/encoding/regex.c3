@@ -348,3 +348,71 @@ fn void stress_multi_wildcard_glibc()
 	regexec(&re, input_large, 0, null);
 	regfree(&re);
 }
+
+
+//////////////////////////////////////
+//////////////////////////////////////
+// =========================================================================
+// Targeted Delta Benchmarks
+// =========================================================================
+
+module regex_benchmarks;
+import std;
+import std::encoding::experimental::regex @public;
+
+String large_haystack_100k;
+String log_file_many_matches;
+Regex re_literal_prefix;
+Regex re_multi_match;
+
+fn void bench_delta_setup() @init
+{
+    // 1. Large 100 KB payload with match near the end
+    // (Tests elimination of zstr_copy + prefix skipping)
+    char[] buf = alloc::alloc_array(mem, char, 100_000);
+    mem::set(buf, 'x', 99_990);
+    mem::copy(&buf[99_990], "hello world", 11);
+    large_haystack_100k = (String)buf[0 : 100_000];
+
+    // 2. Log payload with 500 email matches
+    // (Tests find_all / replace scratchpad reuse)
+    DString ds;
+    ds.init(mem, 50_000);
+    for (int i = 0; i < 500; i++)
+    {
+        ds.appendf("user%d@domain.com, other noise data line %d\n", i, i);
+    }
+    log_file_many_matches = ds.copy_str(mem);
+    ds.free();
+
+    re_literal_prefix = regex::compile(mem, "hello", EXTENDED)!!;
+    re_multi_match    = regex::compile(mem, "([a-zA-Z0-9_]+)@([a-zA-Z0-9_\\.]+)", EXTENDED)!!;
+
+    set_benchmark_func_iterations($reflect(bench_large_input_prefix_skip).qname, 10_000);
+    set_benchmark_func_iterations($reflect(bench_find_all_500_matches).qname,    2_000);
+    set_benchmark_func_iterations($reflect(bench_replace_500_matches).qname,     1_500);
+}
+
+// -------------------------------------------------------------------------
+// Benchmark Functions
+// -------------------------------------------------------------------------
+
+module regex_benchmarks @benchmark;
+
+<* Tests zero-copy slice execution + index_of_char fast skipping on 100KB *>
+fn void bench_large_input_prefix_skip()
+{
+    (void)re_literal_prefix.texec(large_haystack_100k);
+}
+
+<* Tests find_all scratchpad reuse across 500 matches in one pass *>
+fn void bench_find_all_500_matches()
+{
+    (void)re_multi_match.tfind_all(log_file_many_matches);
+}
+
+<* Tests end-to-end replace throughput on 500 matches *>
+fn void bench_replace_500_matches()
+{
+    (void)re_multi_match.treplace(log_file_many_matches, "redacted@domain.com");
+}
