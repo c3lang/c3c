@@ -23,6 +23,7 @@
 - Codegen for debug info was incorrect for default init on arguments, causing crash with LLVM23. 
 - Codegen for bitstruct `b.foo--` was incorrect, causing crash with LLVM23.
 - `@str_pascalcase`/`@str_camelcase` treated digits as word separators and dropped them from the output. #3287
+- Typedef access resolution preferred inner type field over method. #3457
 
 ## 0.8.3 Change list
 
