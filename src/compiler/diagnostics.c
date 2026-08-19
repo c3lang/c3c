@@ -4,7 +4,6 @@
 
 #include "compiler_internal.h"
 #include <math.h>
-#include <stdio.h>
 
 #define LINES_SHOWN 4
 #define MAX_WIDTH 120
@@ -12,7 +11,7 @@
 #define TAB_WIDTH 4
 #define SHIFT_PADDING TAB_WIDTH * 5
 
-#define TAB_REM(i) (TAB_WIDTH - ((i) % TAB_WIDTH))
+#define TAB_REM(column) (TAB_WIDTH - ((column) % TAB_WIDTH))
 
 static void eprint_escaped_string(const char *message)
 {
