@@ -19,9 +19,9 @@ on:
 
 env:
   LLVM_RELEASE_VERSION: 22.x
-  LLVM_RELEASE_VERSION_LINUX_MUSL: 21
-  LLVM_RELEASE_VERSION_OPENBSD: 20
-  LLVM_RELEASE_VERSION_NETBSD: 19
+  LLVM_RELEASE_VERSION_LINUX_MUSL: 22
+  LLVM_RELEASE_VERSION_OPENBSD: 21
+  LLVM_RELEASE_VERSION_NETBSD: 21
   LLVM_DEV_VERSION: 22
   # CACHE_INVALIDATION_SEED: '%Y-%m-%d' # Daily
   CACHE_INVALIDATION_SEED: '%G-%V-1'   # Weekly
@@ -371,7 +371,7 @@ jobs:
     name: Linux (x64) musl Static
     runs-on: ubuntu-24.04
     container:
-      image: alpine:3.23
+      image: alpine:3.24
     steps:
       - name: Prepare Git
         run: |
@@ -438,7 +438,7 @@ jobs:
     name: Linux (x64) Alpine Dynamic
     runs-on: ubuntu-24.04
     container:
-      image: alpine:3.23
+      image: alpine:3.24
     steps:
       - name: Prepare Git
         run: |
@@ -730,7 +730,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm_version: [19, 20]
+        llvm_version: [20, 21]
     steps:
       - uses: actions/checkout@v7
 
