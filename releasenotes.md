@@ -8,6 +8,7 @@
 - `benchmark` and `test` project targets now work properly with `c3c benchmark` and `c3c test`. 
 - Add `$reflect(foo).param_struct` and `Foo::param_struct` properties. #3099
 - Allow the parse `faultset { ... }`. For `faultset`, `faultconst` and `excuse`.
+- Improved error messages when underlined error is too long, or lines are too long. #3383
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
