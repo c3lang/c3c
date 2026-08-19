@@ -12,6 +12,7 @@
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
 - `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.
+- Add `std::collections::Tree`.
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
