@@ -284,31 +284,31 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 			case PRINT_TYPE_ERROR:
 				if (ansi)
 				{
-					eprintf("(%s:%d:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
+					eprintf("%s:%d:%d: \x1b[31;1merror\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location->row, column, message);
+					eprintf("%s:%d:%d: error: %s\n\n", file->full_path, location->row, column, message);
 				}
 				break;
 			case PRINT_TYPE_NOTE:
 				if (ansi)
 				{
-					eprintf("(%s:%d:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
+					eprintf("%s:%d:%d: \x1b[1mnote\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
 				}
 				else
 				{
-					eprintf("(%s:%d:%d) Note: %s\n\n", file->full_path, location->row, column, message);
+					eprintf("%s:%d:%d: note: %s\n\n", file->full_path, location->row, column, message);
 				}
 				break;
 			case PRINT_TYPE_WARN:
 				if (ansi)
 				{
-					eprintf("(%s:%d:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
+					eprintf("%s:%d:%d: \x1b[33;1mwarning\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d:%d) Warning: %s\n\n", file->full_path, location->row, column, message);
+					eprintf("%s:%d:%d: warning: %s\n\n", file->full_path, location->row, column, message);
 				}
 				break;
 			default:
@@ -322,31 +322,31 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 			case PRINT_TYPE_ERROR:
 				if (ansi)
 				{
-					eprintf("(%s:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: \x1b[31;1merror\x1b[0m: %s\n\n", file->full_path, location->row, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d) Error: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: error: %s\n\n", file->full_path, location->row, message);
 				}
 				break;
 			case PRINT_TYPE_NOTE:
 				if (ansi) 
 				{
-					eprintf("(%s:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: \x1b[1mnote\x1b[0m: %s\n\n", file->full_path, location->row, message);
 				} 
 				else
 				{
-					eprintf("(%s:%d) Note: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: note: %s\n\n", file->full_path, location->row, message);
 				}
 				break;
 			case PRINT_TYPE_WARN:
 				if (ansi)
 				{
-					eprintf("(%s:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: \x1b[33;1mwarning\x1b[0m: %s\n\n", file->full_path, location->row, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d) Warning: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: warning: %s\n\n", file->full_path, location->row, message);
 				}
 				break;
 			default:
