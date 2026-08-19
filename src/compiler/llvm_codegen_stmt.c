@@ -1147,25 +1147,25 @@ void llvm_emit_continue(GenContext *c, Ast *ast)
 
 void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 {
-	Ast *jump_target = astptr(ast->nextcase_stmt.case_switch_stmt);
-	if (jump_target->ast_kind != AST_SWITCH_STMT)
+	Ast *parent = astptr(ast->nextcase_stmt.switch_stmt);
+	if (!ast->nextcase_stmt.is_expr)
 	{
 		llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
-		llvm_emit_jmp(context, jump_target->case_stmt.backend_block);
+		llvm_emit_jmp(context, parent->switch_stmt.cases[ast->nextcase_stmt.case_number]->case_stmt.backend_block);
 		return;
 	}
 	BEValue be_value;
-	llvm_emit_expr(context, &be_value, ast->nextcase_stmt.switch_expr);
-	if (jump_target->switch_stmt.flow.jump)
+	llvm_emit_expr(context, &be_value, ast->nextcase_stmt.nextcase_value);
+	if (parent->switch_stmt.flow.jump)
 	{
 		llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
-		Ast **cases = jump_target->switch_stmt.cases;
-		int default_index = jump_target->switch_stmt.codegen.jump.default_index;
-		LLVMBasicBlockRef exit_block = jump_target->switch_stmt.codegen.exit_block;
-		LLVMValueRef instr = llvm_emit_switch_jump_stmt(context, jump_target, cases,
-		                                                jump_target->switch_stmt.codegen.jump.count,
-		                                                jump_target->switch_stmt.codegen.jump.min_index,
-		                                                jump_target->switch_stmt.codegen.jump.jmptable,
+		Ast **cases = parent->switch_stmt.cases;
+		int default_index = parent->switch_stmt.codegen.jump.default_index;
+		LLVMBasicBlockRef exit_block = parent->switch_stmt.codegen.exit_block;
+		LLVMValueRef instr = llvm_emit_switch_jump_stmt(context, parent, cases,
+		                                                parent->switch_stmt.codegen.jump.count,
+		                                                parent->switch_stmt.codegen.jump.min_index,
+		                                                parent->switch_stmt.codegen.jump.jmptable,
 		                                                default_index < 0
 														? exit_block
 		                                                : cases[default_index]->case_stmt.backend_block,
@@ -1179,9 +1179,9 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 
 		return;
 	}
-	llvm_store(context, jump_target->switch_stmt.codegen.retry.var, &be_value);
+	llvm_store(context, parent->switch_stmt.codegen.retry.var, &be_value);
 	llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
-	llvm_emit_jmp(context, jump_target->switch_stmt.codegen.retry.block);
+	llvm_emit_jmp(context, parent->switch_stmt.codegen.retry.block);
 }
 
 

@@ -1,0 +1,50 @@
+// #target: macos-x64
+// #debuginfo: no
+module gen <Type>;
+fn void gfn(Type a, int b) { }
+
+module param_shapes;
+import gen;
+
+struct Data { int v; }
+fn void Data.method(&self, int a) { }
+
+fn void plain(int a, double b) { }
+fn void typed_va(int x, double... y) { }
+fn void untyped_va(int x, y...) { }
+extern fn void unnamed(int, double);
+
+alias GenParams = $Typefrom($Typeof(gen::gfn{int})::param_struct);
+alias MethodParams = $Typefrom($Typeof(Data.method)::param_struct);
+alias PlainParams = $Typefrom($Typeof(plain)::param_struct);
+alias TypedVaParams = $Typefrom($Typeof(typed_va)::param_struct);
+alias UntypedVaParams = $Typefrom($Typeof(untyped_va)::param_struct);
+alias UnnamedParams = $Typefrom($Typeof(unnamed)::param_struct);
+
+fn int main()
+{
+	PlainParams p;
+	p.a = 1;
+	p.b = 2.0;
+	// Splatting must lower to a plain positional call, not to any boxing.
+	plain(...p);
+
+	MethodParams m;
+	GenParams g;
+	TypedVaParams tv;
+	UntypedVaParams uv;
+	UnnamedParams un;
+	return 0;
+}
+
+/* #expect: param_shapes.ll
+
+%"ReflectParamStruct$plain" = type { i32, double }
+%"ReflectParamStruct$method" = type { ptr, i32 }
+%"ReflectParamStruct$gfn{int}" = type { i32, i32 }
+%"ReflectParamStruct$typed_va" = type { i32, %"double[]" }
+%"ReflectParamStruct$untyped_va" = type { i32, %"any[]" }
+%"ReflectParamStruct$unnamed" = type { i32, double }
+  %0 = load i32, ptr %.anon, align 8
+  %1 = load double, ptr %ptradd2, align 8
+  call void @param_shapes.plain(i32 %0, double %1)

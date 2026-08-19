@@ -227,7 +227,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 			return;
 		case AST_NEXTCASE_STMT:
 			sema_trace_stmt_chain_liveness(ast->nextcase_stmt.defer_id);
-			sema_trace_expr_liveness(ast->nextcase_stmt.switch_expr);
+			if (ast->nextcase_stmt.is_expr) sema_trace_expr_liveness(ast->nextcase_stmt.nextcase_value);
 			return;
 		case AST_BREAK_STMT:
 		case AST_CONTINUE_STMT:
@@ -550,8 +550,8 @@ void sema_trace_liveness(void)
 	{
 		sema_trace_decl_liveness(compiler.context.main);
 	}
-	bool keep_tests = compiler.build.testing;
-	bool keep_benchmarks = compiler.build.benchmarking;
+	bool keep_tests = compiler.build.build_test;
+	bool keep_benchmarks = compiler.build.build_benchmark;
 	FOREACH(Decl *, function, compiler.context.method_extension_list)
 	{
 		if (function->decl_kind == DECL_MACRO) continue;

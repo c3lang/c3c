@@ -687,12 +687,13 @@ static inline Ast* parse_if_stmt(ParseContext *c)
  * 	| CAST type ':' case_stmts
  * 	;
  */
-static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenType default_type)
+static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenType default_type, int index)
 {
 	Ast *ast = NEW_AST_TOKEN(AST_CASE_STMT);
 	advance(c);
 	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
 	ast->case_stmt.expr = exprid(expr);
+	ast->case_stmt.index = index;
 	// Change type -> type.typeid
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
@@ -729,9 +730,10 @@ static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenTy
  * default_stmt
  *  : DEFAULT ':' case_stmts
  */
-static inline Ast *parse_default_stmt(ParseContext *c, TokenType case_type, TokenType default_type)
+static inline Ast *parse_default_stmt(ParseContext *c, TokenType case_type, TokenType default_type, int index)
 {
 	Ast *ast = NEW_AST_TOKEN(AST_DEFAULT_STMT);
+	ast->case_stmt.index = index;
 	advance(c);
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':' after 'default'.", poisoned_ast);
 	uint32_t row = c->span.row;
@@ -752,17 +754,18 @@ static inline Ast *parse_default_stmt(ParseContext *c, TokenType case_type, Toke
 bool parse_switch_body(ParseContext *c, Ast ***cases, TokenType case_type, TokenType default_type)
 {
 	CONSUME_OR_RET(TOKEN_LBRACE, false);
+	int index = 0;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		Ast *result;
 		TokenType tok = c->tok;
 		if (tok == case_type)
 		{
-			ASSIGN_AST_OR_RET(result, parse_case_stmt(c, case_type, default_type), false);
+			ASSIGN_AST_OR_RET(result, parse_case_stmt(c, case_type, default_type, index), false);
 		}
 		else if (tok == default_type)
 		{
-			ASSIGN_AST_OR_RET(result, parse_default_stmt(c, case_type, default_type), false);
+			ASSIGN_AST_OR_RET(result, parse_default_stmt(c, case_type, default_type, index), false);
 		}
 		else
 		{
@@ -770,6 +773,7 @@ bool parse_switch_body(ParseContext *c, Ast ***cases, TokenType case_type, Token
 			return false;
 		}
 		vec_add((*cases), result);
+		index++;
 	}
 	return true;
 }
@@ -1235,11 +1239,11 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 		TokenType tok = c->tok;
 		if (tok == TOKEN_CT_CASE)
 		{
-			ASSIGN_AST_OR_RET(result, parse_case_stmt(c, TOKEN_CT_CASE, TOKEN_CT_DEFAULT), poisoned_ast);
+			ASSIGN_AST_OR_RET(result, parse_case_stmt(c, TOKEN_CT_CASE, TOKEN_CT_DEFAULT, 0), poisoned_ast);
 		}
 		else if (tok == TOKEN_CT_DEFAULT)
 		{
-			ASSIGN_AST_OR_RET(result, parse_default_stmt(c, TOKEN_CT_CASE, TOKEN_CT_DEFAULT), poisoned_ast);
+			ASSIGN_AST_OR_RET(result, parse_default_stmt(c, TOKEN_CT_CASE, TOKEN_CT_DEFAULT, 0), poisoned_ast);
 		}
 		else
 		{

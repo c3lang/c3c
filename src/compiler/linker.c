@@ -920,7 +920,7 @@ static void linker_setup_emscripten(const char ***args_ref, Linker linker_type,
 {
 	if (linker_type == LINKER_CC)
 	{
-		if (compiler.build.testing)
+		if (compiler.build.build_test)
 		{
 			// minimal 3 linker flags to make the unit test pass
 			// `c3c compile-test -O1 --target emscripten -o test.js test/unit/ && node test.js`
@@ -929,7 +929,7 @@ static void linker_setup_emscripten(const char ***args_ref, Linker linker_type,
 			add_plain_arg("-sALLOW_MEMORY_GROWTH");
 		}
 
-		if (compiler.build.benchmarking)
+		if (compiler.build.build_benchmark)
 		{
 			add_plain_arg("-sALLOW_MEMORY_GROWTH");
 		}

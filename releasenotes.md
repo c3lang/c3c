@@ -4,6 +4,10 @@
 
 ### Changes / improvements
 - Improved error message when providing an incorrect name for the panic function.
+- Add the ability to pinpoint a `@require` using the `@require [a] a > 0 : "a must be greater than zero"` syntax. #1804
+- `benchmark` and `test` project targets now work properly with `c3c benchmark` and `c3c test`. 
+- Add `$reflect(foo).param_struct` and `Foo::param_struct` properties. #3099
+- Allow the parse `faultset { ... }`. For `faultset`, `faultconst` and `excuse`.
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
@@ -12,6 +16,9 @@
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
 - `@return` was accepted in doc comments for non-function/macro declarations.
+- Can not run targeted benchmark function in project #1651.
+- Detection of dead code would get reset after visiting a scope, causing a crash in codegen. #3453.
+- Switch was incorrectly copied inside of defer, causing crash in codegen. #3454
 - `@str_pascalcase` (and `@str_camelcase`) treated digits as word separators and dropped them from the output, e.g. `@str_pascalcase("h2ello_world_2")` yielded `"HElloWorld"` instead of `"H2elloWorld2"`. #3287
 
 ## 0.8.3 Change list

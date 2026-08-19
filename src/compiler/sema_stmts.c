@@ -28,7 +28,7 @@ static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bott
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location);
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map);
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt);
 static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond);
 static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr);
@@ -49,7 +49,6 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceLocId expr_loc, CanonicalType *switch_type, Ast **cases);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
-static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId loc);
 static bool sema_analyse_ensure(SemaContext *context, Expr *directive);
 
 static inline bool sema_analyse_asm_label(SemaContext *context, AsmInlineBlock *block, Ast *label)
@@ -256,8 +255,8 @@ static inline bool sema_analyse_compound_stmt(SemaContext *context, Ast *stateme
 		ends_with_jump = context->active_scope.end_jump;
 	}
 	SCOPE_END;
-	// If this ends with a jump, then we know we don't need to certain analysis.
-	context->active_scope.end_jump = ends_with_jump;
+	// Overwrite the jump if we didn't have one
+	if (!context->active_scope.end_jump.active) context->active_scope.end_jump = ends_with_jump;
 	return success;
 }
 
@@ -412,7 +411,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 /**
  * Turn a "require" or "ensure" into a contract in the callee.
  */
-static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location)
+static inline bool assert_create_from_contract(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId evaluation_location, SourceLocId* arg_loc_map)
 {
 	Expr *declexpr = directive->contract_expr.decl_exprs;
 	ASSERT(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
@@ -422,7 +421,10 @@ static inline bool assert_create_from_contract(SemaContext *context, Expr *direc
 		if (!sema_analyse_expr_rhs(context, type_bool, expr, false, NULL, false)) return false;
 
 		if (evaluation_location) expr->loc = evaluation_location;
-
+		if (directive->contract_expr.param.found && arg_loc_map)
+		{
+			expr->loc = arg_loc_map[directive->contract_expr.param.index];
+		}
 		const char *comment = directive->contract_expr.comment;
 		if (!comment) comment = directive->contract_expr.expr_string;
 		if (expr_is_const_bool(expr))
@@ -760,7 +762,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			bool success;
 			SCOPE_START_WITH_FLAGS(SCOPE_ENSURE, statement->loc);
 			{
-				success = assert_create_from_contract(context, copy_expr_single(ensure), &append_id, statement->loc);
+				success = assert_create_from_contract(context, copy_expr_single(ensure), &append_id, statement->loc, NULL);
 			}
 			SCOPE_END;
 			if (!success) return false;
@@ -2174,6 +2176,9 @@ static bool context_labels_exist_in_scope(SemaContext *context)
 static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 {
 	SET_JUMP_END(context, statement);
+	assert(!statement->nextcase_stmt.is_resolved);
+	statement->nextcase_stmt.is_resolved = true;
+
 	if (!context->next_jump.target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr && !statement->nextcase_stmt.is_default)
 	{
 		if (context->next_switch)
@@ -2202,31 +2207,32 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	// Handle jump to default.
 	Ast **cases = parent->switch_stmt.cases;
+	statement->nextcase_stmt.is_expr = false;
 	if (statement->nextcase_stmt.is_default)
 	{
-		Ast *default_ast = NULL;
-		FOREACH(Ast *, cs, cases)
+		int default_ast = -1;
+		FOREACH_IDX(idx, Ast *, cs, cases)
 		{
 			if (cs->ast_kind == AST_DEFAULT_STMT)
 			{
-				default_ast = cs;
+				default_ast = (int)idx;
 				break;
 			}
 		}
-		if (!default_ast) RETURN_SEMA_ERROR(statement, "There is no 'default' in the switch to jump to.");
+		if (default_ast < 0) RETURN_SEMA_ERROR(statement, "There is no 'default' in the switch to jump to.");
+		statement->nextcase_stmt.switch_stmt = astid(parent);
 		statement->nextcase_stmt.defer_id = context_get_defers(context, parent->switch_stmt.defer, true);
-		statement->nextcase_stmt.case_switch_stmt = astid(default_ast);
-		statement->nextcase_stmt.switch_expr = NULL;
+		statement->nextcase_stmt.case_number = default_ast;
 		return true;
 	}
 
 	Expr *value = exprptrzero(statement->nextcase_stmt.expr);
-	statement->nextcase_stmt.switch_expr = NULL;
+	statement->nextcase_stmt.switch_stmt = astid(parent);
 	if (!value)
 	{
 		ASSERT(context->next_jump.target);
 		statement->nextcase_stmt.defer_id = context_get_defers(context, parent->switch_stmt.defer, true);
-		statement->nextcase_stmt.case_switch_stmt = astid(context->next_jump.target);
+		statement->nextcase_stmt.case_number = context->next_jump.target->case_stmt.index;
 		return true;
 	}
 
@@ -2249,18 +2255,17 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			return false;
 		}
 		Type *type = type_info->type->canonical;
-		FOREACH(Ast *, case_stmt, parent->switch_stmt.cases)
+		FOREACH_IDX(idx, Ast *, case_stmt, parent->switch_stmt.cases)
 		{
 			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
 			Expr *expr = exprptr(case_stmt->case_stmt.expr);
 			if (sema_cast_const(expr) && expr->const_expr.typeid == type)
 			{
-				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
+				statement->nextcase_stmt.case_number = (int)idx;
 				return true;
 			}
 		}
-		SEMA_ERROR(type_info, "There is no case for type '%s'.", type_to_error_string(type_info->type));
-		return false;
+		RETURN_SEMA_ERROR(type_info, "There is no case for type '%s'.", type_to_error_string(type_info->type));
 	}
 
 	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_fault;
@@ -2271,7 +2276,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	if (sema_cast_const(value))
 	{
-		FOREACH(Ast *, case_stmt, parent->switch_stmt.cases)
+		FOREACH_IDX(idx, Ast *, case_stmt, parent->switch_stmt.cases)
 		{
 			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
 			Expr *from = exprptr(case_stmt->case_stmt.expr);
@@ -2280,15 +2285,15 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &exprptr(case_stmt->case_stmt.to_expr)->const_expr : const_expr;
 			if (expr_const_in_range(&value->const_expr, &value->const_expr, const_expr, to_const_expr))
 			{
-				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
+				statement->nextcase_stmt.case_number = (int)idx;
 				return true;
 			}
 		}
 		RETURN_SEMA_ERROR(value, "There is no 'case %s' in the switch, please check if a case is missing or if this value is incorrect.", expr_const_to_error_string(&value->const_expr));
 	}
 VARIABLE_JUMP:
-	statement->nextcase_stmt.case_switch_stmt = astid(parent);
-	statement->nextcase_stmt.switch_expr = value;
+	statement->nextcase_stmt.is_expr = true;
+	statement->nextcase_stmt.nextcase_value = value;
 	return true;
 }
 
@@ -3323,10 +3328,6 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 }
 
 
-static bool sema_analyse_require(SemaContext *context, Expr *directive, AstId **asserts, SourceLocId loc)
-{
-	return assert_create_from_contract(context, directive, asserts, loc);
-}
 
 static bool sema_analyse_ensure(SemaContext *context, Expr *directive)
 {
@@ -3365,7 +3366,7 @@ void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt)
 	ast_prepend(&compound_stmt->compound_stmt.first_stmt, ast);
 }
 
-bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures)
+bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures, SourceLocId* arg_loc_map)
 {
 	context->call_env.opt_returns = NULL;
 	if (has_ensures)
@@ -3375,7 +3376,7 @@ bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **require
 
 	FOREACH(Expr *, require, requires)
 	{
-		if (!sema_analyse_require(context, require, asserts, call_loc)) return false;
+		if (!assert_create_from_contract(context, require, asserts, call_loc, arg_loc_map)) return false;
 	}
 	if (!has_ensures) return true;
 	FOREACH(Expr *, ensure, ensures)
@@ -3464,7 +3465,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func, unsigned macro
 			Expr **requires = copy_exprlist_macro(contracts->contracts_decl.requires);
 			Expr **ensures = copy_exprlist_macro(contracts->contracts_decl.ensures);
 			copy_end();
-			if (!sema_analyse_contracts(context, contracts, requires, ensures, &next, 0, &has_ensures)) return false;
+			if (!sema_analyse_contracts(context, contracts, requires, ensures, &next, 0, &has_ensures, NULL)) return false;
 		}
 		context->call_env.ensures = has_ensures;
 		bool is_naked = func->func_decl.attr_naked;

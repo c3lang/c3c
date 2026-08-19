@@ -83,6 +83,7 @@ const char *kw_offset;
 const char *kw_ordinal;
 const char *kw_out;
 const char *kw_own;
+const char *kw_param_struct;
 const char *kw_ptr;
 const char *kw_return;
 const char *kw_self;
@@ -193,6 +194,7 @@ void symtab_init(uint32_t capacity)
 	kw_ordinal = KW_DEF("ordinal");
 	kw_out = KW_DEF("out");
 	kw_own = KW_DEF("own");
+	kw_param_struct = KW_DEF("param_struct");
 	kw_ptr = KW_DEF("ptr");
 	kw_qname = KW_DEF("qname");
 	kw_self = KW_DEF("self");
@@ -232,6 +234,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_NAME] = kw_name;
 	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");
 	type_property_list[TYPE_PROPERTY_NAN] = KW_DEF("nan");
+	type_property_list[TYPE_PROPERTY_PARAM_STRUCT] = kw_param_struct;
 	type_property_list[TYPE_PROPERTY_PARAMS] = KW_DEF("params");
 	type_property_list[TYPE_PROPERTY_PARENT] = KW_DEF("parent");
 	type_property_list[TYPE_PROPERTY_QNAME] = kw_qname;
