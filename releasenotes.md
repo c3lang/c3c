@@ -19,6 +19,8 @@
 - Can not run targeted benchmark function in project #1651.
 - Detection of dead code would get reset after visiting a scope, causing a crash in codegen. #3453.
 - Switch was incorrectly copied inside of defer, causing crash in codegen. #3454
+- Codegen for debug info was incorrect for default init on arguments, causing crash with LLVM23. 
+- Codegen for bitstruct `b.foo--` was incorrect, causing crash with LLVM23.
 - `@str_pascalcase` (and `@str_camelcase`) treated digits as word separators and dropped them from the output, e.g. `@str_pascalcase("h2ello_world_2")` yielded `"HElloWorld"` instead of `"H2elloWorld2"`. #3287
 
 ## 0.8.3 Change list
