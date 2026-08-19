@@ -788,7 +788,7 @@ jobs:
             bash -c "./scripts/tools/ci_tests.sh ./bin/c3c"
 
   build-linux-llvm23:
-    if: false
+    if: true
     name: Linux (x64) LLVM 23
     runs-on: ubuntu-24.04
     timeout-minutes: 30
