@@ -1,9 +1,9 @@
 module tree_test @test;
-import std::collections::tree;
+import std::collections::set;
 
 fn void basic_operations()
 {
-	Tree{int} tree;
+	TreeSet{int} tree;
 	defer tree.free();
 
 	assert(tree.is_empty());
@@ -34,12 +34,12 @@ fn void basic_operations()
 
 fn void initialization_methods()
 {
-	Tree{int} tree1;
+	TreeSet{int} tree1;
 	tree1.tinit();
 	defer tree1.free();
 	assert(tree1.is_initialized());
 
-	Tree{int} tree2;
+	TreeSet{int} tree2;
 	tree2.tinit_with_values(1, 2, 3);
 	defer tree2.free();
 	assert(tree2.contains(1));
@@ -48,7 +48,7 @@ fn void initialization_methods()
 	assert(tree2.len() == 3);
 
 	int[] values = { 4, 5, 6 };
-	Tree{int} tree3;
+	TreeSet{int} tree3;
 	tree3.tinit_from_values(values);
 	defer tree3.free();
 	assert(tree3.contains(4));
@@ -56,7 +56,7 @@ fn void initialization_methods()
 	assert(tree3.contains(6));
 	assert(tree3.len() == 3);
 
-	Tree{int} tree4;
+	TreeSet{int} tree4;
 	tree4.tinit_from_tree(&tree3);
 	defer tree4.free();
 	assert(tree4.contains(4));
@@ -67,7 +67,7 @@ fn void initialization_methods()
 
 fn void iterator_test()
 {
-	Tree{int} tree;
+	TreeSet{int} tree;
 	tree.tinit_with_values(1, 2, 3);
 	defer tree.free();
 
@@ -90,7 +90,7 @@ fn void iterator_test()
 	assert(count == 3);
 	assert(found1 && found2 && found3);
 
-	TreeIterator{int} iter = tree.iter();
+	TreeSetIterator{int} iter = tree.iter();
 	count = 0;
 	int sum;
 	while (iter.next())
@@ -104,7 +104,7 @@ fn void iterator_test()
 
 fn void edge_cases()
 {
-	Tree{int} empty;
+	TreeSet{int} empty;
 	empty.tinit();
 	defer empty.free();
 
@@ -112,7 +112,7 @@ fn void edge_cases()
 	assert(!empty.contains(0));
 	empty.remove(0); // Shouldn't crash
 
-	Tree{int} large;
+	TreeSet{int} large;
 	large.tinit();
 	defer large.free();
 
@@ -139,7 +139,7 @@ fn void edge_cases()
 
 fn void is_initialized_test()
 {
-	Tree{int} test;
+	TreeSet{int} test;
 	assert(!test.is_initialized());
 	test.tinit();
 	assert(test.is_initialized());
