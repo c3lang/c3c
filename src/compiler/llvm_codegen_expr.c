@@ -2299,7 +2299,9 @@ static inline void llvm_emit_pre_post_inc_dec_bitstruct(GenContext *c, BEValue *
 	BEValue value = parent;
 	llvm_extract_bitvalue(c, &value, parent_decl, member);
 	LLVMValueRef value_start = llvm_load_value_store(c, &value);
-	LLVMValueRef result = llvm_emit_add_int(c, value.type, value_start, llvm_const_int(c, value.type, diff), lhs->loc);
+	LLVMValueRef result = diff < 0
+		? llvm_emit_sub_int(c, value.type, value_start, llvm_const_int(c, value.type, -diff), lhs->loc)
+		: llvm_emit_add_int(c, value.type, value_start, llvm_const_int(c, value.type, diff), lhs->loc);
 
 	llvm_value_set(be_value, pre ? result : value_start, value.type);
 
@@ -6847,8 +6849,9 @@ static void llvm_emit_default_arg(GenContext *c, BEValue *value, Expr *expr)
 		SourceLoc *loc = sourcelocptrzero(expr->loc);
 		LLVMMetadataRef file = llvm_get_debug_file(c, loc ? loc->file_id : 0);
 		uint32_t row = loc ? loc->row : 1;
+		LLVMMetadataRef sub_type = LLVMDIBuilderCreateSubroutineType(c->debug.builder, file, NULL, 0, LLVMDIFlagZero);
 		LLVMMetadataRef init_def = LLVMDIBuilderCreateFunction(c->debug.builder, file, name, namelen, name, namelen,
-																 file, row, NULL, true, true, row, LLVMDIFlagZero, false);
+																 file, row, sub_type, true, true, row, LLVMDIFlagZero, false);
 		llvm_emit_debug_location(c, expr->default_arg_expr.loc);
 		DebugScope scope = { .lexical_block = init_def, .inline_loc = c->last_loc };
 		DebugScope *old = c->debug.block_stack;

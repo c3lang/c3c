@@ -16,7 +16,7 @@ entry:
   %a = alloca float, align 4
   %b = alloca float, align 4
   %b.f = alloca i64, align 8
-  store float 0x40289999A0000000, ptr %a, align 4
+  store float
   store float 3.350000e+01, ptr %b, align 4
   store i64 0, ptr %b.f, align 8
   %0 = load float, ptr %a, align 4
