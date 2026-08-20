@@ -5,7 +5,7 @@ fn void basic_operations()
 {
 	TreeSet{int} tree;
 	defer tree.free();
-
+	tree.@each(;i) {};
 	assert(tree.is_empty());
 	assert(!tree.contains(1));
 

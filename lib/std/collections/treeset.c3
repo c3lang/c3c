@@ -1,7 +1,7 @@
 <*
- @require Value::is_ordered : `Value must be ordered`
+ @require TreeValue::is_ordered : `TreeValue must be ordered`
 *>
-module std::collections::set <Value>;
+module std::collections::set <TreeValue>;
 import std::io @norecurse;
 
 const Allocator TREE_HEAP_ALLOCATOR = (Allocator)&dummy;
@@ -21,7 +21,7 @@ struct Node
 	Node* left;
 	Node* right;
 	Node* parent;
-	Value value;
+	TreeValue value;
 }
 
 struct TreeSet (Printable)
@@ -54,7 +54,7 @@ fn TreeSet* TreeSet.tinit(&self)
  @param [&inout] allocator : "The allocator to use"
  @require !self.is_initialized() : "TreeSet was already initialized"
 *>
-fn TreeSet* TreeSet.init_from_values(&self, Allocator allocator, Value[] values)
+fn TreeSet* TreeSet.init_from_values(&self, Allocator allocator, TreeValue[] values)
 {
 	self.init(allocator);
 	self.add_all(values);
@@ -65,7 +65,7 @@ fn TreeSet* TreeSet.init_from_values(&self, Allocator allocator, Value[] values)
  @param [in] values : "The values to initialize the tree with"
  @require !self.is_initialized() : "TreeSet was already initialized"
 *>
-fn TreeSet* TreeSet.tinit_from_values(&self, Value[] values) @inline => self.init_from_values(tmem, values);
+fn TreeSet* TreeSet.tinit_from_values(&self, TreeValue[] values) @inline => self.init_from_values(tmem, values);
 
 <*
  @param [&inout] allocator : "The allocator to use"
@@ -96,7 +96,7 @@ macro TreeSet* TreeSet.tinit_with_values(&self, ...)
 fn TreeSet* TreeSet.init_from_tree(&self, Allocator allocator, TreeSet* other_tree)
 {
 	self.init(allocator);
-	other_tree.@each(; Value value)
+	other_tree.@each(; TreeValue value)
 	{
 		self.add(value);
 	};
@@ -122,7 +122,7 @@ fn bool TreeSet.is_initialized(&self) @inline => self.allocator != null;
  @return "the number of values added"
  @ensure return <= values.len
 *>
-fn sz TreeSet.add_all(&self, Value[] values)
+fn sz TreeSet.add_all(&self, TreeValue[] values)
 {
 	sz added_count = 0;
 	foreach (value : values)
@@ -141,7 +141,7 @@ fn sz TreeSet.add_all(&self, Value[] values)
 fn sz TreeSet.add_all_from(&self, TreeSet* other)
 {
 	sz added_count = 0;
-	other.@each(; Value value)
+	other.@each(; TreeValue value)
 	{
 		if (self.add(value)) added_count++;
 	};
@@ -153,7 +153,7 @@ fn sz TreeSet.add_all_from(&self, TreeSet* other)
  @param value
  @return "true if the value was added, false if it was already present"
 *>
-fn bool TreeSet.add(&self, Value value)
+fn bool TreeSet.add(&self, TreeValue value)
 {
 	bool added = add_and_rebalance(self, value);
 	if (added) self.count++;
@@ -200,7 +200,7 @@ fn void TreeSet.clear(&self)
  @return "the number of values removed"
  @ensure return <= values.len
 *>
-fn sz TreeSet.remove_all(&self, Value[] values)
+fn sz TreeSet.remove_all(&self, TreeValue[] values)
 {
 	sz removed_count = 0;
 	foreach (value : values)
@@ -219,7 +219,7 @@ fn sz TreeSet.remove_all(&self, Value[] values)
 fn sz TreeSet.remove_all_from(&self, TreeSet* other)
 {
 	sz removed_count = 0;
-	other.@each(; Value value)
+	other.@each(; TreeValue value)
 	{
 		if (@ok(self.remove(value))) removed_count++;
 	};
@@ -231,14 +231,14 @@ fn sz TreeSet.remove_all_from(&self, TreeSet* other)
  @param value
  @return ? remove_and_rebalance!
 *>
-fn void? TreeSet.remove(&self, Value value) @maydiscard
+fn void? TreeSet.remove(&self, TreeValue value) @maydiscard
 {
 	Node* z = remove_and_rebalance(self, value)!;
 	tree_free_node(self, z);
 	self.count--;
 }
 
-fn bool TreeSet.contains(&self, Value value) @inline => @ok(find(self, value));
+fn bool TreeSet.contains(&self, TreeValue value) @inline => @ok(find(self, value));
 
 <*
  Iterate over all values in the tree
@@ -275,13 +275,13 @@ fn bool TreeSet.is_empty(&self) @inline => self.count == 0;
 
 fn sz TreeSet.len(&self) @inline => self.count;
 
-fn Value[] TreeSet.tvalues(&self) @inline => self.values(tmem);
+fn TreeValue[] TreeSet.tvalues(&self) @inline => self.values(tmem);
 
-fn Value[] TreeSet.values(&self, Allocator allocator)
+fn TreeValue[] TreeSet.values(&self, Allocator allocator)
 {
-	Value[] list = alloc::alloc_array(allocator, Value, self.count);
+	TreeValue[] list = alloc::alloc_array(allocator, TreeValue, self.count);
 	sz index;
-	self.@each(; Value value)
+	self.@each(; TreeValue value)
 	{
 		list[index++] = value;
 	};
@@ -299,7 +299,7 @@ macro void tree_free_node(TreeSet* self, Node* node) @private
 	alloc::free(self.allocator, node);
 }
 
-macro Node* tree_alloc_node(TreeSet* self, Value value) @private
+macro Node* tree_alloc_node(TreeSet* self, TreeValue value) @private
 {
 	// Initialize tree with defaults if not yet initialized.
 	switch (self.allocator.ptr)
@@ -324,7 +324,7 @@ macro Node* tree_alloc_node(TreeSet* self, Value value) @private
 <*
  @return ? NOT_FOUND
 *>
-fn Node*? find(TreeSet* self, Value value) @private
+fn Node*? find(TreeSet* self, TreeValue value) @private
 {
 	Node* x = self.root;
 	while (x != null)
@@ -386,7 +386,7 @@ fn void rotate_right(TreeSet* self, Node* y) @private
 	y.parent = x;
 }
 
-fn bool add_and_rebalance(TreeSet* self, Value value) @private
+fn bool add_and_rebalance(TreeSet* self, TreeValue value) @private
 {
 	Node* x = self.root;
 	Node* y;
@@ -508,7 +508,7 @@ fn Node* maximum(Node* node) @private
 <*
  @return ? find!
 *>
-fn Node*? remove_and_rebalance(TreeSet* self, Value value) @private
+fn Node*? remove_and_rebalance(TreeSet* self, TreeValue value) @private
 {
 	Node* z           = find(self, value)!;
 	Node* y           = z;
@@ -627,7 +627,7 @@ fn Node*? remove_and_rebalance(TreeSet* self, Value value) @private
 fn sz? TreeSet.to_format(&self, Formatter* f) @dynamic
 {
 	sz len = f.print("{ ")!;
-	self.@each(; Value value)
+	self.@each(; TreeValue value)
 	{
 		if (len > 2) len += f.print(", ")!;
 		len += f.printf("%s", value)!;
@@ -647,7 +647,7 @@ fn TreeSetIterator TreeSet.iter(&self) => { .tree = self, .started = false };
 <*
  @return ? NOT_FOUND
 *>
-fn Value*? TreeSetIterator.get(&self)
+fn TreeValue*? TreeSetIterator.get(&self)
 {
 	return self.current ? &self.current.value : NOT_FOUND~;
 }
