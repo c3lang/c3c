@@ -14,6 +14,7 @@
 - `CachedInStream` and `CachedOutStream` added.
 - `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.
 - `pool::ThreadPool` now only available using `ThreadPoolOld` unless `-D OLD_THREADPOOL` is used.
+- `std::net` added `Socket.peer_address`, `peer_port`, `local_address`, and `local_port` for retrieving remote and local socket address information. #3460
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
