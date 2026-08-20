@@ -1447,6 +1447,7 @@ typedef struct
 {
 	ExprId expr;
 	ExprId to_expr;
+	int index;
 	Ast *body;
 	void *backend_block;
 } AstCaseStmt;
@@ -1571,18 +1572,24 @@ typedef struct
 typedef struct
 {
 	AstId defer_id;
+	bool is_resolved;
+	bool is_default;
+	bool is_expr;
 	union
 	{
 		struct
 		{
 			Label label;
 			ExprId expr;
-			bool is_default;
 		};
 		struct
 		{
-			AstId case_switch_stmt;
-			Expr *switch_expr;
+			AstId switch_stmt;
+			union
+			{
+				int case_number;
+				Expr *nextcase_value;
+			};
 		};
 	};
 } AstNextcaseStmt;

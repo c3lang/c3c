@@ -13,6 +13,7 @@ fn void main()
 	@test("abc_def");
 	@test("AbcDef");
 	@test("parseHTTPResponse");
+	@test("h2ello_world_2");
 	io::printn(@str_replace("hello dear! No fear, you are hear!", "ea", "ee", 1));
 }
 
@@ -26,4 +27,7 @@ fn void main()
 @.str.5 = private unnamed_addr constant [7 x i8] c"Abcdef\00", align 1
 @.str.6 = private unnamed_addr constant [20 x i8] c"parse_http_response\00", align 1
 @.str.7 = private unnamed_addr constant [18 x i8] c"Parsehttpresponse\00", align 1
-@.str.8 = private unnamed_addr constant [35 x i8] c"hello deer! No fear, you are hear!\00", align 1
+@.str.8 = private unnamed_addr constant [15 x i8] c"h2ello_world_2\00", align 1
+@.str.9 = private unnamed_addr constant [13 x i8] c"H2elloWorld2\00", align 1
+@.str.10 = private unnamed_addr constant [35 x i8] c"hello deer! No fear, you are hear!\00", align 1
+

@@ -462,9 +462,14 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 			for (ArraySize i = 0; i < len; i++)
 			{
 				char c = string[i];
-				if (!isalpha(c))
+				if (!isalnum(c))
 				{
 					capitalize = true;
+					continue;
+				}
+				if (isdigit(c))
+				{
+					new_string[j++] = c;
 					continue;
 				}
 				if (capitalize)

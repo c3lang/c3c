@@ -307,8 +307,19 @@ static void analyze_generics(Module *module)
 {
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
+		bool remove = false;
+		if (unit->feat_attributes && sema_remove_due_to_conditionals(unit->feat_attributes) != BOOL_FALSE)
+		{
+			remove = true;
+		}
+
 		FOREACH(Decl *, section, unit->generic_decls)
 		{
+			if (remove)
+			{
+				section->generic_decl.decls = NULL;
+				section->generic_decl.conditional_decls = NULL;
+			}
 			register_generic_decls(unit, section->generic_decl.decls);
 			register_generic_decls(unit, section->generic_decl.conditional_decls);
 		}

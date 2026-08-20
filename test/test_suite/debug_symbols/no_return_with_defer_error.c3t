@@ -1,0 +1,23 @@
+// #target: macos-x64
+// #debuginfo: yes
+module main;
+
+fn void test() @noreturn
+{}
+
+fn void foo() {}
+fn int main () {
+	{}
+	test();
+	defer foo(); // #warning: This code will never execute
+	{}
+	return 0;
+}
+
+/* #expect: main.ll
+
+define i32 @main() #1 !dbg !12 {
+entry:
+  call void @main.test() #2, !dbg !16
+  unreachable, !dbg !17
+}

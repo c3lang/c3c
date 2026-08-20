@@ -56,10 +56,8 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_TYPEDEF:
 			case TOKEN_DISTINCT:
 			case TOKEN_ATTRDEF:
-			case TOKEN_ATTRGROUP:
 			case TOKEN_ATTRMACRO:
 			case TOKEN_FAULTSET:
-			case TOKEN_FAULTCONST:
 			case TOKEN_FAULTDEF:
 				return;
 			case TOKEN_CONST:
@@ -3653,7 +3651,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 				return NULL;
 			}
 			break;
-		case TOKEN_ATTRGROUP:
 		case TOKEN_ATTRMACRO:
 		case TOKEN_ATTRDEF:
 			decl = parse_attrdef(c);
@@ -3740,7 +3737,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			attach_contracts = true;
 			break;
 		case TOKEN_FAULTSET:
-		case TOKEN_FAULTCONST:
 			decl = parse_faultset_declaration(c);
 			attach_contracts = true;
 			break;

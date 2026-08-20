@@ -18,7 +18,7 @@ entry:
   %1 = insertelement <2 x ptr> %0, ptr null, i64 1
   store <2 x ptr> %1, ptr %x, align 16
   %2 = load <2 x ptr>, ptr %x, align 16
-  %i2b = icmp ne <2 x ptr> %2, zeroinitializer
+  %i2b = icmp ne <2 x ptr> %2,
   %3 = sext <2 x i1> %i2b to <2 x i8>
   store <2 x i8> %3, ptr %y, align 2
   ret void

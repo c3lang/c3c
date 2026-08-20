@@ -8,16 +8,25 @@
 - `benchmark` and `test` project targets now work properly with `c3c benchmark` and `c3c test`. 
 - Add `$reflect(foo).param_struct` and `Foo::param_struct` properties. #3099
 - Allow the parse `faultset { ... }`. For `faultset`, `faultconst` and `excuse`.
+- Improved error messages when underlined error is too long, or lines are too long. #3383
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
 - `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.
+- `pool::ThreadPool` now only available using `ThreadPoolOld` unless `-D OLD_THREADPOOL` is used.
 - Add `std::collections::Tree`.
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
 - `@return` was accepted in doc comments for non-function/macro declarations.
 - Can not run targeted benchmark function in project #1651.
+- Detection of dead code would get reset after visiting a scope, causing a crash in codegen. #3453.
+- Switch was incorrectly copied inside of defer, causing crash in codegen. #3454
+- Codegen for debug info was incorrect for default init on arguments, causing crash with LLVM23. 
+- Codegen for bitstruct `b.foo--` was incorrect, causing crash with LLVM23.
+- `@str_pascalcase`/`@str_camelcase` treated digits as word separators and dropped them from the output. #3287
+- Typedef access resolution preferred inner type field over method. #3457
+- Generic gets instantiated despite being disabled with `@feat` #3459
 
 ## 0.8.3 Change list
 
