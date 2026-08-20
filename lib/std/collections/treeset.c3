@@ -245,6 +245,7 @@ fn bool TreeSet.contains(&self, TreeValue value) @inline => @ok(find(self, value
 *>
 macro TreeSet.@each(tree; @body(value))
 {
+	if (tree.is_empty()) return;
 	Node* node = minimum(tree.root);
 
 	while OUTER: (true)
