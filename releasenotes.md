@@ -13,6 +13,7 @@
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
 - `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.
+- `pool::ThreadPool` now only available using `ThreadPoolOld` unless `-D OLD_THREADPOOL` is used.
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.

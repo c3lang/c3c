@@ -77,7 +77,7 @@ fn int main(String[] args)
 	Path cwd = path::tcwd()!!;
 	io::printfn("Serving %s on http://0.0.0.0:%d", cwd, port);
 
-	ThreadPool{THREAD_COUNT} worker_pool;
+	ThreadPoolOld{THREAD_COUNT} worker_pool;
 	if (catch err = worker_pool.init())
 	{
 		io::eprintfn("Failed to init thread pool: %s", err);

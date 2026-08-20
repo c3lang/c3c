@@ -1,7 +1,8 @@
 module std::thread::pool <SIZE>;
 import std::thread;
 
-struct ThreadPool @deprecated
+alias ThreadPool @feat(OLD_THREADPOOL) = ThreadPoolOld;
+struct ThreadPoolOld @deprecated
 {
 	Mutex mu;
 	QueueItem[SIZE] queue;
