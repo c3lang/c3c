@@ -1,11 +1,9 @@
 module socketaddresstest @test;
 import std::net;
-import std::io;
-import std::core::test;
 
 fn void test_socket_local_and_peer_address() @feat(!EMSCRIPTEN)
 {
-	tcp::TcpServerSocket server = tcp::listen("127.0.0.1", 0, 4, net::SocketOption.REUSEADDR)!!;
+	TcpServerSocket server = tcp::listen("127.0.0.1", 0, 4, REUSEADDR)!!;
 	defer (void)server.close();
 
 	InetAddress server_local_addr = server.local_address()!!;
@@ -15,10 +13,10 @@ fn void test_socket_local_and_peer_address() @feat(!EMSCRIPTEN)
 	ushort server_port = server.local_port()!!;
 	test::gt(server_port, 0);
 
-	tcp::TcpSocket client = tcp::connect("127.0.0.1", (int)server_port)!!;
+	TcpSocket client = tcp::connect("127.0.0.1", server_port)!!;
 	defer (void)client.close();
 
-	tcp::TcpSocket accepted = tcp::accept(&server)!!;
+	TcpSocket accepted = tcp::accept(&server)!!;
 	defer (void)accepted.close();
 
 	InetAddress client_peer_addr = client.peer_address()!!;
@@ -46,7 +44,7 @@ fn void test_socket_local_and_peer_address() @feat(!EMSCRIPTEN)
 
 fn void test_socket_unconnected_peer_address_error() @feat(!EMSCRIPTEN)
 {
-	tcp::TcpServerSocket server = tcp::listen("127.0.0.1", 0, 1)!!;
+	TcpServerSocket server = tcp::listen("127.0.0.1", 0, 1)!!;
 	defer (void)server.close();
 
 	test::@error(server.peer_address());
@@ -54,7 +52,7 @@ fn void test_socket_unconnected_peer_address_error() @feat(!EMSCRIPTEN)
 
 fn void test_socket_unconnected_peer_port_error() @feat(!EMSCRIPTEN)
 {
-	tcp::TcpServerSocket server = tcp::listen("127.0.0.1", 0, 1)!!;
+	TcpServerSocket server = tcp::listen("127.0.0.1", 0, 1)!!;
 	defer (void)server.close();
 
 	test::@error(server.peer_port());
