@@ -155,7 +155,7 @@ fn sz TreeSet.add_all_from(&self, TreeSet* other)
 *>
 fn bool TreeSet.add(&self, TreeValue value)
 {
-	bool added = add_and_rebalance(self, value);
+	bool added = tree_add_and_rebalance(self, value);
 	if (added) self.count++;
 	return added;
 }
@@ -229,42 +229,42 @@ fn sz TreeSet.remove_all_from(&self, TreeSet* other)
 <*
  Remove a value from the tree.
  @param value
- @return ? remove_and_rebalance!
+ @return? tree_remove_and_rebalance!
 *>
 fn void? TreeSet.remove(&self, TreeValue value) @maydiscard
 {
-	Node* z = remove_and_rebalance(self, value)!;
+	Node* z = tree_remove_and_rebalance(self, value)!;
 	tree_free_node(self, z);
 	self.count--;
 }
 
-fn bool TreeSet.contains(&self, TreeValue value) @inline => @ok(find(self, value));
+fn bool TreeSet.contains(&self, TreeValue value) @inline => @ok(tree_find(self, value));
 
 <*
  Iterate over all values in the tree
 *>
-macro TreeSet.@each(tree; @body(value))
+macro void TreeSet.@each(tree; @body(value))
 {
 	if (tree.is_empty()) return;
-	Node* node = minimum(tree.root);
+	Node* node = tree_minimum(tree.root);
 
-	while OUTER: (true)
+	while (true)
 	{
 		@body(node.value);
 		if (node.right)
 		{
-			node = minimum(node.right);
+			node = tree_minimum(node.right);
 			continue;
 		}
 		else
 		{
 			Node* parent = node.parent;
-			if (!parent) break OUTER;
+			if (!parent) return;
 			while (node == parent.right)
 			{
 				node = parent;
 				parent = node.parent;
-				if (!parent) break OUTER;
+				if (!parent) return;
 			}
 			node = parent;
 			continue;
@@ -272,7 +272,7 @@ macro TreeSet.@each(tree; @body(value))
 	}
 }
 
-fn bool TreeSet.is_empty(&self) @inline => self.count == 0;
+fn bool TreeSet.is_empty(&self) @inline => !self.count;
 
 fn sz TreeSet.len(&self) @inline => self.count;
 
@@ -312,82 +312,56 @@ macro Node* tree_alloc_node(TreeSet* self, TreeValue value) @private
 		default:
 			break;
 	}
-	return alloc::new(
-		self.allocator,
-		Node,
-		{
-			.value = value,
-			.color = NodeColor.RED,
-		}
-	);
+	return alloc::new(self.allocator, Node, { .value = value, .color = RED });
 }
 
 <*
- @return ? NOT_FOUND
+ @return? NOT_FOUND
 *>
-fn Node*? find(TreeSet* self, TreeValue value) @private
+fn Node*? tree_find(TreeSet* self, TreeValue value) @private
 {
 	Node* x = self.root;
 	while (x != null)
 	{
 		if (value == x.value) return x;
-		if (value < x.value)
-		{
-			x = x.left;
-		}
-		else
-		{
-			x = x.right;
-		}
+		x = value < x.value ? x.left : x.right;
 	}
 	return NOT_FOUND~;
 }
 
-fn void rotate_left(TreeSet* self, Node* x) @private
+fn void tree_rotate_left(TreeSet* self, Node* x) @private
 {
 	Node* y = x.right;
 	x.right = y.left;
 	if (y.left) y.left.parent = x;
 	y.parent = x.parent;
-	if (x == self.root)
+	switch (x)
 	{
-		self.root = y;
-	}
-	else if (x == x.parent.left)
-	{
-		x.parent.left = y;
-	}
-	else
-	{
-		x.parent.right = y;
+		case self.root:     self.root = y;
+		case x.parent.left: x.parent.left = y;
+		default:            x.parent.right = y;
 	}
 	y.left = x;
 	x.parent = y;
 }
 
-fn void rotate_right(TreeSet* self, Node* y) @private
+fn void tree_rotate_right(TreeSet* self, Node* y) @private
 {
 	Node* x = y.left;
 	y.left = x.right;
 	if (x.right) x.right.parent = y;
 	x.parent = y.parent;
-	if (y == self.root)
+	switch (y)
 	{
-		self.root = x;
-	}
-	else if (y == y.parent.right)
-	{
-		y.parent.right = x;
-	}
-	else
-	{
-		y.parent.left = x;
+		case self.root:      self.root = x;
+		case y.parent.right: y.parent.right = x;
+		default:             y.parent.left = x;
 	}
 	x.right = y;
 	y.parent = x;
 }
 
-fn bool add_and_rebalance(TreeSet* self, TreeValue value) @private
+fn bool tree_add_and_rebalance(TreeSet* self, TreeValue value) @private
 {
 	Node* x = self.root;
 	Node* y;
@@ -423,16 +397,16 @@ fn bool add_and_rebalance(TreeSet* self, TreeValue value) @private
 
 	// Fixup of RB structure after insertion
 
-	while (z != self.root && z.parent.color == NodeColor.RED)
+	while (z != self.root && z.parent.color == RED)
 	{
 		if (z.parent == z.parent.parent.left)
 		{
 			y = z.parent.parent.right;
-			if (y && y.color == NodeColor.RED)
+			if (y && y.color == RED)
 			{
-				z.parent.color = NodeColor.BLACK;
-				y.color = NodeColor.BLACK;
-				z.parent.parent.color = NodeColor.RED;
+				z.parent.color = BLACK;
+				y.color = BLACK;
+				z.parent.parent.color = RED;
 				z = z.parent.parent;
 			}
 			else
@@ -440,21 +414,21 @@ fn bool add_and_rebalance(TreeSet* self, TreeValue value) @private
 				if (z == z.parent.right)
 				{
 					z = z.parent;
-					rotate_left(self, z);
+					tree_rotate_left(self, z);
 				}
-				z.parent.color = NodeColor.BLACK;
-				z.parent.parent.color = NodeColor.RED;
-				rotate_right(self, z.parent.parent);
+				z.parent.color = BLACK;
+				z.parent.parent.color = RED;
+				tree_rotate_right(self, z.parent.parent);
 			}
 		}
 		else
 		{
 			y = z.parent.parent.left;
-			if (y && y.color == NodeColor.RED)
+			if (y && y.color == RED)
 			{
-				z.parent.color = NodeColor.BLACK;
-				y.color = NodeColor.BLACK;
-				z.parent.parent.color = NodeColor.RED;
+				z.parent.color = BLACK;
+				y.color = BLACK;
+				z.parent.parent.color = RED;
 				z = z.parent.parent;
 			}
 			else
@@ -462,165 +436,153 @@ fn bool add_and_rebalance(TreeSet* self, TreeValue value) @private
 				if (z == z.parent.left)
 				{
 					z = z.parent;
-					rotate_right(self, z);
+					tree_rotate_right(self, z);
 				}
-				z.parent.color = NodeColor.BLACK;
-				z.parent.parent.color = NodeColor.RED;
-				rotate_left(self, z.parent.parent);
+				z.parent.color = BLACK;
+				z.parent.parent.color = RED;
+				tree_rotate_left(self, z.parent.parent);
 			}
 		}
 	}
-	self.root.color = NodeColor.BLACK;
+	self.root.color = BLACK;
 	return true;
 }
 
-fn void transplant(TreeSet* self, Node* u, Node* v) @private
+fn void tree_transplant(TreeSet* self, Node* u, Node* v) @private
 {
-	if (u.parent == null)
+	switch
 	{
-		self.root = v;
+		case !u.parent:          self.root = v;
+		case u == u.parent.left: u.parent.left = v;
+		default:                 u.parent.right = v;
 	}
-	else if (u == u.parent.left)
-	{
-		u.parent.left = v;
-	}
-	else
-	{
-		u.parent.right = v;
-	}
-	if (v != null)
-	{
-		v.parent = u.parent;
-	}
+	if (v) v.parent = u.parent;
 }
 
-fn Node* minimum(Node* node) @private
+fn Node* tree_minimum(Node* node) @private
 {
 	while (node.left) node = node.left;
 	return node;
 }
 
-fn Node* maximum(Node* node) @private
+fn Node* tree_maximum(Node* node) @private
 {
 	while (node.right) node = node.right;
 	return node;
 }
 
 <*
- @return ? find!
+ @return? tree_find!
 *>
-fn Node*? remove_and_rebalance(TreeSet* self, TreeValue value) @private
+fn Node*? tree_remove_and_rebalance(TreeSet* self, TreeValue value) @private
 {
-	Node* z           = find(self, value)!;
+	Node* z           = tree_find(self, value)!;
 	Node* y           = z;
 	Node* x; // Child that will replace z
 	Node* x_parent;
 	NodeColor y_color = y.color;
 
-	if (z.left == null)
+	switch
 	{
-		x = z.right;
-		x_parent = z.parent;
-		transplant(self, z, z.right);
-	}
-	else if (z.right == null)
-	{
-		x = z.left;
-		x_parent = z.parent;
-		transplant(self, z, z.left);
-	}
-	else
-	{
-		y = minimum(z.right);
-		y_color = y.color;
-		x = y.right;
-		x_parent = y;
-		if (y != z.right)
-		{
-			transplant(self, y, y.right);
-			x_parent = y.parent;
-			y.right = z.right;
-			if (y.right != null) y.right.parent = y;
-		}
-		transplant(self, z, y);
-		y.left = z.left;
-		if (y.left != null) y.left.parent = y;
-		y.color = z.color;
+		case !z.left:
+			x = z.right;
+			x_parent = z.parent;
+			tree_transplant(self, z, z.right);
+		case !z.right:
+			x = z.left;
+			x_parent = z.parent;
+			tree_transplant(self, z, z.left);
+		default:
+			y = tree_minimum(z.right);
+			y_color = y.color;
+			x = y.right;
+			x_parent = y;
+			if (y != z.right)
+			{
+				tree_transplant(self, y, y.right);
+				x_parent = y.parent;
+				y.right = z.right;
+				if (y.right != null) y.right.parent = y;
+			}
+			tree_transplant(self, z, y);
+			y.left = z.left;
+			if (y.left != null) y.left.parent = y;
+			y.color = z.color;
 	}
 
 	// Rebalance after deletion
-	if (y_color == NodeColor.BLACK)
+	if (y_color == BLACK)
 	{
-		while (x != self.root && (x == null || x.color == NodeColor.BLACK))
+		while (x != self.root && (!x || x.color == BLACK))
 		{
 			if (x == x_parent.left)
 			{
 				Node* w = x_parent.right;
-				if (w.color == NodeColor.RED)
+				if (w.color == RED)
 				{
-					w.color = NodeColor.BLACK;
-					x_parent.color = NodeColor.RED;
-					rotate_left(self, x_parent);
+					w.color = BLACK;
+					x_parent.color = RED;
+					tree_rotate_left(self, x_parent);
 					w = x_parent.right;
 				}
-				if ((w.left == null || w.left.color == NodeColor.BLACK)
-					&& (w.right == null || w.right.color == NodeColor.BLACK))
+				if ((!w.left || w.left.color == BLACK)
+					&& (!w.right || w.right.color == BLACK))
 				{
-					w.color = NodeColor.RED;
+					w.color = RED;
 					x = x_parent;
 					x_parent = x.parent;
 				}
 				else
 				{
-					if (w.right == null || w.right.color == NodeColor.BLACK)
+					if (!w.right || w.right.color == BLACK)
 					{
-						w.left.color = NodeColor.BLACK;
-						w.color = NodeColor.RED;
-						rotate_right(self, w);
+						w.left.color = BLACK;
+						w.color = RED;
+						tree_rotate_right(self, w);
 						w = x_parent.right;
 					}
 					w.color = x_parent.color;
-					x_parent.color = NodeColor.BLACK;
-					if (w.right != null) w.right.color = NodeColor.BLACK;
-					rotate_left(self, x_parent);
+					x_parent.color = BLACK;
+					if (w.right) w.right.color = BLACK;
+					tree_rotate_left(self, x_parent);
 					x = self.root;
 				}
 			}
 			else
 			{
 				Node* w = x_parent.left;
-				if (w.color == NodeColor.RED)
+				if (w.color == RED)
 				{
-					w.color = NodeColor.BLACK;
-					x_parent.color = NodeColor.RED;
-					rotate_right(self, x_parent);
+					w.color = BLACK;
+					x_parent.color = RED;
+					tree_rotate_right(self, x_parent);
 					w = x_parent.left;
 				}
-				if ((w.right == null || w.right.color == NodeColor.BLACK)
-					&& (w.left == null || w.left.color == NodeColor.BLACK))
+				if ((!w.right || w.right.color == BLACK)
+					&& (!w.left || w.left.color == BLACK))
 				{
-					w.color = NodeColor.RED;
+					w.color = RED;
 					x = x_parent;
 					x_parent = x.parent;
 				}
 				else
 				{
-					if (w.left == null || w.left.color == NodeColor.BLACK)
+					if (!w.left || w.left.color == BLACK)
 					{
-						w.right.color = NodeColor.BLACK;
-						w.color = NodeColor.RED;
-						rotate_left(self, w);
+						w.right.color = BLACK;
+						w.color = RED;
+						tree_rotate_left(self, w);
 						w = x_parent.left;
 					}
 					w.color = x_parent.color;
-					x_parent.color = NodeColor.BLACK;
-					if (w.left != null) w.left.color = NodeColor.BLACK;
-					rotate_right(self, x_parent);
+					x_parent.color = BLACK;
+					if (w.left) w.left.color = BLACK;
+					tree_rotate_right(self, x_parent);
 					x = self.root;
 				}
 			}
 		}
-		if (x != null) x.color = NodeColor.BLACK;
+		if (x) x.color = BLACK;
 	}
 	return z;
 }
@@ -646,7 +608,7 @@ struct TreeSetIterator
 fn TreeSetIterator TreeSet.iter(&self) => { .tree = self, .started = false };
 
 <*
- @return ? NOT_FOUND
+ @return? NOT_FOUND
 *>
 fn TreeValue*? TreeSetIterator.get(&self)
 {
@@ -658,11 +620,11 @@ fn bool TreeSetIterator.next(&self)
 	if (!self.started)
 	{
 		self.started = true;
-		self.current = self.tree.root ? minimum(self.tree.root) : null;
+		self.current = self.tree.root ? tree_minimum(self.tree.root) : null;
 	}
 	else if (self.current.right)
 	{
-		self.current = minimum(self.current.right);
+		self.current = tree_minimum(self.current.right);
 	}
 	else
 	{
