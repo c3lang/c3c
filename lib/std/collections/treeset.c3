@@ -616,7 +616,7 @@ fn Node*? remove_and_rebalance(TreeSet* self, Value value) @private
 				}
 			}
 		}
-		x.color = NodeColor.BLACK;
+		if (x != null) x.color = NodeColor.BLACK;
 	}
 	return z;
 }
@@ -654,7 +654,7 @@ fn bool TreeSetIterator.next(&self)
 	if (!self.started)
 	{
 		self.started = true;
-		self.current = minimum(self.tree.root);
+		self.current = self.tree.root ? minimum(self.tree.root) : null;
 	}
 	else if (self.current.right)
 	{
