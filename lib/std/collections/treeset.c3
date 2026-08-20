@@ -6,6 +6,9 @@ import std::io @norecurse;
 
 const Allocator TREE_HEAP_ALLOCATOR = (Allocator)&dummy;
 
+<* Copy the ONHEAP allocator to initialize to a set that is heap allocated *>
+const TreeSet TREEONHEAP = { .allocator = TREE_HEAP_ALLOCATOR };
+
 enum NodeColor @private
 {
 	RED,
