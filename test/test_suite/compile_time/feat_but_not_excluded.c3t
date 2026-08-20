@@ -1,0 +1,20 @@
+module foo @feat(FOO);
+
+fn int a(int x) => 2*x;
+
+module foo <A> @feat(FOO);
+
+fn int b(int x) => a(x) + A;
+
+module foo <A>;
+
+fn String h() => @sprintf("Hello %s", A);
+
+module main;
+import foo;
+
+fn int main()
+{
+	String s = foo::h{6}();
+	return 0;
+}

@@ -191,8 +191,6 @@ const char *token_type_to_string(TokenType type)
 			return "asm";
 		case TOKEN_ASSERT:
 			return "assert";
-		case TOKEN_ATTRGROUP:
-			return "attrgroup";
 		case TOKEN_ATTRMACRO:
 			return "attrmacro";
 		case TOKEN_ATTRDEF:
@@ -231,8 +229,6 @@ const char *token_type_to_string(TokenType type)
 			return "false";
 		case TOKEN_FAULTDEF:
 			return "faultdef";
-		case TOKEN_FAULTCONST:
-			return "faultconst";
 		case TOKEN_FAULTSET:
 			return "faultset";
 		case TOKEN_FOR:

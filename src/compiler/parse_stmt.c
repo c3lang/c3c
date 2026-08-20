@@ -1459,7 +1459,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_AND:
 		case TOKEN_ARROW:
 		case TOKEN_ATTRDEF:
-		case TOKEN_ATTRGROUP:
 		case TOKEN_ATTRMACRO:
 		case TOKEN_BANGBANG:
 		case TOKEN_BITSTRUCT:
@@ -1497,7 +1496,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_EXTERN:
 		case TOKEN_FAULTDEF:
 		case TOKEN_FAULTSET:
-		case TOKEN_FAULTCONST:
 		case TOKEN_FN:
 		case TOKEN_GREATER:
 		case TOKEN_GREATER_EQ:
