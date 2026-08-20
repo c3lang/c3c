@@ -60,39 +60,24 @@ sz[MAX_CONNS + 2] g_poll_map;
 UnboundedChannel{sz}* g_work_queue;
 Thread[THREAD_COUNT] g_workers;
 
-NativeSocket[2] g_wake_pipe @feat(!WIN32);
-TcpSocketPair g_wake_pair @feat(WIN32);
+TcpSocketPair g_wake_pair;
 
 fn void init_wake_channel()
 {
-	$if env::WIN32:
-		(void)g_wake_pair.init();
-		(void)g_wake_pair.send.sock.set_non_blocking(true);
-		(void)g_wake_pair.recv.sock.set_non_blocking(true);
-	$else
-		(void)posix::pipe((CInt[2]*)&g_wake_pipe);
-		(void)g_wake_pipe[0].set_non_blocking(true);
-		(void)g_wake_pipe[1].set_non_blocking(true);
-	$endif
+	(void)g_wake_pair.init();
+	(void)g_wake_pair.send.sock.set_non_blocking(true);
+	(void)g_wake_pair.recv.sock.set_non_blocking(true);
 }
 
 fn void notify_poller()
 {
-	$if env::WIN32:
-		(void)g_wake_pair.send.write("x");
-	$else
-		(void)libc::write(g_wake_pipe[1], "x", 1);
-	$endif
+	(void)g_wake_pair.send.write("x");
 }
 
 fn void drain_poller_wake()
 {
 	char[512] buf;
-	$if env::WIN32:
-		(void)g_wake_pair.recv.read(&buf);
-	$else
-		(void)libc::read(g_wake_pipe[0], &buf, buf.len);
-	$endif
+	(void)g_wake_pair.recv.read(&buf);
 }
 
 // ============================================================================
@@ -213,11 +198,7 @@ fn int main(String[] args)
 		poll_count++;
 
 		// Index 1: Poller wake notification
-		$if env::WIN32:
-			g_poll_fds[poll_count] = { .socket = g_wake_pair.recv.sock, .events = READ };
-		$else
-			g_poll_fds[poll_count] = { .socket = g_wake_pipe[0], .events = READ };
-		$endif
+		g_poll_fds[poll_count] = { .socket = g_wake_pair.recv.sock, .events = READ };
 		poll_count++;
 
 		// Active client sockets
