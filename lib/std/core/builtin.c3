@@ -216,7 +216,6 @@ fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ig
 			case function_name == "std.core.builtin.panicf":
 			case function_name.starts_with("std.core.runtime.panic_test."):
 			case function_name.starts_with("std.core.runtime.test_panic."):
-				if (inside_builtin_panic_skipped) backtraces_to_ignore++;
 			case function_name == "__GI___sigaction":
 				backtraces_to_ignore = i + 1;
 			default:
