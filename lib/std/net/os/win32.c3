@@ -24,6 +24,7 @@ extern fn int bind(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int listen(NativeSocket, int backlog);
 extern fn NativeSocket accept(NativeSocket, SockAddrPtr address, Socklen_t* address_len);
 extern fn CInt getsockname(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
+extern fn CInt getpeername(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
 
 char[408] wsa_data @local;
 int wsa_init @local;

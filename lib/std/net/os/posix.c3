@@ -23,6 +23,8 @@ extern fn CInt listen(NativeSocket socket, CInt backlog);
 extern fn NativeSocket accept(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
 extern fn CInt poll(Posix_pollfd* fds, Posix_nfds_t nfds, CInt timeout);
 extern fn NativeSocket socketpair(AIFamily domain, AISockType type, AIProtocol protocol, NativeSocket[2]* sv);
+extern fn CInt getsockname(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
+extern fn CInt getpeername(NativeSocket socket, SockAddrPtr address, Socklen_t* address_len);
 
 const CUShort POLLIN      = 0x0001;
 const CUShort POLLPRI     = 0x0002;
