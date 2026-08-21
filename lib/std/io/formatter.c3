@@ -51,11 +51,6 @@ macro sz? struct_to_format(value, Formatter* f, bool $force_dump)
 	return total + f.print(" }");
 }
 
-fn sz? ReflectedParam.to_format(&self, Formatter* f) @dynamic
-{
-	return f.printf("[Parameter '%s']", self.name);
-}
-
 fn sz? Formatter.printf(&self, String format, args...)
 {
 	return self.vprintf(format, args) @inline;

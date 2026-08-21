@@ -1846,6 +1846,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.arch_os_target_override = ARCH_OS_TARGET_DEFAULT,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
+		.implicit_float = IMPLICIT_FLOAT_NOT_SET,
 		.ansi = ANSI_DETECT,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,

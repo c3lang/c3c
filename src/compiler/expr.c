@@ -1043,6 +1043,8 @@ Expr *expr_new_const_bool(int loc, Type *type, bool value)
 	return expr;
 }
 
+
+
 Expr *expr_new_const_null(SourceLocId loc, Type *type)
 {
 	Expr *expr = expr_calloc();

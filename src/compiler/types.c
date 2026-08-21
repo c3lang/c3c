@@ -52,7 +52,6 @@ Type *type_reflection = &t.reflection;
 Type *type_chars = NULL;
 Type *type_wildcard_optional = NULL;
 Type *type_string = &t.string;
-Type *type_reflected_param = NULL;
 Type *type_cint;
 Type *type_cuint;
 
@@ -1603,10 +1602,6 @@ void type_setup(PlatformTarget *target)
 	string_decl->resolve_status = RESOLVE_DONE;
 	type_string = string_decl->type;
 	unit_register_global_decl(compiler.context.core_unit, string_decl);
-
-	Type* types[2] = { type_string, type_typeid };
-	const char* names[2] = { kw_name, kw_type };
-	type_reflected_param = type_create_struct("ReflectedParam", types, names, 2);
 }
 
 int type_kind_bitsize(TypeKind kind)
