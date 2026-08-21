@@ -15,7 +15,7 @@ macro @enum_lookup($Type, $name, value)
 module std::core;
 import std::io;
 
-struct ReflectedParam (Printable)
+struct ReflectedParam (Printable) @deprecated("No longer in use")
 {
 	String name;
 	typeid type;

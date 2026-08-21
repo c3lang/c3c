@@ -268,6 +268,7 @@ typedef struct BuildOptions_
 	bool docgen_append;
 	bool fetch_accept_license;
 	bool msvc_show_versions;
+	ImplicitFloat implicit_float;
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;
 	const char *fetch_sdk_target;
@@ -489,6 +490,7 @@ typedef struct
 		bool sanitize_address : 1;
 		bool sanitize_memory : 1;
 		bool sanitize_thread : 1;
+		ImplicitFloat implicit_float : 3;
 		FpOpt fp_math;
 		SafetyLevel safe_mode;
 		PanicLevel panic_level;
@@ -574,6 +576,7 @@ static BuildTarget default_build_target = {
 		.feature.x86_struct_return = STRUCT_RETURN_DEFAULT,
 		.feature.soft_float = SOFT_FLOAT_DEFAULT,
 		.feature.fp_math = FP_DEFAULT,
+		.feature.implicit_float = IMPLICIT_FLOAT_NOT_SET,
 		.feature.trap_on_wrap = false,
 		.feature.riscv_abi = RISCV_ABI_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,

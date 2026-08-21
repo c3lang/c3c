@@ -193,6 +193,7 @@ static void usage(bool full)
 		print_opt("--memory-env=<option>", "Set the memory environment: normal, small, tiny, none.");
 		print_opt("--strip-unused=<yes|no>", "Strip unused code and globals from the output. (default: yes)");
 		print_opt("--fp-math=<option>", "FP math behaviour: strict, relaxed, fast.");
+		print_opt("--implicit-float=<yes|no>", "Allow the compiler to implicitly generate floating point code (default: yes)");
 		print_opt("--win64-simd=<option>", "Win64 SIMD ABI: array, full.");
 		print_opt("--win-debug=<option>", "Select debug output on Windows: codeview or dwarf (default: codeview).");
 		print_opt("--max-vector-size <number>", "Set the maximum vector bit size to allow (default: 4096).");
@@ -1173,6 +1174,11 @@ static void parse_option(BuildOptions *options)
 				if (!options->verbosity_level) options->verbosity_level = -1;
 				return;
 			}
+			if ((argopt = match_argopt("implicit-float")))
+			{
+				options->implicit_float = parse_opt_select(ImplicitFloat, argopt, on_off);
+				return;
+			}
 			if ((argopt = match_argopt("fp-math")))
 			{
 				options->fp_math = parse_opt_select(FpOpt, argopt, fp_math);
@@ -1840,6 +1846,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.arch_os_target_override = ARCH_OS_TARGET_DEFAULT,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
+		.implicit_float = IMPLICIT_FLOAT_NOT_SET,
 		.ansi = ANSI_DETECT,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,

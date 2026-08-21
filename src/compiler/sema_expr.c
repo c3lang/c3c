@@ -5,6 +5,7 @@
 #include "sema_internal.h"
 #include <math.h>
 
+#define MEMBER_IS_PARAM UINT32_MAX
 #define RETURN_SEMA_FUNC_ERROR(_decl, _node, ...) do { sema_error_at(context, (_node)->loc, __VA_ARGS__); SEMA_NOTE(_decl, "The definition was here."); return false; } while (0)
 #define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0)
 #define RESOLVE(expr__, check__) \
@@ -5435,20 +5436,19 @@ static inline bool sema_expr_analyse_reflection_cname(SemaContext *context UNUSE
 				case VARDECL_CONST:
 				case VARDECL_GLOBAL:
 					goto RETURN_CT;
-				case VARDECL_LOCAL:
+				case VARDECL_PARAM_EXPR:
+				case VARDECL_PARAM_CT:
+				case VARDECL_PARAM_CT_TYPE:
 				case VARDECL_PARAM:
 				case VARDECL_MEMBER:
 				case VARDECL_BITMEMBER:
-				case VARDECL_PARAM_EXPR:
 				case VARDECL_UNWRAPPED:
 				case VARDECL_ERASE:
 				case VARDECL_REWRAPPED:
-				case VARDECL_PARAM_CT:
-				case VARDECL_PARAM_CT_TYPE:
 				case VARDECL_LOCAL_CT:
 				case VARDECL_LOCAL_CT_TYPE:
-					// TODO verify that all of these are correct.
-					break;
+				case VARDECL_LOCAL:
+					return false;
 			}
 			FALLTHROUGH;
 		case DECL_ALIAS:
@@ -5532,7 +5532,7 @@ static inline BoolErr sema_expr_analyse_reflection_alignment(SemaContext *contex
 {
 	if (member)
 	{
-		expr_rewrite_const_int(expr, type_sz, type_min_alignment(reflect->const_expr.member.offset, reflect->const_expr.member.align));
+		expr_rewrite_const_int(expr, type_sz, reflect->const_expr.member.offset == UINT32_MAX ? member->alignment : type_min_alignment(reflect->const_expr.member.offset, reflect->const_expr.member.align));
 		return BOOL_TRUE;
 	}
 	Type *type = reflect->type;
@@ -5682,12 +5682,29 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 	}
 	Decl *member = expr_is_const_member(reflect) ? member = reflect->const_expr.member.decl : NULL;
 	if (member && !sema_analyse_decl(context, member)) return false;
+	bool is_param = member && reflect->const_expr.member.offset == MEMBER_IS_PARAM;
 	Type *type =  member ? member->type : reflect->type;
 	if (!type) goto FAILED;
 	if (type->type_kind == TYPE_FUNC_RAW) type = type_get_func_ptr(type);
 	if (name == kw_is_const)
 	{
 		expr_rewrite_const_bool(expr, type_bool, expr_is_runtime_const(reflect));
+		return true;
+	}
+	if (name == kw_default_value)
+	{
+		if (!is_param)
+		{
+			if (missing_ref) goto MISSING_REF;
+			RETURN_SEMA_ERROR(expr, "'.default_value' is only valid for parameters.");
+		}
+		if (!member->var.init_expr)
+		{
+			if (missing_ref) goto MISSING_REF;
+			RETURN_SEMA_ERROR(expr, "The parameter does not have a default value, check this with `$defined(foo.default_value)` before usage.");
+		}
+		Expr *init_expr = copy_expr_single(member->var.init_expr);
+		expr_replace(expr, init_expr);
 		return true;
 	}
 	bool normal_storage = sema_resolve_storage_type(context, type) == STORAGE_NORMAL;
@@ -5722,17 +5739,18 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 	}
 	if (name == kw_offset)
 	{
+		if (is_param) goto FAILED;
 		if (!sema_expr_analyse_reflection_offset(expr, reflect)) goto FAILED;
 		return true;
 	}
 	if (member)
 	{
-		if (name == kw_is_anonymous)
+		if (name == kw_is_anonymous && !is_param)
 		{
 			expr_rewrite_const_bool(expr, type_bool, member->name == NULL || str_eq("", member->name));
 			return type;
 		}
-		if (name == kw_is_nested)
+		if (name == kw_is_nested && !is_param)
 		{
 			expr_rewrite_const_bool(expr, type_bool, decl_has_members(member));
 			return type;
@@ -5753,7 +5771,7 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 		{
 			return sema_create_const_tags(context, expr, member->attrs_resolved);
 		}
-		if (name == kw_set)
+		if (name == kw_set && !is_param)
 		{
 			if (compiler.build.warnings.deprecation == WARNING_ERROR) RETURN_SEMA_ERROR(expr, "Use of deprecated $field.set(...), use a.$field instead");
 			SEMA_DEPRECATED(expr, "Use of deprecated $field.set(...), use a.$field instead");
@@ -5762,7 +5780,7 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 			expr->type = type_void;
 			return true;
 		}
-		if (name == kw_get)
+		if (name == kw_get && !is_param)
 		{
 			if (compiler.build.warnings.deprecation == WARNING_ERROR) RETURN_SEMA_ERROR(expr, "Use of deprecated $field.get(...), use a.$field instead.");
 			SEMA_DEPRECATED(expr, "Use of deprecated $field.get(...), use a.$field instead.");
@@ -5778,10 +5796,10 @@ static bool sema_expr_analyse_reflection_access(SemaContext *context, Expr *expr
 				expr_rewrite_const_string(expr, "", 0);
 				return true;
 			}
-			expr_rewrite_const_string(expr, member->name, strlen(member->name));
+			expr_rewrite_const_string(expr, member->name, (int)strlen(member->name));
 			return true;
 		}
-		if (name == kw_members)
+		if (name == kw_members && !is_param)
 		{
 			sema_create_const_membersof(expr, type->canonical, reflect->const_expr.member.align, reflect->const_expr.member.offset);
 			return true;
@@ -6031,19 +6049,19 @@ static inline bool sema_create_const_type_params(Expr *expr, Type *type)
 	for (unsigned i = 0; i < params; i++)
 	{
 		Decl *decl = sig->params[i];
-		Expr *name_expr = expr_new_const_string(loc, decl->name ? decl->name : "");
-		Expr *type_expr = expr_new_const_typeid(loc, decl->type->canonical);
-		Expr **values = NULL;
-		vec_add(values, name_expr);
-		vec_add(values, type_expr);
-		Decl *param_ref = type_reflected_param->decl;
-		if (param_ref->is_weak && param_ref->replacement)
-		{
-			param_ref = param_ref->replacement;
-			type_reflected_param = param_ref->type;
-		}
-		Expr *struct_value = sema_create_struct_from_expressions(param_ref, expr->loc, values);
-		vec_add(param_exprs, struct_value);
+		Expr *expr_inner = expr_calloc();
+		expr_inner->expr_kind = EXPR_CONST;
+		expr_inner->loc = loc;
+		expr_inner->const_expr.const_kind = CONST_MEMBER;
+		expr_inner->const_expr.member.decl = decl;
+		expr_inner->const_expr.member.offset = MEMBER_IS_PARAM;
+		expr_inner->const_expr.member.align = decl->alignment ? decl->alignment : type_abi_alignment(decl->type);
+		expr_inner->resolve_status = RESOLVE_DONE;
+		expr_inner->type = type_member;
+		Expr *expr_ref = expr_calloc();
+		expr_ref->loc = loc;
+		expr_rewrite_const_reflect(expr_ref, expr_inner);
+		vec_add(param_exprs, expr_ref);
 	}
 	expr_rewrite_const_untyped_list(expr, param_exprs);
 	return true;

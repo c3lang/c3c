@@ -2118,7 +2118,6 @@ extern Type *type_cuint;
 extern Type *type_chars;
 extern Type *type_wildcard_optional;
 extern Type *type_string;
-extern Type *type_reflected_param;
 extern File stdin_file;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
@@ -2149,6 +2148,7 @@ extern const char *kw_bitsize;
 extern const char *kw_cname;
 extern const char *kw_compiler_rt;
 extern const char *kw_description;
+extern const char *kw_default_value;
 extern const char *kw_drop;
 extern const char *kw_excuse;
 extern const char *kw_generic_args;

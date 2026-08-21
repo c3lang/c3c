@@ -9,6 +9,10 @@
 - Add `$reflect(foo).param_struct` and `Foo::param_struct` properties. #3099
 - Allow the parse `faultset { ... }`. For `faultset`, `faultconst` and `excuse`.
 - Improved error messages when underlined error is too long, or lines are too long. #3383
+- Add `--implicit-float` setting to control emission of floating point operations. #3449
+- Allow parameters to have `@tag` #3084
+- `FooFn::params` no longer returns `ReflectedParam` but a reflected reference. This allows get_tag/tags/has_tag.
+- Allow parameters to be queried for the default value using `.default_value`.
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.

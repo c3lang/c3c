@@ -25,6 +25,7 @@ const char *project_default_keys[][2] = {
 		{"exec", "Scripts run for all targets."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
+		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
 		{"langrev", "Version of the C3 language used."},
 		{"link-args", "Linker arguments for all targets."},
 		{"link-libc", "Link libc (default: true)."},
@@ -113,6 +114,7 @@ const char* project_target_keys[][2] = {
 		{"extension", "Override the default file extension for the build output."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
+		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
 		{"langrev", "Version of the C3 language used."},
 		{"link-args", "Additional linker arguments for the target."},
 		{"link-args-override", "Linker arguments for this target, overriding global settings."},
@@ -584,6 +586,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	// Use the fact that they correspond to 0, 1, -1
 	target->feature.x86_struct_return = get_valid_bool(context, json, "x86-stack-struct-return",
 	                                                   target->feature.x86_struct_return);
+
+	// Implicit float
+	target->feature.implicit_float = (ImplicitFloat) get_valid_bool(context, json, "implicit-float", target->feature.implicit_float);
 
 	// Soft float
 	target->feature.soft_float = get_valid_bool(context, json, "soft-float", target->feature.soft_float);
