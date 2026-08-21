@@ -33,7 +33,8 @@ extern fn CInt pipe(CInt[2]* pipes);
 extern fn CFile fdopen(CInt fd, ZString mode);
 extern fn CInt access(ZString path, CInt mode);
 extern fn CInt closedir(DIRPtr);
-extern fn Posix_dirent* readdir(DIRPtr) @cname(readdir_cname());
+extern fn Posix_dirent* readdir(DIRPtr) @feat(!IOS) @cname(readdir_cname());
+extern fn Posix_dirent* readdir(DIRPtr) @feat(IOS) @cname("readdir");
 extern fn DIRPtr opendir(ZString) @cname(env::NETBSD ??? "__opendir30" : "opendir");
 
 const DT_UNKNOWN =  0;
