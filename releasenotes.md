@@ -16,6 +16,7 @@
 - `pool::ThreadPool` now only available using `ThreadPoolOld` unless `-D OLD_THREADPOOL` is used.
 - Add `std::collections::Tree`.
 - `std::net` added `Socket.peer_address`, `peer_port`, `local_address`, and `local_port` for retrieving remote and local socket address information. #3460
+- Add `range::slice` and `range::exclusive_slice` macros.
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
