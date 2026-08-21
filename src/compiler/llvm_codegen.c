@@ -943,6 +943,7 @@ static void llvm_codegen_setup()
 	attribute_id.optnone = lookup_attribute("optnone");
 	attribute_id.optsize = lookup_attribute("optsize");
 	attribute_id.minsize = lookup_attribute("minsize");
+	attribute_id.noimplicitfloat = lookup_attribute("noimplicitfloat");
 	attribute_id.readonly = lookup_attribute("readonly");
 	attribute_id.reassoc = lookup_attribute("reassoc");
 	attribute_id.sanitize_address = lookup_attribute("sanitize_address");
@@ -1247,6 +1248,10 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
 		llvm_attribute_add(c, function, attribute_id.ssp, -1);
+	}
+	if (compiler.build.feature.implicit_float == IMPLICIT_FLOAT_OFF)
+	{
+		llvm_attribute_add(c, function, attribute_id.noimplicitfloat, -1);
 	}
 	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);

@@ -574,6 +574,7 @@ BUILD:
 	set_if_updated(target->emit_stdlib, options->emit_stdlib);
 	set_if_updated(target->win.crt_linking, options->win.crt_linking);
 	set_if_updated(target->win.subsystem, options->win.subsystem);
+	set_if_updated(target->feature.implicit_float, options->implicit_float);
 	set_if_updated(target->feature.fp_math, options->fp_math);
 	set_if_updated(target->feature.x86_vector_capability, options->x86_vector_capability);
 	set_if_updated(target->feature.x86_cpu_set, options->x86_cpu_set);

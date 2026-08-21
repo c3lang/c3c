@@ -9,6 +9,7 @@
 - Add `$reflect(foo).param_struct` and `Foo::param_struct` properties. #3099
 - Allow the parse `faultset { ... }`. For `faultset`, `faultconst` and `excuse`.
 - Improved error messages when underlined error is too long, or lines are too long. #3383
+- Add `--implicit-float` setting to control emission of floating point operations. #3449
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.

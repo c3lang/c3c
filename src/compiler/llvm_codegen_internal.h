@@ -292,6 +292,7 @@ typedef struct
 	unsigned nounwind;        // No exceptions
 	unsigned nsz;             // no signed zeros
 	unsigned optnone;         // No optimization
+	unsigned noimplicitfloat; // No implicit float instructions
 	unsigned optsize;
 	unsigned minsize;
 	unsigned readonly;        // No reads on pointer
