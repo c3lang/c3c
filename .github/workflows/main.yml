@@ -992,7 +992,7 @@ jobs:
       - name: Setup and Boot iOS Simulator
         if: ${{ matrix.simulator }}
         run: |
-          # erase in case of bad cache then
+          # Erase any bad cache left in all simulators then,
           # free up disk space by removing unavailable or old simulators
           xcrun simctl erase all
           xcrun simctl delete unavailable
@@ -1060,11 +1060,11 @@ jobs:
             exit 0
           fi
           
-          # Shutdown the simulator and erase contents so no bad cache remains,
+          # Shutdown the simulator and erase to eliminate any bad cache
           # irrespective of whether the tests pass or fail
           echo ">>> Shutting down booted simulator with UDID: $DEVICE_ID"
           xcrun simctl shutdown booted
-          xcrun simctl erase booted
+          xcrun simctl erase all
           echo ">>> Simulator shutdown successfully!"
 
   release:
