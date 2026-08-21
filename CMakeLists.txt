@@ -509,6 +509,7 @@ add_executable(c3c
         src/compiler/diagnostics.c
         src/compiler/float.c
         src/compiler/headers.c
+        src/compiler/ios_support.c
         src/compiler/json_output.c
         src/compiler/docgen.c
         src/compiler/lexer.c
