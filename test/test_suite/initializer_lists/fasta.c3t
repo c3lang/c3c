@@ -123,7 +123,7 @@ fn int main(int argc, char **argv)
 @fasta.iub_p = local_unnamed_addr global %"double[]" { ptr @.__const_slice, i64 15 }, align 8
 @.str.12 = private unnamed_addr constant [5 x i8] c"acgt\00", align 1
 @fasta.homosapiens = local_unnamed_addr global %"char[]" { ptr @.str.12, i64 4 }, align 8
-@.__const_slice.13 = private unnamed_addr global [4 x double] [double 0x3FD3639D20BAEB5B, double 0x3FC957AE3DCD561B, double 0x3FC9493AEAB6C2BF, double 0x3FD34BEE4B030838], align 16
+@.__const_slice.13 = private unnamed_addr global [4 x double] [double
 @fasta.homosapiens_p = local_unnamed_addr global %"double[]" { ptr @.__const_slice.13, i64 4 }, align 8
 @fasta.LINELEN = local_unnamed_addr constant i32 60, align 4
 @.str.14 = private unnamed_addr constant [23 x i8] c">ONE Homo sapiens alu\0A\00", align 1

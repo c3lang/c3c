@@ -566,6 +566,7 @@ typedef struct
 	unsigned is_wildcard_overload : 1;
 	OperatorOverload operator : 6;
 	Signature signature;
+	DeclId param_struct;
 	AstId body;
 	union
 	{
@@ -608,6 +609,7 @@ typedef struct
 typedef struct
 {
 	Signature signature;
+	DeclId param_struct;
 } FnTypeDecl;
 
 
@@ -1445,6 +1447,7 @@ typedef struct
 {
 	ExprId expr;
 	ExprId to_expr;
+	int index;
 	Ast *body;
 	void *backend_block;
 } AstCaseStmt;
@@ -1569,18 +1572,24 @@ typedef struct
 typedef struct
 {
 	AstId defer_id;
+	bool is_resolved;
+	bool is_default;
+	bool is_expr;
 	union
 	{
 		struct
 		{
 			Label label;
 			ExprId expr;
-			bool is_default;
 		};
 		struct
 		{
-			AstId case_switch_stmt;
-			Expr *switch_expr;
+			AstId switch_stmt;
+			union
+			{
+				int case_number;
+				Expr *nextcase_value;
+			};
 		};
 	};
 } AstNextcaseStmt;
@@ -2167,6 +2176,7 @@ extern const char *kw_offset;
 extern const char *kw_ordinal;
 extern const char *kw_out;
 extern const char *kw_own;
+extern const char *kw_param_struct;
 extern const char *kw_ptr;
 extern const char *kw_qname;
 extern const char *kw_return;

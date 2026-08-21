@@ -8,6 +8,10 @@
 #define LINES_SHOWN 4
 #define MAX_WIDTH 120
 #define MAX_ERROR_LEN 4096
+#define TAB_WIDTH 4
+#define SHIFT_PADDING TAB_WIDTH * 5
+
+#define TAB_REM(column) (TAB_WIDTH - ((column) % TAB_WIDTH))
 
 static void eprint_escaped_string(const char *message)
 {
@@ -39,6 +43,55 @@ static void eprint_escaped_string(const char *message)
 		}
 	}
 	(void)fputc('"', stderr);
+}
+
+static int utf8_seq_len(unsigned char c)
+{
+	if (c < 0x80) return 1;
+	if (c < 0xE0) return 2;
+	if (c < 0xF0) return 3;
+	return 4;
+}
+
+static void width_of(char c, unsigned column, unsigned *w, unsigned *l)
+{
+	if (c == '\t')
+	{
+		*w = TAB_REM(column);
+		*l = 1;
+		return;
+	}
+
+	*l = utf8_seq_len(c);
+	//! There are unicode chars that have a visual width of 2
+	*w = 1;
+}
+
+static int render_line(char *dst, const unsigned vlen, const char *src)
+{
+	unsigned len = 0;
+	unsigned width = 0;
+
+	unsigned w = 0;
+	unsigned l = 0;
+	while (width < vlen)
+	{
+		width_of(*src, width, &w, &l);
+		
+		if (*src == '\t')
+		{
+			memset(dst + len, ' ', w);
+			len += w;
+		}
+		else
+		{
+			memcpy(dst + len, src, l);
+			len += l;
+		}
+		width += w;
+		src += l;
+	}
+	return (int)len;
 }
 
 static void print_error_type_at(SourceLoc *location, const char *message, PrintType print_type)
@@ -90,12 +143,20 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 				UNREACHABLE_VOID
 		}
 	}
-	unsigned max_line_length = (unsigned)round(log10(location->row)) + 1;
-	unsigned max_lines_for_display = MAX_WIDTH - max_line_length - 2;
-	char number_buffer[20];
-	char number_buffer_elided[20];
-	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
-	snprintf(number_buffer_elided, 20, "%%%dd: %%.*s|\n", max_line_length);
+
+	// Fit a line of full unicode characters
+	char render_buffer[MAX_WIDTH * 4];
+	
+	unsigned row_prefix_width = (unsigned)floor(log10(location->row)) + 1;
+	char prefix_buffer[16];
+	snprintf(prefix_buffer, 16, " %%%dd: ", row_prefix_width);
+	row_prefix_width++; // add ':'
+
+	const char *elipsis = "...";
+	const unsigned elipsis_len = 4; // with space
+
+	const unsigned padded_spaces = 2;
+	unsigned display_line_width = MAX_WIDTH - row_prefix_width - padded_spaces;
 
 	// Insert end in case it's not yet there.
 
@@ -113,86 +174,141 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 			row++;
 		}
 	}
-	int row_len = -1;
+
+	const char *loc_pos = file->contents + location->offset;
+	const char *loc_end = file->contents + location->offset + location->length;
+	unsigned column = location->col;	
+
+	const char *row_offset = current;
+	unsigned row_width = 0;
+	bool is_elided = false;
+	bool needs_shift = column > display_line_width;
+
 	while (row <= display_row)
 	{
-		current += row_len + 1;
-		row_len = 0;
-		while (current[row_len] != '\n' && current[row_len]) row_len++;
-		if (row_len > max_lines_for_display)
+		const bool is_last_row = row == display_row;
+		current = row_offset;
+
+		if (needs_shift && is_last_row)
 		{
-			eprintf(number_buffer_elided, (int)row, max_lines_for_display - 1, current);
+			current = loc_pos;
+			for (int i = SHIFT_PADDING; i > 0; --i)
+			{
+				do { current--; }
+				while ((*current & 0xC0) == 0x80);
+			}
+			row_offset = current;
 		}
-		else
+
+		row_width = 0;
+		while (*row_offset != '\n' && *row_offset)
 		{
-			eprintf(number_buffer, (int)row, row_len, current);
+			unsigned w, l;
+			width_of(*row_offset, row_width, &w, &l);
+			row_width += w;
+			row_offset += l;
 		}
+
+		unsigned render_line_width = display_line_width;
+		if (needs_shift && is_last_row) render_line_width -= elipsis_len;		
+		is_elided = row_width > render_line_width;
+ 		render_line_width = !is_elided ? row_width : render_line_width - elipsis_len;
+
+		char *render_offset = render_buffer;
+		render_offset += sprintf(render_offset, prefix_buffer, (int)row);
+		if (needs_shift && is_last_row)
+		{
+			render_offset += sprintf(render_offset, "%s ", elipsis);
+		}
+		render_offset += render_line(render_offset, render_line_width, current);
+		if (is_elided)
+		{
+			render_offset += sprintf(render_offset, " %s", elipsis);
+		}
+		eprintf("%.*s\n", render_offset - render_buffer, render_buffer);
+
 		row++;
+		row_offset++; // skip '\n'
 	}
-	eprintf("  ");
-	for (unsigned i = 0; i < max_line_length; i++)
+
+	unsigned prefix_width = row_prefix_width + padded_spaces;
+	if (needs_shift) prefix_width += elipsis_len;
+	display_line_width = MAX_WIDTH - prefix_width;
+	
+	eprintf("%*s", prefix_width, "");
+
+	unsigned space_width = 0;
+	while (current < loc_pos)
 	{
-		eprintf(" ");
+		unsigned w, l;
+		width_of(*current, space_width, &w, &l);
+		space_width += w;
+		current += l;		
+		eprintf("%*s", w, "");
 	}
-	unsigned col_location = location->col;
-	if (!col_location || col_location > max_lines_for_display) col_location = 0;
-	unsigned space_to = col_location ? col_location : max_lines_for_display - 1;
-	for (unsigned i = 0; i < space_to - 1; i++)
+	
+	const bool is_multiline = location->length > (row_offset - current) && row_width < display_line_width;
+	unsigned highlighter_width = is_elided ? display_line_width  : row_width;
+	highlighter_width -= space_width;
+	
+	// The char at the start of a loc is currently, always ascii
+	eprintf("^");
+	current++;
+	
+	unsigned i = 1;
+	while (current < loc_end && i < highlighter_width)
 	{
-		unsigned char c = (unsigned char)current[i];
-		if (c == '\t')
-		{
-			eprintf("\t");
-		}
-		else
-		{
-			if (c < 128 || (c & 0xC0) == 0xC0) eprintf(" ");
-		}
+		unsigned w, l;
+		width_of(*current, i, &w, &l);
+		i += w;
+		current += l;
+		while (w-- > 0) eprintf(is_elided ? "~" : "^");
 	}
-	unsigned len = location->length;
-	if (!len) len = 1;
-	if (col_location)
+
+	if (is_multiline)
 	{
-		for (uint32_t i = 0; i < len; i++)
+		unsigned rows_left = 1;
+		while (row_offset++ < loc_end)
 		{
-			eprintf("^");
+			if (*row_offset == '\n') rows_left++;
 		}
+		eprintf(" (+%u lines)", rows_left);
 	}
 	eprintf("\n");
 
 	bool ansi = use_ansi();
-	if (col_location)
+	if (column)
 	{
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
 				if (ansi)
 				{
-					eprintf("(%s:%d:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("%s:%d:%d: \x1b[31;1merror\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("%s:%d:%d: error: %s\n\n", file->full_path, location->row, column, message);
 				}
 				break;
 			case PRINT_TYPE_NOTE:
 				if (ansi)
 				{
-					eprintf("(%s:%d:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("%s:%d:%d: \x1b[1mnote\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
 				}
 				else
 				{
-					eprintf("(%s:%d:%d) Note: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("%s:%d:%d: note: %s\n\n", file->full_path, location->row, column, message);
 				}
 				break;
 			case PRINT_TYPE_WARN:
 				if (ansi)
 				{
-					eprintf("(%s:%d:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("%s:%d:%d: \x1b[33;1mwarning\x1b[0m: %s\n\n", file->full_path, location->row, column, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d:%d) Warning: %s\n\n", file->full_path, location->row, col_location, message);
+					eprintf("%s:%d:%d: warning: %s\n\n", file->full_path, location->row, column, message);
 				}
 				break;
 			default:
@@ -206,31 +322,31 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 			case PRINT_TYPE_ERROR:
 				if (ansi)
 				{
-					eprintf("(%s:%d) \x1b[31;1mError\x1b[0m: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: \x1b[31;1merror\x1b[0m: %s\n\n", file->full_path, location->row, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d) Error: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: error: %s\n\n", file->full_path, location->row, message);
 				}
 				break;
 			case PRINT_TYPE_NOTE:
 				if (ansi) 
 				{
-					eprintf("(%s:%d) \x1b[1mNote\x1b[0m: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: \x1b[1mnote\x1b[0m: %s\n\n", file->full_path, location->row, message);
 				} 
 				else
 				{
-					eprintf("(%s:%d) Note: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: note: %s\n\n", file->full_path, location->row, message);
 				}
 				break;
 			case PRINT_TYPE_WARN:
 				if (ansi)
 				{
-					eprintf("(%s:%d) \x1b[33;1mWarning\x1b[0m: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: \x1b[33;1mwarning\x1b[0m: %s\n\n", file->full_path, location->row, message);
 				}
 				else 
 				{
-					eprintf("(%s:%d) Warning: %s\n\n", file->full_path, location->row, message);
+					eprintf("%s:%d: warning: %s\n\n", file->full_path, location->row, message);
 				}
 				break;
 			default:

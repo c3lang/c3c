@@ -1,7 +1,8 @@
 module std::thread::pool <SIZE>;
 import std::thread;
 
-struct ThreadPool @deprecated
+alias ThreadPool @feat(OLD_THREADPOOL) = ThreadPoolOld;
+struct ThreadPoolOld @deprecated
 {
 	Mutex mu;
 	QueueItem[SIZE] queue;
@@ -30,7 +31,7 @@ struct QueueItem @private
 <*
  @require !self.initialized : "ThreadPool must not be already initialized"
 *>
-fn void? ThreadPool.init(&self, ThreadSettings thread_settings = {})
+fn void? ThreadPoolOld.init(&self, ThreadSettings thread_settings = {})
 {
 	defer catch self.destroy();
 	*self = { .num_threads = SIZE, .initialized = true };
@@ -48,7 +49,7 @@ fn void? ThreadPool.init(&self, ThreadSettings thread_settings = {})
 <*
  Join all threads in the pool.
 *>
-fn void ThreadPool.join(&self)
+fn void ThreadPoolOld.join(&self)
 {
 	if (self.initialized)
 	{
@@ -65,7 +66,7 @@ fn void ThreadPool.join(&self)
  Stop all the threads and cleanup the pool.
  Any pending work will be dropped.
 *>
-fn void ThreadPool.destroy(&self)
+fn void ThreadPoolOld.destroy(&self)
 {
 	@_threadPool_shutdown(self, self.stop_now);
 }
@@ -74,12 +75,12 @@ fn void ThreadPool.destroy(&self)
  Stop all the threads and cleanup the pool.
  Any pending work will be processed.
 *>
-fn void ThreadPool.stop_and_destroy(&self)
+fn void ThreadPoolOld.stop_and_destroy(&self)
 {
 	@_threadPool_shutdown(self, self.stop);
 }
 
-macro void @_threadPool_shutdown(ThreadPool* self, #stop) @private
+macro void @_threadPool_shutdown(ThreadPoolOld* self, #stop) @private
 {
 	if (self.initialized)
 	{
@@ -109,7 +110,7 @@ macro void @_threadPool_shutdown(ThreadPool* self, #stop) @private
  Push a new job to the pool.
  Blocks the current thread if the queue is full.
 *>
-fn void ThreadPool.push(&self, ThreadFn func, void* arg)
+fn void ThreadPoolOld.push(&self, ThreadFn func, void* arg)
 {
 	while (true)
 	{
@@ -129,7 +130,7 @@ fn void ThreadPool.push(&self, ThreadFn func, void* arg)
 
 fn int process_work(void* arg) @private
 {
-	ThreadPool* self = arg;
+	ThreadPoolOld* self = arg;
 	while (true)
 	{
 		self.mu.lock();

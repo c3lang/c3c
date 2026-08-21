@@ -1,0 +1,45 @@
+// #target: macos-x64
+module test;
+import std;
+
+interface Abc
+{
+	fn void testme(int a, double b);
+}
+
+fn void foo(int a, double b) { }
+fn void foo2(int x, double... y) {}
+fn void foo3(int x, y...) {}
+extern fn void foo4(int x, ...);
+
+fn int main()
+{
+	$Typefrom($Typeof(foo4)::param_struct) x4;
+	$Typefrom($Typeof(foo3)::param_struct) x3;
+	$Typefrom($Typeof(foo2)::param_struct) x2;
+
+	$Typefrom($Typeof(Abc.testme)::param_struct) xx;
+	xx.a = 123;
+	xx.b = 23.0;
+	io::printn(xx);
+
+	$Typefrom($Typeof(foo)::param_struct) x;
+	x.a = 123;
+	x.b = 23.0;
+	foo(...x);
+
+	$Typefrom($reflect(foo).param_struct) y;
+	y.a = 123;
+	y.b = 23.0;
+	foo(...y);
+
+	return 0;
+}
+
+/* #expect: test.ll
+
+%"ReflectParamStruct$foo4" = type { i32 }
+%"ReflectParamStruct$foo3" = type { i32, %"any[]" }
+%"ReflectParamStruct$foo2" = type { i32, %"double[]" }
+%"ReflectParamStruct$testme" = type { ptr, i32, double }
+%"ReflectParamStruct$foo" = type { i32, double }

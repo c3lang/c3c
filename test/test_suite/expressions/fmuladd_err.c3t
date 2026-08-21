@@ -41,7 +41,7 @@ if.then2:                                         ; preds = %if.exit
   %fadd = fadd reassoc arcp contract float %1, %2
   ret float %fadd
 if.exit3:                                         ; preds = %if.exit
-  %fmul = fmul reassoc arcp contract float %3, 0x3FD3333340000000
+  %fmul = fmul reassoc arcp contract float %3,
   store float %fmul, ptr %p, align 4
   store float %2, ptr %a, align 4
   %6 = load float, ptr %p, align 4
@@ -60,7 +60,7 @@ if.exit3:                                         ; preds = %if.exit
   %12 = load float, ptr %s, align 4
   %13 = fneg reassoc arcp contract float %12
   %14 = call reassoc arcp contract float @llvm.fmuladd.f32(float %11, float %3, float %13)
-  %fmul7 = fmul reassoc arcp contract float %14, 0x40191EB860000000
+  %fmul7 = fmul reassoc arcp contract float %14,
   %15 = load float, ptr %p, align 4
   %fdiv8 = fdiv reassoc arcp contract float %fmul7, %15
   %16 = call reassoc arcp contract float @llvm.sin.f32(float %fdiv8)

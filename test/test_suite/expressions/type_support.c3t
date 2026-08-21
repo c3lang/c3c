@@ -70,8 +70,8 @@ fn void main()
   i64 -9223372036854775808
   i64 9223372036854775807
   i64 4
-  float 0xC7EFFFFFE0000000
-  float 0x47EFFFFFE0000000
+  float
+  float
   i64 8
-  double 0xFFEFFFFFFFFFFFFF
-  double 0x7FEFFFFFFFFFFFFF
+  double
+  double

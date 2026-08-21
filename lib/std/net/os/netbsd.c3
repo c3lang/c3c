@@ -104,4 +104,4 @@ const SOCK_NONBLOCK     = 0x20000000;    // set non blocking i/o socket
 const SOCK_NOSIGPIPE    = 0x40000000;    // don't send sigpipe
 const SOCK_FLAGS_MASK   = 0xf0000000;    // flags mask
 
-const PLATFORM_O_NONBLOCK = SOCK_NONBLOCK;
+const PLATFORM_O_NONBLOCK = 0x04;
