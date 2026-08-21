@@ -1,4 +1,4 @@
-faultdef FOO, BAR;
+excuse FOO, BAR;
 
 fn void? errorThing()
 {

@@ -1,6 +1,6 @@
 module foo;
 
-faultdef ABC;
+excuse ABC;
 
 fn void test()
 {

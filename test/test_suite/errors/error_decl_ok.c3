@@ -1,9 +1,9 @@
 module errors;
 
-faultdef A;
+excuse A;
 
-faultdef A2, B2;
+excuse A2, B2;
 
-faultdef C, D;
+excuse { C, D }
 
 

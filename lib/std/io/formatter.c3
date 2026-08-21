@@ -13,7 +13,7 @@ interface Printable
 	fn sz? to_format(Formatter* formatter) @optional;
 }
 
-faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
+excuse { BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT }
 
 alias OutputFn = fn void?(void* buffer, char c);
 alias FloatType = double;

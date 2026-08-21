@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-faultdef OH_NO;
+excuse OH_NO;
 const C = 1;
 fn void main() => do_thing()!!;
 

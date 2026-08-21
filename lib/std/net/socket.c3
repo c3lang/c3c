@@ -48,7 +48,7 @@ macro void @loop_over_addresses(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* a
 
 const Duration POLL_FOREVER = (Duration)-1;
 
-constdef PollSubscribe : ushort
+constset PollSubscribe : ushort
 {
 	ANY_READ     = os::POLLIN,
 	PRIO_READ    = os::POLLPRI,
@@ -59,7 +59,7 @@ constdef PollSubscribe : ushort
 	WRITE        = os::POLLWRNORM,
 }
 
-constdef PollEvent : ushort
+constset PollEvent : ushort
 {
 	READ_PRIO  = os::POLLPRI,
 	READ_OOB   = os::POLLRDBAND,

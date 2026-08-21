@@ -4,7 +4,7 @@ import std::math;
 const char[16] XDIGITS_H = "0123456789ABCDEF";
 const char[16] XDIGITS_L = "0123456789abcdef";
 
-faultdef BAD_FORMAT;
+excuse BAD_FORMAT;
 
 fn sz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
 {

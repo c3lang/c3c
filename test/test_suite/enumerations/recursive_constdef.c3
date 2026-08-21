@@ -1,8 +1,8 @@
 module main;
 
-faultdef F;
+excuse F;
 
-constdef Foo : fault
+constset Foo : fault
 {
     F = F // #error: Recursive resolution of expression
 }

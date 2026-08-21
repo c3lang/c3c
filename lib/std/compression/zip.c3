@@ -15,7 +15,8 @@ import std::encoding::codepage, std::compression::deflate;
 import std::crypto::aes, std::hash::sha1;
 import libc;
 
-faultdef
+excuse
+{
 	INVALID_ARGUMENT,
 	IO_ERROR,
 	CORRUPTED_DATA,
@@ -24,8 +25,8 @@ faultdef
 	PASSWORD_NEEDED,
 	PASSWORD_MISMATCH,
 	UNSUPPORTED_METHOD,
-	INVALID_PATH;
-
+	INVALID_PATH
+}
 <*
  Describes a single entry within a ZIP archive.
 *>
@@ -57,7 +58,7 @@ struct ZipArchive
 	String comment;
 }
 
-constdef ZipMethod : UShortLE
+constset ZipMethod : UShortLE
 {
 	STORE = {0},
 	DEFLATE = {8},

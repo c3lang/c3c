@@ -3,7 +3,7 @@ module std::core::types;
 import libc;
 
 
-faultdef VALUE_OUT_OF_RANGE, VALUE_OUT_OF_UNSIGNED_RANGE;
+excuse { VALUE_OUT_OF_RANGE, VALUE_OUT_OF_UNSIGNED_RANGE }
 
 <*
  @require $Type::kind.is_int() : "Type was not an integer"

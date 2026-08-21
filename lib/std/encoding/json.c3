@@ -2,7 +2,7 @@ module std::encoding::json;
 import std::io;
 import std::collections::object;
 
-faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED;
+excuse { UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, INVALID_NUMBER, MAX_DEPTH_REACHED }
 
 int max_depth = 64;
 

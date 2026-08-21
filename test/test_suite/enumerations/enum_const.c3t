@@ -2,13 +2,13 @@
 module test;
 import std;
 
-constdef Bar : String
+constset Bar : String
 {
 	XABC = "foekf",
 	XDEF = "foekfokef"
 }
 
-constdef Foo : int
+constset Foo : int
 {
 	ABC = 4,
 	DEF,
@@ -18,7 +18,7 @@ constdef Foo : int
 }
 
 
-constdef Bde2 :  int
+constset Bde2 :  int
 {
 	FOO = 2,
 	BAR = 100
@@ -30,7 +30,7 @@ const BDE3_BAR = 100;
 
 
 
-constdef Abc2 : int
+constset Abc2 : int
 {
 	UP,
 	DOWN,

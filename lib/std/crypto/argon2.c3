@@ -23,7 +23,7 @@ const bool USE_THREADING = !$feat(ARGON2_FORCE_SEQUENTIAL) && (env::POSIX || env
 typedef SimdVec @local = ulong[<4>] @simd;
 
 <* Values for this enumeration are sourced from the spec as variable `y` in the input configuration. *>
-constdef Argon2Algorithm : inline uint
+constset Argon2Algorithm : inline uint
 {
 	ARGON2_D = 0,
 	ARGON2_I = 1,
@@ -599,7 +599,8 @@ fn void Argon2Decoded.free(&self)
 }
 
 <* Various descriptive faults must be defined for decoding incoming PHC String Format values. *>
-faultdef
+excuse
+{
 	BAD_PARAMETER_KEY,
 	BAD_PARAMETER_VALUE,
 	DUPLICATE_PARAMETERS,
@@ -617,8 +618,8 @@ faultdef
 	NOT_ENOUGH_PARAMETERS,
 	MISSING_ITERATIONS,
 	MISSING_MEM_SIZE,
-	MISSING_PARALLELISM;
-
+	MISSING_PARALLELISM
+}
 <* Helper macro for marking a parameter as seen or throwing if it was already seen. *>
 macro @saw(#field) @local
 {

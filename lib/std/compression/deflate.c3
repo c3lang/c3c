@@ -20,10 +20,12 @@ const int MAX_CHAIN = 16;
 const int GOOD_MATCH = 32;
 const int NICE_MATCH = 128;
 
-faultdef
+excuse
+{
 	CORRUPTED_DATA,
 	IO_ERROR,
-	INVALID_STATE;
+	INVALID_STATE
+}
 
 <*
  Stateful DEFLATE inflater.

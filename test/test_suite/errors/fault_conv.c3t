@@ -2,7 +2,7 @@
 module test;
 import std::io;
 
-faultdef BAD_STUFF, WORSE_STUFF, THE_WORST_STUFF;
+excuse { BAD_STUFF, WORSE_STUFF, THE_WORST_STUFF }
 
 fn int exitcode(fault error)
 {

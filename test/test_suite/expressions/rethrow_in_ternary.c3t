@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 import std::io;
-faultdef ABC ;
+excuse ABC ;
 fn int? hello(int a)
 {
 	return io::EOF~! ? ABC~ : a;

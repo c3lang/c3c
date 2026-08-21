@@ -70,7 +70,7 @@ enum RoundingMode : int
 	TOWARD_NEG_INFINITY
 }
 
-faultdef OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST, NO_INTERSECTION;
+excuse { OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST, NO_INTERSECTION }
 
 <*
  @require values::@is_promotable_to_floatlike(degrees) : `The input must be a numerical value or numerical vector`

@@ -3,7 +3,8 @@ import std::io, libc, std::os, std::net::os;
 
 // This code is based on https://github.com/sheredom/subprocess.h
 
-faultdef
+excuse
+{
 	FAILED_TO_CREATE_PIPE,
 	FAILED_TO_OPEN_STDIN,
 	FAILED_TO_OPEN_STDOUT,
@@ -15,8 +16,8 @@ faultdef
 	FAILED_TO_INITIALIZE_ACTIONS,
 	PROCESS_JOIN_FAILED,
 	PROCESS_TERMINATION_FAILED,
-	READ_FAILED;
-
+	READ_FAILED
+}
 struct Process
 {
 	CFile stdin_file;
@@ -34,7 +35,7 @@ struct Process
 	bool is_alive;
 }
 
-constdef SpawnOptions
+constset SpawnOptions
 {
 	STDERR_TO_STDOUT    = 1 << 0,
 	INHERIT_ENV         = 1 << 1,

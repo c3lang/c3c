@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-faultdef FOO_FAULT;
+excuse FOO_FAULT;
 macro bool? maybe_throw() => FOO_FAULT~;
 macro int? maybe_throw_int() => FOO_FAULT~;
 macro int[2]? maybe_throw_array() => FOO_FAULT~;

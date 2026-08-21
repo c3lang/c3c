@@ -3,8 +3,8 @@ module mymodule;
 
 extern fn void printf(char *, ...);
 
-faultdef FOO;
-faultdef BAR, BAZ;
+excuse FOO;
+excuse BAR, BAZ;
 
 fn void test()
 {

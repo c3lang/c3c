@@ -1,5 +1,5 @@
 module abc_faults;
-faultdef ABC;
+excuse ABC;
 <*
  @require a != ABC~! *> // #error: Rethrows using '!' is not allowed in contracts
 fn void? test(int a)

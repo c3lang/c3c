@@ -1,10 +1,12 @@
-faultdef
+excuse
+{
 	ABC,
 	DEF,
-	ZED;
+	ZED
+}
 
 
-faultdef XYZ;
+excuse XYZ;
 <*
 
  hello world
