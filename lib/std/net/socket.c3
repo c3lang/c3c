@@ -214,13 +214,7 @@ fn void? Socket.shutdown(&self, SocketShutdownHow how)
 *>
 fn InetAddress? Socket.peer_address(&self)
 {
-	char[128] storage @noinit;
-	Socklen_t len = storage.len;
-	if (os::getpeername(self.sock, (SockAddrPtr)&storage, &len) < 0)
-	{
-		return os::socket_error()~;
-	}
-	return decode_sockaddr(&storage);
+	return decode_sockaddr(_getpeername(self));
 }
 
 <*
@@ -228,13 +222,7 @@ fn InetAddress? Socket.peer_address(&self)
 *>
 fn ushort? Socket.peer_port(&self)
 {
-	char[128] storage @noinit;
-	Socklen_t len = storage.len;
-	if (os::getpeername(self.sock, (SockAddrPtr)&storage, &len) < 0)
-	{
-		return os::socket_error()~;
-	}
-	return decode_port(&storage);
+	return decode_port(_getpeername(self));
 }
 
 <*
@@ -242,13 +230,7 @@ fn ushort? Socket.peer_port(&self)
 *>
 fn InetAddress? Socket.local_address(&self)
 {
-	char[128] storage @noinit;
-	Socklen_t len = storage.len;
-	if (os::getsockname(self.sock, (SockAddrPtr)&storage, &len) < 0)
-	{
-		return os::socket_error()~;
-	}
-	return decode_sockaddr(&storage);
+	return decode_sockaddr(_getsockname(self));
 }
 
 <*
@@ -256,18 +238,34 @@ fn InetAddress? Socket.local_address(&self)
 *>
 fn ushort? Socket.local_port(&self)
 {
+	return decode_port(_getsockname(self));
+}
+
+macro char[]? _getsockname(Socket* s) @local
+{
 	char[128] storage @noinit;
 	Socklen_t len = storage.len;
-	if (os::getsockname(self.sock, (SockAddrPtr)&storage, &len) < 0)
+	if (os::getsockname(s.sock, (SockAddrPtr)&storage, &len) < 0)
 	{
 		return os::socket_error()~;
 	}
-	return decode_port(&storage);
+	return storage[:len];
+}
+
+macro char[]? _getpeername(Socket* s) @local
+{
+	char[128] storage @noinit;
+	Socklen_t len = storage.len;
+	if (os::getpeername(s.sock, (SockAddrPtr)&storage, &len) < 0)
+	{
+		return os::socket_error()~;
+	}
+	return storage[:len];
 }
 
 fn InetAddress? decode_sockaddr(char[] storage) @private
 {
-	if (storage.len < 8) return INVALID_IP_STRING~;
+	if (storage.len < 8) return IP_NOT_DECODABLE~;
 
 	$if env::DARWIN || env::BSD_FAMILY:
 		AIFamily family = (AIFamily)storage[1];
@@ -278,29 +276,21 @@ fn InetAddress? decode_sockaddr(char[] storage) @private
 	switch (family)
 	{
 		case os::AF_INET:
-			return (InetAddress){
-				.is_ipv6 = false,
-				.ipv4 = {
-					.a = storage[4],
-					.b = storage[5],
-					.c = storage[6],
-					.d = storage[7],
-				}
-			};
+			return { .ipv4 = { .a = storage[4], .b = storage[5], .c = storage[6], .d = storage[7] } };
 
 		case os::AF_INET6:
-			if (storage.len < 24) return INVALID_IP_STRING~;
+			if (storage.len < 24) return IP_NOT_DECODABLE~;
 			InetAddress addr = { .is_ipv6 = true };
 			mem::copy(&addr.ipv6, &storage[8], 16);
 			return addr;
 
 		default:
-			return INVALID_IP_STRING~;
+			return IP_NOT_DECODABLE~;
 	}
 }
 
 fn ushort? decode_port(char[] storage) @private
 {
-	if (storage.len < 4) return INVALID_IP_STRING~;
-	return (ushort)((ushort)storage[2] << 8 | (ushort)storage[3]);
+	if (storage.len < 4) return IP_NOT_DECODABLE~;
+	return (ushort)storage[2] << 8 | storage[3];
 }
