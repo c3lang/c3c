@@ -5,7 +5,7 @@
 #include "compiler/c_abi_internal.h"
 
 
-static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, unsigned field1_offset, AbiType field2, unsigned field2_offset, ParamInfo param)
+static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, int field1_offset, AbiType field2, int field2_offset, ParamInfo param)
 {
 	if (!abi_type_is_valid(field2))
 	{
@@ -21,11 +21,11 @@ static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, unsigned 
 	return abi_arg_new_expand_coerce_pair(field1.type, field2.type, field2_offset / abi_size, false, param);
 }
 
-static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offset, AbiType *field1_ref, unsigned *field1_offset, AbiType *field2_ref, unsigned *field2_offset)
+static bool riscv_detect_fpcc_struct_internal(Type *type, int current_offset, AbiType *field1_ref, int *field1_offset, AbiType *field2_ref, int *field2_offset)
 {
 	bool is_int = type_is_integer_or_bool_kind(type);
 	bool is_float = type_is_float(type);
-	unsigned flen = compiler.platform.riscv.flen;
+	int flen = compiler.platform.riscv.flen;
 	ByteSize size = type_size(type);
 	if (is_int || is_float)
 	{
@@ -65,7 +65,8 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 												   field1_offset,
 												   field2_ref,
 												   field2_offset)) return false;
-			current_offset += (unsigned)element_size;
+			assert(element_size <= INT_MAX);
+			current_offset += (int)element_size;
 		}
 		return true;
 	}
@@ -77,7 +78,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		FOREACH(Decl *, member, type->decl->strukt.members)
 		{
 			if (!riscv_detect_fpcc_struct_internal(lowered_member_type(member),
-												   (unsigned)(current_offset + member->offset),
+												   current_offset + member->offset,
 												   field1_ref,
 												   field1_offset,
 												   field2_ref,
@@ -89,7 +90,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 	return false;
 }
 
-static bool riscv_detect_fpcc_struct(Type *type, AbiType *field1_ref, unsigned *field1_offset, AbiType *field2_ref, unsigned *field2_offset, unsigned *gprs, unsigned *fprs)
+static bool riscv_detect_fpcc_struct(Type *type, AbiType *field1_ref, int *field1_offset, AbiType *field2_ref, int *field2_offset, int *gprs, int *fprs)
 {
 	*field1_ref = ABI_TYPE_EMPTY;
 	*field2_ref = ABI_TYPE_EMPTY;
@@ -126,12 +127,12 @@ static bool riscv_detect_fpcc_struct(Type *type, AbiType *field1_ref, unsigned *
 	return true;
 }
 
-static ABIArgInfo *riscv_classify_argument_type(ParamInfo param, bool is_fixed, unsigned *gprs, unsigned *fprs)
+static ABIArgInfo *riscv_classify_argument_type(ParamInfo param, bool is_fixed, int *gprs, int *fprs)
 {
 
 	Type *type = type_lowering(param.type);
 
-	unsigned xlen = compiler.platform.riscv.xlen;
+	int xlen = compiler.platform.riscv.xlen;
 	ASSERT(is_power_of_two(xlen));
 
 	ByteSize size = type_size(type);
@@ -146,10 +147,10 @@ static ABIArgInfo *riscv_classify_argument_type(ParamInfo param, bool is_fixed, 
 	if (is_fixed && compiler.platform.riscv.flen && type->type_kind == TYPE_STRUCT)
 	{
 		AbiType field1, field2;
-		unsigned offset1 = 0;
-		unsigned offset2 = 0;
-		unsigned needed_gprs;
-		unsigned needed_fprs;
+		int offset1 = 0;
+		int offset2 = 0;
+		int needed_gprs;
+		int needed_fprs;
 		bool is_candidate = riscv_detect_fpcc_struct(type,
 													 &field1,
 													 &offset1,
@@ -165,12 +166,12 @@ static ABIArgInfo *riscv_classify_argument_type(ParamInfo param, bool is_fixed, 
 		}
 	}
 
-	unsigned alignment = type_abi_alignment(type);
+	int alignment = type_abi_alignment(type);
 	bool must_use_stack = false;
 	// Clang: Determine the number of GPRs needed to pass the current argument
 	// according to the ABI. 2*XLen-aligned varargs are passed in "aligned"
 	// register pairs, so may consume 3 registers.
-	unsigned needed_gprs = 1;
+	int needed_gprs = 1;
 	if (!is_fixed && alignment == 2 * xlen)
 	{
 		needed_gprs = 2 + (*gprs % 2U);
@@ -228,28 +229,28 @@ static ABIArgInfo *riscv_classify_return(ParamInfo param)
 	Type *return_type = type_lowering(param.type);
 	if (type_is_void(return_type)) return abi_arg_ignore();
 
-	unsigned arg_gpr_left = 2;
-	unsigned arg_fpr_left = compiler.platform.riscv.flen ? 2 : 0;
+	int arg_gpr_left = 2;
+	int arg_fpr_left = compiler.platform.riscv.flen ? 2 : 0;
 
 	// The rules for return and argument types are the same, so defer to
 	// classifyArgumentType.
 	return riscv_classify_argument_type(param, true, &arg_gpr_left, &arg_fpr_left);
 }
-ABIArgInfo **riscv_create_params(ParamInfo* params, unsigned param_count, bool is_fixed, unsigned *arg_gprs_left, unsigned *arg_fprs_left)
+ABIArgInfo **riscv_create_params(ParamInfo* params, int param_count, bool is_fixed, int *arg_gprs_left, int *arg_fprs_left)
 {
 	if (!param_count) return NULL;
 	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-	for (unsigned i = 0; i < param_count; i++)
+	for (int i = 0; i < param_count; i++)
 	{
 		args[i] = riscv_classify_argument_type(params[i], is_fixed, arg_gprs_left, arg_fprs_left);
 	}
 	return args;
 }
-void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count)
 {
 	// Registers
-	unsigned gpr = 8;
-	unsigned fpr = 8;
+	int gpr = 8;
+	int fpr = 8;
 
 	Type *ret_type = type_lowering(prototype->return_info.type);
 	ABIArgInfo *ret_abi = prototype->ret_abi_info = riscv_classify_return(prototype->return_info);
@@ -270,8 +271,8 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *params, un
 	// when promoted, but are anyext if passed on the stack. As GPR usage is
 	// different for variadic arguments, we must also track whether we are
 	// examining a vararg or not.
-	unsigned arg_gprs_left = is_ret_indirect ? gpr - 1 : gpr;
-	unsigned arg_fprs_left = compiler.platform.riscv.flen ? fpr : 0;
+	int arg_gprs_left = is_ret_indirect ? gpr - 1 : gpr;
+	int arg_fprs_left = compiler.platform.riscv.flen ? fpr : 0;
 
 
 	prototype->abi_args = riscv_create_params(params, param_count, true, &arg_gprs_left, &arg_fprs_left);

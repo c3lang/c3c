@@ -171,7 +171,7 @@ FAILED:
 
 static Sdk get_sdk(const char *array_tag)
 {
-	Sdk sdk = {};
+	Sdk sdk = { .sub_url = NULL };
 
 	char *base_pkm = (char *)strstr(array_tag, BASE_PKM);
 	char *sdk_pkg = (char *)strstr(array_tag, SDK_PKG);
@@ -207,7 +207,7 @@ static Sdk get_sdk(const char *array_tag)
 	return sdk;
 }
 
-static Sdk *get_sdk_list(size_t *count)
+static Sdk *get_sdk_list(int *count)
 {
 	printf("Fetching dynamic SDK list takes time, go grab a drink.\n");
 	download_file(LATEST_SUCATALOG, "", sucatalog_out, true);
@@ -263,8 +263,8 @@ void fetch_macsdk(BuildOptions *options)
 		exit_compiler(EXIT_FAILURE);
 	}
 
-	int64_t select = ELEMENTLEN(hardcoded) - 1;
-	size_t sdk_count = ELEMENTLEN(hardcoded);
+	int select = (int)ELEMENTLEN(hardcoded) - 1;
+	int sdk_count = (int)ELEMENTLEN(hardcoded);
 	Sdk *list = hardcoded;
 
 	if (options->macos_fetch_sdk_list)

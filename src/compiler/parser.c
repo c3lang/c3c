@@ -13,7 +13,7 @@
  *
  * @param c the current context.
  */
-inline void advance(ParseContext *c)
+void advance(ParseContext *c)
 {
 	if (tok_is(c, TOKEN_EOF)) return;
 

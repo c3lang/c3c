@@ -42,9 +42,9 @@ static bool context_labels_exist_in_scope(SemaContext *context);
 static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statement, AstId replacement);
 static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr);
 static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement);
-static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, Ast **cases, unsigned index);
+static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, Ast **cases, int index);
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
-                                         unsigned index, bool *if_chained, bool *max_ranged, uint64_t *actual_cases_ref,
+                                         int index, bool *if_chained, bool *max_ranged, int64_t *actual_cases_ref,
 										 Int *low, Int *high);
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceLocId expr_loc, CanonicalType *switch_type, Ast **cases);
 
@@ -1112,7 +1112,7 @@ static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, Cond
 	ASSERT(expr->expr_kind == EXPR_COND);
 
 	Expr **dexprs = expr->cond_expr;
-	unsigned entries = vec_size(dexprs);
+	int entries = vec_size(dexprs);
 
 	// 1. Special case, there are no entries, so the type is void
 	if (entries == 0)
@@ -1122,7 +1122,7 @@ static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, Cond
 	}
 
 	// 2. Walk through each of our declarations / expressions as if they were regular expressions.
-	for (unsigned i = 0; i < entries - 1; i++)
+	for (int i = 0; i < entries - 1; i++)
 	{
 		Expr *dexpr = dexprs[i];
 		if (!sema_analyse_expr_rvalue(context, dexpr)) return false;
@@ -1747,7 +1747,7 @@ SKIP_OVERLOAD:;
 	if (is_addr && !sema_expr_rewrite_insert_deref(context, enum_val)) return false;
 	Type *enumerator_type = type_flatten(enum_val->type);
 	Expr *len_call;
-	ArraySize array_len = 0;
+	ArrayIndex array_len = 0;
 	if (len)
 	{
 		len_call = expr_new(EXPR_CALL, enumerator->loc);
@@ -2326,7 +2326,7 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 
 static inline bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 {
-	unsigned ct_context = sema_context_push_ct_stack(context);
+	int ct_context = sema_context_push_ct_stack(context);
 	CondResult res = sema_check_comp_time_bool(context, statement->ct_if_stmt.expr);
 	if (res == COND_MISSING) goto FAILED;
 	if (res == COND_TRUE)
@@ -2389,7 +2389,7 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 	return all_ok;
 }
 
-static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, Ast **cases, unsigned index)
+static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, Ast **cases, int index)
 {
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
 	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false, NULL, false)) return false;
@@ -2397,7 +2397,7 @@ static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, As
 	if (sema_cast_const(expr))
 	{
 		Type *my_type = expr->const_expr.typeid;
-		for (unsigned i = 0; i < index; i++)
+		for (int i = 0; i < index; i++)
 		{
 			Ast *other = cases[i];
 			if (other->ast_kind != AST_CASE_STMT) continue;
@@ -2414,7 +2414,7 @@ static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, As
 }
 
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
-                                         unsigned index, bool *if_chained, bool *max_ranged, uint64_t *actual_cases_ref, Int *low, Int *high)
+                                         int index, bool *if_chained, bool *max_ranged, int64_t *actual_cases_ref, Int *low, Int *high)
 {
 	ASSERT(switch_type);
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
@@ -2450,8 +2450,8 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	{
 		if (is_enum)
 		{
-			uint32_t ord1 = const_expr->enum_val->enum_constant.inner_ordinal;
-			uint32_t ord2 = to_const_expr->enum_val->enum_constant.inner_ordinal;
+			int ord1 = const_expr->enum_val->enum_constant.inner_ordinal;
+			int ord2 = to_const_expr->enum_val->enum_constant.inner_ordinal;
 			if (ord1 > ord2)
 			{
 				sema_error_at(context, make_loc(extend_loc_with_token(sourcelocptr(expr->loc), sourcelocptr(to_expr->loc))),
@@ -2487,7 +2487,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 			}
 		}
 	}
-	for (unsigned i = 0; i < index; i++)
+	for (int i = 0; i < index; i++)
 	{
 		Ast *other = cases[i];
 		if (other->ast_kind != AST_CASE_STMT) continue;
@@ -2507,10 +2507,10 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	return true;
 }
 
-INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned found_count, Decl **enums)
+INLINE const char *create_missing_enums_in_switch_error(Ast **cases, int found_count, Decl **enums)
 {
-	uint32_t enum_count = vec_size(enums);
-	unsigned missing = enum_count - found_count;
+	int enum_count = vec_size(enums);
+	int missing = enum_count - found_count;
 	scratch_buffer_clear();
 	if (missing == 1)
 	{
@@ -2518,19 +2518,19 @@ INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned fo
 	}
 	else
 	{
-		scratch_buffer_printf("%u enum values were not handled in the switch: ", missing);
+		scratch_buffer_printf("%d enum values were not handled in the switch: ", missing);
 	}
-	unsigned case_count = vec_size(cases);
-	unsigned printed = 0;
-	for (unsigned i = 0; i < enum_count; i++)
+	int case_count = vec_size(cases);
+	int printed = 0;
+	for (int i = 0; i < enum_count; i++)
 	{
-		for (unsigned j = 0; j < case_count; j++)
+		for (int j = 0; j < case_count; j++)
 		{
 			Expr *e = exprptr(cases[j]->case_stmt.expr);
 			Expr *e_to = exprptrzero(cases[j]->case_stmt.to_expr);
 			ASSERT_SPAN(e, expr_is_const_enum(e));
-			uint32_t ordinal_from = e->const_expr.enum_val->enum_constant.inner_ordinal;
-			uint32_t ordinal_to = e_to ? e_to->const_expr.enum_val->enum_constant.inner_ordinal : ordinal_from;
+			int ordinal_from = e->const_expr.enum_val->enum_constant.inner_ordinal;
+			int ordinal_to = e_to ? e_to->const_expr.enum_val->enum_constant.inner_ordinal : ordinal_from;
 			if (i >= ordinal_from && i <= ordinal_to) goto CONTINUE;
 		}
 		if (++printed != 1)
@@ -2577,14 +2577,14 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	ASSERT(context->active_scope.defer_start == context->active_scope.defer_last);
 
 	bool exhaustive = false;
-	unsigned case_count = vec_size(cases);
+	int case_count = vec_size(cases);
 	bool success = true;
 	bool max_ranged = false;
 	bool type_switch = switch_type == type_typeid;
-	uint64_t actual_enum_cases = 0;
+	int64_t actual_enum_cases = 0;
 	Int low = { .type = TYPE_POISONED };
 	Int high = { .type = TYPE_POISONED };
-	for (unsigned i = 0; i < case_count; i++)
+	for (int i = 0; i < case_count; i++)
 	{
 		if (!success) break;
 		Ast *stmt = cases[i];
@@ -2628,7 +2628,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 
 	if (!exhaustive && is_enum_switch) exhaustive = actual_enum_cases == vec_size(enum_values);
 	bool all_jump_end = exhaustive;
-	for (unsigned i = 0; i < case_count; i++)
+	for (int i = 0; i < case_count; i++)
 	{
 		Ast *stmt = cases[i];
 		SCOPE_START(statement->loc)
@@ -2661,7 +2661,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			if (int_comp(range, max, BINARYOP_GE))
 			{
 				RETURN_SEMA_ERROR(statement, "The switch cannot use a jump table size of the table would exceed "
-				                             "the maximum allowed (%u), please remove '@jump'.", compiler.build.switchjump_max_size);
+				                             "the maximum allowed (%d), please remove '@jump'.", compiler.build.switchjump_max_size);
 			}
 		}
 		// Do not generate a jump table if we only have a default statement.
@@ -2678,7 +2678,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 
 static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 {
-	unsigned ct_context = sema_context_push_ct_stack(context);
+	int ct_context = sema_context_push_ct_stack(context);
 	// Evaluate the switch statement
 	Expr *cond = exprptrzero(statement->ct_switch_stmt.cond);
 	if (cond && !sema_analyse_ct_expr(context, cond)) goto FAILED;
@@ -2710,13 +2710,13 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 	ExprConst *switch_expr_const = cond ? &cond->const_expr : NULL;
 	Ast **cases = statement->ct_switch_stmt.body;
 
-	unsigned case_count = vec_size(cases);
+	int case_count = vec_size(cases);
 	ASSERT(case_count <= INT32_MAX);
 	int matched_case = (int)case_count;
 	int default_case = (int)case_count;
 
 	// Go through each case
-	for (unsigned i = 0; i < case_count; i++)
+	for (int i = 0; i < case_count; i++)
 	{
 		Ast *stmt = cases[i];
 		switch (stmt->ast_kind)
@@ -2776,7 +2776,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 					goto FAILED;
 				}
 				// Check that it is unique.
-				for (unsigned j = 0; j < i; j++)
+				for (int j = 0; j < i; j++)
 				{
 					Ast *other_stmt = cases[j];
 					if (other_stmt->ast_kind == AST_DEFAULT_STMT) continue;
@@ -2847,11 +2847,11 @@ FAILED:
 
 static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 {
-	unsigned ct_context = sema_context_push_ct_stack(context);
+	int ct_context = sema_context_push_ct_stack(context);
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
 	if (!expr_is_const(collection)) goto FAILED_NO_LIST;
-	unsigned count = (unsigned)-1; // To fix invalid "maybe uninitialized" on GCC
+	int count = -1;
 	ConstInitializer *initializer = NULL;
 	Expr **expressions = NULL;
 	Type *const_list_type = NULL;
@@ -2929,8 +2929,8 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	// Get the body
 	Ast *body = astptr(statement->ct_foreach_stmt.body);
 	AstId *current = &start;
-	unsigned loop_context = sema_context_push_ct_stack(context);
-	for (unsigned i = 0; i < count; i++)
+	int loop_context = sema_context_push_ct_stack(context);
+	for (int i = 0; i < count; i++)
 	{
 		sema_context_pop_ct_stack(context, loop_context);
 		Ast *compound_stmt = copy_ast_single(body);
@@ -3046,7 +3046,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	{
 		if (message_expr)
 		{
-			unsigned len = vec_size(statement->assert_stmt.args);
+			int len = vec_size(statement->assert_stmt.args);
 			if (len && !sema_expr_analyse_sprintf(context, message_expr, message_expr, statement->assert_stmt.args, len)) return false;
 			sema_error_at(context, span, "%.*s", EXPAND_EXPR_STRING(message_expr));
 		}
@@ -3144,7 +3144,7 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
  */
 static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement)
 {
-	unsigned for_context = sema_context_push_ct_stack(context);
+	int for_context = sema_context_push_ct_stack(context);
 	ExprId init;
 	if ((init = statement->for_stmt.init))
 	{
@@ -3179,7 +3179,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	ASSERT(condition);
 	// We set a maximum of macro iterations.
 	// we might consider reducing this.
-	unsigned current_ct_scope = sema_context_push_ct_stack(context);
+	int current_ct_scope = sema_context_push_ct_stack(context);
 	for (int i = 0; ; i++)
 	{
 		if (i >= compiler.build.max_macro_iterations)
@@ -3305,7 +3305,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 	if (context->active_scope.is_poisoned) return false;
 	if (statement->ast_kind == AST_POISONED) return false;
 	EndJump end_jump = context->active_scope.end_jump;
-	unsigned returns = vec_size(context->block_returns);
+	int returns = vec_size(context->block_returns);
 	if (!sema_analyse_statement_inner(context, statement)) return ast_poison(statement);
 	if (end_jump.active)
 	{
@@ -3387,7 +3387,7 @@ bool sema_analyse_contracts(SemaContext *context, Decl *contract, Expr **require
 	return true;
 }
 
-bool sema_analyse_function_body(SemaContext *context, Decl *func, unsigned macro_depth_start)
+bool sema_analyse_function_body(SemaContext *context, Decl *func, int macro_depth_start)
 {
 	// Stop if it's already poisoned.
 	if (!decl_ok(func)) return false;

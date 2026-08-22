@@ -153,15 +153,15 @@ static const char *target_desc[7] = {
 typedef struct BuildOptions_
 {
 	const char *lib_dir[MAX_BUILD_LIB_DIRS];
-	size_t lib_dir_count;
+	int lib_dir_count;
 	const char *libs[MAX_BUILD_LIB_DIRS];
-	size_t lib_count;
+	int lib_count;
 	const char* linker_args[MAX_BUILD_LIB_DIRS];
-	size_t linker_arg_count;
+	int linker_arg_count;
 	const char* linker_lib_dir[MAX_BUILD_LIB_DIRS];
-	size_t linker_lib_dir_count;
+	int linker_lib_dir_count;
 	const char* linker_libs[MAX_BUILD_LIB_DIRS];
-	size_t linker_lib_count;
+	int linker_lib_count;
 	const char *std_lib_dir;
 	const char *run_dir;
 	struct
@@ -457,12 +457,12 @@ typedef struct
 	CompilerBackend backend;
 	LinkerType linker_type;
 	const char *cpu_flags;
-	uint32_t symtab_size;
-	uint32_t max_vector_size;
-	uint32_t max_stack_object_size;
-	uint32_t max_macro_iterations;
-	uint32_t switchrange_max_size;
-	uint32_t switchjump_max_size;
+	int32_t symtab_size;
+	int32_t max_vector_size;
+	int32_t max_stack_object_size;
+	int32_t max_macro_iterations;
+	int32_t switchrange_max_size;
+	int32_t switchjump_max_size;
 	const char **args;
 	const char *panicfn;
 	const char *benchfn;

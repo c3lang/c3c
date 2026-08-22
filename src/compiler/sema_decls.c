@@ -8,14 +8,13 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, Decl *decl);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
-static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
-                                                        unsigned current_index);
+static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current, int current_index);
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
 static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
 static inline bool unit_add_base_extension_method(SemaContext *context, Type *type, Decl *method);
 static inline bool type_add_method(SemaContext *context, Type *parent_type, Decl *method);
-static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters);
+static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, int parameters);
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_len(SemaContext *context, Decl *method);
@@ -29,7 +28,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *union_decl);
 static bool sema_analyse_struct_members(SemaContext *context, Decl *decl);
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl);
 static inline bool sema_check_struct_holes(SemaContext *context, Decl *parent, Decl *member);
-static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl);
+static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, int index, bool allow_overlap, bool *erase_decl);
 static bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local, bool *check_defined);
 
 static inline bool sema_analyse_doc_header(SemaContext *context, DeclId docs, Decl **params, Decl **extra_params, bool *pure_ref, bool is_raw_vaarg);
@@ -63,7 +62,7 @@ static inline bool sema_resolve_align_expr(SemaContext *context, Expr *expr, Ali
 	// Must be <= MAX_ALIGNMENT
 	if (int_ucomp(expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
 	{
-		RETURN_SEMA_ERROR(expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
+		RETURN_SEMA_ERROR(expr, "Alignment must be less or equal to %lld.", (long long)MAX_ALIGNMENT);
 	}
 
 	// Must be > 0
@@ -122,7 +121,7 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 /**
  * Check parameter name uniqueness and that the type is not void.
  */
-static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current, unsigned current_index)
+static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current, int current_index)
 {
 	const char *name = current->name;
 
@@ -158,7 +157,7 @@ static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, De
 static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Decl *decl, bool resolve_interfaces)
 {
 	TypeInfo **interfaces = decl->interfaces;
-	unsigned count = vec_size(interfaces);
+	int count = vec_size(interfaces);
 
 	// Let's max out the number of interfaces. Not strictly needed.
 	if (count > MAX_INTERFACES) RETURN_SEMA_ERROR(interfaces[0], "The maximum number of interfaces (%d) is exeeded.", MAX_INTERFACES);
@@ -166,7 +165,7 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 	// No interfaces? Then we're done. This is the most common case.
 	if (!count) return true;
 
-	for (unsigned i = 0; i < count; i++)
+	for (int i = 0; i < count; i++)
 	{
 		TypeInfo *inf_info = interfaces[i];
 
@@ -184,7 +183,7 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 
 		// We don't permit duplicates as this would affect the implementation ordering.
 		// O(n^2) more than 1-2 interfaces is EXTREMELY unlikely, and we cap at 127.
-		for (unsigned j = 0; j < i; j++)
+		for (int j = 0; j < i; j++)
 		{
 			if (interfaces[j]->type->canonical == inf_type)
 			{
@@ -375,11 +374,11 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *union_decl)
 	AlignSize max_alignment = 0;
 
 	Decl **members = union_decl->strukt.members;
-	unsigned member_count = vec_size(members);
+	int member_count = vec_size(members);
 	ASSERT(member_count > 0);
 
 	// Check all members
-	for (unsigned i = 0; i < member_count; i++)
+	for (int i = 0; i < member_count; i++)
 	{
 		AGAIN:;
 		Decl *member = members[i];
@@ -420,7 +419,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *union_decl)
 		if (!sema_check_struct_holes(context, union_decl, member)) return false;
 
 		ByteSize member_size = type_size(member->type);
-		if (member_size > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Union member '%s' would cause the union to become too large (exceeding 2 GB).", member->name);
+		if (member_size > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Union member '%s' would cause the union to become too large (exceeding %d GB).", member->name, (int)(MAX_STRUCT_SIZE >> 30));
 
 		ASSERT(member_size <= MAX_TYPE_SIZE);
 
@@ -469,7 +468,8 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *union_decl)
 
 	// "Representative" type is the one with the maximum alignment.
 	ASSERT(max_alignment_element >= 0);
-	union_decl->strukt.union_rep = max_alignment_element;
+	ASSERT(max_alignment_element <= STRUCT_INDEX_MAX);
+	union_decl->strukt.union_rep = (StructIndex)max_alignment_element;
 
 	// All members share the same alignment
 	FOREACH(Decl *, member, members)
@@ -488,7 +488,9 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *union_decl)
 	// padding – typically used with LLVM lowering.
 	if (size > rep_size)
 	{
-		union_decl->strukt.padding = (AlignSize)(size - rep_size);
+		ByteSize padding = size - rep_size;
+		if (padding > MAX_STRUCT_PADDING)  RETURN_SEMA_ERROR(union_decl, "The struct padding would exceed %lld.", (long long int)padding);
+		union_decl->strukt.padding = (unsigned short)padding;
 	}
 
 	union_decl->strukt.size = size;
@@ -581,14 +583,14 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	AlignSize natural_alignment = 1;
 	AlignSize actual_alignment = 1;
 	bool is_unaligned = false;
-	AlignSize size = 0;
-	AlignSize offset = 0;
+	ByteSize size = 0;
+	ByteSize offset = 0;
 	bool is_packed = decl->strukt.is_packed;
 	Decl **struct_members = decl->strukt.members;
-	unsigned member_count = vec_size(struct_members);
+	int member_count = vec_size(struct_members);
 	ASSERT(member_count > 0 && "This analysis should only be called on member_count > 0");
 	bool is_naturally_aligned = !is_packed;
-	for (unsigned i = 0; i < member_count; i++)
+	for (int i = 0; i < member_count; i++)
 	{
 	AGAIN:;
 		Decl *member = struct_members[i];
@@ -687,9 +689,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		// In the case of a struct, we will align this to the next offset,
 		// using the alignment of the member.
-		unsigned align_offset = aligned_offset(offset, member_alignment);
+		AlignSize align_offset = aligned_offset((AlignSize)offset, member_alignment);
 
-		unsigned natural_align_offset = aligned_offset(offset, member_natural_alignment);
+		AlignSize natural_align_offset = aligned_offset((AlignSize)offset, member_natural_alignment);
 
 		// If the natural align is different from the aligned offset we have two cases:
 		if (natural_align_offset != align_offset)
@@ -706,7 +708,8 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 				// Otherwise we have a greater offset, and in this case
 				// we add padding for the difference.
 				ASSERT(natural_align_offset < align_offset);
-				member->padding = align_offset - offset;
+				ASSERT(align_offset - offset <= ALIGN_SIZE_MAX);
+				member->padding = (AlignSize)(align_offset - offset);
 			}
 		}
 
@@ -716,20 +719,22 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		{
 			ASSERT(decl_is_struct_type(decl));
 			if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = declid(member);
+			ByteSize padding = align_offset - offset;
+			if (padding > ALIGN_SIZE_MAX) RETURN_SEMA_ERROR(member, "The padding added would exceed %d.", (int)ALIGN_SIZE_MAX);
 			if (decl->attr_nopadding || member->attr_nopadding)
 			{
-				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member which is not allowed with `@nopadding` and `@compact`.", align_offset - offset);
+				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member which is not allowed with `@nopadding` and `@compact`.", (int)(padding));
 			}
-			member->padding = align_offset - offset;
+			member->padding = (AlignSize)(align_offset - offset);
 		}
 
 		if (!sema_check_struct_holes(context, decl, member)) return false;
 
 		offset = align_offset;
-		member->offset = offset;
-		AlignSize sz = offset;
+		ASSERT(offset <= MAX_STRUCT_SIZE);
+		member->offset = (TypeSize)offset;
 		offset += type_size(member->type);
-		if (offset < sz || offset > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Struct member '%s' would cause the struct to become too large (exceeding 2 GB).", member->name);
+		if (offset > MAX_STRUCT_SIZE) RETURN_SEMA_ERROR(member, "Struct member '%s' would cause the struct to become too large (exceeding %d GB).", member->name, (int)(MAX_STRUCT_SIZE / ((ByteSize)1024 * 1024 * 1024)));
 	}
 
 	if (!member_count)
@@ -747,14 +752,16 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 	// We must now possibly add the end padding.
 	// First we calculate the actual size
-	size = aligned_offset(offset, decl->alignment);
+	size = aligned_offset((AlignSize)offset, decl->alignment);
 
 	// We might get a size that is greater than the natural alignment
 	// in this case we need an additional padding
-	AlignSize natural_size = aligned_offset(offset, natural_alignment);
+	AlignSize natural_size = aligned_offset((AlignSize)offset, natural_alignment);
 	if (size > natural_size)
 	{
-		decl->strukt.padding = size - offset;
+		ByteSize padding = size - offset;
+		if (padding > MAX_STRUCT_PADDING)  RETURN_SEMA_ERROR(decl, "The struct padding would exceed %lld.", (long long int)padding);
+		decl->strukt.padding = (unsigned short)(size - offset);
 	}
 
 	// If the size is smaller the naturally aligned struct, then it is also unaligned
@@ -765,7 +772,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	if (is_unaligned && size > offset)
 	{
 		ASSERT(!decl->strukt.padding || decl->strukt.padding == size - offset);
-		decl->strukt.padding = size - offset;
+		ByteSize padding = size - offset;
+		if (padding > MAX_STRUCT_PADDING)  RETURN_SEMA_ERROR(decl, "The struct padding would exceed %lld.", (long long int)padding);
+		decl->strukt.padding = (unsigned short)(size - offset);
 	}
 
 	if (decl->attr_nopadding && type_is_substruct(decl->type))
@@ -784,7 +793,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = declid(decl);
 		if (decl->attr_nopadding)
 		{
-			RETURN_SEMA_ERROR(decl, "%d bytes of padding would be added to the end this struct which is not allowed with `@nopadding` and `@compact`.", size - offset);
+			RETURN_SEMA_ERROR(decl, "%d bytes of padding would be added to the end this struct which is not allowed with `@nopadding` and `@compact`.", (int)(size - offset));
 		}
 	}
 
@@ -792,13 +801,14 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	// Strip padding if we are aligned.
 	if (!decl->strukt.is_packed && is_naturally_aligned)
 	{
-		for (unsigned i = 0; i < member_count; i++)
+		for (int i = 0; i < member_count; i++)
 		{
 			Decl *member = struct_members[i];
 			member->padding = 0;
 		}
 	}
-	decl->strukt.size = size;
+	ASSERT(size <= MAX_TYPE_SIZE);
+	decl->strukt.size = (TypeSize)size;
 	return true;
 }
 
@@ -853,7 +863,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *er
 	return true;
 }
 
-static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl)
+static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, int index, bool allow_overlap, bool *erase_decl)
 {
 
 	if (member->resolve_status == RESOLVE_DONE)
@@ -913,7 +923,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 
 	// Resolve the bit range, starting with the beginning
 
-	unsigned start_bit, end_bit;
+	int start_bit, end_bit;
 
 	if (is_consecutive)
 	{
@@ -951,7 +961,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 			return false;
 		}
 
-		end_bit = start_bit = (unsigned)start->const_expr.ixx.i.low;
+		end_bit = start_bit = (int)start->const_expr.ixx.i.low;
 
 		// Handle the end
 		Expr *end = member->var.end;
@@ -969,7 +979,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 				SEMA_ERROR(end, "Expected at the most a bit index of %d.", bits - 1);
 				return false;
 			}
-			end_bit = (unsigned)end->const_expr.ixx.i.low;
+			end_bit = (int)end->const_expr.ixx.i.low;
 		}
 		else
 		{
@@ -1018,7 +1028,7 @@ AFTER_BIT_CHECK:
 	if (!allow_overlap)
 	{
 		Decl **members = parent->strukt.members;
-		for (unsigned i = 0; i < index; i++)
+		for (int i = 0; i < index; i++)
 		{
 			Decl *other_member = members[i];
 			// Check for overlap.
@@ -1055,10 +1065,10 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 
 	// Walk through the methods.
 	Decl **functions = decl->interface_methods;
-	unsigned count = vec_size(functions);
+	int count = vec_size(functions);
 
 	// Note that zero functions are allowed, this is useful for creating combinations of interfaces.
-	for (unsigned i = 0; i < count; i++)
+	for (int i = 0; i < count; i++)
 	{
 		RETRY:;
 		Decl *method = functions[i];
@@ -1125,7 +1135,7 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 		const char *name = method->name;
 		// Do a simple check to ensure the same function isn't defined twice.
 		// note that this doesn't check if it's overlapping an inherited method, this is deliberate.
-		for (unsigned j = 0; j < i; j++)
+		for (int j = 0; j < i; j++)
 		{
 			if (functions[j]->name == name)
 			{
@@ -1212,10 +1222,10 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 				type_quoted_error_string(decl->strukt.container_type->type));
 	}
 	Decl **members = decl->strukt.members;
-	unsigned member_count = vec_size(members);
+	int member_count = vec_size(members);
 
 	Decl **state = decl->name ? sema_decl_stack_store() : NULL;
-	for (unsigned i = 0; i < member_count; i++)
+	for (int i = 0; i < member_count; i++)
 	{
 		AGAIN:;
 		Decl *member = members[i];
@@ -1242,8 +1252,8 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
 
-	unsigned param_count = vec_size(params);
-	unsigned vararg_index = sig->vararg_index;
+	int param_count = vec_size(params);
+	int vararg_index = sig->vararg_index;
 	bool is_macro = sig->is_macro;
 	bool is_macro_at_name = sig->is_at_macro || sig->is_safemacro;
 	// Check return type
@@ -1379,7 +1389,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	}
 
 	// Check parameters
-	for (unsigned i = 0; i < param_count; i++)
+	for (int i = 0; i < param_count; i++)
 	{
 		Decl *param = params[i];
 		if (!param)
@@ -1584,9 +1594,9 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 	}
 
 	Type **types = NULL;
-	unsigned param_count = vec_size(params);
+	int param_count = vec_size(params);
 
-	for (unsigned i = 0; i < param_count; i++)
+	for (int i = 0; i < param_count; i++)
 	{
 		ASSERT(IS_RESOLVED(params[i]));
 		ASSERT(params[i]->type->canonical);
@@ -1786,9 +1796,9 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
 
 	Decl **associated_values = decl->enums.parameters;
-	unsigned associated_value_count = vec_size(associated_values);
+	int associated_value_count = vec_size(associated_values);
 	Decl** state = sema_decl_stack_store();
-	for (unsigned i = 0; i < associated_value_count; i++)
+	for (int i = 0; i < associated_value_count; i++)
 	{
 		Decl *value = associated_values[i];
 		switch (value->resolve_status)
@@ -1807,12 +1817,12 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	sema_decl_stack_restore(state);
 
 	bool success = true;
-	unsigned enums = vec_size(decl->enums.values);
+	int enums = vec_size(decl->enums.values);
 	Int128 value = { 0, 0 };
 
 	Decl **enum_values = decl->enums.values;
 
-	for (unsigned i = 0; i < enums; i++)
+	for (int i = 0; i < enums; i++)
 	{
 
 		Decl *enum_value = enum_values[i];
@@ -1852,13 +1862,13 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 			                  i128_to_string(value, 10, type_is_signed(flat_underlying_type), false),
 			                  type_quoted_error_string(type));
 		}
-		enum_value->enum_constant.inner_ordinal = value.low;
+		enum_value->enum_constant.inner_ordinal = (int)value.low;
 
 		// Update the value
 		value.low++;
 
 		Expr **args = enum_value->enum_constant.associated;
-		unsigned arg_count = vec_size(args);
+		int arg_count = vec_size(args);
 		if (arg_count > associated_value_count)
 		{
 			if (!associated_value_count)
@@ -1874,17 +1884,17 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		}
 	}
 	decl->resolve_status = RESOLVE_DONE;
-	for (unsigned i = 0; i < associated_value_count; i++)
+	for (int i = 0; i < associated_value_count; i++)
 	{
 		Decl *param = associated_values[i];
 		if (!sema_set_alignment(context, param->type, &param->alignment, true)) return false;
 		param->resolve_status = RESOLVE_DONE;
 	}
-	for (unsigned i = 0; i < enums; i++)
+	for (int i = 0; i < enums; i++)
 	{
 		Decl *enum_value = enum_values[i];
 		Expr **args = enum_value->enum_constant.associated;
-		unsigned arg_count = vec_size(args);
+		int arg_count = vec_size(args);
 		if (arg_count > associated_value_count)
 		{
 			if (!associated_value_count)
@@ -1898,7 +1908,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			RETURN_SEMA_ERROR(enum_value, "Expected %d associated value%s for this enum value.", associated_value_count, associated_value_count != 1 ? "s" : "");
 		}
-		for (unsigned j = 0; j < arg_count; j++)
+		for (int j = 0; j < arg_count; j++)
 		{
 			Expr *arg = args[j];
 
@@ -1974,10 +1984,10 @@ static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool 
 	ASSERT_SPAN(decl, !decl->enums.parameters);
 
 	bool success = true;
-	unsigned enums = vec_size(decl->enums.values);
+	int enums = vec_size(decl->enums.values);
 
 	Decl **enum_values = decl->enums.values;
-	for (unsigned i = 0; i < enums; i++)
+	for (int i = 0; i < enums; i++)
 	{
 		Decl *enum_value = enum_values[i];
 
@@ -2017,7 +2027,7 @@ static inline bool sema_analyse_constdef(SemaContext *context, Decl *decl, bool 
 		ASSERT(enum_value->decl_kind == DECL_ENUM_CONSTANT);
 	}
 	decl->resolve_status = RESOLVE_DONE;
-	for (unsigned i = 0; i < enums; i++)
+	for (int i = 0; i < enums; i++)
 	{
 		Decl *enum_value = enum_values[i];
 		enum_value->resolve_status = RESOLVE_RUNNING;
@@ -2053,18 +2063,18 @@ static inline const char *method_name_by_decl(Decl *method_like)
 
 
 static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr,
-                                         uint32_t parameters)
+                                         int parameters)
 {
 	Signature *signature = &method->func_decl.signature;
 	Decl **params = *params_ptr = signature->params;
-	uint32_t param_count = vec_size(params);
+	int param_count = vec_size(params);
 	if (param_count > parameters)
 	{
-		RETURN_SEMA_ERROR(params[parameters], "Too many parameters, '%s' expects only %u.", method->name, (unsigned)parameters);
+		RETURN_SEMA_ERROR(params[parameters], "Too many parameters, '%s' expects only %d.", method->name, parameters);
 	}
 	if (param_count < parameters)
 	{
-		RETURN_SEMA_ERROR(method, "Not enough parameters, '%s' requires %u.", method->name, (unsigned)parameters);
+		RETURN_SEMA_ERROR(method, "Not enough parameters, '%s' requires %d.", method->name, parameters);
 	}
 
 	if (!signature->rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
@@ -2110,7 +2120,7 @@ OverloadMatch sema_find_typed_operator_type(SemaContext *context, OperatorOverlo
 	Decl *decl = declptrzero(methods->overloads[operator_overload]);
 	if (!decl) return last_match;
 	Decl **decls;
-	unsigned count;
+	int count;
 	Decl *candidate = *candidate_ref;
 	if (decl->decl_kind == DECL_DECLARRAY)
 	{
@@ -2122,7 +2132,7 @@ OverloadMatch sema_find_typed_operator_type(SemaContext *context, OperatorOverlo
 		decls = &decl;
 		count = 1;
 	}
-	for (unsigned i = 0; i < count; i++)
+	for (int i = 0; i < count; i++)
 	{
 		Decl *func = decls[i];
 		if (!sema_analyse_decl(context, func)) return OVERLOAD_MATCH_ERROR;
@@ -2606,7 +2616,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 		Decl *decl = declptrzero(methods->overloads[operator]);
 		if (!decl) goto NONE;
 		Decl **decls;
-		unsigned count;
+		int count;
 		if (decl->decl_kind == DECL_DECLARRAY)
 		{
 			decls = decl->decls;
@@ -2619,7 +2629,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 		}
 		OverloadType type = method->func_decl.overload_type;
 		assert(type);
-		for (unsigned i = 0; i < count; i++)
+		for (int i = 0; i < count; i++)
 		{
 			Decl *func = decls[i];
 			if (func == method) continue;
@@ -2951,8 +2961,8 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 
 	Decl **any_params = interface_sig.params;
 	Decl **this_params = this_sig.params;
-	unsigned any_param_count = vec_size(any_params);
-	unsigned this_param_count = vec_size(this_params);
+	int any_param_count = vec_size(any_params);
+	int this_param_count = vec_size(this_params);
 
 	// Do the param counts match?
 	if (any_param_count != this_param_count)
@@ -3064,7 +3074,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			}
 			break;
 		case ALL_VECTORS:
-			if (sema_kw_is_swizzle(decl->name, strlen(decl->name)))
+			if (sema_kw_is_swizzle(decl->name, (int)strlen(decl->name)))
 			{
 				RETURN_SEMA_ERROR(decl, "\"%s\" is not a valid method name for a vector, since it matches a swizzle combination.", kw);
 			}
@@ -3370,7 +3380,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		RETURN_SEMA_ERROR(attr, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
 	}
 
-	unsigned args = vec_size(attr->exprs);
+	int args = vec_size(attr->exprs);
 
 	// Check that attributes aren't more than 1 on most attributes.
 	if (args > 1 && type != ATTRIBUTE_LINK && type != ATTRIBUTE_TAG && type != ATTRIBUTE_WASM && type != ATTRIBUTE_FEAT)
@@ -3598,7 +3608,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				start = 1;
 				has_link = cond->const_expr.b;
 			}
-			for (unsigned i = start; i < args; i++)
+			for (int i = start; i < args; i++)
 			{
 				Expr *string = attr->exprs[i];
 				if (!sema_analyse_expr_rvalue(context, string)) return false;
@@ -3825,7 +3835,7 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 
 	// Grab all the parameters to the attribute and copy them.
 	Decl **params = attr_decl->attr_decl.params;
-	unsigned param_count = vec_size(params);
+	int param_count = vec_size(params);
 	params = copy_decl_list_single(params);
 
 	// Get the arguments
@@ -4151,7 +4161,7 @@ ADDED:;
 static inline MainType sema_find_main_type(SemaContext *context, Signature *sig, bool is_winmain)
 {
 	Decl **params = sig->params;
-	unsigned param_count = vec_size(params);
+	int param_count = vec_size(params);
 	bool is_win32 = compiler.platform.os == OS_TYPE_WIN32;
 	Type *arg_type, *arg_type2;
 	switch (param_count)
@@ -4588,7 +4598,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	if (is_test || is_benchmark || is_init_finalizer)
 	{
 		ASSERT(!is_interface_method);
-		unsigned params = vec_size(sig->params);
+		int params = vec_size(sig->params);
 		if (params)
 		{
 			RETURN_SEMA_ERROR_AT(sig->params[0] ? sig->params[0]->loc : decl->loc, "%s functions may not take any parameters.",
@@ -4732,8 +4742,8 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 
 INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters)
 {
-	unsigned body_param_count = vec_size(body_parameters);
-	for (unsigned i = 0; i < body_param_count; i++)
+	int body_param_count = vec_size(body_parameters);
+	for (int i = 0; i < body_param_count; i++)
 	{
 		ASSERT(body_parameters);
 		Decl *param = body_parameters[i];
@@ -4912,7 +4922,7 @@ static bool sema_type_is_valid_size(SemaContext *context, Type *type, SourceLocI
 RETRY:
 	if (size.high || size.low > (uint64_t)MAX_TYPE_SIZE)
 	{
-		RETURN_SEMA_ERROR_AT(loc, "This type would exceed max type size of %u GB.", MAX_TYPE_SIZE >> 30);
+		RETURN_SEMA_ERROR_AT(loc, "This type would exceed max type size of %d GB.", (int)(MAX_TYPE_SIZE >> 30));
 	}
 	switch (type->type_kind)
 	{
@@ -4960,7 +4970,7 @@ RETRY:
 	}
 	if (size.high || size.low > (uint64_t)MAX_TYPE_SIZE)
 	{
-		RETURN_SEMA_ERROR_AT(loc, "This type would exceed max type size of %u GB.", MAX_TYPE_SIZE >> 30);
+		RETURN_SEMA_ERROR_AT(loc, "This type would exceed max type size of %d GB.", (int)(MAX_TYPE_SIZE >> 30));
 	}
 	return true;
 }
@@ -5414,8 +5424,8 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 	if (*erase_decl) return true;
 
 	Decl **params = decl->attr_decl.params;
-	unsigned param_count = vec_size(params);
-	for (unsigned i = 0; i < param_count; i++)
+	int param_count = vec_size(params);
+	for (int i = 0; i < param_count; i++)
 	{
 		Decl *param = params[i];
 		if (param->var.kind != VARDECL_PARAM) RETURN_SEMA_ERROR(param, "Expected a simple replacement parameter e.g. 'val' here.");

@@ -1,15 +1,15 @@
 #include "compiler_internal.h"
 
 #define FOREACH_DECL(a__, modules__) \
-	unsigned module_count_ = vec_size(modules__); \
-	for (unsigned i_ = 0; i_ < module_count_; i_++) { \
+	int module_count_ = vec_size(modules__); \
+	for (int i_ = 0; i_ < module_count_; i_++) { \
 	Module *module = modules__[i_]; \
-	unsigned unit_count_ = vec_size(module->units); \
-	for (unsigned j_ = 0; j_ < unit_count_; j_++) { \
+	int unit_count_ = vec_size(module->units); \
+	for (int j_ = 0; j_ < unit_count_; j_++) { \
 	CompilationUnit *unit = module->units[j_]; \
-	unsigned decl_count_ = vec_size(unit->global_decls); \
-	unsigned decl_cond_count_ = vec_size(unit->global_cond_decls); \
-	for (unsigned k_ = 0; k_ < decl_count_ + decl_cond_count_; k_++) { \
+	int decl_count_ = vec_size(unit->global_decls); \
+	int decl_cond_count_ = vec_size(unit->global_cond_decls); \
+	for (int k_ = 0; k_ < decl_count_ + decl_cond_count_; k_++) { \
 	a__ = k_ < decl_count_ ? unit->global_decls[k_] : unit->global_cond_decls[k_ - decl_count_];
 
 #define PRINTF(string__, ...) fprintf(file, string__, ##__VA_ARGS__) /* NOLINT */

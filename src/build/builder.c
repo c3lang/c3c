@@ -670,15 +670,15 @@ BUILD:
 
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
 
-	for (size_t i = 0; i < options->linker_arg_count; i++)
+	for (int i = 0; i < options->linker_arg_count; i++)
 	{
 		vec_add(target->link_args, options->linker_args[i]);
 	}
-	for (size_t i = 0; i < options->linker_lib_dir_count; i++)
+	for (int i = 0; i < options->linker_lib_dir_count; i++)
 	{
 		vec_add(target->linker_libdirs, options->linker_lib_dir[i]);
 	}
-	for (size_t i = 0; i < options->linker_lib_count; i++)
+	for (int i = 0; i < options->linker_lib_count; i++)
 	{
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
@@ -715,10 +715,10 @@ BUILD:
 	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 
 	bool is_static = false;
-	for (size_t i = 0; i < options->linker_arg_count; i++)
+	for (int i = 0; i < options->linker_arg_count; i++)
 	{
 		const char *arg = options->linker_args[i];
-		if (strcmp(arg, "-static") == 0 || strcmp(arg, "--static") == 0 || strcmp(arg, "static") == 0)
+		if (str_eq(arg, "-static") || str_eq(arg, "--static") || str_eq(arg, "static"))
 		{
 			is_static = true;
 			break;

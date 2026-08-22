@@ -5,7 +5,7 @@
 #include "sema_internal.h"
 #include <math.h>
 
-#define MEMBER_IS_PARAM UINT32_MAX
+#define MEMBER_IS_PARAM -1
 #define RETURN_SEMA_FUNC_ERROR(_decl, _node, ...) do { sema_error_at(context, (_node)->loc, __VA_ARGS__); SEMA_NOTE(_decl, "The definition was here."); return false; } while (0)
 #define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0)
 #define RESOLVE(expr__, check__) \
@@ -121,7 +121,7 @@ static inline const char *sema_addr_may_take_of_var(Expr *expr, Decl *decl);
 static inline const char *sema_addr_may_take_of_ident(Expr *inner);
 
 // -- subscript helpers
-static bool sema_subscript_rewrite_index_const_list(Expr *const_list, ArraySize index, bool from_back, Expr *result);
+static bool sema_subscript_rewrite_index_const_list(Expr *const_list, ArrayIndex index, bool from_back, Expr *result);
 static Type *sema_subscript_find_indexable_type_recursively(Type **type, Expr **parent);
 static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context, Expr *main, Expr *subscript_expr, Type *type);
 
@@ -160,7 +160,7 @@ static inline bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call, bool *no_match_ref);
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool *missing_ref);
-static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point);
+static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, int insert_point);
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr);
 static inline bool sema_create_type_param_struct(SemaContext *context, Expr *expr, Decl *fn_decl);
 
@@ -201,7 +201,7 @@ static inline bool sema_expr_fold_hash(SemaContext *context, Expr *expr);
 
 static inline void sema_expr_flatten_const_ident(Expr *expr);
 
-static inline Expr **sema_prepare_splat_insert(Expr **exprs, unsigned added, unsigned insert_point);
+static inline Expr **sema_prepare_splat_insert(Expr **exprs, int added, int insert_point);
 static inline bool sema_analyse_maybe_dead_expr(SemaContext *, Expr *expr, bool is_dead, Type *infer_type);
 static inline bool sema_insert_binary_overload(SemaContext *context, Expr *expr, Decl *overload, Expr *lhs, Expr *rhs, bool reverse);
 static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *left_type, OperatorOverload* operator_overload_ref);
@@ -273,7 +273,7 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
  */
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *index)
 {
-	unsigned args = vec_size(context->macro_varargs);
+	int args = vec_size(context->macro_varargs);
 	Expr *index_expr = exprptr(index->expr);
 	if (!sema_analyse_expr_rvalue(context, index_expr)) return poisoned_expr;
 	if (!type_is_integer(index_expr->type))
@@ -299,7 +299,7 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *index
 	if (idx < 0 || idx >= args) goto OUT_OF_RANGE;
 	return context->macro_varargs[idx];
 OUT_OF_RANGE:
-	RETURN_VAL_SEMA_ERROR(poisoned_expr, index_expr, "Only %u vaarg%s exist.", args, args == 1 ? "" : "s");
+	RETURN_VAL_SEMA_ERROR(poisoned_expr, index_expr, "Only %d vaarg%s exist.", args, args == 1 ? "" : "s");
 }
 
 Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing)
@@ -556,14 +556,14 @@ CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr)
 	return result;
 }
 
-bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_string, Expr **args, unsigned num_args)
+bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_string, Expr **args, int num_args)
 {
 	if (!sema_analyse_expr_rvalue(context, format_string)) return false;
 	if (!sema_cast_const(format_string))
 	{
 		RETURN_SEMA_ERROR(format_string, "Expected a constant format string expression.");
 	}
-	for (unsigned i = 0; i < num_args; i++)
+	for (int i = 0; i < num_args; i++)
 	{
 		Expr *e = args[i];
 		if (!sema_analyse_expr_rvalue(context, e)) return false;
@@ -577,10 +577,10 @@ bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_st
 		RETURN_SEMA_ERROR(format_string, "Expected a constant format string.");
 	}
 	const char *inner_str = format_string->const_expr.bytes.ptr;
-	ArraySize len = format_string->const_expr.bytes.len;
+	ArrayIndex len = format_string->const_expr.bytes.len;
 	scratch_buffer_clear();
 	ArrayIndex current_index = 0;
-	for (ArraySize i = 0; i < len; i++)
+	for (ArrayIndex i = 0; i < len; i++)
 	{
 		char c = inner_str[i];
 		if (c == '%')
@@ -1652,7 +1652,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 	VarDeclKind kind = param->var.kind;
 	Type *type = param->type;
 	// 16. Analyse a regular argument.
-	unsigned errors = compiler.context.errors_found;
+	int errors = compiler.context.errors_found;
 	switch (kind)
 	{
 		case VARDECL_PARAM:
@@ -1835,7 +1835,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDeclContext *c
 
 INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *arg, Decl *strukt, ArrayIndex index)
 {
-	unsigned len = vec_size(strukt->strukt.members);
+	int len = vec_size(strukt->strukt.members);
 	args = sema_prepare_splat_insert(args, len, index);
 	if (sema_cast_const(arg))
 	{
@@ -1905,7 +1905,7 @@ INLINE Expr **sema_splat_struct_insert(SemaContext *context, Expr **args, Expr *
 	return args;
 }
 
-INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Expr *arg, ArraySize len, ArrayIndex index, Decl ***macro_va_decl_ref)
+INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Expr *arg, ArrayIndex len, ArrayIndex index, Decl ***macro_va_decl_ref)
 {
 	args = sema_prepare_splat_insert(args, len, index);
 	if (sema_cast_const(arg))
@@ -2056,7 +2056,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext
 	if (!sema_call_check_invalid_body_arguments(context, call, callee)) return false;
 	// Pick out all the arguments and parameters.
 	Signature *sig = callee->signature;
-	unsigned vaarg_index = sig->vararg_index;
+	int vaarg_index = sig->vararg_index;
 	Variadic variadic = sig->variadic;
 	Decl **decl_params = callee->params;
 	int format_index = (int)sig->attrs.format - 1;
@@ -2069,7 +2069,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext
 	}
 
 	// Zero out all argument slots.
-	unsigned func_param_count = vec_size(decl_params);
+	int func_param_count = vec_size(decl_params);
 
 	// We might have a typed variadic call e.g. foo(int, double...)
 	// get that type.
@@ -2084,12 +2084,12 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext
 	}
 
 	Expr **args = call->call_expr.arguments;
-	unsigned num_args = vec_size(args);
+	int num_args = vec_size(args);
 	Decl **params = callee->params;
 
 	ASSERT(func_param_count < MAX_PARAMS);
 	Expr **actual_args = VECNEW(Expr*, func_param_count);
-	for (unsigned i = 0; i < func_param_count; i++)
+	for (int i = 0; i < func_param_count; i++)
 	{
 		vec_add(actual_args, NULL);
 	}
@@ -2397,7 +2397,7 @@ SPLAT_NORMAL:;
 	if (num_args) last = args[num_args - 1];
 	call->call_expr.arguments = args;
 	// 17. Set default values.
-	for (unsigned i = 0; i < func_param_count; i++)
+	for (int i = 0; i < func_param_count; i++)
 	{
 		// 17a. Assigned a value - skip
 		if (actual_args[i]) continue;
@@ -2472,10 +2472,11 @@ CHECK_FORMAT:;
 	assert(expr_is_const_string(expr));
 	const char *data = expr->const_expr.bytes.ptr;
 	size_t len = expr->const_expr.bytes.len;
-	size_t idx = 0;
+	if (len > INT_MAX) RETURN_SEMA_ERROR(expr, "String too long");
+	int idx = 0;
 	Expr **vaargs = call->call_expr.varargs;
-	unsigned vacount = vec_size(vaargs);
-	for (size_t i = 0; i < len; i++)
+	int vacount = vec_size(vaargs);
+	for (int i = 0; i < (int)len; i++)
 	{
 		if (data[i] != '%') continue;
 		i++;
@@ -2488,7 +2489,7 @@ NEXT_FLAG:
 			case '0':
 			case '#':
 			case ' ':
-				if (++i == len) goto UNEXPECTED_END;
+				if (++i == (int)len) goto UNEXPECTED_END;
 				c = data[i];
 				goto NEXT_FLAG;
 			case '%':
@@ -2509,7 +2510,7 @@ NEXT_FLAG:
 			{
 				RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer for the format width.");
 			}
-			if (++i == len) goto UNEXPECTED_END;
+			if (++i == (int)len) goto UNEXPECTED_END;
 			c = data[i];
 			if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 			expr = vaargs[idx];
@@ -2521,13 +2522,13 @@ NEXT_FLAG:
 		{
 			while (char_is_digit(c))
 			{
-				if (++i == len) goto UNEXPECTED_END;
+				if (++i == (int)len) goto UNEXPECTED_END;
 				c = data[i];
 			}
 		}
 		if (c == '.')
 		{
-			if (++i == len) goto UNEXPECTED_END;
+			if (++i == (int)len) goto UNEXPECTED_END;
 			c = data[i];
 			if (c == '*')
 			{
@@ -2535,7 +2536,7 @@ NEXT_FLAG:
 				{
 					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer for the format width.");
 				}
-				if (++i == len) goto UNEXPECTED_END;
+				if (++i == (int)len) goto UNEXPECTED_END;
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
@@ -2551,7 +2552,7 @@ NEXT_FLAG:
 				}
 				while (char_is_digit(c))
 				{
-					if (++i == len) goto UNEXPECTED_END;
+					if (++i == (int)len) goto UNEXPECTED_END;
 					c = data[i];
 				}
 			}
@@ -2836,9 +2837,9 @@ static inline Type *context_unify_returns(SemaContext *context)
 
 	// 1. Loop through the returns.
 	bool optional = false;
-	unsigned returns = vec_size(context->block_returns);
+	int returns = vec_size(context->block_returns);
 	if (!returns) return type_void;
-	for (unsigned i = 0; i < returns; i++)
+	for (int i = 0; i < returns; i++)
 	{
 		Ast *return_stmt = context->block_returns[i];
 		Type *rtype;
@@ -3013,9 +3014,9 @@ static inline void sema_update_link_from_macro(SemaContext *context, ResolvedAtt
 
 static inline bool sema_analyse_macro_body_params(SemaContext *context, Decl *decl, Expr *call_expr, Decl **body_params, bool *no_match_ref)
 {
-	unsigned body_params_count = vec_size(body_params);
+	int body_params_count = vec_size(body_params);
 	Decl **macro_body_params = decl->func_decl.body_param ? declptr(decl->func_decl.body_param)->body_params : NULL;
-	unsigned expected_body_params = vec_size(macro_body_params);
+	int expected_body_params = vec_size(macro_body_params);
 
 	// Too many parameters
 	if (expected_body_params > body_params_count)
@@ -3031,7 +3032,7 @@ static inline bool sema_analyse_macro_body_params(SemaContext *context, Decl *de
 		RETURN_SEMA_ERROR(call_expr, "Too many parameters for the macro body, expected %d.", expected_body_params);
 	}
 
-	for (unsigned j = 0; j < expected_body_params; j++)
+	for (int j = 0; j < expected_body_params; j++)
 	{
 		Decl *body_param = macro_body_params[j];
 		ASSERT_SPAN(call_expr, body_param->resolve_status == RESOLVE_DONE);
@@ -3231,7 +3232,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	bool has_optional_arg = call_var_optional;
 	if (!sema_call_evaluate_arguments(context, &callee, call_expr, &has_optional_arg, no_match_ref)) return false;
 
-	unsigned vararg_index = sig->vararg_index;
+	int vararg_index = sig->vararg_index;
 	Expr **args = call_expr->call_expr.arguments;
 	SourceLocId arg_positions[MAX_PARAMS] = { [0] = 0 };
 	FOREACH_IDX(i, Decl *, param, params)
@@ -3402,7 +3403,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		must_use = sig->attrs.nodiscard || (optional_return && !sig->attrs.maydiscard);
 	}
-	unsigned returns_found = vec_size(macro_context.block_returns);
+	int returns_found = vec_size(macro_context.block_returns);
 	// We may have zero normal macro returns but the active scope still has a "jump end".
 	// In this case it is triggered by the @body()
 	if (!returns_found && macro_context.active_scope.end_jump.active)
@@ -3505,7 +3506,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 		PRINT_ERROR_AT(call, "Expanding parameters is not allowed for macro invocations.");
 	}
 	// Theoretically we could support named arguments, but that's unnecessary.
-	unsigned expressions = vec_size(call_expr->arguments);
+	int expressions = vec_size(call_expr->arguments);
 	Decl **body_parameters = body_decl->body_params;
 	if (expressions != vec_size(body_parameters))
 	{
@@ -3519,7 +3520,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	bool has_optional_arg = false;
 
 	// Evaluate the expressions.
-	for (unsigned i = 0; i < expressions; i++)
+	for (int i = 0; i < expressions; i++)
 	{
 		Decl *param = params[i];
 		Expr *expr = args[i];
@@ -3556,7 +3557,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	AstId last_defer = context->active_scope.defer_last;
 	SCOPE_START(call->loc);
 	{
-		unsigned ct_context = sema_context_push_ct_stack(context);
+		int ct_context = sema_context_push_ct_stack(context);
 		if (macro_defer)
 		{
 			Ast *macro_defer_ast = astptr(macro_defer);
@@ -3667,7 +3668,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Expr *tag)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned arg_count = vec_size(args);
+	int arg_count = vec_size(args);
 	Decl *decl = tag->type_call_expr.type;
 	if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected a single integer argument to 'from_ordinal'.");
 	Expr *key = args[0];
@@ -3684,11 +3685,11 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 		{
 			RETURN_SEMA_ERROR(key, "'from_ordinal' doesn't work on negative numbers.");
 		}
-		unsigned max_enums = vec_size(decl->enums.values);
+		int max_enums = vec_size(decl->enums.values);
 		Int max = {.i.low = max_enums, .type = TYPE_U32};
 		if (int_comp(to_convert, max, BINARYOP_GE))
 		{
-			RETURN_SEMA_ERROR(key, "The ordinal '%s' exceeds the max ordinal '%u'.", int_to_str(max, 10, false), max_enums - 1);
+			RETURN_SEMA_ERROR(key, "The ordinal '%s' exceeds the max ordinal '%d'.", int_to_str(max, 10, false), max_enums - 1);
 		}
 		if (is_const_enum)
 		{
@@ -3717,7 +3718,7 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 INLINE bool sema_expr_analyse_lookup(SemaContext *context, Expr *expr, Expr *tag)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned arg_count = vec_size(args);
+	int arg_count = vec_size(args);
 	Decl *decl = tag->type_call_expr.type;
 	if (arg_count != 2) RETURN_SEMA_ERROR(expr, "'lookup_field' requires two arguments: the name of the field and the value to search for.");
 	Expr *key = args[1];
@@ -3767,7 +3768,7 @@ FOUND:;
 INLINE bool sema_expr_analyse_is_generic(SemaContext *context, Expr *expr, Expr *tag)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned arg_count = vec_size(args);
+	int arg_count = vec_size(args);
 	Decl *decl = tag->type_call_expr.type;
 	if (arg_count != 1) RETURN_SEMA_ERROR(expr, "'is_generic' requires an argument.");
 	Expr *type_expr = args[0];
@@ -3816,7 +3817,7 @@ static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 			break;
 	}
 	Expr **args = expr->call_expr.arguments;
-	unsigned arg_count = vec_size(args);
+	int arg_count = vec_size(args);
 	bool is_has = tag->type_call_expr.property == TYPE_PROPERTY_HAS_TAG;
 	const char *name = is_has ? "has_tag" : "get_tag";
 	if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected a single string argument to '%s'.", name);
@@ -4159,7 +4160,7 @@ static Type *sema_subscript_find_indexable_type_recursively(Type **type, Expr **
 	}
 }
 
-static bool sema_subscript_rewrite_index_const_list(Expr *const_list, ArraySize index, bool from_back, Expr *result)
+static bool sema_subscript_rewrite_index_const_list(Expr *const_list, ArrayIndex index, bool from_back, Expr *result)
 {
 	if (const_list->const_expr.const_kind == CONST_SLICE)
 	{
@@ -4636,7 +4637,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 					if (failed_ref) return *failed_ref = true, false;
 					RETURN_SEMA_ERROR(index, "Index is out of range.");
 				}
-				ArraySize idx = index->const_expr.ixx.i.low;
+				ArrayIndex idx = index->const_expr.ixx.i.low;
 				ArrayIndex len = sema_len_from_const(current_expr);
 				if (idx > len || (idx == len && !start_from_end) || (idx == 0 && start_from_end))
 				{
@@ -4684,7 +4685,7 @@ static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *
 	Expr *offset = exprptr(expr->pointer_offset_expr.offset);
 	if (!sema_analyse_expr_rvalue(context, offset)) return false;
 	Type *flat = type_flatten(pointer->type);
-	unsigned vec_len = type_kind_is_real_vector(flat->type_kind) ? flat->array.len : 0;
+	int vec_len = type_kind_is_real_vector(flat->type_kind) ? flat->array.len : 0;
 
 	if (!cast_implicit_binary(context, offset, vec_len ? type_get_vector(type_sz, flat->type_kind, vec_len) : type_sz, NULL)) return false;
 
@@ -4949,8 +4950,8 @@ static inline bool sema_slice_initializer(SemaContext *context, Expr *expr, Expr
 			break;
 		case CONST_INIT_ARRAY:
 		{
-			unsigned elements = vec_size(initializer->init_array.elements);
-			for (unsigned i = 0; i < elements; i++)
+			int elements = vec_size(initializer->init_array.elements);
+			for (int i = 0; i < elements; i++)
 			{
 				ConstInitializer *element = initializer->init_array.elements[i];
 				ArrayIndex index = element->init_array_value.index;
@@ -5176,11 +5177,11 @@ static inline bool sema_expr_replace_with_enum_array(SemaContext *context, Expr 
 	Decl **values = enum_decl->enums.values;
 	SourceLocId loc = enum_array_expr->loc;
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, loc);
-	ArraySize elements = vec_size(values);
+	ArrayIndex elements = vec_size(values);
 	Expr **element_values = elements > 0 ? VECNEW(Expr*, elements) : NULL;
 	Type *kind = enum_decl->type;
 	ConstKind const_kind = CONST_ENUM;
-	for (ArraySize i = 0; i < elements; i++)
+	for (ArrayIndex i = 0; i < elements; i++)
 	{
 		Decl *decl = values[i];
 		Expr *expr = expr_new(EXPR_CONST, loc);
@@ -5206,10 +5207,10 @@ static inline bool sema_expr_replace_with_const_enum_array(SemaContext *context,
 	Decl **values = enum_decl->enums.values;
 	SourceLocId loc = enum_array_expr->loc;
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, loc);
-	ArraySize elements = vec_size(values);
+	ArrayIndex elements = vec_size(values);
 	Expr **element_values = elements > 0 ? VECNEW(Expr*, elements) : NULL;
 	Type *kind = enum_decl->type;
-	for (ArraySize i = 0; i < elements; i++)
+	for (ArrayIndex i = 0; i < elements; i++)
 	{
 		Decl *decl = values[i];
 		Expr *expr = copy_expr_single(decl->enum_constant.value);
@@ -5229,9 +5230,9 @@ static inline bool sema_expr_replace_with_enum_name_array(SemaContext *context, 
 	Decl **values = enum_decl->enums.values;
 	SourceLocId loc = enum_array_expr->loc;
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, loc);
-	ArraySize elements = vec_size(values);
+	ArrayIndex elements = vec_size(values);
 	Expr **element_values = elements > 0 ? VECNEW(Expr*, elements) : NULL;
-	for (ArraySize i = 0; i < elements; i++)
+	for (ArrayIndex i = 0; i < elements; i++)
 	{
 		Decl *decl = values[i];
 		Expr *expr = expr_new(EXPR_CONST, loc);
@@ -5532,7 +5533,7 @@ static inline BoolErr sema_expr_analyse_reflection_alignment(SemaContext *contex
 {
 	if (member)
 	{
-		expr_rewrite_const_int(expr, type_sz, reflect->const_expr.member.offset == UINT32_MAX ? member->alignment : type_min_alignment(reflect->const_expr.member.offset, reflect->const_expr.member.align));
+		expr_rewrite_const_int(expr, type_sz, reflect->const_expr.member.offset == -1  ? member->alignment : type_min_alignment(reflect->const_expr.member.offset, reflect->const_expr.member.align));
 		return BOOL_TRUE;
 	}
 	Type *type = reflect->type;
@@ -5872,7 +5873,7 @@ static inline bool sema_create_const_kind(SemaContext *context, Expr *expr, Type
 {
 	Module *module = global_context_find_module(kw_std__core__types);
 	Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
-	unsigned val = type_get_introspection_kind(type->type_kind);
+	int val = type_get_introspection_kind(type->type_kind);
 	if (!type_kind)
 	{
 		// No TypeKind defined, fallback to char.
@@ -6043,10 +6044,10 @@ static inline bool sema_create_const_type_params(Expr *expr, Type *type)
 	ASSERT_SPAN(expr, type->type_kind == TYPE_FUNC_PTR);
 	type = type->pointer;
 	Signature *sig = type->function.signature;
-	unsigned params = vec_size(sig->params);
+	int params = vec_size(sig->params);
 	Expr **param_exprs = params ? VECNEW(Expr*, params) : NULL;
 	SourceLocId loc = expr->loc;
-	for (unsigned i = 0; i < params; i++)
+	for (int i = 0; i < params; i++)
 	{
 		Decl *decl = sig->params[i];
 		Expr *expr_inner = expr_calloc();
@@ -6112,9 +6113,9 @@ static inline bool sema_create_const_tags(SemaContext *context, Expr *expr_tags,
 {
 	SourceLocId loc = expr_tags->loc;
 	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, loc);
-	unsigned values = resolved_attr ? vec_size(resolved_attr->tags) : 0;
+	int values = resolved_attr ? vec_size(resolved_attr->tags) : 0;
 	Expr **element_values = values > 0 ? VECNEW(Expr*, values) : NULL;
-	for (ArraySize i = 0; i < values; i++)
+	for (ArrayIndex i = 0; i < values; i++)
 	{
 		Attr *attr = resolved_attr->tags[i];
 		Expr *expr = expr_new(EXPR_CONST, loc);
@@ -6149,9 +6150,9 @@ static inline void sema_create_const_membersof(Expr *expr, Type *type, AlignSize
 			expr_rewrite_const_untyped_list(expr, NULL);
 			return;
 	}
-	unsigned count = vec_size(members);
+	int count = vec_size(members);
 	Expr **member_exprs = count ? VECNEW(Expr*, count) : NULL;
-	for (unsigned i = 0; i < count; i++)
+	for (int i = 0; i < count; i++)
 	{
 		Decl *decl = members[i];
 		Expr *reflect = expr_new(EXPR_CONST, expr->loc);
@@ -6848,11 +6849,11 @@ bool sema_expr_rewrite_insert_deref(SemaContext *context, Expr *original)
 	return true;
 }
 
-bool sema_check_swizzle_string(SemaContext *context, Expr *expr, const char *kw, unsigned len, unsigned vec_len, bool *is_overlapping_ref, int* index_ref)
+bool sema_check_swizzle_string(SemaContext *context, Expr *expr, const char *kw, int len, int vec_len, bool *is_overlapping_ref, int* index_ref)
 {
 	int index = 0;
 	bool is_overlapping = false;
-	for (unsigned i = 0; i < len; i++)
+	for (int i = 0; i < len; i++)
 	{
 		char val = (char)(swizzle[(int)kw[i]] - 1);
 		if ((val & 0xF) >= vec_len)
@@ -6887,9 +6888,9 @@ bool sema_check_swizzle_string(SemaContext *context, Expr *expr, const char *kw,
 	return true;
 }
 static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, Expr *parent, Type *flat_type,
-                                             const char *kw, unsigned len)
+                                             const char *kw, int len)
 {
-	unsigned vec_len = flat_type->array.len;
+	int vec_len = flat_type->array.len;
 	Type *indexed_type = type_get_indexed_type(parent->type);
 	assert(indexed_type);
 	bool is_ref = expr->access_unresolved_expr.is_ref;
@@ -6940,9 +6941,9 @@ static inline bool sema_analyse_maybe_dead_expr(SemaContext *context, Expr *expr
 	context->active_scope.is_dead = false;
 	return success;
 }
-bool sema_kw_is_swizzle(const char *kw, unsigned len)
+bool sema_kw_is_swizzle(const char *kw, int len)
 {
-	for (unsigned i = 0; i < len; i++)
+	for (int i = 0; i < len; i++)
 	{
 		if (!swizzle[(int)kw[i]]) return false;
 	}
@@ -7160,7 +7161,7 @@ CHECK_DEEPER:
 	}
 	if (type_kind_is_real_vector(flat_kind))
 	{
-		unsigned len = strlen(kw);
+		int len = strlen(kw);
 		if (sema_kw_is_swizzle(kw, len))
 		{
 			return sema_expr_analyse_swizzle(context, expr, current_parent, flat_type, kw, len);
@@ -7370,33 +7371,33 @@ MISSING_REF:
 	return false;
 }
 
-static inline Expr **sema_prepare_splat_insert(Expr **exprs, unsigned added, unsigned insert_point)
+static inline Expr **sema_prepare_splat_insert(Expr **exprs, int added, int insert_point)
 {
 	if (added == 0)
 	{
 		vec_erase_at(exprs, insert_point);
 		return exprs;
 	}
-	unsigned size = vec_size(exprs);
+	int size = vec_size(exprs);
 	ASSERT(size);
-	for (unsigned i = 1; i < added; i++)
+	for (int i = 1; i < added; i++)
 	{
 		vec_add(exprs, NULL);
 	}
 	// Move everything upwards.
-	for (unsigned i = size - 1; i > insert_point; i--)
+	for (int i = size - 1; i > insert_point; i--)
 	{
 		exprs[i + added - 1] = exprs[i];
 	}
 	return exprs;
 }
-static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point)
+static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, int insert_point)
 {
 	Expr **args = context->macro_varargs;
-	unsigned param_count = vec_size(args);
+	int param_count = vec_size(args);
 	Range *range = &expr->vasplat_expr;
 	Expr *start = exprptrzero(range->start);
-	unsigned start_idx = 0;
+	int start_idx = 0;
 	if (start)
 	{
 		if (!sema_analyse_expr_rvalue(context, start)) return NULL;
@@ -7428,7 +7429,7 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 		}
 	}
 	Expr *end = exprptrzero(range->end);
-	unsigned end_idx = param_count;
+	int end_idx = param_count;
 	if (end)
 	{
 		if (!sema_analyse_expr_rvalue(context, end)) return NULL;
@@ -7482,7 +7483,7 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 		}
 	}
 
-	unsigned added = end_idx - start_idx;
+	int added = end_idx - start_idx;
 
 	// Zero splat
 	if (!added)
@@ -7492,7 +7493,7 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 	}
 
 	init_expressions = sema_prepare_splat_insert(init_expressions, added, insert_point);
-	for (unsigned i = start_idx; i < end_idx; i++)
+	for (int i = start_idx; i < end_idx; i++)
 	{
 		init_expressions[insert_point + i - start_idx] = copy_expr_single(args[i]);
 	}
@@ -7503,7 +7504,7 @@ Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs, Decl ***mac
 {
 	if (!context) return exprs;
 	bool in_macro = context->current_macro;
-	unsigned count = vec_size(exprs);
+	int count = vec_size(exprs);
 	bool expand;
 	do
 	{
@@ -7572,7 +7573,7 @@ static inline bool sema_expr_analyse_expr_list(SemaContext *context, Expr *expr)
 {
 	bool success = true;
 	ByteSize last = vec_size(expr->expression_list) - 1;
-	for (unsigned i = 0; i <= last; i++)
+	for (int i = 0; i <= last; i++)
 	{
 		Expr *checked_expr = expr->expression_list[i];
 		if (!sema_analyse_expr_rvalue(context, checked_expr)) return false;
@@ -7857,7 +7858,7 @@ static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
 		if (!decl) return expr_poison(expr);
 
 		ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
-		DEBUG_LOG("Replacing expr (%p) with '%s' (%p) expression resolve: %d", expr, expr_kind_to_string(decl->var.init_expr->expr_kind), decl->var.init_expr, decl->var.init_expr->resolve_status);
+		DEBUG_LOG("Replacing expr (%p) with '%s' (%p) expression resolve: %d", (void*)expr, expr_kind_to_string(decl->var.init_expr->expr_kind), (void*)decl->var.init_expr, decl->var.init_expr->resolve_status);
 		bool is_ref = expr->hash_ident_expr.is_ref;
 		if (decl_is_defaulted_var(decl))
 		{
@@ -8480,7 +8481,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 {
 	Type *right_type = type_no_optional(right->type)->canonical;
 	bool left_is_ptr_vector = left_type->type_kind != TYPE_POINTER;
-	ArraySize vec_len = left_is_ptr_vector ? left_type->array.len : 0;
+	ArrayIndex vec_len = left_is_ptr_vector ? left_type->array.len : 0;
 	// We restore the type to ensure distinct types are tested against each other.
 	left_type = type_no_optional(left->type)->canonical;
 
@@ -8527,7 +8528,7 @@ INLINE bool sema_expr_analyse_ptr_sub(SemaContext *context, Expr *expr, Expr *le
 	}
 
 	// 5. Make sure that the integer does not exceed sz in size.
-	ArraySize max_size = right_is_vector ? type_size(offset_type) : type_size(type_sz);
+	ArrayIndex max_size = right_is_vector ? type_size(offset_type) : type_size(type_sz);
 	if (type_size(right_type) > max_size)
 	{
 		CHECK_ON_DEFINED(failed_ref);
@@ -8988,7 +8989,7 @@ static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Expr *le
 		ASSERT_SPAN(expr, type_kind_is_any_integer(base->type_kind));
 		if (int_ucomp(right->const_expr.ixx, base->builtin.bitsize, BINARYOP_GE))
 		{
-			RETURN_SEMA_ERROR(right, "The shift is not less than the bitsize of %s.", type_quoted_error_string(type_no_optional(left->type)));
+			RETURN_SEMA_ERROR(right, "The shift (%s) is not less than the bitsize of %s.", int_to_str(right->const_expr.ixx, 10, false), type_quoted_error_string(type_no_optional(left->type)));
 		}
 
 		// Make sure that the RHS is positive.
@@ -9373,7 +9374,7 @@ static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr
 	Decl *left_var = left->expr_kind == EXPR_IDENTIFIER ? left->ident_expr : ast_append_generated_local(&current, left);
 	Decl *right_var = right->expr_kind == EXPR_IDENTIFIER ? right->ident_expr : ast_append_generated_local(&current, right);
 	Decl *len_var_left = NULL;
-	ArraySize len = 0;
+	ArrayIndex len = 0;
 	SourceLocId default_loc = expr->loc;
 	if (max->type_kind == TYPE_ARRAY)
 	{
@@ -10097,7 +10098,7 @@ INLINE void sema_expr_inc_dec_const_enum(bool dec, Expr *value)
 {
 	Decl *enum_val = value->const_expr.enum_val;
 	Decl **values = enum_val->type->decl->enums.values;
-	unsigned count = vec_size(values);
+	int count = vec_size(values);
 	for (int i = 0; i < count; i++)
 	{
 		if (values[i] == enum_val)
@@ -10389,7 +10390,7 @@ static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main
 	int precedence_main = BINOP_PREC_REQ[main_op];
 	if (expr_is_ungrouped_binary(left_side))
 	{
-		int left_op = left_side->binary_expr.operator;
+		BinaryOp left_op = left_side->binary_expr.operator;
 		int precedence_left = BINOP_PREC_REQ[left_op];
 		if (precedence_left && (precedence_left == precedence_main))
 		{
@@ -10399,7 +10400,7 @@ static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main
 	}
 	if (expr_is_ungrouped_binary(right_side))
 	{
-		int right_op = right_side->binary_expr.operator;
+		BinaryOp right_op = right_side->binary_expr.operator;
 		int precedence_right = BINOP_PREC_REQ[right_op];
 		if (precedence_right && (precedence_right == precedence_main))
 		{
@@ -10799,7 +10800,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 {
 	const char *string = expr->builtin_expr.ident;
 	BuiltinDefine def = BUILTIN_DEF_NONE;
-	for (unsigned i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
+	for (int i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
 	{
 		if (string == builtin_defines[i])
 		{
@@ -11027,7 +11028,7 @@ static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_in
 		}
 		case TYPE_INFO_VECTOR:
 		{
-			ArraySize size;
+			ArrayIndex size;
 			if (!sema_resolve_array_like_len(context, type_info, &size)) return poisoned_type;
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
@@ -11043,7 +11044,7 @@ static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_in
 		}
 		case TYPE_INFO_ARRAY:
 		{
-			ArraySize size;
+			ArrayIndex size;
 			if (!sema_resolve_array_like_len(context, type_info, &size)) return poisoned_type;
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
@@ -11162,7 +11163,7 @@ static inline Type *sema_evaluate_type_copy(SemaContext *context, TypeInfo *type
 
 INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 {
-	unsigned param_count = vec_size(ct_lambda_params);
+	int param_count = vec_size(ct_lambda_params);
 	if (vec_size(candidate->func_decl.lambda_ct_parameters) != param_count) return false;
 	FOREACH_IDX(i, Decl *, param, candidate->func_decl.lambda_ct_parameters)
 	{
@@ -11199,7 +11200,7 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_type, Decl *original, Decl **ct_lambda_parameters)
 {
 
-	unsigned cached = vec_size(original->func_decl.generated_lambda);
+	int cached = vec_size(original->func_decl.generated_lambda);
 	if (!cached) return NULL;
 	// If it has a function type, then we just use that for comparison.
 	if (func_type)
@@ -11599,9 +11600,9 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 
 	bool success = true;
 	bool failed = false;
-	unsigned list_len = vec_size(list);
+	int list_len = vec_size(list);
 	if (!list_len) RETURN_SEMA_ERROR(expr, "Expected at least one expression to test.");
-	for (unsigned i = 0; i < list_len; i++)
+	for (int i = 0; i < list_len; i++)
 	{
 		Expr *main_expr = list[i];
 		SemaContext *active_context = context;
@@ -12022,7 +12023,7 @@ static inline bool sema_expr_analyse_ct_reflect(SemaContext *context, Expr *expr
 
 static inline BuiltinFunction builtin_by_name(const char *name)
 {
-	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
+	for (int i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{
 		if (builtin_list[i] == name) return (BuiltinFunction)i;
 	}
@@ -12383,7 +12384,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		if (len != to_canonical->array.len)
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
-			RETURN_SEMA_ERROR(expr, "Slice length mismatch, expected %u but got %u.", to_canonical->array.len, len);
+			RETURN_SEMA_ERROR(expr, "Slice length mismatch, expected %d but got %d.", to_canonical->array.len, len);
 		}
 		// Given x[3..7] -> (int[5]*)x[3..7]
 		cast_no_check(expr, type_get_ptr(type_get_array(element, len)), IS_OPTIONAL(expr));
@@ -12985,12 +12986,12 @@ RETRY:
 	return true;
 }
 
-TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref)
+TokenType sema_splitpathref(const char *string, ArrayIndex len, Path **path_ref, const char **ident_ref)
 {
-	ArraySize path_end = 0;
+	ArrayIndex path_end = 0;
 	*path_ref = NULL;
 	*ident_ref = NULL;
-	for (ArraySize i = 0; i < len; i++)
+	for (ArrayIndex i = 0; i < len; i++)
 	{
 		char ch = string[i];
 		if (!char_is_alphanum_(ch))
@@ -13036,7 +13037,7 @@ TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, 
 			break;
 	}
 
-	for (size_t i = start; i < len; i++)
+	for (ArrayIndex i = start; i < len; i++)
 	{
 		char c = string[i];
 		if (!char_is_alphanum_(c)) return TOKEN_INVALID_TOKEN;
@@ -13139,7 +13140,7 @@ bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member, 
 	// Don't check non-consts and non integers.
 	if (!sema_cast_const(right) || !type_is_integer(right->type)) return true;
 
-	unsigned bits = member->var.end_bit - member->var.start_bit + 1;
+	int bits = member->var.end_bit - member->var.start_bit + 1;
 
 	// If we have enough bits to fit, then we're done.
 	if (bits >= type_bit_size(right->type) || int_is_zero(right->const_expr.ixx)) return true;

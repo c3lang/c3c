@@ -104,7 +104,7 @@ const char *kw_wmain;
 const char *kw_FILE_NOT_FOUND;
 const char *kw_IoError;
 
-void symtab_destroy()
+void symtab_destroy(void)
 {
 	free(symtab.bucket);
 }
@@ -374,17 +374,17 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_WIDESTRING_16] = KW_DEF("wstr16");
 	builtin_list[BUILTIN_WIDESTRING_32] = KW_DEF("wstr32");
 
-	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
+	for (int i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{
 		ASSERT(builtin_list[i] && "Missing builtin");
 	}
 
-	for (unsigned i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
+	for (int i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
 	{
 		ASSERT(type_property_list[i] && "Missing type property");
 	}
 
-	for (unsigned i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
+	for (int i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
 	{
 		ASSERT(builtin_defines[i] && "Missing builtin define");
 	}
@@ -460,7 +460,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_WEAKLINK] = KW_DEF("@weaklink");
 	attribute_list[ATTRIBUTE_WINMAIN] = KW_DEF("@winmain");
 
-	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
+	for (int i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{
 		ASSERT(attribute_list[i] && "Missing attributes");
 	}

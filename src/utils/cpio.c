@@ -205,7 +205,7 @@ no_match:
 
 			while (cpio->to_read && (avail = byte_buffer_available(cpio->buffer)) > 0)
 			{
-				const size_t left = MIN(cpio->to_read, BUFSIZ);
+				const size_t left = MIN(cpio->to_read, (size_t)BUFSIZ);
 				const size_t read = byte_buffer_read(&cpio->buffer, tmp, left);
 				if (cpio->out)
 				{

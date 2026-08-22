@@ -648,7 +648,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 				return;
 			case CONST_STRING:
 				putc('\"', c->file);
-				for (unsigned i = 0; i < init->const_expr.bytes.len; i++)
+				for (int i = 0; i < init->const_expr.bytes.len; i++)
 				{
 					char ch = init->const_expr.bytes.ptr[i];
 					if (ch >= ' ' && ch <= 127 && ch != '"')
@@ -687,10 +687,10 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 	PRINTF(" %s;\n", decl_get_extname(decl));
 }
 
-static void header_gen_global_decls(HeaderContext *c, Module **modules, unsigned module_count, bool fn_globals)
+static void header_gen_global_decls(HeaderContext *c, Module **modules, int module_count, bool fn_globals)
 {
 	bool constants_found = false;
-	for (unsigned i = 0; i < module_count; i++)
+	for (int i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
 		// Produce all constants.
@@ -705,7 +705,7 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, unsigned
 	}
 
 	bool globals_found = false;
-	for (unsigned i = 0; i < module_count; i++)
+	for (int i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
 
@@ -721,7 +721,7 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, unsigned
 	}
 
 	bool functions_found = false;
-	for (unsigned i = 0; i < module_count; i++)
+	for (int i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
 
@@ -736,7 +736,7 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, unsigned
 	}
 
 	bool methods_found = false;
-	for (unsigned i = 0; i < module_count; i++)
+	for (int i = 0; i < module_count; i++)
 	{
 		// Ignore stdlib modules
 		Module *module = modules[i];
@@ -756,7 +756,7 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, unsigned
 }
 static void process_queue(HeaderContext *c)
 {
-	for (uint32_t i = 0; i < vec_size(c->type_queue); i++)
+	for (int i = 0; i < vec_size(c->type_queue); i++)
 	{
 		Decl *decl = c->type_queue[i];
 		switch (decl->decl_kind)
@@ -771,7 +771,7 @@ static void process_queue(HeaderContext *c)
 	}
 	vec_resize(c->type_queue, 0);
 }
-void header_gen(Module **modules, unsigned module_count)
+void header_gen(Module **modules, int module_count)
 {
 	HTable table1, table2;
 	htable_init(&table1, 1024);
@@ -806,7 +806,7 @@ void header_gen(Module **modules, unsigned module_count)
 	PRINTF("\n#endif\n\n");
 
 	PRINTF("/* TYPES */\n");
-	for (unsigned i = 0; i < module_count; i++)
+	for (int i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
 		// Produce all constants.
