@@ -55,17 +55,17 @@ void context_change_scope_for_label(SemaContext *context, DeclId label_id, Sourc
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceLocId loc);
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit);
 
-TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref);
+TokenType sema_splitpathref(const char *string, ArrayIndex len, Path **path_ref, const char **ident_ref);
 void sema_print_inline(SemaContext *context, SourceLocId original);
 void sema_error_at(SemaContext *context, SourceLocId loc, const char *message, ...);
 bool sema_warn_at(SemaContext *context, SourceLocId loc, WarningLevel level, const char *message, ...);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
-unsigned sema_context_push_ct_stack(SemaContext *context);
-void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state);
+int sema_context_push_ct_stack(SemaContext *context);
+void sema_context_pop_ct_stack(SemaContext *context, int old_state);
 
-bool sema_analyse_function_body(SemaContext *context, Decl *func, unsigned macro_depth_start);
+bool sema_analyse_function_body(SemaContext *context, Decl *func, int macro_depth_start);
 bool sema_analyse_contracts(SemaContext *context, Decl *contracts, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures, SourceLocId *arg_loc_map);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
@@ -116,9 +116,9 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, SubscriptIndex *range
 Expr *sema_ct_eval_expr(SemaContext *context, CtEvalKind eval_kind, Expr *inner, bool report_missing, bool *was_reflect);
 Expr *sema_resolve_string_ident(SemaContext *context, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
-bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_string, Expr **args, unsigned num_args);
-bool sema_check_swizzle_string(SemaContext *context, Expr *expr, const char *kw, unsigned len, unsigned vec_len, bool *is_overlapping_ref, int *index_ref);
-bool sema_kw_is_swizzle(const char *kw, unsigned len);
+bool sema_expr_analyse_sprintf(SemaContext *context, Expr *expr, Expr *format_string, Expr **args, int num_args);
+bool sema_check_swizzle_string(SemaContext *context, Expr *expr, const char *kw, int len, int vec_len, bool *is_overlapping_ref, int *index_ref);
+bool sema_kw_is_swizzle(const char *kw, int len);
 bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member, bool *failed_ref);
 CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr);
 
@@ -314,7 +314,7 @@ static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *
 
 static inline TypeProperty type_property_by_name(const char *name)
 {
-	for (unsigned i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
+	for (int i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
 	{
 		if (type_property_list[i] == name) return (TypeProperty)i;
 	}

@@ -64,7 +64,7 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 			: expr_const->initializer;
 	Type *type = initializer->type;
 	ASSERT(type_is_any_arraylike(type));
-	ArraySize len = type->array.len;
+	ArrayIndex len = type->array.len;
 	ASSERT(len > 0);
 	char *arr = calloc_arena(len);
 	switch (initializer->kind)
@@ -103,7 +103,7 @@ INLINE bool const_is_bytes(ConstKind kind)
 	return kind == CONST_BYTES || kind == CONST_STRING;
 }
 
-INLINE ConstInitializer *expr_const_array_init_at(ConstInitializer *init, ArraySize index)
+INLINE ConstInitializer *expr_const_array_init_at(ConstInitializer *init, ArrayIndex index)
 {
 	switch (init->kind)
 	{
@@ -151,8 +151,8 @@ static bool expr_const_compare_bitstruct(const ExprConst *left, const ExprConst 
 	ConstInitializer **lhs_inits = lhs->init_struct;
 	ConstInitializer **rhs_inits = rhs->init_struct;
 	Decl **members = lhs->type->decl->strukt.members;
-	unsigned len = vec_size(members);
-	for (unsigned i = 0; i < len; i++)
+	int len = vec_size(members);
+	for (int i = 0; i < len; i++)
 	{
 		ConstInitializer *init_lhs = lhs_inits[i];
 		ConstInitializer *init_rhs = rhs_inits[i];
@@ -277,7 +277,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			{
 				ConstInitializer *lhs = left->initializer;
 				ConstInitializer *rhs = right->initializer;
-				ArraySize len = lhs->type->canonical->array.len;
+				ArrayIndex len = lhs->type->canonical->array.len;
 				bool rhs_is_zero = rhs->kind == CONST_INIT_ZERO;
 				if (lhs->kind == CONST_INIT_ZERO && rhs_is_zero) return op == BINARYOP_EQ;
 				for (ArrayIndex i = 0; i < len; i++)

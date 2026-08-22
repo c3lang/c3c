@@ -174,7 +174,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 
 			c_emit_type_decl(c, prototype->return_result);
 
-			for (size_t i = 0; i < prototype->param_count; i++)
+			for (int i = 0; i < prototype->param_count; i++)
 			{
 				c_emit_type_decl(c, prototype->abi_args[i]->original_type);
 			}
@@ -182,7 +182,7 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			scratch_buffer_clear();
 			const char* typename = c_type_name(c, prototype->return_result);
 			scratch_buffer_printf("%s(*__c3_func_ptr%d)(", typename, id);
-			for (size_t i = 0; i < prototype->param_count; i++)
+			for (int i = 0; i < prototype->param_count; i++)
 			{
 				if (i > 0) scratch_buffer_printf(", ");
 				scratch_buffer_printf("%s", c_type_name(c, prototype->abi_args[i]->original_type));
@@ -423,7 +423,7 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 				PRINT("{ ");
 			}
 			PRINT("\"");
-			for (ArraySize i = 0; i < expr->const_expr.bytes.len; i++)
+			for (ArrayIndex i = 0; i < expr->const_expr.bytes.len; i++)
 			{
 				char b = expr->const_expr.bytes.ptr[i];
 				if (b >= ' ' && b < 127)
@@ -464,10 +464,10 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 static void c_emit_cond_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Expr **list = expr->cond_expr;
-	unsigned size = vec_size(list);
+	int size = vec_size(list);
 	assert(size);
-	unsigned last = size - 1;
-	for (unsigned i = 0; i < last; i++)
+	int last = size - 1;
+	for (int i = 0; i < last; i++)
 	{
 		c_emit_ignored_expr(c, list[i]);
 	}
@@ -476,10 +476,10 @@ static void c_emit_cond_expr(GenContext *c, CValue *value, Expr *expr)
 static void c_emit_expression_list_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	Expr **list = expr->expression_list;
-	unsigned size = vec_size(list);
+	int size = vec_size(list);
 	assert(size);
-	unsigned last = size - 1;
-	for (unsigned i = 0; i < last; i++)
+	int last = size - 1;
+	for (int i = 0; i < last; i++)
 	{
 		c_emit_ignored_expr(c, list[i]);
 		// In the llvm backend, there is a possibility of an early return here
@@ -1300,11 +1300,11 @@ static GenContext *c_gen_module(Module *module, int num)
 	return c;
 }
 
-void **c_gen(Module** modules, unsigned module_count)
+void **c_gen(Module** modules, int module_count)
 {
 	if (!module_count) return NULL;
 	void **gen_contexts = NULL;
-	for (unsigned i = 0; i < module_count; i++)
+	for (int i = 0; i < module_count; i++)
 	{
 		c_gen_module(modules[i], i);
 	}

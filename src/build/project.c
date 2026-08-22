@@ -668,7 +668,7 @@ static JSONObject* resolve_template(BuildTarget *target, const char *template_re
 		const char *manifest_path = NULL;
 		JSONObject *candidate = read_library_manifest_for_path(lib_path, &manifest_path);
 		if (!candidate) continue;
-		BuildParseContext manifest_context = { manifest_path, NULL };
+		BuildParseContext manifest_context = { .file = manifest_path };
 		const char *provides = get_optional_string(manifest_context, candidate, "provides");
 		if (provides && str_eq(provides, lib_name))
 		{
@@ -723,7 +723,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->linker_libs);
 	duplicate_prop(&target->link_args);
 
-	BuildParseContext target_context = { context.file, str_printf("%s %s", type, context.target) };
+	BuildParseContext target_context = { context.file, str_printf("%s %s", type, context.target), false };
 	const char *template_ref = get_optional_string(target_context, json, "template");
 	if (template_ref)
 	{
@@ -760,7 +760,7 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 	ASSERT(project_data->type == J_OBJECT);
 
 	BuildTarget default_target = default_build_target;
-	load_into_build_target((BuildParseContext) { filename, NULL }, project_data, &default_target);
+	load_into_build_target((BuildParseContext) { .file = filename }, project_data, &default_target);
 	JSONObject *targets_json = json_map_get(project_data, "targets");
 	if (!targets_json)
 	{
@@ -777,7 +777,7 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		BuildParseContext context = { filename, key };
+		BuildParseContext context = { filename, key, false };
 		int type = get_valid_string_setting(context, object, "type", targets, 0, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
 		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
 		project_add_target(context, project, &default_target, object, target_desc[type], type);

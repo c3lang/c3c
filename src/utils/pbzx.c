@@ -43,7 +43,7 @@ bool pbzx_extract(const XarFile *file, Cpio *cpio)
 		flg = read_be_uint64(file->file);
 		len = read_be_uint64(file->file);
 		bool plain = len == 0x1000000;
-		uint64_t min = MIN(IN_SIZE, len);
+		uint64_t min = MIN((uint64_t)IN_SIZE, len);
 		fread(in_buf, sizeof(uint8_t), min, file->file);
 
 		if (!plain && strncmp((char *) in_buf, "\xfd""7zXZ\0", 6) != 0)
@@ -77,7 +77,7 @@ bool pbzx_extract(const XarFile *file, Cpio *cpio)
 
 			last = min;
 			len -= min;
-			min = MIN(IN_SIZE, len);
+			min = MIN((uint64_t)IN_SIZE, len);
 			if (min == 0) break;
 			fread(in_buf, sizeof(uint8_t), min, file->file);
 		}

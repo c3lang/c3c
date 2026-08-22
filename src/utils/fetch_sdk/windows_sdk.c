@@ -603,7 +603,7 @@ void fetch_winsdk(BuildOptions *options)
 	{
 		const char *arch = archs[i];
 		const char *arch_suffixes[] = {"crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base"};
-		for (int j = 0; j < ELEMENTLEN(arch_suffixes); j++)
+		for (int j = 0; j < (int)ELEMENTLEN(arch_suffixes); j++)
 		{
 			char *suffix = str_printf(arch_suffixes[j], arch);
 			char *pid_part = str_printf("microsoft.vc.%s.%s", full_msvc_v, suffix);

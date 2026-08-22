@@ -18,9 +18,9 @@ extern const char *llvm_version;
 extern const char *llvm_target;
 
 static const char *unchecked_dir(BuildOptions *options, const char *path);
-static inline bool at_end();
-static inline const char *next_arg();
-static inline bool next_is_opt();
+static inline bool at_end(void);
+static inline const char *next_arg(void);
+static inline bool next_is_opt(void);
 INLINE bool match_longopt(const char *name);
 static inline const char *match_argopt(const char *name);
 static inline bool match_shortopt(const char *name);
@@ -32,7 +32,7 @@ static void parse_optional_target(BuildOptions *options);
 static void add_linker_arg(BuildOptions *options, const char *arg);
 static void update_feature_flags(const char ***flags, const char ***removed_flags, const char *arg, bool add);
 static void print_all_targets(void);
-static int parse_option_select(const char *start, unsigned count, const char **elements);
+static int parse_option_select(const char *start, int count, const char **elements);
 static void print_cmd(const char *command, const char *desc);
 static void print_opt(const char *option, const char *desc);
 
@@ -247,7 +247,7 @@ static void usage(bool full)
 	}
 }
 
-static void fetch_windows_usage()
+static void fetch_windows_usage(void)
 {
 	PRINTF("Usage: %s fetch-sdk windows [<options>]", args[0]);
 	PRINTF("");
@@ -262,7 +262,7 @@ static void fetch_windows_usage()
 	PRINTF("");
 }
 
-static void fetch_android_usage()
+static void fetch_android_usage(void)
 {
 	PRINTF("Usage: %s fetch-sdk android [<options>]", args[0]);
 	PRINTF("");
@@ -273,7 +273,7 @@ static void fetch_android_usage()
 	PRINTF("");
 }
 
-static void fetch_macos_usage()
+static void fetch_macos_usage(void)
 {
 	PRINTF("Usage: %s fetch-sdk macos [<options>]", args[0]);
 	PRINTF("");
@@ -287,7 +287,7 @@ static void fetch_macos_usage()
 	PRINTF("");
 }
 
-static void fetch_sdk_usage()
+static void fetch_sdk_usage(void)
 {
 	PRINTF("Usage: %s fetch-sdk <windows|macos|android> [<options>]", args[0]);
 	PRINTF("");
@@ -322,7 +322,7 @@ static void fetch_sdk_usage_dispatch(const char *target)
 	}
 }
 
-static void docgen_usage()
+static void docgen_usage(void)
 {
 	PRINTF("Usage: %s docgen [<options>] [<path1> <path2> ...]", args[0]);
 	PRINTF("");
@@ -338,7 +338,7 @@ static void docgen_usage()
 	PRINTF("");
 }
 
-static void project_usage()
+static void project_usage(void)
 {
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
 	PRINTF("");
@@ -348,7 +348,7 @@ static void project_usage()
 	print_cmd("fetch", "fetch missing project libraries.");
 }
 
-static void project_view_usage()
+static void project_view_usage(void)
 {
 	PRINTF("Usage: %s [<options>] project view [<options>]", args[0]);
 	PRINTF("");
@@ -1338,7 +1338,7 @@ static void parse_option(BuildOptions *options)
 			{
 				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
 				if (size < 1) error_exit("Expected a valid positive integer >= 1 for --max-stack-object-size.");
-				if (size > MAX_STACK_OBJECT_SIZE) error_exit("Expected a valid positive integer <= %u for --max-stack-object-size.", (unsigned)MAX_STACK_OBJECT_SIZE);
+				if (size > MAX_STACK_OBJECT_SIZE) error_exit("Expected a valid positive integer <= %d for --max-stack-object-size.", (int)MAX_STACK_OBJECT_SIZE);
 				options->max_stack_object_size = size;
 				return;
 			}
@@ -1355,7 +1355,7 @@ static void parse_option(BuildOptions *options)
 				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
 				if (size < 128) error_exit("Expected a valid positive integer >= 128 for --max-vector-size.");
 				if (size > MAX_VECTOR_WIDTH) error_exit("Expected a valid positive integer <= %u for --max-vector-size.", (unsigned)MAX_VECTOR_WIDTH);
-				if (size != next_highest_power_of_2(size))
+				if ((uint32_t)size != next_highest_power_of_2(size))
 				{
 					error_exit("The --max-vector-size value must be a power of 2, try using %u instead.", next_highest_power_of_2(size));
 				}
@@ -1481,7 +1481,7 @@ static void parse_option(BuildOptions *options)
 				PRINTF("Available targets:");
 				EOUTPUT("Invalid target %s.", target);
 				EOUTPUT("These targets are supported:");
-				for (unsigned i = 0; i <= ARCH_OS_TARGET_LAST; i++)
+				for (int i = 0; i <= ARCH_OS_TARGET_LAST; i++)
 				{
 					EOUTPUT("   %s", arch_os_target[i]);
 				}
@@ -1967,7 +1967,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 
 ArchOsTarget arch_os_target_from_string(const char *target)
 {
-	for (unsigned i = 0; i <= ARCH_OS_TARGET_LAST; i++)
+	for (int i = 0; i <= ARCH_OS_TARGET_LAST; i++)
 	{
 		if (strcmp(arch_os_target[i], target) == 0)
 		{
@@ -1994,19 +1994,19 @@ const char *check_dir(const char *path)
 	return path;
 }
 
-static inline bool at_end()
+static inline bool at_end(void)
 {
 	return arg_index == arg_count - 1;
 }
 
-static inline const char *next_arg()
+static inline const char *next_arg(void)
 {
 	ASSERT(!at_end());
 	current_arg = args[++arg_index];
 	return current_arg;
 }
 
-static inline bool next_is_opt()
+static inline bool next_is_opt(void)
 {
 	return args[arg_index + 1][0] == '-';
 }
@@ -2114,13 +2114,13 @@ static void update_feature_flags(const char ***flags, const char ***removed_flag
 static void print_all_targets(void)
 {
 	PRINTF("Available targets:");
-	for (unsigned i = 0; i <= ARCH_OS_TARGET_LAST; i++)
+	for (int i = 0; i <= ARCH_OS_TARGET_LAST; i++)
 	{
 		PRINTF("   %s", arch_os_target[i]);
 	}
 }
 
-static int parse_option_select(const char *start, unsigned count, const char **elements)
+static int parse_option_select(const char *start, int count, const char **elements)
 {
 	assert(count >= 2);
 	const char *arg = current_arg;

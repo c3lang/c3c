@@ -46,4 +46,6 @@ void win_symlink(char *target, char *linkpath)
 	}
 }
 
+#else
+typedef int dummy_decl;
 #endif

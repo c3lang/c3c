@@ -52,18 +52,18 @@ static ABIArgInfo *wasm_classify_return(ParamInfo param)
 	return c_abi_classify_return_type_default(param);
 }
 
-ABIArgInfo **wasm_create_params(ParamInfo *params, unsigned param_count)
+ABIArgInfo **wasm_create_params(ParamInfo *params, int param_count)
 {
 	if (!param_count) return NULL;
 	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-	for (unsigned i = 0; i < param_count; i++)
+	for (int i = 0; i < param_count; i++)
 	{
 		args[i] = wasm_classify_argument_type(params[i]);
 	}
 	return args;
 }
 
-void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count)
 {
 	prototype->ret_abi_info = wasm_classify_return(prototype->return_info);
 	prototype->abi_args = wasm_create_params(params, param_count);

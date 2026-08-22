@@ -19,7 +19,7 @@ ABIArgInfo *win64_classify(Regs *regs, ParamInfo param, bool is_return, bool is_
 	}
 
 	Type *base = NULL;
-	unsigned elements = 0;
+	int elements = 0;
 	if (is_vector_call && type_is_homogeneous_aggregate(type, &base, &elements))
 	{
 		// Enough registers AND return / builtin / vector
@@ -75,7 +75,7 @@ ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, ParamInfo param, ABIArgInfo *in
 {
 	// Assumes vectorCall calling convention.
 	Type *base = NULL;
-	unsigned elements = 0;
+	int elements = 0;
 	Type *type = type_lowering(param.type);
 	if (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_SIMD_VECTOR && type_is_homogeneous_aggregate(type, &base, &elements))
 	{
@@ -89,14 +89,14 @@ ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, ParamInfo param, ABIArgInfo *in
 	return info;
 }
 
-static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, bool is_vector)
+static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, ParamInfo *params, int param_count, bool is_vector)
 {
-	static const unsigned max_param_vector_calls_as_reg = 6;
-	unsigned count = 0;
+	static const int max_param_vector_calls_as_reg = 6;
+	int count = 0;
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-		for (unsigned i = 0; i < param_count; i++)
+		for (int i = 0; i < param_count; i++)
 		{
 			if (count < max_param_vector_calls_as_reg)
 			{
@@ -105,14 +105,14 @@ static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, Par
 			else
 			{
 				// Cannot be passed in registers pretend no registers.
-				unsigned float_regs = regs->float_regs;
+				int float_regs = regs->float_regs;
 				regs->float_regs = 0;
 				args[i] = win64_classify(regs, params[i], false, is_vector);
 				regs->float_regs = float_regs;
 			}
 			count++;
 		}
-		for (unsigned i = 0; i < param_count; i++)
+		for (int i = 0; i < param_count; i++)
 		{
 			args[i] = win64_reclassify_hva_arg(regs, params[i], args[i]);
 		}
@@ -120,18 +120,18 @@ static void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, Par
 	}
 }
 
-ABIArgInfo **win64_create_params(ParamInfo *params, unsigned param_count, Regs *regs,bool is_vector_call)
+ABIArgInfo **win64_create_params(ParamInfo *params, int param_count, Regs *regs,bool is_vector_call)
 {
 	if (!param_count) return NULL;
 	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-	for (unsigned i = 0; i < param_count; i++)
+	for (int i = 0; i < param_count; i++)
 	{
 		args[i] = win64_classify(regs, params[i], false, is_vector_call);
 	}
 	return args;
 }
 
-void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count)
 {
 	// allow calling sysv?
 

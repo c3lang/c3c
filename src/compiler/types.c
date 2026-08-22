@@ -55,7 +55,7 @@ Type *type_string = &t.string;
 Type *type_cint;
 Type *type_cuint;
 
-static unsigned size_slice;
+static int size_slice;
 static AlignSize alignment_slice;
 static AlignSize max_alignment_vector;
 
@@ -207,8 +207,8 @@ static void type_append_func_to_scratch(Signature *signature)
 {
 	type_append_name_to_scratch(typeget(signature->rtype));
 	scratch_buffer_append_char('(');
-	unsigned elements = vec_size(signature->params);
-	for (unsigned i = 0; i < elements; i++)
+	int elements = vec_size(signature->params);
+	for (int i = 0; i < elements; i++)
 	{
 		if (i > 0)
 		{
@@ -460,7 +460,7 @@ TypeSize type_size(Type *type)
 			return type->size = t.uptr.canonical->builtin.bytesize;
 		case VECTORS:
 		case TYPE_ARRAY:
-			if (type_size(type->array.base) > (ArraySize)MAX_ARRAY_SIZE / type->array.len) return type->size = MAX_ARRAY_SIZE + 1;
+			if (type_size(type->array.base) > (ArrayIndex)MAX_ARRAY_SIZE / type->array.len) return type->size = MAX_ARRAY_SIZE + 1;
 			return type->size = type_size(type->array.base) * type->array.len;
 		case TYPE_SLICE:
 			return type->size = size_slice;
@@ -796,7 +796,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 	UNREACHABLE_VOID
 }
 
-bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...)
+bool type_func_match(Type *fn_type, Type *rtype, int arg_count, ...)
 {
 	ASSERT(type_is_func_ptr(fn_type));
 	Signature *sig = fn_type->pointer->function.signature;
@@ -842,7 +842,7 @@ INLINE AlignSize type_alignment_(Type *type, bool alloca)
 			FALLTHROUGH;
 		case TYPE_SIMD_VECTOR:
 		{
-			ArraySize len = type->array.len;
+			ArrayIndex len = type->array.len;
 			if (!len) len = 1;
 			ByteSize width = type_size(type->array.base) * len;
 			AlignSize alignment = (AlignSize)(int32_t)width;
@@ -1266,7 +1266,7 @@ Type *type_get_indexed_type(Type *type)
 	}
 }
 
-static Type *type_create_array(Type *element_type, ArraySize len, TypeKind kind, bool canonical)
+static Type *type_create_array(Type *element_type, ArrayIndex len, TypeKind kind, bool canonical)
 {
 	if (canonical) element_type = element_type->canonical;
 	if (!element_type->type_cache)
@@ -1325,7 +1325,7 @@ Type *type_vector_from_array(Type *vec_type)
 	return type_get_vector(vec_type->array.base, TYPE_VECTOR, vec_type->array.len);
 }
 
-Type *type_get_array(Type *arr_type, ArraySize len)
+Type *type_get_array(Type *arr_type, ArrayIndex len)
 {
 	ASSERT(len > 0 && "Created a zero length array");
 	ASSERT(type_is_valid_for_array(arr_type));
@@ -1409,7 +1409,7 @@ Type *type_get_vector_bool(Type *original_type, TypeKind kind)
 {
 	Type *type = type_flatten(original_type);
 	ByteSize size = type_size(type->array.base);
-	return type_get_vector(type_int_signed_by_bitsize((unsigned)size * 8), kind, (unsigned)original_type->array.len);
+	return type_get_vector(type_int_signed_by_bitsize((int)size * 8), kind, original_type->array.len);
 }
 
 Type *type_get_vector_from_vector(Type *base_type, Type *orginal_vector)
@@ -1428,17 +1428,17 @@ Type *type_get_simd_from_vector(Type *orginal_vector)
 	return type_get_vector(orginal_vector->array.base, TYPE_SIMD_VECTOR, orginal_vector->array.len);
 }
 
-Type *type_get_vector(Type *vector_type, TypeKind kind, unsigned len)
+Type *type_get_vector(Type *vector_type, TypeKind kind, int len)
 {
 	ASSERT(type_kind_is_real_vector(kind) && type_is_valid_for_vector(vector_type));
 	return type_create_array(vector_type, len, kind, false);
 }
 
-static void type_create(const char *name, Type *location, TypeKind kind, unsigned bitsize,
-						unsigned align, unsigned pref_align)
+static void type_create(const char *name, Type *location, TypeKind kind, int bitsize,
+						int align, int pref_align)
 {
 	ASSERT(align);
-	unsigned byte_size = (bitsize + 7) / 8;
+	int byte_size = (bitsize + 7) / 8;
 	*location = (Type) {
 		.type_kind = kind,
 		.size = byte_size,
@@ -1454,10 +1454,10 @@ static void type_create(const char *name, Type *location, TypeKind kind, unsigne
 	global_context_add_type(location);
 }
 
-static void type_init(const char *name, Type *location, TypeKind kind, unsigned bitsize, AlignData align)
+static void type_init(const char *name, Type *location, TypeKind kind, int bitsize, AlignData align)
 {
 	ASSERT(align.align);
-	unsigned byte_size = (bitsize + 7) / 8;
+	int byte_size = (bitsize + 7) / 8;
 	*location = (Type) {
 		.type_kind = kind,
 		.size = byte_size,
@@ -1503,13 +1503,13 @@ Type *type_new_func(Decl *decl, Signature *sig)
 
 static inline void type_init_int(const char *name, Type *type, TypeKind kind, BitSizes bits)
 {
-	unsigned actual_bits = bits ? (unsigned int)(8 << (bits - 1)) : 1;
+	int actual_bits = bits ? (int)(8 << (bits - 1)) : 1;
 	type_init(name, type, kind, actual_bits, compiler.platform.integers[bits]);
 }
 
 static inline void type_create_float(const char *name, Type *type, TypeKind kind, BitSizes bits)
 {
-	unsigned actual_bits = bits ? (unsigned int)(8 << (bits - 1)) : 1;
+	int actual_bits = bits ? (int)(8 << (bits - 1)) : 1;
 	type_init(name, type, kind, actual_bits, compiler.platform.floats[bits]);
 }
 
@@ -1588,7 +1588,7 @@ void type_setup(PlatformTarget *target)
 	type_create_alias("iptr", &t.iptr, type_int_signed_by_bitsize(target->width_pointer));
 
 	alignment_slice = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
-	size_slice = (unsigned)(alignment_slice * 2);
+	size_slice = (int)(alignment_slice * 2);
 	type_init("fault", &t.fault, TYPE_ANYFAULT, target->width_pointer, target->align_pointer);
 	type_chars = type_get_slice(type_char);
 	type_wildcard_optional = type_get_optional(type_wildcard);
@@ -2009,8 +2009,8 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 	ASSERT(type_kind_is_any_integer(other_kind) && type_is_integer(num_type));
 
 	// 4. Check the bit sizes.
-	unsigned other_bit_size = other_num->builtin.bitsize;
-	unsigned bit_size = num_type->builtin.bitsize;
+	int other_bit_size = other_num->builtin.bitsize;
+	int bit_size = num_type->builtin.bitsize;
 
 	// 5. The other type is unsigned
 	if (type_kind_is_unsigned(other_kind))
@@ -2349,7 +2349,7 @@ RETRY_DISTINCT:
 }
 
 
-unsigned type_get_introspection_kind(TypeKind kind)
+int type_get_introspection_kind(TypeKind kind)
 {
 	switch (kind)
 	{

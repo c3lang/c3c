@@ -94,7 +94,7 @@ size_t file_clean_buffer(char *buffer, const char *path, size_t file_size);
 char *file_get_dir(const char *full_path);
 void file_create_folders(const char *name);
 void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
-void file_find_top_dir();
+void file_find_top_dir(void);
 bool file_has_suffix_in_list(const char *file_name, int name_len, const char **suffix_list, int suffix_count);
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count);
 char *file_append_path(const char *path, const char *name);
@@ -108,7 +108,7 @@ bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_stri
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(size_t max_mem);
-void memory_release();
+void memory_release(void);
 
 #define ptrid(ptr_) ((((uintptr_t)(ptr_)) - arena_zero) / 16)
 #define idptr(id_) ((void*)(((uintptr_t)id_) * 16 + arena_zero))
@@ -148,7 +148,7 @@ void str_trim_end(char *str);
 char *str_cat(const char *a, const char *b);
 char *str_cat_len(const char *a, size_t a_len, const char *b, size_t b_len);
 // Search a list of strings and return the matching element or -1 if none found.
-int str_findlist(const char *value, unsigned count, const char** elements);
+int str_findlist(const char *value, int count, const char** elements);
 // Sprintf style, saved to an arena allocated string
 char *str_printf(const char *var, ...) __printflike(1, 2);
 char *str_vprintf(const char *var, va_list list);
@@ -218,10 +218,10 @@ INLINE char char_nibble_to_hex(int c);
 static inline uint32_t fnv1a(const char *key, uint32_t len);
 static inline uint64_t a5hash(const char *key, uint32_t len, uint64_t seed);
 
-INLINE uint32_t vec_size(const void *vec);
+INLINE int32_t vec_size(const void *vec);
 static inline void vec_resize(void *vec, uint32_t new_size);
 static inline void vec_pop(void *vec);
-static inline void vec_erase_at(void *vec, unsigned i);
+static inline void vec_erase_at(void *vec, int i);
 
 #define NUMBER_CHAR_CASE '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
 #define UPPER_CHAR_CASE 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I': case 'J': \
@@ -344,17 +344,17 @@ static inline uint64_t a5hash(const char *key, uint32_t len, uint64_t seed)
 
 typedef struct
 {
-	uint32_t size;
-	uint32_t capacity;
+	int size;
+	int capacity;
 	char data[];
 } VHeader_;
 
 static inline VHeader_* vec_new_(size_t element_size, size_t capacity)
 {
-	ASSERT(capacity < UINT32_MAX);
-	ASSERT(element_size < UINT32_MAX / 100);
+	ASSERT(capacity < INT_MAX);
+	ASSERT(element_size < INT_MAX / 100);
 	VHeader_ *header = CALLOC(element_size * capacity + sizeof(VHeader_));
-	header->capacity = (uint32_t)capacity;
+	header->capacity = (int)capacity;
 	return header;
 }
 
@@ -375,14 +375,14 @@ static inline void vec_pop(void *vec)
 	header[-1].size--;
 }
 
-static inline void vec_erase_front(void  *vec, unsigned to_erase)
+static inline void vec_erase_front(void  *vec, int to_erase)
 {
 	if (!to_erase) return;
 	ASSERT(vec);
-	unsigned size = vec_size(vec);
+	int size = vec_size(vec);
 	ASSERT(size >= to_erase);
 	void **vecptr = (void**)vec;
-	for (int i = to_erase; i < size; i++)
+	for (int i = (int)to_erase; i < (int)size; i++)
 	{
 		vecptr[i - to_erase] = vecptr[i];
 	}
@@ -390,13 +390,13 @@ static inline void vec_erase_front(void  *vec, unsigned to_erase)
 	header[-1].size -= to_erase;
 }
 
-static inline void vec_erase_at(void *vec, unsigned i)
+static inline void vec_erase_at(void *vec, int i)
 {
 	ASSERT(vec);
-	unsigned size = vec_size(vec);
+	int size = vec_size(vec);
 	ASSERT(size > i);
 	void **vecptr = (void**)vec;
-	for (int j = i + 1; j < size; j++)
+	for (int j = (int)i + 1; j < (int)size; j++)
 	{
 		vecptr[j - 1] = vecptr[j];
 	}
@@ -417,7 +417,7 @@ static inline void* expand_(void *vec, size_t element_size)
 	}
 	if (header->size == header->capacity)
 	{
-		VHeader_ *new_array = vec_new_(element_size, header->capacity << 1U);
+		VHeader_ *new_array = vec_new_(element_size, header->capacity << 1);
 #if IS_GCC
 		// I've yet to figure out why GCC insists that this is trying to copy
 		// 8 bytes over a size zero array.
@@ -449,8 +449,8 @@ type__* CONCAT(foreach_it_, __LINE__) = CONCAT(foreach_vec_, __LINE__); \
 for (type__* name__ ; CONCAT(foreach_it_, __LINE__) < CONCAT(foreach_vecend_, __LINE__) ? (name__ = CONCAT(foreach_it_, __LINE__), true) : false; CONCAT(foreach_it_, __LINE__)++)
 
 #define FOREACH_IDX(idx__, type__, name__, vec__) \
-type__* CONCAT(foreach_vec_, __LINE__) = (vec__); uint32_t CONCAT(foreach_vecsize_, __LINE__) = vec_size(CONCAT(foreach_vec_, __LINE__)); \
-uint32_t idx__ = 0; \
+type__* CONCAT(foreach_vec_, __LINE__) = (vec__); int CONCAT(foreach_vecsize_, __LINE__) = vec_size(CONCAT(foreach_vec_, __LINE__)); \
+int idx__ = 0; \
 for (type__ name__ ; idx__ < CONCAT(foreach_vecsize_, __LINE__) ? (name__ = CONCAT(foreach_vec_, __LINE__)[idx__], true) : false; idx__++)
 
 #define VECNEW(_type, _capacity) ((_type *)(vec_new_(sizeof(_type), _capacity) + 1))
@@ -463,21 +463,21 @@ for (type__ name__ ; idx__ < CONCAT(foreach_vecsize_, __LINE__) ? (name__ = CONC
 #define vec_insert_first(vec_, value_) do { \
  void *__temp = expand_((vec_), sizeof(*(vec_))); \
  (vec_) = __temp;                           \
- unsigned __xsize = vec_size(vec_); \
- for (unsigned __x = __xsize - 1; __x > 0; __x--) (vec_)[__x] = (vec_)[__x - 1]; \
+ int __xsize = vec_size(vec_); \
+ for (int __x = __xsize - 1; __x > 0; __x--) (vec_)[__x] = (vec_)[__x - 1]; \
  (vec_)[0] = value_;       \
  } while (0)
 
 #define vec_insert_at(vec_, _at, value_) do { \
  void *__temp = expand_((vec_), sizeof(*(vec_))); \
  (vec_) = __temp;                           \
- unsigned __xsize = vec_size(vec_); \
- for (unsigned __x = __xsize - 1; __x > _at; __x--) (vec_)[__x] = (vec_)[__x - 1]; \
+ int __xsize = vec_size(vec_); \
+ for (int __x = __xsize - 1; __x > _at; __x--) (vec_)[__x] = (vec_)[__x - 1]; \
  (vec_)[_at] = value_;       \
  } while (0)
 
 #if IS_GCC || IS_CLANG
-#define VECLAST(_vec) ({ unsigned _size = vec_size(_vec); _size ? (_vec)[_size - 1] : NULL; })
+#define VECLAST(_vec) ({ int _size = vec_size(_vec); _size ? (_vec)[_size - 1] : NULL; })
 #else
 #define VECLAST(_vec) (vec_size(_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
 #endif
@@ -522,7 +522,7 @@ static inline StringSlice slice_from_string(const char *data)
 	return (StringSlice) { data, strlen(data) };
 }
 
-INLINE uint32_t vec_size(const void *vec)
+INLINE int vec_size(const void *vec)
 {
 	if (!vec) return 0;
 	const VHeader_ *header = vec;
