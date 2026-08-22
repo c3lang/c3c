@@ -13,6 +13,7 @@
 - Allow parameters to have `@tag` #3084
 - `FooFn::params` no longer returns `ReflectedParam` but a reflected reference. This allows get_tag/tags/has_tag.
 - Allow parameters to be queried for the default value using `.default_value`.
+- Allow ternary in alias definitions, e.g. `alias foo = $feat(ABC) ? foo_1 : foo_2`. #3464
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.

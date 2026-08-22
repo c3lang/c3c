@@ -5439,15 +5439,8 @@ static inline bool char_first_is_upper(const char *c)
 	return char_is_upper(*c);
 }
 
-static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl)
+static bool check_valid_symbol_match(SemaContext *context, bool was_constant, Expr *expr, Decl *decl)
 {
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ALIAS, erase_decl)) return decl_poison(decl);
-	if (decl_is_deprecated(decl)) context->call_env.ignore_deprecation = true;
-
-	if (*erase_decl) return true;
-
-	Expr *expr = decl->define_decl.alias_expr;
-	if (!sema_analyse_expr(context, expr)) return false;
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
 		RETURN_SEMA_ERROR(decl, "To alias a type, the alias name must start with uppercase and contain at least one lowercase letter.");
@@ -5456,31 +5449,73 @@ static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *er
 	{
 		RETURN_SEMA_ERROR(expr, "A global variable or function name was expected here.");
 	}
+	if (char_first_is_upper(expr->ident_expr->name))
+	{
+		if (!was_constant)
+		{
+			RETURN_SEMA_ERROR(expr, "An alias starting with a lowercase letter is expected to alias a non-constant. "
+						"If you want to alias a constant, make sure the "
+						"alias name is all uppercase letters.", decl->name);
+
+		}
+	}
+	else if (was_constant)
+	{
+		RETURN_SEMA_ERROR(decl, "An uppercase alias is expected to alias a constant. "
+						"If you want to alias a non-constant, make sure the alias name "
+						"starts with a lower case letter.");
+	}
+	return true;
+}
+
+static inline bool sema_analyse_alias(SemaContext *context, Decl *decl, bool *erase_decl)
+{
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ALIAS, erase_decl)) return decl_poison(decl);
+	if (decl_is_deprecated(decl)) context->call_env.ignore_deprecation = true;
+
+	if (*erase_decl) return true;
+	bool was_constant = char_first_is_upper(decl->name);
+	Expr *expr = decl->define_decl.alias_expr;
+	while (expr->expr_kind == EXPR_TERNARY && expr->ternary_expr.then_expr)
+	{
+		Expr *cond = exprptr(expr->ternary_expr.cond);
+		CondResult res = COND_FALSE;
+		Expr *then = exprptr(expr->ternary_expr.then_expr);
+		Expr *els = exprptr(expr->ternary_expr.else_expr);
+		if (!sema_analyse_cond_expr(context, cond, &res)) return false;
+		bool is_const = expr->ternary_expr.is_const;
+		switch (res)
+		{
+			case COND_MISSING:
+				if (is_const)
+				{
+					RETURN_SEMA_ERROR(cond, "When using '\?\?\?' the cond expression must evaluate to a constant.");
+				}
+				RETURN_SEMA_ERROR(expr, "This is not a compile time constant");
+			case COND_FALSE:
+				if (!is_const)
+				{
+					if (!sema_analyse_expr(context, then) || !check_valid_symbol_match(context, was_constant, then, decl)) return false;
+				}
+				expr = els;
+				break;
+			case COND_TRUE:
+				if (!is_const)
+				{
+					if (!sema_analyse_expr(context, els) || !check_valid_symbol_match(context, was_constant, els, decl)) return false;
+				}
+				expr = then;
+				break;
+		}
+	}
+	if (!sema_analyse_expr(context, expr)) return false;
+	if (!check_valid_symbol_match(context, was_constant, expr, decl)) return false;
 	Decl *symbol = expr->ident_expr;
 	while (true)
 	{
 		if (!sema_analyse_decl(context, symbol)) return false;
 		if (symbol->decl_kind != DECL_ALIAS) break;
 		symbol = symbol->define_decl.alias;
-	}
-	bool should_be_const = char_first_is_upper(decl->name);
-	if (should_be_const)
-	{
-		if (!char_first_is_upper(symbol->name))
-		{
-			RETURN_SEMA_ERROR(decl, "An uppercase alias is expected to alias a constant. "
-									"If you want to alias a non-constant, make sure the alias name "
-									"starts with a lower case letter.");
-		}
-	}
-	else
-	{
-		if (char_first_is_upper(symbol->name))
-		{
-			RETURN_SEMA_ERROR(expr, "An alias starting with a lowercase letter is expected to alias a non-constant. "
-			                        "If you want to alias a constant, make sure the "
-									"alias name is all uppercase letters.", decl->name);
-		}
 	}
 	if (symbol->name[0] == '@' && decl->name[0] != '@')
 	{

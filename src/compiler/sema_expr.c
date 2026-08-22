@@ -1141,7 +1141,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 	{
 		SCOPE_START(right->loc);
 		{
-		success = sema_analyse_maybe_dead_expr(context, right, !is_right, infer_type);
+			success = sema_analyse_maybe_dead_expr(context, right, !is_right, infer_type);
 		}
 		SCOPE_END;
 		if (!success) return expr_poison(expr);

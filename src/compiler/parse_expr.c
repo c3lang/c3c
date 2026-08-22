@@ -1155,12 +1155,12 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 /**
  * subscript ::= '[' range_expr ']'
  */
-static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
+static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceLoc *lhs_span)
 {
 	ASSERT(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_LBRACKET);
 
-	Expr *subs_expr = expr_new_loc(EXPR_SUBSCRIPT, lhs_start);
+	Expr *subs_expr = expr_new_loc(EXPR_SUBSCRIPT, lhs_span);
 	subs_expr->subscript_expr.expr = exprid(left);
 
 	Range range = { .range_type = RANGE_DYNAMIC };
