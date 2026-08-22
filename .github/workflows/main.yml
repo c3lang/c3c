@@ -978,7 +978,6 @@ jobs:
           - { arch: aarch64, simulator: false, os: macos-latest }
           - { arch: aarch64, simulator: true, os: macos-latest }
           - { arch: x64, simulator: true, os: macos-26-intel }
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       
@@ -997,10 +996,11 @@ jobs:
           xcrun simctl erase all
           xcrun simctl delete unavailable
           RUNTIME_JSON=$(xcrun simctl list devices available -j)
-          echo ">>> Initializing iOS Simulator setup..."
+          echo ">>> Initializing iOS simulator setup..."
           
           # Find latest iOS runtime key dynamically and pick first iPhone,
-          # else fallback to first available iPhone from any runtime
+          # otherwise fallback to first available iPhone from any runtime
+          echo ">>> Selecting a simulator from list of simulators..."
           RUNTIME_ID=$(echo "$RUNTIME_JSON" | jq -r '
               first(
                   (.devices[
@@ -1028,7 +1028,7 @@ jobs:
               | .name
           ')
           
-          echo ">>> Selected Simulator Details:"
+          echo ">>> Selected simulator details:"
           echo "Device Name: $DEVICE_NAME"
           echo "UDID: $RUNTIME_ID"
 
@@ -1036,7 +1036,7 @@ jobs:
           xcrun simctl boot "$RUNTIME_ID" || true
           xcrun simctl bootstatus "$RUNTIME_ID" >/dev/null 2>&1 || sleep 5
           
-          echo ">>> iOS Simulator is booted and ready."
+          echo ">>> iOS simulator is booted and ready."
           echo "DEVICE_ID=$RUNTIME_ID" >> "$GITHUB_ENV"
           
       - name: Run Unified Tests (iOS)
@@ -1062,8 +1062,10 @@ jobs:
           
           # Shutdown the simulator and erase to eliminate any bad cache
           # irrespective of whether the tests pass or fail
+          echo ">>> Initiating simulator shutdown..."
           echo ">>> Shutting down booted simulator with UDID: $DEVICE_ID"
           xcrun simctl shutdown booted
+          echo ">>> Erasing simulator cache..."
           xcrun simctl erase all
           echo ">>> Simulator shutdown successfully!"
 
