@@ -288,6 +288,7 @@ typedef struct
 	unsigned nnan;            // no nans
 	unsigned noalias;         // noalias (pointer)
 	unsigned noinline;        // No function inlining
+	unsigned noredzone;       // No redzone for function
 	unsigned noreturn;        // No function return
 	unsigned nounwind;        // No exceptions
 	unsigned nsz;             // no signed zeros

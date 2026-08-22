@@ -937,6 +937,7 @@ static void llvm_codegen_setup()
 	attribute_id.nnan = lookup_attribute("nnan");
 	attribute_id.noalias = lookup_attribute("noalias");
 	attribute_id.noinline = lookup_attribute("noinline");
+	attribute_id.noredzone = lookup_attribute("noredzone");
 	attribute_id.noreturn = lookup_attribute("noreturn");
 	attribute_id.nounwind = lookup_attribute("nounwind");
 	attribute_id.nsz = lookup_attribute("nsz");
@@ -1268,6 +1269,10 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	if (decl->func_decl.attr_noinline)
 	{
 		llvm_attribute_add(c, function, attribute_id.noinline, -1);
+	}
+	if (compiler.platform.noredzone)
+	{
+		llvm_attribute_add(c, function, attribute_id.noredzone, -1);
 	}
 	if (decl->func_decl.signature.attrs.noreturn)
 	{

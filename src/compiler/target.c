@@ -2261,6 +2261,7 @@ void target_setup(BuildTarget *build_target)
 	compiler.platform.width_register = arch_int_register_bit_width(compiler.platform.os, compiler.platform.arch);
 	compiler.platform.alloca_address_space = 0;
 	compiler.platform.object_format = object_format_from_os(compiler.platform.os, compiler.platform.arch);
+	compiler.platform.noredzone = build_target->arch_os_target == ELF_X64;
 	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:

@@ -87,6 +87,7 @@ typedef struct
 	FloatABI float_abi : 3;
 	unsigned default_number_regs_x86 : 8;
 	bool use_comdat : 1;
+	bool noredzone : 1;
 	union
 	{
 		struct
