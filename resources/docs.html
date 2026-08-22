@@ -2196,19 +2196,24 @@
 					const bodyParams = renderParams(m.params);
 					return `<span class="c3-keyword">@body</span>(${bodyParams})`;
 				}
+				// Shorthand reference receiver: &self, &mutex, etc.
+				if (m.is_ref) {
+					let res = `<span class="c3-variable">&${m.name}</span>`;
+					if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
+					return res;
+				}
+				// Shorthand by-value receiver: self
 				if (m.name === 'self') {
-					if (m.type) {
-						const selfType = renderTypeName(m.type);
-						return `${selfType} <span class="c3-variable">${m.is_ref ? '&' : ''}self</span>`;
-					}
-					return `<span class="c3-variable">${m.is_ref ? '&' : ''}self</span>`;
+					let res = `<span class="c3-variable">self</span>`;
+					if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
+					return res;
 				}
 				const isUntypedVararg = m.is_vararg && m.type && m.type.name === 'any...';
 				if (isUntypedVararg) {
 					return `<span class="c3-variable">${m.name || ''}...</span>`;
 				}
 				const type = m.type ? renderTypeName(m.type) : '';
-				const name = m.name ? `<span class="c3-variable">${m.is_ref ? '&' : ''}${m.name}</span>` : '';
+				const name = m.name ? `<span class="c3-variable">${m.name}</span>` : '';
 				let res = type ? (name ? `${type} ${name}` : type) : name;
 				if (m.attributes) res += ` <span class="c3-attribute">${m.attributes.join(' ')}</span>`;
 				if (m.default_value) res += ` = <span class="c3-variable">${m.default_value}</span>`;
