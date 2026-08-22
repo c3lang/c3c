@@ -247,7 +247,7 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		eprintf("%*s", w, "");
 	}
 	
-	const bool is_multiline = location->length > (row_offset - current) && row_width < display_line_width;
+	const bool is_multiline = (ptrdiff_t)location->length > (row_offset - current) && row_width < display_line_width;
 	unsigned highlighter_width = is_elided ? display_line_width  : row_width;
 	highlighter_width -= space_width;
 	
