@@ -27,10 +27,11 @@ TARGET_FLAG="$2"
 
 echo ">>> Running iOS Target CI Tests using C3C at: $C3C_BIN"
 
-# check if simulator UUID is captured
+# check if simulator UDID is captured, without that don't run the tests
+# skip for physical device as it doesn't need it
 DEVICE_ID="${DEVICE_ID}"
 if [[ -z "$DEVICE_ID" && "$TARGET_FLAG" != "ios-aarch64" ]]; then
-    echo "::error::Cannot perform tasks on simulator without UUID"
+    echo "::error::Cannot perform tests on simulator without UDID"
     exit 1
 fi
 
@@ -63,17 +64,27 @@ run_c3c() {
 # on iOS you cannot do compile-run, 
 # if done, the kernel will kill or abort the process,
 # hence we simulate c3c compile-run with this helper
-run_c3c_sim_exec() {
+sim_run() {
     local source_file="$1"
     shift
     local source_name=$(basename "$source_file")
     local target_name="${source_name%.*}"
     local target_path="$MY_WORK_DIR/$target_name"
+    local compile_args=()
     
-    run_c3c compile "$source_file" "$@" -o "$target_name"
+    while [[ $# -gt 0 ]]; do
+        if [[ "$1" == "--" ]]; then
+            shift
+            break
+        fi
+        compile_args+=("$1")
+        shift
+    done
+    
+    run_c3c compile "$source_file" "${compile_args[@]}" -o "$target_name"
     if [ -f "$target_path" ]; then
         # xcrun simctl spawn simulates the behavior of compile-run output on the simulator
-        xcrun simctl spawn "$DEVICE_ID" "$target_path"  
+        xcrun simctl spawn "$DEVICE_ID" "$target_path" "$@"
     fi
 }
 
@@ -107,11 +118,12 @@ run_examples() {
 
     # skip spawn tests on physical device
     if [[ "$TARGET_FLAG" != "ios-aarch64" ]]; then
-        run_c3c_sim_exec examples/hello_world_many.c3
-        run_c3c_sim_exec examples/time.c3
-        run_c3c_sim_exec examples/fannkuch-redux.c3
-        run_c3c_sim_exec examples/contextfree/boolerr.c3
-        run_c3c_sim_exec examples/ls.c3
+        sim_run examples/hello_world_many.c3
+        sim_run examples/time.c3
+        sim_run examples/fannkuch-redux.c3
+        sim_run examples/contextfree/boolerr.c3
+        sim_run examples/ls.c3
+        sim_run examples/args.c3 -- foo -bar "baz baz"
     fi
 
     run_c3c compile --no-entry --test -g --threads 1 --target macos-x64 examples/constants.c3
@@ -141,7 +153,7 @@ run_dynlib_tests() {
     run_c3c -vv dynamic-lib "$ROOT_DIR/resources/examples/dynlib-test/add.c3" -o add
     # Skip dynamic lib spawn on physical device
     if [[ "$TARGET_FLAG" != "ios-aarch64" ]]; then
-        run_c3c_sim_exec "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.dylib"
+        sim_run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.dylib"
     fi
 }
 
@@ -155,7 +167,7 @@ run_staticlib_tests() {
     run_c3c -vv static-lib "$ROOT_DIR/resources/examples/staticlib-test/add.c3" -o libadd
     # Skip static lib spawn on physical device
     if [[ "$TARGET_FLAG" != "ios-aarch64" ]]; then
-        run_c3c_sim_exec "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
+        sim_run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
     fi
 }
 
@@ -249,13 +261,11 @@ run_unit_tests() {
         xcrun simctl spawn "$DEVICE_ID" "$MY_WORK_DIR/unit_test"
     fi
 
-    echo "--- Running Test Suite Runner inside iOS Simulator Container ---"
-    cd "$MY_WORK_DIR"
-    
-    run_c3c compile "$ROOT_DIR/test/src/test_suite_runner.c3" -o suite_runner
-    if [ -f "$MY_WORK_DIR/suite_runner" ]; then
-        xcrun simctl spawn "$DEVICE_ID" "$MY_WORK_DIR/suite_runner" "$C3C_BIN" "$ROOT_DIR/test/test_suite/" --no-terminal
-    fi
+    echo "--- Running Test Suite Runner ---"
+    (
+        cd "$MY_WORK_DIR"
+        sim_run "$ROOT_DIR/test/src/test_suite_runner.c3" -O1 -- "$C3C_BIN" "$ROOT_DIR/test/test_suite/" --no-terminal
+    )
 }
 
 # --- Execution ---
