@@ -1114,12 +1114,9 @@ fn int shift_left(uint* data, int len, int shift_val) @inline
 			carry = val >> 32;
 		}
 
-		if (carry != 0)
+		if (carry != 0 && buf_len < MAX_LEN)
 		{
-			if (buf_len + 1 <= len)
-			{
-				data[buf_len++] = (uint)carry;
-			}
+			data[buf_len++] = (uint)carry;
 		}
 		count -= shift_amount;
 	}
