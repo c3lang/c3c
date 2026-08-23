@@ -141,6 +141,14 @@ typedef enum
 	VECTORIZATION_OFF = 0,
 	VECTORIZATION_ON = 1
 } AutoVectorization;
+
+typedef enum
+{
+	IMPLICIT_FLOAT_NOT_SET = -1,
+	IMPLICIT_FLOAT_OFF = 0,
+	IMPLICIT_FLOAT_ON = 1
+} ImplicitFloat;
+
 typedef enum
 {
 	STRIP_UNUSED_NOT_SET = -1,

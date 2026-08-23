@@ -1,6 +1,6 @@
 module base64;
 
-faultdef INVALID_CHARACTER;
+excuse INVALID_CHARACTER;
 
 // Based on the C2 version.
 

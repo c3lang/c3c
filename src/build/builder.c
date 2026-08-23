@@ -576,6 +576,7 @@ BUILD:
 	set_if_updated(target->emit_stdlib, options->emit_stdlib);
 	set_if_updated(target->win.crt_linking, options->win.crt_linking);
 	set_if_updated(target->win.subsystem, options->win.subsystem);
+	set_if_updated(target->feature.implicit_float, options->implicit_float);
 	set_if_updated(target->feature.fp_math, options->fp_math);
 	set_if_updated(target->feature.x86_vector_capability, options->x86_vector_capability);
 	set_if_updated(target->feature.x86_cpu_set, options->x86_cpu_set);
@@ -671,15 +672,15 @@ BUILD:
 
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
 
-	for (size_t i = 0; i < options->linker_arg_count; i++)
+	for (int i = 0; i < options->linker_arg_count; i++)
 	{
 		vec_add(target->link_args, options->linker_args[i]);
 	}
-	for (size_t i = 0; i < options->linker_lib_dir_count; i++)
+	for (int i = 0; i < options->linker_lib_dir_count; i++)
 	{
 		vec_add(target->linker_libdirs, options->linker_lib_dir[i]);
 	}
-	for (size_t i = 0; i < options->linker_lib_count; i++)
+	for (int i = 0; i < options->linker_lib_count; i++)
 	{
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
@@ -716,10 +717,10 @@ BUILD:
 	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 
 	bool is_static = false;
-	for (size_t i = 0; i < options->linker_arg_count; i++)
+	for (int i = 0; i < options->linker_arg_count; i++)
 	{
 		const char *arg = options->linker_args[i];
-		if (strcmp(arg, "-static") == 0 || strcmp(arg, "--static") == 0 || strcmp(arg, "static") == 0)
+		if (str_eq(arg, "-static") || str_eq(arg, "--static") || str_eq(arg, "static"))
 		{
 			is_static = true;
 			break;

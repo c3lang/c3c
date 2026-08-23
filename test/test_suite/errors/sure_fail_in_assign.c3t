@@ -2,7 +2,7 @@
 module test;
 import std::io;
 
-faultdef OH_NO;
+excuse OH_NO;
 const int C = 1;
 
 fn void main()

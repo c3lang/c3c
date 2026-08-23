@@ -1,8 +1,11 @@
 module std::os::backtrace;
 import std::collections::list, std::core::dstring, std::os, std::io;
 
-faultdef SEGMENT_NOT_FOUND, EXECUTABLE_PATH_NOT_FOUND, IMAGE_NOT_FOUND, NO_BACKTRACE_SYMBOLS,
-         RESOLUTION_FAILED;
+excuse
+{
+	SEGMENT_NOT_FOUND, EXECUTABLE_PATH_NOT_FOUND, IMAGE_NOT_FOUND, NO_BACKTRACE_SYMBOLS,
+	RESOLUTION_FAILED
+}
 
 const Backtrace BACKTRACE_UNKNOWN = { 0, "", "", "", 0, null, false };
 

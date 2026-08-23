@@ -210,7 +210,7 @@ const char* DEFAULT_TARGETS[] = {
 const char *LIB_README = "Welcome to the %s library.\n";
 
 static bool check_name(const char *name);
-static char* get_cwd_project_name();
+static char* get_cwd_project_name(void);
 static void exit_fail(const char *fmt, ...);
 NORETURN static void delete_dir_and_exit(BuildOptions *build_options, const char *fmt, ...);
 static void mkdir_or_fail(BuildOptions *build_options, const char *name);
@@ -258,7 +258,7 @@ void create_library(BuildOptions *build_options)
 	create_file_or_fail(build_options, interface_file, MAIN_INTERFACE_TEMPLATE, module_name(build_options));
 	scratch_buffer_clear();
 	mkdir_or_fail(build_options, "linked-libs");
-	for (int i = 0; i < sizeof(DEFAULT_TARGETS) / sizeof(char*); i++)
+	for (size_t i = 0; i < sizeof(DEFAULT_TARGETS) / sizeof(char*); i++)
 	{
 		const char *target = DEFAULT_TARGETS[i];
 		scratch_buffer_printf(MANIFEST_TARGET, target);
@@ -424,7 +424,7 @@ static bool check_name(const char *name)
 	return true;
 }
 
-static char* get_cwd_project_name()
+static char* get_cwd_project_name(void)
 {
 	char full_path[PATH_MAX];
 	if (!getcwd(full_path, PATH_MAX)) error_exit("Failed to get current working directory.");

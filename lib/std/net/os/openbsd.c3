@@ -105,4 +105,4 @@ const SOCK_NONBLOCK                 = 0x4000; // set O_NONBLOCK
 const SOCK_NONBLOCK_INHERIT         = 0x2000; // inherit O_NONBLOCK from listener
 const SOCK_DNS                      = 0x1000; // set SS_DNS
 
-const PLATFORM_O_NONBLOCK = SOCK_NONBLOCK;
+const PLATFORM_O_NONBLOCK = 0x04;

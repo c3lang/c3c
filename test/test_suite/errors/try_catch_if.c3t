@@ -13,7 +13,7 @@ fn int? tester()
     return 222;
 }
 
-faultdef A;
+excuse A;
 
 fn void test1()
 {

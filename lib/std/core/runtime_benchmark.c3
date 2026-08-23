@@ -4,7 +4,11 @@ import libc, std::time, std::io, std::sort, std::math, std::collections;
 const DEFAULT_WARMUP_ITERS @local = 3;
 const DEFAULT_MAX_ITERS @local = 10000;
 
-faultdef MISSING_CHOICE, INVALID_CHOICE @local;
+excuse
+{
+	MISSING_CHOICE,
+	INVALID_CHOICE @local
+}
 
 alias BenchmarkFn = fn void ();
 

@@ -5,7 +5,7 @@ import std::io, std::collections::object;
 // Pass ini::GLOBAL as the section argument to get/set for those keys.
 const String GLOBAL = "";
 
-faultdef INVALID_SECTION, INVALID_KEY, DUPLICATE_KEY;
+excuse { INVALID_SECTION, INVALID_KEY, DUPLICATE_KEY }
 
 enum DuplicateKeyBehavior
 {

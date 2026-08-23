@@ -2,7 +2,7 @@
 
 module foo;
 
-faultdef Y;
+excuse Y;
 
 fn void main()
 {

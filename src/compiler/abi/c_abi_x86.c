@@ -7,8 +7,7 @@
 #define MIN_ABI_STACK_ALIGN 4
 
 static bool x86_try_use_free_regs(Regs *regs, Type *type);
-
-static ABIArgInfo **x86_create_params(CallABI abi, ParamInfo *params, unsigned param_count, Regs *ptr);
+static ABIArgInfo **x86_create_params(CallABI abi, ParamInfo *params, int param_count, Regs *ptr);
 
 static inline bool type_is_simd_vector(Type *type)
 {
@@ -31,7 +30,7 @@ static bool type_is_union_struct_with_simd_vector(Type *type)
 }
 
 
-static unsigned x86_stack_alignment(Type *type, unsigned alignment)
+static int x86_stack_alignment(Type *type, int alignment)
 {
 	// Less than ABI, use default
 	if (alignment < MIN_ABI_STACK_ALIGN) return 0;
@@ -62,8 +61,8 @@ static ABIArgInfo *x86_create_indirect_result(Regs *regs, Type *type, ByVal by_v
 	// From here on everything is by val:
 
 	// Compute alignment
-	unsigned alignment = type_abi_alignment(type);
-	unsigned stack_alignment = x86_stack_alignment(type, alignment);
+	int alignment = type_abi_alignment(type);
+	int stack_alignment = x86_stack_alignment(type, alignment);
 
 	// Default alignment
 	if (stack_alignment == 0) stack_alignment = 4;
@@ -168,7 +167,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, ParamInfo param)
 	// 3. In the case of a vector or regcall, a homogeneous aggregate
 	//    should be passed directly in a register.
 	Type *base = NULL;
-	unsigned elements = 0;
+	int elements = 0;
 
 	if (type->type_kind == TYPE_SIMD_VECTOR) return abi_arg_new_direct(param);
 
@@ -322,7 +321,7 @@ static bool x86_try_put_primitive_in_reg(CallABI call, Regs *regs, Type *type)
 /**
  * Handle the vector/regcalls with HVAs.
  */
-UNUSED static inline ABIArgInfo *x86_classify_homogenous_aggregate(Regs *regs, Type *type, unsigned elements, bool is_vec_call, ParamInfo param)
+UNUSED static inline ABIArgInfo *x86_classify_homogenous_aggregate(Regs *regs, Type *type, int elements, bool is_vec_call, ParamInfo param)
 {
 	// We now know it's a float/double or a vector,
 	// since only those are valid for x86
@@ -383,7 +382,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 		return x86_create_indirect_result(regs, type, BY_VAL, param);
 	}
 
-	unsigned size = type_size(type);
+	int size = type_size(type);
 
 	// See if we can pass aggregates directly.
 	// this never happens for MSVC
@@ -391,7 +390,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 	{
 		// Here we coerce the aggregate into a struct { i32, i32, ... }
 		// but we do not generate this struct immediately here.
-		unsigned size_in_regs = (size + 3) / 4;
+		int size_in_regs = (size + 3) / 4;
 		ASSERT(size_in_regs < 8);
 		ABIArgInfo *info;
 		if (size_in_regs > 1)
@@ -477,18 +476,18 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, ParamInfo par
 	UNREACHABLE
 }
 
-static ABIArgInfo **x86_create_params(CallABI abi, ParamInfo *params, unsigned param_count, Regs *regs)
+static ABIArgInfo **x86_create_params(CallABI abi, ParamInfo *params, int param_count, Regs *regs)
 {
 	if (!param_count) return NULL;
 	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-	for (unsigned i = 0; i < param_count; i++)
+	for (int i = 0; i < param_count; i++)
 	{
 		args[i] = x86_classify_argument(abi, regs, params[i]);
 	}
 	return args;
 }
 
-void c_abi_func_create_x86(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_x86(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count)
 {
 	// 1. Calculate the registers we have available
 	//    Normal: 0 / 0 (3 on win32 struct ABI)

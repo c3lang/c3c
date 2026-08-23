@@ -2,7 +2,7 @@
 module test;
 import std::io;
 
-faultdef HELLO, WORLD;
+excuse HELLO, WORLD;
 fn void main()
 {
 	fault x = WORLD;

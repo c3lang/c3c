@@ -1,5 +1,5 @@
 module test;
-constdef MyEnum : inline short
+constset MyEnum : inline short
 {
 	ITEM1,
 	ITEM2,

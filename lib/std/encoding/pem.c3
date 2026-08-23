@@ -28,7 +28,8 @@ const DEFAULT_WIDTH = 64;
 alias PemHeader = String[2];
 
 <* Specify a set of possible PEM en/decoding faults. *>
-faultdef
+excuse
+{
 	BODY_REQUIRED,   // encoding: no body given (or too few of them)
 	HEADERS_REQUIRED,   // encoding: no headers given (or too few of them)
 	HEADER_KEY_REQUIRED,   // encoding: blank header keys are not allowed
@@ -47,8 +48,7 @@ faultdef
 	MISSING_POST_EB,   // decoding: no post-EB was found to close off the PEM
 	MISSING_TAG,   // decoding: no tag was defined or parsed from the EB
 	TAG_REQUIRED,   // encoding: no/empty tag given (or too few of them)
-;
-
+}
 
 <* Represents a PEM object in memory, with a reference to the body data, tag value, and optional headers. *>
 struct Pem

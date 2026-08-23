@@ -171,13 +171,13 @@ bitstruct Tc_lflags : CUInt
 	bool extproc : 16;
 }
 
-constdef T_nldly : char
+constset T_nldly : char
 {
 	NL0 = 0b0,
 	NL1 = 0b1,
 }
 
-constdef T_crdly : char
+constset T_crdly : char
 {
 	CR0 = 0b00,
 	CR1 = 0b01,
@@ -185,7 +185,7 @@ constdef T_crdly : char
 	CR3 = 0b11,
 }
 
-constdef T_tabdly : char
+constset T_tabdly : char
 {
 	TAB0 = 0b00,
 	TAB1 = 0b01,
@@ -194,25 +194,25 @@ constdef T_tabdly : char
 	XTABS = TAB3,
 }
 
-constdef T_bsdly : char
+constset T_bsdly : char
 {
 	BS0 = 0b0,
 	BS1 = 0b1,
 }
 
-constdef T_ffdly : char
+constset T_ffdly : char
 {
 	FF0 = 0b0,
 	FF1 = 0b1,
 }
 
-constdef T_vtdly : char
+constset T_vtdly : char
 {
 	VT0 = 0b0,
 	VT1 = 0b1,
 }
 
-constdef T_csize : char
+constset T_csize : char
 {
 	CS5 = 0b00,
 	CS6 = 0b01,
@@ -220,7 +220,7 @@ constdef T_csize : char
 	CS8 = 0b11,
 }
 
-constdef Speed : CUInt
+constset Speed : CUInt
 {
 	B0       = 0o0000000,
 	B50      = 0o0000001,
@@ -256,7 +256,7 @@ constdef Speed : CUInt
 	MAX_BAUD = B4000000,
 }
 
-constdef Control_Char : inline CInt
+constset Control_Char : inline CInt
 {
 	VINTR    = 0,
 	VQUIT    = 1,
@@ -277,7 +277,7 @@ constdef Control_Char : inline CInt
 	VEOL2    = 16,
 }
 
-constdef Tcactions : CInt
+constset Tcactions : CInt
 {
 	TCOOFF    = 0,
 	TCOON     = 1,

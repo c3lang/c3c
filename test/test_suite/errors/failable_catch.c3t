@@ -1,6 +1,6 @@
 // #target: macos-x64
 
-faultdef TEST;
+excuse TEST;
 
 macro foo(int x)
 {

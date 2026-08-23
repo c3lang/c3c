@@ -31,7 +31,7 @@ module std::encoding::xml;
 import std::collections, std::io;
 import std::encoding::xml::internal @public;
 
-faultdef XML_SYNTAX, XML_STACK_OVERFLOW, XML_TAG_MISMATCH, XML_INVALID_REF;
+excuse { XML_SYNTAX, XML_STACK_OVERFLOW, XML_TAG_MISMATCH, XML_INVALID_REF }
 
 const sz DEFAULT_STACK_SIZE = 4096;
 alias XmlNodeList = List{XmlNode*};

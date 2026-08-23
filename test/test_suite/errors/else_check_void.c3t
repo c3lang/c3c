@@ -1,7 +1,7 @@
 // #target: macos-aarch64
 module test;
 
-faultdef MALFORMED_RESPONSE;
+excuse MALFORMED_RESPONSE;
 macro void? set_field(String[] tokens)
 {
 	if (tokens.len < 2) return MALFORMED_RESPONSE~;

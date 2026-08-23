@@ -18,7 +18,7 @@ const uint EPOLLWAKEUP = EpollEvents.EPOLLWAKEUP;
 const uint EPOLLONESHOT = EpollEvents.EPOLLONESHOT;
 const uint EPOLLET = EpollEvents.EPOLLET;
 
-constdef EpollEvents : inline uint
+constset EpollEvents : inline uint
 {
 	EPOLLIN        = 0x001,
 	EPOLLPRI       = 0x002,

@@ -1,6 +1,6 @@
 module std::core::runtime;
 
-faultdef INVALID_CHOICE @if(false);
+excuse INVALID_CHOICE @if(false);
 
 fn bool? get_yes_no(String[] args_at)
 {

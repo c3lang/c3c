@@ -35,9 +35,12 @@ alias Char16 = ushort;
 <*
  Common faults used with strings
 *>
-faultdef INVALID_UTF8, INVALID_UTF16, CONVERSION_FAILED,
-         EMPTY_STRING, NEGATIVE_VALUE, MALFORMED_INTEGER,
-         INTEGER_OVERFLOW, MALFORMED_FLOAT, FLOAT_OUT_OF_RANGE;
+excuse
+{
+	INVALID_UTF8, INVALID_UTF16, CONVERSION_FAILED,
+	EMPTY_STRING, NEGATIVE_VALUE, MALFORMED_INTEGER,
+	INTEGER_OVERFLOW, MALFORMED_FLOAT, FLOAT_OUT_OF_RANGE
+}
 
 
 <*
@@ -444,7 +447,7 @@ fn String[] String.split(self, Allocator allocator, String delimiter, sz max = 0
 *>
 fn String[] String.tsplit(s, String delimiter, sz max = 0, bool skip_empty = false) => s.split(tmem, delimiter, max, skip_empty) @inline;
 
-faultdef BUFFER_EXCEEDED;
+excuse BUFFER_EXCEEDED;
 
 <*
  Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }

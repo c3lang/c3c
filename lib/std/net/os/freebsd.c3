@@ -203,4 +203,4 @@ const CInt MSG_WAITFORONE		= 0x00080000;	// for recvmmsg()
 const CInt MSG_CMSG_CLOFORK		= 0x00400000;	// make received fds close-on-fork 
 
 
-const PLATFORM_O_NONBLOCK = SOCK_NONBLOCK;
+const PLATFORM_O_NONBLOCK = 0x04;

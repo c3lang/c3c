@@ -2,15 +2,16 @@ module std::net::url;
 
 import std::io, std::collections::map, std::collections::list;
 
-faultdef
+excuse
+{
 	EMPTY,
 	INVALID_SCHEME,
 	INVALID_USER,
 	INVALID_PASSWORD,
 	INVALID_HOST,
 	INVALID_PATH,
-	INVALID_FRAGMENT;
-
+	INVALID_FRAGMENT
+}
 <*
  Represents the actual (decoded) Url.
 

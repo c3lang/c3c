@@ -8,7 +8,7 @@
 module std::hash::streebog;
 
 
-constdef StreebogLength : inline int
+constset StreebogLength : inline int
 {
 	SIZE_256 = 32,
 	SIZE_512 = 64,

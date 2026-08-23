@@ -132,7 +132,7 @@ const int SIOCATMARK = 1074033415;
 
 module std::os::win32::wsa @feat(WIN32);
 
-constdef WSAError : int
+constset WSAError : int
 {
 	NO_ERROR                     = 0,
 	INVALID_HANDLE               = 6,

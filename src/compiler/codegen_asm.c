@@ -14,7 +14,7 @@ INLINE bool codegen_asm_label(Ast *ast)
 	return true;
 }
 
-static inline void codegen_create_x86att_arg(AsmInlineBlock *block, unsigned input_offset, Expr *expr)
+static inline void codegen_create_x86att_arg(AsmInlineBlock *block, int input_offset, Expr *expr)
 {
 	ExprAsmArg *arg = &expr->expr_asm_arg;
 	switch (arg->kind)
@@ -87,7 +87,7 @@ static inline void codegen_create_x86att_arg(AsmInlineBlock *block, unsigned inp
 	UNREACHABLE_VOID
 }
 
-static inline void codegen_create_aarch64_arg(AsmInlineBlock *block, unsigned input_offset, Expr *expr)
+static inline void codegen_create_aarch64_arg(AsmInlineBlock *block, int input_offset, Expr *expr)
 {
 	ExprAsmArg *arg = &expr->expr_asm_arg;
 	switch (arg->kind)
@@ -157,7 +157,7 @@ static inline void codegen_create_aarch64_arg(AsmInlineBlock *block, unsigned in
 	UNREACHABLE_VOID
 }
 
-static inline void codegen_create_riscv_arg(AsmInlineBlock *block, unsigned input_offset, Expr *expr)
+static inline void codegen_create_riscv_arg(AsmInlineBlock *block, int input_offset, Expr *expr)
 {
 	ExprAsmArg *arg = &expr->expr_asm_arg;
 	switch (arg->kind)
@@ -213,7 +213,7 @@ static inline char *codegen_create_x86_att_asm(AsmInlineBlock *block)
 {
 	AstId next = block->asm_stmt;
 	scratch_buffer_clear();
-	unsigned input_arg_offset = vec_size(block->output_vars);
+	int input_arg_offset = vec_size(block->output_vars);
 	while (next)
 	{
 		Ast *ast = astptr(next);
@@ -221,9 +221,9 @@ static inline char *codegen_create_x86_att_asm(AsmInlineBlock *block)
 		if (codegen_asm_label(ast)) continue;
 		scratch_buffer_append(ast->asm_stmt.instruction);
 		Expr** args = ast->asm_stmt.args;
-		unsigned arg_count = vec_size(args);
+		int arg_count = vec_size(args);
 		scratch_buffer_append_char(' ');
-		for (unsigned i = arg_count; i > 0; i--)
+		for (int i = arg_count; i > 0; i--)
 		{
 			if (i != arg_count) scratch_buffer_append(", ");
 			codegen_create_x86att_arg(block, input_arg_offset, args[i - 1]);
@@ -238,7 +238,7 @@ static inline char *codegen_create_aarch64_asm(AsmInlineBlock *block)
 {
 	AstId next = block->asm_stmt;
 	scratch_buffer_clear();
-	unsigned input_arg_offset = vec_size(block->output_vars);
+	int input_arg_offset = vec_size(block->output_vars);
 	while (next)
 	{
 		Ast *ast = astptr(next);
@@ -246,9 +246,9 @@ static inline char *codegen_create_aarch64_asm(AsmInlineBlock *block)
 		if (codegen_asm_label(ast)) continue;
 		scratch_buffer_append(ast->asm_stmt.instruction);
 		Expr** args = ast->asm_stmt.args;
-		unsigned arg_count = vec_size(args);
+		int arg_count = vec_size(args);
 		scratch_buffer_append_char(' ');
-		for (unsigned i = 0; i < arg_count; i++)
+		for (int i = 0; i < arg_count; i++)
 		{
 			if (i > 0) scratch_buffer_append(", ");
 			codegen_create_aarch64_arg(block, input_arg_offset, args[i]);
@@ -263,7 +263,7 @@ static inline char *codegen_create_riscv_asm(AsmInlineBlock *block)
 {
 	AstId next = block->asm_stmt;
 	scratch_buffer_clear();
-	unsigned input_arg_offset = vec_size(block->output_vars);
+	int input_arg_offset = vec_size(block->output_vars);
 	while (next)
 	{
 		Ast *ast = astptr(next);
@@ -271,9 +271,9 @@ static inline char *codegen_create_riscv_asm(AsmInlineBlock *block)
 		if (codegen_asm_label(ast)) continue;
 		scratch_buffer_append(ast->asm_stmt.instruction);
 		Expr** args = ast->asm_stmt.args;
-		unsigned arg_count = vec_size(args);
+		int arg_count = vec_size(args);
 		scratch_buffer_append_char(' ');
-		for (unsigned i = 0; i < arg_count; i++)
+		for (int i = 0; i < arg_count; i++)
 		{
 			if (i > 0) scratch_buffer_append(", ");
 			codegen_create_riscv_arg(block, input_arg_offset, args[i]);

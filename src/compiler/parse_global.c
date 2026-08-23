@@ -175,12 +175,12 @@ static inline Path *parse_module_path(ParseContext *c)
  */
 static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 {
-	unsigned params = vec_size(decl->generic_decl.parameters);
+	int params = vec_size(decl->generic_decl.parameters);
 	FOREACH(Decl *, d, unit->module->generic_sections)
 	{
-		unsigned candidate_params = vec_size(d->generic_decl.parameters);
+		int candidate_params = vec_size(d->generic_decl.parameters);
 		if (candidate_params != params) continue;
-		for (unsigned i = 0; i < params; i++)
+		for (int i = 0; i < params; i++)
 		{
 			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i]) goto ON_MISMATCH;
 		}
@@ -300,7 +300,7 @@ bool parse_module(ParseContext *c)
 		{
 			case ATTRIBUTE_LINK:
 			{
-				unsigned args = vec_size(attr->exprs);
+				int args = vec_size(attr->exprs);
 				if (args < 1) RETURN_PRINT_ERROR_AT(false, attr, "'@link' needs at least 1 argument.");
 				vec_add(c->unit->attr_links, attr);
 				continue;
@@ -1333,7 +1333,7 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 		Attr *attr;
 		if (!parse_attribute(c, &attr, false)) return false;
 		if (!attr) return true;
-		Visibility parsed_visibility = -1; // NOLINT
+		Visibility parsed_visibility = (Visibility)-1; // NOLINT
 		if (!attr->is_custom)
 		{
 			// This is important: if we would allow user defined attributes,
@@ -1399,10 +1399,10 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 				*builtin_ref = true;
 				continue;
 			}
-			if (parsed_visibility != -1)
+			if (parsed_visibility != (Visibility)-1)
 			{
 				if (!visibility_ref) RETURN_PRINT_ERROR_AT(false, attr, "'%s' cannot be used here.", attr->name);
-				if (visibility != -1) RETURN_PRINT_ERROR_AT(false, attr, "Only a single visibility attribute may be added.");
+				if (visibility != (Visibility)-1) RETURN_PRINT_ERROR_AT(false, attr, "Only a single visibility attribute may be added.");
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
 			}
@@ -2037,7 +2037,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 		}
 		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), false);
 
-		unsigned first_member_index = vec_size(parent->strukt.members);
+		int first_member_index = vec_size(parent->strukt.members);
 		while (1)
 		{
 			if (!tok_is(c, TOKEN_IDENT)) RETURN_PRINT_ERROR_HERE("A valid member name was expected here.");
@@ -2067,7 +2067,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			}
 		}
 		Decl **members = parent->strukt.members;
-		unsigned last_index = vec_size(members) - 1;
+		int last_index = vec_size(members) - 1;
 		if (last_index != first_member_index)
 		{
 			Decl *last_member = members[last_index];
@@ -2077,7 +2077,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 				// Copy attributes
 				bool is_cond = last_member->is_cond;
 				bool is_feat_cond = last_member->is_feat_cond;
-				for (unsigned i = first_member_index; i < last_index; i++)
+				for (int i = first_member_index; i < last_index; i++)
 				{
 					Decl *member = members[i];
 					if (is_cond) member->is_cond = true;
@@ -2212,7 +2212,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 			member_decl->is_cond = is_cond;
 			member_decl->is_feat_cond = is_feat_cond;
 			CONSUME_OR_RET(TOKEN_EOS, false);
-			unsigned index = vec_size(decl->strukt.members);
+			int index = vec_size(decl->strukt.members);
 			member_decl->var.start_bit = index;
 			member_decl->var.end_bit = index;
 			vec_add(decl->strukt.members, member_decl);

@@ -336,7 +336,7 @@ static bool cab_extract_buffer(uint8_t *data, size_t size, const char *out_root,
 		else if (comp_type == 1) main_algo = "MSZIP";
 		else if (comp_type == 3) main_algo = "LZX (unsupported)";
 	}
-	if (verbose) printf("    CAB: %u folders, %u files, algo: %s\n", num_folders, num_files, main_algo);
+	if (verbose) printf("    CAB: %d folders, %u files, algo: %s\n", num_folders, num_files, main_algo);
 
 	if (file_offset >= size)
 	{

@@ -1,5 +1,5 @@
 module abc;
-constdef Foo
+constset Foo
 {
 	AUDIO = 1,
 	VIDEO = 2

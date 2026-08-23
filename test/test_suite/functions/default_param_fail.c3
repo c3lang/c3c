@@ -1,7 +1,7 @@
 
 int z;
 
-faultdef FOO;
+excuse FOO;
 
 fn void test(int a = z) {}
 

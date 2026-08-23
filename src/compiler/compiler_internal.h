@@ -12,15 +12,14 @@
 #include <float.h>
 
 typedef double Real;
-typedef uint64_t ByteSize;
-typedef uint32_t TypeSize;
+typedef int64_t ByteSize;
+typedef int32_t TypeSize;
 typedef int32_t IndexDiff;
-typedef int64_t ArrayIndex;
-typedef uint16_t StructIndex;
-typedef uint32_t AlignSize;
-typedef uint64_t ArraySize;
-typedef uint64_t BitSize;
-typedef uint32_t FileId;
+typedef int32_t ArrayIndex;
+typedef int16_t StructIndex;
+typedef int32_t AlignSize;
+typedef int64_t BitSize;
+typedef int32_t FileId;
 
 #define INT5_MAX         15
 #define INT12_MAX        2047
@@ -32,7 +31,9 @@ typedef uint32_t FileId;
 #define UINT12_MAX        4095
 #define UINT20_MAX        1048575U
 
-#define MAX_ARRAYINDEX INT64_MAX
+#define STRUCT_INDEX_MAX INT16_MAX
+#define ALIGN_SIZE_MAX INT32_MAX
+#define MAX_ARRAYINDEX INT_MAX
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
 #define MAX_SCOPE_DEPTH 0x100
@@ -43,12 +44,10 @@ typedef uint32_t FileId;
 #define MAX_INTERFACES 127
 #define MAX_VAARGS 512
 #define MAX_BITSTRUCT 0x1000
-#define MAX_MEMBERS ((StructIndex)1) << 15
-#define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
+#define MAX_MEMBERS 0x7FFF
 #define MAX_GENERIC_DEPTH 32
 #define MAX_GENERIC_SUFFIX 1024
 #define MAX_PRIORITY 0xFFFF
-#define MAX_TYPE_SIZE (ByteSize)(2U << 30)
 #define MAX_GLOBAL_DECL_STACK (65536)
 #define MAX_MODULE_NAME 31
 #define MAX_MODULE_PATH 63
@@ -205,7 +204,7 @@ typedef struct
 		struct
 		{
 			const char *ptr;
-			ArraySize len;
+			ArrayIndex len;
 		} bytes;
 		Expr *expr_ref;
 		Decl *global_ref;
@@ -289,17 +288,17 @@ typedef struct Path_
 
 typedef struct
 {
-	unsigned bitsize : 8;
-	unsigned bytesize : 8;
-	unsigned abi_alignment : 8;
-	unsigned pref_alignment : 8;
+	unsigned short bitsize : 8;
+	unsigned short bytesize : 8;
+	unsigned short abi_alignment : 8;
+	unsigned short pref_alignment : 8;
 }  TypeBuiltin;
 
 
 typedef struct
 {
 	Type *base;
-	ArraySize len;
+	ArrayIndex len;
 } TypeArray;
 
 typedef struct
@@ -337,7 +336,7 @@ struct Type_
 			uint16_t tb_type;
 		};
 	};
-	ByteSize size;
+	TypeSize size;
 	void *backend_typeid;
 	void *backend_debug_type;
 	union
@@ -442,7 +441,7 @@ typedef struct
 			TypeSize size;
 			DeclId padded_decl_id;
 			StructIndex union_rep;
-			AlignSize padding : 16;
+			unsigned short padding;
 			bool is_packed : 1;
 			bool is_compact : 1;
 		};
@@ -514,8 +513,8 @@ typedef struct VarDecl_
 				};
 				struct
 				{
-					unsigned start_bit;
-					unsigned end_bit;
+					int start_bit;
+					int end_bit;
 				};
 			};
 		};
@@ -532,7 +531,7 @@ typedef struct
 		struct
 		{
 			Expr **associated;
-			uint32_t inner_ordinal;
+			int inner_ordinal;
 		};
 		Expr *value;
 	};
@@ -554,7 +553,7 @@ struct Signature_
 	bool is_safemacro : 1;
 	Variadic variadic : 3;
 	CallABI abi : 8;
-	unsigned vararg_index;
+	int vararg_index;
 	TypeInfoId rtype;
 	Decl** params;
 };
@@ -632,7 +631,7 @@ typedef struct
 
 typedef struct
 {
-	unsigned id;
+	int id;
 	Decl **templates;
 	Decl **params;
 	const char *name_suffix;
@@ -778,8 +777,8 @@ typedef struct Decl_
 		};
 	};
 	SourceLocId loc;
-	AlignSize offset;
-	AlignSize padding;
+	TypeSize offset;
+	TypeSize padding;
 	AlignSize alignment;
 	union
 	{
@@ -1130,11 +1129,11 @@ typedef struct
 		struct {
 			ExprId base;
 			ExprId idx;
-			uint64_t offset;
+			int64_t offset;
 		};
 		struct {
 			uint64_t value;
-			unsigned bits;
+			int bits;
 			bool is_neg;
 		};
 		union
@@ -1313,7 +1312,7 @@ typedef struct
 typedef struct
 {
 	Expr *ptr;
-	ArraySize len;
+	ArrayIndex len;
 } ExprMakeSlice;
 
 struct Expr_
@@ -1712,12 +1711,12 @@ typedef struct DynamicScope_
 	bool is_poisoned : 1;
 	EndJump end_jump;
 	ScopeFlags flags;
-	unsigned label_start;
-	unsigned current_local;
+	int label_start;
+	int current_local;
 	AstId defer_last;
 	AstId defer_start;
 	Ast *in_defer;
-	unsigned depth;
+	int depth;
 } DynamicScope;
 
 
@@ -1821,7 +1820,7 @@ typedef struct
 {
 	const char *comment;
 	SourceLocId comment_span;
-	unsigned comment_len;
+	int comment_len;
 	Expr **requires;
 	Expr **ensures;
 	ContractParam *params;
@@ -1836,7 +1835,7 @@ typedef struct
 	Attr *deprecated;
 } ContractDescription;
 
-#define EMPTY_CONTRACT ((ContractDescription){ NULL })
+#define EMPTY_CONTRACT ((ContractDescription){ .comment = NULL })
 
 typedef struct ParseContext_
 {
@@ -1881,7 +1880,7 @@ struct SemaContext_
 	CallEnv call_env;
 	Decl *current_macro;
 	InliningSpan *inlined_at;
-	unsigned macro_call_depth;
+	int macro_call_depth;
 	// Jump tracking
 	JumpTarget break_jump;
 	JumpTarget continue_jump;
@@ -1999,7 +1998,7 @@ typedef struct FunctionPrototype_
 	ParamRewrite return_rewrite : 3;
 	ParamInfo return_info;
 	Type *return_result;
-	unsigned param_count;
+	int param_count;
 	unsigned short param_vacount;
 	ABIArgInfo *ret_abi_info;
 	ABIArgInfo **abi_args;
@@ -2059,9 +2058,9 @@ typedef struct
 	const char **sources;
 	File **loaded_sources;
 	bool in_panic_mode : 1;
-	unsigned errors_found;
-	unsigned warnings_found;
-	unsigned includes_used;
+	int errors_found;
+	int warnings_found;
+	int includes_used;
 	Decl ***locals_list;
 	HTable compiler_defines;
 	HTable features;
@@ -2118,7 +2117,6 @@ extern Type *type_cuint;
 extern Type *type_chars;
 extern Type *type_wildcard_optional;
 extern Type *type_string;
-extern Type *type_reflected_param;
 extern File stdin_file;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
@@ -2149,6 +2147,7 @@ extern const char *kw_bitsize;
 extern const char *kw_cname;
 extern const char *kw_compiler_rt;
 extern const char *kw_description;
+extern const char *kw_default_value;
 extern const char *kw_drop;
 extern const char *kw_excuse;
 extern const char *kw_generic_args;
@@ -2291,7 +2290,7 @@ bool int_comp(Int op1, Int op2, BinaryOp op);
 uint64_t int_to_u64(Int op);
 int64_t int_to_i64(Int op);
 bool int_is_zero(Int op);
-unsigned int_bits_needed(Int op);
+int int_bits_needed(Int op);
 bool int_fits(Int op1, TypeKind kind);
 Int int_conv(Int op, TypeKind to_type);
 Int int_div(Int op1, Int op2);
@@ -2392,10 +2391,10 @@ void init_asm(PlatformTarget *target);
 void print_asm_list(PlatformTarget *target);
 AsmRegister *asm_reg_by_name(PlatformTarget *target, const char *name);
 AsmInstruction *asm_instr_by_name(const char *name);
-INLINE const char *asm_clobber_by_index(unsigned index);
-INLINE AsmRegister *asm_reg_by_index(unsigned index);
+INLINE const char *asm_clobber_by_index(int index);
+INLINE AsmRegister *asm_reg_by_index(int index);
 
-AsmRegister *asm_reg_by_index(unsigned index);
+AsmRegister *asm_reg_by_index(int index);
 bool asm_is_supported(ArchType arch);
 
 bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type, bool is_binary_conversion);
@@ -2421,11 +2420,11 @@ bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
-void **c_gen(Module** modules, unsigned module_count);
-void **llvm_gen(Module** modules, unsigned module_count);
-void **tilde_gen(Module** modules, unsigned module_count);
+void **c_gen(Module** modules, int module_count);
+void **llvm_gen(Module** modules, int module_count);
+void **tilde_gen(Module** modules, int module_count);
 
-void header_gen(Module **modules, unsigned module_count);
+void header_gen(Module **modules, int module_count);
 const char *build_base_name(void);
 
 void global_context_clear_errors(void);
@@ -2558,7 +2557,7 @@ void expr_rewrite_const_ref(Expr *expr_to_rewrite, Decl *decl);
 
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 void expr_rewrite_to_const_zero(Expr *expr, Type *type);
-bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index, bool from_back);
+bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, int index, bool from_back);
 
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op);
 
@@ -2665,7 +2664,7 @@ Decl *sema_resolve_generic_symbol(SemaContext *context, const char *symbol, Path
 Decl *sema_resolve_maybe_parameterized_symbol(SemaContext *context, const char *symbol, Path *path, SourceLocId loc);
 BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
-bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
+bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArrayIndex *len_ref);
 
 bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTypeKind kind);
 bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info);
@@ -2729,7 +2728,7 @@ const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, Tok
 void *llvm_target_machine_create(void);
 void codegen_setup_object_names(Module *module, const char **base_name, const char **ir_filename, const char **asm_filename, const char **object_filename);
 void target_setup(BuildTarget *build_target);
-int target_alloca_addr_space();
+int target_alloca_addr_space(void);
 bool os_is_apple(OsType os_type);
 bool os_supports_stacktrace(OsType os_type);
 bool arch_is_wasm(ArchType type);
@@ -2753,11 +2752,11 @@ const char *token_type_to_string(TokenType type);
 #define IS_RESOLVED(element_) ((element_)->resolve_status == RESOLVE_DONE)
 bool type_is_comparable(Type *type);
 bool type_is_ordered(Type *type);
-unsigned type_get_introspection_kind(TypeKind kind);
+int type_get_introspection_kind(TypeKind kind);
 void type_mangle_introspect_name_to_buffer(Type *type);
 AlignSize type_alloca_alignment(Type *type);
 AlignSize type_abi_alignment(Type *type);
-bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...);
+bool type_func_match(Type *fn_type, Type *rtype, int arg_count, ...);
 Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
@@ -2765,7 +2764,7 @@ Type *type_abi_find_single_struct_element(Type *type, bool in_abi);
 Module *type_base_module(Type *type);
 bool type_is_valid_for_vector(Type *type);
 bool type_is_valid_for_array(Type *type);
-Type *type_get_array(Type *arr_type, ArraySize len);
+Type *type_get_array(Type *arr_type, ArrayIndex len);
 Type *type_array_from_vector(Type *vec_type);
 Type *type_vector_from_array(Type *vec_type);
 Type *type_get_indexed_type(Type *type);
@@ -2777,7 +2776,7 @@ Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
 Type *type_get_optional(Type *optional_type);
-Type *type_get_vector(Type *vector_type, TypeKind kind, unsigned len);
+Type *type_get_vector(Type *vector_type, TypeKind kind, int len);
 Type *type_get_vector_from_vector(Type *base_type, Type *orginal_vector);
 Type *type_get_simd_from_vector(Type *orginal_vector);
 Type *type_get_vector_bool(Type *original_type, TypeKind kind);
@@ -2823,7 +2822,7 @@ INLINE Type *type_new(TypeKind kind, const char *name);
 INLINE bool type_is_pointer_sized(Type *type);
 INLINE bool type_is_pointer_sized_or_more(Type *type);
 INLINE Type *type_add_optional(Type *type, bool make_optional);
-INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned count);
+INLINE Type *type_from_inferred(Type *flattened, Type *element_type, int count);
 INLINE bool type_len_is_inferred(Type *type);
 INLINE bool type_is_substruct(Type *type);
 INLINE Type *type_flatten_for_bitstruct(Type *type);
@@ -2911,7 +2910,7 @@ INLINE Type *type_add_optional(Type *type, bool make_optional)
 	return type_get_optional(type);
 }
 
-INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned count)
+INLINE Type *type_from_inferred(Type *flattened, Type *element_type, int count)
 {
 	switch (flattened->type_kind)
 	{
@@ -3296,7 +3295,7 @@ static inline void methods_add(Methods *methods, Decl *method)
 	OperatorOverload operator = method->func_decl.operator;
 	if (operator)
 	{
-		unsigned len = vec_size(method->func_decl.signature.params);
+		int len = vec_size(method->func_decl.signature.params);
 		if (operator == OVERLOAD_MINUS && len == 1)
 		{
 			method->func_decl.operator = operator = OVERLOAD_UNARY_MINUS;
@@ -3403,7 +3402,6 @@ static inline Type *type_flatten_and_inline(Type *type)
 	while (1)
 	{
 		type = type->canonical;
-		Decl *decl;
 		switch (type->type_kind)
 		{
 			case TYPE_OPTIONAL:
@@ -4202,14 +4200,14 @@ INLINE AlignSize type_max_alignment(AlignSize a, AlignSize b)
 
 INLINE BitSize type_bit_size(Type *type)
 {
-	return type_size(type) * 8;
+	return (BitSize)type_size(type) * 8;
 }
 
 bool obj_format_linking_supported(ObjectFormatType format_type);
-bool static_lib_linker(const char *output_file, const char **files, unsigned file_count);
-bool dynamic_lib_linker(const char *output_file, const char **files, unsigned file_count);
-bool linker(const char *output_file, const char **files, unsigned file_count);
-void platform_linker(const char *output_file, const char **files, unsigned file_count);
+bool static_lib_linker(const char *output_file, const char **files, int file_count);
+bool dynamic_lib_linker(const char *output_file, const char **files, int file_count);
+bool linker(const char *output_file, const char **files, int file_count);
+void platform_linker(const char *output_file, const char **files, int file_count);
 const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir);
 const char *arch_to_linker_arch(ArchType arch);
 extern char swizzle[256];
@@ -4597,21 +4595,21 @@ INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
-INLINE const char *asm_clobber_by_index(unsigned index)
+INLINE const char *asm_clobber_by_index(int index)
 {
 	return compiler.platform.clobber_name_list[index];
 }
 
-INLINE AsmRegister *asm_reg_by_index(unsigned index)
+INLINE AsmRegister *asm_reg_by_index(int index)
 {
 	return &compiler.platform.registers[index];
 }
 
-INLINE void clobbers_add(Clobbers *clobbers, unsigned index)
+INLINE void clobbers_add(Clobbers *clobbers, int index)
 {
 	ASSERT(index < MAX_CLOBBER_FLAGS);
-	unsigned bit = index % 64;
-	unsigned element = index / 64;
+	int bit = index % 64;
+	int element = index / 64;
 	clobbers->mask[element] |= (1ull << bit);
 }
 
@@ -4623,20 +4621,20 @@ static inline Clobbers clobbers_make_from(Clobbers clobbers, ...)
 	while ((i = va_arg(list, int)) > -1)
 	{
 		ASSERT(i < MAX_CLOBBER_FLAGS);
-		unsigned bit = i % 64;
-		unsigned element = i / 64;
+		int bit = i % 64;
+		int element = i / 64;
 		clobbers.mask[element] |= (1ull << bit);
 	}
 	va_end(list);
 	return clobbers;
 }
 
-static inline Clobbers clobbers_make(unsigned index, ...)
+static inline Clobbers clobbers_make(int index, ...)
 {
 	Clobbers clobbers = { .mask[0] = 0 };
 	ASSERT(index < MAX_CLOBBER_FLAGS);
-	unsigned bit = index % 64;
-	unsigned element = index / 64;
+	int bit = index % 64;
+	int element = index / 64;
 	clobbers.mask[element] |= (1ull << bit);
 	va_list list;
 	va_start(list, index);
@@ -4653,9 +4651,9 @@ static inline Clobbers clobbers_make(unsigned index, ...)
 }
 
 
-INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
+INLINE int arg_bits_max(AsmArgBits bits, int limit)
 {
-	if (limit == 0) limit = ~(0u);
+	if (limit == 0) limit = INT_MAX;
 	if (limit >= 128 && (bits & ARG_BITS_128)) return 128;
 	if (limit >= 80 && (bits & ARG_BITS_80)) return 80;
 	if (limit >= 64 && (bits & ARG_BITS_64)) return 64;
@@ -4866,5 +4864,5 @@ const char *os_type_to_string(OsType os);
 
 INLINE void expr_rewrite_const_string_from_scratch(Expr *expr_to_rewrite)
 {
-	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), scratch_buffer.len);
+	expr_rewrite_const_string(expr_to_rewrite, scratch_buffer_copy(), (ArrayIndex)scratch_buffer.len);
 }

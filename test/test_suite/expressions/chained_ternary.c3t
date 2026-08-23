@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-faultdef FOO, BAR;
+excuse FOO, BAR;
 
 fn void test()
 {

@@ -1,6 +1,6 @@
 module foo;
 
-faultdef TEST;
+excuse TEST;
 
 module bar;
 import foo;

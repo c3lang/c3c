@@ -42,7 +42,7 @@ Type *type_abi_find_single_struct_element(Type *type, bool in_abi)
 	return found;
 }
 
-bool type_is_homogenous_base_type(Type *type)
+static bool type_is_homogenous_base_type(Type *type)
 {
 	type = type->canonical;
 	switch (compiler.platform.abi)
@@ -133,7 +133,7 @@ bool type_is_homogenous_base_type(Type *type)
 }
 
 
-bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
+static bool type_homogenous_aggregate_small_enough(Type *type, int members)
 {
 	switch (compiler.platform.abi)
 	{
@@ -168,7 +168,7 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
  * @param elements the elements found
  * @return true if it is an aggregate, false otherwise.
  */
-bool type_is_homogeneous_aggregate(LoweredType *type, Type **base, unsigned *elements)
+bool type_is_homogeneous_aggregate(LoweredType *type, Type **base, int *elements)
 {
 	ASSERT(base && type && elements);
 	*elements = 0;
@@ -195,7 +195,7 @@ bool type_is_homogeneous_aggregate(LoweredType *type, Type **base, unsigned *ele
 			{
 				FOREACH(Decl *, member, type->decl->strukt.members)
 				{
-					unsigned member_mult = 1;
+					int member_mult = 1;
 					// Flatten the type.
 					LoweredType *member_type = lowered_member_type(member);
 					// Go down deep into  a nester array.
@@ -205,7 +205,7 @@ bool type_is_homogeneous_aggregate(LoweredType *type, Type **base, unsigned *ele
 						member_mult *= member_type->array.len;
 						member_type = member_type->array.base;
 					}
-					unsigned member_members = 0;
+					int member_members = 0;
 
 					// Check recursively if the field member is homogeneous
 					if (!type_is_homogeneous_aggregate(member_type, base, &member_members)) return false;
@@ -287,7 +287,7 @@ bool type_is_homogeneous_aggregate(LoweredType *type, Type **base, unsigned *ele
 
 
 
-bool codegen_single_obj_output()
+static bool codegen_single_obj_output(void)
 {
 	if (!compiler.build.output_name) return false;
 	if (compiler.build.type != TARGET_TYPE_OBJECT_FILES) return false;

@@ -22,7 +22,7 @@ void test_file(void)
 	memset(&file, 0, sizeof(file));
 }
 #define i128(x_, y_) ((Int128){x_, y_})
-void test128()
+void test128(void)
 {
 	printf("Begin i128 testing.\n");
 	Int128 address = i128_add(i128(0x123, 0x123), i128(0x222, 0x333));

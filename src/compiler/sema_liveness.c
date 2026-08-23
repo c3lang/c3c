@@ -252,7 +252,7 @@ static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 		{
 			Type *array_type = const_init->type;
 			ConstInitializer **elements = const_init->init_array_full;
-			ArraySize size = array_type->array.len;
+			ArrayIndex size = array_type->array.len;
 			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
 			{
 				sema_trace_const_initializer_liveness(elements[i]);
@@ -271,9 +271,9 @@ static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 		{
 			Decl *decl = const_init->type->decl;
 			Decl **members = decl->strukt.members;
-			uint32_t count = vec_size(members);
+			int count = vec_size(members);
 			if (decl->decl_kind == DECL_UNION && count) count = 1;
-			for (ArrayIndex i = 0; i < count; i++)
+			for (int i = 0; i < count; i++)
 			{
 				sema_trace_const_initializer_liveness(const_init->init_struct[i]);
 			}
@@ -599,9 +599,9 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 	Methods *table = decl->method_table;
 	if (!table) return;
 	Decl **methods = table->methods;
-	unsigned method_count = vec_size(methods);
+	int method_count = vec_size(methods);
 	if (!method_count) return;
-	for (unsigned i = 0; i < method_count; i++)
+	for (int i = 0; i < method_count; i++)
 	{
 		Decl *method = methods[i];
 		if (method->decl_kind == DECL_MACRO) continue;

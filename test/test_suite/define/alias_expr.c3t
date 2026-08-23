@@ -1,0 +1,15 @@
+fn void a_new()
+{
+}
+
+fn void a_old()
+{
+}
+
+alias a = $feat(USE_NEW) ??? FOO : a_old;
+alias b = $feat(USE_NEW) ? a_new : a_old;
+
+fn int main()
+{
+	return 0;
+}

@@ -40,8 +40,7 @@ A non-curated list of user written projects and other resources can be found [he
 - Avoid "big ideas" & the "more is better" fallacy.
 - Evolve C into an ergonomic language for modern application development.
 
-C3 owes its inspiration to the [C2 language](http://c2lang.org): to iterate on top of C without trying to be a
-whole new language.
+C3 owes its inspiration to the [C2 language](http://c2lang.org): to iterate on top of C without inventing an entirely new language.
 
 ### Example code
 
@@ -53,8 +52,8 @@ module stack <Type>;
 
 struct Stack
 {
-    usz capacity;
-    usz size;
+    sz capacity;
+    sz size;
     Type* elems;
 }
 

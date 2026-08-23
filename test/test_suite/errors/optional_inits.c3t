@@ -2,7 +2,7 @@
 
 module test;
 import std::io;
-faultdef MY_VAL1, MY_VAL2;
+excuse MY_VAL1, MY_VAL2;
 
 struct Bar
 {

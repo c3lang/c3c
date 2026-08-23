@@ -9,7 +9,7 @@
 
 static inline bool expr_list_is_constant_eval(Expr **exprs);
 static inline bool expr_unary_addr_is_constant_eval(Expr *expr);
-static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArraySize index, bool from_back);
+static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArrayIndex index, bool from_back);
 
 const char *expr_kind_to_string(ExprKind kind)
 {
@@ -516,7 +516,7 @@ Expr *expr_generate_decl(Decl *decl, Expr *assign)
 	return expr_decl;
 }
 
-static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArraySize index, bool from_back)
+static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArrayIndex index, bool from_back)
 {
 	switch (initializer->kind)
 	{
@@ -527,7 +527,7 @@ static inline ConstInitializer *initializer_for_index(ConstInitializer *initiali
 			return initializer;
 		case CONST_INIT_ARRAY_FULL:
 		{
-			unsigned len = vec_size(initializer->init_array_full);
+			int len = vec_size(initializer->init_array_full);
 			if (from_back)
 			{
 				if (index > len || !index) return NULL;
@@ -539,7 +539,7 @@ static inline ConstInitializer *initializer_for_index(ConstInitializer *initiali
 		{
 			if (from_back)
 			{
-				ArraySize len = initializer->type->array.len;
+				ArrayIndex len = initializer->type->array.len;
 				if (index > len || !index) return NULL;
 				index = len - index;
 			}
@@ -669,7 +669,7 @@ Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index)
 	}
 	UNREACHABLE
 }
-bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index, bool from_back)
+bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, int index, bool from_back)
 {
 	ConstInitializer *initializer = initializer_for_index(list, index, from_back);
 	ConstInitType kind = initializer ? initializer->kind : CONST_INIT_ZERO;
@@ -1042,6 +1042,8 @@ Expr *expr_new_const_bool(int loc, Type *type, bool value)
 	expr->resolve_status = RESOLVE_DONE;
 	return expr;
 }
+
+
 
 Expr *expr_new_const_null(SourceLocId loc, Type *type)
 {

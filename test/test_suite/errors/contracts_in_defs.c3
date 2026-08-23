@@ -18,14 +18,14 @@ struct Foo
 	}
 }
 
-faultdef <* hello *> FOO;
+excuse <* hello *> FOO;
 enum Abc
 {
 	<* test *>
 	XYZ
 }
 
-faultdef <* @require a > 0 *> FOO2; // #error: No constraints are allowed on faults
+excuse <* @require a > 0 *> FOO2; // #error: No constraints are allowed on faults
 enum Abc2
 {
 	<* @require a > 0 *> // #error: No constraints are allowed on enum values

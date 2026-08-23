@@ -12,7 +12,7 @@ const char *varargslots_name = "varargslots";
 const char *temp_name = "$$temp";
 
 static void llvm_emit_constructors_and_destructors(GenContext *c);
-static void llvm_codegen_setup();
+static void llvm_codegen_setup(void);
 static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context);
 
 const char* llvm_version = LLVM_VERSION_STRING;
@@ -109,7 +109,7 @@ LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, int6
 INLINE void llvm_emit_xtor(GenContext *c, LLVMValueRef *list, const char *name)
 {
 	if (!list) return;
-	unsigned len = vec_size(list);
+	int len = vec_size(list);
 	LLVMTypeRef type = LLVMTypeOf(list[0]);
 	LLVMValueRef array = LLVMConstArray(type, list, len);
 	LLVMValueRef global = LLVMAddGlobal(c->module, LLVMTypeOf(array), name);
@@ -153,7 +153,7 @@ static LLVMValueRef llvm_emit_macho_xtor_use(GenContext *c, LLVMValueRef global,
 
 static LLVMValueRef llvm_emit_macho_xtor(GenContext *c, LLVMValueRef *list, const char *name, const char *retain_name)
 {
-	unsigned len = vec_size(list);
+	int len = vec_size(list);
 	if (!len) return NULL;
 	scratch_buffer_clear();
 	scratch_buffer_append(".list$");
@@ -247,7 +247,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			ConstInitializer **elements = const_init->init_array_full;
 			ASSERT(type_is_arraylike(type));
-			ArraySize size = type->array.len;
+			ArrayIndex size = type->array.len;
 			ASSERT(size > 0);
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
 			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
@@ -278,7 +278,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			ASSERT(vec_size(elements) > 0 && "Array should always have gotten at least one element.");
 			if (vec_size(elements) > 0 && type->type_kind == TYPE_FLEXIBLE_ARRAY) was_modified = true;
 			ArrayIndex current_index = 0;
-			unsigned alignment = 0;
+			int alignment = 0;
 			LLVMValueRef *parts = NULL;
 			bool pack = false;
 			bool is_vec = type->type_kind == TYPE_SIMD_VECTOR || type->type_kind == TYPE_VECTOR;
@@ -348,7 +348,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 
 			// Create the resulting values:
 			LLVMValueRef values[2] = { result, NULL };
-			unsigned value_count = 1;
+			int value_count = 1;
 
 			// Add possible padding as and i8 array.
 			if (union_size > member_size)
@@ -375,12 +375,12 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			Decl *decl = const_init->type->decl;
 			Decl **members = decl->strukt.members;
 			bool is_packed = decl->strukt.is_packed;
-			uint32_t count = vec_size(members);
+			int count = vec_size(members);
 			if (decl->decl_kind == DECL_UNION && count) count = 1;
 			LLVMValueRef *entries = NULL;
 			bool was_modified = false;
 			ByteSize prev_size = 0;
-			for (ArrayIndex i = 0; i < count; i++)
+			for (int i = 0; i < count; i++)
 			{
 				Decl *member = members[i];
 				if (member->padding)
@@ -607,7 +607,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 				decl_is_local(decl),
 				LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
 				NULL,
-				decl->alignment * 8);
+				(uint32_t)decl->alignment * 8);
 		LLVMGlobalSetMetadata(llvm_get_ref(c, decl), 0, decl->var.backend_debug_ref);
 	}
 
@@ -735,7 +735,7 @@ void gencontext_print_llvm_ir(GenContext *context)
 	}
 }
 
-INLINE LLVMValueRef llvm_emit_alloca_internal(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
+INLINE LLVMValueRef llvm_emit_alloca_internal(GenContext *c, LLVMTypeRef type, int alignment, const char *name)
 {
 	ASSERT(c->current_block);
 	ASSERT(LLVMGetTypeKind(type) != LLVMVoidTypeKind);
@@ -772,7 +772,7 @@ BEValue llvm_emit_alloca_b_realign(GenContext *c, Type *type, AlignSize alignmen
 	return (BEValue){.value = alloca, .alignment = alignment, .kind = BE_ADDRESS, .type = type};
 }
 
-LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
+LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, int alignment, const char *name)
 {
 	return llvm_emit_alloca_internal(c, type, alignment, name);
 }
@@ -809,7 +809,7 @@ static bool intrinsics_setup = false;
 LLVMAttributes attribute_id;
 LLVMIntrinsics intrinsic_id;
 
-static void llvm_codegen_setup()
+static void llvm_codegen_setup(void)
 {
 	if (intrinsics_setup) return;
 
@@ -937,12 +937,14 @@ static void llvm_codegen_setup()
 	attribute_id.nnan = lookup_attribute("nnan");
 	attribute_id.noalias = lookup_attribute("noalias");
 	attribute_id.noinline = lookup_attribute("noinline");
+	attribute_id.noredzone = lookup_attribute("noredzone");
 	attribute_id.noreturn = lookup_attribute("noreturn");
 	attribute_id.nounwind = lookup_attribute("nounwind");
 	attribute_id.nsz = lookup_attribute("nsz");
 	attribute_id.optnone = lookup_attribute("optnone");
 	attribute_id.optsize = lookup_attribute("optsize");
 	attribute_id.minsize = lookup_attribute("minsize");
+	attribute_id.noimplicitfloat = lookup_attribute("noimplicitfloat");
 	attribute_id.readonly = lookup_attribute("readonly");
 	attribute_id.reassoc = lookup_attribute("reassoc");
 	attribute_id.sanitize_address = lookup_attribute("sanitize_address");
@@ -1248,12 +1250,16 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
 		llvm_attribute_add(c, function, attribute_id.ssp, -1);
 	}
+	if (compiler.build.feature.implicit_float == IMPLICIT_FLOAT_OFF)
+	{
+		llvm_attribute_add(c, function, attribute_id.noimplicitfloat, -1);
+	}
 	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
 	int offset = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;
 
 	Signature *sig = prototype->raw_type->function.signature;
-	for (unsigned i = offset; i < prototype->param_count; i++)
+	for (int i = offset; i < prototype->param_count; i++)
 	{
 		ABIArgInfo *info = prototype->abi_args[i];
 		Decl *param_decl = sig->params[i - offset];
@@ -1263,6 +1269,10 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	if (decl->func_decl.attr_noinline)
 	{
 		llvm_attribute_add(c, function, attribute_id.noinline, -1);
+	}
+	if (compiler.platform.noredzone)
+	{
+		llvm_attribute_add(c, function, attribute_id.noredzone, -1);
 	}
 	if (decl->func_decl.signature.attrs.noreturn)
 	{
@@ -1432,7 +1442,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 }
 
 
-INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
+INLINE GenContext *llvm_gen_tests(Module** modules, int module_count, LLVMContextRef shared_context)
 {
 	Path *test_path = path_create_from_string("_$test", 5, 0);
 	Module *test_module = compiler_find_or_create_module(test_path);
@@ -1448,7 +1458,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	LLVMValueRef *decls = NULL;
 
 	LLVMTypeRef opt_test = LLVMFunctionType(llvm_get_type(c, type_fault), NULL, 0, false);
-	for (unsigned i = 0; i < module_count; i++)
+	for (int i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
 		FOREACH(Decl *, test, module->tests)
@@ -1463,7 +1473,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 			vec_add(decls, ref);
 		}
 	}
-	unsigned test_count = vec_size(decls);
+	int test_count = vec_size(decls);
 	LLVMValueRef name_ref;
 	LLVMValueRef decl_ref;
 
@@ -1501,7 +1511,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 }
 
 
-INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, LLVMContextRef shared_context)
+INLINE GenContext *llvm_gen_benchmarks(Module** modules, int module_count, LLVMContextRef shared_context)
 {
 	Path *benchmark_path = path_create_from_string("$benchmark", 10, 0);
 	Module *benchmark_module = compiler_find_or_create_module(benchmark_path);
@@ -1516,7 +1526,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 	LLVMValueRef *decls = NULL;
 
 	LLVMTypeRef opt_benchmark = LLVMFunctionType(llvm_get_type(c, type_fault), NULL, 0, false);
-	for (unsigned i = 0; i < module_count; i++)
+	for (int i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
 		FOREACH(Decl *, benchmark, module->benchmarks)
@@ -1531,7 +1541,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 			vec_add(decls, ref);
 		}
 	}
-	unsigned benchmark_count = vec_size(decls);
+	int benchmark_count = vec_size(decls);
 	LLVMValueRef name_ref;
 	LLVMValueRef decl_ref;
 
@@ -1568,7 +1578,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 	return c;
 }
 
-void **llvm_gen(Module** modules, unsigned module_count)
+void **llvm_gen(Module** modules, int module_count)
 {
 	if (!module_count) return NULL;
 	GenContext **gen_contexts = NULL;
@@ -1592,8 +1602,8 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		{
 			vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
 		}
-		unsigned count = vec_size(gen_contexts);
-		for (unsigned i = 1; i < count; i++)
+		int count = vec_size(gen_contexts);
+		for (int i = 1; i < count; i++)
 		{
 			GenContext *other = gen_contexts[i];
 			LLVMLinkModules2(first->module, other->module);
@@ -1602,7 +1612,7 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		vec_resize(gen_contexts, 1);
 		return (void**)gen_contexts;
 	}
-	for (unsigned i = 0; i < module_count; i++)
+	for (int i = 0; i < module_count; i++)
 	{
 		GenContext *result = llvm_gen_module(modules[i], NULL);
 		if (!result) continue;
@@ -1831,7 +1841,7 @@ void llvm_attribute_add_string(GenContext *c, LLVMValueRef value_to_add_attribut
 
 BitSize llvm_bitsize(GenContext *c, LLVMTypeRef type)
 {
-	return LLVMSizeOfTypeInBits(c->target_data, type);
+	return (BitSize)LLVMSizeOfTypeInBits(c->target_data, type);
 }
 TypeSize llvm_abi_size(GenContext *c, LLVMTypeRef type)
 {
@@ -1843,7 +1853,7 @@ AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type)
 	return (AlignSize)LLVMABIAlignmentOfType(c->target_data, type);
 }
 
-LLVMValueRef llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len)
+LLVMValueRef llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, int dest_align, LLVMValueRef source, int src_align, uint64_t len)
 {
 	ASSERT(dest_align && src_align);
 	if (len <= UINT32_MAX)
