@@ -20,10 +20,10 @@ entry:
   unreachable
 }
 
-; Function Attrs: naked nounwind ssp uwtable
+; Function Attrs: naked nounwind uwtable
 define void @testing.foo(i8 zeroext %0) #0 {
 entry:
   unreachable
 }
 
-attributes #0 = { naked nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #0 = { naked nounwind uwtable "no-stack-arg-probe" "no-trapping-math"="true" }

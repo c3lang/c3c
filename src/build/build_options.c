@@ -1324,10 +1324,10 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->riscv_abi = parse_opt_select(RiscvAbi, argopt, riscv_abi);
 				return;
 			}
-			if ((argopt = match_argopt("stack-probe")))
+			if ((argopt = match_argopt("stack-probe"))) // NOLINT
 			{
 				options->stack_probe = parse_opt_select(StackProbe, argopt, stack_probe);
-				if (options->stack_probe_size != DEFAULT_STACK_PROBE_SIZE)
+				if (options->stack_probe == STACK_PROBE_NONE && options->stack_probe_size != DEFAULT_STACK_PROBE_SIZE)
 				{
 					PRINTF("WARNING: '--stack-probe-size' has no effect when '--stack-probe=none' is specified.");
 				}
@@ -1335,16 +1335,16 @@ static void parse_option(BuildOptions *options) // NOLINT
 			}
 			if (match_longopt("stack-probe-size"))
 			{
-				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg()); // NOLINT
 				if (size < 0) error_exit("Expected a valid integer >= 0 for --stack-probe-size");
 				options->stack_probe_size = size;
-				if (options->stack_probe != STACK_PROBE_NOT_SET)
+				if (options->stack_probe == STACK_PROBE_NONE)
 				{
 					PRINTF("WARNING: '--stack-probe-size' has no effect when '--stack-probe=none' is specified.");
 				}
 				return;
 			}
-			if ((argopt = match_argopt("stack-protector")))
+			if ((argopt = match_argopt("stack-protector"))) // NOLINT
 			{
 				options->stack_protector = parse_opt_select(StackProtector, argopt, stack_protector);
 				return;

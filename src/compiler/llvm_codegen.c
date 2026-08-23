@@ -1242,10 +1242,11 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 
 INLINE void llvm_emit_stack_protector_attributes(GenContext *c, LLVMValueRef function, Decl *decl)
 {
-	StackProtector stack_protector = (decl->attrs_resolved && decl->attrs_resolved->stack_protector != STACK_PROTECTOR_NOT_SET)
-				? decl->attrs_resolved->stack_protector
-				: compiler.build.stack_protector;
-	// Fallback to platform/arch defaults if not set
+	StackProtector stack_protector = (StackProtector)decl->func_decl.stack_protector - 1;
+	if (stack_protector == STACK_PROTECTOR_NOT_SET)
+	{
+		stack_protector = decl->func_decl.attr_naked ? STACK_PROTECTOR_NONE : compiler.build.stack_protector;
+	}
 	if (stack_protector == STACK_PROTECTOR_NOT_SET)
 	{
 		switch (compiler.platform.os)
@@ -1280,9 +1281,11 @@ INLINE void llvm_emit_stack_protector_attributes(GenContext *c, LLVMValueRef fun
 
 INLINE void llvm_emit_stack_probe_attributes(GenContext *c, LLVMValueRef function, Decl *decl)
 {
-	StackProbe stack_probe = (decl->attrs_resolved && decl->attrs_resolved->stack_probe != STACK_PROBE_NOT_SET)
-				? decl->attrs_resolved->stack_probe
-				: compiler.build.stack_probe;
+	StackProbe stack_probe = (StackProbe)decl->func_decl.stack_probe - 1;
+	if (stack_probe == STACK_PROBE_NOT_SET)
+	{
+		stack_probe = decl->func_decl.attr_naked ? STACK_PROBE_NONE : compiler.build.stack_probe;
+	}
 	switch (stack_probe)
 	{
 		case STACK_PROBE_NONE:

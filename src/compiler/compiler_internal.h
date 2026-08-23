@@ -408,8 +408,6 @@ typedef struct
 	const char *section;
 	const char *wasm_module;
 	SourceLocId overload;
-	StackProbe stack_probe;
-	StackProtector stack_protector;
 } ResolvedAttrData;
 
 typedef struct
@@ -590,6 +588,8 @@ typedef struct
 			bool attr_nosanitize_thread : 1;
 			bool is_lambda : 1;
 			bool in_macro : 1;
+			unsigned short stack_probe : 3;
+			unsigned short stack_protector : 3;
 			union
 			{
 				uint32_t priority;

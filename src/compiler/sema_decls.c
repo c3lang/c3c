@@ -3259,37 +3259,6 @@ static bool update_call_abi_from_string(SemaContext *context, Decl *decl, Expr *
 	RETURN_SEMA_ERROR(expr, "Unknown call convention, only 'cdecl', 'stdcall' and 'veccall' are supported");
 }
 
-INLINE bool update_stack_probe(ResolvedAttrData *attr_data, StackProbe stack_probe)
-{
-	attr_data->stack_probe = stack_probe;
-	return true;
-}
-
-static bool update_stack_probe_from_string(SemaContext *context, ResolvedAttrData *attr_data, Expr *expr)
-{
-	const char *str = expr->const_expr.bytes.ptr;
-	if (str_eq(str, "none")) return update_stack_probe(attr_data, STACK_PROBE_NONE);
-	if (str_eq(str, "call")) return update_stack_probe(attr_data, STACK_PROBE_CALL);
-	if (str_eq(str, "inline")) return update_stack_probe(attr_data, STACK_PROBE_INLINE);
-	RETURN_SEMA_ERROR(expr, "Unknown stack probe level, only 'none', 'call' and 'inline' are supported");
-}
-
-INLINE bool update_stack_protector(ResolvedAttrData *attr_data, StackProtector stack_protector)
-{
-	attr_data->stack_protector = stack_protector;
-	return true;
-}
-
-static bool update_stack_protector_from_string(SemaContext *context, ResolvedAttrData *attr_data, Expr *expr)
-{
-	const char *str = expr->const_expr.bytes.ptr;
-	if (str_eq(str, "none")) return update_stack_protector(attr_data, STACK_PROTECTOR_NONE);
-	if (str_eq(str, "basic")) return update_stack_protector(attr_data, STACK_PROTECTOR_BASIC);
-	if (str_eq(str, "strong")) return update_stack_protector(attr_data, STACK_PROTECTOR_STRONG);
-	if (str_eq(str, "all")) return update_stack_protector(attr_data, STACK_PROTECTOR_ALL);
-	RETURN_SEMA_ERROR(expr, "Unknown stack protection level, only 'none', 'basic', 'strong' and 'all' are supported");
-}
-
 /*
  * Analyse an attribute which has to be an integer constant.
  */
@@ -3336,6 +3305,24 @@ INLINE bool sema_analyse_attribute_bool_const(SemaContext *context, Expr *expr)
 	}
 	return true;
 }
+
+INLINE StackProtector stack_protector_from_string(const char *name)
+{
+	if (str_eq(name, "none")) return STACK_PROTECTOR_NONE;
+	if (str_eq(name, "basic")) return STACK_PROTECTOR_BASIC;
+	if (str_eq(name, "strong")) return STACK_PROTECTOR_STRONG;
+	if (str_eq(name, "all")) return STACK_PROTECTOR_ALL;
+	return STACK_PROTECTOR_NOT_SET;
+}
+
+INLINE StackProbe stack_probe_from_string(const char *name)
+{
+	if (str_eq(name, "none")) return STACK_PROBE_NONE;
+	if (str_eq(name, "call")) return STACK_PROBE_CALL;
+	if (str_eq(name, "inline")) return STACK_PROBE_INLINE;
+	return STACK_PROBE_NOT_SET;
+}
+
 
 /**
  * Analyse almost all attributes.
@@ -3464,18 +3451,24 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_STACKPROBE:
 			if (!expr) RETURN_SEMA_ERROR(attr, "Expected a string argument.");
 			if (!sema_analyse_attribute_string_const(context, expr)) return false;
-			if (!update_stack_probe_from_string(context, attr_data, expr)) return false;
+			if ((decl->func_decl.stack_probe = 1 + stack_probe_from_string(expr->const_expr.bytes.ptr)) == STACK_PROBE_NOT_SET + 1) // NOLINT
+			{
+				RETURN_SEMA_ERROR(expr, "Unknown stack probe level, only 'none', 'call' and 'inline' are supported");
+			}
 			return true;
 		case ATTRIBUTE_NOSTACKPROBE:
-			if (!update_stack_probe(attr_data, STACK_PROBE_NONE)) return false;
+			decl->func_decl.stack_probe = STACK_PROBE_NONE + 1;
 			return true;
 		case ATTRIBUTE_STACKPROTECTOR:
 			if (!expr) RETURN_SEMA_ERROR(attr, "Expected a string argument.");
 			if (!sema_analyse_attribute_string_const(context, expr)) return false;
-			if (!update_stack_protector_from_string(context, attr_data, expr)) return false;
+			if ((decl->func_decl.stack_protector = 1+ stack_protector_from_string(expr->const_expr.bytes.ptr)) == STACK_PROTECTOR_NOT_SET + 1) // NOLINT
+			{
+				RETURN_SEMA_ERROR(expr, "Unknown stack protection level, only 'none', 'basic', 'strong' and 'all' are supported");
+			}
 			return true;
 		case ATTRIBUTE_NOSTACKPROTECTOR:
-			if (!update_stack_protector(attr_data, STACK_PROTECTOR_NONE)) return false;
+			decl->func_decl.stack_protector = STACK_PROTECTOR_NONE + 1;
 			return true;
 		case ATTRIBUTE_BENCHMARK:
 			decl->func_decl.attr_benchmark = true;
@@ -3989,12 +3982,11 @@ static bool sema_analyse_attributes_inner(SemaContext *context, ResolvedAttrData
 bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain, bool *erase_decl)
 {
 	if (decl->resolved_attributes) return true;
-	ResolvedAttrData data = { .tags = NULL, .overload = 0, .stack_probe = STACK_PROBE_NOT_SET, .stack_protector = STACK_PROTECTOR_NOT_SET };
+	ResolvedAttrData data = { .tags = NULL, .overload = 0 };
 	if (!sema_analyse_attributes_inner(context, &data, decl, attrs, domain, NULL, erase_decl)) return false;
 	if (*erase_decl) return true;
 	decl->resolved_attributes = true;
-	if (data.tags || data.deprecated || data.links || data.section || data.overload || data.wasm_module 
-		|| data.stack_probe != STACK_PROBE_NOT_SET || data.stack_protector != STACK_PROTECTOR_NOT_SET)
+	if (data.tags || data.deprecated || data.links || data.section || data.overload || data.wasm_module )
 	{
 		ResolvedAttrData *copy = MALLOCS(ResolvedAttrData);
 		*copy = data;
