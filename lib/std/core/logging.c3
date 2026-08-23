@@ -28,7 +28,7 @@ const LogCategory CATEGORY_CUSTOM_START  = (LogCategory)100;
 tlocal LogCategory default_category = CATEGORY_APPLICATION;
 tlocal LogTag current_tag;
 
-faultdef NO_MORE_DYNAMIC_CATEGORIES;
+excuse NO_MORE_DYNAMIC_CATEGORIES;
 
 enum LogPriority : int
 {

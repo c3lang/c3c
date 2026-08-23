@@ -1,6 +1,6 @@
 module std::os::win32 @feat(WIN32);
 
-constdef Win32_CODEPAGE : Win32_UINT
+constset Win32_CODEPAGE : Win32_UINT
 {
 	IBM037                   = 037, // IBM EBCDIC US-Canada
 	IBM437                   = 437, // OEM United States
@@ -156,7 +156,7 @@ constdef Win32_CODEPAGE : Win32_UINT
 	UTF8                     = 65001, // Unicode (UTF-8)
 }
 
-constdef Win32DwMode : Win32_DWORD
+constset Win32DwMode : Win32_DWORD
 {
 	ENABLE_ECHO_INPUT = 0x0004,
 	ENABLE_INSERT_MODE = 0x0020,

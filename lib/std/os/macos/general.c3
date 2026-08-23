@@ -1,7 +1,7 @@
 module std::os::darwin @feat(DARWIN) @link("Foundation.framework");
 import std::os::macos::cf, std::os::macos::objc, std::io;
 
-constdef NSSearchPathDomainMask : NSUInteger
+constset NSSearchPathDomainMask : NSUInteger
 {
 	USER = 1,
 	LOCAL = 2,
@@ -10,7 +10,7 @@ constdef NSSearchPathDomainMask : NSUInteger
 	ALL = 0x0ffff
 }
 
-constdef NSSearchPathDirectory : NSUInteger
+constset NSSearchPathDirectory : NSUInteger
 {
 	APPLICATION = 1,
 	DEMO_APPLICATION,

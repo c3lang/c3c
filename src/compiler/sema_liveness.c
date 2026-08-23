@@ -227,7 +227,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 			return;
 		case AST_NEXTCASE_STMT:
 			sema_trace_stmt_chain_liveness(ast->nextcase_stmt.defer_id);
-			sema_trace_expr_liveness(ast->nextcase_stmt.switch_expr);
+			if (ast->nextcase_stmt.is_expr) sema_trace_expr_liveness(ast->nextcase_stmt.nextcase_value);
 			return;
 		case AST_BREAK_STMT:
 		case AST_CONTINUE_STMT:
@@ -252,7 +252,7 @@ static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 		{
 			Type *array_type = const_init->type;
 			ConstInitializer **elements = const_init->init_array_full;
-			ArraySize size = array_type->array.len;
+			ArrayIndex size = array_type->array.len;
 			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
 			{
 				sema_trace_const_initializer_liveness(elements[i]);
@@ -271,9 +271,9 @@ static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 		{
 			Decl *decl = const_init->type->decl;
 			Decl **members = decl->strukt.members;
-			uint32_t count = vec_size(members);
+			int count = vec_size(members);
 			if (decl->decl_kind == DECL_UNION && count) count = 1;
-			for (ArrayIndex i = 0; i < count; i++)
+			for (int i = 0; i < count; i++)
 			{
 				sema_trace_const_initializer_liveness(const_init->init_struct[i]);
 			}
@@ -550,8 +550,8 @@ void sema_trace_liveness(void)
 	{
 		sema_trace_decl_liveness(compiler.context.main);
 	}
-	bool keep_tests = compiler.build.testing;
-	bool keep_benchmarks = compiler.build.benchmarking;
+	bool keep_tests = compiler.build.build_test;
+	bool keep_benchmarks = compiler.build.build_benchmark;
 	FOREACH(Decl *, function, compiler.context.method_extension_list)
 	{
 		if (function->decl_kind == DECL_MACRO) continue;
@@ -599,9 +599,9 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 	Methods *table = decl->method_table;
 	if (!table) return;
 	Decl **methods = table->methods;
-	unsigned method_count = vec_size(methods);
+	int method_count = vec_size(methods);
 	if (!method_count) return;
-	for (unsigned i = 0; i < method_count; i++)
+	for (int i = 0; i < method_count; i++)
 	{
 		Decl *method = methods[i];
 		if (method->decl_kind == DECL_MACRO) continue;

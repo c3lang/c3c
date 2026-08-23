@@ -4,7 +4,7 @@ module abc <Type>;
 import abc_faults;
 struct TextTemplate { TextTag tags; }
 struct TextTag { usz start; }
-faultdef BAD;
+excuse BAD;
 <*
  @require tag_start != BAD~!!
  *>

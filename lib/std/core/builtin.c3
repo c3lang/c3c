@@ -12,35 +12,23 @@ import libc, std::hash, std::io, std::os::backtrace;
 *>
 macro @rnd() @const @builtin => $$rnd();
 
-/*
- Use `NO_MORE_ELEMENT` when reading the end of an iterator, or accessing a result out of bounds.
-*/
-faultdef NO_MORE_ELEMENT @builtin;
+excuse
+{
+	<* Use `NO_MORE_ELEMENT` when reading the end of an iterator, or accessing a result out of bounds. *>
+	NO_MORE_ELEMENT @builtin,
+	<* Use `NOT_FOUND` when trying to return a value from some collection but the element is missing. *>
+	NOT_FOUND @builtin,
+	<* Use `TYPE_MISMATCH` when an attempt at conversion fails. *>
+	TYPE_MISMATCH @builtin,
+	<* Use `CAPACITY_EXCEEDED` when trying to add to a bounded list or similar. *>
+	CAPACITY_EXCEEDED @builtin,
+	<*  Use `NOT_IMPLEMENTED` when something is conditionally available. *>
+	NOT_IMPLEMENTED @builtin,
+	<* Use `TIMEOUT` when some time or counter limit has been exceeded. *>
+	TIMEOUT @builtin,
+}
 
-/*
- Use `NOT_FOUND` when trying to return a value from some collection but the element is missing.
-*/
-faultdef NOT_FOUND @builtin;
 
-/*
- Use `TYPE_MISMATCH` when an attempt at conversion fails.
-*/
-faultdef TYPE_MISMATCH @builtin;
-
-/*
- Use `CAPACITY_EXCEEDED` when trying to add to a bounded list or similar.
-*/
-faultdef CAPACITY_EXCEEDED @builtin;
-
-/*
- Use `NOT_IMPLEMENTED` when something is conditionally available.
-*/
-faultdef NOT_IMPLEMENTED @builtin;
-
-/*
- Use `TIMEOUT` when some time or counter limit has been exceeded.
-*/
-faultdef TIMEOUT @builtin;
 
 alias VoidFn = fn void();
 
@@ -69,9 +57,18 @@ macro void @swap(#a, #b) @builtin
 	#b = temp;
 }
 
-macro sz bitsizeof($Type) @builtin @const => $Type::size * 8u;
+<*
+ Return the bitsize of a type.
+ @return "The bitsize"
+*>
+macro sz bitsizeof($Type) @builtin @const => $Type::size * 8;
 
-macro sz @bitsizeof(#expr) @builtin @const => @sizeof(#expr) * 8u;
+<*
+ Return the bitsize of an expression, without evaluating the expression.
+
+ @return "The bitsize"
+*>
+macro sz @bitsizeof(#expr) @builtin @const => @sizeof(#expr) * 8;
 
 <*
  Compile-time check for whether a set of constants contains a certain expression.
@@ -89,15 +86,6 @@ macro bool @in($needle, ...) @builtin @const
 	return false;
 }
 
-macro @_all_const_in(...) <NeedleType> @const @local
-{
-	$for int $i = 0; $i < $vaarg.len; $i++:
-		$if $defined(NeedleType a = $vaarg[$i]) &&& !$defined(NeedleType $a = $vaarg[$i]):
-			return false;
-		$endif
-	$endfor
-	return true;
-}
 
 <*
  Convert an `any` type to a type, returning an failure if there is a type mismatch.
@@ -115,8 +103,10 @@ macro anycast(any v, $Type) @builtin
 }
 
 <*
-  @return "The value in the pointer"
-  @return? TYPE_MISMATCH
+ Convert an any to a given type, with a check.
+
+ @return "The value in the pointer"
+ @return? TYPE_MISMATCH : "If the type doesn't match the any"
 *>
 macro any.to(self, $Type)
 {
@@ -125,6 +115,8 @@ macro any.to(self, $Type)
 }
 
 <*
+ Convert an any to a given type, should always be the correct type.
+
  @require self.type == $Type : "The 'any' contained an unexpected type."
  @return "The value in the pointer"
 *>
@@ -133,39 +125,26 @@ macro any.as(self, $Type)
 	return *($Type*)self.ptr;
 }
 
+<*
+ Return the address of a value, if it's a temporary, create a temporary object
+ and take the address of it.
+
+ @param #val : "The expression to take the address of"
+ @return "A pointer to #val"
+*>
 macro @addr(#val) @builtin
 {
-	$if $defined(&#val):
-		return &#val;
-	$else
-		return &&#val;
-	$endif
+	return $defined(&#val) ??? &#val : &&#val;
 }
 
+<*
+ Return the typeid of an expression without evaluating it.
+
+ @return "The typeid"
+*>
 macro typeid @typeid(#value) @const @builtin
 {
 	return $Typeof(#value);
-}
-
-
-<*
- Assert (always) that a condition is true. Otherwise call abort.
-
- @param #value : "The expression to test"
- @param $fmt : "The formatting string"
- @param ... : "Arguments to the format string"
-*>
-macro void always_assert(bool #value, String $fmt = "", ...) @builtin @format(1) @safemacro
-{
-	bool val = #value;
-	if (@unlikely(!val))
-	{
-		$if $fmt == "":
-			abort(@sprintf("Violated assert '%s'.", $stringify(#value)));
-		$else
-			abort(@sprintf("Violated assert '%s': %s", $stringify(#value), $fmt), ...$vaarg);
-		$endif
-	}
 }
 
 <*
@@ -202,183 +181,6 @@ macro bool member_eq(left, right) @builtin
 	return res;
 }
 
-fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ignore)
-{
-	bool inside_builtin_panic_skipped = true;
-	for (int i = backtraces_to_ignore; i < backtrace.len(); i++)
-	{
-		String function_name = backtrace[i].function;
-		switch
-		{
-			case function_name == "std.os.backtrace.capture_current":
-			case function_name == "std.core.builtin.print_backtrace":
-			case function_name == "std.core.builtin.default_panic":
-			case function_name == "std.core.builtin.panicf":
-			case function_name.starts_with("std.core.runtime.panic_test."):
-			case function_name.starts_with("std.core.runtime.test_panic."):
-				if (inside_builtin_panic_skipped) backtraces_to_ignore++;
-			case function_name == "__GI___sigaction":
-				backtraces_to_ignore = i + 1;
-			default:
-				inside_builtin_panic_skipped = false;
-				break;
-		}
-	}
-	return backtraces_to_ignore;
-}
-
-fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_backtrace = null) @feat(LINUX, DARWIN, OPENBSD, WIN32) => @stack_mem(0x1100; Allocator smem)
-{
-	void*[256] buffer;
-	void*[] backtraces = backtrace::capture_current(&buffer);
-	if (added_backtrace)
-	{
-		backtraces[++backtraces_to_ignore] = added_backtrace;
-	}
-	@stack_mem(4096; Allocator mem)
-	{
-		BacktraceList? backtrace = backtrace::symbolize_backtrace(mem, backtraces);
-		if (catch backtrace) return false;
-
-		// Update ignore-count to also ignore the first traces from the panic functions
-		backtraces_to_ignore = panic_print_backtrace_count(backtrace, backtraces_to_ignore);
-		if (backtrace.len() <= backtraces_to_ignore) return false;
-
-		io::eprint("\nERROR: '");
-		io::eprint(message);
-		io::eprintn("'");
-
-		sz repetition_count;
-		foreach (i, &trace : backtrace)
-		{
-			if (i < backtraces_to_ignore) continue;
-			if (trace.has_file() && trace.file.ends_with("/lib/std/core/private/main_stub.c3")) {
-				break;
-			}
-
-			// Repeating backtraces (f.e. for max recursion depth) pretty print
-			if (i > 0 && *trace == backtrace[i-1]) {
-				if (i + 1 < backtrace.len() && *trace == backtrace[i+1]) {
-					repetition_count += 1;
-					continue;
-				} else if (repetition_count > 0) {
-					if (trace.is_unknown()) {
-						io::eprintfn("  ... (%s repetitions of ???)", repetition_count, trace.function);
-					} else {
-						io::eprintfn("  ... (%s repetitions of %s)", repetition_count, trace.function);
-					}
-				}
-			} else {
-				repetition_count = 0;
-			}
-
-			String inline_suffix = trace.is_inline ? " [inline]" : "";
-			switch
-			{
-				case trace.is_unknown():
-					io::eprintfn("  in ???%s", inline_suffix);
-				case trace.has_file():
-					io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
-				default:
-					io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
-			}
-		}
-	};
-	return true;
-}
-
-fn void default_panic(String message, String file, String function, int line) @feat(LINUX, DARWIN, OPENBSD, WIN32)
-{
-	in_panic = true;
-	$if $defined(io::stderr) && env::PANIC_MSG:
-		if (!print_backtrace(message, 2))
-		{
-			io::eprintfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
-		}
-	$endif
-	$$trap();
-
-}
-
-macro void abort(String string = "Unrecoverable error reached", ...) @format(0) @builtin @noreturn
-{
-	panicf(string, $$FILE, $$FUNC, $$LINE, ...$vaarg);
-	$$trap();
-}
-
-bool in_panic @private = false;
-
-fn void default_panic(String message, String file, String function, int line) @weak
-{
-	$if $defined(io::stderr) && env::PANIC_MSG && !env::EMSCRIPTEN:
-		if (in_panic)
-		{
-			io::eprintn("Panic inside of panic.");
-			$$trap();
-			return;
-		}
-		in_panic = true;
-		$if $defined(io::stderr):
-		io::eprint("\nERROR: '");
-		io::eprint(message);
-		io::eprintfn("', in %s (%s:%d)", function, file, line);
-		$endif
-		in_panic = false;
-	$endif
-	$$trap();
-}
-
-alias PanicFn = fn void(String message, String file, String function, int line);
-
-PanicFn panic = &default_panic;
-
-fn void panicf(String fmt, String file, String function, int line, args...)
-{
-	$if $defined(io::stderr) && env::PANIC_MSG && !env::EMSCRIPTEN:
-		if (in_panic)
-		{
-			io::eprint("Panic inside of panic: ");
-			io::eprintn(fmt);
-			return;
-		}
-		in_panic = true;
-		@stack_mem(512; Allocator allocator)
-		{
-			DString s;
-			s.init(allocator);
-			s.appendf(fmt, ...args);
-			in_panic = false;
-			panic(s.str_view(), file, function, line);
-		};
-	$else
-		panic(fmt, file, function, line);
-	$endif
-}
-
-<*
- Marks the path as unreachable. This will panic in safe mode, and in fast will simply be assumed
- never happens.
- @param [in] string : "The panic message or format string"
-*>
-macro void unreachable(String string = "Unreachable statement reached.", ...) @builtin @noreturn
-{
-	$if env::COMPILER_SAFE_MODE:
-	panicf(string, $$FILE, $$FUNC, $$LINE, ...$vaarg);
-	$else
-	$$unreachable();
-	$endif
-}
-
-<*
- Marks the path as unsupported, this is similar to unreachable.
- @param [in] string : "The error message"
-*>
-macro void unsupported(String string = "Unsupported function invoked") @builtin @noreturn
-{
-	panicf(string, $$FILE, $$FUNC, $$LINE, ...$vaarg);
-	$$unreachable();
-}
-
 <*
  @require $defined(uptr[] x = { ...$vaarg }) : "Arguments must be convertible to uptr"
 *>
@@ -387,29 +189,40 @@ macro uptr @syscall(...) @builtin
 	return $$syscall(...$vaarg);
 }
 
-
 <*
- Unconditionally break into an attached debugger when reached.
-*>
-macro void breakpoint() @builtin
-{
-	$$breakpoint();
-}
+ Create an "any" type from a given pointer and type
 
+ @param ptr : "The pointer, may be null"
+ @param type : "The type the any should have"
+ @return "The new any"
+*>
 macro any_make(void* ptr, typeid type) @builtin
 {
 	return $$any_make(ptr, type);
 }
 
-macro any.retype_to(&self, typeid type)
+<*
+ Take an "any" and return a new "any" based on the new type.
+
+ @param self : "The any to take the pointer from"
+ @param type : "The new type"
+ @return "The resulting any with pointer self.ptr and type type"
+*>
+macro any any.retype_to(self, typeid type)
 {
 	return $$any_make(self.ptr, type);
 }
 
 <*
+ Create an any based on its inner type. E.g. a typedef to the type the typedef is
+ based on.
+
+ @param self : "The any to convert"
+ @return "The resulting any with with the inner type"
+
  @require (bool)self.type : "A typed any was expected"
 *>
-macro any.as_inner(&self)
+macro any.as_inner(self)
 {
 	return $$any_make(self.ptr, self.type.inner);
 }
@@ -434,11 +247,16 @@ macro bitcast(expr, $Type) @builtin
 }
 
 <*
+ Get an enum value given its name.
+
  @param $Type : `The type of the enum`
  @param [in] enum_name : `The name of the enum to search for`
+ @return "The enum value"
+ @return? NOT_FOUND : "If no match was found"
+
  @require $Type::kind == ENUM : `Only enums may be used`
  @ensure $Typeof(return) == $Type*
- @return? NOT_FOUND
+
 *>
 macro enum_by_name($Type, String enum_name) @builtin
 {
@@ -452,44 +270,52 @@ macro enum_by_name($Type, String enum_name) @builtin
 
 
 <*
- Mark an expression as likely to be true
+ Check an expression if it is true with a compiler hint how likely it is to be true.
 
  @param #value : "expression to be marked likely"
  @param $probability : "in the range 0 - 1"
+ @return "true if #value is true, false otherwise"
+
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro bool @likely(bool #value, $probability = 1.0) @builtin
 {
 	$switch:
-	$case env::BUILTIN_EXPECT_IS_DISABLED:
-	return #value;
-	$case $probability == 1.0:
-	return $$expect(#value, true);
-	$default:
-	return $$expect_with_probability(#value, true, $probability);
+		$case env::BUILTIN_EXPECT_IS_DISABLED:
+			return #value;
+		$case $probability == 1.0:
+			return $$expect(#value, true);
+		$default:
+			return $$expect_with_probability(#value, true, $probability);
 	$endswitch
 }
 
 <*
- Mark an expression as unlikely to be true
+ Check an expression if it is true with a compiler hint how unlikely it is to be true.
 
  @param #value : "expression to be marked unlikely"
  @param $probability : "in the range 0 - 1"
+ @return "true if #value is true, false otherwise"
+
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 {
 	$switch:
-	$case env::BUILTIN_EXPECT_IS_DISABLED:
-	return #value;
-	$case $probability == 1.0:
-	return $$expect(#value, false);
-	$default:
-	return $$expect_with_probability(#value, false, $probability);
+		$case env::BUILTIN_EXPECT_IS_DISABLED:
+			return #value;
+		$case $probability == 1.0:
+			return $$expect(#value, false);
+		$default:
+			return $$expect_with_probability(#value, false, $probability);
 	$endswitch
 }
 
 <*
+ Mark an integer or bool as having an expected with a particular chance.
+
+ @return "true if it matches the expected value, false otherwise"
+
  @require values::@is_int(#value) || values::@is_bool(#value)
  @require $defined($Typeof(#value) v = expected)
  @require $probability >= 0 && $probability <= 1.0
@@ -497,12 +323,12 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 macro @expect(#value, expected, $probability = 1.0) @builtin
 {
 	$switch:
-	$case env::BUILTIN_EXPECT_IS_DISABLED:
-	return #value == expected;
-	$case $probability == 1.0:
-	return $$expect(#value, ($Typeof(#value))expected);
-	$default:
-	return $$expect_with_probability(#value, expected, $probability);
+		$case env::BUILTIN_EXPECT_IS_DISABLED:
+			return #value == expected;
+		$case $probability == 1.0:
+			return $$expect(#value, ($Typeof(#value))expected);
+		$default:
+			return $$expect_with_probability(#value, expected, $probability);
 	$endswitch
 }
 
@@ -519,7 +345,7 @@ enum PrefetchLocality
 }
 
 <*
- Prefetch a pointer.
+ Prefetch a pointer as a compiler hint.
 
  @param [in] ptr : `Pointer to prefetch`
  @param $locality : `Locality ranging from none to extremely local`
@@ -559,6 +385,9 @@ macro swizzle2(v, v2, ...) @builtin
 
 <*
  Returns the count of leading zero bits from an integer at compile-time.
+
+ @param $value : "A compile time integer"
+ @return "The number of leading zeros"
 
  @require types::is_int($Typeof($value)) : "Input value must be an integer"
  @require @sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
@@ -1087,74 +916,13 @@ macro String fault.@short_name($self) @const
 	return $name[@str_find($name, "::") + 2..];
 }
 
-module std::core::builtin @feat(LINUX, ANDROID, DARWIN) @feat(SAFE_MODE) @feat(DEBUG_SYMBOLS);
-import libc, std::io, std::os::posix;
-
-fn void sig_panic(String message)
+macro @_all_const_in(...) <NeedleType> @const @local
 {
-	default_panic(message, "???", "???", 0);
+	$for int $i = 0; $i < $vaarg.len; $i++:
+$if $defined(NeedleType a = $vaarg[$i]) &&& !$defined(NeedleType $a = $vaarg[$i]):
+return false;
+$endif
+$endfor
+return true;
 }
 
-fn void sig_bus_error(CInt i, void* info, void* context)
-{
-	$if !env::NATIVE_STACKTRACE:
-		sig_panic("Illegal memory access.");
-	$else
-		$if $defined(io::stderr):
-			if (!print_backtrace("Illegal memory access.", 2, posix::stack_instruction(context)))
-			{
-				io::eprintn("\nERROR: 'Illegal memory access'.");
-			}
-		$endif
-	$endif
-	os::fastexit(128 + i);
-}
-
-fn void sig_segmentation_fault(CInt i, void* p1, void* context)
-{
-	$if !env::NATIVE_STACKTRACE:
-		sig_panic("Out of bounds memory access.");
-	$else
-		$if $defined(io::stderr):
-			if (!print_backtrace("Out of bounds memory access.", 2, posix::stack_instruction(context)))
-			{
-				io::eprintn("\nERROR: Memory error without backtrace, possible stack overflow.");
-			}
-		$endif
-	$endif
-	os::fastexit(128 + i);
-}
-
-fn void sig_illegal_instruction(CInt i, void* p1, void* context)
-{
-	if (in_panic) os::fastexit(128 + i);
-	$if !env::NATIVE_STACKTRACE:
-		sig_panic("Illegal instruction.");
-	$else
-		$if $defined(io::stderr):
-			if (!print_backtrace("Illegal instruction.", 2, posix::stack_instruction(context)))
-			{
-				io::eprintn("\nERROR: Illegal instruction.");
-			}
-		$endif
-	$endif
-	os::fastexit(128 + i);
-}
-
-char[64 * 1024] sig_stack @local @feat(BACKTRACE) @feat(LINUX);
-
-// Clean this up
-fn void install_signal_handlers() @init(101) @local @feat(BACKTRACE)
-{
-	$if env::LINUX && !$feat(ASAN):
-		Stack_t ss = {
-			.ss_sp = &sig_stack,
-			.ss_size = sig_stack.len
-		};
-		libc::sigaltstack(&ss, null);
-	$endif
-
-	posix::install_signal_handler(libc::SIGBUS, &sig_bus_error);
-	posix::install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);
-	posix::install_signal_handler(libc::SIGILL,  &sig_illegal_instruction);
-}

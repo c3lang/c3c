@@ -3,7 +3,7 @@
 module demo1;
 import std::io;
 
-faultdef ABC, DEF;
+excuse { ABC, DEF }
 
 fn int? hello(int a)
 {

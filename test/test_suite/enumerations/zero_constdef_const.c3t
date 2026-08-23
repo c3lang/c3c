@@ -7,7 +7,7 @@ fn void main()
 	Foo x = $x;
 }
 
-constdef Foo : int[2]
+constset Foo : int[2]
 {
 	X = {1, 2},
 }

@@ -19,7 +19,7 @@ const char *concat_file_arg = "/";
 #define add_concat_quote_arg(arg_, arg2_) do { vec_add(*args_ref, concat_quote_arg); vec_add(*args_ref, (arg_)); vec_add(*args_ref, (arg2_)); } while(0)
 
 static char *assemble_linker_command(const char **args, bool extra_quote);
-static int assemble_link_arguments(const char **arguments, unsigned len);
+static int assemble_link_arguments(const char **arguments, int len);
 
 static inline bool is_no_pie(RelocModel reloc)
 {
@@ -374,7 +374,7 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 	glob_t globbuf;
 	if (!glob(glob_path, 0, NULL, &globbuf))
 	{
-		for (int i = 0; i < globbuf.gl_pathc; i++)
+		for (int i = 0; i < (int)globbuf.gl_pathc; i++)
 		{
 			const char *path = globbuf.gl_pathv[i];
 			// Avoid qemu problems
@@ -382,7 +382,7 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 			    && compiler.platform.arch != ARCH_TYPE_RISCV32
 			    && strstr(path, "riscv")) continue;
 			size_t len = strlen(path);
-			ASSERT(len > file_len);
+			ASSERT(len > (size_t)file_len);
 			const char *res = str_copy(path, len - file_len);
 			globfree(&globbuf);
 			return res;
@@ -583,14 +583,14 @@ static const char *find_linux_ld(void)
 				case ARCH_TYPE_MIPS64EL: return "/lib/ld-linux-mipsn8.so.1";
 				case ARCH_TYPE_RISCV32:
 				{
-					unsigned flen = compiler.platform.riscv.flen;
+					int flen = compiler.platform.riscv.flen;
 					if (flen == 8) return "/lib/ld-linux-riscv32-ilp32d.so.1";
 					if (flen == 4) return "/lib/ld-linux-riscv32-ilp32f.so.1";
 					return "/lib/ld-linux-riscv32-ilp32.so.1";
 				}
 				case ARCH_TYPE_RISCV64:
 				{
-					unsigned flen = compiler.platform.riscv.flen;
+					int flen = compiler.platform.riscv.flen;
 					if (flen == 8) return "/lib/ld-linux-riscv64-lp64d.so.1";
 					if (flen == 4) return "/lib/ld-linux-riscv64-lp64f.so.1";
 					return "/lib/ld-linux-riscv64-lp64.so.1";
@@ -916,11 +916,11 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 }
 
 static void linker_setup_emscripten(const char ***args_ref, Linker linker_type, 
-                                    const char **files_to_link, unsigned file_count)
+                                    const char **files_to_link, int file_count)
 {
 	if (linker_type == LINKER_CC)
 	{
-		if (compiler.build.testing)
+		if (compiler.build.build_test)
 		{
 			// minimal 3 linker flags to make the unit test pass
 			// `c3c compile-test -O1 --target emscripten -o test.js test/unit/ && node test.js`
@@ -929,7 +929,7 @@ static void linker_setup_emscripten(const char ***args_ref, Linker linker_type,
 			add_plain_arg("-sALLOW_MEMORY_GROWTH");
 		}
 
-		if (compiler.build.benchmarking)
+		if (compiler.build.build_benchmark)
 		{
 			add_plain_arg("-sALLOW_MEMORY_GROWTH");
 		}
@@ -944,7 +944,7 @@ static void linker_setup_emscripten(const char ***args_ref, Linker linker_type,
 	}
 }
 
-static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
+static bool linker_setup(const char ***args_ref, const char **files_to_link, int file_count,
                          const char *output_file, Linker linker_type, Linking *linking)
 {
 	bool is_dylib = compiler.build.type == TARGET_TYPE_DYNAMIC_LIB;
@@ -1019,7 +1019,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			break;
 	}
 
-	for (unsigned i = 0; i < file_count; i++)
+	for (int i = 0; i < file_count; i++)
 	{
 		add_quote_arg(files_to_link[i]);
 	}
@@ -1122,10 +1122,10 @@ Linker linker_find_linker_type(void)
 	UNREACHABLE
 }
 
-static int assemble_link_arguments(const char **arguments, unsigned len)
+static int assemble_link_arguments(const char **arguments, int len)
 {
 	int count = 0;
-	for (unsigned i = 0; i < len ; i++)
+	for (int i = 0; i < len ; i++)
 	{
 		const char *arg = arguments[i];
 		if (arg == quote_arg) continue;
@@ -1157,7 +1157,7 @@ static int assemble_link_arguments(const char **arguments, unsigned len)
 	return count;
 }
 
-static bool link_exe(const char *output_file, const char **files_to_link, unsigned file_count)
+static bool link_exe(const char *output_file, const char **files_to_link, int file_count)
 {
 	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
@@ -1223,8 +1223,8 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 {
 	scratch_buffer_clear();
 	if (extra_quote) scratch_buffer_append_char('"');
-	unsigned count = vec_size(args);
-	for (unsigned i = 0; i < count; i++)
+	int count = vec_size(args);
+	for (int i = 0; i < count; i++)
 	{
 		if (i != 0) scratch_buffer_append_char(' ');
 		const char *arg = args[i];
@@ -1260,7 +1260,7 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 }
 
 
-void platform_linker(const char *output_file, const char **files, unsigned file_count)
+void platform_linker(const char *output_file, const char **files, int file_count)
 {
 	const char **parts = NULL;
 	const char ***args_ref = &parts;
@@ -1405,7 +1405,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	return out_name;
 }
 
-bool dynamic_lib_linker(const char *output_file, const char **files, unsigned file_count)
+bool dynamic_lib_linker(const char *output_file, const char **files, int file_count)
 {
 	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
@@ -1457,7 +1457,7 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 	return true;
 }
 
-bool static_lib_linker(const char *output_file, const char **files, unsigned file_count)
+bool static_lib_linker(const char *output_file, const char **files, int file_count)
 {
 #if LLVM_AVAILABLE
 	ArFormat format;
@@ -1485,7 +1485,7 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 #endif
 }
 
-bool linker(const char *output_file, const char **files, unsigned file_count)
+bool linker(const char *output_file, const char **files, int file_count)
 {
 	return link_exe(output_file, files, file_count);
 }

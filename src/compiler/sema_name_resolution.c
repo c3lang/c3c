@@ -102,13 +102,17 @@ static bool add_interface_to_decl_stack(SemaContext *context, Decl *decl)
 
 static bool add_members_to_decl_stack(SemaContext *context, Decl *decl, FindMember find)
 {
-	if (find != FIELDS_ONLY) sema_add_methods_to_decl_stack(context, decl);
+	Decl *original = decl;
 	while (decl->decl_kind == DECL_TYPEDEF)
 	{
 		Type *type = decl->distinct->type->canonical;
 		if (!type_is_user_defined(type)) break;
 		decl = type->decl;
 	}
+
+	bool late_add = original != decl;
+	if (find != FIELDS_ONLY && !late_add) sema_add_methods_to_decl_stack(context, original);
+
 	if (decl->decl_kind == DECL_ENUM)
 	{
 		FOREACH(Decl *, member, decl->enums.parameters) sema_decl_stack_push(member);
@@ -129,6 +133,9 @@ static bool add_members_to_decl_stack(SemaContext *context, Decl *decl, FindMemb
 			sema_decl_stack_push(member);
 		}
 	}
+
+	if (find != FIELDS_ONLY && late_add) sema_add_methods_to_decl_stack(context, original);
+
 	return true;
 }
 

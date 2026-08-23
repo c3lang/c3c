@@ -2,8 +2,8 @@
 
 module lexer::faults;
 
-faultdef UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
-faultdef TRIE_FULL;
+excuse UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
+excuse TRIE_FULL;
 
 <*
  @require Token::kind == ENUM && Token::inner.kind == UNSIGNED_INT

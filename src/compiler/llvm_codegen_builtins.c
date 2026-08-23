@@ -4,7 +4,7 @@
 
 #include "llvm_codegen_internal.h"
 
-INLINE void llvm_emit_intrinsic_args(GenContext *c, Expr **args, LLVMValueRef *slots, unsigned count);
+INLINE void llvm_emit_intrinsic_args(GenContext *c, Expr **args, LLVMValueRef *slots, int count);
 
 INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
 {
@@ -15,10 +15,10 @@ INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
 	LLVMValueRef arg1 = result_value->value;
 	LLVMValueRef arg2 = LLVMGetPoison(LLVMTypeOf(arg1));
 	LLVMValueRef buff[128];
-	unsigned elements = rtype->array.len;
+	int elements = rtype->array.len;
 	LLVMValueRef *mask_element = elements > 128 ? MALLOC(sizeof(LLVMValueRef)) : buff;
 	LLVMTypeRef mask_element_type = llvm_get_type(c, type_int);
-	for (unsigned i = 0; i < elements; i++)
+	for (int i = 0; i < elements; i++)
 	{
 		mask_element[i] = LLVMConstInt(mask_element_type, elements - i - 1, false);
 	}
@@ -38,12 +38,12 @@ INLINE void llvm_emit_select(GenContext *c, BEValue *result_value, Expr *expr)
 INLINE void llvm_emit_swizzle(GenContext *c, BEValue *result_value, Expr *expr, bool swizzle_two)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned count = vec_size(args);
+	int count = vec_size(args);
 	LLVMValueRef arg2;
 	llvm_emit_expr(c, result_value, args[0]);
 	llvm_value_rvalue(c, result_value);
 	LLVMValueRef arg1 = result_value->value;
-	unsigned mask_start = 1;
+	int mask_start = 1;
 	if (swizzle_two)
 	{
 		mask_start = 2;
@@ -58,12 +58,12 @@ INLINE void llvm_emit_swizzle(GenContext *c, BEValue *result_value, Expr *expr, 
 #define MASK_VALS 256
 	LLVMValueRef mask_cache[MASK_VALS];
 	LLVMValueRef *mask_val = mask_cache;
-	unsigned mask_len = count - mask_start;
+	int mask_len = count - mask_start;
 	if (mask_len > MASK_VALS)
 	{
 		mask_val = MALLOC(sizeof(LLVMValueRef) * (mask_len));
 	}
-	for (unsigned i = mask_start; i < count; i++)
+	for (int i = mask_start; i < count; i++)
 	{
 		llvm_emit_expr(c, result_value, args[i]);
 		llvm_value_rvalue(c, result_value);
@@ -103,7 +103,7 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 	bool is_weak = args[4]->const_expr.b;
 	uint64_t success_ordering = args[5]->const_expr.ixx.i.low;
 	uint64_t failure_ordering = args[6]->const_expr.ixx.i.low;
-	uint64_t alignment = args[7]->const_expr.ixx.i.low;
+	int alignment = (int)args[7]->const_expr.ixx.i.low;
 	LLVMValueRef result = LLVMBuildAtomicCmpXchg(c->builder, normal_args[0], normal_args[1], normal_args[2],
 												 ordering_to_llvm(success_ordering), ordering_to_llvm(failure_ordering), false);
 	if (alignment && alignment >= type_abi_alignment(type))
@@ -291,9 +291,9 @@ static inline LLVMValueRef llvm_syscall_asm(LLVMTypeRef func_type, char *call)
 							true, true, LLVMInlineAsmDialectATT, /* can throw */ false);
 }
 
-static inline void llvm_syscall_write_regs_to_scratch(const char** registers, unsigned args)
+static inline void llvm_syscall_write_regs_to_scratch(const char** registers, int args)
 {
-	for (unsigned i = 0; i < args; i++)
+	for (int i = 0; i < args; i++)
 	{
 		scratch_buffer_append(",{");
 		scratch_buffer_append(registers[i]);
@@ -303,13 +303,13 @@ static inline void llvm_syscall_write_regs_to_scratch(const char** registers, un
 
 static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	unsigned arguments = vec_size(expr->call_expr.arguments);
+	int arguments = vec_size(expr->call_expr.arguments);
 	ASSERT(arguments < 10 && "Only has room for 10");
 	LLVMValueRef arg_results[10];
 	LLVMTypeRef arg_types[10];
 	Expr **args = expr->call_expr.arguments;
 	LLVMTypeRef type = llvm_get_type(c, type_uptr);
-	for (unsigned i = 0; i < arguments; i++)
+	for (int i = 0; i < arguments; i++)
 	{
 		llvm_emit_expr(c, be_value, args[i]);
 		llvm_value_rvalue(c, be_value);
@@ -405,10 +405,10 @@ INLINE unsigned llvm_intrinsic_by_type(Type *type, unsigned int_intrinsic, unsig
 	}
 }
 
-INLINE void llvm_emit_intrinsic_args(GenContext *c, Expr **args, LLVMValueRef *slots, unsigned count)
+INLINE void llvm_emit_intrinsic_args(GenContext *c, Expr **args, LLVMValueRef *slots, int count)
 {
 	BEValue be_value;
-	for (unsigned i = 0; i < count; i++)
+	for (int i = 0; i < count; i++)
 	{
 		llvm_emit_expr(c, &be_value, args[i]);
 		llvm_value_rvalue(c, &be_value);
@@ -520,7 +520,7 @@ void llvm_emit_pow_int_builtin(GenContext *c, BEValue *be_value, Expr *expr)
 void llvm_emit_3_variant_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsigned sid, unsigned uid, unsigned fid)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned count = vec_size(args);
+	int count = vec_size(args);
 	ASSERT(count <= 3);
 	LLVMValueRef arg_slots[3] = {0};
 	unsigned intrinsic = llvm_intrinsic_by_type(args[0]->type, sid, uid, fid);
@@ -558,7 +558,7 @@ void llvm_emit_abs_builtin(GenContext *c, BEValue *be_value, Expr *expr)
 void llvm_emit_simple_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsigned intrinsic)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned count = vec_size(args);
+	int count = vec_size(args);
 	ASSERT(count <= 4);
 	ASSERT(count > 0);
 	LLVMValueRef arg_slots[4] = {0};
@@ -571,7 +571,7 @@ void llvm_emit_simple_builtin(GenContext *c, BEValue *be_value, Expr *expr, unsi
 void llvm_emit_matrix_multiply(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned count = vec_size(args);
+	int count = vec_size(args);
 	ASSERT(count == 5);
 	LLVMValueRef arg_slots[5] = {0};
 	llvm_emit_intrinsic_args(c, args, arg_slots, count);
@@ -585,7 +585,7 @@ void llvm_emit_matrix_multiply(GenContext *c, BEValue *be_value, Expr *expr)
 void llvm_emit_matrix_transpose(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned count = vec_size(args);
+	int count = vec_size(args);
 	ASSERT(count == 3);
 	LLVMValueRef arg_slots[3] = {0};
 	llvm_emit_intrinsic_args(c, args, arg_slots, count);
@@ -607,7 +607,7 @@ static void llvm_emit_masked_load(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMValueRef ptr = arg_slots[0];
 	uint64_t alignment = args[3]->const_expr.ixx.i.low;
 	LLVMTypeRef call_type[2] = { LLVMTypeOf(passthru), c->ptr_type };
-	uint64_t align_val = alignment ? alignment : llvm_abi_alignment(c, call_type[0]);
+	uint64_t align_val = alignment ? alignment : (uint64_t)llvm_abi_alignment(c, call_type[0]);
 
 	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic_id.masked_load, call_type, 2);
 	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
@@ -635,7 +635,7 @@ static void llvm_emit_gather(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMValueRef ptr = arg_slots[0];
 	uint64_t alignment = args[3]->const_expr.ixx.i.low;
 	LLVMTypeRef call_type[2] = { LLVMTypeOf(passthru), LLVMTypeOf(ptr) };
-	uint64_t align_val = alignment ? alignment : llvm_abi_alignment(c, LLVMGetElementType(call_type[0]));
+	uint64_t align_val = alignment ? alignment : (uint64_t)llvm_abi_alignment(c, LLVMGetElementType(call_type[0]));
 
 	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic_id.gather, call_type, 2);
 	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
@@ -658,9 +658,9 @@ static void llvm_emit_mask_to_int(GenContext *c, BEValue *be_value, Expr *expr)
 	ASSERT(vec_size(args) == 1);
 	LLVMValueRef val = llvm_emit_expr_to_rvalue(c, args[0]);
 	LLVMTypeRef mask_type = LLVMTypeOf(val);
-	unsigned bits = LLVMGetVectorSize(mask_type);
+	int bits = (int)LLVMGetVectorSize(mask_type);
 	val = LLVMBuildBitCast(c->builder, val, LLVMIntTypeInContext(c->context, bits), "");
-	unsigned target_bits = next_highest_power_of_2(bits);
+	int target_bits = (int)next_highest_power_of_2(bits);
 	if (target_bits < 8) target_bits = 8;
 	if (target_bits < bits) val = LLVMBuildZExt(c->builder, val, llvm_get_type(c, expr->type), "");
 	llvm_value_set(be_value, val, expr->type);
@@ -671,9 +671,9 @@ static void llvm_emit_int_to_mask(GenContext *c, BEValue *be_value, Expr *expr)
 	Expr **args = expr->call_expr.arguments;
 	ASSERT(vec_size(args) == 2);
 	LLVMValueRef val = llvm_emit_expr_to_rvalue(c, args[0]);
-	unsigned bits = (unsigned)args[1]->const_expr.ixx.i.low;
-	unsigned int_len = type_bit_size(args[0]->type);
-	unsigned npot = next_highest_power_of_2(bits);
+	BitSize bits = (int)args[1]->const_expr.ixx.i.low;
+	int int_len = (int)type_bit_size(args[0]->type);
+	int npot = (int)next_highest_power_of_2(bits);
 	if (npot < 8) npot = 8;
 	if (npot < int_len)
 	{
@@ -705,7 +705,7 @@ static void llvm_emit_masked_store(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMValueRef mask = arg_slots[2];
 	uint64_t alignment = args[3]->const_expr.ixx.i.low;
 	LLVMTypeRef call_type[2] = { LLVMTypeOf(value), c->ptr_type };
-	uint64_t align_val = alignment ? alignment : llvm_abi_alignment(c, call_type[0]);
+	uint64_t align_val = alignment ? alignment : (uint64_t)llvm_abi_alignment(c, call_type[0]);
 
 	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic_id.masked_store, call_type, 2);
 	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
@@ -733,7 +733,7 @@ static void llvm_emit_scatter(GenContext *c, BEValue *be_value, Expr *expr)
 	LLVMValueRef mask = arg_slots[2];
 	uint64_t alignment = args[3]->const_expr.ixx.i.low;
 	LLVMTypeRef call_type[2] = { LLVMTypeOf(value), LLVMTypeOf(ptr) };
-	uint64_t align_val = alignment ? alignment : llvm_abi_alignment(c, LLVMGetElementType(call_type[0]));
+	uint64_t align_val = alignment ? alignment : (uint64_t)llvm_abi_alignment(c, LLVMGetElementType(call_type[0]));
 
 	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(c->module, intrinsic_id.scatter, call_type, 2);
 	LLVMTypeRef type = LLVMGlobalGetValueType(decl);
@@ -754,13 +754,13 @@ static void llvm_emit_scatter(GenContext *c, BEValue *be_value, Expr *expr)
 void llvm_emit_builtin_args_types3(GenContext *c, BEValue *be_value, Expr *expr, unsigned intrinsic, Type *type1, Type *type2, Type *type3)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned count = vec_size(args);
+	int count = vec_size(args);
 	ASSERT(count <= 3);
 	ASSERT(count > 0);
 	LLVMValueRef arg_slots[3] = {0};
 	llvm_emit_intrinsic_args(c, args, arg_slots, count);
 	LLVMTypeRef call_type[3];
-	unsigned type_slots = 0;
+	int type_slots = 0;
 	if (type1) call_type[type_slots++] = llvm_get_type(c, type1);
 	if (type2) call_type[type_slots++] = llvm_get_type(c, type2);
 	if (type3) call_type[type_slots++] = llvm_get_type(c, type3);

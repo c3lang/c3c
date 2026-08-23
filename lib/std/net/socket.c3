@@ -48,7 +48,7 @@ macro void @loop_over_addresses(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* a
 
 const Duration POLL_FOREVER = (Duration)-1;
 
-constdef PollSubscribe : ushort
+constset PollSubscribe : ushort
 {
 	ANY_READ     = os::POLLIN,
 	PRIO_READ    = os::POLLPRI,
@@ -59,7 +59,7 @@ constdef PollSubscribe : ushort
 	WRITE        = os::POLLWRNORM,
 }
 
-constdef PollEvent : ushort
+constset PollEvent : ushort
 {
 	READ_PRIO  = os::POLLPRI,
 	READ_OOB   = os::POLLRDBAND,
@@ -207,4 +207,90 @@ fn void? Socket.shutdown(&self, SocketShutdownHow how)
 	{
 		return os::socket_error()~;
 	}
+}
+
+<*
+ Returns the InetAddress of the remote peer connected to this socket.
+*>
+fn InetAddress? Socket.peer_address(&self)
+{
+	return decode_sockaddr(_getpeername(self));
+}
+
+<*
+ Returns the port number of the remote peer connected to this socket.
+*>
+fn ushort? Socket.peer_port(&self)
+{
+	return decode_port(_getpeername(self));
+}
+
+<*
+ Returns the local InetAddress bound to this socket.
+*>
+fn InetAddress? Socket.local_address(&self)
+{
+	return decode_sockaddr(_getsockname(self));
+}
+
+<*
+ Returns the local port bound to this socket.
+*>
+fn ushort? Socket.local_port(&self)
+{
+	return decode_port(_getsockname(self));
+}
+
+macro char[]? _getsockname(Socket* s) @local
+{
+	char[128] storage @noinit;
+	Socklen_t len = storage.len;
+	if (os::getsockname(s.sock, (SockAddrPtr)&storage, &len) < 0)
+	{
+		return os::socket_error()~;
+	}
+	return storage[:len];
+}
+
+macro char[]? _getpeername(Socket* s) @local
+{
+	char[128] storage @noinit;
+	Socklen_t len = storage.len;
+	if (os::getpeername(s.sock, (SockAddrPtr)&storage, &len) < 0)
+	{
+		return os::socket_error()~;
+	}
+	return storage[:len];
+}
+
+fn InetAddress? decode_sockaddr(char[] storage) @private
+{
+	if (storage.len < 8) return IP_NOT_DECODABLE~;
+
+	$if env::DARWIN || env::BSD_FAMILY:
+		AIFamily family = (AIFamily)storage[1];
+	$else
+		AIFamily family = (AIFamily)*(ushort*)storage.ptr;
+	$endif
+
+	switch (family)
+	{
+		case os::AF_INET:
+			return { .ipv4 = { .a = storage[4], .b = storage[5], .c = storage[6], .d = storage[7] } };
+
+		case os::AF_INET6:
+			if (storage.len < 24) return IP_NOT_DECODABLE~;
+			InetAddress addr = { .is_ipv6 = true };
+			mem::copy(&addr.ipv6, &storage[8], 16);
+			return addr;
+
+		default:
+			return IP_NOT_DECODABLE~;
+	}
+}
+
+fn ushort? decode_port(char[] storage) @private
+{
+	if (storage.len < 4) return IP_NOT_DECODABLE~;
+	return (ushort)storage[2] << 8 | storage[3];
 }

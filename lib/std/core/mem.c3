@@ -12,7 +12,7 @@ const long MB = KB * 1024;
 const long GB = MB * 1024;
 const long TB = GB * 1024;
 
-faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
+excuse { OUT_OF_MEMORY, INVALID_ALLOC_SIZE }
 
 macro bool @constant_is_power_of_2($x) @const @private
 {

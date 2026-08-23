@@ -781,7 +781,7 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 									   BEValue *switch_value)
 {
 	ASSERT_SPAN(switch_ast, min_index > -1);
-	unsigned case_count = vec_size(cases);
+	int case_count = vec_size(cases);
 	BEValue min_val;
 	llvm_emit_expr(c, &min_val, exprptr(cases[min_index]->case_stmt.expr));
 	ASSERT(llvm_value_is_const(&min_val));
@@ -839,7 +839,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 										BEValue *switch_value,
 										LLVMBasicBlockRef exit_block)
 {
-	unsigned case_count = vec_size(cases);
+	int case_count = vec_size(cases);
 	if (!case_count) return;
 	Int min = { .type = TYPE_VOID };
 	Int max = { .type = TYPE_VOID };
@@ -847,7 +847,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	int default_index = -1;
 	bool last_was_default = false;
 	LLVMBasicBlockRef default_block = exit_block;
-	for (unsigned i = 0; i < case_count; i++)
+	for (int i = 0; i < case_count; i++)
 	{
 		Ast *case_ast = cases[i];
 		if (case_ast->ast_kind == AST_DEFAULT_STMT)
@@ -911,7 +911,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 #undef REF_STACK
 	ASSERT(count < DEFAULT_SWITCH_JUMP_MAX_SIZE + 1);
 	memset(refs, 0, sizeof(void *) * count);
-	for (unsigned i = 0; i < case_count; i++)
+	for (int i = 0; i < case_count; i++)
 	{
 		Ast *case_stmt = cases[i];
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
@@ -961,7 +961,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	bool is_if_chain = switch_ast->switch_stmt.flow.if_chain;
 	Type *switch_type = switch_value->type;
 	Ast **cases = switch_ast->switch_stmt.cases;
-	ArraySize case_count = vec_size(cases);
+	ArrayIndex case_count = vec_size(cases);
 	if (!case_count)
 	{
 		// No body or default is empty, just exit after the value.
@@ -969,7 +969,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	}
 
 	Ast *default_case = NULL;
-	for (unsigned i = 0; i < case_count; i++)
+	for (int i = 0; i < case_count; i++)
 	{
 		Ast *case_stmt = cases[i];
 		if (!case_stmt->case_stmt.expr)
@@ -1000,7 +1000,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 	//    default:
 	// }
 	LLVMBasicBlockRef next_block = exit_block;
-	for (unsigned i = case_count; i > 0; i--)
+	for (int i = case_count; i > 0; i--)
 	{
 		Ast *case_stmt = cases[i - 1];
 		if (case_stmt->case_stmt.backend_block)
@@ -1037,7 +1037,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 
 	LLVMValueRef switch_stmt = LLVMBuildSwitch(c->builder, switch_current_val.value, default_case ? default_case->case_stmt.backend_block : exit_block, case_count);
 	c->current_block = NULL;
-	for (unsigned i = 0; i < case_count; i++)
+	for (int i = 0; i < case_count; i++)
 	{
 		Ast *case_stmt = cases[i];
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
@@ -1147,25 +1147,25 @@ void llvm_emit_continue(GenContext *c, Ast *ast)
 
 void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 {
-	Ast *jump_target = astptr(ast->nextcase_stmt.case_switch_stmt);
-	if (jump_target->ast_kind != AST_SWITCH_STMT)
+	Ast *parent = astptr(ast->nextcase_stmt.switch_stmt);
+	if (!ast->nextcase_stmt.is_expr)
 	{
 		llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
-		llvm_emit_jmp(context, jump_target->case_stmt.backend_block);
+		llvm_emit_jmp(context, parent->switch_stmt.cases[ast->nextcase_stmt.case_number]->case_stmt.backend_block);
 		return;
 	}
 	BEValue be_value;
-	llvm_emit_expr(context, &be_value, ast->nextcase_stmt.switch_expr);
-	if (jump_target->switch_stmt.flow.jump)
+	llvm_emit_expr(context, &be_value, ast->nextcase_stmt.nextcase_value);
+	if (parent->switch_stmt.flow.jump)
 	{
 		llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
-		Ast **cases = jump_target->switch_stmt.cases;
-		int default_index = jump_target->switch_stmt.codegen.jump.default_index;
-		LLVMBasicBlockRef exit_block = jump_target->switch_stmt.codegen.exit_block;
-		LLVMValueRef instr = llvm_emit_switch_jump_stmt(context, jump_target, cases,
-		                                                jump_target->switch_stmt.codegen.jump.count,
-		                                                jump_target->switch_stmt.codegen.jump.min_index,
-		                                                jump_target->switch_stmt.codegen.jump.jmptable,
+		Ast **cases = parent->switch_stmt.cases;
+		int default_index = parent->switch_stmt.codegen.jump.default_index;
+		LLVMBasicBlockRef exit_block = parent->switch_stmt.codegen.exit_block;
+		LLVMValueRef instr = llvm_emit_switch_jump_stmt(context, parent, cases,
+		                                                parent->switch_stmt.codegen.jump.count,
+		                                                parent->switch_stmt.codegen.jump.min_index,
+		                                                parent->switch_stmt.codegen.jump.jmptable,
 		                                                default_index < 0
 														? exit_block
 		                                                : cases[default_index]->case_stmt.backend_block,
@@ -1179,9 +1179,9 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 
 		return;
 	}
-	llvm_store(context, jump_target->switch_stmt.codegen.retry.var, &be_value);
+	llvm_store(context, parent->switch_stmt.codegen.retry.var, &be_value);
 	llvm_emit_statement_chain(context, ast->nextcase_stmt.defer_id);
-	llvm_emit_jmp(context, jump_target->switch_stmt.codegen.retry.block);
+	llvm_emit_jmp(context, parent->switch_stmt.codegen.retry.block);
 }
 
 
@@ -1299,7 +1299,7 @@ static inline void add_target_clobbers_to_buffer(GenContext *c)
 static void codegen_append_constraints(ClobberList *clobber_list, const char *str)
 {
 	char *string = clobber_list->string;
-	unsigned len = clobber_list->constraint_len;
+	int len = clobber_list->constraint_len;
 	while (*str)
 	{
 		if (len > 1022) error_exit("Constraint list exceeded max length.");
@@ -1325,8 +1325,8 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 	LLVMValueRef args[512];
 	LLVMTypeRef result_types[512];
 	Decl *result_decls[512];
-	unsigned result_count = 0;
-	unsigned param_count = 0;
+	int result_count = 0;
+	int param_count = 0;
 	AsmInlineBlock *block = ast->asm_block_stmt.block;
 	if (ast->asm_block_stmt.is_string)
 	{
@@ -1433,7 +1433,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 			{
 				if (mask & clobber_mask)
 				{
-					unsigned clobber_index = i * 64 + j;
+					int clobber_index = i * 64 + j;
 					codegen_new_constraint(&clobber_list);
 					codegen_append_constraints(&clobber_list, "~{");
 					codegen_append_constraints(&clobber_list, asm_clobber_by_index(clobber_index));
@@ -1470,7 +1470,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 										   /* can throw */ false
 										   );
 	LLVMValueRef res = LLVMBuildCall2(c->builder, asm_fn_type, asm_fn, args, param_count, "");
-	for (unsigned i = 0; i < param_count; i++)
+	for (int i = 0; i < param_count; i++)
 	{
 		if (pointer_type[i])
 		{
@@ -1484,7 +1484,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 		llvm_store_decl_raw(c, decl, res);
 		return;
 	}
-	for (unsigned i = 0; i < result_count; i++)
+	for (int i = 0; i < result_count; i++)
 	{
 		Decl *decl = result_decls[i];
 		LLVMValueRef res_val = LLVMBuildExtractValue(c->builder, res, i, "");
@@ -1571,9 +1571,9 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const 
 			? type_get_resolved_prototype(panicf->type)
 			: type_get_resolved_prototype(panic_var->type->canonical->pointer);
 	LLVMValueRef actual_args[16];
-	unsigned count = 0;
+	int count = 0;
 	ABIArgInfo **abi_args = prototype->abi_args;
-	for (unsigned i = 0; i < 4; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		Type *type = type_lowering(abi_args[i]->original_type);
 		BEValue value = { .value = panic_args[i], .type = type };
@@ -1582,12 +1582,12 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceLocId loc, const 
 
 	if (panicf)
 	{
-		unsigned elements = vec_size(varargs);
+		int elements = vec_size(varargs);
 		Type *any_slice = type_get_slice(type_any);
 		Type *any_array = type_get_array(type_any, elements);
 		BEValue array_ref = llvm_emit_alloca_b(c, any_array, varargslots_name);
-		unsigned vacount = vec_size(varargs);
-		for (unsigned i = 0; i < vacount; i++)
+		int vacount = vec_size(varargs);
+		for (int i = 0; i < vacount; i++)
 		{
 			BEValue slot = llvm_emit_array_gep(c, &array_ref, i);
 			llvm_store(c, &slot, &varargs[i]);

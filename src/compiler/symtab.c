@@ -81,8 +81,10 @@ const char *kw_name;
 const char *kw_qname;
 const char *kw_offset;
 const char *kw_ordinal;
+const char *kw_default_value;
 const char *kw_out;
 const char *kw_own;
+const char *kw_param_struct;
 const char *kw_ptr;
 const char *kw_return;
 const char *kw_self;
@@ -102,7 +104,7 @@ const char *kw_wmain;
 const char *kw_FILE_NOT_FOUND;
 const char *kw_IoError;
 
-void symtab_destroy()
+void symtab_destroy(void)
 {
 	free(symtab.bucket);
 }
@@ -166,6 +168,7 @@ void symtab_init(uint32_t capacity)
 	kw_bitoffset = KW_DEF("bitoffset");
 	kw_bitsize = KW_DEF("bitsize");
 	kw_cname = KW_DEF("cname");
+	kw_default_value = KW_DEF("default_value");
 	kw_description = KW_DEF("description");
 	kw_drop = KW_DEF("drop");
 	kw_excuse = KW_DEF("excuse");
@@ -193,6 +196,7 @@ void symtab_init(uint32_t capacity)
 	kw_ordinal = KW_DEF("ordinal");
 	kw_out = KW_DEF("out");
 	kw_own = KW_DEF("own");
+	kw_param_struct = KW_DEF("param_struct");
 	kw_ptr = KW_DEF("ptr");
 	kw_qname = KW_DEF("qname");
 	kw_self = KW_DEF("self");
@@ -232,6 +236,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_NAME] = kw_name;
 	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");
 	type_property_list[TYPE_PROPERTY_NAN] = KW_DEF("nan");
+	type_property_list[TYPE_PROPERTY_PARAM_STRUCT] = kw_param_struct;
 	type_property_list[TYPE_PROPERTY_PARAMS] = KW_DEF("params");
 	type_property_list[TYPE_PROPERTY_PARENT] = KW_DEF("parent");
 	type_property_list[TYPE_PROPERTY_QNAME] = kw_qname;
@@ -369,17 +374,17 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_WIDESTRING_16] = KW_DEF("wstr16");
 	builtin_list[BUILTIN_WIDESTRING_32] = KW_DEF("wstr32");
 
-	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
+	for (int i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{
 		ASSERT(builtin_list[i] && "Missing builtin");
 	}
 
-	for (unsigned i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
+	for (int i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
 	{
 		ASSERT(type_property_list[i] && "Missing type property");
 	}
 
-	for (unsigned i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
+	for (int i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
 	{
 		ASSERT(builtin_defines[i] && "Missing builtin define");
 	}
@@ -459,7 +464,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_WEAKLINK] = KW_DEF("@weaklink");
 	attribute_list[ATTRIBUTE_WINMAIN] = KW_DEF("@winmain");
 
-	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
+	for (int i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{
 		ASSERT(attribute_list[i] && "Missing attributes");
 	}

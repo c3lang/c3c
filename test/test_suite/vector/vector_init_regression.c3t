@@ -97,7 +97,7 @@ entry:
   %v = alloca <4 x float>, align 16
   %.anon92 = alloca i64, align 8
   %v96 = alloca <4 x float>, align 16
-  store float 0x3FE921CAC0000000, ptr %radians, align 4
+  store float
   store <4 x float> <float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float undef>, ptr %axis, align 16
   %0 = load float, ptr %radians, align 4
   %1 = call reassoc arcp contract float @llvm.cos.f32(float %0)

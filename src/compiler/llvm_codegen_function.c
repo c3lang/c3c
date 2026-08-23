@@ -5,11 +5,11 @@
 
 #include "llvm_codegen_internal.h"
 
-static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initializer, LLVMValueRef function);
+static void llvm_append_xxlizer(GenContext *c, int  priority, bool is_initializer, LLVMValueRef function);
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
-static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
-static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
-static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, unsigned *index, unsigned real_index);
+static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, int *index, AlignSize alignment);
+static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, int *index);
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, int *index, int real_index);
 static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body, Decl *decl, bool is_naked);
 
 
@@ -72,14 +72,14 @@ void llvm_emit_block(GenContext *c, LLVMBasicBlockRef next_block)
 	c->current_block = next_block;
 }
 
-static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment)
+static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, int *index, AlignSize alignment)
 {
 	switch (type->type_kind)
 	{
 		case TYPE_ARRAY:
 		case VECTORS:
 		{
-			for (unsigned i = 0; i < type->array.len; i++)
+			for (int i = 0; i < type->array.len; i++)
 			{
 				AlignSize element_align;
 				LLVMValueRef target = llvm_emit_array_gep_raw(c, ref, type->array.base, i, alignment, &element_align);
@@ -111,13 +111,13 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 	}
 }
 
-LLVMValueRef llvm_get_next_param(GenContext *c, unsigned *index)
+LLVMValueRef llvm_get_next_param(GenContext *c, int *index)
 {
 	return LLVMGetParam(c->cur_func.ref, (*index)++);
 }
 
 
-static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index)
+static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl, ABIArgInfo *info, int *index)
 {
 	switch (info->kind)
 	{
@@ -214,7 +214,7 @@ static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl,
 
 			AlignSize decl_alignment = decl->alignment;
 			// Store each expanded parameter.
-			for (unsigned idx = 0; idx < info->direct_struct_expand; idx++)
+			for (int idx = 0; idx < info->direct_struct_expand; idx++)
 			{
 				AlignSize align;
 				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, decl_alignment, &align);
@@ -259,7 +259,7 @@ static inline void llvm_process_parameter_value_inner(GenContext *c, Decl *decl,
 	}
 }
 
-static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index)
+static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, int *index)
 {
 	switch (info->rewrite)
 	{
@@ -291,7 +291,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			TODO;
 	}
 }
-static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, unsigned *index, unsigned real_index)
+static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo ***abi_info_ref, int *index, int real_index)
 {
 	ASSERT(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
@@ -518,7 +518,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	LLVMValueRef alloca_point = LLVMBuildAlloca(c->builder, LLVMInt32TypeInContext(c->context), "alloca_point");
 	c->alloca_point = alloca_point;
 
-	unsigned arg = 0;
+	int arg = 0;
 
 
 	DebugScope scope;
@@ -611,7 +611,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	}
 	if (compiler.build.print_large_functions)
 	{
-		unsigned instruction_count = LLVMGetFunctionInstructionCount(function);
+		int instruction_count = LLVMGetFunctionInstructionCount(function);
 		if (instruction_count > 5000)
 		{
 			eprintf("%8u instructions found in %s:%s (%s) - function is very long.\n", instruction_count, decl->unit->module->name->module,
@@ -622,7 +622,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	c->cur_func.ref = prev_function;
 }
 
-static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initializer, LLVMValueRef function)
+static void llvm_append_xxlizer(GenContext *c, int priority, bool is_initializer, LLVMValueRef function)
 {
 	LLVMValueRef **array_ref = is_initializer ? &c->constructors : &c->destructors;
 	LLVMValueRef vals[3] = { llvm_const_int(c, type_int, priority), function, llvm_get_zero(c, type_voidptr) };

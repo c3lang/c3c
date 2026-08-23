@@ -70,7 +70,7 @@ enum RoundingMode : int
 	TOWARD_NEG_INFINITY
 }
 
-faultdef OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST, NO_INTERSECTION;
+excuse { OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST, NO_INTERSECTION }
 
 <*
  @require values::@is_promotable_to_floatlike(degrees) : `The input must be a numerical value or numerical vector`
@@ -129,7 +129,7 @@ macro bool is_approx_rel(x, y, eps)
 }
 
 <*
- @require @kindof(x).is_int() : `The input must be an integer`
+ @require [x] values::@is_int(x) : `The input must be an integer`
 *>
 macro sign(x)
 {

@@ -26,6 +26,7 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl);
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind);
 static bool parse_contracts(ParseContext *c, ContractDescription *contracts_ref);
 static DeclId decl_from_contract_description(ContractDescription *description);
+static inline bool parse_contract_param_name(ParseContext *c, const char **name_ref);
 
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind)
 {
@@ -55,10 +56,8 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_TYPEDEF:
 			case TOKEN_DISTINCT:
 			case TOKEN_ATTRDEF:
-			case TOKEN_ATTRGROUP:
 			case TOKEN_ATTRMACRO:
 			case TOKEN_FAULTSET:
-			case TOKEN_FAULTCONST:
 			case TOKEN_FAULTDEF:
 				return;
 			case TOKEN_CONST:
@@ -176,12 +175,12 @@ static inline Path *parse_module_path(ParseContext *c)
  */
 static inline void unify_generic_decl(CompilationUnit *unit, Decl *decl)
 {
-	unsigned params = vec_size(decl->generic_decl.parameters);
+	int params = vec_size(decl->generic_decl.parameters);
 	FOREACH(Decl *, d, unit->module->generic_sections)
 	{
-		unsigned candidate_params = vec_size(d->generic_decl.parameters);
+		int candidate_params = vec_size(d->generic_decl.parameters);
 		if (candidate_params != params) continue;
-		for (unsigned i = 0; i < params; i++)
+		for (int i = 0; i < params; i++)
 		{
 			if (d->generic_decl.parameters[i] != decl->generic_decl.parameters[i]) goto ON_MISMATCH;
 		}
@@ -207,6 +206,11 @@ bool parse_attach_contracts(Decl *generics, ContractDescription *contracts)
 	if (contracts->first_non_require)
 	{
 		print_error_at(contracts->first_non_require, "Invalid constraint - only '@require' is valid for generic declarations and modules.");
+		return false;
+	}
+	if (contracts->first_variable_require)
+	{
+		print_error_at(contracts->first_variable_require, "Invalid constraint - '@require' with variable references is only valid for functions, macros and function types.");
 		return false;
 	}
 	FOREACH(Expr *, e, contracts->requires) vec_add(generics->generic_decl.requires, e);
@@ -296,7 +300,7 @@ bool parse_module(ParseContext *c)
 		{
 			case ATTRIBUTE_LINK:
 			{
-				unsigned args = vec_size(attr->exprs);
+				int args = vec_size(attr->exprs);
 				if (args < 1) RETURN_PRINT_ERROR_AT(false, attr, "'@link' needs at least 1 argument.");
 				vec_add(c->unit->attr_links, attr);
 				continue;
@@ -1329,7 +1333,7 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 		Attr *attr;
 		if (!parse_attribute(c, &attr, false)) return false;
 		if (!attr) return true;
-		Visibility parsed_visibility = -1; // NOLINT
+		Visibility parsed_visibility = (Visibility)-1; // NOLINT
 		if (!attr->is_custom)
 		{
 			// This is important: if we would allow user defined attributes,
@@ -1395,10 +1399,10 @@ static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref,
 				*builtin_ref = true;
 				continue;
 			}
-			if (parsed_visibility != -1)
+			if (parsed_visibility != (Visibility)-1)
 			{
 				if (!visibility_ref) RETURN_PRINT_ERROR_AT(false, attr, "'%s' cannot be used here.", attr->name);
-				if (visibility != -1) RETURN_PRINT_ERROR_AT(false, attr, "Only a single visibility attribute may be added.");
+				if (visibility != (Visibility)-1) RETURN_PRINT_ERROR_AT(false, attr, "Only a single visibility attribute may be added.");
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
 			}
@@ -2033,7 +2037,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 		}
 		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), false);
 
-		unsigned first_member_index = vec_size(parent->strukt.members);
+		int first_member_index = vec_size(parent->strukt.members);
 		while (1)
 		{
 			if (!tok_is(c, TOKEN_IDENT)) RETURN_PRINT_ERROR_HERE("A valid member name was expected here.");
@@ -2063,7 +2067,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			}
 		}
 		Decl **members = parent->strukt.members;
-		unsigned last_index = vec_size(members) - 1;
+		int last_index = vec_size(members) - 1;
 		if (last_index != first_member_index)
 		{
 			Decl *last_member = members[last_index];
@@ -2073,7 +2077,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 				// Copy attributes
 				bool is_cond = last_member->is_cond;
 				bool is_feat_cond = last_member->is_feat_cond;
-				for (unsigned i = first_member_index; i < last_index; i++)
+				for (int i = first_member_index; i < last_index; i++)
 				{
 					Decl *member = members[i];
 					if (is_cond) member->is_cond = true;
@@ -2208,7 +2212,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 			member_decl->is_cond = is_cond;
 			member_decl->is_feat_cond = is_feat_cond;
 			CONSUME_OR_RET(TOKEN_EOS, false);
-			unsigned index = vec_size(decl->strukt.members);
+			int index = vec_size(decl->strukt.members);
 			member_decl->var.start_bit = index;
 			member_decl->var.end_bit = index;
 			vec_add(decl->strukt.members, member_decl);
@@ -2740,6 +2744,28 @@ static inline Decl *parse_fault(ParseContext *c)
 	return decl;
 }
 
+static inline Decl *parse_faultdef_multirow(ParseContext *c)
+{
+	Decl **decls = NULL;
+	while (!try_consume(c, TOKEN_EOS))
+	{
+		ASSIGN_DECL_OR_RET(Decl *decl, parse_fault(c), poisoned_decl);
+		vec_add(decls, decl);
+		if (try_consume(c, TOKEN_COMMA)) continue;
+		CONSUME_OR_RET(TOKEN_EOS, poisoned_decl);
+		break;
+	}
+	if (!decls)
+	{
+		PRINT_ERROR_LAST("Expected the name of a fault here.");
+		return poisoned_decl;
+	}
+	Decl *decl = decl_calloc();
+	decl->decl_kind = DECL_GROUP;
+	decl->decl_list = decls;
+	decl->docs = decl_from_contract_description(&c->contracts);
+	return decl;
+}
 /**
  * faultdef_declaration ::= FAULTDEF CONST_IDENT (',' CONST_IDENT)* ','? ';'
  */
@@ -2754,19 +2780,39 @@ static inline Decl *parse_faultdef_declaration(ParseContext *c)
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;
 	}
+	return parse_faultdef_multirow(c);
+}
+
+/**
+ * faultdef_declaration ::= FAULTSET CONST_IDENT ';' | '{' CONST_IDENT (',' CONST_IDENT)* ','? '}'
+ */
+static inline Decl *parse_faultset_declaration(ParseContext *c)
+{
+	advance(c);
+
+	if (c->lexer.token_type == TOKEN_EOS)
+	{
+		ASSIGN_DECL_OR_RET(Decl *decl, parse_fault(c), poisoned_decl);
+		CONSUME_EOS_OR_RET(poisoned_decl);
+		return decl;
+	}
+
+	if (!try_consume(c, TOKEN_LBRACE))
+	{
+		return parse_faultdef_multirow(c);
+	}
+
 	Decl **decls = NULL;
-	while (!try_consume(c, TOKEN_EOS))
+	while (true)
 	{
 		ASSIGN_DECL_OR_RET(Decl *decl, parse_fault(c), poisoned_decl);
 		vec_add(decls, decl);
-		if (try_consume(c, TOKEN_COMMA)) continue;
-		CONSUME_OR_RET(TOKEN_EOS, poisoned_decl);
-		break;
-	}
-	if (!decls)
-	{
-		PRINT_ERROR_LAST("Expected the name of a fault here.");
-		return poisoned_decl;
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
+			break;
+		}
+		if (try_consume(c, TOKEN_RBRACE)) break;
 	}
 	Decl *decl = decl_calloc();
 	decl->decl_kind = DECL_GROUP;
@@ -3141,11 +3187,18 @@ static bool parse_doc_direct_comment(ParseContext *c, const char **out_str)
 /**
  * contract ::= expression_list (':'? STRING)?
  */
-static inline bool parse_doc_contract(ParseContext *c, Expr ***list_ref, const char *prefix)
+static inline bool parse_doc_contract(ParseContext *c, Expr ***list_ref, const char *prefix, SourceLocId *linked_to_param_ref)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CONTRACT);
 	const char *start = c->lexer.data.lex_start;
 	advance(c);
+	if (linked_to_param_ref && try_consume(c, TOKEN_LBRACKET))
+	{
+		if (!parse_contract_param_name(c, &expr->contract_expr.param.name)) return false;
+		*linked_to_param_ref = expr->loc;
+		start = c->lexer.data.lex_start;
+		CONSUME_OR_RET(TOKEN_RBRACKET, false);
+	}
 	ASSIGN_EXPR_OR_RET(expr->contract_expr.decl_exprs, parse_expression_list(c, false), false);
 	RANGE_EXTEND_PREV(expr);
 	const char *end = start + 1;
@@ -3188,6 +3241,30 @@ static inline bool parse_doc_contract(ParseContext *c, Expr ***list_ref, const c
 	return true;
 }
 
+static inline bool parse_contract_param_name(ParseContext *c, const char **name_ref)
+{
+	switch (c->tok)
+	{
+		case TOKEN_IDENT:
+		case TOKEN_CT_IDENT:
+		case TOKEN_CT_TYPE_IDENT:
+		case TOKEN_HASH_IDENT:
+			*name_ref = symstr(c);
+			advance(c);
+			return true;
+		case TOKEN_ELLIPSIS:
+			*name_ref = NULL;
+			advance(c);
+			return true;
+		case TOKEN_TYPE_IDENT:
+		case TOKEN_CT_CONST_IDENT:
+		case TOKEN_CONST_IDENT:
+			RETURN_PRINT_ERROR_HERE("This is not a valid parameter name.");
+		default:
+			RETURN_PRINT_ERROR_HERE("Expected a parameter name here.");
+	}
+	UNREACHABLE
+}
 /**
  * param_contract ::= '@param' inout_attribute? any_identifier ( ':' STRING )?
  * inout_attribute ::= '[' '&'? ('in' | 'inout' | 'out') ']'
@@ -3237,28 +3314,10 @@ static inline bool parse_contract_param(ParseContext *c, ContractParam **list_re
 	}
 
 	ContractParam param = { .loc = make_loc(loc) };
-	switch (c->tok)
-	{
-		case TOKEN_IDENT:
-		case TOKEN_CT_IDENT:
-		case TOKEN_CT_TYPE_IDENT:
-		case TOKEN_HASH_IDENT:
-			param.name = symstr(c);
-			break;
-		case TOKEN_ELLIPSIS:
-			param.name = NULL;
-			break;
-		case TOKEN_TYPE_IDENT:
-		case TOKEN_CT_CONST_IDENT:
-		case TOKEN_CONST_IDENT:
-			RETURN_PRINT_ERROR_HERE("This is not a valid parameter name.");
-		default:
-			RETURN_PRINT_ERROR_HERE("Expected a parameter name here.");
-	}
+	if (!parse_contract_param_name(c, &param.name)) return false;
 	param.modifier = mod;
 
 	param.by_ref = is_ref;
-	advance(c);
 	RANGE_EXTEND_PREV(&param);
 	if (parse_docs_to_comment(c))
 	{
@@ -3342,7 +3401,9 @@ static bool parse_contracts(ParseContext *c, ContractDescription *contracts_ref)
 				contracts_ref->first_contract = loc;
 				contracts_ref->has_contracts = true;
 			}
-			if (!parse_doc_contract(c, &contracts_ref->requires, "@require")) return false;
+			SourceLocId linked_to_param = 0;
+			if (!parse_doc_contract(c, &contracts_ref->requires, "@require", &linked_to_param)) return false;
+			if (linked_to_param && !contracts_ref->first_variable_require) contracts_ref->first_variable_require = linked_to_param;
 			goto END;
 		}
 		if (contracts_ref->first_non_require == 0)
@@ -3414,7 +3475,7 @@ static bool parse_contracts(ParseContext *c, ContractDescription *contracts_ref)
 				contracts_ref->first_contract = loc;
 				contracts_ref->has_contracts = true;
 			}
-			if (!parse_doc_contract(c, &contracts_ref->ensures, "@ensure")) return false;
+			if (!parse_doc_contract(c, &contracts_ref->ensures, "@ensure", NULL)) return false;
 		}
 		else if (name == kw_at_pure)
 		{
@@ -3590,7 +3651,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 				return NULL;
 			}
 			break;
-		case TOKEN_ATTRGROUP:
 		case TOKEN_ATTRMACRO:
 		case TOKEN_ATTRDEF:
 			decl = parse_attrdef(c);
@@ -3677,7 +3737,9 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			attach_contracts = true;
 			break;
 		case TOKEN_FAULTSET:
-		case TOKEN_FAULTCONST:
+			decl = parse_faultset_declaration(c);
+			attach_contracts = true;
+			break;
 		case TOKEN_FAULTDEF:
 			decl = parse_faultdef_declaration(c);
 			attach_contracts = true;
@@ -3685,7 +3747,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_IDENT:
 			if (symstr(c) == kw_excuse)
 			{
-				decl = parse_faultdef_declaration(c);
+				decl = parse_faultset_declaration(c);
 				attach_contracts = true;
 				break;
 			}

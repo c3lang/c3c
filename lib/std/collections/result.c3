@@ -1,7 +1,7 @@
 module std::collections::result <OkType, ErrType>;
 import std::io;
 
-faultdef RESULT_ERROR, RESULT_OK;
+excuse { RESULT_ERROR, RESULT_OK }
 
 <*
  Result{OkType, ErrType} holds either a success value or an error value with a payload.

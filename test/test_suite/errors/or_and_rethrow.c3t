@@ -2,7 +2,7 @@
 module foo;
 import std::io;
 
-faultdef ABC;
+excuse ABC;
 
 fn void blurb() { io::printn("Blurb");}
 

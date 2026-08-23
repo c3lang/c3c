@@ -1,4 +1,5 @@
-const FOO = (int[0x80000000][1]) {}; // #error: This type would exceed max type size of 2 GB.
+
+const FOO = (int128[0x40000000 - 1][1]) {}; // #error: This type would exceed max type size of 1 GB.
 
 fn int main()
 {

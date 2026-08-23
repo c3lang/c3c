@@ -51,7 +51,7 @@ int run_subprocess(const char *name, const char **args)
 
 	scratch_buffer_clear();
 	scratch_buffer_printf("%s", name);
-	for (uint32_t i = 0; i < vec_size(args); i++)
+	for (int i = 0; i < vec_size(args); i++)
 	{
 		scratch_buffer_append_char(' ');
 
@@ -125,7 +125,7 @@ int run_subprocess(const char *name, const char **args)
 #else
 	const char **args_null = NULL;
 	vec_add(args_null, name);
-	for (uint32_t i = 0; i < vec_size(args); ++i)
+	for (int i = 0; i < vec_size(args); ++i)
 	{
 		vec_add(args_null, args[i]);
 	}

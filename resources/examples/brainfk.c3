@@ -4,7 +4,7 @@ import std::io;
 const BF_MEM = 30000;
 char[BF_MEM] memory;
 
-faultdef INTEPRET_FAILED;
+excuse INTEPRET_FAILED;
 
 fn void? print_error_type_at(sz pos, String err)
 {

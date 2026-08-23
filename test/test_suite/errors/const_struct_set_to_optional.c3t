@@ -17,7 +17,7 @@ struct Token
 
 Token? b = { .type = SMALLER_EQ };
 
-faultdef EOF, INVALID_NUMBER_TOKEN, INVALID_STRING_TOKEN, UNKNOWN_TOKEN;
+excuse { EOF, INVALID_NUMBER_TOKEN, INVALID_STRING_TOKEN, UNKNOWN_TOKEN }
 
 fn void main()
 {

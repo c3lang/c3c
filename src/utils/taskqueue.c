@@ -21,7 +21,7 @@ static void *taskqueue_thread(void *data)
 	while (1)
 	{
 		pthread_mutex_lock(&task_queue->lock);
-		unsigned task_count = vec_size(task_queue->queue);
+		int task_count = vec_size(task_queue->queue);
 		if (!task_count) goto SHUTDOWN;
 		Task *task = (Task*)task_queue->queue[task_count - 1];
 		vec_pop(task_queue->queue);
@@ -45,14 +45,14 @@ void taskqueue_run(int threads, Task **task_list)
 		}
 		return;
 	}
-	pthread_t *pthreads = cmalloc(sizeof(pthread_t) * (unsigned)threads);
+	pthread_t *pthreads = cmalloc(sizeof(pthread_t) * (int)threads);
 	TaskQueue queue = { .queue = task_list };
 	pthread_attr_t attr;
 	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");
 	if (pthread_attr_init(&attr)) error_exit("Failed to set up attribute for thread");
-	size_t stack_size = TASKQUEUE_THREAD_STACK_SIZE;
+	size_t stack_size = (size_t)TASKQUEUE_THREAD_STACK_SIZE;
 #ifdef PTHREAD_STACK_MIN
-	if (stack_size < PTHREAD_STACK_MIN) stack_size = PTHREAD_STACK_MIN; // NOLINT
+	if (stack_size < (size_t)PTHREAD_STACK_MIN) stack_size = (size_t)PTHREAD_STACK_MIN; // NOLINT
 #endif
 	if (pthread_attr_setstacksize(&attr, stack_size)) error_exit("Failed to set up stack size for thread");
 	for (int i = 0; i < threads; i++)
@@ -86,7 +86,7 @@ static unsigned WINAPI taskqueue_thread(LPVOID lpParam)
 	while (1)
 	{
 		EnterCriticalSection(&task_queue->lock);
-		unsigned task_count = vec_size(task_queue->queue);
+		int task_count = vec_size(task_queue->queue);
 		if (!task_count) goto SHUTDOWN;
 		Task *task = (Task*)task_queue->queue[task_count - 1];
 		vec_pop(task_queue->queue);
@@ -101,7 +101,7 @@ SHUTDOWN:
 void taskqueue_run(int threads, Task **task_list)
 {
 	ASSERT(threads > 0);
-	HANDLE *handles = cmalloc(sizeof(HANDLE) * (unsigned)threads);
+	HANDLE *handles = cmalloc(sizeof(HANDLE) * (int)threads);
 	TaskQueue queue = { .queue = task_list };
 	InitializeCriticalSection(&queue.lock);
 	for (int i = 0; i < threads; i++)

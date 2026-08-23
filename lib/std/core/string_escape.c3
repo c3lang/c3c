@@ -10,7 +10,7 @@
 module std::core::string;
 import std::io;
 
-faultdef INVALID_ESCAPE_SEQUENCE, UNTERMINATED_STRING, INVALID_HEX_ESCAPE, INVALID_UNICODE_ESCAPE;
+excuse { INVALID_ESCAPE_SEQUENCE, UNTERMINATED_STRING, INVALID_HEX_ESCAPE, INVALID_UNICODE_ESCAPE }
 
 <*
  Escape a string by adding quotes and converting special characters to escape sequences.

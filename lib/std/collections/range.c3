@@ -38,10 +38,14 @@ fn Type[] Range.to_array(&self, Allocator allocator)
 	return result;
 }
 
+
 fn sz? Range.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.printf("[%s..%s]", self.start, self.end)!;
 }
+
+<* Check that the range is not negative *>
+macro bool Range.is_valid(self) => self.end + 1 >= self.start;
 
 struct ExclusiveRange (Printable)
 {
@@ -82,6 +86,9 @@ fn Type[] ExclusiveRange.to_array(&self, Allocator allocator)
 	return result;
 }
 
+<* Check that the range is not negative *>
+macro bool ExclusiveRange.is_valid(self) => self.end >= self.start;
+
 module std::collections::range;
 
 <*
@@ -117,4 +124,20 @@ macro upto(to)
 macro exclusive(from, to)
 {
 	return (ExclusiveRange{$Typeof(from)}){ from, to };
+}
+
+<*
+ @require $defined(&array[0], array.len) : "Cannot index `array` parameter"
+ @require $Typeof(range)::is_generic(Range) ||| $Typeof(range)::is_generic(ExclusiveRange) : "`range` parameter was not of type `Range` or `ExclusiveRange`."
+ @require range.start >= 0 && range.end <= array.len : "Range out of bounds"
+ @require !$Typeof(range)::is_generic(Range) ||| range.end < array.len : "Range is out of bounds"
+ @require range.is_valid() : "Range is reversed"
+*>
+macro slice(array, range)
+{
+	$if $Typeof(range)::is_generic(Range):
+		return (&array[range.start])[:range.end - range.start + 1];
+	$else
+		return (&array[range.start])[:range.end - range.start];
+	$endif
 }

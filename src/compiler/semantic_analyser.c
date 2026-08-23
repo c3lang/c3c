@@ -10,10 +10,10 @@ char swizzle[256] = { ['x'] = 0x01, ['y'] = 0x02, ['z'] = 0x03, ['w'] = 0x04,
 
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, SourceLocId loc)
 {
-	unsigned depth = context->active_scope.depth + 1;
+	int depth = context->active_scope.depth + 1;
 	if (depth > MAX_SCOPE_DEPTH)
 	{
-		sema_error_at(context, loc, "Resolution failed due to too deeply nested scopes (%u).", depth);
+		sema_error_at(context, loc, "Resolution failed due to too deeply nested scopes (%d).", depth);
 		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 
@@ -21,7 +21,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, Sou
 	bool scope_is_poisoned = context->active_scope.is_poisoned;
 	Ast *previous_defer = context->active_scope.in_defer;
 	AstId parent_defer = context->active_scope.defer_last;
-	unsigned last_local = context->active_scope.current_local;
+	int last_local = context->active_scope.current_local;
 	// Defer and expression blocks introduce their own return/break/continue
 	// otherwise just merge with the old flags.
 	if (flags & SCOPE_MACRO)
@@ -34,7 +34,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags, Sou
 	flags = context->active_scope.flags | flags;
 	if (is_macro) flags &= ~(SCOPE_ENSURE | SCOPE_ENSURE_MACRO);
 
-	unsigned label_start = new_label_scope ? last_local : context->active_scope.label_start;
+	int label_start = new_label_scope ? last_local : context->active_scope.label_start;
 	DynamicScope new_scope = {
 		.allow_dead_code = false,
 		.is_dead = scope_is_dead,
@@ -307,8 +307,19 @@ static void analyze_generics(Module *module)
 {
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
+		bool remove = false;
+		if (unit->feat_attributes && sema_remove_due_to_conditionals(unit->feat_attributes) != BOOL_FALSE)
+		{
+			remove = true;
+		}
+
 		FOREACH(Decl *, section, unit->generic_decls)
 		{
+			if (remove)
+			{
+				section->generic_decl.decls = NULL;
+				section->generic_decl.conditional_decls = NULL;
+			}
 			register_generic_decls(unit, section->generic_decl.decls);
 			register_generic_decls(unit, section->generic_decl.conditional_decls);
 		}
@@ -410,7 +421,7 @@ static void assign_panicfn(void)
 
 static void assign_testfn(void)
 {
-	if (!compiler.build.testing) return;
+	if (!compiler.build.build_test) return;
 	if (!compiler.build.testfn && no_stdlib())
 	{
 		error_exit("No test function could be found.");
@@ -446,7 +457,7 @@ static void assign_testfn(void)
 
 static void assign_benchfn(void)
 {
-	if (!compiler.build.benchmarking) return;
+	if (!compiler.build.build_benchmark) return;
 	if (!compiler.build.benchfn && no_stdlib())
 	{
 		return;
@@ -546,12 +557,12 @@ void sema_context_init(SemaContext *context, CompilationUnit *unit)
 							   .locals = global_context_acquire_locals_list() };
 }
 
-void sema_context_pop_ct_stack(SemaContext *context, unsigned old_state)
+void sema_context_pop_ct_stack(SemaContext *context, int old_state)
 {
 	vec_resize(context->ct_locals, old_state);
 }
 
-unsigned sema_context_push_ct_stack(SemaContext *context)
+int sema_context_push_ct_stack(SemaContext *context)
 {
 	return vec_size(context->ct_locals);
 }
@@ -596,17 +607,30 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 	return temp_context;
 }
 
+static bool loc_inside_loc(SourceLoc *inner, SourceLoc *outer)
+{
+	if (!inner || !outer) return false;
+	if (inner->offset < outer->offset) return false;
+	if (inner->offset + inner->length > outer->offset + outer->length) return false;
+	return true;
+}
+
 void sema_print_inline(SemaContext *context, SourceLocId original)
 {
 	if (!context) return;
 	InliningSpan *inlined_at = context->inlined_at;
 	SourceLocId last_span = 0;
+	SourceLoc *original_loc = sourcelocptrzero(original);
 	while (inlined_at)
 	{
 		if (inlined_at->loc != original && inlined_at->loc != last_span)
 		{
-			sema_note_prev_at(inlined_at->loc, "Inlined from here.");
-			last_span = inlined_at->loc;
+			SourceLoc *inlined_loc = sourcelocptrzero(inlined_at->loc);
+			if (!loc_inside_loc(original_loc, inlined_loc))
+			{
+				sema_note_prev_at(inlined_at->loc, "Inlined from here.");
+				last_span = inlined_at->loc;
+			}
 		}
 		inlined_at = inlined_at->prev;
 	}

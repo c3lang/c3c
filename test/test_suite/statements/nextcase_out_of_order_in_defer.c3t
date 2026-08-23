@@ -1,0 +1,37 @@
+// #target: macos-x64
+module main;
+fn int main ()
+{
+	defer switch (1)
+	{
+		case 0: nextcase;
+		case 1: break;
+	}
+	return 0;
+}
+
+/* #expect: main.ll
+
+define i32 @main() #0 {
+entry:
+  %switch = alloca i32, align 4
+  store i32 1, ptr %switch, align 4
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %0 = load i32, ptr %switch, align 4
+  switch i32 %0, label %switch.exit [
+    i32 0, label %switch.case
+    i32 1, label %switch.case1
+  ]
+
+switch.case:                                      ; preds = %switch.entry
+  br label %switch.case1
+
+switch.case1:                                     ; preds = %switch.entry, %switch.case
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.case1, %switch.entry
+  ret i32 0
+}
+

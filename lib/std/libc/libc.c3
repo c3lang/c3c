@@ -481,7 +481,7 @@ const int TIME_UTC = 1;
 const CLOCKS_PER_SEC @feat(WIN32) = 1000;
 const CLOCKS_PER_SEC @feat(!WIN32) = 1000000;
 
-constdef Errno : inline CInt @feat(DARWIN)
+constset Errno : inline CInt @feat(DARWIN)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
@@ -587,7 +587,7 @@ constdef Errno : inline CInt @feat(DARWIN)
 	EOPNOTSUPP               = 102, // Operation not supported on socket
 }
 
-constdef Errno : inline CInt @feat(NETBSD)
+constset Errno : inline CInt @feat(NETBSD)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
@@ -693,7 +693,7 @@ constdef Errno : inline CInt @feat(NETBSD)
 }
 
 
-constdef Errno : inline CInt @feat(WIN32)
+constset Errno : inline CInt @feat(WIN32)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
@@ -748,7 +748,7 @@ constdef Errno : inline CInt @feat(WIN32)
 }
 
 
-constdef Errno : inline CInt @feat(EMSCRIPTEN)
+constset Errno : inline CInt @feat(EMSCRIPTEN)
 {
 	OK                       = 0, // No error occurred. System call completed successfully.
 	E2BIG                    = 1, // Argument list too long.
@@ -889,7 +889,7 @@ constdef Errno : inline CInt @feat(EMSCRIPTEN)
 }
 
 
-constdef Errno : inline CInt @feat(FREEBSD)
+constset Errno : inline CInt @feat(FREEBSD)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted
@@ -993,7 +993,7 @@ constdef Errno : inline CInt @feat(FREEBSD)
 	EINTEGRITY               = 97, // FreeBSD: integrity check failed
 }
 
-constdef Errno : inline CInt @feat(OPENBSD)
+constset Errno : inline CInt @feat(OPENBSD)
 {
 	OK                       = 0,
 	EPERM                    = 1,  // Operation not permitted
@@ -1094,7 +1094,7 @@ constdef Errno : inline CInt @feat(OPENBSD)
 	EPROTO                   = 95,
 }
 
-constdef Errno : inline CInt @feat(!WIN32 & !DARWIN & !BSD & !EMSCRIPTEN)
+constset Errno : inline CInt @feat(!WIN32 & !DARWIN & !BSD & !EMSCRIPTEN)
 {
 	OK                       = 0,
 	EPERM                    = 1, // Operation not permitted

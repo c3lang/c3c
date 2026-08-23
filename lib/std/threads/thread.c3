@@ -19,7 +19,8 @@ alias OnceFn = fn void();
 
 alias ThreadFn = fn int(void* arg);
 
-faultdef
+excuse
+{
 	INIT_FAILED,
 	INVALID_THREAD_SETTINGS,
 	LOCK_TIMEOUT,
@@ -29,8 +30,8 @@ faultdef
 	INTERRUPTED,
 	CHANNEL_BLOCKED,
 	CHANNEL_EMPTY,
-	CHANNEL_CLOSED;
-
+	CHANNEL_CLOSED
+}
 enum ThreadPriority
 {
 	DEFAULT,

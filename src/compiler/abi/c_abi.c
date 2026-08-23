@@ -189,7 +189,7 @@ ABIArgInfo *abi_arg_new_expand(ParamInfo param)
 }
 
 
-ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_element, unsigned hi_offset, bool packed, ParamInfo param)
+ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_element, int hi_offset, bool packed, ParamInfo param)
 {
 	ABIArgInfo *arg = abi_arg_new(ABI_ARG_EXPAND_COERCE, param);
 	arg->coerce_expand.lo = first_element;
@@ -242,7 +242,7 @@ void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs)
 	proto->vararg_index = sig->vararg_index;
 	Type *rtype = type_infoptr(sig->rtype)->type;
 	Type *rtype_flat = type_flatten(rtype);
-	unsigned param_count = 0;
+	int param_count = 0;
 	if (rtype_flat->type_kind == TYPE_VECTOR)
 	{
 		rtype_flat = type_array_from_vector(rtype_flat);
@@ -270,8 +270,8 @@ void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs)
 	}
 	proto->call_abi = sig->abi;
 
-	unsigned param_decl_count = vec_size(sig->params);
-	for (unsigned i = 0; i < param_decl_count; i++)
+	int param_decl_count = vec_size(sig->params);
+	for (int i = 0; i < param_decl_count; i++)
 	{
 		Decl *decl = sig->params[i];
 		Type *flat_type = type_flatten(decl->type);
@@ -283,7 +283,7 @@ void c_abi_func_create(Signature *sig, FunctionPrototype *proto, Expr **vaargs)
 		}
 		params[param_count++] = param_info;
 	}
-	unsigned vaarg_count = 0;
+	int vaarg_count = 0;
 	FOREACH(Expr *, val, vaargs)
 	{
 		vaarg_params[vaarg_count++] = (ParamInfo) { .type = type_flatten(val->type) };
@@ -349,14 +349,14 @@ ABIArgInfo *c_abi_classify_argument_type_default(ParamInfo param)
 	return abi_arg_new_direct(param);
 }
 
-void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count)
 {
 	prototype->ret_abi_info = c_abi_classify_return_type_default(prototype->return_info);
 
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-		for (unsigned i = 0; i < param_count; i++)
+		for (int i = 0; i < param_count; i++)
 		{
 			args[i] = c_abi_classify_argument_type_default(params[i]);
 		}
@@ -365,7 +365,7 @@ void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *params, 
 	if (vaarg_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vaarg_count);
-		for (unsigned i = 0; i < vaarg_count; i++)
+		for (int i = 0; i < vaarg_count; i++)
 		{
 			args[i] = c_abi_classify_argument_type_default(vaargs[i]);
 		}

@@ -4,6 +4,17 @@
 
 ### Changes / improvements
 - Improved error message when providing an incorrect name for the panic function.
+- Add the ability to pinpoint a `@require` using the `@require [a] a > 0 : "a must be greater than zero"` syntax. #1804
+- `benchmark` and `test` project targets now work properly with `c3c benchmark` and `c3c test`. 
+- Add `$reflect(foo).param_struct` and `Foo::param_struct` properties. #3099
+- Allow the parse `faultset { ... }`. For `faultset`, `faultconst` and `excuse`.
+- Improved error messages when underlined error is too long, or lines are too long. #3383
+- Add `--implicit-float` setting to control emission of floating point operations. #3449
+- Allow parameters to have `@tag` #3084
+- `FooFn::params` no longer returns `ReflectedParam` but a reflected reference. This allows get_tag/tags/has_tag.
+- Allow parameters to be queried for the default value using `.default_value`.
+- Allow ternary in alias definitions, e.g. `alias foo = $feat(ABC) ? foo_1 : foo_2`. #3464
+- On elf-x64, add noredzone to functions as a stopgap solution.
 - Add `--stack-probe`, `--stack-probe-size` and `--stack-protector` to configure stack probing and stack canary generation. #3437
 - Add `stack-probe` and `stack-protector` project options. #3437
 - Add `@stackprobe(level)`, `@nostackprobe`, `@stackprotector(level)` and `@nostackprotector` attributes on functions and lambdas. #3437
@@ -11,10 +22,22 @@
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
 - `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.
+- `pool::ThreadPool` now only available using `ThreadPoolOld` unless `-D OLD_THREADPOOL` is used.
+- Add `std::collections::Tree`.
+- `std::net` added `Socket.peer_address`, `peer_port`, `local_address`, and `local_port` for retrieving remote and local socket address information. #3460
+- Add a `range::slice` macro.
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
 - `@return` was accepted in doc comments for non-function/macro declarations.
+- Can not run targeted benchmark function in project #1651.
+- Detection of dead code would get reset after visiting a scope, causing a crash in codegen. #3453.
+- Switch was incorrectly copied inside of defer, causing crash in codegen. #3454
+- Codegen for debug info was incorrect for default init on arguments, causing crash with LLVM23. 
+- Codegen for bitstruct `b.foo--` was incorrect, causing crash with LLVM23.
+- `@str_pascalcase`/`@str_camelcase` treated digits as word separators and dropped them from the output. #3287
+- Typedef access resolution preferred inner type field over method. #3457
+- Generic gets instantiated despite being disabled with `@feat` #3459
 
 ## 0.8.3 Change list
 

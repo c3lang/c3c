@@ -7,7 +7,7 @@ typedef ObjcSelector = void*;
 alias ObjcId = void*;
 alias SendVoid = fn void*(void*, ObjcSelector);
 
-faultdef CLASS_NOT_FOUND, UNKNOWN_EVENT;
+excuse { CLASS_NOT_FOUND, UNKNOWN_EVENT }
 
 macro ZString ObjcClass.name(ObjcClass cls) => class_getName(cls);
 macro ObjcClass ObjcClass.superclass(ObjcClass cls) => class_getSuperclass(cls);
@@ -76,7 +76,7 @@ module std::os::macos::objc::ns @feat(DARWIN) @link(env::DARWIN, "CoreFoundation
 import std::os::macos::cf;
 
 
-constdef NSApplicationActivationPolicy : inline NSInteger
+constset NSApplicationActivationPolicy : inline NSInteger
 {
 	REGULAR    = 0,
 	ACCESSORY  = 1,
@@ -84,14 +84,14 @@ constdef NSApplicationActivationPolicy : inline NSInteger
 }
 
 
-constdef NSBackingStoreType : inline NSUInteger
+constset NSBackingStoreType : inline NSUInteger
 {
 	RETAINED    = 0,
 	NONRETAINED = 1,
 	BUFFERED    = 2
 }
 
-constdef NSEventType : inline NSUInteger
+constset NSEventType : inline NSUInteger
 {
 	LEFT_MOUSE_DOWN     = 1,
 	LEFT_MOUSE_UP       = 2,
@@ -130,7 +130,7 @@ constdef NSEventType : inline NSUInteger
 }
 
 
-constdef NSEventMask : inline ulong
+constset NSEventMask : inline ulong
 {
 	LEFT_MOUSE_DOWN     = 1ul << NSEventType.LEFT_MOUSE_DOWN,
 	LEFT_MOUSE_UP       = 1ul << NSEventType.LEFT_MOUSE_UP,
@@ -172,7 +172,7 @@ constdef NSEventMask : inline ulong
 fn NSEventMask event_mask_from_type(NSEventType type) => (NSEventMask)1ul << type;
 
 
-constdef NSEventModifierFlags : inline NSUInteger
+constset NSEventModifierFlags : inline NSUInteger
 {
 	CAPS_LOCK                     = 1 << 16,
 	SHIFT                         = 1 << 17,
@@ -185,7 +185,7 @@ constdef NSEventModifierFlags : inline NSUInteger
 	DEVICE_INDEPENDENT_FLAGS_MASK = 0xffff0000UL,
 }
 
-constdef NSWindowCollectionBehavior : inline NSUInteger
+constset NSWindowCollectionBehavior : inline NSUInteger
 {
 	DEFAULT                       = 0,
 	CAN_JOIN_ALL_SPACES           = 1 << 0,
@@ -205,7 +205,7 @@ constdef NSWindowCollectionBehavior : inline NSUInteger
 	CAN_JOIN_ALL_APPLICATIONS     = 1 << 18,
 }
 
-constdef NSWindowLevel : inline NSInteger
+constset NSWindowLevel : inline NSInteger
 {
 	NORMAL          = 0,
 	FLOATING        = 3,
@@ -218,7 +218,7 @@ constdef NSWindowLevel : inline NSInteger
 	SCREEN_SAVER    = 1000,
 }
 
-constdef NSWindowStyleMask : inline NSUInteger
+constset NSWindowStyleMask : inline NSUInteger
 {
 	BORDERLESS                = 0,
 	TITLED                    = 1 << 0,
@@ -235,20 +235,20 @@ constdef NSWindowStyleMask : inline NSUInteger
 	HUD_WINDOW                = 1 << 13
 }
 
-constdef NSWindowTabbingMode : inline NSInteger
+constset NSWindowTabbingMode : inline NSInteger
 {
 	AUTOMATIC   = 0,
 	DISALLOWED  = 2,
 	PREFERRED   = 1,
 }
 
-constdef NSStatusItemLength : inline CGFloat
+constset NSStatusItemLength : inline CGFloat
 {
 	VARIABLE = -1.0,
 	SQUARE   = -2.0
 }
 
-constdef NSApplicationTerminateReply : inline NSUInteger
+constset NSApplicationTerminateReply : inline NSUInteger
 {
 	CANCEL = 0,
 	NOW    = 1,

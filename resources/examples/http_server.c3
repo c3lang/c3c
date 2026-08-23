@@ -1,18 +1,98 @@
 <*
- This is a simple static HTTP server example. It listens on a TCP port, parses basic
- HTTP/1.1 requests, handles Keep-Alive connections, serves static files with Range
- and ETag support, applies dynamic Gzip compression, and displays directory listings.
+ High-performance, event-driven HTTP/1.1 static file server.
+
+ Architecture & Engine:
+ - Non-blocking socket multiplexing (`net::poll_ms`) with instant self-pipe wakeup
+ - Worker thread pool fed by a thread-safe `UnboundedChannel` (zero Keep-Alive thread starvation)
+ - Zero-copy memory-mapped streaming (`file::mmap_file`) for large assets (>64 KB)
+ - Pre-allocated connection slot table (`Connection[MAX_CONNS]`) with zero accept heap churn
+
+ HTTP/1.1 Features:
+ - Persistent Keep-Alive connections, ETag caching (304), and byte-range requests (206)
+ - On-the-fly dynamic Gzip compression on compressible MIME types
+ - Interactive HTML directory listings with client-side sorting, icons, and hidden file toggles
+ - Directory traversal protection (`..`), 400/403/404/503 error handlers, and structured access logging
 *>
 module http_server;
 import std, libc;
 
-const int THREAD_COUNT = 64;
-const int TCP_BACKLOG = 128;
+// ============================================================================
+// 1. Configuration & Constants
+// ============================================================================
+
+const int THREAD_COUNT = 32;
+const int TCP_BACKLOG = 256;
+const sz MAX_CONNS = 2048;
+const Duration KEEPALIVE_TIMEOUT = 5 * time::SEC;
+const Duration READ_TIMEOUT = 10 * time::SEC;
 
 fn void ignore_sigpipe() @init(1001) @feat(!WIN32)
 {
-	libc::signal(libc::SIGPIPE, fn void(int) {});
+	libc::signal(libc::SIGPIPE, fn void(CInt) {});
 }
+
+// ============================================================================
+// 2. Connection State & Global Context
+// ============================================================================
+
+enum ConnState : char
+{
+	UNUSED,
+	READING,
+	PROCESSING
+}
+
+struct Connection
+{
+	TcpSocket sock;
+	ConnState state;
+	Time last_activity;
+	bool keep_alive;
+
+	char[8192] read_buf;
+	sz read_len;
+}
+
+Connection[MAX_CONNS] g_conns;
+Poll[MAX_CONNS + 2] g_poll_fds;
+sz[MAX_CONNS + 2] g_poll_map;
+
+UnboundedChannel{sz}* g_work_queue;
+Thread[THREAD_COUNT] g_workers;
+
+TcpSocketPair g_wake_pair;
+
+fn void init_wake_channel()
+{
+	(void)g_wake_pair.init();
+	(void)g_wake_pair.send.sock.set_non_blocking(true);
+	(void)g_wake_pair.recv.sock.set_non_blocking(true);
+}
+
+fn void notify_poller()
+{
+	(void)g_wake_pair.send.write("x");
+}
+
+fn void drain_poller_wake()
+{
+	char[512] buf;
+	(void)g_wake_pair.recv.read(&buf);
+}
+
+// ============================================================================
+// 3. Worker Thread Task Runner
+// ============================================================================
+
+fn int worker_thread_main(void* arg) => @pool_init(mem, 131072)
+{
+	while (try slot = g_work_queue.pop()) process_request_task(slot);
+	return 0;
+}
+
+// ============================================================================
+// 4. Main Event Loop & Dispatcher
+// ============================================================================
 
 fn int main(String[] args)
 {
@@ -31,13 +111,15 @@ fn int main(String[] args)
 					return 1;
 				}
 				i++;
-				int? parsed_port = args[i].to_int();
-				if (catch parsed_port)
+				if (try p = args[i].to_int())
+				{
+					port = p;
+				}
+				else
 				{
 					io::eprintfn("Error: invalid port '%s'", args[i]);
 					return 1;
 				}
-				port = parsed_port;
 			case "-r":
 			case "--root":
 				if (i + 1 >= args.len)
@@ -73,155 +155,661 @@ fn int main(String[] args)
 		io::eprintfn("Failed to listen on port %d: %s", port, err);
 		return 1;
 	}
+	(void)server.sock.set_non_blocking(true);
 
-	Path cwd = path::tcwd()!!;
-	io::printfn("Serving %s on http://0.0.0.0:%d", cwd, port);
+	init_wake_channel();
 
-	ThreadPool{THREAD_COUNT} worker_pool;
-	if (catch err = worker_pool.init())
+	Path cwd = path::tcwd() ?? (Path)".";
+	io::printfn("Event-driven HTTP server serving %s on http://0.0.0.0:%d (Workers: %d, Max Conns: %d)",
+		cwd, port, THREAD_COUNT, MAX_CONNS);
+
+	g_work_queue = channel::create_unbounded(mem)!!;
+	for (int i = 0; i < THREAD_COUNT; i++)
 	{
-		io::eprintfn("Failed to init thread pool: %s", err);
-		return 1;
+		g_workers[i].create(&worker_thread_main, null)!!;
 	}
-	defer worker_pool.stop_and_destroy();
+
+	foreach (&conn : g_conns)
+	{
+		conn.state = UNUSED;
+	}
 
 	while (true)
 	{
-		TcpSocket? conn = tcp::accept(&server);
-		if (catch conn) continue;
+		Time now_time = time::now();
 
-		TcpSocket* conn_ptr = mem::new(TcpSocket);
-		*conn_ptr = conn;
-
-		worker_pool.push(&handle_thread, conn_ptr);
-	}
-}
-
-fn int handle_thread(void* arg) => @pool_init(mem, 65536)
-{
-	TcpSocket* conn_ptr = (TcpSocket*)arg;
-	TcpSocket conn = *conn_ptr;
-	mem::free(conn_ptr);
-	(void)handle(conn);
-	return 0;
-}
-
-fn void? handle(TcpSocket conn)
-{
-	defer (void)conn.close();
-
-	while REQ_LOOP: (true)
-	{
-		Poll[1] p = { { conn.sock, READ, (PollEvent)0 } };
-		ulong ready = net::poll_ms(p[..], 5000) ?? 0;
-		if (ready == 0) return;
-
-		@pool()
+		// Timeout check & reap dead connections
+		foreach (i, &conn : g_conns)
 		{
-			Clock start_time = clock::now();
-			int status_code = 0;
-			long response_size = 0;
-			ParsedRequest parsed_req;
+			if (conn.state != READING) continue;
 
-			defer
+			Duration timeout = conn.read_len == 0 ? KEEPALIVE_TIMEOUT : READ_TIMEOUT;
+			if (now_time.diff_us(conn.last_activity) > timeout)
 			{
-				if (status_code != 0)
+				close_conn(i);
+			}
+		}
+
+		// Build polling set
+		sz poll_count = 0;
+
+		// Index 0: Server listen socket
+		g_poll_fds[poll_count] = { .socket = server.sock, .events = READ };
+		poll_count++;
+
+		// Index 1: Poller wake notification
+		g_poll_fds[poll_count] = { .socket = g_wake_pair.recv.sock, .events = READ };
+		poll_count++;
+
+		// Active client sockets
+		foreach (i, &conn : g_conns)
+		{
+			if (conn.state == READING)
+			{
+				g_poll_map[poll_count] = i;
+				g_poll_fds[poll_count] = { .socket = conn.sock.sock, .events = READ };
+				poll_count++;
+			}
+		}
+
+		ulong ready = net::poll_ms(g_poll_fds[:poll_count], 50) ?? 0;
+		if (ready == 0) continue;
+
+		// 1. Accept new incoming connections
+		if (g_poll_fds[0].revents != (PollEvent)0)
+		{
+			while (try client = tcp::accept(&server))
+			{
+				(void)client.sock.set_non_blocking(true);
+
+				if (try slot = find_free_conn_slot())
 				{
-					String date_str = datetime::from_time_tz(time::now(), 0).format(tmem, RFC3339);
-					double elapsed_ms = (double)start_time.to_now() / 1_000_000.0;
-					String time_str = string::tformat("%.1fms", elapsed_ms);
-					String human_s = human_size(response_size);
-					String ip_str = "127.0.0.1";
-					AIFamily family = (AIFamily)(conn.addr_storage[1] == 0 ? conn.addr_storage[0] : conn.addr_storage[1]);
-					switch (family)
-					{
-						case os::AF_INET:
-							ip_str = string::tformat("%d.%d.%d.%d",
-								(conn.addr_storage[4] & 0xFF), (conn.addr_storage[5] & 0xFF),
-								(conn.addr_storage[6] & 0xFF), (conn.addr_storage[7] & 0xFF));
-						case os::AF_INET6:
-							ip_str = "::1";
-					}
-					io::printfn("[%s] %3d %-6s %-32s %8s %8s  %s",
-						date_str, status_code,
-						parsed_req.method ?: "-",
-						parsed_req.path ?: "-",
-						time_str, human_s, ip_str);
-				}
-			}
-
-			char[8192] buf;
-			sz total = 0;
-			while (total < buf.len)
-			{
-				sz? bytes_read = conn.read(buf[total..]);
-				if (catch bytes_read) return;
-				if (bytes_read == 0) return;
-				total += bytes_read;
-				String so_far = (String)buf[:total];
-				if (so_far.contains("\r\n\r\n")) break;
-			}
-
-			String request_data = (String)buf[:total];
-
-			if (try req_val = parse_request(request_data))
-			{
-				parsed_req = req_val;
-			}
-			else
-			{
-				send_error(&conn, 400, "Bad Request", &status_code, &response_size, false)!;
-				return;
-			}
-
-			String raw_path = parsed_req.path;
-			if (env::WIN32)	raw_path = raw_path.treplace("\\", "/");
-
-			Splitter segments = raw_path.tokenize("/");
-			while (try seg = segments.next())
-			{
-				if (seg == "..")
-				{
-					send_error(&conn, 403, "Forbidden", &status_code, &response_size, parsed_req.keep_alive)!;
-					if (!parsed_req.keep_alive) return;
-					continue REQ_LOOP;
-				}
-			}
-
-			if (raw_path == "/favicon.ico" && !file::exists("favicon.ico"))
-			{
-				String conn_str = parsed_req.keep_alive ? "keep-alive" : "close";
-				conn.write(string::tformat("HTTP/1.1 204 No Content\r\nConnection: %s\r\n\r\n", conn_str))!;
-				status_code = 204;
-				if (!parsed_req.keep_alive) return;
-				continue REQ_LOOP;
-			}
-
-			String rel = raw_path.len > 1 ? raw_path[1..] : ".";
-
-			bool is_dir = path::is_dir(path::tnew(rel)!!);
-
-			if (is_dir)
-			{
-				String index_path = string::tformat("%s/index.html", rel);
-				if (file::exists(index_path))
-				{
-					rel = index_path;
-					parsed_req.range_header = "";
+					g_conns[slot].sock = client;
+					g_conns[slot].state = READING;
+					g_conns[slot].last_activity = time::now();
+					g_conns[slot].keep_alive = true;
+					g_conns[slot].read_len = 0;
 				}
 				else
 				{
-					send_dir_listing(&conn, rel, &parsed_req, &status_code, &response_size)!;
-					if (!parsed_req.keep_alive) return;
-					continue REQ_LOOP;
+					String busy_resp = "HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n";
+					(void)client.write(busy_resp);
+					(void)client.close();
+					break;
 				}
 			}
+		}
 
-			send_file(&conn, rel, &parsed_req, &status_code, &response_size)!;
-			if (!parsed_req.keep_alive) return;
-		};
+		// 2. Handle wakeup notification
+		if (g_poll_fds[1].revents != (PollEvent)0)
+		{
+			drain_poller_wake();
+		}
+
+		// 3. Handle active connection read events
+		for (sz p = 2; p < poll_count; p++)
+		{
+			if (g_poll_fds[p].revents == (PollEvent)0) continue;
+
+			sz slot = g_poll_map[p];
+			Connection* conn = &g_conns[slot];
+
+			if (conn.state != READING) continue;
+
+			sz space_left = conn.read_buf.len - conn.read_len;
+			if (space_left == 0)
+			{
+				close_conn(slot);
+				continue;
+			}
+
+			sz bytes_read = conn.sock.read(conn.read_buf[conn.read_len..]) ?? 0;
+			if (bytes_read == 0)
+			{
+				close_conn(slot);
+				continue;
+			}
+
+			conn.read_len += bytes_read;
+			conn.last_activity = time::now();
+
+			String req_str = (String)conn.read_buf[:conn.read_len];
+			if (req_str.contains("\r\n\r\n"))
+			{
+				conn.state = PROCESSING;
+				(void)g_work_queue.push(slot);
+			}
+		}
 	}
 }
+
+fn sz? find_free_conn_slot()
+{
+	foreach (i, &conn : g_conns)
+	{
+		if (conn.state == UNUSED) return i;
+	}
+	return NOT_FOUND~;
+}
+
+fn void close_conn(sz slot)
+{
+	Connection* conn = &g_conns[slot];
+	(void)conn.sock.close();
+	conn.state = UNUSED;
+	conn.read_len = 0;
+}
+
+// ============================================================================
+// 5. Request Processing & Response Dispatching
+// ============================================================================
+
+fn void process_request_task(sz slot) => @pool()
+{
+	Connection* conn = &g_conns[slot];
+
+	Clock start_time = clock::now();
+	int status_code = 0;
+	long response_size = 0;
+
+	String request_data = (String)conn.read_buf[:conn.read_len];
+
+	ParsedRequest? parsed_req = parse_request(request_data);
+	if (catch parsed_req)
+	{
+		make_and_dispatch_error(conn, slot, 400, "Bad Request", &status_code, &response_size, false);
+		log_request(conn, start_time, status_code, {}, response_size);
+		return;
+	}
+
+	conn.keep_alive = parsed_req.keep_alive;
+
+	String raw_path = parsed_req.path;
+	$if env::WIN32:
+		raw_path = raw_path.treplace("\\", "/");
+	$endif
+
+	Splitter segments = raw_path.tokenize("/");
+	while (try seg = segments.next())
+	{
+		if (seg == "..")
+		{
+			make_and_dispatch_error(conn, slot, 403, "Forbidden", &status_code, &response_size, parsed_req.keep_alive);
+			log_request(conn, start_time, status_code, parsed_req, response_size);
+			return;
+		}
+	}
+
+	if (raw_path == "/favicon.ico" && !file::exists("favicon.ico"))
+	{
+		String conn_str = parsed_req.keep_alive ? "keep-alive" : "close";
+		String resp = string::tformat("HTTP/1.1 204 No Content\r\nConnection: %s\r\n\r\n", conn_str);
+		dispatch_response_bytes(conn, slot, resp);
+		status_code = 204;
+		log_request(conn, start_time, status_code, parsed_req, response_size);
+		return;
+	}
+
+	String rel = raw_path.len > 1 ? raw_path[1..] : ".";
+	bool is_dir = file::is_dir(rel);
+
+	if (is_dir)
+	{
+		String index_path = string::tformat("%s/index.html", rel);
+		if (file::exists(index_path))
+		{
+			rel = index_path;
+			parsed_req.range_header = "";
+		}
+		else
+		{
+			serve_dir_listing(conn, slot, rel, &parsed_req, &status_code, &response_size);
+			log_request(conn, start_time, status_code, parsed_req, response_size);
+			return;
+		}
+	}
+
+	serve_static_file(conn, slot, rel, &parsed_req, &status_code, &response_size);
+	log_request(conn, start_time, status_code, parsed_req, response_size);
+}
+
+fn bool send_all_bytes(TcpSocket* sock, char[] data)
+{
+	sz sent = 0;
+	while (sent < data.len)
+	{
+		sz chunk_len = math::min(data.len - sent, (sz)(128 * 1024));
+
+		sz? n = sock.write(data[sent : chunk_len]);
+		if (catch err = n)
+		{
+			if (err == io::WOULD_BLOCK || err == io::INTERRUPTED)
+			{
+				Poll[1] p = { { .socket = sock.sock, .events = WRITE } };
+				if ((net::poll_ms(&p, 5000) ?? 0) == 0) return false;
+				continue;
+			}
+			return false;
+		}
+		if (n == 0)
+		{
+			Poll[1] p = { { .socket = sock.sock, .events = WRITE } };
+			if ((net::poll_ms(&p, 5000) ?? 0) == 0) return false;
+			continue;
+		}
+		sent += n;
+	}
+	return true;
+}
+
+fn void dispatch_response_bytes(Connection* conn, sz slot, char[] data)
+{
+	bool ok = send_all_bytes(&conn.sock, data);
+	if (!ok)
+	{
+		close_conn(slot);
+		return;
+	}
+
+	if (conn.keep_alive)
+	{
+		conn.read_len = 0;
+		conn.last_activity = time::now();
+		conn.state = READING;
+		notify_poller();
+	}
+	else
+	{
+		close_conn(slot);
+	}
+}
+
+fn void make_and_dispatch_error(Connection* conn, sz slot, int code, String reason, int* out_status, long* out_size, bool keep_alive)
+{
+	String body = string::tformat("<h1>%d %s</h1>", code, reason);
+	String conn_str = keep_alive ? "keep-alive" : "close";
+	String resp = string::tformat("HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %d\r\nConnection: %s\r\n\r\n%s",
+		code, reason, body.len, conn_str, body);
+
+	if (out_status) *out_status = code;
+	if (out_size) *out_size = body.len;
+
+	dispatch_response_bytes(conn, slot, resp);
+}
+
+fn void log_request(Connection* conn, Clock start_time, int status_code, ParsedRequest parsed_req, long response_size)
+{
+	if (status_code == 0) return;
+
+	String date_str = datetime::from_time_tz(time::now(), 0).format(tmem, RFC3339);
+	NanoDuration elapsed = start_time.to_now();
+	String human_s = human_size(response_size);
+	String ip_str = conn.sock.peer_address().to_tstring() ?? "127.0.0.1";
+
+	io::printfn("[%s] %3d %-6s %-32s %8s %8s  %s",
+		date_str, status_code,
+		parsed_req.method ?: "-",
+		parsed_req.path ?: "-",
+		elapsed.tunit_str(), human_s, ip_str);
+}
+
+// ============================================================================
+// 6. Static File & Directory Serving
+// ============================================================================
+
+fn void serve_dir_listing(Connection* conn, sz slot, String rel_path, ParsedRequest* req, int* out_status, long* out_size)
+{
+	Path dir_path = path::tnew(rel_path) ?? (Path)rel_path;
+	PathList? files = path::ls(tmem, dir_path, relative: false);
+	if (catch files)
+	{
+		make_and_dispatch_error(conn, slot, 500, "Internal Server Error", out_status, out_size, req.keep_alive);
+		return;
+	}
+
+	FileEntry[] entries = mem::talloc_array(FileEntry, files.len());
+	sz count = 0;
+	foreach (entry_path : files)
+	{
+		String name = entry_path.basename();
+		if (name == "." || name == "..") continue;
+
+		entries[count] = {
+			.path = entry_path,
+			.name = name,
+			.is_dir = file::is_dir(entry_path)
+		};
+		count++;
+	}
+
+	FileEntry[] entries_to_sort = entries[:count];
+	sort::quicksort(entries_to_sort, &entry_cmp);
+
+	DString html = dstring::temp_with_capacity(32768);
+	html.appendf(DIR_LISTING_TEMPLATE_HEADER, FAVICON, req.path, req.path);
+
+	if (req.path != "/") html.append(DIR_LISTING_GO_UP);
+
+	html.append(DIR_LISTING_TABLE_HEADER);
+
+	foreach (entry : entries_to_sort)
+	{
+		long size_raw = entry.is_dir ? -1 : (file::get_size(entry.path) ?? 0);
+		String size_str = entry.is_dir ? "" : human_size(size_raw);
+
+		Time mod = file::last_modified(entry.path) ?? (Time)0;
+		String date_str = mod == (Time)0 ? "-" : datetime::from_time(mod).to_local().format(tmem, DATETIME);
+
+		String encoded_link = url::tencode(entry.name, UNRESERVED);
+		if (entry.is_dir) encoded_link = string::tformat("%s/", encoded_link);
+
+		String safe_name = html_escape(entry.name);
+		html.appendf(DIR_LISTING_ROW_TEMPLATE,
+			entry.name.starts_with(".") ? "hidden-object" : "",
+			entry.is_dir ? "D" : "F", safe_name, entry.is_dir ? "dir" : "file", encoded_link, safe_name, safe_name,
+			size_raw, size_str, (long)mod, date_str);
+	}
+
+	html.append(DIR_LISTING_TABLE_FOOTER);
+	String out_html = html.str_view();
+
+	String date_now = datetime::from_time_tz(time::now(), 0).format(tmem, RFC1123);
+	String conn_str = req.keep_alive ? "keep-alive" : "close";
+
+	if (req.accept_gzip)
+	{
+		if (try compressed = gzip::compress(tmem, out_html))
+		{
+			String headers = string::tformat("HTTP/1.1 200 OK\r\nDate: %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Encoding: gzip\r\nContent-Length: %d\r\nConnection: %s\r\n\r\n",
+				date_now, compressed.len, conn_str);
+
+			if (req.method == "HEAD")
+			{
+				dispatch_response_bytes(conn, slot, headers);
+			}
+			else
+			{
+				char[] full_resp = mem::talloc_array(char, headers.len + compressed.len);
+				full_resp[:headers.len] = headers[..];
+				full_resp[headers.len..] = compressed[..];
+				dispatch_response_bytes(conn, slot, full_resp);
+			}
+			if (out_status) *out_status = 200;
+			if (out_size) *out_size = compressed.len;
+			return;
+		}
+	}
+
+	String headers = string::tformat("HTTP/1.1 200 OK\r\nDate: %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %d\r\nConnection: %s\r\n\r\n",
+		date_now, out_html.len, conn_str);
+
+	if (req.method == "HEAD")
+	{
+		dispatch_response_bytes(conn, slot, headers);
+	}
+	else
+	{
+		char[] full_resp = mem::talloc_array(char, headers.len + out_html.len);
+		full_resp[:headers.len] = headers[..];
+		full_resp[headers.len..] = out_html[..];
+		dispatch_response_bytes(conn, slot, full_resp);
+	}
+
+	if (out_status) *out_status = 200;
+	if (out_size) *out_size = out_html.len;
+}
+
+fn void serve_static_file(Connection* conn, sz slot, String path_str, ParsedRequest* req, int* out_status, long* out_size)
+{
+	File? target_file = file::open(path_str, "rb");
+	if (catch err = target_file)
+	{
+		if (err == io::FILE_NOT_FOUND)
+		{
+			make_and_dispatch_error(conn, slot, 404, "Not Found", out_status, out_size, req.keep_alive);
+			return;
+		}
+		make_and_dispatch_error(conn, slot, 500, "Internal Server Error", out_status, out_size, req.keep_alive);
+		return;
+	}
+	defer (void)target_file.close();
+
+	long size = target_file.size() ?? 0;
+	Time mod = file::last_modified(path_str) ?? (Time)0;
+	String etag = string::tformat("\"%d-%d\"", mod, size);
+
+	if (req.if_none_match.len > 0 && req.if_none_match == etag)
+	{
+		String date_now = datetime::from_time_tz(time::now(), 0).format(tmem, RFC1123);
+		String conn_str = req.keep_alive ? "keep-alive" : "close";
+		String resp = string::tformat("HTTP/1.1 304 Not Modified\r\nDate: %s\r\nETag: %s\r\nConnection: %s\r\n\r\n",
+			date_now, etag, conn_str);
+
+		dispatch_response_bytes(conn, slot, resp);
+		if (out_status) *out_status = 304;
+		if (out_size) *out_size = 0;
+		return;
+	}
+
+	long start = 0;
+	long end = size - 1;
+	bool is_partial = false;
+
+	if (req.range_header.starts_with("bytes="))
+	{
+		String range_val = req.range_header[6..];
+		if (try dash_idx = range_val.index_of_char('-'))
+		{
+			String start_str = range_val[:dash_idx].trim();
+			String end_str = range_val[dash_idx + 1..].trim();
+			switch
+			{
+				case start_str.len > 0:
+					start = start_str.to_long() ?? 0;
+					if (end_str.len > 0) end = end_str.to_long() ?? (size - 1);
+				case end_str.len > 0:
+					long suffix = end_str.to_long() ?? 0;
+					start = size - suffix;
+					end = size - 1;
+			}
+			if (start < 0) start = 0;
+			if (end >= size) end = size - 1;
+			if (start <= end) is_partial = true;
+		}
+	}
+
+	Path file_path = path::tnew(path_str) ?? (Path)path_str;
+	String mime_type = mime_for_ext((file_path.extension() ?? "").to_lower_tcopy());
+	bool compress = req.accept_gzip && !is_partial && is_compressible(mime_type);
+	long content_len = is_partial ? (end - start + 1) : size;
+
+	String date_now = datetime::from_time_tz(time::now(), 0).format(tmem, RFC1123);
+	String conn_str = req.keep_alive ? "keep-alive" : "close";
+
+	if (is_partial)
+	{
+		String headers = string::tformat(
+			"HTTP/1.1 206 Partial Content\r\n"
+			"Date: %s\r\n"
+			"Content-Type: %s\r\n"
+			"Accept-Ranges: bytes\r\n"
+			"Content-Length: %d\r\n"
+			"Content-Range: bytes %d-%d/%d\r\n"
+			"ETag: %s\r\n"
+			"Connection: %s\r\n\r\n",
+			date_now, mime_type, content_len, start, end, size, etag, conn_str);
+
+		if (out_status) *out_status = 206;
+		if (out_size) *out_size = content_len;
+
+		if (req.method == "HEAD")
+		{
+			dispatch_response_bytes(conn, slot, headers);
+			return;
+		}
+
+		// Memory-mapped zero-copy slice for partial content
+		if (content_len > 64 * 1024)
+		{
+			if (try map = file::mmap_file(target_file, (sz)start, (sz)content_len))
+			{
+				defer (void)map.destroy();
+				bool ok = send_all_bytes(&conn.sock, headers) &&
+				          send_all_bytes(&conn.sock, map.bytes());
+
+				if (!ok)
+				{
+					close_conn(slot);
+					return;
+				}
+
+				if (conn.keep_alive)
+				{
+					conn.read_len = 0;
+					conn.last_activity = time::now();
+					conn.state = READING;
+					notify_poller();
+				}
+				else
+				{
+					close_conn(slot);
+				}
+				return;
+			}
+		}
+
+		char[] file_bytes = mem::talloc_array(char, (sz)content_len);
+		(void)target_file.seek(start);
+		sz valid_read = target_file.read(file_bytes) ?? 0;
+
+		char[] full_resp = mem::talloc_array(char, headers.len + valid_read);
+		full_resp[:headers.len] = headers[..];
+		full_resp[headers.len..] = file_bytes[:valid_read];
+
+		dispatch_response_bytes(conn, slot, full_resp);
+		return;
+	}
+
+	if (compress)
+	{
+		if (try file_data = file::load(tmem, path_str))
+		{
+			if (try compressed = gzip::compress(tmem, file_data))
+			{
+				String headers = string::tformat(
+					"HTTP/1.1 200 OK\r\n"
+					"Date: %s\r\n"
+					"Content-Type: %s\r\n"
+					"Accept-Ranges: bytes\r\n"
+					"ETag: %s\r\n"
+					"Content-Encoding: gzip\r\n"
+					"Content-Length: %d\r\n"
+					"Connection: %s\r\n\r\n",
+					date_now, mime_type, etag, compressed.len, conn_str);
+
+				if (out_status) *out_status = 200;
+				if (out_size) *out_size = compressed.len;
+
+				if (req.method == "HEAD")
+				{
+					dispatch_response_bytes(conn, slot, headers);
+					return;
+				}
+
+				char[] full_resp = mem::talloc_array(char, headers.len + compressed.len);
+				full_resp[:headers.len] = headers[..];
+				full_resp[headers.len..] = compressed[..];
+				dispatch_response_bytes(conn, slot, full_resp);
+				return;
+			}
+		}
+	}
+
+	// Zero-copy Memory-Mapped streaming for files > 64 KB
+	if (size > 64 * 1024)
+	{
+		if (try map = file::mmap_file(target_file, 0, (sz)size))
+		{
+			defer (void)map.destroy();
+
+			String headers = string::tformat(
+				"HTTP/1.1 200 OK\r\n"
+				"Date: %s\r\n"
+				"Content-Type: %s\r\n"
+				"Accept-Ranges: bytes\r\n"
+				"ETag: %s\r\n"
+				"Content-Length: %d\r\n"
+				"Connection: %s\r\n\r\n",
+				date_now, mime_type, etag, size, conn_str);
+
+			if (out_status) *out_status = 200;
+			if (out_size) *out_size = size;
+
+			if (req.method == "HEAD")
+			{
+				dispatch_response_bytes(conn, slot, headers);
+				return;
+			}
+
+			bool ok = send_all_bytes(&conn.sock, headers) &&
+			          send_all_bytes(&conn.sock, map.bytes());
+
+			if (!ok)
+			{
+				close_conn(slot);
+				return;
+			}
+
+			if (conn.keep_alive)
+			{
+				conn.read_len = 0;
+				conn.last_activity = time::now();
+				conn.state = READING;
+				notify_poller();
+			}
+			else
+			{
+				close_conn(slot);
+			}
+			return;
+		}
+	}
+
+	String headers = string::tformat(
+		"HTTP/1.1 200 OK\r\n"
+		"Date: %s\r\n"
+		"Content-Type: %s\r\n"
+		"Accept-Ranges: bytes\r\n"
+		"ETag: %s\r\n"
+		"Content-Length: %d\r\n"
+		"Connection: %s\r\n\r\n",
+		date_now, mime_type, etag, size, conn_str);
+
+	if (out_status) *out_status = 200;
+	if (out_size) *out_size = size;
+
+	if (req.method == "HEAD")
+	{
+		dispatch_response_bytes(conn, slot, headers);
+		return;
+	}
+
+	if (try file_data = file::load(tmem, path_str))
+	{
+		char[] full_resp = mem::talloc_array(char, headers.len + file_data.len);
+		full_resp[:headers.len] = headers[..];
+		full_resp[headers.len..] = file_data[..];
+		dispatch_response_bytes(conn, slot, full_resp);
+	}
+	else
+	{
+		make_and_dispatch_error(conn, slot, 500, "Internal Server Error", out_status, out_size, req.keep_alive);
+	}
+}
+
+// ============================================================================
+// 7. Request Parsing & Mime Utilities
+// ============================================================================
 
 struct ParsedRequest
 {
@@ -234,42 +822,37 @@ struct ParsedRequest
 	bool keep_alive;
 }
 
-faultdef MALFORMED_REQUEST;
+excuse MALFORMED_REQUEST;
 
 fn ParsedRequest? parse_request(String req)
 {
 	ParsedRequest parsed_req;
+	Splitter lines = req.tokenize_all("\r\n");
+	String request_line = lines.next() ?? MALFORMED_REQUEST~!;
+
 	switch
 	{
-		case req.starts_with("GET "):  parsed_req.method = "GET";
-		case req.starts_with("HEAD "): parsed_req.method = "HEAD";
+		case request_line.starts_with("GET "):  parsed_req.method = "GET";
+		case request_line.starts_with("HEAD "): parsed_req.method = "HEAD";
 		default: return MALFORMED_REQUEST~;
 	}
 
-	sz? first_crlf = req.index_of("\r\n");
-	if (catch first_crlf) return MALFORMED_REQUEST~;
+	String rest = request_line[parsed_req.method.len + 1..];
+	sz space_idx = rest.index_of_char(' ') ?? MALFORMED_REQUEST~!;
 
-	String rest = req[parsed_req.method.len + 1 .. first_crlf];
-	sz? space_idx = rest.index_of_char(' ');
-	if (catch space_idx) return MALFORMED_REQUEST~;
-
-	String raw = rest[:space_idx];
+	String raw_path = rest[:space_idx];
 	String version = rest[space_idx + 1..].trim();
-	parsed_req.keep_alive = false;
+	parsed_req.keep_alive = !version.ends_with("1.0");
 
-	String path_part = raw;
-	if (try query_idx = raw.index_of_char('?'))
+	String path_part = raw_path;
+	if (try query_idx = raw_path.index_of_char('?'))
 	{
-		path_part = raw[:query_idx];
-		parsed_req.query = raw[query_idx + 1..];
+		path_part = raw_path[:query_idx];
+		parsed_req.query = raw_path[query_idx + 1..];
 	}
 	parsed_req.path = url::tdecode(path_part, PATH) ?? path_part;
 
-	sz? end_headers = req.index_of("\r\n\r\n");
-	String headers_part = req[first_crlf + 2 .. (end_headers ?? req.len)];
-
-	Splitter lines = headers_part.tokenize("\r\n");
-	while (try line = lines.next())
+	while (try line = lines.next() && line.len)
 	{
 		if (try col = line.index_of_char(':'))
 		{
@@ -293,159 +876,6 @@ fn ParsedRequest? parse_request(String req)
 	return parsed_req;
 }
 
-<*
- @param [out] out_status
- @param [out] out_size
-*>
-fn void? send_error(TcpSocket* sock, int code, String reason, int* out_status, long* out_size, bool keep_alive)
-{
-	String body = string::tformat("<h1>%d %s</h1>", code, reason);
-	String conn_str = keep_alive ? "keep-alive" : "close";
-	sock.write(string::tformat("HTTP/1.1 %d %s\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %d\r\nConnection: %s\r\n\r\n%s", code, reason, body.len, conn_str, body))!;
-	if (out_status) *out_status = code;
-	if (out_size) *out_size = body.len;
-}
-
-fn void? stream_gzip(TcpSocket* sock, InStream input, Allocator allocator)
-{
-	GzipWriter gz;
-	gz.init(allocator, sock)!;
-	defer (void)gz.close();
-
-	io::copy_to(input, &gz)!;
-}
-
-fn void? write_response_headers(TcpSocket* sock, String status, String mime_type, bool keep_alive, String extra_fmt, args...)
-{
-	String date_now = datetime::from_time_tz(time::now(), 0).format(tmem, RFC1123);
-	String extra_headers = string::tformat(extra_fmt, ...args);
-	String conn_str = keep_alive ? "keep-alive" : "close";
-	sock.write(string::tformat("HTTP/1.1 %s\r\n"
-		"Date: %s\r\n"
-		"Content-Type: %s\r\n"
-		"%s"
-		"Connection: %s\r\n\r\n", status, date_now, mime_type, extra_headers, conn_str))!;
-}
-
-<*
- @param [out] out_status
- @param [out] out_size
-*>
-fn void? send_file(TcpSocket* sock, String path_str, ParsedRequest* req, int* out_status, long* out_size)
-{
-	@pool()
-	{
-		File? target_file_opt = file::open(path_str, "rb");
-		if (catch err = target_file_opt)
-		{
-			if (err == io::FILE_NOT_FOUND)
-			{
-				send_error(sock, 404, "Not Found", out_status, out_size, req.keep_alive)!;
-				return;
-			}
-			return err~;
-		}
-		File target_file = target_file_opt;
-		defer (void)target_file.close();
-
-		long size = target_file.size()!;
-
-		Time mod = file::last_modified(path_str) ?? (Time)0;
-		String etag = string::tformat("\"%d-%d\"", mod, size);
-
-		if (req.if_none_match == etag)
-		{
-			String conn_str = req.keep_alive ? "keep-alive" : "close";
-			sock.write(string::tformat("HTTP/1.1 304 Not Modified\r\nETag: %s\r\nConnection: %s\r\n\r\n", etag, conn_str))!;
-			if (out_status) *out_status = 304;
-			if (out_size) *out_size = 0;
-			return;
-		}
-
-		long start = 0;
-		long end = size - 1;
-		bool is_partial = false;
-
-		if (req.range_header.starts_with("bytes="))
-		{
-			String range_val = req.range_header[6..];
-			if (try dash_idx = range_val.index_of_char('-'))
-			{
-				String start_str = range_val[:dash_idx].trim();
-				String end_str = range_val[dash_idx + 1..].trim();
-				switch
-				{
-					case start_str.len > 0:
-						start = start_str.to_long() ?? 0;
-						if (end_str.len > 0) end = end_str.to_long() ?? (size - 1);
-					case end_str.len > 0:
-						long suffix = end_str.to_long() ?? 0;
-						start = size - suffix;
-						end = size - 1;
-				}
-				if (start < 0) start = 0;
-				if (end >= size) end = size - 1;
-				if (start <= end) is_partial = true;
-			}
-		}
-
-		Path file_path = path::tnew(path_str)!!;
-		String mime_type = mime_for_ext((file_path.extension() ?? "").to_lower_tcopy());
-		bool compress = req.accept_gzip && !is_partial && is_compressible(mime_type);
-
-
-		long content_len = is_partial ? (end - start + 1) : size;
-
-		if (is_partial)
-		{
-			if (out_status) *out_status = 206;
-			if (out_size) *out_size = content_len;
-
-			write_response_headers(sock, "206 Partial Content", mime_type, req.keep_alive,
-				"Accept-Ranges: bytes\r\nContent-Length: %d\r\nContent-Range: bytes %d-%d/%d\r\nETag: %s\r\n",
-				content_len, start, end, size, etag)!;
-		}
-		else
-		{
-			if (out_status) *out_status = 200;
-			if (out_size) *out_size = size;
-
-			if (compress)
-			{
-				req.keep_alive = false;
-				write_response_headers(sock, "200 OK", mime_type, false,
-					"Accept-Ranges: bytes\r\nETag: %s\r\nContent-Encoding: gzip\r\n", etag)!;
-				if (req.method == "HEAD") return;
-				stream_gzip(sock, &target_file, tmem)!;
-				return;
-			}
-			else
-			{
-				write_response_headers(sock, "200 OK", mime_type, req.keep_alive,
-					"Accept-Ranges: bytes\r\nETag: %s\r\nContent-Length: %d\r\n", etag, size)!;
-			}
-		}
-
-		if (req.method == "HEAD") return;
-
-		if (content_len > 64*1024)
-		{
-			if (try map = file::mmap_file(target_file))
-			{
-				defer (void)map.destroy();
-				char* ptr = (char*)map.vm.ptr;
-				sock.write(ptr[(sz)start : (sz)content_len])!;
-				return;
-			}
-		}
-
-		target_file.seek(start)!;
-		LimitReader lr;
-		lr.init(&target_file, content_len);
-		io::copy_to(&lr, sock)!;
-	};
-}
-
 struct FileEntry
 {
 	Path path;
@@ -466,18 +896,17 @@ fn int entry_cmp(FileEntry* a, FileEntry* b)
 fn String human_size(long size)
 {
 	if (size < 1024) return string::tformat("%dB", size);
-	double scaled_size = size / 1024d;
-	if (scaled_size < 1024) return string::tformat("%.1fKB", scaled_size);
-	scaled_size /= 1024d;
-	if (scaled_size < 1024) return string::tformat("%.1fMB", scaled_size);
-	scaled_size /= 1024d;
+	double scaled_size = size / 1024.0;
+	if (scaled_size < 1024.0) return string::tformat("%.1fKB", scaled_size);
+	scaled_size /= 1024.0;
+	if (scaled_size < 1024.0) return string::tformat("%.1fMB", scaled_size);
+	scaled_size /= 1024.0;
 	return string::tformat("%.1fGB", scaled_size);
 }
 
-fn String html_escape(String input_string) // TODO: std::encoding::html
+fn String html_escape(String input_string)
 {
-	// Worst-case HTML entity size
-	String buf = (String)mem::talloc_array(char, input_string.len * 6);
+	char[] buf = mem::talloc_array(char, input_string.len * 6);
 	sz pos = 0;
 	foreach (character : input_string)
 	{
@@ -496,94 +925,7 @@ fn String html_escape(String input_string) // TODO: std::encoding::html
 		buf[pos : entity.len] = entity[..];
 		pos += entity.len;
 	}
-	return buf[:pos];
-}
-
-<*
- @param [out] out_status
- @param [out] out_size
-*>
-fn void? send_dir_listing(TcpSocket* sock, String rel_path, ParsedRequest* req, int* out_status, long* out_size)
-{
-	@pool()
-	{
-		Path dir_path = path::tnew(rel_path)!!;
-		PathList? files = path::ls(tmem, dir_path, relative: false);
-		if (catch files)
-		{
-			send_error(sock, 500, "Internal Server Error", out_status, out_size, req.keep_alive)!;
-			return;
-		}
-
-		FileEntry[] entries = mem::talloc_array(FileEntry, files.size);
-		sz count = 0;
-		foreach (entry_path : files)
-		{
-			String name = entry_path.basename();
-			if (name == "." || name == "..") continue;
-
-			entries[count] = {
-				.path = entry_path,
-				.name = name,
-				.is_dir = path::is_dir(entry_path)
-			};
-			count++;
-		}
-
-		FileEntry[] entries_to_sort = entries[:count];
-		sort::quicksort(entries_to_sort, &entry_cmp);
-
-		DString html = dstring::new_with_capacity(tmem, 32768);
-
-		html.appendf(DIR_LISTING_TEMPLATE_HEADER, FAVICON, req.path, req.path);
-
-		if (req.path != "/") html.append(DIR_LISTING_GO_UP);
-
-		html.append(DIR_LISTING_TABLE_HEADER);
-
-		foreach (entry : entries_to_sort)
-		{
-			@pool()
-			{
-				long size_raw = entry.is_dir ? -1 : (path::file_size(entry.path) ?? 0);
-				String size_str = entry.is_dir ? "" : human_size(size_raw);
-
-				Time mod = file::last_modified(entry.path) ?? (Time)0;
-				String date_str = mod == (Time)0 ? "-" : datetime::from_time(mod).to_local().format(tmem, DATETIME);
-
-				String encoded_link = url::tencode(entry.name, UNRESERVED);
-				if (entry.is_dir) encoded_link = string::tformat("%s/", encoded_link);
-
-				String safe_name = html_escape(entry.name);
-				html.appendf(DIR_LISTING_ROW_TEMPLATE,
-					entry.name.starts_with(".") ? "hidden-object" : "",
-					entry.is_dir ? "D" : "F", safe_name, entry.is_dir ? "dir" : "file", encoded_link, safe_name, safe_name,
-					size_raw, size_str, (long)mod, date_str);
-			};
-		}
-
-		html.append(DIR_LISTING_TABLE_FOOTER);
-
-		String out_html = html.str_view();
-
-		if (req.accept_gzip)
-		{
-			req.keep_alive = false;
-			write_response_headers(sock, "200 OK", "text/html; charset=utf-8", false,
-				"Content-Encoding: gzip\r\n")!;
-			if (req.method == "HEAD") return;
-			stream_gzip(sock, &&io::wrap_bytes(out_html), tmem)!;
-		}
-		else
-		{
-			write_response_headers(sock, "200 OK", "text/html; charset=utf-8", req.keep_alive,
-				"Content-Length: %d\r\n", out_html.len)!;
-			if (req.method == "HEAD") return;
-			sock.write(out_html)!;
-		}
-		if (out_status) *out_status = 200;
-		if (out_size) *out_size = out_html.len;
-	};
+	return (String)buf[:pos];
 }
 
 enum MimeType : int (String ext, String mime, bool compress)
@@ -663,6 +1005,10 @@ fn bool is_compressible(String content_type)
 	if (try matched = MimeType::lookup_field(mime, content_type)) return matched.compress;
 	return content_type.starts_with("text/");
 }
+
+// ============================================================================
+// 8. HTML Templates
+// ============================================================================
 
 const String DIR_LISTING_TEMPLATE_HEADER =
 `<!DOCTYPE html><html><head><meta charset="UTF-8">
