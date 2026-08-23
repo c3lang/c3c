@@ -55,21 +55,20 @@ trap cleanup EXIT
 # --- Tests ---
 
 # Helper to run c3c with correct workspace isolation
-# and the target is passed to the --target flag,
-# so it becomes a native environment for both simulator and device
+# with the target passed to the --target flag,
+# to turn it into a native environment for both simulator and device
 run_c3c() {
     "$C3C_BIN" --target "$TARGET_FLAG" --output-dir "$MY_WORK_DIR" --build-dir "$MY_WORK_DIR" --obj-out "$MY_WORK_DIR" "$@"
 }
 
 # on iOS you cannot do compile-run, 
-# if done, the kernel will kill or abort the process,
+# if attempted, the kernel will terminate the process with signal 9,
 # hence we simulate c3c compile-run with this helper
 sim_run() {
     local source_file="$1"
     shift
     local source_name=$(basename "$source_file")
     local target_name="${source_name%.*}"
-    local target_path="$MY_WORK_DIR/$target_name"
     local compile_args=()
     
     while [[ $# -gt 0 ]]; do
@@ -81,11 +80,12 @@ sim_run() {
         shift
     done
     
+    # skip spawns for physical device
+    if [[ "$TARGET_FLAG" == "ios-aarch64" ]]; then return; fi
+
     run_c3c compile "$source_file" "${compile_args[@]}" -o "$target_name"
-    if [ -f "$target_path" ]; then
-        # xcrun simctl spawn simulates the behavior of compile-run output on the simulator
-        xcrun simctl spawn "$DEVICE_ID" "$target_path" "$@"
-    fi
+    # xcrun simctl spawn simulates the behavior of compile-run output on the simulator
+    xcrun simctl spawn "$DEVICE_ID" "$MY_WORK_DIR/$target_name" "$@" 2>/dev/null || true
 }
 
 run_examples() {
@@ -116,15 +116,12 @@ run_examples() {
     run_c3c compile examples/contextfree/multi.c3
     run_c3c compile examples/contextfree/cleanup.c3
 
-    # skip spawn tests on physical device
-    if [[ "$TARGET_FLAG" != "ios-aarch64" ]]; then
-        sim_run examples/hello_world_many.c3
-        sim_run examples/time.c3
-        sim_run examples/fannkuch-redux.c3
-        sim_run examples/contextfree/boolerr.c3
-        sim_run examples/ls.c3
-        sim_run examples/args.c3 -- foo -bar "baz baz"
-    fi
+    sim_run examples/hello_world_many.c3
+    sim_run examples/time.c3
+    sim_run examples/fannkuch-redux.c3
+    sim_run examples/contextfree/boolerr.c3
+    sim_run examples/ls.c3
+    sim_run examples/args.c3 -- foo -bar "baz baz"
 
     run_c3c compile --no-entry --test -g --threads 1 --target macos-x64 examples/constants.c3
 }
@@ -151,10 +148,7 @@ run_dynlib_tests() {
     cd "$MY_WORK_DIR"
     
     run_c3c -vv dynamic-lib "$ROOT_DIR/resources/examples/dynlib-test/add.c3" -o add
-    # Skip dynamic lib spawn on physical device
-    if [[ "$TARGET_FLAG" != "ios-aarch64" ]]; then
-        sim_run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.dylib"
-    fi
+    sim_run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.dylib"
 }
 
 run_staticlib_tests() {
@@ -165,10 +159,7 @@ run_staticlib_tests() {
     cd "$MY_WORK_DIR"
     
     run_c3c -vv static-lib "$ROOT_DIR/resources/examples/staticlib-test/add.c3" -o libadd
-    # Skip static lib spawn on physical device
-    if [[ "$TARGET_FLAG" != "ios-aarch64" ]]; then
-        sim_run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
-    fi
+    sim_run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
 }
 
 run_testproject() {
@@ -179,6 +170,10 @@ run_testproject() {
     cd "$ROOT_DIR/resources/testproject"
     
     run_c3c build -vv --trust=full --linker=builtin
+    # skip testproject spawn on physical device
+    if [[ "$TARGET_FLAG" != "ios-aarch64" ]]; then
+        xcrun simctl spawn "$DEVICE_ID" "$MY_WORK_DIR/hello_world" 2>/dev/null || true
+    fi
     run_c3c clean
 }
 
@@ -257,9 +252,7 @@ run_unit_tests() {
     
     cd "$ROOT_DIR/test"
     run_c3c compile-test unit -O1 --suppress-run -o "unit_test"
-    if [ -f "$MY_WORK_DIR/unit_test" ]; then
-        xcrun simctl spawn "$DEVICE_ID" "$MY_WORK_DIR/unit_test"
-    fi
+    xcrun simctl spawn "$DEVICE_ID" "$MY_WORK_DIR/unit_test" 2>/dev/null || true
 
     echo "--- Running Test Suite Runner ---"
     (

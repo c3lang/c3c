@@ -995,11 +995,13 @@ jobs:
           # free up disk space by removing unavailable or old simulators
           xcrun simctl erase all
           xcrun simctl delete unavailable
-          RUNTIME_JSON=$(xcrun simctl list devices available -j)
+
           echo ">>> Initializing iOS simulator setup..."
+          RUNTIME_JSON=$(xcrun simctl list devices available -j)
           
-          # Find latest iOS runtime key dynamically and pick first iPhone,
-          # otherwise fallback to first available iPhone from any runtime
+          # Select the first iPhone that has the latest iOS version
+          # otherwise select the first iPhone of any iOS version other than latest
+          # return the UDID if found, else no UDID will be returned
           echo ">>> Selecting a simulator from list of simulators..."
           RUNTIME_ID=$(echo "$RUNTIME_JSON" | jq -r '
               first(
@@ -1021,16 +1023,28 @@ jobs:
               echo "::error::No operational simulator found."
               exit 1
           fi
-          
+
+          # Extract the device name and version from the selected simulator
           DEVICE_NAME=$(echo "$RUNTIME_JSON" | jq -r --arg id "$RUNTIME_ID" '
               .devices[] | select(type == "array") | .[]?
               | select(type == "object" and .udid == $id)
               | .name
           ')
+
+          # Also extract the version of iOS from the selected simulator
+          # this will tell us if the latest version was selected or not
+          OS_VERSION=$(echo "$RUNTIME_JSON" | jq -r --arg id "$RUNTIME_ID" '
+              .devices | to_entries[]
+              | .key as $runtime
+              | .value[]?
+              | select(type == "object" and .udid == $id)
+              | $runtime | sub("^.*\\.iOS-"; "") | gsub("-"; ".")
+          ')
           
           echo ">>> Selected simulator details:"
           echo "Device Name: $DEVICE_NAME"
           echo "UDID: $RUNTIME_ID"
+          echo "Version: $OS_VERSION"
 
           echo ">>> Booting up simulator..."
           xcrun simctl boot "$RUNTIME_ID" || true
@@ -1041,14 +1055,13 @@ jobs:
           
       - name: Run Unified Tests (iOS)
         run: |
-          chmod +x ./scripts/tools/ios_tests.sh
-          
           if [ "${{ matrix.simulator }}" = "true" ]; then
               SCRIPT_TARGET="ios-${{ matrix.arch }}-sim"
           else
               SCRIPT_TARGET="ios-${{ matrix.arch }}"
           fi
-          
+
+          chmod +x ./scripts/tools/ios_tests.sh
           ./scripts/tools/ios_tests.sh ./build-debug/c3c "$SCRIPT_TARGET"
 
       - name: Shutdown iOS Simulator
@@ -1060,7 +1073,7 @@ jobs:
             exit 0
           fi
           
-          # Shutdown the simulator and erase to eliminate any bad cache
+          # Shutdown the simulator and erase it to eliminate any bad cache
           # irrespective of whether the tests pass or fail
           echo ">>> Initiating simulator shutdown..."
           echo ">>> Shutting down booted simulator with UDID: $DEVICE_ID"
