@@ -120,22 +120,16 @@ macro exclusive(from, to)
 }
 
 <*
- @require $defined(array[0]) : "Cannot index `array` parameter"
- @require $Typeof(range)::name.len > 6 && $Typeof(range)::name[:6] == "Range{"
-   : "`range` parameter was not of type `Range`."
- @require range.start >= 0 && range.end < array.len : "Range out of bounds"
+ @require $defined(&array[0], array.len) : "Cannot index `array` parameter"
+ @require $Typeof(range)::is_generic(Range) ||| $Typeof(range)::is_generic(ExclusiveRange) : "`range` parameter was not of type `Range` or `ExclusiveRange`."
+ @require range.start >= 0 && range.end <= array.len : "Range out of bounds"
+ @require !$Typeof(range)::is_generic(Range) ||| range.end < array.len : "Range is out of bounds"
 *>
 macro slice(array, range)
 {
-	return (&array[range.start])[:range.end - range.start + 1];
-}
-<*
- @require $defined(array[0]) : "Cannot index `array` parameter"
- @require $Typeof(range)::name.len > 15 && $Typeof(range)::name[:15] == "ExclusiveRange{"
-   : "`range` parameter was not of type `ExclusiveRange`."
- @require range.start >= 0 && range.end <= array.len : "Range out of bounds"
-*>
-macro exclusive_slice(array, range)
-{
-	return (&array[range.start])[:range.end - range.start];
+	$if $Typeof(range)::is_generic(Range):
+		return (&array[range.start])[:range.end - range.start + 1];
+	$else
+		return (&array[range.start])[:range.end - range.start];
+	$endif
 }

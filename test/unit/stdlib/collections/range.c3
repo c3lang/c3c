@@ -43,5 +43,5 @@ fn void test_exrange()
 
 	range = { 2, 4 };
 	int[] array = { 5, 6, 9, 1, 2, 8, 4 };
-	assert(range::exclusive_slice(array, range) == { 9, 1 });
+	assert(range::slice(array, range) == { 9, 1 });
 }
