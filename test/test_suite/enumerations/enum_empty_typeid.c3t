@@ -18,10 +18,12 @@ fn int main ()
 @"$ct.test.No_Els_Assoc" = linkonce global { i8, i64, ptr, i64, i64, i64, [1 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 1, [1 x %"char[]"] [%"char[]" { ptr @.enum.ABC, i64 3 }] }, align 8
 @"test.No_Els_Assoc$anything" = linkonce constant [1 x %any] zeroinitializer, align 8
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define i32 @main() #0 {
 entry:
   %x = alloca i64, align 8
   store i64 ptrtoint (ptr @"$ct.test.No_Els_Assoc" to i64), ptr %x, align 8
   ret i32 0
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

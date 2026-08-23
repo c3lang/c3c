@@ -62,7 +62,7 @@ if.exit:                                          ; preds = %if.then
   ret void
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @test.main() #0 {
 entry:
   br label %if.then
@@ -79,3 +79,5 @@ if.exit:                                          ; preds = %if.then
   store i32 %mul, ptr @test.a, align 4
   ret void
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

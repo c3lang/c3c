@@ -953,6 +953,8 @@ static void llvm_codegen_setup(void)
 	attribute_id.sext = lookup_attribute("signext");
 	attribute_id.sret = lookup_attribute("sret");
 	attribute_id.ssp = lookup_attribute("ssp");
+	attribute_id.sspstrong = lookup_attribute("sspstrong");
+	attribute_id.sspreq = lookup_attribute("sspreq");
 	attribute_id.target_features = lookup_attribute("target-features");
 	attribute_id.uwtable = lookup_attribute("uwtable");
 	attribute_id.writeonly = lookup_attribute("writeonly");
@@ -1238,6 +1240,71 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 
 }
 
+INLINE void llvm_emit_stack_protector_attributes(GenContext *c, LLVMValueRef function, Decl *decl)
+{
+	StackProtector stack_protector = (StackProtector)decl->func_decl.stack_protector - 1;
+	if (stack_protector == STACK_PROTECTOR_NOT_SET)
+	{
+		stack_protector = decl->func_decl.attr_naked ? STACK_PROTECTOR_NONE : compiler.build.stack_protector;
+	}
+	if (stack_protector == STACK_PROTECTOR_NOT_SET)
+	{
+		switch (compiler.platform.os)
+		{
+			case OS_TYPE_OPENBSD:
+				stack_protector = STACK_PROTECTOR_STRONG;
+				break;
+			case OS_TYPE_MACOSX:
+			case OS_TYPE_IOS:
+				stack_protector = STACK_PROTECTOR_BASIC;
+				break;
+			default:
+				stack_protector = STACK_PROTECTOR_NONE;
+		}
+	}
+	switch (stack_protector)
+	{
+		case STACK_PROTECTOR_BASIC:
+			llvm_attribute_add(c, function, attribute_id.ssp, -1);
+			llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
+			break;
+		case STACK_PROTECTOR_STRONG:
+			llvm_attribute_add(c, function, attribute_id.sspstrong, -1);
+			break;
+		case STACK_PROTECTOR_ALL:
+			llvm_attribute_add(c, function, attribute_id.sspreq, -1);
+			break;
+		default:
+			break;
+	}
+}
+
+INLINE void llvm_emit_stack_probe_attributes(GenContext *c, LLVMValueRef function, Decl *decl)
+{
+	StackProbe stack_probe = (StackProbe)decl->func_decl.stack_probe - 1;
+	if (stack_probe == STACK_PROBE_NOT_SET)
+	{
+		stack_probe = decl->func_decl.attr_naked ? STACK_PROBE_NONE : compiler.build.stack_probe;
+	}
+	switch (stack_probe)
+	{
+		case STACK_PROBE_NONE:
+			llvm_attribute_add_string(c, function, "no-stack-arg-probe", "", -1);
+			break;
+		case STACK_PROBE_INLINE:
+			llvm_attribute_add_string(c, function, "probe-stack", "inline-asm", -1);
+			break;
+		default:
+			break;
+	}
+	if (compiler.build.stack_probe_size != DEFAULT_STACK_PROBE_SIZE)
+	{
+		char probe_size_str[32];
+		snprintf(probe_size_str, 32, "%u", compiler.build.stack_probe_size);
+		llvm_attribute_add_string(c, function, "stack-probe-size", probe_size_str, -1);
+	}
+}
+
 void llvm_append_function_attributes(GenContext *c, Decl *decl)
 {
 	FunctionPrototype *prototype = type_get_resolved_prototype(decl->type);
@@ -1245,16 +1312,16 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	LLVMValueRef function = decl->backend_ref;
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
+	llvm_emit_stack_protector_attributes(c, function, decl);
+	llvm_emit_stack_probe_attributes(c, function, decl);
 	if (c->debug.enable_stacktrace)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
-		llvm_attribute_add(c, function, attribute_id.ssp, -1);
 	}
 	if (compiler.build.feature.implicit_float == IMPLICIT_FLOAT_OFF)
 	{
 		llvm_attribute_add(c, function, attribute_id.noimplicitfloat, -1);
 	}
-	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
 	int offset = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;
 

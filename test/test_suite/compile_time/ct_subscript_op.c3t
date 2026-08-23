@@ -14,7 +14,7 @@ fn void main()
 @.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 5], align 4
 @.__const.1 = private unnamed_addr constant [3 x i32] [i32 1, i32 32, i32 5], align 4
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @test.main() #0 {
 entry:
   %y = alloca i32, align 4
@@ -25,3 +25,5 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %kl, ptr align 4 @.__const.1, i32 12, i1 false)
   ret void
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

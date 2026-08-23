@@ -94,6 +94,19 @@ static const char *riscv_abi[3] = {
 	[RISCV_ABI_DOUBLE] = "double",
 };
 
+static const char *stack_probe[3] = {
+	[STACK_PROBE_NONE] = "none",
+	[STACK_PROBE_CALL] = "call",
+	[STACK_PROBE_INLINE] = "inline",
+};
+
+static const char *stack_protector[4] = {
+	[STACK_PROTECTOR_NONE] = "none",
+	[STACK_PROTECTOR_BASIC] = "basic",
+	[STACK_PROTECTOR_STRONG] = "strong",
+	[STACK_PROTECTOR_ALL] = "all",
+};
+
 static const char *win64_simd_type[2] = {
 	[WIN64_SIMD_ARRAY] = "array",
 	[WIN64_SIMD_FULL] = "full",

@@ -560,14 +560,14 @@ entry:
 @"test2.argh$int$" = weak local_unnamed_addr global i32 234, align 4
 @"test2.argh$double$" = weak local_unnamed_addr global double 2.340000e+02, align 8
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define weak i32 @"test2.getMult$int$"(i32 %0) #0 {
 entry:
   %mul = mul i32 %0, %0
   ret i32 %mul
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define weak i32 @"test2.hello$int$"() #0 {
 entry:
   ret i32 1
@@ -598,3 +598,5 @@ entry:
   store double %0, ptr %blob, align 8
   %1 = load double, ptr %blob, align 8
   ret double %1
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

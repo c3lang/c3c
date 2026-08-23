@@ -15,6 +15,10 @@
 - Allow parameters to be queried for the default value using `.default_value`.
 - Allow ternary in alias definitions, e.g. `alias foo = $feat(ABC) ? foo_1 : foo_2`. #3464
 - On elf-x64, add noredzone to functions as a stopgap solution.
+- Add `--stack-probe`, `--stack-probe-size` and `--stack-protector` to configure stack probing and stack canary generation. #3437
+- Add `stack-probe` and `stack-protector` project options. #3437
+- Add `@stackprobe(level)`, `@nostackprobe`, `@stackprotector(level)` and `@nostackprotector` attributes on functions and lambdas. #3437
+- Naked functions no longer have stack protectors by default.
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.

@@ -23,8 +23,10 @@ entry:
   ret i32 0
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define internal zeroext i8 @"test.test1a$lambda1"() #0 {
 entry:
   ret i8 0
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
