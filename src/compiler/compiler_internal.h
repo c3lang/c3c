@@ -573,6 +573,7 @@ typedef struct
 		{
 			bool attr_inline : 1;
 			bool attr_noinline : 1;
+			bool attr_noredzone : 1;
 			bool attr_extname : 1;
 			bool attr_naked : 1;
 			bool attr_benchmark : 1;

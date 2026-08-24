@@ -1337,7 +1337,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.noinline, -1);
 	}
-	if (compiler.platform.noredzone)
+	if (compiler.platform.noredzone || decl->func_decl.attr_noredzone)
 	{
 		llvm_attribute_add(c, function, attribute_id.noredzone, -1);
 	}

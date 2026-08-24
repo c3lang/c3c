@@ -3369,6 +3369,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOPADDING] = ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_NORETURN] = CALLABLE_TYPE,
+			[ATTRIBUTE_NOREDZONE] = ATTR_FUNC,
 			[ATTRIBUTE_NOSANITIZE] = ATTR_FUNC,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM | ATTR_FAULT,
@@ -3455,6 +3456,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				RETURN_SEMA_ERROR(expr, "Unknown stack probe level, only 'none', 'call' and 'inline' are supported");
 			}
+			return true;
+		case ATTRIBUTE_NOREDZONE:
+			decl->func_decl.attr_noredzone = true;
 			return true;
 		case ATTRIBUTE_NOSTACKPROBE:
 			decl->func_decl.stack_probe = STACK_PROBE_NONE + 1;
