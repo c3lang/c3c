@@ -1176,6 +1176,7 @@ RETRY:
 		case TYPE_WILDCARD:
 			return true;
 		case TYPE_ALIAS:
+			if (type->decl->resolve_status != RESOLVE_DONE && !sema_resolve_type_decl(context, type)) return false;
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_POINTER:
