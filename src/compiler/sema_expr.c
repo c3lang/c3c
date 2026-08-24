@@ -2824,7 +2824,10 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 	}
 	Type *pointee = func_ptr_type->pointer;
 	expr->call_expr.is_pointer_call = true;
-	return sema_call_analyse_func_invocation(context, pointee->function.decl, pointee, expr, NULL, optional,
+	Decl *func_decl = pointee->function.decl;
+	// This declaration might not have been resolved, so in that case do it.
+	if (func_decl->resolve_status != RESOLVE_DONE && !sema_analyse_decl(context, func_decl)) return false;
+	return sema_call_analyse_func_invocation(context, func_decl, pointee, expr, NULL, optional,
 											 func_ptr_type->pointer->name,
 											 no_match_ref);
 }

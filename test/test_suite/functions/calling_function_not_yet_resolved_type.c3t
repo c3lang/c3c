@@ -1,0 +1,22 @@
+module foo <Type>;
+
+alias Func = fn void (Foo*);
+
+struct Foo
+{
+	Func func;
+}
+
+fn void Foo.call(&self)
+{
+	self.func(self);
+}
+
+module test;
+import foo;
+
+struct Test
+{
+	Foo{int}* foo;
+}
+fn int main() => 0;
