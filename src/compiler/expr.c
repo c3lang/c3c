@@ -673,12 +673,12 @@ bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *
 {
 	ConstInitializer *initializer = initializer_for_index(list, index, from_back);
 	ConstInitType kind = initializer ? initializer->kind : CONST_INIT_ZERO;
+	Type *indexed_type = type_get_indexed_type(list_type);
+	if (!indexed_type) return false;
 	switch (kind)
 	{
 		case CONST_INIT_ZERO:
 		{
-			Type *indexed_type = type_get_indexed_type(list_type);
-			if (!indexed_type) return false;
 			expr_rewrite_to_const_zero(result, indexed_type);
 			return true;
 		}
@@ -686,6 +686,15 @@ bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *
 		case CONST_INIT_UNION:
 		case CONST_INIT_ARRAY:
 		case CONST_INIT_ARRAY_FULL:
+			if (type_flatten(indexed_type)->type_kind == TYPE_SLICE)
+			{
+				expr_rewrite_const_slice(result, indexed_type, initializer);
+			}
+			else
+			{
+				expr_rewrite_const_initializer(result, indexed_type, initializer);
+			}
+			return true;
 		case CONST_INIT_ARRAY_VALUE:
 			return false;
 		case CONST_INIT_VALUE:

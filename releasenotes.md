@@ -42,6 +42,7 @@
 - Generic gets instantiated despite being disabled with `@feat` #3459
 - Compiler hangs with generic alias in function. #3470
 - Resolution order for generics may cause generic function pointers to not get resolved before use. #3471
+- Fix constant subscript folding for nested arrays and structs.
 
 ## 0.8.3 Change list
 
