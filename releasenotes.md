@@ -58,6 +58,7 @@
 - Defer resolution of typedef alignment and generics, allowing more recursive definitions.
 - Improve error message on multiple <* *> in a row. #2971
 - Add the `lgdt` and `lidt` instructions to x86 inline assembly.
+- `$foo = ...` did not always fold things to a constant value as far as possible.
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.

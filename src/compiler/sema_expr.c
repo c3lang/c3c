@@ -7766,7 +7766,7 @@ static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *e
 	// Evaluate right side to using inference from last type.
 	if (!sema_analyse_inferred_expr(context, left->type, right, NULL)) return false;
 
-	if (!expr_is_runtime_const(right))
+	if (!sema_cast_const(right) && !expr_is_runtime_const(right))
 	{
 		if (failed_ref) return *failed_ref = true, false;
 		RETURN_SEMA_ERROR(right, "You can only assign constants to a compile time variable.");

@@ -5148,7 +5148,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 					decl->type = init->type;
 				}
 				// Check that it is constant.
-				if (!expr_is_runtime_const(init))
+				if (!sema_cast_const(init) && !expr_is_runtime_const(init))
 				{
 					if (check_defined) goto FAIL_CHECK;
 					sema_error_not_constant(context, decl, init);
@@ -5166,8 +5166,9 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl, bool *check_defi
 					goto FAIL;
 				}
 				if (!sema_analyse_expr_rvalue(context, init)) goto FAIL;
+
 				// Check it is constant.
-				if (!expr_is_runtime_const(init))
+				if (!sema_cast_const(init) && !expr_is_runtime_const(init))
 				{
 					if (check_defined) goto FAIL_CHECK;
 					sema_error_not_constant(context, decl, init);
