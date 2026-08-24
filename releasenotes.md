@@ -42,6 +42,7 @@
 - Generic gets instantiated despite being disabled with `@feat` #3459
 - Compiler hangs with generic alias in function. #3470
 - Resolution order for generics may cause generic function pointers to not get resolved before use. #3471
+- Stale tid in `thread::current` on POSIX. #3472
 
 ## 0.8.3 Change list
 
