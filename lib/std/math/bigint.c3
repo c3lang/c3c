@@ -1114,8 +1114,9 @@ fn int shift_left(uint* data, int len, int shift_val) @inline
 			carry = val >> 32;
 		}
 
-		if (carry != 0 && buf_len < MAX_LEN)
+		if (carry != 0)
 		{
+			assert(buf_len < MAX_LEN, "Overflow in shift left");
 			data[buf_len++] = (uint)carry;
 		}
 		count -= shift_amount;
