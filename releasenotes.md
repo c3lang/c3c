@@ -20,6 +20,7 @@
 - Add `@stackprobe(level)`, `@nostackprobe`, `@stackprotector(level)` and `@nostackprotector` attributes on functions and lambdas. #3437
 - Naked functions no longer have stack protectors by default.
 - Add `@noredzone` attribute.
+- Add `dso_local` attribute on ELF/COFF.
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.

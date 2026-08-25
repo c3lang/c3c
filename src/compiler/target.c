@@ -2313,6 +2313,7 @@ void target_setup(BuildTarget *build_target)
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
 			target_setup_wasm_abi(build_target);
+			compiler.platform.use_dso_local = false;
 			break;
 		case ARCH_TYPE_ARMB:
 		case ARCH_TYPE_ARM:
@@ -2426,8 +2427,14 @@ void target_setup(BuildTarget *build_target)
 
 	}
 	ASSERT(compiler.platform.reloc_model != RELOC_DEFAULT);
+	compiler.platform.use_dso_local = compiler.platform.object_format == OBJ_FORMAT_COFF || compiler.platform.object_format == OBJ_FORMAT_ELF;
 
-		// TODO remove
+	if (compiler.platform.reloc_model == RELOC_BIG_PIC || compiler.platform.reloc_model == RELOC_SMALL_PIC)
+	{
+		compiler.platform.use_dso_local = false;
+	}
+
+	// TODO remove
 	type_setup(&compiler.platform);
 
 

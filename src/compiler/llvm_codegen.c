@@ -510,6 +510,12 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 		if (opt_ref) llvm_set_external_reference(opt_ref, should_weaken);
 		return;
 	}
+	if (!should_weaken && compiler.platform.use_dso_local)
+	{
+		LLVMSetDSOLocal(ref, true);
+		if (opt_ref) LLVMSetDSOLocal(opt_ref, true);
+	}
+
 	if (decl_is_externally_visible(decl) && !is_static)
 	{
 		if (decl->is_export && compiler.platform.os == OS_TYPE_WIN32  && !compiler.build.win.def && decl->name != kw_main && decl->name != kw_mainstub)
