@@ -7,7 +7,7 @@ fn void test(int i)
 
 /* #expect: test.ll
 
-define void @test.test(i32 %0) #0 {
+define dso_local void @test.test(i32 %0) #0 {
 entry:
   ret void
 }
