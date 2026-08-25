@@ -24,7 +24,7 @@ const SIZE_384 = 48;
 const SIZE_512 = 64;
 
 
-fn void _g(sz r, NumType[] m, char[16][] s, sz i, NumType* a, NumType* b, NumType* c, NumType* d) <NumType> @local @inline
+fn void _g(sz r, NumType[] m, char[16][] s, sz i, NumType* a, NumType* b, NumType* c, NumType* d) <NumType> @local
 {
 	*a += *b + m[s[r][2*i+0]];
 	*d = (*d ^ *a).rotr(NumType == ulong ??? 32 : 16);
@@ -36,7 +36,7 @@ fn void _g(sz r, NumType[] m, char[16][] s, sz i, NumType* a, NumType* b, NumTyp
 	*b = (*b ^ *c).rotr(NumType == ulong ??? 63 : 7);
 }
 
-fn void _round(sz r, NumType[] m, char[16][] s, NumType[] v) <NumType> @local @inline
+fn void _round(sz r, NumType[] m, char[16][] s, NumType[] v) <NumType> @local
 {
 	_g(r, m, s, 0, &v[ 0], &v[ 4], &v[ 8], &v[12]);
 	_g(r, m, s, 1, &v[ 1], &v[ 5], &v[ 9], &v[13]);
