@@ -111,6 +111,7 @@
 - Crash when using ternary operator with vector type and inline constdef #3433
 - Crash on assign-op to compile-time subscript with non-const result #3419
 - Excessive compile times for --strip-unused=no, due to crypto code with nested `@inline`.
+- Assert on calling a generic method in some cases. #3476
 
 ## 0.8.2 Change list
 
