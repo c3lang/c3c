@@ -66,6 +66,7 @@ typedef struct
 	} opt;
 } LLVMPasses;
 
+void llvm_setup(void);
 bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm, LLVMPasses *passes);
 bool llvm_link_elf(const char **args, int arg_count, const char **error_string);
 bool llvm_link_macho(const char **args, int arg_count, const char **error_string);

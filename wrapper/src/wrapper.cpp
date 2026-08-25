@@ -137,12 +137,14 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 
 extern "C" {
 
-
-
-bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm, LLVMPasses *passes) // NOLINT
+void llvm_setup(void)
 {
 	const char *fake_args[] = {"dummy", "--enable-matrix"};
 	llvm::cl::ParseCommandLineOptions(2, fake_args);
+}
+
+bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm, LLVMPasses *passes) // NOLINT
+{
 
 	llvm::TargetMachine *Machine = (llvm::TargetMachine *)(tm);
 	llvm::Module *Mod = llvm::unwrap(m);

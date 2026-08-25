@@ -1485,8 +1485,8 @@ static void parse_option(BuildOptions *options) // NOLINT
 				if (at_end() || next_is_opt()) error_exit("error: --threads needs a valid integer 1 or higher.");
 				const char *thread_string = next_arg();
 				int threads = atoi(thread_string); // NOLINT
-				if (threads < 1) PRINTF("Expected a valid integer 1 or higher.");
-				if (threads > MAX_THREADS) PRINTF("Cannot exceed %d threads.", MAX_THREADS);
+				if (threads < 1) error_exit("Expected a valid integer 1 or higher.");
+				if (threads > MAX_THREADS) error_exit("Cannot exceed %d threads, clamping at .", MAX_THREADS);
 				options->build_threads = threads;
 				return;
 			}
