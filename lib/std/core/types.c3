@@ -181,7 +181,7 @@ macro typeid flat_type($Type) @const
 macro TypeKind flat_kind($Type) @const
 {
 	$if $Type::kind == TYPEDEF || $Type::kind == CONSTDEF:
-		return flat_type($Type::inner);
+		return flat_kind($Type::inner);
 	$else
 		return $Type::kind;
 	$endif
