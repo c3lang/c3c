@@ -85,6 +85,7 @@ void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_ar
 void LLVMSetTargetMachineEmulatedTLS(LLVMTargetMachineRef ref, bool emulated_tls);
 void LLVMSetNoSanitizeAddress(LLVMValueRef Global);
 unsigned LLVMGetFunctionInstructionCount(LLVMValueRef function);
+unsigned LLVMGetModuleInstructionCount(LLVMModuleRef module);
 
 #ifdef __cplusplus
 }

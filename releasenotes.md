@@ -21,7 +21,8 @@
 - Naked functions no longer have stack protectors by default.
 - Add `@noredzone` attribute.
 - Add `dso_local` attribute on ELF/COFF.
-
+- Let LLVM build the biggest modules first.
+ 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
 - `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.

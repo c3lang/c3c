@@ -1651,6 +1651,17 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, int module_count, LLVMC
 	return c;
 }
 
+static int gen_context_cmp(const void* c1, const void* c2)
+{
+	GenContext *ctx1 = *((GenContext**)c1);
+	GenContext *ctx2 = *((GenContext**)c2);
+	unsigned y = LLVMGetModuleInstructionCount(ctx1->module);
+	unsigned x = LLVMGetModuleInstructionCount(ctx2->module);
+	if (x > y) return 1;
+	if (y > x) return -1;
+	return 0;
+}
+
 void **llvm_gen(Module** modules, int module_count)
 {
 	if (!module_count) return NULL;
@@ -1699,6 +1710,7 @@ void **llvm_gen(Module** modules, int module_count)
 	{
 		vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
 	}
+	qsort(gen_contexts, vec_size(gen_contexts), sizeof(void*), &gen_context_cmp);
 	return (void**)gen_contexts;
 }
 

@@ -349,6 +349,11 @@ void LLVMSetNoSanitizeAddress(LLVMValueRef Global)
 	global->setSanitizerMetadata(data);
 }
 
+unsigned LLVMGetModuleInstructionCount(LLVMModuleRef module)
+{
+	llvm::Module *mod = llvm::unwrap(module);
+	return mod->getInstructionCount();
+}
 unsigned LLVMGetFunctionInstructionCount(LLVMValueRef function)
 {
 	auto func = llvm::unwrap<llvm::Function>(function);
