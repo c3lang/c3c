@@ -1765,8 +1765,14 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 	ASSERT(!left && "Had left hand side");
 	ArrayIndex len = 0;
 	char *data = NULL;
+	SourceLoc loc = c->span;
+	// A byte literal may span several lines, and the lexer clamps the span length of any
+	// multiline token to 1, so 'lex_len' is what gives us the true extent of the last token.
+	SourceLoc last = loc;
 	while (c->tok == TOKEN_BYTES)
 	{
+		last = c->span;
+		last.length = (uint32_t)c->data.lex_len;
 		ArrayIndex next_len = c->data.bytes_len;
 		if (!next_len)
 		{
@@ -1801,7 +1807,8 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start 
 		PRINT_ERROR_LAST("A byte array must be at least 1 byte long. While an array cannot be zero length, you can initialize a zero length slice using '{}'.");
 		return poisoned_expr;
 	}
-	Expr *expr_bytes = EXPR_NEW_TOKEN(EXPR_CONST);
+	loc = extend_loc_with_token(&loc, &last);
+	Expr *expr_bytes = expr_new_loc(EXPR_CONST, &loc);
 	expr_bytes->const_expr.bytes.ptr = data;
 	expr_bytes->const_expr.bytes.len = len;
 	expr_bytes->const_expr.const_kind = CONST_BYTES;
