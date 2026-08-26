@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 import libc;
-faultdef FOO;
+excuse FOO;
 
 fn int? abc()
 {

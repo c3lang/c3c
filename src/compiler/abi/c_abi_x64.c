@@ -12,8 +12,8 @@ typedef enum
 
 typedef struct
 {
-	unsigned sse_registers;
-	unsigned int_registers;
+	int sse_registers;
+	int int_registers;
 } Registers;
 
 bool try_use_registers(Registers *available, Registers *used)
@@ -35,7 +35,7 @@ typedef enum
 	CLASS_SSEUP,
 } X64Class;
 
-static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named, ParamInfo param);
+static ABIArgInfo *x64_classify_argument_type(Type *type, int free_int_regs, Registers *needed_registers, NamedArgument is_named, ParamInfo param);
 static bool x64_type_is_structure(Type *type);
 static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named);
 
@@ -60,7 +60,7 @@ static bool x64_type_is_illegal_vector(Type *type)
 	if (type->type_kind != TYPE_SIMD_VECTOR) return false;
 	ByteSize size = type_size(type);
 	// Less than 64 bits or larger than the avx native size => not allowed.
-	if (size <= 8 || size > compiler.platform.x64.native_vector_size_avx) return true;
+	if (size <= 8 || size > (ByteSize)compiler.platform.x64.native_vector_size_avx) return true;
 	// If we pass i128 in mem, then check for that.
 	if (compiler.platform.x64.pass_int128_vector_in_mem)
 	{
@@ -72,7 +72,7 @@ static bool x64_type_is_illegal_vector(Type *type)
 	return false;
 }
 
-ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs, ParamInfo param)
+ABIArgInfo *x64_indirect_result(Type *type, int free_int_regs, ParamInfo param)
 {
 	// If this is a scalar LLVM value then assume LLVM will pass it in the right
 	// place naturally.
@@ -94,7 +94,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs, ParamInfo pa
 	}
 
 	// The byval alignment
-	unsigned align = type_abi_alignment(type);
+	int align = type_abi_alignment(type);
 
 	// Pass as arguments if there are no more free int regs
 	// (if 'onstack' appears, change this code)
@@ -235,7 +235,7 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 		Type *member_type = lowered_member_type(member);
 		if (size > 16 &&
 			((!is_union && size != type_size(member_type))
-			|| size > compiler.platform.x64.native_vector_size_avx))
+			|| size > (ByteSize)compiler.platform.x64.native_vector_size_avx))
 		{
 			*lo_class = CLASS_MEMORY;
 			x64_classify_post_merge(size, lo_class, hi_class);
@@ -287,7 +287,7 @@ void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64
 	}
 
 	ByteSize offset = offset_base;
-	for (ArraySize i = 0; i < type->array.len; i++)
+	for (ArrayIndex i = 0; i < type->array.len; i++)
 	{
 		X64Class field_lo;
 		X64Class field_hi;
@@ -304,7 +304,7 @@ void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64
 void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class,
 						 NamedArgument named_arg)
 {
-	unsigned size = type_size(type);
+	int size = type_size(type);
 	// Pass as int
 	if (size == 1 || size == 2 || size == 4)
 	{
@@ -348,7 +348,7 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 }
 
 
-static Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
+static Decl *x64_get_member_at_offset(Decl *decl, int offset)
 {
 	if (type_size(decl->type) <= offset) return NULL;
 	Decl **members = decl->strukt.members;
@@ -425,7 +425,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 	}
 }
 
-bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
+bool x64_bits_contain_no_user_data(Type *type, int start, int end)
 {
 	// If the bytes being queried are off the end of the type, there is no user
 	// data hiding here.  This handles analysis of builtins, vectors and other
@@ -437,12 +437,12 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 		// Check each field to see if the field overlaps with the queried range.
 		Type *element_type = lowered_array_element_type(type);
 		TypeSize element_size = type_size(element_type);
-		for (unsigned i = 0; i < type->array.len; i++)
+		for (int i = 0; i < type->array.len; i++)
 		{
 			// If the field is after the span we care about, then we're done..
 			TypeSize offset = i * element_size;
 			if (offset >= end) break;
-			unsigned element_start = offset < start ? start - offset : 0;
+			int element_start = offset < start ? start - offset : 0;
 			if (!x64_bits_contain_no_user_data(element_type, element_start, end - offset)) return false;
 		}
 		// No overlap
@@ -452,9 +452,9 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 	{
 		FOREACH(Decl *, member, type->decl->strukt.members)
 		{
-			unsigned offset = member->offset;
+			int offset = member->offset;
 			if (offset >= end) break;
-			unsigned field_start = offset < start ? start - offset : 0;
+			int field_start = offset < start ? start - offset : 0;
 			if (!x64_bits_contain_no_user_data(lowered_member_type(member), field_start, end - offset)) return false;
 		}
 		// No overlap
@@ -463,7 +463,7 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 	return false;
 }
 
-bool x64_contains_float_at_offset(LoweredType *type, unsigned offset)
+bool x64_contains_float_at_offset(LoweredType *type, int offset)
 {
 	if (offset == 0 && type->type_kind == TYPE_F32) return true;
 
@@ -477,14 +477,14 @@ bool x64_contains_float_at_offset(LoweredType *type, unsigned offset)
 	if (type->type_kind == TYPE_ARRAY)
 	{
 		Type *element_type = lowered_array_element_type(type);
-		unsigned element_size = type_size(element_type);
+		int element_size = type_size(element_type);
 		offset -= (offset / element_size) * element_size;
 		return x64_contains_float_at_offset(element_type, offset);
 	}
 	return false;
 }
 
-static Type *x64_get_fp_type_at_offset(Type *type, unsigned ir_offset)
+static Type *x64_get_fp_type_at_offset(Type *type, int ir_offset)
 {
 	while (type->type_kind == TYPE_UNION)
 	{
@@ -506,7 +506,7 @@ static Type *x64_get_fp_type_at_offset(Type *type, unsigned ir_offset)
 	return NULL;
 }
 
-static AbiType x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *source_type, unsigned source_offset)
+static AbiType x64_get_sse_type_at_offset(Type *type, int ir_offset, Type *source_type, int source_offset)
 {
 	Type *float_type = x64_get_fp_type_at_offset(type, ir_offset);
 	if (!float_type || float_type == type_double) return abi_type_get(type_double);
@@ -558,7 +558,7 @@ static AbiType x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *
 /**
  * Based off X86_64ABIInfo::GetINTEGERTypeAtOffset in Clang
  */
-AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_type, unsigned source_offset)
+AbiType x64_get_int_type_at_offset(Type *type, int offset, Type *source_type, int source_offset)
 {
 	type = type_lowering(type);
 	switch (type->type_kind)
@@ -655,7 +655,7 @@ static AbiType x64_get_byte_vector_type(Type *type)
 
 	if (type->type_kind == TYPE_F128) return abi_type_get(type);
 
-	unsigned size = type_size(type);
+	int size = type_size(type);
 
 	ASSERT(size == 16 || size == 32 || size == 64);
 
@@ -674,7 +674,7 @@ static AbiType x64_get_byte_vector_type(Type *type)
 static ABIArgInfo *x64_get_argument_pair_return(AbiType low_type, AbiType high_type, ParamInfo param)
 {
 	TypeSize low_size = abi_type_size(low_type);
-	unsigned hi_start = aligned_offset(low_size, abi_type_abi_alignment(high_type));
+	int hi_start = aligned_offset(low_size, abi_type_abi_alignment(high_type));
 	ASSERT(hi_start != 0 && hi_start <= 8);
 	if (hi_start != 8)
 	{
@@ -779,7 +779,7 @@ ABIArgInfo *x64_classify_return(ParamInfo param)
  * @param is_named
  * @return
  */
-static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named, ParamInfo param)
+static ABIArgInfo *x64_classify_argument_type(Type *type, int free_int_regs, Registers *needed_registers, NamedArgument is_named, ParamInfo param)
 {
 	ASSERT(type == type_lowering(type));
 	X64Class hi_class;
@@ -898,7 +898,7 @@ static ABIArgInfo *x64_classify_parameter(ParamInfo param, Registers *available_
 
 }
 
-void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count)
 {
 	if (prototype->use_win64)
 	{
@@ -917,7 +917,7 @@ void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *params, unsi
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-		for (unsigned i = 0; i < param_count; i++)
+		for (int i = 0; i < param_count; i++)
 		{
 			args[i] = x64_classify_parameter(params[i], &available_registers, NAMED);
 		}
@@ -926,7 +926,7 @@ void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *params, unsi
 	if (vaarg_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vaarg_count);
-		for (unsigned i = 0; i < vaarg_count; i++)
+		for (int i = 0; i < vaarg_count; i++)
 		{
 			args[i] = x64_classify_parameter(vaargs[i], &available_registers, UNNAMED);
 		}

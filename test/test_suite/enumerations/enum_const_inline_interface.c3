@@ -12,7 +12,7 @@ fn void Foo.x(&self) @dynamic
 	io::printn("Foo!");
 }
 
-constdef Tester : inline Foo
+constset Tester : inline Foo
 {
 	ABC = 1
 }

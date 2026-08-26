@@ -2,8 +2,8 @@
 
 module lexer::faults;
 
-faultdef UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
-faultdef TRIE_FULL;
+excuse UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
+excuse TRIE_FULL;
 
 <*
  @require Token::kind == ENUM && Token::inner.kind == UNSIGNED_INT
@@ -743,7 +743,7 @@ or.phi:                                           ; preds = %and.phi6, %and.phi
   ret i8 %8
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define i64 @lexer_test.lex_uint() #0 {
 entry:
   %tcases = alloca %"UintTest[]", align 8
@@ -835,3 +835,5 @@ noerr_block13:                                    ; preds = %after_check11
 loop.exit:                                        ; preds = %loop.cond
   ret i64 0
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

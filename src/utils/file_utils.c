@@ -516,7 +516,7 @@ void file_get_dir_and_filename_from_full(const char *full_path, char **filename,
 	}
 }
 
-void file_find_top_dir()
+void file_find_top_dir(void)
 {
 	while (1)
 	{

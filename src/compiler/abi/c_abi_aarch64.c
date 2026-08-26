@@ -11,7 +11,7 @@ INLINE bool is_aarch64_illegal_vector(Type *type)
 		// Return true if scaled vector
 		return false;
 	}
-	ArraySize len = type->array.len;
+	ArrayIndex len = type->array.len;
 	ASSERT(is_power_of_two(len) && "@simd is enforced to pot sizes, otherwise this would be 'illegal' and handled.");
 	switch (type_size(type))
 	{
@@ -104,7 +104,7 @@ static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param)
 
 	// Homogeneous Floating-point Aggregates (HFAs) need to be expanded.
 	Type *base = NULL;
-	unsigned members = 0;
+	int members = 0;
 	if (type_is_homogeneous_aggregate(type, &base, &members))
 	{
 		ASSERT(members < 128);
@@ -137,7 +137,7 @@ static ABIArgInfo *aarch64_classify_argument_type(ParamInfo param)
 		ASSERT(alignment == 8 || alignment == 16);
 
 		if (alignment == 16) return abi_arg_new_direct_coerce_type_bits(128, param);
-		ArraySize m = size / alignment;
+		ArrayIndex m = size / alignment;
 		if (m > 1) return abi_arg_new_direct_coerce_type(abi_type_get(type_get_array(type_ulong, m)), param);
 		return abi_arg_new_direct_coerce_type_bits(64, param);
 
@@ -180,7 +180,7 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo param, bool variadic)
 	if (!size) return abi_arg_ignore();
 
 	Type *base = NULL;
-	unsigned members = 0;
+	int members = 0;
 	if (type_is_homogeneous_aggregate(type, &base, &members) &&
 		!(compiler.platform.arch == ARCH_TYPE_AARCH64_32 && variadic))
 	{
@@ -199,7 +199,7 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo param, bool variadic)
 			return abi_arg_new_direct_coerce_int(param);
 		}
 
-		unsigned alignment = type_abi_alignment(type);
+		int alignment = type_abi_alignment(type);
 		// Align to multiple of 8.
 		size = aligned_offset(size, 8);
 		if (alignment < 16 && size == 16)
@@ -213,7 +213,7 @@ ABIArgInfo *aarch64_classify_return_type(ParamInfo param, bool variadic)
 }
 
 
-void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count)
+void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count)
 {
 
 	prototype->ret_abi_info = aarch64_classify_return_type(prototype->return_info, prototype->raw_variadic);
@@ -221,7 +221,7 @@ void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *params, 
 	if (param_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-		for (unsigned i = 0; i < param_count; i++)
+		for (int i = 0; i < param_count; i++)
 		{
 			args[i] = aarch64_classify_argument_type(params[i]);
 		}
@@ -230,7 +230,7 @@ void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *params, 
 	if (vaarg_count)
 	{
 		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vaarg_count);
-		for (unsigned i = 0; i < vaarg_count; i++)
+		for (int i = 0; i < vaarg_count; i++)
 		{
 			args[i] = aarch64_classify_argument_type(vaargs[i]);
 		}

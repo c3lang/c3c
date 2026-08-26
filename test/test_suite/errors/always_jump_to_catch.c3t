@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-faultdef TEST;
+excuse TEST;
 fn void? load_corpus2(String, String)
 {}
 

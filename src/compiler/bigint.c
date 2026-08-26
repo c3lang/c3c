@@ -41,7 +41,7 @@ UNUSED static char digit_to_char(uint8_t digit, bool upper)
 char *i128_to_string(Int128 op, uint64_t base, bool is_signed, bool use_prefix)
 {
 	ASSERT(base >= 2 && base <= 16);
-	static char digits[16] = "0123456789ABCDEF";
+	NONSTRING static char digits[16] = "0123456789ABCDEF";
 	char buffer[130];
 	char *loc = buffer;
 	bool add_minus = is_signed && ISNEG(op.high);
@@ -255,12 +255,12 @@ UNUSED CmpRes int128_scomp64(Int128 op1, int64_t op2)
 	{
 		// If this isn't a clean 11111... in the top bits, it's less than.
 		if (op1.high != UINT64_MAX) return CMP_LT;
-		if (op1.low == op2) return CMP_EQ;
+		if (op1.low == (uint64_t)op2) return CMP_EQ;
 		return ((int64_t)op1.low) > op2 ? CMP_GT : CMP_LT;
 	}
 
 	if (op1.high) return CMP_GT;
-	if (op1.low == op2) return CMP_EQ;
+	if (op1.low == (uint64_t)op2) return CMP_EQ;
 	return op1.low > (uint64_t)op2 ? CMP_GT : CMP_LT;
 }
 
@@ -571,8 +571,8 @@ static CmpRes int_signed_compare(Int op1, int64_t op2)
 	{
 		return i128_scomp(op1.i, i128_from_signed(op2));
 	}
-	if (op1.i.high || op2 < 0 || op1.i.low > op2) return CMP_GT;
-	if (op1.i.low < op2) return CMP_LT;
+	if (op1.i.high || op2 < 0 || op1.i.low > (uint64_t)op2) return CMP_GT;
+	if (op1.i.low < (uint64_t)op2) return CMP_LT;
 	return CMP_EQ;
 }
 
@@ -720,7 +720,7 @@ bool int_is_zero(Int op)
 	return !op.i.high && !op.i.low;
 }
 
-unsigned int_bits_needed(Int op)
+int int_bits_needed(Int op)
 {
 	TypeKind kind = op.type;
 	Int128 i = op.i;
@@ -731,9 +731,9 @@ unsigned int_bits_needed(Int op)
 			i = i128_neg(i);
 			i = i128_sub64(i, 1);
 		}
-		return (unsigned) (1 + 128 - i128_clz(&i));
+		return (int)(1 + 128 - i128_clz(&i));
 	}
-	return  (unsigned) (128 - i128_clz(&i));
+	return (int)(128 - i128_clz(&i));
 }
 
 Int int_add(Int op1, Int op2)

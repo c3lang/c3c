@@ -2,14 +2,14 @@
 module foo;
 import std::io;
 import libc;
-faultdef
+excuse {
     X,
     Y,
     Z,
     W,
-    W1;
+    W1 }
 
-faultdef X1, Y2;
+excuse X1, Y2;
 
 typedef Bar = int;
 

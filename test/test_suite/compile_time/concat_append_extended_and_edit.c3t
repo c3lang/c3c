@@ -523,7 +523,7 @@ voiderr160:                                       ; preds = %noerr_block158, %gu
   ret void
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define i32 @main() #0 {
 entry:
   %literal = alloca [8 x i32], align 16
@@ -2213,3 +2213,5 @@ noerr_block668:                                   ; preds = %after_check666
 voiderr670:                                       ; preds = %noerr_block668, %guard_block667, %guard_block661, %guard_block655
   ret i32 0
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

@@ -9,7 +9,7 @@ typedef PathCommon = inline String;
 typedef PathWin = inline PathCommon;
 typedef PathPosix = inline PathCommon;
 
-constdef PathSeparator : inline char
+constset PathSeparator : inline char
 {
 	WIN32 = '\\',
 	POSIX = '/'
@@ -18,7 +18,7 @@ const PathSeparator PREFERRED_SEPARATOR = env::WIN32 ? WIN32 : POSIX;
 
 alias PathList = List { Path };
 
-faultdef INVALID_PATH, NO_PARENT;
+excuse { INVALID_PATH, NO_PARENT }
 
 fn Path? cwd(Allocator allocator)
 {

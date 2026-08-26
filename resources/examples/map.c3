@@ -1,6 +1,6 @@
 module std::container::faults;
 
-faultdef KEY_NOT_FOUND;
+excuse KEY_NOT_FOUND;
 
 module std::container::map <Key, Type>;
 import std::core::builtin;

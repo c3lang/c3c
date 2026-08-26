@@ -1,4 +1,4 @@
-constdef Foo
+constset Foo
 {
 	<* @deprecated *>
 	ABC

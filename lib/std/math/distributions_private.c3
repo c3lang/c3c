@@ -12,7 +12,7 @@ struct ConvergenceControl
 const DEFAULT_CONV = (ConvergenceControl){ 600, 1e-12 };
 const RELAXED_CONV = (ConvergenceControl){ 600, 1e-6 };
 
-faultdef NOT_CONVERGED;
+excuse NOT_CONVERGED;
 
 <*
  Compute binomial coefficient C(n, k)

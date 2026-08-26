@@ -13,8 +13,8 @@
 
 typedef struct
 {
-	unsigned align;
-	unsigned pref_align;
+	int align;
+	int pref_align;
 } AlignData;
 
 typedef struct
@@ -42,7 +42,7 @@ typedef struct
 typedef struct
 {
 	char string[1024];
-	unsigned constraint_len;
+	int constraint_len;
 } ClobberList;
 
 typedef struct
@@ -57,7 +57,7 @@ typedef struct
 {
 	const char *name;
 	AsmArgType param[MAX_ASM_INSTRUCTION_PARAMS]; // Types of arguments available in each slot
-	unsigned param_count;
+	int param_count;
 	Clobbers mask;                                // Which will it clobber
 } AsmInstruction;
 
@@ -82,11 +82,13 @@ typedef struct
 	AlignData floats[BITSIZES_LEN];
 	AlignData floats_pref[BITSIZES_LEN];
 	RelocModel reloc_model;
+	bool use_dso_local;
 	bool pic_required : 1;
 	bool signed_c_char : 1;
 	FloatABI float_abi : 3;
-	unsigned default_number_regs_x86 : 8;
+	int default_number_regs_x86 : 8;
 	bool use_comdat : 1;
+	bool noredzone : 1;
 	union
 	{
 		struct
@@ -98,7 +100,7 @@ typedef struct
 		struct
 		{
 			CpuFeatures features;
-			unsigned align_simd_default : 16;
+			int align_simd_default : 16;
 			bool win64_simd_as_array : 1;
 			bool soft_float : 1;
 			bool is_win64 : 1;
@@ -138,8 +140,8 @@ typedef struct
 		} ppc64;
 		struct
 		{
-			unsigned xlen;
-			unsigned flen;
+			int xlen;
+			int flen;
 		} riscv;
 		struct
 		{
@@ -158,23 +160,23 @@ typedef struct
 	bool vec64f;
 	bool int128;
 	AlignData align_pointer;
-	unsigned align_max_vector;
-	unsigned align_max_tls;
-	unsigned align_large_array;
-	unsigned width_pointer;
-	unsigned width_register;
-	unsigned width_c_short;
-	unsigned width_c_int;
-	unsigned width_c_long;
-	unsigned width_c_long_long;
-	unsigned width_c_long_double;
-	unsigned width_c_wchar;
-	unsigned width_c_wint;
-	unsigned width_large_array_min;
-	unsigned reg_param_max;
-	unsigned sse_reg_param_max;
-	unsigned builtin_ms_valist;
-	unsigned aarch64sve_types;
+	int align_max_vector;
+	int align_max_tls;
+	int align_large_array;
+	int width_pointer;
+	int width_register;
+	int width_c_short;
+	int width_c_int;
+	int width_c_long;
+	int width_c_long_long;
+	int width_c_long_double;
+	int width_c_wchar;
+	int width_c_wint;
+	int width_large_array_min;
+	int reg_param_max;
+	int sse_reg_param_max;
+	int builtin_ms_valist;
+	int aarch64sve_types;
 	char *platform_name;
 	// MinGlobalAlign is used by Clang for SystemZ and Lanai targets.
 
@@ -183,7 +185,7 @@ typedef struct
 	const char *extra_clobbers;
 	AsmRegister registers[ASM_REGISTER_MAX];
 	AsmInstruction instructions[ASM_INSTRUCTION_MAX];
-	unsigned register_count;
+	int register_count;
 
 } PlatformTarget;
 

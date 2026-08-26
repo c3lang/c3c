@@ -45,7 +45,7 @@ macro dupe(value)
 	return temp;
 }
 
-faultdef BAD_READ, OUT_OF_MEMORY;
+excuse { BAD_READ, OUT_OF_MEMORY }
 
 fn Doc? readDoc(char[] url)
 {
@@ -85,7 +85,7 @@ fn Summary readAndBuildSummary(char[] url)
 }
 
 
-faultdef  TITLE_MISSING;
+excuse  TITLE_MISSING;
 
 fn bool? isTitleNonEmpty(Doc doc)
 {

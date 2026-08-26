@@ -25,7 +25,7 @@ NORETURN void exit_compiler(int exit_value)
 	longjmp(on_error_jump, exit_value);
 }
 
-static void cleanup()
+static void cleanup(void)
 {
 	symtab_destroy();
 	memory_release();
@@ -173,7 +173,7 @@ int main_real(int argc, const char *argv[])
 int wmain(int argc, const uint16_t *argv[])
 {
 	char **args = cmalloc(sizeof(void *) * (unsigned)argc);
-	for (unsigned i = 0; i < (unsigned)argc; i++)
+	for (int i = 0; i < (int)argc; i++)
 	{
 		args[i] = win_utf16to8(argv[i]);
 	}

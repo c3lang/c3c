@@ -81,7 +81,7 @@ static inline bool sema_expr_const_append(SemaContext *context, Expr *append_exp
 	return true;
 }
 
-static void expr_concat_const_bytes(Expr *expr, Type *type, bool is_bytes, const char *a, const char *b, ArraySize alen, ArraySize blen)
+static void expr_concat_const_bytes(Expr *expr, Type *type, bool is_bytes, const char *a, const char *b, ArrayIndex alen, ArrayIndex blen)
 {
 	Type *indexed = type_get_indexed_type(type);
 	char *data = malloc_arena(alen + blen + 1);
@@ -101,7 +101,7 @@ static void expr_concat_const_bytes(Expr *expr, Type *type, bool is_bytes, const
 	expr->type = is_bytes ? type_get_array(indexed, alen + blen) : type;
 }
 
-static void expr_concat_character(Expr *expr, Type *type, const char *a, ArraySize alen, uint64_t c)
+static void expr_concat_character(Expr *expr, Type *type, const char *a, ArrayIndex alen, uint64_t c)
 {
 	char append_array[4];
 	int len;
@@ -144,7 +144,7 @@ static void expr_concat_character(Expr *expr, Type *type, const char *a, ArraySi
  */
 static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
-	ArraySize len = left->const_expr.bytes.len;
+	ArrayIndex len = left->const_expr.bytes.len;
 	bool is_bytes = left->const_expr.const_kind == CONST_BYTES;
 	ASSERT(is_bytes || left->const_expr.const_kind == CONST_STRING);
 	Type *indexed = type_get_indexed_type(left->type);
@@ -244,7 +244,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	ASSERT(!type_is_inferred(array_type));
 	bool is_vector = type_kind_is_real_vector(array_type->type_kind);
-	unsigned len = sema_len_from_const(list) + 1;
+	int len = sema_len_from_const(list) + 1;
 	Type *new_inner_type = is_vector ? type_get_vector(indexed, array_type->type_kind, len) : type_get_array(indexed, len);
 	Type *new_outer_type = list->type;
 	if (!is_slice)
@@ -315,7 +315,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 {
 	ASSERT_SPAN(concat_expr, concat_expr->resolve_status == RESOLVE_RUNNING);
 	if (!sema_check_left_right_const(context, left, right)) return false;
-	ArraySize len = 0;
+	ArrayIndex len = 0;
 	TypeKind vec_type = TYPE_POISONED;
 	Type *indexed_type = NULL;
 	Type *element_type = left->type->canonical;
@@ -367,7 +367,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 			len = vec_size(left->const_expr.untyped_list);
 			break;
 	}
-	ArraySize len_lhs = len;
+	ArrayIndex len_lhs = len;
 	switch (right->const_expr.const_kind)
 	{
 		case CONST_FLOAT:
@@ -409,13 +409,13 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	{
 		indexed_type = NULL;
 	}
-	ArraySize len_rhs = sema_len_from_const(right);
+	ArrayIndex len_rhs = sema_len_from_const(right);
 	len += len_rhs;
 	if (!indexed_type)
 	{
 		Expr **untyped_exprs = VECNEW(Expr*, len + 1);
 		Expr *exprs[2] = { left, right };
-		for (unsigned i = 0; i < 2; i++)
+		for (int i = 0; i < 2; i++)
 		{
 			Expr *single_expr = exprs[i];
 			if (expr_is_const_untyped_list(single_expr))
@@ -458,8 +458,8 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				case CONST_INIT_ZERO:
 				{
 					Type *index_type = type_get_indexed_type(type_flatten(init->type));
-					ArraySize len_zero = i == 0 ? len_lhs : len_rhs;
-					for (ArraySize j = 0; j < len_zero; j++)
+					ArrayIndex len_zero = i == 0 ? len_lhs : len_rhs;
+					for (ArrayIndex j = 0; j < len_zero; j++)
 					{
 						Expr *zero = expr_new_expr(EXPR_CONST, single_expr);
 						expr_rewrite_to_const_zero(zero, index_type);
@@ -470,9 +470,9 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				case CONST_INIT_ARRAY:
 				{
 					Type *index_type = type_get_indexed_type(type_flatten(init->type));
-					ArraySize len_zero = i == 0 ? len_lhs : len_rhs;
-					ArraySize offset = vec_size(untyped_exprs);
-					for (ArraySize j = 0; j < len_zero; j++)
+					ArrayIndex len_zero = i == 0 ? len_lhs : len_rhs;
+					ArrayIndex offset = vec_size(untyped_exprs);
+					for (ArrayIndex j = 0; j < len_zero; j++)
 					{
 						Expr *zero = expr_new_expr(EXPR_CONST, single_expr);
 						expr_rewrite_to_const_zero(zero, index_type);
@@ -552,7 +552,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				{
 					// { 0, 0, 0 } + { 1, 2, 3 }
 					ConstInitializer **inits = VECNEW(ConstInitializer*, len);
-					for (ArraySize i = 0; i < len_lhs; i++)
+					for (ArrayIndex i = 0; i < len_lhs; i++)
 					{
 						vec_add(inits, const_init_new_zero(indexed_type));
 					}
@@ -599,7 +599,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 					{
 						vec_add(inits, init);
 					}
-					for (ArraySize i = 0; i < len_rhs; i++)
+					for (ArrayIndex i = 0; i < len_rhs; i++)
 					{
 						vec_add(inits, const_init_new_zero(indexed_type));
 					}
@@ -629,7 +629,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 					{
 						vec_add(inits, init);
 					}
-					for (ArraySize i = 0; i < len_rhs; i++)
+					for (ArrayIndex i = 0; i < len_rhs; i++)
 					{
 						vec_add(inits, const_init_new_zero(indexed_type));
 					}
@@ -664,7 +664,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				{
 					// { 1 => 3 } + { 1, 2, 3 }
 					ConstInitializer **inits = VECNEW(ConstInitializer*, len);
-					for (ArraySize i = 0; i < len_lhs; i++)
+					for (ArrayIndex i = 0; i < len_lhs; i++)
 					{
 						vec_add(inits, const_init_new_zero(indexed_type));
 					}
@@ -683,7 +683,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				case CONST_INIT_ARRAY:
 				{
 					// { 1 => 3 } + { 1 => 3 }
-					ArraySize elements = vec_size(lhs_init->init_array.elements) + vec_size(rhs_init->init_array.elements);
+					ArrayIndex elements = vec_size(lhs_init->init_array.elements) + vec_size(rhs_init->init_array.elements);
 					ConstInitializer **inits = VECNEW(ConstInitializer*, elements);
 					FOREACH(ConstInitializer *, element, lhs_init->init_array.elements)
 					{

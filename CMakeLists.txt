@@ -830,9 +830,16 @@ else()
     target_compile_options(c3c PRIVATE
         -Wall
         -Werror
-        -Wno-unknown-pragmas
+		-Wstrict-prototypes
+		-Wsign-compare
+		-Wno-unused-command-line-argument
+		-Wno-unknown-pragmas
+		-Wno-gnu-auto-type
+		-Wno-gnu-statement-expression-from-macro-expansion
+		-Wno-gnu-zero-variadic-macro-arguments
         -Wno-unused-result
         -Wno-unused-function
+		-Wno-unknown-attributes
         -Wno-unused-variable
         -Wno-unused-parameter
         -Wno-char-subscripts

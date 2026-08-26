@@ -1,0 +1,15 @@
+// #target: elf-x64
+module test;
+fn void test(int i)
+{
+
+}
+
+/* #expect: test.ll
+
+define dso_local void @test.test(i32 %0) #0 {
+entry:
+  ret void
+}
+
+attributes #0 = { noredzone nounwind uwtable

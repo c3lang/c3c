@@ -822,7 +822,7 @@ struct ParsedRequest
 	bool keep_alive;
 }
 
-faultdef MALFORMED_REQUEST;
+excuse MALFORMED_REQUEST;
 
 fn ParsedRequest? parse_request(String req)
 {

@@ -76,7 +76,7 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
                                         JSONObject *json)
 {
-	BuildParseContext context = { library->dir, target_name };
+	BuildParseContext context = { library->dir, target_name, false };
 	target->link_flags = get_string_array(context, json, "link-args", false);
 
 	target->linked_libs = get_string_array(context, json, "linked-libraries", false);
@@ -93,12 +93,12 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 	APPEND_STRING_LIST(&target->cinclude_dirs, "c-include-dirs");
 }
 
-static Library *add_library(JSONObject *json, const char *dir, const char **libs, unsigned libs_len)
+static Library *add_library(JSONObject *json, const char *dir, const char **libs, int libs_len)
 {
 	check_json_keys(manifest_default_keys, manifest_default_keys_count, NULL, 0, json, "library", "--list-manifest-properties");
 	Library *library = CALLOCS(Library);
 	library->dir = dir;
-	BuildParseContext context = { dir, NULL };
+	BuildParseContext context = { dir, NULL, false };
 	const char *provides = get_mandatory_string(context, json, "provides");
 	
 	if (str_findlist(provides, libs_len, libs) == -1)
@@ -296,8 +296,8 @@ void resolve_libraries(BuildTarget *build_target)
 	DEBUG_LOG("Resolve libraries");
 	static const char *c3lib_suffix = ".c3l";
 	const char **c3_libs = NULL;
-	unsigned libdir_count = vec_size(build_target->libdirs);
-	unsigned libs_len = vec_size(build_target->libs);
+	int libdir_count = vec_size(build_target->libdirs);
+	int libs_len = vec_size(build_target->libs);
 	if (libdir_count)
 	{
 		FOREACH(const char *, dir, build_target->libdirs)
@@ -337,7 +337,7 @@ void resolve_libraries(BuildTarget *build_target)
 	{
 		add_library_dependency(build_target, find_library(libraries, lib_count, lib_name), libraries, lib_count);
 	}
-	for (size_t i = 0; i < lib_count; i++)
+	for (int i = 0; i < lib_count; i++)
 	{
 		Library *library = libraries[i];
 		LibraryTarget *target = library->target_used;

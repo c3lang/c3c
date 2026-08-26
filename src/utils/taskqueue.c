@@ -15,21 +15,27 @@ typedef struct TaskQueue_
 	Task **queue;
 } TaskQueue;
 
-static void *taskqueue_thread(void *data)
+static void taskqueue_drain(TaskQueue *task_queue)
 {
-	TaskQueue *task_queue = data;
 	while (1)
 	{
 		pthread_mutex_lock(&task_queue->lock);
-		unsigned task_count = vec_size(task_queue->queue);
-		if (!task_count) goto SHUTDOWN;
+		int task_count = vec_size(task_queue->queue);
+		if (!task_count)
+		{
+			pthread_mutex_unlock(&task_queue->lock);
+			return;
+		}
 		Task *task = (Task*)task_queue->queue[task_count - 1];
 		vec_pop(task_queue->queue);
 		pthread_mutex_unlock(&task_queue->lock);
 		task->task(task->arg);
 	}
-SHUTDOWN:
-	pthread_mutex_unlock(&task_queue->lock);
+}
+
+static void *taskqueue_thread(void *data)
+{
+	taskqueue_drain((TaskQueue *)data);
 	pthread_exit(NULL);
 	return NULL;
 }
@@ -45,22 +51,25 @@ void taskqueue_run(int threads, Task **task_list)
 		}
 		return;
 	}
-	pthread_t *pthreads = cmalloc(sizeof(pthread_t) * (unsigned)threads);
+	// The calling thread works too, so only threads - 1 extra OS threads are needed.
+	int worker_threads = threads - 1;
+	pthread_t *pthreads = cmalloc(sizeof(pthread_t) * (int)worker_threads);
 	TaskQueue queue = { .queue = task_list };
 	pthread_attr_t attr;
 	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");
 	if (pthread_attr_init(&attr)) error_exit("Failed to set up attribute for thread");
-	size_t stack_size = TASKQUEUE_THREAD_STACK_SIZE;
+	size_t stack_size = (size_t)TASKQUEUE_THREAD_STACK_SIZE;
 #ifdef PTHREAD_STACK_MIN
-	if (stack_size < PTHREAD_STACK_MIN) stack_size = PTHREAD_STACK_MIN; // NOLINT
+	if (stack_size < (size_t)PTHREAD_STACK_MIN) stack_size = (size_t)PTHREAD_STACK_MIN; // NOLINT
 #endif
 	if (pthread_attr_setstacksize(&attr, stack_size)) error_exit("Failed to set up stack size for thread");
-	for (int i = 0; i < threads; i++)
+	for (int i = 0; i < worker_threads; i++)
 	{
 		if (pthread_create(&pthreads[i], &attr, taskqueue_thread, &queue)) error_exit("Fail to set up thread pool");
 	}
 	pthread_attr_destroy(&attr);
-	for (int i = 0; i < threads; i++)
+	taskqueue_drain(&queue);
+	for (int i = 0; i < worker_threads; i++)
 	{
 		if (pthread_join(pthreads[i], NULL) != 0) error_exit("Failed to join thread.");
 	}
@@ -79,39 +88,47 @@ typedef struct TaskQueue_
 	Task **queue;
 } TaskQueue;
 
-static unsigned WINAPI taskqueue_thread(LPVOID lpParam)
+static void taskqueue_drain(TaskQueue *task_queue)
 {
-	TaskQueue *task_queue = (TaskQueue *)lpParam;
-	bool is_active = false;
 	while (1)
 	{
 		EnterCriticalSection(&task_queue->lock);
-		unsigned task_count = vec_size(task_queue->queue);
-		if (!task_count) goto SHUTDOWN;
+		int task_count = vec_size(task_queue->queue);
+		if (!task_count)
+		{
+			LeaveCriticalSection(&task_queue->lock);
+			return;
+		}
 		Task *task = (Task*)task_queue->queue[task_count - 1];
 		vec_pop(task_queue->queue);
 		LeaveCriticalSection(&task_queue->lock);
 		task->task(task->arg);
 	}
-SHUTDOWN:
-	LeaveCriticalSection(&task_queue->lock);
+}
+
+static unsigned WINAPI taskqueue_thread(LPVOID lpParam)
+{
+	taskqueue_drain((TaskQueue *)lpParam);
 	return 0;
 }
 
 void taskqueue_run(int threads, Task **task_list)
 {
 	ASSERT(threads > 0);
-	HANDLE *handles = cmalloc(sizeof(HANDLE) * (unsigned)threads);
+	// The calling thread works too, so only threads - 1 extra OS threads are needed.
+	int worker_threads = threads - 1;
+	HANDLE *handles = cmalloc(sizeof(HANDLE) * (int)worker_threads);
 	TaskQueue queue = { .queue = task_list };
 	InitializeCriticalSection(&queue.lock);
-	for (int i = 0; i < threads; i++)
+	for (int i = 0; i < worker_threads; i++)
 	{
 		handles[i] = (HANDLE)_beginthreadex(NULL, 0, taskqueue_thread, &queue, 0, NULL);
 		if (handles[i] == NULL) error_exit("Fail to set up thread pool");
 	}
-	WaitForMultipleObjects(threads, handles, TRUE, INFINITE);
+	taskqueue_drain(&queue);
+	if (worker_threads > 0) WaitForMultipleObjects(worker_threads, handles, TRUE, INFINITE);
 
-	for (int i = 0; i < threads; i++)
+	for (int i = 0; i < worker_threads; i++)
 	{
 		CloseHandle(handles[i]);
 	}

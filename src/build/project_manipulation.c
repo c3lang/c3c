@@ -8,14 +8,14 @@
 
 bool use_ansi(void);
 
-const char** get_project_dependency_directories()
+const char** get_project_dependency_directories(void)
 {
 	const char *filename;
 	JSONObject *json = project_json_load(&filename);
 
 	const char *target = NULL;
 	const char **deps_dirs = NULL;
-	BuildParseContext context = { filename, target };
+	BuildParseContext context = { filename, target, false };
 	APPEND_STRING_LIST(&deps_dirs, "dependency-search-paths");
 
 	return deps_dirs;
@@ -38,7 +38,7 @@ static void print_vec(const char *header, const char **vec, bool opt, const char
 	PRINTFN("");
 }
 
-const char** get_project_dependencies()
+const char** get_project_dependencies(void)
 {
 	const char *filename;
 	const char** dependencies = NULL;
@@ -318,7 +318,7 @@ void fetch_project(BuildOptions* options)
 				error_exit("Invalid data in target '%s'", key);
 			}
 
-			const char **target_deps = get_optional_string_array((BuildParseContext) { filename, key }, target, "dependencies");
+			const char **target_deps = get_optional_string_array((BuildParseContext) { filename, key, false }, target, "dependencies");
 
 			FOREACH(const char*, dep, target_deps)
 			{
@@ -443,7 +443,7 @@ static void view_filtered_project_properties(BuildOptions *build_options, const 
 {
 	uint16_t bitvector = build_options->project_options.view_modifier.flags_bitvector;
 	bool verbose = build_options->project_options.view_modifier.verbose;
-	BuildParseContext context = { filename, NULL };
+	BuildParseContext context = { filename, NULL, false };
 	const char* delim = verbose ? ", " : "\n";
 	char* prop_header;
 
@@ -523,7 +523,7 @@ static void view_filtered_project_properties(BuildOptions *build_options, const 
 			{
 				error_exit("Invalid data in target '%s'", key);
 			}
-			view_target((BuildParseContext) { filename, key }, object, verbose);
+			view_target((BuildParseContext) { filename, key, false }, object, verbose);
 		}
 	}
 }
@@ -541,7 +541,7 @@ void view_project(BuildOptions *build_options)
 		return;
 	}
 
-	BuildParseContext context = { filename, NULL };
+	BuildParseContext context = { filename, NULL, false };
 	/* General information */
 	VIEW_STRING_ARRAY("Authors", "authors", ", ");
 	VIEW_STRING("Version", "version");
@@ -622,6 +622,6 @@ void view_project(BuildOptions *build_options)
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		view_target((BuildParseContext) {filename, key }, object, true);
+		view_target((BuildParseContext) {filename, key, false }, object, true);
 	}
 }

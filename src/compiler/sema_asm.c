@@ -14,7 +14,7 @@ static inline void sema_add_clobber(AsmInlineBlock *block, unsigned index)
 // Add a full clobber mask to the clobbers.
 static inline void sema_add_clobbers(AsmInlineBlock *block, Clobbers *clobbers)
 {
-	for (unsigned i = 0; i < CLOBBER_FLAG_ELEMENTS; i++)
+	for (int i = 0; i < CLOBBER_FLAG_ELEMENTS; i++)
 	{
 		block->clobbers.mask[i] |= clobbers->mask[i];
 	}
@@ -25,7 +25,7 @@ static inline Type *max_supported_imm_int(bool is_signed, AsmArgType arg)
 	// We don't support i128 as imm ints as no targets do.
 	if (is_signed)
 	{
-		unsigned bits = arg_bits_max(arg.imm_arg_ibits, 64);
+		int bits = arg_bits_max(arg.imm_arg_ibits, 64);
 		if (!bits)
 		{
 			bits = arg_bits_max(arg.imm_arg_ubits, 64);
@@ -34,7 +34,7 @@ static inline Type *max_supported_imm_int(bool is_signed, AsmArgType arg)
 		}
 		return type_int_signed_by_bitsize(next_highest_power_of_2(bits));
 	}
-	unsigned bits = arg_bits_max(arg.imm_arg_ubits, 64);
+	int bits = arg_bits_max(arg.imm_arg_ubits, 64);
 	if (!bits) return NULL;
 	return type_int_unsigned_by_bitsize(next_highest_power_of_2(bits));
 }
@@ -64,8 +64,8 @@ static inline Decl *sema_resolve_external_symbol(SemaContext *context, Expr *exp
 static inline bool sema_reg_int_supported_type(AsmArgType arg, Type *type)
 {
 	ASSERT(type_flatten(type) == type);
-	unsigned bits = type_bit_size(type);
-	return next_highest_power_of_2(arg_bits_max(arg.ireg_bits, bits)) == bits;
+	BitSize bits = type_bit_size(type);
+	return next_highest_power_of_2(arg_bits_max(arg.ireg_bits, (int)bits)) == bits;
 }
 
 
@@ -133,7 +133,7 @@ static inline bool sema_check_asm_arg_const_int(SemaContext *context, AsmInlineB
 		return false;
 	}
 	Int i = int_expr->const_expr.ixx;
-	unsigned max_bits = arg_bits_max(arg_type.imm_arg_ibits > arg_type.imm_arg_ubits ? arg_type.imm_arg_ibits : arg_type.imm_arg_ubits, 0);
+	int max_bits = arg_bits_max(arg_type.imm_arg_ibits > arg_type.imm_arg_ubits ? arg_type.imm_arg_ibits : arg_type.imm_arg_ubits, 0);
 	if (!int_fits(i, type->type_kind) || !sema_check_npot_imm_fits(i, arg_type))
 	{
 		SEMA_ERROR(expr, "'%s' expected %s limited to %d bits.", instr->name, type_quoted_error_string(type), max_bits);
@@ -180,7 +180,7 @@ static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock 
 	ASSERT(base->expr_kind == EXPR_ASM);
 	ExprAsmArg *base_arg = &base->expr_asm_arg;
 	AsmArgType address_size = { .ireg_bits = ARG_BITS_16 | ARG_BITS_32 | ARG_BITS_64 }; // NO_LINT
-	unsigned bit_size = 0;
+	int bit_size = 0;
 	switch (base_arg->kind)
 	{
 		case ASM_ARG_REG:
@@ -303,7 +303,7 @@ static inline void asm_reg_add_output(AsmInlineBlock *block, ExprAsmArg *arg)
 	else
 	{
 		// Add a new
-		unsigned out_count = vec_size(block->output_vars);
+		int out_count = vec_size(block->output_vars);
 		if (out_count > 0xFFFF) error_exit("Too many output vars.");
 		arg->index = out_count;
 		vec_add(block->output_vars, arg);
@@ -325,7 +325,7 @@ static inline void asm_reg_add_output(AsmInlineBlock *block, ExprAsmArg *arg)
 
 static inline void asm_add_input(AsmInlineBlock *block, ExprAsmArg *arg)
 {
-	unsigned in_count = vec_size(block->input);
+	int in_count = vec_size(block->input);
 	if (in_count > 0xFFFF) error_exit("Too many input vars.");
 	arg->index = in_count;
 	vec_add(block->input, arg);
@@ -406,7 +406,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 		}
 		if (!sema_reg_int_supported_type(arg_type, type))
 		{
-			unsigned bits = arg_bits_max(arg_type.ireg_bits, 0);
+			int bits = arg_bits_max(arg_type.ireg_bits, 0);
 			ASSERT(bits);
 			RETURN_SEMA_ERROR(expr, "%s is not supported in this position, convert it to a valid type, like %s.",
 					   type_quoted_error_string(decl->type), type_quoted_error_string(type_int_signed_by_bitsize(bits)));
@@ -558,8 +558,8 @@ bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt
 
 	// Check arguments
 	Expr **args = asm_stmt->asm_stmt.args;
-	unsigned expected_params = instr->param_count;
-	unsigned arg_count = vec_size(args);
+	int expected_params = instr->param_count;
+	int arg_count = vec_size(args);
 	if (expected_params != arg_count)
 	{
 		RETURN_SEMA_ERROR(asm_stmt, "Too %s arguments to instruction '%s', expected %d.",
@@ -568,7 +568,7 @@ bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt
 	}
 
 	// Sema check each argument.
-	for (unsigned i = arg_count; i > 0; i--)
+	for (int i = arg_count; i > 0; i--)
 	{
 		if (!sema_check_asm_arg(context, block, instr, instr->param[i - 1], args[i - 1])) return false;
 	}

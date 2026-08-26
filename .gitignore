@@ -70,8 +70,7 @@ dkms.conf
 .vscode/
 out/
 
-/cmake-build-debug/
-/cmake-build-release/
+/cmake-build-*/
 
 CMakeFiles/cmake.check_cache
 CMakeCache.txt

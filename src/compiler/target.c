@@ -12,20 +12,20 @@
 
 static bool cpu_features_contains(CpuFeatures *cpu_features, int feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
-static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
-static unsigned arch_int_register_bit_width(OsType os, ArchType arch);
+static int arch_pointer_bit_width(OsType os, ArchType arch);
+static int arch_int_register_bit_width(OsType os, ArchType arch);
 static ArchType arch_from_llvm_string(StringSlice slice);
 static EnvironmentType environment_type_from_llvm_string(StringSlice env);
 static bool arch_is_supported(ArchType arch);
-static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type);
+static int os_target_c_type_bits(OsType os, ArchType arch, CType type);
 static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t bits);
 static AlignData os_target_alignment_of_float(OsType os, ArchType arch, uint32_t bits);
 static OsType os_from_llvm_string(StringSlice string);
 static VendorType vendor_from_llvm_string(StringSlice string);
-static unsigned os_target_supports_int128(OsType os, ArchType arch);
-static unsigned os_target_supports_float16(OsType os, ArchType arch);
-static unsigned os_target_supports_float128(OsType os, ArchType arch);
-static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
+static int os_target_supports_int128(OsType os, ArchType arch);
+static int os_target_supports_float16(OsType os, ArchType arch);
+static int os_target_supports_float128(OsType os, ArchType arch);
+static int os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
 static void x86_features_from_host(CpuFeatures *cpu_features);
 static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature feature);
 static void cpu_features_add_feature_single(CpuFeatures *cpu_features, int feature);
@@ -237,7 +237,7 @@ static const char *x86_feature_name[] = {
 	[X86_FEAT_SOFT_FLOAT] = "soft-float",
 };
 
-int target_alloca_addr_space()
+int target_alloca_addr_space(void)
 {
 	return compiler.platform.alloca_address_space;
 }
@@ -1224,7 +1224,7 @@ static char *arch_to_target_triple(ArchOsTarget target, LinuxLibc linux_libc)
 		case ARCH_OS_TARGET_DEFAULT: UNREACHABLE;
 	}
 	UNREACHABLE;
-};
+}
 
 static bool arch_is_supported(ArchType arch)
 {
@@ -1454,7 +1454,7 @@ static VendorType vendor_from_llvm_string(StringSlice slice)
 
 
 
-static unsigned arch_pointer_bit_width(OsType os, ArchType arch)
+static int arch_pointer_bit_width(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
@@ -1489,7 +1489,7 @@ static unsigned arch_pointer_bit_width(OsType os, ArchType arch)
 	UNREACHABLE
 }
 
-static unsigned arch_int_register_bit_width(OsType os, ArchType arch)
+static int arch_int_register_bit_width(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
@@ -1524,7 +1524,7 @@ static unsigned arch_int_register_bit_width(OsType os, ArchType arch)
 	UNREACHABLE
 }
 
-static unsigned os_target_supports_float16(OsType os, ArchType arch)
+static int os_target_supports_float16(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
@@ -1538,7 +1538,7 @@ static unsigned os_target_supports_float16(OsType os, ArchType arch)
 	}
 }
 
-static unsigned os_target_supports_float128(OsType os, ArchType arch)
+static int os_target_supports_float128(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
@@ -1561,7 +1561,7 @@ static unsigned os_target_supports_float128(OsType os, ArchType arch)
 	}
 }
 
-static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int)
+static int os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int)
 {
 	if (bits != 64 && bits != 128) return false;
 	switch (arch)
@@ -1608,7 +1608,7 @@ static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type)
 	}
 	UNREACHABLE
 }
-static unsigned os_target_supports_int128(OsType os, ArchType arch)
+static int os_target_supports_int128(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
@@ -1624,7 +1624,7 @@ static unsigned os_target_supports_int128(OsType os, ArchType arch)
 	}
 }
 
-static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
+static int os_target_c_type_bits(OsType os, ArchType arch, CType type)
 {
 	switch (os)
 	{
@@ -1736,7 +1736,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 	return (AlignData) { 0, 0 };
 }
 
-static unsigned arch_big_endian(ArchType arch)
+static int arch_big_endian(ArchType arch)
 {
 	switch (arch)
 	{
@@ -1865,15 +1865,15 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 			{
 				case ARCH_TYPE_MIPS64:
 				case ARCH_TYPE_MIPS64EL:
-					return RELOC_SMALL_PIC;
+					return RELOC_SMALL_PIE;
 				default:
 					return RELOC_NONE;
 			}
 		case OS_DARWIN_TYPES:
-			return RELOC_BIG_PIC;
+			return RELOC_BIG_PIE;
 		case OS_TYPE_WIN32:
 			if (arch == ARCH_TYPE_X86) return RELOC_NONE;
-			return RELOC_BIG_PIC;
+			return RELOC_BIG_PIE;
 		case OS_TYPE_WASI:
 		case OS_TYPE_EMSCRIPTEN:
 			return RELOC_NONE;
@@ -2261,6 +2261,7 @@ void target_setup(BuildTarget *build_target)
 	compiler.platform.width_register = arch_int_register_bit_width(compiler.platform.os, compiler.platform.arch);
 	compiler.platform.alloca_address_space = 0;
 	compiler.platform.object_format = object_format_from_os(compiler.platform.os, compiler.platform.arch);
+	compiler.platform.noredzone = build_target->arch_os_target == ELF_X64;
 	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
@@ -2281,7 +2282,7 @@ void target_setup(BuildTarget *build_target)
 	compiler.platform.float16 = os_target_supports_float16(compiler.platform.os, compiler.platform.arch);
 	for (BitSizes i = BITS8; i < BITSIZES_LEN; i++)
 	{
-		unsigned bits = (unsigned) (8 << (i - 1));
+		int bits = (int) (8 << (i - 1));
 		compiler.platform.integers[i] = os_target_alignment_of_int(compiler.platform.os, compiler.platform.arch, bits);
 		compiler.platform.floats[i] = os_target_alignment_of_float(compiler.platform.os, compiler.platform.arch, bits);
 	}
@@ -2425,8 +2426,15 @@ void target_setup(BuildTarget *build_target)
 
 	}
 	ASSERT(compiler.platform.reloc_model != RELOC_DEFAULT);
+	compiler.platform.use_dso_local = compiler.platform.object_format == OBJ_FORMAT_COFF || compiler.platform.object_format == OBJ_FORMAT_ELF;
 
-		// TODO remove
+
+	if (compiler.platform.reloc_model == RELOC_BIG_PIC || compiler.platform.reloc_model == RELOC_SMALL_PIC)
+	{
+		compiler.platform.use_dso_local = false;
+	}
+
+	// TODO remove
 	type_setup(&compiler.platform);
 
 
@@ -2434,7 +2442,7 @@ void target_setup(BuildTarget *build_target)
 
 static bool host_is_le(void)
 {
-	unsigned int i = 1;
+	int i = 1;
 	char *c = (char *)&i;
 	return (*c == 1);
 }

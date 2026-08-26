@@ -43,7 +43,7 @@ entry:
 }
 
 declare void @llvm.assume(i1 noundef) #1
-attributes #0 = { nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
 !llvm.module.flags = !{!0, !1, !2, !3, !4, !5}
 !0 = !{i32 2, !"Dwarf Version", i32 4}
 !1 = !{i32 2, !"Debug Info Version", i32 3}

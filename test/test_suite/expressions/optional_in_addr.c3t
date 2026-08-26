@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-faultdef ABC;
+excuse ABC;
 macro int? tester()
 {
 	return ABC~;

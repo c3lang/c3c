@@ -1,6 +1,6 @@
 module g <T>;
 
-faultdef F0, F1;
+excuse F0, F1;
 
 module main;
 

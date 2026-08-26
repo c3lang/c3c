@@ -45,7 +45,7 @@ module std::encoding::experimental::regex;
 import std::io;
 import std::collections::list;
 
-constdef CompileFlags
+constset CompileFlags
 {
 	EXTENDED = 1 << 0,
 	ICASE    = 1 << 1,
@@ -53,13 +53,14 @@ constdef CompileFlags
 	NEWLINE  = 1 << 3,
 }
 
-constdef ExecFlags
+constset ExecFlags
 {
 	NOTBOL = 1 << 0,
 	NOTEOL = 1 << 1,
 }
 
-faultdef
+excuse
+{
 	NOMATCH,
 	BADPAT,
 	ECOLLATE,
@@ -72,8 +73,8 @@ faultdef
 	BADBR,
 	ERANGE,
 	OUT_OF_MEMORY,
-	BADRPT;
-
+	BADRPT
+}
 
 struct Regex
 {
@@ -1530,7 +1531,7 @@ fn void tre_purge_regset(int* regset, Tnfa* tnfa, TagId tag) @local
 	regset[0] = -1;
 }
 
-constdef AddTagsSymbol : inline int @local
+constset AddTagsSymbol : inline int @local
 {
 	RECURSE,
 	AFTER_ITERATION,
@@ -1968,7 +1969,7 @@ fn PosAndTags*? tre_set_union(Allocator arena, PosAndTags* set1, PosAndTags* set
 }
 
 
-constdef NflSymbol : inline int @local
+constset NflSymbol : inline int @local
 {
 	RECURSE,
 	POST_UNION,

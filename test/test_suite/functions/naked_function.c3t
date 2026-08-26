@@ -5,11 +5,36 @@ fn void test(int i) @naked
 
 }
 
+fn void test2(int i) @naked @stackprotector("all")
+{
+
+}
+
+fn void test3(int i) @naked @stackprobe("inline")
+{
+
+}
+
 /* #expect: naked_function.ll
 
+; Function Attrs: naked nounwind uwtable
 define void @naked_function.test(i32 %0) #0 {
 entry:
   unreachable
 }
 
-attributes #0 = { naked nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+; Function Attrs: naked nounwind sspreq uwtable
+define void @naked_function.test2(i32 %0) #1 {
+entry:
+  unreachable
+}
+
+; Function Attrs: naked nounwind uwtable
+define void @naked_function.test3(i32 %0) #2 {
+entry:
+  unreachable
+}
+
+attributes #0 = { naked nounwind uwtable "no-stack-arg-probe" "no-trapping-math"="true" }
+attributes #1 = { naked nounwind sspreq uwtable "no-stack-arg-probe" "no-trapping-math"="true" }
+attributes #2 = { naked nounwind uwtable "no-trapping-math"="true" "probe-stack"="inline-asm" }

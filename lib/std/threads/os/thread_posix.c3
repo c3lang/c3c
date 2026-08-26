@@ -199,11 +199,11 @@ tlocal NativeThread current_thread @private;
 fn void* callback(void* arg) @private
 {
 	NativeThread* thread = arg;
-	current_thread = *thread;
 	$if ANDROID_LINUX:
 		thread.tid = (Pid_t)@syscall(libc::SYS_GETTID);
 		os::sem_post(&thread.sem);
 	$endif
+	current_thread = *thread;
 	return (void*)(iptr)thread.thread_fn(thread.arg);
 }
 

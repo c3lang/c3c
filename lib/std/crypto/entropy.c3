@@ -7,7 +7,7 @@
 module std::crypto::entropy;
 import libc;
 
-faultdef SECURE_RANDOM_UNAVAILABLE;
+excuse SECURE_RANDOM_UNAVAILABLE;
 
 <*
  Returns cryptographically secure random bytes. Fails if it is unavailable.

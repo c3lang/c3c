@@ -1058,6 +1058,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_OPTIONAL:
 			return sema_resolve_type_decl(context, type->optional);
 		case TYPE_ALIAS:
+			if (!sema_analyse_decl(context, type->decl)) return false;
 			return sema_resolve_type_decl(context, type->canonical);
 		case TYPE_TYPEDEF:
 			if (!sema_analyse_decl(context, type->decl)) return false;

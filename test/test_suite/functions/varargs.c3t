@@ -1,3 +1,4 @@
+// #target: netbsd-x64
 module varargs;
 
 extern fn void printf(char* c, ...);
@@ -17,7 +18,7 @@ fn void test()
 
 /* #expect: varargs.ll
 
-define void @varargs.test() #0 {
+define dso_local void @varargs.test() #0 {
 entry:
   %x1 = alloca i8, align 1
   %b = alloca i8, align 1

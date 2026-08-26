@@ -1,4 +1,4 @@
-faultdef ABC;
+excuse ABC;
 
 typedef Foo1 = Error;
 

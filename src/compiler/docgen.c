@@ -339,7 +339,7 @@ static void emit_param_json(JsonEmitter *e, Module *module, Decl *p)
 static void emit_params_json(JsonEmitter *e, Module *module, Decl **params)
 {
 	json_start_array_val(e);
-	for (unsigned i = 0; i < vec_size(params); i++)
+	for (int i = 0; i < vec_size(params); i++)
 	{
 		Decl *p = params[i];
 		if (!p) continue;
@@ -416,8 +416,8 @@ static void emit_type_name_to_scratch(TypeInfo *type)
 		case TYPE_INFO_GENERIC:
 			emit_type_name_to_scratch(type->generic.base);
 			scratch_buffer_append("{");
-			unsigned param_count = vec_size(type->generic.params);
-			for (unsigned i = 0; i < param_count; i++)
+			int param_count = vec_size(type->generic.params);
+			for (int i = 0; i < param_count; i++)
 			{
 				if (i > 0) scratch_buffer_append(", ");
 				Expr *param = type->generic.params[i];
@@ -690,7 +690,7 @@ static bool emit_doc_members_json(JsonEmitter *e, Module *module, Decl *decl)
 {
 	if (decl_is_fn_macro(decl))
 	{
-		unsigned count = 0;
+		int count = 0;
 		FOREACH(Decl *, p, decl->func_decl.signature.params) if (p) count++;
 		if (decl->decl_kind == DECL_MACRO && decl->func_decl.body_param && declptr(decl->func_decl.body_param)) count++;
 		if (!count) return false;
@@ -787,7 +787,7 @@ static bool emit_doc_members_json(JsonEmitter *e, Module *module, Decl *decl)
 				fputs("null", e->file);
 			}
 			json_start_array_prop(e, "params");
-			for (unsigned i = 1; i < vec_size(p->func_decl.signature.params); i++)
+			for (int i = 1; i < vec_size(p->func_decl.signature.params); i++)
 			{
 				Decl *param = p->func_decl.signature.params[i];
 				if (!param) continue;
@@ -813,18 +813,16 @@ static void emit_custom_attrs(JsonEmitter *e, Decl *decl)
 	if (vec_size(decl->attrs_resolved->tags) == 0) return;
 
 	json_start_array_prop(e, "custom_attrs");
-	for (unsigned i = 0; i < vec_size(decl->attrs_resolved->tags); i++)
+	FOREACH_IDX(i, Attr *, attr, decl->attrs_resolved->tags)
 	{
-		Attr *attr = decl->attrs_resolved->tags[i];
 		json_start_object(e);
 		json_write_prop_string(e, "name", attr->name);
 		if (vec_size(attr->exprs) > 0)
 		{
 			json_start_array_prop(e, "args");
-			for (unsigned j = 0; j < vec_size(attr->exprs); j++)
+			FOREACH(Expr *, ex, attr->exprs)
 			{
 				json_comma(e);
-				Expr *ex = attr->exprs[j];
 				if (expr_is_const_string(ex))
 				{
 					json_write_string(e->file, ex->const_expr.bytes.ptr);
@@ -958,9 +956,8 @@ static bool emit_doc_comments(JsonEmitter *e, Decl *decl)
 		if (vec_size(contract->contracts_decl.params) > 0)
 		{
 			json_start_array_prop(e, "params");
-			for (unsigned i = 0; i < vec_size(contract->contracts_decl.params); i++)
+			FOREACH_REF(ContractParam, p, contract->contracts_decl.params)
 			{
-				ContractParam *p = &contract->contracts_decl.params[i];
 				if (!p || !p->name) continue;
 
 				json_start_object(e);
@@ -1068,11 +1065,11 @@ static void emit_decl_json(JsonEmitter *e, Module *module, Decl *decl, const cha
 	}
 	if (generic_params)
 	{
-		unsigned param_count = vec_size(generic_params);
+		int param_count = vec_size(generic_params);
 		if (param_count > 0)
 		{
 			json_start_array_prop(e, "generic_parameters");
-			for (unsigned i = 0; i < param_count; i++)
+			for (int i = 0; i < param_count; i++)
 			{
 				json_comma(e);
 				json_write_string(e->file, generic_params[i]);
@@ -1082,11 +1079,11 @@ static void emit_decl_json(JsonEmitter *e, Module *module, Decl *decl, const cha
 	}
 	if (decl_has_interface(decl))
 	{
-		unsigned iface_count = vec_size(decl->interfaces);
+		int iface_count = vec_size(decl->interfaces);
 		if (iface_count > 0)
 		{
 			json_start_array_prop(e, "interfaces");
-			for (unsigned i = 0; i < iface_count; i++)
+			for (int i = 0; i < iface_count; i++)
 			{
 				json_comma(e);
 				print_doc_type(e, module, decl->interfaces[i], false);
@@ -1238,8 +1235,8 @@ static DocCategory get_category_for_decl(Decl *decl)
 static bool emit_category_decls(JsonEmitter *e, Module *module, DocCategory cat)
 {
 	bool found = false;
-	unsigned unit_count = vec_size(module->units);
-	for (unsigned j = 0; j < unit_count; j++)
+	int unit_count = vec_size(module->units);
+	for (int j = 0; j < unit_count; j++)
 	{
 		CompilationUnit *unit = module->units[j];
 		Decl **lists[3];
@@ -1259,8 +1256,8 @@ static bool emit_category_decls(JsonEmitter *e, Module *module, DocCategory cat)
 			}
 		}
 
-		unsigned generic_count = vec_size(unit->generic_decls);
-		for (unsigned k = 0; k < generic_count; k++)
+		int generic_count = vec_size(unit->generic_decls);
+		for (int k = 0; k < generic_count; k++)
 		{
 			Decl *gdecl = unit->generic_decls[k];
 			if (gdecl->decl_kind != DECL_GENERIC) continue;
@@ -1343,7 +1340,7 @@ void compiler_docgen(BuildTarget *target)
 			 (module->name->len > 13 && memcmp(module->name->module, "compiler_rt::", 13) == 0))) continue;
 
 		DeclId module_doc = 0;
-		unsigned unit_count = vec_size(module->units);
+		int unit_count = vec_size(module->units);
 		FOREACH(CompilationUnit *, unit, module->units)
 		{
 			if (unit->module_doc)
@@ -1380,10 +1377,10 @@ void compiler_docgen(BuildTarget *target)
 		{
 			json_start_array_prop(&emitter, "generic_parameters");
 			GenericDecl *g = &module_generic->generic_decl;
-			for (unsigned j = 0; j < vec_size(g->parameters); j++)
+			FOREACH(const char *, name, g->parameters)
 			{
 				json_comma(&emitter);
-				json_write_string(emitter.file, g->parameters[j]);
+				json_write_string(emitter.file, name);
 			}
 			json_end_array(&emitter);
 		}

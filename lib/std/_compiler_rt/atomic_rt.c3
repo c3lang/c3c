@@ -3,7 +3,7 @@ module compiler_rt;
 <*
  All possible atomic orderings
 *>
-constdef AtomicOrderingRT : inline CInt
+constset AtomicOrderingRT : inline CInt
 {
 	NOT_ATOMIC,         // Not atomic
 	UNORDERED,          // No lock

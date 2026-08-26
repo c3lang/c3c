@@ -1,5 +1,5 @@
 
-INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index) // NOLINT
+INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArrayIndex index) // NOLINT
 {
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
 	{
@@ -152,7 +152,7 @@ INLINE LLVMValueRef llvm_emit_trunc_bool(GenContext *c, LLVMValueRef value)
 	return LLVMBuildTrunc(c->builder, value, c->bool_type, "");
 }
 
-INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index)
+INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, int index)
 {
 	LLVMTypeRef type = LLVMTypeOf(agg);
 	switch (LLVMGetTypeKind(type))
@@ -312,17 +312,17 @@ INLINE LLVMValueRef llvm_get_unnamed_struct(GenContext *c, LLVMValueRef *vals, b
 	return LLVMConstStructInContext(c->context, vals, vec_size(vals), is_packed);
 }
 
-INLINE LLVMValueRef llvm_get_array(LLVMTypeRef type, LLVMValueRef *vals, unsigned count)
+INLINE LLVMValueRef llvm_get_array(LLVMTypeRef type, LLVMValueRef *vals, int count)
 {
 	return LLVMConstArray(type, vals, count);
 }
 
-INLINE LLVMValueRef llvm_get_struct_named(LLVMTypeRef type, LLVMValueRef *vals, unsigned count)
+INLINE LLVMValueRef llvm_get_struct_named(LLVMTypeRef type, LLVMValueRef *vals, int count)
 {
 	return LLVMConstNamedStruct(type, vals, count);
 }
 
-INLINE LLVMValueRef llvm_get_struct_of_type(GenContext *c, Type *type, LLVMValueRef *vals, unsigned count)
+INLINE LLVMValueRef llvm_get_struct_of_type(GenContext *c, Type *type, LLVMValueRef *vals, int count)
 {
 	return LLVMConstNamedStruct(llvm_get_type(c, type), vals, count);
 }
@@ -342,10 +342,10 @@ INLINE LLVMValueRef llvm_const_integer(GenContext *c, Int128 i, Type *type)
 	}
 }
 
-INLINE LLVMValueRef llvm_const_vec(GenContext *c, LLVMValueRef scalar_val, unsigned len)
+INLINE LLVMValueRef llvm_const_vec(GenContext *c, LLVMValueRef scalar_val, int len)
 {
 	LLVMValueRef val = LLVMGetUndef(LLVMVectorType(LLVMTypeOf(scalar_val), len));
-	for (ArraySize i = 0; i < len; i++)
+	for (ArrayIndex i = 0; i < len; i++)
 	{
 		val = llvm_emit_insert_value(c, val, scalar_val, i);
 	}
@@ -367,7 +367,7 @@ INLINE LLVMValueRef llvm_add_global(GenContext *c, const char *name, Type *type,
 INLINE LLVMValueRef llvm_add_global_raw(GenContext *c, const char *name, LLVMTypeRef type, AlignSize alignment)
 {
 	LLVMValueRef ref = LLVMAddGlobal(c->module, type, name);
-	LLVMSetAlignment(ref, (unsigned)alignment ? alignment : LLVMPreferredAlignmentOfGlobal(c->target_data, ref));
+	LLVMSetAlignment(ref, alignment ? (unsigned)alignment : LLVMPreferredAlignmentOfGlobal(c->target_data, ref));
 	return ref;
 }
 

@@ -2,7 +2,7 @@
 module main;
 import std::io;
 
-faultdef FAILURE;
+excuse FAILURE;
 
 fn int? foo(int a)
 {

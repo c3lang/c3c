@@ -203,8 +203,8 @@ void cast_no_check(Expr *expr, Type *to_type, bool add_optional)
  */
 void cast_to_int_to_max_bit_size(Expr *lhs, Expr *rhs, Type *left_type, Type *right_type)
 {
-	unsigned bit_size_left = left_type->builtin.bitsize;
-	unsigned bit_size_right = right_type->builtin.bitsize;
+	int bit_size_left = left_type->builtin.bitsize;
+	int bit_size_right = right_type->builtin.bitsize;
 
 	ASSERT(bit_size_left && bit_size_right);
 
@@ -430,8 +430,10 @@ RETRY:
 			{
 				case BINARYOP_ERROR:
 					UNREACHABLE
-				case BINARYOP_MULT:
 				case BINARYOP_SUB:
+					if (type_is_pointer_type(exprptr(expr->binary_expr.right)->type)) return expr;
+					FALLTHROUGH;
+				case BINARYOP_MULT:
 				case BINARYOP_ADD:
 				case BINARYOP_DIV:
 				case BINARYOP_MOD:
@@ -561,9 +563,10 @@ RETRY:
 		{
 			switch (expr->unary_expr.operator)
 			{
-				case UNARYOP_ERROR:
 				case UNARYOP_ADDR:
 				case UNARYOP_TADDR:
+					return expr;
+				case UNARYOP_ERROR:
 					UNREACHABLE;
 				case UNARYOP_DEREF:
 					// Check sizes.
@@ -618,7 +621,7 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 	ASSERT_SPAN(expr, expr_is_const_untyped_list(expr));
 	expr->expr_kind = EXPR_CONST;
 	Expr **values = expr->const_expr.untyped_list;
-	unsigned count = vec_size(values);
+	int count = vec_size(values);
 	ConstInitializer **elements = NULL;
 	Type *flat = type_flatten(to_type);
 	bool is_slice = flat->type_kind == TYPE_SLICE;
@@ -978,7 +981,7 @@ static bool rule_ulist_to_struct(CastContext *cc, UNUSED bool is_explicit, bool 
 {
 	ASSERT_SPAN(cc->expr, expr_is_const_untyped_list(cc->expr));
 	Expr **expressions = cc->expr->const_expr.untyped_list;
-	unsigned size = vec_size(expressions);
+	int size = vec_size(expressions);
 	if (!size) return true;
 	Decl *strukt = cc->to->decl;
 	Decl **members = strukt->strukt.members;
@@ -1000,7 +1003,7 @@ static bool rule_ulist_to_struct(CastContext *cc, UNUSED bool is_explicit, bool 
 static bool rule_ulist_to_vecarr(CastContext *cc, UNUSED bool is_explicit, bool is_silent)
 {
 	Expr **expressions = cc->expr->const_expr.untyped_list;
-	unsigned size = vec_size(expressions);
+	int size = vec_size(expressions);
 	if (!size) return true;
 	if (size != cc->to->array.len)
 	{
@@ -1031,7 +1034,7 @@ static bool rule_ulist_to_slice(CastContext *cc, UNUSED bool is_explicit, bool i
 static bool rule_ulist_to_inferred(CastContext *cc, UNUSED bool is_explicit, bool is_silent)
 {
 	Expr **expressions = cc->expr->const_expr.untyped_list;
-	unsigned size = vec_size(expressions);
+	int size = vec_size(expressions);
 	if (!size)
 	{
 		if (is_silent) return false;
@@ -1134,7 +1137,7 @@ static bool rule_arr_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_arr_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	ArraySize len = cc->from->array.len;
+	ArrayIndex len = cc->from->array.len;
 	if (len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
 	Type *base = cc->from->array.base;
 	switch (type_to_group(type_flatten(base)))
@@ -1158,7 +1161,7 @@ static bool rule_arr_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_vec_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	ArraySize len = cc->from->array.len;
+	ArrayIndex len = cc->from->array.len;
 	if (len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
 	Type *base = cc->from->array.base;
 	cast_context_set_from(cc, type_get_array(base, len));
@@ -1427,6 +1430,13 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 	if (problem)
 	{
 		if (is_silent) return false;
+		// &x - &y might something they attempt to narrow. That's not allowed.
+		if (problem->expr_kind == EXPR_BINARY
+			&& problem->binary_expr.operator == BINARYOP_SUB
+			&& type_is_pointer_type(exprptr(problem->binary_expr.right)->type))
+		{
+			RETURN_CAST_ERROR(expr, "A pointer diff cannot implicitly be cast to %s, but you may use an explicit cast.", type_quoted_error_string(cc->to_type));
+		}
 		// If it's an integer that's the problem, zoom in on that one.
 		if (type_is_integer(type_flatten(problem->type))) expr = problem;
 		// Otherwise require a cast.
@@ -1654,12 +1664,12 @@ static bool rule_int_to_enum(CastContext *cc, bool is_explicit, bool is_silent)
 			if (is_silent) return false;
 			RETURN_CAST_ERROR(cc->expr, "Casting a negative number cannot yield a valid enum.");
 		}
-		unsigned max_enums = vec_size(decl->enums.values);
+		int max_enums = vec_size(decl->enums.values);
 		Int max = {.i.low = max_enums, .type = TYPE_U32};
 		if (int_comp(to_convert, max, BINARYOP_GE))
 		{
 			if (is_silent) return false;
-			RETURN_CAST_ERROR(cc->expr, "The value '%s' exceeds the max ordinal '%u'.", int_to_str(to_convert, 10, false), max_enums - 1);
+			RETURN_CAST_ERROR(cc->expr, "The value '%s' exceeds the max ordinal '%d'.", int_to_str(to_convert, 10, false), max_enums - 1);
 		}
 	}
 	return true;
@@ -1979,9 +1989,9 @@ static void cast_int_to_enum(Expr *expr, Type *type)
 	if (sema_cast_const(expr))
 	{
 		Int to_convert = expr->const_expr.ixx;
-		unsigned max_enums = vec_size(decl->enums.values);
+		int max_enums = vec_size(decl->enums.values);
 		(void)max_enums;
-		assert(max_enums > to_convert.i.low);
+		assert((uint64_t)max_enums > to_convert.i.low);
 		expr->expr_kind = EXPR_CONST;
 		expr->const_expr = (ExprConst) {
 			.enum_val = decl->enums.values[to_convert.i.low],
@@ -2461,7 +2471,7 @@ static void cast_slice_to_vec(Expr *expr, Type *to_type)
 
 static void cast_slice_to_infer(Expr *expr, Type *to_type)
 {
-	ArraySize len = sema_len_from_const(expr);
+	ArrayIndex len = sema_len_from_const(expr);
 	ASSERT(len > 0);
 	Type *indexed = type_get_indexed_type(expr->type);
 	to_type = type_infer_len_from_actual_type(to_type, type_get_array(indexed, len));

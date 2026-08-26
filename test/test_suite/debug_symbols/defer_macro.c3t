@@ -173,7 +173,7 @@ loop.exit:                                        ; preds = %loop.cond
   ret void, !dbg !30
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define i32 @test.main(ptr %0, i64 %1) #0 !dbg !32 {
 entry:
   %args = alloca %"char[][]", align 8
@@ -200,7 +200,7 @@ entry:
   ret i32 0, !dbg !66
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define ptr @test.create_foo(i32 %0, ptr %1, i64 %2, ptr %3, i64 %4) #0 !dbg !67 {
 entry:
   %attach = alloca %Attach_Arg, align 8
@@ -637,6 +637,8 @@ no_match:                                         ; preds = %compare
   br label %check
 }
 
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+
 !llvm.dbg.cu = !{!6}
 
 !0 = !{i32 2, !"Dwarf Version", i32 4}
@@ -753,7 +755,7 @@ no_match:                                         ; preds = %compare
 !111 = !DILocation
 !112 = !DILocalVariable(name: "x", arg: 2
 !113 = !DILocation
-!114 = !DILocalVariable(name: "len", scope: !102, file: !7, line: 232, type: !46, align: 64)
+!114 = !DILocalVariable(name: "len", scope: !102, file: !7,
 !115 = !DILocation
 !116 = !DILocalVariable(name: "out", arg: 1, scope: !117, file: !7
 !117 = distinct !DISubprogram(name: "fprint", linkageName: "fprint", scope:
