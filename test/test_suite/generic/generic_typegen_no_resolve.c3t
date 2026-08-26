@@ -1,0 +1,28 @@
+module test;
+import buf_array;
+
+struct Test
+{
+	Buf_Array{int}* array;
+}
+
+fn int main()
+{
+	Buf_Array{int} array;
+	return array[0];
+}
+
+module buf_array;
+
+alias Buf_Array <Type> = Buf_Array_Impl{Type, 0};
+
+struct Buf_Array_Impl <Type, SIZE>
+{
+	Type[] data;
+	sz     count;
+}
+
+fn Type Buf_Array_Impl.get(&self, sz index) @operator([]) @inline
+{
+	return self.data[index];
+}

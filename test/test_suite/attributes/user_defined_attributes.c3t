@@ -54,6 +54,6 @@ entry:
   ret void
 }
 
-attributes #0 = { noreturn nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
-attributes #1 = { noinline nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
-attributes #2 = { nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #0 = { noreturn nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #1 = { noinline nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
+attributes #2 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

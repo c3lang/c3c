@@ -1,0 +1,69 @@
+struct TrieNode
+{
+	int[4] next;
+	bool is_end;
+}
+
+macro TrieNode[] set_child(TrieNode[] $nodes, int $idx, int $c, int $target)
+{
+	TrieNode[] $out = {};
+	$for var $i = 0; $i < $nodes.len; $i++:
+		$if $i == $idx:
+			var $next = $nodes[$i].next;
+			$next[$c] = $target;
+			$out +++= { (TrieNode) { .next = $next, .is_end = $nodes[$i].is_end } };
+		$else
+			$out +++= { $nodes[$i] };
+		$endif
+	$endfor
+	return $out;
+}
+
+macro TrieNode[] mark_end(TrieNode[] $nodes, int $idx)
+{
+	TrieNode[] $out = {};
+	$for var $i = 0; $i < $nodes.len; $i++:
+		$if $i == $idx:
+			$out +++= { (TrieNode) { .next = $nodes[$i].next, .is_end = true } };
+		$else
+			$out +++= { $nodes[$i] };
+		$endif
+	$endfor
+	return $out;
+}
+
+macro TrieNode[] build_trie(String[] $words)
+{
+	TrieNode[] $nodes = { (TrieNode) {} };
+	$foreach $word : $words:
+		var $curr = 0;
+		$foreach $ch : $word:
+			var $c = (int)($ch - 'a');
+			var $next = $nodes[$curr].next[$c];
+			$if $next == 0:
+				$next = (int)$nodes.len;
+				$nodes = set_child($nodes, $curr, $c, $next);
+				$nodes +++= { (TrieNode) {} };
+			$endif
+			$curr = $next;
+		$endforeach
+		$nodes = mark_end($nodes, $curr);
+	$endforeach
+	return $nodes;
+}
+
+fn int main() => 0;
+const TrieNode[*] TRIE = build_trie({ "ab", "ac", "ba" });
+
+fn bool contains(String word)
+{
+	int curr = 0;
+	foreach (ch : word)
+	{
+		int c = (int)(ch - 'a');
+		if (c < 0 || c >= 4) return false;
+		curr = TRIE[curr].next[c];
+		if (curr == 0) return false;
+	}
+	return TRIE[curr].is_end;
+}

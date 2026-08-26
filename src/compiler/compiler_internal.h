@@ -573,6 +573,7 @@ typedef struct
 		{
 			bool attr_inline : 1;
 			bool attr_noinline : 1;
+			bool attr_noredzone : 1;
 			bool attr_extname : 1;
 			bool attr_naked : 1;
 			bool attr_benchmark : 1;
@@ -588,6 +589,8 @@ typedef struct
 			bool attr_nosanitize_thread : 1;
 			bool is_lambda : 1;
 			bool in_macro : 1;
+			unsigned short stack_probe : 3;
+			unsigned short stack_protector : 3;
 			union
 			{
 				uint32_t priority;

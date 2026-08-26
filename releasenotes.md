@@ -15,7 +15,14 @@
 - Allow parameters to be queried for the default value using `.default_value`.
 - Allow ternary in alias definitions, e.g. `alias foo = $feat(ABC) ? foo_1 : foo_2`. #3464
 - On elf-x64, add noredzone to functions as a stopgap solution.
-
+- Add `--stack-probe`, `--stack-probe-size` and `--stack-protector` to configure stack probing and stack canary generation. #3437
+- Add `stack-probe` and `stack-protector` project options. #3437
+- Add `@stackprobe(level)`, `@nostackprobe`, `@stackprotector(level)` and `@nostackprotector` attributes on functions and lambdas. #3437
+- Naked functions no longer have stack protectors by default.
+- Add `@noredzone` attribute.
+- Add `dso_local` attribute on ELF/COFF.
+- Let LLVM build the biggest modules first.
+ 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
 - `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.
@@ -35,6 +42,10 @@
 - `@str_pascalcase`/`@str_camelcase` treated digits as word separators and dropped them from the output. #3287
 - Typedef access resolution preferred inner type field over method. #3457
 - Generic gets instantiated despite being disabled with `@feat` #3459
+- Compiler hangs with generic alias in function. #3470
+- Resolution order for generics may cause generic function pointers to not get resolved before use. #3471
+- Stale tid in `thread::current` on POSIX. #3472
+- Compiler crashes on implicitly casting a `&a - &b` to another type. #3477
 
 ## 0.8.3 Change list
 
@@ -51,6 +62,7 @@
 - Defer resolution of typedef alignment and generics, allowing more recursive definitions.
 - Improve error message on multiple <* *> in a row. #2971
 - Add the `lgdt` and `lidt` instructions to x86 inline assembly.
+- `$foo = ...` did not always fold things to a constant value as far as possible.
 
 ### Stdlib changes
 - LinkedList and Deque added a `prepend` method.
@@ -101,6 +113,8 @@
 - `io::printf("%3d", 1)` would return the wrong printed length. #3432
 - Crash when using ternary operator with vector type and inline constdef #3433
 - Crash on assign-op to compile-time subscript with non-const result #3419
+- Excessive compile times for --strip-unused=no, due to crypto code with nested `@inline`.
+- Assert on calling a generic method in some cases. #3476
 
 ## 0.8.2 Change list
 

@@ -711,7 +711,7 @@ voiderr151:                                       ; preds = %noerr_block149, %gu
   ret void
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @test.main() #0 {
 entry:
   %varargslots = alloca [1 x %any], align 16
@@ -874,3 +874,5 @@ declare extern_weak i64 @std.io.File.flush(ptr) #0
 
 
 declare extern_weak i64 @std.io.printfn(ptr, ptr, i64, ptr, i64) #0
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

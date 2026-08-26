@@ -1867,15 +1867,15 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 			{
 				case ARCH_TYPE_MIPS64:
 				case ARCH_TYPE_MIPS64EL:
-					return RELOC_SMALL_PIC;
+					return RELOC_SMALL_PIE;
 				default:
 					return RELOC_NONE;
 			}
 		case OS_DARWIN_TYPES:
-			return RELOC_BIG_PIC;
+			return RELOC_BIG_PIE;
 		case OS_TYPE_WIN32:
 			if (arch == ARCH_TYPE_X86) return RELOC_NONE;
-			return RELOC_BIG_PIC;
+			return RELOC_BIG_PIE;
 		case OS_TYPE_WASI:
 		case OS_TYPE_EMSCRIPTEN:
 			return RELOC_NONE;
@@ -2508,8 +2508,15 @@ void target_setup(BuildTarget *build_target)
 
 	}
 	ASSERT(compiler.platform.reloc_model != RELOC_DEFAULT);
+	compiler.platform.use_dso_local = compiler.platform.object_format == OBJ_FORMAT_COFF || compiler.platform.object_format == OBJ_FORMAT_ELF;
 
-		// TODO remove
+
+	if (compiler.platform.reloc_model == RELOC_BIG_PIC || compiler.platform.reloc_model == RELOC_SMALL_PIC)
+	{
+		compiler.platform.use_dso_local = false;
+	}
+
+	// TODO remove
 	type_setup(&compiler.platform);
 
 

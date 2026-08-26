@@ -34,7 +34,7 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   ret ptr %val
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define ptr @elvis.elvis2(ptr %0, ptr %1) #0 {
 entry:
   %i2b = icmp ne ptr %0, null
@@ -79,3 +79,5 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %4 = zext i1 %val to i8
   ret i8 %4
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

@@ -62,6 +62,8 @@ const char *project_default_keys[][2] = {
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
+		{"stack-probe", "Set the stack argument probing mode: none, call (default), inline."},
+		{"stack-protector", "Set the stack protection level: none, basic (default), strong, all."},
 		{"sources", "Paths to project sources for all targets."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
 		{"symtab", "Sets the preferred symtab size."},
@@ -155,6 +157,8 @@ const char* project_target_keys[][2] = {
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
+		{"stack-probe", "Set the stack argument probing mode for this target: none, call (default), inline."},
+		{"stack-protector", "Set the stack protection level for this target: none, basic (default), strong, all."},
 		{"sources", "Additional paths to project sources for the target."},
 		{"sources-override", "Paths to project sources for this target, overriding global settings."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
@@ -522,6 +526,14 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	// linux-libc
 	LinuxLibc linux_libc = GET_SETTING(LinuxLibc, "linux-libc", linuxlibc, "`gnu`, `musl` or `host`.");
 	if (linux_libc > -1) target->linuxpaths.libc = linux_libc;
+
+	// stack-probe
+	StackProbe stack_probe_val = GET_SETTING(StackProbe, "stack-probe", stack_probe, "`none`, `call` or `inline`");
+	if (stack_probe_val != STACK_PROBE_NOT_SET) target->stack_probe = stack_probe_val;
+
+	// stack-protector
+	StackProtector stack_protector_val = GET_SETTING(StackProtector, "stack-protector", stack_protector, "`none`, `basic`, `strong` or `all`");
+	if (stack_protector_val != STACK_PROTECTOR_NOT_SET) target->stack_protector = stack_protector_val;
 
 	// version
 	target->version = get_string(context, json, "version", target->version);

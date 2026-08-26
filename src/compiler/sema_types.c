@@ -210,19 +210,8 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 }
 
 
-static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind)
+INLINE bool sema_resolve_type_on_use(SemaContext *context, Decl *decl, TypeInfo *type_info, ResolveTypeKind resolve_type_kind)
 {
-	if (type_info->unresolved.name == type_string->name && !type_info->unresolved.path)
-	{
-		type_info->type = type_string;
-		type_info->resolve_status = RESOLVE_DONE;
-		return true;
-	}
-	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->loc);
-
-	// Already handled
-	if (!decl) return type_info_poison(type_info);
-
 	decl = decl_flatten(decl);
 	switch (decl->decl_kind)
 	{
@@ -302,7 +291,21 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			UNREACHABLE
 	}
 	UNREACHABLE
+}
+static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind)
+{
+	if (type_info->unresolved.name == type_string->name && !type_info->unresolved.path)
+	{
+		type_info->type = type_string;
+		type_info->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->loc);
 
+	// Already handled
+	if (!decl) return type_info_poison(type_info);
+
+	return sema_resolve_type_on_use(context, decl, type_info, resolve_type_kind);
 }
 
 
@@ -429,7 +432,7 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 }
 
 // Foo{...}
-INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
+static inline bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	TypeInfo *inner = type_info->generic.base;
 	if (inner->kind != TYPE_INFO_IDENTIFIER || inner->subtype != TYPE_COMPRESSED_NONE || inner->optional)
@@ -451,18 +454,20 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	}
 	compiler.generic_depth++;
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,
-	                                                   inner->loc, type_info->generic.params, type_info->loc);
+													   inner->loc, type_info->generic.params, type_info->loc);
 	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
 	ASSERT_SPAN(type_info, type != NULL);
 	type_info->type = type->type;
-	if (compiler.generic_depth == 0) return true;
-	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
-	    && !context->call_env.current_function->func_decl.in_macro && !context->generic_instance)
+	if (compiler.generic_depth != 0)
 	{
-		RETURN_SEMA_ERROR(type_info, "Recursively generic type declarations are only allowed inside of macros. Use `alias` to define an alias for the type instead.");
+		if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
+			&& !context->call_env.current_function->func_decl.in_macro && !context->generic_instance)
+		{
+			RETURN_SEMA_ERROR(type_info, "Recursively generic type declarations are only allowed inside of macros. Use `alias` to define an alias for the type instead.");
+		}
 	}
-	return true;
+	return sema_resolve_type_on_use(context, type, type_info, resolve_kind);
 }
 
 static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner)
@@ -523,7 +528,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 		case TYPE_INFO_POISON:
 			UNREACHABLE
 		case TYPE_INFO_GENERIC:
-			if (!sema_resolve_generic_type(context, type_info)) return type_info_poison(type_info);
+			if (!sema_resolve_generic_type(context, type_info, resolve_kind)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:

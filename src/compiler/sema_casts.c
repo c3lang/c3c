@@ -430,8 +430,10 @@ RETRY:
 			{
 				case BINARYOP_ERROR:
 					UNREACHABLE
-				case BINARYOP_MULT:
 				case BINARYOP_SUB:
+					if (type_is_pointer_type(exprptr(expr->binary_expr.right)->type)) return expr;
+					FALLTHROUGH;
+				case BINARYOP_MULT:
 				case BINARYOP_ADD:
 				case BINARYOP_DIV:
 				case BINARYOP_MOD:
@@ -561,9 +563,10 @@ RETRY:
 		{
 			switch (expr->unary_expr.operator)
 			{
-				case UNARYOP_ERROR:
 				case UNARYOP_ADDR:
 				case UNARYOP_TADDR:
+					return expr;
+				case UNARYOP_ERROR:
 					UNREACHABLE;
 				case UNARYOP_DEREF:
 					// Check sizes.
@@ -1427,6 +1430,13 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 	if (problem)
 	{
 		if (is_silent) return false;
+		// &x - &y might something they attempt to narrow. That's not allowed.
+		if (problem->expr_kind == EXPR_BINARY
+			&& problem->binary_expr.operator == BINARYOP_SUB
+			&& type_is_pointer_type(exprptr(problem->binary_expr.right)->type))
+		{
+			RETURN_CAST_ERROR(expr, "A pointer diff cannot implicitly be cast to %s, but you may use an explicit cast.", type_quoted_error_string(cc->to_type));
+		}
 		// If it's an integer that's the problem, zoom in on that one.
 		if (type_is_integer(type_flatten(problem->type))) expr = problem;
 		// Otherwise require a cast.
