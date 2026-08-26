@@ -1,3 +1,4 @@
+// #target: netbsd-x64
 module foo;
 
 bitstruct Foo : int
@@ -14,7 +15,7 @@ fn void test()
 
 /* #expect: foo.ll
 
-define void @foo.test() #0 {
+define dso_local void @foo.test() #0 {
 entry:
   %f = alloca i32, align 4
   store i32 2, ptr %f, align 4

@@ -1,3 +1,4 @@
+// #target: netbsd-x64
 module foo;
 macro int @cofefe(a; @body(x))
 {
@@ -21,7 +22,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @foo.main() #0 {
+define dso_local void @foo.main() #0 {
 entry:
   %x = alloca i32, align 4
   %y = alloca i32, align 4

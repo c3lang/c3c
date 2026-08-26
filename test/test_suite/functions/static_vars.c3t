@@ -1,3 +1,4 @@
+// #target: freebsd-x64
 module foo;
 
 fn int test()
@@ -13,7 +14,7 @@ fn int test()
 @test.x = internal unnamed_addr global i32 1, align 4
 @test.y = internal thread_local(localdynamic) unnamed_addr global i32 2, align 4
 
-define i32 @foo.test() #0 {
+define dso_local i32 @foo.test() #0 {
 entry:
   %0 = call ptr @llvm.threadlocal.address.p0(ptr @test.y)
   %1 = load i32, ptr @test.x, align 4

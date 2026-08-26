@@ -18,7 +18,7 @@ fn int main(String[] args)
 
 /* #expect: test.ll
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define i32 @test.main(ptr %0, i64 %1) #0 {
 entry:
   %args = alloca %"char[][]", align 8
@@ -168,3 +168,5 @@ switch.default:                                   ; preds = %next_if20
 switch.exit:                                      ; preds = %switch.default, %voiderr
   ret i32 0
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

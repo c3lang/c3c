@@ -563,6 +563,7 @@ void compiler_compile(void)
 			error_exit("Unfinished C backend!");
 		case BACKEND_LLVM:
 #if LLVM_AVAILABLE
+			llvm_setup();
 			gen_contexts = llvm_gen(modules, module_count);
 			task = &thread_compile_task_llvm;
 #else 
@@ -695,14 +696,7 @@ void compiler_compile(void)
 	int task_count = (int)vec_size(tasks);
 	if (task_count > 0)
 	{
-		Task *task_last = VECLAST(tasks);
-		vec_pop(tasks);
-		task_last->task(task_last->arg);
-		task_count--;
-		if (task_count)
-		{
-			taskqueue_run((int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads), tasks);
-		}
+		taskqueue_run((int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads), tasks);
 	}
 	if (compiler.build.print_output)
 	{

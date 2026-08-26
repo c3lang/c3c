@@ -1,0 +1,15 @@
+module test;
+import buf_array;
+
+fn void foo(Buf_Array{int}* arr) {}
+fn int main() => 1;
+
+module buf_array;
+
+alias Buf_Array <Type> = Buf_Array_Impl{Type, 0};
+
+struct Buf_Array_Impl <Type, SIZE>
+{
+	Type[] data;
+	sz     count;
+}

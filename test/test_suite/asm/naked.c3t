@@ -26,3 +26,4 @@ entry:
   unreachable
 }
 
+attributes #0 = { naked nounwind uwtable "no-stack-arg-probe" "no-trapping-math"="true" }

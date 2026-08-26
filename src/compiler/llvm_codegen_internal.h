@@ -153,6 +153,7 @@ typedef struct GenContext_
 	LLVMTypeRef dyn_find_function_type;
 	LLVMValueRef memcmp_function;
 	LLVMTypeRef memcmp_function_type;
+	unsigned module_size;
 } GenContext;
 
 // LLVM Intrinsics
@@ -304,6 +305,8 @@ typedef struct
 	unsigned sext;            // sign extend
 	unsigned sret;            // struct return pointer
 	unsigned ssp;             // safe stack protection
+	unsigned sspstrong;
+	unsigned sspreq;
 	unsigned target_features; // target-features for function compilation
 	unsigned uwtable;
 	unsigned writeonly;       // No writes on pointer

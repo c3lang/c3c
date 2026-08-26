@@ -25,7 +25,7 @@ fn void bar(Enum e) {
 @"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @"$ct.test.Enum" = linkonce global { i8, i64, ptr, i64, i64, i64, [3 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 3, [3 x %"char[]"] [%"char[]" { ptr @.enum.ONE, i64 3 }, %"char[]" { ptr @.enum.TWO, i64 3 }, %"char[]" { ptr @.enum.THREE, i64 5 }] }, align 8
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @foo.bar(i32 %0) #0 {
 entry:
   %x = alloca %"char[]", align 8
@@ -102,3 +102,5 @@ noerr_block15:                                    ; preds = %after_check13
 voiderr:                                          ; preds = %noerr_block15, %guard_block14, %guard_block8, %guard_block
   ret void
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

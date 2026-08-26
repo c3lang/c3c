@@ -510,6 +510,12 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 		if (opt_ref) llvm_set_external_reference(opt_ref, should_weaken);
 		return;
 	}
+	if (!should_weaken && compiler.platform.use_dso_local)
+	{
+		LLVMSetDSOLocal(ref, true);
+		if (opt_ref) LLVMSetDSOLocal(opt_ref, true);
+	}
+
 	if (decl_is_externally_visible(decl) && !is_static)
 	{
 		if (decl->is_export && compiler.platform.os == OS_TYPE_WIN32  && !compiler.build.win.def && decl->name != kw_main && decl->name != kw_mainstub)
@@ -953,6 +959,8 @@ static void llvm_codegen_setup(void)
 	attribute_id.sext = lookup_attribute("signext");
 	attribute_id.sret = lookup_attribute("sret");
 	attribute_id.ssp = lookup_attribute("ssp");
+	attribute_id.sspstrong = lookup_attribute("sspstrong");
+	attribute_id.sspreq = lookup_attribute("sspreq");
 	attribute_id.target_features = lookup_attribute("target-features");
 	attribute_id.uwtable = lookup_attribute("uwtable");
 	attribute_id.writeonly = lookup_attribute("writeonly");
@@ -1238,6 +1246,71 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 
 }
 
+INLINE void llvm_emit_stack_protector_attributes(GenContext *c, LLVMValueRef function, Decl *decl)
+{
+	StackProtector stack_protector = (StackProtector)decl->func_decl.stack_protector - 1;
+	if (stack_protector == STACK_PROTECTOR_NOT_SET)
+	{
+		stack_protector = decl->func_decl.attr_naked ? STACK_PROTECTOR_NONE : compiler.build.stack_protector;
+	}
+	if (stack_protector == STACK_PROTECTOR_NOT_SET)
+	{
+		switch (compiler.platform.os)
+		{
+			case OS_TYPE_OPENBSD:
+				stack_protector = STACK_PROTECTOR_STRONG;
+				break;
+			case OS_TYPE_MACOSX:
+			case OS_TYPE_IOS:
+				stack_protector = STACK_PROTECTOR_BASIC;
+				break;
+			default:
+				stack_protector = STACK_PROTECTOR_NONE;
+		}
+	}
+	switch (stack_protector)
+	{
+		case STACK_PROTECTOR_BASIC:
+			llvm_attribute_add(c, function, attribute_id.ssp, -1);
+			llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
+			break;
+		case STACK_PROTECTOR_STRONG:
+			llvm_attribute_add(c, function, attribute_id.sspstrong, -1);
+			break;
+		case STACK_PROTECTOR_ALL:
+			llvm_attribute_add(c, function, attribute_id.sspreq, -1);
+			break;
+		default:
+			break;
+	}
+}
+
+INLINE void llvm_emit_stack_probe_attributes(GenContext *c, LLVMValueRef function, Decl *decl)
+{
+	StackProbe stack_probe = (StackProbe)decl->func_decl.stack_probe - 1;
+	if (stack_probe == STACK_PROBE_NOT_SET)
+	{
+		stack_probe = decl->func_decl.attr_naked ? STACK_PROBE_NONE : compiler.build.stack_probe;
+	}
+	switch (stack_probe)
+	{
+		case STACK_PROBE_NONE:
+			llvm_attribute_add_string(c, function, "no-stack-arg-probe", "", -1);
+			break;
+		case STACK_PROBE_INLINE:
+			llvm_attribute_add_string(c, function, "probe-stack", "inline-asm", -1);
+			break;
+		default:
+			break;
+	}
+	if (compiler.build.stack_probe_size != DEFAULT_STACK_PROBE_SIZE)
+	{
+		char probe_size_str[32];
+		snprintf(probe_size_str, 32, "%u", compiler.build.stack_probe_size);
+		llvm_attribute_add_string(c, function, "stack-probe-size", probe_size_str, -1);
+	}
+}
+
 void llvm_append_function_attributes(GenContext *c, Decl *decl)
 {
 	FunctionPrototype *prototype = type_get_resolved_prototype(decl->type);
@@ -1245,16 +1318,16 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	LLVMValueRef function = decl->backend_ref;
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
+	llvm_emit_stack_protector_attributes(c, function, decl);
+	llvm_emit_stack_probe_attributes(c, function, decl);
 	if (c->debug.enable_stacktrace)
 	{
 		llvm_attribute_add_string(c, function, "frame-pointer", "all", -1);
-		llvm_attribute_add(c, function, attribute_id.ssp, -1);
 	}
 	if (compiler.build.feature.implicit_float == IMPLICIT_FLOAT_OFF)
 	{
 		llvm_attribute_add(c, function, attribute_id.noimplicitfloat, -1);
 	}
-	llvm_attribute_add_string(c, function, "stack-protector-buffer-size", "8", -1);
 	llvm_attribute_add_string(c, function, "no-trapping-math", "true", -1);
 	int offset = prototype->ret_rewrite == RET_OPTIONAL_VALUE ? 1 : 0;
 
@@ -1270,7 +1343,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.noinline, -1);
 	}
-	if (compiler.platform.noredzone)
+	if (compiler.platform.noredzone || decl->func_decl.attr_noredzone)
 	{
 		llvm_attribute_add(c, function, attribute_id.noredzone, -1);
 	}
@@ -1507,6 +1580,8 @@ INLINE GenContext *llvm_gen_tests(Module** modules, int module_count, LLVMContex
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
 
 	compiler.build.debug_info = actual_debug_info;
+	c->module_size = LLVMGetModuleInstructionCount(c->module);
+
 	return c;
 }
 
@@ -1575,7 +1650,20 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, int module_count, LLVMC
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
 
 	compiler.build.debug_info = actual_debug_info;
+	c->module_size = LLVMGetModuleInstructionCount(c->module);
+
 	return c;
+}
+
+static int gen_context_cmp(const void* c1, const void* c2)
+{
+	GenContext *ctx1 = *((GenContext**)c1);
+	GenContext *ctx2 = *((GenContext**)c2);
+	unsigned x = ctx1->module_size;
+	unsigned y = ctx2->module_size;
+	if (x > y) return 1;
+	if (y > x) return -1;
+	return 0;
 }
 
 void **llvm_gen(Module** modules, int module_count)
@@ -1625,6 +1713,24 @@ void **llvm_gen(Module** modules, int module_count)
 	if (compiler.build.build_test)
 	{
 		vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
+	}
+	int contexts_count = vec_size(gen_contexts);
+	qsort(gen_contexts, contexts_count, sizeof(void*), &gen_context_cmp);
+	if (compiler.build.print_stats)
+	{
+		int last = contexts_count - 1;
+		int first = last - 20;
+		if (first < 0) first = 0;
+		int line = 1;
+		OUTN("--- Module size top list -----------------------------------------");
+		for (int i = last; i >= first; i--)
+		{
+			GenContext *ctx = gen_contexts[i];
+			OUTF("%2d %-40s %10u approx. loc\n",
+				line++, ctx->base_name, ctx->module_size / 10);
+		}
+		OUTN("------------------------------------------------------------------");
+		OUTN("");
 	}
 	return (void**)gen_contexts;
 }
@@ -1793,6 +1899,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		gencontext_verify_ir(gen_context);
 	}
 	if (!has_elements) return NULL;
+	gen_context->module_size = LLVMGetModuleInstructionCount(gen_context->module);
 	return gen_context;
 }
 

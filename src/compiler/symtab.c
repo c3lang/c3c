@@ -407,6 +407,10 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
 	attribute_list[ATTRIBUTE_CALLCONV] = KW_DEF("@callconv");
+	attribute_list[ATTRIBUTE_STACKPROBE] = KW_DEF("@stackprobe");
+	attribute_list[ATTRIBUTE_NOSTACKPROBE] = KW_DEF("@nostackprobe");
+	attribute_list[ATTRIBUTE_STACKPROTECTOR] = KW_DEF("@stackprotector");
+	attribute_list[ATTRIBUTE_NOSTACKPROTECTOR] = KW_DEF("@nostackprotector");
 	attribute_list[ATTRIBUTE_CNAME] = KW_DEF("@cname");
 	attribute_list[ATTRIBUTE_COMPACT] = KW_DEF("@compact");
 	attribute_list[ATTRIBUTE_CONST] = KW_DEF("@const");
@@ -434,6 +438,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_NOPADDING] = KW_DEF("@nopadding");
 	attribute_list[ATTRIBUTE_NORECURSE] = KW_DEF("@norecurse");
 	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("@noreturn");
+	attribute_list[ATTRIBUTE_NOREDZONE] = KW_DEF("@noredzone");
 	attribute_list[ATTRIBUTE_NOSANITIZE] = KW_DEF("@nosanitize");
 	attribute_list[ATTRIBUTE_NOSTRIP] = KW_DEF("@nostrip");
 	attribute_list[ATTRIBUTE_OBFUSCATE] = KW_DEF("@obfuscate");

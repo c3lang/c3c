@@ -832,6 +832,7 @@ else()
         -Werror
 		-Wstrict-prototypes
 		-Wsign-compare
+		-Wno-unused-command-line-argument
 		-Wno-unknown-pragmas
 		-Wno-gnu-auto-type
 		-Wno-gnu-statement-expression-from-macro-expansion

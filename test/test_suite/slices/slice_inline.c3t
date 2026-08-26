@@ -24,7 +24,7 @@ entry:
   %2 = insertvalue %"char[]" %1, i64 32, 1
   ret void
 }
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @foo.Data.working(ptr byval(%Data) align 8 %0) #0 {
 entry:
   %1 = insertvalue %"char[]" undef, ptr %0, 0
@@ -32,3 +32,4 @@ entry:
   ret void
 }
 
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

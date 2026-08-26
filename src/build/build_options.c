@@ -199,6 +199,9 @@ static void usage(bool full)
 		print_opt("--max-vector-size <number>", "Set the maximum vector bit size to allow (default: 4096).");
 		print_opt("--max-stack-object-size <number>", "Set the maximum size of a stack object in KB (default: 128).");
 		print_opt("--max-macro-iterations <number>", "Set the maximum number of iterations in a macro loop (default: 1048575).");
+		print_opt("--stack-probe=<option>", "Set the stack argument probing mode: none, call (default), inline.");
+		print_opt("--stack-probe-size <number>", "Set the stack size threshold for argument probing in bytes (default: 4096).");
+		print_opt("--stack-protector=<option>", "Set the stack protection level: none, basic (default), strong, all.");
 		PRINTF("");
 		print_opt("--print-linking", "Print linker arguments.");
 		PRINTF("");
@@ -792,7 +795,7 @@ static void print_version(void)
 #endif
 }
 
-static void parse_option(BuildOptions *options)
+static void parse_option(BuildOptions *options) // NOLINT
 {
 	const char *argopt;
 	switch (current_arg[1])
@@ -1011,12 +1014,12 @@ static void parse_option(BuildOptions *options)
 			}
 			break;
 		case '-':
-			if ((argopt = match_argopt("validation")))
+			if ((argopt = match_argopt("validation"))) // NOLINT
 			{
 				options->validation_level = parse_opt_select(ValidationLevel, argopt, validation_levels);
 				return;
 			}
-			if ((argopt = match_argopt("ansi")))
+			if ((argopt = match_argopt("ansi"))) // NOLINT
 			{
 				options->ansi = parse_opt_select(Ansi, argopt, on_off);
 				return;
@@ -1027,7 +1030,7 @@ static void parse_option(BuildOptions *options)
 				{
 					FAIL_WITH_ERR_LONG("'--max-mem' expected a max memory.");
 				}
-				if (atoll(next_arg()) < 1)
+				if (atoll(next_arg()) < 1) // NOLINT
 				{
 					FAIL_WITH_ERR_LONG("'--max-mem' expected a positive integer value.");
 				}
@@ -1088,32 +1091,32 @@ static void parse_option(BuildOptions *options)
 				options->print_large_functions = true;
 				return;
 			}
-			if ((argopt = match_argopt("warn-deadcode")))
+			if ((argopt = match_argopt("warn-deadcode"))) // NOLINT
 			{
 				options->warnings.dead_code = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
-			if ((argopt = match_argopt("warn-recursivecontracts")))
+			if ((argopt = match_argopt("warn-recursivecontracts"))) // NOLINT
 			{
 				options->warnings.recursive_contracts = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
-			if ((argopt = match_argopt("warn-builtin")))
+			if ((argopt = match_argopt("warn-builtin"))) // NOLINT
 			{
 				options->warnings.builtin = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
-			if ((argopt = match_argopt("warn-methodvisibility")))
+			if ((argopt = match_argopt("warn-methodvisibility"))) // NOLINT
 			{
 				options->warnings.method_visibility = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
-			if ((argopt = match_argopt("warn-methodsnotresolved")))
+			if ((argopt = match_argopt("warn-methodsnotresolved"))) // NOLINT
 			{
 				options->warnings.methods_not_resolved = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
-			if ((argopt = match_argopt("warn-deprecation")))
+			if ((argopt = match_argopt("warn-deprecation"))) // NOLINT
 			{
 				options->warnings.deprecation = parse_opt_select(WarningLevel, argopt, warnings);
 				silence_deprecation = options->warnings.deprecation == WARNING_SILENT;
@@ -1134,7 +1137,7 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) FAIL_WITH_ERR_LONG("error: --symtab needs a valid integer.");
 				const char *symtab_string = next_arg();
-				int symtab = atoi(symtab_string);
+				int symtab = atoi(symtab_string); // NOLINT
 				if (symtab < 1024) FAIL_WITH_ERR_LONG("Expected the --symtab size to be valid positive integer >= 1024.");
 				if (symtab > MAX_SYMTAB_SIZE)
 				{
@@ -1163,7 +1166,7 @@ static void parse_option(BuildOptions *options)
 				print_version();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
-			if ((argopt = match_argopt("backend")))
+			if ((argopt = match_argopt("backend"))) // NOLINT
 			{
 				options->backend = parse_opt_select(CompilerBackend, argopt, backends);
 				return;
@@ -1174,77 +1177,77 @@ static void parse_option(BuildOptions *options)
 				if (!options->verbosity_level) options->verbosity_level = -1;
 				return;
 			}
-			if ((argopt = match_argopt("implicit-float")))
+			if ((argopt = match_argopt("implicit-float"))) // NOLINT
 			{
 				options->implicit_float = parse_opt_select(ImplicitFloat, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("fp-math")))
+			if ((argopt = match_argopt("fp-math"))) // NOLINT
 			{
 				options->fp_math = parse_opt_select(FpOpt, argopt, fp_math);
 				return;
 			}
-			if ((argopt = match_argopt("linux-libc")))
+			if ((argopt = match_argopt("linux-libc"))) // NOLINT
 			{
 				options->linux_libc = parse_opt_select(LinuxLibc, argopt, linuxlibc);
 				return;
 			}
-			if ((argopt = match_argopt("optsize")))
+			if ((argopt = match_argopt("optsize"))) // NOLINT
 			{
 				options->optsize = parse_opt_select(SizeOptimizationLevel, argopt, optsizes);
 				return;
 			}
-			if ((argopt = match_argopt("optlevel")))
+			if ((argopt = match_argopt("optlevel"))) // NOLINT
 			{
 				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
 				return;
 			}
-			if ((argopt = match_argopt("test-log-level")))
+			if ((argopt = match_argopt("test-log-level"))) // NOLINT
 			{
 				options->test_log_level = parse_opt_select(TestLogLevel, argopt, test_log_levels);
 				return;
 			}
-			if ((argopt = match_argopt("merge-functions")))
+			if ((argopt = match_argopt("merge-functions"))) // NOLINT
 			{
 				options->merge_functions = parse_opt_select(MergeFunctions, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("loop-vectorize")))
+			if ((argopt = match_argopt("loop-vectorize"))) // NOLINT
 			{
 				options->loop_vectorization = parse_opt_select(AutoVectorization, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("unroll-loops")))
+			if ((argopt = match_argopt("unroll-loops"))) // NOLINT
 			{
 				options->unroll_loops = parse_opt_select(UnrollLoops, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("slp-vectorize")))
+			if ((argopt = match_argopt("slp-vectorize"))) // NOLINT
 			{
 				options->slp_vectorization = parse_opt_select(AutoVectorization, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("safe")))
+			if ((argopt = match_argopt("safe"))) // NOLINT
 			{
 				options->safety_level = parse_opt_select(SafetyLevel, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("show-backtrace")))
+			if ((argopt = match_argopt("show-backtrace"))) // NOLINT
 			{
 				options->show_backtrace = parse_opt_select(ShowBacktrace, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("panic-msg")))
+			if ((argopt = match_argopt("panic-msg"))) // NOLINT
 			{
 				options->panic_level = parse_opt_select(PanicLevel, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("single-module")))
+			if ((argopt = match_argopt("single-module"))) // NOLINT
 			{
 				options->single_module = parse_opt_select(SingleModule, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("linker")))
+			if ((argopt = match_argopt("linker"))) // NOLINT
 			{
 				options->custom_linker_path = NULL;
 				options->linker_type = parse_opt_select(LinkerType, argopt, linker_kind);
@@ -1255,22 +1258,22 @@ static void parse_option(BuildOptions *options)
 				}
 				return;
 			}
-			if ((argopt = match_argopt("link-libc")))
+			if ((argopt = match_argopt("link-libc"))) // NOLINT
 			{
 				options->link_libc = parse_opt_select(LinkLibc, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("strip-unused")))
+			if ((argopt = match_argopt("strip-unused"))) // NOLINT
 			{
 				options->strip_unused = parse_opt_select(StripUnused, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("emit-stdlib")))
+			if ((argopt = match_argopt("emit-stdlib"))) // NOLINT
 			{
 				options->emit_stdlib = parse_opt_select(EmitStdlib, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("custom-libc")))
+			if ((argopt = match_argopt("custom-libc"))) // NOLINT
 			{
 				options->custom_libc = parse_opt_select(CustomLibc, argopt, on_off);
 				return;
@@ -1281,44 +1284,69 @@ static void parse_option(BuildOptions *options)
 				vec_add(options->emit_only, next_arg());
 				return;
 			}
-			if ((argopt = match_argopt("use-stdlib")))
+			if ((argopt = match_argopt("use-stdlib"))) // NOLINT
 			{
 				options->use_stdlib = parse_opt_select(UseStdlib, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("x86vec")))
+			if ((argopt = match_argopt("x86vec"))) // NOLINT
 			{
 				options->x86_vector_capability = parse_opt_select(X86VectorCapability, argopt, x86_vector_capability);
 				return;
 			}
-			if ((argopt = match_argopt("win64-simd")))
+			if ((argopt = match_argopt("win64-simd"))) // NOLINT
 			{
 				options->win_64_simd = parse_opt_select(Win64Simd, argopt, win64_simd_type);
 				return;
 			}
-			if ((argopt = match_argopt("win-debug")))
+			if ((argopt = match_argopt("win-debug"))) // NOLINT
 			{
 				options->win_debug = parse_opt_select(WinDebug, argopt, win_debug_type);
 				return;
 			}
-			if ((argopt = match_argopt("x86cpu")))
+			if ((argopt = match_argopt("x86cpu"))) // NOLINT
 			{
 				options->x86_cpu_set = parse_opt_select(X86CpuSet, argopt, x86_cpu_set);
 				return;
 			}
-			if ((argopt = match_argopt("riscv-cpu")))
+			if ((argopt = match_argopt("riscv-cpu"))) // NOLINT
 			{
 				options->riscv_cpu_set = parse_opt_select(RiscvCpuSet, argopt, riscv_cpu_set);
 				return;
 			}
-			if ((argopt = match_argopt("riscvfloat")))
+			if ((argopt = match_argopt("riscvfloat"))) // NOLINT
 			{
 				options->riscv_abi = parse_opt_select(RiscvAbi, argopt, riscv_capability);
 				return;
 			}
-			if ((argopt = match_argopt("riscv-abi")))
+			if ((argopt = match_argopt("riscv-abi"))) // NOLINT
 			{
 				options->riscv_abi = parse_opt_select(RiscvAbi, argopt, riscv_abi);
+				return;
+			}
+			if ((argopt = match_argopt("stack-probe"))) // NOLINT
+			{
+				options->stack_probe = parse_opt_select(StackProbe, argopt, stack_probe);
+				if (options->stack_probe == STACK_PROBE_NONE && options->stack_probe_size != DEFAULT_STACK_PROBE_SIZE)
+				{
+					PRINTF("WARNING: '--stack-probe-size' has no effect when '--stack-probe=none' is specified.");
+				}
+				return;
+			}
+			if (match_longopt("stack-probe-size"))
+			{
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg()); // NOLINT
+				if (size < 0) error_exit("Expected a valid integer >= 0 for --stack-probe-size");
+				options->stack_probe_size = size;
+				if (options->stack_probe == STACK_PROBE_NONE)
+				{
+					PRINTF("WARNING: '--stack-probe-size' has no effect when '--stack-probe=none' is specified.");
+				}
+				return;
+			}
+			if ((argopt = match_argopt("stack-protector"))) // NOLINT
+			{
+				options->stack_protector = parse_opt_select(StackProtector, argopt, stack_protector);
 				return;
 			}
 			if (match_longopt("cpu-flags"))
@@ -1334,25 +1362,25 @@ static void parse_option(BuildOptions *options)
 				options->cpu_flags = scratch_buffer_copy();
 				return;
 			}
-			if (match_longopt("max-stack-object-size"))
+			if (match_longopt("max-stack-object-size")) // NOLINT
 			{
-				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg()); // NOLINT
 				if (size < 1) error_exit("Expected a valid positive integer >= 1 for --max-stack-object-size.");
 				if (size > MAX_STACK_OBJECT_SIZE) error_exit("Expected a valid positive integer <= %d for --max-stack-object-size.", (int)MAX_STACK_OBJECT_SIZE);
 				options->max_stack_object_size = size;
 				return;
 			}
-			if (match_longopt("max-macro-iterations"))
+			if (match_longopt("max-macro-iterations")) // NOLINT
 			{
-				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg()); // NOLINT
 				if (size < 1) error_exit("Expected a valid positive integer >= 128 for --max-macro-iterations");
 				if (size > MAX_MACRO_ITERATIONS) error_exit("Expected a valid positive integer <= %u for --max-macro-iterations.", (unsigned)MAX_MACRO_ITERATIONS);
 				options->max_macro_iterations = size;
 				return;
 			}
-			if (match_longopt("max-vector-size"))
+			if (match_longopt("max-vector-size")) // NOLINT
 			{
-				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg());
+				int size = (at_end() || next_is_opt()) ? 0 : atoi(next_arg()); // NOLINT
 				if (size < 128) error_exit("Expected a valid positive integer >= 128 for --max-vector-size.");
 				if (size > MAX_VECTOR_WIDTH) error_exit("Expected a valid positive integer <= %u for --max-vector-size.", (unsigned)MAX_VECTOR_WIDTH);
 				if ((uint32_t)size != next_highest_power_of_2(size))
@@ -1362,28 +1390,28 @@ static void parse_option(BuildOptions *options)
 				options->max_vector_size = size;
 				return;
 			}
-			if ((argopt = match_argopt("memory-env")))
+			if ((argopt = match_argopt("memory-env"))) // NOLINT
 			{
 				options->memory_environment = parse_opt_select(MemoryEnvironment, argopt, memory_environment);
 				return;
 			}
-			if ((argopt = match_argopt("reloc")))
+			if ((argopt = match_argopt("reloc"))) // NOLINT
 			{
 				options->reloc_model = parse_opt_select(RelocModel, argopt, reloc_models);
 				return;
 			}
-			if (match_longopt("about"))
+			if (match_longopt("about")) // NOLINT
 			{
 				PRINTF("The C3 Compiler");
 				PRINTF("C3 is low level programming language based on C.");
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
-			if (match_longopt("no-obj"))
+			if (match_longopt("no-obj")) // NOLINT
 			{
 				options->no_obj = true;
 				return;
 			}
-			if (match_longopt("obj"))
+			if (match_longopt("obj")) // NOLINT
 			{
 				options->no_obj = false;
 				options->keep_object_files = true;
@@ -1456,9 +1484,9 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --threads needs a valid integer 1 or higher.");
 				const char *thread_string = next_arg();
-				int threads = atoi(thread_string);
-				if (threads < 1) PRINTF("Expected a valid integer 1 or higher.");
-				if (threads > MAX_THREADS) PRINTF("Cannot exceed %d threads.", MAX_THREADS);
+				int threads = atoi(thread_string); // NOLINT
+				if (threads < 1) error_exit("Expected a valid integer 1 or higher.");
+				if (threads > MAX_THREADS) error_exit("Cannot exceed %d threads, clamping at .", MAX_THREADS);
 				options->build_threads = threads;
 				return;
 			}
@@ -1564,7 +1592,7 @@ static void parse_option(BuildOptions *options)
 				options->win.sdk = unchecked_dir(options, next_arg());
 				return;
 			}
-			if ((argopt = match_argopt("trust")))
+			if ((argopt = match_argopt("trust"))) // NOLINT
 			{
 				options->trust_level = parse_opt_select(TrustLevel, argopt, trust_level);
 				return;
@@ -1575,7 +1603,7 @@ static void parse_option(BuildOptions *options)
 				options->win.def = next_arg();
 				return;
 			}
-			if ((argopt = match_argopt("wincrt")))
+			if ((argopt = match_argopt("wincrt"))) // NOLINT
 			{
 				options->win.crt_linking = parse_opt_select(WinCrtLinking, argopt, wincrt_linking);
 				return;
@@ -1590,12 +1618,12 @@ static void parse_option(BuildOptions *options)
 				options->win.vs_dirs = next_arg();
 				return;
 			}
-			if ((argopt = match_argopt("win-subsystem")))
+			if ((argopt = match_argopt("win-subsystem"))) // NOLINT
 			{
 				options->win.subsystem = parse_opt_select(WinSubsystem, argopt, win_subsystem);
 				return;
 			}
-			if ((argopt = match_argopt("sanitize")))
+			if ((argopt = match_argopt("sanitize"))) // NOLINT
 			{
 				options->sanitize_mode = parse_opt_select(SanitizeMode, argopt, sanitize_modes);
 				return;
@@ -1681,7 +1709,7 @@ static void parse_option(BuildOptions *options)
 					}
 					char *name_copy = strdup(name);
 					str_elide_in_place(name_copy, 32);
-					if (strchr(name, '/') != NULL || (PLATFORM_WINDOWS && strchr(name, '\\') != NULL))
+					if (strchr(name, '/') != NULL || (PLATFORM_WINDOWS && strchr(name, '\\') != NULL)) // NOLINT
 					{
 						error_exit(
 								"There is a problem including the library '%s': a library name should never contain the path. Use '--libdir' to add the "
@@ -1760,7 +1788,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("android-api"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: android-api needs a version.");
-				options->android.api_version = atoi(next_arg());
+				options->android.api_version = atoi(next_arg()); // NOLINT
 				return;
 			}
 			if (match_longopt("bsd-sysroot"))
@@ -1856,6 +1884,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
 		.linux_libc = LINUX_LIBC_NOT_SET,
+		.stack_probe = STACK_PROBE_NOT_SET,
+		.stack_protector = STACK_PROTECTOR_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
 		.output_dir = NULL,

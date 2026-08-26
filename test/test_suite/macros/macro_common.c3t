@@ -1,3 +1,4 @@
+// #target: openbsd-x64
 module test;
 
 macro frab(x)

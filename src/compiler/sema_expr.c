@@ -2824,7 +2824,10 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 	}
 	Type *pointee = func_ptr_type->pointer;
 	expr->call_expr.is_pointer_call = true;
-	return sema_call_analyse_func_invocation(context, pointee->function.decl, pointee, expr, NULL, optional,
+	Decl *func_decl = pointee->function.decl;
+	// This declaration might not have been resolved, so in that case do it.
+	if (func_decl->resolve_status != RESOLVE_DONE && !sema_analyse_decl(context, func_decl)) return false;
+	return sema_call_analyse_func_invocation(context, func_decl, pointee, expr, NULL, optional,
 											 func_ptr_type->pointer->name,
 											 no_match_ref);
 }
@@ -7763,7 +7766,7 @@ static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *e
 	// Evaluate right side to using inference from last type.
 	if (!sema_analyse_inferred_expr(context, left->type, right, NULL)) return false;
 
-	if (!expr_is_runtime_const(right))
+	if (!sema_cast_const(right) && !expr_is_runtime_const(right))
 	{
 		if (failed_ref) return *failed_ref = true, false;
 		RETURN_SEMA_ERROR(right, "You can only assign constants to a compile time variable.");
