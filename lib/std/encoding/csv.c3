@@ -1,16 +1,13 @@
 module std::encoding::csv;
 import std::io;
 
-faultdef INCONSISTANT_ROW_LENGTH, NON_UNIQUE_ENTRY;
+faultdef INCONSISTANT_ROW_LENGTH, NON_UNIQUE_ENTRY, INCORRECT_LINE_ENDING;
 
 struct CsvReader
 {
 	InStream stream;
 	Allocator allocator;
 	CsvRow headers;
-	char[] buffer;
-	sz cursor;
-	sz capacity;
 	String separator;
 	bitstruct : char
 	{
@@ -46,8 +43,6 @@ fn CsvReader? load(
 	CsvReader reader;
 	reader.allocator = allocator;
 	reader.stream = stream;
-	reader.buffer = alloc::new_array(allocator, char, buffer_size);
-	defer catch alloc::free(allocator, reader.buffer);
 	reader.separator = separator;
 	reader.has_header = has_header;
 	reader.allow_non_spec_line_endings = allow_non_spec_line_endings;
@@ -91,7 +86,6 @@ fn void? CsvReader.init(
 fn void CsvReader.free(&self)
 {
 	if (self.headers.len()) self.headers.free();
-	alloc::free(self.allocator, self.buffer);
 	self.allocator = null;
 }
 
@@ -112,22 +106,6 @@ fn String CsvRow.get_col(&self, sz col) @operator([])
 {
 	return self.list[col];
 }
-
-// <*
-//  @param [&inout] allocator
-// *>
-// fn CsvRow? CsvReader.read_row(self, Allocator allocator)
-// {
-// 	String row = io::readline(allocator, self.stream)!;
-// 	defer catch alloc::free(allocator, row);
-// 	String[] list = row.split(allocator, self.separator);
-// 	return { list, row, allocator };
-// }
-
-// fn CsvRow? CsvReader.tread_row(self)
-// {
-// 	return self.read_row(tmem) @inline;
-// }
 
 <*
  @require self.allocator != null : `Row already freed`
@@ -192,61 +170,84 @@ macro void? CsvReader.@each_row(&self, int max_rows = int::max; @body(String[] r
 module std::encoding::csv @private;
 import std::io, std::collections::list;
 
+enum ReadState
+{
+	NORMAL,
+	STRING,
+	QUOTE,
+	ENDING,
+}
+
 fn String? CsvReader.find_row(&self)
 {
 	DString row;
 	row.init(self.allocator);
 	defer row.free();
-	sz start    = self.cursor;
-	bool quoted = false;
+	ReadState state = NORMAL;
+	char? current;
+	bool ending     = false;
 
-	while (true)
+	while (!ending)
 	{
-		if (self.cursor >= self.capacity - 1)
+		current = self.stream.read_byte();
+		if (catch err = current)
 		{
-			if (self.cursor - start) row.append_bytes(self.buffer[start:self.cursor - start]);
-			sz? read = self.refill_buffer();
-			start = self.cursor;
-			if (catch err = read)
-			{
-				if (err == io::EOF)
+			if (err == io::EOF) {
+				if (!row.len()) return io::EOF~;
+				break;
+			}
+			return err~;
+		}
+		// Handle CRLF line ending when allowing non spec line endings
+		if (!row.len() && self.allow_non_spec_line_endings && current == '\n') continue;
+		
+		switch (state)
+		{
+			case ENDING:
+				if (self.allow_non_spec_line_endings)
 				{
-					row.append_bytes(self.buffer[start:self.capacity - start]);
-					if (!row.len()) return io::EOF~;
-					self.cursor++;
+					ending = true;
 					break;
 				}
-				return err~;
-			}
+				if (current == '\n')
+				{
+					row.append_char(current);
+				}
+				else
+				{
+					char? next = self.stream.read_byte();
+					if (catch err = next)
+					{
+						if (err == io::EOF)
+						{
+							row.append_char(current);
+							break;
+						}
+						return err~;
+					}
+					if (next == '\n')
+					{
+						ending = true;
+						break;
+					}
+					else
+					{
+						row.append_char(current);
+						current = next;
+						nextcase NORMAL;
+					}
+				}
+			case QUOTE:
+				state = current == '"' ? STRING : NORMAL;
+				nextcase state;
+			case STRING:
+				if (current == '"') state = QUOTE;
+				row.append_char(current);
+			case NORMAL:
+				if (current == '\r' || current == '\n') nextcase ENDING;
+				if (current == '"') state = STRING;
+				row.append_char(current);
 		}
-		if (quoted && self.cursor + 2 <= self.capacity && self.buffer[self.cursor:2] == "\"\"")
-		{
-			row.append_bytes(self.buffer[start..self.cursor]);
-			self.cursor += 2;
-			start = self.cursor;
-		}
-		if (self.buffer[self.cursor] == '"')
-		{
-			quoted = !quoted;
-		}
-		if (quoted)
-		{
-			self.cursor++;
-			continue;
-		}
-		if (self.cursor + 2 <= self.capacity && self.buffer[self.cursor:2] == "\r\n")
-		{
-			row.append_bytes(self.buffer[start..self.cursor - 1]);
-			self.cursor += 2;
-			break;
-		}
-		if (self.allow_non_spec_line_endings && (self.buffer[self.cursor] == '\r' || self.buffer[self.cursor] == '\n'))
-		{
-			row.append_bytes(self.buffer[start..self.cursor - 1]);
-			self.cursor++;
-			break;
-		}
-		self.cursor++;
 	}
 	return row.copy_str(self.allocator);
 }
@@ -309,25 +310,13 @@ fn String[]? parse_row_entries(Allocator allocator, String s, String separator, 
 	return holder[:i];
 }
 
-fn sz? CsvReader.refill_buffer(&self)
+fn void? check_duplicate_entries(CsvRow row)
 {
-	if (self.capacity < self.cursor) self.cursor = self.capacity;
-	if (self.capacity - self.cursor) mem::move(self.buffer.ptr, &self.buffer[self.cursor], self.capacity - self.cursor);
-	sz? read = self.stream.read(self.buffer[self.capacity - self.cursor:self.buffer.len - self.capacity + self.cursor]);
-	if (catch err = read) return err~;
-	if (!read && self.buffer.len) return io::EOF~;
-	self.capacity = self.capacity - self.cursor + read;
-	self.cursor = 0;
-	return read;
-}
-
-fn void? check_duplicate_entries(CsvRow r)
-{
-	for (sz i = 0; i < r.len() - 1; i++)
+	for (sz i = 0; i < row.len() - 1; i++)
 	{
-		for (sz j = i + 1; j < r.len(); j++)
+		for (sz j = i + 1; j < row.len(); j++)
 		{
-			if (r[i] == r[j]) return NON_UNIQUE_ENTRY~;
+			if (row[i] == row[j]) return NON_UNIQUE_ENTRY~;
 		}
 	}
 }

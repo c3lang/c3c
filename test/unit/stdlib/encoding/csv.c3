@@ -64,8 +64,6 @@ fn void string_escape()
 	CsvReader r;
 	r.tinit((ByteReader) { }.init(csv))!!;
 
-	r.skip_row();
-
 	test::@check(r.read_row()!!.len() == 3, "Incorrectly escaped quotes in %s", csv.tescape());
 }
 
