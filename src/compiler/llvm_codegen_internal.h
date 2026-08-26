@@ -153,6 +153,7 @@ typedef struct GenContext_
 	LLVMTypeRef dyn_find_function_type;
 	LLVMValueRef memcmp_function;
 	LLVMTypeRef memcmp_function_type;
+	unsigned module_size;
 } GenContext;
 
 // LLVM Intrinsics
