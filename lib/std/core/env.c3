@@ -170,7 +170,7 @@ const bool ANY_SANITIZER = ADDRESS_SANITIZER || MEMORY_SANITIZER || THREAD_SANIT
 const int LANGUAGE_DEV_VERSION = $$LANGUAGE_DEV_VERSION;
 const bool HAS_NATIVE_ERRNO = LINUX || ANDROID || BSD_FAMILY || DARWIN || WIN32 || EMSCRIPTEN;
 
-macro bool os_is_darwin() @const
+macro bool os_is_darwin() @const @deprecated("Use $feat(DARWIN)")
 {
 	$switch OS_TYPE:
 	$case IOS:
@@ -183,7 +183,7 @@ macro bool os_is_darwin() @const
 	$endswitch
 }
 
-macro bool os_is_posix() @const
+macro bool os_is_posix() @const @deprecated("Use $feat(POSIX)")
 {
 	$switch OS_TYPE:
 	$case IOS:
