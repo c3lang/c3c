@@ -316,7 +316,7 @@ static void linker_setup_darwin(const char ***args_ref, Linker linker_type)
 
 	// Skip if no libc.
 	if (!link_libc()) return;
-	if (!(compiler.platform.os == OS_TYPE_IOS) || !(compiler.platform.os == OS_TYPE_MACOSX))
+	if (!(compiler.platform.os == OS_TYPE_IOS) && !(compiler.platform.os == OS_TYPE_MACOSX))
 	{
 		if (!compiler.build.macos.sdk)
 		{
