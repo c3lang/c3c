@@ -89,6 +89,9 @@ struct AlignedBlock
 	void* start;
 }
 
+<*
+ Support aligned free for something allocated using @aligned_alloc
+*>
 macro void? @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
@@ -99,6 +102,9 @@ macro void? @aligned_free(#free_fn, void* old_pointer)
 	$endif
 }
 
+<*
+ Support aligned free for something allocated using @aligned_alloc_fn
+*>
 macro void? @aligned_free_fn(context, #free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
@@ -110,8 +116,11 @@ macro void? @aligned_free_fn(context, #free_fn, void* old_pointer)
 }
 
 <*
- @require bytes > 0
- @require alignment > 0
+ Support aligned realloc a standard calloc / fn function by adding a header.
+
+ @require bytes > 0 : "A non-zero amount bytes were expected."
+ @require bytes < sz::max - (AlignedBlock::size + alignment) : "Too big block allocated"
+ @require alignment > 0 : "A non-zero alignment was expected"
 *>
 macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, sz bytes, sz alignment)
 {
@@ -126,11 +135,12 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, sz bytes,
 	$endif
 	return new_data;
 }
-
 <*
- @require bytes > 0
- @require alignment > 0
- @require bytes <= sz::max
+ Support aligned alloc based on a standard alloc by adding a header.
+
+ @require bytes > 0 : "A non-zero amount bytes were expected."
+ @require bytes < sz::max - (AlignedBlock::size + alignment) : "Too big block allocated"
+ @require alignment > 0 : "A non-zero alignment was expected"
 *>
 macro void*? @aligned_alloc(#alloc_fn, sz bytes, sz alignment)
 {
@@ -150,9 +160,11 @@ macro void*? @aligned_alloc(#alloc_fn, sz bytes, sz alignment)
 }
 
 <*
- @require bytes > 0
- @require alignment > 0
- @require bytes <= sz::max
+ Support aligned alloc based on a standard alloc + context by adding a header.
+
+ @require bytes > 0 : "A non-zero amount bytes were expected."
+ @require bytes < sz::max - (AlignedBlock::size + alignment) : "Too big block allocated"
+ @require alignment > 0 : "A non-zero alignment was expected"
 *>
 macro void*? @aligned_alloc_fn(context, #alloc_fn, sz bytes, sz alignment)
 {
@@ -174,8 +186,11 @@ macro void*? @aligned_alloc_fn(context, #alloc_fn, sz bytes, sz alignment)
 
 
 <*
- @require bytes > 0
- @require alignment > 0
+ Support aligned realloc based on a standard calloc/free + context by adding a header.
+
+ @require bytes > 0 : "A non-zero amount bytes were expected."
+ @require bytes < sz::max - (AlignedBlock::size + alignment) : "Too big block allocated"
+ @require alignment > 0 : "A non-zero alignment was expected"
 *>
 macro void*? @aligned_realloc_fn(context, #calloc_fn, #free_fn, void* old_pointer, sz bytes, sz alignment)
 {
