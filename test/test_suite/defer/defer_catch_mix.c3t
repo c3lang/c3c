@@ -352,7 +352,7 @@ missing_function:                                 ; preds = %10
   store %"char[]" { ptr @.func, i64 4 }, ptr %taddr6, align 8
   %14 = load [2 x i64], ptr %taddr6, align 8
   %15 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %15([2 x i64] %12, [2 x i64] %13, [2 x i64] %14, i32 133) #5
+  call void %15([2 x i64] %12, [2 x i64] %13,
   unreachable
 
 match:                                            ; preds = %10

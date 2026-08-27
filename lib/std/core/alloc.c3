@@ -53,10 +53,8 @@ interface Allocator
 	<*
 	 Release memory acquired using `acquire` or `resize`.
 
-	 @param [drop] ptr : "The pointer to release"
+	 @param [&drop] ptr : "The pointer to release"
 	 @param aligned : "Whether the pointer was acquired with an alignment requirement"
-
-	 @require [ptr] ptr != null : "Empty pointers should never be released"
 	*>
 	fn void release(void* ptr, bool aligned);
 }
