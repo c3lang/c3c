@@ -47,6 +47,7 @@
 - Stale tid in `thread::current` on POSIX. #3472
 - Compiler crashes on implicitly casting a `&a - &b` to another type. #3477
 - BigInt shift left would not work correctly with shifts over 32 bits.
+- DString copy would accidentally overwrite the allocator.
 
 ## 0.8.3 Change list
 
