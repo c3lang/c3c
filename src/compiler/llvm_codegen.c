@@ -1659,8 +1659,8 @@ static int gen_context_cmp(const void* c1, const void* c2)
 {
 	GenContext *ctx1 = *((GenContext**)c1);
 	GenContext *ctx2 = *((GenContext**)c2);
-	unsigned y = ctx1->module_size;
-	unsigned x = ctx2->module_size;
+	unsigned x = ctx1->module_size;
+	unsigned y = ctx2->module_size;
 	if (x > y) return 1;
 	if (y > x) return -1;
 	return 0;
@@ -1714,17 +1714,20 @@ void **llvm_gen(Module** modules, int module_count)
 	{
 		vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
 	}
-	qsort(gen_contexts, vec_size(gen_contexts), sizeof(void*), &gen_context_cmp);
+	int contexts_count = vec_size(gen_contexts);
+	qsort(gen_contexts, contexts_count, sizeof(void*), &gen_context_cmp);
 	if (compiler.build.print_stats)
 	{
-		int size = vec_size(gen_contexts);
-		if (size > 20) size = 20;
+		int last = contexts_count - 1;
+		int first = last - 20;
+		if (first < 0) first = 0;
+		int line = 1;
 		OUTN("--- Module size top list -----------------------------------------");
-		for (int i = 0; i < size; i++)
+		for (int i = last; i >= first; i--)
 		{
 			GenContext *ctx = gen_contexts[i];
 			OUTF("%2d %-40s %10u approx. loc\n",
-				i + 1, ctx->base_name, ctx->module_size / 10);
+				line++, ctx->base_name, ctx->module_size / 10);
 		}
 		OUTN("------------------------------------------------------------------");
 		OUTN("");

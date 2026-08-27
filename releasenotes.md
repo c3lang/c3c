@@ -47,6 +47,7 @@
 - Resolution order for generics may cause generic function pointers to not get resolved before use. #3471
 - Stale tid in `thread::current` on POSIX. #3472
 - Compiler crashes on implicitly casting a `&a - &b` to another type. #3477
+- BigInt shift left would not work correctly with shifts over 32 bits.
 
 ## 0.8.3 Change list
 

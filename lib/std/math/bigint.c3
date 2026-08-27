@@ -1,11 +1,18 @@
 <*
-Untested new big int implementation, missing unit tests. Etc
+ Fixed size (8192 bit) BigInt implementation.
+
+ Note that overflow is only tracked through asserts in safe builds.
+ This means that some care has to be taken to ensure that it doesn't overflow.
+
+ Furthermore, if used for crypto, note that operations are not constant time and may leak timings for
+ side-channel attacks.
 *>
 module std::math::bigint;
 import std::math::random;
 import std::io;
 
-const MAX_LEN = 4096 * 2 / 32;
+const BIT_SIZE = 8192;
+const MAX_LEN = BIT_SIZE / 32;
 
 const BigInt ZERO = { .len = 1 };
 const BigInt ONE = { .len = 1, .data[0] = 1 };
@@ -1116,10 +1123,8 @@ fn int shift_left(uint* data, int len, int shift_val) @inline
 
 		if (carry != 0)
 		{
-			if (buf_len + 1 <= len)
-			{
-				data[buf_len++] = (uint)carry;
-			}
+			assert(buf_len < MAX_LEN, "Overflow in shift left");
+			data[buf_len++] = (uint)carry;
 		}
 		count -= shift_amount;
 	}
