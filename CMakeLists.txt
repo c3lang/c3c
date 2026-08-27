@@ -506,10 +506,10 @@ add_executable(c3c
         src/compiler/subprocess.h
         src/compiler/context.c
         src/compiler/copying.c
+        src/compiler/darwin_support.c
         src/compiler/diagnostics.c
         src/compiler/float.c
         src/compiler/headers.c
-        src/compiler/ios_support.c
         src/compiler/json_output.c
         src/compiler/docgen.c
         src/compiler/lexer.c
@@ -567,7 +567,6 @@ add_executable(c3c
         src/compiler/c_codegen.c
         src/compiler/decltable.c
         src/compiler/methodtable.c
-        src/compiler/mac_support.c
         src/utils/fetch_sdk/fetch_sdk.c
         src/utils/fetch_sdk/fetch_utils.c
         src/utils/fetch_sdk/windows_sdk.c

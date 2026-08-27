@@ -293,12 +293,17 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	add_plain_arg("/NOLOGO");
 }
 
-static void linker_setup_macos(const char ***args_ref, Linker linker_type)
+static void linker_setup_darwin(const char ***args_ref, Linker linker_type)
 {
 	if (linker_type == LINKER_CC)
 	{
 		add_plain_arg("-target");
 		add_plain_arg(compiler.platform.target_triple);
+		if (compiler.platform.os == OS_TYPE_IOS)
+		{
+			add_plain_arg("-isysroot");
+			add_plain_arg(compiler.build.ios.sysroot);
+		}
 		return;
 	}
 	add_plain_arg("-arch");
@@ -311,87 +316,59 @@ static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 
 	// Skip if no libc.
 	if (!link_libc()) return;
-
-	if (!compiler.build.macos.sdk)
+	if (!compiler.build.macos.sdk && !(compiler.platform.os == OS_TYPE_IOS))
 	{
 		error_exit("Cannot crosslink MacOS without providing --macos-sdk.");
 	}
-	linking_add_link(&compiler.linking, "System");
-	if (compiler.linking.link_math) linking_add_link(&compiler.linking, "m");
-	add_plain_arg("-syslibroot");
-	add_quote_arg(compiler.build.macos.sysroot);
-	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no_pie");
-	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
-	add_plain_arg("-platform_version");
-	add_plain_arg("macos");
-	if (compiler.build.macos.min_version)
-	{
-		add_plain_arg(compiler.build.macos.min_version);
-	}
-	else
-	{
-		add_plain_arg(str_printf("%d.%d.0", compiler.build.macos.sdk->macos_min_deploy_target.major, compiler.build.macos.sdk->macos_min_deploy_target.minor));
-	}
-	if (compiler.build.macos.sdk_version)
-	{
-		add_plain_arg(compiler.build.macos.sdk_version);
-	}
-	else
-	{
-		add_plain_arg(str_printf("%d.%d", compiler.build.macos.sdk->macos_deploy_target.major, compiler.build.macos.sdk->macos_deploy_target.minor));
-	}
-}
-
-static void linker_setup_ios(const char ***args_ref, Linker linker_type)
-{
-	if (linker_type == LINKER_CC)
-	{
-		add_plain_arg("-target");
-		add_plain_arg(compiler.platform.target_triple);
-		add_plain_arg("-isysroot");
-		add_plain_arg(compiler.build.ios.sysroot);
-		return;
-	}
-	add_plain_arg("-arch");
-	add_plain_arg(arch_to_linker_arch(compiler.platform.arch));
-	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE)
-	{
-		add_plain_arg("-no_exported_symbols");
-		add_plain_arg("-dead_strip"); 
-	}
-	if (!link_libc()) return;
 	if (!compiler.build.ios.sdk)
 	{
 		error_exit("Cannot crosslink iOS without providing --ios-sdk.");
 	}
 	linking_add_link(&compiler.linking, "System");
+	if (compiler.linking.link_math && !(compiler.platform.os == OS_TYPE_IOS)) linking_add_link(&compiler.linking, "m");
 	add_plain_arg("-syslibroot");
-	add_quote_arg(compiler.build.ios.sysroot);
-	add_plain_arg("-pie");
+	add_quote_arg(compiler.platform.os == OS_TYPE_IOS ? compiler.build.ios.sysroot : compiler.build.macos.sysroot);
+	if (is_no_pie(compiler.platform.reloc_model) && !(compiler.platform.os == OS_TYPE_IOS)) add_plain_arg("-no_pie");
+	if (is_pie(compiler.platform.reloc_model) || (compiler.platform.os == OS_TYPE_IOS)) add_plain_arg("-pie");
 	add_plain_arg("-platform_version");
-	if (compiler.build.ios.simulator)
+	add_plain_arg(compiler.build.ios.simulator ? "ios-simulator" : compiler.platform.os == OS_TYPE_IOS ? "ios" : "macos");
+	if (compiler.platform.os == OS_TYPE_IOS)
 	{
-		add_plain_arg("ios-simulator");
+		if(compiler.build.ios.min_version)
+		{
+			add_plain_arg(compiler.build.ios.min_version);
+		}
+		else
+		{
+			add_plain_arg(str_printf("%d.%d.0", compiler.build.ios.sdk->ios_min_deploy_target.major, compiler.build.ios.sdk->ios_min_deploy_target.minor));
+		}
+		if(compiler.build.ios.sdk_version)
+		{
+			add_plain_arg(compiler.build.ios.sdk_version);
+		}
+		else
+		{
+			add_plain_arg(str_printf("%d.%d", compiler.build.ios.sdk->ios_deploy_target.major, compiler.build.ios.sdk->ios_deploy_target.minor));
+		}
 	}
 	else
 	{
-		add_plain_arg("ios");
-	}
-	if(compiler.build.ios.min_version)
-	{
-		add_plain_arg(compiler.build.ios.min_version);
-	}
-	else
-	{
-		add_plain_arg(str_printf("%d.%d.0", compiler.build.ios.sdk->ios_min_deploy_target.major, compiler.build.ios.sdk->ios_min_deploy_target.minor));
-	}
-	if(compiler.build.ios.sdk_version)
-	{
-		add_plain_arg(compiler.build.ios.sdk_version);
-	}
-	else
-	{
-		add_plain_arg(str_printf("%d.%d", compiler.build.ios.sdk->ios_deploy_target.major, compiler.build.ios.sdk->ios_deploy_target.minor));
+		if (compiler.build.macos.min_version)
+		{
+			add_plain_arg(compiler.build.macos.min_version);
+		}
+		else
+		{
+			add_plain_arg(str_printf("%d.%d.0", compiler.build.macos.sdk->macos_min_deploy_target.major, compiler.build.macos.sdk->macos_min_deploy_target.minor));
+		}
+		if (compiler.build.macos.sdk_version)
+		{
+			add_plain_arg(compiler.build.macos.sdk_version);
+		}
+		else
+		{
+			add_plain_arg(str_printf("%d.%d", compiler.build.macos.sdk->macos_deploy_target.major, compiler.build.macos.sdk->macos_deploy_target.minor));
+		}
 	}
 }
 
@@ -1042,11 +1019,9 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, int
 			break;
 		case OS_TYPE_WATCHOS:
 		case OS_TYPE_IOS:
-			linker_setup_ios(args_ref, linker_type);
-			break;
 		case OS_TYPE_TVOS:
 		case OS_TYPE_MACOSX:
-			linker_setup_macos(args_ref, linker_type);
+			linker_setup_darwin(args_ref, linker_type);
 			break;
 		case OS_TYPE_WASI:
 		case OS_TYPE_EMSCRIPTEN:

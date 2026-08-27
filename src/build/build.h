@@ -515,7 +515,7 @@ typedef struct
 		const char *sysroot;
 		const char *min_version;
 		const char *sdk_version;
-		MacSDK *sdk;
+		MacosSDK *sdk;
 	} macos;
 	struct
 	{

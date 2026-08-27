@@ -969,15 +969,8 @@ jobs:
           path: c3-android-${{matrix.architecture}}-Debug.tar.gz
 
   test-ios:
-    name: iOS (${{ matrix.arch }}${{ matrix.simulator && '-sim' || '' }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { arch: aarch64, simulator: false, os: macos-latest }
-          - { arch: aarch64, simulator: true, os: macos-latest }
-          - { arch: x64, simulator: true, os: macos-26-intel }
+    name: iOS (aarch64)
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
       
@@ -989,98 +982,24 @@ jobs:
           cmake --build build-debug
 
       - name: Setup and Boot iOS Simulator
-        if: ${{ matrix.simulator }}
-        run: |
-          # Erase any bad cache left in all simulators then,
-          # free up disk space by removing unavailable or old simulators
-          xcrun simctl erase all
-          xcrun simctl delete unavailable
+        uses: futureware-tech/simulator-action@v5
+        with:
+          os: 'iOS'
+          os_version: ">=14.0"
+          erase_before_boot: true
+          shutdown_after_job: true
 
-          echo ">>> Initializing iOS simulator setup..."
-          RUNTIME_JSON=$(xcrun simctl list devices available -j)
-          
-          # Select the first iPhone that has the latest iOS version
-          # otherwise select the first iPhone of any iOS version other than latest
-          # return the UDID if found, else no UDID will be returned
-          echo ">>> Selecting a simulator from list of simulators..."
-          RUNTIME_ID=$(echo "$RUNTIME_JSON" | jq -r '
-              first(
-                  (.devices[
-                      ([ .devices | keys[] 
-                         | select(test("com\\.apple\\.CoreSimulator\\.SimRuntime\\.iOS")) ] 
-                       | sort 
-                       | last)
-                  ] // [])[]?
-                  | select(type == "object" and (.name | test("iPhone")))
-                  | .udid,
-                  (.devices[] | select(type == "array") | .[]?
-                  | select(type == "object" and .isAvailable == true and (.name | test("iPhone")))
-                  | .udid)
-              ) // empty
-          ')
-          
-          if [ -z "$RUNTIME_ID" ]; then
-              echo "::error::No operational simulator found."
-              exit 1
-          fi
-
-          # Extract the device name and version from the selected simulator
-          DEVICE_NAME=$(echo "$RUNTIME_JSON" | jq -r --arg id "$RUNTIME_ID" '
-              .devices[] | select(type == "array") | .[]?
-              | select(type == "object" and .udid == $id)
-              | .name
-          ')
-
-          # Also extract the version of iOS from the selected simulator
-          # this will tell us if the latest version was selected or not
-          OS_VERSION=$(echo "$RUNTIME_JSON" | jq -r --arg id "$RUNTIME_ID" '
-              .devices | to_entries[]
-              | .key as $runtime
-              | .value[]?
-              | select(type == "object" and .udid == $id)
-              | $runtime | sub("^.*\\.iOS-"; "") | gsub("-"; ".")
-          ')
-          
-          echo ">>> Selected simulator details:"
-          echo "Device Name: $DEVICE_NAME"
-          echo "UDID: $RUNTIME_ID"
-          echo "Version: $OS_VERSION"
-
-          echo ">>> Booting up simulator..."
-          xcrun simctl boot "$RUNTIME_ID" || true
-          xcrun simctl bootstatus "$RUNTIME_ID" >/dev/null 2>&1 || sleep 5
-          
-          echo ">>> iOS simulator is booted and ready."
-          echo "DEVICE_ID=$RUNTIME_ID" >> "$GITHUB_ENV"
-          
       - name: Run Unified Tests (iOS)
         run: |
-          if [ "${{ matrix.simulator }}" = "true" ]; then
-              SCRIPT_TARGET="ios-${{ matrix.arch }}-sim"
-          else
-              SCRIPT_TARGET="ios-${{ matrix.arch }}"
-          fi
-
           chmod +x ./scripts/tools/ios_tests.sh
-          ./scripts/tools/ios_tests.sh ./build-debug/c3c "$SCRIPT_TARGET"
+          ./scripts/tools/ci_tests.sh ./build-debug/c3c "ios"
 
-      - name: Shutdown iOS Simulator
-        if: ${{ matrix.simulator && always() }}
+      - name: Compile and Inspect Device Binary
+        if: always()
         run: |
-          # Incase no UDID gets generated, no need to initiate shutdown
-          if [ -z "$DEVICE_ID" ]; then
-            echo "::warning::Shutdown skipped due to no booted simulator."
-            exit 0
-          fi
-          
-          # Shutdown the simulator and erase it to eliminate any bad cache
-          # irrespective of whether the tests pass or fail
-          echo ">>> Initiating simulator shutdown..."
-          echo ">>> Shutting down booted simulator with UDID: $DEVICE_ID"
-          xcrun simctl shutdown booted
-          echo ">>> Erasing simulator cache..."
-          xcrun simctl erase all
-          echo ">>> Simulator shutdown successfully!"
+          ./build-debug/c3c compile resources/examples/hello_world_many.c3 -vv --target ios-aarch64 -o helloworld
+          echo "--- Binary Details ---"
+          file helloworld && echo "---" && otool -hv helloworld
 
   release:
     runs-on: ubuntu-slim

@@ -34,13 +34,20 @@ typedef struct
 {
 	Version macos_deploy_target;
 	Version macos_min_deploy_target;
-} MacSDK;
+} MacosSDK;
 
 typedef struct
 {
 	Version ios_deploy_target;
 	Version ios_min_deploy_target;
 } IosSDK;
+
+typedef struct
+{
+	MacosSDK macossdk;
+	IosSDK iossdk;
+} DarwinSDK;
+
 
 typedef struct {
 	char* windows_sdk_path;
