@@ -316,13 +316,16 @@ static void linker_setup_darwin(const char ***args_ref, Linker linker_type)
 
 	// Skip if no libc.
 	if (!link_libc()) return;
-	if (!compiler.build.macos.sdk && !(compiler.platform.os == OS_TYPE_IOS))
+	if (!(compiler.platform.os == OS_TYPE_IOS) || !(compiler.platform.os == OS_TYPE_MACOSX))
 	{
-		error_exit("Cannot crosslink MacOS without providing --macos-sdk.");
-	}
-	if (!compiler.build.ios.sdk)
-	{
-		error_exit("Cannot crosslink iOS without providing --ios-sdk.");
+		if (!compiler.build.macos.sdk)
+		{
+			error_exit("Cannot crosslink MacOS without providing --macos-sdk.");
+		}
+		if (!compiler.build.ios.sdk)
+		{
+			error_exit("Cannot crosslink iOS without providing --ios-sdk.");
+		}
 	}
 	linking_add_link(&compiler.linking, "System");
 	if (compiler.linking.link_math && !(compiler.platform.os == OS_TYPE_IOS)) linking_add_link(&compiler.linking, "m");
