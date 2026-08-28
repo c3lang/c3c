@@ -28,8 +28,7 @@ fn CsvReader? tload(
 	String separator = ",",
 	bool has_header = true,
 	bool allow_non_spec_line_endings = false,
-	sz buffer_size = 256
-) => load(tmem, stream, separator, has_header, allow_non_spec_line_endings, buffer_size);
+) => load(tmem, stream, separator, has_header, allow_non_spec_line_endings);
 
 fn CsvReader? load(
 	Allocator allocator,
@@ -37,7 +36,6 @@ fn CsvReader? load(
 	String separator = ",",
 	bool has_header = true,
 	bool allow_non_spec_line_endings = false,
-	sz buffer_size = 256
 )
 {
 	CsvReader reader;
@@ -60,14 +58,12 @@ fn void? CsvReader.tinit(
 	String separator = ",",
 	bool has_header = true,
 	bool allow_non_spec_line_endings = false,
-	sz buffer_size = 256
 ) => self.init(
 	tmem,
 	stream,
 	separator,
 	has_header,
 	allow_non_spec_line_endings,
-	buffer_size,
 );
 
 fn void? CsvReader.init(
@@ -77,10 +73,9 @@ fn void? CsvReader.init(
 	String separator = ",",
 	bool has_header = true,
 	bool allow_non_spec_line_endings = false,
-	sz buffer_size = 256
 )
 {
-	*self = load(allocator, stream, separator, has_header, allow_non_spec_line_endings, buffer_size)!;
+	*self = load(allocator, stream, separator, has_header, allow_non_spec_line_endings)!;
 }
 
 fn void CsvReader.free(&self)
@@ -181,10 +176,10 @@ enum ReadState
 fn String? CsvReader.find_row(&self)
 {
 	DString row;
-	row.init(self.allocator);
+	row.init(self.allocator, 256);
 	defer row.free();
 	ReadState state = NORMAL;
-	char? current;
+	char? current;	
 	bool ending     = false;
 
 	while (!ending)
@@ -192,7 +187,8 @@ fn String? CsvReader.find_row(&self)
 		current = self.stream.read_byte();
 		if (catch err = current)
 		{
-			if (err == io::EOF) {
+			if (err == io::EOF)
+			{
 				if (!row.len()) return io::EOF~;
 				break;
 			}
@@ -200,7 +196,7 @@ fn String? CsvReader.find_row(&self)
 		}
 		// Handle CRLF line ending when allowing non spec line endings
 		if (!row.len() && self.allow_non_spec_line_endings && current == '\n') continue;
-		
+
 		switch (state)
 		{
 			case ENDING:
