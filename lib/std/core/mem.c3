@@ -482,7 +482,7 @@ macro bool equals(a, b, sz len = -1, sz $align = 0)
 	{
 		if ((($Type*)x)[i] != (($Type*)y)[i]) return false;
 	}
-	sz last = len % $align;
+	sz last = len % $step;
 	for (sz i = len - last; i < len; i++)
 	{
 		if (((char*)x)[i] != ((char*)y)[i]) return false;

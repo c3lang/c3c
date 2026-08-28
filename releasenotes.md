@@ -50,6 +50,7 @@
 - BigInt shift left would not work correctly with shifts over 32 bits.
 - DString copy would accidentally overwrite the allocator.
 - FixedBlockPool would not correctly handle changes to grow_capacity.
+- Fix bug in `mem::equals` calculating the last part to compare.
 
 ## 0.8.3 Change list
 
