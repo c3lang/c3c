@@ -49,6 +49,7 @@
 - Compiler crashes on implicitly casting a `&a - &b` to another type. #3477
 - BigInt shift left would not work correctly with shifts over 32 bits.
 - DString copy would accidentally overwrite the allocator.
+- FixedBlockPool would not correctly handle changes to grow_capacity.
 
 ## 0.8.3 Change list
 
