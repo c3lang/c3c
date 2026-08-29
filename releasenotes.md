@@ -31,6 +31,7 @@
 - `std::net` added `Socket.peer_address`, `peer_port`, `local_address`, and `local_port` for retrieving remote and local socket address information. #3460
 - Add a `range::slice` macro.
 - Add `log::get_logger`.
+- `RefCounted` now correctly makes a difference between dealloc and free.
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
