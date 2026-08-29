@@ -232,11 +232,14 @@ run_staticlib_tests() {
              cc "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -lexecinfo -lm -lpthread -o a.out
         elif [[ "$SYSTEM_NAME" == "Linux" ]]; then
              cc "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -ldl -lm -lpthread -o a.out
-        elif [[ "$OS_MODE" != "ios" ]]; then
+        elif [[ "$OS_MODE" == "ios" ]]; then
+            xcrun -sdk iphonesimulator clang "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -o a.out
+        else
              # Mac / NetBSD
              cc "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -o a.out
         fi
         if [[ "$OS_MODE" == "ios" ]]; then
+            xcrun simctl spawn booted ./a.out
             sim_run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
         else 
             ./a.out
@@ -254,7 +257,7 @@ run_testproject() {
 
     ARGS="--trust=full"
 
-    if [[ "$OS_MODE" == "linux" || "$OS_MODE" == "mac" ]]; then
+    if [[ "$OS_MODE" == "linux" || "$OS_MODE" == "mac" || "$OS_MODE" == "ios" ]]; then
         ARGS="$ARGS --linker=builtin"
 
         if [ -f "/etc/alpine-release" ]; then

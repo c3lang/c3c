@@ -986,8 +986,6 @@ jobs:
         with:
           os: 'iOS'
           os_version: ">=14.0"
-          erase_before_boot: true
-          shutdown_after_job: true
 
       - name: Run Unified Tests (iOS)
         run: |

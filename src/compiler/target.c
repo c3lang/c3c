@@ -1964,6 +1964,7 @@ INLINE const char *llvm_ios_target_triple(const char *triple)
 		if (compiler.build.ios.simulator) scratch_buffer_append("-simulator");
 		return scratch_buffer_to_string();
 	}
+
 	// Override the deployment target to 14.0 to satisfy the linker's requirements
 	if (ios_sdk->ios_min_deploy_target.major < 14)
 	{
@@ -2426,6 +2427,7 @@ void target_setup(BuildTarget *build_target)
 		compiler.build.ios.simulator = compiler.build.arch_os_target == IOS_AARCH64_SIM || compiler.build.arch_os_target == IOS_X64_SIM;
 		if (!compiler.build.ios.sysroot) compiler.build.ios.sysroot = darwin_sysroot();
 		const char *sysroot = compiler.build.ios.sysroot ? compiler.build.ios.sysroot : darwin_sysroot();
+
 		if (!sysroot)
 		{
 			const char *path = darwin_cross_compile_library();
@@ -2439,6 +2441,7 @@ void target_setup(BuildTarget *build_target)
 				compiler.build.ios.sysroot = sysroot;
 			}
 		}
+
 		compiler.build.ios.sdk = NULL;
 		if (sysroot)
 		{
@@ -2469,6 +2472,7 @@ void target_setup(BuildTarget *build_target)
 			}
 		}
 		compiler.platform.target_triple = strdup(llvm_ios_target_triple(compiler.platform.target_triple));
+		
 	}
 	if (compiler.platform.os == OS_TYPE_MACOSX)
 	{
