@@ -1,6 +1,12 @@
 module std::core::string::tests @test;
 import std::core::test;
 
+struct StringTestPoint
+{
+	int x;
+	int y;
+}
+
 
 fn void test_starts_with()
 {
@@ -417,4 +423,231 @@ fn void test_snake_pascal_self_modify()
 		s2.convert_snake_to_pascal();
 		test::eq(s2, s[1]);
 	}
+}
+
+fn void test_join()
+{
+	String[] parts = { "a", "bb", "ccc" };
+	String joined = string::join(mem, parts, ", ");
+	test::eq(joined, "a, bb, ccc");
+	joined.free(mem);
+	test::eq(string::tjoin(parts, ", "), "a, bb, ccc");
+
+	String[] one = { "solo" };
+	String joined_one = string::join(mem, one, ", ");
+	test::eq(joined_one, "solo");
+	joined_one.free(mem);
+
+	String[] empty;
+	String joined_empty = string::join(mem, empty, ", ");
+	test::eq(joined_empty, "");
+	joined_empty.free(mem);
+
+	String[] with_empty = { "", "b", "" };
+	String joined_with_empty = string::join(mem, with_empty, "-");
+	test::eq(joined_with_empty, "-b-");
+	joined_with_empty.free(mem);
+
+	String[] no_joiner = { "a", "b", "c" };
+	String joined_no_joiner = string::join(mem, no_joiner, "");
+	test::eq(joined_no_joiner, "abc");
+	joined_no_joiner.free(mem);
+}
+
+fn void test_compare_to()
+{
+	test::@check(("abc").compare_to("abd") < 0);
+	test::@check(("abd").compare_to("abc") > 0);
+	test::eq(("abc").compare_to("abc"), 0);
+	test::@check(("ab").compare_to("abc") < 0);
+	test::@check(("abc").compare_to("ab") > 0);
+}
+
+fn void test_compare_to_ignore_case()
+{
+	test::eq(("ABC").compare_to_ignore_case("abc"), 0);
+	test::@check(("abc").compare_to_ignore_case("ABD") < 0);
+	test::@check(("ABD").compare_to_ignore_case("abc") > 0);
+}
+
+fn void test_concat()
+{
+	test::eq(("foo").concat(tmem, "bar"), "foobar");
+	test::eq(("foo").tconcat("bar"), "foobar");
+	test::eq(("").concat(tmem, "bar"), "bar");
+	test::eq(("foo").concat(tmem, ""), "foo");
+}
+
+fn void test_copy_family()
+{
+	String original = "hello";
+	String copied = original.copy(mem);
+	test::eq(copied, original);
+	test::@check(copied.ptr != original.ptr);
+	copied.free(mem);
+
+	String tcopied = original.tcopy();
+	test::eq(tcopied, original);
+
+	ZString z = original.zstr_copy(mem);
+	test::eq(z.str_view(), original);
+	mem::free(z);
+
+	ZString tz = original.zstr_tcopy();
+	test::eq(tz.str_view(), original);
+}
+
+fn void test_zstring_copy_roundtrip()
+{
+	ZString z = "hello";
+	String s = z.copy(mem);
+	test::eq(s, "hello");
+	s.free(mem);
+
+	String ts = z.tcopy();
+	test::eq(ts, "hello");
+}
+
+fn void test_case_conversion()
+{
+	test::eq(("Hello World").to_lower_copy(tmem), "hello world");
+	test::eq(("Hello World").to_lower_tcopy(), "hello world");
+	test::eq(("Hello World").to_upper_copy(tmem), "HELLO WORLD");
+	test::eq(("Hello World").to_upper_tcopy(), "HELLO WORLD");
+
+	String s = ("Hello").tcopy();
+	s.convert_to_lower();
+	test::eq(s, "hello");
+
+	String s2 = ("Hello").tcopy();
+	s2.convert_to_upper();
+	test::eq(s2, "HELLO");
+}
+
+fn void test_capitalize_copy()
+{
+	test::eq(("hello").capitalize_copy(tmem), "Hello");
+	test::eq(("Hello").capitalize_copy(tmem), "Hello");
+	test::eq(("").capitalize_copy(tmem), "");
+	test::eq(("123abc").capitalize_copy(tmem), "123abc");
+}
+
+fn void test_char_in_set()
+{
+	test::@check(string::char_in_set('a', "abc"));
+	test::@check(!string::char_in_set('z', "abc"));
+	test::@check(!string::char_in_set('a', ""));
+}
+
+fn void test_utf16_roundtrip()
+{
+	String original = "hello world";
+	Char16[]? u16 = original.to_utf16(mem);
+	test::@check(@ok(u16));
+	if (try u16v = u16)
+	{
+		defer mem::free(u16v.ptr);
+		String? back = string::from_utf16(mem, u16v);
+		test::@check(@ok(back));
+		if (try backv = back)
+		{
+			test::eq(backv, original);
+			backv.free(mem);
+		}
+	}
+
+	Char16[]? tu16 = original.to_temp_utf16();
+	test::@check(@ok(tu16));
+	if (try tu16v = tu16)
+	{
+		String? tback = string::tfrom_utf16(tu16v);
+		if (try tbackv = tback) test::eq(tbackv, original);
+	}
+}
+
+fn void test_utf32_roundtrip()
+{
+	String original = "hello world";
+	Char32[]? u32 = original.to_utf32(mem);
+	test::@check(@ok(u32));
+	if (try u32v = u32)
+	{
+		defer mem::free(u32v.ptr);
+		String? back = string::from_utf32(mem, u32v);
+		test::@check(@ok(back));
+		if (try backv = back)
+		{
+			test::eq(backv, original);
+			backv.free(mem);
+		}
+	}
+}
+
+fn void test_wstring_roundtrip()
+{
+	String original = "hello";
+	WString? w = original.to_wstring(mem);
+	test::@check(@ok(w));
+	if (try wv = w)
+	{
+		defer mem::free(wv);
+		String? back = string::from_wstring(mem, wv);
+		test::@check(@ok(back));
+		if (try backv = back)
+		{
+			test::eq(backv, original);
+			backv.free(mem);
+		}
+	}
+}
+
+fn void test_utf8_codepoints()
+{
+	test::eq(("hello").utf8_codepoints(), (sz)5);
+	test::eq(("").utf8_codepoints(), (sz)0);
+}
+
+fn void test_index_of_chars()
+{
+	String s = "hello";
+	char[] chars = { 'l', 'z' };
+	sz? index = s.index_of_chars(chars);
+	test::@check(@ok(index));
+	if (try i = index) test::eq(i, (sz)2);
+
+	char[] none = { 'x', 'y' };
+	test::@check(!@ok(s.index_of_chars(none)));
+}
+
+fn void test_from_struct()
+{
+	StringTestPoint p = { 1, 2 };
+	String s = string::from_struct(mem, p);
+	test::@check(s.len > 0);
+
+	String s2 = string::tfrom_struct(p);
+	test::eq(s, s2);
+	s.free(mem);
+}
+
+fn void test_splitter_reset_and_at_end()
+{
+	Splitter splitter = ("a:b:c").tokenize(":");
+	test::@check(!splitter.at_end());
+	while (try tok = splitter.next()) {}
+	test::@check(splitter.at_end());
+	splitter.reset();
+	test::@check(!splitter.at_end());
+	if (try first = splitter.next()) test::eq(first, "a");
+}
+
+fn void test_string_free()
+{
+	String s = ("hello").copy(mem);
+	s.free(mem);
+	test::eq(s, "");
+
+	String empty;
+	empty.free(mem);
+	test::eq(empty, "");
 }
