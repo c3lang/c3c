@@ -22,7 +22,8 @@
 - Add `@noredzone` attribute.
 - Add `dso_local` attribute on ELF/COFF.
 - Let LLVM build the biggest modules first.
- 
+- Miscompilation of struct initializers when a struct contained an array of vectors, causing incorrect alignment. #3483
+
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
 - `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.

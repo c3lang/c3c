@@ -1,0 +1,34 @@
+// #target: macos-aarch64
+module test;
+import std::io;
+enum Entity_Type
+{
+	INVALID,
+	HUMAN,
+	COUNT
+}
+struct Entity
+{
+	Entity_Type type;
+	bool some_boolean;
+	int[<2>][1] my_array;
+	int[<2>] pos_world;
+	bitstruct member : char
+	{
+		bool data;
+	}
+}
+const Entity[(usz)Entity_Type.COUNT] ENTITY_DEFAULTS =
+{
+	[Entity_Type.HUMAN] = { .type = HUMAN },
+};
+fn void main ()
+{
+	io::printn(ENTITY_DEFAULTS);
+}
+
+/* #expect: test.ll
+
+%Entity = type { i32, i8, [1 x [2 x i32]], [2 x i32], i8 }
+
+@test.ENTITY_DEFAULTS = local_unnamed_addr constant { %Entity, { i32, i8, [1 x [2 x i32]], [2 x i32], i8 } } { %Entity zeroinitializer, { i32, i8, [1 x [2 x i32]], [2 x i32], i8 } { i32 1, i8 0, [1 x [2 x i32]] zeroinitializer, [2 x i32] zeroinitializer, i8 0 } }, align 4

@@ -232,7 +232,8 @@ static LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, Inde
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init, bool in_aggregate)
 {
 	ASSERT(const_init->type == type_flatten(const_init->type));
-	Type *type = in_aggregate && const_init->type->type_kind == TYPE_VECTOR ? type_array_from_vector(const_init->type) : const_init->type;
+
+	Type *type = in_aggregate ? type_lowering_abi(const_init->type) : const_init->type;
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
