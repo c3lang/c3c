@@ -147,7 +147,12 @@ fn void test_aligned_array_variants() @test
 	test::eq(uninit[1], 8);
 
 	int* to_grow = alloc::new_array_aligned(mem, int, 2);
+	to_grow[0] = 11;
+	to_grow[1] = 22;
 	to_grow = alloc::realloc_array_aligned(mem, to_grow, int, 6);
 	defer alloc::free_aligned(mem, to_grow);
-	test::eq(to_grow[5], 0);
+	test::eq(to_grow[0], 11);
+	test::eq(to_grow[1], 22);
+	to_grow[5] = 33;
+	test::eq(to_grow[5], 33);
 }
