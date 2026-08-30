@@ -65,6 +65,168 @@ constset ZipMethod : UShortLE
 	AEX = {99},
 }
 
+fn bool? _find_eocd(File* f, long file_size, ZipEOCD* eocd) @local
+{
+	long search_start = file_size > ZipEOCD::size + 65535LL ? file_size - (ZipEOCD::size + 65535LL) : 0;
+	for (long pos = file_size - ZipEOCD::size; pos >= search_start; pos--)
+	{
+		if (pos > sz::max) return io::OVERFLOW~;
+		f.seek(pos)!;
+		UIntLE sig;
+		if (io::read_any(f, &sig)! != 4) break;
+
+		if (sig.val == ZIP_EOCD_SIG)
+		{
+			f.seek(pos)!;
+			if (io::read_any(f, eocd)! == ZipEOCD::size)
+			{
+				long expected_end = pos + ZipEOCD::size + eocd.comment_len.val;
+				if (expected_end == file_size)
+				{
+					return true;
+				}
+			}
+		}
+		if (pos == 0) break;
+	}
+	return false;
+}
+
+fn sz? _read_zip64_cd(File* f, long file_size, sz default_entries) @local
+{
+	sz locator_pos = (sz)file_size - ZipEOCD::size - Zip64Locator::size;
+	if (locator_pos < 0) return default_entries;
+
+	f.seek(locator_pos)!;
+	Zip64Locator locator;
+	if (try n = io::read_buffer_to_end(f, ((char*)&locator)[:Zip64Locator::size]).len
+		&& n == Zip64Locator::size && locator.signature.val == ZIP64_LOCATOR_SIG)
+	{
+		if (locator.offset_eocd.val > sz::max) return io::OVERFLOW~;
+		f.seek(locator.offset_eocd.val)!;
+		Zip64EOCD eocd64;
+		io::read_any(f, &eocd64)!;
+		if (eocd64.signature.val == ZIP64_EOCD_SIG)
+		{
+			if (eocd64.offset_cd.val > sz::max) return io::OVERFLOW~;
+			f.seek(eocd64.offset_cd.val)!!;
+			return (sz)eocd64.count_total.val;
+		}
+	}
+	return default_entries;
+}
+
+fn String? _decode_filename(Allocator allocator, char[] raw_name, bool is_utf8) @local
+{
+	if (is_utf8 || is_valid_utf8(raw_name))
+	{
+		return (String)raw_name;
+	}
+	String name = (String)codepage::decode(allocator, raw_name, CP437)!!;
+	alloc::free(allocator, raw_name.ptr);
+	return name;
+}
+
+fn void? _parse_zip64_extra(char[] extra_field, ZipCDH* cdh, long* uncompressed_size, long* compressed_size, long* offset) @local
+{
+	ByteReader reader = { .bytes = extra_field };
+	while (reader.available()! >= 4)
+	{
+		ushort id = io::read_le_ushort(&reader)!;
+		ushort size = io::read_le_ushort(&reader)!;
+
+		if (id == ZIP64_EXTRA_ID)
+		{
+			int remaining = size;
+			if (cdh.uncompressed_size.val == 0xFFFFFFFF && remaining >= 8)
+			{
+				*uncompressed_size = io::read_le_long(&reader)!;
+				remaining -= 8;
+			}
+			if (cdh.compressed_size.val == 0xFFFFFFFF && remaining >= 8)
+			{
+				*compressed_size = io::read_le_long(&reader)!;
+				remaining -= 8;
+			}
+			if (cdh.relative_offset.val == 0xFFFFFFFF && remaining >= 8)
+			{
+				*offset = io::read_le_long(&reader)!;
+				remaining -= 8;
+			}
+			break;
+		}
+		reader.seek(size, FROM_CURSOR)!;
+	}
+}
+
+fn bool _is_directory_entry(String name, ushort version_made_by, uint external_attr) @local
+{
+	if (name.ends_with("/") || name.ends_with("\\")) return true;
+	ushort host_system = version_made_by >> 8;
+	if (host_system == 0 || host_system == 10) // MS-DOS or NTFS
+	{
+		if ((external_attr & 0x10) != 0) return true;
+	}
+	else if (host_system == 3) // Unix
+	{
+		if (((external_attr >> 16) & 0x4000) != 0) return true;
+	}
+	return false;
+}
+
+fn bool? _parse_zip_cd_entry(File* f, Allocator allocator, ZipEntry* entry) @local
+{
+	ZipCDH cdh;
+	if (io::read_any(f, &cdh)! != ZipCDH::size) return false;
+	if (cdh.signature.val != ZIP_CDH_SIG) return false;
+
+	char[] raw_name = alloc::alloc_array(allocator, char, cdh.filename_len.val);
+	defer catch alloc::free(allocator, raw_name);
+	if (raw_name.len && io::read_buffer(f, raw_name)! != (sz)cdh.filename_len.val)
+	{
+		alloc::free(allocator, raw_name);
+		return false;
+	}
+
+	String name = _decode_filename(allocator, raw_name, (cdh.flags.val & 0x0800) != 0)!;
+	raw_name = {};
+	defer catch alloc::free(allocator, name);
+
+	char[] extra_field;
+	if (cdh.extra_field_len.val > 0)
+	{
+		extra_field = alloc::alloc_array(allocator, char, cdh.extra_field_len.val);
+		defer catch alloc::free(allocator, extra_field);
+		io::read_all(f, extra_field)!;
+	}
+	defer alloc::free(allocator, extra_field);
+
+	f.seek(cdh.comment_len.val, FROM_CURSOR)!;
+
+	long uncompressed_size = cdh.uncompressed_size.val;
+	long compressed_size = cdh.compressed_size.val;
+	long offset = cdh.relative_offset.val;
+
+	if (cdh.uncompressed_size.val == 0xFFFFFFFF || cdh.compressed_size.val == 0xFFFFFFFF || cdh.relative_offset.val == 0xFFFFFFFF)
+	{
+		_parse_zip64_extra(extra_field, &cdh, &uncompressed_size, &compressed_size, &offset)!;
+	}
+
+	*entry = {
+		.name = name,
+		.uncompressed_size = uncompressed_size,
+		.compressed_size = compressed_size,
+		.crc32 = cdh.crc32.val,
+		.offset = offset,
+		.method = cdh.method,
+		.last_mod_time = cdh.last_mod_time.val,
+		.last_mod_date = cdh.last_mod_date.val,
+		.is_directory = _is_directory_entry(name, cdh.version_made_by.val, cdh.external_attr.val),
+		.is_encrypted = (cdh.flags.val & 1) != 0
+	};
+	return true;
+}
+
 <*
  Opens a ZIP archive.
  @param allocator : `The allocator to use.`
@@ -93,38 +255,10 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 	defer catch (void)f.close();
 
 	long file_size = f.size()!!;
-
 	if (file_size < ZipEOCD::size) return CORRUPTED_DATA~;
 
-	long search_start = file_size > ZipEOCD::size + 65535LL ? file_size - (ZipEOCD::size + 65535LL) : 0;
-
 	ZipEOCD eocd;
-	bool found = false;
-
-	for (long pos = file_size - ZipEOCD::size; pos >= search_start; pos--)
-	{
-		if (pos > sz::max) return io::OVERFLOW~;
-		f.seek(pos)!;
-		UIntLE sig;
-		if (io::read_any(&f, &sig)! != 4) break;
-
-		if (sig.val == ZIP_EOCD_SIG)
-		{
-			f.seek(pos)!;
-			if (io::read_any(&f, &eocd)! == ZipEOCD::size)
-			{
-				long expected_end = pos + ZipEOCD::size + eocd.comment_len.val;
-				if (expected_end == file_size)
-				{
-					found = true;
-					break;
-				}
-			}
-		}
-		if (pos == 0) break;
-	}
-
-	if (!found) return CORRUPTED_DATA~;
+	if (!_find_eocd(&f, file_size, &eocd)!) return CORRUPTED_DATA~;
 
 	ZipArchive archive;
 	archive.allocator = allocator;
@@ -150,134 +284,16 @@ fn ZipArchive? open(Allocator allocator, String path, String mode = "r")
 
 	sz num_entries = eocd.num_entries.val;
 
-
 	// ZIP64 check
 	if (eocd.num_entries.val == 0xFFFF || eocd.cd_offset.val == 0xFFFFFFFF)
 	{
-		sz locator_pos = (sz)file_size - ZipEOCD::size - Zip64Locator::size;
-		if (locator_pos >= 0)
-		{
-			archive.file.seek(locator_pos)!;
-			Zip64Locator locator;
-			if (try n = io::read_buffer_to_end(archive.file, ((char*)&locator)[:Zip64Locator::size]).len
-				&& n == Zip64Locator::size && locator.signature.val == ZIP64_LOCATOR_SIG)
-			{
-				if (locator.offset_eocd.val > sz::max) return io::OVERFLOW~;
-				archive.file.seek(locator.offset_eocd.val)!;
-				Zip64EOCD eocd64;
-				io::read_any(archive.file, &eocd64)!;
-				if (eocd64.signature.val == ZIP64_EOCD_SIG)
-				{
-					if (eocd64.offset_cd.val > sz::max) return io::OVERFLOW~;
-					archive.file.seek(eocd64.offset_cd.val)!!;
-					num_entries = (sz)eocd64.count_total.val;
-				}
-			}
-		}
+		num_entries = _read_zip64_cd(archive.file, file_size, num_entries)!;
 	}
 
 	for (sz i = 0; i < num_entries; i++)
 	{
-		ZipCDH cdh;
-		if (io::read_any(archive.file, &cdh)! != ZipCDH::size) break;
-		if (cdh.signature.val != ZIP_CDH_SIG) break;
-
-		char[] raw_name = alloc::alloc_array(allocator, char, cdh.filename_len.val);
-		defer catch alloc::free(allocator, raw_name);
-		if (raw_name.len && io::read_buffer(archive.file, raw_name)! != (sz)cdh.filename_len.val)
-		{
-			alloc::free(allocator, raw_name);
-			break;
-		}
-
-		String name;
-		bool is_utf8 = (cdh.flags.val & 0x0800) != 0;
-		if (is_utf8 || is_valid_utf8(raw_name))
-		{
-			name = (String)raw_name;
-		}
-		else
-		{
-			name = (String)codepage::decode(allocator, raw_name, CP437)!!;
-			alloc::free(allocator, raw_name.ptr);
-		}
-		raw_name = {};
-		defer catch alloc::free(allocator, name);
-
-		char[] extra_field;
-		if (cdh.extra_field_len.val > 0)
-		{
-			extra_field = alloc::alloc_array(allocator, char, cdh.extra_field_len.val);
-			defer catch alloc::free(allocator, extra_field);
-			io::read_all(archive.file, extra_field)!;
-		}
-
-		defer alloc::free(allocator, extra_field);
-		archive.file.seek(cdh.comment_len.val, FROM_CURSOR)!;
-
-		long uncompressed_size = cdh.uncompressed_size.val;
-		long compressed_size = cdh.compressed_size.val;
-		long offset = cdh.relative_offset.val;
-
-		if (cdh.uncompressed_size.val == 0xFFFFFFFF || cdh.compressed_size.val == 0xFFFFFFFF || cdh.relative_offset.val == 0xFFFFFFFF)
-		{
-			ByteReader reader = { .bytes = extra_field };
-			while (reader.available()! >= 4)
-			{
-				ushort id = io::read_le_ushort(&reader)!;
-				ushort size = io::read_le_ushort(&reader)!;
-
-				if (id == ZIP64_EXTRA_ID)
-				{
-					int remaining = size;
-					if (cdh.uncompressed_size.val == 0xFFFFFFFF && remaining >= 8)
-					{
-						uncompressed_size = io::read_le_long(&reader)!;
-						remaining -= 8;
-					}
-					if (cdh.compressed_size.val == 0xFFFFFFFF && remaining >= 8)
-					{
-						compressed_size = io::read_le_long(&reader)!;
-						remaining -= 8;
-					}
-					if (cdh.relative_offset.val == 0xFFFFFFFF && remaining >= 8)
-					{
-						offset = io::read_le_long(&reader)!;
-						remaining -= 8;
-					}
-					break;
-				}
-				reader.seek(size, FROM_CURSOR)!;
-			}
-		}
-
-		bool is_directory = name.ends_with("/") || name.ends_with("\\");
-		if (!is_directory)
-		{
-			ushort host_system = cdh.version_made_by.val >> 8;
-			if (host_system == 0 || host_system == 10) // MS-DOS or NTFS
-			{
-				if ((cdh.external_attr.val & 0x10) != 0) is_directory = true;
-			}
-			else if (host_system == 3) // Unix
-			{
-				if (((cdh.external_attr.val >> 16) & 0x4000) != 0) is_directory = true;
-			}
-		}
-
-		ZipEntry entry = {
-			.name = name,
-			.uncompressed_size = uncompressed_size,
-			.compressed_size = compressed_size,
-			.crc32 = cdh.crc32.val,
-			.offset = offset,
-			.method = cdh.method,
-			.last_mod_time = cdh.last_mod_time.val,
-			.last_mod_date = cdh.last_mod_date.val,
-			.is_directory = is_directory,
-			.is_encrypted = (cdh.flags.val & 1) != 0
-		};
-
+		ZipEntry entry;
+		if (!_parse_zip_cd_entry(archive.file, allocator, &entry)!) break;
 		archive.entries.push(entry);
 	}
 
@@ -328,16 +344,7 @@ fn ZipArchive? recover(Allocator allocator, String path)
 			break;
 		}
 
-		String name;
-		if ((lfh.flags.val & 0x0800) != 0 || is_valid_utf8(raw_name))
-		{
-			name = (String)raw_name;
-		}
-		else
-		{
-			name = (String)codepage::decode(allocator, raw_name, CP437)!!;
-			alloc::free(allocator, raw_name.ptr);
-		}
+		String name = _decode_filename(allocator, raw_name, (lfh.flags.val & 0x0800) != 0)!;
 
 		archive.file.seek(lfh.extra_field_len.val, FROM_CURSOR)!!;
 
@@ -362,6 +369,127 @@ fn ZipArchive? recover(Allocator allocator, String path)
 
 	if (archive.entries.len() == 0) return CORRUPTED_DATA~;
 	return archive;
+}
+
+fn void? _write_cd_entry(File* f, Allocator allocator, ZipEntry* entry, long* cd_size) @local
+{
+	ZipCDH cdh = {
+		.signature.val = ZIP_CDH_SIG,
+		.version_made_by.val = 45, // 4.5 for ZIP64
+		.version_needed.val = 45,
+		.method = entry.method,
+		.last_mod_time.val = entry.last_mod_time,
+		.last_mod_date.val = entry.last_mod_date,
+		.crc32.val = entry.crc32,
+		.filename_len.val = (ushort)entry.name.len,
+	};
+
+	bool is_zip64 = entry.uncompressed_size >= 0xFFFFFFFF || entry.compressed_size >= 0xFFFFFFFF || entry.offset >= 0xFFFFFFFF;
+
+	char[] extra_data;
+	if (is_zip64)
+	{
+		cdh.compressed_size.val = 0xFFFFFFFF;
+		cdh.uncompressed_size.val = 0xFFFFFFFF;
+		cdh.relative_offset.val = 0xFFFFFFFF;
+
+		// Header(4) + Uncomp(8) + Comp(8) + Offset(8)
+		ushort extra_size = 28;
+		extra_data = alloc::alloc_array(allocator, char, extra_size);
+		bitorder::write(ZIP64_EXTRA_ID, extra_data[:2], UShortLE);
+		bitorder::write((ushort)(extra_size - 4), extra_data[2:2], UShortLE);
+		bitorder::write(entry.uncompressed_size, extra_data[4:8], LongLE);
+		bitorder::write(entry.compressed_size, extra_data[12:8], LongLE);
+		bitorder::write(entry.offset, extra_data[20:8], LongLE);
+
+		cdh.extra_field_len.val = extra_size;
+	}
+	else
+	{
+		cdh.compressed_size.val = (uint)entry.compressed_size;
+		cdh.uncompressed_size.val = (uint)entry.uncompressed_size;
+		cdh.relative_offset.val = (uint)entry.offset;
+	}
+
+	// Set external attributes (MS-DOS compatibility).
+	// 0x10 is the DOS directory attribute.
+	cdh.external_attr.val = (uint)(entry.is_directory ? 0x10 : 0);
+
+	io::write_any(f, &cdh)!;
+	f.write(entry.name)!;
+	if (is_zip64)
+	{
+		f.write(extra_data)!;
+		alloc::free(allocator, extra_data);
+	}
+
+	long entry_record_size = (long)ZipCDH::size + entry.name.len + cdh.extra_field_len.val;
+	if (*cd_size + entry_record_size <= 0) return io::OVERFLOW~;
+	*cd_size += entry_record_size;
+}
+
+fn void? _write_eocd_records(File* f, Allocator allocator, sz num_entries, long cd_size, long cd_offset, String comment) @local
+{
+	bool cd_zip64 = num_entries >= 0xFFFF || cd_size >= 0xFFFFFFFF || cd_offset >= 0xFFFFFFFF;
+
+	if (cd_zip64)
+	{
+		long eocd64_offset = f.cursor()!;
+
+		Zip64EOCD eocd64 = {
+			.signature.val = ZIP64_EOCD_SIG,
+			.size.val = (ulong)(Zip64EOCD::size - 12),
+			.version_made.val = 45,
+			.version_needed.val = 45,
+			.count_this_disk.val = num_entries,
+			.count_total.val = num_entries,
+			.size_cd.val = cd_size,
+			.offset_cd.val = cd_offset,
+		};
+
+		io::write_any(f, &eocd64)!;
+
+		Zip64Locator locator = {
+			.signature.val = ZIP64_LOCATOR_SIG,
+			.disk_start.val = 0,
+			.offset_eocd.val = eocd64_offset,
+			.total_disks.val = 1,
+		};
+
+		io::write_any(f, &locator)!;
+	}
+
+	char[] encoded_comment;
+	if (comment.len > 0)
+	{
+		char[]? res = codepage::encode(allocator, comment, CodePage.CP437);
+		if (try res)
+		{
+			encoded_comment = res;
+			if (encoded_comment.len > 0xFFFF)
+			{
+				alloc::free(allocator, encoded_comment.ptr);
+				return INVALID_ARGUMENT~;
+			}
+		}
+	}
+	defer if (encoded_comment.ptr) alloc::free(allocator, encoded_comment);
+
+	ZipEOCD eocd = {
+		.signature.val = ZIP_EOCD_SIG,
+		.num_entries_this_disk.val = (ushort)(num_entries >= 0xFFFF ? 0xFFFF : (ushort)num_entries),
+		.num_entries.val = (ushort)(num_entries >= 0xFFFF ? 0xFFFF : (ushort)num_entries),
+		.cd_size.val = (uint)(cd_size >= 0xFFFFFFFF ? 0xFFFFFFFF : (uint)cd_size),
+		.cd_offset.val = (uint)(cd_offset >= 0xFFFFFFFF ? 0xFFFFFFFF : (uint)cd_offset),
+		.comment_len.val = (ushort)encoded_comment.len,
+	};
+
+	io::write_any(f, &eocd)!;
+
+	if (encoded_comment.len > 0)
+	{
+		f.write(encoded_comment)!;
+	}
 }
 
 <*
@@ -391,122 +519,10 @@ fn void? ZipArchive.close(&self)
 
 		for (sz i = 0; i < self.entries.len(); i++)
 		{
-			ZipEntry* entry = self.entries.get_ref(i);
-			ZipCDH cdh = {
-				.signature.val = ZIP_CDH_SIG,
-				.version_made_by.val = 45, // 4.5 for ZIP64
-				.version_needed.val = 45,
-				.method = entry.method,
-				.last_mod_time.val = entry.last_mod_time,
-				.last_mod_date.val = entry.last_mod_date,
-				.crc32.val = entry.crc32,
-				.filename_len.val = (ushort)entry.name.len,
-			};
-
-			bool is_zip64 = entry.uncompressed_size >= 0xFFFFFFFF || entry.compressed_size >= 0xFFFFFFFF || entry.offset >= 0xFFFFFFFF;
-
-			char[] extra_data;
-			if (is_zip64)
-			{
-				cdh.compressed_size.val = 0xFFFFFFFF;
-				cdh.uncompressed_size.val = 0xFFFFFFFF;
-				cdh.relative_offset.val = 0xFFFFFFFF;
-
-				// Header(4) + Uncomp(8) + Comp(8) + Offset(8)
-				ushort extra_size = 28;
-				extra_data = alloc::alloc_array(self.allocator, char, extra_size);
-				bitorder::write(ZIP64_EXTRA_ID, extra_data[:2], UShortLE);
-				bitorder::write((ushort)(extra_size - 4), extra_data[2:2], UShortLE);
-				bitorder::write(entry.uncompressed_size, extra_data[4:8], LongLE);
-				bitorder::write(entry.compressed_size, extra_data[12:8], LongLE);
-				bitorder::write(entry.offset, extra_data[20:8], LongLE);
-
-				cdh.extra_field_len.val = extra_size;
-			}
-			else
-			{
-				cdh.compressed_size.val = (uint)entry.compressed_size;
-				cdh.uncompressed_size.val = (uint)entry.uncompressed_size;
-				cdh.relative_offset.val = (uint)entry.offset;
-			}
-
-			// Set external attributes (MS-DOS compatibility).
-			// 0x10 is the DOS directory attribute.
-			cdh.external_attr.val = (uint)(entry.is_directory ? 0x10 : 0);
-
-			io::write_any(self.file, &cdh)!;
-			self.file.write(entry.name)!;
-			if (is_zip64)
-			{
-				self.file.write(extra_data)!;
-				alloc::free(self.allocator, extra_data);
-			}
-
-			long entry_record_size = (long)ZipCDH::size + entry.name.len + cdh.extra_field_len.val;
-			if (cd_size + entry_record_size <= 0) return io::OVERFLOW~;
-			cd_size += entry_record_size;
+			_write_cd_entry(self.file, self.allocator, self.entries.get_ref(i), &cd_size)!;
 		}
 
-		bool cd_zip64 = self.entries.len() >= 0xFFFF || cd_size >= 0xFFFFFFFF || cd_offset >= 0xFFFFFFFF;
-
-		if (cd_zip64)
-		{
-			long eocd64_offset = self.file.cursor()!;
-
-			Zip64EOCD eocd64 = {
-				.signature.val = ZIP64_EOCD_SIG,
-				.size.val = (ulong)(Zip64EOCD::size - 12),
-				.version_made.val = 45,
-				.version_needed.val = 45,
-				.count_this_disk.val = self.entries.len(),
-				.count_total.val = self.entries.len(),
-				.size_cd.val = cd_size,
-				.offset_cd.val = cd_offset,
-			};
-
-			io::write_any(self.file, &eocd64)!;
-
-			Zip64Locator locator = {
-				.signature.val = ZIP64_LOCATOR_SIG,
-				.disk_start.val = 0,
-				.offset_eocd.val = eocd64_offset,
-				.total_disks.val = 1,
-			};
-
-			io::write_any(self.file, &locator)!;
-		}
-
-		char[] encoded_comment;
-		if (self.comment.len > 0)
-		{
-			char[]? res = codepage::encode(self.allocator, self.comment, CodePage.CP437);
-			if (try res)
-			{
-				encoded_comment = res;
-				if (encoded_comment.len > 0xFFFF)
-				{
-					alloc::free(self.allocator, encoded_comment.ptr);
-					return INVALID_ARGUMENT~;
-				}
-			}
-		}
-		defer if (encoded_comment.ptr) alloc::free(self.allocator, encoded_comment);
-
-		ZipEOCD eocd = {
-			.signature.val = ZIP_EOCD_SIG,
-			.num_entries_this_disk.val = (ushort)(self.entries.len() >= 0xFFFF ? 0xFFFF : (ushort)self.entries.len()),
-			.num_entries.val = (ushort)(self.entries.len() >= 0xFFFF ? 0xFFFF : (ushort)self.entries.len()),
-			.cd_size.val = (uint)(cd_size >= 0xFFFFFFFF ? 0xFFFFFFFF : (uint)cd_size),
-			.cd_offset.val = (uint)(cd_offset >= 0xFFFFFFFF ? 0xFFFFFFFF : (uint)cd_offset),
-			.comment_len.val = (ushort)encoded_comment.len,
-		};
-
-		io::write_any(self.file, &eocd)!;
-
-		if (encoded_comment.len > 0)
-		{
-			self.file.write(encoded_comment)!;
-		}
+		_write_eocd_records(self.file, self.allocator, self.entries.len(), cd_size, cd_offset, self.comment)!;
 	}
 }
 
@@ -738,6 +754,89 @@ fn void? ZipEntryReader.seek(&self, long offset, SeekOrigin seek = FROM_START) @
 	self.adapter.pos = new_pos;
 }
 
+fn void? _init_aex_reader(File* f, ZipEntry* entry, ZipLFH* lfh, String password, ZipEntryReader* reader) @local
+{
+	if (entry.method != AEX) return ENCRYPTED_FILE~;
+	if (!password.len) return PASSWORD_NEEDED~;
+
+	char aex_strength;
+	ushort aex_method;
+	ushort aex_version;
+
+	f.seek(lfh.filename_len.val, FROM_CURSOR)!;
+	long end = f.cursor()! + lfh.extra_field_len.val;
+	while (f.cursor()! < end)
+	{
+		ushort id = io::read_le_ushort(f)!;
+		ushort size = io::read_le_ushort(f)!;
+
+		if (id == AEX_EXTRA_ID)
+		{
+			aex_version = io::read_le_ushort(f)!;
+			io::read_le_ushort(f)!;
+			aex_strength = f.read_byte()!;
+			aex_method = io::read_le_ushort(f)!;
+			continue;
+		}
+		f.seek(size, FROM_CURSOR)!;
+	}
+	if (!aex_version) return CORRUPTED_DATA~;
+
+	AesType aes_type;
+	sz key_len;
+	switch (aex_strength)
+	{
+		case 1: key_len = 16; aes_type = AES128;
+		case 2: key_len = 24; aes_type = AES192;
+		case 3: key_len = 32; aes_type = AES256;
+		default: return CORRUPTED_DATA~;
+	}
+	sz salt_len = key_len / 2;
+
+	@pool()
+	{
+		char[] buf = mem::temp_array(char, salt_len + 2);
+		buf = io::read_buffer_to_end(f, buf)!;
+
+		if (buf.len < salt_len + 2) return CORRUPTED_DATA~;
+
+		char[] salt        = buf[0:salt_len];
+		char[] pv_stored   = buf[salt_len:2];
+
+		sz cipher_len = (sz)entry.compressed_size - salt_len - 2 - 10;
+		if (cipher_len < 0) return CORRUPTED_DATA~;
+
+		char[] cipher = mem::temp_array(char, cipher_len);
+		cipher = io::read_buffer_to_end(f, cipher)!;
+		if (cipher.len != cipher_len) return CORRUPTED_DATA~;
+
+		char[] hmac_stored = mem::temp_array(char, 10);
+		hmac_stored = io::read_buffer_to_end(f, hmac_stored)!;
+		if (hmac_stored.len != 10) return CORRUPTED_DATA~;
+
+		sz dk_len = key_len * 2 + 2;
+		char[] dk = mem::temp_array(char, dk_len);
+		sha1::pbkdf2(password, salt, 1000, dk);
+
+		char[] aes_key = dk[0:key_len];
+		char[] mac_key = dk[key_len:key_len];
+		char[] pv_derived = dk[key_len*2:2];
+
+		if (pv_stored != pv_derived) return PASSWORD_MISMATCH~;
+
+		char[*] hmac_calc = sha1::hmac(mac_key, cipher);
+		if (hmac_stored[:10] != hmac_calc[:10]) return CORRUPTED_DATA~;
+
+		char[16] iv = { [0] = 1 };
+		reader.adapter.aes.init(aes_type, aes_key, iv[..], CTR_LE);
+	};
+
+	reader.adapter.aex = aex_version;
+	reader.adapter.start_offset += (long)salt_len + 2;
+	reader.adapter.size = entry.compressed_size - salt_len - 2 - 10;
+	reader.method = (ZipMethod)aex_method;
+}
+
 <*
  Opens a reader for an entry.
  @param filename : `The name of the file to read.`
@@ -774,85 +873,7 @@ fn ZipEntryReader? ZipArchive.open_reader(&self, String filename, String passwor
 	// AE-X decryption.
 	if (entry.is_encrypted)
 	{
-		if (entry.method != AEX) return ENCRYPTED_FILE~;
-		if (!password.len) return PASSWORD_NEEDED~;
-
-		char aex_strength;
-		ushort aex_method;
-		ushort aex_version;
-
-		self.file.seek(lfh.filename_len.val, FROM_CURSOR)!;
-		long end = self.file.cursor()! + lfh.extra_field_len.val;
-		while (self.file.cursor()! < end)
-		{
-			ushort id = io::read_le_ushort(self.file)!;
-			ushort size = io::read_le_ushort(self.file)!;
-
-			if (id == AEX_EXTRA_ID)
-			{
-				aex_version = io::read_le_ushort(self.file)!;
-				io::read_le_ushort(self.file)!;
-				aex_strength = self.file.read_byte()!;
-				aex_method = io::read_le_ushort(self.file)!;
-				continue;
-			}
-			self.file.seek(size, FROM_CURSOR)!;
-		}
-		if (!aex_version) return CORRUPTED_DATA~;
-
-		AesType aes_type;
-		sz key_len;
-		switch (aex_strength)
-		{
-			case 1: key_len = 16; aes_type = AES128;
-			case 2: key_len = 24; aes_type = AES192;
-			case 3: key_len = 32; aes_type = AES256;
-			default: return CORRUPTED_DATA~;
-		}
-		sz salt_len = key_len / 2;
-
-		@pool()
-		{
-			char[] buf = mem::temp_array(char, salt_len + 2);
-			buf = io::read_buffer_to_end(self.file, buf)!;
-
-			if (buf.len < salt_len + 2) return CORRUPTED_DATA~;
-
-			char[] salt        = buf[0:salt_len];
-			char[] pv_stored   = buf[salt_len:2];
-
-			sz cipher_len = (sz)entry.compressed_size - salt_len - 2 - 10;
-			if (cipher_len < 0) return CORRUPTED_DATA~;
-
-			char[] cipher = mem::temp_array(char, cipher_len);
-			cipher = io::read_buffer_to_end(self.file, cipher)!;
-			if (cipher.len != cipher_len) return CORRUPTED_DATA~;
-
-			char[] hmac_stored = mem::temp_array(char, 10);
-			hmac_stored = io::read_buffer_to_end(self.file, hmac_stored)!;
-			if (hmac_stored.len != 10) return CORRUPTED_DATA~;
-
-			sz dk_len = key_len * 2 + 2;
-			char[] dk = mem::temp_array(char, dk_len);
-			sha1::pbkdf2(password, salt, 1000, dk);
-
-			char[] aes_key = dk[0:key_len];
-			char[] mac_key = dk[key_len:key_len];
-			char[] pv_derived = dk[key_len*2:2];
-
-			if (pv_stored != pv_derived) return PASSWORD_MISMATCH~;
-
-			char[*] hmac_calc = sha1::hmac(mac_key, cipher);
-			if (hmac_stored[:10] != hmac_calc[:10]) return CORRUPTED_DATA~;
-
-			char[16] iv = { [0] = 1 };
-			reader.adapter.aes.init(aes_type, aes_key, iv[..], CTR_LE);
-		};
-
-		reader.adapter.aex = aex_version;
-		reader.adapter.start_offset += (long)salt_len + 2;
-		reader.adapter.size = entry.compressed_size - salt_len - 2 - 10;
-		reader.method = (ZipMethod)aex_method;
+		_init_aex_reader(self.file, &entry, &lfh, password, &reader)!;
 	}
 
 	return reader;
