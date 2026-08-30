@@ -123,8 +123,9 @@ static void usage(bool full)
 		print_opt("--header-output <dir>", "Override header file output directory when building libraries.");
 		print_opt("--emit-llvm", "Emit LLVM IR as a .ll file per module.");
 		print_opt("--emit-asm", "Emit asm as a .s file per module.");
-		print_opt("--obj", "Emit object files. (Enabled by default)");
+		print_opt("--obj", "Emit object files, this is only valid for for `compile-only` (Enabled by default)");
 		print_opt("--no-obj", "Do not output object files, this is only valid for `compile-only`.");
+		print_opt("--keep-obj", "Do not delete object files after linking.");
 		print_opt("--no-headers", "Do not generate C headers when building a library.");
 		print_opt("--target <target>", "Compile for a particular architecture + OS target.");
 		print_opt("--threads <number>", "Set the number of threads to use for compilation.");
@@ -1418,6 +1419,10 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if (match_longopt("obj")) // NOLINT
 			{
 				options->no_obj = false;
+				return;
+			}
+			if (match_longopt("keep-obj")) // NOLINT
+			{
 				options->keep_object_files = true;
 				return;
 			}

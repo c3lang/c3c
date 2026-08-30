@@ -24,6 +24,7 @@
 - Let LLVM build the biggest modules first.
 - Support for iOS.
 - Allow `-` in `c3c init some-project`.
+- `--keep-obj` added, to prevent object files from being deleted after building/linking.
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
