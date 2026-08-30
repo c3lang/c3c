@@ -370,42 +370,76 @@ run_http_server_tests() {
     PORT=$(( 8085 + $RANDOM % 10000 ))
     echo "Starting server on port $PORT..."
 
-    ARGS=""
-    if [[ "$OS_MODE" == "ios" ]]; then ARGS="xcrun simctl spawn booted"; fi
-    $ARGS "$OUTPUT_BIN" -p $PORT -r "$ROOT_DIR/resources/examples" &
-    SERVER_PID=$!
+    kill_server() {
+        if [ -n "$SERVER_PID" ]; then
+            kill $SERVER_PID 2>/dev/null || true
+        fi
+        if [[ "$OS_MODE" == "ios" ]]; then
+            xcrun simctl spawn booted pkill -f "$OUTPUT_BIN" 2>/dev/null || true
+        fi
+    }
 
-    sleep 2
+    if [[ "$OS_MODE" == "ios" ]]; then
+        tail -f /dev/null | xcrun simctl spawn booted "$OUTPUT_BIN" -p $PORT -r "$ROOT_DIR/resources/examples" > "$MY_WORK_DIR/server.log" 2>&1 &
+        SERVER_PID=$!
+    else
+        "$OUTPUT_BIN" -p $PORT -r "$ROOT_DIR/resources/examples" > "$MY_WORK_DIR/server.log" 2>&1 &
+        SERVER_PID=$!
+    fi
+
+    # Poll until server is responding (up to 6 seconds)
+    SERVER_READY=false
+    for i in {1..30}; do
+        if curl -s -o /dev/null "http://127.0.0.1:$PORT/"; then
+            SERVER_READY=true
+            break
+        fi
+        sleep 0.2
+    done
+
+    if [ "$SERVER_READY" != "true" ]; then
+        echo "::error::HTTP server failed to start or respond on port $PORT within timeout."
+        echo "--- Server Log Output ---"
+        cat "$MY_WORK_DIR/server.log" 2>/dev/null || true
+        kill_server
+        exit 1
+    fi
 
     # Test root path (directory listing)
     echo "Testing GET /"
-    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/")
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/" || echo "000")
     if [ "$HTTP_STATUS" != "200" ]; then
         echo "::error::HTTP GET / failed with status $HTTP_STATUS."
-        kill $SERVER_PID 2>/dev/null || true
+        echo "--- Server Log Output ---"
+        cat "$MY_WORK_DIR/server.log" 2>/dev/null || true
+        kill_server
         exit 1
     fi
 
     # Test served file
     echo "Testing GET /http_server.c3"
-    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/http_server.c3")
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/http_server.c3" || echo "000")
     if [ "$HTTP_STATUS" != "200" ]; then
         echo "::error::HTTP GET /http_server.c3 failed with status $HTTP_STATUS."
-        kill $SERVER_PID 2>/dev/null || true
+        echo "--- Server Log Output ---"
+        cat "$MY_WORK_DIR/server.log" 2>/dev/null || true
+        kill_server
         exit 1
     fi
 
     # Test missing file (404 expected)
     echo "Testing 404 for invalid path"
-    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/does_not_exist_404_test")
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/does_not_exist_404_test" || echo "000")
     if [ "$HTTP_STATUS" != "404" ]; then
         echo "::error::HTTP GET /does_not_exist_404_test expected 404, but got $HTTP_STATUS."
-        kill $SERVER_PID 2>/dev/null || true
+        echo "--- Server Log Output ---"
+        cat "$MY_WORK_DIR/server.log" 2>/dev/null || true
+        kill_server
         exit 1
     fi
 
     echo "HTTP Server Integration Tests passed."
-    kill $SERVER_PID 2>/dev/null || true
+    kill_server
 }
 
 run_unit_tests() {
