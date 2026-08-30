@@ -75,6 +75,15 @@ fn void unique_header_entries()
 	test::@error(r.tinit((ByteReader) { }.init(csv)), csv::NON_UNIQUE_ENTRY);
 }
 
+fn void quote_escape()
+{
+	String csv = "name,age,nickname\r\nAlice,30,\"Alice the \"\"Goat\"\"\"";
+
+	CsvReader r;
+	r.tinit((ByteReader) { }.init(csv))!!;
+	test::@check(r.read_row()!!.len() == 3, "Incorrectly escaped quotes in %s", csv);
+}
+
 fn void csv_each_row()
 {
 	TestCase[] tests = {

@@ -8,7 +8,7 @@ struct CsvReader
 	InStream stream;
 	Allocator allocator;
 	CsvRow headers;
-	String separator;
+	String delimeter;
 	bitstruct : char
 	{
 		bool has_header;
@@ -25,15 +25,15 @@ struct CsvRow (Printable)
 
 fn CsvReader? tload(
 	InStream stream,
-	String separator = ",",
+	String delimeter = ",",
 	bool has_header = true,
 	bool allow_non_spec_line_endings = false,
-) => load(tmem, stream, separator, has_header, allow_non_spec_line_endings);
+) => load(tmem, stream, delimeter, has_header, allow_non_spec_line_endings);
 
 fn CsvReader? load(
 	Allocator allocator,
 	InStream stream,
-	String separator = ",",
+	String delimeter = ",",
 	bool has_header = true,
 	bool allow_non_spec_line_endings = false,
 )
@@ -41,7 +41,7 @@ fn CsvReader? load(
 	CsvReader reader;
 	reader.allocator = allocator;
 	reader.stream = stream;
-	reader.separator = separator;
+	reader.delimeter = delimeter;
 	reader.has_header = has_header;
 	reader.allow_non_spec_line_endings = allow_non_spec_line_endings;
 	if (has_header)
@@ -55,13 +55,13 @@ fn CsvReader? load(
 fn void? CsvReader.tinit(
 	&self,
 	InStream stream,
-	String separator = ",",
+	String delimeter = ",",
 	bool has_header = true,
 	bool allow_non_spec_line_endings = false,
 ) => self.init(
 	tmem,
 	stream,
-	separator,
+	delimeter,
 	has_header,
 	allow_non_spec_line_endings,
 );
@@ -70,12 +70,12 @@ fn void? CsvReader.init(
 	&self,
 	Allocator allocator,
 	InStream stream,
-	String separator = ",",
+	String delimeter = ",",
 	bool has_header = true,
 	bool allow_non_spec_line_endings = false,
 )
 {
-	*self = load(allocator, stream, separator, has_header, allow_non_spec_line_endings)!;
+	*self = load(allocator, stream, delimeter, has_header, allow_non_spec_line_endings)!;
 }
 
 fn void CsvReader.free(&self)
@@ -112,28 +112,34 @@ fn void CsvRow.free(&self)
 	self.allocator = null;
 }
 
+<*
+ @require self.allocator != null : `CsvReader is not initialized`
+*>
 fn void? CsvReader.skip_row(self) @maydiscard => @pool()
 {
 	(void)self.find_row()!;
 }
 
+<*
+ @require self.allocator != null : `CsvReader is not initialized`
+*>
 fn CsvRow? CsvReader.read_row(&self)
 {
 	String row = self.find_row()!;
 
-	return { parse_row_entries(self.allocator, row, self.separator, self.headers.len()), row, self.allocator };
+	return { parse_row_entries(self.allocator, row, self.delimeter, self.headers.len()), row, self.allocator };
 }
 
 macro void? @each_row(
 	Allocator allocator,
 	InStream stream,
-	String separator = ",",
+	String delimeter = ",",
 	bool allow_non_spec_line_endings,
 	int max_rows = int::max; @body(String[] row)
 ) @maydiscard
 {
 	CsvReader r;
-	r.init(allocator, stream, separator, false, allow_non_spec_line_endings)!;
+	r.init(allocator, stream, delimeter, false, allow_non_spec_line_endings)!;
 	defer r.free();
 
 	return r.@each_row(max_rows ; row)
@@ -154,7 +160,7 @@ macro void? CsvReader.@each_row(&self, int max_rows = int::max; @body(String[] r
 				if (err == io::EOF) return;
 				return err~;
 			}
-			String[] row = parse_row_entries(self.allocator, s, self.separator, 0)!;
+			String[] row = parse_row_entries(self.allocator, s, self.delimeter, 0)!;
 			@body(row);
 			alloc::free(self.allocator, row);
 			alloc::free(self.allocator, s);
@@ -167,10 +173,10 @@ import std::io, std::collections::list;
 
 enum ReadState
 {
-	NORMAL,
-	STRING,
-	QUOTE,
 	ENDING,
+	QUOTE,
+	STRING,
+	NORMAL,
 }
 
 fn String? CsvReader.find_row(&self)
@@ -179,7 +185,7 @@ fn String? CsvReader.find_row(&self)
 	row.init(self.allocator, 256);
 	defer row.free();
 	ReadState state = NORMAL;
-	char? current;	
+	char? current;
 	bool ending     = false;
 
 	while (!ending)
@@ -190,6 +196,8 @@ fn String? CsvReader.find_row(&self)
 			if (err == io::EOF)
 			{
 				if (!row.len()) return io::EOF~;
+				if (state == QUOTE) row.append_char('"');
+				if (state == STRING) return encoding::MALFORMED_DATA~;
 				break;
 			}
 			return err~;
@@ -235,9 +243,20 @@ fn String? CsvReader.find_row(&self)
 				}
 			case QUOTE:
 				state = current == '"' ? STRING : NORMAL;
-				nextcase state;
+				if (state == STRING)
+				{
+					row.append("\\\"");
+					break;
+				}
+				row.append_char('"');
+				if (current == '\r' || current == '\n') nextcase ENDING;
+				row.append_char(current);
 			case STRING:
-				if (current == '"') state = QUOTE;
+				if (current == '"')
+				{
+					state = QUOTE;
+					break;
+				}
 				row.append_char(current);
 			case NORMAL:
 				if (current == '\r' || current == '\n') nextcase ENDING;
@@ -248,62 +267,75 @@ fn String? CsvReader.find_row(&self)
 	return row.copy_str(self.allocator);
 }
 
-fn String[]? parse_row_entries(Allocator allocator, String s, String separator, sz entry_count = 0)
+enum ParseState
 {
-	if (!s.len) return { };
-	sz capacity    = entry_count ? entry_count : 16;
-	String* holder = alloc::alloc_array(allocator, String, capacity);
-	sz i           = 0;
-	bool going     = true;
+	STRING,
+	NORMAL,
+	PUSH,
+}
 
-	while (going)
+fn String[]? parse_row_entries(Allocator allocator, String row, String delimeter, sz entry_amount = 0)
+{
+	if (!row.len) return { };
+	sz capacity      = entry_amount ? entry_amount : 16;
+	String* holder   = alloc::alloc_array(allocator, String, capacity);
+	sz entry_index   = 0;
+	sz row_index     = 0;
+	sz reading_index = 0;
+	ParseState state = NORMAL;
+	char current;
+
+	while (true)
 	{
-		sz index = min(s.index_of("\"") ?? (sz::max - 1), s.index_of(separator) ?? (sz::max - 1));
-		String res @noinit;
-		if (index >= s.len)
+		if (row_index + reading_index == row.len)
 		{
-			res = s;
-			going = false;
-		}
-		else
-		{
-			if (s[index] == '"')
+			if (entry_index == capacity)
 			{
-				while (true)
-				{
-					sz? quoted = 1 + s[index + 1..].index_of_char('"');
-					if (catch err = quoted)
-					{
-						return encoding::MALFORMED_DATA~;
-					}
-					else if (index + quoted == s.len - 1 || s[index + quoted + 1:separator.len] == separator)
-					{
-						index += quoted + 1;
-						break;
-					}
-					index += quoted;
-				}
+				capacity *= 2;
+				holder = alloc::realloc(allocator, holder, String::size * capacity);
 			}
-			res = s[:index];
-			if (index >= s.len)
-			{
-				going = false;
-			}
-			else
-			{
-				s = s[index + separator.len..];
-			}
+			holder[entry_index++] = row[row_index:reading_index];
+			break;
 		}
-		if (i == capacity)
-		{
-			capacity *= 2;
-			holder = alloc::realloc(allocator, holder, String::size * capacity);
-		}
-		holder[i++] = res;
-	}
-	if (entry_count && i != entry_count) return INCONSISTANT_ROW_LENGTH~;
+		current = row[row_index + reading_index];
 
-	return holder[:i];
+		switch (state)
+		{
+			case STRING:
+				if (current == '\\')
+				{
+					reading_index += 2;
+					continue;
+				}
+				if (current == '"')
+				{
+					state = NORMAL;
+				}
+				reading_index++;
+			case NORMAL:
+				if (current == delimeter[0] && row[row_index + reading_index:delimeter.len] == delimeter)
+				{
+					nextcase PUSH;
+				}
+				if (current == '"')
+				{
+					state = STRING;
+				}
+				reading_index++;
+			case PUSH:
+				if (entry_index == capacity)
+				{
+					capacity *= 2;
+					holder = alloc::realloc(allocator, holder, String::size * capacity);
+				}
+				holder[entry_index++] = row[row_index:reading_index];
+				row_index += reading_index + delimeter.len;
+				reading_index = 0;
+		}
+	}
+	if (entry_amount && entry_index != entry_amount) return INCONSISTANT_ROW_LENGTH~;
+
+	return holder[:entry_index];
 }
 
 fn void? check_duplicate_entries(CsvRow row)
