@@ -2736,8 +2736,10 @@ bool os_is_apple(OsType os_type);
 bool os_supports_stacktrace(OsType os_type);
 bool arch_is_wasm(ArchType type);
 
-const char *macos_sysroot(void);
-MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
+const char *darwin_sysroot(void);
+DarwinSDK *macos_sysroot_sdk_information(const char *sdk_path);
+DarwinSDK *ios_sysroot_sdk_information(const char *sdk_path, bool platform);
+const char *ios_cross_compile_library(bool simulator);
 const char *macos_cross_compile_library(void);
 WindowsSDK *windows_get_sdk(void);
 // This string may be in the scratch buffer

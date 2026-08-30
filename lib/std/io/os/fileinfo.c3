@@ -103,6 +103,23 @@ fn bool native_is_dir(String path)
 	$endif
 }
 
+fn bool native_is_link(String path)
+{
+	$switch:
+		$case env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY || env::EMSCRIPTEN:
+			@pool()
+			{
+				Stat stat;
+				return libc::lstat(path.zstr_tcopy(), &stat) == 0 && libc_S_ISTYPE(stat.st_mode, libc::S_IFLNK);
+			};
+		$case env::WIN32:
+			Win32_FILE_ATTRIBUTE_DATA data;
+			return @ok(get_win32_file_attributes(path, &data)) && (data.dwFileAttributes & win32::FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+		$default:
+			return false;
+	$endswitch
+}
+
 fn Time_t? native_get_modified_time(String path) => @pool()
 {
 	$switch:

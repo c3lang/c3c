@@ -181,6 +181,13 @@ typedef struct BuildOptions_
 	} macos;
 	struct
 	{
+		const char *sysroot;
+		const char *min_version;
+		const char *sdk_version;
+		bool simulator;
+	} ios;
+	struct
+	{
 		const char *crt;
 		const char *crtbegin;
 	} linuxpaths;
@@ -508,8 +515,16 @@ typedef struct
 		const char *sysroot;
 		const char *min_version;
 		const char *sdk_version;
-		MacSDK *sdk;
+		DarwinSDK *sdk;
 	} macos;
+	struct
+	{
+		const char *sysroot;
+		const char *min_version;
+		const char *sdk_version;
+		DarwinSDK *sdk;
+		bool simulator;
+	} ios;
 	struct
 	{
 		const char *sdk;
