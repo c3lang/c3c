@@ -15,6 +15,11 @@ const OVERALIGNED @private = Type::alignment > mem::DEFAULT_MEM_ALIGNMENT;
 
 alias DeallocFn = fn void(void*);
 
+<*
+ @param [&inout] ptr : "The pointer must be allocated using the allocator provided"
+ @param [&inout] allocator : "The allocator that created the pointer"
+ @return "A reference to use"
+*>
 fn Ref wrap(Type* ptr, Allocator allocator = mem)
 {
 	return { .refcount = alloc::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
@@ -28,19 +33,14 @@ fn Ref wrap(Type* ptr, Allocator allocator = mem)
 macro Ref new(Allocator allocator, #init = ...) @nodiscard @safemacro
 {
 	$if $defined(#init):
-		$if OVERALIGNED:
-			Type* ptr = alloc::malloc_aligned(allocator, Type::size, Type::alignment)!!;
-			*ptr = #init;
-		$else
-			Type* ptr = alloc::malloc(allocator, Type::size);
-			*ptr = #init;
-		$endif
+		Type* ptr = OVERALIGNED
+			??? alloc::malloc_aligned(allocator, Type::size, Type::alignment)!!
+			: alloc::malloc(allocator, Type::size);
+		*ptr = #init;
 	$else
-		$if OVERALIGNED:
-			Type* ptr = alloc::calloc_aligned(allocator, Type::size, Type::alignment)!!;
-		$else
-			Type* ptr = alloc::calloc(allocator, Type::size);
-		$endif
+		Type* ptr = OVERALIGNED
+			??? alloc::calloc_aligned(allocator, Type::size, Type::alignment)!!
+			: alloc::calloc(allocator, Type::size);
 	$endif
 	return { .refcount = alloc::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
 }
@@ -85,7 +85,8 @@ import std::thread, std::atomic;
 
 <*
  A RefCounted struct should be an inline base of a struct.
- If a `dealloc` is defined, then it will be called rather than `free`
+ If a `dealloc` is defined, it will be called when refcount reaches 0.
+ If `free` is defined, it will be called after `dealloc` otherwise mem::free will be called.
 
  For convenience, a ref count of 0 is still valid, and the struct is
  only freed when when ref count drops to -1.
@@ -114,6 +115,10 @@ macro retain(refcounted)
 }
 
 <*
+ Will release the refcounted value when the refcount reaches zero. If the
+ refcounted object doesn't implement .dealloc, `free` will be used, which assumes
+ heap allocation.
+
  @require $defined(RefCounted* c = refcounted) : "Expected a ref counted value"
  @require !$defined(refcounted.dealloc()) ||| $Typeof(refcounted.dealloc()) == void
    : "Expected refcounted type to have a valid dealloc"
@@ -127,6 +132,9 @@ macro void release(refcounted)
 		thread::fence(ACQUIRE);
 		$if $defined(refcounted.dealloc):
 			refcounted.dealloc();
+		$endif
+		$if $defined(refcounted.free):
+			refcounted.free();
 		$else
 			free(refcounted);
 		$endif

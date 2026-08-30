@@ -130,8 +130,8 @@ declare i1 @llvm.expect.i1(i1, i1) #1
 !37 = !DILocation(
 !38 = !DILocation(line: 16, column: 24, scope: !8)
 !39 = !DILocation(line: 16, column: 19, scope: !8)
-!40 = !DILocalVariable(name: "value", arg: 1, scope: !41, file: !7, line: 290, type: !13)
-!41 = distinct !DISubprogram(name: "@atomic_store", linkageName: "@atomic_store", scope: !20, file: !20, line: 290, type: !33, scopeLine: 290, flags: DIFlagPrototyped, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6, retainedNodes: !11)
+!40 = !DILocalVariable(name: "value", arg: 1, scope: !41, file: !7
+!41 = distinct !DISubprogram(name: "@atomic_store", linkageName: "@atomic_store", scope: !20, file: !20
 !42 = !DILocation(
 !43 = !DILocation(line: 16, column: 2, scope: !8)
 !44 = !DILocation(

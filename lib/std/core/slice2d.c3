@@ -61,13 +61,13 @@ macro void Slice2d.@each_ref(&self; @body(sz[<2>], Type*))
 <*
  Return a row as a slice.
 
- @param idy : "The row to return"
+ @param y : "The row to return"
  @return "The slice for the particular row"
- @require idy >= 0 && idy < self.ylen
+ @require [y] (usz)y < (usz)self.ylen : "y value out of range"
 *>
-macro Type[] Slice2d.get_row(self, sz idy) @operator([])
+macro Type[] Slice2d.get_row(self, sz y) @operator([])
 {
-	return (self.ptr + self.inner_len * (idy + self.ystart))[self.xstart:self.xlen];
+	return (self.ptr + self.inner_len * (y + self.ystart))[self.xstart:self.xlen];
 }
 
 <*
@@ -75,8 +75,9 @@ macro Type[] Slice2d.get_row(self, sz idy) @operator([])
 
  @param coord : "The xy coordinate"
  @return "The value at that coordinate"
- @require coord.y >= 0 && coord.y < self.ylen : "y value out of range"
- @require coord.x >= 0 && coord.x < self.xlen : "x value out of range"
+
+ @require (usz)coord.x < (usz)self.xlen : "x value out of range"
+ @require (usz)coord.y < (usz)self.ylen : "y value out of range"
 *>
 macro Type Slice2d.get_coord(self, sz[<2>] coord)
 {
@@ -88,8 +89,9 @@ macro Type Slice2d.get_coord(self, sz[<2>] coord)
 
  @param coord : "The xy coordinate"
  @return "A pointer to the value at that coordinate"
- @require coord.y >= 0 && coord.y < self.ylen : "y value out of range"
- @require coord.x >= 0 && coord.x < self.xlen : "x value out of range"
+
+ @require (usz)coord.x < (usz)self.xlen : "x value out of range"
+ @require (usz)coord.y < (usz)self.ylen : "y value out of range"
 *>
 macro Type* Slice2d.get_coord_ref(self, sz[<2>] coord)
 {
@@ -102,8 +104,9 @@ macro Type* Slice2d.get_coord_ref(self, sz[<2>] coord)
  @param x : "The x coordinate"
  @param y : "The x coordinate"
  @return "The value at that coordinate"
- @require y >= 0 && y < self.ylen : "y value out of range"
- @require x >= 0 && x < self.xlen : "x value out of range"
+
+ @require [x] (usz)x < (usz)self.xlen : "x value out of range"
+ @require [y] (usz)y < (usz)self.ylen : "y value out of range"
 *>
 macro Type Slice2d.get_xy(self, x, y)
 {
@@ -116,8 +119,9 @@ macro Type Slice2d.get_xy(self, x, y)
  @param x : "The x coordinate"
  @param y : "The y coordinate"
  @return "A pointer to the value at that coordinate"
- @require y >= 0 && y < self.ylen : "y value out of range"
- @require x >= 0 && x < self.xlen : "x value out of range"
+
+ @require [x] (usz)x < (usz)self.xlen : "x value out of range"
+ @require [y] (usz)y < (usz)self.ylen : "y value out of range"
 *>
 macro Type* Slice2d.get_xy_ref(self, x, y)
 {
@@ -129,8 +133,9 @@ macro Type* Slice2d.get_xy_ref(self, x, y)
 
  @param coord : "The xy coordinate"
  @param value : "The new value"
- @require coord.y >= 0 && coord.y < self.ylen : "y value out of range"
- @require coord.x >= 0 && coord.x < self.xlen : "x value out of range"
+
+ @require (usz)coord.x < (usz)self.xlen : "x value out of range"
+ @require (usz)coord.y < (usz)self.ylen : "y value out of range"
 *>
 macro void Slice2d.set_coord(self, sz[<2>] coord, Type value)
 {
@@ -143,8 +148,9 @@ macro void Slice2d.set_coord(self, sz[<2>] coord, Type value)
  @param x : "The x coordinate"
  @param y : "The y coordinate"
  @param value : "The new value"
- @require y >= 0 && y < self.ylen : "y value out of range"
- @require x >= 0 && x < self.xlen : "x value out of range"
+
+ @require [x] (usz)x < (usz)self.xlen : "x value out of range"
+ @require [y] (usz)y < (usz)self.ylen : "y value out of range"
 *>
 macro void Slice2d.set_xy(self, x, y, Type value)
 {
@@ -154,12 +160,21 @@ macro void Slice2d.set_xy(self, x, y, Type value)
 <*
  Reslice a slice2d returning a new slice.
 
+ For xlen and ylen, a negative value instead trims that many elements off the end of the row,
+ e.g. -1 stops one element short of the end. 0 gives the full length.
+
  @param x : "The starting x"
- @param xlen : "The length along x"
+ @param xlen : "The length along x."
  @param y : "The starting y"
  @param ylen : "The length along y"
- @require y >= 0 && y < self.ylen
- @require x >= 0 && x < self.xlen
+ @return "A new slice"
+
+ @require (usz)x < (usz)self.xlen : "x position out of bounds"
+ @require (usz)y < (usz)self.ylen : "y position out of bounds"
+ @require xlen < 1 || x + xlen <= self.xlen : "xlen out of bounds"
+ @require ylen < 1 || y + ylen <= self.ylen : "ylen out of bounds"
+ @require xlen > 0 || self.xlen + xlen >= x : "xlen out of bounds"
+ @require ylen > 0 || self.ylen + ylen >= y : "ylen out of bounds"
 *>
 fn Slice2d Slice2d.slice(&self, sz x = 0, sz xlen = 0, sz y = 0, sz ylen = 0)
 {

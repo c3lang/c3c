@@ -144,3 +144,46 @@ fn void test_lcm()
 	assert(a.lcm(b).equals(bigint::from_int(11*17)));
 	assert(math::lcm(a,b).equals(bigint::from_int(11*17)));
 }
+
+fn void test_shl_across_limb_boundaries()
+{
+	BigInt one = bigint::from_int(1);
+
+	// Shifts below the 32-bit limb width stay inside the first limb.
+	assert(one.shl(1).to_string(tmem) == "2");
+	assert(one.shl(31).to_string(tmem) == "2147483648");
+
+	// Shifts of 32 bits or more must carry into a new limb, growing the
+	// value up to MAX_LEN limbs rather than being silently discarded.
+	assert(one.shl(32).to_string(tmem) == "4294967296");
+	assert(one.shl(33).to_string(tmem) == "8589934592");
+	assert(one.shl(63).to_string(tmem) == "9223372036854775808");
+	assert(one.shl(64).to_string(tmem) == "18446744073709551616");
+	assert(one.shl(65).to_string(tmem) == "36893488147419103232");
+	assert(one.shl(100).to_string(tmem) == "1267650600228229401496703205376");
+
+	// A left shift must agree with repeated doubling.
+	BigInt acc = bigint::from_int(1);
+	for (int i = 0; i < 100; i++) acc = acc.add(acc);
+	assert(one.shl(100).equals(acc));
+
+	// A left shift must agree with multiplication by 2^n.
+	BigInt v; v.init_with_u128(0xDEAD_BEEF_CAFE_BABEull);
+	assert(v.shl(70).equals(v.mult(one.shl(70))));
+}
+
+fn void test_shl_shr_roundtrip()
+{
+	BigInt one = bigint::from_int(1);
+	int[8] shifts = {1, 31, 32, 33, 63, 64, 65, 100};
+	foreach (n : shifts)
+	{
+		assert(one.shl(n).shr(n).equals(one));
+	}
+
+	BigInt big = one.shl(100);
+	assert(big.shr(64).equals(one.shl(36)));
+	assert(big.shr(101).is_zero());
+	assert(big.shl(0).equals(big));
+	assert(big.shr(0).equals(big));
+}

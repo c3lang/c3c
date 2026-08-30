@@ -83,6 +83,12 @@ macro Char16[] @char16(String $string) @builtin
 	return $$wstr16($string)[..^2];
 }
 
+<*
+ Create a compile-time formatted string constant.
+
+ @param $format : "The compile-time format string"
+ @return "The formatted string, computed at compile time"
+*>
 macro String @sprintf(String $format, ...) @builtin @const
 {
 	return $$sprintf($format, ...$vaarg);
@@ -103,7 +109,7 @@ fn ZString tformat_zstr(String fmt, args...) @format(0)
  Return a new String created using the formatting function, this function will implicitly
  use the temp allocator.
 
- @param [inout] allocator : `The allocator to use`
+ @param [&inout] allocator : `The allocator to use`
  @param [in] fmt : `The formatting string`
 *>
 fn String format(Allocator allocator, String fmt, args...) @format(1) => @pool()
@@ -322,6 +328,14 @@ fn bool String.starts_with(self, String prefix)
 	return self[:prefix.len] == prefix;
 }
 
+<*
+ Compare two strings case-insensitively (ASCII only), lexicographically.
+
+ @param [in] self
+ @param [in] s
+ @pure
+ @return "negative if self < s, 0 if equal, positive if self > s"
+*>
 fn int String.compare_to_ignore_case(self, String s)
 {
 	sz len = min(s.len, self.len);
@@ -333,6 +347,14 @@ fn int String.compare_to_ignore_case(self, String s)
 	return (int)math::sign(self.len - s.len);
 }
 
+<*
+ Compare two strings byte-by-byte, lexicographically.
+
+ @param [in] self
+ @param [in] s
+ @pure
+ @return "negative if self < s, 0 if equal, positive if self > s"
+*>
 fn int String.compare_to(self, String s)
 {
 	sz len = min(s.len, self.len);
@@ -685,6 +707,16 @@ fn sz? String.rindex_of(self, String substr)
 	return NOT_FOUND~;
 }
 
+<*
+ Compare two ZStrings for byte-for-byte equality, stopping at the first zero terminator.
+ A null ZString is considered different from any non-null ZString.
+
+ @param [in] self
+ @param [in] other
+ @return "true if both ZStrings have the same content"
+
+ @pure
+*>
 fn bool ZString.eq(self, ZString other) @operator(==)
 {
 	char* a = self;
@@ -699,11 +731,25 @@ fn bool ZString.eq(self, ZString other) @operator(==)
 	}
 }
 
+<*
+ View a ZString as a String, without copying.
+
+ @param [&own] self
+ @return "A String view of the same memory, not including the zero terminator"
+*>
 fn String ZString.str_view(self)
 {
 	return (String)(self[:self.len()]);
 }
 
+<*
+ Count the number of UTF-8 codepoints in a zero-terminated string.
+
+ @param [&in] str
+ @return "The number of UTF-8 codepoints, which may be fewer than the byte length"
+
+ @pure
+*>
 fn sz ZString.char_len(str)
 {
 	sz len = 0;
@@ -715,6 +761,12 @@ fn sz ZString.char_len(str)
 	return len;
 }
 
+<*
+ @param [&in] self
+ @return "The number of bytes before the zero terminator"
+
+ @pure
+*>
 fn sz ZString.len(self)
 {
 	sz len;
@@ -722,6 +774,12 @@ fn sz ZString.len(self)
 	return len;
 }
 
+<*
+ @param [&in] self
+ @return "The number of Char16 units before the zero terminator"
+
+ @pure
+*>
 fn sz WString.len(self)
 {
 	sz len;
@@ -729,6 +787,13 @@ fn sz WString.len(self)
 	return len;
 }
 
+<*
+ Copy this string into a newly allocated, zero-terminated ZString.
+
+ @param [in] self
+ @param [&inout] allocator
+ @return "A ZString allocated using the allocator, must be released using `mem::free`"
+*>
 fn ZString String.zstr_copy(self, Allocator allocator)
 {
 	sz len = self.len;
@@ -738,6 +803,14 @@ fn ZString String.zstr_copy(self, Allocator allocator)
 	return (ZString)str;
 }
 
+<*
+ Concatenate two strings into a newly allocated string.
+
+ @param [in] self
+ @param [&inout] allocator
+ @param [in] s2 : "The string to append after self"
+ @return "A new zero-terminated string containing self followed by s2"
+*>
 fn String String.concat(self, Allocator allocator, String s2)
 {
 	sz full_len = self.len + s2.len;
@@ -749,15 +822,20 @@ fn String String.concat(self, Allocator allocator, String s2)
 	return (String)str[:full_len];
 }
 
+<* Alias for `String.concat` using the temp allocator. *>
 fn String String.tconcat(self, String s2) => self.concat(tmem, s2);
 
 
+<* Alias for `String.zstr_copy` using the temp allocator. *>
 fn ZString String.zstr_tcopy(self) => self.zstr_copy(tmem) @inline;
 
 <*
  Copy this string, by duplicating the string, always adding a zero byte
  sentinel, so that it safely can be converted to a ZString by a
  cast.
+
+ @param [in] self
+ @param [&inout] allocator
 *>
 fn String String.copy(self, Allocator allocator)
 {
@@ -768,6 +846,13 @@ fn String String.copy(self, Allocator allocator)
 	return (String)str[:len];
 }
 
+<*
+ Free a string previously allocated via `String.copy` (or similar) using the given allocator.
+ A string with a null `ptr` is left untouched.
+
+ @param [&inout] self
+ @param [&inout] allocator : "The allocator that allocated the string"
+*>
 fn void String.free(&self, Allocator allocator)
 {
 	if (!self.ptr) return;
@@ -775,13 +860,26 @@ fn void String.free(&self, Allocator allocator)
 	*self = "";
 }
 
+<* Alias for `String.copy` using the temp allocator. *>
 fn String String.tcopy(self) => self.copy(tmem) @inline;
 
+<*
+ Copy the ZString's content into a newly allocated String.
+
+ @param [&in] self
+ @param [&inout] allocator
+ @return "A new String, safe to convert to a ZString"
+*>
 fn String ZString.copy(self, Allocator allocator)
 {
 	return self.str_view().copy(allocator) @inline;
 }
 
+<*
+ Alias for `ZString.copy` using the temp allocator.
+
+ @param [&in] self
+*>
 fn String ZString.tcopy(self)
 {
 	return self.str_view().copy(tmem) @inline;
@@ -789,6 +887,9 @@ fn String ZString.tcopy(self)
 
 <*
  Convert an UTF-8 string to UTF-16
+
+ @param [in] self
+ @param [&inout] allocator
  @return "The UTF-16 string as a slice, allocated using the given allocator"
  @return? INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
 *>
@@ -801,15 +902,33 @@ fn Char16[]? String.to_utf16(self, Allocator allocator)
 	return data[:len16];
 }
 
+<* Alias for `String.to_utf16` using the temp allocator. *>
 fn Char16[]? String.to_temp_utf16(self) => self.to_utf16(tmem);
 
+<*
+ Convert an UTF-8 string to a zero-terminated UTF-16 WString.
+
+ @param [in] self
+ @param [&inout] allocator
+ @return "The WString, allocated using the given allocator"
+ @return? INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
+*>
 fn WString? String.to_wstring(self, Allocator allocator)
 {
 	return (WString)self.to_utf16(allocator).ptr;
 }
 
+<* Alias for `String.to_wstring` using the temp allocator. *>
 fn WString? String.to_temp_wstring(self) => self.to_wstring(tmem);
 
+<*
+ Convert an UTF-8 string to UTF-32.
+
+ @param [in] self
+ @param [&inout] allocator
+ @return "The UTF-32 string as a slice, allocated using the given allocator"
+ @return? INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
+*>
 fn Char32[]? String.to_utf32(self, Allocator allocator)
 {
 	sz codepoints = conv::utf8_codepoints(self);
@@ -819,6 +938,7 @@ fn Char32[]? String.to_utf32(self, Allocator allocator)
 	return data[:codepoints];
 }
 
+<* Alias for `String.to_utf32` using the temp allocator. *>
 fn Char32[]? String.to_temp_utf32(self) => self.to_utf32(tmem);
 
 <*
@@ -832,6 +952,13 @@ fn void String.convert_to_lower(self)
 	foreach (&c : self) if (c.is_upper() @pure) *c += 'a' - 'A';
 }
 
+<*
+ Returns a string converted to ASCII lower case.
+
+ @param [in] self
+ @param [&inout] allocator
+ @return `a new String converted to ASCII lower case.`
+*>
 fn String String.to_lower_copy(self, Allocator allocator)
 {
 	String copy = self.copy(allocator);
@@ -839,6 +966,7 @@ fn String String.to_lower_copy(self, Allocator allocator)
 	return copy;
 }
 
+<* Alias for `String.to_lower_copy` using the temp allocator. *>
 fn String String.to_lower_tcopy(self)
 {
 	return self.to_lower_copy(tmem);
@@ -859,8 +987,7 @@ fn void String.convert_to_upper(self)
  Returns a string converted to ASCII upper case.
 
  @param [in] self
- @param [inout] allocator
-
+ @param [&inout] allocator
  @return `a new String converted to ASCII upper case.`
 *>
 fn String String.to_upper_copy(self, Allocator allocator)
@@ -870,6 +997,13 @@ fn String String.to_upper_copy(self, Allocator allocator)
 	return copy;
 }
 
+<*
+ Returns a copy of the string with the first character converted to ASCII upper case.
+
+ @param [in] self
+ @param [&inout] allocator
+ @return `a new String with the first character converted to ASCII upper case.`
+*>
 fn String String.capitalize_copy(self, Allocator allocator)
 {
 	String s = self.copy(allocator);
@@ -884,6 +1018,7 @@ fn String String.capitalize_copy(self, Allocator allocator)
  Convert a string from `snake_case` to PascalCase.
 
  @param [in] self
+ @param [&inout] allocator
  @return `"FooBar" from "foo_bar" the resulting pointer may safely be cast to ZString.`
 *>
 fn String String.snake_to_pascal_copy(self, Allocator allocator)
@@ -908,7 +1043,7 @@ fn String String.snake_to_pascal_copy(self, Allocator allocator)
 <*
  Movifies the current string from `snake_case` to PascalCase.
 
- @param [inout] self
+ @param [&inout] self
 *>
 fn void String.convert_snake_to_pascal(&self)
 {
@@ -932,6 +1067,7 @@ fn void String.convert_snake_to_pascal(&self)
  Convert a string from `PascalCase` to `snake_case`.
 
  @param [in] self
+ @param [&inout] allocator
  @return `"foo_bar" from "FooBar" the resulting pointer may safely be cast to ZString.`
 *>
 fn String String.pascal_to_snake_copy(self, Allocator allocator) => @pool()
@@ -956,6 +1092,10 @@ fn String String.pascal_to_snake_copy(self, Allocator allocator) => @pool()
 }
 
 
+<*
+ @param [own] self
+ @return "An iterator over the string's characters"
+*>
 fn StringIterator String.iterator(self)
 {
 	return { self, 0 };
@@ -970,6 +1110,13 @@ fn String String.to_upper_tcopy(self)
 	return self.to_upper_copy(tmem);
 }
 
+<*
+ Convert an UTF-32 string to UTF-8.
+
+ @param [&inout] allocator
+ @param [in] utf32
+ @return "The UTF-8 string, allocated using the given allocator"
+*>
 fn String? from_utf32(Allocator allocator, Char32[] utf32)
 {
 	sz len = conv::utf8len_for_utf32(utf32);
@@ -980,6 +1127,14 @@ fn String? from_utf32(Allocator allocator, Char32[] utf32)
 	return (String)data[:len];
 }
 
+<*
+ Convert raw UTF-32 bytes (not necessarily aligned) to UTF-8.
+
+ @param [&inout] allocator
+ @param [in] utf32 : "The raw bytes making up the UTF-32 codepoints"
+ @param swap_endianess : "Set to true if the bytes are in the non-native endianness"
+ @return "The UTF-8 string, allocated using the given allocator"
+*>
 fn String? from_utf32_bytes(Allocator allocator, char[] utf32, bool swap_endianess)
 {
 	sz len = conv::utf8len_for_utf32_bytes(utf32, swap_endianess);
@@ -1002,6 +1157,14 @@ fn String? from_utf32_bytes(Allocator allocator, char[] utf32, bool swap_endiane
 	return (String)data[:len];
 }
 
+<*
+ Convert an UTF-16 string to UTF-8.
+
+ @param [&inout] allocator
+ @param [in] utf16
+ @return "The UTF-8 string, allocated using the given allocator"
+ @return? INVALID_UTF16 : "If the string contained an invalid UTF-16 sequence"
+*>
 fn String? from_utf16(Allocator allocator, Char16[] utf16)
 {
 	sz len = conv::utf8len_for_utf16(utf16);
@@ -1012,6 +1175,15 @@ fn String? from_utf16(Allocator allocator, Char16[] utf16)
 	return (String)data[:len];
 }
 
+<*
+ Convert raw UTF-16 bytes (not necessarily aligned) to UTF-8.
+
+ @param [&inout] allocator
+ @param [in] utf16 : "The raw bytes making up the UTF-16 units"
+ @param swap_endianess : "Set to true if the bytes are in the non-native endianness"
+ @return "The UTF-8 string, allocated using the given allocator"
+ @return? INVALID_UTF16 : "If the string contained an invalid UTF-16 sequence"
+*>
 fn String? from_utf16_bytes(Allocator allocator, char[] utf16, bool swap_endianess)
 {
 	sz len = conv::utf8len_for_utf16_bytes(utf16, swap_endianess);
@@ -1035,6 +1207,14 @@ fn String? from_utf16_bytes(Allocator allocator, char[] utf16, bool swap_endiane
 	return (String)data[:len];
 }
 
+<*
+ Convert a zero-terminated UTF-16 WString to UTF-8.
+
+ @param [&inout] allocator
+ @param [&in] wstring
+ @return "The UTF-8 string, allocated using the given allocator"
+ @return? INVALID_UTF16 : "If the string contained an invalid UTF-16 sequence"
+*>
 fn String? from_wstring(Allocator allocator, WString wstring)
 {
 	sz utf16_len;
@@ -1043,9 +1223,16 @@ fn String? from_wstring(Allocator allocator, WString wstring)
 	return from_utf16(allocator, utf16);
 }
 
+<* Alias for `from_wstring` using the temp allocator. *>
 fn String? tfrom_wstring(WString wstring) => from_wstring(tmem, wstring) @inline;
+<* Alias for `from_utf16` using the temp allocator. *>
 fn String? tfrom_utf16(Char16[] utf16) => from_utf16(tmem, utf16) @inline;
 
+<*
+ @param [in] s
+ @pure
+ @return "The number of UTF-8 codepoints in the string, which may be fewer than the byte length"
+*>
 fn sz String.utf8_codepoints(s)
 {
 	sz len = 0;
@@ -1063,6 +1250,7 @@ fn sz String.utf8_codepoints(s)
 
  Furthermore it will skip any spaces before and after the number.
 
+ @param [in] self
  @param base : "The base to convert to"
  @require base > 0 && base <= 16 : "Unsupported base"
  @return? MALFORMED_INTEGER : "When the value has some illegal character"
@@ -1145,15 +1333,24 @@ fn IntType? to_integer(String self, int base = 10) <IntType>
 	return value;
 }
 
+<* Alias for `to_integer{int128}`. See `to_integer` for parameters and faults. *>
 fn int128? String.to_int128(self, int base = 10) => to_integer{int128}(self, base) @inline;
+<* Alias for `to_integer{long}`. See `to_integer` for parameters and faults. *>
 fn long? String.to_long(self, int base = 10) => to_integer{long}(self, base) @inline;
+<* Alias for `to_integer{int}`. See `to_integer` for parameters and faults. *>
 fn int? String.to_int(self, int base = 10) => to_integer{int}(self, base) @inline;
+<* Alias for `to_integer{short}`. See `to_integer` for parameters and faults. *>
 fn short? String.to_short(self, int base = 10) => to_integer{short}(self, base) @inline;
+<* Alias for `to_integer{ichar}`. See `to_integer` for parameters and faults. *>
 fn ichar? String.to_ichar(self, int base = 10) => to_integer{ichar}(self, base) @inline;
 
+<* Alias for `to_integer{uint128}`. See `to_integer` for parameters and faults. *>
 fn uint128? String.to_uint128(self, int base = 10) => to_integer{uint128}(self, base) @inline;
+<* Alias for `to_integer{ulong}`. See `to_integer` for parameters and faults. *>
 fn ulong? String.to_ulong(self, int base = 10) => to_integer{ulong}(self, base) @inline;
+<* Alias for `to_integer{uint}`. See `to_integer` for parameters and faults. *>
 fn uint? String.to_uint(self, int base = 10) => to_integer{uint}(self, base) @inline;
+<* Alias for `to_integer{ushort}`. See `to_integer` for parameters and faults. *>
 fn ushort? String.to_ushort(self, int base = 10) => to_integer{ushort}(self, base) @inline;
 
 <*
@@ -1161,7 +1358,17 @@ fn ushort? String.to_ushort(self, int base = 10) => to_integer{ushort}(self, bas
 *>
 fn char? String.to_char(self, int base = 10) => to_integer{char}(self, base) @inline;
 
+<*
+ @param [in] self
+ @return? MALFORMED_FLOAT : "When the value has some illegal character"
+ @return? FLOAT_OUT_OF_RANGE : "If the value does not fit in a double"
+*>
 fn double? String.to_double(self) => _string_to_real(self, double);
+<*
+ @param [in] self
+ @return? MALFORMED_FLOAT : "When the value has some illegal character"
+ @return? FLOAT_OUT_OF_RANGE : "If the value does not fit in a float"
+*>
 fn float? String.to_float(self) => _string_to_real(self, float);
 
 
@@ -1170,6 +1377,7 @@ fn float? String.to_float(self) => _string_to_real(self, float);
  "foo", "bar" and "baz", if you want the empty string to be present, use `tokenize_all`
  instead.
 
+ @param [in] self
  @param [in] split : "The string to use for splitting"
  @return "A Splitter to track the state"
 *>
@@ -1183,6 +1391,7 @@ fn Splitter String.tokenize(self, String split)
  "foo", "bar" and "baz", if you want the empty string to be present, use `tokenize_all`
  instead.
 
+ @param [in] self
  @param [in] split : "The string to use for splitting"
  @param skip_last : "Set to true to not include the last empty token if present (default: false)"
  @return "A Splitter to track the state"
@@ -1248,16 +1457,32 @@ struct Splitter
 	int last_index;
 }
 
+<*
+ Reset the splitter back to the start of the string, so `next()` starts over.
+
+ @param [&inout] self
+*>
 fn void Splitter.reset(&self)
 {
 	self.current = 0;
 }
 
+<*
+ @param [&in] self
+ @return "true once `next()` has no more tokens to produce"
+*>
 fn bool Splitter.at_end(&self)
 {
 	return self.current > self.string.len;
 }
 
+<*
+ Advance the splitter and return the next token.
+
+ @param [&inout] self
+ @return "The next token"
+ @return? NO_MORE_ELEMENT : "if there are no more tokens"
+*>
 fn String? Splitter.next(&self)
 {
 	while (true)

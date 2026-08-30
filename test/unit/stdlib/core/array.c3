@@ -78,6 +78,15 @@ fn void find_subarray()
 	assert(@catch(array::index_of(a, 4)) == NOT_FOUND);
 }
 
+fn void rindex_of()
+{
+	int[5] a = { 1, 2, 3, 2, 5 };
+	test::eq(array::rindex_of(a, 2)!!, 3);
+	test::eq(array::rindex_of(a, 1)!!, 0);
+	test::eq(array::rindex_of(a, 5)!!, 4);
+	test::@error(array::rindex_of(a, 99), NOT_FOUND);
+}
+
 fn void concat()
 {
 	int[3] a = { 1, 2, 3 };
@@ -443,4 +452,32 @@ fn void unlace_list()
 	array::unlace(tmem, list.array_view(), &outl, &outr);
 	test::@check(outl.len == 3 && outl == (bool[]){ false, true, false });
 	test::@check(outr.len == 3 && outr == (bool[]){ false, false, false });
+}
+
+fn void slice2d()
+{
+	int[4][3] grid = {
+		{ 0, 1, 2, 3 },
+		{ 10, 11, 12, 13 },
+		{ 20, 21, 22, 23 },
+	};
+
+	Slice2d{int} full = array::slice2d(&grid);
+	test::eq(full.len(), 3);
+	test::eq(full.count(), 12);
+	test::@check(full[0] == (int[]){ 0, 1, 2, 3 });
+	test::@check(full[1] == (int[]){ 10, 11, 12, 13 });
+	test::eq(full.get_xy(2, 1), 12);
+	test::eq(full.get_coord({ 2, 1 }), 12);
+
+	// Sub-slice: rows 1-2, columns 1-2.
+	Slice2d{int} sub = array::slice2d(&grid, x: 1, xlen: 2, y: 1, ylen: 2);
+	test::eq(sub.len(), 2);
+	test::eq(sub.count(), 4);
+	test::eq(sub.get_xy(0, 0), 11);
+	test::eq(sub.get_xy(1, 1), 22);
+
+	// Slice2d wraps the original memory, so writes through it are visible in `grid`.
+	sub.set_xy(0, 0, 999);
+	test::eq(grid[1][1], 999);
 }

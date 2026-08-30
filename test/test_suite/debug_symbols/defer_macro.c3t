@@ -373,9 +373,9 @@ entry:
   %error_var = alloca i64, align 8
   %allocator9 = alloca %any, align 8
   %elements10 = alloca i64, align 8
-  %allocator13 = alloca %any, align 8
+  %allocator14 = alloca %any, align 8
   %size = alloca i64, align 8
-  %blockret14 = alloca ptr, align 8
+  %blockret15 = alloca ptr, align 8
   %.inlinecache = alloca ptr, align 8
   %.cachedtype = alloca ptr, align 8
   %retparam = alloca ptr, align 8
@@ -414,170 +414,179 @@ entry:
     #dbg_declare(ptr %elements7, !213, !DIExpression(), !214)
   %8 = load i64, ptr %elements, align 8
   store i64 %8, ptr %elements7, align 8
-  %9 = load i64, ptr %elements7, align 8, !dbg !215
-  %ge = icmp sge i64 %9, 0, !dbg !217
-  call void @llvm.assume(i1 %ge), !dbg !217
-    #dbg_declare(ptr %allocator9, !218, !DIExpression(), !227)
+  %9 = load ptr, ptr %allocator, align 8, !dbg !215
+  %neq = icmp ne ptr %9, null, !dbg !215
+  call void @llvm.assume(i1 %neq), !dbg !215
+  %10 = load i64, ptr %elements7, align 8, !dbg !217
+  %ge = icmp sge i64 %10, 0, !dbg !218
+  call void @llvm.assume(i1 %ge), !dbg !218
+    #dbg_declare(ptr %allocator9, !219, !DIExpression(), !228)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator9, ptr align 8 %allocator, i32 16, i1 false)
-    #dbg_declare(ptr %elements10, !229, !DIExpression(), !230)
-  %10 = load i64, ptr %elements7, align 8
-  store i64 %10, ptr %elements10, align 8
-  %11 = load i64, ptr %elements10, align 8, !dbg !231
-  %ge12 = icmp sge i64 %11, 0, !dbg !233
-  call void @llvm.assume(i1 %ge12), !dbg !233
-    #dbg_declare(ptr %allocator13, !234, !DIExpression(), !238)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator13, ptr align 8 %allocator9, i32 16, i1 false)
-  %12 = load i64, ptr %elements10, align 8, !dbg !240
-  %mul = mul i64 16, %12, !dbg !241
-    #dbg_declare(ptr %size, !242, !DIExpression(), !243)
+    #dbg_declare(ptr %elements10, !230, !DIExpression(), !231)
+  %11 = load i64, ptr %elements7, align 8
+  store i64 %11, ptr %elements10, align 8
+  %12 = load ptr, ptr %allocator9, align 8, !dbg !232
+  %neq12 = icmp ne ptr %12, null, !dbg !232
+  call void @llvm.assume(i1 %neq12), !dbg !232
+  %13 = load i64, ptr %elements10, align 8, !dbg !234
+  %ge13 = icmp sge i64 %13, 0, !dbg !235
+  call void @llvm.assume(i1 %ge13), !dbg !235
+    #dbg_declare(ptr %allocator14, !236, !DIExpression(), !240)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator14, ptr align 8 %allocator9, i32 16, i1 false)
+  %14 = load i64, ptr %elements10, align 8, !dbg !242
+  %mul = mul i64 16, %14, !dbg !243
+    #dbg_declare(ptr %size, !244, !DIExpression(), !245)
   store i64 %mul, ptr %size, align 8
-  %13 = load i64, ptr %size, align 8, !dbg !244
-  %ge15 = icmp sge i64 %13, 0, !dbg !246
-  call void @llvm.assume(i1 %ge15), !dbg !246
-  %14 = load i64, ptr %size, align 8, !dbg !247
-  %i2nb = icmp eq i64 %14, 0, !dbg !247
-  br i1 %i2nb, label %if.then, label %if.exit, !dbg !247
+  %15 = load ptr, ptr %allocator14, align 8, !dbg !246
+  %neq16 = icmp ne ptr %15, null, !dbg !246
+  call void @llvm.assume(i1 %neq16), !dbg !246
+  %16 = load i64, ptr %size, align 8, !dbg !248
+  %ge17 = icmp sge i64 %16, 0, !dbg !249
+  call void @llvm.assume(i1 %ge17), !dbg !249
+  %17 = load i64, ptr %size, align 8, !dbg !250
+  %i2nb = icmp eq i64 %17, 0, !dbg !250
+  br i1 %i2nb, label %if.then, label %if.exit, !dbg !250
 
 if.then:                                          ; preds = %entry
-  store ptr null, ptr %blockret14, align 8, !dbg !248
-  br label %expr_block.exit, !dbg !248
-
-if.exit:                                          ; preds = %entry
-  %ptradd = getelementptr inbounds i8, ptr %allocator13, i64 8, !dbg !249
-  %15 = load i64, ptr %ptradd, align 8, !dbg !249
-  %16 = inttoptr i64 %15 to ptr, !dbg !249
-  %17 = load ptr, ptr %.cachedtype, align 8
-  %18 = icmp eq ptr %16, %17
-  br i1 %18, label %cache_hit, label %cache_miss
-
-cache_miss:                                       ; preds = %if.exit
-  %19 = call ptr @.dyn_search(ptr %16, ptr @"$sel.acquire")
-  store ptr %19, ptr %.inlinecache, align 8
-  store ptr %16, ptr %.cachedtype, align 8
-  br label %21
-
-cache_hit:                                        ; preds = %if.exit
-  %20 = load ptr, ptr %.inlinecache, align 8
-  br label %21
-
-21:                                               ; preds = %cache_hit, %cache_miss
-  %fn_phi = phi ptr [ %20, %cache_hit ], [ %19, %cache_miss ]
-  %22 = icmp eq ptr %fn_phi, null
-  br i1 %22, label %missing_function, label %match
-
-missing_function:                                 ; preds = %21
-  %23 = load ptr, ptr @std.core.builtin.panic, align 8, !dbg !251
-  call void %23(ptr @.panic_msg, i64 44, ptr @.file,
-  unreachable, !dbg !251
-
-match:                                            ; preds = %21
-  %24 = load ptr, ptr %allocator13, align 8
-  %25 = load i64, ptr %size, align 8
-  %26 = call i64 %fn_phi(ptr %retparam, ptr %24, i64 %25, i32 0, i64 0), !dbg !251
-  %not_err = icmp eq i64 %26, 0, !dbg !251
-  %27 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !251
-  br i1 %27, label %after_check, label %assign_optional, !dbg !251
-
-assign_optional:                                  ; preds = %match
-  store i64 %26, ptr %error_var, align 8, !dbg !251
-  br label %panic_block, !dbg !251
-
-after_check:                                      ; preds = %match
-  %28 = load ptr, ptr %retparam, align 8, !dbg !251
-  store ptr %28, ptr %blockret14, align 8, !dbg !251
+  store ptr null, ptr %blockret15, align 8, !dbg !251
   br label %expr_block.exit, !dbg !251
 
+if.exit:                                          ; preds = %entry
+  %ptradd = getelementptr inbounds i8, ptr %allocator14, i64 8, !dbg !252
+  %18 = load i64, ptr %ptradd, align 8, !dbg !252
+  %19 = inttoptr i64 %18 to ptr, !dbg !252
+  %20 = load ptr, ptr %.cachedtype, align 8
+  %21 = icmp eq ptr %19, %20
+  br i1 %21, label %cache_hit, label %cache_miss
+
+cache_miss:                                       ; preds = %if.exit
+  %22 = call ptr @.dyn_search(ptr %19, ptr @"$sel.acquire")
+  store ptr %22, ptr %.inlinecache, align 8
+  store ptr %19, ptr %.cachedtype, align 8
+  br label %24
+
+cache_hit:                                        ; preds = %if.exit
+  %23 = load ptr, ptr %.inlinecache, align 8
+  br label %24
+
+24:                                               ; preds = %cache_hit, %cache_miss
+  %fn_phi = phi ptr [ %23, %cache_hit ], [ %22, %cache_miss ]
+  %25 = icmp eq ptr %fn_phi, null
+  br i1 %25, label %missing_function, label %match
+
+missing_function:                                 ; preds = %24
+  %26 = load ptr, ptr @std.core.builtin.panic, align 8, !dbg !254
+  call void %26(ptr @.panic_msg, i64 44, ptr @.file,
+  unreachable, !dbg !254
+
+match:                                            ; preds = %24
+  %27 = load ptr, ptr %allocator14, align 8
+  %28 = load i64, ptr %size, align 8
+  %29 = call i64 %fn_phi(ptr %retparam, ptr %27, i64 %28, i32 0, i64 0), !dbg !254
+  %not_err = icmp eq i64 %29, 0, !dbg !254
+  %30 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !254
+  br i1 %30, label %after_check, label %assign_optional, !dbg !254
+
+assign_optional:                                  ; preds = %match
+  store i64 %29, ptr %error_var, align 8, !dbg !254
+  br label %panic_block, !dbg !254
+
+after_check:                                      ; preds = %match
+  %31 = load ptr, ptr %retparam, align 8, !dbg !254
+  store ptr %31, ptr %blockret15, align 8, !dbg !254
+  br label %expr_block.exit, !dbg !254
+
 expr_block.exit:                                  ; preds = %after_check, %if.then
-  %29 = load ptr, ptr %blockret14, align 8, !dbg !251
-  %30 = load i64, ptr %elements10, align 8, !dbg !252
-  %add = add i64 0, %30, !dbg !252
-  %size16 = sub i64 %add, 0, !dbg !252
-  %31 = insertvalue %"char[][]" undef, ptr %29, 0, !dbg !252
-  %32 = insertvalue %"char[][]" %31, i64 %size16, 1, !dbg !252
-  br label %noerr_block, !dbg !252
+  %32 = load ptr, ptr %blockret15, align 8, !dbg !254
+  %33 = load i64, ptr %elements10, align 8, !dbg !255
+  %add = add i64 0, %33, !dbg !255
+  %size18 = sub i64 %add, 0, !dbg !255
+  %34 = insertvalue %"char[][]" undef, ptr %32, 0, !dbg !255
+  %35 = insertvalue %"char[][]" %34, i64 %size18, 1, !dbg !255
+  br label %noerr_block, !dbg !255
 
 panic_block:                                      ; preds = %assign_optional
-  %33 = insertvalue %any undef, ptr %error_var, 0, !dbg !252
-  %34 = insertvalue %any %33, i64 ptrtoint (ptr @"$ct.fault" to i64), 1, !dbg !252
-  store %any %34, ptr %varargslots, align 16
-  %35 = insertvalue %"any[]" undef, ptr %varargslots, 0
-  %"$$temp" = insertvalue %"any[]" %35, i64 1, 1
+  %36 = insertvalue %any undef, ptr %error_var, 0, !dbg !255
+  %37 = insertvalue %any %36, i64 ptrtoint (ptr @"$ct.fault" to i64), 1, !dbg !255
+  store %any %37, ptr %varargslots, align 16
+  %38 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %38, i64 1, 1
   store %"any[]" %"$$temp", ptr %indirectarg, align 8
   call void @std.core.builtin.panicf(
-  unreachable, !dbg !228
+  unreachable, !dbg !229
 
 noerr_block:                                      ; preds = %expr_block.exit
-  store %"char[][]" %32, ptr %list5, align 8, !dbg !228
-    #dbg_declare(ptr %i, !253, !DIExpression(), !255)
-  store i32 0, ptr %i, align 4, !dbg !256
-  br label %loop.cond, !dbg !256
+  store %"char[][]" %35, ptr %list5, align 8, !dbg !229
+    #dbg_declare(ptr %i, !256, !DIExpression(), !258)
+  store i32 0, ptr %i, align 4, !dbg !259
+  br label %loop.cond, !dbg !259
 
 loop.cond:                                        ; preds = %loop.exit, %noerr_block
-  %36 = load i32, ptr %i, align 4, !dbg !257
-  %37 = load i32, ptr %argc2, align 4, !dbg !258
-  %lt = icmp slt i32 %36, %37, !dbg !257
-  br i1 %lt, label %loop.body, label %loop.exit28, !dbg !257
+  %39 = load i32, ptr %i, align 4, !dbg !260
+  %40 = load i32, ptr %argc2, align 4, !dbg !261
+  %lt = icmp slt i32 %39, %40, !dbg !260
+  br i1 %lt, label %loop.body, label %loop.exit30, !dbg !260
 
 loop.body:                                        ; preds = %loop.cond
-    #dbg_declare(ptr %arg, !259, !DIExpression(), !261)
-  %38 = load ptr, ptr %argv3, align 8, !dbg !262
-  %39 = load i32, ptr %i, align 4, !dbg !263
-  %sext17 = sext i32 %39 to i64, !dbg !263
-  %ptroffset = getelementptr inbounds [8 x i8], ptr %38, i64 %sext17, !dbg !263
-  %40 = load ptr, ptr %ptroffset, align 8, !dbg !263
-  store ptr %40, ptr %arg, align 8, !dbg !263
-  %41 = load ptr, ptr %arg, align 8, !dbg !264
-    #dbg_declare(ptr %ptr, !265, !DIExpression(), !269)
-  %42 = load ptr, ptr %arg, align 8
-  store ptr %42, ptr %ptr, align 8
-    #dbg_declare(ptr %len, !271, !DIExpression(), !272)
-  store i64 0, ptr %len, align 8, !dbg !272
-  br label %loop.cond19, !dbg !273
+    #dbg_declare(ptr %arg, !262, !DIExpression(), !264)
+  %41 = load ptr, ptr %argv3, align 8, !dbg !265
+  %42 = load i32, ptr %i, align 4, !dbg !266
+  %sext19 = sext i32 %42 to i64, !dbg !266
+  %ptroffset = getelementptr inbounds [8 x i8], ptr %41, i64 %sext19, !dbg !266
+  %43 = load ptr, ptr %ptroffset, align 8, !dbg !266
+  store ptr %43, ptr %arg, align 8, !dbg !266
+  %44 = load ptr, ptr %arg, align 8, !dbg !267
+    #dbg_declare(ptr %ptr, !268, !DIExpression(), !272)
+  %45 = load ptr, ptr %arg, align 8
+  store ptr %45, ptr %ptr, align 8
+    #dbg_declare(ptr %len, !274, !DIExpression(), !275)
+  store i64 0, ptr %len, align 8, !dbg !275
+  br label %loop.cond21, !dbg !276
 
-loop.cond19:                                      ; preds = %loop.body21, %loop.body
-  %43 = load ptr, ptr %ptr, align 8, !dbg !274
-  %44 = load i64, ptr %len, align 8, !dbg !276
-  %ptradd20 = getelementptr inbounds i8, ptr %43, i64 %44, !dbg !276
-  %45 = load i8, ptr %ptradd20, align 1, !dbg !276
-  %i2b = icmp ne i8 %45, 0, !dbg !276
-  br i1 %i2b, label %loop.body21, label %loop.exit, !dbg !276
+loop.cond21:                                      ; preds = %loop.body23, %loop.body
+  %46 = load ptr, ptr %ptr, align 8, !dbg !277
+  %47 = load i64, ptr %len, align 8, !dbg !279
+  %ptradd22 = getelementptr inbounds i8, ptr %46, i64 %47, !dbg !279
+  %48 = load i8, ptr %ptradd22, align 1, !dbg !279
+  %i2b = icmp ne i8 %48, 0, !dbg !279
+  br i1 %i2b, label %loop.body23, label %loop.exit, !dbg !279
 
-loop.body21:                                      ; preds = %loop.cond19
-  %46 = load i64, ptr %len, align 8, !dbg !277
-  %add22 = add i64 %46, 1, !dbg !277
-  store i64 %add22, ptr %len, align 8, !dbg !277
-  br label %loop.cond19, !dbg !277
+loop.body23:                                      ; preds = %loop.cond21
+  %49 = load i64, ptr %len, align 8, !dbg !280
+  %add24 = add i64 %49, 1, !dbg !280
+  store i64 %add24, ptr %len, align 8, !dbg !280
+  br label %loop.cond21, !dbg !280
 
-loop.exit:                                        ; preds = %loop.cond19
-  %47 = load i64, ptr %len, align 8, !dbg !278
-  %add23 = add i64 0, %47, !dbg !278
-  %size24 = sub i64 %add23, 0, !dbg !278
-  %48 = insertvalue %"char[]" undef, ptr %41, 0, !dbg !278
-  %49 = insertvalue %"char[]" %48, i64 %size24, 1, !dbg !278
-  %50 = load ptr, ptr %list5, align 8, !dbg !279
-  %51 = load i32, ptr %i, align 4, !dbg !280
-  %sext25 = sext i32 %51 to i64, !dbg !280
-  %ptroffset26 = getelementptr inbounds [16 x i8], ptr %50, i64 %sext25, !dbg !280
-  store %"char[]" %49, ptr %ptroffset26, align 8, !dbg !280
-  %52 = load i32, ptr %i, align 4, !dbg !281
-  %add27 = add i32 %52, 1, !dbg !281
-  store i32 %add27, ptr %i, align 4, !dbg !281
-  br label %loop.cond, !dbg !281
+loop.exit:                                        ; preds = %loop.cond21
+  %50 = load i64, ptr %len, align 8, !dbg !281
+  %add25 = add i64 0, %50, !dbg !281
+  %size26 = sub i64 %add25, 0, !dbg !281
+  %51 = insertvalue %"char[]" undef, ptr %44, 0, !dbg !281
+  %52 = insertvalue %"char[]" %51, i64 %size26, 1, !dbg !281
+  %53 = load ptr, ptr %list5, align 8, !dbg !282
+  %54 = load i32, ptr %i, align 4, !dbg !283
+  %sext27 = sext i32 %54 to i64, !dbg !283
+  %ptroffset28 = getelementptr inbounds [16 x i8], ptr %53, i64 %sext27, !dbg !283
+  store %"char[]" %52, ptr %ptroffset28, align 8, !dbg !283
+  %55 = load i32, ptr %i, align 4, !dbg !284
+  %add29 = add i32 %55, 1, !dbg !284
+  store i32 %add29, ptr %i, align 4, !dbg !284
+  br label %loop.cond, !dbg !284
 
-loop.exit28:                                      ; preds = %loop.cond
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %list5, i32 16, i1 false), !dbg !282
-  %lo = load ptr, ptr %list, align 8, !dbg !283
-  %ptradd29 = getelementptr inbounds i8, ptr %list, i64 8, !dbg !283
-  %hi = load i64, ptr %ptradd29, align 8, !dbg !283
-  %53 = call i32 @test.main(ptr %lo, i64 %hi), !dbg !284
-  store i32 %53, ptr %blockret, align 4, !dbg !284
-  %54 = load ptr, ptr %list, align 8, !dbg !285
-  call void @std.core.mem.free(ptr %54) #5, !dbg !287
-  br label %expr_block.exit30, !dbg !287
+loop.exit30:                                      ; preds = %loop.cond
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %list5, i32 16, i1 false), !dbg !285
+  %lo = load ptr, ptr %list, align 8, !dbg !286
+  %ptradd31 = getelementptr inbounds i8, ptr %list, i64 8, !dbg !286
+  %hi = load i64, ptr %ptradd31, align 8, !dbg !286
+  %56 = call i32 @test.main(ptr %lo, i64 %hi), !dbg !287
+  store i32 %56, ptr %blockret, align 4, !dbg !287
+  %57 = load ptr, ptr %list, align 8, !dbg !288
+  call void @std.core.mem.free(ptr %57) #5, !dbg !290
+  br label %expr_block.exit32, !dbg !290
 
-expr_block.exit30:                                ; preds = %loop.exit28
-  %55 = load i32, ptr %blockret, align 4, !dbg !287
-  ret i32 %55, !dbg !287
+expr_block.exit32:                                ; preds = %loop.exit30
+  %58 = load i32, ptr %blockret, align 4, !dbg !290
+  ret i32 %58, !dbg !290
 }
 
 declare { i32, ptr } @attach.to_scope() #0
