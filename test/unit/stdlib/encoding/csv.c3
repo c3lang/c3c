@@ -92,6 +92,15 @@ fn void empty_header_entry()
 	test::@error(r.tinit((ByteReader) { }.init(csv)), csv::EMPTY_HEADER_ENTRY);
 }
 
+fn void handle_utf8_dom()
+{
+	String csv = x'EFBBBF' +++ "name,age\r\nAlice,30";
+
+	CsvReader r;
+	r.tinit((ByteReader) { }.init(csv))!!;
+	test::@check(r.headers.get_col(0).len == 4, "Incorrectly stripped utf8 DOM %s", r.headers.get_col(0).tescape());
+}
+
 fn void csv_each_row()
 {
 	TestCase[] tests = {

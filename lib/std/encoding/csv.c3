@@ -9,10 +9,11 @@ struct CsvReader
 	Allocator allocator;
 	CsvRow headers;
 	String delimiter;
-	bitstruct : char
+	bitstruct flags : char
 	{
 		bool has_header;
 		bool allow_non_spec_line_endings;
+		bool has_read;
 	}
 }
 
@@ -63,8 +64,9 @@ fn CsvReader? load(
 	reader.allocator = allocator;
 	reader.stream = stream;
 	reader.delimiter = delimiter;
-	reader.has_header = has_header;
-	reader.allow_non_spec_line_endings = allow_non_spec_line_endings;
+	reader.flags.has_header = has_header;
+	reader.flags.allow_non_spec_line_endings = allow_non_spec_line_endings;
+	reader.flags.has_read = false;
 	if (has_header)
 	{
 		reader.headers = reader.read_row()!;
@@ -181,7 +183,11 @@ fn CsvRow? CsvReader.read_row(&self)
 {
 	String row = self.find_row()!;
 
-	return { parse_row_entries(self.allocator, row, self.delimiter, self.headers.len()), row, self.allocator };
+	return {
+		parse_row_entries(self.allocator, row, self.delimiter, self.headers.len(), (char*)&self.flags),
+		row,
+		self.allocator
+	};
 }
 
 <*
@@ -231,7 +237,13 @@ macro void? CsvReader.@each_row(&self, int max_rows = int::max; @body(String[] r
 				if (err == io::EOF) return;
 				return err~;
 			}
-			String[] row = parse_row_entries(self.allocator, s, self.delimiter, self.headers.len())!;
+			String[] row = parse_row_entries(
+				self.allocator,
+				s,
+				self.delimiter,
+				self.headers.len(),
+				(char*)&self.flags
+			)!;
 			@body(row);
 			alloc::free(self.allocator, row);
 			alloc::free(self.allocator, s);
@@ -274,12 +286,12 @@ fn String? CsvReader.find_row(&self)
 			return err~;
 		}
 		// Handle CRLF line ending when allowing non spec line endings
-		if (!row.len() && self.allow_non_spec_line_endings && current == '\n') continue;
+		if (!row.len() && self.flags.allow_non_spec_line_endings && current == '\n') continue;
 
 		switch (state)
 		{
 			case ENDING:
-				if (self.allow_non_spec_line_endings)
+				if (self.flags.allow_non_spec_line_endings)
 				{
 					ending = true;
 					break;
@@ -345,7 +357,7 @@ enum ParseState
 	PUSH,
 }
 
-fn String[]? parse_row_entries(Allocator allocator, String row, String delimiter, sz entry_amount = 0)
+fn String[]? parse_row_entries(Allocator allocator, String row, String delimiter, sz entry_amount = 0, char* flags)
 {
 	if (!row.len) return { };
 	sz capacity      = entry_amount ? entry_amount : 16;
@@ -358,6 +370,11 @@ fn String[]? parse_row_entries(Allocator allocator, String row, String delimiter
 
 	while (true)
 	{
+		if (!(*flags & 0b00000100))
+		{
+			if (row.starts_with(x'EFBBBF')) row_index += 3;
+			*flags = *flags ^ 0b00000100;
+		}
 		if (row_index + reading_index == row.len)
 		{
 			if (entry_index == capacity)
