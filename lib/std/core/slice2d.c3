@@ -160,11 +160,21 @@ macro void Slice2d.set_xy(self, x, y, Type value)
 <*
  Reslice a slice2d returning a new slice.
 
+ For xlen and ylen, a negative value instead trims that many elements off the end of the row,
+ e.g. -1 stops one element short of the end. 0 gives the full length.
+
  @param x : "The starting x"
- @param xlen : "The length along x"
+ @param xlen : "The length along x."
  @param y : "The starting y"
  @param ylen : "The length along y"
  @return "A new slice"
+
+ @require (usz)x < (usz)self.xlen : "x position out of bounds"
+ @require (usz)y < (usz)self.ylen : "y position out of bounds"
+ @require xlen < 1 || x + xlen <= self.xlen : "xlen out of bounds"
+ @require ylen < 1 || y + ylen <= self.ylen : "ylen out of bounds"
+ @require xlen > 0 || self.xlen + xlen >= x : "xlen out of bounds"
+ @require ylen > 0 || self.ylen + ylen >= y : "ylen out of bounds"
 *>
 fn Slice2d Slice2d.slice(&self, sz x = 0, sz xlen = 0, sz y = 0, sz ylen = 0)
 {
