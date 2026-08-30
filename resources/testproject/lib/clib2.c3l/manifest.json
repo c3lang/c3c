@@ -16,5 +16,8 @@
     "windows-aarch64": {},
     "android-aarch64": {},
     "android-x86_64": {},
+    "ios-aarch64": {},
+    "ios-aarch64-sim": {},
+    "ios-x64-sim": {}
   }
 }
