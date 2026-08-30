@@ -22,6 +22,7 @@
 - Add `@noredzone` attribute.
 - Add `dso_local` attribute on ELF/COFF.
 - Let LLVM build the biggest modules first.
+- Support for iOS.
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.

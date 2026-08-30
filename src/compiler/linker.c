@@ -293,14 +293,36 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	add_plain_arg("/NOLOGO");
 }
 
+static void _linker_setup_darwin_version(const char ***args_ref, DarwinSDK *sdk, const char *min_version, const char *sdk_version)
+{
+	if (min_version)
+	{
+		add_plain_arg(min_version);
+	}
+	else
+	{
+		add_plain_arg(str_printf("%d.%d.0", sdk->min_deploy_target.major, sdk->min_deploy_target.minor));
+	}
+	if (sdk_version)
+	{
+		add_plain_arg(sdk_version);
+	}
+	else
+	{
+		add_plain_arg(str_printf("%d.%d", sdk->deploy_target.major, sdk->deploy_target.minor));
+	}
+
+}
 static void linker_setup_darwin(const char ***args_ref, Linker linker_type)
 {
+	bool is_ios = compiler.platform.os == OS_TYPE_IOS;
+	bool is_macos = !is_ios;
 	if (linker_type == LINKER_CC)
 	{
 		add_plain_arg("-target");
 		add_plain_arg(compiler.platform.target_triple);
 		add_plain_arg("-isysroot");
-		add_plain_arg(compiler.platform.os == OS_TYPE_IOS ? compiler.build.ios.sysroot : compiler.build.macos.sysroot);
+		add_plain_arg(compiler.platform.os == is_ios ? compiler.build.ios.sysroot : compiler.build.macos.sysroot);
 		return;
 	}
 	add_plain_arg("-arch");
@@ -313,18 +335,18 @@ static void linker_setup_darwin(const char ***args_ref, Linker linker_type)
 
 	// Skip if no libc.
 	if (!link_libc()) return;
-	if (!compiler.build.macos.sdk && compiler.platform.os != OS_TYPE_IOS)
+	if (!compiler.build.macos.sdk && is_macos)
 	{
 		error_exit("Cannot crosslink MacOS without providing --macos-sdk.");
 	}
-	if (!compiler.build.ios.sdk && compiler.platform.os != OS_TYPE_MACOSX)
+	if (!compiler.build.ios.sdk && is_ios)
 	{
 		error_exit("Cannot crosslink iOS without providing --ios-sdk.");
 	}
 	linking_add_link(&compiler.linking, "System");
-	if (compiler.linking.link_math && compiler.platform.os != OS_TYPE_IOS) linking_add_link(&compiler.linking, "m");
+	if (compiler.linking.link_math && is_macos) linking_add_link(&compiler.linking, "m");
 	add_plain_arg("-syslibroot");
-	add_quote_arg(compiler.platform.os == OS_TYPE_IOS ? compiler.build.ios.sysroot : compiler.build.macos.sysroot);
+	add_quote_arg(is_ios ? compiler.build.ios.sysroot : compiler.build.macos.sysroot);
 	if (is_no_pie(compiler.platform.reloc_model) && compiler.platform.os != OS_TYPE_IOS) add_plain_arg("-no_pie");
 	if (is_pie(compiler.platform.reloc_model) || compiler.platform.os == OS_TYPE_IOS) add_plain_arg("-pie");
 	add_plain_arg("-platform_version");
@@ -338,42 +360,12 @@ static void linker_setup_darwin(const char ***args_ref, Linker linker_type)
 		{
 			add_plain_arg("ios");
 		}
-		if (compiler.build.ios.min_version)
-		{
-			add_plain_arg(compiler.build.ios.min_version);
-		}
-		else
-		{
-			add_plain_arg(str_printf("%d.%d.0", compiler.build.ios.sdk->ios_min_deploy_target.major, compiler.build.ios.sdk->ios_min_deploy_target.minor));
-		}
-		if (compiler.build.ios.sdk_version)
-		{
-			add_plain_arg(compiler.build.ios.sdk_version);
-		}
-		else
-		{
-			add_plain_arg(str_printf("%d.%d", compiler.build.ios.sdk->ios_deploy_target.major, compiler.build.ios.sdk->ios_deploy_target.minor));
-		}
+		_linker_setup_darwin_version(args_ref, compiler.build.ios.sdk, compiler.build.ios.min_version, compiler.build.ios.sdk_version);
 	}
 	else
 	{
 		add_plain_arg("macos");
-		if (compiler.build.macos.min_version)
-		{
-			add_plain_arg(compiler.build.macos.min_version);
-		}
-		else
-		{
-			add_plain_arg(str_printf("%d.%d.0", compiler.build.macos.sdk->macos_min_deploy_target.major, compiler.build.macos.sdk->macos_min_deploy_target.minor));
-		}
-		if (compiler.build.macos.sdk_version)
-		{
-			add_plain_arg(compiler.build.macos.sdk_version);
-		}
-		else
-		{
-			add_plain_arg(str_printf("%d.%d", compiler.build.macos.sdk->macos_deploy_target.major, compiler.build.macos.sdk->macos_deploy_target.minor));
-		}
+		_linker_setup_darwin_version(args_ref, compiler.build.macos.sdk, compiler.build.macos.min_version, compiler.build.macos.sdk_version);
 	}
 }
 

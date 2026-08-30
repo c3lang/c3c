@@ -515,14 +515,14 @@ typedef struct
 		const char *sysroot;
 		const char *min_version;
 		const char *sdk_version;
-		MacosSDK *sdk;
+		DarwinSDK *sdk;
 	} macos;
 	struct
 	{
 		const char *sysroot;
 		const char *min_version;
 		const char *sdk_version;
-		IosSDK *sdk;
+		DarwinSDK *sdk;
 		bool simulator;
 	} ios;
 	struct

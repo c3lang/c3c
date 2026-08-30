@@ -4,25 +4,26 @@
 const char *darwin_sysroot(void)
 {
 #if __APPLE__
-		static const char *xcode_sysroot;
-		if (compiler.platform.os == OS_TYPE_IOS)
+	static const char *xcode_sysroot;
+	bool is_ios = compiler.platform.os == OS_TYPE_IOS;
+	if (is_ios)
+	{
+		if (compiler.build.ios.simulator)
 		{
-			if (compiler.build.ios.simulator)
-			{
-				xcode_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk";
-			}
-			else
-			{
-				xcode_sysroot =  "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk";
-			}
+			xcode_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk";
 		}
 		else
 		{
-			xcode_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk";
+			xcode_sysroot =  "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk";
 		}
-		static const char *commandline_tool_sysroot = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk";
-		if(file_is_dir(xcode_sysroot)) return xcode_sysroot;
-		if(file_is_dir(commandline_tool_sysroot) && !(compiler.platform.os == OS_TYPE_IOS)) return commandline_tool_sysroot;
+	}
+	else
+	{
+		xcode_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk";
+	}
+	static const char *commandline_tool_sysroot = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk";
+	if (file_is_dir(xcode_sysroot)) return xcode_sysroot;
+	if (file_is_dir(commandline_tool_sysroot) && !is_ios) return commandline_tool_sysroot;
 #endif
 	return NULL;
 }
@@ -31,38 +32,50 @@ void parse_version(const char *version_string, Version *version)
 {
 	StringSlice slice = slice_from_string(version_string);
 	StringSlice first = slice_next_token(&slice, '.');
-	version->major = atoi(first.ptr);
-	version->minor = atoi(slice.ptr);
+	version->major = atoi(first.ptr); // NOLINT
+	version->minor = atoi(slice.ptr); // NOLINT
 }
 
-DarwinSDK *darwin_sysroot_sdk_information(const char *sdk_path)
+static DarwinSDK *_darwin_sysroot_sdk_information(const char *sdk_path, bool ios, bool simulator)
 {
+	ASSERT(!simulator || ios); // Simulator is not valid for MacOS
 	JsonParser parser;
 	size_t len;
 	
 	scratch_buffer_clear();
 	scratch_buffer_printf("%s/SDKSettings.json", sdk_path);
 	const char *settings_json_path = scratch_buffer_to_string();
-	if(!file_exists(settings_json_path)) error_exit("Invalid %s SDK path: '%s'.", compiler.platform.os == OS_TYPE_IOS ? "iOS" : "MacOS", sdk_path);
+	if(!file_exists(settings_json_path)) error_exit("Invalid %s SDK path: '%s'.", ios ? "iOS" : "MacOS", sdk_path);
 	const char *file = file_read_all(settings_json_path, &len);
 	json_init_string(&parser, file);
 	DarwinSDK *sdk = CALLOCS(DarwinSDK);
 	JSONObject *top_object = json_parse(&parser);
 	JSONObject *supported_targets = json_map_get(top_object, "SupportedTargets");
-	JSONObject *darwin_target = json_map_get(supported_targets, compiler.build.ios.simulator ? "iphonesimulator" : compiler.platform.os == OS_TYPE_IOS ? "iphoneos" : "macosx");
+	const char *default_darwin_target = ios ? "iphoneos" : "macosx";
+	if (simulator) default_darwin_target = "iphonesimulator";
+	JSONObject *darwin_target = json_map_get(supported_targets, default_darwin_target);
 
 	const char *default_deploy_target = json_map_get(darwin_target, "DefaultDeploymentTarget")->str;
-	parse_version(default_deploy_target, compiler.platform.os == OS_TYPE_IOS ? &sdk->iossdk.ios_deploy_target : &sdk->macossdk.macos_deploy_target);
+	parse_version(default_deploy_target, &sdk->deploy_target);
 
 	const char *min_deploy_target = json_map_get(darwin_target, "MinimumDeploymentTarget")->str;
-	parse_version(min_deploy_target, compiler.platform.os == OS_TYPE_IOS ? &sdk->iossdk.ios_deploy_target : &sdk->macossdk.macos_deploy_target);
+	parse_version(min_deploy_target, &sdk->deploy_target);
 
 	return sdk;
 }
 
-const char *darwin_cross_compile_library(void)
+DarwinSDK *ios_sysroot_sdk_information(const char *sdk_path, bool simulator)
 {
-	const char *sdk = compiler.build.ios.simulator ? "iPhoneSimulator.sdk" : compiler.platform.os == OS_TYPE_IOS ? "iPhoneOS.sdk" : "MacOSX.sdk";
+	return _darwin_sysroot_sdk_information(sdk_path, true, simulator);
+}
+
+DarwinSDK *macos_sysroot_sdk_information(const char *sdk_path)
+{
+	return _darwin_sysroot_sdk_information(sdk_path, false, false);
+}
+
+const char *_darwin_cross_compile_library(const char *sdk)
+{
 	const char *local = find_rel_exe_dir(sdk);
 	if (local && file_is_dir((char *)local)) return local;
 
@@ -95,4 +108,14 @@ const char *darwin_cross_compile_library(void)
 	}
 #endif
 	return NULL;
+}
+
+const char *ios_cross_compile_library(bool simulator)
+{
+	return _darwin_cross_compile_library(simulator ? "iPhoneSimulator.sdk" : "iPhoneOS.sdk");
+}
+
+const char *macos_cross_compile_library(void)
+{
+	return _darwin_cross_compile_library("MacOSX.sdk");
 }
