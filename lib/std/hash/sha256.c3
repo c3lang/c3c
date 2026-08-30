@@ -73,13 +73,10 @@ fn void Sha256.update(&self, char[] data)
 
 	// When the data pointer is aligned, we can disregard unaligned loading in the `transform` macro.
 	//   We do this here from the outer call to reduce the expense of checking alignment on every single block.
-	if (0 == (sz)data.ptr % sz::size)
+	bool aligned = ((sz)data.ptr % sz::size) == 0;
+	for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..])
 	{
-		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) _transform(self, (uint*)data.ptr);
-	}
-	else
-	{
-		for (; data.len >= BLOCK_SIZE; data = data[BLOCK_SIZE..]) _transform_unaligned(self, (uint*)data.ptr);
+		_transform(self, (uint*)data.ptr, aligned);
 	}
 
 	// Leftover data just gets stored away for the next update or final.
@@ -119,12 +116,8 @@ fn char[HASH_SIZE] Sha256.final(&self)
 	return hash;
 }
 
-// These wrappers are necessary to significantly reduce code generation from macro expansions.
-//   Note that transformations on `self.buffer` (when incoming == null) should always be aligned.
-fn void _transform(Sha256* self, uint* incoming = null) @local @noinline => _do_transform(self, incoming, true);
-fn void _transform_unaligned(Sha256* self, uint* incoming = null) @local @noinline => _do_transform(self, incoming, false);
-
-macro _do_transform(Sha256* self, uint* incoming = null, bool $aligned = true) @local
+// Transformations on `self.buffer` (when incoming == null) are always aligned due to `@align(ulong::size)`.
+fn void _transform(Sha256* self, uint* incoming = null, bool aligned = true) @local
 {
 	uint a, b, c, d, e, f, g, h, t1, t2 @noinit;
 	uint[64] m @noinit;
@@ -135,8 +128,14 @@ macro _do_transform(Sha256* self, uint* incoming = null, bool $aligned = true) @
 	$if env::BIG_ENDIAN:
 		@as_char_view(m)[:BLOCK_SIZE] = @as_char_view(incoming)[:BLOCK_SIZE];
 	$else
-		// Unrolling this seems to make the hash slower.
-		for (i = 0; i < 16; ++i) m[i] = bswap($aligned ??? incoming[i] : mem::load(&incoming[i], 1));
+		if (aligned)
+		{
+			for (i = 0; i < 16; ++i) m[i] = bswap(incoming[i]);
+		}
+		else
+		{
+			for (i = 0; i < 16; ++i) m[i] = bswap(mem::load(&incoming[i], 1));
+		}
 	$endif
 
 	for (i = 16; i < 64; i++) m[i] = @sigma1(m[i - 2]) + m[i - 7] + @sigma0(m[i - 15]) + m[i - 16];
