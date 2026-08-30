@@ -117,7 +117,7 @@ fn char[HASH_SIZE] Sha256.final(&self)
 }
 
 // Transformations on `self.buffer` (when incoming == null) are always aligned due to `@align(ulong::size)`.
-fn void _transform(Sha256* self, uint* incoming = null, bool aligned = true) @local @noinline
+fn void _transform(Sha256* self, uint* incoming = null, bool aligned = true) @local
 {
 	uint a, b, c, d, e, f, g, h, t1, t2 @noinit;
 	uint[64] m @noinit;

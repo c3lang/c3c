@@ -483,7 +483,7 @@ fn Blake3Output Blake3ChunkState.output(&self) @inline
  @param counter
  @param flags
 *>
-fn Blake3Output make_output(uint[] key, char* in_block, sz block_len, long counter, char flags) @local @noinline
+fn Blake3Output make_output(uint[] key, char* in_block, sz block_len, long counter, char flags) @local
 {
 	Blake3Output o;
 	o.input_cv[..] = key[..];
@@ -597,7 +597,7 @@ macro @round(uint* state, uint* msg, sz round) @local
 	@g(state, 3, 4,  9, 14, msg[schedule[14]], msg[schedule[15]]);
 }
 
-fn void compress_pre(uint* state, uint* cv, char* block, sz block_len, long counter, char flags) @local @noinline
+fn void compress_pre(uint* state, uint* cv, char* block, sz block_len, long counter, char flags) @local
 {
 	uint[16] block_words @noinit;
 	foreach (i, &b : block_words) *b = mem::load((uint*)&block[i * 4], 1);
@@ -614,14 +614,14 @@ fn void compress_pre(uint* state, uint* cv, char* block, sz block_len, long coun
 	}
 }
 
-fn void compress_in_place(uint* cv, char* block, sz block_len, long counter, char flags) @local @noinline
+fn void compress_in_place(uint* cv, char* block, sz block_len, long counter, char flags) @local
 {
 	uint[16] state @noinit;
 	compress_pre(&state, cv, block, block_len, counter, flags);
 	for (sz i = 0; i < 8; i++) cv[i] = state[i] ^ state[i + 8];
 }
 
-fn void compress_xof(uint* cv, char* block, sz block_len, long counter, char flags, char* out) @local @noinline
+fn void compress_xof(uint* cv, char* block, sz block_len, long counter, char flags, char* out) @local
 {
 	uint[16] state @noinit;
 	compress_pre(&state, cv, block, block_len, counter, flags);
@@ -657,7 +657,7 @@ macro hash_many(char*[] inputs, sz num_inputs, sz blocks, uint[] key, long count
 }
 
 
-fn void compress_subtree_to_parent_node(char[] input, uint[] key, long chunk_counter, char flags, char[] out, bool use_tbb) @local @noinline
+fn void compress_subtree_to_parent_node(char[] input, uint[] key, long chunk_counter, char flags, char[] out, bool use_tbb) @local
 {
 	char[MAX_SIMD_DEGREE_OR_2 * OUT_SIZE] cv_array;
 
@@ -672,7 +672,7 @@ fn void compress_subtree_to_parent_node(char[] input, uint[] key, long chunk_cou
 	out[..] = cv_array[:2 * OUT_SIZE];
 }
 
-fn sz compress_subtree_wide(char[] input, uint[] key, long chunk_counter, char flags, char* out, bool use_tbb) @local @noinline
+fn sz compress_subtree_wide(char[] input, uint[] key, long chunk_counter, char flags, char* out, bool use_tbb) @local
 {
 	if (input.len <= (sz)@simd_degree() * CHUNK_SIZE) return compress_chunks_parallel(input, key, chunk_counter, flags, out);
 
@@ -698,7 +698,7 @@ fn sz compress_subtree_wide(char[] input, uint[] key, long chunk_counter, char f
 	return compress_parents_parallel(cv_array[..], left_n + right_n, key, flags, out);
 }
 
-fn sz compress_parents_parallel(char[] child_chaining_values, sz num_chaining_values, uint[] key, char flags, char* out) @local @noinline
+fn sz compress_parents_parallel(char[] child_chaining_values, sz num_chaining_values, uint[] key, char flags, char* out) @local
 {
 	char*[MAX_SIMD_DEGREE_OR_2] parents_array;
 	sz parents_array_len = 0;
@@ -719,7 +719,7 @@ fn sz compress_parents_parallel(char[] child_chaining_values, sz num_chaining_va
 	return parents_array_len;
 }
 
-fn sz compress_chunks_parallel(char[] input, uint[] key, long chunk_counter, char flags, char* out) @local @noinline
+fn sz compress_chunks_parallel(char[] input, uint[] key, long chunk_counter, char flags, char* out) @local
 {
 	char*[MAX_SIMD_DEGREE] chunks_array;
 	sz input_position = 0;

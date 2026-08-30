@@ -203,6 +203,8 @@ fn sz Inflater.copy_unused_input(&self, char[] dest)
 	return self.reader.copy_unused_input(dest);
 }
 
+fn void Inflater.write_byte(&self, char c) @inline { self.window[(sz)(self.pos & 0xFFFF)] = c; self.pos++; }
+
 fn char[]? decompress(Allocator allocator, char[] input) => @pool()
 {
 	if (!input.len) return alloc::new_array(allocator, char, 0);
@@ -516,111 +518,6 @@ fn void? Deflater.scan_matches(&self, bool final)
 	self.hash = hash;
 	self.strstart = strstart;
 	self.match_pos = (uint)pos;
-}
-
-fn void _rle_encode_tree_lengths(char[] all_lens, List{Token}* tree_tokens, uint[] tree_freqs) @local
-{
-	for (long i = 0; i < all_lens.len;)
-	{
-		char len = all_lens[i];
-		long count = 1;
-		while (i + count < all_lens.len && all_lens[i + count] == len) count++;
-
-		if (len == 0)
-		{
-			while (count >= 11)
-			{
-				uint c = (uint)math::min(count, (long)138);
-				tree_tokens.push({ 18, (ushort)(c - 11u) });
-				tree_freqs[18]++;
-				i += c; count -= c;
-			}
-			while (count >= 3)
-			{
-				uint c = (uint)math::min(count, (long)10);
-				tree_tokens.push({ 17, (ushort)(c - 3u) });
-				tree_freqs[17]++;
-				i += c; count -= c;
-			}
-		}
-		else if (count >= 4)
-		{
-			tree_tokens.push({ (ushort)len, 0 });
-			tree_freqs[(uint)len]++;
-			i++; count--;
-			while (count >= 3)
-			{
-				uint c = (uint)math::min(count, (long)6);
-				tree_tokens.push({ 16, (ushort)(c - 3u) });
-				tree_freqs[16]++;
-				i += c; count -= c;
-			}
-		}
-		while (count--)
-		{
-			tree_tokens.push({ (ushort)len, 0 });
-			tree_freqs[(uint)len]++;
-			i++;
-		}
-	}
-}
-
-fn void _encode_match_len(uint b_len, uint* code, int* extra_bits, uint* extra) @local
-{
-	switch (b_len)
-	{
-		case 3..10:   *code = 257u + b_len - 3u; *extra_bits = 0; *extra = 0;
-		case 11..18:  *code = 265u + (b_len - 11u) / 2; *extra_bits = 1; *extra = (b_len - 11u) % 2;
-		case 19..34:  *code = 269u + (b_len - 19u) / 4; *extra_bits = 2; *extra = (b_len - 19u) % 4;
-		case 35..66:  *code = 273u + (b_len - 35u) / 8; *extra_bits = 3; *extra = (b_len - 35u) % 8;
-		case 67..130: *code = 277u + (b_len - 67u) / 16; *extra_bits = 4; *extra = (b_len - 67u) % 16;
-		case 131..257:*code = 281u + (b_len - 131u) / 32; *extra_bits = 5; *extra = (b_len - 131u) % 32;
-		default:      *code = 285u; *extra_bits = 0; *extra = 0;
-	}
-}
-
-fn void _encode_match_dist(uint b_dist, uint* code, int* extra_bits, uint* extra) @local
-{
-	switch (b_dist)
-	{
-		case 1..4:     *code = b_dist - 1u; *extra_bits = 0; *extra = 0;
-		case 5..8:     *code = 4u + (b_dist - 5u) / 2u; *extra_bits = 1; *extra = (b_dist - 5u) % 2;
-		case 9..16:    *code = 6u + (b_dist - 9u) / 4u; *extra_bits = 2; *extra = (b_dist - 9u) % 4;
-		case 17..32:   *code = 8u + (b_dist - 17u) / 8u; *extra_bits = 3; *extra = (b_dist - 17u) % 8;
-		case 33..64:   *code = 10u + (b_dist - 33u) / 16u; *extra_bits = 4; *extra = (b_dist - 33u) % 16;
-		case 65..128:  *code = 12u + (b_dist - 65u) / 32u; *extra_bits = 5; *extra = (b_dist - 65u) % 32;
-		case 129..256: *code = 14u + (b_dist - 129u) / 64u; *extra_bits = 6; *extra = (b_dist - 129u) % 64;
-		case 257..512: *code = 16u + (b_dist - 257u) / 128u; *extra_bits = 7; *extra = (b_dist - 257u) % 128;
-		case 513..1024: *code = 18u + (b_dist - 513u) / 256; *extra_bits = 8; *extra = (b_dist - 513u) % 256;
-		case 1025..2048: *code = 20u + (b_dist - 1025u) / 512; *extra_bits = 9; *extra = (b_dist - 1025u) % 512;
-		case 2049..4096: *code = 22u + (b_dist - 2049u) / 1024; *extra_bits = 10; *extra = (b_dist - 2049u) % 1024;
-		case 4097..8192: *code = 24u + (b_dist - 4097u) / 2048; *extra_bits = 11; *extra = (b_dist - 4097u) % 2048;
-		case 8193..16384: *code = 26u + (b_dist - 8193u) / 4096; *extra_bits = 12; *extra = (b_dist - 8193u) % 4096;
-		default:          *code = 28u + (b_dist - 16385u) / 8192; *extra_bits = 13; *extra = (b_dist - 16385u) % 8192;
-	}
-}
-
-fn void _write_compressed_tokens(Deflater* self, Code* lit_codes, Code* dist_codes) @local
-{
-	foreach (t : self.tokens[:self.token_count])
-	{
-		if (t.dist == 0)
-		{
-			self.bwriter.write_huffman(lit_codes[t.val].code, lit_codes[t.val].len);
-		}
-		else
-		{
-			uint len_code; int len_extra_bits; uint len_extra;
-			_encode_match_len(t.val, &len_code, &len_extra_bits, &len_extra);
-			self.bwriter.write_huffman(lit_codes[len_code].code, lit_codes[len_code].len);
-			if (len_extra_bits > 0) self.bwriter.write_bits(len_extra, len_extra_bits);
-
-			uint dist_c; int dist_extra_b; uint dist_ex;
-			_encode_match_dist(t.dist, &dist_c, &dist_extra_b, &dist_ex);
-			self.bwriter.write_huffman(dist_codes[dist_c].code, dist_codes[dist_c].len);
-			if (dist_extra_b > 0) self.bwriter.write_bits(dist_ex, dist_extra_b);
-		}
-	}
 }
 
 fn void? Deflater.emit_block(&self, bool final)=> @pool()
@@ -1355,10 +1252,114 @@ fn void? Inflater.step(&self)
 	return;
 }
 
-fn void Inflater.write_byte(&self, char c) @inline { self.window[(sz)(self.pos & 0xFFFF)] = c; self.pos++; }
 
 const ushort[31] LENGTH_BASE @private = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0 };
 const char[31] LENGTH_EXTRA @private = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0 };
 const ushort[32] DIST_BASE @private = { 1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0 };
 const char[32] DIST_EXTRA @private = { 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0 };
 const uint[19] ORDER @private = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
+
+fn void _encode_match_len(uint b_len, uint* code, int* extra_bits, uint* extra) @local
+{
+	switch (b_len)
+	{
+		case 3..10:   *code = 257u + b_len - 3u; *extra_bits = 0; *extra = 0;
+		case 11..18:  *code = 265u + (b_len - 11u) / 2; *extra_bits = 1; *extra = (b_len - 11u) % 2;
+		case 19..34:  *code = 269u + (b_len - 19u) / 4; *extra_bits = 2; *extra = (b_len - 19u) % 4;
+		case 35..66:  *code = 273u + (b_len - 35u) / 8; *extra_bits = 3; *extra = (b_len - 35u) % 8;
+		case 67..130: *code = 277u + (b_len - 67u) / 16; *extra_bits = 4; *extra = (b_len - 67u) % 16;
+		case 131..257:*code = 281u + (b_len - 131u) / 32; *extra_bits = 5; *extra = (b_len - 131u) % 32;
+		default:      *code = 285u; *extra_bits = 0; *extra = 0;
+	}
+}
+
+fn void _encode_match_dist(uint b_dist, uint* code, int* extra_bits, uint* extra) @local
+{
+	switch (b_dist)
+	{
+		case 1..4:     *code = b_dist - 1u; *extra_bits = 0; *extra = 0;
+		case 5..8:     *code = 4u + (b_dist - 5u) / 2u; *extra_bits = 1; *extra = (b_dist - 5u) % 2;
+		case 9..16:    *code = 6u + (b_dist - 9u) / 4u; *extra_bits = 2; *extra = (b_dist - 9u) % 4;
+		case 17..32:   *code = 8u + (b_dist - 17u) / 8u; *extra_bits = 3; *extra = (b_dist - 17u) % 8;
+		case 33..64:   *code = 10u + (b_dist - 33u) / 16u; *extra_bits = 4; *extra = (b_dist - 33u) % 16;
+		case 65..128:  *code = 12u + (b_dist - 65u) / 32u; *extra_bits = 5; *extra = (b_dist - 65u) % 32;
+		case 129..256: *code = 14u + (b_dist - 129u) / 64u; *extra_bits = 6; *extra = (b_dist - 129u) % 64;
+		case 257..512: *code = 16u + (b_dist - 257u) / 128u; *extra_bits = 7; *extra = (b_dist - 257u) % 128;
+		case 513..1024: *code = 18u + (b_dist - 513u) / 256; *extra_bits = 8; *extra = (b_dist - 513u) % 256;
+		case 1025..2048: *code = 20u + (b_dist - 1025u) / 512; *extra_bits = 9; *extra = (b_dist - 1025u) % 512;
+		case 2049..4096: *code = 22u + (b_dist - 2049u) / 1024; *extra_bits = 10; *extra = (b_dist - 2049u) % 1024;
+		case 4097..8192: *code = 24u + (b_dist - 4097u) / 2048; *extra_bits = 11; *extra = (b_dist - 4097u) % 2048;
+		case 8193..16384: *code = 26u + (b_dist - 8193u) / 4096; *extra_bits = 12; *extra = (b_dist - 8193u) % 4096;
+		default:          *code = 28u + (b_dist - 16385u) / 8192; *extra_bits = 13; *extra = (b_dist - 16385u) % 8192;
+	}
+}
+
+fn void _write_compressed_tokens(Deflater* self, Code* lit_codes, Code* dist_codes) @local
+{
+	foreach (t : self.tokens[:self.token_count])
+	{
+		if (t.dist == 0)
+		{
+			self.bwriter.write_huffman(lit_codes[t.val].code, lit_codes[t.val].len);
+		}
+		else
+		{
+			uint len_code; int len_extra_bits; uint len_extra;
+			_encode_match_len(t.val, &len_code, &len_extra_bits, &len_extra);
+			self.bwriter.write_huffman(lit_codes[len_code].code, lit_codes[len_code].len);
+			if (len_extra_bits > 0) self.bwriter.write_bits(len_extra, len_extra_bits);
+
+			uint dist_c; int dist_extra_b; uint dist_ex;
+			_encode_match_dist(t.dist, &dist_c, &dist_extra_b, &dist_ex);
+			self.bwriter.write_huffman(dist_codes[dist_c].code, dist_codes[dist_c].len);
+			if (dist_extra_b > 0) self.bwriter.write_bits(dist_ex, dist_extra_b);
+		}
+	}
+}
+
+fn void _rle_encode_tree_lengths(char[] all_lens, List{Token}* tree_tokens, uint[] tree_freqs) @local
+{
+	for (long i = 0; i < all_lens.len;)
+	{
+		char len = all_lens[i];
+		long count = 1;
+		while (i + count < all_lens.len && all_lens[i + count] == len) count++;
+
+		if (len == 0)
+		{
+			while (count >= 11)
+			{
+				uint c = (uint)math::min(count, (long)138);
+				tree_tokens.push({ 18, (ushort)(c - 11u) });
+				tree_freqs[18]++;
+				i += c; count -= c;
+			}
+			while (count >= 3)
+			{
+				uint c = (uint)math::min(count, (long)10);
+				tree_tokens.push({ 17, (ushort)(c - 3u) });
+				tree_freqs[17]++;
+				i += c; count -= c;
+			}
+		}
+		else if (count >= 4)
+		{
+			tree_tokens.push({ (ushort)len, 0 });
+			tree_freqs[(uint)len]++;
+			i++; count--;
+			while (count >= 3)
+			{
+				uint c = (uint)math::min(count, (long)6);
+				tree_tokens.push({ 16, (ushort)(c - 3u) });
+				tree_freqs[16]++;
+				i += c; count -= c;
+			}
+		}
+		while (count--)
+		{
+			tree_tokens.push({ (ushort)len, 0 });
+			tree_freqs[(uint)len]++;
+			i++;
+		}
+	}
+}
