@@ -36,6 +36,7 @@ enum PathEnv : (PathSeparator separator)
 
 fn bool is_dir(Path path) => os::native_is_dir(path);
 fn bool is_file(Path path) => os::native_is_file(path);
+fn bool is_link(Path path) => os::native_is_link(path);
 fn long? file_size(Path path) => os::native_file_size(path);
 fn bool exists(Path path) => os::native_file_or_dir_exists(path);
 fn Path? tcwd() => cwd(tmem) @inline;

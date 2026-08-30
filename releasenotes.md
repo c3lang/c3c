@@ -32,6 +32,7 @@
 - Add a `range::slice` macro.
 - Add `log::get_logger`.
 - `RefCounted` now correctly makes a difference between dealloc and free.
+- `Path.is_link` added.
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
