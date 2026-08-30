@@ -84,6 +84,14 @@ fn void quote_escape()
 	test::@check(r.read_row()!!.len() == 3, "Incorrectly escaped quotes in %s", csv);
 }
 
+fn void empty_header_entry()
+{
+	String csv = "name,age,gender,\r\nAlice,30,female,20";
+
+	CsvReader r;
+	test::@error(r.tinit((ByteReader) { }.init(csv)), csv::EMPTY_HEADER_ENTRY);
+}
+
 fn void csv_each_row()
 {
 	TestCase[] tests = {
