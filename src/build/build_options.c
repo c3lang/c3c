@@ -232,6 +232,10 @@ static void usage(bool full)
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
 		print_opt("--macos-sdk-version <ver>", "Set the MacOS SDK compiled for.");
 		PRINTF("");
+		print_opt("--ios-sdk <dir>", "Set the directory for the iOS SDK for cross compilation.");
+		print_opt("--ios-min-version <ver>", "Set the minimum iOS version to compile for.");
+		print_opt("--ios-sdk-version <ver>", "Set the iOS SDK compiled for.");
+		PRINTF("");
 		print_opt("--linux-libc=<host|gnu|musl>", "Set the libc to use on Linux, defaults to host.");
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
@@ -1582,6 +1586,12 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->macos.sysroot = unchecked_dir(options, next_arg());
 				return;
 			}
+			if (match_longopt("ios-sdk"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --ios-sdk needs a directory.");
+				options->ios.sysroot = unchecked_dir(options, next_arg());
+				return;
+			}
 			if (match_longopt("win-sdk"))
 			{
 				if (options->win.vs_dirs)
@@ -1634,10 +1644,22 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->macos.sdk_version = next_arg();
 				return;
 			}
+			if (match_longopt("ios-sdk-version"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --ios-sdk-version needs a version.");
+				options->ios.sdk_version = next_arg();
+				return;
+			}
 			if (match_longopt("macos-min-version"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --macos-min-version needs a version.");
 				options->macos.min_version = next_arg();
+				return;
+			}
+			if (match_longopt("ios-min-version"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --ios-min-version needs a version.");
+				options->ios.min_version = next_arg();
 				return;
 			}
 			if (match_longopt("output-dir"))

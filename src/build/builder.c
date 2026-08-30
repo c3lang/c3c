@@ -601,11 +601,14 @@ BUILD:
 	OVERRIDE_IF_SET(echo_prefix);
 	OVERRIDE_IF_SET(stack_probe_size);
 
-	OVERRIDE_IF_SET(macos.sysroot);
 	OVERRIDE_IF_SET(win.sdk);
 	OVERRIDE_IF_SET(win.vs_dirs);
+	OVERRIDE_IF_SET(macos.sysroot);
 	OVERRIDE_IF_SET(macos.min_version);
 	OVERRIDE_IF_SET(macos.sdk_version);
+	OVERRIDE_IF_SET(ios.sysroot);
+	OVERRIDE_IF_SET(ios.min_version);
+	OVERRIDE_IF_SET(ios.sdk_version);
 	OVERRIDE_IF_SET(linuxpaths.crt);
 	OVERRIDE_IF_SET(linuxpaths.crtbegin);
 	OVERRIDE_IF_SET(android.ndk_path);

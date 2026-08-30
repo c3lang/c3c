@@ -59,7 +59,7 @@ static DarwinSDK *_darwin_sysroot_sdk_information(const char *sdk_path, bool ios
 	parse_version(default_deploy_target, &sdk->deploy_target);
 
 	const char *min_deploy_target = json_map_get(darwin_target, "MinimumDeploymentTarget")->str;
-	parse_version(min_deploy_target, &sdk->deploy_target);
+	parse_version(min_deploy_target, &sdk->min_deploy_target);
 
 	return sdk;
 }
