@@ -1,5 +1,4 @@
 module std::core::mem::alloc;
-import std::math;
 
 <*
  Source-location information recorded for a tracked allocation.
@@ -30,8 +29,7 @@ interface Allocator
 	 @param alignment : "The required alignment, or 0 to use the default alignment"
 	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 
-	 @require [alignment] !alignment || math::is_power_of_2(alignment)
-	 @require [alignment] alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
+     @require [alignment] !alignment || mem::is_valid_alignment(alignment) : "Alignment must be a valid power of 2"
 	 @require [size] size > 0 : "The size must be 1 or more"
 	*>
 	fn void*? acquire(sz size, AllocInitType init_type, sz alignment = 0);
@@ -44,8 +42,7 @@ interface Allocator
 	 @param alignment : "The required alignment, or 0 to use the default alignment"
 	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 
-	 @require [alignment] !alignment || math::is_power_of_2(alignment)
-	 @require [alignment] alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
+     @require [alignment] !alignment || mem::is_valid_alignment(alignment) : "Alignment must be a valid power of 2"
 	 @require [new_size] new_size > 0
 	*>
 	fn void*? resize(void* ptr, sz new_size, sz alignment = 0);
@@ -193,7 +190,7 @@ macro void free(Allocator allocator, void* ptr)
  @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 
  @require [size] size >= 0 : "Invalid memory size"
- @require [alignment] alignment > 0 : "Invalid alignment"
+ @require [alignment] mem::is_valid_alignment(alignment) : "The alignment must be a valid power of two"
 *>
 macro void*? malloc_aligned(Allocator allocator, sz size, sz alignment) @nodiscard
 {
@@ -218,7 +215,7 @@ macro void*? malloc_aligned(Allocator allocator, sz size, sz alignment) @nodisca
  @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 
  @require [size] size >= 0 : "Invalid memory size"
- @require [alignment] alignment > 0 : "Invalid alignment"
+ @require [alignment] mem::is_valid_alignment(alignment) : "The alignment must be a valid power of two"
 *>
 macro void*? calloc_aligned(Allocator allocator, sz size, sz alignment) @nodiscard
 {
@@ -238,7 +235,7 @@ macro void*? calloc_aligned(Allocator allocator, sz size, sz alignment) @nodisca
  @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 
  @require [new_size] new_size >= 0 : "Invalid memory size"
- @require [alignment] alignment > 0 : "Invalid alignment"
+ @require [alignment] mem::is_valid_alignment(alignment) : "The alignment must be a valid power of two"
 *>
 macro void*? realloc_aligned(Allocator allocator, void* ptr, sz new_size, sz alignment) @nodiscard
 {

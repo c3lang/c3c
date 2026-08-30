@@ -241,7 +241,8 @@ after_check19:                                    ; preds = %entry, %after_check
   %53 = insertvalue %any %52, i64 ptrtoint (ptr @"$ct.sa$double" to i64), 1
   store %any %53, ptr %varargslots61, align 16
   %54 = call i64 @std.io.printfn(ptr %retparam66, ptr @.str.12, i64 2, ptr %varargslots61, i64 1)
-  %55 = call ptr @std.core.mem.allocators.push_pool(i64 0) #5
+  call void @llvm.assume(i1 true)
+  %55 = call ptr @std.core.mem.allocators.push_pool(i64 0) #6
   store ptr %55, ptr %state, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map3, i8 0, i64 48, i1 false)
   %56 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator)
@@ -262,7 +263,7 @@ after_check19:                                    ; preds = %entry, %after_check
   store %any %63, ptr %varargslots72, align 16
   %64 = call i64 @std.io.printfn(ptr %retparam77, ptr @.str.13, i64 2, ptr %varargslots72, i64 1)
   %65 = load ptr, ptr %state, align 8
-  call void @std.core.mem.allocators.pop_pool(ptr %65) #5
+  call void @std.core.mem.allocators.pop_pool(ptr %65)
   ret void
 }
 

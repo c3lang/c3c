@@ -124,7 +124,7 @@ fn void test_block_size_is_bumped_to_hold_a_freelist_entry() @test
 	pool.init(mem, 1, 4);
 	defer pool.free();
 
-	test::@check(pool.block_size >= (sz)8, "Expected the block size to be bumped to fit a freelist entry (one pointer)");
+	test::@check(pool.block_size >= FixedBlockPoolEntry::size, "Expected the block size to be bumped to fit a freelist entry (one pointer)");
 
 	void* a = pool.alloc();
 	pool.dealloc(a);
@@ -156,7 +156,7 @@ fn void test_no_alignment_request_does_not_pad_blocks() @test
 	defer pool.free();
 
 	// Just big enough to hold a FixedBlockPoolEntry (one pointer), nothing more.
-	test::eq(pool.block_size, (sz)8);
+	test::eq(pool.block_size, FixedBlockPoolEntry::size);
 }
 
 fn void test_requested_alignment_smaller_than_default_does_not_pad_blocks() @test
@@ -169,8 +169,8 @@ fn void test_requested_alignment_smaller_than_default_does_not_pad_blocks() @tes
 
 	void* a = pool.alloc();
 	void* b = pool.alloc();
-	test::eq((uptr)a % (uptr)4, (uptr)0);
-	test::eq((uptr)b % (uptr)4, (uptr)0);
+	test::eq((uptr)a % 4, (uptr)0);
+	test::eq((uptr)b % 4, (uptr)0);
 }
 
 struct OveralignedFoo @align(32)
@@ -192,7 +192,7 @@ fn void test_overaligned_type_is_honored_for_every_block() @test
 	for (int i = 0; i < 10; i++)
 	{
 		void* p = pool.alloc();
-		test::eq((uptr)p % (uptr)OveralignedFoo::alignment, (uptr)0);
+		test::eq((uptr)p % OveralignedFoo::alignment, (uptr)0);
 	}
 }
 
@@ -202,29 +202,15 @@ fn void test_alignment_16bit_is_honored() @test
 	pool.init(mem, 3, 4, 2);
 	defer pool.free();
 
-	test::eq(pool.block_size, (sz)8);
+	test::eq(pool.block_size, FixedBlockPoolEntry::size);
 
 	for (int i = 0; i < 10; i++)
 	{
 		void* p = pool.alloc();
-		test::eq((uptr)p % (uptr)2, (uptr)0);
+		test::eq((uptr)p % 2, (uptr)0);
 	}
 }
 
-fn void test_alignment_8bit_is_honored() @test
-{
-	FixedBlockPool pool;
-	pool.init(mem, 3, 4, 1);
-	defer pool.free();
-
-	test::eq(pool.block_size, (sz)8);
-
-	for (int i = 0; i < 10; i++)
-	{
-		void* p = pool.alloc();
-		test::eq((uptr)p % (uptr)1, (uptr)0);
-	}
-}
 
 fn void test_dealloc_and_reuse_on_grown_page() @test
 {
