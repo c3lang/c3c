@@ -29,36 +29,45 @@ entry:
   call void @llvm.memset.p0.i64(ptr align 16 %x, i8 0, i64 35, i1 false)
   call void @llvm.memset.p0.i64(ptr align 16 %w, i8 0, i64 24, i1 false)
   %ptradd = getelementptr inbounds i8, ptr %x, i64 1
-  %0 = load i64, ptr %ptradd, align 1
-  store i64 %0, ptr %z, align 8
-  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 1
-  %1 = ptrtoint ptr %ptradd1 to i64
-  %2 = urem i64 %1, 8
-  %3 = icmp ne i64 %2, 0
-  %4 = call i1 @llvm.expect.i1(i1 %3, i1 false)
-  br i1 %4, label %panic, label %checkok
+  %neq = icmp ne ptr %ptradd, null
+  br i1 %neq, label %assert_ok, label %assert_fail
 
-checkok:                                          ; preds = %entry
-  %5 = load i64, ptr %ptradd1, align 8
-  store i64 %5, ptr %y, align 8
+assert_fail:                                      ; preds = %entry
+  %0 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %0(ptr @.panic_msg, i64 37
+  unreachable
+
+assert_ok:                                        ; preds = %entry
+  %1 = load i64, ptr %ptradd, align 1
+  store i64 %1, ptr %z, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 1
+  %2 = ptrtoint ptr %ptradd1 to i64
+  %3 = urem i64 %2, 8
+  %4 = icmp ne i64 %3, 0
+  %5 = call i1 @llvm.expect.i1(i1 %4, i1 false)
+  br i1 %5, label %panic, label %checkok
+
+checkok:                                          ; preds = %assert_ok
+  %6 = load i64, ptr %ptradd1, align 8
+  store i64 %6, ptr %y, align 8
   %ptradd4 = getelementptr inbounds i8, ptr %w, i64 8
-  %6 = load i64, ptr %ptradd4, align 8
-  store i64 %6, ptr %ww, align 8
+  %7 = load i64, ptr %ptradd4, align 8
+  store i64 %7, ptr %ww, align 8
   ret i32 0
 
-panic:                                            ; preds = %entry
+panic:                                            ; preds = %assert_ok
   store i64 8, ptr %taddr, align 8
-  %7 = insertvalue %any undef, ptr %taddr, 0
-  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  store i64 %2, ptr %taddr2, align 8
-  %9 = insertvalue %any undef, ptr %taddr2, 0
-  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  store %any %8, ptr %varargslots, align 16
+  %8 = insertvalue %any undef, ptr %taddr, 0
+  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store i64 %3, ptr %taddr2, align 8
+  %10 = insertvalue %any undef, ptr %taddr2, 0
+  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %9, ptr %varargslots, align 16
   %ptradd3 = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store %any %10, ptr %ptradd3, align 16
-  %11 = insertvalue %"any[]" undef, ptr %varargslots, 0
-  %"$$temp" = insertvalue %"any[]" %11, i64 2, 1
+  store %any %11, ptr %ptradd3, align 16
+  %12 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %12, i64 2, 1
   store %"any[]" %"$$temp", ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64
+  call void @std.core.builtin.panicf(ptr @.panic_msg
   unreachable
 }

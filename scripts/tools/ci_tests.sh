@@ -168,7 +168,7 @@ run_cli_tests() {
             return
         fi
 
-        if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == *"BSD" ]] || [[ "$OS_MODE" == "android" ]] || [[ "$OS_MODE" == "ios" ]] || [[ "$OS_MODE" == "windows" && "$SYSTEM_NAME" == *"-ARM64" ]]; then
+        if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == *"BSD" ]] || [[ "$OS_MODE" == "ios" ]] || [[ "$OS_MODE" == "android" ]]; then
             echo "::warning::Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
             return
         fi

@@ -33,6 +33,7 @@ struct Stat
 }
 
 extern fn CInt stat(ZString path, Stat* stat) @cname("__stat50");
+extern fn CInt lstat(ZString path, Stat* stat) @cname("__lstat50");
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
 
