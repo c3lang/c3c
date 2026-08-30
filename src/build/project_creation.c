@@ -419,7 +419,7 @@ static bool check_name(const char *name)
 	{
 		char c = name[i];
 		if (c == '\0') break;
-		if (!char_is_alphanum_(c)) return false;
+		if (!char_is_alphanum_(c) && c != '-') return false;
 	}
 	return true;
 }

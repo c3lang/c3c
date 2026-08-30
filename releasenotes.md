@@ -23,6 +23,7 @@
 - Add `dso_local` attribute on ELF/COFF.
 - Let LLVM build the biggest modules first.
 - Support for iOS.
+- Allow `-` in `c3c init some-project`.
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
