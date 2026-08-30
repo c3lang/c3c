@@ -111,7 +111,7 @@ static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side, SourceLoc *lhs
  * Parse lhs [op] [rhs]
  * This will return lhs if no candidate is found.
  */
-inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, SourceLoc *lhs_start, Precedence precedence)
+Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, SourceLoc *lhs_start, Precedence precedence)
 {
 	while (1)
 	{
@@ -1155,12 +1155,12 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start)
 /**
  * subscript ::= '[' range_expr ']'
  */
-static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
+static Expr *parse_subscript_expr(ParseContext *c, Expr *left, SourceLoc *lhs_span)
 {
 	ASSERT(left && expr_ok(left));
 	advance_and_verify(c, TOKEN_LBRACKET);
 
-	Expr *subs_expr = expr_new_loc(EXPR_SUBSCRIPT, lhs_start);
+	Expr *subs_expr = expr_new_loc(EXPR_SUBSCRIPT, lhs_span);
 	subs_expr->subscript_expr.expr = exprid(left);
 
 	Range range = { .range_type = RANGE_DYNAMIC };
@@ -1763,17 +1763,17 @@ static void parse_base64(char *result_pointer, const char *result_pointer_end, c
 static Expr *parse_bytes_expr(ParseContext *c, Expr *left, SourceLoc *lhs_start UNUSED)
 {
 	ASSERT(!left && "Had left hand side");
-	ArraySize len = 0;
+	ArrayIndex len = 0;
 	char *data = NULL;
 	while (c->tok == TOKEN_BYTES)
 	{
-		ArraySize next_len = c->data.bytes_len;
+		ArrayIndex next_len = c->data.bytes_len;
 		if (!next_len)
 		{
 			advance(c);
 			continue;
 		}
-		ArraySize new_len = len + next_len;
+		ArrayIndex new_len = len + next_len;
 		char *new_data = MALLOC(new_len + 1);
 		if (data)
 		{

@@ -1,3 +1,4 @@
+// #target: netbsd-x64
 module withbody;
 
 
@@ -45,7 +46,7 @@ fn void main()
 
 /* #expect: withbody.ll
 
-define i32 @withbody.Foo.mutate(ptr %0) #0 {
+define dso_local i32 @withbody.Foo.mutate(ptr %0) #0 {
 entry:
   %1 = call i32 (ptr, ...) @printf(ptr @.str.2)
   %2 = load i32, ptr %0, align 4
@@ -55,7 +56,7 @@ entry:
   ret i32 %mul
 }
 
-define void @withbody.main() #0 {
+define dso_local void @withbody.main() #0 {
 entry:
   %f = alloca %Foo, align 4
   %y = alloca i32, align 4

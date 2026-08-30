@@ -16,7 +16,7 @@
 module std::compression::gzip;
 import std::io, std::hash::crc32, std::compression::deflate, std::encoding::codepage, std::math;
 
-faultdef CORRUPT_HEADER, CORRUPT_DATA, UNSUPPORTED_METHOD, IO_ERROR;
+excuse { CORRUPT_HEADER, CORRUPT_DATA, UNSUPPORTED_METHOD, IO_ERROR }
 
 struct GzipHeader @packed
 {

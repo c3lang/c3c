@@ -84,7 +84,7 @@ module std::crypto::keccak @private;
 import std::math;
 
 <* A set of KeccakContext states used in its private state machine. *>
-constdef KeccakState : inline int
+constset KeccakState : inline int
 {
 	UNINITIALIZED,
 	INITIALIZED,

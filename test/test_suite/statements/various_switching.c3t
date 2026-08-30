@@ -3,8 +3,8 @@ module mymodule;
 
 extern fn void printf(char *, ...);
 
-faultdef FOO;
-faultdef BAR, BAZ;
+excuse FOO;
+excuse BAR, BAZ;
 
 fn void test()
 {
@@ -218,10 +218,12 @@ switch.exit37:                                    ; preds = %switch.default36, %
   ret void
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @mymodule.main() #0 {
 entry:
   call void @mymodule.test()
   call void (ptr, ...) @printf(ptr @.str.8)
   ret void
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

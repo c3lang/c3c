@@ -1,6 +1,6 @@
 module main;
 
-constdef Origin : inline sz[<2>]
+constset Origin : inline sz[<2>]
 {
 	HI = { 0, 0 },
 }

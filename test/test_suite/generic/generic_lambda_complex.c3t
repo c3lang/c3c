@@ -2,7 +2,7 @@
 
 module abc_faults;
 
-faultdef UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
+excuse UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
 
 <* @require Type::kind == STRUCT *>
 module abc <Type>;

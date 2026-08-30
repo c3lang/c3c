@@ -196,7 +196,7 @@ entry:
   %b30 = alloca ptr, align 8
   %to31 = alloca ptr, align 8
   %i32 = alloca i64, align 8
-  store float 0x4028B4BC60000000, ptr %f, align 4
+  store float
   %0 = load float, ptr %f, align 4
   store float %0, ptr %expr, align 4
   store ptr %expr, ptr %b, align 8

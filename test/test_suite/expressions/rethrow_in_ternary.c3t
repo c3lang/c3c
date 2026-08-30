@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 import std::io;
-faultdef ABC ;
+excuse ABC ;
 fn int? hello(int a)
 {
 	return io::EOF~! ? ABC~ : a;
@@ -27,7 +27,7 @@ guard_block:                                      ; preds = %entry
   ret i64 %2
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define i64 @test.bye() #0 {
 entry:
   ret i64 0
@@ -71,3 +71,5 @@ end_block:                                        ; preds = %after_check4, %assi
   %i2b = icmp ne i64 %4, 0
   ret void
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

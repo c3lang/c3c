@@ -1,4 +1,4 @@
-faultdef FOO;
+excuse FOO;
 
 fn void test()
 {

@@ -17,6 +17,7 @@
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
 #define DEFAULT_SWITCH_JUMP_MAX_SIZE (0x3FFF)
 #define DEFAULT_PATH "."
+#define DEFAULT_STACK_PROBE_SIZE (0x1000)
 
 typedef enum
 {
@@ -153,15 +154,15 @@ static const char *target_desc[7] = {
 typedef struct BuildOptions_
 {
 	const char *lib_dir[MAX_BUILD_LIB_DIRS];
-	size_t lib_dir_count;
+	int lib_dir_count;
 	const char *libs[MAX_BUILD_LIB_DIRS];
-	size_t lib_count;
+	int lib_count;
 	const char* linker_args[MAX_BUILD_LIB_DIRS];
-	size_t linker_arg_count;
+	int linker_arg_count;
 	const char* linker_lib_dir[MAX_BUILD_LIB_DIRS];
-	size_t linker_lib_dir_count;
+	int linker_lib_dir_count;
 	const char* linker_libs[MAX_BUILD_LIB_DIRS];
-	size_t linker_lib_count;
+	int linker_lib_count;
 	const char *std_lib_dir;
 	const char *run_dir;
 	struct
@@ -268,6 +269,7 @@ typedef struct BuildOptions_
 	bool docgen_append;
 	bool fetch_accept_license;
 	bool msvc_show_versions;
+	ImplicitFloat implicit_float;
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;
 	const char *fetch_sdk_target;
@@ -306,6 +308,9 @@ typedef struct BuildOptions_
 	LinuxLibc linux_libc;
 	MemoryEnvironment memory_environment;
 	SanitizeMode sanitize_mode;
+	StackProbe stack_probe;
+	StackProtector stack_protector;
+	uint32_t stack_probe_size;
 	uint32_t max_vector_size;
 	uint32_t max_stack_object_size;
 	const char *cpu_flags;
@@ -455,13 +460,16 @@ typedef struct
 	ArchOsTarget arch_os_target;
 	CompilerBackend backend;
 	LinkerType linker_type;
+	StackProbe stack_probe;
+	StackProtector stack_protector;
+	uint32_t stack_probe_size;
 	const char *cpu_flags;
-	uint32_t symtab_size;
-	uint32_t max_vector_size;
-	uint32_t max_stack_object_size;
-	uint32_t max_macro_iterations;
-	uint32_t switchrange_max_size;
-	uint32_t switchjump_max_size;
+	int32_t symtab_size;
+	int32_t max_vector_size;
+	int32_t max_stack_object_size;
+	int32_t max_macro_iterations;
+	int32_t switchrange_max_size;
+	int32_t switchjump_max_size;
 	const char **args;
 	const char *panicfn;
 	const char *benchfn;
@@ -489,6 +497,7 @@ typedef struct
 		bool sanitize_address : 1;
 		bool sanitize_memory : 1;
 		bool sanitize_thread : 1;
+		ImplicitFloat implicit_float : 3;
 		FpOpt fp_math;
 		SafetyLevel safe_mode;
 		PanicLevel panic_level;
@@ -574,6 +583,7 @@ static BuildTarget default_build_target = {
 		.feature.x86_struct_return = STRUCT_RETURN_DEFAULT,
 		.feature.soft_float = SOFT_FLOAT_DEFAULT,
 		.feature.fp_math = FP_DEFAULT,
+		.feature.implicit_float = IMPLICIT_FLOAT_NOT_SET,
 		.feature.trap_on_wrap = false,
 		.feature.riscv_abi = RISCV_ABI_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
@@ -589,6 +599,9 @@ static BuildTarget default_build_target = {
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 		.switchjump_max_size = DEFAULT_SWITCH_JUMP_MAX_SIZE,
 		.quiet = false,
+		.stack_probe = STACK_PROBE_NOT_SET,
+		.stack_protector = STACK_PROTECTOR_NOT_SET,
+		.stack_probe_size = DEFAULT_STACK_PROBE_SIZE,
 };
 
 

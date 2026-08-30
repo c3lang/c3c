@@ -280,7 +280,7 @@ BinaryOp binaryop_from_token(TokenType type)
 
 TokenType binaryop_to_token(BinaryOp type)
 {
-	for (unsigned i = 0; i <= TOKEN_LAST; i++)
+	for (int i = 0; i <= TOKEN_LAST; i++)
 	{
 		if (binary_op[i] == type) return (TokenType)i;
 	}
@@ -308,7 +308,7 @@ bool ast_is_not_empty(Ast *ast)
 
 AttributeType attribute_by_name(const char *name)
 {
-	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
+	for (int i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{
 		if (attribute_list[i] == name) return (AttributeType)i;
 	}
@@ -389,11 +389,11 @@ int decl_count_elements(Decl *structlike)
 {
 	int elements = 0;
 	Decl **members = structlike->strukt.members;
-	unsigned member_size = vec_size(members);
+	int member_size = vec_size(members);
 	if (member_size == 0) return 0;
 	// In the case we have a union, we only count the first element.
 	if (structlike->decl_kind == DECL_UNION) member_size = 1;
-	for (unsigned i = 0; i < member_size; i++)
+	for (int i = 0; i < member_size; i++)
 	{
 		Decl *member = members[i];
 		// Recursively count the anonymous struct/unions
@@ -561,8 +561,8 @@ AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 			return NO_MATCH;
 	}
 	ASSERT_SPAN(decl, members);
-	unsigned list = vec_size(members);
-	for (unsigned i = 0; i < list; i++)
+	int list = vec_size(members);
+	for (int i = 0; i < list; i++)
 	{
 		Decl *m = members[i];
 		if (m == member)

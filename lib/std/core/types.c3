@@ -3,7 +3,7 @@ module std::core::types;
 import libc;
 
 
-faultdef VALUE_OUT_OF_RANGE, VALUE_OUT_OF_UNSIGNED_RANGE;
+excuse { VALUE_OUT_OF_RANGE, VALUE_OUT_OF_UNSIGNED_RANGE }
 
 <*
  @require $Type::kind.is_int() : "Type was not an integer"
@@ -181,7 +181,7 @@ macro typeid flat_type($Type) @const
 macro TypeKind flat_kind($Type) @const
 {
 	$if $Type::kind == TYPEDEF || $Type::kind == CONSTDEF:
-		return flat_type($Type::inner);
+		return flat_kind($Type::inner);
 	$else
 		return $Type::kind;
 	$endif

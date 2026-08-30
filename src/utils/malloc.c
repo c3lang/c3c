@@ -27,7 +27,7 @@ void memory_init(size_t max_mem)
 	vmem_alloc(&arena, 16);
 }
 
-void memory_release()
+void memory_release(void)
 {
 	vmem_free(&arena);
 	vmem_free(&char_arena);

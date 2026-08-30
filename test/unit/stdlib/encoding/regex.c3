@@ -588,7 +588,7 @@ fn void test_bracket_multibyte_literals() @test
    https://go.dev/src/regexp/testdata/nullsubexpr.dat?m=text
   ===========================================================  */
 
-faultdef NO_ERR; // sentinel: compile_error_code returns this when no error is expected
+excuse NO_ERR; // sentinel: compile_error_code returns this when no error is expected
 
 fn void test_posix_compliance_go_testdata_333_cases() @test
 {

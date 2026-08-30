@@ -7,7 +7,7 @@ const int PIXELS_MAX = 400_000_000;
  Purely informative. It will be saved to the file header,
  but does not affect how chunks are en-/decoded.
 *>
-constdef QOIColorspace : char
+constset QOIColorspace : char
 {
 	<* sRGB with linear alpha *>
 	SRGB = 0,
@@ -21,7 +21,7 @@ constdef QOIColorspace : char
  AUTO can be used when decoding to automatically determine
  the channels from the file's header.
 *>
-constdef QOIChannels : inline char
+constset QOIChannels : inline char
 {
 	AUTO = 0,
 	RGB = 3,
@@ -43,7 +43,15 @@ struct QOIDesc
  QOI Errors.
  These are all the possible bad outcomes.
 *>
-faultdef INVALID_PARAMETERS, FILE_OPEN_FAILED, FILE_WRITE_FAILED, INVALID_DATA, TOO_MANY_PIXELS;
+excuse
+{
+	INVALID_PARAMETERS,
+	FILE_OPEN_FAILED,
+	FILE_WRITE_FAILED,
+	INVALID_DATA,
+	TOO_MANY_PIXELS
+}
+
 
 
 // Let the user decide if they want to use std::io
@@ -70,8 +78,8 @@ fn sz? write(String filename, char[] input, QOIDesc* desc) => @pool()
 	// encode data
 	char[] output = encode(tmem, input, desc)!;
 
-	file::save(filename, output)!;
-	return output.len;
+file::save(filename, output)!;
+return output.len;
 }
 
 
@@ -101,8 +109,8 @@ fn char[]? read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels
 {
 	// read file
 	char[] data = file::load_temp(filename) ?? FILE_OPEN_FAILED~!;
-	// pass data to decode function
-	return decode(allocator, data, desc, channels);
+// pass data to decode function
+return decode(allocator, data, desc, channels);
 }
 
 

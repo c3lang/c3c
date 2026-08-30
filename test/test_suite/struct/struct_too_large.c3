@@ -2,7 +2,7 @@ import std;
 struct Foo
 {
     int a;
-    int[int::max] b; // #error: Struct member 'b' would cause the struct to become too large
+    int[0x40000000] b; // #error: Struct member 'b' would cause the struct to become too large
 }
 
 fn int main()

@@ -1,3 +1,4 @@
+// #target: linux-x64
 module foo;
 import bar;
 import bar::abc;

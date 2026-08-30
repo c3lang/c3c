@@ -4,7 +4,7 @@ struct Foo
     int x, y;
 }
 
-faultdef FOO;
+excuse FOO;
 
 extern fn int printf(char *c, ...);
 

@@ -29,7 +29,7 @@ fn void test_enum_by_name()
 }
 
 
-faultdef SOME_FAULT, ABC_FAULT;
+excuse SOME_FAULT, ABC_FAULT;
 
 fn void test_try_catch()
 {

@@ -87,7 +87,7 @@ macro @simd_degree() @local
 }
 
 <* Flags used during hash computation based on its state. *>
-constdef Blake3Flags : inline char
+constset Blake3Flags : inline char
 {
 	CHUNK_START			= 1 << 0,
 	CHUNK_END			= 1 << 1,
@@ -455,7 +455,7 @@ fn void Blake3ChunkState.update(&self, char[] input)
 		input = input[take..];
 		if (input.len)
 		{
-			compress_in_place(self.cv[..], self.buf[..], BLOCK_SIZE, self.chunk_counter, self.flags | self.maybe_start_flag());
+			compress_in_place(&self.cv, &self.buf, BLOCK_SIZE, self.chunk_counter, self.flags | self.maybe_start_flag());
 			self.blocks_compressed++;
 			self.buf_len = 0;
 			self.buf[..] = {};
@@ -463,7 +463,7 @@ fn void Blake3ChunkState.update(&self, char[] input)
 	}
 	for (; input.len > BLOCK_SIZE; self.blocks_compressed++, input = input[BLOCK_SIZE..])
 	{
-		compress_in_place(self.cv[..], input[:BLOCK_SIZE], BLOCK_SIZE, self.chunk_counter, self.flags | self.maybe_start_flag());
+		compress_in_place(&self.cv, input.ptr, BLOCK_SIZE, self.chunk_counter, self.flags | self.maybe_start_flag());
 	}
 	self.fill_buf(input);
 }
@@ -483,7 +483,7 @@ fn Blake3Output Blake3ChunkState.output(&self) @inline
  @param counter
  @param flags
 *>
-fn Blake3Output make_output(uint[] key, char* in_block, sz block_len, long counter, char flags) @local @noinline
+fn Blake3Output make_output(uint[] key, char* in_block, sz block_len, long counter, char flags) @local
 {
 	Blake3Output o;
 	o.input_cv[..] = key[..];
@@ -513,7 +513,7 @@ macro void Blake3Output.chaining_value(&self, char* cv)
 {
 	uint[KEY_SIZE_WORDS] cv_words;
 	cv_words[..] = self.input_cv[..];
-	compress_in_place(cv_words[..], self.block, self.block_len, self.counter, self.flags);
+	compress_in_place(&cv_words, &self.block, self.block_len, self.counter, self.flags);
 	cv[:KEY_SIZE] = @as_char_view(cv_words)[:KEY_SIZE];
 }
 
@@ -533,7 +533,7 @@ fn void Blake3Output.root_bytes(&self, sz seek, char[] into)
 
 	if (offset_within_block)
 	{
-		compress_xof(self.input_cv[..], self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, wide_buf[..]);
+		compress_xof(&self.input_cv, &self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, &wide_buf);
 		long avail = BLOCK_SIZE - offset_within_block;
 		sz bytes = (sz)min((long)into.len, avail);
 		into[:bytes] = wide_buf[offset_within_block:bytes];
@@ -542,13 +542,13 @@ fn void Blake3Output.root_bytes(&self, sz seek, char[] into)
 	}
 	if (into.len / BLOCK_SIZE)
 	{
-		@xof_many(self.input_cv[..], self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, into, into.len / BLOCK_SIZE);
+		@xof_many(&self.input_cv, &self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, into, into.len / BLOCK_SIZE);
 	}
 	output_block_counter += into.len / 64;
 	into = into[(sz)(into.len & -64ll) ..];
 	if (into.len)
 	{
-		compress_xof(self.input_cv[..], self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, wide_buf[..]);
+		compress_xof(&self.input_cv, &self.block, self.block_len, output_block_counter, self.flags | Blake3Flags.ROOT, &wide_buf);
 		into[..] = wide_buf[:into.len];
 	}
 }
@@ -584,7 +584,7 @@ macro @g(#state, a, b, c, d, x, y) @local
 	#state[b] = (#state[b] ^ #state[c]).rotr(7);
 }
 
-macro @round(uint[] state, uint* msg, sz round) @local
+macro @round(uint* state, uint* msg, sz round) @local
 {
 	char* schedule = &MESSAGE_SCHEDULE[round];
 	@g(state, 0, 4,  8, 12, msg[schedule[0] ], msg[schedule[1] ]);
@@ -597,12 +597,12 @@ macro @round(uint[] state, uint* msg, sz round) @local
 	@g(state, 3, 4,  9, 14, msg[schedule[14]], msg[schedule[15]]);
 }
 
-fn void compress_pre(uint[] state, uint[] cv, char[BLOCK_SIZE] block, sz block_len, long counter, char flags) @local @noinline
+fn void compress_pre(uint* state, uint* cv, char* block, sz block_len, long counter, char flags) @local
 {
 	uint[16] block_words @noinit;
 	foreach (i, &b : block_words) *b = mem::load((uint*)&block[i * 4], 1);
-	state[0:8] = cv[0:8];
-	state[8:4] = IV[0:4];
+	mem::copy(state, cv, 8 * uint::size);
+	mem::copy(&state[8], &IV, 4 * uint::size);
 	state[12] = (uint)counter;
 	state[13] = (uint)((ulong)counter >> 32);
 	state[14] = (uint)block_len;
@@ -610,28 +610,28 @@ fn void compress_pre(uint[] state, uint[] cv, char[BLOCK_SIZE] block, sz block_l
 
 	for (int i = 0; i < 7; i++)
 	{
-		@round(state, &block_words[0], (sz)i);
+		@round(state, &block_words, (sz)i);
 	}
 }
 
-macro compress_in_place(uint[] cv, char[BLOCK_SIZE] block, sz block_len, long counter, char flags) @local
+fn void compress_in_place(uint* cv, char* block, sz block_len, long counter, char flags) @local
 {
 	uint[16] state @noinit;
-	compress_pre(state[..], cv, block, block_len, counter, flags);
+	compress_pre(&state, cv, block, block_len, counter, flags);
 	for (sz i = 0; i < 8; i++) cv[i] = state[i] ^ state[i + 8];
 }
 
-macro compress_xof(uint[] cv, char[BLOCK_SIZE] block, sz block_len, long counter, char flags, char[] out) @local
+fn void compress_xof(uint* cv, char* block, sz block_len, long counter, char flags, char* out) @local
 {
 	uint[16] state @noinit;
-	compress_pre(state[..], cv, block, block_len, counter, flags);
-	$for sz $i = 0; $i < 8; $i++: mem::store((uint*)&out[4 * $i], state[$i] ^ state[$i + 8], 1); $endfor
-	$for sz $i = 0; $i < 8; $i++: mem::store((uint*)&out[4 * (8 + $i)], state[$i + 8] ^ cv[$i], 1); $endfor
+	compress_pre(&state, cv, block, block_len, counter, flags);
+	for (sz i = 0; i < 8; i++) mem::store((uint*)&out[4 * i], state[i] ^ state[i + 8], 1);
+	for (sz i = 0; i < 8; i++) mem::store((uint*)&out[4 * (8 + i)], state[i + 8] ^ cv[i], 1);
 }
 
-macro @xof_many(uint[] cv, char[BLOCK_SIZE] block, sz block_len, long counter, char flags, char[] out, sz out_blocks) @local
+macro @xof_many(uint* cv, char* block, sz block_len, long counter, char flags, char[] out, sz out_blocks) @local
 {
-	for (sz i = 0; i < out_blocks; i++, out = out[BLOCK_SIZE..]) compress_xof(cv, block, block_len, counter + i, flags, out);
+	for (sz i = 0; i < out_blocks; i++, out = out[BLOCK_SIZE..]) compress_xof(cv, block, block_len, counter + i, flags, out.ptr);
 }
 
 macro hash_one(char* input, sz blocks, uint[] key, long counter, char flags, char flags_start, char flags_end, char[] out) @local
@@ -642,7 +642,7 @@ macro hash_one(char* input, sz blocks, uint[] key, long counter, char flags, cha
 	for (; blocks > 0; input += BLOCK_SIZE, blocks--, block_flags = flags)
 	{
 		if (blocks == 1) block_flags |= flags_end;
-		compress_in_place(cv[..], input[:BLOCK_SIZE], BLOCK_SIZE, counter, block_flags);
+		compress_in_place(&cv, input, BLOCK_SIZE, counter, block_flags);
 	}
 	foreach (i, c : cv) mem::store((uint*)&out[i * 4], c, 1);
 }
@@ -657,7 +657,7 @@ macro hash_many(char*[] inputs, sz num_inputs, sz blocks, uint[] key, long count
 }
 
 
-fn void compress_subtree_to_parent_node(char[] input, uint[] key, long chunk_counter, char flags, char[] out, bool use_tbb) @local @noinline
+fn void compress_subtree_to_parent_node(char[] input, uint[] key, long chunk_counter, char flags, char[] out, bool use_tbb) @local
 {
 	char[MAX_SIMD_DEGREE_OR_2 * OUT_SIZE] cv_array;
 
@@ -672,7 +672,7 @@ fn void compress_subtree_to_parent_node(char[] input, uint[] key, long chunk_cou
 	out[..] = cv_array[:2 * OUT_SIZE];
 }
 
-fn sz compress_subtree_wide(char[] input, uint[] key, long chunk_counter, char flags, char* out, bool use_tbb) @local @noinline
+fn sz compress_subtree_wide(char[] input, uint[] key, long chunk_counter, char flags, char* out, bool use_tbb) @local
 {
 	if (input.len <= (sz)@simd_degree() * CHUNK_SIZE) return compress_chunks_parallel(input, key, chunk_counter, flags, out);
 
@@ -698,7 +698,7 @@ fn sz compress_subtree_wide(char[] input, uint[] key, long chunk_counter, char f
 	return compress_parents_parallel(cv_array[..], left_n + right_n, key, flags, out);
 }
 
-fn sz compress_parents_parallel(char[] child_chaining_values, sz num_chaining_values, uint[] key, char flags, char* out) @local @noinline
+fn sz compress_parents_parallel(char[] child_chaining_values, sz num_chaining_values, uint[] key, char flags, char* out) @local
 {
 	char*[MAX_SIMD_DEGREE_OR_2] parents_array;
 	sz parents_array_len = 0;
@@ -719,7 +719,7 @@ fn sz compress_parents_parallel(char[] child_chaining_values, sz num_chaining_va
 	return parents_array_len;
 }
 
-fn sz compress_chunks_parallel(char[] input, uint[] key, long chunk_counter, char flags, char* out) @local @noinline
+fn sz compress_chunks_parallel(char[] input, uint[] key, long chunk_counter, char flags, char* out) @local
 {
 	char*[MAX_SIMD_DEGREE] chunks_array;
 	sz input_position = 0;

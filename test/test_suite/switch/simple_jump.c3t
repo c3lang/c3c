@@ -237,7 +237,7 @@ switch.exit:                                      ; preds = %switch.default, %sw
   ret void
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @simple_jump.test6(i32 %0) #0 {
 entry:
   %switch = alloca i32, align 4
@@ -281,3 +281,5 @@ switch.default:                                   ; preds = %jumpblock, %jumpblo
 switch.exit:                                      ; preds = %switch.default, %switch.case1, %switch.case
   ret void
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

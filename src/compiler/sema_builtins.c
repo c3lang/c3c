@@ -170,10 +170,10 @@ static bool sema_check_builtin_args(SemaContext *context, Expr **args, BuiltinAr
 static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, bool swizzle_two)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned arg_count = vec_size(args);
+	int arg_count = vec_size(args);
 	bool optional = false;
 	int first_mask_value = swizzle_two ? 2 : 1;
-	for (unsigned i = 0; i < first_mask_value; i++)
+	for (int i = 0; i < first_mask_value; i++)
 	{
 		Expr *arg = args[i];
 		// Analyse the expressions
@@ -187,9 +187,9 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 	if (swizzle_two && !sema_check_builtin_args_match(context, args, 2)) return false;
 
 	Type *flat = type_flatten(args[0]->type);
-	unsigned components = flat->array.len;
+	ArrayIndex components = flat->array.len;
 	if (swizzle_two) components *= 2;
-	for (unsigned i = first_mask_value; i < arg_count; i++)
+	for (int i = first_mask_value; i < arg_count; i++)
 	{
 		Expr *mask_val = args[i];
 		if (!sema_analyse_expr_rhs(context, type_int, mask_val, false, NULL, false)) return false;
@@ -197,7 +197,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 		{
 			RETURN_SEMA_ERROR(mask_val, "The swizzle positions must be compile time constants.");
 		}
-		if (mask_val->const_expr.ixx.i.low >= components)
+		if (mask_val->const_expr.ixx.i.low >= (uint64_t)components)
 		{
 			if (components == 1) RETURN_SEMA_ERROR(mask_val, "The only possible swizzle position is 0.");
 			RETURN_SEMA_ERROR(mask_val, "The swizzle position must be in the range 0-%d.", components - 1);
@@ -268,13 +268,13 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
 {
 	Expr **args = expr->call_expr.arguments;
-	unsigned arg_count = vec_size(args);
+	int arg_count = vec_size(args);
 	if (arg_count > 7)
 	{
 		RETURN_SEMA_ERROR(args[7], "Only 7 arguments supported for $$syscall.");
 	}
 	bool optional = false;
-	for (unsigned i = 0; i < arg_count; i++)
+	for (int i = 0; i < arg_count; i++)
 	{
 		Expr *arg = args[i];
 		if (!sema_analyse_expr_rhs(context, type_uptr, arg, true, NULL, false)) return false;
@@ -296,7 +296,7 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
 	return true;
 }
 
-uint64_t rand_u64()
+uint64_t rand_u64(void)
 {
 	return ((uint64_t)rand() << 48) ^ ((uint64_t)rand() << 32) ^ ((uint64_t)rand() << 16) ^ rand();
 }
@@ -333,14 +333,14 @@ static bool sema_expr_analyse_str_replace(SemaContext *context, Expr *expr, Expr
 		RETURN_SEMA_ERROR(limit, "Expected a constant limit.");
 	}
 	const char *inner_str = arg->const_expr.bytes.ptr;
-	ArraySize len = arg->const_expr.bytes.len;
+	ArrayIndex len = arg->const_expr.bytes.len;
 	const char *pattern_str = pattern->const_expr.bytes.ptr;
-	ArraySize pattern_len = pattern->const_expr.bytes.len;
+	ArrayIndex pattern_len = pattern->const_expr.bytes.len;
 	const char *replace_str = replace->const_expr.bytes.ptr;
-	ArraySize limit_int = int_ucomp(limit->const_expr.ixx, MAX_ARRAY_SIZE, BINARYOP_GT) ? 0 : limit->const_expr.ixx.i.low;
+	ArrayIndex limit_int = int_ucomp(limit->const_expr.ixx, MAX_ARRAY_SIZE, BINARYOP_GT) ? 0 : limit->const_expr.ixx.i.low;
 	scratch_buffer_clear();
 	ArrayIndex index = 0;
-	if (limit_int == 0) limit_int = UINT64_MAX;
+	if (limit_int == 0) limit_int = MAX_ARRAY_SIZE;
 	while (index < len)
 	{
 		const char *end = strstr(inner_str + index, pattern_str);
@@ -405,7 +405,7 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take convert.");
 	}
 	const char *string = inner->const_expr.bytes.ptr;
-	ArraySize len = inner->const_expr.bytes.len;
+	ArrayIndex len = inner->const_expr.bytes.len;
 	// Empty string: no conversion
 	if (!len)
 	{
@@ -429,7 +429,7 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 	switch (func)
 	{
 		case BUILTIN_STR_LOWER:
-			for (ArraySize i = 0; i < len; i++)
+			for (ArrayIndex i = 0; i < len; i++)
 			{
 				char c = string[i];
 				new_string[i] = (char)(char_is_upper(c) ? (c | 0x20) : c);
@@ -438,7 +438,7 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 		case BUILTIN_STR_SNAKECASE:
 		{
 			size_t index = 0;
-			for (ArraySize i = 0; i < len; i++)
+			for (ArrayIndex i = 0; i < len; i++)
 			{
 				char c = string[i];
 				if (isupper(c))
@@ -459,12 +459,17 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 		{
 			bool capitalize = true;
 			size_t j = 0;
-			for (ArraySize i = 0; i < len; i++)
+			for (ArrayIndex i = 0; i < len; i++)
 			{
 				char c = string[i];
-				if (!isalpha(c))
+				if (!isalnum(c))
 				{
 					capitalize = true;
+					continue;
+				}
+				if (isdigit(c))
+				{
+					new_string[j++] = c;
 					continue;
 				}
 				if (capitalize)
@@ -479,7 +484,7 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 			break;
 		}
 		case BUILTIN_STR_UPPER:
-			for (ArraySize i = 0; i < len; i++)
+			for (ArrayIndex i = 0; i < len; i++)
 			{
 				char c = string[i];
 				new_string[i] = (char)(char_is_lower(c) ? (c & ~0x20) : c);
@@ -538,7 +543,7 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 	Expr **args = expr->call_expr.arguments;
 	Expr *inner = args[0];
 	bool zero_terminate = true;
-	unsigned arg_count = vec_size(args);
+	int arg_count = vec_size(args);
 	if (arg_count > 2)
 	{
 		RETURN_SEMA_ERROR(inner, "Too many arguments, expected 1 or 2 arguments.");
@@ -560,12 +565,12 @@ bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunctio
 	}
 
 	const char *string = inner->const_expr.bytes.ptr;
-	ArraySize original_len = inner->const_expr.bytes.len;
+	ArrayIndex original_len = inner->const_expr.bytes.len;
 
 	int bytes_per_unit = func == BUILTIN_WIDESTRING_16 ? 2 : 4;
 
 	Type *type = func == BUILTIN_WIDESTRING_16 ? type_ushort : type_uint;
-	ArraySize len = (original_len + 1) * bytes_per_unit;   // inflate to unit size +null-term
+	ArrayIndex len = (original_len + 1) * bytes_per_unit;   // inflate to unit size +null-term
 	ConstInitializer **elements = VECNEW(ConstInitializer*, len);
 
 	const char *data = string;
@@ -624,7 +629,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
 	Expr **args = expr->call_expr.arguments;
-	unsigned arg_count = vec_size(args);
+	int arg_count = vec_size(args);
 	int expected_args = builtin_expected_args(func);
 	bool expect_vararg = false;
 	if (expected_args < 0)
@@ -644,7 +649,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		RETURN_SEMA_ERROR(args[expected_args], "Too many arguments.");
 	}
 
-	for (unsigned i = 0; i < arg_count; i++)
+	for (int i = 0; i < arg_count; i++)
 	{
 		if (expr_is_named_param(args[i]))
 		{
@@ -701,7 +706,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 
 	// 2. We can now check all the arguments, since they in general work on the
 	//    exact type size, we don't do any forced promotion.
-	for (unsigned i = 0; i < arg_count; i++)
+	for (int i = 0; i < arg_count; i++)
 	{
 		if (!sema_analyse_expr_rvalue(context, args[i])) return false;
 		optional = optional || type_is_optional(args[i]->type);
@@ -847,7 +852,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_VEC, BA_INTEGER, BA_INTEGER}, 3)) return false;
 			if (!sema_check_builtin_args_const(context, &args[1], 2)) return false;
-			ArraySize vec_len = type_flatten(args[0]->type)->array.len;
+			ArrayIndex vec_len = type_flatten(args[0]->type)->array.len;
 			if (!cast_implicit(context, args[2], args[1]->type, false)) return false;
 			Int sum = int_mul(args[1]->const_expr.ixx, args[2]->const_expr.ixx);
 			if (!int_icomp(sum, vec_len, BINARYOP_EQ))
@@ -867,17 +872,17 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				RETURN_SEMA_ERROR(args[1], "Expected both matrices to be of the same type.");
 			}
-			ArraySize vec_len1 = flat1->array.len;
-			ArraySize vec_len2 = flat2->array.len;
+			ArrayIndex vec_len1 = flat1->array.len;
+			ArrayIndex vec_len2 = flat2->array.len;
 			Int128 sum = i128_mult(args[2]->const_expr.ixx.i, args[3]->const_expr.ixx.i);
 			args[2]->type = type_int;
 			args[3]->type = type_int;
-			if (sum.high != 0 || sum.low != vec_len1)
+			if (sum.high != 0 || (ArrayIndex)sum.low != vec_len1)
 			{
 				RETURN_SEMA_ERROR(args[3], "Expected outer row * inner to equal %d.", vec_len1);
 			}
 			sum = i128_mult(args[3]->const_expr.ixx.i, args[4]->const_expr.ixx.i);
-			if (sum.high != 0 || sum.low != vec_len2)
+			if (sum.high != 0 || (ArrayIndex)sum.low != vec_len2)
 			{
 				RETURN_SEMA_ERROR(args[4], "Expected inner * outer col to equal %d.", vec_len2);
 			}
@@ -979,7 +984,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_PREFETCH:
 			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER, BA_INTEGER}, 3)) return false;
-			for (unsigned i = 1; i < 3; i++)
+			for (int i = 1; i < 3; i++)
 			{
 				if (!sema_cast_const(args[i])) RETURN_SEMA_ERROR(args[i], "A constant value is required.");
 				if (!cast_implicit(context, args[i], type_int, false)) return false;
@@ -1050,7 +1055,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			Type *flat_pointer_vec = type_flatten(args[0]->type);
 			Type *flat_passthru_vec = type_flatten(args[2]->type);
 			Type *pointer_type = flat_pointer_vec->array.base;
-			ArraySize len = flat_pointer_vec->array.len;
+			ArrayIndex len = flat_pointer_vec->array.len;
 			if (pointer_type->pointer->canonical != flat_passthru_vec->array.base->canonical)
 			{
 				RETURN_SEMA_ERROR(args[2], "Expected the vector to have elements of type %s.", type_quoted_error_string(pointer_type->pointer));
@@ -1119,7 +1124,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_BOOLVEC }, 1)) return false;
 			Type *vec = type_flatten(args[0]->type);
-			ArraySize len = vec->array.len;
+			ArrayIndex len = vec->array.len;
 			if (len > 128)
 			{
 				RETURN_SEMA_ERROR(args[0], "Masks must be 128 or fewer bits to convert them to an integer.");

@@ -10,13 +10,13 @@
 module std::core::string;
 import std::io;
 
-faultdef INVALID_ESCAPE_SEQUENCE, UNTERMINATED_STRING, INVALID_HEX_ESCAPE, INVALID_UNICODE_ESCAPE;
+excuse { INVALID_ESCAPE_SEQUENCE, UNTERMINATED_STRING, INVALID_HEX_ESCAPE, INVALID_UNICODE_ESCAPE }
 
 <*
  Escape a string by adding quotes and converting special characters to escape sequences.
 
- @param allocator : "The allocator to use for the result"
- @param s : "The string to escape"
+ @param [in] s : "The string to escape"
+ @param [&inout] allocator : "The allocator to use for the result"
  @param strip_quotes : "Do not include beginning and end quotes, defaults to false"
  @return "The escaped string with surrounding quotes, can safely be cast to ZString"
 *>
@@ -38,6 +38,131 @@ fn String String.escape(String s, Allocator allocator, bool strip_quotes = false
 		return result.copy_str(allocator);
 	};
 }
+
+<*
+ Escape a string using the temp allocator.
+
+ @param [in] s : "The string to escape"
+ @param strip_quotes : "Do not include beginning and end quotes, defaults to false"
+ @return "The escaped string with surrounding quotes"
+*>
+fn String String.tescape(String s, bool strip_quotes = false) => s.escape(tmem, strip_quotes);
+
+<*
+ Calculate the length needed for an escaped string (including quotes).
+
+ @param [in] s : "The string to check"
+ @param strip_quotes : "Whether quotes are added"
+ @return "The length needed for the escaped version"
+
+ @pure
+*>
+fn sz escape_len(String s, bool strip_quotes = false)
+{
+	sz len = strip_quotes ? 0 : 2; // For quotes
+	foreach (char c : s)
+	{
+		switch (c)
+		{
+			case '"':
+			case '\\':
+			case '\b':
+			case '\f':
+			case '\n':
+			case '\r':
+			case '\t':
+			case '\v':
+			case '\0':
+				len += 2; // \X
+			default:
+				if (c >= 32 && c <= 126)
+				{
+					len += 1;
+				}
+				else
+				{
+					len += 4; // \xHH
+				}
+		}
+	}
+	return len;
+}
+
+<*
+ Unescape a quoted string by parsing escape sequences.
+
+ @param [in] s : "The quoted string to unescape"
+ @param [&inout] allocator : "The allocator to use for the result"
+ @param allow_unquoted : "Set to true to unescape strings not surrounded by quotes, defaults to false"
+ @param lenient : "Be lenient with escapes, resolving unknown sequences to the escape character, defaults to false"
+ @return "The unescaped string without quotes, safe to convert to ZString"
+ @return? UNTERMINATED_STRING, INVALID_ESCAPE_SEQUENCE, INVALID_HEX_ESCAPE, INVALID_UNICODE_ESCAPE
+*>
+fn String? String.unescape(String s, Allocator allocator, bool allow_unquoted = false, bool lenient = false)
+{
+	if (s.len >= 2 && s[0] == '"' && s[^1] == '"')
+	{
+		// Remove quotes.
+		s = s[1:^2];
+	}
+	else if (!allow_unquoted) return UNTERMINATED_STRING~;
+
+	// Handle empty string case
+	if (!s.len)
+	{
+		return "".copy(allocator);
+	}
+	if (allocator == tmem)
+	{
+		DString result = dstring::new_with_capacity(tmem, s.len);
+		unescape_dstring(s, result, allow_unquoted, lenient)!;
+		return result.str_view();
+	}
+	@pool()
+	{
+		DString result = dstring::temp_with_capacity(s.len);
+		unescape_dstring(s, result, allow_unquoted, lenient)!;
+		return result.copy_str(allocator);
+	};
+}
+
+<*
+ Unescape a quoted string using the temp allocator.
+
+ @param [in] s : "The quoted string to unescape"
+ @param allow_unquoted : "Set to true to unescape strings not surrounded by quotes, defaults to false"
+ @param lenient : "Be lenient with escapes, resolving unknown sequences to the escape character, defaults to false"
+ @return "The unescaped string without quotes"
+ @return? UNTERMINATED_STRING, INVALID_ESCAPE_SEQUENCE, INVALID_HEX_ESCAPE, INVALID_UNICODE_ESCAPE
+*>
+fn String? String.tunescape(String s, bool allow_unquoted = false, bool lenient = false) => s.unescape(tmem, allow_unquoted, lenient);
+
+<*
+ Check if a character needs to be escaped in a string literal.
+
+ @param c : "The character to check"
+ @return "True if the character needs escaping"
+*>
+fn bool needs_escape(char c)
+{
+	switch (c)
+	{
+		case '"':
+		case '\\':
+		case '\b':
+		case '\f':
+		case '\n':
+		case '\r':
+		case '\t':
+		case '\v':
+		case '\0':
+			return true;
+		default:
+			return c < 32 || c > 126;
+	}
+}
+
+// --- implementation
 
 fn void escape_dstring(String s, DString result, bool strip_quotes) @private
 {
@@ -72,89 +197,6 @@ fn void escape_dstring(String s, DString result, bool strip_quotes) @private
 
 	if (!strip_quotes) result.append_char('"');
 
-}
-<*
- Escape a string using the temp allocator.
-
- @param s : "The string to escape"
- @param strip_quotes : "Do not include beginning and end quotes, defaults to false"
- @return "The escaped string with surrounding quotes"
-*>
-fn String String.tescape(String s, bool strip_quotes = false) => s.escape(tmem, strip_quotes);
-
-<*
- Calculate the length needed for an escaped string (including quotes).
-
- @param s : "The string to check"
- @return "The length needed for the escaped version"
-*>
-fn sz escape_len(String s)
-{
-	sz len = 2; // For quotes
-	foreach (char c : s)
-	{
-		switch (c)
-		{
-			case '"':
-			case '\\':
-			case '\b':
-			case '\f':
-			case '\n':
-			case '\r':
-			case '\t':
-			case '\v':
-			case '\0':
-				len += 2; // \X
-			default:
-				if (c >= 32 && c <= 126)
-				{
-					len += 1;
-				}
-				else
-				{
-					len += 4; // \xHH
-				}
-		}
-	}
-	return len;
-}
-
-<*
- Unescape a quoted string by parsing escape sequences.
-
- @param allocator : "The allocator to use for the result"
- @param s : "The quoted string to unescape"
- @param allow_unquoted : "Set to true to unescape strings not surrounded by quotes, defaults to false"
- @param lenient : "Be lenient with escapes, resolving unknown sequences to the escape character, defaults to false"
- @return "The unescaped string without quotes, safe to convert to ZString"
- @return? UNTERMINATED_STRING, INVALID_ESCAPE_SEQUENCE, INVALID_HEX_ESCAPE, INVALID_UNICODE_ESCAPE
-*>
-fn String? String.unescape(String s, Allocator allocator, bool allow_unquoted = false, bool lenient = false)
-{
-	if (s.len >= 2 && s[0] == '"' && s[^1] == '"')
-	{
-		// Remove quotes.
-		s = s[1:^2];
-	}
-	else if (!allow_unquoted) return UNTERMINATED_STRING~;
-
-	// Handle empty string case
-	if (!s.len)
-	{
-		return "".copy(allocator);
-	}
-	if (allocator == tmem)
-	{
-		DString result = dstring::new_with_capacity(tmem, s.len);
-		unescape_dstring(s, result, allow_unquoted, lenient)!;
-		return result.str_view();
-	}
-	@pool()
-	{
-		DString result = dstring::temp_with_capacity(s.len);
-		unescape_dstring(s, result, allow_unquoted, lenient)!;
-		return result.copy_str(allocator);
-	};
 }
 
 fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false, bool lenient = false) @private
@@ -198,14 +240,26 @@ fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false,
 			case 'u':
 				// Unicode escape \uHHHH
 				if (i + 4 >= len) return INVALID_UNICODE_ESCAPE~;
-				uint val;
-				for (int j = 0; j < 4; j++)
+				uint val = read_utf16(s, &i, len)!;
+				if (val & conv::UTF16_SURROGATE_GENERIC_MASK != conv::UTF16_SURROGATE_GENERIC_VALUE)
 				{
-					char hex_char = s[++i];
-					if (!hex_char.is_xdigit()) return INVALID_UNICODE_ESCAPE~;
-					val = val << 4 + (hex_char > '9' ? (hex_char | 32u) - 'a' + 10u : hex_char - '0');
+					result.append_char32(val);
+					break;
 				}
-				result.append_char32(val);
+				if (i + 2 >= len) return INVALID_UNICODE_ESCAPE~;
+				if (s[++i] != '\\') return INVALID_UNICODE_ESCAPE~;
+				if (s[++i] != 'u') return INVALID_UNICODE_ESCAPE~;
+				if (val & conv::UTF16_SURROGATE_MASK != conv::UTF16_SURROGATE_HIGH_VALUE) return INVALID_UNICODE_ESCAPE~;
+				uint low = read_utf16(s, &i, len)!;
+				// Unmatched high surrogate, invalid
+
+				if (low & conv::UTF16_SURROGATE_MASK != conv::UTF16_SURROGATE_LOW_VALUE) return INVALID_UNICODE_ESCAPE~;
+
+				// The high bits of the codepoint are the value bits of the high surrogate
+				// The low bits of the codepoint are the value bits of the low surrogate
+				Char32 uc = ((Char32)val & conv::UTF16_SURROGATE_CODEPOINT_MASK) << conv::UTF16_SURROGATE_BITS
+					| ((Char32)low & conv::UTF16_SURROGATE_CODEPOINT_MASK) + conv::UTF16_SURROGATE_OFFSET;
+				result.append_char32(uc);
 			case 'U':
 				// Unicode escape \UHHHHHHHH
 				if (i + 8 >= len) return INVALID_UNICODE_ESCAPE~;
@@ -224,38 +278,16 @@ fn void? unescape_dstring(String s, DString result, bool allow_unquoted = false,
 	}
 }
 
-<*
- Unescape a quoted string using the temp allocator.
 
- @param s : "The quoted string to unescape"
- @param allow_unquoted : "Set to true to unescape strings not surrounded by quotes, defaults to false"
- @param lenient : "Be lenient with escapes, resolving unknown sequences to the escape character, defaults to false"
- @return "The unescaped string without quotes"
- @return? UNTERMINATED_STRING, INVALID_ESCAPE_SEQUENCE, INVALID_HEX_ESCAPE, INVALID_UNICODE_ESCAPE
-*>
-fn String? String.tunescape(String s, bool allow_unquoted = false, bool lenient = false) => s.unescape(tmem, allow_unquoted, lenient);
-
-<*
- Check if a character needs to be escaped in a string literal.
-
- @param c : "The character to check"
- @return "True if the character needs escaping"
-*>
-fn bool needs_escape(char c)
+fn uint? read_utf16(String s, sz* i, sz len) @local
 {
-	switch (c)
+	if (*i + 4 >= len) return INVALID_UNICODE_ESCAPE~;
+	uint val;
+	for (int j = 0; j < 4; j++)
 	{
-		case '"':
-		case '\\':
-		case '\b':
-		case '\f':
-		case '\n':
-		case '\r':
-		case '\t':
-		case '\v':
-		case '\0':
-			return true;
-		default:
-			return c < 32 || c > 126;
+		char hex_char = s[++(*i)];
+		if (!hex_char.is_xdigit()) return INVALID_UNICODE_ESCAPE~;
+		val = val << 4 + (hex_char > '9' ? (hex_char | 32u) - 'a' + 10u : hex_char - '0');
 	}
+	return val;
 }

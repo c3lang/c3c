@@ -14,7 +14,7 @@ macro dupe(value)
 	if (!temp) return OUT_OF_MEMORY~;
 	return temp;
 }
-faultdef BAD_READ, OUT_OF_MEMORY;
+excuse BAD_READ, OUT_OF_MEMORY;
 fn Doc? readDoc(char[] )
 {
 	char* str = malloc( + 1);

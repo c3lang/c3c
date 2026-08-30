@@ -1,7 +1,10 @@
 module std::core::string::ansi;
 import std::io;
 
-constdef Ansi : inline String
+<*
+ ANSI escape codes for common text styles and 4-bit foreground/background colors.
+*>
+constset Ansi : inline String
 {
 	RESET              = "\e[0m",
 	BOLD               = "\e[1m",
@@ -57,12 +60,22 @@ constdef Ansi : inline String
 	BG_BRIGHT_WHITE    = "\e[107m",
 }
 
+<*
+ A 24-bit foreground or background color, formattable with '%s' to produce its ANSI escape code.
+*>
 struct AnsiColor (Printable)
 {
 	char r, g, b;
 	bool bg;
 }
 
+<*
+ Format the color as its ANSI 24-bit escape code.
+
+ @param [&in] self : "The color to format"
+ @param [&inout] fmt : "The formatter to write the escape code to"
+ @return "The number of bytes written"
+*>
 fn sz? AnsiColor.to_format(&self, Formatter* fmt) @dynamic
 {
 	return fmt.printf("\e[%s8;2;%s;%s;%sm", self.bg ? 4 : 3, self.r, self.g, self.b);
@@ -71,6 +84,10 @@ fn sz? AnsiColor.to_format(&self, Formatter* fmt) @dynamic
 <*
  24-bit color code
 
+ @param r : "The red channel, 0-255"
+ @param g : "The green channel, 0-255"
+ @param b : "The blue channel, 0-255"
+ @param bg : "If true, colors the background instead of the foreground"
  @return `A struct that, when formatted with '%s', sets the foreground or background colour to the specified rgb value`
 *>
 fn AnsiColor get_color_rgb(char r, char g, char b, bool bg = false)
@@ -81,6 +98,8 @@ fn AnsiColor get_color_rgb(char r, char g, char b, bool bg = false)
 <*
  24-bit color code
 
+ @param rgb : "The color, packed as 0xRRGGBB"
+ @param bg : "If true, colors the background instead of the foreground"
  @return `A struct that, when formatted with '%s', sets the foreground or background colour of printed text to the specified rgb value`
 *>
 fn AnsiColor get_color(uint rgb, bool bg = false)
@@ -91,6 +110,8 @@ fn AnsiColor get_color(uint rgb, bool bg = false)
 <*
  8-bit color code
 
+ @param $index : "The 8-bit color palette index, 0-255"
+ @param $bg : "If true, colors the background instead of the foreground"
  @return `the formatting char for the given background color`
 *>
 macro String color_8bit(char $index, bool $bg = false) @const
@@ -102,6 +123,10 @@ macro String color_8bit(char $index, bool $bg = false) @const
 <*
  24-bit color code
 
+ @param $r : "The red channel, 0-255"
+ @param $g : "The green channel, 0-255"
+ @param $b : "The blue channel, 0-255"
+ @param $bg : "If true, colors the background instead of the foreground"
  @return `the string for the given foreground color`
 *>
 macro String color_rgb(char $r, char $g, char $b, bool $bg = false) @const
@@ -113,8 +138,11 @@ macro String color_rgb(char $r, char $g, char $b, bool $bg = false) @const
 <*
  24-bit color code rgb
 
- @require $rgb <= 0xFF_FF_FF : `Expected a 24 bit RGB value`
+ @param $rgb : "The color, packed as 0xRRGGBB"
+ @param $bg : "If true, colors the background instead of the foreground"
  @return `the string char for the given foreground color`
+
+ @require [$rgb] $rgb <= 0xFF_FF_FF : `Expected a 24 bit RGB value`
 *>
 macro String color(uint $rgb, bool $bg = false) @const
 {

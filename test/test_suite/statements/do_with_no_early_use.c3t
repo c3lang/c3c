@@ -17,7 +17,7 @@ macro @my_ok(#z)
 	return true;
 }
 
-faultdef WAS_ZERO;
+excuse WAS_ZERO;
 
 fn int? nonzero(int x)
 {

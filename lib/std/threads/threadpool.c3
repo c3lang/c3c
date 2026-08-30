@@ -1,7 +1,7 @@
-module std::thread @feat(NEW_THREADPOOL);
+module std::thread @feat(!OLD_THREADPOOL);
 import std::collections::deque, std::time, std::atomic::types;
 
-faultdef POOL_SHUTDOWN, POOL_SPAWN_FAILED;
+excuse { POOL_SHUTDOWN, POOL_SPAWN_FAILED }
 
 alias ThreadPoolTaskFn = fn void(void* arg);
 

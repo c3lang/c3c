@@ -13,7 +13,7 @@ interface Printable
 	fn sz? to_format(Formatter* formatter) @optional;
 }
 
-faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
+excuse { BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT }
 
 alias OutputFn = fn void?(void* buffer, char c);
 alias FloatType = double;
@@ -49,11 +49,6 @@ macro sz? struct_to_format(value, Formatter* f, bool $force_dump)
 		$endif
 	$endforeach
 	return total + f.print(" }");
-}
-
-fn sz? ReflectedParam.to_format(&self, Formatter* f) @dynamic
-{
-	return f.printf("[Parameter '%s']", self.name);
 }
 
 fn sz? Formatter.printf(&self, String format, args...)

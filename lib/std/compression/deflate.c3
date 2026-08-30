@@ -20,10 +20,12 @@ const int MAX_CHAIN = 16;
 const int GOOD_MATCH = 32;
 const int NICE_MATCH = 128;
 
-faultdef
+excuse
+{
 	CORRUPTED_DATA,
 	IO_ERROR,
-	INVALID_STATE;
+	INVALID_STATE
+}
 
 <*
  Stateful DEFLATE inflater.
@@ -200,6 +202,8 @@ fn sz Inflater.copy_unused_input(&self, char[] dest)
 {
 	return self.reader.copy_unused_input(dest);
 }
+
+fn void Inflater.write_byte(&self, char c) @inline { self.window[(sz)(self.pos & 0xFFFF)] = c; self.pos++; }
 
 fn char[]? decompress(Allocator allocator, char[] input) => @pool()
 {
@@ -553,49 +557,7 @@ fn void? Deflater.emit_block(&self, bool final)=> @pool()
 	all_lens[:hlit_cnt] = lit_lens[:hlit_cnt];
 	all_lens[hlit_cnt:hdist_cnt] = dist_lens[:hdist_cnt];
 
-	for (long i = 0; i < all_lens.len;)
-	{
-		char len = all_lens[i];
-		long count = 1;
-		while (i + count < all_lens.len && all_lens[i + count] == len) count++;
-
-		if (len == 0)
-		{
-			while (count >= 11)
-			{
-				uint c = (uint)math::min(count, (long)138);
-				tree_tokens.push({ 18, (ushort)(c - 11u) });
-				tree_freqs[18]++;
-				i += c; count -= c;
-			}
-			while (count >= 3)
-			{
-				uint c = (uint)math::min(count, (long)10);
-				tree_tokens.push({ 17, (ushort)(c - 3u) });
-				tree_freqs[17]++;
-				i += c; count -= c;
-			}
-		}
-		else if (count >= 4)
-		{
-			tree_tokens.push({ (ushort)len, 0 });
-			tree_freqs[(uint)len]++;
-			i++; count--;
-			while (count >= 3)
-			{
-				uint c = (uint)math::min(count, (long)6);
-				tree_tokens.push({ 16, (ushort)(c - 3u) });
-				tree_freqs[16]++;
-				i += c; count -= c;
-			}
-		}
-		while (count--)
-		{
-			tree_tokens.push({ (ushort)len, 0 });
-			tree_freqs[(uint)len]++;
-			i++;
-		}
-	}
+	_rle_encode_tree_lengths(all_lens, &tree_tokens, tree_freqs);
 
 	// Build the code length Huffman tree
 	Huffman tree_huff;
@@ -627,51 +589,7 @@ fn void? Deflater.emit_block(&self, bool final)=> @pool()
 	gen_canonical_codes(&dist_codes, dist_lens[:hdist_cnt]);
 
 	// Write the actual compressed data tokens
-	foreach (t : self.tokens[:self.token_count])
-	{
-		if (t.dist == 0)
-		{
-			self.bwriter.write_huffman(lit_codes[t.val].code, lit_codes[t.val].len);
-		}
-		else
-		{
-			uint b_len = t.val; uint b_dist = t.dist;
-			uint len_code; int len_extra_bits = 0; uint len_extra = 0;
-			switch (b_len)
-			{
-				case 3..10:   len_code = 257u + b_len - 3u;
-				case 11..18:  len_code = 265u + (b_len - 11u) / 2; len_extra_bits = 1; len_extra = (b_len - 11u) % 2;
-				case 19..34:  len_code = 269u + (b_len - 19u) / 4; len_extra_bits = 2; len_extra = (b_len - 19u) % 4;
-				case 35..66:  len_code = 273u + (b_len - 35u) / 8; len_extra_bits = 3; len_extra = (b_len - 35u) % 8;
-				case 67..130: len_code = 277u + (b_len - 67u) / 16; len_extra_bits = 4; len_extra = (b_len - 67u) % 16;
-				case 131..257:len_code = 281u + (b_len - 131u) / 32; len_extra_bits = 5; len_extra = (b_len - 131u) % 32;
-				default:      len_code = 285u;
-			}
-			self.bwriter.write_huffman(lit_codes[len_code].code, lit_codes[len_code].len);
-			if (len_extra_bits > 0) self.bwriter.write_bits(len_extra, len_extra_bits);
-
-			uint dist_c; int dist_extra_b = 0; uint dist_ex = 0;
-			switch (b_dist)
-			{
-				case 1..4:     dist_c = b_dist - 1u;
-				case 5..8:     dist_c = 4u + (b_dist - 5u) / 2u; dist_extra_b = 1; dist_ex = (b_dist - 5u) % 2;
-				case 9..16:    dist_c = 6u + (b_dist - 9u) / 4u; dist_extra_b = 2; dist_ex = (b_dist - 9u) % 4;
-				case 17..32:   dist_c = 8u + (b_dist - 17u) / 8u; dist_extra_b = 3; dist_ex = (b_dist - 17u) % 8;
-				case 33..64:   dist_c = 10u + (b_dist - 33u) / 16u; dist_extra_b = 4; dist_ex = (b_dist - 33u) % 16;
-				case 65..128:  dist_c = 12u + (b_dist - 65u) / 32u; dist_extra_b = 5; dist_ex = (b_dist - 65u) % 32;
-				case 129..256: dist_c = 14u + (b_dist - 129u) / 64u; dist_extra_b = 6; dist_ex = (b_dist - 129u) % 64;
-				case 257..512: dist_c = 16u + (b_dist - 257u) / 128u; dist_extra_b = 7; dist_ex = (b_dist - 257u) % 128;
-				case 513..1024: dist_c = 18u + (b_dist - 513u) / 256; dist_extra_b = 8; dist_ex = (b_dist - 513u) % 256;
-				case 1025..2048: dist_c = 20u + (b_dist - 1025u) / 512; dist_extra_b = 9; dist_ex = (b_dist - 1025u) % 512;
-				case 2049..4096: dist_c = 22u + (b_dist - 2049u) / 1024; dist_extra_b = 10; dist_ex = (b_dist - 2049u) % 1024;
-				case 4097..8192: dist_c = 24u + (b_dist - 4097u) / 2048; dist_extra_b = 11; dist_ex = (b_dist - 4097u) % 2048;
-				case 8193..16384: dist_c = 26u + (b_dist - 8193u) / 4096; dist_extra_b = 12; dist_ex = (b_dist - 8193u) % 4096;
-				default:          dist_c = 28u + (b_dist - 16385u) / 8192; dist_extra_b = 13; dist_ex = (b_dist - 16385u) % 8192;
-			}
-			self.bwriter.write_huffman(dist_codes[dist_c].code, dist_codes[dist_c].len);
-			if (dist_extra_b > 0) self.bwriter.write_bits(dist_ex, dist_extra_b);
-		}
-	}
+	_write_compressed_tokens(self, &lit_codes, &dist_codes);
 
 	if (final)
 	{
@@ -994,86 +912,10 @@ struct IndexMap @private
 }
 fn bool IndexMap.less(&self, IndexMap other) => self.freq < other.freq;
 
-fn char[] pkg_merge(Allocator allocator, uint[] freqs, int max_bits) @private => @pool()
+fn void _pkg_merge_backtrack(ulong[] is_merged, uint[] hist, sz max_elements, sz num_relevant, ulong mask) @local
 {
-	List {IndexMap} map; map.tinit();
-	sz n = 0;
-	foreach (i, freq : freqs) { if (freq == 0) continue; map.push({i, freq}); n++; }
-	if (n == 0) return {};
-	sort::quicksort(map.array_view());
-	if (n == 1)
-	{
-		char[] blen = alloc::new_array(allocator, char, freqs.len);
-		blen[map[0].index] = 1;
-		return blen;
-	}
-	sz max_elements = 2 * n;
-	uint[] hist = mem::temp_array(uint, max_elements);
-	foreach (i, m : map) hist[i] = m.freq;
-	uint[] current = mem::temp_array(uint, max_elements);
-	uint[] previous = mem::temp_array(uint, max_elements);
-	ulong[] is_merged = mem::temp_array(ulong, max_elements);
-	previous[:n] = hist[:n];
-	sz num_previous = n;
-	is_merged[:max_elements] = 0;
-	sz num_relevant = 2 * n - 2;
-	ulong mask = 1;
-
-	for (int bits = max_bits - 1; bits > 0; bits--)
-	{
-		num_previous &= (sz)~1;
-		current[0] = hist[0];
-		current[1] = hist[1];
-		uint sum = current[0] + current[1];
-		sz num_current = 2; sz num_hist = 2; sz num_merged = 0;
-
-		while (true)
-		{
-			if (num_hist < n && hist[num_hist] <= sum)
-			{
-				if (num_current < max_elements)
-				{
-					current[num_current++] = hist[num_hist++];
-					continue;
-				} else { break; }
-			}
-			if (num_current < max_elements)
-			{
-				is_merged[num_current] |= mask;
-				current[num_current] = sum;
-				num_current++;
-				num_merged++;
-			}
-			else
-			{
-				break;
-			}
-
-			if (num_merged * 2 >= num_previous) break;
-			sum = previous[num_merged * 2] + previous[num_merged * 2 + 1];
-		}
-		while (num_hist < n && num_current < max_elements)
-		{
-			current[num_current++] = hist[num_hist++];
-		}
-		mask <<= 1;
-		if (num_previous >= num_relevant)
-		{
-			bool keep_going = false;
-			for (sz i = num_relevant; i > 1; i--)
-			{
-				if (previous[i - 1] != current[i - 1])
-				{
-					keep_going = true;
-					break;
-				}
-			}
-			if (!keep_going) break;
-		}
-		@swap(previous, current); num_previous = num_current;
-	}
-
-	mask >>= 1; hist[..] = 0;
+	mask >>= 1;
+	hist[..] = 0;
 	sz num_analyze = num_relevant;
 	while (mask != 0)
 	{
@@ -1093,8 +935,97 @@ fn char[] pkg_merge(Allocator allocator, uint[] freqs, int max_bits) @private =>
 		mask >>= 1;
 	}
 	for (sz i = 0; i < num_analyze; i++) hist[i]++;
+}
+
+fn sz _pkg_merge_round(uint[] hist, sz n, uint[] current, uint[] previous, sz num_previous, ulong[] is_merged, ulong mask, sz max_elements) @local
+{
+	num_previous &= (sz)~1;
+	current[0] = hist[0];
+	current[1] = hist[1];
+	uint sum = current[0] + current[1];
+	sz num_current = 2; sz num_hist = 2; sz num_merged = 0;
+
+	while (true)
+	{
+		if (num_hist < n && hist[num_hist] <= sum)
+		{
+			if (num_current < max_elements)
+			{
+				current[num_current++] = hist[num_hist++];
+				continue;
+			} else { break; }
+		}
+		if (num_current < max_elements)
+		{
+			is_merged[num_current] |= mask;
+			current[num_current] = sum;
+			num_current++;
+			num_merged++;
+		}
+		else
+		{
+			break;
+		}
+
+		if (num_merged * 2 >= num_previous) break;
+		sum = previous[num_merged * 2] + previous[num_merged * 2 + 1];
+	}
+	while (num_hist < n && num_current < max_elements)
+	{
+		current[num_current++] = hist[num_hist++];
+	}
+	return num_current;
+}
+
+fn char[] pkg_merge(Allocator allocator, uint[] freqs, int max_bits) @private => @pool()
+{
+	IndexMap[] map = mem::temp_array(IndexMap, freqs.len);
+	sz n = 0;
+	foreach (i, freq : freqs) { if (freq != 0) map[n++] = {i, freq}; }
+	if (n == 0) return {};
+	IndexMap[] sorted_map = map[:n];
+	sort::quicksort(sorted_map);
+	if (n == 1)
+	{
+		char[] blen = alloc::new_array(allocator, char, freqs.len);
+		blen[sorted_map[0].index] = 1;
+		return blen;
+	}
+	sz max_elements = 2 * n;
+	uint[] hist = mem::temp_array(uint, max_elements);
+	foreach (i, m : sorted_map) hist[i] = m.freq;
+	uint[] current = mem::temp_array(uint, max_elements);
+	uint[] previous = mem::temp_array(uint, max_elements);
+	ulong[] is_merged = mem::temp_array(ulong, max_elements);
+	previous[:n] = hist[:n];
+	sz num_previous = n;
+	is_merged[:max_elements] = 0;
+	sz num_relevant = 2 * n - 2;
+	ulong mask = 1;
+
+	for (int bits = max_bits - 1; bits > 0; bits--)
+	{
+		sz num_current = _pkg_merge_round(hist, n, current, previous, num_previous, is_merged, mask, max_elements);
+		mask <<= 1;
+		if (num_previous >= num_relevant)
+		{
+			bool keep_going = false;
+			for (sz i = num_relevant; i > 1; i--)
+			{
+				if (previous[i - 1] != current[i - 1])
+				{
+					keep_going = true;
+					break;
+				}
+			}
+			if (!keep_going) break;
+		}
+		@swap(previous, current); num_previous = num_current;
+	}
+
+	_pkg_merge_backtrack(is_merged, hist, max_elements, num_relevant, mask);
 	char[] blen = alloc::new_array(allocator, char, freqs.len);
-	foreach (i, m : map) blen[m.index] = (char)hist[i];
+	foreach (i, m : sorted_map) blen[m.index] = (char)hist[i];
 	return blen;
 }
 
@@ -1321,10 +1252,114 @@ fn void? Inflater.step(&self)
 	return;
 }
 
-fn void Inflater.write_byte(&self, char c) @inline { self.window[(sz)(self.pos & 0xFFFF)] = c; self.pos++; }
 
 const ushort[31] LENGTH_BASE @private = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0 };
 const char[31] LENGTH_EXTRA @private = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0 };
 const ushort[32] DIST_BASE @private = { 1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0 };
 const char[32] DIST_EXTRA @private = { 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0 };
 const uint[19] ORDER @private = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
+
+fn void _encode_match_len(uint b_len, uint* code, int* extra_bits, uint* extra) @local
+{
+	switch (b_len)
+	{
+		case 3..10:   *code = 257u + b_len - 3u; *extra_bits = 0; *extra = 0;
+		case 11..18:  *code = 265u + (b_len - 11u) / 2; *extra_bits = 1; *extra = (b_len - 11u) % 2;
+		case 19..34:  *code = 269u + (b_len - 19u) / 4; *extra_bits = 2; *extra = (b_len - 19u) % 4;
+		case 35..66:  *code = 273u + (b_len - 35u) / 8; *extra_bits = 3; *extra = (b_len - 35u) % 8;
+		case 67..130: *code = 277u + (b_len - 67u) / 16; *extra_bits = 4; *extra = (b_len - 67u) % 16;
+		case 131..257:*code = 281u + (b_len - 131u) / 32; *extra_bits = 5; *extra = (b_len - 131u) % 32;
+		default:      *code = 285u; *extra_bits = 0; *extra = 0;
+	}
+}
+
+fn void _encode_match_dist(uint b_dist, uint* code, int* extra_bits, uint* extra) @local
+{
+	switch (b_dist)
+	{
+		case 1..4:     *code = b_dist - 1u; *extra_bits = 0; *extra = 0;
+		case 5..8:     *code = 4u + (b_dist - 5u) / 2u; *extra_bits = 1; *extra = (b_dist - 5u) % 2;
+		case 9..16:    *code = 6u + (b_dist - 9u) / 4u; *extra_bits = 2; *extra = (b_dist - 9u) % 4;
+		case 17..32:   *code = 8u + (b_dist - 17u) / 8u; *extra_bits = 3; *extra = (b_dist - 17u) % 8;
+		case 33..64:   *code = 10u + (b_dist - 33u) / 16u; *extra_bits = 4; *extra = (b_dist - 33u) % 16;
+		case 65..128:  *code = 12u + (b_dist - 65u) / 32u; *extra_bits = 5; *extra = (b_dist - 65u) % 32;
+		case 129..256: *code = 14u + (b_dist - 129u) / 64u; *extra_bits = 6; *extra = (b_dist - 129u) % 64;
+		case 257..512: *code = 16u + (b_dist - 257u) / 128u; *extra_bits = 7; *extra = (b_dist - 257u) % 128;
+		case 513..1024: *code = 18u + (b_dist - 513u) / 256; *extra_bits = 8; *extra = (b_dist - 513u) % 256;
+		case 1025..2048: *code = 20u + (b_dist - 1025u) / 512; *extra_bits = 9; *extra = (b_dist - 1025u) % 512;
+		case 2049..4096: *code = 22u + (b_dist - 2049u) / 1024; *extra_bits = 10; *extra = (b_dist - 2049u) % 1024;
+		case 4097..8192: *code = 24u + (b_dist - 4097u) / 2048; *extra_bits = 11; *extra = (b_dist - 4097u) % 2048;
+		case 8193..16384: *code = 26u + (b_dist - 8193u) / 4096; *extra_bits = 12; *extra = (b_dist - 8193u) % 4096;
+		default:          *code = 28u + (b_dist - 16385u) / 8192; *extra_bits = 13; *extra = (b_dist - 16385u) % 8192;
+	}
+}
+
+fn void _write_compressed_tokens(Deflater* self, Code* lit_codes, Code* dist_codes) @local
+{
+	foreach (t : self.tokens[:self.token_count])
+	{
+		if (t.dist == 0)
+		{
+			self.bwriter.write_huffman(lit_codes[t.val].code, lit_codes[t.val].len);
+		}
+		else
+		{
+			uint len_code; int len_extra_bits; uint len_extra;
+			_encode_match_len(t.val, &len_code, &len_extra_bits, &len_extra);
+			self.bwriter.write_huffman(lit_codes[len_code].code, lit_codes[len_code].len);
+			if (len_extra_bits > 0) self.bwriter.write_bits(len_extra, len_extra_bits);
+
+			uint dist_c; int dist_extra_b; uint dist_ex;
+			_encode_match_dist(t.dist, &dist_c, &dist_extra_b, &dist_ex);
+			self.bwriter.write_huffman(dist_codes[dist_c].code, dist_codes[dist_c].len);
+			if (dist_extra_b > 0) self.bwriter.write_bits(dist_ex, dist_extra_b);
+		}
+	}
+}
+
+fn void _rle_encode_tree_lengths(char[] all_lens, List{Token}* tree_tokens, uint[] tree_freqs) @local
+{
+	for (long i = 0; i < all_lens.len;)
+	{
+		char len = all_lens[i];
+		long count = 1;
+		while (i + count < all_lens.len && all_lens[i + count] == len) count++;
+
+		if (len == 0)
+		{
+			while (count >= 11)
+			{
+				uint c = (uint)math::min(count, (long)138);
+				tree_tokens.push({ 18, (ushort)(c - 11u) });
+				tree_freqs[18]++;
+				i += c; count -= c;
+			}
+			while (count >= 3)
+			{
+				uint c = (uint)math::min(count, (long)10);
+				tree_tokens.push({ 17, (ushort)(c - 3u) });
+				tree_freqs[17]++;
+				i += c; count -= c;
+			}
+		}
+		else if (count >= 4)
+		{
+			tree_tokens.push({ (ushort)len, 0 });
+			tree_freqs[(uint)len]++;
+			i++; count--;
+			while (count >= 3)
+			{
+				uint c = (uint)math::min(count, (long)6);
+				tree_tokens.push({ 16, (ushort)(c - 3u) });
+				tree_freqs[16]++;
+				i += c; count -= c;
+			}
+		}
+		while (count--)
+		{
+			tree_tokens.push({ (ushort)len, 0 });
+			tree_freqs[(uint)len]++;
+			i++;
+		}
+	}
+}

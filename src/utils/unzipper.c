@@ -72,9 +72,9 @@ const char *zip_dir_iterator(FILE *zip, ZipDirIterator *iterator)
 	if (fseek(zip, 0, SEEK_END)) return "Couldn't move to end of .c3l file!";
 
 	long file_size = ftell(zip);
-	if (file_size <= sizeof(ZipEndRecord)) return "Too small to be a .c3l";
+	if (file_size <= (long)sizeof(ZipEndRecord)) return "Too small to be a .c3l";
 
-	long read_bytes = file_size < sizeof(internal_buffer) ? file_size : sizeof(internal_buffer);
+	long read_bytes = file_size < (long)sizeof(internal_buffer) ? file_size : (long)sizeof(internal_buffer);
 
 	if (fseek(zip, file_size - read_bytes, SEEK_SET)) return "Cannot seek in .c3l file";
 

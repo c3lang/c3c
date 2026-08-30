@@ -1,5 +1,5 @@
 module testing_branch;
-faultdef FOO;
+excuse FOO;
 
 macro usz? problemz(val) => val >= 5 ? usz : FOO~; // #error: Implicitly casting 'typeid' to 'usz'
 macro usz? problemz2(val) => val >= 5 ? $Typefrom("usz") : FOO~; // #error: Implicitly casting 'typeid' to 'usz'

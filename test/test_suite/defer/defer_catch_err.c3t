@@ -2,7 +2,7 @@
 module foo;
 import std::io;
 
-faultdef FOO;
+excuse FOO;
 
 fn void? test2()
 {

@@ -5,7 +5,7 @@ struct Result <WithType2>
 }
 macro Result{WithType} err(fault error) <WithType> => { .error = error };
 
-faultdef TESTIN;
+excuse TESTIN;
 
 fn int main()
 {

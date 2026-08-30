@@ -34,7 +34,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define i32 @main() #0 {
 entry:
   %sretparam = alloca %Mask64, align 64

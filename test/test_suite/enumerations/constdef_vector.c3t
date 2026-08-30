@@ -2,7 +2,7 @@
 module test;
 import std;
 
-constdef Color : char[<4>]
+constset Color : char[<4>]
 {
 	LIGHTGRAY   = { 200, 200, 200, 255 },
 }

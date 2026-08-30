@@ -26,7 +26,7 @@ ABIArgInfo *abi_arg_new_direct_coerce_type(AbiType type, ParamInfo param);
 ABIArgInfo *abi_arg_new_direct_coerce_type_spec(AbiSpecType type, ParamInfo param);
 ABIArgInfo *abi_arg_new_direct_coerce_type_bits(int bits, ParamInfo param);
 ABIArgInfo *abi_arg_new_direct_struct_expand_i32(uint8_t elements, ParamInfo param);
-ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_element, unsigned hi_offset, bool packed, ParamInfo param);
+ABIArgInfo *abi_arg_new_expand_coerce_pair(Type *first_element, Type *second_element, int hi_offset, bool packed, ParamInfo param);
 ABIArgInfo *abi_arg_new_indirect_realigned(AlignSize alignment, Type *by_val_type, ParamInfo param);
 ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type, ParamInfo param);
 ABIArgInfo *abi_arg_new_indirect_not_by_val(Type *type, ParamInfo param);
@@ -39,21 +39,21 @@ TypeSize abi_type_size(AbiType type);
 
 typedef struct
 {
-	unsigned int_regs;
-	unsigned float_regs;
+	int int_regs;
+	int float_regs;
 } Regs;
 
 
 
 ABIArgInfo *c_abi_classify_return_type_default(ParamInfo param);
 ABIArgInfo *c_abi_classify_argument_type_default(ParamInfo param);
-void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_x86(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
-void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *params, unsigned param_count, ParamInfo *vaargs, unsigned vaarg_count);
+void c_abi_func_create_win64(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count);
+void c_abi_func_create_x86(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count);
+void c_abi_func_create_x64(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count);
+void c_abi_func_create_aarch64(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count);
+void c_abi_func_create_riscv(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count);
+void c_abi_func_create_wasm(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count);
+void c_abi_func_create_default(FunctionPrototype *prototype, ParamInfo *params, int param_count, ParamInfo *vaargs, int vaarg_count);
 
 
 static inline AbiType abi_type_get(Type *type)

@@ -1,4 +1,5 @@
-faultdef FOO, BAR;
+// #target: netbsd-x64
+excuse FOO, BAR;
 
 fn void? errorThing()
 {
@@ -23,12 +24,12 @@ fn void main()
 
 /* #expect: anyfault_void.ll
 
-define i64 @anyfault_void.errorThing() #0 {
+define dso_local i64 @anyfault_void.errorThing() #0 {
 entry:
   ret i64 ptrtoint (ptr @anyfault_void.BAR to i64)
 }
 
-define i64 @anyfault_void.errorThing2() #0 {
+define dso_local i64 @anyfault_void.errorThing2() #0 {
 entry:
   %reterr = alloca i64, align 8
   ret i64 0
@@ -36,7 +37,7 @@ entry:
 
 declare void @printf(ptr, ...) #0
 
-define void @anyfault_void.main() #0 {
+define dso_local void @anyfault_void.main() #0 {
 entry:
   %z = alloca i64, align 8
   %blockret = alloca i64, align 8

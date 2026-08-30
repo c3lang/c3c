@@ -10,9 +10,9 @@
 
 struct ScratchBuf scratch_buffer;
 
-int str_findlist(const char *value, unsigned count, const char** elements)
+int str_findlist(const char *value, int count, const char** elements)
 {
-	for (unsigned i = 0; i < count; i++)
+	for (int i = 0; i < count; i++)
 	{
 		if (strcmp(value, elements[i]) == 0) return (int)i;
 	}

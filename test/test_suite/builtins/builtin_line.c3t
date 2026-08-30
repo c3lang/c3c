@@ -9,7 +9,7 @@ struct UJsonReader
     int last_error_line;
 }
 
-faultdef INVALID_KIND;
+excuse INVALID_KIND;
 
 fn void? UJsonReader.dict(&self, String file = $$FILE, String func = $$FUNC, int line = $$LINE)
 {

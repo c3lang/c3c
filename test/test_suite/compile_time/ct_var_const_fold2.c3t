@@ -1,0 +1,11 @@
+module test;
+const int[3] GLOBAL_ARR = { 1, 2, 3 };
+
+macro void set_it()
+{
+	var $tmp = { 0, 0, 0 };
+	$tmp = GLOBAL_ARR;
+	$tmp[0] = 99;
+}
+
+fn void main() { set_it(); }

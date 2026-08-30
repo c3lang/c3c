@@ -8,7 +8,7 @@
 module std::hash::streebog;
 
 
-constdef StreebogLength : inline int
+constset StreebogLength : inline int
 {
 	SIZE_256 = 32,
 	SIZE_512 = 64,
@@ -69,33 +69,6 @@ macro @lpsx(#a, #b, #result) @local
 	}
 }
 
-macro @g_n(#n, #h, #m) @local
-{
-	ulong[8] k_i;
-	ulong[8] state;
-
-	@lpsx(#h, #n, k_i);
-	@lpsx(k_i, #m, state);
-	// Do not unroll this loop - produces far too much code at compile-time.
-	for (sz i = 0; i < 11; i++)
-	{
-		@lpsx(k_i, ITERATION_CONSTANTS[i], k_i);
-		@lpsx(k_i, state, state);
-	}
-	@lpsx(k_i, ITERATION_CONSTANTS[11], k_i);
-	@xor_512(k_i, state, state);
-	@xor_512(state, #h, state);
-	@xor_512(state, #m, #h);
-}
-
-
-macro @_streebog_stage2(Streebog* self, #m) @local
-{
-	@g_n(self.n, self.h, #m);
-	@add_512(self.n, STAGE2_512);
-	@add_512(self.s, #m);
-}
-
 macro void Streebog.init(&self, StreebogLength $hash_size)
 {
 	mem::zero_volatile(@as_char_view(*self)); // explicitly initialize the entire state to 0
@@ -117,7 +90,7 @@ fn void Streebog.update(&self, char[] data)
 		self.index += size;
 		if (size < rest) return;
 
-		@_streebog_stage2(self, self.message);
+		_streebog_stage2(self, &self.message);
 		data = data[rest..];
 		self.index = 0;
 	}
@@ -126,12 +99,12 @@ fn void Streebog.update(&self, char[] data)
 	{
 		if (aligned)
 		{
-			@_streebog_stage2(self, (ulong*)data.ptr);
+			_streebog_stage2(self, (ulong*)data.ptr);
 		}
 		else
 		{
 			@as_char_view(self.message)[:BLOCK_SIZE] = data[:BLOCK_SIZE];
-			@_streebog_stage2(self, self.message);
+			_streebog_stage2(self, &self.message);
 		}
 	}
 	if (data.len)
@@ -147,13 +120,13 @@ fn void Streebog.update(&self, char[] data)
 macro char[*] Streebog.final(&self, StreebogLength $hash_size)
 {
 	char[$hash_size] result;
-	streebog_final_private(self);
+	_streebog_final_private(self);
 	defer mem::zero_volatile(@as_char_view(*self)); // implicitly clear the structure when finalized
 	result[..] = @as_char_view(self.h)[(BLOCK_SIZE - $hash_size)..];
 	return result;
 }
 
-fn void streebog_final_private(Streebog* self) @local
+fn void _streebog_final_private(Streebog* self) @local
 {
 	ulong[8] unprocessed_bits_count;
 	sz index = self.index >> 3;
@@ -164,9 +137,35 @@ fn void streebog_final_private(Streebog* self) @local
 	self.message[index++] ^= 1ul << shift;
 	if (index < 8) self.message[index..] = {};
 
-	@g_n(self.n, self.h, self.message);
+	_g_n(&self.n, &self.h, &self.message);
 	@add_512(self.n, unprocessed_bits_count);
 	@add_512(self.s, self.message);
-	@g_n(ZERO_512, self.h, self.n);
-	@g_n(ZERO_512, self.h, self.s);
+	_g_n(&ZERO_512, &self.h, &self.n);
+	_g_n(&ZERO_512, &self.h, &self.s);
+}
+
+fn void _g_n(ulong* n, ulong* h, ulong* m) @local
+{
+	ulong[8] k_i;
+	ulong[8] state;
+
+	@lpsx(n, h, k_i);
+	@lpsx(k_i, m, state);
+	// Do not unroll this loop - produces far too much code at compile-time.
+	for (sz i = 0; i < 11; i++)
+	{
+		@lpsx(k_i, ITERATION_CONSTANTS[i], k_i);
+		@lpsx(k_i, state, state);
+	}
+	@lpsx(k_i, ITERATION_CONSTANTS[11], k_i);
+	@xor_512(k_i, state, state);
+	@xor_512(state, h, state);
+	@xor_512(state, m, h);
+}
+
+fn void _streebog_stage2(Streebog* self, ulong* m) @local
+{
+	_g_n(&self.n, &self.h, m);
+	@add_512(self.n, STAGE2_512);
+	@add_512(self.s, m);
 }

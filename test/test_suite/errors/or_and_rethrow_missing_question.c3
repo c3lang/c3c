@@ -1,5 +1,5 @@
 module faults;
-faultdef
+excuse
     EXAMPLE,
     DOG_ATE_MY_HOMEWORK,
     MY_TEXTBOOK_CAUGHT_FIRE,

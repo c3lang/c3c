@@ -28,9 +28,13 @@
 #define DEFAULT_MAX_MACRO_ITERATIONS 0xFFFFF
 #define DEFAULT_VECTOR_WIDTH 4096
 #define DEFAULT_STACK_OBJECT_SIZE 64
-#define MAX_ARRAY_SIZE (2U * 1024U * 1024U * 1024U)
+#define MAX_ARRAY_SIZE   ((ByteSize)0x40000000)
 #define MAX_SOURCE_LOCATION_LEN (1024U * 1024U)
-#define MAX_STRUCT_SIZE ((ByteSize)(2U * 1024U * 1024U * 1024U))
+#define MAX_STRUCT_SIZE  ((ByteSize)0x40000000)
+#define MAX_STRUCT_PADDING 0xFFFF
+#define MAX_ALIGNMENT   ((AlignSize)0x10000000)
+#define MAX_TYPE_SIZE    ((ByteSize)0x40000000)
+
 #define PROJECT_JSON "project.json"
 #define PROJECT_JSON5 "project.json5"
 
@@ -89,10 +93,16 @@
 #define INLINE __attribute__((always_inline)) static inline
 #define FORMAT_STR
 #define FORMAT(__X__, __Y__) __attribute__((format (printf, __X__, __Y__)))
+	#if defined(__OpenBSD__)
+		#define NONSTRING
+	#else
+		#define NONSTRING __attribute__((nonstring))
+	#endif
 #elif defined(_MSC_VER)
 #define FALLTHROUGH ((void)0)
 #define INLINE static __forceinline
 #define NORETURN __declspec(noreturn)
+#define NONSTRING
 #define UNUSED
 #define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
 // On msvc when using /analyze flag it is possible to have printf-style format strings compiler warnings
@@ -114,6 +124,7 @@
 #define FALLTHROUGH ((void)0)
 #define UNUSED
 #define NORETURN
+#define NONSTRING
 #define FORMAT_STR
 #define FORMAT(__X__, __Y__)
 #endif

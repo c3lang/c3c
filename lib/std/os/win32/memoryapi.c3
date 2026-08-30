@@ -1,6 +1,6 @@
 module std::os::win32 @feat(WIN32);
 
-constdef Win32_AllocationType
+constset Win32_AllocationType
 {
 	MEM_COMMIT      = 0x00001000,
 	MEM_RESERVE     = 0x00002000,
@@ -12,7 +12,7 @@ constdef Win32_AllocationType
     MEM_WRITE_WATCH = 0x00200000
 }
 
-constdef Win32_Protect : Win32_DWORD
+constset Win32_Protect : Win32_DWORD
 {
 	PAGE_EXECUTE           = 0x10,
 	PAGE_EXECUTE_READ      = 0x20,
@@ -29,7 +29,7 @@ constdef Win32_Protect : Win32_DWORD
 	PAGE_WRITECOMBINE      = 0x400,
 }
 
-constdef Win32_FreeType : Win32_DWORD
+constset Win32_FreeType : Win32_DWORD
 {
 	MEM_DECOMMIT              = 0x00004000,
 	MEM_RELEASE               = 0x00008000,
@@ -37,7 +37,7 @@ constdef Win32_FreeType : Win32_DWORD
 	MEM_PRESERVE_PLACEHOLDER  = 0x00000002,
 }
 
-constdef Win32_FileMapAccess : Win32_DWORD
+constset Win32_FileMapAccess : Win32_DWORD
 {
 	FILE_MAP_COPY    = 0x0001,
 	FILE_MAP_WRITE   = 0x0002,

@@ -4,7 +4,7 @@ import libc;
 import std::io;
 import std::collections::maybe;
 
-faultdef TITLE_MISSING, BAD_READ;
+excuse { TITLE_MISSING, BAD_READ }
 
 struct Doc
 {

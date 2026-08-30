@@ -25,6 +25,7 @@ const char *project_default_keys[][2] = {
 		{"exec", "Scripts run for all targets."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
+		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
 		{"langrev", "Version of the C3 language used."},
 		{"link-args", "Linker arguments for all targets."},
 		{"link-libc", "Link libc (default: true)."},
@@ -61,6 +62,8 @@ const char *project_default_keys[][2] = {
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
+		{"stack-probe", "Set the stack argument probing mode: none, call (default), inline."},
+		{"stack-protector", "Set the stack protection level: none, basic (default), strong, all."},
 		{"sources", "Paths to project sources for all targets."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
 		{"symtab", "Sets the preferred symtab size."},
@@ -113,6 +116,7 @@ const char* project_target_keys[][2] = {
 		{"extension", "Override the default file extension for the build output."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
+		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
 		{"langrev", "Version of the C3 language used."},
 		{"link-args", "Additional linker arguments for the target."},
 		{"link-args-override", "Linker arguments for this target, overriding global settings."},
@@ -153,6 +157,8 @@ const char* project_target_keys[][2] = {
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"slp-vectorize", "Force enable/disable SLP auto-vectorization."},
 		{"soft-float", "Output soft-float functions."},
+		{"stack-probe", "Set the stack argument probing mode for this target: none, call (default), inline."},
+		{"stack-protector", "Set the stack protection level for this target: none, basic (default), strong, all."},
 		{"sources", "Additional paths to project sources for the target."},
 		{"sources-override", "Paths to project sources for this target, overriding global settings."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
@@ -521,6 +527,14 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	LinuxLibc linux_libc = GET_SETTING(LinuxLibc, "linux-libc", linuxlibc, "`gnu`, `musl` or `host`.");
 	if (linux_libc > -1) target->linuxpaths.libc = linux_libc;
 
+	// stack-probe
+	StackProbe stack_probe_val = GET_SETTING(StackProbe, "stack-probe", stack_probe, "`none`, `call` or `inline`");
+	if (stack_probe_val != STACK_PROBE_NOT_SET) target->stack_probe = stack_probe_val;
+
+	// stack-protector
+	StackProtector stack_protector_val = GET_SETTING(StackProtector, "stack-protector", stack_protector, "`none`, `basic`, `strong` or `all`");
+	if (stack_protector_val != STACK_PROTECTOR_NOT_SET) target->stack_protector = stack_protector_val;
+
 	// version
 	target->version = get_string(context, json, "version", target->version);
 
@@ -584,6 +598,9 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	// Use the fact that they correspond to 0, 1, -1
 	target->feature.x86_struct_return = get_valid_bool(context, json, "x86-stack-struct-return",
 	                                                   target->feature.x86_struct_return);
+
+	// Implicit float
+	target->feature.implicit_float = (ImplicitFloat) get_valid_bool(context, json, "implicit-float", target->feature.implicit_float);
 
 	// Soft float
 	target->feature.soft_float = get_valid_bool(context, json, "soft-float", target->feature.soft_float);
@@ -663,7 +680,7 @@ static JSONObject* resolve_template(BuildTarget *target, const char *template_re
 		const char *manifest_path = NULL;
 		JSONObject *candidate = read_library_manifest_for_path(lib_path, &manifest_path);
 		if (!candidate) continue;
-		BuildParseContext manifest_context = { manifest_path, NULL };
+		BuildParseContext manifest_context = { .file = manifest_path };
 		const char *provides = get_optional_string(manifest_context, candidate, "provides");
 		if (provides && str_eq(provides, lib_name))
 		{
@@ -718,7 +735,7 @@ static void project_add_target(BuildParseContext context, Project *project, Buil
 	duplicate_prop(&target->linker_libs);
 	duplicate_prop(&target->link_args);
 
-	BuildParseContext target_context = { context.file, str_printf("%s %s", type, context.target) };
+	BuildParseContext target_context = { context.file, str_printf("%s %s", type, context.target), false };
 	const char *template_ref = get_optional_string(target_context, json, "template");
 	if (template_ref)
 	{
@@ -755,7 +772,7 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 	ASSERT(project_data->type == J_OBJECT);
 
 	BuildTarget default_target = default_build_target;
-	load_into_build_target((BuildParseContext) { filename, NULL }, project_data, &default_target);
+	load_into_build_target((BuildParseContext) { .file = filename }, project_data, &default_target);
 	JSONObject *targets_json = json_map_get(project_data, "targets");
 	if (!targets_json)
 	{
@@ -772,7 +789,7 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		BuildParseContext context = { filename, key };
+		BuildParseContext context = { filename, key, false };
 		int type = get_valid_string_setting(context, object, "type", targets, 0, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
 		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
 		project_add_target(context, project, &default_target, object, target_desc[type], type);

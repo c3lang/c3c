@@ -1,13 +1,13 @@
 module gl;
 
-constdef BufferBit : int
+constset BufferBit : int
 {
     COLOR = 0x00004000,
     STENCIL = 0x00000400,
     DEPTH = 0x00000100,
 }
 
-constdef Primitive : int
+constset Primitive : int
 {
     POINTS = 0,
     LINES = 1,

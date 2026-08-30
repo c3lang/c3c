@@ -34,7 +34,7 @@ bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTy
 	return sema_resolve_type(context, type_info, kind);
 }
 
-bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref)
+bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArrayIndex *len_ref)
 {
 	// Get the expression describing the length.
 	Expr *len_expr = type_info->array.len;
@@ -88,14 +88,14 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 		{
 			RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "A vector may not exceed %d in bit width.", compiler.build.max_vector_size);
 		}
-		RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "The array length may not exceed %lld.", (long long)MAX_ARRAY_SIZE);
+		RETURN_VAL_SEMA_ERROR(type_info_poison(type_info), len_expr, "The array size may not exceed %lld MB.", MAX_ARRAY_SIZE / (1024LL * 1024));
 	}
 	// We're done, return the size and mark it as a success.
-	*len_ref = (ArraySize)len.i.low;
+	*len_ref = (ArrayIndex)len.i.low;
 	return true;
 }
 
-static inline bool sema_check_array_type(SemaContext *context, TypeInfo *original_info, Type *base, TypeInfoKind kind, ArraySize len, Type **result_ref)
+static inline bool sema_check_array_type(SemaContext *context, TypeInfo *original_info, Type *base, TypeInfoKind kind, ArrayIndex len, Type **result_ref)
 {
 	if (base->type_kind == TYPE_OPTIONAL)
 	{
@@ -181,7 +181,7 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 	// Check the underlying type
 	if (!sema_resolve_type(context, type->array.base, resolve_kind)) return type_info_poison(type);
 
-	ArraySize len;
+	ArrayIndex len;
 	TypeInfoKind kind = type->kind;
 	switch (kind)
 	{
@@ -200,7 +200,7 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 	{
 		if (kind == TYPE_INFO_VECTOR && type_size(type->type) > compiler.build.max_vector_size / 8)
 		{
-			RETURN_SEMA_ERROR(type, "Vectors with bitsize over %u are not supported (this vector is %llu bits), "
+			RETURN_SEMA_ERROR(type, "Vectors with bitsize over %d are not supported (this vector is %llu bits), "
 						   "but you can increase the maximum allowed using '--max-vector-size'.",
 						   compiler.build.max_vector_size, (unsigned long long)type_size(type->type) * 8);
 		}
@@ -210,19 +210,8 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 }
 
 
-static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind)
+INLINE bool sema_resolve_type_on_use(SemaContext *context, Decl *decl, TypeInfo *type_info, ResolveTypeKind resolve_type_kind)
 {
-	if (type_info->unresolved.name == type_string->name && !type_info->unresolved.path)
-	{
-		type_info->type = type_string;
-		type_info->resolve_status = RESOLVE_DONE;
-		return true;
-	}
-	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->loc);
-
-	// Already handled
-	if (!decl) return type_info_poison(type_info);
-
 	decl = decl_flatten(decl);
 	switch (decl->decl_kind)
 	{
@@ -302,7 +291,21 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			UNREACHABLE
 	}
 	UNREACHABLE
+}
+static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind)
+{
+	if (type_info->unresolved.name == type_string->name && !type_info->unresolved.path)
+	{
+		type_info->type = type_string;
+		type_info->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->loc);
 
+	// Already handled
+	if (!decl) return type_info_poison(type_info);
+
+	return sema_resolve_type_on_use(context, decl, type_info, resolve_type_kind);
 }
 
 
@@ -383,7 +386,7 @@ INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info, Res
 	}
 
 	const char *bytes = expr->const_expr.bytes.ptr;
-	ArraySize len = expr->const_expr.bytes.len;
+	ArrayIndex len = expr->const_expr.bytes.len;
 	Expr *typefrom = sema_resolve_string_ident(context, expr, true);
 	if (!typefrom || !expr_ok(typefrom)) return false;
 	if (typefrom->expr_kind != EXPR_TYPEINFO)
@@ -429,7 +432,7 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 }
 
 // Foo{...}
-INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
+static inline bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	TypeInfo *inner = type_info->generic.base;
 	if (inner->kind != TYPE_INFO_IDENTIFIER || inner->subtype != TYPE_COMPRESSED_NONE || inner->optional)
@@ -451,18 +454,20 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	}
 	compiler.generic_depth++;
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,
-	                                                   inner->loc, type_info->generic.params, type_info->loc);
+													   inner->loc, type_info->generic.params, type_info->loc);
 	compiler.generic_depth--;
 	if (!decl_ok(type)) return false;
 	ASSERT_SPAN(type_info, type != NULL);
 	type_info->type = type->type;
-	if (compiler.generic_depth == 0) return true;
-	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
-	    && !context->call_env.current_function->func_decl.in_macro && !context->generic_instance)
+	if (compiler.generic_depth != 0)
 	{
-		RETURN_SEMA_ERROR(type_info, "Recursively generic type declarations are only allowed inside of macros. Use `alias` to define an alias for the type instead.");
+		if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
+			&& !context->call_env.current_function->func_decl.in_macro && !context->generic_instance)
+		{
+			RETURN_SEMA_ERROR(type_info, "Recursively generic type declarations are only allowed inside of macros. Use `alias` to define an alias for the type instead.");
+		}
 	}
-	return true;
+	return sema_resolve_type_on_use(context, type, type_info, resolve_kind);
 }
 
 static inline bool sema_check_ptr_type(SemaContext *context, TypeInfo *type_info, Type *inner)
@@ -523,7 +528,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 		case TYPE_INFO_POISON:
 			UNREACHABLE
 		case TYPE_INFO_GENERIC:
-			if (!sema_resolve_generic_type(context, type_info)) return type_info_poison(type_info);
+			if (!sema_resolve_generic_type(context, type_info, resolve_kind)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
@@ -681,14 +686,14 @@ static uint32_t hash_function(Signature *sig)
 
 static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi UNUSED, uint32_t hash, FuncTypeEntry *entry)
 {
-	unsigned param_count = vec_size(sig->params);
+	int param_count = vec_size(sig->params);
 	FunctionPrototype *proto = CALLOCS(FunctionPrototype);
 	Type *rtype = type_infoptr(sig->rtype)->type;
 	Decl **param_copy = NULL;
 	if (param_count)
 	{
 		param_copy = VECNEW(Decl*, param_count);
-		for (unsigned i = 0; i < param_count; i++)
+		for (int i = 0; i < param_count; i++)
 		{
 			Decl *decl = decl_copy(sig->params[i]);
 			decl->type = decl->type->canonical;
@@ -788,7 +793,7 @@ static int compare_function(Signature *sig, FunctionPrototype *proto)
 	Decl **params = sig->params;
 	Signature *raw_sig = proto->raw_type->function.signature;
 	Decl **other_params = raw_sig->params;
-	unsigned param_count = vec_size(params);
+	int param_count = vec_size(params);
 	if (param_count != vec_size(other_params)) return -1;
 	if (!compare_func_param(typeget(sig->rtype), typeget(proto->raw_type->function.signature->rtype))) return -1;
 	FOREACH_IDX(i, Decl *, param, params)

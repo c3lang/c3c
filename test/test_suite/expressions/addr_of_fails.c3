@@ -62,7 +62,7 @@ fn void test6()
 
 alias Baz = Foo;
 typedef Bar = int;
-faultdef FOO;
+excuse FOO;
 union Un { int x; }
 enum MyEnum { BAR }
 

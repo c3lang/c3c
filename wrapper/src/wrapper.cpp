@@ -137,12 +137,14 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 
 extern "C" {
 
-
-
-bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm, LLVMPasses *passes) // NOLINT
+void llvm_setup(void)
 {
 	const char *fake_args[] = {"dummy", "--enable-matrix"};
 	llvm::cl::ParseCommandLineOptions(2, fake_args);
+}
+
+bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm, LLVMPasses *passes) // NOLINT
+{
 
 	llvm::TargetMachine *Machine = (llvm::TargetMachine *)(tm);
 	llvm::Module *Mod = llvm::unwrap(m);
@@ -347,6 +349,11 @@ void LLVMSetNoSanitizeAddress(LLVMValueRef Global)
 	global->setSanitizerMetadata(data);
 }
 
+unsigned LLVMGetModuleInstructionCount(LLVMModuleRef module)
+{
+	llvm::Module *mod = llvm::unwrap(module);
+	return mod->getInstructionCount();
+}
 unsigned LLVMGetFunctionInstructionCount(LLVMValueRef function)
 {
 	auto func = llvm::unwrap<llvm::Function>(function);

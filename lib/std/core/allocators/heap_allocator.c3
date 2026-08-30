@@ -40,7 +40,7 @@ fn void*? SimpleHeapAllocator.acquire(&self, sz size, AllocInitType init_type, s
 fn void*? SimpleHeapAllocator.resize(&self, void* old_pointer, sz size, sz alignment) @dynamic
 {
 	return alignment > 0
-		? @aligned_realloc_fn(self, simple_alloc_calloc, simple_alloc_free, old_pointer, size, alignment)
+		? @aligned_realloc_fn(self, simple_alloc_alloc, simple_alloc_free, old_pointer, size, alignment)
 		:  simple_alloc_realloc(self, old_pointer, size);
 }
 

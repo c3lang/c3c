@@ -3,7 +3,7 @@ import std::math, std::os::posix, libc, std::bits;
 
 // Virtual Memory allocator
 
-faultdef VMEM_RESERVE_FAILED;
+excuse VMEM_RESERVE_FAILED;
 
 struct Vmem (Allocator)
 {

@@ -574,6 +574,7 @@ BUILD:
 	set_if_updated(target->emit_stdlib, options->emit_stdlib);
 	set_if_updated(target->win.crt_linking, options->win.crt_linking);
 	set_if_updated(target->win.subsystem, options->win.subsystem);
+	set_if_updated(target->feature.implicit_float, options->implicit_float);
 	set_if_updated(target->feature.fp_math, options->fp_math);
 	set_if_updated(target->feature.x86_vector_capability, options->x86_vector_capability);
 	set_if_updated(target->feature.x86_cpu_set, options->x86_cpu_set);
@@ -582,6 +583,8 @@ BUILD:
 	set_if_updated(target->feature.win_debug, options->win_debug);
 	set_if_updated(target->linuxpaths.libc, options->linux_libc);
 	set_if_updated(target->feature.pass_win64_simd_as_arrays, options->win_64_simd);
+	set_if_updated(target->stack_probe, options->stack_probe);
+	set_if_updated(target->stack_protector, options->stack_protector);
 
 	OVERRIDE_IF_SET(output_dir);
 	OVERRIDE_IF_SET(panicfn);
@@ -594,6 +597,7 @@ BUILD:
 	OVERRIDE_IF_SET(win.def);
 	OVERRIDE_IF_SET(no_entry);
 	OVERRIDE_IF_SET(echo_prefix);
+	OVERRIDE_IF_SET(stack_probe_size);
 
 	OVERRIDE_IF_SET(macos.sysroot);
 	OVERRIDE_IF_SET(win.sdk);
@@ -623,6 +627,8 @@ BUILD:
 	if (!target->max_stack_object_size) target->max_stack_object_size = DEFAULT_STACK_OBJECT_SIZE;
 	if (!target->max_macro_iterations) target->max_macro_iterations = DEFAULT_MAX_MACRO_ITERATIONS;
 	if (target->quiet && !options->verbosity_level) options->verbosity_level = -1;
+
+	if (target->stack_probe == STACK_PROBE_NOT_SET) target->stack_probe = STACK_PROBE_CALL;
 
 	switch (target->validation_level)
 	{
@@ -669,15 +675,15 @@ BUILD:
 
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
 
-	for (size_t i = 0; i < options->linker_arg_count; i++)
+	for (int i = 0; i < options->linker_arg_count; i++)
 	{
 		vec_add(target->link_args, options->linker_args[i]);
 	}
-	for (size_t i = 0; i < options->linker_lib_dir_count; i++)
+	for (int i = 0; i < options->linker_lib_dir_count; i++)
 	{
 		vec_add(target->linker_libdirs, options->linker_lib_dir[i]);
 	}
-	for (size_t i = 0; i < options->linker_lib_count; i++)
+	for (int i = 0; i < options->linker_lib_count; i++)
 	{
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
@@ -714,10 +720,10 @@ BUILD:
 	if (target->linuxpaths.libc == LINUX_LIBC_NOT_SET) target->linuxpaths.libc = default_libc;
 
 	bool is_static = false;
-	for (size_t i = 0; i < options->linker_arg_count; i++)
+	for (int i = 0; i < options->linker_arg_count; i++)
 	{
 		const char *arg = options->linker_args[i];
-		if (strcmp(arg, "-static") == 0 || strcmp(arg, "--static") == 0 || strcmp(arg, "static") == 0)
+		if (str_eq(arg, "-static") || str_eq(arg, "--static") || str_eq(arg, "static"))
 		{
 			is_static = true;
 			break;

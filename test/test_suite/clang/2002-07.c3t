@@ -902,7 +902,7 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define void @foo.strcat(ptr %0, ptr %1) #0 {
 entry:
   %s1 = alloca ptr, align 8
@@ -947,7 +947,7 @@ loop.exit7:                                       ; preds = %loop.cond2
   ret void
 }
 
-; Function Attrs: nounwind uwtable
+; Function Attrs: nounwind ssp uwtable
 define i32 @foo.strcmp(ptr %0, ptr %1) #0 {
 entry:
   %s1 = alloca ptr, align 8
@@ -1015,3 +1015,5 @@ if.else10:                                        ; preds = %if.else6
   %sub = sub i32 %zext12, %zext14
   ret i32 %sub
 }
+
+attributes #0 = { nounwind ssp uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }

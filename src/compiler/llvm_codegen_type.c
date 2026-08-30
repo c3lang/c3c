@@ -66,7 +66,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 						llvm_get_type(c, lowered_member_type(rep_type)),
 						NULL
 				};
-				unsigned elements = 1;
+				int elements = 1;
 				if (decl->strukt.padding)
 				{
 					type_ref[elements++] = llvm_const_padding_type(c, decl->strukt.padding);
@@ -105,7 +105,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			UNREACHABLE_VOID
 		case TYPE_ARRAY:
 		case VECTORS:
-			for (ArraySize i = type->array.len; i > 0; i--)
+			for (ArrayIndex i = type->array.len; i > 0; i--)
 			{
 				param_expand(context, params_ref, type->array.base);
 			}
@@ -175,7 +175,7 @@ static inline void add_func_type_param(GenContext *c, ABIArgInfo *arg_info, LLVM
 		{
 			// Normal direct.
 			LLVMTypeRef coerce_type = llvm_get_type(c, type_uint);
-			for (unsigned idx = 0; idx < arg_info->direct_struct_expand; idx++)
+			for (int idx = 0; idx < arg_info->direct_struct_expand; idx++)
 			{
 				vec_add(*params, coerce_type);
 			}
@@ -246,12 +246,12 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 	}
 
 	// Add in all of the required arguments.
-	for (unsigned i = 0; i < prototype->param_count; i++)
+	for (int i = 0; i < prototype->param_count; i++)
 	{
 		add_func_type_param(c, prototype->abi_args[i], params);
 	}
 
-	for (unsigned i = 0; i < prototype->param_vacount; i++)
+	for (int i = 0; i < prototype->param_vacount; i++)
 	{
 		add_func_type_param(c, prototype->abi_varargs[i], params);
 	}
@@ -281,7 +281,7 @@ bool llvm_types_are_similar(LLVMTypeRef original, LLVMTypeRef coerce)
 	if (original == coerce) return true;
 	if (LLVMGetTypeKind(original) != LLVMStructTypeKind) return false;
 	if (LLVMGetTypeKind(coerce) != LLVMStructTypeKind) return false;
-	unsigned types = LLVMCountStructElementTypes(original);
+	unsigned types = (unsigned)LLVMCountStructElementTypes(original);
 	if (types != LLVMCountStructElementTypes(coerce)) return false;
 	for (unsigned i = 0; i < types; i++)
 	{
@@ -367,7 +367,7 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 			LLVMTypeRef coerce_type = llvm_get_type(c, type_uint);
 			ASSERT(arg_info->direct_struct_expand > 1U && arg_info->direct_struct_expand < 10);
 			LLVMTypeRef refs[10];
-			for (unsigned i = 0; i < arg_info->direct_struct_expand; i++)
+			for (int i = 0; i < arg_info->direct_struct_expand; i++)
 			{
 				refs[i] = coerce_type;
 			}
@@ -515,7 +515,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	bool is_dynamic = decl->is_dynamic;
 
 	Decl **enum_vals = decl->enums.values;
-	unsigned elements = vec_size(enum_vals);
+	int elements = vec_size(enum_vals);
 	Decl **associated_values = decl->enums.parameters;
 	if (is_external && is_dynamic)
 	{
@@ -527,7 +527,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	LLVMValueRef *values = elements ? malloc_arena(elements * sizeof(LLVMValueRef)) : NULL;
 
 	bool obfuscate = decl->obfuscate;
-	for (unsigned i = 0; i < elements; i++)
+	for (int i = 0; i < elements; i++)
 	{
 		assert(values);
 		const char *name = enum_vals[i]->name;
@@ -552,12 +552,12 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 
 	LLVMValueRef val = llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ENUM, type_base(type), elements, names, is_external);
 
-	unsigned count = vec_size(associated_values);
-	for (unsigned ai = 0; ai < count; ai++)
+	int count = vec_size(associated_values);
+	for (int ai = 0; ai < count; ai++)
 	{
 		LLVMTypeRef val_type = NULL;
 		bool mixed = false;
-		for (unsigned i = 0; i < elements; i++)
+		for (int i = 0; i < elements; i++)
 		{
 			assert(values);
 			BEValue value;

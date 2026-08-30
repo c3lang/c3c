@@ -8,7 +8,7 @@ Example:
 module sample::m;
 import std::io;
 
-faultdef DIVISION_BY_ZERO;
+excuse DIVISION_BY_ZERO;
 
 fn double? divide(int a, int b)
 {

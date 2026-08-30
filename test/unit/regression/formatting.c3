@@ -11,7 +11,7 @@ struct TestS (Decl, Printable)
 }
 fn sz? TestS.to_format(&self, Formatter* formatter) @dynamic => formatter.printf("[%d]", self.a);
 
-faultdef DERP;
+excuse DERP;
 
 fn void various_cornercases() @test
 {

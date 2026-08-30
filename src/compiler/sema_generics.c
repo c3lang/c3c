@@ -145,7 +145,7 @@ Decl *sema_generate_parameterized_identifier(SemaContext *context, Decl *generic
 {
 	Module *module = alias->unit->module;
 	Decl *instance = NULL;
-	unsigned id = generic->generic_decl.id;
+	int id = generic->generic_decl.id;
 	FOREACH(Decl *, g, alias->unit->module->generic_sections)
 	{
 		if (g->generic_decl.id != id) continue;
@@ -360,9 +360,9 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *context, Path *decl_pat
 	if (!alias) return poisoned_decl;
 	ASSERT_AT(invocation_loc, alias->is_template && alias->generic_id);
 	Decl *generic = declptr(alias->generic_id);
-	unsigned parameter_count = vec_size(generic->generic_decl.parameters);
+	int parameter_count = vec_size(generic->generic_decl.parameters);
 	ASSERT(parameter_count > 0);
-	unsigned count = vec_size(params);
+	int count = vec_size(params);
 	if (parameter_count != count)
 	{
 		if (!count)
