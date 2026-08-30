@@ -69,13 +69,13 @@ macro @lpsx(#a, #b, #result) @local
 	}
 }
 
-macro @g_n(#n, #h, #m) @local
+fn void _g_n(ulong* n, ulong* h, ulong* m) @local @noinline
 {
 	ulong[8] k_i;
 	ulong[8] state;
 
-	@lpsx(#h, #n, k_i);
-	@lpsx(k_i, #m, state);
+	@lpsx(n, h, k_i);
+	@lpsx(k_i, m, state);
 	// Do not unroll this loop - produces far too much code at compile-time.
 	for (sz i = 0; i < 11; i++)
 	{
@@ -84,16 +84,15 @@ macro @g_n(#n, #h, #m) @local
 	}
 	@lpsx(k_i, ITERATION_CONSTANTS[11], k_i);
 	@xor_512(k_i, state, state);
-	@xor_512(state, #h, state);
-	@xor_512(state, #m, #h);
+	@xor_512(state, h, state);
+	@xor_512(state, m, h);
 }
 
-
-macro @_streebog_stage2(Streebog* self, #m) @local
+fn void _streebog_stage2(Streebog* self, ulong* m) @local @noinline
 {
-	@g_n(self.n, self.h, #m);
+	_g_n(&self.n, &self.h, m);
 	@add_512(self.n, STAGE2_512);
-	@add_512(self.s, #m);
+	@add_512(self.s, m);
 }
 
 macro void Streebog.init(&self, StreebogLength $hash_size)
@@ -117,7 +116,7 @@ fn void Streebog.update(&self, char[] data)
 		self.index += size;
 		if (size < rest) return;
 
-		@_streebog_stage2(self, self.message);
+		_streebog_stage2(self, &self.message);
 		data = data[rest..];
 		self.index = 0;
 	}
@@ -126,12 +125,12 @@ fn void Streebog.update(&self, char[] data)
 	{
 		if (aligned)
 		{
-			@_streebog_stage2(self, (ulong*)data.ptr);
+			_streebog_stage2(self, (ulong*)data.ptr);
 		}
 		else
 		{
 			@as_char_view(self.message)[:BLOCK_SIZE] = data[:BLOCK_SIZE];
-			@_streebog_stage2(self, self.message);
+			_streebog_stage2(self, &self.message);
 		}
 	}
 	if (data.len)
@@ -164,9 +163,9 @@ fn void streebog_final_private(Streebog* self) @local
 	self.message[index++] ^= 1ul << shift;
 	if (index < 8) self.message[index..] = {};
 
-	@g_n(self.n, self.h, self.message);
+	_g_n(&self.n, &self.h, &self.message);
 	@add_512(self.n, unprocessed_bits_count);
 	@add_512(self.s, self.message);
-	@g_n(ZERO_512, self.h, self.n);
-	@g_n(ZERO_512, self.h, self.s);
+	_g_n(&ZERO_512, &self.h, &self.n);
+	_g_n(&ZERO_512, &self.h, &self.s);
 }
