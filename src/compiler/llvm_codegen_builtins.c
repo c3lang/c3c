@@ -824,11 +824,11 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 		case BUILTIN_EXACT_MOD:
 			if (type_is_signed_any(base_type))
 			{
-				res = LLVMBuildSRem(c->builder, arg_slots[0], arg_slots[1], "eumod");
+				res = LLVMBuildSRem(c->builder, arg_slots[0], arg_slots[1], "esmod");
 			}
 			else
 			{
-				res = LLVMBuildSDiv(c->builder, arg_slots[0], arg_slots[1], "esmod");
+				res = LLVMBuildURem(c->builder, arg_slots[0], arg_slots[1], "eumod");
 			}
 			break;
 		default:
