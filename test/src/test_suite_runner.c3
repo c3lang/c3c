@@ -256,7 +256,7 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 }
 
 /* --------------------- Directive parsing ----------------------------- */
-fn bool parse_trailing_directive(int line_number, String line, RunSettings* settings, bool is_single)
+fn bool parse_trailing_directive(int line_number, String line, RunSettings* settings, bool is_single, OutStream output_stream)
 {
 	if (settings.current_file.is_output) return true;
 	sz index = line.rindex_of("// #")!! + 4;
@@ -267,7 +267,7 @@ fn bool parse_trailing_directive(int line_number, String line, RunSettings* sett
 
 	if (@catch(key) || s.current > clean_line.len)
 	{
-		io::printfn("FAILED - Unknown trailing directive '%s'", clean_line);
+		io::fprintfn(output_stream, "FAILED - Unknown trailing directive '%s'", clean_line)!!;
 		return false;
 	}
 
@@ -280,19 +280,19 @@ fn bool parse_trailing_directive(int line_number, String line, RunSettings* sett
 		case "error":
 			settings.current_file.errors.push({ line_number, value, false });
 		default:
-			io::printfn("FAILED - Unknown trailing directive '%s'", clean_line);
+			io::fprintfn(output_stream, "FAILED - Unknown trailing directive '%s'", clean_line)!!;
 			return false;
 	}
 	return true;
 }
 
-fn void parse_header_directive(int* line_no, String line, RunSettings* settings, bool is_single, Path test_dir)
+fn bool parse_header_directive(int* line_no, String line, RunSettings* settings, bool is_single, Path test_dir, OutStream output_stream)
 {
 	String clean_line = line[4..].trim();
 	Splitter s = clean_line.tokenize(":");
 	String? key_opt = s.next();
 
-	if (catch key_opt) return;
+	if (catch key_opt) return true;
 
 	String value = (s.current <= clean_line.len) ? clean_line[s.current..].trim() : "";
 	bool is_output = settings.current_file.is_output;
@@ -312,21 +312,31 @@ fn void parse_header_directive(int* line_no, String line, RunSettings* settings,
 		case "deprecation":
 			if (!is_output) settings.no_deprecation = value == "no";
 		case "file":
-			if (is_single) error_exit("FAILED - 'file' directive only allowed with .c3t");
+			if (is_single)
+			{
+				io::fprintn(output_stream, "FAILED - 'file' directive only allowed with .c3t")!!;
+				return false;
+			}
 			settings.current_file.close();
 			RunFile* file = create_run_file(test_dir, value, false);
 			settings.current_file = file;
 			*line_no = 1;
 			settings.input_files.push(file);
 		case "expect":
-			if (is_single) error_exit("FAILED - 'expect' directive only allowed with .c3t");
+			if (is_single)
+			{
+				io::fprintn(output_stream, "FAILED - 'expect' directive only allowed with .c3t")!!;
+				return false;
+			}
 			if (settings.current_file) settings.current_file.close();
 			RunFile* ofile = create_run_file(test_dir, value, true);
 			settings.current_file = ofile;
 			settings.output_files.push(ofile);
 		default:
-			io::printfn("FAILED - Unknown header directive '%s'", clean_line);
+			io::fprintfn(output_stream, "FAILED - Unknown header directive '%s'", clean_line)!!;
+			return false;
 	}
+	return true;
 }
 
 /* ----------------------- Status / Progress --------------------------- */
@@ -481,12 +491,16 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 				}
 				continue;
 			}
-			parse_header_directive(&line_no, line, &settings, single, test_dir);
+			if (!parse_header_directive(&line_no, line, &settings, single, test_dir, output_stream))
+			{
+				foreach (r : settings.input_files) r.close();
+				return false;
+			}
 			continue;
 		}
 		else if (line.contains("// #"))
 		{
-			if (!parse_trailing_directive(line_no, line, &settings, single))
+			if (!parse_trailing_directive(line_no, line, &settings, single, output_stream))
 			{
 				foreach (r : settings.input_files) r.close();
 				return false;
