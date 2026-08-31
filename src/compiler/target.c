@@ -153,6 +153,7 @@ static const char *x86_feature_name[] = {
 	[X86_FEAT_AVX5124FMAPS] = "avx5124fmaps",
 	[X86_FEAT_AVX512VPOPCNTDQ] = "avx512vpopcntdq",
 	[X86_FEAT_AVX512VBMI2] = "avx512vbmi2",
+	[X86_FEAT_AVX512BMM] = "avx512bmm",
 	[X86_FEAT_GFNI] = "gfni",
 	[X86_FEAT_VPCLMULQDQ] = "vpclmulqdq",
 	[X86_FEAT_AVX512VNNI] = "avx512vnni",
@@ -730,6 +731,7 @@ static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature featu
 		case X86_FEAT_AVX512VBMI2:
 		case X86_FEAT_AVX512BITALG:
 		case X86_FEAT_AVX512BF16:
+		case X86_FEAT_AVX512BMM:
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512BW);
 			return;
 		case X86_FEAT_AVX5124VNNIW:
@@ -907,6 +909,7 @@ static void x64features_limit_from_capability(CpuFeatures *cpu_features, X86Vect
 			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX10_1_512);
 			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX10_1_256);
 			cpu_features_remove_feature(cpu_features, X86_FEAT_USERMSR);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512BMM);
 			break;
 		case X86VECTOR_CPU:
 		case X86VECTOR_DEFAULT:
