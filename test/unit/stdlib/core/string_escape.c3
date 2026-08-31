@@ -62,6 +62,12 @@ UnescapeTest[] unescape_tests = {
     { `"\u2603"`, "☃", {} }, // Snowman
     { `"\U0001F600"`, "😀", {} }, // Grinning face emoji
 
+    // Surrogate pairs (JSON's only way to represent astral-plane codepoints)
+    { `"😀"`, "😀", {} }, // Grinning face, as a surrogate pair
+    { `"a😀b"`, "a😀b", {} }, // Surrounded by plain ASCII
+    { `"😀😀"`, "😀😀", {} }, // Two consecutive pairs
+    { `"𐀀"`, "𐀀", {} }, // Lowest possible surrogate pair, U+10000
+
     // Error cases
     { `"unterminated`, "", string::UNTERMINATED_STRING },
     { `unterminated"`, "", string::UNTERMINATED_STRING },
@@ -73,6 +79,14 @@ UnescapeTest[] unescape_tests = {
     { `"bad\uGGGG"`, "", string::INVALID_UNICODE_ESCAPE },
     { `"bad\U"`, "", string::INVALID_UNICODE_ESCAPE },
     { `"bad\UGGGGGGGG"`, "", string::INVALID_UNICODE_ESCAPE },
+
+    // Invalid surrogate pairs
+    { `"\udc00"`, "", string::INVALID_UNICODE_ESCAPE }, // Lone low surrogate, no preceding high
+    { `"\ud800"`, "", string::INVALID_UNICODE_ESCAPE }, // Lone high surrogate, nothing follows
+    { `"\ud800x"`, "", string::INVALID_UNICODE_ESCAPE }, // High surrogate followed by plain text, not \u
+    { `"\ud800\n"`, "", string::INVALID_UNICODE_ESCAPE }, // High surrogate followed by a different escape
+    { `"\ud800A"`, "", string::INVALID_UNICODE_ESCAPE }, // High surrogate followed by a non-surrogate \u
+    { `"\ud800\ud800"`, "", string::INVALID_UNICODE_ESCAPE }, // High surrogate followed by another high surrogate
 };
 
 fn void test_escape()
@@ -104,6 +118,46 @@ fn void test_escape_default_quotes_with_explicit_allocator()
     assert(result == `"hello"`, "escape(mem) = %s, expected quoted output", result);
 }
 
+fn void test_escape_strip_quotes_with_explicit_allocator()
+{
+    String result = "hello".escape(mem, strip_quotes: true);
+    defer result.free(mem);
+    assert(result == "hello", "escape(mem, strip_quotes: true) = %s, expected unquoted output", result);
+}
+
+fn void test_unescape_with_explicit_allocator()
+{
+    String? result = (`"hello\nworld"`).unescape(mem);
+    if (try r = result)
+    {
+        defer r.free(mem);
+        assert(r == "hello\nworld", "unescape(mem) = %s, expected 'hello\\nworld'", r);
+    }
+    else
+    {
+        assert(false, "unescape(mem) failed unexpectedly");
+    }
+}
+
+fn void test_unescape_empty_with_explicit_allocator()
+{
+    String? result = (`""`).unescape(mem);
+    if (try r = result)
+    {
+        defer r.free(mem);
+        assert(r == "", "unescape(mem) of an empty string should give an empty string");
+    }
+    else
+    {
+        assert(false, "unescape(mem) failed unexpectedly");
+    }
+}
+
+fn void test_unescape_pair() => @pool()
+{
+	test::eq(`"\U0001f600"`.tunescape()!!, "😀");
+	test::eq(`"\ud83d\ude00"`.tunescape()!!, "😀");
+}
 fn void test_unescape()
 {
     foreach (test : unescape_tests)

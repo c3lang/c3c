@@ -1274,6 +1274,7 @@ static int jump_buffer_size(void)
 		case LINUX_RISCV64:
 			// Godbolt test
 			return 43;
+		case IOS_X64_SIM:
 		case MACOS_X64:
 			return 19; // Actually 18.5
 		case WINDOWS_X64: // 16 on x32
@@ -1299,6 +1300,7 @@ static int jump_buffer_size(void)
 			// Based on Godbolt
 			return 24;
 		case IOS_AARCH64:
+		case IOS_AARCH64_SIM:
 		case MACOS_AARCH64:
 			// Based on macOS headers
 			return 25;

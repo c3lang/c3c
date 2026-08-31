@@ -58,6 +58,7 @@ struct Stat @feat(!X86_64)
 }
 
 extern fn CInt stat(ZString path, Stat* stat);
+extern fn CInt lstat(ZString path, Stat* stat);
 
 extern fn CInt get_nprocs();
 extern fn CInt get_nprocs_conf();

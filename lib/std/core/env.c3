@@ -170,46 +170,12 @@ const bool ANY_SANITIZER = ADDRESS_SANITIZER || MEMORY_SANITIZER || THREAD_SANIT
 const int LANGUAGE_DEV_VERSION = $$LANGUAGE_DEV_VERSION;
 const bool HAS_NATIVE_ERRNO = LINUX || ANDROID || BSD_FAMILY || DARWIN || WIN32 || EMSCRIPTEN;
 
-macro bool os_is_darwin() @const
-{
-	$switch OS_TYPE:
-	$case IOS:
-	$case MACOS:
-	$case TVOS:
-	$case WATCHOS:
-		return true;
-	$default:
-		return false;
-	$endswitch
-}
-
-macro bool os_is_posix() @const
-{
-	$switch OS_TYPE:
-	$case IOS:
-	$case MACOS:
-	$case NETBSD:
-	$case LINUX:
-	$case KFREEBSD:
-	$case FREEBSD:
-	$case OPENBSD:
-	$case SOLARIS:
-	$case TVOS:
-	$case WATCHOS:
-	$case EMSCRIPTEN:
-	$case ANDROID:
-		return true;
-	$case WIN32:
-	$case WASI:
-		return false;
-	$default:
-		$echo("Assuming non-Posix environment");
-		return false;
-	$endswitch
-}
 const String[] AUTHORS = $$AUTHORS;
 const String[] AUTHOR_EMAILS = $$AUTHOR_EMAILS;
 const String PROJECT_VERSION = $$PROJECT_VERSION;
 const String PROJECT_PATH = $$PROJECT_PATH;
 const BUILTIN_EXPECT_IS_DISABLED = $feat(DISABLE_BUILTIN_EXPECT);
 const BUILTIN_PREFETCH_IS_DISABLED = $feat(DISABLE_BUILTIN_PREFETCH);
+
+macro bool os_is_darwin() @const @deprecated("Use $feat(DARWIN)") => $feat(DARWIN);
+macro bool os_is_posix() @const @deprecated("Use $feat(POSIX)") => $feat(POSIX);

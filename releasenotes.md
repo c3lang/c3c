@@ -23,7 +23,10 @@
 - Add `dso_local` attribute on ELF/COFF.
 - Let LLVM build the biggest modules first.
 - Fix source locations for byte literal values continued on a new line.
- 
+- Support for iOS.
+- Allow `-` in `c3c init some-project`.
+- `--keep-obj` added, to prevent object files from being deleted after building/linking.
+
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
 - `InStream.read` now consistently returns 0 on EOF, and never throws io::EOF, and requires a non-zero buffer target.
@@ -31,6 +34,9 @@
 - Add `std::collections::Tree`.
 - `std::net` added `Socket.peer_address`, `peer_port`, `local_address`, and `local_port` for retrieving remote and local socket address information. #3460
 - Add a `range::slice` macro.
+- Add `log::get_logger`.
+- `RefCounted` now correctly makes a difference between dealloc and free.
+- `Path.is_link` added.
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
@@ -48,6 +54,11 @@
 - Stale tid in `thread::current` on POSIX. #3472
 - Compiler crashes on implicitly casting a `&a - &b` to another type. #3477
 - BigInt shift left would not work correctly with shifts over 32 bits.
+- DString copy would accidentally overwrite the allocator.
+- FixedBlockPool would not correctly handle changes to grow_capacity.
+- Fix bug in `mem::equals` calculating the last part to compare.
+- Miscompilation of struct initializers when a struct contained an array of vectors, causing incorrect alignment. #3483
+- `String.escape` would not correctly handle UTF16 pairs.
 
 ## 0.8.3 Change list
 

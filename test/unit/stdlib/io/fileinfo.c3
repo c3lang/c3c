@@ -16,6 +16,13 @@ fn void test_native_is_dir() @feat(LINUX, DARWIN, ANDROID)
 	assert(!os::native_is_dir("/dev/null"));
 }
 
+fn void test_is_link() @feat(LINUX)
+{
+	assert(path::is_link((Path)"/proc/self/exe"));
+	assert(!path::is_link((Path)"/"));
+	assert(!path::is_link((Path)"/this/file/does/not/exist"));
+}
+
 
 fn void test_native_is_file() @feat(BSD)
 {
