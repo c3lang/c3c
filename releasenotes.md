@@ -25,6 +25,7 @@
 - Support for iOS.
 - Allow `-` in `c3c init some-project`.
 - `--keep-obj` added, to prevent object files from being deleted after building/linking.
+- Slice equality for flat types is now lowered to `memcmp`, avoiding scalar loops. #3491
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
@@ -58,6 +59,8 @@
 - Fix bug in `mem::equals` calculating the last part to compare.
 - Miscompilation of struct initializers when a struct contained an array of vectors, causing incorrect alignment. #3483
 - `String.escape` would not correctly handle UTF16 pairs.
+- Heap buffer corruption when reversing vectors larger than 128 elements due to an undersized allocation.
+- `$$mod` on unsigned integers emitted signed division instead of unsigned remainder.
 
 ## 0.8.3 Change list
 
