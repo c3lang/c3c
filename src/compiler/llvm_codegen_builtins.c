@@ -16,7 +16,7 @@ INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
 	LLVMValueRef arg2 = LLVMGetPoison(LLVMTypeOf(arg1));
 	LLVMValueRef buff[128];
 	int elements = rtype->array.len;
-	LLVMValueRef *mask_element = elements > 128 ? MALLOC(sizeof(LLVMValueRef)) : buff;
+	LLVMValueRef *mask_element = elements > 128 ? MALLOC(sizeof(LLVMValueRef) * elements) : buff;
 	LLVMTypeRef mask_element_type = llvm_get_type(c, type_int);
 	for (int i = 0; i < elements; i++)
 	{
