@@ -18,7 +18,7 @@ fn void main()
 
   %emul = mul i8 %0, %1
   %esdiv = sdiv i8 %2, %3
-  %eumod = srem i8 %4, %5
+  %esmod = srem i8 %4, %5
   %eadd = add i8 %6, %7
   %esub = sub i8 %8, %9
   %eneg = sub i8 0, %10

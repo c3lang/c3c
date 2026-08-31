@@ -16,7 +16,7 @@ INLINE void llvm_emit_reverse(GenContext *c, BEValue *result_value, Expr *expr)
 	LLVMValueRef arg2 = LLVMGetPoison(LLVMTypeOf(arg1));
 	LLVMValueRef buff[128];
 	int elements = rtype->array.len;
-	LLVMValueRef *mask_element = elements > 128 ? MALLOC(sizeof(LLVMValueRef)) : buff;
+	LLVMValueRef *mask_element = elements > 128 ? MALLOC(sizeof(LLVMValueRef) * elements) : buff;
 	LLVMTypeRef mask_element_type = llvm_get_type(c, type_int);
 	for (int i = 0; i < elements; i++)
 	{
@@ -824,11 +824,11 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 		case BUILTIN_EXACT_MOD:
 			if (type_is_signed_any(base_type))
 			{
-				res = LLVMBuildSRem(c->builder, arg_slots[0], arg_slots[1], "eumod");
+				res = LLVMBuildSRem(c->builder, arg_slots[0], arg_slots[1], "esmod");
 			}
 			else
 			{
-				res = LLVMBuildSDiv(c->builder, arg_slots[0], arg_slots[1], "esmod");
+				res = LLVMBuildURem(c->builder, arg_slots[0], arg_slots[1], "eumod");
 			}
 			break;
 		default:
