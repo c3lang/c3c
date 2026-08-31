@@ -387,9 +387,12 @@ run_http_server_tests() {
         SERVER_PID=$!
     fi
 
-    # Poll until server is responding (up to 6 seconds)
+    # Poll until server is responding.
+    # iOS simulator startup is slow (xcrun simctl attach + binary load can take 10-20s).
+    POLL_ITERS=$([[ "$OS_MODE" == "ios" ]] && echo 150 || echo 30)  # 30s / 6s
     SERVER_READY=false
-    for i in {1..30}; do
+    for ((i = 1; i <= POLL_ITERS; i++)); do
+        kill -0 "$SERVER_PID" 2>/dev/null || { echo "::error::HTTP server process exited unexpectedly."; break; }
         if curl -s -o /dev/null "http://127.0.0.1:$PORT/"; then
             SERVER_READY=true
             break
