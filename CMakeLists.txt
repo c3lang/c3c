@@ -35,6 +35,10 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
     cmake_policy(SET CMP0135 NEW)
 endif()
 
+if (POLICY CMP0156)
+    cmake_policy(SET CMP0156 NEW)
+endif()
+
 if (NOT DEFINED CMAKE_INSTALL_LIBDIR)
     if (WIN32)
         set(CMAKE_INSTALL_LIBDIR "c:\\c3c\\lib")
