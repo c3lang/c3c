@@ -81,12 +81,12 @@ interface Logger
  @param fmt : "The format string"
  @param category : "The category to log under, defaults to the current `default_category`"
 *>
-macro void verbose(String fmt, ..., LogCategory category = default_category) => call_log(VERBOSE, category, fmt, ...$vaarg);
-macro void debug(String fmt, ..., LogCategory category = default_category) => call_log(DEBUG, category, fmt, ...$vaarg);
-macro void info(String fmt, ..., LogCategory category = default_category) => call_log(INFO, category, fmt, ...$vaarg);
-macro void warn(String fmt, ..., LogCategory category = default_category) => call_log(WARN, category, fmt, ...$vaarg);
-macro void error(String fmt, ..., LogCategory category = default_category) => call_log(ERROR, category, fmt, ...$vaarg);
-macro void critical(String fmt, ..., LogCategory category = default_category) => call_log(CRITICAL, category, fmt, ...$vaarg);
+macro void verbose(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(VERBOSE, category, fmt, ...$vaarg);
+macro void debug(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(DEBUG, category, fmt, ...$vaarg);
+macro void info(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(INFO, category, fmt, ...$vaarg);
+macro void warn(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(WARN, category, fmt, ...$vaarg);
+macro void error(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(ERROR, category, fmt, ...$vaarg);
+macro void critical(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(CRITICAL, category, fmt, ...$vaarg);
 
 <*
  Run `@body` with `default_category` temporarily set to `new_category`, restored on exit.

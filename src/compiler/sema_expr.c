@@ -2046,10 +2046,10 @@ INLINE Type *sema_get_va_type(SemaContext *context, Expr *expr, Variadic variadi
 			expr = copy_expr_single(expr);
 			if (!sema_analyse_expr_rvalue(context, expr)) return poisoned_type;
 		}
-		return type_flatten(expr->type);
+		return expr->type;
 	}
 	assert(expr->expr_kind == EXPR_MAKE_ANY);
-	return type_flatten(expr->make_any_expr.typeid->const_expr.typeid);
+	return expr->make_any_expr.typeid->const_expr.typeid;
 }
 
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext *callee, Expr *call, bool *optional,
@@ -2503,8 +2503,9 @@ NEXT_FLAG:
 		if (idx == vacount) goto TOO_FEW_ARGUMENTS;
 		expr = vaargs[idx];
 		if (!expr) goto TOO_FEW_ARGUMENTS;
-		Type *type = sema_get_va_type(context, expr, variadic);
-		if (!type_ok(type)) return false;
+		Type *type_original = sema_get_va_type(context, expr, variadic);
+		if (!type_ok(type_original)) return false;
+		Type *type = type_flatten(type_original);
 
 		// Possible variable width
 		if (c == '*')
@@ -2518,8 +2519,10 @@ NEXT_FLAG:
 			if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 			expr = vaargs[idx];
 			if (!expr) goto TOO_FEW_ARGUMENTS;
-			type = sema_get_va_type(context, expr, variadic);
+			type_original = sema_get_va_type(context, expr, variadic);
+			type = type_flatten(type_original);
 			if (!type_ok(type)) return false;
+
 		}
 		else
 		{
@@ -2537,14 +2540,15 @@ NEXT_FLAG:
 			{
 				if (!type_is_integer(type))
 				{
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer for the format width.");
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer for the format width, not %s.", type_quoted_error_string(type_original));
 				}
 				if (++i == (int)len) goto UNEXPECTED_END;
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
 				if (!expr) goto TOO_FEW_ARGUMENTS;
-				type = sema_get_va_type(context, expr, variadic);
+				type_original = sema_get_va_type(context, expr, variadic);
+				type = type_flatten(type);
 				if (!type_ok(type)) return false;
 			}
 			else
@@ -2567,7 +2571,7 @@ NEXT_FLAG:
 			case 'c':
 				if (!type_is_integer(type))
 				{
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer here.");
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer here, but the type was %s.", type_quoted_error_string(type_original));
 				}
 				goto NEXT;
 			case 'd':
@@ -2588,22 +2592,22 @@ NEXT_FLAG:
 				{
 					if (type->type_kind == TYPE_ENUM)
 					{
-						RETURN_SEMA_ERROR(vaargs[idx], "An enum cannot directly be turned into a number. Use '.ordinal' to convert it to its value.", type_quoted_error_string(type));
+						RETURN_SEMA_ERROR(vaargs[idx], "An enum cannot directly be turned into a number. Use '.ordinal' to convert it to its value.", type_quoted_error_string(type_original));
 					}
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected a number here, but was %s", type_quoted_error_string(type));
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a number here, but it was a value of type %s.", type_quoted_error_string(type_original));
 				}
 				goto NEXT;
 			case 'p':
 				if (!type_is_pointer_type(type) && !type_is_integer(type))
 				{
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer here.");
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer here, but it was a value of type %s.", type_quoted_error_string(type_original));
 				}
 				goto NEXT;
 			case 'H':
 			case 'h':
 				if (!type_flat_is_valid_for_arg_h(type))
 				{
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer, char array or slice here.");
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer, char array or slice here, but the type was %s.", type_quoted_error_string(type_original));
 				}
 				goto NEXT;
 			case 'u':
@@ -2631,7 +2635,7 @@ NO_MATCH_REF:
 UNEXPECTED_END:
 	RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Unexpected end of formatting string mid format declaration.");
 TOO_FEW_ARGUMENTS:
-	RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too few arguments provided for the formatting string.");
+	RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too few arguments were provided for the formatting string.");
 }
 
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr)
