@@ -100,6 +100,8 @@ typedef struct
 	WarningLevel method_visibility;
 	WarningLevel builtin;
 	WarningLevel recursive_contracts;
+	WarningLevel unused_parameter;
+	WarningLevel unused_local;
 } Warnings;
 
 typedef enum

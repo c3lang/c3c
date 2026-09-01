@@ -51,6 +51,32 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
 static bool sema_analyse_ensure(SemaContext *context, Expr *directive);
 
+
+bool sema_scope_check_locals(SemaContext *context, DynamicScope old_scope)
+{
+	WarningLevel unused_local = compiler.build.warnings.unused_local;
+	if (unused_local == WARNING_SILENT) return true;
+	int last = context->active_scope.current_local;
+	for (int i = old_scope.current_local; i < last; i++)
+	{
+		Decl *decl = context->locals[i];
+		if (!decl->is_used && decl->name)
+		{
+			switch (decl->var.kind)
+			{
+				case VARDECL_LOCAL:
+				case VARDECL_LOCAL_CT:
+				case VARDECL_LOCAL_CT_TYPE:
+					if (!SEMA_WARN(decl, unused_local, "The variable '%s' is never used.", decl->name)) return false;
+					break;
+				default:
+					break;
+			}
+		}
+	}
+	return true;
+}
+
 static inline bool sema_analyse_asm_label(SemaContext *context, AsmInlineBlock *block, Ast *label)
 {
 	const char *name = label->asm_label;
@@ -1538,7 +1564,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 		// And pop the cond scope.
 	}
-	SCOPE_END;
+	SCOPE_END_CHECK;
 
 	// Trying to iterate over an optional is meaningless, it should always be handled
 	// So check if it's a foreach (x : may_fail())
@@ -1726,7 +1752,7 @@ SKIP_OVERLOAD:;
 	Decl *temp = NULL;
 	if (enumerator->expr_kind == EXPR_IDENTIFIER)
 	{
-		enumerator->ident_expr->var.is_written = true;
+		decl_write(enumerator->ident_expr);
 		temp = enumerator->ident_expr;
 	}
 	else
@@ -3016,7 +3042,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 		}
 		context_pop_defers_and_replace_ast(context, statement);
 	}
-	SCOPE_END;
+	SCOPE_END_CHECK;
 
 	if (statement->flow.no_exit && !statement->flow.has_break)
 	{
@@ -3498,12 +3524,42 @@ NEXT:
 		}
 
 	}
-	SCOPE_END;
+	WarningLevel unused_param = compiler.build.warnings.unused_parameter;
+	WarningLevel unused_local = compiler.build.warnings.unused_local;
+	if (unused_param != WARNING_SILENT || unused_local != WARNING_SILENT)
+	{
+		int last = context->active_scope.current_local;
+		for (int i = 0; i < last; i++)
+		{
+			Decl *decl = context->locals[i];
+			if (!decl->is_used && decl->name)
+			{
+				switch (decl->var.kind)
+				{
+					case VARDECL_PARAM:
+					case VARDECL_PARAM_EXPR:
+					case VARDECL_PARAM_CT:
+					case VARDECL_PARAM_CT_TYPE:
+						if (!SEMA_WARN(decl, unused_parameter, "The parameter '%s' is never used.", decl->name)) return false;
+						break;
+					case VARDECL_LOCAL:
+					case VARDECL_LOCAL_CT:
+					case VARDECL_LOCAL_CT_TYPE:
+						if (!SEMA_WARN(decl, unused_local, "The variable '%s' is never used.", decl->name)) return false;
+						break;
+					default:
+						break;
+				}
+			}
+		}
+	}
+	SCOPE_END_UNCHECKED;
 	if (lambda_params)
 	{
 		FOREACH_IDX(i, Decl *, ct_param, lambda_params)
 		{
 			func->func_decl.lambda_ct_parameters[i]->var.is_read = ct_param->var.is_read;
+			func->func_decl.lambda_ct_parameters[i]->is_used = ct_param->is_used;
 		}
 	}
 	return true;

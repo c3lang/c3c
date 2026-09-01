@@ -147,6 +147,8 @@ static void usage(bool full)
 		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
 		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
 		print_opt("--warn-builtin=<yes|no|error>", "Print warning when using builtin functions outside of the stdlib: yes, no, error.");
+		print_opt("--warn-unusedparam=<yes|no|error>", "Print warning when a parameter is not used after compile-time folding: yes, no, error.");
+		print_opt("--warn-unusedlocal=<yes|no|error>", "Print warning when a local is not used after compile-time folding: yes, no, error.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -1104,6 +1106,16 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if ((argopt = match_argopt("warn-recursivecontracts"))) // NOLINT
 			{
 				options->warnings.recursive_contracts = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-unusedparam"))) // NOLINT
+			{
+				options->warnings.unused_parameter = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-unusedlocal"))) // NOLINT
+			{
+				options->warnings.unused_local = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
 			if ((argopt = match_argopt("warn-builtin"))) // NOLINT

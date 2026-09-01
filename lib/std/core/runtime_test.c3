@@ -55,9 +55,9 @@ fn TestUnit[] test_collection_create(Allocator allocator)
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
 	TestUnit[] tests = alloc::alloc_array(allocator, TestUnit, names.len);
-	foreach (i, test : fns)
+	foreach (i, test_fn : fns)
 	{
-		tests[i] = { names[i], fns[i] };
+		tests[i] = { names[i], test_fn };
 	}
 	return tests;
 }
