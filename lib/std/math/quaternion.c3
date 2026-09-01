@@ -73,8 +73,6 @@ fn QuaternionNumber QuaternionNumber.conjugate(self) => { -self.v.x, -self.v.y, 
 
 fn QuaternionNumber QuaternionNumber.slerp(self, QuaternionNumber q2, Real amount)
 {
-	QuaternionNumber result = {};
-
 	Real[<4>] q2v = q2.v;
 	Real cos_half_theta = self.v.dot(q2v);
 

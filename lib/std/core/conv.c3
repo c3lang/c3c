@@ -528,7 +528,6 @@ fn void? utf8to16_unsafe(String utf8, Char16* utf16_buffer)
 *>
 macro void utf32to8_unsafe(Char32[] utf32, char* utf8_buffer, $unaligned, $byteswap)
 {
-	char* start = utf8_buffer;
 	foreach (&ucref : utf32)
 	{
 		Char32 uc = $unaligned ??? mem::load(ucref, $align: 1) : *ucref;
