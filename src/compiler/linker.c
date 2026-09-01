@@ -1431,6 +1431,10 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 #endif
 
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
+	if (compiler.build.print_linking)
+	{
+		puts(output);
+	}
 	DEBUG_LOG("Compiling c sources using '%s'", output);
 	if (system(output) != 0)
 	{
