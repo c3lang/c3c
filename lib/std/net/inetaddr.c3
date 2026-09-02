@@ -77,7 +77,7 @@ fn InetAddress? ipv6_from_str(String s)
 	bool last_was_colon, found_zero;
 	int current = -1;
 	InetAddress addr = { .is_ipv6 = true };
-	foreach (i, c : s)
+	foreach (c : s)
 	{
 		if (c == ':')
 		{

@@ -153,6 +153,7 @@ static const char *x86_feature_name[] = {
 	[X86_FEAT_AVX5124FMAPS] = "avx5124fmaps",
 	[X86_FEAT_AVX512VPOPCNTDQ] = "avx512vpopcntdq",
 	[X86_FEAT_AVX512VBMI2] = "avx512vbmi2",
+	[X86_FEAT_AVX512BMM] = "avx512bmm",
 	[X86_FEAT_GFNI] = "gfni",
 	[X86_FEAT_VPCLMULQDQ] = "vpclmulqdq",
 	[X86_FEAT_AVX512VNNI] = "avx512vnni",
@@ -730,6 +731,7 @@ static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature featu
 		case X86_FEAT_AVX512VBMI2:
 		case X86_FEAT_AVX512BITALG:
 		case X86_FEAT_AVX512BF16:
+		case X86_FEAT_AVX512BMM:
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512BW);
 			return;
 		case X86_FEAT_AVX5124VNNIW:
@@ -907,6 +909,7 @@ static void x64features_limit_from_capability(CpuFeatures *cpu_features, X86Vect
 			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX10_1_512);
 			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX10_1_256);
 			cpu_features_remove_feature(cpu_features, X86_FEAT_USERMSR);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512BMM);
 			break;
 		case X86VECTOR_CPU:
 		case X86VECTOR_DEFAULT:
@@ -1207,7 +1210,9 @@ static char *arch_to_target_triple(ArchOsTarget target, LinuxLibc linux_libc)
 		case ANDROID_AARCH64: return "aarch64-linux-android";
 		case ANDROID_X86_64: return "x86_64-linux-android";
 		case LINUX_AARCH64: return linux_libc == LINUX_LIBC_MUSL ? "aarch64-unknown-linux-musl" : "aarch64-unknown-linux-gnu";
-		case IOS_AARCH64: return "aarch64-apple-ios";
+		case IOS_AARCH64: return "arm64-apple-ios";
+		case IOS_AARCH64_SIM: return "arm64-apple-ios-simulator";
+		case IOS_X64_SIM: return "x86_64-apple-ios-simulator";
 		case MACOS_AARCH64: return "aarch64-apple-macosx";
 		case ELF_AARCH64: return "aarch64-unknown-elf";
 		case WINDOWS_AARCH64: return "aarch64-pc-windows-msvc";
@@ -1921,7 +1926,7 @@ INLINE const char *llvm_macos_target_triple(const char *triple)
 		scratch_buffer_append(compiler.build.macos.min_version);
 		return scratch_buffer_to_string();
 	}
-	MacSDK *mac_sdk = compiler.build.macos.sdk;
+	DarwinSDK *mac_sdk = compiler.build.macos.sdk;
 
 	if (!mac_sdk)
 	{
@@ -1932,7 +1937,43 @@ INLINE const char *llvm_macos_target_triple(const char *triple)
 	}
 	scratch_buffer_clear();
 	scratch_buffer_append(triple);
-	scratch_buffer_printf("%d.%d.0", mac_sdk->macos_min_deploy_target.major, mac_sdk->macos_min_deploy_target.minor);
+	scratch_buffer_printf("%d.%d.0", mac_sdk->min_deploy_target.major, mac_sdk->min_deploy_target.minor);
+	return scratch_buffer_to_string();
+}
+
+INLINE const char *llvm_ios_target_triple(const char *triple)
+{
+	size_t base = strlen(triple);
+	if (base > 10 && strcmp(triple + base - 10, "-simulator") == 0)
+	{
+		base -= 10;
+	}
+
+	if (compiler.build.ios.min_version)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append_len(triple, base);
+		scratch_buffer_append(compiler.build.ios.min_version);
+		if (compiler.build.ios.simulator) scratch_buffer_append("-simulator");
+		return scratch_buffer_to_string();
+	}
+	DarwinSDK *ios_sdk = compiler.build.ios.sdk;
+
+	if (!ios_sdk)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append_len(triple, base);
+		scratch_buffer_append("15.0");
+		if (compiler.build.ios.simulator) scratch_buffer_append("-simulator");
+		return scratch_buffer_to_string();
+	}
+
+	// Override the deployment target to 14.0 to satisfy the linker's requirements
+	if (ios_sdk->min_deploy_target.major < 14) ios_sdk->min_deploy_target.major = 14;
+	scratch_buffer_clear();
+	scratch_buffer_append_len(triple, base);
+	scratch_buffer_printf("%d.%d.0", ios_sdk->min_deploy_target.major, ios_sdk->min_deploy_target.minor);
+	if (compiler.build.ios.simulator) scratch_buffer_append("-simulator");
 	return scratch_buffer_to_string();
 }
 
@@ -2178,6 +2219,11 @@ FOUND:;
 	}
 }
 
+static void _darwin_sdk_set_min_ver(DarwinSDK *sdk, int target)
+{
+	if (sdk->min_deploy_target.major < target) sdk->min_deploy_target = (Version) { target, 0 };
+	if (sdk->deploy_target.major < target) sdk->deploy_target = (Version) { target, 0 };
+}
 
 void target_setup(BuildTarget *build_target)
 {
@@ -2383,12 +2429,40 @@ void target_setup(BuildTarget *build_target)
 
 	if (compiler.platform.os == OS_TYPE_IOS)
 	{
-		WARNING("iOS not properly supported yet.");
+		bool is_sim = compiler.build.ios.simulator = compiler.build.arch_os_target == IOS_AARCH64_SIM || compiler.build.arch_os_target == IOS_X64_SIM;
+		if (!compiler.build.ios.sysroot) compiler.build.ios.sysroot = darwin_sysroot();
+		const char *sysroot = compiler.build.ios.sysroot ? compiler.build.ios.sysroot : darwin_sysroot();
+
+		if (!sysroot)
+		{
+			const char *path = ios_cross_compile_library(is_sim);
+			if (path)
+			{
+				if (!compiler.build.quiet && !compiler.build.silent)
+				{
+					OUTF("Using iOS SDK at: %s\n", path);
+				}
+				sysroot = scratch_buffer_copy();
+				compiler.build.ios.sysroot = sysroot;
+			}
+		}
+
+		compiler.build.ios.sdk = NULL;
+		if (sysroot)
+		{
+			INFO_LOG("iOS SDK: %s", sysroot);
+			DarwinSDK *sdk = ios_sysroot_sdk_information(sysroot, is_sim);
+			compiler.build.ios.sdk = sdk;
+			int min_ver = compiler.platform.arch == ARCH_TYPE_AARCH64 ? 12 : 14;
+			_darwin_sdk_set_min_ver(compiler.build.ios.sdk, min_ver);
+		}
+		compiler.platform.target_triple = strdup(llvm_ios_target_triple(compiler.platform.target_triple));
+		
 	}
 	if (compiler.platform.os == OS_TYPE_MACOSX)
 	{
-		if (!compiler.build.macos.sysroot) compiler.build.macos.sysroot = macos_sysroot();
-		const char *sysroot = compiler.build.macos.sysroot ? compiler.build.macos.sysroot : macos_sysroot();
+		if (!compiler.build.macos.sysroot) compiler.build.macos.sysroot = darwin_sysroot();
+		const char *sysroot = compiler.build.macos.sysroot ? compiler.build.macos.sysroot : darwin_sysroot();
 
 		if (!sysroot)
 		{
@@ -2409,17 +2483,11 @@ void target_setup(BuildTarget *build_target)
 		if (sysroot)
 		{
 			INFO_LOG("Macos SDK: %s", sysroot);
-			compiler.build.macos.sdk = macos_sysroot_sdk_information(sysroot);
+			DarwinSDK *sdk = macos_sysroot_sdk_information(sysroot);
+			compiler.build.macos.sdk = sdk;
 			if (compiler.platform.arch == ARCH_TYPE_AARCH64)
 			{
-				if (compiler.build.macos.sdk->macos_min_deploy_target.major < 11)
-				{
-					compiler.build.macos.sdk->macos_min_deploy_target = (Version) { 11, 0 };
-				}
-				if (compiler.build.macos.sdk->macos_deploy_target.major < 11)
-				{
-					compiler.build.macos.sdk->macos_deploy_target = (Version) { 11, 0 };
-				}
+				_darwin_sdk_set_min_ver(sdk, 11);
 			}
 		}
 		compiler.platform.target_triple = strdup(llvm_macos_target_triple(compiler.platform.target_triple));

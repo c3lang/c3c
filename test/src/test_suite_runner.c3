@@ -1,15 +1,12 @@
 module test_suite_runner;
-import std::io, std::math, std::os, std::collections;
-import libc;
-import std::thread, std::atomic;
-
-alias Pool = FixedThreadPool;
+import std, libc;
 
 Atomic{bool} global_should_quit;
 
 struct TestRunnerContext
 {
 	Path compiler_path;
+	Atomic{int} current_task_index;
 	Atomic{int} test_count;
 	Atomic{int} skip_count;
 	Atomic{int} success_count;
@@ -19,17 +16,15 @@ struct TestRunnerContext
 	bool no_terminal;
 	bool only_skipped;
 	String stdlib;
-	Pool pool;
 	Mutex print_mutex;
-	Atomic{int} thread_id_counter;
+	Path[] files_to_test;
 	sz total_test_files;
 }
 
-struct TestOutput
+struct WorkerContext
 {
-	DString buffer;
-	sz index;
-	bool has_output;
+	int worker_id;
+	Path test_dir;
 }
 
 TestRunnerContext context;
@@ -77,11 +72,11 @@ struct RunFile
 		struct
 		{
 			File file;
-			List {Error} warnings;
-			List {Error} errors;
+			List{Error} warnings;
+			List{Error} errors;
 			int line_offset;
 		}
-		List {String} expected_lines;
+		List{String} expected_lines;
 	}
 }
 
@@ -143,7 +138,7 @@ fn bool find_and_mark_error(RunSettings* settings, String type, String file,
 	foreach (f : settings.input_files)
 	{
 		if (f.name != basename) continue;
-		List {Error}* list;
+		List{Error}* list;
 		switch (type)
 		{
 			case "Error":
@@ -168,14 +163,14 @@ fn void print_errors(OutStream stream, String title, List{String} errors)
 {
 	if (errors.is_empty()) return;
 	io::fprintfn(stream, "\n %s:\n ------------------------------", title)!!;
-	foreach(e : errors) io::fprintn(stream, e)!!;
+	foreach (e : errors) io::fprintn(stream, e)!!;
 }
 
 fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, OutStream buffer_stream, CInt result)
 {
 	List{String} unexpected_errors;
 	Splitter lines = out.str_view().tokenize("\n");
-	
+
 	while (try line = lines.next())
 	{
 		if (!line) continue;
@@ -187,8 +182,8 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 		String? line_opt = s.next();
 		String? col_opt = s.next();
 
-		if (try type = type_opt && try file = file_opt && 
-			try line_str = line_opt && try col = col_opt && 
+		if (try type = type_opt && try file = file_opt &&
+			try line_str = line_opt && try col = col_opt &&
 			s.current < line.len)
 		{
 			String msg = line[s.current..];
@@ -203,7 +198,7 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 		{
 			io::fprintn(buffer_stream, "\nFAILED - Unexpected response from compiler:")!!;
 			io::fprint(buffer_stream, "Compiler command line: ")!!;
-			foreach(arg : *cmdline) io::fprintf(buffer_stream, "%s ", arg)!!;
+			foreach (arg : *cmdline) io::fprintf(buffer_stream, "%s ", arg)!!;
 			io::fprintn(buffer_stream)!!;
 			io::fprintn(buffer_stream, "Output: ------------------------------------------------------->>>")!!;
 			io::fprintn(buffer_stream, out)!!;
@@ -216,13 +211,19 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 	List{String} missed_warnings;
 	foreach (file : settings.input_files)
 	{
-		foreach (&err : file.errors) if (!err.found)
+		foreach (&err : file.errors)
 		{
-			missed_errors.push(string::tformat(" - %s:%d expected: \"%s\"", file.name, err.line, err.text));
+			if (!err.found)
+			{
+				missed_errors.push(string::tformat(" - %s:%d expected: \"%s\"", file.name, err.line, err.text));
+			}
 		}
-		foreach (&warn : file.warnings) if (!warn.found)
+		foreach (&warn : file.warnings)
 		{
-			missed_warnings.push(string::tformat(" - %s:%d expected: \"%s\"", file.name, warn.line, warn.text));
+			if (!warn.found)
+			{
+				missed_warnings.push(string::tformat(" - %s:%d expected: \"%s\"", file.name, warn.line, warn.text));
+			}
 		}
 	}
 
@@ -255,18 +256,18 @@ fn bool parse_result(DString out, RunSettings settings, List{String}* cmdline, O
 }
 
 /* --------------------- Directive parsing ----------------------------- */
-fn bool parse_trailing_directive(int line_number, String line, RunSettings* settings, bool is_single)
+fn bool parse_trailing_directive(int line_number, String line, RunSettings* settings, bool is_single, OutStream output_stream)
 {
 	if (settings.current_file.is_output) return true;
 	sz index = line.rindex_of("// #")!! + 4;
 	String clean_line = line[index..].trim();
-	
+
 	Splitter s = clean_line.tokenize(":");
 	String? key = s.next();
-	
-	if (@catch(key) || s.current > clean_line.len) 
+
+	if (@catch(key) || s.current > clean_line.len)
 	{
-		io::printfn("FAILED - Unknown trailing directive '%s'", clean_line);
+		io::fprintfn(output_stream, "FAILED - Unknown trailing directive '%s'", clean_line)!!;
 		return false;
 	}
 
@@ -279,26 +280,24 @@ fn bool parse_trailing_directive(int line_number, String line, RunSettings* sett
 		case "error":
 			settings.current_file.errors.push({ line_number, value, false });
 		default:
-			io::printfn("FAILED - Unknown trailing directive '%s'", clean_line);
+			io::fprintfn(output_stream, "FAILED - Unknown trailing directive '%s'", clean_line)!!;
 			return false;
 	}
 	return true;
 }
 
-fn void parse_header_directive(int* line_no, String line, RunSettings* settings, bool is_single, Path test_dir)
+fn bool parse_header_directive(int* line_no, String line, RunSettings* settings, bool is_single, Path test_dir, OutStream output_stream)
 {
 	String clean_line = line[4..].trim();
 	Splitter s = clean_line.tokenize(":");
 	String? key_opt = s.next();
-	
-	if (catch err = key_opt) return;
-	String key = key_opt;
-	
-	String value = (s.current <= clean_line.len) ? clean_line[s.current..].trim() : "";
 
+	if (catch key_opt) return true;
+
+	String value = (s.current <= clean_line.len) ? clean_line[s.current..].trim() : "";
 	bool is_output = settings.current_file.is_output;
-	
-	switch (key)
+
+	switch (key_opt)
 	{
 		case "error":
 			if (!is_output) settings.current_file.errors.push({ *line_no, value, false });
@@ -313,22 +312,31 @@ fn void parse_header_directive(int* line_no, String line, RunSettings* settings,
 		case "deprecation":
 			if (!is_output) settings.no_deprecation = value == "no";
 		case "file":
-			if (is_single) error_exit("FAILED - 'file' directive only allowed with .c3t");
+			if (is_single)
+			{
+				io::fprintn(output_stream, "FAILED - 'file' directive only allowed with .c3t")!!;
+				return false;
+			}
 			settings.current_file.close();
 			RunFile* file = create_run_file(test_dir, value, false);
 			settings.current_file = file;
 			*line_no = 1;
 			settings.input_files.push(file);
 		case "expect":
-			if (is_single) error_exit("FAILED - 'expect' directive only allowed with .c3t");
+			if (is_single)
+			{
+				io::fprintn(output_stream, "FAILED - 'expect' directive only allowed with .c3t")!!;
+				return false;
+			}
 			if (settings.current_file) settings.current_file.close();
 			RunFile* ofile = create_run_file(test_dir, value, true);
 			settings.current_file = ofile;
 			settings.output_files.push(ofile);
 		default:
-			io::printfn("FAILED - Unknown header directive '%s'", clean_line);
-			context.failure_count.add(1);
+			io::fprintfn(output_stream, "FAILED - Unknown header directive '%s'", clean_line)!!;
+			return false;
 	}
+	return true;
 }
 
 /* ----------------------- Status / Progress --------------------------- */
@@ -340,25 +348,20 @@ fn int get_terminal_width()
 		const ulong TIOCGWINSZ @feat(DARWIN, BSD) = 0x40087468;
 
 		Winsize ws;
-		if (libc::ioctl(1, TIOCGWINSZ, &ws) == 0) return (int)ws.ws_col;
+		if (libc::ioctl(1, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) return (int)ws.ws_col;
 	$endif
 
 	return 80;
 }
 
 const String CLEAR_LINE = "\e[2K";
-const String MOVETO_COLUMN_ONE = "\e[1G"; 
+const String MOVETO_COLUMN_ONE = "\r";
 
-fn void update_status(sz index, Path filename, TestOutput* output)
+fn void update_status(Path filename)
 {
-	if (context.no_terminal)
-	{
-		output.has_output = true;
-		if (filename.len == 0) io::fprint((OutStream)&output.buffer, "Passed.")!!;
-		return;
-	}
+	if (context.no_terminal) return;
 
-	Mutex.@in_lock(&context.print_mutex)
+	context.print_mutex.@in_lock()
 	{
 		bool has_entry = filename.len != 0;
 		const String[8] PARTS = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉" };
@@ -370,7 +373,7 @@ fn void update_status(sz index, Path filename, TestOutput* output)
 		int full_width = (int)math::floor(fraction * progress_bar_width);
 		int remainder = (int)math::floor(8 * (fraction * progress_bar_width % 1.0));
 		io::printf("%s%s%sTest progress: [", Ansi.RESET, CLEAR_LINE, MOVETO_COLUMN_ONE);
-		sz failed = context.failure_count.load();
+		int failed = context.failure_count.load();
 		io::print(failed ? Ansi.RED : Ansi.GREEN);
 		for (int i = 0; i < full_width; i++) io::print("█");
 		if (full_width != progress_bar_width) io::print(PARTS[remainder]);
@@ -381,9 +384,9 @@ fn void update_status(sz index, Path filename, TestOutput* output)
 	};
 }
 
-fn void print_failure_box(sz index, Path file_path, String error_output)
+fn void print_failure_box(sz index, Path file_path, String error_output, int failure_count)
 {
-	Mutex.@in_lock(&context.print_mutex)
+	context.print_mutex.@in_lock()
 	{
 		int width = get_terminal_width();
 
@@ -392,10 +395,10 @@ fn void print_failure_box(sz index, Path file_path, String error_output)
 		for (int i = 2; i < width; i++) io::print("\u2500");
 		io::printn("\u256e" +++ Ansi.RESET);
 
-		io::printf("- %d/%d %s: %s", index, context.failure_count.load(), file_path, error_output)!!;
+		io::printf("- %d/%d %s: %s", index, failure_count, file_path, error_output)!!;
 
 		if (!error_output.ends_with("\n")) io::printn();
-		
+
 		io::print(Ansi.RED +++ "\u2570");
 		for (int i = 2; i < width; i++) io::print("\u2500");
 		io::printn("\u256f" +++ Ansi.RESET);
@@ -411,12 +414,14 @@ fn void? collect_files(Path file_path, List{Path}* files)
 		Path current_file = file_path.append(tmem, f)!;
 		switch
 		{
-			case path::is_dir(current_file): collect_files(current_file, files)!;
+			case path::is_dir(current_file):
+				collect_files(current_file, files)!;
 			case path::is_file(current_file):
 				switch (current_file.extension() ?? "")
 				{
 					case "c3":
-					case "c3t": files.push(current_file);
+					case "c3t":
+						files.push(current_file);
 				}
 			default:
 				io::printfn("Skip %s", current_file);
@@ -425,37 +430,21 @@ fn void? collect_files(Path file_path, List{Path}* files)
 }
 
 /* ----------------------- Core test logic ------------------------------ */
-tlocal int tlocal_worker_id = -1;
-
-fn bool test_file(Path file_path, TestOutput* output, sz index)
+fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz index)
 {
 	if (global_should_quit.load()) return false;
 	context.test_count.add(1);
-	update_status(index, file_path, output);
-
-	if (tlocal_worker_id == -1)
-	{
-		tlocal_worker_id = context.thread_id_counter.add(1);
-	}
+	update_status(file_path);
 
 	bool single;
-	Path test_dir = context.test_root.tappend(string::tformat("_c3test_%d", tlocal_worker_id))!!;
-
-	if (!path::is_dir(test_dir))
-	{
-		if (@catch(path::mkdir(test_dir)))
-		{
-			io::fprintfn((OutStream)&output.buffer, "FAILED - Failed to create temp test directory '%s'.", test_dir)!!;
-			os::exit(1);
-		}
-	}
-
 	switch (file_path.extension() ?? "")
 	{
-		case "c3": single = true;
-		case "c3t": single = false;
+		case "c3":
+			single = true;
+		case "c3t":
+			single = false;
 		default:
-			io::fprintfn((OutStream)&output.buffer,
+			io::fprintfn(output_stream,
 				"FAILED - Unexpected file name '%s', expected a file with a '.c3' or '.c3t' suffix.",
 				file_path)!!;
 			return false;
@@ -464,7 +453,7 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 	char[]? content_raw = file::load_path_temp(file_path);
 	if (catch content_raw)
 	{
-		io::fprintfn((OutStream)&output.buffer, "FAILED - Failed to open/read '%s'.", file_path)!!;
+		io::fprintfn(output_stream, "FAILED - Failed to open/read '%s'.", file_path)!!;
 		return false;
 	}
 	String content = (String)content_raw;
@@ -474,18 +463,15 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 	settings.input_files.init(tmem);
 	settings.output_files.init(tmem);
 
-	RunFile* rf = create_run_file(
-		test_dir,
-		file_path.basename()[..^(single ? 4 : 5)].tconcat(".c3"),
-		false);
+	String target_c3_name = file_path.basename().strip_suffix(single ? ".c3" : ".c3t").tconcat(".c3");
+	RunFile* rf = create_run_file(test_dir, target_c3_name, false);
 
 	settings.current_file = rf;
 	settings.input_files.push(rf);
 
 	bool found_skip_directive = false;
-
 	int line_no = 1;
-	
+
 	Splitter lines = content.tokenize_all("\n", skip_last: true);
 	while (try line = lines.next())
 	{
@@ -505,18 +491,22 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 				}
 				continue;
 			}
-			parse_header_directive(&line_no, line, &settings, single, test_dir);
+			if (!parse_header_directive(&line_no, line, &settings, single, test_dir, output_stream))
+			{
+				foreach (r : settings.input_files) r.close();
+				return false;
+			}
 			continue;
 		}
 		else if (line.contains("// #"))
 		{
-			if (!parse_trailing_directive(line_no, line, &settings, single))
+			if (!parse_trailing_directive(line_no, line, &settings, single, output_stream))
 			{
 				foreach (r : settings.input_files) r.close();
 				return false;
 			}
 		}
-		
+
 		settings.current_file.add_line(line);
 		line_no++;
 	}
@@ -530,16 +520,25 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 		return true;
 	}
 
+	foreach (file : settings.output_files)
+	{
+		Path expected_file = test_dir.tappend(file.name)!!;
+		if (file::exists(expected_file)) (void)file::delete(expected_file);
+	}
+
 	List{String} cmdline;
 	cmdline.init(tmem, 32);
 	cmdline.push(context.compiler_path);
 
-	cmdline.push_all({"compile-only",
+	cmdline.push_all({
+		"compile-only",
 		"-O0",
 		"--test",
 		"--max-mem", "512",
 		"--no-obj",
-		"--threads", "1"});
+		"--threads", "1"
+	});
+
 	if (settings.output_files.is_empty())
 	{
 		cmdline.push("--strip-unused=yes");
@@ -550,8 +549,8 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 		cmdline.push_all({"--stdlib", context.stdlib});
 	}
 
-	cmdline.push_all({"--llvm-out", test_dir });
-	cmdline.push_all({"--build-dir", test_dir.tappend("build")!! });
+	cmdline.push_all({"--llvm-out", test_dir});
+	cmdline.push_all({"--build-dir", test_dir.tappend("build")!!});
 
 	foreach (file : settings.input_files)
 	{
@@ -565,7 +564,7 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 
 	cmdline.push(settings.debuginfo ? "-g" : "-g0");
 
-	if (settings.arch) 
+	if (settings.arch)
 	{
 		cmdline.push("--target");
 		cmdline.push(settings.arch);
@@ -585,17 +584,17 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 
 	if (global_should_quit.load()) return false;
 	Process compilation = process::spawn(cmdline.array_view(), NO_WINDOW | INHERIT_ENV)!!;
-
 	defer compilation.destroy();
-	
+
 	DString out;
 	out.init(tmem, 4096);
 	char[4096] tmp_buf;
 	InStream stderr_stream = &&compilation.stderr();
-	while (try read = stderr_stream.read(&tmp_buf)) 
+	while (try read = stderr_stream.read(&tmp_buf))
 	{
 		if (read == 0) break;
-		if (out.len() < 65536) {
+		if (out.len() < 65536)
+		{
 			out.append(tmp_buf[:read]);
 		}
 	}
@@ -611,19 +610,19 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 			if (read == 0) break;
 			if (out.len() < 70000) out.append(tmp_buf[:read]);
 		}
-		
-		io::fprintfn((OutStream)&output.buffer, "FAILED - Error(%s): %s", result, out)!!;
+
+		io::fprintfn(output_stream, "FAILED - Error(%s): %s", result, out)!!;
 		return false;
 	}
 
-	if (!parse_result(out, settings, &cmdline, (OutStream)&output.buffer, result)) return false;
+	if (!parse_result(out, settings, &cmdline, output_stream, result)) return false;
 
 	foreach (file : settings.output_files)
 	{
 		Path expected_file = test_dir.tappend(file.name)!!;
 		if (!file::exists(expected_file))
 		{
-			io::fprintfn((OutStream)&output.buffer, "FAILED - Did not compile file %s.", file.name)!!;
+			io::fprintfn(output_stream, "FAILED - Did not compile file %s.", file.name)!!;
 			return false;
 		}
 
@@ -643,57 +642,79 @@ fn bool test_file(Path file_path, TestOutput* output, sz index)
 
 		if (try next)
 		{
-			io::fprintfn((OutStream)&output.buffer,
+			io::fprintfn(output_stream,
 				"FAILED - %s did not contain: %s", file.name, next)!!;
-			io::fprintfn((OutStream)&output.buffer,
+			io::fprintfn(output_stream,
 				"\n\n------------------------------------------------>>>> %s\n", file.name)!!;
 			(void)file_ll.seek(0);
-			io::fprintn((OutStream)&output.buffer,
+			io::fprintn(output_stream,
 				(String)io::read_fully(tmem, &file_ll))!!;
-			io::fprintfn((OutStream)&output.buffer,
+			io::fprintfn(output_stream,
 				"<<<<------------------------------------------------- %s\n", file_path)!!;
 			return false;
 		}
 	}
 
 	context.success_count.add(1);
-	update_status(index, {}, output);
+	update_status({});
 	return true;
 }
 
-fn void test_file_threaded(any[] data)
+fn void run_single_test(Path file_path, sz index, Path test_dir) => @pool()
 {
-	@pool_init(mem, 1024 * 1024)
+	if (global_should_quit.load()) return;
+
+	DString out_buf;
+	out_buf.init(tmem, 512);
+
+	bool ok = test_file(file_path, test_dir, (OutStream)&out_buf, index);
+	if (!ok)
 	{
-		Path file_path = *anycast(data[0], Path)!!;
-		TestOutput* output = *anycast(data[1], TestOutput*)!!;
-		sz index = *anycast(data[2], sz)!!;
-
 		if (global_should_quit.load()) return;
-
-		if (!test_file(file_path, output, index))
+		int failure_count = context.failure_count.add(1) + 1;
+		if (!context.no_terminal)
 		{
-			if (global_should_quit.load()) return;
-			context.failure_count.add(1);
-			if (!context.no_terminal)
+			print_failure_box(index, file_path, out_buf.str_view(), failure_count);
+		}
+	}
+
+	if (context.no_terminal)
+	{
+		if (global_should_quit.load()) return;
+		context.print_mutex.@in_lock()
+		{
+			io::printf("- %d/%d %s: ",
+				context.test_count.load(),
+				context.failure_count.load(),
+				file_path)!!;
+			if (ok)
 			{
-				print_failure_box(index, file_path, output.buffer.str_view());
+				io::printn("Passed.");
 			}
-		}
-
-		if (context.no_terminal)
-		{
-			if (global_should_quit.load() || output.buffer.len() == 0) return;
-			Mutex.@in_lock(&context.print_mutex)
+			else
 			{
-				io::printf("- %d/%d %s: ",
-					context.test_count.load(),
-					context.failure_count.load(),
-					file_path)!!;
-				io::printn(output.buffer.str_view());
-			};
-		}
-	};
+				io::printn(out_buf.str_view());
+			}
+		};
+	}
+}
+
+fn int worker_thread_main(void* arg) => @pool_init(mem, 256 * 1024)
+{
+	WorkerContext* wctx = (WorkerContext*)arg;
+
+	(void)path::mkdir(wctx.test_dir, recursive: true);
+	defer (void)path::rmtree(wctx.test_dir);
+
+	while (!global_should_quit.load())
+	{
+		sz task_idx = context.current_task_index.add(1);
+		if (task_idx >= context.total_test_files) break;
+
+		run_single_test(context.files_to_test[task_idx], task_idx, wctx.test_dir);
+	}
+
+	return 0;
 }
 
 /* --------------------------------------------------------------------- */
@@ -706,13 +727,24 @@ fn int main(String[] args)
 		global_should_quit.store(true);
 	});
 
+	$if env::WIN32:
+		if (io::stdout().isatty())
+		{
+			win32::Win32_HANDLE handle = win32::getStdHandle(win32::STD_OUTPUT_HANDLE);
+			win32::Win32DwMode mode;
+			if (win32::getConsoleMode(handle, &mode))
+			{
+				win32::setConsoleMode(handle, (win32::Win32DwMode)(mode | (win32::Win32DwMode)0x0004));
+			}
+		}
+	$endif
+
 	String appname = args[0];
 	if (args.len < 3) usage(appname);
 
 	context.no_terminal = !io::stdout().isatty();
 	context.start_cwd = path::tcwd()!!;
 	context.print_mutex.init()!!;
-
 	context.test_root = path::temp_directory(mem)!!;
 
 	Path? path = args[1].to_tpath();
@@ -767,71 +799,54 @@ fn int main(String[] args)
 	Path? file = args[2].to_tpath().absolute(tmem);
 	if (catch file) arg_error_exit(appname, "Invalid path: '%s'.", args[2]);
 
-	PathList files_to_test;
-	files_to_test.init(tmem);
+	PathList collected;
+	collected.init(tmem);
 
 	switch
 	{
 		case path::is_file(file):
-			files_to_test.push(file);
+			collected.push(file);
 		case path::is_dir(file):
-			collect_files(file, &files_to_test)!!;
+			collect_files(file, &collected)!!;
 		default:
 			error_exit("Error: Path wasn't to directory or file: %s", file);
 	}
 
-	context.total_test_files = files_to_test.len();
+	context.total_test_files = collected.len();
+	context.files_to_test = collected.to_array(mem);
+	defer mem::free(context.files_to_test);
 
-	TestOutput[] test_outputs = mem::new_array(TestOutput, context.total_test_files);
-	for (sz i = 0; i < context.total_test_files; i++)
+	if (num_threads < 1) num_threads = 1;
+	if (num_threads > context.total_test_files && context.total_test_files > 0)
 	{
-		test_outputs[i].index = i;
-		test_outputs[i].buffer.init(mem);
+		num_threads = context.total_test_files;
 	}
+
+	WorkerContext[] worker_ctxs = mem::new_array(WorkerContext, num_threads);
+	Thread[] threads = mem::new_array(Thread, num_threads);
 
 	defer
 	{
-		foreach (o : test_outputs)
-		{
-			o.buffer.free();
-		}
-		mem::free(test_outputs);
+		mem::free(worker_ctxs);
+		mem::free(threads);
 	}
 
-	context.pool.init(num_threads, context.total_test_files)!!;
-	defer context.pool.stop_and_destroy();
-
-	for (sz i = 0; i < context.total_test_files; i++)
+	for (sz i = 0; i < num_threads; i++)
 	{
-		context.pool.push(&test_file_threaded,
-			files_to_test[i],
-			&test_outputs[i],
-			i)!!;
+		worker_ctxs[i] = {
+			.worker_id = (int)i,
+			.test_dir = context.test_root.append(mem, string::tformat("_c3test_%d", i))!!
+		};
+		threads[i].create(&worker_thread_main, &worker_ctxs[i])!!;
 	}
 
-	while ((sz)context.success_count.load() + context.failure_count.load() + context.skip_count.load() < context.total_test_files)
+	for (sz i = 0; i < num_threads; i++)
 	{
-		if (global_should_quit.load())
-		{
-			io::printn("\n[Ctrl+C] Stopping tests and cleaning up...");
-			break; 
-		}
-		thread::sleep_ms(50);
+		threads[i].join();
+		worker_ctxs[i].test_dir.free(mem);
 	}
 
-	context.pool.stop_and_destroy(); 
-
-	io::printn(" Removing temporary directories...");
-	PathList entries = path::ls(mem, context.test_root)!!;
-	foreach (f : entries)
-	{
-		if (f.starts_with("_c3test_"))
-		{
-			path::rmtree(context.test_root.tappend(f)!!)!!;
-		}
-	}
-
-	if (global_should_quit.load()) os::exit(1);	
+	if (global_should_quit.load()) os::exit(1);
 
 	int total_files = context.test_count.load();
 	int success = context.success_count.load();
@@ -853,7 +868,7 @@ fn int main(String[] args)
 
 	if (!context.no_terminal)
 	{
-		io::print(all_ok ? (String)Ansi.GREEN : (String)Ansi.RED);
+		io::print(all_ok ? Ansi.GREEN : Ansi.RED);
 	}
 
 	io::printfn(

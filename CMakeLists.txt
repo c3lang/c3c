@@ -35,6 +35,10 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
     cmake_policy(SET CMP0135 NEW)
 endif()
 
+if (POLICY CMP0156)
+    cmake_policy(SET CMP0156 NEW)
+endif()
+
 if (NOT DEFINED CMAKE_INSTALL_LIBDIR)
     if (WIN32)
         set(CMAKE_INSTALL_LIBDIR "c:\\c3c\\lib")
@@ -506,6 +510,7 @@ add_executable(c3c
         src/compiler/subprocess.h
         src/compiler/context.c
         src/compiler/copying.c
+        src/compiler/darwin_support.c
         src/compiler/diagnostics.c
         src/compiler/float.c
         src/compiler/headers.c
@@ -566,7 +571,6 @@ add_executable(c3c
         src/compiler/c_codegen.c
         src/compiler/decltable.c
         src/compiler/methodtable.c
-        src/compiler/mac_support.c
         src/utils/fetch_sdk/fetch_sdk.c
         src/utils/fetch_sdk/fetch_utils.c
         src/utils/fetch_sdk/windows_sdk.c

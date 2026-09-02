@@ -3371,6 +3371,38 @@ static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	BEValue len_match;
 	llvm_emit_comp(c, &len_match, &lhs_len, &rhs_len, BINARYOP_EQ);
 
+	Type *flat_base = type_flatten(array_base_type);
+	switch (flat_base->type_kind)
+	{
+		case ALL_INTS:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+		case TYPE_CONSTDEF:
+		case TYPE_FUNC_PTR:
+		case TYPE_INTERFACE:
+		case TYPE_ANY:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		{
+			LLVMBasicBlockRef memcmp_block = llvm_basic_block_new(c, "slice_memcmp");
+			LLVMBasicBlockRef no_match_block = c->current_block;
+			llvm_emit_cond_br(c, &len_match, memcmp_block, exit);
+			llvm_emit_block(c, memcmp_block);
+			LLVMValueRef bytes = array_base_size == 1 ? lhs_len.value : LLVMBuildMul(c->builder, lhs_len.value, llvm_const_size(c, array_base_size), "bytes");
+			BEValue cmp_res;
+			llvm_emit_memcmp(c, &cmp_res, lhs_value.value, rhs_value.value, bytes);
+			llvm_emit_int_comp_zero(c, &cmp_res, &cmp_res, binary_op);
+			LLVMBasicBlockRef match_block = c->current_block;
+			llvm_emit_br(c, exit);
+			llvm_emit_block(c, exit);
+			LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
+			llvm_new_phi(c, be_value, "slice_cmp_phi", type_bool, cmp_res.value, match_block, failure, no_match_block);
+			return;
+		}
+		default:
+			break;
+	}
+
 	LLVMBasicBlockRef no_match_block = c->current_block;
 	llvm_emit_cond_br(c, &len_match, value_cmp, exit);
 

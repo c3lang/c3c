@@ -90,8 +90,6 @@ fn TempAllocator*? TempAllocator.derive_allocator(&self, sz reserve = 0)
 {
 	if (!reserve) reserve = self.reserve_size;
 	sz remaining = self.capacity - self.used;
-	void* mem @noinit;
-	sz size @noinit;
 	if (self.min_size + reserve > remaining)
 	{
 		return self.derived = new_temp_allocator(self.backing_allocator, self.realloc_size, self.reserve_size, self.min_size, self.realloc_size)!;

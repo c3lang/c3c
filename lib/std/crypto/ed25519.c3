@@ -349,7 +349,7 @@ fn void F25519Int.reduce_carry(&s, uint carry)
 
 	carry *= 19;
 
-	foreach (i, &v : s)
+	foreach (&v : s)
 	{
 		carry += *v;
 		*v = (char)carry;

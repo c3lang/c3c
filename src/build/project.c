@@ -26,6 +26,9 @@ const char *project_default_keys[][2] = {
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
 		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
+		{"ios-min-version", "Set the minimum iOS version to compile for."},
+		{"ios-sdk", "Set the directory for the iOS SDK for cross compilation."},
+		{"ios-sdk-version", "Set the iOS SDK compiled for." },
 		{"langrev", "Version of the C3 language used."},
 		{"link-args", "Linker arguments for all targets."},
 		{"link-libc", "Link libc (default: true)."},
@@ -117,6 +120,9 @@ const char* project_target_keys[][2] = {
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
 		{"implicit-float", "Allow implicit use of floating point instructions. (default: true)"},
+		{"ios-min-version", "Set the minimum iOS version to compile for."},
+		{"ios-sdk", "Set the directory for the iOS SDK for cross compilation."},
+		{"ios-sdk-version", "Set the iOS SDK compiled for." },
 		{"langrev", "Version of the C3 language used."},
 		{"link-args", "Additional linker arguments for the target."},
 		{"link-args-override", "Linker arguments for this target, overriding global settings."},
@@ -502,11 +508,21 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->macos.sysroot = get_string(context, json, "macos-sdk", target->macos.sysroot);
 	if (!target->macos.sysroot) target->macos.sysroot = get_string(context, json, "macossdk", NULL);
 
+	// iossdk
+	target->ios.sysroot = get_string(context, json, "ios-sdk", target->ios.sysroot);
+	if (!target->ios.sysroot) target->ios.sysroot = get_string(context, json, "iossdk", NULL);
+
 	// macos-min-version
 	target->macos.min_version = get_string(context, json, "macos-min-version", target->macos.min_version);
 
+	// ios-min-version
+	target->ios.min_version = get_string(context, json, "ios-min-version", target->ios.min_version);
+
 	// macos-sdk-version
 	target->macos.sdk_version = get_string(context, json, "macos-sdk-version", target->macos.sdk_version);
+
+	// ios-sdk-version
+	target->ios.sdk_version = get_string(context, json, "ios-sdk-version", target->ios.sdk_version);
 
 	// Linux crt
 	target->linuxpaths.crt = get_string(context, json, "linux-crt", target->linuxpaths.crt);

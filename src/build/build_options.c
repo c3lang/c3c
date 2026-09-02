@@ -123,8 +123,9 @@ static void usage(bool full)
 		print_opt("--header-output <dir>", "Override header file output directory when building libraries.");
 		print_opt("--emit-llvm", "Emit LLVM IR as a .ll file per module.");
 		print_opt("--emit-asm", "Emit asm as a .s file per module.");
-		print_opt("--obj", "Emit object files. (Enabled by default)");
+		print_opt("--obj", "Emit object files, this is only valid for for `compile-only` (Enabled by default)");
 		print_opt("--no-obj", "Do not output object files, this is only valid for `compile-only`.");
+		print_opt("--keep-obj", "Do not delete object files after linking.");
 		print_opt("--no-headers", "Do not generate C headers when building a library.");
 		print_opt("--target <target>", "Compile for a particular architecture + OS target.");
 		print_opt("--threads <number>", "Set the number of threads to use for compilation.");
@@ -146,6 +147,8 @@ static void usage(bool full)
 		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
 		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
 		print_opt("--warn-builtin=<yes|no|error>", "Print warning when using builtin functions outside of the stdlib: yes, no, error.");
+		print_opt("--warn-unusedparam=<yes|no|error>", "Print warning when a parameter is not used after compile-time folding: yes, no, error.");
+		print_opt("--warn-unusedlocal=<yes|no|error>", "Print warning when a local is not used after compile-time folding: yes, no, error.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -231,6 +234,10 @@ static void usage(bool full)
 		print_opt("--macos-sdk <dir>", "Set the directory for the MacOS SDK for cross compilation.");
 		print_opt("--macos-min-version <ver>", "Set the minimum MacOS version to compile for.");
 		print_opt("--macos-sdk-version <ver>", "Set the MacOS SDK compiled for.");
+		PRINTF("");
+		print_opt("--ios-sdk <dir>", "Set the directory for the iOS SDK for cross compilation.");
+		print_opt("--ios-min-version <ver>", "Set the minimum iOS version to compile for.");
+		print_opt("--ios-sdk-version <ver>", "Set the iOS SDK compiled for.");
 		PRINTF("");
 		print_opt("--linux-libc=<host|gnu|musl>", "Set the libc to use on Linux, defaults to host.");
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
@@ -1101,6 +1108,16 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->warnings.recursive_contracts = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
+			if ((argopt = match_argopt("warn-unusedparam"))) // NOLINT
+			{
+				options->warnings.unused_parameter = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-unusedlocal"))) // NOLINT
+			{
+				options->warnings.unused_local = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
 			if ((argopt = match_argopt("warn-builtin"))) // NOLINT
 			{
 				options->warnings.builtin = parse_opt_select(WarningLevel, argopt, warnings);
@@ -1414,6 +1431,10 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if (match_longopt("obj")) // NOLINT
 			{
 				options->no_obj = false;
+				return;
+			}
+			if (match_longopt("keep-obj")) // NOLINT
+			{
 				options->keep_object_files = true;
 				return;
 			}
@@ -1582,6 +1603,12 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->macos.sysroot = unchecked_dir(options, next_arg());
 				return;
 			}
+			if (match_longopt("ios-sdk"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --ios-sdk needs a directory.");
+				options->ios.sysroot = unchecked_dir(options, next_arg());
+				return;
+			}
 			if (match_longopt("win-sdk"))
 			{
 				if (options->win.vs_dirs)
@@ -1634,10 +1661,22 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->macos.sdk_version = next_arg();
 				return;
 			}
+			if (match_longopt("ios-sdk-version"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --ios-sdk-version needs a version.");
+				options->ios.sdk_version = next_arg();
+				return;
+			}
 			if (match_longopt("macos-min-version"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --macos-min-version needs a version.");
 				options->macos.min_version = next_arg();
+				return;
+			}
+			if (match_longopt("ios-min-version"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --ios-min-version needs a version.");
+				options->ios.min_version = next_arg();
 				return;
 			}
 			if (match_longopt("output-dir"))
@@ -2184,6 +2223,8 @@ const char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[FREEBSD_X86] = "freebsd-x86",
 		[FREEBSD_X64] = "freebsd-x64",
 		[IOS_AARCH64] = "ios-aarch64",
+		[IOS_AARCH64_SIM] = "ios-aarch64-sim",
+		[IOS_X64_SIM] = "ios-x64-sim",
 		[LINUX_AARCH64] = "linux-aarch64",
 		[LINUX_RISCV32] = "linux-riscv32",
 		[LINUX_RISCV64] = "linux-riscv64",

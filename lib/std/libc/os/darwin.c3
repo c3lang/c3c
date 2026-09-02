@@ -42,6 +42,7 @@ struct Stat
 }
 
 extern fn int stat(ZString str, Stat* stat) @cname("stat64");
+extern fn int lstat(ZString str, Stat* stat) @cname("lstat64");
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
 

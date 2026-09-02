@@ -296,6 +296,8 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 		case FREEBSD_X86:
 		case FREEBSD_X64:
 		case IOS_AARCH64:
+		case IOS_AARCH64_SIM:
+		case IOS_X64_SIM:
 		case LINUX_AARCH64:
 		case LINUX_RISCV32:
 		case LINUX_RISCV64:
@@ -599,11 +601,14 @@ BUILD:
 	OVERRIDE_IF_SET(echo_prefix);
 	OVERRIDE_IF_SET(stack_probe_size);
 
-	OVERRIDE_IF_SET(macos.sysroot);
 	OVERRIDE_IF_SET(win.sdk);
 	OVERRIDE_IF_SET(win.vs_dirs);
+	OVERRIDE_IF_SET(macos.sysroot);
 	OVERRIDE_IF_SET(macos.min_version);
 	OVERRIDE_IF_SET(macos.sdk_version);
+	OVERRIDE_IF_SET(ios.sysroot);
+	OVERRIDE_IF_SET(ios.min_version);
+	OVERRIDE_IF_SET(ios.sdk_version);
 	OVERRIDE_IF_SET(linuxpaths.crt);
 	OVERRIDE_IF_SET(linuxpaths.crtbegin);
 	OVERRIDE_IF_SET(android.ndk_path);
@@ -635,6 +640,8 @@ BUILD:
 		case VALIDATION_LENIENT:
 			update_warning_if_not_set(&target->warnings.builtin, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.dead_code, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.unused_parameter, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.unused_local, WARNING_SILENT);
 			update_warning_if_not_set(&target->warnings.recursive_contracts, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.deprecation, WARNING_SILENT);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
@@ -644,6 +651,8 @@ BUILD:
 			target->validation_level = VALIDATION_STRICT;
 			FALLTHROUGH;
 		case VALIDATION_STRICT:
+			update_warning_if_not_set(&target->warnings.unused_parameter, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.unused_local, WARNING_SILENT);
 			update_warning_if_not_set(&target->warnings.builtin, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.dead_code, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.deprecation, WARNING_WARN);
@@ -658,6 +667,8 @@ BUILD:
 			update_warning_if_not_set(&target->warnings.recursive_contracts, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.unused_parameter, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.unused_local, WARNING_ERROR);
 			break;
 	}
 	update_warning(&target->warnings.builtin, options->warnings.builtin);
@@ -666,6 +677,8 @@ BUILD:
 	update_warning(&target->warnings.deprecation, options->warnings.deprecation);
 	update_warning(&target->warnings.method_visibility, options->warnings.method_visibility);
 	update_warning(&target->warnings.methods_not_resolved, options->warnings.methods_not_resolved);
+	update_warning(&target->warnings.unused_local, options->warnings.unused_local);
+	update_warning(&target->warnings.unused_parameter, options->warnings.unused_parameter);
 
 	if (options->keep_object_files)
 	{

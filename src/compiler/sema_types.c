@@ -250,7 +250,7 @@ INLINE bool sema_resolve_type_on_use(SemaContext *context, Decl *decl, TypeInfo 
 		case DECL_VAR:
 			if (decl->var.kind == VARDECL_PARAM_CT_TYPE || decl->var.kind == VARDECL_LOCAL_CT_TYPE)
 			{
-				decl->var.is_read = true;
+				decl_read(decl);
 				Expr *init_expr = decl->var.init_expr;
 				if (!init_expr)
 				{

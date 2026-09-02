@@ -766,6 +766,7 @@ typedef struct Decl_
 	bool is_template : 1;
 	bool is_templated : 1;
 	bool is_method_checked : 1;
+	bool is_used : 1;
 	union
 	{
 		void *backend_ref;
@@ -2736,8 +2737,10 @@ bool os_is_apple(OsType os_type);
 bool os_supports_stacktrace(OsType os_type);
 bool arch_is_wasm(ArchType type);
 
-const char *macos_sysroot(void);
-MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
+const char *darwin_sysroot(void);
+DarwinSDK *macos_sysroot_sdk_information(const char *sdk_path);
+DarwinSDK *ios_sysroot_sdk_information(const char *sdk_path, bool platform);
+const char *ios_cross_compile_library(bool simulator);
 const char *macos_cross_compile_library(void);
 WindowsSDK *windows_get_sdk(void);
 // This string may be in the scratch buffer
@@ -3828,6 +3831,31 @@ INLINE bool decl_is_user_defined_type(Decl *decl)
 			| (kind == DECL_ENUM) | (kind == DECL_TYPE_ALIAS) | (kind == DECL_TYPEDEF)
 			| (kind == DECL_INTERFACE)
 			;
+}
+
+INLINE void decl_used(Decl *decl)
+{
+	decl->is_used = true;
+}
+INLINE void decl_read(Decl *decl)
+{
+	decl->is_used = true;
+	assert(decl->decl_kind == DECL_VAR);
+	decl->var.is_read = true;
+}
+
+INLINE void decl_write(Decl *decl)
+{
+	assert(decl->decl_kind == DECL_VAR);
+	decl->is_used = true;
+	decl->var.is_written = true;
+}
+
+INLINE void decl_addr(Decl *decl)
+{
+	assert(decl->decl_kind == DECL_VAR);
+	decl->is_used = true;
+	decl->var.is_addr = true;
 }
 
 INLINE Decl *decl_flatten(Decl *decl)

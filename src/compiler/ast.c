@@ -191,6 +191,7 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceLocId loc)
 	Decl *decl = decl_calloc();
 	decl->decl_kind = DECL_VAR;
 	decl->loc = loc;
+	decl->is_used = true;
 	decl->name = NULL;
 	decl->var.kind = kind;
 	decl->var.is_temp = true;

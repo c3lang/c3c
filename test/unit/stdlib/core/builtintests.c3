@@ -383,3 +383,13 @@ fn void test_fault_short_name_comp() @test
 }
 
 
+fn void test_builtin_mod() @test
+{
+	uint a = 10;
+	uint b = 3;
+	assert($$mod(a, b) == 1);
+
+	int c = -10;
+	int d = 3;
+	assert($$mod(c, d) == -1);
+}

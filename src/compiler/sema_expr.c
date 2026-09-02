@@ -908,13 +908,13 @@ bool sema_expr_check_assign(SemaContext *context, Expr *expr, bool *failed_ref)
 	if (expr->expr_kind == EXPR_SUBSCRIPT)
 	{
 		inner = exprptr(expr->subscript_expr.expr);
-		if (inner->expr_kind == EXPR_IDENTIFIER) inner->ident_expr->var.is_written = true;
+		if (inner->expr_kind == EXPR_IDENTIFIER) decl_write(inner->ident_expr);
 		goto CHECK_INNER;
 	}
 	if (expr->expr_kind == EXPR_BITACCESS || expr->expr_kind == EXPR_ACCESS_RESOLVED) expr = expr->access_resolved_expr.parent;
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{
-		expr->ident_expr->var.is_written = true;
+		decl_write(expr->ident_expr);
 	}
 	if (expr->expr_kind != EXPR_UNARY) return true;
 	inner = expr->inner_expr;
@@ -1370,10 +1370,12 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	sema_display_deprecated_warning_on_use(context, decl, expr->loc);
 
 	unit_register_external_symbol(context, decl);
+	decl_used(decl);
 	decl = decl_flatten(decl);
+	decl_used(decl);
 	if (decl->decl_kind == DECL_VAR)
 	{
-		decl->var.is_read = true;
+		decl_read(decl);
 		switch (decl->var.kind)
 		{
 			case VARDECL_CONST:
@@ -1437,7 +1439,7 @@ static inline bool sema_expr_resolve_ct_identifier(SemaContext *context, Expr *e
 	ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
 	ASSERT_SPAN(expr, decl->resolve_status == RESOLVE_DONE);
 
-	decl->var.is_read = true;
+	decl_read(decl);
 	expr->type = decl->type;
 	expr->ident_expr = decl;
 	expr->expr_kind = EXPR_IDENTIFIER;
@@ -1802,6 +1804,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDeclContext *c
 			success = sema_analyse_parameter(new_context, arg, param, callee->definition, optional, no_match_ref,
 											 callee->macro, false);
 		}
+		success = success && sema_scope_check_locals(context, old_scope);
 		SCOPE_END;
 		context_switch_stat_pop(new_context, switch_state);
 		sema_context_destroy(&default_context);
@@ -2043,10 +2046,10 @@ INLINE Type *sema_get_va_type(SemaContext *context, Expr *expr, Variadic variadi
 			expr = copy_expr_single(expr);
 			if (!sema_analyse_expr_rvalue(context, expr)) return poisoned_type;
 		}
-		return type_flatten(expr->type);
+		return expr->type;
 	}
 	assert(expr->expr_kind == EXPR_MAKE_ANY);
-	return type_flatten(expr->make_any_expr.typeid->const_expr.typeid);
+	return expr->make_any_expr.typeid->const_expr.typeid;
 }
 
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDeclContext *callee, Expr *call, bool *optional,
@@ -2500,8 +2503,9 @@ NEXT_FLAG:
 		if (idx == vacount) goto TOO_FEW_ARGUMENTS;
 		expr = vaargs[idx];
 		if (!expr) goto TOO_FEW_ARGUMENTS;
-		Type *type = sema_get_va_type(context, expr, variadic);
-		if (!type_ok(type)) return false;
+		Type *type_original = sema_get_va_type(context, expr, variadic);
+		if (!type_ok(type_original)) return false;
+		Type *type = type_flatten(type_original);
 
 		// Possible variable width
 		if (c == '*')
@@ -2515,8 +2519,10 @@ NEXT_FLAG:
 			if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 			expr = vaargs[idx];
 			if (!expr) goto TOO_FEW_ARGUMENTS;
-			type = sema_get_va_type(context, expr, variadic);
+			type_original = sema_get_va_type(context, expr, variadic);
+			type = type_flatten(type_original);
 			if (!type_ok(type)) return false;
+
 		}
 		else
 		{
@@ -2534,14 +2540,15 @@ NEXT_FLAG:
 			{
 				if (!type_is_integer(type))
 				{
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer for the format width.");
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer for the format width, not %s.", type_quoted_error_string(type_original));
 				}
 				if (++i == (int)len) goto UNEXPECTED_END;
 				c = data[i];
 				if (++idx == vacount) goto TOO_FEW_ARGUMENTS;
 				expr = vaargs[idx];
 				if (!expr) goto TOO_FEW_ARGUMENTS;
-				type = sema_get_va_type(context, expr, variadic);
+				type_original = sema_get_va_type(context, expr, variadic);
+				type = type_flatten(type);
 				if (!type_ok(type)) return false;
 			}
 			else
@@ -2564,7 +2571,7 @@ NEXT_FLAG:
 			case 'c':
 				if (!type_is_integer(type))
 				{
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer here.");
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer here, but the type was %s.", type_quoted_error_string(type_original));
 				}
 				goto NEXT;
 			case 'd':
@@ -2585,22 +2592,22 @@ NEXT_FLAG:
 				{
 					if (type->type_kind == TYPE_ENUM)
 					{
-						RETURN_SEMA_ERROR(vaargs[idx], "An enum cannot directly be turned into a number. Use '.ordinal' to convert it to its value.", type_quoted_error_string(type));
+						RETURN_SEMA_ERROR(vaargs[idx], "An enum cannot directly be turned into a number. Use '.ordinal' to convert it to its value.", type_quoted_error_string(type_original));
 					}
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected a number here, but was %s", type_quoted_error_string(type));
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a number here, but it was a value of type %s.", type_quoted_error_string(type_original));
 				}
 				goto NEXT;
 			case 'p':
 				if (!type_is_pointer_type(type) && !type_is_integer(type))
 				{
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer here.");
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer here, but it was a value of type %s.", type_quoted_error_string(type_original));
 				}
 				goto NEXT;
 			case 'H':
 			case 'h':
 				if (!type_flat_is_valid_for_arg_h(type))
 				{
-					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer, char array or slice here.");
+					RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer, char array or slice here, but the type was %s.", type_quoted_error_string(type_original));
 				}
 				goto NEXT;
 			case 'u':
@@ -2628,7 +2635,7 @@ NO_MATCH_REF:
 UNEXPECTED_END:
 	RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Unexpected end of formatting string mid format declaration.");
 TOO_FEW_ARGUMENTS:
-	RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too few arguments provided for the formatting string.");
+	RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too few arguments were provided for the formatting string.");
 }
 
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr)
@@ -3599,7 +3606,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 		}
 		sema_context_pop_ct_stack(context, ct_context);
 	}
-	SCOPE_END;
+	SCOPE_END_CHECK;
 
 	return true;
 
@@ -9694,7 +9701,7 @@ ON_FAILED:
 static inline const char *sema_addr_may_take_of_var(Expr *expr, Decl *decl)
 {
 	if (decl->decl_kind != DECL_VAR) return "This is not a regular variable.";
-	decl->var.is_addr = true;
+	decl_addr(decl);
 	bool is_void = type_flatten(decl->type) == type_void;
 	switch (decl->var.kind)
 	{
@@ -11499,7 +11506,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		// Because we cannot check if the parameter is used before everything, set them all as read.
 		FOREACH(Decl *, d, ct_lambda_parameters)
 		{
-			d->var.is_read = true;
+			decl_read(d);
 		}
 		decl_flatten(decl)->is_external_visible = true;
 		vec_add(unit->module->lambdas_to_evaluate, decl);
@@ -12750,59 +12757,64 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr, bool *failed_ref
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 {
-	if (expr->expr_kind == EXPR_EXPRESSION_LIST)
+	switch (expr->expr_kind)
 	{
-		FOREACH(Expr *, expr_element, expr->expression_list)
+		case EXPR_EXPRESSION_LIST:
 		{
-			if (!sema_expr_check_discard(context, expr_element)) return false;
-		}
-		return true;
-	}
-	if (expr->expr_kind == EXPR_DECL) return true;
-	if (expr->expr_kind == EXPR_SUBSCRIPT_ASSIGN || expr->expr_kind == EXPR_SLICE_ASSIGN) return true;
-	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator >= BINARYOP_ASSIGN) return true;
-	if (expr->expr_kind == EXPR_UNARY || expr->expr_kind == EXPR_POST_UNARY)
-	{
-		switch (expr->unary_expr.operator)
-		{
-			case UNARYOP_DEC:
-			case UNARYOP_INC:
-				return true;
-			default:
-				break;
-		}
-	}
-	if (expr->expr_kind == EXPR_MACRO_BLOCK)
-	{
-		if (expr->macro_block.is_must_use)
-		{
-			if (expr->macro_block.is_optional_return)
+			FOREACH(Expr *, expr_element, expr->expression_list)
 			{
-				RETURN_SEMA_ERROR(expr, "The macro returns %s, which is an optional and must be handled. "
-										"You can either assign it to a variable, rethrow it using '!', "
-										"panic with '!!', use if-catch etc. You can also silence the error using a void cast (e.g. '(void)the_call()') to ignore the error.",
-								  type_quoted_error_string(expr->type));
+				if (!sema_expr_check_discard(context, expr_element)) return false;
 			}
-			RETURN_SEMA_ERROR(expr, "The called macro is marked `@nodiscard` meaning the result should be kept. You can still discard it using a void cast (e.g. '(void)the_call()') if you want.");
+			return true;
 		}
-		if (expr->macro_block.had_optional_arg) goto ERROR_ARGS;
-		return true;
-	}
-	if (expr->expr_kind == EXPR_CALL)
-	{
-		if (expr->call_expr.must_use)
-		{
-			if (expr->call_expr.is_optional_return)
+		case EXPR_DECL:
+		case EXPR_SUBSCRIPT_ASSIGN:
+		case EXPR_SLICE_ASSIGN:
+			return true;
+		case EXPR_BINARY:
+			if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return true;
+			break;
+		case EXPR_UNARY:
+		case EXPR_POST_UNARY:
+			switch (expr->unary_expr.operator)
 			{
-				RETURN_SEMA_ERROR(expr, "The function returns %s, which is an optional and must be handled. "
-										"You can either assign it to a variable, rethrow it using '!', "
-										"panic with '!!', use if-catch etc. You can also silence the error using a void cast (e.g. '(void)the_call()') to ignore the error.",
-										type_quoted_error_string(expr->type));
+				case UNARYOP_DEC:
+				case UNARYOP_INC:
+					return true;
+				default:
+					break;
 			}
-			RETURN_SEMA_ERROR(expr, "The called function is marked `@nodiscard` meaning the result should be kept. You can still discard it using a void cast (e.g. '(void)the_call()') if you want.");
-		}
-		if (expr->call_expr.has_optional_arg) goto ERROR_ARGS;
-		return true;
+			break;
+		case EXPR_MACRO_BLOCK:
+			if (expr->macro_block.is_must_use)
+			{
+				if (expr->macro_block.is_optional_return)
+				{
+					RETURN_SEMA_ERROR(expr, "The macro returns %s, which is an optional and must be handled. "
+											"You can either assign it to a variable, rethrow it using '!', "
+											"panic with '!!', use if-catch etc. You can also silence the error using a void cast (e.g. '(void)the_call()') to ignore the error.",
+									  type_quoted_error_string(expr->type));
+				}
+				RETURN_SEMA_ERROR(expr, "The called macro is marked `@nodiscard` meaning the result should be kept. You can still discard it using a void cast (e.g. '(void)the_call()') if you want.");
+			}
+			if (expr->macro_block.had_optional_arg) goto ERROR_ARGS;
+			return true;
+		case EXPR_CALL:
+			if (expr->call_expr.must_use)
+			{
+				if (expr->call_expr.is_optional_return)
+				{
+					RETURN_SEMA_ERROR(expr, "The function returns %s, which is an optional and must be handled. "
+											"You can either assign it to a variable, rethrow it using '!', "
+											"panic with '!!', use if-catch etc. You can also silence the error using a void cast (e.g. '(void)the_call()') to ignore the error.",
+											type_quoted_error_string(expr->type));
+				}
+				RETURN_SEMA_ERROR(expr, "The called function is marked `@nodiscard` meaning the result should be kept. You can still discard it using a void cast (e.g. '(void)the_call()') if you want.");
+			}
+			if (expr->call_expr.has_optional_arg) goto ERROR_ARGS;
+			return true;
+		default:
+			break;
 	}
 	if (!IS_OPTIONAL(expr))
 	{

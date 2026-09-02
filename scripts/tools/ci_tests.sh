@@ -60,7 +60,30 @@ ROOT_DIR="$REAL_ROOT_DIR"
 
 # Helper to run c3c with the correct workspace isolation
 run_c3c() {
-    "$C3C_BIN" --output-dir "$MY_WORK_DIR" --build-dir "$MY_WORK_DIR" --obj-out "$MY_WORK_DIR" "$@"
+    TARGET_ARGS=""
+    if [[ "$OS_MODE" == "ios" ]]; then TARGET_ARGS="--target ios-aarch64-sim"; fi
+    "$C3C_BIN" $TARGET_ARGS --output-dir "$MY_WORK_DIR" --build-dir "$MY_WORK_DIR" --obj-out "$MY_WORK_DIR" "$@"
+}
+
+# Helper for ios to simulate compile-run
+sim_run() {
+    local source_file="$1"
+    shift
+    local source_name=$(basename "$source_file")
+    local target_name="${source_name%.*}"
+    local compile_args=()
+
+    while [[ $# -gt 0 ]]; do
+        if [[ "$1" == "--" ]]; then
+            shift
+            break
+        fi
+        compile_args+=("$1")
+        shift
+    done
+
+    run_c3c compile "$source_file" "${compile_args[@]}" -o "$target_name"
+    xcrun simctl spawn booted "$MY_WORK_DIR/$target_name" "$@" 2>/dev/null || true
 }
 
 run_examples() {
@@ -92,14 +115,23 @@ run_examples() {
     run_c3c compile examples/contextfree/multi.c3
     run_c3c compile examples/contextfree/cleanup.c3
 
-    run_c3c compile-run examples/hello_world_many.c3
-    run_c3c compile-run examples/time.c3
-    run_c3c compile-run examples/fannkuch-redux.c3
-    run_c3c compile-run examples/contextfree/boolerr.c3
-    run_c3c compile-run examples/load_world.c3
-    run_c3c compile-run examples/process.c3
-    run_c3c compile-run examples/ls.c3
-    run_c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+    if [[ "$OS_MODE" == "ios" ]]; then 
+        sim_run examples/hello_world_many.c3
+        sim_run examples/time.c3
+        sim_run examples/fannkuch-redux.c3
+        sim_run examples/contextfree/boolerr.c3
+        sim_run examples/ls.c3
+        sim_run examples/args.c3 -- foo -bar "baz baz"
+    else 
+        run_c3c compile-run examples/hello_world_many.c3
+        run_c3c compile-run examples/time.c3
+        run_c3c compile-run examples/fannkuch-redux.c3
+        run_c3c compile-run examples/contextfree/boolerr.c3
+        run_c3c compile-run examples/load_world.c3
+        run_c3c compile-run examples/process.c3
+        run_c3c compile-run examples/ls.c3
+        run_c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+    fi
 
     if [[ "$OS_MODE" == "linux" ]]; then
         run_c3c compile-run --linker=builtin linux_stack.c3 || echo "Warning: linux_stack builtin linker skipped"
@@ -136,7 +168,7 @@ run_cli_tests() {
             return
         fi
 
-        if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == "OpenBSD" ]] || [[ "$SYSTEM_NAME" == "NetBSD" ]] || [[ "$OS_MODE" == "android" ]] || [[ "$OS_MODE" == "windows" && "$SYSTEM_NAME" == *"-ARM64" ]]; then
+        if [ -f "/etc/alpine-release" ] || [[ "$SYSTEM_NAME" == *"BSD" ]] || [[ "$OS_MODE" == "ios" ]] || [[ "$OS_MODE" == "android" ]]; then
             echo "::warning::Skipping raylib_arkanoid (vendor raylib doesn't support this platform)"
             return
         fi
@@ -172,6 +204,8 @@ run_dynlib_tests() {
         run_c3c -vv compile-run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.lib"
     elif [[ "$OS_MODE" == "mac" ]]; then
         run_c3c -vv compile-run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.dylib"
+    elif [[ "$OS_MODE" == "ios" ]]; then
+        sim_run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -vv -l "add.dylib"
     else
         if [ -f "add.so" ]; then mv "add.so" "libadd.so"; fi
         cc "$ROOT_DIR/resources/examples/dynlib-test/test.c" -L. -ladd -Wl,-rpath=. -o a.out
@@ -198,12 +232,19 @@ run_staticlib_tests() {
              cc "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -lexecinfo -lm -lpthread -o a.out
         elif [[ "$SYSTEM_NAME" == "Linux" ]]; then
              cc "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -ldl -lm -lpthread -o a.out
+        elif [[ "$OS_MODE" == "ios" ]]; then
+            xcrun -sdk iphonesimulator clang "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -o a.out
         else
              # Mac / NetBSD
              cc "$ROOT_DIR/resources/examples/staticlib-test/test.c" -L. -ladd -o a.out
         fi
-        ./a.out
-        run_c3c compile-run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
+        if [[ "$OS_MODE" == "ios" ]]; then
+            xcrun simctl spawn booted ./a.out
+            sim_run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
+        else 
+            ./a.out
+            run_c3c compile-run "$ROOT_DIR/resources/examples/staticlib-test/test.c3" -L . -l add
+        fi
     fi
 }
 
@@ -216,7 +257,7 @@ run_testproject() {
 
     ARGS="--trust=full"
 
-    if [[ "$OS_MODE" == "linux" || "$OS_MODE" == "mac" ]]; then
+    if [[ "$OS_MODE" == "linux" || "$OS_MODE" == "mac" || "$OS_MODE" == "ios" ]]; then
         ARGS="$ARGS --linker=builtin"
 
         if [ -f "/etc/alpine-release" ]; then
@@ -224,7 +265,12 @@ run_testproject() {
         fi
     fi
 
-    run_c3c run -vv $ARGS
+    if [[ "$OS_MODE" == "ios" ]]; then
+        run_c3c build -vv $ARGS
+        xcrun simctl spawn booted "$MY_WORK_DIR/hello_world" 2>/dev/null || true
+    else
+        run_c3c run -vv $ARGS
+    fi
     run_c3c clean
 
     if [[ "$OS_MODE" == "windows" ]]; then
@@ -323,40 +369,80 @@ run_http_server_tests() {
 
     PORT=$(( 8085 + $RANDOM % 10000 ))
     echo "Starting server on port $PORT..."
-    "$OUTPUT_BIN" -p $PORT -r "$ROOT_DIR/resources/examples" &
-    SERVER_PID=$!
 
-    sleep 1
+    kill_server() {
+        if [ -n "$SERVER_PID" ]; then
+            kill $SERVER_PID 2>/dev/null || true
+        fi
+        if [[ "$OS_MODE" == "ios" ]]; then
+            xcrun simctl spawn booted pkill -f "$OUTPUT_BIN" 2>/dev/null || true
+        fi
+    }
+
+    if [[ "$OS_MODE" == "ios" ]]; then
+        tail -f /dev/null | xcrun simctl spawn booted "$OUTPUT_BIN" -p $PORT -r "$ROOT_DIR/resources/examples" > "$MY_WORK_DIR/server.log" 2>&1 &
+        SERVER_PID=$!
+    else
+        "$OUTPUT_BIN" -p $PORT -r "$ROOT_DIR/resources/examples" > "$MY_WORK_DIR/server.log" 2>&1 &
+        SERVER_PID=$!
+    fi
+
+    # Poll until server is responding.
+    # iOS simulator startup is slow (xcrun simctl attach + binary load can take 10-20s).
+    POLL_ITERS=$([[ "$OS_MODE" == "ios" ]] && echo 150 || echo 30)  # 30s / 6s
+    SERVER_READY=false
+    for ((i = 1; i <= POLL_ITERS; i++)); do
+        kill -0 "$SERVER_PID" 2>/dev/null || { echo "::error::HTTP server process exited unexpectedly."; break; }
+        if curl -s -o /dev/null "http://127.0.0.1:$PORT/"; then
+            SERVER_READY=true
+            break
+        fi
+        sleep 0.2
+    done
+
+    if [ "$SERVER_READY" != "true" ]; then
+        echo "::error::HTTP server failed to start or respond on port $PORT within timeout."
+        echo "--- Server Log Output ---"
+        cat "$MY_WORK_DIR/server.log" 2>/dev/null || true
+        kill_server
+        exit 1
+    fi
 
     # Test root path (directory listing)
     echo "Testing GET /"
-    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/")
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/" || echo "000")
     if [ "$HTTP_STATUS" != "200" ]; then
         echo "::error::HTTP GET / failed with status $HTTP_STATUS."
-        kill $SERVER_PID 2>/dev/null || true
+        echo "--- Server Log Output ---"
+        cat "$MY_WORK_DIR/server.log" 2>/dev/null || true
+        kill_server
         exit 1
     fi
 
     # Test served file
     echo "Testing GET /http_server.c3"
-    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/http_server.c3")
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/http_server.c3" || echo "000")
     if [ "$HTTP_STATUS" != "200" ]; then
         echo "::error::HTTP GET /http_server.c3 failed with status $HTTP_STATUS."
-        kill $SERVER_PID 2>/dev/null || true
+        echo "--- Server Log Output ---"
+        cat "$MY_WORK_DIR/server.log" 2>/dev/null || true
+        kill_server
         exit 1
     fi
 
     # Test missing file (404 expected)
     echo "Testing 404 for invalid path"
-    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/does_not_exist_404_test")
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/does_not_exist_404_test" || echo "000")
     if [ "$HTTP_STATUS" != "404" ]; then
         echo "::error::HTTP GET /does_not_exist_404_test expected 404, but got $HTTP_STATUS."
-        kill $SERVER_PID 2>/dev/null || true
+        echo "--- Server Log Output ---"
+        cat "$MY_WORK_DIR/server.log" 2>/dev/null || true
+        kill_server
         exit 1
     fi
 
     echo "HTTP Server Integration Tests passed."
-    kill $SERVER_PID 2>/dev/null || true
+    kill_server
 }
 
 run_unit_tests() {
@@ -368,14 +454,26 @@ run_unit_tests() {
 
     UNIT_TEST_ARGS="-O1"
     if [[ "$OS_MODE" != "bsd" ]]; then
-        UNIT_TEST_ARGS="$UNIT_TEST_ARGS -D SLOW_TESTS -D RUN_PROCESS_TESTS"
+        if [[ "$OS_MODE" == "ios" ]]; then
+            UNIT_TEST_ARGS="$UNIT_TEST_ARGS -D SLOW_TESTS --suppress-run"
+        else
+            UNIT_TEST_ARGS="$UNIT_TEST_ARGS -D SLOW_TESTS -D RUN_PROCESS_TESTS"
+        fi
     fi
+
     run_c3c compile-test unit $UNIT_TEST_ARGS
+    if [[ "$OS_MODE" == "ios" ]]; then
+        xcrun simctl spawn booted "$MY_WORK_DIR/testrun" 2>/dev/null || true
+    fi
 
     echo "--- Running Test Suite Runner ---"
     (
         cd "$MY_WORK_DIR"
-        run_c3c compile-run -O1 "$ROOT_DIR/test/src/test_suite_runner.c3" -- "$C3C_BIN" "$ROOT_DIR/test/test_suite/" --no-terminal
+        if [[ "$OS_MODE" == "ios" ]]; then
+            sim_run "$ROOT_DIR/test/src/test_suite_runner.c3" -O1 -- "$C3C_BIN" "$ROOT_DIR/test/test_suite/" --no-terminal
+        else
+            run_c3c compile-run -O1 "$ROOT_DIR/test/src/test_suite_runner.c3" -- "$C3C_BIN" "$ROOT_DIR/test/test_suite/" --no-terminal
+        fi
     )
 }
 

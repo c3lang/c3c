@@ -28,7 +28,9 @@
 #define SCOPE_START(span__) SCOPE_START_WITH_FLAGS(SCOPE_NONE, span__)
 #define SCOPE_START_WITH_FLAGS(flags, span__) do { DynamicScope old_scope = context->active_scope; context_change_scope_with_flags(context, flags, span__);
 #define SCOPE_START_WITH_LABEL(label, span__) do { DynamicScope old_scope = context->active_scope; context_change_scope_for_label(context, label, span__);
-#define SCOPE_END ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = old_scope; } while(0)
+#define SCOPE_END ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); success = success && sema_scope_check_locals(context, old_scope); context->active_scope = old_scope; } while(0)
+#define SCOPE_END_CHECK ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); if (!sema_scope_check_locals(context, old_scope)) return false; context->active_scope = old_scope; } while(0)
+#define SCOPE_END_UNCHECKED ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = old_scope; } while(0)
 #define SCOPE_POP_ERROR() ((bool)(context->active_scope = old_scope, false))
 #define SCOPE_ERROR_END_OUTER() do { context->active_scope = stored_scope; } while(0)
 #define PUSH_Y(ast, X) JumpTarget _old_##X = context->X##_jump; context->X##_jump = (JumpTarget) { ast, context->active_scope.defer_last }
@@ -64,6 +66,7 @@ void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
 int sema_context_push_ct_stack(SemaContext *context);
 void sema_context_pop_ct_stack(SemaContext *context, int old_state);
+bool sema_scope_check_locals(SemaContext *context, DynamicScope old_scope);
 
 bool sema_analyse_function_body(SemaContext *context, Decl *func, int macro_depth_start);
 bool sema_analyse_contracts(SemaContext *context, Decl *contracts, Expr **requires, Expr **ensures, AstId **asserts, SourceLocId call_loc, bool *has_ensures, SourceLocId *arg_loc_map);

@@ -30,4 +30,5 @@ struct Stat
 }
 
 extern fn CInt stat(ZString path, Stat* stat);
+extern fn CInt lstat(ZString path, Stat* stat);
 extern fn CInt emscripten_num_logical_cores();
