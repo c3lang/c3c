@@ -1692,11 +1692,25 @@ void **llvm_gen(Module** modules, int module_count)
 			vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
 		}
 		int count = vec_size(gen_contexts);
-		for (int i = 1; i < count; i++)
+		while (count > 1)
 		{
-			GenContext *other = gen_contexts[i];
-			LLVMLinkModules2(first->module, other->module);
-			gencontext_destroy(other);
+			int new_count = 0;
+			for (int i = 0; i < count; i += 2)
+			{
+				if (i + 1 < count)
+				{
+					GenContext *dst = gen_contexts[i];
+					GenContext *src = gen_contexts[i + 1];
+					LLVMLinkModules2(dst->module, src->module);
+					gencontext_destroy(src);
+					gen_contexts[new_count++] = dst;
+				}
+				else
+				{
+					gen_contexts[new_count++] = gen_contexts[i];
+				}
+			}
+			count = new_count;
 		}
 		vec_resize(gen_contexts, 1);
 		return (void**)gen_contexts;
