@@ -889,7 +889,7 @@ static void init_asm_x86(PlatformTarget* target)
 		reg_register_list(target, x86_low_byte_regs, 8, ASM_REG_INT, ARG_BITS_8, X86_RAX);
 		reg_register_list(target, x86_float_regs, 8, ASM_REG_FLOAT, ARG_BITS_80, X86_ST0);
 		reg_register_list(target, x86_xmm_regs, 8, ASM_REF_FVEC, ARG_BITS_128, X86_MM0);
-		reg_register_list(target, x86_control_regs, 3 , ASM_REG_INT, ARG_BITS_32, X86_CR2);
+		reg_register_list(target, x86_control_regs, 4 , ASM_REG_INT, ARG_BITS_32, X86_CR0);
 	}
 	else
 	{
@@ -901,10 +901,9 @@ static void init_asm_x86(PlatformTarget* target)
 		reg_register_list(target, x86_xmm_regs, 16, ASM_REF_FVEC, ARG_BITS_128, X86_XMM0);
 		reg_register_list(target, x86_ymm_regs, 16, ASM_REF_FVEC, ARG_BITS_256, X86_XMM0);
 		reg_register_list(target, x86_zmm_regs, 16, ASM_REF_FVEC, ARG_BITS_512, X86_XMM0);
-		reg_register_list(target, x86_control_regs, 3, ASM_REG_INT, ARG_BITS_64, X86_CR2);
+		reg_register_list(target, x86_control_regs, 4, ASM_REG_INT, ARG_BITS_64, X86_CR0);
 	}
 
-	reg_register(target, x86_control_regs[3], ASM_REG_INT, ARG_BITS_32, X86_CR0);
 }
 
 bool asm_is_supported(ArchType arch)

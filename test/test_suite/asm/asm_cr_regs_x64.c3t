@@ -1,0 +1,18 @@
+// #target: linux-x64
+
+module test;
+
+fn void main(String[] args)
+{
+	asm
+	{
+		movq $rax, $cr0;
+		movq $rax, $cr2;
+		movq $rax, $cr3;
+		movq $rax, $cr4;
+	};
+}
+
+/* #expect: test.ll
+
+"movq %cr0, %rax\0Amovq %cr2, %rax\0Amovq %cr3, %rax\0Amovq %cr4, %rax\0A", "~{rax},~{flags},~{dirflag},~{fspr}"
