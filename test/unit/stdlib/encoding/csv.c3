@@ -1,4 +1,4 @@
-module csv_test @test;
+module std::encoding::csv_test @test;
 import std::encoding::csv;
 import std::io;
 
@@ -24,13 +24,13 @@ fn void line_endings()
 		CsvReader r;
 		r.tinit((ByteReader) { }.init(test), ",", false, false)!!;
 
-		CsvRow row = r.read_row()!!;
+		CsvRow row = *r.read_row()!!;
 		test::@check(row.len() != 2, "Line ending was not correctly handled on case %s", test.tescape());
 		r.free();
 
 		r.tinit((ByteReader) { }.init(test), ",", false, true)!!;
 
-		row = r.read_row()!!;
+		row = *r.read_row()!!;
 		test::@check(row.len() == 2, "Line ending was not correctly handled on case %s", test.tescape());
 	}
 }
@@ -101,6 +101,18 @@ fn void handle_utf8_dom()
 	test::@check(r.headers.get_col(0).len == 4, "Incorrectly stripped utf8 DOM %s", r.headers.get_col(0).tescape());
 }
 
+fn void trim_whitespace()
+{
+	String csv = "name,age,nickname\r\n  Alice  ,30,\"  Alice the Goat\"  ";
+
+	CsvReader r;
+	r.tinit((ByteReader) { }.init(csv))!!;
+
+	CsvRow *row = r.read_row()!!;
+	test::@check(row.get_col(0) == "Alice", "Incorrectly stripped whitespace of non-string entry &s", row.get_col(0).tescape());
+	test::@check(row.get_col(2) == "\"  Alice the Goat\"", "Incorrectly stripped whitespace of string entry &s", row.get_col(0).tescape());
+}
+
 fn void csv_each_row()
 {
 	TestCase[] tests = {
@@ -117,11 +129,6 @@ fn void csv_each_row()
 		{
 			"aaa,bbb,ccc\n111,222,333",
 			{ "aaa", "bbb", "ccc", "111", "222", "333" },
-			","
-		},
-		{
-			"aaa , bbb\t ,ccc\r\n 111,222,333\r\n",
-			{ "aaa ", " bbb\t ", "ccc", " 111", "222", "333" },
 			","
 		},
 	};
@@ -168,7 +175,7 @@ fn void csv_row()
 		t.sep,
 		false,
 	)!!;
-	CsvRow row = r.read_row()!!;
+	CsvRow row = *r.read_row()!!;
 	assert(row.list.len == t.want.len, "not enough records found");
 	for (int i = 0; i < row.list.len; i++)
 	{

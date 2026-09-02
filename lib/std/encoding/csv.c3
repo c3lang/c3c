@@ -1,13 +1,49 @@
+<*
+ Csv file parser for C3 standard library.
+
+ Features:
+ - Support for single or multi-character delimiter.
+ - Support for non spec CRLF line endings when setting `allow_non_spec_line_endings` to `true`.
+ - Support for csv files without header row by setting `has_header` to `false`.
+ - Handling of strings in the data.
+ - Handling of double quotes escape in strings `""` --> `"`.
+ - Handling of utf8 DOM at the start of the file.
+ - Checking for duplicate or emtpy entries in csv header.
+
+ Limitations:
+ - Unable to correctly parse non utf8 encoded csv files.
+ - Unable to parse utf16 or utf32 files.
+
+ API:
+ - `CsvReader`:	Struct containing all information needed for parsing, needs to be initialized.
+ - `CsvRow`: 	Struct containing the row data from an csv, should only be obtained from function returns.
+ - `load`:		Creates CsvReader ready to be used for parsing.
+ - `tload`:		Creates CsvReader using the `tmem` allocator ready to be used for parsing.
+ - `@each_row`:	Performes the body on every row in the csv file.
+
+ Methods:
+ - `CsvReader.init`:		Initializes the CsvReader to be ready for parsing.
+ - `CsvReader.tinit`:		Initializes the CsvReader with the `tmem` allocator to be ready for parsing.
+ - `CsvReader.free`:		Frees the allocated memory associated with the CsvReader.
+ - `CsvReader.read_row`:	Reads a row of the csv file and returns the pointer to the corresponding CsvRow.
+ - `CsvReader.skip_row`:	Reads a row of the csv file and does not return the row.
+ - `CsvReader.@each_row`:	Performes the body on every row in the csv file.
+
+ - `CsvRow.to_format`:		Formats the row data for printing.
+ - `CsvRow.len`:			Returns the amount of csv entries in the row.
+ - `CsvRow.get_col`:		Returns the entry at the provided column number.
+ - `CsvRow.free`:			Frees the row entries and the raw row string associated with it.
+*>
 module std::encoding::csv;
 import std::io;
 
-faultdef INCONSISTANT_ROW_LENGTH, NON_UNIQUE_ENTRY, INCORRECT_LINE_ENDING, EMPTY_HEADER_ENTRY;
+excuse INCONSISTANT_ROW_LENGTH, NON_UNIQUE_ENTRY, INCORRECT_LINE_ENDING, EMPTY_HEADER_ENTRY;
 
 struct CsvReader
 {
 	InStream stream;
 	Allocator allocator;
-	CsvRow headers;
+	CsvRow* headers;
 	String delimiter;
 	bitstruct flags : char
 	{
@@ -127,7 +163,7 @@ fn void? CsvReader.init(
 *>
 fn void CsvReader.free(&self)
 {
-	if (self.headers.len()) self.headers.free();
+	if (self.headers) self.headers.free();
 	self.allocator = null;
 }
 
@@ -138,6 +174,7 @@ fn sz? CsvRow.to_format(&self, Formatter* f) @dynamic
 
 fn sz CsvRow.len(&self) @operator(len)
 {
+	if (self == null) return 0;
 	return self.list.len;
 }
 
@@ -169,7 +206,7 @@ fn void CsvRow.free(&self)
 *>
 fn void? CsvReader.skip_row(self) @maydiscard => @pool()
 {
-	(void)self.find_row()!;
+	(void)find_row(self.allocator, self.stream, self.flags.allow_non_spec_line_endings)!;
 }
 
 <*
@@ -179,15 +216,15 @@ fn void? CsvReader.skip_row(self) @maydiscard => @pool()
  @return "A CsvRow containing the row as a string and a list of entries"
  @return? encoding::MALFORMED_DATA : "Parsing faults, may also be a stream reading error"
 *>
-fn CsvRow? CsvReader.read_row(&self)
+fn CsvRow*? CsvReader.read_row(&self)
 {
-	String row = self.find_row()!;
+	CsvRow* result = alloc::alloc(self.allocator, CsvRow);
+	
+	result.allocator = self.allocator;
+	result.row = find_row(self.allocator, self.stream, self.flags.allow_non_spec_line_endings)!;
+	result.list = parse_row_entries(self.allocator, result.row, self.delimiter, self.headers, (char*)&self.flags)!;
 
-	return {
-		parse_row_entries(self.allocator, row, self.delimiter, self.headers.len(), (char*)&self.flags),
-		row,
-		self.allocator
-	};
+	return result;
 }
 
 <*
@@ -231,7 +268,7 @@ macro void? CsvReader.@each_row(&self, int max_rows = int::max; @body(String[] r
 	{
 		@stack_mem(512 ; mem)
 		{
-			String? s = self.find_row();
+			String? s = find_row(self.allocator, self.stream, self.flags.allow_non_spec_line_endings);
 			if (catch err = s)
 			{
 				if (err == io::EOF) return;
@@ -241,7 +278,7 @@ macro void? CsvReader.@each_row(&self, int max_rows = int::max; @body(String[] r
 				self.allocator,
 				s,
 				self.delimiter,
-				self.headers.len(),
+				self.headers,
 				(char*)&self.flags
 			)!;
 			@body(row);
@@ -262,10 +299,10 @@ enum ReadState
 	NORMAL,
 }
 
-fn String? CsvReader.find_row(&self)
+fn String? find_row(Allocator allocator, InStream stream, bool allow_non_spec_line_endings)
 {
 	DString row;
-	row.init(self.allocator, 256);
+	row.init(allocator, 256);
 	defer row.free();
 	ReadState state = NORMAL;
 	char? current;
@@ -273,7 +310,7 @@ fn String? CsvReader.find_row(&self)
 
 	while (!ending)
 	{
-		current = self.stream.read_byte();
+		current = stream.read_byte();
 		if (catch err = current)
 		{
 			if (err == io::EOF)
@@ -286,12 +323,12 @@ fn String? CsvReader.find_row(&self)
 			return err~;
 		}
 		// Handle CRLF line ending when allowing non spec line endings
-		if (!row.len() && self.flags.allow_non_spec_line_endings && current == '\n') continue;
+		if (!row.len() && allow_non_spec_line_endings && current == '\n') continue;
 
 		switch (state)
 		{
 			case ENDING:
-				if (self.flags.allow_non_spec_line_endings)
+				if (allow_non_spec_line_endings)
 				{
 					ending = true;
 					break;
@@ -302,7 +339,7 @@ fn String? CsvReader.find_row(&self)
 				}
 				else
 				{
-					char? next = self.stream.read_byte();
+					char? next = stream.read_byte();
 					if (catch err = next)
 					{
 						if (err == io::EOF)
@@ -347,7 +384,7 @@ fn String? CsvReader.find_row(&self)
 				row.append_char(current);
 		}
 	}
-	return row.copy_str(self.allocator);
+	return row.copy_str(allocator);
 }
 
 enum ParseState
@@ -357,10 +394,10 @@ enum ParseState
 	PUSH,
 }
 
-fn String[]? parse_row_entries(Allocator allocator, String row, String delimiter, sz entry_amount = 0, char* flags)
+fn String[]? parse_row_entries(Allocator allocator, String row, String delimiter, CsvRow* header = null, char* flags)
 {
 	if (!row.len) return { };
-	sz capacity      = entry_amount ? entry_amount : 16;
+	sz capacity      = header ? header.len() : 16;
 	String* holder   = alloc::alloc_array(allocator, String, capacity);
 	sz entry_index   = 0;
 	sz row_index     = 0;
@@ -382,7 +419,7 @@ fn String[]? parse_row_entries(Allocator allocator, String row, String delimiter
 				capacity *= 2;
 				holder = alloc::realloc(allocator, holder, String::size * capacity);
 			}
-			holder[entry_index++] = row[row_index:reading_index];
+			holder[entry_index++] = row[row_index:reading_index].trim();
 			break;
 		}
 		current = row[row_index + reading_index];
@@ -416,24 +453,24 @@ fn String[]? parse_row_entries(Allocator allocator, String row, String delimiter
 					capacity *= 2;
 					holder = alloc::realloc(allocator, holder, String::size * capacity);
 				}
-				holder[entry_index++] = row[row_index:reading_index];
+				holder[entry_index++] = row[row_index:reading_index].trim();
 				row_index += reading_index + delimiter.len;
 				reading_index = 0;
 		}
 	}
-	if (entry_amount && entry_index != entry_amount) return INCONSISTANT_ROW_LENGTH~;
+	if (header && entry_index != header.len()) return INCONSISTANT_ROW_LENGTH~;
 
 	return holder[:entry_index];
 }
 
-fn void? check_duplicate_entries(CsvRow row, bool allow_empty = true)
+fn void? check_duplicate_entries(CsvRow* row, bool allow_empty = true)
 {
 	if (!allow_empty) foreach (entry : row) if (!entry.len) return EMPTY_HEADER_ENTRY~;
 	for (sz i = 0; i < row.len() - 1; i++)
 	{
 		for (sz j = i + 1; j < row.len(); j++)
 		{
-			if (row[i] == row[j]) return NON_UNIQUE_ENTRY~;
+			if (row.get_col(i) == row.get_col(j)) return NON_UNIQUE_ENTRY~;
 		}
 	}
 }
