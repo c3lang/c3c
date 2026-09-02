@@ -27,6 +27,8 @@
 - `--keep-obj` added, to prevent object files from being deleted after building/linking.
 - Slice equality for flat types is now lowered to `memcmp`, avoiding scalar loops. #3491
 - Add `--warn-unusedlocal` and `--warn-unusedparam` to detect unused parameters and locals. #3485
+- Improve the error message for build options which use `=`.
+- Add control registers to x86 inline assembly
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.

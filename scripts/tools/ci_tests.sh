@@ -102,6 +102,7 @@ run_examples() {
     run_c3c compile examples/hash.c3
     run_c3c compile examples/http_server.c3
     run_c3c compile-only examples/levenshtein.c3
+    run_c3c compile-only --single-module=yes examples/levenshtein.c3 # --single-module test
     run_c3c compile examples/load_world.c3
     run_c3c compile-only examples/map.c3
     run_c3c compile examples/mandelbrot.c3

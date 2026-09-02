@@ -66,9 +66,11 @@ typedef enum
 	X86_TMM5,
 	X86_TMM6,
 	X86_TMM7,
+	X86_CR0,
+	X86_CR2,
+	X86_CR3,
+	X86_CR4
 } X86Clobbers;
-
-
 
 static const char *X86ClobberNames[] = {
 		[X86_CC] = "cc",
@@ -135,6 +137,10 @@ static const char *X86ClobberNames[] = {
 		[X86_TMM5] = "tmm5",
 		[X86_TMM6] = "tmm6",
 		[X86_TMM7] = "tmm7",
+		[X86_CR0] = "cr0",
+		[X86_CR2] = "cr2",
+		[X86_CR3] = "cr3",
+		[X86_CR4] = "cr4",
 };
 
 static const char *x64_quad_regs[] = { "$rax", "$rbx", "$rcx", "$rdx", "$rsp",
@@ -161,3 +167,5 @@ static const char *x86_ymm_regs[] = { "$ymm0", "$ymm1", "$ymm2", "$ymm3", "$ymm4
 
 static const char *x86_zmm_regs[] = { "$zmm0", "$zmm1", "$zmm2", "$zmm3", "$zmm4", "$zmm5", "$zmm6", "$zmm7",
 									  "$zmm8", "$zmm9", "$zmm10", "$zmm11", "$zmm12", "$zmm13", "$zmm14", "$zmm15" };
+
+static const char *x86_control_regs[] = {"$cr0", "$cr2", "$cr3", "$cr4"};
