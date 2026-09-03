@@ -6967,56 +6967,78 @@ static void llvm_emit_vector_from_array(GenContext *c, BEValue *value, Expr *exp
 	llvm_emit_array_to_vector(c, value, expr->type);
 }
 
+// This is the any_value.ptr and some_slice.ptr operation
 static void llvm_emit_ptr_access(GenContext *c, BEValue *value, Expr *expr)
 {
+	// First emit the struct as address or value
 	if (!llvm_emit_folded_in_block(c, value, expr->inner_expr)) RETURN_EMPTY_BLOCK(value);
+
+	// If it's a pointer, then we just bet the first element with a GEP
 	if (value->kind == BE_ADDRESS)
 	{
 		llvm_emit_struct_gep_ref(c, value, value, expr->type, 0);
 		return;
 	}
+
+	// If we have the struct as a value, do an extract value.
 	LLVMValueRef ptr = llvm_emit_extract_value(c, value->value, 0);
 	llvm_value_set(value, ptr, expr->type);
 }
 
+// This simple operation is essentially any x = { ptr(), type() }
 static void llvm_emit_make_any(GenContext *c, BEValue *value, Expr *expr)
 {
+	// Resolve the pointer
 	if (!llvm_emit_rvalue_in_block(c, value, expr->make_any_expr.inner)) RETURN_EMPTY_BLOCK(value);
+
+	// Then the type
 	BEValue typeid_val;
 	Expr *typeid = expr->make_any_expr.typeid;
 	if (!llvm_emit_rvalue_in_block(c, &typeid_val, typeid)) RETURN_EMPTY_BLOCK(value);
+
+	// Create a struct from the two values.
 	llvm_value_aggregate_two(c, value, expr->type, value->value, typeid_val.value);
 }
 
 static void llvm_emit_ext_trunc(GenContext *c, BEValue *value, Expr *expr)
 {
+	// We first need an rvalue
 	if (!llvm_emit_rvalue_in_block(c, value, expr->ext_trunc_expr.inner)) RETURN_EMPTY_BLOCK(value);
+
+	// The target type is the expression's type.
 	Type *to_type = type_lowering(expr->type);
 	LLVMTypeRef to = llvm_get_type(c, to_type);
 	LLVMValueRef val;
+
 	if (type_is_floatlike(to_type))
 	{
+		// Float or float vectors
 		val = type_convert_will_trunc(to_type, value->type)
 		      ? LLVMBuildFPTrunc(c->builder, value->value, llvm_get_type(c, to_type), "fpfptrunc")
 		      : LLVMBuildFPExt(c->builder, value->value, llvm_get_type(c, to_type), "fpfpext");
-
 	}
 	else
 	{
+		// Integers and int vectors
 		val = expr->ext_trunc_expr.is_signed
 				? llvm_sext_trunc(c, value->value, to)
 				: llvm_zext_trunc(c, value->value, to);
 	}
 	llvm_value_set(value, val, to_type);
 }
+
+// FooEnum x = (FooEnum)y
 void llvm_emit_enum_from_ord(GenContext *c, BEValue *value, Expr *expr)
 {
-	llvm_emit_expr(c, value, expr->inner_expr);
-	RETURN_ON_EMPTY_BLOCK(value);
-	if (safe_mode_enabled() && c->builder != c->global_builder)
+	// First, make sure it's not an optional
+	// the reason why we don't turn this into an rvalue
+	// is because it's not strictly needed unless we want to
+	// truncate or check it.
+	if (!llvm_emit_folded_in_block(c, value, expr->inner_expr)) RETURN_EMPTY_BLOCK(value);
+
+	if (safe_mode_enabled() && !llvm_is_global_eval(c))
 	{
 		llvm_value_rvalue(c, value);
-		RETURN_ON_EMPTY_BLOCK(value);
 		BEValue check;
 		Decl *decl = type_flatten(expr->type)->decl;
 		int max = vec_size(decl->enums.values);
@@ -7034,14 +7056,17 @@ void llvm_emit_enum_from_ord(GenContext *c, BEValue *value, Expr *expr)
 		llvm_emit_int_comp_raw(c, &check, value->type, value->type, value->value, val, BINARYOP_GE);
 		llvm_emit_panic_on_true(c, check.value, "Failed integer to enum conversion", expr->loc, scratch_buffer_copy(), value, NULL);
 	}
+
 	// We might need to extend or truncate.
 	Type *to_type = type_lowering(expr->type);
 	if (type_size(to_type) != type_size(value->type))
 	{
+		// If we extend or truncate, we need an rvalue.
 		llvm_value_rvalue(c, value);
 		llvm_value_set(value, llvm_zext_trunc(c, value->value, llvm_get_type(c, to_type)), to_type);
 		return;
 	}
+	// Otherwise, we can just change the type.
 	value->type = type_lowering(to_type);
 }
 
