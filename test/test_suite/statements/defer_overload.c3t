@@ -20,10 +20,10 @@ entry:
   %b = alloca i32, align 4
   %self1 = alloca i32, align 4
   store i32 0, ptr %b, align 4
-  %neq = icmp ne ptr %b, null
-  call void @llvm.assume(i1 %neq)
-  %neq1 = icmp ne ptr %b, null
-  call void @llvm.assume(i1 %neq1)
+  %ne = icmp ne ptr %b, null
+  call void @llvm.assume(i1 %ne)
+  %ne1 = icmp ne ptr %b, null
+  call void @llvm.assume(i1 %ne1)
   %0 = load i32, ptr %b, align 4
   store i32 %0, ptr %self1, align 4
   %1 = load i32, ptr %self1, align 4

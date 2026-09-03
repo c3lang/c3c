@@ -2104,7 +2104,14 @@ static inline const char *match_argopt(const char *name)
 {
 	size_t len = strlen(name);
 	if (!str_start_with(&current_arg[2], name)) return NULL;
-	if (current_arg[2 + len] != '=') return NULL;
+	if (current_arg[2 + len] != '=')
+	{
+		if (current_arg[2 + len] == 0)
+		{
+			FAIL_WITH_ERR("'%s' should be followed by a '='. Use it like: '--%s=<option>'", name, name);
+		}
+		return NULL;
+	}
 	return &current_arg[2 + len + 1];
 }
 
