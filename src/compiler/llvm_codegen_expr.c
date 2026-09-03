@@ -7114,6 +7114,7 @@ void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->inner_expr);
+	llvm_value_fold_optional(c, value);
 	RETURN_ON_EMPTY_BLOCK(value);
 	llvm_emit_vec_to_array(c, value, expr->type);
 }

@@ -64,6 +64,7 @@
 - `String.escape` would not correctly handle UTF16 pairs.
 - Heap buffer corruption when reversing vectors larger than 128 elements due to an undersized allocation.
 - `$$mod` on unsigned integers emitted signed division instead of unsigned remainder.
+- Improved codegen for casting an optional vector to an array.
 
 ## 0.8.3 Change list
 

@@ -1360,6 +1360,7 @@ typedef enum
 } OverloadMatch;
 typedef enum
 {
+	OVERLOAD_NONE,
 	OVERLOAD_ELEMENT_AT = 1,
 	OVERLOAD_ELEMENT_REF,
 	OVERLOAD_ELEMENT_SET,
@@ -1392,7 +1393,6 @@ typedef enum
 	OVERLOADS_COUNT = OVERLOAD_SHR_ASSIGN
 } OperatorOverload;
 
-#define OVERLOAD_NONE ((OperatorOverload)0)
 typedef enum
 {
 	OS_TYPE_UNKNOWN,
