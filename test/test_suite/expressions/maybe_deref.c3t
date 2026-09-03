@@ -61,8 +61,8 @@ entry:
   %8 = load ptr, ptr %lptr, align 8
   store ptr %8, ptr %self, align 8
   %9 = load ptr, ptr %self, align 8
-  %neq = icmp ne ptr %9, null
-  call void @llvm.assume(i1 %neq)
+  %ne = icmp ne ptr %9, null
+  call void @llvm.assume(i1 %ne)
   %10 = load ptr, ptr %self, align 8
   %11 = load i64, ptr %10, align 8
   %lt = icmp slt i64 0, %11
@@ -72,8 +72,8 @@ entry:
   %13 = load ptr, ptr %ptradd1, align 8
   %14 = load i32, ptr %13, align 4
   store i32 %14, ptr %x4, align 4
-  %neq2 = icmp ne ptr %l, null
-  call void @llvm.assume(i1 %neq2)
+  %ne2 = icmp ne ptr %l, null
+  call void @llvm.assume(i1 %ne2)
   %15 = load i64, ptr %l, align 8
   %lt3 = icmp slt i64 0, %15
   call void @llvm.assume(i1 %lt3)

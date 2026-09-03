@@ -260,9 +260,6 @@ static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLV
 {
 	int bits = vector_type->array.len;
 	LLVMTypeRef llvm_type = LLVMTypeOf(val);
-	if (bits <= 64)
-	{
-	}
 	unsigned intrinsic = is_equals ? intrinsic_id.vector_reduce_and : intrinsic_id.vector_reduce_or;
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, &llvm_type, 1, &val, 1);
 	llvm_value_set(be_value, result, type_bool);
@@ -2184,28 +2181,13 @@ static void llvm_emit_vec_comp(GenContext *c, BEValue *result, BEValue *lhs, BEV
 	{
 		switch (binary_op)
 		{
-			case BINARYOP_VEC_EQ:
-				// Unordered?
-				res = LLVMBuildFCmp(c->builder, LLVMRealOEQ, lhs->value, rhs->value, "eq");
-				break;
-			case BINARYOP_VEC_NE:
-				// Unordered?
-				res = LLVMBuildFCmp(c->builder, LLVMRealUNE, lhs->value, rhs->value, "neq");
-				break;
-			case BINARYOP_VEC_GE:
-				res = LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs->value, rhs->value, "ge");
-				break;
-			case BINARYOP_VEC_GT:
-				res = LLVMBuildFCmp(c->builder, LLVMRealOGT, lhs->value, rhs->value, "gt");
-				break;
-			case BINARYOP_VEC_LE:
-				res = LLVMBuildFCmp(c->builder, LLVMRealOLE, lhs->value, rhs->value, "le");
-				break;
-			case BINARYOP_VEC_LT:
-				res = LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs->value, rhs->value, "lt");
-				break;
-			default:
-				UNREACHABLE_VOID
+			case BINARYOP_VEC_EQ: res = LLVMBuildFCmp(c->builder, LLVMRealOEQ, lhs->value, rhs->value, "eq"); break;
+			case BINARYOP_VEC_NE: res = LLVMBuildFCmp(c->builder, LLVMRealUNE, lhs->value, rhs->value, "ne"); break;
+			case BINARYOP_VEC_GE: res = LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs->value, rhs->value, "ge"); break;
+			case BINARYOP_VEC_GT: res = LLVMBuildFCmp(c->builder, LLVMRealOGT, lhs->value, rhs->value, "gt"); break;
+			case BINARYOP_VEC_LE: res = LLVMBuildFCmp(c->builder, LLVMRealOLE, lhs->value, rhs->value, "le"); break;
+			case BINARYOP_VEC_LT: res = LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs->value, rhs->value, "lt"); break;
+			default: UNREACHABLE_VOID
 		}
 	}
 	else
@@ -2213,28 +2195,13 @@ static void llvm_emit_vec_comp(GenContext *c, BEValue *result, BEValue *lhs, BEV
 		bool is_signed = type_is_signed(lhs->type->array.base);
 		switch (binary_op)
 		{
-			case BINARYOP_VEC_EQ:
-				// Unordered?
-				res = LLVMBuildICmp(c->builder, LLVMIntEQ, lhs->value, rhs->value, "eq");
-				break;
-			case BINARYOP_VEC_NE:
-				// Unordered?
-				res = LLVMBuildICmp(c->builder, LLVMIntNE, lhs->value, rhs->value, "neq");
-				break;
-			case BINARYOP_VEC_GE:
-				res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSGE : LLVMIntUGE, lhs->value, rhs->value, "ge");
-				break;
-			case BINARYOP_VEC_GT:
-				res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSGT : LLVMIntUGT, lhs->value, rhs->value, "gt");
-				break;
-			case BINARYOP_VEC_LE:
-				res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSLE : LLVMIntULE, lhs->value, rhs->value, "le");
-				break;
-			case BINARYOP_VEC_LT:
-				res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSLT : LLVMIntULT, lhs->value, rhs->value, "lt");
-				break;
-			default:
-				UNREACHABLE_VOID
+			case BINARYOP_VEC_EQ: res = LLVMBuildICmp(c->builder, LLVMIntEQ, lhs->value, rhs->value, "eq"); break;
+			case BINARYOP_VEC_NE: res = LLVMBuildICmp(c->builder, LLVMIntNE, lhs->value, rhs->value, "ne"); break;
+			case BINARYOP_VEC_GE: res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSGE : LLVMIntUGE, lhs->value, rhs->value, "ge"); break;
+			case BINARYOP_VEC_GT: res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSGT : LLVMIntUGT, lhs->value, rhs->value, "gt"); break;
+			case BINARYOP_VEC_LE: res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSLE : LLVMIntULE, lhs->value, rhs->value, "le"); break;
+			case BINARYOP_VEC_LT: res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSLT : LLVMIntULT, lhs->value, rhs->value, "lt"); break;
+			default: UNREACHABLE_VOID
 		}
 	}
 	llvm_value_set(result, res, type);
@@ -3186,26 +3153,13 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 		LLVMValueRef value;
 		switch (binary_op)
 		{
-			case BINARYOP_EQ:
-				value = LLVMBuildICmp(c->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
-				break;
-			case BINARYOP_NE:
-				value = LLVMBuildICmp(c->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
-				break;
-			case BINARYOP_GE:
-				value = LLVMBuildICmp(c->builder, LLVMIntUGE, lhs_value, rhs_value, "ge");
-				break;
-			case BINARYOP_GT:
-				value = LLVMBuildICmp(c->builder, LLVMIntUGT, lhs_value, rhs_value, "gt");
-				break;
-			case BINARYOP_LE:
-				value = LLVMBuildICmp(c->builder, LLVMIntULE, lhs_value, rhs_value, "le");
-				break;
-			case BINARYOP_LT:
-				value = LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
-				break;
-			default:
-				UNREACHABLE_VOID
+			case BINARYOP_EQ: value = LLVMBuildICmp(c->builder, LLVMIntEQ,  lhs_value, rhs_value, "eq"); break;
+			case BINARYOP_NE: value = LLVMBuildICmp(c->builder, LLVMIntNE,  lhs_value, rhs_value, "ne"); break;
+			case BINARYOP_GE: value = LLVMBuildICmp(c->builder, LLVMIntUGE, lhs_value, rhs_value, "ge"); break;
+			case BINARYOP_GT: value = LLVMBuildICmp(c->builder, LLVMIntUGT, lhs_value, rhs_value, "gt"); break;
+			case BINARYOP_LE: value = LLVMBuildICmp(c->builder, LLVMIntULE, lhs_value, rhs_value, "le"); break;
+			case BINARYOP_LT: value = LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt"); break;
+			default: UNREACHABLE_VOID
 		}
 		if (vector_type)
 		{
@@ -3219,30 +3173,16 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 
 	// Left side is signed.
 	LLVMValueRef comp_value;
-	LLVMValueRef check_value;
 
 	switch (binary_op)
 	{
-		case BINARYOP_EQ:
-			comp_value = LLVMBuildICmp(c->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
-			break;
-		case BINARYOP_NE:
-			comp_value = LLVMBuildICmp(c->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
-			break;
-		case BINARYOP_GE:
-			comp_value = LLVMBuildICmp(c->builder, LLVMIntSGE, lhs_value, rhs_value, "ge");
-			break;
-		case BINARYOP_GT:
-			comp_value = LLVMBuildICmp(c->builder, LLVMIntSGT, lhs_value, rhs_value, "gt");
-			break;
-		case BINARYOP_LE:
-			comp_value = LLVMBuildICmp(c->builder, LLVMIntSLE, lhs_value, rhs_value, "le");
-			break;
-		case BINARYOP_LT:
-			comp_value = LLVMBuildICmp(c->builder, LLVMIntSLT, lhs_value, rhs_value, "lt");
-			break;
-		default:
-			UNREACHABLE_VOID
+		case BINARYOP_EQ: comp_value = LLVMBuildICmp(c->builder, LLVMIntEQ,  lhs_value, rhs_value, "eq"); break;
+		case BINARYOP_NE: comp_value = LLVMBuildICmp(c->builder, LLVMIntNE,  lhs_value, rhs_value, "ne"); break;
+		case BINARYOP_GE: comp_value = LLVMBuildICmp(c->builder, LLVMIntSGE, lhs_value, rhs_value, "ge"); break;
+		case BINARYOP_GT: comp_value = LLVMBuildICmp(c->builder, LLVMIntSGT, lhs_value, rhs_value, "gt"); break;
+		case BINARYOP_LE: comp_value = LLVMBuildICmp(c->builder, LLVMIntSLE, lhs_value, rhs_value, "le"); break;
+		case BINARYOP_LT: comp_value = LLVMBuildICmp(c->builder, LLVMIntSLT, lhs_value, rhs_value, "lt"); break;
+		default: UNREACHABLE_VOID
 	}
 
 	if (vector_type)
@@ -3263,26 +3203,13 @@ static void llvm_emit_ptr_comparison(GenContext *c, BEValue *result, BEValue *lh
 	LLVMValueRef val;
 	switch (binary_op)
 	{
-		case BINARYOP_EQ:
-			val = LLVMBuildICmp(c->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
-			break;
-		case BINARYOP_NE:
-			val = LLVMBuildICmp(c->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
-			break;
-		case BINARYOP_GE:
-			val = LLVMBuildICmp(c->builder, LLVMIntUGE, lhs_value, rhs_value, "ge");
-			break;
-		case BINARYOP_GT:
-			val = LLVMBuildICmp(c->builder, LLVMIntUGT, lhs_value, rhs_value, "gt");
-			break;
-		case BINARYOP_LE:
-			val = LLVMBuildICmp(c->builder, LLVMIntULE, lhs_value, rhs_value, "le");
-			break;
-		case BINARYOP_LT:
-			val = LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
-			break;
-		default:
-			UNREACHABLE_VOID
+		case BINARYOP_EQ: val = LLVMBuildICmp(c->builder, LLVMIntEQ,  lhs_value, rhs_value, "eq"); break;
+		case BINARYOP_NE: val = LLVMBuildICmp(c->builder, LLVMIntNE,  lhs_value, rhs_value, "ne"); break;
+		case BINARYOP_GE: val = LLVMBuildICmp(c->builder, LLVMIntUGE, lhs_value, rhs_value, "ge"); break;
+		case BINARYOP_GT: val = LLVMBuildICmp(c->builder, LLVMIntUGT, lhs_value, rhs_value, "gt"); break;
+		case BINARYOP_LE: val = LLVMBuildICmp(c->builder, LLVMIntULE, lhs_value, rhs_value, "le"); break;
+		case BINARYOP_LT: val = LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt"); break;
+		default: UNREACHABLE_VOID
 	}
 	llvm_value_set(result, val, type_bool);
 }
@@ -3665,28 +3592,13 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *result, BEValue *lhs, B
 	LLVMValueRef val;
 	switch (binary_op)
 	{
-		case BINARYOP_EQ:
-			// Unordered?
-			val = LLVMBuildFCmp(c->builder, LLVMRealOEQ, lhs_value, rhs_value, "eq");
-			break;
-		case BINARYOP_NE:
-			// Unordered?
-			val = LLVMBuildFCmp(c->builder, LLVMRealUNE, lhs_value, rhs_value, "neq");
-			break;
-		case BINARYOP_GE:
-			val = LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs_value, rhs_value, "ge");
-			break;
-		case BINARYOP_GT:
-			val = LLVMBuildFCmp(c->builder, LLVMRealOGT, lhs_value, rhs_value, "gt");
-			break;
-		case BINARYOP_LE:
-			val = LLVMBuildFCmp(c->builder, LLVMRealOLE, lhs_value, rhs_value, "le");
-			break;
-		case BINARYOP_LT:
-			val = LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs_value, rhs_value, "lt");
-			break;
-		default:
-			UNREACHABLE_VOID
+		case BINARYOP_EQ: val = LLVMBuildFCmp(c->builder, LLVMRealOEQ, lhs_value, rhs_value, "eq"); break;
+		case BINARYOP_NE: val = LLVMBuildFCmp(c->builder, LLVMRealUNE, lhs_value, rhs_value, "ne"); break;
+		case BINARYOP_GE: val = LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs_value, rhs_value, "ge"); break;
+		case BINARYOP_GT: val = LLVMBuildFCmp(c->builder, LLVMRealOGT, lhs_value, rhs_value, "gt"); break;
+		case BINARYOP_LE: val = LLVMBuildFCmp(c->builder, LLVMRealOLE, lhs_value, rhs_value, "le"); break;
+		case BINARYOP_LT: val = LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs_value, rhs_value, "lt"); break;
+		default: UNREACHABLE_VOID
 	}
 	if (vector_type)
 	{
