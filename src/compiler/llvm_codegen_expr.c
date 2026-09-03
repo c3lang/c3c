@@ -100,7 +100,7 @@ LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true)
 	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, values, 2);
 }
 
-Expr *expr_remove_recast(Expr *expr)
+static Expr *expr_remove_recast(Expr *expr)
 {
 	Type *main_type = type_lowering(expr->type);
 	while (expr->expr_kind == EXPR_RECAST && main_type == type_lowering(expr->inner_expr->type))
@@ -381,8 +381,10 @@ LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size)
 	return llvm_get_undef_raw(llvm_const_padding_type(c, size));
 }
 
+// Lower a + b
 static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocId loc)
 {
+	// Implement trap on integer wrap (not recommended!)
 	if (compiler.build.feature.trap_on_wrap && !type_kind_is_real_vector(type->type_kind))
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
@@ -402,7 +404,7 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 		llvm_emit_panic_on_true(c, ok, "Addition overflow", loc, NULL, NULL, NULL);
 		return result;
 	}
-
+	// Normal wrapping add.
 	return LLVMBuildAdd(c->builder, left, right, "add");
 }
 
@@ -2420,7 +2422,7 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 	bool is_const = expr_is_const(inner);
 	if (is_const)
 	{
-		alignment = type_min_alignment(inner->const_expr.ptr, alignment);
+		alignment = type_min_alignment_size((ByteSize)inner->const_expr.ptr, alignment);
 	}
 	if (safe_mode_enabled() && !is_const)
 	{
@@ -2439,7 +2441,6 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 			c->emitting_load_store_check = true;
 			BEValue value1;
 			BEValue value2;
-			if (inner->type->name )
 			llvm_value_set(&value1, align, type_sz);
 			llvm_value_set(&value2, rem, type_sz);
 			llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", inner->loc, "Unaligned access: ptr %% %s = %s, use mem::load / mem::store for unaligned access.",
@@ -4098,7 +4099,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			if (type_is_pointer_vector(lhs_type))
 			{
 				Type *element_type = lhs_type->array.base->pointer;
-				int len = LLVMGetVectorSize(LLVMTypeOf(lhs_value));
+				int len = (int)LLVMGetVectorSize(LLVMTypeOf(lhs_value));
 				LLVMTypeRef int_vec_type = llvm_get_type(c, type_get_vector_from_vector(type_sz, lhs_type)); // NOLINT(readability-suspicious-call-argument)
 				if (lhs_type == rhs_type)
 				{
@@ -4858,7 +4859,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 static void llvm_expand_array_to_args(GenContext *c, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, int *arg_count_ref, AlignSize alignment)
 {
 	Type *element = param_type->array.base;
-	for (ByteSize i = 0; i < param_type->array.len; i++)
+	for (ArrayIndex i = 0; i < param_type->array.len; i++)
 	{
 		AlignSize load_align;
 		LLVMValueRef element_ptr = llvm_emit_array_gep_raw(c, expand_ptr, element, i, alignment, &load_align);
@@ -4943,7 +4944,7 @@ LLVMValueRef llvm_emit_struct_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeR
 {
 	*alignment = type_min_alignment((AlignSize)LLVMOffsetOfElement(c->target_data, struct_type, index), struct_alignment);
 	if (!index) return ptr;
-	ByteSize offset = LLVMOffsetOfElement(c->target_data, struct_type, index);
+	ByteSize offset = (ByteSize)LLVMOffsetOfElement(c->target_data, struct_type, index);
 	return llvm_emit_const_ptradd_inbounds_raw(c, ptr, offset);
 }
 
@@ -4965,7 +4966,7 @@ LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, BEVa
 	{
 		index_val = llvm_zext_trunc(c, index_val, c->size_type);
 	}
-	*alignment = type_min_alignment(element_size, array_alignment);
+	*alignment = type_min_alignment_size(element_size, array_alignment);
 	return llvm_emit_pointer_inbounds_gep_raw(c, ptr, index_val, element_size);
 }
 
@@ -4977,7 +4978,8 @@ BEValue llvm_emit_array_gep(GenContext *c, BEValue *parent, ArrayIndex index)
 	return llvm_emit_array_gep_index(c, parent, &index_value);
 }
 
-LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, Type *element_type, int index, AlignSize array_alignment, AlignSize *alignment)
+// Essentially &(*ptr)[x]
+LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, Type *element_type, ArrayIndex index, AlignSize array_alignment, AlignSize *alignment)
 {
 	BEValue index_value;
 	llvm_value_set(&index_value, llvm_const_size(c, index), type_sz);
@@ -5005,7 +5007,8 @@ static LLVMValueRef vec_slots[MAX_VECTOR_WIDTH];
 
 LLVMValueRef llvm_emit_const_vector_pot(LLVMValueRef value, ArrayIndex len)
 {
-	ArrayIndex npot = next_highest_power_of_2(len);
+	ASSERT(len < (int)(UINT32_MAX / 4));
+	ArrayIndex npot = (ArrayIndex)next_highest_power_of_2(len);
 	for (ArrayIndex i = 0; i < len; i++)
 	{
 		vec_slots[i] = value;
@@ -5035,7 +5038,7 @@ static LLVMValueRef llvm_ptr_mult(GenContext *c, LLVMValueRef offset, ByteSize s
 	LLVMValueRef mult;
 	if (LLVMGetTypeKind(offset_type) == LLVMVectorTypeKind)
 	{
-		mult = llvm_emit_const_vector(LLVMConstInt(LLVMGetElementType(offset_type), size, false), LLVMGetVectorSize(offset_type));
+		mult = llvm_emit_const_vector(LLVMConstInt(LLVMGetElementType(offset_type), size, false), (int)LLVMGetVectorSize(offset_type));
 	}
 	else
 	{
@@ -5043,6 +5046,7 @@ static LLVMValueRef llvm_ptr_mult(GenContext *c, LLVMValueRef offset, ByteSize s
 	}
 	return LLVMBuildMul(c->builder, offset, mult, "");
 }
+
 LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMValueRef offset, ByteSize element_size)
 {
 	if (LLVMIsConstant(offset))
@@ -6852,7 +6856,7 @@ static void llvm_emit_test_hook(GenContext *c, BEValue *value, Expr *expr)
 static void llvm_emit_swizzle_from_value(GenContext *c, LLVMValueRef vector_value, BEValue *value, Expr *expr)
 {
 	LLVMTypeRef result_type = llvm_get_type(c, expr->type);
-	int vec_len = LLVMGetVectorSize(result_type);
+	int vec_len = (int)LLVMGetVectorSize(result_type);
 	LLVMValueRef mask_val[256];
 	ASSERT(vec_len <= 256);
 	const char *sw_ptr = expr->swizzle_expr.swizzle;
@@ -7041,35 +7045,53 @@ void llvm_emit_enum_from_ord(GenContext *c, BEValue *value, Expr *expr)
 	value->type = type_lowering(to_type);
 }
 
-void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
+// (int[<4>])123
+static void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
 {
+	// Emit the constant
 	llvm_emit_expr(c, value, expr->inner_expr);
+	// Exit on jump
 	RETURN_ON_EMPTY_BLOCK(value);
+
+	// Load the value
 	LLVMValueRef val = llvm_load_value_store(c, value);
+
+	// Create the vector
 	LLVMTypeRef type = llvm_get_type(c, expr->type);
-	int elements = LLVMGetVectorSize(type);
+	int elements = (int)LLVMGetVectorSize(type);
 	LLVMValueRef res = LLVMGetUndef(type);
 	for (int i = 0; i < elements; i++)
 	{
 		res = LLVMBuildInsertElement(c->builder, res, val, llvm_const_size(c, i), "");
 	}
+
+	// Update the value.
 	llvm_value_set(value, res, expr->type);
 }
 
+// Emit (int[4])some_vec
 void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 {
+	// Emit the load, in this case we know this is not an optional.
+	assert(value->kind != BE_ADDRESS_OPTIONAL);
 	LLVMValueRef val = llvm_load_value_store(c, value);
+
+	// Determine the type of conversion
 	LLVMTypeRef type_ptr = LLVMTypeOf(val);
 	LLVMTypeKind type_kind = LLVMGetTypeKind(type_ptr);
 	Type *to_type = type_lowering(type);
 	switch (type_kind)
 	{
 		case LLVMArrayTypeKind:
+			// Just rewrite the type, since alignment is going to be fine.
 			value->type = to_type;
 			return;
 		case LLVMVectorTypeKind:
+			// The default path
 			break;
 		case LLVMStructTypeKind:
+			// The value is actually a struct, if so, let's turn it into
+			// an address and a load.
 			llvm_value_addr(c, value);
 			value->type = to_type;
 			return;
@@ -7077,13 +7099,16 @@ void llvm_emit_vec_to_array(GenContext *c, BEValue *value, Type *type)
 			UNREACHABLE_VOID
 	}
 
+	// Create an undefined array
 	LLVMValueRef array = llvm_get_undef(c, to_type);
 
+	// Do extract insert (is there a more efficient way?)
 	for (int i = 0; i < to_type->array.len; i++)
 	{
 		LLVMValueRef element = llvm_emit_extract_value(c, val, i);
 		array = llvm_emit_insert_value(c, array, element, i);
 	}
+	// The resulting array is what we want.
 	llvm_value_set(value, array, to_type);
 }
 static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr *expr)
@@ -7093,18 +7118,35 @@ static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr
 	llvm_emit_vec_to_array(c, value, expr->type);
 }
 
+// This is for the case when we have a slice
+// that is a known length.
+// Code is essentially
+//
+// int[4] temp;
+// memcpy(temp, slice.ptr, sizeof(temp), alignof(res), alignof(int));
 void llvm_emit_slice_to_vec_array(GenContext *c, BEValue *value, Expr *expr)
 {
+	// Emit the slice, jump if done.
 	if (!llvm_emit_rvalue_in_block(c, value, expr->inner_expr)) RETURN_EMPTY_BLOCK(value);
+
+	// Find the element alignment
 	BEValue pointer;
 	Type *base = value->type->array.base;
 	AlignSize element_alignment = type_abi_alignment(base);
+
+	// Emit slice.ptr
 	llvm_emit_slice_pointer(c, value, &pointer);
 	llvm_value_rvalue(c, &pointer);
+
+	// Emit "int[4] temp"
 	Type *to_type = type_lowering(expr->type);
 	LLVMTypeRef type = llvm_get_type(c, to_type);
 	BEValue temp = llvm_emit_alloca_b(c, to_type, ".temp");
+
+	// Do the memcpy
 	llvm_emit_memcpy(c, temp.value, temp.alignment, pointer.value, element_alignment, llvm_abi_size(c, type));
+
+	// The value is now a pointer to the alloca of the array/vector.
 	*value = temp;
 }
 
@@ -7127,6 +7169,7 @@ static inline void llvm_emit_make_slice(GenContext *c, BEValue *value, Expr *exp
 
 bool llvm_emit_folded_in_block(GenContext *c, BEValue *value, Expr *expr)
 {
+	// If this in the global eval, we con't need to track the current block.
 	if (llvm_is_global_eval(c))
 	{
 		llvm_emit_expr(c, value, expr);
@@ -7134,16 +7177,18 @@ bool llvm_emit_folded_in_block(GenContext *c, BEValue *value, Expr *expr)
 		return true;
 	}
 	llvm_emit_expr(c, value, expr);
+	// Jump exit if we encountered a jump.
 	if (!c->current_block) return false;
+
 	llvm_value_fold_optional(c, value);
+	// Jump exit if we encountered a jump.
 	if (!c->current_block) return false;
 	return true;
 }
 
-
-
 bool llvm_emit_rvalue_in_block(GenContext *c, BEValue *value, Expr *expr)
 {
+	// If this in the global eval, we con't need to track the current block.
 	if (llvm_is_global_eval(c))
 	{
 		llvm_emit_expr(c, value, expr);
@@ -7151,9 +7196,14 @@ bool llvm_emit_rvalue_in_block(GenContext *c, BEValue *value, Expr *expr)
 		return true;
 	}
 	llvm_emit_expr(c, value, expr);
+	// Jump exit if we encountered a jump.
 	if (!c->current_block) return false;
+
 	llvm_value_rvalue(c, value);
+	// Jump exit if we encountered a jump.
 	if (!c->current_block) return false;
+
+	// No jump!
 	return true;
 }
 

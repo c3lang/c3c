@@ -495,7 +495,7 @@ LLVMValueRef llvm_emit_const_vector(LLVMValueRef value, ArrayIndex len);
 LLVMValueRef llvm_emit_const_vector_pot(LLVMValueRef value, ArrayIndex len);
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef struct_type, int index,
                                       int struct_alignment, AlignSize *alignment);
-LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, Type *element_type, int index, AlignSize array_alignment, AlignSize *alignment);
+LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, Type *element_type, ArrayIndex index, AlignSize array_alignment, AlignSize *alignment);
 BEValue llvm_emit_array_gep_index(GenContext *c, BEValue *parent, BEValue *index);
 BEValue llvm_emit_array_gep(GenContext *c, BEValue *parent, ArrayIndex index);
 LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, BEValue *index, AlignSize array_alignment, AlignSize *alignment, ByteSize type_size);
