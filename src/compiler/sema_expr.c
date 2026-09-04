@@ -4444,7 +4444,7 @@ DEFAULT:
 				if (failed_ref) goto VALID_FAIL_POISON;
 				RETURN_SEMA_ERROR(subscripted, "Cannot index '%s' from the end, since there is no 'len' overload.", type_to_error_string(subscripted->type));
 			}
-			if (!sema_analyse_expr_rvalue(context, current_expr)) return false;
+			if (!type_is_pointer_type(current_expr->type)) expr_insert_addr(current_expr);
 			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_PARAM, current_expr->loc);
 			Expr *decl = expr_generate_decl(temp, expr_copy(current_expr));
 			expr_rewrite_two(current_expr, decl, expr_variable(temp));
