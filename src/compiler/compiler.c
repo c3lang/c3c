@@ -309,7 +309,7 @@ static int compile_cfiles(const char *cc, const char **files, const char *flags,
 {
 	if (!cc || !file_executable_in_path(cc))
 	{
-		cc = default_c_compiler();
+		cc = find_c_compiler();
 	}
 	int total = 0;
 	FOREACH(const char *, file, files)
@@ -743,7 +743,7 @@ void compiler_compile(void)
 		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
 		if (system_linker_available)
 		{
-			const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
+			const char *cc = find_c_compiler();
 			if (!file_executable_in_path(cc)) system_linker_available = false;
 			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && compiler.build.linker_type != LINKER_TYPE_BUILTIN && (!file_executable_in_path(cc) || !strstr(cc, "emcc")))
 			{
@@ -756,7 +756,7 @@ void compiler_compile(void)
 			case LINKER_TYPE_CC:
 				if (!system_linker_available)
 				{
-					const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
+					const char *cc = find_c_compiler();
 					OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
 					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
 					use_system_linker = false;
@@ -2014,8 +2014,9 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	return source_file_text_load(file, out);
 }
 
-const char *default_c_compiler(void)
+const char *find_c_compiler(void)
 {
+	if (compiler.build.cc) return compiler.build.cc;
 	static const char *cc = NULL;
 	if (cc) return cc;
 	const char *cc_env = getenv("C3C_CC");

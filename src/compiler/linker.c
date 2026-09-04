@@ -1320,7 +1320,7 @@ void platform_linker(const char *output_file, const char **files, int file_count
 	else
 	{
 		INFO_LOG("Using cc linker.");
-		vec_add(parts, compiler.build.cc ? compiler.build.cc : default_c_compiler());
+		vec_add(parts, find_c_compiler());
 	}
 
 	if (file_is_dir(output_file))

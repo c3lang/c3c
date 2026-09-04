@@ -66,6 +66,7 @@
 - `$$mod` on unsigned integers emitted signed division instead of unsigned remainder.
 - Improved codegen for casting an optional vector to an array.
 - Overload for `^1`, e.g. `foo[^1] = 2` did not work correctly. #3496
+- Correctly use defined C compiler in all cases. #3495
 
 ## 0.8.3 Change list
 
