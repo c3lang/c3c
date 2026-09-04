@@ -173,133 +173,7 @@ alias ObjcSendUShort = fn ushort(ObjcId, ObjcSelector);
 alias ObjcSendNSUInteger = fn NSUInteger(ObjcId, ObjcSelector);
 alias ObjcSendVoidIntPtrNSInteger = fn void(ObjcId, ObjcSelector, int*, NSInteger);
 
-macro bool rgfw_bool(x) => x ? (bool)1 : (bool)0;
-macro uint rgfw_bit(x) => (uint)1 << (uint)(x);
-macro void* rgfw_memcpy(void* dest, void* src, usz count) => memcpy(dest, src, count);
-macro void* rgfw_memzero(void* ptr, usz count) => memset(ptr, 0, count);
-macro float rgfw_min(float a, float b) => a < b ? a : b;
 
-fn void* rgfw_alloc_impl(usz size) => malloc(size);
-fn void rgfw_free_impl(void* ptr) { if (ptr != null) free(ptr); }
-
-alias RgfwInitFlags = char;
-alias RgfwFormat = char;
-alias RgfwModeRequest = char;
-alias RgfwKey = char;
-alias RgfwMouseButton = char;
-alias RgfwKeymod = char;
-alias RgfwDndActionType = char;
-alias RgfwDataTransferType = char;
-alias RgfwEventType = char;
-alias RgfwEventFlag = uint;
-alias RgfwEventWait = int;
-alias RgfwWindowFlags = uint;
-alias RgfwIcon = char;
-alias RgfwMouseIcon = char;
-alias RgfwFlashRequest = char;
-alias RgfwDebugType = char;
-alias RgfwErrorCode = char;
-alias RgfwGlReleaseBehavior = int;
-alias RgfwGlProfile = int;
-alias RgfwGlRenderer = int;
-alias RgfwGfxContextType = uint;
-
-const RGFW_TRUE = (bool)1;
-const RGFW_FALSE = (bool)0;
-
-
-typedef RgfwMouse = void;
-alias RgfwProc = fn void();
-alias RgfwConvertImageDataFunc = fn void(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, usz count);
-alias RgfwGenericFunc = fn void(RgfwEvent* e);
-alias RgfwDebugFunc = fn void(RgfwDebugInfo* info);
-
-struct RgfwColorLayout { int r, g, b, a; uint channels; }
-
-struct RgfwGammaRamp
-{
-	ushort* red;
-	ushort* green;
-	ushort* blue;
-	usz count;
-}
-
-struct RgfwMonitorMode
-{
-	int w, h;
-	float refreshRate;
-	char red, blue, green;
-	void* src;
-}
-
-struct RgfwMonitor
-{
-	int x, y;
-	char[128] name;
-	float scaleX, scaleY;
-	float pixelRatio;
-	float physW, physH;
-	RgfwMonitorMode mode;
-	void* userPtr;
-	RgfwMonitorNode* node;
-}
-
-struct RgfwDataTransfer
-{
-	char* data;
-	usz length;
-	RgfwDataTransferType type;
-}
-
-struct RgfwDataDropNode
-{
-	char* data;
-	usz length;
-	RgfwDataTransferType type;
-	RgfwDataDropNode* next;
-}
-
-struct RgfwCommonEvent { RgfwEventType type; RgfwWindow* win; }
-struct RgfwWindowFocusEvent { RgfwEventType type; RgfwWindow* win; bool state; }
-struct RgfwMouseButtonEvent { RgfwEventType type; RgfwWindow* win; RgfwMouseButton value; bool state; }
-struct RgfwMouseDeltaEvent { RgfwEventType type; RgfwWindow* win; float x, y; }
-struct RgfwMouseMotionEvent { RgfwEventType type; RgfwWindow* win; int x, y; bool inWindow; }
-struct RgfwKeyEvent { RgfwEventType type; RgfwWindow* win; RgfwKey value; bool repeat; RgfwKeymod mod; bool state; }
-struct RgfwKeyCharEvent { RgfwEventType type; RgfwWindow* win; uint value; }
-struct RgfwDataDropEvent { RgfwEventType type; RgfwWindow* win; RgfwDataDropNode* value; }
-struct RgfwDataDragEvent { RgfwEventType type; RgfwWindow* win; int x, y; RgfwDndActionType action; RgfwDataTransferType dataType; }
-struct RgfwScaleUpdatedEvent { RgfwEventType type; RgfwWindow* win; float x, y; }
-struct RgfwMonitorEvent { RgfwEventType type; RgfwWindow* win; RgfwMonitor* monitor; bool state; }
-struct RgfwWindowUpdateEvent { RgfwEventType type; RgfwWindow* win; int x, y, w, h; }
-
-union RgfwEvent
-{
-	RgfwEventType type;
-	RgfwCommonEvent common;
-	RgfwWindowFocusEvent focus;
-	RgfwWindowUpdateEvent update;
-	RgfwMouseButtonEvent button;
-	RgfwMouseDeltaEvent delta;
-	RgfwMouseMotionEvent mouse;
-	RgfwKeyEvent key;
-	RgfwKeyCharEvent keyChar;
-	RgfwDataDropEvent drop;
-	RgfwDataDragEvent drag;
-	RgfwScaleUpdatedEvent scale;
-	RgfwMonitorEvent monitor;
-}
-
-struct RgfwCallbacks
-{
-	RgfwGenericFunc[25] arr;
-}
-
-struct RgfwDebugInfo
-{
-	RgfwDebugType type;
-	RgfwErrorCode code;
-	char* msg;
-}
 
 struct RgfwGlContext { void* ctx; void* format; }
 struct RgfwEglContext { void* ctx; void* surface; void* eglWindow; }
@@ -368,14 +242,7 @@ struct RgfwWindowSrc
 	int x, y, w, h;
 }
 
-struct RgfwSurface
-{
-	char* data;
-	int w, h;
-	RgfwFormat format;
-	RgfwConvertImageDataFunc convertFunc;
-	RgfwNativeImage native;
-}
+
 
 struct RgfwWindowInternal
 {
@@ -535,7 +402,7 @@ fn void* rgfw_alloc(usz size) { return rgfw_alloc_impl(size); }
 fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
 fn usz rgfw_sizeofInfo() { return RgfwInfo::size; }
 fn usz rgfw_sizeofNativeImage() { return RgfwNativeImage::size; }
-fn usz rgfw_sizeofSurface() { return RgfwSurface::size; }
+fn usz rgfw_sizeofSurface() { return GfxSurface::size; }
 fn usz rgfw_sizeofWindow() { return RgfwWindow::size; }
 fn usz rgfw_sizeofWindowSrc() { return RgfwWindowSrc::size; }
 
@@ -563,35 +430,35 @@ fn void* rgfw_eglProc(char* name)
 
 fn bool rgfw_loadEGL()
 {
-	if (_rgfw.egl_handle != null) return RGFW_TRUE;
+	if (_rgfw.egl_handle != null) return true;
 	char*[5] names = {"libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll"};
 	for (usz i = 0; i < 5; i++)
 	{
 		_rgfw.egl_handle = dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
 		if (_rgfw.egl_handle != null) break;
 	}
-	if (_rgfw.egl_handle == null) return RGFW_FALSE;
+	if (_rgfw.egl_handle == null) return false;
 	void* getProc = dlsym(_rgfw.egl_handle, "eglGetProcAddress");
-	if (getProc == null) return RGFW_FALSE;
+	if (getProc == null) return false;
 	rgfw_eglGetProcAddress = (EglGetProcAddressProc)getProc;
 	_rgfw.eglGetProcAddress = getProc;
 	void* proc;
-	proc = rgfw_eglProc("eglGetDisplay"); if (proc == null) return RGFW_FALSE; rgfw_eglGetDisplay = (EglGetDisplayProc)proc;
-	proc = rgfw_eglProc("eglInitialize"); if (proc == null) return RGFW_FALSE; rgfw_eglInitialize = (EglInitializeProc)proc;
-	proc = rgfw_eglProc("eglTerminate"); if (proc == null) return RGFW_FALSE; rgfw_eglTerminate = (EglTerminateProc)proc;
-	proc = rgfw_eglProc("eglBindAPI"); if (proc == null) return RGFW_FALSE; rgfw_eglBindApi = (EglBindApiProc)proc;
-	proc = rgfw_eglProc("eglChooseConfig"); if (proc == null) return RGFW_FALSE; rgfw_eglChooseConfig = (EglChooseConfigProc)proc;
-	proc = rgfw_eglProc("eglCreateContext"); if (proc == null) return RGFW_FALSE; rgfw_eglCreateContext = (EglCreateContextProc)proc;
-	proc = rgfw_eglProc("eglDestroyContext"); if (proc == null) return RGFW_FALSE; rgfw_eglDestroyContext = (EglDestroyContextProc)proc;
-	proc = rgfw_eglProc("eglCreateWindowSurface"); if (proc == null) return RGFW_FALSE; rgfw_eglCreateWindowSurface = (EglCreateWindowSurfaceProc)proc;
-	proc = rgfw_eglProc("eglDestroySurface"); if (proc == null) return RGFW_FALSE; rgfw_eglDestroySurface = (EglDestroySurfaceProc)proc;
-	proc = rgfw_eglProc("eglMakeCurrent"); if (proc == null) return RGFW_FALSE; rgfw_eglMakeCurrent = (EglMakeCurrentProc)proc;
-	proc = rgfw_eglProc("eglSwapBuffers"); if (proc == null) return RGFW_FALSE; rgfw_eglSwapBuffers = (EglSwapBuffersProc)proc;
-	proc = rgfw_eglProc("eglSwapInterval"); if (proc == null) return RGFW_FALSE; rgfw_eglSwapInterval = (EglSwapIntervalProc)proc;
-	proc = rgfw_eglProc("eglGetCurrentContext"); if (proc == null) return RGFW_FALSE; rgfw_eglGetCurrentContext = (EglGetCurrentContextProc)proc;
-	proc = rgfw_eglProc("eglQueryString"); if (proc == null) return RGFW_FALSE; rgfw_eglQueryString = (EglQueryStringProc)proc;
-	proc = rgfw_eglProc("eglGetConfigAttrib"); if (proc == null) return RGFW_FALSE; rgfw_eglGetConfigAttrib = (EglGetConfigAttribProc)proc;
-	return RGFW_TRUE;
+	proc = rgfw_eglProc("eglGetDisplay"); if (proc == null) return false; rgfw_eglGetDisplay = (EglGetDisplayProc)proc;
+	proc = rgfw_eglProc("eglInitialize"); if (proc == null) return false; rgfw_eglInitialize = (EglInitializeProc)proc;
+	proc = rgfw_eglProc("eglTerminate"); if (proc == null) return false; rgfw_eglTerminate = (EglTerminateProc)proc;
+	proc = rgfw_eglProc("eglBindAPI"); if (proc == null) return false; rgfw_eglBindApi = (EglBindApiProc)proc;
+	proc = rgfw_eglProc("eglChooseConfig"); if (proc == null) return false; rgfw_eglChooseConfig = (EglChooseConfigProc)proc;
+	proc = rgfw_eglProc("eglCreateContext"); if (proc == null) return false; rgfw_eglCreateContext = (EglCreateContextProc)proc;
+	proc = rgfw_eglProc("eglDestroyContext"); if (proc == null) return false; rgfw_eglDestroyContext = (EglDestroyContextProc)proc;
+	proc = rgfw_eglProc("eglCreateWindowSurface"); if (proc == null) return false; rgfw_eglCreateWindowSurface = (EglCreateWindowSurfaceProc)proc;
+	proc = rgfw_eglProc("eglDestroySurface"); if (proc == null) return false; rgfw_eglDestroySurface = (EglDestroySurfaceProc)proc;
+	proc = rgfw_eglProc("eglMakeCurrent"); if (proc == null) return false; rgfw_eglMakeCurrent = (EglMakeCurrentProc)proc;
+	proc = rgfw_eglProc("eglSwapBuffers"); if (proc == null) return false; rgfw_eglSwapBuffers = (EglSwapBuffersProc)proc;
+	proc = rgfw_eglProc("eglSwapInterval"); if (proc == null) return false; rgfw_eglSwapInterval = (EglSwapIntervalProc)proc;
+	proc = rgfw_eglProc("eglGetCurrentContext"); if (proc == null) return false; rgfw_eglGetCurrentContext = (EglGetCurrentContextProc)proc;
+	proc = rgfw_eglProc("eglQueryString"); if (proc == null) return false; rgfw_eglQueryString = (EglQueryStringProc)proc;
+	proc = rgfw_eglProc("eglGetConfigAttrib"); if (proc == null) return false; rgfw_eglGetConfigAttrib = (EglGetConfigAttribProc)proc;
+	return true;
 }
 
 fn void rgfw_unloadEGL()
@@ -612,18 +479,18 @@ char*[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_EXT_metal_surface"};
 
 fn bool rgfw_loadVulkan()
 {
-	if (_rgfw.vulkan_handle != null) return RGFW_TRUE;
+	if (_rgfw.vulkan_handle != null) return true;
 	char*[3] names = {"libvulkan.1.dylib", "libvulkan.dylib", "libMoltenVK.dylib"};
 	for (usz i = 0; i < 3; i++)
 	{
 		_rgfw.vulkan_handle = dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
 		if (_rgfw.vulkan_handle != null) break;
 	}
-	if (_rgfw.vulkan_handle == null) return RGFW_FALSE;
+	if (_rgfw.vulkan_handle == null) return false;
 	void* proc = dlsym(_rgfw.vulkan_handle, "vkGetInstanceProcAddr");
-	if (proc == null) return RGFW_FALSE;
+	if (proc == null) return false;
 	_rgfw.vkGetInstanceProcAddress = (RgfwVkGetInstanceProcAddressProc)proc;
-	return RGFW_TRUE;
+	return true;
 }
 
 fn void rgfw_unloadVulkan()
@@ -664,7 +531,7 @@ fn VkResult rgfw_window_createSurface_Vulkan(RgfwWindow* win, VkInstance instanc
 	return ((RgfwVkCreateMetalSurfaceEXTProc)raw)(instance, &createInfo, null, surface);
 }
 
-fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => RGFW_FALSE;
+fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
 
 fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, char* msg)
 {
@@ -744,7 +611,7 @@ fn void rgfw_eventQueueFlush() { _rgfw.eventLen = 0; }
 
 fn void rgfw_eventQueuePush(RgfwEvent* event)
 {
-	if (_rgfw.queueEvents == RGFW_FALSE) return;
+	if (_rgfw.queueEvents == false) return;
 	if (_rgfw.eventLen >= MAX_EVENTS)
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_EVENT_QUEUE, "Event queue limit 'MAX_EVENTS' has been reached automatically flushing queue.");
@@ -773,30 +640,30 @@ fn void rgfw_eventQueuePushAndCall(RgfwEvent* event)
 
 fn bool rgfw_checkEvent(RgfwEvent* event)
 {
-	if (_rgfw.eventLen == 0 && _rgfw.polledEvents == RGFW_FALSE)
+	if (_rgfw.eventLen == 0 && _rgfw.polledEvents == false)
 	{
-		_rgfw.queueEvents = RGFW_TRUE;
+		_rgfw.queueEvents = true;
 		rgfw_pollEvents();
-		_rgfw.polledEvents = RGFW_TRUE;
+		_rgfw.polledEvents = true;
 	}
-	if (rgfw_checkQueuedEvent(event) == RGFW_FALSE)
+	if (rgfw_checkQueuedEvent(event) == false)
 	{
-		_rgfw.polledEvents = RGFW_FALSE;
-		return RGFW_FALSE;
+		_rgfw.polledEvents = false;
+		return false;
 	}
-	return RGFW_TRUE;
+	return true;
 }
 
 fn bool rgfw_checkQueuedEvent(RgfwEvent* event)
 {
-	_rgfw.queueEvents = RGFW_TRUE;
+	_rgfw.queueEvents = true;
 	RgfwEvent* ev = rgfw_eventQueuePop();
 	if (ev != null)
 	{
 		*event = *ev;
-		return RGFW_TRUE;
+		return true;
 	}
-	return RGFW_FALSE;
+	return false;
 }
 
 fn RgfwEvent* rgfw_window_eventQueuePop(RgfwWindow* win)
@@ -814,26 +681,26 @@ fn RgfwEvent* rgfw_window_eventQueuePop(RgfwWindow* win)
 
 fn bool rgfw_window_checkEvent(RgfwWindow* win, RgfwEvent* event)
 {
-	if (_rgfw.eventLen == 0 && _rgfw.polledEvents == RGFW_FALSE)
+	if (_rgfw.eventLen == 0 && _rgfw.polledEvents == false)
 	{
-		_rgfw.queueEvents = RGFW_TRUE;
+		_rgfw.queueEvents = true;
 		rgfw_pollEvents();
-		_rgfw.polledEvents = RGFW_TRUE;
+		_rgfw.polledEvents = true;
 	}
-	if (rgfw_window_checkQueuedEvent(win, event) == RGFW_FALSE)
+	if (rgfw_window_checkQueuedEvent(win, event) == false)
 	{
-		_rgfw.polledEvents = RGFW_FALSE;
-		return RGFW_FALSE;
+		_rgfw.polledEvents = false;
+		return false;
 	}
-	return RGFW_TRUE;
+	return true;
 }
 
 fn bool rgfw_window_checkQueuedEvent(RgfwWindow* win, RgfwEvent* event)
 {
 	RgfwEvent* ev = rgfw_window_eventQueuePop(win);
-	if (ev == null) return RGFW_FALSE;
+	if (ev == null) return false;
 	*event = *ev;
-	return RGFW_TRUE;
+	return true;
 }
 
 fn void rgfw_windowMaximizedCallback(RgfwWindow* win, int x, int y, int w, int h)
@@ -863,7 +730,7 @@ fn void rgfw_windowRestoredCallback(RgfwWindow* win, int x, int y, int w, int h)
 {
 	win.internal.flags &= ~((uint)RGFW_WINDOW_MINIMIZE);
 	win.x = x; win.y = y; win.w = w; win.h = h;
-	if (rgfw_window_isMaximized(win) == RGFW_FALSE) win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE);
+	if (rgfw_window_isMaximized(win) == false) win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE);
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_RESTORED_FLAG)) return;
 	RgfwEvent event;
 	event.type = RGFW_WINDOW_RESTORED;
@@ -896,7 +763,7 @@ fn void rgfw_windowResizedCallback(RgfwWindow* win, int w, int h)
 
 fn void rgfw_windowCloseCallback(RgfwWindow* win)
 {
-	win.internal.shouldClose = RGFW_TRUE;
+	win.internal.shouldClose = true;
 	RgfwEvent event;
 	event.type = RGFW_WINDOW_CLOSE;
 	event.common.win = win;
@@ -943,7 +810,7 @@ fn void rgfw_windowFocusCallback(RgfwWindow* win, bool inFocus)
 	RgfwEvent event;
 	event.common.win = win;
 	event.focus.state = inFocus;
-	if (inFocus == RGFW_TRUE)
+	if (inFocus == true)
 	{
 		if (win.internal.flags & RGFW_WINDOW_FULLSCREEN) rgfw_window_raise(win);
 		event.type = RGFW_WINDOW_FOCUS_IN;
@@ -953,9 +820,9 @@ fn void rgfw_windowFocusCallback(RgfwWindow* win, bool inFocus)
 		if (win.internal.flags & RGFW_WINDOW_FULLSCREEN) rgfw_window_minimize(win);
 		for (usz key = 0; key < (usz)RGFW_KEY_LAST; key++)
 		{
-			if (rgfw_isKeyDown((RgfwKey)key) == RGFW_FALSE) continue;
-			_rgfw.keyboard[key].current = RGFW_FALSE;
-			if (win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG) rgfw_keyCallback(win, (RgfwKey)key, win.internal.mod, RGFW_FALSE, RGFW_FALSE);
+			if (rgfw_isKeyDown((RgfwKey)key) == false) continue;
+			_rgfw.keyboard[key].current = false;
+			if (win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG) rgfw_keyCallback(win, (RgfwKey)key, win.internal.mod, false, false);
 		}
 		rgfw_resetKey();
 		event.type = RGFW_WINDOW_FOCUS_OUT;
@@ -975,14 +842,14 @@ fn void rgfw_mouseNotifyCallback(RgfwWindow* win, int x, int y, bool status)
 	if (status)
 	{
 		if (!(win.internal.enabledEvents & RGFW_MOUSE_ENTER_FLAG)) return;
-		_rgfw.windowState.mouseEnter = RGFW_TRUE;
+		_rgfw.windowState.mouseEnter = true;
 		event.type = RGFW_MOUSE_ENTER;
 	}
 	else
 	{
 		if (!(win.internal.enabledEvents & RGFW_MOUSE_LEAVE_FLAG)) return;
 		_rgfw.windowState.winLeave = win;
-		_rgfw.windowState.mouseLeave = RGFW_TRUE;
+		_rgfw.windowState.mouseLeave = true;
 		event.type = RGFW_MOUSE_LEAVE;
 	}
 	rgfw_eventQueuePushAndCall(&event);
@@ -992,7 +859,7 @@ fn void rgfw_dataDragCallback(RgfwWindow* win, RgfwDataTransferType dataType, Rg
 {
 	if (!(win.internal.enabledEvents & RGFW_DATA_DRAG_FLAG) || !(win.internal.flags & RGFW_WINDOW_ALLOW_DND)) return;
 	_rgfw.windowState.win = win;
-	_rgfw.windowState.dataDragging = RGFW_TRUE;
+	_rgfw.windowState.dataDragging = true;
 	_rgfw.windowState.dropX = x;
 	_rgfw.windowState.dropY = y;
 	RgfwEvent event;
@@ -1006,7 +873,7 @@ fn void rgfw_dataDropCallback(RgfwWindow* win, char* data, usz length, RgfwDataT
 {
 	if (!(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG) || !(win.internal.flags & RGFW_WINDOW_ALLOW_DND)) return;
 	_rgfw.windowState.win = win;
-	_rgfw.windowState.dataDrop = RGFW_TRUE;
+	_rgfw.windowState.dataDrop = true;
 	_rgfw.windowState.dataLength = length;
 	RgfwDataDropNode node;
 	rgfw_memzero(&node, RgfwDataDropNode::size);
@@ -1018,7 +885,7 @@ fn void rgfw_dataDropCallback(RgfwWindow* win, char* data, usz length, RgfwDataT
 	event.drop.value = &node;
 	event.common.win = win;
 	if (_rgfw.callbacks[(usz)event.type] != null) _rgfw.callbacks[(usz)event.type](&event);
-	if (_rgfw.queueEvents == RGFW_FALSE && _rgfw.dndBuild == RGFW_FALSE) return;
+	if (_rgfw.queueEvents == false && _rgfw.dndBuild == false) return;
 	char* dataCopy = (char*)rgfw_alloc_impl(length);
 	if (dataCopy != null) { rgfw_memcpy(dataCopy, data, length); node.data = dataCopy; }
 	RgfwDataDropNode* heapNode = (RgfwDataDropNode*)rgfw_alloc_impl(RgfwDataDropNode::size);
@@ -1130,9 +997,9 @@ fn int rgfw_init_ptr(char* className, RgfwInitFlags flags, RgfwInfo* info)
 	if (className == null) className = "RGFW";
 	rgfw_setInfo(info);
 	rgfw_memzero(_rgfw, RgfwInfo::size);
-	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == RGFW_FALSE) return -1;
-	if (flags & RGFW_INIT_EGL && rgfw_loadEGL() == RGFW_FALSE) return -1;
-	if (flags & RGFW_INIT_VULKAN && rgfw_loadVulkan() == RGFW_FALSE) return -1;
+	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == false) return -1;
+	if (flags & RGFW_INIT_EGL && rgfw_loadEGL() == false) return -1;
+	if (flags & RGFW_INIT_VULKAN && rgfw_loadVulkan() == false) return -1;
 	rgfw_initKeycodes();
 	int out = rgfw_initPlatform(className, flags);
 	if (out != 0)
@@ -1218,7 +1085,7 @@ fn void rgfw_window_close(RgfwWindow* win)
 fn void rgfw_window_closePtr(RgfwWindow* win)
 {
 	if (win == null) return;
-	if (win.internal.captureMouse) rgfw_window_captureMouse(win, RGFW_FALSE);
+	if (win.internal.captureMouse) rgfw_window_captureMouse(win, false);
 	if ((win.src.gfxType & RGFW_GFX_EGL) && win.src.ctx.egl != null)
 	{
 		rgfw_window_deleteContext_EGL(win, win.src.ctx.egl);
@@ -1266,8 +1133,8 @@ fn void rgfw_getMouseScroll(float* x, float* y) { if (x != null) *x = _rgfw.scro
 fn void rgfw_getMouseVector(float* x, float* y) { if (x != null) *x = _rgfw.vectorX; if (y != null) *y = _rgfw.vectorY; }
 
 fn RgfwWindowSrc* rgfw_window_getSrc(RgfwWindow* win) => &win.src;
-fn bool rgfw_window_getPosition(RgfwWindow* win, int* x, int* y) { if (x != null) *x = win.x; if (y != null) *y = win.y; return RGFW_TRUE; }
-fn bool rgfw_window_getSize(RgfwWindow* win, int* w, int* h) { if (w != null) *w = win.w; if (h != null) *h = win.h; return RGFW_TRUE; }
+fn bool rgfw_window_getPosition(RgfwWindow* win, int* x, int* y) { if (x != null) *x = win.x; if (y != null) *y = win.y; return true; }
+fn bool rgfw_window_getSize(RgfwWindow* win, int* w, int* h) { if (w != null) *w = win.w; if (h != null) *h = win.h; return true; }
 fn uint rgfw_window_getFlags(RgfwWindow* win) => win.internal.flags;
 fn RgfwKey rgfw_window_getExitKey(RgfwWindow* win) => win.internal.exitKey;
 fn void rgfw_window_setExitKey(RgfwWindow* win, RgfwKey key) { win.internal.exitKey = key; }
@@ -1281,10 +1148,10 @@ fn void rgfw_window_setUserPtr(RgfwWindow* win, void* ptr) { win.userPtr = ptr; 
 fn bool rgfw_window_getSizeInPixels(RgfwWindow* win, int* w, int* h)
 {
 	RgfwMonitor* mon = rgfw_window_getMonitor(win);
-	if (mon == null) return RGFW_FALSE;
+	if (mon == null) return false;
 	if (w != null) *w = (int)((float)win.w * mon.pixelRatio);
 	if (h != null) *h = (int)((float)win.h * mon.pixelRatio);
-	return RGFW_TRUE;
+	return true;
 }
 
 fn bool rgfw_window_didMouseLeave(RgfwWindow* win) => rgfw_bool(_rgfw.windowState.winLeave == win && _rgfw.windowState.mouseLeave);
@@ -1295,15 +1162,15 @@ fn bool rgfw_window_didDataDrop(RgfwWindow* win) => rgfw_bool(rgfw_window_getDat
 
 fn bool rgfw_window_getDataDrag(RgfwWindow* win, int* x, int* y)
 {
-	if (_rgfw.windowState.win != win || _rgfw.windowState.dataDragging == RGFW_FALSE) return RGFW_FALSE;
+	if (_rgfw.windowState.win != win || _rgfw.windowState.dataDragging == false) return false;
 	if (x != null) *x = _rgfw.windowState.dropX;
 	if (y != null) *y = _rgfw.windowState.dropY;
-	return RGFW_TRUE;
+	return true;
 }
 
 fn RgfwDataDropNode* rgfw_window_getDataDrop(RgfwWindow* win)
 {
-	if (_rgfw.windowState.win != win || _rgfw.windowState.dataDrop == RGFW_FALSE) return null;
+	if (_rgfw.windowState.win != win || _rgfw.windowState.dataDrop == false) return null;
 	return _rgfw.dndRoot;
 }
 
@@ -1326,7 +1193,7 @@ fn void rgfw_window_setFlagsInternal(RgfwWindow* win, RgfwWindowFlags flags, Rgf
 	else if (cmpFlags & RGFW_WINDOW_MINIMIZE) { rgfw_window_restore(win); }
 	if (flags & RGFW_WINDOW_CENTER) rgfw_window_center(win);
 	if (flags & RGFW_WINDOW_CENTER_CURSOR) rgfw_window_moveMouse(win, win.x + (win.w / 2), win.y + (win.h / 2));
-	if (flags & RGFW_WINDOW_FULLSCREEN) { rgfw_window_setFullscreen(win, RGFW_TRUE); }
+	if (flags & RGFW_WINDOW_FULLSCREEN) { rgfw_window_setFullscreen(win, true); }
 	else if (cmpFlags & RGFW_WINDOW_FULLSCREEN) { rgfw_window_setFullscreen(win, false); }
 	if (flags & RGFW_WINDOW_HIDE_MOUSE) { rgfw_window_showMouse(win, false); }
 	else if (cmpFlags & RGFW_WINDOW_HIDE_MOUSE) { rgfw_window_showMouse(win, true); }
@@ -1334,10 +1201,10 @@ fn void rgfw_window_setFlagsInternal(RgfwWindow* win, RgfwWindowFlags flags, Rgf
 	else if (cmpFlags & RGFW_WINDOW_HIDE) { rgfw_window_show(win); }
 	if (flags & RGFW_WINDOW_FLOATING) { rgfw_window_setFloating(win, true); }
 	else if (cmpFlags & RGFW_WINDOW_FLOATING) { rgfw_window_setFloating(win, false); }
-	if (flags & RGFW_WINDOW_RAW_MOUSE) { rgfw_window_setRawMouseMode(win, RGFW_TRUE); }
-	else if (cmpFlags & RGFW_WINDOW_RAW_MOUSE) { rgfw_window_setRawMouseMode(win, RGFW_FALSE); }
-	if (flags & RGFW_WINDOW_CAPTURE_MOUSE) { rgfw_window_captureRawMouse(win, RGFW_TRUE); }
-	else if (cmpFlags & RGFW_WINDOW_CAPTURE_MOUSE) { rgfw_window_captureMouse(win, RGFW_FALSE); }
+	if (flags & RGFW_WINDOW_RAW_MOUSE) { rgfw_window_setRawMouseMode(win, true); }
+	else if (cmpFlags & RGFW_WINDOW_RAW_MOUSE) { rgfw_window_setRawMouseMode(win, false); }
+	if (flags & RGFW_WINDOW_CAPTURE_MOUSE) { rgfw_window_captureRawMouse(win, true); }
+	else if (cmpFlags & RGFW_WINDOW_CAPTURE_MOUSE) { rgfw_window_captureMouse(win, false); }
 	if (flags & RGFW_WINDOW_FOCUS) rgfw_window_focus(win);
 	if (flags & RGFW_WINDOW_SCALE_TO_MONITOR) rgfw_window_scaleToMonitor(win);
 	if (flags & RGFW_WINDOW_NO_RESIZE)
@@ -1356,7 +1223,7 @@ fn void rgfw_window_setFlagsInternal(RgfwWindow* win, RgfwWindowFlags flags, Rgf
 fn void rgfw_window_setFlags(RgfwWindow* win, RgfwWindowFlags flags) { rgfw_window_setFlagsInternal(win, flags, win.internal.flags); }
 fn bool rgfw_window_isInFocus(RgfwWindow* win) => rgfw_bool(win.internal.inFocus);
 fn void rgfw_setBuildDND(bool state) { _rgfw.dndBuild = state; }
-fn bool rgfw_window_getMouse(RgfwWindow* win, int* x, int* y) { if (x != null) *x = win.internal.lastMouseX; if (y != null) *y = win.internal.lastMouseY; return RGFW_TRUE; }
+fn bool rgfw_window_getMouse(RgfwWindow* win, int* x, int* y) { if (x != null) *x = win.internal.lastMouseX; if (y != null) *y = win.internal.lastMouseY; return true; }
 fn bool rgfw_window_isKeyPressed(RgfwWindow* win, RgfwKey key) => rgfw_bool(rgfw_isKeyPressed(key) && rgfw_window_isInFocus(win));
 fn bool rgfw_window_isKeyDown(RgfwWindow* win, RgfwKey key) => rgfw_bool(rgfw_isKeyDown(key) && rgfw_window_isInFocus(win));
 fn bool rgfw_window_isKeyReleased(RgfwWindow* win, RgfwKey key) => rgfw_bool(rgfw_isKeyReleased(key) && rgfw_window_isInFocus(win));
@@ -1398,7 +1265,7 @@ fn bool rgfw_monitorModeCompare(RgfwMonitorMode* mon, RgfwMonitorMode* mon2, Rgf
 }
 
 fn bool rgfw_window_shouldClose(RgfwWindow* win) => rgfw_bool(win == null || win.internal.shouldClose || (win.internal.exitKey && rgfw_isKeyDown(win.internal.exitKey)));
-fn void rgfw_window_setShouldClose(RgfwWindow* win, bool shouldClose) { if (shouldClose) { rgfw_windowCloseCallback(win); } else { win.internal.shouldClose = RGFW_FALSE; } }
+fn void rgfw_window_setShouldClose(RgfwWindow* win, bool shouldClose) { if (shouldClose) { rgfw_windowCloseCallback(win); } else { win.internal.shouldClose = false; } }
 fn void rgfw_window_scaleToMonitor(RgfwWindow* win) { RgfwMonitor* monitor = rgfw_window_getMonitor(win); if (monitor == null) return; rgfw_window_resize(win, (int)(monitor.scaleX * (float)win.w), (int)(monitor.scaleY * (float)win.h)); }
 fn void rgfw_window_moveToMonitor(RgfwWindow* win, RgfwMonitor* m) { rgfw_window_move(win, m.x + win.x, m.y + win.y); }
 
@@ -1411,50 +1278,21 @@ RgfwColorLayout[6] rgfw_layouts = {
 	{3, 2, 1, 0, 4},
 };
 
-fn void rgfw_copyImageData(char* dest_data, int w, int h, RgfwFormat dest_format, char* src_data, RgfwFormat src_format, RgfwConvertImageDataFunc func)
-{
-	rgfw_copyImageData64(dest_data, w, h, dest_format, src_data, src_format, RGFW_FALSE, func);
-}
 
+fn void rgfw_surface_setConvertFunc(GfxSurface* surface, RgfwConvertImageDataFunc func) { surface.convertFunc = func; }
+fn RgfwNativeImage* rgfw_surface_getNativeImage(GfxSurface* surface) => &surface.native;
+fn void rgfw_surface_free(GfxSurface* surface) { rgfw_surface_freePtr(surface); rgfw_free_impl(surface); }
 
-fn void rgfw_copyImageData64(char* dest_data, int dest_w, int dest_h, RgfwFormat dest_format, char* src_data, RgfwFormat src_format, bool is64bit, RgfwConvertImageDataFunc func)
+fn GfxSurface* rgfw_window_createSurface(RgfwWindow* win, char* data, int w, int h, RgfwFormat format)
 {
-	uint count = (uint)(dest_w * dest_h);
-	if (src_format == dest_format)
-	{
-		uint channels = dest_format >= RGFW_FORMAT_RGBA8 ? 4 : 3;
-		rgfw_memcpy(dest_data, src_data, (usz)(count * channels));
-		return;
-	}
-	RgfwColorLayout* srcLayout = &rgfw_layouts[(usz)src_format];
-	RgfwColorLayout* destLayout = &rgfw_layouts[(usz)dest_format];
-	if (is64bit || func == null) { rgfw_convertImageData64(dest_data, src_data, srcLayout, destLayout, count, is64bit); }
-	else { func(dest_data, src_data, srcLayout, destLayout, count); }
-}
-
-fn RgfwSurface* rgfw_createSurface(char* data, int w, int h, RgfwFormat format)
-{
-	RgfwSurface* surface = (RgfwSurface*)rgfw_alloc_impl(RgfwSurface::size);
+	GfxSurface* surface = (GfxSurface*)rgfw_alloc_impl(GfxSurface::size);
 	if (surface == null) return null;
-	rgfw_memzero(surface, RgfwSurface::size);
-	rgfw_createSurfacePtr(data, w, h, format, surface);
-	return surface;
-}
-
-fn void rgfw_surface_setConvertFunc(RgfwSurface* surface, RgfwConvertImageDataFunc func) { surface.convertFunc = func; }
-fn RgfwNativeImage* rgfw_surface_getNativeImage(RgfwSurface* surface) => &surface.native;
-fn void rgfw_surface_free(RgfwSurface* surface) { rgfw_surface_freePtr(surface); rgfw_free_impl(surface); }
-
-fn RgfwSurface* rgfw_window_createSurface(RgfwWindow* win, char* data, int w, int h, RgfwFormat format)
-{
-	RgfwSurface* surface = (RgfwSurface*)rgfw_alloc_impl(RgfwSurface::size);
-	if (surface == null) return null;
-	rgfw_memzero(surface, RgfwSurface::size);
+	rgfw_memzero(surface, GfxSurface::size);
 	rgfw_window_createSurfacePtr(win, data, w, h, format, surface);
 	return surface;
 }
 
-fn bool rgfw_window_createSurfacePtr(RgfwWindow* win, char* data, int w, int h, RgfwFormat format, RgfwSurface* surface)
+fn bool rgfw_window_createSurfacePtr(RgfwWindow* win, char* data, int w, int h, RgfwFormat format, GfxSurface* surface)
 {
 	return rgfw_createSurfacePtr(data, w, h, format, surface);
 }
@@ -1469,7 +1307,7 @@ fn RgfwMonitorNode* rgfw_monitors_add(RgfwMonitor* mon)
 	_rgfw.monitors.list.cur = node;
 	if (mon != null) node.mon = *mon;
 	node.mon.node = node;
-	node.disconnected = RGFW_FALSE;
+	node.disconnected = false;
 	_rgfw.monitors.count += 1;
 	return node;
 }
@@ -1491,9 +1329,9 @@ fn void rgfw_monitors_refresh()
 	while (node != null)
 	{
 		RgfwMonitorNode* next = node.next;
-		if (node.disconnected != RGFW_FALSE)
+		if (node.disconnected != false)
 		{
-			rgfw_monitorCallback(_rgfw.root, &node.mon, RGFW_FALSE);
+			rgfw_monitorCallback(_rgfw.root, &node.mon, false);
 			rgfw_monitors_remove(node, prev);
 		}
 		prev = node;
@@ -1516,9 +1354,9 @@ fn RgfwMonitor** rgfw_getMonitors(usz* len)
 {
 	if (len != null) *len = 0;
 	usz count = 0;
-	if (rgfw_getMonitorsPtr(0, null, &count) == RGFW_FALSE || count == 0) return null;
+	if (rgfw_getMonitorsPtr(0, null, &count) == false || count == 0) return null;
 	RgfwMonitor** monitors = (RgfwMonitor**)rgfw_alloc_impl(RgfwMonitor*::size * count);
-	if (rgfw_getMonitorsPtr(count, monitors, &count) == RGFW_FALSE)
+	if (rgfw_getMonitorsPtr(count, monitors, &count) == false)
 	{
 		rgfw_free_impl(monitors);
 		return null;
@@ -1530,7 +1368,7 @@ fn RgfwMonitor** rgfw_getMonitors(usz* len)
 fn bool rgfw_getMonitorsPtr(usz max, RgfwMonitor** monitors, usz* len)
 {
 	if (len != null) *len = _rgfw.monitors.count;
-	if (monitors == null || max == 0) return RGFW_TRUE;
+	if (monitors == null || max == 0) return true;
 	if (len != null) *len = max;
 	usz i = 0;
 	RgfwMonitorNode* cur_node = _rgfw.monitors.list.head;
@@ -1540,7 +1378,7 @@ fn bool rgfw_getMonitorsPtr(usz max, RgfwMonitor** monitors, usz* len)
 		i++;
 		cur_node = cur_node.next;
 	}
-	return RGFW_TRUE;
+	return true;
 }
 
 fn RgfwMonitor* rgfw_getPrimaryMonitor()
@@ -1579,16 +1417,16 @@ fn bool rgfw_monitor_findClosestMode(RgfwMonitor* monitor, RgfwMonitorMode* mode
 	}
 	if (chosen != null && closest != null) *closest = *chosen;
 	rgfw_free_impl(modes);
-	return chosen == null ? RGFW_FALSE : RGFW_TRUE;
+	return chosen == null ? false : true;
 }
 
-fn bool rgfw_monitor_getPosition(RgfwMonitor* monitor, int* x, int* y) { if (x != null) *x = monitor.x; if (y != null) *y = monitor.y; return RGFW_TRUE; }
+fn bool rgfw_monitor_getPosition(RgfwMonitor* monitor, int* x, int* y) { if (x != null) *x = monitor.x; if (y != null) *y = monitor.y; return true; }
 fn char* rgfw_monitor_getName(RgfwMonitor* monitor) => &monitor.name[0];
-fn bool rgfw_monitor_getScale(RgfwMonitor* monitor, float* x, float* y) { if (x != null) *x = monitor.scaleX; if (y != null) *y = monitor.scaleY; return RGFW_TRUE; }
-fn bool rgfw_monitor_getPhysicalSize(RgfwMonitor* monitor, float* w, float* h) { if (w != null) *w = monitor.physW; if (h != null) *h = monitor.physH; return RGFW_TRUE; }
+fn bool rgfw_monitor_getScale(RgfwMonitor* monitor, float* x, float* y) { if (x != null) *x = monitor.scaleX; if (y != null) *y = monitor.scaleY; return true; }
+fn bool rgfw_monitor_getPhysicalSize(RgfwMonitor* monitor, float* w, float* h) { if (w != null) *w = monitor.physW; if (h != null) *h = monitor.physH; return true; }
 fn void rgfw_monitor_setUserPtr(RgfwMonitor* monitor, void* userPtr) { monitor.userPtr = userPtr; }
 fn void* rgfw_monitor_getUserPtr(RgfwMonitor* monitor) => monitor.userPtr;
-fn bool rgfw_monitor_getMode(RgfwMonitor* monitor, RgfwMonitorMode* mode) { if (mode != null) *mode = monitor.mode; return RGFW_TRUE; }
+fn bool rgfw_monitor_getMode(RgfwMonitor* monitor, RgfwMonitorMode* mode) { if (mode != null) *mode = monitor.mode; return true; }
 
 fn RgfwGammaRamp* rgfw_monitor_getGammaRamp(RgfwMonitor* monitor)
 {
@@ -1632,10 +1470,6 @@ fn bool rgfw_monitor_setGamma(RgfwMonitor* monitor, float gamma)
 	return ret;
 }
 
-fn bool rgfw_window_setIcon(RgfwWindow* win, char* data, int w, int h, RgfwFormat format)
-{
-	return rgfw_window_setIconEx(win, data, w, h, format, RGFW_ICON_BOTH);
-}
 
 fn void rgfw_window_captureMouse(RgfwWindow* win, bool state) { win.internal.captureMouse = state; rgfw_window_captureMousePlatform(win, state); }
 fn void rgfw_window_setRawMouseMode(RgfwWindow* win, bool state) { win.internal.rawMouse = state; rgfw_window_setRawMouseModePlatform(win, state); }
@@ -1680,12 +1514,12 @@ fn bool rgfw_window_setMouseDefault(RgfwWindow* win) => rgfw_window_setMouseStan
 fn bool rgfw_window_setMouseStandard(RgfwWindow* win, RgfwMouseIcon icon) => rgfw_window_setMouse(win, _rgfw.standardMice[(usz)icon]);
 fn bool rgfw_window_setMouse(RgfwWindow* win, RgfwMouse* mouse) { if (mouse != _rgfw.hiddenMouse) win.internal.mouse = mouse; return rgfw_window_setMousePlatform(win, mouse); }
 fn void rgfw_window_setDND(RgfwWindow* win, bool allow) { rgfw_setBit(&win.internal.flags, RGFW_WINDOW_ALLOW_DND, allow); }
-fn void rgfw_window_showMouse(RgfwWindow* win, bool show) { rgfw_window_showMouseFlags(win, show); if (show == RGFW_FALSE) { rgfw_window_setMouse(win, _rgfw.hiddenMouse); } else { rgfw_window_setMouse(win, win.internal.mouse); } }
+fn void rgfw_window_showMouse(RgfwWindow* win, bool show) { rgfw_window_showMouseFlags(win, show); if (show == false) { rgfw_window_setMouse(win, _rgfw.hiddenMouse); } else { rgfw_window_setMouse(win, win.internal.mouse); } }
 
 fn bool rgfw_isLatin(char* string, usz length)
 {
-	for (usz i = 0; i < length; i++) if ((char)string[i] >= 0x80) return RGFW_TRUE;
-	return RGFW_FALSE;
+	for (usz i = 0; i < length; i++) if ((char)string[i] >= 0x80) return true;
+	return false;
 }
 
 fn uint rgfw_decodeUTF8(char* string, usz* starting_index)
@@ -1720,7 +1554,7 @@ fn void rgfw_window_setAspectRatio(RgfwWindow* win, int w, int h)
 
 fn RgfwFormat rgfw_nativeFormat() => RGFW_FORMAT_BGRA8;
 
-fn void rgfw_window_blitSurface(RgfwWindow* win, RgfwSurface* surface)
+fn void rgfw_window_blitSurface(RgfwWindow* win, GfxSurface* surface)
 {
 	if (win == null || surface == null || surface.data == null) return;
 	int minW = win.w < surface.w ? win.w : surface.w;
@@ -1785,12 +1619,12 @@ fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key)
 
 RgfwGlHints rgfw_global_hints_open_gl_src = {
 	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
-	RGFW_FALSE, RGFW_FALSE, RGFW_FALSE, RGFW_FALSE, RGFW_GL_RELEASE_NONE,
+	false, false, false, false, RGFW_GL_RELEASE_NONE,
 	RGFW_GL_CORE, 1, 0, null, null, RGFW_GL_ACCELERATED
 };
 RgfwGlHints* rgfw_global_hints_open_gl = &rgfw_global_hints_open_gl_src;
 
-fn void rgfw_resetGlobalHints_OpenGL() { rgfw_global_hints_open_gl_src = {0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, RGFW_FALSE, RGFW_FALSE, RGFW_FALSE, RGFW_FALSE, RGFW_GL_RELEASE_NONE, RGFW_GL_CORE, 1, 0, null, null, RGFW_GL_ACCELERATED}; }
+fn void rgfw_resetGlobalHints_OpenGL() { rgfw_global_hints_open_gl_src = {0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, false, false, false, false, RGFW_GL_RELEASE_NONE, RGFW_GL_CORE, 1, 0, null, null, RGFW_GL_ACCELERATED}; }
 fn void rgfw_setGlobalHints_OpenGL(RgfwGlHints* hints) { rgfw_global_hints_open_gl = hints; }
 fn RgfwGlHints* rgfw_getGlobalHints_OpenGL() { return rgfw_global_hints_open_gl; }
 fn void* rgfw_glContext_getSourceContext(RgfwGlContext* ctx) { return ctx.ctx; }
@@ -1807,17 +1641,17 @@ struct RgfwAttribStack
 
 fn bool rgfw_extensionSupportedStr(char* extensions, char* ext, usz len)
 {
-	if (extensions == null || ext == null) return RGFW_FALSE;
+	if (extensions == null || ext == null) return false;
 	while (ext[len - 1] == 0 && len > 3) len--;
 	char* start = extensions;
 	char* where = strstr(extensions, ext);
 	while (where != null)
 	{
 		char* terminator = where + len;
-		if ((where == start || *(where - 1) == ' ') && (*terminator == ' ' || *terminator == 0)) return RGFW_TRUE;
+		if ((where == start || *(where - 1) == ' ') && (*terminator == ' ' || *terminator == 0)) return true;
 		where = strstr(terminator, ext);
 	}
-	return RGFW_FALSE;
+	return false;
 }
 
 alias RgfwGetProcAddressFunc = fn RgfwProc(char* procname);
@@ -1825,8 +1659,8 @@ alias RgfwGetProcAddressFunc = fn RgfwProc(char* procname);
 fn bool rgfw_extensionSupported_base(char* extension, usz len, RgfwGetProcAddressFunc getProcAddress)
 {
 	RgfwProc rgfw_gl_get_string = getProcAddress("glGetString");
-	if (rgfw_gl_get_string == null) return RGFW_FALSE;
-	return RGFW_FALSE;
+	if (rgfw_gl_get_string == null) return false;
+	return false;
 }
 
 const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
@@ -1859,7 +1693,7 @@ fn RgfwGlContext* rgfw_window_createContext_OpenGL(RgfwWindow* win, RgfwGlHints*
 	RgfwGlContext* ctx = (RgfwGlContext*)rgfw_alloc_impl(RgfwGlContext::size);
 	if (ctx == null) return null;
 	rgfw_memzero(ctx, RgfwGlContext::size);
-	if (rgfw_window_createContextPtr_OpenGL(win, ctx, hints) == RGFW_FALSE)
+	if (rgfw_window_createContextPtr_OpenGL(win, ctx, hints) == false)
 	{
 		rgfw_free_impl(ctx);
 		if (win != null) win.src.ctx.native = null;
@@ -1883,7 +1717,7 @@ fn void rgfw_window_deleteContext_OpenGL(RgfwWindow* win, RgfwGlContext* ctx)
 
 fn bool rgfw_extensionSupported_OpenGL(char* extension, usz len)
 {
-	if (rgfw_extensionSupported_base(extension, len, &rgfw_getProcAddress_OpenGL)) return RGFW_TRUE;
+	if (rgfw_extensionSupported_base(extension, len, &rgfw_getProcAddress_OpenGL)) return true;
 	return rgfw_extensionSupportedPlatform_OpenGL(extension, len);
 }
 
@@ -1895,7 +1729,7 @@ fn void rgfw_window_makeCurrentWindow_OpenGL(RgfwWindow* win)
 
 fn RgfwWindow* rgfw_getCurrentWindow_OpenGL() => _rgfw.current;
 
-fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, usz len) => RGFW_FALSE;
+fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, usz len) => false;
 
 fn RgfwProc rgfw_getProcAddress_OpenGL(char* procname)
 {
@@ -1908,7 +1742,7 @@ fn RgfwProc rgfw_getProcAddress_OpenGL(char* procname)
 
 fn bool rgfw_window_createContextPtr_OpenGL(RgfwWindow* win, RgfwGlContext* ctx, RgfwGlHints* hints)
 {
-	if (win == null || ctx == null || hints == null || win.src.window == null) return RGFW_FALSE;
+	if (win == null || ctx == null || hints == null || win.src.window == null) return false;
 	win.src.ctx.native = ctx;
 	win.src.gfxType = RGFW_GFX_NATIVE_OPEN_GL;
 
@@ -1943,7 +1777,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(RgfwWindow* win, RgfwGlContext* ctx,
 	if (format == null)
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_OPEN_GL_CONTEXT, "Failed to load pixel format for OpenGL.");
-		return RGFW_FALSE;
+		return false;
 	}
 
 	ObjcId share = hints.share != null ? (ObjcId)hints.share.ctx : null;
@@ -1952,7 +1786,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(RgfwWindow* win, RgfwGlContext* ctx,
 	{
 		ns_release(format);
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL context.");
-		return RGFW_FALSE;
+		return false;
 	}
 	ctx.format = format;
 	objc_send((ObjcId)ctx.ctx, ObjcSendVoidId, "setView:", (ObjcId)win.src.view);
@@ -1964,7 +1798,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(RgfwWindow* win, RgfwGlContext* ctx,
 	rgfw_window_makeCurrentContext_OpenGL(win);
 	rgfw_window_swapInterval_OpenGL(win, 0);
 	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_ERR_OPEN_GL_CONTEXT, "OpenGL context initialized.");
-	return RGFW_TRUE;
+	return true;
 }
 
 fn void rgfw_window_deleteContextPtr_OpenGL(RgfwWindow* win, RgfwGlContext* ctx)
@@ -2109,13 +1943,13 @@ fn void rgfw_osxWindowDidDeminiaturize(ObjcId self, ObjcSelector sel, ObjcId not
 fn void rgfw_osxWindowDidBecomeKey(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
 	RgfwWindow* win = rgfw_osxDelegateWindow(self);
-	if (win != null) rgfw_windowFocusCallback(win, RGFW_TRUE);
+	if (win != null) rgfw_windowFocusCallback(win, true);
 }
 
 fn void rgfw_osxWindowDidResignKey(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
 	RgfwWindow* win = rgfw_osxDelegateWindow(self);
-	if (win != null) rgfw_windowFocusCallback(win, RGFW_FALSE);
+	if (win != null) rgfw_windowFocusCallback(win, false);
 }
 
 fn RgfwWindow* rgfw_osxViewWindow(ObjcId self)
@@ -2125,7 +1959,7 @@ fn RgfwWindow* rgfw_osxViewWindow(ObjcId self)
 	return (RgfwWindow*)out;
 }
 
-fn bool rgfw_osxAcceptsFirstResponder(ObjcId self, ObjcSelector sel) => RGFW_TRUE;
+fn bool rgfw_osxAcceptsFirstResponder(ObjcId self, ObjcSelector sel) => true;
 
 fn void rgfw_osxMouseMovedCommon(ObjcId self, ObjcId event)
 {
@@ -2152,12 +1986,12 @@ fn void rgfw_osxMouseButtonCommon(ObjcId self, ObjcId event, bool down, RgfwMous
 	rgfw_osxMouseMovedCommon(self, event);
 }
 
-fn void rgfw_osxMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, RGFW_TRUE, RGFW_MOUSE_LEFT); }
-fn void rgfw_osxMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, RGFW_FALSE, RGFW_MOUSE_LEFT); }
-fn void rgfw_osxRightMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, RGFW_TRUE, RGFW_MOUSE_RIGHT); }
-fn void rgfw_osxRightMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, RGFW_FALSE, RGFW_MOUSE_RIGHT); }
-fn void rgfw_osxOtherMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, RGFW_TRUE, RGFW_MOUSE_MIDDLE); }
-fn void rgfw_osxOtherMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, RGFW_FALSE, RGFW_MOUSE_MIDDLE); }
+fn void rgfw_osxMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, true, RGFW_MOUSE_LEFT); }
+fn void rgfw_osxMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, false, RGFW_MOUSE_LEFT); }
+fn void rgfw_osxRightMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, true, RGFW_MOUSE_RIGHT); }
+fn void rgfw_osxRightMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, false, RGFW_MOUSE_RIGHT); }
+fn void rgfw_osxOtherMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, true, RGFW_MOUSE_MIDDLE); }
+fn void rgfw_osxOtherMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, false, RGFW_MOUSE_MIDDLE); }
 
 fn void rgfw_osxScrollWheel(ObjcId self, ObjcSelector sel, ObjcId event)
 {
@@ -2187,27 +2021,27 @@ fn void rgfw_osxKeyCommon(ObjcId self, ObjcId event, bool down)
 	if (keyCode >= 256) return;
 	RgfwKey key = _rgfw.keycodes[(usz)keyCode];
 	if (key == RGFW_KEY_NULL) return;
-	bool repeat = down ? objc_send(event, ObjcSendBool, "isARepeat") : RGFW_FALSE;
+	bool repeat = down ? objc_send(event, ObjcSendBool, "isARepeat") : false;
 	RgfwKeymod mods = rgfw_osxMods(objc_send(event, ObjcSendNSUInteger, "modifierFlags"));
 	rgfw_keyCallback(win, key, mods, repeat, down);
 }
 
-fn void rgfw_osxKeyDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxKeyCommon(self, event, RGFW_TRUE); }
-fn void rgfw_osxKeyUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxKeyCommon(self, event, RGFW_FALSE); }
+fn void rgfw_osxKeyDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxKeyCommon(self, event, true); }
+fn void rgfw_osxKeyUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxKeyCommon(self, event, false); }
 
 fn void rgfw_osxMouseEntered(ObjcId self, ObjcSelector sel, ObjcId event)
 {
 	RgfwWindow* win = rgfw_osxViewWindow(self);
 	if (win == null) return;
 	CGPoint p = objc_send(event, ObjcSendPoint, "locationInWindow");
-	rgfw_mouseNotifyCallback(win, (int)p.x, win.h - (int)p.y, RGFW_TRUE);
+	rgfw_mouseNotifyCallback(win, (int)p.x, win.h - (int)p.y, true);
 }
 
 fn void rgfw_osxMouseExited(ObjcId self, ObjcSelector sel, ObjcId event)
 {
 	RgfwWindow* win = rgfw_osxViewWindow(self);
 	if (win == null) return;
-	rgfw_mouseNotifyCallback(win, win.internal.lastMouseX, win.internal.lastMouseY, RGFW_FALSE);
+	rgfw_mouseNotifyCallback(win, win.internal.lastMouseX, win.internal.lastMouseY, false);
 }
 
 fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
@@ -2216,7 +2050,7 @@ fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
 	if (win == null) return;
 
 	RgfwKey value = RGFW_KEY_NULL;
-	bool pressed = RGFW_FALSE;
+	bool pressed = false;
 
 	NSUInteger flags = objc_send(event, ObjcSendNSUInteger, "modifierFlags");
 	rgfw_keyUpdateKeyModsEx(win,
@@ -2226,7 +2060,7 @@ fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
 		rgfw_bool(flags & 0x00080000),
 		rgfw_bool(flags & 0x00020000),
 		rgfw_bool(flags & 0x00100000),
-		RGFW_FALSE);
+		false);
 
 	for (int i = 0; i < 9; i++)
 	{
@@ -2238,8 +2072,8 @@ fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
 	{
 		NSUInteger shift = (NSUInteger)1 << (uint)(i + 16);
 		RgfwKey key = (RgfwKey)(RGFW_KEY_CAPS_LOCK + i);
-		if ((flags & shift) != 0 && !rgfw_isKeyDown(key)) { pressed = RGFW_TRUE; value = key; break; }
-		if ((flags & shift) == 0 && rgfw_isKeyDown(key)) { pressed = RGFW_FALSE; value = key; break; }
+		if ((flags & shift) != 0 && !rgfw_isKeyDown(key)) { pressed = true; value = key; break; }
+		if ((flags & shift) == 0 && rgfw_isKeyDown(key)) { pressed = false; value = key; break; }
 	}
 
 	rgfw_keyCallback(win, value, win.internal.mod, rgfw_bool(rgfw_isKeyDown(value) && pressed), pressed);
@@ -2259,7 +2093,7 @@ fn void rgfw_osxViewDidChangeBackingProperties(ObjcId self, ObjcSelector sel)
 	rgfw_scaleUpdatedCallback(win, mon.scaleX, mon.scaleY);
 }
 
-fn bool rgfw_osxWantsUpdateLayer(ObjcId self, ObjcSelector sel) => RGFW_TRUE;
+fn bool rgfw_osxWantsUpdateLayer(ObjcId self, ObjcSelector sel) => true;
 
 fn void rgfw_osxUpdateLayer(ObjcId self, ObjcSelector sel)
 {
@@ -2307,15 +2141,15 @@ fn void rgfw_osxDraggingEnded(ObjcId self, ObjcSelector sel, ObjcId sender)
 fn bool rgfw_osxPrepareForDragOperation(ObjcId self, ObjcSelector sel, ObjcId sender)
 {
 	RgfwWindow* win = rgfw_osxViewWindow(self);
-	if (win == null || !(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return RGFW_TRUE;
-	if (!(win.internal.flags & RGFW_WINDOW_ALLOW_DND)) return RGFW_FALSE;
-	return RGFW_TRUE;
+	if (win == null || !(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return true;
+	if (!(win.internal.flags & RGFW_WINDOW_ALLOW_DND)) return false;
+	return true;
 }
 
 fn bool rgfw_osxPerformDragOperation(ObjcId self, ObjcSelector sel, ObjcId sender)
 {
 	RgfwWindow* win = rgfw_osxViewWindow(self);
-	if (win == null || !(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return RGFW_FALSE;
+	if (win == null || !(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return false;
 
 	ObjcId pasteBoard = objc_send(sender, ObjcSendId, "draggingPasteboard");
 	ObjcId types = objc_send(pasteBoard, ObjcSendId, "types");
@@ -2324,7 +2158,7 @@ fn bool rgfw_osxPerformDragOperation(ObjcId self, ObjcSelector sel, ObjcId sende
 	if (!objc_send(types, ObjcSendBoolId, "containsObject:", fileURLsType))
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_CLIPBOARD, "No files found on the pasteboard.");
-		return RGFW_FALSE;
+		return false;
 	}
 
 	ObjcId propertyList = objc_send(pasteBoard, ObjcSendIdId, "propertyListForType:", fileURLsType);
@@ -2335,10 +2169,10 @@ fn bool rgfw_osxPerformDragOperation(ObjcId self, ObjcSelector sel, ObjcId sende
 		char* filePath = ns_utf8(propertyList);
 		rgfw_dataDropCallback(win, filePath, (usz)stringCount + 1, RGFW_DATA_FILE);
 	}
-	if (!objc_send(propertyList, ObjcSendBoolId, "isKindOfClass:", objc_class("NSArray"))) return RGFW_FALSE;
+	if (!objc_send(propertyList, ObjcSendBoolId, "isKindOfClass:", objc_class("NSArray"))) return false;
 
 	NSUInteger count = objc_send(propertyList, ObjcSendNSUInteger, "count");
-	if (count == 0) return RGFW_FALSE;
+	if (count == 0) return false;
 
 	for (NSUInteger i = 0; i < count; i++)
 	{
@@ -2348,7 +2182,7 @@ fn bool rgfw_osxPerformDragOperation(ObjcId self, ObjcSelector sel, ObjcId sende
 		rgfw_dataDropCallback(win, filePath, (usz)stringCount + 1, RGFW_DATA_FILE);
 	}
 
-	return RGFW_FALSE;
+	return false;
 }
 
 fn void rgfw_registerOsxClasses()
@@ -2513,7 +2347,7 @@ fn void rgfw_pollMonitors()
 		if (displays[i] == cgMainDisplayID()) _rgfw.monitors.primary = node;
 	}
 }
-fn void rgfw_stopCheckEvents() { if (_rgfw != null) _rgfw.stopCheckEvents_bool = RGFW_TRUE; }
+fn void rgfw_stopCheckEvents() { if (_rgfw != null) _rgfw.stopCheckEvents_bool = true; }
 fn void rgfw_waitForEvent(int waitMS)
 {
 	if (_rgfw == null || _rgfw.nsApp == null) return;
@@ -2573,7 +2407,7 @@ fn RgfwWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, Rgfw
 	if (!(flags & RGFW_WINDOW_HIDE)) rgfw_window_showPlatform(win);
 	if (flags & RGFW_WINDOW_MAXIMIZE) rgfw_window_maximizePlatform(win);
 	if (flags & RGFW_WINDOW_MINIMIZE) rgfw_window_minimizePlatform(win);
-	if (flags & RGFW_WINDOW_FULLSCREEN) rgfw_window_setFullscreen(win, RGFW_TRUE);
+	if (flags & RGFW_WINDOW_FULLSCREEN) rgfw_window_setFullscreen(win, true);
 	return win;
 }
 
@@ -2591,9 +2425,9 @@ fn void rgfw_window_closePlatform(RgfwWindow* win)
 
 fn bool rgfw_window_setMousePlatform(RgfwWindow* win, RgfwMouse* mouse)
 {
-	if (mouse == null) return RGFW_FALSE;
+	if (mouse == null) return false;
 	objc_send((ObjcId)mouse, ObjcSendVoid, "set");
-	return RGFW_TRUE;
+	return true;
 }
 
 fn void rgfw_window_showPlatform(RgfwWindow* win)
@@ -2632,9 +2466,9 @@ fn void rgfw_window_resizePlatform(RgfwWindow* win, int w, int h)
 fn void rgfw_window_maximizePlatform(RgfwWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "zoom:", null); }
 fn void rgfw_window_captureMousePlatform(RgfwWindow* win, bool state) { cgAssociateMouseAndMouseCursorPosition(!state); }
 fn void rgfw_window_setRawMouseModePlatform(RgfwWindow* win, bool state) { _rgfw.rawMouse = state; }
-fn bool rgfw_createSurfacePtr(char* data, int w, int h, RgfwFormat format, RgfwSurface* surface)
+fn bool rgfw_createSurfacePtr(char* data, int w, int h, RgfwFormat format, GfxSurface* surface)
 {
-	if (surface == null) return RGFW_FALSE;
+	if (surface == null) return false;
 	surface.data = data;
 	surface.w = w;
 	surface.h = h;
@@ -2644,7 +2478,7 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, RgfwFormat format, RgfwS
 	return rgfw_bool(surface.native.buffer != null);
 }
 
-fn void rgfw_surface_freePtr(RgfwSurface* surface)
+fn void rgfw_surface_freePtr(GfxSurface* surface)
 {
 	if (surface == null) return;
 	if (surface.native.native0 != null) ns_release((ObjcId)surface.native.native0);
@@ -2710,7 +2544,7 @@ fn bool rgfw_monitor_getWorkarea(RgfwMonitor* monitor, int* x, int* y, int* widt
 	if (y != null) *y = (int)bounds.origin.y;
 	if (width != null) *width = (int)bounds.size.width;
 	if (height != null) *height = (int)bounds.size.height;
-	return RGFW_TRUE;
+	return true;
 }
 
 fn usz rgfw_monitor_getModesPtr(RgfwMonitor* monitor, RgfwMonitorMode** modes)
@@ -2758,11 +2592,11 @@ fn usz rgfw_monitor_getGammaRampPtr(RgfwMonitor* monitor, RgfwGammaRamp* ramp)
 
 fn bool rgfw_monitor_setGammaRamp(RgfwMonitor* monitor, RgfwGammaRamp* ramp)
 {
-	if (ramp == null || ramp.count == 0) return RGFW_FALSE;
+	if (ramp == null || ramp.count == 0) return false;
 	float* red = (float*)rgfw_alloc_impl(ramp.count * float::size);
 	float* green = (float*)rgfw_alloc_impl(ramp.count * float::size);
 	float* blue = (float*)rgfw_alloc_impl(ramp.count * float::size);
-	if (red == null || green == null || blue == null) { rgfw_free_impl(red); rgfw_free_impl(green); rgfw_free_impl(blue); return RGFW_FALSE; }
+	if (red == null || green == null || blue == null) { rgfw_free_impl(red); rgfw_free_impl(green); rgfw_free_impl(blue); return false; }
 	for (usz i = 0; i < ramp.count; i++)
 	{
 		red[i] = (float)ramp.red[i] / 65535.0;
@@ -2775,7 +2609,7 @@ fn bool rgfw_monitor_setGammaRamp(RgfwMonitor* monitor, RgfwGammaRamp* ramp)
 }
 
 fn bool rgfw_monitor_requestMode(RgfwMonitor* mon, RgfwMonitorMode* mode, RgfwModeRequest request) => rgfw_monitor_setMode(mon, mode);
-fn bool rgfw_monitor_setMode(RgfwMonitor* mon, RgfwMonitorMode* mode) { if (mode == null || mode.src == null) return RGFW_FALSE; return rgfw_bool(cgDisplaySetDisplayMode(rgfw_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0); }
+fn bool rgfw_monitor_setMode(RgfwMonitor* mon, RgfwMonitorMode* mode) { if (mode == null || mode.src == null) return false; return rgfw_bool(cgDisplaySetDisplayMode(rgfw_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0); }
 fn RgfwMonitor* rgfw_window_getMonitor(RgfwWindow* win) => rgfw_getPrimaryMonitor();
 fn bool rgfw_window_fetchSize(RgfwWindow* win, int* w, int* h)
 {
@@ -2786,10 +2620,10 @@ fn bool rgfw_window_fetchSize(RgfwWindow* win, int* w, int* h)
 	}
 	if (w != null) *w = win.w;
 	if (h != null) *h = win.h;
-	return RGFW_TRUE;
+	return true;
 }
 
-fn void rgfw_window_focus(RgfwWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyWindow", null); if (win != null) win.internal.inFocus = RGFW_TRUE; }
+fn void rgfw_window_focus(RgfwWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyWindow", null); if (win != null) win.internal.inFocus = true; }
 fn void rgfw_window_raise(RgfwWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderFrontRegardless", null); }
 fn void rgfw_window_setFullscreen(RgfwWindow* win, bool fullscreen) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "toggleFullScreen:", null); if (win != null) rgfw_setBit(&win.internal.flags, RGFW_WINDOW_FULLSCREEN, fullscreen); }
 fn void rgfw_window_setFloating(RgfwWindow* win, bool floating) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidNSInteger, "setLevel:", floating ? NS_WINDOW_LEVEL_FLOATING : NS_WINDOW_LEVEL_NORMAL); if (win != null) rgfw_setBit(&win.internal.flags, RGFW_WINDOW_FLOATING, floating); }
@@ -2821,39 +2655,39 @@ fn void rgfw_window_setBorder(RgfwWindow* win, bool border)
 }
 fn void rgfw_window_setMousePassthrough(RgfwWindow* win, bool passthrough) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidBool, "setIgnoresMouseEvents:", passthrough); }
 fn void rgfw_window_setName(RgfwWindow* win, char* name) { if (win != null && win.src.window != null && name != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "setTitle:", ns_string(name)); }
-fn bool rgfw_window_setIconEx(RgfwWindow* win, char* data, int w, int h, RgfwFormat format, RgfwIcon type)
+fn bool rgfw_window_setIconEx(RgfwWindow* win, char* data, int w, int h, RgfwFormat format, GfxWindowIconType type)
 {
-	if (_rgfw == null || _rgfw.nsApp == null) return RGFW_FALSE;
+	if (_rgfw == null || _rgfw.nsApp == null) return false;
 	if (data == null)
 	{
 		objc_send(_rgfw.nsApp, ObjcSendVoidId, "setApplicationIconImage:", null);
-		return RGFW_TRUE;
+		return true;
 	}
 	ObjcId rep = ns_bitmapRep(w, h);
 	char* pixels = ns_bitmapData(rep);
-	if (pixels == null) { ns_release(rep); return RGFW_FALSE; }
+	if (pixels == null) { ns_release(rep); return false; }
 	rgfw_copyImageData(pixels, w, h, RGFW_FORMAT_RGBA8, data, format, null);
 	ObjcId image = ns_imageWithRep(rep, w, h);
 	objc_send(_rgfw.nsApp, ObjcSendVoidId, "setApplicationIconImage:", image);
 	ns_release(image);
 	ns_release(rep);
-	return RGFW_TRUE;
+	return true;
 }
 fn void rgfw_window_hide(RgfwWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderOut:", null); win.internal.flags |= RGFW_WINDOW_HIDE; }
 fn void rgfw_window_flash(RgfwWindow* win, RgfwFlashRequest request) { if (_rgfw.nsApp != null) objc_send(_rgfw.nsApp, ObjcSendIntegerNSUInteger, "requestUserAttention:", (NSUInteger)request); }
-fn bool rgfw_window_isHidden(RgfwWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible") ? RGFW_FALSE : RGFW_TRUE; return rgfw_bool(win.internal.flags & RGFW_WINDOW_HIDE); }
+fn bool rgfw_window_isHidden(RgfwWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible") ? false : true; return rgfw_bool(win.internal.flags & RGFW_WINDOW_HIDE); }
 fn bool rgfw_window_isMinimized(RgfwWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isMiniaturized"); return rgfw_bool(win.internal.flags & RGFW_WINDOW_MINIMIZE); }
-fn bool rgfw_window_isMaximized(RgfwWindow* win) { if (win == null) return RGFW_FALSE; if (win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isZoomed"); return rgfw_bool(win.internal.flags & RGFW_WINDOW_MAXIMIZE); }
-fn bool rgfw_window_isFloating(RgfwWindow* win) { if (win == null) return RGFW_FALSE; if (win.src.window != null) return rgfw_bool(objc_send((ObjcId)win.src.window, ObjcSendInteger, "level") > NS_WINDOW_LEVEL_NORMAL); return rgfw_bool(win.internal.flags & RGFW_WINDOW_FLOATING); }
+fn bool rgfw_window_isMaximized(RgfwWindow* win) { if (win == null) return false; if (win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isZoomed"); return rgfw_bool(win.internal.flags & RGFW_WINDOW_MAXIMIZE); }
+fn bool rgfw_window_isFloating(RgfwWindow* win) { if (win == null) return false; if (win.src.window != null) return rgfw_bool(objc_send((ObjcId)win.src.window, ObjcSendInteger, "level") > NS_WINDOW_LEVEL_NORMAL); return rgfw_bool(win.internal.flags & RGFW_WINDOW_FLOATING); }
 fn bool rgfw_getGlobalMouse(int* x, int* y)
 {
 	CGEventRef event = cgEventCreate(null);
-	if (event == null) return RGFW_FALSE;
+	if (event == null) return false;
 	CGPoint point = cgEventGetLocation(event);
 	cfRelease(event);
 	if (x != null) *x = (int)point.x;
 	if (y != null) *y = (int)point.y;
-	return RGFW_TRUE;
+	return true;
 }
 
 fn void rgfw_window_moveMouse(RgfwWindow* win, int x, int y)
@@ -2866,11 +2700,11 @@ fn void rgfw_window_moveMouse(RgfwWindow* win, int x, int y)
 
 fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, usz capacity, RgfwDataTransfer* data)
 {
-	if (requestedType != RGFW_DATA_TEXT || data == null) return RGFW_FALSE;
+	if (requestedType != RGFW_DATA_TEXT || data == null) return false;
 	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
 	ObjcId str = objc_send(pb, ObjcSendIdId, "stringForType:", ns_string("public.utf8-plain-text"));
 	char* raw = ns_utf8(str);
-	if (raw == null) return RGFW_FALSE;
+	if (raw == null) return false;
 	usz len = strlen(raw);
 	if (buffer != null && capacity > 0)
 	{
@@ -2882,12 +2716,12 @@ fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, 
 	else { data.data = raw; }
 	data.length = len;
 	data.type = RGFW_DATA_TEXT;
-	return RGFW_TRUE;
+	return true;
 }
 
 fn bool rgfw_writeClipboard(RgfwDataTransfer* data)
 {
-	if (data == null || data.type != RGFW_DATA_TEXT || data.data == null) return RGFW_FALSE;
+	if (data == null || data.type != RGFW_DATA_TEXT || data.data == null) return false;
 	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
 	objc_send(pb, ObjcSendVoid, "clearContents");
 	return objc_send(pb, ObjcSendBoolIdId, "setString:forType:", ns_string(data.data), ns_string("public.utf8-plain-text"));
@@ -2915,14 +2749,14 @@ const EglInt EGL_EXTENSIONS = 0x3055;
 
 fn bool rgfw_extensionSupportedPlatform_EGL(char* extension, usz len)
 {
-	if (rgfw_eglQueryString == null || _rgfw.egl_display == null) return RGFW_FALSE;
+	if (rgfw_eglQueryString == null || _rgfw.egl_display == null) return false;
 	char* extensions = rgfw_eglQueryString((EglDisplay)_rgfw.egl_display, EGL_EXTENSIONS);
 	return rgfw_extensionSupportedStr(extensions, extension, len);
 }
 
 fn bool rgfw_extensionSupported_EGL(char* extension, usz len)
 {
-	if (rgfw_extensionSupported_base(extension, len, &rgfw_getProcAddress_EGL)) return RGFW_TRUE;
+	if (rgfw_extensionSupported_base(extension, len, &rgfw_getProcAddress_EGL)) return true;
 	return rgfw_extensionSupportedPlatform_EGL(extension, len);
 }
 
@@ -2941,7 +2775,7 @@ fn RgfwEglContext* rgfw_window_createContext_EGL(RgfwWindow* win, RgfwGlHints* h
 	RgfwEglContext* ctx = (RgfwEglContext*)rgfw_alloc_impl(RgfwEglContext::size);
 	if (ctx == null) return null;
 	rgfw_memzero(ctx, RgfwEglContext::size);
-	if (rgfw_window_createContextPtr_EGL(win, ctx, hints) == RGFW_FALSE)
+	if (rgfw_window_createContextPtr_EGL(win, ctx, hints) == false)
 	{
 		rgfw_free_impl(ctx);
 		return null;
@@ -2952,15 +2786,15 @@ fn RgfwEglContext* rgfw_window_createContext_EGL(RgfwWindow* win, RgfwGlHints* h
 
 fn bool rgfw_window_createContextPtr_EGL(RgfwWindow* win, RgfwEglContext* ctx, RgfwGlHints* hints)
 {
-	if (win == null || ctx == null || hints == null) return RGFW_FALSE;
-	if (rgfw_loadEGL() == RGFW_FALSE) return RGFW_FALSE;
+	if (win == null || ctx == null || hints == null) return false;
+	if (rgfw_loadEGL() == false) return false;
 	if (_rgfw.egl_display == null)
 	{
 		_rgfw.egl_display = rgfw_eglGetDisplay(null);
-		if (_rgfw.egl_display == null) return RGFW_FALSE;
+		if (_rgfw.egl_display == null) return false;
 		EglInt major = 0;
 		EglInt minor = 0;
-		if (rgfw_eglInitialize((EglDisplay)_rgfw.egl_display, &major, &minor) == 0) return RGFW_FALSE;
+		if (rgfw_eglInitialize((EglDisplay)_rgfw.egl_display, &major, &minor) == 0) return false;
 	}
 
 	EglInt[32] cfg;
@@ -2977,7 +2811,7 @@ fn bool rgfw_window_createContextPtr_EGL(RgfwWindow* win, RgfwEglContext* ctx, R
 	rgfw_attribStack_pushAttribs(&cfgStack, EGL_NONE, EGL_NONE);
 	EglConfig config = null;
 	EglInt num = 0;
-	if (rgfw_eglChooseConfig((EglDisplay)_rgfw.egl_display, &cfg, &config, 1, &num) == 0 || num == 0) return RGFW_FALSE;
+	if (rgfw_eglChooseConfig((EglDisplay)_rgfw.egl_display, &cfg, &config, 1, &num) == 0 || num == 0) return false;
 	rgfw_eglBindApi(hints.profile == RGFW_GL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
 	EglInt[8] ctxAttribs;
 	RgfwAttribStack ctxStack;
@@ -2986,7 +2820,7 @@ fn bool rgfw_window_createContextPtr_EGL(RgfwWindow* win, RgfwEglContext* ctx, R
 	rgfw_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
 	EglContext share = hints.shareEGL != null ? (EglContext)hints.shareEGL.ctx : null;
 	ctx.ctx = rgfw_eglCreateContext((EglDisplay)_rgfw.egl_display, config, share, &ctxAttribs);
-	if (ctx.ctx == null) return RGFW_FALSE;
+	if (ctx.ctx == null) return false;
 	EglNativeWindowType nativeWindow = win.src.window;
 	if (win.src.view != null) nativeWindow = rgfw_getLayer_OSX();
 	ctx.surface = rgfw_eglCreateWindowSurface((EglDisplay)_rgfw.egl_display, config, nativeWindow, null);
@@ -2994,12 +2828,12 @@ fn bool rgfw_window_createContextPtr_EGL(RgfwWindow* win, RgfwEglContext* ctx, R
 	{
 		rgfw_eglDestroyContext((EglDisplay)_rgfw.egl_display, (EglContext)ctx.ctx);
 		ctx.ctx = null;
-		return RGFW_FALSE;
+		return false;
 	}
 	win.src.ctx.egl = ctx;
 	win.src.gfxType = RGFW_GFX_EGL;
 	rgfw_window_makeCurrentContext_EGL(win);
-	return RGFW_TRUE;
+	return true;
 }
 
 fn RgfwEglContext* rgfw_window_getContext_EGL(RgfwWindow* win) => win != null ? win.src.ctx.egl : null;
