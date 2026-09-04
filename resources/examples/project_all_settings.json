@@ -34,7 +34,6 @@
   },
   // Global settings.
   // C compiler if the project also compiles C sources
-  // defaults to 'cc'.
   "cc": "cc",
   // CPU name, used for optimizations in the LLVM backend.
   "cpu": "generic",

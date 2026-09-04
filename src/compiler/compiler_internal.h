@@ -4898,7 +4898,7 @@ INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl)
 	return decl->attrs_resolved = CALLOCS(ResolvedAttrData);
 }
 
-const char *default_c_compiler(void);
+const char *find_c_compiler(void);
 
 void print_build_env(void);
 void print_asm(PlatformTarget *target);

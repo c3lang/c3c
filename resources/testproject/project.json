@@ -20,7 +20,6 @@
   "targets": {
     "hello_world": {
       "type": "executable",
-      "cc" : "cc",
       "c-sources": [
         "./csource/**"
       ],
@@ -34,7 +33,6 @@
     },
     "hello_world_lib": {
       "type": "static-lib",
-      "cc" : "cc",
       "c-sources": [
         "./csource/**"
       ]
