@@ -25,7 +25,6 @@ alias RgfwEventWait = int;
 alias RgfwWindowFlags = uint;
 alias RgfwIcon = char;
 alias RgfwMouseIcon = char;
-alias RgfwFlashRequest = char;
 alias RgfwDebugType = char;
 alias RgfwErrorCode = char;
 alias RgfwGlReleaseBehavior = int;
@@ -66,7 +65,7 @@ struct RgfwMonitorMode
 	void* src;
 }
 
-struct RgfwMonitor
+struct GfxMonitor
 {
 	int x, y;
 	char[128] name;
@@ -78,33 +77,90 @@ struct RgfwMonitor
 	RgfwMonitorNode* node;
 }
 
-struct RgfwDataTransfer
+struct RgfwKeyState
+{
+	bool current;
+	bool prev;
+}
+
+struct GfxWindow
+{
+	RgfwWindowSrc src;
+	GfxWindowInternal internal;
+	void* userPtr;
+	int x, y, w, h;
+}
+
+struct GfxWindowInternal
+{
+	RgfwKey exitKey;
+	int lastMouseX, lastMouseY;
+	bool shouldClose;
+	bool rawMouse;
+	bool captureMouse;
+	bool inFocus;
+	bool mouseInside;
+	RgfwKeymod mod;
+	RgfwEventFlag enabledEvents;
+	uint flags;
+	int oldX, oldY, oldW, oldH;
+	RgfwMonitorMode oldMode;
+	RgfwMouse* mouse;
+}
+
+
+struct RgfwWindowState
+{
+	bool mouseEnter;
+	bool dataDragging;
+	bool dataDrop;
+	usz dataLength;
+	int dropX, dropY;
+	GfxWindow* win;
+	bool mouseLeave;
+	GfxWindow* winLeave;
+}
+
+struct GfxMonitors
+{
+	GfxMonitorList list;
+	usz count;
+	RgfwMonitorNode* primary;
+}
+
+struct GfxMonitorList
+{
+	RgfwMonitorNode* head;
+	RgfwMonitorNode* cur;
+}
+
+struct GfxDataTransfer
 {
 	char* data;
 	usz length;
 	RgfwDataTransferType type;
 }
 
-struct RgfwDataDropNode
+struct GfxDataDropNode
 {
 	char* data;
 	usz length;
 	RgfwDataTransferType type;
-	RgfwDataDropNode* next;
+	GfxDataDropNode* next;
 }
 
-struct RgfwCommonEvent { RgfwEventType type; RgfwWindow* win; }
-struct RgfwWindowFocusEvent { RgfwEventType type; RgfwWindow* win; bool state; }
-struct RgfwMouseButtonEvent { RgfwEventType type; RgfwWindow* win; RgfwMouseButton value; bool state; }
-struct RgfwMouseDeltaEvent { RgfwEventType type; RgfwWindow* win; float x, y; }
-struct RgfwMouseMotionEvent { RgfwEventType type; RgfwWindow* win; int x, y; bool inWindow; }
-struct RgfwKeyEvent { RgfwEventType type; RgfwWindow* win; RgfwKey value; bool repeat; RgfwKeymod mod; bool state; }
-struct RgfwKeyCharEvent { RgfwEventType type; RgfwWindow* win; uint value; }
-struct RgfwDataDropEvent { RgfwEventType type; RgfwWindow* win; RgfwDataDropNode* value; }
-struct RgfwDataDragEvent { RgfwEventType type; RgfwWindow* win; int x, y; RgfwDndActionType action; RgfwDataTransferType dataType; }
-struct RgfwScaleUpdatedEvent { RgfwEventType type; RgfwWindow* win; float x, y; }
-struct RgfwMonitorEvent { RgfwEventType type; RgfwWindow* win; RgfwMonitor* monitor; bool state; }
-struct RgfwWindowUpdateEvent { RgfwEventType type; RgfwWindow* win; int x, y, w, h; }
+struct RgfwCommonEvent { RgfwEventType type; GfxWindow* win; }
+struct RgfwWindowFocusEvent { RgfwEventType type; GfxWindow* win; bool state; }
+struct RgfwMouseButtonEvent { RgfwEventType type; GfxWindow* win; RgfwMouseButton value; bool state; }
+struct RgfwMouseDeltaEvent { RgfwEventType type; GfxWindow* win; float x, y; }
+struct RgfwMouseMotionEvent { RgfwEventType type; GfxWindow* win; int x, y; bool inWindow; }
+struct RgfwKeyEvent { RgfwEventType type; GfxWindow* win; RgfwKey value; bool repeat; RgfwKeymod mod; bool state; }
+struct RgfwKeyCharEvent { RgfwEventType type; GfxWindow* win; uint value; }
+struct RgfwDataDropEvent { RgfwEventType type; GfxWindow* win; GfxDataDropNode* value; }
+struct RgfwDataDragEvent { RgfwEventType type; GfxWindow* win; int x, y; RgfwDndActionType action; RgfwDataTransferType dataType; }
+struct RgfwScaleUpdatedEvent { RgfwEventType type; GfxWindow* win; float x, y; }
+struct RgfwMonitorEvent { RgfwEventType type; GfxWindow* win; GfxMonitor* monitor; bool state; }
+struct RgfwWindowUpdateEvent { RgfwEventType type; GfxWindow* win; int x, y, w, h; }
 
 union RgfwEvent
 {
@@ -433,10 +489,13 @@ const RgfwMouseIcon RGFW_MOUSE_PROGRESS = 20;
 const RgfwMouseIcon RGFW_MOUSE_ICON_COUNT = 21;
 const RgfwMouseIcon RGFW_MOUSE_ICON_FINAL = 16;
 
+constset GfxFlashRequest
+{
+	CANCEL,
+	BRIEFLY,
+	UNTIL_FOCUSED
+}
 
-const RgfwFlashRequest RGFW_FLASH_CANCEL = 0;
-const RgfwFlashRequest RGFW_FLASH_BRIEFLY = 1;
-const RgfwFlashRequest RGFW_FLASH_UNTIL_FOCUSED = 2;
 
 const RgfwDebugType RGFW_TYPE_ERROR = 0;
 const RgfwDebugType RGFW_TYPE_WARNING = 1;
@@ -464,7 +523,7 @@ const RgfwErrorCode RGFW_INFO_OPEN_GL = 18;
 const RgfwErrorCode RGFW_WARNING_WAYLAND = 19;
 const RgfwErrorCode RGFW_WARNING_OPEN_GL = 20;
 
-fn void rgfw_convertImageData64(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, usz count, bool is64bit)
+fn void convert_image_data_64(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, usz count, bool is64bit)
 {
 	char[4] rgba = {0, 0, 0, 0};
 	uint i2 = 0;
@@ -484,7 +543,7 @@ fn void rgfw_convertImageData64(char* dest_data, char* src_data, RgfwColorLayout
 	}
 }
 
-fn void rgfw_copyImageData64(char* dest_data, int dest_w, int dest_h, RgfwFormat dest_format, char* src_data, RgfwFormat src_format, bool is64bit, RgfwConvertImageDataFunc func)
+fn void copy_image_data_64(char* dest_data, int dest_w, int dest_h, RgfwFormat dest_format, char* src_data, RgfwFormat src_format, bool is64bit, RgfwConvertImageDataFunc func)
 {
 	uint count = (uint)(dest_w * dest_h);
 	if (src_format == dest_format)
@@ -495,23 +554,39 @@ fn void rgfw_copyImageData64(char* dest_data, int dest_w, int dest_h, RgfwFormat
 	}
 	RgfwColorLayout* srcLayout = &rgfw_layouts[(usz)src_format];
 	RgfwColorLayout* destLayout = &rgfw_layouts[(usz)dest_format];
-	if (is64bit || func == null) { rgfw_convertImageData64(dest_data, src_data, srcLayout, destLayout, count, is64bit); }
+	if (is64bit || func == null) { convert_image_data_64(dest_data, src_data, srcLayout, destLayout, count, is64bit); }
 	else { func(dest_data, src_data, srcLayout, destLayout, count); }
 }
 
 fn void rgfw_copyImageData(char* dest_data, int w, int h, RgfwFormat dest_format, char* src_data, RgfwFormat src_format, RgfwConvertImageDataFunc func)
 {
-	rgfw_copyImageData64(dest_data, w, h, dest_format, src_data, src_format, false, func);
+	copy_image_data_64(dest_data, w, h, dest_format, src_data, src_format, false, func);
 }
 
-fn GfxSurface* rgfw_createSurface(char* data, int w, int h, RgfwFormat format)
+fn int init(char* className, RgfwInitFlags flags)
+{
+	return rgfw_init_ptr(className, flags, &_rgfw_global);
+}
+
+fn void finalize() { rgfw_deinit_ptr(_rgfw); }
+
+fn GfxSurface* create_surface(char* data, int w, int h, RgfwFormat format)
 {
 	GfxSurface* surface = mem::new(GfxSurface);
 	rgfw_createSurfacePtr(data, w, h, format, surface);
 	return surface;
 }
 
-fn bool rgfw_window_setIcon(RgfwWindow* win, char* data, int w, int h, RgfwFormat format)
+fn GfxWindow* create_window(char* name, int x, int y, int w, int h, RgfwWindowFlags flags)
 {
-	return rgfw_window_setIconEx(win, data, w, h, format, BOTH);
+	GfxWindow* win = mem::new(GfxWindow);
+	return rgfw_createWindowPtr(name, x, y, w, h, flags, win);
+}
+
+fn bool is_mouse_pressed(RgfwMouseButton button) => _rgfw.mouseButtons[(sz)button].current && !_rgfw.mouseButtons[(sz)button].prev;
+
+fn void GfxWindow.destroy(&self)
+{
+	rgfw_window_closePtr(self);
+	free(self);
 }
