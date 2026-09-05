@@ -28,11 +28,9 @@ alias VkSurfaceKHR = ulong;
 alias VkResult = int;
 alias RgfwVkGetInstanceProcAddressProc = fn RgfwProc(VkInstance instance, char* procname);
 
-extern fn void* malloc(usz size);
-extern fn void free(void* ptr);
-extern fn void* memcpy(void* dest, void* src, usz count);
-extern fn void* memset(void* dest, int value, usz count);
-extern fn usz strlen(char* str);
+extern fn void* memcpy(void* dest, void* src, sz count);
+extern fn void* memset(void* dest, int value, sz count);
+extern fn sz strlen(char* str);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
 extern fn void* dlopen(char* path, int mode);
@@ -118,7 +116,7 @@ const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 struct RgfwNativeImage
 {
-	RgfwFormat format;
+	GfxFormat format;
 	char* buffer;
 	void* native0;
 	void* native1;
@@ -189,13 +187,13 @@ RgfwInfo _rgfw_global;
 
 fn void rgfw_setInfo(RgfwInfo* info) { _rgfw = info; }
 fn RgfwInfo* rgfw_getInfo() { return _rgfw; }
-fn void* rgfw_alloc(usz size) { return rgfw_alloc_impl(size); }
+fn void* rgfw_alloc(sz size) { return rgfw_alloc_impl(size); }
 fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
-fn usz rgfw_sizeofInfo() { return RgfwInfo::size; }
-fn usz rgfw_sizeofNativeImage() { return RgfwNativeImage::size; }
-fn usz rgfw_sizeofSurface() { return GfxSurface::size; }
-fn usz rgfw_sizeofWindow() { return GfxWindow::size; }
-fn usz rgfw_sizeofWindowSrc() { return RgfwWindowSrc::size; }
+fn sz rgfw_sizeofInfo() { return RgfwInfo::size; }
+fn sz rgfw_sizeofNativeImage() { return RgfwNativeImage::size; }
+fn sz rgfw_sizeofSurface() { return GfxSurface::size; }
+fn sz rgfw_sizeofWindow() { return GfxWindow::size; }
+fn sz rgfw_sizeofWindowSrc() { return RgfwWindowSrc::size; }
 
 fn bool rgfw_loadGL() => true;
 fn void rgfw_unloadGL() {}
@@ -206,7 +204,7 @@ alias WGPUSurface = void*;
 alias WGPUSType = int;
 const WGPUSType WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR = 0x00040000;
 struct WgpuChainedStruct { WgpuChainedStruct* next; WGPUSType sType; }
-struct WgpuStringView { char* data; usz length; }
+struct WgpuStringView { char* data; sz length; }
 struct WgpuSurfaceDescriptor { WgpuChainedStruct* nextInChain; }
 struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector { WgpuChainedStruct chain; WgpuStringView selector; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @wasm("env", "wgpuInstanceCreateSurface");
@@ -270,7 +268,7 @@ fn int rgfw_init_ptr(char* className, RgfwInitFlags flags, RgfwInfo* info)
 		rgfw_setInfo(null);
 		return out;
 	}
-	for (usz i = 0; i < (usz)RGFW_MOUSE_ICON_COUNT; i++)
+	for (sz i = 0; i < (sz)RGFW_MOUSE_ICON_COUNT; i++)
 	{
 		_rgfw.standardMice[i] = rgfw_createMouseStandard((RgfwMouseIcon)i);
 	}
@@ -285,7 +283,7 @@ fn void rgfw_deinit_ptr(RgfwInfo* info)
 	rgfw_setInfo(info);
 	for (RgfwMouseIcon i = 0; i < RGFW_MOUSE_ICON_COUNT; i++)
 	{
-		if (_rgfw.standardMice[(usz)i] != null) rgfw_freeMouse(_rgfw.standardMice[(usz)i]);
+		if (_rgfw.standardMice[(sz)i] != null) rgfw_freeMouse(_rgfw.standardMice[(sz)i]);
 	}
 	rgfw_freeMonitors();
 	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_GLOBAL, "global context deinitialized");
@@ -307,7 +305,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
 	win.x = x; win.y = y; win.w = w; win.h = h;
-	win.internal.mouse = _rgfw.standardMice[(usz)RGFW_MOUSE_NORMAL];
+	win.internal.mouse = _rgfw.standardMice[(sz)RGFW_MOUSE_NORMAL];
 	win.internal.flags = flags;
 	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
 	RgfwWindowFlags reservedFlags = flags & RGFW_WINDOW_SCALE_TO_MONITOR;
@@ -354,7 +352,7 @@ fn void rgfw_window_closePtr(GfxWindow* win)
 
 
 
-fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, RgfwFormat format, GfxSurface* surface)
+fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
 	return rgfw_createSurfacePtr(data, w, h, format, surface);
 }
@@ -363,20 +361,20 @@ fn void rgfw_window_setDND(GfxWindow* win, bool allow) { rgfw_setBit(&win.intern
 
 
 fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h) {}
-fn RgfwFormat rgfw_nativeFormat() => RGFW_FORMAT_RGBA8;
+fn GfxFormat rgfw_nativeFormat() => RGBA8;
 
 // ---- JS host imports (no Emscripten runtime under C3's wasm target) ----
 extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "rgfw_set_canvas_size");
-extern fn void rgfwJsSetWindowTitle(char* name, usz len) @wasm("env", "rgfw_set_window_title");
+extern fn void rgfwJsSetWindowTitle(char* name, sz len) @wasm("env", "rgfw_set_window_title");
 extern fn void rgfwJsSetupWindowListeners() @wasm("env", "rgfw_setup_window_listeners");
 extern fn void rgfwJsSetupDropListeners() @wasm("env", "rgfw_setup_drop_listeners");
 extern fn void rgfwJsBlitSurface(char* data, int w, int h, int minH) @wasm("env", "rgfw_blit_surface");
-extern fn void rgfwJsSetCursor(char* name, usz len) @wasm("env", "rgfw_set_cursor");
+extern fn void rgfwJsSetCursor(char* name, sz len) @wasm("env", "rgfw_set_cursor");
 extern fn void rgfwJsHideCursor() @wasm("env", "rgfw_hide_cursor");
 extern fn int rgfwJsGetMouseX() @wasm("env", "rgfw_get_mouse_x");
 extern fn int rgfwJsGetMouseY() @wasm("env", "rgfw_get_mouse_y");
 extern fn void rgfwJsSetPointerEvents(int passthrough) @wasm("env", "rgfw_set_pointer_events");
-extern fn void rgfwJsWriteClipboard(char* data, usz len) @wasm("env", "rgfw_write_clipboard");
+extern fn void rgfwJsWriteClipboard(char* data, sz len) @wasm("env", "rgfw_write_clipboard");
 extern fn int rgfwJsUsingAsyncify() @wasm("env", "rgfw_using_asyncify");
 extern fn void rgfwJsSleep(int ms) @wasm("env", "rgfw_sleep");
 extern fn double rgfwJsDevicePixelRatio() @wasm("env", "rgfw_device_pixel_ratio");
@@ -392,10 +390,10 @@ extern fn void rgfwJsWebglDestroyContext(int ctx) @wasm("env", "rgfw_webgl_destr
 extern fn void rgfwJsWebglMakeCurrent(int ctx) @wasm("env", "rgfw_webgl_make_current");
 extern fn void rgfwJsWebglCommitFrame() @wasm("env", "rgfw_webgl_commit_frame");
 extern fn int rgfwJsWebglGetCurrentContext() @wasm("env", "rgfw_webgl_get_current_context");
-extern fn int rgfwJsExtensionSupported(char* name, usz len) @wasm("env", "rgfw_extension_supported");
+extern fn int rgfwJsExtensionSupported(char* name, sz len) @wasm("env", "rgfw_extension_supported");
 extern fn RgfwProc rgfwJsGetProcAddress(char* name) @wasm("env", "rgfw_webgl_get_proc_address");
 extern fn void rgfwJsMkdir(char* name) @wasm("env", "rgfw_mkdir");
-extern fn void rgfwJsWriteFile(char* path, char* data, usz len) @wasm("env", "rgfw_write_file");
+extern fn void rgfwJsWriteFile(char* path, char* data, sz len) @wasm("env", "rgfw_write_file");
 
 const int DOM_VK_BACK_QUOTE = 192; const int DOM_VK_0 = 48; const int DOM_VK_1 = 49; const int DOM_VK_2 = 50;
 const int DOM_VK_3 = 51; const int DOM_VK_4 = 52; const int DOM_VK_5 = 53; const int DOM_VK_6 = 54;
@@ -579,11 +577,11 @@ fn void rgfw_handleKeyMods(bool capital, bool numlock, bool control, bool alt, b
 	rgfw_keyUpdateKeyModsEx(_rgfw.root, capital, numlock, control, alt, shift, super, scroll);
 }
 
-fn void rgfw_emscriptenOnDrop(char* file, usz size) @export("rgfw_onDrop") { rgfw_dataDropCallback(_rgfw.root, file, size, RGFW_DATA_FILE); }
+fn void rgfw_emscriptenOnDrop(char* file, sz size) @export("rgfw_onDrop") { rgfw_dataDropCallback(_rgfw.root, file, size, RGFW_DATA_FILE); }
 
 fn void rgfw_stopCheckEvents() { _rgfw.stopCheckEvents_bool = true; }
 
-fn bool rgfw_createSurfacePtr(char* data, int w, int h, RgfwFormat format, GfxSurface* surface)
+fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
 	surface.data = data;
 	surface.w = w;
@@ -595,7 +593,7 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, RgfwFormat format, GfxSu
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
 	int minH = win.h < surface.h ? win.h : surface.h;
-	rgfw_copyImageData(surface.data, surface.w, minH, RGFW_FORMAT_RGBA8, surface.data, surface.format, surface.convertFunc);
+	copy_image_data(surface.data, surface.w, minH, RGBA8, surface.data, surface.format, surface.convertFunc);
 	rgfwJsBlitSurface(surface.data, surface.w, surface.h, minH);
 }
 
@@ -667,7 +665,7 @@ fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
 	monitor.scaleX = dpi / 96.0f;
 	monitor.scaleY = dpi / 96.0f;
 	rgfw_splitBPP(32, &monitor.mode);
-	monitor.mode.refreshRate = 0;
+	monitor.mode.refresh_rate = 0;
 
 	RgfwMonitorNode* node = rgfw_monitors_add(&monitor);
 	if (node != null)
@@ -733,7 +731,7 @@ fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 }
 
 fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y) {}
-fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, RgfwFormat format) => null;
+fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format) => null;
 
 fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 {
@@ -766,7 +764,7 @@ fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 	return true;
 }
 
-fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, usz capacity, GfxDataTransfer* data)
+fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
 	if (requestedType != RGFW_DATA_TEXT) return false;
 	return false;
@@ -836,7 +834,7 @@ fn void rgfw_window_makeCurrentContext_OpenGL(GfxWindow* win)
 
 fn void rgfw_window_swapBuffers_OpenGL(GfxWindow* win) { rgfwJsWebglCommitFrame(); }
 fn void* rgfw_getCurrentContext_OpenGL() => (void*)(uptr)rgfwJsWebglGetCurrentContext();
-fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, usz len) => rgfw_bool(rgfwJsExtensionSupported(extension, len) != 0);
+fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, sz len) => rgfw_bool(rgfwJsExtensionSupported(extension, len) != 0);
 fn RgfwProc rgfw_getProcAddress_OpenGL(char* procname) => rgfwJsGetProcAddress(procname);
 fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval) {}
 
@@ -858,7 +856,7 @@ fn void rgfw_window_setName(GfxWindow* win, char* name)
 
 fn void rgfw_window_maximizePlatform(GfxWindow* win)
 {
-	GfxMonitor* mon = rgfw_window_getMonitor(win);
+	GfxMonitor* mon = find_monitor(win);
 	if (mon != null) rgfw_window_resize(win, mon.mode.w, mon.mode.h);
 	rgfw_window_move(win, 0, 0);
 }
@@ -877,19 +875,19 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 
 fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) { rgfwJsSetOpacity((float)opacity / 255.0f); }
 
-fn GfxMonitor* rgfw_window_getMonitor(GfxWindow* win) => rgfw_getPrimaryMonitor();
+fn GfxMonitor* find_monitor(GfxWindow* win) => rgfw_getPrimaryMonitor();
 
 // ---- unsupported on WASM (match the original's no-op stubs) ----
 fn void rgfw_pollMonitors() {}
 fn void rgfw_monitorNode_free(RgfwMonitorNode* node) {}
 fn void rgfw_window_focus(GfxWindow* win) {}
 fn void rgfw_window_raise(GfxWindow* win) {}
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, GfxMonitorModeRequest request) => false;
+fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => false;
 fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height) => false;
-fn usz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp) => 0;
+fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp) => 0;
 fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp) => false;
-fn usz rgfw_monitor_getModesPtr(GfxMonitor* mon, RgfwMonitorMode** modes) => 0;
-fn bool rgfw_monitor_setMode(GfxMonitor* mon, RgfwMonitorMode* mode) => false;
+fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* mon) => {};
+fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => false;
 fn void rgfw_window_movePlatform(GfxWindow* win, int x, int y) {}
 fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h) {}
 fn void rgfw_window_setMaxSize(GfxWindow* win, int w, int h) {}
@@ -897,7 +895,7 @@ fn void rgfw_window_minimizePlatform(GfxWindow* win) {}
 fn void rgfw_window_restorePlatform(GfxWindow* win) {}
 fn void rgfw_window_setFloating(GfxWindow* win, bool floating) {}
 fn void rgfw_window_setBorder(GfxWindow* win, bool border) {}
-fn bool GfxWindow.set_icon(&win, char* data, int w, int h, RgfwFormat format, GfxWindowIconType type = BOTH) => false;
+fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH) => false;
 fn void rgfw_window_hide(GfxWindow* win) {}
 fn void rgfw_window_showPlatform(GfxWindow* win) {}
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) {}

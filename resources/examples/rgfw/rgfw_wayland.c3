@@ -1,4 +1,5 @@
 module std::gfx @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
+import std::collections::list;
 
 // C3 port of the Wayland/EGL RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
 // Mechanical, line-by-line style translation of the RGFW_WAYLAND implementation.
@@ -23,11 +24,9 @@ const bool RGFW_BUILD_WAYLAND = true;
 const bool RGFW_BUILD_WINDOWS = false;
 const bool RGFW_BUILD_EGL = true;
 
-extern fn void* malloc(usz size);
-extern fn void free(void* ptr);
-extern fn void* memcpy(void* dest, void* src, usz count);
-extern fn void* memset(void* dest, int value, usz count);
-extern fn usz strlen(char* str);
+extern fn void* memcpy(void* dest, void* src, sz count);
+extern fn void* memset(void* dest, int value, sz count);
+extern fn sz strlen(char* str);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
 extern fn void* dlopen(char* path, int mode);
@@ -70,15 +69,15 @@ alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig confi
 
 
 // ---- POSIX / libc bits used by the Wayland backend ----
-extern fn void* mmap(void* addr, usz length, int prot, int flags, int fd, long offset);
-extern fn int munmap(void* addr, usz length);
+extern fn void* mmap(void* addr, sz length, int prot, int flags, int fd, long offset);
+extern fn int munmap(void* addr, sz length);
 extern fn int shmOpen(char* name, int oflag, int mode) @cname("shm_open");
 extern fn int shmUnlink(char* name) @cname("shm_unlink");
 extern fn int ftruncate(int fd, long length);
 extern fn int close(int fd);
 extern fn int pipe(int[2]* fds);
-extern fn long read(int fd, void* buf, usz count);
-extern fn long write(int fd, void* buf, usz count);
+extern fn long read(int fd, void* buf, sz count);
+extern fn long write(int fd, void* buf, sz count);
 extern fn int poll(Pollfd* fds, ulong nfds, int timeout);
 extern fn char* getenv(char* name);
 struct Pollfd { int fd; short events; short revents; }
@@ -97,7 +96,7 @@ typedef WlProxy = void;
 alias WlFixed = int;
 struct WlMessage { char* name; char* signature; void* types; }
 struct WlInterface { char* name; int version; int methodCount; WlMessage* methods; int eventCount; WlMessage* events; }
-struct WlArray { usz size; usz alloc; void* data; }
+struct WlArray { sz size; sz alloc; void* data; }
 
 extern fn WlDisplay* wlDisplayConnect(char* name) @cname("wl_display_connect");
 extern fn void wlDisplayDisconnect(WlDisplay* display) @cname("wl_display_disconnect");
@@ -412,7 +411,7 @@ const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 struct RgfwNativeImage
 {
-	RgfwFormat format;
+	GfxFormat format;
 	char* buffer;
 	void* native0;
 	void* native1;
@@ -463,8 +462,8 @@ struct RgfwMonitorNode
 	uint id;
 	WlProxy* output;
 	WlProxy* xdgOutput;
-	RgfwMonitorMode* modes;
-	usz modeCount;
+	GfxMonitorMode* modes;
+	sz modeCount;
 }
 
 
@@ -558,13 +557,13 @@ EglQueryStringProc rgfw_eglQueryString;
 EglGetConfigAttribProc rgfw_eglGetConfigAttrib;
 fn void rgfw_setInfo(RgfwInfo* info) { _rgfw = info; }
 fn RgfwInfo* rgfw_getInfo() { return _rgfw; }
-fn void* rgfw_alloc(usz size) { return rgfw_alloc_impl(size); }
+fn void* rgfw_alloc(sz size) { return rgfw_alloc_impl(size); }
 fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
-fn usz rgfw_sizeofInfo() { return RgfwInfo::size; }
-fn usz rgfw_sizeofNativeImage() { return RgfwNativeImage::size; }
-fn usz rgfw_sizeofSurface() { return GfxSurface::size; }
-fn usz rgfw_sizeofWindow() { return GfxWindow::size; }
-fn usz rgfw_sizeofWindowSrc() { return RgfwWindowSrc::size; }
+fn sz rgfw_sizeofInfo() { return RgfwInfo::size; }
+fn sz rgfw_sizeofNativeImage() { return RgfwNativeImage::size; }
+fn sz rgfw_sizeofSurface() { return GfxSurface::size; }
+fn sz rgfw_sizeofWindow() { return GfxWindow::size; }
+fn sz rgfw_sizeofWindowSrc() { return RgfwWindowSrc::size; }
 
 fn bool rgfw_loadGL()
 {
@@ -589,7 +588,7 @@ fn bool rgfw_loadEGL()
 {
 	if (_rgfw.egl_handle != null) return true;
 	char*[5] names = {"libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll"};
-	for (usz i = 0; i < 5; i++)
+	for (sz i = 0; i < 5; i++)
 	{
 		_rgfw.egl_handle = dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
 		if (_rgfw.egl_handle != null) break;
@@ -640,7 +639,7 @@ fn bool rgfw_loadVulkan()
 {
 	if (_rgfw.vulkan_handle != null) return true;
 	char*[2] names = {"libvulkan.so.1", "libvulkan.so"};
-	for (usz i = 0; i < 2; i++)
+	for (sz i = 0; i < 2; i++)
 	{
 		_rgfw.vulkan_handle = dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
 		if (_rgfw.vulkan_handle != null) break;
@@ -666,7 +665,7 @@ fn RgfwProc rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, char* procna
 	return _rgfw.vkGetInstanceProcAddress(instance, procname);
 }
 
-fn char** rgfw_getRequiredInstanceExtensions_Vulkan(usz* count)
+fn char** rgfw_getRequiredInstanceExtensions_Vulkan(sz* count)
 {
 	if (count != null) *count = 2;
 	return &rgfw_vulkanExtensions;
@@ -753,7 +752,7 @@ fn int rgfw_init_ptr(char* className, RgfwInitFlags flags, RgfwInfo* info)
 		rgfw_setInfo(null);
 		return out;
 	}
-	for (usz i = 0; i < (usz)RGFW_MOUSE_ICON_COUNT; i++)
+	for (sz i = 0; i < (sz)RGFW_MOUSE_ICON_COUNT; i++)
 	{
 		_rgfw.standardMice[i] = rgfw_createMouseStandard((RgfwMouseIcon)i);
 	}
@@ -767,7 +766,7 @@ fn void rgfw_deinit_ptr(RgfwInfo* info)
 	rgfw_setInfo(info);
 	for (RgfwMouseIcon i = 0; i < RGFW_MOUSE_ICON_COUNT; i++)
 	{
-		if (_rgfw.standardMice[(usz)i] != null) rgfw_freeMouse(_rgfw.standardMice[(usz)i]);
+		if (_rgfw.standardMice[(sz)i] != null) rgfw_freeMouse(_rgfw.standardMice[(sz)i]);
 	}
 	rgfw_freeMonitors();
 	rgfw_deinitPlatform();
@@ -787,7 +786,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
 	win.x = x; win.y = y; win.w = w; win.h = h;
-	win.internal.mouse = _rgfw.standardMice[(usz)RGFW_MOUSE_NORMAL];
+	win.internal.mouse = _rgfw.standardMice[(sz)RGFW_MOUSE_NORMAL];
 	win.internal.flags = flags;
 	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
 	RgfwWindowFlags reservedFlags = flags & RGFW_WINDOW_SCALE_TO_MONITOR;
@@ -1016,8 +1015,8 @@ fn void rgfw_wlXdgToplevelConfigureHandler(void* data, WlProxy* toplevel, int wi
 	if (states != null)
 	{
 		uint* state = (uint*)states.data;
-		usz count = states.size / uint::size;
-		for (usz i = 0; i < count; i++)
+		sz count = states.size / uint::size;
+		for (sz i = 0; i < count; i++)
 		{
 			switch (state[i])
 			{
@@ -1083,7 +1082,7 @@ fn void rgfw_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlProxy* 
 
 	int x = (int)wlFixedToDouble(surfaceX);
 	int y = (int)wlFixedToDouble(surfaceY);
-	rgfw_mouseNotifyCallback(win, x, y, true);
+	_mouse_notify_callback(win, x, y, true);
 }
 
 fn void rgfw_wlPointerLeave(void* data, WlProxy* pointer, uint serial, WlProxy* surface)
@@ -1091,7 +1090,7 @@ fn void rgfw_wlPointerLeave(void* data, WlProxy* pointer, uint serial, WlProxy* 
 	GfxWindow* win = (GfxWindow*)wlSurfaceGetUserData(surface);
 	RgfwInfo* info = (RgfwInfo*)data;
 	if (info.mouseOwner == win) info.mouseOwner = null;
-	rgfw_mouseNotifyCallback(win, win.internal.lastMouseX, win.internal.lastMouseY, false);
+	_mouse_notify_callback(win, win.internal.lastMouseX, win.internal.lastMouseY, false);
 }
 
 fn void rgfw_wlPointerMotion(void* data, WlProxy* pointer, uint time, WlFixed x, WlFixed y)
@@ -1266,18 +1265,18 @@ fn void rgfw_wlOutputHandleMode(void* data, WlProxy* output, uint flags, int wid
 	RgfwMonitorNode* node = (RgfwMonitorNode*)data;
 	GfxMonitor* mon = &node.mon;
 
-	RgfwMonitorMode mode;
+	GfxMonitorMode mode;
 	mode.w = width;
 	mode.h = height;
-	mode.refreshRate = (float)refresh / 1000.0f;
+	mode.refresh_rate = (float)refresh / 1000.0f;
 	mode.src = output;
 
 	node.modeCount += 1;
-	RgfwMonitorMode* modes = (RgfwMonitorMode*)rgfw_alloc_impl(node.modeCount * RgfwMonitorMode::size);
+	GfxMonitorMode* modes = malloc(node.modeCount * GfxMonitorMode::size);
 	if (node.modeCount > 1)
 	{
-		rgfw_monitor_getModesPtr(mon, &modes);
-		rgfw_free_impl(node.modes);
+		modes[:node.modeCount - 1] = node.modes[:node.modeCount - 1];
+		free(node.modes);
 	}
 	modes[node.modeCount - 1] = mode;
 	node.modes = modes;
@@ -1295,7 +1294,7 @@ fn void rgfw_wlOutputSetScale(void* data, WlProxy* output, int factor)
 fn void rgfw_wlOutputSetName(void* data, WlProxy* output, char* name)
 {
 	GfxMonitor* mon = &((RgfwMonitorNode*)data).mon;
-	usz n = strlen(name);
+	sz n = strlen(name);
 	if (n > 127) n = 127;
 	rgfw_memcpy(&mon.name, name, n);
 	mon.name[n] = 0;
@@ -1366,7 +1365,7 @@ fn void rgfw_wlCreateOutputs(WlProxy* registry, uint id)
 	while (prefix[n] != 0) { defaultName[n] = prefix[n]; n++; }
 	defaultName[n] = (char)('0' + (_rgfw.monitors.count % 10));
 	defaultName[n + 1] = 0;
-	rgfw_memcpy(&mon.name, &defaultName, (usz)n + 2);
+	rgfw_memcpy(&mon.name, &defaultName, (sz)n + 2);
 
 	mon.scaleY = 1.0f; mon.scaleX = 1.0f; mon.pixelRatio = 1.0f;
 
@@ -1403,7 +1402,7 @@ fn void rgfw_wlDataSourceSend(void* data, WlProxy* source, char* mimeType, int f
 {
 	if (rgfw_bool(mimeType != null) && strstr(mimeType, "text/plain") != null)
 	{
-		usz length = _rgfw.unixClipboard.length;
+		sz length = _rgfw.unixClipboard.length;
 		if (_rgfw.unixClipboard.data[0] == 0) length -= 1;
 		write(fd, (void*)_rgfw.unixClipboard.data, length);
 	}
@@ -1444,13 +1443,13 @@ fn void rgfw_wlDataDeviceSelection(void* data, WlProxy* device, WlProxy* offer)
 	long n = read(pfds[0], &buf, 1024);
 	if (n <= 0) { close(pfds[0]); wlDataOfferDestroy(offer); return; }
 
-	usz length = (usz)n;
+	sz length = (sz)n;
 	if (buf[n - 1] != 0) length += 1;
 
 	if (_rgfw.unixClipboard != null) rgfw_free_impl(_rgfw.unixClipboard);
-	_rgfw.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + (usz)n);
+	_rgfw.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + (sz)n);
 	char* dataPtr = (char*)_rgfw.unixClipboard + GfxDataTransfer::size - 1;
-	rgfw_memcpy(dataPtr, &buf, (usz)n);
+	rgfw_memcpy(dataPtr, &buf, (sz)n);
 	dataPtr[length - 1] = 0;
 	_rgfw.unixClipboard.data = dataPtr;
 	_rgfw.unixClipboard.type = RGFW_DATA_TEXT;
@@ -1545,9 +1544,9 @@ fn int rgfw_wlCreateShmFile(long size)
 	return fd;
 }
 
-fn RgfwFormat rgfw_nativeFormat() => RGFW_FORMAT_BGRA8;
+fn GfxFormat rgfw_nativeFormat() => BGRA8;
 
-fn bool rgfw_createSurfacePtr(char* data, int w, int h, RgfwFormat format, GfxSurface* surface)
+fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
 	surface.data = data;
 	surface.w = w;
@@ -1571,11 +1570,11 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, RgfwFormat format, GfxSu
 	}
 
 	surface.native.fd = fd;
-	surface.native.format = RGFW_FORMAT_BGRA8;
+	surface.native.format = BGRA8;
 	return true;
 }
 
-fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, RgfwFormat format, GfxSurface* surface) => rgfw_createSurfacePtr(data, w, h, format, surface);
+fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxSurface* surface) => rgfw_createSurfacePtr(data, w, h, format, surface);
 
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
@@ -1594,7 +1593,7 @@ fn void rgfw_surface_freePtr(GfxSurface* surface)
 {
 	if (surface.native.pool != null) wlShmPoolDestroy(surface.native.pool);
 	if (surface.native.fd != 0) close(surface.native.fd);
-	if (surface.native.buffer != null) munmap(surface.native.buffer, (usz)(surface.w * surface.h * 4));
+	if (surface.native.buffer != null) munmap(surface.native.buffer, (sz)(surface.w * surface.h * 4));
 }
 
 fn void rgfw_window_setBorder(GfxWindow* win, bool border)
@@ -1885,7 +1884,7 @@ fn void rgfw_window_setName(GfxWindow* win, char* name)
 
 fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) {}
 
-fn bool GfxWindow.set_icon(&win, char* data, int w, int h, RgfwFormat format, GfxWindowIconType type = BOTH)
+fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
 {
 	if (_rgfw.iconManager == null || w != h) return false;
 
@@ -1896,7 +1895,7 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, RgfwFormat format, Gf
 
 	int minW = w < surface.w ? w : surface.w;
 	int minH = h < surface.h ? h : surface.h;
-	rgfw_copyImageData(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
+	copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
 
 	win.src.icon = xdgToplevelIconManagerV1CreateIcon(_rgfw.iconManager);
 	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, w, h, w * 4, WL_SHM_FORMAT_ARGB8888);
@@ -1949,7 +1948,7 @@ fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 	return (RgfwMouse*)surface;
 }
 
-fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, RgfwFormat format)
+fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format)
 {
 	GfxSurface* surface = create_surface(data, w, h, format);
 	if (surface == null) return null;
@@ -1957,7 +1956,7 @@ fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, RgfwFormat format)
 	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, surface.w, surface.h, surface.w * 4, WL_SHM_FORMAT_ARGB8888);
 	int minW = w < surface.w ? w : surface.w;
 	int minH = h < surface.h ? h : surface.h;
-	rgfw_copyImageData(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
+	copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
 	return (RgfwMouse*)surface;
 }
 
@@ -2002,7 +2001,7 @@ fn void rgfw_window_showPlatform(GfxWindow* win)
 
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) {}
 
-fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, usz capacity, GfxDataTransfer* data)
+fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
 	if (requestedType != RGFW_DATA_TEXT) return false;
 	if (_rgfw.unixClipboard == null || _rgfw.unixClipboard.length == 0)
@@ -2032,7 +2031,7 @@ fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 	if (_rgfw.unixClipboard != null) { rgfw_free_impl(_rgfw.unixClipboard); _rgfw.unixClipboard = null; }
 
 	_rgfw.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + data.length);
-	usz length = data.length;
+	sz length = data.length;
 	if (data.data[length - 1] != 0) length += 1;
 
 	char* dataPtr = (char*)_rgfw.unixClipboard + GfxDataTransfer::size - 1;
@@ -2078,18 +2077,22 @@ fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width
 	return true;
 }
 
-fn usz rgfw_monitor_getModesPtr(GfxMonitor* monitor, RgfwMonitorMode** modes)
+fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* monitor)
 {
-	if (modes != null) rgfw_memcpy(*modes, monitor.node.modes, monitor.node.modeCount * RgfwMonitorMode::size);
-	return monitor.node.modeCount;
+	List{GfxMonitorMode} modes;
+	for (int i = 0; i < monitor.node.modeCount; i++)
+	{
+		modes.push(monitor.node.modes[i]);
+	}
+	return modes.array_view();
 }
 
-fn usz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp) => 0;
+fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp) => 0;
 fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp) => false;
 
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, GfxMonitorModeRequest request)
+fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
-	for (usz i = 0; i < mon.node.modeCount; i++)
+	for (sz i = 0; i < mon.node.modeCount; i++)
 	{
 		if (rgfw_monitorModeCompare(mode, &mon.node.modes[i], request) == false) continue;
 		rgfw_monitor_setMode(mon, &mon.node.modes[i]);
@@ -2098,9 +2101,9 @@ fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, GfxMoni
 	return false;
 }
 
-fn bool rgfw_monitor_setMode(GfxMonitor* mon, RgfwMonitorMode* mode) => false;
+fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => false;
 
-fn GfxMonitor* rgfw_window_getMonitor(GfxWindow* win)
+fn GfxMonitor* find_monitor(GfxWindow* win)
 {
 	if (win.src.activeMonitor == null) return rgfw_getPrimaryMonitor();
 	return &win.src.activeMonitor.mon;
@@ -2116,15 +2119,15 @@ fn ulong rgfw_unix_getTimeNS()
 struct RgfwAttribStack
 {
 	int* attribs;
-	usz count;
-	usz max;
+	sz count;
+	sz max;
 }
 
-fn void rgfw_attribStack_init(RgfwAttribStack* stack, int* attribs, usz max) { stack.attribs = attribs; stack.count = 0; stack.max = max; }
+fn void rgfw_attribStack_init(RgfwAttribStack* stack, int* attribs, sz max) { stack.attribs = attribs; stack.count = 0; stack.max = max; }
 fn void rgfw_attribStack_pushAttrib(RgfwAttribStack* stack, int attrib) { stack.attribs[stack.count] = attrib; stack.count += 1; }
 fn void rgfw_attribStack_pushAttribs(RgfwAttribStack* stack, int attrib1, int attrib2) { rgfw_attribStack_pushAttrib(stack, attrib1); rgfw_attribStack_pushAttrib(stack, attrib2); }
 
-fn bool rgfw_extensionSupportedStr(char* extensions, char* ext, usz len)
+fn bool rgfw_extensionSupportedStr(char* extensions, char* ext, sz len)
 {
 	if (extensions == null || ext == null) return false;
 	while (ext[len - 1] == 0 && len > 3) len--;
@@ -2155,14 +2158,14 @@ const EglInt EGL_OPENGL_API = 0x30a2;
 const EglInt EGL_OPENGL_ES_API = 0x30a0;
 const EglInt EGL_CONTEXT_CLIENT_VERSION = 0x3098;
 
-fn bool rgfw_extensionSupportedPlatform_EGL(char* extension, usz len)
+fn bool rgfw_extensionSupportedPlatform_EGL(char* extension, sz len)
 {
 	if (rgfw_eglQueryString == null || _rgfw.egl_display == null) return false;
 	char* extensions = rgfw_eglQueryString((EglDisplay)_rgfw.egl_display, 0x3055 /* EGL_EXTENSIONS */);
 	return rgfw_bool(extensions != null && rgfw_extensionSupportedStr(extensions, extension, len));
 }
 
-fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, usz len) => rgfw_extensionSupportedPlatform_EGL(extension, len);
+fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, sz len) => rgfw_extensionSupportedPlatform_EGL(extension, len);
 
 fn RgfwProc rgfw_getProcAddress_EGL(char* procname)
 {
@@ -2291,7 +2294,7 @@ fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
 	}
 
 	char[4] blk = {0, 0, 0, 0};
-	_rgfw.hiddenMouse = rgfw_createMouse((char*)&blk, 1, 1, RGFW_FORMAT_RGBA8);
+	_rgfw.hiddenMouse = rgfw_createMouse((char*)&blk, 1, 1, RGBA8);
 
 	static XdgWmBaseListener wmBaseListener = { .ping = &rgfw_wlXdgWmBasePingHandler };
 	xdgWmBaseAddListener(_rgfw.xdgWmBase, &wmBaseListener, null);

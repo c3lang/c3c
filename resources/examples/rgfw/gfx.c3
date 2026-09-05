@@ -3,17 +3,16 @@ module std::gfx;
 
 macro bool rgfw_bool(x) => x ? (bool)1 : (bool)0;
 macro uint rgfw_bit(x) => (uint)1 << (uint)(x);
-macro void* rgfw_memcpy(void* dest, void* src, usz count) => memcpy(dest, src, count);
-macro void* rgfw_memzero(void* ptr, usz count) => memset(ptr, 0, count);
+macro void* rgfw_memcpy(void* dest, void* src, sz count) => memcpy(dest, src, count);
+macro void* rgfw_memzero(void* ptr, sz count) => memset(ptr, 0, count);
 macro float rgfw_min(float a, float b) => a < b ? a : b;
-fn void* rgfw_alloc_impl(usz size) => malloc(size);
+fn void* rgfw_alloc_impl(sz size) => malloc(size);
 fn void rgfw_free_impl(void* ptr) { if (ptr != null) free(ptr); }
 
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
 
 alias RgfwInitFlags = char;
-alias RgfwFormat = char;
 alias RgfwKey = char;
 alias RgfwMouseButton = char;
 alias RgfwKeymod = char;
@@ -34,33 +33,33 @@ alias RgfwGfxContextType = uint;
 
 typedef RgfwMouse = void;
 alias RgfwProc = fn void();
-alias RgfwConvertImageDataFunc = fn void(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, usz count);
+alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, sz count);
 alias GfxGenericFunc = fn void(GfxEvent* e);
 alias RgfwDebugFunc = fn void(RgfwDebugInfo* info);
 
-struct RgfwColorLayout { int r, g, b, a; uint channels; }
+struct RgfwColorLayout { int r, g, b, a; int channels; }
 
 struct RgfwGammaRamp
 {
 	ushort* red;
 	ushort* green;
 	ushort* blue;
-	usz count;
+	sz count;
 }
 
 struct GfxSurface
 {
 	char* data;
 	int w, h;
-	RgfwFormat format;
-	RgfwConvertImageDataFunc convertFunc;
+	GfxFormat format;
+	GfxConvertImageDataFn convertFunc;
 	RgfwNativeImage native;
 }
 
-struct RgfwMonitorMode
+struct GfxMonitorMode
 {
 	int w, h;
-	float refreshRate;
+	float refresh_rate;
 	char red, blue, green;
 	void* src;
 }
@@ -72,7 +71,7 @@ struct GfxMonitor
 	float scaleX, scaleY;
 	float pixelRatio;
 	float physW, physH;
-	RgfwMonitorMode mode;
+	GfxMonitorMode mode;
 	void* userPtr;
 	RgfwMonitorNode* node;
 }
@@ -104,7 +103,7 @@ struct GfxWindowInternal
 	RgfwEventFlag enabledEvents;
 	uint flags;
 	int oldX, oldY, oldW, oldH;
-	RgfwMonitorMode oldMode;
+	GfxMonitorMode oldMode;
 	RgfwMouse* mouse;
 }
 
@@ -114,7 +113,7 @@ struct RgfwWindowState
 	bool mouseEnter;
 	bool dataDragging;
 	bool dataDrop;
-	usz dataLength;
+	sz dataLength;
 	int dropX, dropY;
 	GfxWindow* win;
 	bool mouseLeave;
@@ -124,7 +123,7 @@ struct RgfwWindowState
 struct GfxMonitors
 {
 	GfxMonitorList list;
-	usz count;
+	sz count;
 	RgfwMonitorNode* primary;
 }
 
@@ -137,14 +136,14 @@ struct GfxMonitorList
 struct GfxDataTransfer
 {
 	char* data;
-	usz length;
+	sz length;
 	RgfwDataTransferType type;
 }
 
 struct GfxDataDropNode
 {
 	char* data;
-	usz length;
+	sz length;
 	RgfwDataTransferType type;
 	GfxDataDropNode* next;
 }
@@ -211,14 +210,15 @@ const RgfwInitFlags RGFW_INIT_EGL = 2;
 const RgfwInitFlags RGFW_INIT_VULKAN = 4;
 const RgfwInitFlags RGFW_INIT_X11 = 8;
 
-const RgfwFormat RGFW_FORMAT_RGB8 = 0;
-const RgfwFormat RGFW_FORMAT_BGR8 = 1;
-const RgfwFormat RGFW_FORMAT_RGBA8 = 2;
-const RgfwFormat RGFW_FORMAT_ARGB8 = 3;
-const RgfwFormat RGFW_FORMAT_BGRA8 = 4;
-const RgfwFormat RGFW_FORMAT_ABGR8 = 5;
-const RgfwFormat RGFW_FORMAT_COUNT = 6;
-
+enum GfxFormat : char (int channels, RgfwColorLayout layout)
+{
+	RGB8  { 3, { 0, 1, 2, 3, 3 } },
+	BGR8  { 3, { 2, 1, 0, 3, 3 } },
+	RGBA8 { 4, { 0, 1, 2, 3, 4 } },
+	ARGB8 { 4, { 1, 2, 3, 0, 4 } },
+	BGRA8 { 4, { 2, 1, 0, 3, 4 } },
+	ABGR8 { 4, { 3, 2, 1, 0, 4 } },
+}
 
 const RgfwKey RGFW_KEY_NULL = 0;
 const RgfwKey RGFW_KEY_ESCAPE = 27;
@@ -526,42 +526,51 @@ const RgfwErrorCode RGFW_INFO_OPEN_GL = 18;
 const RgfwErrorCode RGFW_WARNING_WAYLAND = 19;
 const RgfwErrorCode RGFW_WARNING_OPEN_GL = 20;
 
-fn void convert_image_data_64(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, usz count, bool is64bit)
+fn void convert_image_data_64(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, sz count, bool is64bit)
 {
 	char[4] rgba = {0, 0, 0, 0};
-	uint i2 = 0;
-	for (uint i = 0; i < count; i++)
+	sz i2 = 0;
+	for (sz i = 0; i < count; i++)
 	{
-		char* src_px = &src_data[(usz)(i * srcLayout.channels)];
-		char* dst_px = &dest_data[(usz)(i2 * destLayout.channels)];
-		rgba[0] = src_px[(usz)srcLayout.r];
-		rgba[1] = src_px[(usz)srcLayout.g];
-		rgba[2] = src_px[(usz)srcLayout.b];
-		rgba[3] = srcLayout.channels == 4 ? src_px[(usz)srcLayout.a] : 255;
-		dst_px[(usz)destLayout.r] = rgba[0];
-		dst_px[(usz)destLayout.g] = rgba[1];
-		dst_px[(usz)destLayout.b] = rgba[2];
-		if (destLayout.channels == 4) dst_px[(usz)destLayout.a] = rgba[3];
-		i2 += 1 + (uint)is64bit;
+		char* src_px = &src_data[i * srcLayout.channels];
+		char* dst_px = &dest_data[i2 * destLayout.channels];
+		rgba[0] = src_px[srcLayout.r];
+		rgba[1] = src_px[srcLayout.g];
+		rgba[2] = src_px[srcLayout.b];
+		rgba[3] = srcLayout.channels == 4 ? src_px[srcLayout.a] : 255;
+		dst_px[destLayout.r] = rgba[0];
+		dst_px[destLayout.g] = rgba[1];
+		dst_px[destLayout.b] = rgba[2];
+		if (destLayout.channels == 4) dst_px[destLayout.a] = rgba[3];
+		i2 += 1 + (sz)is64bit;
 	}
 }
 
-fn void copy_image_data_64(char* dest_data, int dest_w, int dest_h, RgfwFormat dest_format, char* src_data, RgfwFormat src_format, bool is64bit, RgfwConvertImageDataFunc func)
+<*
+ @require !@catch(dest_w.overflow_mul(dest_h))
+*>
+fn void copy_image_data_64(char* dest_data, int dest_w, int dest_h, GfxFormat dest_format, char* src_data, GfxFormat src_format, bool is64bit, GfxConvertImageDataFn func)
 {
-	uint count = (uint)(dest_w * dest_h);
+	sz count = (sz)dest_w * dest_h;
 	if (src_format == dest_format)
 	{
-		uint channels = dest_format >= RGFW_FORMAT_RGBA8 ? 4 : 3;
-		rgfw_memcpy(dest_data, src_data, (usz)(count * channels));
+		int channels = dest_format.channels;
+		mem::copy(dest_data, src_data, count * channels);
 		return;
 	}
-	RgfwColorLayout* srcLayout = &rgfw_layouts[(usz)src_format];
-	RgfwColorLayout* destLayout = &rgfw_layouts[(usz)dest_format];
-	if (is64bit || func == null) { convert_image_data_64(dest_data, src_data, srcLayout, destLayout, count, is64bit); }
-	else { func(dest_data, src_data, srcLayout, destLayout, count); }
+	RgfwColorLayout* srcLayout = &&src_format.layout;
+	RgfwColorLayout* destLayout = &&dest_format.layout;
+	if (is64bit || func == null)
+	{
+		convert_image_data_64(dest_data, src_data, srcLayout, destLayout, count, is64bit);
+	}
+	else
+	{
+		func(dest_data, src_data, srcLayout, destLayout, count);
+	}
 }
 
-fn void rgfw_copyImageData(char* dest_data, int w, int h, RgfwFormat dest_format, char* src_data, RgfwFormat src_format, RgfwConvertImageDataFunc func)
+fn void copy_image_data(char* dest_data, int w, int h, GfxFormat dest_format, char* src_data, GfxFormat src_format, GfxConvertImageDataFn func)
 {
 	copy_image_data_64(dest_data, w, h, dest_format, src_data, src_format, false, func);
 }
@@ -573,7 +582,7 @@ fn int init(char* className, RgfwInitFlags flags)
 
 fn void finalize() { rgfw_deinit_ptr(_rgfw); }
 
-fn GfxSurface* create_surface(char* data, int w, int h, RgfwFormat format)
+fn GfxSurface* create_surface(char* data, int w, int h, GfxFormat format)
 {
 	GfxSurface* surface = mem::new(GfxSurface);
 	rgfw_createSurfacePtr(data, w, h, format, surface);
@@ -615,7 +624,7 @@ fn void GfxWindow.set_should_close(&win, bool should_close)
 
 fn void window_scale_to_monitor(GfxWindow* win)
 {
-	GfxMonitor* monitor = rgfw_window_getMonitor(win);
+	GfxMonitor* monitor = find_monitor(win);
 	if (monitor == null) return;
 	rgfw_window_resize(win, (int)(monitor.scaleX * (float)win.w), (int)(monitor.scaleY * (float)win.h));
 }
@@ -643,7 +652,7 @@ fn bool is_key_released(RgfwKey key, GfxWindow* window = null)
 }
 fn bool is_mouse_down(RgfwMouseButton button, GfxWindow* window = null)
 {
-	return _rgfw.mouseButtons[(usz)button].current && (!window || window.has_focus());
+	return _rgfw.mouseButtons[(sz)button].current && (!window || window.has_focus());
 }
 
 fn bool is_mouse_released(RgfwMouseButton button, GfxWindow* window = null)
@@ -689,7 +698,7 @@ fn void rgfw_eventQueueFlush() { _rgfw.eventLen = 0; }
 
 fn void event_queue_push(GfxEvent* event)
 {
-	if (_rgfw.queueEvents == false) return;
+	if (!_rgfw.queueEvents) return;
 	if (_rgfw.eventLen >= MAX_EVENTS)
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_EVENT_QUEUE, "Event queue limit 'MAX_EVENTS' has been reached automatically flushing queue.");
@@ -698,7 +707,7 @@ fn void event_queue_push(GfxEvent* event)
 	}
 	int eventTop = (_rgfw.eventBottom + _rgfw.eventLen) % MAX_EVENTS;
 	_rgfw.eventLen += 1;
-	_rgfw.events[(usz)eventTop] = *event;
+	_rgfw.events[eventTop] = *event;
 }
 
 fn GfxEvent? event_queue_pop()
@@ -918,8 +927,8 @@ fn void rgfw_mouseButtonCallback(GfxWindow* win, RgfwMouseButton button, bool pr
 		if (!(win.internal.enabledEvents & RGFW_MOUSE_BUTTON_RELEASED_FLAG)) return;
 		event.type = RGFW_MOUSE_BUTTON_RELEASED;
 	}
-	_rgfw.mouseButtons[(usz)button].prev = _rgfw.mouseButtons[(usz)button].current;
-	_rgfw.mouseButtons[(usz)button].current = press;
+	_rgfw.mouseButtons[(sz)button].prev = _rgfw.mouseButtons[(sz)button].current;
+	_rgfw.mouseButtons[(sz)button].current = press;
 	event.button.value = button;
 	event.button.state = press;
 	event.common.win = win;
@@ -1000,7 +1009,7 @@ fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
 	else
 	{
 		if (win.internal.flags & RGFW_WINDOW_FULLSCREEN) rgfw_window_minimize(win);
-		for (usz key = 0; key < (usz)RGFW_KEY_LAST; key++)
+		for (sz key = 0; key < (sz)RGFW_KEY_LAST; key++)
 		{
 			if (is_key_down((RgfwKey)key) == false) continue;
 			_rgfw.keyboard[key].current = false;
@@ -1012,30 +1021,6 @@ fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
 	event_queue_call_push(&event);
 }
 
-fn void rgfw_mouseNotifyCallback(GfxWindow* win, int x, int y, bool status)
-{
-	win.internal.mouseInside = status;
-	_rgfw.windowState.win = win;
-	win.internal.lastMouseX = x;
-	win.internal.lastMouseY = y;
-	GfxEvent event;
-	event.common.win = win;
-	event.mouse.x = x; event.mouse.y = y; event.mouse.inWindow = win.internal.mouseInside;
-	if (status)
-	{
-		if (!(win.internal.enabledEvents & RGFW_MOUSE_ENTER_FLAG)) return;
-		_rgfw.windowState.mouseEnter = true;
-		event.type = RGFW_MOUSE_ENTER;
-	}
-	else
-	{
-		if (!(win.internal.enabledEvents & RGFW_MOUSE_LEAVE_FLAG)) return;
-		_rgfw.windowState.winLeave = win;
-		_rgfw.windowState.mouseLeave = true;
-		event.type = RGFW_MOUSE_LEAVE;
-	}
-	event_queue_call_push(&event);
-}
 
 fn void rgfw_dataDragCallback(GfxWindow* win, RgfwDataTransferType dataType, RgfwDndActionType action, int x, int y)
 {
@@ -1051,7 +1036,7 @@ fn void rgfw_dataDragCallback(GfxWindow* win, RgfwDataTransferType dataType, Rgf
 	event_queue_call_push(&event);
 }
 
-fn void rgfw_dataDropCallback(GfxWindow* win, char* data, usz length, RgfwDataTransferType dataType)
+fn void rgfw_dataDropCallback(GfxWindow* win, char* data, sz length, RgfwDataTransferType dataType)
 {
 	if (!(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG) || !(win.internal.flags & RGFW_WINDOW_ALLOW_DND)) return;
 	_rgfw.windowState.win = win;
@@ -1066,7 +1051,7 @@ fn void rgfw_dataDropCallback(GfxWindow* win, char* data, usz length, RgfwDataTr
 	event.type = RGFW_DATA_DROP;
 	event.drop.value = &node;
 	event.common.win = win;
-	if (_rgfw.callbacks[(usz)event.type] != null) _rgfw.callbacks[(usz)event.type](&event);
+	if (_rgfw.callbacks[(sz)event.type] != null) _rgfw.callbacks[(sz)event.type](&event);
 	if (_rgfw.queueEvents == false && _rgfw.dndBuild == false) return;
 	char* dataCopy = (char*)rgfw_alloc_impl(length);
 	if (dataCopy != null) { rgfw_memcpy(dataCopy, data, length); node.data = dataCopy; }
@@ -1102,8 +1087,8 @@ fn void rgfw_keyCallback(GfxWindow* win, RgfwKey key, RgfwKeymod mod, bool repea
 		if (!(win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG)) return;
 		event.type = RGFW_KEY_RELEASED;
 	}
-	_rgfw.keyboard[(usz)key].prev = _rgfw.keyboard[(usz)key].current;
-	_rgfw.keyboard[(usz)key].current = state;
+	_rgfw.keyboard[(sz)key].prev = _rgfw.keyboard[(sz)key].current;
+	_rgfw.keyboard[(sz)key].current = state;
 	event.key.value = key; event.key.repeat = repeat; event.key.mod = mod; event.key.state = state;
 	event.common.win = win;
 	event_queue_call_push(&event);
@@ -1113,9 +1098,9 @@ fn void rgfw_initKeycodes()
 {
 	_rgfw.keycodes = {};
 	rgfw_initKeycodesPlatform();
-	for (usz i = 0; i < (usz)RGFW_KEY_LAST; i++)
+	for (sz i = 0; i < (sz)RGFW_KEY_LAST; i++)
 	{
-		for (usz y = 0; y < _rgfw.keycodes.len; y++)
+		for (sz y = 0; y < _rgfw.keycodes.len; y++)
 		{
 			if (_rgfw.keycodes[y] == (RgfwKey)i)
 			{
@@ -1147,8 +1132,8 @@ fn void rgfw_setQueueEvents(bool queue) { _rgfw.queueEvents = queue; }
 
 fn void rgfw_resetPrevState()
 {
-	for (usz i = 0; i < (usz)RGFW_KEY_LAST; i++) _rgfw.keyboard[i].prev = _rgfw.keyboard[i].current;
-	for (usz i = 0; i < (usz)RGFW_MOUSE_FINAL; i++) _rgfw.mouseButtons[i].prev = _rgfw.mouseButtons[i].current;
+	for (sz i = 0; i < (sz)RGFW_KEY_LAST; i++) _rgfw.keyboard[i].prev = _rgfw.keyboard[i].current;
+	for (sz i = 0; i < (sz)RGFW_MOUSE_FINAL; i++) _rgfw.mouseButtons[i].prev = _rgfw.mouseButtons[i].current;
 	_rgfw.scrollX = 0.0f; _rgfw.scrollY = 0.0f;
 	_rgfw.vectorX = 0.0f; _rgfw.vectorY = 0.0f;
 	rgfw_memzero(&_rgfw.windowState, RgfwWindowState::size);
@@ -1179,7 +1164,7 @@ fn void rgfw_window_setUserPtr(GfxWindow* win, void* ptr) { win.userPtr = ptr; }
 
 fn bool rgfw_window_getSizeInPixels(GfxWindow* win, int* w, int* h)
 {
-	GfxMonitor* mon = rgfw_window_getMonitor(win);
+	GfxMonitor* mon = find_monitor(win);
 	if (mon == null) return false;
 	if (w != null) *w = (int)((float)win.w * mon.pixelRatio);
 	if (h != null) *h = (int)((float)win.h * mon.pixelRatio);
@@ -1218,14 +1203,14 @@ fn void rgfw_setBit(uint* value, uint mask, bool set)
 
 fn void rgfw_window_center(GfxWindow* win)
 {
-	GfxMonitor* mon = rgfw_window_getMonitor(win);
+	GfxMonitor* mon = find_monitor(win);
 	if (mon == null) return;
 	rgfw_window_move(win, mon.x + ((mon.mode.w - win.w) / 2), mon.y + ((mon.mode.h - win.h) / 2));
 }
 
 fn bool rgfw_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
 {
-	RgfwMonitorMode mode;
+	GfxMonitorMode mode;
 	mode.w = win.w;
 	mode.h = win.h;
 	bool ret = rgfw_monitor_requestMode(mon, &mode, SCALE);
@@ -1233,7 +1218,7 @@ fn bool rgfw_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
 	return ret;
 }
 
-fn void rgfw_splitBPP(uint bpp, RgfwMonitorMode* mode)
+fn void rgfw_splitBPP(uint bpp, GfxMonitorMode* mode)
 {
 	if (bpp == 32) bpp = 24;
 	mode.red = mode.green = mode.blue = (char)(bpp / 3);
@@ -1242,27 +1227,18 @@ fn void rgfw_splitBPP(uint bpp, RgfwMonitorMode* mode)
 	if (delta == 2) mode.red = mode.red + 1;
 }
 
-fn bool rgfw_monitorModeCompare(RgfwMonitorMode* mon, RgfwMonitorMode* mon2, GfxMonitorModeRequest request)
+fn bool rgfw_monitorModeCompare(GfxMonitorMode* mon, GfxMonitorMode* mon2, GfxMonitorModeRequest request)
 {
 	return rgfw_bool(((mon.w == mon2.w && mon.h == mon2.h) || !(request & SCALE)) &&
-	((mon.refreshRate == mon2.refreshRate) || !(request & REFRESH)) &&
+	((mon.refresh_rate == mon2.refresh_rate) || !(request & REFRESH)) &&
 	((mon.red == mon2.red && mon.green == mon2.green && mon.blue == mon2.blue) || !(request & RGB)));
 }
 
-RgfwColorLayout[6] rgfw_layouts = {
-	{0, 1, 2, 3, 3},
-	{2, 1, 0, 3, 3},
-	{0, 1, 2, 3, 4},
-	{1, 2, 3, 0, 4},
-	{2, 1, 0, 3, 4},
-	{3, 2, 1, 0, 4},
-};
-
-fn void rgfw_surface_setConvertFunc(GfxSurface* surface, RgfwConvertImageDataFunc func) { surface.convertFunc = func; }
+fn void rgfw_surface_setConvertFunc(GfxSurface* surface, GfxConvertImageDataFn func) { surface.convertFunc = func; }
 fn RgfwNativeImage* rgfw_surface_getNativeImage(GfxSurface* surface) => &surface.native;
 fn void rgfw_surface_free(GfxSurface* surface) { rgfw_surface_freePtr(surface); rgfw_free_impl(surface); }
 
-fn GfxSurface* rgfw_window_createSurface(GfxWindow* win, char* data, int w, int h, RgfwFormat format)
+fn GfxSurface* rgfw_window_createSurface(GfxWindow* win, char* data, int w, int h, GfxFormat format)
 {
 	GfxSurface* surface = (GfxSurface*)rgfw_alloc_impl(GfxSurface::size);
 	if (surface == null) return null;
@@ -1320,10 +1296,10 @@ fn void rgfw_freeMonitors()
 	}
 }
 
-fn GfxMonitor** rgfw_getMonitors(usz* len)
+fn GfxMonitor** rgfw_getMonitors(sz* len)
 {
 	if (len != null) *len = 0;
-	usz count = 0;
+	sz count = 0;
 	if (rgfw_getMonitorsPtr(0, null, &count) == false || count == 0) return null;
 	GfxMonitor** monitors = (GfxMonitor**)rgfw_alloc_impl(GfxMonitor*::size * count);
 	if (rgfw_getMonitorsPtr(count, monitors, &count) == false)
@@ -1335,12 +1311,12 @@ fn GfxMonitor** rgfw_getMonitors(usz* len)
 	return monitors;
 }
 
-fn bool rgfw_getMonitorsPtr(usz max, GfxMonitor** monitors, usz* len)
+fn bool rgfw_getMonitorsPtr(sz max, GfxMonitor** monitors, sz* len)
 {
 	if (len != null) *len = _rgfw.monitors.count;
 	if (monitors == null || max == 0) return true;
 	if (len != null) *len = max;
-	usz i = 0;
+	sz i = 0;
 	RgfwMonitorNode* cur_node = _rgfw.monitors.list.head;
 	while (cur_node != null && i < max)
 	{
@@ -1358,36 +1334,28 @@ fn GfxMonitor* rgfw_getPrimaryMonitor()
 	return &_rgfw.monitors.primary.mon;
 }
 
-fn RgfwMonitorMode* rgfw_monitor_getModes(GfxMonitor* monitor, usz* count)
+fn GfxMonitorMode[] GfxMonitor.get_modes(&monitor, Allocator allocator)
 {
-	usz num = rgfw_monitor_getModesPtr(monitor, null);
-	RgfwMonitorMode* modes = (RgfwMonitorMode*)rgfw_alloc_impl(num * RgfwMonitorMode::size);
-	num = rgfw_monitor_getModesPtr(monitor, &modes);
-	if (count != null) *count = num;
-	return modes;
+	return alloc::clone_slice(allocator, rgfw_monitor_getModesPtr(monitor));
 }
 
-fn void rgfw_freeModes(RgfwMonitorMode* modes) { rgfw_free_impl(modes); }
-
-fn bool rgfw_monitor_findClosestMode(GfxMonitor* monitor, RgfwMonitorMode* mode, RgfwMonitorMode* closest)
+fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mode) => @pool()
 {
-	usz count = rgfw_monitor_getModesPtr(monitor, null);
-	RgfwMonitorMode* modes = (RgfwMonitorMode*)rgfw_alloc_impl(count * RgfwMonitorMode::size);
-	count = rgfw_monitor_getModesPtr(monitor, &modes);
-	RgfwMonitorMode* chosen = null;
-	uint topScore = 1;
-	for (usz i = 0; i < count; i++)
+	GfxMonitorMode* chosen;
+	int top_score = 1;
+	foreach (&mode2 : rgfw_monitor_getModesPtr(monitor))
 	{
-		RgfwMonitorMode* mode2 = &modes[i];
-		uint score = 0;
+		int score = 0;
 		if (mode.w == mode2.w && mode.h == mode2.h) score += 1000;
 		if (mode.red == mode2.red && mode.green == mode2.green && mode.blue == mode2.blue) score += 100;
-		if (mode.refreshRate == mode.refreshRate) score += 10;
-		if (score > topScore) { topScore = score; chosen = mode2; }
+		if (mode.refresh_rate == mode2.refresh_rate) score += 10;
+		if (score > top_score)
+		{
+			top_score = score;
+			chosen = mode2;
+		}
 	}
-	if (chosen != null && closest != null) *closest = *chosen;
-	rgfw_free_impl(modes);
-	return chosen == null ? false : true;
+	return chosen ? *chosen : NOT_FOUND~;
 }
 
 fn bool rgfw_monitor_getPosition(GfxMonitor* monitor, int* x, int* y) { if (x != null) *x = monitor.x; if (y != null) *y = monitor.y; return true; }
@@ -1396,7 +1364,7 @@ fn bool rgfw_monitor_getScale(GfxMonitor* monitor, float* x, float* y) { if (x !
 fn bool rgfw_monitor_getPhysicalSize(GfxMonitor* monitor, float* w, float* h) { if (w != null) *w = monitor.physW; if (h != null) *h = monitor.physH; return true; }
 fn void rgfw_monitor_setUserPtr(GfxMonitor* monitor, void* userPtr) { monitor.userPtr = userPtr; }
 fn void* rgfw_monitor_getUserPtr(GfxMonitor* monitor) => monitor.userPtr;
-fn bool rgfw_monitor_getMode(GfxMonitor* monitor, RgfwMonitorMode* mode) { if (mode != null) *mode = monitor.mode; return true; }
+fn bool rgfw_monitor_getMode(GfxMonitor* monitor, GfxMonitorMode* mode) { if (mode != null) *mode = monitor.mode; return true; }
 
 fn RgfwGammaRamp* rgfw_monitor_getGammaRamp(GfxMonitor* monitor)
 {
@@ -1417,9 +1385,9 @@ fn void rgfw_freeGammaRamp(RgfwGammaRamp* ramp)
 	rgfw_free_impl(ramp);
 }
 
-fn bool rgfw_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, usz count)
+fn bool rgfw_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, sz count)
 {
-	for (usz i = 0; i < count; i++)
+	for (sz i = 0; i < count; i++)
 	{
 		float value = (float)i / (float)(count - 1);
 		value = powf(value, 1.0f / gamma) * 65535.0f + 0.5f;
@@ -1433,7 +1401,7 @@ fn bool rgfw_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, 
 
 fn bool rgfw_monitor_setGamma(GfxMonitor* monitor, float gamma)
 {
-	usz count = rgfw_monitor_getGammaRampPtr(monitor, null);
+	sz count = rgfw_monitor_getGammaRampPtr(monitor, null);
 	ushort* ptr = (ushort*)rgfw_alloc_impl(count * ushort::size);
 	bool ret = rgfw_monitor_setGammaPtr(monitor, gamma, ptr, count);
 	rgfw_free_impl(ptr);
@@ -1483,20 +1451,20 @@ fn void rgfw_window_showMouseFlags(GfxWindow* win, bool show)
 }
 
 fn bool rgfw_window_setMouseDefault(GfxWindow* win) => rgfw_window_setMouseStandard(win, RGFW_MOUSE_NORMAL);
-fn bool rgfw_window_setMouseStandard(GfxWindow* win, RgfwMouseIcon icon) => rgfw_window_setMouse(win, _rgfw.standardMice[(usz)icon]);
+fn bool rgfw_window_setMouseStandard(GfxWindow* win, RgfwMouseIcon icon) => rgfw_window_setMouse(win, _rgfw.standardMice[(sz)icon]);
 fn bool rgfw_window_setMouse(GfxWindow* win, RgfwMouse* mouse) { if (mouse != _rgfw.hiddenMouse) win.internal.mouse = mouse; return rgfw_window_setMousePlatform(win, mouse); }
 
-fn bool rgfw_isLatin(char* string, usz length)
+fn bool rgfw_isLatin(char* string, sz length)
 {
-	for (usz i = 0; i < length; i++) if ((char)string[i] >= 0x80) return true;
+	for (sz i = 0; i < length; i++) if ((char)string[i] >= 0x80) return true;
 	return false;
 }
 
-fn uint rgfw_decodeUTF8(char* string, usz* starting_index)
+fn uint rgfw_decodeUTF8(char* string, sz* starting_index)
 {
 	uint[6] offsets = {0x00000000u, 0x00003080u, 0x000e2080u, 0x03c82080u, 0xfa082080u, 0x82082080u};
 	uint codepoint = (char)string[*starting_index];
-	usz count = 1;
+	sz count = 1;
 	while ((string[count + *starting_index] & 0xc0) == 0x80)
 	{
 		codepoint = (codepoint << 6) + (char)string[count + *starting_index];
@@ -1529,4 +1497,29 @@ fn void _remove_monitor(RgfwMonitorNode* node, RgfwMonitorNode* prev)
 	}
 	node.next = null;
 	free(node);
+}
+
+fn void _mouse_notify_callback(GfxWindow* win, int x, int y, bool status)
+{
+	win.internal.mouseInside = status;
+	_rgfw.windowState.win = win;
+	win.internal.lastMouseX = x;
+	win.internal.lastMouseY = y;
+	GfxEvent event;
+	event.common.win = win;
+	event.mouse.x = x; event.mouse.y = y; event.mouse.inWindow = win.internal.mouseInside;
+	if (status)
+	{
+		if (!(win.internal.enabledEvents & RGFW_MOUSE_ENTER_FLAG)) return;
+		_rgfw.windowState.mouseEnter = true;
+		event.type = RGFW_MOUSE_ENTER;
+	}
+	else
+	{
+		if (!(win.internal.enabledEvents & RGFW_MOUSE_LEAVE_FLAG)) return;
+		_rgfw.windowState.winLeave = win;
+		_rgfw.windowState.mouseLeave = true;
+		event.type = RGFW_MOUSE_LEAVE;
+	}
+	event_queue_call_push(&event);
 }
