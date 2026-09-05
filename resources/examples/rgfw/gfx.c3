@@ -1106,3 +1106,38 @@ fn void rgfw_keyCallback(GfxWindow* win, RgfwKey key, RgfwKeymod mod, bool repea
 	event.common.win = win;
 	event_queue_call_push(&event);
 }
+
+fn void rgfw_initKeycodes()
+{
+	_rgfw.keycodes = {};
+	rgfw_initKeycodesPlatform();
+	for (usz i = 0; i < (usz)RGFW_KEY_LAST; i++)
+	{
+		for (usz y = 0; y < _rgfw.keycodes.len; y++)
+		{
+			if (_rgfw.keycodes[y] == (RgfwKey)i)
+			{
+				_rgfw.apiKeycodes[i] = (uint)y;
+				break;
+			}
+		}
+	}
+	rgfw_resetKey();
+}
+
+fn RgfwKey rgfw_apiKeyToRGFW(uint keycode)
+{
+	if (keycode >= _rgfw.keycodes.len) return RGFW_KEY_NULL;
+	return _rgfw.keycodes[keycode];
+}
+
+fn uint rgfw_rgfwToApiKey(RgfwKey keycode)
+{
+	return _rgfw.apiKeycodes[keycode];
+}
+
+fn void rgfw_resetKey()
+{
+	_rgfw.keyboard = {};
+}
+

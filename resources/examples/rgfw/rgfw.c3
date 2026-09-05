@@ -484,40 +484,6 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 	return prev;
 }
 
-fn void rgfw_initKeycodes()
-{
-	rgfw_memzero((void*)&_rgfw.keycodes, RgfwKey[256]::size);
-	rgfw_initKeycodesPlatform();
-	for (usz i = 0; i < (usz)RGFW_KEY_LAST; i++)
-	{
-		for (usz y = 0; y < 256; y++)
-		{
-			if (_rgfw.keycodes[y] == (RgfwKey)i)
-			{
-				_rgfw.apiKeycodes[i] = (uint)y;
-				break;
-			}
-		}
-	}
-	rgfw_resetKey();
-}
-
-fn RgfwKey rgfw_apiKeyToRGFW(uint keycode)
-{
-	if (keycode > 256) return RGFW_KEY_NULL;
-	return _rgfw.keycodes[(usz)keycode];
-}
-
-fn uint rgfw_rgfwToApiKey(RgfwKey keycode)
-{
-	return _rgfw.apiKeycodes[(usz)keycode];
-}
-
-fn void rgfw_resetKey()
-{
-	rgfw_memzero((void*)&_rgfw.keyboard, RgfwKeyState[256]::size);
-}
-
 
 
 
