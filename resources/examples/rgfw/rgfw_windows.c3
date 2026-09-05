@@ -1377,8 +1377,8 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 	win.internal.flags |= RGFW_WINDOW_FULLSCREEN;
 	rgfw_window_setBorder(win, false);
 
-	setWindowPos(win.src.window, (HWnd*)(uptr)(-1) /* HWND_TOPMOST */, mon.x, mon.y, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
-	win.x = mon.x; win.y = mon.y;
+	setWindowPos(win.src.window, (HWnd*)(uptr)(-1) /* HWND_TOPMOST */, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
+	win.x = mon.origin.x; win.y = mon.origin.y;
 
 	rgfw_monitor_scaleToWindow(mon, win);
 	setWindowPos(win.src.window, (HWnd*)(uptr)(-1), 0, 0, mon.mode.w, mon.mode.h, 0x0200 | 0x0020 | 0x0040 | 0x0002);
@@ -1635,8 +1635,7 @@ fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 	monitorInfo.cbSize = MonitorInfoExW::size;
 	getMonitorInfoW(node.hMonitor, &monitorInfo);
 
-	node.mon.x = monitorInfo.rcMonitor.left;
-	node.mon.y = monitorInfo.rcMonitor.top;
+	node.mon.origin = { monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top};
 
 	HDc hdc = createDCW((ushort*)&monitorInfo.szDevice, null, null, null);
 	float dpiX = (float)getDeviceCaps(hdc, 88 /* LOGPIXELSX */);

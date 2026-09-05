@@ -1254,8 +1254,7 @@ WlShmListener rgfw_wlShmListener = { .format = &rgfw_wlShmFormatHandler };
 fn void rgfw_wlOutputSetGeometry(void* data, WlProxy* output, int x, int y, int physW, int physH, int subpixel, char* make, char* model, int transform)
 {
 	GfxMonitor* mon = &((RgfwMonitorNode*)data).mon;
-	mon.x = x;
-	mon.y = y;
+	mon.origin = { x, y };
 	mon.physW = (float)physW / 25.4f;
 	mon.physH = (float)physH / 25.4f;
 }
@@ -1305,8 +1304,7 @@ fn void rgfw_wlOutputDescription(void* data, WlProxy* output, char* description)
 fn void rgfw_xdgOutputLogicalPos(void* data, WlProxy* xdgOutput, int x, int y)
 {
 	GfxMonitor* mon = &((RgfwMonitorNode*)data).mon;
-	mon.x = x;
-	mon.y = y;
+	mon.origin = { x, y };
 }
 
 fn void rgfw_xdgOutputLogicalSize(void* data, WlProxy* xdgOutput, int width, int height)
@@ -2070,8 +2068,8 @@ fn void rgfw_monitorNode_free(RgfwMonitorNode* node)
 
 fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
 {
-	if (x != null) *x = monitor.x;
-	if (y != null) *y = monitor.y;
+	if (x != null) *x = monitor.origin.x;
+	if (y != null) *y = monitor.origin.y;
 	if (width != null) *width = monitor.mode.w;
 	if (height != null) *height = monitor.mode.h;
 	return true;

@@ -1,5 +1,5 @@
 module std::gfx;
-
+import std::math;
 
 macro bool rgfw_bool(x) => x ? (bool)1 : (bool)0;
 macro uint rgfw_bit(x) => (uint)1 << (uint)(x);
@@ -66,7 +66,7 @@ struct GfxMonitorMode
 
 struct GfxMonitor
 {
-	int x, y;
+	IntVec2 origin;
 	char[128] name;
 	float scaleX, scaleY;
 	float pixelRatio;
@@ -631,7 +631,7 @@ fn void window_scale_to_monitor(GfxWindow* win)
 
 fn void window_move_to_monitor(GfxWindow* win, GfxMonitor* m)
 {
-	rgfw_window_move(win, m.x + win.x, m.y + win.y);
+	rgfw_window_move(win, m.origin.x + win.x, m.origin.y + win.y);
 }
 
 fn void GfxWindow.set_flags(&win, RgfwWindowFlags flags) { _window_set_flags(win, flags, win.internal.flags); }
@@ -1205,7 +1205,7 @@ fn void rgfw_window_center(GfxWindow* win)
 {
 	GfxMonitor* mon = find_monitor(win);
 	if (mon == null) return;
-	rgfw_window_move(win, mon.x + ((mon.mode.w - win.w) / 2), mon.y + ((mon.mode.h - win.h) / 2));
+	rgfw_window_move(win, mon.origin.x + ((mon.mode.w - win.w) / 2), mon.origin.y + ((mon.mode.h - win.h) / 2));
 }
 
 fn bool rgfw_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
@@ -1214,7 +1214,7 @@ fn bool rgfw_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
 	mode.w = win.w;
 	mode.h = win.h;
 	bool ret = rgfw_monitor_requestMode(mon, &mode, SCALE);
-	rgfw_window_move(win, mon.x, mon.y);
+	rgfw_window_move(win, ...mon.origin);
 	return ret;
 }
 
@@ -1358,7 +1358,6 @@ fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mo
 	return chosen ? *chosen : NOT_FOUND~;
 }
 
-fn bool rgfw_monitor_getPosition(GfxMonitor* monitor, int* x, int* y) { if (x != null) *x = monitor.x; if (y != null) *y = monitor.y; return true; }
 fn char* rgfw_monitor_getName(GfxMonitor* monitor) => &monitor.name[0];
 fn bool rgfw_monitor_getScale(GfxMonitor* monitor, float* x, float* y) { if (x != null) *x = monitor.scaleX; if (y != null) *y = monitor.scaleY; return true; }
 fn bool rgfw_monitor_getPhysicalSize(GfxMonitor* monitor, float* w, float* h) { if (w != null) *w = monitor.physW; if (h != null) *h = monitor.physH; return true; }

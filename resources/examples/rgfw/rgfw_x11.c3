@@ -2319,7 +2319,7 @@ fn void rgfw_pollMonitors()
 		if (physW > 0.0f && physH > 0.0f) { monitor.physW = physW; monitor.physH = physH; }
 		else { monitor.physW = (float)ci.width / 96.0f; monitor.physH = (float)ci.height / 96.0f; }
 
-		monitor.x = ci.x; monitor.y = ci.y;
+		monitor.origin = { ci.x, ci.y };
 
 		float dpi = 96.0f;
 		rgfw_xGetSystemContentDPI(&dpi);
@@ -2348,8 +2348,8 @@ fn void rgfw_monitorNode_free(RgfwMonitorNode* node) {}
 fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
 {
 	XWindow root = xDefaultRootWindow(_rgfw.display);
-	int areaX = monitor.x;
-	int areaY = monitor.y;
+	int areaX = monitor.origin.x;
+	int areaY = monitor.origin.y;
 	int areaW = monitor.mode.w;
 	int areaH = monitor.mode.h;
 
@@ -2480,8 +2480,8 @@ fn GfxMonitor* find_monitor(GfxWindow* win)
 	if (xGetWindowAttributes(_rgfw.display, win.src.window, &attrs) == 0) return null;
 	for (RgfwMonitorNode* node = _rgfw.monitors.list.head; node != null; node = node.next)
 	{
-		if ((attrs.x < node.mon.x + node.mon.mode.w) && (attrs.x + attrs.width > node.mon.x) &&
-			(attrs.y < node.mon.y + node.mon.mode.h) && (attrs.y + attrs.height > node.mon.y))
+		if ((attrs.x < node.mon.origin.x + node.mon.mode.w) && (attrs.x + attrs.width > node.mon.origin.x) &&
+			(attrs.y < node.mon.origin.y + node.mon.mode.h) && (attrs.y + attrs.height > node.mon.origin.y))
 		{
 			return &node.mon;
 		}

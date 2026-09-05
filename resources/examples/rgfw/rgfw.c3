@@ -930,8 +930,7 @@ fn void rgfw_monitorFromDisplay(CGDirectDisplayID display, GfxMonitor* mon)
 	rgfw_memcpy(&mon.name, "Display", 8);
 	CGRect bounds = cgDisplayBounds(display);
 	CGDisplayModeRef mode = cgDisplayCopyDisplayMode(display);
-	mon.x = (int)bounds.origin.x;
-	mon.y = (int)bounds.origin.y;
+	mon.origin = { (int)bounds.origin.x, (int)bounds.origin.y };
 	mon.mode.w = mode != null ? (int)cgDisplayModeGetWidth(mode) : (int)bounds.size.width;
 	mon.mode.h = mode != null ? (int)cgDisplayModeGetHeight(mode) : (int)bounds.size.height;
 	mon.mode.refresh_rate = mode != null ? (float)cgDisplayModeGetRefreshRate(mode) : 60.0;

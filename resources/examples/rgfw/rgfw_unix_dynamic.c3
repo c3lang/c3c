@@ -2401,7 +2401,7 @@ fn void rgfw_pollMonitors_X11()
 		if (physW > 0.0f && physH > 0.0f) { monitor.physW = physW; monitor.physH = physH; }
 		else { monitor.physW = (float)ci.width / 96.0f; monitor.physH = (float)ci.height / 96.0f; }
 
-		monitor.x = ci.x; monitor.y = ci.y;
+		monitor.origin = { ci.x, ci.y };
 
 		float dpi = 96.0f;
 		rgfw_xGetSystemContentDPI(&dpi);
@@ -2430,8 +2430,8 @@ fn void rgfw_monitorNode_free_X11(RgfwMonitorNode* node) {}
 fn bool rgfw_monitor_getWorkarea_X11(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
 {
 	XWindow root = xDefaultRootWindow(_rgfw.display);
-	int areaX = monitor.x;
-	int areaY = monitor.y;
+	int areaX = monitor.origin.x;
+	int areaY = monitor.origin.y;
 	int areaW = monitor.mode.w;
 	int areaH = monitor.mode.h;
 
@@ -2562,8 +2562,8 @@ fn GfxMonitor* rgfw_window_getMonitor_X11(GfxWindow* win)
 	if (xGetWindowAttributes(_rgfw.display, win.src.window, &attrs) == 0) return null;
 	for (RgfwMonitorNode* node = _rgfw.monitors.list.head; node != null; node = node.next)
 	{
-		if ((attrs.x < node.mon.x + node.mon.mode.w) && (attrs.x + attrs.width > node.mon.x) &&
-			(attrs.y < node.mon.y + node.mon.mode.h) && (attrs.y + attrs.height > node.mon.y))
+		if ((attrs.x < node.mon.origin.x + node.mon.mode.w) && (attrs.x + attrs.width > node.mon.origin.x) &&
+			(attrs.y < node.mon.origin.y + node.mon.mode.h) && (attrs.y + attrs.height > node.mon.origin.y))
 		{
 			return &node.mon;
 		}
@@ -3935,8 +3935,7 @@ WlShmListener rgfw_wlShmListener = { .format = &rgfw_wlShmFormatHandler };
 fn void rgfw_wlOutputSetGeometry(void* data, WlProxy* output, int x, int y, int physW, int physH, int subpixel, char* make, char* model, int transform)
 {
 	GfxMonitor* mon = &((RgfwMonitorNode*)data).mon;
-	mon.x = x;
-	mon.y = y;
+	mon.origin = { x, y };
 	mon.physW = (float)physW / 25.4f;
 	mon.physH = (float)physH / 25.4f;
 }
@@ -3987,8 +3986,7 @@ fn void rgfw_wlOutputDescription(void* data, WlProxy* output, char* description)
 fn void rgfw_xdgOutputLogicalPos(void* data, WlProxy* xdgOutput, int x, int y)
 {
 	GfxMonitor* mon = &((RgfwMonitorNode*)data).mon;
-	mon.x = x;
-	mon.y = y;
+	mon.origin = { x, y };
 }
 
 fn void rgfw_xdgOutputLogicalSize(void* data, WlProxy* xdgOutput, int width, int height)
@@ -4771,8 +4769,8 @@ fn void rgfw_monitorNode_free_Wayland(RgfwMonitorNode* node)
 
 fn bool rgfw_monitor_getWorkarea_Wayland(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
 {
-	if (x != null) *x = monitor.x;
-	if (y != null) *y = monitor.y;
+	if (x != null) *x = monitor.origin.x;
+	if (y != null) *y = monitor.origin.y;
 	if (width != null) *width = monitor.mode.w;
 	if (height != null) *height = monitor.mode.h;
 	return true;

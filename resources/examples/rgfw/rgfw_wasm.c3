@@ -652,9 +652,7 @@ fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
 {
 	_rgfw.usingAsyncify = -1;
 	GfxMonitor monitor;
-	rgfw_memzero(&monitor, GfxMonitor::size);
-	monitor.x = 0;
-	monitor.y = 0;
+	monitor.origin = {};
 	monitor.pixelRatio = (float)rgfwJsDevicePixelRatio();
 	monitor.mode.w = rgfwJsInnerWidth();
 	monitor.mode.h = rgfwJsInnerHeight();
