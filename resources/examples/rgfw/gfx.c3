@@ -1,5 +1,6 @@
 module std::gfx;
 
+
 macro bool rgfw_bool(x) => x ? (bool)1 : (bool)0;
 macro uint rgfw_bit(x) => (uint)1 << (uint)(x);
 macro void* rgfw_memcpy(void* dest, void* src, usz count) => memcpy(dest, src, count);
@@ -593,7 +594,7 @@ fn void GfxWindow.destroy(&self)
 
 fn void rgfw_eventQueueFlush() { _rgfw.eventLen = 0; }
 
-fn void rgfw_eventQueuePush(GfxEvent* event)
+fn void event_queue_push(GfxEvent* event)
 {
 	if (_rgfw.queueEvents == false) return;
 	if (_rgfw.eventLen >= MAX_EVENTS)
@@ -607,71 +608,22 @@ fn void rgfw_eventQueuePush(GfxEvent* event)
 	_rgfw.events[(usz)eventTop] = *event;
 }
 
-fn GfxEvent* rgfw_eventQueuePop()
+fn GfxEvent? event_queue_pop()
 {
-	if (_rgfw.eventLen == 0) return null;
-	GfxEvent* ev = &_rgfw.events[(usz)_rgfw.eventBottom];
-	_rgfw.eventLen -= 1;
+	if (!_rgfw.eventLen) return NO_MORE_ELEMENT~;
+	GfxEvent* ev = &_rgfw.events[_rgfw.eventBottom];
+	_rgfw.eventLen--;
 	_rgfw.eventBottom = (_rgfw.eventBottom + 1) % MAX_EVENTS;
-	return ev;
+	return *ev;
 }
 
-fn void rgfw_eventQueuePushAndCall(GfxEvent* event)
+fn void event_queue_call_push(GfxEvent* event)
 {
-	if (_rgfw.callbacks[(usz)event.type] != null) _rgfw.callbacks[(usz)event.type](event);
-	rgfw_eventQueuePush(event);
+	if (_rgfw.callbacks[event.type]) _rgfw.callbacks[event.type](event);
+	event_queue_push(event);
 }
 
-fn bool rgfw_checkEvent(GfxEvent* event)
-{
-	if (_rgfw.eventLen == 0 && _rgfw.polledEvents == false)
-	{
-		_rgfw.queueEvents = true;
-		rgfw_pollEvents();
-		_rgfw.polledEvents = true;
-	}
-	if (rgfw_checkQueuedEvent(event) == false)
-	{
-		_rgfw.polledEvents = false;
-		return false;
-	}
-	return true;
-}
-
-fn bool rgfw_checkQueuedEvent(GfxEvent* event)
-{
-	_rgfw.queueEvents = true;
-	GfxEvent* ev = rgfw_eventQueuePop();
-	if (ev)
-	{
-		*event = *ev;
-		return true;
-	}
-	return false;
-}
-
-fn GfxEvent* rgfw_window_eventQueuePop(GfxWindow* win)
-{
-	GfxEvent* ev = rgfw_eventQueuePop();
-	if (!ev) return ev;
-	for (int i = 1; i < _rgfw.eventLen && ev.common.win != win && ev.common.win != null; i++)
-	{
-		rgfw_eventQueuePush(ev);
-		ev = rgfw_eventQueuePop();
-	}
-	if (ev.common.win != win && ev.common.win != null) return null;
-	return ev;
-}
-
-fn bool rgfw_window_checkQueuedEvent(GfxWindow* win, GfxEvent* event)
-{
-	GfxEvent* ev = rgfw_window_eventQueuePop(win);
-	if (!ev) return false;
-	*event = *ev;
-	return true;
-}
-
-fn bool rgfw_window_checkEvent(GfxWindow* win, GfxEvent* event)
+fn GfxEvent? check_event()
 {
 	if (!_rgfw.eventLen && !_rgfw.polledEvents)
 	{
@@ -679,12 +631,43 @@ fn bool rgfw_window_checkEvent(GfxWindow* win, GfxEvent* event)
 		rgfw_pollEvents();
 		_rgfw.polledEvents = true;
 	}
-	if (!rgfw_window_checkQueuedEvent(win, event))
+	defer catch _rgfw.polledEvents = false;
+	return check_queued_event();
+}
+
+fn GfxEvent? check_queued_event()
+{
+	_rgfw.queueEvents = true;
+	return event_queue_pop();
+}
+
+fn GfxEvent? window_event_queue_pop(GfxWindow* win)
+{
+	GfxEvent ev = event_queue_pop()!;
+	for (int i = 1; i < _rgfw.eventLen && ev.common.win != win && ev.common.win != null; i++)
 	{
-		_rgfw.polledEvents = false;
-		return false;
+		event_queue_push(&ev);
+		ev = event_queue_pop()!!;
 	}
-	return true;
+	if (ev.common.win != win && ev.common.win != null) return NO_MORE_ELEMENT~;
+	return ev;
+}
+
+fn GfxEvent? check_queued_window_event(GfxWindow* win)
+{
+	return window_event_queue_pop(win);
+}
+
+fn GfxEvent? check_window_event(GfxWindow* win)
+{
+	if (!_rgfw.eventLen && !_rgfw.polledEvents)
+	{
+		_rgfw.queueEvents = true;
+		rgfw_pollEvents();
+		_rgfw.polledEvents = true;
+	}
+	defer catch _rgfw.polledEvents = false;
+	return check_queued_window_event(win);
 }
 
 
