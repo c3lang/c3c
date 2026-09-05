@@ -794,13 +794,13 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	GfxWindow* ret = rgfw_createWindowPlatform(name, flags, win);
 	if (ret == null) return null;
 	flags |= reservedFlags;
-	rgfw_window_setFlagsInternal(win, flags, 0);
+	_window_set_flags(win, flags, 0);
 	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) rgfw_window_setMouseDefault(win);
 	rgfw_window_setName(win, name);
 	if (!(flags & RGFW_WINDOW_HIDE))
 	{
 		flags |= RGFW_WINDOW_HIDE;
-		rgfw_window_show(win);
+		show(win);
 	}
 	else if ((flags & RGFW_WINDOW_MAXIMIZE) || (flags & RGFW_WINDOW_FULLSCREEN))
 	{
@@ -998,7 +998,7 @@ fn void rgfw_wlXdgSurfaceConfigureHandler(void* data, WlProxy* xdgSurface, uint 
 
 	if (win.src.resizing)
 	{
-		rgfw_windowResizedCallback(win, win.w, win.h);
+		_window_resized_callback(win, win.w, win.h);
 		rgfw_window_resize(win, win.w, win.h);
 		if (!(win.internal.flags & RGFW_WINDOW_TRANSPARENT)) rgfw_wlSetOpaque(win);
 	}
@@ -1042,7 +1042,7 @@ fn void rgfw_wlXdgToplevelConfigureHandler(void* data, WlProxy* toplevel, int wi
 fn void rgfw_wlXdgToplevelCloseHandler(void* data, WlProxy* toplevel)
 {
 	GfxWindow* win = (GfxWindow*)data;
-	if (!win.internal.shouldClose) rgfw_windowCloseCallback(win);
+	if (!win.internal.shouldClose) _window_close_callback(win);
 }
 
 fn void rgfw_wlXdgDecorationConfigureHandler(void* data, WlProxy* decoration, uint mode)
@@ -1060,7 +1060,7 @@ fn void rgfw_wlRelativePointerMotion(void* data, WlProxy* relPointer, uint timeH
 	if (win == null) return;
 	float vecX = (float)wlFixedToDouble(dx);
 	float vecY = (float)wlFixedToDouble(dy);
-	rgfw_rawMotionCallback(win, vecX, vecY);
+	_raw_motion_callback(win, vecX, vecY);
 }
 
 fn void rgfw_wlPointerLocked(void* data, WlProxy* lockedPointer)
@@ -1506,7 +1506,7 @@ fn void rgfw_wlGlobalRegistryRemove(void* data, WlProxy* registry, uint id)
 	else { node = prev; }
 
 	rgfw_monitorCallback(_rgfw.root, &node.mon, false);
-	rgfw_monitors_remove(node, prev);
+	_remove_monitor(node, prev);
 }
 
 WlRegistryListener rgfw_registryListener = { .global = &rgfw_wlGlobalRegistryHandler, .globalRemove = &rgfw_wlGlobalRegistryRemove };
@@ -1875,7 +1875,7 @@ fn void rgfw_window_minimizePlatform(GfxWindow* win)
 }
 
 fn void rgfw_window_restorePlatform(GfxWindow* win) => rgfw_toggleWaylandMaximized(win, false);
-fn bool GfxWindow.is_floating(&win) => !rgfw_window_isFullscreen(win) && !rgfw_window_isMaximized(win);
+fn bool GfxWindow.is_floating(&win) => !win.is_fullscreen() && !rgfw_window_isMaximized(win);
 
 fn void rgfw_window_setName(GfxWindow* win, char* name)
 {
@@ -2087,7 +2087,7 @@ fn usz rgfw_monitor_getModesPtr(GfxMonitor* monitor, RgfwMonitorMode** modes)
 fn usz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp) => 0;
 fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp) => false;
 
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, RgfwModeRequest request)
+fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	for (usz i = 0; i < mon.node.modeCount; i++)
 	{

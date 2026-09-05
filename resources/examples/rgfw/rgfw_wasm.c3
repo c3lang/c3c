@@ -318,14 +318,14 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 		return null;
 	}
 	flags |= reservedFlags;
-	rgfw_window_setFlagsInternal(win, flags, 0);
+	_window_set_flags(win, flags, 0);
 	if (flags & RGFW_WINDOW_OPEN_GL) rgfw_window_createContext_OpenGL(win, rgfw_getGlobalHints_OpenGL());
 	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) rgfw_window_setMouseDefault(win);
 	rgfw_window_setName(win, name);
 	if (!(flags & RGFW_WINDOW_HIDE))
 	{
 		flags |= RGFW_WINDOW_HIDE;
-		rgfw_window_show(win);
+		show(win);
 	}
 	else if ((flags & RGFW_WINDOW_MAXIMIZE) || (flags & RGFW_WINDOW_FULLSCREEN))
 	{
@@ -486,7 +486,7 @@ fn RgfwKey rgfw_wasmPhysicalToRGFW(uint hash)
 
 fn void rgfwEmscriptenOnResize(int w, int h) @export("rgfw_on_resize")
 {
-	rgfw_windowResizedCallback(_rgfw.root, w, h);
+	_window_resized_callback(_rgfw.root, w, h);
 }
 
 fn void rgfwEmscriptenOnFullscreenChange(int screenW, int screenH, bool entering) @export("rgfw_on_fullscreenchange")
@@ -506,7 +506,7 @@ fn void rgfwEmscriptenOnFullscreenChange(int screenW, int screenH, bool entering
 		_rgfw.root.h = originalH;
 	}
 	rgfwJsSetCanvasSize(_rgfw.root.w, _rgfw.root.h);
-	rgfw_windowResizedCallback(_rgfw.root, _rgfw.root.w, _rgfw.root.h);
+	_window_resized_callback(_rgfw.root, _rgfw.root.w, _rgfw.root.h);
 }
 
 fn void rgfwEmscriptenOnFocusIn() @export("rgfw_on_focusin") { rgfw_windowFocusCallback(_rgfw.root, true); }
@@ -515,7 +515,7 @@ fn void rgfwEmscriptenOnFocusOut() @export("rgfw_on_focusout") { rgfw_windowFocu
 fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("rgfw_on_mousemove")
 {
 	rgfw_mouseMotionCallback(_rgfw.root, x, y);
-	rgfw_rawMotionCallback(_rgfw.root, (float)movementX, (float)movementY);
+	_raw_motion_callback(_rgfw.root, (float)movementX, (float)movementY);
 }
 
 fn void rgfwEmscriptenOnMouseDown(int button) @export("rgfw_on_mousedown")
@@ -541,7 +541,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 		for (int i = 0; i < numTouches; i++)
 		{
 			rgfw_mouseMotionCallback(_rgfw.root, xs[i], ys[i]);
-			rgfw_rawMotionCallback(_rgfw.root, 0.0f, 0.0f);
+			_raw_motion_callback(_rgfw.root, 0.0f, 0.0f);
 		}
 		return;
 	}
@@ -558,7 +558,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 	for (int i = 0; i < numTouches; i++)
 	{
 		rgfw_mouseMotionCallback(_rgfw.root, xs[i], ys[i]);
-		rgfw_rawMotionCallback(_rgfw.root, 0.0f, 0.0f);
+		_raw_motion_callback(_rgfw.root, 0.0f, 0.0f);
 		rgfw_mouseButtonCallback(_rgfw.root, RGFW_MOUSE_LEFT, (bool)down);
 	}
 }
@@ -884,7 +884,7 @@ fn void rgfw_pollMonitors() {}
 fn void rgfw_monitorNode_free(RgfwMonitorNode* node) {}
 fn void rgfw_window_focus(GfxWindow* win) {}
 fn void rgfw_window_raise(GfxWindow* win) {}
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, RgfwModeRequest request) => false;
+fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, GfxMonitorModeRequest request) => false;
 fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height) => false;
 fn usz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp) => 0;
 fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp) => false;

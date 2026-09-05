@@ -548,7 +548,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	GfxWindow* ret = rgfw_createWindowPlatform(name, flags, win);
 	if (ret == null) return null;
 	flags |= reservedFlags;
-	rgfw_window_setFlagsInternal(win, flags, 0);
+	_window_set_flags(win, flags, 0);
 	win.src.gfxType = 0;
 	if (flags & RGFW_WINDOW_OPEN_GL) rgfw_window_createContext_OpenGL(win, rgfw_getGlobalHints_OpenGL());
 	if (!(flags & RGFW_WINDOW_OPEN_GL)) win.src.gfxType = 0;
@@ -558,7 +558,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	if (!(flags & RGFW_WINDOW_HIDE))
 	{
 		flags |= RGFW_WINDOW_HIDE;
-		rgfw_window_show(win);
+		show(win);
 	}
 	else if ((flags & RGFW_WINDOW_MAXIMIZE) || (flags & RGFW_WINDOW_FULLSCREEN))
 	{
@@ -962,7 +962,7 @@ fn GfxWindow* rgfw_osxDelegateWindow(ObjcId self)
 fn void rgfw_osxWindowWillClose(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
 	GfxWindow* win = rgfw_osxDelegateWindow(self);
-	if (win != null) rgfw_windowCloseCallback(win);
+	if (win != null) _window_close_callback(win);
 }
 
 fn void rgfw_osxWindowDidResize(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -972,7 +972,7 @@ fn void rgfw_osxWindowDidResize(ObjcId self, ObjcSelector sel, ObjcId notificati
 	int w = 0;
 	int h = 0;
 	rgfw_window_fetchSize(win, &w, &h);
-	rgfw_windowResizedCallback(win, w, h);
+	_window_resized_callback(win, w, h);
 }
 
 fn void rgfw_osxWindowDidMove(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -982,7 +982,7 @@ fn void rgfw_osxWindowDidMove(ObjcId self, ObjcSelector sel, ObjcId notification
 	CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
 	CGRect content = objc_send((ObjcId)win.src.window, ObjcSendRectRect, "contentRectForFrameRect:", frame);
 	float y = rgfw_cocoaYTransform((float)(content.origin.y + content.size.height - 1));
-	rgfw_windowMovedCallback(win, (int)content.origin.x, (int)y);
+	_window_moved_callback(win, (int)content.origin.x, (int)y);
 }
 
 fn void rgfw_osxWindowDidMiniaturize(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -994,7 +994,7 @@ fn void rgfw_osxWindowDidMiniaturize(ObjcId self, ObjcSelector sel, ObjcId notif
 fn void rgfw_osxWindowDidDeminiaturize(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
 	GfxWindow* win = rgfw_osxDelegateWindow(self);
-	if (win != null) rgfw_windowRestoredCallback(win, win.x, win.y, win.w, win.h);
+	if (win != null) _window_restored_callback(win, win.x, win.y, win.w, win.h);
 }
 
 fn void rgfw_osxWindowDidBecomeKey(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -1665,7 +1665,7 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 	return rgfw_bool(err == 0);
 }
 
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, RgfwModeRequest request) => rgfw_monitor_setMode(mon, mode);
+fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, GfxMonitorModeRequest request) => rgfw_monitor_setMode(mon, mode);
 fn bool rgfw_monitor_setMode(GfxMonitor* mon, RgfwMonitorMode* mode) { if (mode == null || mode.src == null) return false; return rgfw_bool(cgDisplaySetDisplayMode(rgfw_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0); }
 fn GfxMonitor* rgfw_window_getMonitor(GfxWindow* win) => rgfw_getPrimaryMonitor();
 fn bool rgfw_window_fetchSize(GfxWindow* win, int* w, int* h)

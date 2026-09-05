@@ -750,7 +750,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	GfxWindow* ret = rgfw_createWindowPlatform(name, flags, win);
 	if (ret == null) return null;
 	flags |= reservedFlags;
-	rgfw_window_setFlagsInternal(win, flags, 0);
+	_window_set_flags(win, flags, 0);
 
 	win.src.gfxType = 0;
 	if (flags & RGFW_WINDOW_OPEN_GL) rgfw_window_createContext_OpenGL(win, rgfw_getGlobalHints_OpenGL());
@@ -760,7 +760,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	if (!(flags & RGFW_WINDOW_HIDE))
 	{
 		flags |= RGFW_WINDOW_HIDE;
-		rgfw_window_show(win);
+		show(win);
 	}
 	else if ((flags & RGFW_WINDOW_MAXIMIZE) || (flags & RGFW_WINDOW_FULLSCREEN))
 	{
@@ -882,7 +882,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, usz wParam, iptr lParam)
 
 	switch (message)
 	{
-		case 0x0010: case 0x0012: rgfw_windowCloseCallback(win); return 0; // WM_CLOSE, WM_QUIT
+		case 0x0010: case 0x0012: _window_close_callback(win); return 0; // WM_CLOSE, WM_QUIT
 		case 0x0006: // WM_ACTIVATE
 		{
 			bool inFocus = rgfw_bool((wParam & 0xffff) != 0);
@@ -892,13 +892,13 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, usz wParam, iptr lParam)
 		case 0x0003: // WM_MOVE
 		{
 			if (win.internal.captureMouse) rgfw_window_captureMousePlatform(win, true);
-			rgfw_windowMovedCallback(win, (int)(short)(lParam & 0xffff), (int)(short)((lParam >> 16) & 0xffff));
+			_window_moved_callback(win, (int)(short)(lParam & 0xffff), (int)(short)((lParam >> 16) & 0xffff));
 			return defWindowProcW(hWnd, message, wParam, lParam);
 		}
 		case 0x0005: // WM_SIZE
 		{
 			if (win.internal.captureMouse) rgfw_window_captureMousePlatform(win, true);
-			rgfw_windowResizedCallback(win, (int)(lParam & 0xffff), (int)((lParam >> 16) & 0xffff));
+			_window_resized_callback(win, (int)(lParam & 0xffff), (int)((lParam >> 16) & 0xffff));
 			rgfw_window_checkMode(win);
 			return defWindowProcW(hWnd, message, wParam, lParam);
 		}
@@ -1111,7 +1111,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, usz wParam, iptr lParam)
 				vecY = (float)raw.mouse.lLastY;
 			}
 
-			rgfw_rawMotionCallback(win, vecX, vecY);
+			_raw_motion_callback(win, vecX, vecY);
 			break;
 		}
 		case 0x02A3: rgfw_mouseNotifyCallback(win, win.internal.lastMouseX, win.internal.lastMouseY, false); break; // WM_MOUSELEAVE
@@ -1589,7 +1589,7 @@ fn usz rgfw_monitor_getModesPtr(GfxMonitor* monitor, RgfwMonitorMode** modes)
 			usz i;
 			for (i = 0; i < count; i++)
 			{
-				if (rgfw_monitorModeCompare(&(*modes)[i], &mode, RGFW_MONITOR_ALL) == true) break;
+				if (rgfw_monitorModeCompare(&(*modes)[i], &mode, ALL) == true) break;
 			}
 			if (i < count) continue;
 			(*modes)[count] = mode;
@@ -1749,7 +1749,7 @@ fn bool rgfw_monitor_setMode(GfxMonitor* mon, RgfwMonitorMode* mode)
 	return false;
 }
 
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, RgfwModeRequest request)
+fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	DevModeW dm;
 	rgfw_memzero(&dm, DevModeW::size);
@@ -1761,9 +1761,9 @@ fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, RgfwMod
 		if (enumDisplaySettingsW((ushort*)&mon.node.adapterName, index, &dm) == 0) break;
 		index += 1;
 
-		if (request & RGFW_MONITOR_SCALE) { dm.fields |= DM_PELSWIDTH | DM_PELSHEIGHT; dm.pelsWidth = (uint)mode.w; dm.pelsHeight = (uint)mode.h; }
-		if (request & RGFW_MONITOR_REFRESH) { dm.fields |= DM_DISPLAYFREQUENCY; dm.displayFrequency = (uint)mode.refreshRate; }
-		if (request & RGFW_MONITOR_RGB) { dm.fields |= DM_BITSPERPEL; dm.bitsPerPel = (uint)(mode.red + mode.green + mode.blue); }
+		if (request & SCALE) { dm.fields |= DM_PELSWIDTH | DM_PELSHEIGHT; dm.pelsWidth = (uint)mode.w; dm.pelsHeight = (uint)mode.h; }
+		if (request & REFRESH) { dm.fields |= DM_DISPLAYFREQUENCY; dm.displayFrequency = (uint)mode.refreshRate; }
+		if (request & RGB) { dm.fields |= DM_BITSPERPEL; dm.bitsPerPel = (uint)(mode.red + mode.green + mode.blue); }
 
 		if (changeDisplaySettingsExW((ushort*)&mon.node.adapterName, &dm, null, CDS_TEST, null) == DISP_CHANGE_SUCCESSFUL)
 		{

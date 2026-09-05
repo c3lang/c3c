@@ -323,7 +323,7 @@ extern fn int xFreeGC(Display* d, GContext gc) @cname("XFreeGC");
 extern fn int xSaveContext(Display* d, XlibId xid, int context, XPointer data) @cname("XSaveContext");
 extern fn int xFindContext(Display* d, XlibId xid, int context, XPointer* dataOut) @cname("XFindContext");
 extern fn int xDeleteContext(Display* d, XlibId xid, int context) @cname("XDeleteContext");
-extern fn int xUniqueContext() @cname("XUniqueContext");
+extern fn int xUniqueContext() @cname("XrmUniqueQuark");
 extern fn XlibIC xCreateIC(XlibIM im, ...) @cname("XCreateIC");
 
 // XIMCallback: { XPointer client_data; XIMProc callback; } from Xlib.h. XlibIC/XlibIM
@@ -371,7 +371,7 @@ extern fn int xClearWindow(Display* d, XWindow w) @cname("XClearWindow");
 extern fn int xFlush(Display* d) @cname("XFlush");
 extern fn int xSync(Display* d, int discard) @cname("XSync");
 extern fn int xPending(Display* d) @cname("XPending");
-extern fn int qLength(Display* d) @cname("QLength");
+extern fn int qLength(Display* d) @cname("XQLength");
 extern fn int xEventsQueued(Display* d, int mode) @cname("XEventsQueued");
 extern fn int xNextEvent(Display* d, XEvent* ev) @cname("XNextEvent");
 extern fn int xPeekEvent(Display* d, XEvent* ev) @cname("XPeekEvent");
@@ -902,13 +902,13 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	GfxWindow* ret = rgfw_createWindowPlatform(name, flags, win);
 	if (ret == null) return null;
 	flags |= reservedFlags;
-	rgfw_window_setFlagsInternal(win, flags, 0);
+	_window_set_flags(win, flags, 0);
 	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) rgfw_window_setMouseDefault(win);
 	rgfw_window_setName(win, name);
 	if (!(flags & RGFW_WINDOW_HIDE))
 	{
 		flags |= RGFW_WINDOW_HIDE;
-		rgfw_window_show(win);
+		show(win);
 	}
 	else if ((flags & RGFW_WINDOW_MAXIMIZE) || (flags & RGFW_WINDOW_FULLSCREEN))
 	{
@@ -1012,7 +1012,7 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 	if (!rgfw_window_isHidden(win))
 	{
 		rgfw_window_hide(win);
-		rgfw_window_show(win);
+		show(win);
 	}
 }
 
@@ -1441,7 +1441,7 @@ fn void rgfw_xHandleEvent()
 				if (ximaskIsSet(raw.valuators.mask, 0)) { deltaX += (float)raw.raw_values[index]; index++; }
 				if (ximaskIsSet(raw.valuators.mask, 1)) deltaY += (float)raw.raw_values[index];
 				_rgfw.vectorX = deltaX; _rgfw.vectorY = deltaY;
-				rgfw_rawMotionCallback(_rgfw.root, _rgfw.vectorX, _rgfw.vectorY);
+				_raw_motion_callback(_rgfw.root, _rgfw.vectorX, _rgfw.vectorY);
 			}
 		}
 		xFreeEventData(_rgfw.display, &e.xcookie);
@@ -1587,7 +1587,7 @@ fn void rgfw_xHandleEvent()
 			break;
 		case 33: // ClientMessage
 		{
-			if ((ulong)e.xclient.data.l[0] == _rgfw.wmDeleteWindow) { rgfw_windowCloseCallback(win); break; }
+			if ((ulong)e.xclient.data.l[0] == _rgfw.wmDeleteWindow) { _window_close_callback(win); break; }
 
 			if (!(win.internal.flags & RGFW_WINDOW_ALLOW_DND) || _rgfw.x11Version > 5 /* RGFW_XDND_VERSION */) return;
 
@@ -1748,7 +1748,7 @@ fn void rgfw_xHandleEvent()
 				rgfw_window_checkMode(win);
 				win.src.w = e.xconfigure.width;
 				win.src.h = e.xconfigure.height;
-				rgfw_windowResizedCallback(win, e.xconfigure.width, e.xconfigure.height);
+				_window_resized_callback(win, e.xconfigure.width, e.xconfigure.height);
 			}
 			int configureX = e.xconfigure.x;
 			int configureY = e.xconfigure.y;
@@ -1766,7 +1766,7 @@ fn void rgfw_xHandleEvent()
 			{
 				win.src.x = configureX;
 				win.src.y = configureY;
-				rgfw_windowMovedCallback(win, configureX, configureY);
+				_window_moved_callback(win, configureX, configureY);
 			}
 			return;
 		}
@@ -1871,7 +1871,7 @@ fn void rgfw_window_focus(GfxWindow* win)
 fn void rgfw_window_raise(GfxWindow* win)
 {
 	xMapRaised(_rgfw.display, win.src.window);
-	rgfw_window_setFullscreen(win, rgfw_window_isFullscreen(win));
+	rgfw_window_setFullscreen(win, win.is_fullscreen());
 }
 
 fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
@@ -2091,7 +2091,7 @@ fn void rgfw_window_showPlatform(GfxWindow* win)
 		xNextEvent(_rgfw.display, &dummy);
 		if (dummy.type == 15 /* VisibilityNotify */ && dummy.xany.window == win.src.window) break;
 	}
-	rgfw_window_setFullscreen(win, rgfw_window_isFullscreen(win));
+	rgfw_window_setFullscreen(win, win.is_fullscreen());
 }
 
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request)
@@ -2439,7 +2439,7 @@ fn bool rgfw_monitor_setMode(GfxMonitor* mon, RgfwMonitorMode* mode)
 	return out;
 }
 
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, RgfwModeRequest request)
+fn bool rgfw_monitor_requestMode(GfxMonitor* mon, RgfwMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	bool output = false;
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_rgfw.display, xDefaultRootWindow(_rgfw.display));
@@ -2583,7 +2583,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* conte
 	xFree(vi);
 
 	if (rgfw_xCreateWindow(visual, "", win.internal.flags, win) == false) return false;
-	if (showWindow) rgfw_window_show(win);
+	if (showWindow) show(win);
 
 	int[40] contextAttribs;
 	rgfw_attribStack_init(&stack, (int*)&contextAttribs, 40);
