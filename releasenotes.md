@@ -22,6 +22,7 @@
 - Add `@noredzone` attribute.
 - Add `dso_local` attribute on ELF/COFF.
 - Let LLVM build the biggest modules first.
+- Fix source locations for byte literal values continued on a new line.
 - Support for iOS.
 - Allow `-` in `c3c init some-project`.
 - `--keep-obj` added, to prevent object files from being deleted after building/linking.
