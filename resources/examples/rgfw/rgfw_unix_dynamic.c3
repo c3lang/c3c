@@ -53,15 +53,15 @@ alias EglSwapIntervalProc = fn EglBoolean(EglDisplay display, EglInt interval);
 alias EglGetCurrentContextProc = fn EglContext();
 alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
 alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
-// ---- Xlib core types (ABI-compatible aliases; Display/Visual/Screen stay opaque) ----
-typedef Display = void;
-typedef Visual = void;
+// ---- Xlib core types (ABI-compatible aliases; GfxXDisplay/GfxXVisual/Screen stay opaque) ----
+typedef GfxXDisplay = void;
+typedef GfxXVisual = void;
 typedef Screen = void;
-alias XWindow = ulong;
+alias GfxXWindow = ulong;
 alias Colormap = ulong;
 alias XCursor = ulong;
 alias Pixmap = ulong;
-alias Drawable = ulong;
+alias GfxXDrawable = ulong;
 alias GContext = void*;
 alias Atom = ulong;
 alias VisualID = ulong;
@@ -69,13 +69,13 @@ alias KeySym = ulong;
 alias KeyCode = char;
 alias Time = ulong;
 alias XlibId = ulong;
-alias XPointer = char*;
+alias GfxXPointer = char*;
 alias Region = void*;
 alias XlibIC = void*;
 alias XlibIM = void*;
 alias XIMStyle = ulong;
 alias RRMode = ulong;
-alias RROutput = ulong;
+alias GfxRROutput = ulong;
 alias RRCrtc = ulong;
 alias GLXContext = void*;
 alias GLXFBConfig = void*;
@@ -93,7 +93,7 @@ alias GlxGetProcAddressProc = fn RgfwProc(ZString);
 
 struct XVisualInfo
 {
-	Visual* visual;
+	GfxXVisual* visual;
 	VisualID visualid;
 	int screen;
 	int depth;
@@ -128,8 +128,8 @@ struct XWindowAttributes
 	int width, height;
 	int border_width;
 	int depth;
-	Visual* visual;
-	XWindow root;
+	GfxXVisual* visual;
+	GfxXWindow root;
 	int c_class;
 	int bit_gravity;
 	int win_gravity;
@@ -155,7 +155,7 @@ struct XWMHints
 	int input;
 	int initial_state;
 	Pixmap icon_pixmap;
-	XWindow icon_window;
+	GfxXWindow icon_window;
 	int icon_x, icon_y;
 	Pixmap icon_mask;
 	XlibId window_group;
@@ -174,24 +174,24 @@ struct XSizeHints
 	int win_gravity;
 }
 
-struct XAnyEvent { int type; ulong serial; int send_event; Display* display; XWindow window; }
-struct XKeyEvent { int type; ulong serial; int send_event; Display* display; XWindow window; XWindow root; XWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; uint keycode; int same_screen; }
-struct XButtonEvent { int type; ulong serial; int send_event; Display* display; XWindow window; XWindow root; XWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; uint button; int same_screen; }
-struct XMotionEvent { int type; ulong serial; int send_event; Display* display; XWindow window; XWindow root; XWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; char is_hint; int same_screen; }
-struct XCrossingEvent { int type; ulong serial; int send_event; Display* display; XWindow window; XWindow root; XWindow subwindow; Time time; int x, y; int x_root, y_root; int mode; int detail; int same_screen; int focus; uint state; }
-struct XFocusChangeEvent { int type; ulong serial; int send_event; Display* display; XWindow window; int mode; int detail; }
-struct XExposeEvent { int type; ulong serial; int send_event; Display* display; XWindow window; int x, y, width, height; int count; }
-struct XConfigureEvent { int type; ulong serial; int send_event; Display* display; XWindow event; XWindow window; int x, y, width, height; int border_width; XWindow above; int override_redirect; }
-struct XPropertyEvent { int type; ulong serial; int send_event; Display* display; XWindow window; Atom atom; Time time; int state; }
+struct XAnyEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; }
+struct XKeyEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; uint keycode; int same_screen; }
+struct XButtonEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; uint button; int same_screen; }
+struct XMotionEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; char is_hint; int same_screen; }
+struct XCrossingEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; int mode; int detail; int same_screen; int focus; uint state; }
+struct XFocusChangeEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; int mode; int detail; }
+struct XExposeEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; int x, y, width, height; int count; }
+struct XConfigureEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; int x, y, width, height; int border_width; GfxXWindow above; int override_redirect; }
+struct XPropertyEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; Atom atom; Time time; int state; }
 struct XClientMessageDataL { long[5] l; }
-struct XClientMessageEvent { int type; ulong serial; int send_event; Display* display; XWindow window; Atom message_type; int format; XClientMessageDataL data; }
-struct XSelectionRequestEvent { int type; ulong serial; int send_event; Display* display; XWindow owner; XWindow requestor; Atom selection; Atom target; Atom property; Time time; }
-struct XSelectionEvent { int type; ulong serial; int send_event; Display* display; XWindow requestor; Atom selection; Atom target; Atom property; Time time; }
-struct XReparentEvent { int type; ulong serial; int send_event; Display* display; XWindow event; XWindow window; XWindow parent; int x, y; int override_redirect; }
-struct XMapEvent { int type; ulong serial; int send_event; Display* display; XWindow event; XWindow window; int override_redirect; }
-struct XUnmapEvent { int type; ulong serial; int send_event; Display* display; XWindow event; XWindow window; int from_configure; }
-struct XErrorEvent { int type; Display* display; ulong resourceid; ulong serial; char error_code; char request_code; char minor_code; }
-struct XGenericEventCookie { int type; ulong serial; int send_event; Display* display; int extension; int evtype; uint cookie_data_len; void* data; }
+struct XClientMessageEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; Atom message_type; int format; XClientMessageDataL data; }
+struct XSelectionRequestEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow owner; GfxXWindow requestor; Atom selection; Atom target; Atom property; Time time; }
+struct XSelectionEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow requestor; Atom selection; Atom target; Atom property; Time time; }
+struct XReparentEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; GfxXWindow parent; int x, y; int override_redirect; }
+struct XMapEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; int override_redirect; }
+struct XUnmapEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; int from_configure; }
+struct XErrorEvent { int type; GfxXDisplay* display; ulong resourceid; ulong serial; char error_code; char request_code; char minor_code; }
+struct XGenericEventCookie { int type; ulong serial; int send_event; GfxXDisplay* display; int extension; int evtype; uint cookie_data_len; void* data; }
 
 union XEvent
 {
@@ -217,37 +217,37 @@ union XEvent
 }
 
 // ---- XRandr ----
-struct XRRScreenResources { Time timestamp; Time configTimestamp; int ncrtc; RRCrtc* crtcs; int noutput; RROutput* outputs; int nmode; XRRModeInfoNative* modes; }
+struct XRRScreenResources { Time timestamp; Time configTimestamp; int ncrtc; RRCrtc* crtcs; int noutput; GfxRROutput* outputs; int nmode; XRRModeInfoNative* modes; }
 struct XRRModeInfoNative { RRMode id; uint width; uint height; ulong dotClock; uint hSyncStart; uint hSyncEnd; uint hTotal; uint hSkew; uint vSyncStart; uint vSyncEnd; uint vTotal; char* name; uint nameLength; ulong modeFlags; }
-struct XRRCrtcInfo { Time timestamp; int x, y; uint width, height; RRMode mode; int rotation; int noutput; RROutput* outputs; int rotations; int npossible; RROutput* possible; }
-struct XRROutputInfo { Time timestamp; RRCrtc crtc; char* name; int nameLen; ulong mm_width; ulong mm_height; int connection; int subpixel_order; int ncrtc; RRCrtc* crtcs; int nclone; RROutput* clones; int nmode; int npreferred; RRMode* modes; }
+struct XRRCrtcInfo { Time timestamp; int x, y; uint width, height; RRMode mode; int rotation; int noutput; GfxRROutput* outputs; int rotations; int npossible; GfxRROutput* possible; }
+struct GfxXRROutputInfo { Time timestamp; RRCrtc crtc; char* name; int nameLen; ulong mm_width; ulong mm_height; int connection; int subpixel_order; int ncrtc; RRCrtc* crtcs; int nclone; GfxRROutput* clones; int nmode; int npreferred; RRMode* modes; }
 struct XRRCrtcGamma { int size; ushort* red; ushort* green; ushort* blue; }
 
 // ---- Xcursor / XInput2 / Xext sync+shape (dlopen'd like the original) ----
 struct XcursorImage { uint version; uint size; uint width, height; uint xhot, yhot; uint delay; uint* pixels; }
 struct XIEventMask { int deviceid; int mask_len; char* mask; }
 struct XIValuatorState { int mask_len; char* mask; double* values; }
-struct XIRawEvent { int type; ulong serial; int send_event; Display* display; int extension; int evtype; Time time; int deviceid; int sourceid; int detail; int flags; XIValuatorState valuators; double* raw_values; }
+struct XIRawEvent { int type; ulong serial; int send_event; GfxXDisplay* display; int extension; int evtype; Time time; int deviceid; int sourceid; int detail; int flags; XIValuatorState valuators; double* raw_values; }
 struct XSyncValue { int hi; uint lo; }
 alias XSyncCounter = XlibId;
 
 // GLX
-alias RGFW_glXCreateContextAttribsARBProc = fn GLXContext(Display*, GLXFBConfig, GLXContext, int, int*);
-alias RGFW_glXQueryExtensionsStringProc = fn ZString(Display*, int);
-alias RGFW_glXChooseVisualProc = fn XVisualInfo*(Display*, int, int*);
-alias RGFW_glXCreateContextProc = fn GLXContext(Display*, XVisualInfo*, GLXContext, int);
-alias RGFW_glXMakeCurrentProc = fn int(Display*, GLXDrawable, GLXContext);
+alias RGFW_glXCreateContextAttribsARBProc = fn GLXContext(GfxXDisplay*, GLXFBConfig, GLXContext, int, int*);
+alias RGFW_glXQueryExtensionsStringProc = fn ZString(GfxXDisplay*, int);
+alias RGFW_glXChooseVisualProc = fn XVisualInfo*(GfxXDisplay*, int, int*);
+alias RGFW_glXCreateContextProc = fn GLXContext(GfxXDisplay*, XVisualInfo*, GLXContext, int);
+alias RGFW_glXMakeCurrentProc = fn int(GfxXDisplay*, GLXDrawable, GLXContext);
 alias RGFW_glXGetCurrentContextProc = fn GLXContext();
-alias RGFW_glXSwapBuffersProc = fn void(Display*, GLXDrawable);
-alias RGFW_glXSwapIntervalEXTProc = fn void(Display*, GLXDrawable, int);
+alias RGFW_glXSwapBuffersProc = fn void(GfxXDisplay*, GLXDrawable);
+alias RGFW_glXSwapIntervalEXTProc = fn void(GfxXDisplay*, GLXDrawable, int);
 alias RGFW_glXGetProcAddressProc = fn void*(ZString);
-alias RGFW_glXGetVisualFromFBConfigProc = fn XVisualInfo*(Display*, GLXFBConfig);
-alias RGFW_glXGetFBConfigAttribProc = fn int(Display*, GLXFBConfig, int, int*);
+alias RGFW_glXGetVisualFromFBConfigProc = fn XVisualInfo*(GfxXDisplay*, GLXFBConfig);
+alias RGFW_glXGetFBConfigAttribProc = fn int(GfxXDisplay*, GLXFBConfig, int, int*);
 alias RGFW_glXGetProcAddressARBProc = fn void*(ZString);
-alias RGFW_glXChooseFBConfigProc = fn GLXFBConfig*(Display*, int, int*, int*);
-alias RGFW_glXDestroyContextProc = fn void(Display*, GLXContext);
-alias RGFW_glXCreateWindowProc = fn GLXWindow(Display*, GLXFBConfig, XWindow, int*);
-alias RGFW_glXDestroyWindowProc = fn void(Display*, GLXWindow);
+alias RGFW_glXChooseFBConfigProc = fn GLXFBConfig*(GfxXDisplay*, int, int*, int*);
+alias RGFW_glXDestroyContextProc = fn void(GfxXDisplay*, GLXContext);
+alias RGFW_glXCreateWindowProc = fn GLXWindow(GfxXDisplay*, GLXFBConfig, GfxXWindow, int*);
+alias RGFW_glXDestroyWindowProc = fn void(GfxXDisplay*, GLXWindow);
 alias RGFW_glXSwapIntervalNativeProc = fn int(int);
 
 RGFW_glXCreateContextAttribsARBProc rgfw_glXCreateContextAttribsARB;
@@ -269,13 +269,13 @@ RGFW_glXSwapIntervalNativeProc rgfw_glXSwapIntervalNative;
 
 alias PFN_XcursorImageCreate = fn XcursorImage*(int, int);
 alias PFN_XcursorImageDestroy = fn void(XcursorImage*);
-alias PFN_XcursorImageLoadCursor = fn XCursor(Display*, XcursorImage*);
-alias PFN_XISelectEvents = fn int(Display*, XWindow, XIEventMask*, int);
+alias PFN_XcursorImageLoadCursor = fn XCursor(GfxXDisplay*, XcursorImage*);
+alias PFN_XISelectEvents = fn int(GfxXDisplay*, GfxXWindow, XIEventMask*, int);
 alias PFN_XSyncIntToValue = fn void(XSyncValue*, int);
-alias PFN_XSyncSetCounter = fn int(Display*, XSyncCounter, XSyncValue);
-alias PFN_XSyncCreateCounter = fn XSyncCounter(Display*, XSyncValue);
-alias PFN_XShapeCombineMask = fn void(Display*, XWindow, int, int, int, Pixmap, int);
-alias PFN_XShapeCombineRegion = fn void(Display*, XWindow, int, int, int, Region, int);
+alias PFN_XSyncSetCounter = fn int(GfxXDisplay*, XSyncCounter, XSyncValue);
+alias PFN_XSyncCreateCounter = fn XSyncCounter(GfxXDisplay*, XSyncValue);
+alias PFN_XShapeCombineMask = fn void(GfxXDisplay*, GfxXWindow, int, int, int, Pixmap, int);
+alias PFN_XShapeCombineRegion = fn void(GfxXDisplay*, GfxXWindow, int, int, int, Region, int);
 
 PFN_XcursorImageCreate rgfw_xcursorImageCreateSRC;
 PFN_XcursorImageDestroy rgfw_xcursorImageDestroySRC;
@@ -291,39 +291,13 @@ void* rgfw_x11XiHandle;
 void* rgfw_x11ExtHandle;
 
 // ---- Xlib core functions (directly linked, like the original non-dynamic X11 build) ----
-extern fn Display* xOpenDisplay(ZString name) @cname("XOpenDisplay");
-extern fn int xCloseDisplay(Display* d) @cname("XCloseDisplay");
-extern fn int xInitThreads() @cname("XInitThreads");
-extern fn XWindow xDefaultRootWindow(Display* d) @cname("XDefaultRootWindow");
-extern fn XWindow xRootWindow(Display* d, int screen) @cname("XRootWindow");
-extern fn int xDefaultScreen(Display* d) @cname("XDefaultScreen");
-extern fn Visual* xDefaultVisual(Display* d, int screen) @cname("XDefaultVisual");
-extern fn int xDefaultDepth(Display* d, int screen) @cname("XDefaultDepth");
-extern fn GContext xDefaultGC(Display* d, int screen) @cname("XDefaultGC");
-extern fn Colormap xCreateColormap(Display* d, XWindow win, Visual* visual, int alloc) @cname("XCreateColormap");
-extern fn int xFreeColors(Display* d, Colormap cm, ulong* pixels, int n, ulong planes) @cname("XFreeColors");
-extern fn XWindow xCreateWindow(Display* d, XWindow parent, int x, int y, uint w, uint h, uint borderWidth, int depth, uint c_class, Visual* visual, ulong valuemask, XSetWindowAttributes* attrs) @cname("XCreateWindow");
-extern fn int xDestroyWindow(Display* d, XWindow w) @cname("XDestroyWindow");
-extern fn int xMapWindow(Display* d, XWindow w) @cname("XMapWindow");
-extern fn int xMapRaised(Display* d, XWindow w) @cname("XMapRaised");
-extern fn int xUnmapWindow(Display* d, XWindow w) @cname("XUnmapWindow");
-extern fn int xMoveWindow(Display* d, XWindow w, int x, int y) @cname("XMoveWindow");
-extern fn int xResizeWindow(Display* d, XWindow w, uint width, uint height) @cname("XResizeWindow");
-extern fn int xRaiseWindow(Display* d, XWindow w) @cname("XRaiseWindow");
-extern fn GContext xCreateGC(Display* d, Drawable draw, ulong valuemask, void* values) @cname("XCreateGC");
-extern fn int xFreeGC(Display* d, GContext gc) @cname("XFreeGC");
-extern fn int xSaveContext(Display* d, XlibId xid, int context, XPointer data) @cname("XSaveContext");
-extern fn int xFindContext(Display* d, XlibId xid, int context, XPointer* dataOut) @cname("XFindContext");
-extern fn int xDeleteContext(Display* d, XlibId xid, int context) @cname("XDeleteContext");
-extern fn int xUniqueContext() @cname("XrmUniqueQuark");
-extern fn XlibIC xCreateIC(XlibIM im, ...) @cname("XCreateIC");
 
-// XIMCallback: { XPointer client_data; XIMProc callback; } from Xlib.h. XlibIC/XlibIM
+// XIMCallback: { GfxXPointer client_data; XIMProc callback; } from Xlib.h. XlibIC/XlibIM
 // are both plain void* in this port, so one function-pointer alias covers the callback.
 alias XImCallbackProc = fn void(void* im, char* clientData, char* callData);
 struct XImCallback
 {
-	XPointer client_data;
+	GfxXPointer client_data;
 	XImCallbackProc callback;
 }
 // XIMStyles: { unsigned short count_styles; XIMStyle *supported_styles; } from Xlib.h.
@@ -334,67 +308,7 @@ struct XImStyles
 }
 
 // Signature required by XRegisterIMInstantiateCallback / XUnregisterIMInstantiateCallback.
-alias XImInstantiateCallbackProc = fn void(Display* d, XPointer clientData, XPointer callData);
-extern fn int xDestroyIC(XlibIC ic) @cname("XDestroyIC");
-extern fn int xSetICFocus(XlibIC ic) @cname("XSetICFocus");
-extern fn int xUnsetICFocus(XlibIC ic) @cname("XUnsetICFocus");
-extern fn XlibIM xOpenIM(Display* d, void* db, ZString res_name, ZString res_class) @cname("XOpenIM");
-extern fn int xCloseIM(XlibIM im) @cname("XCloseIM");
-extern fn ZString xGetIMValues(XlibIM im, ...) @cname("XGetIMValues");
-extern fn ZString xSetIMValues(XlibIM im, ...) @cname("XSetIMValues");
-extern fn int xRegisterIMInstantiateCallback(Display* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer clientData) @cname("XRegisterIMInstantiateCallback");
-extern fn int xUnregisterIMInstantiateCallback(Display* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer clientData) @cname("XUnregisterIMInstantiateCallback");
-extern fn ZString xSetLocaleModifiers(ZString modifierList) @cname("XSetLocaleModifiers");
-extern fn sz xutf8LookupString(XlibIC ic, XKeyEvent* event, char* buffer, int bytes, KeySym* keysym, int* status) @cname("Xutf8LookupString");
-extern fn int xutf8SetWMProperties(Display* d, XWindow w, ZString windowName, ZString iconName, ZString* argv, int argc, XSizeHints* hints, XWMHints* wmHints, void* classHints) @cname("Xutf8SetWMProperties");
-extern fn int xSetClassHint(Display* d, XWindow w, XClassHint* hint) @cname("XSetClassHint");
-extern fn int xSetWMHints(Display* d, XWindow w, XWMHints* hints) @cname("XSetWMHints");
-extern fn XWMHints* xGetWMHints(Display* d, XWindow w) @cname("XGetWMHints");
-extern fn int xSetWMProtocols(Display* d, XWindow w, Atom* protocols, int count) @cname("XSetWMProtocols");
-extern fn int xSetWMSizeHints(Display* d, Drawable w, XSizeHints* hints, Atom property) @cname("XSetWMSizeHints");
-extern fn int xGetWMNormalHints(Display* d, XWindow w, XSizeHints* hints, long* flags) @cname("XGetWMNormalHints");
-extern fn int xSetWMNormalHints(Display* d, XWindow w, XSizeHints* hints) @cname("XSetWMNormalHints");
-extern fn int xSelectInput(Display* d, Drawable w, long eventMask) @cname("XSelectInput");
-extern fn int xStoreName(Display* d, XWindow w, ZString name) @cname("XStoreName");
-extern fn int xSetWindowBackground(Display* d, XWindow w, ulong background) @cname("XSetWindowBackground");
-extern fn int xSetWindowBackgroundPixmap(Display* d, XWindow w, Pixmap pixmap) @cname("XSetWindowBackgroundPixmap");
-extern fn int xClearWindow(Display* d, XWindow w) @cname("XClearWindow");
-extern fn int xFlush(Display* d) @cname("XFlush");
-extern fn int xSync(Display* d, int discard) @cname("XSync");
-extern fn int xPending(Display* d) @cname("XPending");
-extern fn int xConnectionNumber(Display* d) @cname("XConnectionNumber");
-extern fn int qLength(Display* d) @cname("XQLength");
-extern fn int xEventsQueued(Display* d, int mode) @cname("XEventsQueued");
-extern fn int xNextEvent(Display* d, XEvent* ev) @cname("XNextEvent");
-extern fn int xPeekEvent(Display* d, XEvent* ev) @cname("XPeekEvent");
-extern fn int xCheckTypedWindowEvent(Display* d, XWindow w, int eventType, XEvent* ev) @cname("XCheckTypedWindowEvent");
-extern fn int xFilterEvent(XEvent* ev, XWindow w) @cname("XFilterEvent");
-extern fn int xSendEvent(Display* d, XWindow w, int propagate, long eventMask, XEvent* ev) @cname("XSendEvent");
-extern fn int xGetEventData(Display* d, XGenericEventCookie* cookie) @cname("XGetEventData");
-extern fn int xFreeEventData(Display* d, XGenericEventCookie* cookie) @cname("XFreeEventData");
-extern fn int xGetWindowAttributes(Display* d, XWindow w, XWindowAttributes* attrs) @cname("XGetWindowAttributes");
-extern fn int xChangeProperty(Display* d, XWindow w, Atom property, Atom type, int format, int mode, char* data, int nelements) @cname("XChangeProperty");
-extern fn int xGetWindowProperty(Display* d, XWindow w, Atom property, CLong offset, CLong length, int delet, Atom reqType, Atom* actualType, int* actualFormat, ulong* nitems, ulong* bytesAfter, char** propReturn) @cname("XGetWindowProperty");
-extern fn int xDeleteProperty(Display* d, XWindow w, Atom property) @cname("XDeleteProperty");
-extern fn Atom xInternAtom(Display* d, ZString name, int onlyIfExists) @cname("XInternAtom");
-extern fn int xConvertSelection(Display* d, Atom selection, Atom target, Atom property, XWindow requestor, Time time) @cname("XConvertSelection");
-extern fn XWindow xGetSelectionOwner(Display* d, Atom selection) @cname("XGetSelectionOwner");
-extern fn int xSetSelectionOwner(Display* d, Atom selection, XWindow owner, Time time) @cname("XSetSelectionOwner");
-extern fn int xFree(void* data) @cname("XFree");
-extern fn int xSetErrorHandler(void* handler) @cname("XSetErrorHandler");
-extern fn int xGetErrorText(Display* d, int code, char* buffer, int len) @cname("XGetErrorText");
-extern fn int xQueryPointer(Display* d, XWindow w, XWindow* rootRet, XWindow* childRet, int* rootX, int* rootY, int* winX, int* winY, uint* mask) @cname("XQueryPointer");
-extern fn int xWarpPointer(Display* d, XWindow src, XWindow dest, int srcX, int srcY, uint srcW, uint srcH, int destX, int destY) @cname("XWarpPointer");
-extern fn int xTranslateCoordinates(Display* d, XWindow src, XWindow dest, int srcX, int srcY, int* destXRet, int* destYRet, XWindow* childRet) @cname("XTranslateCoordinates");
-extern fn int xSetInputFocus(Display* d, XWindow w, int revert, Time time) @cname("XSetInputFocus");
-extern fn int xGrabPointer(Display* d, XWindow w, int ownerEvents, uint eventMask, int pointerMode, int keyboardMode, XWindow confineTo, XCursor cursor, Time time) @cname("XGrabPointer");
-extern fn int xUngrabPointer(Display* d, Time time) @cname("XUngrabPointer");
-extern fn int xIconifyWindow(Display* d, XWindow w, int screen) @cname("XIconifyWindow");
-extern fn int xDefineCursor(Display* d, XWindow w, XCursor cursor) @cname("XDefineCursor");
-extern fn int xFreeCursor(Display* d, XCursor cursor) @cname("XFreeCursor");
-extern fn XCursor xCreateFontCursor(Display* d, uint shape) @cname("XCreateFontCursor");
-extern fn KeySym xkbKeycodeToKeysym(Display* d, KeyCode kc, int group, int level) @cname("XkbKeycodeToKeysym");
-extern fn int xkbGetState(Display* d, uint deviceSpec, void* stateRet) @cname("XkbGetState");
+alias XImInstantiateCallbackProc = fn void(GfxXDisplay* d, GfxXPointer clientData, GfxXPointer callData);
 
 struct XkbStateRec
 {
@@ -419,49 +333,8 @@ const char SHIFT_MASK = 1 << 0;
 const char LOCK_MASK = 1 << 1;
 const char MOD2_MASK = 1 << 4;
 const char MOD3_MASK = 1 << 5;
-extern fn void* xkbGetMap(Display* d, uint which, uint deviceSpec) @cname("XkbGetMap");
-extern fn int xkbGetNames(Display* d, uint which, void* xkb) @cname("XkbGetNames");
-extern fn void* xkbGetKeyboardByName(Display* d, uint deviceSpec, void* names, uint want, uint need, int loadKeycodes) @cname("XkbGetKeyboardByName");
-extern fn int xkbFreeKeyboard(void* xkb, uint which, int freeAll) @cname("XkbFreeKeyboard");
-extern fn int xMatchVisualInfo(Display* d, int screen, int depth, int c_class, XVisualInfo* visualOut) @cname("XMatchVisualInfo");
-extern fn int xChangeWindowAttributes(Display* d, XWindow w, ulong valuemask, XSetWindowAttributes* attrs) @cname("XChangeWindowAttributes");
-extern fn Region xCreateRegion() @cname("XCreateRegion");
-extern fn int xDestroyRegion(Region r) @cname("XDestroyRegion");
-extern fn XCursor xCreatePixmap(Display* d, Drawable draw, uint w, uint h, uint depth) @cname("XCreatePixmap");
-extern fn void* xCreateImage(Display* d, Visual* visual, uint depth, int format, int offset, char* data, uint w, uint h, int bitmapPad, int bytesPerLine) @cname("XCreateImage");
-extern fn int xPutImage(Display* d, Drawable draw, GContext gc, void* image, int srcX, int srcY, int destX, int destY, uint w, uint h) @cname("XPutImage");
-extern fn int xDestroyImage(void* image) @cname("XDestroyImage");
 
-// Leading fields of the real XImage struct (ABI-compatible prefix; only used to null
-// out `data` before XDestroyImage, since that buffer is owned by our own allocation).
-struct XImageHeader
-{
-	int width;
-	int height;
-	int xoffset;
-	int format;
-	char* data;
-}
-extern fn ZString xResourceManagerString(Display* d) @cname("XResourceManagerString");
-extern fn void* xrmGetStringDatabase(ZString data) @cname("XrmGetStringDatabase");
-extern fn int xrmGetResource(void* db, ZString name, ZString c_class, ZString* typeOut, void* valueOut) @cname("XrmGetResource");
-extern fn int xrmDestroyDatabase(void* db) @cname("XrmDestroyDatabase");
-extern fn double atof(char* s) @cname("atof");
-extern fn XRRScreenResources* xRRGetScreenResourcesCurrent(Display* d, XWindow w) @cname("XRRGetScreenResourcesCurrent");
-extern fn int xRRFreeScreenResources(XRRScreenResources* res) @cname("XRRFreeScreenResources");
-extern fn RROutput xRRGetOutputPrimary(Display* d, XWindow w) @cname("XRRGetOutputPrimary");
-extern fn XRROutputInfo* xRRGetOutputInfo(Display* d, XRRScreenResources* res, RROutput output) @cname("XRRGetOutputInfo");
-extern fn int xRRFreeOutputInfo(XRROutputInfo* info) @cname("XRRFreeOutputInfo");
-extern fn XRRCrtcInfo* xRRGetCrtcInfo(Display* d, XRRScreenResources* res, RRCrtc crtc) @cname("XRRGetCrtcInfo");
-extern fn int xRRFreeCrtcInfo(XRRCrtcInfo* info) @cname("XRRFreeCrtcInfo");
-extern fn int xRRSetCrtcConfig(Display* d, XRRScreenResources* res, RRCrtc crtc, Time time, int x, int y, RRMode mode, int rotation, RROutput* outputs, int noutputs) @cname("XRRSetCrtcConfig");
-extern fn int xRRGetCrtcGammaSize(Display* d, RRCrtc crtc) @cname("XRRGetCrtcGammaSize");
-extern fn XRRCrtcGamma* xRRGetCrtcGamma(Display* d, RRCrtc crtc) @cname("XRRGetCrtcGamma");
-extern fn XRRCrtcGamma* xRRAllocGamma(int size) @cname("XRRAllocGamma");
-extern fn int xRRSetCrtcGamma(Display* d, RRCrtc crtc, XRRCrtcGamma* gamma) @cname("XRRSetCrtcGamma");
-extern fn int xRRFreeGamma(XRRCrtcGamma* gamma) @cname("XRRFreeGamma");
-extern fn int xRRQueryExtension(Display* d, int* eventBase, int* errorBase) @cname("XRRQueryExtension");
-extern fn int xRRSelectInput(Display* d, XWindow w, int mask) @cname("XRRSelectInput");
+
 
 macro sz ximaskLen(event) => (sz)((event >> 3) + 1);
 macro void xiSetMask(char* mask, event) { mask[(sz)(event / 8)] |= (char)(1 << (event % 8)); }
@@ -527,8 +400,8 @@ struct RgfwNativeImage
 
 struct RgfwWindowSrc
 {
-	XWindow window;
-	XWindow parent;
+	GfxXWindow window;
+	GfxXWindow parent;
 	GContext gc;
 	XlibIC ic;
 	ulong flashEnd;
@@ -607,14 +480,14 @@ struct RgfwInfo
 	void* egl_display;
 	void* egl_handle;
 	void* eglGetProcAddress;
-	Display* display;
+	GfxXDisplay* display;
 	int context;
-	XWindow helperWindow;
+	GfxXWindow helperWindow;
 	ZString className;
 	XlibIM im;
 	GfxDataTransfer* unixClipboard;
 	int xrandrEventBase;
-	XWindow x11Source;
+	GfxXWindow x11Source;
 	int x11Version;
 	int x11Format;
 	RgfwDataTransferType x11TransferType;
@@ -792,7 +665,7 @@ const int RTLD_LAZY = 0x1;
 const int RTLD_LOCAL = 0x4;
 const int VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR = 1000004000;
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
-struct VkXlibSurfaceCreateInfoKHR { int sType; void* pNext; uint flags; Display* dpy; XWindow window; }
+struct VkXlibSurfaceCreateInfoKHR { int sType; void* pNext; uint flags; GfxXDisplay* dpy; GfxXWindow window; }
 alias RgfwVkCreateXlibSurfaceKHRProc = fn VkResult(VkInstance instance, VkXlibSurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
 ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_xlib_surface"};
 
@@ -847,14 +720,14 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 	return ((RgfwVkCreateXlibSurfaceKHRProc)raw)(instance, &createInfo, null, surface);
 }
 
-extern fn VisualID xVisualIDFromVisual(Visual* visual) @cname("XVisualIDFromVisual");
-alias RgfwVkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, Display*, VisualID);
+extern fn VisualID xVisualIDFromVisual(GfxXVisual* visual) @cname("XVisualIDFromVisual");
+alias RgfwVkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, GfxXDisplay*, VisualID);
 
 fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex)
 {
 	RgfwProc raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
 	if (raw == null) return false;
-	Visual* visual = xDefaultVisual(_rgfw.display, xDefaultScreen(_rgfw.display));
+	GfxXVisual* visual = xDefaultVisual(_rgfw.display, xDefaultScreen(_rgfw.display));
 	uint out = ((RgfwVkGetPhysicalDeviceXlibPresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex, _rgfw.display, xVisualIDFromVisual(visual));
 	return rgfw_bool(out != 0);
 }
@@ -866,7 +739,7 @@ const WGPUSType WGPU_STYPE_SURFACE_SOURCE_XLIB_WINDOW = 0x00000006;
 const WGPUSType WGPU_STYPE_SURFACE_SOURCE_WAYLAND_SURFACE = 0x00000007;
 struct WgpuChainedStruct { WgpuChainedStruct* next; WGPUSType sType; }
 struct WgpuSurfaceDescriptor { WgpuChainedStruct* nextInChain; }
-struct WgpuSurfaceSourceXlibWindow { WgpuChainedStruct chain; Display* display; XWindow window; }
+struct WgpuSurfaceSourceXlibWindow { WgpuChainedStruct chain; GfxXDisplay* display; GfxXWindow window; }
 struct WgpuSurfaceSourceWaylandSurface { WgpuChainedStruct chain; WlDisplay* display; WlProxy* surface; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
@@ -1121,7 +994,7 @@ fn void rgfw_window_getVisual(XVisualInfo* visual, bool transparent)
 	}
 }
 
-fn int rgfw_xErrorHandler(Display* display, XErrorEvent* ev)
+fn int rgfw_xErrorHandler(GfxXDisplay* display, XErrorEvent* ev)
 {
 	char[512] errorText;
 	xGetErrorText(display, ev.error_code, (char*)&errorText, 512);
@@ -1147,7 +1020,7 @@ fn void rgfw_x11ImCallback(void* im, char* clientData, char* callData)
 // Opens the IM, then validates it supports the exact style this library wants
 // (XIMPreeditNothing | XIMStatusNothing) before keeping it, and registers an
 // IM-level destroy callback so a later-vanishing IM daemon nulls _rgfw.im.
-fn void rgfw_x11ImInitCallback(Display* d, XPointer clientData, XPointer callData)
+fn void rgfw_x11ImInitCallback(GfxXDisplay* d, GfxXPointer clientData, GfxXPointer callData)
 {
 	if (_rgfw.im != null) return;
 
@@ -1208,14 +1081,14 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags fla
 
 	win.src.flashEnd = 0;
 	xFreeColors(_rgfw.display, cmap, null, 0, 0);
-	xSaveContext(_rgfw.display, win.src.window, _rgfw.context, (XPointer)win);
+	xSaveContext(_rgfw.display, win.src.window, _rgfw.context, (GfxXPointer)win);
 	win.src.gc = xCreateGC(_rgfw.display, win.src.window, 0, null);
 
 	if (_rgfw.im != null)
 	{
 		XImCallback callback;
 		callback.callback = &rgfw_x11IcCallback;
-		callback.client_data = (XPointer)win;
+		callback.client_data = (GfxXPointer)win;
 
 		win.src.ic = xCreateIC(_rgfw.im, "inputStyle", (long)(0x0008 | 0x0400) /* XIMPreeditNothing | XIMStatusNothing */,
 			"clientWindow", win.src.window, "focusWindow", win.src.window,
@@ -1268,7 +1141,7 @@ fn bool rgfw_getGlobalMouse_X11(int* fX, int* fY)
 {
 	int x, y;
 	uint z;
-	XWindow window1, window2;
+	GfxXWindow window1, window2;
 	xQueryPointer(_rgfw.display, xDefaultRootWindow(_rgfw.display), &window1, &window2, fX, fY, &x, &y, &z);
 	return true;
 }
@@ -1516,7 +1389,7 @@ fn void rgfw_xHandleEvent()
 	}
 
 	GfxWindow* win = null;
-	if (xFindContext(_rgfw.display, e.xany.window, _rgfw.context, (XPointer*)&win) != 0) return;
+	if (xFindContext(_rgfw.display, e.xany.window, _rgfw.context, (GfxXPointer*)&win) != 0) return;
 
 	if (win.src.flashEnd != 0)
 	{
@@ -1560,7 +1433,7 @@ fn void rgfw_xHandleEvent()
 			}
 			else
 			{
-				XWindow rootRet, childRet;
+				GfxXWindow rootRet, childRet;
 				int rootX, rootY, winX, winY;
 				uint mask;
 				xQueryPointer(_rgfw.display, xDefaultRootWindow(_rgfw.display), &rootRet, &childRet, &rootX, &rootY, &winX, &winY, &mask);
@@ -1668,7 +1541,7 @@ fn void rgfw_xHandleEvent()
 				Atom[3] realFormats;
 				int list = (int)(e.xclient.data.l[1] & 1);
 
-				_rgfw.x11Source = (XWindow)e.xclient.data.l[0];
+				_rgfw.x11Source = (GfxXWindow)e.xclient.data.l[0];
 				_rgfw.x11Version = (int)(e.xclient.data.l[1] >> 24);
 				_rgfw.x11Format = 0;
 				if (list)
@@ -1711,7 +1584,7 @@ fn void rgfw_xHandleEvent()
 			{
 				int xabs = (int)((e.xclient.data.l[2] >> 16) & 0xffff);
 				int yabs = (int)(e.xclient.data.l[2] & 0xffff);
-				XWindow dummy;
+				GfxXWindow dummy;
 				int xpos, ypos;
 
 				xTranslateCoordinates(_rgfw.display, xDefaultRootWindow(_rgfw.display), win.src.window,
@@ -1822,10 +1695,10 @@ fn void rgfw_xHandleEvent()
 
 			// if the event came from the server and we're not a direct child of the root window then
 			// we're using local coords which need to be translated into screen coords
-			XWindow root = xDefaultRootWindow(_rgfw.display);
+			GfxXWindow root = xDefaultRootWindow(_rgfw.display);
 			if (e.xany.send_event == 0 && win.src.parent != root)
 			{
-				XWindow dummy;
+				GfxXWindow dummy;
 				xTranslateCoordinates(_rgfw.display, win.src.parent, root, configureX, configureY, &configureX, &configureY, &dummy);
 			}
 
@@ -2127,7 +2000,7 @@ fn void rgfw_window_moveMouse_X11(GfxWindow* win, int x, int y)
 {
 	int rootX, rootY, winX, winY;
 	uint mask;
-	XWindow rootRet, childRet;
+	GfxXWindow rootRet, childRet;
 	xQueryPointer(_rgfw.display, xDefaultRootWindow(_rgfw.display), &rootRet, &childRet, &rootX, &rootY, &winX, &winY, &mask);
 	win.internal.last_mouse = { x - win.x, y - win.y };
 	if (winX == x && winY == y) return;
@@ -2348,10 +2221,10 @@ fn void* rgfw_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, Gf
 
 fn void rgfw_pollMonitors_X11()
 {
-	XWindow root = xDefaultRootWindow(_rgfw.display);
+	GfxXWindow root = xDefaultRootWindow(_rgfw.display);
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_rgfw.display, root);
 	if (res == null) return;
-	RROutput primary = xRRGetOutputPrimary(_rgfw.display, root);
+	GfxRROutput primary = xRRGetOutputPrimary(_rgfw.display, root);
 
 	for (RgfwMonitorNode* node = _rgfw.monitors.list.head; node != null; node = node.next) node.disconnected = true;
 
@@ -2370,7 +2243,7 @@ fn void rgfw_pollMonitors_X11()
 		}
 
 		GfxMonitor monitor;
-		XRROutputInfo* info = xRRGetOutputInfo(_rgfw.display, res, res.outputs[i]);
+		GfxXRROutputInfo* info = xRRGetOutputInfo(_rgfw.display, res, res.outputs[i]);
 		if (info == null) continue;
 		if (info.connection != 0 || info.crtc == 0) { xRRFreeOutputInfo(info); continue; }
 
@@ -2422,7 +2295,7 @@ fn void rgfw_monitorNode_free_X11(RgfwMonitorNode* node) {}
 
 fn bool rgfw_monitor_getWorkarea_X11(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
 {
-	XWindow root = xDefaultRootWindow(_rgfw.display);
+	GfxXWindow root = xDefaultRootWindow(_rgfw.display);
 	int areaX = monitor.origin.x;
 	int areaY = monitor.origin.y;
 	int areaW = monitor.mode.w;
@@ -2463,7 +2336,7 @@ fn GfxMonitorMode[] rgfw_monitor_getModesPtr_X11(GfxMonitor* monitor)
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_rgfw.display, xDefaultRootWindow(_rgfw.display));
 	if (!res) return {};
 	XRRCrtcInfo* ci = xRRGetCrtcInfo(_rgfw.display, res, monitor.node.nativeId1);
-	XRROutputInfo* oi = xRRGetOutputInfo(_rgfw.display, res, monitor.node.nativeId0);
+	GfxXRROutputInfo* oi = xRRGetOutputInfo(_rgfw.display, res, monitor.node.nativeId0);
 	sz count = (sz)oi.nmode;
 	List{GfxMonitorMode} modes;
 	for (int i = 0; i < oi.nmode; i++)
@@ -2526,7 +2399,7 @@ fn bool rgfw_monitor_requestMode_X11(GfxMonitor* mon, GfxMonitorMode* mode, GfxM
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_rgfw.display, xDefaultRootWindow(_rgfw.display));
 	if (res == null) return false;
 	XRRCrtcInfo* ci = xRRGetCrtcInfo(_rgfw.display, res, mon.node.nativeId1);
-	XRROutputInfo* oi = xRRGetOutputInfo(_rgfw.display, res, mon.node.nativeId0);
+	GfxXRROutputInfo* oi = xRRGetOutputInfo(_rgfw.display, res, mon.node.nativeId0);
 	RRMode native = 0;
 
 	for (int i = 0; i < oi.nmode; i++)
