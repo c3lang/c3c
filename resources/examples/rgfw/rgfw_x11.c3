@@ -903,99 +903,6 @@ fn void rgfw_windowMinimizedCallback(GfxWindow* win)
 	event_queue_call_push(&event);
 }
 
-fn void rgfw_windowRestoredCallback(GfxWindow* win, int x, int y, int w, int h)
-{
-	win.internal.flags &= ~((uint)RGFW_WINDOW_MINIMIZE);
-	win.x = x; win.y = y; win.w = w; win.h = h;
-	if (rgfw_window_isMaximized(win) == false) win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE);
-	if (!(win.internal.enabledEvents & RGFW_WINDOW_RESTORED_FLAG)) return;
-	GfxEvent event;
-	event.type = RGFW_WINDOW_RESTORED;
-	event.update.x = x; event.update.y = y; event.update.w = w; event.update.h = h;
-	event.common.win = win;
-	event_queue_call_push(&event);
-}
-
-fn void rgfw_window_checkMode(GfxWindow* win)
-{
-	if (rgfw_window_isMinimized(win))
-	{
-		rgfw_windowMinimizedCallback(win);
-	}
-	else if (rgfw_window_isMaximized(win))
-	{
-		rgfw_windowMaximizedCallback(win, win.x, win.y, win.w, win.h);
-	}
-	else if (((win.internal.flags & RGFW_WINDOW_MINIMIZE) && !rgfw_window_isMaximized(win)) ||
-	         ((win.internal.flags & RGFW_WINDOW_MAXIMIZE) && !rgfw_window_isMaximized(win)))
-	{
-		rgfw_windowRestoredCallback(win, win.x, win.y, win.w, win.h);
-	}
-}
-
-fn void rgfw_windowMovedCallback(GfxWindow* win, int x, int y)
-{
-	win.x = x; win.y = y;
-	if (!(win.internal.enabledEvents & RGFW_WINDOW_MOVED_FLAG)) return;
-	GfxEvent event;
-	event.type = RGFW_WINDOW_MOVED;
-	event.update.x = x; event.update.y = y; event.update.w = win.w; event.update.h = win.h;
-	event.common.win = win;
-	event_queue_call_push(&event);
-}
-
-fn void rgfw_windowResizedCallback(GfxWindow* win, int w, int h)
-{
-	win.w = w; win.h = h;
-	if (!(win.internal.enabledEvents & RGFW_WINDOW_RESIZED_FLAG)) return;
-	GfxEvent event;
-	event.type = RGFW_WINDOW_RESIZED;
-	event.update.x = win.x; event.update.y = win.y; event.update.w = w; event.update.h = h;
-	event.common.win = win;
-	event_queue_call_push(&event);
-}
-
-fn void rgfw_windowCloseCallback(GfxWindow* win)
-{
-	win.internal.shouldClose = true;
-	GfxEvent event;
-	event.type = RGFW_WINDOW_CLOSE;
-	event.common.win = win;
-	event_queue_call_push(&event);
-}
-
-fn void rgfw_mouseMotionCallback(GfxWindow* win, int x, int y)
-{
-	win.internal.lastMouseX = x;
-	win.internal.lastMouseY = y;
-	if (!(win.internal.enabledEvents & RGFW_MOUSE_MOTION_FLAG)) return;
-	GfxEvent event;
-	event.type = RGFW_MOUSE_MOTION;
-	event.mouse.x = x; event.mouse.y = y; event.mouse.inWindow = win.internal.mouseInside;
-	event.common.win = win;
-	event_queue_call_push(&event);
-}
-
-fn void rgfw_rawMotionCallback(GfxWindow* win, float x, float y)
-{
-	_rgfw.vectorX = x; _rgfw.vectorY = y;
-	if (!(win.internal.enabledEvents & RGFW_MOUSE_RAW_MOTION_FLAG)) return;
-	GfxEvent event;
-	event.type = RGFW_MOUSE_RAW_MOTION;
-	event.delta.x = x; event.delta.y = y;
-	event.common.win = win;
-	event_queue_call_push(&event);
-}
-
-fn void rgfw_windowRefreshCallback(GfxWindow* win, int x, int y, int w, int h)
-{
-	if (!(win.internal.enabledEvents & RGFW_WINDOW_REFRESH_FLAG)) return;
-	GfxEvent event;
-	event.type = RGFW_WINDOW_REFRESH;
-	event.update.x = x; event.update.y = y; event.update.w = w; event.update.h = h;
-	event.common.win = win;
-	event_queue_call_push(&event);
-}
 
 fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
 {
@@ -1014,7 +921,7 @@ fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
 		if (win.internal.flags & RGFW_WINDOW_FULLSCREEN) rgfw_window_minimize(win);
 		for (usz key = 0; key < (usz)RGFW_KEY_LAST; key++)
 		{
-			if (rgfw_isKeyDown((RgfwKey)key) == false) continue;
+			if (is_key_down((RgfwKey)key) == false) continue;
 			_rgfw.keyboard[key].current = false;
 			if (win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG) rgfw_keyCallback(win, (RgfwKey)key, win.internal.mod, false, false);
 		}
@@ -1282,14 +1189,6 @@ fn void rgfw_resetPrevState()
 	_rgfw.dndCur = null;
 }
 
-fn bool rgfw_isKeyPressed(RgfwKey key) => rgfw_bool(_rgfw.keyboard[(usz)key].current && !_rgfw.keyboard[(usz)key].prev);
-fn bool rgfw_isKeyDown(RgfwKey key) => _rgfw.keyboard[(usz)key].current;
-fn bool rgfw_isKeyReleased(RgfwKey key) => rgfw_bool(!_rgfw.keyboard[(usz)key].current && _rgfw.keyboard[(usz)key].prev);
-fn bool rgfw_isMouseDown(RgfwMouseButton button) => _rgfw.mouseButtons[(usz)button].current;
-fn bool rgfw_isMouseReleased(RgfwMouseButton button) => rgfw_bool(!_rgfw.mouseButtons[(usz)button].current && _rgfw.mouseButtons[(usz)button].prev);
-
-fn void rgfw_getMouseScroll(float* x, float* y) { if (x != null) *x = _rgfw.scrollX; if (y != null) *y = _rgfw.scrollY; }
-fn void rgfw_getMouseVector(float* x, float* y) { if (x != null) *x = _rgfw.vectorX; if (y != null) *y = _rgfw.vectorY; }
 
 fn RgfwWindowSrc* rgfw_window_getSrc(GfxWindow* win) => &win.src;
 fn bool rgfw_window_getPosition(GfxWindow* win, int* x, int* y) { if (x != null) *x = win.x; if (y != null) *y = win.y; return true; }
@@ -1342,52 +1241,6 @@ fn void rgfw_setBit(uint* value, uint mask, bool set)
 	else { *value &= ~mask; }
 }
 
-fn void rgfw_window_setFlagsInternal(GfxWindow* win, RgfwWindowFlags flags, RgfwWindowFlags cmpFlags)
-{
-	if (flags & RGFW_WINDOW_NO_BORDER) { rgfw_window_setBorder(win, false); }
-	else if (cmpFlags & RGFW_WINDOW_NO_BORDER) { rgfw_window_setBorder(win, true); }
-	if (flags & RGFW_WINDOW_MAXIMIZE) { rgfw_window_maximize(win); }
-	else if (cmpFlags & RGFW_WINDOW_MAXIMIZE) { rgfw_window_restore(win); }
-	if (flags & RGFW_WINDOW_MINIMIZE) { rgfw_window_minimize(win); }
-	else if (cmpFlags & RGFW_WINDOW_MINIMIZE) { rgfw_window_restore(win); }
-	if (flags & RGFW_WINDOW_CENTER) rgfw_window_center(win);
-	if (flags & RGFW_WINDOW_CENTER_CURSOR) rgfw_window_moveMouse(win, win.x + (win.w / 2), win.y + (win.h / 2));
-	if (flags & RGFW_WINDOW_FULLSCREEN) { rgfw_window_setFullscreen(win, true); }
-	else if (cmpFlags & RGFW_WINDOW_FULLSCREEN) { rgfw_window_setFullscreen(win, false); }
-	if (flags & RGFW_WINDOW_HIDE_MOUSE) { rgfw_window_showMouse(win, false); }
-	else if (cmpFlags & RGFW_WINDOW_HIDE_MOUSE) { rgfw_window_showMouse(win, true); }
-	if (flags & RGFW_WINDOW_HIDE) { rgfw_window_hide(win); }
-	else if (cmpFlags & RGFW_WINDOW_HIDE) { rgfw_window_show(win); }
-	if (flags & RGFW_WINDOW_FLOATING) { rgfw_window_setFloating(win, true); }
-	else if (cmpFlags & RGFW_WINDOW_FLOATING) { rgfw_window_setFloating(win, false); }
-	if (flags & RGFW_WINDOW_RAW_MOUSE) { rgfw_window_setRawMouseMode(win, true); }
-	else if (cmpFlags & RGFW_WINDOW_RAW_MOUSE) { rgfw_window_setRawMouseMode(win, false); }
-	if (flags & RGFW_WINDOW_CAPTURE_MOUSE) { rgfw_window_captureRawMouse(win, true); }
-	else if (cmpFlags & RGFW_WINDOW_CAPTURE_MOUSE) { rgfw_window_captureMouse(win, false); }
-	if (flags & RGFW_WINDOW_FOCUS) rgfw_window_focus(win);
-	if (flags & RGFW_WINDOW_SCALE_TO_MONITOR) rgfw_window_scaleToMonitor(win);
-	if (flags & RGFW_WINDOW_NO_RESIZE)
-	{
-		rgfw_window_setMaxSize(win, win.w, win.h);
-		rgfw_window_setMinSize(win, win.w, win.h);
-	}
-	else if (cmpFlags & RGFW_WINDOW_NO_RESIZE)
-	{
-		rgfw_window_setMaxSize(win, 0, 0);
-		rgfw_window_setMinSize(win, 0, 0);
-	}
-	win.internal.flags = flags;
-}
-
-fn void rgfw_window_setFlags(GfxWindow* win, RgfwWindowFlags flags) { rgfw_window_setFlagsInternal(win, flags, win.internal.flags); }
-fn bool rgfw_window_isInFocus(GfxWindow* win) => rgfw_bool(win.internal.inFocus);
-fn void rgfw_setBuildDND(bool state) { _rgfw.dndBuild = state; }
-fn bool rgfw_window_isKeyPressed(GfxWindow* win, RgfwKey key) => rgfw_bool(rgfw_isKeyPressed(key) && rgfw_window_isInFocus(win));
-fn bool rgfw_window_isKeyDown(GfxWindow* win, RgfwKey key) => rgfw_bool(rgfw_isKeyDown(key) && rgfw_window_isInFocus(win));
-fn bool rgfw_window_isKeyReleased(GfxWindow* win, RgfwKey key) => rgfw_bool(rgfw_isKeyReleased(key) && rgfw_window_isInFocus(win));
-fn bool rgfw_window_isMousePressed(GfxWindow* win, RgfwMouseButton button) => rgfw_bool(is_mouse_pressed(button) && rgfw_window_isInFocus(win));
-fn bool rgfw_window_isMouseDown(GfxWindow* win, RgfwMouseButton button) => rgfw_bool(rgfw_isMouseDown(button) && rgfw_window_isInFocus(win));
-fn bool rgfw_window_isMouseReleased(GfxWindow* win, RgfwMouseButton button) => rgfw_bool(rgfw_isMouseReleased(button) && rgfw_window_isInFocus(win));
 
 fn void rgfw_window_center(GfxWindow* win)
 {
@@ -1422,10 +1275,6 @@ fn bool rgfw_monitorModeCompare(RgfwMonitorMode* mon, RgfwMonitorMode* mon2, Rgf
 		((mon.red == mon2.red && mon.green == mon2.green && mon.blue == mon2.blue) || !(request & RGFW_MONITOR_RGB)));
 }
 
-fn bool rgfw_window_shouldClose(GfxWindow* win) => rgfw_bool(win == null || win.internal.shouldClose || (win.internal.exitKey && rgfw_isKeyDown(win.internal.exitKey)));
-fn void rgfw_window_setShouldClose(GfxWindow* win, bool shouldClose) { if (shouldClose) { rgfw_windowCloseCallback(win); } else { win.internal.shouldClose = false; } }
-fn void rgfw_window_scaleToMonitor(GfxWindow* win) { GfxMonitor* monitor = rgfw_window_getMonitor(win); if (monitor == null) return; rgfw_window_resize(win, (int)(monitor.scaleX * (float)win.w), (int)(monitor.scaleY * (float)win.h)); }
-fn void rgfw_window_moveToMonitor(GfxWindow* win, GfxMonitor* m) { rgfw_window_move(win, m.x + win.x, m.y + win.y); }
 
 RgfwColorLayout[6] rgfw_layouts = {
 	{0, 1, 2, 3, 3},
@@ -1646,10 +1495,10 @@ fn void rgfw_keyUpdateKeyModsEx(GfxWindow* win, bool capital, bool numlock, bool
 fn void rgfw_keyUpdateKeyMods(GfxWindow* win, bool capital, bool numlock, bool scroll)
 {
 	rgfw_keyUpdateKeyModsEx(win, capital, numlock,
-		rgfw_bool(rgfw_isKeyDown(RGFW_KEY_CONTROL_L) || rgfw_isKeyDown(RGFW_KEY_CONTROL_R)),
-		rgfw_bool(rgfw_isKeyDown(RGFW_KEY_ALT_L) || rgfw_isKeyDown(RGFW_KEY_ALT_R)),
-		rgfw_bool(rgfw_isKeyDown(RGFW_KEY_SHIFT_L) || rgfw_isKeyDown(RGFW_KEY_SHIFT_R)),
-		rgfw_bool(rgfw_isKeyDown(RGFW_KEY_SUPER_L) || rgfw_isKeyDown(RGFW_KEY_SUPER_R)),
+		rgfw_bool(is_key_down(RGFW_KEY_CONTROL_L) || is_key_down(RGFW_KEY_CONTROL_R)),
+		rgfw_bool(is_key_down(RGFW_KEY_ALT_L) || is_key_down(RGFW_KEY_ALT_R)),
+		rgfw_bool(is_key_down(RGFW_KEY_SHIFT_L) || is_key_down(RGFW_KEY_SHIFT_R)),
+		rgfw_bool(is_key_down(RGFW_KEY_SUPER_L) || is_key_down(RGFW_KEY_SUPER_R)),
 		scroll);
 }
 
@@ -2217,7 +2066,7 @@ fn void rgfw_xHandleEvent()
 
 	if (win.src.flashEnd != 0)
 	{
-		if (win.src.flashEnd <= rgfw_unix_getTimeNS() || rgfw_window_isInFocus(win)) rgfw_window_flash(win, CANCEL);
+		if (win.src.flashEnd <= rgfw_unix_getTimeNS() || win.has_focus()) rgfw_window_flash(win, CANCEL);
 	}
 
 	bool keyRepeat = false;
@@ -2860,7 +2709,7 @@ fn void rgfw_window_showPlatform(GfxWindow* win)
 
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request)
 {
-	if (rgfw_window_isInFocus(win) && request != CANCEL) return;
+	if (win.has_focus() && request != CANCEL) return;
 	XWMHints* wmhints = xGetWMHints(_rgfw.display, win.src.window);
 	if (wmhints == null) return;
 	if (request != CANCEL)
