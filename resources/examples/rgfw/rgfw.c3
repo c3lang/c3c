@@ -1,6 +1,6 @@
 module std::gfx @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
 
-import std::collections;
+import std::collections, std::math;
 // C3 port of the shared RGFW implementation from /Users/lerno/Downloads/RGFW.h.
 // This file intentionally imports no C3 standard-library modules. It only
 // declares the small C runtime hooks RGFW's C header also expects from the host.
@@ -539,7 +539,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	rgfw_memzero(win, GfxWindow::size);
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
-	win.x = x; win.y = y; win.w = w; win.h = h;
+	win.bounds = { x, y, w, h };
 	win.internal.mouse = _rgfw.standardMice[(sz)RGFW_MOUSE_NORMAL];
 	win.internal.flags = flags;
 	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
@@ -613,22 +613,17 @@ fn GfxFormat rgfw_nativeFormat() => BGRA8;
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
 	if (win == null || surface == null || surface.data == null) return;
-	int minW = win.w < surface.w ? win.w : surface.w;
-	int minH = win.h < surface.h ? win.h : surface.h;
+	IntVec2 min = math::min(win.size, surface.size);
 	GfxMonitor* mon = find_monitor(win);
-	if (mon != null)
-	{
-		minW = (int)((float)minW * mon.pixelRatio);
-		minH = (int)((float)minH * mon.pixelRatio);
-	}
-	ObjcId rep = ns_bitmapRep(minW, minH);
+	if (mon) min = (IntVec2)((Vec2)min * mon.pixelRatio);
+	ObjcId rep = ns_bitmapRep(...min);
 	char* pixels = ns_bitmapData(rep);
 	if (pixels == null) { ns_release(rep); return; }
-	copy_image_data(pixels, minW, minH, RGBA8, surface.data, surface.format, surface.convertFunc);
-	ObjcId image = ns_imageWithRep(rep, minW, minH);
+	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convertFunc);
+	ObjcId image = ns_imageWithRep(rep, ...min);
 	objc_send((ObjcId)win.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
 	ObjcId layer = objc_send((ObjcId)win.src.view, ObjcSendId, "layer");
-	if (layer != null) objc_send(layer, ObjcSendVoidId, "setContents:", image);
+	if (layer) objc_send(layer, ObjcSendVoidId, "setContents:", image);
 	ns_release(image);
 	ns_release(rep);
 }
@@ -937,11 +932,11 @@ fn void rgfw_monitorFromDisplay(CGDirectDisplayID display, GfxMonitor* mon)
 	mon.mode.red = 8; mon.mode.green = 8; mon.mode.blue = 8;
 	mon.mode.src = mode;
 	CGSize phys = cgDisplayScreenSize(display);
-	mon.physW = (float)phys.width;
-	mon.physH = (float)phys.height;
-	mon.scaleX = mon.mode.w > 0 ? ((float)bounds.size.width / (float)mon.mode.w) : 1.0;
-	mon.scaleY = mon.mode.h > 0 ? ((float)bounds.size.height / (float)mon.mode.h) : 1.0;
-	mon.pixelRatio = mon.scaleX;
+	mon.phys_size = { (float)phys.width, (float)phys.height };
+	mon.scale = {
+		mon.mode.w > 0 ? ((float)bounds.size.width / (float)mon.mode.w) : 1.0,
+		mon.mode.h > 0 ? ((float)bounds.size.height / (float)mon.mode.h) : 1.0 };
+	mon.pixelRatio = mon.scale.x;
 }
 
 fn CGDirectDisplayID rgfw_monitorDisplay(GfxMonitor* monitor)
@@ -969,8 +964,8 @@ fn void rgfw_osxWindowDidResize(ObjcId self, ObjcSelector sel, ObjcId notificati
 	if (win == null) return;
 	int w = 0;
 	int h = 0;
-	rgfw_window_fetchSize(win, &w, &h);
-	_window_resized_callback(win, w, h);
+
+	_window_resized_callback(win, ...rgfw_window_fetchSize(win));
 }
 
 fn void rgfw_osxWindowDidMove(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -992,7 +987,7 @@ fn void rgfw_osxWindowDidMiniaturize(ObjcId self, ObjcSelector sel, ObjcId notif
 fn void rgfw_osxWindowDidDeminiaturize(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
 	GfxWindow* win = rgfw_osxDelegateWindow(self);
-	if (win != null) _window_restored_callback(win, win.x, win.y, win.w, win.h);
+	if (win != null) _window_restored_callback(win, ...win.origin, ...win.size);
 }
 
 fn void rgfw_osxWindowDidBecomeKey(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -1021,7 +1016,7 @@ fn void rgfw_osxMouseMovedCommon(ObjcId self, ObjcId event)
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (win == null) return;
 	CGPoint p = objc_send(event, ObjcSendPoint, "locationInWindow");
-	rgfw_mouseMotionCallback(win, (int)p.x, win.h - (int)p.y);
+	_mouse_motion_callback(win, (int)p.x, win.height - (int)p.y);
 }
 
 fn void rgfw_osxMouseMoved(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseMovedCommon(self, event); }
@@ -1089,14 +1084,14 @@ fn void rgfw_osxMouseEntered(ObjcId self, ObjcSelector sel, ObjcId event)
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (win == null) return;
 	CGPoint p = objc_send(event, ObjcSendPoint, "locationInWindow");
-	_mouse_notify_callback(win, (int)p.x, win.h - (int)p.y, true);
+	_mouse_notify_callback(win, (int)p.x, win.height - (int)p.y, true);
 }
 
 fn void rgfw_osxMouseExited(ObjcId self, ObjcSelector sel, ObjcId event)
 {
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (win == null) return;
-	_mouse_notify_callback(win, win.internal.lastMouseX, win.internal.lastMouseY, false);
+	_mouse_notify_callback(win, ...win.internal.last_mouse, false);
 }
 
 fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
@@ -1145,7 +1140,7 @@ fn void rgfw_osxViewDidChangeBackingProperties(ObjcId self, ObjcSelector sel)
 	if (win == null) return;
 	GfxMonitor* mon = find_monitor(win);
 	if (mon == null) return;
-	rgfw_scaleUpdatedCallback(win, mon.scaleX, mon.scaleY);
+	rgfw_scaleUpdatedCallback(win, ...mon.scale);
 }
 
 fn bool rgfw_osxWantsUpdateLayer(ObjcId self, ObjcSelector sel) => true;
@@ -1154,7 +1149,7 @@ fn void rgfw_osxUpdateLayer(ObjcId self, ObjcSelector sel)
 {
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (win == null) return;
-	rgfw_windowRefreshCallback(win, 0, 0, win.w, win.h);
+	rgfw_windowRefreshCallback(win, 0, 0, ...win.size);
 }
 
 fn void rgfw_osxDrawRect(ObjcId self, ObjcSelector sel, CGRect rect)
@@ -1170,7 +1165,7 @@ fn NSUInteger rgfw_osxDraggingEntered(ObjcId self, ObjcSelector sel, ObjcId send
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (win == null) return 0;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
-	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_ENTER, (int)p.x, win.h - (int)p.y);
+	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_ENTER, (int)p.x, win.height - (int)p.y);
 	return 1;
 }
 
@@ -1180,7 +1175,7 @@ fn NSUInteger rgfw_osxDraggingUpdated(ObjcId self, ObjcSelector sel, ObjcId send
 	if (win == null) return 0;
 	if (!(win.internal.enabledEvents & RGFW_DATA_DRAG_FLAG)) return 1;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
-	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_MOVE, (int)p.x, win.h - (int)p.y);
+	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_MOVE, (int)p.x, win.height - (int)p.y);
 	return 1;
 }
 
@@ -1190,7 +1185,7 @@ fn void rgfw_osxDraggingEnded(ObjcId self, ObjcSelector sel, ObjcId sender)
 	if (win == null) return;
 	if (!(win.internal.enabledEvents & RGFW_DATA_DRAG_FLAG)) return;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
-	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_EXIT, (int)p.x, win.h - (int)p.y);
+	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_EXIT, (int)p.x, win.height - (int)p.y);
 }
 
 fn bool rgfw_osxPrepareForDragOperation(ObjcId self, ObjcSelector sel, ObjcId sender)
@@ -1436,11 +1431,11 @@ fn GfxWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, GfxWi
 	NSUInteger style = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
 	if (!(flags & RGFW_WINDOW_NO_RESIZE)) style |= NS_WINDOW_STYLE_RESIZABLE;
 	if (flags & RGFW_WINDOW_NO_BORDER) style = NS_WINDOW_STYLE_BORDERLESS;
-	CGRect rect = ns_rect((double)win.x, (double)rgfw_cocoaYTransform((float)(win.y + win.h - 1)), (double)win.w, (double)win.h);
+	CGRect rect = ns_rect((double)win.x, (double)rgfw_cocoaYTransform((float)(win.y + win.height - 1)), (double)win.width, (double)win.height);
 	ObjcId nswin = objc_send(ns_alloc("NSWindow"), ObjcSendIdWindowInit, "initWithContentRect:styleMask:backing:defer:", rect, style, NS_BACKING_STORE_BUFFERED, false);
 	if (nswin == null) return null;
 	ObjcId view = rgfw_osxViewClass != (ObjcClass)null ? objc_send((ObjcId)rgfw_osxViewClass, ObjcSendId, "alloc") : ns_alloc("NSView");
-	view = objc_send(view, ObjcSendIdRect, "initWithFrame:", ns_rect(0.0, 0.0, (double)win.w, (double)win.h));
+	view = objc_send(view, ObjcSendIdRect, "initWithFrame:", ns_rect(0.0, 0.0, (double)win.width, (double)win.height));
 	if (rgfw_osxViewClass != (ObjcClass)null) object_setInstanceVariable(view, "rgfw_window", win);
 	ObjcId delegate = null;
 	if (rgfw_osxWindowDelegateClass != (ObjcClass)null)
@@ -1453,7 +1448,7 @@ fn GfxWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, GfxWi
 	win.src.window = ns_retain(nswin);
 	win.src.view = ns_retain(view);
 	win.src.delegate = delegate;
-	win.src.x = win.x; win.src.y = win.y; win.src.w = win.w; win.src.h = win.h;
+	win.src.x = win.x; win.src.y = win.y; win.src.w = win.width; win.src.h = win.height;
 	objc_send(nswin, ObjcSendVoidId, "setContentView:", view);
 	objc_send(nswin, ObjcSendVoidId, "makeFirstResponder:", view);
 	objc_send(nswin, ObjcSendVoidBool, "setAcceptsMouseMovedEvents:", true);
@@ -1525,8 +1520,7 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSur
 {
 	if (surface == null) return false;
 	surface.data = data;
-	surface.w = w;
-	surface.h = h;
+	surface.size = { w, h };
 	surface.format = format;
 	surface.native.format = RGBA8;
 	surface.native.buffer = (char*)rgfw_alloc_impl((sz)(w * h * 4));
@@ -1668,16 +1662,14 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => rgfw_monitor_setMode(mon, mode);
 fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) { if (mode == null || mode.src == null) return false; return rgfw_bool(cgDisplaySetDisplayMode(rgfw_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0); }
 fn GfxMonitor* find_monitor(GfxWindow* win) => rgfw_getPrimaryMonitor();
-fn bool rgfw_window_fetchSize(GfxWindow* win, int* w, int* h)
+fn IntVec2 rgfw_window_fetchSize(GfxWindow* win)
 {
-	if (win != null && win.src.window != null)
+	if (win.src.window != null)
 	{
 		CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
-		win.w = (int)frame.size.width; win.h = (int)frame.size.height;
+		win.size = { (int)frame.size.width, (int)frame.size.height };
 	}
-	if (w != null) *w = win.w;
-	if (h != null) *h = win.h;
-	return true;
+	return win.size;
 }
 
 fn void rgfw_window_focus(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyWindow", null); if (win != null) win.internal.inFocus = true; }
@@ -1708,8 +1700,8 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 		offset = (double)(frame.size.height - content.size.height);
 	}
 
-	rgfw_window_resize(win, win.w, win.h + (int)offset);
-	win.h -= (int)offset;
+	rgfw_window_resize(win, win.width, win.height + (int)offset);
+	win.height -= (int)offset;
 }
 fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidBool, "setIgnoresMouseEvents:", passthrough); }
 fn void rgfw_window_setName(GfxWindow* win, char* name) { if (win != null && win.src.window != null && name != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "setTitle:", ns_string(name)); }
@@ -1755,12 +1747,13 @@ fn bool rgfw_getGlobalMouse(int* x, int* y)
 	return true;
 }
 
+<*
+ @param [in] win
+*>
 fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y)
 {
-	CGPoint point;
-	point.x = (CGFloat)x; point.y = (CGFloat)y;
-	cgWarpMouseCursorPosition(point);
-	if (win != null) { win.internal.lastMouseX = x; win.internal.lastMouseY = y; }
+	cgWarpMouseCursorPosition({ x, y });
+	if (win) win.internal.last_mouse = { x, y };
 }
 
 fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)

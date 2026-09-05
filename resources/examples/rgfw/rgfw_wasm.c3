@@ -1,5 +1,5 @@
 module std::gfx;
-
+import std::math;
 // C3 port of the WASM/WebGL RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
 // Mechanical, line-by-line style translation of the RGFW_WASM implementation.
 // Standalone alternative to rgfw.c3 (macOS) / rgfw_x11.c3 / rgfw_wayland.c3 /
@@ -304,7 +304,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	rgfw_memzero(win, GfxWindow::size);
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
-	win.x = x; win.y = y; win.w = w; win.h = h;
+	win.x = x; win.y = y; win.width = w; win.height = h;
 	win.internal.mouse = _rgfw.standardMice[(sz)RGFW_MOUSE_NORMAL];
 	win.internal.flags = flags;
 	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
@@ -490,21 +490,18 @@ fn void rgfwEmscriptenOnResize(int w, int h) @export("rgfw_on_resize")
 fn void rgfwEmscriptenOnFullscreenChange(int screenW, int screenH, bool entering) @export("rgfw_on_fullscreenchange")
 {
 	if (!(_rgfw.root.internal.enabledEvents & RGFW_WINDOW_RESIZED_FLAG)) return;
-	static int originalW, originalH;
+	static IntVec2 original;
 	if (entering)
 	{
-		originalW = _rgfw.root.w;
-		originalH = _rgfw.root.h;
-		_rgfw.root.w = screenW;
-		_rgfw.root.h = screenH;
+		original = _rgfw.root.size;
+		_rgfw.root.size = { screenW, screenH };
 	}
 	else
 	{
-		_rgfw.root.w = originalW;
-		_rgfw.root.h = originalH;
+		_rgfw.root.size = original;
 	}
-	rgfwJsSetCanvasSize(_rgfw.root.w, _rgfw.root.h);
-	_window_resized_callback(_rgfw.root, _rgfw.root.w, _rgfw.root.h);
+	rgfwJsSetCanvasSize(..._rgfw.root.size);
+	_window_resized_callback(_rgfw.root, ..._rgfw.root.size);
 }
 
 fn void rgfwEmscriptenOnFocusIn() @export("rgfw_on_focusin") { rgfw_windowFocusCallback(_rgfw.root, true); }
@@ -512,7 +509,7 @@ fn void rgfwEmscriptenOnFocusOut() @export("rgfw_on_focusout") { rgfw_windowFocu
 
 fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("rgfw_on_mousemove")
 {
-	rgfw_mouseMotionCallback(_rgfw.root, x, y);
+	_mouse_motion_callback(_rgfw.root, x, y);
 	_raw_motion_callback(_rgfw.root, (float)movementX, (float)movementY);
 }
 
@@ -538,7 +535,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 		if (!(_rgfw.root.internal.enabledEvents & RGFW_MOUSE_MOTION_FLAG)) return;
 		for (int i = 0; i < numTouches; i++)
 		{
-			rgfw_mouseMotionCallback(_rgfw.root, xs[i], ys[i]);
+			_mouse_motion_callback(_rgfw.root, xs[i], ys[i]);
 			_raw_motion_callback(_rgfw.root, 0.0f, 0.0f);
 		}
 		return;
@@ -555,7 +552,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 
 	for (int i = 0; i < numTouches; i++)
 	{
-		rgfw_mouseMotionCallback(_rgfw.root, xs[i], ys[i]);
+		_mouse_motion_callback(_rgfw.root, xs[i], ys[i]);
 		_raw_motion_callback(_rgfw.root, 0.0f, 0.0f);
 		rgfw_mouseButtonCallback(_rgfw.root, RGFW_MOUSE_LEFT, (bool)down);
 	}
@@ -584,17 +581,16 @@ fn void rgfw_stopCheckEvents() { _rgfw.stopCheckEvents_bool = true; }
 fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
 	surface.data = data;
-	surface.w = w;
-	surface.h = h;
+	surface.size = { w, h };
 	surface.format = format;
 	return true;
 }
 
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
-	int minH = win.h < surface.h ? win.h : surface.h;
-	copy_image_data(surface.data, surface.w, minH, RGBA8, surface.data, surface.format, surface.convertFunc);
-	rgfwJsBlitSurface(surface.data, surface.w, surface.h, minH);
+	int minH = win.height < surface.size.y ? win.height : surface.size.y;
+	copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convertFunc);
+	rgfwJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
 }
 
 fn void rgfw_surface_freePtr(GfxSurface* surface) {}
@@ -656,12 +652,14 @@ fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
 	monitor.pixelRatio = (float)rgfwJsDevicePixelRatio();
 	monitor.mode.w = rgfwJsInnerWidth();
 	monitor.mode.h = rgfwJsInnerHeight();
-	monitor.physW = (float)(int)(monitor.mode.w * monitor.pixelRatio + 0.5f);
-	monitor.physH = (float)(int)(monitor.mode.h * monitor.pixelRatio + 0.5f);
+	monitor.phys_size = {
+		(float)(int)(monitor.mode.w * monitor.pixelRatio + 0.5f),
+		(float)(int)(monitor.mode.h * monitor.pixelRatio + 0.5f)
+	};
 
 	float dpi = 96.0f * monitor.pixelRatio;
-	monitor.scaleX = dpi / 96.0f;
-	monitor.scaleY = dpi / 96.0f;
+	monitor.scale = (Vec2)(dpi / 96.0f);
+
 	rgfw_splitBPP(32, &monitor.mode);
 	monitor.mode.refresh_rate = 0;
 
@@ -676,7 +674,7 @@ fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
 
 fn GfxWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, GfxWindow* win)
 {
-	rgfwJsSetCanvasSize(win.w, win.h);
+	rgfwJsSetCanvasSize(win.width, win.height);
 	rgfwJsSetWindowTitle(name, strlen(name));
 	rgfwJsSetupWindowListeners();
 
@@ -687,7 +685,7 @@ fn GfxWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, GfxWi
 }
 
 fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key) => key;
-fn bool rgfw_window_fetchSize(GfxWindow* win, int* w, int* h) => rgfw_window_getSize(win, w, h);
+fn IntVec2 rgfw_window_fetchSize(GfxWindow* win) => win.get_size();
 
 fn void rgfw_pollEvents()
 {

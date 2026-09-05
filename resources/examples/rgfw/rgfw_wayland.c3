@@ -1,5 +1,5 @@
 module std::gfx @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
-import std::collections::list;
+import std::collections::list, std::math;
 
 // C3 port of the Wayland/EGL RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
 // Mechanical, line-by-line style translation of the RGFW_WAYLAND implementation.
@@ -785,7 +785,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	rgfw_memzero(win, GfxWindow::size);
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
-	win.x = x; win.y = y; win.w = w; win.h = h;
+	win.x = x; win.y = y; win.width = w; win.height = h;
 	win.internal.mouse = _rgfw.standardMice[(sz)RGFW_MOUSE_NORMAL];
 	win.internal.flags = flags;
 	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
@@ -963,7 +963,7 @@ fn void rgfw_wlSetOpaque(GfxWindow* win)
 {
 	WlProxy* region = wlCompositorCreateRegion(_rgfw.compositor);
 	if (region == null) return;
-	wlRegionAdd(region, 0, 0, win.w, win.h);
+	wlRegionAdd(region, 0, 0, win.width, win.height);
 	wlSurfaceSetOpaqueRegion(win.src.surface, region);
 	wlRegionDestroy(region);
 }
@@ -997,8 +997,8 @@ fn void rgfw_wlXdgSurfaceConfigureHandler(void* data, WlProxy* xdgSurface, uint 
 
 	if (win.src.resizing)
 	{
-		_window_resized_callback(win, win.w, win.h);
-		rgfw_window_resize(win, win.w, win.h);
+		_window_resized_callback(win, win.width, win.height);
+		rgfw_window_resize(win, win.width, win.height);
 		if (!(win.internal.flags & RGFW_WINDOW_TRANSPARENT)) rgfw_wlSetOpaque(win);
 	}
 
@@ -1030,11 +1030,11 @@ fn void rgfw_wlXdgToplevelConfigureHandler(void* data, WlProxy* toplevel, int wi
 		}
 	}
 
-	if (width != 0 && height != 0 && (win.w != width || win.h != height))
+	if (width != 0 && height != 0 && (win.width != width || win.height != height))
 	{
 		win.src.resizing = true;
-		win.src.w = width; win.w = width;
-		win.src.h = height; win.h = height;
+		win.src.w = width; win.width = width;
+		win.src.h = height; win.height = height;
 	}
 }
 
@@ -1090,7 +1090,7 @@ fn void rgfw_wlPointerLeave(void* data, WlProxy* pointer, uint serial, WlProxy* 
 	GfxWindow* win = (GfxWindow*)wlSurfaceGetUserData(surface);
 	RgfwInfo* info = (RgfwInfo*)data;
 	if (info.mouseOwner == win) info.mouseOwner = null;
-	_mouse_notify_callback(win, win.internal.lastMouseX, win.internal.lastMouseY, false);
+	_mouse_notify_callback(win, ...win.internal.last_mouse, false);
 }
 
 fn void rgfw_wlPointerMotion(void* data, WlProxy* pointer, uint time, WlFixed x, WlFixed y)
@@ -1100,7 +1100,7 @@ fn void rgfw_wlPointerMotion(void* data, WlProxy* pointer, uint time, WlFixed x,
 	if (win == null) return;
 	int cx = (int)wlFixedToDouble(x);
 	int cy = (int)wlFixedToDouble(y);
-	rgfw_mouseMotionCallback(win, cx, cy);
+	_mouse_motion_callback(win, cx, cy);
 }
 
 fn void rgfw_wlPointerButton(void* data, WlProxy* pointer, uint serial, uint time, uint button, uint state)
@@ -1255,8 +1255,7 @@ fn void rgfw_wlOutputSetGeometry(void* data, WlProxy* output, int x, int y, int 
 {
 	GfxMonitor* mon = &((RgfwMonitorNode*)data).mon;
 	mon.origin = { x, y };
-	mon.physW = (float)physW / 25.4f;
-	mon.physH = (float)physH / 25.4f;
+	mon.phys_size = { physW / 25.4f, physH / 25.4f };
 }
 
 fn void rgfw_wlOutputHandleMode(void* data, WlProxy* output, uint flags, int width, int height, int refresh)
@@ -1286,8 +1285,7 @@ fn void rgfw_wlOutputHandleMode(void* data, WlProxy* output, uint flags, int wid
 fn void rgfw_wlOutputSetScale(void* data, WlProxy* output, int factor)
 {
 	GfxMonitor* mon = &((RgfwMonitorNode*)data).mon;
-	mon.scaleX = (float)factor;
-	mon.scaleY = (float)factor;
+	mon.scale = (Vec2)factor;
 }
 
 fn void rgfw_wlOutputSetName(void* data, WlProxy* output, char* name)
@@ -1326,10 +1324,9 @@ fn void rgfw_wlOutputHandleDone(void* data, WlProxy* output)
 	RgfwMonitorNode* node = (RgfwMonitorNode*)data;
 	GfxMonitor* mon = &node.mon;
 
-	if (mon.physW <= 0 || mon.physH <= 0)
+	if (mon.phys_size.x <= 0 || mon.phys_size.y <= 0)
 	{
-		mon.physW = (float)mon.mode.w / 96.0f;
-		mon.physH = (float)mon.mode.h / 96.0f;
+		mon.phys_size = { mon.mode.w / 96.0f, mon.mode.h / 96.0f };
 	}
 
 	if (node.disconnected == false) return;
@@ -1356,7 +1353,6 @@ fn void rgfw_wlCreateOutputs(WlProxy* registry, uint id)
 	if (output == null) return;
 
 	GfxMonitor mon;
-	rgfw_memzero(&mon, GfxMonitor::size);
 	char[10] defaultName;
 	int n = 0;
 	char* prefix = "monitor-";
@@ -1365,7 +1361,8 @@ fn void rgfw_wlCreateOutputs(WlProxy* registry, uint id)
 	defaultName[n + 1] = 0;
 	rgfw_memcpy(&mon.name, &defaultName, (sz)n + 2);
 
-	mon.scaleY = 1.0f; mon.scaleX = 1.0f; mon.pixelRatio = 1.0f;
+	mon.scale = (Vec2)1;
+	mon.pixelRatio = 1.0f;
 
 	RgfwMonitorNode* node = rgfw_monitors_add(&mon);
 	if (node == null) return;
@@ -1547,11 +1544,10 @@ fn GfxFormat rgfw_nativeFormat() => BGRA8;
 fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
 	surface.data = data;
-	surface.w = w;
-	surface.h = h;
+	surface.size = { w, h };
 	surface.format = format;
 
-	uint size = (uint)(surface.w * surface.h * 4);
+	int size = w * h * 4;
 	int fd = rgfw_wlCreateShmFile((long)size);
 	if (fd < 0)
 	{
@@ -1576,12 +1572,11 @@ fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, G
 
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
-	int minW = win.w < surface.w ? win.w : surface.w;
-	int minH = win.h < surface.h ? win.h : surface.h;
-	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, minW, minH, surface.w * 4, WL_SHM_FORMAT_ARGB8888);
+	IntVec2 min = math::min(win.size, surface.size);
+	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...min, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
 
 	wlSurfaceAttach(win.src.surface, surface.native.wlBuffer, 0, 0);
-	wlSurfaceDamage(win.src.surface, 0, 0, minW, minH);
+	wlSurfaceDamage(win.src.surface, 0, 0, ...min);
 	wlSurfaceCommit(win.src.surface);
 	wlBufferDestroy(surface.native.wlBuffer);
 	surface.native.wlBuffer = null;
@@ -1591,7 +1586,7 @@ fn void rgfw_surface_freePtr(GfxSurface* surface)
 {
 	if (surface.native.pool != null) wlShmPoolDestroy(surface.native.pool);
 	if (surface.native.fd != 0) close(surface.native.fd);
-	if (surface.native.buffer != null) munmap(surface.native.buffer, (sz)(surface.w * surface.h * 4));
+	if (surface.native.buffer != null) munmap(surface.native.buffer, (sz)(surface.size.x * surface.size.y * 4));
 }
 
 fn void rgfw_window_setBorder(GfxWindow* win, bool border)
@@ -1663,7 +1658,7 @@ fn GfxWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, GfxWi
 
 	win.src.xdgToplevel = xdgSurfaceGetToplevel(win.src.xdgSurface);
 	xdgToplevelSetAppId(win.src.xdgToplevel, name);
-	xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.w, win.h);
+	xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
 
 	if (!(win.internal.flags & RGFW_WINDOW_TRANSPARENT)) rgfw_wlSetOpaque(win);
 
@@ -1773,7 +1768,7 @@ fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key)
 	return RGFW_KEY_NULL;
 }
 
-fn bool rgfw_window_fetchSize(GfxWindow* win, int* w, int* h) => rgfw_window_getSize(win, w, h);
+fn IntVec2 rgfw_window_fetchSize(GfxWindow* win) => win.get_size();
 
 fn void rgfw_pollEvents()
 {
@@ -1825,10 +1820,10 @@ fn void rgfw_window_movePlatform(GfxWindow* win, int x, int y) { win.x = x; win.
 
 fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
 {
-	win.w = w; win.h = h;
+	win.width = w; win.height = h;
 	if (_rgfw.compositor != null)
 	{
-		xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.w, win.h);
+		xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
 		if (win.src.ctx.egl != null && win.src.ctx.egl.eglWindow != null) wlEglWindowResize((WlEglWindow*)win.src.ctx.egl.eglWindow, w, h, 0, 0);
 	}
 }
@@ -1850,7 +1845,7 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 	if (fullscreen)
 	{
 		win.internal.flags |= RGFW_WINDOW_FULLSCREEN;
-		win.internal.oldX = win.x; win.internal.oldY = win.y; win.internal.oldW = win.w; win.internal.oldH = win.h;
+		win.internal.old_bounds = win.bounds;
 		xdgToplevelSetFullscreen(win.src.xdgToplevel, null);
 	}
 	else
@@ -1866,7 +1861,7 @@ fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) {}
 fn void rgfw_window_minimizePlatform(GfxWindow* win)
 {
 	if (rgfw_window_isMaximized(win)) return;
-	win.internal.oldX = win.x; win.internal.oldY = win.y; win.internal.oldW = win.w; win.internal.oldH = win.h;
+	win.internal.old_bounds = win.bounds;
 	win.src.minimized = true;
 	xdgToplevelSetMinimized(win.src.xdgToplevel);
 }
@@ -1890,9 +1885,10 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, Gfx
 
 	GfxSurface* surface = create_surface(data, w, h, format);
 	if (surface == null) return false;
+	if (surface == null) return false;
 
-	int minW = w < surface.w ? w : surface.w;
-	int minH = h < surface.h ? h : surface.h;
+	int minW = w < surface.size.x ? w : surface.size.x;
+	int minH = h < surface.size.y ? h : surface.size.y;
 	copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
 
 	win.src.icon = xdgToplevelIconManagerV1CreateIcon(_rgfw.iconManager);
@@ -1938,10 +1934,8 @@ fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 	WlCursorImage* cursorImage = wlcursor.images[0];
 	WlProxy* cursorBuffer = wlCursorImageGetBuffer(cursorImage);
 
-	GfxSurface* surface = (GfxSurface*)rgfw_alloc_impl(GfxSurface::size);
-	rgfw_memzero(surface, GfxSurface::size);
-	surface.w = (int)cursorImage.width;
-	surface.h = (int)cursorImage.height;
+	GfxSurface* surface = mem::new(GfxSurface);
+	surface.size = { (int)cursorImage.width, (int)cursorImage.height };
 	surface.native.wlBuffer = cursorBuffer;
 	return (RgfwMouse*)surface;
 }
@@ -1951,9 +1945,9 @@ fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format)
 	GfxSurface* surface = create_surface(data, w, h, format);
 	if (surface == null) return null;
 
-	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, surface.w, surface.h, surface.w * 4, WL_SHM_FORMAT_ARGB8888);
-	int minW = w < surface.w ? w : surface.w;
-	int minH = h < surface.h ? h : surface.h;
+	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...surface.size, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
+	int minW = w < surface.size.x ? w : surface.size.x;
+	int minH = h < surface.size.y ? h : surface.size.y;
 	copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
 	return (RgfwMouse*)surface;
 }
@@ -1963,7 +1957,7 @@ fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 	GfxSurface* surface = (GfxSurface*)mouse;
 	win.src.usingCustomCursor = true;
 	wlSurfaceAttach(win.src.customCursorSurface, surface.native.wlBuffer, 0, 0);
-	wlSurfaceDamage(win.src.customCursorSurface, 0, 0, surface.w, surface.h);
+	wlSurfaceDamage(win.src.customCursorSurface, 0, 0, ...surface.size);
 	wlSurfaceCommit(win.src.customCursorSurface);
 	return true;
 }
@@ -2213,7 +2207,7 @@ fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, Rg
 	ctx.ctx = rgfw_eglCreateContext((EglDisplay)_rgfw.egl_display, config, share, (EglInt*)&ctxAttribs);
 	if (ctx.ctx == null) return false;
 
-	WlEglWindow* eglWindow = wlEglWindowCreate(win.src.surface, win.w, win.h);
+	WlEglWindow* eglWindow = wlEglWindowCreate(win.src.surface, win.width, win.height);
 	ctx.eglWindow = eglWindow;
 	ctx.surface = rgfw_eglCreateWindowSurface((EglDisplay)_rgfw.egl_display, config, (EglNativeWindowType)eglWindow, null);
 	if (ctx.surface == null)

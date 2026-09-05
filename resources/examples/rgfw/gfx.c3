@@ -50,7 +50,7 @@ struct RgfwGammaRamp
 struct GfxSurface
 {
 	char* data;
-	int w, h;
+	IntVec2 size;
 	GfxFormat format;
 	GfxConvertImageDataFn convertFunc;
 	RgfwNativeImage native;
@@ -68,9 +68,9 @@ struct GfxMonitor
 {
 	IntVec2 origin;
 	char[128] name;
-	float scaleX, scaleY;
+	Vec2 scale;
 	float pixelRatio;
-	float physW, physH;
+	Vec2 phys_size;
 	GfxMonitorMode mode;
 	void* userPtr;
 	RgfwMonitorNode* node;
@@ -84,16 +84,16 @@ struct RgfwKeyState
 
 struct GfxWindow
 {
+	inline IntRect bounds;
 	RgfwWindowSrc src;
 	GfxWindowInternal internal;
 	void* userPtr;
-	int x, y, w, h;
 }
 
 struct GfxWindowInternal
 {
 	RgfwKey exitKey;
-	int lastMouseX, lastMouseY;
+	IntVec2 last_mouse;
 	bool shouldClose;
 	bool rawMouse;
 	bool captureMouse;
@@ -102,7 +102,7 @@ struct GfxWindowInternal
 	RgfwKeymod mod;
 	RgfwEventFlag enabledEvents;
 	uint flags;
-	int oldX, oldY, oldW, oldH;
+	IntRect old_bounds;
 	GfxMonitorMode oldMode;
 	RgfwMouse* mouse;
 }
@@ -597,7 +597,7 @@ fn GfxWindow* create_window(char* name, int x, int y, int w, int h, RgfwWindowFl
 
 fn bool is_mouse_pressed(RgfwMouseButton button) => _rgfw.mouseButtons[(sz)button].current && !_rgfw.mouseButtons[(sz)button].prev;
 
-fn int[<2>] get_mouse(GfxWindow* win) => { win.internal.lastMouseX, win.internal.lastMouseY };
+fn IntVec2 GfxWindow.get_mouse(&win) => win.internal.last_mouse;
 
 <*
  Check if a window should be closed.
@@ -626,12 +626,12 @@ fn void window_scale_to_monitor(GfxWindow* win)
 {
 	GfxMonitor* monitor = find_monitor(win);
 	if (monitor == null) return;
-	rgfw_window_resize(win, (int)(monitor.scaleX * (float)win.w), (int)(monitor.scaleY * (float)win.h));
+	rgfw_window_resize(win, ...(IntVec2)(monitor.scale * (Vec2)win.size));
 }
 
 fn void window_move_to_monitor(GfxWindow* win, GfxMonitor* m)
 {
-	rgfw_window_move(win, m.origin.x + win.x, m.origin.y + win.y);
+	rgfw_window_move(win, ...(m.origin + win.origin));
 }
 
 fn void GfxWindow.set_flags(&win, RgfwWindowFlags flags) { _window_set_flags(win, flags, win.internal.flags); }
@@ -782,15 +782,15 @@ fn void _window_set_flags(GfxWindow* win, RgfwWindowFlags flags, RgfwWindowFlags
 	switch
 	{
 		case flags & RGFW_WINDOW_MAXIMIZE != 0: rgfw_window_maximize(win);
-		case cmpFlags & RGFW_WINDOW_MAXIMIZE != 0: rgfw_window_restore(win);
+		case cmpFlags & RGFW_WINDOW_MAXIMIZE != 0: restore_window(win);
 	}
 	switch
 	{
 		case flags & RGFW_WINDOW_MINIMIZE != 0: rgfw_window_minimize(win);
-		case cmpFlags & RGFW_WINDOW_MINIMIZE != 0: rgfw_window_restore(win);
+		case cmpFlags & RGFW_WINDOW_MINIMIZE != 0: restore_window(win);
 	}
 	if (flags & RGFW_WINDOW_CENTER) rgfw_window_center(win);
-	if (flags & RGFW_WINDOW_CENTER_CURSOR) rgfw_window_moveMouse(win, win.x + (win.w / 2), win.y + (win.h / 2));
+	if (flags & RGFW_WINDOW_CENTER_CURSOR) rgfw_window_moveMouse(win, win.x + (win.width / 2), win.y + (win.height / 2));
 	switch
 	{
 		case flags & RGFW_WINDOW_FULLSCREEN != 0: rgfw_window_setFullscreen(win, true);
@@ -811,8 +811,8 @@ fn void _window_set_flags(GfxWindow* win, RgfwWindowFlags flags, RgfwWindowFlags
 	switch (true)
 	{
 		case flags & RGFW_WINDOW_NO_RESIZE != 0 :
-			rgfw_window_setMaxSize(win, win.w, win.h);
-			rgfw_window_setMinSize(win, win.w, win.h);
+			rgfw_window_setMaxSize(win, win.width, win.height);
+			rgfw_window_setMinSize(win, win.width, win.height);
 		case cmpFlags & RGFW_WINDOW_NO_RESIZE != 0:
 			rgfw_window_setMaxSize(win, 0, 0);
 			rgfw_window_setMinSize(win, 0, 0);
@@ -823,7 +823,7 @@ fn void _window_set_flags(GfxWindow* win, RgfwWindowFlags flags, RgfwWindowFlags
 fn void _window_restored_callback(GfxWindow* win, int x, int y, int w, int h) @private
 {
 	win.internal.flags &= ~((uint)RGFW_WINDOW_MINIMIZE);
-	win.x = x; win.y = y; win.w = w; win.h = h;
+	win.x = x; win.y = y; win.width = w; win.height = h;
 	if (rgfw_window_isMaximized(win) == false) win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE);
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_RESTORED_FLAG)) return;
 	GfxEvent event;
@@ -841,12 +841,12 @@ fn void rgfw_window_checkMode(GfxWindow* win)
 	}
 	else if (rgfw_window_isMaximized(win))
 	{
-		rgfw_windowMaximizedCallback(win, win.x, win.y, win.w, win.h);
+		rgfw_windowMaximizedCallback(win, win.x, win.y, win.width, win.height);
 	}
 	else if (((win.internal.flags & RGFW_WINDOW_MINIMIZE) && !rgfw_window_isMaximized(win)) ||
 	((win.internal.flags & RGFW_WINDOW_MAXIMIZE) && !rgfw_window_isMaximized(win)))
 	{
-		_window_restored_callback(win, win.x, win.y, win.w, win.h);
+		_window_restored_callback(win, win.x, win.y, win.width, win.height);
 	}
 }
 
@@ -856,14 +856,14 @@ fn void _window_moved_callback(GfxWindow* win, int x, int y) @private
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_MOVED_FLAG)) return;
 	GfxEvent event;
 	event.type = RGFW_WINDOW_MOVED;
-	event.update.x = x; event.update.y = y; event.update.w = win.w; event.update.h = win.h;
+	event.update.x = x; event.update.y = y; event.update.w = win.width; event.update.h = win.height;
 	event.common.win = win;
 	event_queue_call_push(&event);
 }
 
 fn void _window_resized_callback(GfxWindow* win, int w, int h) @private
 {
-	win.w = w; win.h = h;
+	win.width = w; win.height = h;
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_RESIZED_FLAG)) return;
 	GfxEvent event;
 	event.type = RGFW_WINDOW_RESIZED;
@@ -881,17 +881,6 @@ fn void _window_close_callback(GfxWindow* win) @private
 	event_queue_call_push(&event);
 }
 
-fn void rgfw_mouseMotionCallback(GfxWindow* win, int x, int y)
-{
-	win.internal.lastMouseX = x;
-	win.internal.lastMouseY = y;
-	if (!(win.internal.enabledEvents & RGFW_MOUSE_MOTION_FLAG)) return;
-	GfxEvent event;
-	event.type = RGFW_MOUSE_MOTION;
-	event.mouse.x = x; event.mouse.y = y; event.mouse.inWindow = win.internal.mouseInside;
-	event.common.win = win;
-	event_queue_call_push(&event);
-}
 
 fn void _raw_motion_callback(GfxWindow* win, float x, float y)
 {
@@ -974,7 +963,7 @@ fn void rgfw_monitorCallback(GfxWindow* win, GfxMonitor* monitor, bool connected
 fn void rgfw_windowMaximizedCallback(GfxWindow* win, int x, int y, int w, int h)
 {
 	win.internal.flags |= RGFW_WINDOW_MAXIMIZE;
-	win.x = x; win.y = y; win.w = w; win.h = h;
+	win.x = x; win.y = y; win.width = w; win.height = h;
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_MAXIMIZED_FLAG)) return;
 	GfxEvent event;
 	event.type = RGFW_WINDOW_MAXIMIZED;
@@ -989,7 +978,7 @@ fn void rgfw_windowMinimizedCallback(GfxWindow* win)
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_MINIMIZED_FLAG)) return;
 	GfxEvent event;
 	event.type = RGFW_WINDOW_MINIMIZED;
-	event.update.x = win.x; event.update.y = win.y; event.update.w = win.w; event.update.h = win.h;
+	event.update.x = win.x; event.update.y = win.y; event.update.w = win.width; event.update.h = win.height;
 	event.common.win = win;
 	event_queue_call_push(&event);
 }
@@ -1150,8 +1139,8 @@ fn void rgfw_resetPrevState()
 
 
 fn RgfwWindowSrc* rgfw_window_getSrc(GfxWindow* win) => &win.src;
-fn bool rgfw_window_getPosition(GfxWindow* win, int* x, int* y) { if (x != null) *x = win.x; if (y != null) *y = win.y; return true; }
-fn bool rgfw_window_getSize(GfxWindow* win, int* w, int* h) { if (w != null) *w = win.w; if (h != null) *h = win.h; return true; }
+fn IntVec2 GfxWindow.get_origin(&win) => win.origin;
+fn IntVec2 GfxWindow.get_size(&win) => win.size;
 fn uint rgfw_window_getFlags(GfxWindow* win) => win.internal.flags;
 fn RgfwKey rgfw_window_getExitKey(GfxWindow* win) => win.internal.exitKey;
 fn void rgfw_window_setExitKey(GfxWindow* win, RgfwKey key) { win.internal.exitKey = key; }
@@ -1166,8 +1155,8 @@ fn bool rgfw_window_getSizeInPixels(GfxWindow* win, int* w, int* h)
 {
 	GfxMonitor* mon = find_monitor(win);
 	if (mon == null) return false;
-	if (w != null) *w = (int)((float)win.w * mon.pixelRatio);
-	if (h != null) *h = (int)((float)win.h * mon.pixelRatio);
+	if (w != null) *w = (int)((float)win.width * mon.pixelRatio);
+	if (h != null) *h = (int)((float)win.height * mon.pixelRatio);
 	return true;
 }
 
@@ -1205,14 +1194,14 @@ fn void rgfw_window_center(GfxWindow* win)
 {
 	GfxMonitor* mon = find_monitor(win);
 	if (mon == null) return;
-	rgfw_window_move(win, mon.origin.x + ((mon.mode.w - win.w) / 2), mon.origin.y + ((mon.mode.h - win.h) / 2));
+	rgfw_window_move(win, mon.origin.x + ((mon.mode.w - win.width) / 2), mon.origin.y + ((mon.mode.h - win.height) / 2));
 }
 
 fn bool rgfw_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
 {
 	GfxMonitorMode mode;
-	mode.w = win.w;
-	mode.h = win.h;
+	mode.w = win.width;
+	mode.h = win.height;
 	bool ret = rgfw_monitor_requestMode(mon, &mode, SCALE);
 	rgfw_window_move(win, ...mon.origin);
 	return ret;
@@ -1359,8 +1348,6 @@ fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mo
 }
 
 fn char* rgfw_monitor_getName(GfxMonitor* monitor) => &monitor.name[0];
-fn bool rgfw_monitor_getScale(GfxMonitor* monitor, float* x, float* y) { if (x != null) *x = monitor.scaleX; if (y != null) *y = monitor.scaleY; return true; }
-fn bool rgfw_monitor_getPhysicalSize(GfxMonitor* monitor, float* w, float* h) { if (w != null) *w = monitor.physW; if (h != null) *h = monitor.physH; return true; }
 fn void rgfw_monitor_setUserPtr(GfxMonitor* monitor, void* userPtr) { monitor.userPtr = userPtr; }
 fn void* rgfw_monitor_getUserPtr(GfxMonitor* monitor) => monitor.userPtr;
 fn bool rgfw_monitor_getMode(GfxMonitor* monitor, GfxMonitorMode* mode) { if (mode != null) *mode = monitor.mode; return true; }
@@ -1473,12 +1460,27 @@ fn uint rgfw_decodeUTF8(char* string, sz* starting_index)
 	return codepoint - offsets[count - 1];
 }
 
+
 fn void show(GfxWindow* win) { if (win.internal.flags & RGFW_WINDOW_FOCUS_ON_SHOW) rgfw_window_focus(win); win.internal.flags &= ~((uint)RGFW_WINDOW_HIDE); rgfw_window_showPlatform(win); if (win.internal.flags & RGFW_WINDOW_MAXIMIZE) rgfw_window_maximize(win); }
-fn void rgfw_window_restore(GfxWindow* win) { rgfw_window_restorePlatform(win); win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE); show(win); rgfw_window_move(win, win.internal.oldX, win.internal.oldY); rgfw_window_resize(win, win.internal.oldW, win.internal.oldH); }
+
+fn void restore_window(GfxWindow* win)
+{
+	rgfw_window_restorePlatform(win);
+	win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE);
+	show(win);
+	rgfw_window_move(win, ...win.internal.old_bounds.origin);
+	rgfw_window_resize(win, ...win.internal.old_bounds.size);
+}
 fn void rgfw_window_minimize(GfxWindow* win) { rgfw_window_minimizePlatform(win); win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE); }
-fn void rgfw_window_maximize(GfxWindow* win) { win.internal.oldX = win.x; win.internal.oldY = win.y; win.internal.oldW = win.w; win.internal.oldH = win.h; win.internal.flags |= RGFW_WINDOW_MAXIMIZE; rgfw_window_fetchSize(win, null, null); rgfw_window_maximizePlatform(win); }
-fn void rgfw_window_move(GfxWindow* win, int x, int y) { win.x = x; win.y = y; rgfw_window_movePlatform(win, x, y); win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE); }
-fn void rgfw_window_resize(GfxWindow* win, int w, int h) { win.w = w; win.h = h; rgfw_window_resizePlatform(win, w, h); win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE); }
+fn void rgfw_window_maximize(GfxWindow* win)
+{
+	win.internal.old_bounds = win.bounds;
+	win.internal.flags |= RGFW_WINDOW_MAXIMIZE;
+	rgfw_window_fetchSize(win);
+	rgfw_window_maximizePlatform(win);
+}
+fn void rgfw_window_move(GfxWindow* win, int x, int y) { win.origin = { x, y }; rgfw_window_movePlatform(win, x, y); win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE); }
+fn void rgfw_window_resize(GfxWindow* win, int w, int h) { win.size = { w, h }; rgfw_window_resizePlatform(win, w, h); win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE); }
 
 module std::gfx @private;
 
@@ -1502,8 +1504,7 @@ fn void _mouse_notify_callback(GfxWindow* win, int x, int y, bool status)
 {
 	win.internal.mouseInside = status;
 	_rgfw.windowState.win = win;
-	win.internal.lastMouseX = x;
-	win.internal.lastMouseY = y;
+	win.internal.last_mouse = { x, y };
 	GfxEvent event;
 	event.common.win = win;
 	event.mouse.x = x; event.mouse.y = y; event.mouse.inWindow = win.internal.mouseInside;
@@ -1520,5 +1521,16 @@ fn void _mouse_notify_callback(GfxWindow* win, int x, int y, bool status)
 		_rgfw.windowState.mouseLeave = true;
 		event.type = RGFW_MOUSE_LEAVE;
 	}
+	event_queue_call_push(&event);
+}
+
+fn void _mouse_motion_callback(GfxWindow* win, int x, int y)
+{
+	win.internal.last_mouse = { x, y };
+	if (!(win.internal.enabledEvents & RGFW_MOUSE_MOTION_FLAG)) return;
+	GfxEvent event;
+	event.type = RGFW_MOUSE_MOTION;
+	event.mouse.x = x; event.mouse.y = y; event.mouse.inWindow = win.internal.mouseInside;
+	event.common.win = win;
 	event_queue_call_push(&event);
 }

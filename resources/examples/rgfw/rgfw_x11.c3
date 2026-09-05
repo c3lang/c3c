@@ -1,6 +1,6 @@
 module std::gfx @link("X11", "Xext", "Xrandr", "GL");
 
-import std::collections::list;
+import std::collections::list, std::math;
 
 // C3 port of the X11/GLX RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
 // Mechanical, line-by-line style translation of the RGFW_X11 implementation.
@@ -894,7 +894,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	rgfw_memzero(win, GfxWindow::size);
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
-	win.x = x; win.y = y; win.w = w; win.h = h;
+	win.x = x; win.y = y; win.width = w; win.height = h;
 	win.internal.mouse = _rgfw.standardMice[(sz)RGFW_MOUSE_NORMAL];
 	win.internal.flags = flags;
 	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
@@ -958,8 +958,7 @@ fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, G
 {
 	if (surface == null) return false;
 	surface.data = data;
-	surface.w = w;
-	surface.h = h;
+	surface.size = { w, h };
 	surface.format = format;
 
 	XWindowAttributes attrs;
@@ -969,7 +968,7 @@ fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, G
 		return false;
 	}
 
-	surface.native.bitmap = xCreateImage(_rgfw.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, (uint)surface.w, (uint)surface.h, 32, 0);
+	surface.native.bitmap = xCreateImage(_rgfw.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])surface.size, 32, 0);
 	surface.native.buffer = (char*)rgfw_alloc_impl((sz)(w * h * 4));
 	surface.native.format = rgfw_xImageGetFormat(surface.native.bitmap);
 
@@ -990,9 +989,8 @@ fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 	if (surface == null) return;
 	// surface.native.bitmap->data = surface.native.buffer would go here in real Xlib
 	// (XImage.data is a char* at a fixed offset); left to the caller's XImage helper.
-	int minW = win.w < surface.w ? win.w : surface.w;
-	int minH = win.h < surface.h ? win.h : surface.h;
-	xPutImage(_rgfw.display, win.src.window, win.src.gc, surface.native.bitmap, 0, 0, 0, 0, (uint)minW, (uint)minH);
+	IntVec2 min = math::min(win.size, surface.size);
+	xPutImage(_rgfw.display, win.src.window, win.src.gc, surface.native.bitmap, 0, 0, 0, 0, (uint)min.x, (uint)min.y);
 }
 
 fn void rgfw_surface_freePtr(GfxSurface* surface)
@@ -1134,7 +1132,7 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, char* name, RgfwWindowFlags flags
 	swa.event_mask = eventMask;
 	swa.background_pixmap = 0;
 
-	win.src.window = xCreateWindow(_rgfw.display, win.src.parent, win.x, win.y, (uint)win.w, (uint)win.h,
+	win.src.window = xCreateWindow(_rgfw.display, win.src.parent, win.x, win.y, (uint)win.width, (uint)win.height,
 		0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 13) | (1 << 11), &swa);
 		// CWBorderPixel | CWColormap | CWEventMask
 	if (win.src.window == 0) return false;
@@ -1177,7 +1175,7 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, char* name, RgfwWindowFlags flags
 		xChangeProperty(_rgfw.display, win.src.window, _rgfw.xdndAware, 4, 32, 0, &version, 1);
 	}
 
-	win.src.x = win.x; win.src.y = win.y; win.src.w = win.w; win.src.h = win.h;
+	win.src.x = win.x; win.src.y = win.y; win.src.w = win.width; win.src.h = win.height;
 	xSetWindowBackground(_rgfw.display, win.src.window, 0);
 	xClearWindow(_rgfw.display, win.src.window);
 	xSetWindowBackgroundPixmap(_rgfw.display, win.src.window, 0);
@@ -1558,7 +1556,7 @@ fn void rgfw_xHandleEvent()
 			rgfw_mouseButtonCallback(win, value, false);
 			break;
 		}
-		case 6: rgfw_mouseMotionCallback(win, e.xmotion.x, e.xmotion.y); // MotionNotify
+		case 6: _mouse_motion_callback(win, e.xmotion.x, e.xmotion.y); // MotionNotify
 		case 12: rgfw_windowRefreshCallback(win, e.xexpose.x, e.xexpose.y, e.xexpose.width, e.xexpose.height); // Expose
 		case 28: // PropertyNotify
 			if (e.xproperty.state == 0 /* PropertyNewValue */)
@@ -1576,7 +1574,7 @@ fn void rgfw_xHandleEvent()
 				{
 					if (rgfw_window_isMaximized(win) && !(win.internal.flags & RGFW_WINDOW_MAXIMIZE))
 					{
-						rgfw_windowMaximizedCallback(win, win.x, win.y, win.w, win.h);
+						rgfw_windowMaximizedCallback(win, win.x, win.y, win.width, win.height);
 						handled = true;
 					}
 				}
@@ -1653,7 +1651,7 @@ fn void rgfw_xHandleEvent()
 				dragX = xpos;
 				dragY = ypos;
 
-				rgfw_mouseMotionCallback(win, xpos, ypos);
+				_mouse_motion_callback(win, xpos, ypos);
 
 				XEvent reply;
 				rgfw_memzero(&reply, XEvent::size);
@@ -1777,7 +1775,7 @@ fn void rgfw_xHandleEvent()
 			if (win.src.ic != null) xUnsetICFocus(win.src.ic);
 			rgfw_windowFocusCallback(win, false);
 		case 7: _mouse_notify_callback(win, e.xcrossing.x, e.xcrossing.y, true); // EnterNotify
-		case 8: _mouse_notify_callback(win, win.internal.lastMouseX, win.internal.lastMouseY, false); // LeaveNotify
+		case 8: _mouse_notify_callback(win, ...win.internal.last_mouse, false); // LeaveNotify
 		case 21: win.src.parent = e.xreparent.parent; // ReparentNotify
 		default: break;
 	}
@@ -1785,13 +1783,12 @@ fn void rgfw_xHandleEvent()
 	xFlush(_rgfw.display);
 }
 
-fn bool rgfw_window_fetchSize(GfxWindow* win, int* w, int* h)
+fn IntVec2 rgfw_window_fetchSize(GfxWindow* win)
 {
 	XWindowAttributes attribs;
 	xGetWindowAttributes(_rgfw.display, win.src.window, &attribs);
-	win.w = attribs.width;
-	win.h = attribs.height;
-	return rgfw_window_getSize(win, w, h);
+	win.size = { attribs.width, attribs.height };
+	return win.get_size();
 }
 
 fn void rgfw_pollEvents()
@@ -1809,7 +1806,7 @@ fn void rgfw_window_movePlatform(GfxWindow* win, int x, int y)
 
 fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
 {
-	win.w = w; win.h = h;
+	win.width = w; win.height = h;
 	xResizeWindow(_rgfw.display, win.src.window, (uint)w, (uint)h);
 	if (win.internal.flags & RGFW_WINDOW_NO_RESIZE)
 	{
@@ -1893,7 +1890,7 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 	if (fullscreen)
 	{
 		win.internal.flags |= RGFW_WINDOW_FULLSCREEN;
-		win.internal.oldX = win.x; win.internal.oldY = win.y; win.internal.oldW = win.w; win.internal.oldH = win.h;
+		win.internal.old_bounds = win.bounds;
 	}
 	else { win.internal.flags &= ~(uint)RGFW_WINDOW_FULLSCREEN; }
 
@@ -1918,7 +1915,7 @@ fn void rgfw_window_setOpacity(GfxWindow* win, char opacity)
 fn void rgfw_window_minimizePlatform(GfxWindow* win)
 {
 	if (rgfw_window_isMaximized(win)) return;
-	win.internal.oldX = win.x; win.internal.oldY = win.y; win.internal.oldW = win.w; win.internal.oldH = win.h;
+	win.internal.old_bounds = win.bounds;
 	xIconifyWindow(_rgfw.display, win.src.window, xDefaultScreen(_rgfw.display));
 	xFlush(_rgfw.display);
 }
@@ -2063,8 +2060,7 @@ fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y)
 	uint mask;
 	XWindow rootRet, childRet;
 	xQueryPointer(_rgfw.display, xDefaultRootWindow(_rgfw.display), &rootRet, &childRet, &rootX, &rootY, &winX, &winY, &mask);
-	win.internal.lastMouseX = x - win.x;
-	win.internal.lastMouseY = y - win.y;
+	win.internal.last_mouse = { x - win.x, y - win.y };
 	if (winX == x && winY == y) return;
 	xWarpPointer(_rgfw.display, 0, win.src.window, 0, 0, 0, 0, x - win.x, y - win.y);
 }
@@ -2316,14 +2312,20 @@ fn void rgfw_pollMonitors()
 		rgfw_memcpy(&monitor.name, info.name, n);
 		monitor.name[n] = 0;
 
-		if (physW > 0.0f && physH > 0.0f) { monitor.physW = physW; monitor.physH = physH; }
-		else { monitor.physW = (float)ci.width / 96.0f; monitor.physH = (float)ci.height / 96.0f; }
+		if (physW > 0.0f && physH > 0.0f)
+		{
+			monitor.phys_size = { physW, physH };
+		}
+		else
+		{
+			monitor.phys_size = { ci.width / 96.0f, ci.height / 96.0f };
+		}
 
 		monitor.origin = { ci.x, ci.y };
 
 		float dpi = 96.0f;
 		rgfw_xGetSystemContentDPI(&dpi);
-		monitor.scaleX = dpi / 96.0f; monitor.scaleY = dpi / 96.0f;
+		monitor.scale = (Vec2)(dpi / 96.0f);
 		monitor.pixelRatio = dpi >= 192.0f ? 2.0f : 1.0f;
 
 		void* mi = rgfw_xGetMode(ci, res, ci.mode, &monitor.mode);

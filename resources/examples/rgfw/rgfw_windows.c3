@@ -1,5 +1,5 @@
 module std::gfx @link("user32", "gdi32", "shell32", "advapi32", "dwmapi", "opengl32", "winmm");
-import std::collections::list;
+import std::collections::list, std::math;
 
 // C3 port of the Win32/WGL RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
 // Mechanical, line-by-line style translation of the RGFW_WINDOWS implementation.
@@ -655,8 +655,8 @@ fn int rgfw_window_createSwapChain_DirectX(GfxWindow* win, DxgiFactory* pFactory
 	DxgiSwapChainDesc swapChainDesc;
 	rgfw_memzero(&swapChainDesc, DxgiSwapChainDesc::size);
 	swapChainDesc.bufferCount = 2;
-	swapChainDesc.bufferDesc.width = (uint)win.w;
-	swapChainDesc.bufferDesc.height = (uint)win.h;
+	swapChainDesc.bufferDesc.width = (uint)win.width;
+	swapChainDesc.bufferDesc.height = (uint)win.height;
 	swapChainDesc.bufferDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.bufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.outputWindow = win.src.window;
@@ -742,7 +742,7 @@ fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwW
 	rgfw_memzero(win, GfxWindow::size);
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
-	win.x = x; win.y = y; win.w = w; win.h = h;
+	win.x = x; win.y = y; win.width = w; win.height = h;
 	win.internal.mouse = _rgfw.standardMice[(sz)RGFW_MOUSE_NORMAL];
 	win.internal.flags = flags;
 	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
@@ -967,7 +967,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			if (win.src.actionFrame) rgfw_window_captureMousePlatform(win, win.internal.captureMouse);
 			break;
 		}
-		case 0x0113: rgfw_windowRefreshCallback(win, 0, 0, win.w, win.h); break; // WM_TIMER
+		case 0x0113: rgfw_windowRefreshCallback(win, 0, 0, win.width, win.height); break; // WM_TIMER
 		case 0x00A1: // WM_NCLBUTTONDOWN
 		{
 			// workaround for half-second pause when starting to move window
@@ -989,7 +989,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			{
 				char[128] ps;
 				beginPaint(hWnd, &ps);
-				rgfw_windowRefreshCallback(win, 0, 0, win.w, win.h);
+				rgfw_windowRefreshCallback(win, 0, 0, win.width, win.height);
 				endPaint(hWnd, &ps);
 			}
 			return defWindowProcW(hWnd, message, wParam, lParam);
@@ -1064,7 +1064,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			int mx = (int)(short)(lParam & 0xffff);
 			int my = (int)(short)((lParam >> 16) & 0xffff);
 			if (win.internal.mouseInside == false) _mouse_notify_callback(win, mx, my, true);
-			rgfw_mouseMotionCallback(win, mx, my);
+			_mouse_motion_callback(win, mx, my);
 			break;
 		}
 		case 0x00FF: // WM_INPUT
@@ -1102,8 +1102,8 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 				pos.y += (int)(((float)raw.mouse.lLastY / 65535.0f) * (float)height);
 				screenToClient(win.src.window, &pos);
 
-				vecX = (float)(pos.x - win.internal.lastMouseX);
-				vecY = (float)(pos.y - win.internal.lastMouseY);
+				vecX = (float)(pos.x - win.internal.last_mouse.x);
+				vecY = (float)(pos.y - win.internal.last_mouse.y);
 			}
 			else
 			{
@@ -1114,7 +1114,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			_raw_motion_callback(win, vecX, vecY);
 			break;
 		}
-		case 0x02A3: _mouse_notify_callback(win, win.internal.lastMouseX, win.internal.lastMouseY, false); break; // WM_MOUSELEAVE
+		case 0x02A3: _mouse_notify_callback(win, ...win.internal.last_mouse, false); break; // WM_MOUSELEAVE
 		case 0x0201: case 0x0204: case 0x0207: case 0x020B: // WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_XBUTTONDOWN
 		{
 			RgfwMouseButton value = 0;
@@ -1281,14 +1281,14 @@ fn GfxWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, GfxWi
 	ushort[256] wideName;
 	multiByteToWideChar(65001, 0, name, -1, &wideName, 255);
 
-	Rect rect = {0, 0, win.w, win.h};
+	Rect rect = {0, 0, win.width, win.height};
 	uint style = rgfw_winapiWindowGetStyle(win, flags);
 	uint exStyle = rgfw_winapiWindowGetExStyle(win, flags);
 	adjustWindowRectEx(&rect, style, 0, exStyle);
 
 	win.src.window = createWindowExW(0, _rgfw.wndClass.className, &wideName, windowStyle, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _rgfw.instance, null);
 	setPropW(win.src.window, rgfw_wideRgfwPropName(), win);
-	rgfw_window_resize(win, win.w, win.h);
+	rgfw_window_resize(win, win.width, win.height);
 
 	if (flags & RGFW_WINDOW_ALLOW_DND)
 	{
@@ -1349,7 +1349,7 @@ fn void rgfw_window_focus(GfxWindow* win) { setForegroundWindow(win.src.window);
 fn void rgfw_window_raise(GfxWindow* win)
 {
 	bringWindowToTop(win.src.window);
-	setWindowPos(win.src.window, (HWnd*)(uptr)0, win.x, win.y, win.w, win.h, 0x0001 | 0x0002 | 0x0200 | 0x0020); // NOSIZE|NOMOVE|NOOWNERZORDER|FRAMECHANGED
+	setWindowPos(win.src.window, (HWnd*)(uptr)0, win.x, win.y, win.width, win.height, 0x0001 | 0x0002 | 0x0200 | 0x0020); // NOSIZE|NOMOVE|NOOWNERZORDER|FRAMECHANGED
 }
 
 fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
@@ -1361,18 +1361,18 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 		rgfw_monitor_setMode(mon, &win.internal.oldMode);
 		rgfw_window_setBorder(win, true);
 
-		Rect rect = {0, 0, win.internal.oldW, win.internal.oldH};
+		Rect rect = {0, 0, ...win.internal.old_bounds.size};
 		uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
 		uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
 		adjustWindowRectEx(&rect, style, 0, exStyle);
-		setWindowPos(win.src.window, (HWnd*)(uptr)0, win.internal.oldX, win.internal.oldY, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
+		setWindowPos(win.src.window, (HWnd*)(uptr)0, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
 
 		win.internal.flags &= ~(uint)RGFW_WINDOW_FULLSCREEN;
-		win.x = win.internal.oldX; win.y = win.internal.oldY; win.w = win.internal.oldW; win.h = win.internal.oldH;
+		win.bounds = win.internal.old_bounds;
 		return;
 	}
 
-	win.internal.oldX = win.x; win.internal.oldY = win.y; win.internal.oldW = win.w; win.internal.oldH = win.h;
+	win.internal.old_bounds = win.bounds;
 	win.internal.oldMode = mon.mode;
 	win.internal.flags |= RGFW_WINDOW_FULLSCREEN;
 	rgfw_window_setBorder(win, false);
@@ -1382,7 +1382,7 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 
 	rgfw_monitor_scaleToWindow(mon, win);
 	setWindowPos(win.src.window, (HWnd*)(uptr)(-1), 0, 0, mon.mode.w, mon.mode.h, 0x0200 | 0x0020 | 0x0040 | 0x0002);
-	win.w = mon.mode.w; win.h = mon.mode.h;
+	win.width = mon.mode.w; win.height = mon.mode.h;
 }
 
 fn void rgfw_window_maximizePlatform(GfxWindow* win) { rgfw_window_hide(win); showWindow(win.src.window, (int)SW_MAXIMIZE); }
@@ -1473,13 +1473,13 @@ fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key)
 	}
 }
 
-fn bool rgfw_window_fetchSize(GfxWindow* win, int* w, int* h)
+fn IntVec2 rgfw_window_fetchSize(GfxWindow* win)
 {
 	Rect area;
 	getClientRect(win.src.window, &area);
-	win.w = area.right;
-	win.h = area.bottom;
-	return rgfw_window_getSize(win, w, h);
+	win.width = area.right;
+	win.height = area.bottom;
+	return win.get_size();
 }
 
 fn void rgfw_pollEvents()
@@ -1640,11 +1640,12 @@ fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 	HDc hdc = createDCW((ushort*)&monitorInfo.szDevice, null, null, null);
 	float dpiX = (float)getDeviceCaps(hdc, 88 /* LOGPIXELSX */);
 	float dpiY = (float)getDeviceCaps(hdc, 90 /* LOGPIXELSY */);
-	node.mon.scaleX = dpiX / 96.0f;
-	node.mon.scaleY = dpiY / 96.0f;
+	node.mon.scale = { dpiX / 96.0f, dpiY / 96.0f };
 	node.mon.pixelRatio = dpiX >= 192.0f ? 2.0f : 1.0f;
-	node.mon.physW = (float)getDeviceCaps(hdc, 4 /* HORZSIZE */) / 25.4f;
-	node.mon.physH = (float)getDeviceCaps(hdc, 6 /* VERTSIZE */) / 25.4f;
+	node.mon.phys_size = {
+		(float)getDeviceCaps(hdc, 4 /* HORZSIZE */) / 25.4f,
+		(float)getDeviceCaps(hdc, 6 /* VERTSIZE */) / 25.4f
+	};
 	deleteDC(hdc);
 
 	if (monitorInfo.dwFlags & MONITORINFOF_PRIMARY) _rgfw.monitors.primary = node;
@@ -1880,7 +1881,7 @@ fn void rgfw_window_movePlatform(GfxWindow* win, int x, int y)
 
 fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
 {
-	win.w = w; win.h = h;
+	win.width = w; win.height = h;
 	Rect rect = {0, 0, w, h};
 	uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
 	uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
@@ -1997,8 +1998,7 @@ fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 
 fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y)
 {
-	win.internal.lastMouseX = x - win.x;
-	win.internal.lastMouseY = y - win.y;
+	win.internal.last_mouse = { x - win.x, y - win.y };
 	setCursorPos(x, y);
 }
 
@@ -2251,17 +2251,15 @@ fn void rgfw_unloadEGL() {}
 fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
 	surface.data = data;
-	surface.w = w;
-	surface.h = h;
+	surface.size = { w, h };
 	surface.format = format;
 
 	BitmapV5Header bi;
-	rgfw_memzero(&bi, BitmapV5Header::size);
 	bi.size = BitmapV5Header::size;
 	bi.width = w;
 	bi.height = -h;
 	bi.planes = 1;
-	bi.bitCount = (ushort)(format >= RGBA8 ? 32 : 24);
+	bi.bitCount = (ushort)format.channels * 8;
 	bi.compression = BI_RGB;
 
 	surface.native.bitmap = createDIBSection(_rgfw.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
@@ -2286,10 +2284,9 @@ fn void rgfw_surface_freePtr(GfxSurface* surface)
 
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
-	int blitW = win.w < surface.w ? win.w : surface.w;
-	int blitH = win.h < surface.h ? win.h : surface.h;
-	copy_image_data(surface.native.buffer, surface.w, blitH, surface.native.format, surface.data, surface.format, surface.convertFunc);
-	bitBlt(win.src.hdc, 0, 0, blitW, blitH, surface.native.hdcMem, 0, 0, 0x00CC0020 /* SRCCOPY */);
+	IntVec2 blit = math::min(win.size, surface.size);
+	copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convertFunc);
+	bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdcMem, 0, 0, 0x00CC0020 /* SRCCOPY */);
 }
 
 fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
