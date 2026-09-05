@@ -1,25 +1,16 @@
-module std::gfx @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
+module std::gfx @feat(MACOS) @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
 
-import std::collections, std::math;
+import std::collections, std::math, libc;
 // C3 port of the shared RGFW implementation from /Users/lerno/Downloads/RGFW.h.
 // This file intentionally imports no C3 standard-library modules. It only
 // declares the small C runtime hooks RGFW's C header also expects from the host.
 
-
-const bool RGFW_BUILD_MACOS = true;
-const bool RGFW_BUILD_X11 = false;
-const bool RGFW_BUILD_WAYLAND = false;
-const bool RGFW_BUILD_WINDOWS = false;
-const bool RGFW_BUILD_EGL = true;
 
 extern fn void* memcpy(void* dest, void* src, sz count);
 extern fn void* memset(void* dest, int value, sz count);
 extern fn sz strlen(char* str);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
-extern fn void* dlopen(char* path, int mode);
-extern fn void* dlsym(void* handle, char* symbol);
-extern fn int dlclose(void* handle);
 extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
@@ -42,7 +33,7 @@ alias VkInstance = void*;
 alias VkPhysicalDevice = void*;
 alias VkSurfaceKHR = ulong;
 alias VkResult = int;
-alias RgfwVkGetInstanceProcAddressProc = fn RgfwProc(VkInstance instance, char* procname);
+alias RgfwVkGetInstanceProcAddressProc = fn RgfwProc(VkInstance instance, ZString procname);
 struct VkMetalSurfaceCreateInfoEXT { int sType; void* pNext; uint flags; void* pLayer; }
 alias RgfwVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* createInfo, void* allocator, VkSurfaceKHR* surface);
 alias EglDisplay = void*;
@@ -53,7 +44,7 @@ alias EglNativeDisplayType = void*;
 alias EglNativeWindowType = void*;
 alias EglBoolean = uint;
 alias EglInt = int;
-alias EglGetProcAddressProc = fn RgfwProc(char* procname);
+alias EglGetProcAddressProc = fn RgfwProc(ZString procname);
 alias EglGetDisplayProc = fn EglDisplay(EglNativeDisplayType display);
 alias EglInitializeProc = fn EglBoolean(EglDisplay display, EglInt* major, EglInt* minor);
 alias EglTerminateProc = fn EglBoolean(EglDisplay display);
@@ -67,13 +58,13 @@ alias EglMakeCurrentProc = fn EglBoolean(EglDisplay display, EglSurface draw, Eg
 alias EglSwapBuffersProc = fn EglBoolean(EglDisplay display, EglSurface surface);
 alias EglSwapIntervalProc = fn EglBoolean(EglDisplay display, EglInt interval);
 alias EglGetCurrentContextProc = fn EglContext();
-alias EglQueryStringProc = fn char*(EglDisplay display, EglInt name);
+alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
 alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
-alias XOpenDisplayProc = fn void*(char* displayName);
+alias XOpenDisplayProc = fn void*(ZString displayName);
 alias XCloseDisplayProc = fn int(void* display);
 alias XDefaultRootWindowProc = fn ulong(void* display);
 alias XCreateSimpleWindowProc = fn ulong(void* display, ulong parent, int x, int y, uint width, uint height, uint borderWidth, ulong border, ulong background);
-alias XStoreNameProc = fn int(void* display, ulong window, char* name);
+alias XStoreNameProc = fn int(void* display, ulong window, ZString name);
 alias XMapRaisedProc = fn int(void* display, ulong window);
 alias XMapWindowProc = fn int(void* display, ulong window);
 alias XUnmapWindowProc = fn int(void* display, ulong window);
@@ -82,7 +73,7 @@ alias XMoveWindowProc = fn int(void* display, ulong window, int x, int y);
 alias XResizeWindowProc = fn int(void* display, ulong window, uint width, uint height);
 alias XFlushProc = fn int(void* display);
 alias XPendingProc = fn int(void* display);
-alias WlDisplayConnectProc = fn void*(char* name);
+alias WlDisplayConnectProc = fn void*(ZString name);
 alias WlDisplayDisconnectProc = fn void(void* display);
 alias WlDisplayDispatchPendingProc = fn int(void* display);
 alias WlDisplayRoundtripProc = fn int(void* display);
@@ -93,14 +84,14 @@ struct CGSize { CGFloat width, height; }
 struct CGRect { CGPoint origin; CGSize size; }
 
 extern fn void objc_msgSendRaw(...) @cname("objc_msgSend") @builtin;
-extern fn ObjcSelector sel_registerName(char* name);
-extern fn ObjcClass objc_getClass(char* name);
-extern fn ObjcClass objc_allocateClassPair(ObjcClass superclass, char* name, sz extraBytes);
+extern fn ObjcSelector sel_registerName(ZString name);
+extern fn ObjcClass objc_getClass(ZString name);
+extern fn ObjcClass objc_allocateClassPair(ObjcClass superclass, ZString name, sz extraBytes);
 extern fn void objc_registerClassPair(ObjcClass cls);
-extern fn bool class_addIvar(ObjcClass cls, char* name, sz size, char alignment, char* types);
+extern fn bool class_addIvar(ObjcClass cls, ZString name, sz size, char alignment, char* types);
 extern fn bool class_addMethod(ObjcClass cls, ObjcSelector name, void* imp, char* types);
-extern fn void* object_setInstanceVariable(ObjcId obj, char* name, void* value);
-extern fn void* object_getInstanceVariable(ObjcId obj, char* name, void* outValue);
+extern fn void* object_setInstanceVariable(ObjcId obj, ZString name, void* value);
+extern fn void* object_getInstanceVariable(ObjcId obj, ZString name, void* outValue);
 extern fn void* objc_autoreleasePoolPush();
 extern fn void objc_autoreleasePoolPop(void* context);
 
@@ -126,18 +117,18 @@ extern fn int cgWarpMouseCursorPosition(CGPoint p) @cname("CGWarpMouseCursorPosi
 extern fn CFIndex cfArrayGetCount(CFArrayRef array) @cname("CFArrayGetCount");
 extern fn void* cfArrayGetValueAtIndex(CFArrayRef array, CFIndex index) @cname("CFArrayGetValueAtIndex");
 extern fn void cfRelease(void* ref) @cname("CFRelease");
-extern fn CFStringRef cfStringCreateWithCString(void* alloc, char* str, uint encoding) @cname("CFStringCreateWithCString");
+extern fn CFStringRef cfStringCreateWithCString(void* alloc, ZString str, uint encoding) @cname("CFStringCreateWithCString");
 extern fn CFBundleRef cfBundleGetBundleWithIdentifier(CFStringRef bundleID) @cname("CFBundleGetBundleWithIdentifier");
 extern fn void* cfBundleGetFunctionPointerForName(CFBundleRef bundle, CFStringRef functionName) @cname("CFBundleGetFunctionPointerForName");
 
-macro objc_send(id, $FunctionType, char* $selector, ...)
+macro objc_send(id, $FunctionType, ZString $selector, ...)
 {
 	return (($FunctionType)&objc_msgSendRaw)((ObjcId)id, sel_registerName($selector), ...$vaarg);
 }
 
 alias ObjcSendId = fn ObjcId(ObjcId, ObjcSelector);
-alias ObjcSendIdCharPtr = fn ObjcId(ObjcId, ObjcSelector, char*);
-alias ObjcSendCharPtr = fn char*(ObjcId, ObjcSelector);
+alias ObjcSendIdCharPtr = fn ObjcId(ObjcId, ObjcSelector, ZString);
+alias ObjcSendCharPtr = fn ZString(ObjcId, ObjcSelector);
 alias ObjcSendVoid = fn void(ObjcId, ObjcSelector);
 alias ObjcSendVoidId = fn void(ObjcId, ObjcSelector, ObjcId);
 alias ObjcSendVoidBool = fn void(ObjcId, ObjcSelector, bool);
@@ -152,7 +143,7 @@ alias ObjcSendIdNSUInteger = fn ObjcId(ObjcId, ObjcSelector, NSUInteger);
 alias ObjcSendIdRect = fn ObjcId(ObjcId, ObjcSelector, CGRect);
 alias ObjcSendIdSize = fn ObjcId(ObjcId, ObjcSelector, CGSize);
 alias ObjcSendIdImagePoint = fn ObjcId(ObjcId, ObjcSelector, ObjcId, CGPoint);
-alias ObjcSendBitmapRepInit = fn ObjcId(ObjcId, ObjcSelector, char**, NSInteger, NSInteger, NSInteger, NSInteger, bool, bool, ObjcId, NSUInteger, NSInteger, NSInteger);
+alias ObjcSendBitmapRepInit = fn ObjcId(ObjcId, ObjcSelector, ZString*, NSInteger, NSInteger, NSInteger, NSInteger, bool, bool, ObjcId, NSUInteger, NSInteger, NSInteger);
 alias ObjcSendIdEvent = fn ObjcId(ObjcId, ObjcSelector, NSUInteger, ObjcId, ObjcId, bool);
 alias ObjcSendIdDouble = fn ObjcId(ObjcId, ObjcSelector, double);
 alias ObjcSendVoidIdBool = fn void(ObjcId, ObjcSelector, ObjcId, bool);
@@ -354,10 +345,10 @@ fn void rgfw_unloadGL()
 	_rgfw.nativeGL_handle = null;
 	_rgfw.glGetProcAddress = null;
 }
-fn void* rgfw_eglProc(char* name)
+fn void* rgfw_eglProc(ZString name)
 {
 	if (_rgfw.egl_handle == null) return null;
-	void* proc = dlsym(_rgfw.egl_handle, name);
+	void* proc = libc::dlsym(_rgfw.egl_handle, name);
 	if (proc == null && rgfw_eglGetProcAddress != null) proc = (void*)rgfw_eglGetProcAddress(name);
 	return proc;
 }
@@ -365,14 +356,14 @@ fn void* rgfw_eglProc(char* name)
 fn bool rgfw_loadEGL()
 {
 	if (_rgfw.egl_handle != null) return true;
-	char*[5] names = {"libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll"};
+	ZString[5] names = {"libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll"};
 	for (sz i = 0; i < 5; i++)
 	{
-		_rgfw.egl_handle = dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
+		_rgfw.egl_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
 		if (_rgfw.egl_handle != null) break;
 	}
 	if (_rgfw.egl_handle == null) return false;
-	void* getProc = dlsym(_rgfw.egl_handle, "eglGetProcAddress");
+	void* getProc = libc::dlsym(_rgfw.egl_handle, "eglGetProcAddress");
 	if (getProc == null) return false;
 	rgfw_eglGetProcAddress = (EglGetProcAddressProc)getProc;
 	_rgfw.eglGetProcAddress = getProc;
@@ -399,7 +390,7 @@ fn void rgfw_unloadEGL()
 {
 	if (_rgfw.egl_handle == null) return;
 	if (_rgfw.egl_display != null && rgfw_eglTerminate != null) rgfw_eglTerminate((EglDisplay)_rgfw.egl_display);
-	dlclose(_rgfw.egl_handle);
+	libc::dlclose(_rgfw.egl_handle);
 	_rgfw.egl_handle = null;
 	_rgfw.egl_display = null;
 	_rgfw.eglGetProcAddress = null;
@@ -409,19 +400,19 @@ const int RTLD_LAZY = 0x1;
 const int RTLD_LOCAL = 0x4;
 const int VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT = 1000217000;
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
-char*[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_EXT_metal_surface"};
+ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_EXT_metal_surface"};
 
 fn bool rgfw_loadVulkan()
 {
 	if (_rgfw.vulkan_handle != null) return true;
-	char*[3] names = {"libvulkan.1.dylib", "libvulkan.dylib", "libMoltenVK.dylib"};
+	ZString[3] names = {"libvulkan.1.dylib", "libvulkan.dylib", "libMoltenVK.dylib"};
 	for (sz i = 0; i < 3; i++)
 	{
-		_rgfw.vulkan_handle = dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
+		_rgfw.vulkan_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
 		if (_rgfw.vulkan_handle != null) break;
 	}
 	if (_rgfw.vulkan_handle == null) return false;
-	void* proc = dlsym(_rgfw.vulkan_handle, "vkGetInstanceProcAddr");
+	void* proc = libc::dlsym(_rgfw.vulkan_handle, "vkGetInstanceProcAddr");
 	if (proc == null) return false;
 	_rgfw.vkGetInstanceProcAddress = (RgfwVkGetInstanceProcAddressProc)proc;
 	return true;
@@ -430,18 +421,18 @@ fn bool rgfw_loadVulkan()
 fn void rgfw_unloadVulkan()
 {
 	if (_rgfw.vulkan_handle == null) return;
-	dlclose(_rgfw.vulkan_handle);
+	libc::dlclose(_rgfw.vulkan_handle);
 	_rgfw.vulkan_handle = null;
 	_rgfw.vkGetInstanceProcAddress = null;
 }
 
-fn RgfwProc rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, char* procname)
+fn RgfwProc rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
 {
 	if (_rgfw == null || _rgfw.vkGetInstanceProcAddress == null) return null;
 	return _rgfw.vkGetInstanceProcAddress(instance, procname);
 }
 
-fn char** rgfw_getRequiredInstanceExtensions_Vulkan(sz* count)
+fn ZString* rgfw_getRequiredInstanceExtensions_Vulkan(sz* count)
 {
 	if (count != null) *count = 2;
 	return &rgfw_vulkanExtensions;
@@ -467,7 +458,7 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 
 fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
 
-fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, char* msg)
+fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
 {
 	RgfwDebugInfo info;
 	info.type = type;
@@ -487,7 +478,7 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 
 
 
-fn int rgfw_init_ptr(char* className, RgfwInitFlags flags, RgfwInfo* info)
+fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 {
 	if (info == _rgfw || info == null) return 1;
 	if (className == null) className = "RGFW";
@@ -532,7 +523,7 @@ fn void rgfw_deinit_ptr(RgfwInfo* info)
 
 
 
-fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
 {
 	if (win == null || _rgfw == null) return null;
 	if (name == null) name = "";
@@ -690,24 +681,24 @@ struct RgfwAttribStack
 	sz max;
 }
 
-fn bool rgfw_extensionSupportedStr(char* extensions, char* ext, sz len)
+fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len)
 {
 	if (extensions == null || ext == null) return false;
 	while (ext[len - 1] == 0 && len > 3) len--;
-	char* start = extensions;
-	char* where = strstr(extensions, ext);
+	ZString start = extensions;
+	ZString where = (ZString)strstr(extensions, ext);
 	while (where != null)
 	{
-		char* terminator = where + len;
-		if ((where == start || *(where - 1) == ' ') && (*terminator == ' ' || *terminator == 0)) return true;
-		where = strstr(terminator, ext);
+		ZString terminator = where + len;
+		if ((where == start || *((char*)where - 1) == ' ') && (terminator[0] == ' ' || terminator[0] == 0)) return true;
+		where = (ZString)strstr(terminator, ext);
 	}
 	return false;
 }
 
-alias RgfwGetProcAddressFunc = fn RgfwProc(char* procname);
+alias RgfwGetProcAddressFunc = fn RgfwProc(ZString procname);
 
-fn bool rgfw_extensionSupported_base(char* extension, sz len, RgfwGetProcAddressFunc getProcAddress)
+fn bool rgfw_extensionSupported_base(ZString extension, sz len, RgfwGetProcAddressFunc getProcAddress)
 {
 	RgfwProc rgfw_gl_get_string = getProcAddress("glGetString");
 	if (rgfw_gl_get_string == null) return false;
@@ -766,7 +757,7 @@ fn void rgfw_window_deleteContext_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
 	if (win != null && (win.src.gfxType & RGFW_GFX_OWNED_BY_RGFW)) rgfw_free_impl(ctx);
 }
 
-fn bool rgfw_extensionSupported_OpenGL(char* extension, sz len)
+fn bool rgfw_extensionSupported_OpenGL(ZString extension, sz len)
 {
 	if (rgfw_extensionSupported_base(extension, len, &rgfw_getProcAddress_OpenGL)) return true;
 	return rgfw_extensionSupportedPlatform_OpenGL(extension, len);
@@ -780,9 +771,9 @@ fn void rgfw_window_makeCurrentWindow_OpenGL(GfxWindow* win)
 
 fn GfxWindow* rgfw_getCurrentWindow_OpenGL() => _rgfw.current;
 
-fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, sz len) => false;
+fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => false;
 
-fn RgfwProc rgfw_getProcAddress_OpenGL(char* procname)
+fn RgfwProc rgfw_getProcAddress_OpenGL(ZString procname)
 {
 	if (_rgfw == null || _rgfw.nativeGL_handle == null || procname == null) return null;
 	CFStringRef symbolName = cfStringCreateWithCString(null, procname, 0x0600);
@@ -885,18 +876,18 @@ const NSUInteger NS_EVENT_MASK_ANY = 0xffffffffffffffff;
 const NSInteger NS_WINDOW_LEVEL_NORMAL = 0;
 const NSInteger NS_WINDOW_LEVEL_FLOATING = 3;
 
-fn ObjcId objc_class(char* name) => (ObjcId)objc_getClass(name);
-fn ObjcId ns_alloc(char* className) => objc_send(objc_class(className), ObjcSendId, "alloc");
+fn ObjcId objc_class(ZString name) => (ObjcId)objc_getClass(name);
+fn ObjcId ns_alloc(ZString className) => objc_send(objc_class(className), ObjcSendId, "alloc");
 fn ObjcId ns_retain(ObjcId obj) { if (obj != null) objc_send(obj, ObjcSendId, "retain"); return obj; }
 fn void ns_release(ObjcId obj) { if (obj != null) objc_send(obj, ObjcSendVoid, "release"); }
-fn ObjcId ns_string(char* str) => objc_send(objc_class("NSString"), ObjcSendIdCharPtr, "stringWithUTF8String:", str);
-fn char* ns_utf8(ObjcId str) { if (str == null) return null; return objc_send(str, ObjcSendCharPtr, "UTF8String"); }
+fn ObjcId ns_string(ZString str) => objc_send(objc_class("NSString"), ObjcSendIdCharPtr, "stringWithUTF8String:", str);
+fn ZString ns_utf8(ObjcId str) { if (str == null) return null; return objc_send(str, ObjcSendCharPtr, "UTF8String"); }
 
 fn ObjcId ns_bitmapRep(int w, int h)
 {
 	return objc_send(ns_alloc("NSBitmapImageRep"), ObjcSendBitmapRepInit,
 		"initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bitmapFormat:bytesPerRow:bitsPerPixel:",
-		(char**)null, (NSInteger)w, (NSInteger)h, 8, 4, true, false, ns_string("NSCalibratedRGBColorSpace"), (NSUInteger)2, (NSInteger)(w * 4), 32);
+		(ZString*)null, (NSInteger)w, (NSInteger)h, 8, 4, true, false, ns_string("NSCalibratedRGBColorSpace"), (NSUInteger)2, (NSInteger)(w * 4), 32);
 }
 
 fn char* ns_bitmapData(ObjcId rep) => rep == null ? null : objc_send(rep, ObjcSendCharPtr, "bitmapData");
@@ -1216,7 +1207,7 @@ fn bool rgfw_osxPerformDragOperation(ObjcId self, ObjcSelector sel, ObjcId sende
 	if (objc_send(propertyList, ObjcSendBoolId, "isKindOfClass:", objc_class("NSString")))
 	{
 		NSUInteger stringCount = objc_send(propertyList, ObjcSendNSUInteger, "length");
-		char* filePath = ns_utf8(propertyList);
+		ZString filePath = ns_utf8(propertyList);
 		rgfw_dataDropCallback(win, filePath, (sz)stringCount + 1, RGFW_DATA_FILE);
 	}
 	if (!objc_send(propertyList, ObjcSendBoolId, "isKindOfClass:", objc_class("NSArray"))) return false;
@@ -1227,7 +1218,7 @@ fn bool rgfw_osxPerformDragOperation(ObjcId self, ObjcSelector sel, ObjcId sende
 	for (NSUInteger i = 0; i < count; i++)
 	{
 		ObjcId fileURL = objc_send(propertyList, ObjcSendIdNSUInteger, "objectAtIndex:", i);
-		char* filePath = ns_utf8(fileURL);
+		ZString filePath = ns_utf8(fileURL);
 		NSUInteger stringCount = objc_send(fileURL, ObjcSendNSUInteger, "length");
 		rgfw_dataDropCallback(win, filePath, (sz)stringCount + 1, RGFW_DATA_FILE);
 	}
@@ -1309,7 +1300,7 @@ fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h)
 	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setMinSize:", size);
 }
 
-fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
+fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
 {
 	_rgfw.nsPool = objc_autoreleasePoolPush();
 	_rgfw.nsApp = objc_send(objc_class("NSApplication"), ObjcSendId, "sharedApplication");
@@ -1415,7 +1406,7 @@ fn void rgfw_moveToMacOSResourceDir()
 	ObjcId bundle = objc_send(objc_class("NSBundle"), ObjcSendId, "mainBundle");
 	if (bundle == null) return;
 	ObjcId path = objc_send(bundle, ObjcSendId, "resourcePath");
-	char* raw = ns_utf8(path);
+	ZString raw = ns_utf8(path);
 	if (raw != null) chdir(raw);
 }
 fn void* rgfw_window_getView_OSX(GfxWindow* win) => win != null ? win.src.view : null;
@@ -1426,7 +1417,7 @@ fn void* rgfw_window_getHDC(GfxWindow* win) => null;
 fn ulong rgfw_window_getWindow_X11(GfxWindow* win) => (win != null && win.src.window != null) ? (ulong)win.src.window : 0;
 fn void* rgfw_window_getWindow_Wayland(GfxWindow* win) => win != null ? win.src.window : null;
 
-fn GfxWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
 {
 	NSUInteger style = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
 	if (!(flags & RGFW_WINDOW_NO_RESIZE)) style |= NS_WINDOW_STYLE_RESIZABLE;
@@ -1704,7 +1695,7 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 	win.height -= (int)offset;
 }
 fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidBool, "setIgnoresMouseEvents:", passthrough); }
-fn void rgfw_window_setName(GfxWindow* win, char* name) { if (win != null && win.src.window != null && name != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "setTitle:", ns_string(name)); }
+fn void rgfw_window_setName(GfxWindow* win, ZString name) { if (win != null && win.src.window != null && name != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "setTitle:", ns_string(name)); }
 fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
 {
 	if (_rgfw == null || _rgfw.nsApp == null) return false;
@@ -1782,7 +1773,7 @@ fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 	if (data == null || data.type != RGFW_DATA_TEXT || data.data == null) return false;
 	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
 	objc_send(pb, ObjcSendVoid, "clearContents");
-	return objc_send(pb, ObjcSendBoolIdId, "setString:forType:", ns_string(data.data), ns_string("public.utf8-plain-text"));
+	return objc_send(pb, ObjcSendBoolIdId, "setString:forType:", ns_string((ZString)data.data), ns_string("public.utf8-plain-text"));
 }
 
 fn void* rgfw_eglContext_getSourceContext(RgfwEglContext* ctx) => ctx != null ? ctx.ctx : null;
@@ -1805,14 +1796,14 @@ const EglInt EGL_OPENGL_ES_API = 0x30a0;
 const EglInt EGL_CONTEXT_CLIENT_VERSION = 0x3098;
 const EglInt EGL_EXTENSIONS = 0x3055;
 
-fn bool rgfw_extensionSupportedPlatform_EGL(char* extension, sz len)
+fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
 {
 	if (rgfw_eglQueryString == null || _rgfw.egl_display == null) return false;
-	char* extensions = rgfw_eglQueryString((EglDisplay)_rgfw.egl_display, EGL_EXTENSIONS);
+	ZString extensions = rgfw_eglQueryString((EglDisplay)_rgfw.egl_display, EGL_EXTENSIONS);
 	return rgfw_extensionSupportedStr(extensions, extension, len);
 }
 
-fn bool rgfw_extensionSupported_EGL(char* extension, sz len)
+fn bool rgfw_extensionSupported_EGL(ZString extension, sz len)
 {
 	if (rgfw_extensionSupported_base(extension, len, &rgfw_getProcAddress_EGL)) return true;
 	return rgfw_extensionSupportedPlatform_EGL(extension, len);
@@ -1821,7 +1812,7 @@ fn bool rgfw_extensionSupported_EGL(char* extension, sz len)
 fn void* rgfw_getCurrentContext_EGL() => rgfw_eglGetCurrentContext != null ? rgfw_eglGetCurrentContext() : null;
 fn GfxWindow* rgfw_getCurrentWindow_EGL() => _rgfw.current;
 fn void* rgfw_getDisplay_EGL() => _rgfw.egl_display;
-fn RgfwProc rgfw_getProcAddress_EGL(char* procname)
+fn RgfwProc rgfw_getProcAddress_EGL(ZString procname)
 {
 	if (procname == null) return null;
 	void* proc = rgfw_eglProc(procname);

@@ -1,6 +1,14 @@
 module std::gfx;
 import std::math;
 
+const bool RGFW_BUILD_MACOS = $feat(MACOS);
+const bool RGFW_BUILD_X11 = $feat(X11) || $feat(X11_WAYLAND);
+const bool RGFW_BUILD_WAYLAND = $feat(WAYLAND);
+const bool RGFW_BUILD_WINDOWS = $feat(WIN32);
+const bool RGFW_BUILD_EGL = $feat(X11_WAYLAND) || $feat(X11) || $feat(WAYLAND) || $feat(MACOS);
+const bool RGFW_BUILD_WASM = $feat(WASM);
+
+
 macro bool rgfw_bool(x) => x ? (bool)1 : (bool)0;
 macro uint rgfw_bit(x) => (uint)1 << (uint)(x);
 macro void* rgfw_memcpy(void* dest, void* src, sz count) => memcpy(dest, src, count);
@@ -187,7 +195,7 @@ struct RgfwDebugInfo
 {
 	RgfwDebugType type;
 	RgfwErrorCode code;
-	char* msg;
+	ZString msg;
 }
 
 constset GfxWindowIconType
@@ -575,7 +583,7 @@ fn void copy_image_data(char* dest_data, int w, int h, GfxFormat dest_format, ch
 	copy_image_data_64(dest_data, w, h, dest_format, src_data, src_format, false, func);
 }
 
-fn int init(char* className, RgfwInitFlags flags)
+fn int init(ZString className, RgfwInitFlags flags)
 {
 	return rgfw_init_ptr(className, flags, &_rgfw_global);
 }
@@ -589,7 +597,7 @@ fn GfxSurface* create_surface(char* data, int w, int h, GfxFormat format)
 	return surface;
 }
 
-fn GfxWindow* create_window(char* name, int x, int y, int w, int h, RgfwWindowFlags flags)
+fn GfxWindow* create_window(ZString name, int x, int y, int w, int h, RgfwWindowFlags flags)
 {
 	GfxWindow* win = mem::new(GfxWindow);
 	return rgfw_createWindowPtr(name, x, y, w, h, flags, win);
@@ -1347,7 +1355,7 @@ fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mo
 	return chosen ? *chosen : NOT_FOUND~;
 }
 
-fn char* rgfw_monitor_getName(GfxMonitor* monitor) => &monitor.name[0];
+fn ZString rgfw_monitor_getName(GfxMonitor* monitor) => (ZString)&monitor.name[0];
 fn void rgfw_monitor_setUserPtr(GfxMonitor* monitor, void* userPtr) { monitor.userPtr = userPtr; }
 fn void* rgfw_monitor_getUserPtr(GfxMonitor* monitor) => monitor.userPtr;
 fn bool rgfw_monitor_getMode(GfxMonitor* monitor, GfxMonitorMode* mode) { if (mode != null) *mode = monitor.mode; return true; }
@@ -1440,13 +1448,13 @@ fn bool rgfw_window_setMouseDefault(GfxWindow* win) => rgfw_window_setMouseStand
 fn bool rgfw_window_setMouseStandard(GfxWindow* win, RgfwMouseIcon icon) => rgfw_window_setMouse(win, _rgfw.standardMice[(sz)icon]);
 fn bool rgfw_window_setMouse(GfxWindow* win, RgfwMouse* mouse) { if (mouse != _rgfw.hiddenMouse) win.internal.mouse = mouse; return rgfw_window_setMousePlatform(win, mouse); }
 
-fn bool rgfw_isLatin(char* string, sz length)
+fn bool rgfw_isLatin(ZString string, sz length)
 {
 	for (sz i = 0; i < length; i++) if ((char)string[i] >= 0x80) return true;
 	return false;
 }
 
-fn uint rgfw_decodeUTF8(char* string, sz* starting_index)
+fn uint rgfw_decodeUTF8(ZString string, sz* starting_index)
 {
 	uint[6] offsets = {0x00000000u, 0x00003080u, 0x000e2080u, 0x03c82080u, 0xfa082080u, 0x82082080u};
 	uint codepoint = (char)string[*starting_index];

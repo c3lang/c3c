@@ -1,4 +1,4 @@
-module std::gfx;
+module std::gfx @feat(WASM);
 import std::math;
 // C3 port of the WASM/WebGL RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
 // Mechanical, line-by-line style translation of the RGFW_WASM implementation.
@@ -15,27 +15,19 @@ import std::math;
 // JS to call back into (key events, drag-drop) are marked @export so the host
 // can find them.
 
-const bool RGFW_BUILD_MACOS = false;
-const bool RGFW_BUILD_X11 = false;
-const bool RGFW_BUILD_WAYLAND = false;
-const bool RGFW_BUILD_WINDOWS = false;
-const bool RGFW_BUILD_EGL = false;
-const bool RGFW_BUILD_WASM = true;
+
 
 alias VkInstance = void*;
 alias VkPhysicalDevice = void*;
 alias VkSurfaceKHR = ulong;
 alias VkResult = int;
-alias RgfwVkGetInstanceProcAddressProc = fn RgfwProc(VkInstance instance, char* procname);
+alias RgfwVkGetInstanceProcAddressProc = fn RgfwProc(VkInstance instance, ZString procname);
 
 extern fn void* memcpy(void* dest, void* src, sz count);
 extern fn void* memset(void* dest, int value, sz count);
 extern fn sz strlen(char* str);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
-extern fn void* dlopen(char* path, int mode);
-extern fn void* dlsym(void* handle, char* symbol);
-extern fn int dlclose(void* handle);
 extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
@@ -49,7 +41,7 @@ alias EglNativeDisplayType = void*;
 alias EglNativeWindowType = void*;
 alias EglBoolean = uint;
 alias EglInt = int;
-alias EglGetProcAddressProc = fn RgfwProc(char* procname);
+alias EglGetProcAddressProc = fn RgfwProc(ZString procname);
 alias EglGetDisplayProc = fn EglDisplay(EglNativeDisplayType display);
 alias EglInitializeProc = fn EglBoolean(EglDisplay display, EglInt* major, EglInt* minor);
 alias EglTerminateProc = fn EglBoolean(EglDisplay display);
@@ -63,7 +55,7 @@ alias EglMakeCurrentProc = fn EglBoolean(EglDisplay display, EglSurface draw, Eg
 alias EglSwapBuffersProc = fn EglBoolean(EglDisplay display, EglSurface surface);
 alias EglSwapIntervalProc = fn EglBoolean(EglDisplay display, EglInt interval);
 alias EglGetCurrentContextProc = fn EglContext();
-alias EglQueryStringProc = fn char*(EglDisplay display, EglInt name);
+alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
 alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
 
 
@@ -221,7 +213,7 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
-fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, char* msg)
+fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
 {
 	RgfwDebugInfo info;
 	info.type = type;
@@ -237,7 +229,7 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 	return prev;
 }
 
-fn int rgfw_init_ptr(char* className, RgfwInitFlags flags, RgfwInfo* info)
+fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 {
 	if (info == _rgfw || info == null) return 1;
 	if (className == null) className = "RGFW";
@@ -297,7 +289,7 @@ fn void rgfw_deinit_ptr(RgfwInfo* info)
 
 
 
-fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
 {
 	if (win == null || _rgfw == null) return null;
 	if (name == null) name = "";
@@ -365,11 +357,11 @@ fn GfxFormat rgfw_nativeFormat() => RGBA8;
 
 // ---- JS host imports (no Emscripten runtime under C3's wasm target) ----
 extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "rgfw_set_canvas_size");
-extern fn void rgfwJsSetWindowTitle(char* name, sz len) @wasm("env", "rgfw_set_window_title");
+extern fn void rgfwJsSetWindowTitle(ZString name, sz len) @wasm("env", "rgfw_set_window_title");
 extern fn void rgfwJsSetupWindowListeners() @wasm("env", "rgfw_setup_window_listeners");
 extern fn void rgfwJsSetupDropListeners() @wasm("env", "rgfw_setup_drop_listeners");
 extern fn void rgfwJsBlitSurface(char* data, int w, int h, int minH) @wasm("env", "rgfw_blit_surface");
-extern fn void rgfwJsSetCursor(char* name, sz len) @wasm("env", "rgfw_set_cursor");
+extern fn void rgfwJsSetCursor(ZString name, sz len) @wasm("env", "rgfw_set_cursor");
 extern fn void rgfwJsHideCursor() @wasm("env", "rgfw_hide_cursor");
 extern fn int rgfwJsGetMouseX() @wasm("env", "rgfw_get_mouse_x");
 extern fn int rgfwJsGetMouseY() @wasm("env", "rgfw_get_mouse_y");
@@ -390,10 +382,10 @@ extern fn void rgfwJsWebglDestroyContext(int ctx) @wasm("env", "rgfw_webgl_destr
 extern fn void rgfwJsWebglMakeCurrent(int ctx) @wasm("env", "rgfw_webgl_make_current");
 extern fn void rgfwJsWebglCommitFrame() @wasm("env", "rgfw_webgl_commit_frame");
 extern fn int rgfwJsWebglGetCurrentContext() @wasm("env", "rgfw_webgl_get_current_context");
-extern fn int rgfwJsExtensionSupported(char* name, sz len) @wasm("env", "rgfw_extension_supported");
-extern fn RgfwProc rgfwJsGetProcAddress(char* name) @wasm("env", "rgfw_webgl_get_proc_address");
-extern fn void rgfwJsMkdir(char* name) @wasm("env", "rgfw_mkdir");
-extern fn void rgfwJsWriteFile(char* path, char* data, sz len) @wasm("env", "rgfw_write_file");
+extern fn int rgfwJsExtensionSupported(ZString name, sz len) @wasm("env", "rgfw_extension_supported");
+extern fn RgfwProc rgfwJsGetProcAddress(ZString name) @wasm("env", "rgfw_webgl_get_proc_address");
+extern fn void rgfwJsMkdir(ZString name) @wasm("env", "rgfw_mkdir");
+extern fn void rgfwJsWriteFile(ZString path, char* data, sz len) @wasm("env", "rgfw_write_file");
 
 const int DOM_VK_BACK_QUOTE = 192; const int DOM_VK_0 = 48; const int DOM_VK_1 = 49; const int DOM_VK_2 = 50;
 const int DOM_VK_3 = 51; const int DOM_VK_4 = 52; const int DOM_VK_5 = 53; const int DOM_VK_6 = 54;
@@ -558,11 +550,11 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 	}
 }
 
-fn void rgfw_handleKeyEvent(char* code, uint codepoint, bool press) @export("rgfw_handleKeyEvent")
+fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("rgfw_handleKeyEvent")
 {
-	char* iCode = code;
+	ZString iCode = code;
 	uint hash = 0;
-	while (*iCode != 0) { hash = ((hash ^ 0x7E057D79u) << 3) ^ (uint)*iCode; iCode++; }
+	while (iCode[0] != 0) { hash = ((hash ^ 0x7E057D79u) << 3) ^ (uint)iCode[0]; iCode++; }
 
 	RgfwKey physicalKey = rgfw_wasmPhysicalToRGFW(hash);
 	rgfw_keyCallback(_rgfw.root, physicalKey, _rgfw.root.internal.mod, rgfw_bool(is_key_down(physicalKey) && press), press);
@@ -644,7 +636,7 @@ fn void rgfw_initKeycodesPlatform()
 	_rgfw.keycodes[DOM_VK_F22] = RGFW_KEY_F22; _rgfw.keycodes[DOM_VK_F23] = RGFW_KEY_F23; _rgfw.keycodes[DOM_VK_F24] = RGFW_KEY_F24;
 }
 
-fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
+fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
 {
 	_rgfw.usingAsyncify = -1;
 	GfxMonitor monitor;
@@ -672,7 +664,7 @@ fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
 	return 0;
 }
 
-fn GfxWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
 {
 	rgfwJsSetCanvasSize(win.width, win.height);
 	rgfwJsSetWindowTitle(name, strlen(name));
@@ -698,7 +690,7 @@ fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h) { rgfwJsSetCanv
 
 fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 {
-	char* cursorName;
+	ZString cursorName;
 	switch (mouse)
 	{
 		case RGFW_MOUSE_NORMAL: cursorName = "default"; case RGFW_MOUSE_ARROW: cursorName = "default";
@@ -731,7 +723,7 @@ fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format) => nu
 
 fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 {
-	char* name = (char*)mouse;
+	ZString name = (ZString)mouse;
 	rgfwJsSetCursor(name, strlen(name));
 	return true;
 }
@@ -830,8 +822,8 @@ fn void rgfw_window_makeCurrentContext_OpenGL(GfxWindow* win)
 
 fn void rgfw_window_swapBuffers_OpenGL(GfxWindow* win) { rgfwJsWebglCommitFrame(); }
 fn void* rgfw_getCurrentContext_OpenGL() => (void*)(uptr)rgfwJsWebglGetCurrentContext();
-fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, sz len) => rgfw_bool(rgfwJsExtensionSupported(extension, len) != 0);
-fn RgfwProc rgfw_getProcAddress_OpenGL(char* procname) => rgfwJsGetProcAddress(procname);
+fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfw_bool(rgfwJsExtensionSupported(extension, len) != 0);
+fn RgfwProc rgfw_getProcAddress_OpenGL(ZString procname) => rgfwJsGetProcAddress(procname);
 fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval) {}
 
 fn void rgfw_deinitPlatform() {}
@@ -844,7 +836,7 @@ fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
 	else { rgfwJsExitPointerLock(); }
 }
 
-fn void rgfw_window_setName(GfxWindow* win, char* name)
+fn void rgfw_window_setName(GfxWindow* win, ZString name)
 {
 	if (name == null) name = "";
 	rgfwJsSetWindowTitle(name, strlen(name));

@@ -1,4 +1,4 @@
-module std::gfx @link("user32", "gdi32", "shell32", "advapi32", "dwmapi", "opengl32", "winmm");
+module std::gfx @feat(WIN32) @link("user32", "gdi32", "shell32", "advapi32", "dwmapi", "opengl32", "winmm");
 import std::collections::list, std::math;
 
 // C3 port of the Win32/WGL RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
@@ -7,17 +7,13 @@ import std::collections::list, std::math;
 // ONE rgfw*.c3 file should be included for a given target, matching how the
 // original C header only ever compiles one #ifdef backend at a time.
 
-const bool RGFW_BUILD_MACOS = false;
-const bool RGFW_BUILD_X11 = false;
-const bool RGFW_BUILD_WAYLAND = false;
-const bool RGFW_BUILD_WINDOWS = true;
-const bool RGFW_BUILD_EGL = false;
+
 
 alias VkInstance = void*;
 alias VkPhysicalDevice = void*;
 alias VkSurfaceKHR = ulong;
 alias VkResult = int;
-alias RgfwVkGetInstanceProcAddressProc = fn RgfwProc(VkInstance instance, char* procname);
+alias RgfwVkGetInstanceProcAddressProc = fn RgfwProc(VkInstance instance, ZString procname);
 
 
 extern fn void* memcpy(void* dest, void* src, sz count);
@@ -25,9 +21,6 @@ extern fn void* memset(void* dest, int value, sz count);
 extern fn sz strlen(char* str);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
-extern fn void* dlopen(char* path, int mode);
-extern fn void* dlsym(void* handle, char* symbol);
-extern fn int dlclose(void* handle);
 extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
@@ -41,7 +34,7 @@ alias EglNativeDisplayType = void*;
 alias EglNativeWindowType = void*;
 alias EglBoolean = uint;
 alias EglInt = int;
-alias EglGetProcAddressProc = fn RgfwProc(char* procname);
+alias EglGetProcAddressProc = fn RgfwProc(ZString procname);
 alias EglGetDisplayProc = fn EglDisplay(EglNativeDisplayType display);
 alias EglInitializeProc = fn EglBoolean(EglDisplay display, EglInt* major, EglInt* minor);
 alias EglTerminateProc = fn EglBoolean(EglDisplay display);
@@ -55,7 +48,7 @@ alias EglMakeCurrentProc = fn EglBoolean(EglDisplay display, EglSurface draw, Eg
 alias EglSwapBuffersProc = fn EglBoolean(EglDisplay display, EglSurface surface);
 alias EglSwapIntervalProc = fn EglBoolean(EglDisplay display, EglInt interval);
 alias EglGetCurrentContextProc = fn EglContext();
-alias EglQueryStringProc = fn char*(EglDisplay display, EglInt name);
+alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
 alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
 
 
@@ -181,11 +174,11 @@ const uint FLASHW_TIMERNOFG = 12;
 struct MinMaxInfo { Point ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize; }
 
 // ---- extern Win32 functions (kernel32/user32/gdi32/shell32/dwmapi) ----
-extern fn HModule* loadLibraryA(char* name) @cname("LoadLibraryA");
+extern fn HModule* loadLibraryA(ZString name) @cname("LoadLibraryA");
 extern fn int freeLibrary(HModule* hmod) @cname("FreeLibrary");
-extern fn void* getProcAddress(HModule* hmod, char* name) @cname("GetProcAddress");
+extern fn void* getProcAddress(HModule* hmod, ZString name) @cname("GetProcAddress");
 extern fn HModule* getModuleHandleW(ushort* name) @cname("GetModuleHandleW");
-extern fn int multiByteToWideChar(uint codePage, uint flags, char* str, int cbMultiByte, ushort* out, int cchWideChar) @cname("MultiByteToWideChar");
+extern fn int multiByteToWideChar(uint codePage, uint flags, ZString str, int cbMultiByte, ushort* out, int cchWideChar) @cname("MultiByteToWideChar");
 extern fn int wideCharToMultiByte(uint codePage, uint flags, ushort* wstr, int cchWideChar, char* out, int cbMultiByte, char* defChar, int* usedDefChar) @cname("WideCharToMultiByte");
 
 extern fn ushort registerClassW(WndClassW* wc) @cname("RegisterClassW");
@@ -523,7 +516,7 @@ const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
 const int VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR = 1000009000;
 struct VkWin32SurfaceCreateInfoKHR { int sType; void* pNext; uint flags; void* hinstance; void* hwnd; }
 alias RgfwVkCreateWin32SurfaceKHRProc = fn VkResult(VkInstance instance, VkWin32SurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
-char*[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_win32_surface"};
+ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_win32_surface"};
 
 fn bool rgfw_loadVulkan()
 {
@@ -544,13 +537,13 @@ fn void rgfw_unloadVulkan()
 	_rgfw.vkGetInstanceProcAddress = null;
 }
 
-fn RgfwProc rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, char* procname)
+fn RgfwProc rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
 {
 	if (_rgfw == null || _rgfw.vkGetInstanceProcAddress == null) return null;
 	return _rgfw.vkGetInstanceProcAddress(instance, procname);
 }
 
-fn char** rgfw_getRequiredInstanceExtensions_Vulkan(sz* count)
+fn ZString* rgfw_getRequiredInstanceExtensions_Vulkan(sz* count)
 {
 	if (count != null) *count = 2;
 	return &rgfw_vulkanExtensions;
@@ -674,7 +667,7 @@ fn int rgfw_window_createSwapChain_DirectX(GfxWindow* win, DxgiFactory* pFactory
 	return 0;
 }
 
-fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, char* msg)
+fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
 {
 	RgfwDebugInfo info;
 	info.type = type;
@@ -691,7 +684,7 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 }
 
 
-fn int rgfw_init_ptr(char* className, RgfwInitFlags flags, RgfwInfo* info)
+fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 {
 	if (info == _rgfw || info == null) return 1;
 	if (className == null) className = "RGFW";
@@ -735,7 +728,7 @@ fn void rgfw_deinit_ptr(RgfwInfo* info)
 }
 
 
-fn GfxWindow* rgfw_createWindowPtr(char* name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
 {
 	if (win == null || _rgfw == null) return null;
 	if (name == null) name = "";
@@ -1233,7 +1226,7 @@ fn void rgfw_initKeycodesPlatform()
 	_rgfw.keycodes[0x059] = RGFW_KEY_PAD_EQUAL; _rgfw.keycodes[0x037] = RGFW_KEY_PAD_MULTIPLY; _rgfw.keycodes[0x04A] = RGFW_KEY_PAD_MINUS;
 }
 
-fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
+fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
 {
 	setProcessDPIAware();
 	timeBeginPeriod(1);
@@ -1262,7 +1255,7 @@ fn int rgfw_initPlatform(char* className, RgfwInitFlags flags)
 	return 0;
 }
 
-fn GfxWindow* rgfw_createWindowPlatform(char* name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
 {
 	if (name[0] == 0) name = " ";
 	win.src.hIconSmall = null; win.src.hIconBig = null;
@@ -1415,17 +1408,17 @@ fn void rgfw_attribStack_init(RgfwAttribStack* stack, int* attribs, sz max) { st
 fn void rgfw_attribStack_pushAttrib(RgfwAttribStack* stack, int attrib) { stack.attribs[stack.count] = attrib; stack.count += 1; }
 fn void rgfw_attribStack_pushAttribs(RgfwAttribStack* stack, int attrib1, int attrib2) { rgfw_attribStack_pushAttrib(stack, attrib1); rgfw_attribStack_pushAttrib(stack, attrib2); }
 
-fn bool rgfw_extensionSupportedStr(char* extensions, char* ext, sz len)
+fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len)
 {
 	if (extensions == null || ext == null) return false;
 	while (ext[len - 1] == 0 && len > 3) len--;
-	char* start = extensions;
-	char* where = strstr(extensions, ext);
+	ZString start = extensions;
+	ZString where = (ZString)strstr(extensions, ext);
 	while (where != null)
 	{
-		char* terminator = where + len;
-		if ((where == start || *(where - 1) == ' ') && (*terminator == ' ' || *terminator == 0)) return true;
-		where = strstr(terminator, ext);
+		ZString terminator = where + len;
+		if ((where == start || *((char*)where - 1) == ' ') && (terminator[0] == ' ' || terminator[0] == 0)) return true;
+		where = (ZString)strstr(terminator, ext);
 	}
 	return false;
 }
@@ -1889,7 +1882,7 @@ fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
 	setWindowPos(win.src.window, (HWnd*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
 }
 
-fn void rgfw_window_setName(GfxWindow* win, char* name)
+fn void rgfw_window_setName(GfxWindow* win, ZString name)
 {
 	if (name == null) name = "";
 	ushort[256] wideName;
@@ -1982,7 +1975,7 @@ fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 	ushort* buffer = (ushort*)globalLock(object);
 	if (buffer == null) { globalFree(object); return false; }
 
-	multiByteToWideChar(65001, 0, data.data, -1, buffer, (int)data.length);
+	multiByteToWideChar(65001, 0, (ZString)data.data, -1, buffer, (int)data.length);
 	globalUnlock(object);
 
 	sz retry = 0;
@@ -2040,13 +2033,13 @@ const int WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB = 0x20A9;
 const int WGL_CONTEXT_DEBUG_BIT_ARB = 0x00000001;
 const int WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB = 0x00000004;
 
-alias GetExtStringArbFn = fn char*(HDc*);
-alias GetExtStringExtFn = fn char*();
-alias GlxGetProcAddressProc = fn RgfwProc(char*);
+alias GetExtStringArbFn = fn ZString(HDc*);
+alias GetExtStringExtFn = fn ZString();
+alias GlxGetProcAddressProc = fn RgfwProc(ZString);
 
-fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, sz len)
+fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 {
-	char* extensions = null;
+	ZString extensions = null;
 	RgfwProc proc = rgfw_getProcAddress_OpenGL("wglGetExtensionsStringARB");
 	RgfwProc proc2 = rgfw_getProcAddress_OpenGL("wglGetExtensionsStringEXT");
 	if (proc != null) { extensions = ((GetExtStringArbFn)proc)(rgfw_wglGetCurrentDC()); }
@@ -2054,7 +2047,7 @@ fn bool rgfw_extensionSupportedPlatform_OpenGL(char* extension, sz len)
 	return rgfw_bool(extensions != null && rgfw_extensionSupportedStr(extensions, extension, len));
 }
 
-fn RgfwProc rgfw_getProcAddress_OpenGL(char* procname)
+fn RgfwProc rgfw_getProcAddress_OpenGL(ZString procname)
 {
 	RgfwProc proc = _rgfw.glGetProcAddress != null ? ((GlxGetProcAddressProc)_rgfw.glGetProcAddress)(procname) : null;
 	if (proc != null) return proc;
@@ -2187,10 +2180,10 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, 
 		}
 
 		char[32] noError = "WGL_ARB_create_context_no_error";
-		if (rgfw_extensionSupportedPlatform_OpenGL((char*)&noError, 31)) rgfw_attribStack_pushAttribs(&stack, WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError);
+		if (rgfw_extensionSupportedPlatform_OpenGL((ZString)&noError, 31)) rgfw_attribStack_pushAttribs(&stack, WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError);
 
 		char[30] flushControl = "WGL_ARB_context_flush_control";
-		if (rgfw_extensionSupportedPlatform_OpenGL((char*)&flushControl, 30))
+		if (rgfw_extensionSupportedPlatform_OpenGL((ZString)&flushControl, 30))
 		{
 			if (hints.releaseBehavior == RGFW_GL_RELEASE_FLUSH) { rgfw_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB); }
 			else if (hints.releaseBehavior == RGFW_GL_RELEASE_NONE) { rgfw_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB); }
@@ -2199,7 +2192,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, 
 		int flags = 0;
 		if (hints.debug) flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
 		char[34] robustness = "WGL_ARB_create_context_robustness";
-		if (hints.robustness && rgfw_extensionSupportedPlatform_OpenGL((char*)&robustness, 33)) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
+		if (hints.robustness && rgfw_extensionSupportedPlatform_OpenGL((ZString)&robustness, 33)) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 		if (flags != 0) rgfw_attribStack_pushAttribs(&stack, WGL_CONTEXT_FLAGS_ARB, flags);
 
 		rgfw_attribStack_pushAttribs(&stack, 0, 0);
