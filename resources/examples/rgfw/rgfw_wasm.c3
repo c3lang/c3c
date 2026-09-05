@@ -152,7 +152,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	if (info == _rgfw || info == null) return 1;
 	if (className == null) className = "RGFW";
 	rgfw_setInfo(info);
-	rgfw_memzero(_rgfw, RgfwInfo::size);
+	*_rgfw = {};
 	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == false)
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_FAILED_FUNC_LOAD, "Failed to load the OpenGL library");
@@ -174,7 +174,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_INFO_GLOBAL, "failed to initialize global context");
 		rgfw_deinitPlatform();
-		rgfw_memzero(_rgfw, RgfwInfo::size);
+		*_rgfw = {};
 		rgfw_setInfo(null);
 		return out;
 	}
@@ -211,7 +211,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Rgf
 {
 	if (win == null || _rgfw == null) return null;
 	if (name == null) name = "";
-	rgfw_memzero(win, GfxWindow::size);
+	*win = {};
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
 	win.x = x; win.y = y; win.width = w; win.height = h;
@@ -713,13 +713,11 @@ fn RgfwGlHints* rgfw_getGlobalHints_OpenGL() { return rgfw_global_hints_open_gl;
 
 fn RgfwGlContext* rgfw_window_createContext_OpenGL(GfxWindow* win, RgfwGlHints* hints)
 {
-	RgfwGlContext* ctx = (RgfwGlContext*)rgfw_alloc_impl(RgfwGlContext::size);
-	if (ctx == null) return null;
-	rgfw_memzero(ctx, RgfwGlContext::size);
-	if (rgfw_window_createContextPtr_OpenGL(win, ctx, hints) == false)
+	RgfwGlContext* ctx = mem::new(RgfwGlContext);
+	if (!rgfw_window_createContextPtr_OpenGL(win, ctx, hints))
 	{
-		rgfw_free_impl(ctx);
-		if (win != null) win.src.ctx.native = null;
+		free(ctx);
+		if (win) win.src.ctx.native = null;
 		return null;
 	}
 	win.src.gfxType |= RGFW_GFX_OWNED_BY_RGFW;

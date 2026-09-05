@@ -11,8 +11,6 @@ const bool RGFW_BUILD_WASM = $feat(WASM);
 
 macro uint rgfw_bit(x) => (uint)1 << (uint)(x);
 macro void* rgfw_memcpy(void* dest, void* src, sz count) => memcpy(dest, src, count);
-macro void* rgfw_memzero(void* ptr, sz count) => memset(ptr, 0, count);
-macro float rgfw_min(float a, float b) => a < b ? a : b;
 fn void* rgfw_alloc_impl(sz size) => malloc(size);
 fn void rgfw_free_impl(void* ptr) { if (ptr != null) free(ptr); }
 
@@ -1186,11 +1184,7 @@ fn void rgfw_dataDropCallback(GfxWindow* win, char* data, sz length, RgfwDataTra
 	_rgfw.windowState.win = win;
 	_rgfw.windowState.dataDrop = true;
 	_rgfw.windowState.dataLength = length;
-	GfxDataDropNode node;
-	rgfw_memzero(&node, GfxDataDropNode::size);
-	node.data = data;
-	node.length = length;
-	node.type = dataType;
+	GfxDataDropNode node = { .data = data, .length = length, .type = dataType };
 	GfxEvent event;
 	event.type = RGFW_DATA_DROP;
 	event.drop.value = &node;
@@ -1280,7 +1274,7 @@ fn void rgfw_resetPrevState()
 	for (sz i = 0; i < (sz)RGFW_MOUSE_FINAL; i++) _rgfw.mouseButtons[i].prev = _rgfw.mouseButtons[i].current;
 	_rgfw.scrollX = 0.0f; _rgfw.scrollY = 0.0f;
 	_rgfw.vectorX = 0.0f; _rgfw.vectorY = 0.0f;
-	rgfw_memzero(&_rgfw.windowState, RgfwWindowState::size);
+	_rgfw.windowState = {};
 	GfxDataDropNode* node = _rgfw.dndRoot;
 	while (node != null)
 	{
@@ -1384,9 +1378,7 @@ fn void rgfw_surface_free(GfxSurface* surface) { rgfw_surface_freePtr(surface); 
 
 fn GfxSurface* rgfw_window_createSurface(GfxWindow* win, char* data, int w, int h, GfxFormat format)
 {
-	GfxSurface* surface = (GfxSurface*)rgfw_alloc_impl(GfxSurface::size);
-	if (surface == null) return null;
-	rgfw_memzero(surface, GfxSurface::size);
+	GfxSurface* surface = mem::new(GfxSurface);
 	rgfw_window_createSurfacePtr(win, data, w, h, format, surface);
 	return surface;
 }
@@ -1532,7 +1524,7 @@ fn bool rgfw_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, 
 	{
 		float value = (float)i / (float)(count - 1);
 		value = powf(value, 1.0f / gamma) * 65535.0f + 0.5f;
-		value = rgfw_min(value, 65535.0f);
+		value = min(value, 65535.0f);
 		ptr[i] = (ushort)value;
 	}
 	RgfwGammaRamp ramp;

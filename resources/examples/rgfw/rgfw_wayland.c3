@@ -615,7 +615,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	if (info == _rgfw || info == null) return 1;
 	if (className == null) className = "RGFW";
 	rgfw_setInfo(info);
-	rgfw_memzero(_rgfw, RgfwInfo::size);
+	*_rgfw = {};
 	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == false) return -1;
 	if (flags & RGFW_INIT_EGL && rgfw_loadEGL() == false) return -1;
 	if (flags & RGFW_INIT_VULKAN && rgfw_loadVulkan() == false) return -1;
@@ -624,7 +624,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	if (out != 0)
 	{
 		rgfw_deinitPlatform();
-		rgfw_memzero(_rgfw, RgfwInfo::size);
+		*_rgfw = {};
 		rgfw_setInfo(null);
 		return out;
 	}
@@ -658,7 +658,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Rgf
 {
 	if (win == null || _rgfw == null) return null;
 	if (name == null) name = "";
-	rgfw_memzero(win, GfxWindow::size);
+	*win = {};
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
 	win.x = x; win.y = y; win.width = w; win.height = h;
@@ -1670,7 +1670,6 @@ fn void rgfw_pollEvents()
 	}
 
 	Pollfd fds;
-	rgfw_memzero(&fds, Pollfd::size);
 	fds.fd = wlDisplayGetFd(_rgfw.wlDisplay);
 	fds.events = (short)POLLIN;
 

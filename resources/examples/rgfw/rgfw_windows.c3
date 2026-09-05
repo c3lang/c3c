@@ -387,7 +387,6 @@ fn bool rgfw_loadGL()
 	uint pfdFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
 
 	PixelFormatDescriptor pfd;
-	rgfw_memzero(&pfd, PixelFormatDescriptor::size);
 	pfd.size = (ushort)PixelFormatDescriptor::size;
 	pfd.version = 1;
 	pfd.flags = pfdFlags;
@@ -558,7 +557,6 @@ fn int rgfw_window_createSwapChain_DirectX(GfxWindow* win, DxgiFactory* pFactory
 	if (win == null || pFactory == null || pDevice == null || swapchain == null) return -1;
 
 	DxgiSwapChainDesc swapChainDesc;
-	rgfw_memzero(&swapChainDesc, DxgiSwapChainDesc::size);
 	swapChainDesc.bufferCount = 2;
 	swapChainDesc.bufferDesc.width = (uint)win.width;
 	swapChainDesc.bufferDesc.height = (uint)win.height;
@@ -601,7 +599,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	if (info == _rgfw || info == null) return 1;
 	if (className == null) className = "RGFW";
 	rgfw_setInfo(info);
-	rgfw_memzero(_rgfw, RgfwInfo::size);
+	*_rgfw = {};
 	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == false) return -1;
 	if (flags & RGFW_INIT_EGL && rgfw_loadEGL() == false) return -1;
 	if (flags & RGFW_INIT_VULKAN && rgfw_loadVulkan() == false) return -1;
@@ -610,7 +608,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	if (out != 0)
 	{
 		rgfw_deinitPlatform();
-		rgfw_memzero(_rgfw, RgfwInfo::size);
+		*_rgfw = {};
 		rgfw_setInfo(null);
 		return out;
 	}
@@ -644,7 +642,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Rgf
 {
 	if (win == null || _rgfw == null) return null;
 	if (name == null) name = "";
-	rgfw_memzero(win, GfxWindow::size);
+	*win = {};
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
 	win.x = x; win.y = y; win.width = w; win.height = h;
@@ -742,7 +740,6 @@ fn void rgfw_win32MakeWindowTransparent(GfxWindow* win)
 	if (!(win.internal.flags & RGFW_WINDOW_TRANSPARENT)) return;
 
 	DwmBlurBehind bb;
-	rgfw_memzero(&bb, DwmBlurBehind::size);
 	bb.dwFlags = 0x1; // DWM_BB_ENABLE
 	bb.fEnable = 1;
 	bb.hRgnBlur = null;
@@ -780,7 +777,6 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 	if (win == null) return defWindowProcW(hWnd, message, wParam, lParam);
 
 	Rect frame;
-	rgfw_memzero(&frame, Rect::size);
 	uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
 	uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
 	adjustWindowRectEx(&frame, style, 0, exStyle);
@@ -977,7 +973,6 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			if (!(win.internal.rawMouse || _rgfw.rawMouse)) return defWindowProcW(hWnd, message, wParam, lParam);
 
 			RawInputMouse raw;
-			rgfw_memzero(&raw, RawInputMouse::size);
 			uint rawSize = (uint)RawInputMouse::size;
 			getRawInputData((HRawInput)(uptr)lParam, RID_INPUT, &raw, &rawSize, (uint)RawInputHeader::size);
 
@@ -1146,7 +1141,7 @@ fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
 	_rgfw.instance = getModuleHandleW(null);
 	multiByteToWideChar(65001, 0, className, -1, (ushort*)&_rgfw.wideClassName, 255);
 
-	rgfw_memzero(&_rgfw.wndClass, WndClassW::size);
+	_rgfw.wndClass = {};
 	_rgfw.wndClass.className = (ushort*)&_rgfw.wideClassName;
 	_rgfw.wndClass.hInstance = _rgfw.instance;
 	_rgfw.wndClass.hCursor = loadCursorA(null, (char*)(uptr)32512 /* IDC_ARROW */);
@@ -1339,14 +1334,12 @@ fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key)
 {
 	uint vsc = rgfw_rgfwToApiKey(key);
 	char[256] keyboardState;
-	rgfw_memzero(&keyboardState, 256);
 	if (getKeyboardState((char*)&keyboardState) == 0) return key;
 
 	uint vk = mapVirtualKeyW(vsc, 1 /* MAPVK_VSC_TO_VK */);
 	void* layout = getKeyboardLayout(0);
 
 	ushort[4] charBuffer;
-	rgfw_memzero(&charBuffer, 8);
 	int result = toUnicodeEx(vk, vsc, (char*)&keyboardState, &charBuffer, 1, 0, layout);
 	if (result == 1 && charBuffer[0] < 256) return (RgfwKey)charBuffer[0];
 
@@ -1403,7 +1396,6 @@ fn bool rgfw_window_isHidden(GfxWindow* win) => isWindowVisible(win.src.window) 
 fn bool rgfw_window_isMinimized(GfxWindow* win)
 {
 	WindowPlacement placement;
-	rgfw_memzero(&placement, WindowPlacement::size);
 	getWindowPlacement(win.src.window, &placement);
 	return placement.showCmd == SW_SHOWMINIMIZED;
 }
@@ -1411,7 +1403,6 @@ fn bool rgfw_window_isMinimized(GfxWindow* win)
 fn bool rgfw_window_isMaximized(GfxWindow* win)
 {
 	WindowPlacement placement;
-	rgfw_memzero(&placement, WindowPlacement::size);
 	getWindowPlacement(win.src.window, &placement);
 	return placement.showCmd == SW_SHOWMAXIMIZED || isZoomed(win.src.window) != 0;
 }
@@ -1500,7 +1491,6 @@ fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* monitor)
 fn int rgfw_win32GetMonitorHandleCallback(void* hMonitor, void* hdcMonitor, Rect* lprcMonitor, iptr dwData)
 {
 	MonitorInfoExW mi;
-	rgfw_memzero(&mi, MonitorInfoExW::size);
 	mi.cbSize = MonitorInfoExW::size;
 	if (getMonitorInfoW(hMonitor, &mi) != 0)
 	{
@@ -1515,7 +1505,6 @@ fn int rgfw_win32GetMonitorHandleCallback(void* hMonitor, void* hdcMonitor, Rect
 fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 {
 	DevModeW dm;
-	rgfw_memzero(&dm, DevModeW::size);
 	dm.size = (ushort)DevModeW::size;
 	if (enumDisplaySettingsW((ushort*)&adapter.deviceName, (uint)ENUM_CURRENT_SETTINGS, &dm) == 0) return;
 
@@ -1536,7 +1525,6 @@ fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 	rgfw_win32GetMode(&dm, &node.mon.mode);
 
 	MonitorInfoExW monitorInfo;
-	rgfw_memzero(&monitorInfo, MonitorInfoExW::size);
 	monitorInfo.cbSize = MonitorInfoExW::size;
 	getMonitorInfoW(node.hMonitor, &monitorInfo);
 
@@ -1564,7 +1552,7 @@ fn void rgfw_pollMonitors()
 	DisplayDeviceW adapter;
 	for (uint adapterNum = 0;; adapterNum++)
 	{
-		rgfw_memzero(&adapter, DisplayDeviceW::size);
+		adapter = {};
 		adapter.cb = DisplayDeviceW::size;
 		if (enumDisplayDevicesW(null, adapterNum, &adapter, 0) == 0) break;
 		if (!(adapter.stateFlags & DISPLAY_DEVICE_ACTIVE)) continue;
@@ -1573,7 +1561,7 @@ fn void rgfw_pollMonitors()
 		uint deviceNum;
 		for (deviceNum = 0;; deviceNum++)
 		{
-			rgfw_memzero(&dd, DisplayDeviceW::size);
+			dd = {};
 			dd.cb = DisplayDeviceW::size;
 			if (enumDisplayDevicesW((ushort*)&adapter.deviceName, deviceNum, &dd, 0) == 0) break;
 			if (!(dd.stateFlags & DISPLAY_DEVICE_ACTIVE)) continue;
@@ -1625,7 +1613,6 @@ fn GfxMonitor* find_monitor(GfxWindow* win)
 fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	DevModeW dm;
-	rgfw_memzero(&dm, DevModeW::size);
 	dm.size = (ushort)DevModeW::size;
 	dm.fields |= DM_PELSWIDTH | DM_PELSHEIGHT;
 	dm.pelsWidth = (uint)mode.w;
@@ -1650,7 +1637,6 @@ fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
 fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	DevModeW dm;
-	rgfw_memzero(&dm, DevModeW::size);
 	dm.size = (ushort)DevModeW::size;
 	uint index = 0;
 
@@ -1679,7 +1665,6 @@ fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonit
 fn HIcon rgfw_loadHandleImage(char* data, int w, int h, GfxFormat format, int icon)
 {
 	BitmapV5Header bi;
-	rgfw_memzero(&bi, BitmapV5Header::size);
 	bi.size = BitmapV5Header::size;
 	bi.width = w;
 	bi.height = -h;
@@ -1696,7 +1681,6 @@ fn HIcon rgfw_loadHandleImage(char* data, int w, int h, GfxFormat format, int ic
 	HBitmap mask = createBitmap(w, h, 1, 1, null);
 
 	IconInfo ii;
-	rgfw_memzero(&ii, IconInfo::size);
 	ii.fIcon = icon;
 	ii.xHotspot = (uint)w / 2;
 	ii.yHotspot = (uint)h / 2;
@@ -1748,7 +1732,6 @@ fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request)
 {
 	if (win.has_focus() && request != CANCEL) return;
 	FlashWInfo desc;
-	rgfw_memzero(&desc, FlashWInfo::size);
 	desc.cbSize = FlashWInfo::size;
 	desc.hwnd = win.src.window;
 	switch (request)
@@ -2007,7 +1990,6 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, 
 	win.src.gfxType = RGFW_GFX_NATIVE_OPEN_GL;
 
 	PixelFormatDescriptor pfd;
-	rgfw_memzero(&pfd, PixelFormatDescriptor::size);
 	pfd.size = (ushort)PixelFormatDescriptor::size;
 	pfd.version = 1;
 	pfd.flags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;

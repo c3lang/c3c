@@ -617,7 +617,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	if (info == _rgfw || info == null) return 1;
 	if (className == null) className = "RGFW";
 	rgfw_setInfo(info);
-	rgfw_memzero(_rgfw, RgfwInfo::size);
+	*_rgfw = {};
 	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == false) return -1;
 	if (flags & RGFW_INIT_EGL && rgfw_loadEGL() == false) return -1;
 	if (flags & RGFW_INIT_VULKAN && rgfw_loadVulkan() == false) return -1;
@@ -626,7 +626,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	if (out != 0)
 	{
 		rgfw_deinitPlatform();
-		rgfw_memzero(_rgfw, RgfwInfo::size);
+		*_rgfw = {};
 		rgfw_setInfo(null);
 		return out;
 	}
@@ -659,7 +659,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Rgf
 {
 	if (win == null || _rgfw == null) return null;
 	if (name == null) name = "";
-	rgfw_memzero(win, GfxWindow::size);
+	*win = {};
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
 	win.x = x; win.y = y; win.width = w; win.height = h;
@@ -785,7 +785,6 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state)
 {
 	char[4] mask;
-	rgfw_memzero(&mask, 4);
 	if (state) xiSetMask((char*)&mask, 6 /* XI_RawMotion */);
 	XIEventMask em;
 	em.deviceid = 1; // XIAllMasterDevices
@@ -892,7 +891,6 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags fla
 		(1 << 5) | (1 << 4) | (1 << 15) | (1 << 16) | (1 << 22);
 
 	XSetWindowAttributes swa;
-	rgfw_memzero(&swa, XSetWindowAttributes::size);
 	win.src.parent = xDefaultRootWindow(_rgfw.display);
 
 	Colormap cmap = xCreateColormap(_rgfw.display, win.src.parent, visual.visual, 0);
@@ -1078,7 +1076,6 @@ fn void rgfw_xHandleClipboardSelection(XEvent* event)
 	}
 
 	XEvent reply;
-	rgfw_memzero(&reply, XEvent::size);
 	reply.type = 31; // SelectionNotify
 	reply.xselection.property = request.property;
 	reply.xselection.display = request.display;
@@ -1422,7 +1419,6 @@ fn void rgfw_xHandleEvent()
 				_mouse_motion_callback(win, xpos, ypos);
 
 				XEvent reply;
-				rgfw_memzero(&reply, XEvent::size);
 				reply.type = 33; // ClientMessage
 				reply.xclient.window = _rgfw.x11Source;
 				reply.xclient.message_type = _rgfw.xdndStatus;
@@ -1457,7 +1453,6 @@ fn void rgfw_xHandleEvent()
 				else if (_rgfw.x11Version >= 2)
 				{
 					XEvent reply;
-					rgfw_memzero(&reply, XEvent::size);
 					reply.type = 33; // ClientMessage
 					reply.xclient.window = _rgfw.x11Source;
 					reply.xclient.message_type = _rgfw.xdndFinished;
@@ -1494,7 +1489,6 @@ fn void rgfw_xHandleEvent()
 			if (_rgfw.x11Version >= 2)
 			{
 				XEvent reply;
-				rgfw_memzero(&reply, XEvent::size);
 				reply.type = 33; // ClientMessage
 				reply.xclient.window = _rgfw.x11Source;
 				reply.xclient.message_type = _rgfw.xdndFinished;
@@ -1590,7 +1584,6 @@ fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h)
 {
 	long flags;
 	XSizeHints hints;
-	rgfw_memzero(&hints, XSizeHints::size);
 	xGetWMNormalHints(_rgfw.display, win.src.window, &hints, &flags);
 	hints.flags |= 1 << 4; // PMinSize
 	hints.min_width = w; hints.min_height = h;
@@ -1601,7 +1594,6 @@ fn void rgfw_window_setMaxSize(GfxWindow* win, int w, int h)
 {
 	long flags;
 	XSizeHints hints;
-	rgfw_memzero(&hints, XSizeHints::size);
 	xGetWMNormalHints(_rgfw.display, win.src.window, &hints, &flags);
 	hints.flags |= 1 << 5; // PMaxSize
 	hints.max_width = w; hints.max_height = h;
@@ -1611,7 +1603,6 @@ fn void rgfw_window_setMaxSize(GfxWindow* win, int w, int h)
 fn void rgfw_toggleXMaximized(GfxWindow* win, bool maximized)
 {
 	XEvent xev;
-	rgfw_memzero(&xev, XEvent::size);
 	xev.type = 33; // ClientMessage
 	xev.xclient.window = win.src.window;
 	xev.xclient.message_type = _rgfw.netWmState;
@@ -1642,7 +1633,6 @@ fn void rgfw_window_raise(GfxWindow* win)
 fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
 {
 	XEvent xev;
-	rgfw_memzero(&xev, XEvent::size);
 	xev.xclient.type = 33;
 	xev.xclient.send_event = 1;
 	xev.xclient.message_type = _rgfw.netWmState;
@@ -1735,7 +1725,7 @@ fn bool GfxWindow.set_icon(&win, char* dataSrc, int w, int h, GfxFormat format, 
 	}
 	int count = 2 + (w * h);
 	ulong* data = (ulong*)rgfw_alloc_impl((sz)count * ulong::size);
-	rgfw_memzero(data, (sz)count * ulong::size);
+	mem::clear(data, (sz)count * ulong::size);
 	data[0] = (ulong)w;
 	data[1] = (ulong)h;
 
@@ -1807,7 +1797,7 @@ fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format)
 	if (rgfw_xcursorImageCreateSRC == null) return null;
 	XcursorImage* native = rgfw_xcursorImageCreateSRC(w, h);
 	native.xhot = 0; native.yhot = 0;
-	rgfw_memzero(native.pixels, (sz)(w * h * 4));
+	mem::clear(native.pixels, (sz)(w * h * 4));
 	rgfw_memcpy(native.pixels, data, (sz)(w * h * 4));
 	XCursor cursor = rgfw_xcursorImageLoadCursorSRC(_rgfw.display, native);
 	rgfw_xcursorImageDestroySRC(native);
@@ -2496,7 +2486,6 @@ fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
 	if (_rgfw.context == 0) return -1;
 
 	XSetWindowAttributes wa;
-	rgfw_memzero(&wa, XSetWindowAttributes::size);
 	wa.event_mask = 1 << 22; // PropertyChangeMask
 	_rgfw.helperWindow = xCreateWindow(_rgfw.display, xDefaultRootWindow(_rgfw.display), 0, 0, 1, 1, 0, 0,
 		2 /* InputOnly */, xDefaultVisual(_rgfw.display, xDefaultScreen(_rgfw.display)), 1 << 11, &wa);

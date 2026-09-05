@@ -397,7 +397,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	if (info == _rgfw || info == null) return 1;
 	if (className == null) className = "RGFW";
 	rgfw_setInfo(info);
-	rgfw_memzero(_rgfw, RgfwInfo::size);
+	*_rgfw = {};
 	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == false) return -1;
 	if (flags & RGFW_INIT_EGL && rgfw_loadEGL() == false) return -1;
 	if (flags & RGFW_INIT_VULKAN && rgfw_loadVulkan() == false) return -1;
@@ -406,7 +406,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 	if (out != 0)
 	{
 		rgfw_deinitPlatform();
-		rgfw_memzero(_rgfw, RgfwInfo::size);
+		*_rgfw = {};
 		rgfw_setInfo(null);
 		return out;
 	}
@@ -441,7 +441,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Rgf
 {
 	if (win == null || _rgfw == null) return null;
 	if (name == null) name = "";
-	rgfw_memzero(win, GfxWindow::size);
+	*win = {};
 	_rgfw.windowCount++;
 	if (_rgfw.root == null) rgfw_setRootWindow(win);
 	win.bounds = { x, y, w, h };
@@ -646,13 +646,11 @@ fn void nsOpenGLContext_setValues(ObjcId context, int* vals, NSInteger param)
 
 fn RgfwGlContext* rgfw_window_createContext_OpenGL(GfxWindow* win, RgfwGlHints* hints)
 {
-	RgfwGlContext* ctx = (RgfwGlContext*)rgfw_alloc_impl(RgfwGlContext::size);
-	if (ctx == null) return null;
-	rgfw_memzero(ctx, RgfwGlContext::size);
-	if (rgfw_window_createContextPtr_OpenGL(win, ctx, hints) == false)
+	RgfwGlContext* ctx = mem::new(RgfwGlContext);
+	if (!rgfw_window_createContextPtr_OpenGL(win, ctx, hints))
 	{
-		rgfw_free_impl(ctx);
-		if (win != null) win.src.ctx.native = null;
+		free(ctx);
+		if (win) win.src.ctx.native = null;
 		return null;
 	}
 	win.src.gfxType |= RGFW_GFX_OWNED_BY_RGFW;
@@ -826,7 +824,7 @@ fn CGRect ns_rect(double x, double y, double w, double h)
 
 fn void rgfw_monitorFromDisplay(CGDirectDisplayID display, GfxMonitor* mon)
 {
-	rgfw_memzero(mon, GfxMonitor::size);
+	*mon = {};
 	rgfw_memcpy(&mon.name, "Display", 8);
 	CGRect bounds = cgDisplayBounds(display);
 	CGDisplayModeRef mode = cgDisplayCopyDisplayMode(display);
@@ -1735,12 +1733,10 @@ fn GfxFn rgfw_getProcAddress_EGL(ZString procname)
 
 fn RgfwEglContext* rgfw_window_createContext_EGL(GfxWindow* win, RgfwGlHints* hints)
 {
-	RgfwEglContext* ctx = (RgfwEglContext*)rgfw_alloc_impl(RgfwEglContext::size);
-	if (ctx == null) return null;
-	rgfw_memzero(ctx, RgfwEglContext::size);
-	if (rgfw_window_createContextPtr_EGL(win, ctx, hints) == false)
+	RgfwEglContext* ctx = mem::new(RgfwEglContext);
+	if (!rgfw_window_createContextPtr_EGL(win, ctx, hints))
 	{
-		rgfw_free_impl(ctx);
+		free(ctx);
 		return null;
 	}
 	win.src.gfxType |= RGFW_GFX_OWNED_BY_RGFW;
