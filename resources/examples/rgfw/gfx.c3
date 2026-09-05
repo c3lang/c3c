@@ -9,7 +9,6 @@ const bool RGFW_BUILD_EGL = $feat(X11_WAYLAND) || $feat(X11) || $feat(WAYLAND) |
 const bool RGFW_BUILD_WASM = $feat(WASM);
 
 
-macro bool rgfw_bool(x) => x ? (bool)1 : (bool)0;
 macro uint rgfw_bit(x) => (uint)1 << (uint)(x);
 macro void* rgfw_memcpy(void* dest, void* src, sz count) => memcpy(dest, src, count);
 macro void* rgfw_memzero(void* ptr, sz count) => memset(ptr, 0, count);
@@ -40,7 +39,7 @@ alias RgfwGlRenderer = int;
 alias RgfwGfxContextType = uint;
 
 typedef RgfwMouse = void;
-alias RgfwProc = fn void();
+alias GfxFn = fn void();
 alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, sz count);
 alias GfxGenericFunc = fn void(GfxEvent* e);
 alias RgfwDebugFunc = fn void(RgfwDebugInfo* info);
@@ -81,7 +80,7 @@ struct GfxMonitor
 	Vec2 phys_size;
 	GfxMonitorMode mode;
 	void* userPtr;
-	RgfwMonitorNode* node;
+	GfxMonitorNode* node;
 }
 
 struct RgfwKeyState
@@ -96,6 +95,31 @@ struct GfxWindow
 	RgfwWindowSrc src;
 	GfxWindowInternal internal;
 	void* userPtr;
+}
+
+struct GfxMonitorNode
+{
+	GfxMonitor mon;
+	bool disconnected;
+	GfxMonitorNode* next;
+	void* native0;
+	void* native1;
+	ulong nativeId0;
+	ulong nativeId1;
+	struct @feat(X11_WAYLAND, WAYLAND)
+	{
+		uint id;
+		WlProxy* output;
+		WlProxy* xdgOutput;
+		GfxMonitorMode* modes;
+		sz modeCount;
+	}
+	struct @feat(WIN32)
+	{
+		void* hMonitor; // HMONITOR
+		ushort[32] adapterName;
+		ushort[32] deviceName;
+	}
 }
 
 struct GfxWindowInternal
@@ -132,13 +156,13 @@ struct GfxMonitors
 {
 	GfxMonitorList list;
 	sz count;
-	RgfwMonitorNode* primary;
+	GfxMonitorNode* primary;
 }
 
 struct GfxMonitorList
 {
-	RgfwMonitorNode* head;
-	RgfwMonitorNode* cur;
+	GfxMonitorNode* head;
+	GfxMonitorNode* cur;
 }
 
 struct GfxDataTransfer
@@ -147,6 +171,129 @@ struct GfxDataTransfer
 	sz length;
 	RgfwDataTransferType type;
 }
+
+struct RgfwInfo // WASM
+{
+	GfxWindow* root;
+	int windowCount;
+	RgfwMouse* hiddenMouse;
+	RgfwMouse*[21] standardMice;
+	RgfwDebugFunc debugCallbackSrc;
+	GfxGenericFunc[25] callbacks;
+	GfxEvent[MAX_EVENTS] events;
+	int eventBottom;
+	int eventLen;
+	bool queueEvents;
+	bool polledEvents;
+	uint[RGFW_KEY_LAST] apiKeycodes;
+	RgfwKey[$feat(WIN32) ? 512 : 256] keycodes;
+	bool stopCheckEvents_bool;
+	ulong timerOffset;
+	int[3] eventWait_forceStop @feat(X11_WAYLAND);
+	GfxDataTransfer* clipboard;
+	bool dndBuild;
+	GfxDataDropNode* dndRoot;
+	GfxDataDropNode* dndCur;
+
+	GfxMonitors monitors;
+	GfxWindow* current;
+	void* nativeGL_handle;
+	void* glGetProcAddress;
+	void* vulkan_handle;
+	GfxVkGetInstanceProcAddressProc vkGetInstanceProcAddress;
+	struct @feat(!WASM)
+	{
+		void* egl_display;
+		void* egl_handle;
+		void* eglGetProcAddress;
+	}
+	struct @feat(WIN32)
+	{
+		void* instance; // HINSTANCE
+		WndClassW wndClass;
+		ushort[256] wideClassName;
+		void* helperWindow; // HWND
+	}
+	struct @feat(WASM)
+	{
+		int usingAsyncify;
+	}
+	struct @feat(MACOS)
+	{
+		void* x11_handle;
+		void* x11_display;
+		ulong x11_root;
+		void* wayland_handle;
+		void* wl_display;
+		ObjcId nsApp;
+		ObjcId nsPool;
+		NSUInteger windowNumberSeed;
+	}
+	GfxDataTransfer* unixClipboard @feat(WAYLAND, X11_WAYLAND, X11);
+
+	struct @feat(WAYLAND, X11_WAYLAND)
+	{
+		WlDisplay* wlDisplay;
+		WlProxy* registry;
+		WlProxy* compositor;
+		WlProxy* seat;
+		WlProxy* shm;
+		WlProxy* wlPointer;
+		WlProxy* wlKeyboard;
+		WlProxy* xdgWmBase;
+		WlProxy* decorationManager;
+		WlProxy* constraintManager;
+		WlProxy* relativePointerManager;
+		WlProxy* relativePointer;
+		WlProxy* iconManager;
+		WlProxy* xdgOutputManager;
+		WlProxy* wpPointerWarp;
+		WlProxy* dataDeviceManager;
+		WlProxy* dataDevice;
+		WlCursorTheme* wlCursorTheme;
+		WlProxy* cursorSurface;
+		GfxWindow* mouseOwner;
+		GfxWindow* kbOwner;
+		uint mouseEnterSerial;
+		XkbContext* xkbContext;
+		XkbKeymap* keymap;
+		XkbState* xkbState;
+		XkbComposeState* composeState;
+		int wlRepeatInfoRate;
+		int wlRepeatInfoDelay;
+		uint lastKey;
+		uint lastKeyTime;
+	}
+	struct @feat(X11, X11_WAYLAND)
+	{
+		GfxXDisplay* display;
+		int context;
+		GfxXWindow helperWindow;
+		ZString className;
+		XlibIM im;
+		int xrandrEventBase;
+		GfxXWindow x11Source;
+		int x11Version;
+		int x11Format;
+		RgfwDataTransferType x11TransferType;
+		XErrorEvent* x11Error;
+		Atom netCurrentDesktop, netWmStateMaximizedVert, netWmStateMaximizedHorz, netWmBypassCompositor;
+		Atom netWmState, motifWmHints, wmDeleteWindow, netWmSyncRequestCounter, netWmSyncRequest;
+		Atom atomPair, multiple, targets, saveTargets, utf8String;
+		Atom xdndTypeList, xdndSelection, xdndAware, xdndEnter, xdndPosition, xdndStatus, xdndLeave, xdndDrop, xdndFinished, xdndActionCopy;
+		Atom wmProtocols, wmState, netWmStateFullscreen, netWmStateAbove, netWmWindowOpacity;
+		Atom netWmName, netWmIcon, xselData, clipboardAtom, clipboardManager;
+		Atom xtextUriList, xtextPlain, netWorkarea;
+	}
+	bool useWaylandBool @feat(X11_WAYLAND);
+	bool rawMouse;
+	RgfwWindowState windowState;
+	RgfwKeyState[8] mouseButtons;
+	RgfwKeyState[RGFW_KEY_LAST] keyboard;
+	float scrollX, scrollY;
+	float vectorX, vectorY;
+}
+
 
 struct GfxDataDropNode
 {
@@ -1226,9 +1373,9 @@ fn void rgfw_splitBPP(uint bpp, GfxMonitorMode* mode)
 
 fn bool rgfw_monitorModeCompare(GfxMonitorMode* mon, GfxMonitorMode* mon2, GfxMonitorModeRequest request)
 {
-	return rgfw_bool(((mon.w == mon2.w && mon.h == mon2.h) || !(request & SCALE)) &&
+	return ((mon.w == mon2.w && mon.h == mon2.h) || !(request & SCALE)) &&
 	((mon.refresh_rate == mon2.refresh_rate) || !(request & REFRESH)) &&
-	((mon.red == mon2.red && mon.green == mon2.green && mon.blue == mon2.blue) || !(request & RGB)));
+	((mon.red == mon2.red && mon.green == mon2.green && mon.blue == mon2.blue) || !(request & RGB));
 }
 
 fn void rgfw_surface_setConvertFunc(GfxSurface* surface, GfxConvertImageDataFn func) { surface.convertFunc = func; }
@@ -1245,9 +1392,9 @@ fn GfxSurface* rgfw_window_createSurface(GfxWindow* win, char* data, int w, int 
 }
 
 
-fn RgfwMonitorNode* rgfw_monitors_add(GfxMonitor* mon)
+fn GfxMonitorNode* rgfw_monitors_add(GfxMonitor* mon)
 {
-	RgfwMonitorNode* node = mem::new(RgfwMonitorNode);
+	GfxMonitorNode* node = mem::new(GfxMonitorNode);
 	if (!_rgfw.monitors.list.head)
 	{
 		_rgfw.monitors.list.head = node;
@@ -1267,11 +1414,11 @@ fn RgfwMonitorNode* rgfw_monitors_add(GfxMonitor* mon)
 
 fn void rgfw_monitors_refresh()
 {
-	RgfwMonitorNode* prev = _rgfw.monitors.list.head;
-	RgfwMonitorNode* node = _rgfw.monitors.list.head;
+	GfxMonitorNode* prev = _rgfw.monitors.list.head;
+	GfxMonitorNode* node = _rgfw.monitors.list.head;
 	while (node != null)
 	{
-		RgfwMonitorNode* next = node.next;
+		GfxMonitorNode* next = node.next;
 		if (node.disconnected != false)
 		{
 			rgfw_monitorCallback(_rgfw.root, &node.mon, false);
@@ -1284,10 +1431,10 @@ fn void rgfw_monitors_refresh()
 
 fn void rgfw_freeMonitors()
 {
-	RgfwMonitorNode* node = _rgfw.monitors.list.head;
+	GfxMonitorNode* node = _rgfw.monitors.list.head;
 	while (node != null)
 	{
-		RgfwMonitorNode* next = node.next;
+		GfxMonitorNode* next = node.next;
 		_remove_monitor(node, node);
 		node = next;
 	}
@@ -1314,7 +1461,7 @@ fn bool rgfw_getMonitorsPtr(sz max, GfxMonitor** monitors, sz* len)
 	if (monitors == null || max == 0) return true;
 	if (len != null) *len = max;
 	sz i = 0;
-	RgfwMonitorNode* cur_node = _rgfw.monitors.list.head;
+	GfxMonitorNode* cur_node = _rgfw.monitors.list.head;
 	while (cur_node != null && i < max)
 	{
 		monitors[i] = &cur_node.mon;
@@ -1402,13 +1549,14 @@ fn bool rgfw_monitor_setGamma(GfxMonitor* monitor, float gamma)
 	return ret;
 }
 
+fn bool GfxWindow.captures_mouse(&self) => self.internal.captureMouse;
+fn bool GfxWindow.is_raw_mouse(&self) => self.internal.rawMouse;
+
 
 fn void rgfw_window_captureMouse(GfxWindow* win, bool state) { win.internal.captureMouse = state; rgfw_window_captureMousePlatform(win, state); }
 fn void rgfw_window_setRawMouseMode(GfxWindow* win, bool state) { win.internal.rawMouse = state; rgfw_window_setRawMouseModePlatform(win, state); }
 fn void rgfw_setRawMouseMode(bool state) { _rgfw.rawMouse = state; if (_rgfw.root != null) rgfw_window_setRawMouseModePlatform(_rgfw.root, state); }
 fn void rgfw_window_captureRawMouse(GfxWindow* win, bool state) { rgfw_window_captureMouse(win, state); rgfw_window_setRawMouseMode(win, state); }
-fn bool rgfw_window_isRawMouseMode(GfxWindow* win) => rgfw_bool(win.internal.rawMouse);
-fn bool rgfw_window_isCaptured(GfxWindow* win) => rgfw_bool(win.internal.captureMouse);
 
 fn void rgfw_keyUpdateKeyMod(GfxWindow* win, RgfwKeymod mod, bool value) { if (value) { win.internal.mod |= mod; } else { win.internal.mod &= ~mod; } }
 fn void rgfw_keyUpdateKeyModsEx(GfxWindow* win, bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll)
@@ -1425,11 +1573,11 @@ fn void rgfw_keyUpdateKeyModsEx(GfxWindow* win, bool capital, bool numlock, bool
 fn void rgfw_keyUpdateKeyMods(GfxWindow* win, bool capital, bool numlock, bool scroll)
 {
 	rgfw_keyUpdateKeyModsEx(win, capital, numlock,
-	rgfw_bool(is_key_down(RGFW_KEY_CONTROL_L) || is_key_down(RGFW_KEY_CONTROL_R)),
-	rgfw_bool(is_key_down(RGFW_KEY_ALT_L) || is_key_down(RGFW_KEY_ALT_R)),
-	rgfw_bool(is_key_down(RGFW_KEY_SHIFT_L) || is_key_down(RGFW_KEY_SHIFT_R)),
-	rgfw_bool(is_key_down(RGFW_KEY_SUPER_L) || is_key_down(RGFW_KEY_SUPER_R)),
-	scroll);
+		is_key_down(RGFW_KEY_CONTROL_L) || is_key_down(RGFW_KEY_CONTROL_R),
+		is_key_down(RGFW_KEY_ALT_L) || is_key_down(RGFW_KEY_ALT_R),
+		is_key_down(RGFW_KEY_SHIFT_L) || is_key_down(RGFW_KEY_SHIFT_R),
+		is_key_down(RGFW_KEY_SUPER_L) || is_key_down(RGFW_KEY_SUPER_R),
+		scroll);
 }
 
 fn bool GfxWindow.is_mouse_hidden(&win) => win.internal.flags & RGFW_WINDOW_HIDE_MOUSE != 0;
@@ -1492,7 +1640,7 @@ fn void rgfw_window_resize(GfxWindow* win, int w, int h) { win.size = { w, h }; 
 
 module std::gfx @private;
 
-fn void _remove_monitor(RgfwMonitorNode* node, RgfwMonitorNode* prev)
+fn void _remove_monitor(GfxMonitorNode* node, GfxMonitorNode* prev)
 {
 	_rgfw.monitors.count -= 1;
 	rgfw_monitorNode_free(node);

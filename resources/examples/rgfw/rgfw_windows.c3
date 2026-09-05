@@ -8,48 +8,14 @@ import std::collections::list, std::math;
 // original C header only ever compiles one #ifdef backend at a time.
 
 
-
-alias VkInstance = void*;
-alias VkPhysicalDevice = void*;
-alias VkSurfaceKHR = ulong;
-alias VkResult = int;
-alias RgfwVkGetInstanceProcAddressProc = fn RgfwProc(VkInstance instance, ZString procname);
-
-
 extern fn void* memcpy(void* dest, void* src, sz count);
 extern fn void* memset(void* dest, int value, sz count);
-extern fn sz strlen(char* str);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
 extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
 struct Timespec { long tv_sec; long tv_nsec; }
-
-alias EglDisplay = void*;
-alias EglContext = void*;
-alias EglSurface = void*;
-alias EglConfig = void*;
-alias EglNativeDisplayType = void*;
-alias EglNativeWindowType = void*;
-alias EglBoolean = uint;
-alias EglInt = int;
-alias EglGetProcAddressProc = fn RgfwProc(ZString procname);
-alias EglGetDisplayProc = fn EglDisplay(EglNativeDisplayType display);
-alias EglInitializeProc = fn EglBoolean(EglDisplay display, EglInt* major, EglInt* minor);
-alias EglTerminateProc = fn EglBoolean(EglDisplay display);
-alias EglBindApiProc = fn EglBoolean(uint api);
-alias EglChooseConfigProc = fn EglBoolean(EglDisplay display, EglInt* attribs, EglConfig* configs, EglInt configSize, EglInt* numConfig);
-alias EglCreateContextProc = fn EglContext(EglDisplay display, EglConfig config, EglContext shareContext, EglInt* attribs);
-alias EglDestroyContextProc = fn EglBoolean(EglDisplay display, EglContext context);
-alias EglCreateWindowSurfaceProc = fn EglSurface(EglDisplay display, EglConfig config, EglNativeWindowType window, EglInt* attribs);
-alias EglDestroySurfaceProc = fn EglBoolean(EglDisplay display, EglSurface surface);
-alias EglMakeCurrentProc = fn EglBoolean(EglDisplay display, EglSurface draw, EglSurface read, EglContext context);
-alias EglSwapBuffersProc = fn EglBoolean(EglDisplay display, EglSurface surface);
-alias EglSwapIntervalProc = fn EglBoolean(EglDisplay display, EglInt interval);
-alias EglGetCurrentContextProc = fn EglContext();
-alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
-alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
 
 
 // ---- Win32 base types ----
@@ -386,63 +352,9 @@ struct RgfwWindowSrc
 }
 
 
-struct RgfwMonitorNode
-{
-	GfxMonitor mon;
-	bool disconnected;
-	RgfwMonitorNode* next;
-	void* native0;
-	void* native1;
-	ulong nativeId0;
-	ulong nativeId1;
-	void* hMonitor; // HMONITOR
-	ushort[32] adapterName;
-	ushort[32] deviceName;
-}
 
 
 
-struct RgfwInfo
-{
-	GfxWindow* root;
-	int windowCount;
-	RgfwMouse* hiddenMouse;
-	RgfwMouse*[21] standardMice;
-	RgfwDebugFunc debugCallbackSrc;
-	GfxGenericFunc[25] callbacks;
-	GfxEvent[MAX_EVENTS] events;
-	int eventBottom;
-	int eventLen;
-	bool queueEvents;
-	bool polledEvents;
-	uint[RGFW_KEY_LAST] apiKeycodes;
-	RgfwKey[512] keycodes;
-	bool stopCheckEvents_bool;
-	ulong timerOffset;
-	GfxDataTransfer* clipboard;
-	bool dndBuild;
-	GfxDataDropNode* dndRoot;
-	GfxDataDropNode* dndCur;
-	GfxMonitors monitors;
-	GfxWindow* current;
-	void* nativeGL_handle;
-	void* glGetProcAddress;
-	void* vulkan_handle;
-	RgfwVkGetInstanceProcAddressProc vkGetInstanceProcAddress;
-	void* egl_display;
-	void* egl_handle;
-	void* eglGetProcAddress;
-	void* instance; // HINSTANCE
-	WndClassW wndClass;
-	ushort[256] wideClassName;
-	void* helperWindow; // HWND
-	bool rawMouse;
-	RgfwWindowState windowState;
-	RgfwKeyState[8] mouseButtons;
-	RgfwKeyState[RGFW_KEY_LAST] keyboard;
-	float scrollX, scrollY;
-	float vectorX, vectorY;
-}
 
 RgfwInfo* _rgfw;
 RgfwInfo _rgfw_global;
@@ -525,7 +437,7 @@ fn bool rgfw_loadVulkan()
 	if (_rgfw.vulkan_handle == null) return false;
 	void* proc = getProcAddress((HModule*)_rgfw.vulkan_handle, "vkGetInstanceProcAddr");
 	if (proc == null) return false;
-	_rgfw.vkGetInstanceProcAddress = (RgfwVkGetInstanceProcAddressProc)proc;
+	_rgfw.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
 	return true;
 }
 
@@ -537,7 +449,7 @@ fn void rgfw_unloadVulkan()
 	_rgfw.vkGetInstanceProcAddress = null;
 }
 
-fn RgfwProc rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
+fn GfxFn rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
 {
 	if (_rgfw == null || _rgfw.vkGetInstanceProcAddress == null) return null;
 	return _rgfw.vkGetInstanceProcAddress(instance, procname);
@@ -553,7 +465,7 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 {
 	if (surface == null || win == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	*surface = 0;
-	RgfwProc raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkCreateWin32SurfaceKHR");
+	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkCreateWin32SurfaceKHR");
 	if (raw == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	VkWin32SurfaceCreateInfoKHR createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
@@ -568,10 +480,10 @@ alias RgfwVkGetPhysicalDeviceWin32PresentationSupportKHRProc = fn uint(VkPhysica
 
 fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex)
 {
-	RgfwProc raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
+	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
 	if (raw == null) return false;
 	uint out = ((RgfwVkGetPhysicalDeviceWin32PresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex);
-	return rgfw_bool(out != 0);
+	return out != 0;
 }
 
 alias WGPUInstance = void*;
@@ -848,7 +760,7 @@ fn bool rgfw_win32GetDarkModeState()
 	static ushort[61] subKey = {(ushort)'S', (ushort)'o', (ushort)'f', (ushort)'t', (ushort)'w', (ushort)'a', (ushort)'r', (ushort)'e', (ushort)'\\', (ushort)'M', (ushort)'i', (ushort)'c', (ushort)'r', (ushort)'o', (ushort)'s', (ushort)'o', (ushort)'f', (ushort)'t', (ushort)'\\', (ushort)'W', (ushort)'i', (ushort)'n', (ushort)'d', (ushort)'o', (ushort)'w', (ushort)'s', (ushort)'\\', (ushort)'C', (ushort)'u', (ushort)'r', (ushort)'r', (ushort)'e', (ushort)'n', (ushort)'t', (ushort)'V', (ushort)'e', (ushort)'r', (ushort)'s', (ushort)'i', (ushort)'o', (ushort)'n', (ushort)'\\', (ushort)'T', (ushort)'h', (ushort)'e', (ushort)'m', (ushort)'e', (ushort)'s', (ushort)'\\', (ushort)'P', (ushort)'e', (ushort)'r', (ushort)'s', (ushort)'o', (ushort)'n', (ushort)'a', (ushort)'l', (ushort)'i', (ushort)'z', (ushort)'e', 0}; // "Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
 	static ushort[18] valueName = {(ushort)'A', (ushort)'p', (ushort)'p', (ushort)'s', (ushort)'U', (ushort)'s', (ushort)'e', (ushort)'L', (ushort)'i', (ushort)'g', (ushort)'h', (ushort)'t', (ushort)'T', (ushort)'h', (ushort)'e', (ushort)'m', (ushort)'e', 0}; // "AppsUseLightTheme"
 	regGetValueW((void*)(uptr)0x80000001 /* HKEY_CURRENT_USER */, (ushort*)&subKey, (ushort*)&valueName, 0x00000010 /* RRF_RT_REG_DWORD */, null, &lightMode, &len);
-	return rgfw_bool(lightMode == 0);
+	return lightMode == 0;
 }
 
 fn void rgfw_win32MakeWindowDarkMode(GfxWindow* win, bool state)
@@ -878,7 +790,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		case 0x0010: case 0x0012: _window_close_callback(win); return 0; // WM_CLOSE, WM_QUIT
 		case 0x0006: // WM_ACTIVATE
 		{
-			bool inFocus = rgfw_bool((wParam & 0xffff) != 0);
+			bool inFocus = (wParam & 0xffff) != 0;
 			rgfw_windowFocusCallback(win, inFocus);
 			return defWindowProcW(hWnd, message, wParam, lParam);
 		}
@@ -944,7 +856,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		case 0x0024: // WM_GETMINMAXINFO
 		{
 			MinMaxInfo* mmi = (MinMaxInfo*)(uptr)lParam;
-			bool resize = rgfw_bool((win.src.minSizeW == win.src.maxSizeW) && (win.src.minSizeH == win.src.maxSizeH));
+			bool resize = (win.src.minSizeW == win.src.maxSizeW) && (win.src.minSizeH == win.src.maxSizeH);
 			rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_RESIZE, resize);
 
 			mmi.ptMinTrackSize.x = win.src.minSizeW + (frame.right - frame.left);
@@ -1029,7 +941,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			}
 			RgfwKey value = (RgfwKey)rgfw_apiKeyToRGFW((uint)scancode);
 			if (wParam == 0x11 /* VK_CONTROL */) { value = ((lParam >> 16) & 0x0100) != 0 ? RGFW_KEY_CONTROL_R : RGFW_KEY_CONTROL_L; }
-			rgfw_keyUpdateKeyMods(win, rgfw_bool(getKeyState(0x14) & 1), rgfw_bool(getKeyState(0x90) & 1), rgfw_bool(getKeyState(0x91) & 1));
+			rgfw_keyUpdateKeyMods(win, getKeyState(0x14) & 1 != 0, getKeyState(0x90) & 1 != 0, getKeyState(0x91) & 1 != 0);
 			rgfw_keyCallback(win, value, win.internal.mod, false, false);
 			break;
 		}
@@ -1048,7 +960,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			RgfwKey value = (RgfwKey)rgfw_apiKeyToRGFW((uint)scancode);
 			if (wParam == 0x11) { value = ((lParam >> 16) & 0x0100) != 0 ? RGFW_KEY_CONTROL_R : RGFW_KEY_CONTROL_L; }
 			bool repeat = is_key_down(value);
-			rgfw_keyUpdateKeyMods(win, rgfw_bool(getKeyState(0x14) & 1), rgfw_bool(getKeyState(0x90) & 1), rgfw_bool(getKeyState(0x91) & 1));
+			rgfw_keyUpdateKeyMods(win, getKeyState(0x14) & 1 != 0, getKeyState(0x90) & 1 != 0, getKeyState(0x91) & 1 != 0);
 			rgfw_keyCallback(win, value, win.internal.mod, repeat, true);
 			break;
 		}
@@ -1297,7 +1209,7 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 
 fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 {
-	rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_BORDER, rgfw_bool(!border));
+	rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_BORDER, !border);
 
 	Rect rect;
 	getClientRect(win.src.window, &rect);
@@ -1486,14 +1398,14 @@ fn void rgfw_pollEvents()
 	}
 }
 
-fn bool rgfw_window_isHidden(GfxWindow* win) => rgfw_bool(isWindowVisible(win.src.window) == 0 && !rgfw_window_isMinimized(win));
+fn bool rgfw_window_isHidden(GfxWindow* win) => isWindowVisible(win.src.window) == 0 && !rgfw_window_isMinimized(win);
 
 fn bool rgfw_window_isMinimized(GfxWindow* win)
 {
 	WindowPlacement placement;
 	rgfw_memzero(&placement, WindowPlacement::size);
 	getWindowPlacement(win.src.window, &placement);
-	return rgfw_bool(placement.showCmd == SW_SHOWMINIMIZED);
+	return placement.showCmd == SW_SHOWMINIMIZED;
 }
 
 fn bool rgfw_window_isMaximized(GfxWindow* win)
@@ -1501,7 +1413,7 @@ fn bool rgfw_window_isMaximized(GfxWindow* win)
 	WindowPlacement placement;
 	rgfw_memzero(&placement, WindowPlacement::size);
 	getWindowPlacement(win.src.window, &placement);
-	return rgfw_bool(placement.showCmd == SW_SHOWMAXIMIZED || isZoomed(win.src.window) != 0);
+	return placement.showCmd == SW_SHOWMAXIMIZED || isZoomed(win.src.window) != 0;
 }
 
 fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
@@ -1592,7 +1504,7 @@ fn int rgfw_win32GetMonitorHandleCallback(void* hMonitor, void* hdcMonitor, Rect
 	mi.cbSize = MonitorInfoExW::size;
 	if (getMonitorInfoW(hMonitor, &mi) != 0)
 	{
-		RgfwMonitorNode* node = (RgfwMonitorNode*)(void*)dwData;
+		GfxMonitorNode* node = (GfxMonitorNode*)(void*)dwData;
 		sz i;
 		for (i = 0; mi.szDevice[i] != 0 && node.adapterName[i] != 0 && mi.szDevice[i] == node.adapterName[i]; i++) {}
 		if (mi.szDevice[i] == 0 && node.adapterName[i] == 0) node.hMonitor = hMonitor;
@@ -1607,7 +1519,7 @@ fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 	dm.size = (ushort)DevModeW::size;
 	if (enumDisplaySettingsW((ushort*)&adapter.deviceName, (uint)ENUM_CURRENT_SETTINGS, &dm) == 0) return;
 
-	RgfwMonitorNode* node = rgfw_monitors_add(null);
+	GfxMonitorNode* node = rgfw_monitors_add(null);
 	rgfw_memcpy(&node.adapterName, &adapter.deviceName, 64);
 	if (dd != null) rgfw_memcpy(&node.deviceName, &dd.deviceName, 64);
 
@@ -1647,7 +1559,7 @@ fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 
 fn void rgfw_pollMonitors()
 {
-	for (RgfwMonitorNode* node = _rgfw.monitors.list.head; node != null; node = node.next) node.disconnected = true;
+	for (GfxMonitorNode* node = _rgfw.monitors.list.head; node != null; node = node.next) node.disconnected = true;
 
 	DisplayDeviceW adapter;
 	for (uint adapterNum = 0;; adapterNum++)
@@ -1666,7 +1578,7 @@ fn void rgfw_pollMonitors()
 			if (enumDisplayDevicesW((ushort*)&adapter.deviceName, deviceNum, &dd, 0) == 0) break;
 			if (!(dd.stateFlags & DISPLAY_DEVICE_ACTIVE)) continue;
 
-			RgfwMonitorNode* node;
+			GfxMonitorNode* node;
 			for (node = _rgfw.monitors.list.head; node != null; node = node.next)
 			{
 				sz i;
@@ -1684,7 +1596,7 @@ fn void rgfw_pollMonitors()
 
 		if (deviceNum == 0)
 		{
-			RgfwMonitorNode* node;
+			GfxMonitorNode* node;
 			for (node = _rgfw.monitors.list.head; node != null; node = node.next)
 			{
 				sz i;
@@ -1698,12 +1610,12 @@ fn void rgfw_pollMonitors()
 	rgfw_monitors_refresh();
 }
 
-fn void rgfw_monitorNode_free(RgfwMonitorNode* node) {}
+fn void rgfw_monitorNode_free(GfxMonitorNode* node) {}
 
 fn GfxMonitor* find_monitor(GfxWindow* win)
 {
 	HMonitor src = monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
-	for (RgfwMonitorNode* node = _rgfw.monitors.list.head; node != null; node = node.next)
+	for (GfxMonitorNode* node = _rgfw.monitors.list.head; node != null; node = node.next)
 	{
 		if (node.hMonitor == src) return &node.mon;
 	}
@@ -2035,21 +1947,21 @@ const int WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB = 0x00000004;
 
 alias GetExtStringArbFn = fn ZString(HDc*);
 alias GetExtStringExtFn = fn ZString();
-alias GlxGetProcAddressProc = fn RgfwProc(ZString);
+alias GlxGetProcAddressProc = fn GfxFn(ZString);
 
 fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 {
 	ZString extensions = null;
-	RgfwProc proc = rgfw_getProcAddress_OpenGL("wglGetExtensionsStringARB");
-	RgfwProc proc2 = rgfw_getProcAddress_OpenGL("wglGetExtensionsStringEXT");
+	GfxFn proc = rgfw_getProcAddress_OpenGL("wglGetExtensionsStringARB");
+	GfxFn proc2 = rgfw_getProcAddress_OpenGL("wglGetExtensionsStringEXT");
 	if (proc != null) { extensions = ((GetExtStringArbFn)proc)(rgfw_wglGetCurrentDC()); }
 	else if (proc2 != null) { extensions = ((GetExtStringExtFn)proc2)(); }
-	return rgfw_bool(extensions != null && rgfw_extensionSupportedStr(extensions, extension, len));
+	return extensions && rgfw_extensionSupportedStr(extensions, extension, len);
 }
 
-fn RgfwProc rgfw_getProcAddress_OpenGL(ZString procname)
+fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname)
 {
-	RgfwProc proc = _rgfw.glGetProcAddress != null ? ((GlxGetProcAddressProc)_rgfw.glGetProcAddress)(procname) : null;
+	GfxFn proc = _rgfw.glGetProcAddress != null ? ((GlxGetProcAddressProc)_rgfw.glGetProcAddress)(procname) : null;
 	if (proc != null) return proc;
 	return getProcAddress((HModule*)_rgfw.nativeGL_handle, procname);
 }

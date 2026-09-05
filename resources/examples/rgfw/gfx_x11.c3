@@ -10,6 +10,14 @@ struct XImageHeader
 	int format;
 	char* data;
 }
+// X11 types
+
+typedef GfxXDisplay = void;
+typedef GfxXVisual = void;
+alias GfxXWindow = ulong;
+alias GfxXDrawable = ulong;
+alias GfxXPointer = char*;
+alias GfxRROutput = ulong;
 
 // X11 used functions
 extern fn GfxXDisplay* xOpenDisplay(ZString name) @cname("XOpenDisplay");

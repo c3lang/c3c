@@ -1,6 +1,6 @@
 module std::gfx @feat(MACOS) @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
 
-import std::collections, std::math, libc;
+import std::collections, std::math, libc, std::os::macos;
 // C3 port of the shared RGFW implementation from /Users/lerno/Downloads/RGFW.h.
 // This file intentionally imports no C3 standard-library modules. It only
 // declares the small C runtime hooks RGFW's C header also expects from the host.
@@ -8,7 +8,6 @@ import std::collections, std::math, libc;
 
 extern fn void* memcpy(void* dest, void* src, sz count);
 extern fn void* memset(void* dest, int value, sz count);
-extern fn sz strlen(char* str);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
 extern fn int chdir(char* path);
@@ -22,44 +21,16 @@ typedef ObjcSelector = void*;
 alias CGFloat = double;
 alias NSUInteger = ulong;
 alias NSInteger = long;
-alias CFIndex = long;
 alias CFArrayRef = void*;
 alias CFStringRef = void*;
 alias CFBundleRef = void*;
 alias CGDirectDisplayID = uint;
 alias CGDisplayModeRef = void*;
 alias CGEventRef = void*;
-alias VkInstance = void*;
-alias VkPhysicalDevice = void*;
-alias VkSurfaceKHR = ulong;
-alias VkResult = int;
-alias RgfwVkGetInstanceProcAddressProc = fn RgfwProc(VkInstance instance, ZString procname);
+
 struct VkMetalSurfaceCreateInfoEXT { int sType; void* pNext; uint flags; void* pLayer; }
 alias RgfwVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* createInfo, void* allocator, VkSurfaceKHR* surface);
-alias EglDisplay = void*;
-alias EglContext = void*;
-alias EglSurface = void*;
-alias EglConfig = void*;
-alias EglNativeDisplayType = void*;
-alias EglNativeWindowType = void*;
-alias EglBoolean = uint;
-alias EglInt = int;
-alias EglGetProcAddressProc = fn RgfwProc(ZString procname);
-alias EglGetDisplayProc = fn EglDisplay(EglNativeDisplayType display);
-alias EglInitializeProc = fn EglBoolean(EglDisplay display, EglInt* major, EglInt* minor);
-alias EglTerminateProc = fn EglBoolean(EglDisplay display);
-alias EglBindApiProc = fn EglBoolean(uint api);
-alias EglChooseConfigProc = fn EglBoolean(EglDisplay display, EglInt* attribs, EglConfig* configs, EglInt configSize, EglInt* numConfig);
-alias EglCreateContextProc = fn EglContext(EglDisplay display, EglConfig config, EglContext shareContext, EglInt* attribs);
-alias EglDestroyContextProc = fn EglBoolean(EglDisplay display, EglContext context);
-alias EglCreateWindowSurfaceProc = fn EglSurface(EglDisplay display, EglConfig config, EglNativeWindowType window, EglInt* attribs);
-alias EglDestroySurfaceProc = fn EglBoolean(EglDisplay display, EglSurface surface);
-alias EglMakeCurrentProc = fn EglBoolean(EglDisplay display, EglSurface draw, EglSurface read, EglContext context);
-alias EglSwapBuffersProc = fn EglBoolean(EglDisplay display, EglSurface surface);
-alias EglSwapIntervalProc = fn EglBoolean(EglDisplay display, EglInt interval);
-alias EglGetCurrentContextProc = fn EglContext();
-alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
-alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
+
 alias XOpenDisplayProc = fn void*(ZString displayName);
 alias XCloseDisplayProc = fn int(void* display);
 alias XDefaultRootWindowProc = fn ulong(void* display);
@@ -79,9 +50,7 @@ alias WlDisplayDispatchPendingProc = fn int(void* display);
 alias WlDisplayRoundtripProc = fn int(void* display);
 alias WlDisplayGetFdProc = fn int(void* display);
 
-struct CGPoint { CGFloat x, y; }
-struct CGSize { CGFloat width, height; }
-struct CGRect { CGPoint origin; CGSize size; }
+
 
 extern fn void objc_msgSendRaw(...) @cname("objc_msgSend") @builtin;
 extern fn ObjcSelector sel_registerName(ZString name);
@@ -232,62 +201,7 @@ struct RgfwWindowSrc
 	int x, y, w, h;
 }
 
-struct RgfwMonitorNode
-{
-	GfxMonitor mon;
-	bool disconnected;
-	RgfwMonitorNode* next;
-	void* native0;
-	void* native1;
-	ulong nativeId0;
-	ulong nativeId1;
-}
 
-struct RgfwInfo
-{
-	GfxWindow* root;
-	int windowCount;
-	RgfwMouse* hiddenMouse;
-	RgfwMouse*[21] standardMice;
-	RgfwDebugFunc debugCallbackSrc;
-	GfxGenericFunc[25] callbacks;
-	GfxEvent[MAX_EVENTS] events;
-	int eventBottom;
-	int eventLen;
-	bool queueEvents;
-	bool polledEvents;
-	uint[RGFW_KEY_LAST] apiKeycodes;
-	RgfwKey[256] keycodes;
-	bool stopCheckEvents_bool;
-	ulong timerOffset;
-	GfxDataTransfer* clipboard;
-	bool dndBuild;
-	GfxDataDropNode* dndRoot;
-	GfxDataDropNode* dndCur;
-	GfxMonitors monitors;
-	GfxWindow* current;
-	void* nativeGL_handle;
-	void* glGetProcAddress;
-	void* vulkan_handle;
-	RgfwVkGetInstanceProcAddressProc vkGetInstanceProcAddress;
-	void* egl_display;
-	void* egl_handle;
-	void* eglGetProcAddress;
-	void* x11_handle;
-	void* x11_display;
-	ulong x11_root;
-	void* wayland_handle;
-	void* wl_display;
-	ObjcId nsApp;
-	ObjcId nsPool;
-	NSUInteger windowNumberSeed;
-	bool rawMouse;
-	RgfwWindowState windowState;
-	RgfwKeyState[8] mouseButtons;
-	RgfwKeyState[RGFW_KEY_LAST] keyboard;
-	float scrollX, scrollY;
-	float vectorX, vectorY;
-}
 
 RgfwInfo* _rgfw;
 RgfwInfo _rgfw_global;
@@ -337,7 +251,7 @@ fn bool rgfw_loadGL()
 	_rgfw.nativeGL_handle = cfBundleGetBundleWithIdentifier(bundleName);
 	if (bundleName != null) cfRelease(bundleName);
 	_rgfw.glGetProcAddress = (void*)&rgfw_getProcAddress_OpenGL;
-	return rgfw_bool(_rgfw.nativeGL_handle != null);
+	return _rgfw.nativeGL_handle != null;
 }
 
 fn void rgfw_unloadGL()
@@ -414,7 +328,7 @@ fn bool rgfw_loadVulkan()
 	if (_rgfw.vulkan_handle == null) return false;
 	void* proc = libc::dlsym(_rgfw.vulkan_handle, "vkGetInstanceProcAddr");
 	if (proc == null) return false;
-	_rgfw.vkGetInstanceProcAddress = (RgfwVkGetInstanceProcAddressProc)proc;
+	_rgfw.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
 	return true;
 }
 
@@ -426,7 +340,7 @@ fn void rgfw_unloadVulkan()
 	_rgfw.vkGetInstanceProcAddress = null;
 }
 
-fn RgfwProc rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
+fn GfxFn rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
 {
 	if (_rgfw == null || _rgfw.vkGetInstanceProcAddress == null) return null;
 	return _rgfw.vkGetInstanceProcAddress(instance, procname);
@@ -442,7 +356,7 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 {
 	if (surface == null || win == null || win.src.view == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	*surface = 0;
-	RgfwProc raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkCreateMetalSurfaceEXT");
+	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkCreateMetalSurfaceEXT");
 	if (raw == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	ObjcId layer = objc_send(objc_class("CAMetalLayer"), ObjcSendId, "layer");
 	if (layer == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
@@ -696,11 +610,11 @@ fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len)
 	return false;
 }
 
-alias RgfwGetProcAddressFunc = fn RgfwProc(ZString procname);
+alias RgfwGetProcAddressFunc = fn GfxFn(ZString procname);
 
 fn bool rgfw_extensionSupported_base(ZString extension, sz len, RgfwGetProcAddressFunc getProcAddress)
 {
-	RgfwProc rgfw_gl_get_string = getProcAddress("glGetString");
+	GfxFn rgfw_gl_get_string = getProcAddress("glGetString");
 	if (rgfw_gl_get_string == null) return false;
 	return false;
 }
@@ -773,11 +687,11 @@ fn GfxWindow* rgfw_getCurrentWindow_OpenGL() => _rgfw.current;
 
 fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => false;
 
-fn RgfwProc rgfw_getProcAddress_OpenGL(ZString procname)
+fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname)
 {
 	if (_rgfw == null || _rgfw.nativeGL_handle == null || procname == null) return null;
 	CFStringRef symbolName = cfStringCreateWithCString(null, procname, 0x0600);
-	RgfwProc symbol = (RgfwProc)cfBundleGetFunctionPointerForName((CFBundleRef)_rgfw.nativeGL_handle, symbolName);
+	GfxFn symbol = (GfxFn)cfBundleGetFunctionPointerForName((CFBundleRef)_rgfw.nativeGL_handle, symbolName);
 	if (symbolName != null) cfRelease(symbolName);
 	return symbol;
 }
@@ -1095,12 +1009,12 @@ fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
 
 	NSUInteger flags = objc_send(event, ObjcSendNSUInteger, "modifierFlags");
 	rgfw_keyUpdateKeyModsEx(win,
-		rgfw_bool(flags & 0x00010000),
-		rgfw_bool(flags & 0x00200000),
-		rgfw_bool(flags & 0x00040000),
-		rgfw_bool(flags & 0x00080000),
-		rgfw_bool(flags & 0x00020000),
-		rgfw_bool(flags & 0x00100000),
+		flags & 0x00010000 != 0,
+		flags & 0x00200000 != 0,
+		flags & 0x00040000 != 0,
+		flags & 0x00080000 != 0,
+		flags & 0x00020000 != 0,
+		flags & 0x00100000 != 0,
 		false);
 
 	for (int i = 0; i < 9; i++)
@@ -1117,7 +1031,7 @@ fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
 		if ((flags & shift) == 0 && is_key_down(key)) { pressed = false; value = key; break; }
 	}
 
-	rgfw_keyCallback(win, value, win.internal.mod, rgfw_bool(is_key_down(value) && pressed), pressed);
+	rgfw_keyCallback(win, value, win.internal.mod, is_key_down(value) && pressed, pressed);
 	if (value != RGFW_KEY_CAPS_LOCK)
 	{
 		RgfwKey other = (RgfwKey)(value + 4);
@@ -1273,7 +1187,7 @@ fn void rgfw_registerOsxClasses()
 	objc_registerClassPair(rgfw_osxViewClass);
 }
 
-fn void rgfw_monitorNode_free(RgfwMonitorNode* node) { if (node != null && node.mon.mode.src != null) cfRelease(node.mon.mode.src); }
+fn void rgfw_monitorNode_free(GfxMonitorNode* node) { if (node != null && node.mon.mode.src != null) cfRelease(node.mon.mode.src); }
 
 fn void rgfw_window_setMaxSize(GfxWindow* win, int w, int h)
 {
@@ -1382,7 +1296,7 @@ fn void rgfw_pollMonitors()
 	{
 		GfxMonitor mon;
 		rgfw_monitorFromDisplay(displays[i], &mon);
-		RgfwMonitorNode* node = rgfw_monitors_add(&mon);
+		GfxMonitorNode* node = rgfw_monitors_add(&mon);
 		if (node == null) continue;
 		node.nativeId0 = (ulong)displays[i];
 		if (displays[i] == cgMainDisplayID()) _rgfw.monitors.primary = node;
@@ -1397,7 +1311,7 @@ fn void rgfw_waitForEvent(int waitMS)
 	ObjcId ev = objc_send(_rgfw.nsApp, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, date, mode, true);
 	if (ev != null) objc_send(_rgfw.nsApp, ObjcSendVoidIdBool, "postEvent:atStart:", ev, true);
 }
-fn bool rgfw_usingWayland() => rgfw_bool(_rgfw != null && _rgfw.wl_display != null);
+fn bool rgfw_usingWayland() => _rgfw != null && _rgfw.wl_display != null;
 fn void* rgfw_getLayer_OSX() { if (_rgfw == null || _rgfw.current == null || _rgfw.current.src.view == null) return null; return objc_send((ObjcId)_rgfw.current.src.view, ObjcSendId, "layer"); }
 fn void* rgfw_getDisplay_X11() => _rgfw != null ? _rgfw.x11_display : null;
 fn void* rgfw_getDisplay_Wayland() => _rgfw != null ? _rgfw.wl_display : null;
@@ -1444,7 +1358,7 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 	objc_send(nswin, ObjcSendVoidId, "makeFirstResponder:", view);
 	objc_send(nswin, ObjcSendVoidBool, "setAcceptsMouseMovedEvents:", true);
 	rgfw_window_setName(win, name);
-	rgfw_window_setFloating(win, rgfw_bool(flags & RGFW_WINDOW_FLOATING));
+	rgfw_window_setFloating(win, flags & RGFW_WINDOW_FLOATING != 0);
 	if (!(flags & RGFW_WINDOW_HIDE)) rgfw_window_showPlatform(win);
 	if (flags & RGFW_WINDOW_MAXIMIZE) rgfw_window_maximizePlatform(win);
 	if (flags & RGFW_WINDOW_MINIMIZE) rgfw_window_minimizePlatform(win);
@@ -1515,7 +1429,7 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSur
 	surface.format = format;
 	surface.native.format = RGBA8;
 	surface.native.buffer = (char*)rgfw_alloc_impl((sz)(w * h * 4));
-	return rgfw_bool(surface.native.buffer != null);
+	return surface.native.buffer != null;
 }
 
 fn void rgfw_surface_freePtr(GfxSurface* surface)
@@ -1647,11 +1561,11 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 	}
 	int err = cgSetDisplayTransferByTable(rgfw_monitorDisplay(monitor), (uint)ramp.count, red, green, blue);
 	rgfw_free_impl(red); rgfw_free_impl(green); rgfw_free_impl(blue);
-	return rgfw_bool(err == 0);
+	return err == 0;
 }
 
 fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => rgfw_monitor_setMode(mon, mode);
-fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) { if (mode == null || mode.src == null) return false; return rgfw_bool(cgDisplaySetDisplayMode(rgfw_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0); }
+fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) { if (mode == null || mode.src == null) return false; return cgDisplaySetDisplayMode(rgfw_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0; }
 fn GfxMonitor* find_monitor(GfxWindow* win) => rgfw_getPrimaryMonitor();
 fn IntVec2 rgfw_window_fetchSize(GfxWindow* win)
 {
@@ -1676,7 +1590,7 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 	CGRect content = objc_send((ObjcId)win.src.view, ObjcSendRect, "frame");
 	double offset = 0;
 
-	rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_BORDER, rgfw_bool(!border));
+	rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_BORDER, !border);
 	NSUInteger styleMask = NS_WINDOW_STYLE_BORDERLESS | NS_WINDOW_STYLE_FULL_SIZE_CONTENT_VIEW;
 	if (border) styleMask = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
 	if (!(win.internal.flags & RGFW_WINDOW_NO_RESIZE)) styleMask |= NS_WINDOW_STYLE_RESIZABLE;
@@ -1716,9 +1630,9 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, Gfx
 }
 fn void rgfw_window_hide(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderOut:", null); win.internal.flags |= RGFW_WINDOW_HIDE; }
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) { if (_rgfw.nsApp != null) objc_send(_rgfw.nsApp, ObjcSendIntegerNSUInteger, "requestUserAttention:", (NSUInteger)request); }
-fn bool rgfw_window_isHidden(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible") ? false : true; return rgfw_bool(win.internal.flags & RGFW_WINDOW_HIDE); }
-fn bool rgfw_window_isMinimized(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isMiniaturized"); return rgfw_bool(win.internal.flags & RGFW_WINDOW_MINIMIZE); }
-fn bool rgfw_window_isMaximized(GfxWindow* win) { if (win == null) return false; if (win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isZoomed"); return rgfw_bool(win.internal.flags & RGFW_WINDOW_MAXIMIZE); }
+fn bool rgfw_window_isHidden(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible") ? false : true; return win.internal.flags & RGFW_WINDOW_HIDE != 0; }
+fn bool rgfw_window_isMinimized(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isMiniaturized"); return win.internal.flags & RGFW_WINDOW_MINIMIZE != 0; }
+fn bool rgfw_window_isMaximized(GfxWindow* win) { if (win == null) return false; if (win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isZoomed"); return win.internal.flags & RGFW_WINDOW_MAXIMIZE != 0; }
 
 fn bool GfxWindow.is_floating(&win)
 {
@@ -1752,9 +1666,9 @@ fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, 
 	if (requestedType != RGFW_DATA_TEXT || data == null) return false;
 	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
 	ObjcId str = objc_send(pb, ObjcSendIdId, "stringForType:", ns_string("public.utf8-plain-text"));
-	char* raw = ns_utf8(str);
+	ZString raw = ns_utf8(str);
 	if (raw == null) return false;
-	sz len = strlen(raw);
+	sz len = raw.len();
 	if (buffer != null && capacity > 0)
 	{
 		sz copyLen = len < capacity - 1 ? len : capacity - 1;
@@ -1812,11 +1726,11 @@ fn bool rgfw_extensionSupported_EGL(ZString extension, sz len)
 fn void* rgfw_getCurrentContext_EGL() => rgfw_eglGetCurrentContext != null ? rgfw_eglGetCurrentContext() : null;
 fn GfxWindow* rgfw_getCurrentWindow_EGL() => _rgfw.current;
 fn void* rgfw_getDisplay_EGL() => _rgfw.egl_display;
-fn RgfwProc rgfw_getProcAddress_EGL(ZString procname)
+fn GfxFn rgfw_getProcAddress_EGL(ZString procname)
 {
 	if (procname == null) return null;
 	void* proc = rgfw_eglProc(procname);
-	return (RgfwProc)proc;
+	return (GfxFn)proc;
 }
 
 fn RgfwEglContext* rgfw_window_createContext_EGL(GfxWindow* win, RgfwGlHints* hints)
