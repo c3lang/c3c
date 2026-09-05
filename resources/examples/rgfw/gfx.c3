@@ -36,7 +36,7 @@ alias RgfwGfxContextType = uint;
 typedef RgfwMouse = void;
 alias RgfwProc = fn void();
 alias RgfwConvertImageDataFunc = fn void(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, usz count);
-alias RgfwGenericFunc = fn void(GfxEvent* e);
+alias GfxGenericFunc = fn void(GfxEvent* e);
 alias RgfwDebugFunc = fn void(RgfwDebugInfo* info);
 
 struct RgfwColorLayout { int r, g, b, a; uint channels; }
@@ -182,7 +182,7 @@ union GfxEvent
 
 struct RgfwCallbacks
 {
-	RgfwGenericFunc[25] arr;
+	GfxGenericFunc[25] arr;
 }
 
 struct RgfwDebugInfo
@@ -586,11 +586,38 @@ fn GfxWindow* create_window(char* name, int x, int y, int w, int h, RgfwWindowFl
 
 fn bool is_mouse_pressed(RgfwMouseButton button) => _rgfw.mouseButtons[(sz)button].current && !_rgfw.mouseButtons[(sz)button].prev;
 
+fn int[<2>] get_mouse(GfxWindow* win) => { win.internal.lastMouseX, win.internal.lastMouseY };
+
 fn void GfxWindow.destroy(&self)
 {
 	rgfw_window_closePtr(self);
 	free(self);
 }
+
+fn GfxGenericFunc set_event_callback(RgfwEventType type, GfxGenericFunc func)
+{
+	GfxGenericFunc old = _rgfw.callbacks[type];
+	_rgfw.callbacks[type] = func;
+	return old;
+}
+
+fn void set_dual_event_callback(RgfwEventType type, GfxGenericFunc func, GfxGenericFunc* first, GfxGenericFunc* second)
+{
+	GfxGenericFunc func1 = set_event_callback(type, func);
+	GfxGenericFunc func2 = set_event_callback((RgfwEventType)(type + 1), func);
+	if (first != null) *first = func1;
+	if (second != null) *second = func2;
+}
+
+fn void set_all_event_callback(GfxGenericFunc func, RgfwCallbacks* callbacks)
+{
+	for (RgfwEventType i = RGFW_EVENT_NONE + 1; i < RGFW_EVENT_COUNT; i++)
+	{
+		if (callbacks != null) callbacks.arr[i] = _rgfw.callbacks[i];
+		set_event_callback(i, func);
+	}
+}
+
 
 fn void rgfw_eventQueueFlush() { _rgfw.eventLen = 0; }
 

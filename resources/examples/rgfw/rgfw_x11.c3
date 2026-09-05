@@ -563,7 +563,7 @@ struct RgfwInfo
 	RgfwMouse* hiddenMouse;
 	RgfwMouse*[21] standardMice;
 	RgfwDebugFunc debugCallbackSrc;
-	RgfwGenericFunc[25] callbacks;
+	GfxGenericFunc[25] callbacks;
 	GfxEvent[MAX_EVENTS] events;
 	int eventBottom;
 	int eventLen;
@@ -878,29 +878,6 @@ fn void rgfw_resetKey()
 	rgfw_memzero((void*)&_rgfw.keyboard, RgfwKeyState[256]::size);
 }
 
-fn RgfwGenericFunc rgfw_setEventCallback(RgfwEventType type, RgfwGenericFunc func)
-{
-	RgfwGenericFunc old = _rgfw.callbacks[(usz)type];
-	_rgfw.callbacks[(usz)type] = func;
-	return old;
-}
-
-fn void rgfw_setDualEventCallback(RgfwEventType type, RgfwGenericFunc func, RgfwGenericFunc* first, RgfwGenericFunc* second)
-{
-	RgfwGenericFunc func1 = rgfw_setEventCallback(type, func);
-	RgfwGenericFunc func2 = rgfw_setEventCallback((RgfwEventType)(type + 1), func);
-	if (first != null) *first = func1;
-	if (second != null) *second = func2;
-}
-
-fn void rgfw_setAllEventCallbacks(RgfwGenericFunc func, RgfwCallbacks* callbacks)
-{
-	for (RgfwEventType i = RGFW_EVENT_NONE + 1; i < RGFW_EVENT_COUNT; i++)
-	{
-		if (callbacks != null) callbacks.arr[(usz)i] = _rgfw.callbacks[(usz)i];
-		rgfw_setEventCallback(i, func);
-	}
-}
 
 
 fn void rgfw_windowMaximizedCallback(GfxWindow* win, int x, int y, int w, int h)
@@ -1405,7 +1382,6 @@ fn void rgfw_window_setFlagsInternal(GfxWindow* win, RgfwWindowFlags flags, Rgfw
 fn void rgfw_window_setFlags(GfxWindow* win, RgfwWindowFlags flags) { rgfw_window_setFlagsInternal(win, flags, win.internal.flags); }
 fn bool rgfw_window_isInFocus(GfxWindow* win) => rgfw_bool(win.internal.inFocus);
 fn void rgfw_setBuildDND(bool state) { _rgfw.dndBuild = state; }
-fn bool rgfw_window_getMouse(GfxWindow* win, int* x, int* y) { if (x != null) *x = win.internal.lastMouseX; if (y != null) *y = win.internal.lastMouseY; return true; }
 fn bool rgfw_window_isKeyPressed(GfxWindow* win, RgfwKey key) => rgfw_bool(rgfw_isKeyPressed(key) && rgfw_window_isInFocus(win));
 fn bool rgfw_window_isKeyDown(GfxWindow* win, RgfwKey key) => rgfw_bool(rgfw_isKeyDown(key) && rgfw_window_isInFocus(win));
 fn bool rgfw_window_isKeyReleased(GfxWindow* win, RgfwKey key) => rgfw_bool(rgfw_isKeyReleased(key) && rgfw_window_isInFocus(win));
