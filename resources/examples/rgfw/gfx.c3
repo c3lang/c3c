@@ -35,7 +35,7 @@ alias RgfwGfxContextType = uint;
 typedef RgfwMouse = void;
 alias RgfwProc = fn void();
 alias RgfwConvertImageDataFunc = fn void(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, usz count);
-alias RgfwGenericFunc = fn void(RgfwEvent* e);
+alias RgfwGenericFunc = fn void(GfxEvent* e);
 alias RgfwDebugFunc = fn void(RgfwDebugInfo* info);
 
 struct RgfwColorLayout { int r, g, b, a; uint channels; }
@@ -162,7 +162,7 @@ struct RgfwScaleUpdatedEvent { RgfwEventType type; GfxWindow* win; float x, y; }
 struct RgfwMonitorEvent { RgfwEventType type; GfxWindow* win; GfxMonitor* monitor; bool state; }
 struct RgfwWindowUpdateEvent { RgfwEventType type; GfxWindow* win; int x, y, w, h; }
 
-union RgfwEvent
+union GfxEvent
 {
 	RgfwEventType type;
 	RgfwCommonEvent common;
@@ -590,3 +590,102 @@ fn void GfxWindow.destroy(&self)
 	rgfw_window_closePtr(self);
 	free(self);
 }
+
+fn void rgfw_eventQueueFlush() { _rgfw.eventLen = 0; }
+
+fn void rgfw_eventQueuePush(GfxEvent* event)
+{
+	if (_rgfw.queueEvents == false) return;
+	if (_rgfw.eventLen >= MAX_EVENTS)
+	{
+		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_EVENT_QUEUE, "Event queue limit 'MAX_EVENTS' has been reached automatically flushing queue.");
+		rgfw_eventQueueFlush();
+		return;
+	}
+	int eventTop = (_rgfw.eventBottom + _rgfw.eventLen) % MAX_EVENTS;
+	_rgfw.eventLen += 1;
+	_rgfw.events[(usz)eventTop] = *event;
+}
+
+fn GfxEvent* rgfw_eventQueuePop()
+{
+	if (_rgfw.eventLen == 0) return null;
+	GfxEvent* ev = &_rgfw.events[(usz)_rgfw.eventBottom];
+	_rgfw.eventLen -= 1;
+	_rgfw.eventBottom = (_rgfw.eventBottom + 1) % MAX_EVENTS;
+	return ev;
+}
+
+fn void rgfw_eventQueuePushAndCall(GfxEvent* event)
+{
+	if (_rgfw.callbacks[(usz)event.type] != null) _rgfw.callbacks[(usz)event.type](event);
+	rgfw_eventQueuePush(event);
+}
+
+fn bool rgfw_checkEvent(GfxEvent* event)
+{
+	if (_rgfw.eventLen == 0 && _rgfw.polledEvents == false)
+	{
+		_rgfw.queueEvents = true;
+		rgfw_pollEvents();
+		_rgfw.polledEvents = true;
+	}
+	if (rgfw_checkQueuedEvent(event) == false)
+	{
+		_rgfw.polledEvents = false;
+		return false;
+	}
+	return true;
+}
+
+fn bool rgfw_checkQueuedEvent(GfxEvent* event)
+{
+	_rgfw.queueEvents = true;
+	GfxEvent* ev = rgfw_eventQueuePop();
+	if (ev)
+	{
+		*event = *ev;
+		return true;
+	}
+	return false;
+}
+
+fn GfxEvent* rgfw_window_eventQueuePop(GfxWindow* win)
+{
+	GfxEvent* ev = rgfw_eventQueuePop();
+	if (!ev) return ev;
+	for (int i = 1; i < _rgfw.eventLen && ev.common.win != win && ev.common.win != null; i++)
+	{
+		rgfw_eventQueuePush(ev);
+		ev = rgfw_eventQueuePop();
+	}
+	if (ev.common.win != win && ev.common.win != null) return null;
+	return ev;
+}
+
+fn bool rgfw_window_checkQueuedEvent(GfxWindow* win, GfxEvent* event)
+{
+	GfxEvent* ev = rgfw_window_eventQueuePop(win);
+	if (!ev) return false;
+	*event = *ev;
+	return true;
+}
+
+fn bool rgfw_window_checkEvent(GfxWindow* win, GfxEvent* event)
+{
+	if (!_rgfw.eventLen && !_rgfw.polledEvents)
+	{
+		_rgfw.queueEvents = true;
+		rgfw_pollEvents();
+		_rgfw.polledEvents = true;
+	}
+	if (!rgfw_window_checkQueuedEvent(win, event))
+	{
+		_rgfw.polledEvents = false;
+		return false;
+	}
+	return true;
+}
+
+
+

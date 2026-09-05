@@ -595,7 +595,7 @@ struct RgfwInfo
 	RgfwMouse*[21] standardMice;
 	RgfwDebugFunc debugCallbackSrc;
 	RgfwGenericFunc[25] callbacks;
-	RgfwEvent[MAX_EVENTS] events;
+	GfxEvent[MAX_EVENTS] events;
 	int eventBottom;
 	int eventLen;
 	bool queueEvents;
@@ -979,108 +979,14 @@ fn void rgfw_setAllEventCallbacks(RgfwGenericFunc func, RgfwCallbacks* callbacks
 	}
 }
 
-fn void rgfw_eventQueueFlush() { _rgfw.eventLen = 0; }
 
-fn void rgfw_eventQueuePush(RgfwEvent* event)
-{
-	if (_rgfw.queueEvents == false) return;
-	if (_rgfw.eventLen >= MAX_EVENTS)
-	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_EVENT_QUEUE, "Event queue limit 'MAX_EVENTS' has been reached automatically flushing queue.");
-		rgfw_eventQueueFlush();
-		return;
-	}
-	int eventTop = (_rgfw.eventBottom + _rgfw.eventLen) % MAX_EVENTS;
-	_rgfw.eventLen += 1;
-	_rgfw.events[(usz)eventTop] = *event;
-}
-
-fn RgfwEvent* rgfw_eventQueuePop()
-{
-	if (_rgfw.eventLen == 0) return null;
-	RgfwEvent* ev = &_rgfw.events[(usz)_rgfw.eventBottom];
-	_rgfw.eventLen -= 1;
-	_rgfw.eventBottom = (_rgfw.eventBottom + 1) % MAX_EVENTS;
-	return ev;
-}
-
-fn void rgfw_eventQueuePushAndCall(RgfwEvent* event)
-{
-	if (_rgfw.callbacks[(usz)event.type] != null) _rgfw.callbacks[(usz)event.type](event);
-	rgfw_eventQueuePush(event);
-}
-
-fn bool rgfw_checkEvent(RgfwEvent* event)
-{
-	if (_rgfw.eventLen == 0 && _rgfw.polledEvents == false)
-	{
-		_rgfw.queueEvents = true;
-		rgfw_pollEvents();
-		_rgfw.polledEvents = true;
-	}
-	if (rgfw_checkQueuedEvent(event) == false)
-	{
-		_rgfw.polledEvents = false;
-		return false;
-	}
-	return true;
-}
-
-fn bool rgfw_checkQueuedEvent(RgfwEvent* event)
-{
-	_rgfw.queueEvents = true;
-	RgfwEvent* ev = rgfw_eventQueuePop();
-	if (ev != null)
-	{
-		*event = *ev;
-		return true;
-	}
-	return false;
-}
-
-fn RgfwEvent* rgfw_window_eventQueuePop(GfxWindow* win)
-{
-	RgfwEvent* ev = rgfw_eventQueuePop();
-	if (ev == null) return ev;
-	for (int i = 1; i < _rgfw.eventLen && ev.common.win != win && ev.common.win != null; i++)
-	{
-		rgfw_eventQueuePush(ev);
-		ev = rgfw_eventQueuePop();
-	}
-	if (ev.common.win != win && ev.common.win != null) return null;
-	return ev;
-}
-
-fn bool rgfw_window_checkEvent(GfxWindow* win, RgfwEvent* event)
-{
-	if (_rgfw.eventLen == 0 && _rgfw.polledEvents == false)
-	{
-		_rgfw.queueEvents = true;
-		rgfw_pollEvents();
-		_rgfw.polledEvents = true;
-	}
-	if (rgfw_window_checkQueuedEvent(win, event) == false)
-	{
-		_rgfw.polledEvents = false;
-		return false;
-	}
-	return true;
-}
-
-fn bool rgfw_window_checkQueuedEvent(GfxWindow* win, RgfwEvent* event)
-{
-	RgfwEvent* ev = rgfw_window_eventQueuePop(win);
-	if (ev == null) return false;
-	*event = *ev;
-	return true;
-}
 
 fn void rgfw_windowMaximizedCallback(GfxWindow* win, int x, int y, int w, int h)
 {
 	win.internal.flags |= RGFW_WINDOW_MAXIMIZE;
 	win.x = x; win.y = y; win.w = w; win.h = h;
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_MAXIMIZED_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_WINDOW_MAXIMIZED;
 	event.update.x = x; event.update.y = y; event.update.w = w; event.update.h = h;
 	event.common.win = win;
@@ -1091,7 +997,7 @@ fn void rgfw_windowMinimizedCallback(GfxWindow* win)
 {
 	win.internal.flags |= RGFW_WINDOW_MINIMIZE;
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_MINIMIZED_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_WINDOW_MINIMIZED;
 	event.update.x = win.x; event.update.y = win.y; event.update.w = win.w; event.update.h = win.h;
 	event.common.win = win;
@@ -1104,7 +1010,7 @@ fn void rgfw_windowRestoredCallback(GfxWindow* win, int x, int y, int w, int h)
 	win.x = x; win.y = y; win.w = w; win.h = h;
 	if (rgfw_window_isMaximized(win) == false) win.internal.flags &= ~((uint)RGFW_WINDOW_MAXIMIZE);
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_RESTORED_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_WINDOW_RESTORED;
 	event.update.x = x; event.update.y = y; event.update.w = w; event.update.h = h;
 	event.common.win = win;
@@ -1132,7 +1038,7 @@ fn void rgfw_windowMovedCallback(GfxWindow* win, int x, int y)
 {
 	win.x = x; win.y = y;
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_MOVED_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_WINDOW_MOVED;
 	event.update.x = x; event.update.y = y; event.update.w = win.w; event.update.h = win.h;
 	event.common.win = win;
@@ -1143,7 +1049,7 @@ fn void rgfw_windowResizedCallback(GfxWindow* win, int w, int h)
 {
 	win.w = w; win.h = h;
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_RESIZED_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_WINDOW_RESIZED;
 	event.update.x = win.x; event.update.y = win.y; event.update.w = w; event.update.h = h;
 	event.common.win = win;
@@ -1153,7 +1059,7 @@ fn void rgfw_windowResizedCallback(GfxWindow* win, int w, int h)
 fn void rgfw_windowCloseCallback(GfxWindow* win)
 {
 	win.internal.shouldClose = true;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_WINDOW_CLOSE;
 	event.common.win = win;
 	rgfw_eventQueuePushAndCall(&event);
@@ -1164,7 +1070,7 @@ fn void rgfw_mouseMotionCallback(GfxWindow* win, int x, int y)
 	win.internal.lastMouseX = x;
 	win.internal.lastMouseY = y;
 	if (!(win.internal.enabledEvents & RGFW_MOUSE_MOTION_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_MOUSE_MOTION;
 	event.mouse.x = x; event.mouse.y = y; event.mouse.inWindow = win.internal.mouseInside;
 	event.common.win = win;
@@ -1175,7 +1081,7 @@ fn void rgfw_rawMotionCallback(GfxWindow* win, float x, float y)
 {
 	_rgfw.vectorX = x; _rgfw.vectorY = y;
 	if (!(win.internal.enabledEvents & RGFW_MOUSE_RAW_MOTION_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_MOUSE_RAW_MOTION;
 	event.delta.x = x; event.delta.y = y;
 	event.common.win = win;
@@ -1185,7 +1091,7 @@ fn void rgfw_rawMotionCallback(GfxWindow* win, float x, float y)
 fn void rgfw_windowRefreshCallback(GfxWindow* win, int x, int y, int w, int h)
 {
 	if (!(win.internal.enabledEvents & RGFW_WINDOW_REFRESH_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_WINDOW_REFRESH;
 	event.update.x = x; event.update.y = y; event.update.w = w; event.update.h = h;
 	event.common.win = win;
@@ -1196,7 +1102,7 @@ fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
 {
 	win.internal.inFocus = inFocus;
 	if (win.internal.captureMouse) rgfw_window_captureMousePlatform(win, inFocus);
-	RgfwEvent event;
+	GfxEvent event;
 	event.common.win = win;
 	event.focus.state = inFocus;
 	if (inFocus == true)
@@ -1225,7 +1131,7 @@ fn void rgfw_mouseNotifyCallback(GfxWindow* win, int x, int y, bool status)
 	_rgfw.windowState.win = win;
 	win.internal.lastMouseX = x;
 	win.internal.lastMouseY = y;
-	RgfwEvent event;
+	GfxEvent event;
 	event.common.win = win;
 	event.mouse.x = x; event.mouse.y = y; event.mouse.inWindow = win.internal.mouseInside;
 	if (status)
@@ -1251,7 +1157,7 @@ fn void rgfw_dataDragCallback(GfxWindow* win, RgfwDataTransferType dataType, Rgf
 	_rgfw.windowState.dataDragging = true;
 	_rgfw.windowState.dropX = x;
 	_rgfw.windowState.dropY = y;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_DATA_DRAG;
 	event.drag.x = x; event.drag.y = y; event.drag.action = action; event.drag.dataType = dataType;
 	event.common.win = win;
@@ -1269,7 +1175,7 @@ fn void rgfw_dataDropCallback(GfxWindow* win, char* data, usz length, RgfwDataTr
 	node.data = data;
 	node.length = length;
 	node.type = dataType;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_DATA_DROP;
 	event.drop.value = &node;
 	event.common.win = win;
@@ -1287,7 +1193,7 @@ fn void rgfw_dataDropCallback(GfxWindow* win, char* data, usz length, RgfwDataTr
 fn void rgfw_keyCharCallback(GfxWindow* win, uint codepoint)
 {
 	if (!(win.internal.enabledEvents & RGFW_KEY_CHAR_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_KEY_CHAR;
 	event.keyChar.value = codepoint;
 	event.common.win = win;
@@ -1296,7 +1202,7 @@ fn void rgfw_keyCharCallback(GfxWindow* win, uint codepoint)
 
 fn void rgfw_keyCallback(GfxWindow* win, RgfwKey key, RgfwKeymod mod, bool repeat, bool state)
 {
-	RgfwEvent event;
+	GfxEvent event;
 	if (state)
 	{
 		if (!(win.internal.enabledEvents & RGFW_KEY_PRESSED_FLAG)) return;
@@ -1316,7 +1222,7 @@ fn void rgfw_keyCallback(GfxWindow* win, RgfwKey key, RgfwKeymod mod, bool repea
 
 fn void rgfw_mouseButtonCallback(GfxWindow* win, RgfwMouseButton button, bool press)
 {
-	RgfwEvent event;
+	GfxEvent event;
 	if (press)
 	{
 		if (!(win.internal.enabledEvents & RGFW_MOUSE_BUTTON_PRESSED_FLAG)) return;
@@ -1339,7 +1245,7 @@ fn void rgfw_mouseScrollCallback(GfxWindow* win, float x, float y)
 {
 	if (!(win.internal.enabledEvents & RGFW_MOUSE_SCROLL_FLAG)) return;
 	_rgfw.scrollX = x; _rgfw.scrollY = y;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_MOUSE_SCROLL;
 	event.delta.x = x; event.delta.y = y;
 	event.common.win = win;
@@ -1349,7 +1255,7 @@ fn void rgfw_mouseScrollCallback(GfxWindow* win, float x, float y)
 fn void rgfw_scaleUpdatedCallback(GfxWindow* win, float scaleX, float scaleY)
 {
 	if (!(win.internal.enabledEvents & RGFW_SCALE_UPDATED_FLAG)) return;
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = RGFW_SCALE_UPDATED;
 	event.scale.x = scaleX; event.scale.y = scaleY;
 	event.common.win = win;
@@ -1363,7 +1269,7 @@ fn void rgfw_monitorCallback(GfxWindow* win, GfxMonitor* monitor, bool connected
 		if (connected && !(win.internal.enabledEvents & RGFW_MONITOR_CONNECTED_FLAG)) return;
 		if (!connected && !(win.internal.enabledEvents & RGFW_MONITOR_DISCONNECTED_FLAG)) return;
 	}
-	RgfwEvent event;
+	GfxEvent event;
 	event.type = connected ? RGFW_MONITOR_CONNECTED : RGFW_MONITOR_DISCONNECTED;
 	event.monitor.monitor = monitor;
 	event.monitor.state = connected;
