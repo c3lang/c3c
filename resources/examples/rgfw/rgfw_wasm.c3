@@ -21,7 +21,7 @@ extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
-struct Timespec { long tv_sec; long tv_nsec; }
+struct Timespec { long tv_sec; CLong tv_nsec; }
 
 
 struct RgfwGlContext { void* ctx; void* format; }

@@ -15,7 +15,7 @@ extern fn float powf(float x, float y);
 extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
-struct Timespec { long tv_sec; long tv_nsec; }
+struct Timespec { long tv_sec; CLong tv_nsec; }
 
 
 // ---- Win32 base types ----
@@ -168,9 +168,9 @@ extern fn int getWindowRect(HWnd* wnd, Rect* rect) @cname("GetWindowRect");
 extern fn int getClientRect(HWnd* wnd, Rect* rect) @cname("GetClientRect");
 extern fn int adjustWindowRectEx(Rect* rect, uint style, int menu, uint exStyle) @cname("AdjustWindowRectEx");
 extern fn int setWindowPos(HWnd* wnd, HWnd* insertAfter, int x, int y, int cx, int cy, uint flags) @cname("SetWindowPos");
-extern fn iptr setWindowLongW(HWnd* wnd, int index, iptr newLong) @cname("SetWindowLongW");
-extern fn iptr setWindowLong(HWnd* wnd, int index, iptr newLong) @cname("SetWindowLongA");
-extern fn iptr getWindowLongW(HWnd* wnd, int index) @cname("GetWindowLongW");
+extern fn CLong setWindowLongW(HWnd* wnd, int index, CLong newLong) @cname("SetWindowLongW");
+extern fn CLong setWindowLong(HWnd* wnd, int index, CLong newLong) @cname("SetWindowLongA");
+extern fn CLong getWindowLongW(HWnd* wnd, int index) @cname("GetWindowLongW");
 extern fn iptr getWindowLongPtr(HWnd* wnd, int index) @cname("GetWindowLongPtrA");
 extern fn int showWindow(HWnd* wnd, int cmdShow) @cname("ShowWindow");
 extern fn int isWindowVisible(HWnd* wnd) @cname("IsWindowVisible");
@@ -1208,13 +1208,13 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 
 	Rect rect;
 	getClientRect(win.src.window, &rect);
-	iptr style = getWindowLongW(win.src.window, -16 /* GWL_STYLE */);
-	style |= (iptr)rgfw_winapiWindowGetStyle(win, win.internal.flags);
+	CLong style = getWindowLongW(win.src.window, -16 /* GWL_STYLE */);
+	style |= (CLong)rgfw_winapiWindowGetStyle(win, win.internal.flags);
 
-	if (!border) { style &= ~(iptr)0x00CF0000; } // ~WS_OVERLAPPEDWINDOW
+	if (!border) { style &= ~(CLong)0x00CF0000; } // ~WS_OVERLAPPEDWINDOW
 	else
 	{
-		if (win.internal.flags & RGFW_WINDOW_NO_RESIZE) style &= ~(iptr)0x00010000; // ~WS_MAXIMIZEBOX
+		if (win.internal.flags & RGFW_WINDOW_NO_RESIZE) style &= ~(CLong)0x00010000; // ~WS_MAXIMIZEBOX
 		style |= 0x00CF0000; // WS_OVERLAPPEDWINDOW
 	}
 
@@ -1790,14 +1790,14 @@ fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough)
 	uint key = 0;
 	char alpha = 0;
 	uint flags = 0;
-	iptr exStyle = getWindowLongW(win.src.window, -20);
+	CLong exStyle = getWindowLongW(win.src.window, -20);
 	if (exStyle & 0x00080000) getLayeredWindowAttributes(win.src.window, &key, &alpha, &flags);
 
 	if (passthrough) { exStyle |= (0x00000020 | 0x00080000); } // WS_EX_TRANSPARENT|WS_EX_LAYERED
 	else
 	{
-		exStyle &= ~(iptr)0x00000020;
-		if ((exStyle & 0x00080000) && !(flags & 2)) exStyle &= ~(iptr)0x00080000;
+		exStyle &= ~(CLong)0x00000020;
+		if ((exStyle & 0x00080000) && !(flags & 2)) exStyle &= ~(CLong)0x00080000;
 	}
 
 	setWindowLongW(win.src.window, -20, exStyle);

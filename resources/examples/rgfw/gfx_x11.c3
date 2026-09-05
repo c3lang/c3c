@@ -14,10 +14,10 @@ struct XImageHeader
 
 typedef GfxXDisplay = void;
 typedef GfxXVisual = void;
-alias GfxXWindow = ulong;
-alias GfxXDrawable = ulong;
+alias GfxXWindow = CULong;
+alias GfxXDrawable = CULong;
 alias GfxXPointer = char*;
-alias GfxRROutput = ulong;
+alias GfxRROutput = CULong;
 
 // X11 used functions
 extern fn GfxXDisplay* xOpenDisplay(ZString name) @cname("XOpenDisplay");
@@ -30,8 +30,8 @@ extern fn GfxXVisual* xDefaultVisual(GfxXDisplay* d, int screen) @cname("XDefaul
 extern fn int xDefaultDepth(GfxXDisplay* d, int screen) @cname("XDefaultDepth");
 extern fn GContext xDefaultGC(GfxXDisplay* d, int screen) @cname("XDefaultGC");
 extern fn Colormap xCreateColormap(GfxXDisplay* d, GfxXWindow win, GfxXVisual* visual, int alloc) @cname("XCreateColormap");
-extern fn int xFreeColors(GfxXDisplay* d, Colormap cm, ulong* pixels, int n, ulong planes) @cname("XFreeColors");
-extern fn GfxXWindow xCreateWindow(GfxXDisplay* d, GfxXWindow parent, int x, int y, uint w, uint h, uint borderWidth, int depth, uint c_class, GfxXVisual* visual, ulong valuemask, XSetWindowAttributes* attrs) @cname("XCreateWindow");
+extern fn int xFreeColors(GfxXDisplay* d, Colormap cm, CULong* pixels, int n, CULong planes) @cname("XFreeColors");
+extern fn GfxXWindow xCreateWindow(GfxXDisplay* d, GfxXWindow parent, int x, int y, uint w, uint h, uint borderWidth, int depth, uint c_class, GfxXVisual* visual, CULong valuemask, XSetWindowAttributes* attrs) @cname("XCreateWindow");
 extern fn int xDestroyWindow(GfxXDisplay* d, GfxXWindow w) @cname("XDestroyWindow");
 extern fn int xMapWindow(GfxXDisplay* d, GfxXWindow w) @cname("XMapWindow");
 extern fn int xMapRaised(GfxXDisplay* d, GfxXWindow w) @cname("XMapRaised");
@@ -39,7 +39,7 @@ extern fn int xUnmapWindow(GfxXDisplay* d, GfxXWindow w) @cname("XUnmapWindow");
 extern fn int xMoveWindow(GfxXDisplay* d, GfxXWindow w, int x, int y) @cname("XMoveWindow");
 extern fn int xResizeWindow(GfxXDisplay* d, GfxXWindow w, uint width, uint height) @cname("XResizeWindow");
 extern fn int xRaiseWindow(GfxXDisplay* d, GfxXWindow w) @cname("XRaiseWindow");
-extern fn GContext xCreateGC(GfxXDisplay* d, GfxXDrawable draw, ulong valuemask, void* values) @cname("XCreateGC");
+extern fn GContext xCreateGC(GfxXDisplay* d, GfxXDrawable draw, CULong valuemask, void* values) @cname("XCreateGC");
 extern fn int xFreeGC(GfxXDisplay* d, GContext gc) @cname("XFreeGC");
 extern fn int xSaveContext(GfxXDisplay* d, XlibId xid, int context, GfxXPointer data) @cname("XSaveContext");
 extern fn int xFindContext(GfxXDisplay* d, XlibId xid, int context, GfxXPointer* dataOut) @cname("XFindContext");
@@ -63,11 +63,11 @@ extern fn int xSetWMHints(GfxXDisplay* d, GfxXWindow w, XWMHints* hints) @cname(
 extern fn XWMHints* xGetWMHints(GfxXDisplay* d, GfxXWindow w) @cname("XGetWMHints");
 extern fn int xSetWMProtocols(GfxXDisplay* d, GfxXWindow w, Atom* protocols, int count) @cname("XSetWMProtocols");
 extern fn int xSetWMSizeHints(GfxXDisplay* d, GfxXDrawable w, XSizeHints* hints, Atom property) @cname("XSetWMSizeHints");
-extern fn int xGetWMNormalHints(GfxXDisplay* d, GfxXWindow w, XSizeHints* hints, long* flags) @cname("XGetWMNormalHints");
+extern fn int xGetWMNormalHints(GfxXDisplay* d, GfxXWindow w, XSizeHints* hints, CLong* flags) @cname("XGetWMNormalHints");
 extern fn int xSetWMNormalHints(GfxXDisplay* d, GfxXWindow w, XSizeHints* hints) @cname("XSetWMNormalHints");
-extern fn int xSelectInput(GfxXDisplay* d, GfxXDrawable w, long eventMask) @cname("XSelectInput");
+extern fn int xSelectInput(GfxXDisplay* d, GfxXDrawable w, CLong eventMask) @cname("XSelectInput");
 extern fn int xStoreName(GfxXDisplay* d, GfxXWindow w, ZString name) @cname("XStoreName");
-extern fn int xSetWindowBackground(GfxXDisplay* d, GfxXWindow w, ulong background) @cname("XSetWindowBackground");
+extern fn int xSetWindowBackground(GfxXDisplay* d, GfxXWindow w, CULong background) @cname("XSetWindowBackground");
 extern fn int xSetWindowBackgroundPixmap(GfxXDisplay* d, GfxXWindow w, Pixmap pixmap) @cname("XSetWindowBackgroundPixmap");
 extern fn int xClearWindow(GfxXDisplay* d, GfxXWindow w) @cname("XClearWindow");
 extern fn int xFlush(GfxXDisplay* d) @cname("XFlush");
@@ -80,12 +80,12 @@ extern fn int xNextEvent(GfxXDisplay* d, XEvent* ev) @cname("XNextEvent");
 extern fn int xPeekEvent(GfxXDisplay* d, XEvent* ev) @cname("XPeekEvent");
 extern fn int xCheckTypedWindowEvent(GfxXDisplay* d, GfxXWindow w, int eventType, XEvent* ev) @cname("XCheckTypedWindowEvent");
 extern fn int xFilterEvent(XEvent* ev, GfxXWindow w) @cname("XFilterEvent");
-extern fn int xSendEvent(GfxXDisplay* d, GfxXWindow w, int propagate, long eventMask, XEvent* ev) @cname("XSendEvent");
+extern fn int xSendEvent(GfxXDisplay* d, GfxXWindow w, int propagate, CLong eventMask, XEvent* ev) @cname("XSendEvent");
 extern fn int xGetEventData(GfxXDisplay* d, XGenericEventCookie* cookie) @cname("XGetEventData");
 extern fn int xFreeEventData(GfxXDisplay* d, XGenericEventCookie* cookie) @cname("XFreeEventData");
 extern fn int xGetWindowAttributes(GfxXDisplay* d, GfxXWindow w, XWindowAttributes* attrs) @cname("XGetWindowAttributes");
 extern fn int xChangeProperty(GfxXDisplay* d, GfxXWindow w, Atom property, Atom type, int format, int mode, char* data, int nelements) @cname("XChangeProperty");
-extern fn int xGetWindowProperty(GfxXDisplay* d, GfxXWindow w, Atom property, CLong offset, CLong length, int delet, Atom reqType, Atom* actualType, int* actualFormat, ulong* nitems, ulong* bytesAfter, char** propReturn) @cname("XGetWindowProperty");
+extern fn int xGetWindowProperty(GfxXDisplay* d, GfxXWindow w, Atom property, CLong offset, CLong length, int delet, Atom reqType, Atom* actualType, int* actualFormat, CULong* nitems, CULong* bytesAfter, char** propReturn) @cname("XGetWindowProperty");
 extern fn int xDeleteProperty(GfxXDisplay* d, GfxXWindow w, Atom property) @cname("XDeleteProperty");
 extern fn Atom xInternAtom(GfxXDisplay* d, ZString name, int onlyIfExists) @cname("XInternAtom");
 extern fn int xConvertSelection(GfxXDisplay* d, Atom selection, Atom target, Atom property, GfxXWindow requestor, Time time) @cname("XConvertSelection");
@@ -111,7 +111,7 @@ extern fn int xkbGetNames(GfxXDisplay* d, uint which, void* xkb) @cname("XkbGetN
 extern fn void* xkbGetKeyboardByName(GfxXDisplay* d, uint deviceSpec, void* names, uint want, uint need, int loadKeycodes) @cname("XkbGetKeyboardByName");
 extern fn int xkbFreeKeyboard(void* xkb, uint which, int freeAll) @cname("XkbFreeKeyboard");
 extern fn int xMatchVisualInfo(GfxXDisplay* d, int screen, int depth, int c_class, XVisualInfo* visualOut) @cname("XMatchVisualInfo");
-extern fn int xChangeWindowAttributes(GfxXDisplay* d, GfxXWindow w, ulong valuemask, XSetWindowAttributes* attrs) @cname("XChangeWindowAttributes");
+extern fn int xChangeWindowAttributes(GfxXDisplay* d, GfxXWindow w, CULong valuemask, XSetWindowAttributes* attrs) @cname("XChangeWindowAttributes");
 extern fn Region xCreateRegion() @cname("XCreateRegion");
 extern fn int xDestroyRegion(Region r) @cname("XDestroyRegion");
 extern fn XCursor xCreatePixmap(GfxXDisplay* d, GfxXDrawable draw, uint w, uint h, uint depth) @cname("XCreatePixmap");

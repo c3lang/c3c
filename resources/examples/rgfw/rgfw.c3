@@ -13,14 +13,14 @@ extern fn float powf(float x, float y);
 extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
-struct Timespec { long tv_sec; long tv_nsec; }
+struct Timespec { CLong tv_sec; CLong tv_nsec; }
 
 alias ObjcId = void*;
 typedef ObjcClass = void*;
 typedef ObjcSelector = void*;
 alias CGFloat = double;
-alias NSUInteger = ulong;
-alias NSInteger = long;
+alias NSUInteger = CULong;
+alias NSInteger = CLong;
 alias CFArrayRef = void*;
 alias CFStringRef = void*;
 alias CFBundleRef = void*;
@@ -33,15 +33,15 @@ alias RgfwVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetal
 
 alias XOpenDisplayProc = fn void*(ZString displayName);
 alias XCloseDisplayProc = fn int(void* display);
-alias XDefaultRootWindowProc = fn ulong(void* display);
-alias XCreateSimpleWindowProc = fn ulong(void* display, ulong parent, int x, int y, uint width, uint height, uint borderWidth, ulong border, ulong background);
-alias XStoreNameProc = fn int(void* display, ulong window, ZString name);
-alias XMapRaisedProc = fn int(void* display, ulong window);
-alias XMapWindowProc = fn int(void* display, ulong window);
-alias XUnmapWindowProc = fn int(void* display, ulong window);
-alias XDestroyWindowProc = fn int(void* display, ulong window);
-alias XMoveWindowProc = fn int(void* display, ulong window, int x, int y);
-alias XResizeWindowProc = fn int(void* display, ulong window, uint width, uint height);
+alias XDefaultRootWindowProc = fn CULong(void* display);
+alias XCreateSimpleWindowProc = fn CULong(void* display, CULong parent, int x, int y, uint width, uint height, uint borderWidth, CULong border, CULong background);
+alias XStoreNameProc = fn int(void* display, CULong window, ZString name);
+alias XMapRaisedProc = fn int(void* display, CULong window);
+alias XMapWindowProc = fn int(void* display, CULong window);
+alias XUnmapWindowProc = fn int(void* display, CULong window);
+alias XDestroyWindowProc = fn int(void* display, CULong window);
+alias XMoveWindowProc = fn int(void* display, CULong window, int x, int y);
+alias XResizeWindowProc = fn int(void* display, CULong window, uint width, uint height);
 alias XFlushProc = fn int(void* display);
 alias XPendingProc = fn int(void* display);
 alias WlDisplayConnectProc = fn void*(ZString name);
@@ -1326,7 +1326,7 @@ fn void rgfw_window_setLayer_OSX(GfxWindow* win, void* layer) { if (win != null 
 fn void* rgfw_window_getWindow_OSX(GfxWindow* win) => win != null ? win.src.window : null;
 fn void* rgfw_window_getHWND(GfxWindow* win) => null;
 fn void* rgfw_window_getHDC(GfxWindow* win) => null;
-fn ulong rgfw_window_getWindow_X11(GfxWindow* win) => (win != null && win.src.window != null) ? (ulong)win.src.window : 0;
+fn CULong rgfw_window_getWindow_X11(GfxWindow* win) => (win != null && win.src.window != null) ? (CULong)win.src.window : 0;
 fn void* rgfw_window_getWindow_Wayland(GfxWindow* win) => win != null ? win.src.window : null;
 
 fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)

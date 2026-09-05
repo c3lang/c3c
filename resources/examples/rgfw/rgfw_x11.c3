@@ -17,35 +17,35 @@ extern fn void* memset(void* dest, int value, sz count);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn char* strtok(char* str, char* delim);
 extern fn char* strtokR(char* str, char* delim, char** saveptr) @cname("strtok_r");
-extern fn long strtol(char* str, char** endptr, int base);
+extern fn CLong strtol(char* str, char** endptr, int base);
 extern fn float powf(float x, float y);
 extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
-struct Timespec { long tv_sec; long tv_nsec; }
+struct Timespec { CLong tv_sec; CLong tv_nsec; }
 
 // ---- Xlib core types (ABI-compatible aliases; GfxXDisplay/GfxXVisual/Screen stay opaque) ----
 typedef Screen = void;
-alias Colormap = ulong;
-alias XCursor = ulong;
-alias Pixmap = ulong;
+alias Colormap = CULong;
+alias XCursor = CULong;
+alias Pixmap = CULong;
 alias GContext = void*;
-alias Atom = ulong;
-alias VisualID = ulong;
-alias KeySym = ulong;
+alias Atom = CULong;
+alias VisualID = CULong;
+alias KeySym = CULong;
 alias KeyCode = char;
-alias Time = ulong;
-alias XlibId = ulong;
+alias Time = CULong;
+alias XlibId = CULong;
 alias Region = void*;
 alias XlibIC = void*;
 alias XlibIM = void*;
-alias XIMStyle = ulong;
-alias RRMode = ulong;
-alias RRCrtc = ulong;
+alias XIMStyle = CULong;
+alias RRMode = CULong;
+alias RRCrtc = CULong;
 alias GLXContext = void*;
 alias GLXFBConfig = void*;
-alias GLXDrawable = ulong;
-alias GLXWindow = ulong;
+alias GLXDrawable = CULong;
+alias GLXWindow = CULong;
 
 const int X_TRUE = 1;
 const int X_FALSE = 0;
@@ -53,7 +53,7 @@ const int NONE = 0;
 const int CURRENT_TIME = 0;
 
 struct XAspect { int x, y; }
-struct X11WindowHints { ulong flags, functions, decorations, status; long input_mode; }
+struct X11WindowHints { CULong flags, functions, decorations, status; CLong input_mode; }
 alias GlxGetProcAddressProc = fn GfxFn(ZString);
 
 struct XVisualInfo
@@ -63,7 +63,7 @@ struct XVisualInfo
 	int screen;
 	int depth;
 	int c_class;
-	ulong red_mask, green_mask, blue_mask;
+	CULong red_mask, green_mask, blue_mask;
 	int colormap_size;
 	int bits_per_rgb;
 }
@@ -71,17 +71,17 @@ struct XVisualInfo
 struct XSetWindowAttributes
 {
 	Pixmap background_pixmap;
-	ulong background_pixel;
+	CULong background_pixel;
 	Pixmap border_pixmap;
-	ulong border_pixel;
+	CULong border_pixel;
 	int bit_gravity;
 	int win_gravity;
 	int backing_store;
-	ulong backing_planes;
-	ulong backing_pixel;
+	CULong backing_planes;
+	CULong backing_pixel;
 	int save_under;
-	long event_mask;
-	long do_not_propagate_mask;
+	CLong event_mask;
+	CLong do_not_propagate_mask;
 	int override_redirect;
 	Colormap colormap;
 	XCursor cursor;
@@ -99,15 +99,15 @@ struct XWindowAttributes
 	int bit_gravity;
 	int win_gravity;
 	int backing_store;
-	ulong backing_planes;
-	ulong backing_pixel;
+	CULong backing_planes;
+	CULong backing_pixel;
 	int save_under;
 	Colormap colormap;
 	int map_installed;
 	int map_state;
-	long all_event_masks;
-	long your_event_mask;
-	long do_not_propagate_mask;
+	CLong all_event_masks;
+	CLong your_event_mask;
+	CLong do_not_propagate_mask;
 	int override_redirect;
 	Screen* screen;
 }
@@ -116,7 +116,7 @@ struct XClassHint { ZString res_name; ZString res_class; }
 
 struct XWMHints
 {
-	long flags;
+	CLong flags;
 	int input;
 	int initial_state;
 	Pixmap icon_pixmap;
@@ -128,7 +128,7 @@ struct XWMHints
 
 struct XSizeHints
 {
-	long flags;
+	CLong flags;
 	int x, y, width, height;
 	int min_width, min_height;
 	int max_width, max_height;
@@ -139,24 +139,24 @@ struct XSizeHints
 	int win_gravity;
 }
 
-struct XAnyEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; }
-struct XKeyEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; uint keycode; int same_screen; }
-struct XButtonEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; uint button; int same_screen; }
-struct XMotionEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; char is_hint; int same_screen; }
-struct XCrossingEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; int mode; int detail; int same_screen; int focus; uint state; }
-struct XFocusChangeEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; int mode; int detail; }
-struct XExposeEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; int x, y, width, height; int count; }
-struct XConfigureEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; int x, y, width, height; int border_width; GfxXWindow above; int override_redirect; }
-struct XPropertyEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; Atom atom; Time time; int state; }
-struct XClientMessageDataL { long[5] l; }
-struct XClientMessageEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow window; Atom message_type; int format; XClientMessageDataL data; }
-struct XSelectionRequestEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow owner; GfxXWindow requestor; Atom selection; Atom target; Atom property; Time time; }
-struct XSelectionEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow requestor; Atom selection; Atom target; Atom property; Time time; }
-struct XReparentEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; GfxXWindow parent; int x, y; int override_redirect; }
-struct XMapEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; int override_redirect; }
-struct XUnmapEvent { int type; ulong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; int from_configure; }
-struct XErrorEvent { int type; GfxXDisplay* display; ulong resourceid; ulong serial; char error_code; char request_code; char minor_code; }
-struct XGenericEventCookie { int type; ulong serial; int send_event; GfxXDisplay* display; int extension; int evtype; uint cookie_data_len; void* data; }
+struct XAnyEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow window; }
+struct XKeyEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; uint keycode; int same_screen; }
+struct XButtonEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; uint button; int same_screen; }
+struct XMotionEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; uint state; char is_hint; int same_screen; }
+struct XCrossingEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow window; GfxXWindow root; GfxXWindow subwindow; Time time; int x, y; int x_root, y_root; int mode; int detail; int same_screen; int focus; uint state; }
+struct XFocusChangeEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow window; int mode; int detail; }
+struct XExposeEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow window; int x, y, width, height; int count; }
+struct XConfigureEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; int x, y, width, height; int border_width; GfxXWindow above; int override_redirect; }
+struct XPropertyEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow window; Atom atom; Time time; int state; }
+struct XClientMessageDataL { CLong[5] l; }
+struct XClientMessageEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow window; Atom message_type; int format; XClientMessageDataL data; }
+struct XSelectionRequestEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow owner; GfxXWindow requestor; Atom selection; Atom target; Atom property; Time time; }
+struct XSelectionEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow requestor; Atom selection; Atom target; Atom property; Time time; }
+struct XReparentEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; GfxXWindow parent; int x, y; int override_redirect; }
+struct XMapEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; int override_redirect; }
+struct XUnmapEvent { int type; CULong serial; int send_event; GfxXDisplay* display; GfxXWindow event; GfxXWindow window; int from_configure; }
+struct XErrorEvent { int type; GfxXDisplay* display; CULong resourceid; CULong serial; char error_code; char request_code; char minor_code; }
+struct XGenericEventCookie { int type; CULong serial; int send_event; GfxXDisplay* display; int extension; int evtype; uint cookie_data_len; void* data; }
 
 union XEvent
 {
@@ -178,21 +178,21 @@ union XEvent
 	XUnmapEvent xunmap;
 	XErrorEvent xerror;
 	XGenericEventCookie xcookie;
-	long[24] pad;
+	CLong[24] pad;
 }
 
 // ---- XRandr ----
 struct XRRScreenResources { Time timestamp; Time configTimestamp; int ncrtc; RRCrtc* crtcs; int noutput; GfxRROutput* outputs; int nmode; XRRModeInfoNative* modes; }
-struct XRRModeInfoNative { RRMode id; uint width; uint height; ulong dotClock; uint hSyncStart; uint hSyncEnd; uint hTotal; uint hSkew; uint vSyncStart; uint vSyncEnd; uint vTotal; char* name; uint nameLength; ulong modeFlags; }
+struct XRRModeInfoNative { RRMode id; uint width; uint height; CULong dotClock; uint hSyncStart; uint hSyncEnd; uint hTotal; uint hSkew; uint vSyncStart; uint vSyncEnd; uint vTotal; char* name; uint nameLength; CULong modeFlags; }
 struct XRRCrtcInfo { Time timestamp; int x, y; uint width, height; RRMode mode; int rotation; int noutput; GfxRROutput* outputs; int rotations; int npossible; GfxRROutput* possible; }
-struct GfxXRROutputInfo { Time timestamp; RRCrtc crtc; ZString name; int nameLen; ulong mm_width; ulong mm_height; int connection; int subpixel_order; int ncrtc; RRCrtc* crtcs; int nclone; GfxRROutput* clones; int nmode; int npreferred; RRMode* modes; }
+struct GfxXRROutputInfo { Time timestamp; RRCrtc crtc; ZString name; int nameLen; CULong mm_width; CULong mm_height; int connection; int subpixel_order; int ncrtc; RRCrtc* crtcs; int nclone; GfxRROutput* clones; int nmode; int npreferred; RRMode* modes; }
 struct XRRCrtcGamma { int size; ushort* red; ushort* green; ushort* blue; }
 
 // ---- Xcursor / XInput2 / Xext sync+shape (dlopen'd like the original) ----
 struct XcursorImage { uint version; uint size; uint width, height; uint xhot, yhot; uint delay; uint* pixels; }
 struct XIEventMask { int deviceid; int mask_len; char* mask; }
 struct XIValuatorState { int mask_len; char* mask; double* values; }
-struct XIRawEvent { int type; ulong serial; int send_event; GfxXDisplay* display; int extension; int evtype; Time time; int deviceid; int sourceid; int detail; int flags; XIValuatorState valuators; double* raw_values; }
+struct XIRawEvent { int type; CULong serial; int send_event; GfxXDisplay* display; int extension; int evtype; Time time; int deviceid; int sourceid; int detail; int flags; XIValuatorState valuators; double* raw_values; }
 struct XSyncValue { int hi; uint lo; }
 alias XSyncCounter = XlibId;
 
@@ -271,7 +271,7 @@ struct XImCallback
 struct XImStyles
 {
 	ushort count_styles;
-	ulong* supported_styles;
+	CULong* supported_styles;
 }
 
 // Signature required by XRegisterIMInstantiateCallback / XUnregisterIMInstantiateCallback.
@@ -704,7 +704,7 @@ fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h)
 	if (win == null) return;
 	if (w == 0 && h == 0) return;
 	XSizeHints hints;
-	long flags;
+	CLong flags;
 	xGetWMNormalHints(_rgfw.display, win.src.window, &hints, &flags);
 	hints.flags |= (1 << 6); // PAspect
 	hints.min_aspect.x = w; hints.max_aspect.x = w;
@@ -773,7 +773,7 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 	rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_BORDER, !border);
 	X11WindowHints hints;
 	hints.flags = 2;
-	hints.decorations = (ulong)border;
+	hints.decorations = (CULong)border;
 	xChangeProperty(_rgfw.display, win.src.window, _rgfw.motifWmHints, _rgfw.motifWmHints, 32, 0, (char*)&hints, 5);
 	if (!rgfw_window_isHidden(win))
 	{
@@ -887,7 +887,7 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags fla
 {
 	// KeyPress | KeyRelease | ButtonPress | ButtonRelease | PointerMotion | StructureNotify | FocusChange |
 	// LeaveWindow | EnterWindow | Exposure | VisibilityChange | PropertyChange
-	long eventMask = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 6) | (1 << 17) | (1 << 21) |
+	CLong eventMask = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 6) | (1 << 17) | (1 << 21) |
 		(1 << 5) | (1 << 4) | (1 << 15) | (1 << 16) | (1 << 22);
 
 	XSetWindowAttributes swa;
@@ -914,7 +914,7 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags fla
 		callback.callback = &rgfw_x11IcCallback;
 		callback.client_data = (GfxXPointer)win;
 
-		win.src.ic = xCreateIC(_rgfw.im, "inputStyle", (long)(0x0008 | 0x0400) /* XIMPreeditNothing | XIMStatusNothing */,
+		win.src.ic = xCreateIC(_rgfw.im, "inputStyle", (CULong)(0x0008 | 0x0400) /* XIMPreeditNothing | XIMStatusNothing */,
 			"clientWindow", win.src.window, "focusWindow", win.src.window,
 			"destroyCallback", &callback, (char*)null);
 	}
@@ -1040,11 +1040,11 @@ fn void rgfw_xHandleClipboardSelection(XEvent* event)
 		Atom* targets = null;
 		Atom actualType;
 		int actualFormat;
-		ulong count, bytesAfter;
+		CULong count, bytesAfter;
 		xGetWindowProperty(_rgfw.display, request.requestor, request.property, 0, ~0, 0, _rgfw.atomPair,
 			&actualType, &actualFormat, &count, &bytesAfter, (char**)&targets);
 
-		for (ulong i = 0; i < count; i += 2)
+		for (CULong i = 0; i < count; i += 2)
 		{
 			if (targets[i] == _rgfw.utf8String || targets[i] == 31 /* XA_STRING */)
 			{
@@ -1350,7 +1350,7 @@ fn void rgfw_xHandleEvent()
 			break;
 		case 33: // ClientMessage
 		{
-			if ((ulong)e.xclient.data.l[0] == _rgfw.wmDeleteWindow) { _window_close_callback(win); break; }
+			if ((CULong)e.xclient.data.l[0] == _rgfw.wmDeleteWindow) { _window_close_callback(win); break; }
 
 			if (!(win.internal.flags & RGFW_WINDOW_ALLOW_DND) || _rgfw.x11Version > 5 /* RGFW_XDND_VERSION */) return;
 
@@ -1371,7 +1371,7 @@ fn void rgfw_xHandleEvent()
 				{
 					Atom actualType;
 					int actualFormat;
-					ulong bytesAfter;
+					CULong bytesAfter;
 					xGetWindowProperty(_rgfw.display, _rgfw.x11Source, _rgfw.xdndTypeList, 0, ~0, 0, 4,
 						&actualType, &actualFormat, &count, &bytesAfter, (char**)&formats);
 				}
@@ -1382,7 +1382,7 @@ fn void rgfw_xHandleEvent()
 					{
 						if (e.xclient.data.l[i] != 0)
 						{
-							realFormats[count] = (ulong)e.xclient.data.l[i];
+							realFormats[count] = (CULong)e.xclient.data.l[i];
 							count++;
 						}
 					}
@@ -1423,14 +1423,14 @@ fn void rgfw_xHandleEvent()
 				reply.xclient.window = _rgfw.x11Source;
 				reply.xclient.message_type = _rgfw.xdndStatus;
 				reply.xclient.format = 32;
-				reply.xclient.data.l[0] = (long)win.src.window;
+				reply.xclient.data.l[0] = (CLong)win.src.window;
 				reply.xclient.data.l[2] = 0;
 				reply.xclient.data.l[3] = 0;
 
 				if (_rgfw.x11Format != 0)
 				{
 					reply.xclient.data.l[1] = 1;
-					if (_rgfw.x11Version >= 2) reply.xclient.data.l[4] = (long)_rgfw.xdndActionCopy;
+					if (_rgfw.x11Version >= 2) reply.xclient.data.l[4] = (CLong)_rgfw.xdndActionCopy;
 				}
 
 				xSendEvent(_rgfw.display, _rgfw.x11Source, 0, 0, &reply);
@@ -1457,7 +1457,7 @@ fn void rgfw_xHandleEvent()
 					reply.xclient.window = _rgfw.x11Source;
 					reply.xclient.message_type = _rgfw.xdndFinished;
 					reply.xclient.format = 32;
-					reply.xclient.data.l[0] = (long)win.src.window;
+					reply.xclient.data.l[0] = (CLong)win.src.window;
 					reply.xclient.data.l[1] = 0;
 					reply.xclient.data.l[2] = 0;
 
@@ -1472,10 +1472,10 @@ fn void rgfw_xHandleEvent()
 			if (!(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG) || e.xselection.property != _rgfw.xdndSelection || !(win.internal.flags & RGFW_WINDOW_ALLOW_DND)) return;
 
 			ZString data;
-			ulong result;
+			CULong result;
 			Atom actualType;
 			int actualFormat;
-			ulong bytesAfter;
+			CULong bytesAfter;
 
 			xGetWindowProperty(_rgfw.display, e.xselection.requestor, e.xselection.property, 0, ~0, 0, e.xselection.target,
 				&actualType, &actualFormat, &result, &bytesAfter, (char**)&data);
@@ -1493,9 +1493,9 @@ fn void rgfw_xHandleEvent()
 				reply.xclient.window = _rgfw.x11Source;
 				reply.xclient.message_type = _rgfw.xdndFinished;
 				reply.xclient.format = 32;
-				reply.xclient.data.l[0] = (long)win.src.window;
-				reply.xclient.data.l[1] = (long)result;
-				reply.xclient.data.l[2] = (long)_rgfw.xdndActionCopy;
+				reply.xclient.data.l[0] = (CLong)win.src.window;
+				reply.xclient.data.l[1] = (CLong)result;
+				reply.xclient.data.l[2] = (CLong)_rgfw.xdndActionCopy;
 				xSendEvent(_rgfw.display, _rgfw.x11Source, 0, 0, &reply);
 				xFlush(_rgfw.display);
 			}
@@ -1582,7 +1582,7 @@ fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
 
 fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h)
 {
-	long flags;
+	CLong flags;
 	XSizeHints hints;
 	xGetWMNormalHints(_rgfw.display, win.src.window, &hints, &flags);
 	hints.flags |= 1 << 4; // PMinSize
@@ -1592,7 +1592,7 @@ fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h)
 
 fn void rgfw_window_setMaxSize(GfxWindow* win, int w, int h)
 {
-	long flags;
+	CLong flags;
 	XSizeHints hints;
 	xGetWMNormalHints(_rgfw.display, win.src.window, &hints, &flags);
 	hints.flags |= 1 << 5; // PMaxSize
@@ -1608,8 +1608,8 @@ fn void rgfw_toggleXMaximized(GfxWindow* win, bool maximized)
 	xev.xclient.message_type = _rgfw.netWmState;
 	xev.xclient.format = 32;
 	xev.xclient.data.l[0] = (int)maximized;
-	xev.xclient.data.l[1] = (long)_rgfw.netWmStateMaximizedHorz;
-	xev.xclient.data.l[2] = (long)_rgfw.netWmStateMaximizedVert;
+	xev.xclient.data.l[1] = (CLong)_rgfw.netWmStateMaximizedHorz;
+	xev.xclient.data.l[2] = (CLong)_rgfw.netWmStateMaximizedVert;
 	xSendEvent(_rgfw.display, xDefaultRootWindow(_rgfw.display), 0, (1 << 20) | (1 << 19), &xev);
 }
 
@@ -1639,7 +1639,7 @@ fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
 	xev.xclient.window = win.src.window;
 	xev.xclient.format = 32;
 	xev.xclient.data.l[0] = (int)fullscreen;
-	xev.xclient.data.l[1] = (long)netAtom;
+	xev.xclient.data.l[1] = (CLong)netAtom;
 	xSendEvent(_rgfw.display, xDefaultRootWindow(_rgfw.display), 0, (1 << 19) | (1 << 20), &xev);
 }
 
@@ -1688,11 +1688,11 @@ fn bool GfxWindow.is_floating(&win)
 {
 	Atom actualType;
 	int actualFormat;
-	ulong nitems, bytesAfter;
+	CULong nitems, bytesAfter;
 	Atom* propReturn = null;
 	int status = xGetWindowProperty(_rgfw.display, win.src.window, _rgfw.netWmState, 0, ~0, 0, 4, &actualType, &actualFormat, &nitems, &bytesAfter, (char**)&propReturn);
 	if (status != 0 || actualType != 4) return false;
-	for (ulong i = 0; i < nitems; i++) if (propReturn[i] == _rgfw.netWmStateAbove) return true;
+	for (CULong i = 0; i < nitems; i++) if (propReturn[i] == _rgfw.netWmStateAbove) return true;
 	if (propReturn) xFree(propReturn);
 	return false;
 }
@@ -1724,10 +1724,10 @@ fn bool GfxWindow.set_icon(&win, char* dataSrc, int w, int h, GfxFormat format, 
 		return !!xChangeProperty(_rgfw.display, win.src.window, _rgfw.netWmIcon, 6, 32, 0, null, 0);
 	}
 	int count = 2 + (w * h);
-	ulong* data = (ulong*)rgfw_alloc_impl((sz)count * ulong::size);
-	mem::clear(data, (sz)count * ulong::size);
-	data[0] = (ulong)w;
-	data[1] = (ulong)h;
+	CULong* data = (CULong*)rgfw_alloc_impl((sz)count * CULong::size);
+	mem::clear(data, (sz)count * CULong::size);
+	data[0] = (CULong)w;
+	data[1] = (CULong)h;
 
 	copy_image_data_64((char*)&data[2], w, h, BGRA8, dataSrc, format, true, null);
 	bool res = true;
@@ -1955,7 +1955,7 @@ fn bool rgfw_window_isMinimized(GfxWindow* win)
 {
 	Atom actualType;
 	int actualFormat;
-	ulong nitems, bytesAfter;
+	CULong nitems, bytesAfter;
 	char* propData;
 	int status = xGetWindowProperty(_rgfw.display, win.src.window, _rgfw.wmState, 0, 2, 0, 0, &actualType, &actualFormat, &nitems, &bytesAfter, &propData);
 	if (status == 0 && nitems >= 1 && propData == (char*)(uptr)3 /* IconicState */)
@@ -1973,11 +1973,11 @@ fn bool rgfw_window_isMaximized(GfxWindow* win)
 {
 	Atom actualType;
 	int actualFormat;
-	ulong nitems, bytesAfter;
+	CULong nitems, bytesAfter;
 	char* propData;
 	int status = xGetWindowProperty(_rgfw.display, win.src.window, _rgfw.netWmState, 0, 1024, 0, 4, &actualType, &actualFormat, &nitems, &bytesAfter, &propData);
 	if (status != 0) { if (propData != null) xFree(propData); return false; }
-	for (ulong i = 0; i < nitems; i++)
+	for (CULong i = 0; i < nitems; i++)
 	{
 		if ((Atom)propData[i] == _rgfw.netWmStateMaximizedVert || (Atom)propData[i] == _rgfw.netWmStateMaximizedHorz)
 		{
@@ -2117,7 +2117,7 @@ fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width
 	{
 		Atom* extents = null;
 		Atom* desktop = null;
-		Atom actualType; int actualFormat; ulong extentCount, bytesAfter, count;
+		Atom actualType; int actualFormat; CULong extentCount, bytesAfter, count;
 		xGetWindowProperty(_rgfw.display, root, _rgfw.netWorkarea, 0, ~0, 0, 6, &actualType, &actualFormat, &extentCount, &bytesAfter, (char**)&extents);
 		xGetWindowProperty(_rgfw.display, root, _rgfw.netCurrentDesktop, 0, ~0, 0, 6, &actualType, &actualFormat, &count, &bytesAfter, (char**)&desktop);
 

@@ -220,7 +220,7 @@ struct RgfwInfo // WASM
 	{
 		void* x11_handle;
 		void* x11_display;
-		ulong x11_root;
+		CULong x11_root;
 		void* wayland_handle;
 		void* wl_display;
 		ObjcId nsApp;

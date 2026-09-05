@@ -27,19 +27,19 @@ extern fn float powf(float x, float y);
 extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
-struct Timespec { long tv_sec; long tv_nsec; }
+struct Timespec { CLong tv_sec; CLong tv_nsec; }
 
 // ---- POSIX / libc bits used by the Wayland backend ----
-extern fn void* mmap(void* addr, sz length, int prot, int flags, int fd, long offset);
+extern fn void* mmap(void* addr, sz length, int prot, int flags, int fd, sz offset);
 extern fn int munmap(void* addr, sz length);
 extern fn int shmOpen(ZString name, int oflag, int mode) @cname("shm_open");
 extern fn int shmUnlink(ZString name) @cname("shm_unlink");
-extern fn int ftruncate(int fd, long length);
+extern fn int ftruncate(int fd, sz length);
 extern fn int close(int fd);
 extern fn int pipe(int[2]* fds);
-extern fn long read(int fd, void* buf, sz count);
-extern fn long write(int fd, void* buf, sz count);
-extern fn int poll(Pollfd* fds, ulong nfds, int timeout);
+extern fn sz read(int fd, void* buf, sz count);
+extern fn sz write(int fd, void* buf, sz count);
+extern fn int poll(Pollfd* fds, CUInt nfds, int timeout);
 extern fn ZString getenv(ZString name);
 struct Pollfd { int fd; short events; short revents; }
 const int PROT_READ = 0x1;
@@ -1311,7 +1311,7 @@ fn void rgfw_wlDataDeviceSelection(void* data, WlProxy* device, WlProxy* offer)
 	wlDisplayRoundtrip(_rgfw.wlDisplay);
 
 	char[1024] buf;
-	long n = read(pfds[0], &buf, 1024);
+	sz n = read(pfds[0], &buf, 1024);
 	if (n <= 0) { close(pfds[0]); wlDataOfferDestroy(offer); return; }
 
 	sz length = (sz)n;
@@ -1385,7 +1385,7 @@ fn void rgfw_wlRandname(char* buf)
 {
 	Timespec ts;
 	clock_gettime(0, &ts);
-	long r = ts.tv_nsec;
+	CLong r = ts.tv_nsec;
 	for (int i = 0; i < 6; i++)
 	{
 		buf[i] = (char)('A' + (r & 15) + (r & 16) * 2);
@@ -1407,7 +1407,7 @@ fn int rgfw_wlAnonymousShmOpen()
 	return -1;
 }
 
-fn int rgfw_wlCreateShmFile(long size)
+fn int rgfw_wlCreateShmFile(sz size)
 {
 	int fd = rgfw_wlAnonymousShmOpen();
 	if (fd < 0) return fd;
@@ -1424,7 +1424,7 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSur
 	surface.format = format;
 
 	int size = w * h * 4;
-	int fd = rgfw_wlCreateShmFile((long)size);
+	int fd = rgfw_wlCreateShmFile((sz)size);
 	if (fd < 0)
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_BUFFER, "Failed to create a buffer.");
