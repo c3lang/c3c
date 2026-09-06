@@ -122,7 +122,6 @@ extern fn ZString xResourceManagerString(GfxXDisplay* d) @cname("XResourceManage
 extern fn void* xrmGetStringDatabase(ZString data) @cname("XrmGetStringDatabase");
 extern fn int xrmGetResource(void* db, ZString name, ZString c_class, ZString* typeOut, void* valueOut) @cname("XrmGetResource");
 extern fn int xrmDestroyDatabase(void* db) @cname("XrmDestroyDatabase");
-extern fn double atof(char* s) @cname("atof");
 extern fn XRRScreenResources* xRRGetScreenResourcesCurrent(GfxXDisplay* d, GfxXWindow w) @cname("XRRGetScreenResourcesCurrent");
 extern fn int xRRFreeScreenResources(XRRScreenResources* res) @cname("XRRFreeScreenResources");
 extern fn GfxRROutput xRRGetOutputPrimary(GfxXDisplay* d, GfxXWindow w) @cname("XRRGetOutputPrimary");

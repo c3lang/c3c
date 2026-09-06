@@ -95,12 +95,18 @@ struct RgfwWindowSrc
 RgfwInfo* _rgfw;
 RgfwInfo _rgfw_global;
 
+// public
 fn void rgfw_setInfo(RgfwInfo* info) { _rgfw = info; }
+// public
 fn RgfwInfo* rgfw_getInfo() { return _rgfw; }
+// public
 fn void* rgfw_alloc(sz size) { return rgfw_alloc_impl(size); }
+// public
 fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
 
+// public
 fn bool rgfw_loadGL() => true;
+// public
 fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
 
 alias WGPUInstance = void*;
@@ -113,6 +119,7 @@ struct WgpuSurfaceDescriptor { WgpuChainedStruct* nextInChain; }
 struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector { WgpuChainedStruct chain; WgpuStringView selector; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @wasm("env", "wgpuInstanceCreateSurface");
 
+// public
 fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
@@ -125,6 +132,7 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
+// public
 fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
 {
 	RgfwDebugInfo info;
@@ -134,6 +142,7 @@ fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
 	if (_rgfw != null && _rgfw.debugCallbackSrc != null) _rgfw.debugCallbackSrc(&info);
 }
 
+// public
 fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 {
 	RgfwDebugFunc prev = _rgfw.debugCallbackSrc;
@@ -145,6 +154,7 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 
 
 
+// public
 fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
 {
 	if (win == null || _rgfw == null) return null;
@@ -181,6 +191,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Rgf
 }
 
 
+// public
 fn void rgfw_window_closePtr(GfxWindow* win)
 {
 	if (win == null) return;
@@ -200,12 +211,14 @@ fn void rgfw_window_closePtr(GfxWindow* win)
 
 
 
+// public
 fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
 	return rgfw_createSurfacePtr(data, w, h, format, surface);
 }
 
 
+// public
 fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h) {}
 
 // ---- JS host imports (no Emscripten runtime under C3's wasm target) ----
@@ -272,6 +285,7 @@ const int DOM_VK_INSERT = 45; const int DOM_VK_END = 35; const int DOM_VK_PAGE_U
 const int DOM_VK_ESCAPE = 27; const int DOM_VK_HOME = 36; const int DOM_VK_SCROLL_LOCK = 145;
 const int DOM_VK_PRINTSCREEN = 44; const int DOM_VK_PAUSE = 19;
 
+// private
 fn RgfwKey rgfw_wasmPhysicalToRGFW(uint hash)
 {
 	switch (hash)
@@ -327,11 +341,13 @@ fn RgfwKey rgfw_wasmPhysicalToRGFW(uint hash)
 	}
 }
 
+// private
 fn void rgfwEmscriptenOnResize(int w, int h) @export("rgfw_on_resize")
 {
 	_window_resized_callback(_rgfw.root, w, h);
 }
 
+// private
 fn void rgfwEmscriptenOnFullscreenChange(int screenW, int screenH, bool entering) @export("rgfw_on_fullscreenchange")
 {
 	if (!(_rgfw.root.internal.enabledEvents & RGFW_WINDOW_RESIZED_FLAG)) return;
@@ -349,29 +365,36 @@ fn void rgfwEmscriptenOnFullscreenChange(int screenW, int screenH, bool entering
 	_window_resized_callback(_rgfw.root, ..._rgfw.root.size);
 }
 
+// private
 fn void rgfwEmscriptenOnFocusIn() @export("rgfw_on_focusin") { rgfw_windowFocusCallback(_rgfw.root, true); }
+// private
 fn void rgfwEmscriptenOnFocusOut() @export("rgfw_on_focusout") { rgfw_windowFocusCallback(_rgfw.root, false); }
 
+// private
 fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("rgfw_on_mousemove")
 {
 	_mouse_motion_callback(_rgfw.root, x, y);
 	_raw_motion_callback(_rgfw.root, (float)movementX, (float)movementY);
 }
 
+// private
 fn void rgfwEmscriptenOnMouseDown(int button) @export("rgfw_on_mousedown")
 {
 	if (button > 2) button += 2;
 	rgfw_mouseButtonCallback(_rgfw.root, (RgfwMouseButton)button, true);
 }
 
+// private
 fn void rgfwEmscriptenOnMouseUp(int button) @export("rgfw_on_mouseup")
 {
 	if (button > 2) button += 2;
 	rgfw_mouseButtonCallback(_rgfw.root, (RgfwMouseButton)button, false);
 }
 
+// private
 fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("rgfw_on_wheel") { rgfw_mouseScrollCallback(_rgfw.root, deltaX, deltaY); }
 
+// private
 fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("rgfw_on_touch")
 {
 	// down == 255 is the sentinel for touchmove (no button state change).
@@ -403,6 +426,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 	}
 }
 
+// private
 fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("rgfw_handleKeyEvent")
 {
 	ZString iCode = code;
@@ -414,15 +438,19 @@ fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("r
 	if (press) rgfw_keyCharCallback(_rgfw.root, codepoint);
 }
 
+// private
 fn void rgfw_handleKeyMods(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("rgfw_handleKeyMods")
 {
 	rgfw_keyUpdateKeyModsEx(_rgfw.root, capital, numlock, control, alt, shift, super, scroll);
 }
 
+// private
 fn void rgfw_emscriptenOnDrop(char* file, sz size) @export("rgfw_onDrop") { rgfw_dataDropCallback(_rgfw.root, file, size, RGFW_DATA_FILE); }
 
+// public
 fn void rgfw_stopCheckEvents() { _rgfw.stopCheckEvents_bool = true; }
 
+// public
 fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
 	surface.data = data;
@@ -431,6 +459,7 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSur
 	return true;
 }
 
+// public
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
 	int minH = win.height < surface.size.y ? win.height : surface.size.y;
@@ -438,8 +467,10 @@ fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 	rgfwJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
 }
 
+// public
 fn void rgfw_surface_freePtr(GfxSurface* surface) {}
 
+// public
 fn void rgfw_initKeycodesPlatform()
 {
 	_rgfw.keycodes[DOM_VK_BACK_QUOTE] = RGFW_KEY_BACKTICK;
@@ -489,6 +520,7 @@ fn void rgfw_initKeycodesPlatform()
 	_rgfw.keycodes[DOM_VK_F22] = RGFW_KEY_F22; _rgfw.keycodes[DOM_VK_F23] = RGFW_KEY_F23; _rgfw.keycodes[DOM_VK_F24] = RGFW_KEY_F24;
 }
 
+// public
 fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
 {
 	_rgfw.usingAsyncify = -1;
@@ -517,6 +549,7 @@ fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
 	return 0;
 }
 
+// public
 fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
 {
 	rgfwJsSetCanvasSize(win.width, win.height);
@@ -529,9 +562,12 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 	return win;
 }
 
+// public
 fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key) => key;
+// public
 fn IntVec2 rgfw_window_fetchSize(GfxWindow* win) => win.get_size();
 
+// public
 fn void rgfw_pollEvents()
 {
 	if (_rgfw.usingAsyncify == -1) _rgfw.usingAsyncify = rgfwJsUsingAsyncify();
@@ -539,8 +575,10 @@ fn void rgfw_pollEvents()
 	if (_rgfw.usingAsyncify) rgfwJsSleep(0);
 }
 
+// public
 fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h) { rgfwJsSetCanvasSize(w, h); }
 
+// public
 fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 {
 	ZString cursorName;
@@ -571,9 +609,12 @@ fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 	return (RgfwMouse*)cursorName;
 }
 
+// public
 fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y) {}
+// public
 fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format) => null;
 
+// public
 fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 {
 	ZString name = (ZString)mouse;
@@ -581,8 +622,10 @@ fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 	return true;
 }
 
+// public
 fn void rgfw_freeMouse(RgfwMouse* mouse) {}
 
+// public
 fn bool rgfw_getGlobalMouse(int* x, int* y)
 {
 	if (x != null) *x = rgfwJsGetMouseX();
@@ -590,20 +633,24 @@ fn bool rgfw_getGlobalMouse(int* x, int* y)
 	return true;
 }
 
+// public
 fn void rgfw_window_setMousePassthrough(GfxWindow* win, char passthrough) { rgfwJsSetPointerEvents(passthrough); }
 
+// public
 fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 {
 	rgfwJsWriteClipboard(data.data, data.length);
 	return true;
 }
 
+// public
 fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
 	if (requestedType != RGFW_DATA_TEXT) return false;
 	return false;
 }
 
+// public
 fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, RgfwGlHints* hints)
 {
 	win.src.ctx.native = ctx;
@@ -621,6 +668,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, 
 	return true;
 }
 
+// public
 fn void rgfw_window_deleteContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
 {
 	rgfwJsWebglDestroyContext((int)(uptr)ctx.ctx);
@@ -635,10 +683,14 @@ RgfwGlHints rgfw_global_hints_open_gl_src = {
 };
 RgfwGlHints* rgfw_global_hints_open_gl = &rgfw_global_hints_open_gl_src;
 
+// public
 fn void rgfw_resetGlobalHints_OpenGL() { rgfw_global_hints_open_gl_src = {0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, false, false, false, false, RGFW_GL_RELEASE_NONE, RGFW_GL_CORE, 1, 0, null, null, RGFW_GL_ACCELERATED}; }
+// public
 fn void rgfw_setGlobalHints_OpenGL(RgfwGlHints* hints) { rgfw_global_hints_open_gl = hints; }
+// public
 fn RgfwGlHints* rgfw_getGlobalHints_OpenGL() { return rgfw_global_hints_open_gl; }
 
+// public
 fn RgfwGlContext* rgfw_window_createContext_OpenGL(GfxWindow* win, RgfwGlHints* hints)
 {
 	RgfwGlContext* ctx = mem::new(RgfwGlContext);
@@ -652,40 +704,53 @@ fn RgfwGlContext* rgfw_window_createContext_OpenGL(GfxWindow* win, RgfwGlHints* 
 	return ctx;
 }
 
+// public
 fn void rgfw_window_deleteContext_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
 {
 	rgfw_window_deleteContextPtr_OpenGL(win, ctx);
 	if (win != null && (win.src.gfxType & RGFW_GFX_OWNED_BY_RGFW)) rgfw_free_impl(ctx);
 }
 
+// public
 fn void rgfw_window_makeCurrentContext_OpenGL(GfxWindow* win)
 {
 	if (win == null) { rgfwJsWebglMakeCurrent(0); }
 	else { rgfwJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx); }
 }
 
+// public
 fn void rgfw_window_swapBuffers_OpenGL(GfxWindow* win) { rgfwJsWebglCommitFrame(); }
+// public
 fn void* rgfw_getCurrentContext_OpenGL() => (void*)(uptr)rgfwJsWebglGetCurrentContext();
+// public
 fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfwJsExtensionSupported(extension, len) != 0;
+// public
 fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname) => rgfwJsGetProcAddress(procname);
+// public
 fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval) {}
 
+// public
 fn void rgfw_deinitPlatform() {}
+// public
 fn void rgfw_window_closePlatform(GfxWindow* win) {}
 
+// public
 fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state) {}
+// public
 fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
 {
 	if (state) { rgfwJsRequestPointerLock(); }
 	else { rgfwJsExitPointerLock(); }
 }
 
+// public
 fn void rgfw_window_setName(GfxWindow* win, ZString name)
 {
 	if (name == null) name = "";
 	rgfwJsSetWindowTitle(name, name.len());
 }
 
+// public
 fn void rgfw_window_maximizePlatform(GfxWindow* win)
 {
 	GfxMonitor* mon = find_monitor(win);
@@ -693,6 +758,7 @@ fn void rgfw_window_maximizePlatform(GfxWindow* win)
 	rgfw_window_move(win, 0, 0);
 }
 
+// public
 fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
@@ -705,38 +771,69 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 	rgfwJsExitFullscreen();
 }
 
+// public
 fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) { rgfwJsSetOpacity((float)opacity / 255.0f); }
 
+// public
 fn GfxMonitor* find_monitor(GfxWindow* win) => rgfw_getPrimaryMonitor();
 
 // ---- unsupported on WASM (match the original's no-op stubs) ----
+// public
 fn void rgfw_pollMonitors() {}
+// public
 fn void rgfw_monitorNode_free(GfxMonitorNode* node) {}
+// public
 fn void rgfw_window_focus(GfxWindow* win) {}
+// public
 fn void rgfw_window_raise(GfxWindow* win) {}
+// public
 fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => false;
+// public
 fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height) => false;
+// public
 fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp) => 0;
+// public
 fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp) => false;
+// public
 fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* mon) => {};
+// public
 fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => false;
+// public
 fn void rgfw_window_movePlatform(GfxWindow* win, int x, int y) {}
+// public
 fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h) {}
+// public
 fn void rgfw_window_setMaxSize(GfxWindow* win, int w, int h) {}
+// public
 fn void rgfw_window_minimizePlatform(GfxWindow* win) {}
+// public
 fn void rgfw_window_restorePlatform(GfxWindow* win) {}
+// public
 fn void rgfw_window_setFloating(GfxWindow* win, bool floating) {}
+// public
 fn void rgfw_window_setBorder(GfxWindow* win, bool border) {}
+// public
 fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH) => false;
+// public
 fn void rgfw_window_hide(GfxWindow* win) {}
+// public
 fn void rgfw_window_showPlatform(GfxWindow* win) {}
+// public
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) {}
+// public
 fn bool rgfw_window_isHidden(GfxWindow* win) => false;
+// public
 fn bool rgfw_window_isMinimized(GfxWindow* win) => false;
+// public
 fn bool rgfw_window_isMaximized(GfxWindow* win) => false;
+// public
 fn bool GfxWindow.is_floating(&win) => false;
+// public
 fn void rgfw_waitForEvent(int waitMS) {}
 
-fn bool rgfw_loadEGL() => false;
+// public
+fn bool load_egl() => false;
+// public
 fn bool rgfw_loadVulkan() => false;
+// public
 fn void rgfw_unloadVulkan() {}
