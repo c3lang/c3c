@@ -1717,6 +1717,52 @@ fn void rgfw_deinit_ptr(RgfwInfo* info)
 	rgfw_setInfo(null);
 }
 
+// public
+fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
+{
+	if (win == null || _rgfw == null) return null;
+	if (name == null) name = "";
+	*win = {};
+	_rgfw.windowCount++;
+	if (_rgfw.root == null) rgfw_setRootWindow(win);
+	win.bounds = { x, y, w, h };
+	win.internal.mouse = _rgfw.standardMice[(sz)RGFW_MOUSE_NORMAL];
+	win.internal.flags = flags;
+	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
+	RgfwWindowFlags reservedFlags = flags & RGFW_WINDOW_SCALE_TO_MONITOR;
+	GfxWindow* ret = rgfw_createWindowPlatform(name, flags, win);
+	if (ret == null)
+	{
+		log::error("Failed to create a window", category: log::CATEGORY_VIDEO);
+		return null;
+	}
+	flags |= reservedFlags;
+	_window_set_flags(win, flags, 0);
+	win.src.gfxType = 0;
+	$if $feat(MACOS) || $feat(WIN32) || $feat(WASM):
+	if (flags & RGFW_WINDOW_OPEN_GL) rgfw_window_createContext_OpenGL(win, rgfw_getGlobalHints_OpenGL());
+	if (!(flags & RGFW_WINDOW_OPEN_GL)) win.src.gfxType = 0;
+	$endif
+	$if $feat(MACOS):
+	if (flags & RGFW_WINDOW_EGL) rgfw_window_createContext_EGL(win, rgfw_getGlobalHints_OpenGL());
+	$endif
+	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) win.set_mouse_default();
+	rgfw_window_setName(win, name);
+	if (!(flags & RGFW_WINDOW_HIDE))
+	{
+		flags |= RGFW_WINDOW_HIDE;
+		show(win);
+	}
+	else if ((flags & RGFW_WINDOW_MAXIMIZE) || (flags & RGFW_WINDOW_FULLSCREEN))
+	{
+		rgfw_window_hide(win);
+	}
+	return ret;
+}
+
+
+
+
 
 // public
 fn GfxFormat native_format()

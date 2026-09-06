@@ -557,37 +557,6 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 
 
 
-// public
-fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
-{
-	if (win == null || _rgfw == null) return null;
-	if (name == null) name = "";
-	*win = {};
-	_rgfw.windowCount++;
-	if (_rgfw.root == null) rgfw_setRootWindow(win);
-	win.x = x; win.y = y; win.width = w; win.height = h;
-	win.internal.mouse = _rgfw.standardMice[(sz)RGFW_MOUSE_NORMAL];
-	win.internal.flags = flags;
-	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
-	RgfwWindowFlags reservedFlags = flags & RGFW_WINDOW_SCALE_TO_MONITOR;
-	GfxWindow* ret = rgfw_createWindowPlatform(name, flags, win);
-	if (ret == null) return null;
-	flags |= reservedFlags;
-	_window_set_flags(win, flags, 0);
-	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) win.set_mouse_default();
-	rgfw_window_setName(win, name);
-	if (!(flags & RGFW_WINDOW_HIDE))
-	{
-		flags |= RGFW_WINDOW_HIDE;
-		show(win);
-	}
-	else if ((flags & RGFW_WINDOW_MAXIMIZE) || (flags & RGFW_WINDOW_FULLSCREEN))
-	{
-		rgfw_window_hide(win);
-	}
-	return ret;
-}
-
 
 // public
 fn void rgfw_window_closePtr(GfxWindow* win)
