@@ -254,11 +254,6 @@ fn bool rgfw_loadGL()
 	return _rgfw.nativeGL_handle != null;
 }
 
-fn void rgfw_unloadGL()
-{
-	_rgfw.nativeGL_handle = null;
-	_rgfw.glGetProcAddress = null;
-}
 fn void* rgfw_eglProc(ZString name)
 {
 	if (_rgfw.egl_handle == null) return null;
@@ -340,17 +335,7 @@ fn void rgfw_unloadVulkan()
 	_rgfw.vkGetInstanceProcAddress = null;
 }
 
-fn GfxFn rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
-{
-	if (_rgfw == null || _rgfw.vkGetInstanceProcAddress == null) return null;
-	return _rgfw.vkGetInstanceProcAddress(instance, procname);
-}
 
-fn ZString* rgfw_getRequiredInstanceExtensions_Vulkan(sz* count)
-{
-	if (count != null) *count = 2;
-	return &rgfw_vulkanExtensions;
-}
 
 fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
 {
@@ -392,48 +377,7 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 
 
 
-fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
-{
-	if (info == _rgfw || info == null) return 1;
-	if (className == null) className = "RGFW";
-	rgfw_setInfo(info);
-	*_rgfw = {};
-	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == false) return -1;
-	if (flags & RGFW_INIT_EGL && rgfw_loadEGL() == false) return -1;
-	if (flags & RGFW_INIT_VULKAN && rgfw_loadVulkan() == false) return -1;
-	rgfw_initKeycodes();
-	int out = rgfw_initPlatform(className, flags);
-	if (out != 0)
-	{
-		rgfw_deinitPlatform();
-		*_rgfw = {};
-		rgfw_setInfo(null);
-		return out;
-	}
-	for (sz i = 0; i < (sz)RGFW_MOUSE_ICON_COUNT; i++)
-	{
-		_rgfw.standardMice[i] = rgfw_createMouseStandard((RgfwMouseIcon)i);
-	}
-	rgfw_pollMonitors();
-	return out;
-}
 
-fn void rgfw_deinit_ptr(RgfwInfo* info)
-{
-	if (info == null) return;
-	rgfw_setInfo(info);
-	for (RgfwMouseIcon i = 0; i < RGFW_MOUSE_ICON_COUNT; i++)
-	{
-		if (_rgfw.standardMice[(sz)i] != null) rgfw_freeMouse(_rgfw.standardMice[(sz)i]);
-	}
-	rgfw_freeMonitors();
-	rgfw_deinitPlatform();
-	rgfw_unloadEGL();
-	rgfw_unloadGL();
-	_rgfw.root = null;
-	_rgfw.windowCount = 0;
-	rgfw_setInfo(null);
-}
 
 
 
@@ -457,7 +401,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Rgf
 	if (flags & RGFW_WINDOW_OPEN_GL) rgfw_window_createContext_OpenGL(win, rgfw_getGlobalHints_OpenGL());
 	if (!(flags & RGFW_WINDOW_OPEN_GL)) win.src.gfxType = 0;
 	if (flags & RGFW_WINDOW_EGL) rgfw_window_createContext_EGL(win, rgfw_getGlobalHints_OpenGL());
-	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) rgfw_window_setMouseDefault(win);
+	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) win.set_mouse_default();
 	rgfw_window_setName(win, name);
 	if (!(flags & RGFW_WINDOW_HIDE))
 	{
@@ -499,9 +443,7 @@ fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, G
 	return rgfw_createSurfacePtr(data, w, h, format, surface);
 }
 
-fn void rgfw_window_setDND(GfxWindow* win, bool allow) { rgfw_setBit(&win.internal.flags, RGFW_WINDOW_ALLOW_DND, allow); }
 
-fn void rgfw_window_showMouse(GfxWindow* win, bool show) { rgfw_window_showMouseFlags(win, show); if (show == false) { rgfw_window_setMouse(win, _rgfw.hiddenMouse); } else { rgfw_window_setMouse(win, win.internal.mouse); } }
 
 fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h)
 {
@@ -513,7 +455,7 @@ fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h)
 	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setContentAspectRatio:", size);
 }
 
-fn GfxFormat rgfw_nativeFormat() => BGRA8;
+
 
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
@@ -584,9 +526,6 @@ fn void rgfw_resetGlobalHints_OpenGL() { rgfw_global_hints_open_gl_src = {0, 0, 
 fn void rgfw_setGlobalHints_OpenGL(RgfwGlHints* hints) { rgfw_global_hints_open_gl = hints; }
 fn RgfwGlHints* rgfw_getGlobalHints_OpenGL() { return rgfw_global_hints_open_gl; }
 fn void* rgfw_glContext_getSourceContext(RgfwGlContext* ctx) { return ctx.ctx; }
-fn void rgfw_attribStack_init(RgfwAttribStack* stack, int* attribs, sz max) { stack.attribs = attribs; stack.count = 0; stack.max = max; }
-fn void rgfw_attribStack_pushAttrib(RgfwAttribStack* stack, int attrib) { stack.attribs[stack.count] = attrib; stack.count += 1; }
-fn void rgfw_attribStack_pushAttribs(RgfwAttribStack* stack, int attrib1, int attrib2) { rgfw_attribStack_pushAttrib(stack, attrib1); rgfw_attribStack_pushAttrib(stack, attrib2); }
 
 struct RgfwAttribStack
 {
@@ -595,20 +534,6 @@ struct RgfwAttribStack
 	sz max;
 }
 
-fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len)
-{
-	if (extensions == null || ext == null) return false;
-	while (ext[len - 1] == 0 && len > 3) len--;
-	ZString start = extensions;
-	ZString where = (ZString)strstr(extensions, ext);
-	while (where != null)
-	{
-		ZString terminator = where + len;
-		if ((where == start || *((char*)where - 1) == ' ') && (terminator[0] == ' ' || terminator[0] == 0)) return true;
-		where = (ZString)strstr(terminator, ext);
-	}
-	return false;
-}
 
 alias RgfwGetProcAddressFunc = fn GfxFn(ZString procname);
 

@@ -422,11 +422,6 @@ fn void rgfw_setInfo(RgfwInfo* info) { _rgfw = info; }
 fn RgfwInfo* rgfw_getInfo() { return _rgfw; }
 fn void* rgfw_alloc(sz size) { return rgfw_alloc_impl(size); }
 fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
-fn sz rgfw_sizeofInfo() { return RgfwInfo::size; }
-fn sz rgfw_sizeofNativeImage() { return RgfwNativeImage::size; }
-fn sz rgfw_sizeofSurface() { return GfxSurface::size; }
-fn sz rgfw_sizeofWindow() { return GfxWindow::size; }
-fn sz rgfw_sizeofWindowSrc() { return RgfwWindowSrc::size; }
 
 fn bool rgfw_loadGL_X11()
 {
@@ -467,11 +462,7 @@ fn bool rgfw_loadGL_X11()
 	return true;
 }
 
-fn void rgfw_unloadGL_X11()
-{
-	_rgfw.nativeGL_handle = null;
-	_rgfw.glGetProcAddress = null;
-}
+
 fn void* rgfw_eglProc(ZString name)
 {
 	if (_rgfw.egl_handle == null) return null;
@@ -555,17 +546,6 @@ fn void rgfw_unloadVulkan()
 	_rgfw.vkGetInstanceProcAddress = null;
 }
 
-fn GfxFn rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
-{
-	if (_rgfw == null || _rgfw.vkGetInstanceProcAddress == null) return null;
-	return _rgfw.vkGetInstanceProcAddress(instance, procname);
-}
-
-fn ZString* rgfw_getRequiredInstanceExtensions_Vulkan(sz* count)
-{
-	if (count != null) *count = 2;
-	return &rgfw_vulkanExtensions;
-}
 
 fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
 {
@@ -649,48 +629,7 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 
 
 
-fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
-{
-	if (info == _rgfw || info == null) return 1;
-	if (className == null) className = "RGFW";
-	rgfw_setInfo(info);
-	*_rgfw = {};
-	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == false) return -1;
-	if (flags & RGFW_INIT_EGL && rgfw_loadEGL() == false) return -1;
-	if (flags & RGFW_INIT_VULKAN && rgfw_loadVulkan() == false) return -1;
-	rgfw_initKeycodes();
-	int out = rgfw_initPlatform(className, flags);
-	if (out != 0)
-	{
-		rgfw_deinitPlatform();
-		*_rgfw = {};
-		rgfw_setInfo(null);
-		return out;
-	}
-	for (sz i = 0; i < (sz)RGFW_MOUSE_ICON_COUNT; i++)
-	{
-		_rgfw.standardMice[i] = rgfw_createMouseStandard((RgfwMouseIcon)i);
-	}
-	rgfw_pollMonitors();
-	return out;
-}
 
-fn void rgfw_deinit_ptr(RgfwInfo* info)
-{
-	if (info == null) return;
-	rgfw_setInfo(info);
-	for (RgfwMouseIcon i = 0; i < RGFW_MOUSE_ICON_COUNT; i++)
-	{
-		if (_rgfw.standardMice[(sz)i] != null) rgfw_freeMouse(_rgfw.standardMice[(sz)i]);
-	}
-	rgfw_freeMonitors();
-	rgfw_deinitPlatform();
-	rgfw_unloadEGL();
-	rgfw_unloadGL();
-	_rgfw.root = null;
-	_rgfw.windowCount = 0;
-	rgfw_setInfo(null);
-}
 
 
 fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, RgfwWindowFlags flags, GfxWindow* win)
@@ -709,7 +648,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Rgf
 	if (ret == null) return null;
 	flags |= reservedFlags;
 	_window_set_flags(win, flags, 0);
-	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) rgfw_window_setMouseDefault(win);
+	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) win.set_mouse_default();
 	rgfw_window_setName(win, name);
 	if (!(flags & RGFW_WINDOW_HIDE))
 	{
@@ -734,8 +673,6 @@ fn void rgfw_window_closePtr(GfxWindow* win)
 	_rgfw.windowCount--;
 }
 
-fn void rgfw_window_setDND(GfxWindow* win, bool allow) { rgfw_setBit(&win.internal.flags, RGFW_WINDOW_ALLOW_DND, allow); }
-fn void rgfw_window_showMouse(GfxWindow* win, bool show) { rgfw_window_showMouseFlags(win, show); if (show == false) { rgfw_window_setMouse(win, _rgfw.hiddenMouse); } else { rgfw_window_setMouse(win, win.internal.mouse); } }
 
 fn void rgfw_window_setAspectRatio_X11(GfxWindow* win, int w, int h)
 {
@@ -750,7 +687,6 @@ fn void rgfw_window_setAspectRatio_X11(GfxWindow* win, int w, int h)
 	xSetWMNormalHints(_rgfw.display, win.src.window, &hints);
 }
 
-fn GfxFormat rgfw_nativeFormat_X11() => BGRA8;
 
 fn GfxFormat rgfw_xImageGetFormat(void* imagePtr)
 {
@@ -2611,24 +2547,7 @@ struct RgfwAttribStack
 	sz max;
 }
 
-fn void rgfw_attribStack_init(RgfwAttribStack* stack, int* attribs, sz max) { stack.attribs = attribs; stack.count = 0; stack.max = max; }
-fn void rgfw_attribStack_pushAttrib(RgfwAttribStack* stack, int attrib) { stack.attribs[stack.count] = attrib; stack.count += 1; }
-fn void rgfw_attribStack_pushAttribs(RgfwAttribStack* stack, int attrib1, int attrib2) { rgfw_attribStack_pushAttrib(stack, attrib1); rgfw_attribStack_pushAttrib(stack, attrib2); }
 
-fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len)
-{
-	if (extensions == null || ext == null) return false;
-	while (ext[len - 1] == 0 && len > 3) len--;
-	ZString start = extensions;
-	ZString where = (ZString)strstr(extensions, ext);
-	while (where != null)
-	{
-		ZString terminator = where + len;
-		if ((where == start || *((char*)where - 1) == ' ') && (terminator[0] == ' ' || terminator[0] == 0)) return true;
-		where = (ZString)strstr(terminator, ext);
-	}
-	return false;
-}
 
 
 // ==================== Wayland-specific declarations & backend ====================
@@ -3130,11 +3049,7 @@ fn bool rgfw_loadGL_Wayland()
 	return rgfw_loadEGL();
 }
 
-fn void rgfw_unloadGL_Wayland()
-{
-	_rgfw.nativeGL_handle = null;
-	_rgfw.glGetProcAddress = null;
-}
+
 
 const int VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR = 1000006000;
 
@@ -3473,7 +3388,7 @@ fn void rgfw_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlProxy* 
 	info.mouseOwner = win;
 
 	if (win.src.usingCustomCursor) { wlPointerSetCursor(pointer, serial, win.src.customCursorSurface, 0, 0); }
-	else { rgfw_window_setMouseDefault(win); }
+	else { win.set_mouse_default(); }
 
 	int x = (int)wlFixedToDouble(surfaceX);
 	int y = (int)wlFixedToDouble(surfaceY);
@@ -3946,7 +3861,6 @@ fn int rgfw_wlCreateShmFile(sz size)
 	return fd;
 }
 
-fn GfxFormat rgfw_nativeFormat_Wayland() => BGRA8;
 
 fn bool rgfw_createSurfacePtr_Wayland(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
@@ -4762,7 +4676,6 @@ import std::math;
 // / RGFW_load_X11() / RGFW_load_Wayland() / RGFW_usingWayland() design.
 
 alias RgfwWindowSetAspectRatioFn = fn void(GfxWindow*, int, int);
-alias RgfwNativeFormatFn = fn GfxFormat();
 alias RgfwCreateSurfacePtrFn = fn bool(char*, int, int, GfxFormat, GfxSurface*);
 alias RgfwWindowBlitSurfaceFn = fn void(GfxWindow*, GfxSurface*);
 alias RgfwSurfaceFreePtrFn = fn void(GfxSurface*);
@@ -4826,7 +4739,6 @@ alias RgfwWindowCreateSurfaceWebGPUFn = fn WGPUSurface(GfxWindow*, WGPUInstance)
 struct RgfwFunctionPointers
 {
 	RgfwWindowSetAspectRatioFn window_setAspectRatio;
-	RgfwNativeFormatFn nativeFormat;
 	RgfwCreateSurfacePtrFn createSurfacePtr;
 	RgfwWindowBlitSurfaceFn window_blitSurface;
 	RgfwSurfaceFreePtrFn surface_freePtr;
@@ -4894,7 +4806,7 @@ bool rgfw_dynamicUsingWayland = false;
 fn bool rgfw_usingWayland() => rgfw_dynamicUsingWayland;
 
 fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h) => rgfw_api.window_setAspectRatio(win, w, h);
-fn GfxFormat rgfw_nativeFormat() => rgfw_api.nativeFormat();
+
 fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface) => rgfw_api.createSurfacePtr(data, w, h, format, surface);
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface) => rgfw_api.window_blitSurface(win, surface);
 fn void rgfw_surface_freePtr(GfxSurface* surface) => rgfw_api.surface_freePtr(surface);
@@ -4958,7 +4870,6 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 fn void rgfw_loadX11()
 {
 	rgfw_api.window_setAspectRatio = &rgfw_window_setAspectRatio_X11;
-	rgfw_api.nativeFormat = &rgfw_nativeFormat_X11;
 	rgfw_api.createSurfacePtr = &rgfw_createSurfacePtr_X11;
 	rgfw_api.window_blitSurface = &rgfw_window_blitSurface_X11;
 	rgfw_api.surface_freePtr = &rgfw_surface_freePtr_X11;
@@ -5023,7 +4934,6 @@ fn void rgfw_loadX11()
 fn void rgfw_loadWayland()
 {
 	rgfw_api.window_setAspectRatio = &rgfw_window_setAspectRatio_Wayland;
-	rgfw_api.nativeFormat = &rgfw_nativeFormat_Wayland;
 	rgfw_api.createSurfacePtr = &rgfw_createSurfacePtr_Wayland;
 	rgfw_api.window_blitSurface = &rgfw_window_blitSurface_Wayland;
 	rgfw_api.surface_freePtr = &rgfw_surface_freePtr_Wayland;
@@ -5133,11 +5043,6 @@ fn bool rgfw_loadGL()
 	return rgfw_loadGL_X11();
 }
 
-fn void rgfw_unloadGL()
-{
-	if (rgfw_usingWayland()) { rgfw_unloadGL_Wayland(); return; }
-	rgfw_unloadGL_X11();
-}
 
 fn void rgfw_stopCheckEvents()
 {

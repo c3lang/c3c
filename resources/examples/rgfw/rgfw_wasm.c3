@@ -99,14 +99,8 @@ fn void rgfw_setInfo(RgfwInfo* info) { _rgfw = info; }
 fn RgfwInfo* rgfw_getInfo() { return _rgfw; }
 fn void* rgfw_alloc(sz size) { return rgfw_alloc_impl(size); }
 fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
-fn sz rgfw_sizeofInfo() { return RgfwInfo::size; }
-fn sz rgfw_sizeofNativeImage() { return RgfwNativeImage::size; }
-fn sz rgfw_sizeofSurface() { return GfxSurface::size; }
-fn sz rgfw_sizeofWindow() { return GfxWindow::size; }
-fn sz rgfw_sizeofWindowSrc() { return RgfwWindowSrc::size; }
 
 fn bool rgfw_loadGL() => true;
-fn void rgfw_unloadGL() {}
 fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
 
 alias WGPUInstance = void*;
@@ -147,63 +141,7 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 	return prev;
 }
 
-fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
-{
-	if (info == _rgfw || info == null) return 1;
-	if (className == null) className = "RGFW";
-	rgfw_setInfo(info);
-	*_rgfw = {};
-	if (flags & RGFW_INIT_OPEN_GL && rgfw_loadGL() == false)
-	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_FAILED_FUNC_LOAD, "Failed to load the OpenGL library");
-		return -1;
-	}
-	if (flags & RGFW_INIT_EGL && rgfw_loadEGL() == false)
-	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_FAILED_FUNC_LOAD, "Failed to load the EGL library");
-		return -1;
-	}
-	if (flags & RGFW_INIT_VULKAN && rgfw_loadVulkan() == false)
-	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_FAILED_FUNC_LOAD, "Failed to load the Vulkan library");
-		return -1;
-	}
-	rgfw_initKeycodes();
-	int out = rgfw_initPlatform(className, flags);
-	if (out != 0)
-	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_INFO_GLOBAL, "failed to initialize global context");
-		rgfw_deinitPlatform();
-		*_rgfw = {};
-		rgfw_setInfo(null);
-		return out;
-	}
-	for (sz i = 0; i < (sz)RGFW_MOUSE_ICON_COUNT; i++)
-	{
-		_rgfw.standardMice[i] = rgfw_createMouseStandard((RgfwMouseIcon)i);
-	}
-	rgfw_pollMonitors();
-	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_GLOBAL, "global context initialized");
-	return out;
-}
 
-fn void rgfw_deinit_ptr(RgfwInfo* info)
-{
-	if (info == null) return;
-	rgfw_setInfo(info);
-	for (RgfwMouseIcon i = 0; i < RGFW_MOUSE_ICON_COUNT; i++)
-	{
-		if (_rgfw.standardMice[(sz)i] != null) rgfw_freeMouse(_rgfw.standardMice[(sz)i]);
-	}
-	rgfw_freeMonitors();
-	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_GLOBAL, "global context deinitialized");
-	rgfw_deinitPlatform();
-	rgfw_unloadEGL();
-	rgfw_unloadGL();
-	_rgfw.root = null;
-	_rgfw.windowCount = 0;
-	rgfw_setInfo(null);
-}
 
 
 
@@ -228,7 +166,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Rgf
 	flags |= reservedFlags;
 	_window_set_flags(win, flags, 0);
 	if (flags & RGFW_WINDOW_OPEN_GL) rgfw_window_createContext_OpenGL(win, rgfw_getGlobalHints_OpenGL());
-	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) rgfw_window_setMouseDefault(win);
+	if (!(flags & RGFW_WINDOW_HIDE_MOUSE)) win.set_mouse_default();
 	rgfw_window_setName(win, name);
 	if (!(flags & RGFW_WINDOW_HIDE))
 	{
@@ -267,11 +205,8 @@ fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, G
 	return rgfw_createSurfacePtr(data, w, h, format, surface);
 }
 
-fn void rgfw_window_setDND(GfxWindow* win, bool allow) { rgfw_setBit(&win.internal.flags, RGFW_WINDOW_ALLOW_DND, allow); }
-
 
 fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h) {}
-fn GfxFormat rgfw_nativeFormat() => RGBA8;
 
 // ---- JS host imports (no Emscripten runtime under C3's wasm target) ----
 extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "rgfw_set_canvas_size");
@@ -647,13 +582,6 @@ fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 }
 
 fn void rgfw_freeMouse(RgfwMouse* mouse) {}
-
-fn void rgfw_window_showMouse(GfxWindow* win, bool show)
-{
-	rgfw_window_showMouseFlags(win, show);
-	if (show) { rgfw_window_setMouseDefault(win); }
-	else { rgfwJsHideCursor(); }
-}
 
 fn bool rgfw_getGlobalMouse(int* x, int* y)
 {
