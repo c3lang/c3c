@@ -738,6 +738,5 @@ fn bool GfxWindow.is_floating(&win) => false;
 fn void rgfw_waitForEvent(int waitMS) {}
 
 fn bool rgfw_loadEGL() => false;
-fn void rgfw_unloadEGL() {}
 fn bool rgfw_loadVulkan() => false;
 fn void rgfw_unloadVulkan() {}

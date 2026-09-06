@@ -1596,23 +1596,13 @@ fn void rgfw_deinit_ptr(RgfwInfo* info)
 	rgfw_freeMonitors();
 	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_GLOBAL, "global context deinitialized");
 	rgfw_deinitPlatform();
-	rgfw_unloadEGL();
-	rgfw_unloadGL();
+	unload_egl();
+	unload_gl();
 	_rgfw.root = null;
 	_rgfw.windowCount = 0;
 	rgfw_setInfo(null);
 }
 
-fn void rgfw_unloadGL()
-{
-	$switch:
-		$case $feat(WASM):
-			return;
-		$default:
-			_rgfw.nativeGL_handle = null;
-			_rgfw.glGetProcAddress = null;
-	$endswitch
-}
 
 fn GfxFormat native_format()
 {

@@ -2044,8 +2044,6 @@ fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval)
 	}
 }
 
-fn bool rgfw_loadEGL() => false;
-fn void rgfw_unloadEGL() {}
 
 fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
