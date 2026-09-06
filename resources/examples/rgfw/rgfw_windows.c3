@@ -352,29 +352,21 @@ struct RgfwWindowSrc
 }
 
 
-
-
-
-
-RgfwInfo* _rgfw;
-RgfwInfo _rgfw_global;
-
-
 // public
 fn bool rgfw_loadGL()
 {
-	if (_rgfw.nativeGL_handle != null && _rgfw.glGetProcAddress != null) return true;
-	_rgfw.nativeGL_handle = loadLibraryA("opengl32.dll");
-	_rgfw.glGetProcAddress = getProcAddress((HModule*)_rgfw.nativeGL_handle, "wglGetProcAddress");
+	if (_gfx_ctx.nativeGL_handle != null && _gfx_ctx.glGetProcAddress != null) return true;
+	_gfx_ctx.nativeGL_handle = loadLibraryA("opengl32.dll");
+	_gfx_ctx.glGetProcAddress = getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglGetProcAddress");
 
-	rgfw_wglCreateContext = (RgfwWglCreateContextProc)getProcAddress((HModule*)_rgfw.nativeGL_handle, "wglCreateContext");
-	rgfw_wglDeleteContext = (RgfwWglDeleteContextProc)getProcAddress((HModule*)_rgfw.nativeGL_handle, "wglDeleteContext");
-	rgfw_wglMakeCurrent = (RgfwWglMakeCurrentProc)getProcAddress((HModule*)_rgfw.nativeGL_handle, "wglMakeCurrent");
-	rgfw_wglGetCurrentDC = (RgfwWglGetCurrentDcProc)getProcAddress((HModule*)_rgfw.nativeGL_handle, "wglGetCurrentDC");
-	rgfw_wglGetCurrentContext = (RgfwWglGetCurrentContextProc)getProcAddress((HModule*)_rgfw.nativeGL_handle, "wglGetCurrentContext");
-	rgfw_wglShareLists = (RgfwWglShareListsProc)getProcAddress((HModule*)_rgfw.nativeGL_handle, "wglShareLists");
+	rgfw_wglCreateContext = (RgfwWglCreateContextProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglCreateContext");
+	rgfw_wglDeleteContext = (RgfwWglDeleteContextProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglDeleteContext");
+	rgfw_wglMakeCurrent = (RgfwWglMakeCurrentProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglMakeCurrent");
+	rgfw_wglGetCurrentDC = (RgfwWglGetCurrentDcProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglGetCurrentDC");
+	rgfw_wglGetCurrentContext = (RgfwWglGetCurrentContextProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglGetCurrentContext");
+	rgfw_wglShareLists = (RgfwWglShareListsProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglShareLists");
 
-	HWnd* dummyWin = createWindowExW(0, _rgfw.wndClass.className, null, 0, 0, 0, 0, 0, null, null, _rgfw.instance, null);
+	HWnd* dummyWin = createWindowExW(0, _gfx_ctx.wndClass.className, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
 	HDc dummyDc = getDC(dummyWin);
 	uint pfdFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
 
@@ -418,22 +410,22 @@ ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_win32_surface"};
 // public
 fn bool rgfw_loadVulkan()
 {
-	if (_rgfw.vulkan_handle != null) return true;
-	_rgfw.vulkan_handle = loadLibraryA("vulkan-1.dll");
-	if (_rgfw.vulkan_handle == null) return false;
-	void* proc = getProcAddress((HModule*)_rgfw.vulkan_handle, "vkGetInstanceProcAddr");
+	if (_gfx_ctx.vulkan_handle != null) return true;
+	_gfx_ctx.vulkan_handle = loadLibraryA("vulkan-1.dll");
+	if (_gfx_ctx.vulkan_handle == null) return false;
+	void* proc = getProcAddress((HModule*)_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
 	if (proc == null) return false;
-	_rgfw.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
+	_gfx_ctx.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
 	return true;
 }
 
 // public
 fn void rgfw_unloadVulkan()
 {
-	if (_rgfw.vulkan_handle == null) return;
-	freeLibrary((HModule*)_rgfw.vulkan_handle);
-	_rgfw.vulkan_handle = null;
-	_rgfw.vkGetInstanceProcAddress = null;
+	if (_gfx_ctx.vulkan_handle == null) return;
+	freeLibrary((HModule*)_gfx_ctx.vulkan_handle);
+	_gfx_ctx.vulkan_handle = null;
+	_gfx_ctx.vkGetInstanceProcAddress = null;
 }
 
 
@@ -449,7 +441,7 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	createInfo.pNext = null;
 	createInfo.flags = 0;
-	createInfo.hinstance = _rgfw.instance;
+	createInfo.hinstance = _gfx_ctx.instance;
 	createInfo.hwnd = win.src.window;
 	return ((RgfwVkCreateWin32SurfaceKHRProc)raw)(instance, &createInfo, null, surface);
 }
@@ -481,7 +473,7 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 	fromHwnd.chain.next = null;
 	fromHwnd.chain.sType = WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND;
 	fromHwnd.hwnd = window.src.window;
-	fromHwnd.hinstance = _rgfw.instance;
+	fromHwnd.hinstance = _gfx_ctx.instance;
 	WgpuSurfaceDescriptor surfaceDesc;
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromHwnd;
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
@@ -654,7 +646,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 {
 	if (message == 0x007E /* WM_DISPLAYCHANGE */) rgfw_pollMonitors();
 
-	if (hWnd == _rgfw.helperWindow) return defWindowProcW(hWnd, message, wParam, lParam);
+	if (hWnd == _gfx_ctx.helperWindow) return defWindowProcW(hWnd, message, wParam, lParam);
 
 	GfxWindow* win = (GfxWindow*)getPropW(hWnd, rgfw_wideRgfwPropName());
 	if (win == null) return defWindowProcW(hWnd, message, wParam, lParam);
@@ -853,7 +845,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		}
 		case 0x00FF: // WM_INPUT
 		{
-			if (!(win.internal.rawMouse || _rgfw.rawMouse)) return defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.rawMouse || _gfx_ctx.rawMouse)) return defWindowProcW(hWnd, message, wParam, lParam);
 
 			RawInputMouse raw;
 			uint rawSize = (uint)RawInputMouse::size;
@@ -957,53 +949,53 @@ fn ushort* rgfw_wideRgfwPropName()
 // public
 fn void rgfw_initKeycodesPlatform()
 {
-	_rgfw.keycodes[0x00B] = RGFW_KEY0; _rgfw.keycodes[0x002] = RGFW_KEY1; _rgfw.keycodes[0x003] = RGFW_KEY2;
-	_rgfw.keycodes[0x004] = RGFW_KEY3; _rgfw.keycodes[0x005] = RGFW_KEY4; _rgfw.keycodes[0x006] = RGFW_KEY5;
-	_rgfw.keycodes[0x007] = RGFW_KEY6; _rgfw.keycodes[0x008] = RGFW_KEY7; _rgfw.keycodes[0x009] = RGFW_KEY8;
-	_rgfw.keycodes[0x00A] = RGFW_KEY9;
-	_rgfw.keycodes[0x01E] = RGFW_KEY_A; _rgfw.keycodes[0x030] = RGFW_KEY_B; _rgfw.keycodes[0x02E] = RGFW_KEY_C;
-	_rgfw.keycodes[0x020] = RGFW_KEY_D; _rgfw.keycodes[0x012] = RGFW_KEY_E; _rgfw.keycodes[0x021] = RGFW_KEY_F;
-	_rgfw.keycodes[0x022] = RGFW_KEY_G; _rgfw.keycodes[0x023] = RGFW_KEY_H; _rgfw.keycodes[0x017] = RGFW_KEY_I;
-	_rgfw.keycodes[0x024] = RGFW_KEY_J; _rgfw.keycodes[0x025] = RGFW_KEY_K; _rgfw.keycodes[0x026] = RGFW_KEY_L;
-	_rgfw.keycodes[0x032] = RGFW_KEY_M; _rgfw.keycodes[0x031] = RGFW_KEY_N; _rgfw.keycodes[0x018] = RGFW_KEY_O;
-	_rgfw.keycodes[0x019] = RGFW_KEY_P; _rgfw.keycodes[0x010] = RGFW_KEY_Q; _rgfw.keycodes[0x013] = RGFW_KEY_R;
-	_rgfw.keycodes[0x01F] = RGFW_KEY_S; _rgfw.keycodes[0x014] = RGFW_KEY_T; _rgfw.keycodes[0x016] = RGFW_KEY_U;
-	_rgfw.keycodes[0x02F] = RGFW_KEY_V; _rgfw.keycodes[0x011] = RGFW_KEY_W; _rgfw.keycodes[0x02D] = RGFW_KEY_X;
-	_rgfw.keycodes[0x015] = RGFW_KEY_Y; _rgfw.keycodes[0x02C] = RGFW_KEY_Z;
-	_rgfw.keycodes[0x028] = RGFW_KEY_APOSTROPHE; _rgfw.keycodes[0x02B] = RGFW_KEY_BACK_SLASH;
-	_rgfw.keycodes[0x033] = RGFW_KEY_COMMA; _rgfw.keycodes[0x00D] = RGFW_KEY_EQUALS;
-	_rgfw.keycodes[0x029] = RGFW_KEY_BACKTICK; _rgfw.keycodes[0x01A] = RGFW_KEY_BRACKET;
-	_rgfw.keycodes[0x00C] = RGFW_KEY_MINUS; _rgfw.keycodes[0x034] = RGFW_KEY_PERIOD;
-	_rgfw.keycodes[0x01B] = RGFW_KEY_CLOSE_BRACKET; _rgfw.keycodes[0x027] = RGFW_KEY_SEMICOLON;
-	_rgfw.keycodes[0x035] = RGFW_KEY_SLASH; _rgfw.keycodes[0x056] = RGFW_KEY_WORLD2;
-	_rgfw.keycodes[0x00E] = RGFW_KEY_BACK_SPACE; _rgfw.keycodes[0x153] = RGFW_KEY_DELETE;
-	_rgfw.keycodes[0x14F] = RGFW_KEY_END; _rgfw.keycodes[0x01C] = RGFW_KEY_ENTER;
-	_rgfw.keycodes[0x001] = RGFW_KEY_ESCAPE; _rgfw.keycodes[0x147] = RGFW_KEY_HOME;
-	_rgfw.keycodes[0x152] = RGFW_KEY_INSERT; _rgfw.keycodes[0x15D] = RGFW_KEY_MENU;
-	_rgfw.keycodes[0x151] = RGFW_KEY_PAGE_DOWN; _rgfw.keycodes[0x149] = RGFW_KEY_PAGE_UP;
-	_rgfw.keycodes[0x045] = RGFW_KEY_PAUSE; _rgfw.keycodes[0x039] = RGFW_KEY_SPACE;
-	_rgfw.keycodes[0x00F] = RGFW_KEY_TAB; _rgfw.keycodes[0x03A] = RGFW_KEY_CAPS_LOCK;
-	_rgfw.keycodes[0x145] = RGFW_KEY_NUM_LOCK; _rgfw.keycodes[0x046] = RGFW_KEY_SCROLL_LOCK;
-	_rgfw.keycodes[0x03B] = RGFW_KEY_F1; _rgfw.keycodes[0x03C] = RGFW_KEY_F2; _rgfw.keycodes[0x03D] = RGFW_KEY_F3;
-	_rgfw.keycodes[0x03E] = RGFW_KEY_F4; _rgfw.keycodes[0x03F] = RGFW_KEY_F5; _rgfw.keycodes[0x040] = RGFW_KEY_F6;
-	_rgfw.keycodes[0x041] = RGFW_KEY_F7; _rgfw.keycodes[0x042] = RGFW_KEY_F8; _rgfw.keycodes[0x043] = RGFW_KEY_F9;
-	_rgfw.keycodes[0x044] = RGFW_KEY_F10; _rgfw.keycodes[0x057] = RGFW_KEY_F11; _rgfw.keycodes[0x058] = RGFW_KEY_F12;
-	_rgfw.keycodes[0x064] = RGFW_KEY_F13; _rgfw.keycodes[0x065] = RGFW_KEY_F14; _rgfw.keycodes[0x066] = RGFW_KEY_F15;
-	_rgfw.keycodes[0x067] = RGFW_KEY_F16; _rgfw.keycodes[0x068] = RGFW_KEY_F17; _rgfw.keycodes[0x069] = RGFW_KEY_F18;
-	_rgfw.keycodes[0x06A] = RGFW_KEY_F19; _rgfw.keycodes[0x06B] = RGFW_KEY_F20; _rgfw.keycodes[0x06C] = RGFW_KEY_F21;
-	_rgfw.keycodes[0x06D] = RGFW_KEY_F22; _rgfw.keycodes[0x06E] = RGFW_KEY_F23; _rgfw.keycodes[0x076] = RGFW_KEY_F24;
-	_rgfw.keycodes[0x038] = RGFW_KEY_ALT_L; _rgfw.keycodes[0x01D] = RGFW_KEY_CONTROL_L; _rgfw.keycodes[0x02A] = RGFW_KEY_SHIFT_L;
-	_rgfw.keycodes[0x15B] = RGFW_KEY_SUPER_L; _rgfw.keycodes[0x137] = RGFW_KEY_PRINT_SCREEN;
-	_rgfw.keycodes[0x138] = RGFW_KEY_ALT_R; _rgfw.keycodes[0x11D] = RGFW_KEY_CONTROL_R;
-	_rgfw.keycodes[0x036] = RGFW_KEY_SHIFT_R; _rgfw.keycodes[0x15C] = RGFW_KEY_SUPER_R;
-	_rgfw.keycodes[0x150] = RGFW_KEY_DOWN; _rgfw.keycodes[0x14B] = RGFW_KEY_LEFT;
-	_rgfw.keycodes[0x14D] = RGFW_KEY_RIGHT; _rgfw.keycodes[0x148] = RGFW_KEY_UP;
-	_rgfw.keycodes[0x052] = RGFW_KEY_PAD0; _rgfw.keycodes[0x04F] = RGFW_KEY_PAD1; _rgfw.keycodes[0x050] = RGFW_KEY_PAD2;
-	_rgfw.keycodes[0x051] = RGFW_KEY_PAD3; _rgfw.keycodes[0x04B] = RGFW_KEY_PAD4; _rgfw.keycodes[0x04C] = RGFW_KEY_PAD5;
-	_rgfw.keycodes[0x04D] = RGFW_KEY_PAD6; _rgfw.keycodes[0x047] = RGFW_KEY_PAD7; _rgfw.keycodes[0x048] = RGFW_KEY_PAD8;
-	_rgfw.keycodes[0x049] = RGFW_KEY_PAD9; _rgfw.keycodes[0x04E] = RGFW_KEY_PAD_PLUS; _rgfw.keycodes[0x053] = RGFW_KEY_PAD_PERIOD;
-	_rgfw.keycodes[0x135] = RGFW_KEY_PAD_SLASH; _rgfw.keycodes[0x11C] = RGFW_KEY_PAD_RETURN;
-	_rgfw.keycodes[0x059] = RGFW_KEY_PAD_EQUAL; _rgfw.keycodes[0x037] = RGFW_KEY_PAD_MULTIPLY; _rgfw.keycodes[0x04A] = RGFW_KEY_PAD_MINUS;
+	_gfx_ctx.keycodes[0x00B] = RGFW_KEY0; _gfx_ctx.keycodes[0x002] = RGFW_KEY1; _gfx_ctx.keycodes[0x003] = RGFW_KEY2;
+	_gfx_ctx.keycodes[0x004] = RGFW_KEY3; _gfx_ctx.keycodes[0x005] = RGFW_KEY4; _gfx_ctx.keycodes[0x006] = RGFW_KEY5;
+	_gfx_ctx.keycodes[0x007] = RGFW_KEY6; _gfx_ctx.keycodes[0x008] = RGFW_KEY7; _gfx_ctx.keycodes[0x009] = RGFW_KEY8;
+	_gfx_ctx.keycodes[0x00A] = RGFW_KEY9;
+	_gfx_ctx.keycodes[0x01E] = RGFW_KEY_A; _gfx_ctx.keycodes[0x030] = RGFW_KEY_B; _gfx_ctx.keycodes[0x02E] = RGFW_KEY_C;
+	_gfx_ctx.keycodes[0x020] = RGFW_KEY_D; _gfx_ctx.keycodes[0x012] = RGFW_KEY_E; _gfx_ctx.keycodes[0x021] = RGFW_KEY_F;
+	_gfx_ctx.keycodes[0x022] = RGFW_KEY_G; _gfx_ctx.keycodes[0x023] = RGFW_KEY_H; _gfx_ctx.keycodes[0x017] = RGFW_KEY_I;
+	_gfx_ctx.keycodes[0x024] = RGFW_KEY_J; _gfx_ctx.keycodes[0x025] = RGFW_KEY_K; _gfx_ctx.keycodes[0x026] = RGFW_KEY_L;
+	_gfx_ctx.keycodes[0x032] = RGFW_KEY_M; _gfx_ctx.keycodes[0x031] = RGFW_KEY_N; _gfx_ctx.keycodes[0x018] = RGFW_KEY_O;
+	_gfx_ctx.keycodes[0x019] = RGFW_KEY_P; _gfx_ctx.keycodes[0x010] = RGFW_KEY_Q; _gfx_ctx.keycodes[0x013] = RGFW_KEY_R;
+	_gfx_ctx.keycodes[0x01F] = RGFW_KEY_S; _gfx_ctx.keycodes[0x014] = RGFW_KEY_T; _gfx_ctx.keycodes[0x016] = RGFW_KEY_U;
+	_gfx_ctx.keycodes[0x02F] = RGFW_KEY_V; _gfx_ctx.keycodes[0x011] = RGFW_KEY_W; _gfx_ctx.keycodes[0x02D] = RGFW_KEY_X;
+	_gfx_ctx.keycodes[0x015] = RGFW_KEY_Y; _gfx_ctx.keycodes[0x02C] = RGFW_KEY_Z;
+	_gfx_ctx.keycodes[0x028] = RGFW_KEY_APOSTROPHE; _gfx_ctx.keycodes[0x02B] = RGFW_KEY_BACK_SLASH;
+	_gfx_ctx.keycodes[0x033] = RGFW_KEY_COMMA; _gfx_ctx.keycodes[0x00D] = RGFW_KEY_EQUALS;
+	_gfx_ctx.keycodes[0x029] = RGFW_KEY_BACKTICK; _gfx_ctx.keycodes[0x01A] = RGFW_KEY_BRACKET;
+	_gfx_ctx.keycodes[0x00C] = RGFW_KEY_MINUS; _gfx_ctx.keycodes[0x034] = RGFW_KEY_PERIOD;
+	_gfx_ctx.keycodes[0x01B] = RGFW_KEY_CLOSE_BRACKET; _gfx_ctx.keycodes[0x027] = RGFW_KEY_SEMICOLON;
+	_gfx_ctx.keycodes[0x035] = RGFW_KEY_SLASH; _gfx_ctx.keycodes[0x056] = RGFW_KEY_WORLD2;
+	_gfx_ctx.keycodes[0x00E] = RGFW_KEY_BACK_SPACE; _gfx_ctx.keycodes[0x153] = RGFW_KEY_DELETE;
+	_gfx_ctx.keycodes[0x14F] = RGFW_KEY_END; _gfx_ctx.keycodes[0x01C] = RGFW_KEY_ENTER;
+	_gfx_ctx.keycodes[0x001] = RGFW_KEY_ESCAPE; _gfx_ctx.keycodes[0x147] = RGFW_KEY_HOME;
+	_gfx_ctx.keycodes[0x152] = RGFW_KEY_INSERT; _gfx_ctx.keycodes[0x15D] = RGFW_KEY_MENU;
+	_gfx_ctx.keycodes[0x151] = RGFW_KEY_PAGE_DOWN; _gfx_ctx.keycodes[0x149] = RGFW_KEY_PAGE_UP;
+	_gfx_ctx.keycodes[0x045] = RGFW_KEY_PAUSE; _gfx_ctx.keycodes[0x039] = RGFW_KEY_SPACE;
+	_gfx_ctx.keycodes[0x00F] = RGFW_KEY_TAB; _gfx_ctx.keycodes[0x03A] = RGFW_KEY_CAPS_LOCK;
+	_gfx_ctx.keycodes[0x145] = RGFW_KEY_NUM_LOCK; _gfx_ctx.keycodes[0x046] = RGFW_KEY_SCROLL_LOCK;
+	_gfx_ctx.keycodes[0x03B] = RGFW_KEY_F1; _gfx_ctx.keycodes[0x03C] = RGFW_KEY_F2; _gfx_ctx.keycodes[0x03D] = RGFW_KEY_F3;
+	_gfx_ctx.keycodes[0x03E] = RGFW_KEY_F4; _gfx_ctx.keycodes[0x03F] = RGFW_KEY_F5; _gfx_ctx.keycodes[0x040] = RGFW_KEY_F6;
+	_gfx_ctx.keycodes[0x041] = RGFW_KEY_F7; _gfx_ctx.keycodes[0x042] = RGFW_KEY_F8; _gfx_ctx.keycodes[0x043] = RGFW_KEY_F9;
+	_gfx_ctx.keycodes[0x044] = RGFW_KEY_F10; _gfx_ctx.keycodes[0x057] = RGFW_KEY_F11; _gfx_ctx.keycodes[0x058] = RGFW_KEY_F12;
+	_gfx_ctx.keycodes[0x064] = RGFW_KEY_F13; _gfx_ctx.keycodes[0x065] = RGFW_KEY_F14; _gfx_ctx.keycodes[0x066] = RGFW_KEY_F15;
+	_gfx_ctx.keycodes[0x067] = RGFW_KEY_F16; _gfx_ctx.keycodes[0x068] = RGFW_KEY_F17; _gfx_ctx.keycodes[0x069] = RGFW_KEY_F18;
+	_gfx_ctx.keycodes[0x06A] = RGFW_KEY_F19; _gfx_ctx.keycodes[0x06B] = RGFW_KEY_F20; _gfx_ctx.keycodes[0x06C] = RGFW_KEY_F21;
+	_gfx_ctx.keycodes[0x06D] = RGFW_KEY_F22; _gfx_ctx.keycodes[0x06E] = RGFW_KEY_F23; _gfx_ctx.keycodes[0x076] = RGFW_KEY_F24;
+	_gfx_ctx.keycodes[0x038] = RGFW_KEY_ALT_L; _gfx_ctx.keycodes[0x01D] = RGFW_KEY_CONTROL_L; _gfx_ctx.keycodes[0x02A] = RGFW_KEY_SHIFT_L;
+	_gfx_ctx.keycodes[0x15B] = RGFW_KEY_SUPER_L; _gfx_ctx.keycodes[0x137] = RGFW_KEY_PRINT_SCREEN;
+	_gfx_ctx.keycodes[0x138] = RGFW_KEY_ALT_R; _gfx_ctx.keycodes[0x11D] = RGFW_KEY_CONTROL_R;
+	_gfx_ctx.keycodes[0x036] = RGFW_KEY_SHIFT_R; _gfx_ctx.keycodes[0x15C] = RGFW_KEY_SUPER_R;
+	_gfx_ctx.keycodes[0x150] = RGFW_KEY_DOWN; _gfx_ctx.keycodes[0x14B] = RGFW_KEY_LEFT;
+	_gfx_ctx.keycodes[0x14D] = RGFW_KEY_RIGHT; _gfx_ctx.keycodes[0x148] = RGFW_KEY_UP;
+	_gfx_ctx.keycodes[0x052] = RGFW_KEY_PAD0; _gfx_ctx.keycodes[0x04F] = RGFW_KEY_PAD1; _gfx_ctx.keycodes[0x050] = RGFW_KEY_PAD2;
+	_gfx_ctx.keycodes[0x051] = RGFW_KEY_PAD3; _gfx_ctx.keycodes[0x04B] = RGFW_KEY_PAD4; _gfx_ctx.keycodes[0x04C] = RGFW_KEY_PAD5;
+	_gfx_ctx.keycodes[0x04D] = RGFW_KEY_PAD6; _gfx_ctx.keycodes[0x047] = RGFW_KEY_PAD7; _gfx_ctx.keycodes[0x048] = RGFW_KEY_PAD8;
+	_gfx_ctx.keycodes[0x049] = RGFW_KEY_PAD9; _gfx_ctx.keycodes[0x04E] = RGFW_KEY_PAD_PLUS; _gfx_ctx.keycodes[0x053] = RGFW_KEY_PAD_PERIOD;
+	_gfx_ctx.keycodes[0x135] = RGFW_KEY_PAD_SLASH; _gfx_ctx.keycodes[0x11C] = RGFW_KEY_PAD_RETURN;
+	_gfx_ctx.keycodes[0x059] = RGFW_KEY_PAD_EQUAL; _gfx_ctx.keycodes[0x037] = RGFW_KEY_PAD_MULTIPLY; _gfx_ctx.keycodes[0x04A] = RGFW_KEY_PAD_MINUS;
 }
 
 // public
@@ -1012,30 +1004,30 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 	setProcessDPIAware();
 	timeBeginPeriod(1);
 
-	_rgfw.instance = getModuleHandleW(null);
+	_gfx_ctx.instance = getModuleHandleW(null);
 	@pool()
 	{
-		multiByteToWideChar(65001, 0, class_name.zstr_copy(tmem), -1, (ushort*)&_rgfw.wideClassName, 255);
+		multiByteToWideChar(65001, 0, class_name.zstr_copy(tmem), -1, (ushort*)&_gfx_ctx.wideClassName, 255);
 	};
 
-	_rgfw.wndClass = {};
-	_rgfw.wndClass.className = (ushort*)&_rgfw.wideClassName;
-	_rgfw.wndClass.hInstance = _rgfw.instance;
-	_rgfw.wndClass.hCursor = loadCursorA(null, (char*)(uptr)32512 /* IDC_ARROW */);
-	_rgfw.wndClass.wndProc = &rgfw_wndProcW;
-	_rgfw.wndClass.clsExtra = (int)sz::size;
+	_gfx_ctx.wndClass = {};
+	_gfx_ctx.wndClass.className = (ushort*)&_gfx_ctx.wideClassName;
+	_gfx_ctx.wndClass.hInstance = _gfx_ctx.instance;
+	_gfx_ctx.wndClass.hCursor = loadCursorA(null, (char*)(uptr)32512 /* IDC_ARROW */);
+	_gfx_ctx.wndClass.wndProc = &rgfw_wndProcW;
+	_gfx_ctx.wndClass.clsExtra = (int)sz::size;
 
-	_rgfw.wndClass.hIcon = (HIcon)loadImageA(_rgfw.instance, "RGFW_ICON", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
-	if (_rgfw.wndClass.hIcon == null)
+	_gfx_ctx.wndClass.hIcon = (HIcon)loadImageA(_gfx_ctx.instance, "RGFW_ICON", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
+	if (_gfx_ctx.wndClass.hIcon == null)
 	{
-		_rgfw.wndClass.hIcon = (HIcon)loadImageA(null, (char*)(uptr)32512 /* IDI_APPLICATION */, 1, 0, 0, 0x00000040 | 0x00008000);
+		_gfx_ctx.wndClass.hIcon = (HIcon)loadImageA(null, (char*)(uptr)32512 /* IDI_APPLICATION */, 1, 0, 0, 0x00000040 | 0x00008000);
 	}
 
-	registerClassW(&_rgfw.wndClass);
-	_rgfw.helperWindow = createWindowExW(0, _rgfw.wndClass.className, null, 0, 0, 0, 0, 0, null, null, _rgfw.instance, null);
+	registerClassW(&_gfx_ctx.wndClass);
+	_gfx_ctx.helperWindow = createWindowExW(0, _gfx_ctx.wndClass.className, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
 
 	char[4] blk = {0, 0, 0, 0};
-	_rgfw.hiddenMouse = rgfw_createMouse((char*)&blk, 1, 1, RGBA8);
+	_gfx_ctx.hiddenMouse = rgfw_createMouse((char*)&blk, 1, 1, RGBA8);
 	return 0;
 }
 
@@ -1064,7 +1056,7 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxW
 	uint exStyle = rgfw_winapiWindowGetExStyle(win, flags);
 	adjustWindowRectEx(&rect, style, 0, exStyle);
 
-	win.src.window = createWindowExW(0, _rgfw.wndClass.className, &wideName, windowStyle, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _rgfw.instance, null);
+	win.src.window = createWindowExW(0, _gfx_ctx.wndClass.className, &wideName, windowStyle, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx_ctx.instance, null);
 	setPropW(win.src.window, rgfw_wideRgfwPropName(), win);
 	rgfw_window_resize(win, win.width, win.height);
 
@@ -1188,7 +1180,7 @@ fn void rgfw_window_restorePlatform(GfxWindow* win) {}
 // public
 fn bool GfxWindow.is_floating(&win) => getWindowLongPtr(win.src.window, -20) & 0x00000008 != 0;
 // public
-fn void rgfw_stopCheckEvents() { postMessageW(_rgfw.helperWindow, 0, 0, 0); }
+fn void rgfw_stopCheckEvents() { postMessageW(_gfx_ctx.helperWindow, 0, 0, 0); }
 // public
 fn void rgfw_waitForEvent(int waitMS) { msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */); }
 
@@ -1425,14 +1417,14 @@ fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 	};
 	deleteDC(hdc);
 
-	if (monitorInfo.dwFlags & MONITORINFOF_PRIMARY) _rgfw.monitors.primary = node;
-	rgfw_monitorCallback(_rgfw.root, &node.mon, true);
+	if (monitorInfo.dwFlags & MONITORINFOF_PRIMARY) _gfx_ctx.monitors.primary = node;
+	rgfw_monitorCallback(_gfx_ctx.root, &node.mon, true);
 }
 
 // public
 fn void rgfw_pollMonitors()
 {
-	for (GfxMonitorNode* node = _rgfw.monitors.list.head; node != null; node = node.next) node.disconnected = true;
+	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next) node.disconnected = true;
 
 	DisplayDeviceW adapter;
 	for (uint adapterNum = 0;; adapterNum++)
@@ -1452,7 +1444,7 @@ fn void rgfw_pollMonitors()
 			if (!(dd.stateFlags & DISPLAY_DEVICE_ACTIVE)) continue;
 
 			GfxMonitorNode* node;
-			for (node = _rgfw.monitors.list.head; node != null; node = node.next)
+			for (node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
 			{
 				sz i;
 				for (i = 0; dd.deviceName[i] != 0 && node.deviceName[i] != 0 && dd.deviceName[i] == node.deviceName[i]; i++) {}
@@ -1470,7 +1462,7 @@ fn void rgfw_pollMonitors()
 		if (deviceNum == 0)
 		{
 			GfxMonitorNode* node;
-			for (node = _rgfw.monitors.list.head; node != null; node = node.next)
+			for (node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
 			{
 				sz i;
 				for (i = 0; adapter.deviceName[i] != 0 && node.adapterName[i] != 0 && adapter.deviceName[i] == node.adapterName[i]; i++) {}
@@ -1490,7 +1482,7 @@ fn void rgfw_monitorNode_free(GfxMonitorNode* node) {}
 fn GfxMonitor* find_monitor(GfxWindow* win)
 {
 	HMonitor src = monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
-	for (GfxMonitorNode* node = _rgfw.monitors.list.head; node != null; node = node.next)
+	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
 	{
 		if (node.hMonitor == src) return &node.mon;
 	}
@@ -1654,9 +1646,9 @@ fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request)
 fn void rgfw_deinitPlatform()
 {
 	timeEndPeriod(1);
-	if (_rgfw.helperWindow != null) destroyWindow(_rgfw.helperWindow);
-	if (_rgfw.instance != null) unregisterClassW(_rgfw.wndClass.className, _rgfw.instance);
-	if (_rgfw.hiddenMouse != null) rgfw_freeMouse(_rgfw.hiddenMouse);
+	if (_gfx_ctx.helperWindow != null) destroyWindow(_gfx_ctx.helperWindow);
+	if (_gfx_ctx.instance != null) unregisterClassW(_gfx_ctx.wndClass.className, _gfx_ctx.instance);
+	if (_gfx_ctx.hiddenMouse != null) rgfw_freeMouse(_gfx_ctx.hiddenMouse);
 }
 
 // public
@@ -1862,9 +1854,9 @@ fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 // public
 fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname)
 {
-	GfxFn proc = _rgfw.glGetProcAddress != null ? ((GlxGetProcAddressProc)_rgfw.glGetProcAddress)(procname) : null;
+	GfxFn proc = _gfx_ctx.glGetProcAddress != null ? ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname) : null;
 	if (proc != null) return proc;
-	return getProcAddress((HModule*)_rgfw.nativeGL_handle, procname);
+	return getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, procname);
 }
 
 
@@ -2040,7 +2032,7 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSur
 	bi.bitCount = (ushort)format.channels * 8;
 	bi.compression = BI_RGB;
 
-	surface.native.bitmap = createDIBSection(_rgfw.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
+	surface.native.bitmap = createDIBSection(_gfx_ctx.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
 	surface.native.format = format.channels > 3 ? BGRA8 : BGR8;
 
 	if (surface.native.bitmap == null)
@@ -2049,7 +2041,7 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSur
 		return false;
 	}
 
-	surface.native.hdcMem = createCompatibleDC(_rgfw.root.src.hdc);
+	surface.native.hdcMem = createCompatibleDC(_gfx_ctx.root.src.hdc);
 	selectObject(surface.native.hdcMem, surface.native.bitmap);
 	return true;
 }

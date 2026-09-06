@@ -43,12 +43,12 @@ excuse PROC_LOAD_FAILED;
 // public
 fn void unload_egl()
 {
-	if (_rgfw.egl_handle == null) return;
-	if (_rgfw.egl_display != null && rgfw_eglTerminate != null) rgfw_eglTerminate((EglDisplay)_rgfw.egl_display);
-	libc::dlclose(_rgfw.egl_handle);
-	_rgfw.egl_handle = null;
-	_rgfw.egl_display = null;
-	_rgfw.eglGetProcAddress = null;
+	if (_gfx_ctx.egl_handle == null) return;
+	if (_gfx_ctx.egl_display != null && rgfw_eglTerminate != null) rgfw_eglTerminate((EglDisplay)_gfx_ctx.egl_display);
+	libc::dlclose(_gfx_ctx.egl_handle);
+	_gfx_ctx.egl_handle = null;
+	_gfx_ctx.egl_display = null;
+	_gfx_ctx.eglGetProcAddress = null;
 	rgfw_eglGetProcAddress = null;
 }
 
@@ -66,8 +66,8 @@ fn GfxFn rgfw_getProcAddress_EGL(ZString procname)
 // private
 fn void*? rgfw_eglProc(ZString name)
 {
-	if (_rgfw.egl_handle == null) return PROC_LOAD_FAILED~;
-	void* proc = libc::dlsym(_rgfw.egl_handle, name);
+	if (_gfx_ctx.egl_handle == null) return PROC_LOAD_FAILED~;
+	void* proc = libc::dlsym(_gfx_ctx.egl_handle, name);
 	if (!proc && rgfw_eglGetProcAddress) proc = (void*)rgfw_eglGetProcAddress(name);
 	if (!proc) return PROC_LOAD_FAILED~;
 	return proc;
@@ -96,18 +96,18 @@ fn void? bind_egl() @local
 // public
 fn bool load_egl()
 {
-	if (_rgfw.egl_handle) return true;
+	if (_gfx_ctx.egl_handle) return true;
 	ZString[5] names = {"libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll"};
 	foreach (name : names)
 	{
-		_rgfw.egl_handle = libc::dlopen(name, RTLD_LAZY | RTLD_LOCAL);
-		if (_rgfw.egl_handle) break;
+		_gfx_ctx.egl_handle = libc::dlopen(name, RTLD_LAZY | RTLD_LOCAL);
+		if (_gfx_ctx.egl_handle) break;
 	}
-	if (!_rgfw.egl_handle) return false;
-	void* getProc = libc::dlsym(_rgfw.egl_handle, "eglGetProcAddress");
+	if (!_gfx_ctx.egl_handle) return false;
+	void* getProc = libc::dlsym(_gfx_ctx.egl_handle, "eglGetProcAddress");
 	if (getProc == null) return false;
 	rgfw_eglGetProcAddress = (EglGetProcAddressProc)getProc;
-	_rgfw.eglGetProcAddress = getProc;
+	_gfx_ctx.eglGetProcAddress = getProc;
 	if (catch bind_egl()) return false;
 	return true;
 }
@@ -115,34 +115,34 @@ fn bool load_egl()
 // public
 fn void* rgfw_getCurrentContext_EGL() => rgfw_eglGetCurrentContext != null ? rgfw_eglGetCurrentContext() : null;
 // public
-fn GfxWindow* rgfw_getCurrentWindow_EGL() => _rgfw.current;
+fn GfxWindow* rgfw_getCurrentWindow_EGL() => _gfx_ctx.current;
 // public
-fn void* rgfw_getDisplay_EGL() => _rgfw.egl_display;
+fn void* rgfw_getDisplay_EGL() => _gfx_ctx.egl_display;
 
 // public
 fn void rgfw_window_makeCurrentContext_EGL(GfxWindow* win)
 {
-	if (!_rgfw.egl_display || !rgfw_eglMakeCurrent) return;
+	if (!_gfx_ctx.egl_display || !rgfw_eglMakeCurrent) return;
 	if (!win || !win.src.ctx.egl)
 	{
-		rgfw_eglMakeCurrent((EglDisplay)_rgfw.egl_display, null, null, null);
+		rgfw_eglMakeCurrent((EglDisplay)_gfx_ctx.egl_display, null, null, null);
 		return;
 	}
 	RgfwEglContext* ctx = win.src.ctx.egl;
-	rgfw_eglMakeCurrent((EglDisplay)_rgfw.egl_display, (EglSurface)ctx.surface, (EglSurface)ctx.surface, (EglContext)ctx.ctx);
+	rgfw_eglMakeCurrent((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface, (EglSurface)ctx.surface, (EglContext)ctx.ctx);
 }
 
 // public
 fn void rgfw_window_swapBuffers_EGL(GfxWindow* win)
 {
 	if (!win || !win.src.ctx.egl || !rgfw_eglSwapBuffers) return;
-	rgfw_eglSwapBuffers((EglDisplay)_rgfw.egl_display, (EglSurface)win.src.ctx.egl.surface);
+	rgfw_eglSwapBuffers((EglDisplay)_gfx_ctx.egl_display, (EglSurface)win.src.ctx.egl.surface);
 }
 
 // public
 fn void rgfw_window_swapInterval_EGL(GfxWindow* win, int swapInterval)
 {
 	if (!rgfw_eglSwapInterval) return;
-	rgfw_eglSwapInterval((EglDisplay)_rgfw.egl_display, swapInterval);
+	rgfw_eglSwapInterval((EglDisplay)_gfx_ctx.egl_display, swapInterval);
 }
 

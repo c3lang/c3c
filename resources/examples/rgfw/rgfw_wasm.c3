@@ -91,11 +91,6 @@ struct RgfwWindowSrc
 	int x, y, w, h;
 }
 
-
-RgfwInfo* _rgfw;
-RgfwInfo _rgfw_global;
-
-
 // public
 fn bool rgfw_loadGL() => true;
 // public
@@ -261,55 +256,55 @@ fn RgfwKey rgfw_wasmPhysicalToRGFW(uint hash)
 // private
 fn void rgfwEmscriptenOnResize(int w, int h) @export("rgfw_on_resize")
 {
-	_window_resized_callback(_rgfw.root, w, h);
+	_window_resized_callback(_gfx_ctx.root, w, h);
 }
 
 // private
 fn void rgfwEmscriptenOnFullscreenChange(int screenW, int screenH, bool entering) @export("rgfw_on_fullscreenchange")
 {
-	if (!(_rgfw.root.internal.enabledEvents & RGFW_WINDOW_RESIZED_FLAG)) return;
+	if (!(_gfx_ctx.root.internal.enabledEvents & RGFW_WINDOW_RESIZED_FLAG)) return;
 	static IntVec2 original;
 	if (entering)
 	{
-		original = _rgfw.root.size;
-		_rgfw.root.size = { screenW, screenH };
+		original = _gfx_ctx.root.size;
+		_gfx_ctx.root.size = { screenW, screenH };
 	}
 	else
 	{
-		_rgfw.root.size = original;
+		_gfx_ctx.root.size = original;
 	}
-	rgfwJsSetCanvasSize(..._rgfw.root.size);
-	_window_resized_callback(_rgfw.root, ..._rgfw.root.size);
+	rgfwJsSetCanvasSize(..._gfx_ctx.root.size);
+	_window_resized_callback(_gfx_ctx.root, ..._gfx_ctx.root.size);
 }
 
 // private
-fn void rgfwEmscriptenOnFocusIn() @export("rgfw_on_focusin") { rgfw_windowFocusCallback(_rgfw.root, true); }
+fn void rgfwEmscriptenOnFocusIn() @export("rgfw_on_focusin") { rgfw_windowFocusCallback(_gfx_ctx.root, true); }
 // private
-fn void rgfwEmscriptenOnFocusOut() @export("rgfw_on_focusout") { rgfw_windowFocusCallback(_rgfw.root, false); }
+fn void rgfwEmscriptenOnFocusOut() @export("rgfw_on_focusout") { rgfw_windowFocusCallback(_gfx_ctx.root, false); }
 
 // private
 fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("rgfw_on_mousemove")
 {
-	_mouse_motion_callback(_rgfw.root, x, y);
-	_raw_motion_callback(_rgfw.root, (float)movementX, (float)movementY);
+	_mouse_motion_callback(_gfx_ctx.root, x, y);
+	_raw_motion_callback(_gfx_ctx.root, (float)movementX, (float)movementY);
 }
 
 // private
 fn void rgfwEmscriptenOnMouseDown(int button) @export("rgfw_on_mousedown")
 {
 	if (button > 2) button += 2;
-	rgfw_mouseButtonCallback(_rgfw.root, (GfxMouseButton)button, true);
+	rgfw_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, true);
 }
 
 // private
 fn void rgfwEmscriptenOnMouseUp(int button) @export("rgfw_on_mouseup")
 {
 	if (button > 2) button += 2;
-	rgfw_mouseButtonCallback(_rgfw.root, (GfxMouseButton)button, false);
+	rgfw_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, false);
 }
 
 // private
-fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("rgfw_on_wheel") { rgfw_mouseScrollCallback(_rgfw.root, deltaX, deltaY); }
+fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("rgfw_on_wheel") { rgfw_mouseScrollCallback(_gfx_ctx.root, deltaX, deltaY); }
 
 // private
 fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("rgfw_on_touch")
@@ -317,29 +312,29 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 	// down == 255 is the sentinel for touchmove (no button state change).
 	if (down == 255)
 	{
-		if (!(_rgfw.root.internal.enabledEvents & RGFW_MOUSE_MOTION_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabledEvents & RGFW_MOUSE_MOTION_FLAG)) return;
 		for (int i = 0; i < numTouches; i++)
 		{
-			_mouse_motion_callback(_rgfw.root, xs[i], ys[i]);
-			_raw_motion_callback(_rgfw.root, 0.0f, 0.0f);
+			_mouse_motion_callback(_gfx_ctx.root, xs[i], ys[i]);
+			_raw_motion_callback(_gfx_ctx.root, 0.0f, 0.0f);
 		}
 		return;
 	}
 
 	if (down)
 	{
-		if (!(_rgfw.root.internal.enabledEvents & RGFW_MOUSE_BUTTON_PRESSED_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabledEvents & RGFW_MOUSE_BUTTON_PRESSED_FLAG)) return;
 	}
 	else
 	{
-		if (!(_rgfw.root.internal.enabledEvents & RGFW_MOUSE_BUTTON_RELEASED_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabledEvents & RGFW_MOUSE_BUTTON_RELEASED_FLAG)) return;
 	}
 
 	for (int i = 0; i < numTouches; i++)
 	{
-		_mouse_motion_callback(_rgfw.root, xs[i], ys[i]);
-		_raw_motion_callback(_rgfw.root, 0.0f, 0.0f);
-		rgfw_mouseButtonCallback(_rgfw.root, LEFT, (bool)down);
+		_mouse_motion_callback(_gfx_ctx.root, xs[i], ys[i]);
+		_raw_motion_callback(_gfx_ctx.root, 0.0f, 0.0f);
+		rgfw_mouseButtonCallback(_gfx_ctx.root, LEFT, (bool)down);
 	}
 }
 
@@ -351,21 +346,21 @@ fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("r
 	while (iCode[0] != 0) { hash = ((hash ^ 0x7E057D79u) << 3) ^ (uint)iCode[0]; iCode++; }
 
 	RgfwKey physicalKey = rgfw_wasmPhysicalToRGFW(hash);
-	rgfw_keyCallback(_rgfw.root, physicalKey, _rgfw.root.internal.mod, is_key_down(physicalKey) && press, press);
-	if (press) rgfw_keyCharCallback(_rgfw.root, codepoint);
+	rgfw_keyCallback(_gfx_ctx.root, physicalKey, _gfx_ctx.root.internal.mod, is_key_down(physicalKey) && press, press);
+	if (press) rgfw_keyCharCallback(_gfx_ctx.root, codepoint);
 }
 
 // private
 fn void rgfw_handleKeyMods(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("rgfw_handleKeyMods")
 {
-	rgfw_keyUpdateKeyModsEx(_rgfw.root, capital, numlock, control, alt, shift, super, scroll);
+	rgfw_keyUpdateKeyModsEx(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
 }
 
 // private
-fn void rgfw_emscriptenOnDrop(char* file, sz size) @export("rgfw_onDrop") { rgfw_dataDropCallback(_rgfw.root, file, size, RGFW_DATA_FILE); }
+fn void rgfw_emscriptenOnDrop(char* file, sz size) @export("rgfw_onDrop") { rgfw_dataDropCallback(_gfx_ctx.root, file, size, RGFW_DATA_FILE); }
 
 // public
-fn void rgfw_stopCheckEvents() { _rgfw.stopCheckEvents_bool = true; }
+fn void rgfw_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
 
 // public
 fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
@@ -390,57 +385,57 @@ fn void rgfw_surface_freePtr(GfxSurface* surface) {}
 // public
 fn void rgfw_initKeycodesPlatform()
 {
-	_rgfw.keycodes[DOM_VK_BACK_QUOTE] = RGFW_KEY_BACKTICK;
-	_rgfw.keycodes[DOM_VK_0] = RGFW_KEY0; _rgfw.keycodes[DOM_VK_1] = RGFW_KEY1; _rgfw.keycodes[DOM_VK_2] = RGFW_KEY2;
-	_rgfw.keycodes[DOM_VK_3] = RGFW_KEY3; _rgfw.keycodes[DOM_VK_4] = RGFW_KEY4; _rgfw.keycodes[DOM_VK_5] = RGFW_KEY5;
-	_rgfw.keycodes[DOM_VK_6] = RGFW_KEY6; _rgfw.keycodes[DOM_VK_7] = RGFW_KEY7; _rgfw.keycodes[DOM_VK_8] = RGFW_KEY8;
-	_rgfw.keycodes[DOM_VK_9] = RGFW_KEY9; _rgfw.keycodes[DOM_VK_SPACE] = RGFW_KEY_SPACE;
-	_rgfw.keycodes[DOM_VK_A] = RGFW_KEY_A; _rgfw.keycodes[DOM_VK_B] = RGFW_KEY_B; _rgfw.keycodes[DOM_VK_C] = RGFW_KEY_C;
-	_rgfw.keycodes[DOM_VK_D] = RGFW_KEY_D; _rgfw.keycodes[DOM_VK_E] = RGFW_KEY_E; _rgfw.keycodes[DOM_VK_F] = RGFW_KEY_F;
-	_rgfw.keycodes[DOM_VK_G] = RGFW_KEY_G; _rgfw.keycodes[DOM_VK_H] = RGFW_KEY_H; _rgfw.keycodes[DOM_VK_I] = RGFW_KEY_I;
-	_rgfw.keycodes[DOM_VK_J] = RGFW_KEY_J; _rgfw.keycodes[DOM_VK_K] = RGFW_KEY_K; _rgfw.keycodes[DOM_VK_L] = RGFW_KEY_L;
-	_rgfw.keycodes[DOM_VK_M] = RGFW_KEY_M; _rgfw.keycodes[DOM_VK_N] = RGFW_KEY_N; _rgfw.keycodes[DOM_VK_O] = RGFW_KEY_O;
-	_rgfw.keycodes[DOM_VK_P] = RGFW_KEY_P; _rgfw.keycodes[DOM_VK_Q] = RGFW_KEY_Q; _rgfw.keycodes[DOM_VK_R] = RGFW_KEY_R;
-	_rgfw.keycodes[DOM_VK_S] = RGFW_KEY_S; _rgfw.keycodes[DOM_VK_T] = RGFW_KEY_T; _rgfw.keycodes[DOM_VK_U] = RGFW_KEY_U;
-	_rgfw.keycodes[DOM_VK_V] = RGFW_KEY_V; _rgfw.keycodes[DOM_VK_W] = RGFW_KEY_W; _rgfw.keycodes[DOM_VK_X] = RGFW_KEY_X;
-	_rgfw.keycodes[DOM_VK_Y] = RGFW_KEY_Y; _rgfw.keycodes[DOM_VK_Z] = RGFW_KEY_Z;
-	_rgfw.keycodes[DOM_VK_PERIOD] = RGFW_KEY_PERIOD; _rgfw.keycodes[DOM_VK_COMMA] = RGFW_KEY_COMMA;
-	_rgfw.keycodes[DOM_VK_SLASH] = RGFW_KEY_SLASH; _rgfw.keycodes[DOM_VK_OPEN_BRACKET] = RGFW_KEY_BRACKET;
-	_rgfw.keycodes[DOM_VK_CLOSE_BRACKET] = RGFW_KEY_CLOSE_BRACKET; _rgfw.keycodes[DOM_VK_SEMICOLON] = RGFW_KEY_SEMICOLON;
-	_rgfw.keycodes[DOM_VK_QUOTE] = RGFW_KEY_APOSTROPHE; _rgfw.keycodes[DOM_VK_BACK_SLASH] = RGFW_KEY_BACK_SLASH;
-	_rgfw.keycodes[DOM_VK_RETURN] = RGFW_KEY_RETURN; _rgfw.keycodes[DOM_VK_DELETE] = RGFW_KEY_DELETE;
-	_rgfw.keycodes[DOM_VK_NUM_LOCK] = RGFW_KEY_NUM_LOCK; _rgfw.keycodes[DOM_VK_DIVIDE] = RGFW_KEY_PAD_SLASH;
-	_rgfw.keycodes[DOM_VK_MULTIPLY] = RGFW_KEY_PAD_MULTIPLY; _rgfw.keycodes[DOM_VK_SUBTRACT] = RGFW_KEY_PAD_MINUS;
-	_rgfw.keycodes[DOM_VK_NUMPAD1] = RGFW_KEY_PAD1; _rgfw.keycodes[DOM_VK_NUMPAD2] = RGFW_KEY_PAD2;
-	_rgfw.keycodes[DOM_VK_NUMPAD3] = RGFW_KEY_PAD3; _rgfw.keycodes[DOM_VK_NUMPAD4] = RGFW_KEY_PAD4;
-	_rgfw.keycodes[DOM_VK_NUMPAD5] = RGFW_KEY_PAD5; _rgfw.keycodes[DOM_VK_NUMPAD6] = RGFW_KEY_PAD6;
-	_rgfw.keycodes[DOM_VK_NUMPAD9] = RGFW_KEY_PAD9; _rgfw.keycodes[DOM_VK_NUMPAD0] = RGFW_KEY_PAD0;
-	_rgfw.keycodes[DOM_VK_DECIMAL] = RGFW_KEY_PAD_PERIOD; _rgfw.keycodes[DOM_VK_HYPHEN_MINUS] = RGFW_KEY_MINUS;
-	_rgfw.keycodes[DOM_VK_EQUALS] = RGFW_KEY_EQUALS; _rgfw.keycodes[DOM_VK_BACK_SPACE] = RGFW_KEY_BACK_SPACE;
-	_rgfw.keycodes[DOM_VK_TAB] = RGFW_KEY_TAB; _rgfw.keycodes[DOM_VK_CAPS_LOCK] = RGFW_KEY_CAPS_LOCK;
-	_rgfw.keycodes[DOM_VK_SHIFT] = RGFW_KEY_SHIFT_L; _rgfw.keycodes[DOM_VK_CONTROL] = RGFW_KEY_CONTROL_L;
-	_rgfw.keycodes[DOM_VK_ALT] = RGFW_KEY_ALT_L; _rgfw.keycodes[DOM_VK_META] = RGFW_KEY_SUPER_L;
-	_rgfw.keycodes[DOM_VK_F1] = RGFW_KEY_F1; _rgfw.keycodes[DOM_VK_F2] = RGFW_KEY_F2; _rgfw.keycodes[DOM_VK_F3] = RGFW_KEY_F3;
-	_rgfw.keycodes[DOM_VK_F4] = RGFW_KEY_F4; _rgfw.keycodes[DOM_VK_F5] = RGFW_KEY_F5; _rgfw.keycodes[DOM_VK_F6] = RGFW_KEY_F6;
-	_rgfw.keycodes[DOM_VK_F7] = RGFW_KEY_F7; _rgfw.keycodes[DOM_VK_F8] = RGFW_KEY_F8; _rgfw.keycodes[DOM_VK_F9] = RGFW_KEY_F9;
-	_rgfw.keycodes[DOM_VK_F10] = RGFW_KEY_F10; _rgfw.keycodes[DOM_VK_F11] = RGFW_KEY_F11; _rgfw.keycodes[DOM_VK_F12] = RGFW_KEY_F12;
-	_rgfw.keycodes[DOM_VK_UP] = RGFW_KEY_UP; _rgfw.keycodes[DOM_VK_DOWN] = RGFW_KEY_DOWN;
-	_rgfw.keycodes[DOM_VK_LEFT] = RGFW_KEY_LEFT; _rgfw.keycodes[DOM_VK_RIGHT] = RGFW_KEY_RIGHT;
-	_rgfw.keycodes[DOM_VK_INSERT] = RGFW_KEY_INSERT; _rgfw.keycodes[DOM_VK_END] = RGFW_KEY_END;
-	_rgfw.keycodes[DOM_VK_PAGE_UP] = RGFW_KEY_PAGE_UP; _rgfw.keycodes[DOM_VK_PAGE_DOWN] = RGFW_KEY_PAGE_DOWN;
-	_rgfw.keycodes[DOM_VK_ESCAPE] = RGFW_KEY_ESCAPE; _rgfw.keycodes[DOM_VK_HOME] = RGFW_KEY_HOME;
-	_rgfw.keycodes[DOM_VK_SCROLL_LOCK] = RGFW_KEY_SCROLL_LOCK; _rgfw.keycodes[DOM_VK_PRINTSCREEN] = RGFW_KEY_PRINT_SCREEN;
-	_rgfw.keycodes[DOM_VK_PAUSE] = RGFW_KEY_PAUSE;
-	_rgfw.keycodes[DOM_VK_F13] = RGFW_KEY_F13; _rgfw.keycodes[DOM_VK_F14] = RGFW_KEY_F14; _rgfw.keycodes[DOM_VK_F15] = RGFW_KEY_F15;
-	_rgfw.keycodes[DOM_VK_F16] = RGFW_KEY_F16; _rgfw.keycodes[DOM_VK_F17] = RGFW_KEY_F17; _rgfw.keycodes[DOM_VK_F18] = RGFW_KEY_F18;
-	_rgfw.keycodes[DOM_VK_F19] = RGFW_KEY_F19; _rgfw.keycodes[DOM_VK_F20] = RGFW_KEY_F20; _rgfw.keycodes[DOM_VK_F21] = RGFW_KEY_F21;
-	_rgfw.keycodes[DOM_VK_F22] = RGFW_KEY_F22; _rgfw.keycodes[DOM_VK_F23] = RGFW_KEY_F23; _rgfw.keycodes[DOM_VK_F24] = RGFW_KEY_F24;
+	_gfx_ctx.keycodes[DOM_VK_BACK_QUOTE] = RGFW_KEY_BACKTICK;
+	_gfx_ctx.keycodes[DOM_VK_0] = RGFW_KEY0; _gfx_ctx.keycodes[DOM_VK_1] = RGFW_KEY1; _gfx_ctx.keycodes[DOM_VK_2] = RGFW_KEY2;
+	_gfx_ctx.keycodes[DOM_VK_3] = RGFW_KEY3; _gfx_ctx.keycodes[DOM_VK_4] = RGFW_KEY4; _gfx_ctx.keycodes[DOM_VK_5] = RGFW_KEY5;
+	_gfx_ctx.keycodes[DOM_VK_6] = RGFW_KEY6; _gfx_ctx.keycodes[DOM_VK_7] = RGFW_KEY7; _gfx_ctx.keycodes[DOM_VK_8] = RGFW_KEY8;
+	_gfx_ctx.keycodes[DOM_VK_9] = RGFW_KEY9; _gfx_ctx.keycodes[DOM_VK_SPACE] = RGFW_KEY_SPACE;
+	_gfx_ctx.keycodes[DOM_VK_A] = RGFW_KEY_A; _gfx_ctx.keycodes[DOM_VK_B] = RGFW_KEY_B; _gfx_ctx.keycodes[DOM_VK_C] = RGFW_KEY_C;
+	_gfx_ctx.keycodes[DOM_VK_D] = RGFW_KEY_D; _gfx_ctx.keycodes[DOM_VK_E] = RGFW_KEY_E; _gfx_ctx.keycodes[DOM_VK_F] = RGFW_KEY_F;
+	_gfx_ctx.keycodes[DOM_VK_G] = RGFW_KEY_G; _gfx_ctx.keycodes[DOM_VK_H] = RGFW_KEY_H; _gfx_ctx.keycodes[DOM_VK_I] = RGFW_KEY_I;
+	_gfx_ctx.keycodes[DOM_VK_J] = RGFW_KEY_J; _gfx_ctx.keycodes[DOM_VK_K] = RGFW_KEY_K; _gfx_ctx.keycodes[DOM_VK_L] = RGFW_KEY_L;
+	_gfx_ctx.keycodes[DOM_VK_M] = RGFW_KEY_M; _gfx_ctx.keycodes[DOM_VK_N] = RGFW_KEY_N; _gfx_ctx.keycodes[DOM_VK_O] = RGFW_KEY_O;
+	_gfx_ctx.keycodes[DOM_VK_P] = RGFW_KEY_P; _gfx_ctx.keycodes[DOM_VK_Q] = RGFW_KEY_Q; _gfx_ctx.keycodes[DOM_VK_R] = RGFW_KEY_R;
+	_gfx_ctx.keycodes[DOM_VK_S] = RGFW_KEY_S; _gfx_ctx.keycodes[DOM_VK_T] = RGFW_KEY_T; _gfx_ctx.keycodes[DOM_VK_U] = RGFW_KEY_U;
+	_gfx_ctx.keycodes[DOM_VK_V] = RGFW_KEY_V; _gfx_ctx.keycodes[DOM_VK_W] = RGFW_KEY_W; _gfx_ctx.keycodes[DOM_VK_X] = RGFW_KEY_X;
+	_gfx_ctx.keycodes[DOM_VK_Y] = RGFW_KEY_Y; _gfx_ctx.keycodes[DOM_VK_Z] = RGFW_KEY_Z;
+	_gfx_ctx.keycodes[DOM_VK_PERIOD] = RGFW_KEY_PERIOD; _gfx_ctx.keycodes[DOM_VK_COMMA] = RGFW_KEY_COMMA;
+	_gfx_ctx.keycodes[DOM_VK_SLASH] = RGFW_KEY_SLASH; _gfx_ctx.keycodes[DOM_VK_OPEN_BRACKET] = RGFW_KEY_BRACKET;
+	_gfx_ctx.keycodes[DOM_VK_CLOSE_BRACKET] = RGFW_KEY_CLOSE_BRACKET; _gfx_ctx.keycodes[DOM_VK_SEMICOLON] = RGFW_KEY_SEMICOLON;
+	_gfx_ctx.keycodes[DOM_VK_QUOTE] = RGFW_KEY_APOSTROPHE; _gfx_ctx.keycodes[DOM_VK_BACK_SLASH] = RGFW_KEY_BACK_SLASH;
+	_gfx_ctx.keycodes[DOM_VK_RETURN] = RGFW_KEY_RETURN; _gfx_ctx.keycodes[DOM_VK_DELETE] = RGFW_KEY_DELETE;
+	_gfx_ctx.keycodes[DOM_VK_NUM_LOCK] = RGFW_KEY_NUM_LOCK; _gfx_ctx.keycodes[DOM_VK_DIVIDE] = RGFW_KEY_PAD_SLASH;
+	_gfx_ctx.keycodes[DOM_VK_MULTIPLY] = RGFW_KEY_PAD_MULTIPLY; _gfx_ctx.keycodes[DOM_VK_SUBTRACT] = RGFW_KEY_PAD_MINUS;
+	_gfx_ctx.keycodes[DOM_VK_NUMPAD1] = RGFW_KEY_PAD1; _gfx_ctx.keycodes[DOM_VK_NUMPAD2] = RGFW_KEY_PAD2;
+	_gfx_ctx.keycodes[DOM_VK_NUMPAD3] = RGFW_KEY_PAD3; _gfx_ctx.keycodes[DOM_VK_NUMPAD4] = RGFW_KEY_PAD4;
+	_gfx_ctx.keycodes[DOM_VK_NUMPAD5] = RGFW_KEY_PAD5; _gfx_ctx.keycodes[DOM_VK_NUMPAD6] = RGFW_KEY_PAD6;
+	_gfx_ctx.keycodes[DOM_VK_NUMPAD9] = RGFW_KEY_PAD9; _gfx_ctx.keycodes[DOM_VK_NUMPAD0] = RGFW_KEY_PAD0;
+	_gfx_ctx.keycodes[DOM_VK_DECIMAL] = RGFW_KEY_PAD_PERIOD; _gfx_ctx.keycodes[DOM_VK_HYPHEN_MINUS] = RGFW_KEY_MINUS;
+	_gfx_ctx.keycodes[DOM_VK_EQUALS] = RGFW_KEY_EQUALS; _gfx_ctx.keycodes[DOM_VK_BACK_SPACE] = RGFW_KEY_BACK_SPACE;
+	_gfx_ctx.keycodes[DOM_VK_TAB] = RGFW_KEY_TAB; _gfx_ctx.keycodes[DOM_VK_CAPS_LOCK] = RGFW_KEY_CAPS_LOCK;
+	_gfx_ctx.keycodes[DOM_VK_SHIFT] = RGFW_KEY_SHIFT_L; _gfx_ctx.keycodes[DOM_VK_CONTROL] = RGFW_KEY_CONTROL_L;
+	_gfx_ctx.keycodes[DOM_VK_ALT] = RGFW_KEY_ALT_L; _gfx_ctx.keycodes[DOM_VK_META] = RGFW_KEY_SUPER_L;
+	_gfx_ctx.keycodes[DOM_VK_F1] = RGFW_KEY_F1; _gfx_ctx.keycodes[DOM_VK_F2] = RGFW_KEY_F2; _gfx_ctx.keycodes[DOM_VK_F3] = RGFW_KEY_F3;
+	_gfx_ctx.keycodes[DOM_VK_F4] = RGFW_KEY_F4; _gfx_ctx.keycodes[DOM_VK_F5] = RGFW_KEY_F5; _gfx_ctx.keycodes[DOM_VK_F6] = RGFW_KEY_F6;
+	_gfx_ctx.keycodes[DOM_VK_F7] = RGFW_KEY_F7; _gfx_ctx.keycodes[DOM_VK_F8] = RGFW_KEY_F8; _gfx_ctx.keycodes[DOM_VK_F9] = RGFW_KEY_F9;
+	_gfx_ctx.keycodes[DOM_VK_F10] = RGFW_KEY_F10; _gfx_ctx.keycodes[DOM_VK_F11] = RGFW_KEY_F11; _gfx_ctx.keycodes[DOM_VK_F12] = RGFW_KEY_F12;
+	_gfx_ctx.keycodes[DOM_VK_UP] = RGFW_KEY_UP; _gfx_ctx.keycodes[DOM_VK_DOWN] = RGFW_KEY_DOWN;
+	_gfx_ctx.keycodes[DOM_VK_LEFT] = RGFW_KEY_LEFT; _gfx_ctx.keycodes[DOM_VK_RIGHT] = RGFW_KEY_RIGHT;
+	_gfx_ctx.keycodes[DOM_VK_INSERT] = RGFW_KEY_INSERT; _gfx_ctx.keycodes[DOM_VK_END] = RGFW_KEY_END;
+	_gfx_ctx.keycodes[DOM_VK_PAGE_UP] = RGFW_KEY_PAGE_UP; _gfx_ctx.keycodes[DOM_VK_PAGE_DOWN] = RGFW_KEY_PAGE_DOWN;
+	_gfx_ctx.keycodes[DOM_VK_ESCAPE] = RGFW_KEY_ESCAPE; _gfx_ctx.keycodes[DOM_VK_HOME] = RGFW_KEY_HOME;
+	_gfx_ctx.keycodes[DOM_VK_SCROLL_LOCK] = RGFW_KEY_SCROLL_LOCK; _gfx_ctx.keycodes[DOM_VK_PRINTSCREEN] = RGFW_KEY_PRINT_SCREEN;
+	_gfx_ctx.keycodes[DOM_VK_PAUSE] = RGFW_KEY_PAUSE;
+	_gfx_ctx.keycodes[DOM_VK_F13] = RGFW_KEY_F13; _gfx_ctx.keycodes[DOM_VK_F14] = RGFW_KEY_F14; _gfx_ctx.keycodes[DOM_VK_F15] = RGFW_KEY_F15;
+	_gfx_ctx.keycodes[DOM_VK_F16] = RGFW_KEY_F16; _gfx_ctx.keycodes[DOM_VK_F17] = RGFW_KEY_F17; _gfx_ctx.keycodes[DOM_VK_F18] = RGFW_KEY_F18;
+	_gfx_ctx.keycodes[DOM_VK_F19] = RGFW_KEY_F19; _gfx_ctx.keycodes[DOM_VK_F20] = RGFW_KEY_F20; _gfx_ctx.keycodes[DOM_VK_F21] = RGFW_KEY_F21;
+	_gfx_ctx.keycodes[DOM_VK_F22] = RGFW_KEY_F22; _gfx_ctx.keycodes[DOM_VK_F23] = RGFW_KEY_F23; _gfx_ctx.keycodes[DOM_VK_F24] = RGFW_KEY_F24;
 }
 
 // public
 fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 {
-	_rgfw.usingAsyncify = -1;
+	_gfx_ctx.usingAsyncify = -1;
 	GfxMonitor monitor;
 	monitor.origin = {};
 	monitor.pixelRatio = (float)rgfwJsDevicePixelRatio();
@@ -460,8 +455,8 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 	GfxMonitorNode* node = rgfw_monitors_add(&monitor);
 	if (node != null)
 	{
-		_rgfw.monitors.primary = node;
-		rgfw_monitorCallback(_rgfw.root, &node.mon, true);
+		_gfx_ctx.monitors.primary = node;
+		rgfw_monitorCallback(_gfx_ctx.root, &node.mon, true);
 	}
 	return 0;
 }
@@ -487,9 +482,9 @@ fn IntVec2 rgfw_window_fetchSize(GfxWindow* win) => win.get_size();
 // public
 fn void rgfw_pollEvents()
 {
-	if (_rgfw.usingAsyncify == -1) _rgfw.usingAsyncify = rgfwJsUsingAsyncify();
+	if (_gfx_ctx.usingAsyncify == -1) _gfx_ctx.usingAsyncify = rgfwJsUsingAsyncify();
 	rgfw_resetPrevState();
-	if (_rgfw.usingAsyncify) rgfwJsSleep(0);
+	if (_gfx_ctx.usingAsyncify) rgfwJsSleep(0);
 }
 
 // public

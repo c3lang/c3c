@@ -11,8 +11,8 @@ alias GfxVkGetInstanceProcAddressProc = fn GfxFn(VkInstance instance, ZString pr
 // public
 fn GfxFn rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
 {
-	if (_rgfw == null || _rgfw.vkGetInstanceProcAddress == null) return null;
-	return _rgfw.vkGetInstanceProcAddress(instance, procname);
+	if (!_gfx_ctx.vkGetInstanceProcAddress) return null;
+	return _gfx_ctx.vkGetInstanceProcAddress(instance, procname);
 }
 
 // public

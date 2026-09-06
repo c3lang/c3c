@@ -10,8 +10,8 @@ fn void rgfw_attribStack_pushAttribs(RgfwAttribStack* stack, int attrib1, int at
 // public
 fn void unload_gl()
 {
-	_rgfw.nativeGL_handle = null;
-	_rgfw.glGetProcAddress = null;
+	_gfx_ctx.nativeGL_handle = null;
+	_gfx_ctx.glGetProcAddress = null;
 }
 
 

@@ -203,8 +203,6 @@ struct RgfwWindowSrc
 
 
 
-RgfwInfo* _rgfw;
-RgfwInfo _rgfw_global;
 ObjcClass rgfw_osxWindowDelegateClass;
 ObjcClass rgfw_osxViewClass;
 EglGetProcAddressProc rgfw_eglGetProcAddress;
@@ -247,10 +245,10 @@ WlDisplayGetFdProc rgfw_wlDisplayGetFd;
 fn bool rgfw_loadGL()
 {
 	CFStringRef bundleName = cfStringCreateWithCString(null, "com.apple.opengl", 0x0600);
-	_rgfw.nativeGL_handle = cfBundleGetBundleWithIdentifier(bundleName);
+	_gfx_ctx.nativeGL_handle = cfBundleGetBundleWithIdentifier(bundleName);
 	if (bundleName != null) cfRelease(bundleName);
-	_rgfw.glGetProcAddress = (void*)&rgfw_getProcAddress_OpenGL;
-	return _rgfw.nativeGL_handle != null;
+	_gfx_ctx.glGetProcAddress = (void*)&rgfw_getProcAddress_OpenGL;
+	return _gfx_ctx.nativeGL_handle != null;
 }
 
 
@@ -265,27 +263,27 @@ ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_EXT_metal_surface"};
 // public
 fn bool rgfw_loadVulkan()
 {
-	if (_rgfw.vulkan_handle != null) return true;
+	if (_gfx_ctx.vulkan_handle != null) return true;
 	ZString[3] names = {"libvulkan.1.dylib", "libvulkan.dylib", "libMoltenVK.dylib"};
 	for (sz i = 0; i < 3; i++)
 	{
-		_rgfw.vulkan_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
-		if (_rgfw.vulkan_handle != null) break;
+		_gfx_ctx.vulkan_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
+		if (_gfx_ctx.vulkan_handle != null) break;
 	}
-	if (_rgfw.vulkan_handle == null) return false;
-	void* proc = libc::dlsym(_rgfw.vulkan_handle, "vkGetInstanceProcAddr");
+	if (_gfx_ctx.vulkan_handle == null) return false;
+	void* proc = libc::dlsym(_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
 	if (proc == null) return false;
-	_rgfw.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
+	_gfx_ctx.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
 	return true;
 }
 
 // public
 fn void rgfw_unloadVulkan()
 {
-	if (_rgfw.vulkan_handle == null) return;
-	libc::dlclose(_rgfw.vulkan_handle);
-	_rgfw.vulkan_handle = null;
-	_rgfw.vkGetInstanceProcAddress = null;
+	if (_gfx_ctx.vulkan_handle == null) return;
+	libc::dlclose(_gfx_ctx.vulkan_handle);
+	_gfx_ctx.vulkan_handle = null;
+	_gfx_ctx.vkGetInstanceProcAddress = null;
 }
 
 
@@ -458,12 +456,12 @@ fn bool rgfw_extensionSupported_OpenGL(ZString extension, sz len)
 // public
 fn void rgfw_window_makeCurrentWindow_OpenGL(GfxWindow* win)
 {
-	if (win != null) _rgfw.current = win;
+	if (win != null) _gfx_ctx.current = win;
 	rgfw_window_makeCurrentContext_OpenGL(win);
 }
 
 // public
-fn GfxWindow* rgfw_getCurrentWindow_OpenGL() => _rgfw.current;
+fn GfxWindow* rgfw_getCurrentWindow_OpenGL() => _gfx_ctx.current;
 
 // public
 fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => false;
@@ -471,9 +469,9 @@ fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => fal
 // public
 fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname)
 {
-	if (_rgfw == null || _rgfw.nativeGL_handle == null || procname == null) return null;
+	if (!_gfx_ctx.nativeGL_handle || !procname) return null;
 	CFStringRef symbolName = cfStringCreateWithCString(null, procname, 0x0600);
-	GfxFn symbol = (GfxFn)cfBundleGetFunctionPointerForName((CFBundleRef)_rgfw.nativeGL_handle, symbolName);
+	GfxFn symbol = (GfxFn)cfBundleGetFunctionPointerForName((CFBundleRef)_gfx_ctx.nativeGL_handle, symbolName);
 	if (symbolName != null) cfRelease(symbolName);
 	return symbol;
 }
@@ -790,7 +788,7 @@ fn void rgfw_osxKeyCommon(ObjcId self, ObjcId event, bool down)
 	if (win == null) return;
 	ushort keyCode = objc_send(event, ObjcSendUShort, "keyCode");
 	if (keyCode >= 256) return;
-	RgfwKey key = _rgfw.keycodes[(sz)keyCode];
+	RgfwKey key = _gfx_ctx.keycodes[(sz)keyCode];
 	if (key == RGFW_KEY_NULL) return;
 	bool repeat = down ? objc_send(event, ObjcSendBool, "isARepeat") : false;
 	RgfwKeymod mods = rgfw_osxMods(objc_send(event, ObjcSendNSUInteger, "modifierFlags"));
@@ -841,7 +839,7 @@ fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
 	for (int i = 0; i < 9; i++)
 	{
 		RgfwKey modKey = (RgfwKey)(RGFW_KEY_CAPS_LOCK + i);
-		_rgfw.keyboard[(sz)modKey].prev = _rgfw.keyboard[(sz)modKey].current;
+		_gfx_ctx.keyboard[(sz)modKey].prev = _gfx_ctx.keyboard[(sz)modKey].current;
 	}
 
 	for (int i = 0; i < 5; i++)
@@ -1051,15 +1049,15 @@ fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h)
 // public
 fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 {
-	_rgfw.nsPool = objc_autoreleasePoolPush();
-	_rgfw.nsApp = objc_send(objc_class("NSApplication"), ObjcSendId, "sharedApplication");
-	if (_rgfw.nsApp == null)
+	_gfx_ctx.nsPool = objc_autoreleasePoolPush();
+	_gfx_ctx.nsApp = objc_send(objc_class("NSApplication"), ObjcSendId, "sharedApplication");
+	if (_gfx_ctx.nsApp == null)
 	{
 		log::error("NSApplication sharedApplication failed.", category: log::CATEGORY_VIDEO);
 		return -1;
 	}
-	objc_send(_rgfw.nsApp, ObjcSendVoidNSUInteger, "setActivationPolicy:", NS_APP_ACTIVATION_POLICY_REGULAR);
-	objc_send(_rgfw.nsApp, ObjcSendVoid, "finishLaunching");
+	objc_send(_gfx_ctx.nsApp, ObjcSendVoidNSUInteger, "setActivationPolicy:", NS_APP_ACTIVATION_POLICY_REGULAR);
+	objc_send(_gfx_ctx.nsApp, ObjcSendVoid, "finishLaunching");
 	rgfw_registerOsxClasses();
 	rgfw_pollMonitors();
 	return 0;
@@ -1068,66 +1066,66 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 // public
 fn void rgfw_deinitPlatform()
 {
-	if (_rgfw.nsPool != null)
+	if (_gfx_ctx.nsPool != null)
 	{
-		objc_autoreleasePoolPop(_rgfw.nsPool);
-		_rgfw.nsPool = null;
+		objc_autoreleasePoolPop(_gfx_ctx.nsPool);
+		_gfx_ctx.nsPool = null;
 	}
 }
 
 // public
 fn void rgfw_initKeycodesPlatform()
 {
-	_rgfw.keycodes[0x00] = RGFW_KEY_A; _rgfw.keycodes[0x01] = RGFW_KEY_S; _rgfw.keycodes[0x02] = RGFW_KEY_D; _rgfw.keycodes[0x03] = RGFW_KEY_F;
-	_rgfw.keycodes[0x04] = RGFW_KEY_H; _rgfw.keycodes[0x05] = RGFW_KEY_G; _rgfw.keycodes[0x06] = RGFW_KEY_Z; _rgfw.keycodes[0x07] = RGFW_KEY_X;
-	_rgfw.keycodes[0x08] = RGFW_KEY_C; _rgfw.keycodes[0x09] = RGFW_KEY_V; _rgfw.keycodes[0x0B] = RGFW_KEY_B; _rgfw.keycodes[0x0C] = RGFW_KEY_Q;
-	_rgfw.keycodes[0x0D] = RGFW_KEY_W; _rgfw.keycodes[0x0E] = RGFW_KEY_E; _rgfw.keycodes[0x0F] = RGFW_KEY_R; _rgfw.keycodes[0x10] = RGFW_KEY_Y;
-	_rgfw.keycodes[0x11] = RGFW_KEY_T; _rgfw.keycodes[0x12] = RGFW_KEY1; _rgfw.keycodes[0x13] = RGFW_KEY2; _rgfw.keycodes[0x14] = RGFW_KEY3;
-	_rgfw.keycodes[0x15] = RGFW_KEY4; _rgfw.keycodes[0x16] = RGFW_KEY6; _rgfw.keycodes[0x17] = RGFW_KEY5; _rgfw.keycodes[0x18] = RGFW_KEY_EQUAL;
-	_rgfw.keycodes[0x19] = RGFW_KEY9; _rgfw.keycodes[0x1A] = RGFW_KEY7; _rgfw.keycodes[0x1B] = RGFW_KEY_MINUS; _rgfw.keycodes[0x1C] = RGFW_KEY8;
-	_rgfw.keycodes[0x1D] = RGFW_KEY0; _rgfw.keycodes[0x1E] = RGFW_KEY_CLOSE_BRACKET; _rgfw.keycodes[0x1F] = RGFW_KEY_O; _rgfw.keycodes[0x20] = RGFW_KEY_U;
-	_rgfw.keycodes[0x21] = RGFW_KEY_BRACKET; _rgfw.keycodes[0x22] = RGFW_KEY_I; _rgfw.keycodes[0x23] = RGFW_KEY_P; _rgfw.keycodes[0x24] = RGFW_KEY_RETURN;
-	_rgfw.keycodes[0x25] = RGFW_KEY_L; _rgfw.keycodes[0x26] = RGFW_KEY_J; _rgfw.keycodes[0x27] = RGFW_KEY_APOSTROPHE; _rgfw.keycodes[0x28] = RGFW_KEY_K;
-	_rgfw.keycodes[0x29] = RGFW_KEY_SEMICOLON; _rgfw.keycodes[0x2A] = RGFW_KEY_BACK_SLASH; _rgfw.keycodes[0x2B] = RGFW_KEY_COMMA; _rgfw.keycodes[0x2C] = RGFW_KEY_SLASH;
-	_rgfw.keycodes[0x2D] = RGFW_KEY_N; _rgfw.keycodes[0x2E] = RGFW_KEY_M; _rgfw.keycodes[0x2F] = RGFW_KEY_PERIOD; _rgfw.keycodes[0x31] = RGFW_KEY_SPACE;
-	_rgfw.keycodes[0x32] = RGFW_KEY_BACKTICK; _rgfw.keycodes[0x33] = RGFW_KEY_BACK_SPACE; _rgfw.keycodes[0x35] = RGFW_KEY_ESCAPE; _rgfw.keycodes[0x30] = RGFW_KEY_TAB;
-	_rgfw.keycodes[0x7B] = RGFW_KEY_LEFT; _rgfw.keycodes[0x7C] = RGFW_KEY_RIGHT; _rgfw.keycodes[0x7D] = RGFW_KEY_DOWN; _rgfw.keycodes[0x7E] = RGFW_KEY_UP;
-	_rgfw.keycodes[0x38] = RGFW_KEY_SHIFT_L; _rgfw.keycodes[0x3B] = RGFW_KEY_CONTROL_L; _rgfw.keycodes[0x3A] = RGFW_KEY_ALT_L; _rgfw.keycodes[0x37] = RGFW_KEY_SUPER_L;
-	_rgfw.keycodes[0x3C] = RGFW_KEY_SHIFT_R; _rgfw.keycodes[0x3E] = RGFW_KEY_CONTROL_R; _rgfw.keycodes[0x3D] = RGFW_KEY_ALT_R; _rgfw.keycodes[0x36] = RGFW_KEY_SUPER_R;
-	_rgfw.keycodes[0x7A] = RGFW_KEY_F1; _rgfw.keycodes[0x78] = RGFW_KEY_F2; _rgfw.keycodes[0x63] = RGFW_KEY_F3; _rgfw.keycodes[0x76] = RGFW_KEY_F4;
-	_rgfw.keycodes[0x60] = RGFW_KEY_F5; _rgfw.keycodes[0x61] = RGFW_KEY_F6; _rgfw.keycodes[0x62] = RGFW_KEY_F7; _rgfw.keycodes[0x64] = RGFW_KEY_F8;
-	_rgfw.keycodes[0x65] = RGFW_KEY_F9; _rgfw.keycodes[0x6D] = RGFW_KEY_F10; _rgfw.keycodes[0x67] = RGFW_KEY_F11; _rgfw.keycodes[0x6F] = RGFW_KEY_F12;
-	_rgfw.keycodes[0x69] = RGFW_KEY_PRINT_SCREEN; _rgfw.keycodes[0x6B] = RGFW_KEY_F14; _rgfw.keycodes[0x71] = RGFW_KEY_F15; _rgfw.keycodes[0x6A] = RGFW_KEY_F16;
-	_rgfw.keycodes[0x40] = RGFW_KEY_F17; _rgfw.keycodes[0x4F] = RGFW_KEY_F18; _rgfw.keycodes[0x50] = RGFW_KEY_F19; _rgfw.keycodes[0x5A] = RGFW_KEY_F20;
-	_rgfw.keycodes[0x0A] = RGFW_KEY_WORLD1; _rgfw.keycodes[0x39] = RGFW_KEY_CAPS_LOCK; _rgfw.keycodes[0x75] = RGFW_KEY_DELETE; _rgfw.keycodes[0x77] = RGFW_KEY_END;
-	_rgfw.keycodes[0x73] = RGFW_KEY_HOME; _rgfw.keycodes[0x72] = RGFW_KEY_INSERT; _rgfw.keycodes[0x6E] = RGFW_KEY_MENU; _rgfw.keycodes[0x47] = RGFW_KEY_NUM_LOCK;
-	_rgfw.keycodes[0x79] = RGFW_KEY_PAGE_DOWN; _rgfw.keycodes[0x74] = RGFW_KEY_PAGE_UP;
-	_rgfw.keycodes[0x52] = RGFW_KEY_PAD0; _rgfw.keycodes[0x53] = RGFW_KEY_PAD1; _rgfw.keycodes[0x54] = RGFW_KEY_PAD2; _rgfw.keycodes[0x55] = RGFW_KEY_PAD3;
-	_rgfw.keycodes[0x56] = RGFW_KEY_PAD4; _rgfw.keycodes[0x57] = RGFW_KEY_PAD5; _rgfw.keycodes[0x58] = RGFW_KEY_PAD6; _rgfw.keycodes[0x59] = RGFW_KEY_PAD7;
-	_rgfw.keycodes[0x5B] = RGFW_KEY_PAD8; _rgfw.keycodes[0x5C] = RGFW_KEY_PAD9; _rgfw.keycodes[0x45] = RGFW_KEY_PAD_SLASH; _rgfw.keycodes[0x41] = RGFW_KEY_PAD_PERIOD;
-	_rgfw.keycodes[0x4B] = RGFW_KEY_PAD_SLASH; _rgfw.keycodes[0x4C] = RGFW_KEY_PAD_RETURN; _rgfw.keycodes[0x51] = RGFW_KEY_PAD_EQUAL; _rgfw.keycodes[0x43] = RGFW_KEY_PAD_MULTIPLY;
-	_rgfw.keycodes[0x4E] = RGFW_KEY_PAD_MINUS;
+	_gfx_ctx.keycodes[0x00] = RGFW_KEY_A; _gfx_ctx.keycodes[0x01] = RGFW_KEY_S; _gfx_ctx.keycodes[0x02] = RGFW_KEY_D; _gfx_ctx.keycodes[0x03] = RGFW_KEY_F;
+	_gfx_ctx.keycodes[0x04] = RGFW_KEY_H; _gfx_ctx.keycodes[0x05] = RGFW_KEY_G; _gfx_ctx.keycodes[0x06] = RGFW_KEY_Z; _gfx_ctx.keycodes[0x07] = RGFW_KEY_X;
+	_gfx_ctx.keycodes[0x08] = RGFW_KEY_C; _gfx_ctx.keycodes[0x09] = RGFW_KEY_V; _gfx_ctx.keycodes[0x0B] = RGFW_KEY_B; _gfx_ctx.keycodes[0x0C] = RGFW_KEY_Q;
+	_gfx_ctx.keycodes[0x0D] = RGFW_KEY_W; _gfx_ctx.keycodes[0x0E] = RGFW_KEY_E; _gfx_ctx.keycodes[0x0F] = RGFW_KEY_R; _gfx_ctx.keycodes[0x10] = RGFW_KEY_Y;
+	_gfx_ctx.keycodes[0x11] = RGFW_KEY_T; _gfx_ctx.keycodes[0x12] = RGFW_KEY1; _gfx_ctx.keycodes[0x13] = RGFW_KEY2; _gfx_ctx.keycodes[0x14] = RGFW_KEY3;
+	_gfx_ctx.keycodes[0x15] = RGFW_KEY4; _gfx_ctx.keycodes[0x16] = RGFW_KEY6; _gfx_ctx.keycodes[0x17] = RGFW_KEY5; _gfx_ctx.keycodes[0x18] = RGFW_KEY_EQUAL;
+	_gfx_ctx.keycodes[0x19] = RGFW_KEY9; _gfx_ctx.keycodes[0x1A] = RGFW_KEY7; _gfx_ctx.keycodes[0x1B] = RGFW_KEY_MINUS; _gfx_ctx.keycodes[0x1C] = RGFW_KEY8;
+	_gfx_ctx.keycodes[0x1D] = RGFW_KEY0; _gfx_ctx.keycodes[0x1E] = RGFW_KEY_CLOSE_BRACKET; _gfx_ctx.keycodes[0x1F] = RGFW_KEY_O; _gfx_ctx.keycodes[0x20] = RGFW_KEY_U;
+	_gfx_ctx.keycodes[0x21] = RGFW_KEY_BRACKET; _gfx_ctx.keycodes[0x22] = RGFW_KEY_I; _gfx_ctx.keycodes[0x23] = RGFW_KEY_P; _gfx_ctx.keycodes[0x24] = RGFW_KEY_RETURN;
+	_gfx_ctx.keycodes[0x25] = RGFW_KEY_L; _gfx_ctx.keycodes[0x26] = RGFW_KEY_J; _gfx_ctx.keycodes[0x27] = RGFW_KEY_APOSTROPHE; _gfx_ctx.keycodes[0x28] = RGFW_KEY_K;
+	_gfx_ctx.keycodes[0x29] = RGFW_KEY_SEMICOLON; _gfx_ctx.keycodes[0x2A] = RGFW_KEY_BACK_SLASH; _gfx_ctx.keycodes[0x2B] = RGFW_KEY_COMMA; _gfx_ctx.keycodes[0x2C] = RGFW_KEY_SLASH;
+	_gfx_ctx.keycodes[0x2D] = RGFW_KEY_N; _gfx_ctx.keycodes[0x2E] = RGFW_KEY_M; _gfx_ctx.keycodes[0x2F] = RGFW_KEY_PERIOD; _gfx_ctx.keycodes[0x31] = RGFW_KEY_SPACE;
+	_gfx_ctx.keycodes[0x32] = RGFW_KEY_BACKTICK; _gfx_ctx.keycodes[0x33] = RGFW_KEY_BACK_SPACE; _gfx_ctx.keycodes[0x35] = RGFW_KEY_ESCAPE; _gfx_ctx.keycodes[0x30] = RGFW_KEY_TAB;
+	_gfx_ctx.keycodes[0x7B] = RGFW_KEY_LEFT; _gfx_ctx.keycodes[0x7C] = RGFW_KEY_RIGHT; _gfx_ctx.keycodes[0x7D] = RGFW_KEY_DOWN; _gfx_ctx.keycodes[0x7E] = RGFW_KEY_UP;
+	_gfx_ctx.keycodes[0x38] = RGFW_KEY_SHIFT_L; _gfx_ctx.keycodes[0x3B] = RGFW_KEY_CONTROL_L; _gfx_ctx.keycodes[0x3A] = RGFW_KEY_ALT_L; _gfx_ctx.keycodes[0x37] = RGFW_KEY_SUPER_L;
+	_gfx_ctx.keycodes[0x3C] = RGFW_KEY_SHIFT_R; _gfx_ctx.keycodes[0x3E] = RGFW_KEY_CONTROL_R; _gfx_ctx.keycodes[0x3D] = RGFW_KEY_ALT_R; _gfx_ctx.keycodes[0x36] = RGFW_KEY_SUPER_R;
+	_gfx_ctx.keycodes[0x7A] = RGFW_KEY_F1; _gfx_ctx.keycodes[0x78] = RGFW_KEY_F2; _gfx_ctx.keycodes[0x63] = RGFW_KEY_F3; _gfx_ctx.keycodes[0x76] = RGFW_KEY_F4;
+	_gfx_ctx.keycodes[0x60] = RGFW_KEY_F5; _gfx_ctx.keycodes[0x61] = RGFW_KEY_F6; _gfx_ctx.keycodes[0x62] = RGFW_KEY_F7; _gfx_ctx.keycodes[0x64] = RGFW_KEY_F8;
+	_gfx_ctx.keycodes[0x65] = RGFW_KEY_F9; _gfx_ctx.keycodes[0x6D] = RGFW_KEY_F10; _gfx_ctx.keycodes[0x67] = RGFW_KEY_F11; _gfx_ctx.keycodes[0x6F] = RGFW_KEY_F12;
+	_gfx_ctx.keycodes[0x69] = RGFW_KEY_PRINT_SCREEN; _gfx_ctx.keycodes[0x6B] = RGFW_KEY_F14; _gfx_ctx.keycodes[0x71] = RGFW_KEY_F15; _gfx_ctx.keycodes[0x6A] = RGFW_KEY_F16;
+	_gfx_ctx.keycodes[0x40] = RGFW_KEY_F17; _gfx_ctx.keycodes[0x4F] = RGFW_KEY_F18; _gfx_ctx.keycodes[0x50] = RGFW_KEY_F19; _gfx_ctx.keycodes[0x5A] = RGFW_KEY_F20;
+	_gfx_ctx.keycodes[0x0A] = RGFW_KEY_WORLD1; _gfx_ctx.keycodes[0x39] = RGFW_KEY_CAPS_LOCK; _gfx_ctx.keycodes[0x75] = RGFW_KEY_DELETE; _gfx_ctx.keycodes[0x77] = RGFW_KEY_END;
+	_gfx_ctx.keycodes[0x73] = RGFW_KEY_HOME; _gfx_ctx.keycodes[0x72] = RGFW_KEY_INSERT; _gfx_ctx.keycodes[0x6E] = RGFW_KEY_MENU; _gfx_ctx.keycodes[0x47] = RGFW_KEY_NUM_LOCK;
+	_gfx_ctx.keycodes[0x79] = RGFW_KEY_PAGE_DOWN; _gfx_ctx.keycodes[0x74] = RGFW_KEY_PAGE_UP;
+	_gfx_ctx.keycodes[0x52] = RGFW_KEY_PAD0; _gfx_ctx.keycodes[0x53] = RGFW_KEY_PAD1; _gfx_ctx.keycodes[0x54] = RGFW_KEY_PAD2; _gfx_ctx.keycodes[0x55] = RGFW_KEY_PAD3;
+	_gfx_ctx.keycodes[0x56] = RGFW_KEY_PAD4; _gfx_ctx.keycodes[0x57] = RGFW_KEY_PAD5; _gfx_ctx.keycodes[0x58] = RGFW_KEY_PAD6; _gfx_ctx.keycodes[0x59] = RGFW_KEY_PAD7;
+	_gfx_ctx.keycodes[0x5B] = RGFW_KEY_PAD8; _gfx_ctx.keycodes[0x5C] = RGFW_KEY_PAD9; _gfx_ctx.keycodes[0x45] = RGFW_KEY_PAD_SLASH; _gfx_ctx.keycodes[0x41] = RGFW_KEY_PAD_PERIOD;
+	_gfx_ctx.keycodes[0x4B] = RGFW_KEY_PAD_SLASH; _gfx_ctx.keycodes[0x4C] = RGFW_KEY_PAD_RETURN; _gfx_ctx.keycodes[0x51] = RGFW_KEY_PAD_EQUAL; _gfx_ctx.keycodes[0x43] = RGFW_KEY_PAD_MULTIPLY;
+	_gfx_ctx.keycodes[0x4E] = RGFW_KEY_PAD_MINUS;
 }
 
 // public
 fn void rgfw_pollEvents()
 {
 	rgfw_resetPrevState();
-	if (_rgfw == null || _rgfw.nsApp == null) return;
+	if (!_gfx_ctx.nsApp) return;
 	ObjcId distantPast = objc_send(objc_class("NSDate"), ObjcSendId, "distantPast");
 	ObjcId mode = ns_string("kCFRunLoopDefaultMode");
 	while (true)
 	{
-		ObjcId ev = objc_send(_rgfw.nsApp, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, distantPast, mode, true);
+		ObjcId ev = objc_send(_gfx_ctx.nsApp, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, distantPast, mode, true);
 		if (ev == null) break;
-		objc_send(_rgfw.nsApp, ObjcSendVoidId, "sendEvent:", ev);
+		objc_send(_gfx_ctx.nsApp, ObjcSendVoidId, "sendEvent:", ev);
 	}
 }
 
 // public
 fn void rgfw_pollMonitors()
 {
-	if (_rgfw.monitors.count != 0) rgfw_freeMonitors();
+	if (_gfx_ctx.monitors.count != 0) rgfw_freeMonitors();
 	uint count = 0;
 	CGDirectDisplayID[16] displays;
 	if (cgGetActiveDisplayList(16, &displays, &count) != 0) return;
@@ -1138,28 +1136,28 @@ fn void rgfw_pollMonitors()
 		GfxMonitorNode* node = rgfw_monitors_add(&mon);
 		if (node == null) continue;
 		node.nativeId0 = (ulong)displays[i];
-		if (displays[i] == cgMainDisplayID()) _rgfw.monitors.primary = node;
+		if (displays[i] == cgMainDisplayID()) _gfx_ctx.monitors.primary = node;
 	}
 }
 // public
-fn void rgfw_stopCheckEvents() { if (_rgfw != null) _rgfw.stopCheckEvents_bool = true; }
+fn void rgfw_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
 // public
 fn void rgfw_waitForEvent(int waitMS)
 {
-	if (_rgfw == null || _rgfw.nsApp == null) return;
+	if (!_gfx_ctx.nsApp) return;
 	ObjcId date = objc_send(objc_class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)waitMS / 1000.0);
 	ObjcId mode = ns_string("kCFRunLoopDefaultMode");
-	ObjcId ev = objc_send(_rgfw.nsApp, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, date, mode, true);
-	if (ev != null) objc_send(_rgfw.nsApp, ObjcSendVoidIdBool, "postEvent:atStart:", ev, true);
+	ObjcId ev = objc_send(_gfx_ctx.nsApp, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, date, mode, true);
+	if (ev != null) objc_send(_gfx_ctx.nsApp, ObjcSendVoidIdBool, "postEvent:atStart:", ev, true);
 }
 // public
-fn bool rgfw_usingWayland() => _rgfw != null && _rgfw.wl_display != null;
+fn bool rgfw_usingWayland() => _gfx_ctx.wl_display != null;
 // public
-fn void* rgfw_getLayer_OSX() { if (_rgfw == null || _rgfw.current == null || _rgfw.current.src.view == null) return null; return objc_send((ObjcId)_rgfw.current.src.view, ObjcSendId, "layer"); }
+fn void* rgfw_getLayer_OSX() { if (_gfx_ctx.current == null || _gfx_ctx.current.src.view == null) return null; return objc_send((ObjcId)_gfx_ctx.current.src.view, ObjcSendId, "layer"); }
 // public
-fn void* rgfw_getDisplay_X11() => _rgfw != null ? _rgfw.x11_display : null;
+fn void* rgfw_getDisplay_X11() => _gfx_ctx.x11_display;
 // public
-fn void* rgfw_getDisplay_Wayland() => _rgfw != null ? _rgfw.wl_display : null;
+fn void* rgfw_getDisplay_Wayland() => _gfx_ctx.wl_display;
 // public
 fn void rgfw_moveToMacOSResourceDir()
 {
@@ -1246,7 +1244,7 @@ fn void rgfw_window_showPlatform(GfxWindow* win)
 {
 	if (win == null || win.src.window == null) return;
 	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyAndOrderFront:", null);
-	if (_rgfw.nsApp != null) objc_send(_rgfw.nsApp, ObjcSendVoidBool, "activateIgnoringOtherApps:", true);
+	if (_gfx_ctx.nsApp != null) objc_send(_gfx_ctx.nsApp, ObjcSendVoidBool, "activateIgnoringOtherApps:", true);
 	win.internal.flags.hide = false;
 }
 
@@ -1285,7 +1283,7 @@ fn void rgfw_window_maximizePlatform(GfxWindow* win) { if (win != null && win.sr
 // public
 fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state) { cgAssociateMouseAndMouseCursorPosition(!state); }
 // public
-fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state) { _rgfw.rawMouse = state; }
+fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state) { _gfx_ctx.rawMouse = state; }
 // public
 fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
@@ -1499,10 +1497,10 @@ fn void rgfw_window_setName(GfxWindow* win, ZString name) { if (win != null && w
 // public
 fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
 {
-	if (_rgfw == null || _rgfw.nsApp == null) return false;
+	if (!_gfx_ctx.nsApp) return false;
 	if (data == null)
 	{
-		objc_send(_rgfw.nsApp, ObjcSendVoidId, "setApplicationIconImage:", null);
+		objc_send(_gfx_ctx.nsApp, ObjcSendVoidId, "setApplicationIconImage:", null);
 		return true;
 	}
 	ObjcId rep = ns_bitmapRep(w, h);
@@ -1510,7 +1508,7 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, Gfx
 	if (pixels == null) { ns_release(rep); return false; }
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjcId image = ns_imageWithRep(rep, w, h);
-	objc_send(_rgfw.nsApp, ObjcSendVoidId, "setApplicationIconImage:", image);
+	objc_send(_gfx_ctx.nsApp, ObjcSendVoidId, "setApplicationIconImage:", image);
 	ns_release(image);
 	ns_release(rep);
 	return true;
@@ -1518,7 +1516,7 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, Gfx
 // public
 fn void rgfw_window_hide(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderOut:", null); win.internal.flags.hide = true; }
 // public
-fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) { if (_rgfw.nsApp != null) objc_send(_rgfw.nsApp, ObjcSendIntegerNSUInteger, "requestUserAttention:", (NSUInteger)request); }
+fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) { if (_gfx_ctx.nsApp != null) objc_send(_gfx_ctx.nsApp, ObjcSendIntegerNSUInteger, "requestUserAttention:", (NSUInteger)request); }
 // public
 fn bool rgfw_window_isHidden(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible") ? false : true; return win.internal.flags.hide; }
 // public
@@ -1613,8 +1611,8 @@ const EglInt EGL_EXTENSIONS = 0x3055;
 // public
 fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
 {
-	if (rgfw_eglQueryString == null || _rgfw.egl_display == null) return false;
-	ZString extensions = rgfw_eglQueryString((EglDisplay)_rgfw.egl_display, EGL_EXTENSIONS);
+	if (rgfw_eglQueryString == null || _gfx_ctx.egl_display == null) return false;
+	ZString extensions = rgfw_eglQueryString((EglDisplay)_gfx_ctx.egl_display, EGL_EXTENSIONS);
 	return rgfw_extensionSupportedStr(extensions, extension, len);
 }
 
@@ -1644,13 +1642,13 @@ fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, Rg
 {
 	if (win == null || ctx == null || hints == null) return false;
 	if (load_egl() == false) return false;
-	if (_rgfw.egl_display == null)
+	if (_gfx_ctx.egl_display == null)
 	{
-		_rgfw.egl_display = rgfw_eglGetDisplay(null);
-		if (_rgfw.egl_display == null) return false;
+		_gfx_ctx.egl_display = rgfw_eglGetDisplay(null);
+		if (_gfx_ctx.egl_display == null) return false;
 		EglInt major = 0;
 		EglInt minor = 0;
-		if (rgfw_eglInitialize((EglDisplay)_rgfw.egl_display, &major, &minor) == 0) return false;
+		if (rgfw_eglInitialize((EglDisplay)_gfx_ctx.egl_display, &major, &minor) == 0) return false;
 	}
 
 	EglInt[32] cfg;
@@ -1667,7 +1665,7 @@ fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, Rg
 	rgfw_attribStack_pushAttribs(&cfgStack, EGL_NONE, EGL_NONE);
 	EglConfig config = null;
 	EglInt num = 0;
-	if (rgfw_eglChooseConfig((EglDisplay)_rgfw.egl_display, &cfg, &config, 1, &num) == 0 || num == 0) return false;
+	if (rgfw_eglChooseConfig((EglDisplay)_gfx_ctx.egl_display, &cfg, &config, 1, &num) == 0 || num == 0) return false;
 	rgfw_eglBindApi(hints.profile == RGFW_GL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
 	EglInt[8] ctxAttribs;
 	RgfwAttribStack ctxStack;
@@ -1675,14 +1673,14 @@ fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, Rg
 	if (hints.profile == RGFW_GL_ES) rgfw_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
 	rgfw_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
 	EglContext share = hints.shareEGL != null ? (EglContext)hints.shareEGL.ctx : null;
-	ctx.ctx = rgfw_eglCreateContext((EglDisplay)_rgfw.egl_display, config, share, &ctxAttribs);
+	ctx.ctx = rgfw_eglCreateContext((EglDisplay)_gfx_ctx.egl_display, config, share, &ctxAttribs);
 	if (ctx.ctx == null) return false;
 	EglNativeWindowType nativeWindow = win.src.window;
 	if (win.src.view != null) nativeWindow = rgfw_getLayer_OSX();
-	ctx.surface = rgfw_eglCreateWindowSurface((EglDisplay)_rgfw.egl_display, config, nativeWindow, null);
+	ctx.surface = rgfw_eglCreateWindowSurface((EglDisplay)_gfx_ctx.egl_display, config, nativeWindow, null);
 	if (ctx.surface == null)
 	{
-		rgfw_eglDestroyContext((EglDisplay)_rgfw.egl_display, (EglContext)ctx.ctx);
+		rgfw_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
 		ctx.ctx = null;
 		return false;
 	}
@@ -1705,16 +1703,16 @@ fn void rgfw_window_deleteContext_EGL(GfxWindow* win, RgfwEglContext* ctx)
 // public
 fn void rgfw_window_deleteContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx)
 {
-	if (ctx == null || _rgfw.egl_display == null) return;
-	if (ctx.surface != null) rgfw_eglDestroySurface((EglDisplay)_rgfw.egl_display, (EglSurface)ctx.surface);
-	if (ctx.ctx != null) rgfw_eglDestroyContext((EglDisplay)_rgfw.egl_display, (EglContext)ctx.ctx);
+	if (ctx == null || _gfx_ctx.egl_display == null) return;
+	if (ctx.surface != null) rgfw_eglDestroySurface((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface);
+	if (ctx.ctx != null) rgfw_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
 	ctx.surface = null;
 	ctx.ctx = null;
 	if (win != null) win.src.ctx.egl = null;
 }
 
 // public
-fn void rgfw_window_makeCurrentWindow_EGL(GfxWindow* win) { _rgfw.current = win; }
+fn void rgfw_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current = win; }
 
 alias WGPUInstance = void*;
 alias WGPUSurface = void*;
@@ -1776,7 +1774,7 @@ fn float rgfw_cocoaYTransform(float y) => (float)(cgDisplayBounds(cgMainDisplayI
 // public
 fn GfxDataTransfer* rgfw_readClipboard(RgfwDataTransferType requestedType)
 {
-	return _rgfw.clipboard;
+	return _gfx_ctx.clipboard;
 }
 
 // public

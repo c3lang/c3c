@@ -412,10 +412,6 @@ struct RgfwWindowSrc
 	bool usingCustomCursor;
 }
 
-
-
-RgfwInfo* _rgfw;
-RgfwInfo _rgfw_global;
 EglGetProcAddressProc rgfw_eglGetProcAddress;
 EglGetDisplayProc rgfw_eglGetDisplay;
 EglInitializeProc rgfw_eglInitialize;
@@ -453,27 +449,27 @@ ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_wayland_surface"};
 // public
 fn bool rgfw_loadVulkan()
 {
-	if (_rgfw.vulkan_handle != null) return true;
+	if (_gfx_ctx.vulkan_handle != null) return true;
 	ZString[2] names = {"libvulkan.so.1", "libvulkan.so"};
 	for (sz i = 0; i < 2; i++)
 	{
-		_rgfw.vulkan_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
-		if (_rgfw.vulkan_handle != null) break;
+		_gfx_ctx.vulkan_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
+		if (_gfx_ctx.vulkan_handle != null) break;
 	}
-	if (_rgfw.vulkan_handle == null) return false;
-	void* proc = libc::dlsym(_rgfw.vulkan_handle, "vkGetInstanceProcAddr");
+	if (_gfx_ctx.vulkan_handle == null) return false;
+	void* proc = libc::dlsym(_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
 	if (proc == null) return false;
-	_rgfw.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
+	_gfx_ctx.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
 	return true;
 }
 
 // public
 fn void rgfw_unloadVulkan()
 {
-	if (_rgfw.vulkan_handle == null) return;
-	libc::dlclose(_rgfw.vulkan_handle);
-	_rgfw.vulkan_handle = null;
-	_rgfw.vkGetInstanceProcAddress = null;
+	if (_gfx_ctx.vulkan_handle == null) return;
+	libc::dlclose(_gfx_ctx.vulkan_handle);
+	_gfx_ctx.vulkan_handle = null;
+	_gfx_ctx.vkGetInstanceProcAddress = null;
 }
 
 
@@ -489,7 +485,7 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 	createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
 	createInfo.pNext = null;
 	createInfo.flags = 0;
-	createInfo.display = _rgfw.wlDisplay;
+	createInfo.display = _gfx_ctx.wlDisplay;
 	createInfo.surface = win.src.surface;
 	return ((RgfwVkCreateWaylandSurfaceKHRProc)raw)(instance, &createInfo, null, surface);
 }
@@ -501,7 +497,7 @@ fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, Vk
 {
 	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
 	if (raw == null) return false;
-	uint out = ((RgfwVkGetPhysicalDeviceWaylandPresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex, _rgfw.wlDisplay);
+	uint out = ((RgfwVkGetPhysicalDeviceWaylandPresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex, _gfx_ctx.wlDisplay);
 	return out != 0;
 }
 
@@ -520,7 +516,7 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 	WgpuSurfaceSourceWaylandSurface fromWl;
 	fromWl.chain.next = null;
 	fromWl.chain.sType = WGPU_STYPE_SURFACE_SOURCE_WAYLAND_SURFACE;
-	fromWl.display = _rgfw.wlDisplay;
+	fromWl.display = _gfx_ctx.wlDisplay;
 	fromWl.surface = window.src.surface;
 	WgpuSurfaceDescriptor surfaceDesc;
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromWl;
@@ -670,7 +666,7 @@ const uint WL_SHM_FORMAT_ARGB8888 = 0;
 // private
 fn void rgfw_wlSetOpaque(GfxWindow* win)
 {
-	WlProxy* region = wlCompositorCreateRegion(_rgfw.compositor);
+	WlProxy* region = wlCompositorCreateRegion(_gfx_ctx.compositor);
 	if (region == null) return;
 	wlRegionAdd(region, 0, 0, win.width, win.height);
 	wlSurfaceSetOpaqueRegion(win.src.surface, region);
@@ -695,7 +691,7 @@ fn void rgfw_wlXdgSurfaceConfigureHandler(void* data, WlProxy* xdgSurface, uint 
 	GfxWindow* win = (GfxWindow*)data;
 	if (win == null)
 	{
-		win = _rgfw.kbOwner;
+		win = _gfx_ctx.kbOwner;
 		if (win == null) return;
 	}
 
@@ -911,11 +907,11 @@ fn XkbKeysym rgfw_wlComposeSymbol(RgfwInfo* info, XkbKeysym sym)
 fn void rgfw_wlSendKeyEvent(uint key)
 {
 	XkbKeysym* keysyms;
-	if (xkbStateKeyGetSyms(_rgfw.xkbState, key + 8, &keysyms) == 1)
+	if (xkbStateKeyGetSyms(_gfx_ctx.xkbState, key + 8, &keysyms) == 1)
 	{
-		XkbKeysym keysym = rgfw_wlComposeSymbol(_rgfw, keysyms[0]);
+		XkbKeysym keysym = rgfw_wlComposeSymbol(&_gfx_ctx, keysyms[0]);
 		uint codepoint = xkbKeysymToUtf32(keysym);
-		if (codepoint != 0) rgfw_keyCharCallback(_rgfw.kbOwner, codepoint);
+		if (codepoint != 0) rgfw_keyCharCallback(_gfx_ctx.kbOwner, codepoint);
 	}
 }
 
@@ -932,8 +928,8 @@ fn void rgfw_wlKeyboardKey(void* data, WlProxy* keyboard, uint serial, uint time
 	rgfw_keyCallback(win, rgfwKey, win.internal.mod, is_key_down(rgfwKey) && state != 0, !!state);
 
 	info.lastKey = state != 0 ? key : 0;
-	info.lastKeyTime = time + (uint)_rgfw.wlRepeatInfoDelay;
-	if (state != 0) rgfw_wlSendKeyEvent(_rgfw.lastKey);
+	info.lastKeyTime = time + (uint)_gfx_ctx.wlRepeatInfoDelay;
+	if (state != 0) rgfw_wlSendKeyEvent(_gfx_ctx.lastKey);
 }
 
 // private
@@ -946,8 +942,8 @@ fn void rgfw_wlKeyboardModifiers(void* data, WlProxy* keyboard, uint serial, uin
 // private
 fn void rgfw_wlKeyboardRepeatInfo(void* data, WlProxy* keyboard, int rate, int delay)
 {
-	_rgfw.wlRepeatInfoRate = rate;
-	_rgfw.wlRepeatInfoDelay = delay;
+	_gfx_ctx.wlRepeatInfoRate = rate;
+	_gfx_ctx.wlRepeatInfoDelay = delay;
 }
 
 WlPointerListener rgfw_wlPointerListener = {
@@ -1074,7 +1070,7 @@ fn void rgfw_wlOutputHandleDone(void* data, WlProxy* output)
 
 	if (node.disconnected == false) return;
 	node.disconnected = true;
-	rgfw_monitorCallback(_rgfw.root, mon, true);
+	rgfw_monitorCallback(_gfx_ctx.root, mon, true);
 }
 
 WlOutputListener rgfw_wlOutputListener = {
@@ -1093,7 +1089,7 @@ fn void rgfw_wlCreateOutputs(WlProxy* registry, uint id)
 	// If wl_seat hasn't been bound yet (compositor announced wl_output first), fall back to
 	// version 4 instead of calling wlProxyGetVersion(null), which would crash.
 	uint fallbackVersion = 4;
-	WlProxy* output = wlRegistryBind(registry, id, &wlOutputInterface, _rgfw.seat == null ? fallbackVersion : wlProxyGetVersion(_rgfw.seat));
+	WlProxy* output = wlRegistryBind(registry, id, &wlOutputInterface, _gfx_ctx.seat == null ? fallbackVersion : wlProxyGetVersion(_gfx_ctx.seat));
 	if (output == null) return;
 
 	GfxMonitor mon;
@@ -1101,7 +1097,7 @@ fn void rgfw_wlCreateOutputs(WlProxy* registry, uint id)
 	int n = 0;
 	ZString prefix = "monitor-";
 	while (prefix[n] != 0) { defaultName[n] = prefix[n]; n++; }
-	defaultName[n] = (char)('0' + (_rgfw.monitors.count % 10));
+	defaultName[n] = (char)('0' + (_gfx_ctx.monitors.count % 10));
 	defaultName[n + 1] = 0;
 	rgfw_memcpy(&mon.name, &defaultName, (sz)n + 2);
 
@@ -1119,9 +1115,9 @@ fn void rgfw_wlCreateOutputs(WlProxy* registry, uint id)
 	wlOutputSetUserData(output, node);
 	wlOutputAddListener(output, &rgfw_wlOutputListener, node);
 
-	if (_rgfw.xdgOutputManager == null) return;
+	if (_gfx_ctx.xdgOutputManager == null) return;
 
-	node.xdgOutput = zxdgOutputManagerV1GetXdgOutput(_rgfw.xdgOutputManager, node.output);
+	node.xdgOutput = zxdgOutputManagerV1GetXdgOutput(_gfx_ctx.xdgOutputManager, node.output);
 	zxdgOutputV1AddListener(node.xdgOutput, &rgfw_xdgOutputListener, node);
 }
 
@@ -1146,9 +1142,9 @@ fn void rgfw_wlDataSourceSend(void* data, WlProxy* source, ZString mimeType, int
 {
 	if (mimeType && strstr(mimeType, "text/plain") != null)
 	{
-		sz length = _rgfw.unixClipboard.length;
-		if (_rgfw.unixClipboard.data[0] == 0) length -= 1;
-		write(fd, (void*)_rgfw.unixClipboard.data, length);
+		sz length = _gfx_ctx.unixClipboard.length;
+		if (_gfx_ctx.unixClipboard.data[0] == 0) length -= 1;
+		write(fd, (void*)_gfx_ctx.unixClipboard.data, length);
 	}
 	close(fd);
 }
@@ -1189,7 +1185,7 @@ fn void rgfw_wlDataDeviceSelection(void* data, WlProxy* device, WlProxy* offer)
 	pipe(&pfds);
 	wlDataOfferReceive(offer, "text/plain", pfds[1]);
 	close(pfds[1]);
-	wlDisplayRoundtrip(_rgfw.wlDisplay);
+	wlDisplayRoundtrip(_gfx_ctx.wlDisplay);
 
 	char[1024] buf;
 	sz n = read(pfds[0], &buf, 1024);
@@ -1198,14 +1194,14 @@ fn void rgfw_wlDataDeviceSelection(void* data, WlProxy* device, WlProxy* offer)
 	sz length = (sz)n;
 	if (buf[n - 1] != 0) length += 1;
 
-	if (_rgfw.unixClipboard != null) rgfw_free_impl(_rgfw.unixClipboard);
-	_rgfw.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + (sz)n);
-	char* dataPtr = (char*)_rgfw.unixClipboard + GfxDataTransfer::size - 1;
+	if (_gfx_ctx.unixClipboard != null) rgfw_free_impl(_gfx_ctx.unixClipboard);
+	_gfx_ctx.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + (sz)n);
+	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
 	rgfw_memcpy(dataPtr, &buf, (sz)n);
 	dataPtr[length - 1] = 0;
-	_rgfw.unixClipboard.data = dataPtr;
-	_rgfw.unixClipboard.type = RGFW_DATA_TEXT;
-	_rgfw.unixClipboard.length = length;
+	_gfx_ctx.unixClipboard.data = dataPtr;
+	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;
+	_gfx_ctx.unixClipboard.length = length;
 
 	close(pfds[0]);
 	wlDataOfferDestroy(offer);
@@ -1261,7 +1257,7 @@ fn void rgfw_wlGlobalRegistryRemove(void* data, WlProxy* registry, uint id)
 	}
 	else { node = prev; }
 
-	rgfw_monitorCallback(_rgfw.root, &node.mon, false);
+	rgfw_monitorCallback(_gfx_ctx.root, &node.mon, false);
 	_remove_monitor(node, prev);
 }
 
@@ -1320,7 +1316,7 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSur
 		return false;
 	}
 
-	surface.native.pool = wlShmCreatePool(_rgfw.shm, fd, (int)size);
+	surface.native.pool = wlShmCreatePool(_gfx_ctx.shm, fd, (int)size);
 	surface.native.buffer = mmap(null, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (surface.native.buffer == MAP_FAILED)
 	{
@@ -1361,7 +1357,7 @@ fn void rgfw_surface_freePtr(GfxSurface* surface)
 fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
-	if (_rgfw.decorationManager != null)
+	if (_gfx_ctx.decorationManager != null)
 	{
 		zxdgToplevelDecorationV1SetMode(win.src.decoration, border ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE : ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
 	}
@@ -1370,19 +1366,19 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 // public
 fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state)
 {
-	if (_rgfw.relativePointerManager == null) return;
+	if (_gfx_ctx.relativePointerManager == null) return;
 
 	if (state == false)
 	{
-		if (_rgfw.relativePointer != null) zwpRelativePointerV1Destroy(_rgfw.relativePointer);
-		_rgfw.relativePointer = null;
+		if (_gfx_ctx.relativePointer != null) zwpRelativePointerV1Destroy(_gfx_ctx.relativePointer);
+		_gfx_ctx.relativePointer = null;
 		return;
 	}
-	if (_rgfw.relativePointer != null) return;
+	if (_gfx_ctx.relativePointer != null) return;
 
-	_rgfw.relativePointer = zwpRelativePointerManagerV1GetRelativePointer(_rgfw.relativePointerManager, _rgfw.wlPointer);
+	_gfx_ctx.relativePointer = zwpRelativePointerManagerV1GetRelativePointer(_gfx_ctx.relativePointerManager, _gfx_ctx.wlPointer);
 	static ZwpRelativePointerV1Listener listener = { .relativeMotion = &rgfw_wlRelativePointerMotion };
-	zwpRelativePointerV1AddListener(_rgfw.relativePointer, &listener, _rgfw);
+	zwpRelativePointerV1AddListener(_gfx_ctx.relativePointer, &listener, &_gfx_ctx);
 }
 
 // private
@@ -1391,7 +1387,7 @@ fn void rgfw_wlUnlockedNoop(void* data, WlProxy* p) {}
 // public
 fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
 {
-	if (_rgfw.constraintManager == null) return;
+	if (_gfx_ctx.constraintManager == null) return;
 
 	if (state == false)
 	{
@@ -1401,9 +1397,9 @@ fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
 	}
 	if (win.src.lockedPointer != null) return;
 
-	win.src.lockedPointer = zwpPointerConstraintsV1LockPointer(_rgfw.constraintManager, win.src.surface, _rgfw.wlPointer, null, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
+	win.src.lockedPointer = zwpPointerConstraintsV1LockPointer(_gfx_ctx.constraintManager, win.src.surface, _gfx_ctx.wlPointer, null, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
 	static ZwpLockedPointerV1Listener listener = { .locked = &rgfw_wlPointerLocked, .unlocked = &rgfw_wlUnlockedNoop };
-	zwpLockedPointerV1AddListener(win.src.lockedPointer, &listener, _rgfw);
+	zwpLockedPointerV1AddListener(win.src.lockedPointer, &listener, &_gfx_ctx);
 }
 
 XdgSurfaceListener rgfw_xdgSurfaceListener = { .configure = &rgfw_wlXdgSurfaceConfigureHandler };
@@ -1419,15 +1415,15 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxW
 {
 	rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_WARNING_WAYLAND, "RGFW Wayland support is experimental");
 
-	win.src.surface = wlCompositorCreateSurface(_rgfw.compositor);
+	win.src.surface = wlCompositorCreateSurface(_gfx_ctx.compositor);
 	wlSurfaceAddListener(win.src.surface, &rgfw_windowSurfaceListener, win);
 	wlSurfaceSetUserData(win.src.surface, win);
 
-	win.src.customCursorSurface = wlCompositorCreateSurface(_rgfw.compositor);
+	win.src.customCursorSurface = wlCompositorCreateSurface(_gfx_ctx.compositor);
 
-	win.src.xdgSurface = xdgWmBaseGetXdgSurface(_rgfw.xdgWmBase, win.src.surface);
+	win.src.xdgSurface = xdgWmBaseGetXdgSurface(_gfx_ctx.xdgWmBase, win.src.surface);
 	xdgSurfaceAddListener(win.src.xdgSurface, &rgfw_xdgSurfaceListener, win);
-	xdgWmBaseSetUserData(_rgfw.xdgWmBase, win);
+	xdgWmBaseSetUserData(_gfx_ctx.xdgWmBase, win);
 
 	win.src.xdgToplevel = xdgSurfaceGetToplevel(win.src.xdgSurface);
 	xdgToplevelSetAppId(win.src.xdgToplevel, name);
@@ -1437,20 +1433,20 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxW
 
 	xdgToplevelAddListener(win.src.xdgToplevel, &rgfw_xdgToplevelListener, win);
 
-	if (_rgfw.decorationManager != null)
+	if (_gfx_ctx.decorationManager != null)
 	{
 		uint decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
-		win.src.decoration = zxdgDecorationManagerV1GetToplevelDecoration(_rgfw.decorationManager, win.src.xdgToplevel);
+		win.src.decoration = zxdgDecorationManagerV1GetToplevelDecoration(_gfx_ctx.decorationManager, win.src.xdgToplevel);
 		zxdgToplevelDecorationV1AddListener(win.src.decoration, &rgfw_xdgDecorationListener, win);
 		if (flags.no_border) decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
 		zxdgToplevelDecorationV1SetMode(win.src.decoration, decorationMode);
 	}
 
-	if (_rgfw.iconManager != null) xdgToplevelIconManagerV1SetIcon(_rgfw.iconManager, win.src.xdgToplevel, null);
+	if (_gfx_ctx.iconManager != null) xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, null);
 
 	wlSurfaceCommit(win.src.surface);
 
-	while (win.src.configured == false) wlDisplayDispatch(_rgfw.wlDisplay);
+	while (win.src.configured == false) wlDisplayDispatch(_gfx_ctx.wlDisplay);
 
 	return win;
 }
@@ -1468,7 +1464,7 @@ fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key)
 {
 	uint keycode = rgfw_rgfwToApiKey(key);
 	XkbKeycode kc = keycode + 8;
-	XkbKeysym sym = xkbStateKeyGetOneSym(_rgfw.xkbState, kc);
+	XkbKeysym sym = xkbStateKeyGetOneSym(_gfx_ctx.xkbState, kc);
 	if (sym < 256) return (RgfwKey)sym;
 
 	switch (sym)
@@ -1551,44 +1547,44 @@ fn void rgfw_pollEvents()
 {
 	rgfw_resetPrevState();
 
-	while (wlDisplayFlush(_rgfw.wlDisplay) == -1)
+	while (wlDisplayFlush(_gfx_ctx.wlDisplay) == -1)
 	{
 		if (*rgfwErrnoLocation() == RGFW_EAGAIN)
 		{
-			if (wlDisplayDispatchPending(_rgfw.wlDisplay) == -1) return;
+			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == -1) return;
 		}
 		else { return; }
 	}
 
-	if (_rgfw.wlRepeatInfoRate != 0 && _rgfw.lastKey != 0)
+	if (_gfx_ctx.wlRepeatInfoRate != 0 && _gfx_ctx.lastKey != 0)
 	{
 		uint now = (uint)(rgfw_unix_getTimeNS() / 1000000);
-		if (now > _rgfw.lastKeyTime)
+		if (now > _gfx_ctx.lastKeyTime)
 		{
-			rgfw_wlSendKeyEvent(_rgfw.lastKey);
-			_rgfw.lastKeyTime = now + 1000 / (uint)_rgfw.wlRepeatInfoRate;
+			rgfw_wlSendKeyEvent(_gfx_ctx.lastKey);
+			_gfx_ctx.lastKeyTime = now + 1000 / (uint)_gfx_ctx.wlRepeatInfoRate;
 		}
 	}
 
 	Pollfd fds;
-	fds.fd = wlDisplayGetFd(_rgfw.wlDisplay);
+	fds.fd = wlDisplayGetFd(_gfx_ctx.wlDisplay);
 	fds.events = (short)POLLIN;
 
 	while (true)
 	{
-		while (wlDisplayPrepareRead(_rgfw.wlDisplay) != 0)
+		while (wlDisplayPrepareRead(_gfx_ctx.wlDisplay) != 0)
 		{
-			if (wlDisplayDispatchPending(_rgfw.wlDisplay) > 0) return;
+			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) > 0) return;
 		}
 
-		if (poll(&fds, 1, 0) == 0) { wlDisplayCancelRead(_rgfw.wlDisplay); return; }
+		if (poll(&fds, 1, 0) == 0) { wlDisplayCancelRead(_gfx_ctx.wlDisplay); return; }
 
 		if (fds.revents & POLLIN)
 		{
-			wlDisplayReadEvents(_rgfw.wlDisplay);
-			if (wlDisplayDispatchPending(_rgfw.wlDisplay) > 0) return;
+			wlDisplayReadEvents(_gfx_ctx.wlDisplay);
+			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) > 0) return;
 		}
-		else { wlDisplayCancelRead(_rgfw.wlDisplay); }
+		else { wlDisplayCancelRead(_gfx_ctx.wlDisplay); }
 	}
 }
 
@@ -1599,7 +1595,7 @@ fn void rgfw_window_movePlatform(GfxWindow* win, int x, int y) { win.x = x; win.
 fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
 {
 	win.width = w; win.height = h;
-	if (_rgfw.compositor != null)
+	if (_gfx_ctx.compositor != null)
 	{
 		xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
 		if (win.src.ctx.egl != null && win.src.ctx.egl.eglWindow != null) wlEglWindowResize((WlEglWindow*)win.src.ctx.egl.eglWindow, w, h, 0, 0);
@@ -1663,7 +1659,7 @@ fn bool GfxWindow.is_floating(&win) => !win.is_fullscreen() && !rgfw_window_isMa
 fn void rgfw_window_setName(GfxWindow* win, ZString name)
 {
 	if (name == null) name = "";
-	if (_rgfw.compositor != null) xdgToplevelSetTitle(win.src.xdgToplevel, name);
+	if (_gfx_ctx.compositor != null) xdgToplevelSetTitle(win.src.xdgToplevel, name);
 }
 
 // public
@@ -1672,7 +1668,7 @@ fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) {}
 // public
 fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
 {
-	if (_rgfw.iconManager == null || w != h) return false;
+	if (_gfx_ctx.iconManager == null || w != h) return false;
 
 	if (win.src.icon != null) { xdgToplevelIconV1Destroy(win.src.icon); win.src.icon = null; }
 
@@ -1684,10 +1680,10 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, Gfx
 	int minH = h < surface.size.y ? h : surface.size.y;
 	copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
 
-	win.src.icon = xdgToplevelIconManagerV1CreateIcon(_rgfw.iconManager);
+	win.src.icon = xdgToplevelIconManagerV1CreateIcon(_gfx_ctx.iconManager);
 	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, w, h, w * 4, WL_SHM_FORMAT_ARGB8888);
 	xdgToplevelIconV1AddBuffer(win.src.icon, surface.native.wlBuffer, 1);
-	xdgToplevelIconManagerV1SetIcon(_rgfw.iconManager, win.src.xdgToplevel, win.src.icon);
+	xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, win.src.icon);
 
 	rgfw_surface_free(surface);
 	return true;
@@ -1723,7 +1719,7 @@ fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse)
 		default: return null;
 	}
 
-	WlCursor* wlcursor = wlCursorThemeGetCursor(_rgfw.wlCursorTheme, cursorName);
+	WlCursor* wlcursor = wlCursorThemeGetCursor(_gfx_ctx.wlCursorTheme, cursorName);
 	if (wlcursor == null) return null;
 	WlCursorImage* cursorImage = wlcursor.images[0];
 	WlProxy* cursorBuffer = wlCursorImageGetBuffer(cursorImage);
@@ -1770,9 +1766,9 @@ fn void rgfw_freeMouse(RgfwMouse* mouse)
 // public
 fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y)
 {
-	if (_rgfw.wpPointerWarp != null)
+	if (_gfx_ctx.wpPointerWarp != null)
 	{
-		wpPointerWarpV1WarpPointer(_rgfw.wpPointerWarp, win.src.surface, _rgfw.wlPointer, wlFixedFromInt(x), wlFixedFromInt(y), _rgfw.mouseEnterSerial);
+		wpPointerWarpV1WarpPointer(_gfx_ctx.wpPointerWarp, win.src.surface, _gfx_ctx.wlPointer, wlFixedFromInt(x), wlFixedFromInt(y), _gfx_ctx.mouseEnterSerial);
 	}
 }
 
@@ -1798,17 +1794,17 @@ fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) {}
 fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
 	if (requestedType != RGFW_DATA_TEXT) return false;
-	if (_rgfw.unixClipboard == null || _rgfw.unixClipboard.length == 0)
+	if (_gfx_ctx.unixClipboard == null || _gfx_ctx.unixClipboard.length == 0)
 	{
 		data.length = 0;
 		data.type = RGFW_DATA_NONE;
 		return false;
 	}
-	data.length = _rgfw.unixClipboard.length;
+	data.length = _gfx_ctx.unixClipboard.length;
 	data.type = RGFW_DATA_TEXT;
 	if (buffer == null) return true;
-	if (_rgfw.unixClipboard.length > capacity) return false;
-	rgfw_memcpy(buffer, (void*)_rgfw.unixClipboard.data, _rgfw.unixClipboard.length);
+	if (_gfx_ctx.unixClipboard.length > capacity) return false;
+	rgfw_memcpy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
 	data.data = buffer;
 	return true;
 }
@@ -1822,31 +1818,31 @@ WlDataSourceListener rgfw_dataSourceListener = {
 // public
 fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 {
-	if (_rgfw.dataDeviceManager == null) return false;
-	if (_rgfw.unixClipboard != null) { rgfw_free_impl(_rgfw.unixClipboard); _rgfw.unixClipboard = null; }
+	if (_gfx_ctx.dataDeviceManager == null) return false;
+	if (_gfx_ctx.unixClipboard != null) { rgfw_free_impl(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
 
-	_rgfw.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + data.length);
+	_gfx_ctx.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + data.length);
 	sz length = data.length;
 	if (data.data[length - 1] != 0) length += 1;
 
-	char* dataPtr = (char*)_rgfw.unixClipboard + GfxDataTransfer::size - 1;
+	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
 	rgfw_memcpy(dataPtr, (void*)data.data, data.length);
 	dataPtr[length - 1] = 0;
-	_rgfw.unixClipboard.data = dataPtr;
-	_rgfw.unixClipboard.type = RGFW_DATA_TEXT;
-	_rgfw.unixClipboard.length = length;
+	_gfx_ctx.unixClipboard.data = dataPtr;
+	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;
+	_gfx_ctx.unixClipboard.length = length;
 
-	GfxWindow* win = _rgfw.kbOwner;
+	GfxWindow* win = _gfx_ctx.kbOwner;
 	if (win.src.dataSource != null) { wlDataSourceDestroy(win.src.dataSource); win.src.dataSource = null; }
 
-	win.src.dataSource = wlDataDeviceManagerCreateDataSource(_rgfw.dataDeviceManager);
+	win.src.dataSource = wlDataDeviceManagerCreateDataSource(_gfx_ctx.dataDeviceManager);
 	if (win.src.dataSource == null)
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_CLIPBOARD, "Could not create clipboard data source");
 		return false;
 	}
 
-	wlDataSourceAddListener(win.src.dataSource, &rgfw_dataSourceListener, _rgfw);
+	wlDataSourceAddListener(win.src.dataSource, &rgfw_dataSourceListener, &_gfx_ctx);
 	wlDataSourceOffer(win.src.dataSource, "text/plain;charset=utf-8");
 	return true;
 }
@@ -1858,7 +1854,7 @@ fn bool rgfw_window_isMinimized(GfxWindow* win) => win.src.minimized;
 // public
 fn bool rgfw_window_isMaximized(GfxWindow* win) => win.src.maximized;
 // public
-fn void rgfw_pollMonitors() { _rgfw.monitors.primary = _rgfw.monitors.list.head; }
+fn void rgfw_pollMonitors() { _gfx_ctx.monitors.primary = _gfx_ctx.monitors.list.head; }
 
 // public
 fn void rgfw_monitorNode_free(GfxMonitorNode* node)
@@ -1951,8 +1947,8 @@ const EglInt EGL_CONTEXT_CLIENT_VERSION = 0x3098;
 // public
 fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
 {
-	if (rgfw_eglQueryString == null || _rgfw.egl_display == null) return false;
-	ZString extensions = rgfw_eglQueryString((EglDisplay)_rgfw.egl_display, 0x3055 /* EGL_EXTENSIONS */);
+	if (rgfw_eglQueryString == null || _gfx_ctx.egl_display == null) return false;
+	ZString extensions = rgfw_eglQueryString((EglDisplay)_gfx_ctx.egl_display, 0x3055 /* EGL_EXTENSIONS */);
 	return extensions != null && rgfw_extensionSupportedStr(extensions, extension, len);
 }
 
@@ -1968,13 +1964,13 @@ fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, Rg
 {
 	if (win == null || ctx == null || hints == null) return false;
 	if (load_egl() == false) return false;
-	if (_rgfw.egl_display == null)
+	if (_gfx_ctx.egl_display == null)
 	{
-		_rgfw.egl_display = rgfw_eglGetDisplay((EglNativeDisplayType)_rgfw.wlDisplay);
-		if (_rgfw.egl_display == null) return false;
+		_gfx_ctx.egl_display = rgfw_eglGetDisplay((EglNativeDisplayType)_gfx_ctx.wlDisplay);
+		if (_gfx_ctx.egl_display == null) return false;
 		EglInt major = 0;
 		EglInt minor = 0;
-		if (rgfw_eglInitialize((EglDisplay)_rgfw.egl_display, &major, &minor) == 0) return false;
+		if (rgfw_eglInitialize((EglDisplay)_gfx_ctx.egl_display, &major, &minor) == 0) return false;
 	}
 
 	EglInt[32] cfg;
@@ -1992,7 +1988,7 @@ fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, Rg
 
 	EglConfig config = null;
 	EglInt num = 0;
-	if (rgfw_eglChooseConfig((EglDisplay)_rgfw.egl_display, (EglInt*)&cfg, &config, 1, &num) == 0 || num == 0) return false;
+	if (rgfw_eglChooseConfig((EglDisplay)_gfx_ctx.egl_display, (EglInt*)&cfg, &config, 1, &num) == 0 || num == 0) return false;
 	rgfw_eglBindApi(hints.profile == RGFW_GL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
 
 	EglInt[8] ctxAttribs;
@@ -2002,15 +1998,15 @@ fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, Rg
 	rgfw_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
 
 	EglContext share = hints.shareEGL != null ? (EglContext)hints.shareEGL.ctx : null;
-	ctx.ctx = rgfw_eglCreateContext((EglDisplay)_rgfw.egl_display, config, share, (EglInt*)&ctxAttribs);
+	ctx.ctx = rgfw_eglCreateContext((EglDisplay)_gfx_ctx.egl_display, config, share, (EglInt*)&ctxAttribs);
 	if (ctx.ctx == null) return false;
 
 	WlEglWindow* eglWindow = wlEglWindowCreate(win.src.surface, win.width, win.height);
 	ctx.eglWindow = eglWindow;
-	ctx.surface = rgfw_eglCreateWindowSurface((EglDisplay)_rgfw.egl_display, config, (EglNativeWindowType)eglWindow, null);
+	ctx.surface = rgfw_eglCreateWindowSurface((EglDisplay)_gfx_ctx.egl_display, config, (EglNativeWindowType)eglWindow, null);
 	if (ctx.surface == null)
 	{
-		rgfw_eglDestroyContext((EglDisplay)_rgfw.egl_display, (EglContext)ctx.ctx);
+		rgfw_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
 		ctx.ctx = null;
 		return false;
 	}
@@ -2023,9 +2019,9 @@ fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, Rg
 // public
 fn void rgfw_window_deleteContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx)
 {
-	if (ctx == null || _rgfw.egl_display == null) return;
-	if (ctx.surface != null) rgfw_eglDestroySurface((EglDisplay)_rgfw.egl_display, (EglSurface)ctx.surface);
-	if (ctx.ctx != null) rgfw_eglDestroyContext((EglDisplay)_rgfw.egl_display, (EglContext)ctx.ctx);
+	if (ctx == null || _gfx_ctx.egl_display == null) return;
+	if (ctx.surface != null) rgfw_eglDestroySurface((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface);
+	if (ctx.ctx != null) rgfw_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
 	if (ctx.eglWindow != null) wlEglWindowDestroy((WlEglWindow*)ctx.eglWindow);
 	ctx.surface = null;
 	ctx.ctx = null;
@@ -2057,47 +2053,47 @@ fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval) { rgfw
 // public
 fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 {
-	_rgfw.wlDisplay = wlDisplayConnect(null);
-	if (_rgfw.wlDisplay == null)
+	_gfx_ctx.wlDisplay = wlDisplayConnect(null);
+	if (_gfx_ctx.wlDisplay == null)
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_WAYLAND, "Failed to load Wayland display");
 		return -1;
 	}
 
-	_rgfw.compositor = null;
-	_rgfw.registry = wlDisplayGetRegistry(_rgfw.wlDisplay);
-	wlRegistryAddListener(_rgfw.registry, &rgfw_registryListener, _rgfw);
-	wlDisplayRoundtrip(_rgfw.wlDisplay);
+	_gfx_ctx.compositor = null;
+	_gfx_ctx.registry = wlDisplayGetRegistry(_gfx_ctx.wlDisplay);
+	wlRegistryAddListener(_gfx_ctx.registry, &rgfw_registryListener, &_gfx_ctx);
+	wlDisplayRoundtrip(_gfx_ctx.wlDisplay);
 
-	if (_rgfw.compositor == null)
+	if (_gfx_ctx.compositor == null)
 	{
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_WAYLAND, "Can't find compositor.");
 		return -1;
 	}
 
-	if (_rgfw.wlCursorTheme == null)
+	if (_gfx_ctx.wlCursorTheme == null)
 	{
-		_rgfw.wlCursorTheme = wlCursorThemeLoad(null, 24, _rgfw.shm);
-		_rgfw.cursorSurface = wlCompositorCreateSurface(_rgfw.compositor);
+		_gfx_ctx.wlCursorTheme = wlCursorThemeLoad(null, 24, _gfx_ctx.shm);
+		_gfx_ctx.cursorSurface = wlCompositorCreateSurface(_gfx_ctx.compositor);
 	}
 
 	char[4] blk = {0, 0, 0, 0};
-	_rgfw.hiddenMouse = rgfw_createMouse((char*)&blk, 1, 1, RGBA8);
+	_gfx_ctx.hiddenMouse = rgfw_createMouse((char*)&blk, 1, 1, RGBA8);
 
 	static XdgWmBaseListener wmBaseListener = { .ping = &rgfw_wlXdgWmBasePingHandler };
-	xdgWmBaseAddListener(_rgfw.xdgWmBase, &wmBaseListener, null);
+	xdgWmBaseAddListener(_gfx_ctx.xdgWmBase, &wmBaseListener, null);
 
-	_rgfw.xkbContext = xkbContextNew(XKB_CONTEXT_NO_FLAGS);
+	_gfx_ctx.xkbContext = xkbContextNew(XKB_CONTEXT_NO_FLAGS);
 
 	static WlDataDeviceListener dataDeviceListener = {
 		.dataOffer = &rgfw_wlDataDeviceDataOffer, .enter = &rgfw_wlDataDeviceNothingEnter, .leave = &rgfw_wlDataDeviceNothing,
 		.motion = &rgfw_wlDataDeviceNothingMotion, .drop = &rgfw_wlDataDeviceNothing, .selection = &rgfw_wlDataDeviceSelection
 	};
 
-	if (_rgfw.seat != null && _rgfw.dataDeviceManager != null)
+	if (_gfx_ctx.seat != null && _gfx_ctx.dataDeviceManager != null)
 	{
-		_rgfw.dataDevice = wlDataDeviceManagerGetDataDevice(_rgfw.dataDeviceManager, _rgfw.seat);
-		wlDataDeviceAddListener(_rgfw.dataDevice, &dataDeviceListener, null);
+		_gfx_ctx.dataDevice = wlDataDeviceManagerGetDataDevice(_gfx_ctx.dataDeviceManager, _gfx_ctx.seat);
+		wlDataDeviceAddListener(_gfx_ctx.dataDevice, &dataDeviceListener, null);
 	}
 
 	return 0;
@@ -2106,27 +2102,27 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 // public
 fn void rgfw_deinitPlatform()
 {
-	if (_rgfw.unixClipboard != null) { rgfw_free_impl(_rgfw.unixClipboard); _rgfw.unixClipboard = null; }
-	if (_rgfw.wlPointer != null) wlPointerDestroy(_rgfw.wlPointer);
-	if (_rgfw.wlKeyboard != null) wlKeyboardDestroy(_rgfw.wlKeyboard);
-	if (_rgfw.registry != null) wlRegistryDestroy(_rgfw.registry);
-	if (_rgfw.decorationManager != null) zxdgDecorationManagerV1Destroy(_rgfw.decorationManager);
-	if (_rgfw.relativePointerManager != null) zwpRelativePointerManagerV1Destroy(_rgfw.relativePointerManager);
-	if (_rgfw.relativePointer != null) zwpRelativePointerV1Destroy(_rgfw.relativePointer);
-	if (_rgfw.constraintManager != null) zwpPointerConstraintsV1Destroy(_rgfw.constraintManager);
-	if (_rgfw.iconManager != null) xdgToplevelIconManagerV1Destroy(_rgfw.iconManager);
-	if (_rgfw.xdgOutputManager != null) zxdgOutputManagerV1Destroy(_rgfw.xdgOutputManager);
-	if (_rgfw.dataDeviceManager != null) wlDataDeviceManagerDestroy(_rgfw.dataDeviceManager);
-	if (_rgfw.dataDevice != null) wlDataDeviceDestroy(_rgfw.dataDevice);
-	if (_rgfw.wlCursorTheme != null) wlCursorThemeDestroy(_rgfw.wlCursorTheme);
-	if (_rgfw.wpPointerWarp != null) wpPointerWarpV1Destroy(_rgfw.wpPointerWarp);
-	if (_rgfw.hiddenMouse != null) rgfw_freeMouse(_rgfw.hiddenMouse);
-	if (_rgfw.cursorSurface != null) wlSurfaceDestroy(_rgfw.cursorSurface);
-	if (_rgfw.shm != null) wlShmDestroy(_rgfw.shm);
-	if (_rgfw.seat != null) wlSeatRelease(_rgfw.seat);
-	if (_rgfw.xdgWmBase != null) xdgWmBaseDestroy(_rgfw.xdgWmBase);
-	if (_rgfw.compositor != null) wlCompositorDestroy(_rgfw.compositor);
-	if (_rgfw.wlDisplay != null) wlDisplayDisconnect(_rgfw.wlDisplay);
+	if (_gfx_ctx.unixClipboard != null) { rgfw_free_impl(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
+	if (_gfx_ctx.wlPointer != null) wlPointerDestroy(_gfx_ctx.wlPointer);
+	if (_gfx_ctx.wlKeyboard != null) wlKeyboardDestroy(_gfx_ctx.wlKeyboard);
+	if (_gfx_ctx.registry != null) wlRegistryDestroy(_gfx_ctx.registry);
+	if (_gfx_ctx.decorationManager != null) zxdgDecorationManagerV1Destroy(_gfx_ctx.decorationManager);
+	if (_gfx_ctx.relativePointerManager != null) zwpRelativePointerManagerV1Destroy(_gfx_ctx.relativePointerManager);
+	if (_gfx_ctx.relativePointer != null) zwpRelativePointerV1Destroy(_gfx_ctx.relativePointer);
+	if (_gfx_ctx.constraintManager != null) zwpPointerConstraintsV1Destroy(_gfx_ctx.constraintManager);
+	if (_gfx_ctx.iconManager != null) xdgToplevelIconManagerV1Destroy(_gfx_ctx.iconManager);
+	if (_gfx_ctx.xdgOutputManager != null) zxdgOutputManagerV1Destroy(_gfx_ctx.xdgOutputManager);
+	if (_gfx_ctx.dataDeviceManager != null) wlDataDeviceManagerDestroy(_gfx_ctx.dataDeviceManager);
+	if (_gfx_ctx.dataDevice != null) wlDataDeviceDestroy(_gfx_ctx.dataDevice);
+	if (_gfx_ctx.wlCursorTheme != null) wlCursorThemeDestroy(_gfx_ctx.wlCursorTheme);
+	if (_gfx_ctx.wpPointerWarp != null) wpPointerWarpV1Destroy(_gfx_ctx.wpPointerWarp);
+	if (_gfx_ctx.hiddenMouse != null) rgfw_freeMouse(_gfx_ctx.hiddenMouse);
+	if (_gfx_ctx.cursorSurface != null) wlSurfaceDestroy(_gfx_ctx.cursorSurface);
+	if (_gfx_ctx.shm != null) wlShmDestroy(_gfx_ctx.shm);
+	if (_gfx_ctx.seat != null) wlSeatRelease(_gfx_ctx.seat);
+	if (_gfx_ctx.xdgWmBase != null) xdgWmBaseDestroy(_gfx_ctx.xdgWmBase);
+	if (_gfx_ctx.compositor != null) wlCompositorDestroy(_gfx_ctx.compositor);
+	if (_gfx_ctx.wlDisplay != null) wlDisplayDisconnect(_gfx_ctx.wlDisplay);
 }
 
 // public
