@@ -1372,7 +1372,6 @@ static const char c_runtime_header_boilerplate[] =
     "#include <stdint.h>\n"
     "#include <stddef.h>\n"
     "#include <stdbool.h>\n"
-    "#include <inttypes.h>\n\n"
     "#if defined(__TINYC__)\n"
     "#define __c3_thread_local\n"
     "#elif defined(_MSC_VER)\n"

@@ -63,16 +63,23 @@ const char *c_get_decl_name(Decl *decl)
 	}
 	decl = c_decl_unwrap(decl);
 
-	if (decl == compiler.context.main && !decl->func_decl.type_parent)
+	if ((decl == compiler.context.main && !decl->func_decl.type_parent) ||
+	    (decl->is_synthetic && decl->name && strcmp(decl->name, "main") == 0))
 	{
+		if (compiler.platform.os == OS_TYPE_WIN32 && decl->decl_kind == DECL_FUNC && vec_size(decl->func_decl.signature.params) == 4)
+		{
+			Decl *param2 = decl->func_decl.signature.params[2];
+			Type *t2 = c_decl_type(param2);
+			if (t2 && t2->type_kind == TYPE_POINTER && t2->pointer && t2->pointer->type_kind == TYPE_U16)
+			{
+				return "wWinMain";
+			}
+			return "WinMain";
+		}
 		if (!decl->unit || !decl->unit->main_function || !decl->unit->main_function->is_synthetic || decl == decl->unit->main_function)
 		{
 			return "main";
 		}
-	}
-	if (decl->is_synthetic && decl->name && strcmp(decl->name, "main") == 0)
-	{
-		return "main";
 	}
 	if (decl->is_extern)
 	{
@@ -1014,8 +1021,9 @@ static const char *c_backend_cflags = NULL;
 
 static const char *c_backend_build_cflags(const char *cc)
 {
-	bool is_cl  = str_ends_with(cc, "cl.exe");
-	bool is_tcc = str_ends_with(cc, "tcc");
+	bool is_cl    = str_ends_with(cc, "cl.exe");
+	bool is_tcc   = str_ends_with(cc, "tcc");
+	bool is_clang = strstr(cc, "clang") != NULL || strstr(cc, "zig") != NULL;
 	char buf[4096];
 	buf[0] = '\0';
 
@@ -1040,18 +1048,27 @@ static const char *c_backend_build_cflags(const char *cc)
 	{
 		if (!has_warn_flags)
 		{
-			strncat(buf, "-w ", sizeof(buf) - strlen(buf) - 1);
+			// -Wno-incompatible-pointer-types prevents Clang 16+ from treating 
+			// cross-module C struct pointers with identical layouts as fatal errors
+			strncat(buf, "-w -Wno-incompatible-pointer-types ", sizeof(buf) - strlen(buf) - 1);
 		}
 		strncat(buf, "-fno-builtin -fwrapv -fno-strict-aliasing ", sizeof(buf) - strlen(buf) - 1);
-		if (compiler.platform.os == OS_TYPE_IOS)
+
+		// Clang requires --target when cross-compiling; GCC uses target-prefixed binaries instead
+		if (is_clang && compiler.build.arch_os_target != default_target)
 		{
-			strncat(buf, "-target ", sizeof(buf) - strlen(buf) - 1);
+			strncat(buf, "--target=", sizeof(buf) - strlen(buf) - 1);
 			strncat(buf, compiler.platform.target_triple, sizeof(buf) - strlen(buf) - 1);
-			strncat(buf, " -isysroot \"", sizeof(buf) - strlen(buf) - 1);
+			strncat(buf, " ", sizeof(buf) - strlen(buf) - 1);
+		}
+
+		if (compiler.platform.os == OS_TYPE_IOS && compiler.build.ios.sysroot)
+		{
+			strncat(buf, "-isysroot \"", sizeof(buf) - strlen(buf) - 1);
 			strncat(buf, compiler.build.ios.sysroot, sizeof(buf) - strlen(buf) - 1);
 			strncat(buf, "\" ", sizeof(buf) - strlen(buf) - 1);
 		}
-		if (compiler.platform.reloc_model != RELOC_NONE)
+		if (compiler.platform.os != OS_TYPE_WIN32 && compiler.platform.reloc_model != RELOC_NONE)
 		{
 			strncat(buf, "-fPIC ", sizeof(buf) - strlen(buf) - 1);
 		}

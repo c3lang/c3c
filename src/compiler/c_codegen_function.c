@@ -455,7 +455,7 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 			PRINT(", ");
 		}
 		// Standard C requires main's argv to be char**, not uint8_t**
-		if (strcmp(fn_name, "main") == 0 && (emitted_count == 1 || emitted_count == 2))
+		if (strcmp(fn_name, "main") == 0 && vec_size(sig->params) <= 3 && (emitted_count == 1 || emitted_count == 2))
 		{
 			PRINT("char**");
 		}
@@ -587,7 +587,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 		}
 	}
 
-	if (strcmp(fn_name, "main") == 0)
+	if (strcmp(fn_name, "main") == 0 || strcmp(fn_name, "WinMain") == 0 || strcmp(fn_name, "wWinMain") == 0)
 	{
 		PRINT("\t__c3_init_runtime();\n");
 	}
@@ -683,7 +683,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 		}
 		Decl *rd       = d ? decl_raw(d) : NULL;
 		VariableId vid = (VariableId)(uintptr_t)htable_get(&c->local_vars, rd);
-		if (strcmp(fn_name, "main") == 0 && (emitted_params == 1 || emitted_params == 2))
+		if (strcmp(fn_name, "main") == 0 && vec_size(sig->params) <= 3 && (emitted_params == 1 || emitted_params == 2))
 		{
 			PRINTF("char** ___var_%d", vid);
 		}

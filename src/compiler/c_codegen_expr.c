@@ -714,7 +714,51 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 			return;
 		}
 
-		c_emit_type_forward_decl(c, func_val.type);
+		const char *fn_cast = NULL;
+		char fn_cast_buf[512];
+		if (func_val.type && type_is_func_ptr(func_val.type))
+		{
+			c_emit_type_forward_decl(c, func_val.type);
+			fn_cast = c_type_name(c, func_val.type);
+		}
+		else
+		{
+			const char *ret_tname = c_type_name(c, return_type);
+			snprintf(fn_cast_buf, sizeof(fn_cast_buf), "%s (*)(", ret_tname);
+			if (sig && sig->params && vec_size(sig->params) > 0)
+			{
+				int p_emitted = 0;
+				FOREACH(Decl *, p, sig->params)
+				{
+					Type *ptype = c_decl_type(p);
+					if (ptype && is_valid_type_ptr(ptype) && c_type_is_resolved(ptype) && type_size(ptype) == 0) continue;
+					if (p_emitted++ > 0) strncat(fn_cast_buf, ", ", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
+					strncat(fn_cast_buf, c_type_name(c, ptype), sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
+				}
+				if (sig->variadic == VARIADIC_RAW)
+				{
+					if (p_emitted > 0) strncat(fn_cast_buf, ", ", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
+					strncat(fn_cast_buf, "...", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
+				}
+				if (p_emitted == 0) strncat(fn_cast_buf, "void", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
+			}
+			else if (arg_idx > 0)
+			{
+				for (int i = 0; i < arg_idx; i++)
+				{
+					if (i > 0) strncat(fn_cast_buf, ", ", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
+					Type *at = (c_args[i].type && is_valid_type_ptr(c_args[i].type)) ? c_safe_type_lower(c_args[i].type) : type_voidptr;
+					strncat(fn_cast_buf, c_type_name(c, at), sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
+				}
+			}
+			else
+			{
+				strncat(fn_cast_buf, "void", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
+			}
+			strncat(fn_cast_buf, ")", sizeof(fn_cast_buf) - strlen(fn_cast_buf) - 1);
+			fn_cast = fn_cast_buf;
+		}
+
 		if (has_return)
 		{
 			c_emit_type_forward_decl(c, return_type);
@@ -722,11 +766,11 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 			if (call->has_optional_arg)
 			{
 				PRINTF("%s ___var_%d = {0};\n", c_type_name(c, return_type), ret_var);
-				PRINTF("if (__c3_current_fault == NULL) {\n\t___var_%d = ((%s)___var_%d)(", ret_var, c_type_name(c, func_val.type), func_val.var);
+				PRINTF("if (__c3_current_fault == NULL) {\n\t___var_%d = ((%s)___var_%d)(", ret_var, fn_cast, func_val.var);
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = ((%s)___var_%d)(", c_type_name(c, return_type), ret_var, c_type_name(c, func_val.type), func_val.var);
+				PRINTF("%s ___var_%d = ((%s)___var_%d)(", c_type_name(c, return_type), ret_var, fn_cast, func_val.var);
 			}
 		}
 		else
@@ -739,11 +783,11 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 			}
 			if (call->has_optional_arg)
 			{
-				PRINTF("if (__c3_current_fault == NULL) {\n\t((%s)___var_%d)(", c_type_name(c, func_val.type), func_val.var);
+				PRINTF("if (__c3_current_fault == NULL) {\n\t((%s)___var_%d)(", fn_cast, func_val.var);
 			}
 			else
 			{
-				PRINTF("((%s)___var_%d)(", c_type_name(c, func_val.type), func_val.var);
+				PRINTF("((%s)___var_%d)(", fn_cast, func_val.var);
 			}
 		}
 	}
@@ -872,7 +916,14 @@ static void c_emit_call_expr(GenContext *c, CValue *value, Expr *expr)
 			}
 			else if (arg_type && type_is_pointer(arg_type))
 			{
-				PRINTF("(%s)___var_%d", exp_tname, c_args[i].var);
+				if (strcmp(exp_tname, arg_tname) == 0)
+				{
+					PRINTF("___var_%d", c_args[i].var);
+				}
+				else
+				{
+					PRINTF("(void*)___var_%d", c_args[i].var);
+				}
 			}
 			else if (arg_type && c_type_is_aggregate(arg_type))
 			{
