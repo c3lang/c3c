@@ -646,7 +646,7 @@ fn void rgfw_surface_freePtr(GfxSurface* surface)
 // public
 fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 {
-	rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_BORDER, !border);
+	win.internal.flags.no_border = !border;
 	X11WindowHints hints;
 	hints.flags = 2;
 	hints.decorations = (CULong)border;
@@ -818,9 +818,9 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags fla
 	rgfw_window_setName(win, name);
 	xMoveWindow(_rgfw.display, win.src.window, win.x, win.y);
 
-	if (flags & RGFW_WINDOW_ALLOW_DND)
+	if (flags.allow_dnd)
 	{
-		win.internal.flags |= RGFW_WINDOW_ALLOW_DND;
+		win.internal.flags.allow_dnd = true;
 		char version = 5;
 		xChangeProperty(_rgfw.display, win.src.window, _rgfw.xdndAware, 4, 32, 0, &version, 1);
 	}
@@ -835,13 +835,13 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags fla
 // public
 fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
 {
-	if ((flags & RGFW_WINDOW_OPEN_GL) || (flags & RGFW_WINDOW_EGL))
+	if (flags.open_gl || flags.egl)
 	{
 		win.src.window = 0;
 		return win;
 	}
 	XVisualInfo visual;
-	rgfw_window_getVisual(&visual, win.internal.flags & RGFW_WINDOW_TRANSPARENT != 0);
+	rgfw_window_getVisual(&visual, win.internal.flags.transparent);
 	if (!rgfw_xCreateWindow(visual, name, flags, win)) return null;
 	return win;
 }
@@ -1220,7 +1220,7 @@ fn void rgfw_xHandleEvent()
 				bool handled = false;
 				if (e.xproperty.atom == _rgfw.wmState)
 				{
-					if (rgfw_window_isMinimized(win) && !(win.internal.flags & RGFW_WINDOW_MINIMIZE))
+					if (rgfw_window_isMinimized(win) && !(win.internal.flags.minimize))
 					{
 						rgfw_windowMinimizedCallback(win);
 						handled = true;
@@ -1228,7 +1228,7 @@ fn void rgfw_xHandleEvent()
 				}
 				else if (e.xproperty.atom == _rgfw.netWmState)
 				{
-					if (rgfw_window_isMaximized(win) && !(win.internal.flags & RGFW_WINDOW_MAXIMIZE))
+					if (rgfw_window_isMaximized(win) && !(win.internal.flags.maximize))
 					{
 						rgfw_windowMaximizedCallback(win, win.x, win.y, win.width, win.height);
 						handled = true;
@@ -1243,7 +1243,7 @@ fn void rgfw_xHandleEvent()
 		{
 			if ((CULong)e.xclient.data.l[0] == _rgfw.wmDeleteWindow) { _window_close_callback(win); break; }
 
-			if (!(win.internal.flags & RGFW_WINDOW_ALLOW_DND) || _rgfw.x11Version > 5 /* RGFW_XDND_VERSION */) return;
+			if (!(win.internal.flags.allow_dnd) || _rgfw.x11Version > 5 /* RGFW_XDND_VERSION */) return;
 
 			int dragX = 0;
 			int dragY = 0;
@@ -1360,7 +1360,7 @@ fn void rgfw_xHandleEvent()
 		}
 		case 31: // SelectionNotify
 		{
-			if (!(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG) || e.xselection.property != _rgfw.xdndSelection || !(win.internal.flags & RGFW_WINDOW_ALLOW_DND)) return;
+			if (!(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG) || e.xselection.property != _rgfw.xdndSelection || !(win.internal.flags.allow_dnd)) return;
 
 			ZString data;
 			CULong result;
@@ -1465,7 +1465,7 @@ fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
 {
 	win.width = w; win.height = h;
 	xResizeWindow(_rgfw.display, win.src.window, (uint)w, (uint)h);
-	if (win.internal.flags & RGFW_WINDOW_NO_RESIZE)
+	if (win.internal.flags.no_resize)
 	{
 		XSizeHints sh;
 		sh.flags = (1 << 4) | (1 << 5);
@@ -1550,15 +1550,18 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
-		win.internal.flags |= RGFW_WINDOW_FULLSCREEN;
+		win.internal.flags.fullscreen = true;
 		win.internal.old_bounds = win.bounds;
 	}
-	else { win.internal.flags &= ~(uint)RGFW_WINDOW_FULLSCREEN; }
+	else
+	{
+		win.internal.flags.fullscreen = false;
+	}
 
 	xRaiseWindow(_rgfw.display, win.src.window);
 	rgfw_window_setXAtom(win, _rgfw.netWmStateFullscreen, fullscreen);
 
-	if (!(win.internal.flags & RGFW_WINDOW_TRANSPARENT))
+	if (!(win.internal.flags.transparent))
 	{
 		char value = (char)fullscreen;
 		xChangeProperty(_rgfw.display, win.src.window, _rgfw.netWmBypassCompositor, 6 /* XA_CARDINAL */, 32, 0, &value, 1);
@@ -1742,7 +1745,7 @@ fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y)
 // public
 fn void rgfw_window_hide(GfxWindow* win)
 {
-	win.internal.flags |= (uint)RGFW_WINDOW_HIDE;
+	win.internal.flags.hide = true;
 	xUnmapWindow(_rgfw.display, win.src.window);
 	xFlush(_rgfw.display);
 }
@@ -1750,8 +1753,8 @@ fn void rgfw_window_hide(GfxWindow* win)
 // public
 fn void rgfw_window_showPlatform(GfxWindow* win)
 {
-	win.internal.flags &= ~(uint)RGFW_WINDOW_HIDE;
-	if (rgfw_window_isHidden(win) == false) return;
+	win.internal.flags.hide = false;
+	if (!rgfw_window_isHidden(win)) return;
 	xMapWindow(_rgfw.display, win.src.window);
 	rgfw_window_move(win, win.x, win.y);
 
@@ -2219,7 +2222,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* conte
 		rgfw_window_closePlatform(win);
 	}
 
-	bool transparent = win.internal.flags & RGFW_WINDOW_TRANSPARENT != 0;
+	bool transparent = win.internal.flags.transparent;
 
 	int[40] visualAttribs;
 	RgfwAttribStack stack;

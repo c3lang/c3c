@@ -620,16 +620,20 @@ fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, G
 fn uint rgfw_winapiWindowGetStyle(GfxWindow* win, RgfwWindowFlags flags)
 {
 	uint style = 0x04000000 | 0x02000000; // WS_CLIPSIBLINGS | WS_CLIPCHILDREN
-	if (flags & RGFW_WINDOW_FULLSCREEN) { style |= 0x80000000; } // WS_POPUP
+	if (flags.fullscreen)
+	{
+		style |= 0x80000000;
+		return style;
+	} // WS_POPUP
+	style |= 0x00080000 | 0x00020000; // WS_SYSMENU | WS_MINIMIZEBOX
+	if (!flags.no_border)
+	{
+		style |= 0x00C00000; // WS_CAPTION
+		if (!flags.no_resize) style |= 0x00010000 | 0x00040000; // WS_MAXIMIZEBOX | WS_THICKFRAME
+	}
 	else
 	{
-		style |= 0x00080000 | 0x00020000; // WS_SYSMENU | WS_MINIMIZEBOX
-		if (!(flags & RGFW_WINDOW_NO_BORDER))
-		{
-			style |= 0x00C00000; // WS_CAPTION
-			if (!(flags & RGFW_WINDOW_NO_RESIZE)) style |= 0x00010000 | 0x00040000; // WS_MAXIMIZEBOX | WS_THICKFRAME
-		}
-		else { style |= 0x80000000; }
+		style |= 0x80000000;
 	}
 	return style;
 }
@@ -638,7 +642,7 @@ fn uint rgfw_winapiWindowGetStyle(GfxWindow* win, RgfwWindowFlags flags)
 fn uint rgfw_winapiWindowGetExStyle(GfxWindow* win, RgfwWindowFlags flags)
 {
 	uint style = 0x00040000; // WS_EX_APPWINDOW
-	if ((flags & RGFW_WINDOW_FULLSCREEN) || (flags & RGFW_WINDOW_FLOATING) || win.is_floating()) style |= 0x00000008; // WS_EX_TOPMOST
+	if (flags.fullscreen || flags.floating || win.is_floating()) style |= 0x00000008; // WS_EX_TOPMOST
 	return style;
 }
 
@@ -657,7 +661,7 @@ fn bool rgfw_createUTF8FromWideStringWin32(ushort* source, char* output, sz max)
 // private
 fn void rgfw_win32MakeWindowTransparent(GfxWindow* win)
 {
-	if (!(win.internal.flags & RGFW_WINDOW_TRANSPARENT)) return;
+	if (!(win.internal.flags.transparent)) return;
 
 	DwmBlurBehind bb;
 	bb.dwFlags = 0x1; // DWM_BB_ENABLE
@@ -776,7 +780,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		{
 			MinMaxInfo* mmi = (MinMaxInfo*)(uptr)lParam;
 			bool resize = (win.src.minSizeW == win.src.maxSizeW) && (win.src.minSizeH == win.src.maxSizeH);
-			rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_RESIZE, resize);
+			win.internal.flags.no_resize = resize;
 
 			mmi.ptMinTrackSize.x = win.src.minSizeW + (frame.right - frame.left);
 			mmi.ptMinTrackSize.y = win.src.minSizeH + (frame.bottom - frame.top);
@@ -1098,10 +1102,10 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 	win.src.aspectRatioW = 0; win.src.aspectRatioH = 0;
 
 	uint windowStyle = 0x04000000 | 0x02000000; // WS_CLIPSIBLINGS | WS_CLIPCHILDREN
-	if (!(flags & RGFW_WINDOW_NO_BORDER))
+	if (!(flags.no_border))
 	{
 		windowStyle |= 0x00C00000 | 0x00080000 | 0x00800000 | 0x00020000; // WS_CAPTION|WS_SYSMENU|WS_BORDER|WS_MINIMIZEBOX
-		if (!(flags & RGFW_WINDOW_NO_RESIZE)) windowStyle |= 0x00040000 | 0x00010000; // WS_SIZEBOX | WS_MAXIMIZEBOX
+		if (!(flags.no_resize)) windowStyle |= 0x00040000 | 0x00010000; // WS_SIZEBOX | WS_MAXIMIZEBOX
 	}
 	else { windowStyle |= 0x80000000 | 0x10000000 | 0x00080000; } // WS_POPUP|WS_VISIBLE|WS_SYSMENU
 
@@ -1117,9 +1121,9 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 	setPropW(win.src.window, rgfw_wideRgfwPropName(), win);
 	rgfw_window_resize(win, win.width, win.height);
 
-	if (flags & RGFW_WINDOW_ALLOW_DND)
+	if (flags.allow_dnd)
 	{
-		win.internal.flags |= RGFW_WINDOW_ALLOW_DND;
+		win.internal.flags.allow_dnd = true;
 		rgfw_window_setDND(win, true);
 	}
 	win.src.hdc = getDC(win.src.window);
@@ -1132,7 +1136,8 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 // public
 fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 {
-	rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_BORDER, !border);
+
+	win.internal.flags.no_border = !border;
 
 	Rect rect;
 	getClientRect(win.src.window, &rect);
@@ -1142,7 +1147,7 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 	if (!border) { style &= ~(CLong)0x00CF0000; } // ~WS_OVERLAPPEDWINDOW
 	else
 	{
-		if (win.internal.flags & RGFW_WINDOW_NO_RESIZE) style &= ~(CLong)0x00010000; // ~WS_MAXIMIZEBOX
+		if (win.internal.flags.no_resize) style &= ~(CLong)0x00010000; // ~WS_MAXIMIZEBOX
 		style |= 0x00CF0000; // WS_OVERLAPPEDWINDOW
 	}
 
@@ -1197,14 +1202,14 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 		adjustWindowRectEx(&rect, style, 0, exStyle);
 		setWindowPos(win.src.window, (HWnd*)(uptr)0, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
 
-		win.internal.flags &= ~(uint)RGFW_WINDOW_FULLSCREEN;
+		win.internal.flags.fullscreen = false;
 		win.bounds = win.internal.old_bounds;
 		return;
 	}
 
 	win.internal.old_bounds = win.bounds;
 	win.internal.oldMode = mon.mode;
-	win.internal.flags |= RGFW_WINDOW_FULLSCREEN;
+	win.internal.flags.fullscreen = true;
 	rgfw_window_setBorder(win, false);
 
 	setWindowPos(win.src.window, (HWnd*)(uptr)(-1) /* HWND_TOPMOST */, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
@@ -1670,7 +1675,7 @@ fn void rgfw_freeMouse(RgfwMouse* mouse) { destroyCursor((HCursor)mouse); }
 // public
 fn void rgfw_window_hide(GfxWindow* win) { showWindow(win.src.window, (int)SW_HIDE); }
 // public
-fn void rgfw_window_showPlatform(GfxWindow* win) { if (!(win.internal.flags & RGFW_WINDOW_MAXIMIZE)) showWindow(win.src.window, (int)SW_RESTORE); }
+fn void rgfw_window_showPlatform(GfxWindow* win) { if (!(win.internal.flags.maximize)) showWindow(win.src.window, (int)SW_RESTORE); }
 
 // public
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request)

@@ -616,7 +616,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, 
 	}
 	ctx.format = format;
 	objc_send((ObjcId)ctx.ctx, ObjcSendVoidId, "setView:", (ObjcId)win.src.view);
-	if (win.internal.flags & RGFW_WINDOW_TRANSPARENT)
+	if (win.internal.flags.transparent)
 	{
 		int opacity = 0;
 		nsOpenGLContext_setValues((ObjcId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
@@ -1010,7 +1010,7 @@ fn bool rgfw_osxPrepareForDragOperation(ObjcId self, ObjcSelector sel, ObjcId se
 {
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (win == null || !(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return true;
-	if (!(win.internal.flags & RGFW_WINDOW_ALLOW_DND)) return false;
+	if (!(win.internal.flags.allow_dnd)) return false;
 	return true;
 }
 
@@ -1272,8 +1272,8 @@ fn void* rgfw_window_getWindow_Wayland(GfxWindow* win) => win != null ? win.src.
 fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
 {
 	NSUInteger style = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
-	if (!(flags & RGFW_WINDOW_NO_RESIZE)) style |= NS_WINDOW_STYLE_RESIZABLE;
-	if (flags & RGFW_WINDOW_NO_BORDER) style = NS_WINDOW_STYLE_BORDERLESS;
+	if (!flags.no_resize) style |= NS_WINDOW_STYLE_RESIZABLE;
+	if (flags.no_border) style = NS_WINDOW_STYLE_BORDERLESS;
 	CGRect rect = ns_rect((double)win.x, (double)rgfw_cocoaYTransform((float)(win.y + win.height - 1)), (double)win.width, (double)win.height);
 	ObjcId nswin = objc_send(ns_alloc("NSWindow"), ObjcSendIdWindowInit, "initWithContentRect:styleMask:backing:defer:", rect, style, NS_BACKING_STORE_BUFFERED, false);
 	if (nswin == null) return null;
@@ -1296,11 +1296,11 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 	objc_send(nswin, ObjcSendVoidId, "makeFirstResponder:", view);
 	objc_send(nswin, ObjcSendVoidBool, "setAcceptsMouseMovedEvents:", true);
 	rgfw_window_setName(win, name);
-	rgfw_window_setFloating(win, flags & RGFW_WINDOW_FLOATING != 0);
-	if (!(flags & RGFW_WINDOW_HIDE)) rgfw_window_showPlatform(win);
-	if (flags & RGFW_WINDOW_MAXIMIZE) rgfw_window_maximizePlatform(win);
-	if (flags & RGFW_WINDOW_MINIMIZE) rgfw_window_minimizePlatform(win);
-	if (flags & RGFW_WINDOW_FULLSCREEN) rgfw_window_setFullscreen(win, true);
+	rgfw_window_setFloating(win, flags.floating);
+	if (!(flags.hide)) rgfw_window_showPlatform(win);
+	if (flags.maximize) rgfw_window_maximizePlatform(win);
+	if (flags.minimize) rgfw_window_minimizePlatform(win);
+	if (flags.fullscreen) rgfw_window_setFullscreen(win, true);
 	return win;
 }
 
@@ -1331,7 +1331,7 @@ fn void rgfw_window_showPlatform(GfxWindow* win)
 	if (win == null || win.src.window == null) return;
 	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyAndOrderFront:", null);
 	if (_rgfw.nsApp != null) objc_send(_rgfw.nsApp, ObjcSendVoidBool, "activateIgnoringOtherApps:", true);
-	win.internal.flags &= ~((uint)RGFW_WINDOW_HIDE);
+	win.internal.flags.hide = false;
 }
 
 // public
@@ -1339,7 +1339,8 @@ fn void rgfw_window_restorePlatform(GfxWindow* win)
 {
 	if (win == null || win.src.window == null) return;
 	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "deminiaturize:", null);
-	win.internal.flags &= ~((uint)(RGFW_WINDOW_MINIMIZE | RGFW_WINDOW_MAXIMIZE));
+	win.internal.flags.minimize = false;
+	win.internal.flags.maximize = false;
 }
 
 // public
@@ -1544,9 +1545,9 @@ fn void rgfw_window_focus(GfxWindow* win) { if (win != null && win.src.window !=
 fn void rgfw_window_raise(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderFrontRegardless", null); }
 
 // public
-fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "toggleFullScreen:", null); if (win != null) rgfw_setBit(&win.internal.flags, RGFW_WINDOW_FULLSCREEN, fullscreen); }
+fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "toggleFullScreen:", null); if (win != null) win.internal.flags.fullscreen = fullscreen; }
 // public
-fn void rgfw_window_setFloating(GfxWindow* win, bool floating) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidNSInteger, "setLevel:", floating ? NS_WINDOW_LEVEL_FLOATING : NS_WINDOW_LEVEL_NORMAL); if (win != null) rgfw_setBit(&win.internal.flags, RGFW_WINDOW_FLOATING, floating); }
+fn void rgfw_window_setFloating(GfxWindow* win, bool floating) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidNSInteger, "setLevel:", floating ? NS_WINDOW_LEVEL_FLOATING : NS_WINDOW_LEVEL_NORMAL); if (win != null) win.internal.flags.floating = floating; }
 // public
 fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidCGFloat, "setAlphaValue:", (CGFloat)opacity / 255.0); }
 // public
@@ -1557,10 +1558,10 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 	CGRect content = objc_send((ObjcId)win.src.view, ObjcSendRect, "frame");
 	double offset = 0;
 
-	rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_BORDER, !border);
+	win.internal.flags.no_border = !border;
 	NSUInteger styleMask = NS_WINDOW_STYLE_BORDERLESS | NS_WINDOW_STYLE_FULL_SIZE_CONTENT_VIEW;
 	if (border) styleMask = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
-	if (!(win.internal.flags & RGFW_WINDOW_NO_RESIZE)) styleMask |= NS_WINDOW_STYLE_RESIZABLE;
+	if (!win.internal.flags.no_resize) styleMask |= NS_WINDOW_STYLE_RESIZABLE;
 
 	objc_send((ObjcId)win.src.window, ObjcSendVoidNSUInteger, "setStyleMask:", styleMask);
 
@@ -1599,22 +1600,22 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, Gfx
 	return true;
 }
 // public
-fn void rgfw_window_hide(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderOut:", null); win.internal.flags |= RGFW_WINDOW_HIDE; }
+fn void rgfw_window_hide(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderOut:", null); win.internal.flags.hide = true; }
 // public
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) { if (_rgfw.nsApp != null) objc_send(_rgfw.nsApp, ObjcSendIntegerNSUInteger, "requestUserAttention:", (NSUInteger)request); }
 // public
-fn bool rgfw_window_isHidden(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible") ? false : true; return win.internal.flags & RGFW_WINDOW_HIDE != 0; }
+fn bool rgfw_window_isHidden(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible") ? false : true; return win.internal.flags.hide; }
 // public
-fn bool rgfw_window_isMinimized(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isMiniaturized"); return win.internal.flags & RGFW_WINDOW_MINIMIZE != 0; }
+fn bool rgfw_window_isMinimized(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isMiniaturized"); return win.internal.flags.minimize; }
 // public
-fn bool rgfw_window_isMaximized(GfxWindow* win) { if (win == null) return false; if (win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isZoomed"); return win.internal.flags & RGFW_WINDOW_MAXIMIZE != 0; }
+fn bool rgfw_window_isMaximized(GfxWindow* win) { if (win == null) return false; if (win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isZoomed"); return win.internal.flags.maximize; }
 
 // public
 fn bool GfxWindow.is_floating(&win)
 {
 	if (!win) return false;
 	if (win.src.window) return objc_send((ObjcId)win.src.window, ObjcSendInteger, "level") > NS_WINDOW_LEVEL_NORMAL;
-	return win.internal.flags & RGFW_WINDOW_FLOATING != 0;
+	return win.internal.flags.floating;
 }
 
 // public

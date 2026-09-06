@@ -522,7 +522,7 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 	rgfwJsSetWindowTitle(name, name.len());
 	rgfwJsSetupWindowListeners();
 
-	if (flags & RGFW_WINDOW_ALLOW_DND) win.internal.flags |= RGFW_WINDOW_ALLOW_DND;
+	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
 
 	rgfwJsSetupDropListeners();
 	return win;
@@ -729,11 +729,11 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
-		win.internal.flags |= RGFW_WINDOW_FULLSCREEN;
+		win.internal.flags.fullscreen = true;
 		rgfwJsRequestFullscreen();
 		return;
 	}
-	win.internal.flags &= ~(uint)RGFW_WINDOW_FULLSCREEN;
+	win.internal.flags.fullscreen = false;
 	rgfwJsExitFullscreen();
 }
 

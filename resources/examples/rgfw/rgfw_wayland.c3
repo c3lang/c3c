@@ -751,7 +751,7 @@ fn void rgfw_wlXdgSurfaceConfigureHandler(void* data, WlProxy* xdgSurface, uint 
 	{
 		_window_resized_callback(win, win.width, win.height);
 		rgfw_window_resize(win, win.width, win.height);
-		if (!(win.internal.flags & RGFW_WINDOW_TRANSPARENT)) rgfw_wlSetOpaque(win);
+		if (!(win.internal.flags.transparent)) rgfw_wlSetOpaque(win);
 	}
 
 	win.src.configured = true;
@@ -1400,7 +1400,7 @@ fn void rgfw_surface_freePtr(GfxSurface* surface)
 // public
 fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 {
-	rgfw_setBit(&win.internal.flags, RGFW_WINDOW_NO_BORDER, !border);
+	win.internal.flags.no_border = !border;
 	if (_rgfw.decorationManager != null)
 	{
 		zxdgToplevelDecorationV1SetMode(win.src.decoration, border ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE : ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
@@ -1473,7 +1473,7 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 	xdgToplevelSetAppId(win.src.xdgToplevel, name);
 	xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
 
-	if (!(win.internal.flags & RGFW_WINDOW_TRANSPARENT)) rgfw_wlSetOpaque(win);
+	if (!(win.internal.flags.transparent)) rgfw_wlSetOpaque(win);
 
 	xdgToplevelAddListener(win.src.xdgToplevel, &rgfw_xdgToplevelListener, win);
 
@@ -1482,7 +1482,7 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, Gfx
 		uint decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
 		win.src.decoration = zxdgDecorationManagerV1GetToplevelDecoration(_rgfw.decorationManager, win.src.xdgToplevel);
 		zxdgToplevelDecorationV1AddListener(win.src.decoration, &rgfw_xdgDecorationListener, win);
-		if (flags & RGFW_WINDOW_NO_BORDER) decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
+		if (flags.no_border) decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
 		zxdgToplevelDecorationV1SetMode(win.src.decoration, decorationMode);
 	}
 
@@ -1669,13 +1669,13 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
-		win.internal.flags |= RGFW_WINDOW_FULLSCREEN;
+		win.internal.flags.fullscreen = true;
 		win.internal.old_bounds = win.bounds;
 		xdgToplevelSetFullscreen(win.src.xdgToplevel, null);
 	}
 	else
 	{
-		win.internal.flags &= ~(uint)RGFW_WINDOW_FULLSCREEN;
+		win.internal.flags.fullscreen = false;
 		xdgToplevelUnsetFullscreen(win.src.xdgToplevel);
 	}
 }
@@ -1821,13 +1821,13 @@ fn void rgfw_window_hide(GfxWindow* win)
 {
 	wlSurfaceAttach(win.src.surface, null, 0, 0);
 	wlSurfaceCommit(win.src.surface);
-	win.internal.flags |= RGFW_WINDOW_HIDE;
+	win.internal.flags.hide = true;
 }
 
 // public
 fn void rgfw_window_showPlatform(GfxWindow* win)
 {
-	win.internal.flags &= ~(uint)RGFW_WINDOW_HIDE;
+	win.internal.flags.hide = false;
 	wlSurfaceCommit(win.src.surface);
 }
 
