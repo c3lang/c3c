@@ -516,7 +516,7 @@ fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
 }
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
 {
 	rgfwJsSetCanvasSize(win.width, win.height);
 	rgfwJsSetWindowTitle(name, name.len());
@@ -550,26 +550,27 @@ fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 	ZString cursorName;
 	switch (mouse)
 	{
-		case RGFW_MOUSE_NORMAL: cursorName = "default"; case RGFW_MOUSE_ARROW: cursorName = "default";
-		case RGFW_MOUSE_IBEAM: cursorName = "text";
-		case RGFW_MOUSE_CROSSHAIR: cursorName = "crosshair";
-		case RGFW_MOUSE_POINTING_HAND: cursorName = "pointer";
-		case RGFW_MOUSE_RESIZE_EW: cursorName = "ew-resize";
-		case RGFW_MOUSE_RESIZE_NS: cursorName = "ns-resize";
-		case RGFW_MOUSE_RESIZE_NWSE: cursorName = "nwse-resize";
-		case RGFW_MOUSE_RESIZE_NESW: cursorName = "nesw-resize";
-		case RGFW_MOUSE_RESIZE_NW: cursorName = "nw-resize";
-		case RGFW_MOUSE_RESIZE_N: cursorName = "n-resize";
-		case RGFW_MOUSE_RESIZE_NE: cursorName = "ne-resize";
-		case RGFW_MOUSE_RESIZE_E: cursorName = "e-resize";
-		case RGFW_MOUSE_RESIZE_SE: cursorName = "se-resize";
-		case RGFW_MOUSE_RESIZE_S: cursorName = "s-resize";
-		case RGFW_MOUSE_RESIZE_SW: cursorName = "sw-resize";
-		case RGFW_MOUSE_RESIZE_W: cursorName = "w-resize";
-		case RGFW_MOUSE_RESIZE_ALL: cursorName = "move";
-		case RGFW_MOUSE_NOT_ALLOWED: cursorName = "not-allowed";
-		case RGFW_MOUSE_WAIT: cursorName = "wait";
-		case RGFW_MOUSE_PROGRESS: cursorName = "progress";
+		case NORMAL: cursorName = "default";
+		case ARROW: cursorName = "default";
+		case IBEAM: cursorName = "text";
+		case CROSSHAIR: cursorName = "crosshair";
+		case POINTING_HAND: cursorName = "pointer";
+		case RESIZE_EW: cursorName = "ew-resize";
+		case RESIZE_NS: cursorName = "ns-resize";
+		case RESIZE_NWSE: cursorName = "nwse-resize";
+		case RESIZE_NESW: cursorName = "nesw-resize";
+		case RESIZE_NW: cursorName = "nw-resize";
+		case RESIZE_N: cursorName = "n-resize";
+		case RESIZE_NE: cursorName = "ne-resize";
+		case RESIZE_E: cursorName = "e-resize";
+		case RESIZE_SE: cursorName = "se-resize";
+		case RESIZE_S: cursorName = "s-resize";
+		case RESIZE_SW: cursorName = "sw-resize";
+		case RESIZE_W: cursorName = "w-resize";
+		case RESIZE_ALL: cursorName = "move";
+		case NOT_ALLOWED: cursorName = "not-allowed";
+		case WAIT: cursorName = "wait";
+		case PROGRESS: cursorName = "progress";
 		default: return null;
 	}
 	return (RgfwMouse*)cursorName;

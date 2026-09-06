@@ -617,7 +617,7 @@ fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, G
 
 
 // public
-fn uint rgfw_winapiWindowGetStyle(GfxWindow* win, RgfwWindowFlags flags)
+fn uint rgfw_winapiWindowGetStyle(GfxWindow* win, GfxWindowFlags flags)
 {
 	uint style = 0x04000000 | 0x02000000; // WS_CLIPSIBLINGS | WS_CLIPCHILDREN
 	if (flags.fullscreen)
@@ -639,7 +639,7 @@ fn uint rgfw_winapiWindowGetStyle(GfxWindow* win, RgfwWindowFlags flags)
 }
 
 // public
-fn uint rgfw_winapiWindowGetExStyle(GfxWindow* win, RgfwWindowFlags flags)
+fn uint rgfw_winapiWindowGetExStyle(GfxWindow* win, GfxWindowFlags flags)
 {
 	uint style = 0x00040000; // WS_EX_APPWINDOW
 	if (flags.fullscreen || flags.floating || win.is_floating()) style |= 0x00000008; // WS_EX_TOPMOST
@@ -1093,7 +1093,7 @@ fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
 }
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
 {
 	if (name[0] == 0) name = " ";
 	win.src.hIconSmall = null; win.src.hIconBig = null;
@@ -1642,18 +1642,27 @@ fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 	uint mouseIcon;
 	switch (mouse)
 	{
-		case RGFW_MOUSE_NORMAL: mouseIcon = 32512; case RGFW_MOUSE_ARROW: mouseIcon = 32512; // OCR_NORMAL
-		case RGFW_MOUSE_IBEAM: mouseIcon = 32513;
-		case RGFW_MOUSE_WAIT: mouseIcon = 32514;
-		case RGFW_MOUSE_CROSSHAIR: mouseIcon = 32515;
-		case RGFW_MOUSE_PROGRESS: mouseIcon = 32650;
-		case RGFW_MOUSE_RESIZE_NWSE: mouseIcon = 32642; case RGFW_MOUSE_RESIZE_NW: mouseIcon = 32642; case RGFW_MOUSE_RESIZE_SE: mouseIcon = 32642;
-		case RGFW_MOUSE_RESIZE_NESW: mouseIcon = 32643; case RGFW_MOUSE_RESIZE_NE: mouseIcon = 32643; case RGFW_MOUSE_RESIZE_SW: mouseIcon = 32643;
-		case RGFW_MOUSE_RESIZE_EW: mouseIcon = 32644; case RGFW_MOUSE_RESIZE_E: mouseIcon = 32644; case RGFW_MOUSE_RESIZE_W: mouseIcon = 32644;
-		case RGFW_MOUSE_RESIZE_NS: mouseIcon = 32645; case RGFW_MOUSE_RESIZE_N: mouseIcon = 32645; case RGFW_MOUSE_RESIZE_S: mouseIcon = 32645;
-		case RGFW_MOUSE_RESIZE_ALL: mouseIcon = 32646;
-		case RGFW_MOUSE_NOT_ALLOWED: mouseIcon = 32648;
-		case RGFW_MOUSE_POINTING_HAND: mouseIcon = 32649;
+		case NORMAL:
+		case ARROW: mouseIcon = 32512; // OCR_NORMAL
+		case IBEAM: mouseIcon = 32513;
+		case WAIT: mouseIcon = 32514;
+		case CROSSHAIR: mouseIcon = 32515;
+		case PROGRESS: mouseIcon = 32650;
+		case RESIZE_NW:
+		case RESIZE_SE:
+		case RESIZE_NWSE: mouseIcon = 32642;
+		case RESIZE_NE:
+		case RESIZE_SW:
+		case RESIZE_NESW: mouseIcon = 32643;
+		case RESIZE_E:
+		case RESIZE_W:
+		case RESIZE_EW: mouseIcon = 32644;
+		case RESIZE_N:
+		case RESIZE_S:
+		case RESIZE_NS: mouseIcon = 32645;
+		case RESIZE_ALL: mouseIcon = 32646;
+		case NOT_ALLOWED: mouseIcon = 32648;
+		case POINTING_HAND: mouseIcon = 32649;
 		default: return null;
 	}
 	return (RgfwMouse*)loadCursorA(null, (char*)(uptr)mouseIcon);

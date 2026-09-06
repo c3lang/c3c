@@ -1455,7 +1455,7 @@ XdgToplevelListener rgfw_xdgToplevelListener = { .configure = &rgfw_wlXdgTopleve
 ZxdgToplevelDecorationV1Listener rgfw_xdgDecorationListener = { .configure = &rgfw_wlXdgDecorationConfigureHandler };
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
 {
 	rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_WARNING_WAYLAND, "RGFW Wayland support is experimental");
 
@@ -1739,27 +1739,27 @@ fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 	ZString cursorName;
 	switch (mouse)
 	{
-		case RGFW_MOUSE_NORMAL: cursorName = "left_ptr";
-		case RGFW_MOUSE_ARROW: cursorName = "left_ptr";
-		case RGFW_MOUSE_IBEAM: cursorName = "xterm";
-		case RGFW_MOUSE_CROSSHAIR: cursorName = "crosshair";
-		case RGFW_MOUSE_POINTING_HAND: cursorName = "hand2";
-		case RGFW_MOUSE_RESIZE_EW: cursorName = "sb_h_double_arrow";
-		case RGFW_MOUSE_RESIZE_NS: cursorName = "sb_v_double_arrow";
-		case RGFW_MOUSE_RESIZE_NWSE: cursorName = "top_left_corner";
-		case RGFW_MOUSE_RESIZE_NESW: cursorName = "top_right_corner";
-		case RGFW_MOUSE_RESIZE_NW: cursorName = "top_left_corner";
-		case RGFW_MOUSE_RESIZE_N: cursorName = "top_side";
-		case RGFW_MOUSE_RESIZE_NE: cursorName = "top_right_corner";
-		case RGFW_MOUSE_RESIZE_E: cursorName = "right_side";
-		case RGFW_MOUSE_RESIZE_SE: cursorName = "bottom_right_corner";
-		case RGFW_MOUSE_RESIZE_S: cursorName = "bottom_side";
-		case RGFW_MOUSE_RESIZE_SW: cursorName = "bottom_left_corner";
-		case RGFW_MOUSE_RESIZE_W: cursorName = "left_side";
-		case RGFW_MOUSE_RESIZE_ALL: cursorName = "fleur";
-		case RGFW_MOUSE_NOT_ALLOWED: cursorName = "not-allowed";
-		case RGFW_MOUSE_WAIT: cursorName = "watch";
-		case RGFW_MOUSE_PROGRESS: cursorName = "watch";
+		case NORMAL: cursorName = "left_ptr";
+		case ARROW: cursorName = "left_ptr";
+		case IBEAM: cursorName = "xterm";
+		case CROSSHAIR: cursorName = "crosshair";
+		case POINTING_HAND: cursorName = "hand2";
+		case RESIZE_EW: cursorName = "sb_h_double_arrow";
+		case RESIZE_NS: cursorName = "sb_v_double_arrow";
+		case RESIZE_NWSE: cursorName = "top_left_corner";
+		case RESIZE_NESW: cursorName = "top_right_corner";
+		case RESIZE_NW: cursorName = "top_left_corner";
+		case RESIZE_N: cursorName = "top_side";
+		case RESIZE_NE: cursorName = "top_right_corner";
+		case RESIZE_E: cursorName = "right_side";
+		case RESIZE_SE: cursorName = "bottom_right_corner";
+		case RESIZE_S: cursorName = "bottom_side";
+		case RESIZE_SW: cursorName = "bottom_left_corner";
+		case RESIZE_W: cursorName = "left_side";
+		case RESIZE_ALL: cursorName = "fleur";
+		case NOT_ALLOWED: cursorName = "not-allowed";
+		case WAIT: cursorName = "watch";
+		case PROGRESS: cursorName = "watch";
 		default: return null;
 	}
 

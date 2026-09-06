@@ -767,7 +767,7 @@ fn void rgfw_x11ImInitCallback(GfxXDisplay* d, GfxXPointer clientData, GfxXPoint
 }
 
 // public
-fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags flags, GfxWindow* win)
+fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flags, GfxWindow* win)
 {
 	// KeyPress | KeyRelease | ButtonPress | ButtonRelease | PointerMotion | StructureNotify | FocusChange |
 	// LeaveWindow | EnterWindow | Exposure | VisibilityChange | PropertyChange
@@ -833,7 +833,7 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags fla
 }
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
 {
 	if (flags.open_gl || flags.egl)
 	{
@@ -1680,27 +1680,27 @@ fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 	uint mouseIcon = 0;
 	switch (mouse)
 	{
-		case RGFW_MOUSE_NORMAL: mouseIcon = 68; // XC_left_ptr
-		case RGFW_MOUSE_ARROW: mouseIcon = 68;
-		case RGFW_MOUSE_IBEAM: mouseIcon = 152; // XC_xterm
-		case RGFW_MOUSE_WAIT: mouseIcon = 150; // XC_watch
-		case RGFW_MOUSE_CROSSHAIR: mouseIcon = 130; // XC_tcross
-		case RGFW_MOUSE_PROGRESS: mouseIcon = 150;
-		case RGFW_MOUSE_RESIZE_NWSE: mouseIcon = 134;
-		case RGFW_MOUSE_RESIZE_NESW: mouseIcon = 136;
-		case RGFW_MOUSE_RESIZE_EW: mouseIcon = 108;
-		case RGFW_MOUSE_RESIZE_NS: mouseIcon = 116;
-		case RGFW_MOUSE_RESIZE_NW: mouseIcon = 134;
-		case RGFW_MOUSE_RESIZE_N: mouseIcon = 138;
-		case RGFW_MOUSE_RESIZE_NE: mouseIcon = 136;
-		case RGFW_MOUSE_RESIZE_E: mouseIcon = 96;
-		case RGFW_MOUSE_RESIZE_SE: mouseIcon = 14;
-		case RGFW_MOUSE_RESIZE_S: mouseIcon = 16;
-		case RGFW_MOUSE_RESIZE_SW: mouseIcon = 12;
-		case RGFW_MOUSE_RESIZE_W: mouseIcon = 70;
-		case RGFW_MOUSE_RESIZE_ALL: mouseIcon = 52; // XC_fleur
-		case RGFW_MOUSE_NOT_ALLOWED: mouseIcon = 88; // XC_pirate
-		case RGFW_MOUSE_POINTING_HAND: mouseIcon = 60; // XC_hand2
+		case NORMAL: mouseIcon = 68; // XC_left_ptr
+		case ARROW: mouseIcon = 68;
+		case IBEAM: mouseIcon = 152; // XC_xterm
+		case WAIT: mouseIcon = 150; // XC_watch
+		case CROSSHAIR: mouseIcon = 130; // XC_tcross
+		case PROGRESS: mouseIcon = 150;
+		case RESIZE_NWSE: mouseIcon = 134;
+		case RESIZE_NESW: mouseIcon = 136;
+		case RESIZE_EW: mouseIcon = 108;
+		case RESIZE_NS: mouseIcon = 116;
+		case RESIZE_NW: mouseIcon = 134;
+		case RESIZE_N: mouseIcon = 138;
+		case RESIZE_NE: mouseIcon = 136;
+		case RESIZE_E: mouseIcon = 96;
+		case RESIZE_SE: mouseIcon = 14;
+		case RESIZE_S: mouseIcon = 16;
+		case RESIZE_SW: mouseIcon = 12;
+		case RESIZE_W: mouseIcon = 70;
+		case RESIZE_ALL: mouseIcon = 52; // XC_fleur
+		case NOT_ALLOWED: mouseIcon = 88; // XC_pirate
+		case POINTING_HAND: mouseIcon = 60; // XC_hand2
 		default: return null;
 	}
 	XCursor cursor = xCreateFontCursor(_rgfw.display, mouseIcon);

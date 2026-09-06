@@ -807,7 +807,7 @@ fn void rgfw_x11ImInitCallback(GfxXDisplay* d, GfxXPointer clientData, GfxXPoint
 }
 
 // public
-fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags flags, GfxWindow* win)
+fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flags, GfxWindow* win)
 {
 	CLong eventMask = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 6) | (1 << 17) | (1 << 21) |
 		(1 << 5) | (1 << 4) | (1 << 15) | (1 << 16) | (1 << 22);
@@ -871,7 +871,7 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, RgfwWindowFlags fla
 }
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform_X11(ZString name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform_X11(ZString name, GfxWindowFlags flags, GfxWindow* win)
 {
 	if (flags.open_gl || flags.egl)
 	{
@@ -1717,27 +1717,27 @@ fn RgfwMouse* rgfw_createMouseStandard_X11(RgfwMouseIcon mouse)
 	uint mouseIcon = 0;
 	switch (mouse)
 	{
-		case RGFW_MOUSE_NORMAL: mouseIcon = 68; // XC_left_ptr
-		case RGFW_MOUSE_ARROW: mouseIcon = 68;
-		case RGFW_MOUSE_IBEAM: mouseIcon = 152; // XC_xterm
-		case RGFW_MOUSE_WAIT: mouseIcon = 150; // XC_watch
-		case RGFW_MOUSE_CROSSHAIR: mouseIcon = 130; // XC_tcross
-		case RGFW_MOUSE_PROGRESS: mouseIcon = 150;
-		case RGFW_MOUSE_RESIZE_NWSE: mouseIcon = 134;
-		case RGFW_MOUSE_RESIZE_NESW: mouseIcon = 136;
-		case RGFW_MOUSE_RESIZE_EW: mouseIcon = 108;
-		case RGFW_MOUSE_RESIZE_NS: mouseIcon = 116;
-		case RGFW_MOUSE_RESIZE_NW: mouseIcon = 134;
-		case RGFW_MOUSE_RESIZE_N: mouseIcon = 138;
-		case RGFW_MOUSE_RESIZE_NE: mouseIcon = 136;
-		case RGFW_MOUSE_RESIZE_E: mouseIcon = 96;
-		case RGFW_MOUSE_RESIZE_SE: mouseIcon = 14;
-		case RGFW_MOUSE_RESIZE_S: mouseIcon = 16;
-		case RGFW_MOUSE_RESIZE_SW: mouseIcon = 12;
-		case RGFW_MOUSE_RESIZE_W: mouseIcon = 70;
-		case RGFW_MOUSE_RESIZE_ALL: mouseIcon = 52; // XC_fleur
-		case RGFW_MOUSE_NOT_ALLOWED: mouseIcon = 88; // XC_pirate
-		case RGFW_MOUSE_POINTING_HAND: mouseIcon = 60; // XC_hand2
+		case NORMAL: mouseIcon = 68; // XC_left_ptr
+		case ARROW: mouseIcon = 68;
+		case IBEAM: mouseIcon = 152; // XC_xterm
+		case WAIT: mouseIcon = 150; // XC_watch
+		case CROSSHAIR: mouseIcon = 130; // XC_tcross
+		case PROGRESS: mouseIcon = 150;
+		case RESIZE_NWSE: mouseIcon = 134;
+		case RESIZE_NESW: mouseIcon = 136;
+		case RESIZE_EW: mouseIcon = 108;
+		case RESIZE_NS: mouseIcon = 116;
+		case RESIZE_NW: mouseIcon = 134;
+		case RESIZE_N: mouseIcon = 138;
+		case RESIZE_NE: mouseIcon = 136;
+		case RESIZE_E: mouseIcon = 96;
+		case RESIZE_SE: mouseIcon = 14;
+		case RESIZE_S: mouseIcon = 16;
+		case RESIZE_SW: mouseIcon = 12;
+		case RESIZE_W: mouseIcon = 70;
+		case RESIZE_ALL: mouseIcon = 52; // XC_fleur
+		case NOT_ALLOWED: mouseIcon = 88; // XC_pirate
+		case POINTING_HAND: mouseIcon = 60; // XC_hand2
 		default: return null;
 	}
 	XCursor cursor = xCreateFontCursor(_rgfw.display, mouseIcon);
@@ -4049,7 +4049,7 @@ XdgToplevelListener rgfw_xdgToplevelListener = { .configure = &rgfw_wlXdgTopleve
 ZxdgToplevelDecorationV1Listener rgfw_xdgDecorationListener = { .configure = &rgfw_wlXdgDecorationConfigureHandler };
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform_Wayland(ZString name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform_Wayland(ZString name, GfxWindowFlags flags, GfxWindow* win)
 {
 	rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_WARNING_WAYLAND, "RGFW Wayland support is experimental");
 
@@ -4338,27 +4338,27 @@ fn RgfwMouse* rgfw_createMouseStandard_Wayland(RgfwMouseIcon mouse)
 	ZString cursorName;
 	switch (mouse)
 	{
-		case RGFW_MOUSE_NORMAL: cursorName = "left_ptr";
-		case RGFW_MOUSE_ARROW: cursorName = "left_ptr";
-		case RGFW_MOUSE_IBEAM: cursorName = "xterm";
-		case RGFW_MOUSE_CROSSHAIR: cursorName = "crosshair";
-		case RGFW_MOUSE_POINTING_HAND: cursorName = "hand2";
-		case RGFW_MOUSE_RESIZE_EW: cursorName = "sb_h_double_arrow";
-		case RGFW_MOUSE_RESIZE_NS: cursorName = "sb_v_double_arrow";
-		case RGFW_MOUSE_RESIZE_NWSE: cursorName = "top_left_corner";
-		case RGFW_MOUSE_RESIZE_NESW: cursorName = "top_right_corner";
-		case RGFW_MOUSE_RESIZE_NW: cursorName = "top_left_corner";
-		case RGFW_MOUSE_RESIZE_N: cursorName = "top_side";
-		case RGFW_MOUSE_RESIZE_NE: cursorName = "top_right_corner";
-		case RGFW_MOUSE_RESIZE_E: cursorName = "right_side";
-		case RGFW_MOUSE_RESIZE_SE: cursorName = "bottom_right_corner";
-		case RGFW_MOUSE_RESIZE_S: cursorName = "bottom_side";
-		case RGFW_MOUSE_RESIZE_SW: cursorName = "bottom_left_corner";
-		case RGFW_MOUSE_RESIZE_W: cursorName = "left_side";
-		case RGFW_MOUSE_RESIZE_ALL: cursorName = "fleur";
-		case RGFW_MOUSE_NOT_ALLOWED: cursorName = "not-allowed";
-		case RGFW_MOUSE_WAIT: cursorName = "watch";
-		case RGFW_MOUSE_PROGRESS: cursorName = "watch";
+		case NORMAL: cursorName = "left_ptr";
+		case ARROW: cursorName = "left_ptr";
+		case IBEAM: cursorName = "xterm";
+		case CROSSHAIR: cursorName = "crosshair";
+		case POINTING_HAND: cursorName = "hand2";
+		case RESIZE_EW: cursorName = "sb_h_double_arrow";
+		case RESIZE_NS: cursorName = "sb_v_double_arrow";
+		case RESIZE_NWSE: cursorName = "top_left_corner";
+		case RESIZE_NESW: cursorName = "top_right_corner";
+		case RESIZE_NW: cursorName = "top_left_corner";
+		case RESIZE_N: cursorName = "top_side";
+		case RESIZE_NE: cursorName = "top_right_corner";
+		case RESIZE_E: cursorName = "right_side";
+		case RESIZE_SE: cursorName = "bottom_right_corner";
+		case RESIZE_S: cursorName = "bottom_side";
+		case RESIZE_SW: cursorName = "bottom_left_corner";
+		case RESIZE_W: cursorName = "left_side";
+		case RESIZE_ALL: cursorName = "fleur";
+		case NOT_ALLOWED: cursorName = "not-allowed";
+		case WAIT: cursorName = "watch";
+		case PROGRESS: cursorName = "watch";
 		default: return null;
 	}
 
@@ -4825,7 +4825,7 @@ alias RgfwSurfaceFreePtrFn = fn void(GfxSurface*);
 alias RgfwWindowSetBorderFn = fn void(GfxWindow*, bool);
 alias RgfwWindowSetRawMouseModePlatformFn = fn void(GfxWindow*, bool);
 alias RgfwWindowCaptureMousePlatformFn = fn void(GfxWindow*, bool);
-alias RgfwCreateWindowPlatformFn = fn GfxWindow*(ZString, RgfwWindowFlags, GfxWindow*);
+alias RgfwCreateWindowPlatformFn = fn GfxWindow*(ZString, GfxWindowFlags, GfxWindow*);
 alias RgfwGetGlobalMouseFn = fn bool(int*, int*);
 alias RgfwPhysicalToMappedKeyFn = fn RgfwKey(RgfwKey);
 alias RgfwWindowFetchSizeFn = fn IntVec2(GfxWindow*);
@@ -4965,7 +4965,7 @@ fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state) => rgfw_
 // public
 fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state) => rgfw_api.window_captureMousePlatform(win, state);
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win) => rgfw_api.createWindowPlatform(name, flags, win);
+fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win) => rgfw_api.createWindowPlatform(name, flags, win);
 // public
 fn bool rgfw_getGlobalMouse(int* fX, int* fY) => rgfw_api.getGlobalMouse(fX, fY);
 // public

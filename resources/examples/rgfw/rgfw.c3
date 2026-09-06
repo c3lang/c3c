@@ -1269,7 +1269,7 @@ fn CULong rgfw_window_getWindow_X11(GfxWindow* win) => (win != null && win.src.w
 fn void* rgfw_window_getWindow_Wayland(GfxWindow* win) => win != null ? win.src.window : null;
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, RgfwWindowFlags flags, GfxWindow* win)
+fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
 {
 	NSUInteger style = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
 	if (!flags.no_resize) style |= NS_WINDOW_STYLE_RESIZABLE;
@@ -1416,27 +1416,27 @@ fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
 	ObjcId cursor = null;
 	switch (mouse)
 	{
-		case RGFW_MOUSE_NORMAL: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
-		case RGFW_MOUSE_ARROW: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
-		case RGFW_MOUSE_IBEAM: cursor = objc_send(cls, ObjcSendId, "IBeamCursor");
-		case RGFW_MOUSE_CROSSHAIR: cursor = objc_send(cls, ObjcSendId, "crosshairCursor");
-		case RGFW_MOUSE_POINTING_HAND: cursor = objc_send(cls, ObjcSendId, "pointingHandCursor");
-		case RGFW_MOUSE_RESIZE_EW: cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
-		case RGFW_MOUSE_RESIZE_E: cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
-		case RGFW_MOUSE_RESIZE_W: cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
-		case RGFW_MOUSE_RESIZE_NS: cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
-		case RGFW_MOUSE_RESIZE_N: cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
-		case RGFW_MOUSE_RESIZE_S: cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
-		case RGFW_MOUSE_RESIZE_NWSE: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
-		case RGFW_MOUSE_RESIZE_NW: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
-		case RGFW_MOUSE_RESIZE_SE: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
-		case RGFW_MOUSE_RESIZE_NESW: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
-		case RGFW_MOUSE_RESIZE_NE: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
-		case RGFW_MOUSE_RESIZE_SW: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
-		case RGFW_MOUSE_RESIZE_ALL: cursor = objc_send(cls, ObjcSendId, "openHandCursor");
-		case RGFW_MOUSE_NOT_ALLOWED: cursor = objc_send(cls, ObjcSendId, "operationNotAllowedCursor");
-		case RGFW_MOUSE_WAIT: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
-		case RGFW_MOUSE_PROGRESS: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
+		case NORMAL: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
+		case ARROW: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
+		case IBEAM: cursor = objc_send(cls, ObjcSendId, "IBeamCursor");
+		case CROSSHAIR: cursor = objc_send(cls, ObjcSendId, "crosshairCursor");
+		case POINTING_HAND: cursor = objc_send(cls, ObjcSendId, "pointingHandCursor");
+		case RESIZE_EW: cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
+		case RESIZE_E: cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
+		case RESIZE_W: cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
+		case RESIZE_NS: cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
+		case RESIZE_N: cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
+		case RESIZE_S: cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
+		case RESIZE_NWSE: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NW: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_SE: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NESW: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_NE: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_SW: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_ALL: cursor = objc_send(cls, ObjcSendId, "openHandCursor");
+		case NOT_ALLOWED: cursor = objc_send(cls, ObjcSendId, "operationNotAllowedCursor");
+		case WAIT: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
+		case PROGRESS: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
 		default: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
 	}
 	return (RgfwMouse*)ns_retain(cursor);
