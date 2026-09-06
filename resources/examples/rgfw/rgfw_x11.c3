@@ -767,10 +767,13 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flag
 			"destroyCallback", &callback, (char*)null);
 	}
 
-	XClassHint hint;
-	hint.res_name = name != null ? name : "RGFW";
-	hint.res_class = _rgfw.className;
-	xSetClassHint(_rgfw.display, win.src.window, &hint);
+	@pool()
+	{
+		XClassHint hint;
+		hint.res_name = name ?: "RGFW";
+		hint.res_class = _rgfw.class_name.zstr_copy(tmem);
+		xSetClassHint(_rgfw.display, win.src.window, &hint);
+	};
 
 	XWMHints hints;
 	hints.flags = 1 << 1; // StateHint
@@ -1146,12 +1149,12 @@ fn void rgfw_xHandleEvent()
 			bool scroll = e.xbutton.button >= 4 && e.xbutton.button <= 7;
 			float scrollX = 0.0f;
 			float scrollY = 0.0f;
-			RgfwMouseButton value = 0;
+			RgfwMouseButton value;
 			switch (e.xbutton.button)
 			{
-				case 1: value = RGFW_MOUSE_LEFT;
-				case 2: value = RGFW_MOUSE_MIDDLE;
-				case 3: value = RGFW_MOUSE_RIGHT;
+				case 1: value = LEFT;
+				case 2: value = MIDDLE;
+				case 3: value = RIGHT;
 				case 4: scrollY = 1.0f;
 				case 5: scrollY = -1.0f;
 				case 6: scrollX = 1.0f;
@@ -1165,12 +1168,12 @@ fn void rgfw_xHandleEvent()
 		case 5: // ButtonRelease
 		{
 			if (e.xbutton.button >= 4 && e.xbutton.button <= 7) break;
-			RgfwMouseButton value = 0;
+			RgfwMouseButton value;
 			switch (e.xbutton.button)
 			{
-				case 1: value = RGFW_MOUSE_LEFT;
-				case 2: value = RGFW_MOUSE_MIDDLE;
-				case 3: value = RGFW_MOUSE_RIGHT;
+				case 1: value = LEFT;
+				case 2: value = MIDDLE;
+				case 3: value = RIGHT;
 				default: value = (RgfwMouseButton)(e.xbutton.button - 1 - 4);
 			}
 			rgfw_mouseButtonCallback(win, value, false);
@@ -2354,9 +2357,9 @@ fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval)
 }
 
 // public
-fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
+fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 {
-	_rgfw.className = className;
+	_rgfw.class_name = class_name;
 
 	xInitThreads();
 	_rgfw.display = xOpenDisplay(null);

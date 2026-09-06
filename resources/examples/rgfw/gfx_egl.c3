@@ -111,3 +111,38 @@ fn bool load_egl()
 	if (catch bind_egl()) return false;
 	return true;
 }
+
+// public
+fn void* rgfw_getCurrentContext_EGL() => rgfw_eglGetCurrentContext != null ? rgfw_eglGetCurrentContext() : null;
+// public
+fn GfxWindow* rgfw_getCurrentWindow_EGL() => _rgfw.current;
+// public
+fn void* rgfw_getDisplay_EGL() => _rgfw.egl_display;
+
+// public
+fn void rgfw_window_makeCurrentContext_EGL(GfxWindow* win)
+{
+	if (!_rgfw.egl_display || !rgfw_eglMakeCurrent) return;
+	if (!win || !win.src.ctx.egl)
+	{
+		rgfw_eglMakeCurrent((EglDisplay)_rgfw.egl_display, null, null, null);
+		return;
+	}
+	RgfwEglContext* ctx = win.src.ctx.egl;
+	rgfw_eglMakeCurrent((EglDisplay)_rgfw.egl_display, (EglSurface)ctx.surface, (EglSurface)ctx.surface, (EglContext)ctx.ctx);
+}
+
+// public
+fn void rgfw_window_swapBuffers_EGL(GfxWindow* win)
+{
+	if (!win || !win.src.ctx.egl || !rgfw_eglSwapBuffers) return;
+	rgfw_eglSwapBuffers((EglDisplay)_rgfw.egl_display, (EglSurface)win.src.ctx.egl.surface);
+}
+
+// public
+fn void rgfw_window_swapInterval_EGL(GfxWindow* win, int swapInterval)
+{
+	if (!rgfw_eglSwapInterval) return;
+	rgfw_eglSwapInterval((EglDisplay)_rgfw.egl_display, swapInterval);
+}
+

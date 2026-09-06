@@ -898,26 +898,14 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			break;
 		}
 		case 0x02A3: _mouse_notify_callback(win, ...win.internal.last_mouse, false); break; // WM_MOUSELEAVE
-		case 0x0201: case 0x0204: case 0x0207: case 0x020B: // WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_XBUTTONDOWN
-		{
-			RgfwMouseButton value = 0;
-			if (message == 0x020B) { value = (RgfwMouseButton)(RGFW_MOUSE_MISC1 + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)); }
-			else if (message == 0x0201) { value = RGFW_MOUSE_LEFT; }
-			else if (message == 0x0204) { value = RGFW_MOUSE_RIGHT; }
-			else { value = RGFW_MOUSE_MIDDLE; }
-			rgfw_mouseButtonCallback(win, value, true);
-			break;
-		}
-		case 0x0202: case 0x0205: case 0x0208: case 0x020C: // ...UP variants
-		{
-			RgfwMouseButton value = 0;
-			if (message == 0x020C) { value = (RgfwMouseButton)(RGFW_MOUSE_MISC1 + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)); }
-			else if (message == 0x0202) { value = RGFW_MOUSE_LEFT; }
-			else if (message == 0x0205) { value = RGFW_MOUSE_RIGHT; }
-			else { value = RGFW_MOUSE_MIDDLE; }
-			rgfw_mouseButtonCallback(win, value, false);
-			break;
-		}
+		case 0x0201: rgfw_mouseButtonCallback(win, LEFT, true);
+		case 0x0204: rgfw_mouseButtonCallback(win, RIGHT, true);
+		case 0x0207: rgfw_mouseButtonCallback(win, MIDDLE, true);
+		case 0x020B: rgfw_mouseButtonCallback(win, (RgfwMouseButton)(RgfwMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), true);
+		case 0x0202: rgfw_mouseButtonCallback(win, LEFT, false);
+		case 0x0205: rgfw_mouseButtonCallback(win, RIGHT, false);
+		case 0x0208: rgfw_mouseButtonCallback(win, MIDDLE, false);
+		case 0x020C: rgfw_mouseButtonCallback(win, (RgfwMouseButton)(RgfwMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), false);
 		case 0x020A: // WM_MOUSEWHEEL
 		{
 			float scrollY = (float)((short)((wParam >> 16) & 0xffff)) / 120.0f; // WHEEL_DELTA
@@ -1019,13 +1007,16 @@ fn void rgfw_initKeycodesPlatform()
 }
 
 // public
-fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
+fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 {
 	setProcessDPIAware();
 	timeBeginPeriod(1);
 
 	_rgfw.instance = getModuleHandleW(null);
-	multiByteToWideChar(65001, 0, className, -1, (ushort*)&_rgfw.wideClassName, 255);
+	@pool()
+	{
+		multiByteToWideChar(65001, 0, class_name.zstr_copy(tmem), -1, (ushort*)&_rgfw.wideClassName, 255);
+	};
 
 	_rgfw.wndClass = {};
 	_rgfw.wndClass.className = (ushort*)&_rgfw.wideClassName;
@@ -1876,44 +1867,8 @@ fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname)
 	return getProcAddress((HModule*)_rgfw.nativeGL_handle, procname);
 }
 
-RgfwGlHints rgfw_globalHints_OpenGL_src = {
-	0, 0, 0, 0, 1,
-	8, 8, 8, 8,
-	24,
-	0, 0, 0, 0,
-	false, false, false, false,
-	RGFW_GL_RELEASE_NONE, RGFW_GL_CORE,
-	1, 0,
-	null, null,
-	RGFW_GL_ACCELERATED
-};
-RgfwGlHints* rgfw_globalHints_OpenGL = &rgfw_globalHints_OpenGL_src;
 
-// public
-fn void rgfw_setGlobalHints_OpenGL(RgfwGlHints* hints) { rgfw_globalHints_OpenGL = hints; }
-// public
-fn RgfwGlHints* rgfw_getGlobalHints_OpenGL() => rgfw_globalHints_OpenGL;
 
-// public
-fn RgfwGlContext* rgfw_window_createContext_OpenGL(GfxWindow* win, RgfwGlHints* hints)
-{
-	RgfwGlContext* ctx = (RgfwGlContext*)rgfw_alloc_impl(RgfwGlContext::size);
-	if (rgfw_window_createContextPtr_OpenGL(win, ctx, hints) == false)
-	{
-		rgfw_free_impl(ctx);
-		win.src.ctx.native = null;
-		return null;
-	}
-	win.src.gfxType |= RGFW_GFX_OWNED_BY_RGFW;
-	return ctx;
-}
-
-// public
-fn void rgfw_window_deleteContext_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
-{
-	rgfw_window_deleteContextPtr_OpenGL(win, ctx);
-	if (win.src.gfxType & RGFW_GFX_OWNED_BY_RGFW) rgfw_free_impl(ctx);
-}
 
 // public
 fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, RgfwGlHints* hints)

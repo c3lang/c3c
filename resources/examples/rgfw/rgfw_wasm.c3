@@ -339,7 +339,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 	{
 		_mouse_motion_callback(_rgfw.root, xs[i], ys[i]);
 		_raw_motion_callback(_rgfw.root, 0.0f, 0.0f);
-		rgfw_mouseButtonCallback(_rgfw.root, RGFW_MOUSE_LEFT, (bool)down);
+		rgfw_mouseButtonCallback(_rgfw.root, LEFT, (bool)down);
 	}
 }
 
@@ -438,7 +438,7 @@ fn void rgfw_initKeycodesPlatform()
 }
 
 // public
-fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
+fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 {
 	_rgfw.usingAsyncify = -1;
 	GfxMonitor monitor;
@@ -594,40 +594,6 @@ fn void rgfw_window_deleteContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
 	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_OPEN_GL, "OpenGL context freed.");
 }
 
-RgfwGlHints rgfw_global_hints_open_gl_src = {
-	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
-	false, false, false, false, RGFW_GL_RELEASE_NONE,
-	RGFW_GL_CORE, 1, 0, null, null, RGFW_GL_ACCELERATED
-};
-RgfwGlHints* rgfw_global_hints_open_gl = &rgfw_global_hints_open_gl_src;
-
-// public
-fn void rgfw_resetGlobalHints_OpenGL() { rgfw_global_hints_open_gl_src = {0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, false, false, false, false, RGFW_GL_RELEASE_NONE, RGFW_GL_CORE, 1, 0, null, null, RGFW_GL_ACCELERATED}; }
-// public
-fn void rgfw_setGlobalHints_OpenGL(RgfwGlHints* hints) { rgfw_global_hints_open_gl = hints; }
-// public
-fn RgfwGlHints* rgfw_getGlobalHints_OpenGL() { return rgfw_global_hints_open_gl; }
-
-// public
-fn RgfwGlContext* rgfw_window_createContext_OpenGL(GfxWindow* win, RgfwGlHints* hints)
-{
-	RgfwGlContext* ctx = mem::new(RgfwGlContext);
-	if (!rgfw_window_createContextPtr_OpenGL(win, ctx, hints))
-	{
-		free(ctx);
-		if (win) win.src.ctx.native = null;
-		return null;
-	}
-	win.src.gfxType |= RGFW_GFX_OWNED_BY_RGFW;
-	return ctx;
-}
-
-// public
-fn void rgfw_window_deleteContext_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
-{
-	rgfw_window_deleteContextPtr_OpenGL(win, ctx);
-	if (win != null && (win.src.gfxType & RGFW_GFX_OWNED_BY_RGFW)) rgfw_free_impl(ctx);
-}
 
 // public
 fn void rgfw_window_makeCurrentContext_OpenGL(GfxWindow* win)

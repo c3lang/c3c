@@ -392,19 +392,7 @@ fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key)
 	return key;
 }
 
-RgfwGlHints rgfw_global_hints_open_gl_src = {
-	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
-	false, false, false, false, RGFW_GL_RELEASE_NONE,
-	RGFW_GL_CORE, 1, 0, null, null, RGFW_GL_ACCELERATED
-};
-RgfwGlHints* rgfw_global_hints_open_gl = &rgfw_global_hints_open_gl_src;
 
-// public
-fn void rgfw_resetGlobalHints_OpenGL() { rgfw_global_hints_open_gl_src = {0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, false, false, false, false, RGFW_GL_RELEASE_NONE, RGFW_GL_CORE, 1, 0, null, null, RGFW_GL_ACCELERATED}; }
-// public
-fn void rgfw_setGlobalHints_OpenGL(RgfwGlHints* hints) { rgfw_global_hints_open_gl = hints; }
-// public
-fn RgfwGlHints* rgfw_getGlobalHints_OpenGL() { return rgfw_global_hints_open_gl; }
 // public
 fn void* rgfw_glContext_getSourceContext(RgfwGlContext* ctx) { return ctx.ctx; }
 
@@ -451,19 +439,6 @@ fn void nsOpenGLContext_setValues(ObjcId context, int* vals, NSInteger param)
 	objc_send(context, ObjcSendVoidIntPtrNSInteger, "setValues:forParameter:", vals, param);
 }
 
-// public
-fn RgfwGlContext* rgfw_window_createContext_OpenGL(GfxWindow* win, RgfwGlHints* hints)
-{
-	RgfwGlContext* ctx = mem::new(RgfwGlContext);
-	if (!rgfw_window_createContextPtr_OpenGL(win, ctx, hints))
-	{
-		free(ctx);
-		if (win) win.src.ctx.native = null;
-		return null;
-	}
-	win.src.gfxType |= RGFW_GFX_OWNED_BY_RGFW;
-	return ctx;
-}
 
 // public
 fn RgfwGlContext* rgfw_window_getContext_OpenGL(GfxWindow* win)
@@ -472,12 +447,6 @@ fn RgfwGlContext* rgfw_window_getContext_OpenGL(GfxWindow* win)
 	return win.src.ctx.native;
 }
 
-// public
-fn void rgfw_window_deleteContext_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
-{
-	rgfw_window_deleteContextPtr_OpenGL(win, ctx);
-	if (win != null && (win.src.gfxType & RGFW_GFX_OWNED_BY_RGFW)) rgfw_free_impl(ctx);
-}
 
 // public
 fn bool rgfw_extensionSupported_OpenGL(ZString extension, sz len)
@@ -768,26 +737,29 @@ fn void rgfw_osxMouseButtonCommon(ObjcId self, ObjcId event, bool down, RgfwMous
 	if (win == null) return;
 	NSUInteger button = objc_send(event, ObjcSendNSUInteger, "buttonNumber");
 	RgfwMouseButton rgfwButton = fallback;
-	if (button == 0) { rgfwButton = RGFW_MOUSE_LEFT; }
-	else if (button == 1) { rgfwButton = RGFW_MOUSE_RIGHT; }
-	else if (button == 2) { rgfwButton = RGFW_MOUSE_MIDDLE; }
-	else { rgfwButton = (RgfwMouseButton)button; }
+	switch (button)
+	{
+		case 0: rgfwButton = LEFT;
+		case 1: rgfwButton = RIGHT;
+		case 2: rgfwButton = MIDDLE;
+		default: rgfwButton = (RgfwMouseButton)button;
+	}
 	rgfw_mouseButtonCallback(win, rgfwButton, down);
 	rgfw_osxMouseMovedCommon(self, event);
 }
 
 // private
-fn void rgfw_osxMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, true, RGFW_MOUSE_LEFT); }
+fn void rgfw_osxMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, true, LEFT); }
 // private
-fn void rgfw_osxMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, false, RGFW_MOUSE_LEFT); }
+fn void rgfw_osxMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, false, LEFT); }
 // private
-fn void rgfw_osxRightMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, true, RGFW_MOUSE_RIGHT); }
+fn void rgfw_osxRightMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, true, RIGHT); }
 // private
-fn void rgfw_osxRightMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, false, RGFW_MOUSE_RIGHT); }
+fn void rgfw_osxRightMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, false, RIGHT); }
 // private
-fn void rgfw_osxOtherMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, true, RGFW_MOUSE_MIDDLE); }
+fn void rgfw_osxOtherMouseDown(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, true, MIDDLE); }
 // private
-fn void rgfw_osxOtherMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, false, RGFW_MOUSE_MIDDLE); }
+fn void rgfw_osxOtherMouseUp(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseButtonCommon(self, event, false, MIDDLE); }
 
 // private
 fn void rgfw_osxScrollWheel(ObjcId self, ObjcSelector sel, ObjcId event)
@@ -1077,7 +1049,7 @@ fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h)
 }
 
 // public
-fn int rgfw_initPlatform(ZString className, RgfwInitFlags flags)
+fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 {
 	_rgfw.nsPool = objc_autoreleasePoolPush();
 	_rgfw.nsApp = objc_send(objc_class("NSApplication"), ObjcSendId, "sharedApplication");
@@ -1653,12 +1625,6 @@ fn bool rgfw_extensionSupported_EGL(ZString extension, sz len)
 	return rgfw_extensionSupportedPlatform_EGL(extension, len);
 }
 
-// public
-fn void* rgfw_getCurrentContext_EGL() => rgfw_eglGetCurrentContext != null ? rgfw_eglGetCurrentContext() : null;
-// public
-fn GfxWindow* rgfw_getCurrentWindow_EGL() => _rgfw.current;
-// public
-fn void* rgfw_getDisplay_EGL() => _rgfw.egl_display;
 
 // public
 fn RgfwEglContext* rgfw_window_createContext_EGL(GfxWindow* win, RgfwGlHints* hints)
@@ -1748,19 +1714,7 @@ fn void rgfw_window_deleteContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx)
 }
 
 // public
-fn void rgfw_window_makeCurrentContext_EGL(GfxWindow* win)
-{
-	if (_rgfw.egl_display == null || rgfw_eglMakeCurrent == null) return;
-	if (win == null || win.src.ctx.egl == null) { rgfw_eglMakeCurrent((EglDisplay)_rgfw.egl_display, null, null, null); return; }
-	RgfwEglContext* ctx = win.src.ctx.egl;
-	rgfw_eglMakeCurrent((EglDisplay)_rgfw.egl_display, (EglSurface)ctx.surface, (EglSurface)ctx.surface, (EglContext)ctx.ctx);
-}
-// public
 fn void rgfw_window_makeCurrentWindow_EGL(GfxWindow* win) { _rgfw.current = win; }
-// public
-fn void rgfw_window_swapBuffers_EGL(GfxWindow* win) { if (win != null && win.src.ctx.egl != null && rgfw_eglSwapBuffers != null) rgfw_eglSwapBuffers((EglDisplay)_rgfw.egl_display, (EglSurface)win.src.ctx.egl.surface); }
-// public
-fn void rgfw_window_swapInterval_EGL(GfxWindow* win, int swapInterval) { if (rgfw_eglSwapInterval != null) rgfw_eglSwapInterval((EglDisplay)_rgfw.egl_display, swapInterval); }
 
 alias WGPUInstance = void*;
 alias WGPUSurface = void*;

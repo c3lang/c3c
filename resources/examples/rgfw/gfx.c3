@@ -39,9 +39,7 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
 
-alias RgfwInitFlags = char;
 alias RgfwKey = char;
-alias RgfwMouseButton = char;
 alias RgfwKeymod = char;
 alias RgfwDndActionType = char;
 alias RgfwDataTransferType = char;
@@ -286,7 +284,7 @@ struct RgfwInfo // WASM
 		GfxXDisplay* display;
 		int context;
 		GfxXWindow helperWindow;
-		ZString className;
+		String class_name;
 		XlibIM im;
 		int xrandrEventBase;
 		GfxXWindow x11Source;
@@ -377,10 +375,14 @@ constset GfxMonitorModeRequest : char
 	ALL     = 0b111,
 }
 
-const RgfwInitFlags RGFW_INIT_OPEN_GL = 1;
-const RgfwInitFlags RGFW_INIT_EGL = 2;
-const RgfwInitFlags RGFW_INIT_VULKAN = 4;
-const RgfwInitFlags RGFW_INIT_X11 = 8;
+constset GfxInitOption : char
+{
+	NONE         = 0b0000,
+	INIT_OPEN_GL = 0b0001,
+	INIT_EGL     = 0b0010,
+	INIT_VULKAN  = 0b0100,
+	ENABLE_X11   = 0b1000,
+}
 
 enum GfxFormat : char (int channels, RgfwColorLayout layout)
 {
@@ -519,15 +521,17 @@ const RgfwKey RGFW_KEY_WORLD2 = 194;
 
 const RGFW_KEY_LAST = 256;
 
-const RgfwMouseButton RGFW_MOUSE_LEFT = 0;
-const RgfwMouseButton RGFW_MOUSE_MIDDLE = 1;
-const RgfwMouseButton RGFW_MOUSE_RIGHT = 2;
-const RgfwMouseButton RGFW_MOUSE_MISC1 = 3;
-const RgfwMouseButton RGFW_MOUSE_MISC2 = 4;
-const RgfwMouseButton RGFW_MOUSE_MISC3 = 5;
-const RgfwMouseButton RGFW_MOUSE_MISC4 = 6;
-const RgfwMouseButton RGFW_MOUSE_MISC5 = 7;
-const RgfwMouseButton RGFW_MOUSE_FINAL = 8;
+enum RgfwMouseButton
+{
+	LEFT,
+	MIDDLE,
+	RIGHT,
+	MISC1,
+	MISC2,
+	MISC3,
+	MISC4,
+	MISC5,
+}
 
 const RgfwKeymod RGFW_MOD_CAPS_LOCK = 1;
 const RgfwKeymod RGFW_MOD_NUM_LOCK = 2;
@@ -759,9 +763,9 @@ fn void copy_image_data(char* dest_data, int w, int h, GfxFormat dest_format, ch
 }
 
 // public
-fn int init(ZString className, RgfwInitFlags flags)
+fn int init(String class_name, GfxInitOption flags)
 {
-	return rgfw_init_ptr(className, flags, &_rgfw_global);
+	return _rgfw_global.init(class_name, flags);
 }
 
 // public
@@ -1384,7 +1388,10 @@ fn void rgfw_setQueueEvents(bool queue) { _rgfw.queueEvents = queue; }
 fn void rgfw_resetPrevState()
 {
 	for (sz i = 0; i < (sz)RGFW_KEY_LAST; i++) _rgfw.keyboard[i].prev = _rgfw.keyboard[i].current;
-	for (sz i = 0; i < (sz)RGFW_MOUSE_FINAL; i++) _rgfw.mouseButtons[i].prev = _rgfw.mouseButtons[i].current;
+	foreach (mouse : RgfwMouseButton::values)
+	{
+		_rgfw.mouseButtons[mouse.ordinal].prev = _rgfw.mouseButtons[mouse.ordinal].current;
+	}
 	_rgfw.scrollX = 0.0f; _rgfw.scrollY = 0.0f;
 	_rgfw.vectorX = 0.0f; _rgfw.vectorY = 0.0f;
 	_rgfw.windowState = {};
@@ -1709,29 +1716,32 @@ fn bool GfxWindow.is_raw_mouse(&self) => self.internal.rawMouse;
 
 
 // public
-fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
+<*
+ @param [&inout] self : "The context to initialize"
+*>
+fn int RgfwInfo.init(&self, String class_name, GfxInitOption options)
 {
-	if (info == _rgfw || info == null) return 1;
-	if (className == null) className = "RGFW";
-	rgfw_setInfo(info);
+	if (self == _rgfw) return 1;
+	class_name = class_name ?: "RGFW";
+	rgfw_setInfo(self);
 	*_rgfw = {};
-	if (flags & RGFW_INIT_OPEN_GL && !rgfw_loadGL())
+	if (options & INIT_OPEN_GL && !rgfw_loadGL())
 	{
 		log::error("Failed to load the OpenGL library", category: log::CATEGORY_VIDEO);
 		return -1;
 	}
-	if (flags & RGFW_INIT_EGL && !load_egl())
+	if (options & INIT_EGL && !load_egl())
 	{
 		log::error("Failed to load the EGL library", category: log::CATEGORY_VIDEO);
 		return -1;
 	}
-	if (flags & RGFW_INIT_VULKAN && !rgfw_loadVulkan())
+	if (options & INIT_VULKAN && !rgfw_loadVulkan())
 	{
 		log::error("Failed to load the Vulkan library", category: log::CATEGORY_VIDEO);
 		return -1;
 	}
 	rgfw_initKeycodes();
-	int out = rgfw_initPlatform(className, flags);
+	int out = rgfw_initPlatform(class_name, options);
 	if (out != 0)
 	{
 		log::error("Failed to initialize global context", category: log::CATEGORY_VIDEO);
