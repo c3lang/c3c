@@ -242,10 +242,6 @@ WlDisplayDispatchPendingProc rgfw_wlDisplayDispatchPending;
 WlDisplayRoundtripProc rgfw_wlDisplayRoundtrip;
 WlDisplayGetFdProc rgfw_wlDisplayGetFd;
 
-// public
-fn void rgfw_setInfo(RgfwInfo* info) { _rgfw = info; }
-// public
-fn RgfwInfo* rgfw_getInfo() { return _rgfw; }
 
 // public
 fn bool rgfw_loadGL()
@@ -316,64 +312,12 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 // public
 fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
 
-// public
-fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
-{
-	RgfwDebugInfo info;
-	info.type = type;
-	info.code = code;
-	info.msg = msg;
-	if (_rgfw != null && _rgfw.debugCallbackSrc != null) _rgfw.debugCallbackSrc(&info);
-}
-
-// public
-fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
-{
-	RgfwDebugFunc prev = _rgfw.debugCallbackSrc;
-	_rgfw.debugCallbackSrc = func;
-	return prev;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-// public
-fn void rgfw_window_closePtr(GfxWindow* win)
-{
-	if (win == null) return;
-	if (win.internal.captureMouse) rgfw_window_captureMouse(win, false);
-	if ((win.src.gfxType & RGFW_GFX_EGL) && win.src.ctx.egl != null)
-	{
-		rgfw_window_deleteContext_EGL(win, win.src.ctx.egl);
-		win.src.ctx.egl = null;
-	}
-	if ((win.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && win.src.ctx.native != null)
-	{
-		rgfw_window_deleteContext_OpenGL(win, win.src.ctx.native);
-		win.src.ctx.native = null;
-	}
-	rgfw_window_closePlatform(win);
-	if (_rgfw.clipboard != null) rgfw_free_impl(_rgfw.clipboard);
-	_rgfw.clipboard = null;
-	_rgfw.windowCount--;
-}
-
 
 // public
 fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxSurface* surface)
 {
 	return rgfw_createSurfacePtr(data, w, h, format, surface);
 }
-
-
 
 // public
 fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h)
@@ -1410,7 +1354,7 @@ fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format)
 }
 
 // public
-fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
+fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse)
 {
 	ObjcId cls = objc_class("NSCursor");
 	ObjcId cursor = null;

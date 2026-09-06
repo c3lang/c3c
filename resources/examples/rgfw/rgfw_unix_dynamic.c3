@@ -418,14 +418,6 @@ EglSwapIntervalProc rgfw_eglSwapInterval;
 EglGetCurrentContextProc rgfw_eglGetCurrentContext;
 EglQueryStringProc rgfw_eglQueryString;
 EglGetConfigAttribProc rgfw_eglGetConfigAttrib;
-// public
-fn void rgfw_setInfo(RgfwInfo* info) { _rgfw = info; }
-// public
-fn RgfwInfo* rgfw_getInfo() { return _rgfw; }
-// public
-fn void* rgfw_alloc(sz size) { return rgfw_alloc_impl(size); }
-// public
-fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
 
 // public
 fn bool rgfw_loadGL_X11()
@@ -570,23 +562,6 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU_Wayland(GfxWindow* window, WGPUI
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
-// public
-fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
-{
-	RgfwDebugInfo info;
-	info.type = type;
-	info.code = code;
-	info.msg = msg;
-	if (_rgfw != null && _rgfw.debugCallbackSrc != null) _rgfw.debugCallbackSrc(&info);
-}
-
-// public
-fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
-{
-	RgfwDebugFunc prev = _rgfw.debugCallbackSrc;
-	_rgfw.debugCallbackSrc = func;
-	return prev;
-}
 
 
 
@@ -597,16 +572,6 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 
 
 
-// public
-fn void rgfw_window_closePtr(GfxWindow* win)
-{
-	if (win == null) return;
-	if (win.internal.captureMouse) rgfw_window_captureMouse(win, false);
-	rgfw_window_closePlatform(win);
-	if (_rgfw.clipboard != null) rgfw_free_impl(_rgfw.clipboard);
-	_rgfw.clipboard = null;
-	_rgfw.windowCount--;
-}
 
 
 // public
@@ -1712,7 +1677,7 @@ fn bool rgfw_window_setIconEx_X11(GfxWindow* win, char* dataSrc, int w, int h, G
 }
 
 // public
-fn RgfwMouse* rgfw_createMouseStandard_X11(RgfwMouseIcon mouse)
+fn RgfwMouse* rgfw_createMouseStandard_X11(GfxMouseIcon mouse)
 {
 	uint mouseIcon = 0;
 	switch (mouse)
@@ -4333,7 +4298,7 @@ fn bool rgfw_window_setIconEx_Wayland(GfxWindow* win, char* data, int w, int h, 
 }
 
 // public
-fn RgfwMouse* rgfw_createMouseStandard_Wayland(RgfwMouseIcon mouse)
+fn RgfwMouse* rgfw_createMouseStandard_Wayland(GfxMouseIcon mouse)
 {
 	ZString cursorName;
 	switch (mouse)
@@ -4846,7 +4811,7 @@ alias RgfwWindowIsFloatingFn = fn bool(GfxWindow*);
 alias RgfwWindowSetNameFn = fn void(GfxWindow*, ZString);
 alias RgfwWindowSetMousePassthroughFn = fn void(GfxWindow*, bool);
 alias RgfwWindowSetIconExFn = fn bool(GfxWindow*, char*, int, int, GfxFormat, GfxWindowIconType);
-alias RgfwCreateMouseStandardFn = fn RgfwMouse*(RgfwMouseIcon);
+alias RgfwCreateMouseStandardFn = fn RgfwMouse*(GfxMouseIcon);
 alias RgfwCreateMouseFn = fn RgfwMouse*(char*, int, int, GfxFormat);
 alias RgfwWindowSetMousePlatformFn = fn bool(GfxWindow*, RgfwMouse*);
 alias RgfwFreeMouseFn = fn void(RgfwMouse*);
@@ -5007,7 +4972,7 @@ fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) => rgf
 // public
 fn bool GfxWindow.set_icon(&win, char* dataSrc, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH) => rgfw_api.window_setIconEx(win, dataSrc, w, h, format, type);
 // public
-fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse) => rgfw_api.createMouseStandard(mouse);
+fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse) => rgfw_api.createMouseStandard(mouse);
 // public
 fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format) => rgfw_api.createMouse(data, w, h, format);
 // public

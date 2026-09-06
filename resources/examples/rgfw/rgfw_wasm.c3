@@ -95,14 +95,6 @@ struct RgfwWindowSrc
 RgfwInfo* _rgfw;
 RgfwInfo _rgfw_global;
 
-// public
-fn void rgfw_setInfo(RgfwInfo* info) { _rgfw = info; }
-// public
-fn RgfwInfo* rgfw_getInfo() { return _rgfw; }
-// public
-fn void* rgfw_alloc(sz size) { return rgfw_alloc_impl(size); }
-// public
-fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
 
 // public
 fn bool rgfw_loadGL() => true;
@@ -132,47 +124,6 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
-// public
-fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
-{
-	RgfwDebugInfo info;
-	info.type = type;
-	info.code = code;
-	info.msg = msg;
-	if (_rgfw != null && _rgfw.debugCallbackSrc != null) _rgfw.debugCallbackSrc(&info);
-}
-
-// public
-fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
-{
-	RgfwDebugFunc prev = _rgfw.debugCallbackSrc;
-	_rgfw.debugCallbackSrc = func;
-	return prev;
-}
-
-
-
-
-
-
-
-
-// public
-fn void rgfw_window_closePtr(GfxWindow* win)
-{
-	if (win == null) return;
-	if (win.internal.captureMouse) rgfw_window_captureMouse(win, false);
-	if ((win.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && win.src.ctx.native != null)
-	{
-		rgfw_window_deleteContext_OpenGL(win, win.src.ctx.native);
-		win.src.ctx.native = null;
-	}
-	rgfw_window_closePlatform(win);
-	if (_rgfw.clipboard != null) rgfw_free_impl(_rgfw.clipboard);
-	_rgfw.clipboard = null;
-	_rgfw.windowCount--;
-	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_WINDOW, "a window was freed");
-}
 
 
 
@@ -545,7 +496,7 @@ fn void rgfw_pollEvents()
 fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h) { rgfwJsSetCanvasSize(w, h); }
 
 // public
-fn RgfwMouse* rgfw_createMouseStandard(RgfwMouseIcon mouse)
+fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse)
 {
 	ZString cursorName;
 	switch (mouse)

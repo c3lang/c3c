@@ -14,6 +14,27 @@ macro void* rgfw_memcpy(void* dest, void* src, sz count) => memcpy(dest, src, co
 fn void* rgfw_alloc_impl(sz size) => malloc(size);
 // public
 fn void rgfw_free_impl(void* ptr) { if (ptr != null) free(ptr); }
+// public
+fn void* rgfw_alloc(sz size) { return rgfw_alloc_impl(size); }
+// public
+fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
+// public
+fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
+{
+	RgfwDebugInfo info;
+	info.type = type;
+	info.code = code;
+	info.msg = msg;
+	if (_rgfw != null && _rgfw.debugCallbackSrc != null) _rgfw.debugCallbackSrc(&info);
+}
+
+// public
+fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
+{
+	RgfwDebugFunc prev = _rgfw.debugCallbackSrc;
+	_rgfw.debugCallbackSrc = func;
+	return prev;
+}
 
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
@@ -621,7 +642,7 @@ const GfxWindowFlags WINDOWED_FULLSCREEN = { .no_border, .maximize };
 const GfxWindowFlags CAPTURE_RAW_MOUSE = { .capture_mouse, .raw_mouse };
 
 
-enum RgfwMouseIcon : char
+enum GfxMouseIcon : char
 {
 	NORMAL,
 	ARROW,
@@ -679,6 +700,11 @@ const RgfwErrorCode RGFW_INFO_GLOBAL = 17;
 const RgfwErrorCode RGFW_INFO_OPEN_GL = 18;
 const RgfwErrorCode RGFW_WARNING_WAYLAND = 19;
 const RgfwErrorCode RGFW_WARNING_OPEN_GL = 20;
+
+// public
+fn void rgfw_setInfo(RgfwInfo* info) { _rgfw = info; }
+// public
+fn RgfwInfo* rgfw_getInfo() { return _rgfw; }
 
 // public
 fn void convert_image_data_64(char* dest_data, char* src_data, RgfwColorLayout* srcLayout, RgfwColorLayout* destLayout, sz count, bool is64bit)
@@ -845,6 +871,37 @@ fn void GfxWindow.destroy(&self)
 {
 	rgfw_window_closePtr(self);
 	free(self);
+}
+
+// public
+fn void rgfw_window_closePtr(GfxWindow* win)
+{
+	if (!win) return;
+	if (win.internal.captureMouse) rgfw_window_captureMouse(win, false);
+	$if $feat(MACOS):
+	if ((win.src.gfxType & RGFW_GFX_EGL) && win.src.ctx.egl != null)
+	{
+		rgfw_window_deleteContext_EGL(win, win.src.ctx.egl);
+		win.src.ctx.egl = null;
+	}
+	if ((win.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && win.src.ctx.native != null)
+	{
+		rgfw_window_deleteContext_OpenGL(win, win.src.ctx.native);
+		win.src.ctx.native = null;
+	}
+	$endif
+	$if $feat(WASM) || $feat(WIN32):
+	if ((win.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && win.src.ctx.native != null)
+	{
+		rgfw_window_deleteContext_OpenGL(win, win.src.ctx.native);
+		win.src.ctx.native = null;
+	}
+	$endif
+	rgfw_window_closePlatform(win);
+	if (_rgfw.clipboard) free(_rgfw.clipboard);
+	_rgfw.clipboard = null;
+	_rgfw.windowCount--;
+	log::debug("A window was freed", category: log::CATEGORY_VIDEO);
 }
 
 // public
@@ -1683,7 +1740,7 @@ fn int rgfw_init_ptr(ZString className, RgfwInitFlags flags, RgfwInfo* info)
 		rgfw_setInfo(null);
 		return out;
 	}
-	foreach (icon : RgfwMouseIcon::values)
+	foreach (icon : GfxMouseIcon::values)
 	{
 		_rgfw.standardMice[icon.ordinal] = rgfw_createMouseStandard(icon);
 	}
@@ -1697,7 +1754,7 @@ fn void rgfw_deinit_ptr(RgfwInfo* info)
 {
 	if (info == null) return;
 	rgfw_setInfo(info);
-	foreach (icon : RgfwMouseIcon::values)
+	foreach (icon : GfxMouseIcon::values)
 	{
 		if (_rgfw.standardMice[icon.ordinal]) rgfw_freeMouse(_rgfw.standardMice[icon.ordinal]);
 	}
@@ -1720,7 +1777,7 @@ fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, Gfx
 	_rgfw.windowCount++;
 	if (!_rgfw.root) rgfw_setRootWindow(win);
 	win.bounds = { x, y, w, h };
-	win.internal.mouse = _rgfw.standardMice[RgfwMouseIcon.NORMAL.ordinal];
+	win.internal.mouse = _rgfw.standardMice[GfxMouseIcon.NORMAL.ordinal];
 	win.internal.flags = flags;
 	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
 	GfxWindow* ret = rgfw_createWindowPlatform(name, flags, win);
@@ -1824,7 +1881,7 @@ fn void rgfw_window_showMouseFlags(GfxWindow* win, bool show)
 // public
 fn bool GfxWindow.set_mouse_default(&self) => self.set_mouse_standard(NORMAL);
 // public
-fn bool GfxWindow.set_mouse_standard(&self, RgfwMouseIcon icon) => self.set_mouse(_rgfw.standardMice[(sz)icon]);
+fn bool GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon) => self.set_mouse(_rgfw.standardMice[(sz)icon]);
 // public
 fn bool GfxWindow.set_mouse(&self, RgfwMouse* mouse)
 {
