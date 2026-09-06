@@ -320,7 +320,7 @@ struct GfxDataDropNode
 
 struct RgfwCommonEvent { GfxEventType type; GfxWindow* win; }
 struct RgfwWindowFocusEvent { GfxEventType type; GfxWindow* win; bool state; }
-struct RgfwMouseButtonEvent { GfxEventType type; GfxWindow* win; RgfwMouseButton value; bool state; }
+struct RgfwMouseButtonEvent { GfxEventType type; GfxWindow* win; GfxMouseButton value; bool state; }
 struct RgfwMouseDeltaEvent { GfxEventType type; GfxWindow* win; float x, y; }
 struct RgfwMouseMotionEvent { GfxEventType type; GfxWindow* win; int x, y; bool inWindow; }
 struct RgfwKeyEvent { GfxEventType type; GfxWindow* win; RgfwKey value; bool repeat; RgfwKeymod mod; bool state; }
@@ -521,7 +521,7 @@ const RgfwKey RGFW_KEY_WORLD2 = 194;
 
 const RGFW_KEY_LAST = 256;
 
-enum RgfwMouseButton
+enum GfxMouseButton
 {
 	LEFT,
 	MIDDLE,
@@ -787,7 +787,7 @@ fn GfxWindow* create_window(ZString name, int x, int y, int w, int h, GfxWindowF
 }
 
 // public
-fn bool is_mouse_pressed(RgfwMouseButton button) => _rgfw.mouseButtons[(sz)button].current && !_rgfw.mouseButtons[(sz)button].prev;
+fn bool is_mouse_pressed(GfxMouseButton button) => _rgfw.mouseButtons[(sz)button].current && !_rgfw.mouseButtons[(sz)button].prev;
 
 // public
 fn IntVec2 GfxWindow.get_mouse(&win) => win.internal.last_mouse;
@@ -854,13 +854,13 @@ fn bool is_key_released(RgfwKey key, GfxWindow* window = null)
 	return !_rgfw.keyboard[key].current && _rgfw.keyboard[key].prev && (!window || window.has_focus());
 }
 // public
-fn bool is_mouse_down(RgfwMouseButton button, GfxWindow* window = null)
+fn bool is_mouse_down(GfxMouseButton button, GfxWindow* window = null)
 {
 	return _rgfw.mouseButtons[(sz)button].current && (!window || window.has_focus());
 }
 
 // public
-fn bool is_mouse_released(RgfwMouseButton button, GfxWindow* window = null)
+fn bool is_mouse_released(GfxMouseButton button, GfxWindow* window = null)
 {
 	return !_rgfw.mouseButtons[button].current && _rgfw.mouseButtons[button].prev && (!window || window.has_focus());
 }
@@ -1157,7 +1157,7 @@ fn void rgfw_windowRefreshCallback(GfxWindow* win, int x, int y, int w, int h)
 }
 
 // public
-fn void rgfw_mouseButtonCallback(GfxWindow* win, RgfwMouseButton button, bool press)
+fn void rgfw_mouseButtonCallback(GfxWindow* win, GfxMouseButton button, bool press)
 {
 	GfxEvent event;
 	if (press)
@@ -1388,7 +1388,7 @@ fn void rgfw_setQueueEvents(bool queue) { _rgfw.queueEvents = queue; }
 fn void rgfw_resetPrevState()
 {
 	for (sz i = 0; i < (sz)RGFW_KEY_LAST; i++) _rgfw.keyboard[i].prev = _rgfw.keyboard[i].current;
-	foreach (mouse : RgfwMouseButton::values)
+	foreach (mouse : GfxMouseButton::values)
 	{
 		_rgfw.mouseButtons[mouse.ordinal].prev = _rgfw.mouseButtons[mouse.ordinal].current;
 	}

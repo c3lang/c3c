@@ -833,7 +833,7 @@ fn void rgfw_wlPointerButton(void* data, WlProxy* pointer, uint serial, uint tim
 	uint b = button - 0x110;
 	if (b == 1) { b = 2; }
 	else if (b == 2) { b = 1; }
-	rgfw_mouseButtonCallback(win, (RgfwMouseButton)b, !!state);
+	rgfw_mouseButtonCallback(win, (GfxMouseButton)b, !!state);
 }
 
 // private

@@ -298,14 +298,14 @@ fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @e
 fn void rgfwEmscriptenOnMouseDown(int button) @export("rgfw_on_mousedown")
 {
 	if (button > 2) button += 2;
-	rgfw_mouseButtonCallback(_rgfw.root, (RgfwMouseButton)button, true);
+	rgfw_mouseButtonCallback(_rgfw.root, (GfxMouseButton)button, true);
 }
 
 // private
 fn void rgfwEmscriptenOnMouseUp(int button) @export("rgfw_on_mouseup")
 {
 	if (button > 2) button += 2;
-	rgfw_mouseButtonCallback(_rgfw.root, (RgfwMouseButton)button, false);
+	rgfw_mouseButtonCallback(_rgfw.root, (GfxMouseButton)button, false);
 }
 
 // private

@@ -901,11 +901,11 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		case 0x0201: rgfw_mouseButtonCallback(win, LEFT, true);
 		case 0x0204: rgfw_mouseButtonCallback(win, RIGHT, true);
 		case 0x0207: rgfw_mouseButtonCallback(win, MIDDLE, true);
-		case 0x020B: rgfw_mouseButtonCallback(win, (RgfwMouseButton)(RgfwMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), true);
+		case 0x020B: rgfw_mouseButtonCallback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), true);
 		case 0x0202: rgfw_mouseButtonCallback(win, LEFT, false);
 		case 0x0205: rgfw_mouseButtonCallback(win, RIGHT, false);
 		case 0x0208: rgfw_mouseButtonCallback(win, MIDDLE, false);
-		case 0x020C: rgfw_mouseButtonCallback(win, (RgfwMouseButton)(RgfwMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), false);
+		case 0x020C: rgfw_mouseButtonCallback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), false);
 		case 0x020A: // WM_MOUSEWHEEL
 		{
 			float scrollY = (float)((short)((wParam >> 16) & 0xffff)) / 120.0f; // WHEEL_DELTA

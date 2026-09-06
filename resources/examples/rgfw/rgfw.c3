@@ -731,18 +731,18 @@ fn void rgfw_osxMouseMoved(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_o
 fn void rgfw_osxMouseDragged(ObjcId self, ObjcSelector sel, ObjcId event) { rgfw_osxMouseMovedCommon(self, event); }
 
 // private
-fn void rgfw_osxMouseButtonCommon(ObjcId self, ObjcId event, bool down, RgfwMouseButton fallback)
+fn void rgfw_osxMouseButtonCommon(ObjcId self, ObjcId event, bool down, GfxMouseButton fallback)
 {
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (win == null) return;
 	NSUInteger button = objc_send(event, ObjcSendNSUInteger, "buttonNumber");
-	RgfwMouseButton rgfwButton = fallback;
+	GfxMouseButton rgfwButton = fallback;
 	switch (button)
 	{
 		case 0: rgfwButton = LEFT;
 		case 1: rgfwButton = RIGHT;
 		case 2: rgfwButton = MIDDLE;
-		default: rgfwButton = (RgfwMouseButton)button;
+		default: rgfwButton = (GfxMouseButton)button;
 	}
 	rgfw_mouseButtonCallback(win, rgfwButton, down);
 	rgfw_osxMouseMovedCommon(self, event);

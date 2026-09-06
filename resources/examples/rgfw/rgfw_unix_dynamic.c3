@@ -1188,7 +1188,7 @@ fn void rgfw_xHandleEvent()
 			bool scroll = e.xbutton.button >= 4 && e.xbutton.button <= 7;
 			float scrollX = 0.0f;
 			float scrollY = 0.0f;
-			RgfwMouseButton value;
+			GfxMouseButton value;
 			switch (e.xbutton.button)
 			{
 				case 1: value = LEFT;
@@ -1198,7 +1198,7 @@ fn void rgfw_xHandleEvent()
 				case 5: scrollY = -1.0f;
 				case 6: scrollX = 1.0f;
 				case 7: scrollX = -1.0f;
-				default: value = (RgfwMouseButton)(e.xbutton.button - 1 - 4);
+				default: value = (GfxMouseButton)(e.xbutton.button - 1 - 4);
 			}
 			if (scroll) { rgfw_mouseScrollCallback(win, scrollX, scrollY); break; }
 			rgfw_mouseButtonCallback(win, value, true);
@@ -1207,13 +1207,13 @@ fn void rgfw_xHandleEvent()
 		case 5: // ButtonRelease
 		{
 			if (e.xbutton.button >= 4 && e.xbutton.button <= 7) break;
-			RgfwMouseButton value;
+			GfxMouseButton value;
 			switch (e.xbutton.button)
 			{
 				case 1: value = LEFT;
 				case 2: value = MIDDLE;
 				case 3: value = RIGHT;
-				default: value = (RgfwMouseButton)(e.xbutton.button - 1 - 4);
+				default: value = (GfxMouseButton)(e.xbutton.button - 1 - 4);
 			}
 			rgfw_mouseButtonCallback(win, value, false);
 			break;
@@ -3423,7 +3423,7 @@ fn void rgfw_wlPointerButton(void* data, WlProxy* pointer, uint serial, uint tim
 	uint b = button - 0x110;
 	if (b == 1) { b = 2; }
 	else if (b == 2) { b = 1; }
-	rgfw_mouseButtonCallback(win, (RgfwMouseButton)b, !!state);
+	rgfw_mouseButtonCallback(win, (GfxMouseButton)b, !!state);
 }
 
 // private
