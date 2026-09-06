@@ -998,6 +998,17 @@ void c_emit_global_decl(GenContext *c, Decl *var)
 	htable_set(&c->emitted_global_decls, (void *)vname, (void *)1);
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname = c_type_name(c, var_type);
+	AlignSize align   = var->alignment;
+	if (!align && is_valid_type_ptr(var->type) && c_type_is_resolved(var->type))
+	{
+		align = type_alloca_alignment(var->type);
+	}
+	if (align < 16 && c_get_type_size(var_type) >= 16)
+	{
+		align = 16;
+	}
+	AlignSize abi_align   = (c_type_is_resolved(var_type)) ? type_abi_alignment(var_type) : 1;
+	const char *align_str = (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
 	PRINT("extern ");
 	if (var->var.kind == VARDECL_CONST)
 	{
@@ -1007,7 +1018,7 @@ void c_emit_global_decl(GenContext *c, Decl *var)
 	{
 		PRINT("__c3_thread_local ");
 	}
-	PRINTF("%s %s", tname, vname);
+	PRINTF("%s%s %s", align_str, tname, vname);
 	const char *asm_name = c_get_decl_asm_name(var);
 	if (asm_name && (strncmp(asm_name, "__atomic_", 9) == 0 || strncmp(asm_name, "__builtin_", 10) == 0))
 	{
@@ -1052,6 +1063,17 @@ void c_emit_global_def(GenContext *c, Decl *var)
 	htable_set(&c->emitted_global_defs, (void *)vname, (void *)1);
 	c_emit_type_forward_decl(c, var_type);
 	const char *tname = c_type_name(c, var_type);
+	AlignSize align   = var->alignment;
+	if (!align && is_valid_type_ptr(var->type) && c_type_is_resolved(var->type))
+	{
+		align = type_alloca_alignment(var->type);
+	}
+	if (align < 16 && c_get_type_size(var_type) >= 16)
+	{
+		align = 16;
+	}
+	AlignSize abi_align   = (c_type_is_resolved(var_type)) ? type_abi_alignment(var_type) : 1;
+	const char *align_str = (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
 	if (var->var.kind == VARDECL_CONST)
 	{
 		PRINT("const ");
@@ -1060,7 +1082,7 @@ void c_emit_global_def(GenContext *c, Decl *var)
 	{
 		PRINT("__c3_thread_local ");
 	}
-	PRINTF("%s %s", tname, vname);
+	PRINTF("%s%s %s", align_str, tname, vname);
 	if (var->var.init_expr && c_can_emit_static_initializer(var->var.init_expr))
 	{
 		PRINT(" = ");

@@ -504,17 +504,34 @@ void c_emit_local_var_declarations(GenContext *c)
 		}
 		c_emit_type_forward_decl(c, vt);
 		const char *tname = c_type_name(c, vt);
+
+		AlignSize align = lv.decl ? lv.decl->alignment : 0;
+		if (!align && lv.decl && is_valid_type_ptr(lv.decl->type) && c_type_is_resolved(lv.decl->type))
+		{
+			align = type_alloca_alignment(lv.decl->type);
+		}
+		if (!align && lv.type && is_valid_type_ptr(lv.type) && c_type_is_resolved(lv.type))
+		{
+			align = type_alloca_alignment(lv.type);
+		}
+		if (align < 16 && c_get_type_size(vt) >= 16)
+		{
+			align = 16;
+		}
+		AlignSize abi_align   = (c_type_is_resolved(vt)) ? type_abi_alignment(vt) : 1;
+		const char *align_str = (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
+
 		if (c_type_is_aggregate(vt))
 		{
-			PRINTF("\t%s ___var_%d = {0};\n", tname, lv.id);
+			PRINTF("\t%s%s ___var_%d = {0};\n", align_str, tname, lv.id);
 		}
 		else if (type_is_pointer(vt) || vt->type_kind == TYPE_ANYFAULT || vt->type_kind == TYPE_TYPEID)
 		{
-			PRINTF("\t%s ___var_%d = NULL;\n", tname, lv.id);
+			PRINTF("\t%s%s ___var_%d = NULL;\n", align_str, tname, lv.id);
 		}
 		else
 		{
-			PRINTF("\t%s ___var_%d = 0;\n", tname, lv.id);
+			PRINTF("\t%s%s ___var_%d = 0;\n", align_str, tname, lv.id);
 		}
 	}
 }
@@ -642,7 +659,22 @@ void c_emit_function(GenContext *c, Decl *fn)
 		c_emit_type_forward_decl(c, vt);
 		const char *tname = c_type_name(c, vt);
 		bool is_tls       = lv.decl && lv.decl->var.is_threadlocal;
-		PRINTF("static %s%s ___var_%d", is_tls ? "__c3_thread_local " : "", tname, lv.id);
+		AlignSize align   = lv.decl ? lv.decl->alignment : 0;
+		if (!align && lv.decl && is_valid_type_ptr(lv.decl->type) && c_type_is_resolved(lv.decl->type))
+		{
+			align = type_alloca_alignment(lv.decl->type);
+		}
+		if (!align && lv.type && is_valid_type_ptr(lv.type) && c_type_is_resolved(lv.type))
+		{
+			align = type_alloca_alignment(lv.type);
+		}
+		if (align < 16 && c_get_type_size(vt) >= 16)
+		{
+			align = 16;
+		}
+		AlignSize abi_align   = (c_type_is_resolved(vt)) ? type_abi_alignment(vt) : 1;
+		const char *align_str = (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
+		PRINTF("static %s%s%s ___var_%d", align_str, is_tls ? "__c3_thread_local " : "", tname, lv.id);
 		if (lv.decl && lv.decl->var.init_expr && expr_is_const(lv.decl->var.init_expr))
 		{
 			PRINT(" = ");

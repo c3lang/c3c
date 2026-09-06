@@ -1065,7 +1065,15 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	{
 		if (addr_val.var != 0)
 		{
-			PRINTF("%s ___var_%d = (___var_%d != NULL) ? *(%s*)___var_%d : 0;\n", tname, temp, addr_val.var, tname, addr_val.var);
+			if (type_size(target_type) == 16 && (target_type->type_kind == TYPE_I128 || target_type->type_kind == TYPE_U128))
+			{
+				PRINTF("%s ___var_%d = 0;\n", tname, temp);
+				PRINTF("if (___var_%d != NULL) { __c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s)); }\n", addr_val.var, temp, addr_val.var, tname);
+			}
+			else
+			{
+				PRINTF("%s ___var_%d = (___var_%d != NULL) ? *(%s*)___var_%d : 0;\n", tname, temp, addr_val.var, tname, addr_val.var);
+			}
 		}
 		else
 		{
@@ -1437,7 +1445,14 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 		}
 		else
 		{
-			PRINTF("*(%s*)___var_%d = ___var_%d;\n", tname, addr_val.var, right_val->var);
+			if (type_size(target_type) == 16 && (target_type->type_kind == TYPE_I128 || target_type->type_kind == TYPE_U128))
+			{
+				PRINTF("__c3_memcpy((void*)___var_%d, &___var_%d, sizeof(%s));\n", addr_val.var, right_val->var, tname);
+			}
+			else
+			{
+				PRINTF("*(%s*)___var_%d = ___var_%d;\n", tname, addr_val.var, right_val->var);
+			}
 		}
 	}
 	else if (c_type_is_aggregate(target_type) && (target_type->type_kind == TYPE_ARRAY || target_type->type_kind == TYPE_VECTOR || target_type->type_kind == TYPE_SIMD_VECTOR))

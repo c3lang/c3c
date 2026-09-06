@@ -872,7 +872,7 @@ bool c_emit_type_decl(GenContext *c, Type *type)
 			{
 				len = 1;
 			}
-			AlignSize vec_align = (type->type_kind == TYPE_SIMD_VECTOR) ? type_abi_alignment(type) : 0;
+			AlignSize vec_align = type_abi_alignment(type);
 			const char *ext     = (len == 0) ? "__extension__ " : "";
 			if (vec_align > type_abi_alignment(type->array.base))
 			{
