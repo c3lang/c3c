@@ -1075,119 +1075,103 @@ static const char *c_backend_build_cflags(const char *cc)
 	}
 
 	// 2. Optimization level & size
-	if (!is_tcc)
+	switch (compiler.build.optsize)
 	{
-		switch (compiler.build.optsize)
-		{
-			case SIZE_OPTIMIZATION_SMALL:
-				strncat(buf, is_cl ? "/O1 " : "-Os ", sizeof(buf) - strlen(buf) - 1);
-				break;
-			case SIZE_OPTIMIZATION_TINY:
-				strncat(buf, is_cl ? "/O1 " : "-Oz ", sizeof(buf) - strlen(buf) - 1);
-				break;
-			default:
-				switch (compiler.build.optlevel)
-				{
-					case OPTIMIZATION_NONE:
-					case OPTIMIZATION_NOT_SET:
-						strncat(buf, is_cl ? "/Od " : "-O0 ", sizeof(buf) - strlen(buf) - 1);
-						break;
-					case OPTIMIZATION_LESS:
-						strncat(buf, is_cl ? "/O1 " : "-O1 ", sizeof(buf) - strlen(buf) - 1);
-						break;
-					case OPTIMIZATION_MORE:
-						strncat(buf, is_cl ? "/O2 " : "-O2 ", sizeof(buf) - strlen(buf) - 1);
-						break;
-					case OPTIMIZATION_AGGRESSIVE:
-						strncat(buf, is_cl ? "/O2 " : "-O3 ", sizeof(buf) - strlen(buf) - 1);
-						break;
-				}
-				break;
-		}
+		case SIZE_OPTIMIZATION_SMALL:
+			strncat(buf, is_cl ? "/O1 " : "-Os ", sizeof(buf) - strlen(buf) - 1);
+			break;
+		case SIZE_OPTIMIZATION_TINY:
+			strncat(buf, is_cl ? "/O1 " : "-Oz ", sizeof(buf) - strlen(buf) - 1);
+			break;
+		default:
+			switch (compiler.build.optlevel)
+			{
+				case OPTIMIZATION_NONE:
+				case OPTIMIZATION_NOT_SET:
+					strncat(buf, is_cl ? "/Od " : "-O0 ", sizeof(buf) - strlen(buf) - 1);
+					break;
+				case OPTIMIZATION_LESS:
+					strncat(buf, is_cl ? "/O1 " : "-O1 ", sizeof(buf) - strlen(buf) - 1);
+					break;
+				case OPTIMIZATION_MORE:
+					strncat(buf, is_cl ? "/O2 " : "-O2 ", sizeof(buf) - strlen(buf) - 1);
+					break;
+				case OPTIMIZATION_AGGRESSIVE:
+					strncat(buf, is_cl ? "/O2 " : "-O3 ", sizeof(buf) - strlen(buf) - 1);
+					break;
+			}
+			break;
 	}
 
 	// 3. Debug info
-	if (!is_tcc)
+	switch (compiler.build.debug_info)
 	{
-		switch (compiler.build.debug_info)
-		{
-			case DEBUG_INFO_FULL:
-				strncat(buf, is_cl ? "/Z7 " : "-g ", sizeof(buf) - strlen(buf) - 1);
-				break;
-			case DEBUG_INFO_LINE_TABLES:
-				strncat(buf, is_cl ? "/Z7 " : "-g1 ", sizeof(buf) - strlen(buf) - 1);
-				break;
-			case DEBUG_INFO_NONE:
-			default:
-				if (!is_cl && compiler.build.debug_info == DEBUG_INFO_NONE)
-				{
-					strncat(buf, "-g0 ", sizeof(buf) - strlen(buf) - 1);
-				}
-				break;
-		}
-	}
-	else if (compiler.build.debug_info != DEBUG_INFO_NONE)
-	{
-		strncat(buf, "-g ", sizeof(buf) - strlen(buf) - 1);
+		case DEBUG_INFO_FULL:
+			strncat(buf, is_cl ? "/Z7 " : "-g ", sizeof(buf) - strlen(buf) - 1);
+			break;
+		case DEBUG_INFO_LINE_TABLES:
+			strncat(buf, is_cl ? "/Z7 " : "-g1 ", sizeof(buf) - strlen(buf) - 1);
+			break;
+		case DEBUG_INFO_NONE:
+		default:
+			if (!is_cl && compiler.build.debug_info == DEBUG_INFO_NONE)
+			{
+				strncat(buf, "-g0 ", sizeof(buf) - strlen(buf) - 1);
+			}
+			break;
 	}
 
 	// 4. Floating-point math
-	if (!is_tcc)
+	switch (compiler.build.feature.fp_math)
 	{
-		switch (compiler.build.feature.fp_math)
-		{
-			case FP_FAST:
-				strncat(buf, is_cl ? "/fp:fast " : "-ffast-math ", sizeof(buf) - strlen(buf) - 1);
-				break;
-			case FP_RELAXED:
-				if (!is_cl)
-				{
-					strncat(buf, "-fno-trapping-math ", sizeof(buf) - strlen(buf) - 1);
-				}
-				break;
-			case FP_STRICT:
-			default:
-				if (is_cl)
-				{
-					strncat(buf, "/fp:precise ", sizeof(buf) - strlen(buf) - 1);
-				}
-				else
-				{
-					strncat(buf, "-fno-fast-math ", sizeof(buf) - strlen(buf) - 1);
-				}
-				break;
-		}
+		case FP_FAST:
+			strncat(buf, is_cl ? "/fp:fast " : "-ffast-math ", sizeof(buf) - strlen(buf) - 1);
+			break;
+		case FP_RELAXED:
+			if (!is_cl)
+			{
+				strncat(buf, "-fno-trapping-math ", sizeof(buf) - strlen(buf) - 1);
+			}
+			break;
+		case FP_STRICT:
+		default:
+			if (is_cl)
+			{
+				strncat(buf, "/fp:precise ", sizeof(buf) - strlen(buf) - 1);
+			}
+			else
+			{
+				strncat(buf, "-fno-fast-math ", sizeof(buf) - strlen(buf) - 1);
+			}
+			break;
 	}
 
 	// 5. Sanitizers & Loop optimizations
-	if (!is_tcc)
+	if (compiler.build.feature.sanitize_address)
 	{
-		if (compiler.build.feature.sanitize_address)
+		strncat(buf, is_cl ? "/fsanitize=address " : "-fsanitize=address ", sizeof(buf) - strlen(buf) - 1);
+	}
+	if (!is_cl)
+	{
+		if (compiler.build.feature.sanitize_memory)
 		{
-			strncat(buf, is_cl ? "/fsanitize=address " : "-fsanitize=address ", sizeof(buf) - strlen(buf) - 1);
+			strncat(buf, "-fsanitize=memory ", sizeof(buf) - strlen(buf) - 1);
 		}
-		if (!is_cl)
+		if (compiler.build.feature.sanitize_thread)
 		{
-			if (compiler.build.feature.sanitize_memory)
-			{
-				strncat(buf, "-fsanitize=memory ", sizeof(buf) - strlen(buf) - 1);
-			}
-			if (compiler.build.feature.sanitize_thread)
-			{
-				strncat(buf, "-fsanitize=thread ", sizeof(buf) - strlen(buf) - 1);
-			}
-			if (compiler.build.unroll_loops == UNROLL_LOOPS_ON)
-			{
-				strncat(buf, "-funroll-loops ", sizeof(buf) - strlen(buf) - 1);
-			}
-			if (compiler.build.loop_vectorization == VECTORIZATION_ON)
-			{
-				strncat(buf, "-ftree-vectorize ", sizeof(buf) - strlen(buf) - 1);
-			}
-			else if (compiler.build.loop_vectorization == VECTORIZATION_OFF)
-			{
-				strncat(buf, "-fno-tree-vectorize ", sizeof(buf) - strlen(buf) - 1);
-			}
+			strncat(buf, "-fsanitize=thread ", sizeof(buf) - strlen(buf) - 1);
+		}
+		if (compiler.build.unroll_loops == UNROLL_LOOPS_ON)
+		{
+			strncat(buf, "-funroll-loops ", sizeof(buf) - strlen(buf) - 1);
+		}
+		if (compiler.build.loop_vectorization == VECTORIZATION_ON)
+		{
+			strncat(buf, "-ftree-vectorize ", sizeof(buf) - strlen(buf) - 1);
+		}
+		else if (compiler.build.loop_vectorization == VECTORIZATION_OFF)
+		{
+			strncat(buf, "-fno-tree-vectorize ", sizeof(buf) - strlen(buf) - 1);
 		}
 	}
 
