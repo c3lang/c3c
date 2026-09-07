@@ -10,8 +10,6 @@ import std::collections::list, std::math;
 
 
 extern fn char* strstr(char* haystack, char* needle);
-extern fn float powf(float x, float y);
-extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
 struct Timespec { long tv_sec; CLong tv_nsec; }
@@ -328,7 +326,7 @@ const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
 const RgfwGfxContextType RGFW_GFX_EGL = 2;
 const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
-struct RgfwNativeImage
+struct GfxNativeImage
 {
 	GfxFormat format;
 	char* buffer; // bitmapBits
@@ -1097,7 +1095,11 @@ fn bool rgfw_getGlobalMouse(int* x, int* y)
 }
 
 // public
-fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h) { win.src.aspectRatioW = w; win.src.aspectRatioH = h; }
+fn void _window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
+{
+	win.src.aspectRatioW = w;
+	win.src.aspectRatioH = h;
+}
 // public
 fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h) { win.src.minSizeW = w; win.src.minSizeH = h; }
 // public

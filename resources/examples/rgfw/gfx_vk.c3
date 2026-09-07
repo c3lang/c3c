@@ -8,6 +8,7 @@ alias VkSurfaceKHR = ulong;
 alias GfxVkGetInstanceProcAddressProc = fn GfxFn(VkInstance instance, ZString procname);
 
 
+
 // public
 fn GfxFn rgfw_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname)
 {

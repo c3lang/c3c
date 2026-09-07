@@ -15,9 +15,7 @@ import std::math;
 // JS to call back into (key events, drag-drop) are marked @export so the host
 // can find them.
 
-extern fn void* memset(void* dest, int value, sz count);
 extern fn char* strstr(char* haystack, char* needle);
-extern fn float powf(float x, float y);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
 struct Timespec { long tv_sec; CLong tv_nsec; }
@@ -70,7 +68,7 @@ const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
 const RgfwGfxContextType RGFW_GFX_EGL = 2;
 const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
-struct RgfwNativeImage
+struct GfxNativeImage
 {
 	GfxFormat format;
 	char* buffer;
@@ -119,8 +117,7 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 }
 
 
-// public
-fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h) {}
+fn void _window_set_aspect_ratio(GfxWindow* win, int w, int h) @private {}
 
 // ---- JS host imports (no Emscripten runtime under C3's wasm target) ----
 extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "rgfw_set_canvas_size");

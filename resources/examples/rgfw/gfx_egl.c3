@@ -38,6 +38,23 @@ alias EglGetCurrentContextProc = fn EglContext();
 alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
 alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
 
+EglGetProcAddressProc rgfw_eglGetProcAddress;
+EglGetDisplayProc rgfw_eglGetDisplay;
+EglInitializeProc rgfw_eglInitialize;
+EglTerminateProc rgfw_eglTerminate;
+EglBindApiProc rgfw_eglBindApi;
+EglChooseConfigProc rgfw_eglChooseConfig;
+EglCreateContextProc rgfw_eglCreateContext;
+EglDestroyContextProc rgfw_eglDestroyContext;
+EglCreateWindowSurfaceProc rgfw_eglCreateWindowSurface;
+EglDestroySurfaceProc rgfw_eglDestroySurface;
+EglMakeCurrentProc rgfw_eglMakeCurrent;
+EglSwapBuffersProc rgfw_eglSwapBuffers;
+EglSwapIntervalProc rgfw_eglSwapInterval;
+EglGetCurrentContextProc rgfw_eglGetCurrentContext;
+EglQueryStringProc rgfw_eglQueryString;
+EglGetConfigAttribProc rgfw_eglGetConfigAttrib;
+
 excuse PROC_LOAD_FAILED;
 
 // public

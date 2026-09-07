@@ -1,5 +1,5 @@
 module std::gfx;
-import std::math;
+import std::math, std::os::macos;
 
 const bool RGFW_BUILD_MACOS = $feat(MACOS);
 const bool RGFW_BUILD_X11 = $feat(X11) || $feat(X11_WAYLAND);
@@ -7,6 +7,9 @@ const bool RGFW_BUILD_WAYLAND = $feat(WAYLAND);
 const bool RGFW_BUILD_WINDOWS = $feat(WIN32);
 const bool RGFW_BUILD_EGL = $feat(X11_WAYLAND) || $feat(X11) || $feat(WAYLAND) || $feat(MACOS);
 const bool RGFW_BUILD_WASM = $feat(WASM);
+
+const int RTLD_LAZY = 0x1;
+const int RTLD_LOCAL = 0x4;
 
 excuse
 {
@@ -71,8 +74,10 @@ struct GfxSurface
 	IntVec2 size;
 	GfxFormat format;
 	GfxConvertImageDataFn convertFunc;
-	RgfwNativeImage native;
+	GfxNativeImage native;
 }
+
+
 
 struct GfxMonitorMode
 {
@@ -1581,7 +1586,7 @@ fn bool rgfw_monitorModeCompare(GfxMonitorMode* mon, GfxMonitorMode* mon2, GfxMo
 // public
 fn void rgfw_surface_setConvertFunc(GfxSurface* surface, GfxConvertImageDataFn func) { surface.convertFunc = func; }
 // public
-fn RgfwNativeImage* rgfw_surface_getNativeImage(GfxSurface* surface) => &surface.native;
+fn GfxNativeImage* rgfw_surface_getNativeImage(GfxSurface* surface) => &surface.native;
 // public
 
 <*
@@ -1714,6 +1719,7 @@ fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mo
 	return chosen ? *chosen : NOT_FOUND~;
 }
 
+
 // public
 fn ZString rgfw_monitor_getName(GfxMonitor* monitor) => (ZString)&monitor.name[0];
 // public
@@ -1750,7 +1756,7 @@ fn bool rgfw_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, 
 	for (sz i = 0; i < count; i++)
 	{
 		float value = (float)i / (float)(count - 1);
-		value = powf(value, 1.0f / gamma) * 65535.0f + 0.5f;
+		value = math::pow(value, 1.0f / gamma) * 65535.0f + 0.5f;
 		value = min(value, 65535.0f);
 		ptr[i] = (ushort)value;
 	}
@@ -1760,18 +1766,17 @@ fn bool rgfw_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, 
 }
 
 // public
-fn bool rgfw_monitor_setGamma(GfxMonitor* monitor, float gamma)
+fn bool GfxMonitor.set_gamma(&self, float gamma)
 {
-	sz count = rgfw_monitor_getGammaRampPtr(monitor, null);
+	sz count = rgfw_monitor_getGammaRampPtr(self, null);
 	ushort* ptr = mem::alloc_array(ushort, count);
-	bool ret = rgfw_monitor_setGammaPtr(monitor, gamma, ptr, count);
+	bool ret = rgfw_monitor_setGammaPtr(self, gamma, ptr, count);
 	free(ptr);
 	return ret;
 }
 
-// public
 fn bool GfxWindow.captures_mouse(&self) => self.internal.captureMouse;
-// public
+
 fn bool GfxWindow.is_raw_mouse(&self) => self.internal.rawMouse;
 
 
@@ -1813,7 +1818,7 @@ fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindo
 	}
 }
 
-
+macro void GfxWindow.set_aspect_ratio(&self, int w, int h) => _window_set_aspect_ratio(self, w, h);
 
 
 

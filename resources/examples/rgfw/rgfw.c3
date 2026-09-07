@@ -1,28 +1,17 @@
 module std::gfx @feat(MACOS) @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
 
-import std::collections, std::math, libc, std::os::macos;
+import std::collections, std::math, libc, std::os::macos, std::io;
 // C3 port of the shared RGFW implementation from /Users/lerno/Downloads/RGFW.h.
 // This file intentionally imports no C3 standard-library modules. It only
 // declares the small C runtime hooks RGFW's C header also expects from the host.
 
 excuse NSWINDOW_CREATION_FAILED;
 
-extern fn void* memset(void* dest, int value, sz count);
 extern fn char* strstr(char* haystack, char* needle);
-extern fn float powf(float x, float y);
-extern fn int chdir(char* path);
-extern fn int clock_gettime(int clock_id, Timespec* ts);
-
-struct Timespec { CLong tv_sec; CLong tv_nsec; }
 
 alias ObjcId = void*;
 typedef ObjcClass = void*;
 typedef ObjcSelector = void*;
-alias CGFloat = double;
-alias NSUInteger = CULong;
-alias NSInteger = CLong;
-alias CFArrayRef = void*;
-alias CFStringRef = void*;
 alias CFBundleRef = void*;
 alias CGDirectDisplayID = uint;
 alias CGDisplayModeRef = void*;
@@ -30,27 +19,6 @@ alias CGEventRef = void*;
 
 struct VkMetalSurfaceCreateInfoEXT { int sType; void* pNext; uint flags; void* pLayer; }
 alias RgfwVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* createInfo, void* allocator, VkSurfaceKHR* surface);
-
-alias XOpenDisplayProc = fn void*(ZString displayName);
-alias XCloseDisplayProc = fn int(void* display);
-alias XDefaultRootWindowProc = fn CULong(void* display);
-alias XCreateSimpleWindowProc = fn CULong(void* display, CULong parent, int x, int y, uint width, uint height, uint borderWidth, CULong border, CULong background);
-alias XStoreNameProc = fn int(void* display, CULong window, ZString name);
-alias XMapRaisedProc = fn int(void* display, CULong window);
-alias XMapWindowProc = fn int(void* display, CULong window);
-alias XUnmapWindowProc = fn int(void* display, CULong window);
-alias XDestroyWindowProc = fn int(void* display, CULong window);
-alias XMoveWindowProc = fn int(void* display, CULong window, int x, int y);
-alias XResizeWindowProc = fn int(void* display, CULong window, uint width, uint height);
-alias XFlushProc = fn int(void* display);
-alias XPendingProc = fn int(void* display);
-alias WlDisplayConnectProc = fn void*(ZString name);
-alias WlDisplayDisconnectProc = fn void(void* display);
-alias WlDisplayDispatchPendingProc = fn int(void* display);
-alias WlDisplayRoundtripProc = fn int(void* display);
-alias WlDisplayGetFdProc = fn int(void* display);
-
-
 
 extern fn void objc_msgSendRaw(...) @cname("objc_msgSend") @builtin;
 extern fn ObjcSelector sel_registerName(ZString name);
@@ -181,14 +149,6 @@ const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
 const RgfwGfxContextType RGFW_GFX_EGL = 2;
 const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
-struct RgfwNativeImage
-{
-	GfxFormat format;
-	char* buffer;
-	void* native0;
-	void* native1;
-	void* native2;
-}
 
 struct RgfwWindowSrc
 {
@@ -205,40 +165,8 @@ struct RgfwWindowSrc
 
 ObjcClass rgfw_osxWindowDelegateClass;
 ObjcClass rgfw_osxViewClass;
-EglGetProcAddressProc rgfw_eglGetProcAddress;
-EglGetDisplayProc rgfw_eglGetDisplay;
-EglInitializeProc rgfw_eglInitialize;
-EglTerminateProc rgfw_eglTerminate;
-EglBindApiProc rgfw_eglBindApi;
-EglChooseConfigProc rgfw_eglChooseConfig;
-EglCreateContextProc rgfw_eglCreateContext;
-EglDestroyContextProc rgfw_eglDestroyContext;
-EglCreateWindowSurfaceProc rgfw_eglCreateWindowSurface;
-EglDestroySurfaceProc rgfw_eglDestroySurface;
-EglMakeCurrentProc rgfw_eglMakeCurrent;
-EglSwapBuffersProc rgfw_eglSwapBuffers;
-EglSwapIntervalProc rgfw_eglSwapInterval;
-EglGetCurrentContextProc rgfw_eglGetCurrentContext;
-EglQueryStringProc rgfw_eglQueryString;
-EglGetConfigAttribProc rgfw_eglGetConfigAttrib;
-XOpenDisplayProc rgfw_xOpenDisplay;
-XCloseDisplayProc rgfw_xCloseDisplay;
-XDefaultRootWindowProc rgfw_xDefaultRootWindow;
-XCreateSimpleWindowProc rgfw_xCreateSimpleWindow;
-XStoreNameProc rgfw_xStoreName;
-XMapRaisedProc rgfw_xMapRaised;
-XMapWindowProc rgfw_xMapWindow;
-XUnmapWindowProc rgfw_xUnmapWindow;
-XDestroyWindowProc rgfw_xDestroyWindow;
-XMoveWindowProc rgfw_xMoveWindow;
-XResizeWindowProc rgfw_xResizeWindow;
-XFlushProc rgfw_xFlush;
-XPendingProc rgfw_xPending;
-WlDisplayConnectProc rgfw_wlDisplayConnect;
-WlDisplayDisconnectProc rgfw_wlDisplayDisconnect;
-WlDisplayDispatchPendingProc rgfw_wlDisplayDispatchPending;
-WlDisplayRoundtripProc rgfw_wlDisplayRoundtrip;
-WlDisplayGetFdProc rgfw_wlDisplayGetFd;
+
+
 
 
 // public
@@ -252,10 +180,6 @@ fn bool rgfw_loadGL()
 }
 
 
-
-
-const int RTLD_LAZY = 0x1;
-const int RTLD_LOCAL = 0x4;
 const int VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT = 1000217000;
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
 ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_EXT_metal_surface"};
@@ -309,19 +233,6 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 
 // public
 fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
-
-
-// public
-fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h)
-{
-	if (win == null || win.src.window == null) return;
-	if (w == 0 && h == 0) { w = 1; h = 1; }
-	CGSize size;
-	size.width = (CGFloat)w;
-	size.height = (CGFloat)h;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setContentAspectRatio:", size);
-}
-
 
 
 // public
@@ -608,26 +519,6 @@ fn CGRect ns_rect(double x, double y, double w, double h)
 	return rect;
 }
 
-// private
-fn void rgfw_monitorFromDisplay(CGDirectDisplayID display, GfxMonitor* mon)
-{
-	*mon = {};
-	mem::copy(&mon.name, "Display", 8);
-	CGRect bounds = cgDisplayBounds(display);
-	CGDisplayModeRef mode = cgDisplayCopyDisplayMode(display);
-	mon.origin = { (int)bounds.origin.x, (int)bounds.origin.y };
-	mon.mode.w = mode != null ? (int)cgDisplayModeGetWidth(mode) : (int)bounds.size.width;
-	mon.mode.h = mode != null ? (int)cgDisplayModeGetHeight(mode) : (int)bounds.size.height;
-	mon.mode.refresh_rate = mode != null ? (float)cgDisplayModeGetRefreshRate(mode) : 60.0;
-	mon.mode.red = 8; mon.mode.green = 8; mon.mode.blue = 8;
-	mon.mode.src = mode;
-	CGSize phys = cgDisplayScreenSize(display);
-	mon.phys_size = { (float)phys.width, (float)phys.height };
-	mon.scale = {
-		mon.mode.w > 0 ? ((float)bounds.size.width / (float)mon.mode.w) : 1.0,
-		mon.mode.h > 0 ? ((float)bounds.size.height / (float)mon.mode.h) : 1.0 };
-	mon.pixelRatio = mon.scale.x;
-}
 
 // private
 fn CGDirectDisplayID rgfw_monitorDisplay(GfxMonitor* monitor)
@@ -1130,7 +1021,7 @@ fn void rgfw_pollMonitors()
 	for (uint i = 0; i < count; i++)
 	{
 		GfxMonitor mon;
-		rgfw_monitorFromDisplay(displays[i], &mon);
+		_monitor_from_display(displays[i], &mon);
 		GfxMonitorNode* node = rgfw_monitors_add(&mon);
 		if (node == null) continue;
 		node.nativeId0 = (ulong)displays[i];
@@ -1163,7 +1054,7 @@ fn void rgfw_moveToMacOSResourceDir()
 	if (bundle == null) return;
 	ObjcId path = objc_send(bundle, ObjcSendId, "resourcePath");
 	ZString raw = ns_utf8(path);
-	if (raw != null) chdir(raw);
+	if (raw) (void)path::chdir(raw.str_view());
 }
 // public
 fn void* rgfw_window_getView_OSX(GfxWindow* win) => win != null ? win.src.view : null;

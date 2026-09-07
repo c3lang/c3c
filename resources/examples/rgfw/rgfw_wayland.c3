@@ -21,8 +21,6 @@ import std::collections::list, std::math, libc;
 
 
 extern fn char* strstr(char* haystack, char* needle);
-extern fn float powf(float x, float y);
-extern fn int chdir(char* path);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
 struct Timespec { CLong tv_sec; CLong tv_nsec; }
@@ -116,18 +114,6 @@ const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
 const RgfwGfxContextType RGFW_GFX_EGL = 2;
 const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
-struct RgfwNativeImage
-{
-	GfxFormat format;
-	char* buffer;
-	void* native0;
-	void* native1;
-	void* native2;
-	WlProxy* pool; // wl_shm_pool*
-	int fd;
-	WlProxy* wlBuffer; // wl_buffer*
-}
-
 struct RgfwWindowSrc
 {
 	void* window;
@@ -157,26 +143,7 @@ struct RgfwWindowSrc
 	bool usingCustomCursor;
 }
 
-EglGetProcAddressProc rgfw_eglGetProcAddress;
-EglGetDisplayProc rgfw_eglGetDisplay;
-EglInitializeProc rgfw_eglInitialize;
-EglTerminateProc rgfw_eglTerminate;
-EglBindApiProc rgfw_eglBindApi;
-EglChooseConfigProc rgfw_eglChooseConfig;
-EglCreateContextProc rgfw_eglCreateContext;
-EglDestroyContextProc rgfw_eglDestroyContext;
-EglCreateWindowSurfaceProc rgfw_eglCreateWindowSurface;
-EglDestroySurfaceProc rgfw_eglDestroySurface;
-EglMakeCurrentProc rgfw_eglMakeCurrent;
-EglSwapBuffersProc rgfw_eglSwapBuffers;
-EglSwapIntervalProc rgfw_eglSwapInterval;
-EglGetCurrentContextProc rgfw_eglGetCurrentContext;
-EglQueryStringProc rgfw_eglQueryString;
-EglGetConfigAttribProc rgfw_eglGetConfigAttrib;
 
-
-const int RTLD_LAZY = 0x1;
-const int RTLD_LOCAL = 0x4;
 const int VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR = 1000006000;
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
 struct VkWaylandSurfaceCreateInfoKHR { int sType; void* pNext; uint flags; WlDisplay* display; WlProxy* surface; }

@@ -4,6 +4,19 @@ import std::math, std::collections::list, libc;
 const WAYLAND_ONLY = $feat(WAYLAND) && !$feat(X11_WAYLAND) && !$feat(X11);
 const X11_ONLY = !$feat(WAYLAND) && !$feat(X11_WAYLAND) && $feat(X11);
 
+struct GfxNativeImage
+{
+	GfxFormat format;
+	char* buffer;
+	void* bitmap; // XImage* (X11)
+	struct @feat(WAYLAND, X11_WAYLAND)
+	{
+		WlProxy* pool; // wl_shm_pool* (Wayland)
+		int fd; // Wayland
+		WlProxy* wlBuffer; // wl_buffer* (Wayland)
+	}
+}
+
 fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* monitor)
 {
 	$switch:
@@ -718,7 +731,7 @@ fn void rgfw_window_restorePlatform(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h)
+fn void _window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
 {
 	$switch:
 		$case WAYLAND_ONLY:
