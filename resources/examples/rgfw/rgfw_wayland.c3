@@ -767,7 +767,7 @@ fn void rgfw_wlShmFormatHandler(void* data, WlProxy* shm, uint format) {}
 // private
 fn void rgfw_wlRelativePointerMotion(void* data, WlProxy* relPointer, uint timeHi, uint timeLo, WlFixed dx, WlFixed dy, WlFixed dxUnaccel, WlFixed dyUnaccel)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	GfxWindow* win = info.mouseOwner;
 	if (win == null) return;
 	float vecX = (float)wlFixedToDouble(dx);
@@ -778,14 +778,14 @@ fn void rgfw_wlRelativePointerMotion(void* data, WlProxy* relPointer, uint timeH
 // private
 fn void rgfw_wlPointerLocked(void* data, WlProxy* lockedPointer)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	wlPointerSetCursor(info.wlPointer, info.mouseEnterSerial, null, 0, 0);
 }
 
 // private
 fn void rgfw_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlProxy* surface, WlFixed surfaceX, WlFixed surfaceY)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	GfxWindow* win = (GfxWindow*)wlSurfaceGetUserData(surface);
 	info.mouseEnterSerial = serial;
 	win.internal.mouseInside = true;
@@ -804,7 +804,7 @@ fn void rgfw_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlProxy* 
 fn void rgfw_wlPointerLeave(void* data, WlProxy* pointer, uint serial, WlProxy* surface)
 {
 	GfxWindow* win = (GfxWindow*)wlSurfaceGetUserData(surface);
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	if (info.mouseOwner == win) info.mouseOwner = null;
 	_mouse_notify_callback(win, ...win.internal.last_mouse, false);
 }
@@ -812,7 +812,7 @@ fn void rgfw_wlPointerLeave(void* data, WlProxy* pointer, uint serial, WlProxy* 
 // private
 fn void rgfw_wlPointerMotion(void* data, WlProxy* pointer, uint time, WlFixed x, WlFixed y)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	GfxWindow* win = info.mouseOwner;
 	if (win == null) return;
 	int cx = (int)wlFixedToDouble(x);
@@ -823,7 +823,7 @@ fn void rgfw_wlPointerMotion(void* data, WlProxy* pointer, uint time, WlFixed x,
 // private
 fn void rgfw_wlPointerButton(void* data, WlProxy* pointer, uint serial, uint time, uint button, uint state)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	GfxWindow* win = info.mouseOwner;
 	if (win == null) return;
 	uint b = button - 0x110;
@@ -835,7 +835,7 @@ fn void rgfw_wlPointerButton(void* data, WlProxy* pointer, uint serial, uint tim
 // private
 fn void rgfw_wlPointerAxis(void* data, WlProxy* pointer, uint time, uint axis, WlFixed value)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	GfxWindow* win = info.mouseOwner;
 	if (win == null) return;
 	float scrollX = 0.0f;
@@ -849,7 +849,7 @@ fn void rgfw_wlPointerAxis(void* data, WlProxy* pointer, uint time, uint axis, W
 // private
 fn void rgfw_wlKeyboardKeymap(void* data, WlProxy* keyboard, uint format, int fd, uint size)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	ZString keymapString = (ZString)mmap(null, size, PROT_READ, MAP_SHARED, fd, 0);
 	xkbKeymapUnref(info.keymap);
 	info.keymap = xkbKeymapNewFromString(info.xkbContext, keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
@@ -874,7 +874,7 @@ fn void rgfw_wlKeyboardKeymap(void* data, WlProxy* keyboard, uint format, int fd
 // private
 fn void rgfw_wlKeyboardEnter(void* data, WlProxy* keyboard, uint serial, WlProxy* surface, WlArray* keys)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	GfxWindow* win = (GfxWindow*)wlSurfaceGetUserData(surface);
 	info.kbOwner = win;
 
@@ -886,14 +886,14 @@ fn void rgfw_wlKeyboardEnter(void* data, WlProxy* keyboard, uint serial, WlProxy
 // private
 fn void rgfw_wlKeyboardLeave(void* data, WlProxy* keyboard, uint serial, WlProxy* surface)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	GfxWindow* win = (GfxWindow*)wlSurfaceGetUserData(surface);
 	if (info.kbOwner == win) info.kbOwner = null;
 	rgfw_windowFocusCallback(win, false);
 }
 
 // private
-fn XkbKeysym rgfw_wlComposeSymbol(RgfwInfo* info, XkbKeysym sym)
+fn XkbKeysym rgfw_wlComposeSymbol(GfxContext* info, XkbKeysym sym)
 {
 	if (sym == XKB_KEY_NO_SYMBOL || info.composeState == null) return sym;
 	if (xkbComposeStateFeed(info.composeState, sym) != XKB_COMPOSE_FEED_ACCEPTED) return sym;
@@ -918,7 +918,7 @@ fn void rgfw_wlSendKeyEvent(uint key)
 // private
 fn void rgfw_wlKeyboardKey(void* data, WlProxy* keyboard, uint serial, uint time, uint key, uint state)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	if (info.kbOwner == null) return;
 
 	GfxWindow* win = info.kbOwner;
@@ -935,7 +935,7 @@ fn void rgfw_wlKeyboardKey(void* data, WlProxy* keyboard, uint serial, uint time
 // private
 fn void rgfw_wlKeyboardModifiers(void* data, WlProxy* keyboard, uint serial, uint modsDepressed, uint modsLatched, uint modsLocked, uint group)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	xkbStateUpdateMask(info.xkbState, modsDepressed, modsLatched, modsLocked, 0, 0, group);
 }
 
@@ -958,7 +958,7 @@ WlKeyboardListener rgfw_wlKeyboardListener = {
 // private
 fn void rgfw_wlSeatCapabilities(void* data, WlProxy* seat, uint capabilities)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 
 	if ((capabilities & WL_SEAT_CAPABILITY_POINTER) != 0 && info.wlPointer == null)
 	{
@@ -1152,7 +1152,7 @@ fn void rgfw_wlDataSourceSend(void* data, WlProxy* source, ZString mimeType, int
 // private
 fn void rgfw_wlDataSourceCancelled(void* data, WlProxy* source)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	if (info.kbOwner != null && info.kbOwner.src.dataSource == source) info.kbOwner.src.dataSource = null;
 	wlDataSourceDestroy(source);
 }
@@ -1217,7 +1217,7 @@ fn void rgfw_wlDataDeviceNothingMotion(void* data, WlProxy* device, uint time, W
 // private
 fn void rgfw_wlGlobalRegistryHandler(void* data, WlProxy* registry, uint id, ZString iface, uint version)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 
 	if (strstr(iface, "wl_compositor") == iface) { info.compositor = wlRegistryBind(registry, id, &wlCompositorInterface, 4); }
 	else if (strstr(iface, "xdg_wm_base") == iface) { info.xdgWmBase = wlRegistryBind(registry, id, &xdgWmBaseInterface, 1); }
@@ -1244,7 +1244,7 @@ fn void rgfw_wlGlobalRegistryHandler(void* data, WlProxy* registry, uint id, ZSt
 // private
 fn void rgfw_wlGlobalRegistryRemove(void* data, WlProxy* registry, uint id)
 {
-	RgfwInfo* info = (RgfwInfo*)data;
+	GfxContext* info = data;
 	GfxMonitorNode* prev = info.monitors.list.head;
 	GfxMonitorNode* node = null;
 	if (prev == null) return;
@@ -1302,35 +1302,31 @@ fn int rgfw_wlCreateShmFile(sz size)
 
 
 // public
-fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
+fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
-	surface.data = data;
-	surface.size = { w, h };
-	surface.format = format;
+	self.data = data;
+	self.size = { w, h };
+	self.format = format;
 
 	int size = w * h * 4;
 	int fd = rgfw_wlCreateShmFile((sz)size);
 	if (fd < 0)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_BUFFER, "Failed to create a buffer.");
-		return false;
+		log::error("Failed to create a buffer", category: log::CATEGORY_VIDEO);
+		return SURFACE_CREATION_FAILED~;
 	}
-
-	surface.native.pool = wlShmCreatePool(_gfx_ctx.shm, fd, (int)size);
-	surface.native.buffer = mmap(null, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (surface.native.buffer == MAP_FAILED)
+	defer catch self.release();
+	self.native.fd = fd;
+	self.native.format = BGRA8;
+	self.native.pool = wlShmCreatePool(_gfx_ctx.shm, fd, (int)size);
+	self.native.buffer = mmap(null, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (self.native.buffer == MAP_FAILED)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_BUFFER, "mmap failed.");
-		return false;
+		log::error("mmap failed", category: log::CATEGORY_VIDEO);
+		self.native.buffer = null;
+		return SURFACE_CREATION_FAILED~;
 	}
-
-	surface.native.fd = fd;
-	surface.native.format = BGRA8;
-	return true;
 }
-
-// public
-fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxSurface* surface) => rgfw_createSurfacePtr(data, w, h, format, surface);
 
 // public
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
@@ -1346,11 +1342,13 @@ fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 }
 
 // public
-fn void rgfw_surface_freePtr(GfxSurface* surface)
+fn void GfxSurface.release(&self)
 {
-	if (surface.native.pool != null) wlShmPoolDestroy(surface.native.pool);
-	if (surface.native.fd != 0) close(surface.native.fd);
-	if (surface.native.buffer != null) munmap(surface.native.buffer, (sz)(surface.size.x * surface.size.y * 4));
+	if (!self.data) return;
+	if (self.native.pool) wlShmPoolDestroy(self.native.pool);
+	if (self.native.fd) close(self.native.fd);
+	if (self.native.buffer) munmap(self.native.buffer, (sz)(self.size.x * self.size.y * 4));
+	*self = {};
 }
 
 // public
@@ -1672,9 +1670,8 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, Gfx
 
 	if (win.src.icon != null) { xdgToplevelIconV1Destroy(win.src.icon); win.src.icon = null; }
 
-	GfxSurface* surface = create_surface(data, w, h, format);
-	if (surface == null) return false;
-	if (surface == null) return false;
+	GfxSurface*? surface = create_surface(data, w, h, format);
+	if (catch surface) return false;
 
 	int minW = w < surface.size.x ? w : surface.size.x;
 	int minH = h < surface.size.y ? h : surface.size.y;
@@ -1685,7 +1682,7 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, Gfx
 	xdgToplevelIconV1AddBuffer(win.src.icon, surface.native.wlBuffer, 1);
 	xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, win.src.icon);
 
-	rgfw_surface_free(surface);
+	surface.destroy();
 	return true;
 }
 
@@ -1733,8 +1730,8 @@ fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse)
 // public
 fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format)
 {
-	GfxSurface* surface = create_surface(data, w, h, format);
-	if (surface == null) return null;
+	GfxSurface*? surface = create_surface(data, w, h, format);
+	if (catch surface) return null;
 
 	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...surface.size, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
 	int minW = w < surface.size.x ? w : surface.size.x;
@@ -1760,7 +1757,7 @@ fn void rgfw_freeMouse(RgfwMouse* mouse)
 	if (mouse == null) return;
 	GfxSurface* surface = (GfxSurface*)mouse;
 	if (surface.native.buffer != null && surface.native.wlBuffer != null) wlBufferDestroy(surface.native.wlBuffer);
-	rgfw_surface_free(surface);
+	surface.destroy();
 }
 
 // public

@@ -556,15 +556,6 @@ fn int rgfw_window_createSwapChain_DirectX(GfxWindow* win, DxgiFactory* pFactory
 
 
 // public
-fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxSurface* surface)
-{
-	return rgfw_createSurfacePtr(data, w, h, format, surface);
-
-}
-
-
-
-// public
 fn uint rgfw_winapiWindowGetStyle(GfxWindow* win, GfxWindowFlags flags)
 {
 	uint style = 0x04000000 | 0x02000000; // WS_CLIPSIBLINGS | WS_CLIPCHILDREN
@@ -2017,12 +2008,16 @@ fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval)
 }
 
 
+
+
+
+
 // public
-fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
+fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
-	surface.data = data;
-	surface.size = { w, h };
-	surface.format = format;
+	self.data = data;
+	self.size = { w, h };
+	self.format = format;
 
 	BitmapV5Header bi;
 	bi.size = BitmapV5Header::size;
@@ -2031,26 +2026,26 @@ fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSur
 	bi.planes = 1;
 	bi.bitCount = (ushort)format.channels * 8;
 	bi.compression = BI_RGB;
+	self.native.format = format.channels > 3 ? BGRA8 : BGR8;
+	self.native.bitmap = createDIBSection(_gfx_ctx.root.src.hdc, &bi, 0, (void**)&self.native.buffer, null, 0);
 
-	surface.native.bitmap = createDIBSection(_gfx_ctx.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
-	surface.native.format = format.channels > 3 ? BGRA8 : BGR8;
-
-	if (surface.native.bitmap == null)
+	if (self.native.bitmap == null)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_BUFFER, "Failed to create DIB section.");
-		return false;
+		log::error("Failed to create DIB section.", category: log::CATEGORY_VIDEO);
+		return SURFACE_CREATION_FAILED~;
 	}
-
-	surface.native.hdcMem = createCompatibleDC(_gfx_ctx.root.src.hdc);
-	selectObject(surface.native.hdcMem, surface.native.bitmap);
-	return true;
+	defer catch self.release();
+	self.native.hdcMem = createCompatibleDC(_gfx_ctx.root.src.hdc);
+	selectObject(self.native.hdcMem, self.native.bitmap);
 }
 
 // public
-fn void rgfw_surface_freePtr(GfxSurface* surface)
+fn void GfxSurface.release(&self)
 {
-	deleteDC(surface.native.hdcMem);
-	deleteObject(surface.native.bitmap);
+	if (!self.data) return;
+	deleteDC(self.native.hdcMem);
+	deleteObject(self.native.bitmap);
+	*self = {};
 }
 
 // public

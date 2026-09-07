@@ -312,12 +312,6 @@ fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, Vk
 
 
 // public
-fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxSurface* surface)
-{
-	return rgfw_createSurfacePtr(data, w, h, format, surface);
-}
-
-// public
 fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h)
 {
 	if (win == null || win.src.window == null) return;
@@ -1285,25 +1279,23 @@ fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state) { cgAssocia
 // public
 fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state) { _gfx_ctx.rawMouse = state; }
 // public
-fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
+
+fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
-	if (surface == null) return false;
-	surface.data = data;
-	surface.size = { w, h };
-	surface.format = format;
-	surface.native.format = RGBA8;
-	surface.native.buffer = (char*)rgfw_alloc_impl((sz)(w * h * 4));
-	return surface.native.buffer != null;
+	self.data = data;
+	self.size = { w, h };
+	self.format = format;
+	self.native.format = RGBA8;
+	self.native.buffer = malloc((sz)w * h * 4);
 }
 
 // public
-fn void rgfw_surface_freePtr(GfxSurface* surface)
+fn void GfxSurface.release(&self)
 {
-	if (surface == null) return;
-	if (surface.native.native0 != null) ns_release((ObjcId)surface.native.native0);
-	rgfw_free_impl(surface.native.buffer);
-	surface.native.buffer = null;
-	surface.native.native0 = null;
+	if (!self.data) return;
+	if (self.native.native0) ns_release((ObjcId)self.native.native0);
+	if (self.native.buffer) free(self.native.buffer);
+	*self = {};
 }
 
 // public

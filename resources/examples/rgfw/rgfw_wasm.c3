@@ -120,16 +120,6 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 }
 
 
-
-
-
-// public
-fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxSurface* surface)
-{
-	return rgfw_createSurfacePtr(data, w, h, format, surface);
-}
-
-
 // public
 fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h) {}
 
@@ -363,12 +353,11 @@ fn void rgfw_emscriptenOnDrop(char* file, sz size) @export("rgfw_onDrop") { rgfw
 fn void rgfw_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
 
 // public
-fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface)
+fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
-	surface.data = data;
-	surface.size = { w, h };
-	surface.format = format;
-	return true;
+	self.data = data;
+	self.size = { w, h };
+	self.format = format;
 }
 
 // public
@@ -380,7 +369,7 @@ fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 }
 
 // public
-fn void rgfw_surface_freePtr(GfxSurface* surface) {}
+fn void GfxSurface.release(&self) { *self = {}; }
 
 // public
 fn void rgfw_initKeycodesPlatform()

@@ -552,38 +552,32 @@ fn GfxFormat rgfw_xImageGetFormat(void* imagePtr)
 }
 
 // public
-fn bool rgfw_window_createSurfacePtr(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxSurface* surface)
+fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
-	if (surface == null) return false;
-	surface.data = data;
-	surface.size = { w, h };
-	surface.format = format;
+	if (!window) window = _gfx_ctx.root;
+	self.data = data;
+	self.size = { w, h };
+	self.format = format;
 
 	XWindowAttributes attrs;
-	if (xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attrs) == 0)
+	if (xGetWindowAttributes(_gfx_ctx.display, window.src.window, &attrs) == 0)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_BUFFER, "Failed to get window attributes.");
-		return false;
+		log::error("Failed to get window attributes.", category: log::CATEGORY_VIDEO);
+		return SURFACE_CREATION_FAILED~;
 	}
+	defer catch self.release();
+	self.native.bitmap = xCreateImage(_gfx_ctx.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])self.size, 32, 0);
+	self.native.buffer = malloc((sz)w * h * 4);
+	self.native.format = rgfw_xImageGetFormat(self.native.bitmap);
 
-	surface.native.bitmap = xCreateImage(_gfx_ctx.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])surface.size, 32, 0);
-	surface.native.buffer = (char*)rgfw_alloc_impl((sz)(w * h * 4));
-	surface.native.format = rgfw_xImageGetFormat(surface.native.bitmap);
-
-	if (surface.native.bitmap == null)
+	if (!self.native.bitmap)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_BUFFER, "Failed to create XImage.");
-		return false;
+		log::error("Failed to create XImage.", category: log::CATEGORY_VIDEO);
+		return SURFACE_CREATION_FAILED~;
 	}
-
-	surface.native.format = BGRA8;
-	return true;
 }
 
-// public
-fn bool rgfw_createSurfacePtr(char* data, int w, int h, GfxFormat format, GfxSurface* surface) => rgfw_window_createSurfacePtr(_gfx_ctx.root, data, w, h, format, surface);
-
-// public
+	// public
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
 	if (surface == null) return;
@@ -594,11 +588,12 @@ fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 }
 
 // public
-fn void rgfw_surface_freePtr(GfxSurface* surface)
+fn void GfxSurface.release(&self)
 {
-	if (surface == null) return;
-	rgfw_free_impl(surface.native.buffer);
-	xDestroyImage(surface.native.bitmap);
+	if (!self.data) return;
+	free(self.native.buffer);
+	xDestroyImage(self.native.bitmap);
+	*self = {};
 }
 
 // public

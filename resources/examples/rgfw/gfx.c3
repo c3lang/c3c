@@ -8,7 +8,10 @@ const bool RGFW_BUILD_WINDOWS = $feat(WIN32);
 const bool RGFW_BUILD_EGL = $feat(X11_WAYLAND) || $feat(X11) || $feat(WAYLAND) || $feat(MACOS);
 const bool RGFW_BUILD_WASM = $feat(WASM);
 
-
+excuse
+{
+	SURFACE_CREATION_FAILED,
+}
 macro void* rgfw_memcpy(void* dest, void* src, sz count) => memcpy(dest, src, count);
 // public
 fn void* rgfw_alloc_impl(sz size) => malloc(size);
@@ -187,7 +190,7 @@ struct GfxDataTransfer
 	RgfwDataTransferType type;
 }
 
-struct RgfwInfo // WASM
+struct GfxContext
 {
 	bool initialized;
 	GfxWindow* root;
@@ -817,11 +820,12 @@ fn void finalize()
 }
 
 // public
-fn GfxSurface* create_surface(char* data, int w, int h, GfxFormat format)
+fn GfxSurface*? create_surface(char* data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
-	GfxSurface* surface = mem::new(GfxSurface);
-	rgfw_createSurfacePtr(data, w, h, format, surface);
-	return surface;
+	GfxSurface* s = mem::new(GfxSurface);
+	defer catch free(s);
+	s.init(data, w, h, format, window: window)!;
+	return s;
 }
 
 // public
@@ -1569,15 +1573,17 @@ fn void rgfw_surface_setConvertFunc(GfxSurface* surface, GfxConvertImageDataFn f
 // public
 fn RgfwNativeImage* rgfw_surface_getNativeImage(GfxSurface* surface) => &surface.native;
 // public
-fn void rgfw_surface_free(GfxSurface* surface) { rgfw_surface_freePtr(surface); rgfw_free_impl(surface); }
 
-// public
-fn GfxSurface* rgfw_window_createSurface(GfxWindow* win, char* data, int w, int h, GfxFormat format)
+<*
+ @param [&drop] self : "The surface to reclaim"
+*>
+fn void GfxSurface.destroy(&self)
 {
-	GfxSurface* surface = mem::new(GfxSurface);
-	rgfw_window_createSurfacePtr(win, data, w, h, format, surface);
-	return surface;
+	self.release();
+	free(self);
 }
+
+
 
 
 // public
@@ -2069,4 +2075,4 @@ fn void _event_queue_call_push(GfxEvent* event)
 	event_queue_push(event);
 }
 
-RgfwInfo _gfx_ctx;
+GfxContext _gfx_ctx;
