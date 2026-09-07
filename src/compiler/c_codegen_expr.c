@@ -1019,17 +1019,18 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 
 		if (!c_type_is_aggregate(target_t) && (op == BINARYOP_SHL_ASSIGN || op == BINARYOP_SHR_ASSIGN))
 		{
+			BitSize bit_limit = type_bit_size(target_t);
 			if (safe_mode_enabled())
 			{
 				if (type_is_signed(right_val.type))
 				{
-					PRINTF("if (___var_%d < 0 || (size_t)___var_%d >= sizeof(%s)*8) { __c3_abort(); }\n",
-					       right_val.var, right_val.var, target_tname);
+					PRINTF("if (___var_%d < 0 || (size_t)___var_%d >= %lluULL) { __c3_abort(); }\n",
+					       right_val.var, right_val.var, (unsigned long long)bit_limit);
 				}
 				else
 				{
-					PRINTF("if ((size_t)___var_%d >= sizeof(%s)*8) { __c3_abort(); }\n",
-					       right_val.var, target_tname);
+					PRINTF("if ((size_t)___var_%d >= %lluULL) { __c3_abort(); }\n",
+					       right_val.var, (unsigned long long)bit_limit);
 				}
 			}
 		}
@@ -1186,17 +1187,18 @@ static void c_emit_binary_expr(GenContext *c, CValue *value, Expr *expr)
 	if (!c_type_is_aggregate(expr_type) && (op == BINARYOP_SHR || op == BINARYOP_SHL))
 	{
 		bool is_shl = (op == BINARYOP_SHL);
+		BitSize bit_limit = type_bit_size(expr_type);
 		if (safe_mode_enabled())
 		{
 			if (right_t && type_is_signed(right_t))
 			{
-				PRINTF("if (___var_%d < 0 || (size_t)___var_%d >= sizeof(%s)*8) { __c3_abort(); }\n",
-				       right_value.var, right_value.var, type_string);
+				PRINTF("if (___var_%d < 0 || (size_t)___var_%d >= %lluULL) { __c3_abort(); }\n",
+				       right_value.var, right_value.var, (unsigned long long)bit_limit);
 			}
 			else
 			{
-				PRINTF("if ((size_t)___var_%d >= sizeof(%s)*8) { __c3_abort(); }\n",
-				       right_value.var, type_string);
+				PRINTF("if ((size_t)___var_%d >= %lluULL) { __c3_abort(); }\n",
+				       right_value.var, (unsigned long long)bit_limit);
 			}
 		}
 		if (left_t && type_is_unsigned(left_t))

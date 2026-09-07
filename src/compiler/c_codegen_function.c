@@ -49,7 +49,7 @@ VariableId c_get_or_create_decl_var(GenContext *c, Decl *decl)
 		c_register_function_local(c, v, type_int, false, NULL);
 		return v;
 	}
-	decl    = decl_raw(decl);
+	decl    = c_decl_unwrap(decl);
 	void *v = htable_get(&c->local_vars, decl);
 	if (v)
 	{
@@ -587,7 +587,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 		VariableId vid = c_create_variable(c);
 		if (d)
 		{
-			d = decl_raw(d);
+			d = c_decl_unwrap(d);
 			htable_set(&c->local_vars, d, (void *)(uintptr_t)vid);
 			if (IS_OPTIONAL(d))
 			{
@@ -700,7 +700,8 @@ void c_emit_function(GenContext *c, Decl *fn)
 		PRINTF("#if defined(__GNUC__) || defined(__clang__)\n__attribute__((destructor(%d)))\n#endif\n", c_prio);
 	}
 
-	PRINTF("%s %s(", ret_type_name, fn_name);
+	bool is_weak = fn->is_weak || fn->is_weak_link;
+	PRINTF("%s%s %s(", is_weak ? "__attribute__((weak)) " : "", ret_type_name, fn_name);
 	int emitted_params = 0;
 	FOREACH(Decl *, d, sig->params)
 	{
@@ -713,7 +714,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 		{
 			PRINT(", ");
 		}
-		Decl *rd       = d ? decl_raw(d) : NULL;
+		Decl *rd       = d ? c_decl_unwrap(d) : NULL;
 		VariableId vid = (VariableId)(uintptr_t)htable_get(&c->local_vars, rd);
 		if (strcmp(fn_name, "main") == 0 && vec_size(sig->params) <= 3 && (emitted_params == 1 || emitted_params == 2))
 		{
