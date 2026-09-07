@@ -354,6 +354,7 @@ const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 struct RgfwWindowSrc
 {
+	inline IntRect bounds;
 	GfxXWindow window;
 	GfxXWindow parent;
 	GContext gc;
@@ -363,7 +364,6 @@ struct RgfwWindowSrc
 	XSyncCounter counter;
 	RgfwGfxContext ctx;
 	RgfwGfxContextType gfxType;
-	int x, y, w, h;
 }
 
 
@@ -588,7 +588,7 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 		xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.xdndAware, 4, 32, 0, &version, 1);
 	}
 
-	win.src.x = win.x; win.src.y = win.y; win.src.w = win.width; win.src.h = win.height;
+	win.src.bounds = win.bounds;
 	xSetWindowBackground(_gfx_ctx.display, win.src.window, 0);
 	xClearWindow(_gfx_ctx.display, win.src.window);
 	xSetWindowBackgroundPixmap(_gfx_ctx.display, win.src.window, 0);
@@ -1086,11 +1086,10 @@ fn void rgfw_xHandleEvent()
 		}
 		case 22: // ConfigureNotify
 		{
-			if (e.xconfigure.width != win.src.w || e.xconfigure.height != win.src.h)
+			if (e.xconfigure.width != win.src.width || e.xconfigure.height != win.src.height)
 			{
 				rgfw_window_checkMode(win);
-				win.src.w = e.xconfigure.width;
-				win.src.h = e.xconfigure.height;
+				win.src.size = { e.xconfigure.width, e.xconfigure.height };
 				_window_resized_callback(win, e.xconfigure.width, e.xconfigure.height);
 			}
 			int configureX = e.xconfigure.x;
@@ -1114,10 +1113,10 @@ fn void rgfw_xHandleEvent()
 			return;
 		}
 		case 9: // FocusIn
-			if (win.src.ic != null) xSetICFocus(win.src.ic);
+			if (win.src.ic) xSetICFocus(win.src.ic);
 			rgfw_windowFocusCallback(win, true);
 		case 10: // FocusOut
-			if (win.src.ic != null) xUnsetICFocus(win.src.ic);
+			if (win.src.ic) xUnsetICFocus(win.src.ic);
 			rgfw_windowFocusCallback(win, false);
 		case 7: _mouse_notify_callback(win, e.xcrossing.x, e.xcrossing.y, true); // EnterNotify
 		case 8: _mouse_notify_callback(win, ...win.internal.last_mouse, false); // LeaveNotify

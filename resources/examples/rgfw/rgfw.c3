@@ -152,13 +152,13 @@ const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 struct RgfwWindowSrc
 {
+	inline IntRect bounds;
 	void* window;
 	void* view;
 	void* mouse;
 	void* delegate;
 	RgfwGfxContext ctx;
 	RgfwGfxContextType gfxType;
-	int x, y, w, h;
 }
 
 
@@ -1094,7 +1094,7 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 	win.src.window = ns_retain(nswin);
 	win.src.view = ns_retain(view);
 	win.src.delegate = delegate;
-	win.src.x = win.x; win.src.y = win.y; win.src.w = win.width; win.src.h = win.height;
+	win.src.bounds = win.bounds;
 	objc_send(nswin, ObjcSendVoidId, "setContentView:", view);
 	objc_send(nswin, ObjcSendVoidId, "makeFirstResponder:", view);
 	objc_send(nswin, ObjcSendVoidBool, "setAcceptsMouseMovedEvents:", true);

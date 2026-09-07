@@ -336,6 +336,7 @@ struct GfxNativeImage
 
 struct RgfwWindowSrc
 {
+	inline IntRect bounds;
 	void* window; // HWND
 	void* hdc; // HDC
 	void* hIconSmall; // HICON
@@ -345,7 +346,6 @@ struct RgfwWindowSrc
 	ushort highSurrogate;
 	RgfwGfxContext ctx;
 	RgfwGfxContextType gfxType;
-	int x, y, w, h;
 }
 
 

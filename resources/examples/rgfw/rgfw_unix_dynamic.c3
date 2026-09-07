@@ -351,6 +351,7 @@ const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 struct RgfwWindowSrc
 {
+	inline IntRect bounds;
 	GfxXWindow window;
 	GfxXWindow parent;
 	GContext gc;
@@ -360,7 +361,6 @@ struct RgfwWindowSrc
 	XSyncCounter counter;
 	RgfwGfxContext ctx;
 	RgfwGfxContextType gfxType;
-	int x, y, w, h;
 	WlProxy* surface;
 	WlProxy* xdgSurface;
 	WlProxy* xdgToplevel;
@@ -600,7 +600,7 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 		xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.xdndAware, 4, 32, 0, &version, 1);
 	}
 
-	win.src.x = win.x; win.src.y = win.y; win.src.w = win.width; win.src.h = win.height;
+	win.src.bounds = win.bounds;
 	xSetWindowBackground(_gfx_ctx.display, win.src.window, 0);
 	xClearWindow(_gfx_ctx.display, win.src.window);
 	xSetWindowBackgroundPixmap(_gfx_ctx.display, win.src.window, 0);
@@ -1095,11 +1095,10 @@ fn void rgfw_xHandleEvent()
 		}
 		case 22: // ConfigureNotify
 		{
-			if (e.xconfigure.width != win.src.w || e.xconfigure.height != win.src.h)
+			if (e.xconfigure.width != win.src.width || e.xconfigure.height != win.src.height)
 			{
 				rgfw_window_checkMode(win);
-				win.src.w = e.xconfigure.width;
-				win.src.h = e.xconfigure.height;
+				win.src.size = { e.xconfigure.width, e.xconfigure.height };
 				_window_resized_callback(win, e.xconfigure.width, e.xconfigure.height);
 			}
 			int configureX = e.xconfigure.x;
@@ -1403,8 +1402,8 @@ fn void rgfw_wlXdgToplevelConfigureHandler(void* data, WlProxy* toplevel, int wi
 	if (width != 0 && height != 0 && (win.width != width || win.height != height))
 	{
 		win.src.resizing = true;
-		win.src.w = width; win.width = width;
-		win.src.h = height; win.height = height;
+		win.size = { width, height };
+		win.src.size = win.size;
 	}
 }
 

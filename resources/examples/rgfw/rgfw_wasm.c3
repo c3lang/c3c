@@ -79,13 +79,13 @@ struct GfxNativeImage
 
 struct RgfwWindowSrc
 {
+	inline IntRect bounds;
 	void* window;
 	void* view;
 	void* mouse;
 	void* delegate;
 	RgfwGfxContext ctx;
 	RgfwGfxContextType gfxType;
-	int x, y, w, h;
 }
 
 // public

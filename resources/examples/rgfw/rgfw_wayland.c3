@@ -116,13 +116,13 @@ const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 struct RgfwWindowSrc
 {
+	inline IntRect bounds;
 	void* window;
 	void* view;
 	void* mouse;
 	void* delegate;
 	RgfwGfxContext ctx;
 	RgfwGfxContextType gfxType;
-	int x, y, w, h;
 	WlProxy* surface;
 	WlProxy* xdgSurface;
 	WlProxy* xdgToplevel;
@@ -284,8 +284,8 @@ fn void rgfw_wlXdgToplevelConfigureHandler(void* data, WlProxy* toplevel, int wi
 	if (width != 0 && height != 0 && (win.width != width || win.height != height))
 	{
 		win.src.resizing = true;
-		win.src.w = width; win.width = width;
-		win.src.h = height; win.height = height;
+		win.size = { width, height };
+		win.src.size = win.size;
 	}
 }
 
