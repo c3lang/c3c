@@ -1070,7 +1070,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, int
 	// Link sanitizer runtime libraries
 	if (compiler.platform.os == OS_TYPE_MACOSX)
 	{
-		if (compiler.build.feature.sanitize_address || compiler.build.feature.sanitize_thread)
+		if (compiler.build.feature.sanitize_address || compiler.build.feature.sanitize_thread || compiler.build.feature.sanitize_fuzzer)
 		{
 			const char *compiler_path = find_executable_path();
 			if (compiler.build.feature.sanitize_address)
@@ -1080,6 +1080,10 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, int
 			if (compiler.build.feature.sanitize_thread)
 			{
 				add_concat_file_arg(compiler_path, "c3c_rt/libclang_rt.tsan_osx_dynamic.dylib");
+			}
+			if (compiler.build.feature.sanitize_fuzzer)
+			{
+				add_concat_file_arg(compiler_path, "c3c_rt/libclang_rt.fuzzer_osx_dynamic.dylib");
 			}
 
 			// Add rpath for sanitizer runtime libraries last, after user-provided link args have been added.

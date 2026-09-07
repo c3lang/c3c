@@ -1491,40 +1491,41 @@ static void check_fuzzer_options(BuildTarget *target)
 	{
 		error_exit("Fuzzer support requires linking with the system compiler driver, please remove `--linker=builtin`.");
 	}
-	if (compiler.platform.os != OS_TYPE_LINUX || target->arch_os_target != default_target)
+	if ((compiler.platform.os != OS_TYPE_LINUX && compiler.platform.os != OS_TYPE_MACOSX) || target->arch_os_target != default_target)
 	{
-		error_exit("Fuzzer support is currently only available when compiling for the native Linux target.");
+		error_exit("Fuzzer support is currently only available when compiling for the native Linux or macOS target.");
 	}
-	const char *cc = target->cc;
-	if (!cc)
+	if (compiler.platform.os == OS_TYPE_LINUX)
 	{
-		const char *cc_env = getenv("C3C_CC");
-		if (cc_env && cc_env[0]) cc = cc_env;
-	}
-	if (!cc)
-	{
-		// No C compiler driver was configured: pick clang automatically so
-		// `--sanitize=fuzzer` works out of the box whenever clang is available.
-		if (file_executable_in_path("clang"))
+		const char *cc = target->cc;
+		if (!cc)
 		{
-			target->cc = "clang";
-			return;
+			const char *cc_env = getenv("C3C_CC");
+			if (cc_env && cc_env[0]) cc = cc_env;
 		}
-		char clang_version[16];
-		for (int version = 24; version >= 17; version--)
+		if (!cc)
 		{
-			sprintf(clang_version, "clang-%d", version);
-			if (file_executable_in_path(clang_version))
+			if (file_executable_in_path("clang"))
 			{
-				target->cc = str_dup(clang_version);
+				target->cc = "clang";
 				return;
 			}
+			char clang_version[16];
+			for (int version = 24; version >= 17; version--)
+			{
+				sprintf(clang_version, "clang-%d", version);
+				if (file_executable_in_path(clang_version))
+				{
+					target->cc = str_dup(clang_version);
+					return;
+				}
+			}
+			error_exit("Fuzzer support requires clang as the C compiler driver, but no clang was found in the PATH. Install clang or set the C3C_CC environment variable to a clang binary.");
 		}
-		error_exit("Fuzzer support requires clang as the C compiler driver, but no clang was found in the PATH. Install clang or set the C3C_CC environment variable to a clang binary.");
-	}
-	if (!file_executable_in_path(cc) || !strstr(cc, "clang"))
-	{
-		error_exit("Fuzzer support requires clang as the C compiler driver, please use `--cc <clang>` or set the C3C_CC environment variable to a clang binary.");
+		if (!file_executable_in_path(cc) || !strstr(cc, "clang"))
+		{
+			error_exit("Fuzzer support requires clang as the C compiler driver, please use `--cc <clang>` or set the C3C_CC environment variable to a clang binary.");
+		}
 	}
 }
 
