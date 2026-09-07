@@ -11,8 +11,6 @@ import std::collections::list, std::math, libc;
 // exactly as the original does when RGFW_NO_X11_CURSOR_PRELOAD etc. are not set.
 
 
-
-extern fn char* strstr(char* haystack, char* needle);
 extern fn char* strtok(char* str, char* delim);
 extern fn char* strtokR(char* str, char* delim, char** saveptr) @cname("strtok_r");
 extern fn CLong strtol(char* str, char** endptr, int base);
@@ -351,7 +349,6 @@ const RgfwGfxContextType RGFW_GFX_EGL = 2;
 const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 
-
 struct RgfwWindowSrc
 {
 	inline IntRect bounds;
@@ -367,47 +364,12 @@ struct RgfwWindowSrc
 }
 
 
-
-
 const int VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR = 1000004000;
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
 struct VkXlibSurfaceCreateInfoKHR { int sType; void* pNext; uint flags; GfxXDisplay* dpy; GfxXWindow window; }
 alias RgfwVkCreateXlibSurfaceKHRProc = fn VkResult(VkInstance instance, VkXlibSurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
 ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_xlib_surface"};
 
-// public
-fn bool rgfw_loadVulkan()
-{
-	if (_gfx_ctx.vulkan_handle != null) return true;
-	ZString[3] names = {"libvulkan.so.1", "libvulkan.so", "libMoltenVK.so"};
-	for (sz i = 0; i < 3; i++)
-	{
-		_gfx_ctx.vulkan_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
-		if (_gfx_ctx.vulkan_handle != null) break;
-	}
-	if (_gfx_ctx.vulkan_handle == null) return false;
-	void* proc = libc::dlsym(_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
-	if (proc == null) return false;
-	_gfx_ctx.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
-	return true;
-}
-
-
-// public
-fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
-{
-	if (surface == null || win == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
-	*surface = 0;
-	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkCreateXlibSurfaceKHR");
-	if (raw == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
-	VkXlibSurfaceCreateInfoKHR createInfo;
-	createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-	createInfo.pNext = null;
-	createInfo.flags = 0;
-	createInfo.dpy = _gfx_ctx.display;
-	createInfo.window = win.src.window;
-	return ((RgfwVkCreateXlibSurfaceKHRProc)raw)(instance, &createInfo, null, surface);
-}
 
 extern fn VisualID xVisualIDFromVisual(GfxXVisual* visual) @cname("XVisualIDFromVisual");
 alias RgfwVkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, GfxXDisplay*, VisualID);
@@ -432,97 +394,15 @@ struct WgpuSurfaceSourceXlibWindow { WgpuChainedStruct chain; GfxXDisplay* displ
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
 
-// public
-fn GfxFormat rgfw_xImageGetFormat(void* imagePtr)
-{
-	// XImage*: bits_per_pixel/red_mask/green_mask/blue_mask live at a fixed
-	// offset in the real struct; here we only ever set the format ourselves
-	// right after xCreateImage, so this mirrors the original's fallback path.
-	return BGRA8;
-}
-
-
-// public
-fn void rgfw_window_getVisual(XVisualInfo* visual, bool transparent)
-{
-	visual.visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-	visual.depth = xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-	if (transparent)
-	{
-		xMatchVisualInfo(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), 32, 4 /* TrueColor */, visual);
-		if (visual.depth != 32) rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_WARNING_OPEN_GL, "Failed to load a 32-bit depth.");
-	}
-}
-
-// public
-fn int rgfw_xErrorHandler(GfxXDisplay* display, XErrorEvent* ev)
-{
-	char[512] errorText;
-	xGetErrorText(display, ev.error_code, (char*)&errorText, 512);
-	rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_X11, (ZString)&errorText);
-	_gfx_ctx.x11Error = ev;
-	return 0;
-}
-
-// public
-fn void rgfw_x11IcCallback(void* ic, char* clientData, char* callData)
-{
-	GfxWindow* win = (GfxWindow*)(void*)clientData;
-	win.src.ic = null;
-}
-
 // IM-level destroy callback: fires if the input-method daemon disappears later,
 // so we don't keep a dangling _gfx_ctx.im handle around.
-// public
-fn void rgfw_x11ImCallback(void* im, char* clientData, char* callData)
-{
-	_gfx_ctx.im = null;
-}
+
 
 // Instantiate callback: fires once an input method actually becomes available.
 // Opens the IM, then validates it supports the exact style this library wants
 // (XIMPreeditNothing | XIMStatusNothing) before keeping it, and registers an
 // IM-level destroy callback so a later-vanishing IM daemon nulls _gfx_ctx.im.
-// public
-fn void rgfw_x11ImInitCallback(GfxXDisplay* d, GfxXPointer clientData, GfxXPointer callData)
-{
-	if (_gfx_ctx.im != null) return;
 
-	_gfx_ctx.im = xOpenIM(_gfx_ctx.display, null, null, null);
-	if (_gfx_ctx.im == null) return;
-
-	bool found = false;
-	XImStyles* styles = null;
-
-	if (xGetIMValues(_gfx_ctx.im, "queryInputStyle", &styles, (char*)null) != null)
-	{
-		found = false;
-	}
-	else
-	{
-		for (uint i = 0; i < styles.count_styles; i++)
-		{
-			if (styles.supported_styles[i] == (0x0008 | 0x0400) /* XIMPreeditNothing | XIMStatusNothing */)
-			{
-				found = true;
-				break;
-			}
-		}
-		xFree(styles);
-	}
-
-	if (found == false)
-	{
-		xCloseIM(_gfx_ctx.im);
-		_gfx_ctx.im = null;
-		return;
-	}
-
-	XImCallback callback;
-	callback.callback = &rgfw_x11ImCallback;
-	callback.client_data = null;
-	xSetIMValues(_gfx_ctx.im, "destroyCallback", &callback, (char*)null);
-}
 
 // public
 fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flags, GfxWindow* win)
@@ -597,143 +477,6 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 // public
 fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => rgfw_createWindowPlatform_X11(name, flags, win);
 
-
-// public
-fn void rgfw_unix_parseURI(GfxWindow* win, ZString data)
-{
-	ZString prefix = "file://";
-	ZString line;
-	ZString savePtr;
-	while ((line = (ZString)strtokR(data, "\r\n", (char**)&savePtr)) != null)
-	{
-		data = null;
-
-		if (line[0] == '#') continue;
-
-		ZString l;
-		for (l = line; true; l++)
-		{
-			if ((char*)l - (char*)line > 7) { break; }
-			else if (l[0] != prefix[(char*)l - (char*)line]) { break; }
-			else if (l[0] == 0 && prefix[(char*)l - (char*)line] == 0)
-			{
-				line += 7;
-				while (line[0] != '/') line++;
-				break;
-			}
-			else if (l[0] == 0) { break; }
-		}
-
-		sz len = line.len();
-		ZString path = (ZString)malloc(len + 1);
-
-		sz index = 0;
-		while (line[0] != 0)
-		{
-			if (line[0] == '%' && line[1] != 0 && line[2] != 0)
-			{
-				char[3] digits = {0, 0, 0};
-				digits[0] = line[1];
-				digits[1] = line[2];
-				digits[2] = 0;
-				path[index] = (char)strtol((char*)&digits, null, 16);
-				line += 2;
-			}
-			else
-			{
-				if (index >= len) break;
-				path[index] = line[0];
-			}
-			index++;
-			line++;
-		}
-
-		path[len] = 0;
-		rgfw_dataDropCallback(win, path, len + 1, RGFW_DATA_FILE);
-		free(path);
-	}
-}
-
-// public
-fn void rgfw_xHandleClipboardSelection(XEvent* event)
-{
-	XSelectionRequestEvent* request = &event.xselectionrequest;
-	Atom[2] formats = {_gfx_ctx.utf8String, 31 /* XA_STRING */};
-
-	if (request.target == _gfx_ctx.targets)
-	{
-		Atom[4] targets = {_gfx_ctx.targets, _gfx_ctx.multiple, _gfx_ctx.utf8String, 31};
-		xChangeProperty(_gfx_ctx.display, request.requestor, request.property, 4 /* XA_ATOM */, 32, 0, (char*)&targets, 4);
-	}
-	else if (request.target == _gfx_ctx.multiple)
-	{
-		Atom* targets = null;
-		Atom actualType;
-		int actualFormat;
-		CULong count, bytesAfter;
-		xGetWindowProperty(_gfx_ctx.display, request.requestor, request.property, 0, ~0, 0, _gfx_ctx.atomPair,
-			&actualType, &actualFormat, &count, &bytesAfter, (char**)&targets);
-
-		for (CULong i = 0; i < count; i += 2)
-		{
-			if (targets[i] == _gfx_ctx.utf8String || targets[i] == 31 /* XA_STRING */)
-			{
-				xChangeProperty(_gfx_ctx.display, request.requestor, targets[i + 1], targets[i],
-					8, 0, _gfx_ctx.unixClipboard.data, (int)_gfx_ctx.unixClipboard.length);
-			}
-			else
-			{
-				targets[i + 1] = 0; // None
-			}
-		}
-
-		xChangeProperty(_gfx_ctx.display, request.requestor, request.property, _gfx_ctx.atomPair, 32, 0, (char*)targets, (int)count);
-		xFlush(_gfx_ctx.display);
-		xFree(targets);
-	}
-	else if (request.target == _gfx_ctx.saveTargets)
-	{
-		xChangeProperty(_gfx_ctx.display, request.requestor, request.property, 0, 32, 0, null, 0);
-	}
-	else
-	{
-		for (sz i = 0; i < 2; i++)
-		{
-			if (request.target != formats[i]) continue;
-			xChangeProperty(_gfx_ctx.display, request.requestor, request.property, request.target,
-				8, 0, _gfx_ctx.unixClipboard.data, (int)_gfx_ctx.unixClipboard.length);
-		}
-	}
-
-	XEvent reply;
-	reply.type = 31; // SelectionNotify
-	reply.xselection.property = request.property;
-	reply.xselection.display = request.display;
-	reply.xselection.requestor = request.requestor;
-	reply.xselection.selection = request.selection;
-	reply.xselection.target = request.target;
-	reply.xselection.time = request.time;
-	xSendEvent(_gfx_ctx.display, request.requestor, 0, 0, &reply);
-	xFlush(_gfx_ctx.display);
-}
-
-// private
-fn int rgfw_xHandleClipboardSelectionHelper()
-{
-	XEvent event;
-	xPending(_gfx_ctx.display);
-	if (qLength(_gfx_ctx.display) != 0 || xEventsQueued(_gfx_ctx.display, 0) + xEventsQueued(_gfx_ctx.display, 1) != 0)
-	{
-		xNextEvent(_gfx_ctx.display, &event);
-	}
-	else
-	{
-		return 0;
-	}
-
-	if (event.type == 30) { rgfw_xHandleClipboardSelection(&event); return 0; } // SelectionRequest
-	return 0;
-}
 
 const KeySym XK_F1 = 0xffbe; const KeySym XK_F2 = 0xffbf; const KeySym XK_F3 = 0xffc0; const KeySym XK_F4 = 0xffc1;
 const KeySym XK_F5 = 0xffc2; const KeySym XK_F6 = 0xffc3; const KeySym XK_F7 = 0xffc4; const KeySym XK_F8 = 0xffc5;
@@ -1125,84 +868,6 @@ fn void rgfw_xHandleEvent()
 	}
 
 	xFlush(_gfx_ctx.display);
-}
-
-
-// private
-fn void rgfw_toggleXMaximized(GfxWindow* win, bool maximized)
-{
-	XEvent xev;
-	xev.type = 33; // ClientMessage
-	xev.xclient.window = win.src.window;
-	xev.xclient.message_type = _gfx_ctx.netWmState;
-	xev.xclient.format = 32;
-	xev.xclient.data.l[0] = (int)maximized;
-	xev.xclient.data.l[1] = (CLong)_gfx_ctx.netWmStateMaximizedHorz;
-	xev.xclient.data.l[2] = (CLong)_gfx_ctx.netWmStateMaximizedVert;
-	xSendEvent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 20) | (1 << 19), &xev);
-}
-
-
-// private
-fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
-{
-	XEvent xev;
-	xev.xclient.type = 33;
-	xev.xclient.send_event = 1;
-	xev.xclient.message_type = _gfx_ctx.netWmState;
-	xev.xclient.window = win.src.window;
-	xev.xclient.format = 32;
-	xev.xclient.data.l[0] = (int)fullscreen;
-	xev.xclient.data.l[1] = (CLong)netAtom;
-	xSendEvent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 19) | (1 << 20), &xev);
-}
-
-
-
-
-
-// public
-fn void rgfw_xGetSystemContentDPI(float* dpi)
-{
-	if (dpi == null) return;
-	float dpiOutput = 96.0f;
-	ZString rms = xResourceManagerString(_gfx_ctx.display);
-	if (rms == null) return;
-	void* db = xrmGetStringDatabase(rms);
-	if (db == null) return;
-	ZString type = null;
-	// xrmGetResource's value-out parameter is a small {len,addr} struct; omitted here.
-	xrmDestroyDatabase(db);
-	*dpi = dpiOutput;
-}
-
-// public
-fn void* rgfw_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxMonitorMode* foundMode)
-{
-	XRRModeInfoNative* mi = null;
-	for (int j = 0; j < res.nmode; j++) if (res.modes[j].id == mode) mi = &res.modes[j];
-	if (mi == null) return null;
-
-	foundMode.w = (int)mi.width;
-	foundMode.h = (int)mi.height;
-	if (ci.rotation == 4 || ci.rotation == 8) // RR_Rotate_90 / RR_Rotate_270
-	{
-		foundMode.w = (int)mi.height;
-		foundMode.h = (int)mi.width;
-	}
-
-	rgfw_splitBPP((uint)xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), foundMode);
-	foundMode.src = (void*)(uptr)mode;
-	foundMode.refresh_rate = 0;
-	if (mi.hTotal == 0 || mi.vTotal == 0) return mi;
-
-	uint vTotal = mi.vTotal;
-	int numerator = (int)mi.dotClock;
-	int denominator = (int)(mi.hTotal * vTotal);
-	if (denominator <= 0) denominator = 1;
-	float refresh_rate = (float)numerator / (float)denominator;
-	foundMode.refresh_rate = (float)((int)(refresh_rate * 100 + 0.5f)) / 100.0f;
-	return mi;
 }
 
 

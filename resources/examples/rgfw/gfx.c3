@@ -1,5 +1,5 @@
 module std::gfx;
-import std::math, std::os::macos;
+import std::math, std::os::macos, libc;
 
 const bool RGFW_BUILD_MACOS = $feat(MACOS);
 const bool RGFW_BUILD_X11 = $feat(X11) || $feat(X11_WAYLAND);
@@ -1974,12 +1974,12 @@ fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len) @fea
 	if (extensions == null || ext == null) return false;
 	while (ext[len - 1] == 0 && len > 3) len--;
 	ZString start = extensions;
-	ZString where = (ZString)strstr(extensions, ext);
+	ZString where = (ZString)libc::strstr(extensions, ext);
 	while (where != null)
 	{
 		ZString terminator = where + len;
 		if (((char*)where == (char*)start || *((char*)where - 1) == ' ') && (terminator[0] == ' ' || terminator[0] == 0)) return true;
-		where = (ZString)strstr(terminator, ext);
+		where = (ZString)libc::strstr(terminator, ext);
 	}
 	return false;
 }

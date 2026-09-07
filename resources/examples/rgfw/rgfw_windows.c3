@@ -8,8 +8,6 @@ import std::collections::list, std::math;
 // original C header only ever compiles one #ifdef backend at a time.
 
 
-
-extern fn char* strstr(char* haystack, char* needle);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
 struct Timespec { long tv_sec; CLong tv_nsec; }

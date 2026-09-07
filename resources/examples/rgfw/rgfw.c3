@@ -7,8 +7,6 @@ import std::collections, std::math, libc, std::os::macos, std::io;
 
 excuse NSWINDOW_CREATION_FAILED;
 
-extern fn char* strstr(char* haystack, char* needle);
-
 alias ObjcId = void*;
 typedef ObjcClass = void*;
 typedef ObjcSelector = void*;
