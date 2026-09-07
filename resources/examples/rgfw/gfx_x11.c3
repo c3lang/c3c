@@ -163,7 +163,7 @@ fn void rgfw_window_setBorder_X11(GfxWindow* win, bool border)
 	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.motifWmHints, _gfx_ctx.motifWmHints, 32, 0, (char*)&hints, 5);
 	if (!rgfw_window_isHidden(win))
 	{
-		rgfw_window_hide(win);
+		win.hide();
 		show(win);
 	}
 }
@@ -643,54 +643,54 @@ fn bool rgfw_monitor_setMode_X11(GfxMonitor* mon, GfxMonitorMode* mode)
 }
 
 // private
-fn RgfwKey rgfw_physicalToMappedKey_X11(RgfwKey key)
+fn GfxKey rgfw_physicalToMappedKey_X11(GfxKey key)
 {
 	KeyCode keycode = (KeyCode)rgfw_rgfwToApiKey(key);
 	KeySym sym = xkbKeycodeToKeysym(_gfx_ctx.display, keycode, 0, 0);
-	if (sym < 256) return (RgfwKey)sym;
+	if (sym < 256) return (GfxKey)sym;
 
 	switch (sym)
 	{
-		case XK_F1: return RGFW_KEY_F1; case XK_F2: return RGFW_KEY_F2; case XK_F3: return RGFW_KEY_F3;
-		case XK_F4: return RGFW_KEY_F4; case XK_F5: return RGFW_KEY_F5; case XK_F6: return RGFW_KEY_F6;
-		case XK_F7: return RGFW_KEY_F7; case XK_F8: return RGFW_KEY_F8; case XK_F9: return RGFW_KEY_F9;
-		case XK_F10: return RGFW_KEY_F10; case XK_F11: return RGFW_KEY_F11; case XK_F12: return RGFW_KEY_F12;
-		case XK_F13: return RGFW_KEY_F13; case XK_F14: return RGFW_KEY_F14; case XK_F15: return RGFW_KEY_F15;
-		case XK_F16: return RGFW_KEY_F16; case XK_F17: return RGFW_KEY_F17; case XK_F18: return RGFW_KEY_F18;
-		case XK_F19: return RGFW_KEY_F19; case XK_F20: return RGFW_KEY_F20; case XK_F21: return RGFW_KEY_F21;
-		case XK_F22: return RGFW_KEY_F22; case XK_F23: return RGFW_KEY_F23; case XK_F24: return RGFW_KEY_F24;
-		case XK_F25: return RGFW_KEY_F25;
-		case XK_SHIFT_L: return RGFW_KEY_SHIFT_L; case XK_SHIFT_R: return RGFW_KEY_SHIFT_R;
-		case XK_CONTROL_L: return RGFW_KEY_CONTROL_L; case XK_CONTROL_R: return RGFW_KEY_CONTROL_R;
-		case XK_ALT_L: return RGFW_KEY_ALT_L; case XK_ALT_R: return RGFW_KEY_ALT_R;
-		case XK_SUPER_L: return RGFW_KEY_SUPER_L; case XK_SUPER_R: return RGFW_KEY_SUPER_R;
-		case XK_CAPS_LOCK: return RGFW_KEY_CAPS_LOCK;
-		case XK_NUM_LOCK: return RGFW_KEY_NUM_LOCK;
-		case XK_SCROLL_LOCK: return RGFW_KEY_SCROLL_LOCK;
-		case XK_UP: return RGFW_KEY_UP; case XK_DOWN: return RGFW_KEY_DOWN;
-		case XK_LEFT: return RGFW_KEY_LEFT; case XK_RIGHT: return RGFW_KEY_RIGHT;
-		case XK_HOME: return RGFW_KEY_HOME; case XK_END: return RGFW_KEY_END;
-		case XK_PAGE_UP: return RGFW_KEY_PAGE_UP; case XK_PAGE_DOWN: return RGFW_KEY_PAGE_DOWN;
-		case XK_INSERT: return RGFW_KEY_INSERT;
-		case XK_MENU: return RGFW_KEY_MENU;
-		case XK_KP_ADD: return RGFW_KEY_PAD_PLUS;
-		case XK_KP_SUBTRACT: return RGFW_KEY_PAD_MINUS;
-		case XK_KP_MULTIPLY: return RGFW_KEY_PAD_MULTIPLY;
-		case XK_KP_DIVIDE: return RGFW_KEY_PAD_SLASH;
-		case XK_KP_EQUAL: return RGFW_KEY_PAD_EQUAL;
-		case XK_KP_ENTER: return RGFW_KEY_PAD_RETURN;
-		case XK_KP_DECIMAL: return RGFW_KEY_PAD_PERIOD;
-		case XK_KP_0: return RGFW_KEY_PAD0; case XK_KP_1: return RGFW_KEY_PAD1;
-		case XK_KP_2: return RGFW_KEY_PAD2; case XK_KP_3: return RGFW_KEY_PAD3;
-		case XK_KP_4: return RGFW_KEY_PAD4; case XK_KP_5: return RGFW_KEY_PAD5;
-		case XK_KP_6: return RGFW_KEY_PAD6; case XK_KP_7: return RGFW_KEY_PAD7;
-		case XK_KP_8: return RGFW_KEY_PAD8; case XK_KP_9: return RGFW_KEY_PAD9;
-		case XK_PRINT: return RGFW_KEY_PRINT_SCREEN;
-		case XK_PAUSE: return RGFW_KEY_PAUSE;
+		case XK_F1: return F1; case XK_F2: return F2; case XK_F3: return F3;
+		case XK_F4: return F4; case XK_F5: return F5; case XK_F6: return F6;
+		case XK_F7: return F7; case XK_F8: return F8; case XK_F9: return F9;
+		case XK_F10: return F10; case XK_F11: return F11; case XK_F12: return F12;
+		case XK_F13: return F13; case XK_F14: return F14; case XK_F15: return F15;
+		case XK_F16: return F16; case XK_F17: return F17; case XK_F18: return F18;
+		case XK_F19: return F19; case XK_F20: return F20; case XK_F21: return F21;
+		case XK_F22: return F22; case XK_F23: return F23; case XK_F24: return F24;
+		case XK_F25: return F25;
+		case XK_SHIFT_L: return SHIFT_L; case XK_SHIFT_R: return SHIFT_R;
+		case XK_CONTROL_L: return CONTROL_L; case XK_CONTROL_R: return CONTROL_R;
+		case XK_ALT_L: return ALT_L; case XK_ALT_R: return ALT_R;
+		case XK_SUPER_L: return SUPER_L; case XK_SUPER_R: return SUPER_R;
+		case XK_CAPS_LOCK: return CAPS_LOCK;
+		case XK_NUM_LOCK: return NUM_LOCK;
+		case XK_SCROLL_LOCK: return SCROLL_LOCK;
+		case XK_UP: return UP; case XK_DOWN: return DOWN;
+		case XK_LEFT: return LEFT; case XK_RIGHT: return RIGHT;
+		case XK_HOME: return HOME; case XK_END: return END;
+		case XK_PAGE_UP: return PAGE_UP; case XK_PAGE_DOWN: return PAGE_DOWN;
+		case XK_INSERT: return INSERT;
+		case XK_MENU: return MENU;
+		case XK_KP_ADD: return PAD_PLUS;
+		case XK_KP_SUBTRACT: return PAD_MINUS;
+		case XK_KP_MULTIPLY: return PAD_MULTIPLY;
+		case XK_KP_DIVIDE: return PAD_SLASH;
+		case XK_KP_EQUAL: return PAD_EQUAL;
+		case XK_KP_ENTER: return PAD_RETURN;
+		case XK_KP_DECIMAL: return PAD_PERIOD;
+		case XK_KP_0: return PAD0; case XK_KP_1: return PAD1;
+		case XK_KP_2: return PAD2; case XK_KP_3: return PAD3;
+		case XK_KP_4: return PAD4; case XK_KP_5: return PAD5;
+		case XK_KP_6: return PAD6; case XK_KP_7: return PAD7;
+		case XK_KP_8: return PAD8; case XK_KP_9: return PAD9;
+		case XK_PRINT: return PRINT_SCREEN;
+		case XK_PAUSE: return PAUSE;
 		default: break;
 	}
 
-	return RGFW_KEY_NULL;
+	return NULL;
 }
 
 // private
@@ -1213,7 +1213,7 @@ fn bool rgfw_window_createContextPtr_OpenGL_X11(GfxWindow* win, RgfwGlContext* c
 	win.src.ctx.native.window = rgfw_glXCreateWindow(_gfx_ctx.display, bestFbc, win.src.window, null);
 	rgfw_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
 	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_OPEN_GL, "OpenGL context initalized.");
-	rgfw_window_swapInterval_OpenGL(win, 0);
+	win.opengl_swap_interval(0);
 	return true;
 }
 
@@ -1352,7 +1352,7 @@ fn void rgfw_window_showPlatform_X11(GfxWindow* win)
 	win.internal.flags.hide = false;
 	if (!rgfw_window_isHidden(win)) return;
 	xMapWindow(_gfx_ctx.display, win.src.window);
-	rgfw_window_move(win, win.x, win.y);
+	win.move(...win.origin);
 
 	rgfw_waitForShowEvent_X11(win);
 	rgfw_window_setFullscreen(win, win.is_fullscreen());
@@ -1707,3 +1707,18 @@ fn GfxFormat rgfw_xImageGetFormat(void* imagePtr)
 	// right after xCreateImage, so this mirrors the original's fallback path.
 	return BGRA8;
 }
+
+// public
+fn void rgfw_window_swapInterval_OpenGL_X11(GfxWindow* win, int swapInterval)
+{
+	switch
+	{
+		case rgfw_glXSwapIntervalEXT != null:
+			rgfw_glXSwapIntervalEXT(_gfx_ctx.display, win.src.ctx.native.window, swapInterval);
+		case rgfw_glXSwapIntervalNative != null:
+			rgfw_glXSwapIntervalNative(swapInterval);
+		default:
+			log::warn("Failed to load swap interval function", category: log::CATEGORY_VIDEO);
+	}
+}
+

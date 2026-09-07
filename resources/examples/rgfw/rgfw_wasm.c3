@@ -184,58 +184,58 @@ const int DOM_VK_ESCAPE = 27; const int DOM_VK_HOME = 36; const int DOM_VK_SCROL
 const int DOM_VK_PRINTSCREEN = 44; const int DOM_VK_PAUSE = 19;
 
 // private
-fn RgfwKey rgfw_wasmPhysicalToRGFW(uint hash)
+fn GfxKey rgfw_wasmPhysicalToRGFW(uint hash)
 {
 	switch (hash)
 	{
-		case 0x67243A2Du: return RGFW_KEY_ESCAPE;
-		case 0x67251058u: return RGFW_KEY0; case 0x67251059u: return RGFW_KEY1; case 0x6725105Au: return RGFW_KEY2;
-		case 0x6725105Bu: return RGFW_KEY3; case 0x6725105Cu: return RGFW_KEY4; case 0x6725105Du: return RGFW_KEY5;
-		case 0x6725105Eu: return RGFW_KEY6; case 0x6725105Fu: return RGFW_KEY7; case 0x67251050u: return RGFW_KEY8;
-		case 0x67251051u: return RGFW_KEY9;
-		case 0x92E14DD3u: return RGFW_KEY_MINUS; case 0x92E1FBACu: return RGFW_KEY_EQUALS;
-		case 0x36BF1CB5u: return RGFW_KEY_BACK_SPACE; case 0x7B8E51E2u: return RGFW_KEY_TAB;
-		case 0x2C595B51u: return RGFW_KEY_Q; case 0x2C595B57u: return RGFW_KEY_W; case 0x2C595B45u: return RGFW_KEY_E;
-		case 0x2C595B52u: return RGFW_KEY_R; case 0x2C595B54u: return RGFW_KEY_T; case 0x2C595B59u: return RGFW_KEY_Y;
-		case 0x2C595B55u: return RGFW_KEY_U; case 0x2C595B4Fu: return RGFW_KEY_O; case 0x2C595B50u: return RGFW_KEY_P;
-		case 0x45D8158Cu: return RGFW_KEY_CLOSE_BRACKET; case 0xDEEABF7Cu: return RGFW_KEY_BRACKET;
-		case 0x92E1C5D2u: return RGFW_KEY_RETURN; case 0xE058958Cu: return RGFW_KEY_CONTROL_L;
-		case 0x2C595B41u: return RGFW_KEY_A; case 0x2C595B53u: return RGFW_KEY_S; case 0x2C595B44u: return RGFW_KEY_D;
-		case 0x2C595B46u: return RGFW_KEY_F; case 0x2C595B47u: return RGFW_KEY_G; case 0x2C595B48u: return RGFW_KEY_H;
-		case 0x2C595B4Au: return RGFW_KEY_J; case 0x2C595B4Bu: return RGFW_KEY_K; case 0x2C595B4Cu: return RGFW_KEY_L;
-		case 0x2707219Eu: return RGFW_KEY_SEMICOLON; case 0x92E0B58Du: return RGFW_KEY_APOSTROPHE;
-		case 0x36BF358Du: return RGFW_KEY_BACKTICK; case 0x26B1958Cu: return RGFW_KEY_SHIFT_L;
-		case 0x36BF2438u: return RGFW_KEY_BACK_SLASH;
-		case 0x2C595B5Au: return RGFW_KEY_Z; case 0x2C595B58u: return RGFW_KEY_X; case 0x2C595B43u: return RGFW_KEY_C;
-		case 0x2C595B56u: return RGFW_KEY_V; case 0x2C595B42u: return RGFW_KEY_B; case 0x2C595B4Eu: return RGFW_KEY_N;
-		case 0x2C595B4Du: return RGFW_KEY_M;
-		case 0x92E1A1C1u: return RGFW_KEY_COMMA; case 0x672FFAD4u: return RGFW_KEY_PERIOD; case 0x92E0A438u: return RGFW_KEY_SLASH;
-		case 0xC5A6BF7Cu: return RGFW_KEY_SHIFT_R; case 0x5D64DA91u: return RGFW_KEY_PAD_MULTIPLY;
-		case 0xC914958Cu: return RGFW_KEY_ALT_L; case 0x92E09CB5u: return RGFW_KEY_SPACE;
-		case 0xB8FAE73Bu: return RGFW_KEY_CAPS_LOCK;
-		case 0x7174B789u: return RGFW_KEY_F1; case 0x7174B78Au: return RGFW_KEY_F2; case 0x7174B78Bu: return RGFW_KEY_F3;
-		case 0x7174B78Cu: return RGFW_KEY_F4; case 0x7174B78Du: return RGFW_KEY_F5; case 0x7174B78Eu: return RGFW_KEY_F6;
-		case 0x7174B78Fu: return RGFW_KEY_F7; case 0x7174B780u: return RGFW_KEY_F8; case 0x7174B781u: return RGFW_KEY_F9;
-		case 0x7B8E57B0u: return RGFW_KEY_F10;
-		case 0xC925FCDFu: return RGFW_KEY_PAD_MULTIPLY; case 0xC925FCD0u: return RGFW_KEY_PAD8; case 0xC925FCD1u: return RGFW_KEY_PAD9;
-		case 0x5EA3E8A4u: return RGFW_KEY_MINUS;
-		case 0xC925FCDCu: return RGFW_KEY_PAD4; case 0xC925FCDDu: return RGFW_KEY_PAD5; case 0xC925FCDEu: return RGFW_KEY_PAD6;
-		case 0xC925FCD9u: return RGFW_KEY_PAD1; case 0xC925FCDAu: return RGFW_KEY_PAD2; case 0xC925FCDBu: return RGFW_KEY_PAD3;
-		case 0xC925FCD8u: return RGFW_KEY_PAD0; case 0x95852DACu: return RGFW_KEY_PERIOD;
-		case 0x7B8E57B1u: return RGFW_KEY_F11; case 0x7B8E57B2u: return RGFW_KEY_F12;
-		case 0x7B8E57B3u: return RGFW_KEY_F13; case 0x7B8E57B4u: return RGFW_KEY_F14; case 0x7B8E57B5u: return RGFW_KEY_F15;
-		case 0x7B8E57B6u: return RGFW_KEY_F16; case 0x7B8E57B7u: return RGFW_KEY_F17; case 0x7B8E57B8u: return RGFW_KEY_F18;
-		case 0x7B8E57B9u: return RGFW_KEY_F19; case 0x7B8E57A8u: return RGFW_KEY_F20; case 0x7B8E57A9u: return RGFW_KEY_F21;
-		case 0x7B8E57AAu: return RGFW_KEY_F22; case 0x7B8E57ABu: return RGFW_KEY_F23;
-		case 0x7393FBACu: return RGFW_KEY_PAD_RETURN; case 0xB88EBF7Cu: return RGFW_KEY_ALT_R;
-		case 0xC925873Bu: return RGFW_KEY_NUM_LOCK; case 0x2C595F45u: return RGFW_KEY_HOME;
-		case 0xC91BB690u: return RGFW_KEY_UP; case 0x672F9210u: return RGFW_KEY_PAGE_UP;
-		case 0x3799258Cu: return RGFW_KEY_LEFT; case 0x4CE33F7Cu: return RGFW_KEY_RIGHT;
-		case 0x7B8E55DCu: return RGFW_KEY_END; case 0x3799379Eu: return RGFW_KEY_DOWN; case 0xBA90179Eu: return RGFW_KEY_PAGE_DOWN;
-		case 0x6723CB2Cu: return RGFW_KEY_INSERT; case 0x6725C50Du: return RGFW_KEY_DELETE;
-		case 0x6723658Cu: return RGFW_KEY_SUPER_L; case 0x39643F7Cu: return RGFW_KEY_SUPER_R;
-		case 0x380B9C8Cu: return RGFW_KEY_PAD_PLUS;
-		default: return RGFW_KEY_NULL;
+		case 0x67243A2Du: return ESCAPE;
+		case 0x67251058u: return NUM0; case 0x67251059u: return NUM1; case 0x6725105Au: return NUM2;
+		case 0x6725105Bu: return NUM3; case 0x6725105Cu: return NUM4; case 0x6725105Du: return NUM5;
+		case 0x6725105Eu: return NUM6; case 0x6725105Fu: return NUM7; case 0x67251050u: return NUM8;
+		case 0x67251051u: return NUM9;
+		case 0x92E14DD3u: return MINUS; case 0x92E1FBACu: return EQUALS;
+		case 0x36BF1CB5u: return BACK_SPACE; case 0x7B8E51E2u: return TAB;
+		case 0x2C595B51u: return Q; case 0x2C595B57u: return W; case 0x2C595B45u: return E;
+		case 0x2C595B52u: return R; case 0x2C595B54u: return T; case 0x2C595B59u: return Y;
+		case 0x2C595B55u: return U; case 0x2C595B4Fu: return O; case 0x2C595B50u: return P;
+		case 0x45D8158Cu: return CLOSE_BRACKET; case 0xDEEABF7Cu: return BRACKET;
+		case 0x92E1C5D2u: return RETURN; case 0xE058958Cu: return CONTROL_L;
+		case 0x2C595B41u: return A; case 0x2C595B53u: return S; case 0x2C595B44u: return D;
+		case 0x2C595B46u: return F; case 0x2C595B47u: return G; case 0x2C595B48u: return H;
+		case 0x2C595B4Au: return J; case 0x2C595B4Bu: return K; case 0x2C595B4Cu: return L;
+		case 0x2707219Eu: return SEMICOLON; case 0x92E0B58Du: return APOSTROPHE;
+		case 0x36BF358Du: return BACKTICK; case 0x26B1958Cu: return SHIFT_L;
+		case 0x36BF2438u: return BACK_SLASH;
+		case 0x2C595B5Au: return Z; case 0x2C595B58u: return X; case 0x2C595B43u: return C;
+		case 0x2C595B56u: return V; case 0x2C595B42u: return B; case 0x2C595B4Eu: return N;
+		case 0x2C595B4Du: return M;
+		case 0x92E1A1C1u: return COMMA; case 0x672FFAD4u: return PERIOD; case 0x92E0A438u: return SLASH;
+		case 0xC5A6BF7Cu: return SHIFT_R; case 0x5D64DA91u: return PAD_MULTIPLY;
+		case 0xC914958Cu: return ALT_L; case 0x92E09CB5u: return SPACE;
+		case 0xB8FAE73Bu: return CAPS_LOCK;
+		case 0x7174B789u: return F1; case 0x7174B78Au: return F2; case 0x7174B78Bu: return F3;
+		case 0x7174B78Cu: return F4; case 0x7174B78Du: return F5; case 0x7174B78Eu: return F6;
+		case 0x7174B78Fu: return F7; case 0x7174B780u: return F8; case 0x7174B781u: return F9;
+		case 0x7B8E57B0u: return F10;
+		case 0xC925FCDFu: return PAD_MULTIPLY; case 0xC925FCD0u: return PAD8; case 0xC925FCD1u: return PAD9;
+		case 0x5EA3E8A4u: return MINUS;
+		case 0xC925FCDCu: return PAD4; case 0xC925FCDDu: return PAD5; case 0xC925FCDEu: return PAD6;
+		case 0xC925FCD9u: return PAD1; case 0xC925FCDAu: return PAD2; case 0xC925FCDBu: return PAD3;
+		case 0xC925FCD8u: return PAD0; case 0x95852DACu: return PERIOD;
+		case 0x7B8E57B1u: return F11; case 0x7B8E57B2u: return F12;
+		case 0x7B8E57B3u: return F13; case 0x7B8E57B4u: return F14; case 0x7B8E57B5u: return F15;
+		case 0x7B8E57B6u: return F16; case 0x7B8E57B7u: return F17; case 0x7B8E57B8u: return F18;
+		case 0x7B8E57B9u: return F19; case 0x7B8E57A8u: return F20; case 0x7B8E57A9u: return F21;
+		case 0x7B8E57AAu: return F22; case 0x7B8E57ABu: return F23;
+		case 0x7393FBACu: return PAD_RETURN; case 0xB88EBF7Cu: return ALT_R;
+		case 0xC925873Bu: return NUM_LOCK; case 0x2C595F45u: return HOME;
+		case 0xC91BB690u: return UP; case 0x672F9210u: return PAGE_UP;
+		case 0x3799258Cu: return LEFT; case 0x4CE33F7Cu: return RIGHT;
+		case 0x7B8E55DCu: return END; case 0x3799379Eu: return DOWN; case 0xBA90179Eu: return PAGE_DOWN;
+		case 0x6723CB2Cu: return INSERT; case 0x6725C50Du: return DELETE;
+		case 0x6723658Cu: return SUPER_L; case 0x39643F7Cu: return SUPER_R;
+		case 0x380B9C8Cu: return PAD_PLUS;
+		default: return NULL;
 	}
 }
 
@@ -331,7 +331,7 @@ fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("r
 	uint hash = 0;
 	while (iCode[0] != 0) { hash = ((hash ^ 0x7E057D79u) << 3) ^ (uint)iCode[0]; iCode++; }
 
-	RgfwKey physicalKey = rgfw_wasmPhysicalToRGFW(hash);
+	GfxKey physicalKey = rgfw_wasmPhysicalToRGFW(hash);
 	rgfw_keyCallback(_gfx_ctx.root, physicalKey, _gfx_ctx.root.internal.mod, is_key_down(physicalKey) && press, press);
 	if (press) rgfw_keyCharCallback(_gfx_ctx.root, codepoint);
 }
@@ -370,51 +370,51 @@ fn void GfxSurface.release(&self) { *self = {}; }
 // public
 fn void rgfw_initKeycodesPlatform()
 {
-	_gfx_ctx.keycodes[DOM_VK_BACK_QUOTE] = RGFW_KEY_BACKTICK;
-	_gfx_ctx.keycodes[DOM_VK_0] = RGFW_KEY0; _gfx_ctx.keycodes[DOM_VK_1] = RGFW_KEY1; _gfx_ctx.keycodes[DOM_VK_2] = RGFW_KEY2;
-	_gfx_ctx.keycodes[DOM_VK_3] = RGFW_KEY3; _gfx_ctx.keycodes[DOM_VK_4] = RGFW_KEY4; _gfx_ctx.keycodes[DOM_VK_5] = RGFW_KEY5;
-	_gfx_ctx.keycodes[DOM_VK_6] = RGFW_KEY6; _gfx_ctx.keycodes[DOM_VK_7] = RGFW_KEY7; _gfx_ctx.keycodes[DOM_VK_8] = RGFW_KEY8;
-	_gfx_ctx.keycodes[DOM_VK_9] = RGFW_KEY9; _gfx_ctx.keycodes[DOM_VK_SPACE] = RGFW_KEY_SPACE;
-	_gfx_ctx.keycodes[DOM_VK_A] = RGFW_KEY_A; _gfx_ctx.keycodes[DOM_VK_B] = RGFW_KEY_B; _gfx_ctx.keycodes[DOM_VK_C] = RGFW_KEY_C;
-	_gfx_ctx.keycodes[DOM_VK_D] = RGFW_KEY_D; _gfx_ctx.keycodes[DOM_VK_E] = RGFW_KEY_E; _gfx_ctx.keycodes[DOM_VK_F] = RGFW_KEY_F;
-	_gfx_ctx.keycodes[DOM_VK_G] = RGFW_KEY_G; _gfx_ctx.keycodes[DOM_VK_H] = RGFW_KEY_H; _gfx_ctx.keycodes[DOM_VK_I] = RGFW_KEY_I;
-	_gfx_ctx.keycodes[DOM_VK_J] = RGFW_KEY_J; _gfx_ctx.keycodes[DOM_VK_K] = RGFW_KEY_K; _gfx_ctx.keycodes[DOM_VK_L] = RGFW_KEY_L;
-	_gfx_ctx.keycodes[DOM_VK_M] = RGFW_KEY_M; _gfx_ctx.keycodes[DOM_VK_N] = RGFW_KEY_N; _gfx_ctx.keycodes[DOM_VK_O] = RGFW_KEY_O;
-	_gfx_ctx.keycodes[DOM_VK_P] = RGFW_KEY_P; _gfx_ctx.keycodes[DOM_VK_Q] = RGFW_KEY_Q; _gfx_ctx.keycodes[DOM_VK_R] = RGFW_KEY_R;
-	_gfx_ctx.keycodes[DOM_VK_S] = RGFW_KEY_S; _gfx_ctx.keycodes[DOM_VK_T] = RGFW_KEY_T; _gfx_ctx.keycodes[DOM_VK_U] = RGFW_KEY_U;
-	_gfx_ctx.keycodes[DOM_VK_V] = RGFW_KEY_V; _gfx_ctx.keycodes[DOM_VK_W] = RGFW_KEY_W; _gfx_ctx.keycodes[DOM_VK_X] = RGFW_KEY_X;
-	_gfx_ctx.keycodes[DOM_VK_Y] = RGFW_KEY_Y; _gfx_ctx.keycodes[DOM_VK_Z] = RGFW_KEY_Z;
-	_gfx_ctx.keycodes[DOM_VK_PERIOD] = RGFW_KEY_PERIOD; _gfx_ctx.keycodes[DOM_VK_COMMA] = RGFW_KEY_COMMA;
-	_gfx_ctx.keycodes[DOM_VK_SLASH] = RGFW_KEY_SLASH; _gfx_ctx.keycodes[DOM_VK_OPEN_BRACKET] = RGFW_KEY_BRACKET;
-	_gfx_ctx.keycodes[DOM_VK_CLOSE_BRACKET] = RGFW_KEY_CLOSE_BRACKET; _gfx_ctx.keycodes[DOM_VK_SEMICOLON] = RGFW_KEY_SEMICOLON;
-	_gfx_ctx.keycodes[DOM_VK_QUOTE] = RGFW_KEY_APOSTROPHE; _gfx_ctx.keycodes[DOM_VK_BACK_SLASH] = RGFW_KEY_BACK_SLASH;
-	_gfx_ctx.keycodes[DOM_VK_RETURN] = RGFW_KEY_RETURN; _gfx_ctx.keycodes[DOM_VK_DELETE] = RGFW_KEY_DELETE;
-	_gfx_ctx.keycodes[DOM_VK_NUM_LOCK] = RGFW_KEY_NUM_LOCK; _gfx_ctx.keycodes[DOM_VK_DIVIDE] = RGFW_KEY_PAD_SLASH;
-	_gfx_ctx.keycodes[DOM_VK_MULTIPLY] = RGFW_KEY_PAD_MULTIPLY; _gfx_ctx.keycodes[DOM_VK_SUBTRACT] = RGFW_KEY_PAD_MINUS;
-	_gfx_ctx.keycodes[DOM_VK_NUMPAD1] = RGFW_KEY_PAD1; _gfx_ctx.keycodes[DOM_VK_NUMPAD2] = RGFW_KEY_PAD2;
-	_gfx_ctx.keycodes[DOM_VK_NUMPAD3] = RGFW_KEY_PAD3; _gfx_ctx.keycodes[DOM_VK_NUMPAD4] = RGFW_KEY_PAD4;
-	_gfx_ctx.keycodes[DOM_VK_NUMPAD5] = RGFW_KEY_PAD5; _gfx_ctx.keycodes[DOM_VK_NUMPAD6] = RGFW_KEY_PAD6;
-	_gfx_ctx.keycodes[DOM_VK_NUMPAD9] = RGFW_KEY_PAD9; _gfx_ctx.keycodes[DOM_VK_NUMPAD0] = RGFW_KEY_PAD0;
-	_gfx_ctx.keycodes[DOM_VK_DECIMAL] = RGFW_KEY_PAD_PERIOD; _gfx_ctx.keycodes[DOM_VK_HYPHEN_MINUS] = RGFW_KEY_MINUS;
-	_gfx_ctx.keycodes[DOM_VK_EQUALS] = RGFW_KEY_EQUALS; _gfx_ctx.keycodes[DOM_VK_BACK_SPACE] = RGFW_KEY_BACK_SPACE;
-	_gfx_ctx.keycodes[DOM_VK_TAB] = RGFW_KEY_TAB; _gfx_ctx.keycodes[DOM_VK_CAPS_LOCK] = RGFW_KEY_CAPS_LOCK;
-	_gfx_ctx.keycodes[DOM_VK_SHIFT] = RGFW_KEY_SHIFT_L; _gfx_ctx.keycodes[DOM_VK_CONTROL] = RGFW_KEY_CONTROL_L;
-	_gfx_ctx.keycodes[DOM_VK_ALT] = RGFW_KEY_ALT_L; _gfx_ctx.keycodes[DOM_VK_META] = RGFW_KEY_SUPER_L;
-	_gfx_ctx.keycodes[DOM_VK_F1] = RGFW_KEY_F1; _gfx_ctx.keycodes[DOM_VK_F2] = RGFW_KEY_F2; _gfx_ctx.keycodes[DOM_VK_F3] = RGFW_KEY_F3;
-	_gfx_ctx.keycodes[DOM_VK_F4] = RGFW_KEY_F4; _gfx_ctx.keycodes[DOM_VK_F5] = RGFW_KEY_F5; _gfx_ctx.keycodes[DOM_VK_F6] = RGFW_KEY_F6;
-	_gfx_ctx.keycodes[DOM_VK_F7] = RGFW_KEY_F7; _gfx_ctx.keycodes[DOM_VK_F8] = RGFW_KEY_F8; _gfx_ctx.keycodes[DOM_VK_F9] = RGFW_KEY_F9;
-	_gfx_ctx.keycodes[DOM_VK_F10] = RGFW_KEY_F10; _gfx_ctx.keycodes[DOM_VK_F11] = RGFW_KEY_F11; _gfx_ctx.keycodes[DOM_VK_F12] = RGFW_KEY_F12;
-	_gfx_ctx.keycodes[DOM_VK_UP] = RGFW_KEY_UP; _gfx_ctx.keycodes[DOM_VK_DOWN] = RGFW_KEY_DOWN;
-	_gfx_ctx.keycodes[DOM_VK_LEFT] = RGFW_KEY_LEFT; _gfx_ctx.keycodes[DOM_VK_RIGHT] = RGFW_KEY_RIGHT;
-	_gfx_ctx.keycodes[DOM_VK_INSERT] = RGFW_KEY_INSERT; _gfx_ctx.keycodes[DOM_VK_END] = RGFW_KEY_END;
-	_gfx_ctx.keycodes[DOM_VK_PAGE_UP] = RGFW_KEY_PAGE_UP; _gfx_ctx.keycodes[DOM_VK_PAGE_DOWN] = RGFW_KEY_PAGE_DOWN;
-	_gfx_ctx.keycodes[DOM_VK_ESCAPE] = RGFW_KEY_ESCAPE; _gfx_ctx.keycodes[DOM_VK_HOME] = RGFW_KEY_HOME;
-	_gfx_ctx.keycodes[DOM_VK_SCROLL_LOCK] = RGFW_KEY_SCROLL_LOCK; _gfx_ctx.keycodes[DOM_VK_PRINTSCREEN] = RGFW_KEY_PRINT_SCREEN;
-	_gfx_ctx.keycodes[DOM_VK_PAUSE] = RGFW_KEY_PAUSE;
-	_gfx_ctx.keycodes[DOM_VK_F13] = RGFW_KEY_F13; _gfx_ctx.keycodes[DOM_VK_F14] = RGFW_KEY_F14; _gfx_ctx.keycodes[DOM_VK_F15] = RGFW_KEY_F15;
-	_gfx_ctx.keycodes[DOM_VK_F16] = RGFW_KEY_F16; _gfx_ctx.keycodes[DOM_VK_F17] = RGFW_KEY_F17; _gfx_ctx.keycodes[DOM_VK_F18] = RGFW_KEY_F18;
-	_gfx_ctx.keycodes[DOM_VK_F19] = RGFW_KEY_F19; _gfx_ctx.keycodes[DOM_VK_F20] = RGFW_KEY_F20; _gfx_ctx.keycodes[DOM_VK_F21] = RGFW_KEY_F21;
-	_gfx_ctx.keycodes[DOM_VK_F22] = RGFW_KEY_F22; _gfx_ctx.keycodes[DOM_VK_F23] = RGFW_KEY_F23; _gfx_ctx.keycodes[DOM_VK_F24] = RGFW_KEY_F24;
+	_gfx_ctx.keycodes[DOM_VK_BACK_QUOTE] = BACKTICK;
+	_gfx_ctx.keycodes[DOM_VK_0] = NUM0; _gfx_ctx.keycodes[DOM_VK_1] = NUM1; _gfx_ctx.keycodes[DOM_VK_2] = NUM2;
+	_gfx_ctx.keycodes[DOM_VK_3] = NUM3; _gfx_ctx.keycodes[DOM_VK_4] = NUM4; _gfx_ctx.keycodes[DOM_VK_5] = NUM5;
+	_gfx_ctx.keycodes[DOM_VK_6] = NUM6; _gfx_ctx.keycodes[DOM_VK_7] = NUM7; _gfx_ctx.keycodes[DOM_VK_8] = NUM8;
+	_gfx_ctx.keycodes[DOM_VK_9] = NUM9; _gfx_ctx.keycodes[DOM_VK_SPACE] = SPACE;
+	_gfx_ctx.keycodes[DOM_VK_A] = A; _gfx_ctx.keycodes[DOM_VK_B] = B; _gfx_ctx.keycodes[DOM_VK_C] = C;
+	_gfx_ctx.keycodes[DOM_VK_D] = D; _gfx_ctx.keycodes[DOM_VK_E] = E; _gfx_ctx.keycodes[DOM_VK_F] = F;
+	_gfx_ctx.keycodes[DOM_VK_G] = G; _gfx_ctx.keycodes[DOM_VK_H] = H; _gfx_ctx.keycodes[DOM_VK_I] = I;
+	_gfx_ctx.keycodes[DOM_VK_J] = J; _gfx_ctx.keycodes[DOM_VK_K] = K; _gfx_ctx.keycodes[DOM_VK_L] = L;
+	_gfx_ctx.keycodes[DOM_VK_M] = M; _gfx_ctx.keycodes[DOM_VK_N] = N; _gfx_ctx.keycodes[DOM_VK_O] = O;
+	_gfx_ctx.keycodes[DOM_VK_P] = P; _gfx_ctx.keycodes[DOM_VK_Q] = Q; _gfx_ctx.keycodes[DOM_VK_R] = R;
+	_gfx_ctx.keycodes[DOM_VK_S] = S; _gfx_ctx.keycodes[DOM_VK_T] = T; _gfx_ctx.keycodes[DOM_VK_U] = U;
+	_gfx_ctx.keycodes[DOM_VK_V] = V; _gfx_ctx.keycodes[DOM_VK_W] = W; _gfx_ctx.keycodes[DOM_VK_X] = X;
+	_gfx_ctx.keycodes[DOM_VK_Y] = Y; _gfx_ctx.keycodes[DOM_VK_Z] = Z;
+	_gfx_ctx.keycodes[DOM_VK_PERIOD] = PERIOD; _gfx_ctx.keycodes[DOM_VK_COMMA] = COMMA;
+	_gfx_ctx.keycodes[DOM_VK_SLASH] = SLASH; _gfx_ctx.keycodes[DOM_VK_OPEN_BRACKET] = BRACKET;
+	_gfx_ctx.keycodes[DOM_VK_CLOSE_BRACKET] = CLOSE_BRACKET; _gfx_ctx.keycodes[DOM_VK_SEMICOLON] = SEMICOLON;
+	_gfx_ctx.keycodes[DOM_VK_QUOTE] = APOSTROPHE; _gfx_ctx.keycodes[DOM_VK_BACK_SLASH] = BACK_SLASH;
+	_gfx_ctx.keycodes[DOM_VK_RETURN] = RETURN; _gfx_ctx.keycodes[DOM_VK_DELETE] = DELETE;
+	_gfx_ctx.keycodes[DOM_VK_NUM_LOCK] = NUM_LOCK; _gfx_ctx.keycodes[DOM_VK_DIVIDE] = PAD_SLASH;
+	_gfx_ctx.keycodes[DOM_VK_MULTIPLY] = PAD_MULTIPLY; _gfx_ctx.keycodes[DOM_VK_SUBTRACT] = PAD_MINUS;
+	_gfx_ctx.keycodes[DOM_VK_NUMPAD1] = PAD1; _gfx_ctx.keycodes[DOM_VK_NUMPAD2] = PAD2;
+	_gfx_ctx.keycodes[DOM_VK_NUMPAD3] = PAD3; _gfx_ctx.keycodes[DOM_VK_NUMPAD4] = PAD4;
+	_gfx_ctx.keycodes[DOM_VK_NUMPAD5] = PAD5; _gfx_ctx.keycodes[DOM_VK_NUMPAD6] = PAD6;
+	_gfx_ctx.keycodes[DOM_VK_NUMPAD9] = PAD9; _gfx_ctx.keycodes[DOM_VK_NUMPAD0] = PAD0;
+	_gfx_ctx.keycodes[DOM_VK_DECIMAL] = PAD_PERIOD; _gfx_ctx.keycodes[DOM_VK_HYPHEN_MINUS] = MINUS;
+	_gfx_ctx.keycodes[DOM_VK_EQUALS] = EQUALS; _gfx_ctx.keycodes[DOM_VK_BACK_SPACE] = BACK_SPACE;
+	_gfx_ctx.keycodes[DOM_VK_TAB] = TAB; _gfx_ctx.keycodes[DOM_VK_CAPS_LOCK] = CAPS_LOCK;
+	_gfx_ctx.keycodes[DOM_VK_SHIFT] = SHIFT_L; _gfx_ctx.keycodes[DOM_VK_CONTROL] = CONTROL_L;
+	_gfx_ctx.keycodes[DOM_VK_ALT] = ALT_L; _gfx_ctx.keycodes[DOM_VK_META] = SUPER_L;
+	_gfx_ctx.keycodes[DOM_VK_F1] = F1; _gfx_ctx.keycodes[DOM_VK_F2] = F2; _gfx_ctx.keycodes[DOM_VK_F3] = F3;
+	_gfx_ctx.keycodes[DOM_VK_F4] = F4; _gfx_ctx.keycodes[DOM_VK_F5] = F5; _gfx_ctx.keycodes[DOM_VK_F6] = F6;
+	_gfx_ctx.keycodes[DOM_VK_F7] = F7; _gfx_ctx.keycodes[DOM_VK_F8] = F8; _gfx_ctx.keycodes[DOM_VK_F9] = F9;
+	_gfx_ctx.keycodes[DOM_VK_F10] = F10; _gfx_ctx.keycodes[DOM_VK_F11] = F11; _gfx_ctx.keycodes[DOM_VK_F12] = F12;
+	_gfx_ctx.keycodes[DOM_VK_UP] = UP; _gfx_ctx.keycodes[DOM_VK_DOWN] = DOWN;
+	_gfx_ctx.keycodes[DOM_VK_LEFT] = LEFT; _gfx_ctx.keycodes[DOM_VK_RIGHT] = RIGHT;
+	_gfx_ctx.keycodes[DOM_VK_INSERT] = INSERT; _gfx_ctx.keycodes[DOM_VK_END] = END;
+	_gfx_ctx.keycodes[DOM_VK_PAGE_UP] = PAGE_UP; _gfx_ctx.keycodes[DOM_VK_PAGE_DOWN] = PAGE_DOWN;
+	_gfx_ctx.keycodes[DOM_VK_ESCAPE] = ESCAPE; _gfx_ctx.keycodes[DOM_VK_HOME] = HOME;
+	_gfx_ctx.keycodes[DOM_VK_SCROLL_LOCK] = SCROLL_LOCK; _gfx_ctx.keycodes[DOM_VK_PRINTSCREEN] = PRINT_SCREEN;
+	_gfx_ctx.keycodes[DOM_VK_PAUSE] = PAUSE;
+	_gfx_ctx.keycodes[DOM_VK_F13] = F13; _gfx_ctx.keycodes[DOM_VK_F14] = F14; _gfx_ctx.keycodes[DOM_VK_F15] = F15;
+	_gfx_ctx.keycodes[DOM_VK_F16] = F16; _gfx_ctx.keycodes[DOM_VK_F17] = F17; _gfx_ctx.keycodes[DOM_VK_F18] = F18;
+	_gfx_ctx.keycodes[DOM_VK_F19] = F19; _gfx_ctx.keycodes[DOM_VK_F20] = F20; _gfx_ctx.keycodes[DOM_VK_F21] = F21;
+	_gfx_ctx.keycodes[DOM_VK_F22] = F22; _gfx_ctx.keycodes[DOM_VK_F23] = F23; _gfx_ctx.keycodes[DOM_VK_F24] = F24;
 }
 
 // public
@@ -459,7 +459,7 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 }
 
 // public
-fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key) => key;
+fn GfxKey rgfw_physicalToMappedKey(GfxKey key) => key;
 // public
 fn IntVec2 rgfw_window_fetchSize(GfxWindow* win) => win.get_size();
 
@@ -561,7 +561,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, 
 	}
 	ctx.ctx = (void*)(uptr)handle;
 	rgfwJsWebglMakeCurrent(handle);
-	rgfw_window_swapInterval_OpenGL(win, 0);
+	win.opengl_swap_interval(0);
 	return true;
 }
 
@@ -589,8 +589,6 @@ fn void* rgfw_getCurrentContext_OpenGL() => (void*)(uptr)rgfwJsWebglGetCurrentCo
 fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfwJsExtensionSupported(extension, len) != 0;
 // public
 fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname) => rgfwJsGetProcAddress(procname);
-// public
-fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval) {}
 
 // public
 fn void rgfw_deinitPlatform() {}
@@ -616,8 +614,8 @@ fn void GfxWindow.set_name(&self, String name)
 fn void rgfw_window_maximizePlatform(GfxWindow* win)
 {
 	GfxMonitor* mon = find_monitor(win);
-	if (mon != null) rgfw_window_resize(win, mon.mode.w, mon.mode.h);
-	rgfw_window_move(win, 0, 0);
+	if (mon) win.resize(mon.mode.w, mon.mode.h);
+	win.move(0, 0);
 }
 
 // public
@@ -637,7 +635,7 @@ fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
 fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) { rgfwJsSetOpacity((float)opacity / 255.0f); }
 
 // public
-fn GfxMonitor* find_monitor(GfxWindow* win) => rgfw_getPrimaryMonitor();
+fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
 
 // ---- unsupported on WASM (match the original's no-op stubs) ----
 // public
@@ -677,10 +675,9 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border) {}
 // public
 fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH) => false;
 // public
-fn void rgfw_window_hide(GfxWindow* win) {}
+fn void GfxWindow.hide(&self) {}
 
-// public
-fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) {}
+fn void GfxWindow.flash(&self, GfxFlashRequest request) {}
 // public
 fn bool rgfw_window_isHidden(GfxWindow* win) => false;
 // public
@@ -696,5 +693,3 @@ fn void rgfw_waitForEvent(int waitMS) {}
 fn bool load_egl() => false;
 // public
 fn bool rgfw_loadVulkan() => false;
-// public
-fn void rgfw_unloadVulkan() {}

@@ -709,83 +709,83 @@ fn bool rgfw_monitor_requestMode_Wayland(GfxMonitor* mon, GfxMonitorMode* mode, 
 }
 
 // private
-fn RgfwKey rgfw_physicalToMappedKey_Wayland(RgfwKey key)
+fn GfxKey rgfw_physicalToMappedKey_Wayland(GfxKey key)
 {
 	uint keycode = rgfw_rgfwToApiKey(key);
 	XkbKeycode kc = keycode + 8;
 	XkbKeysym sym = xkbStateKeyGetOneSym(_gfx_ctx.xkbState, kc);
-	if (sym < 256) return (RgfwKey)sym;
+	if (sym < 256) return (GfxKey)sym;
 
 	switch (sym)
 	{
-		case XKB_KEY_F1: return RGFW_KEY_F1;
-		case XKB_KEY_F2: return RGFW_KEY_F2;
-		case XKB_KEY_F3: return RGFW_KEY_F3;
-		case XKB_KEY_F4: return RGFW_KEY_F4;
-		case XKB_KEY_F5: return RGFW_KEY_F5;
-		case XKB_KEY_F6: return RGFW_KEY_F6;
-		case XKB_KEY_F7: return RGFW_KEY_F7;
-		case XKB_KEY_F8: return RGFW_KEY_F8;
-		case XKB_KEY_F9: return RGFW_KEY_F9;
-		case XKB_KEY_F10: return RGFW_KEY_F10;
-		case XKB_KEY_F11: return RGFW_KEY_F11;
-		case XKB_KEY_F12: return RGFW_KEY_F12;
-		case XKB_KEY_F13: return RGFW_KEY_F13;
-		case XKB_KEY_F14: return RGFW_KEY_F14;
-		case XKB_KEY_F15: return RGFW_KEY_F15;
-		case XKB_KEY_F16: return RGFW_KEY_F16;
-		case XKB_KEY_F17: return RGFW_KEY_F17;
-		case XKB_KEY_F18: return RGFW_KEY_F18;
-		case XKB_KEY_F19: return RGFW_KEY_F19;
-		case XKB_KEY_F20: return RGFW_KEY_F20;
-		case XKB_KEY_F21: return RGFW_KEY_F21;
-		case XKB_KEY_F22: return RGFW_KEY_F22;
-		case XKB_KEY_F23: return RGFW_KEY_F23;
-		case XKB_KEY_F24: return RGFW_KEY_F24;
-		case XKB_KEY_F25: return RGFW_KEY_F25;
-		case XKB_KEY_SHIFT_L: return RGFW_KEY_SHIFT_L;
-		case XKB_KEY_SHIFT_R: return RGFW_KEY_SHIFT_R;
-		case XKB_KEY_CONTROL_L: return RGFW_KEY_CONTROL_L;
-		case XKB_KEY_CONTROL_R: return RGFW_KEY_CONTROL_R;
-		case XKB_KEY_ALT_L: return RGFW_KEY_ALT_L;
-		case XKB_KEY_ALT_R: return RGFW_KEY_ALT_R;
-		case XKB_KEY_SUPER_L: return RGFW_KEY_SUPER_L;
-		case XKB_KEY_SUPER_R: return RGFW_KEY_SUPER_R;
-		case XKB_KEY_CAPS_LOCK: return RGFW_KEY_CAPS_LOCK;
-		case XKB_KEY_NUM_LOCK: return RGFW_KEY_NUM_LOCK;
-		case XKB_KEY_SCROLL_LOCK: return RGFW_KEY_SCROLL_LOCK;
-		case XKB_KEY_UP: return RGFW_KEY_UP;
-		case XKB_KEY_DOWN: return RGFW_KEY_DOWN;
-		case XKB_KEY_LEFT: return RGFW_KEY_LEFT;
-		case XKB_KEY_RIGHT: return RGFW_KEY_RIGHT;
-		case XKB_KEY_HOME: return RGFW_KEY_HOME;
-		case XKB_KEY_END: return RGFW_KEY_END;
-		case XKB_KEY_PAGE_UP: return RGFW_KEY_PAGE_UP;
-		case XKB_KEY_PAGE_DOWN: return RGFW_KEY_PAGE_DOWN;
-		case XKB_KEY_INSERT: return RGFW_KEY_INSERT;
-		case XKB_KEY_MENU: return RGFW_KEY_MENU;
-		case XKB_KEY_KP_ADD: return RGFW_KEY_PAD_PLUS;
-		case XKB_KEY_KP_SUBTRACT: return RGFW_KEY_PAD_MINUS;
-		case XKB_KEY_KP_MULTIPLY: return RGFW_KEY_PAD_MULTIPLY;
-		case XKB_KEY_KP_DIVIDE: return RGFW_KEY_PAD_SLASH;
-		case XKB_KEY_KP_EQUAL: return RGFW_KEY_PAD_EQUAL;
-		case XKB_KEY_KP_ENTER: return RGFW_KEY_PAD_RETURN;
-		case XKB_KEY_KP_DECIMAL: return RGFW_KEY_PAD_PERIOD;
-		case XKB_KEY_KP_0: return RGFW_KEY_PAD0;
-		case XKB_KEY_KP_1: return RGFW_KEY_PAD1;
-		case XKB_KEY_KP_2: return RGFW_KEY_PAD2;
-		case XKB_KEY_KP_3: return RGFW_KEY_PAD3;
-		case XKB_KEY_KP_4: return RGFW_KEY_PAD4;
-		case XKB_KEY_KP_5: return RGFW_KEY_PAD5;
-		case XKB_KEY_KP_6: return RGFW_KEY_PAD6;
-		case XKB_KEY_KP_7: return RGFW_KEY_PAD7;
-		case XKB_KEY_KP_8: return RGFW_KEY_PAD8;
-		case XKB_KEY_KP_9: return RGFW_KEY_PAD9;
-		case XKB_KEY_PRINT: return RGFW_KEY_PRINT_SCREEN;
-		case XKB_KEY_PAUSE: return RGFW_KEY_PAUSE;
+		case XKB_KEY_F1:            return F1;
+		case XKB_KEY_F2:            return F2;
+		case XKB_KEY_F3:            return F3;
+		case XKB_KEY_F4:            return F4;
+		case XKB_KEY_F5:            return F5;
+		case XKB_KEY_F6:            return F6;
+		case XKB_KEY_F7:            return F7;
+		case XKB_KEY_F8:            return F8;
+		case XKB_KEY_F9:            return F9;
+		case XKB_KEY_F10:           return F10;
+		case XKB_KEY_F11:           return F11;
+		case XKB_KEY_F12:           return F12;
+		case XKB_KEY_F13:           return F13;
+		case XKB_KEY_F14:           return F14;
+		case XKB_KEY_F15:           return F15;
+		case XKB_KEY_F16:           return F16;
+		case XKB_KEY_F17:           return F17;
+		case XKB_KEY_F18:           return F18;
+		case XKB_KEY_F19:           return F19;
+		case XKB_KEY_F20:           return F20;
+		case XKB_KEY_F21:           return F21;
+		case XKB_KEY_F22:           return F22;
+		case XKB_KEY_F23:           return F23;
+		case XKB_KEY_F24:           return F24;
+		case XKB_KEY_F25:           return F25;
+		case XKB_KEY_SHIFT_L:       return SHIFT_L;
+		case XKB_KEY_SHIFT_R:       return SHIFT_R;
+		case XKB_KEY_CONTROL_L:     return CONTROL_L;
+		case XKB_KEY_CONTROL_R:     return CONTROL_R;
+		case XKB_KEY_ALT_L:         return ALT_L;
+		case XKB_KEY_ALT_R:         return ALT_R;
+		case XKB_KEY_SUPER_L:       return SUPER_L;
+		case XKB_KEY_SUPER_R:       return SUPER_R;
+		case XKB_KEY_CAPS_LOCK:     return CAPS_LOCK;
+		case XKB_KEY_NUM_LOCK:      return NUM_LOCK;
+		case XKB_KEY_SCROLL_LOCK:   return SCROLL_LOCK;
+		case XKB_KEY_UP:            return UP;
+		case XKB_KEY_DOWN:          return DOWN;
+		case XKB_KEY_LEFT:          return LEFT;
+		case XKB_KEY_RIGHT:         return RIGHT;
+		case XKB_KEY_HOME:          return HOME;
+		case XKB_KEY_END:           return END;
+		case XKB_KEY_PAGE_UP:       return PAGE_UP;
+		case XKB_KEY_PAGE_DOWN:     return PAGE_DOWN;
+		case XKB_KEY_INSERT:        return INSERT;
+		case XKB_KEY_MENU:          return MENU;
+		case XKB_KEY_KP_ADD:        return PAD_PLUS;
+		case XKB_KEY_KP_SUBTRACT:   return PAD_MINUS;
+		case XKB_KEY_KP_MULTIPLY:   return PAD_MULTIPLY;
+		case XKB_KEY_KP_DIVIDE:     return PAD_SLASH;
+		case XKB_KEY_KP_EQUAL:      return PAD_EQUAL;
+		case XKB_KEY_KP_ENTER:      return PAD_RETURN;
+		case XKB_KEY_KP_DECIMAL:    return PAD_PERIOD;
+		case XKB_KEY_KP_0:          return PAD0;
+		case XKB_KEY_KP_1:          return PAD1;
+		case XKB_KEY_KP_2:          return PAD2;
+		case XKB_KEY_KP_3:          return PAD3;
+		case XKB_KEY_KP_4:          return PAD4;
+		case XKB_KEY_KP_5:          return PAD5;
+		case XKB_KEY_KP_6:          return PAD6;
+		case XKB_KEY_KP_7:          return PAD7;
+		case XKB_KEY_KP_8:          return PAD8;
+		case XKB_KEY_KP_9:          return PAD9;
+		case XKB_KEY_PRINT:         return PRINT_SCREEN;
+		case XKB_KEY_PAUSE:         return PAUSE;
 		default: break;
 	}
-	return RGFW_KEY_NULL;
+	return NULL;
 }
 
 // private
@@ -887,9 +887,16 @@ fn bool rgfw_window_createContextPtr_OpenGL_Wayland(GfxWindow* win, RgfwGlContex
 {
 	bool out = rgfw_window_createContextPtr_EGL(win, (RgfwEglContext*)ctx, hints);
 	win.src.gfxType = RGFW_GFX_NATIVE_OPEN_GL;
-	rgfw_window_swapInterval_OpenGL(win, 0);
+	win.opengl_swap_interval(0);
 	return out;
 }
+
+// public
+fn void rgfw_window_swapInterval_OpenGL_Wayland(GfxWindow* win, int swapInterval)
+{
+	rgfw_window_swapInterval_EGL(win, swapInterval);
+}
+
 
 // private
 fn WGPUSurface rgfw_window_createSurface_WebGPU_Wayland(GfxWindow* window, WGPUInstance instance)
@@ -1170,7 +1177,7 @@ fn bool rgfw_window_setIconEx_Wayland(GfxWindow* win, char* data, int w, int h, 
 // private
 fn GfxMonitor* rgfw_window_getMonitor_Wayland(GfxWindow* win)
 {
-	if (win.src.activeMonitor == null) return rgfw_getPrimaryMonitor();
+	if (win.src.activeMonitor == null) return get_primary_monitor() ?? null;
 	return &win.src.activeMonitor.mon;
 }
 
@@ -1460,7 +1467,7 @@ fn void rgfw_wlKeyboardKey(void* data, WlProxy* keyboard, uint serial, uint time
 	if (info.kbOwner == null) return;
 
 	GfxWindow* win = info.kbOwner;
-	RgfwKey rgfwKey = rgfw_apiKeyToRGFW(key + 8);
+	GfxKey rgfwKey = rgfw_apiKeyToRGFW(key + 8);
 
 	rgfw_keyUpdateKeyMods(win, xkbKeymapModGetIndex(info.keymap, "Lock") != 0, xkbKeymapModGetIndex(info.keymap, "Mod2") != 0, xkbKeymapModGetIndex(info.keymap, "ScrollLock") != 0);
 	rgfw_keyCallback(win, rgfwKey, win.internal.mod, is_key_down(rgfwKey) && state != 0, !!state);
@@ -1761,7 +1768,7 @@ fn void rgfw_wlXdgSurfaceConfigureHandler(void* data, WlProxy* xdgSurface, uint 
 	if (win.src.resizing)
 	{
 		_window_resized_callback(win, win.width, win.height);
-		rgfw_window_resize(win, win.width, win.height);
+		win.resize(...win.size);
 		if (!(win.internal.flags.transparent)) rgfw_wlSetOpaque(win);
 	}
 

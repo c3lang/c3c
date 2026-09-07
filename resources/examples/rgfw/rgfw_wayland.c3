@@ -344,7 +344,5 @@ fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
 }
 
 
-// public
-fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval) { rgfw_window_swapInterval_EGL(win, swapInterval); }
 
 

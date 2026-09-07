@@ -38,7 +38,6 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
 
-alias RgfwKey = char;
 alias RgfwKeymod = char;
 alias RgfwDndActionType = char;
 alias RgfwDataTransferType = char;
@@ -140,7 +139,7 @@ struct GfxMonitorNode
 
 struct GfxWindowInternal
 {
-	RgfwKey exitKey;
+	GfxKey exitKey;
 	IntVec2 last_mouse;
 	bool shouldClose;
 	bool rawMouse;
@@ -202,8 +201,8 @@ struct GfxContext
 	int eventLen;
 	bool queueEvents;
 	bool polledEvents;
-	uint[RGFW_KEY_LAST] apiKeycodes;
-	RgfwKey[$feat(WIN32) ? 512 : 256] keycodes;
+	uint[GFX_KEYS] apiKeycodes;
+	GfxKey[$feat(WIN32) ? 512 : 256] keycodes;
 	bool stopCheckEvents_bool;
 	ulong timerOffset;
 	int[3] eventWait_forceStop @feat(X11_WAYLAND);
@@ -306,7 +305,7 @@ struct GfxContext
 	bool rawMouse;
 	RgfwWindowState windowState;
 	RgfwKeyState[8] mouseButtons;
-	RgfwKeyState[RGFW_KEY_LAST] keyboard;
+	RgfwKeyState[GFX_KEYS] keyboard;
 	float scrollX, scrollY;
 	float vectorX, vectorY;
 }
@@ -325,7 +324,7 @@ struct RgfwWindowFocusEvent { GfxEventType type; GfxWindow* win; bool state; }
 struct RgfwMouseButtonEvent { GfxEventType type; GfxWindow* win; GfxMouseButton value; bool state; }
 struct RgfwMouseDeltaEvent { GfxEventType type; GfxWindow* win; float x, y; }
 struct RgfwMouseMotionEvent { GfxEventType type; GfxWindow* win; int x, y; bool inWindow; }
-struct RgfwKeyEvent { GfxEventType type; GfxWindow* win; RgfwKey value; bool repeat; RgfwKeymod mod; bool state; }
+struct RgfwKeyEvent { GfxEventType type; GfxWindow* win; GfxKey value; bool repeat; RgfwKeymod mod; bool state; }
 struct RgfwKeyCharEvent { GfxEventType type; GfxWindow* win; uint value; }
 struct RgfwDataDropEvent { GfxEventType type; GfxWindow* win; GfxDataDropNode* value; }
 struct RgfwDataDragEvent { GfxEventType type; GfxWindow* win; int x, y; RgfwDndActionType action; RgfwDataTransferType dataType; }
@@ -396,132 +395,136 @@ enum GfxFormat : char (int channels, RgfwColorLayout layout)
 	ABGR8 { 4, { 3, 2, 1, 0, 4 } },
 }
 
-const RgfwKey RGFW_KEY_NULL = 0;
-const RgfwKey RGFW_KEY_ESCAPE = 27;
-const RgfwKey RGFW_KEY_BACKTICK = '`';
-const RgfwKey RGFW_KEY0 = '0';
-const RgfwKey RGFW_KEY1 = '1';
-const RgfwKey RGFW_KEY2 = '2';
-const RgfwKey RGFW_KEY3 = '3';
-const RgfwKey RGFW_KEY4 = '4';
-const RgfwKey RGFW_KEY5 = '5';
-const RgfwKey RGFW_KEY6 = '6';
-const RgfwKey RGFW_KEY7 = '7';
-const RgfwKey RGFW_KEY8 = '8';
-const RgfwKey RGFW_KEY9 = '9';
-const RgfwKey RGFW_KEY_MINUS = '-';
-const RgfwKey RGFW_KEY_EQUAL = '=';
-const RgfwKey RGFW_KEY_EQUALS = '=';
-const RgfwKey RGFW_KEY_BACK_SPACE = 8;
-const RgfwKey RGFW_KEY_TAB = 9;
-const RgfwKey RGFW_KEY_SPACE = ' ';
-const RgfwKey RGFW_KEY_A = 'a';
-const RgfwKey RGFW_KEY_B = 'b';
-const RgfwKey RGFW_KEY_C = 'c';
-const RgfwKey RGFW_KEY_D = 'd';
-const RgfwKey RGFW_KEY_E = 'e';
-const RgfwKey RGFW_KEY_F = 'f';
-const RgfwKey RGFW_KEY_G = 'g';
-const RgfwKey RGFW_KEY_H = 'h';
-const RgfwKey RGFW_KEY_I = 'i';
-const RgfwKey RGFW_KEY_J = 'j';
-const RgfwKey RGFW_KEY_K = 'k';
-const RgfwKey RGFW_KEY_L = 'l';
-const RgfwKey RGFW_KEY_M = 'm';
-const RgfwKey RGFW_KEY_N = 'n';
-const RgfwKey RGFW_KEY_O = 'o';
-const RgfwKey RGFW_KEY_P = 'p';
-const RgfwKey RGFW_KEY_Q = 'q';
-const RgfwKey RGFW_KEY_R = 'r';
-const RgfwKey RGFW_KEY_S = 's';
-const RgfwKey RGFW_KEY_T = 't';
-const RgfwKey RGFW_KEY_U = 'u';
-const RgfwKey RGFW_KEY_V = 'v';
-const RgfwKey RGFW_KEY_W = 'w';
-const RgfwKey RGFW_KEY_X = 'x';
-const RgfwKey RGFW_KEY_Y = 'y';
-const RgfwKey RGFW_KEY_Z = 'z';
-const RgfwKey RGFW_KEY_PERIOD = '.';
-const RgfwKey RGFW_KEY_COMMA = ',';
-const RgfwKey RGFW_KEY_SLASH = '/';
-const RgfwKey RGFW_KEY_BRACKET = '[';
-const RgfwKey RGFW_KEY_CLOSE_BRACKET = ']';
-const RgfwKey RGFW_KEY_SEMICOLON = ';';
-const RgfwKey RGFW_KEY_APOSTROPHE = '\'';
-const RgfwKey RGFW_KEY_BACK_SLASH = '\\';
-const RgfwKey RGFW_KEY_RETURN = 10;
-const RgfwKey RGFW_KEY_ENTER = 10;
-const RgfwKey RGFW_KEY_DELETE = 127;
-const RgfwKey RGFW_KEY_F1 = 128;
-const RgfwKey RGFW_KEY_F2 = 129;
-const RgfwKey RGFW_KEY_F3 = 130;
-const RgfwKey RGFW_KEY_F4 = 131;
-const RgfwKey RGFW_KEY_F5 = 132;
-const RgfwKey RGFW_KEY_F6 = 133;
-const RgfwKey RGFW_KEY_F7 = 134;
-const RgfwKey RGFW_KEY_F8 = 135;
-const RgfwKey RGFW_KEY_F9 = 136;
-const RgfwKey RGFW_KEY_F10 = 137;
-const RgfwKey RGFW_KEY_F11 = 138;
-const RgfwKey RGFW_KEY_F12 = 139;
-const RgfwKey RGFW_KEY_F13 = 140;
-const RgfwKey RGFW_KEY_F14 = 141;
-const RgfwKey RGFW_KEY_F15 = 142;
-const RgfwKey RGFW_KEY_F16 = 143;
-const RgfwKey RGFW_KEY_F17 = 144;
-const RgfwKey RGFW_KEY_F18 = 145;
-const RgfwKey RGFW_KEY_F19 = 146;
-const RgfwKey RGFW_KEY_F20 = 147;
-const RgfwKey RGFW_KEY_F21 = 148;
-const RgfwKey RGFW_KEY_F22 = 149;
-const RgfwKey RGFW_KEY_F23 = 150;
-const RgfwKey RGFW_KEY_F24 = 151;
-const RgfwKey RGFW_KEY_F25 = 152;
-const RgfwKey RGFW_KEY_CAPS_LOCK = 153;
-const RgfwKey RGFW_KEY_SHIFT_L = 154;
-const RgfwKey RGFW_KEY_CONTROL_L = 155;
-const RgfwKey RGFW_KEY_ALT_L = 156;
-const RgfwKey RGFW_KEY_SUPER_L = 157;
-const RgfwKey RGFW_KEY_SHIFT_R = 158;
-const RgfwKey RGFW_KEY_CONTROL_R = 159;
-const RgfwKey RGFW_KEY_ALT_R = 160;
-const RgfwKey RGFW_KEY_SUPER_R = 161;
-const RgfwKey RGFW_KEY_UP = 162;
-const RgfwKey RGFW_KEY_DOWN = 163;
-const RgfwKey RGFW_KEY_LEFT = 164;
-const RgfwKey RGFW_KEY_RIGHT = 165;
-const RgfwKey RGFW_KEY_INSERT = 166;
-const RgfwKey RGFW_KEY_MENU = 167;
-const RgfwKey RGFW_KEY_END = 168;
-const RgfwKey RGFW_KEY_HOME = 169;
-const RgfwKey RGFW_KEY_PAGE_UP = 170;
-const RgfwKey RGFW_KEY_PAGE_DOWN = 171;
-const RgfwKey RGFW_KEY_NUM_LOCK = 172;
-const RgfwKey RGFW_KEY_PAD_SLASH = 173;
-const RgfwKey RGFW_KEY_PAD_MULTIPLY = 174;
-const RgfwKey RGFW_KEY_PAD_PLUS = 175;
-const RgfwKey RGFW_KEY_PAD_MINUS = 176;
-const RgfwKey RGFW_KEY_PAD_EQUAL = 177;
-const RgfwKey RGFW_KEY_PAD_EQUALS = 177;
-const RgfwKey RGFW_KEY_PAD1 = 178;
-const RgfwKey RGFW_KEY_PAD2 = 179;
-const RgfwKey RGFW_KEY_PAD3 = 180;
-const RgfwKey RGFW_KEY_PAD4 = 181;
-const RgfwKey RGFW_KEY_PAD5 = 182;
-const RgfwKey RGFW_KEY_PAD6 = 183;
-const RgfwKey RGFW_KEY_PAD7 = 184;
-const RgfwKey RGFW_KEY_PAD8 = 185;
-const RgfwKey RGFW_KEY_PAD9 = 186;
-const RgfwKey RGFW_KEY_PAD0 = 187;
-const RgfwKey RGFW_KEY_PAD_PERIOD = 188;
-const RgfwKey RGFW_KEY_PAD_RETURN = 189;
-const RgfwKey RGFW_KEY_SCROLL_LOCK = 190;
-const RgfwKey RGFW_KEY_PRINT_SCREEN = 191;
-const RgfwKey RGFW_KEY_PAUSE = 192;
-const RgfwKey RGFW_KEY_WORLD1 = 193;
-const RgfwKey RGFW_KEY_WORLD2 = 194;
+constset GfxKey : inline char
+{
+	NULL            = 0,
+	ESCAPE          = 27,
+	BACKTICK        = '`',
+	NUM0            = '0',
+	NUM1            = '1',
+	NUM2            = '2',
+	NUM3            = '3',
+	NUM4            = '4',
+	NUM5            = '5',
+	NUM6            = '6',
+	NUM7            = '7',
+	NUM8            = '8',
+	NUM9            = '9',
+	MINUS           = '-',
+	EQUAL           = '=',
+	EQUALS          = '=',
+	BACK_SPACE      = 8,
+	TAB             = 9,
+	SPACE           = ' ',
+	A               = 'a',
+	B               = 'b',
+	C               = 'c',
+	D               = 'd',
+	E               = 'e',
+	F               = 'f',
+	G               = 'g',
+	H               = 'h',
+	I               = 'i',
+	J               = 'j',
+	K               = 'k',
+	L               = 'l',
+	M               = 'm',
+	N               = 'n',
+	O               = 'o',
+	P               = 'p',
+	Q               = 'q',
+	R               = 'r',
+	S               = 's',
+	T               = 't',
+	U               = 'u',
+	V               = 'v',
+	W               = 'w',
+	X               = 'x',
+	Y               = 'y',
+	Z               = 'z',
+	PERIOD          = '.',
+	COMMA           = ',',
+	SLASH           = '/',
+	BRACKET         = '[',
+	CLOSE_BRACKET   = ']',
+	SEMICOLON       = ';',
+	APOSTROPHE      = '\'',
+	BACK_SLASH      = '\\',
+	RETURN          = 10,
+	ENTER           = 10,
+	DELETE          = 127,
+	F1              = 128,
+	F2              = 129,
+	F3              = 130,
+	F4              = 131,
+	F5              = 132,
+	F6              = 133,
+	F7              = 134,
+	F8              = 135,
+	F9              = 136,
+	F10             = 137,
+	F11             = 138,
+	F12             = 139,
+	F13             = 140,
+	F14             = 141,
+	F15             = 142,
+	F16             = 143,
+	F17             = 144,
+	F18             = 145,
+	F19             = 146,
+	F20             = 147,
+	F21             = 148,
+	F22             = 149,
+	F23             = 150,
+	F24             = 151,
+	F25             = 152,
+	CAPS_LOCK       = 153,
+	SHIFT_L         = 154,
+	CONTROL_L       = 155,
+	ALT_L           = 156,
+	SUPER_L         = 157,
+	SHIFT_R         = 158,
+	CONTROL_R       = 159,
+	ALT_R           = 160,
+	SUPER_R         = 161,
+	UP              = 162,
+	DOWN            = 163,
+	LEFT            = 164,
+	RIGHT           = 165,
+	INSERT          = 166,
+	MENU            = 167,
+	END             = 168,
+	HOME            = 169,
+	PAGE_UP         = 170,
+	PAGE_DOWN       = 171,
+	NUM_LOCK        = 172,
+	PAD_SLASH       = 173,
+	PAD_MULTIPLY    = 174,
+	PAD_PLUS        = 175,
+	PAD_MINUS       = 176,
+	PAD_EQUAL       = 177,
+	PAD_EQUALS      = 177,
+	PAD1            = 178,
+	PAD2            = 179,
+	PAD3            = 180,
+	PAD4            = 181,
+	PAD5            = 182,
+	PAD6            = 183,
+	PAD7            = 184,
+	PAD8            = 185,
+	PAD9            = 186,
+	PAD0            = 187,
+	PAD_PERIOD      = 188,
+	PAD_RETURN      = 189,
+	SCROLL_LOCK     = 190,
+	PRINT_SCREEN    = 191,
+	PAUSE           = 192,
+	WORLD1          = 193,
+	WORLD2          = 194,
 
-const RGFW_KEY_LAST = 256;
+}
+
+const GFX_KEYS = 256;
 
 enum GfxMouseButton
 {
@@ -871,13 +874,13 @@ fn void window_scale_to_monitor(GfxWindow* win)
 {
 	GfxMonitor* monitor = find_monitor(win);
 	if (monitor == null) return;
-	rgfw_window_resize(win, ...(IntVec2)(monitor.scale * (Vec2)win.size));
+	win.resize(...(IntVec2)(monitor.scale * (Vec2)win.size));
 }
 
 // public
 fn void window_move_to_monitor(GfxWindow* win, GfxMonitor* m)
 {
-	rgfw_window_move(win, ...(m.origin + win.origin));
+	win.move(...(m.origin + win.origin));
 }
 
 // public
@@ -896,17 +899,17 @@ fn void set_build_dnd(bool allow)
 }
 
 // public
-fn bool is_key_pressed(RgfwKey key, GfxWindow* window = null)
+fn bool is_key_pressed(GfxKey key, GfxWindow* window = null)
 {
 	return _gfx_ctx.keyboard[key].current && !_gfx_ctx.keyboard[key].prev && (!window || window.has_focus());
 }
 // public
-fn bool is_key_down(RgfwKey key, GfxWindow* window = null)
+fn bool is_key_down(GfxKey key, GfxWindow* window = null)
 {
 	return _gfx_ctx.keyboard[key].current && (!window || window.has_focus());
 }
 // public
-fn bool is_key_released(RgfwKey key, GfxWindow* window = null)
+fn bool is_key_released(GfxKey key, GfxWindow* window = null)
 {
 	return !_gfx_ctx.keyboard[key].current && _gfx_ctx.keyboard[key].prev && (!window || window.has_focus());
 }
@@ -1073,22 +1076,27 @@ fn GfxEvent? check_window_event(GfxWindow* win)
 	return check_queued_window_event(win);
 }
 
+fn void GfxWindow.set_border(&self, bool border)
+{
+	rgfw_window_setBorder(self, border);
+}
+
 // public
 fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags cmpFlags) @private
 {
 	switch
 	{
-		case flags.no_border: rgfw_window_setBorder(win, false);
-		case cmpFlags.no_border: rgfw_window_setBorder(win, true);
+		case flags.no_border: win.set_border(false);
+		case cmpFlags.no_border: win.set_border(true);
 	}
 	switch
 	{
-		case flags.maximize: rgfw_window_maximize(win);
+		case flags.maximize: win.maximize();
 		case cmpFlags.maximize: restore_window(win);
 	}
 	switch
 	{
-		case flags.minimize: rgfw_window_minimize(win);
+		case flags.minimize: win.minimize();
 		case cmpFlags.minimize: restore_window(win);
 	}
 	if (flags.center) rgfw_window_center(win);
@@ -1098,16 +1106,46 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 		case flags.fullscreen: rgfw_window_setFullscreen(win, true);
 		case cmpFlags.fullscreen: rgfw_window_setFullscreen(win, false);
 	}
-	if (flags.hide_mouse) { rgfw_window_showMouse(win, false); }
-	else if (cmpFlags.hide_mouse) { rgfw_window_showMouse(win, true); }
-	if (flags.hide) { rgfw_window_hide(win); }
-	else if (cmpFlags.hide) { show(win); }
-	if (flags.floating) { rgfw_window_setFloating(win, true); }
-	else if (cmpFlags.floating) { rgfw_window_setFloating(win, false); }
-	if (flags.raw_mouse) { rgfw_window_setRawMouseMode(win, true); }
-	else if (cmpFlags.raw_mouse) { rgfw_window_setRawMouseMode(win, false); }
-	if (flags.capture_mouse) { rgfw_window_captureRawMouse(win, true); }
-	else if (cmpFlags.capture_mouse) { rgfw_window_captureMouse(win, false); }
+	if (flags.hide_mouse)
+	{
+		win.show_mouse(false);
+	}
+	else if (cmpFlags.hide_mouse)
+	{
+		win.show_mouse(true);
+	}
+	if (flags.hide)
+	{
+		win.hide();
+	}
+	else if (cmpFlags.hide)
+	{
+		show(win);
+	}
+	if (flags.floating)
+	{
+		rgfw_window_setFloating(win, true);
+	}
+	else if (cmpFlags.floating)
+	{
+		rgfw_window_setFloating(win, false);
+	}
+	if (flags.raw_mouse)
+	{
+		rgfw_window_setRawMouseMode(win, true);
+	}
+	else if (cmpFlags.raw_mouse)
+	{
+		rgfw_window_setRawMouseMode(win, false);
+	}
+	if (flags.capture_mouse)
+	{
+		rgfw_window_captureRawMouse(win, true);
+	}
+	else if (cmpFlags.capture_mouse)
+	{
+		rgfw_window_captureMouse(win, false);
+	}
 	if (flags.focus) rgfw_window_focus(win);
 	if (flags.scale_to_monitor) window_scale_to_monitor(win);
 	switch (true)
@@ -1313,12 +1351,13 @@ fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
 	}
 	else
 	{
-		if (win.internal.flags.fullscreen) rgfw_window_minimize(win);
-		for (sz key = 0; key < (sz)RGFW_KEY_LAST; key++)
+		if (win.internal.flags.fullscreen) win.minimize();
+		for (int i = 0; i < GFX_KEYS; i++)
 		{
-			if (is_key_down((RgfwKey)key) == false) continue;
-			_gfx_ctx.keyboard[key].current = false;
-			if (win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG) rgfw_keyCallback(win, (RgfwKey)key, win.internal.mod, false, false);
+			GfxKey key = (GfxKey)i;
+			if (!is_key_down(key)) continue;
+			_gfx_ctx.keyboard[i].current = false;
+			if (win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG) rgfw_keyCallback(win, key, win.internal.mod, false, false);
 		}
 		rgfw_resetKey();
 		event.type = WINDOW_FOCUS_OUT;
@@ -1387,7 +1426,7 @@ fn void rgfw_keyCharCallback(GfxWindow* win, uint codepoint)
 }
 
 // public
-fn void rgfw_keyCallback(GfxWindow* win, RgfwKey key, RgfwKeymod mod, bool repeat, bool state)
+fn void rgfw_keyCallback(GfxWindow* win, GfxKey key, RgfwKeymod mod, bool repeat, bool state)
 {
 	GfxEvent event;
 	if (state)
@@ -1412,11 +1451,11 @@ fn void rgfw_initKeycodes()
 {
 	_gfx_ctx.keycodes = {};
 	rgfw_initKeycodesPlatform();
-	for (sz i = 0; i < (sz)RGFW_KEY_LAST; i++)
+	for (int i = 0; i < GFX_KEYS; i++)
 	{
-		for (sz y = 0; y < _gfx_ctx.keycodes.len; y++)
+		for (int y = 0; y < _gfx_ctx.keycodes.len; y++)
 		{
-			if (_gfx_ctx.keycodes[y] == (RgfwKey)i)
+			if (_gfx_ctx.keycodes[y] == (GfxKey)i)
 			{
 				_gfx_ctx.apiKeycodes[i] = (uint)y;
 				break;
@@ -1427,14 +1466,14 @@ fn void rgfw_initKeycodes()
 }
 
 // public
-fn RgfwKey rgfw_apiKeyToRGFW(uint keycode)
+fn GfxKey rgfw_apiKeyToRGFW(uint keycode)
 {
-	if (keycode >= _gfx_ctx.keycodes.len) return RGFW_KEY_NULL;
+	if (keycode >= _gfx_ctx.keycodes.len) return NULL;
 	return _gfx_ctx.keycodes[keycode];
 }
 
 // public
-fn uint rgfw_rgfwToApiKey(RgfwKey keycode)
+fn uint rgfw_rgfwToApiKey(GfxKey keycode)
 {
 	return _gfx_ctx.apiKeycodes[keycode];
 }
@@ -1451,7 +1490,7 @@ fn void rgfw_setQueueEvents(bool queue) { _gfx_ctx.queueEvents = queue; }
 // public
 fn void rgfw_resetPrevState()
 {
-	for (sz i = 0; i < (sz)RGFW_KEY_LAST; i++) _gfx_ctx.keyboard[i].prev = _gfx_ctx.keyboard[i].current;
+	foreach (&entry : _gfx_ctx.keyboard) entry.prev = entry.current;
 	foreach (mouse : GfxMouseButton::values)
 	{
 		_gfx_ctx.mouseButtons[mouse.ordinal].prev = _gfx_ctx.mouseButtons[mouse.ordinal].current;
@@ -1480,9 +1519,9 @@ fn IntVec2 GfxWindow.get_size(&win) => win.size;
 // public
 fn GfxWindowFlags rgfw_window_getFlags(GfxWindow* win) => win.internal.flags;
 // public
-fn RgfwKey rgfw_window_getExitKey(GfxWindow* win) => win.internal.exitKey;
+fn GfxKey rgfw_window_getExitKey(GfxWindow* win) => win.internal.exitKey;
 // public
-fn void rgfw_window_setExitKey(GfxWindow* win, RgfwKey key) { win.internal.exitKey = key; }
+fn void rgfw_window_setExitKey(GfxWindow* win, GfxKey key) { win.internal.exitKey = key; }
 // public
 fn void rgfw_window_setEnabledEvents(GfxWindow* win, RgfwEventFlag events) { win.internal.enabledEvents = events; }
 // public
@@ -1550,8 +1589,8 @@ fn void rgfw_setBit(uint* value, uint mask, bool set)
 fn void rgfw_window_center(GfxWindow* win)
 {
 	GfxMonitor* mon = find_monitor(win);
-	if (mon == null) return;
-	rgfw_window_move(win, mon.origin.x + ((mon.mode.w - win.width) / 2), mon.origin.y + ((mon.mode.h - win.height) / 2));
+	if (!mon) return;
+	win.move(mon.origin.x + ((mon.mode.w - win.width) / 2), mon.origin.y + ((mon.mode.h - win.height) / 2));
 }
 
 // public
@@ -1561,7 +1600,7 @@ fn bool rgfw_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
 	mode.w = win.width;
 	mode.h = win.height;
 	bool ret = rgfw_monitor_requestMode(mon, &mode, SCALE);
-	rgfw_window_move(win, ...mon.origin);
+	win.move(...mon.origin);
 	return ret;
 }
 
@@ -1685,11 +1724,14 @@ fn bool rgfw_getMonitorsPtr(sz max, GfxMonitor** monitors, sz* len)
 	return true;
 }
 
-// public
-fn GfxMonitor* rgfw_getPrimaryMonitor()
+<*
+ @return? NOT_FOUND : "If there is no monitor found"
+ @ensure return != null : "Return value cannot be null"
+*> 
+fn GfxMonitor*? get_primary_monitor()
 {
-	if (_gfx_ctx.monitors.primary == null) _gfx_ctx.monitors.primary = _gfx_ctx.monitors.list.head;
-	if (_gfx_ctx.monitors.primary == null) return null;
+	if (!_gfx_ctx.monitors.primary) _gfx_ctx.monitors.primary = _gfx_ctx.monitors.list.head;
+	if (!_gfx_ctx.monitors.primary) return NOT_FOUND~;
 	return &_gfx_ctx.monitors.primary.mon;
 }
 
@@ -1814,7 +1856,7 @@ fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindo
 			flags.hide = true;
 			show(self);
 		case flags.maximize || flags.fullscreen:
-			rgfw_window_hide(self);
+			self.hide();
 	}
 }
 
@@ -1856,10 +1898,10 @@ fn void rgfw_keyUpdateKeyModsEx(GfxWindow* win, bool capital, bool numlock, bool
 fn void rgfw_keyUpdateKeyMods(GfxWindow* win, bool capital, bool numlock, bool scroll)
 {
 	rgfw_keyUpdateKeyModsEx(win, capital, numlock,
-		is_key_down(RGFW_KEY_CONTROL_L) || is_key_down(RGFW_KEY_CONTROL_R),
-		is_key_down(RGFW_KEY_ALT_L) || is_key_down(RGFW_KEY_ALT_R),
-		is_key_down(RGFW_KEY_SHIFT_L) || is_key_down(RGFW_KEY_SHIFT_R),
-		is_key_down(RGFW_KEY_SUPER_L) || is_key_down(RGFW_KEY_SUPER_R),
+		is_key_down(CONTROL_L) || is_key_down(CONTROL_R),
+		is_key_down(ALT_L)     || is_key_down(ALT_R),
+		is_key_down(SHIFT_L)   || is_key_down(SHIFT_R),
+		is_key_down(SUPER_L)   || is_key_down(SUPER_R),
 		scroll);
 }
 
@@ -1926,7 +1968,7 @@ fn void show(GfxWindow* win)
 	if (win.internal.flags.focus_on_show) rgfw_window_focus(win);
 	win.internal.flags.hide = false;
 	rgfw_window_showPlatform(win);
-	if (win.internal.flags.maximize) rgfw_window_maximize(win);
+	if (win.internal.flags.maximize) win.maximize();
 }
 
 // public
@@ -1935,36 +1977,37 @@ fn void restore_window(GfxWindow* win)
 	rgfw_window_restorePlatform(win);
 	win.internal.flags.maximize = false;
 	show(win);
-	rgfw_window_move(win, ...win.internal.old_bounds.origin);
-	rgfw_window_resize(win, ...win.internal.old_bounds.size);
+	win.move(...win.internal.old_bounds.origin);
+	win.resize(...win.internal.old_bounds.size);
 }
-// public
-fn void rgfw_window_minimize(GfxWindow* win)
+
+fn void GfxWindow.minimize(&self)
 {
-	rgfw_window_minimizePlatform(win);
-	win.internal.flags.maximize = false;
+	rgfw_window_minimizePlatform(self);
+	self.internal.flags.maximize = false;
 }
+
 // public
-fn void rgfw_window_maximize(GfxWindow* win)
+fn void GfxWindow.maximize(&self)
 {
-	win.internal.old_bounds = win.bounds;
-	win.internal.flags.maximize = true;
-	rgfw_window_fetchSize(win);
-	rgfw_window_maximizePlatform(win);
+	self.internal.old_bounds = self.bounds;
+	self.internal.flags.maximize = true;
+	rgfw_window_fetchSize(self);
+	rgfw_window_maximizePlatform(self);
 }
-// public
-fn void rgfw_window_move(GfxWindow* win, int x, int y)
+
+fn void GfxWindow.move(&self, int x, int y)
 {
-	win.origin = { x, y };
-	rgfw_window_movePlatform(win, x, y);
-	win.internal.flags.maximize = false;
+	self.origin = { x, y };
+	rgfw_window_movePlatform(self, x, y);
+	self.internal.flags.maximize = false;
 }
-// public
-fn void rgfw_window_resize(GfxWindow* win, int w, int h)
+
+fn void GfxWindow.resize(&self, int w, int h)
 {
-	win.size = { w, h };
-	rgfw_window_resizePlatform(win, w, h);
-	win.internal.flags.maximize = false;
+	self.size = { w, h };
+	rgfw_window_resizePlatform(self, w, h);
+	self.internal.flags.maximize = false;
 }
 
 
@@ -1984,23 +2027,38 @@ fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len) @fea
 	return false;
 }
 
-// public
-fn void rgfw_window_setDND(GfxWindow* win, bool allow)
+fn void GfxWindow.set_dnd(&self, bool allow)
 {
-	win.internal.flags.allow_dnd = allow;
+	self.internal.flags.allow_dnd = allow;
 	$if $feat(WIN32):
-		dragAcceptFiles(win.src.window, (int)allow);
+		dragAcceptFiles(self.src.window, (int)allow);
 	$endif
 }
 
 // public
-fn void rgfw_window_showMouse(GfxWindow* win, bool show)
+fn void unload_vulkan()
 {
-	rgfw_window_showMouseFlags(win, show);
+	$if $feat(WASM):
+		return;
+	$else
+		if (!_gfx_ctx.vulkan_handle) return;
+		$if $feat(WIN32):
+			freeLibrary((HModule*)_gfx_ctx.vulkan_handle);
+		$else
+			libc::dlclose(_gfx_ctx.vulkan_handle);
+		$endif
+		_gfx_ctx.vulkan_handle = null;
+		_gfx_ctx.vkGetInstanceProcAddress = null;
+	$endif
+}
+
+fn void GfxWindow.show_mouse(&self, bool show)
+{
+	rgfw_window_showMouseFlags(self, show);
 	$if $feat(WASM):
 	if (show)
 	{
-		win.set_mouse_default();
+		self.set_mouse_default();
 	}
 	else
 	{
@@ -2009,11 +2067,11 @@ fn void rgfw_window_showMouse(GfxWindow* win, bool show)
 	$else
 	if (show)
 	{
-		win.set_mouse(win.internal.mouse);
+		self.set_mouse(self.internal.mouse);
 	}
 	else
 	{
-		win.set_mouse(_gfx_ctx.hiddenMouse);
+		self.set_mouse(_gfx_ctx.hiddenMouse);
 	}
 	$endif
 

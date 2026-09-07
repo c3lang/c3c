@@ -1,3 +1,38 @@
+module std::gfx;
+
+// public
+fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
+{
+	$switch:
+		$case $feat(MACOS):
+			if (self.src.ctx.native && self.src.ctx.native.ctx)
+			{
+				nsOpenGLContext_setValues((ObjcId)self.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
+			}
+		$case $feat(WIN32):
+			if (!rgfw_wglSwapIntervalEXT || !rgfw_wglSwapIntervalEXT(swap_interval))
+			{
+				log::error("Failed to set OpenGL swap interval", category: log::CATEGORY_VIDEO);
+			}
+		$case $feat(LINUX):
+			$switch:
+				$case WAYLAND_ONLY:
+					return rgfw_window_swapInterval_OpenGL_Wayland(self, swap_interval);
+				$case X11_ONLY:
+					return rgfw_window_swapInterval_OpenGL_X11(self, swap_interval);
+				$default:
+					if (rgfw_dynamicUsingWayland)
+					{
+						return rgfw_window_swapInterval_OpenGL_Wayland(self, swap_interval);
+					}
+					return rgfw_window_swapInterval_OpenGL_X11(self, swap_interval);
+			$endswitch
+		$default:
+		// Nothing
+	$endswitch
+}
+
+
 module std::gfx @feat(!WASM);
 
 // public

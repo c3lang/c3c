@@ -542,7 +542,7 @@ fn void rgfw_xHandleEvent()
 
 	if (win.src.flashEnd != 0)
 	{
-		if (win.src.flashEnd <= rgfw_unix_getTimeNS() || win.has_focus()) rgfw_window_flash(win, CANCEL);
+		if (win.src.flashEnd <= rgfw_unix_getTimeNS() || win.has_focus()) win.flash(CANCEL);
 	}
 
 	bool keyRepeat = false;
@@ -562,7 +562,7 @@ fn void rgfw_xHandleEvent()
 		case 2: // KeyPress
 		{
 			if (!(win.internal.enabledEvents & RGFW_KEY_PRESSED_FLAG)) return;
-			RgfwKey value = (RgfwKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
+			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
 
 			XkbStateRec state;
 			xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
@@ -603,7 +603,7 @@ fn void rgfw_xHandleEvent()
 		case 3: // KeyRelease
 		{
 			if (!(win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG)) return;
-			RgfwKey value = (RgfwKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
+			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
 
 			XkbStateRec state;
 			xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
@@ -871,19 +871,6 @@ fn void rgfw_xHandleEvent()
 }
 
 
-// public
-fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval)
-{
-	switch
-	{
-		case rgfw_glXSwapIntervalEXT != null:
-			rgfw_glXSwapIntervalEXT(_gfx_ctx.display, win.src.ctx.native.window, swapInterval);
-		case rgfw_glXSwapIntervalNative != null:
-			rgfw_glXSwapIntervalNative(swapInterval);
-		default:
-			log::warn("Failed to load swap interval function", category: log::CATEGORY_VIDEO);
-	}
-}
 
 
 struct RgfwAttribStack

@@ -200,17 +200,6 @@ fn bool rgfw_loadVulkan()
 }
 
 // public
-fn void rgfw_unloadVulkan()
-{
-	if (_gfx_ctx.vulkan_handle == null) return;
-	libc::dlclose(_gfx_ctx.vulkan_handle);
-	_gfx_ctx.vulkan_handle = null;
-	_gfx_ctx.vkGetInstanceProcAddress = null;
-}
-
-
-
-// public
 fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
 {
 	if (surface == null || win == null || win.src.view == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
@@ -265,7 +254,7 @@ const uint UC_KEY_ACTION_DOWN = 0;
 const uint UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT = 0;
 
 // public
-fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key)
+fn GfxKey rgfw_physicalToMappedKey(GfxKey key)
 {
 	ushort keycode = (ushort)rgfw_rgfwToApiKey(key);
 	TISInputSourceRef source = tisCopyCurrentKeyboardLayoutInputSource();
@@ -288,7 +277,7 @@ fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key)
 
 	cfRelease(source);
 
-	if (status == 0 && len == 1 && chars[0] < 256) return (RgfwKey)chars[0];
+	if (status == 0 && len == 1 && chars[0] < 256) return (GfxKey)chars[0];
 
 	return key;
 }
@@ -436,7 +425,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, 
 		nsOpenGLContext_setValues((ObjcId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
 	}
 	rgfw_window_makeCurrentContext_OpenGL(win);
-	rgfw_window_swapInterval_OpenGL(win, 0);
+	win.opengl_swap_interval(0);
 	log::info("OpenGL context initialized", category: log::CATEGORY_VIDEO);
 	return true;
 }
@@ -463,8 +452,6 @@ fn void rgfw_window_makeCurrentContext_OpenGL(GfxWindow* win)
 fn void* rgfw_getCurrentContext_OpenGL() => objc_send(objc_class("NSOpenGLContext"), ObjcSendId, "currentContext");
 // public
 fn void rgfw_window_swapBuffers_OpenGL(GfxWindow* win) { if (win != null && win.src.ctx.native != null && win.src.ctx.native.ctx != null) objc_send((ObjcId)win.src.ctx.native.ctx, ObjcSendVoid, "flushBuffer"); }
-// public
-fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval) { if (win != null && win.src.ctx.native != null && win.src.ctx.native.ctx != null) nsOpenGLContext_setValues((ObjcId)win.src.ctx.native.ctx, &swapInterval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL); }
 
 const NSUInteger NS_WINDOW_STYLE_TITLED = 1;
 const NSUInteger NS_WINDOW_STYLE_CLOSABLE = 2;
@@ -675,8 +662,8 @@ fn void rgfw_osxKeyCommon(ObjcId self, ObjcId event, bool down)
 	if (win == null) return;
 	ushort keyCode = objc_send(event, ObjcSendUShort, "keyCode");
 	if (keyCode >= 256) return;
-	RgfwKey key = _gfx_ctx.keycodes[(sz)keyCode];
-	if (key == RGFW_KEY_NULL) return;
+	GfxKey key = _gfx_ctx.keycodes[(sz)keyCode];
+	if (key == NULL) return;
 	bool repeat = down ? objc_send(event, ObjcSendBool, "isARepeat") : false;
 	RgfwKeymod mods = rgfw_osxMods(objc_send(event, ObjcSendNSUInteger, "modifierFlags"));
 	rgfw_keyCallback(win, key, mods, repeat, down);
@@ -710,7 +697,7 @@ fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (win == null) return;
 
-	RgfwKey value = RGFW_KEY_NULL;
+	GfxKey value = NULL;
 	bool pressed = false;
 
 	NSUInteger flags = objc_send(event, ObjcSendNSUInteger, "modifierFlags");
@@ -725,22 +712,22 @@ fn void rgfw_osxFlagsChanged(ObjcId self, ObjcSelector sel, ObjcId event)
 
 	for (int i = 0; i < 9; i++)
 	{
-		RgfwKey modKey = (RgfwKey)(RGFW_KEY_CAPS_LOCK + i);
+		GfxKey modKey = CAPS_LOCK + (GfxKey)i;
 		_gfx_ctx.keyboard[(sz)modKey].prev = _gfx_ctx.keyboard[(sz)modKey].current;
 	}
 
 	for (int i = 0; i < 5; i++)
 	{
 		NSUInteger shift = (NSUInteger)1 << (uint)(i + 16);
-		RgfwKey key = (RgfwKey)(RGFW_KEY_CAPS_LOCK + i);
+		GfxKey key = CAPS_LOCK + (GfxKey)i;
 		if ((flags & shift) != 0 && !is_key_down(key)) { pressed = true; value = key; break; }
 		if ((flags & shift) == 0 && is_key_down(key)) { pressed = false; value = key; break; }
 	}
 
 	rgfw_keyCallback(win, value, win.internal.mod, is_key_down(value) && pressed, pressed);
-	if (value != RGFW_KEY_CAPS_LOCK)
+	if (value != CAPS_LOCK)
 	{
-		RgfwKey other = (RgfwKey)(value + 4);
+		GfxKey other = (GfxKey)(value + 4);
 		rgfw_keyCallback(win, other, win.internal.mod, is_key_down(other) && pressed, pressed);
 	}
 }
@@ -963,35 +950,117 @@ fn void rgfw_deinitPlatform()
 // public
 fn void rgfw_initKeycodesPlatform()
 {
-	_gfx_ctx.keycodes[0x00] = RGFW_KEY_A; _gfx_ctx.keycodes[0x01] = RGFW_KEY_S; _gfx_ctx.keycodes[0x02] = RGFW_KEY_D; _gfx_ctx.keycodes[0x03] = RGFW_KEY_F;
-	_gfx_ctx.keycodes[0x04] = RGFW_KEY_H; _gfx_ctx.keycodes[0x05] = RGFW_KEY_G; _gfx_ctx.keycodes[0x06] = RGFW_KEY_Z; _gfx_ctx.keycodes[0x07] = RGFW_KEY_X;
-	_gfx_ctx.keycodes[0x08] = RGFW_KEY_C; _gfx_ctx.keycodes[0x09] = RGFW_KEY_V; _gfx_ctx.keycodes[0x0B] = RGFW_KEY_B; _gfx_ctx.keycodes[0x0C] = RGFW_KEY_Q;
-	_gfx_ctx.keycodes[0x0D] = RGFW_KEY_W; _gfx_ctx.keycodes[0x0E] = RGFW_KEY_E; _gfx_ctx.keycodes[0x0F] = RGFW_KEY_R; _gfx_ctx.keycodes[0x10] = RGFW_KEY_Y;
-	_gfx_ctx.keycodes[0x11] = RGFW_KEY_T; _gfx_ctx.keycodes[0x12] = RGFW_KEY1; _gfx_ctx.keycodes[0x13] = RGFW_KEY2; _gfx_ctx.keycodes[0x14] = RGFW_KEY3;
-	_gfx_ctx.keycodes[0x15] = RGFW_KEY4; _gfx_ctx.keycodes[0x16] = RGFW_KEY6; _gfx_ctx.keycodes[0x17] = RGFW_KEY5; _gfx_ctx.keycodes[0x18] = RGFW_KEY_EQUAL;
-	_gfx_ctx.keycodes[0x19] = RGFW_KEY9; _gfx_ctx.keycodes[0x1A] = RGFW_KEY7; _gfx_ctx.keycodes[0x1B] = RGFW_KEY_MINUS; _gfx_ctx.keycodes[0x1C] = RGFW_KEY8;
-	_gfx_ctx.keycodes[0x1D] = RGFW_KEY0; _gfx_ctx.keycodes[0x1E] = RGFW_KEY_CLOSE_BRACKET; _gfx_ctx.keycodes[0x1F] = RGFW_KEY_O; _gfx_ctx.keycodes[0x20] = RGFW_KEY_U;
-	_gfx_ctx.keycodes[0x21] = RGFW_KEY_BRACKET; _gfx_ctx.keycodes[0x22] = RGFW_KEY_I; _gfx_ctx.keycodes[0x23] = RGFW_KEY_P; _gfx_ctx.keycodes[0x24] = RGFW_KEY_RETURN;
-	_gfx_ctx.keycodes[0x25] = RGFW_KEY_L; _gfx_ctx.keycodes[0x26] = RGFW_KEY_J; _gfx_ctx.keycodes[0x27] = RGFW_KEY_APOSTROPHE; _gfx_ctx.keycodes[0x28] = RGFW_KEY_K;
-	_gfx_ctx.keycodes[0x29] = RGFW_KEY_SEMICOLON; _gfx_ctx.keycodes[0x2A] = RGFW_KEY_BACK_SLASH; _gfx_ctx.keycodes[0x2B] = RGFW_KEY_COMMA; _gfx_ctx.keycodes[0x2C] = RGFW_KEY_SLASH;
-	_gfx_ctx.keycodes[0x2D] = RGFW_KEY_N; _gfx_ctx.keycodes[0x2E] = RGFW_KEY_M; _gfx_ctx.keycodes[0x2F] = RGFW_KEY_PERIOD; _gfx_ctx.keycodes[0x31] = RGFW_KEY_SPACE;
-	_gfx_ctx.keycodes[0x32] = RGFW_KEY_BACKTICK; _gfx_ctx.keycodes[0x33] = RGFW_KEY_BACK_SPACE; _gfx_ctx.keycodes[0x35] = RGFW_KEY_ESCAPE; _gfx_ctx.keycodes[0x30] = RGFW_KEY_TAB;
-	_gfx_ctx.keycodes[0x7B] = RGFW_KEY_LEFT; _gfx_ctx.keycodes[0x7C] = RGFW_KEY_RIGHT; _gfx_ctx.keycodes[0x7D] = RGFW_KEY_DOWN; _gfx_ctx.keycodes[0x7E] = RGFW_KEY_UP;
-	_gfx_ctx.keycodes[0x38] = RGFW_KEY_SHIFT_L; _gfx_ctx.keycodes[0x3B] = RGFW_KEY_CONTROL_L; _gfx_ctx.keycodes[0x3A] = RGFW_KEY_ALT_L; _gfx_ctx.keycodes[0x37] = RGFW_KEY_SUPER_L;
-	_gfx_ctx.keycodes[0x3C] = RGFW_KEY_SHIFT_R; _gfx_ctx.keycodes[0x3E] = RGFW_KEY_CONTROL_R; _gfx_ctx.keycodes[0x3D] = RGFW_KEY_ALT_R; _gfx_ctx.keycodes[0x36] = RGFW_KEY_SUPER_R;
-	_gfx_ctx.keycodes[0x7A] = RGFW_KEY_F1; _gfx_ctx.keycodes[0x78] = RGFW_KEY_F2; _gfx_ctx.keycodes[0x63] = RGFW_KEY_F3; _gfx_ctx.keycodes[0x76] = RGFW_KEY_F4;
-	_gfx_ctx.keycodes[0x60] = RGFW_KEY_F5; _gfx_ctx.keycodes[0x61] = RGFW_KEY_F6; _gfx_ctx.keycodes[0x62] = RGFW_KEY_F7; _gfx_ctx.keycodes[0x64] = RGFW_KEY_F8;
-	_gfx_ctx.keycodes[0x65] = RGFW_KEY_F9; _gfx_ctx.keycodes[0x6D] = RGFW_KEY_F10; _gfx_ctx.keycodes[0x67] = RGFW_KEY_F11; _gfx_ctx.keycodes[0x6F] = RGFW_KEY_F12;
-	_gfx_ctx.keycodes[0x69] = RGFW_KEY_PRINT_SCREEN; _gfx_ctx.keycodes[0x6B] = RGFW_KEY_F14; _gfx_ctx.keycodes[0x71] = RGFW_KEY_F15; _gfx_ctx.keycodes[0x6A] = RGFW_KEY_F16;
-	_gfx_ctx.keycodes[0x40] = RGFW_KEY_F17; _gfx_ctx.keycodes[0x4F] = RGFW_KEY_F18; _gfx_ctx.keycodes[0x50] = RGFW_KEY_F19; _gfx_ctx.keycodes[0x5A] = RGFW_KEY_F20;
-	_gfx_ctx.keycodes[0x0A] = RGFW_KEY_WORLD1; _gfx_ctx.keycodes[0x39] = RGFW_KEY_CAPS_LOCK; _gfx_ctx.keycodes[0x75] = RGFW_KEY_DELETE; _gfx_ctx.keycodes[0x77] = RGFW_KEY_END;
-	_gfx_ctx.keycodes[0x73] = RGFW_KEY_HOME; _gfx_ctx.keycodes[0x72] = RGFW_KEY_INSERT; _gfx_ctx.keycodes[0x6E] = RGFW_KEY_MENU; _gfx_ctx.keycodes[0x47] = RGFW_KEY_NUM_LOCK;
-	_gfx_ctx.keycodes[0x79] = RGFW_KEY_PAGE_DOWN; _gfx_ctx.keycodes[0x74] = RGFW_KEY_PAGE_UP;
-	_gfx_ctx.keycodes[0x52] = RGFW_KEY_PAD0; _gfx_ctx.keycodes[0x53] = RGFW_KEY_PAD1; _gfx_ctx.keycodes[0x54] = RGFW_KEY_PAD2; _gfx_ctx.keycodes[0x55] = RGFW_KEY_PAD3;
-	_gfx_ctx.keycodes[0x56] = RGFW_KEY_PAD4; _gfx_ctx.keycodes[0x57] = RGFW_KEY_PAD5; _gfx_ctx.keycodes[0x58] = RGFW_KEY_PAD6; _gfx_ctx.keycodes[0x59] = RGFW_KEY_PAD7;
-	_gfx_ctx.keycodes[0x5B] = RGFW_KEY_PAD8; _gfx_ctx.keycodes[0x5C] = RGFW_KEY_PAD9; _gfx_ctx.keycodes[0x45] = RGFW_KEY_PAD_SLASH; _gfx_ctx.keycodes[0x41] = RGFW_KEY_PAD_PERIOD;
-	_gfx_ctx.keycodes[0x4B] = RGFW_KEY_PAD_SLASH; _gfx_ctx.keycodes[0x4C] = RGFW_KEY_PAD_RETURN; _gfx_ctx.keycodes[0x51] = RGFW_KEY_PAD_EQUAL; _gfx_ctx.keycodes[0x43] = RGFW_KEY_PAD_MULTIPLY;
-	_gfx_ctx.keycodes[0x4E] = RGFW_KEY_PAD_MINUS;
+	_gfx_ctx.keycodes[0x00] = A;
+	_gfx_ctx.keycodes[0x01] = S;
+	_gfx_ctx.keycodes[0x02] = D;
+	_gfx_ctx.keycodes[0x03] = F;
+	_gfx_ctx.keycodes[0x04] = H;
+	_gfx_ctx.keycodes[0x05] = G;
+	_gfx_ctx.keycodes[0x06] = Z;
+	_gfx_ctx.keycodes[0x07] = X;
+	_gfx_ctx.keycodes[0x08] = C;
+	_gfx_ctx.keycodes[0x09] = V;
+	_gfx_ctx.keycodes[0x0B] = B;
+	_gfx_ctx.keycodes[0x0C] = Q;
+	_gfx_ctx.keycodes[0x0D] = W;
+	_gfx_ctx.keycodes[0x0E] = E;
+	_gfx_ctx.keycodes[0x0F] = R;
+	_gfx_ctx.keycodes[0x10] = Y;
+	_gfx_ctx.keycodes[0x11] = T;
+	_gfx_ctx.keycodes[0x12] = NUM1;
+	_gfx_ctx.keycodes[0x13] = NUM2;
+	_gfx_ctx.keycodes[0x14] = NUM3;
+	_gfx_ctx.keycodes[0x15] = NUM4;
+	_gfx_ctx.keycodes[0x16] = NUM6;
+	_gfx_ctx.keycodes[0x17] = NUM5;
+	_gfx_ctx.keycodes[0x18] = EQUAL;
+	_gfx_ctx.keycodes[0x19] = NUM9;
+	_gfx_ctx.keycodes[0x1A] = NUM7;
+	_gfx_ctx.keycodes[0x1B] = MINUS;
+	_gfx_ctx.keycodes[0x1C] = NUM8;
+	_gfx_ctx.keycodes[0x1D] = NUM0;
+	_gfx_ctx.keycodes[0x1E] = CLOSE_BRACKET;
+	_gfx_ctx.keycodes[0x1F] = O;
+	_gfx_ctx.keycodes[0x20] = U;
+	_gfx_ctx.keycodes[0x21] = BRACKET;
+	_gfx_ctx.keycodes[0x22] = I;
+	_gfx_ctx.keycodes[0x23] = P;
+	_gfx_ctx.keycodes[0x24] = RETURN;
+	_gfx_ctx.keycodes[0x25] = L;
+	_gfx_ctx.keycodes[0x26] = J;
+	_gfx_ctx.keycodes[0x27] = APOSTROPHE;
+	_gfx_ctx.keycodes[0x28] = K;
+	_gfx_ctx.keycodes[0x29] = SEMICOLON;
+	_gfx_ctx.keycodes[0x2A] = BACK_SLASH;
+	_gfx_ctx.keycodes[0x2B] = COMMA;
+	_gfx_ctx.keycodes[0x2C] = SLASH;
+	_gfx_ctx.keycodes[0x2D] = N;
+	_gfx_ctx.keycodes[0x2E] = M;
+	_gfx_ctx.keycodes[0x2F] = PERIOD;
+	_gfx_ctx.keycodes[0x31] = SPACE;
+	_gfx_ctx.keycodes[0x32] = BACKTICK;
+	_gfx_ctx.keycodes[0x33] = BACK_SPACE;
+	_gfx_ctx.keycodes[0x35] = ESCAPE;
+	_gfx_ctx.keycodes[0x30] = TAB;
+	_gfx_ctx.keycodes[0x7B] = LEFT;
+	_gfx_ctx.keycodes[0x7C] = RIGHT;
+	_gfx_ctx.keycodes[0x7D] = DOWN;
+	_gfx_ctx.keycodes[0x7E] = UP;
+	_gfx_ctx.keycodes[0x38] = SHIFT_L;
+	_gfx_ctx.keycodes[0x3B] = CONTROL_L;
+	_gfx_ctx.keycodes[0x3A] = ALT_L;
+	_gfx_ctx.keycodes[0x37] = SUPER_L;
+	_gfx_ctx.keycodes[0x3C] = SHIFT_R;
+	_gfx_ctx.keycodes[0x3E] = CONTROL_R;
+	_gfx_ctx.keycodes[0x3D] = ALT_R;
+	_gfx_ctx.keycodes[0x36] = SUPER_R;
+	_gfx_ctx.keycodes[0x7A] = F1;
+	_gfx_ctx.keycodes[0x78] = F2;
+	_gfx_ctx.keycodes[0x63] = F3;
+	_gfx_ctx.keycodes[0x76] = F4;
+	_gfx_ctx.keycodes[0x60] = F5;
+	_gfx_ctx.keycodes[0x61] = F6;
+	_gfx_ctx.keycodes[0x62] = F7;
+	_gfx_ctx.keycodes[0x64] = F8;
+	_gfx_ctx.keycodes[0x65] = F9;
+	_gfx_ctx.keycodes[0x6D] = F10;
+	_gfx_ctx.keycodes[0x67] = F11;
+	_gfx_ctx.keycodes[0x6F] = F12;
+	_gfx_ctx.keycodes[0x69] = PRINT_SCREEN;
+	_gfx_ctx.keycodes[0x6B] = F14;
+	_gfx_ctx.keycodes[0x71] = F15;
+	_gfx_ctx.keycodes[0x6A] = F16;
+	_gfx_ctx.keycodes[0x40] = F17;
+	_gfx_ctx.keycodes[0x4F] = F18;
+	_gfx_ctx.keycodes[0x50] = F19;
+	_gfx_ctx.keycodes[0x5A] = F20;
+	_gfx_ctx.keycodes[0x0A] = WORLD1;
+	_gfx_ctx.keycodes[0x39] = CAPS_LOCK;
+	_gfx_ctx.keycodes[0x75] = DELETE;
+	_gfx_ctx.keycodes[0x77] = END;
+	_gfx_ctx.keycodes[0x73] = HOME;
+	_gfx_ctx.keycodes[0x72] = INSERT;
+	_gfx_ctx.keycodes[0x6E] = MENU;
+	_gfx_ctx.keycodes[0x47] = NUM_LOCK;
+	_gfx_ctx.keycodes[0x79] = PAGE_DOWN;
+	_gfx_ctx.keycodes[0x74] = PAGE_UP;
+	_gfx_ctx.keycodes[0x52] = PAD0;
+	_gfx_ctx.keycodes[0x53] = PAD1;
+	_gfx_ctx.keycodes[0x54] = PAD2;
+	_gfx_ctx.keycodes[0x55] = PAD3;
+	_gfx_ctx.keycodes[0x56] = PAD4;
+	_gfx_ctx.keycodes[0x57] = PAD5;
+	_gfx_ctx.keycodes[0x58] = PAD6;
+	_gfx_ctx.keycodes[0x59] = PAD7;
+	_gfx_ctx.keycodes[0x5B] = PAD8;
+	_gfx_ctx.keycodes[0x5C] = PAD9;
+	_gfx_ctx.keycodes[0x45] = PAD_SLASH;
+	_gfx_ctx.keycodes[0x41] = PAD_PERIOD;
+	_gfx_ctx.keycodes[0x4B] = PAD_SLASH;
+	_gfx_ctx.keycodes[0x4C] = PAD_RETURN;
+	_gfx_ctx.keycodes[0x51] = PAD_EQUAL;
+	_gfx_ctx.keycodes[0x43] = PAD_MULTIPLY;
+	_gfx_ctx.keycodes[0x4E] = PAD_MINUS;
 }
 
 // public
@@ -1060,14 +1129,6 @@ fn void* rgfw_window_getView_OSX(GfxWindow* win) => win != null ? win.src.view :
 fn void rgfw_window_setLayer_OSX(GfxWindow* win, void* layer) { if (win != null && win.src.view != null) objc_send((ObjcId)win.src.view, ObjcSendVoidId, "setLayer:", (ObjcId)layer); }
 // public
 fn void* rgfw_window_getWindow_OSX(GfxWindow* win) => win != null ? win.src.window : null;
-// public
-fn void* rgfw_window_getHWND(GfxWindow* win) => null;
-// public
-fn void* rgfw_window_getHDC(GfxWindow* win) => null;
-// public
-fn CULong rgfw_window_getWindow_X11(GfxWindow* win) => (win != null && win.src.window != null) ? (CULong)win.src.window : 0;
-// public
-fn void* rgfw_window_getWindow_Wayland(GfxWindow* win) => win != null ? win.src.window : null;
 
 // public
 fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
@@ -1318,7 +1379,7 @@ fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonit
 // public
 fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) { if (mode == null || mode.src == null) return false; return cgDisplaySetDisplayMode(rgfw_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0; }
 // public
-fn GfxMonitor* find_monitor(GfxWindow* win) => rgfw_getPrimaryMonitor();
+fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
 // public
 fn IntVec2 rgfw_window_fetchSize(GfxWindow* win)
 {
@@ -1364,7 +1425,7 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 		offset = (double)(frame.size.height - content.size.height);
 	}
 
-	rgfw_window_resize(win, win.width, win.height + (int)offset);
+	win.resize(win.width, win.height + (int)offset);
 	win.height -= (int)offset;
 }
 // public
@@ -1396,9 +1457,13 @@ fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, Gfx
 	return true;
 }
 // public
-fn void rgfw_window_hide(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderOut:", null); win.internal.flags.hide = true; }
-// public
-fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) { if (_gfx_ctx.nsApp != null) objc_send(_gfx_ctx.nsApp, ObjcSendIntegerNSUInteger, "requestUserAttention:", (NSUInteger)request); }
+fn void GfxWindow.hide(&self)
+{
+	if (self.src.window) objc_send((ObjcId)self.src.window, ObjcSendVoidId, "orderOut:", null);
+	self.internal.flags.hide = true;
+}
+
+fn void GfxWindow.flash(&self, GfxFlashRequest request) { if (_gfx_ctx.nsApp) objc_send(_gfx_ctx.nsApp, ObjcSendIntegerNSUInteger, "requestUserAttention:", (NSUInteger)request); }
 // public
 fn bool rgfw_window_isHidden(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible") ? false : true; return win.internal.flags.hide; }
 // public

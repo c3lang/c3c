@@ -554,7 +554,7 @@ fn void rgfw_xHandleEvent()
 
 	if (win.src.flashEnd != 0)
 	{
-		if (win.src.flashEnd <= rgfw_unix_getTimeNS() || win.has_focus()) rgfw_window_flash(win, CANCEL);
+		if (win.src.flashEnd <= rgfw_unix_getTimeNS() || win.has_focus()) win.flash(CANCEL);
 	}
 
 	bool keyRepeat = false;
@@ -574,7 +574,7 @@ fn void rgfw_xHandleEvent()
 		case 2: // KeyPress
 		{
 			if (!(win.internal.enabledEvents & RGFW_KEY_PRESSED_FLAG)) return;
-			RgfwKey value = (RgfwKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
+			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
 
 			XkbStateRec state;
 			xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
@@ -615,7 +615,7 @@ fn void rgfw_xHandleEvent()
 		case 3: // KeyRelease
 		{
 			if (!(win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG)) return;
-			RgfwKey value = (RgfwKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
+			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
 
 			XkbStateRec state;
 			xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
@@ -883,14 +883,6 @@ fn void rgfw_xHandleEvent()
 }
 
 
-// public
-fn void rgfw_window_swapInterval_OpenGL_X11(GfxWindow* win, int swapInterval)
-{
-	if (rgfw_glXSwapIntervalEXT != null) { rgfw_glXSwapIntervalEXT(_gfx_ctx.display, win.src.ctx.native.window, swapInterval); }
-	else if (rgfw_glXSwapIntervalNative != null) { rgfw_glXSwapIntervalNative(swapInterval); }
-	else { rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_ERR_OPEN_GL_CONTEXT, "Failed to load swap interval function"); }
-}
-
 
 struct RgfwAttribStack
 {
@@ -1121,9 +1113,6 @@ fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
 }
 
 
-// public
-fn void rgfw_window_swapInterval_OpenGL_Wayland(GfxWindow* win, int swapInterval) { rgfw_window_swapInterval_EGL(win, swapInterval); }
-
 
 module std::gfx @feat(X11_WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
 import std::math;
@@ -1147,16 +1136,6 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 	return rgfw_createWindowPlatform_X11(name, flags, win);
 }
 
-
-// public
-fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval)
-{
-	if (rgfw_dynamicUsingWayland)
-	{
-		return rgfw_window_swapInterval_OpenGL_Wayland(win, swapInterval);
-	}
-	rgfw_window_swapInterval_OpenGL_X11(win, swapInterval);
-}
 
 
 // public

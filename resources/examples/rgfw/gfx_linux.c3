@@ -339,7 +339,7 @@ fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonit
 }
 
 // public
-fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key)
+fn GfxKey rgfw_physicalToMappedKey(GfxKey key)
 {
 	$switch:
 		$case WAYLAND_ONLY:
@@ -509,19 +509,19 @@ fn IntVec2 rgfw_window_fetchSize(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request)
+fn void GfxWindow.flash(&self, GfxFlashRequest request)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return rgfw_window_flash_Wayland(win, request);
+			return rgfw_window_flash_Wayland(self, request);
 		$case X11_ONLY:
-			return rgfw_window_flash_X11(win, request);
+			return rgfw_window_flash_X11(self, request);
 		$default:
 			if (rgfw_dynamicUsingWayland)
 			{
-				return rgfw_window_flash_Wayland(win, request);
+				return rgfw_window_flash_Wayland(self, request);
 			}
-			return rgfw_window_flash_X11(win, request);
+			return rgfw_window_flash_X11(self, request);
 	$endswitch
 }
 
@@ -543,19 +543,19 @@ fn void rgfw_window_focus(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_hide(GfxWindow* win)
+fn void GfxWindow.hide(&self)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return rgfw_window_hide_Wayland(win);
+			return rgfw_window_hide_Wayland(self);
 		$case X11_ONLY:
-			return rgfw_window_hide_X11(win);
+			return rgfw_window_hide_X11(self);
 		$default:
 			if (rgfw_dynamicUsingWayland)
 			{
-				return rgfw_window_hide_Wayland(win);
+				return rgfw_window_hide_Wayland(self);
 			}
-			return rgfw_window_hide_X11(win);
+			return rgfw_window_hide_X11(self);
 	$endswitch
 }
 
@@ -950,14 +950,7 @@ fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 	$endswitch
 }
 
-// public
-fn void rgfw_unloadVulkan()
-{
-	if (_gfx_ctx.vulkan_handle == null) return;
-	libc::dlclose(_gfx_ctx.vulkan_handle);
-	_gfx_ctx.vulkan_handle = null;
-	_gfx_ctx.vkGetInstanceProcAddress = null;
-}
+
 
 // public
 fn ulong rgfw_unix_getTimeNS()
