@@ -726,31 +726,33 @@ void fetch_winsdk(BuildOptions *options)
 		error_exit("Missing library components");
 	}
 
+	char *include_path = file_append_path(sdk_output, "include");
+	char *crt_inc = file_append_path(include_path, "crt");
+	char *sdk_inc_root = file_append_path(include_path, "sdk");
+	char *sdk_inc_ucrt = file_append_path(sdk_inc_root, "ucrt");
+	char *sdk_inc_um = file_append_path(sdk_inc_root, "um");
+	char *sdk_inc_shared = file_append_path(sdk_inc_root, "shared");
+
+	dir_make_recursive(crt_inc);
+	dir_make_recursive(sdk_inc_ucrt);
+	dir_make_recursive(sdk_inc_um);
+	dir_make_recursive(sdk_inc_shared);
+
+	copy_to_msvc_sdk(s_msvc_inc, crt_inc);
+	copy_to_msvc_sdk(s_inc_ucrt, sdk_inc_ucrt);
+	copy_to_msvc_sdk(s_inc_um, sdk_inc_um);
+	copy_to_msvc_sdk(s_inc_shared, sdk_inc_shared);
+
 	// Finalizing and copying files for all requested target architectures
 	for (int i = 0; i < (int)vec_size(archs); i++)
 	{
 		const char *arch = archs[i];
 		char *sdk_arch = file_append_path(sdk_output, arch);
-		char *include_path = file_append_path(sdk_output, "include");
-		char *crt_inc = file_append_path(include_path, "crt");
-		char *sdk_inc_root = file_append_path(include_path, "sdk");
-		char *sdk_inc_ucrt = file_append_path(sdk_inc_root, "ucrt");
-		char *sdk_inc_um = file_append_path(sdk_inc_root, "um");
-		char *sdk_inc_shared = file_append_path(sdk_inc_root, "shared");
 		dir_make_recursive(sdk_arch);
-		dir_make_recursive(crt_inc);
-		dir_make_recursive(sdk_inc_ucrt);
-		dir_make_recursive(sdk_inc_um);
-		dir_make_recursive(sdk_inc_shared);
 
 		char *ucrt_path = find_folder_inf(s_ucrt, arch, true);
 		char *um_path = find_folder_inf(s_um, arch, true);
 		char *msvc_path = find_folder_inf(s_msvc, arch, true);
-
-		copy_to_msvc_sdk(s_msvc_inc, crt_inc);
-		copy_to_msvc_sdk(s_inc_ucrt, sdk_inc_ucrt);
-		copy_to_msvc_sdk(s_inc_um, sdk_inc_um);
-		copy_to_msvc_sdk(s_inc_shared, sdk_inc_shared);
 
 		if (ucrt_path && um_path && msvc_path)
 		{
