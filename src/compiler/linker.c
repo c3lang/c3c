@@ -1092,6 +1092,10 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, int
 		if (compiler.build.feature.sanitize_address) add_plain_arg("-fsanitize=address");
 		if (compiler.build.feature.sanitize_memory) add_plain_arg("-fsanitize=memory");
 		if (compiler.build.feature.sanitize_thread) add_plain_arg("-fsanitize=thread");
+		if (compiler.build.feature.sanitize_fuzzer && linker_type == LINKER_CC)
+		{
+			add_plain_arg("-fsanitize=fuzzer");
+		}
 	}
 
 	return true;

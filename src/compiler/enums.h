@@ -393,6 +393,7 @@ typedef enum
 	SANITIZE_ADDRESS,
 	SANITIZE_MEMORY,
 	SANITIZE_THREAD,
+	SANITIZE_FUZZER,
 } SanitizeMode;
 
 typedef enum

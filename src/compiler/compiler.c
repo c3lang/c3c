@@ -1482,11 +1482,58 @@ static void check_thread_sanitizer_options(BuildTarget *target)
 			error_exit("Thread sanitizer is only supported on 64-bit Linux, NetBSD, FreeBSD and Darwin.");
 	}
 }
+static void check_fuzzer_options(BuildTarget *target)
+{
+#if !LLVM_AVAILABLE
+	error_exit("Fuzzer support requires a c3c build with the LLVM backend.");
+#endif
+	if (target->linker_type == LINKER_TYPE_BUILTIN)
+	{
+		error_exit("Fuzzer support requires linking with the system compiler driver, please remove `--linker=builtin`.");
+	}
+	if (compiler.platform.os != OS_TYPE_LINUX || target->arch_os_target != default_target)
+	{
+		error_exit("Fuzzer support is currently only available when compiling for the native Linux target.");
+	}
+	const char *cc = target->cc;
+	if (!cc)
+	{
+		const char *cc_env = getenv("C3C_CC");
+		if (cc_env && cc_env[0]) cc = cc_env;
+	}
+	if (!cc)
+	{
+		// No C compiler driver was configured: pick clang automatically so
+		// `--sanitize=fuzzer` works out of the box whenever clang is available.
+		if (file_executable_in_path("clang"))
+		{
+			target->cc = "clang";
+			return;
+		}
+		char clang_version[16];
+		for (int version = 24; version >= 17; version--)
+		{
+			sprintf(clang_version, "clang-%d", version);
+			if (file_executable_in_path(clang_version))
+			{
+				target->cc = str_dup(clang_version);
+				return;
+			}
+		}
+		error_exit("Fuzzer support requires clang as the C compiler driver, but no clang was found in the PATH. Install clang or set the C3C_CC environment variable to a clang binary.");
+	}
+	if (!file_executable_in_path(cc) || !strstr(cc, "clang"))
+	{
+		error_exit("Fuzzer support requires clang as the C compiler driver, please use `--cc <clang>` or set the C3C_CC environment variable to a clang binary.");
+	}
+}
+
 static void check_sanitizer_options(BuildTarget *target)
 {
 	if (target->feature.sanitize_address) check_address_sanitizer_options(target);
 	if (target->feature.sanitize_memory) check_memory_sanitizer_options(target);
 	if (target->feature.sanitize_thread) check_thread_sanitizer_options(target);
+	if (target->feature.sanitize_fuzzer) check_fuzzer_options(target);
 
 	if (target->type == TARGET_TYPE_BENCHMARK)
 	{
@@ -1711,6 +1758,7 @@ INLINE void update_feature_flags(void)
 	if (compiler.build.feature.sanitize_address) add_feat("ASAN");
 	if (compiler.build.feature.sanitize_memory) add_feat("MSAN");
 	if (compiler.build.feature.sanitize_thread) add_feat("TSAN");
+	if (compiler.build.feature.sanitize_fuzzer) add_feat("FUZZER");
 	if (compiler.build.feature.panic_level != PANIC_OFF) add_feat("PRINT_PANIC");
 }
 
