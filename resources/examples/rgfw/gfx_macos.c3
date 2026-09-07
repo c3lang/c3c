@@ -50,3 +50,300 @@ fn void rgfw_window_showPlatform(GfxWindow* win)
 	if (_gfx_ctx.nsApp != null) objc_send(_gfx_ctx.nsApp, ObjcSendVoidBool, "activateIgnoringOtherApps:", true);
 	win.internal.flags.hide = false;
 }
+
+// MacOS callbacks
+
+fn void _osx_register_classes()
+{
+	if (rgfw_osxWindowDelegateClass != (ObjcClass)null) return;
+	rgfw_osxWindowDelegateClass = objc_allocateClassPair(objc_getClass("NSObject"), "RGFWWindowDelegateC3", 0);
+	if (rgfw_osxWindowDelegateClass == (ObjcClass)null) return;
+	class_addIvar(rgfw_osxWindowDelegateClass, "rgfw_window", void*::size, 3, "^v");
+	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowWillClose:"), (void*)&_osx_window_will_close, "v@:@");
+	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidResize:"), (void*)&_osx_window_did_resize, "v@:@");
+	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidMove:"), (void*)&_osx_window_did_move, "v@:@");
+	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidMiniaturize:"), (void*)&_osx_window_did_miniaturize, "v@:@");
+	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidDeminiaturize:"), (void*)&_osx_window_did_deminiaturize, "v@:@");
+	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidBecomeKey:"), (void*)&_osx_window_did_become_key, "v@:@");
+	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidResignKey:"), (void*)&_osx_window_did_resign_key, "v@:@");
+	objc_registerClassPair(rgfw_osxWindowDelegateClass);
+	rgfw_osxViewClass = objc_allocateClassPair(objc_getClass("NSView"), "RGFWViewC3", 0);
+	if (rgfw_osxViewClass == (ObjcClass)null) return;
+	class_addIvar(rgfw_osxViewClass, "rgfw_window", void*::size, 3, "^v");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("acceptsFirstResponder"), (void*)&rgfw_osxAcceptsFirstResponder, "c@:");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("mouseMoved:"), (void*)&_osx_mouse_moved, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("mouseDragged:"), (void*)&_osx_mouse_dragged, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("rightMouseDragged:"), (void*)&_osx_mouse_dragged, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("otherMouseDragged:"), (void*)&_osx_mouse_dragged, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("mouseDown:"), (void*)&_osx_mouse_button_down, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("mouseUp:"), (void*)&_osx_mouse_button_up, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("rightMouseDown:"), (void*)&_osx_right_mouse_button_down, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("rightMouseUp:"), (void*)&_osx_right_mouse_button_up, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("otherMouseDown:"), (void*)&_osx_other_mouse_button_down, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("otherMouseUp:"), (void*)&_osx_other_mouse_button_up, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("scrollWheel:"), (void*)&_osx_scroll_wheel, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("keyDown:"), (void*)&_osx_key_down, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("keyUp:"), (void*)&_osx_key_up, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("mouseEntered:"), (void*)&_osx_mouse_entered, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("mouseExited:"), (void*)&_osx_mouse_exited, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("flagsChanged:"), (void*)&_osx_flags_changed, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("viewDidChangeBackingProperties"), (void*)&_osx_view_did_change_backing_properties, "v@:");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("wantsUpdateLayer"), (void*)&rgfw_osxWantsUpdateLayer, "c@:");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("updateLayer"), (void*)&rgfw_osxUpdateLayer, "v@:");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("drawRect:"), (void*)&rgfw_osxDrawRect, "v@:{CGRect={CGPoint=dd}{CGSize=dd}}");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("draggingEntered:"), (void*)&_osx_dragging_entered, "l@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("draggingUpdated:"), (void*)&_osx_dragging_updated, "l@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("draggingExited:"), (void*)&_osx_dragging_ended, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("draggingEnded:"), (void*)&_osx_dragging_ended, "v@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("prepareForDragOperation:"), (void*)&_osx_prepare_for_drag_operation, "c@:@");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("performDragOperation:"), (void*)&_osx_perform_drag_operation, "c@:@");
+	objc_registerClassPair(rgfw_osxViewClass);
+}
+fn void _osx_key_updown(ObjcId self, ObjcId event, bool down)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	// No window
+	if (!win) return;
+	ushort keyCode = objc_send(event, ObjcSendUShort, "keyCode");
+	if (keyCode >= 256) return;
+	GfxKey key = _gfx_ctx.keycodes[(sz)keyCode];
+	// Unmapped key
+	if (!key) return;
+	bool repeat = down ? objc_send(event, ObjcSendBool, "isARepeat") : false;
+	RgfwKeymod mods = rgfw_osxMods(objc_send(event, ObjcSendNSUInteger, "modifierFlags"));
+	rgfw_keyCallback(win, key, mods, repeat, down);
+}
+
+fn void _osx_key_down(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_key_updown(self, event, true);
+fn void _osx_key_up(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_key_updown(self, event, false);
+
+fn void _osx_mouse_entered(ObjcId self, ObjcSelector sel, ObjcId event)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return;
+	CGPoint p = objc_send(event, ObjcSendPoint, "locationInWindow");
+	_mouse_notify_callback(win, (int)p.x, win.height - (int)p.y, true);
+}
+
+fn void _osx_mouse_exited(ObjcId self, ObjcSelector sel, ObjcId event)
+{
+	if (GfxWindow* win = rgfw_osxViewWindow(self)) _mouse_notify_callback(win, ...win.internal.last_mouse, false);
+}
+
+fn void _osx_window_did_move(ObjcId self, ObjcSelector sel, ObjcId notification)
+{
+	GfxWindow* win = rgfw_osxDelegateWindow(self);
+	if (!win || !win.src.window) return;
+	CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
+	CGRect content = objc_send((ObjcId)win.src.window, ObjcSendRectRect, "contentRectForFrameRect:", frame);
+	float y = rgfw_cocoaYTransform((float)(content.origin.y + content.size.height - 1));
+	_window_moved_callback(win, (int)content.origin.x, (int)y);
+}
+
+fn void _osx_window_did_miniaturize(ObjcId self, ObjcSelector sel, ObjcId notification)
+{
+	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) rgfw_windowMinimizedCallback(win);
+}
+
+fn void _osx_window_did_deminiaturize(ObjcId self, ObjcSelector sel, ObjcId notification)
+{
+	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) _window_restored_callback(win, ...win.origin, ...win.size);
+}
+
+fn void _osx_window_did_become_key(ObjcId self, ObjcSelector sel, ObjcId notification)
+{
+	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) rgfw_windowFocusCallback(win, true);
+}
+
+fn void _osx_window_will_close(ObjcId self, ObjcSelector sel, ObjcId notification)
+{
+	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) _window_close_callback(win);
+}
+
+fn void _osx_window_did_resize(ObjcId self, ObjcSelector sel, ObjcId notification)
+{
+	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) _window_resized_callback(win, ...rgfw_window_fetchSize(win));
+}
+fn void _osx_window_did_resign_key(ObjcId self, ObjcSelector sel, ObjcId notification)
+{
+	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) rgfw_windowFocusCallback(win, false);
+}
+
+fn void _osx_mouse_moved_common(ObjcId self, ObjcId event)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return;
+	CGPoint p = objc_send(event, ObjcSendPoint, "locationInWindow");
+	_mouse_motion_callback(win, (int)p.x, win.height - (int)p.y);
+}
+
+fn void _osx_mouse_moved(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_mouse_moved_common(self, event);
+fn void _osx_mouse_dragged(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_mouse_moved_common(self, event);
+
+// private
+fn void _osx_mouse_button_common(ObjcId self, ObjcId event, bool down, GfxMouseButton fallback)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return;
+	NSUInteger button = objc_send(event, ObjcSendNSUInteger, "buttonNumber");
+	GfxMouseButton gfx_button = fallback;
+	switch (button)
+	{
+		case 0: gfx_button = LEFT;
+		case 1: gfx_button = RIGHT;
+		case 2: gfx_button = MIDDLE;
+		default: gfx_button = (GfxMouseButton)button;
+	}
+	rgfw_mouseButtonCallback(win, gfx_button, down);
+	_osx_mouse_moved_common(self, event);
+}
+
+fn void _osx_mouse_button_down(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_mouse_button_common(self, event, true, LEFT);
+fn void _osx_mouse_button_up(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_mouse_button_common(self, event, false, LEFT);
+fn void _osx_right_mouse_button_down(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_mouse_button_common(self, event, true, RIGHT);
+fn void _osx_right_mouse_button_up(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_mouse_button_common(self, event, false, RIGHT);
+fn void _osx_other_mouse_button_down(ObjcId self, ObjcSelector sel, ObjcId event) { _osx_mouse_button_common(self, event, true, MIDDLE); }
+fn void _osx_other_mouse_button_up(ObjcId self, ObjcSelector sel, ObjcId event) { _osx_mouse_button_common(self, event, false, MIDDLE); }
+
+fn void _osx_scroll_wheel(ObjcId self, ObjcSelector sel, ObjcId event)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return;
+	CGFloat x = objc_send(event, ObjcSendCGFloat, "scrollingDeltaX");
+	CGFloat y = objc_send(event, ObjcSendCGFloat, "scrollingDeltaY");
+	rgfw_mouseScrollCallback(win, (float)x, (float)y);
+}
+
+fn void _osx_flags_changed(ObjcId self, ObjcSelector sel, ObjcId event)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return;
+
+	GfxKey value = NULL;
+	bool pressed = false;
+
+	NSUInteger flags = objc_send(event, ObjcSendNSUInteger, "modifierFlags");
+	rgfw_keyUpdateKeyModsEx(win,
+		flags & 0x00010000 != 0,
+		flags & 0x00200000 != 0,
+		flags & 0x00040000 != 0,
+		flags & 0x00080000 != 0,
+		flags & 0x00020000 != 0,
+		flags & 0x00100000 != 0,
+		false);
+
+	for (int i = 0; i < 9; i++)
+	{
+		GfxKey modKey = CAPS_LOCK + (GfxKey)i;
+		_gfx_ctx.keyboard[modKey].prev = _gfx_ctx.keyboard[modKey].current;
+	}
+
+	for (int i = 0; i < 5; i++)
+	{
+		NSUInteger shift = (NSUInteger)1 << (uint)(i + 16);
+		GfxKey key = CAPS_LOCK + (GfxKey)i;
+		if (flags & shift && !is_key_down(key))
+		{
+			pressed = true;
+			value = key;
+			break;
+		}
+		if (flags & shift == 0 && is_key_down(key))
+		{
+			pressed = false;
+			value = key;
+			break;
+		}
+	}
+
+	rgfw_keyCallback(win, value, win.internal.mod, is_key_down(value) && pressed, pressed);
+	if (value != CAPS_LOCK)
+	{
+		GfxKey other = (GfxKey)(value + 4);
+		rgfw_keyCallback(win, other, win.internal.mod, is_key_down(other) && pressed, pressed);
+	}
+}
+
+fn void _osx_view_did_change_backing_properties(ObjcId self, ObjcSelector sel)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return;
+	GfxMonitor* mon = find_monitor(win);
+	if (!mon) return;
+	rgfw_scaleUpdatedCallback(win, ...mon.scale);
+}
+
+fn NSUInteger _osx_dragging_entered(ObjcId self, ObjcSelector sel, ObjcId sender)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return 0;
+	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
+	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_ENTER, (int)p.x, win.height - (int)p.y);
+	return 1;
+}
+
+fn NSUInteger _osx_dragging_updated(ObjcId self, ObjcSelector sel, ObjcId sender)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return 0;
+	if (!(win.internal.enabledEvents & RGFW_DATA_DRAG_FLAG)) return 1;
+	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
+	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_MOVE, (int)p.x, win.height - (int)p.y);
+	return 1;
+}
+
+fn void _osx_dragging_ended(ObjcId self, ObjcSelector sel, ObjcId sender)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return;
+	if (!(win.internal.enabledEvents & RGFW_DATA_DRAG_FLAG)) return;
+	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
+	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_EXIT, (int)p.x, win.height - (int)p.y);
+}
+
+fn bool _osx_prepare_for_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win || !(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return true;
+	return win.internal.flags.allow_dnd;
+}
+
+// private
+fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win || !(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return false;
+
+	ObjcId pasteBoard = objc_send(sender, ObjcSendId, "draggingPasteboard");
+	ObjcId types = objc_send(pasteBoard, ObjcSendId, "types");
+	ObjcId fileURLsType = ns_string("NSFilenamesPboardType");
+
+	if (!objc_send(types, ObjcSendBoolId, "containsObject:", fileURLsType))
+	{
+		log::warn("No files found on the pasteboard", category: log::CATEGORY_VIDEO);
+		return false;
+	}
+
+	ObjcId propertyList = objc_send(pasteBoard, ObjcSendIdId, "propertyListForType:", fileURLsType);
+
+	if (objc_send(propertyList, ObjcSendBoolId, "isKindOfClass:", objc_class("NSString")))
+	{
+		NSUInteger stringCount = objc_send(propertyList, ObjcSendNSUInteger, "length");
+		ZString filePath = ns_utf8(propertyList);
+		rgfw_dataDropCallback(win, filePath, (sz)stringCount + 1, RGFW_DATA_FILE);
+	}
+	if (!objc_send(propertyList, ObjcSendBoolId, "isKindOfClass:", objc_class("NSArray"))) return false;
+
+	NSUInteger count = objc_send(propertyList, ObjcSendNSUInteger, "count");
+	if (!count) return false;
+
+	for (NSUInteger i = 0; i < count; i++)
+	{
+		ObjcId fileURL = objc_send(propertyList, ObjcSendIdNSUInteger, "objectAtIndex:", i);
+		ZString filePath = ns_utf8(fileURL);
+		NSUInteger stringCount = objc_send(fileURL, ObjcSendNSUInteger, "length");
+		rgfw_dataDropCallback(win, filePath, (sz)stringCount + 1, RGFW_DATA_FILE);
+	}
+
+	return false;
+}
