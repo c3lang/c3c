@@ -1158,24 +1158,7 @@ fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
 }
 
 
-// public
-fn void rgfw_window_showPlatform(GfxWindow* win)
-{
-	win.internal.flags.hide = false;
-	if (!rgfw_window_isHidden(win)) return;
-	xMapWindow(_gfx_ctx.display, win.src.window);
-	rgfw_window_move(win, win.x, win.y);
 
-	XEvent dummy;
-	while (true)
-	{
-		// XCheckTypedWindowEvent(display, window, VisibilityNotify, &dummy)
-		if (xPending(_gfx_ctx.display) == 0) break;
-		xNextEvent(_gfx_ctx.display, &dummy);
-		if (dummy.type == 15 /* VisibilityNotify */ && dummy.xany.window == win.src.window) break;
-	}
-	rgfw_window_setFullscreen(win, win.is_fullscreen());
-}
 
 
 // public

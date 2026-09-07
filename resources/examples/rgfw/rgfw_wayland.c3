@@ -889,14 +889,6 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 }
 
 
-// public
-fn void rgfw_window_showPlatform(GfxWindow* win)
-{
-	win.internal.flags.hide = false;
-	wlSurfaceCommit(win.src.surface);
-}
-
-
 WlDataSourceListener rgfw_dataSourceListener = {
 	.target = &rgfw_wlDataSourceNothingStr, .action = &rgfw_wlDataSourceNothingU32,
 	.dndDropPerformed = &rgfw_wlDataSourceNothing, .dndFinished = &rgfw_wlDataSourceNothing,

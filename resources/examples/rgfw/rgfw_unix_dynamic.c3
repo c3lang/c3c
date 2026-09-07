@@ -1167,29 +1167,8 @@ fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
 }
 
 
-// public
-fn bool rgfw_waitForShowEvent_X11(GfxWindow* win)
-{
-	XEvent dummy;
-	while (xCheckTypedWindowEvent(_gfx_ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
-	{
-		rgfw_waitForEvent(100);
-	}
 
-	return true;
-}
 
-// public
-fn void rgfw_window_showPlatform_X11(GfxWindow* win)
-{
-	win.internal.flags.hide = false;
-	if (rgfw_window_isHidden(win) == false) return;
-	xMapWindow(_gfx_ctx.display, win.src.window);
-	rgfw_window_move(win, win.x, win.y);
-
-	rgfw_waitForShowEvent_X11(win);
-	rgfw_window_setFullscreen(win, win.is_fullscreen());
-}
 
 
 // public
@@ -2018,12 +1997,6 @@ fn void? rgfw_createWindowPlatform_Wayland(String name, GfxWindowFlags flags, Gf
 }
 
 
-// public
-fn void rgfw_window_showPlatform_Wayland(GfxWindow* win)
-{
-	win.internal.flags.hide = false;
-	wlSurfaceCommit(win.src.surface);
-}
 
 
 WlDataSourceListener rgfw_dataSourceListener = {
@@ -2167,17 +2140,6 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 		return rgfw_createWindowPlatform_Wayland(name, flags, win);
 	}
 	return rgfw_createWindowPlatform_X11(name, flags, win);
-}
-
-
-// public
-fn void rgfw_window_showPlatform(GfxWindow* win)
-{
-	if (rgfw_dynamicUsingWayland)
-	{
-		return rgfw_window_showPlatform_Wayland(win);
-	}
-	rgfw_window_showPlatform_X11(win);
 }
 
 

@@ -1127,14 +1127,7 @@ fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 	return true;
 }
 
-// public
-fn void rgfw_window_showPlatform(GfxWindow* win)
-{
-	if (win == null || win.src.window == null) return;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyAndOrderFront:", null);
-	if (_gfx_ctx.nsApp != null) objc_send(_gfx_ctx.nsApp, ObjcSendVoidBool, "activateIgnoringOtherApps:", true);
-	win.internal.flags.hide = false;
-}
+
 
 // public
 fn void rgfw_window_restorePlatform(GfxWindow* win)

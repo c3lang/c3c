@@ -678,8 +678,7 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border) {}
 fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH) => false;
 // public
 fn void rgfw_window_hide(GfxWindow* win) {}
-// public
-fn void rgfw_window_showPlatform(GfxWindow* win) {}
+
 // public
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) {}
 // public

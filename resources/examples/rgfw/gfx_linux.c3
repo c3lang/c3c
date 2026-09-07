@@ -33,6 +33,22 @@ fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* monitor)
 	$endswitch
 }
 
+fn void rgfw_window_showPlatform(GfxWindow* win)
+{
+	$switch:
+		$case WAYLAND_ONLY:
+			return rgfw_window_showPlatform_Wayland(win);
+		$case X11_ONLY:
+			return rgfw_window_showPlatform_X11(win);
+		$default:
+			if (rgfw_dynamicUsingWayland)
+			{
+				return rgfw_window_showPlatform_Wayland(win);
+			}
+			return rgfw_window_showPlatform_X11(win);
+	$endswitch
+}
+
 // public
 fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 {

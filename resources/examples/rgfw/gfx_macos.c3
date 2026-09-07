@@ -42,3 +42,11 @@ fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon)
 	};
 	mon.pixelRatio = mon.scale.x;
 }
+
+fn void rgfw_window_showPlatform(GfxWindow* win)
+{
+	if (win == null || win.src.window == null) return;
+	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyAndOrderFront:", null);
+	if (_gfx_ctx.nsApp != null) objc_send(_gfx_ctx.nsApp, ObjcSendVoidBool, "activateIgnoringOtherApps:", true);
+	win.internal.flags.hide = false;
+}

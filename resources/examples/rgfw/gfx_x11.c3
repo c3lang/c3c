@@ -999,14 +999,18 @@ fn bool rgfw_writeClipboard_X11(GfxDataTransfer* data)
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_CLIPBOARD, "X11 failed to become owner of clipboard selection");
 		return false;
 	}
-	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
+	if (_gfx_ctx.unixClipboard)
+	{
+		free(_gfx_ctx.unixClipboard);
+		_gfx_ctx.unixClipboard = null;
+	}
 
 	sz length = data.length;
 	if (data.data[data.length - 1] != 0) length += 1;
 
 	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, data.length);
 	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	mem::copy(dataPtr, (void*)data.data, data.length);
+	mem::copy(dataPtr, data.data, data.length);
 	dataPtr[length - 1] = 0;
 	_gfx_ctx.unixClipboard.data = dataPtr;
 	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;
@@ -1340,4 +1344,39 @@ fn GfxMonitor* rgfw_window_getMonitor_X11(GfxWindow* win)
 		}
 	}
 	return _gfx_ctx.monitors.list.head != null ? &_gfx_ctx.monitors.list.head.mon : null;
+}
+
+// public
+fn void rgfw_window_showPlatform_X11(GfxWindow* win)
+{
+	win.internal.flags.hide = false;
+	if (!rgfw_window_isHidden(win)) return;
+	xMapWindow(_gfx_ctx.display, win.src.window);
+	rgfw_window_move(win, win.x, win.y);
+
+	rgfw_waitForShowEvent_X11(win);
+	rgfw_window_setFullscreen(win, win.is_fullscreen());
+}
+
+// public
+fn bool rgfw_waitForShowEvent_X11(GfxWindow* win)
+{
+	$if $feat(X11_WAYLAND):
+	XEvent dummy;
+	while (xCheckTypedWindowEvent(_gfx_ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
+	{
+		rgfw_waitForEvent(100);
+	}
+	return true;
+	$else
+	XEvent dummy;
+	while (true)
+	{
+		// XCheckTypedWindowEvent(display, window, VisibilityNotify, &dummy)
+		if (xPending(_gfx_ctx.display) == 0) break;
+		xNextEvent(_gfx_ctx.display, &dummy);
+		if (dummy.type == 15 /* VisibilityNotify */ && dummy.xany.window == win.src.window) break;
+	}
+	return true;
+	$endif
 }

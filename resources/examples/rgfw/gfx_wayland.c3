@@ -1057,6 +1057,12 @@ fn void rgfw_window_setRawMouseModePlatform_Wayland(GfxWindow* win, bool state)
 // private
 fn void rgfw_window_swapBuffers_OpenGL_Wayland(GfxWindow* win) { rgfw_window_swapBuffers_EGL(win); }
 
+fn void rgfw_window_showPlatform_Wayland(GfxWindow* win)
+{
+	win.internal.flags.hide = false;
+	wlSurfaceCommit(win.src.surface);
+}
+
 // private
 fn bool rgfw_writeClipboard_Wayland(GfxDataTransfer* data)
 {

@@ -1611,8 +1611,6 @@ fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 fn void rgfw_freeMouse(RgfwMouse* mouse) { destroyCursor((HCursor)mouse); }
 // public
 fn void rgfw_window_hide(GfxWindow* win) { showWindow(win.src.window, (int)SW_HIDE); }
-// public
-fn void rgfw_window_showPlatform(GfxWindow* win) { if (!(win.internal.flags.maximize)) showWindow(win.src.window, (int)SW_RESTORE); }
 
 // public
 fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request)
