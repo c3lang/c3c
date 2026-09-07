@@ -591,7 +591,7 @@ fn void GfxSurface.release(&self)
 {
 	if (!self.data) return;
 	free(self.native.buffer);
-	xDestroyImage(self.native.bitmap);
+	if (self.native.bitmap) xDestroyImage(self.native.bitmap);
 	*self = {};
 }
 
@@ -772,7 +772,7 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 
 	xSelectInput(_gfx_ctx.display, win.src.window, eventMask);
 	xSetWMProtocols(_gfx_ctx.display, win.src.window, &_gfx_ctx.wmDeleteWindow, 1);
-	rgfw_window_setName(win, name);
+	win.set_name(name);
 	xMoveWindow(_gfx_ctx.display, win.src.window, win.x, win.y);
 
 	if (flags.allow_dnd)
@@ -1564,12 +1564,12 @@ fn bool GfxWindow.is_floating(&win)
 }
 
 // public
-fn void rgfw_window_setName(GfxWindow* win, String name) => @pool()
+fn void GfxWindow.set_name(&self, String name) => @pool()
 {
 	ZString cstring = name.zstr_copy(tmem);
-	xutf8SetWMProperties(_gfx_ctx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
-	xStoreName(_gfx_ctx.display, win.src.window, cstring);
-	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmName, _gfx_ctx.utf8String, 8, 0, cstring, name.len);
+	xutf8SetWMProperties(_gfx_ctx.display, self.src.window, cstring, cstring, null, 0, null, null, null);
+	xStoreName(_gfx_ctx.display, self.src.window, cstring);
+	xChangeProperty(_gfx_ctx.display, self.src.window, _gfx_ctx.netWmName, _gfx_ctx.utf8String, 8, 0, cstring, name.len);
 }
 
 // public

@@ -1668,9 +1668,9 @@ fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
 }
 
 // public
-fn void rgfw_window_setName(GfxWindow* win, String name) => @pool()
+fn void GfxWindow.set_name(&self, String name)
 {
-	setWindowTextW(win.src.window, name.to_wstring(tmem)!!);
+	setWindowTextW(self.src.window, name.to_wstring(tmem)!!);
 }
 
 // public

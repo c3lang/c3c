@@ -1654,11 +1654,11 @@ fn void rgfw_window_restorePlatform(GfxWindow* win) => rgfw_toggleWaylandMaximiz
 fn bool GfxWindow.is_floating(&win) => !win.is_fullscreen() && !rgfw_window_isMaximized(win);
 
 // public
-fn void rgfw_window_setName(GfxWindow* win, String name)
+fn void GfxWindow.set_name(&self, String name)
 {
 	if (_gfx_ctx.compositor) @pool()
 	{
-		xdgToplevelSetTitle(win.src.xdgToplevel, name.zstr_copy(tmem));
+		xdgToplevelSetTitle(self.src.xdgToplevel, name.zstr_copy(tmem));
 	};
 }
 

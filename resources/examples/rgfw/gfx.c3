@@ -211,7 +211,7 @@ struct GfxContext
 	ulong timerOffset;
 	int[3] eventWait_forceStop @feat(X11_WAYLAND);
 	GfxDataTransfer* clipboard;
-	bool dndBuild;
+	bool dnd_build;
 	GfxDataDropNode* dndRoot;
 	GfxDataDropNode* dndCur;
 
@@ -888,7 +888,15 @@ fn void GfxWindow.set_flags(&win, GfxWindowFlags flags) { _window_set_flags(win,
 // public
 fn bool GfxWindow.has_focus(&win) => win.internal.inFocus;
 // public
-fn void rgfw_setBuildDND(bool state) { _gfx_ctx.dndBuild = state; }
+
+<*
+ Toggles building the drag-and-drop (DND) linked list
+ @param allow : "set to true to allow DND building"
+*>
+fn void set_build_dnd(bool allow)
+{
+	_gfx_ctx.dnd_build = allow;
+}
 
 // public
 fn bool is_key_pressed(RgfwKey key, GfxWindow* window = null)
@@ -925,35 +933,34 @@ fn float[<2>] get_mouse_vector() => { _gfx_ctx.vectorX, _gfx_ctx.vectorY };
 // public
 fn void GfxWindow.destroy(&self)
 {
-	rgfw_window_closePtr(self);
+	self.release();
 	free(self);
 }
 
 // public
-fn void rgfw_window_closePtr(GfxWindow* win)
+fn void GfxWindow.release(&self)
 {
-	if (!win) return;
-	if (win.internal.captureMouse) rgfw_window_captureMouse(win, false);
+	if (self.internal.captureMouse) rgfw_window_captureMouse(self, false);
 	$if $feat(MACOS):
-	if ((win.src.gfxType & RGFW_GFX_EGL) && win.src.ctx.egl != null)
+	if ((self.src.gfxType & RGFW_GFX_EGL) && self.src.ctx.egl != null)
 	{
-		rgfw_window_deleteContext_EGL(win, win.src.ctx.egl);
-		win.src.ctx.egl = null;
+		rgfw_window_deleteContext_EGL(self, self.src.ctx.egl);
+		self.src.ctx.egl = null;
 	}
-	if ((win.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && win.src.ctx.native != null)
+	if ((self.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
 	{
-		rgfw_window_deleteContext_OpenGL(win, win.src.ctx.native);
-		win.src.ctx.native = null;
+		rgfw_window_deleteContext_OpenGL(self, self.src.ctx.native);
+		self.src.ctx.native = null;
 	}
 	$endif
 	$if $feat(WASM) || $feat(WIN32):
-	if ((win.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && win.src.ctx.native != null)
+	if ((self.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
 	{
-		rgfw_window_deleteContext_OpenGL(win, win.src.ctx.native);
-		win.src.ctx.native = null;
+		rgfw_window_deleteContext_OpenGL(self, self.src.ctx.native);
+		self.src.ctx.native = null;
 	}
 	$endif
-	rgfw_window_closePlatform(win);
+	rgfw_window_closePlatform(self);
 	if (_gfx_ctx.clipboard) free(_gfx_ctx.clipboard);
 	_gfx_ctx.clipboard = null;
 	_gfx_ctx.windowCount--;
@@ -1351,7 +1358,7 @@ fn void rgfw_dataDropCallback(GfxWindow* win, char* data, sz length, RgfwDataTra
 	event.drop.value = &node;
 	event.common.win = win;
 	if (_gfx_ctx.callbacks[(sz)event.type] != null) _gfx_ctx.callbacks[(sz)event.type](&event);
-	if (_gfx_ctx.queueEvents == false && _gfx_ctx.dndBuild == false) return;
+	if (!_gfx_ctx.queueEvents && !_gfx_ctx.dnd_build) return;
 	char* dataCopy = (char*)rgfw_alloc_impl(length);
 	if (dataCopy != null) { rgfw_memcpy(dataCopy, data, length); node.data = dataCopy; }
 	GfxDataDropNode* heapNode = (GfxDataDropNode*)rgfw_alloc_impl(GfxDataDropNode::size);
@@ -1795,7 +1802,7 @@ fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindo
 	if (flags.egl) rgfw_window_createContext_EGL(self, rgfw_getGlobalHints_OpenGL());
 	$endif
 	if (!flags.hide_mouse) self.set_mouse_default();
-	rgfw_window_setName(self, name);
+	self.set_name(name);
 	switch
 	{
 		case !flags.hide:

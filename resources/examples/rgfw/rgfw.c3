@@ -1208,7 +1208,7 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 	objc_send(nswin, ObjcSendVoidId, "setContentView:", view);
 	objc_send(nswin, ObjcSendVoidId, "makeFirstResponder:", view);
 	objc_send(nswin, ObjcSendVoidBool, "setAcceptsMouseMovedEvents:", true);
-	rgfw_window_setName(win, name);
+	win.set_name(name);
 	rgfw_window_setFloating(win, flags.floating);
 	if (!(flags.hide)) rgfw_window_showPlatform(win);
 	if (flags.maximize) rgfw_window_maximizePlatform(win);
@@ -1488,8 +1488,13 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 }
 // public
 fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidBool, "setIgnoresMouseEvents:", passthrough); }
-// public
-fn void rgfw_window_setName(GfxWindow* win, String name) { if (win && win.src.window) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "setTitle:", name.to_nsstring()); }
+
+
+fn void GfxWindow.set_name(&self, String name)
+{
+	if (self.src.window) objc_send((ObjcId)self.src.window, ObjcSendVoidId, "setTitle:", name.to_nsstring());
+}
+
 // public
 fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
 {

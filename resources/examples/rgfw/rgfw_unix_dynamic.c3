@@ -636,7 +636,7 @@ fn void rgfw_surface_freePtr_X11(GfxSurface* surface)
 {
 	if (!surface.data) return;
 	if (surface.native.buffer) free(surface.native.buffer);
-	xDestroyImage(surface.native.bitmap);
+	if (surface.native.bitmap) xDestroyImage(surface.native.bitmap);
 	*surface = {};
 }
 
@@ -813,7 +813,7 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 
 	xSelectInput(_gfx_ctx.display, win.src.window, eventMask);
 	xSetWMProtocols(_gfx_ctx.display, win.src.window, &_gfx_ctx.wmDeleteWindow, 1);
-	rgfw_window_setName(win, name);
+	win.set_name(name);
 	xMoveWindow(_gfx_ctx.display, win.src.window, win.x, win.y);
 
 	if (flags.allow_dnd)
@@ -4765,7 +4765,6 @@ import std::math;
 // / RGFW_load_X11() / RGFW_load_Wayland() / RGFW_usingWayland() design.
 
 alias RgfwWindowSetAspectRatioFn = fn void(GfxWindow*, int, int);
-alias RgfwCreateSurfacePtrFn = fn void?(void*, int, int, GfxFormat, GfxSurface*, GfxWindow*);
 alias RgfwWindowBlitSurfaceFn = fn void(GfxWindow*, GfxSurface*);
 alias RgfwSurfaceFreePtrFn = fn void(GfxSurface*);
 alias RgfwWindowSetBorderFn = fn void(GfxWindow*, bool);
@@ -4784,12 +4783,9 @@ alias RgfwWindowMaximizePlatformFn = fn void(GfxWindow*);
 alias RgfwWindowFocusFn = fn void(GfxWindow*);
 alias RgfwWindowRaiseFn = fn void(GfxWindow*);
 alias RgfwWindowSetFullscreenFn = fn void(GfxWindow*, bool);
-alias RgfwWindowSetFloatingFn = fn void(GfxWindow*, bool);
 alias RgfwWindowSetOpacityFn = fn void(GfxWindow*, char);
 alias RgfwWindowMinimizePlatformFn = fn void(GfxWindow*);
 alias RgfwWindowRestorePlatformFn = fn void(GfxWindow*);
-alias RgfwWindowIsFloatingFn = fn bool(GfxWindow*);
-alias RgfwWindowSetNameFn = fn void(GfxWindow*, String);
 alias RgfwWindowSetMousePassthroughFn = fn void(GfxWindow*, bool);
 alias RgfwWindowSetIconExFn = fn bool(GfxWindow*, char*, int, int, GfxFormat, GfxWindowIconType);
 alias RgfwCreateMouseStandardFn = fn RgfwMouse*(GfxMouseIcon);
@@ -4828,7 +4824,6 @@ alias RgfwWindowCreateSurfaceWebGPUFn = fn WGPUSurface(GfxWindow*, WGPUInstance)
 struct RgfwFunctionPointers
 {
 	RgfwWindowSetAspectRatioFn window_setAspectRatio;
-	RgfwCreateSurfacePtrFn createSurfacePtr;
 	RgfwWindowBlitSurfaceFn window_blitSurface;
 	RgfwSurfaceFreePtrFn surface_freePtr;
 	RgfwWindowSetBorderFn window_setBorder;
@@ -4847,12 +4842,9 @@ struct RgfwFunctionPointers
 	RgfwWindowFocusFn window_focus;
 	RgfwWindowRaiseFn window_raise;
 	RgfwWindowSetFullscreenFn window_setFullscreen;
-	RgfwWindowSetFloatingFn window_setFloating;
 	RgfwWindowSetOpacityFn window_setOpacity;
 	RgfwWindowMinimizePlatformFn window_minimizePlatform;
 	RgfwWindowRestorePlatformFn window_restorePlatform;
-	RgfwWindowIsFloatingFn window_isFloating;
-	RgfwWindowSetNameFn window_setName;
 	RgfwWindowSetMousePassthroughFn window_setMousePassthrough;
 	RgfwWindowSetIconExFn window_setIconEx;
 	RgfwCreateMouseStandardFn createMouseStandard;
@@ -4901,7 +4893,11 @@ fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h) => rgfw_api.win
 // public
 fn void? GfxSurface.init(&self, void*data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
-	return rgfw_api.createSurfacePtr(data, w, h, format, self, window);
+	if (rgfw_dynamicUsingWayland)
+	{
+		return rgfw_createSurfacePtr_Wayland(data, w, h, format, self, window);
+	}
+	return rgfw_createSurfacePtr_X11(data, w, h, format, self, window);
 }
 // public
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface) => rgfw_api.window_blitSurface(win, surface);
@@ -4940,17 +4936,38 @@ fn void rgfw_window_raise(GfxWindow* win) => rgfw_api.window_raise(win);
 // public
 fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen) => rgfw_api.window_setFullscreen(win, fullscreen);
 // public
-fn void rgfw_window_setFloating(GfxWindow* win, bool floating) => rgfw_api.window_setFloating(win, floating);
-// public
+fn void rgfw_window_setFloating(GfxWindow* win, bool floating)
+{
+	if (rgfw_dynamicUsingWayland)
+	{
+		return rgfw_window_setFloating_Wayland(win, floating);
+	}
+	rgfw_window_setFloating_X11(win, floating);
+}
 fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) => rgfw_api.window_setOpacity(win, opacity);
 // public
 fn void rgfw_window_minimizePlatform(GfxWindow* win) => rgfw_api.window_minimizePlatform(win);
 // public
 fn void rgfw_window_restorePlatform(GfxWindow* win) => rgfw_api.window_restorePlatform(win);
 // public
-fn bool GfxWindow.is_floating(&win) => rgfw_api.window_isFloating(win);
+fn bool GfxWindow.is_floating(&win)
+{
+	if (rgfw_dynamicUsingWayland)
+	{
+		return rgfw_window_isFloating_Wayland(win);
+	}
+	return rgfw_window_isFloating_X11(win);
+}
 // public
-fn void rgfw_window_setName(GfxWindow* win, String name) => rgfw_api.window_setName(win, name);
+fn void GfxWindow.set_name(&self, String name)
+{
+	if (rgfw_dynamicUsingWayland)
+	{
+		return rgfw_window_setName_Wayland(self, name);
+	}
+	rgfw_window_setName_X11(self, name);
+}
+
 // public
 fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) => rgfw_api.window_setMousePassthrough(win, passthrough);
 // public
@@ -5024,7 +5041,6 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 fn void rgfw_loadX11()
 {
 	rgfw_api.window_setAspectRatio = &rgfw_window_setAspectRatio_X11;
-	rgfw_api.createSurfacePtr = &rgfw_createSurfacePtr_X11;
 	rgfw_api.window_blitSurface = &rgfw_window_blitSurface_X11;
 	rgfw_api.surface_freePtr = &rgfw_surface_freePtr_X11;
 	rgfw_api.window_setBorder = &rgfw_window_setBorder_X11;
@@ -5043,12 +5059,9 @@ fn void rgfw_loadX11()
 	rgfw_api.window_focus = &rgfw_window_focus_X11;
 	rgfw_api.window_raise = &rgfw_window_raise_X11;
 	rgfw_api.window_setFullscreen = &rgfw_window_setFullscreen_X11;
-	rgfw_api.window_setFloating = &rgfw_window_setFloating_X11;
 	rgfw_api.window_setOpacity = &rgfw_window_setOpacity_X11;
 	rgfw_api.window_minimizePlatform = &rgfw_window_minimizePlatform_X11;
 	rgfw_api.window_restorePlatform = &rgfw_window_restorePlatform_X11;
-	rgfw_api.window_isFloating = &rgfw_window_isFloating_X11;
-	rgfw_api.window_setName = &rgfw_window_setName_X11;
 	rgfw_api.window_setMousePassthrough = &rgfw_window_setMousePassthrough_X11;
 	rgfw_api.window_setIconEx = &rgfw_window_setIconEx_X11;
 	rgfw_api.createMouseStandard = &rgfw_createMouseStandard_X11;
@@ -5089,7 +5102,6 @@ fn void rgfw_loadX11()
 fn void rgfw_loadWayland()
 {
 	rgfw_api.window_setAspectRatio = &rgfw_window_setAspectRatio_Wayland;
-	rgfw_api.createSurfacePtr = &rgfw_createSurfacePtr_Wayland;
 	rgfw_api.window_blitSurface = &rgfw_window_blitSurface_Wayland;
 	rgfw_api.surface_freePtr = &rgfw_surface_freePtr_Wayland;
 	rgfw_api.window_setBorder = &rgfw_window_setBorder_Wayland;
@@ -5108,12 +5120,9 @@ fn void rgfw_loadWayland()
 	rgfw_api.window_focus = &rgfw_window_focus_Wayland;
 	rgfw_api.window_raise = &rgfw_window_raise_Wayland;
 	rgfw_api.window_setFullscreen = &rgfw_window_setFullscreen_Wayland;
-	rgfw_api.window_setFloating = &rgfw_window_setFloating_Wayland;
 	rgfw_api.window_setOpacity = &rgfw_window_setOpacity_Wayland;
 	rgfw_api.window_minimizePlatform = &rgfw_window_minimizePlatform_Wayland;
 	rgfw_api.window_restorePlatform = &rgfw_window_restorePlatform_Wayland;
-	rgfw_api.window_isFloating = &rgfw_window_isFloating_Wayland;
-	rgfw_api.window_setName = &rgfw_window_setName_Wayland;
 	rgfw_api.window_setMousePassthrough = &rgfw_window_setMousePassthrough_Wayland;
 	rgfw_api.window_setIconEx = &rgfw_window_setIconEx_Wayland;
 	rgfw_api.createMouseStandard = &rgfw_createMouseStandard_Wayland;

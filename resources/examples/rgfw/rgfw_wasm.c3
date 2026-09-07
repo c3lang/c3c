@@ -611,7 +611,7 @@ fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
 }
 
 // public
-fn void rgfw_window_setName(GfxWindow* win, String name)
+fn void GfxWindow.set_name(&self, String name)
 {
 	rgfwJsSetWindowTitle((ZString)name, name.len);
 }
