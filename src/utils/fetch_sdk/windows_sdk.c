@@ -586,9 +586,11 @@ void fetch_winsdk(BuildOptions *options)
 
 	// Dynamically prepare MSIs list based on requested archs
 	const char **msi_names = NULL;
-	vec_add(msi_names, "Windows SDK for Windows Store Apps Headers-x86_en-us.msi");
-	vec_add(msi_names, "Windows SDK for Windows Store Apps Headers OnecoreUap-x86_en-us.msi");
 	vec_add(msi_names, "Windows SDK for Windows Store Apps Libs-x86_en-us.msi");
+	vec_add(msi_names, "Windows SDK for Windows Store Apps Headers-x86_en-us.msi");
+
+	// Microsoft hid the rest desktop headers here, %$#!
+	vec_add(msi_names, "Windows SDK Desktop Headers x86-x86_en-us.msi");
 	vec_add(msi_names, "Universal CRT Headers Libraries and Sources-x86_en-us.msi");
 	for (int i = 0; i < (int)vec_size(archs); i++)
 	{
