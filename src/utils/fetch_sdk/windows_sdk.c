@@ -537,11 +537,15 @@ void fetch_winsdk(BuildOptions *options)
 
 	// Dynamically prepare MSIs list based on requested archs
 	const char **msi_names = NULL;
+	vec_add(msi_names, "Windows SDK for Windows Store Apps Headers-x86_en-us.msi");
+	vec_add(msi_names, "Windows SDK for Windows Store Apps Headers OnecoreUap-x86_en-us.msi");
 	vec_add(msi_names, "Windows SDK for Windows Store Apps Libs-x86_en-us.msi");
 	vec_add(msi_names, "Universal CRT Headers Libraries and Sources-x86_en-us.msi");
 	for (int i = 0; i < (int)vec_size(archs); i++)
 	{
 		char *msi_name = str_printf("Windows SDK Desktop Libs %s-x86_en-us.msi", archs[i]);
+		vec_add(msi_names, msi_name);
+		msi_name = str_printf("Windows SDK Desktop Headers %s-x86_en-us.msi", archs[i]);
 		vec_add(msi_names, msi_name);
 	}
 
@@ -602,7 +606,7 @@ void fetch_winsdk(BuildOptions *options)
 	for (int i = 0; i < (int)vec_size(archs); i++)
 	{
 		const char *arch = archs[i];
-		const char *arch_suffixes[] = {"crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base"};
+		const char *arch_suffixes[] = {"crt.headers.base", "crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base"};
 		for (int j = 0; j < (int)ELEMENTLEN(arch_suffixes); j++)
 		{
 			char *suffix = str_printf(arch_suffixes[j], arch);
@@ -693,13 +697,27 @@ void fetch_winsdk(BuildOptions *options)
 	if (verbose_level >= 1) printf("Finalizing SDK\n");
 	char *s_vc_root = find_folder_inf(out_root, "vc", false);
 	char *s_msvc_base = s_vc_root ? find_folder_inf(s_vc_root, "msvc", false) : NULL;
+	char *s_msvc_inc = s_msvc_base ? find_folder_inf(s_msvc_base, "include", true) : NULL;
 	char *s_msvc = s_msvc_base ? find_folder_inf(s_msvc_base, "lib", true) : NULL;
 
 	char *s_kits = find_folder_inf(out_root, "windows kits", false);
 	char *s_lib = s_kits ? find_folder_inf(s_kits, "lib", true) : NULL;
+	char *s_inc = s_kits ? find_folder_inf(s_kits, "include", true) : NULL;
 	char *s_sdk_v = s_lib ? find_folder_inf(s_lib, sdk_key, false) : NULL;
+	char *s_inc_v = s_lib ? find_folder_inf(s_inc, sdk_key, false) : NULL;
 	char *s_ucrt = s_sdk_v ? find_folder_inf(s_sdk_v, "ucrt", true) : NULL;
 	char *s_um = s_sdk_v ? find_folder_inf(s_sdk_v, "um", true) : NULL;
+	char *s_inc_ucrt = s_inc_v ? find_folder_inf(s_inc_v, "ucrt", true) : NULL;
+	char *s_inc_um = s_inc_v ? find_folder_inf(s_inc_v, "um", true) : NULL;
+	char *s_inc_shared = s_inc_v ? find_folder_inf(s_inc_v, "shared", true) : NULL;
+
+	if (!s_msvc_inc || !s_inc_ucrt || !s_inc_um || !s_inc_shared)
+	{
+		if (verbose_level >= 0)
+			eprintf("MSVC: %s, UCRT: %s, UM: %s, SHARED: %s\n", s_msvc_inc ? "OK" : "MISSING",
+				s_inc_ucrt ? "OK" : "MISSING", s_inc_um ? "OK" : "MISSING", s_inc_shared ? "OK" : "MISSING");
+		error_exit("Missing header components");
+	}
 
 	if (!s_ucrt || !s_um || !s_msvc)
 	{
@@ -713,11 +731,26 @@ void fetch_winsdk(BuildOptions *options)
 	{
 		const char *arch = archs[i];
 		char *sdk_arch = file_append_path(sdk_output, arch);
+		char *include_path = file_append_path(sdk_output, "include");
+		char *crt_inc = file_append_path(include_path, "crt");
+		char *sdk_inc_root = file_append_path(include_path, "sdk");
+		char *sdk_inc_ucrt = file_append_path(sdk_inc_root, "ucrt");
+		char *sdk_inc_um = file_append_path(sdk_inc_root, "um");
+		char *sdk_inc_shared = file_append_path(sdk_inc_root, "shared");
 		dir_make_recursive(sdk_arch);
+		dir_make_recursive(crt_inc);
+		dir_make_recursive(sdk_inc_ucrt);
+		dir_make_recursive(sdk_inc_um);
+		dir_make_recursive(sdk_inc_shared);
 
 		char *ucrt_path = find_folder_inf(s_ucrt, arch, true);
 		char *um_path = find_folder_inf(s_um, arch, true);
 		char *msvc_path = find_folder_inf(s_msvc, arch, true);
+
+		copy_to_msvc_sdk(s_msvc_inc, crt_inc);
+		copy_to_msvc_sdk(s_inc_ucrt, sdk_inc_ucrt);
+		copy_to_msvc_sdk(s_inc_um, sdk_inc_um);
+		copy_to_msvc_sdk(s_inc_shared, sdk_inc_shared);
 
 		if (ucrt_path && um_path && msvc_path)
 		{
