@@ -1,4 +1,5 @@
 module std::gfx @feat(WAYLAND, X11_WAYLAND) @private @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
+import std::math, std::collections::list;
 
 // public
 fn void rgfw_window_captureMousePlatform_Wayland(GfxWindow* win, bool state)
@@ -16,6 +17,25 @@ fn void rgfw_window_captureMousePlatform_Wayland(GfxWindow* win, bool state)
 	win.src.lockedPointer = zwpPointerConstraintsV1LockPointer(_gfx_ctx.constraintManager, win.src.surface, _gfx_ctx.wlPointer, null, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
 	static ZwpLockedPointerV1Listener listener = { .locked = &rgfw_wlPointerLocked, .unlocked = &rgfw_wlUnlockedNoop };
 	zwpLockedPointerV1AddListener(win.src.lockedPointer, &listener, &_gfx_ctx);
+}
+
+// public
+fn sz rgfw_monitor_getGammaRampPtr_Wayland(GfxMonitor* monitor, RgfwGammaRamp* ramp) => 0;
+
+fn bool rgfw_monitor_setGammaRamp_Wayland(GfxMonitor* monitor, RgfwGammaRamp* ramp) => false;
+
+// public
+fn bool rgfw_monitor_setMode_Wayland(GfxMonitor* mon, GfxMonitorMode* mode) => false;
+
+// public
+fn GfxMonitorMode[] rgfw_monitor_getModesPtr_Wayland(GfxMonitor* monitor)
+{
+	List{GfxMonitorMode} modes;
+	for (int i = 0; i < monitor.node.modeCount; i++)
+	{
+		modes.push(monitor.node.modes[i]);
+	}
+	return modes.array_view();
 }
 
 XdgSurfaceListener rgfw_xdgSurfaceListener = { .configure = &rgfw_wlXdgSurfaceConfigureHandler };
@@ -488,3 +508,662 @@ const uint WL_POINTER_AXIS_VERTICAL_SCROLL = 0;
 const uint WL_POINTER_AXIS_HORIZONTAL_SCROLL = 1;
 const uint WL_OUTPUT_MODE_CURRENT = 1;
 const uint WL_SHM_FORMAT_ARGB8888 = 0;
+
+// private
+fn RgfwMouse* rgfw_createMouse_Wayland(char* data, int w, int h, GfxFormat format)
+{
+	GfxSurface*? surface = create_surface(data, w, h, format);
+	if (catch surface) return null;
+
+	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...surface.size, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
+	int minW = w < surface.size.x ? w : surface.size.x;
+	int minH = h < surface.size.y ? h : surface.size.y;
+	copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
+	return (RgfwMouse*)surface;
+}
+
+// private
+fn RgfwMouse* rgfw_createMouseStandard_Wayland(GfxMouseIcon mouse)
+{
+	ZString cursorName;
+	switch (mouse)
+	{
+		case NORMAL: cursorName = "left_ptr";
+		case ARROW: cursorName = "left_ptr";
+		case IBEAM: cursorName = "xterm";
+		case CROSSHAIR: cursorName = "crosshair";
+		case POINTING_HAND: cursorName = "hand2";
+		case RESIZE_EW: cursorName = "sb_h_double_arrow";
+		case RESIZE_NS: cursorName = "sb_v_double_arrow";
+		case RESIZE_NWSE: cursorName = "top_left_corner";
+		case RESIZE_NESW: cursorName = "top_right_corner";
+		case RESIZE_NW: cursorName = "top_left_corner";
+		case RESIZE_N: cursorName = "top_side";
+		case RESIZE_NE: cursorName = "top_right_corner";
+		case RESIZE_E: cursorName = "right_side";
+		case RESIZE_SE: cursorName = "bottom_right_corner";
+		case RESIZE_S: cursorName = "bottom_side";
+		case RESIZE_SW: cursorName = "bottom_left_corner";
+		case RESIZE_W: cursorName = "left_side";
+		case RESIZE_ALL: cursorName = "fleur";
+		case NOT_ALLOWED: cursorName = "not-allowed";
+		case WAIT: cursorName = "watch";
+		case PROGRESS: cursorName = "watch";
+		default: return null;
+	}
+
+	WlCursor* wlcursor = wlCursorThemeGetCursor(_gfx_ctx.wlCursorTheme, cursorName);
+	if (wlcursor == null) return null;
+	WlCursorImage* cursorImage = wlcursor.images[0];
+	WlProxy* cursorBuffer = wlCursorImageGetBuffer(cursorImage);
+
+	GfxSurface* surface = mem::new(GfxSurface);
+	surface.size = { (int)cursorImage.width, (int)cursorImage.height };
+	surface.native.wlBuffer = cursorBuffer;
+	return (RgfwMouse*)surface;
+}
+
+// private
+fn void rgfw_deinitPlatform_Wayland()
+{
+	if (_gfx_ctx.unixClipboard != null) { rgfw_free_impl(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
+	if (_gfx_ctx.wlPointer != null) wlPointerDestroy(_gfx_ctx.wlPointer);
+	if (_gfx_ctx.wlKeyboard != null) wlKeyboardDestroy(_gfx_ctx.wlKeyboard);
+	if (_gfx_ctx.registry != null) wlRegistryDestroy(_gfx_ctx.registry);
+	if (_gfx_ctx.decorationManager != null) zxdgDecorationManagerV1Destroy(_gfx_ctx.decorationManager);
+	if (_gfx_ctx.relativePointerManager != null) zwpRelativePointerManagerV1Destroy(_gfx_ctx.relativePointerManager);
+	if (_gfx_ctx.relativePointer != null) zwpRelativePointerV1Destroy(_gfx_ctx.relativePointer);
+	if (_gfx_ctx.constraintManager != null) zwpPointerConstraintsV1Destroy(_gfx_ctx.constraintManager);
+	if (_gfx_ctx.iconManager != null) xdgToplevelIconManagerV1Destroy(_gfx_ctx.iconManager);
+	if (_gfx_ctx.xdgOutputManager != null) zxdgOutputManagerV1Destroy(_gfx_ctx.xdgOutputManager);
+	if (_gfx_ctx.dataDeviceManager != null) wlDataDeviceManagerDestroy(_gfx_ctx.dataDeviceManager);
+	if (_gfx_ctx.dataDevice != null) wlDataDeviceDestroy(_gfx_ctx.dataDevice);
+	if (_gfx_ctx.wlCursorTheme != null) wlCursorThemeDestroy(_gfx_ctx.wlCursorTheme);
+	if (_gfx_ctx.wpPointerWarp != null) wpPointerWarpV1Destroy(_gfx_ctx.wpPointerWarp);
+	if (_gfx_ctx.hiddenMouse != null) rgfw_freeMouse(_gfx_ctx.hiddenMouse);
+	if (_gfx_ctx.cursorSurface != null) wlSurfaceDestroy(_gfx_ctx.cursorSurface);
+	if (_gfx_ctx.shm != null) wlShmDestroy(_gfx_ctx.shm);
+	if (_gfx_ctx.seat != null) wlSeatRelease(_gfx_ctx.seat);
+	if (_gfx_ctx.xdgWmBase != null) xdgWmBaseDestroy(_gfx_ctx.xdgWmBase);
+	if (_gfx_ctx.compositor != null) wlCompositorDestroy(_gfx_ctx.compositor);
+	if (_gfx_ctx.wlDisplay != null) wlDisplayDisconnect(_gfx_ctx.wlDisplay);
+}
+
+// private
+fn bool rgfw_extensionSupportedPlatform_OpenGL_Wayland(ZString extension, sz len) => rgfw_extensionSupportedPlatform_EGL(extension, len);
+
+// private
+fn void rgfw_freeMouse_Wayland(RgfwMouse* mouse)
+{
+	if (mouse == null) return;
+	GfxSurface* surface = (GfxSurface*)mouse;
+	if (surface.native.buffer != null && surface.native.wlBuffer != null) wlBufferDestroy(surface.native.wlBuffer);
+	surface.destroy();
+}
+
+// private
+fn void* rgfw_getCurrentContext_OpenGL_Wayland() => rgfw_getCurrentContext_EGL();
+
+// private
+fn bool rgfw_getGlobalMouse_Wayland(int* x, int* y)
+{
+	if (x != null) *x = 0;
+	if (y != null) *y = 0;
+	return false;
+}
+
+// private
+fn GfxFn rgfw_getProcAddress_OpenGL_Wayland(ZString procname) => rgfw_getProcAddress_EGL(procname);
+
+// private
+fn void rgfw_initKeycodesPlatform_Wayland()
+{
+	// Wayland keycodes come directly from the evdev-based xkb keymap (key+8);
+	// no separate keycode table walk is needed the way X11's is.
+}
+
+// private
+fn int rgfw_initPlatform_Wayland(String class_name, GfxInitOption flags)
+{
+	_gfx_ctx.wlDisplay = wlDisplayConnect(null);
+	if (_gfx_ctx.wlDisplay == null)
+	{
+		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_WAYLAND, "Failed to load Wayland display");
+		return -1;
+	}
+
+	_gfx_ctx.compositor = null;
+	_gfx_ctx.registry = wlDisplayGetRegistry(_gfx_ctx.wlDisplay);
+	wlRegistryAddListener(_gfx_ctx.registry, &rgfw_registryListener, &_gfx_ctx);
+	wlDisplayRoundtrip(_gfx_ctx.wlDisplay);
+
+	if (_gfx_ctx.compositor == null)
+	{
+		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_WAYLAND, "Can't find compositor.");
+		return -1;
+	}
+
+	if (_gfx_ctx.wlCursorTheme == null)
+	{
+		_gfx_ctx.wlCursorTheme = wlCursorThemeLoad(null, 24, _gfx_ctx.shm);
+		_gfx_ctx.cursorSurface = wlCompositorCreateSurface(_gfx_ctx.compositor);
+	}
+
+	char[4] blk = {0, 0, 0, 0};
+	_gfx_ctx.hiddenMouse = rgfw_createMouse((char*)&blk, 1, 1, RGBA8);
+
+	static XdgWmBaseListener wmBaseListener = { .ping = &rgfw_wlXdgWmBasePingHandler };
+	xdgWmBaseAddListener(_gfx_ctx.xdgWmBase, &wmBaseListener, null);
+
+	_gfx_ctx.xkbContext = xkbContextNew(XKB_CONTEXT_NO_FLAGS);
+
+	static WlDataDeviceListener dataDeviceListener = {
+		.dataOffer = &rgfw_wlDataDeviceDataOffer, .enter = &rgfw_wlDataDeviceNothingEnter, .leave = &rgfw_wlDataDeviceNothing,
+		.motion = &rgfw_wlDataDeviceNothingMotion, .drop = &rgfw_wlDataDeviceNothing, .selection = &rgfw_wlDataDeviceSelection
+	};
+
+	if (_gfx_ctx.seat != null && _gfx_ctx.dataDeviceManager != null)
+	{
+		_gfx_ctx.dataDevice = wlDataDeviceManagerGetDataDevice(_gfx_ctx.dataDeviceManager, _gfx_ctx.seat);
+		wlDataDeviceAddListener(_gfx_ctx.dataDevice, &dataDeviceListener, null);
+	}
+
+	return 0;
+}
+
+// private
+fn bool rgfw_loadGL_Wayland()
+{
+	// Wayland only ever renders through EGL; "OpenGL" here just means EGL is ready.
+	return load_egl();
+}
+
+// private
+fn void rgfw_monitorNode_free_Wayland(GfxMonitorNode* node)
+{
+	if (node.output != null) wlOutputDestroy(node.output);
+	if (node.xdgOutput != null) zxdgOutputV1Destroy(node.xdgOutput);
+	if (node.modes != null) { rgfw_free_impl(node.modes); node.modeCount = 0; }
+}
+
+// private
+fn bool rgfw_monitor_getWorkarea_Wayland(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
+{
+	if (x != null) *x = monitor.origin.x;
+	if (y != null) *y = monitor.origin.y;
+	if (width != null) *width = monitor.mode.w;
+	if (height != null) *height = monitor.mode.h;
+	return true;
+}
+
+// private
+fn bool rgfw_monitor_requestMode_Wayland(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+{
+	for (sz i = 0; i < mon.node.modeCount; i++)
+	{
+		if (rgfw_monitorModeCompare(mode, &mon.node.modes[i], request) == false) continue;
+		rgfw_monitor_setMode(mon, &mon.node.modes[i]);
+		return true;
+	}
+	return false;
+}
+
+// private
+fn RgfwKey rgfw_physicalToMappedKey_Wayland(RgfwKey key)
+{
+	uint keycode = rgfw_rgfwToApiKey(key);
+	XkbKeycode kc = keycode + 8;
+	XkbKeysym sym = xkbStateKeyGetOneSym(_gfx_ctx.xkbState, kc);
+	if (sym < 256) return (RgfwKey)sym;
+
+	switch (sym)
+	{
+		case XKB_KEY_F1: return RGFW_KEY_F1;
+		case XKB_KEY_F2: return RGFW_KEY_F2;
+		case XKB_KEY_F3: return RGFW_KEY_F3;
+		case XKB_KEY_F4: return RGFW_KEY_F4;
+		case XKB_KEY_F5: return RGFW_KEY_F5;
+		case XKB_KEY_F6: return RGFW_KEY_F6;
+		case XKB_KEY_F7: return RGFW_KEY_F7;
+		case XKB_KEY_F8: return RGFW_KEY_F8;
+		case XKB_KEY_F9: return RGFW_KEY_F9;
+		case XKB_KEY_F10: return RGFW_KEY_F10;
+		case XKB_KEY_F11: return RGFW_KEY_F11;
+		case XKB_KEY_F12: return RGFW_KEY_F12;
+		case XKB_KEY_F13: return RGFW_KEY_F13;
+		case XKB_KEY_F14: return RGFW_KEY_F14;
+		case XKB_KEY_F15: return RGFW_KEY_F15;
+		case XKB_KEY_F16: return RGFW_KEY_F16;
+		case XKB_KEY_F17: return RGFW_KEY_F17;
+		case XKB_KEY_F18: return RGFW_KEY_F18;
+		case XKB_KEY_F19: return RGFW_KEY_F19;
+		case XKB_KEY_F20: return RGFW_KEY_F20;
+		case XKB_KEY_F21: return RGFW_KEY_F21;
+		case XKB_KEY_F22: return RGFW_KEY_F22;
+		case XKB_KEY_F23: return RGFW_KEY_F23;
+		case XKB_KEY_F24: return RGFW_KEY_F24;
+		case XKB_KEY_F25: return RGFW_KEY_F25;
+		case XKB_KEY_SHIFT_L: return RGFW_KEY_SHIFT_L;
+		case XKB_KEY_SHIFT_R: return RGFW_KEY_SHIFT_R;
+		case XKB_KEY_CONTROL_L: return RGFW_KEY_CONTROL_L;
+		case XKB_KEY_CONTROL_R: return RGFW_KEY_CONTROL_R;
+		case XKB_KEY_ALT_L: return RGFW_KEY_ALT_L;
+		case XKB_KEY_ALT_R: return RGFW_KEY_ALT_R;
+		case XKB_KEY_SUPER_L: return RGFW_KEY_SUPER_L;
+		case XKB_KEY_SUPER_R: return RGFW_KEY_SUPER_R;
+		case XKB_KEY_CAPS_LOCK: return RGFW_KEY_CAPS_LOCK;
+		case XKB_KEY_NUM_LOCK: return RGFW_KEY_NUM_LOCK;
+		case XKB_KEY_SCROLL_LOCK: return RGFW_KEY_SCROLL_LOCK;
+		case XKB_KEY_UP: return RGFW_KEY_UP;
+		case XKB_KEY_DOWN: return RGFW_KEY_DOWN;
+		case XKB_KEY_LEFT: return RGFW_KEY_LEFT;
+		case XKB_KEY_RIGHT: return RGFW_KEY_RIGHT;
+		case XKB_KEY_HOME: return RGFW_KEY_HOME;
+		case XKB_KEY_END: return RGFW_KEY_END;
+		case XKB_KEY_PAGE_UP: return RGFW_KEY_PAGE_UP;
+		case XKB_KEY_PAGE_DOWN: return RGFW_KEY_PAGE_DOWN;
+		case XKB_KEY_INSERT: return RGFW_KEY_INSERT;
+		case XKB_KEY_MENU: return RGFW_KEY_MENU;
+		case XKB_KEY_KP_ADD: return RGFW_KEY_PAD_PLUS;
+		case XKB_KEY_KP_SUBTRACT: return RGFW_KEY_PAD_MINUS;
+		case XKB_KEY_KP_MULTIPLY: return RGFW_KEY_PAD_MULTIPLY;
+		case XKB_KEY_KP_DIVIDE: return RGFW_KEY_PAD_SLASH;
+		case XKB_KEY_KP_EQUAL: return RGFW_KEY_PAD_EQUAL;
+		case XKB_KEY_KP_ENTER: return RGFW_KEY_PAD_RETURN;
+		case XKB_KEY_KP_DECIMAL: return RGFW_KEY_PAD_PERIOD;
+		case XKB_KEY_KP_0: return RGFW_KEY_PAD0;
+		case XKB_KEY_KP_1: return RGFW_KEY_PAD1;
+		case XKB_KEY_KP_2: return RGFW_KEY_PAD2;
+		case XKB_KEY_KP_3: return RGFW_KEY_PAD3;
+		case XKB_KEY_KP_4: return RGFW_KEY_PAD4;
+		case XKB_KEY_KP_5: return RGFW_KEY_PAD5;
+		case XKB_KEY_KP_6: return RGFW_KEY_PAD6;
+		case XKB_KEY_KP_7: return RGFW_KEY_PAD7;
+		case XKB_KEY_KP_8: return RGFW_KEY_PAD8;
+		case XKB_KEY_KP_9: return RGFW_KEY_PAD9;
+		case XKB_KEY_PRINT: return RGFW_KEY_PRINT_SCREEN;
+		case XKB_KEY_PAUSE: return RGFW_KEY_PAUSE;
+		default: break;
+	}
+	return RGFW_KEY_NULL;
+}
+
+// private
+fn void rgfw_pollEvents_Wayland()
+{
+	rgfw_resetPrevState();
+
+	while (wlDisplayFlush(_gfx_ctx.wlDisplay) == -1)
+	{
+		if (*rgfwErrnoLocation() == RGFW_EAGAIN)
+		{
+			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == -1) return;
+		}
+		else { return; }
+	}
+
+	if (_gfx_ctx.wlRepeatInfoRate != 0 && _gfx_ctx.lastKey != 0)
+	{
+		uint now = (uint)(rgfw_unix_getTimeNS() / 1000000);
+		if (now > _gfx_ctx.lastKeyTime)
+		{
+			rgfw_wlSendKeyEvent(_gfx_ctx.lastKey);
+			_gfx_ctx.lastKeyTime = now + 1000 / (uint)_gfx_ctx.wlRepeatInfoRate;
+		}
+	}
+
+	Pollfd fds;
+	fds.fd = wlDisplayGetFd(_gfx_ctx.wlDisplay);
+	fds.events = (short)POLLIN;
+
+	while (true)
+	{
+		while (wlDisplayPrepareRead(_gfx_ctx.wlDisplay) != 0)
+		{
+			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) > 0) return;
+		}
+
+		if (poll(&fds, 1, 0) == 0) { wlDisplayCancelRead(_gfx_ctx.wlDisplay); return; }
+
+		if (fds.revents & POLLIN)
+		{
+			wlDisplayReadEvents(_gfx_ctx.wlDisplay);
+			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) > 0) return;
+		}
+		else { wlDisplayCancelRead(_gfx_ctx.wlDisplay); }
+	}
+}
+
+// private
+fn void rgfw_pollMonitors_Wayland() { _gfx_ctx.monitors.primary = _gfx_ctx.monitors.list.head; }
+
+// private
+fn bool rgfw_readClipboardPtr_Wayland(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
+{
+	if (requestedType != RGFW_DATA_TEXT) return false;
+	if (_gfx_ctx.unixClipboard == null || _gfx_ctx.unixClipboard.length == 0)
+	{
+		data.length = 0;
+		data.type = RGFW_DATA_NONE;
+		return false;
+	}
+	data.length = _gfx_ctx.unixClipboard.length;
+	data.type = RGFW_DATA_TEXT;
+	if (buffer == null) return true;
+	if (_gfx_ctx.unixClipboard.length > capacity) return false;
+	rgfw_memcpy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
+	data.data = buffer;
+	return true;
+}
+
+// private
+fn void rgfw_window_blitSurface_Wayland(GfxWindow* win, GfxSurface* surface)
+{
+	IntVec2 min = math::min(win.size, surface.size);
+	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...min, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
+
+	wlSurfaceAttach(win.src.surface, surface.native.wlBuffer, 0, 0);
+	wlSurfaceDamage(win.src.surface, 0, 0, ...min);
+	wlSurfaceCommit(win.src.surface);
+	wlBufferDestroy(surface.native.wlBuffer);
+	surface.native.wlBuffer = null;
+}
+
+// private
+fn void rgfw_window_closePlatform_Wayland(GfxWindow* win)
+{
+	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_WINDOW, "a window was freed");
+	if (win.src.decoration != null) zxdgToplevelDecorationV1Destroy(win.src.decoration);
+	if (win.src.xdgToplevel != null) xdgToplevelDestroy(win.src.xdgToplevel);
+	wlSurfaceDestroy(win.src.customCursorSurface);
+	if (win.src.lockedPointer != null) zwpLockedPointerV1Destroy(win.src.lockedPointer);
+	if (win.src.icon != null) xdgToplevelIconV1Destroy(win.src.icon);
+	xdgSurfaceDestroy(win.src.xdgSurface);
+	wlSurfaceDestroy(win.src.surface);
+}
+
+// private
+fn bool rgfw_window_createContextPtr_OpenGL_Wayland(GfxWindow* win, RgfwGlContext* ctx, RgfwGlHints* hints)
+{
+	bool out = rgfw_window_createContextPtr_EGL(win, (RgfwEglContext*)ctx, hints);
+	win.src.gfxType = RGFW_GFX_NATIVE_OPEN_GL;
+	rgfw_window_swapInterval_OpenGL(win, 0);
+	return out;
+}
+
+// private
+fn WGPUSurface rgfw_window_createSurface_WebGPU_Wayland(GfxWindow* window, WGPUInstance instance)
+{
+	WgpuSurfaceSourceWaylandSurface fromWl;
+	fromWl.chain.next = null;
+	fromWl.chain.sType = WGPU_STYPE_SURFACE_SOURCE_WAYLAND_SURFACE;
+	fromWl.display = _gfx_ctx.wlDisplay;
+	fromWl.surface = window.src.surface;
+	WgpuSurfaceDescriptor surfaceDesc;
+	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromWl;
+	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
+}
+
+// private
+fn void rgfw_window_deleteContextPtr_OpenGL_Wayland(GfxWindow* win, RgfwGlContext* ctx) { rgfw_window_deleteContextPtr_EGL(win, (RgfwEglContext*)ctx); win.src.ctx.native = null; }
+
+// private
+fn IntVec2 rgfw_window_fetchSize_Wayland(GfxWindow* win) => win.get_size();
+
+// private
+fn void rgfw_window_flash_Wayland(GfxWindow* win, GfxFlashRequest request) {}
+
+// private
+fn void rgfw_window_focus_Wayland(GfxWindow* win) {}
+
+// private
+fn void rgfw_window_hide_Wayland(GfxWindow* win)
+{
+	wlSurfaceAttach(win.src.surface, null, 0, 0);
+	wlSurfaceCommit(win.src.surface);
+	win.internal.flags.hide = true;
+}
+
+// private
+fn bool rgfw_window_isHidden_Wayland(GfxWindow* win) => false;
+
+// private
+fn bool rgfw_window_isMaximized_Wayland(GfxWindow* win) => win.src.maximized;
+
+// private
+fn bool rgfw_window_isMinimized_Wayland(GfxWindow* win) => win.src.minimized;
+
+// private
+fn void rgfw_window_makeCurrentContext_OpenGL_Wayland(GfxWindow* win) { rgfw_window_makeCurrentContext_EGL(win); }
+
+// private
+fn void rgfw_window_maximizePlatform_Wayland(GfxWindow* win) => rgfw_toggleWaylandMaximized(win, true);
+
+// private
+fn void rgfw_window_minimizePlatform_Wayland(GfxWindow* win)
+{
+	if (rgfw_window_isMaximized(win)) return;
+	win.internal.old_bounds = win.bounds;
+	win.src.minimized = true;
+	xdgToplevelSetMinimized(win.src.xdgToplevel);
+}
+
+// private
+fn void rgfw_window_moveMouse_Wayland(GfxWindow* win, int x, int y)
+{
+	if (_gfx_ctx.wpPointerWarp != null)
+	{
+		wpPointerWarpV1WarpPointer(_gfx_ctx.wpPointerWarp, win.src.surface, _gfx_ctx.wlPointer, wlFixedFromInt(x), wlFixedFromInt(y), _gfx_ctx.mouseEnterSerial);
+	}
+}
+
+// private
+fn void rgfw_window_movePlatform_Wayland(GfxWindow* win, int x, int y) { win.x = x; win.y = y; }
+
+// private
+fn void rgfw_window_raise_Wayland(GfxWindow* win) {}
+
+// private
+fn void rgfw_window_resizePlatform_Wayland(GfxWindow* win, int w, int h)
+{
+	win.width = w; win.height = h;
+	if (_gfx_ctx.compositor != null)
+	{
+		xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
+		if (win.src.ctx.egl != null && win.src.ctx.egl.eglWindow != null) wlEglWindowResize((WlEglWindow*)win.src.ctx.egl.eglWindow, w, h, 0, 0);
+	}
+}
+
+// private
+fn void rgfw_window_restorePlatform_Wayland(GfxWindow* win) => rgfw_toggleWaylandMaximized(win, false);
+
+// private
+fn void rgfw_window_setAspectRatio_Wayland(GfxWindow* win, int w, int h)
+{
+	if (w == 0 && h == 0) return;
+	xdgToplevelSetMaxSize(win.src.xdgToplevel, w, h);
+}
+
+// private
+fn void rgfw_window_setBorder_Wayland(GfxWindow* win, bool border)
+{
+	win.internal.flags.no_border = !border;
+	if (_gfx_ctx.decorationManager != null)
+	{
+		zxdgToplevelDecorationV1SetMode(win.src.decoration, border ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE : ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+	}
+}
+
+// private
+fn void rgfw_window_setFloating_Wayland(GfxWindow* win, bool floating) {}
+
+// private
+fn void rgfw_window_setFullscreen_Wayland(GfxWindow* win, bool fullscreen)
+{
+	if (fullscreen)
+	{
+		win.internal.flags.fullscreen = true;
+		win.internal.old_bounds = win.bounds;
+		xdgToplevelSetFullscreen(win.src.xdgToplevel, null);
+	}
+	else
+	{
+		win.internal.flags.fullscreen = false;
+		xdgToplevelUnsetFullscreen(win.src.xdgToplevel);
+	}
+}
+
+// private
+fn void rgfw_window_setMaxSize_Wayland(GfxWindow* win, int w, int h) { xdgToplevelSetMaxSize(win.src.xdgToplevel, w, h); }
+
+// private
+fn void rgfw_window_setMinSize_Wayland(GfxWindow* win, int w, int h) { xdgToplevelSetMinSize(win.src.xdgToplevel, w, h); }
+
+// private
+fn void rgfw_window_setMousePassthrough_Wayland(GfxWindow* win, bool passthrough) {}
+
+// private
+fn bool rgfw_window_setMousePlatform_Wayland(GfxWindow* win, RgfwMouse* mouse)
+{
+	GfxSurface* surface = (GfxSurface*)mouse;
+	win.src.usingCustomCursor = true;
+	wlSurfaceAttach(win.src.customCursorSurface, surface.native.wlBuffer, 0, 0);
+	wlSurfaceDamage(win.src.customCursorSurface, 0, 0, ...surface.size);
+	wlSurfaceCommit(win.src.customCursorSurface);
+	return true;
+}
+
+// private
+fn void rgfw_window_setOpacity_Wayland(GfxWindow* win, char opacity) {}
+
+// private
+fn void rgfw_window_setRawMouseModePlatform_Wayland(GfxWindow* win, bool state)
+{
+	if (_gfx_ctx.relativePointerManager == null) return;
+
+	if (state == false)
+	{
+		if (_gfx_ctx.relativePointer != null) zwpRelativePointerV1Destroy(_gfx_ctx.relativePointer);
+		_gfx_ctx.relativePointer = null;
+		return;
+	}
+	if (_gfx_ctx.relativePointer != null) return;
+
+	_gfx_ctx.relativePointer = zwpRelativePointerManagerV1GetRelativePointer(_gfx_ctx.relativePointerManager, _gfx_ctx.wlPointer);
+	static ZwpRelativePointerV1Listener listener = { .relativeMotion = &rgfw_wlRelativePointerMotion };
+	zwpRelativePointerV1AddListener(_gfx_ctx.relativePointer, &listener, &_gfx_ctx);
+}
+
+// private
+fn void rgfw_window_swapBuffers_OpenGL_Wayland(GfxWindow* win) { rgfw_window_swapBuffers_EGL(win); }
+
+// private
+fn bool rgfw_writeClipboard_Wayland(GfxDataTransfer* data)
+{
+	if (_gfx_ctx.dataDeviceManager == null) return false;
+	if (_gfx_ctx.unixClipboard != null) { rgfw_free_impl(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
+
+	_gfx_ctx.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + data.length);
+	sz length = data.length;
+	if (data.data[length - 1] != 0) length += 1;
+
+	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
+	rgfw_memcpy(dataPtr, (void*)data.data, data.length);
+	dataPtr[length - 1] = 0;
+	_gfx_ctx.unixClipboard.data = dataPtr;
+	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;
+	_gfx_ctx.unixClipboard.length = length;
+
+	GfxWindow* win = _gfx_ctx.kbOwner;
+	if (win.src.dataSource != null) { wlDataSourceDestroy(win.src.dataSource); win.src.dataSource = null; }
+
+	win.src.dataSource = wlDataDeviceManagerCreateDataSource(_gfx_ctx.dataDeviceManager);
+	if (win.src.dataSource == null)
+	{
+		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_CLIPBOARD, "Could not create clipboard data source");
+		return false;
+	}
+
+	wlDataSourceAddListener(win.src.dataSource, &rgfw_dataSourceListener, &_gfx_ctx);
+	wlDataSourceOffer(win.src.dataSource, "text/plain;charset=utf-8");
+	return true;
+}
+
+// private
+fn void? rgfw_createSurfacePtr_Wayland(void* data, int w, int h, GfxFormat format, GfxSurface* self, GfxWindow* window)
+{
+	self.data = data;
+	self.size = { w, h };
+	self.format = format;
+
+	int size = w * h * 4;
+	int fd = rgfw_wlCreateShmFile((sz)size);
+	if (fd < 0)
+	{
+		log::error("Failed to create a buffer", category: log::CATEGORY_VIDEO);
+		return SURFACE_CREATION_FAILED~;
+	}
+	defer catch self.release();
+	self.native.pool = wlShmCreatePool(_gfx_ctx.shm, fd, (int)size);
+	self.native.buffer = mmap(null, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	self.native.fd = fd;
+	self.native.format = BGRA8;
+
+	if (self.native.buffer == MAP_FAILED)
+	{
+		log::error("mmap failed", category: log::CATEGORY_VIDEO);
+		self.native.buffer = null;
+		return SURFACE_CREATION_FAILED~;
+	}
+}
+
+// private
+fn void rgfw_surface_freePtr_Wayland(GfxSurface* surface)
+{
+	if (!surface.data) return;
+	if (surface.native.pool) wlShmPoolDestroy(surface.native.pool);
+	if (surface.native.fd) close(surface.native.fd);
+	if (surface.native.buffer) munmap(surface.native.buffer, (sz)(surface.size.x * surface.size.y * 4));
+	*surface = {};
+}
+
+// private
+fn bool rgfw_window_isFloating_Wayland(GfxWindow* win) => !win.is_fullscreen() && !rgfw_window_isMaximized(win);
+
+// private
+fn void rgfw_window_setName_Wayland(GfxWindow* win, String name)
+{
+	if (_gfx_ctx.compositor) @pool()
+	{
+		xdgToplevelSetTitle(win.src.xdgToplevel, name.zstr_copy(tmem));
+	};
+}
+
+// private
+fn bool rgfw_window_setIconEx_Wayland(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
+{
+	if (_gfx_ctx.iconManager == null || w != h) return false;
+
+	if (win.src.icon != null) { xdgToplevelIconV1Destroy(win.src.icon); win.src.icon = null; }
+
+	GfxSurface*? surface = create_surface(data, w, h, format);
+	if (catch surface) return false;
+	defer surface.destroy();
+	int minW = w < surface.size.x ? w : surface.size.x;
+	int minH = h < surface.size.y ? h : surface.size.y;
+	copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
+
+	win.src.icon = xdgToplevelIconManagerV1CreateIcon(_gfx_ctx.iconManager);
+	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, w, h, w * 4, WL_SHM_FORMAT_ARGB8888);
+	xdgToplevelIconV1AddBuffer(win.src.icon, surface.native.wlBuffer, 1);
+	xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, win.src.icon);
+
+	return true;
+}
+
+// private
+fn GfxMonitor* rgfw_window_getMonitor_Wayland(GfxWindow* win)
+{
+	if (win.src.activeMonitor == null) return rgfw_getPrimaryMonitor();
+	return &win.src.activeMonitor.mon;
+}

@@ -391,9 +391,6 @@ EglGetCurrentContextProc rgfw_eglGetCurrentContext;
 EglQueryStringProc rgfw_eglQueryString;
 EglGetConfigAttribProc rgfw_eglGetConfigAttrib;
 
-// public
-fn bool rgfw_loadGL() => rgfw_loadGL_X11();
-
 
 const int RTLD_LAZY = 0x1;
 const int RTLD_LOCAL = 0x4;
@@ -418,15 +415,6 @@ fn bool rgfw_loadVulkan()
 	if (proc == null) return false;
 	_gfx_ctx.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
 	return true;
-}
-
-// public
-fn void rgfw_unloadVulkan()
-{
-	if (_gfx_ctx.vulkan_handle == null) return;
-	libc::dlclose(_gfx_ctx.vulkan_handle);
-	_gfx_ctx.vulkan_handle = null;
-	_gfx_ctx.vkGetInstanceProcAddress = null;
 }
 
 
@@ -468,12 +456,6 @@ struct WgpuSurfaceDescriptor { WgpuChainedStruct* nextInChain; }
 struct WgpuSurfaceSourceXlibWindow { WgpuChainedStruct chain; GfxXDisplay* display; GfxXWindow window; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
-// public
-fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance) => rgfw_window_createSurface_WebGPU_X11(window, instance);
-
-// public
-fn void rgfw_window_setAspectRatio(GfxWindow* win, int w, int h) => rgfw_window_setAspectRatio_X11(win, w, h);
-
 
 // public
 fn GfxFormat rgfw_xImageGetFormat(void* imagePtr)
@@ -484,23 +466,6 @@ fn GfxFormat rgfw_xImageGetFormat(void* imagePtr)
 	return BGRA8;
 }
 
-// public
-fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null) => rgfw_createSurfacePtr_X11(data, w, h, format, self, window);
-
-	// public
-fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface) => rgfw_window_blitSurface_X11(win, surface);
-
-// public
-fn void GfxSurface.release(&self) => rgfw_surface_freePtr_X11(self);
-
-// public
-fn void rgfw_window_setBorder(GfxWindow* win, bool border) => rgfw_window_setBorder_X11(win, border);
-
-// public
-fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state) => rgfw_window_setRawMouseModePlatform_X11(win, state);
-
-// public
-fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state) => rgfw_window_captureMousePlatform_X11(win, state);
 
 // public
 fn void rgfw_window_getVisual(XVisualInfo* visual, bool transparent)
@@ -657,8 +622,6 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 // public
 fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => rgfw_createWindowPlatform_X11(name, flags, win);
 
-// public
-fn bool rgfw_getGlobalMouse(int* fX, int* fY) => rgfw_getGlobalMouse_X11(fX, fY);
 
 // public
 fn void rgfw_unix_parseURI(GfxWindow* win, ZString data)
@@ -821,8 +784,6 @@ const KeySym XK_KP_4 = 0xffb4; const KeySym XK_KP_5 = 0xffb5; const KeySym XK_KP
 const KeySym XK_KP_8 = 0xffb8; const KeySym XK_KP_9 = 0xffb9;
 const KeySym XK_PRINT = 0xff61; const KeySym XK_PAUSE = 0xff13;
 
-// public
-fn RgfwKey rgfw_physicalToMappedKey(RgfwKey key) => rgfw_physicalToMappedKey_X11(key);
 
 // public
 fn void rgfw_xHandleEvent()
@@ -1192,23 +1153,6 @@ fn void rgfw_xHandleEvent()
 	xFlush(_gfx_ctx.display);
 }
 
-// public
-fn IntVec2 rgfw_window_fetchSize(GfxWindow* win) => rgfw_window_fetchSize_X11(win);
-
-// public
-fn void rgfw_pollEvents() => rgfw_pollEvents_X11();
-
-// public
-fn void rgfw_window_movePlatform(GfxWindow* win, int x, int y) => rgfw_window_movePlatform_X11(win, x, y);
-
-// public
-fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h) => rgfw_window_resizePlatform_X11(win, w, h);
-
-// public
-fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h) => rgfw_window_setMinSize_X11(win, w, h);
-
-// public
-fn void rgfw_window_setMaxSize(GfxWindow* win, int w, int h) => rgfw_window_setMaxSize_X11(win, w, h);
 
 // private
 fn void rgfw_toggleXMaximized(GfxWindow* win, bool maximized)
@@ -1224,14 +1168,6 @@ fn void rgfw_toggleXMaximized(GfxWindow* win, bool maximized)
 	xSendEvent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 20) | (1 << 19), &xev);
 }
 
-// public
-fn void rgfw_window_maximizePlatform(GfxWindow* win) => rgfw_window_maximizePlatform_X11(win);
-
-// public
-fn void rgfw_window_focus(GfxWindow* win) => rgfw_window_focus_X11(win);
-
-// public
-fn void rgfw_window_raise(GfxWindow* win) => rgfw_window_raise_X11(win);
 
 // private
 fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
@@ -1247,50 +1183,6 @@ fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
 	xSendEvent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 19) | (1 << 20), &xev);
 }
 
-// public
-fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen) => rgfw_window_setFullscreen_X11(win, fullscreen);
-
-// public
-fn void rgfw_window_setFloating(GfxWindow* win, bool floating) => rgfw_window_setFloating_X11(win, floating);
-
-// public
-fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) => rgfw_window_setOpacity_X11(win, opacity);
-
-// public
-fn void rgfw_window_minimizePlatform(GfxWindow* win) => rgfw_window_minimizePlatform_X11(win);
-
-// public
-fn void rgfw_window_restorePlatform(GfxWindow* win) => rgfw_window_restorePlatform_X11(win);
-
-// public
-fn bool GfxWindow.is_floating(&win) => rgfw_window_isFloating_X11(win);
-
-// public
-fn void GfxWindow.set_name(&self, String name) => rgfw_window_setName_X11(self, name);
-
-// public
-fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) => rgfw_window_setMousePassthrough_X11(win, passthrough);
-
-// public
-fn bool GfxWindow.set_icon(&win, char* dataSrc, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH) => rgfw_window_setIconEx_X11(win, dataSrc, w, h, format, type);
-
-// public
-fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse) => rgfw_createMouseStandard_X11(mouse);
-
-// public
-fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format) => rgfw_createMouse_X11(data, w, h, format);
-
-// public
-fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse) => rgfw_window_setMousePlatform_X11(win, mouse);
-
-// public
-fn void rgfw_freeMouse(RgfwMouse* mouse) => rgfw_freeMouse_X11(mouse);
-
-// public
-fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y) => rgfw_window_moveMouse_X11(win, x, y);
-
-// public
-fn void rgfw_window_hide(GfxWindow* win) => rgfw_window_hide_X11(win);
 
 // public
 fn void rgfw_window_showPlatform(GfxWindow* win)
@@ -1311,23 +1203,6 @@ fn void rgfw_window_showPlatform(GfxWindow* win)
 	rgfw_window_setFullscreen(win, win.is_fullscreen());
 }
 
-// public
-fn void rgfw_window_flash(GfxWindow* win, GfxFlashRequest request) => rgfw_window_flash_X11(win, request);
-
-// public
-fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* dataTransfer) => rgfw_readClipboardPtr_X11(requestedType, buffer, capacity, dataTransfer);
-
-// public
-fn bool rgfw_writeClipboard(GfxDataTransfer* data) => rgfw_writeClipboard_X11(data);
-
-// public
-fn bool rgfw_window_isHidden(GfxWindow* win) => rgfw_window_isHidden_X11(win);
-
-// public
-fn bool rgfw_window_isMinimized(GfxWindow* win) => rgfw_window_isMinimized_X11(win);
-
-// public
-fn bool rgfw_window_isMaximized(GfxWindow* win) => rgfw_window_isMaximized_X11(win);
 
 // public
 fn void rgfw_xGetSystemContentDPI(float* dpi)
@@ -1373,59 +1248,6 @@ fn void* rgfw_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, Gf
 	return mi;
 }
 
-// public
-fn void rgfw_pollMonitors() => rgfw_pollMonitors_X11();
-
-// public
-fn void rgfw_monitorNode_free(GfxMonitorNode* node) => rgfw_monitorNode_free_X11(node);
-
-// public
-fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height) => rgfw_monitor_getWorkarea_X11(monitor, x, y, width, height);
-
-// public
-fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* monitor) => rgfw_monitor_getModesPtr_X11(monitor);
-
-// public
-fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp) => rgfw_monitor_getGammaRampPtr_X11(monitor, ramp);
-// public
-fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp) => rgfw_monitor_setGammaRamp_X11(monitor, ramp);
-
-// public
-fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => rgfw_monitor_setMode_X11(mon, mode);
-
-// public
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => rgfw_monitor_requestMode_X11(mon, mode, request);
-
-// public
-fn GfxMonitor* find_monitor(GfxWindow* win) => rgfw_window_getMonitor_X11(win);
-
-// public
-fn ulong rgfw_unix_getTimeNS()
-{
-	Timespec ts;
-	clock_gettime(1 /* CLOCK_MONOTONIC */, &ts);
-	return (ulong)ts.tv_sec * 1000000000 + (ulong)ts.tv_nsec;
-}
-
-// public
-fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfw_extensionSupportedPlatform_OpenGL_X11(extension, len);
-
-// public
-fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname) => rgfw_getProcAddress_OpenGL_X11(procname);
-
-// public
-fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* context, RgfwGlHints* hints) => rgfw_window_createContextPtr_OpenGL_X11(win, context, hints);
-
-// public
-fn void rgfw_window_deleteContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx) => rgfw_window_deleteContextPtr_OpenGL_X11(win, ctx);
-
-// public
-fn void rgfw_window_makeCurrentContext_OpenGL(GfxWindow* win) => rgfw_window_makeCurrentContext_OpenGL_X11(win);
-
-// public
-fn void* rgfw_getCurrentContext_OpenGL() => rgfw_getCurrentContext_OpenGL_X11();
-// public
-fn void rgfw_window_swapBuffers_OpenGL(GfxWindow* win) => rgfw_window_swapBuffers_OpenGL_X11(win);
 
 // public
 fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval)
@@ -1441,17 +1263,6 @@ fn void rgfw_window_swapInterval_OpenGL(GfxWindow* win, int swapInterval)
 	}
 }
 
-// public
-fn int rgfw_initPlatform(String class_name, GfxInitOption flags) => rgfw_initPlatform_X11(class_name, flags);
-
-// public
-fn void rgfw_deinitPlatform() => rgfw_deinitPlatform_X11();
-
-// public
-fn void rgfw_initKeycodesPlatform() => rgfw_initKeycodesPlatform_X11();
-
-// public
-fn void rgfw_window_closePlatform(GfxWindow* win) => rgfw_window_closePlatform_X11(win);
 
 struct RgfwAttribStack
 {
