@@ -11,7 +11,6 @@ import std::collections::list, std::math, libc;
 // exactly as the original does when RGFW_NO_X11_CURSOR_PRELOAD etc. are not set.
 
 
-
 extern fn void* memcpy(void* dest, void* src, sz count);
 extern fn void* memset(void* dest, int value, sz count);
 extern fn char* strstr(char* haystack, char* needle);
@@ -720,8 +719,9 @@ fn void rgfw_x11ImInitCallback(GfxXDisplay* d, GfxXPointer clientData, GfxXPoint
 }
 
 // public
-fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flags, GfxWindow* win)
+fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flags, GfxWindow* win)
 {
+	if (!name) name = "C3GFX";
 	// KeyPress | KeyRelease | ButtonPress | ButtonRelease | PointerMotion | StructureNotify | FocusChange |
 	// LeaveWindow | EnterWindow | Exposure | VisibilityChange | PropertyChange
 	CLong eventMask = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 6) | (1 << 17) | (1 << 21) |
@@ -738,7 +738,7 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flag
 	win.src.window = xCreateWindow(_gfx_ctx.display, win.src.parent, win.x, win.y, (uint)win.width, (uint)win.height,
 		0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 13) | (1 << 11), &swa);
 		// CWBorderPixel | CWColormap | CWEventMask
-	if (win.src.window == 0) return false;
+	if (!win.src.window) return X11_WINDOW_CREATION_FAILED~;
 
 	win.src.flashEnd = 0;
 	xFreeColors(_gfx_ctx.display, cmap, null, 0, 0);
@@ -759,7 +759,8 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flag
 	@pool()
 	{
 		XClassHint hint;
-		hint.res_name = name ?: "RGFW";
+
+		hint.res_name = name.zstr_copy(tmem);
 		hint.res_class = _gfx_ctx.class_name.zstr_copy(tmem);
 		xSetClassHint(_gfx_ctx.display, win.src.window, &hint);
 	};
@@ -785,21 +786,19 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flag
 	xSetWindowBackground(_gfx_ctx.display, win.src.window, 0);
 	xClearWindow(_gfx_ctx.display, win.src.window);
 	xSetWindowBackgroundPixmap(_gfx_ctx.display, win.src.window, 0);
-	return true;
 }
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
+fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	if (flags.open_gl || flags.egl)
 	{
 		win.src.window = 0;
-		return win;
+		return;
 	}
 	XVisualInfo visual;
 	rgfw_window_getVisual(&visual, win.internal.flags.transparent);
-	if (!rgfw_xCreateWindow(visual, name, flags, win)) return null;
-	return win;
+	return rgfw_xCreateWindow(visual, name, flags, win);
 }
 
 // public
@@ -1565,12 +1564,12 @@ fn bool GfxWindow.is_floating(&win)
 }
 
 // public
-fn void rgfw_window_setName(GfxWindow* win, ZString name)
+fn void rgfw_window_setName(GfxWindow* win, String name) => @pool()
 {
-	if (name == null) name = "";
-	xutf8SetWMProperties(_gfx_ctx.display, win.src.window, name, name, null, 0, null, null, null);
-	xStoreName(_gfx_ctx.display, win.src.window, name);
-	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmName, _gfx_ctx.utf8String, 8, 0, name, (int)name.len());
+	ZString cstring = name.zstr_copy(tmem);
+	xutf8SetWMProperties(_gfx_ctx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
+	xStoreName(_gfx_ctx.display, win.src.window, cstring);
+	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmName, _gfx_ctx.utf8String, 8, 0, cstring, name.len);
 }
 
 // public
@@ -2246,7 +2245,7 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* conte
 	XVisualInfo visual = *vi;
 	xFree(vi);
 
-	if (rgfw_xCreateWindow(visual, "", win.internal.flags, win) == false) return false;
+	if (catch rgfw_xCreateWindow(visual, "", win.internal.flags, win)) return false;
 	if (showWindow) show(win);
 
 	int[40] contextAttribs;

@@ -451,16 +451,15 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 }
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
+fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	rgfwJsSetCanvasSize(win.width, win.height);
-	rgfwJsSetWindowTitle(name, name.len());
+	rgfwJsSetWindowTitle((ZString)name, name.len);
 	rgfwJsSetupWindowListeners();
 
 	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
 
 	rgfwJsSetupDropListeners();
-	return win;
 }
 
 // public
@@ -612,10 +611,9 @@ fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
 }
 
 // public
-fn void rgfw_window_setName(GfxWindow* win, ZString name)
+fn void rgfw_window_setName(GfxWindow* win, String name)
 {
-	if (name == null) name = "";
-	rgfwJsSetWindowTitle(name, name.len());
+	rgfwJsSetWindowTitle((ZString)name, name.len);
 }
 
 // public

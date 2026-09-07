@@ -1,5 +1,10 @@
 module std::gfx @feat(X11, X11_WAYLAND) @link("X11", "Xext", "Xrandr", "GL") @private;
 
+excuse
+{
+	X11_WINDOW_CREATION_FAILED
+}
+
 // Leading fields of the real XImage struct (ABI-compatible prefix; only used to null
 // out `data` before XDestroyImage, since that buffer is owned by our own allocation).
 struct XImageHeader

@@ -1023,9 +1023,9 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 }
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
+fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
 {
-	if (name[0] == 0) name = " ";
+	if (!name.len) name = " ";
 	win.src.hIconSmall = null; win.src.hIconBig = null;
 	win.src.maxSizeW = 0; win.src.maxSizeH = 0;
 	win.src.minSizeW = 0; win.src.minSizeH = 0;
@@ -1039,15 +1039,13 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxW
 	}
 	else { windowStyle |= 0x80000000 | 0x10000000 | 0x00080000; } // WS_POPUP|WS_VISIBLE|WS_SYSMENU
 
-	ushort[256] wideName;
-	multiByteToWideChar(65001, 0, name, -1, &wideName, 255);
 
 	Rect rect = {0, 0, win.width, win.height};
 	uint style = rgfw_winapiWindowGetStyle(win, flags);
 	uint exStyle = rgfw_winapiWindowGetExStyle(win, flags);
 	adjustWindowRectEx(&rect, style, 0, exStyle);
 
-	win.src.window = createWindowExW(0, _gfx_ctx.wndClass.className, &wideName, windowStyle, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx_ctx.instance, null);
+	win.src.window = createWindowExW(0, _gfx_ctx.wndClass.className, name.to_wstring(tmem)!!, windowStyle, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx_ctx.instance, null);
 	setPropW(win.src.window, rgfw_wideRgfwPropName(), win);
 	rgfw_window_resize(win, win.width, win.height);
 
@@ -1060,7 +1058,6 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxW
 
 	rgfw_win32MakeWindowDarkMode(win, rgfw_win32GetDarkModeState());
 	rgfw_win32MakeWindowTransparent(win);
-	return win;
 }
 
 // public
@@ -1671,12 +1668,9 @@ fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
 }
 
 // public
-fn void rgfw_window_setName(GfxWindow* win, ZString name)
+fn void rgfw_window_setName(GfxWindow* win, String name) => @pool()
 {
-	if (name == null) name = "";
-	ushort[256] wideName;
-	multiByteToWideChar(65001, 0, name, -1, &wideName, 256);
-	setWindowTextW(win.src.window, &wideName);
+	setWindowTextW(win.src.window, name.to_wstring(tmem)!!);
 }
 
 // public

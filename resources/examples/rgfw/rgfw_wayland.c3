@@ -1409,7 +1409,7 @@ XdgToplevelListener rgfw_xdgToplevelListener = { .configure = &rgfw_wlXdgTopleve
 ZxdgToplevelDecorationV1Listener rgfw_xdgDecorationListener = { .configure = &rgfw_wlXdgDecorationConfigureHandler };
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
+fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
 {
 	rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_WARNING_WAYLAND, "RGFW Wayland support is experimental");
 
@@ -1424,7 +1424,7 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxW
 	xdgWmBaseSetUserData(_gfx_ctx.xdgWmBase, win);
 
 	win.src.xdgToplevel = xdgSurfaceGetToplevel(win.src.xdgSurface);
-	xdgToplevelSetAppId(win.src.xdgToplevel, name);
+	xdgToplevelSetAppId(win.src.xdgToplevel, name.zstr_copy(tmem));
 	xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
 
 	if (!(win.internal.flags.transparent)) rgfw_wlSetOpaque(win);
@@ -1440,13 +1440,13 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxW
 		zxdgToplevelDecorationV1SetMode(win.src.decoration, decorationMode);
 	}
 
-	if (_gfx_ctx.iconManager != null) xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, null);
+	if (_gfx_ctx.iconManager) xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, null);
 
 	wlSurfaceCommit(win.src.surface);
 
-	while (win.src.configured == false) wlDisplayDispatch(_gfx_ctx.wlDisplay);
+	while (!win.src.configured) wlDisplayDispatch(_gfx_ctx.wlDisplay);
 
-	return win;
+
 }
 
 // public
@@ -1654,10 +1654,12 @@ fn void rgfw_window_restorePlatform(GfxWindow* win) => rgfw_toggleWaylandMaximiz
 fn bool GfxWindow.is_floating(&win) => !win.is_fullscreen() && !rgfw_window_isMaximized(win);
 
 // public
-fn void rgfw_window_setName(GfxWindow* win, ZString name)
+fn void rgfw_window_setName(GfxWindow* win, String name)
 {
-	if (name == null) name = "";
-	if (_gfx_ctx.compositor != null) xdgToplevelSetTitle(win.src.xdgToplevel, name);
+	if (_gfx_ctx.compositor) @pool()
+	{
+		xdgToplevelSetTitle(win.src.xdgToplevel, name.zstr_copy(tmem));
+	};
 }
 
 // public

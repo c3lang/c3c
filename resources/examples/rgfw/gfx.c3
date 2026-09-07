@@ -10,6 +10,7 @@ const bool RGFW_BUILD_WASM = $feat(WASM);
 
 excuse
 {
+	GFX_CONTEXT_NOT_INITIALIZED,
 	SURFACE_CREATION_FAILED,
 }
 macro void* rgfw_memcpy(void* dest, void* src, sz count) => memcpy(dest, src, count);
@@ -829,10 +830,12 @@ fn GfxSurface*? create_surface(char* data, int w, int h, GfxFormat format, GfxWi
 }
 
 // public
-fn GfxWindow* create_window(ZString name, int x, int y, int w, int h, GfxWindowFlags flags)
+fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
 {
 	GfxWindow* win = mem::new(GfxWindow);
-	return rgfw_createWindowPtr(name, x, y, w, h, flags, win);
+	defer catch free(win);
+	win.init(name, x, y, w, h, flags)!;
+	return win;
 }
 
 // public
@@ -1769,45 +1772,38 @@ fn bool GfxWindow.is_raw_mouse(&self) => self.internal.rawMouse;
 
 
 // public
-fn GfxWindow* rgfw_createWindowPtr(ZString name, int x, int y, int w, int h, GfxWindowFlags flags, GfxWindow* win)
+fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindowFlags flags)
 {
-	if (win == null || !_gfx_ctx.initialized) return null;
-	if (name == null) name = "";
-	*win = {};
+	if (!_gfx_ctx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
+	*self = {};
 	_gfx_ctx.windowCount++;
-	if (!_gfx_ctx.root) rgfw_setRootWindow(win);
-	win.bounds = { x, y, w, h };
-	win.internal.mouse = _gfx_ctx.standardMice[GfxMouseIcon.NORMAL.ordinal];
-	win.internal.flags = flags;
-	win.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
-	GfxWindow* ret = rgfw_createWindowPlatform(name, flags, win);
-	if (!ret)
-	{
-		log::error("Failed to create a window", category: log::CATEGORY_VIDEO);
-		return null;
-	}
-	_window_set_flags(win, flags, {});
-	win.src.gfxType = 0;
+	if (!_gfx_ctx.root) rgfw_setRootWindow(self);
+	self.bounds = { x, y, w, h };
+	self.internal.mouse = _gfx_ctx.standardMice[GfxMouseIcon.NORMAL.ordinal];
+	self.internal.flags = flags;
+	self.internal.enabledEvents = RGFW_ALL_EVENT_FLAGS;
+	rgfw_createWindowPlatform(name, flags, self)!;
+	_window_set_flags(self, flags, {});
+	self.src.gfxType = 0;
 	$if $feat(MACOS) || $feat(WIN32) || $feat(WASM):
 	if (flags.open_gl)
 	{
-		rgfw_window_createContext_OpenGL(win, rgfw_getGlobalHints_OpenGL());
+		rgfw_window_createContext_OpenGL(self, rgfw_getGlobalHints_OpenGL());
 	}
 	$endif
 	$if $feat(MACOS):
-	if (flags.egl) rgfw_window_createContext_EGL(win, rgfw_getGlobalHints_OpenGL());
+	if (flags.egl) rgfw_window_createContext_EGL(self, rgfw_getGlobalHints_OpenGL());
 	$endif
-	if (!flags.hide_mouse) win.set_mouse_default();
-	rgfw_window_setName(win, name);
+	if (!flags.hide_mouse) self.set_mouse_default();
+	rgfw_window_setName(self, name);
 	switch
 	{
 		case !flags.hide:
 			flags.hide = true;
-			show(win);
+			show(self);
 		case flags.maximize || flags.fullscreen:
-			rgfw_window_hide(win);
+			rgfw_window_hide(self);
 	}
-	return ret;
 }
 
 

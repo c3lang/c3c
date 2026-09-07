@@ -764,7 +764,7 @@ fn void rgfw_x11ImInitCallback(GfxXDisplay* d, GfxXPointer clientData, GfxXPoint
 }
 
 // public
-fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flags, GfxWindow* win)
+fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	CLong eventMask = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 6) | (1 << 17) | (1 << 21) |
 		(1 << 5) | (1 << 4) | (1 << 15) | (1 << 16) | (1 << 22);
@@ -778,9 +778,9 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flag
 	swa.background_pixmap = 0;
 
 	win.src.window = xCreateWindow(_gfx_ctx.display, win.src.parent, win.x, win.y, (uint)win.width, (uint)win.height,
-		0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 13) | (1 << 11), &swa);
-		// CWBorderPixel | CWColormap | CWEventMask
-	if (win.src.window == 0) return false;
+	0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 13) | (1 << 11), &swa);
+	// CWBorderPixel | CWColormap | CWEventMask
+	if (!win.src.window) return X11_WINDOW_CREATION_FAILED~;
 
 	win.src.flashEnd = 0;
 	xFreeColors(_gfx_ctx.display, cmap, null, 0, 0);
@@ -801,7 +801,7 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flag
 	@pool()
 	{
 		XClassHint hint;
-		hint.res_name = name ?: "RGFW";
+		hint.res_name = (name ?: "C3GFX").zstr_copy(tmem);
 		hint.res_class = _gfx_ctx.class_name.zstr_copy(tmem);
 		xSetClassHint(_gfx_ctx.display, win.src.window, &hint);
 	};
@@ -827,21 +827,19 @@ fn bool rgfw_xCreateWindow(XVisualInfo visual, ZString name, GfxWindowFlags flag
 	xSetWindowBackground(_gfx_ctx.display, win.src.window, 0);
 	xClearWindow(_gfx_ctx.display, win.src.window);
 	xSetWindowBackgroundPixmap(_gfx_ctx.display, win.src.window, 0);
-	return true;
 }
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform_X11(ZString name, GfxWindowFlags flags, GfxWindow* win)
+fn void? rgfw_createWindowPlatform_X11(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	if (flags.open_gl || flags.egl)
 	{
 		win.src.window = 0;
-		return win;
+		return;
 	}
 	XVisualInfo visual;
 	rgfw_window_getVisual(&visual, win.internal.flags.transparent);
-	if (rgfw_xCreateWindow(visual, name, flags, win) == false) return null;
-	return win;
+	return rgfw_xCreateWindow(visual, name, flags, win);
 }
 
 // public
@@ -1607,12 +1605,12 @@ fn bool rgfw_window_isFloating_X11(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_setName_X11(GfxWindow* win, ZString name)
+fn void rgfw_window_setName_X11(GfxWindow* win, String name) => @pool()
 {
-	if (name == null) name = "";
-	xutf8SetWMProperties(_gfx_ctx.display, win.src.window, name, name, null, 0, null, null, null);
-	xStoreName(_gfx_ctx.display, win.src.window, name);
-	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmName, _gfx_ctx.utf8String, 8, 0, name, (int)name.len());
+	ZString cstring = name.zstr_copy(tmem);
+	xutf8SetWMProperties(_gfx_ctx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
+	xStoreName(_gfx_ctx.display, win.src.window, cstring);
+	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmName, _gfx_ctx.utf8String, 8, 0, cstring, name.len);
 }
 
 // public
@@ -2292,7 +2290,7 @@ fn bool rgfw_window_createContextPtr_OpenGL_X11(GfxWindow* win, RgfwGlContext* c
 	XVisualInfo visual = *vi;
 	xFree(vi);
 
-	if (rgfw_xCreateWindow(visual, "", win.internal.flags, win) == false) return false;
+	if (catch rgfw_xCreateWindow(visual, "", win.internal.flags, win)) return false;
 	if (showWindow) show(win);
 
 	int[40] contextAttribs;
@@ -4011,7 +4009,7 @@ XdgToplevelListener rgfw_xdgToplevelListener = { .configure = &rgfw_wlXdgTopleve
 ZxdgToplevelDecorationV1Listener rgfw_xdgDecorationListener = { .configure = &rgfw_wlXdgDecorationConfigureHandler };
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform_Wayland(ZString name, GfxWindowFlags flags, GfxWindow* win)
+fn void? rgfw_createWindowPlatform_Wayland(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
 {
 	rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_WARNING_WAYLAND, "RGFW Wayland support is experimental");
 
@@ -4026,14 +4024,14 @@ fn GfxWindow* rgfw_createWindowPlatform_Wayland(ZString name, GfxWindowFlags fla
 	xdgWmBaseSetUserData(_gfx_ctx.xdgWmBase, win);
 
 	win.src.xdgToplevel = xdgSurfaceGetToplevel(win.src.xdgSurface);
-	xdgToplevelSetAppId(win.src.xdgToplevel, name);
+	xdgToplevelSetAppId(win.src.xdgToplevel, name.zstr_copy(tmem));
 	xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
 
 	if (!(win.internal.flags.transparent)) rgfw_wlSetOpaque(win);
 
 	xdgToplevelAddListener(win.src.xdgToplevel, &rgfw_xdgToplevelListener, win);
 
-	if (_gfx_ctx.decorationManager != null)
+	if (_gfx_ctx.decorationManager)
 	{
 		uint decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
 		win.src.decoration = zxdgDecorationManagerV1GetToplevelDecoration(_gfx_ctx.decorationManager, win.src.xdgToplevel);
@@ -4042,13 +4040,12 @@ fn GfxWindow* rgfw_createWindowPlatform_Wayland(ZString name, GfxWindowFlags fla
 		zxdgToplevelDecorationV1SetMode(win.src.decoration, decorationMode);
 	}
 
-	if (_gfx_ctx.iconManager != null) xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, null);
+	if (_gfx_ctx.iconManager) xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, null);
 
 	wlSurfaceCommit(win.src.surface);
 
-	while (win.src.configured == false) wlDisplayDispatch(_gfx_ctx.wlDisplay);
+	while (!win.src.configured) wlDisplayDispatch(_gfx_ctx.wlDisplay);
 
-	return win;
 }
 
 // public
@@ -4262,10 +4259,12 @@ fn void rgfw_window_restorePlatform_Wayland(GfxWindow* win) => rgfw_toggleWaylan
 fn bool rgfw_window_isFloating_Wayland(GfxWindow* win) => !win.is_fullscreen() && !rgfw_window_isMaximized(win);
 
 // public
-fn void rgfw_window_setName_Wayland(GfxWindow* win, ZString name)
+fn void rgfw_window_setName_Wayland(GfxWindow* win, String name)
 {
-	if (name == null) name = "";
-	if (_gfx_ctx.compositor != null) xdgToplevelSetTitle(win.src.xdgToplevel, name);
+	if (_gfx_ctx.compositor) @pool()
+	{
+		xdgToplevelSetTitle(win.src.xdgToplevel, name.zstr_copy(tmem));
+	};
 }
 
 // public
@@ -4772,7 +4771,7 @@ alias RgfwSurfaceFreePtrFn = fn void(GfxSurface*);
 alias RgfwWindowSetBorderFn = fn void(GfxWindow*, bool);
 alias RgfwWindowSetRawMouseModePlatformFn = fn void(GfxWindow*, bool);
 alias RgfwWindowCaptureMousePlatformFn = fn void(GfxWindow*, bool);
-alias RgfwCreateWindowPlatformFn = fn GfxWindow*(ZString, GfxWindowFlags, GfxWindow*);
+alias RgfwCreateWindowPlatformFn = fn void?(String, GfxWindowFlags, GfxWindow*);
 alias RgfwGetGlobalMouseFn = fn bool(int*, int*);
 alias RgfwPhysicalToMappedKeyFn = fn RgfwKey(RgfwKey);
 alias RgfwWindowFetchSizeFn = fn IntVec2(GfxWindow*);
@@ -4790,7 +4789,7 @@ alias RgfwWindowSetOpacityFn = fn void(GfxWindow*, char);
 alias RgfwWindowMinimizePlatformFn = fn void(GfxWindow*);
 alias RgfwWindowRestorePlatformFn = fn void(GfxWindow*);
 alias RgfwWindowIsFloatingFn = fn bool(GfxWindow*);
-alias RgfwWindowSetNameFn = fn void(GfxWindow*, ZString);
+alias RgfwWindowSetNameFn = fn void(GfxWindow*, String);
 alias RgfwWindowSetMousePassthroughFn = fn void(GfxWindow*, bool);
 alias RgfwWindowSetIconExFn = fn bool(GfxWindow*, char*, int, int, GfxFormat, GfxWindowIconType);
 alias RgfwCreateMouseStandardFn = fn RgfwMouse*(GfxMouseIcon);
@@ -4915,7 +4914,7 @@ fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state) => rgfw_
 // public
 fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state) => rgfw_api.window_captureMousePlatform(win, state);
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win) => rgfw_api.createWindowPlatform(name, flags, win);
+fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => rgfw_api.createWindowPlatform(name, flags, win);
 // public
 fn bool rgfw_getGlobalMouse(int* fX, int* fY) => rgfw_api.getGlobalMouse(fX, fY);
 // public
@@ -4951,7 +4950,7 @@ fn void rgfw_window_restorePlatform(GfxWindow* win) => rgfw_api.window_restorePl
 // public
 fn bool GfxWindow.is_floating(&win) => rgfw_api.window_isFloating(win);
 // public
-fn void rgfw_window_setName(GfxWindow* win, ZString name) => rgfw_api.window_setName(win, name);
+fn void rgfw_window_setName(GfxWindow* win, String name) => rgfw_api.window_setName(win, name);
 // public
 fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) => rgfw_api.window_setMousePassthrough(win, passthrough);
 // public

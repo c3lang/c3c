@@ -5,6 +5,7 @@ import std::collections, std::math, libc, std::os::macos;
 // This file intentionally imports no C3 standard-library modules. It only
 // declares the small C runtime hooks RGFW's C header also expects from the host.
 
+excuse NSWINDOW_CREATION_FAILED;
 
 extern fn void* memcpy(void* dest, void* src, sz count);
 extern fn void* memset(void* dest, int value, sz count);
@@ -576,6 +577,10 @@ fn ObjcId ns_retain(ObjcId obj) { if (obj != null) objc_send(obj, ObjcSendId, "r
 fn void ns_release(ObjcId obj) { if (obj != null) objc_send(obj, ObjcSendVoid, "release"); }
 fn ObjcId ns_string(ZString str) => objc_send(objc_class("NSString"), ObjcSendIdCharPtr, "stringWithUTF8String:", str);
 fn ZString ns_utf8(ObjcId str) { if (str == null) return null; return objc_send(str, ObjcSendCharPtr, "UTF8String"); }
+fn ObjcId String.to_nsstring(self) => @pool()
+{
+	return ns_string(self.zstr_copy(tmem));
+}
 
 fn ObjcId ns_bitmapRep(int w, int h)
 {
@@ -1177,14 +1182,14 @@ fn CULong rgfw_window_getWindow_X11(GfxWindow* win) => (win != null && win.src.w
 fn void* rgfw_window_getWindow_Wayland(GfxWindow* win) => win != null ? win.src.window : null;
 
 // public
-fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxWindow* win)
+fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	NSUInteger style = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
 	if (!flags.no_resize) style |= NS_WINDOW_STYLE_RESIZABLE;
 	if (flags.no_border) style = NS_WINDOW_STYLE_BORDERLESS;
 	CGRect rect = ns_rect((double)win.x, (double)rgfw_cocoaYTransform((float)(win.y + win.height - 1)), (double)win.width, (double)win.height);
 	ObjcId nswin = objc_send(ns_alloc("NSWindow"), ObjcSendIdWindowInit, "initWithContentRect:styleMask:backing:defer:", rect, style, NS_BACKING_STORE_BUFFERED, false);
-	if (nswin == null) return null;
+	if (!nswin) return NSWINDOW_CREATION_FAILED~;
 	ObjcId view = rgfw_osxViewClass != (ObjcClass)null ? objc_send((ObjcId)rgfw_osxViewClass, ObjcSendId, "alloc") : ns_alloc("NSView");
 	view = objc_send(view, ObjcSendIdRect, "initWithFrame:", ns_rect(0.0, 0.0, (double)win.width, (double)win.height));
 	if (rgfw_osxViewClass != (ObjcClass)null) object_setInstanceVariable(view, "rgfw_window", win);
@@ -1209,7 +1214,6 @@ fn GfxWindow* rgfw_createWindowPlatform(ZString name, GfxWindowFlags flags, GfxW
 	if (flags.maximize) rgfw_window_maximizePlatform(win);
 	if (flags.minimize) rgfw_window_minimizePlatform(win);
 	if (flags.fullscreen) rgfw_window_setFullscreen(win, true);
-	return win;
 }
 
 // public
@@ -1485,7 +1489,7 @@ fn void rgfw_window_setBorder(GfxWindow* win, bool border)
 // public
 fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidBool, "setIgnoresMouseEvents:", passthrough); }
 // public
-fn void rgfw_window_setName(GfxWindow* win, ZString name) { if (win != null && win.src.window != null && name != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "setTitle:", ns_string(name)); }
+fn void rgfw_window_setName(GfxWindow* win, String name) { if (win && win.src.window) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "setTitle:", name.to_nsstring()); }
 // public
 fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
 {
