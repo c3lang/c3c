@@ -13,15 +13,7 @@ excuse
 	GFX_CONTEXT_NOT_INITIALIZED,
 	SURFACE_CREATION_FAILED,
 }
-macro void* rgfw_memcpy(void* dest, void* src, sz count) => memcpy(dest, src, count);
-// public
-fn void* rgfw_alloc_impl(sz size) => malloc(size);
-// public
-fn void rgfw_free_impl(void* ptr) { if (ptr != null) free(ptr); }
-// public
-fn void* rgfw_alloc(sz size) { return rgfw_alloc_impl(size); }
-// public
-fn void rgfw_free(void* ptr) { rgfw_free_impl(ptr); }
+
 // public
 fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
 {
@@ -1359,13 +1351,21 @@ fn void rgfw_dataDropCallback(GfxWindow* win, char* data, sz length, RgfwDataTra
 	event.common.win = win;
 	if (_gfx_ctx.callbacks[(sz)event.type] != null) _gfx_ctx.callbacks[(sz)event.type](&event);
 	if (!_gfx_ctx.queueEvents && !_gfx_ctx.dnd_build) return;
-	char* dataCopy = (char*)rgfw_alloc_impl(length);
-	if (dataCopy != null) { rgfw_memcpy(dataCopy, data, length); node.data = dataCopy; }
-	GfxDataDropNode* heapNode = (GfxDataDropNode*)rgfw_alloc_impl(GfxDataDropNode::size);
-	if (heapNode == null) return;
+	char* dataCopy = malloc(length);
+	mem::copy(dataCopy, data, length);
+	node.data = dataCopy;
+	GfxDataDropNode* heapNode = mem::new(GfxDataDropNode);
 	*heapNode = node;
-	if (_gfx_ctx.dndRoot == null) { _gfx_ctx.dndRoot = heapNode; _gfx_ctx.dndCur = heapNode; }
-	else { _gfx_ctx.dndCur.next = heapNode; _gfx_ctx.dndCur = heapNode; }
+	if (_gfx_ctx.dndRoot == null)
+	{
+		_gfx_ctx.dndRoot = heapNode;
+		_gfx_ctx.dndCur = heapNode;
+	}
+	else
+	{
+		_gfx_ctx.dndCur.next = heapNode;
+		_gfx_ctx.dndCur = heapNode;
+	}
 	event.drop.value = heapNode;
 	event_queue_push(&event);
 }
@@ -1458,7 +1458,7 @@ fn void rgfw_resetPrevState()
 	while (node != null)
 	{
 		GfxDataDropNode* next = node.next;
-		rgfw_free_impl(node);
+		free(node);
 		node = next;
 	}
 	_gfx_ctx.dndRoot = null;
@@ -1653,10 +1653,10 @@ fn GfxMonitor** rgfw_getMonitors(sz* len)
 	if (len != null) *len = 0;
 	sz count = 0;
 	if (rgfw_getMonitorsPtr(0, null, &count) == false || count == 0) return null;
-	GfxMonitor** monitors = (GfxMonitor**)rgfw_alloc_impl(GfxMonitor*::size * count);
+	GfxMonitor** monitors = mem::alloc_array(GfxMonitor*, count);
 	if (rgfw_getMonitorsPtr(count, monitors, &count) == false)
 	{
-		rgfw_free_impl(monitors);
+		free(monitors);
 		return null;
 	}
 	if (len != null) *len = count;
@@ -1726,11 +1726,11 @@ fn bool rgfw_monitor_getMode(GfxMonitor* monitor, GfxMonitorMode* mode) { if (mo
 // public
 fn RgfwGammaRamp* rgfw_monitor_getGammaRamp(GfxMonitor* monitor)
 {
-	RgfwGammaRamp* ramp = (RgfwGammaRamp*)rgfw_alloc_impl(RgfwGammaRamp::size);
+	RgfwGammaRamp* ramp = mem::new(RgfwGammaRamp);
 	ramp.count = rgfw_monitor_getGammaRampPtr(monitor, null);
-	ramp.red = (ushort*)rgfw_alloc_impl(ushort::size * ramp.count);
-	ramp.green = (ushort*)rgfw_alloc_impl(ushort::size * ramp.count);
-	ramp.blue = (ushort*)rgfw_alloc_impl(ushort::size * ramp.count);
+	ramp.red = mem::alloc_array(ushort, ramp.count);
+	ramp.green = mem::alloc_array(ushort, ramp.count);
+	ramp.blue = mem::alloc_array(ushort, ramp.count);
 	ramp.count = rgfw_monitor_getGammaRampPtr(monitor, ramp);
 	return ramp;
 }
@@ -1738,10 +1738,10 @@ fn RgfwGammaRamp* rgfw_monitor_getGammaRamp(GfxMonitor* monitor)
 // public
 fn void rgfw_freeGammaRamp(RgfwGammaRamp* ramp)
 {
-	rgfw_free_impl(ramp.red);
-	rgfw_free_impl(ramp.green);
-	rgfw_free_impl(ramp.blue);
-	rgfw_free_impl(ramp);
+	free(ramp.red);
+	free(ramp.green);
+	free(ramp.blue);
+	free(ramp);
 }
 
 // public
@@ -1763,9 +1763,9 @@ fn bool rgfw_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, 
 fn bool rgfw_monitor_setGamma(GfxMonitor* monitor, float gamma)
 {
 	sz count = rgfw_monitor_getGammaRampPtr(monitor, null);
-	ushort* ptr = (ushort*)rgfw_alloc_impl(count * ushort::size);
+	ushort* ptr = mem::alloc_array(ushort, count);
 	bool ret = rgfw_monitor_setGammaPtr(monitor, gamma, ptr, count);
-	rgfw_free_impl(ptr);
+	free(ptr);
 	return ret;
 }
 

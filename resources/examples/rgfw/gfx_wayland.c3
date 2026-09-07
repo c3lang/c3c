@@ -566,7 +566,7 @@ fn RgfwMouse* rgfw_createMouseStandard_Wayland(GfxMouseIcon mouse)
 // private
 fn void rgfw_deinitPlatform_Wayland()
 {
-	if (_gfx_ctx.unixClipboard != null) { rgfw_free_impl(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
+	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
 	if (_gfx_ctx.wlPointer != null) wlPointerDestroy(_gfx_ctx.wlPointer);
 	if (_gfx_ctx.wlKeyboard != null) wlKeyboardDestroy(_gfx_ctx.wlKeyboard);
 	if (_gfx_ctx.registry != null) wlRegistryDestroy(_gfx_ctx.registry);
@@ -683,7 +683,7 @@ fn void rgfw_monitorNode_free_Wayland(GfxMonitorNode* node)
 {
 	if (node.output != null) wlOutputDestroy(node.output);
 	if (node.xdgOutput != null) zxdgOutputV1Destroy(node.xdgOutput);
-	if (node.modes != null) { rgfw_free_impl(node.modes); node.modeCount = 0; }
+	if (node.modes != null) { free(node.modes); node.modeCount = 0; }
 }
 
 // private
@@ -851,7 +851,7 @@ fn bool rgfw_readClipboardPtr_Wayland(RgfwDataTransferType requestedType, char* 
 	data.type = RGFW_DATA_TEXT;
 	if (buffer == null) return true;
 	if (_gfx_ctx.unixClipboard.length > capacity) return false;
-	rgfw_memcpy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
+	mem::copy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
 	data.data = buffer;
 	return true;
 }
@@ -1061,14 +1061,14 @@ fn void rgfw_window_swapBuffers_OpenGL_Wayland(GfxWindow* win) { rgfw_window_swa
 fn bool rgfw_writeClipboard_Wayland(GfxDataTransfer* data)
 {
 	if (_gfx_ctx.dataDeviceManager == null) return false;
-	if (_gfx_ctx.unixClipboard != null) { rgfw_free_impl(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
+	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
 
-	_gfx_ctx.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + data.length);
+	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, data.length);
 	sz length = data.length;
 	if (data.data[length - 1] != 0) length += 1;
 
 	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	rgfw_memcpy(dataPtr, (void*)data.data, data.length);
+	mem::copy(dataPtr, (void*)data.data, data.length);
 	dataPtr[length - 1] = 0;
 	_gfx_ctx.unixClipboard.data = dataPtr;
 	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;

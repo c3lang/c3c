@@ -7,7 +7,6 @@ import std::collections, std::math, libc, std::os::macos;
 
 excuse NSWINDOW_CREATION_FAILED;
 
-extern fn void* memcpy(void* dest, void* src, sz count);
 extern fn void* memset(void* dest, int value, sz count);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
@@ -613,7 +612,7 @@ fn CGRect ns_rect(double x, double y, double w, double h)
 fn void rgfw_monitorFromDisplay(CGDirectDisplayID display, GfxMonitor* mon)
 {
 	*mon = {};
-	rgfw_memcpy(&mon.name, "Display", 8);
+	mem::copy(&mon.name, "Display", 8);
 	CGRect bounds = cgDisplayBounds(display);
 	CGDisplayModeRef mode = cgDisplayCopyDisplayMode(display);
 	mon.origin = { (int)bounds.origin.x, (int)bounds.origin.y };
@@ -1397,11 +1396,11 @@ fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 	CGDirectDisplayID display = rgfw_monitorDisplay(monitor);
 	uint count = cgDisplayGammaTableCapacity(display);
 	if (ramp == null) return (sz)count;
-	float* red = (float*)rgfw_alloc_impl((sz)count * float::size);
-	float* green = (float*)rgfw_alloc_impl((sz)count * float::size);
-	float* blue = (float*)rgfw_alloc_impl((sz)count * float::size);
+	float* red = mem::alloc_array(float, count);
+	float* green = mem::alloc_array(float, count);
+	float* blue = mem::alloc_array(float, count);
 	uint actual = 0;
-	if (red == null || green == null || blue == null || cgGetDisplayTransferByTable(display, count, red, green, blue, &actual) != 0) { rgfw_free_impl(red); rgfw_free_impl(green); rgfw_free_impl(blue); return 0; }
+	if (red == null || green == null || blue == null || cgGetDisplayTransferByTable(display, count, red, green, blue, &actual) != 0) { free(red); free(green); free(blue); return 0; }
 	for (uint i = 0; i < actual; i++)
 	{
 		ramp.red[i] = (ushort)(red[i] * 65535.0);
@@ -1409,7 +1408,7 @@ fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 		ramp.blue[i] = (ushort)(blue[i] * 65535.0);
 	}
 	ramp.count = (sz)actual;
-	rgfw_free_impl(red); rgfw_free_impl(green); rgfw_free_impl(blue);
+	free(red); free(green); free(blue);
 	return (sz)actual;
 }
 
@@ -1417,10 +1416,10 @@ fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 {
 	if (ramp == null || ramp.count == 0) return false;
-	float* red = (float*)rgfw_alloc_impl(ramp.count * float::size);
-	float* green = (float*)rgfw_alloc_impl(ramp.count * float::size);
-	float* blue = (float*)rgfw_alloc_impl(ramp.count * float::size);
-	if (red == null || green == null || blue == null) { rgfw_free_impl(red); rgfw_free_impl(green); rgfw_free_impl(blue); return false; }
+	float* red = mem::alloc_array(float, ramp.count);
+	float* green = mem::alloc_array(float, ramp.count);
+	float* blue = mem::alloc_array(float, ramp.count);
+	if (red == null || green == null || blue == null) { free(red); free(green); free(blue); return false; }
 	for (sz i = 0; i < ramp.count; i++)
 	{
 		red[i] = (float)ramp.red[i] / 65535.0;
@@ -1428,7 +1427,7 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 		blue[i] = (float)ramp.blue[i] / 65535.0;
 	}
 	int err = cgSetDisplayTransferByTable(rgfw_monitorDisplay(monitor), (uint)ramp.count, red, green, blue);
-	rgfw_free_impl(red); rgfw_free_impl(green); rgfw_free_impl(blue);
+	free(red); free(green); free(blue);
 	return err == 0;
 }
 
@@ -1567,7 +1566,7 @@ fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, 
 	if (buffer != null && capacity > 0)
 	{
 		sz copyLen = len < capacity - 1 ? len : capacity - 1;
-		rgfw_memcpy(buffer, raw, copyLen);
+		mem::copy(buffer, raw, copyLen);
 		buffer[copyLen] = 0;
 		data.data = buffer;
 	}
@@ -1698,7 +1697,7 @@ fn RgfwEglContext* rgfw_window_getContext_EGL(GfxWindow* win) => win != null ? w
 fn void rgfw_window_deleteContext_EGL(GfxWindow* win, RgfwEglContext* ctx)
 {
 	rgfw_window_deleteContextPtr_EGL(win, ctx);
-	if (win != null && (win.src.gfxType & RGFW_GFX_OWNED_BY_RGFW)) rgfw_free_impl(ctx);
+	if (win != null && (win.src.gfxType & RGFW_GFX_OWNED_BY_RGFW)) free(ctx);
 }
 
 // public

@@ -8,8 +8,7 @@ import std::collections::list, std::math;
 // original C header only ever compiles one #ifdef backend at a time.
 
 
-extern fn void* memcpy(void* dest, void* src, sz count);
-extern fn void* memset(void* dest, int value, sz count);
+
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
 extern fn int chdir(char* path);
@@ -913,13 +912,13 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			{
 				uint length = dragQueryFileW(drop, i, null, 0);
 				if (length == 0) continue;
-				ushort* buffer = (ushort*)rgfw_alloc_impl((sz)(length + 1) * 2);
-				char* cbuffer = (char*)rgfw_alloc_impl((sz)length + 1);
+				ushort* buffer = (ushort*)malloc((sz)(length + 1) * 2);
+				char* cbuffer = (char*)malloc((sz)length + 1);
 				dragQueryFileW(drop, i, buffer, length + 1);
 				rgfw_createUTF8FromWideStringWin32(buffer, cbuffer, length);
 				rgfw_dataDropCallback(win, cbuffer, (sz)length + 1, RGFW_DATA_FILE);
-				rgfw_free_impl(buffer);
-				rgfw_free_impl(cbuffer);
+				free(buffer);
+				free(cbuffer);
 			}
 			dragFinish(drop);
 			break;
@@ -1286,9 +1285,9 @@ fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 	deleteDC(dc);
 	if (ramp != null)
 	{
-		rgfw_memcpy(ramp.red, &values[0], 512);
-		rgfw_memcpy(ramp.green, &values[256], 512);
-		rgfw_memcpy(ramp.blue, &values[512], 512);
+		mem::copy(ramp.red, &values[0], 512);
+		mem::copy(ramp.green, &values[256], 512);
+		mem::copy(ramp.blue, &values[512], 512);
 	}
 	return 256;
 }
@@ -1302,9 +1301,9 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_PLATFORM, "Win32: Gamma ramp size must be 256");
 		return false;
 	}
-	rgfw_memcpy(&values[0], ramp.red, 512);
-	rgfw_memcpy(&values[256], ramp.green, 512);
-	rgfw_memcpy(&values[512], ramp.blue, 512);
+	mem::copy(&values[0], ramp.red, 512);
+	mem::copy(&values[256], ramp.green, 512);
+	mem::copy(&values[512], ramp.blue, 512);
 	HDc dc = createDCW(&rgfw_wideDisplayName, (ushort*)&monitor.node.adapterName, null, null);
 	setDeviceGammaRamp(dc, &values);
 	deleteDC(dc);
@@ -1373,8 +1372,8 @@ fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 	if (enumDisplaySettingsW((ushort*)&adapter.deviceName, (uint)ENUM_CURRENT_SETTINGS, &dm) == 0) return;
 
 	GfxMonitorNode* node = rgfw_monitors_add(null);
-	rgfw_memcpy(&node.adapterName, &adapter.deviceName, 64);
-	if (dd != null) rgfw_memcpy(&node.deviceName, &dd.deviceName, 64);
+	mem::copy(&node.adapterName, &adapter.deviceName, 64);
+	if (dd != null) mem::copy(&node.deviceName, &dd.deviceName, 64);
 
 	if (dd != null) rgfw_createUTF8FromWideStringWin32((ushort*)&dd.deviceString, (char*)&node.mon.name, 127);
 	node.mon.name[127] = 0;

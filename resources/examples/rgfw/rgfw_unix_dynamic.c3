@@ -10,7 +10,6 @@ import std::collections::list, std::math, libc;
 // thin dispatchers that branch on rgfw_dynamicUsingWayland (set once at init
 // after runtime display-server detection).
 
-extern fn void* memcpy(void* dest, void* src, sz count);
 extern fn void* memset(void* dest, int value, sz count);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn char* strtok(char* str, char* delim);
@@ -665,7 +664,7 @@ fn void rgfw_unix_parseURI(GfxWindow* win, ZString data)
 		}
 
 		sz len = line.len();
-		ZString path = (ZString)rgfw_alloc_impl(len + 1);
+		ZString path = (ZString)malloc(len + 1);
 
 		sz index = 0;
 		while (line[0] != 0)
@@ -690,7 +689,7 @@ fn void rgfw_unix_parseURI(GfxWindow* win, ZString data)
 
 		path[len] = 0;
 		rgfw_dataDropCallback(win, path, len + 1, RGFW_DATA_FILE);
-		rgfw_free_impl(path);
+		free(path);
 	}
 }
 
@@ -1721,7 +1720,7 @@ fn void rgfw_wlOutputSetName(void* data, WlProxy* output, ZString name)
 	GfxMonitor* mon = &((GfxMonitorNode*)data).mon;
 	sz n = name.len();
 	if (n > 127) n = 127;
-	rgfw_memcpy(&mon.name, name, n);
+	mem::copy(&mon.name, name, n);
 	mon.name[n] = 0;
 }
 
@@ -1796,7 +1795,7 @@ fn void rgfw_wlCreateOutputs(WlProxy* registry, uint id)
 	while (prefix[n] != 0) { defaultName[n] = prefix[n]; n++; }
 	defaultName[n] = (char)('0' + (_gfx_ctx.monitors.count % 10));
 	defaultName[n + 1] = 0;
-	rgfw_memcpy(&mon.name, &defaultName, (sz)n + 2);
+	mem::copy(&mon.name, &defaultName, (sz)n + 2);
 
 	mon.scale = (Vec2)1;
 	mon.pixelRatio = 1.0f;
@@ -1896,10 +1895,10 @@ fn void rgfw_wlDataDeviceSelection(void* data, WlProxy* device, WlProxy* offer)
 	sz length = (sz)n;
 	if (buf[n - 1] != 0) length += 1;
 
-	if (_gfx_ctx.unixClipboard != null) rgfw_free_impl(_gfx_ctx.unixClipboard);
-	_gfx_ctx.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + (sz)n);
+	if (_gfx_ctx.unixClipboard != null) free(_gfx_ctx.unixClipboard);
+	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, n);
 	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	rgfw_memcpy(dataPtr, &buf, (sz)n);
+	mem::copy(dataPtr, &buf, (sz)n);
 	dataPtr[length - 1] = 0;
 	_gfx_ctx.unixClipboard.data = dataPtr;
 	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;

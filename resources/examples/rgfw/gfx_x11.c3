@@ -268,9 +268,9 @@ fn sz rgfw_monitor_getGammaRampPtr_X11(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 	XRRCrtcGamma* gamma = xRRGetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1);
 	if (ramp != null)
 	{
-		rgfw_memcpy(ramp.red, gamma.red, size * ushort::size);
-		rgfw_memcpy(ramp.green, gamma.green, size * ushort::size);
-		rgfw_memcpy(ramp.blue, gamma.blue, size * ushort::size);
+		mem::copy(ramp.red, gamma.red, size * ushort::size);
+		mem::copy(ramp.green, gamma.green, size * ushort::size);
+		mem::copy(ramp.blue, gamma.blue, size * ushort::size);
 	}
 	xRRFreeGamma(gamma);
 	return size;
@@ -286,9 +286,9 @@ fn bool rgfw_monitor_setGammaRamp_X11(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 		return false;
 	}
 	XRRCrtcGamma* gamma = xRRAllocGamma((int)ramp.count);
-	rgfw_memcpy(gamma.red, ramp.red, ramp.count * ushort::size);
-	rgfw_memcpy(gamma.green, ramp.green, ramp.count * ushort::size);
-	rgfw_memcpy(gamma.blue, ramp.blue, ramp.count * ushort::size);
+	mem::copy(gamma.red, ramp.red, ramp.count * ushort::size);
+	mem::copy(gamma.green, ramp.green, ramp.count * ushort::size);
+	mem::copy(gamma.blue, ramp.blue, ramp.count * ushort::size);
 	xRRSetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1, gamma);
 	xRRFreeGamma(gamma);
 	return true;
@@ -301,7 +301,7 @@ fn RgfwMouse* rgfw_createMouse_X11(char* data, int w, int h, GfxFormat format)
 	XcursorImage* native = rgfw_xcursorImageCreateSRC(w, h);
 	native.xhot = 0; native.yhot = 0;
 	mem::clear(native.pixels, (sz)(w * h * 4));
-	rgfw_memcpy(native.pixels, data, (sz)(w * h * 4));
+	mem::copy(native.pixels, data, (sz)(w * h * 4));
 	XCursor cursor = rgfw_xcursorImageLoadCursorSRC(_gfx_ctx.display, native);
 	rgfw_xcursorImageDestroySRC(native);
 	return (RgfwMouse*)cursor;
@@ -366,7 +366,7 @@ fn void rgfw_deinitPlatform_X11()
 		xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&rgfw_x11ImInitCallback, null);
 	}
 	if (_gfx_ctx.im != null) { xCloseIM(_gfx_ctx.im); _gfx_ctx.im = null; }
-	if (_gfx_ctx.unixClipboard != null) { rgfw_free_impl(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
+	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
 	if (_gfx_ctx.hiddenMouse != null) { rgfw_freeMouse(_gfx_ctx.hiddenMouse); _gfx_ctx.hiddenMouse = null; }
 	if (_gfx_ctx.helperWindow != 0) xDestroyWindow(_gfx_ctx.display, _gfx_ctx.helperWindow);
 	if (_gfx_ctx.display != null) xCloseDisplay(_gfx_ctx.display);
@@ -738,7 +738,7 @@ fn void rgfw_pollMonitors_X11()
 
 		sz n = info.name.len();
 		if (n > 127) n = 127;
-		rgfw_memcpy(&monitor.name, info.name, n);
+		mem::copy(&monitor.name, info.name, n);
 		monitor.name[n] = 0;
 
 		if (physW > 0.0f && physH > 0.0f)
@@ -999,14 +999,14 @@ fn bool rgfw_writeClipboard_X11(GfxDataTransfer* data)
 		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_CLIPBOARD, "X11 failed to become owner of clipboard selection");
 		return false;
 	}
-	if (_gfx_ctx.unixClipboard != null) { rgfw_free_impl(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
+	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
 
 	sz length = data.length;
 	if (data.data[data.length - 1] != 0) length += 1;
 
-	_gfx_ctx.unixClipboard = (GfxDataTransfer*)rgfw_alloc_impl(GfxDataTransfer::size + data.length);
+	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, data.length);
 	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	rgfw_memcpy(dataPtr, (void*)data.data, data.length);
+	mem::copy(dataPtr, (void*)data.data, data.length);
 	dataPtr[length - 1] = 0;
 	_gfx_ctx.unixClipboard.data = dataPtr;
 	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;
@@ -1026,7 +1026,7 @@ fn bool rgfw_readClipboardPtr_X11(RgfwDataTransferType requestedType, char* buff
 		if (buffer != null && _gfx_ctx.unixClipboard.data != null)
 		{
 			if (_gfx_ctx.unixClipboard.length > capacity) return false;
-			rgfw_memcpy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
+			mem::copy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
 		}
 		dataTransfer.type = RGFW_DATA_TEXT;
 		return true;
@@ -1056,7 +1056,7 @@ fn bool rgfw_readClipboardPtr_X11(RgfwDataTransferType requestedType, char* buff
 	if (size > (CULong)capacity && buffer != null) { ret = false; }
 	else if ((target == _gfx_ctx.utf8String || target == 31) && buffer != null)
 	{
-		rgfw_memcpy(buffer, data, (sz)size);
+		mem::copy(buffer, data, (sz)size);
 		buffer[length - 1] = 0;
 		xFree(data);
 	}
@@ -1321,7 +1321,7 @@ fn bool rgfw_window_setIconEx_X11(GfxWindow* win, char* dataSrc, int w, int h, G
 		xSetWMHints(_gfx_ctx.display, win.src.window, &wmHints);
 	}
 
-	rgfw_free_impl(data);
+	free(data);
 	xFlush(_gfx_ctx.display);
 	return res;
 }

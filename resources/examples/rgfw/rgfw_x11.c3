@@ -11,8 +11,7 @@ import std::collections::list, std::math, libc;
 // exactly as the original does when RGFW_NO_X11_CURSOR_PRELOAD etc. are not set.
 
 
-extern fn void* memcpy(void* dest, void* src, sz count);
-extern fn void* memset(void* dest, int value, sz count);
+
 extern fn char* strstr(char* haystack, char* needle);
 extern fn char* strtok(char* str, char* delim);
 extern fn char* strtokR(char* str, char* delim, char** saveptr) @cname("strtok_r");
@@ -650,7 +649,7 @@ fn void rgfw_unix_parseURI(GfxWindow* win, ZString data)
 		}
 
 		sz len = line.len();
-		ZString path = (ZString)rgfw_alloc_impl(len + 1);
+		ZString path = (ZString)malloc(len + 1);
 
 		sz index = 0;
 		while (line[0] != 0)
@@ -675,7 +674,7 @@ fn void rgfw_unix_parseURI(GfxWindow* win, ZString data)
 
 		path[len] = 0;
 		rgfw_dataDropCallback(win, path, len + 1, RGFW_DATA_FILE);
-		rgfw_free_impl(path);
+		free(path);
 	}
 }
 

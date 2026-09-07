@@ -15,7 +15,6 @@ import std::math;
 // JS to call back into (key events, drag-drop) are marked @export so the host
 // can find them.
 
-extern fn void* memcpy(void* dest, void* src, sz count);
 extern fn void* memset(void* dest, int value, sz count);
 extern fn char* strstr(char* haystack, char* needle);
 extern fn float powf(float x, float y);
