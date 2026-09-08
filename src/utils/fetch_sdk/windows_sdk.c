@@ -151,6 +151,7 @@ static void copy_to_msvc_sdk(const char *src, const char *dst)
 				{ "ole32.lib", "Ole32.lib" },
 				{ "oleaut32.lib", "OleAut32.lib" },
 				{ "uuid.lib", "Uuid.lib" },
+				{ "winhttp.lib", "Winhttp.lib" },
 				{ "comdlg32.lib", "ComDlg32.lib" },
 				{ "activitycoordinatortypes.h", "ActivityCoordinatorTypes.h" },
 				{ "activscp.h", "ActivScp.h" },
