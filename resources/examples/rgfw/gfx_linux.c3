@@ -220,7 +220,7 @@ fn bool rgfw_getGlobalMouse(int* fX, int* fY)
 }
 
 // public
-fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname)
+fn GfxFn _get_opengl_proc_native(ZString procname)
 {
 	$switch:
 		$case WAYLAND_ONLY:
@@ -283,19 +283,19 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 }
 
 // public
-fn bool rgfw_loadGL()
+fn void? _load_opengl_native() @private
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return rgfw_loadGL_Wayland();
+			return _load_opengl_wayland();
 		$case X11_ONLY:
-			return rgfw_loadGL_X11();
+			return _load_opengl_x11();
 		$default:
 			if (gfx_use_wayland)
 			{
-				return rgfw_loadGL_Wayland();
+				return _load_opengl_wayland();
 			}
-			return rgfw_loadGL_X11();
+			return _load_opengl_x11();
 	$endswitch
 }
 

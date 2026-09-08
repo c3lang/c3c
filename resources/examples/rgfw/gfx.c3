@@ -4,6 +4,7 @@ import std::math, std::os::macos, libc;
 alias GfxPoint = int[<2>];
 alias GfxSize = int[<2>];
 
+
 const bool RGFW_BUILD_MACOS = $feat(MACOS);
 const bool RGFW_BUILD_X11 = $feat(X11) || $feat(X11_WAYLAND);
 const bool RGFW_BUILD_WAYLAND = $feat(WAYLAND);
@@ -18,6 +19,13 @@ excuse
 {
 	GFX_CONTEXT_NOT_INITIALIZED,
 	SURFACE_CREATION_FAILED,
+	MISSING_VULKAN_LIB,
+	MISSING_OPENGL_LIB,
+	MISSING_EGL_LIB,
+	MISSING_VK_GET_INSTANCE_PROC_ADDR,
+	MISSING_GL_GET_PROC_ADDR,
+	MISSING_EGL_GET_PROC_ADDR,
+	EGL_BINDING_FAILED,
 }
 
 const MAX_EVENTS = 32;
@@ -827,17 +835,17 @@ fn int init(String class_name, GfxInitOption options)
 	if (_gfx_ctx.initialized) return 1;
 	class_name = class_name ?: "C3GFX";
 	_gfx_ctx = { .initialized = true };
-	if (options & INIT_OPEN_GL && !rgfw_loadGL())
+	if (options & INIT_OPEN_GL && @catch(load_opengl()))
 	{
 		log::error("Failed to load the OpenGL library", category: log::CATEGORY_VIDEO);
 		return -1;
 	}
-	if (options & INIT_EGL && !load_egl())
+	if (options & INIT_EGL && @catch(_load_egl_native()))
 	{
 		log::error("Failed to load the EGL library", category: log::CATEGORY_VIDEO);
 		return -1;
 	}
-	if (options & INIT_VULKAN && !rgfw_loadVulkan())
+	if (options & INIT_VULKAN && @catch(_load_vulkan_native()))
 	{
 		log::error("Failed to load the Vulkan library", category: log::CATEGORY_VIDEO);
 		return -1;
@@ -872,7 +880,7 @@ fn void finalize()
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
 	rgfw_deinitPlatform();
 	unload_egl();
-	unload_gl();
+	unload_opengl();
 	_gfx_ctx.root = null;
 	_gfx_ctx.windowCount = 0;
 	_gfx_ctx = {};
@@ -2172,6 +2180,12 @@ fn void GfxWindow.set_dnd(&self, bool allow)
 	$endif
 }
 
+fn GfxFn get_opengl_proc(ZString s)
+{
+	return _get_opengl_proc_native(s);
+}
+
+
 // public
 fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len) @feat(!WASM)
 {
@@ -2188,12 +2202,35 @@ fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len) @fea
 	return false;
 }
 
+fn void? load_egl()
+{
+	return _load_egl_native() @inline;
+}
 
+fn void unload_egl()
+{
+	_unload_egl_native() @inline;
+}
 
-// public
+fn void? load_opengl()
+{
+	return _load_opengl_native() @inline;
+
+}
+
+fn void unload_opengl()
+{
+	_unload_opengl_native() @inline;
+}
+
+fn void? load_vulkan()
+{
+	return _load_vulkan_native() @inline;
+}
+
 fn void unload_vulkan()
 {
-	unload_vulkan_native() @inline;
+	_unload_vulkan_native() @inline;
 }
 
 fn void GfxWindow.show_mouse(&self, bool show)

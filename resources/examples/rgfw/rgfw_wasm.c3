@@ -86,8 +86,6 @@ struct RgfwWindowSrc
 }
 
 // public
-fn bool rgfw_loadGL() => true;
-// public
 fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
 
 alias WGPUInstance = void*;
@@ -586,7 +584,7 @@ fn void* rgfw_getCurrentContext_OpenGL() => (void*)(uptr)rgfwJsWebglGetCurrentCo
 // public
 fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfwJsExtensionSupported(extension, len) != 0;
 // public
-fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname) => rgfwJsGetProcAddress(procname);
+fn GfxFn _get_opengl_proc_native(ZString procname) => rgfwJsGetProcAddress(procname);
 
 // public
 fn void rgfw_deinitPlatform() {}
@@ -647,7 +645,3 @@ fn void rgfw_window_minimizePlatform(GfxWindow* win) {}
 fn void rgfw_window_setFloating(GfxWindow* win, bool floating) {}
 fn void rgfw_waitForEvent(int waitMS) {}
 
-// public
-fn bool load_egl() => false;
-// public
-fn bool rgfw_loadVulkan() => false;

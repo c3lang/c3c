@@ -10,6 +10,15 @@ struct GfxNativeImage
 	void* native2;
 }
 
+fn void? _load_opengl_native()
+{
+	CFStringRef bundleName = cfStringCreateWithCString(null, "com.apple.opengl", 0x0600);
+	defer cfRelease(bundleName);
+	_gfx_ctx.nativeGL_handle = cfBundleGetBundleWithIdentifier(bundleName);
+	if (!_gfx_ctx.nativeGL_handle) return MISSING_OPENGL_LIB~;
+	_gfx_ctx.glGetProcAddress = (void*)&_get_opengl_proc_native;
+}
+
 fn bool _window_is_floating_native(GfxWindow* win)
 {
 	if (!win) return false;

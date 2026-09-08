@@ -145,23 +145,6 @@ struct VkWaylandSurfaceCreateInfoKHR { int sType; void* pNext; uint flags; WlDis
 alias RgfwVkCreateWaylandSurfaceKHRProc = fn VkResult(VkInstance instance, VkWaylandSurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
 ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_wayland_surface"};
 
-// public
-fn bool rgfw_loadVulkan()
-{
-	if (_gfx_ctx.vulkan_handle != null) return true;
-	ZString[2] names = {"libvulkan.so.1", "libvulkan.so"};
-	for (sz i = 0; i < 2; i++)
-	{
-		_gfx_ctx.vulkan_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
-		if (_gfx_ctx.vulkan_handle != null) break;
-	}
-	if (_gfx_ctx.vulkan_handle == null) return false;
-	void* proc = libc::dlsym(_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
-	if (proc == null) return false;
-	_gfx_ctx.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
-	return true;
-}
-
 
 // public
 fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)

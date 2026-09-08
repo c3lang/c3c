@@ -165,36 +165,12 @@ ObjcClass rgfw_osxViewClass;
 
 
 // public
-fn bool rgfw_loadGL()
-{
-	CFStringRef bundleName = cfStringCreateWithCString(null, "com.apple.opengl", 0x0600);
-	_gfx_ctx.nativeGL_handle = cfBundleGetBundleWithIdentifier(bundleName);
-	if (bundleName != null) cfRelease(bundleName);
-	_gfx_ctx.glGetProcAddress = (void*)&rgfw_getProcAddress_OpenGL;
-	return _gfx_ctx.nativeGL_handle != null;
-}
 
 
 const int VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT = 1000217000;
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
 ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_EXT_metal_surface"};
 
-// public
-fn bool rgfw_loadVulkan()
-{
-	if (_gfx_ctx.vulkan_handle != null) return true;
-	ZString[3] names = {"libvulkan.1.dylib", "libvulkan.dylib", "libMoltenVK.dylib"};
-	for (sz i = 0; i < 3; i++)
-	{
-		_gfx_ctx.vulkan_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
-		if (_gfx_ctx.vulkan_handle != null) break;
-	}
-	if (_gfx_ctx.vulkan_handle == null) return false;
-	void* proc = libc::dlsym(_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
-	if (proc == null) return false;
-	_gfx_ctx.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
-	return true;
-}
 
 // public
 fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
@@ -338,7 +314,7 @@ fn RgfwGlContext* rgfw_window_getContext_OpenGL(GfxWindow* win)
 // public
 fn bool rgfw_extensionSupported_OpenGL(ZString extension, sz len)
 {
-	if (rgfw_extensionSupported_base(extension, len, &rgfw_getProcAddress_OpenGL)) return true;
+	if (rgfw_extensionSupported_base(extension, len, &_get_opengl_proc_native)) return true;
 	return rgfw_extensionSupportedPlatform_OpenGL(extension, len);
 }
 
@@ -356,7 +332,7 @@ fn GfxWindow* rgfw_getCurrentWindow_OpenGL() => _gfx_ctx.current;
 fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => false;
 
 // public
-fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname)
+fn GfxFn _get_opengl_proc_native(ZString procname)
 {
 	if (!_gfx_ctx.nativeGL_handle || !procname) return null;
 	CFStringRef symbolName = cfStringCreateWithCString(null, procname, 0x0600);
@@ -1186,7 +1162,7 @@ fn RgfwEglContext* rgfw_window_createContext_EGL(GfxWindow* win, RgfwGlHints* hi
 fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, RgfwGlHints* hints)
 {
 	if (win == null || ctx == null || hints == null) return false;
-	if (load_egl() == false) return false;
+	if (@catch(_load_egl_native())) return false;
 	if (_gfx_ctx.egl_display == null)
 	{
 		_gfx_ctx.egl_display = rgfw_eglGetDisplay(null);

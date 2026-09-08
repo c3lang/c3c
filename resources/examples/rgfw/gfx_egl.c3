@@ -1,14 +1,7 @@
-module std::gfx;
-// public
-fn bool load_egl() @weak
-{
-	return false;
-}
+module std::gfx @private;
 
-// public
-fn void unload_egl() @weak
-{
-}
+fn void? _load_egl_native() @private @weak => NOT_IMPLEMENTED~;
+fn void _unload_egl_native() @private @weak { }
 
 module std::gfx @feat(MACOS, WAYLAND, X11, X11_WAYLAND);
 import libc;
@@ -58,7 +51,7 @@ EglGetConfigAttribProc rgfw_eglGetConfigAttrib;
 excuse PROC_LOAD_FAILED;
 
 // public
-fn void unload_egl()
+fn void _unload_egl_native() @private
 {
 	if (_gfx_ctx.egl_handle == null) return;
 	if (_gfx_ctx.egl_display != null && rgfw_eglTerminate != null) rgfw_eglTerminate((EglDisplay)_gfx_ctx.egl_display);
@@ -111,22 +104,15 @@ fn void? bind_egl() @local
 	rgfw_eglGetConfigAttrib = rgfw_eglProc("eglGetConfigAttrib")!;
 }
 // public
-fn bool load_egl()
+fn void? _load_egl_native() @private
 {
-	if (_gfx_ctx.egl_handle) return true;
-	ZString[5] names = {"libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll"};
-	foreach (name : names)
-	{
-		_gfx_ctx.egl_handle = libc::dlopen(name, RTLD_LAZY | RTLD_LOCAL);
-		if (_gfx_ctx.egl_handle) break;
-	}
-	if (!_gfx_ctx.egl_handle) return false;
+	if (_gfx_ctx.egl_handle) return;
+	_gfx_ctx.egl_handle = _dlopen_any("libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll") ?? MISSING_EGL_LIB~!;
 	void* getProc = libc::dlsym(_gfx_ctx.egl_handle, "eglGetProcAddress");
-	if (getProc == null) return false;
+	if (!getProc) return MISSING_EGL_GET_PROC_ADDR~;
 	rgfw_eglGetProcAddress = (EglGetProcAddressProc)getProc;
 	_gfx_ctx.eglGetProcAddress = getProc;
-	if (catch bind_egl()) return false;
-	return true;
+	if (catch bind_egl()) return EGL_BINDING_FAILED~;
 }
 
 // public

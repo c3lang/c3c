@@ -498,43 +498,37 @@ fn int rgfw_initPlatform_X11(String class_name, GfxInitOption flags)
 }
 
 // private
-fn bool rgfw_loadGL_X11()
+fn void? _load_opengl_x11()
 {
-	if (_gfx_ctx.nativeGL_handle != null && _gfx_ctx.glGetProcAddress != null) return true;
-	ZString[3] glxSonames = {"libGLX.so.0", "libGL.so.1", "libGL.so"};
-	for (sz i = 0; i < 3; i++)
-	{
-		_gfx_ctx.nativeGL_handle = libc::dlopen(glxSonames[i], RTLD_LAZY | RTLD_LOCAL);
-		if (_gfx_ctx.nativeGL_handle != null) break;
-	}
-	if (_gfx_ctx.nativeGL_handle == null) return false;
+	if (_gfx_ctx.nativeGL_handle && _gfx_ctx.glGetProcAddress) return;
+	_gfx_ctx.nativeGL_handle = _dlopen_any("libGLX.so.0", "libGL.so.1", "libGL.so") ?? MISSING_OPENGL_LIB~!;
 	void* ptr = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetProcAddress");
-	_gfx_ctx.glGetProcAddress = ptr;
-
-	rgfw_glXChooseVisual = (RGFW_glXChooseVisualProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseVisual");
-	rgfw_glXCreateContext = (RGFW_glXCreateContextProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContext");
-	rgfw_glXMakeCurrent = (RGFW_glXMakeCurrentProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXMakeCurrent");
-	rgfw_glXGetCurrentContext = (RGFW_glXGetCurrentContextProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetCurrentContext");
-	rgfw_glXSwapBuffers = (RGFW_glXSwapBuffersProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapBuffers");
-	rgfw_glXGetVisualFromFBConfig = (RGFW_glXGetVisualFromFBConfigProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetVisualFromFBConfig");
-	rgfw_glXGetFBConfigAttrib = (RGFW_glXGetFBConfigAttribProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetFBConfigAttrib");
-	rgfw_glXGetProcAddressARB = (RGFW_glXGetProcAddressARBProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetProcAddressARB");
-	rgfw_glXChooseFBConfig = (RGFW_glXChooseFBConfigProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseFBConfig");
-	rgfw_glXDestroyContext = (RGFW_glXDestroyContextProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyContext");
-	rgfw_glXCreateWindow = (RGFW_glXCreateWindowProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateWindow");
-	rgfw_glXDestroyWindow = (RGFW_glXDestroyWindowProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyWindow");
-	rgfw_glXQueryExtensionsString = (RGFW_glXQueryExtensionsStringProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXQueryExtensionsString");
-	rgfw_glXCreateContextAttribsARB = (RGFW_glXCreateContextAttribsARBProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContextAttribsARB");
-	rgfw_glXSwapIntervalEXT = (RGFW_glXSwapIntervalEXTProc)libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapIntervalEXT");
-	if (rgfw_glXSwapIntervalEXT == null)
+	if (!ptr) return MISSING_GL_GET_PROC_ADDR~;
+	_gfx_ctx.glGetProcAddress        = ptr;
+	rgfw_glXChooseVisual             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseVisual");
+	rgfw_glXCreateContext            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContext");
+	rgfw_glXMakeCurrent              = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXMakeCurrent");
+	rgfw_glXGetCurrentContext        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetCurrentContext");
+	rgfw_glXSwapBuffers              = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapBuffers");
+	rgfw_glXGetVisualFromFBConfig    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetVisualFromFBConfig");
+	rgfw_glXGetFBConfigAttrib        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetFBConfigAttrib");
+	rgfw_glXGetProcAddressARB        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetProcAddressARB");
+	rgfw_glXChooseFBConfig           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseFBConfig");
+	rgfw_glXDestroyContext           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyContext");
+	rgfw_glXCreateWindow             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateWindow");
+	rgfw_glXDestroyWindow            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyWindow");
+	rgfw_glXQueryExtensionsString    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXQueryExtensionsString");
+	rgfw_glXCreateContextAttribsARB  = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContextAttribsARB");
+	rgfw_glXSwapIntervalEXT          = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapIntervalEXT");
+	if (!rgfw_glXSwapIntervalEXT)
 	{
 		ZString[2] array = {"GLX_MESA_swap_control", "GLX_SGI_swap_control"};
-		for (sz i = 0; i < 2 && rgfw_glXSwapIntervalNative == null; i++)
+		foreach (name : array)
 		{
-			rgfw_glXSwapIntervalNative = (RGFW_glXSwapIntervalNativeProc)libc::dlsym(_gfx_ctx.nativeGL_handle, array[i]);
+			rgfw_glXSwapIntervalNative = libc::dlsym(_gfx_ctx.nativeGL_handle, name);
+			if (rgfw_glXSwapIntervalNative) break;
 		}
 	}
-	return true;
 }
 
 // private
@@ -1776,22 +1770,6 @@ fn bool rgfw_waitForShowEvent_X11(GfxWindow* win)
 	$endif
 }
 
-// public
-fn bool rgfw_loadVulkan()
-{
-	if (_gfx_ctx.vulkan_handle != null) return true;
-	ZString[3] names = {"libvulkan.so.1", "libvulkan.so", "libMoltenVK.so"};
-	for (sz i = 0; i < 3; i++)
-	{
-		_gfx_ctx.vulkan_handle = libc::dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
-		if (_gfx_ctx.vulkan_handle != null) break;
-	}
-	if (_gfx_ctx.vulkan_handle == null) return false;
-	void* proc = libc::dlsym(_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
-	if (proc == null) return false;
-	_gfx_ctx.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
-	return true;
-}
 
 // private
 fn void rgfw_toggleXMaximized(GfxWindow* win, bool maximized)

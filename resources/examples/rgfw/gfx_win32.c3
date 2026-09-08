@@ -1,4 +1,5 @@
 module std::gfx @feat(WIN32) @private;
+import std::os::win32;
 
 fn void _window_show_native(GfxWindow* win)
 {
@@ -12,7 +13,7 @@ fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFor
 
 	if (!data)
 	{
-		HIcon defaultIcon = loadIconA(null, (char*)(uptr)32512 /* IDI_APPLICATION */);
+		Win32_HICON defaultIcon = loadIconA(null, (char*)(uptr)32512 /* IDI_APPLICATION */);
 		if (type & WINDOW) sendMessage(win.src.window, 0x0080 /* WM_SETICON */, 0, (iptr)defaultIcon);
 		if (type & TASKBAR) sendMessage(win.src.window, 0x0080, 1, (iptr)defaultIcon);
 		return true;
@@ -54,7 +55,7 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 		uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
 		uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
 		adjustWindowRectEx(&rect, style, 0, exStyle);
-		setWindowPos(win.src.window, (HWnd*)(uptr)0, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
+		setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
 
 		win.internal.flags.fullscreen = false;
 		win.bounds = win.internal.old_bounds;
@@ -66,11 +67,11 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	win.internal.flags.fullscreen = true;
 	_window_set_border_native(win, false);
 
-	setWindowPos(win.src.window, (HWnd*)(uptr)(-1) /* HWND_TOPMOST */, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
+	setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1) /* HWND_TOPMOST */, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
 	win.origin = mon.origin;
 
 	rgfw_monitor_scaleToWindow(mon, win);
-	setWindowPos(win.src.window, (HWnd*)(uptr)(-1), 0, 0, mon.mode.w, mon.mode.h, 0x0200 | 0x0020 | 0x0040 | 0x0002);
+	setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, mon.mode.w, mon.mode.h, 0x0200 | 0x0020 | 0x0040 | 0x0002);
 	win.width = mon.mode.w; win.height = mon.mode.h;
 }
 
@@ -81,7 +82,7 @@ fn void _window_resize_native(GfxWindow* win, int w, int h)
 	uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
 	uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
 	adjustWindowRectEx(&rect, style, 0, exStyle);
-	setWindowPos(win.src.window, (HWnd*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
+	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
 }
 
 

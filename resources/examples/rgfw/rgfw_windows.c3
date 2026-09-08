@@ -1,5 +1,5 @@
 module std::gfx @feat(WIN32) @link("user32", "gdi32", "shell32", "advapi32", "dwmapi", "opengl32", "winmm");
-import std::collections::list, std::math;
+import std::collections::list, std::math, std::os::win32;
 
 // C3 port of the Win32/WGL RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
 // Mechanical, line-by-line style translation of the RGFW_WINDOWS implementation.
@@ -14,24 +14,16 @@ struct Timespec { long tv_sec; CLong tv_nsec; }
 
 
 // ---- Win32 base types ----
-typedef HWnd = void;
-typedef HModule = void;
-alias HDc = void*;
-alias HIcon = void*;
-alias HCursor = void*;
-alias HBitmap = void*;
-alias HMonitor = void*;
 alias HGlrc = void*;
 alias HRgn = void*;
-alias HBrush = void*;
 alias HGdiObj = void*;
 alias HRawInput = void*;
-alias WndProc = fn iptr(HWnd*, uint, sz, iptr);
+alias WndProc = fn iptr(Win32_HWND*, uint, sz, iptr);
 
 struct Point { int x, y; }
 struct Rect { int left, top, right, bottom; }
-struct Msg { HWnd* hwnd; uint message; sz wParam; iptr lParam; uint time; Point pt; }
-struct WndClassW { uint style; WndProc wndProc; int clsExtra; int wndExtra; void* hInstance; HIcon hIcon; HCursor hCursor; HBrush hbrBackground; ushort* menuName; ushort* className; }
+struct Msg { Win32_HWND* hwnd; uint message; sz wParam; iptr lParam; uint time; Point pt; }
+struct WndClassW { uint style; WndProc wndProc; int clsExtra; int wndExtra; void* hInstance; Win32_HICON hIcon; Win32_HCURSOR hCursor; Win32_HBRUSH hbrBackground; ushort* menuName; ushort* className; }
 
 struct PixelFormatDescriptor
 {
@@ -67,7 +59,7 @@ struct BitmapV5Header
 }
 const uint BI_RGB = 0;
 
-struct IconInfo { int fIcon; uint xHotspot, yHotspot; HBitmap hbmMask; HBitmap hbmColor; }
+struct IconInfo { int fIcon; uint xHotspot, yHotspot; Win32_HBITMAP hbmMask; Win32_HBITMAP hbmColor; }
 
 struct DwmBlurBehind { uint dwFlags; int fEnable; HRgn hRgnBlur; int fTransitionOnMaximized; }
 
@@ -110,7 +102,7 @@ const uint SW_MINIMIZE = 6;
 const uint SW_RESTORE = 9;
 const uint SW_HIDE = 0;
 
-struct RawInputDevice { ushort usagePage, usage; uint flags; HWnd* target; }
+struct RawInputDevice { ushort usagePage, usage; uint flags; Win32_HWND* target; }
 const uint RIDEV_REMOVE = 0x00000001;
 
 struct RawInputHeader { uint dwType; uint dwSize; void* hDevice; sz wParam; }
@@ -127,7 +119,7 @@ const int SM_YVIRTUALSCREEN = 77;
 const int SM_CXVIRTUALSCREEN = 78;
 const int SM_CYVIRTUALSCREEN = 79;
 
-struct FlashWInfo { uint cbSize; HWnd* hwnd; uint dwFlags; uint uCount; uint dwTimeout; }
+struct FlashWInfo { uint cbSize; Win32_HWND* hwnd; uint dwFlags; uint uCount; uint dwTimeout; }
 const uint FLASHW_STOP = 0;
 const uint FLASHW_TRAY = 2;
 const uint FLASHW_TIMERNOFG = 12;
@@ -135,96 +127,92 @@ const uint FLASHW_TIMERNOFG = 12;
 struct MinMaxInfo { Point ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize; }
 
 // ---- extern Win32 functions (kernel32/user32/gdi32/shell32/dwmapi) ----
-extern fn HModule* loadLibraryA(ZString name) @cname("LoadLibraryA");
-extern fn int freeLibrary(HModule* hmod) @cname("FreeLibrary");
-extern fn void* getProcAddress(HModule* hmod, ZString name) @cname("GetProcAddress");
-extern fn HModule* getModuleHandleW(ushort* name) @cname("GetModuleHandleW");
+extern fn Win32_HMODULE* getModuleHandleW(ushort* name) @cname("GetModuleHandleW");
 extern fn int multiByteToWideChar(uint codePage, uint flags, ZString str, int cbMultiByte, ushort* out, int cchWideChar) @cname("MultiByteToWideChar");
 extern fn int wideCharToMultiByte(uint codePage, uint flags, ushort* wstr, int cchWideChar, char* out, int cbMultiByte, char* defChar, int* usedDefChar) @cname("WideCharToMultiByte");
 
 extern fn ushort registerClassW(WndClassW* wc) @cname("RegisterClassW");
 extern fn int unregisterClassW(ushort* className, void* instance) @cname("UnregisterClassW");
-extern fn HWnd* createWindowExW(uint exStyle, ushort* className, ushort* windowName, uint style, int x, int y, int w, int h, HWnd* parent, void* menu, void* instance, void* param) @cname("CreateWindowExW");
-extern fn int destroyWindow(HWnd* wnd) @cname("DestroyWindow");
-extern fn iptr defWindowProcW(HWnd* wnd, uint msg, sz wParam, iptr lParam) @cname("DefWindowProcW");
-extern fn int peekMessageA(Msg* msg, HWnd* wnd, uint msgFilterMin, uint msgFilterMax, uint removeMsg) @cname("PeekMessageA");
+extern fn int destroyWindow(Win32_HWND* wnd) @cname("DestroyWindow");
+extern fn iptr defWindowProcW(Win32_HWND* wnd, uint msg, sz wParam, iptr lParam) @cname("DefWindowProcW");
+extern fn int peekMessageA(Msg* msg, Win32_HWND* wnd, uint msgFilterMin, uint msgFilterMax, uint removeMsg) @cname("PeekMessageA");
 extern fn int translateMessage(Msg* msg) @cname("TranslateMessage");
 extern fn iptr dispatchMessageA(Msg* msg) @cname("DispatchMessageA");
-extern fn int postMessageW(HWnd* wnd, uint msg, sz wParam, iptr lParam) @cname("PostMessageW");
-extern fn int postMessage(HWnd* wnd, uint msg, sz wParam, iptr lParam) @cname("PostMessageA");
-extern fn int sendMessage(HWnd* wnd, uint msg, sz wParam, iptr lParam) @cname("SendMessageA");
+extern fn int postMessageW(Win32_HWND* wnd, uint msg, sz wParam, iptr lParam) @cname("PostMessageW");
+extern fn int postMessage(Win32_HWND* wnd, uint msg, sz wParam, iptr lParam) @cname("PostMessageA");
+extern fn int sendMessage(Win32_HWND* wnd, uint msg, sz wParam, iptr lParam) @cname("SendMessageA");
 extern fn uint msgWaitForMultipleObjects(uint count, void* handles, int waitAll, uint milliseconds, uint wakeMask) @cname("MsgWaitForMultipleObjects");
 
-extern fn void* setPropW(HWnd* wnd, ushort* name, void* data) @cname("SetPropW");
-extern fn void* getPropW(HWnd* wnd, ushort* name) @cname("GetPropW");
-extern fn void* removePropW(HWnd* wnd, ushort* name) @cname("RemovePropW");
+extern fn void* setPropW(Win32_HWND* wnd, ushort* name, void* data) @cname("SetPropW");
+extern fn void* getPropW(Win32_HWND* wnd, ushort* name) @cname("GetPropW");
+extern fn void* removePropW(Win32_HWND* wnd, ushort* name) @cname("RemovePropW");
 
-extern fn int getWindowRect(HWnd* wnd, Rect* rect) @cname("GetWindowRect");
-extern fn int getClientRect(HWnd* wnd, Rect* rect) @cname("GetClientRect");
+extern fn int getWindowRect(Win32_HWND* wnd, Rect* rect) @cname("GetWindowRect");
+extern fn int getClientRect(Win32_HWND* wnd, Rect* rect) @cname("GetClientRect");
 extern fn int adjustWindowRectEx(Rect* rect, uint style, int menu, uint exStyle) @cname("AdjustWindowRectEx");
-extern fn int setWindowPos(HWnd* wnd, HWnd* insertAfter, int x, int y, int cx, int cy, uint flags) @cname("SetWindowPos");
-extern fn CLong setWindowLongW(HWnd* wnd, int index, CLong newLong) @cname("SetWindowLongW");
-extern fn CLong setWindowLong(HWnd* wnd, int index, CLong newLong) @cname("SetWindowLongA");
-extern fn CLong getWindowLongW(HWnd* wnd, int index) @cname("GetWindowLongW");
-extern fn iptr getWindowLongPtr(HWnd* wnd, int index) @cname("GetWindowLongPtrA");
-extern fn int showWindow(HWnd* wnd, int cmdShow) @cname("ShowWindow");
-extern fn int isWindowVisible(HWnd* wnd) @cname("IsWindowVisible");
-extern fn int isZoomed(HWnd* wnd) @cname("IsZoomed");
-extern fn int getWindowPlacement(HWnd* wnd, WindowPlacement* placement) @cname("GetWindowPlacement");
-extern fn int bringWindowToTop(HWnd* wnd) @cname("BringWindowToTop");
-extern fn HWnd* setForegroundWindow(HWnd* wnd) @cname("SetForegroundWindow");
-extern fn HWnd* setFocus(HWnd* wnd) @cname("SetFocus");
-extern fn int setWindowTextW(HWnd* wnd, ushort* text) @cname("SetWindowTextW");
-extern fn int setLayeredWindowAttributes(HWnd* wnd, uint crKey, char alpha, uint flags) @cname("SetLayeredWindowAttributes");
-extern fn int getLayeredWindowAttributes(HWnd* wnd, uint* crKey, char* alpha, uint* flags) @cname("GetLayeredWindowAttributes");
-extern fn HWnd* monitorFromWindow(HWnd* wnd, uint flags) @cname("MonitorFromWindow");
+extern fn int setWindowPos(Win32_HWND* wnd, Win32_HWND* insertAfter, int x, int y, int cx, int cy, uint flags) @cname("SetWindowPos");
+extern fn CLong setWindowLongW(Win32_HWND* wnd, int index, CLong newLong) @cname("SetWindowLongW");
+extern fn CLong setWindowLong(Win32_HWND* wnd, int index, CLong newLong) @cname("SetWindowLongA");
+extern fn CLong getWindowLongW(Win32_HWND* wnd, int index) @cname("GetWindowLongW");
+extern fn iptr getWindowLongPtr(Win32_HWND* wnd, int index) @cname("GetWindowLongPtrA");
+extern fn int showWindow(Win32_HWND* wnd, int cmdShow) @cname("ShowWindow");
+extern fn int isWindowVisible(Win32_HWND* wnd) @cname("IsWindowVisible");
+extern fn int isZoomed(Win32_HWND* wnd) @cname("IsZoomed");
+extern fn int getWindowPlacement(Win32_HWND* wnd, WindowPlacement* placement) @cname("GetWindowPlacement");
+extern fn int bringWindowToTop(Win32_HWND* wnd) @cname("BringWindowToTop");
+extern fn Win32_HWND* setForegroundWindow(Win32_HWND* wnd) @cname("SetForegroundWindow");
+extern fn Win32_HWND* setFocus(Win32_HWND* wnd) @cname("SetFocus");
+extern fn int setWindowTextW(Win32_HWND* wnd, ushort* text) @cname("SetWindowTextW");
+extern fn int setLayeredWindowAttributes(Win32_HWND* wnd, uint crKey, char alpha, uint flags) @cname("SetLayeredWindowAttributes");
+extern fn int getLayeredWindowAttributes(Win32_HWND* wnd, uint* crKey, char* alpha, uint* flags) @cname("GetLayeredWindowAttributes");
+extern fn Win32_HWND* monitorFromWindow(Win32_HWND* wnd, uint flags) @cname("MonitorFromWindow");
 extern fn int flashWindowEx(FlashWInfo* info) @cname("FlashWindowEx");
-extern fn int dragAcceptFiles(HWnd* wnd, int accept) @cname("DragAcceptFiles");
+extern fn int dragAcceptFiles(Win32_HWND* wnd, int accept) @cname("DragAcceptFiles");
 
-extern fn HDc* getDC(HWnd* wnd) @cname("GetDC");
-extern fn int releaseDC(HWnd* wnd, HDc* dc) @cname("ReleaseDC");
-extern fn int choosePixelFormat(HDc* dc, PixelFormatDescriptor* pfd) @cname("ChoosePixelFormat");
-extern fn int setPixelFormat(HDc* dc, int format, PixelFormatDescriptor* pfd) @cname("SetPixelFormat");
-extern fn int describePixelFormat(HDc* dc, int format, uint bytes, PixelFormatDescriptor* pfd) @cname("DescribePixelFormat");
-extern fn int swapBuffers(HDc* dc) @cname("SwapBuffers");
-extern fn HBitmap createDIBSection(HDc* dc, void* bmi, uint usage, void** bits, void* section, uint offset) @cname("CreateDIBSection");
-extern fn HDc* createCompatibleDC(HDc* dc) @cname("CreateCompatibleDC");
-extern fn HDc* createDCW(ushort* driver, ushort* device, ushort* output, void* initData) @cname("CreateDCW");
-extern fn int deleteDC(HDc* dc) @cname("DeleteDC");
-extern fn void* selectObject(HDc* dc, void* obj) @cname("SelectObject");
+extern fn Win32_HDC* getDC(Win32_HWND* wnd) @cname("GetDC");
+extern fn int releaseDC(Win32_HWND* wnd, Win32_HDC* dc) @cname("ReleaseDC");
+extern fn int choosePixelFormat(Win32_HDC* dc, PixelFormatDescriptor* pfd) @cname("ChoosePixelFormat");
+extern fn int setPixelFormat(Win32_HDC* dc, int format, PixelFormatDescriptor* pfd) @cname("SetPixelFormat");
+extern fn int describePixelFormat(Win32_HDC* dc, int format, uint bytes, PixelFormatDescriptor* pfd) @cname("DescribePixelFormat");
+extern fn int swapBuffers(Win32_HDC* dc) @cname("SwapBuffers");
+extern fn Win32_HBITMAP createDIBSection(Win32_HDC* dc, void* bmi, uint usage, void** bits, void* section, uint offset) @cname("CreateDIBSection");
+extern fn Win32_HDC* createCompatibleDC(Win32_HDC* dc) @cname("CreateCompatibleDC");
+extern fn Win32_HDC* createDCW(ushort* driver, ushort* device, ushort* output, void* initData) @cname("CreateDCW");
+extern fn int deleteDC(Win32_HDC* dc) @cname("DeleteDC");
+extern fn void* selectObject(Win32_HDC* dc, void* obj) @cname("SelectObject");
 extern fn int deleteObject(void* obj) @cname("DeleteObject");
-extern fn int bitBlt(HDc* dst, int x, int y, int w, int h, HDc* src, int x1, int y1, uint rop) @cname("BitBlt");
-extern fn int getDeviceCaps(HDc* dc, int index) @cname("GetDeviceCaps");
-extern fn int getDeviceGammaRamp(HDc* dc, void* ramp) @cname("GetDeviceGammaRamp");
-extern fn int setDeviceGammaRamp(HDc* dc, void* ramp) @cname("SetDeviceGammaRamp");
-extern fn HBitmap createBitmap(int w, int h, uint planes, uint bitCount, void* bits) @cname("CreateBitmap");
-extern fn HIcon createIconIndirect(IconInfo* info) @cname("CreateIconIndirect");
-extern fn int destroyIcon(HIcon icon) @cname("DestroyIcon");
-extern fn HCursor loadCursorA(void* instance, char* name) @cname("LoadCursorA");
-extern fn HIcon loadIconA(void* instance, char* name) @cname("LoadIconA");
+extern fn int bitBlt(Win32_HDC* dst, int x, int y, int w, int h, Win32_HDC* src, int x1, int y1, uint rop) @cname("BitBlt");
+extern fn int getDeviceCaps(Win32_HDC* dc, int index) @cname("GetDeviceCaps");
+extern fn int getDeviceGammaRamp(Win32_HDC* dc, void* ramp) @cname("GetDeviceGammaRamp");
+extern fn int setDeviceGammaRamp(Win32_HDC* dc, void* ramp) @cname("SetDeviceGammaRamp");
+extern fn Win32_HBITMAP createBitmap(int w, int h, uint planes, uint bitCount, void* bits) @cname("CreateBitmap");
+extern fn Win32_HICON createIconIndirect(IconInfo* info) @cname("CreateIconIndirect");
+extern fn int destroyIcon(Win32_HICON icon) @cname("DestroyIcon");
+extern fn Win32_HCURSOR loadCursorA(void* instance, char* name) @cname("LoadCursorA");
+extern fn Win32_HICON loadIconA(void* instance, char* name) @cname("LoadIconA");
 extern fn void* loadImageA(void* instance, char* name, uint c_type, int cx, int cy, uint fuLoad) @cname("LoadImageA");
-extern fn int destroyCursor(HCursor cursor) @cname("DestroyCursor");
-extern fn int setCursor(HCursor cursor) @cname("SetCursor");
-extern fn iptr setClassLongPtrA(HWnd* wnd, int index, iptr newLong) @cname("SetClassLongPtrA");
+extern fn int destroyCursor(Win32_HCURSOR cursor) @cname("DestroyCursor");
+extern fn int setCursor(Win32_HCURSOR cursor) @cname("SetCursor");
+extern fn iptr setClassLongPtrA(Win32_HWND* wnd, int index, iptr newLong) @cname("SetClassLongPtrA");
 extern fn int getCursorPos(Point* p) @cname("GetCursorPos");
 extern fn int setCursorPos(int x, int y) @cname("SetCursorPos");
-extern fn int screenToClient(HWnd* wnd, Point* p) @cname("ScreenToClient");
-extern fn int clientToScreen(HWnd* wnd, Point* p) @cname("ClientToScreen");
+extern fn int screenToClient(Win32_HWND* wnd, Point* p) @cname("ScreenToClient");
+extern fn int clientToScreen(Win32_HWND* wnd, Point* p) @cname("ClientToScreen");
 extern fn int clipCursor(Rect* rect) @cname("ClipCursor");
 extern fn int registerRawInputDevices(RawInputDevice* devices, uint numDevices, uint size) @cname("RegisterRawInputDevices");
 extern fn uint getRawInputData(HRawInput hRawInput, uint command, void* data, uint* size, uint headerSize) @cname("GetRawInputData");
 extern fn int getSystemMetrics(int index) @cname("GetSystemMetrics");
 
-extern fn int enumDisplayMonitors(HDc* dc, Rect* clip, void* proc, iptr data) @cname("EnumDisplayMonitors");
-extern fn int getMonitorInfoA(HMonitor mon, void* info) @cname("GetMonitorInfoA");
-extern fn int getMonitorInfoW(HMonitor mon, void* info) @cname("GetMonitorInfoW");
+extern fn int enumDisplayMonitors(Win32_HDC* dc, Rect* clip, void* proc, iptr data) @cname("EnumDisplayMonitors");
+extern fn int getMonitorInfoA(Win32_HMONITOR mon, void* info) @cname("GetMonitorInfoA");
+extern fn int getMonitorInfoW(Win32_HMONITOR mon, void* info) @cname("GetMonitorInfoW");
 extern fn int enumDisplayDevicesW(ushort* device, uint devNum, DisplayDeviceW* dd, uint flags) @cname("EnumDisplayDevicesW");
 extern fn int enumDisplaySettingsW(ushort* device, uint modeNum, DevModeW* dm) @cname("EnumDisplaySettingsW");
 extern fn int changeDisplaySettingsExW(ushort* device, DevModeW* dm, void* wnd, uint flags, void* param) @cname("ChangeDisplaySettingsExW");
 extern fn void setProcessDPIAware() @cname("SetProcessDPIAware");
 extern fn uint regGetValueW(void* key, ushort* subKey, ushort* value, uint flags, uint* type, void* data, uint* dataSize) @cname("RegGetValueW");
 
-extern fn int openClipboard(HWnd* wnd) @cname("OpenClipboard");
+extern fn int openClipboard(Win32_HWND* wnd) @cname("OpenClipboard");
 extern fn int closeClipboard() @cname("CloseClipboard");
 extern fn int emptyClipboard() @cname("EmptyClipboard");
 extern fn void* getClipboardData(uint format) @cname("GetClipboardData");
@@ -244,26 +232,26 @@ extern fn int dragQueryPoint(void* drop, Point* p) @cname("DragQueryPoint");
 extern fn uint dragQueryFileW(void* drop, uint fileIndex, ushort* file, uint cch) @cname("DragQueryFileW");
 extern fn void dragFinish(void* drop) @cname("DragFinish");
 
-extern fn int getUpdateRect(HWnd* wnd, Rect* rect, int erase) @cname("GetUpdateRect");
-extern fn int beginPaint(HWnd* wnd, void* ps) @cname("BeginPaint");
-extern fn int endPaint(HWnd* wnd, void* ps) @cname("EndPaint");
-extern fn uint setTimer(HWnd* wnd, uptr idEvent, uint elapse, void* proc) @cname("SetTimer");
-extern fn int killTimer(HWnd* wnd, uptr idEvent) @cname("KillTimer");
+extern fn int getUpdateRect(Win32_HWND* wnd, Rect* rect, int erase) @cname("GetUpdateRect");
+extern fn int beginPaint(Win32_HWND* wnd, void* ps) @cname("BeginPaint");
+extern fn int endPaint(Win32_HWND* wnd, void* ps) @cname("EndPaint");
+extern fn uint setTimer(Win32_HWND* wnd, uptr idEvent, uint elapse, void* proc) @cname("SetTimer");
+extern fn int killTimer(Win32_HWND* wnd, uptr idEvent) @cname("KillTimer");
 
-extern fn int dwmEnableBlurBehindWindow(HWnd* wnd, void* bb) @cname("DwmEnableBlurBehindWindow");
-extern fn int dwmSetWindowAttribute(HWnd* wnd, uint attr, void* value, uint size) @cname("DwmSetWindowAttribute");
+extern fn int dwmEnableBlurBehindWindow(Win32_HWND* wnd, void* bb) @cname("DwmEnableBlurBehindWindow");
+extern fn int dwmSetWindowAttribute(Win32_HWND* wnd, uint attr, void* value, uint size) @cname("DwmSetWindowAttribute");
 
 extern fn uint timeBeginPeriod(uint period) @cname("timeBeginPeriod");
 extern fn uint timeEndPeriod(uint period) @cname("timeEndPeriod");
 
-alias RgfwWglCreateContextProc = fn HGlrc(HDc*);
+alias RgfwWglCreateContextProc = fn HGlrc(Win32_HDC*);
 alias RgfwWglDeleteContextProc = fn int(HGlrc);
-alias RgfwWglMakeCurrentProc = fn int(HDc*, HGlrc);
-alias RgfwWglGetCurrentDcProc = fn HDc*();
+alias RgfwWglMakeCurrentProc = fn int(Win32_HDC*, HGlrc);
+alias RgfwWglGetCurrentDcProc = fn Win32_HDC*();
 alias RgfwWglGetCurrentContextProc = fn HGlrc();
 alias RgfwWglShareListsProc = fn int(HGlrc, HGlrc);
-alias RgfwWglCreateContextAttribsArbProc = fn HGlrc(HDc*, HGlrc, int*);
-alias RgfwWglChoosePixelFormatArbProc = fn int(HDc*, int*, float*, uint, int*, uint*);
+alias RgfwWglCreateContextAttribsArbProc = fn HGlrc(Win32_HDC*, HGlrc, int*);
+alias RgfwWglChoosePixelFormatArbProc = fn int(Win32_HDC*, int*, float*, uint, int*, uint*);
 alias RgfwWglSwapIntervalExtProc = fn int(int);
 
 RgfwWglCreateContextProc rgfw_wglCreateContext;
@@ -346,54 +334,6 @@ struct RgfwWindowSrc
 }
 
 
-// public
-fn bool rgfw_loadGL()
-{
-	if (_gfx_ctx.nativeGL_handle != null && _gfx_ctx.glGetProcAddress != null) return true;
-	_gfx_ctx.nativeGL_handle = loadLibraryA("opengl32.dll");
-	_gfx_ctx.glGetProcAddress = getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglGetProcAddress");
-
-	rgfw_wglCreateContext = (RgfwWglCreateContextProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglCreateContext");
-	rgfw_wglDeleteContext = (RgfwWglDeleteContextProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglDeleteContext");
-	rgfw_wglMakeCurrent = (RgfwWglMakeCurrentProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglMakeCurrent");
-	rgfw_wglGetCurrentDC = (RgfwWglGetCurrentDcProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglGetCurrentDC");
-	rgfw_wglGetCurrentContext = (RgfwWglGetCurrentContextProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglGetCurrentContext");
-	rgfw_wglShareLists = (RgfwWglShareListsProc)getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, "wglShareLists");
-
-	HWnd* dummyWin = createWindowExW(0, _gfx_ctx.wndClass.className, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
-	HDc dummyDc = getDC(dummyWin);
-	uint pfdFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-
-	PixelFormatDescriptor pfd;
-	pfd.size = (ushort)PixelFormatDescriptor::size;
-	pfd.version = 1;
-	pfd.flags = pfdFlags;
-	pfd.pixelType = PFD_TYPE_RGBA;
-	pfd.colorBits = 32;
-	pfd.alphaBits = 8;
-	pfd.layerType = PFD_MAIN_PLANE;
-	pfd.depthBits = 32;
-	pfd.stencilBits = 8;
-
-	int dummyPixelFormat = choosePixelFormat(dummyDc, &pfd);
-	setPixelFormat(dummyDc, dummyPixelFormat, &pfd);
-
-	void* dummyContext = rgfw_wglCreateContext(dummyDc);
-	void* cur = rgfw_wglGetCurrentContext();
-	rgfw_wglMakeCurrent(dummyDc, dummyContext);
-
-	rgfw_wglCreateContextAttribsARB = (RgfwWglCreateContextAttribsArbProc)rgfw_getProcAddress_OpenGL("wglCreateContextAttribsARB");
-	rgfw_wglChoosePixelFormatARB = (RgfwWglChoosePixelFormatArbProc)rgfw_getProcAddress_OpenGL("wglChoosePixelFormatARB");
-	rgfw_wglSwapIntervalEXT = (RgfwWglSwapIntervalExtProc)rgfw_getProcAddress_OpenGL("wglSwapIntervalEXT");
-
-	if (rgfw_wglSwapIntervalEXT == null) rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_OPEN_GL_CONTEXT, "Failed to load swap interval function");
-
-	rgfw_wglMakeCurrent(dummyDc, cur);
-	rgfw_wglDeleteContext(dummyContext);
-	releaseDC(dummyWin, dummyDc);
-	destroyWindow(dummyWin);
-	return true;
-}
 
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
 const int VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR = 1000009000;
@@ -401,17 +341,6 @@ struct VkWin32SurfaceCreateInfoKHR { int sType; void* pNext; uint flags; void* h
 alias RgfwVkCreateWin32SurfaceKHRProc = fn VkResult(VkInstance instance, VkWin32SurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
 ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_win32_surface"};
 
-// public
-fn bool rgfw_loadVulkan()
-{
-	if (_gfx_ctx.vulkan_handle != null) return true;
-	_gfx_ctx.vulkan_handle = loadLibraryA("vulkan-1.dll");
-	if (_gfx_ctx.vulkan_handle == null) return false;
-	void* proc = getProcAddress((HModule*)_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
-	if (proc == null) return false;
-	_gfx_ctx.vkGetInstanceProcAddress = (GfxVkGetInstanceProcAddressProc)proc;
-	return true;
-}
 
 // public
 fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
@@ -621,7 +550,7 @@ macro GfxPoint _param_to_point(iptr lParam)
 }
 
 // private
-fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
+fn iptr rgfw_wndProcW(Win32_HWND* hWnd, uint message, sz wParam, iptr lParam)
 {
 	if (message == 0x007E /* WM_DISPLAYCHANGE */) rgfw_pollMonitors();
 
@@ -982,14 +911,14 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 	_gfx_ctx.wndClass.wndProc = &rgfw_wndProcW;
 	_gfx_ctx.wndClass.clsExtra = (int)sz::size;
 
-	_gfx_ctx.wndClass.hIcon = (HIcon)loadImageA(_gfx_ctx.instance, "RGFW_ICON", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
+	_gfx_ctx.wndClass.hIcon = (Win32_HICON)loadImageA(_gfx_ctx.instance, "RGFW_ICON", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
 	if (_gfx_ctx.wndClass.hIcon == null)
 	{
-		_gfx_ctx.wndClass.hIcon = (HIcon)loadImageA(null, (char*)(uptr)32512 /* IDI_APPLICATION */, 1, 0, 0, 0x00000040 | 0x00008000);
+		_gfx_ctx.wndClass.hIcon = (Win32_HICON)loadImageA(null, (char*)(uptr)32512 /* IDI_APPLICATION */, 1, 0, 0, 0x00000040 | 0x00008000);
 	}
 
 	registerClassW(&_gfx_ctx.wndClass);
-	_gfx_ctx.helperWindow = createWindowExW(0, _gfx_ctx.wndClass.className, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
+	_gfx_ctx.helperWindow = win32::createWindowExW(0, _gfx_ctx.wndClass.className, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
 
 	char[4] blk = {0, 0, 0, 0};
 	_gfx_ctx.hiddenMouse = rgfw_createMouse((char*)&blk, 1, 1, RGBA8);
@@ -1019,7 +948,7 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 	uint exStyle = rgfw_winapiWindowGetExStyle(win, flags);
 	adjustWindowRectEx(&rect, style, 0, exStyle);
 
-	win.src.window = createWindowExW(0, _gfx_ctx.wndClass.className, name.to_wstring(tmem)!!, windowStyle, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx_ctx.instance, null);
+	win.src.window = win32::createWindowExW(0, _gfx_ctx.wndClass.className, name.to_wstring(tmem)!!, windowStyle, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx_ctx.instance, null);
 	setPropW(win.src.window, rgfw_wideRgfwPropName(), win);
 	win.resize(...win.size);
 
@@ -1057,7 +986,7 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 	clientToScreen(win.src.window, (Point*)&rect.right);
 	adjustWindowRectEx(&rect, (uint)style, 0, exStyle);
 	setWindowLongW(win.src.window, -16, style);
-	setWindowPos(win.src.window, (HWnd*)(uptr)0 /* HWND_TOP */, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
+	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0 /* HWND_TOP */, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
 }
 
 
@@ -1090,7 +1019,7 @@ fn void _window_focus_native(GfxWindow* win) { setForegroundWindow(win.src.windo
 fn void rgfw_window_raise(GfxWindow* win)
 {
 	bringWindowToTop(win.src.window);
-	setWindowPos(win.src.window, (HWnd*)(uptr)0, win.x, win.y, win.width, win.height, 0x0001 | 0x0002 | 0x0200 | 0x0020); // NOSIZE|NOMOVE|NOOWNERZORDER|FRAMECHANGED
+	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, win.x, win.y, win.width, win.height, 0x0001 | 0x0002 | 0x0200 | 0x0020); // NOSIZE|NOMOVE|NOOWNERZORDER|FRAMECHANGED
 }
 
 // public
@@ -1102,8 +1031,8 @@ fn void rgfw_window_minimizePlatform(GfxWindow* win) { showWindow(win.src.window
 // public
 fn void rgfw_window_setFloating(GfxWindow* win, bool floating)
 {
-	if (floating) { setWindowPos(win.src.window, (HWnd*)(uptr)(-1), 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040); }
-	else { setWindowPos(win.src.window, (HWnd*)(uptr)(-2) /* HWND_NOTOPMOST */, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040); }
+	if (floating) { setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040); }
+	else { setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-2) /* HWND_NOTOPMOST */, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040); }
 }
 // public
 fn void rgfw_window_setOpacity(GfxWindow* win, char opacity)
@@ -1228,7 +1157,7 @@ fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width
 fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 {
 	ushort[768] values; // 3 x 256
-	HDc dc = createDCW(&rgfw_wideDisplayName, (ushort*)&monitor.node.adapterName, null, null);
+	Win32_HDC dc = createDCW(&rgfw_wideDisplayName, (ushort*)&monitor.node.adapterName, null, null);
 	getDeviceGammaRamp(dc, &values);
 	deleteDC(dc);
 	if (ramp != null)
@@ -1252,7 +1181,7 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 	mem::copy(&values[0], ramp.red, 512);
 	mem::copy(&values[256], ramp.green, 512);
 	mem::copy(&values[512], ramp.blue, 512);
-	HDc dc = createDCW(&rgfw_wideDisplayName, (ushort*)&monitor.node.adapterName, null, null);
+	Win32_HDC dc = createDCW(&rgfw_wideDisplayName, (ushort*)&monitor.node.adapterName, null, null);
 	setDeviceGammaRamp(dc, &values);
 	deleteDC(dc);
 	return true;
@@ -1341,7 +1270,7 @@ fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 
 	node.mon.origin = { monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top};
 
-	HDc hdc = createDCW((ushort*)&monitorInfo.szDevice, null, null, null);
+	Win32_HDC hdc = createDCW((ushort*)&monitorInfo.szDevice, null, null, null);
 	float dpiX = (float)getDeviceCaps(hdc, 88 /* LOGPIXELSX */);
 	float dpiY = (float)getDeviceCaps(hdc, 90 /* LOGPIXELSY */);
 	node.mon.scale = { dpiX / 96.0f, dpiY / 96.0f };
@@ -1416,7 +1345,7 @@ fn void rgfw_monitorNode_free(GfxMonitorNode* node) {}
 // public
 fn GfxMonitor* find_monitor(GfxWindow* win)
 {
-	HMonitor src = monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
+	Win32_HMONITOR src = monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
 	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
 	{
 		if (node.hMonitor == src) return &node.mon;
@@ -1479,7 +1408,7 @@ fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonit
 }
 
 // private
-fn HIcon rgfw_loadHandleImage(char* data, int w, int h, GfxFormat format, int icon)
+fn Win32_HICON rgfw_loadHandleImage(char* data, int w, int h, GfxFormat format, int icon)
 {
 	BitmapV5Header bi;
 	bi.size = BitmapV5Header::size;
@@ -1489,13 +1418,13 @@ fn HIcon rgfw_loadHandleImage(char* data, int w, int h, GfxFormat format, int ic
 	bi.bitCount = 32;
 	bi.compression = BI_RGB;
 
-	HDc dc = getDC(null);
+	Win32_HDC dc = getDC(null);
 	char* target;
-	HBitmap color = createDIBSection(dc, &bi, 0, (void**)&target, null, 0);
+	Win32_HBITMAP color = createDIBSection(dc, &bi, 0, (void**)&target, null, 0);
 	copy_image_data(target, w, h, BGRA8, data, format, null);
 	releaseDC(null, dc);
 
-	HBitmap mask = createBitmap(w, h, 1, 1, null);
+	Win32_HBITMAP mask = createBitmap(w, h, 1, 1, null);
 
 	IconInfo ii;
 	ii.fIcon = icon;
@@ -1504,7 +1433,7 @@ fn HIcon rgfw_loadHandleImage(char* data, int w, int h, GfxFormat format, int ic
 	ii.hbmMask = mask;
 	ii.hbmColor = color;
 
-	HIcon handle = createIconIndirect(&ii);
+	Win32_HICON handle = createIconIndirect(&ii);
 	deleteObject(color);
 	deleteObject(mask);
 	return handle;
@@ -1549,12 +1478,12 @@ fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format) => (R
 fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 {
 	setClassLongPtrA(win.src.window, -12 /* GCLP_HCURSOR */, (iptr)(uptr)mouse);
-	setCursor((HCursor)mouse);
+	setCursor((Win32_HCURSOR)mouse);
 	return false;
 }
 
 // public
-fn void rgfw_freeMouse(RgfwMouse* mouse) { destroyCursor((HCursor)mouse); }
+fn void rgfw_freeMouse(RgfwMouse* mouse) { destroyCursor((Win32_HCURSOR)mouse); }
 
 fn void _window_hide_native(GfxWindow* win) @private
 {
@@ -1600,7 +1529,7 @@ fn void rgfw_window_closePlatform(GfxWindow* win)
 fn void _window_move_native(GfxWindow* win, int x, int y)
 {
 	win.x = x; win.y = y;
-	setWindowPos(win.src.window, (HWnd*)(uptr)0, win.x, win.y, 0, 0, 0x0001 /* SWP_NOSIZE */);
+	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, win.x, win.y, 0, 0, 0x0001 /* SWP_NOSIZE */);
 }
 
 // public
@@ -1733,7 +1662,7 @@ const int WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB = 0x20A9;
 const int WGL_CONTEXT_DEBUG_BIT_ARB = 0x00000001;
 const int WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB = 0x00000004;
 
-alias GetExtStringArbFn = fn ZString(HDc*);
+alias GetExtStringArbFn = fn ZString(Win32_HDC*);
 alias GetExtStringExtFn = fn ZString();
 alias GlxGetProcAddressProc = fn GfxFn(ZString);
 
@@ -1741,23 +1670,12 @@ alias GlxGetProcAddressProc = fn GfxFn(ZString);
 fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 {
 	ZString extensions = null;
-	GfxFn proc = rgfw_getProcAddress_OpenGL("wglGetExtensionsStringARB");
-	GfxFn proc2 = rgfw_getProcAddress_OpenGL("wglGetExtensionsStringEXT");
+	GfxFn proc = _get_opengl_proc_native("wglGetExtensionsStringARB");
+	GfxFn proc2 = _get_opengl_proc_native("wglGetExtensionsStringEXT");
 	if (proc != null) { extensions = ((GetExtStringArbFn)proc)(rgfw_wglGetCurrentDC()); }
 	else if (proc2 != null) { extensions = ((GetExtStringExtFn)proc2)(); }
 	return extensions && rgfw_extensionSupportedStr(extensions, extension, len);
 }
-
-// public
-fn GfxFn rgfw_getProcAddress_OpenGL(ZString procname)
-{
-	GfxFn proc = _gfx_ctx.glGetProcAddress != null ? ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname) : null;
-	if (proc != null) return proc;
-	return getProcAddress((HModule*)_gfx_ctx.nativeGL_handle, procname);
-}
-
-
-
 
 // public
 fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, RgfwGlHints* hints)

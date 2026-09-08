@@ -1,4 +1,15 @@
 module std::gfx @private;
+import libc;
+
+fn void*? _dlopen_any(ZString... names) @feat(POSIX)
+{
+	foreach (name : names)
+	{
+		void* proc = libc::dlopen(name, RTLD_LAZY | RTLD_LOCAL);
+		if (proc) return proc;
+	}
+	return NOT_FOUND~;
+}
 
 // To remove
 fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)

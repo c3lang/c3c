@@ -672,7 +672,7 @@ fn int rgfw_initPlatform_Wayland(String class_name, GfxInitOption flags)
 }
 
 // private
-fn bool rgfw_loadGL_Wayland()
+fn void? _load_opengl_wayland()
 {
 	// Wayland only ever renders through EGL; "OpenGL" here just means EGL is ready.
 	return load_egl();
@@ -1211,7 +1211,7 @@ fn void rgfw_toggleWaylandMaximized(GfxWindow* win, bool maximized)
 fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, RgfwGlHints* hints)
 {
 	if (win == null || ctx == null || hints == null) return false;
-	if (load_egl() == false) return false;
+	if (@catch(_load_egl_native())) return false;
 	if (_gfx_ctx.egl_display == null)
 	{
 		_gfx_ctx.egl_display = rgfw_eglGetDisplay((EglNativeDisplayType)_gfx_ctx.wlDisplay);
