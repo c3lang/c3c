@@ -269,6 +269,7 @@ static void fetch_windows_usage(void)
 	print_opt("--msvc-version <ver>", "Specify a particular MSVC version to fetch.");
 	print_opt("--sdk-version <ver>", "Specify a particular Windows SDK version to fetch.");
 	print_opt("--arch <arch>", "Target architecture to fetch (x64, arm64). May be specified multiple times.");
+	print_opt("--fetch-headers", "Also fetch headers, do not specify more than one architecture!");
 	PRINTF("");
 }
 
@@ -699,6 +700,11 @@ static void parse_command(BuildOptions *options)
 					if (at_end() || next_is_opt())
 						error_exit("error: --arch needs an architecture (x64, arm64).");
 					vec_add(options->fetch_sdk_archs, next_arg());
+					continue;
+				}
+				if (match_longopt("fetch-headers"))
+				{
+					options->msvc_fetch_headers = true;
 					continue;
 				}
 			}
