@@ -21,7 +21,7 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 				$case X11_ONLY:
 					return rgfw_window_swapInterval_OpenGL_X11(self, swap_interval);
 				$default:
-					if (rgfw_dynamicUsingWayland)
+					if (gfx_use_wayland)
 					{
 						return rgfw_window_swapInterval_OpenGL_Wayland(self, swap_interval);
 					}

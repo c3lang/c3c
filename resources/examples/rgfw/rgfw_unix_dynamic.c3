@@ -7,7 +7,7 @@ import std::collections::list, std::math, libc;
 // only ONE rgfw*.c3 file should be included for a given target. This one is
 // the "everything Linux" build: both backends are compiled in as *_X11/
 // *_Wayland suffixed implementations, and the public rgfw_* functions are
-// thin dispatchers that branch on rgfw_dynamicUsingWayland (set once at init
+// thin dispatchers that branch on gfx_use_wayland (set once at init
 // after runtime display-server detection).
 
 
@@ -573,7 +573,7 @@ fn void rgfw_xHandleEvent()
 	{
 		case 2: // KeyPress
 		{
-			if (!(win.internal.enabledEvents & RGFW_KEY_PRESSED_FLAG)) return;
+			if (!(win.internal.enabled_events & RGFW_KEY_PRESSED_FLAG)) return;
 			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
 
 			XkbStateRec state;
@@ -614,7 +614,7 @@ fn void rgfw_xHandleEvent()
 		}
 		case 3: // KeyRelease
 		{
-			if (!(win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG)) return;
+			if (!(win.internal.enabled_events & RGFW_KEY_RELEASED_FLAG)) return;
 			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
 
 			XkbStateRec state;
@@ -667,7 +667,7 @@ fn void rgfw_xHandleEvent()
 				bool handled = false;
 				if (e.xproperty.atom == _gfx_ctx.wmState)
 				{
-					if (rgfw_window_isMinimized(win) && !(win.internal.flags.minimize))
+					if (_window_is_minimized_native(win) && !(win.internal.flags.minimize))
 					{
 						rgfw_windowMinimizedCallback(win);
 						handled = true;
@@ -675,7 +675,7 @@ fn void rgfw_xHandleEvent()
 				}
 				else if (e.xproperty.atom == _gfx_ctx.netWmState)
 				{
-					if (rgfw_window_isMaximized(win) && !(win.internal.flags.maximize))
+					if (_window_is_maximized_native(win) && !(win.internal.flags.maximize))
 					{
 						rgfw_windowMaximizedCallback(win, win.x, win.y, win.width, win.height);
 						handled = true;
@@ -807,7 +807,7 @@ fn void rgfw_xHandleEvent()
 		}
 		case 31: // SelectionNotify
 		{
-			if (!(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
+			if (!(win.internal.enabled_events & RGFW_DATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
 
 			ZString data;
 			CULong result;
@@ -1118,18 +1118,18 @@ module std::gfx @feat(X11_WAYLAND) @link("wayland-client", "wayland-cursor", "wa
 import std::math;
 // ==================== RGFW_DYNAMIC runtime dispatch layer ====================
 // Combined X11+Wayland runtime dispatch: every entry point below branches on
-// rgfw_dynamicUsingWayland (set once in rgfw_initPlatform) instead of a vtable.
+// gfx_use_wayland (set once in rgfw_initPlatform) instead of a vtable.
 
-bool rgfw_dynamicUsingWayland = false;
+bool gfx_use_wayland = false;
 
 // public
-fn bool rgfw_usingWayland() => rgfw_dynamicUsingWayland;
+fn bool rgfw_usingWayland() => gfx_use_wayland;
 
 
 // public
 fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
 {
-	if (rgfw_dynamicUsingWayland)
+	if (gfx_use_wayland)
 	{
 		return rgfw_createWindowPlatform_Wayland(name, flags, win);
 	}

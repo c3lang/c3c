@@ -117,39 +117,39 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 }
 
 
-fn void _window_set_aspect_ratio(GfxWindow* win, int w, int h) @private {}
+fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private {}
 
 // ---- JS host imports (no Emscripten runtime under C3's wasm target) ----
-extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "rgfw_set_canvas_size");
-extern fn void rgfwJsSetWindowTitle(ZString name, sz len) @wasm("env", "rgfw_set_window_title");
-extern fn void rgfwJsSetupWindowListeners() @wasm("env", "rgfw_setup_window_listeners");
-extern fn void rgfwJsSetupDropListeners() @wasm("env", "rgfw_setup_drop_listeners");
-extern fn void rgfwJsBlitSurface(char* data, int w, int h, int minH) @wasm("env", "rgfw_blit_surface");
-extern fn void rgfwJsSetCursor(ZString name, sz len) @wasm("env", "rgfw_set_cursor");
-extern fn void rgfwJsHideCursor() @wasm("env", "rgfw_hide_cursor");
-extern fn int rgfwJsGetMouseX() @wasm("env", "rgfw_get_mouse_x");
-extern fn int rgfwJsGetMouseY() @wasm("env", "rgfw_get_mouse_y");
-extern fn void rgfwJsSetPointerEvents(int passthrough) @wasm("env", "rgfw_set_pointer_events");
-extern fn void rgfwJsWriteClipboard(char* data, sz len) @wasm("env", "rgfw_write_clipboard");
-extern fn int rgfwJsUsingAsyncify() @wasm("env", "rgfw_using_asyncify");
-extern fn void rgfwJsSleep(int ms) @wasm("env", "rgfw_sleep");
-extern fn double rgfwJsDevicePixelRatio() @wasm("env", "rgfw_device_pixel_ratio");
-extern fn int rgfwJsInnerWidth() @wasm("env", "rgfw_inner_width");
-extern fn int rgfwJsInnerHeight() @wasm("env", "rgfw_inner_height");
-extern fn void rgfwJsRequestPointerLock() @wasm("env", "rgfw_request_pointer_lock");
-extern fn void rgfwJsExitPointerLock() @wasm("env", "rgfw_exit_pointer_lock");
-extern fn void rgfwJsRequestFullscreen() @wasm("env", "rgfw_request_fullscreen");
-extern fn void rgfwJsExitFullscreen() @wasm("env", "rgfw_exit_fullscreen");
-extern fn void rgfwJsSetOpacity(float opacity) @wasm("env", "rgfw_set_opacity");
-extern fn int rgfwJsWebglCreateContext(RgfwGlHints* hints) @wasm("env", "rgfw_webgl_create_context");
-extern fn void rgfwJsWebglDestroyContext(int ctx) @wasm("env", "rgfw_webgl_destroy_context");
-extern fn void rgfwJsWebglMakeCurrent(int ctx) @wasm("env", "rgfw_webgl_make_current");
-extern fn void rgfwJsWebglCommitFrame() @wasm("env", "rgfw_webgl_commit_frame");
-extern fn int rgfwJsWebglGetCurrentContext() @wasm("env", "rgfw_webgl_get_current_context");
-extern fn int rgfwJsExtensionSupported(ZString name, sz len) @wasm("env", "rgfw_extension_supported");
-extern fn GfxFn rgfwJsGetProcAddress(ZString name) @wasm("env", "rgfw_webgl_get_proc_address");
-extern fn void rgfwJsMkdir(ZString name) @wasm("env", "rgfw_mkdir");
-extern fn void rgfwJsWriteFile(ZString path, char* data, sz len) @wasm("env", "rgfw_write_file");
+extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "emscripten_set_canvas_size");
+extern fn void rgfwJsSetWindowTitle(ZString name, sz len) @wasm("env", "emscripten_set_window_title");
+extern fn void rgfwJsSetupWindowListeners() @wasm("env", "emscripten_setup_window_listeners");
+extern fn void rgfwJsSetupDropListeners() @wasm("env", "emscripten_setup_drop_listeners");
+extern fn void rgfwJsBlitSurface(char* data, int w, int h, int minH) @wasm("env", "emscripten_blit_surface");
+extern fn void rgfwJsSetCursor(ZString name, sz len) @wasm("env", "emscripten_set_cursor");
+extern fn void rgfwJsHideCursor() @wasm("env", "emscripten_hide_cursor");
+extern fn int rgfwJsGetMouseX() @wasm("env", "emscripten_get_mouse_x");
+extern fn int rgfwJsGetMouseY() @wasm("env", "emscripten_get_mouse_y");
+extern fn void rgfwJsSetPointerEvents(int passthrough) @wasm("env", "emscripten_set_pointer_events");
+extern fn void rgfwJsWriteClipboard(char* data, sz len) @wasm("env", "emscripten_write_clipboard");
+extern fn int rgfwJsUsingAsyncify() @wasm("env", "emscripten_using_asyncify");
+extern fn void rgfwJsSleep(int ms) @wasm("env", "emscripten_sleep");
+extern fn double rgfwJsDevicePixelRatio() @wasm("env", "emscripten_device_pixel_ratio");
+extern fn int rgfwJsInnerWidth() @wasm("env", "emscripten_inner_width");
+extern fn int rgfwJsInnerHeight() @wasm("env", "emscripten_inner_height");
+extern fn void rgfwJsRequestPointerLock() @wasm("env", "emscripten_request_pointer_lock");
+extern fn void rgfwJsExitPointerLock() @wasm("env", "emscripten_exit_pointer_lock");
+extern fn void rgfwJsRequestFullscreen() @wasm("env", "emscripten_request_fullscreen");
+extern fn void rgfwJsExitFullscreen() @wasm("env", "emscripten_exit_fullscreen");
+extern fn void rgfwJsSetOpacity(float opacity) @wasm("env", "emscripten_set_opacity");
+extern fn int rgfwJsWebglCreateContext(RgfwGlHints* hints) @wasm("env", "emscripten_webgl_create_context");
+extern fn void rgfwJsWebglDestroyContext(int ctx) @wasm("env", "emscripten_webgl_destroy_context");
+extern fn void rgfwJsWebglMakeCurrent(int ctx) @wasm("env", "emscripten_webgl_make_current");
+extern fn void rgfwJsWebglCommitFrame() @wasm("env", "emscripten_webgl_commit_frame");
+extern fn int rgfwJsWebglGetCurrentContext() @wasm("env", "emscripten_webgl_get_current_context");
+extern fn int rgfwJsExtensionSupported(ZString name, sz len) @wasm("env", "emscripten_extension_supported");
+extern fn GfxFn rgfwJsGetProcAddress(ZString name) @wasm("env", "emscripten_webgl_get_proc_address");
+extern fn void rgfwJsMkdir(ZString name) @wasm("env", "emscripten_mkdir");
+extern fn void rgfwJsWriteFile(ZString path, char* data, sz len) @wasm("env", "emscripten_write_file");
 
 const int DOM_VK_BACK_QUOTE = 192; const int DOM_VK_0 = 48; const int DOM_VK_1 = 49; const int DOM_VK_2 = 50;
 const int DOM_VK_3 = 51; const int DOM_VK_4 = 52; const int DOM_VK_5 = 53; const int DOM_VK_6 = 54;
@@ -240,65 +240,42 @@ fn GfxKey rgfw_wasmPhysicalToRGFW(uint hash)
 }
 
 // private
-fn void rgfwEmscriptenOnResize(int w, int h) @export("rgfw_on_resize")
+fn void rgfwEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
 {
 	_window_resized_callback(_gfx_ctx.root, w, h);
 }
 
 // private
-fn void rgfwEmscriptenOnFullscreenChange(int screenW, int screenH, bool entering) @export("rgfw_on_fullscreenchange")
-{
-	if (!(_gfx_ctx.root.internal.enabledEvents & RGFW_WINDOW_RESIZED_FLAG)) return;
-	static IntVec2 original;
-	if (entering)
-	{
-		original = _gfx_ctx.root.size;
-		_gfx_ctx.root.size = { screenW, screenH };
-	}
-	else
-	{
-		_gfx_ctx.root.size = original;
-	}
-	rgfwJsSetCanvasSize(..._gfx_ctx.root.size);
-	_window_resized_callback(_gfx_ctx.root, ..._gfx_ctx.root.size);
-}
 
 // private
-fn void rgfwEmscriptenOnFocusIn() @export("rgfw_on_focusin") { rgfw_windowFocusCallback(_gfx_ctx.root, true); }
+fn void rgfwEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { rgfw_windowFocusCallback(_gfx_ctx.root, true); }
 // private
-fn void rgfwEmscriptenOnFocusOut() @export("rgfw_on_focusout") { rgfw_windowFocusCallback(_gfx_ctx.root, false); }
+fn void rgfwEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { rgfw_windowFocusCallback(_gfx_ctx.root, false); }
 
 // private
-fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("rgfw_on_mousemove")
+fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("c3gfx_on_mousemove")
 {
 	_mouse_motion_callback(_gfx_ctx.root, x, y);
 	_raw_motion_callback(_gfx_ctx.root, (float)movementX, (float)movementY);
 }
 
 // private
-fn void rgfwEmscriptenOnMouseDown(int button) @export("rgfw_on_mousedown")
-{
-	if (button > 2) button += 2;
-	rgfw_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, true);
-}
-
-// private
-fn void rgfwEmscriptenOnMouseUp(int button) @export("rgfw_on_mouseup")
+fn void rgfwEmscriptenOnMouseUp(int button) @export("c3gfx_on_mouseup")
 {
 	if (button > 2) button += 2;
 	rgfw_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, false);
 }
 
 // private
-fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("rgfw_on_wheel") { rgfw_mouseScrollCallback(_gfx_ctx.root, deltaX, deltaY); }
+fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { rgfw_mouseScrollCallback(_gfx_ctx.root, deltaX, deltaY); }
 
 // private
-fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("rgfw_on_touch")
+fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("c3gfx_on_touch")
 {
 	// down == 255 is the sentinel for touchmove (no button state change).
 	if (down == 255)
 	{
-		if (!(_gfx_ctx.root.internal.enabledEvents & RGFW_MOUSE_MOTION_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabled_events & RGFW_MOUSE_MOTION_FLAG)) return;
 		for (int i = 0; i < numTouches; i++)
 		{
 			_mouse_motion_callback(_gfx_ctx.root, xs[i], ys[i]);
@@ -309,11 +286,11 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 
 	if (down)
 	{
-		if (!(_gfx_ctx.root.internal.enabledEvents & RGFW_MOUSE_BUTTON_PRESSED_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabled_events & RGFW_MOUSE_BUTTON_PRESSED_FLAG)) return;
 	}
 	else
 	{
-		if (!(_gfx_ctx.root.internal.enabledEvents & RGFW_MOUSE_BUTTON_RELEASED_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabled_events & RGFW_MOUSE_BUTTON_RELEASED_FLAG)) return;
 	}
 
 	for (int i = 0; i < numTouches; i++)
@@ -325,7 +302,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 }
 
 // private
-fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("rgfw_handleKeyEvent")
+fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("c3gfx_handleKeyEvent")
 {
 	ZString iCode = code;
 	uint hash = 0;
@@ -337,13 +314,12 @@ fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("r
 }
 
 // private
-fn void rgfw_handleKeyMods(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("rgfw_handleKeyMods")
+fn void rgfw_handleKeyMods(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("c3gfx_handleKeyMods")
 {
 	rgfw_keyUpdateKeyModsEx(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
 }
 
 // private
-fn void rgfw_emscriptenOnDrop(char* file, sz size) @export("rgfw_onDrop") { rgfw_dataDropCallback(_gfx_ctx.root, file, size, RGFW_DATA_FILE); }
 
 // public
 fn void rgfw_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
@@ -472,7 +448,6 @@ fn void rgfw_pollEvents()
 }
 
 // public
-fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h) { rgfwJsSetCanvasSize(w, h); }
 
 // public
 fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse)
@@ -596,9 +571,9 @@ fn void rgfw_deinitPlatform() {}
 fn void rgfw_window_closePlatform(GfxWindow* win) {}
 
 // public
-fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state) {}
+fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) {}
 // public
-fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
+fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 {
 	if (state) { rgfwJsRequestPointerLock(); }
 	else { rgfwJsExitPointerLock(); }
@@ -617,20 +592,6 @@ fn void rgfw_window_maximizePlatform(GfxWindow* win)
 	if (mon) win.resize(mon.mode.w, mon.mode.h);
 	win.move(0, 0);
 }
-
-// public
-fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
-{
-	if (fullscreen)
-	{
-		win.internal.flags.fullscreen = true;
-		rgfwJsRequestFullscreen();
-		return;
-	}
-	win.internal.flags.fullscreen = false;
-	rgfwJsExitFullscreen();
-}
-
 // public
 fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) { rgfwJsSetOpacity((float)opacity / 255.0f); }
 
@@ -643,7 +604,7 @@ fn void rgfw_pollMonitors() {}
 // public
 fn void rgfw_monitorNode_free(GfxMonitorNode* node) {}
 // public
-fn void rgfw_window_focus(GfxWindow* win) {}
+fn void _window_focus_native(GfxWindow* win) {}
 // public
 fn void rgfw_window_raise(GfxWindow* win) {}
 // public
@@ -658,35 +619,9 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp) => f
 fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* mon) => {};
 // public
 fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => false;
-// public
-fn void rgfw_window_movePlatform(GfxWindow* win, int x, int y) {}
-// public
-fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h) {}
-// public
-fn void rgfw_window_setMaxSize(GfxWindow* win, int w, int h) {}
-// public
+fn void _window_set_max_size_native(GfxWindow* win, int w, int h) {}
 fn void rgfw_window_minimizePlatform(GfxWindow* win) {}
-// public
-fn void rgfw_window_restorePlatform(GfxWindow* win) {}
-// public
 fn void rgfw_window_setFloating(GfxWindow* win, bool floating) {}
-// public
-fn void rgfw_window_setBorder(GfxWindow* win, bool border) {}
-// public
-fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH) => false;
-// public
-fn void GfxWindow.hide(&self) {}
-
-fn void GfxWindow.flash(&self, GfxFlashRequest request) {}
-// public
-fn bool rgfw_window_isHidden(GfxWindow* win) => false;
-// public
-fn bool rgfw_window_isMinimized(GfxWindow* win) => false;
-// public
-fn bool rgfw_window_isMaximized(GfxWindow* win) => false;
-// public
-fn bool GfxWindow.is_floating(&win) => false;
-// public
 fn void rgfw_waitForEvent(int waitMS) {}
 
 // public

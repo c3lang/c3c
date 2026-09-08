@@ -932,13 +932,13 @@ fn void rgfw_window_hide_Wayland(GfxWindow* win)
 }
 
 // private
-fn bool rgfw_window_isHidden_Wayland(GfxWindow* win) => false;
+fn bool _window_is_hidden_wayland(GfxWindow* win) => false;
 
 // private
-fn bool rgfw_window_isMaximized_Wayland(GfxWindow* win) => win.src.maximized;
+fn bool _window_is_maximized_wayland(GfxWindow* win) => win.src.maximized;
 
 // private
-fn bool rgfw_window_isMinimized_Wayland(GfxWindow* win) => win.src.minimized;
+fn bool _window_is_minimized_wayland(GfxWindow* win) => win.src.minimized;
 
 // private
 fn void rgfw_window_makeCurrentContext_OpenGL_Wayland(GfxWindow* win) { rgfw_window_makeCurrentContext_EGL(win); }
@@ -949,7 +949,7 @@ fn void rgfw_window_maximizePlatform_Wayland(GfxWindow* win) => rgfw_toggleWayla
 // private
 fn void rgfw_window_minimizePlatform_Wayland(GfxWindow* win)
 {
-	if (rgfw_window_isMaximized(win)) return;
+	if (_window_is_maximized_native(win)) return;
 	win.internal.old_bounds = win.bounds;
 	win.src.minimized = true;
 	xdgToplevelSetMinimized(win.src.xdgToplevel);
@@ -971,7 +971,7 @@ fn void rgfw_window_movePlatform_Wayland(GfxWindow* win, int x, int y) { win.x =
 fn void rgfw_window_raise_Wayland(GfxWindow* win) {}
 
 // private
-fn void rgfw_window_resizePlatform_Wayland(GfxWindow* win, int w, int h)
+fn void _window_resize_wayland(GfxWindow* win, int w, int h)
 {
 	win.width = w; win.height = h;
 	if (_gfx_ctx.compositor != null)
@@ -1005,7 +1005,7 @@ fn void rgfw_window_setBorder_Wayland(GfxWindow* win, bool border)
 fn void rgfw_window_setFloating_Wayland(GfxWindow* win, bool floating) {}
 
 // private
-fn void rgfw_window_setFullscreen_Wayland(GfxWindow* win, bool fullscreen)
+fn void _window_set_fullscreen_wayland(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
@@ -1021,10 +1021,10 @@ fn void rgfw_window_setFullscreen_Wayland(GfxWindow* win, bool fullscreen)
 }
 
 // private
-fn void rgfw_window_setMaxSize_Wayland(GfxWindow* win, int w, int h) { xdgToplevelSetMaxSize(win.src.xdgToplevel, w, h); }
+fn void _window_set_max_size_wayland(GfxWindow* win, int w, int h) { xdgToplevelSetMaxSize(win.src.xdgToplevel, w, h); }
 
 // private
-fn void rgfw_window_setMinSize_Wayland(GfxWindow* win, int w, int h) { xdgToplevelSetMinSize(win.src.xdgToplevel, w, h); }
+fn void _window_set_min_size_wayland(GfxWindow* win, int w, int h) { xdgToplevelSetMinSize(win.src.xdgToplevel, w, h); }
 
 // private
 fn void rgfw_window_setMousePassthrough_Wayland(GfxWindow* win, bool passthrough) {}
@@ -1141,7 +1141,7 @@ fn void rgfw_surface_freePtr_Wayland(GfxSurface* surface)
 }
 
 // private
-fn bool rgfw_window_isFloating_Wayland(GfxWindow* win) => !win.is_fullscreen() && !rgfw_window_isMaximized(win);
+fn bool _window_is_floating_wayland(GfxWindow* win) => !win.is_fullscreen() && !_window_is_maximized_native(win);
 
 // private
 fn void rgfw_window_setName_Wayland(GfxWindow* win, String name)
@@ -1153,7 +1153,7 @@ fn void rgfw_window_setName_Wayland(GfxWindow* win, String name)
 }
 
 // private
-fn bool rgfw_window_setIconEx_Wayland(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
+fn bool _window_set_icon_wayland(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
 	if (_gfx_ctx.iconManager == null || w != h) return false;
 
@@ -1602,7 +1602,7 @@ fn void rgfw_wlPointerAxis(void* data, WlProxy* pointer, uint time, uint axis, W
 	if (win == null) return;
 	float scrollX = 0.0f;
 	float scrollY = 0.0f;
-	if (!(win.internal.enabledEvents & RGFW_MOUSE_SCROLL_FLAG)) return;
+	if (!(win.internal.enabled_events & RGFW_MOUSE_SCROLL_FLAG)) return;
 	if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) { scrollX = (float)(-wlFixedToDouble(value) / 10.0); }
 	else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) { scrollY = (float)(-wlFixedToDouble(value) / 10.0); }
 	rgfw_mouseScrollCallback(win, scrollX, scrollY);

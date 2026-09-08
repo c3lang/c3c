@@ -339,7 +339,9 @@ struct RgfwWindowSrc
 	void* hdc; // HDC
 	void* hIconSmall; // HICON
 	void* hIconBig; // HICON
-	int maxSizeW, maxSizeH, minSizeW, minSizeH, aspectRatioW, aspectRatioH;
+	IntVec2 min_size;
+	IntVec2 max_size;
+	int aspectRatioW, aspectRatioH;
 	bool actionFrame;
 	ushort highSurrogate;
 	RgfwGfxContext ctx;
@@ -642,13 +644,13 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		}
 		case 0x0003: // WM_MOVE
 		{
-			if (win.internal.captureMouse) rgfw_window_captureMousePlatform(win, true);
+			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
 			_window_moved_callback(win, (int)(short)(lParam & 0xffff), (int)(short)((lParam >> 16) & 0xffff));
 			return defWindowProcW(hWnd, message, wParam, lParam);
 		}
 		case 0x0005: // WM_SIZE
 		{
-			if (win.internal.captureMouse) rgfw_window_captureMousePlatform(win, true);
+			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
 			_window_resized_callback(win, (int)(lParam & 0xffff), (int)((lParam >> 16) & 0xffff));
 			rgfw_window_checkMode(win);
 			return defWindowProcW(hWnd, message, wParam, lParam);
@@ -665,7 +667,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		{
 			if (lParam == 0 && win.src.actionFrame)
 			{
-				rgfw_window_captureMousePlatform(win, win.internal.captureMouse);
+				_window_set_capture_mouse_native(win, win.internal.capture_mouse);
 				win.src.actionFrame = false;
 			}
 			break;
@@ -702,20 +704,20 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		case 0x0024: // WM_GETMINMAXINFO
 		{
 			MinMaxInfo* mmi = (MinMaxInfo*)(uptr)lParam;
-			bool resize = (win.src.minSizeW == win.src.maxSizeW) && (win.src.minSizeH == win.src.maxSizeH);
+			bool resize = win.src.min_size == win.src.max_size;
 			win.internal.flags.no_resize = resize;
 
-			mmi.ptMinTrackSize.x = win.src.minSizeW + (frame.right - frame.left);
-			mmi.ptMinTrackSize.y = win.src.minSizeH + (frame.bottom - frame.top);
-			if (win.src.maxSizeW == 0 && win.src.maxSizeH == 0) return defWindowProcW(hWnd, message, wParam, lParam);
+			mmi.ptMinTrackSize.x = win.src.min_size.x + (frame.right - frame.left);
+			mmi.ptMinTrackSize.y = win.src.min_size.y + (frame.bottom - frame.top);
+			if (win.src.max_size == { 0, 0 }) return defWindowProcW(hWnd, message, wParam, lParam);
 
-			mmi.ptMaxTrackSize.x = win.src.maxSizeW + (frame.right - frame.left);
-			mmi.ptMaxTrackSize.y = win.src.maxSizeH + (frame.bottom - frame.top);
+			mmi.ptMaxTrackSize.x = win.src.max_size.x + (frame.right - frame.left);
+			mmi.ptMaxTrackSize.y = win.src.max_size.y + (frame.bottom - frame.top);
 			return defWindowProcW(hWnd, message, wParam, lParam);
 		}
 		case 0x0231: case 0x0232: // WM_ENTERSIZEMOVE, WM_EXITSIZEMOVE
 		{
-			if (win.src.actionFrame) rgfw_window_captureMousePlatform(win, win.internal.captureMouse);
+			if (win.src.actionFrame) _window_set_capture_mouse_native(win, win.internal.capture_mouse);
 			break;
 		}
 		case 0x0113: rgfw_windowRefreshCallback(win, 0, 0, win.width, win.height); break; // WM_TIMER
@@ -775,7 +777,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		}
 		case 0x0101: case 0x0105: // WM_KEYUP, WM_SYSKEYUP
 		{
-			if (!(win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.enabled_events & RGFW_KEY_RELEASED_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
 			int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
 			if (scancode == 0) scancode = (int)mapVirtualKeyW((uint)wParam, 0 /* MAPVK_VK_TO_VSC */);
 			switch (scancode)
@@ -793,7 +795,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		}
 		case 0x0100: case 0x0104: // WM_KEYDOWN, WM_SYSKEYDOWN
 		{
-			if (!(win.internal.enabledEvents & RGFW_KEY_PRESSED_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.enabled_events & RGFW_KEY_PRESSED_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
 			int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
 			if (scancode == 0) scancode = (int)mapVirtualKeyW((uint)wParam, 0);
 			switch (scancode)
@@ -820,7 +822,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		}
 		case 0x00FF: // WM_INPUT
 		{
-			if (!(win.internal.rawMouse || _gfx_ctx.rawMouse)) return defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.raw_mouse || _gfx_ctx.raw_mouse)) return defWindowProcW(hWnd, message, wParam, lParam);
 
 			RawInputMouse raw;
 			uint rawSize = (uint)RawInputMouse::size;
@@ -891,7 +893,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			Point pt;
 			dragQueryPoint(drop, &pt);
 			rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_MOVE, pt.x, pt.y);
-			if (!(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.enabled_events & RGFW_DATA_DROP_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
 			uint count = dragQueryFileW(drop, 0xffffffff, null, 0);
 			for (uint i = 0; i < count; i++)
 			{
@@ -1011,8 +1013,8 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 {
 	if (!name.len) name = " ";
 	win.src.hIconSmall = null; win.src.hIconBig = null;
-	win.src.maxSizeW = 0; win.src.maxSizeH = 0;
-	win.src.minSizeW = 0; win.src.minSizeH = 0;
+	win.src.max_size = {};
+	win.src.min_size = {};
 	win.src.aspectRatioW = 0; win.src.aspectRatioH = 0;
 
 	uint windowStyle = 0x04000000 | 0x02000000; // WS_CLIPSIBLINGS | WS_CLIPCHILDREN
@@ -1045,7 +1047,7 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 }
 
 // public
-fn void rgfw_window_setBorder(GfxWindow* win, bool border)
+fn void _window_set_border_native(GfxWindow* win, bool border)
 {
 
 	win.internal.flags.no_border = !border;
@@ -1082,18 +1084,20 @@ fn bool rgfw_getGlobalMouse(int* x, int* y)
 }
 
 // public
-fn void _window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
+fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
 {
 	win.src.aspectRatioW = w;
 	win.src.aspectRatioH = h;
 }
 // public
-fn void rgfw_window_setMinSize(GfxWindow* win, int w, int h) { win.src.minSizeW = w; win.src.minSizeH = h; }
 // public
-fn void rgfw_window_setMaxSize(GfxWindow* win, int w, int h) { win.src.maxSizeW = w; win.src.maxSizeH = h; }
+fn void _window_set_max_size_native(GfxWindow* win, int w, int h)
+{
+	win.src.max_size = { w, h };
+}
 
 // public
-fn void rgfw_window_focus(GfxWindow* win) { setForegroundWindow(win.src.window); setFocus(win.src.window); }
+fn void _window_focus_native(GfxWindow* win) { setForegroundWindow(win.src.window); setFocus(win.src.window); }
 // public
 fn void rgfw_window_raise(GfxWindow* win)
 {
@@ -1102,38 +1106,6 @@ fn void rgfw_window_raise(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_setFullscreen(GfxWindow* win, bool fullscreen)
-{
-	GfxMonitor* mon = find_monitor(win);
-
-	if (fullscreen == false)
-	{
-		rgfw_monitor_setMode(mon, &win.internal.oldMode);
-		rgfw_window_setBorder(win, true);
-
-		Rect rect = {0, 0, ...win.internal.old_bounds.size};
-		uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
-		uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
-		adjustWindowRectEx(&rect, style, 0, exStyle);
-		setWindowPos(win.src.window, (HWnd*)(uptr)0, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
-
-		win.internal.flags.fullscreen = false;
-		win.bounds = win.internal.old_bounds;
-		return;
-	}
-
-	win.internal.old_bounds = win.bounds;
-	win.internal.oldMode = mon.mode;
-	win.internal.flags.fullscreen = true;
-	rgfw_window_setBorder(win, false);
-
-	setWindowPos(win.src.window, (HWnd*)(uptr)(-1) /* HWND_TOPMOST */, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
-	win.x = mon.origin.x; win.y = mon.origin.y;
-
-	rgfw_monitor_scaleToWindow(mon, win);
-	setWindowPos(win.src.window, (HWnd*)(uptr)(-1), 0, 0, mon.mode.w, mon.mode.h, 0x0200 | 0x0020 | 0x0040 | 0x0002);
-	win.width = mon.mode.w; win.height = mon.mode.h;
-}
 
 // public
 fn void rgfw_window_maximizePlatform(GfxWindow* win) { win.hide(); showWindow(win.src.window, (int)SW_MAXIMIZE); }
@@ -1152,9 +1124,8 @@ fn void rgfw_window_setOpacity(GfxWindow* win, char opacity)
 	setLayeredWindowAttributes(win.src.window, 0, opacity, 2);
 }
 // public
-fn void rgfw_window_restorePlatform(GfxWindow* win) {}
+fn void _window_restore_native(GfxWindow* win) {}
 // public
-fn bool GfxWindow.is_floating(&win) => getWindowLongPtr(win.src.window, -20) & 0x00000008 != 0;
 // public
 fn void rgfw_stopCheckEvents() { postMessageW(_gfx_ctx.helperWindow, 0, 0, 0); }
 // public
@@ -1234,10 +1205,10 @@ fn void rgfw_pollEvents()
 }
 
 // public
-fn bool rgfw_window_isHidden(GfxWindow* win) => isWindowVisible(win.src.window) == 0 && !rgfw_window_isMinimized(win);
+fn bool _window_is_hidden_native(GfxWindow* win) => isWindowVisible(win.src.window) == 0 && !_window_is_minimized_native(win);
 
 // public
-fn bool rgfw_window_isMinimized(GfxWindow* win)
+fn bool _window_is_minimized_native(GfxWindow* win)
 {
 	WindowPlacement placement;
 	getWindowPlacement(win.src.window, &placement);
@@ -1245,7 +1216,7 @@ fn bool rgfw_window_isMinimized(GfxWindow* win)
 }
 
 // public
-fn bool rgfw_window_isMaximized(GfxWindow* win)
+fn bool _window_is_maximized_native(GfxWindow* win)
 {
 	WindowPlacement placement;
 	getWindowPlacement(win.src.window, &placement);
@@ -1596,16 +1567,18 @@ fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 
 // public
 fn void rgfw_freeMouse(RgfwMouse* mouse) { destroyCursor((HCursor)mouse); }
-// public
-fn void GfxWindow.hide(&self) { showWindow(self.src.window, (int)SW_HIDE); }
 
-// public
-fn void GfxWindow.flash(&self, GfxFlashRequest request)
+fn void _window_hide_native(GfxWindow* win) @private
 {
-	if (self.has_focus() && request != CANCEL) return;
+	showWindow(win.src.window, (int)SW_HIDE);
+}
+
+fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) @private
+{
+	if (win.has_focus() && request != CANCEL) return;
 	FlashWInfo desc;
 	desc.cbSize = FlashWInfo::size;
-	desc.hwnd = self.src.window;
+	desc.hwnd = win.src.window;
 	switch (request)
 	{
 		case CANCEL: desc.dwFlags = FLASHW_STOP;
@@ -1636,22 +1609,13 @@ fn void rgfw_window_closePlatform(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_movePlatform(GfxWindow* win, int x, int y)
+fn void _window_move_native(GfxWindow* win, int x, int y)
 {
 	win.x = x; win.y = y;
 	setWindowPos(win.src.window, (HWnd*)(uptr)0, win.x, win.y, 0, 0, 0x0001 /* SWP_NOSIZE */);
 }
 
 // public
-fn void rgfw_window_resizePlatform(GfxWindow* win, int w, int h)
-{
-	win.width = w; win.height = h;
-	Rect rect = {0, 0, w, h};
-	uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
-	uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
-	adjustWindowRectEx(&rect, style, 0, exStyle);
-	setWindowPos(win.src.window, (HWnd*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
-}
 
 // public
 fn void GfxWindow.set_name(&self, String name)
@@ -1679,32 +1643,6 @@ fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough)
 	if (passthrough) setLayeredWindowAttributes(win.src.window, key, alpha, flags);
 }
 
-// public
-fn bool GfxWindow.set_icon(&win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
-{
-	if (win.src.hIconSmall != null && (type & WINDOW)) destroyIcon(win.src.hIconSmall);
-	if (win.src.hIconBig != null && (type & TASKBAR)) destroyIcon(win.src.hIconBig);
-
-	if (!data)
-	{
-		HIcon defaultIcon = loadIconA(null, (char*)(uptr)32512 /* IDI_APPLICATION */);
-		if (type & WINDOW) sendMessage(win.src.window, 0x0080 /* WM_SETICON */, 0, (iptr)(uptr)defaultIcon);
-		if (type & TASKBAR) sendMessage(win.src.window, 0x0080, 1, (iptr)(uptr)defaultIcon);
-		return true;
-	}
-
-	if (type & WINDOW)
-	{
-		win.src.hIconSmall = rgfw_loadHandleImage(data, w, h, format, 1);
-		sendMessage(win.src.window, 0x0080, 0, (iptr)(uptr)win.src.hIconSmall);
-	}
-	if (type & TASKBAR)
-	{
-		win.src.hIconBig = rgfw_loadHandleImage(data, w, h, format, 1);
-		sendMessage(win.src.window, 0x0080, 1, (iptr)(uptr)win.src.hIconBig);
-	}
-	return true;
-}
 
 // public
 fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
@@ -2029,7 +1967,7 @@ fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 }
 
 // public
-fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
+fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 {
 	if (state == false) { clipCursor(null); return; }
 
@@ -2041,7 +1979,7 @@ fn void rgfw_window_captureMousePlatform(GfxWindow* win, bool state)
 }
 
 // public
-fn void rgfw_window_setRawMouseModePlatform(GfxWindow* win, bool state)
+fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 {
 	RawInputDevice id = {0x01, 0x02, 0, win.src.window};
 	id.flags = state == true ? 0 : RIDEV_REMOVE;

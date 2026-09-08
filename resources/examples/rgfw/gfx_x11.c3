@@ -161,10 +161,10 @@ fn void rgfw_window_setBorder_X11(GfxWindow* win, bool border)
 	hints.flags = 2;
 	hints.decorations = (CULong)border;
 	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.motifWmHints, _gfx_ctx.motifWmHints, 32, 0, (char*)&hints, 5);
-	if (!rgfw_window_isHidden(win))
+	if (!_window_is_hidden_x11(win))
 	{
 		win.hide();
-		show(win);
+		win.show();
 	}
 }
 
@@ -811,7 +811,7 @@ fn void rgfw_window_hide_X11(GfxWindow* win)
 }
 
 // private
-fn bool rgfw_window_isHidden_X11(GfxWindow* win)
+fn bool _window_is_hidden_x11(GfxWindow* win)
 {
 	XWindowAttributes windowAttributes;
 	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &windowAttributes);
@@ -819,7 +819,7 @@ fn bool rgfw_window_isHidden_X11(GfxWindow* win)
 }
 
 // private
-fn bool rgfw_window_isMaximized_X11(GfxWindow* win)
+fn bool _window_is_maximized_x11(GfxWindow* win)
 {
 	Atom actualType;
 	int actualFormat;
@@ -840,7 +840,7 @@ fn bool rgfw_window_isMaximized_X11(GfxWindow* win)
 }
 
 // private
-fn bool rgfw_window_isMinimized_X11(GfxWindow* win)
+fn bool _window_is_minimized_x11(GfxWindow* win)
 {
 	Atom actualType;
 	int actualFormat;
@@ -871,7 +871,7 @@ fn void rgfw_window_maximizePlatform_X11(GfxWindow* win) => rgfw_toggleXMaximize
 // private
 fn void rgfw_window_minimizePlatform_X11(GfxWindow* win)
 {
-	if (rgfw_window_isMaximized(win)) return;
+	if (_window_is_maximized_native(win)) return;
 	win.internal.old_bounds = win.bounds;
 	xIconifyWindow(_gfx_ctx.display, win.src.window, xDefaultScreen(_gfx_ctx.display));
 	xFlush(_gfx_ctx.display);
@@ -900,11 +900,11 @@ fn void rgfw_window_movePlatform_X11(GfxWindow* win, int x, int y)
 fn void rgfw_window_raise_X11(GfxWindow* win)
 {
 	xMapRaised(_gfx_ctx.display, win.src.window);
-	rgfw_window_setFullscreen(win, win.is_fullscreen());
+	_window_set_fullscreen_native(win, win.is_fullscreen());
 }
 
 // private
-fn void rgfw_window_resizePlatform_X11(GfxWindow* win, int w, int h)
+fn void _window_resize_x11(GfxWindow* win, int w, int h)
 {
 	win.width = w; win.height = h;
 	xResizeWindow(_gfx_ctx.display, win.src.window, (uint)w, (uint)h);
@@ -929,7 +929,7 @@ fn void rgfw_window_restorePlatform_X11(GfxWindow* win)
 fn void rgfw_window_setFloating_X11(GfxWindow* win, bool floating) => rgfw_window_setXAtom(win, _gfx_ctx.netWmStateAbove, floating);
 
 // private
-fn void rgfw_window_setFullscreen_X11(GfxWindow* win, bool fullscreen)
+fn void _window_set_fullscreen_x11(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
@@ -952,7 +952,7 @@ fn void rgfw_window_setFullscreen_X11(GfxWindow* win, bool fullscreen)
 }
 
 // private
-fn void rgfw_window_setMaxSize_X11(GfxWindow* win, int w, int h)
+fn void _window_set_max_size_x11(GfxWindow* win, int w, int h)
 {
 	CLong flags;
 	XSizeHints hints;
@@ -963,7 +963,7 @@ fn void rgfw_window_setMaxSize_X11(GfxWindow* win, int w, int h)
 }
 
 // private
-fn void rgfw_window_setMinSize_X11(GfxWindow* win, int w, int h)
+fn void _window_set_min_size_x11(GfxWindow* win, int w, int h)
 {
 	CLong flags;
 	XSizeHints hints;
@@ -1081,7 +1081,7 @@ fn bool rgfw_window_createContextPtr_OpenGL_X11(GfxWindow* win, RgfwGlContext* c
 	bool showWindow = false;
 	if (win.src.window != 0)
 	{
-		showWindow = !rgfw_window_isMinimized(win);
+		showWindow = !_window_is_minimized_native(win);
 		rgfw_window_closePlatform(win);
 	}
 
@@ -1154,7 +1154,7 @@ fn bool rgfw_window_createContextPtr_OpenGL_X11(GfxWindow* win, RgfwGlContext* c
 	xFree(vi);
 
 	if (catch rgfw_xCreateWindow(visual, "", win.internal.flags, win)) return false;
-	if (showWindow) show(win);
+	if (showWindow) win.show();
 
 	int[40] contextAttribs;
 	rgfw_attribStack_init(&stack, (int*)&contextAttribs, 40);
@@ -1265,7 +1265,7 @@ fn void? rgfw_createSurfacePtr_X11(void* data, int w, int h, GfxFormat format, G
 }
 
 // private
-fn bool rgfw_window_isFloating_X11(GfxWindow* win)
+fn bool _window_is_floating_x11(GfxWindow* win)
 {
 	Atom actualType;
 	int actualFormat;
@@ -1288,7 +1288,7 @@ fn void rgfw_window_setName_X11(GfxWindow* win, String name) => @pool()
 }
 
 // private
-fn bool rgfw_window_setIconEx_X11(GfxWindow* win, char* dataSrc, int w, int h, GfxFormat format, GfxWindowIconType type)
+fn bool _window_set_icon_x11(GfxWindow* win, char* dataSrc, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
 	if (dataSrc == null)
 	{
@@ -1350,12 +1350,12 @@ fn GfxMonitor* rgfw_window_getMonitor_X11(GfxWindow* win)
 fn void rgfw_window_showPlatform_X11(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
-	if (!rgfw_window_isHidden(win)) return;
+	if (!_window_is_hidden_native(win)) return;
 	xMapWindow(_gfx_ctx.display, win.src.window);
 	win.move(...win.origin);
 
 	rgfw_waitForShowEvent_X11(win);
-	rgfw_window_setFullscreen(win, win.is_fullscreen());
+	_window_set_fullscreen_native(win, win.is_fullscreen());
 }
 
 // public

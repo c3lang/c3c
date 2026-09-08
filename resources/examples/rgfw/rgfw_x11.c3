@@ -561,7 +561,7 @@ fn void rgfw_xHandleEvent()
 	{
 		case 2: // KeyPress
 		{
-			if (!(win.internal.enabledEvents & RGFW_KEY_PRESSED_FLAG)) return;
+			if (!(win.internal.enabled_events & RGFW_KEY_PRESSED_FLAG)) return;
 			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
 
 			XkbStateRec state;
@@ -602,7 +602,7 @@ fn void rgfw_xHandleEvent()
 		}
 		case 3: // KeyRelease
 		{
-			if (!(win.internal.enabledEvents & RGFW_KEY_RELEASED_FLAG)) return;
+			if (!(win.internal.enabled_events & RGFW_KEY_RELEASED_FLAG)) return;
 			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
 
 			XkbStateRec state;
@@ -655,7 +655,7 @@ fn void rgfw_xHandleEvent()
 				bool handled = false;
 				if (e.xproperty.atom == _gfx_ctx.wmState)
 				{
-					if (rgfw_window_isMinimized(win) && !(win.internal.flags.minimize))
+					if (_window_is_minimized_native(win) && !(win.internal.flags.minimize))
 					{
 						rgfw_windowMinimizedCallback(win);
 						handled = true;
@@ -663,7 +663,7 @@ fn void rgfw_xHandleEvent()
 				}
 				else if (e.xproperty.atom == _gfx_ctx.netWmState)
 				{
-					if (rgfw_window_isMaximized(win) && !(win.internal.flags.maximize))
+					if (_window_is_maximized_native(win) && !(win.internal.flags.maximize))
 					{
 						rgfw_windowMaximizedCallback(win, win.x, win.y, win.width, win.height);
 						handled = true;
@@ -795,7 +795,7 @@ fn void rgfw_xHandleEvent()
 		}
 		case 31: // SelectionNotify
 		{
-			if (!(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
+			if (!(win.internal.enabled_events & RGFW_DATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
 
 			ZString data;
 			CULong result;

@@ -10,7 +10,42 @@ struct GfxNativeImage
 	void* native2;
 }
 
-fn void _window_set_aspect_ratio(GfxWindow* win, int w, int h)
+fn bool _window_is_floating_native(GfxWindow* win)
+{
+	if (!win) return false;
+	if (win.src.window) return objc_send((ObjcId)win.src.window, ObjcSendInteger, "level") > NS_WINDOW_LEVEL_NORMAL;
+	return win.internal.flags.floating;
+}
+
+fn void _window_resize_native(GfxWindow* win, int w, int h)
+{
+	if (!win.src.window) return;
+	CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
+	CGRect content = objc_send((ObjcId)win.src.window, ObjcSendRectRect, "contentRectForFrameRect:", frame);
+	double offset = frame.size.height - content.size.height;
+	objc_send((ObjcId)win.src.window, ObjcSendVoidRectBool, "setFrame:display:", ns_rect((double)win.x, (double)win.y, (double)w, (double)h + offset), true);
+}
+
+fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
+{
+	if (!_gfx_ctx.nsApp) return false;
+	if (!data)
+	{
+		objc_send(_gfx_ctx.nsApp, ObjcSendVoidId, "setApplicationIconImage:", null);
+		return true;
+	}
+	ObjcId rep = ns_bitmapRep(w, h);
+	defer ns_release(rep);
+	char* pixels = ns_bitmapData(rep);
+	if (!pixels) return false;
+	copy_image_data(pixels, w, h, RGBA8, data, format, null);
+	ObjcId image = ns_imageWithRep(rep, w, h);
+	defer ns_release(image);
+	objc_send(_gfx_ctx.nsApp, ObjcSendVoidId, "setApplicationIconImage:", image);
+	return true;
+}
+
+fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
 {
 	if (!win.src.window) return;
 	if (w == 0 && h == 0)
@@ -22,8 +57,30 @@ fn void _window_set_aspect_ratio(GfxWindow* win, int w, int h)
 	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setContentAspectRatio:", size);
 }
 
-// private
-fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon)
+fn bool _window_is_hidden_native(GfxWindow* win) @private
+{
+	if (win.src.window) return !objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible");
+	return win.internal.flags.hide;
+}
+
+fn void rgfw_pollMonitors()
+{
+	if (_gfx_ctx.monitors.count != 0) rgfw_freeMonitors();
+	uint count = 0;
+	CGDirectDisplayID[16] displays;
+	if (cgGetActiveDisplayList(16, &displays, &count) != 0) return;
+	for (uint i = 0; i < count; i++)
+	{
+		GfxMonitor mon;
+		_monitor_from_display(displays[i], &mon);
+		GfxMonitorNode* node = rgfw_monitors_add(&mon);
+		if (node == null) continue;
+		node.nativeId0 = (ulong)displays[i];
+		if (displays[i] == cgMainDisplayID()) _gfx_ctx.monitors.primary = node;
+	}
+}
+
+fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
 {
 	*mon = {};
 	mem::copy(&mon.name, "Display", 8);
@@ -43,7 +100,7 @@ fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon)
 	mon.pixelRatio = mon.scale.x;
 }
 
-fn void rgfw_window_showPlatform(GfxWindow* win)
+fn void _window_show_native(GfxWindow* win)
 {
 	if (win == null || win.src.window == null) return;
 	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyAndOrderFront:", null);
@@ -58,7 +115,7 @@ fn void _osx_register_classes()
 	if (rgfw_osxWindowDelegateClass != (ObjcClass)null) return;
 	rgfw_osxWindowDelegateClass = objc_allocateClassPair(objc_getClass("NSObject"), "RGFWWindowDelegateC3", 0);
 	if (rgfw_osxWindowDelegateClass == (ObjcClass)null) return;
-	class_addIvar(rgfw_osxWindowDelegateClass, "rgfw_window", void*::size, 3, "^v");
+	class_addIvar(rgfw_osxWindowDelegateClass, "gfx_window", void*::size, 3, "^v");
 	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowWillClose:"), (void*)&_osx_window_will_close, "v@:@");
 	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidResize:"), (void*)&_osx_window_did_resize, "v@:@");
 	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidMove:"), (void*)&_osx_window_did_move, "v@:@");
@@ -67,10 +124,10 @@ fn void _osx_register_classes()
 	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidBecomeKey:"), (void*)&_osx_window_did_become_key, "v@:@");
 	class_addMethod(rgfw_osxWindowDelegateClass, sel_registerName("windowDidResignKey:"), (void*)&_osx_window_did_resign_key, "v@:@");
 	objc_registerClassPair(rgfw_osxWindowDelegateClass);
-	rgfw_osxViewClass = objc_allocateClassPair(objc_getClass("NSView"), "RGFWViewC3", 0);
+	rgfw_osxViewClass = objc_allocateClassPair(objc_getClass("NSView"), "GfxViewC3", 0);
 	if (rgfw_osxViewClass == (ObjcClass)null) return;
-	class_addIvar(rgfw_osxViewClass, "rgfw_window", void*::size, 3, "^v");
-	class_addMethod(rgfw_osxViewClass, sel_registerName("acceptsFirstResponder"), (void*)&rgfw_osxAcceptsFirstResponder, "c@:");
+	class_addIvar(rgfw_osxViewClass, "gfx_window", void*::size, 3, "^v");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("acceptsFirstResponder"), (void*)&_osx_accepts_first_responder, "c@:");
 	class_addMethod(rgfw_osxViewClass, sel_registerName("mouseMoved:"), (void*)&_osx_mouse_moved, "v@:@");
 	class_addMethod(rgfw_osxViewClass, sel_registerName("mouseDragged:"), (void*)&_osx_mouse_dragged, "v@:@");
 	class_addMethod(rgfw_osxViewClass, sel_registerName("rightMouseDragged:"), (void*)&_osx_mouse_dragged, "v@:@");
@@ -88,9 +145,9 @@ fn void _osx_register_classes()
 	class_addMethod(rgfw_osxViewClass, sel_registerName("mouseExited:"), (void*)&_osx_mouse_exited, "v@:@");
 	class_addMethod(rgfw_osxViewClass, sel_registerName("flagsChanged:"), (void*)&_osx_flags_changed, "v@:@");
 	class_addMethod(rgfw_osxViewClass, sel_registerName("viewDidChangeBackingProperties"), (void*)&_osx_view_did_change_backing_properties, "v@:");
-	class_addMethod(rgfw_osxViewClass, sel_registerName("wantsUpdateLayer"), (void*)&rgfw_osxWantsUpdateLayer, "c@:");
-	class_addMethod(rgfw_osxViewClass, sel_registerName("updateLayer"), (void*)&rgfw_osxUpdateLayer, "v@:");
-	class_addMethod(rgfw_osxViewClass, sel_registerName("drawRect:"), (void*)&rgfw_osxDrawRect, "v@:{CGRect={CGPoint=dd}{CGSize=dd}}");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("wantsUpdateLayer"), (void*)&_osx_wants_update_layer, "c@:");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("updateLayer"), (void*)&_osx_update_layer, "v@:");
+	class_addMethod(rgfw_osxViewClass, sel_registerName("drawRect:"), (void*)&_osx_draw_rect, "v@:{CGRect={CGPoint=dd}{CGSize=dd}}");
 	class_addMethod(rgfw_osxViewClass, sel_registerName("draggingEntered:"), (void*)&_osx_dragging_entered, "l@:@");
 	class_addMethod(rgfw_osxViewClass, sel_registerName("draggingUpdated:"), (void*)&_osx_dragging_updated, "l@:@");
 	class_addMethod(rgfw_osxViewClass, sel_registerName("draggingExited:"), (void*)&_osx_dragging_ended, "v@:@");
@@ -286,7 +343,7 @@ fn NSUInteger _osx_dragging_updated(ObjcId self, ObjcSelector sel, ObjcId sender
 {
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (!win) return 0;
-	if (!(win.internal.enabledEvents & RGFW_DATA_DRAG_FLAG)) return 1;
+	if (!(win.internal.enabled_events & RGFW_DATA_DRAG_FLAG)) return 1;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
 	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_MOVE, (int)p.x, win.height - (int)p.y);
 	return 1;
@@ -296,7 +353,7 @@ fn void _osx_dragging_ended(ObjcId self, ObjcSelector sel, ObjcId sender)
 {
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (!win) return;
-	if (!(win.internal.enabledEvents & RGFW_DATA_DRAG_FLAG)) return;
+	if (!(win.internal.enabled_events & RGFW_DATA_DRAG_FLAG)) return;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
 	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_EXIT, (int)p.x, win.height - (int)p.y);
 }
@@ -304,7 +361,7 @@ fn void _osx_dragging_ended(ObjcId self, ObjcSelector sel, ObjcId sender)
 fn bool _osx_prepare_for_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender)
 {
 	GfxWindow* win = rgfw_osxViewWindow(self);
-	if (!win || !(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return true;
+	if (!win || !(win.internal.enabled_events & RGFW_DATA_DROP_FLAG)) return true;
 	return win.internal.flags.allow_dnd;
 }
 
@@ -312,7 +369,7 @@ fn bool _osx_prepare_for_drag_operation(ObjcId self, ObjcSelector sel, ObjcId se
 fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender)
 {
 	GfxWindow* win = rgfw_osxViewWindow(self);
-	if (!win || !(win.internal.enabledEvents & RGFW_DATA_DROP_FLAG)) return false;
+	if (!win || !(win.internal.enabled_events & RGFW_DATA_DROP_FLAG)) return false;
 
 	ObjcId pasteBoard = objc_send(sender, ObjcSendId, "draggingPasteboard");
 	ObjcId types = objc_send(pasteBoard, ObjcSendId, "types");
@@ -344,6 +401,22 @@ fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender
 		NSUInteger stringCount = objc_send(fileURL, ObjcSendNSUInteger, "length");
 		rgfw_dataDropCallback(win, filePath, (sz)stringCount + 1, RGFW_DATA_FILE);
 	}
-
 	return false;
+}
+
+fn bool _osx_wants_update_layer(ObjcId self, ObjcSelector sel) => true;
+
+fn void _osx_update_layer(ObjcId self, ObjcSelector sel)
+{
+	if (GfxWindow* win = rgfw_osxViewWindow(self)) rgfw_windowRefreshCallback(win, 0, 0, ...win.size);
+}
+
+fn bool _osx_accepts_first_responder(ObjcId self, ObjcSelector sel) => true;
+
+fn void _osx_draw_rect(ObjcId self, ObjcSelector sel, CGRect rect)
+{
+	GfxWindow* win = rgfw_osxViewWindow(self);
+	if (!win) return;
+	float y = rgfw_cocoaYTransform((float)(rect.size.height - 1));
+	rgfw_windowRefreshCallback(win, (int)rect.origin.x, (int)y, (int)rect.size.width, (int)rect.size.height);
 }
