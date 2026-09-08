@@ -1,4 +1,5 @@
 module std::gfx;
+import std::os::macos;
 
 fn void? _load_opengl_native() @private @weak => NOT_IMPLEMENTED~;
 fn void _unload_opengl_native() @private @weak { }

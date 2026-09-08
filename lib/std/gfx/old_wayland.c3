@@ -10,16 +10,10 @@ struct Timespec { CLong tv_sec; CLong tv_nsec; }
 extern fn int shmOpen(ZString name, int oflag, int mode) @cname("shm_open");
 extern fn int shmUnlink(ZString name) @cname("shm_unlink");
 extern fn int ftruncate(int fd, sz length);
-extern fn int close(int fd);
-extern fn int pipe(int[2]* fds);
-extern fn sz read(int fd, void* buf, sz count);
-extern fn sz write(int fd, void* buf, sz count);
 extern fn int poll(Pollfd* fds, CUInt nfds, int timeout);
-extern fn ZString getenv(ZString name);
+
 struct Pollfd { int fd; short events; short revents; }
-const int PROT_READ = 0x1;
-const int PROT_WRITE = 0x2;
-const int MAP_SHARED = 0x01;
+
 const int O_RDWR = 0x0002;
 const int O_CREAT = 0x0040;
 const int O_EXCL = 0x0080;
@@ -27,9 +21,6 @@ const int POLLIN = 0x0001;
 
 // ---- Wayland client core (real libwayland-client ABI) ----
 
-
-extern fn int* rgfwErrnoLocation() @cname("__errno_location");
-const int TODO_RENAMEEAGAIN = 11;
 
 const uint WL_MARSHAL_FLAG_DESTROY = 1;
 
@@ -153,12 +144,8 @@ fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance
 	return out != 0;
 }
 
-alias WGPUInstance = void*;
-alias WGPUSurface = void*;
-alias WGPUSType = int;
+
 const WGPUSType WGPU_STYPE_SURFACE_SOURCE_WAYLAND_SURFACE = 0x00000007;
-struct WgpuChainedStruct { WgpuChainedStruct* next; WGPUSType sType; }
-struct WgpuSurfaceDescriptor { WgpuChainedStruct* nextInChain; }
 struct WgpuSurfaceSourceWaylandSurface { WgpuChainedStruct chain; WlDisplay* display; WlProxy* surface; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
@@ -188,35 +175,6 @@ ZxdgOutputV1Listener todo_fix_xdgOutputListener = {
 
 
 // private
-fn void _wl_data_device_selection(void* data, WlProxy* device, WlProxy* offer)
-{
-	if (offer == null) return;
-
-	int[2] pfds;
-	pipe(&pfds);
-	wlDataOfferReceive(offer, "text/plain", pfds[1]);
-	close(pfds[1]);
-	wlDisplayRoundtrip(_gfx_ctx.wlDisplay);
-
-	char[1024] buf;
-	sz n = read(pfds[0], &buf, 1024);
-	if (n <= 0) { close(pfds[0]); wlDataOfferDestroy(offer); return; }
-
-	sz length = (sz)n;
-	if (buf[n - 1] != 0) length += 1;
-
-	if (_gfx_ctx.unixClipboard != null) free(_gfx_ctx.unixClipboard);
-	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, n);
-	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	mem::copy(dataPtr, &buf, n);
-	dataPtr[length - 1] = 0;
-	_gfx_ctx.unixClipboard.data = dataPtr;
-	_gfx_ctx.unixClipboard.type = TEXT;
-	_gfx_ctx.unixClipboard.length = length;
-
-	close(pfds[0]);
-	wlDataOfferDestroy(offer);
-}
 
 
 WlRegistryListener todo_fix_registryListener = { .global = &todo_fix_wlGlobalRegistryHandler, .globalRemove = &todo_fix_wlGlobalRegistryRemove };

@@ -795,7 +795,7 @@ fn void todo_fix_pollEvents_Wayland()
 
 	while (wlDisplayFlush(_gfx_ctx.wlDisplay) == -1)
 	{
-		if (*rgfwErrnoLocation() == TODO_RENAMEEAGAIN)
+		if (libc::errno() == EAGAIN)
 		{
 			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == -1) return;
 		}
@@ -1858,3 +1858,33 @@ fn void todo_fix_xdgOutputNothing(void* data, WlProxy* xdgOutput) {}
 
 // private
 fn void todo_fix_xdgOutputNothingStr(void* data, WlProxy* xdgOutput, ZString s) {}
+
+fn void _wl_data_device_selection(void* data, WlProxy* device, WlProxy* offer)
+{
+	if (offer == null) return;
+
+	int[2] pfds;
+	posix::pipe(&pfds);
+	wlDataOfferReceive(offer, "text/plain", pfds[1]);
+	libc::close(pfds[1]);
+	wlDisplayRoundtrip(_gfx_ctx.wlDisplay);
+
+	char[1024] buf;
+	sz n = libc::read(pfds[0], &buf, 1024);
+	if (n <= 0) { libc::close(pfds[0]); wlDataOfferDestroy(offer); return; }
+
+	sz length = (sz)n;
+	if (buf[n - 1] != 0) length += 1;
+
+	if (_gfx_ctx.unixClipboard != null) free(_gfx_ctx.unixClipboard);
+	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, n);
+	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
+	mem::copy(dataPtr, &buf, n);
+	dataPtr[length - 1] = 0;
+	_gfx_ctx.unixClipboard.data = dataPtr;
+	_gfx_ctx.unixClipboard.type = TEXT;
+	_gfx_ctx.unixClipboard.length = length;
+
+	libc::close(pfds[0]);
+	wlDataOfferDestroy(offer);
+}

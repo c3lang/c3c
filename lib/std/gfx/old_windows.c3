@@ -363,12 +363,7 @@ fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance
 	return out != 0;
 }
 
-alias WGPUInstance = void*;
-alias WGPUSurface = void*;
-alias WGPUSType = int;
 const WGPUSType WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND = 0x00000005;
-struct WgpuChainedStruct { WgpuChainedStruct* next; WGPUSType sType; }
-struct WgpuSurfaceDescriptor { WgpuChainedStruct* nextInChain; }
 struct WgpuSurfaceSourceWindowsHWND { WgpuChainedStruct chain; void* hinstance; void* hwnd; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 

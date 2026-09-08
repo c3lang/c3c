@@ -70,13 +70,7 @@ struct TodoRenameWindowSrc
 // public
 fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
 
-alias WGPUInstance = void*;
-alias WGPUSurface = void*;
-alias WGPUSType = int;
 const WGPUSType WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR = 0x00040000;
-struct WgpuChainedStruct { WgpuChainedStruct* next; WGPUSType sType; }
-struct WgpuStringView { char* data; sz length; }
-struct WgpuSurfaceDescriptor { WgpuChainedStruct* nextInChain; }
 struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector { WgpuChainedStruct chain; WgpuStringView selector; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @wasm("env", "wgpuInstanceCreateSurface");
 

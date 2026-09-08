@@ -15,6 +15,7 @@ excuse
 	MISSING_GL_GET_PROC_ADDR,
 	MISSING_EGL_GET_PROC_ADDR,
 	EGL_BINDING_FAILED,
+	X11_WINDOW_CREATION_FAILED
 }
 
 const MAX_EVENTS = 32;
@@ -233,13 +234,13 @@ struct GfxContext
 	}
 	struct @feat(X11, X11_WAYLAND)
 	{
-		GfxXDisplay* display;
+		XDisplay* display;
 		int context;
-		GfxXWindow helperWindow;
+		XWindow helperWindow;
 		String class_name;
 		XlibIM im;
 		int xrandrEventBase;
-		GfxXWindow x11Source;
+		XWindow x11Source;
 		int x11Version;
 		int x11Format;
 		GfxDataTransferType x11TransferType;

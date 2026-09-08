@@ -7,7 +7,7 @@ import std::collections, std::math, libc, std::os::macos, std::io;
 
 excuse NSWINDOW_CREATION_FAILED;
 
-alias ObjcId = void*;
+
 typedef ObjcClass = void*;
 typedef ObjcSelector = void*;
 alias CFBundleRef = void*;
@@ -1190,12 +1190,7 @@ fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, TodoRenameEglContex
 // public
 fn void todo_fix_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current = win; }
 
-alias WGPUInstance = void*;
-alias WGPUSurface = void*;
-alias WGPUSType = int;
 const WGPUSType WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER = 0x00000004;
-struct WgpuChainedStruct { WgpuChainedStruct* next; WGPUSType sType; }
-struct WgpuSurfaceDescriptor { WgpuChainedStruct* nextInChain; }
 struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; void* layer; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
