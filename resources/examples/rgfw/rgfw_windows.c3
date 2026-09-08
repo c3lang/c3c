@@ -950,7 +950,7 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 
 	win.src.window = win32::createWindowExW(0, _gfx_ctx.wndClass.className, name.to_wstring(tmem)!!, windowStyle, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx_ctx.instance, null);
 	setPropW(win.src.window, rgfw_wideRgfwPropName(), win);
-	win.resize(...win.size);
+	win.resize(win.size);
 
 	if (flags.allow_dnd)
 	{
@@ -1008,9 +1008,9 @@ fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
 }
 // public
 // public
-fn void _window_set_max_size_native(GfxWindow* win, int w, int h)
+fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 {
-	win.src.max_size = { w, h };
+	win.src.max_size = size;
 }
 
 // public
@@ -1190,8 +1190,7 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 // public
 fn void rgfw_win32GetMode(DevModeW* dm, GfxMonitorMode* mode)
 {
-	mode.w = (int)dm.pelsWidth;
-	mode.h = (int)dm.pelsHeight;
+	mode.size = { (int)dm.pelsWidth, (int)dm.pelsHeight };
 	rgfw_splitBPP(dm.bitsPerPel, mode);
 	switch (dm.displayFrequency)
 	{
@@ -1219,7 +1218,7 @@ fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* monitor)
 		sz i;
 		foreach (&mode2 : modes)
 		{
-			if (rgfw_monitorModeCompare(mode2, &mode, ALL)) continue OUTER;
+			if (mode2.equals_request(&mode, ALL)) continue OUTER;
 		}
 		modes.push(mode);
 	}
@@ -1359,12 +1358,12 @@ fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
 	DevModeW dm;
 	dm.size = (ushort)DevModeW::size;
 	dm.fields |= DM_PELSWIDTH | DM_PELSHEIGHT;
-	dm.pelsWidth = (uint)mode.w;
-	dm.pelsHeight = (uint)mode.h;
+	dm.pelsWidth = (uint)mode.size.x;
+	dm.pelsHeight = (uint)mode.size.y;
 	dm.fields |= DM_DISPLAYFREQUENCY;
 	dm.displayFrequency = (uint)mode.refresh_rate;
 	dm.fields |= DM_BITSPERPEL;
-	dm.bitsPerPel = (uint)(mode.red + mode.green + mode.blue);
+	dm.bitsPerPel = (uint)(mode.rgb.sum());
 
 	if (changeDisplaySettingsExW((ushort*)&mon.node.adapterName, &dm, null, CDS_TEST, null) == DISP_CHANGE_SUCCESSFUL)
 	{
@@ -1390,9 +1389,9 @@ fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonit
 		if (enumDisplaySettingsW((ushort*)&mon.node.adapterName, index, &dm) == 0) break;
 		index += 1;
 
-		if (request & SCALE) { dm.fields |= DM_PELSWIDTH | DM_PELSHEIGHT; dm.pelsWidth = (uint)mode.w; dm.pelsHeight = (uint)mode.h; }
+		if (request & SCALE) { dm.fields |= DM_PELSWIDTH | DM_PELSHEIGHT; dm.pelsWidth = (uint)mode.size.x; dm.pelsHeight = (uint)mode.size.y; }
 		if (request & REFRESH) { dm.fields |= DM_DISPLAYFREQUENCY; dm.displayFrequency = (uint)mode.refresh_rate; }
-		if (request & RGB) { dm.fields |= DM_BITSPERPEL; dm.bitsPerPel = (uint)(mode.red + mode.green + mode.blue); }
+		if (request & RGB) { dm.fields |= DM_BITSPERPEL; dm.bitsPerPel = (uint)(mode.rgb.sum()); }
 
 		if (changeDisplaySettingsExW((ushort*)&mon.node.adapterName, &dm, null, CDS_TEST, null) == DISP_CHANGE_SUCCESSFUL)
 		{
@@ -1526,10 +1525,10 @@ fn void rgfw_window_closePlatform(GfxWindow* win)
 }
 
 // public
-fn void _window_move_native(GfxWindow* win, int x, int y)
+fn void _window_move_native(GfxWindow* win, GfxPoint where)
 {
-	win.x = x; win.y = y;
-	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, win.x, win.y, 0, 0, 0x0001 /* SWP_NOSIZE */);
+	win.origin = where;
+	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, ...where, 0, 0, 0x0001 /* SWP_NOSIZE */);
 }
 
 // public

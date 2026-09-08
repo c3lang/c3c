@@ -5,7 +5,7 @@ fn void*? _dlopen_any(ZString... names) @feat(POSIX)
 {
 	foreach (name : names)
 	{
-		void* proc = libc::dlopen(name, RTLD_LAZY | RTLD_LOCAL);
+		void* proc = libc::dlopen(name, libc::RTLD_LAZY | libc::RTLD_LOCAL);
 		if (proc) return proc;
 	}
 	return NOT_FOUND~;

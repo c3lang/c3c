@@ -509,31 +509,12 @@ fn GfxWindow* rgfw_osxViewWindow(ObjcId self)
 // public
 fn void rgfw_monitorNode_free(GfxMonitorNode* node) { if (node != null && node.mon.mode.src != null) cfRelease(node.mon.mode.src); }
 
-// public
-fn void _window_set_max_size_native(GfxWindow* win, int w, int h)
-{
-	if (win == null || win.src.window == null) return;
-	if (w == 0 && h == 0)
-	{
-		GfxMonitor* mon = find_monitor(win);
-		if (mon != null)
-		{
-			w = mon.mode.w;
-			h = mon.mode.h;
-		}
-	}
-	CGSize size;
-	size.width = (CGFloat)w; size.height = (CGFloat)h;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setMaxSize:", size);
-}
 
 // public
-fn void _window_set_min_size_native(GfxWindow* win, int w, int h)
+fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 {
-	if (win == null || win.src.window == null) return;
-	CGSize size;
-	size.width = (CGFloat)w; size.height = (CGFloat)h;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setMinSize:", size);
+	if (!win.src.window) return;
+	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setMinSize:", (CGSize) { ...size });
 }
 
 // public
@@ -800,13 +781,13 @@ fn void _window_restore_native(GfxWindow* win)
 // public
 fn void rgfw_window_minimizePlatform(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "miniaturize:", null); }
 // public
-fn void _window_move_native(GfxWindow* win, int x, int y)
+fn void _window_move_native(GfxWindow* win, GfxPoint where)
 {
-	if (win == null || win.src.window == null) return;
+	if (!win.src.window) return;
 	CGRect content = objc_send((ObjcId)win.src.view, ObjcSendRect, "frame");
-	win.x = x;
-	win.y = (int)rgfw_cocoaYTransform((float)y + (float)content.size.height - 1.0f);
-	CGPoint origin = { .x = (double)x, .y = (double)y };
+	win.x = where.x;
+	win.y = (int)rgfw_cocoaYTransform((float)where.y + (float)content.size.height - 1.0f);
+	CGPoint origin = { ...where };
 	objc_send((ObjcId)win.src.window, ObjcSendVoidPoint, "setFrameOrigin:", origin);
 }
 // public
@@ -912,12 +893,9 @@ fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* monitor)
 	{
 		CGDisplayModeRef mode = (CGDisplayModeRef)cfArrayGetValueAtIndex(list, (CFIndex)i);
 		modes.push({
-			.w = (int)cgDisplayModeGetWidth(mode),
-			.h = (int)cgDisplayModeGetHeight(mode),
+			.size = { (int)cgDisplayModeGetWidth(mode), (int)cgDisplayModeGetHeight(mode) },
 			.refresh_rate = (float)cgDisplayModeGetRefreshRate(mode),
-			.red = 8,
-			.green = 8,
-			.blue = 8,
+			.rgb = (char[<3>])8,
 			.src = mode
 		});
 	}
@@ -1017,7 +995,7 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 		offset = (double)(frame.size.height - content.size.height);
 	}
 
-	win.resize(win.width, win.height + (int)offset);
+	win.resize(win.size + { 0, (int)offset });
 	win.height -= (int)offset;
 }
 // public

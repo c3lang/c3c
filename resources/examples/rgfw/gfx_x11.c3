@@ -460,16 +460,16 @@ fn int rgfw_initPlatform_X11(String class_name, GfxInitOption flags)
 		2 /* InputOnly */, xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), 1 << 11, &wa);
 	if (_gfx_ctx.helperWindow == 0) return -1;
 
-	rgfw_x11CursorHandle = libc::dlopen("libXcursor.so.1", RTLD_LAZY | RTLD_LOCAL);
+	rgfw_x11CursorHandle = libc::dlopen("libXcursor.so.1", libc::RTLD_LAZY | libc::RTLD_LOCAL);
 	if (rgfw_x11CursorHandle != null)
 	{
 		rgfw_xcursorImageCreateSRC = (PFN_XcursorImageCreate)libc::dlsym(rgfw_x11CursorHandle, "XcursorImageCreate");
 		rgfw_xcursorImageDestroySRC = (PFN_XcursorImageDestroy)libc::dlsym(rgfw_x11CursorHandle, "XcursorImageDestroy");
 		rgfw_xcursorImageLoadCursorSRC = (PFN_XcursorImageLoadCursor)libc::dlsym(rgfw_x11CursorHandle, "XcursorImageLoadCursor");
 	}
-	rgfw_x11XiHandle = libc::dlopen("libXi.so.6", RTLD_LAZY | RTLD_LOCAL);
+	rgfw_x11XiHandle = libc::dlopen("libXi.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
 	if (rgfw_x11XiHandle != null) rgfw_xiSelectEventsSRC = (PFN_XISelectEvents)libc::dlsym(rgfw_x11XiHandle, "XISelectEvents");
-	rgfw_x11ExtHandle = libc::dlopen("libXext.so.6", RTLD_LAZY | RTLD_LOCAL);
+	rgfw_x11ExtHandle = libc::dlopen("libXext.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
 	if (rgfw_x11ExtHandle != null)
 	{
 		rgfw_xSyncCreateCounterSRC = (PFN_XSyncCreateCounter)libc::dlsym(rgfw_x11ExtHandle, "XSyncCreateCounter");
@@ -561,8 +561,8 @@ fn bool rgfw_monitor_getWorkarea_X11(GfxMonitor* monitor, int* x, int* y, int* w
 	GfxXWindow root = xDefaultRootWindow(_gfx_ctx.display);
 	int areaX = monitor.origin.x;
 	int areaY = monitor.origin.y;
-	int areaW = monitor.mode.w;
-	int areaH = monitor.mode.h;
+	int areaW = monitor.mode.size.x;
+	int areaH = monitor.mode.size.y;
 
 	if (_gfx_ctx.netWorkarea != 0 && _gfx_ctx.netCurrentDesktop != 0)
 	{
@@ -606,14 +606,14 @@ fn bool rgfw_monitor_requestMode_X11(GfxMonitor* mon, GfxMonitorMode* mode, GfxM
 
 	for (int i = 0; i < oi.nmode; i++)
 	{
-		GfxMonitorMode foundMode;
-		void* mi = rgfw_xGetMode(ci, res, oi.modes[i], &foundMode);
+		GfxMonitorMode found_mode;
+		void* mi = rgfw_xGetMode(ci, res, oi.modes[i], &found_mode);
 		if (mi == null) continue;
-		if (rgfw_monitorModeCompare(mode, &foundMode, request))
+		if (mode.equals_request(&found_mode, request))
 		{
 			native = ((XRRModeInfoNative*)mi).id;
 			output = true;
-			mon.mode = foundMode;
+			mon.mode = found_mode;
 			break;
 		}
 	}
@@ -1278,11 +1278,10 @@ fn void rgfw_window_moveMouse_X11(GfxWindow* win, int x, int y)
 	xWarpPointer(_gfx_ctx.display, 0, win.src.window, 0, 0, 0, 0, x - win.x, y - win.y);
 }
 
-// private
-fn void rgfw_window_movePlatform_X11(GfxWindow* win, int x, int y)
+fn void _window_move_x11(GfxWindow* win, GfxPoint where)
 {
-	win.x = x; win.y = y;
-	xMoveWindow(_gfx_ctx.display, win.src.window, x, y);
+	win.origin = where;
+	xMoveWindow(_gfx_ctx.display, win.src.window, ...where);
 }
 
 // private
@@ -1293,16 +1292,16 @@ fn void rgfw_window_raise_X11(GfxWindow* win)
 }
 
 // private
-fn void _window_resize_x11(GfxWindow* win, int w, int h)
+fn void _window_resize_x11(GfxWindow* win, GfxSize size)
 {
-	win.width = w; win.height = h;
-	xResizeWindow(_gfx_ctx.display, win.src.window, (uint)w, (uint)h);
+	win.size = size;
+	xResizeWindow(_gfx_ctx.display, win.src.window, (uint)size.x, (uint)size.y);
 	if (win.internal.flags.no_resize)
 	{
 		XSizeHints sh;
 		sh.flags = (1 << 4) | (1 << 5);
-		sh.min_width = w; sh.max_width = w;
-		sh.min_height = h; sh.max_height = h;
+		sh.min_width = sh.max_width = size.x;
+		sh.min_height = sh.max_height = size.y;
 		xSetWMSizeHints(_gfx_ctx.display, win.src.window, &sh, 0);
 	}
 }
@@ -1341,24 +1340,24 @@ fn void _window_set_fullscreen_x11(GfxWindow* win, bool fullscreen)
 }
 
 // private
-fn void _window_set_max_size_x11(GfxWindow* win, int w, int h)
+fn void _window_set_max_size_x11(GfxWindow* win, GfxSize size)
 {
 	CLong flags;
 	XSizeHints hints;
 	xGetWMNormalHints(_gfx_ctx.display, win.src.window, &hints, &flags);
 	hints.flags |= 1 << 5; // PMaxSize
-	hints.max_width = w; hints.max_height = h;
+	hints.max_width = size.x; hints.max_height = size.y;
 	xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
 }
 
 // private
-fn void _window_set_min_size_x11(GfxWindow* win, int w, int h)
+fn void _window_set_min_size_x11(GfxWindow* win, GfxSize size)
 {
 	CLong flags;
 	XSizeHints hints;
 	xGetWMNormalHints(_gfx_ctx.display, win.src.window, &hints, &flags);
 	hints.flags |= 1 << 4; // PMinSize
-	hints.min_width = w; hints.min_height = h;
+	hints.min_width = size.x; hints.min_height = size.y;
 	xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
 }
 
@@ -1726,8 +1725,8 @@ fn GfxMonitor* rgfw_window_getMonitor_X11(GfxWindow* win)
 	if (xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attrs) == 0) return null;
 	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
 	{
-		if ((attrs.x < node.mon.origin.x + node.mon.mode.w) && (attrs.x + attrs.width > node.mon.origin.x) &&
-			(attrs.y < node.mon.origin.y + node.mon.mode.h) && (attrs.y + attrs.height > node.mon.origin.y))
+		if ((attrs.x < node.mon.origin.x + node.mon.mode.size.x) && (attrs.x + attrs.width > node.mon.origin.x) &&
+			(attrs.y < node.mon.origin.y + node.mon.mode.size.y) && (attrs.y + attrs.height > node.mon.origin.y))
 		{
 			return &node.mon;
 		}
@@ -1741,7 +1740,7 @@ fn void rgfw_window_showPlatform_X11(GfxWindow* win)
 	win.internal.flags.hide = false;
 	if (!_window_is_hidden_native(win)) return;
 	xMapWindow(_gfx_ctx.display, win.src.window);
-	win.move(...win.origin);
+	win.move(win.origin);
 
 	rgfw_waitForShowEvent_X11(win);
 	_window_set_fullscreen_native(win, win.is_fullscreen());
@@ -1948,23 +1947,21 @@ fn int rgfw_xErrorHandler(GfxXDisplay* display, XErrorEvent* ev)
 }
 
 // public
-fn void* rgfw_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxMonitorMode* foundMode)
+fn void* rgfw_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxMonitorMode* found_mode)
 {
 	XRRModeInfoNative* mi = null;
 	for (int j = 0; j < res.nmode; j++) if (res.modes[j].id == mode) mi = &res.modes[j];
-	if (mi == null) return null;
+	if (!mi) return null;
 
-	foundMode.w = (int)mi.width;
-	foundMode.h = (int)mi.height;
+	found_mode.size = { (int)mi.width, (int)mi.height };
 	if (ci.rotation == 4 || ci.rotation == 8) // RR_Rotate_90 / RR_Rotate_270
 	{
-		foundMode.w = (int)mi.height;
-		foundMode.h = (int)mi.width;
+		found_mode.size = found_mode.size.yx;
 	}
 
-	rgfw_splitBPP((uint)xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), foundMode);
-	foundMode.src = (void*)(uptr)mode;
-	foundMode.refresh_rate = 0;
+	rgfw_splitBPP((uint)xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), found_mode);
+	found_mode.src = (void*)(uptr)mode;
+	found_mode.refresh_rate = 0;
 	if (mi.hTotal == 0 || mi.vTotal == 0) return mi;
 
 	uint vTotal = mi.vTotal;
@@ -1972,7 +1969,7 @@ fn void* rgfw_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, Gf
 	int denominator = (int)(mi.hTotal * vTotal);
 	if (denominator <= 0) denominator = 1;
 	float refresh_rate = (float)numerator / (float)denominator;
-	foundMode.refresh_rate = (float)((int)(refresh_rate * 100 + 0.5f)) / 100.0f;
+	found_mode.refresh_rate = (float)((int)(refresh_rate * 100 + 0.5f)) / 100.0f;
 	return mi;
 }
 

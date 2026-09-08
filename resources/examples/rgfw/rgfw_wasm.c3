@@ -421,11 +421,10 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 	GfxMonitor monitor;
 	monitor.origin = {};
 	monitor.pixelRatio = (float)rgfwJsDevicePixelRatio();
-	monitor.mode.w = rgfwJsInnerWidth();
-	monitor.mode.h = rgfwJsInnerHeight();
+	monitor.mode.size = { rgfwJsInnerWidth(), rgfwJsInnerHeight() };
 	monitor.phys_size = {
-		(float)(int)(monitor.mode.w * monitor.pixelRatio + 0.5f),
-		(float)(int)(monitor.mode.h * monitor.pixelRatio + 0.5f)
+		(float)(int)(monitor.mode.size.x * monitor.pixelRatio + 0.5f),
+		(float)(int)(monitor.mode.size.y * monitor.pixelRatio + 0.5f)
 	};
 
 	float dpi = 96.0f * monitor.pixelRatio;
@@ -607,13 +606,6 @@ fn void GfxWindow.set_name(&self, String name)
 }
 
 // public
-fn void _window_maximize_native(GfxWindow* win)
-{
-	GfxMonitor* mon = find_monitor(win);
-	if (mon) win.resize(mon.mode.w, mon.mode.h);
-	win.move(0, 0);
-}
-// public
 fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) { rgfwJsSetOpacity((float)opacity / 255.0f); }
 
 // public
@@ -625,7 +617,7 @@ fn void rgfw_pollMonitors() {}
 // public
 fn void rgfw_monitorNode_free(GfxMonitorNode* node) {}
 // public
-fn void _window_focus_native(GfxWindow* win) {}
+
 // public
 fn void rgfw_window_raise(GfxWindow* win) {}
 // public
@@ -640,7 +632,7 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp) => f
 fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* mon) => {};
 // public
 fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => false;
-fn void _window_set_max_size_native(GfxWindow* win, int w, int h) {}
+
 fn void rgfw_window_minimizePlatform(GfxWindow* win) {}
 fn void rgfw_window_setFloating(GfxWindow* win, bool floating) {}
 fn void rgfw_waitForEvent(int waitMS) {}

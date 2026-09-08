@@ -7,16 +7,25 @@ fn bool _window_is_minimized_native(GfxWindow* win) => false;
 fn bool _window_is_maximized_native(GfxWindow* win) => false;
 fn void _window_hide_native(GfxWindow* win) {}
 fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) {}
-fn void _window_move_native(GfxWindow* win, int x, int y) {}
+fn void _window_move_native(GfxWindow* win, GfxPoint where) {}
 fn void _window_restore_native(GfxWindow* win) {}
 fn void _window_set_border_native(GfxWindow* win, bool border) {}
 fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type) => false;
 fn bool _window_is_floating_native(GfxWindow* win) => false;
-fn void _window_set_min_size_native(GfxWindow* win, int w, int h) {}
+fn void _window_set_min_size_native(GfxWindow* win, GfxSize size) {}
+fn void _window_focus_native(GfxWindow* win) {}
+fn void _window_set_max_size_native(GfxWindow* win, GfxSize size) {}
 
-fn void _window_resize_native(GfxWindow* win, int w, int h)
+fn void _window_maximize_native(GfxWindow* win)
 {
-	rgfwJsSetCanvasSize(w, h);
+	GfxMonitor* mon = find_monitor(win);
+	if (mon) win.resize(mon.mode.size);
+	win.move({});
+}
+
+fn void _window_resize_native(GfxWindow* win, GfxSize size)
+{
+	rgfwJsSetCanvasSize(...size);
 }
 
 fn void _window_show_mouse_native(GfxWindow* win, bool show)

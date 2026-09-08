@@ -689,19 +689,19 @@ fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y)
 }
 
 // public
-fn void _window_move_native(GfxWindow* win, int x, int y)
+fn void _window_move_native(GfxWindow* win, GfxPoint where)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return rgfw_window_movePlatform_Wayland(win, x, y);
+			return _window_move_wayland(win, where);
 		$case X11_ONLY:
-			return rgfw_window_movePlatform_X11(win, x, y);
+			return _window_move_x11(win, where);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return rgfw_window_movePlatform_Wayland(win, x, y);
+				return _window_move_wayland(win, where);
 			}
-			return rgfw_window_movePlatform_X11(win, x, y);
+			return _window_move_x11(win, where);
 	$endswitch
 }
 
@@ -723,19 +723,19 @@ fn void rgfw_window_raise(GfxWindow* win)
 }
 
 // public
-fn void _window_resize_native(GfxWindow* win, int w, int h)
+fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_resize_wayland(win, w, h);
+			return _window_resize_wayland(win, size);
 		$case X11_ONLY:
-			return _window_resize_x11(win, w, h);
+			return _window_resize_x11(win, size);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return _window_resize_wayland(win, w, h);
+				return _window_resize_wayland(win, size);
 			}
-			return _window_resize_x11(win, w, h);
+			return _window_resize_x11(win, size);
 	$endswitch
 }
 
@@ -825,36 +825,36 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 }
 
 // public
-fn void _window_set_max_size_native(GfxWindow* win, int w, int h)
+fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_max_size_wayland(win, w, h);
+			return _window_set_max_size_wayland(win, size);
 		$case X11_ONLY:
-			return _window_set_max_size_x11(win, w, h);
+			return _window_set_max_size_x11(win, size);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return _window_set_max_size_wayland(win, w, h);
+				return _window_set_max_size_wayland(win, size);
 			}
-			return _window_set_max_size_x11(win, w, h);
+			return _window_set_max_size_x11(win, size);
 	$endswitch
 }
 
 // public
-fn void _window_set_min_size_native(GfxWindow* win, int w, int h)
+fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_min_size_wayland(win, w, h);
+			return _window_set_min_size_wayland(win, size);
 		$case X11_ONLY:
-			return _window_set_min_size_x11(win, w, h);
+			return _window_set_min_size_x11(win, size);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return _window_set_min_size_wayland(win, w, h);
+				return _window_set_min_size_wayland(win, size);
 			}
-			return _window_set_min_size_x11(win, w, h);
+			return _window_set_min_size_x11(win, size);
 	$endswitch
 }
 

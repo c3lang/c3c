@@ -691,8 +691,8 @@ fn bool rgfw_monitor_getWorkarea_Wayland(GfxMonitor* monitor, int* x, int* y, in
 {
 	if (x != null) *x = monitor.origin.x;
 	if (y != null) *y = monitor.origin.y;
-	if (width != null) *width = monitor.mode.w;
-	if (height != null) *height = monitor.mode.h;
+	if (width != null) *width = monitor.mode.size.x;
+	if (height != null) *height = monitor.mode.size.y;
 	return true;
 }
 
@@ -701,7 +701,7 @@ fn bool rgfw_monitor_requestMode_Wayland(GfxMonitor* mon, GfxMonitorMode* mode, 
 {
 	for (sz i = 0; i < mon.node.modeCount; i++)
 	{
-		if (rgfw_monitorModeCompare(mode, &mon.node.modes[i], request) == false) continue;
+		if (!mode.equals_request(&mon.node.modes[i], request)) continue;
 		rgfw_monitor_setMode(mon, &mon.node.modes[i]);
 		return true;
 	}
@@ -965,20 +965,22 @@ fn void rgfw_window_moveMouse_Wayland(GfxWindow* win, int x, int y)
 	}
 }
 
-// private
-fn void rgfw_window_movePlatform_Wayland(GfxWindow* win, int x, int y) { win.x = x; win.y = y; }
+fn void _window_move_wayland(GfxWindow* win, GfxPoint where)
+{
+	win.origin = where;
+}
 
 // private
 fn void rgfw_window_raise_Wayland(GfxWindow* win) {}
 
 // private
-fn void _window_resize_wayland(GfxWindow* win, int w, int h)
+fn void _window_resize_wayland(GfxWindow* win, GfxSize size)
 {
-	win.width = w; win.height = h;
+	win.size = size;
 	if (_gfx_ctx.compositor != null)
 	{
-		xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
-		if (win.src.ctx.egl != null && win.src.ctx.egl.eglWindow != null) wlEglWindowResize((WlEglWindow*)win.src.ctx.egl.eglWindow, w, h, 0, 0);
+		xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, ...size);
+		if (win.src.ctx.egl != null && win.src.ctx.egl.eglWindow != null) wlEglWindowResize((WlEglWindow*)win.src.ctx.egl.eglWindow, ...size, 0, 0);
 	}
 }
 
@@ -1021,11 +1023,15 @@ fn void _window_set_fullscreen_wayland(GfxWindow* win, bool fullscreen)
 	}
 }
 
-// private
-fn void _window_set_max_size_wayland(GfxWindow* win, int w, int h) { xdgToplevelSetMaxSize(win.src.xdgToplevel, w, h); }
+fn void _window_set_max_size_wayland(GfxWindow* win, GfxSize size)
+{
+	xdgToplevelSetMaxSize(win.src.xdgToplevel, ...size);
+}
 
-// private
-fn void _window_set_min_size_wayland(GfxWindow* win, int w, int h) { xdgToplevelSetMinSize(win.src.xdgToplevel, w, h); }
+fn void _window_set_min_size_wayland(GfxWindow* win, GfxSize size)
+{
+	xdgToplevelSetMinSize(win.src.xdgToplevel, ...size);
+}
 
 // private
 fn void rgfw_window_setMousePassthrough_Wayland(GfxWindow* win, bool passthrough) {}
@@ -1537,7 +1543,7 @@ fn void rgfw_wlOutputHandleDone(void* data, WlProxy* output)
 
 	if (mon.phys_size.x <= 0 || mon.phys_size.y <= 0)
 	{
-		mon.phys_size = { mon.mode.w / 96.0f, mon.mode.h / 96.0f };
+		mon.phys_size = (Vec2)mon.mode.size / 96.0f;
 	}
 
 	if (node.disconnected == false) return;
@@ -1552,9 +1558,8 @@ fn void rgfw_wlOutputHandleMode(void* data, WlProxy* output, uint flags, int wid
 	GfxMonitor* mon = &node.mon;
 
 	GfxMonitorMode mode;
-	mode.w = width;
-	mode.h = height;
-	mode.refresh_rate = (float)refresh / 1000.0f;
+	mode.size = { width, height };
+	mode.refresh_rate = refresh / 1000.0f;
 	mode.src = output;
 
 	node.modeCount += 1;
@@ -1780,7 +1785,7 @@ fn void rgfw_wlXdgSurfaceConfigureHandler(void* data, WlProxy* xdgSurface, uint 
 	if (win.src.resizing)
 	{
 		_window_resized_callback(win, win.size);
-		win.resize(...win.size);
+		win.resize(win.size);
 		if (!(win.internal.flags.transparent)) rgfw_wlSetOpaque(win);
 	}
 
@@ -1842,12 +1847,11 @@ fn void rgfw_xdgOutputLogicalPos(void* data, WlProxy* xdgOutput, int x, int y)
 fn void rgfw_xdgOutputLogicalSize(void* data, WlProxy* xdgOutput, int width, int height)
 {
 	GfxMonitor* mon = &((GfxMonitorNode*)data).mon;
-	float monFloatWidth = (float)mon.mode.w;
+	float monFloatWidth = (float)mon.mode.size.x;
 	float scaleX = monFloatWidth / (float)width;
 	float dpi = scaleX * 96.0f;
 	mon.pixelRatio = dpi >= 192.0f ? 2.0f : 1.0f;
-	mon.mode.w = width;
-	mon.mode.h = height;
+	mon.mode.size = { width, height };
 }
 
 // private

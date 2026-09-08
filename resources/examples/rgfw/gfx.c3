@@ -4,17 +4,6 @@ import std::math, std::os::macos, libc;
 alias GfxPoint = int[<2>];
 alias GfxSize = int[<2>];
 
-
-const bool RGFW_BUILD_MACOS = $feat(MACOS);
-const bool RGFW_BUILD_X11 = $feat(X11) || $feat(X11_WAYLAND);
-const bool RGFW_BUILD_WAYLAND = $feat(WAYLAND);
-const bool RGFW_BUILD_WINDOWS = $feat(WIN32);
-const bool RGFW_BUILD_EGL = $feat(X11_WAYLAND) || $feat(X11) || $feat(WAYLAND) || $feat(MACOS);
-const bool RGFW_BUILD_WASM = $feat(WASM);
-
-const int RTLD_LAZY = 0x1;
-const int RTLD_LOCAL = 0x4;
-
 excuse
 {
 	GFX_CONTEXT_NOT_INITIALIZED,
@@ -31,51 +20,20 @@ excuse
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
 
-alias RgfwEventFlag = uint;
-alias RgfwEventWait = int;
-alias RgfwDebugType = char;
-alias RgfwErrorCode = char;
-alias RgfwGlReleaseBehavior = int;
-alias RgfwGlProfile = int;
-alias RgfwGlRenderer = int;
-alias RgfwGfxContextType = uint;
-
-typedef RgfwMouse = void;
-alias GfxFn = fn void();
-alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
-alias GfxGenericFunc = fn void(GfxEvent* e);
-alias RgfwDebugFunc = fn void(RgfwDebugInfo* info);
-
-struct GfxColorLayout { int r, g, b, a; int channels; }
-
-struct RgfwGammaRamp
-{
-	ushort* red;
-	ushort* green;
-	ushort* blue;
-	sz count;
-}
-
-const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
-const RgfwGfxContextType RGFW_GFX_EGL = 2;
-const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
-
 struct GfxSurface
 {
-	char* data;
-	GfxPoint size;
+	void* data;
+	GfxSize size;
 	GfxFormat format;
 	GfxConvertImageDataFn convertFunc;
 	GfxNativeImage native;
 }
 
-
-
 struct GfxMonitorMode
 {
-	int w, h;
+	GfxSize size;
 	float refresh_rate;
-	char red, blue, green;
+	char[<3>] rgb;
 	void* src;
 }
 
@@ -992,22 +950,22 @@ fn void GfxWindow.set_disabled_events(&self, RgfwEventFlag events)
 
 fn void GfxWindow.scale_to_monitor(&self)
 {
-	if (GfxMonitor* monitor = find_monitor(self)) self.resize(...(GfxPoint)(monitor.scale * (Vec2)self.size));
+	if (GfxMonitor* monitor = find_monitor(self)) self.resize((GfxSize)(monitor.scale * (Vec2)self.size));
 }
 
 fn void GfxWindow.move_to_monitor(&self, GfxMonitor* m)
 {
-	self.move(...(m.origin + self.origin));
+	self.move(m.origin + self.origin);
 }
 
-fn void GfxWindow.set_min_size(&self, int w, int h)
+fn void GfxWindow.set_min_size(&self, GfxSize size)
 {
-	_window_set_min_size_native(self, w, h);
+	_window_set_min_size_native(self, size) @inline;
 }
 
-fn void GfxWindow.set_max_size(&self, int w, int h)
+fn void GfxWindow.set_max_size(&self, GfxSize size)
 {
-	_window_set_max_size_native(self, w, h);
+	_window_set_max_size_native(self, size) @inline;
 }
 
 fn void GfxWindow.set_border(&self, bool border)
@@ -1282,11 +1240,11 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	switch (true)
 	{
 		case flags.no_resize:
-			_window_set_max_size_native(win, win.width, win.height);
-			_window_set_min_size_native(win, win.width, win.height);
+			_window_set_max_size_native(win, win.size);
+			_window_set_min_size_native(win, win.size);
 		case cmpFlags.no_resize:
-			_window_set_max_size_native(win, 0, 0);
-			_window_set_min_size_native(win, 0, 0);
+			_window_set_max_size_native(win, {});
+			_window_set_min_size_native(win, {});
 	}
 	win.internal.flags = flags;
 }
@@ -1699,17 +1657,16 @@ fn void rgfw_window_center(GfxWindow* win)
 {
 	GfxMonitor* mon = find_monitor(win);
 	if (!mon) return;
-	win.move(mon.origin.x + ((mon.mode.w - win.width) / 2), mon.origin.y + ((mon.mode.h - win.height) / 2));
+	win.move(mon.origin + (mon.mode.size - win.size) / 2);
 }
 
 // public
 fn bool rgfw_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
 {
 	GfxMonitorMode mode;
-	mode.w = win.width;
-	mode.h = win.height;
+	mode.size = win.size;
 	bool ret = rgfw_monitor_requestMode(mon, &mode, SCALE);
-	win.move(...mon.origin);
+	win.move(mon.origin);
 	return ret;
 }
 
@@ -1717,18 +1674,18 @@ fn bool rgfw_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
 fn void rgfw_splitBPP(uint bpp, GfxMonitorMode* mode)
 {
 	if (bpp == 32) bpp = 24;
-	mode.red = mode.green = mode.blue = (char)(bpp / 3);
-	uint delta = bpp - (mode.red * 3);
-	if (delta >= 1) mode.green = mode.green + 1;
-	if (delta == 2) mode.red = mode.red + 1;
+	mode.rgb.r = mode.rgb.g = mode.rgb.b = (char)(bpp / 3);
+	uint delta = bpp - (mode.rgb.r * 3);
+	if (delta >= 1) mode.rgb.g = mode.rgb.g + 1;
+	if (delta == 2) mode.rgb.r = mode.rgb.r + 1;
 }
 
 // public
-fn bool rgfw_monitorModeCompare(GfxMonitorMode* mon, GfxMonitorMode* mon2, GfxMonitorModeRequest request)
+fn bool GfxMonitorMode.equals_request(&self, GfxMonitorMode* mon2, GfxMonitorModeRequest request)
 {
-	return ((mon.w == mon2.w && mon.h == mon2.h) || !(request & SCALE)) &&
-	((mon.refresh_rate == mon2.refresh_rate) || !(request & REFRESH)) &&
-	((mon.red == mon2.red && mon.green == mon2.green && mon.blue == mon2.blue) || !(request & RGB));
+	return (self.size == mon2.size || !(request & SCALE)) &&
+		((self.refresh_rate == mon2.refresh_rate) || !(request & REFRESH)) &&
+		((self.rgb == mon2.rgb) || !(request & RGB));
 }
 
 // public
@@ -1858,8 +1815,8 @@ fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mo
 	foreach (&mode2 : rgfw_monitor_getModesPtr(monitor))
 	{
 		int score = 0;
-		if (mode.w == mode2.w && mode.h == mode2.h) score += 1000;
-		if (mode.red == mode2.red && mode.green == mode2.green && mode.blue == mode2.blue) score += 100;
+		if (mode.size == mode2.size) score += 1000;
+		if (mode.rgb == mode2.rgb) score += 100;
 		if (mode.refresh_rate == mode2.refresh_rate) score += 10;
 		if (score > top_score)
 		{
@@ -2134,8 +2091,8 @@ fn void GfxWindow.restore(&self)
 	_window_restore_native(self);
 	self.internal.flags.maximize = false;
 	self.show();
-	self.move(...self.internal.old_bounds.origin);
-	self.resize(...self.internal.old_bounds.size);
+	self.move(self.internal.old_bounds.origin);
+	self.resize(self.internal.old_bounds.size);
 }
 
 fn void GfxWindow.minimize(&self)
@@ -2157,17 +2114,17 @@ fn void GfxWindow.maximize(&self)
 	_window_maximize_native(self);
 }
 
-fn void GfxWindow.move(&self, int x, int y)
+fn void GfxWindow.move(&self, GfxPoint where)
 {
-	self.origin = { x, y };
-	_window_move_native(self, x, y);
+	self.origin = where;
+	_window_move_native(self, where);
 	self.internal.flags.maximize = false;
 }
 
-fn void GfxWindow.resize(&self, int w, int h)
+fn void GfxWindow.resize(&self, GfxSize size)
 {
-	self.size = { w, h };
-	_window_resize_native(self, w, h);
+	self.size = size;
+	_window_resize_native(self, size);
 	self.internal.flags.maximize = false;
 }
 
@@ -2239,9 +2196,35 @@ fn void GfxWindow.show_mouse(&self, bool show)
 }
 
 
+alias RgfwEventFlag = uint;
+alias RgfwEventWait = int;
+alias RgfwDebugType = char;
+alias RgfwErrorCode = char;
+alias RgfwGlReleaseBehavior = int;
+alias RgfwGlProfile = int;
+alias RgfwGlRenderer = int;
+alias RgfwGfxContextType = uint;
 
+typedef RgfwMouse = void;
+alias GfxFn = fn void();
+alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
+alias GfxGenericFunc = fn void(GfxEvent* e);
+alias RgfwDebugFunc = fn void(RgfwDebugInfo* info);
 
-module std::gfx @private;
+struct GfxColorLayout { int r, g, b, a; int channels; }
+
+struct RgfwGammaRamp
+{
+	ushort* red;
+	ushort* green;
+	ushort* blue;
+	sz count;
+}
+
+const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
+const RgfwGfxContextType RGFW_GFX_EGL = 2;
+const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
+
 
 
 // public
@@ -2292,3 +2275,4 @@ fn void _event_queue_call_push(GfxEvent* event)
 }
 
 GfxContext _gfx_ctx;
+

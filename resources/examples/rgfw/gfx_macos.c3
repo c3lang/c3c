@@ -26,13 +26,13 @@ fn bool _window_is_floating_native(GfxWindow* win)
 	return win.internal.flags.floating;
 }
 
-fn void _window_resize_native(GfxWindow* win, int w, int h)
+fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
 	if (!win.src.window) return;
 	CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
 	CGRect content = objc_send((ObjcId)win.src.window, ObjcSendRectRect, "contentRectForFrameRect:", frame);
 	double offset = frame.size.height - content.size.height;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidRectBool, "setFrame:display:", ns_rect((double)win.x, (double)win.y, (double)w, (double)h + offset), true);
+	objc_send((ObjcId)win.src.window, ObjcSendVoidRectBool, "setFrame:display:", ns_rect((double)win.x, (double)win.y, (double)size.x, (double)size.y + offset), true);
 }
 
 fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
@@ -96,18 +96,30 @@ fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
 	CGRect bounds = cgDisplayBounds(display);
 	CGDisplayModeRef mode = cgDisplayCopyDisplayMode(display);
 	mon.origin = { (int)bounds.origin.x, (int)bounds.origin.y };
-	mon.mode.w = mode ? (int)cgDisplayModeGetWidth(mode) : (int)bounds.size.width;
-	mon.mode.h = mode ? (int)cgDisplayModeGetHeight(mode) : (int)bounds.size.height;
+	mon.mode.size.x = mode ? (int)cgDisplayModeGetWidth(mode) : (int)bounds.size.width;
+	mon.mode.size.y = mode ? (int)cgDisplayModeGetHeight(mode) : (int)bounds.size.height;
 	mon.mode.refresh_rate = mode ? (float)cgDisplayModeGetRefreshRate(mode) : 60.0;
-	mon.mode.red = 8; mon.mode.green = 8; mon.mode.blue = 8;
+	mon.mode.rgb = { 8, 8, 8 };
 	mon.mode.src = mode;
 	mon.phys_size = (float[<2>])(double[<2>]){ ...cgDisplayScreenSize(display) };
 	mon.scale = {
-		mon.mode.w > 0 ? ((float)bounds.size.width / (float)mon.mode.w) : 1.0,
-		mon.mode.h > 0 ? ((float)bounds.size.height / (float)mon.mode.h) : 1.0
+		mon.mode.size.x > 0 ? (float)bounds.size.width / (float)mon.mode.size.x : 1.0,
+		mon.mode.size.y > 0 ? (float)bounds.size.height / (float)mon.mode.size.y : 1.0
 	};
 	mon.pixelRatio = mon.scale.x;
 }
+
+fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
+{
+	if (!win.src.window) return;
+	if (size == { 0, 0 })
+	{
+		GfxMonitor* mon = find_monitor(win);
+		if (mon) size = mon.mode.size;
+	}
+	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setMaxSize:", (CGSize){ ...size });
+}
+
 
 fn void _window_show_native(GfxWindow* win)
 {

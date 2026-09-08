@@ -32,9 +32,9 @@ fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFor
 	return true;
 }
 
-fn void _window_set_min_size_native(GfxWindow* win, int w, int h)
+fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 {
-	win.src.min_size = { w, h };
+	win.src.min_size = size;
 }
 
 fn bool _window_is_floating_native(GfxWindow* win)
@@ -71,14 +71,14 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	win.origin = mon.origin;
 
 	rgfw_monitor_scaleToWindow(mon, win);
-	setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, mon.mode.w, mon.mode.h, 0x0200 | 0x0020 | 0x0040 | 0x0002);
-	win.width = mon.mode.w; win.height = mon.mode.h;
+	setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, ...mon.mode.size, 0x0200 | 0x0020 | 0x0040 | 0x0002);
+	win.size = mon.mode.size;
 }
 
-fn void _window_resize_native(GfxWindow* win, int w, int h)
+fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
-	win.size = { w, h };
-	Rect rect = {0, 0, w, h};
+	win.size = size;
+	Rect rect = { 0, 0, ...size };
 	uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
 	uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
 	adjustWindowRectEx(&rect, style, 0, exStyle);
