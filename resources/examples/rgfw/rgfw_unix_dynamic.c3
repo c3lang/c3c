@@ -524,9 +524,6 @@ struct RgfwAttribStack
 
 // ==================== Wayland-specific declarations & backend ====================
 // ---- POSIX / libc bits used by the Wayland backend ----
-extern fn void* mmap(void* addr, sz length, int prot, int flags, int fd, sz offset);
-
-extern fn int munmap(void* addr, sz length);
 
 extern fn int shmOpen(ZString name, int oflag, int mode) @cname("shm_open");
 
@@ -534,13 +531,8 @@ extern fn int shmUnlink(ZString name) @cname("shm_unlink");
 
 extern fn int ftruncate(int fd, sz length);
 
-extern fn int close(int fd);
 
 extern fn int pipe(int[2]* fds);
-
-extern fn sz read(int fd, void* buf, sz count);
-
-extern fn sz write(int fd, void* buf, sz count);
 
 extern fn int poll(Pollfd* fds, CUInt nfds, int timeout);
 
@@ -548,17 +540,9 @@ extern fn int fcntl(int fd, int cmd, ...) @cname("fcntl");
 const int F_GETFD = 1;
 const int F_GETFL = 3;
 
-extern fn ZString getenv(ZString name);
 
 struct Pollfd { int fd; short events; short revents; }
 
-const int PROT_READ = 0x1;
-
-const int PROT_WRITE = 0x2;
-
-const int MAP_SHARED = 0x01;
-
-const void* MAP_FAILED = (void*)(uptr)(-1);
 
 const int O_RDWR = 0x0002;
 
@@ -621,24 +605,29 @@ ZxdgOutputV1Listener rgfw_xdgOutputListener = {
 
 
 // private
-fn void rgfw_wlDataDeviceSelection(void* data, WlProxy* device, WlProxy* offer)
+fn void _wl_data_device_selection(void* data, WlProxy* device, WlProxy* offer)
 {
-	if (offer == null) return;
+	if (!offer) return;
 
 	int[2] pfds;
 	pipe(&pfds);
 	wlDataOfferReceive(offer, "text/plain", pfds[1]);
-	close(pfds[1]);
+	libc::close(pfds[1]);
 	wlDisplayRoundtrip(_gfx_ctx.wlDisplay);
 
 	char[1024] buf;
-	sz n = read(pfds[0], &buf, 1024);
-	if (n <= 0) { close(pfds[0]); wlDataOfferDestroy(offer); return; }
+	sz n = libc::read(pfds[0], &buf, 1024);
+	if (n <= 0)
+	{
+		libc::close(pfds[0]);
+		wlDataOfferDestroy(offer);
+		return;
+	}
 
 	sz length = (sz)n;
 	if (buf[n - 1] != 0) length += 1;
 
-	if (_gfx_ctx.unixClipboard != null) free(_gfx_ctx.unixClipboard);
+	if (_gfx_ctx.unixClipboard) free(_gfx_ctx.unixClipboard);
 	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, n);
 	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
 	mem::copy(dataPtr, &buf, (sz)n);
@@ -647,7 +636,7 @@ fn void rgfw_wlDataDeviceSelection(void* data, WlProxy* device, WlProxy* offer)
 	_gfx_ctx.unixClipboard.type = TEXT;
 	_gfx_ctx.unixClipboard.length = length;
 
-	close(pfds[0]);
+	libc::close(pfds[0]);
 	wlDataOfferDestroy(offer);
 }
 
@@ -703,35 +692,7 @@ WlDataSourceListener rgfw_dataSourceListener = {
 };
 
 
-const EglInt EGL_NONE = 0x3038;
 
-const EglInt EGL_RED_SIZE = 0x3024;
-
-const EglInt EGL_GREEN_SIZE = 0x3023;
-
-const EglInt EGL_BLUE_SIZE = 0x3022;
-
-const EglInt EGL_ALPHA_SIZE = 0x3021;
-
-const EglInt EGL_DEPTH_SIZE = 0x3025;
-
-const EglInt EGL_STENCIL_SIZE = 0x3026;
-
-const EglInt EGL_RENDERABLE_TYPE = 0x3040;
-
-const EglInt EGL_SURFACE_TYPE = 0x3033;
-
-const EglInt EGL_WINDOW_BIT = 0x0004;
-
-const EglInt EGL_OPENGL_BIT = 0x0008;
-
-const EglInt EGL_OPENGL_ES2_BIT = 0x0004;
-
-const EglInt EGL_OPENGL_API = 0x30a2;
-
-const EglInt EGL_OPENGL_ES_API = 0x30a0;
-
-const EglInt EGL_CONTEXT_CLIENT_VERSION = 0x3098;
 
 // public
 fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
@@ -742,9 +703,8 @@ fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
 }
 
 
-
 module std::gfx @feat(X11_WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
-import std::math;
+import std::math, libc;
 // ==================== RGFW_DYNAMIC runtime dispatch layer ====================
 // Combined X11+Wayland runtime dispatch: every entry point below branches on
 // gfx_use_wayland (set once in rgfw_initPlatform) instead of a vtable.
@@ -765,8 +725,6 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 	return rgfw_createWindowPlatform_X11(name, flags, win);
 }
 
-
-
 // public
 fn void rgfw_stopCheckEvents()
 {
@@ -774,7 +732,7 @@ fn void rgfw_stopCheckEvents()
 	while (true)
 	{
 		char byte = 0;
-		sz result = write(_gfx_ctx.eventWait_forceStop[1], &byte, 1);
+		sz result = libc::write(_gfx_ctx.eventWait_forceStop[1], &byte, 1);
 		if (result == 1 || result == -1) break;
 	}
 }
@@ -869,7 +827,7 @@ fn void rgfw_waitForEvent(int waitMS)
 	if (_gfx_ctx.eventWait_forceStop[2])
 	{
 		char[64] data;
-		read(_gfx_ctx.eventWait_forceStop[0], &data, 64);
+		libc::read(_gfx_ctx.eventWait_forceStop[0], &data, 64);
 
 		_gfx_ctx.eventWait_forceStop[2] = 0;
 	}

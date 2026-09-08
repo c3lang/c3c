@@ -1999,21 +1999,6 @@ fn void set_raw_mouse_mode(bool enabled)
 	if (_gfx_ctx.root) _window_set_raw_mouse_mode_native(_gfx_ctx.root, enabled);
 }
 
-// public
-fn uint rgfw_decodeUTF8(ZString string, sz* starting_index)
-{
-	uint[6] offsets = {0x00000000u, 0x00003080u, 0x000e2080u, 0x03c82080u, 0xfa082080u, 0x82082080u};
-	uint codepoint = (char)string[*starting_index];
-	sz count = 1;
-	while ((string[count + *starting_index] & 0xc0) == 0x80)
-	{
-		codepoint = (codepoint << 6) + (char)string[count + *starting_index];
-		count++;
-	}
-	*starting_index += count;
-	return codepoint - offsets[count - 1];
-}
-
 
 fn void GfxWindow.hide(&self)
 {
@@ -2068,6 +2053,11 @@ fn void GfxWindow.resize(&self, GfxSize size)
 	self.size = size;
 	_window_resize_native(self, size);
 	self.internal.flags.maximize = false;
+}
+
+fn void GfxWindow.show_mouse(&self, bool show)
+{
+	_window_show_mouse_native(self, show);
 }
 
 
@@ -2130,11 +2120,6 @@ fn void? load_vulkan()
 fn void unload_vulkan()
 {
 	_unload_vulkan_native() @inline;
-}
-
-fn void GfxWindow.show_mouse(&self, bool show)
-{
-	_window_show_mouse_native(self, show);
 }
 
 

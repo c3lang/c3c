@@ -114,3 +114,19 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show) @feat(!WASM)
 		win.set_mouse(_gfx_ctx.hiddenMouse);
 	}
 }
+
+
+// public
+fn uint rgfw_decodeUTF8(ZString string, sz* starting_index)
+{
+	uint[6] offsets = {0x00000000u, 0x00003080u, 0x000e2080u, 0x03c82080u, 0xfa082080u, 0x82082080u};
+	uint codepoint = (char)string[*starting_index];
+	sz count = 1;
+	while ((string[count + *starting_index] & 0xc0) == 0x80)
+	{
+		codepoint = (codepoint << 6) + (char)string[count + *starting_index];
+		count++;
+	}
+	*starting_index += count;
+	return codepoint - offsets[count - 1];
+}

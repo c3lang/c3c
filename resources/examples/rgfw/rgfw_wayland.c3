@@ -24,8 +24,6 @@ extern fn int clock_gettime(int clock_id, Timespec* ts);
 struct Timespec { CLong tv_sec; CLong tv_nsec; }
 
 // ---- POSIX / libc bits used by the Wayland backend ----
-extern fn void* mmap(void* addr, sz length, int prot, int flags, int fd, sz offset);
-extern fn int munmap(void* addr, sz length);
 extern fn int shmOpen(ZString name, int oflag, int mode) @cname("shm_open");
 extern fn int shmUnlink(ZString name) @cname("shm_unlink");
 extern fn int ftruncate(int fd, sz length);
@@ -39,7 +37,6 @@ struct Pollfd { int fd; short events; short revents; }
 const int PROT_READ = 0x1;
 const int PROT_WRITE = 0x2;
 const int MAP_SHARED = 0x01;
-const void* MAP_FAILED = (void*)(uptr)(-1);
 const int O_RDWR = 0x0002;
 const int O_CREAT = 0x0040;
 const int O_EXCL = 0x0080;
@@ -208,7 +205,7 @@ ZxdgOutputV1Listener rgfw_xdgOutputListener = {
 
 
 // private
-fn void rgfw_wlDataDeviceSelection(void* data, WlProxy* device, WlProxy* offer)
+fn void _wl_data_device_selection(void* data, WlProxy* device, WlProxy* offer)
 {
 	if (offer == null) return;
 
@@ -299,21 +296,7 @@ struct RgfwAttribStack
 }
 
 
-const EglInt EGL_NONE = 0x3038;
-const EglInt EGL_RED_SIZE = 0x3024;
-const EglInt EGL_GREEN_SIZE = 0x3023;
-const EglInt EGL_BLUE_SIZE = 0x3022;
-const EglInt EGL_ALPHA_SIZE = 0x3021;
-const EglInt EGL_DEPTH_SIZE = 0x3025;
-const EglInt EGL_STENCIL_SIZE = 0x3026;
-const EglInt EGL_RENDERABLE_TYPE = 0x3040;
-const EglInt EGL_SURFACE_TYPE = 0x3033;
-const EglInt EGL_WINDOW_BIT = 0x0004;
-const EglInt EGL_OPENGL_BIT = 0x0008;
-const EglInt EGL_OPENGL_ES2_BIT = 0x0004;
-const EglInt EGL_OPENGL_API = 0x30a2;
-const EglInt EGL_OPENGL_ES_API = 0x30a0;
-const EglInt EGL_CONTEXT_CLIENT_VERSION = 0x3098;
+
 
 // public
 fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)

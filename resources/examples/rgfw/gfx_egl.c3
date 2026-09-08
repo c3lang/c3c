@@ -6,6 +6,23 @@ fn void _unload_egl_native() @private @weak { }
 module std::gfx @feat(MACOS, WAYLAND, X11, X11_WAYLAND);
 import libc;
 
+const EglInt EGL_NONE = 0x3038;
+const EglInt EGL_RED_SIZE = 0x3024;
+const EglInt EGL_GREEN_SIZE = 0x3023;
+const EglInt EGL_BLUE_SIZE = 0x3022;
+const EglInt EGL_ALPHA_SIZE = 0x3021;
+const EglInt EGL_DEPTH_SIZE = 0x3025;
+const EglInt EGL_STENCIL_SIZE = 0x3026;
+const EglInt EGL_RENDERABLE_TYPE = 0x3040;
+const EglInt EGL_SURFACE_TYPE = 0x3033;
+const EglInt EGL_WINDOW_BIT = 0x0004;
+const EglInt EGL_OPENGL_BIT = 0x0008;
+const EglInt EGL_OPENGL_ES2_BIT = 0x0004;
+const EglInt EGL_OPENGL_API = 0x30a2;
+const EglInt EGL_OPENGL_ES_API = 0x30a0;
+const EglInt EGL_CONTEXT_CLIENT_VERSION = 0x3098;
+const EglInt EGL_EXTENSIONS = 0x3055;
+
 alias EglDisplay = void*;
 alias EglContext = void*;
 alias EglSurface = void*;

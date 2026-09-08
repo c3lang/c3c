@@ -1,5 +1,5 @@
 module std::gfx @feat(WAYLAND, X11_WAYLAND) @private @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
-import std::math, std::collections::list, libc;
+import std::math, std::collections::list, libc, std::os::posix, std::os::env;
 
 // public
 fn void rgfw_window_captureMousePlatform_Wayland(GfxWindow* win, bool state)
@@ -91,8 +91,8 @@ extern fn void wlProxyDestroy(WlProxy* proxy) @cname("wl_proxy_destroy");
 extern fn void wlProxyMarshal(WlProxy* proxy, uint opcode, ...) @cname("wl_proxy_marshal");
 
 macro WlFixed wlFixedFromInt(int i) => (WlFixed)(i * 256);
-macro int wlFixedToInt(WlFixed f) => f / 256;
-macro double wlFixedToDouble(WlFixed f) => (double)f / 256.0;
+macro int WlFixed.to_int(self) => self / 256;
+macro double WlFixed.to_double(self) => (double)self / 256.0;
 macro WlFixed wlFixedFromDouble(double d) => (WlFixed)(d * 256.0);
 
 extern WlInterface wlRegistryInterface @cname("wl_registry_interface");
@@ -659,7 +659,7 @@ fn int rgfw_initPlatform_Wayland(String class_name, GfxInitOption flags)
 
 	static WlDataDeviceListener dataDeviceListener = {
 		.dataOffer = &rgfw_wlDataDeviceDataOffer, .enter = &rgfw_wlDataDeviceNothingEnter, .leave = &rgfw_wlDataDeviceNothing,
-		.motion = &rgfw_wlDataDeviceNothingMotion, .drop = &rgfw_wlDataDeviceNothing, .selection = &rgfw_wlDataDeviceSelection
+		.motion = &rgfw_wlDataDeviceNothingMotion, .drop = &rgfw_wlDataDeviceNothing, .selection = &_wl_data_device_selection
 	};
 
 	if (_gfx_ctx.seat != null && _gfx_ctx.dataDeviceManager != null)
@@ -1125,11 +1125,11 @@ fn void? rgfw_createSurfacePtr_Wayland(void* data, int w, int h, GfxFormat forma
 	}
 	defer catch self.release();
 	self.native.pool = wlShmCreatePool(_gfx_ctx.shm, fd, (int)size);
-	self.native.buffer = mmap(null, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	self.native.buffer = posix::mmap(null, (usz)size, posix::PROT_READ | posix::PROT_WRITE, posix::MAP_SHARED, fd, 0);
 	self.native.fd = fd;
 	self.native.format = BGRA8;
 
-	if (self.native.buffer == MAP_FAILED)
+	if (self.native.buffer == posix::MAP_FAILED)
 	{
 		log::error("mmap failed", category: log::CATEGORY_VIDEO);
 		self.native.buffer = null;
@@ -1142,8 +1142,8 @@ fn void rgfw_surface_freePtr_Wayland(GfxSurface* surface)
 {
 	if (!surface.data) return;
 	if (surface.native.pool) wlShmPoolDestroy(surface.native.pool);
-	if (surface.native.fd) close(surface.native.fd);
-	if (surface.native.buffer) munmap(surface.native.buffer, (sz)(surface.size.x * surface.size.y * 4));
+	if (surface.native.fd) libc::close(surface.native.fd);
+	if (surface.native.buffer) posix::munmap(surface.native.buffer, (usz)(surface.size.x * surface.size.y * 4));
 	*surface = {};
 }
 
@@ -1188,7 +1188,7 @@ fn GfxMonitor* rgfw_window_getMonitor_Wayland(GfxWindow* win)
 	return &win.src.activeMonitor.mon;
 }
 
-fn void rgfw_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlProxy* surface, WlFixed surfaceX, WlFixed surfaceY)
+fn void rgfw_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlProxy* surface, WlFixed surface_x, WlFixed surface_y)
 {
 	GfxContext* info = data;
 	GfxWindow* win = (GfxWindow*)wlSurfaceGetUserData(surface);
@@ -1200,8 +1200,8 @@ fn void rgfw_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlProxy* 
 	if (win.src.usingCustomCursor) { wlPointerSetCursor(pointer, serial, win.src.customCursorSurface, 0, 0); }
 	else { win.set_mouse_default(); }
 
-	int x = (int)wlFixedToDouble(surfaceX);
-	int y = (int)wlFixedToDouble(surfaceY);
+	int x = (int)surface_x.to_double();
+	int y = (int)surface_y.to_double();
 	_mouse_notify_callback(win, { x, y }, true);
 }
 
@@ -1353,7 +1353,11 @@ fn int rgfw_wlCreateShmFile(sz size)
 {
 	int fd = rgfw_wlAnonymousShmOpen();
 	if (fd < 0) return fd;
-	if (ftruncate(fd, size) < 0) { close(fd); return -1; }
+	if (ftruncate(fd, size) < 0)
+	{
+		libc::close(fd);
+		return -1;
+	}
 	return fd;
 }
 
@@ -1403,9 +1407,9 @@ fn void rgfw_wlDataSourceSend(void* data, WlProxy* source, ZString mimeType, int
 	{
 		sz length = _gfx_ctx.unixClipboard.length;
 		if (_gfx_ctx.unixClipboard.data[0] == 0) length -= 1;
-		write(fd, (void*)_gfx_ctx.unixClipboard.data, length);
+		libc::write(fd, (void*)_gfx_ctx.unixClipboard.data, (usz)length);
 	}
-	close(fd);
+	libc::close(fd);
 }
 
 // private
@@ -1485,23 +1489,20 @@ fn void rgfw_wlKeyboardKey(void* data, WlProxy* keyboard, uint serial, uint time
 }
 
 // private
-fn void rgfw_wlKeyboardKeymap(void* data, WlProxy* keyboard, uint format, int fd, uint size)
+fn void rgfw_wlKeyboardKeymap(void* data, WlProxy* keyboard, uint format, int fd, uint size) => @pool()
 {
 	GfxContext* info = data;
-	ZString keymapString = (ZString)mmap(null, size, PROT_READ, MAP_SHARED, fd, 0);
+	ZString keymapString = (ZString)posix::mmap(null, size, posix::PROT_READ, posix::MAP_SHARED, fd, 0);
 	xkbKeymapUnref(info.keymap);
 	info.keymap = xkbKeymapNewFromString(info.xkbContext, keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
-	munmap(keymapString, size);
-	close(fd);
+	posix::munmap(keymapString, size);
+	libc::close(fd);
 	xkbStateUnref(info.xkbState);
 	info.xkbState = xkbStateNew(info.keymap);
 
-	ZString locale = getenv("LC_ALL");
-	if (locale == null) locale = getenv("LC_CTYPE");
-	if (locale == null) locale = getenv("LANG");
-	if (locale == null) locale = "C";
+	String locale = env::tget_var("LC_ALL") ?? env::tget_var("LC_CTYPE") ?? env::tget_var("LANG") ?? "C";
 
-	XkbComposeTable* composeTable = xkbComposeTableNewFromLocale(info.xkbContext, locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
+	XkbComposeTable* composeTable = xkbComposeTableNewFromLocale(info.xkbContext, (ZString)locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
 	if (composeTable != null)
 	{
 		info.composeState = xkbComposeStateNew(composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
@@ -1610,11 +1611,11 @@ fn void rgfw_wlPointerAxis(void* data, WlProxy* pointer, uint time, uint axis, W
 	if (!(win.internal.enabled_events & RGFW_MOUSE_SCROLL_FLAG)) return;
 	if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
 	{
-		scroll.x = (float)(-wlFixedToDouble(value) / 10.0);
+		scroll.x = (float)(-value.to_double() / 10.0);
 	}
 	else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL)
 	{
-		scroll.y = (float)(-wlFixedToDouble(value) / 10.0);
+		scroll.y = (float)(-value.to_double() / 10.0);
 	}
 	rgfw_mouseScrollCallback(win, scroll);
 }
@@ -1659,8 +1660,8 @@ fn void rgfw_wlPointerMotion(void* data, WlProxy* pointer, uint time, WlFixed x,
 	GfxContext* info = data;
 	GfxWindow* win = info.mouseOwner;
 	if (win == null) return;
-	int cx = (int)wlFixedToDouble(x);
-	int cy = (int)wlFixedToDouble(y);
+	int cx = (int)x.to_double();
+	int cy = (int)y.to_double();
 	_mouse_motion_callback(win, { cx, cy });
 }
 
@@ -1682,10 +1683,8 @@ fn void rgfw_wlRelativePointerMotion(void* data, WlProxy* relPointer, uint timeH
 {
 	GfxContext* info = data;
 	GfxWindow* win = info.mouseOwner;
-	if (win == null) return;
-	float vecX = (float)wlFixedToDouble(dx);
-	float vecY = (float)wlFixedToDouble(dy);
-	_raw_motion_callback(win, { vecX, vecY });
+	if (!win) return;
+	_raw_motion_callback(win, { (float)dx.to_double(), (float)dy.to_double() });
 }
 
 // private

@@ -1,5 +1,5 @@
 module std::gfx @feat(X11_WAYLAND, X11, WAYLAND);
-import std::math, std::collections::list, libc;
+import std::math, std::collections::list, libc, std::os::env;
 
 const WAYLAND_ONLY = $feat(WAYLAND) && !$feat(X11_WAYLAND) && !$feat(X11);
 const X11_ONLY = !$feat(WAYLAND) && !$feat(X11_WAYLAND) && $feat(X11);
@@ -264,8 +264,8 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 		$default:
 			if (!(flags & ENABLE_X11))
 			{
-				ZString waylandDisplay = getenv("WAYLAND_DISPLAY");
-				gfx_use_wayland = waylandDisplay != null && waylandDisplay[0] != 0;
+				String wayland_display = env::tget_var("WAYLAND_DISPLAY") ?? "";
+				gfx_use_wayland = wayland_display != "";;
 				if (gfx_use_wayland)
 				{
 					int ret = rgfw_initPlatform_Wayland(class_name, flags);
