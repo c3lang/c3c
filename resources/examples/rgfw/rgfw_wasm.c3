@@ -16,9 +16,6 @@ import std::math;
 // can find them.
 
 extern fn char* strstr(char* haystack, char* needle);
-extern fn int clock_gettime(int clock_id, Timespec* ts);
-
-struct Timespec { long tv_sec; CLong tv_nsec; }
 
 
 struct RgfwGlContext { void* ctx; void* format; }
@@ -337,7 +334,7 @@ fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("c
 // private
 fn void rgfw_handleKeyMods(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("c3gfx_handleKeyMods")
 {
-	rgfw_keyUpdateKeyModsEx(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
+	_key_update_key_mods_ex(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
 }
 
 // private
@@ -345,19 +342,13 @@ fn void rgfw_handleKeyMods(bool capital, bool numlock, bool control, bool alt, b
 // public
 fn void rgfw_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
 
-// public
-fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
-{
-	self.data = data;
-	self.size = { w, h };
-	self.format = format;
-}
+
 
 // public
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
 	int minH = win.height < surface.size.y ? win.height : surface.size.y;
-	copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convertFunc);
+	copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
 	rgfwJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
 }
 
@@ -433,7 +424,7 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 	rgfw_splitBPP(32, &monitor.mode);
 	monitor.mode.refresh_rate = 0;
 
-	GfxMonitorNode* node = rgfw_monitors_add(&monitor);
+	GfxMonitorNode* node = _monitor_add(&monitor);
 	if (node != null)
 	{
 		_gfx_ctx.monitors.primary = node;

@@ -25,7 +25,7 @@ struct GfxSurface
 	void* data;
 	GfxSize size;
 	GfxFormat format;
-	GfxConvertImageDataFn convertFunc;
+	GfxConvertImageDataFn convert_fn;
 	GfxNativeImage native;
 }
 
@@ -45,7 +45,7 @@ struct GfxMonitor
 	float pixelRatio;
 	Vec2 phys_size;
 	GfxMonitorMode mode;
-	void* userPtr;
+	void* user_ptr;
 	GfxMonitorNode* node;
 }
 
@@ -60,7 +60,7 @@ struct GfxWindow
 	inline IntRect bounds;
 	RgfwWindowSrc src;
 	GfxWindowInternal internal;
-	void* userPtr;
+	void* user_ptr;
 }
 
 struct GfxMonitorNode
@@ -834,7 +834,7 @@ fn void finalize()
 	{
 		if (_gfx_ctx.standardMice[icon.ordinal]) rgfw_freeMouse(_gfx_ctx.standardMice[icon.ordinal]);
 	}
-	rgfw_freeMonitors();
+	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
 	rgfw_deinitPlatform();
 	unload_egl();
@@ -1598,9 +1598,9 @@ fn void rgfw_resetPrevState()
 
 
 // public
-fn void* rgfw_window_getUserPtr(GfxWindow* win) => win.userPtr;
+fn void* rgfw_window_getUserPtr(GfxWindow* win) => win.user_ptr;
 // public
-fn void rgfw_window_setUserPtr(GfxWindow* win, void* ptr) { win.userPtr = ptr; }
+fn void rgfw_window_setUserPtr(GfxWindow* win, void* ptr) { win.user_ptr = ptr; }
 
 // public
 fn bool rgfw_window_getSizeInPixels(GfxWindow* win, int* w, int* h)
@@ -1680,19 +1680,15 @@ fn void rgfw_splitBPP(uint bpp, GfxMonitorMode* mode)
 	if (delta == 2) mode.rgb.r = mode.rgb.r + 1;
 }
 
-// public
-fn bool GfxMonitorMode.equals_request(&self, GfxMonitorMode* mon2, GfxMonitorModeRequest request)
+fn GfxNativeImage* GfxSurface.get_native_image(&self)
 {
-	return (self.size == mon2.size || !(request & SCALE)) &&
-		((self.refresh_rate == mon2.refresh_rate) || !(request & REFRESH)) &&
-		((self.rgb == mon2.rgb) || !(request & RGB));
+	return &self.native;
 }
 
-// public
-fn void rgfw_surface_setConvertFunc(GfxSurface* surface, GfxConvertImageDataFn func) { surface.convertFunc = func; }
-// public
-fn GfxNativeImage* rgfw_surface_getNativeImage(GfxSurface* surface) => &surface.native;
-// public
+fn void GfxSurface.set_convert_fn(&self, GfxConvertImageDataFn func)
+{
+	self.convert_fn = func;
+}
 
 <*
  @param [&drop] self : "The surface to reclaim"
@@ -1703,39 +1699,21 @@ fn void GfxSurface.destroy(&self)
 	free(self);
 }
 
-
-
-
-// public
-fn GfxMonitorNode* rgfw_monitors_add(GfxMonitor* mon)
+fn bool GfxMonitorMode.equals_request(&self, GfxMonitorMode* mon2, GfxMonitorModeRequest request)
 {
-	GfxMonitorNode* node = mem::new(GfxMonitorNode);
-	if (!_gfx_ctx.monitors.list.head)
-	{
-		_gfx_ctx.monitors.list.head = node;
-	}
-	else
-	{
-		_gfx_ctx.monitors.list.cur.next = node;
-	}
-	_gfx_ctx.monitors.list.cur = node;
-	if (mon != null) node.mon = *mon;
-	node.mon.node = node;
-	node.disconnected = false;
-	_gfx_ctx.monitors.count += 1;
-	return node;
+	return (self.size == mon2.size || !(request & SCALE)) &&
+	((self.refresh_rate == mon2.refresh_rate) || !(request & REFRESH)) &&
+	((self.rgb == mon2.rgb) || !(request & RGB));
 }
 
-
-// public
-fn void rgfw_monitors_refresh()
+fn void refresh_monitors()
 {
 	GfxMonitorNode* prev = _gfx_ctx.monitors.list.head;
 	GfxMonitorNode* node = _gfx_ctx.monitors.list.head;
-	while (node != null)
+	while (node)
 	{
 		GfxMonitorNode* next = node.next;
-		if (node.disconnected != false)
+		if (!node.disconnected)
 		{
 			rgfw_monitorCallback(_gfx_ctx.root, &node.mon, false);
 			_remove_monitor(node, prev);
@@ -1745,11 +1723,10 @@ fn void rgfw_monitors_refresh()
 	}
 }
 
-// public
-fn void rgfw_freeMonitors()
+fn void free_monitors()
 {
 	GfxMonitorNode* node = _gfx_ctx.monitors.list.head;
-	while (node != null)
+	while (node)
 	{
 		GfxMonitorNode* next = node.next;
 		_remove_monitor(node, node);
@@ -1757,37 +1734,19 @@ fn void rgfw_freeMonitors()
 	}
 }
 
-// public
-fn GfxMonitor** rgfw_getMonitors(sz* len)
+fn GfxMonitor*[] get_monitors()
 {
-	if (len != null) *len = 0;
-	sz count = 0;
-	if (rgfw_getMonitorsPtr(0, null, &count) == false || count == 0) return null;
-	GfxMonitor** monitors = mem::alloc_array(GfxMonitor*, count);
-	if (rgfw_getMonitorsPtr(count, monitors, &count) == false)
-	{
-		free(monitors);
-		return null;
-	}
-	if (len != null) *len = count;
-	return monitors;
-}
-
-// public
-fn bool rgfw_getMonitorsPtr(sz max, GfxMonitor** monitors, sz* len)
-{
-	if (len != null) *len = _gfx_ctx.monitors.count;
-	if (monitors == null || max == 0) return true;
-	if (len != null) *len = max;
+	sz count = _gfx_ctx.monitors.count;
+	if (!count) return {};
+	GfxMonitor*[] monitors = mem::temp_array(GfxMonitor*, count);
 	sz i = 0;
 	GfxMonitorNode* cur_node = _gfx_ctx.monitors.list.head;
-	while (cur_node != null && i < max)
+	while (cur_node)
 	{
-		monitors[i] = &cur_node.mon;
-		i++;
+		monitors[i++] = &cur_node.mon;
 		cur_node = cur_node.next;
 	}
-	return true;
+	return monitors;
 }
 
 <*
@@ -1828,14 +1787,35 @@ fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mo
 }
 
 
-// public
-fn ZString rgfw_monitor_getName(GfxMonitor* monitor) => (ZString)&monitor.name[0];
-// public
-fn void rgfw_monitor_setUserPtr(GfxMonitor* monitor, void* userPtr) { monitor.userPtr = userPtr; }
-// public
-fn void* rgfw_monitor_getUserPtr(GfxMonitor* monitor) => monitor.userPtr;
-// public
-fn bool rgfw_monitor_getMode(GfxMonitor* monitor, GfxMonitorMode* mode) { if (mode != null) *mode = monitor.mode; return true; }
+fn String GfxMonitor.get_name(&self)
+{
+	return ((ZString)&self.name[0]).str_view();
+}
+
+fn void GfxMonitor.set_user_ptr(&self, void* user_ptr)
+{
+	self.user_ptr = user_ptr;
+}
+
+fn void* GfxMonitor.get_user_ptr(&self)
+{
+	return self.user_ptr;
+}
+
+fn GfxMonitorMode GfxMonitor.get_mode(&self)
+{
+	return self.mode;
+}
+
+fn bool GfxMonitor.set_gamma(&self, float gamma)
+{
+	sz count = rgfw_monitor_getGammaRampPtr(self, null);
+	ushort* ptr = mem::alloc_array(ushort, count);
+	bool ret = rgfw_monitor_setGammaPtr(self, gamma, ptr, count);
+	free(ptr);
+	return ret;
+}
+
 
 // public
 fn RgfwGammaRamp* rgfw_monitor_getGammaRamp(GfxMonitor* monitor)
@@ -1907,14 +1887,6 @@ fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindo
 	}
 }
 
-fn bool GfxMonitor.set_gamma(&self, float gamma)
-{
-	sz count = rgfw_monitor_getGammaRampPtr(self, null);
-	ushort* ptr = mem::alloc_array(ushort, count);
-	bool ret = rgfw_monitor_setGammaPtr(self, gamma, ptr, count);
-	free(ptr);
-	return ret;
-}
 
 fn bool GfxWindow.will_capture_mouse(&self) => self.internal.capture_mouse;
 
@@ -1990,66 +1962,36 @@ fn GfxFormat native_format()
 	return $feat(WASM) ? RGBA8 : BGRA8;
 }
 
-fn void rgfw_keyUpdateKeyModsEx(GfxWindow* win, bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll)
+fn bool GfxWindow.is_borderless(&win)
 {
-	win.update_key_modifier(KEYMOD_CAPS_LOCK, capital);
-	win.update_key_modifier(KEYMOD_NUM_LOCK, numlock);
-	win.update_key_modifier(KEYMOD_CONTROL, control);
-	win.update_key_modifier(KEYMOD_ALT, alt);
-	win.update_key_modifier(KEYMOD_SHIFT, shift);
-	win.update_key_modifier(KEYMOD_SUPER, super);
-	win.update_key_modifier(KEYMOD_SCROLL_LOCK, scroll);
+	return win.internal.flags.no_border;
+}
+fn bool GfxWindow.is_fullscreen(&win)
+{
+	return win.internal.flags.fullscreen;
+}
+fn bool GfxWindow.allows_dnd(&win)
+{
+	return win.internal.flags.allow_dnd;
 }
 
-// public
-fn void rgfw_keyUpdateKeyMods(GfxWindow* win, bool capital, bool numlock, bool scroll)
+
+fn bool GfxWindow.set_mouse_default(&self)
 {
-	rgfw_keyUpdateKeyModsEx(win, capital, numlock,
-		is_key_down(CONTROL_L) || is_key_down(CONTROL_R),
-		is_key_down(ALT_L)     || is_key_down(ALT_R),
-		is_key_down(SHIFT_L)   || is_key_down(SHIFT_R),
-		is_key_down(SUPER_L)   || is_key_down(SUPER_R),
-		scroll);
+	return self.set_mouse_standard(NORMAL);
 }
 
-// public
-fn bool GfxWindow.is_borderless(&win) => win.internal.flags.no_border;
-// public
-fn bool GfxWindow.is_fullscreen(&win) => win.internal.flags.fullscreen;
-// public
-fn bool GfxWindow.allows_dnd(&win) => win.internal.flags.allow_dnd;
-
-
-// public
-fn void rgfw_window_showMouseFlags(GfxWindow* win, bool show)
+fn bool GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
 {
-	if (show && win.internal.flags.hide_mouse)
-	{
-		win.internal.flags.hide_mouse = false;
-	}
-	else if (!show && !win.internal.flags.hide_mouse)
-	{
-		win.internal.flags.hide_mouse = true;
-	}
+	return self.set_mouse(_gfx_ctx.standardMice[(sz)icon]);
 }
 
-// public
-fn bool GfxWindow.set_mouse_default(&self) => self.set_mouse_standard(NORMAL);
-// public
-fn bool GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon) => self.set_mouse(_gfx_ctx.standardMice[(sz)icon]);
-// public
 fn bool GfxWindow.set_mouse(&self, RgfwMouse* mouse)
 {
 	if (mouse != _gfx_ctx.hiddenMouse) self.internal.mouse = mouse;
 	return rgfw_window_setMousePlatform(self, mouse);
 }
 
-// public
-fn bool rgfw_isLatin(ZString string, sz length)
-{
-	for (sz i = 0; i < length; i++) if ((char)string[i] >= 0x80) return true;
-	return false;
-}
 
 fn void set_raw_mouse_mode(bool enabled)
 {

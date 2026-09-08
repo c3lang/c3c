@@ -30,7 +30,7 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 
 fn void _window_show_mouse_native(GfxWindow* win, bool show)
 {
-	rgfw_window_showMouseFlags(win, show);
+	_window_show_mouse_flags(win, show);
 	if (show)
 	{
 		win.set_mouse_default();
@@ -82,4 +82,12 @@ fn void _emscripten_on_mousedown(int button) @export("c3gfx_on_mousedown")
 {
 	if (button > 2) button += 2;
 	rgfw_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, true);
+}
+
+// public
+fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
+{
+	self.data = data;
+	self.size = { w, h };
+	self.format = format;
 }

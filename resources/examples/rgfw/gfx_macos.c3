@@ -35,6 +35,16 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 	objc_send((ObjcId)win.src.window, ObjcSendVoidRectBool, "setFrame:display:", ns_rect((double)win.x, (double)win.y, (double)size.x, (double)size.y + offset), true);
 }
 
+fn void _window_move_native(GfxWindow* win, GfxPoint where)
+{
+	if (!win.src.window) return;
+	CGRect content = objc_send((ObjcId)win.src.view, ObjcSendRect, "frame");
+	win.x = where.x;
+	win.y = (int)rgfw_cocoaYTransform((float)where.y + (float)content.size.height - 1.0f);
+	CGPoint origin = { ...where };
+	objc_send((ObjcId)win.src.window, ObjcSendVoidPoint, "setFrameOrigin:", origin);
+}
+
 fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
 	if (!_gfx_ctx.nsApp) return false;
@@ -74,7 +84,7 @@ fn bool _window_is_hidden_native(GfxWindow* win) @private
 
 fn void rgfw_pollMonitors()
 {
-	if (_gfx_ctx.monitors.count != 0) rgfw_freeMonitors();
+	if (_gfx_ctx.monitors.count != 0) free_monitors();
 	uint count = 0;
 	CGDirectDisplayID[16] displays;
 	if (cgGetActiveDisplayList(16, &displays, &count) != 0) return;
@@ -82,7 +92,7 @@ fn void rgfw_pollMonitors()
 	{
 		GfxMonitor mon;
 		_monitor_from_display(displays[i], &mon);
-		GfxMonitorNode* node = rgfw_monitors_add(&mon);
+		GfxMonitorNode* node = _monitor_add(&mon);
 		if (node == null) continue;
 		node.nativeId0 = (ulong)displays[i];
 		if (displays[i] == cgMainDisplayID()) _gfx_ctx.monitors.primary = node;
@@ -301,7 +311,7 @@ fn void _osx_flags_changed(ObjcId self, ObjcSelector sel, ObjcId event)
 	bool pressed = false;
 
 	NSUInteger flags = objc_send(event, ObjcSendNSUInteger, "modifierFlags");
-	rgfw_keyUpdateKeyModsEx(win,
+	_key_update_key_mods_ex(win,
 		flags & 0x00010000 != 0,
 		flags & 0x00200000 != 0,
 		flags & 0x00040000 != 0,

@@ -771,7 +771,7 @@ fn void rgfw_xHandleEvent()
 
 				XkbStateRec state;
 				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
-				rgfw_keyUpdateKeyMods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
+				_key_update_key_mods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
 
 				if (win.src.ic != null && xFilterEvent(&e, 0) == 0)
 				{
@@ -815,7 +815,7 @@ fn void rgfw_xHandleEvent()
 
 				XkbStateRec state;
 				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
-				rgfw_keyUpdateKeyMods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
+				_key_update_key_mods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
 
 				rgfw_keyCallback(win, value, win.internal.mod, false, false);
 				break;
@@ -1150,7 +1150,7 @@ fn void rgfw_pollMonitors_X11()
 		if (mi == null) break;
 
 		xRRFreeCrtcInfo(ci);
-		node = rgfw_monitors_add(&monitor);
+		node = _monitor_add(&monitor);
 		if (node == null) break;
 		node.nativeId0 = res.outputs[i];
 		node.nativeId1 = info.crtc;
@@ -1160,7 +1160,7 @@ fn void rgfw_pollMonitors_X11()
 	}
 
 	xRRFreeScreenResources(res);
-	rgfw_monitors_refresh();
+	refresh_monitors();
 }
 
 // private

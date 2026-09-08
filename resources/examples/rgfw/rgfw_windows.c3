@@ -719,7 +719,7 @@ fn iptr rgfw_wndProcW(Win32_HWND* hWnd, uint message, sz wParam, iptr lParam)
 			}
 			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW((uint)scancode);
 			if (wParam == 0x11 /* VK_CONTROL */) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
-			rgfw_keyUpdateKeyMods(win, getKeyState(0x14) & 1 != 0, getKeyState(0x90) & 1 != 0, getKeyState(0x91) & 1 != 0);
+			_key_update_key_mods(win, getKeyState(0x14) & 1 != 0, getKeyState(0x90) & 1 != 0, getKeyState(0x91) & 1 != 0);
 			rgfw_keyCallback(win, value, win.internal.mod, false, false);
 			break;
 		}
@@ -738,7 +738,7 @@ fn iptr rgfw_wndProcW(Win32_HWND* hWnd, uint message, sz wParam, iptr lParam)
 			GfxKey value = (GfxKey)rgfw_apiKeyToRGFW((uint)scancode);
 			if (wParam == 0x11) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
 			bool repeat = is_key_down(value);
-			rgfw_keyUpdateKeyMods(win, getKeyState(0x14) & 1 != 0, getKeyState(0x90) & 1 != 0, getKeyState(0x91) & 1 != 0);
+			_key_update_key_mods(win, getKeyState(0x14) & 1 != 0, getKeyState(0x90) & 1 != 0, getKeyState(0x91) & 1 != 0);
 			rgfw_keyCallback(win, value, win.internal.mod, repeat, true);
 			break;
 		}
@@ -1247,7 +1247,7 @@ fn void rgfw_win32CreateMonitor(DisplayDeviceW* adapter, DisplayDeviceW* dd)
 	dm.size = (ushort)DevModeW::size;
 	if (enumDisplaySettingsW((ushort*)&adapter.deviceName, (uint)ENUM_CURRENT_SETTINGS, &dm) == 0) return;
 
-	GfxMonitorNode* node = rgfw_monitors_add(null);
+	GfxMonitorNode* node = _monitor_add(null);
 	mem::copy(&node.adapterName, &adapter.deviceName, 64);
 	if (dd != null) mem::copy(&node.deviceName, &dd.deviceName, 64);
 
@@ -1335,7 +1335,7 @@ fn void rgfw_pollMonitors()
 			rgfw_win32CreateMonitor(&adapter, null);
 		}
 	}
-	rgfw_monitors_refresh();
+	refresh_monitors();
 }
 
 // public
@@ -1867,7 +1867,7 @@ fn void GfxSurface.release(&self)
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint blit = math::min(win.size, surface.size);
-	copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convertFunc);
+	copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
 	bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdcMem, 0, 0, 0x00CC0020 /* SRCCOPY */);
 }
 

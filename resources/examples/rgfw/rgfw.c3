@@ -205,7 +205,7 @@ fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 	ObjcId rep = ns_bitmapRep(...min);
 	char* pixels = ns_bitmapData(rep);
 	if (pixels == null) { ns_release(rep); return; }
-	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convertFunc);
+	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
 	ObjcId image = ns_imageWithRep(rep, ...min);
 	objc_send((ObjcId)win.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
 	ObjcId layer = objc_send((ObjcId)win.src.view, ObjcSendId, "layer");
@@ -781,15 +781,7 @@ fn void _window_restore_native(GfxWindow* win)
 // public
 fn void rgfw_window_minimizePlatform(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "miniaturize:", null); }
 // public
-fn void _window_move_native(GfxWindow* win, GfxPoint where)
-{
-	if (!win.src.window) return;
-	CGRect content = objc_send((ObjcId)win.src.view, ObjcSendRect, "frame");
-	win.x = where.x;
-	win.y = (int)rgfw_cocoaYTransform((float)where.y + (float)content.size.height - 1.0f);
-	CGPoint origin = { ...where };
-	objc_send((ObjcId)win.src.window, ObjcSendVoidPoint, "setFrameOrigin:", origin);
-}
+
 // public
 // public
 fn void _window_maximize_native(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "zoom:", null); }

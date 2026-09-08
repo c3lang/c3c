@@ -861,7 +861,7 @@ fn void rgfw_window_blitSurface_Wayland(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint min = math::min(win.size, surface.size);
 	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...min, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
-	copy_image_data(surface.native.buffer, min.x, min.y, surface.native.format, surface.data, surface.format, surface.convertFunc);
+	copy_image_data(surface.native.buffer, min.x, min.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
 
 	wlSurfaceAttach(win.src.surface, surface.native.wlBuffer, 0, 0);
 	wlSurfaceDamage(win.src.surface, 0, 0, ...min);
@@ -1331,7 +1331,7 @@ fn void rgfw_wlCreateOutputs(WlProxy* registry, uint id)
 	mon.scale = (Vec2)1;
 	mon.pixelRatio = 1.0f;
 
-	GfxMonitorNode* node = rgfw_monitors_add(&mon);
+	GfxMonitorNode* node = _monitor_add(&mon);
 	if (node == null) return;
 
 	node.modeCount = 0;
@@ -1476,7 +1476,7 @@ fn void rgfw_wlKeyboardKey(void* data, WlProxy* keyboard, uint serial, uint time
 	GfxWindow* win = info.kbOwner;
 	GfxKey rgfwKey = rgfw_apiKeyToRGFW(key + 8);
 
-	rgfw_keyUpdateKeyMods(win, xkbKeymapModGetIndex(info.keymap, "Lock") != 0, xkbKeymapModGetIndex(info.keymap, "Mod2") != 0, xkbKeymapModGetIndex(info.keymap, "ScrollLock") != 0);
+	_key_update_key_mods(win, xkbKeymapModGetIndex(info.keymap, "Lock") != 0, xkbKeymapModGetIndex(info.keymap, "Mod2") != 0, xkbKeymapModGetIndex(info.keymap, "ScrollLock") != 0);
 	rgfw_keyCallback(win, rgfwKey, win.internal.mod, is_key_down(rgfwKey) && state != 0, !!state);
 
 	info.lastKey = state != 0 ? key : 0;
