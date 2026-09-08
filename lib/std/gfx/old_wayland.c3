@@ -1,23 +1,6 @@
 module std::gfx @feat(WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
 import std::collections::list, std::math, libc;
 
-// C3 port of the Wayland/EGL RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
-// Mechanical, line-by-line style translation of the RGFW_WAYLAND implementation.
-// Standalone alternative to rgfw.c3 (macOS) / rgfw_x11.c3 - only ONE rgfw*.c3 file
-// should be included for a given target, matching how the original C header only
-// ever compiles one #ifdef backend at a time.
-//
-// Like the original C header (which does `#include "xdg-shell.h"` etc. and expects
-// the caller to generate+compile those files with wayland-scanner), this file
-// declares the xdg-shell/decoration/relative-pointer/pointer-constraints/xdg-output/
-// toplevel-icon/pointer-warp `_interface` descriptor tables as `extern` - a real
-// build needs wayland-scanner-generated protocol code (from wayland-protocols)
-// compiled and linked in alongside this file to supply those tables. Everything
-// built on top of them here (the `xdg_*`/`zxdg_*`/`zwp_*`/`wp_*` request wrappers)
-// is reimplemented directly against `wl_proxy_marshal_flags` using each protocol's
-// stable request ordering, since those wrapper functions are normally generated as
-// `static inline` (no linkable symbol to bind to).
-
 
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
@@ -46,7 +29,7 @@ const int POLLIN = 0x0001;
 
 
 extern fn int* rgfwErrnoLocation() @cname("__errno_location");
-const int RGFW_EAGAIN = 11;
+const int TODO_RENAMEEAGAIN = 11;
 
 const uint WL_MARSHAL_FLAG_DESTROY = 1;
 
@@ -62,22 +45,22 @@ const uint WL_MARSHAL_FLAG_DESTROY = 1;
 // private
 fn void rgfwDoNothing() {}
 
-struct RgfwGlContext { void* ctx; void* format; }
-struct RgfwEglContext { void* ctx; void* surface; void* eglWindow; }
+struct TodoRenameGlContext { void* ctx; void* format; }
+struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
 
-const RgfwGlReleaseBehavior RGFW_GL_RELEASE_FLUSH = 0;
-const RgfwGlReleaseBehavior RGFW_GL_RELEASE_NONE = 1;
+const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_FLUSH = 0;
+const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_NONE = 1;
 
-const RgfwGlProfile RGFW_GL_CORE = 0;
-const RgfwGlProfile RGFW_GL_FORWARD_COMPATIBILITY = 1;
-const RgfwGlProfile RGFW_GL_COMPATIBILITY = 2;
-const RgfwGlProfile RGFW_GL_ES = 3;
-const RgfwGlProfile RGFW_GL_WEB = 4;
+const TodoRenameGlProfile TODO_RENAMEGL_CORE = 0;
+const TodoRenameGlProfile TODO_RENAMEGL_FORWARD_COMPATIBILITY = 1;
+const TodoRenameGlProfile TODO_RENAMEGL_COMPATIBILITY = 2;
+const TodoRenameGlProfile TODO_RENAMEGL_ES = 3;
+const TodoRenameGlProfile TODO_RENAMEGL_WEB = 4;
 
-const RgfwGlRenderer RGFW_GL_ACCELERATED = 0;
-const RgfwGlRenderer RGFW_GL_SOFTWARE = 1;
+const TodoRenameGlRenderer TODO_RENAMEGL_ACCELERATED = 0;
+const TodoRenameGlRenderer TODO_RENAMEGL_SOFTWARE = 1;
 
-struct RgfwGlHints
+struct TodoRenameGlHints
 {
 	int stencil;
 	int samples;
@@ -91,30 +74,30 @@ struct RgfwGlHints
 	bool robustness;
 	bool debug;
 	bool noError;
-	RgfwGlReleaseBehavior releaseBehavior;
-	RgfwGlProfile profile;
+	TodoRenameGlReleaseBehavior releaseBehavior;
+	TodoRenameGlProfile profile;
 	int major, minor;
-	RgfwGlContext* share;
-	RgfwEglContext* shareEGL;
-	RgfwGlRenderer renderer;
+	TodoRenameGlContext* share;
+	TodoRenameEglContext* shareEGL;
+	TodoRenameGlRenderer renderer;
 }
 
-union RgfwGfxContext
+union TodoRenameGfxContext
 {
-	RgfwGlContext* native;
-	RgfwEglContext* egl;
+	TodoRenameGlContext* native;
+	TodoRenameEglContext* egl;
 }
 
 
-struct RgfwWindowSrc
+struct TodoRenameWindowSrc
 {
 	inline IntRect bounds;
 	void* window;
 	void* view;
 	void* mouse;
 	void* delegate;
-	RgfwGfxContext ctx;
-	RgfwGfxContextType gfxType;
+	TodoRenameGfxContext ctx;
+	TodoRenameGfxContextType gfxType;
 	WlProxy* surface;
 	WlProxy* xdgSurface;
 	WlProxy* xdgToplevel;
@@ -139,16 +122,16 @@ struct RgfwWindowSrc
 const int VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR = 1000006000;
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
 struct VkWaylandSurfaceCreateInfoKHR { int sType; void* pNext; uint flags; WlDisplay* display; WlProxy* surface; }
-alias RgfwVkCreateWaylandSurfaceKHRProc = fn VkResult(VkInstance instance, VkWaylandSurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
-ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_wayland_surface"};
+alias TodoRenameVkCreateWaylandSurfaceKHRProc = fn VkResult(VkInstance instance, VkWaylandSurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
+ZString[2] todo_fix_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_wayland_surface"};
 
 
 // public
-fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
+fn VkResult todo_fix_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
 {
 	if (surface == null || win == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	*surface = 0;
-	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkCreateWaylandSurfaceKHR");
+	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateWaylandSurfaceKHR");
 	if (raw == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	VkWaylandSurfaceCreateInfoKHR createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
@@ -156,17 +139,17 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 	createInfo.flags = 0;
 	createInfo.display = _gfx_ctx.wlDisplay;
 	createInfo.surface = win.src.surface;
-	return ((RgfwVkCreateWaylandSurfaceKHRProc)raw)(instance, &createInfo, null, surface);
+	return ((TodoRenameVkCreateWaylandSurfaceKHRProc)raw)(instance, &createInfo, null, surface);
 }
 
-alias RgfwVkGetPhysicalDeviceWaylandPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, WlDisplay*);
+alias TodoRenameVkGetPhysicalDeviceWaylandPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, WlDisplay*);
 
 // public
-fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex)
+fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex)
 {
-	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
+	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
 	if (raw == null) return false;
-	uint out = ((RgfwVkGetPhysicalDeviceWaylandPresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex, _gfx_ctx.wlDisplay);
+	uint out = ((TodoRenameVkGetPhysicalDeviceWaylandPresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex, _gfx_ctx.wlDisplay);
 	return out != 0;
 }
 
@@ -180,27 +163,27 @@ struct WgpuSurfaceSourceWaylandSurface { WgpuChainedStruct chain; WlDisplay* dis
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
 
-WlPointerListener rgfw_wlPointerListener = {
-	.enter = &rgfw_wlPointerEnter, .leave = &rgfw_wlPointerLeave, .motion = &rgfw_wlPointerMotion,
-	.button = &rgfw_wlPointerButton, .axis = &rgfw_wlPointerAxis
+WlPointerListener todo_fix_wlPointerListener = {
+	.enter = &todo_fix_wlPointerEnter, .leave = &todo_fix_wlPointerLeave, .motion = &todo_fix_wlPointerMotion,
+	.button = &todo_fix_wlPointerButton, .axis = &todo_fix_wlPointerAxis
 };
-WlKeyboardListener rgfw_wlKeyboardListener = {
-	.keymap = &rgfw_wlKeyboardKeymap, .enter = &rgfw_wlKeyboardEnter, .leave = &rgfw_wlKeyboardLeave,
-	.key = &rgfw_wlKeyboardKey, .modifiers = &rgfw_wlKeyboardModifiers, .repeatInfo = &rgfw_wlKeyboardRepeatInfo
+WlKeyboardListener todo_fix_wlKeyboardListener = {
+	.keymap = &todo_fix_wlKeyboardKeymap, .enter = &todo_fix_wlKeyboardEnter, .leave = &todo_fix_wlKeyboardLeave,
+	.key = &todo_fix_wlKeyboardKey, .modifiers = &todo_fix_wlKeyboardModifiers, .repeatInfo = &todo_fix_wlKeyboardRepeatInfo
 };
 
 
-WlSeatListener rgfw_wlSeatListener = { .capabilities = &rgfw_wlSeatCapabilities, .name = &rgfw_wlSeatName };
-WlShmListener rgfw_wlShmListener = { .format = &rgfw_wlShmFormatHandler };
+WlSeatListener todo_fix_wlSeatListener = { .capabilities = &todo_fix_wlSeatCapabilities, .name = &todo_fix_wlSeatName };
+WlShmListener todo_fix_wlShmListener = { .format = &todo_fix_wlShmFormatHandler };
 
 
-WlOutputListener rgfw_wlOutputListener = {
-	.geometry = &rgfw_wlOutputSetGeometry, .mode = &rgfw_wlOutputHandleMode, .done = &rgfw_wlOutputHandleDone,
-	.scale = &rgfw_wlOutputSetScale, .name = &rgfw_wlOutputSetName, .description = &rgfw_wlOutputDescription
+WlOutputListener todo_fix_wlOutputListener = {
+	.geometry = &todo_fix_wlOutputSetGeometry, .mode = &todo_fix_wlOutputHandleMode, .done = &todo_fix_wlOutputHandleDone,
+	.scale = &todo_fix_wlOutputSetScale, .name = &todo_fix_wlOutputSetName, .description = &todo_fix_wlOutputDescription
 };
-ZxdgOutputV1Listener rgfw_xdgOutputListener = {
-	.name = &rgfw_xdgOutputNothingStr, .done = &rgfw_xdgOutputNothing, .description = &rgfw_xdgOutputNothingStr,
-	.logicalPosition = &rgfw_xdgOutputLogicalPos, .logicalSize = &rgfw_xdgOutputLogicalSize
+ZxdgOutputV1Listener todo_fix_xdgOutputListener = {
+	.name = &todo_fix_xdgOutputNothingStr, .done = &todo_fix_xdgOutputNothing, .description = &todo_fix_xdgOutputNothingStr,
+	.logicalPosition = &todo_fix_xdgOutputLogicalPos, .logicalSize = &todo_fix_xdgOutputLogicalSize
 };
 
 
@@ -236,37 +219,37 @@ fn void _wl_data_device_selection(void* data, WlProxy* device, WlProxy* offer)
 }
 
 
-WlRegistryListener rgfw_registryListener = { .global = &rgfw_wlGlobalRegistryHandler, .globalRemove = &rgfw_wlGlobalRegistryRemove };
+WlRegistryListener todo_fix_registryListener = { .global = &todo_fix_wlGlobalRegistryHandler, .globalRemove = &todo_fix_wlGlobalRegistryRemove };
 
 
 // public
-fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
+fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
 {
-	rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_WARNING_WAYLAND, "RGFW Wayland support is experimental");
+	todo_fix_debugCallback(TODO_RENAMETYPE_WARNING, TODO_RENAMEWARNING_WAYLAND, "RGFW Wayland support is experimental");
 
 	win.src.surface = wlCompositorCreateSurface(_gfx_ctx.compositor);
-	wlSurfaceAddListener(win.src.surface, &rgfw_windowSurfaceListener, win);
+	wlSurfaceAddListener(win.src.surface, &todo_fix_windowSurfaceListener, win);
 	wlSurfaceSetUserData(win.src.surface, win);
 
 	win.src.customCursorSurface = wlCompositorCreateSurface(_gfx_ctx.compositor);
 
 	win.src.xdgSurface = xdgWmBaseGetXdgSurface(_gfx_ctx.xdgWmBase, win.src.surface);
-	xdgSurfaceAddListener(win.src.xdgSurface, &rgfw_xdgSurfaceListener, win);
+	xdgSurfaceAddListener(win.src.xdgSurface, &todo_fix_xdgSurfaceListener, win);
 	xdgWmBaseSetUserData(_gfx_ctx.xdgWmBase, win);
 
 	win.src.xdgToplevel = xdgSurfaceGetToplevel(win.src.xdgSurface);
 	xdgToplevelSetAppId(win.src.xdgToplevel, name.zstr_copy(tmem));
 	xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
 
-	if (!(win.internal.flags.transparent)) rgfw_wlSetOpaque(win);
+	if (!(win.internal.flags.transparent)) todo_fix_wlSetOpaque(win);
 
-	xdgToplevelAddListener(win.src.xdgToplevel, &rgfw_xdgToplevelListener, win);
+	xdgToplevelAddListener(win.src.xdgToplevel, &todo_fix_xdgToplevelListener, win);
 
 	if (_gfx_ctx.decorationManager != null)
 	{
 		uint decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
 		win.src.decoration = zxdgDecorationManagerV1GetToplevelDecoration(_gfx_ctx.decorationManager, win.src.xdgToplevel);
-		zxdgToplevelDecorationV1AddListener(win.src.decoration, &rgfw_xdgDecorationListener, win);
+		zxdgToplevelDecorationV1AddListener(win.src.decoration, &todo_fix_xdgDecorationListener, win);
 		if (flags.no_border) decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
 		zxdgToplevelDecorationV1SetMode(win.src.decoration, decorationMode);
 	}
@@ -281,14 +264,14 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 }
 
 
-WlDataSourceListener rgfw_dataSourceListener = {
-	.target = &rgfw_wlDataSourceNothingStr, .action = &rgfw_wlDataSourceNothingU32,
-	.dndDropPerformed = &rgfw_wlDataSourceNothing, .dndFinished = &rgfw_wlDataSourceNothing,
-	.send = &rgfw_wlDataSourceSend, .cancelled = &rgfw_wlDataSourceCancelled
+WlDataSourceListener todo_fix_dataSourceListener = {
+	.target = &todo_fix_wlDataSourceNothingStr, .action = &todo_fix_wlDataSourceNothingU32,
+	.dndDropPerformed = &todo_fix_wlDataSourceNothing, .dndFinished = &todo_fix_wlDataSourceNothing,
+	.send = &todo_fix_wlDataSourceSend, .cancelled = &todo_fix_wlDataSourceCancelled
 };
 
 
-struct RgfwAttribStack
+struct TodoRenameAttribStack
 {
 	int* attribs;
 	sz count;
@@ -299,11 +282,11 @@ struct RgfwAttribStack
 
 
 // public
-fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
+fn bool todo_fix_extensionSupportedPlatform_EGL(ZString extension, sz len)
 {
-	if (rgfw_eglQueryString == null || _gfx_ctx.egl_display == null) return false;
-	ZString extensions = rgfw_eglQueryString((EglDisplay)_gfx_ctx.egl_display, 0x3055 /* EGL_EXTENSIONS */);
-	return extensions != null && rgfw_extensionSupportedStr(extensions, extension, len);
+	if (todo_fix_eglQueryString == null || _gfx_ctx.egl_display == null) return false;
+	ZString extensions = todo_fix_eglQueryString((EglDisplay)_gfx_ctx.egl_display, 0x3055 /* EGL_EXTENSIONS */);
+	return extensions != null && todo_fix_extensionSupportedStr(extensions, extension, len);
 }
 
 

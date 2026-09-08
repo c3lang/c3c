@@ -57,9 +57,9 @@ fn GfxMonitorNode* _monitor_add(GfxMonitor* mon)
 
 
 // To remove
-fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
+fn void todo_fix_debugCallback(TodoRenameDebugType type, TodoRenameErrorCode code, ZString msg)
 {
-	RgfwDebugInfo info;
+	TodoRenameDebugInfo info;
 	info.type = type;
 	info.code = code;
 	info.msg = msg;
@@ -67,9 +67,9 @@ fn void rgfw_debugCallback(RgfwDebugType type, RgfwErrorCode code, ZString msg)
 }
 
 // To remove
-fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
+fn TodoRenameDebugFunc todo_fix_setDebugCallback(TodoRenameDebugFunc func)
 {
-	RgfwDebugFunc prev = _gfx_ctx.debugCallbackSrc;
+	TodoRenameDebugFunc prev = _gfx_ctx.debugCallbackSrc;
 	_gfx_ctx.debugCallbackSrc = func;
 	return prev;
 }
@@ -77,7 +77,7 @@ fn RgfwDebugFunc rgfw_setDebugCallback(RgfwDebugFunc func)
 fn void _remove_monitor(GfxMonitorNode* node, GfxMonitorNode* prev)
 {
 	_gfx_ctx.monitors.count--;
-	rgfw_monitorNode_free(node);
+	todo_fix_monitorNode_free(node);
 	if (prev != node)
 	{
 		prev.next = node.next;
@@ -117,7 +117,7 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show) @feat(!WASM)
 
 
 // public
-fn uint rgfw_decodeUTF8(ZString string, sz* starting_index)
+fn uint todo_fix_decodeUTF8(ZString string, sz* starting_index)
 {
 	uint[6] offsets = {0x00000000u, 0x00003080u, 0x000e2080u, 0x03c82080u, 0xfa082080u, 0x82082080u};
 	uint codepoint = (char)string[*starting_index];

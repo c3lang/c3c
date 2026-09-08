@@ -21,12 +21,12 @@ fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFor
 
 	if (type & WINDOW)
 	{
-		win.src.hIconSmall = rgfw_loadHandleImage(data, w, h, format, 1);
+		win.src.hIconSmall = todo_fix_loadHandleImage(data, w, h, format, 1);
 		sendMessage(win.src.window, 0x0080, 0, (iptr)(uptr)win.src.hIconSmall);
 	}
 	if (type & TASKBAR)
 	{
-		win.src.hIconBig = rgfw_loadHandleImage(data, w, h, format, 1);
+		win.src.hIconBig = todo_fix_loadHandleImage(data, w, h, format, 1);
 		sendMessage(win.src.window, 0x0080, 1, (iptr)(uptr)win.src.hIconBig);
 	}
 	return true;
@@ -48,12 +48,12 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 
 	if (!fullscreen)
 	{
-		rgfw_monitor_setMode(mon, &win.internal.oldMode);
+		todo_fix_monitor_setMode(mon, &win.internal.oldMode);
 		_window_set_border_native(win, true);
 
 		Rect rect = {0, 0, ...win.internal.old_bounds.size};
-		uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
-		uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
+		uint style = todo_fix_winapiWindowGetStyle(win, win.internal.flags);
+		uint exStyle = todo_fix_winapiWindowGetExStyle(win, win.internal.flags);
 		adjustWindowRectEx(&rect, style, 0, exStyle);
 		setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
 
@@ -70,7 +70,7 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1) /* HWND_TOPMOST */, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
 	win.origin = mon.origin;
 
-	rgfw_monitor_scaleToWindow(mon, win);
+	todo_fix_monitor_scaleToWindow(mon, win);
 	setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, ...mon.mode.size, 0x0200 | 0x0020 | 0x0040 | 0x0002);
 	win.size = mon.mode.size;
 }
@@ -79,8 +79,8 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
 	Rect rect = { 0, 0, ...size };
-	uint style = rgfw_winapiWindowGetStyle(win, win.internal.flags);
-	uint exStyle = rgfw_winapiWindowGetExStyle(win, win.internal.flags);
+	uint style = todo_fix_winapiWindowGetStyle(win, win.internal.flags);
+	uint exStyle = todo_fix_winapiWindowGetExStyle(win, win.internal.flags);
 	adjustWindowRectEx(&rect, style, 0, exStyle);
 	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
 }

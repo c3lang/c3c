@@ -16,7 +16,7 @@ alias CGDisplayModeRef = void*;
 alias CGEventRef = void*;
 
 struct VkMetalSurfaceCreateInfoEXT { int sType; void* pNext; uint flags; void* pLayer; }
-alias RgfwVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* createInfo, void* allocator, VkSurfaceKHR* surface);
+alias TodoRenameVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* createInfo, void* allocator, VkSurfaceKHR* surface);
 
 extern fn void objc_msgSendRaw(...) @cname("objc_msgSend") @builtin;
 extern fn ObjcSelector sel_registerName(ZString name);
@@ -100,22 +100,22 @@ alias ObjcSendVoidIntPtrNSInteger = fn void(ObjcId, ObjcSelector, int*, NSIntege
 
 
 
-struct RgfwGlContext { void* ctx; void* format; }
-struct RgfwEglContext { void* ctx; void* surface; void* eglWindow; }
+struct TodoRenameGlContext { void* ctx; void* format; }
+struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
 
-const RgfwGlReleaseBehavior RGFW_GL_RELEASE_FLUSH = 0;
-const RgfwGlReleaseBehavior RGFW_GL_RELEASE_NONE = 1;
+const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_FLUSH = 0;
+const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_NONE = 1;
 
-const RgfwGlProfile RGFW_GL_CORE = 0;
-const RgfwGlProfile RGFW_GL_FORWARD_COMPATIBILITY = 1;
-const RgfwGlProfile RGFW_GL_COMPATIBILITY = 2;
-const RgfwGlProfile RGFW_GL_ES = 3;
-const RgfwGlProfile RGFW_GL_WEB = 4;
+const TodoRenameGlProfile TODO_RENAMEGL_CORE = 0;
+const TodoRenameGlProfile TODO_RENAMEGL_FORWARD_COMPATIBILITY = 1;
+const TodoRenameGlProfile TODO_RENAMEGL_COMPATIBILITY = 2;
+const TodoRenameGlProfile TODO_RENAMEGL_ES = 3;
+const TodoRenameGlProfile TODO_RENAMEGL_WEB = 4;
 
-const RgfwGlRenderer RGFW_GL_ACCELERATED = 0;
-const RgfwGlRenderer RGFW_GL_SOFTWARE = 1;
+const TodoRenameGlRenderer TODO_RENAMEGL_ACCELERATED = 0;
+const TodoRenameGlRenderer TODO_RENAMEGL_SOFTWARE = 1;
 
-struct RgfwGlHints
+struct TodoRenameGlHints
 {
 	int stencil;
 	int samples;
@@ -129,37 +129,37 @@ struct RgfwGlHints
 	bool robustness;
 	bool debug;
 	bool noError;
-	RgfwGlReleaseBehavior releaseBehavior;
-	RgfwGlProfile profile;
+	TodoRenameGlReleaseBehavior releaseBehavior;
+	TodoRenameGlProfile profile;
 	int major, minor;
-	RgfwGlContext* share;
-	RgfwEglContext* shareEGL;
-	RgfwGlRenderer renderer;
+	TodoRenameGlContext* share;
+	TodoRenameEglContext* shareEGL;
+	TodoRenameGlRenderer renderer;
 }
 
-union RgfwGfxContext
+union TodoRenameGfxContext
 {
-	RgfwGlContext* native;
-	RgfwEglContext* egl;
+	TodoRenameGlContext* native;
+	TodoRenameEglContext* egl;
 }
 
 
 
-struct RgfwWindowSrc
+struct TodoRenameWindowSrc
 {
 	inline IntRect bounds;
 	void* window;
 	void* view;
 	void* mouse;
 	void* delegate;
-	RgfwGfxContext ctx;
-	RgfwGfxContextType gfxType;
+	TodoRenameGfxContext ctx;
+	TodoRenameGfxContextType gfxType;
 }
 
 
 
-ObjcClass rgfw_osxWindowDelegateClass;
-ObjcClass rgfw_osxViewClass;
+ObjcClass todo_fix_osxWindowDelegateClass;
+ObjcClass todo_fix_osxViewClass;
 
 
 
@@ -169,34 +169,34 @@ ObjcClass rgfw_osxViewClass;
 
 const int VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT = 1000217000;
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
-ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_EXT_metal_surface"};
+ZString[2] todo_fix_vulkanExtensions = {"VK_KHR_surface", "VK_EXT_metal_surface"};
 
 
 // public
-fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
+fn VkResult todo_fix_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
 {
 	if (surface == null || win == null || win.src.view == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	*surface = 0;
-	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkCreateMetalSurfaceEXT");
+	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateMetalSurfaceEXT");
 	if (raw == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	ObjcId layer = objc_send(objc_class("CAMetalLayer"), ObjcSendId, "layer");
 	if (layer == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	objc_send((ObjcId)win.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
-	rgfw_window_setLayer_OSX(win, layer);
+	todo_fix_window_setLayer_OSX(win, layer);
 	VkMetalSurfaceCreateInfoEXT createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
 	createInfo.pNext = null;
 	createInfo.flags = 0;
 	createInfo.pLayer = layer;
-	return ((RgfwVkCreateMetalSurfaceEXTProc)raw)(instance, &createInfo, null, surface);
+	return ((TodoRenameVkCreateMetalSurfaceEXTProc)raw)(instance, &createInfo, null, surface);
 }
 
 // public
-fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
+fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
 
 
 // public
-fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
+fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
 	if (win == null || surface == null || surface.data == null) return;
 	GfxPoint min = math::min(win.size, surface.size);
@@ -227,9 +227,9 @@ const uint UC_KEY_ACTION_DOWN = 0;
 const uint UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT = 0;
 
 // public
-fn GfxKey rgfw_physicalToMappedKey(GfxKey key)
+fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
 {
-	ushort keycode = (ushort)rgfw_rgfwToApiKey(key);
+	ushort keycode = (ushort)todo_fix_rgfwToApiKey(key);
 	TISInputSourceRef source = tisCopyCurrentKeyboardLayoutInputSource();
 	if (source == null) return key;
 
@@ -257,9 +257,9 @@ fn GfxKey rgfw_physicalToMappedKey(GfxKey key)
 
 
 // public
-fn void* rgfw_glContext_getSourceContext(RgfwGlContext* ctx) { return ctx.ctx; }
+fn void* todo_fix_glContext_getSourceContext(TodoRenameGlContext* ctx) { return ctx.ctx; }
 
-struct RgfwAttribStack
+struct TodoRenameAttribStack
 {
 	int* attribs;
 	sz count;
@@ -267,13 +267,13 @@ struct RgfwAttribStack
 }
 
 
-alias RgfwGetProcAddressFunc = fn GfxFn(ZString procname);
+alias TodoRenameGetProcAddressFunc = fn GfxFn(ZString procname);
 
 // public
-fn bool rgfw_extensionSupported_base(ZString extension, sz len, RgfwGetProcAddressFunc getProcAddress)
+fn bool todo_fix_extensionSupported_base(ZString extension, sz len, TodoRenameGetProcAddressFunc getProcAddress)
 {
-	GfxFn rgfw_gl_get_string = getProcAddress("glGetString");
-	if (rgfw_gl_get_string == null) return false;
+	GfxFn todo_fix_gl_get_string = getProcAddress("glGetString");
+	if (todo_fix_gl_get_string == null) return false;
 	return false;
 }
 
@@ -304,32 +304,32 @@ fn void nsOpenGLContext_setValues(ObjcId context, int* vals, NSInteger param)
 
 
 // public
-fn RgfwGlContext* rgfw_window_getContext_OpenGL(GfxWindow* win)
+fn TodoRenameGlContext* todo_fix_window_getContext_OpenGL(GfxWindow* win)
 {
-	if (win == null || (win.src.gfxType & RGFW_GFX_EGL)) return null;
+	if (win == null || (win.src.gfxType & TODO_RENAMEGFX_EGL)) return null;
 	return win.src.ctx.native;
 }
 
 
 // public
-fn bool rgfw_extensionSupported_OpenGL(ZString extension, sz len)
+fn bool todo_fix_extensionSupported_OpenGL(ZString extension, sz len)
 {
-	if (rgfw_extensionSupported_base(extension, len, &_get_opengl_proc_native)) return true;
-	return rgfw_extensionSupportedPlatform_OpenGL(extension, len);
+	if (todo_fix_extensionSupported_base(extension, len, &_get_opengl_proc_native)) return true;
+	return todo_fix_extensionSupportedPlatform_OpenGL(extension, len);
 }
 
 // public
-fn void rgfw_window_makeCurrentWindow_OpenGL(GfxWindow* win)
+fn void todo_fix_window_makeCurrentWindow_OpenGL(GfxWindow* win)
 {
 	if (win != null) _gfx_ctx.current = win;
-	rgfw_window_makeCurrentContext_OpenGL(win);
+	todo_fix_window_makeCurrentContext_OpenGL(win);
 }
 
 // public
-fn GfxWindow* rgfw_getCurrentWindow_OpenGL() => _gfx_ctx.current;
+fn GfxWindow* todo_fix_getCurrentWindow_OpenGL() => _gfx_ctx.current;
 
 // public
-fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => false;
+fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => false;
 
 // public
 fn GfxFn _get_opengl_proc_native(ZString procname)
@@ -342,38 +342,38 @@ fn GfxFn _get_opengl_proc_native(ZString procname)
 }
 
 // public
-fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, RgfwGlHints* hints)
+fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx, TodoRenameGlHints* hints)
 {
 	if (win == null || ctx == null || hints == null || win.src.window == null) return false;
 	win.src.ctx.native = ctx;
-	win.src.gfxType = RGFW_GFX_NATIVE_OPEN_GL;
+	win.src.gfxType = TODO_RENAMEGFX_NATIVE_OPEN_GL;
 
 	int[40] attribs;
-	RgfwAttribStack stack;
-	rgfw_attribStack_init(&stack, &attribs, 40);
+	TodoRenameAttribStack stack;
+	todo_fix_attribStack_init(&stack, &attribs, 40);
 	int colorBits = (hints.red + hints.green + hints.blue + hints.alpha) / 4;
-	rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_COLOR_SIZE, colorBits);
-	rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_ALPHA_SIZE, hints.alpha);
-	rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth);
-	rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil);
-	rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_AUX_BUFFERS, hints.auxBuffers);
-	rgfw_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_CLOSEST_POLICY);
+	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_COLOR_SIZE, colorBits);
+	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_ALPHA_SIZE, hints.alpha);
+	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth);
+	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil);
+	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_AUX_BUFFERS, hints.auxBuffers);
+	todo_fix_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_CLOSEST_POLICY);
 	if (hints.samples != 0)
 	{
-		rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1);
-		rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_SAMPLES, hints.samples);
+		todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1);
+		todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_SAMPLES, hints.samples);
 	}
-	else { rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0); }
-	if (hints.doubleBuffer != 0) rgfw_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_DOUBLE_BUFFER);
-	rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_OPEN_GL_PROFILE, hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
+	else { todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0); }
+	if (hints.doubleBuffer != 0) todo_fix_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_DOUBLE_BUFFER);
+	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_OPEN_GL_PROFILE, hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
 	if (hints.major <= 2)
 	{
 		int accumSize = (hints.accumRed + hints.accumGreen + hints.accumBlue + hints.accumAlpha) / 4;
-		rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_ACCUM_SIZE, accumSize);
+		todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_ACCUM_SIZE, accumSize);
 	}
-	if (hints.renderer == RGFW_GL_SOFTWARE) { rgfw_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID); }
-	else { rgfw_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_ACCELERATED); }
-	rgfw_attribStack_pushAttribs(&stack, 0, 0);
+	if (hints.renderer == TODO_RENAMEGL_SOFTWARE) { todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID); }
+	else { todo_fix_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_ACCELERATED); }
+	todo_fix_attribStack_pushAttribs(&stack, 0, 0);
 
 	ObjcId format = objc_send(ns_alloc("NSOpenGLPixelFormat"), ObjcSendIdU32Ptr, "initWithAttributes:", (uint*)&attribs);
 	if (format == null)
@@ -397,14 +397,14 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, 
 		int opacity = 0;
 		nsOpenGLContext_setValues((ObjcId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
 	}
-	rgfw_window_makeCurrentContext_OpenGL(win);
+	todo_fix_window_makeCurrentContext_OpenGL(win);
 	win.opengl_swap_interval(0);
 	log::info("OpenGL context initialized", category: log::CATEGORY_VIDEO);
 	return true;
 }
 
 // public
-fn void rgfw_window_deleteContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
+fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx)
 {
 	if (ctx == null) return;
 	ns_release((ObjcId)ctx.format);
@@ -415,16 +415,16 @@ fn void rgfw_window_deleteContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
 }
 
 // public
-fn void rgfw_window_makeCurrentContext_OpenGL(GfxWindow* win)
+fn void todo_fix_window_makeCurrentContext_OpenGL(GfxWindow* win)
 {
 	if (win != null && win.src.ctx.native != null && win.src.ctx.native.ctx != null) { objc_send((ObjcId)win.src.ctx.native.ctx, ObjcSendVoid, "makeCurrentContext"); }
 	else { objc_send(objc_class("NSOpenGLContext"), ObjcSendId, "clearCurrentContext"); }
 }
 
 // public
-fn void* rgfw_getCurrentContext_OpenGL() => objc_send(objc_class("NSOpenGLContext"), ObjcSendId, "currentContext");
+fn void* todo_fix_getCurrentContext_OpenGL() => objc_send(objc_class("NSOpenGLContext"), ObjcSendId, "currentContext");
 // public
-fn void rgfw_window_swapBuffers_OpenGL(GfxWindow* win) { if (win != null && win.src.ctx.native != null && win.src.ctx.native.ctx != null) objc_send((ObjcId)win.src.ctx.native.ctx, ObjcSendVoid, "flushBuffer"); }
+fn void todo_fix_window_swapBuffers_OpenGL(GfxWindow* win) { if (win != null && win.src.ctx.native != null && win.src.ctx.native.ctx != null) objc_send((ObjcId)win.src.ctx.native.ctx, ObjcSendVoid, "flushBuffer"); }
 
 const NSUInteger NS_WINDOW_STYLE_TITLED = 1;
 const NSUInteger NS_WINDOW_STYLE_CLOSABLE = 2;
@@ -479,14 +479,14 @@ fn CGRect ns_rect(double x, double y, double w, double h)
 
 
 // private
-fn CGDirectDisplayID rgfw_monitorDisplay(GfxMonitor* monitor)
+fn CGDirectDisplayID todo_fix_monitorDisplay(GfxMonitor* monitor)
 {
 	if (monitor != null && monitor.node != null && monitor.node.nativeId0 != 0) return (CGDirectDisplayID)monitor.node.nativeId0;
 	return cgMainDisplayID();
 }
 
 // private
-fn GfxWindow* rgfw_osxDelegateWindow(ObjcId self)
+fn GfxWindow* todo_fix_osxDelegateWindow(ObjcId self)
 {
 	void* out = null;
 	object_getInstanceVariable(self, "gfx_window", &out);
@@ -496,7 +496,7 @@ fn GfxWindow* rgfw_osxDelegateWindow(ObjcId self)
 
 
 // private
-fn GfxWindow* rgfw_osxViewWindow(ObjcId self)
+fn GfxWindow* todo_fix_osxViewWindow(ObjcId self)
 {
 	void* out = null;
 	object_getInstanceVariable(self, "gfx_window", &out);
@@ -507,7 +507,7 @@ fn GfxWindow* rgfw_osxViewWindow(ObjcId self)
 // private
 
 // public
-fn void rgfw_monitorNode_free(GfxMonitorNode* node) { if (node != null && node.mon.mode.src != null) cfRelease(node.mon.mode.src); }
+fn void todo_fix_monitorNode_free(GfxMonitorNode* node) { if (node != null && node.mon.mode.src != null) cfRelease(node.mon.mode.src); }
 
 
 // public
@@ -518,7 +518,7 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 }
 
 // public
-fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
+fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 {
 	_gfx_ctx.nsPool = objc_autoreleasePoolPush();
 	_gfx_ctx.nsApp = objc_send(objc_class("NSApplication"), ObjcSendId, "sharedApplication");
@@ -530,12 +530,12 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 	objc_send(_gfx_ctx.nsApp, ObjcSendVoidNSUInteger, "setActivationPolicy:", NS_APP_ACTIVATION_POLICY_REGULAR);
 	objc_send(_gfx_ctx.nsApp, ObjcSendVoid, "finishLaunching");
 	_osx_register_classes();
-	rgfw_pollMonitors();
+	todo_fix_pollMonitors();
 	return 0;
 }
 
 // public
-fn void rgfw_deinitPlatform()
+fn void todo_fix_deinitPlatform()
 {
 	if (_gfx_ctx.nsPool != null)
 	{
@@ -545,7 +545,7 @@ fn void rgfw_deinitPlatform()
 }
 
 // public
-fn void rgfw_initKeycodesPlatform()
+fn void todo_fix_initKeycodesPlatform()
 {
 	_gfx_ctx.keycodes[0x00] = A;
 	_gfx_ctx.keycodes[0x01] = S;
@@ -661,9 +661,9 @@ fn void rgfw_initKeycodesPlatform()
 }
 
 // public
-fn void rgfw_pollEvents()
+fn void todo_fix_pollEvents()
 {
-	rgfw_resetPrevState();
+	todo_fix_resetPrevState();
 	if (!_gfx_ctx.nsApp) return;
 	ObjcId distantPast = objc_send(objc_class("NSDate"), ObjcSendId, "distantPast");
 	ObjcId mode = ns_string("kCFRunLoopDefaultMode");
@@ -677,9 +677,9 @@ fn void rgfw_pollEvents()
 
 
 // public
-fn void rgfw_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
+fn void todo_fix_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
 // public
-fn void rgfw_waitForEvent(int waitMS)
+fn void todo_fix_waitForEvent(int waitMS)
 {
 	if (!_gfx_ctx.nsApp) return;
 	ObjcId date = objc_send(objc_class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)waitMS / 1000.0);
@@ -688,15 +688,15 @@ fn void rgfw_waitForEvent(int waitMS)
 	if (ev != null) objc_send(_gfx_ctx.nsApp, ObjcSendVoidIdBool, "postEvent:atStart:", ev, true);
 }
 // public
-fn bool rgfw_usingWayland() => _gfx_ctx.wl_display != null;
+fn bool todo_fix_usingWayland() => _gfx_ctx.wl_display != null;
 // public
-fn void* rgfw_getLayer_OSX() { if (_gfx_ctx.current == null || _gfx_ctx.current.src.view == null) return null; return objc_send((ObjcId)_gfx_ctx.current.src.view, ObjcSendId, "layer"); }
+fn void* todo_fix_getLayer_OSX() { if (_gfx_ctx.current == null || _gfx_ctx.current.src.view == null) return null; return objc_send((ObjcId)_gfx_ctx.current.src.view, ObjcSendId, "layer"); }
 // public
-fn void* rgfw_getDisplay_X11() => _gfx_ctx.x11_display;
+fn void* todo_fix_getDisplay_X11() => _gfx_ctx.x11_display;
 // public
-fn void* rgfw_getDisplay_Wayland() => _gfx_ctx.wl_display;
+fn void* todo_fix_getDisplay_Wayland() => _gfx_ctx.wl_display;
 // public
-fn void rgfw_moveToMacOSResourceDir()
+fn void todo_fix_moveToMacOSResourceDir()
 {
 	ObjcId bundle = objc_send(objc_class("NSBundle"), ObjcSendId, "mainBundle");
 	if (bundle == null) return;
@@ -705,28 +705,28 @@ fn void rgfw_moveToMacOSResourceDir()
 	if (raw) (void)path::chdir(raw.str_view());
 }
 // public
-fn void* rgfw_window_getView_OSX(GfxWindow* win) => win != null ? win.src.view : null;
+fn void* todo_fix_window_getView_OSX(GfxWindow* win) => win != null ? win.src.view : null;
 // public
-fn void rgfw_window_setLayer_OSX(GfxWindow* win, void* layer) { if (win != null && win.src.view != null) objc_send((ObjcId)win.src.view, ObjcSendVoidId, "setLayer:", (ObjcId)layer); }
+fn void todo_fix_window_setLayer_OSX(GfxWindow* win, void* layer) { if (win != null && win.src.view != null) objc_send((ObjcId)win.src.view, ObjcSendVoidId, "setLayer:", (ObjcId)layer); }
 // public
-fn void* rgfw_window_getWindow_OSX(GfxWindow* win) => win != null ? win.src.window : null;
+fn void* todo_fix_window_getWindow_OSX(GfxWindow* win) => win != null ? win.src.window : null;
 
 // public
-fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	NSUInteger style = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
 	if (!flags.no_resize) style |= NS_WINDOW_STYLE_RESIZABLE;
 	if (flags.no_border) style = NS_WINDOW_STYLE_BORDERLESS;
-	CGRect rect = ns_rect((double)win.x, (double)rgfw_cocoaYTransform((float)(win.y + win.height - 1)), (double)win.width, (double)win.height);
+	CGRect rect = ns_rect((double)win.x, (double)todo_fix_cocoaYTransform((float)(win.y + win.height - 1)), (double)win.width, (double)win.height);
 	ObjcId nswin = objc_send(ns_alloc("NSWindow"), ObjcSendIdWindowInit, "initWithContentRect:styleMask:backing:defer:", rect, style, NS_BACKING_STORE_BUFFERED, false);
 	if (!nswin) return NSWINDOW_CREATION_FAILED~;
-	ObjcId view = rgfw_osxViewClass != (ObjcClass)null ? objc_send((ObjcId)rgfw_osxViewClass, ObjcSendId, "alloc") : ns_alloc("NSView");
+	ObjcId view = todo_fix_osxViewClass != (ObjcClass)null ? objc_send((ObjcId)todo_fix_osxViewClass, ObjcSendId, "alloc") : ns_alloc("NSView");
 	view = objc_send(view, ObjcSendIdRect, "initWithFrame:", ns_rect(0.0, 0.0, (double)win.width, (double)win.height));
-	if (rgfw_osxViewClass != (ObjcClass)null) object_setInstanceVariable(view, "gfx_window", win);
+	if (todo_fix_osxViewClass != (ObjcClass)null) object_setInstanceVariable(view, "gfx_window", win);
 	ObjcId delegate = null;
-	if (rgfw_osxWindowDelegateClass != (ObjcClass)null)
+	if (todo_fix_osxWindowDelegateClass != (ObjcClass)null)
 	{
-		delegate = objc_send((ObjcId)rgfw_osxWindowDelegateClass, ObjcSendId, "alloc");
+		delegate = objc_send((ObjcId)todo_fix_osxWindowDelegateClass, ObjcSendId, "alloc");
 		delegate = objc_send(delegate, ObjcSendId, "init");
 		object_setInstanceVariable(delegate, "gfx_window", win);
 		objc_send(nswin, ObjcSendVoidId, "setDelegate:", delegate);
@@ -739,15 +739,15 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 	objc_send(nswin, ObjcSendVoidId, "makeFirstResponder:", view);
 	objc_send(nswin, ObjcSendVoidBool, "setAcceptsMouseMovedEvents:", true);
 	win.set_name(name);
-	rgfw_window_setFloating(win, flags.floating);
+	todo_fix_window_setFloating(win, flags.floating);
 	if (!(flags.hide)) _window_show_native(win);
 	if (flags.maximize) _window_maximize_native(win);
-	if (flags.minimize) rgfw_window_minimizePlatform(win);
+	if (flags.minimize) todo_fix_window_minimizePlatform(win);
 	if (flags.fullscreen) _window_set_fullscreen_native(win, true);
 }
 
 // public
-fn void rgfw_window_closePlatform(GfxWindow* win)
+fn void todo_fix_window_closePlatform(GfxWindow* win)
 {
 	if (win == null) return;
 	if (win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoid, "close");
@@ -760,7 +760,7 @@ fn void rgfw_window_closePlatform(GfxWindow* win)
 }
 
 // public
-fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
+fn bool todo_fix_window_setMousePlatform(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	if (mouse == null) return false;
 	objc_send((ObjcId)mouse, ObjcSendVoid, "set");
@@ -779,7 +779,7 @@ fn void _window_restore_native(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_minimizePlatform(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "miniaturize:", null); }
+fn void todo_fix_window_minimizePlatform(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "miniaturize:", null); }
 // public
 
 // public
@@ -810,7 +810,7 @@ fn void GfxSurface.release(&self)
 }
 
 // public
-fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format)
+fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)
 {
 	if (data == null) return null;
 	ObjcId rep = ns_bitmapRep(w, h);
@@ -823,11 +823,11 @@ fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format)
 	ObjcId cursor = objc_send(ns_alloc("NSCursor"), ObjcSendIdImagePoint, "initWithImage:hotSpot:", image, hot);
 	ns_release(image);
 	ns_release(rep);
-	return (RgfwMouse*)cursor;
+	return (TodoRenameMouse*)cursor;
 }
 
 // public
-fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse)
+fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 {
 	ObjcId cls = objc_class("NSCursor");
 	ObjcId cursor = null;
@@ -856,16 +856,16 @@ fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse)
 		case PROGRESS: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
 		default: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
 	}
-	return (RgfwMouse*)ns_retain(cursor);
+	return (TodoRenameMouse*)ns_retain(cursor);
 }
 
 // public
-fn void rgfw_freeMouse(RgfwMouse* mouse) { ns_release((ObjcId)mouse); }
+fn void todo_fix_freeMouse(TodoRenameMouse* mouse) { ns_release((ObjcId)mouse); }
 
 // public
-fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
+fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
 {
-	CGRect bounds = cgDisplayBounds(rgfw_monitorDisplay(monitor));
+	CGRect bounds = cgDisplayBounds(todo_fix_monitorDisplay(monitor));
 	if (x != null) *x = (int)bounds.origin.x;
 	if (y != null) *y = (int)bounds.origin.y;
 	if (width != null) *width = (int)bounds.size.width;
@@ -874,9 +874,9 @@ fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width
 }
 
 // public
-fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* monitor)
+fn GfxMonitorMode[] todo_fix_monitor_getModesPtr(GfxMonitor* monitor)
 {
-	CFArrayRef list = cgDisplayCopyAllDisplayModes(rgfw_monitorDisplay(monitor), null);
+	CFArrayRef list = cgDisplayCopyAllDisplayModes(todo_fix_monitorDisplay(monitor), null);
 	if (!list) return {};
 
 	List{GfxMonitorMode} modes;
@@ -896,9 +896,9 @@ fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* monitor)
 }
 
 // public
-fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp)
+fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
 {
-	CGDirectDisplayID display = rgfw_monitorDisplay(monitor);
+	CGDirectDisplayID display = todo_fix_monitorDisplay(monitor);
 	uint count = cgDisplayGammaTableCapacity(display);
 	if (ramp == null) return (sz)count;
 	float* red = mem::alloc_array(float, count);
@@ -918,7 +918,7 @@ fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 }
 
 // public
-fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
+fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
 {
 	if (ramp == null || ramp.count == 0) return false;
 	float* red = mem::alloc_array(float, ramp.count);
@@ -931,15 +931,15 @@ fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 		green[i] = (float)ramp.green[i] / 65535.0;
 		blue[i] = (float)ramp.blue[i] / 65535.0;
 	}
-	int err = cgSetDisplayTransferByTable(rgfw_monitorDisplay(monitor), (uint)ramp.count, red, green, blue);
+	int err = cgSetDisplayTransferByTable(todo_fix_monitorDisplay(monitor), (uint)ramp.count, red, green, blue);
 	free(red); free(green); free(blue);
 	return err == 0;
 }
 
 // public
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => rgfw_monitor_setMode(mon, mode);
+fn bool todo_fix_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => todo_fix_monitor_setMode(mon, mode);
 // public
-fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) { if (mode == null || mode.src == null) return false; return cgDisplaySetDisplayMode(rgfw_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0; }
+fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) { if (mode == null || mode.src == null) return false; return cgDisplaySetDisplayMode(todo_fix_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0; }
 // public
 fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
 // public
@@ -956,14 +956,14 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 // public
 fn void _window_focus_native(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyWindow", null); if (win != null) win.internal.inFocus = true; }
 // public
-fn void rgfw_window_raise(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderFrontRegardless", null); }
+fn void todo_fix_window_raise(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderFrontRegardless", null); }
 
 // public
 fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "toggleFullScreen:", null); if (win != null) win.internal.flags.fullscreen = fullscreen; }
 // public
-fn void rgfw_window_setFloating(GfxWindow* win, bool floating) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidNSInteger, "setLevel:", floating ? NS_WINDOW_LEVEL_FLOATING : NS_WINDOW_LEVEL_NORMAL); if (win != null) win.internal.flags.floating = floating; }
+fn void todo_fix_window_setFloating(GfxWindow* win, bool floating) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidNSInteger, "setLevel:", floating ? NS_WINDOW_LEVEL_FLOATING : NS_WINDOW_LEVEL_NORMAL); if (win != null) win.internal.flags.floating = floating; }
 // public
-fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidCGFloat, "setAlphaValue:", (CGFloat)opacity / 255.0); }
+fn void todo_fix_window_setOpacity(GfxWindow* win, char opacity) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidCGFloat, "setAlphaValue:", (CGFloat)opacity / 255.0); }
 // public
 fn void _window_set_border_native(GfxWindow* win, bool border)
 {
@@ -991,7 +991,7 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 	win.height -= (int)offset;
 }
 // public
-fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidBool, "setIgnoresMouseEvents:", passthrough); }
+fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidBool, "setIgnoresMouseEvents:", passthrough); }
 
 
 fn void GfxWindow.set_name(&self, String name)
@@ -1021,7 +1021,7 @@ fn bool _window_is_maximized_native(GfxWindow* win) { if (win == null) return fa
 
 
 // public
-fn bool rgfw_getGlobalMouse(int* x, int* y)
+fn bool todo_fix_getGlobalMouse(int* x, int* y)
 {
 	CGEventRef event = cgEventCreate(null);
 	if (event == null) return false;
@@ -1036,14 +1036,14 @@ fn bool rgfw_getGlobalMouse(int* x, int* y)
  @param [in] win
 *>
 // public
-fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y)
+fn void todo_fix_window_moveMouse(GfxWindow* win, int x, int y)
 {
 	cgWarpMouseCursorPosition({ x, y });
 	if (win) win.internal.last_mouse = { x, y };
 }
 
 // public
-fn bool rgfw_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
+fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
 	if (requestedType != TEXT || data == null) return false;
 	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
@@ -1068,7 +1068,7 @@ fn bool rgfw_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, s
 }
 
 // public
-fn bool rgfw_writeClipboard(GfxDataTransfer* data)
+fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
 {
 	if (!data || data.type != TEXT || !data.data) return false;
 	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
@@ -1077,118 +1077,118 @@ fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 }
 
 // public
-fn void* rgfw_eglContext_getSourceContext(RgfwEglContext* ctx) => ctx != null ? ctx.ctx : null;
+fn void* todo_fix_eglContext_getSourceContext(TodoRenameEglContext* ctx) => ctx != null ? ctx.ctx : null;
 // public
-fn void* rgfw_eglContext_getSurface(RgfwEglContext* ctx) => ctx != null ? ctx.surface : null;
+fn void* todo_fix_eglContext_getSurface(TodoRenameEglContext* ctx) => ctx != null ? ctx.surface : null;
 // public
-fn void* rgfw_eglContext_wlEGLWindow(RgfwEglContext* ctx) => ctx != null ? ctx.eglWindow : null;
+fn void* todo_fix_eglContext_wlEGLWindow(TodoRenameEglContext* ctx) => ctx != null ? ctx.eglWindow : null;
 
 
 // public
-fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
+fn bool todo_fix_extensionSupportedPlatform_EGL(ZString extension, sz len)
 {
-	if (rgfw_eglQueryString == null || _gfx_ctx.egl_display == null) return false;
-	ZString extensions = rgfw_eglQueryString((EglDisplay)_gfx_ctx.egl_display, EGL_EXTENSIONS);
-	return rgfw_extensionSupportedStr(extensions, extension, len);
+	if (todo_fix_eglQueryString == null || _gfx_ctx.egl_display == null) return false;
+	ZString extensions = todo_fix_eglQueryString((EglDisplay)_gfx_ctx.egl_display, EGL_EXTENSIONS);
+	return todo_fix_extensionSupportedStr(extensions, extension, len);
 }
 
 // public
-fn bool rgfw_extensionSupported_EGL(ZString extension, sz len)
+fn bool todo_fix_extensionSupported_EGL(ZString extension, sz len)
 {
-	if (rgfw_extensionSupported_base(extension, len, &rgfw_getProcAddress_EGL)) return true;
-	return rgfw_extensionSupportedPlatform_EGL(extension, len);
+	if (todo_fix_extensionSupported_base(extension, len, &todo_fix_getProcAddress_EGL)) return true;
+	return todo_fix_extensionSupportedPlatform_EGL(extension, len);
 }
 
 
 // public
-fn RgfwEglContext* rgfw_window_createContext_EGL(GfxWindow* win, RgfwGlHints* hints)
+fn TodoRenameEglContext* todo_fix_window_createContext_EGL(GfxWindow* win, TodoRenameGlHints* hints)
 {
-	RgfwEglContext* ctx = mem::new(RgfwEglContext);
-	if (!rgfw_window_createContextPtr_EGL(win, ctx, hints))
+	TodoRenameEglContext* ctx = mem::new(TodoRenameEglContext);
+	if (!todo_fix_window_createContextPtr_EGL(win, ctx, hints))
 	{
 		free(ctx);
 		return null;
 	}
-	win.src.gfxType |= RGFW_GFX_OWNED_BY_RGFW;
+	win.src.gfxType |= TODO_RENAMEGFX_OWNED_BY_RGFW;
 	return ctx;
 }
 
 // public
-fn bool rgfw_window_createContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx, RgfwGlHints* hints)
+fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContext* ctx, TodoRenameGlHints* hints)
 {
 	if (win == null || ctx == null || hints == null) return false;
 	if (@catch(_load_egl_native())) return false;
 	if (_gfx_ctx.egl_display == null)
 	{
-		_gfx_ctx.egl_display = rgfw_eglGetDisplay(null);
+		_gfx_ctx.egl_display = todo_fix_eglGetDisplay(null);
 		if (_gfx_ctx.egl_display == null) return false;
 		EglInt major = 0;
 		EglInt minor = 0;
-		if (rgfw_eglInitialize((EglDisplay)_gfx_ctx.egl_display, &major, &minor) == 0) return false;
+		if (todo_fix_eglInitialize((EglDisplay)_gfx_ctx.egl_display, &major, &minor) == 0) return false;
 	}
 
 	EglInt[32] cfg;
-	RgfwAttribStack cfgStack;
-	rgfw_attribStack_init(&cfgStack, &cfg, 32);
-	rgfw_attribStack_pushAttribs(&cfgStack, EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
-	rgfw_attribStack_pushAttribs(&cfgStack, EGL_RED_SIZE, hints.red);
-	rgfw_attribStack_pushAttribs(&cfgStack, EGL_GREEN_SIZE, hints.green);
-	rgfw_attribStack_pushAttribs(&cfgStack, EGL_BLUE_SIZE, hints.blue);
-	rgfw_attribStack_pushAttribs(&cfgStack, EGL_ALPHA_SIZE, hints.alpha);
-	rgfw_attribStack_pushAttribs(&cfgStack, EGL_DEPTH_SIZE, hints.depth);
-	rgfw_attribStack_pushAttribs(&cfgStack, EGL_STENCIL_SIZE, hints.stencil);
-	rgfw_attribStack_pushAttribs(&cfgStack, EGL_RENDERABLE_TYPE, hints.profile == RGFW_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
-	rgfw_attribStack_pushAttribs(&cfgStack, EGL_NONE, EGL_NONE);
+	TodoRenameAttribStack cfgStack;
+	todo_fix_attribStack_init(&cfgStack, &cfg, 32);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RED_SIZE, hints.red);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_GREEN_SIZE, hints.green);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_BLUE_SIZE, hints.blue);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_ALPHA_SIZE, hints.alpha);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_DEPTH_SIZE, hints.depth);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_STENCIL_SIZE, hints.stencil);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAMEGL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_NONE, EGL_NONE);
 	EglConfig config = null;
 	EglInt num = 0;
-	if (rgfw_eglChooseConfig((EglDisplay)_gfx_ctx.egl_display, &cfg, &config, 1, &num) == 0 || num == 0) return false;
-	rgfw_eglBindApi(hints.profile == RGFW_GL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
+	if (todo_fix_eglChooseConfig((EglDisplay)_gfx_ctx.egl_display, &cfg, &config, 1, &num) == 0 || num == 0) return false;
+	todo_fix_eglBindApi(hints.profile == TODO_RENAMEGL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
 	EglInt[8] ctxAttribs;
-	RgfwAttribStack ctxStack;
-	rgfw_attribStack_init(&ctxStack, &ctxAttribs, 8);
-	if (hints.profile == RGFW_GL_ES) rgfw_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
-	rgfw_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
+	TodoRenameAttribStack ctxStack;
+	todo_fix_attribStack_init(&ctxStack, &ctxAttribs, 8);
+	if (hints.profile == TODO_RENAMEGL_ES) todo_fix_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
+	todo_fix_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
 	EglContext share = hints.shareEGL != null ? (EglContext)hints.shareEGL.ctx : null;
-	ctx.ctx = rgfw_eglCreateContext((EglDisplay)_gfx_ctx.egl_display, config, share, &ctxAttribs);
+	ctx.ctx = todo_fix_eglCreateContext((EglDisplay)_gfx_ctx.egl_display, config, share, &ctxAttribs);
 	if (ctx.ctx == null) return false;
 	EglNativeWindowType nativeWindow = win.src.window;
-	if (win.src.view != null) nativeWindow = rgfw_getLayer_OSX();
-	ctx.surface = rgfw_eglCreateWindowSurface((EglDisplay)_gfx_ctx.egl_display, config, nativeWindow, null);
+	if (win.src.view != null) nativeWindow = todo_fix_getLayer_OSX();
+	ctx.surface = todo_fix_eglCreateWindowSurface((EglDisplay)_gfx_ctx.egl_display, config, nativeWindow, null);
 	if (ctx.surface == null)
 	{
-		rgfw_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
+		todo_fix_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
 		ctx.ctx = null;
 		return false;
 	}
 	win.src.ctx.egl = ctx;
-	win.src.gfxType = RGFW_GFX_EGL;
-	rgfw_window_makeCurrentContext_EGL(win);
+	win.src.gfxType = TODO_RENAMEGFX_EGL;
+	todo_fix_window_makeCurrentContext_EGL(win);
 	return true;
 }
 
 // public
-fn RgfwEglContext* rgfw_window_getContext_EGL(GfxWindow* win) => win != null ? win.src.ctx.egl : null;
+fn TodoRenameEglContext* todo_fix_window_getContext_EGL(GfxWindow* win) => win != null ? win.src.ctx.egl : null;
 
 // public
-fn void rgfw_window_deleteContext_EGL(GfxWindow* win, RgfwEglContext* ctx)
+fn void todo_fix_window_deleteContext_EGL(GfxWindow* win, TodoRenameEglContext* ctx)
 {
-	rgfw_window_deleteContextPtr_EGL(win, ctx);
-	if (win != null && (win.src.gfxType & RGFW_GFX_OWNED_BY_RGFW)) free(ctx);
+	todo_fix_window_deleteContextPtr_EGL(win, ctx);
+	if (win != null && (win.src.gfxType & TODO_RENAMEGFX_OWNED_BY_RGFW)) free(ctx);
 }
 
 // public
-fn void rgfw_window_deleteContextPtr_EGL(GfxWindow* win, RgfwEglContext* ctx)
+fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, TodoRenameEglContext* ctx)
 {
 	if (ctx == null || _gfx_ctx.egl_display == null) return;
-	if (ctx.surface != null) rgfw_eglDestroySurface((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface);
-	if (ctx.ctx != null) rgfw_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
+	if (ctx.surface != null) todo_fix_eglDestroySurface((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface);
+	if (ctx.ctx != null) todo_fix_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
 	ctx.surface = null;
 	ctx.ctx = null;
 	if (win != null) win.src.ctx.egl = null;
 }
 
 // public
-fn void rgfw_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current = win; }
+fn void todo_fix_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current = win; }
 
 alias WGPUInstance = void*;
 alias WGPUSurface = void*;
@@ -1200,7 +1200,7 @@ struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; void* layer; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
 // public
-fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance)
 {
 	if (window == null || window.src.view == null)
 	{
@@ -1208,9 +1208,9 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 		return null;
 	}
 	objc_send((ObjcId)window.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
-	void* layer = rgfw_getLayer_OSX();
+	void* layer = todo_fix_getLayer_OSX();
 	if (layer == null) return null;
-	rgfw_window_setLayer_OSX(window, layer);
+	todo_fix_window_setLayer_OSX(window, layer);
 
 	WgpuSurfaceSourceMetalLayer fromMetal;
 	fromMetal.chain.next = null;
@@ -1221,7 +1221,7 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 // public
-fn void* rgfw_getNSScreenForDisplayUInt(uint uintNum)
+fn void* todo_fix_getNSScreenForDisplayUInt(uint uintNum)
 {
 	ObjcId screens = objc_send(objc_class("NSScreen"), ObjcSendId, "screens");
 	if (screens == null) return null;
@@ -1238,25 +1238,25 @@ fn void* rgfw_getNSScreenForDisplayUInt(uint uintNum)
 }
 
 // public
-fn void rgfw_osx_initView(GfxWindow* win)
+fn void todo_fix_osx_initView(GfxWindow* win)
 {
 	if (win == null || win.src.window == null || win.src.view == null) return;
 	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "setContentView:", (ObjcId)win.src.view);
 	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeFirstResponder:", (ObjcId)win.src.view);
 }
 // public
-fn float rgfw_cocoaYTransform(float y) => (float)(cgDisplayBounds(cgMainDisplayID()).size.height - (double)y - 1.0);
+fn float todo_fix_cocoaYTransform(float y) => (float)(cgDisplayBounds(cgMainDisplayID()).size.height - (double)y - 1.0);
 
 // public
-fn GfxDataTransfer* rgfw_readClipboard(GfxDataTransferType requestedType)
+fn GfxDataTransfer* todo_fix_readClipboard(GfxDataTransferType requestedType)
 {
 	return _gfx_ctx.clipboard;
 }
 
 // public
-fn GfxDataTransfer* rgfw_readClipboardString()
+fn GfxDataTransfer* todo_fix_readClipboardString()
 {
-	return rgfw_readClipboard(TEXT);
+	return todo_fix_readClipboard(TEXT);
 }
 // public
-fn bool rgfw_readClipboardStringPtr(char* buffer, sz capacity, GfxDataTransfer* data) { return rgfw_readClipboardPtr(TEXT, buffer, capacity, data); }
+fn bool todo_fix_readClipboardStringPtr(char* buffer, sz capacity, GfxDataTransfer* data) { return todo_fix_readClipboardPtr(TEXT, buffer, capacity, data); }

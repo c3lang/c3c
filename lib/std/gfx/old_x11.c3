@@ -1,14 +1,14 @@
-module std::gfx @feat(X11_WAYLAND) @link("X11", "Xext", "Xrandr", "GL", "wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
+module std::gfx @feat(X11) @link("X11", "Xext", "Xrandr", "GL");
+
 import std::collections::list, std::math, libc;
-// C3 port of RGFW's combined "X11 AND Wayland" + RGFW_DYNAMIC mode: a single
-// Linux binary that supports both display servers, choosing at runtime
-// (Wayland if available, falling back to X11).
-// Standalone alternative to rgfw.c3 (macOS) / rgfw_x11.c3 / rgfw_wayland.c3 -
-// only ONE rgfw*.c3 file should be included for a given target. This one is
-// the "everything Linux" build: both backends are compiled in as *_X11/
-// *_Wayland suffixed implementations, and the public rgfw_* functions are
-// thin dispatchers that branch on gfx_use_wayland (set once at init
-// after runtime display-server detection).
+
+// C3 port of the X11/GLX RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
+// Mechanical, line-by-line style translation of the TODO_RENAMEX11 implementation.
+// This is a standalone alternative to rgfw.c3 (the macOS build) - only ONE of
+// the rgfw*.c3 files should be included for a given target, matching how the
+// original C header only ever compiles one #ifdef backend at a time.
+// Optional extensions (Xcursor, XInput2, Xext sync/shape) are loaded via dlopen,
+// exactly as the original does when TODO_RENAMENO_X11_CURSOR_PRELOAD etc. are not set.
 
 
 extern fn char* strtok(char* str, char* delim);
@@ -17,7 +17,6 @@ extern fn CLong strtol(char* str, char** endptr, int base);
 extern fn int clock_gettime(int clock_id, Timespec* ts);
 
 struct Timespec { CLong tv_sec; CLong tv_nsec; }
-
 
 // ---- Xlib core types (ABI-compatible aliases; GfxXDisplay/GfxXVisual/Screen stay opaque) ----
 typedef Screen = void;
@@ -192,40 +191,40 @@ struct XSyncValue { int hi; uint lo; }
 alias XSyncCounter = XlibId;
 
 // GLX
-alias RGFW_glXCreateContextAttribsARBProc = fn GLXContext(GfxXDisplay*, GLXFBConfig, GLXContext, int, int*);
-alias RGFW_glXQueryExtensionsStringProc = fn ZString(GfxXDisplay*, int);
-alias RGFW_glXChooseVisualProc = fn XVisualInfo*(GfxXDisplay*, int, int*);
-alias RGFW_glXCreateContextProc = fn GLXContext(GfxXDisplay*, XVisualInfo*, GLXContext, int);
-alias RGFW_glXMakeCurrentProc = fn int(GfxXDisplay*, GLXDrawable, GLXContext);
-alias RGFW_glXGetCurrentContextProc = fn GLXContext();
-alias RGFW_glXSwapBuffersProc = fn void(GfxXDisplay*, GLXDrawable);
-alias RGFW_glXSwapIntervalEXTProc = fn void(GfxXDisplay*, GLXDrawable, int);
-alias RGFW_glXGetProcAddressProc = fn void*(ZString);
-alias RGFW_glXGetVisualFromFBConfigProc = fn XVisualInfo*(GfxXDisplay*, GLXFBConfig);
-alias RGFW_glXGetFBConfigAttribProc = fn int(GfxXDisplay*, GLXFBConfig, int, int*);
-alias RGFW_glXGetProcAddressARBProc = fn void*(ZString);
-alias RGFW_glXChooseFBConfigProc = fn GLXFBConfig*(GfxXDisplay*, int, int*, int*);
-alias RGFW_glXDestroyContextProc = fn void(GfxXDisplay*, GLXContext);
-alias RGFW_glXCreateWindowProc = fn GLXWindow(GfxXDisplay*, GLXFBConfig, GfxXWindow, int*);
-alias RGFW_glXDestroyWindowProc = fn void(GfxXDisplay*, GLXWindow);
-alias RGFW_glXSwapIntervalNativeProc = fn int(int);
+alias TODO_RENAMEglXCreateContextAttribsARBProc = fn GLXContext(GfxXDisplay*, GLXFBConfig, GLXContext, int, int*);
+alias TODO_RENAMEglXQueryExtensionsStringProc = fn ZString(GfxXDisplay*, int);
+alias TODO_RENAMEglXChooseVisualProc = fn XVisualInfo*(GfxXDisplay*, int, int*);
+alias TODO_RENAMEglXCreateContextProc = fn GLXContext(GfxXDisplay*, XVisualInfo*, GLXContext, int);
+alias TODO_RENAMEglXMakeCurrentProc = fn int(GfxXDisplay*, GLXDrawable, GLXContext);
+alias TODO_RENAMEglXGetCurrentContextProc = fn GLXContext();
+alias TODO_RENAMEglXSwapBuffersProc = fn void(GfxXDisplay*, GLXDrawable);
+alias TODO_RENAMEglXSwapIntervalEXTProc = fn void(GfxXDisplay*, GLXDrawable, int);
+alias TODO_RENAMEglXGetProcAddressProc = fn void*(ZString);
+alias TODO_RENAMEglXGetVisualFromFBConfigProc = fn XVisualInfo*(GfxXDisplay*, GLXFBConfig);
+alias TODO_RENAMEglXGetFBConfigAttribProc = fn int(GfxXDisplay*, GLXFBConfig, int, int*);
+alias TODO_RENAMEglXGetProcAddressARBProc = fn void*(ZString);
+alias TODO_RENAMEglXChooseFBConfigProc = fn GLXFBConfig*(GfxXDisplay*, int, int*, int*);
+alias TODO_RENAMEglXDestroyContextProc = fn void(GfxXDisplay*, GLXContext);
+alias TODO_RENAMEglXCreateWindowProc = fn GLXWindow(GfxXDisplay*, GLXFBConfig, GfxXWindow, int*);
+alias TODO_RENAMEglXDestroyWindowProc = fn void(GfxXDisplay*, GLXWindow);
+alias TODO_RENAMEglXSwapIntervalNativeProc = fn int(int);
 
-RGFW_glXCreateContextAttribsARBProc rgfw_glXCreateContextAttribsARB;
-RGFW_glXQueryExtensionsStringProc rgfw_glXQueryExtensionsString;
-RGFW_glXChooseVisualProc rgfw_glXChooseVisual;
-RGFW_glXCreateContextProc rgfw_glXCreateContext;
-RGFW_glXMakeCurrentProc rgfw_glXMakeCurrent;
-RGFW_glXGetCurrentContextProc rgfw_glXGetCurrentContext;
-RGFW_glXSwapBuffersProc rgfw_glXSwapBuffers;
-RGFW_glXSwapIntervalEXTProc rgfw_glXSwapIntervalEXT;
-RGFW_glXGetVisualFromFBConfigProc rgfw_glXGetVisualFromFBConfig;
-RGFW_glXGetFBConfigAttribProc rgfw_glXGetFBConfigAttrib;
-RGFW_glXGetProcAddressARBProc rgfw_glXGetProcAddressARB;
-RGFW_glXChooseFBConfigProc rgfw_glXChooseFBConfig;
-RGFW_glXDestroyContextProc rgfw_glXDestroyContext;
-RGFW_glXCreateWindowProc rgfw_glXCreateWindow;
-RGFW_glXDestroyWindowProc rgfw_glXDestroyWindow;
-RGFW_glXSwapIntervalNativeProc rgfw_glXSwapIntervalNative;
+TODO_RENAMEglXCreateContextAttribsARBProc todo_fix_glXCreateContextAttribsARB;
+TODO_RENAMEglXQueryExtensionsStringProc todo_fix_glXQueryExtensionsString;
+TODO_RENAMEglXChooseVisualProc todo_fix_glXChooseVisual;
+TODO_RENAMEglXCreateContextProc todo_fix_glXCreateContext;
+TODO_RENAMEglXMakeCurrentProc todo_fix_glXMakeCurrent;
+TODO_RENAMEglXGetCurrentContextProc todo_fix_glXGetCurrentContext;
+TODO_RENAMEglXSwapBuffersProc todo_fix_glXSwapBuffers;
+TODO_RENAMEglXSwapIntervalEXTProc todo_fix_glXSwapIntervalEXT;
+TODO_RENAMEglXGetVisualFromFBConfigProc todo_fix_glXGetVisualFromFBConfig;
+TODO_RENAMEglXGetFBConfigAttribProc todo_fix_glXGetFBConfigAttrib;
+TODO_RENAMEglXGetProcAddressARBProc todo_fix_glXGetProcAddressARB;
+TODO_RENAMEglXChooseFBConfigProc todo_fix_glXChooseFBConfig;
+TODO_RENAMEglXDestroyContextProc todo_fix_glXDestroyContext;
+TODO_RENAMEglXCreateWindowProc todo_fix_glXCreateWindow;
+TODO_RENAMEglXDestroyWindowProc todo_fix_glXDestroyWindow;
+TODO_RENAMEglXSwapIntervalNativeProc todo_fix_glXSwapIntervalNative;
 
 alias PFN_XcursorImageCreate = fn XcursorImage*(int, int);
 alias PFN_XcursorImageDestroy = fn void(XcursorImage*);
@@ -237,20 +236,21 @@ alias PFN_XSyncCreateCounter = fn XSyncCounter(GfxXDisplay*, XSyncValue);
 alias PFN_XShapeCombineMask = fn void(GfxXDisplay*, GfxXWindow, int, int, int, Pixmap, int);
 alias PFN_XShapeCombineRegion = fn void(GfxXDisplay*, GfxXWindow, int, int, int, Region, int);
 
-PFN_XcursorImageCreate rgfw_xcursorImageCreateSRC;
-PFN_XcursorImageDestroy rgfw_xcursorImageDestroySRC;
-PFN_XcursorImageLoadCursor rgfw_xcursorImageLoadCursorSRC;
-PFN_XISelectEvents rgfw_xiSelectEventsSRC;
-PFN_XSyncIntToValue rgfw_xSyncIntToValueSRC;
-PFN_XSyncSetCounter rgfw_xSyncSetCounterSRC;
-PFN_XSyncCreateCounter rgfw_xSyncCreateCounterSRC;
-PFN_XShapeCombineMask rgfw_xShapeCombineMaskSRC;
-PFN_XShapeCombineRegion rgfw_xShapeCombineRegionSRC;
-void* rgfw_x11CursorHandle;
-void* rgfw_x11XiHandle;
-void* rgfw_x11ExtHandle;
+PFN_XcursorImageCreate todo_fix_xcursorImageCreateSRC;
+PFN_XcursorImageDestroy todo_fix_xcursorImageDestroySRC;
+PFN_XcursorImageLoadCursor todo_fix_xcursorImageLoadCursorSRC;
+PFN_XISelectEvents todo_fix_xiSelectEventsSRC;
+PFN_XSyncIntToValue todo_fix_xSyncIntToValueSRC;
+PFN_XSyncSetCounter todo_fix_xSyncSetCounterSRC;
+PFN_XSyncCreateCounter todo_fix_xSyncCreateCounterSRC;
+PFN_XShapeCombineMask todo_fix_xShapeCombineMaskSRC;
+PFN_XShapeCombineRegion todo_fix_xShapeCombineRegionSRC;
+void* todo_fix_x11CursorHandle;
+void* todo_fix_x11XiHandle;
+void* todo_fix_x11ExtHandle;
 
 // ---- Xlib core functions (directly linked, like the original non-dynamic X11 build) ----
+
 
 // XIMCallback: { GfxXPointer client_data; XIMProc callback; } from Xlib.h. XlibIC/XlibIM
 // are both plain void* in this port, so one function-pointer alias covers the callback.
@@ -260,6 +260,7 @@ struct XImCallback
 	GfxXPointer client_data;
 	XImCallbackProc callback;
 }
+
 // XIMStyles: { unsigned short count_styles; XIMStyle *supported_styles; } from Xlib.h.
 struct XImStyles
 {
@@ -300,22 +301,22 @@ macro void xiSetMask(char* mask, event) { mask[(sz)(event / 8)] |= (char)(1 << (
 macro bool ximaskIsSet(char* mask, event) => (mask[(sz)(event / 8)] & (char)(1 << (event % 8))) != 0;
 
 
-struct RgfwGlContext { GLXContext ctx; GLXWindow window; }
-struct RgfwEglContext { void* ctx; void* surface; void* eglWindow; }
+struct TodoRenameGlContext { GLXContext ctx; GLXWindow window; }
+struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
 
-const RgfwGlReleaseBehavior RGFW_GL_RELEASE_FLUSH = 0;
-const RgfwGlReleaseBehavior RGFW_GL_RELEASE_NONE = 1;
+const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_FLUSH = 0;
+const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_NONE = 1;
 
-const RgfwGlProfile RGFW_GL_CORE = 0;
-const RgfwGlProfile RGFW_GL_FORWARD_COMPATIBILITY = 1;
-const RgfwGlProfile RGFW_GL_COMPATIBILITY = 2;
-const RgfwGlProfile RGFW_GL_ES = 3;
-const RgfwGlProfile RGFW_GL_WEB = 4;
+const TodoRenameGlProfile TODO_RENAMEGL_CORE = 0;
+const TodoRenameGlProfile TODO_RENAMEGL_FORWARD_COMPATIBILITY = 1;
+const TodoRenameGlProfile TODO_RENAMEGL_COMPATIBILITY = 2;
+const TodoRenameGlProfile TODO_RENAMEGL_ES = 3;
+const TodoRenameGlProfile TODO_RENAMEGL_WEB = 4;
 
-const RgfwGlRenderer RGFW_GL_ACCELERATED = 0;
-const RgfwGlRenderer RGFW_GL_SOFTWARE = 1;
+const TodoRenameGlRenderer TODO_RENAMEGL_ACCELERATED = 0;
+const TodoRenameGlRenderer TODO_RENAMEGL_SOFTWARE = 1;
 
-struct RgfwGlHints
+struct TodoRenameGlHints
 {
 	int stencil;
 	int samples;
@@ -329,23 +330,23 @@ struct RgfwGlHints
 	bool robustness;
 	bool debug;
 	bool noError;
-	RgfwGlReleaseBehavior releaseBehavior;
-	RgfwGlProfile profile;
+	TodoRenameGlReleaseBehavior releaseBehavior;
+	TodoRenameGlProfile profile;
 	int major, minor;
-	RgfwGlContext* share;
-	RgfwEglContext* shareEGL;
-	RgfwGlRenderer renderer;
+	TodoRenameGlContext* share;
+	TodoRenameEglContext* shareEGL;
+	TodoRenameGlRenderer renderer;
 }
 
-union RgfwGfxContext
+union TodoRenameGfxContext
 {
-	RgfwGlContext* native;
-	RgfwEglContext* egl;
+	TodoRenameGlContext* native;
+	TodoRenameEglContext* egl;
 }
 
 
 
-struct RgfwWindowSrc
+struct TodoRenameWindowSrc
 {
 	inline IntRect bounds;
 	GfxXWindow window;
@@ -355,46 +356,28 @@ struct RgfwWindowSrc
 	ulong flashEnd;
 	long counter_value;
 	XSyncCounter counter;
-	RgfwGfxContext ctx;
-	RgfwGfxContextType gfxType;
-	WlProxy* surface;
-	WlProxy* xdgSurface;
-	WlProxy* xdgToplevel;
-	WlProxy* decoration;
-	WlProxy* lockedPointer;
-	WlProxy* icon;
-	WlProxy* dataSource;
-	WlProxy* customCursorSurface;
-	GfxMonitorNode* activeMonitor;
-	uint decorationMode;
-	bool pendingActivated;
-	bool activated;
-	bool resizing;
-	bool pendingMaximized;
-	bool maximized;
-	bool minimized;
-	bool configured;
-	bool usingCustomCursor;
+	TodoRenameGfxContext ctx;
+	TodoRenameGfxContextType gfxType;
 }
 
 
 const int VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR = 1000004000;
 const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
 struct VkXlibSurfaceCreateInfoKHR { int sType; void* pNext; uint flags; GfxXDisplay* dpy; GfxXWindow window; }
-alias RgfwVkCreateXlibSurfaceKHRProc = fn VkResult(VkInstance instance, VkXlibSurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
-ZString[2] rgfw_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_xlib_surface"};
+alias TodoRenameVkCreateXlibSurfaceKHRProc = fn VkResult(VkInstance instance, VkXlibSurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
+ZString[2] todo_fix_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_xlib_surface"};
 
 
 extern fn VisualID xVisualIDFromVisual(GfxXVisual* visual) @cname("XVisualIDFromVisual");
-alias RgfwVkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, GfxXDisplay*, VisualID);
+alias TodoRenameVkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, GfxXDisplay*, VisualID);
 
 // public
-fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex)
+fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex)
 {
-	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
-	if (raw == null) return false;
+	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
+	if (!raw) return false;
 	GfxXVisual* visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-	uint out = ((RgfwVkGetPhysicalDeviceXlibPresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex, _gfx_ctx.display, xVisualIDFromVisual(visual));
+	uint out = ((TodoRenameVkGetPhysicalDeviceXlibPresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex, _gfx_ctx.display, xVisualIDFromVisual(visual));
 	return out != 0;
 }
 
@@ -402,11 +385,9 @@ alias WGPUInstance = void*;
 alias WGPUSurface = void*;
 alias WGPUSType = int;
 const WGPUSType WGPU_STYPE_SURFACE_SOURCE_XLIB_WINDOW = 0x00000006;
-const WGPUSType WGPU_STYPE_SURFACE_SOURCE_WAYLAND_SURFACE = 0x00000007;
 struct WgpuChainedStruct { WgpuChainedStruct* next; WGPUSType sType; }
 struct WgpuSurfaceDescriptor { WgpuChainedStruct* nextInChain; }
 struct WgpuSurfaceSourceXlibWindow { WgpuChainedStruct chain; GfxXDisplay* display; GfxXWindow window; }
-struct WgpuSurfaceSourceWaylandSurface { WgpuChainedStruct chain; WlDisplay* display; WlProxy* surface; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
 
@@ -421,8 +402,11 @@ extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfa
 
 
 // public
-fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? todo_fix_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flags, GfxWindow* win)
 {
+	if (!name) name = "C3GFX";
+	// KeyPress | KeyRelease | ButtonPress | ButtonRelease | PointerMotion | StructureNotify | FocusChange |
+	// LeaveWindow | EnterWindow | Exposure | VisibilityChange | PropertyChange
 	CLong eventMask = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 6) | (1 << 17) | (1 << 21) |
 		(1 << 5) | (1 << 4) | (1 << 15) | (1 << 16) | (1 << 22);
 
@@ -435,8 +419,8 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 	swa.background_pixmap = 0;
 
 	win.src.window = xCreateWindow(_gfx_ctx.display, win.src.parent, win.x, win.y, (uint)win.width, (uint)win.height,
-	0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 13) | (1 << 11), &swa);
-	// CWBorderPixel | CWColormap | CWEventMask
+		0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 13) | (1 << 11), &swa);
+		// CWBorderPixel | CWColormap | CWEventMask
 	if (!win.src.window) return X11_WINDOW_CREATION_FAILED~;
 
 	win.src.flashEnd = 0;
@@ -447,7 +431,7 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 	if (_gfx_ctx.im != null)
 	{
 		XImCallback callback;
-		callback.callback = &rgfw_x11IcCallback;
+		callback.callback = &todo_fix_x11IcCallback;
 		callback.client_data = (GfxXPointer)win;
 
 		win.src.ic = xCreateIC(_gfx_ctx.im, "inputStyle", (CULong)(0x0008 | 0x0400) /* XIMPreeditNothing | XIMStatusNothing */,
@@ -458,7 +442,8 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 	@pool()
 	{
 		XClassHint hint;
-		hint.res_name = (name ?: "C3GFX").zstr_copy(tmem);
+
+		hint.res_name = name.zstr_copy(tmem);
 		hint.res_class = _gfx_ctx.class_name.zstr_copy(tmem);
 		xSetClassHint(_gfx_ctx.display, win.src.window, &hint);
 	};
@@ -485,6 +470,9 @@ fn void? rgfw_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags flag
 	xClearWindow(_gfx_ctx.display, win.src.window);
 	xSetWindowBackgroundPixmap(_gfx_ctx.display, win.src.window, 0);
 }
+
+// public
+fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => todo_fix_createWindowPlatform_X11(name, flags, win);
 
 
 const KeySym XK_F1 = 0xffbe; const KeySym XK_F2 = 0xffbf; const KeySym XK_F3 = 0xffc0; const KeySym XK_F4 = 0xffc1;
@@ -514,321 +502,14 @@ const KeySym XK_PRINT = 0xff61; const KeySym XK_PAUSE = 0xff13;
 
 // public
 
-struct RgfwAttribStack
+
+
+
+
+struct TodoRenameAttribStack
 {
 	int* attribs;
 	sz count;
 	sz max;
 }
 
-
-// ==================== Wayland-specific declarations & backend ====================
-// ---- POSIX / libc bits used by the Wayland backend ----
-
-extern fn int shmOpen(ZString name, int oflag, int mode) @cname("shm_open");
-
-extern fn int shmUnlink(ZString name) @cname("shm_unlink");
-
-extern fn int ftruncate(int fd, sz length);
-
-
-extern fn int pipe(int[2]* fds);
-
-extern fn int poll(Pollfd* fds, CUInt nfds, int timeout);
-
-extern fn int fcntl(int fd, int cmd, ...) @cname("fcntl");
-const int F_GETFD = 1;
-const int F_GETFL = 3;
-
-
-struct Pollfd { int fd; short events; short revents; }
-
-
-const int O_RDWR = 0x0002;
-
-const int O_CREAT = 0x0040;
-const int O_EXCL = 0x0080;
-
-const int POLLIN = 0x0001;
-
-// ---- Wayland client core (real libwayland-client ABI) ----
-
-extern fn int* rgfwErrnoLocation() @cname("__errno_location");
-const int RGFW_EAGAIN = 11;
-
-
-const uint WL_MARSHAL_FLAG_DESTROY = 1;
-
-
-// ---- listener vtables (field order matches each protocol's `_listener` struct) ----
-
-
-// private
-fn void rgfwDoNothing() {}
-
-
-const int VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR = 1000006000;
-
-struct VkWaylandSurfaceCreateInfoKHR { int sType; void* pNext; uint flags; WlDisplay* display; WlProxy* surface; }
-
-alias RgfwVkCreateWaylandSurfaceKHRProc = fn VkResult(VkInstance instance, VkWaylandSurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
-
-
-// private
-
-
-WlPointerListener rgfw_wlPointerListener = {
-	.enter = &rgfw_wlPointerEnter, .leave = &rgfw_wlPointerLeave, .motion = &rgfw_wlPointerMotion,
-	.button = &rgfw_wlPointerButton, .axis = &rgfw_wlPointerAxis
-};
-
-WlKeyboardListener rgfw_wlKeyboardListener = {
-	.keymap = &rgfw_wlKeyboardKeymap, .enter = &rgfw_wlKeyboardEnter, .leave = &rgfw_wlKeyboardLeave,
-	.key = &rgfw_wlKeyboardKey, .modifiers = &rgfw_wlKeyboardModifiers, .repeatInfo = &rgfw_wlKeyboardRepeatInfo
-};
-
-
-WlSeatListener rgfw_wlSeatListener = { .capabilities = &rgfw_wlSeatCapabilities, .name = &rgfw_wlSeatName };
-
-WlShmListener rgfw_wlShmListener = { .format = &rgfw_wlShmFormatHandler };
-
-
-WlOutputListener rgfw_wlOutputListener = {
-	.geometry = &rgfw_wlOutputSetGeometry, .mode = &rgfw_wlOutputHandleMode, .done = &rgfw_wlOutputHandleDone,
-	.scale = &rgfw_wlOutputSetScale, .name = &rgfw_wlOutputSetName, .description = &rgfw_wlOutputDescription
-};
-
-ZxdgOutputV1Listener rgfw_xdgOutputListener = {
-	.name = &rgfw_xdgOutputNothingStr, .done = &rgfw_xdgOutputNothing, .description = &rgfw_xdgOutputNothingStr,
-	.logicalPosition = &rgfw_xdgOutputLogicalPos, .logicalSize = &rgfw_xdgOutputLogicalSize
-};
-
-
-// private
-fn void _wl_data_device_selection(void* data, WlProxy* device, WlProxy* offer)
-{
-	if (!offer) return;
-
-	int[2] pfds;
-	pipe(&pfds);
-	wlDataOfferReceive(offer, "text/plain", pfds[1]);
-	libc::close(pfds[1]);
-	wlDisplayRoundtrip(_gfx_ctx.wlDisplay);
-
-	char[1024] buf;
-	sz n = libc::read(pfds[0], &buf, 1024);
-	if (n <= 0)
-	{
-		libc::close(pfds[0]);
-		wlDataOfferDestroy(offer);
-		return;
-	}
-
-	sz length = (sz)n;
-	if (buf[n - 1] != 0) length += 1;
-
-	if (_gfx_ctx.unixClipboard) free(_gfx_ctx.unixClipboard);
-	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, n);
-	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	mem::copy(dataPtr, &buf, (sz)n);
-	dataPtr[length - 1] = 0;
-	_gfx_ctx.unixClipboard.data = dataPtr;
-	_gfx_ctx.unixClipboard.type = TEXT;
-	_gfx_ctx.unixClipboard.length = length;
-
-	libc::close(pfds[0]);
-	wlDataOfferDestroy(offer);
-}
-
-
-WlRegistryListener rgfw_registryListener = { .global = &rgfw_wlGlobalRegistryHandler, .globalRemove = &rgfw_wlGlobalRegistryRemove };
-
-
-// public
-fn void? rgfw_createWindowPlatform_Wayland(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
-{
-	rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_WARNING_WAYLAND, "RGFW Wayland support is experimental");
-
-	win.src.surface = wlCompositorCreateSurface(_gfx_ctx.compositor);
-	wlSurfaceAddListener(win.src.surface, &rgfw_windowSurfaceListener, win);
-	wlSurfaceSetUserData(win.src.surface, win);
-
-	win.src.customCursorSurface = wlCompositorCreateSurface(_gfx_ctx.compositor);
-
-	win.src.xdgSurface = xdgWmBaseGetXdgSurface(_gfx_ctx.xdgWmBase, win.src.surface);
-	xdgSurfaceAddListener(win.src.xdgSurface, &rgfw_xdgSurfaceListener, win);
-	xdgWmBaseSetUserData(_gfx_ctx.xdgWmBase, win);
-
-	win.src.xdgToplevel = xdgSurfaceGetToplevel(win.src.xdgSurface);
-	xdgToplevelSetAppId(win.src.xdgToplevel, name.zstr_copy(tmem));
-	xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
-
-	if (!(win.internal.flags.transparent)) rgfw_wlSetOpaque(win);
-
-	xdgToplevelAddListener(win.src.xdgToplevel, &rgfw_xdgToplevelListener, win);
-
-	if (_gfx_ctx.decorationManager)
-	{
-		uint decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
-		win.src.decoration = zxdgDecorationManagerV1GetToplevelDecoration(_gfx_ctx.decorationManager, win.src.xdgToplevel);
-		zxdgToplevelDecorationV1AddListener(win.src.decoration, &rgfw_xdgDecorationListener, win);
-		if (flags.no_border) decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
-		zxdgToplevelDecorationV1SetMode(win.src.decoration, decorationMode);
-	}
-
-	if (_gfx_ctx.iconManager) xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, null);
-
-	wlSurfaceCommit(win.src.surface);
-
-	while (!win.src.configured) wlDisplayDispatch(_gfx_ctx.wlDisplay);
-
-}
-
-
-WlDataSourceListener rgfw_dataSourceListener = {
-	.target = &rgfw_wlDataSourceNothingStr, .action = &rgfw_wlDataSourceNothingU32,
-	.dndDropPerformed = &rgfw_wlDataSourceNothing, .dndFinished = &rgfw_wlDataSourceNothing,
-	.send = &rgfw_wlDataSourceSend, .cancelled = &rgfw_wlDataSourceCancelled
-};
-
-
-
-
-// public
-fn bool rgfw_extensionSupportedPlatform_EGL(ZString extension, sz len)
-{
-	if (rgfw_eglQueryString == null || _gfx_ctx.egl_display == null) return false;
-	ZString extensions = rgfw_eglQueryString((EglDisplay)_gfx_ctx.egl_display, 0x3055 /* EGL_EXTENSIONS */);
-	return extensions && rgfw_extensionSupportedStr(extensions, extension, len);
-}
-
-
-module std::gfx @feat(X11_WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
-import std::math, libc;
-// ==================== RGFW_DYNAMIC runtime dispatch layer ====================
-// Combined X11+Wayland runtime dispatch: every entry point below branches on
-// gfx_use_wayland (set once in rgfw_initPlatform) instead of a vtable.
-
-bool gfx_use_wayland = false;
-
-// public
-fn bool rgfw_usingWayland() => gfx_use_wayland;
-
-
-// public
-fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
-{
-	if (gfx_use_wayland)
-	{
-		return rgfw_createWindowPlatform_Wayland(name, flags, win);
-	}
-	return rgfw_createWindowPlatform_X11(name, flags, win);
-}
-
-// public
-fn void rgfw_stopCheckEvents()
-{
-	_gfx_ctx.eventWait_forceStop[2] = 1;
-	while (true)
-	{
-		char byte = 0;
-		sz result = libc::write(_gfx_ctx.eventWait_forceStop[1], &byte, 1);
-		if (result == 1 || result == -1) break;
-	}
-}
-
-// public
-fn void rgfw_waitForEvent(int waitMS)
-{
-	if (waitMS == 0) return;
-
-	if (_gfx_ctx.eventWait_forceStop[0] == 0 || _gfx_ctx.eventWait_forceStop[1] == 0)
-	{
-		if (pipe((int[2]*)&_gfx_ctx.eventWait_forceStop) != -1)
-		{
-			fcntl(_gfx_ctx.eventWait_forceStop[0], F_GETFL, 0);
-			fcntl(_gfx_ctx.eventWait_forceStop[0], F_GETFD, 0);
-			fcntl(_gfx_ctx.eventWait_forceStop[1], F_GETFL, 0);
-			fcntl(_gfx_ctx.eventWait_forceStop[1], F_GETFD, 0);
-		}
-	}
-
-	Pollfd[2] fds;
-	fds[0].fd = 0;
-	fds[0].events = (short)POLLIN;
-	fds[1].fd = _gfx_ctx.eventWait_forceStop[0];
-	fds[1].events = (short)POLLIN;
-
-	if (rgfw_usingWayland())
-	{
-		fds[0].fd = wlDisplayGetFd(_gfx_ctx.wlDisplay);
-
-		// empty the queue
-		while (wlDisplayPrepareRead(_gfx_ctx.wlDisplay) != 0)
-		{
-			// error occured when dispatching the queue
-			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == -1) return;
-		}
-
-		// send any pending requests to the compositor
-		while (wlDisplayFlush(_gfx_ctx.wlDisplay) == -1)
-		{
-			// queue is full dispatch them
-			if (*rgfwErrnoLocation() == RGFW_EAGAIN)
-			{
-				if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == -1) return;
-			}
-			else { return; }
-		}
-	}
-	else
-	{
-		fds[0].fd = xConnectionNumber(_gfx_ctx.display);
-	}
-
-	ulong start = rgfw_unix_getTimeNS();
-	if (rgfw_usingWayland())
-	{
-		while (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == 0)
-		{
-			if (poll(&fds[0], 1, waitMS) <= 0)
-			{
-				wlDisplayCancelRead(_gfx_ctx.wlDisplay);
-				break;
-			}
-			else
-			{
-				if (wlDisplayReadEvents(_gfx_ctx.wlDisplay) == -1) return;
-			}
-
-			if (waitMS != RGFW_EVENT_WAIT_NEXT)
-			{
-				waitMS -= (int)((rgfw_unix_getTimeNS() - start) / 1000000);
-			}
-		}
-
-		// queue contains events from read, dispatch them
-		if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == -1) return;
-	}
-	else
-	{
-		while (xPending(_gfx_ctx.display) == 0)
-		{
-			if (poll(&fds[0], 1, waitMS) <= 0) break;
-
-			if (waitMS != RGFW_EVENT_WAIT_NEXT)
-			{
-				waitMS -= (int)((rgfw_unix_getTimeNS() - start) / 1000000);
-			}
-		}
-	}
-
-	// drain any data in the stop request
-	if (_gfx_ctx.eventWait_forceStop[2])
-	{
-		char[64] data;
-		libc::read(_gfx_ctx.eventWait_forceStop[0], &data, 64);
-
-		_gfx_ctx.eventWait_forceStop[2] = 0;
-	}
-}

@@ -57,12 +57,12 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 
 fn void _emscripten_on_drop(char* file, sz size) @export("c3gfx_on_drop")
 {
-	rgfw_dataDropCallback(_gfx_ctx.root, file, size, FILE);
+	todo_fix_dataDropCallback(_gfx_ctx.root, file, size, FILE);
 }
 
 fn void _emscripten_on_fullscreenchange(int screenW, int screenH, bool entering) @export("c3gfx_on_fullscreenchange")
 {
-	if (!(_gfx_ctx.root.internal.enabled_events & RGFW_WINDOW_RESIZED_FLAG)) return;
+	if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAMEWINDOW_RESIZED_FLAG)) return;
 	static GfxPoint original;
 	if (entering)
 	{
@@ -81,7 +81,7 @@ fn void _emscripten_on_fullscreenchange(int screenW, int screenH, bool entering)
 fn void _emscripten_on_mousedown(int button) @export("c3gfx_on_mousedown")
 {
 	if (button > 2) button += 2;
-	rgfw_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, true);
+	todo_fix_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, true);
 }
 
 // public

@@ -146,7 +146,7 @@ extern fn int xRRSelectInput(GfxXDisplay* d, GfxXWindow w, int mask) @cname("XRR
 module std::gfx @feat(X11, X11_WAYLAND) @private;
 import std::math, std::collections::list, libc;
 
-fn void rgfw_surface_freePtr_X11(GfxSurface* surface)
+fn void todo_fix_surface_freePtr_X11(GfxSurface* surface)
 {
 	if (!surface.data) return;
 	if (surface.native.buffer) free(surface.native.buffer);
@@ -154,7 +154,7 @@ fn void rgfw_surface_freePtr_X11(GfxSurface* surface)
 	*surface = {};
 }
 
-fn void rgfw_window_setBorder_X11(GfxWindow* win, bool border)
+fn void todo_fix_window_setBorder_X11(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
 	X11WindowHints hints;
@@ -168,7 +168,7 @@ fn void rgfw_window_setBorder_X11(GfxWindow* win, bool border)
 	}
 }
 
-fn void rgfw_window_setRawMouseModePlatform_X11(GfxWindow* win, bool state)
+fn void todo_fix_window_setRawMouseModePlatform_X11(GfxWindow* win, bool state)
 {
 	char[4] mask;
 	if (state) xiSetMask((char*)&mask, 6 /* XI_RawMotion */);
@@ -176,10 +176,10 @@ fn void rgfw_window_setRawMouseModePlatform_X11(GfxWindow* win, bool state)
 	em.deviceid = 1; // XIAllMasterDevices
 	em.mask_len = 4;
 	em.mask = (char*)&mask;
-	if (rgfw_xiSelectEventsSRC) rgfw_xiSelectEventsSRC(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &em, 1);
+	if (todo_fix_xiSelectEventsSRC) todo_fix_xiSelectEventsSRC(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &em, 1);
 }
 
-fn void rgfw_window_captureMousePlatform_X11(GfxWindow* win, bool state)
+fn void todo_fix_window_captureMousePlatform_X11(GfxWindow* win, bool state)
 {
 	if (state)
 	{
@@ -193,7 +193,7 @@ fn void rgfw_window_captureMousePlatform_X11(GfxWindow* win, bool state)
 }
 
 // private
-fn WGPUSurface rgfw_window_createSurface_WebGPU_X11(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface todo_fix_window_createSurface_WebGPU_X11(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuSurfaceSourceXlibWindow fromXlib;
 	fromXlib.chain.next = null;
@@ -206,7 +206,7 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU_X11(GfxWindow* window, WGPUInsta
 }
 
 // public
-fn void rgfw_window_setAspectRatio_X11(GfxWindow* win, int w, int h)
+fn void todo_fix_window_setAspectRatio_X11(GfxWindow* win, int w, int h)
 {
 	if (win == null) return;
 	if (w == 0 && h == 0) return;
@@ -220,7 +220,7 @@ fn void rgfw_window_setAspectRatio_X11(GfxWindow* win, int w, int h)
 }
 
 // public
-fn void rgfw_window_blitSurface_X11(GfxWindow* win, GfxSurface* surface)
+fn void todo_fix_window_blitSurface_X11(GfxWindow* win, GfxSurface* surface)
 {
 	if (surface == null) return;
 	// surface.native.bitmap->data = surface.native.buffer would go here in real Xlib
@@ -230,7 +230,7 @@ fn void rgfw_window_blitSurface_X11(GfxWindow* win, GfxSurface* surface)
 }
 
 // public
-fn bool rgfw_getGlobalMouse_X11(int* fX, int* fY)
+fn bool todo_fix_getGlobalMouse_X11(int* fX, int* fY)
 {
 	int x, y;
 	uint z;
@@ -240,7 +240,7 @@ fn bool rgfw_getGlobalMouse_X11(int* fX, int* fY)
 }
 
 // public
-fn GfxPoint rgfw_window_fetchSize_X11(GfxWindow* win)
+fn GfxPoint todo_fix_window_fetchSize_X11(GfxWindow* win)
 {
 	XWindowAttributes attribs;
 	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attribs);
@@ -249,20 +249,20 @@ fn GfxPoint rgfw_window_fetchSize_X11(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_setMousePassthrough_X11(GfxWindow* win, bool passthrough)
+fn void todo_fix_window_setMousePassthrough_X11(GfxWindow* win, bool passthrough)
 {
 	if (passthrough)
 	{
 		Region region = xCreateRegion();
-		if (rgfw_xShapeCombineRegionSRC) rgfw_xShapeCombineRegionSRC(_gfx_ctx.display, win.src.window, 2, 0, 0, region, 0);
+		if (todo_fix_xShapeCombineRegionSRC) todo_fix_xShapeCombineRegionSRC(_gfx_ctx.display, win.src.window, 2, 0, 0, region, 0);
 		xDestroyRegion(region);
 		return;
 	}
-	if (rgfw_xShapeCombineMaskSRC) rgfw_xShapeCombineMaskSRC(_gfx_ctx.display, win.src.window, 2, 0, 0, 0, 0);
+	if (todo_fix_xShapeCombineMaskSRC) todo_fix_xShapeCombineMaskSRC(_gfx_ctx.display, win.src.window, 2, 0, 0, 0, 0);
 }
 
 // public
-fn sz rgfw_monitor_getGammaRampPtr_X11(GfxMonitor* monitor, RgfwGammaRamp* ramp)
+fn sz todo_fix_monitor_getGammaRampPtr_X11(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
 {
 	sz size = (sz)xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
 	XRRCrtcGamma* gamma = xRRGetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1);
@@ -277,12 +277,12 @@ fn sz rgfw_monitor_getGammaRampPtr_X11(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 }
 
 // public
-fn bool rgfw_monitor_setGammaRamp_X11(GfxMonitor* monitor, RgfwGammaRamp* ramp)
+fn bool todo_fix_monitor_setGammaRamp_X11(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
 {
 	sz size = (sz)xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
 	if (size != ramp.count)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_X11, "X11: Gamma ramp size must match current ramp size");
+		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_X11, "X11: Gamma ramp size must match current ramp size");
 		return false;
 	}
 	XRRCrtcGamma* gamma = xRRAllocGamma((int)ramp.count);
@@ -295,20 +295,20 @@ fn bool rgfw_monitor_setGammaRamp_X11(GfxMonitor* monitor, RgfwGammaRamp* ramp)
 }
 
 // private
-fn RgfwMouse* rgfw_createMouse_X11(char* data, int w, int h, GfxFormat format)
+fn TodoRenameMouse* todo_fix_createMouse_X11(char* data, int w, int h, GfxFormat format)
 {
-	if (rgfw_xcursorImageCreateSRC == null) return null;
-	XcursorImage* native = rgfw_xcursorImageCreateSRC(w, h);
+	if (todo_fix_xcursorImageCreateSRC == null) return null;
+	XcursorImage* native = todo_fix_xcursorImageCreateSRC(w, h);
 	native.xhot = 0; native.yhot = 0;
 	mem::clear(native.pixels, (sz)(w * h * 4));
 	mem::copy(native.pixels, data, (sz)(w * h * 4));
-	XCursor cursor = rgfw_xcursorImageLoadCursorSRC(_gfx_ctx.display, native);
-	rgfw_xcursorImageDestroySRC(native);
-	return (RgfwMouse*)cursor;
+	XCursor cursor = todo_fix_xcursorImageLoadCursorSRC(_gfx_ctx.display, native);
+	todo_fix_xcursorImageDestroySRC(native);
+	return (TodoRenameMouse*)cursor;
 }
 
 // private
-fn RgfwMouse* rgfw_createMouseStandard_X11(GfxMouseIcon mouse)
+fn TodoRenameMouse* todo_fix_createMouseStandard_X11(GfxMouseIcon mouse)
 {
 	uint mouseIcon = 0;
 	switch (mouse)
@@ -337,11 +337,11 @@ fn RgfwMouse* rgfw_createMouseStandard_X11(GfxMouseIcon mouse)
 		default: return null;
 	}
 	XCursor cursor = xCreateFontCursor(_gfx_ctx.display, mouseIcon);
-	return (RgfwMouse*)cursor;
+	return (TodoRenameMouse*)cursor;
 }
 
 // private
-fn void? rgfw_createWindowPlatform_X11(String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? todo_fix_createWindowPlatform_X11(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	if (flags.open_gl || flags.egl)
 	{
@@ -349,63 +349,63 @@ fn void? rgfw_createWindowPlatform_X11(String name, GfxWindowFlags flags, GfxWin
 		return;
 	}
 	XVisualInfo visual;
-	rgfw_window_getVisual(&visual, win.internal.flags.transparent);
-	return rgfw_xCreateWindow(visual, name, flags, win);
+	todo_fix_window_getVisual(&visual, win.internal.flags.transparent);
+	return todo_fix_xCreateWindow(visual, name, flags, win);
 }
 
 // private
-fn void rgfw_deinitPlatform_X11()
+fn void todo_fix_deinitPlatform_X11()
 {
 	if (_gfx_ctx.display != null)
 	{
 		if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helperWindow)
 		{
 			xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardManager, _gfx_ctx.saveTargets, 0, _gfx_ctx.helperWindow, 0);
-			while (rgfw_xHandleClipboardSelectionHelper() != 0) {}
+			while (todo_fix_xHandleClipboardSelectionHelper() != 0) {}
 		}
-		xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&rgfw_x11ImInitCallback, null);
+		xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&todo_fix_x11ImInitCallback, null);
 	}
 	if (_gfx_ctx.im != null) { xCloseIM(_gfx_ctx.im); _gfx_ctx.im = null; }
 	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
-	if (_gfx_ctx.hiddenMouse != null) { rgfw_freeMouse(_gfx_ctx.hiddenMouse); _gfx_ctx.hiddenMouse = null; }
+	if (_gfx_ctx.hiddenMouse != null) { todo_fix_freeMouse(_gfx_ctx.hiddenMouse); _gfx_ctx.hiddenMouse = null; }
 	if (_gfx_ctx.helperWindow != 0) xDestroyWindow(_gfx_ctx.display, _gfx_ctx.helperWindow);
 	if (_gfx_ctx.display != null) xCloseDisplay(_gfx_ctx.display);
 	_gfx_ctx.display = null;
 
-	if (rgfw_x11CursorHandle != null) { libc::dlclose(rgfw_x11CursorHandle); rgfw_x11CursorHandle = null; }
-	if (rgfw_x11XiHandle != null) { libc::dlclose(rgfw_x11XiHandle); rgfw_x11XiHandle = null; }
-	if (rgfw_x11ExtHandle != null) { libc::dlclose(rgfw_x11ExtHandle); rgfw_x11ExtHandle = null; }
+	if (todo_fix_x11CursorHandle != null) { libc::dlclose(todo_fix_x11CursorHandle); todo_fix_x11CursorHandle = null; }
+	if (todo_fix_x11XiHandle != null) { libc::dlclose(todo_fix_x11XiHandle); todo_fix_x11XiHandle = null; }
+	if (todo_fix_x11ExtHandle != null) { libc::dlclose(todo_fix_x11ExtHandle); todo_fix_x11ExtHandle = null; }
 }
 
 // private
-fn bool rgfw_extensionSupportedPlatform_OpenGL_X11(ZString extension, sz len)
+fn bool todo_fix_extensionSupportedPlatform_OpenGL_X11(ZString extension, sz len)
 {
-	ZString extensions = rgfw_glXQueryExtensionsString(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-	return extensions && rgfw_extensionSupportedStr(extensions, extension, len);
+	ZString extensions = todo_fix_glXQueryExtensionsString(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
+	return extensions && todo_fix_extensionSupportedStr(extensions, extension, len);
 }
 
 // private
-fn void rgfw_freeMouse_X11(RgfwMouse* mouse) { xFreeCursor(_gfx_ctx.display, (XCursor)mouse); }
+fn void todo_fix_freeMouse_X11(TodoRenameMouse* mouse) { xFreeCursor(_gfx_ctx.display, (XCursor)mouse); }
 
 // private
-fn void* rgfw_getCurrentContext_OpenGL_X11() => rgfw_glXGetCurrentContext();
+fn void* todo_fix_getCurrentContext_OpenGL_X11() => todo_fix_glXGetCurrentContext();
 
 // private
-fn GfxFn rgfw_getProcAddress_OpenGL_X11(ZString procname)
+fn GfxFn todo_fix_getProcAddress_OpenGL_X11(ZString procname)
 {
 	if (_gfx_ctx.glGetProcAddress == null) return null;
 	return ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname);
 }
 
 // private
-fn void rgfw_initKeycodesPlatform_X11()
+fn void todo_fix_initKeycodesPlatform_X11()
 {
-	// A full evdev-keycode -> RGFW_KEY table walk (xkbGetKeyboardByName) is left
-	// out of this mechanical pass; keycodes[] stays zeroed (RGFW_KEY_NULL).
+	// A full evdev-keycode -> _KEY table walk (xkbGetKeyboardByName) is left
+	// out of this mechanical pass; keycodes[] stays zeroed (_KEY_NULL).
 }
 
 // private
-fn int rgfw_initPlatform_X11(String class_name, GfxInitOption flags)
+fn int todo_fix_initPlatform_X11(String class_name, GfxInitOption flags)
 {
 	_gfx_ctx.class_name = class_name;
 
@@ -460,34 +460,34 @@ fn int rgfw_initPlatform_X11(String class_name, GfxInitOption flags)
 		2 /* InputOnly */, xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), 1 << 11, &wa);
 	if (_gfx_ctx.helperWindow == 0) return -1;
 
-	rgfw_x11CursorHandle = libc::dlopen("libXcursor.so.1", libc::RTLD_LAZY | libc::RTLD_LOCAL);
-	if (rgfw_x11CursorHandle != null)
+	todo_fix_x11CursorHandle = libc::dlopen("libXcursor.so.1", libc::RTLD_LAZY | libc::RTLD_LOCAL);
+	if (todo_fix_x11CursorHandle != null)
 	{
-		rgfw_xcursorImageCreateSRC = (PFN_XcursorImageCreate)libc::dlsym(rgfw_x11CursorHandle, "XcursorImageCreate");
-		rgfw_xcursorImageDestroySRC = (PFN_XcursorImageDestroy)libc::dlsym(rgfw_x11CursorHandle, "XcursorImageDestroy");
-		rgfw_xcursorImageLoadCursorSRC = (PFN_XcursorImageLoadCursor)libc::dlsym(rgfw_x11CursorHandle, "XcursorImageLoadCursor");
+		todo_fix_xcursorImageCreateSRC = (PFN_XcursorImageCreate)libc::dlsym(todo_fix_x11CursorHandle, "XcursorImageCreate");
+		todo_fix_xcursorImageDestroySRC = (PFN_XcursorImageDestroy)libc::dlsym(todo_fix_x11CursorHandle, "XcursorImageDestroy");
+		todo_fix_xcursorImageLoadCursorSRC = (PFN_XcursorImageLoadCursor)libc::dlsym(todo_fix_x11CursorHandle, "XcursorImageLoadCursor");
 	}
-	rgfw_x11XiHandle = libc::dlopen("libXi.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
-	if (rgfw_x11XiHandle != null) rgfw_xiSelectEventsSRC = (PFN_XISelectEvents)libc::dlsym(rgfw_x11XiHandle, "XISelectEvents");
-	rgfw_x11ExtHandle = libc::dlopen("libXext.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
-	if (rgfw_x11ExtHandle != null)
+	todo_fix_x11XiHandle = libc::dlopen("libXi.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
+	if (todo_fix_x11XiHandle != null) todo_fix_xiSelectEventsSRC = (PFN_XISelectEvents)libc::dlsym(todo_fix_x11XiHandle, "XISelectEvents");
+	todo_fix_x11ExtHandle = libc::dlopen("libXext.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
+	if (todo_fix_x11ExtHandle != null)
 	{
-		rgfw_xSyncCreateCounterSRC = (PFN_XSyncCreateCounter)libc::dlsym(rgfw_x11ExtHandle, "XSyncCreateCounter");
-		rgfw_xSyncIntToValueSRC = (PFN_XSyncIntToValue)libc::dlsym(rgfw_x11ExtHandle, "XSyncIntToValue");
-		rgfw_xSyncSetCounterSRC = (PFN_XSyncSetCounter)libc::dlsym(rgfw_x11ExtHandle, "XSyncSetCounter");
-		rgfw_xShapeCombineRegionSRC = (PFN_XShapeCombineRegion)libc::dlsym(rgfw_x11ExtHandle, "XShapeCombineRegion");
-		rgfw_xShapeCombineMaskSRC = (PFN_XShapeCombineMask)libc::dlsym(rgfw_x11ExtHandle, "XShapeCombineMask");
+		todo_fix_xSyncCreateCounterSRC = (PFN_XSyncCreateCounter)libc::dlsym(todo_fix_x11ExtHandle, "XSyncCreateCounter");
+		todo_fix_xSyncIntToValueSRC = (PFN_XSyncIntToValue)libc::dlsym(todo_fix_x11ExtHandle, "XSyncIntToValue");
+		todo_fix_xSyncSetCounterSRC = (PFN_XSyncSetCounter)libc::dlsym(todo_fix_x11ExtHandle, "XSyncSetCounter");
+		todo_fix_xShapeCombineRegionSRC = (PFN_XShapeCombineRegion)libc::dlsym(todo_fix_x11ExtHandle, "XShapeCombineRegion");
+		todo_fix_xShapeCombineMaskSRC = (PFN_XShapeCombineMask)libc::dlsym(todo_fix_x11ExtHandle, "XShapeCombineMask");
 	}
 
 	char[4] blk = {0, 0, 0, 0};
-	_gfx_ctx.hiddenMouse = rgfw_createMouse((char*)&blk, 1, 1, RGBA8);
+	_gfx_ctx.hiddenMouse = todo_fix_createMouse((char*)&blk, 1, 1, RGBA8);
 	_gfx_ctx.unixClipboard = null;
 
-	xSetErrorHandler((void*)&rgfw_xErrorHandler);
+	xSetErrorHandler((void*)&todo_fix_xErrorHandler);
 	xSync(_gfx_ctx.display, 0);
 
 	xSetLocaleModifiers("");
-	xRegisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&rgfw_x11ImInitCallback, null);
+	xRegisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&todo_fix_x11ImInitCallback, null);
 
 	int errorBase;
 	if (xRRQueryExtension(_gfx_ctx.display, &_gfx_ctx.xrandrEventBase, &errorBase) != 0)
@@ -505,37 +505,37 @@ fn void? _load_opengl_x11()
 	void* ptr = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetProcAddress");
 	if (!ptr) return MISSING_GL_GET_PROC_ADDR~;
 	_gfx_ctx.glGetProcAddress        = ptr;
-	rgfw_glXChooseVisual             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseVisual");
-	rgfw_glXCreateContext            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContext");
-	rgfw_glXMakeCurrent              = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXMakeCurrent");
-	rgfw_glXGetCurrentContext        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetCurrentContext");
-	rgfw_glXSwapBuffers              = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapBuffers");
-	rgfw_glXGetVisualFromFBConfig    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetVisualFromFBConfig");
-	rgfw_glXGetFBConfigAttrib        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetFBConfigAttrib");
-	rgfw_glXGetProcAddressARB        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetProcAddressARB");
-	rgfw_glXChooseFBConfig           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseFBConfig");
-	rgfw_glXDestroyContext           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyContext");
-	rgfw_glXCreateWindow             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateWindow");
-	rgfw_glXDestroyWindow            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyWindow");
-	rgfw_glXQueryExtensionsString    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXQueryExtensionsString");
-	rgfw_glXCreateContextAttribsARB  = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContextAttribsARB");
-	rgfw_glXSwapIntervalEXT          = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapIntervalEXT");
-	if (!rgfw_glXSwapIntervalEXT)
+	todo_fix_glXChooseVisual             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseVisual");
+	todo_fix_glXCreateContext            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContext");
+	todo_fix_glXMakeCurrent              = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXMakeCurrent");
+	todo_fix_glXGetCurrentContext        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetCurrentContext");
+	todo_fix_glXSwapBuffers              = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapBuffers");
+	todo_fix_glXGetVisualFromFBConfig    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetVisualFromFBConfig");
+	todo_fix_glXGetFBConfigAttrib        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetFBConfigAttrib");
+	todo_fix_glXGetProcAddressARB        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetProcAddressARB");
+	todo_fix_glXChooseFBConfig           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseFBConfig");
+	todo_fix_glXDestroyContext           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyContext");
+	todo_fix_glXCreateWindow             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateWindow");
+	todo_fix_glXDestroyWindow            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyWindow");
+	todo_fix_glXQueryExtensionsString    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXQueryExtensionsString");
+	todo_fix_glXCreateContextAttribsARB  = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContextAttribsARB");
+	todo_fix_glXSwapIntervalEXT          = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapIntervalEXT");
+	if (!todo_fix_glXSwapIntervalEXT)
 	{
 		ZString[2] array = {"GLX_MESA_swap_control", "GLX_SGI_swap_control"};
 		foreach (name : array)
 		{
-			rgfw_glXSwapIntervalNative = libc::dlsym(_gfx_ctx.nativeGL_handle, name);
-			if (rgfw_glXSwapIntervalNative) break;
+			todo_fix_glXSwapIntervalNative = libc::dlsym(_gfx_ctx.nativeGL_handle, name);
+			if (todo_fix_glXSwapIntervalNative) break;
 		}
 	}
 }
 
 // private
-fn void rgfw_monitorNode_free_X11(GfxMonitorNode* node) {}
+fn void todo_fix_monitorNode_free_X11(GfxMonitorNode* node) {}
 
 // private
-fn GfxMonitorMode[] rgfw_monitor_getModesPtr_X11(GfxMonitor* monitor)
+fn GfxMonitorMode[] todo_fix_monitor_getModesPtr_X11(GfxMonitor* monitor)
 {
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display));
 	if (!res) return {};
@@ -546,7 +546,7 @@ fn GfxMonitorMode[] rgfw_monitor_getModesPtr_X11(GfxMonitor* monitor)
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode mode;
-		rgfw_xGetMode(ci, res, oi.modes[i], &mode);
+		todo_fix_xGetMode(ci, res, oi.modes[i], &mode);
 		modes.push(mode);
 	}
 	xRRFreeOutputInfo(oi);
@@ -556,7 +556,7 @@ fn GfxMonitorMode[] rgfw_monitor_getModesPtr_X11(GfxMonitor* monitor)
 }
 
 // private
-fn bool rgfw_monitor_getWorkarea_X11(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
+fn bool todo_fix_monitor_getWorkarea_X11(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
 {
 	GfxXWindow root = xDefaultRootWindow(_gfx_ctx.display);
 	int areaX = monitor.origin.x;
@@ -595,7 +595,7 @@ fn bool rgfw_monitor_getWorkarea_X11(GfxMonitor* monitor, int* x, int* y, int* w
 }
 
 // private
-fn bool rgfw_monitor_requestMode_X11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+fn bool todo_fix_monitor_requestMode_X11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	bool output = false;
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display));
@@ -607,7 +607,7 @@ fn bool rgfw_monitor_requestMode_X11(GfxMonitor* mon, GfxMonitorMode* mode, GfxM
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode found_mode;
-		void* mi = rgfw_xGetMode(ci, res, oi.modes[i], &found_mode);
+		void* mi = todo_fix_xGetMode(ci, res, oi.modes[i], &found_mode);
 		if (mi == null) continue;
 		if (mode.equals_request(&found_mode, request))
 		{
@@ -625,7 +625,7 @@ fn bool rgfw_monitor_requestMode_X11(GfxMonitor* mon, GfxMonitorMode* mode, GfxM
 }
 
 // private
-fn bool rgfw_monitor_setMode_X11(GfxMonitor* mon, GfxMonitorMode* mode)
+fn bool todo_fix_monitor_setMode_X11(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	bool out = false;
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display));
@@ -637,9 +637,9 @@ fn bool rgfw_monitor_setMode_X11(GfxMonitor* mon, GfxMonitorMode* mode)
 }
 
 // private
-fn GfxKey rgfw_physicalToMappedKey_X11(GfxKey key)
+fn GfxKey todo_fix_physicalToMappedKey_X11(GfxKey key)
 {
-	KeyCode keycode = (KeyCode)rgfw_rgfwToApiKey(key);
+	KeyCode keycode = (KeyCode)todo_fix_rgfwToApiKey(key);
 	KeySym sym = xkbKeycodeToKeysym(_gfx_ctx.display, keycode, 0, 0);
 	if (sym < 256) return (GfxKey)sym;
 
@@ -688,14 +688,14 @@ fn GfxKey rgfw_physicalToMappedKey_X11(GfxKey key)
 }
 
 // private
-fn void rgfw_pollEvents_X11()
+fn void todo_fix_pollEvents_X11()
 {
-	rgfw_resetPrevState();
+	todo_fix_resetPrevState();
 	xPending(_gfx_ctx.display);
-	while (qLength(_gfx_ctx.display) != 0) rgfw_xHandleEvent();
+	while (qLength(_gfx_ctx.display) != 0) todo_fix_xHandleEvent();
 }
 
-fn void rgfw_xHandleEvent()
+fn void todo_fix_xHandleEvent()
 {
 	static Vec2 delta = {};
 
@@ -709,13 +709,13 @@ fn void rgfw_xHandleEvent()
 
 	if (e.type == _gfx_ctx.xrandrEventBase + 0 /* RRNotify */)
 	{
-		rgfw_pollMonitors();
+		todo_fix_pollMonitors();
 		return;
 	}
 
 	if (e.type == 30 /* SelectionRequest */)
 	{
-		rgfw_xHandleClipboardSelection(&e);
+		todo_fix_xHandleClipboardSelection(&e);
 		return;
 	}
 
@@ -747,7 +747,7 @@ fn void rgfw_xHandleEvent()
 
 	if (win.src.flashEnd != 0)
 	{
-		if (win.src.flashEnd <= rgfw_unix_getTimeNS() || win.has_focus()) win.flash(CANCEL);
+		if (win.src.flashEnd <= todo_fix_unix_getTimeNS() || win.has_focus()) win.flash(CANCEL);
 	}
 
 	bool keyRepeat = false;
@@ -766,8 +766,8 @@ fn void rgfw_xHandleEvent()
 	{
 		case 2: // KeyPress
 			{
-				if (!(win.internal.enabled_events & RGFW_KEY_PRESSED_FLAG)) return;
-				GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
+				if (!(win.internal.enabled_events & TODO_RENAMEKEY_PRESSED_FLAG)) return;
+				GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW(e.xkey.keycode);
 
 				XkbStateRec state;
 				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
@@ -784,7 +784,7 @@ fn void rgfw_xHandleEvent()
 						sz index = 0;
 						while (index < count)
 						{
-							rgfw_keyCharCallback(win, rgfw_decodeUTF8((ZString)&buffer, &index));
+							todo_fix_keyCharCallback(win, todo_fix_decodeUTF8((ZString)&buffer, &index));
 						}
 					}
 				}
@@ -802,22 +802,22 @@ fn void rgfw_xHandleEvent()
 					}
 					if ((KeySym)(char)sym != sym) sym = 0;
 
-					rgfw_keyCharCallback(win, (uint)(char)sym);
+					todo_fix_keyCharCallback(win, (uint)(char)sym);
 				}
 
-				rgfw_keyCallback(win, value, win.internal.mod, keyRepeat, true);
+				todo_fix_keyCallback(win, value, win.internal.mod, keyRepeat, true);
 				break;
 			}
 		case 3: // KeyRelease
 			{
-				if (!(win.internal.enabled_events & RGFW_KEY_RELEASED_FLAG)) return;
-				GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
+				if (!(win.internal.enabled_events & TODO_RENAMEKEY_RELEASED_FLAG)) return;
+				GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW(e.xkey.keycode);
 
 				XkbStateRec state;
 				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
 				_key_update_key_mods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
 
-				rgfw_keyCallback(win, value, win.internal.mod, false, false);
+				todo_fix_keyCallback(win, value, win.internal.mod, false, false);
 				break;
 			}
 		case 4: // ButtonPress
@@ -838,10 +838,10 @@ fn void rgfw_xHandleEvent()
 				}
 				if (scroll)
 				{
-					rgfw_mouseScrollCallback(win, scroll_delta);
+					todo_fix_mouseScrollCallback(win, scroll_delta);
 					break;
 				}
-				rgfw_mouseButtonCallback(win, value, true);
+				todo_fix_mouseButtonCallback(win, value, true);
 				break;
 			}
 		case 5: // ButtonRelease
@@ -855,11 +855,11 @@ fn void rgfw_xHandleEvent()
 					case 3: value = RIGHT;
 					default: value = (GfxMouseButton)(e.xbutton.button - 1 - 4);
 				}
-				rgfw_mouseButtonCallback(win, value, false);
+				todo_fix_mouseButtonCallback(win, value, false);
 				break;
 			}
 		case 6: _mouse_motion_callback(win, { e.xmotion.x, e.xmotion.y }); // MotionNotify
-		case 12: rgfw_windowRefreshCallback(win, { e.xexpose.x, e.xexpose.y, e.xexpose.width, e.xexpose.height }); // Expose
+		case 12: todo_fix_windowRefreshCallback(win, { e.xexpose.x, e.xexpose.y, e.xexpose.width, e.xexpose.height }); // Expose
 		case 28: // PropertyNotify
 			if (e.xproperty.state == 0 /* PropertyNewValue */)
 			{
@@ -868,7 +868,7 @@ fn void rgfw_xHandleEvent()
 				{
 					if (_window_is_minimized_native(win) && !(win.internal.flags.minimize))
 					{
-						rgfw_windowMinimizedCallback(win);
+						todo_fix_windowMinimizedCallback(win);
 						handled = true;
 					}
 				}
@@ -876,14 +876,14 @@ fn void rgfw_xHandleEvent()
 				{
 					if (_window_is_maximized_native(win) && !(win.internal.flags.maximize))
 					{
-						rgfw_windowMaximizedCallback(win, win.bounds);
+						todo_fix_windowMaximizedCallback(win, win.bounds);
 						handled = true;
 					}
 				}
-				if (!handled) rgfw_window_checkMode(win);
+				if (!handled) todo_fix_window_checkMode(win);
 			}
 		case 19: case 18: // MapNotify, UnmapNotify
-			rgfw_window_checkMode(win);
+			todo_fix_window_checkMode(win);
 			break;
 		case 33: // ClientMessage
 			{
@@ -893,7 +893,7 @@ fn void rgfw_xHandleEvent()
 					break;
 				}
 
-				if (!(win.internal.flags.allow_dnd) || _gfx_ctx.x11Version > 5 /* RGFW_XDND_VERSION */) return;
+				if (!(win.internal.flags.allow_dnd) || _gfx_ctx.x11Version > 5 /* TODO_RENAMEXDND_VERSION */) return;
 
 				GfxPoint drag;
 
@@ -950,7 +950,7 @@ fn void rgfw_xHandleEvent()
 
 					if (list != 0 && formats != null) xFree(formats);
 
-					rgfw_dataDragCallback(win, _gfx_ctx.x11TransferType, ENTER, drag);
+					todo_fix_dataDragCallback(win, _gfx_ctx.x11TransferType, ENTER, drag);
 				}
 				else if (e.xclient.message_type == _gfx_ctx.xdndPosition)
 				{
@@ -984,11 +984,11 @@ fn void rgfw_xHandleEvent()
 					xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
 					xFlush(_gfx_ctx.display);
 
-					rgfw_dataDragCallback(win, _gfx_ctx.x11TransferType, MOVE, drag);
+					todo_fix_dataDragCallback(win, _gfx_ctx.x11TransferType, MOVE, drag);
 				}
 				else if (e.xclient.message_type == _gfx_ctx.xdndLeave)
 				{
-					rgfw_dataDragCallback(win, _gfx_ctx.x11TransferType, EXIT, drag);
+					todo_fix_dataDragCallback(win, _gfx_ctx.x11TransferType, EXIT, drag);
 				}
 				else if (e.xclient.message_type == _gfx_ctx.xdndDrop)
 				{
@@ -1017,7 +1017,7 @@ fn void rgfw_xHandleEvent()
 			}
 		case 31: // SelectionNotify
 			{
-				if (!(win.internal.enabled_events & RGFW_DATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
+				if (!(win.internal.enabled_events & TODO_RENAMEDATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
 
 				ZString data;
 				CULong result;
@@ -1030,7 +1030,7 @@ fn void rgfw_xHandleEvent()
 
 				if (result != 0)
 				{
-					rgfw_unix_parseURI(win, data);
+					todo_fix_unix_parseURI(win, data);
 					if (data != null) xFree(data);
 				}
 
@@ -1053,7 +1053,7 @@ fn void rgfw_xHandleEvent()
 			{
 				if (e.xconfigure.width != win.src.width || e.xconfigure.height != win.src.height)
 				{
-					rgfw_window_checkMode(win);
+					todo_fix_window_checkMode(win);
 					win.src.size = { e.xconfigure.width, e.xconfigure.height };
 					_window_resized_callback(win, win.src.size);
 				}
@@ -1077,10 +1077,10 @@ fn void rgfw_xHandleEvent()
 			}
 		case 9: // FocusIn
 			if (win.src.ic) xSetICFocus(win.src.ic);
-			rgfw_windowFocusCallback(win, true);
+			todo_fix_windowFocusCallback(win, true);
 		case 10: // FocusOut
 			if (win.src.ic) xUnsetICFocus(win.src.ic);
-			rgfw_windowFocusCallback(win, false);
+			todo_fix_windowFocusCallback(win, false);
 		case 7: _mouse_notify_callback(win, { e.xcrossing.x, e.xcrossing.y }, true); // EnterNotify
 		case 8: _mouse_notify_callback(win, win.internal.last_mouse, false); // LeaveNotify
 		case 21: win.src.parent = e.xreparent.parent; // ReparentNotify
@@ -1091,7 +1091,7 @@ fn void rgfw_xHandleEvent()
 }
 
 // private
-fn void rgfw_pollMonitors_X11()
+fn void todo_fix_pollMonitors_X11()
 {
 	GfxXWindow root = xDefaultRootWindow(_gfx_ctx.display);
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, root);
@@ -1142,11 +1142,11 @@ fn void rgfw_pollMonitors_X11()
 		monitor.origin = { ci.x, ci.y };
 
 		float dpi = 96.0f;
-		rgfw_xGetSystemContentDPI(&dpi);
+		todo_fix_xGetSystemContentDPI(&dpi);
 		monitor.scale = (Vec2)(dpi / 96.0f);
 		monitor.pixelRatio = dpi >= 192.0f ? 2.0f : 1.0f;
 
-		void* mi = rgfw_xGetMode(ci, res, ci.mode, &monitor.mode);
+		void* mi = todo_fix_xGetMode(ci, res, ci.mode, &monitor.mode);
 		if (mi == null) break;
 
 		xRRFreeCrtcInfo(ci);
@@ -1156,7 +1156,7 @@ fn void rgfw_pollMonitors_X11()
 		node.nativeId1 = info.crtc;
 		if (node.nativeId0 == primary) _gfx_ctx.monitors.primary = node;
 		xRRFreeOutputInfo(info);
-		rgfw_monitorCallback(_gfx_ctx.root, &node.mon, true);
+		todo_fix_monitorCallback(_gfx_ctx.root, &node.mon, true);
 	}
 
 	xRRFreeScreenResources(res);
@@ -1164,7 +1164,7 @@ fn void rgfw_pollMonitors_X11()
 }
 
 // private
-fn void rgfw_window_closePlatform_X11(GfxWindow* win)
+fn void todo_fix_window_closePlatform_X11(GfxWindow* win)
 {
 	if (win.src.ic != null) { xDestroyIC(win.src.ic); win.src.ic = null; }
 	xFreeGC(_gfx_ctx.display, win.src.gc);
@@ -1173,16 +1173,16 @@ fn void rgfw_window_closePlatform_X11(GfxWindow* win)
 }
 
 // private
-fn void rgfw_window_deleteContextPtr_OpenGL_X11(GfxWindow* win, RgfwGlContext* ctx)
+fn void todo_fix_window_deleteContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGlContext* ctx)
 {
-	if (win.src.ctx.native.window != win.src.window) rgfw_glXDestroyWindow(_gfx_ctx.display, win.src.ctx.native.window);
-	rgfw_glXDestroyContext(_gfx_ctx.display, ctx.ctx);
+	if (win.src.ctx.native.window != win.src.window) todo_fix_glXDestroyWindow(_gfx_ctx.display, win.src.ctx.native.window);
+	todo_fix_glXDestroyContext(_gfx_ctx.display, ctx.ctx);
 	win.src.ctx.native = null;
-	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_OPEN_GL, "OpenGL context freed.");
+	todo_fix_debugCallback(TODO_RENAMETYPE_INFO, TODO_RENAMEINFO_OPEN_GL, "OpenGL context freed.");
 }
 
 // private
-fn void rgfw_window_focus_X11(GfxWindow* win)
+fn void todo_fix_window_focus_X11(GfxWindow* win)
 {
 	XWindowAttributes attr;
 	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attr);
@@ -1192,7 +1192,7 @@ fn void rgfw_window_focus_X11(GfxWindow* win)
 }
 
 // private
-fn void rgfw_window_hide_X11(GfxWindow* win)
+fn void todo_fix_window_hide_X11(GfxWindow* win)
 {
 	win.internal.flags.hide = true;
 	xUnmapWindow(_gfx_ctx.display, win.src.window);
@@ -1248,17 +1248,17 @@ fn bool _window_is_minimized_x11(GfxWindow* win)
 }
 
 // private
-fn void rgfw_window_makeCurrentContext_OpenGL_X11(GfxWindow* win)
+fn void todo_fix_window_makeCurrentContext_OpenGL_X11(GfxWindow* win)
 {
-	if (win == null) { rgfw_glXMakeCurrent(null, 0, null); }
-	else { rgfw_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx); }
+	if (win == null) { todo_fix_glXMakeCurrent(null, 0, null); }
+	else { todo_fix_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx); }
 }
 
 // private
-fn void _window_maximize_x11(GfxWindow* win) => rgfw_toggleXMaximized(win, true);
+fn void _window_maximize_x11(GfxWindow* win) => todo_fix_toggleXMaximized(win, true);
 
 // private
-fn void rgfw_window_minimizePlatform_X11(GfxWindow* win)
+fn void todo_fix_window_minimizePlatform_X11(GfxWindow* win)
 {
 	if (_window_is_maximized_native(win)) return;
 	win.internal.old_bounds = win.bounds;
@@ -1267,7 +1267,7 @@ fn void rgfw_window_minimizePlatform_X11(GfxWindow* win)
 }
 
 // private
-fn void rgfw_window_moveMouse_X11(GfxWindow* win, int x, int y)
+fn void todo_fix_window_moveMouse_X11(GfxWindow* win, int x, int y)
 {
 	int rootX, rootY, winX, winY;
 	uint mask;
@@ -1285,7 +1285,7 @@ fn void _window_move_x11(GfxWindow* win, GfxPoint where)
 }
 
 // private
-fn void rgfw_window_raise_X11(GfxWindow* win)
+fn void todo_fix_window_raise_X11(GfxWindow* win)
 {
 	xMapRaised(_gfx_ctx.display, win.src.window);
 	_window_set_fullscreen_native(win, win.is_fullscreen());
@@ -1307,14 +1307,14 @@ fn void _window_resize_x11(GfxWindow* win, GfxSize size)
 }
 
 // private
-fn void rgfw_window_restorePlatform_X11(GfxWindow* win)
+fn void todo_fix_window_restorePlatform_X11(GfxWindow* win)
 {
-	rgfw_toggleXMaximized(win, false);
+	todo_fix_toggleXMaximized(win, false);
 	xFlush(_gfx_ctx.display);
 }
 
 // private
-fn void rgfw_window_setFloating_X11(GfxWindow* win, bool floating) => rgfw_window_setXAtom(win, _gfx_ctx.netWmStateAbove, floating);
+fn void todo_fix_window_setFloating_X11(GfxWindow* win, bool floating) => todo_fix_window_setXAtom(win, _gfx_ctx.netWmStateAbove, floating);
 
 // private
 fn void _window_set_fullscreen_x11(GfxWindow* win, bool fullscreen)
@@ -1330,7 +1330,7 @@ fn void _window_set_fullscreen_x11(GfxWindow* win, bool fullscreen)
 	}
 
 	xRaiseWindow(_gfx_ctx.display, win.src.window);
-	rgfw_window_setXAtom(win, _gfx_ctx.netWmStateFullscreen, fullscreen);
+	todo_fix_window_setXAtom(win, _gfx_ctx.netWmStateFullscreen, fullscreen);
 
 	if (!(win.internal.flags.transparent))
 	{
@@ -1362,29 +1362,29 @@ fn void _window_set_min_size_x11(GfxWindow* win, GfxSize size)
 }
 
 // private
-fn bool rgfw_window_setMousePlatform_X11(GfxWindow* win, RgfwMouse* mouse)
+fn bool todo_fix_window_setMousePlatform_X11(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	xDefineCursor(_gfx_ctx.display, win.src.window, (XCursor)mouse);
 	return true;
 }
 
 // private
-fn void rgfw_window_setOpacity_X11(GfxWindow* win, char opacity)
+fn void todo_fix_window_setOpacity_X11(GfxWindow* win, char opacity)
 {
 	uint value = (uint)(4294967295.0 * (double)opacity);
 	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmWindowOpacity, 6, 32, 0, (char*)&value, 1);
 }
 
 // private
-fn void rgfw_window_swapBuffers_OpenGL_X11(GfxWindow* win) { rgfw_glXSwapBuffers(_gfx_ctx.display, win.src.ctx.native.window); }
+fn void todo_fix_window_swapBuffers_OpenGL_X11(GfxWindow* win) { todo_fix_glXSwapBuffers(_gfx_ctx.display, win.src.ctx.native.window); }
 
 // private
-fn bool rgfw_writeClipboard_X11(GfxDataTransfer* data)
+fn bool todo_fix_writeClipboard_X11(GfxDataTransfer* data)
 {
 	xSetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.helperWindow, 0);
 	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) != _gfx_ctx.helperWindow)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_CLIPBOARD, "X11 failed to become owner of clipboard selection");
+		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_CLIPBOARD, "X11 failed to become owner of clipboard selection");
 		return false;
 	}
 	if (_gfx_ctx.unixClipboard)
@@ -1407,7 +1407,7 @@ fn bool rgfw_writeClipboard_X11(GfxDataTransfer* data)
 }
 
 // private
-fn bool rgfw_readClipboardPtr_X11(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* dataTransfer)
+fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* dataTransfer)
 {
 	if (requestedType != TEXT) return false;
 	dataTransfer.data = buffer;
@@ -1461,56 +1461,56 @@ fn bool rgfw_readClipboardPtr_X11(GfxDataTransferType requestedType, char* buffe
 }
 
 // private
-fn bool rgfw_window_createContextPtr_OpenGL_X11(GfxWindow* win, RgfwGlContext* context, RgfwGlHints* hints)
+fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGlContext* context, TodoRenameGlHints* hints)
 {
 	win.src.ctx.native = context;
-	win.src.gfxType = RGFW_GFX_NATIVE_OPEN_GL;
+	win.src.gfxType = TODO_RENAMEGFX_NATIVE_OPEN_GL;
 
 	bool showWindow = false;
 	if (win.src.window != 0)
 	{
 		showWindow = !_window_is_minimized_native(win);
-		rgfw_window_closePlatform(win);
+		todo_fix_window_closePlatform(win);
 	}
 
 	bool transparent = win.internal.flags.transparent;
 
 	int[40] visualAttribs;
-	RgfwAttribStack stack;
-	rgfw_attribStack_init(&stack, (int*)&visualAttribs, 40);
-	rgfw_attribStack_pushAttribs(&stack, 0x22, 0x8002); // GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR
-	rgfw_attribStack_pushAttribs(&stack, 0x8012, 1); // GLX_X_RENDERABLE
-	rgfw_attribStack_pushAttribs(&stack, 0x8011, 0x1); // GLX_RENDER_TYPE, GLX_RGBA_BIT
-	rgfw_attribStack_pushAttribs(&stack, 0x8010, 0x1); // GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT
-	rgfw_attribStack_pushAttribs(&stack, 5, 1); // GLX_DOUBLEBUFFER
-	rgfw_attribStack_pushAttribs(&stack, 11, hints.alpha); // GLX_ALPHA_SIZE
-	rgfw_attribStack_pushAttribs(&stack, 12, hints.depth); // GLX_DEPTH_SIZE
-	rgfw_attribStack_pushAttribs(&stack, 13, hints.stencil); // GLX_STENCIL_SIZE
-	rgfw_attribStack_pushAttribs(&stack, 6, hints.stereo); // GLX_STEREO
-	rgfw_attribStack_pushAttribs(&stack, 7, hints.auxBuffers); // GLX_AUX_BUFFERS
-	rgfw_attribStack_pushAttribs(&stack, 8, hints.red); // GLX_RED_SIZE
-	rgfw_attribStack_pushAttribs(&stack, 9, hints.green); // GLX_GREEN_SIZE
-	rgfw_attribStack_pushAttribs(&stack, 10, hints.blue); // GLX_BLUE_SIZE
-	rgfw_attribStack_pushAttribs(&stack, 14, hints.accumRed); // GLX_ACCUM_RED_SIZE
-	rgfw_attribStack_pushAttribs(&stack, 15, hints.accumGreen);
-	rgfw_attribStack_pushAttribs(&stack, 16, hints.accumBlue);
-	rgfw_attribStack_pushAttribs(&stack, 17, hints.accumAlpha);
+	TodoRenameAttribStack stack;
+	todo_fix_attribStack_init(&stack, (int*)&visualAttribs, 40);
+	todo_fix_attribStack_pushAttribs(&stack, 0x22, 0x8002); // GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR
+	todo_fix_attribStack_pushAttribs(&stack, 0x8012, 1); // GLX_X_RENDERABLE
+	todo_fix_attribStack_pushAttribs(&stack, 0x8011, 0x1); // GLX_RENDER_TYPE, GLX_RGBA_BIT
+	todo_fix_attribStack_pushAttribs(&stack, 0x8010, 0x1); // GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT
+	todo_fix_attribStack_pushAttribs(&stack, 5, 1); // GLX_DOUBLEBUFFER
+	todo_fix_attribStack_pushAttribs(&stack, 11, hints.alpha); // GLX_ALPHA_SIZE
+	todo_fix_attribStack_pushAttribs(&stack, 12, hints.depth); // GLX_DEPTH_SIZE
+	todo_fix_attribStack_pushAttribs(&stack, 13, hints.stencil); // GLX_STENCIL_SIZE
+	todo_fix_attribStack_pushAttribs(&stack, 6, hints.stereo); // GLX_STEREO
+	todo_fix_attribStack_pushAttribs(&stack, 7, hints.auxBuffers); // GLX_AUX_BUFFERS
+	todo_fix_attribStack_pushAttribs(&stack, 8, hints.red); // GLX_RED_SIZE
+	todo_fix_attribStack_pushAttribs(&stack, 9, hints.green); // GLX_GREEN_SIZE
+	todo_fix_attribStack_pushAttribs(&stack, 10, hints.blue); // GLX_BLUE_SIZE
+	todo_fix_attribStack_pushAttribs(&stack, 14, hints.accumRed); // GLX_ACCUM_RED_SIZE
+	todo_fix_attribStack_pushAttribs(&stack, 15, hints.accumGreen);
+	todo_fix_attribStack_pushAttribs(&stack, 16, hints.accumBlue);
+	todo_fix_attribStack_pushAttribs(&stack, 17, hints.accumAlpha);
 
 	if (hints.sRGB)
 	{
 		ZString srgbArbStr = "GLX_ARB_framebuffer_sRGB";
 		ZString srgbExtStr = "GLX_EXT_framebuffer_sRGB";
-		if (rgfw_extensionSupportedPlatform_OpenGL_X11(srgbArbStr, srgbArbStr.len() + 1)) rgfw_attribStack_pushAttribs(&stack, 0x20B2, (int)hints.sRGB); // GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB
-		if (rgfw_extensionSupportedPlatform_OpenGL_X11(srgbExtStr, srgbExtStr.len() + 1)) rgfw_attribStack_pushAttribs(&stack, 0x20B2, (int)hints.sRGB); // GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT
+		if (todo_fix_extensionSupportedPlatform_OpenGL_X11(srgbArbStr, srgbArbStr.len() + 1)) todo_fix_attribStack_pushAttribs(&stack, 0x20B2, (int)hints.sRGB); // GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB
+		if (todo_fix_extensionSupportedPlatform_OpenGL_X11(srgbExtStr, srgbExtStr.len() + 1)) todo_fix_attribStack_pushAttribs(&stack, 0x20B2, (int)hints.sRGB); // GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT
 	}
 
-	rgfw_attribStack_pushAttribs(&stack, 0, 0);
+	todo_fix_attribStack_pushAttribs(&stack, 0, 0);
 
 	int fbcount;
-	GLXFBConfig* fbc = rgfw_glXChooseFBConfig(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), (int*)&visualAttribs, &fbcount);
+	GLXFBConfig* fbc = todo_fix_glXChooseFBConfig(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), (int*)&visualAttribs, &fbcount);
 	if (fbc == null || fbcount == 0)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_OPEN_GL_CONTEXT, "Failed to find any valid GLX visual configs.");
+		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to find any valid GLX visual configs.");
 		return false;
 	}
 
@@ -1519,11 +1519,11 @@ fn bool rgfw_window_createContextPtr_OpenGL_X11(GfxWindow* win, RgfwGlContext* c
 	int bestSamples = 0;
 	for (int i = 0; i < fbcount; i++)
 	{
-		XVisualInfo* vi = rgfw_glXGetVisualFromFBConfig(_gfx_ctx.display, fbc[i]);
+		XVisualInfo* vi = todo_fix_glXGetVisualFromFBConfig(_gfx_ctx.display, fbc[i]);
 		if (vi == null) continue;
 		int sampBuf, samples;
-		rgfw_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], 100000, &sampBuf); // GLX_SAMPLE_BUFFERS
-		rgfw_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], 100001, &samples); // GLX_SAMPLES
+		todo_fix_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], 100000, &sampBuf); // GLX_SAMPLE_BUFFERS
+		todo_fix_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], 100001, &samples); // GLX_SAMPLES
 		if (bestFbcIdx == -1) bestFbcIdx = i;
 		if ((!transparent || vi.depth == 32) && bestDepth == 0) { bestFbcIdx = i; bestDepth = vi.depth; }
 		if ((!transparent || vi.depth == 32) && samples <= hints.samples && samples > bestSamples) { bestFbcIdx = i; bestDepth = vi.depth; bestSamples = samples; }
@@ -1531,82 +1531,82 @@ fn bool rgfw_window_createContextPtr_OpenGL_X11(GfxWindow* win, RgfwGlContext* c
 	}
 	if (bestFbcIdx == -1)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_OPEN_GL_CONTEXT, "Failed to get a valid GLX visual.");
+		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to get a valid GLX visual.");
 		return false;
 	}
 
 	GLXFBConfig bestFbc = fbc[bestFbcIdx];
-	XVisualInfo* vi = rgfw_glXGetVisualFromFBConfig(_gfx_ctx.display, bestFbc);
+	XVisualInfo* vi = todo_fix_glXGetVisualFromFBConfig(_gfx_ctx.display, bestFbc);
 	xFree(fbc);
 	XVisualInfo visual = *vi;
 	xFree(vi);
 
-	if (catch rgfw_xCreateWindow(visual, "", win.internal.flags, win)) return false;
+	if (catch todo_fix_xCreateWindow(visual, "", win.internal.flags, win)) return false;
 	if (showWindow) win.show();
 
 	int[40] contextAttribs;
-	rgfw_attribStack_init(&stack, (int*)&contextAttribs, 40);
+	todo_fix_attribStack_init(&stack, (int*)&contextAttribs, 40);
 	int mask = 0;
 	switch (hints.profile)
 	{
-		case RGFW_GL_ES: mask |= 0x4;
-		case RGFW_GL_FORWARD_COMPATIBILITY: mask |= 0x2;
-		case RGFW_GL_COMPATIBILITY: mask |= 0x2;
+		case TODO_RENAMEGL_ES: mask |= 0x4;
+		case TODO_RENAMEGL_FORWARD_COMPATIBILITY: mask |= 0x2;
+		case TODO_RENAMEGL_COMPATIBILITY: mask |= 0x2;
 		default: mask |= 0x1; // GLX_CONTEXT_CORE_PROFILE_BIT_ARB
 	}
-	rgfw_attribStack_pushAttribs(&stack, 0x9126, mask); // GLX_CONTEXT_PROFILE_MASK_ARB
+	todo_fix_attribStack_pushAttribs(&stack, 0x9126, mask); // GLX_CONTEXT_PROFILE_MASK_ARB
 	if (hints.minor != 0 || hints.major != 0)
 	{
-		rgfw_attribStack_pushAttribs(&stack, 0x2091, hints.major);
-		rgfw_attribStack_pushAttribs(&stack, 0x2092, hints.minor);
+		todo_fix_attribStack_pushAttribs(&stack, 0x2091, hints.major);
+		todo_fix_attribStack_pushAttribs(&stack, 0x2092, hints.minor);
 	}
 
 	ZString flushStr = "GLX_ARB_context_flush_control";
-	if (rgfw_extensionSupportedPlatform_OpenGL_X11(flushStr, flushStr.len() + 1))
+	if (todo_fix_extensionSupportedPlatform_OpenGL_X11(flushStr, flushStr.len() + 1))
 	{
-		if (hints.releaseBehavior == RGFW_GL_RELEASE_FLUSH) { rgfw_attribStack_pushAttribs(&stack, 0x2097, 0x2098); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB
-		else if (hints.releaseBehavior == RGFW_GL_RELEASE_NONE) { rgfw_attribStack_pushAttribs(&stack, 0x2097, 0); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB
+		if (hints.releaseBehavior == TODO_RENAMEGL_RELEASE_FLUSH) { todo_fix_attribStack_pushAttribs(&stack, 0x2097, 0x2098); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB
+		else if (hints.releaseBehavior == TODO_RENAMEGL_RELEASE_NONE) { todo_fix_attribStack_pushAttribs(&stack, 0x2097, 0); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB
 	}
 
 	ZString robustStr = "GLX_ARB_create_context_robustness";
 	int glFlags = 0;
 	if (hints.debug) glFlags |= 0x00000001; // GLX_CONTEXT_DEBUG_BIT_ARB
-	if (hints.robustness && rgfw_extensionSupportedPlatform_OpenGL_X11(robustStr, robustStr.len() + 1)) glFlags |= 0x00000004; // GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB
-	if (glFlags != 0) rgfw_attribStack_pushAttribs(&stack, 0x2094, glFlags); // GLX_CONTEXT_FLAGS_ARB
+	if (hints.robustness && todo_fix_extensionSupportedPlatform_OpenGL_X11(robustStr, robustStr.len() + 1)) glFlags |= 0x00000004; // GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB
+	if (glFlags != 0) todo_fix_attribStack_pushAttribs(&stack, 0x2094, glFlags); // GLX_CONTEXT_FLAGS_ARB
 
 	ZString noErrorStr = "GLX_ARB_create_context_no_error";
-	if (rgfw_extensionSupportedPlatform_OpenGL_X11(noErrorStr, noErrorStr.len() + 1)) rgfw_attribStack_pushAttribs(&stack, 0x31B3, (int)hints.noError); // GLX_CONTEXT_OPENGL_NO_ERROR_ARB
+	if (todo_fix_extensionSupportedPlatform_OpenGL_X11(noErrorStr, noErrorStr.len() + 1)) todo_fix_attribStack_pushAttribs(&stack, 0x31B3, (int)hints.noError); // GLX_CONTEXT_OPENGL_NO_ERROR_ARB
 
-	rgfw_attribStack_pushAttribs(&stack, 0, 0);
+	todo_fix_attribStack_pushAttribs(&stack, 0, 0);
 
 	GLXContext ctx = null;
 	if (hints.share != null) ctx = hints.share.ctx;
 
-	if (rgfw_glXCreateContextAttribsARB == null)
+	if (todo_fix_glXCreateContextAttribsARB == null)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_OPEN_GL_CONTEXT, "Failed to load proc address 'glXCreateContextAttribsARB', loading a generic OpenGL context.");
-		win.src.ctx.native.ctx = rgfw_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
+		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to load proc address 'glXCreateContextAttribsARB', loading a generic OpenGL context.");
+		win.src.ctx.native.ctx = todo_fix_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
 	}
 	else
 	{
 		_gfx_ctx.x11Error = null;
-		win.src.ctx.native.ctx = rgfw_glXCreateContextAttribsARB(_gfx_ctx.display, bestFbc, ctx, X_TRUE, (int*)&contextAttribs);
+		win.src.ctx.native.ctx = todo_fix_glXCreateContextAttribsARB(_gfx_ctx.display, bestFbc, ctx, X_TRUE, (int*)&contextAttribs);
 		if (_gfx_ctx.x11Error != null || win.src.ctx.native.ctx == null)
 		{
-			rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL context with AttribsARB, loading a generic OpenGL context.");
-			win.src.ctx.native.ctx = rgfw_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
+			todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL context with AttribsARB, loading a generic OpenGL context.");
+			win.src.ctx.native.ctx = todo_fix_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
 		}
 	}
 
-	win.src.ctx.native.window = rgfw_glXCreateWindow(_gfx_ctx.display, bestFbc, win.src.window, null);
-	rgfw_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
-	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_OPEN_GL, "OpenGL context initalized.");
+	win.src.ctx.native.window = todo_fix_glXCreateWindow(_gfx_ctx.display, bestFbc, win.src.window, null);
+	todo_fix_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
+	todo_fix_debugCallback(TODO_RENAMETYPE_INFO, TODO_RENAMEINFO_OPEN_GL, "OpenGL context initalized.");
 	win.opengl_swap_interval(0);
 	return true;
 }
 
 // private
-fn void rgfw_window_flash_X11(GfxWindow* win, GfxFlashRequest request)
+fn void todo_fix_window_flash_X11(GfxWindow* win, GfxFlashRequest request)
 {
 	if (win.has_focus() && request != CANCEL) return;
 	XWMHints* wmhints = xGetWMHints(_gfx_ctx.display, win.src.window);
@@ -1614,7 +1614,7 @@ fn void rgfw_window_flash_X11(GfxWindow* win, GfxFlashRequest request)
 	if (request)
 	{
 		wmhints.flags |= 1 << 8; // XUrgencyHint
-		if (request == BRIEFLY) win.src.flashEnd = rgfw_unix_getTimeNS() + (ulong)1e9;
+		if (request == BRIEFLY) win.src.flashEnd = todo_fix_unix_getTimeNS() + (ulong)1e9;
 		if (request == UNTIL_FOCUSED) win.src.flashEnd = (ulong)-1;
 	}
 	else
@@ -1627,7 +1627,7 @@ fn void rgfw_window_flash_X11(GfxWindow* win, GfxFlashRequest request)
 }
 
 // private
-fn void? rgfw_createSurfacePtr_X11(void* data, int w, int h, GfxFormat format, GfxSurface* self, GfxWindow* window)
+fn void? todo_fix_createSurfacePtr_X11(void* data, int w, int h, GfxFormat format, GfxSurface* self, GfxWindow* window)
 {
 	if (!window) window = _gfx_ctx.root;
 	self.data = data;
@@ -1643,7 +1643,7 @@ fn void? rgfw_createSurfacePtr_X11(void* data, int w, int h, GfxFormat format, G
 	defer catch self.release();
 	self.native.bitmap = xCreateImage(_gfx_ctx.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])self.size, 32, 0);
 	self.native.buffer = malloc((sz)w * h * 4);
-	self.native.format = rgfw_xImageGetFormat(self.native.bitmap);
+	self.native.format = todo_fix_xImageGetFormat(self.native.bitmap);
 
 	if (!self.native.bitmap)
 	{
@@ -1667,7 +1667,7 @@ fn bool _window_is_floating_x11(GfxWindow* win)
 }
 
 // private
-fn void rgfw_window_setName_X11(GfxWindow* win, String name) => @pool()
+fn void todo_fix_window_setName_X11(GfxWindow* win, String name) => @pool()
 {
 	ZString cstring = name.zstr_copy(tmem);
 	xutf8SetWMProperties(_gfx_ctx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
@@ -1719,7 +1719,7 @@ fn bool _window_set_icon_x11(GfxWindow* win, char* dataSrc, int w, int h, GfxFor
 }
 
 // private
-fn GfxMonitor* rgfw_window_getMonitor_X11(GfxWindow* win)
+fn GfxMonitor* todo_fix_window_getMonitor_X11(GfxWindow* win)
 {
 	XWindowAttributes attrs;
 	if (xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attrs) == 0) return null;
@@ -1735,25 +1735,25 @@ fn GfxMonitor* rgfw_window_getMonitor_X11(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_showPlatform_X11(GfxWindow* win)
+fn void todo_fix_window_showPlatform_X11(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
 	if (!_window_is_hidden_native(win)) return;
 	xMapWindow(_gfx_ctx.display, win.src.window);
 	win.move(win.origin);
 
-	rgfw_waitForShowEvent_X11(win);
+	todo_fix_waitForShowEvent_X11(win);
 	_window_set_fullscreen_native(win, win.is_fullscreen());
 }
 
 // public
-fn bool rgfw_waitForShowEvent_X11(GfxWindow* win)
+fn bool todo_fix_waitForShowEvent_X11(GfxWindow* win)
 {
 	$if $feat(X11_WAYLAND):
 	XEvent dummy;
 	while (xCheckTypedWindowEvent(_gfx_ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
 	{
-		rgfw_waitForEvent(100);
+		todo_fix_waitForEvent(100);
 	}
 	return true;
 	$else
@@ -1771,7 +1771,7 @@ fn bool rgfw_waitForShowEvent_X11(GfxWindow* win)
 
 
 // private
-fn void rgfw_toggleXMaximized(GfxWindow* win, bool maximized)
+fn void todo_fix_toggleXMaximized(GfxWindow* win, bool maximized)
 {
 	XEvent xev;
 	xev.type = 33; // ClientMessage
@@ -1785,7 +1785,7 @@ fn void rgfw_toggleXMaximized(GfxWindow* win, bool maximized)
 }
 
 // public
-fn void rgfw_unix_parseURI(GfxWindow* win, ZString data)
+fn void todo_fix_unix_parseURI(GfxWindow* win, ZString data)
 {
 	ZString prefix = "file://";
 	ZString line;
@@ -1835,17 +1835,17 @@ fn void rgfw_unix_parseURI(GfxWindow* win, ZString data)
 		}
 
 		path[len] = 0;
-		rgfw_dataDropCallback(win, path, len + 1, FILE);
+		todo_fix_dataDropCallback(win, path, len + 1, FILE);
 		free(path);
 	}
 }
 
 // public
-fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
+fn VkResult todo_fix_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
 {
 	if (surface == null || win == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	*surface = 0;
-	GfxFn raw = rgfw_getInstanceProcAddress_Vulkan(instance, "vkCreateXlibSurfaceKHR");
+	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateXlibSurfaceKHR");
 	if (raw == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
 	VkXlibSurfaceCreateInfoKHR createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
@@ -1853,23 +1853,23 @@ fn VkResult rgfw_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance
 	createInfo.flags = 0;
 	createInfo.dpy = _gfx_ctx.display;
 	createInfo.window = win.src.window;
-	return ((RgfwVkCreateXlibSurfaceKHRProc)raw)(instance, &createInfo, null, surface);
+	return ((TodoRenameVkCreateXlibSurfaceKHRProc)raw)(instance, &createInfo, null, surface);
 }
 
 // public
-fn void rgfw_window_getVisual(XVisualInfo* visual, bool transparent)
+fn void todo_fix_window_getVisual(XVisualInfo* visual, bool transparent)
 {
 	visual.visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
 	visual.depth = xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
 	if (transparent)
 	{
 		xMatchVisualInfo(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), 32, 4 /* TrueColor */, visual);
-		if (visual.depth != 32) rgfw_debugCallback(RGFW_TYPE_WARNING, RGFW_WARNING_OPEN_GL, "Failed to load a 32-bit depth.");
+		if (visual.depth != 32) todo_fix_debugCallback(TODO_RENAMETYPE_WARNING, TODO_RENAMEWARNING_OPEN_GL, "Failed to load a 32-bit depth.");
 	}
 }
 
 // private
-fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
+fn void todo_fix_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
 {
 	XEvent xev;
 	xev.xclient.type = 33;
@@ -1883,20 +1883,20 @@ fn void rgfw_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
 }
 
 // public
-fn void rgfw_x11IcCallback(void* ic, char* clientData, char* callData)
+fn void todo_fix_x11IcCallback(void* ic, char* clientData, char* callData)
 {
 	GfxWindow* win = (GfxWindow*)(void*)clientData;
 	win.src.ic = null;
 }
 
 // public
-fn void rgfw_x11ImCallback(void* im, char* clientData, char* callData)
+fn void todo_fix_x11ImCallback(void* im, char* clientData, char* callData)
 {
 	_gfx_ctx.im = null;
 }
 
 // public
-fn void rgfw_x11ImInitCallback(GfxXDisplay* d, GfxXPointer clientData, GfxXPointer callData)
+fn void todo_fix_x11ImInitCallback(GfxXDisplay* d, GfxXPointer clientData, GfxXPointer callData)
 {
 	if (_gfx_ctx.im != null) return;
 
@@ -1931,23 +1931,23 @@ fn void rgfw_x11ImInitCallback(GfxXDisplay* d, GfxXPointer clientData, GfxXPoint
 	}
 
 	XImCallback callback;
-	callback.callback = &rgfw_x11ImCallback;
+	callback.callback = &todo_fix_x11ImCallback;
 	callback.client_data = null;
 	xSetIMValues(_gfx_ctx.im, "destroyCallback", &callback, (char*)null);
 }
 
 // public
-fn int rgfw_xErrorHandler(GfxXDisplay* display, XErrorEvent* ev)
+fn int todo_fix_xErrorHandler(GfxXDisplay* display, XErrorEvent* ev)
 {
 	char[512] errorText;
 	xGetErrorText(display, ev.error_code, (char*)&errorText, 512);
-	rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_X11, (ZString)&errorText);
+	todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_X11, (ZString)&errorText);
 	_gfx_ctx.x11Error = ev;
 	return 0;
 }
 
 // public
-fn void* rgfw_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxMonitorMode* found_mode)
+fn void* todo_fix_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxMonitorMode* found_mode)
 {
 	XRRModeInfoNative* mi = null;
 	for (int j = 0; j < res.nmode; j++) if (res.modes[j].id == mode) mi = &res.modes[j];
@@ -1959,7 +1959,7 @@ fn void* rgfw_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, Gf
 		found_mode.size = found_mode.size.yx;
 	}
 
-	rgfw_splitBPP((uint)xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), found_mode);
+	todo_fix_splitBPP((uint)xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), found_mode);
 	found_mode.src = (void*)(uptr)mode;
 	found_mode.refresh_rate = 0;
 	if (mi.hTotal == 0 || mi.vTotal == 0) return mi;
@@ -1974,7 +1974,7 @@ fn void* rgfw_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, Gf
 }
 
 // public
-fn void rgfw_xGetSystemContentDPI(float* dpi)
+fn void todo_fix_xGetSystemContentDPI(float* dpi)
 {
 	if (dpi == null) return;
 	float dpiOutput = 96.0f;
@@ -1989,7 +1989,7 @@ fn void rgfw_xGetSystemContentDPI(float* dpi)
 }
 
 // public
-fn void rgfw_xHandleClipboardSelection(XEvent* event)
+fn void todo_fix_xHandleClipboardSelection(XEvent* event)
 {
 	XSelectionRequestEvent* request = &event.xselectionrequest;
 	Atom[2] formats = {_gfx_ctx.utf8String, 31 /* XA_STRING */};
@@ -2052,7 +2052,7 @@ fn void rgfw_xHandleClipboardSelection(XEvent* event)
 }
 
 // private
-fn int rgfw_xHandleClipboardSelectionHelper()
+fn int todo_fix_xHandleClipboardSelectionHelper()
 {
 	XEvent event;
 	xPending(_gfx_ctx.display);
@@ -2065,12 +2065,12 @@ fn int rgfw_xHandleClipboardSelectionHelper()
 		return 0;
 	}
 
-	if (event.type == 30) { rgfw_xHandleClipboardSelection(&event); return 0; } // SelectionRequest
+	if (event.type == 30) { todo_fix_xHandleClipboardSelection(&event); return 0; } // SelectionRequest
 	return 0;
 }
 
 // public
-fn GfxFormat rgfw_xImageGetFormat(void* imagePtr)
+fn GfxFormat todo_fix_xImageGetFormat(void* imagePtr)
 {
 	// XImage*: bits_per_pixel/red_mask/green_mask/blue_mask live at a fixed
 	// offset in the real struct; here we only ever set the format ourselves
@@ -2079,14 +2079,14 @@ fn GfxFormat rgfw_xImageGetFormat(void* imagePtr)
 }
 
 // public
-fn void rgfw_window_swapInterval_OpenGL_X11(GfxWindow* win, int swapInterval)
+fn void todo_fix_window_swapInterval_OpenGL_X11(GfxWindow* win, int swapInterval)
 {
 	switch
 	{
-		case rgfw_glXSwapIntervalEXT != null:
-			rgfw_glXSwapIntervalEXT(_gfx_ctx.display, win.src.ctx.native.window, swapInterval);
-		case rgfw_glXSwapIntervalNative != null:
-			rgfw_glXSwapIntervalNative(swapInterval);
+		case todo_fix_glXSwapIntervalEXT != null:
+			todo_fix_glXSwapIntervalEXT(_gfx_ctx.display, win.src.ctx.native.window, swapInterval);
+		case todo_fix_glXSwapIntervalNative != null:
+			todo_fix_glXSwapIntervalNative(swapInterval);
 		default:
 			log::warn("Failed to load swap interval function", category: log::CATEGORY_VIDEO);
 	}

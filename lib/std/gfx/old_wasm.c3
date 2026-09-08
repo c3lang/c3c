@@ -1,39 +1,24 @@
 module std::gfx @feat(WASM);
 import std::math;
-// C3 port of the WASM/WebGL RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
-// Mechanical, line-by-line style translation of the RGFW_WASM implementation.
-// Standalone alternative to rgfw.c3 (macOS) / rgfw_x11.c3 / rgfw_wayland.c3 /
-// rgfw_windows.c3 - only ONE rgfw*.c3 file should be included for a given
-// target, matching how the original C header only ever compiles one #ifdef
-// backend at a time.
-//
-// The original relies on Emscripten's EM_ASM (inline JS) and emscripten_*
-// runtime; C3's wasm target has no Emscripten runtime, so every DOM/JS touch
-// point here is a named `extern fn ... @wasm("env", "name")` import that a
-// small JS host must implement (canvas sizing, cursor style, fullscreen,
-// clipboard, WebGL context, DOM event wiring), and the functions RGFW expects
-// JS to call back into (key events, drag-drop) are marked @export so the host
-// can find them.
-
 extern fn char* strstr(char* haystack, char* needle);
 
 
-struct RgfwGlContext { void* ctx; void* format; }
-struct RgfwEglContext { void* ctx; void* surface; void* eglWindow; }
+struct TodoRenameGlContext { void* ctx; void* format; }
+struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
 
-const RgfwGlReleaseBehavior RGFW_GL_RELEASE_FLUSH = 0;
-const RgfwGlReleaseBehavior RGFW_GL_RELEASE_NONE = 1;
+const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_FLUSH = 0;
+const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_NONE = 1;
 
-const RgfwGlProfile RGFW_GL_CORE = 0;
-const RgfwGlProfile RGFW_GL_FORWARD_COMPATIBILITY = 1;
-const RgfwGlProfile RGFW_GL_COMPATIBILITY = 2;
-const RgfwGlProfile RGFW_GL_ES = 3;
-const RgfwGlProfile RGFW_GL_WEB = 4;
+const TodoRenameGlProfile TODO_RENAMEGL_CORE = 0;
+const TodoRenameGlProfile TODO_RENAMEGL_FORWARD_COMPATIBILITY = 1;
+const TodoRenameGlProfile TODO_RENAMEGL_COMPATIBILITY = 2;
+const TodoRenameGlProfile TODO_RENAMEGL_ES = 3;
+const TodoRenameGlProfile TODO_RENAMEGL_WEB = 4;
 
-const RgfwGlRenderer RGFW_GL_ACCELERATED = 0;
-const RgfwGlRenderer RGFW_GL_SOFTWARE = 1;
+const TodoRenameGlRenderer TODO_RENAMEGL_ACCELERATED = 0;
+const TodoRenameGlRenderer TODO_RENAMEGL_SOFTWARE = 1;
 
-struct RgfwGlHints
+struct TodoRenameGlHints
 {
 	int stencil;
 	int samples;
@@ -47,18 +32,18 @@ struct RgfwGlHints
 	bool robustness;
 	bool debug;
 	bool noError;
-	RgfwGlReleaseBehavior releaseBehavior;
-	RgfwGlProfile profile;
+	TodoRenameGlReleaseBehavior releaseBehavior;
+	TodoRenameGlProfile profile;
 	int major, minor;
-	RgfwGlContext* share;
-	RgfwEglContext* shareEGL;
-	RgfwGlRenderer renderer;
+	TodoRenameGlContext* share;
+	TodoRenameEglContext* shareEGL;
+	TodoRenameGlRenderer renderer;
 }
 
-union RgfwGfxContext
+union TodoRenameGfxContext
 {
-	RgfwGlContext* native;
-	RgfwEglContext* egl;
+	TodoRenameGlContext* native;
+	TodoRenameEglContext* egl;
 }
 
 
@@ -71,19 +56,19 @@ struct GfxNativeImage
 	void* native2;
 }
 
-struct RgfwWindowSrc
+struct TodoRenameWindowSrc
 {
 	inline IntRect bounds;
 	void* window;
 	void* view;
 	void* mouse;
 	void* delegate;
-	RgfwGfxContext ctx;
-	RgfwGfxContextType gfxType;
+	TodoRenameGfxContext ctx;
+	TodoRenameGfxContextType gfxType;
 }
 
 // public
-fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
+fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
 
 alias WGPUInstance = void*;
 alias WGPUSurface = void*;
@@ -96,7 +81,7 @@ struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector { WgpuChainedStruct chain; 
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @wasm("env", "wgpuInstanceCreateSurface");
 
 // public
-fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
 	canvasDesc.chain.next = null;
@@ -118,7 +103,7 @@ extern fn void rgfwJsSetupWindowListeners() @wasm("env", "emscripten_setup_windo
 extern fn void rgfwJsSetupDropListeners() @wasm("env", "emscripten_setup_drop_listeners");
 
 // Each of the following registers exactly one DOM/window listener, mirroring
-// RGFW_createWindowPlatform's emscripten_set_*_callback calls one-for-one so
+// TODO_RENAMEcreateWindowPlatform's emscripten_set_*_callback calls one-for-one so
 // the JS host implementation can be checked line-by-line against RGFW.h.
 extern fn void rgfwJsSetResizeCallback() @wasm("env", "emscripten_set_resize_callback");
 extern fn void rgfwJsSetFullscreenChangeCallback() @wasm("env", "emscripten_set_fullscreenchange_callback");
@@ -159,7 +144,7 @@ extern fn void rgfwJsExitPointerLock() @wasm("env", "emscripten_exit_pointer_loc
 extern fn void rgfwJsRequestFullscreen() @wasm("env", "emscripten_request_fullscreen");
 extern fn void rgfwJsExitFullscreen() @wasm("env", "emscripten_exit_fullscreen");
 extern fn void rgfwJsSetOpacity(float opacity) @wasm("env", "emscripten_set_opacity");
-extern fn int rgfwJsWebglCreateContext(RgfwGlHints* hints) @wasm("env", "emscripten_webgl_create_context");
+extern fn int rgfwJsWebglCreateContext(TodoRenameGlHints* hints) @wasm("env", "emscripten_webgl_create_context");
 extern fn void rgfwJsWebglDestroyContext(int ctx) @wasm("env", "emscripten_webgl_destroy_context");
 extern fn void rgfwJsWebglMakeCurrent(int ctx) @wasm("env", "emscripten_webgl_make_current");
 extern fn void rgfwJsWebglCommitFrame() @wasm("env", "emscripten_webgl_commit_frame");
@@ -202,7 +187,7 @@ const int DOM_VK_ESCAPE = 27; const int DOM_VK_HOME = 36; const int DOM_VK_SCROL
 const int DOM_VK_PRINTSCREEN = 44; const int DOM_VK_PAUSE = 19;
 
 // private
-fn GfxKey rgfw_wasmPhysicalToRGFW(uint hash)
+fn GfxKey todo_fix_wasmPhysicalToRGFW(uint hash)
 {
 	switch (hash)
 	{
@@ -266,9 +251,9 @@ fn void rgfwEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
 // private
 
 // private
-fn void rgfwEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { rgfw_windowFocusCallback(_gfx_ctx.root, true); }
+fn void rgfwEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { todo_fix_windowFocusCallback(_gfx_ctx.root, true); }
 // private
-fn void rgfwEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { rgfw_windowFocusCallback(_gfx_ctx.root, false); }
+fn void rgfwEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { todo_fix_windowFocusCallback(_gfx_ctx.root, false); }
 
 // private
 fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("c3gfx_on_mousemove")
@@ -281,11 +266,11 @@ fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @e
 fn void rgfwEmscriptenOnMouseUp(int button) @export("c3gfx_on_mouseup")
 {
 	if (button > 2) button += 2;
-	rgfw_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, false);
+	todo_fix_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, false);
 }
 
 // private
-fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { rgfw_mouseScrollCallback(_gfx_ctx.root, { deltaX, deltaY }); }
+fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { todo_fix_mouseScrollCallback(_gfx_ctx.root, { deltaX, deltaY }); }
 
 // private
 fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("c3gfx_on_touch")
@@ -293,7 +278,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 	// down == 255 is the sentinel for touchmove (no button state change).
 	if (down == 255)
 	{
-		if (!(_gfx_ctx.root.internal.enabled_events & RGFW_MOUSE_MOTION_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAMEMOUSE_MOTION_FLAG)) return;
 		for (int i = 0; i < numTouches; i++)
 		{
 			_mouse_motion_callback(_gfx_ctx.root, { xs[i], ys[i] });
@@ -304,35 +289,35 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 
 	if (down)
 	{
-		if (!(_gfx_ctx.root.internal.enabled_events & RGFW_MOUSE_BUTTON_PRESSED_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAMEMOUSE_BUTTON_PRESSED_FLAG)) return;
 	}
 	else
 	{
-		if (!(_gfx_ctx.root.internal.enabled_events & RGFW_MOUSE_BUTTON_RELEASED_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAMEMOUSE_BUTTON_RELEASED_FLAG)) return;
 	}
 
 	for (int i = 0; i < numTouches; i++)
 	{
 		_mouse_motion_callback(_gfx_ctx.root, { xs[i], ys[i] });
 		_raw_motion_callback(_gfx_ctx.root, { });
-		rgfw_mouseButtonCallback(_gfx_ctx.root, LEFT, (bool)down);
+		todo_fix_mouseButtonCallback(_gfx_ctx.root, LEFT, (bool)down);
 	}
 }
 
 // private
-fn void rgfw_handleKeyEvent(ZString code, uint codepoint, bool press) @export("c3gfx_handleKeyEvent")
+fn void todo_fix_handleKeyEvent(ZString code, uint codepoint, bool press) @export("c3gfx_handleKeyEvent")
 {
 	ZString iCode = code;
 	uint hash = 0;
 	while (iCode[0] != 0) { hash = ((hash ^ 0x7E057D79u) << 3) ^ (uint)iCode[0]; iCode++; }
 
-	GfxKey physicalKey = rgfw_wasmPhysicalToRGFW(hash);
-	rgfw_keyCallback(_gfx_ctx.root, physicalKey, _gfx_ctx.root.internal.mod, is_key_down(physicalKey) && press, press);
-	if (press) rgfw_keyCharCallback(_gfx_ctx.root, codepoint);
+	GfxKey physicalKey = todo_fix_wasmPhysicalToRGFW(hash);
+	todo_fix_keyCallback(_gfx_ctx.root, physicalKey, _gfx_ctx.root.internal.mod, is_key_down(physicalKey) && press, press);
+	if (press) todo_fix_keyCharCallback(_gfx_ctx.root, codepoint);
 }
 
 // private
-fn void rgfw_handleKeyMods(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("c3gfx_handleKeyMods")
+fn void todo_fix_handleKeyMods(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("c3gfx_handleKeyMods")
 {
 	_key_update_key_mods_ex(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
 }
@@ -340,12 +325,12 @@ fn void rgfw_handleKeyMods(bool capital, bool numlock, bool control, bool alt, b
 // private
 
 // public
-fn void rgfw_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
+fn void todo_fix_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
 
 
 
 // public
-fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
+fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
 	int minH = win.height < surface.size.y ? win.height : surface.size.y;
 	copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
@@ -356,7 +341,7 @@ fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 fn void GfxSurface.release(&self) { *self = {}; }
 
 // public
-fn void rgfw_initKeycodesPlatform()
+fn void todo_fix_initKeycodesPlatform()
 {
 	_gfx_ctx.keycodes[DOM_VK_BACK_QUOTE] = BACKTICK;
 	_gfx_ctx.keycodes[DOM_VK_0] = NUM0; _gfx_ctx.keycodes[DOM_VK_1] = NUM1; _gfx_ctx.keycodes[DOM_VK_2] = NUM2;
@@ -406,7 +391,7 @@ fn void rgfw_initKeycodesPlatform()
 }
 
 // public
-fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
+fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 {
 	_gfx_ctx.usingAsyncify = -1;
 	GfxMonitor monitor;
@@ -421,20 +406,20 @@ fn int rgfw_initPlatform(String class_name, GfxInitOption flags)
 	float dpi = 96.0f * monitor.pixelRatio;
 	monitor.scale = (Vec2)(dpi / 96.0f);
 
-	rgfw_splitBPP(32, &monitor.mode);
+	todo_fix_splitBPP(32, &monitor.mode);
 	monitor.mode.refresh_rate = 0;
 
 	GfxMonitorNode* node = _monitor_add(&monitor);
 	if (node != null)
 	{
 		_gfx_ctx.monitors.primary = node;
-		rgfw_monitorCallback(_gfx_ctx.root, &node.mon, true);
+		todo_fix_monitorCallback(_gfx_ctx.root, &node.mon, true);
 	}
 	return 0;
 }
 
 // public
-fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	rgfwJsSetCanvasSize(win.width, win.height);
 	rgfwJsSetWindowTitle((ZString)name, name.len);
@@ -446,22 +431,22 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 }
 
 // public
-fn GfxKey rgfw_physicalToMappedKey(GfxKey key) => key;
+fn GfxKey todo_fix_physicalToMappedKey(GfxKey key) => key;
 // public
 fn GfxPoint _window_fetch_size_native(GfxWindow* win) => win.get_size();
 
 // public
-fn void rgfw_pollEvents()
+fn void todo_fix_pollEvents()
 {
 	if (_gfx_ctx.usingAsyncify == -1) _gfx_ctx.usingAsyncify = rgfwJsUsingAsyncify();
-	rgfw_resetPrevState();
+	todo_fix_resetPrevState();
 	if (_gfx_ctx.usingAsyncify) rgfwJsSleep(0);
 }
 
 // public
 
 // public
-fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse)
+fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 {
 	ZString cursorName;
 	switch (mouse)
@@ -489,16 +474,16 @@ fn RgfwMouse* rgfw_createMouseStandard(GfxMouseIcon mouse)
 		case PROGRESS: cursorName = "progress";
 		default: return null;
 	}
-	return (RgfwMouse*)cursorName;
+	return (TodoRenameMouse*)cursorName;
 }
 
 // public
-fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y) {}
+fn void todo_fix_window_moveMouse(GfxWindow* win, int x, int y) {}
 // public
-fn RgfwMouse* rgfw_createMouse(char* data, int w, int h, GfxFormat format) => null;
+fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format) => null;
 
 // public
-fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
+fn bool todo_fix_window_setMousePlatform(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	ZString name = (ZString)mouse;
 	rgfwJsSetCursor(name, name.len());
@@ -506,10 +491,10 @@ fn bool rgfw_window_setMousePlatform(GfxWindow* win, RgfwMouse* mouse)
 }
 
 // public
-fn void rgfw_freeMouse(RgfwMouse* mouse) {}
+fn void todo_fix_freeMouse(TodoRenameMouse* mouse) {}
 
 // public
-fn bool rgfw_getGlobalMouse(int* x, int* y)
+fn bool todo_fix_getGlobalMouse(int* x, int* y)
 {
 	if (x != null) *x = rgfwJsGetMouseX();
 	if (y != null) *y = rgfwJsGetMouseY();
@@ -517,32 +502,32 @@ fn bool rgfw_getGlobalMouse(int* x, int* y)
 }
 
 // public
-fn void rgfw_window_setMousePassthrough(GfxWindow* win, char passthrough) { rgfwJsSetPointerEvents(passthrough); }
+fn void todo_fix_window_setMousePassthrough(GfxWindow* win, char passthrough) { rgfwJsSetPointerEvents(passthrough); }
 
 // public
-fn bool rgfw_writeClipboard(GfxDataTransfer* data)
+fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
 {
 	rgfwJsWriteClipboard(data.data, data.length);
 	return true;
 }
 
 // public
-fn bool rgfw_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
+fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
 	if (requestedType != TEXT) return false;
 	return false;
 }
 
 // public
-fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, RgfwGlHints* hints)
+fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx, TodoRenameGlHints* hints)
 {
 	win.src.ctx.native = ctx;
-	win.src.gfxType = RGFW_GFX_NATIVE_OPEN_GL;
+	win.src.gfxType = TODO_RENAMEGFX_NATIVE_OPEN_GL;
 
 	int handle = rgfwJsWebglCreateContext(hints);
 	if (handle == 0)
 	{
-		rgfw_debugCallback(RGFW_TYPE_ERROR, RGFW_ERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL Context.");
+		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL Context.");
 		return false;
 	}
 	ctx.ctx = (void*)(uptr)handle;
@@ -552,34 +537,34 @@ fn bool rgfw_window_createContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx, 
 }
 
 // public
-fn void rgfw_window_deleteContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
+fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx)
 {
 	rgfwJsWebglDestroyContext((int)(uptr)ctx.ctx);
 	win.src.ctx.native.ctx = null;
-	rgfw_debugCallback(RGFW_TYPE_INFO, RGFW_INFO_OPEN_GL, "OpenGL context freed.");
+	todo_fix_debugCallback(TODO_RENAMETYPE_INFO, TODO_RENAMEINFO_OPEN_GL, "OpenGL context freed.");
 }
 
 
 // public
-fn void rgfw_window_makeCurrentContext_OpenGL(GfxWindow* win)
+fn void todo_fix_window_makeCurrentContext_OpenGL(GfxWindow* win)
 {
 	if (win == null) { rgfwJsWebglMakeCurrent(0); }
 	else { rgfwJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx); }
 }
 
 // public
-fn void rgfw_window_swapBuffers_OpenGL(GfxWindow* win) { rgfwJsWebglCommitFrame(); }
+fn void todo_fix_window_swapBuffers_OpenGL(GfxWindow* win) { rgfwJsWebglCommitFrame(); }
 // public
-fn void* rgfw_getCurrentContext_OpenGL() => (void*)(uptr)rgfwJsWebglGetCurrentContext();
+fn void* todo_fix_getCurrentContext_OpenGL() => (void*)(uptr)rgfwJsWebglGetCurrentContext();
 // public
-fn bool rgfw_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfwJsExtensionSupported(extension, len) != 0;
+fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfwJsExtensionSupported(extension, len) != 0;
 // public
 fn GfxFn _get_opengl_proc_native(ZString procname) => rgfwJsGetProcAddress(procname);
 
 // public
-fn void rgfw_deinitPlatform() {}
+fn void todo_fix_deinitPlatform() {}
 // public
-fn void rgfw_window_closePlatform(GfxWindow* win) {}
+fn void todo_fix_window_closePlatform(GfxWindow* win) {}
 
 // public
 fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) {}
@@ -597,34 +582,34 @@ fn void GfxWindow.set_name(&self, String name)
 }
 
 // public
-fn void rgfw_window_setOpacity(GfxWindow* win, char opacity) { rgfwJsSetOpacity((float)opacity / 255.0f); }
+fn void todo_fix_window_setOpacity(GfxWindow* win, char opacity) { rgfwJsSetOpacity((float)opacity / 255.0f); }
 
 // public
 fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
 
 // ---- unsupported on WASM (match the original's no-op stubs) ----
 // public
-fn void rgfw_pollMonitors() {}
+fn void todo_fix_pollMonitors() {}
 // public
-fn void rgfw_monitorNode_free(GfxMonitorNode* node) {}
+fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}
 // public
 
 // public
-fn void rgfw_window_raise(GfxWindow* win) {}
+fn void todo_fix_window_raise(GfxWindow* win) {}
 // public
-fn bool rgfw_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => false;
+fn bool todo_fix_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => false;
 // public
-fn bool rgfw_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height) => false;
+fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height) => false;
 // public
-fn sz rgfw_monitor_getGammaRampPtr(GfxMonitor* monitor, RgfwGammaRamp* ramp) => 0;
+fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => 0;
 // public
-fn bool rgfw_monitor_setGammaRamp(GfxMonitor* monitor, RgfwGammaRamp* ramp) => false;
+fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => false;
 // public
-fn GfxMonitorMode[] rgfw_monitor_getModesPtr(GfxMonitor* mon) => {};
+fn GfxMonitorMode[] todo_fix_monitor_getModesPtr(GfxMonitor* mon) => {};
 // public
-fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => false;
+fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => false;
 
-fn void rgfw_window_minimizePlatform(GfxWindow* win) {}
-fn void rgfw_window_setFloating(GfxWindow* win, bool floating) {}
-fn void rgfw_waitForEvent(int waitMS) {}
+fn void todo_fix_window_minimizePlatform(GfxWindow* win) {}
+fn void todo_fix_window_setFloating(GfxWindow* win, bool floating) {}
+fn void todo_fix_waitForEvent(int waitMS) {}
 

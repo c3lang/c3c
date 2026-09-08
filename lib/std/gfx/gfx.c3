@@ -58,7 +58,7 @@ struct GfxKeyState
 struct GfxWindow
 {
 	inline IntRect bounds;
-	RgfwWindowSrc src;
+	TodoRenameWindowSrc src;
 	GfxWindowInternal internal;
 	void* user_ptr;
 }
@@ -98,11 +98,11 @@ struct GfxWindowInternal
 	bool inFocus;
 	bool mouse_inside;
 	GfxKeyModifier mod;
-	RgfwEventFlag enabled_events;
+	TodoRenameEventFlag enabled_events;
 	GfxWindowFlags flags;
 	IntRect old_bounds;
 	GfxMonitorMode oldMode;
-	RgfwMouse* mouse;
+	TodoRenameMouse* mouse;
 }
 
 
@@ -143,9 +143,9 @@ struct GfxContext
 	bool initialized;
 	GfxWindow* root;
 	int windowCount;
-	RgfwMouse* hiddenMouse;
-	RgfwMouse*[21] standardMice;
-	RgfwDebugFunc debugCallbackSrc;
+	TodoRenameMouse* hiddenMouse;
+	TodoRenameMouse*[21] standardMice;
+	TodoRenameDebugFunc debugCallbackSrc;
 	GfxGenericFunc[25] callbacks;
 	GfxEvent[MAX_EVENTS] events;
 	int eventBottom;
@@ -356,15 +356,15 @@ union GfxEvent
 	GfxMonitorEvent monitor;
 }
 
-struct RgfwCallbacks
+struct TodoRenameCallbacks
 {
 	GfxGenericFunc[25] arr;
 }
 
-struct RgfwDebugInfo
+struct TodoRenameDebugInfo
 {
-	RgfwDebugType type;
-	RgfwErrorCode code;
+	TodoRenameDebugType type;
+	TodoRenameErrorCode code;
 	ZString msg;
 }
 
@@ -611,42 +611,42 @@ enum GfxEventType : char
 	MONITOR_DISCONNECTED,
 }
 
-const RgfwEventFlag RGFW_KEY_PRESSED_FLAG = 2;
-const RgfwEventFlag RGFW_KEY_RELEASED_FLAG = 4;
-const RgfwEventFlag RGFW_KEY_CHAR_FLAG = 8;
-const RgfwEventFlag RGFW_MOUSE_SCROLL_FLAG = 64;
-const RgfwEventFlag RGFW_MOUSE_BUTTON_PRESSED_FLAG = 16;
-const RgfwEventFlag RGFW_MOUSE_BUTTON_RELEASED_FLAG = 32;
-const RgfwEventFlag RGFW_MOUSE_MOTION_FLAG = 128;
-const RgfwEventFlag RGFW_MOUSE_RAW_MOTION_FLAG = 256;
-const RgfwEventFlag RGFW_MOUSE_ENTER_FLAG = 512;
-const RgfwEventFlag RGFW_MOUSE_LEAVE_FLAG = 1024;
-const RgfwEventFlag RGFW_WINDOW_MOVED_FLAG = 2048;
-const RgfwEventFlag RGFW_WINDOW_RESIZED_FLAG = 4096;
-const RgfwEventFlag RGFW_WINDOW_FOCUS_IN_FLAG = 8192;
-const RgfwEventFlag RGFW_WINDOW_FOCUS_OUT_FLAG = 16384;
-const RgfwEventFlag RGFW_WINDOW_REFRESH_FLAG = 32768;
-const RgfwEventFlag RGFW_WINDOW_MAXIMIZED_FLAG = 131072;
-const RgfwEventFlag RGFW_WINDOW_MINIMIZED_FLAG = 262144;
-const RgfwEventFlag RGFW_WINDOW_RESTORED_FLAG = 524288;
-const RgfwEventFlag RGFW_SCALE_UPDATED_FLAG = 4194304;
-const RgfwEventFlag RGFW_WINDOW_CLOSE_FLAG = 65536;
-const RgfwEventFlag RGFW_DATA_DROP_FLAG = 1048576;
-const RgfwEventFlag RGFW_DATA_DRAG_FLAG = 2097152;
-const RgfwEventFlag RGFW_MONITOR_CONNECTED_FLAG = 8388608;
-const RgfwEventFlag RGFW_MONITOR_DISCONNECTED_FLAG = 16777216;
-const RgfwEventFlag RGFW_MOUSE_POS_CHANGED_FLAG = 128;
-const RgfwEventFlag RGFW_KEY_EVENTS_FLAG = 14;
-const RgfwEventFlag RGFW_MOUSE_EVENTS_FLAG = 2032;
-const RgfwEventFlag RGFW_WINDOW_EVENTS_FLAG = 5150720;
-const RgfwEventFlag RGFW_WINDOW_FOCUS_EVENTS_FLAG = 24576;
-const RgfwEventFlag RGFW_DATA_DRAG_DROP_EVENTS_FLAG = 3145728;
-const RgfwEventFlag RGFW_MONITOR_EVENTS_FLAG = 25165824;
-const RgfwEventFlag RGFW_ALL_EVENT_FLAGS = 33554430;
+const TodoRenameEventFlag TODO_RENAMEKEY_PRESSED_FLAG = 2;
+const TodoRenameEventFlag TODO_RENAMEKEY_RELEASED_FLAG = 4;
+const TodoRenameEventFlag TODO_RENAMEKEY_CHAR_FLAG = 8;
+const TodoRenameEventFlag TODO_RENAMEMOUSE_SCROLL_FLAG = 64;
+const TodoRenameEventFlag TODO_RENAMEMOUSE_BUTTON_PRESSED_FLAG = 16;
+const TodoRenameEventFlag TODO_RENAMEMOUSE_BUTTON_RELEASED_FLAG = 32;
+const TodoRenameEventFlag TODO_RENAMEMOUSE_MOTION_FLAG = 128;
+const TodoRenameEventFlag TODO_RENAMEMOUSE_RAW_MOTION_FLAG = 256;
+const TodoRenameEventFlag TODO_RENAMEMOUSE_ENTER_FLAG = 512;
+const TodoRenameEventFlag TODO_RENAMEMOUSE_LEAVE_FLAG = 1024;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_MOVED_FLAG = 2048;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_RESIZED_FLAG = 4096;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_FOCUS_IN_FLAG = 8192;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_FOCUS_OUT_FLAG = 16384;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_REFRESH_FLAG = 32768;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_MAXIMIZED_FLAG = 131072;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_MINIMIZED_FLAG = 262144;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_RESTORED_FLAG = 524288;
+const TodoRenameEventFlag TODO_RENAMESCALE_UPDATED_FLAG = 4194304;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_CLOSE_FLAG = 65536;
+const TodoRenameEventFlag TODO_RENAMEDATA_DROP_FLAG = 1048576;
+const TodoRenameEventFlag TODO_RENAMEDATA_DRAG_FLAG = 2097152;
+const TodoRenameEventFlag TODO_RENAMEMONITOR_CONNECTED_FLAG = 8388608;
+const TodoRenameEventFlag TODO_RENAMEMONITOR_DISCONNECTED_FLAG = 16777216;
+const TodoRenameEventFlag TODO_RENAMEMOUSE_POS_CHANGED_FLAG = 128;
+const TodoRenameEventFlag TODO_RENAMEKEY_EVENTS_FLAG = 14;
+const TodoRenameEventFlag TODO_RENAMEMOUSE_EVENTS_FLAG = 2032;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_EVENTS_FLAG = 5150720;
+const TodoRenameEventFlag TODO_RENAMEWINDOW_FOCUS_EVENTS_FLAG = 24576;
+const TodoRenameEventFlag TODO_RENAMEDATA_DRAG_DROP_EVENTS_FLAG = 3145728;
+const TodoRenameEventFlag TODO_RENAMEMONITOR_EVENTS_FLAG = 25165824;
+const TodoRenameEventFlag TODO_RENAMEALL_EVENT_FLAGS = 33554430;
 
 
-const RgfwEventWait RGFW_EVENT_NO_WAIT = 0;
-const RgfwEventWait RGFW_EVENT_WAIT_NEXT = -1;
+const TodoRenameEventWait TODO_RENAMEEVENT_NO_WAIT = 0;
+const TodoRenameEventWait TODO_RENAMEEVENT_WAIT_NEXT = -1;
 
 bitstruct GfxWindowFlags : uint
 {
@@ -708,31 +708,31 @@ constset GfxFlashRequest
 }
 
 
-const RgfwDebugType RGFW_TYPE_ERROR = 0;
-const RgfwDebugType RGFW_TYPE_WARNING = 1;
-const RgfwDebugType RGFW_TYPE_INFO = 2;
+const TodoRenameDebugType TODO_RENAMETYPE_ERROR = 0;
+const TodoRenameDebugType TODO_RENAMETYPE_WARNING = 1;
+const TodoRenameDebugType TODO_RENAMETYPE_INFO = 2;
 
-const RgfwErrorCode RGFW_NO_ERROR = 0;
-const RgfwErrorCode RGFW_ERR_OUT_OF_MEMORY = 1;
-const RgfwErrorCode RGFW_ERR_OPEN_GL_CONTEXT = 2;
-const RgfwErrorCode RGFW_ERR_EGL_CONTEXT = 3;
-const RgfwErrorCode RGFW_ERR_WAYLAND = 4;
-const RgfwErrorCode RGFW_ERR_X11 = 5;
-const RgfwErrorCode RGFW_ERR_DIRECT_X_CONTEXT = 6;
-const RgfwErrorCode RGFW_ERR_IO_KIT = 7;
-const RgfwErrorCode RGFW_ERR_CLIPBOARD = 8;
-const RgfwErrorCode RGFW_ERR_FAILED_FUNC_LOAD = 9;
-const RgfwErrorCode RGFW_ERR_BUFFER = 10;
-const RgfwErrorCode RGFW_ERR_METAL = 11;
-const RgfwErrorCode RGFW_ERR_PLATFORM = 12;
-const RgfwErrorCode RGFW_ERR_EVENT_QUEUE = 13;
-const RgfwErrorCode RGFW_ERR_NO_INIT = 14;
-const RgfwErrorCode RGFW_INFO_WINDOW = 15;
-const RgfwErrorCode RGFW_INFO_BUFFER = 16;
-const RgfwErrorCode RGFW_INFO_GLOBAL = 17;
-const RgfwErrorCode RGFW_INFO_OPEN_GL = 18;
-const RgfwErrorCode RGFW_WARNING_WAYLAND = 19;
-const RgfwErrorCode RGFW_WARNING_OPEN_GL = 20;
+const TodoRenameErrorCode TODO_RENAMENO_ERROR = 0;
+const TodoRenameErrorCode TODO_RENAMEERR_OUT_OF_MEMORY = 1;
+const TodoRenameErrorCode TODO_RENAMEERR_OPEN_GL_CONTEXT = 2;
+const TodoRenameErrorCode TODO_RENAMEERR_EGL_CONTEXT = 3;
+const TodoRenameErrorCode TODO_RENAMEERR_WAYLAND = 4;
+const TodoRenameErrorCode TODO_RENAMEERR_X11 = 5;
+const TodoRenameErrorCode TODO_RENAMEERR_DIRECT_X_CONTEXT = 6;
+const TodoRenameErrorCode TODO_RENAMEERR_IO_KIT = 7;
+const TodoRenameErrorCode TODO_RENAMEERR_CLIPBOARD = 8;
+const TodoRenameErrorCode TODO_RENAMEERR_FAILED_FUNC_LOAD = 9;
+const TodoRenameErrorCode TODO_RENAMEERR_BUFFER = 10;
+const TodoRenameErrorCode TODO_RENAMEERR_METAL = 11;
+const TodoRenameErrorCode TODO_RENAMEERR_PLATFORM = 12;
+const TodoRenameErrorCode TODO_RENAMEERR_EVENT_QUEUE = 13;
+const TodoRenameErrorCode TODO_RENAMEERR_NO_INIT = 14;
+const TodoRenameErrorCode TODO_RENAMEINFO_WINDOW = 15;
+const TodoRenameErrorCode TODO_RENAMEINFO_BUFFER = 16;
+const TodoRenameErrorCode TODO_RENAMEINFO_GLOBAL = 17;
+const TodoRenameErrorCode TODO_RENAMEINFO_OPEN_GL = 18;
+const TodoRenameErrorCode TODO_RENAMEWARNING_WAYLAND = 19;
+const TodoRenameErrorCode TODO_RENAMEWARNING_OPEN_GL = 20;
 
 
 // public
@@ -808,20 +808,20 @@ fn int init(String class_name, GfxInitOption options)
 		log::error("Failed to load the Vulkan library", category: log::CATEGORY_VIDEO);
 		return -1;
 	}
-	rgfw_initKeycodes();
-	int out = rgfw_initPlatform(class_name, options);
+	todo_fix_initKeycodes();
+	int out = todo_fix_initPlatform(class_name, options);
 	if (out != 0)
 	{
 		log::error("Failed to initialize global context", category: log::CATEGORY_VIDEO);
-		rgfw_deinitPlatform();
+		todo_fix_deinitPlatform();
 		_gfx_ctx = {};
 		return out;
 	}
 	foreach (icon : GfxMouseIcon::values)
 	{
-		_gfx_ctx.standardMice[icon.ordinal] = rgfw_createMouseStandard(icon);
+		_gfx_ctx.standardMice[icon.ordinal] = todo_fix_createMouseStandard(icon);
 	}
-	rgfw_pollMonitors();
+	todo_fix_pollMonitors();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
 	return out;
 }
@@ -832,11 +832,11 @@ fn void finalize()
 	if (!_gfx_ctx.initialized) return;
 	foreach (icon : GfxMouseIcon::values)
 	{
-		if (_gfx_ctx.standardMice[icon.ordinal]) rgfw_freeMouse(_gfx_ctx.standardMice[icon.ordinal]);
+		if (_gfx_ctx.standardMice[icon.ordinal]) todo_fix_freeMouse(_gfx_ctx.standardMice[icon.ordinal]);
 	}
 	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
-	rgfw_deinitPlatform();
+	todo_fix_deinitPlatform();
 	unload_egl();
 	unload_opengl();
 	_gfx_ctx.root = null;
@@ -898,7 +898,7 @@ fn void GfxWindow.set_should_close(&win, bool should_close)
 	_window_close_callback(win);
 }
 
-fn RgfwWindowSrc* GfxWindow.get_src(&self)
+fn TodoRenameWindowSrc* GfxWindow.get_src(&self)
 {
 	return &self.src;
 }
@@ -932,19 +932,19 @@ fn void GfxWindow.set_exit_key(&self, GfxKey key)
 	self.internal.exit_key = key;
 }
 
-fn void GfxWindow.set_enabled_events(&self, RgfwEventFlag events)
+fn void GfxWindow.set_enabled_events(&self, TodoRenameEventFlag events)
 {
 	self.internal.enabled_events = events;
 }
 
-fn RgfwEventFlag GfxWindow.get_enabled_events(&self)
+fn TodoRenameEventFlag GfxWindow.get_enabled_events(&self)
 {
 	return self.internal.enabled_events;
 }
 
-fn void GfxWindow.set_disabled_events(&self, RgfwEventFlag events)
+fn void GfxWindow.set_disabled_events(&self, TodoRenameEventFlag events)
 {
-	self.internal.enabled_events = RGFW_ALL_EVENT_FLAGS & ~events;
+	self.internal.enabled_events = TODO_RENAMEALL_EVENT_FLAGS & ~events;
 }
 
 
@@ -1036,25 +1036,25 @@ fn void GfxWindow.release(&self)
 {
 	if (self.internal.capture_mouse) self.set_capture_mouse(false);
 	$if $feat(MACOS):
-	if ((self.src.gfxType & RGFW_GFX_EGL) && self.src.ctx.egl != null)
+	if ((self.src.gfxType & TODO_RENAMEGFX_EGL) && self.src.ctx.egl != null)
 	{
-		rgfw_window_deleteContext_EGL(self, self.src.ctx.egl);
+		todo_fix_window_deleteContext_EGL(self, self.src.ctx.egl);
 		self.src.ctx.egl = null;
 	}
-	if ((self.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
+	if ((self.src.gfxType & TODO_RENAMEGFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
 	{
-		rgfw_window_deleteContext_OpenGL(self, self.src.ctx.native);
+		todo_fix_window_deleteContext_OpenGL(self, self.src.ctx.native);
 		self.src.ctx.native = null;
 	}
 	$endif
 	$if $feat(WASM) || $feat(WIN32):
-	if ((self.src.gfxType & RGFW_GFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
+	if ((self.src.gfxType & TODO_RENAMEGFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
 	{
-		rgfw_window_deleteContext_OpenGL(self, self.src.ctx.native);
+		todo_fix_window_deleteContext_OpenGL(self, self.src.ctx.native);
 		self.src.ctx.native = null;
 	}
 	$endif
-	rgfw_window_closePlatform(self);
+	todo_fix_window_closePlatform(self);
 	if (_gfx_ctx.clipboard) free(_gfx_ctx.clipboard);
 	_gfx_ctx.clipboard = null;
 	_gfx_ctx.windowCount--;
@@ -1079,7 +1079,7 @@ fn void set_dual_event_callback(GfxEventType type, GfxGenericFunc func, GfxGener
 }
 
 // public
-fn void set_all_event_callback(GfxGenericFunc func, RgfwCallbacks* callbacks)
+fn void set_all_event_callback(GfxGenericFunc func, TodoRenameCallbacks* callbacks)
 {
 	foreach (i : GfxEventType::values[1..])
 	{
@@ -1090,7 +1090,7 @@ fn void set_all_event_callback(GfxGenericFunc func, RgfwCallbacks* callbacks)
 
 
 // public
-fn void rgfw_eventQueueFlush() { _gfx_ctx.eventLen = 0; }
+fn void todo_fix_eventQueueFlush() { _gfx_ctx.eventLen = 0; }
 
 // public
 fn void event_queue_push(GfxEvent* event)
@@ -1099,7 +1099,7 @@ fn void event_queue_push(GfxEvent* event)
 	if (_gfx_ctx.eventLen >= MAX_EVENTS)
 	{
 		log::error("Event queue limit 'MAX_EVENTS' has been reached automatically flushing queue.", category: log::CATEGORY_VIDEO);
-		rgfw_eventQueueFlush();
+		todo_fix_eventQueueFlush();
 		return;
 	}
 	int eventTop = (_gfx_ctx.eventBottom + _gfx_ctx.eventLen) % MAX_EVENTS;
@@ -1124,7 +1124,7 @@ fn GfxEvent? check_event()
 	if (!_gfx_ctx.eventLen && !_gfx_ctx.polledEvents)
 	{
 		_gfx_ctx.queueEvents = true;
-		rgfw_pollEvents();
+		todo_fix_pollEvents();
 		_gfx_ctx.polledEvents = true;
 	}
 	defer catch _gfx_ctx.polledEvents = false;
@@ -1163,7 +1163,7 @@ fn GfxEvent? check_window_event(GfxWindow* win)
 	if (!_gfx_ctx.eventLen && !_gfx_ctx.polledEvents)
 	{
 		_gfx_ctx.queueEvents = true;
-		rgfw_pollEvents();
+		todo_fix_pollEvents();
 		_gfx_ctx.polledEvents = true;
 	}
 	defer catch _gfx_ctx.polledEvents = false;
@@ -1188,8 +1188,8 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 		case flags.minimize: win.minimize();
 		case cmpFlags.minimize: win.restore();
 	}
-	if (flags.center) rgfw_window_center(win);
-	if (flags.center_cursor) rgfw_window_moveMouse(win, win.x + (win.width / 2), win.y + (win.height / 2));
+	if (flags.center) todo_fix_window_center(win);
+	if (flags.center_cursor) todo_fix_window_moveMouse(win, win.x + (win.width / 2), win.y + (win.height / 2));
 	switch
 	{
 		case flags.fullscreen: _window_set_fullscreen_native(win, true);
@@ -1213,11 +1213,11 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	}
 	if (flags.floating)
 	{
-		rgfw_window_setFloating(win, true);
+		todo_fix_window_setFloating(win, true);
 	}
 	else if (cmpFlags.floating)
 	{
-		rgfw_window_setFloating(win, false);
+		todo_fix_window_setFloating(win, false);
 	}
 	if (flags.raw_mouse)
 	{
@@ -1255,7 +1255,7 @@ fn void _window_restored_callback(GfxWindow* win, IntRect bounds) @private
 	win.internal.flags.minimize = false;
 	win.bounds = bounds;
 	if (!_window_is_maximized_native(win)) win.internal.flags.maximize = false;
-	if (win.internal.enabled_events & RGFW_WINDOW_RESTORED_FLAG == 0) return;
+	if (win.internal.enabled_events & TODO_RENAMEWINDOW_RESTORED_FLAG == 0) return;
 	GfxEvent event;
 	event.type = WINDOW_RESTORED;
 	event.update.bounds = bounds;
@@ -1264,17 +1264,17 @@ fn void _window_restored_callback(GfxWindow* win, IntRect bounds) @private
 }
 
 // private
-fn void rgfw_window_checkMode(GfxWindow* win)
+fn void todo_fix_window_checkMode(GfxWindow* win)
 {
 	switch
 	{
-		case _window_is_minimized_native(win) && (win.internal.enabled_events & RGFW_WINDOW_MINIMIZED_FLAG):
-			rgfw_windowMinimizedCallback(win);
-		case _window_is_maximized_native(win)&& (win.internal.enabled_events & RGFW_WINDOW_MAXIMIZED_FLAG):
-			rgfw_windowMaximizedCallback(win, win.bounds);
+		case _window_is_minimized_native(win) && (win.internal.enabled_events & TODO_RENAMEWINDOW_MINIMIZED_FLAG):
+			todo_fix_windowMinimizedCallback(win);
+		case _window_is_maximized_native(win)&& (win.internal.enabled_events & TODO_RENAMEWINDOW_MAXIMIZED_FLAG):
+			todo_fix_windowMaximizedCallback(win, win.bounds);
 		case (win.internal.flags.minimize && !_window_is_maximized_native(win)) ||
 			 (win.internal.flags.maximize && !_window_is_maximized_native(win)):
-			if (win.internal.enabled_events & RGFW_WINDOW_RESTORED_FLAG) _window_restored_callback(win, win.bounds);
+			if (win.internal.enabled_events & TODO_RENAMEWINDOW_RESTORED_FLAG) _window_restored_callback(win, win.bounds);
 	}
 }
 
@@ -1282,7 +1282,7 @@ fn void rgfw_window_checkMode(GfxWindow* win)
 fn void _window_moved_callback(GfxWindow* win, GfxPoint where) @private
 {
 	win.origin = where;
-	if (!(win.internal.enabled_events & RGFW_WINDOW_MOVED_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEWINDOW_MOVED_FLAG)) return;
 	GfxEvent event;
 	event.type = WINDOW_MOVED;
 	event.update.bounds = win.bounds;
@@ -1294,7 +1294,7 @@ fn void _window_moved_callback(GfxWindow* win, GfxPoint where) @private
 fn void _window_resized_callback(GfxWindow* win, GfxSize size) @private
 {
 	win.size = size;
-	if (!(win.internal.enabled_events & RGFW_WINDOW_RESIZED_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEWINDOW_RESIZED_FLAG)) return;
 	GfxEvent event;
 	event.type = WINDOW_RESIZED;
 	event.update.bounds = win.bounds;
@@ -1317,7 +1317,7 @@ fn void _window_close_callback(GfxWindow* win) @private
 fn void _raw_motion_callback(GfxWindow* win, Vec2 delta)
 {
 	_gfx_ctx.vector = delta;
-	if (!(win.internal.enabled_events & RGFW_MOUSE_RAW_MOTION_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEMOUSE_RAW_MOTION_FLAG)) return;
 	GfxEvent event;
 	event.type = MOUSE_RAW_MOTION;
 	event.delta.vector = delta;
@@ -1326,9 +1326,9 @@ fn void _raw_motion_callback(GfxWindow* win, Vec2 delta)
 }
 
 // public
-fn void rgfw_windowRefreshCallback(GfxWindow* win, IntRect bounds)
+fn void todo_fix_windowRefreshCallback(GfxWindow* win, IntRect bounds)
 {
-	if (!(win.internal.enabled_events & RGFW_WINDOW_REFRESH_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEWINDOW_REFRESH_FLAG)) return;
 	GfxEvent event;
 	event.type = WINDOW_REFRESH;
 	event.update.bounds = bounds;
@@ -1337,17 +1337,17 @@ fn void rgfw_windowRefreshCallback(GfxWindow* win, IntRect bounds)
 }
 
 // public
-fn void rgfw_mouseButtonCallback(GfxWindow* win, GfxMouseButton button, bool press)
+fn void todo_fix_mouseButtonCallback(GfxWindow* win, GfxMouseButton button, bool press)
 {
 	GfxEvent event;
 	if (press)
 	{
-		if (!(win.internal.enabled_events & RGFW_MOUSE_BUTTON_PRESSED_FLAG)) return;
+		if (!(win.internal.enabled_events & TODO_RENAMEMOUSE_BUTTON_PRESSED_FLAG)) return;
 		event.type = MOUSE_BUTTON_PRESSED;
 	}
 	else
 	{
-		if (!(win.internal.enabled_events & RGFW_MOUSE_BUTTON_RELEASED_FLAG)) return;
+		if (!(win.internal.enabled_events & TODO_RENAMEMOUSE_BUTTON_RELEASED_FLAG)) return;
 		event.type = MOUSE_BUTTON_RELEASED;
 	}
 	_gfx_ctx.mouseButtons[(sz)button].prev = _gfx_ctx.mouseButtons[(sz)button].current;
@@ -1359,9 +1359,9 @@ fn void rgfw_mouseButtonCallback(GfxWindow* win, GfxMouseButton button, bool pre
 }
 
 // public
-fn void rgfw_mouseScrollCallback(GfxWindow* win, Vec2 delta)
+fn void todo_fix_mouseScrollCallback(GfxWindow* win, Vec2 delta)
 {
-	if (!(win.internal.enabled_events & RGFW_MOUSE_SCROLL_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEMOUSE_SCROLL_FLAG)) return;
 	_gfx_ctx.scroll = delta;
 	GfxEvent event;
 	event.type = MOUSE_SCROLL;
@@ -1371,9 +1371,9 @@ fn void rgfw_mouseScrollCallback(GfxWindow* win, Vec2 delta)
 }
 
 // public
-fn void rgfw_scaleUpdatedCallback(GfxWindow* win, Vec2 scale)
+fn void todo_fix_scaleUpdatedCallback(GfxWindow* win, Vec2 scale)
 {
-	if (!(win.internal.enabled_events & RGFW_SCALE_UPDATED_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMESCALE_UPDATED_FLAG)) return;
 	GfxEvent event;
 	event.type = SCALE_UPDATED;
 	event.scale.scale = scale;
@@ -1382,12 +1382,12 @@ fn void rgfw_scaleUpdatedCallback(GfxWindow* win, Vec2 scale)
 }
 
 // public
-fn void rgfw_monitorCallback(GfxWindow* win, GfxMonitor* monitor, bool connected)
+fn void todo_fix_monitorCallback(GfxWindow* win, GfxMonitor* monitor, bool connected)
 {
 	if (win != null)
 	{
-		if (connected && !(win.internal.enabled_events & RGFW_MONITOR_CONNECTED_FLAG)) return;
-		if (!connected && !(win.internal.enabled_events & RGFW_MONITOR_DISCONNECTED_FLAG)) return;
+		if (connected && !(win.internal.enabled_events & TODO_RENAMEMONITOR_CONNECTED_FLAG)) return;
+		if (!connected && !(win.internal.enabled_events & TODO_RENAMEMONITOR_DISCONNECTED_FLAG)) return;
 	}
 	GfxEvent event;
 	event.type = connected ? MONITOR_CONNECTED : MONITOR_DISCONNECTED;
@@ -1398,11 +1398,11 @@ fn void rgfw_monitorCallback(GfxWindow* win, GfxMonitor* monitor, bool connected
 }
 
 // public
-fn void rgfw_windowMaximizedCallback(GfxWindow* win, IntRect bounds)
+fn void todo_fix_windowMaximizedCallback(GfxWindow* win, IntRect bounds)
 {
 	win.internal.flags.maximize = true;
 	win.bounds = bounds;
-	if (!(win.internal.enabled_events & RGFW_WINDOW_MAXIMIZED_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEWINDOW_MAXIMIZED_FLAG)) return;
 	GfxEvent event;
 	event.type = WINDOW_MAXIMIZED;
 	event.update.bounds = bounds;
@@ -1411,10 +1411,10 @@ fn void rgfw_windowMaximizedCallback(GfxWindow* win, IntRect bounds)
 }
 
 // public
-fn void rgfw_windowMinimizedCallback(GfxWindow* win)
+fn void todo_fix_windowMinimizedCallback(GfxWindow* win)
 {
 	win.internal.flags.minimize = true;
-	if (!(win.internal.enabled_events & RGFW_WINDOW_MINIMIZED_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEWINDOW_MINIMIZED_FLAG)) return;
 	GfxEvent event;
 	event.type = WINDOW_MINIMIZED;
 	event.update.bounds = win.bounds;
@@ -1423,7 +1423,7 @@ fn void rgfw_windowMinimizedCallback(GfxWindow* win)
 }
 
 // public
-fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
+fn void todo_fix_windowFocusCallback(GfxWindow* win, bool inFocus)
 {
 	win.internal.inFocus = inFocus;
 	if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, inFocus);
@@ -1432,7 +1432,7 @@ fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
 	event.focus.state = inFocus;
 	if (inFocus == true)
 	{
-		if (win.internal.flags.fullscreen) rgfw_window_raise(win);
+		if (win.internal.flags.fullscreen) todo_fix_window_raise(win);
 		event.type = WINDOW_FOCUS_IN;
 	}
 	else
@@ -1443,9 +1443,9 @@ fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
 			GfxKey key = (GfxKey)i;
 			if (!is_key_down(key)) continue;
 			_gfx_ctx.keyboard[i].current = false;
-			if (win.internal.enabled_events & RGFW_KEY_RELEASED_FLAG) rgfw_keyCallback(win, key, win.internal.mod, false, false);
+			if (win.internal.enabled_events & TODO_RENAMEKEY_RELEASED_FLAG) todo_fix_keyCallback(win, key, win.internal.mod, false, false);
 		}
-		rgfw_resetKey();
+		todo_fix_resetKey();
 		event.type = WINDOW_FOCUS_OUT;
 	}
 	_event_queue_call_push(&event);
@@ -1453,9 +1453,9 @@ fn void rgfw_windowFocusCallback(GfxWindow* win, bool inFocus)
 
 
 // public
-fn void rgfw_dataDragCallback(GfxWindow* win, GfxDataTransferType dataType, GfxDndActionType action, GfxPoint pos)
+fn void todo_fix_dataDragCallback(GfxWindow* win, GfxDataTransferType dataType, GfxDndActionType action, GfxPoint pos)
 {
-	if (!(win.internal.enabled_events & RGFW_DATA_DRAG_FLAG) || !win.internal.flags.allow_dnd) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEDATA_DRAG_FLAG) || !win.internal.flags.allow_dnd) return;
 	_gfx_ctx.window_state.win = win;
 	_gfx_ctx.window_state.dataDragging = true;
 	_gfx_ctx.window_state.drop = pos;
@@ -1469,9 +1469,9 @@ fn void rgfw_dataDragCallback(GfxWindow* win, GfxDataTransferType dataType, GfxD
 }
 
 // public
-fn void rgfw_dataDropCallback(GfxWindow* win, char* data, sz length, GfxDataTransferType dataType)
+fn void todo_fix_dataDropCallback(GfxWindow* win, char* data, sz length, GfxDataTransferType dataType)
 {
-	if (!(win.internal.enabled_events & RGFW_DATA_DROP_FLAG) || !win.internal.flags.allow_dnd) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEDATA_DROP_FLAG) || !win.internal.flags.allow_dnd) return;
 	_gfx_ctx.window_state.win = win;
 	_gfx_ctx.window_state.dataDrop = true;
 	_gfx_ctx.window_state.dataLength = length;
@@ -1502,9 +1502,9 @@ fn void rgfw_dataDropCallback(GfxWindow* win, char* data, sz length, GfxDataTran
 }
 
 // public
-fn void rgfw_keyCharCallback(GfxWindow* win, uint codepoint)
+fn void todo_fix_keyCharCallback(GfxWindow* win, uint codepoint)
 {
-	if (!(win.internal.enabled_events & RGFW_KEY_CHAR_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEKEY_CHAR_FLAG)) return;
 	GfxEvent event;
 	event.type = KEY_CHAR;
 	event.keyChar.value = codepoint;
@@ -1513,17 +1513,17 @@ fn void rgfw_keyCharCallback(GfxWindow* win, uint codepoint)
 }
 
 // public
-fn void rgfw_keyCallback(GfxWindow* win, GfxKey key, GfxKeyModifier mod, bool repeat, bool state)
+fn void todo_fix_keyCallback(GfxWindow* win, GfxKey key, GfxKeyModifier mod, bool repeat, bool state)
 {
 	GfxEvent event;
 	if (state)
 	{
-		if (!(win.internal.enabled_events & RGFW_KEY_PRESSED_FLAG)) return;
+		if (!(win.internal.enabled_events & TODO_RENAMEKEY_PRESSED_FLAG)) return;
 		event.type = KEY_PRESSED;
 	}
 	else
 	{
-		if (!(win.internal.enabled_events & RGFW_KEY_RELEASED_FLAG)) return;
+		if (!(win.internal.enabled_events & TODO_RENAMEKEY_RELEASED_FLAG)) return;
 		event.type = KEY_RELEASED;
 	}
 	_gfx_ctx.keyboard[(sz)key].prev = _gfx_ctx.keyboard[(sz)key].current;
@@ -1534,10 +1534,10 @@ fn void rgfw_keyCallback(GfxWindow* win, GfxKey key, GfxKeyModifier mod, bool re
 }
 
 // public
-fn void rgfw_initKeycodes()
+fn void todo_fix_initKeycodes()
 {
 	_gfx_ctx.keycodes = {};
-	rgfw_initKeycodesPlatform();
+	todo_fix_initKeycodesPlatform();
 	for (int i = 0; i < GFX_KEYS; i++)
 	{
 		for (int y = 0; y < _gfx_ctx.keycodes.len; y++)
@@ -1549,33 +1549,33 @@ fn void rgfw_initKeycodes()
 			}
 		}
 	}
-	rgfw_resetKey();
+	todo_fix_resetKey();
 }
 
 // public
-fn GfxKey rgfw_apiKeyToRGFW(uint keycode)
+fn GfxKey todo_fix_apiKeyToRGFW(uint keycode)
 {
 	if (keycode >= _gfx_ctx.keycodes.len) return NULL;
 	return _gfx_ctx.keycodes[keycode];
 }
 
 // public
-fn uint rgfw_rgfwToApiKey(GfxKey keycode)
+fn uint todo_fix_rgfwToApiKey(GfxKey keycode)
 {
 	return _gfx_ctx.apiKeycodes[keycode];
 }
 
 // public
-fn void rgfw_resetKey()
+fn void todo_fix_resetKey()
 {
 	_gfx_ctx.keyboard = {};
 }
 
 // public
-fn void rgfw_setQueueEvents(bool queue) { _gfx_ctx.queueEvents = queue; }
+fn void todo_fix_setQueueEvents(bool queue) { _gfx_ctx.queueEvents = queue; }
 
 // public
-fn void rgfw_resetPrevState()
+fn void todo_fix_resetPrevState()
 {
 	foreach (&entry : _gfx_ctx.keyboard) entry.prev = entry.current;
 	foreach (mouse : GfxMouseButton::values)
@@ -1598,12 +1598,12 @@ fn void rgfw_resetPrevState()
 
 
 // public
-fn void* rgfw_window_getUserPtr(GfxWindow* win) => win.user_ptr;
+fn void* todo_fix_window_getUserPtr(GfxWindow* win) => win.user_ptr;
 // public
-fn void rgfw_window_setUserPtr(GfxWindow* win, void* ptr) { win.user_ptr = ptr; }
+fn void todo_fix_window_setUserPtr(GfxWindow* win, void* ptr) { win.user_ptr = ptr; }
 
 // public
-fn bool rgfw_window_getSizeInPixels(GfxWindow* win, int* w, int* h)
+fn bool todo_fix_window_getSizeInPixels(GfxWindow* win, int* w, int* h)
 {
 	GfxMonitor* mon = find_monitor(win);
 	if (mon == null) return false;
@@ -1613,18 +1613,18 @@ fn bool rgfw_window_getSizeInPixels(GfxWindow* win, int* w, int* h)
 }
 
 // public
-fn bool rgfw_window_didMouseLeave(GfxWindow* win) => _gfx_ctx.window_state.win_leave == win && _gfx_ctx.window_state.mouse_leave;
+fn bool todo_fix_window_didMouseLeave(GfxWindow* win) => _gfx_ctx.window_state.win_leave == win && _gfx_ctx.window_state.mouse_leave;
 // public
-fn bool rgfw_window_didMouseEnter(GfxWindow* win) => _gfx_ctx.window_state.win == win && _gfx_ctx.window_state.mouse_enter;
+fn bool todo_fix_window_didMouseEnter(GfxWindow* win) => _gfx_ctx.window_state.win == win && _gfx_ctx.window_state.mouse_enter;
 // public
-fn bool rgfw_window_isMouseInside(GfxWindow* win) => win.internal.mouse_inside;
+fn bool todo_fix_window_isMouseInside(GfxWindow* win) => win.internal.mouse_inside;
 // public
-fn bool rgfw_window_isDataDragging(GfxWindow* win) => rgfw_window_getDataDrag(win, null, null);
+fn bool todo_fix_window_isDataDragging(GfxWindow* win) => todo_fix_window_getDataDrag(win, null, null);
 // public
-fn bool rgfw_window_didDataDrop(GfxWindow* win) => rgfw_window_getDataDrop(win) != null;
+fn bool todo_fix_window_didDataDrop(GfxWindow* win) => todo_fix_window_getDataDrop(win) != null;
 
 // public
-fn bool rgfw_window_getDataDrag(GfxWindow* win, int* x, int* y)
+fn bool todo_fix_window_getDataDrag(GfxWindow* win, int* x, int* y)
 {
 	if (_gfx_ctx.window_state.win != win || _gfx_ctx.window_state.dataDragging == false) return false;
 	if (x != null) *x = _gfx_ctx.window_state.drop.x;
@@ -1633,19 +1633,19 @@ fn bool rgfw_window_getDataDrag(GfxWindow* win, int* x, int* y)
 }
 
 // public
-fn GfxDataDropNode* rgfw_window_getDataDrop(GfxWindow* win)
+fn GfxDataDropNode* todo_fix_window_getDataDrop(GfxWindow* win)
 {
 	if (_gfx_ctx.window_state.win != win || _gfx_ctx.window_state.dataDrop == false) return null;
 	return _gfx_ctx.dndRoot;
 }
 
 // public
-fn void rgfw_setRootWindow(GfxWindow* win) { _gfx_ctx.root = win; }
+fn void todo_fix_setRootWindow(GfxWindow* win) { _gfx_ctx.root = win; }
 // public
-fn GfxWindow* rgfw_getRootWindow() { return _gfx_ctx.root; }
+fn GfxWindow* todo_fix_getRootWindow() { return _gfx_ctx.root; }
 
 // public
-fn void rgfw_setBit(uint* value, uint mask, bool set)
+fn void todo_fix_setBit(uint* value, uint mask, bool set)
 {
 	if (set) { *value |= mask; }
 	else { *value &= ~mask; }
@@ -1653,7 +1653,7 @@ fn void rgfw_setBit(uint* value, uint mask, bool set)
 
 
 // public
-fn void rgfw_window_center(GfxWindow* win)
+fn void todo_fix_window_center(GfxWindow* win)
 {
 	GfxMonitor* mon = find_monitor(win);
 	if (!mon) return;
@@ -1661,17 +1661,17 @@ fn void rgfw_window_center(GfxWindow* win)
 }
 
 // public
-fn bool rgfw_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
+fn bool todo_fix_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
 {
 	GfxMonitorMode mode;
 	mode.size = win.size;
-	bool ret = rgfw_monitor_requestMode(mon, &mode, SCALE);
+	bool ret = todo_fix_monitor_requestMode(mon, &mode, SCALE);
 	win.move(mon.origin);
 	return ret;
 }
 
 // public
-fn void rgfw_splitBPP(uint bpp, GfxMonitorMode* mode)
+fn void todo_fix_splitBPP(uint bpp, GfxMonitorMode* mode)
 {
 	if (bpp == 32) bpp = 24;
 	mode.rgb.r = mode.rgb.g = mode.rgb.b = (char)(bpp / 3);
@@ -1715,7 +1715,7 @@ fn void refresh_monitors()
 		GfxMonitorNode* next = node.next;
 		if (!node.disconnected)
 		{
-			rgfw_monitorCallback(_gfx_ctx.root, &node.mon, false);
+			todo_fix_monitorCallback(_gfx_ctx.root, &node.mon, false);
 			_remove_monitor(node, prev);
 		}
 		prev = node;
@@ -1763,7 +1763,7 @@ fn GfxMonitor*? get_primary_monitor()
 // public
 fn GfxMonitorMode[] GfxMonitor.get_modes(&monitor, Allocator allocator)
 {
-	return alloc::clone_slice(allocator, rgfw_monitor_getModesPtr(monitor));
+	return alloc::clone_slice(allocator, todo_fix_monitor_getModesPtr(monitor));
 }
 
 // public
@@ -1771,7 +1771,7 @@ fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mo
 {
 	GfxMonitorMode* chosen;
 	int top_score = 1;
-	foreach (&mode2 : rgfw_monitor_getModesPtr(monitor))
+	foreach (&mode2 : todo_fix_monitor_getModesPtr(monitor))
 	{
 		int score = 0;
 		if (mode.size == mode2.size) score += 1000;
@@ -1809,28 +1809,28 @@ fn GfxMonitorMode GfxMonitor.get_mode(&self)
 
 fn bool GfxMonitor.set_gamma(&self, float gamma)
 {
-	sz count = rgfw_monitor_getGammaRampPtr(self, null);
+	sz count = todo_fix_monitor_getGammaRampPtr(self, null);
 	ushort* ptr = mem::alloc_array(ushort, count);
-	bool ret = rgfw_monitor_setGammaPtr(self, gamma, ptr, count);
+	bool ret = todo_fix_monitor_setGammaPtr(self, gamma, ptr, count);
 	free(ptr);
 	return ret;
 }
 
 
 // public
-fn RgfwGammaRamp* rgfw_monitor_getGammaRamp(GfxMonitor* monitor)
+fn TodoRenameGammaRamp* todo_fix_monitor_getGammaRamp(GfxMonitor* monitor)
 {
-	RgfwGammaRamp* ramp = mem::new(RgfwGammaRamp);
-	ramp.count = rgfw_monitor_getGammaRampPtr(monitor, null);
+	TodoRenameGammaRamp* ramp = mem::new(TodoRenameGammaRamp);
+	ramp.count = todo_fix_monitor_getGammaRampPtr(monitor, null);
 	ramp.red = mem::alloc_array(ushort, ramp.count);
 	ramp.green = mem::alloc_array(ushort, ramp.count);
 	ramp.blue = mem::alloc_array(ushort, ramp.count);
-	ramp.count = rgfw_monitor_getGammaRampPtr(monitor, ramp);
+	ramp.count = todo_fix_monitor_getGammaRampPtr(monitor, ramp);
 	return ramp;
 }
 
 // public
-fn void rgfw_freeGammaRamp(RgfwGammaRamp* ramp)
+fn void todo_fix_freeGammaRamp(TodoRenameGammaRamp* ramp)
 {
 	free(ramp.red);
 	free(ramp.green);
@@ -1839,7 +1839,7 @@ fn void rgfw_freeGammaRamp(RgfwGammaRamp* ramp)
 }
 
 // public
-fn bool rgfw_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, sz count)
+fn bool todo_fix_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, sz count)
 {
 	for (sz i = 0; i < count; i++)
 	{
@@ -1848,9 +1848,9 @@ fn bool rgfw_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, 
 		value = min(value, 65535.0f);
 		ptr[i] = (ushort)value;
 	}
-	RgfwGammaRamp ramp;
+	TodoRenameGammaRamp ramp;
 	ramp.red = ptr; ramp.green = ptr; ramp.blue = ptr; ramp.count = count;
-	return rgfw_monitor_setGammaRamp(monitor, &ramp);
+	return todo_fix_monitor_setGammaRamp(monitor, &ramp);
 }
 
 fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindowFlags flags)
@@ -1858,22 +1858,22 @@ fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindo
 	if (!_gfx_ctx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
 	*self = {};
 	_gfx_ctx.windowCount++;
-	if (!_gfx_ctx.root) rgfw_setRootWindow(self);
+	if (!_gfx_ctx.root) todo_fix_setRootWindow(self);
 	self.bounds = { x, y, w, h };
 	self.internal.mouse = _gfx_ctx.standardMice[GfxMouseIcon.NORMAL.ordinal];
 	self.internal.flags = flags;
-	self.internal.enabled_events = RGFW_ALL_EVENT_FLAGS;
-	rgfw_createWindowPlatform(name, flags, self)!;
+	self.internal.enabled_events = TODO_RENAMEALL_EVENT_FLAGS;
+	todo_fix_createWindowPlatform(name, flags, self)!;
 	_window_set_flags(self, flags, {});
 	self.src.gfxType = 0;
 	$if $feat(MACOS) || $feat(WIN32) || $feat(WASM):
 		if (flags.open_gl)
 		{
-			rgfw_window_createContext_OpenGL(self, rgfw_getGlobalHints_OpenGL());
+			todo_fix_window_createContext_OpenGL(self, todo_fix_getGlobalHints_OpenGL());
 		}
 	$endif
 	$if $feat(MACOS):
-		if (flags.egl) rgfw_window_createContext_EGL(self, rgfw_getGlobalHints_OpenGL());
+		if (flags.egl) todo_fix_window_createContext_EGL(self, todo_fix_getGlobalHints_OpenGL());
 	$endif
 	if (!flags.hide_mouse) self.set_mouse_default();
 	self.set_name(name);
@@ -1986,10 +1986,10 @@ fn bool GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
 	return self.set_mouse(_gfx_ctx.standardMice[(sz)icon]);
 }
 
-fn bool GfxWindow.set_mouse(&self, RgfwMouse* mouse)
+fn bool GfxWindow.set_mouse(&self, TodoRenameMouse* mouse)
 {
 	if (mouse != _gfx_ctx.hiddenMouse) self.internal.mouse = mouse;
-	return rgfw_window_setMousePlatform(self, mouse);
+	return todo_fix_window_setMousePlatform(self, mouse);
 }
 
 
@@ -2024,7 +2024,7 @@ fn void GfxWindow.restore(&self)
 
 fn void GfxWindow.minimize(&self)
 {
-	rgfw_window_minimizePlatform(self);
+	todo_fix_window_minimizePlatform(self);
 	self.internal.flags.maximize = false;
 }
 
@@ -2076,7 +2076,7 @@ fn GfxFn get_opengl_proc(ZString s)
 
 
 // public
-fn bool rgfw_extensionSupportedStr(ZString extensions, ZString ext, sz len) @feat(!WASM)
+fn bool todo_fix_extensionSupportedStr(ZString extensions, ZString ext, sz len) @feat(!WASM)
 {
 	if (extensions == null || ext == null) return false;
 	while (ext[len - 1] == 0 && len > 3) len--;
@@ -2123,24 +2123,24 @@ fn void unload_vulkan()
 }
 
 
-alias RgfwEventFlag = uint;
-alias RgfwEventWait = int;
-alias RgfwDebugType = char;
-alias RgfwErrorCode = char;
-alias RgfwGlReleaseBehavior = int;
-alias RgfwGlProfile = int;
-alias RgfwGlRenderer = int;
-alias RgfwGfxContextType = uint;
+alias TodoRenameEventFlag = uint;
+alias TodoRenameEventWait = int;
+alias TodoRenameDebugType = char;
+alias TodoRenameErrorCode = char;
+alias TodoRenameGlReleaseBehavior = int;
+alias TodoRenameGlProfile = int;
+alias TodoRenameGlRenderer = int;
+alias TodoRenameGfxContextType = uint;
 
-typedef RgfwMouse = void;
+typedef TodoRenameMouse = void;
 alias GfxFn = fn void();
 alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
 alias GfxGenericFunc = fn void(GfxEvent* e);
-alias RgfwDebugFunc = fn void(RgfwDebugInfo* info);
+alias TodoRenameDebugFunc = fn void(TodoRenameDebugInfo* info);
 
 struct GfxColorLayout { int r, g, b, a; int channels; }
 
-struct RgfwGammaRamp
+struct TodoRenameGammaRamp
 {
 	ushort* red;
 	ushort* green;
@@ -2148,9 +2148,9 @@ struct RgfwGammaRamp
 	sz count;
 }
 
-const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
-const RgfwGfxContextType RGFW_GFX_EGL = 2;
-const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
+const TodoRenameGfxContextType TODO_RENAMEGFX_NATIVE_OPEN_GL = 1;
+const TodoRenameGfxContextType TODO_RENAMEGFX_EGL = 2;
+const TodoRenameGfxContextType TODO_RENAMEGFX_OWNED_BY_RGFW = 4;
 
 
 
@@ -2166,13 +2166,13 @@ fn void _mouse_notify_callback(GfxWindow* win, GfxPoint where, bool status)
 	event.mouse.in_window = win.internal.mouse_inside;
 	if (status)
 	{
-		if (!(win.internal.enabled_events & RGFW_MOUSE_ENTER_FLAG)) return;
+		if (!(win.internal.enabled_events & TODO_RENAMEMOUSE_ENTER_FLAG)) return;
 		_gfx_ctx.window_state.mouse_enter = true;
 		event.type = MOUSE_ENTER;
 	}
 	else
 	{
-		if (!(win.internal.enabled_events & RGFW_MOUSE_LEAVE_FLAG)) return;
+		if (!(win.internal.enabled_events & TODO_RENAMEMOUSE_LEAVE_FLAG)) return;
 		_gfx_ctx.window_state.win_leave = win;
 		_gfx_ctx.window_state.mouse_leave = true;
 		event.type = MOUSE_LEAVE;
@@ -2180,13 +2180,13 @@ fn void _mouse_notify_callback(GfxWindow* win, GfxPoint where, bool status)
 	_event_queue_call_push(&event);
 }
 
-fn void rgfw_window_setEventState(GfxWindow* win, RgfwEventFlag event, bool state) { rgfw_setBit(&win.internal.enabled_events, event, state); }
+fn void todo_fix_window_setEventState(GfxWindow* win, TodoRenameEventFlag event, bool state) { todo_fix_setBit(&win.internal.enabled_events, event, state); }
 
 // public
 fn void _mouse_motion_callback(GfxWindow* win, GfxPoint where)
 {
 	win.internal.last_mouse = where;
-	if (!(win.internal.enabled_events & RGFW_MOUSE_MOTION_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAMEMOUSE_MOTION_FLAG)) return;
 	GfxEvent event;
 	event.type = MOUSE_MOTION;
 	event.mouse.pos = where;
