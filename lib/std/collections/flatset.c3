@@ -461,8 +461,8 @@ fn void grow(FlatSet* self) @private
 	HashType* new_data = (HashType*)alloc::malloc(self.alloc, mem_req);
 	reset_hashes(new_data[:new_capacity]);
 
-	sz old_idx        = 0;
-	Value* old_values = values_array(old_data, old_capacity);
+	sz old_idx         = 0;
+	Value[] old_values = values_array(old_data, old_capacity);
 
 	for (; old_idx < old_capacity; ++old_idx)
 	{

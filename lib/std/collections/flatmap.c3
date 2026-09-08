@@ -300,15 +300,15 @@ fn void? FlatMap.remove(&self, Key key) @maydiscard
 <*
  Iterates over each key-value pair in the map.
 
- @require self.is_initialized() : "Must be initialized set"
+ @require self.is_initialized() : "Must be initialized map"
 *>
 macro void FlatMap.@each_pair(&self; @body(Key key, Value value))
 {
 	if (@unlikely(self.is_empty())) return;
 
 	HashType[] hashes = hashes_array(self);
-	Key[] keys        = keys_array(self.data, self.capacity);
-	Value[] values    = values_array(self.data, self.capacity);
+	Key[] keys        = keys_array(self);
+	Value[] values    = values_array(self);
 
 	foreach (idx, hash : hashes)
 	{
@@ -322,14 +322,14 @@ macro void FlatMap.@each_pair(&self; @body(Key key, Value value))
 <*
  Iterates over each key in the map.
 
- @require self.is_initialized() : "Must be initialized set"
+ @require self.is_initialized() : "Must be initialized map"
 *>
 macro void FlatMap.@each_key(&self; @body(Key key))
 {
 	if (@unlikely(self.is_empty())) return;
 
 	HashType[] hashes = hashes_array(self);
-	Key[] keys        = keys_array(self.data, self.capacity);
+	Key[] keys        = keys_array(self);
 
 	foreach (idx, hash : hashes)
 	{
@@ -343,14 +343,14 @@ macro void FlatMap.@each_key(&self; @body(Key key))
 <*
  Iterates over each value in the map.
 
- @require self.is_initialized() : "Must be initialized set"
+ @require self.is_initialized() : "Must be initialized map"
 *>
 macro void FlatMap.@each_value(&self; @body(Value value))
 {
 	if (@unlikely(self.is_empty())) return;
 
 	HashType[] hashes = hashes_array(self);
-	Value[] values    = values_array(self.data, self.capacity);
+	Value[] values    = values_array(self);
 
 	foreach (idx, hash : hashes)
 	{
@@ -407,7 +407,7 @@ fn Key[] FlatMap.keys(&self, Allocator alloc)
 {
 	Key[] key_buff    = alloc::alloc_array(alloc, Key, self.count);
 	sz key_buff_used  = 0;
-	Key[] exist_keys  = keys_array(self.data, self.capacity);
+	Key[] exist_keys  = keys_array(self);
 	HashType[] hashes = hashes_array(self);
 
 	foreach (idx, hash : hashes)
@@ -434,10 +434,10 @@ fn Key[] FlatMap.tkeys(&self)
 *>
 fn Value[] FlatMap.values(&self, Allocator alloc)
 {
-	Value[] value_buff  = alloc::alloc_array(alloc, Value, self.count);
-	sz value_buff_used  = 0;
-	Value* exist_values = values_array(self.data, self.capacity);
-	HashType[] hashes   = hashes_array(self);
+	Value[] value_buff   = alloc::alloc_array(alloc, Value, self.count);
+	sz value_buff_used   = 0;
+	Value[] exist_values = values_array(self);
+	HashType[] hashes    = hashes_array(self);
 
 	foreach (idx, hash : hashes)
 	{
@@ -491,15 +491,15 @@ fn HashType[] hashes_array(FlatMap* self) @private @inline
 	return self.data[:self.capacity];
 }
 
-fn Key[] keys_array(HashType* data, sz capacity) @private
+fn Key[] keys_array(FlatMap* self) @private
 {
-	return ((Key*)mem::aligned_pointer((Key*)(data + capacity), Key::alignment))[:capacity];
+	return ((Key*)mem::aligned_pointer((Key*)(self.data + self.capacity), Key::alignment))[:self.capacity];
 }
 
-fn Value[] values_array(HashType* data, sz capacity) @private
+fn Value[] values_array(FlatMap* self) @private
 {
-	Key* keys = keys_array(data, capacity);
-	return ((Value*)mem::aligned_pointer((Value*)(keys + capacity), Value::alignment))[:capacity];
+	Key[] keys = keys_array(self);
+	return ((Value*)mem::aligned_pointer((Value*)(keys.ptr + self.capacity), Value::alignment))[:self.capacity];
 }
 
 fn HashType calc_hash(Key key) @inline
