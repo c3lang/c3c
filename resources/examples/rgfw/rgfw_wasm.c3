@@ -64,9 +64,6 @@ union RgfwGfxContext
 	RgfwEglContext* egl;
 }
 
-const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
-const RgfwGfxContextType RGFW_GFX_EGL = 2;
-const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 struct GfxNativeImage
 {
@@ -119,11 +116,37 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance 
 
 fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private {}
 
-// ---- JS host imports (no Emscripten runtime under C3's wasm target) ----
+// TODO All of this is horribly broken
 extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "emscripten_set_canvas_size");
 extern fn void rgfwJsSetWindowTitle(ZString name, sz len) @wasm("env", "emscripten_set_window_title");
 extern fn void rgfwJsSetupWindowListeners() @wasm("env", "emscripten_setup_window_listeners");
 extern fn void rgfwJsSetupDropListeners() @wasm("env", "emscripten_setup_drop_listeners");
+
+// Each of the following registers exactly one DOM/window listener, mirroring
+// RGFW_createWindowPlatform's emscripten_set_*_callback calls one-for-one so
+// the JS host implementation can be checked line-by-line against RGFW.h.
+extern fn void rgfwJsSetResizeCallback() @wasm("env", "emscripten_set_resize_callback");
+extern fn void rgfwJsSetFullscreenChangeCallback() @wasm("env", "emscripten_set_fullscreenchange_callback");
+extern fn void rgfwJsSetMouseMoveCallback() @wasm("env", "emscripten_set_mousemove_callback");
+extern fn void rgfwJsSetTouchStartCallback() @wasm("env", "emscripten_set_touchstart_callback");
+extern fn void rgfwJsSetTouchEndCallback() @wasm("env", "emscripten_set_touchend_callback");
+extern fn void rgfwJsSetTouchMoveCallback() @wasm("env", "emscripten_set_touchmove_callback");
+// RGFW's own Emscripten_on_touchcancel is a no-op; registered anyway to match
+// RGFW.h exactly (the JS host's listener may itself do nothing).
+extern fn void rgfwJsSetTouchCancelCallback() @wasm("env", "emscripten_set_touchcancel_callback");
+extern fn void rgfwJsSetMouseDownCallback() @wasm("env", "emscripten_set_mousedown_callback");
+extern fn void rgfwJsSetMouseUpCallback() @wasm("env", "emscripten_set_mouseup_callback");
+extern fn void rgfwJsSetWheelCallback() @wasm("env", "emscripten_set_wheel_callback");
+extern fn void rgfwJsSetFocusInCallback() @wasm("env", "emscripten_set_focusin_callback");
+extern fn void rgfwJsSetFocusOutCallback() @wasm("env", "emscripten_set_focusout_callback");
+// Combined registrations: RGFW.h wires each of these pairs from a single
+// EM_ASM block (keydown+keyup; drop+dragover) rather than as separate
+// emscripten_set_*_callback calls, so one host call covers each pair.
+extern fn void rgfwJsSetKeyCallbacks() @wasm("env", "emscripten_set_key_callbacks");
+extern fn void rgfwJsSetDropCallbacks() @wasm("env", "emscripten_set_drop_callbacks");
+// RGFW.h calls `EM_ASM("Module.canvas.focus();")` after every fullscreen
+// transition so keyboard events keep targeting the canvas.
+extern fn void rgfwJsFocusCanvas() @wasm("env", "emscripten_focus_canvas");
 extern fn void rgfwJsBlitSurface(char* data, int w, int h, int minH) @wasm("env", "emscripten_blit_surface");
 extern fn void rgfwJsSetCursor(ZString name, sz len) @wasm("env", "emscripten_set_cursor");
 extern fn void rgfwJsHideCursor() @wasm("env", "emscripten_hide_cursor");
@@ -242,7 +265,7 @@ fn GfxKey rgfw_wasmPhysicalToRGFW(uint hash)
 // private
 fn void rgfwEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
 {
-	_window_resized_callback(_gfx_ctx.root, w, h);
+	_window_resized_callback(_gfx_ctx.root, { w, h });
 }
 
 // private
@@ -255,8 +278,8 @@ fn void rgfwEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { rgfw_windowFoc
 // private
 fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("c3gfx_on_mousemove")
 {
-	_mouse_motion_callback(_gfx_ctx.root, x, y);
-	_raw_motion_callback(_gfx_ctx.root, (float)movementX, (float)movementY);
+	_mouse_motion_callback(_gfx_ctx.root, { x, y });
+	_raw_motion_callback(_gfx_ctx.root, { (float)movementX, (float)movementY });
 }
 
 // private
@@ -267,7 +290,7 @@ fn void rgfwEmscriptenOnMouseUp(int button) @export("c3gfx_on_mouseup")
 }
 
 // private
-fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { rgfw_mouseScrollCallback(_gfx_ctx.root, deltaX, deltaY); }
+fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { rgfw_mouseScrollCallback(_gfx_ctx.root, { deltaX, deltaY }); }
 
 // private
 fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("c3gfx_on_touch")
@@ -278,8 +301,8 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 		if (!(_gfx_ctx.root.internal.enabled_events & RGFW_MOUSE_MOTION_FLAG)) return;
 		for (int i = 0; i < numTouches; i++)
 		{
-			_mouse_motion_callback(_gfx_ctx.root, xs[i], ys[i]);
-			_raw_motion_callback(_gfx_ctx.root, 0.0f, 0.0f);
+			_mouse_motion_callback(_gfx_ctx.root, { xs[i], ys[i] });
+			_raw_motion_callback(_gfx_ctx.root, {});
 		}
 		return;
 	}
@@ -295,8 +318,8 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 
 	for (int i = 0; i < numTouches; i++)
 	{
-		_mouse_motion_callback(_gfx_ctx.root, xs[i], ys[i]);
-		_raw_motion_callback(_gfx_ctx.root, 0.0f, 0.0f);
+		_mouse_motion_callback(_gfx_ctx.root, { xs[i], ys[i] });
+		_raw_motion_callback(_gfx_ctx.root, { });
 		rgfw_mouseButtonCallback(_gfx_ctx.root, LEFT, (bool)down);
 	}
 }
@@ -437,7 +460,7 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 // public
 fn GfxKey rgfw_physicalToMappedKey(GfxKey key) => key;
 // public
-fn IntVec2 rgfw_window_fetchSize(GfxWindow* win) => win.get_size();
+fn GfxPoint _window_fetch_size_native(GfxWindow* win) => win.get_size();
 
 // public
 fn void rgfw_pollEvents()
@@ -516,9 +539,9 @@ fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 }
 
 // public
-fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
+fn bool rgfw_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
-	if (requestedType != RGFW_DATA_TEXT) return false;
+	if (requestedType != TEXT) return false;
 	return false;
 }
 
@@ -586,7 +609,7 @@ fn void GfxWindow.set_name(&self, String name)
 }
 
 // public
-fn void rgfw_window_maximizePlatform(GfxWindow* win)
+fn void _window_maximize_native(GfxWindow* win)
 {
 	GfxMonitor* mon = find_monitor(win);
 	if (mon) win.resize(mon.mode.w, mon.mode.h);

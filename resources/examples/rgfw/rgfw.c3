@@ -143,9 +143,6 @@ union RgfwGfxContext
 	RgfwEglContext* egl;
 }
 
-const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
-const RgfwGfxContextType RGFW_GFX_EGL = 2;
-const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 
 struct RgfwWindowSrc
@@ -226,9 +223,9 @@ fn bool rgfw_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, Vk
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
 	if (win == null || surface == null || surface.data == null) return;
-	IntVec2 min = math::min(win.size, surface.size);
+	GfxPoint min = math::min(win.size, surface.size);
 	GfxMonitor* mon = find_monitor(win);
-	if (mon) min = (IntVec2)((Vec2)min * mon.pixelRatio);
+	if (mon) min = (GfxPoint)((Vec2)min * mon.pixelRatio);
 	ObjcId rep = ns_bitmapRep(...min);
 	char* pixels = ns_bitmapData(rep);
 	if (pixels == null) { ns_release(rep); return; }
@@ -532,16 +529,6 @@ fn GfxWindow* rgfw_osxViewWindow(ObjcId self)
 
 
 // private
-fn RgfwKeymod rgfw_osxMods(NSUInteger flags)
-{
-	RgfwKeymod mods = 0;
-	if (flags & 0x00020000) mods |= RGFW_MOD_SHIFT;
-	if (flags & 0x00040000) mods |= RGFW_MOD_CONTROL;
-	if (flags & 0x00080000) mods |= RGFW_MOD_ALT;
-	if (flags & 0x00100000) mods |= RGFW_MOD_SUPER;
-	if (flags & 0x00010000) mods |= RGFW_MOD_CAPS_LOCK;
-	return mods;
-}
 
 // public
 fn void rgfw_monitorNode_free(GfxMonitorNode* node) { if (node != null && node.mon.mode.src != null) cfRelease(node.mon.mode.src); }
@@ -797,7 +784,7 @@ fn void? rgfw_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow*
 	win.set_name(name);
 	rgfw_window_setFloating(win, flags.floating);
 	if (!(flags.hide)) _window_show_native(win);
-	if (flags.maximize) rgfw_window_maximizePlatform(win);
+	if (flags.maximize) _window_maximize_native(win);
 	if (flags.minimize) rgfw_window_minimizePlatform(win);
 	if (flags.fullscreen) _window_set_fullscreen_native(win, true);
 }
@@ -848,7 +835,7 @@ fn void _window_move_native(GfxWindow* win, int x, int y)
 }
 // public
 // public
-fn void rgfw_window_maximizePlatform(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "zoom:", null); }
+fn void _window_maximize_native(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "zoom:", null); }
 // public
 fn void _window_set_capture_mouse_native(GfxWindow* win, bool state) { cgAssociateMouseAndMouseCursorPosition(!state); }
 // public
@@ -1010,7 +997,7 @@ fn bool rgfw_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) { if (mode =
 // public
 fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
 // public
-fn IntVec2 rgfw_window_fetchSize(GfxWindow* win)
+fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 {
 	if (win.src.window != null)
 	{
@@ -1110,9 +1097,9 @@ fn void rgfw_window_moveMouse(GfxWindow* win, int x, int y)
 }
 
 // public
-fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
+fn bool rgfw_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
-	if (requestedType != RGFW_DATA_TEXT || data == null) return false;
+	if (requestedType != TEXT || data == null) return false;
 	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
 	ObjcId str = objc_send(pb, ObjcSendIdId, "stringForType:", ns_string("public.utf8-plain-text"));
 	ZString raw = ns_utf8(str);
@@ -1125,16 +1112,19 @@ fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, 
 		buffer[copyLen] = 0;
 		data.data = buffer;
 	}
-	else { data.data = raw; }
+	else
+	{
+		data.data = raw;
+	}
 	data.length = len;
-	data.type = RGFW_DATA_TEXT;
+	data.type = TEXT;
 	return true;
 }
 
 // public
 fn bool rgfw_writeClipboard(GfxDataTransfer* data)
 {
-	if (data == null || data.type != RGFW_DATA_TEXT || data.data == null) return false;
+	if (!data || data.type != TEXT || !data.data) return false;
 	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
 	objc_send(pb, ObjcSendVoid, "clearContents");
 	return objc_send(pb, ObjcSendBoolIdId, "setString:forType:", ns_string((ZString)data.data), ns_string("public.utf8-plain-text"));
@@ -1327,12 +1317,15 @@ fn void rgfw_osx_initView(GfxWindow* win)
 fn float rgfw_cocoaYTransform(float y) => (float)(cgDisplayBounds(cgMainDisplayID()).size.height - (double)y - 1.0);
 
 // public
-fn GfxDataTransfer* rgfw_readClipboard(RgfwDataTransferType requestedType)
+fn GfxDataTransfer* rgfw_readClipboard(GfxDataTransferType requestedType)
 {
 	return _gfx_ctx.clipboard;
 }
 
 // public
-fn GfxDataTransfer* rgfw_readClipboardString() { return rgfw_readClipboard(RGFW_DATA_TEXT); }
+fn GfxDataTransfer* rgfw_readClipboardString()
+{
+	return rgfw_readClipboard(TEXT);
+}
 // public
-fn bool rgfw_readClipboardStringPtr(char* buffer, sz capacity, GfxDataTransfer* data) { return rgfw_readClipboardPtr(RGFW_DATA_TEXT, buffer, capacity, data); }
+fn bool rgfw_readClipboardStringPtr(char* buffer, sz capacity, GfxDataTransfer* data) { return rgfw_readClipboardPtr(TEXT, buffer, capacity, data); }

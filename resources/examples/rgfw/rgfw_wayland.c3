@@ -41,8 +41,8 @@ const int PROT_WRITE = 0x2;
 const int MAP_SHARED = 0x01;
 const void* MAP_FAILED = (void*)(uptr)(-1);
 const int O_RDWR = 0x0002;
-const int O_CREAT = 0x0200;
-const int O_EXCL = 0x0800;
+const int O_CREAT = 0x0040;
+const int O_EXCL = 0x0080;
 const int POLLIN = 0x0001;
 
 // ---- Wayland client core (real libwayland-client ABI) ----
@@ -108,9 +108,6 @@ union RgfwGfxContext
 	RgfwEglContext* egl;
 }
 
-const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
-const RgfwGfxContextType RGFW_GFX_EGL = 2;
-const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 struct RgfwWindowSrc
 {
@@ -251,7 +248,7 @@ fn void rgfw_wlDataDeviceSelection(void* data, WlProxy* device, WlProxy* offer)
 	mem::copy(dataPtr, &buf, n);
 	dataPtr[length - 1] = 0;
 	_gfx_ctx.unixClipboard.data = dataPtr;
-	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;
+	_gfx_ctx.unixClipboard.type = TEXT;
 	_gfx_ctx.unixClipboard.length = length;
 
 	close(pfds[0]);

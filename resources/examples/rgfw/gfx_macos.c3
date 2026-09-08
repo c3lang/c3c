@@ -167,7 +167,7 @@ fn void _osx_key_updown(ObjcId self, ObjcId event, bool down)
 	// Unmapped key
 	if (!key) return;
 	bool repeat = down ? objc_send(event, ObjcSendBool, "isARepeat") : false;
-	RgfwKeymod mods = rgfw_osxMods(objc_send(event, ObjcSendNSUInteger, "modifierFlags"));
+	GfxKeyModifier mods = _osx_modifiers_to_gfx(objc_send(event, ObjcSendNSUInteger, "modifierFlags"));
 	rgfw_keyCallback(win, key, mods, repeat, down);
 }
 
@@ -179,12 +179,12 @@ fn void _osx_mouse_entered(ObjcId self, ObjcSelector sel, ObjcId event)
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (!win) return;
 	CGPoint p = objc_send(event, ObjcSendPoint, "locationInWindow");
-	_mouse_notify_callback(win, (int)p.x, win.height - (int)p.y, true);
+	_mouse_notify_callback(win, { (int)p.x, win.height - (int)p.y }, true);
 }
 
 fn void _osx_mouse_exited(ObjcId self, ObjcSelector sel, ObjcId event)
 {
-	if (GfxWindow* win = rgfw_osxViewWindow(self)) _mouse_notify_callback(win, ...win.internal.last_mouse, false);
+	if (GfxWindow* win = rgfw_osxViewWindow(self)) _mouse_notify_callback(win, win.internal.last_mouse, false);
 }
 
 fn void _osx_window_did_move(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -194,7 +194,7 @@ fn void _osx_window_did_move(ObjcId self, ObjcSelector sel, ObjcId notification)
 	CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
 	CGRect content = objc_send((ObjcId)win.src.window, ObjcSendRectRect, "contentRectForFrameRect:", frame);
 	float y = rgfw_cocoaYTransform((float)(content.origin.y + content.size.height - 1));
-	_window_moved_callback(win, (int)content.origin.x, (int)y);
+	_window_moved_callback(win, { (int)content.origin.x, (int)y });
 }
 
 fn void _osx_window_did_miniaturize(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -204,7 +204,7 @@ fn void _osx_window_did_miniaturize(ObjcId self, ObjcSelector sel, ObjcId notifi
 
 fn void _osx_window_did_deminiaturize(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
-	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) _window_restored_callback(win, ...win.origin, ...win.size);
+	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) _window_restored_callback(win, win.bounds);
 }
 
 fn void _osx_window_did_become_key(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -219,7 +219,7 @@ fn void _osx_window_will_close(ObjcId self, ObjcSelector sel, ObjcId notificatio
 
 fn void _osx_window_did_resize(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
-	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) _window_resized_callback(win, ...rgfw_window_fetchSize(win));
+	if (GfxWindow* win = rgfw_osxDelegateWindow(self)) _window_resized_callback(win, _window_fetch_size_native(win));
 }
 fn void _osx_window_did_resign_key(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
@@ -231,7 +231,7 @@ fn void _osx_mouse_moved_common(ObjcId self, ObjcId event)
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (!win) return;
 	CGPoint p = objc_send(event, ObjcSendPoint, "locationInWindow");
-	_mouse_motion_callback(win, (int)p.x, win.height - (int)p.y);
+	_mouse_motion_callback(win, { (int)p.x, win.height - (int)p.y });
 }
 
 fn void _osx_mouse_moved(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_mouse_moved_common(self, event);
@@ -268,7 +268,7 @@ fn void _osx_scroll_wheel(ObjcId self, ObjcSelector sel, ObjcId event)
 	if (!win) return;
 	CGFloat x = objc_send(event, ObjcSendCGFloat, "scrollingDeltaX");
 	CGFloat y = objc_send(event, ObjcSendCGFloat, "scrollingDeltaY");
-	rgfw_mouseScrollCallback(win, (float)x, (float)y);
+	rgfw_mouseScrollCallback(win, { (float)x, (float)y });
 }
 
 fn void _osx_flags_changed(ObjcId self, ObjcSelector sel, ObjcId event)
@@ -327,7 +327,7 @@ fn void _osx_view_did_change_backing_properties(ObjcId self, ObjcSelector sel)
 	if (!win) return;
 	GfxMonitor* mon = find_monitor(win);
 	if (!mon) return;
-	rgfw_scaleUpdatedCallback(win, ...mon.scale);
+	rgfw_scaleUpdatedCallback(win, mon.scale);
 }
 
 fn NSUInteger _osx_dragging_entered(ObjcId self, ObjcSelector sel, ObjcId sender)
@@ -335,7 +335,7 @@ fn NSUInteger _osx_dragging_entered(ObjcId self, ObjcSelector sel, ObjcId sender
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (!win) return 0;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
-	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_ENTER, (int)p.x, win.height - (int)p.y);
+	rgfw_dataDragCallback(win, FILE, ENTER, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -345,7 +345,7 @@ fn NSUInteger _osx_dragging_updated(ObjcId self, ObjcSelector sel, ObjcId sender
 	if (!win) return 0;
 	if (!(win.internal.enabled_events & RGFW_DATA_DRAG_FLAG)) return 1;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
-	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_MOVE, (int)p.x, win.height - (int)p.y);
+	rgfw_dataDragCallback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -355,7 +355,7 @@ fn void _osx_dragging_ended(ObjcId self, ObjcSelector sel, ObjcId sender)
 	if (!win) return;
 	if (!(win.internal.enabled_events & RGFW_DATA_DRAG_FLAG)) return;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
-	rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_EXIT, (int)p.x, win.height - (int)p.y);
+	rgfw_dataDragCallback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
 }
 
 fn bool _osx_prepare_for_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender)
@@ -387,7 +387,7 @@ fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender
 	{
 		NSUInteger stringCount = objc_send(propertyList, ObjcSendNSUInteger, "length");
 		ZString filePath = ns_utf8(propertyList);
-		rgfw_dataDropCallback(win, filePath, (sz)stringCount + 1, RGFW_DATA_FILE);
+		rgfw_dataDropCallback(win, filePath, (sz)stringCount + 1, FILE);
 	}
 	if (!objc_send(propertyList, ObjcSendBoolId, "isKindOfClass:", objc_class("NSArray"))) return false;
 
@@ -399,7 +399,7 @@ fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender
 		ObjcId fileURL = objc_send(propertyList, ObjcSendIdNSUInteger, "objectAtIndex:", i);
 		ZString filePath = ns_utf8(fileURL);
 		NSUInteger stringCount = objc_send(fileURL, ObjcSendNSUInteger, "length");
-		rgfw_dataDropCallback(win, filePath, (sz)stringCount + 1, RGFW_DATA_FILE);
+		rgfw_dataDropCallback(win, filePath, (sz)stringCount + 1, FILE);
 	}
 	return false;
 }
@@ -408,7 +408,7 @@ fn bool _osx_wants_update_layer(ObjcId self, ObjcSelector sel) => true;
 
 fn void _osx_update_layer(ObjcId self, ObjcSelector sel)
 {
-	if (GfxWindow* win = rgfw_osxViewWindow(self)) rgfw_windowRefreshCallback(win, 0, 0, ...win.size);
+	if (GfxWindow* win = rgfw_osxViewWindow(self)) rgfw_windowRefreshCallback(win, { 0, 0, ...win.size });
 }
 
 fn bool _osx_accepts_first_responder(ObjcId self, ObjcSelector sel) => true;
@@ -418,5 +418,18 @@ fn void _osx_draw_rect(ObjcId self, ObjcSelector sel, CGRect rect)
 	GfxWindow* win = rgfw_osxViewWindow(self);
 	if (!win) return;
 	float y = rgfw_cocoaYTransform((float)(rect.size.height - 1));
-	rgfw_windowRefreshCallback(win, (int)rect.origin.x, (int)y, (int)rect.size.width, (int)rect.size.height);
+	rgfw_windowRefreshCallback(win, { (int)rect.origin.x, (int)y, (int)rect.size.width, (int)rect.size.height });
+}
+
+// --- helpers
+
+fn GfxKeyModifier _osx_modifiers_to_gfx(NSUInteger flags)
+{
+	return {
+		.shift     = flags & 0x00020000 != 0,
+		.control   = flags & 0x00040000 != 0,
+		.alt       = flags & 0x00080000 != 0,
+		.super     = flags & 0x00100000 != 0,
+		.caps_lock = flags & 0x00010000 != 0,
+	};
 }

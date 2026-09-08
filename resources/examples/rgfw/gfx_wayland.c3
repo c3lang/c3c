@@ -838,17 +838,17 @@ fn void rgfw_pollEvents_Wayland()
 fn void rgfw_pollMonitors_Wayland() { _gfx_ctx.monitors.primary = _gfx_ctx.monitors.list.head; }
 
 // private
-fn bool rgfw_readClipboardPtr_Wayland(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
+fn bool rgfw_readClipboardPtr_Wayland(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
-	if (requestedType != RGFW_DATA_TEXT) return false;
+	if (requestedType != TEXT) return false;
 	if (_gfx_ctx.unixClipboard == null || _gfx_ctx.unixClipboard.length == 0)
 	{
 		data.length = 0;
-		data.type = RGFW_DATA_NONE;
+		data.type = NONE;
 		return false;
 	}
 	data.length = _gfx_ctx.unixClipboard.length;
-	data.type = RGFW_DATA_TEXT;
+	data.type = TEXT;
 	if (buffer == null) return true;
 	if (_gfx_ctx.unixClipboard.length > capacity) return false;
 	mem::copy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
@@ -859,8 +859,9 @@ fn bool rgfw_readClipboardPtr_Wayland(RgfwDataTransferType requestedType, char* 
 // private
 fn void rgfw_window_blitSurface_Wayland(GfxWindow* win, GfxSurface* surface)
 {
-	IntVec2 min = math::min(win.size, surface.size);
+	GfxPoint min = math::min(win.size, surface.size);
 	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...min, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
+	copy_image_data(surface.native.buffer, min.x, min.y, surface.native.format, surface.data, surface.format, surface.convertFunc);
 
 	wlSurfaceAttach(win.src.surface, surface.native.wlBuffer, 0, 0);
 	wlSurfaceDamage(win.src.surface, 0, 0, ...min);
@@ -915,7 +916,7 @@ fn WGPUSurface rgfw_window_createSurface_WebGPU_Wayland(GfxWindow* window, WGPUI
 fn void rgfw_window_deleteContextPtr_OpenGL_Wayland(GfxWindow* win, RgfwGlContext* ctx) { rgfw_window_deleteContextPtr_EGL(win, (RgfwEglContext*)ctx); win.src.ctx.native = null; }
 
 // private
-fn IntVec2 rgfw_window_fetchSize_Wayland(GfxWindow* win) => win.get_size();
+fn GfxPoint rgfw_window_fetchSize_Wayland(GfxWindow* win) => win.get_size();
 
 // private
 fn void rgfw_window_flash_Wayland(GfxWindow* win, GfxFlashRequest request) {}
@@ -944,7 +945,7 @@ fn bool _window_is_minimized_wayland(GfxWindow* win) => win.src.minimized;
 fn void rgfw_window_makeCurrentContext_OpenGL_Wayland(GfxWindow* win) { rgfw_window_makeCurrentContext_EGL(win); }
 
 // private
-fn void rgfw_window_maximizePlatform_Wayland(GfxWindow* win) => rgfw_toggleWaylandMaximized(win, true);
+fn void _window_maximize_wayland(GfxWindow* win) => rgfw_toggleWaylandMaximized(win, true);
 
 // private
 fn void rgfw_window_minimizePlatform_Wayland(GfxWindow* win)
@@ -1084,7 +1085,7 @@ fn bool rgfw_writeClipboard_Wayland(GfxDataTransfer* data)
 	mem::copy(dataPtr, (void*)data.data, data.length);
 	dataPtr[length - 1] = 0;
 	_gfx_ctx.unixClipboard.data = dataPtr;
-	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;
+	_gfx_ctx.unixClipboard.type = TEXT;
 	_gfx_ctx.unixClipboard.length = length;
 
 	GfxWindow* win = _gfx_ctx.kbOwner;
@@ -1186,8 +1187,8 @@ fn void rgfw_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlProxy* 
 	GfxContext* info = data;
 	GfxWindow* win = (GfxWindow*)wlSurfaceGetUserData(surface);
 	info.mouseEnterSerial = serial;
-	win.internal.mouseInside = true;
-	info.windowState.mouseEnter = true;
+	win.internal.mouse_inside = true;
+	info.window_state.mouse_enter = true;
 	info.mouseOwner = win;
 
 	if (win.src.usingCustomCursor) { wlPointerSetCursor(pointer, serial, win.src.customCursorSurface, 0, 0); }
@@ -1195,7 +1196,7 @@ fn void rgfw_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlProxy* 
 
 	int x = (int)wlFixedToDouble(surfaceX);
 	int y = (int)wlFixedToDouble(surfaceY);
-	_mouse_notify_callback(win, x, y, true);
+	_mouse_notify_callback(win, { x, y }, true);
 }
 
 // private
@@ -1600,12 +1601,17 @@ fn void rgfw_wlPointerAxis(void* data, WlProxy* pointer, uint time, uint axis, W
 	GfxContext* info = data;
 	GfxWindow* win = info.mouseOwner;
 	if (win == null) return;
-	float scrollX = 0.0f;
-	float scrollY = 0.0f;
+	Vec2 scroll = {};
 	if (!(win.internal.enabled_events & RGFW_MOUSE_SCROLL_FLAG)) return;
-	if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) { scrollX = (float)(-wlFixedToDouble(value) / 10.0); }
-	else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) { scrollY = (float)(-wlFixedToDouble(value) / 10.0); }
-	rgfw_mouseScrollCallback(win, scrollX, scrollY);
+	if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
+	{
+		scroll.x = (float)(-wlFixedToDouble(value) / 10.0);
+	}
+	else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL)
+	{
+		scroll.y = (float)(-wlFixedToDouble(value) / 10.0);
+	}
+	rgfw_mouseScrollCallback(win, scroll);
 }
 
 // private
@@ -1615,8 +1621,14 @@ fn void rgfw_wlPointerButton(void* data, WlProxy* pointer, uint serial, uint tim
 	GfxWindow* win = info.mouseOwner;
 	if (win == null) return;
 	uint b = button - 0x110;
-	if (b == 1) { b = 2; }
-	else if (b == 2) { b = 1; }
+	if (b == 1)
+	{
+		b = 2;
+	}
+	else if (b == 2)
+	{
+		b = 1;
+	}
 	rgfw_mouseButtonCallback(win, (GfxMouseButton)b, !!state);
 }
 
@@ -1626,7 +1638,7 @@ fn void rgfw_wlPointerLeave(void* data, WlProxy* pointer, uint serial, WlProxy* 
 	GfxWindow* win = (GfxWindow*)wlSurfaceGetUserData(surface);
 	GfxContext* info = data;
 	if (info.mouseOwner == win) info.mouseOwner = null;
-	_mouse_notify_callback(win, ...win.internal.last_mouse, false);
+	_mouse_notify_callback(win, win.internal.last_mouse, false);
 }
 
 // private
@@ -1644,7 +1656,7 @@ fn void rgfw_wlPointerMotion(void* data, WlProxy* pointer, uint time, WlFixed x,
 	if (win == null) return;
 	int cx = (int)wlFixedToDouble(x);
 	int cy = (int)wlFixedToDouble(y);
-	_mouse_motion_callback(win, cx, cy);
+	_mouse_motion_callback(win, { cx, cy });
 }
 
 // private
@@ -1668,7 +1680,7 @@ fn void rgfw_wlRelativePointerMotion(void* data, WlProxy* relPointer, uint timeH
 	if (win == null) return;
 	float vecX = (float)wlFixedToDouble(dx);
 	float vecY = (float)wlFixedToDouble(dy);
-	_raw_motion_callback(win, vecX, vecY);
+	_raw_motion_callback(win, { vecX, vecY });
 }
 
 // private
@@ -1767,7 +1779,7 @@ fn void rgfw_wlXdgSurfaceConfigureHandler(void* data, WlProxy* xdgSurface, uint 
 
 	if (win.src.resizing)
 	{
-		_window_resized_callback(win, win.width, win.height);
+		_window_resized_callback(win, win.size);
 		win.resize(...win.size);
 		if (!(win.internal.flags.transparent)) rgfw_wlSetOpaque(win);
 	}

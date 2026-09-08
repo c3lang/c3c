@@ -320,9 +320,6 @@ union RgfwGfxContext
 	RgfwEglContext* egl;
 }
 
-const RgfwGfxContextType RGFW_GFX_NATIVE_OPEN_GL = 1;
-const RgfwGfxContextType RGFW_GFX_EGL = 2;
-const RgfwGfxContextType RGFW_GFX_OWNED_BY_RGFW = 4;
 
 struct GfxNativeImage
 {
@@ -339,8 +336,8 @@ struct RgfwWindowSrc
 	void* hdc; // HDC
 	void* hIconSmall; // HICON
 	void* hIconBig; // HICON
-	IntVec2 min_size;
-	IntVec2 max_size;
+	GfxPoint min_size;
+	GfxPoint max_size;
 	int aspectRatioW, aspectRatioH;
 	bool actionFrame;
 	ushort highSurrogate;
@@ -610,6 +607,7 @@ fn bool rgfw_win32GetDarkModeState()
 	return lightMode == 0;
 }
 
+
 // public
 fn void rgfw_win32MakeWindowDarkMode(GfxWindow* win, bool state)
 {
@@ -617,6 +615,10 @@ fn void rgfw_win32MakeWindowDarkMode(GfxWindow* win, bool state)
 	dwmSetWindowAttribute(win.src.window, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &value, (uint)int::size);
 }
 
+macro GfxPoint _param_to_point(iptr lParam)
+{
+	return { (int)(lParam & 0xffff), (int)((lParam >> 16) & 0xffff) };
+}
 
 // private
 fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
@@ -645,13 +647,13 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		case 0x0003: // WM_MOVE
 		{
 			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
-			_window_moved_callback(win, (int)(short)(lParam & 0xffff), (int)(short)((lParam >> 16) & 0xffff));
+			_window_moved_callback(win, _param_to_point(lParam));
 			return defWindowProcW(hWnd, message, wParam, lParam);
 		}
 		case 0x0005: // WM_SIZE
 		{
 			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
-			_window_resized_callback(win, (int)(lParam & 0xffff), (int)((lParam >> 16) & 0xffff));
+			_window_resized_callback(win, _param_to_point(lParam));
 			rgfw_window_checkMode(win);
 			return defWindowProcW(hWnd, message, wParam, lParam);
 		}
@@ -673,12 +675,10 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			break;
 		}
 		case 0x02E0: // WM_DPICHANGED
-		{
 			float scaleX = (float)((wParam >> 16) & 0xffff) / 96.0f;
 			float scaleY = (float)(wParam & 0xffff) / 96.0f;
-			rgfw_scaleUpdatedCallback(win, scaleX, scaleY);
+			rgfw_scaleUpdatedCallback(win, { scaleX, scaleY});
 			return defWindowProcW(hWnd, message, wParam, lParam);
-		}
 		case 0x0214: // WM_SIZING
 		{
 			if (win.src.aspectRatioW == 0 && win.src.aspectRatioH == 0) break;
@@ -715,12 +715,13 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			mmi.ptMaxTrackSize.y = win.src.max_size.y + (frame.bottom - frame.top);
 			return defWindowProcW(hWnd, message, wParam, lParam);
 		}
-		case 0x0231: case 0x0232: // WM_ENTERSIZEMOVE, WM_EXITSIZEMOVE
+		case 0x0231: // WM_ENTERSIZEMOVE
+		case 0x0232: // WM_EXITSIZEMOVE
 		{
 			if (win.src.actionFrame) _window_set_capture_mouse_native(win, win.internal.capture_mouse);
 			break;
 		}
-		case 0x0113: rgfw_windowRefreshCallback(win, 0, 0, win.width, win.height); break; // WM_TIMER
+		case 0x0113: rgfw_windowRefreshCallback(win, { 0, 0, ...win.size }); break; // WM_TIMER
 		case 0x00A1: // WM_NCLBUTTONDOWN
 		{
 			// workaround for half-second pause when starting to move window
@@ -736,13 +737,13 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			Rect rect;
 			if (getUpdateRect(hWnd, &rect, 0) != 0)
 			{
-				rgfw_windowRefreshCallback(win, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+				rgfw_windowRefreshCallback(win, { rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top });
 			}
 			else
 			{
 				char[128] ps;
 				beginPaint(hWnd, &ps);
-				rgfw_windowRefreshCallback(win, 0, 0, win.width, win.height);
+				rgfw_windowRefreshCallback(win, { 0, 0, ...win.size });
 				endPaint(hWnd, &ps);
 			}
 			return defWindowProcW(hWnd, message, wParam, lParam);
@@ -813,15 +814,10 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 			break;
 		}
 		case 0x0200: // WM_MOUSEMOVE
-		{
-			int mx = (int)(short)(lParam & 0xffff);
-			int my = (int)(short)((lParam >> 16) & 0xffff);
-			if (win.internal.mouseInside == false) _mouse_notify_callback(win, mx, my, true);
-			_mouse_motion_callback(win, mx, my);
-			break;
-		}
+			GfxPoint where = _param_to_point(lParam);
+			if (win.internal.mouse_inside == false) _mouse_notify_callback(win, where, true);
+			_mouse_motion_callback(win, where);
 		case 0x00FF: // WM_INPUT
-		{
 			if (!(win.internal.raw_mouse || _gfx_ctx.raw_mouse)) return defWindowProcW(hWnd, message, wParam, lParam);
 
 			RawInputMouse raw;
@@ -863,10 +859,8 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 				vecY = (float)raw.mouse.lLastY;
 			}
 
-			_raw_motion_callback(win, vecX, vecY);
-			break;
-		}
-		case 0x02A3: _mouse_notify_callback(win, ...win.internal.last_mouse, false); break; // WM_MOUSELEAVE
+			_raw_motion_callback(win, { vecX, vecY });
+		case 0x02A3: _mouse_notify_callback(win, win.internal.last_mouse, false); // WM_MOUSELEAVE
 		case 0x0201: rgfw_mouseButtonCallback(win, LEFT, true);
 		case 0x0204: rgfw_mouseButtonCallback(win, RIGHT, true);
 		case 0x0207: rgfw_mouseButtonCallback(win, MIDDLE, true);
@@ -876,23 +870,17 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 		case 0x0208: rgfw_mouseButtonCallback(win, MIDDLE, false);
 		case 0x020C: rgfw_mouseButtonCallback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), false);
 		case 0x020A: // WM_MOUSEWHEEL
-		{
 			float scrollY = (float)((short)((wParam >> 16) & 0xffff)) / 120.0f; // WHEEL_DELTA
-			rgfw_mouseScrollCallback(win, 0.0f, scrollY);
-			break;
-		}
+			rgfw_mouseScrollCallback(win, { 0.0f, scrollY });
 		case 0x020E: // WM_MOUSEHWHEEL
-		{
 			float scrollX = -(float)((short)((wParam >> 16) & 0xffff)) / 120.0f;
-			rgfw_mouseScrollCallback(win, scrollX, 0.0f);
-			break;
-		}
+			rgfw_mouseScrollCallback(win, { scrollX, 0.0f });
 		case 0x0233: // WM_DROPFILES
 		{
 			void* drop = (void*)wParam;
 			Point pt;
 			dragQueryPoint(drop, &pt);
-			rgfw_dataDragCallback(win, RGFW_DATA_FILE, RGFW_DND_ACTION_MOVE, pt.x, pt.y);
+			rgfw_dataDragCallback(win, FILE, MOVE, { pt.x, pt.y });
 			if (!(win.internal.enabled_events & RGFW_DATA_DROP_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
 			uint count = dragQueryFileW(drop, 0xffffffff, null, 0);
 			for (uint i = 0; i < count; i++)
@@ -903,7 +891,7 @@ fn iptr rgfw_wndProcW(HWnd* hWnd, uint message, sz wParam, iptr lParam)
 				char* cbuffer = (char*)malloc((sz)length + 1);
 				dragQueryFileW(drop, i, buffer, length + 1);
 				rgfw_createUTF8FromWideStringWin32(buffer, cbuffer, length);
-				rgfw_dataDropCallback(win, cbuffer, (sz)length + 1, RGFW_DATA_FILE);
+				rgfw_dataDropCallback(win, cbuffer, (sz)length + 1, FILE);
 				free(buffer);
 				free(cbuffer);
 			}
@@ -1108,7 +1096,7 @@ fn void rgfw_window_raise(GfxWindow* win)
 // public
 
 // public
-fn void rgfw_window_maximizePlatform(GfxWindow* win) { win.hide(); showWindow(win.src.window, (int)SW_MAXIMIZE); }
+fn void _window_maximize_native(GfxWindow* win) { win.hide(); showWindow(win.src.window, (int)SW_MAXIMIZE); }
 // public
 fn void rgfw_window_minimizePlatform(GfxWindow* win) { showWindow(win.src.window, (int)SW_MINIMIZE); }
 // public
@@ -1183,7 +1171,7 @@ fn GfxKey rgfw_physicalToMappedKey(GfxKey key)
 }
 
 // public
-fn IntVec2 rgfw_window_fetchSize(GfxWindow* win)
+fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 {
 	Rect area;
 	getClientRect(win.src.window, &area);
@@ -1645,9 +1633,9 @@ fn void rgfw_window_setMousePassthrough(GfxWindow* win, bool passthrough)
 
 
 // public
-fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
+fn bool rgfw_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
-	if (requestedType != RGFW_DATA_TEXT) return false;
+	if (requestedType != TEXT) return false;
 
 	sz retry = 0;
 	int isOpen = 0;
@@ -1663,7 +1651,7 @@ fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, 
 	if (length <= 0) return false;
 
 	data.length = (sz)length;
-	data.type = RGFW_DATA_TEXT;
+	data.type = TEXT;
 
 	if (buffer != null && capacity < data.length) { ret = false; }
 	else if (buffer != null && data.length != 0)
@@ -1961,7 +1949,7 @@ fn void GfxSurface.release(&self)
 // public
 fn void rgfw_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
-	IntVec2 blit = math::min(win.size, surface.size);
+	GfxPoint blit = math::min(win.size, surface.size);
 	copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convertFunc);
 	bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdcMem, 0, 0, 0x00CC0020 /* SRCCOPY */);
 }

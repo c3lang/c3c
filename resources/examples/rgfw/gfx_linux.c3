@@ -402,7 +402,7 @@ fn void rgfw_pollMonitors()
 }
 
 // public
-fn bool rgfw_readClipboardPtr(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* dataTransfer)
+fn bool rgfw_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* dataTransfer)
 {
 	$switch:
 		$case WAYLAND_ONLY:
@@ -504,7 +504,7 @@ fn void rgfw_window_deleteContextPtr_OpenGL(GfxWindow* win, RgfwGlContext* ctx)
 }
 
 // public
-fn IntVec2 rgfw_window_fetchSize(GfxWindow* win)
+fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
@@ -638,19 +638,19 @@ fn void rgfw_window_makeCurrentContext_OpenGL(GfxWindow* win)
 }
 
 // public
-fn void rgfw_window_maximizePlatform(GfxWindow* win)
+fn void _window_maximize_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return rgfw_window_maximizePlatform_Wayland(win);
+			return _window_maximize_wayland(win);
 		$case X11_ONLY:
-			return rgfw_window_maximizePlatform_X11(win);
+			return _window_maximize_x11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return rgfw_window_maximizePlatform_Wayland(win);
+				return _window_maximize_wayland(win);
 			}
-			return rgfw_window_maximizePlatform_X11(win);
+			return _window_maximize_x11(win);
 	$endswitch
 }
 

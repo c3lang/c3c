@@ -225,7 +225,7 @@ fn void rgfw_window_blitSurface_X11(GfxWindow* win, GfxSurface* surface)
 	if (surface == null) return;
 	// surface.native.bitmap->data = surface.native.buffer would go here in real Xlib
 	// (XImage.data is a char* at a fixed offset); left to the caller's XImage helper.
-	IntVec2 min = math::min(win.size, surface.size);
+	GfxPoint min = math::min(win.size, surface.size);
 	xPutImage(_gfx_ctx.display, win.src.window, win.src.gc, surface.native.bitmap, 0, 0, 0, 0, (uint)min.x, (uint)min.y);
 }
 
@@ -240,7 +240,7 @@ fn bool rgfw_getGlobalMouse_X11(int* fX, int* fY)
 }
 
 // public
-fn IntVec2 rgfw_window_fetchSize_X11(GfxWindow* win)
+fn GfxPoint rgfw_window_fetchSize_X11(GfxWindow* win)
 {
 	XWindowAttributes attribs;
 	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attribs);
@@ -701,6 +701,401 @@ fn void rgfw_pollEvents_X11()
 	while (qLength(_gfx_ctx.display) != 0) rgfw_xHandleEvent();
 }
 
+fn void rgfw_xHandleEvent()
+{
+	static Vec2 delta = {};
+
+	XEvent e;
+	xNextEvent(_gfx_ctx.display, &e);
+
+	if (e.type != 35 /* GenericEvent */)
+	{
+		delta = {};
+	}
+
+	if (e.type == _gfx_ctx.xrandrEventBase + 0 /* RRNotify */)
+	{
+		rgfw_pollMonitors();
+		return;
+	}
+
+	if (e.type == 30 /* SelectionRequest */)
+	{
+		rgfw_xHandleClipboardSelection(&e);
+		return;
+	}
+
+	if (e.type == 35 /* GenericEvent */)
+	{
+		xGetEventData(_gfx_ctx.display, &e.xcookie);
+		if (e.xcookie.evtype == 17 /* XI_RawMotion */)
+		{
+			XIRawEvent* raw = (XIRawEvent*)e.xcookie.data;
+			if (raw.valuators.mask_len != 0)
+			{
+				int index = 0;
+				if (ximaskIsSet(raw.valuators.mask, 0))
+				{
+					delta.x += (float)raw.raw_values[index];
+					index++;
+				}
+				if (ximaskIsSet(raw.valuators.mask, 1)) delta.y += (float)raw.raw_values[index];
+				_gfx_ctx.vector = delta;
+				_raw_motion_callback(_gfx_ctx.root, delta);
+			}
+		}
+		xFreeEventData(_gfx_ctx.display, &e.xcookie);
+		return;
+	}
+
+	GfxWindow* win = null;
+	if (xFindContext(_gfx_ctx.display, e.xany.window, _gfx_ctx.context, (GfxXPointer*)&win) != 0) return;
+
+	if (win.src.flashEnd != 0)
+	{
+		if (win.src.flashEnd <= rgfw_unix_getTimeNS() || win.has_focus()) win.flash(CANCEL);
+	}
+
+	bool keyRepeat = false;
+	if (e.type == 3 /* KeyRelease */ && xEventsQueued(_gfx_ctx.display, 1) != 0)
+	{
+		XEvent ne;
+		xPeekEvent(_gfx_ctx.display, &ne);
+		if (ne.type == 2 /* KeyPress */ && e.xkey.time == ne.xkey.time && e.xkey.keycode == ne.xkey.keycode)
+		{
+			xNextEvent(_gfx_ctx.display, &e);
+			keyRepeat = true;
+		}
+	}
+
+	switch (e.type)
+	{
+		case 2: // KeyPress
+			{
+				if (!(win.internal.enabled_events & RGFW_KEY_PRESSED_FLAG)) return;
+				GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
+
+				XkbStateRec state;
+				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
+				rgfw_keyUpdateKeyMods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
+
+				if (win.src.ic != null && xFilterEvent(&e, 0) == 0)
+				{
+					char[100] buffer;
+					int status;
+					sz count = xutf8LookupString(win.src.ic, &e.xkey, (char*)&buffer, 99, null, &status);
+					if (status == 2 /* XLookupChars */ || status == 4 /* XLookupBoth */)
+					{
+						buffer[count] = 0;
+						sz index = 0;
+						while (index < count)
+						{
+							rgfw_keyCharCallback(win, rgfw_decodeUTF8((ZString)&buffer, &index));
+						}
+					}
+				}
+				else
+				{
+					GfxXWindow rootRet, childRet;
+					int rootX, rootY, winX, winY;
+					uint mask;
+					xQueryPointer(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &rootRet, &childRet, &rootX, &rootY, &winX, &winY, &mask);
+					KeySym sym = xkbKeycodeToKeysym(_gfx_ctx.display, (KeyCode)e.xkey.keycode, 0, (mask & SHIFT_MASK) ? 1 : 0);
+
+					if ((mask & LOCK_MASK) && sym >= 0x0061 /* XK_a */ && sym <= 0x007a /* XK_z */)
+					{
+						sym = (mask & SHIFT_MASK) ? sym + 32 : sym - 32;
+					}
+					if ((KeySym)(char)sym != sym) sym = 0;
+
+					rgfw_keyCharCallback(win, (uint)(char)sym);
+				}
+
+				rgfw_keyCallback(win, value, win.internal.mod, keyRepeat, true);
+				break;
+			}
+		case 3: // KeyRelease
+			{
+				if (!(win.internal.enabled_events & RGFW_KEY_RELEASED_FLAG)) return;
+				GfxKey value = (GfxKey)rgfw_apiKeyToRGFW(e.xkey.keycode);
+
+				XkbStateRec state;
+				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
+				rgfw_keyUpdateKeyMods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
+
+				rgfw_keyCallback(win, value, win.internal.mod, false, false);
+				break;
+			}
+		case 4: // ButtonPress
+			{
+				bool scroll = e.xbutton.button >= 4 && e.xbutton.button <= 7;
+				Vec2 scroll_delta;
+				GfxMouseButton value;
+				switch (e.xbutton.button)
+				{
+					case 1: value = LEFT;
+					case 2: value = MIDDLE;
+					case 3: value = RIGHT;
+					case 4: scroll_delta = { 0, 1 };
+					case 5: scroll_delta = { 0, -1 };
+					case 6: scroll_delta = { 1, 0 };
+					case 7: scroll_delta = { -1, 0 };
+					default: value = (GfxMouseButton)(e.xbutton.button - 1 - 4);
+				}
+				if (scroll)
+				{
+					rgfw_mouseScrollCallback(win, scroll_delta);
+					break;
+				}
+				rgfw_mouseButtonCallback(win, value, true);
+				break;
+			}
+		case 5: // ButtonRelease
+			{
+				if (e.xbutton.button >= 4 && e.xbutton.button <= 7) break;
+				GfxMouseButton value;
+				switch (e.xbutton.button)
+				{
+					case 1: value = LEFT;
+					case 2: value = MIDDLE;
+					case 3: value = RIGHT;
+					default: value = (GfxMouseButton)(e.xbutton.button - 1 - 4);
+				}
+				rgfw_mouseButtonCallback(win, value, false);
+				break;
+			}
+		case 6: _mouse_motion_callback(win, { e.xmotion.x, e.xmotion.y }); // MotionNotify
+		case 12: rgfw_windowRefreshCallback(win, { e.xexpose.x, e.xexpose.y, e.xexpose.width, e.xexpose.height }); // Expose
+		case 28: // PropertyNotify
+			if (e.xproperty.state == 0 /* PropertyNewValue */)
+			{
+				bool handled = false;
+				if (e.xproperty.atom == _gfx_ctx.wmState)
+				{
+					if (_window_is_minimized_native(win) && !(win.internal.flags.minimize))
+					{
+						rgfw_windowMinimizedCallback(win);
+						handled = true;
+					}
+				}
+				else if (e.xproperty.atom == _gfx_ctx.netWmState)
+				{
+					if (_window_is_maximized_native(win) && !(win.internal.flags.maximize))
+					{
+						rgfw_windowMaximizedCallback(win, win.bounds);
+						handled = true;
+					}
+				}
+				if (!handled) rgfw_window_checkMode(win);
+			}
+		case 19: case 18: // MapNotify, UnmapNotify
+			rgfw_window_checkMode(win);
+			break;
+		case 33: // ClientMessage
+			{
+				if ((CULong)e.xclient.data.l[0] == _gfx_ctx.wmDeleteWindow)
+				{
+					_window_close_callback(win);
+					break;
+				}
+
+				if (!(win.internal.flags.allow_dnd) || _gfx_ctx.x11Version > 5 /* RGFW_XDND_VERSION */) return;
+
+				GfxPoint drag;
+
+				if (e.xclient.message_type == _gfx_ctx.xdndEnter)
+				{
+					CULong count;
+					Atom* formats;
+					Atom[3] realFormats;
+					int list = (int)(e.xclient.data.l[1] & 1);
+
+					_gfx_ctx.x11Source = (GfxXWindow)e.xclient.data.l[0];
+					_gfx_ctx.x11Version = (int)(e.xclient.data.l[1] >> 24);
+					_gfx_ctx.x11Format = 0;
+					if (list)
+					{
+						Atom actualType;
+						int actualFormat;
+						CULong bytesAfter;
+						xGetWindowProperty(_gfx_ctx.display, _gfx_ctx.x11Source, _gfx_ctx.xdndTypeList, 0, ~0, 0, 4,
+						&actualType, &actualFormat, &count, &bytesAfter, (char**)&formats);
+					}
+					else
+					{
+						count = 0;
+						for (sz i = 2; i < 2 + 3; i++)
+						{
+							if (e.xclient.data.l[i] != 0)
+							{
+								realFormats[count] = (CULong)e.xclient.data.l[i];
+								count++;
+							}
+						}
+						formats = (Atom*)&realFormats;
+					}
+
+					for (sz i = 0; i < (sz)count; i++)
+					{
+						if (formats[i] == _gfx_ctx.xtextUriList)
+						{
+							_gfx_ctx.x11TransferType = FILE;
+						}
+						else if (formats[i] == _gfx_ctx.xtextPlain)
+						{
+							_gfx_ctx.x11TransferType = TEXT;
+						}
+						else
+						{
+							continue;
+						}
+
+						_gfx_ctx.x11Format = (int)formats[i];
+						break;
+					}
+
+					if (list != 0 && formats != null) xFree(formats);
+
+					rgfw_dataDragCallback(win, _gfx_ctx.x11TransferType, ENTER, drag);
+				}
+				else if (e.xclient.message_type == _gfx_ctx.xdndPosition)
+				{
+					int xabs = (int)((e.xclient.data.l[2] >> 16) & 0xffff);
+					int yabs = (int)(e.xclient.data.l[2] & 0xffff);
+					GfxXWindow dummy;
+					int xpos, ypos;
+
+					xTranslateCoordinates(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), win.src.window,
+					xabs, yabs, &xpos, &ypos, &dummy);
+
+					drag = { xpos, ypos };
+
+					_mouse_motion_callback(win, drag);
+
+					XEvent reply;
+					reply.type = 33; // ClientMessage
+					reply.xclient.window = _gfx_ctx.x11Source;
+					reply.xclient.message_type = _gfx_ctx.xdndStatus;
+					reply.xclient.format = 32;
+					reply.xclient.data.l[0] = (CLong)win.src.window;
+					reply.xclient.data.l[2] = 0;
+					reply.xclient.data.l[3] = 0;
+
+					if (_gfx_ctx.x11Format != 0)
+					{
+						reply.xclient.data.l[1] = 1;
+						if (_gfx_ctx.x11Version >= 2) reply.xclient.data.l[4] = (CLong)_gfx_ctx.xdndActionCopy;
+					}
+
+					xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
+					xFlush(_gfx_ctx.display);
+
+					rgfw_dataDragCallback(win, _gfx_ctx.x11TransferType, MOVE, drag);
+				}
+				else if (e.xclient.message_type == _gfx_ctx.xdndLeave)
+				{
+					rgfw_dataDragCallback(win, _gfx_ctx.x11TransferType, EXIT, drag);
+				}
+				else if (e.xclient.message_type == _gfx_ctx.xdndDrop)
+				{
+					if (_gfx_ctx.x11Format != 0)
+					{
+						Time time = _gfx_ctx.x11Version >= 1 ?(Time)e.xclient.data.l[2] : 0; // CurrentTime
+						xConvertSelection(_gfx_ctx.display, _gfx_ctx.xdndSelection, (Atom)_gfx_ctx.x11Format,
+						_gfx_ctx.xdndSelection, win.src.window, time);
+					}
+					else if (_gfx_ctx.x11Version >= 2)
+					{
+						XEvent reply;
+						reply.type = 33; // ClientMessage
+						reply.xclient.window = _gfx_ctx.x11Source;
+						reply.xclient.message_type = _gfx_ctx.xdndFinished;
+						reply.xclient.format = 32;
+						reply.xclient.data.l[0] = (CLong)win.src.window;
+						reply.xclient.data.l[1] = 0;
+						reply.xclient.data.l[2] = 0;
+
+						xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
+						xFlush(_gfx_ctx.display);
+					}
+				}
+				break;
+			}
+		case 31: // SelectionNotify
+			{
+				if (!(win.internal.enabled_events & RGFW_DATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
+
+				ZString data;
+				CULong result;
+				Atom actualType;
+				int actualFormat;
+				CULong bytesAfter;
+
+				xGetWindowProperty(_gfx_ctx.display, e.xselection.requestor, e.xselection.property, 0, ~0, 0, e.xselection.target,
+				&actualType, &actualFormat, &result, &bytesAfter, (char**)&data);
+
+				if (result != 0)
+				{
+					rgfw_unix_parseURI(win, data);
+					if (data != null) xFree(data);
+				}
+
+				if (_gfx_ctx.x11Version >= 2)
+				{
+					XEvent reply;
+					reply.type = 33; // ClientMessage
+					reply.xclient.window = _gfx_ctx.x11Source;
+					reply.xclient.message_type = _gfx_ctx.xdndFinished;
+					reply.xclient.format = 32;
+					reply.xclient.data.l[0] = (CLong)win.src.window;
+					reply.xclient.data.l[1] = (CLong)result;
+					reply.xclient.data.l[2] = (CLong)_gfx_ctx.xdndActionCopy;
+					xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
+					xFlush(_gfx_ctx.display);
+				}
+				break;
+			}
+		case 22: // ConfigureNotify
+			{
+				if (e.xconfigure.width != win.src.width || e.xconfigure.height != win.src.height)
+				{
+					rgfw_window_checkMode(win);
+					win.src.size = { e.xconfigure.width, e.xconfigure.height };
+					_window_resized_callback(win, win.src.size);
+				}
+				GfxPoint configure = { e.xconfigure.x, e.xconfigure.y };
+
+				// if the event came from the server and we're not a direct child of the root window then
+				// we're using local coords which need to be translated into screen coords
+				GfxXWindow root = xDefaultRootWindow(_gfx_ctx.display);
+				if (e.xany.send_event == 0 && win.src.parent != root)
+				{
+					GfxXWindow dummy;
+					xTranslateCoordinates(_gfx_ctx.display, win.src.parent, root, ...configure, &configure.x, &configure.y, &dummy);
+				}
+
+				if (configure != win.origin)
+				{
+					win.src.origin = configure;
+					_window_moved_callback(win, configure);
+				}
+				return;
+			}
+		case 9: // FocusIn
+			if (win.src.ic) xSetICFocus(win.src.ic);
+			rgfw_windowFocusCallback(win, true);
+		case 10: // FocusOut
+			if (win.src.ic) xUnsetICFocus(win.src.ic);
+			rgfw_windowFocusCallback(win, false);
+		case 7: _mouse_notify_callback(win, { e.xcrossing.x, e.xcrossing.y }, true); // EnterNotify
+		case 8: _mouse_notify_callback(win, win.internal.last_mouse, false); // LeaveNotify
+		case 21: win.src.parent = e.xreparent.parent; // ReparentNotify
+		default: break;
+	}
+
+	xFlush(_gfx_ctx.display);
+}
+
 // private
 fn void rgfw_pollMonitors_X11()
 {
@@ -866,7 +1261,7 @@ fn void rgfw_window_makeCurrentContext_OpenGL_X11(GfxWindow* win)
 }
 
 // private
-fn void rgfw_window_maximizePlatform_X11(GfxWindow* win) => rgfw_toggleXMaximized(win, true);
+fn void _window_maximize_x11(GfxWindow* win) => rgfw_toggleXMaximized(win, true);
 
 // private
 fn void rgfw_window_minimizePlatform_X11(GfxWindow* win)
@@ -1013,15 +1408,15 @@ fn bool rgfw_writeClipboard_X11(GfxDataTransfer* data)
 	mem::copy(dataPtr, data.data, data.length);
 	dataPtr[length - 1] = 0;
 	_gfx_ctx.unixClipboard.data = dataPtr;
-	_gfx_ctx.unixClipboard.type = RGFW_DATA_TEXT;
+	_gfx_ctx.unixClipboard.type = TEXT;
 	_gfx_ctx.unixClipboard.length = length;
 	return true;
 }
 
 // private
-fn bool rgfw_readClipboardPtr_X11(RgfwDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* dataTransfer)
+fn bool rgfw_readClipboardPtr_X11(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* dataTransfer)
 {
-	if (requestedType != RGFW_DATA_TEXT) return false;
+	if (requestedType != TEXT) return false;
 	dataTransfer.data = buffer;
 
 	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helperWindow)
@@ -1032,7 +1427,7 @@ fn bool rgfw_readClipboardPtr_X11(RgfwDataTransferType requestedType, char* buff
 			if (_gfx_ctx.unixClipboard.length > capacity) return false;
 			mem::copy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
 		}
-		dataTransfer.type = RGFW_DATA_TEXT;
+		dataTransfer.type = TEXT;
 		return true;
 	}
 
@@ -1068,7 +1463,7 @@ fn bool rgfw_readClipboardPtr_X11(RgfwDataTransferType requestedType, char* buff
 
 	xDeleteProperty(_gfx_ctx.display, event.xselection.requestor, event.xselection.property);
 	dataTransfer.length = length;
-	dataTransfer.type = RGFW_DATA_TEXT;
+	dataTransfer.type = TEXT;
 	return ret;
 }
 
@@ -1463,7 +1858,7 @@ fn void rgfw_unix_parseURI(GfxWindow* win, ZString data)
 		}
 
 		path[len] = 0;
-		rgfw_dataDropCallback(win, path, len + 1, RGFW_DATA_FILE);
+		rgfw_dataDropCallback(win, path, len + 1, FILE);
 		free(path);
 	}
 }
