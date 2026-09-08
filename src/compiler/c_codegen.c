@@ -37,6 +37,15 @@ static inline bool c_is_builtin_symbol_collision(const char *name)
 	return strncmp(name, "__atomic_", 9) == 0 || strncmp(name, "__builtin_", 10) == 0;
 }
 
+static const char *c_check_collision(const char *name)
+{
+	if (name && c_is_builtin_symbol_collision(name))
+	{
+		return c_intern(str_printf("__c3_ext_%s", name));
+	}
+	return name;
+}
+
 const char *c_get_decl_asm_name(Decl *decl)
 {
 	if (!decl)
@@ -94,11 +103,7 @@ const char *c_get_decl_name(Decl *decl)
 		}
 		if (name)
 		{
-			if (c_is_builtin_symbol_collision(name))
-			{
-				return c_intern(str_printf("__c3_ext_%s", name));
-			}
-			return name;
+			return c_check_collision(name);
 		}
 	}
 
@@ -109,23 +114,18 @@ const char *c_get_decl_name(Decl *decl)
 
 	if (decl->has_extname && decl->extname)
 	{
-		const char *name = c_sanitize_name(decl->extname);
-		if (c_is_builtin_symbol_collision(name))
-		{
-			return c_intern(str_printf("__c3_ext_%s", name));
-		}
-		return name;
+		return c_check_collision(c_sanitize_name(decl->extname));
+	}
+
+	if (!decl->unit || !decl->unit->module)
+	{
+		return c_check_collision(c_sanitize_name(decl->name));
 	}
 
 	decl->is_export = true;
 	scratch_buffer_set_extern_decl_name(decl, true);
-	char *str        = scratch_buffer_copy();
-	const char *name = c_sanitize_name(str);
-	if (c_is_builtin_symbol_collision(name))
-	{
-		return c_intern(str_printf("__c3_ext_%s", name));
-	}
-	return name;
+	char *str = scratch_buffer_copy();
+	return c_check_collision(c_sanitize_name(str));
 }
 
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param)
@@ -240,13 +240,17 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 	if (d->decl_kind == DECL_GENERIC)
 	{
 		FOREACH(Decl *, inst, d->generic_decl.instances)
-		c_traverse_decl(c, inst, visitor, userdata);
+		{
+			c_traverse_decl(c, inst, visitor, userdata);
+		}
 		return;
 	}
 	if (d->decl_kind == DECL_GENERIC_INSTANCE)
 	{
 		FOREACH(Decl *, gd, d->instance_decl.generated_decls)
-		c_traverse_decl(c, gd, visitor, userdata);
+		{
+			c_traverse_decl(c, gd, visitor, userdata);
+		}
 		return;
 	}
 	if (d->decl_kind == DECL_ALIAS)
@@ -261,7 +265,9 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 	if (d->decl_kind == DECL_GROUP)
 	{
 		FOREACH(Decl *, gd, d->decl_list)
-		c_traverse_decl(c, gd, visitor, userdata);
+		{
+			c_traverse_decl(c, gd, visitor, userdata);
+		}
 		return;
 	}
 	if (d->is_template)
@@ -284,12 +290,16 @@ static void c_traverse_decl(GenContext *c, Decl *d, CDeclVisitor visitor, void *
 	if (d->decl_kind == DECL_INTERFACE && d->interface_methods)
 	{
 		FOREACH(Decl *, im, d->interface_methods)
-		c_traverse_decl(c, im, visitor, userdata);
+		{
+			c_traverse_decl(c, im, visitor, userdata);
+		}
 	}
 	if (decl_has_interface(d) && d->method_table && d->method_table->methods)
 	{
 		FOREACH(Decl *, m, d->method_table->methods)
-		c_traverse_decl(c, m, visitor, userdata);
+		{
+			c_traverse_decl(c, m, visitor, userdata);
+		}
 	}
 }
 
@@ -300,19 +310,33 @@ static void c_traverse_unit(GenContext *c, CompilationUnit *unit, CDeclVisitor v
 		return;
 	}
 	FOREACH(Decl *, t, unit->types)
-	c_traverse_decl(c, t, visitor, userdata);
+	{
+		c_traverse_decl(c, t, visitor, userdata);
+	}
 	FOREACH(Decl *, v, unit->vars)
-	c_traverse_decl(c, v, visitor, userdata);
+	{
+		c_traverse_decl(c, v, visitor, userdata);
+	}
 	FOREACH(Decl *, f, unit->functions)
-	c_traverse_decl(c, f, visitor, userdata);
+	{
+		c_traverse_decl(c, f, visitor, userdata);
+	}
 	FOREACH(Decl *, m, unit->methods)
-	c_traverse_decl(c, m, visitor, userdata);
+	{
+		c_traverse_decl(c, m, visitor, userdata);
+	}
 	FOREACH(Decl *, l, unit->lambdas)
-	c_traverse_decl(c, l, visitor, userdata);
+	{
+		c_traverse_decl(c, l, visitor, userdata);
+	}
 	FOREACH(Decl *, e, unit->enums)
-	c_traverse_decl(c, e, visitor, userdata);
+	{
+		c_traverse_decl(c, e, visitor, userdata);
+	}
 	FOREACH(Decl *, g, unit->generic_decls)
-	c_traverse_decl(c, g, visitor, userdata);
+	{
+		c_traverse_decl(c, g, visitor, userdata);
+	}
 	if (unit->main_function)
 	{
 		c_traverse_decl(c, unit->main_function, visitor, userdata);
@@ -328,14 +352,22 @@ void c_traverse_all_modules(GenContext *c, CDeclVisitor visitor, void *userdata)
 			continue;
 		}
 		FOREACH(CompilationUnit *, unit, mod->units)
-		c_traverse_unit(c, unit, visitor, userdata);
+		{
+			c_traverse_unit(c, unit, visitor, userdata);
+		}
 	}
 	FOREACH(Decl *, ext, compiler.context.method_extension_list)
-	c_traverse_decl(c, ext, visitor, userdata);
+	{
+		c_traverse_decl(c, ext, visitor, userdata);
+	}
 	FOREACH(Decl *, ug, compiler.context.unregistered_generic_decls)
-	c_traverse_decl(c, ug, visitor, userdata);
+	{
+		c_traverse_decl(c, ug, visitor, userdata);
+	}
 	FOREACH(Decl *, ums, compiler.context.unregistered_method_specializations)
-	c_traverse_decl(c, ums, visitor, userdata);
+	{
+		c_traverse_decl(c, ums, visitor, userdata);
+	}
 }
 
 static bool c_module_has_live_code(Module *module)
@@ -386,85 +418,73 @@ static bool c_module_has_live_code(Module *module)
 	return false;
 }
 
-static void visit_forward_decl(GenContext *c, Decl *d, void *ud)
+static void c_emit_decl_types(GenContext *c, Decl *d, bool forward_decl)
 {
-	(void)ud;
+	bool (*emit_fn)(GenContext *, Type *) = forward_decl ? c_emit_type_forward_decl : c_emit_type_decl;
 	Type *dt = c_decl_type(d);
 	if (is_valid_type_ptr(dt) && dt->type_kind != TYPE_POISONED)
 	{
-		c_emit_type_forward_decl(c, dt);
+		emit_fn(c, dt);
 	}
-	if (d->decl_kind == DECL_FUNC)
+	if (d->decl_kind != DECL_FUNC)
 	{
-		Type *rtype = typeget(d->func_decl.signature.rtype);
-		if (is_valid_type_ptr(rtype) && rtype->type_kind != TYPE_POISONED)
+		return;
+	}
+	Type *rtype = typeget(d->func_decl.signature.rtype);
+	if (is_valid_type_ptr(rtype) && rtype->type_kind != TYPE_POISONED)
+	{
+		emit_fn(c, rtype);
+	}
+	FOREACH(Decl *, p, d->func_decl.signature.params)
+	{
+		Type *ptype = c_decl_type(p);
+		if (is_valid_type_ptr(ptype) && ptype->type_kind != TYPE_POISONED)
 		{
-			c_emit_type_forward_decl(c, rtype);
-		}
-		FOREACH(Decl *, p, d->func_decl.signature.params)
-		{
-			Type *ptype = c_decl_type(p);
-			if (is_valid_type_ptr(ptype) && ptype->type_kind != TYPE_POISONED)
-			{
-				c_emit_type_forward_decl(c, ptype);
-			}
+			emit_fn(c, ptype);
 		}
 	}
+}
+
+static void visit_forward_decl(GenContext *c, Decl *d, void *ud)
+{
+	(void)ud;
+	c_emit_decl_types(c, d, true);
 }
 
 static void visit_type_decl(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
-	Type *dt = c_decl_type(d);
-	if (is_valid_type_ptr(dt) && dt->type_kind != TYPE_POISONED)
-	{
-		c_emit_type_decl(c, dt);
-	}
-	if (d->decl_kind == DECL_FUNC)
-	{
-		Type *rtype = typeget(d->func_decl.signature.rtype);
-		if (rtype)
-		{
-			c_emit_type_decl(c, rtype);
-		}
-		FOREACH(Decl *, p, d->func_decl.signature.params)
-		{
-			Type *ptype = c_decl_type(p);
-			if (is_valid_type_ptr(ptype) && ptype->type_kind != TYPE_POISONED)
-			{
-				c_emit_type_decl(c, ptype);
-			}
-		}
-	}
+	c_emit_decl_types(c, d, false);
 }
 
 static void visit_fn_prototype(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
 	d = c_decl_unwrap(d);
-	if (d && d->decl_kind == DECL_FUNC)
+	if (!d || d->decl_kind != DECL_FUNC)
 	{
-		if (d->func_decl.attr_test)
-		{
-			if (!compiler.build.build_test)
-			{
-				return;
-			}
-		}
-		else if (d->func_decl.attr_benchmark)
-		{
-			if (!compiler.build.build_benchmark)
-			{
-				return;
-			}
-		}
-		else if (strip_unused() && !d->is_live)
+		return;
+	}
+	if (d->func_decl.attr_test)
+	{
+		if (!compiler.build.build_test)
 		{
 			return;
 		}
-		bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
-		c_emit_function_decl(c, d, is_current);
 	}
+	else if (d->func_decl.attr_benchmark)
+	{
+		if (!compiler.build.build_benchmark)
+		{
+			return;
+		}
+	}
+	else if (strip_unused() && !d->is_live)
+	{
+		return;
+	}
+	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
+	c_emit_function_decl(c, d, is_current);
 }
 
 static void visit_mark_declared(GenContext *c, Decl *d, void *ud)
@@ -489,7 +509,9 @@ static void visit_dynamic_dispatcher(GenContext *c, Decl *d, void *ud)
 	if (d->decl_kind == DECL_INTERFACE && d->interface_methods)
 	{
 		FOREACH(Decl *, im, d->interface_methods)
-		c_emit_dynamic_dispatcher(c, im);
+		{
+			c_emit_dynamic_dispatcher(c, im);
+		}
 	}
 }
 
@@ -497,11 +519,7 @@ static void visit_global_forward_decl(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
 	d = c_decl_unwrap(d);
-	if (!d)
-	{
-		return;
-	}
-	if (strip_unused() && !d->is_live)
+	if (!d || (strip_unused() && !d->is_live))
 	{
 		return;
 	}
@@ -540,15 +558,10 @@ static void visit_global_def(GenContext *c, Decl *d, void *ud)
 {
 	(void)ud;
 	d = c_decl_unwrap(d);
-	if (!d)
+	if (!d || (strip_unused() && !d->is_live))
 	{
 		return;
 	}
-	if (strip_unused() && !d->is_live)
-	{
-		return;
-	}
-	// In single-module mode (current_module == NULL), emit all globals; otherwise only this module's.
 	bool is_current = (!c->current_module || (d->unit && d->unit->module == c->current_module));
 	if (!is_current)
 	{
@@ -704,6 +717,76 @@ static void c_try_emit_function_def(GenContext *c, Decl *decl, bool only_used)
 	c_emit_function(c, decl);
 }
 
+static bool c_has_main_function(Module **modules, int mod_count)
+{
+	for (int m = 0; m < mod_count; m++)
+	{
+		Module *mod = modules[m];
+		if (!mod)
+		{
+			continue;
+		}
+		FOREACH(CompilationUnit *, unit, mod->units)
+		{
+			if (unit->main_function)
+			{
+				return true;
+			}
+			FOREACH(Decl *, decl, unit->functions)
+			{
+				if (decl && decl->name && strcmp(decl->name, "main") == 0)
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+static Decl **c_collect_and_sort_init_functions(void)
+{
+	Decl **init_funcs = NULL;
+	FOREACH(Module *, mod, compiler.context.module_list)
+	{
+		if (!mod)
+		{
+			continue;
+		}
+		FOREACH(CompilationUnit *, unit, mod->units)
+		{
+			if (!unit)
+			{
+				continue;
+			}
+			FOREACH(Decl *, d, unit->functions)
+			{
+				if (d && d->decl_kind == DECL_FUNC && d->func_decl.attr_init && !d->is_extern)
+				{
+					vec_add(init_funcs, d);
+				}
+			}
+		}
+	}
+
+	int init_count = vec_size(init_funcs);
+	for (int i = 0; i < init_count - 1; i++)
+	{
+		for (int j = i + 1; j < init_count; j++)
+		{
+			uint32_t p_i = init_funcs[i]->func_decl.priority ? init_funcs[i]->func_decl.priority : MAX_PRIORITY;
+			uint32_t p_j = init_funcs[j]->func_decl.priority ? init_funcs[j]->func_decl.priority : MAX_PRIORITY;
+			if (p_j < p_i)
+			{
+				Decl *tmp     = init_funcs[i];
+				init_funcs[i] = init_funcs[j];
+				init_funcs[j] = tmp;
+			}
+		}
+	}
+	return init_funcs;
+}
+
 static GenContext *c_gen_module(Module *module, int num)
 {
 	(void)num;
@@ -764,11 +847,9 @@ static GenContext *c_gen_module(Module *module, int num)
 	htable_init(&c->emitted_global_decls, 8192);
 	htable_init(&c->emitted_global_defs, 8192);
 
-	// Include the shared header with all types, prototypes, and dispatchers
 	fputs("/* Generated by C3 Compiler */\n", f);
 	fputs("#include \"__c3_shared.h\"\n\n", f);
 
-	// Mark all types as generated so inline functions don't attempt to re-declare them
 	c_mark_all_types_declared(c);
 
 	fputs("/* GLOBALS */\n", f);
@@ -785,11 +866,7 @@ static GenContext *c_gen_module(Module *module, int num)
 	for (int m = 0; m < mod_count; m++)
 	{
 		Module *mod = modules[m];
-		if (!mod || !vec_size(mod->units))
-		{
-			continue;
-		}
-		if (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod))
+		if (!mod || !vec_size(mod->units) || (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod)))
 		{
 			continue;
 		}
@@ -850,14 +927,8 @@ static GenContext *c_gen_module(Module *module, int num)
 			Type *gt          = c_decl_type(var);
 			if (c_type_is_aggregate(gt))
 			{
-				if (val.kind == CV_ADDRESS)
-				{
-					PRINTF("__c3_memcpy(&%s, (void*)___var_%d, sizeof(%s));\n", gname, val.var, gname);
-				}
-				else
-				{
-					PRINTF("__c3_memcpy(&%s, &___var_%d, sizeof(%s));\n", gname, val.var, gname);
-				}
+				const char *src_ref = (val.kind == CV_ADDRESS) ? "(void*)" : "&";
+				PRINTF("__c3_memcpy(&%s, %s___var_%d, sizeof(%s));\n", gname, src_ref, val.var, gname);
 			}
 			else
 			{
@@ -888,41 +959,7 @@ static GenContext *c_gen_module(Module *module, int num)
 		PRINTF("void %s(void) {}\n\n", init_globals_name);
 	}
 
-	bool has_main = false;
-	for (int m = 0; m < mod_count; m++)
-	{
-		Module *mod = modules[m];
-		if (!mod)
-		{
-			continue;
-		}
-		FOREACH(CompilationUnit *, unit, mod->units)
-		{
-			if (unit->main_function)
-			{
-				has_main = true;
-				break;
-			}
-			FOREACH(Decl *, decl, unit->functions)
-			{
-				if (decl && decl->name && strcmp(decl->name, "main") == 0)
-				{
-					has_main = true;
-					break;
-				}
-			}
-			if (has_main)
-			{
-				break;
-			}
-		}
-		if (has_main)
-		{
-			break;
-		}
-	}
-
-	if (has_main || compiler.build.single_module == SINGLE_MODULE_ON)
+	if (c_has_main_function(modules, mod_count) || compiler.build.single_module == SINGLE_MODULE_ON)
 	{
 		PRINT("void __c3_init_runtime(void) {\n");
 		PRINT("\tstatic bool initialized = false;\n");
@@ -930,47 +967,8 @@ static GenContext *c_gen_module(Module *module, int num)
 		PRINT("\tinitialized = true;\n");
 		PRINTF("\t%s();\n", init_globals_name);
 
-		// Collect all @init functions
-		Decl **init_funcs = NULL;
-		FOREACH(Module *, mod, compiler.context.module_list)
-		{
-			if (!mod)
-			{
-				continue;
-			}
-			FOREACH(CompilationUnit *, unit, mod->units)
-			{
-				if (!unit)
-				{
-					continue;
-				}
-				FOREACH(Decl *, d, unit->functions)
-				{
-					if (d && d->decl_kind == DECL_FUNC && d->func_decl.attr_init && !d->is_extern)
-					{
-						vec_add(init_funcs, d);
-					}
-				}
-			}
-		}
-
-		// Sort @init functions by priority (lower number runs first)
-		int init_count = vec_size(init_funcs);
-		for (int i = 0; i < init_count - 1; i++)
-		{
-			for (int j = i + 1; j < init_count; j++)
-			{
-				uint32_t p_i = init_funcs[i]->func_decl.priority ? init_funcs[i]->func_decl.priority : MAX_PRIORITY;
-				uint32_t p_j = init_funcs[j]->func_decl.priority ? init_funcs[j]->func_decl.priority : MAX_PRIORITY;
-				if (p_j < p_i)
-				{
-					Decl *tmp     = init_funcs[i];
-					init_funcs[i] = init_funcs[j];
-					init_funcs[j] = tmp;
-				}
-			}
-		}
-
+		Decl **init_funcs = c_collect_and_sort_init_functions();
+		int init_count    = vec_size(init_funcs);
 		for (int i = 0; i < init_count; i++)
 		{
 			c_emit_function_decl(c, init_funcs[i], false);
@@ -982,11 +980,7 @@ static GenContext *c_gen_module(Module *module, int num)
 	for (int m = 0; m < mod_count; m++)
 	{
 		Module *mod = modules[m];
-		if (!mod || !vec_size(mod->units))
-		{
-			continue;
-		}
-		if (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod))
+		if (!mod || !vec_size(mod->units) || (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(mod)))
 		{
 			continue;
 		}
@@ -1019,6 +1013,15 @@ static GenContext *c_gen_module(Module *module, int num)
 static const char *c_backend_cc     = NULL;
 static const char *c_backend_cflags = NULL;
 
+static inline void c_buf_append(char *buf, size_t cap, const char *str)
+{
+	size_t len = strlen(buf);
+	if (len + 1 < cap)
+	{
+		strncat(buf, str, cap - len - 1);
+	}
+}
+
 static const char *c_backend_build_cflags(const char *cc)
 {
 	bool is_cl    = str_ends_with(cc, "cl.exe");
@@ -1027,176 +1030,141 @@ static const char *c_backend_build_cflags(const char *cc)
 	char buf[4096];
 	buf[0] = '\0';
 
-	// 1. Base flags
 	bool has_warn_flags = compiler.build.cflags && (strstr(compiler.build.cflags, "-W") || strstr(compiler.build.cflags, "/W"));
 	if (is_cl)
 	{
-		strncat(buf, "/nologo ", sizeof(buf) - strlen(buf) - 1);
-		if (!has_warn_flags)
-		{
-			strncat(buf, "/w ", sizeof(buf) - strlen(buf) - 1);
-		}
+		c_buf_append(buf, sizeof(buf), has_warn_flags ? "/nologo " : "/nologo /w ");
 	}
 	else if (is_tcc)
 	{
 		if (!has_warn_flags)
 		{
-			strncat(buf, "-w ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "-w ");
 		}
 	}
 	else
 	{
 		if (!has_warn_flags)
 		{
-			// -Wno-incompatible-pointer-types prevents Clang 16+ from treating 
-			// cross-module C struct pointers with identical layouts as fatal errors
-			strncat(buf, "-w -Wno-incompatible-pointer-types ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "-w -Wno-incompatible-pointer-types ");
 		}
-		strncat(buf, "-fno-builtin -fwrapv -fno-strict-aliasing ", sizeof(buf) - strlen(buf) - 1);
+		c_buf_append(buf, sizeof(buf), "-fno-builtin -fwrapv -fno-strict-aliasing ");
 
-		// Clang requires --target when cross-compiling; GCC uses target-prefixed binaries instead
 		if (is_clang && compiler.build.arch_os_target != default_target)
 		{
-			strncat(buf, "--target=", sizeof(buf) - strlen(buf) - 1);
-			strncat(buf, compiler.platform.target_triple, sizeof(buf) - strlen(buf) - 1);
-			strncat(buf, " ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "--target=");
+			c_buf_append(buf, sizeof(buf), compiler.platform.target_triple);
+			c_buf_append(buf, sizeof(buf), " ");
 		}
-
 		if (compiler.platform.os == OS_TYPE_IOS && compiler.build.ios.sysroot)
 		{
-			strncat(buf, "-isysroot \"", sizeof(buf) - strlen(buf) - 1);
-			strncat(buf, compiler.build.ios.sysroot, sizeof(buf) - strlen(buf) - 1);
-			strncat(buf, "\" ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "-isysroot \"");
+			c_buf_append(buf, sizeof(buf), compiler.build.ios.sysroot);
+			c_buf_append(buf, sizeof(buf), "\" ");
 		}
 		if (compiler.platform.os != OS_TYPE_WIN32 && compiler.platform.reloc_model != RELOC_NONE)
 		{
-			strncat(buf, "-fPIC ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "-fPIC ");
 		}
 	}
 
-	// 2. Optimization level & size
 	switch (compiler.build.optsize)
 	{
 		case SIZE_OPTIMIZATION_SMALL:
-			strncat(buf, is_cl ? "/O1 " : "-Os ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), is_cl ? "/O1 " : "-Os ");
 			break;
 		case SIZE_OPTIMIZATION_TINY:
-			strncat(buf, is_cl ? "/O1 " : "-Oz ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), is_cl ? "/O1 " : "-Oz ");
 			break;
 		default:
 			switch (compiler.build.optlevel)
 			{
 				case OPTIMIZATION_NONE:
 				case OPTIMIZATION_NOT_SET:
-					strncat(buf, is_cl ? "/Od " : "-O0 ", sizeof(buf) - strlen(buf) - 1);
+					c_buf_append(buf, sizeof(buf), is_cl ? "/Od " : "-O0 ");
 					break;
 				case OPTIMIZATION_LESS:
-					strncat(buf, is_cl ? "/O1 " : "-O1 ", sizeof(buf) - strlen(buf) - 1);
+					c_buf_append(buf, sizeof(buf), is_cl ? "/O1 " : "-O1 ");
 					break;
 				case OPTIMIZATION_MORE:
-					strncat(buf, is_cl ? "/O2 " : "-O2 ", sizeof(buf) - strlen(buf) - 1);
+					c_buf_append(buf, sizeof(buf), is_cl ? "/O2 " : "-O2 ");
 					break;
 				case OPTIMIZATION_AGGRESSIVE:
-					strncat(buf, is_cl ? "/O2 " : "-O3 ", sizeof(buf) - strlen(buf) - 1);
+					c_buf_append(buf, sizeof(buf), is_cl ? "/O2 " : "-O3 ");
 					break;
 			}
 			break;
 	}
 
-	// 3. Debug info
-	switch (compiler.build.debug_info)
+	if (compiler.build.debug_info == DEBUG_INFO_FULL)
 	{
-		case DEBUG_INFO_FULL:
-			strncat(buf, is_cl ? "/Z7 " : "-g ", sizeof(buf) - strlen(buf) - 1);
-			break;
-		case DEBUG_INFO_LINE_TABLES:
-			strncat(buf, is_cl ? "/Z7 " : "-g1 ", sizeof(buf) - strlen(buf) - 1);
-			break;
-		case DEBUG_INFO_NONE:
-		default:
-			if (!is_cl && compiler.build.debug_info == DEBUG_INFO_NONE)
-			{
-				strncat(buf, "-g0 ", sizeof(buf) - strlen(buf) - 1);
-			}
-			break;
+		c_buf_append(buf, sizeof(buf), is_cl ? "/Z7 " : "-g ");
+	}
+	else if (compiler.build.debug_info == DEBUG_INFO_LINE_TABLES)
+	{
+		c_buf_append(buf, sizeof(buf), is_cl ? "/Z7 " : "-g1 ");
+	}
+	else if (!is_cl && compiler.build.debug_info == DEBUG_INFO_NONE)
+	{
+		c_buf_append(buf, sizeof(buf), "-g0 ");
 	}
 
-	// 4. Floating-point math
 	switch (compiler.build.feature.fp_math)
 	{
 		case FP_FAST:
-			strncat(buf, is_cl ? "/fp:fast " : "-ffast-math ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), is_cl ? "/fp:fast " : "-ffast-math ");
 			break;
 		case FP_RELAXED:
 			if (!is_cl)
 			{
-				strncat(buf, "-fno-trapping-math ", sizeof(buf) - strlen(buf) - 1);
+				c_buf_append(buf, sizeof(buf), "-fno-trapping-math ");
 			}
 			break;
 		case FP_STRICT:
 		default:
-			if (is_cl)
-			{
-				strncat(buf, "/fp:precise ", sizeof(buf) - strlen(buf) - 1);
-			}
-			else
-			{
-				strncat(buf, "-fno-fast-math ", sizeof(buf) - strlen(buf) - 1);
-			}
+			c_buf_append(buf, sizeof(buf), is_cl ? "/fp:precise " : "-fno-fast-math ");
 			break;
 	}
 
-	// 5. Sanitizers & Loop optimizations
 	if (compiler.build.feature.sanitize_address)
 	{
-		strncat(buf, is_cl ? "/fsanitize=address " : "-fsanitize=address ", sizeof(buf) - strlen(buf) - 1);
+		c_buf_append(buf, sizeof(buf), is_cl ? "/fsanitize=address " : "-fsanitize=address ");
 	}
 	if (!is_cl)
 	{
 		if (compiler.build.feature.sanitize_memory)
 		{
-			strncat(buf, "-fsanitize=memory ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "-fsanitize=memory ");
 		}
 		if (compiler.build.feature.sanitize_thread)
 		{
-			strncat(buf, "-fsanitize=thread ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "-fsanitize=thread ");
 		}
 		if (compiler.build.unroll_loops == UNROLL_LOOPS_ON)
 		{
-			strncat(buf, "-funroll-loops ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "-funroll-loops ");
 		}
 		if (compiler.build.loop_vectorization == VECTORIZATION_ON)
 		{
-			strncat(buf, "-ftree-vectorize ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "-ftree-vectorize ");
 		}
 		else if (compiler.build.loop_vectorization == VECTORIZATION_OFF)
 		{
-			strncat(buf, "-fno-tree-vectorize ", sizeof(buf) - strlen(buf) - 1);
+			c_buf_append(buf, sizeof(buf), "-fno-tree-vectorize ");
 		}
 	}
 
-	// 6. Include directories
 	FOREACH(const char *, inc, compiler.build.cinclude_dirs)
 	{
-		if (is_cl)
-		{
-			strncat(buf, "/I \"", sizeof(buf) - strlen(buf) - 1);
-			strncat(buf, inc, sizeof(buf) - strlen(buf) - 1);
-			strncat(buf, "\" ", sizeof(buf) - strlen(buf) - 1);
-		}
-		else
-		{
-			strncat(buf, "-I \"", sizeof(buf) - strlen(buf) - 1);
-			strncat(buf, inc, sizeof(buf) - strlen(buf) - 1);
-			strncat(buf, "\" ", sizeof(buf) - strlen(buf) - 1);
-		}
+		c_buf_append(buf, sizeof(buf), is_cl ? "/I \"" : "-I \"");
+		c_buf_append(buf, sizeof(buf), inc);
+		c_buf_append(buf, sizeof(buf), "\" ");
 	}
 
-	// 7. User-provided cflags placed LAST so they can override any defaults
 	if (compiler.build.cflags)
 	{
-		strncat(buf, compiler.build.cflags, sizeof(buf) - strlen(buf) - 1);
-		strncat(buf, " ", sizeof(buf) - strlen(buf) - 1);
+		c_buf_append(buf, sizeof(buf), compiler.build.cflags);
+		c_buf_append(buf, sizeof(buf), " ");
 	}
 
 	return str_dup(buf);
@@ -1205,11 +1173,7 @@ static const char *c_backend_build_cflags(const char *cc)
 const char *c_codegen(void *context)
 {
 	GenContext *c = (GenContext *)context;
-	if (!c)
-	{
-		return NULL;
-	}
-	if (c->current_module && !compiler_should_output_file(c->base_name))
+	if (!c || (c->current_module && !compiler_should_output_file(c->base_name)))
 	{
 		return NULL;
 	}
@@ -1253,7 +1217,6 @@ void **c_gen(Module **modules, int module_count)
 	c_emit_runtime_header(dir);
 	c_emit_shared_header(dir);
 
-	// Pre-calculate on the main thread before starting worker threads
 	c_backend_cc     = compiler.build.cc ? compiler.build.cc : find_c_compiler();
 	c_backend_cflags = c_backend_build_cflags(c_backend_cc);
 

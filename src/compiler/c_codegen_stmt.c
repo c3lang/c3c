@@ -2,11 +2,7 @@
 
 void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 {
-	if (!decl)
-	{
-		return;
-	}
-	if (!c->current_block_live)
+	if (!decl || !c->current_block_live)
 	{
 		return;
 	}
@@ -114,6 +110,27 @@ void c_emit_check_fault_and_return(GenContext *c, Expr *expr)
 	}
 }
 
+static const char *c_cond_expr_str(const CValue *cval, bool invert)
+{
+	if (!cval || cval->var == 0)
+	{
+		return invert ? "0" : "1";
+	}
+	if (cval->type && cval->type->type_kind == TYPE_SLICE)
+	{
+		return str_printf("___var_%d.len %s 0", cval->var, invert ? "==" : "!=");
+	}
+	if (cval->type && (cval->type->type_kind == TYPE_ANY || cval->type->type_kind == TYPE_INTERFACE))
+	{
+		return str_printf("___var_%d.ptr %s NULL", cval->var, invert ? "==" : "!=");
+	}
+	if (cval->type && (type_is_pointer(cval->type) || cval->type->type_kind == TYPE_FUNC_PTR))
+	{
+		return str_printf("___var_%d %s NULL", cval->var, invert ? "==" : "!=");
+	}
+	return str_printf("%s___var_%d", invert ? "!" : "", cval->var);
+}
+
 static void c_emit_if_stmt(GenContext *c, Ast *stmt)
 {
 	AstIfStmt *if_stmt = &stmt->if_stmt;
@@ -141,29 +158,7 @@ static void c_emit_if_stmt(GenContext *c, Ast *stmt)
 		c_value_rvalue(c, &condition);
 	}
 
-	if (condition.var != 0)
-	{
-		if (condition.type && condition.type->type_kind == TYPE_SLICE)
-		{
-			PRINTF("if (___var_%d.len != 0) {\n", condition.var);
-		}
-		else if (condition.type && (condition.type->type_kind == TYPE_ANY || condition.type->type_kind == TYPE_INTERFACE))
-		{
-			PRINTF("if (___var_%d.ptr != NULL) {\n", condition.var);
-		}
-		else if (condition.type && (type_is_pointer(condition.type) || condition.type->type_kind == TYPE_FUNC_PTR))
-		{
-			PRINTF("if (___var_%d != NULL) {\n", condition.var);
-		}
-		else
-		{
-			PRINTF("if (___var_%d) {\n", condition.var);
-		}
-	}
-	else
-	{
-		PRINT("if (1) {\n");
-	}
+	PRINTF("if (%s) {\n", c_cond_expr_str(&condition, false));
 
 	bool entry_live = c->current_block_live;
 
@@ -241,22 +236,7 @@ static void c_emit_for_stmt(GenContext *c, Ast *stmt)
 		c_value_rvalue(c, &cond_val);
 		if (cond_val.var != 0)
 		{
-			if (cond_val.type && cond_val.type->type_kind == TYPE_SLICE)
-			{
-				PRINTF("if (___var_%d.len == 0) goto __C3_LABEL_%d;\n", cond_val.var, loop_exit);
-			}
-			else if (cond_val.type && (cond_val.type->type_kind == TYPE_ANY || cond_val.type->type_kind == TYPE_INTERFACE))
-			{
-				PRINTF("if (___var_%d.ptr == NULL) goto __C3_LABEL_%d;\n", cond_val.var, loop_exit);
-			}
-			else if (cond_val.type && (type_is_pointer(cond_val.type) || cond_val.type->type_kind == TYPE_FUNC_PTR))
-			{
-				PRINTF("if (___var_%d == NULL) goto __C3_LABEL_%d;\n", cond_val.var, loop_exit);
-			}
-			else
-			{
-				PRINTF("if (!___var_%d) goto __C3_LABEL_%d;\n", cond_val.var, loop_exit);
-			}
+			PRINTF("if (%s) goto __C3_LABEL_%d;\n", c_cond_expr_str(&cond_val, true), loop_exit);
 		}
 	}
 	if (skip_first)
@@ -360,6 +340,45 @@ static void c_emit_nextcase_stmt(GenContext *c, Ast *stmt)
 	c->current_block_live = false;
 }
 
+static int c_emit_switch_case_labels(GenContext *c, Ast **cases, int case_count, Ast *default_case, int switch_exit)
+{
+	int default_label = switch_exit;
+	if (default_case && default_case->case_stmt.body)
+	{
+		default_label = c_create_label(c);
+	}
+
+	for (int i = 0; i < case_count; i++)
+	{
+		Ast *cs = cases[i];
+		if (cs == default_case)
+		{
+			cs->case_stmt.backend_block = cs->case_stmt.body ? (void *)(uintptr_t)default_label : NULL;
+		}
+		else
+		{
+			cs->case_stmt.backend_block = cs->case_stmt.body ? (void *)(uintptr_t)c_create_label(c) : NULL;
+		}
+	}
+
+	void *next_block = (void *)(uintptr_t)switch_exit;
+	for (int i = case_count; i > 0; i--)
+	{
+		Ast *cs = cases[i - 1];
+		if (cs->case_stmt.backend_block)
+		{
+			next_block = cs->case_stmt.backend_block;
+			continue;
+		}
+		cs->case_stmt.backend_block = next_block;
+		if (cs == default_case)
+		{
+			default_label = (int)(uintptr_t)next_block;
+		}
+	}
+	return default_label;
+}
+
 static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 {
 	AstSwitchStmt *sw = &stmt->switch_stmt;
@@ -398,23 +417,7 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 		stmt->switch_stmt.codegen.retry.block = (void *)(uintptr_t)switch_entry;
 		stmt->switch_stmt.codegen.retry.var   = (void *)(uintptr_t)cond_var;
 
-		for (int i = 0; i < case_count; i++)
-		{
-			Ast *cs                     = cases[i];
-			cs->case_stmt.backend_block = cs->case_stmt.body ? (void *)(uintptr_t)c_create_label(c) : NULL;
-		}
-
-		void *next_block = (void *)(uintptr_t)switch_exit;
-		for (int i = case_count; i > 0; i--)
-		{
-			Ast *cs = cases[i - 1];
-			if (cs->case_stmt.backend_block)
-			{
-				next_block = cs->case_stmt.backend_block;
-				continue;
-			}
-			cs->case_stmt.backend_block = next_block;
-		}
+		c_emit_switch_case_labels(c, cases, case_count, NULL, switch_exit);
 
 		c_emit_label(c, switch_entry);
 		PRINTF("switch (___var_%d) {\n", cond_var);
@@ -487,40 +490,7 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 		stmt->switch_stmt.codegen.retry.block = (void *)(uintptr_t)switch_entry;
 		stmt->switch_stmt.codegen.retry.var   = (void *)(uintptr_t)cond_var;
 
-		int default_label = switch_exit;
-		if (default_case && default_case->case_stmt.body)
-		{
-			default_label = c_create_label(c);
-		}
-
-		for (int i = 0; i < case_count; i++)
-		{
-			Ast *cs = cases[i];
-			if (cs == default_case)
-			{
-				cs->case_stmt.backend_block = cs->case_stmt.body ? (void *)(uintptr_t)default_label : NULL;
-			}
-			else
-			{
-				cs->case_stmt.backend_block = cs->case_stmt.body ? (void *)(uintptr_t)c_create_label(c) : NULL;
-			}
-		}
-
-		void *next_block = (void *)(uintptr_t)switch_exit;
-		for (int i = case_count; i > 0; i--)
-		{
-			Ast *cs = cases[i - 1];
-			if (cs->case_stmt.backend_block)
-			{
-				next_block = cs->case_stmt.backend_block;
-				continue;
-			}
-			cs->case_stmt.backend_block = next_block;
-			if (cs == default_case)
-			{
-				default_label = (int)(uintptr_t)next_block;
-			}
-		}
+		int default_label = c_emit_switch_case_labels(c, cases, case_count, default_case, switch_exit);
 
 		c_emit_label(c, switch_entry);
 
@@ -668,6 +638,30 @@ static void c_emit_switch_stmt(GenContext *c, Ast *stmt)
 	c->current_break_label = old_break;
 }
 
+static void c_emit_defer_and_fault_cleanup(GenContext *c, int fault_var, AstId cleanup, AstId cleanup_fail)
+{
+	if (fault_var != 0 && cleanup_fail)
+	{
+		PRINTF("if (___var_%d != NULL) {\n", fault_var);
+		c_emit_stmt_chain(c, cleanup_fail);
+		PRINT("} else {\n");
+		if (cleanup)
+		{
+			c_emit_stmt_chain(c, cleanup);
+		}
+		PRINT("}\n");
+	}
+	else if (cleanup)
+	{
+		c_emit_stmt_chain(c, cleanup);
+	}
+
+	if (fault_var != 0)
+	{
+		PRINTF("__c3_current_fault = ___var_%d;\n", fault_var);
+	}
+}
+
 static void c_emit_return(GenContext *c, Ast *stmt)
 {
 	if (!c->current_block_live)
@@ -713,26 +707,7 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 		}
 	}
 
-	if (is_fn_optional && stmt->return_stmt.cleanup_fail)
-	{
-		PRINTF("if (___var_%d != NULL) {\n", saved_fault);
-		c_emit_stmt_chain(c, stmt->return_stmt.cleanup_fail);
-		PRINT("} else {\n");
-		if (stmt->return_stmt.cleanup)
-		{
-			c_emit_stmt_chain(c, stmt->return_stmt.cleanup);
-		}
-		PRINT("}\n");
-	}
-	else if (stmt->return_stmt.cleanup)
-	{
-		c_emit_stmt_chain(c, stmt->return_stmt.cleanup);
-	}
-
-	if (is_fn_optional)
-	{
-		PRINTF("__c3_current_fault = ___var_%d;\n", saved_fault);
-	}
+	c_emit_defer_and_fault_cleanup(c, is_fn_optional ? saved_fault : 0, stmt->return_stmt.cleanup, stmt->return_stmt.cleanup_fail);
 
 	if (cur_ret_t->type_kind == TYPE_VOID)
 	{
@@ -745,7 +720,6 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 	{
 		Type *ret_t = (ret_val.type && is_valid_type_ptr(ret_val.type)) ? c_safe_type_lower(ret_val.type) : type_void;
 
-		// For void?, the C return type is c3fault_t
 		if (cur_ret_t->type_kind == TYPE_ANYFAULT || cur_ret_t == type_fault)
 		{
 			if (is_fn_optional)
@@ -764,7 +738,6 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 			return;
 		}
 
-		// Returning a fault from a non-fault-returning optional function (e.g. return FOO~ from fn int?)
 		if ((ret_t->type_kind == TYPE_ANYFAULT || ret_t == type_fault) &&
 		    cur_ret_t->type_kind != TYPE_ANYFAULT && cur_ret_t != type_fault && cur_ret_t->type_kind != TYPE_VOID)
 		{
@@ -884,18 +857,14 @@ static void c_emit_foreach_stmt(GenContext *c, Ast *stmt)
 	const char *arrow = c_arrow(&enum_val);
 
 	Type *elem_type = NULL;
-	if (enum_type->type_kind == TYPE_SLICE)
-	{
-		elem_type = enum_type->array.base ? c_safe_type_lower(enum_type->array.base) : type_char;
-	}
-	else if (enum_type->type_kind == TYPE_ARRAY || enum_type->type_kind == TYPE_VECTOR || enum_type->type_kind == TYPE_SIMD_VECTOR)
+	if (enum_type->type_kind == TYPE_SLICE || c_type_is_vec_or_arr(enum_type))
 	{
 		elem_type = enum_type->array.base ? c_safe_type_lower(enum_type->array.base) : type_char;
 	}
 	else if (enum_type->type_kind == TYPE_POINTER && enum_type->pointer)
 	{
 		Type *pt = c_safe_type_lower(enum_type->pointer);
-		if (pt->type_kind == TYPE_ARRAY || pt->type_kind == TYPE_VECTOR || pt->type_kind == TYPE_SIMD_VECTOR)
+		if (c_type_is_vec_or_arr(pt))
 		{
 			elem_type = pt->array.base ? c_safe_type_lower(pt->array.base) : type_char;
 			arrow     = "->";
@@ -916,11 +885,11 @@ static void c_emit_foreach_stmt(GenContext *c, Ast *stmt)
 	{
 		PRINTF("size_t ___var_%d = ___var_%d%slen;\n", len_var, enum_val.var, arrow);
 	}
-	else if (enum_type->type_kind == TYPE_ARRAY || enum_type->type_kind == TYPE_VECTOR || enum_type->type_kind == TYPE_SIMD_VECTOR)
+	else if (c_type_is_vec_or_arr(enum_type))
 	{
 		PRINTF("size_t ___var_%d = %llu;\n", len_var, (unsigned long long)enum_type->array.len);
 	}
-	else if (enum_type->type_kind == TYPE_POINTER && enum_type->pointer && (enum_type->pointer->type_kind == TYPE_ARRAY || enum_type->pointer->type_kind == TYPE_VECTOR || enum_type->pointer->type_kind == TYPE_SIMD_VECTOR))
+	else if (enum_type->type_kind == TYPE_POINTER && enum_type->pointer && c_type_is_vec_or_arr(enum_type->pointer))
 	{
 		PRINTF("size_t ___var_%d = %llu;\n", len_var, (unsigned long long)enum_type->pointer->array.len);
 	}
@@ -1069,7 +1038,7 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 {
 	if (stmt->asm_block_stmt.is_string)
 	{
-		Expr *str_expr = exprptr(stmt->asm_block_stmt.asm_string);
+		Expr *str_expr   = exprptr(stmt->asm_block_stmt.asm_string);
 		const char *data = str_expr->const_expr.bytes.ptr;
 		PRINT("\t__asm__ __volatile__ (");
 		c_emit_string_literal(c, data, (ArrayIndex)strlen(data));
@@ -1078,20 +1047,19 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 	}
 
 	AsmInlineBlock *block = stmt->asm_block_stmt.block;
-	char *raw_asm = str_dup(codegen_create_asm(stmt));
-	char *gnu_asm = c_convert_asm_template(raw_asm);
-	// free(raw_asm);
+	char *raw_asm         = str_dup(codegen_create_asm(stmt));
+	char *gnu_asm         = c_convert_asm_template(raw_asm);
 
-	int out_count = (block && block->output_vars) ? vec_size(block->output_vars) : 0;
+	int out_count                = (block && block->output_vars) ? vec_size(block->output_vars) : 0;
 	const char **out_constraints = NULL;
-	const char **out_names = NULL;
+	const char **out_names       = NULL;
 	for (int i = 0; i < out_count; i++)
 	{
-		ExprAsmArg *var = block->output_vars[i];
+		ExprAsmArg *var         = block->output_vars[i];
 		const char *constraint = (var->kind == ASM_ARG_MEMVAR)
-			? (var->ident.early_clobber ? "=&m" : "=m")
-			: (var->ident.early_clobber ? "=&r" : "=r");
-		const char *name = c_get_asm_operand_name(c, var->ident.ident_decl);
+		                             ? (var->ident.early_clobber ? "=&m" : "=m")
+		                             : (var->ident.early_clobber ? "=&r" : "=r");
+		const char *name       = c_get_asm_operand_name(c, var->ident.ident_decl);
 		vec_add(out_constraints, constraint);
 		vec_add(out_names, name);
 		if (IS_OPTIONAL(var->ident.ident_decl))
@@ -1100,27 +1068,27 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 		}
 	}
 
-	int in_count = (block && block->input) ? vec_size(block->input) : 0;
+	int in_count                = (block && block->input) ? vec_size(block->input) : 0;
 	const char **in_constraints = NULL;
-	const char **in_names = NULL;
+	const char **in_names       = NULL;
 	for (int i = 0; i < in_count; i++)
 	{
-		ExprAsmArg *val = block->input[i];
+		ExprAsmArg *val         = block->input[i];
 		const char *constraint = NULL;
-		const char *name = NULL;
+		const char *name       = NULL;
 		switch (val->kind)
 		{
 			case ASM_ARG_MEMADDR:
 			{
-				constraint = "r";
+				constraint       = "r";
 				const char *base = c_get_asm_operand_name(c, val->ident.ident_decl);
-				name = c_intern(str_printf("&%s", base));
+				name             = c_intern(str_printf("&%s", base));
 				break;
 			}
 			case ASM_ARG_MEMVAR:
 			{
 				constraint = "m";
-				name = c_get_asm_operand_name(c, val->ident.ident_decl);
+				name       = c_get_asm_operand_name(c, val->ident.ident_decl);
 				break;
 			}
 			case ASM_ARG_REGVAR:
@@ -1140,19 +1108,17 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 			}
 			case ASM_ARG_VALUE:
 			{
-				CValue eval = {0};
+				CValue eval   = {0};
 				Expr *in_expr = exprptr(val->expr_id);
 				c_emit_expr(c, &eval, in_expr);
 				c_value_rvalue(c, &eval);
 				c_ensure_cvalue_var(c, &eval, in_expr->type);
 				constraint = "r";
-				name = c_intern(str_printf("___var_%d", eval.var));
+				name       = c_intern(str_printf("___var_%d", eval.var));
 				break;
 			}
 			default:
-			{
 				UNREACHABLE_VOID
-			}
 		}
 		vec_add(in_constraints, constraint);
 		vec_add(in_names, name);
@@ -1177,7 +1143,7 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 			{
 				if (mask & clobber_mask)
 				{
-					int clobber_index = i * 64 + j;
+					int clobber_index        = i * 64 + j;
 					const char *clobber_name = asm_clobber_by_index(clobber_index);
 					if (clobber_name && *clobber_name)
 					{
@@ -1248,12 +1214,9 @@ void c_emit_asm_block_stmt(GenContext *c, Ast *stmt)
 	PRINT("\n\t);\n");
 }
 
-void c_emit_stmt(GenContext *c, Ast *stmt){
-	if (!stmt)
-	{
-		return;
-	}
-	if (!c->current_block_live)
+void c_emit_stmt(GenContext *c, Ast *stmt)
+{
+	if (!stmt || !c->current_block_live)
 	{
 		return;
 	}
@@ -1280,12 +1243,11 @@ void c_emit_stmt(GenContext *c, Ast *stmt){
 		{
 			FOREACH(Decl *, decl, stmt->decls_stmt)
 			{
-				if (!decl)
+				if (decl)
 				{
-					continue;
+					CValue value = {0};
+					c_emit_local_decl(c, decl, &value);
 				}
-				CValue value = {0};
-				c_emit_local_decl(c, decl, &value);
 			}
 			return;
 		}
@@ -1381,26 +1343,7 @@ void c_emit_stmt(GenContext *c, Ast *stmt){
 				PRINTF("___var_%d = NULL;\n", target_fault_var);
 			}
 
-			if (target_fault_var != 0 && stmt->return_stmt.cleanup_fail)
-			{
-				PRINTF("if (___var_%d != NULL) {\n", target_fault_var);
-				c_emit_stmt_chain(c, stmt->return_stmt.cleanup_fail);
-				PRINT("} else {\n");
-				if (stmt->return_stmt.cleanup)
-				{
-					c_emit_stmt_chain(c, stmt->return_stmt.cleanup);
-				}
-				PRINT("}\n");
-			}
-			else if (stmt->return_stmt.cleanup)
-			{
-				c_emit_stmt_chain(c, stmt->return_stmt.cleanup);
-			}
-
-			if (target_fault_var != 0)
-			{
-				PRINTF("__c3_current_fault = ___var_%d;\n", target_fault_var);
-			}
+			c_emit_defer_and_fault_cleanup(c, target_fault_var, stmt->return_stmt.cleanup, stmt->return_stmt.cleanup_fail);
 
 			if (exit_label)
 			{
@@ -1500,24 +1443,16 @@ void c_emit_stmt(GenContext *c, Ast *stmt){
 			}
 			return;
 		case AST_ASM_BLOCK_STMT:
-		{
 			c_emit_asm_block_stmt(c, stmt);
 			return;
-		}
 		case AST_NOP_STMT:
-		{
 			PRINT(";\n");
 			return;
-		}
 		case AST_DEFER_STMT:
-		{
 			return;
-		}
 		default:
-		{
 			PRINT("/* STMT */\n");
 			return;
-		}
 	}
 }
 

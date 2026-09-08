@@ -39,84 +39,170 @@ static const BuiltinMap simple_builtins_table[] = {
     {BUILTIN_COPYSIGN, "__builtin_copysign"},
 };
 
+static const char *c_vec_elem_operand(GenContext *c, CValue *arg, int k)
+{
+	Type *t  = arg->type ? type_flatten(arg->type) : NULL;
+	bool ptr = (t && t->type_kind == TYPE_POINTER) || (arg->kind == CV_ADDRESS);
+	if (ptr && t && t->pointer)
+	{
+		t = type_flatten(t->pointer);
+	}
+	if (c_type_is_vec_or_arr(t))
+	{
+		return str_printf("___var_%d%sptr[%d]", arg->var, c_arrow(arg), k);
+	}
+	if (ptr)
+	{
+		return str_printf("*(%s*)___var_%d", c_type_name(c, t), arg->var);
+	}
+	return str_printf("___var_%d", arg->var);
+}
+
+static inline int c_get_const_int_arg(Expr *expr, int def_val)
+{
+	if (expr && expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER)
+	{
+		return (int)expr->const_expr.ixx.i.low;
+	}
+	return def_val;
+}
+
+static void c_emit_atomic_float_cas(GenContext *c, int temp, const char *tn, Type *rtype, int ptr_var, int val_var, const char *op, bool is_cmp)
+{
+	const char *u_int = (type_size(rtype) == 8) ? "uint64_t" : "uint32_t";
+	PRINTF("%s ___var_%d;\n", tn, temp);
+	PRINT("{\n");
+	PRINTF("\tunion { %s f; %s i; } _old, _new;\n", tn, u_int);
+	PRINTF("\t_old.f = *(volatile %s*)___var_%d;\n", tn, ptr_var);
+	PRINTF("\tdo {\n");
+	if (is_cmp)
+	{
+		PRINTF("\t\t_new.f = (_old.f %s ___var_%d) ? _old.f : ___var_%d;\n", op, val_var, val_var);
+	}
+	else
+	{
+		PRINTF("\t\t_new.f = _old.f %s ___var_%d;\n", op, val_var);
+	}
+	PRINTF("\t} while (!__atomic_compare_exchange_n((%s*)___var_%d, &_old.i, _new.i, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", u_int, ptr_var);
+	PRINTF("\t___var_%d = _old.f;\n", temp);
+	PRINT("}\n");
+}
+
+static void c_emit_builtin_gather_load(GenContext *c, CValue *value, Type *return_type, CValue *c_args, int num_args, bool is_gather)
+{
+	if (num_args < 3)
+	{
+		c_emit_temp_zero(c, value, return_type);
+		return;
+	}
+	int temp            = c_emit_temp_var(c, value, return_type);
+	const char *tn      = c_type_name(c, return_type);
+	c_value_rvalue(c, &c_args[0]);
+	c_value_rvalue(c, &c_args[1]);
+	c_value_rvalue(c, &c_args[2]);
+	Type *flat_ret      = type_flatten(return_type);
+	int len             = c_type_is_vec_or_arr(flat_ret) ? (int)flat_ret->array.len : 0;
+	Type *elem_type     = flat_ret ? flat_ret->array.base : type_void;
+	const char *elem_tn = c_type_name(c, elem_type);
+	PRINTF("%s ___var_%d;\n", tn, temp);
+	for (int i = 0; i < len; i++)
+	{
+		PRINTF("if (___var_%d.ptr[%d]) {\n", c_args[1].var, i);
+		if (is_gather)
+		{
+			PRINTF("\t___var_%d.ptr[%d] = *(%s*)___var_%d.ptr[%d];\n", temp, i, elem_tn, c_args[0].var, i);
+		}
+		else
+		{
+			PRINTF("\t___var_%d.ptr[%d] = ((%s*)___var_%d)[%d];\n", temp, i, elem_tn, c_args[0].var, i);
+		}
+		PRINTF("} else {\n");
+		PRINTF("\t___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", temp, i, c_args[2].var, i);
+		PRINTF("}\n");
+	}
+}
+
+static void c_emit_builtin_scatter_store(GenContext *c, CValue *value, Expr **args, CValue *c_args, int num_args, bool is_scatter)
+{
+	if (num_args >= 3)
+	{
+		c_value_rvalue(c, &c_args[0]);
+		c_value_rvalue(c, &c_args[1]);
+		c_value_rvalue(c, &c_args[2]);
+		Type *flat_val      = type_flatten(args[1]->type);
+		int len             = c_type_is_vec_or_arr(flat_val) ? (int)flat_val->array.len : 0;
+		Type *elem_type     = flat_val ? flat_val->array.base : type_void;
+		const char *elem_tn = c_type_name(c, elem_type);
+		for (int i = 0; i < len; i++)
+		{
+			PRINTF("if (___var_%d.ptr[%d]) {\n", c_args[2].var, i);
+			if (is_scatter)
+			{
+				PRINTF("\t*(%s*)___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", elem_tn, c_args[0].var, i, c_args[1].var, i);
+			}
+			else
+			{
+				PRINTF("\t((%s*)___var_%d)[%d] = ___var_%d.ptr[%d];\n", elem_tn, c_args[0].var, i, c_args[1].var, i);
+			}
+			PRINTF("}\n");
+		}
+	}
+	c_value_set_void(value);
+}
+
 static bool c_try_emit_table_builtin(GenContext *c, CValue *value, Type *return_type, BuiltinFunction bfn, CValue *c_args, int arg_idx, bool has_return)
 {
 	for (size_t i = 0; i < sizeof(simple_builtins_table) / sizeof(simple_builtins_table[0]); i++)
 	{
-		if (simple_builtins_table[i].kind == bfn)
+		if (simple_builtins_table[i].kind != bfn)
 		{
-			const char *builtin_fn     = simple_builtins_table[i].c_fn;
-			compiler.linking.link_math = true;
-			if (has_return)
-			{
-				c_emit_type_forward_decl(c, return_type);
-				Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
-				bool is_vec    = flat_ret && (flat_ret->type_kind == TYPE_VECTOR || flat_ret->type_kind == TYPE_SIMD_VECTOR || flat_ret->type_kind == TYPE_ARRAY);
-				if (is_vec)
-				{
-					int len        = c_type_aggregate_len(flat_ret);
-					int temp       = c_emit_temp_var(c, value, return_type);
-					const char *tn = c_type_name(c, return_type);
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					for (int k = 0; k < len; k++)
-					{
-						PRINTF("___var_%d.ptr[%d] = %s(", temp, k, builtin_fn);
-						for (int j = 0; j < arg_idx; j++)
-						{
-							if (j != 0)
-							{
-								PRINT(", ");
-							}
-							Type *arg_flat  = c_args[j].type ? type_flatten(c_args[j].type) : NULL;
-							bool arg_is_ptr = false;
-							if (arg_flat && arg_flat->type_kind == TYPE_POINTER && arg_flat->pointer)
-							{
-								arg_is_ptr = true;
-								arg_flat   = type_flatten(arg_flat->pointer);
-							}
-							if (c_args[j].kind == CV_ADDRESS)
-							{
-								arg_is_ptr = true;
-							}
-							bool arg_is_vec = arg_flat && (arg_flat->type_kind == TYPE_VECTOR || arg_flat->type_kind == TYPE_SIMD_VECTOR || arg_flat->type_kind == TYPE_ARRAY);
-							if (arg_is_vec)
-							{
-								PRINTF("___var_%d%sptr[%d]", c_args[j].var, c_arrow(&c_args[j]), k);
-							}
-							else if (arg_is_ptr)
-							{
-								PRINTF("*(%s*)___var_%d", c_type_name(c, arg_flat), c_args[j].var);
-							}
-							else
-							{
-								PRINTF("___var_%d", c_args[j].var);
-							}
-						}
-						PRINT(");\n");
-					}
-					return true;
-				}
-				PRINTF("%s ___var_%d = %s(", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), builtin_fn);
-			}
-			else
-			{
-				value->var  = 0;
-				value->type = type_void;
-				value->kind = CV_VALUE;
-				PRINTF("%s(", builtin_fn);
-			}
-			for (int j = 0; j < arg_idx; j++)
-			{
-				if (j != 0)
-				{
-					PRINT(", ");
-				}
-				c_value_rvalue(c, &c_args[j]);
-				PRINTF("___var_%d", c_args[j].var);
-			}
-			PRINT(");\n");
-			return true;
+			continue;
 		}
+		const char *builtin_fn     = simple_builtins_table[i].c_fn;
+		compiler.linking.link_math = true;
+		if (has_return)
+		{
+			c_emit_type_forward_decl(c, return_type);
+			Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
+			if (c_type_is_vec_or_arr(flat_ret))
+			{
+				int len        = c_type_aggregate_len(flat_ret);
+				int temp       = c_emit_temp_var(c, value, return_type);
+				const char *tn = c_type_name(c, return_type);
+				PRINTF("%s ___var_%d;\n", tn, temp);
+				for (int k = 0; k < len; k++)
+				{
+					PRINTF("___var_%d.ptr[%d] = %s(", temp, k, builtin_fn);
+					for (int j = 0; j < arg_idx; j++)
+					{
+						if (j != 0)
+						{
+							PRINT(", ");
+						}
+						PRINT(c_vec_elem_operand(c, &c_args[j], k));
+					}
+					PRINT(");\n");
+				}
+				return true;
+			}
+			PRINTF("%s ___var_%d = %s(", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), builtin_fn);
+		}
+		else
+		{
+			c_value_set_void(value);
+			PRINTF("%s(", builtin_fn);
+		}
+		for (int j = 0; j < arg_idx; j++)
+		{
+			if (j != 0)
+			{
+				PRINT(", ");
+			}
+			c_value_rvalue(c, &c_args[j]);
+			PRINTF("___var_%d", c_args[j].var);
+		}
+		PRINT(");\n");
+		return true;
 	}
 	return false;
 }
@@ -162,31 +248,16 @@ static void c_emit_builtin_sat(GenContext *c, CValue *value, Type *rtype, Builti
 	int bytes = (int)type_size(rtype);
 	if (type_is_signed(rtype))
 	{
+		const char *cond = (op == BUILTIN_SAT_SUB) ? "< 0" : ">= 0";
 		if (bytes == 16)
 		{
-			if (op == BUILTIN_SAT_SUB)
-			{
-				PRINTF("\t___var_%d = (___var_%d < 0) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n",
-				       temp, b->var);
-			}
-			else
-			{
-				PRINTF("\t___var_%d = (___var_%d >= 0) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n",
-				       temp, b->var);
-			}
+			PRINTF("\t___var_%d = (___var_%d %s) ? (__c3_int128)(~((__c3_uint128)1 << 127)) : (__c3_int128)((__c3_uint128)1 << 127);\n",
+			       temp, b->var, cond);
 		}
 		else
 		{
-			if (op == BUILTIN_SAT_SUB)
-			{
-				PRINTF("\t___var_%d = (___var_%d < 0) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
-				       temp, b->var, tn, tn, tn, tn);
-			}
-			else
-			{
-				PRINTF("\t___var_%d = (___var_%d >= 0) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
-				       temp, b->var, tn, tn, tn, tn);
-			}
+			PRINTF("\t___var_%d = (___var_%d %s) ? (%s)(((uint64_t)1 << (sizeof(%s)*8-1)) - 1) : (%s)(~(((uint64_t)1 << (sizeof(%s)*8-1)) - 1));\n",
+			       temp, b->var, cond, tn, tn, tn, tn);
 		}
 	}
 	else
@@ -221,8 +292,8 @@ static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, Bui
 	{
 		Type *t0       = c_args[0].type ? type_flatten(c_args[0].type) : NULL;
 		Type *t1       = c_args[1].type ? type_flatten(c_args[1].type) : NULL;
-		bool t0_is_vec = t0 && (t0->type_kind == TYPE_ARRAY || t0->type_kind == TYPE_VECTOR || t0->type_kind == TYPE_SIMD_VECTOR);
-		bool t1_is_vec = t1 && (t1->type_kind == TYPE_ARRAY || t1->type_kind == TYPE_VECTOR || t1->type_kind == TYPE_SIMD_VECTOR);
+		bool t0_is_vec = c_type_is_vec_or_arr(t0);
+		bool t1_is_vec = c_type_is_vec_or_arr(t1);
 		if (t1_is_vec)
 		{
 			acc_arg = &c_args[0];
@@ -252,7 +323,7 @@ static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, Bui
 		is_ptr = true;
 	}
 
-	bool is_vec = vt && (vt->type_kind == TYPE_ARRAY || vt->type_kind == TYPE_VECTOR || vt->type_kind == TYPE_SIMD_VECTOR);
+	bool is_vec = c_type_is_vec_or_arr(vt);
 	int len     = is_vec ? c_type_aggregate_len(vt) : 1;
 
 	if (!is_vec)
@@ -276,21 +347,21 @@ static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, Bui
 	}
 
 	const char *arrow = c_arrow(vec_arg);
+	int start_k       = 1;
+	if (acc_arg)
+	{
+		c_value_rvalue(c, acc_arg);
+		PRINTF("%s ___var_%d = (%s)___var_%d;\n", tn, temp, tn, acc_arg->var);
+		start_k = 0;
+	}
+	else
+	{
+		PRINTF("%s ___var_%d = ___var_%d%sptr[0];\n", tn, temp, vec_arg->var, arrow);
+	}
 
 	if (op == BUILTIN_REDUCE_MIN || op == BUILTIN_REDUCE_MAX)
 	{
 		const char *comp_op = (op == BUILTIN_REDUCE_MIN) ? "<" : ">";
-		int start_k         = 1;
-		if (acc_arg)
-		{
-			c_value_rvalue(c, acc_arg);
-			PRINTF("%s ___var_%d = (%s)___var_%d;\n", tn, temp, tn, acc_arg->var);
-			start_k = 0;
-		}
-		else
-		{
-			PRINTF("%s ___var_%d = ___var_%d%sptr[0];\n", tn, temp, vec_arg->var, arrow);
-		}
 		for (int k = start_k; k < len; k++)
 		{
 			PRINTF("if (___var_%d%sptr[%d] %s ___var_%d) ___var_%d = ___var_%d%sptr[%d];\n",
@@ -317,17 +388,6 @@ static void c_emit_builtin_reduce(GenContext *c, CValue *value, Type *rtype, Bui
 		bin_op = "^";
 	}
 
-	int start_k = 1;
-	if (acc_arg)
-	{
-		c_value_rvalue(c, acc_arg);
-		PRINTF("%s ___var_%d = (%s)___var_%d;\n", tn, temp, tn, acc_arg->var);
-		start_k = 0;
-	}
-	else
-	{
-		PRINTF("%s ___var_%d = ___var_%d%sptr[0];\n", tn, temp, vec_arg->var, arrow);
-	}
 	for (int k = start_k; k < len; k++)
 	{
 		PRINTF("___var_%d %s= ___var_%d%sptr[%d];\n", temp, bin_op, vec_arg->var, arrow, k);
@@ -370,9 +430,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[2]);
 				PRINTF("__c3_memcpy((void*)___var_%d, (void*)___var_%d, (size_t)___var_%d);\n", c_args[0].var, c_args[1].var, c_args[2].var);
 			}
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
+			c_value_set_void(value);
 			break;
 		case BUILTIN_MEMMOVE:
 			if (num_args >= 3)
@@ -380,9 +438,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[2]);
 				PRINTF("__c3_memmove((void*)___var_%d, (void*)___var_%d, (size_t)___var_%d);\n", c_args[0].var, c_args[1].var, c_args[2].var);
 			}
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
+			c_value_set_void(value);
 			break;
 		case BUILTIN_MEMSET:
 		case BUILTIN_MEMSET_INLINE:
@@ -392,9 +448,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				c_value_rvalue(c, &c_args[2]);
 				PRINTF("__c3_memset((void*)___var_%d, (int)___var_%d, (size_t)___var_%d);\n", c_args[0].var, c_args[1].var, c_args[2].var);
 			}
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
+			c_value_set_void(value);
 			break;
 		case BUILTIN_SYSCALL:
 		{
@@ -433,18 +487,9 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			int M = 4, K = 4, N = 4;
 			if (num_args >= 5)
 			{
-				if (args[2]->expr_kind == EXPR_CONST && args[2]->const_expr.const_kind == CONST_INTEGER)
-				{
-					M = (int)args[2]->const_expr.ixx.i.low;
-				}
-				if (args[3]->expr_kind == EXPR_CONST && args[3]->const_expr.const_kind == CONST_INTEGER)
-				{
-					K = (int)args[3]->const_expr.ixx.i.low;
-				}
-				if (args[4]->expr_kind == EXPR_CONST && args[4]->const_expr.const_kind == CONST_INTEGER)
-				{
-					N = (int)args[4]->const_expr.ixx.i.low;
-				}
+				M = c_get_const_int_arg(args[2], 4);
+				K = c_get_const_int_arg(args[3], 4);
+				N = c_get_const_int_arg(args[4], 4);
 			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
@@ -478,14 +523,8 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			int M = 4, N = 4;
 			if (num_args >= 3)
 			{
-				if (args[1]->expr_kind == EXPR_CONST && args[1]->const_expr.const_kind == CONST_INTEGER)
-				{
-					M = (int)args[1]->const_expr.ixx.i.low;
-				}
-				if (args[2]->expr_kind == EXPR_CONST && args[2]->const_expr.const_kind == CONST_INTEGER)
-				{
-					N = (int)args[2]->const_expr.ixx.i.low;
-				}
+				M = c_get_const_int_arg(args[1], 4);
+				N = c_get_const_int_arg(args[2], 4);
 			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
@@ -506,9 +545,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_BREAKPOINT:
 			PRINT("__c3_abort();\n");
 			c->current_block_live = false;
-			value->var            = 0;
-			value->type           = type_void;
-			value->kind           = CV_VALUE;
+			c_value_set_void(value);
 			break;
 		case BUILTIN_MIN:
 		case BUILTIN_MAX:
@@ -519,35 +556,17 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			if (num_args >= 2)
 			{
 				Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
-				bool is_vec    = flat_ret && (flat_ret->type_kind == TYPE_VECTOR || flat_ret->type_kind == TYPE_SIMD_VECTOR || flat_ret->type_kind == TYPE_ARRAY);
-				if (is_vec)
+				if (c_type_is_vec_or_arr(flat_ret))
 				{
 					int len = c_type_aggregate_len(flat_ret);
 					PRINTF("%s ___var_%d;\n", tn, temp);
 					for (int k = 0; k < len; k++)
 					{
-						Type *t0  = c_args[0].type ? type_flatten(c_args[0].type) : NULL;
-						bool ptr0 = (t0 && t0->type_kind == TYPE_POINTER) || (c_args[0].kind == CV_ADDRESS);
-						if (ptr0 && t0 && t0->pointer)
-						{
-							t0 = type_flatten(t0->pointer);
-						}
-						bool vec0      = t0 && (t0->type_kind == TYPE_VECTOR || t0->type_kind == TYPE_SIMD_VECTOR || t0->type_kind == TYPE_ARRAY);
-						const char *a0 = vec0 ? str_printf("___var_%d%sptr[%d]", c_args[0].var, c_arrow(&c_args[0]), k)
-						                      : (ptr0 ? str_printf("*(%s*)___var_%d", c_type_name(c, t0), c_args[0].var) : str_printf("___var_%d", c_args[0].var));
-
+						const char *a0 = c_vec_elem_operand(c, &c_args[0], k);
 						PRINTF("___var_%d.ptr[%d] = %s;\n", temp, k, a0);
 						for (int a = 1; a < num_args; a++)
 						{
-							Type *ta  = c_args[a].type ? type_flatten(c_args[a].type) : NULL;
-							bool ptra = (ta && ta->type_kind == TYPE_POINTER) || (c_args[a].kind == CV_ADDRESS);
-							if (ptra && ta && ta->pointer)
-							{
-								ta = type_flatten(ta->pointer);
-							}
-							bool veca        = ta && (ta->type_kind == TYPE_VECTOR || ta->type_kind == TYPE_SIMD_VECTOR || ta->type_kind == TYPE_ARRAY);
-							const char *next = veca ? str_printf("___var_%d%sptr[%d]", c_args[a].var, c_arrow(&c_args[a]), k)
-							                        : (ptra ? str_printf("*(%s*)___var_%d", c_type_name(c, ta), c_args[a].var) : str_printf("___var_%d", c_args[a].var));
+							const char *next = c_vec_elem_operand(c, &c_args[a], k);
 							PRINTF("if (%s %s ___var_%d.ptr[%d]) ___var_%d.ptr[%d] = %s;\n",
 							       next, op, temp, k, temp, k, next);
 						}
@@ -572,7 +591,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		}
@@ -607,114 +626,22 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		}
 		case BUILTIN_GATHER:
-		{
-			int temp       = c_emit_temp_var(c, value, return_type);
-			const char *tn = c_type_name(c, return_type);
-			if (num_args >= 3)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				c_value_rvalue(c, &c_args[1]);
-				c_value_rvalue(c, &c_args[2]);
-				Type *flat_ret      = type_flatten(return_type);
-				int len             = (flat_ret && (flat_ret->type_kind == TYPE_VECTOR || flat_ret->type_kind == TYPE_SIMD_VECTOR || flat_ret->type_kind == TYPE_ARRAY)) ? (int)flat_ret->array.len : 0;
-				Type *elem_type     = flat_ret->array.base;
-				const char *elem_tn = c_type_name(c, elem_type);
-				PRINTF("%s ___var_%d;\n", tn, temp);
-				for (int i = 0; i < len; i++)
-				{
-					PRINTF("if (___var_%d.ptr[%d]) {\n", c_args[1].var, i);
-					PRINTF("\t___var_%d.ptr[%d] = *(%s*)___var_%d.ptr[%d];\n", temp, i, elem_tn, c_args[0].var, i);
-					PRINTF("} else {\n");
-					PRINTF("\t___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", temp, i, c_args[2].var, i);
-					PRINTF("}\n");
-				}
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
-			}
+			c_emit_builtin_gather_load(c, value, return_type, c_args, num_args, true);
 			break;
-		}
-		case BUILTIN_SCATTER:
-		{
-			if (num_args >= 3)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				c_value_rvalue(c, &c_args[1]);
-				c_value_rvalue(c, &c_args[2]);
-				Type *flat_val      = type_flatten(args[1]->type);
-				int len             = (flat_val && (flat_val->type_kind == TYPE_VECTOR || flat_val->type_kind == TYPE_SIMD_VECTOR || flat_val->type_kind == TYPE_ARRAY)) ? (int)flat_val->array.len : 0;
-				Type *elem_type     = flat_val->array.base;
-				const char *elem_tn = c_type_name(c, elem_type);
-				for (int i = 0; i < len; i++)
-				{
-					PRINTF("if (___var_%d.ptr[%d]) {\n", c_args[2].var, i);
-					PRINTF("\t*(%s*)___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", elem_tn, c_args[0].var, i, c_args[1].var, i);
-					PRINTF("}\n");
-				}
-			}
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
-			break;
-		}
 		case BUILTIN_MASKED_LOAD:
-		{
-			int temp       = c_emit_temp_var(c, value, return_type);
-			const char *tn = c_type_name(c, return_type);
-			if (num_args >= 3)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				c_value_rvalue(c, &c_args[1]);
-				c_value_rvalue(c, &c_args[2]);
-				Type *flat_ret      = type_flatten(return_type);
-				int len             = (flat_ret && (flat_ret->type_kind == TYPE_VECTOR || flat_ret->type_kind == TYPE_SIMD_VECTOR || flat_ret->type_kind == TYPE_ARRAY)) ? (int)flat_ret->array.len : 0;
-				Type *elem_type     = flat_ret->array.base;
-				const char *elem_tn = c_type_name(c, elem_type);
-				PRINTF("%s ___var_%d;\n", tn, temp);
-				for (int i = 0; i < len; i++)
-				{
-					PRINTF("if (___var_%d.ptr[%d]) {\n", c_args[1].var, i);
-					PRINTF("\t___var_%d.ptr[%d] = ((%s*)___var_%d)[%d];\n", temp, i, elem_tn, c_args[0].var, i);
-					PRINTF("} else {\n");
-					PRINTF("\t___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", temp, i, c_args[2].var, i);
-					PRINTF("}\n");
-				}
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
-			}
+			c_emit_builtin_gather_load(c, value, return_type, c_args, num_args, false);
 			break;
-		}
+		case BUILTIN_SCATTER:
+			c_emit_builtin_scatter_store(c, value, args, c_args, num_args, true);
+			break;
 		case BUILTIN_MASKED_STORE:
-		{
-			if (num_args >= 3)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				c_value_rvalue(c, &c_args[1]);
-				c_value_rvalue(c, &c_args[2]);
-				Type *flat_val      = type_flatten(args[1]->type);
-				int len             = (flat_val && (flat_val->type_kind == TYPE_VECTOR || flat_val->type_kind == TYPE_SIMD_VECTOR || flat_val->type_kind == TYPE_ARRAY)) ? (int)flat_val->array.len : 0;
-				Type *elem_type     = flat_val->array.base;
-				const char *elem_tn = c_type_name(c, elem_type);
-				for (int i = 0; i < len; i++)
-				{
-					PRINTF("if (___var_%d.ptr[%d]) {\n", c_args[2].var, i);
-					PRINTF("\t((%s*)___var_%d)[%d] = ___var_%d.ptr[%d];\n", elem_tn, c_args[0].var, i, c_args[1].var, i);
-					PRINTF("}\n");
-				}
-			}
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
+			c_emit_builtin_scatter_store(c, value, args, c_args, num_args, false);
 			break;
-		}
 		case BUILTIN_MASK_TO_INT:
 		{
 			int temp       = c_emit_temp_var(c, value, return_type);
@@ -723,7 +650,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			{
 				c_value_rvalue(c, &c_args[0]);
 				Type *vec          = type_flatten(args[0]->type);
-				int len            = (vec && (vec->type_kind == TYPE_VECTOR || vec->type_kind == TYPE_SIMD_VECTOR || vec->type_kind == TYPE_ARRAY)) ? (int)vec->array.len : 0;
+				int len            = c_type_is_vec_or_arr(vec) ? (int)vec->array.len : 0;
 				const char *one_tn = (type_bit_size(return_type) > 64) ? "__c3_uint128" : "uint64_t";
 				PRINTF("%s ___var_%d = 0;\n", tn, temp);
 				for (int i = 0; i < len; i++)
@@ -740,28 +667,26 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		}
 		case BUILTIN_INT_TO_MASK:
 		{
+			if (num_args < 1)
+			{
+				c_emit_temp_zero(c, value, return_type);
+				break;
+			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
-			if (num_args >= 1)
+			c_value_rvalue(c, &c_args[0]);
+			Type *flat_ret     = type_flatten(return_type);
+			int len            = c_type_is_vec_or_arr(flat_ret) ? (int)flat_ret->array.len : 0;
+			Type *arg0_type    = type_flatten(args[0]->type);
+			BitSize bits       = type_bit_size(arg0_type);
+			Type *u_type       = type_int_unsigned_by_bitsize(bits);
+			const char *u_tn   = c_type_name(c, u_type);
+			const char *one_tn = (bits > 64) ? "__c3_uint128" : "uint64_t";
+			PRINTF("%s ___var_%d;\n", tn, temp);
+			for (int i = 0; i < len; i++)
 			{
-				c_value_rvalue(c, &c_args[0]);
-				Type *flat_ret     = type_flatten(return_type);
-				int len            = (flat_ret && (flat_ret->type_kind == TYPE_VECTOR || flat_ret->type_kind == TYPE_SIMD_VECTOR || flat_ret->type_kind == TYPE_ARRAY)) ? (int)flat_ret->array.len : 0;
-				Type *arg0_type    = type_flatten(args[0]->type);
-				BitSize bits       = type_bit_size(arg0_type);
-				Type *u_type       = type_int_unsigned_by_bitsize(bits);
-				const char *u_tn   = c_type_name(c, u_type);
-				const char *one_tn = (bits > 64) ? "__c3_uint128" : "uint64_t";
-				PRINTF("%s ___var_%d;\n", tn, temp);
-				for (int i = 0; i < len; i++)
-				{
-					PRINTF("___var_%d.ptr[%d] = (((%s)___var_%d & ((%s)1 << %d)) != 0);\n",
-					       temp, i, u_tn, c_args[0].var, one_tn, i);
-				}
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
+				PRINTF("___var_%d.ptr[%d] = (((%s)___var_%d & ((%s)1 << %d)) != 0);\n",
+				       temp, i, u_tn, c_args[0].var, one_tn, i);
 			}
 			break;
 		}
@@ -769,37 +694,35 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_SWIZZLE2:
 		{
 			bool is_swizzle2 = (builtin == BUILTIN_SWIZZLE2);
+			int first_mask   = is_swizzle2 ? 2 : 1;
+			if (num_args < first_mask)
+			{
+				c_emit_temp_zero(c, value, return_type);
+				break;
+			}
 			int temp         = c_emit_temp_var(c, value, return_type);
 			const char *tn   = c_type_name(c, return_type);
-			int first_mask   = is_swizzle2 ? 2 : 1;
-			if (num_args >= first_mask)
+			c_value_rvalue(c, &c_args[0]);
+			if (is_swizzle2)
 			{
-				c_value_rvalue(c, &c_args[0]);
-				if (is_swizzle2)
-				{
-					c_value_rvalue(c, &c_args[1]);
-				}
-				Type *flat     = type_flatten(args[0]->type);
-				int components = (int)flat->array.len;
-				PRINTF("%s ___var_%d;\n", tn, temp);
-				int out_len = num_args - first_mask;
-				for (int i = 0; i < out_len; i++)
-				{
-					int mask_idx = first_mask + i;
-					int idx      = (int)args[mask_idx]->const_expr.ixx.i.low;
-					if (is_swizzle2 && idx >= components)
-					{
-						PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", temp, i, c_args[1].var, idx - components);
-					}
-					else
-					{
-						PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", temp, i, c_args[0].var, idx);
-					}
-				}
+				c_value_rvalue(c, &c_args[1]);
 			}
-			else
+			Type *flat     = type_flatten(args[0]->type);
+			int components = (int)flat->array.len;
+			PRINTF("%s ___var_%d;\n", tn, temp);
+			int out_len = num_args - first_mask;
+			for (int i = 0; i < out_len; i++)
 			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
+				int mask_idx = first_mask + i;
+				int idx      = (int)args[mask_idx]->const_expr.ixx.i.low;
+				if (is_swizzle2 && idx >= components)
+				{
+					PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", temp, i, c_args[1].var, idx - components);
+				}
+				else
+				{
+					PRINTF("___var_%d.ptr[%d] = ___var_%d.ptr[%d];\n", temp, i, c_args[0].var, idx);
+				}
 			}
 			break;
 		}
@@ -809,37 +732,33 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_EXACT_DIV:
 		case BUILTIN_EXACT_MOD:
 		{
+			if (num_args < 2)
+			{
+				c_emit_temp_zero(c, value, return_type);
+				break;
+			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			const char *op = (builtin == BUILTIN_EXACT_ADD) ? "+" : (builtin == BUILTIN_EXACT_SUB) ? "-"
 			                                                    : (builtin == BUILTIN_EXACT_MUL)   ? "*"
 			                                                    : (builtin == BUILTIN_EXACT_DIV)   ? "/"
 			                                                                                       : "%";
-			if (num_args >= 2)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				c_value_rvalue(c, &c_args[1]);
-				PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", tn, temp, c_args[0].var, op, c_args[1].var);
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
-			}
+			c_value_rvalue(c, &c_args[0]);
+			c_value_rvalue(c, &c_args[1]);
+			PRINTF("%s ___var_%d = ___var_%d %s ___var_%d;\n", tn, temp, c_args[0].var, op, c_args[1].var);
 			break;
 		}
 		case BUILTIN_EXACT_NEG:
 		{
+			if (num_args < 1)
+			{
+				c_emit_temp_zero(c, value, return_type);
+				break;
+			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
-			if (num_args >= 1)
-			{
-				c_value_rvalue(c, &c_args[0]);
-				PRINTF("%s ___var_%d = -___var_%d;\n", tn, temp, c_args[0].var);
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
-			}
+			c_value_rvalue(c, &c_args[0]);
+			PRINTF("%s ___var_%d = -___var_%d;\n", tn, temp, c_args[0].var);
 			break;
 		}
 		case BUILTIN_OVERFLOW_ADD:
@@ -870,7 +789,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_SAT_SHL:
@@ -885,7 +804,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_CTLZ:
@@ -910,7 +829,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_CTTZ:
@@ -935,7 +854,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_POPCOUNT:
@@ -958,7 +877,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_BSWAP:
@@ -997,7 +916,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_BITREVERSE:
@@ -1024,7 +943,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_FSHL:
@@ -1034,7 +953,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_FSHR:
@@ -1044,7 +963,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_ABS:
@@ -1053,8 +972,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 				int temp       = c_emit_temp_var(c, value, return_type);
 				const char *tn = c_type_name(c, return_type);
 				Type *flat_ret = return_type ? type_flatten(return_type) : NULL;
-				bool is_vec    = flat_ret && (flat_ret->type_kind == TYPE_VECTOR || flat_ret->type_kind == TYPE_SIMD_VECTOR || flat_ret->type_kind == TYPE_ARRAY);
-				if (is_vec)
+				if (c_type_is_vec_or_arr(flat_ret))
 				{
 					int len       = c_type_aggregate_len(flat_ret);
 					Type *elem_t  = flat_ret->array.base ? type_flatten(flat_ret->array.base) : return_type;
@@ -1091,7 +1009,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_EXPECT:
@@ -1111,7 +1029,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_PREFETCH:
@@ -1119,9 +1037,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			{
 				PRINTF("__builtin_prefetch((void*)___var_%d);\n", c_args[0].var);
 			}
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
+			c_value_set_void(value);
 			break;
 		case BUILTIN_FRAMEADDRESS:
 			PRINTF("%s ___var_%d = __builtin_frame_address(0);\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type));
@@ -1138,19 +1054,17 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_VOLATILE_STORE:
 			if (num_args >= 2)
 			{
 				c_value_rvalue(c, &c_args[1]);
-				Type *vt = (c_args[1].type && is_valid_type_ptr(c_args[1].type)) ? c_safe_type_lower(c_args[1].type) : type_void;
+				Type *vt = c_expr_type_or(args[1], type_void);
 				PRINTF("*(volatile %s*)___var_%d = ___var_%d;\n", c_type_name(c, vt), c_args[0].var, c_args[1].var);
 			}
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
+			c_value_set_void(value);
 			break;
 		case BUILTIN_UNALIGNED_LOAD:
 		{
@@ -1166,19 +1080,11 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_UNALIGNED_STORE:
 			if (num_args >= 2)
 			{
-				Type *vt = (c_args[1].type && is_valid_type_ptr(c_args[1].type)) ? c_safe_type_lower(c_args[1].type) : type_void;
-				if (c_args[1].kind == CV_ADDRESS)
-				{
-					PRINTF("__c3_memcpy((void*)___var_%d, (void*)___var_%d, sizeof(%s));\n", c_args[0].var, c_args[1].var, c_type_name(c, vt));
-				}
-				else
-				{
-					PRINTF("__c3_memcpy((void*)___var_%d, &___var_%d, sizeof(%s));\n", c_args[0].var, c_args[1].var, c_type_name(c, vt));
-				}
+				Type *vt            = c_expr_type_or(args[1], type_void);
+				const char *src_ref = (c_args[1].kind == CV_ADDRESS) ? "(void*)" : "&";
+				PRINTF("__c3_memcpy((void*)___var_%d, %s___var_%d, sizeof(%s));\n", c_args[0].var, src_ref, c_args[1].var, c_type_name(c, vt));
 			}
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
+			c_value_set_void(value);
 			break;
 		case BUILTIN_ATOMIC_LOAD:
 			if (num_args >= 1)
@@ -1205,14 +1111,14 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_ATOMIC_STORE:
 			if (num_args >= 2)
 			{
 				c_value_rvalue(c, &c_args[1]);
-				Type *vt = (c_args[1].type && is_valid_type_ptr(c_args[1].type)) ? c_safe_type_lower(c_args[1].type) : type_void;
+				Type *vt = c_expr_type_or(args[1], type_void);
 				if (type_is_float(vt))
 				{
 					const char *u_int = (type_size(vt) == 8) ? "uint64_t" : "uint32_t";
@@ -1231,9 +1137,7 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 					PRINTF("__atomic_store_n((%s*)___var_%d, ___var_%d, __ATOMIC_SEQ_CST);\n", c_type_name(c, vt), c_args[0].var, c_args[1].var);
 				}
 			}
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
+			c_value_set_void(value);
 			break;
 		case BUILTIN_ATOMIC_FETCH_ADD:
 		case BUILTIN_ATOMIC_FETCH_SUB:
@@ -1243,6 +1147,11 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 		case BUILTIN_ATOMIC_FETCH_NAND:
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 		{
+			if (num_args < 2)
+			{
+				c_emit_temp_zero(c, value, return_type);
+				break;
+			}
 			int temp          = c_emit_temp_var(c, value, return_type);
 			const char *tn    = c_type_name(c, return_type);
 			const char *aname = (builtin == BUILTIN_ATOMIC_FETCH_SUB) ? "__atomic_fetch_sub" : (builtin == BUILTIN_ATOMIC_FETCH_AND)    ? "__atomic_fetch_and"
@@ -1251,89 +1160,53 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			                                                                               : (builtin == BUILTIN_ATOMIC_FETCH_NAND)     ? "__atomic_fetch_nand"
 			                                                                               : (builtin == BUILTIN_ATOMIC_FETCH_EXCHANGE) ? "__atomic_exchange_n"
 			                                                                                                                            : "__atomic_fetch_add";
-			if (num_args >= 2)
+			c_value_rvalue(c, &c_args[1]);
+			if (type_is_float(return_type) && (builtin == BUILTIN_ATOMIC_FETCH_ADD || builtin == BUILTIN_ATOMIC_FETCH_SUB))
 			{
-				c_value_rvalue(c, &c_args[1]);
-				if (type_is_float(return_type) && (builtin == BUILTIN_ATOMIC_FETCH_ADD || builtin == BUILTIN_ATOMIC_FETCH_SUB))
-				{
-					const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
-					const char *op    = (builtin == BUILTIN_ATOMIC_FETCH_SUB) ? "-" : "+";
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					PRINT("{\n");
-					PRINTF("\tunion { %s f; %s i; } _old, _new;\n", tn, u_int);
-					PRINTF("\t_old.f = *(volatile %s*)___var_%d;\n", tn, c_args[0].var);
-					PRINTF("\tdo {\n");
-					PRINTF("\t\t_new.f = _old.f %s ___var_%d;\n", op, c_args[1].var);
-					PRINTF("\t} while (!__atomic_compare_exchange_n((%s*)___var_%d, &_old.i, _new.i, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", u_int, c_args[0].var);
-					PRINTF("\t___var_%d = _old.f;\n", temp);
-					PRINT("}\n");
-				}
-				else if (return_type->type_kind == TYPE_BOOL)
-				{
-					PRINTF("bool ___var_%d = (bool)%s((uint8_t*)___var_%d, (uint8_t)___var_%d, __ATOMIC_SEQ_CST);\n",
-					       temp, aname, c_args[0].var, c_args[1].var);
-				}
-				else
-				{
-					PRINTF("%s ___var_%d = %s((%s*)___var_%d, ___var_%d, __ATOMIC_SEQ_CST);\n", tn, temp, aname, tn, c_args[0].var, c_args[1].var);
-				}
+				const char *op = (builtin == BUILTIN_ATOMIC_FETCH_SUB) ? "-" : "+";
+				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, op, false);
+			}
+			else if (return_type->type_kind == TYPE_BOOL)
+			{
+				PRINTF("bool ___var_%d = (bool)%s((uint8_t*)___var_%d, (uint8_t)___var_%d, __ATOMIC_SEQ_CST);\n",
+				       temp, aname, c_args[0].var, c_args[1].var);
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
+				PRINTF("%s ___var_%d = %s((%s*)___var_%d, ___var_%d, __ATOMIC_SEQ_CST);\n", tn, temp, aname, tn, c_args[0].var, c_args[1].var);
 			}
 			break;
 		}
 		case BUILTIN_ATOMIC_FETCH_MAX:
 		case BUILTIN_ATOMIC_FETCH_MIN:
 		{
+			if (num_args < 2)
+			{
+				c_emit_temp_zero(c, value, return_type);
+				break;
+			}
 			int temp       = c_emit_temp_var(c, value, return_type);
 			const char *tn = c_type_name(c, return_type);
 			const char *op = (builtin == BUILTIN_ATOMIC_FETCH_MIN) ? "<" : ">";
-			if (num_args >= 2)
+			c_value_rvalue(c, &c_args[1]);
+			if (type_is_float(return_type))
 			{
-				c_value_rvalue(c, &c_args[1]);
-				if (type_is_float(return_type))
-				{
-					const char *u_int = (type_size(return_type) == 8) ? "uint64_t" : "uint32_t";
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					PRINT("{\n");
-					PRINTF("\tunion { %s f; %s i; } _old, _new;\n", tn, u_int);
-					PRINTF("\t_old.f = *(volatile %s*)___var_%d;\n", tn, c_args[0].var);
-					PRINTF("\tdo {\n");
-					PRINTF("\t\t_new.f = (_old.f %s ___var_%d) ? _old.f : ___var_%d;\n", op, c_args[1].var, c_args[1].var);
-					PRINTF("\t} while (!__atomic_compare_exchange_n((%s*)___var_%d, &_old.i, _new.i, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", u_int, c_args[0].var);
-					PRINTF("\t___var_%d = _old.f;\n", temp);
-					PRINT("}\n");
-				}
-				else if (return_type->type_kind == TYPE_BOOL)
-				{
-					PRINTF("bool ___var_%d;\n", temp);
-					PRINT("{\n");
-					PRINTF("\tuint8_t _old = *(volatile uint8_t*)___var_%d;\n", c_args[0].var);
-					PRINTF("\tuint8_t _new;\n");
-					PRINTF("\tdo {\n");
-					PRINTF("\t\t_new = (_old %s (uint8_t)___var_%d) ? _old : (uint8_t)___var_%d;\n", op, c_args[1].var, c_args[1].var);
-					PRINTF("\t} while (!__atomic_compare_exchange_n((uint8_t*)___var_%d, &_old, _new, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", c_args[0].var);
-					PRINTF("\t___var_%d = (bool)_old;\n", temp);
-					PRINT("}\n");
-				}
-				else
-				{
-					PRINTF("%s ___var_%d;\n", tn, temp);
-					PRINT("{\n");
-					PRINTF("\t%s _old = *(volatile %s*)___var_%d;\n", tn, tn, c_args[0].var);
-					PRINTF("\t%s _new;\n", tn);
-					PRINTF("\tdo {\n");
-					PRINTF("\t\t_new = (_old %s ___var_%d) ? _old : ___var_%d;\n", op, c_args[1].var, c_args[1].var);
-					PRINTF("\t} while (!__atomic_compare_exchange_n((%s*)___var_%d, &_old, _new, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", tn, c_args[0].var);
-					PRINTF("\t___var_%d = _old;\n", temp);
-					PRINT("}\n");
-				}
+				c_emit_atomic_float_cas(c, temp, tn, return_type, c_args[0].var, c_args[1].var, op, true);
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", tn, temp, c_type_zero_literal(return_type));
+				bool is_bool       = (return_type->type_kind == TYPE_BOOL);
+				const char *c_type = is_bool ? "uint8_t" : tn;
+				const char *c_cast = is_bool ? "(uint8_t)" : "";
+				PRINTF("%s ___var_%d;\n", tn, temp);
+				PRINT("{\n");
+				PRINTF("\t%s _old = *(volatile %s*)___var_%d;\n", c_type, c_type, c_args[0].var);
+				PRINTF("\t%s _new;\n", c_type);
+				PRINTF("\tdo {\n");
+				PRINTF("\t\t_new = (_old %s %s___var_%d) ? _old : %s___var_%d;\n", op, c_cast, c_args[1].var, c_cast, c_args[1].var);
+				PRINTF("\t} while (!__atomic_compare_exchange_n((%s*)___var_%d, &_old, _new, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));\n", c_type, c_args[0].var);
+				PRINTF("\t___var_%d = %s_old;\n", temp, is_bool ? "(bool)" : "");
+				PRINT("}\n");
 			}
 			break;
 		}
@@ -1373,14 +1246,12 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		case BUILTIN_FENCE:
 			PRINT("__atomic_thread_fence(__ATOMIC_SEQ_CST);\n");
-			value->var  = 0;
-			value->type = type_void;
-			value->kind = CV_VALUE;
+			c_value_set_void(value);
 			break;
 		case BUILTIN_SYSCLOCK:
 			PRINTF("%s ___var_%d = 0;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type));
@@ -1400,19 +1271,17 @@ void c_emit_builtin_call(GenContext *c, CValue *value, Expr *expr)
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			break;
 		default:
 			if (has_return)
 			{
-				PRINTF("%s ___var_%d = %s;\n", c_type_name(c, return_type), c_emit_temp_var(c, value, return_type), c_type_zero_literal(return_type));
+				c_emit_temp_zero(c, value, return_type);
 			}
 			else
 			{
-				value->var  = 0;
-				value->type = type_void;
-				value->kind = CV_VALUE;
+				c_value_set_void(value);
 			}
 			break;
 	}

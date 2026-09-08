@@ -20,31 +20,19 @@ bool c_is_file_global(Decl *decl)
 	{
 		return false;
 	}
-	if (decl->is_extern)
+	if (decl->is_extern || decl->var.kind == VARDECL_GLOBAL)
 	{
 		return true;
 	}
-	if (decl->var.kind == VARDECL_GLOBAL)
+	if (decl->var.kind == VARDECL_CONST && decl->unit && decl->unit->vars)
 	{
-		return true;
-	}
-	if (decl->var.kind == VARDECL_CONST)
-	{
-		if (!decl->unit)
+		FOREACH(Decl *, v, decl->unit->vars)
 		{
-			return false;
-		}
-		if (decl->unit->vars)
-		{
-			FOREACH(Decl *, v, decl->unit->vars)
+			if (c_decl_unwrap(v) == decl)
 			{
-				if (c_decl_unwrap(v) == decl)
-				{
-					return true;
-				}
+				return true;
 			}
 		}
-		return false;
 	}
 	return false;
 }
@@ -168,6 +156,26 @@ static void c_bit_set_bytes_internal(uint8_t *bytes, int start_bit, int end_bit,
 	}
 }
 
+static uint64_t c_get_const_init_val(ConstInitializer *val)
+{
+	if (!val || val->kind != CONST_INIT_VALUE || !val->init_value || val->init_value->expr_kind != EXPR_CONST)
+	{
+		return 0;
+	}
+	ExprConst *ec = &val->init_value->const_expr;
+	switch (ec->const_kind)
+	{
+		case CONST_BOOL:
+			return ec->b ? 1 : 0;
+		case CONST_INTEGER:
+			return ec->ixx.i.low;
+		case CONST_ENUM:
+			return (uint64_t)ec->enum_val->enum_constant.inner_ordinal;
+		default:
+			return 0;
+	}
+}
+
 static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *init)
 {
 	Type *bit_type       = type_flatten(init->type);
@@ -177,14 +185,7 @@ static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *
 
 	if (init->kind == CONST_INIT_ZERO)
 	{
-		if (flat_container->type_kind == TYPE_ARRAY)
-		{
-			PRINT("{0}");
-		}
-		else
-		{
-			PRINT("0");
-		}
+		PRINT(flat_container->type_kind == TYPE_ARRAY ? "{0}" : "0");
 		return;
 	}
 
@@ -209,26 +210,9 @@ static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *
 				{
 					continue;
 				}
-				Decl *m    = members[i];
-				uint64_t v = 0;
-				if (val->kind == CONST_INIT_VALUE && val->init_value && val->init_value->expr_kind == EXPR_CONST)
-				{
-					ExprConst *ec = &val->init_value->const_expr;
-					if (ec->const_kind == CONST_BOOL)
-					{
-						v = ec->b ? 1 : 0;
-					}
-					else if (ec->const_kind == CONST_INTEGER)
-					{
-						v = ec->ixx.i.low;
-					}
-					else if (ec->const_kind == CONST_ENUM)
-					{
-						v = (uint64_t)ec->enum_val->enum_constant.inner_ordinal;
-					}
-				}
+				uint64_t v = c_get_const_init_val(val);
 				int start_bit = 0, end_bit = 0;
-				c_get_bitstruct_member_bits(m, &start_bit, &end_bit);
+				c_get_bitstruct_member_bits(members[i], &start_bit, &end_bit);
 				c_bit_set_bytes_internal(bytes, start_bit, end_bit, rev, v);
 			}
 		}
@@ -259,26 +243,9 @@ static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *
 			{
 				continue;
 			}
-			Decl *m    = members[i];
-			uint64_t v = 0;
-			if (val->kind == CONST_INIT_VALUE && val->init_value && val->init_value->expr_kind == EXPR_CONST)
-			{
-				ExprConst *ec = &val->init_value->const_expr;
-				if (ec->const_kind == CONST_BOOL)
-				{
-					v = ec->b ? 1 : 0;
-				}
-				else if (ec->const_kind == CONST_INTEGER)
-				{
-					v = ec->ixx.i.low;
-				}
-				else if (ec->const_kind == CONST_ENUM)
-				{
-					v = (uint64_t)ec->enum_val->enum_constant.inner_ordinal;
-				}
-			}
+			uint64_t v = c_get_const_init_val(val);
 			int start_bit = 0, end_bit = 0;
-			c_get_bitstruct_member_bits(m, &start_bit, &end_bit);
+			c_get_bitstruct_member_bits(members[i], &start_bit, &end_bit);
 			int bit_size = end_bit - start_bit + 1;
 			if (bit_size <= 0)
 			{
@@ -289,21 +256,9 @@ static void c_emit_const_bitstruct_initializer(GenContext *c, ConstInitializer *
 			total |= (start_bit >= 64 ? 0 : (v << start_bit));
 		}
 	}
-	else if (init->kind == CONST_INIT_VALUE && init->init_value && init->init_value->expr_kind == EXPR_CONST)
+	else
 	{
-		ExprConst *ec = &init->init_value->const_expr;
-		if (ec->const_kind == CONST_INTEGER)
-		{
-			total = ec->ixx.i.low;
-		}
-		else if (ec->const_kind == CONST_BOOL)
-		{
-			total = ec->b ? 1 : 0;
-		}
-		else if (ec->const_kind == CONST_ENUM)
-		{
-			total = (uint64_t)ec->enum_val->enum_constant.inner_ordinal;
-		}
+		total = c_get_const_init_val(init);
 	}
 	if (c_is_bitstruct_requires_byteswap(decl))
 	{
@@ -614,23 +569,10 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 			}
 			return;
 		}
-		if (uop == UNARYOP_NEG)
+		if (uop == UNARYOP_NEG || uop == UNARYOP_BITNEG || uop == UNARYOP_NOT)
 		{
-			PRINT("-(");
-			c_emit_const_init_expr(c, expr->unary_expr.expr, type);
-			PRINT(")");
-			return;
-		}
-		if (uop == UNARYOP_BITNEG)
-		{
-			PRINT("~(");
-			c_emit_const_init_expr(c, expr->unary_expr.expr, type);
-			PRINT(")");
-			return;
-		}
-		if (uop == UNARYOP_NOT)
-		{
-			PRINT("!(");
+			const char *uop_str = (uop == UNARYOP_NEG) ? "-" : (uop == UNARYOP_BITNEG ? "~" : "!");
+			PRINTF("%s(", uop_str);
 			c_emit_const_init_expr(c, expr->unary_expr.expr, type);
 			PRINT(")");
 			return;
@@ -690,7 +632,7 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 			{
 				c_emit_global_decl(c, d);
 				Type *dt = c_decl_type(d);
-				if (type->type_kind == TYPE_SLICE && dt && (dt->type_kind == TYPE_ARRAY || dt->type_kind == TYPE_VECTOR || dt->type_kind == TYPE_SIMD_VECTOR))
+				if (type->type_kind == TYPE_SLICE && dt && c_type_is_vec_or_arr(dt))
 				{
 					PRINTF("(%s){ .ptr = (void*)%s.ptr, .len = %llu }", tname, c_get_decl_name(d), (unsigned long long)dt->array.len);
 					return;
@@ -971,6 +913,25 @@ void c_emit_const_init_expr(GenContext *c, Expr *expr, Type *type)
 	PRINTF("%s", c_type_zero_literal(type));
 }
 
+static const char *c_get_align_attr_str(Decl *decl, Type *type)
+{
+	AlignSize align = decl ? decl->alignment : 0;
+	if (!align && decl && is_valid_type_ptr(decl->type) && c_type_is_resolved(decl->type))
+	{
+		align = type_alloca_alignment(decl->type);
+	}
+	if (!align && type && is_valid_type_ptr(type) && c_type_is_resolved(type))
+	{
+		align = type_alloca_alignment(type);
+	}
+	if (align < 16 && c_get_type_size(type) >= 16)
+	{
+		align = 16;
+	}
+	AlignSize abi_align = (c_type_is_resolved(type)) ? type_abi_alignment(type) : 1;
+	return (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
+}
+
 void c_emit_global_decl(GenContext *c, Decl *var)
 {
 	if (!var || var->replacement || var->is_template)
@@ -997,18 +958,8 @@ void c_emit_global_decl(GenContext *c, Decl *var)
 
 	htable_set(&c->emitted_global_decls, (void *)vname, (void *)1);
 	c_emit_type_forward_decl(c, var_type);
-	const char *tname = c_type_name(c, var_type);
-	AlignSize align   = var->alignment;
-	if (!align && is_valid_type_ptr(var->type) && c_type_is_resolved(var->type))
-	{
-		align = type_alloca_alignment(var->type);
-	}
-	if (align < 16 && c_get_type_size(var_type) >= 16)
-	{
-		align = 16;
-	}
-	AlignSize abi_align   = (c_type_is_resolved(var_type)) ? type_abi_alignment(var_type) : 1;
-	const char *align_str = (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
+	const char *tname     = c_type_name(c, var_type);
+	const char *align_str = c_get_align_attr_str(var, var_type);
 	PRINT("extern ");
 	if (var->var.kind == VARDECL_CONST)
 	{
@@ -1062,18 +1013,8 @@ void c_emit_global_def(GenContext *c, Decl *var)
 
 	htable_set(&c->emitted_global_defs, (void *)vname, (void *)1);
 	c_emit_type_forward_decl(c, var_type);
-	const char *tname = c_type_name(c, var_type);
-	AlignSize align   = var->alignment;
-	if (!align && is_valid_type_ptr(var->type) && c_type_is_resolved(var->type))
-	{
-		align = type_alloca_alignment(var->type);
-	}
-	if (align < 16 && c_get_type_size(var_type) >= 16)
-	{
-		align = 16;
-	}
-	AlignSize abi_align   = (c_type_is_resolved(var_type)) ? type_abi_alignment(var_type) : 1;
-	const char *align_str = (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
+	const char *tname     = c_type_name(c, var_type);
+	const char *align_str = c_get_align_attr_str(var, var_type);
 	if (var->var.kind == VARDECL_CONST)
 	{
 		PRINT("const ");
@@ -1209,7 +1150,9 @@ void c_emit_dynamic_dispatcher(GenContext *c, Decl *dyn_fn)
 	c_traverse_all_modules(c, c_find_dyn_impl_visitor, &search);
 
 	FOREACH(Decl *, impl, impls)
-	c_emit_function_decl(c, impl, false);
+	{
+		c_emit_function_decl(c, impl, false);
+	}
 
 	Decl *def_method = declptrzero(dyn_fn->func_decl.default_method);
 	if (def_method && strip_unused() && !def_method->is_live)
@@ -1378,7 +1321,9 @@ static void c_collect_and_emit_bitstructs(FILE *f, HTable *emitted, Decl *d)
 	if (decl_has_members(d) && d->strukt.members)
 	{
 		FOREACH(Decl *, m, d->strukt.members)
-		c_collect_and_emit_bitstructs(f, emitted, m);
+		{
+			c_collect_and_emit_bitstructs(f, emitted, m);
+		}
 	}
 }
 
@@ -1510,8 +1455,7 @@ static const char c_runtime_header_boilerplate[] =
     "#define __builtin_popcountll __c3_tcc_popcount64\n"
     "#define __builtin_popcountl  __c3_tcc_popcount64\n"
     "#define __builtin_popcount   __c3_tcc_popcount64\n"
-
-	"static inline uint16_t __c3_tcc_bswap16(uint16_t x) { return (uint16_t)((x << 8) | (x >> 8)); }\n"
+    "static inline uint16_t __c3_tcc_bswap16(uint16_t x) { return (uint16_t)((x << 8) | (x >> 8)); }\n"
     "static inline uint32_t __c3_tcc_bswap32(uint32_t x) {\n"
     "\treturn ((x << 24) & 0xff000000u) | ((x << 8) & 0x00ff0000u) | ((x >> 8) & 0x0000ff00u) | ((x >> 24) & 0x000000ffu);\n"
     "}\n"
@@ -1524,8 +1468,6 @@ static const char c_runtime_header_boilerplate[] =
     "#define __builtin_bswap16 __c3_tcc_bswap16\n"
     "#define __builtin_bswap32 __c3_tcc_bswap32\n"
     "#define __builtin_bswap64 __c3_tcc_bswap64\n"
-
-	
     "#define __c3_abort()  (*(volatile int*)0 = 0)\n"
     "#ifndef __ATOMIC_SEQ_CST\n"
     "#define __ATOMIC_RELAXED 0\n"
@@ -1590,7 +1532,7 @@ static const char c_runtime_header_boilerplate[] =
     "\tif (size == 4) {\n"
     "\t\tuint32_t exp = *(uint32_t*)expected;\n"
     "\t\t__asm__ __volatile__(\"lock cmpxchgl %2, %1; sete %0\" : \"=q\"(success), \"+m\"(*(uint32_t*)ptr), \"+r\"((uint32_t)desired), \"+a\"(exp) : : \"memory\");\n"
-    "\t\tif (!success) *(uint8_t*)expected = exp;\n"
+    "\t\tif (!success) *(uint32_t*)expected = exp;\n"
     "\t\treturn success;\n"
     "\t}\n"
     "\tif (size == 8) {\n"
@@ -1758,10 +1700,7 @@ static Type **c_collect_runtime_types(HTable *emitted_types)
 	for (int i = 0; i < type_count; i++)
 	{
 		Type *t = compiler.context.type[i];
-		if (!t || !is_valid_type_ptr(t) || t == poisoned_type || t->type_kind == TYPE_POISONED ||
-		    t->type_kind == TYPE_WILDCARD || t->type_kind == TYPE_UNTYPEDLIST ||
-		    t->type_kind == TYPE_TYPEINFO || t->type_kind == TYPE_MEMBER || t->type_kind == TYPE_REFLECTION ||
-		    t->type_kind == TYPE_FUNC_RAW || t->type_kind == TYPE_INFERRED_ARRAY || t->type_kind == TYPE_INFERRED_VECTOR)
+		if (!c_type_needs_emission(t))
 		{
 			continue;
 		}
@@ -1850,7 +1789,9 @@ void c_emit_runtime_header(const char *dir)
 				continue;
 			}
 			FOREACH(Decl *, d, unit->types)
-			c_collect_and_emit_bitstructs(f, &emitted_bs, d);
+			{
+				c_collect_and_emit_bitstructs(f, &emitted_bs, d);
+			}
 		}
 	}
 
@@ -1948,7 +1889,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 		{
 			inner_sym = str_printf("&%s", c_typeid_name(t->pointer));
 		}
-		else if ((t->type_kind == TYPE_SLICE || t->type_kind == TYPE_ARRAY || t->type_kind == TYPE_VECTOR || t->type_kind == TYPE_SIMD_VECTOR) && t->array.base && is_valid_type_ptr(t->array.base))
+		else if ((t->type_kind == TYPE_SLICE || c_type_is_vec_or_arr(t)) && t->array.base && is_valid_type_ptr(t->array.base))
 		{
 			inner_sym = str_printf("&%s", c_typeid_name(t->array.base));
 		}
@@ -1974,7 +1915,7 @@ GenContext *c_emit_runtime_c(const char *dir)
 		}
 
 		size_t len = 0;
-		if (t->type_kind == TYPE_ARRAY || t->type_kind == TYPE_VECTOR || t->type_kind == TYPE_SIMD_VECTOR)
+		if (c_type_is_vec_or_arr(t))
 		{
 			len = (size_t)t->array.len;
 		}

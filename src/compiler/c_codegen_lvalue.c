@@ -1,6 +1,6 @@
 #include "c_codegen_internal.h"
 
-Decl *get_struct_decl_from_type(Type *type)
+static inline Type *c_flatten_deref(Type *type)
 {
 	if (!type || !is_valid_type_ptr(type))
 	{
@@ -11,17 +11,15 @@ Decl *get_struct_decl_from_type(Type *type)
 	{
 		flat = type_flatten(flat->pointer);
 	}
-	if (!flat)
+	return flat;
+}
+
+Decl *get_struct_decl_from_type(Type *type)
+{
+	Decl *d = c_type_get_decl(c_flatten_deref(type));
+	if (d && (d->decl_kind == DECL_STRUCT || d->decl_kind == DECL_UNION || d->decl_kind == DECL_BITSTRUCT))
 	{
-		return NULL;
-	}
-	if (flat->type_kind == TYPE_STRUCT || flat->type_kind == TYPE_UNION || flat->type_kind == TYPE_BITSTRUCT)
-	{
-		Decl *d = flat->decl;
-		if (d && (d->decl_kind == DECL_STRUCT || d->decl_kind == DECL_UNION || d->decl_kind == DECL_BITSTRUCT))
-		{
-			return d;
-		}
+		return d;
 	}
 	return NULL;
 }
@@ -33,57 +31,48 @@ bool c_find_member_index_rec(Decl *parent_decl, Decl *member, int *out_indices, 
 		return false;
 	}
 
-	// 1. Check direct members first by pointer equality
+	FOREACH_IDX(i1, Decl *, m, parent_decl->strukt.members)
 	{
-		FOREACH_IDX(i1, Decl *, m, parent_decl->strukt.members)
+		if (m == member)
 		{
-			if (m == member)
+			if (*out_depth < max_depth)
 			{
-				if (*out_depth < max_depth)
-				{
-					out_indices[(*out_depth)++] = (int)i1;
-					return true;
-				}
+				out_indices[(*out_depth)++] = (int)i1;
+				return true;
 			}
 		}
 	}
 
-	// 2. Check direct members by name
+	FOREACH_IDX(i2, Decl *, m, parent_decl->strukt.members)
 	{
-		FOREACH_IDX(i2, Decl *, m, parent_decl->strukt.members)
+		if (m->name && member->name && strcmp(m->name, member->name) == 0)
 		{
-			if (m->name && member->name && strcmp(m->name, member->name) == 0)
+			if (*out_depth < max_depth)
 			{
-				if (*out_depth < max_depth)
-				{
-					out_indices[(*out_depth)++] = (int)i2;
-					return true;
-				}
+				out_indices[(*out_depth)++] = (int)i2;
+				return true;
 			}
 		}
 	}
 
-	// 3. Recurse into substructs if not found in the current struct
+	FOREACH_IDX(i3, Decl *, m, parent_decl->strukt.members)
 	{
-		FOREACH_IDX(i3, Decl *, m, parent_decl->strukt.members)
+		if (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT ||
+		    (m->decl_kind == DECL_VAR && is_valid_type_ptr(m->type) &&
+		     (type_flatten(m->type)->type_kind == TYPE_STRUCT || type_flatten(m->type)->type_kind == TYPE_UNION || type_flatten(m->type)->type_kind == TYPE_BITSTRUCT)))
 		{
-			if (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT ||
-			    (m->decl_kind == DECL_VAR && is_valid_type_ptr(m->type) &&
-			     (type_flatten(m->type)->type_kind == TYPE_STRUCT || type_flatten(m->type)->type_kind == TYPE_UNION || type_flatten(m->type)->type_kind == TYPE_BITSTRUCT)))
+			Decl *sub_decl  = (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT)
+			                      ? m
+			                      : type_flatten(m->type)->decl;
+			int saved_depth = *out_depth;
+			if (*out_depth < max_depth)
 			{
-				Decl *sub_decl  = (m->decl_kind == DECL_STRUCT || m->decl_kind == DECL_UNION || m->decl_kind == DECL_BITSTRUCT)
-				                      ? m
-				                      : type_flatten(m->type)->decl;
-				int saved_depth = *out_depth;
-				if (*out_depth < max_depth)
+				out_indices[(*out_depth)++] = (int)i3;
+				if (c_find_member_index_rec(sub_decl, member, out_indices, out_depth, max_depth))
 				{
-					out_indices[(*out_depth)++] = (int)i3;
-					if (c_find_member_index_rec(sub_decl, member, out_indices, out_depth, max_depth))
-					{
-						return true;
-					}
-					*out_depth = saved_depth;
+					return true;
 				}
+				*out_depth = saved_depth;
 			}
 		}
 	}
@@ -92,15 +81,7 @@ bool c_find_member_index_rec(Decl *parent_decl, Decl *member, int *out_indices, 
 
 bool c_is_bitstruct_array(Type *type, Decl **out_decl)
 {
-	if (!type || !is_valid_type_ptr(type))
-	{
-		return false;
-	}
-	Type *flat = type_flatten(type);
-	if (flat && flat->type_kind == TYPE_POINTER && flat->pointer && is_valid_type_ptr(flat->pointer))
-	{
-		flat = type_flatten(flat->pointer);
-	}
+	Type *flat = c_flatten_deref(type);
 	if (!flat || flat->type_kind != TYPE_BITSTRUCT || !flat->decl)
 	{
 		return false;
@@ -156,6 +137,29 @@ bool c_is_bitstruct_requires_byteswap(Decl *d)
 	return false;
 }
 
+static int c_eval_bit_const_expr(Expr *e)
+{
+	while (e && (e->expr_kind == EXPR_RVALUE || e->expr_kind == EXPR_RECAST || e->expr_kind == EXPR_EXT_TRUNC))
+	{
+		e = e->inner_expr;
+	}
+	if (!e || e->expr_kind != EXPR_CONST)
+	{
+		return 0;
+	}
+	switch (e->const_expr.const_kind)
+	{
+		case CONST_INTEGER:
+			return (int)e->const_expr.ixx.i.low;
+		case CONST_ENUM:
+			return (int)e->const_expr.enum_val->enum_constant.inner_ordinal;
+		case CONST_BOOL:
+			return e->const_expr.b ? 1 : 0;
+		default:
+			return 0;
+	}
+}
+
 void c_get_bitstruct_member_bits(Decl *m, int *out_start_bit, int *out_end_bit)
 {
 	if (!m || m->decl_kind != DECL_VAR)
@@ -171,51 +175,8 @@ void c_get_bitstruct_member_bits(Decl *m, int *out_start_bit, int *out_end_bit)
 		return;
 	}
 
-	Expr *start = m->var.start;
-	while (start && (start->expr_kind == EXPR_RVALUE || start->expr_kind == EXPR_RECAST || start->expr_kind == EXPR_EXT_TRUNC))
-	{
-		start = start->inner_expr;
-	}
-
-	int s = 0;
-	if (start && start->expr_kind == EXPR_CONST)
-	{
-		if (start->const_expr.const_kind == CONST_INTEGER)
-		{
-			s = (int)start->const_expr.ixx.i.low;
-		}
-		else if (start->const_expr.const_kind == CONST_ENUM)
-		{
-			s = (int)start->const_expr.enum_val->enum_constant.inner_ordinal;
-		}
-		else if (start->const_expr.const_kind == CONST_BOOL)
-		{
-			s = start->const_expr.b ? 1 : 0;
-		}
-	}
-
-	int e     = s;
-	Expr *end = m->var.end;
-	while (end && (end->expr_kind == EXPR_RVALUE || end->expr_kind == EXPR_RECAST || end->expr_kind == EXPR_EXT_TRUNC))
-	{
-		end = end->inner_expr;
-	}
-
-	if (end && end->expr_kind == EXPR_CONST)
-	{
-		if (end->const_expr.const_kind == CONST_INTEGER)
-		{
-			e = (int)end->const_expr.ixx.i.low;
-		}
-		else if (end->const_expr.const_kind == CONST_ENUM)
-		{
-			e = (int)end->const_expr.enum_val->enum_constant.inner_ordinal;
-		}
-		else if (end->const_expr.const_kind == CONST_BOOL)
-		{
-			e = end->const_expr.b ? 1 : 0;
-		}
-	}
+	int s = c_eval_bit_const_expr(m->var.start);
+	int e = m->var.end ? c_eval_bit_const_expr(m->var.end) : s;
 
 	if (s < 0)
 	{
@@ -270,7 +231,6 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 		bool is_signed         = type_is_signed(m_type);
 		const char *shift_type = (bit_size > 64) ? "__c3_uint128" : "uint64_t";
 
-		// Getter
 		fprintf(f, "static inline %s %s_get_%s(const void *p) {\n", ret_tname, bs_name, m_name);
 		if (is_array)
 		{
@@ -384,7 +344,6 @@ void c_emit_bitstruct_accessors_to_file(FILE *f, Decl *decl)
 		}
 		fputs("}\n", f);
 
-		// Setter
 		fprintf(f, "static inline void %s_set_%s(void *p, %s val) {\n", bs_name, m_name, ret_tname);
 		if (is_array)
 		{
@@ -561,11 +520,7 @@ const char *c_emit_bitstruct_container(GenContext *c, Expr *parent_expr, Decl *m
 		return c_tname;
 	}
 
-	Type *flat = type_flatten(parent_type);
-	if (flat && flat->type_kind == TYPE_POINTER && flat->pointer)
-	{
-		flat = type_flatten(flat->pointer);
-	}
+	Type *flat = c_flatten_deref(parent_type);
 	container_decl = (flat && flat->type_kind == TYPE_BITSTRUCT) ? flat->decl : parent_decl;
 
 	Type *c_type = type_uint;
@@ -624,6 +579,30 @@ static void c_emit_struct_member_addr(GenContext *c, const char *tname, int temp
 		PRINTF(".m%d", indices[i]);
 	}
 	PRINT(")) : NULL;\n");
+}
+
+static void c_emit_enum_assoc_access(GenContext *c, Decl *enum_decl, Decl *member, Expr *parent_expr, bool parent_is_ptr, int temp, const char *tname, Type *target_type, bool is_addr)
+{
+	const char *arr_name = c_get_enum_assoc_name(enum_decl, member);
+	CValue parent_val    = {0};
+	c_emit_expr(c, &parent_val, parent_expr);
+	c_value_rvalue(c, &parent_val);
+	c_ensure_cvalue_var(c, &parent_val, type_sz);
+	const char *idx_str = parent_is_ptr
+	                          ? str_printf("(size_t)(*___var_%d)", parent_val.var)
+	                          : str_printf("(size_t)___var_%d", parent_val.var);
+	if (is_addr)
+	{
+		PRINTF("%s ___var_%d = (%s)&%s[%s];\n", tname, temp, tname, arr_name, idx_str);
+		return;
+	}
+	if (c_type_is_aggregate(target_type))
+	{
+		PRINTF("%s ___var_%d;\n", tname, temp);
+		PRINTF("__c3_memcpy(&___var_%d, &%s[%s], sizeof(%s));\n", temp, arr_name, idx_str, tname);
+		return;
+	}
+	PRINTF("%s ___var_%d = (%s)%s[%s];\n", tname, temp, tname, arr_name, idx_str);
 }
 
 void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target_type)
@@ -717,15 +696,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			Decl *member    = c_decl_unwrap(expr->access_resolved_expr.ref);
 			if (member && member->decl_kind == DECL_VAR)
 			{
-				const char *arr_name = c_get_enum_assoc_name(enum_decl, member);
-				CValue parent_val    = {0};
-				c_emit_expr(c, &parent_val, expr->access_resolved_expr.parent);
-				c_value_rvalue(c, &parent_val);
-				c_ensure_cvalue_var(c, &parent_val, type_sz);
-				const char *idx_str = parent_is_ptr
-				                          ? str_printf("(size_t)(*___var_%d)", parent_val.var)
-				                          : str_printf("(size_t)___var_%d", parent_val.var);
-				PRINTF("%s ___var_%d = (%s)&%s[%s];\n", tname, temp, tname, arr_name, idx_str);
+				c_emit_enum_assoc_access(c, enum_decl, member, expr->access_resolved_expr.parent, parent_is_ptr, temp, tname, target_type, true);
 				return;
 			}
 		}
@@ -744,7 +715,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			{
 				base_struct_type = parent_type;
 			}
-			if (base_struct_type->type_kind == TYPE_INTERFACE || base_struct_type->type_kind == TYPE_ANY)
+			if (c_type_is_any(base_struct_type))
 			{
 				if (member && member->decl_kind == DECL_FUNC)
 				{
@@ -775,7 +746,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			PRINTF("%s ___var_%d = (%s)&(___var_%d.%s);\n", tname, temp, tname, parent_val.var, fname);
 			return;
 		}
-		if (parent_type->type_kind == TYPE_ANY || parent_type->type_kind == TYPE_INTERFACE)
+		if (c_type_is_any(parent_type))
 		{
 			CValue parent_val = {0};
 			c_emit_expr(c, &parent_val, expr->access_resolved_expr.parent);
@@ -823,7 +794,7 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			}
 			return;
 		}
-		else if (parent_type->type_kind == TYPE_SLICE)
+		if (parent_type->type_kind == TYPE_SLICE)
 		{
 			CValue parent_val = {0};
 			c_emit_expr(c, &parent_val, parent_expr);
@@ -838,22 +809,19 @@ void c_emit_lvalue_addr(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			}
 			return;
 		}
+		CValue parent_addr = {0};
+		c_emit_lvalue_addr(c, parent_expr, &parent_addr, type_get_ptr(parent_type));
+		if (expr->subscript_expr.index.start_from_end)
+		{
+			PRINTF("%s ___var_%d = (%s)&(((%s*)___var_%d)->ptr[%llu - ___var_%d]);\n",
+			       tname, temp, tname, c_type_name(c, parent_type), parent_addr.var, (unsigned long long)parent_type->array.len, index_val.var);
+		}
 		else
 		{
-			CValue parent_addr = {0};
-			c_emit_lvalue_addr(c, parent_expr, &parent_addr, type_get_ptr(parent_type));
-			if (expr->subscript_expr.index.start_from_end)
-			{
-				PRINTF("%s ___var_%d = (%s)&(((%s*)___var_%d)->ptr[%llu - ___var_%d]);\n",
-				       tname, temp, tname, c_type_name(c, parent_type), parent_addr.var, (unsigned long long)parent_type->array.len, index_val.var);
-			}
-			else
-			{
-				PRINTF("%s ___var_%d = (%s)&(((%s*)___var_%d)->ptr[___var_%d]);\n",
-				       tname, temp, tname, c_type_name(c, parent_type), parent_addr.var, index_val.var);
-			}
-			return;
+			PRINTF("%s ___var_%d = (%s)&(((%s*)___var_%d)->ptr[___var_%d]);\n",
+			       tname, temp, tname, c_type_name(c, parent_type), parent_addr.var, index_val.var);
 		}
+		return;
 	}
 
 	CValue inner_val = {0};
@@ -936,10 +904,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 				const char *gname = c_get_decl_name(decl);
 				if (IS_OPTIONAL(decl) && (!raw_ident || raw_ident->var.kind != VARDECL_UNWRAPPED))
 				{
-					int fault_temp = c_emit_temp_var(c, NULL, type_fault);
-					PRINTF("c3fault_t ___var_%d = %s__f;\n", fault_temp, gname);
-					PRINTF("__c3_current_fault = ___var_%d;\n", fault_temp);
-					out_val->optional = fault_temp;
+					out_val->optional = c_emit_capture_current_fault(c);
 				}
 				if (c_type_is_aggregate(target_type))
 				{
@@ -993,23 +958,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 			Decl *member    = c_decl_unwrap(expr->access_resolved_expr.ref);
 			if (member && member->decl_kind == DECL_VAR)
 			{
-				const char *arr_name = c_get_enum_assoc_name(enum_decl, member);
-				CValue parent_val    = {0};
-				c_emit_expr(c, &parent_val, expr->access_resolved_expr.parent);
-				c_value_rvalue(c, &parent_val);
-				c_ensure_cvalue_var(c, &parent_val, type_sz);
-				const char *idx_str = parent_is_ptr
-				                          ? str_printf("(size_t)(*___var_%d)", parent_val.var)
-				                          : str_printf("(size_t)___var_%d", parent_val.var);
-				if (c_type_is_aggregate(target_type))
-				{
-					PRINTF("%s ___var_%d;\n", tname, temp);
-					PRINTF("__c3_memcpy(&___var_%d, &%s[%s], sizeof(%s));\n", temp, arr_name, idx_str, tname);
-				}
-				else
-				{
-					PRINTF("%s ___var_%d = (%s)%s[%s];\n", tname, temp, tname, arr_name, idx_str);
-				}
+				c_emit_enum_assoc_access(c, enum_decl, member, expr->access_resolved_expr.parent, parent_is_ptr, temp, tname, target_type, false);
 				return;
 			}
 		}
@@ -1022,7 +971,7 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 		}
 		if (member && member->decl_kind == DECL_FUNC)
 		{
-			if (base_type && (base_type->type_kind == TYPE_ANY || base_type->type_kind == TYPE_INTERFACE))
+			if (base_type && c_type_is_any(base_type))
 			{
 				CValue parent_val = {0};
 				c_emit_expr(c, &parent_val, expr->access_resolved_expr.parent);
@@ -1082,6 +1031,24 @@ void c_emit_lvalue_read(GenContext *c, Expr *expr, CValue *out_val, Type *target
 	}
 }
 
+static void c_emit_vec_compound_assign(GenContext *c, const char *lhs_fmt, int len, const char *assign_op, CValue *right_val)
+{
+	bool r_is_agg = (right_val->type && c_type_is_aggregate(right_val->type));
+	for (int k = 0; k < len; k++)
+	{
+		PRINTF(lhs_fmt, k);
+		PRINTF(" %s ", assign_op);
+		if (r_is_agg)
+		{
+			PRINTF("___var_%d.ptr[%d];\n", right_val->var, k);
+		}
+		else
+		{
+			PRINTF("___var_%d;\n", right_val->var);
+		}
+	}
+}
+
 void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const char *assign_op, CValue *out_val)
 {
 	if (!left)
@@ -1103,7 +1070,7 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 		const char *sw     = left->swizzle_expr.swizzle;
 		int sw_len         = (int)strlen(sw);
 		Type *target_type  = c_expr_type(left);
-		bool r_is_vec      = (right_val && right_val->type && (right_val->type->type_kind == TYPE_ARRAY || right_val->type->type_kind == TYPE_VECTOR || right_val->type->type_kind == TYPE_SIMD_VECTOR));
+		bool r_is_vec      = (right_val && right_val->type && c_type_is_vec_or_arr(right_val->type));
 		for (int i = 0; i < sw_len; i++)
 		{
 			int p_idx = SWIZZLE_INDEX(sw[i]);
@@ -1189,25 +1156,14 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 				}
 				return;
 			}
-			if (strcmp(assign_op, "=") != 0 && c_type_is_aggregate(gt) && (gt->type_kind == TYPE_ARRAY || gt->type_kind == TYPE_VECTOR || gt->type_kind == TYPE_SIMD_VECTOR))
+			if (strcmp(assign_op, "=") != 0 && c_type_is_aggregate(gt) && c_type_is_vec_or_arr(gt))
 			{
 				int len = (int)gt->array.len;
 				if (len <= 0)
 				{
 					len = 1;
 				}
-				bool r_is_agg = (right_val->type && c_type_is_aggregate(right_val->type));
-				for (int k = 0; k < len; k++)
-				{
-					if (r_is_agg)
-					{
-						PRINTF("%s.ptr[%d] %s ___var_%d.ptr[%d];\n", gname, k, assign_op, right_val->var, k);
-					}
-					else
-					{
-						PRINTF("%s.ptr[%d] %s ___var_%d;\n", gname, k, assign_op, right_val->var);
-					}
-				}
+				c_emit_vec_compound_assign(c, str_printf("%s.ptr[%%d]", gname), len, assign_op, right_val);
 				if (out_val)
 				{
 					int temp = c_emit_temp_var(c, out_val, gt);
@@ -1216,7 +1172,7 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 				}
 				return;
 			}
-			if (gt->type_kind == TYPE_POINTER && (right_val->type && (right_val->type->type_kind == TYPE_ANY || right_val->type->type_kind == TYPE_INTERFACE)))
+			if (gt->type_kind == TYPE_POINTER && (right_val->type && c_type_is_any(right_val->type)))
 			{
 				PRINTF("%s %s (void*)___var_%d.ptr;\n", gname, assign_op, right_val->var);
 			}
@@ -1224,43 +1180,37 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 			{
 				PRINTF("%s %s (%s)___var_%d.ptr;\n", gname, assign_op, c_type_name(c, gt), right_val->var);
 			}
-			else if (gt->type_kind == TYPE_POINTER && (right_val->type && (right_val->type->type_kind == TYPE_ARRAY || right_val->type->type_kind == TYPE_VECTOR || right_val->type->type_kind == TYPE_SIMD_VECTOR)))
+			else if (gt->type_kind == TYPE_POINTER && (right_val->type && c_type_is_vec_or_arr(right_val->type)))
 			{
 				PRINTF("%s %s (%s)(___var_%d%sptr);\n", gname, assign_op, c_type_name(c, gt), right_val->var, c_arrow(right_val));
 			}
-			else if (gt->type_kind == TYPE_SLICE && (right_val->type && (right_val->type->type_kind == TYPE_ARRAY || right_val->type->type_kind == TYPE_VECTOR || right_val->type->type_kind == TYPE_SIMD_VECTOR)))
+			else if (gt->type_kind == TYPE_SLICE && (right_val->type && c_type_is_vec_or_arr(right_val->type)))
 			{
 				PRINTF("%s %s (%s){ .ptr = (void*)(___var_%d%sptr), .len = %llu };\n",
 				       gname, assign_op, c_type_name(c, gt), right_val->var, c_arrow(right_val), (unsigned long long)right_val->type->array.len);
 			}
-			else if (gt->type_kind == TYPE_ANY || gt->type_kind == TYPE_INTERFACE)
+			else if (c_type_is_any(gt))
 			{
 				c_emit_assign_to_any(c, gname, right_val);
 			}
 			else if (c_type_is_aggregate(gt))
 			{
-				if (right_val->kind == CV_ADDRESS)
-				{
-					PRINTF("__c3_memcpy(&%s, (void*)___var_%d, sizeof(%s));\n", gname, right_val->var, gname);
-				}
-				else
-				{
-					PRINTF("__c3_memcpy(&%s, &___var_%d, sizeof(%s));\n", gname, right_val->var, gname);
-				}
+				const char *src_ref = (right_val->kind == CV_ADDRESS) ? "(void*)" : "&";
+				PRINTF("__c3_memcpy(&%s, %s___var_%d, sizeof(%s));\n", gname, src_ref, right_val->var, gname);
 			}
-			else if (type_is_integer(gt) && (type_is_pointer(right_val->type) || right_val->type->type_kind == TYPE_ANYFAULT || right_val->type->type_kind == TYPE_TYPEID))
+			else if (type_is_integer(gt) && c_type_is_c_pointer(right_val->type))
 			{
 				PRINTF("%s %s (%s)(uintptr_t)___var_%d;\n", gname, assign_op, c_type_name(c, gt), right_val->var);
 			}
-			else if ((type_is_pointer(gt) || gt->type_kind == TYPE_ANYFAULT || gt->type_kind == TYPE_TYPEID) && type_is_integer(right_val->type))
+			else if (c_type_is_c_pointer(gt) && type_is_integer(right_val->type))
 			{
 				PRINTF("%s %s (%s)(uintptr_t)___var_%d;\n", gname, assign_op, c_type_name(c, gt), right_val->var);
 			}
-			else if (type_is_float(gt) && (type_is_pointer(right_val->type) || right_val->type->type_kind == TYPE_ANYFAULT || right_val->type->type_kind == TYPE_TYPEID))
+			else if (type_is_float(gt) && c_type_is_c_pointer(right_val->type))
 			{
 				PRINTF("%s %s 0.0;\n", gname, assign_op);
 			}
-			else if ((type_is_pointer(gt) || gt->type_kind == TYPE_ANYFAULT || gt->type_kind == TYPE_TYPEID) && type_is_float(right_val->type))
+			else if (c_type_is_c_pointer(gt) && type_is_float(right_val->type))
 			{
 				PRINTF("%s %s NULL;\n", gname, assign_op);
 			}
@@ -1311,25 +1261,14 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 					c_emit_assign_decl_fault(c, left_decl, right_val, NULL);
 				}
 			}
-			else if (c_type_is_aggregate(lt) && (lt->type_kind == TYPE_ARRAY || lt->type_kind == TYPE_VECTOR || lt->type_kind == TYPE_SIMD_VECTOR))
+			else if (c_type_is_aggregate(lt) && c_type_is_vec_or_arr(lt))
 			{
 				int len = (int)lt->array.len;
 				if (len <= 0)
 				{
 					len = 1;
 				}
-				bool r_is_agg = (right_val->type && c_type_is_aggregate(right_val->type));
-				for (int k = 0; k < len; k++)
-				{
-					if (r_is_agg)
-					{
-						PRINTF("___var_%d.ptr[%d] %s ___var_%d.ptr[%d];\n", vid, k, assign_op, right_val->var, k);
-					}
-					else
-					{
-						PRINTF("___var_%d.ptr[%d] %s ___var_%d;\n", vid, k, assign_op, right_val->var);
-					}
-				}
+				c_emit_vec_compound_assign(c, str_printf("___var_%d.ptr[%%d]", vid), len, assign_op, right_val);
 			}
 			else
 			{
@@ -1380,7 +1319,7 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 		{
 			PRINTF("__c3_memset((void*)___var_%d, 0, sizeof(%s));\n", addr_val.var, tname);
 		}
-		else if (type_is_pointer(target_type) || target_type->type_kind == TYPE_ANYFAULT || target_type->type_kind == TYPE_TYPEID)
+		else if (c_type_is_c_pointer(target_type))
 		{
 			PRINTF("*(%s*)___var_%d %s NULL;\n", tname, addr_val.var, assign_op);
 		}
@@ -1399,16 +1338,10 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 	{
 		if (c_type_is_aggregate(target_type))
 		{
-			if (right_val->kind == CV_ADDRESS)
-			{
-				PRINTF("__c3_memcpy((void*)___var_%d, (void*)___var_%d, sizeof(%s));\n", addr_val.var, right_val->var, tname);
-			}
-			else
-			{
-				PRINTF("__c3_memcpy((void*)___var_%d, &___var_%d, sizeof(%s));\n", addr_val.var, right_val->var, tname);
-			}
+			const char *src_ref = (right_val->kind == CV_ADDRESS) ? "(void*)" : "&";
+			PRINTF("__c3_memcpy((void*)___var_%d, %s___var_%d, sizeof(%s));\n", addr_val.var, src_ref, right_val->var, tname);
 		}
-		else if (target_type->type_kind == TYPE_POINTER && (right_val->type && (right_val->type->type_kind == TYPE_ANY || right_val->type->type_kind == TYPE_INTERFACE)))
+		else if (target_type->type_kind == TYPE_POINTER && (right_val->type && c_type_is_any(right_val->type)))
 		{
 			PRINTF("*(%s*)___var_%d = (%s)___var_%d.ptr;\n", tname, addr_val.var, tname, right_val->var);
 		}
@@ -1416,26 +1349,26 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 		{
 			PRINTF("*(%s*)___var_%d = (%s)___var_%d.ptr;\n", tname, addr_val.var, tname, right_val->var);
 		}
-		else if (target_type->type_kind == TYPE_POINTER && (right_val->type && (right_val->type->type_kind == TYPE_ARRAY || right_val->type->type_kind == TYPE_VECTOR || right_val->type->type_kind == TYPE_SIMD_VECTOR)))
+		else if (target_type->type_kind == TYPE_POINTER && (right_val->type && c_type_is_vec_or_arr(right_val->type)))
 		{
 			PRINTF("*(%s*)___var_%d = (%s)(___var_%d%sptr);\n", tname, addr_val.var, tname, right_val->var, c_arrow(right_val));
 		}
-		else if (target_type->type_kind == TYPE_SLICE && (right_val->type && (right_val->type->type_kind == TYPE_ARRAY || right_val->type->type_kind == TYPE_VECTOR || right_val->type->type_kind == TYPE_SIMD_VECTOR)))
+		else if (target_type->type_kind == TYPE_SLICE && (right_val->type && c_type_is_vec_or_arr(right_val->type)))
 		{
 			PRINTF("*(%s*)___var_%d = (%s){ .ptr = (void*)(___var_%d%sptr), .len = %llu };\n",
 			       tname, addr_val.var, tname, right_val->var, c_arrow(right_val), (unsigned long long)right_val->type->array.len);
 		}
-		else if (target_type->type_kind == TYPE_ANY || target_type->type_kind == TYPE_INTERFACE)
+		else if (c_type_is_any(target_type))
 		{
 			char target_deref[64];
 			snprintf(target_deref, sizeof(target_deref), "*(__c3_any__*)___var_%d", addr_val.var);
 			c_emit_assign_to_any(c, target_deref, right_val);
 		}
-		else if (type_is_float(target_type) && (right_val->type && (type_is_pointer(right_val->type) || right_val->type->type_kind == TYPE_ANYFAULT || right_val->type->type_kind == TYPE_TYPEID)))
+		else if (type_is_float(target_type) && c_type_is_c_pointer(right_val->type))
 		{
 			PRINTF("*(%s*)___var_%d = 0.0;\n", tname, addr_val.var);
 		}
-		else if ((type_is_pointer(target_type) || target_type->type_kind == TYPE_ANYFAULT || target_type->type_kind == TYPE_TYPEID) && type_is_float(right_val->type))
+		else if (c_type_is_c_pointer(target_type) && type_is_float(right_val->type))
 		{
 			PRINTF("*(%s*)___var_%d = NULL;\n", tname, addr_val.var);
 		}
@@ -1455,25 +1388,14 @@ void c_emit_lvalue_assign(GenContext *c, Expr *left, CValue *right_val, const ch
 			}
 		}
 	}
-	else if (c_type_is_aggregate(target_type) && (target_type->type_kind == TYPE_ARRAY || target_type->type_kind == TYPE_VECTOR || target_type->type_kind == TYPE_SIMD_VECTOR))
+	else if (c_type_is_aggregate(target_type) && c_type_is_vec_or_arr(target_type))
 	{
 		int len = (int)target_type->array.len;
 		if (len <= 0)
 		{
 			len = 1;
 		}
-		bool r_is_agg = (right_val->type && c_type_is_aggregate(right_val->type));
-		for (int k = 0; k < len; k++)
-		{
-			if (r_is_agg)
-			{
-				PRINTF("((%s*)___var_%d)->ptr[%d] %s ___var_%d.ptr[%d];\n", tname, addr_val.var, k, assign_op, right_val->var, k);
-			}
-			else
-			{
-				PRINTF("((%s*)___var_%d)->ptr[%d] %s ___var_%d;\n", tname, addr_val.var, k, assign_op, right_val->var);
-			}
-		}
+		c_emit_vec_compound_assign(c, str_printf("((%s*)___var_%d)->ptr[%%d]", tname, addr_val.var), len, assign_op, right_val);
 	}
 	else
 	{

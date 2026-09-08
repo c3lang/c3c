@@ -1,9 +1,37 @@
 #include "c_codegen_internal.h"
 
+AlignSize c_get_effective_alignment(Decl *decl, Type *type)
+{
+	AlignSize align = decl ? decl->alignment : 0;
+	if (!align && decl && is_valid_type_ptr(decl->type) && c_type_is_resolved(decl->type))
+	{
+		align = type_alloca_alignment(decl->type);
+	}
+	if (!align && type && is_valid_type_ptr(type) && c_type_is_resolved(type))
+	{
+		align = type_alloca_alignment(type);
+	}
+	Type *vt = type ? c_safe_type_lower(type) : type_int;
+	if (align < 16 && c_get_type_size(vt) >= 16)
+	{
+		align = 16;
+	}
+	return align;
+}
+
+static const char *c_local_align_str(Decl *decl, Type *type)
+{
+	AlignSize align     = c_get_effective_alignment(decl, type);
+	Type *vt            = type ? c_safe_type_lower(type) : type_int;
+	AlignSize abi_align = c_type_is_resolved(vt) ? type_abi_alignment(vt) : 1;
+	return (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
+}
+
 int c_create_label(GenContext *c)
 {
 	return ++c->id_gen;
 }
+
 int c_create_variable(GenContext *c)
 {
 	return ++c->id_gen;
@@ -79,15 +107,7 @@ VariableId c_get_decl_fault_var(GenContext *c, Decl *decl)
 		return 0;
 	}
 	decl = decl_raw(decl);
-	if (decl->decl_kind != DECL_VAR)
-	{
-		return 0;
-	}
-	if (decl->var.kind == VARDECL_UNWRAPPED)
-	{
-		return 0;
-	}
-	if (!IS_OPTIONAL(decl))
+	if (decl->decl_kind != DECL_VAR || decl->var.kind == VARDECL_UNWRAPPED || !IS_OPTIONAL(decl))
 	{
 		return 0;
 	}
@@ -155,11 +175,7 @@ VariableId c_ensure_cvalue_var(GenContext *c, CValue *val, Type *fallback_type)
 
 void c_value_rvalue(GenContext *c, CValue *val)
 {
-	if (!val || val->var == 0)
-	{
-		return;
-	}
-	if (val->kind != CV_ADDRESS)
+	if (!val || val->var == 0 || val->kind != CV_ADDRESS)
 	{
 		return;
 	}
@@ -189,11 +205,7 @@ void c_value_rvalue(GenContext *c, CValue *val)
 
 void c_value_addr(GenContext *c, CValue *val)
 {
-	if (!val || val->var == 0)
-	{
-		return;
-	}
-	if (val->kind == CV_ADDRESS)
+	if (!val || val->var == 0 || val->kind == CV_ADDRESS)
 	{
 		return;
 	}
@@ -244,17 +256,15 @@ void c_emit_assign_to_any(GenContext *c, const char *dst_expr, CValue *src)
 		return;
 	}
 
-	Type *src_type  = (src->type && is_valid_type_ptr(src->type)) ? c_safe_type_lower(src->type) : type_void;
-	bool src_is_any = (src_type->type_kind == TYPE_ANY || src_type->type_kind == TYPE_INTERFACE);
-
-	if (src_is_any)
+	Type *src_type = (src->type && is_valid_type_ptr(src->type)) ? c_safe_type_lower(src->type) : type_void;
+	if (c_type_is_any(src_type))
 	{
 		PRINTF("%s = ___var_%d;\n", dst_expr, src->var);
 		return;
 	}
 
 	if (src_type->type_kind == TYPE_STRUCT && src_type->decl && src_type->decl->strukt.members && vec_size(src_type->decl->strukt.members) > 0 &&
-	    (src_type->decl->strukt.members[0]->type->type_kind == TYPE_ANY || src_type->decl->strukt.members[0]->type->type_kind == TYPE_INTERFACE))
+	    c_type_is_any(src_type->decl->strukt.members[0]->type))
 	{
 		PRINTF("%s = ___var_%d%sm0;\n", dst_expr, src->var, c_arrow(src));
 		return;
@@ -264,7 +274,7 @@ void c_emit_assign_to_any(GenContext *c, const char *dst_expr, CValue *src)
 	{
 		Type *pointee = (src_type->pointer && is_valid_type_ptr(src_type->pointer)) ? src_type->pointer : type_void;
 		if (pointee->type_kind == TYPE_STRUCT && pointee->decl && pointee->decl->strukt.members && vec_size(pointee->decl->strukt.members) > 0 &&
-		    (pointee->decl->strukt.members[0]->type->type_kind == TYPE_ANY || pointee->decl->strukt.members[0]->type->type_kind == TYPE_INTERFACE))
+		    c_type_is_any(pointee->decl->strukt.members[0]->type))
 		{
 			PRINTF("%s = ((%s*)___var_%d)->m0;\n", dst_expr, c_type_name(c, pointee), src->var);
 		}
@@ -304,7 +314,7 @@ void c_emit_assign_var(GenContext *c, VariableId dst_var, Type *dst_type, CValue
 		{
 			PRINTF("__c3_memset(&___var_%d, 0, sizeof(%s));\n", dst_var, dst_tname);
 		}
-		else if (type_is_pointer(dst_type) || dst_type->type_kind == TYPE_FUNC_PTR || dst_type->type_kind == TYPE_ANYFAULT || dst_type->type_kind == TYPE_TYPEID)
+		else if (c_type_is_c_pointer(dst_type))
 		{
 			PRINTF("___var_%d = NULL;\n", dst_var);
 		}
@@ -317,7 +327,7 @@ void c_emit_assign_var(GenContext *c, VariableId dst_var, Type *dst_type, CValue
 
 	if (c_type_is_aggregate(dst_type) || c_type_is_aggregate(src_type))
 	{
-		if (dst_type->type_kind == TYPE_POINTER && (src_type->type_kind == TYPE_ANY || src_type->type_kind == TYPE_INTERFACE))
+		if (dst_type->type_kind == TYPE_POINTER && c_type_is_any(src_type))
 		{
 			PRINTF("___var_%d = (%s)___var_%d.ptr;\n", dst_var, dst_tname, src_val->var);
 		}
@@ -325,47 +335,34 @@ void c_emit_assign_var(GenContext *c, VariableId dst_var, Type *dst_type, CValue
 		{
 			PRINTF("___var_%d = (%s)___var_%d.ptr;\n", dst_var, dst_tname, src_val->var);
 		}
-		else if (dst_type->type_kind == TYPE_POINTER && (src_type->type_kind == TYPE_ARRAY || src_type->type_kind == TYPE_VECTOR || src_type->type_kind == TYPE_SIMD_VECTOR))
+		else if (dst_type->type_kind == TYPE_POINTER && c_type_is_vec_or_arr(src_type))
 		{
 			PRINTF("___var_%d = (%s)(___var_%d%sptr);\n", dst_var, dst_tname, src_val->var, c_arrow(src_val));
 		}
-		else if (dst_type->type_kind == TYPE_SLICE && (src_type->type_kind == TYPE_ARRAY || src_type->type_kind == TYPE_VECTOR || src_type->type_kind == TYPE_SIMD_VECTOR))
+		else if (dst_type->type_kind == TYPE_SLICE && c_type_is_vec_or_arr(src_type))
 		{
 			PRINTF("___var_%d = (%s){ .ptr = (void*)(___var_%d%sptr), .len = %llu };\n",
 			       dst_var, dst_tname, src_val->var, c_arrow(src_val), (unsigned long long)src_type->array.len);
 		}
-		else if (dst_type->type_kind == TYPE_SLICE && src_type->type_kind == TYPE_POINTER && src_type->pointer && (src_type->pointer->type_kind == TYPE_ARRAY || src_type->pointer->type_kind == TYPE_VECTOR || src_type->pointer->type_kind == TYPE_SIMD_VECTOR))
+		else if (dst_type->type_kind == TYPE_SLICE && src_type->type_kind == TYPE_POINTER && src_type->pointer && c_type_is_vec_or_arr(src_type->pointer))
 		{
 			PRINTF("___var_%d = (%s){ .ptr = (void*)(___var_%d), .len = %llu };\n",
 			       dst_var, dst_tname, src_val->var, (unsigned long long)src_type->pointer->array.len);
 		}
-		else if (dst_type->type_kind == TYPE_ANY || dst_type->type_kind == TYPE_INTERFACE)
+		else if (c_type_is_any(dst_type))
 		{
 			char target_slot[64];
 			snprintf(target_slot, sizeof(target_slot), "___var_%d", dst_var);
 			c_emit_assign_to_any(c, target_slot, src_val);
 		}
-		else if (dst_type->type_kind == src_type->type_kind && strcmp(dst_tname, c_type_name(c, src_type)) == 0)
+		else if (dst_type->type_kind == src_type->type_kind && strcmp(dst_tname, c_type_name(c, src_type)) == 0 && src_val->kind != CV_ADDRESS)
 		{
-			if (src_val->kind == CV_ADDRESS)
-			{
-				PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", dst_var, src_val->var, dst_tname);
-			}
-			else
-			{
-				PRINTF("___var_%d = ___var_%d;\n", dst_var, src_val->var);
-			}
+			PRINTF("___var_%d = ___var_%d;\n", dst_var, src_val->var);
 		}
 		else
 		{
-			if (src_val->kind == CV_ADDRESS)
-			{
-				PRINTF("__c3_memcpy(&___var_%d, (void*)___var_%d, sizeof(%s));\n", dst_var, src_val->var, dst_tname);
-			}
-			else
-			{
-				PRINTF("__c3_memcpy(&___var_%d, &___var_%d, sizeof(%s));\n", dst_var, src_val->var, dst_tname);
-			}
+			const char *src_ref = (src_val->kind == CV_ADDRESS) ? "(void*)" : "&";
+			PRINTF("__c3_memcpy(&___var_%d, %s___var_%d, sizeof(%s));\n", dst_var, src_ref, src_val->var, dst_tname);
 		}
 	}
 	else
@@ -375,19 +372,19 @@ void c_emit_assign_var(GenContext *c, VariableId dst_var, Type *dst_type, CValue
 			c_value_rvalue(c, src_val);
 		}
 
-		if (type_is_integer(dst_type) && (type_is_pointer(src_type) || src_type->type_kind == TYPE_ANYFAULT || src_type->type_kind == TYPE_TYPEID))
+		if (type_is_integer(dst_type) && c_type_is_c_pointer(src_type))
 		{
 			PRINTF("___var_%d = (%s)(uintptr_t)___var_%d;\n", dst_var, dst_tname, src_val->var);
 		}
-		else if ((type_is_pointer(dst_type) || dst_type->type_kind == TYPE_ANYFAULT || dst_type->type_kind == TYPE_TYPEID) && type_is_integer(src_type))
+		else if (c_type_is_c_pointer(dst_type) && type_is_integer(src_type))
 		{
 			PRINTF("___var_%d = (%s)(uintptr_t)___var_%d;\n", dst_var, dst_tname, src_val->var);
 		}
-		else if (type_is_float(dst_type) && (type_is_pointer(src_type) || src_type->type_kind == TYPE_ANYFAULT || src_type->type_kind == TYPE_TYPEID))
+		else if (type_is_float(dst_type) && c_type_is_c_pointer(src_type))
 		{
 			PRINTF("___var_%d = 0.0;\n", dst_var);
 		}
-		else if ((type_is_pointer(dst_type) || dst_type->type_kind == TYPE_ANYFAULT || dst_type->type_kind == TYPE_TYPEID) && type_is_float(src_type))
+		else if (c_type_is_c_pointer(dst_type) && type_is_float(src_type))
 		{
 			PRINTF("___var_%d = NULL;\n", dst_var);
 		}
@@ -454,7 +451,6 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 		{
 			PRINT(", ");
 		}
-		// Standard C requires main's argv to be char**, not uint8_t**
 		if (strcmp(fn_name, "main") == 0 && vec_size(sig->params) <= 3 && (emitted_count == 1 || emitted_count == 2))
 		{
 			PRINT("char**");
@@ -503,23 +499,8 @@ void c_emit_local_var_declarations(GenContext *c)
 			vt = type_int;
 		}
 		c_emit_type_forward_decl(c, vt);
-		const char *tname = c_type_name(c, vt);
-
-		AlignSize align = lv.decl ? lv.decl->alignment : 0;
-		if (!align && lv.decl && is_valid_type_ptr(lv.decl->type) && c_type_is_resolved(lv.decl->type))
-		{
-			align = type_alloca_alignment(lv.decl->type);
-		}
-		if (!align && lv.type && is_valid_type_ptr(lv.type) && c_type_is_resolved(lv.type))
-		{
-			align = type_alloca_alignment(lv.type);
-		}
-		if (align < 16 && c_get_type_size(vt) >= 16)
-		{
-			align = 16;
-		}
-		AlignSize abi_align   = (c_type_is_resolved(vt)) ? type_abi_alignment(vt) : 1;
-		const char *align_str = (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
+		const char *tname     = c_type_name(c, vt);
+		const char *align_str = c_local_align_str(lv.decl, vt);
 
 		if (c_type_is_aggregate(vt))
 		{
@@ -642,11 +623,7 @@ void c_emit_function(GenContext *c, Decl *fn)
 
 	FOREACH(CLocalVar, lv, c->function_locals)
 	{
-		if (htable_get(&c->declared_vars, (void *)(uintptr_t)lv.id))
-		{
-			continue;
-		}
-		if (!lv.is_static)
+		if (htable_get(&c->declared_vars, (void *)(uintptr_t)lv.id) || !lv.is_static)
 		{
 			continue;
 		}
@@ -657,23 +634,9 @@ void c_emit_function(GenContext *c, Decl *fn)
 			vt = type_int;
 		}
 		c_emit_type_forward_decl(c, vt);
-		const char *tname = c_type_name(c, vt);
-		bool is_tls       = lv.decl && lv.decl->var.is_threadlocal;
-		AlignSize align   = lv.decl ? lv.decl->alignment : 0;
-		if (!align && lv.decl && is_valid_type_ptr(lv.decl->type) && c_type_is_resolved(lv.decl->type))
-		{
-			align = type_alloca_alignment(lv.decl->type);
-		}
-		if (!align && lv.type && is_valid_type_ptr(lv.type) && c_type_is_resolved(lv.type))
-		{
-			align = type_alloca_alignment(lv.type);
-		}
-		if (align < 16 && c_get_type_size(vt) >= 16)
-		{
-			align = 16;
-		}
-		AlignSize abi_align   = (c_type_is_resolved(vt)) ? type_abi_alignment(vt) : 1;
-		const char *align_str = (align > abi_align) ? str_printf("__c3_aligned(%u) ", (unsigned)align) : "";
+		const char *tname     = c_type_name(c, vt);
+		bool is_tls           = lv.decl && lv.decl->var.is_threadlocal;
+		const char *align_str = c_local_align_str(lv.decl, vt);
 		PRINTF("static %s%s%s ___var_%d", align_str, is_tls ? "__c3_thread_local " : "", tname, lv.id);
 		if (lv.decl && lv.decl->var.init_expr && expr_is_const(lv.decl->var.init_expr))
 		{
@@ -687,17 +650,13 @@ void c_emit_function(GenContext *c, Decl *fn)
 		}
 	}
 
-	if (fn->func_decl.attr_init)
+	if (fn->func_decl.attr_init || fn->func_decl.attr_finalizer)
 	{
-		uint32_t prio = fn->func_decl.priority ? fn->func_decl.priority : MAX_PRIORITY;
-		int c_prio    = 102 + (int)((prio - 1) * (65535 - 102) / (MAX_PRIORITY - 1));
-		PRINTF("#if defined(__GNUC__) || defined(__clang__)\n__attribute__((constructor(%d)))\n#endif\n", c_prio);
-	}
-	else if (fn->func_decl.attr_finalizer)
-	{
-		uint32_t prio = fn->func_decl.priority ? fn->func_decl.priority : MAX_PRIORITY;
-		int c_prio    = 101 + (int)((prio - 1) * (65535 - 101) / (MAX_PRIORITY - 1));
-		PRINTF("#if defined(__GNUC__) || defined(__clang__)\n__attribute__((destructor(%d)))\n#endif\n", c_prio);
+		uint32_t prio    = fn->func_decl.priority ? fn->func_decl.priority : MAX_PRIORITY;
+		int base_prio    = fn->func_decl.attr_init ? 102 : 101;
+		int c_prio       = base_prio + (int)((prio - 1) * (65535 - base_prio) / (MAX_PRIORITY - 1));
+		const char *attr = fn->func_decl.attr_init ? "constructor" : "destructor";
+		PRINTF("#if defined(__GNUC__) || defined(__clang__)\n__attribute__((%s(%d)))\n#endif\n", attr, c_prio);
 	}
 
 	bool is_weak = fn->is_weak || fn->is_weak_link;

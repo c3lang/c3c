@@ -179,7 +179,7 @@ Type *c_safe_type_lower(Type *type)
 			}
 			return type_get_slice(lowered_base);
 		}
-		if (type->type_kind == TYPE_ARRAY || type->type_kind == TYPE_VECTOR || type->type_kind == TYPE_SIMD_VECTOR || type->type_kind == TYPE_FLEXIBLE_ARRAY)
+		if (c_type_is_vec_or_arr(type) || type->type_kind == TYPE_FLEXIBLE_ARRAY)
 		{
 			if (!is_valid_type_ptr(type->array.base) || type->array.base == type)
 			{
@@ -346,7 +346,7 @@ Type *c_expr_type(Expr *expr)
 		{
 			return c_safe_type_lower(parent_t->pointer);
 		}
-		if ((parent_t->type_kind == TYPE_SLICE || parent_t->type_kind == TYPE_ARRAY || parent_t->type_kind == TYPE_VECTOR || parent_t->type_kind == TYPE_SIMD_VECTOR) && parent_t->array.base)
+		if ((parent_t->type_kind == TYPE_SLICE || c_type_is_vec_or_arr(parent_t)) && parent_t->array.base)
 		{
 			return c_safe_type_lower(parent_t->array.base);
 		}
@@ -391,8 +391,7 @@ bool c_type_is_aggregate(Type *t)
 	}
 	t = c_safe_type_lower(t);
 	return t->type_kind == TYPE_STRUCT || t->type_kind == TYPE_UNION ||
-	       t->type_kind == TYPE_ARRAY || t->type_kind == TYPE_SLICE ||
-	       t->type_kind == TYPE_VECTOR || t->type_kind == TYPE_SIMD_VECTOR ||
+	       c_type_is_vec_or_arr(t) || t->type_kind == TYPE_SLICE ||
 	       t->type_kind == TYPE_FLEXIBLE_ARRAY ||
 	       t->type_kind == TYPE_ANY || t->type_kind == TYPE_INTERFACE;
 }
@@ -992,6 +991,16 @@ const char *c_fault_symbol_name(Decl *decl)
 	return c_intern(str_printf("__c3_fault_%s", name));
 }
 
+static Type *c_unwrap_target_type(Type *t)
+{
+	t = c_unwrap_alias(t);
+	if (t && type_is_pointer(t) && t->pointer)
+	{
+		t = c_unwrap_alias(t->pointer);
+	}
+	return t;
+}
+
 Type *c_get_method_target_type(Decl *m)
 {
 	if (!m || m->decl_kind != DECL_FUNC)
@@ -1003,20 +1012,7 @@ Type *c_get_method_target_type(Decl *m)
 		TypeInfo *ti = type_infoptr(m->func_decl.type_parent);
 		if (ti && is_valid_type_ptr(ti->type))
 		{
-			Type *t = ti->type;
-			while (t && is_valid_type_ptr(t) && t->type_kind == TYPE_ALIAS && t->canonical != t)
-			{
-				t = t->canonical;
-			}
-			if (t && type_is_pointer(t) && t->pointer)
-			{
-				t = t->pointer;
-			}
-			while (t && is_valid_type_ptr(t) && t->type_kind == TYPE_ALIAS && t->canonical != t)
-			{
-				t = t->canonical;
-			}
-			return t;
+			return c_unwrap_target_type(ti->type);
 		}
 	}
 	Signature *sig = &m->func_decl.signature;
@@ -1028,19 +1024,7 @@ Type *c_get_method_target_type(Decl *m)
 			Type *pt = self_p->type ? self_p->type : c_decl_type(self_p);
 			if (pt && is_valid_type_ptr(pt))
 			{
-				while (pt && is_valid_type_ptr(pt) && pt->type_kind == TYPE_ALIAS && pt->canonical != pt)
-				{
-					pt = pt->canonical;
-				}
-				if (type_is_pointer(pt) && pt->pointer)
-				{
-					pt = pt->pointer;
-				}
-				while (pt && is_valid_type_ptr(pt) && pt->type_kind == TYPE_ALIAS && pt->canonical != pt)
-				{
-					pt = pt->canonical;
-				}
-				return pt;
+				return c_unwrap_target_type(pt);
 			}
 		}
 	}
