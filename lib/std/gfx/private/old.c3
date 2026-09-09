@@ -88,14 +88,14 @@ fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 	if (mon) min = (GfxPoint)((Vec2)min * mon.pixelRatio);
 	ObjcId rep = ns_bitmapRep(...min);
 	char* pixels = ns_bitmapData(rep);
-	if (pixels == null) { ns_release(rep); return; }
+	defer objc::release(rep);
+	if (!pixels) return;
 	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
 	ObjcId image = ns_imageWithRep(rep, ...min);
 	objc_send((ObjcId)win.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
 	ObjcId layer = objc_send((ObjcId)win.src.view, ObjcSendId, "layer");
 	if (layer) objc_send(layer, ObjcSendVoidId, "setContents:", image);
-	ns_release(image);
-	ns_release(rep);
+	objc::release(image);
 }
 
 alias TISInputSourceRef = void*;
@@ -270,7 +270,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ct
 	ctx.ctx = objc_send(ns_alloc("NSOpenGLContext"), ObjcSendIdIdId, "initWithFormat:shareContext:", format, share);
 	if (ctx.ctx == null)
 	{
-		ns_release(format);
+		objc::release(format);
 		log::error("Failed to create an OpenGL context", category: log::CATEGORY_VIDEO);
 		return false;
 	}
@@ -291,8 +291,8 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ct
 fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx)
 {
 	if (ctx == null) return;
-	ns_release((ObjcId)ctx.format);
-	ns_release((ObjcId)ctx.ctx);
+	objc::release(ctx.format);
+	objc::release(ctx.ctx);
 	ctx.format = null;
 	ctx.ctx = null;
 	if (win != null) win.src.ctx.native = null;
@@ -325,8 +325,6 @@ const NSInteger NS_WINDOW_LEVEL_FLOATING = 3;
 
 fn ObjcId objc_class(ZString name) => (ObjcId)objc_getClass(name);
 fn ObjcId ns_alloc(ZString className) => objc_send(objc_class(className), ObjcSendId, "alloc");
-fn ObjcId ns_retain(ObjcId obj) { if (obj != null) objc_send(obj, ObjcSendId, "retain"); return obj; }
-fn void ns_release(ObjcId obj) { if (obj != null) objc_send(obj, ObjcSendVoid, "release"); }
 fn ObjcId ns_string(ZString str) => objc_send(objc_class("NSString"), ObjcSendIdCharPtr, "stringWithUTF8String:", str);
 fn ZString ns_utf8(ObjcId str) { if (str == null) return null; return objc_send(str, ObjcSendCharPtr, "UTF8String"); }
 fn ObjcId String.to_nsstring(self) => @pool()
@@ -615,8 +613,8 @@ fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWin
 		object_setInstanceVariable(delegate, "gfx_window", win);
 		objc_send(nswin, ObjcSendVoidId, "setDelegate:", delegate);
 	}
-	win.src.window = ns_retain(nswin);
-	win.src.view = ns_retain(view);
+	win.src.window = objc::retain(nswin);
+	win.src.view = objc::retain(view);
 	win.src.delegate = delegate;
 	win.src.bounds = win.bounds;
 	objc_send(nswin, ObjcSendVoidId, "setContentView:", view);
@@ -634,10 +632,10 @@ fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWin
 fn void todo_fix_window_closePlatform(GfxWindow* win)
 {
 	if (win == null) return;
-	if (win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoid, "close");
-	ns_release((ObjcId)win.src.delegate);
-	ns_release((ObjcId)win.src.view);
-	ns_release((ObjcId)win.src.window);
+	if (win.src.window) objc_send((ObjcId)win.src.window, ObjcSendVoid, "close");
+	objc::release(win.src.delegate);
+	objc::release(win.src.view);
+	objc::release(win.src.window);
 	win.src.delegate = null;
 	win.src.view = null;
 	win.src.window = null;
@@ -667,7 +665,7 @@ fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxW
 fn void GfxSurface.release(&self)
 {
 	if (!self.data) return;
-	if (self.native.native0) ns_release((ObjcId)self.native.native0);
+	if (self.native.native0) objc::release(self.native.native0);
 	if (self.native.buffer) free(self.native.buffer);
 	*self = {};
 }
@@ -677,15 +675,15 @@ fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat for
 {
 	if (data == null) return null;
 	ObjcId rep = ns_bitmapRep(w, h);
+	defer objc::release(rep);
 	char* pixels = ns_bitmapData(rep);
-	if (pixels == null) { ns_release(rep); return null; }
+	if (!pixels) return null;
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjcId image = ns_imageWithRep(rep, w, h);
 	CGPoint hot;
 	hot.x = 0.0; hot.y = 0.0;
 	ObjcId cursor = objc_send(ns_alloc("NSCursor"), ObjcSendIdImagePoint, "initWithImage:hotSpot:", image, hot);
-	ns_release(image);
-	ns_release(rep);
+	objc::release(image);
 	return (TodoRenameMouse*)cursor;
 }
 
@@ -696,33 +694,31 @@ fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 	ObjcId cursor = null;
 	switch (mouse)
 	{
-		case NORMAL: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
-		case ARROW: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
-		case IBEAM: cursor = objc_send(cls, ObjcSendId, "IBeamCursor");
-		case CROSSHAIR: cursor = objc_send(cls, ObjcSendId, "crosshairCursor");
+		case NORMAL:        cursor = objc_send(cls, ObjcSendId, "arrowCursor");
+		case ARROW:         cursor = objc_send(cls, ObjcSendId, "arrowCursor");
+		case IBEAM:         cursor = objc_send(cls, ObjcSendId, "IBeamCursor");
+		case CROSSHAIR:     cursor = objc_send(cls, ObjcSendId, "crosshairCursor");
 		case POINTING_HAND: cursor = objc_send(cls, ObjcSendId, "pointingHandCursor");
-		case RESIZE_EW: cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
-		case RESIZE_E: cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
-		case RESIZE_W: cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
-		case RESIZE_NS: cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
-		case RESIZE_N: cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
-		case RESIZE_S: cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
-		case RESIZE_NWSE: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_NW: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_SE: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_NESW: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_NE: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_SW: cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_ALL: cursor = objc_send(cls, ObjcSendId, "openHandCursor");
-		case NOT_ALLOWED: cursor = objc_send(cls, ObjcSendId, "operationNotAllowedCursor");
-		case WAIT: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
-		case PROGRESS: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
-		default: cursor = objc_send(cls, ObjcSendId, "arrowCursor");
+		case RESIZE_EW:     cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
+		case RESIZE_E:      cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
+		case RESIZE_W:      cursor = objc_send(cls, ObjcSendId, "resizeLeftRightCursor");
+		case RESIZE_NS:     cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
+		case RESIZE_N:      cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
+		case RESIZE_S:      cursor = objc_send(cls, ObjcSendId, "resizeUpDownCursor");
+		case RESIZE_NWSE:   cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NW:     cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_SE:     cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NESW:   cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_NE:     cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_SW:     cursor = objc_send(cls, ObjcSendId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_ALL:    cursor = objc_send(cls, ObjcSendId, "openHandCursor");
+		case NOT_ALLOWED:   cursor = objc_send(cls, ObjcSendId, "operationNotAllowedCursor");
+		case WAIT:          cursor = objc_send(cls, ObjcSendId, "arrowCursor");
+		case PROGRESS:      cursor = objc_send(cls, ObjcSendId, "arrowCursor");
+		default:            cursor = objc_send(cls, ObjcSendId, "arrowCursor");
 	}
-	return (TodoRenameMouse*)ns_retain(cursor);
+	return (TodoRenameMouse*)objc::retain(cursor);
 }
-
-// public
 
 // public
 fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)

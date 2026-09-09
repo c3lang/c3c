@@ -5,7 +5,8 @@ typedef ObjcMethod = void*;
 typedef ObjcIvar = void*;
 typedef ObjcSelector = void*;
 alias ObjcId = void*;
-alias SendVoid = fn void*(void*, ObjcSelector);
+alias SendVoid = fn void(ObjcId, ObjcSelector);
+alias SendId = fn ObjcId(ObjcId, ObjcSelector);
 
 excuse { CLASS_NOT_FOUND, UNKNOWN_EVENT }
 
@@ -17,8 +18,13 @@ macro ObjcMethod ObjcClass.method(ObjcClass cls, ObjcSelector name) => class_get
 macro bool ObjcSelector.equals(ObjcSelector a, ObjcSelector b) => a == b;
 macro bool ObjcClass.equals(ObjcClass a, ObjcClass b) => a == b;
 
-fn ObjcId alloc(ObjcClass cls) => objc::msg_send(cls, SendVoid, "alloc");
+fn ObjcId alloc(ObjcClass cls) => objc::msg_send(cls, SendId, "alloc");
 fn void release(ObjcId id) => objc::msg_send(id, SendVoid, "release");
+fn ObjcId retain(ObjcId id)
+{
+	if (id) objc::msg_send(id, SendId, "retain");
+	return id;
+}
 
 alias NSUInteger = env::ARCH_64_BIT ??? ulong : uint;
 alias NSInteger = env::ARCH_64_BIT ??? long : int;

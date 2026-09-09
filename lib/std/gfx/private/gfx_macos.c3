@@ -123,12 +123,12 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFor
 		return true;
 	}
 	ObjcId rep = ns_bitmapRep(w, h);
-	defer ns_release(rep);
+	defer objc::release(rep);
 	char* pixels = ns_bitmapData(rep);
 	if (!pixels) return false;
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjcId image = ns_imageWithRep(rep, w, h);
-	defer ns_release(image);
+	defer objc::release(image);
 	objc_send(_gfx_ctx.nsApp, ObjcSendVoidId, "setApplicationIconImage:", image);
 	return true;
 }
