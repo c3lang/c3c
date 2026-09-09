@@ -3,12 +3,12 @@ module std::gfx @feat(X11) @link("X11", "Xext", "Xrandr", "GL");
 import std::collections::list, std::math, libc;
 
 // C3 port of the X11/GLX RGFW backend from /Users/lerno/Downloads/AGFW.h (RGFW).
-// Mechanical, line-by-line style translation of the TODO_RENAMEX11 implementation.
+// Mechanical, line-by-line style translation of the TODO_RENAME_X11 implementation.
 // This is a standalone alternative to rgfw.c3 (the macOS build) - only ONE of
 // the rgfw*.c3 files should be included for a given target, matching how the
 // original C header only ever compiles one #ifdef backend at a time.
 // Optional extensions (Xcursor, XInput2, Xext sync/shape) are loaded via dlopen,
-// exactly as the original does when TODO_RENAMENO_X11_CURSOR_PRELOAD etc. are not set.
+// exactly as the original does when TODO_RENAME_NO_X11_CURSOR_PRELOAD etc. are not set.
 
 
 extern fn char* strtok(char* str, char* delim);
@@ -48,40 +48,40 @@ const int CURRENT_TIME = 0;
 alias GlxGetProcAddressProc = fn GfxFn(ZString);
 
 // GLX
-alias TODO_RENAMEglXCreateContextAttribsARBProc = fn GLXContext(XDisplay*, GLXFBConfig, GLXContext, int, int*);
-alias TODO_RENAMEglXQueryExtensionsStringProc = fn ZString(XDisplay*, int);
-alias TODO_RENAMEglXChooseVisualProc = fn XVisualInfo*(XDisplay*, int, int*);
-alias TODO_RENAMEglXCreateContextProc = fn GLXContext(XDisplay*, XVisualInfo*, GLXContext, int);
-alias TODO_RENAMEglXMakeCurrentProc = fn int(XDisplay*, GLXDrawable, GLXContext);
-alias TODO_RENAMEglXGetCurrentContextProc = fn GLXContext();
-alias TODO_RENAMEglXSwapBuffersProc = fn void(XDisplay*, GLXDrawable);
-alias TODO_RENAMEglXSwapIntervalEXTProc = fn void(XDisplay*, GLXDrawable, int);
-alias TODO_RENAMEglXGetProcAddressProc = fn void*(ZString);
-alias TODO_RENAMEglXGetVisualFromFBConfigProc = fn XVisualInfo*(XDisplay*, GLXFBConfig);
-alias TODO_RENAMEglXGetFBConfigAttribProc = fn int(XDisplay*, GLXFBConfig, int, int*);
-alias TODO_RENAMEglXGetProcAddressARBProc = fn void*(ZString);
-alias TODO_RENAMEglXChooseFBConfigProc = fn GLXFBConfig*(XDisplay*, int, int*, int*);
-alias TODO_RENAMEglXDestroyContextProc = fn void(XDisplay*, GLXContext);
-alias TODO_RENAMEglXCreateWindowProc = fn GLXWindow(XDisplay*, GLXFBConfig, XWindow, int*);
-alias TODO_RENAMEglXDestroyWindowProc = fn void(XDisplay*, GLXWindow);
-alias TODO_RENAMEglXSwapIntervalNativeProc = fn int(int);
+alias TODO_RENAME_glXCreateContextAttribsARBProc = fn GLXContext(XDisplay*, GLXFBConfig, GLXContext, int, int*);
+alias TODO_RENAME_glXQueryExtensionsStringProc = fn ZString(XDisplay*, int);
+alias TODO_RENAME_glXChooseVisualProc = fn XVisualInfo*(XDisplay*, int, int*);
+alias TODO_RENAME_glXCreateContextProc = fn GLXContext(XDisplay*, XVisualInfo*, GLXContext, int);
+alias TODO_RENAME_glXMakeCurrentProc = fn int(XDisplay*, GLXDrawable, GLXContext);
+alias TODO_RENAME_glXGetCurrentContextProc = fn GLXContext();
+alias TODO_RENAME_glXSwapBuffersProc = fn void(XDisplay*, GLXDrawable);
+alias TODO_RENAME_glXSwapIntervalEXTProc = fn void(XDisplay*, GLXDrawable, int);
+alias TODO_RENAME_glXGetProcAddressProc = fn void*(ZString);
+alias TODO_RENAME_glXGetVisualFromFBConfigProc = fn XVisualInfo*(XDisplay*, GLXFBConfig);
+alias TODO_RENAME_glXGetFBConfigAttribProc = fn int(XDisplay*, GLXFBConfig, int, int*);
+alias TODO_RENAME_glXGetProcAddressARBProc = fn void*(ZString);
+alias TODO_RENAME_glXChooseFBConfigProc = fn GLXFBConfig*(XDisplay*, int, int*, int*);
+alias TODO_RENAME_glXDestroyContextProc = fn void(XDisplay*, GLXContext);
+alias TODO_RENAME_glXCreateWindowProc = fn GLXWindow(XDisplay*, GLXFBConfig, XWindow, int*);
+alias TODO_RENAME_glXDestroyWindowProc = fn void(XDisplay*, GLXWindow);
+alias TODO_RENAME_glXSwapIntervalNativeProc = fn int(int);
 
-TODO_RENAMEglXCreateContextAttribsARBProc todo_fix_glXCreateContextAttribsARB;
-TODO_RENAMEglXQueryExtensionsStringProc todo_fix_glXQueryExtensionsString;
-TODO_RENAMEglXChooseVisualProc todo_fix_glXChooseVisual;
-TODO_RENAMEglXCreateContextProc todo_fix_glXCreateContext;
-TODO_RENAMEglXMakeCurrentProc todo_fix_glXMakeCurrent;
-TODO_RENAMEglXGetCurrentContextProc todo_fix_glXGetCurrentContext;
-TODO_RENAMEglXSwapBuffersProc todo_fix_glXSwapBuffers;
-TODO_RENAMEglXSwapIntervalEXTProc todo_fix_glXSwapIntervalEXT;
-TODO_RENAMEglXGetVisualFromFBConfigProc todo_fix_glXGetVisualFromFBConfig;
-TODO_RENAMEglXGetFBConfigAttribProc todo_fix_glXGetFBConfigAttrib;
-TODO_RENAMEglXGetProcAddressARBProc todo_fix_glXGetProcAddressARB;
-TODO_RENAMEglXChooseFBConfigProc todo_fix_glXChooseFBConfig;
-TODO_RENAMEglXDestroyContextProc todo_fix_glXDestroyContext;
-TODO_RENAMEglXCreateWindowProc todo_fix_glXCreateWindow;
-TODO_RENAMEglXDestroyWindowProc todo_fix_glXDestroyWindow;
-TODO_RENAMEglXSwapIntervalNativeProc todo_fix_glXSwapIntervalNative;
+TODO_RENAME_glXCreateContextAttribsARBProc todo_fix_glXCreateContextAttribsARB;
+TODO_RENAME_glXQueryExtensionsStringProc todo_fix_glXQueryExtensionsString;
+TODO_RENAME_glXChooseVisualProc todo_fix_glXChooseVisual;
+TODO_RENAME_glXCreateContextProc todo_fix_glXCreateContext;
+TODO_RENAME_glXMakeCurrentProc todo_fix_glXMakeCurrent;
+TODO_RENAME_glXGetCurrentContextProc todo_fix_glXGetCurrentContext;
+TODO_RENAME_glXSwapBuffersProc todo_fix_glXSwapBuffers;
+TODO_RENAME_glXSwapIntervalEXTProc todo_fix_glXSwapIntervalEXT;
+TODO_RENAME_glXGetVisualFromFBConfigProc todo_fix_glXGetVisualFromFBConfig;
+TODO_RENAME_glXGetFBConfigAttribProc todo_fix_glXGetFBConfigAttrib;
+TODO_RENAME_glXGetProcAddressARBProc todo_fix_glXGetProcAddressARB;
+TODO_RENAME_glXChooseFBConfigProc todo_fix_glXChooseFBConfig;
+TODO_RENAME_glXDestroyContextProc todo_fix_glXDestroyContext;
+TODO_RENAME_glXCreateWindowProc todo_fix_glXCreateWindow;
+TODO_RENAME_glXDestroyWindowProc todo_fix_glXDestroyWindow;
+TODO_RENAME_glXSwapIntervalNativeProc todo_fix_glXSwapIntervalNative;
 
 
 // ---- Xlib core functions (directly linked, like the original non-dynamic X11 build) ----
@@ -122,17 +122,17 @@ macro bool ximaskIsSet(char* mask, event) => (mask[(sz)(event / 8)] & (char)(1 <
 struct TodoRenameGlContext { GLXContext ctx; GLXWindow window; }
 struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
 
-const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_FLUSH = 0;
-const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_NONE = 1;
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
 
-const TodoRenameGlProfile TODO_RENAMEGL_CORE = 0;
-const TodoRenameGlProfile TODO_RENAMEGL_FORWARD_COMPATIBILITY = 1;
-const TodoRenameGlProfile TODO_RENAMEGL_COMPATIBILITY = 2;
-const TodoRenameGlProfile TODO_RENAMEGL_ES = 3;
-const TodoRenameGlProfile TODO_RENAMEGL_WEB = 4;
+const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
+const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
+const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
+const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
+const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
 
-const TodoRenameGlRenderer TODO_RENAMEGL_ACCELERATED = 0;
-const TodoRenameGlRenderer TODO_RENAMEGL_SOFTWARE = 1;
+const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
+const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
 
 struct TodoRenameGlHints
 {
@@ -179,30 +179,21 @@ struct TodoRenameWindowSrc
 }
 
 
-const int VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR = 1000004000;
-const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
-struct VkXlibSurfaceCreateInfoKHR { int sType; void* pNext; uint flags; XDisplay* dpy; XWindow window; }
-alias TodoRenameVkCreateXlibSurfaceKHRProc = fn VkResult(VkInstance instance, VkXlibSurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
-ZString[2] todo_fix_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_xlib_surface"};
 
 
 extern fn VisualID xVisualIDFromVisual(XVisual* visual) @cname("XVisualIDFromVisual");
 alias TodoRenameVkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, XDisplay*, VisualID);
 
 // public
-fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex)
+fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
 	if (!raw) return false;
 	XVisual* visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-	uint out = ((TodoRenameVkGetPhysicalDeviceXlibPresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex, _gfx_ctx.display, xVisualIDFromVisual(visual));
+	uint out = ((TodoRenameVkGetPhysicalDeviceXlibPresentationSupportKHRProc)raw)(physical_device, queue_family_index, _gfx_ctx.display, xVisualIDFromVisual(visual));
 	return out != 0;
 }
 
-
-const WGPUSType WGPU_STYPE_SURFACE_SOURCE_XLIB_WINDOW = 0x00000006;
-struct WgpuSurfaceSourceXlibWindow { WgpuChainedStruct chain; XDisplay* display; XWindow window; }
-extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
 
 // IM-level destroy callback: fires if the input-method daemon disappears later,

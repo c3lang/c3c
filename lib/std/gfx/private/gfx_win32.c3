@@ -85,5 +85,33 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
 }
 
+// --- Vulkan
+
+alias VkGetPhysicalDeviceWin32PresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint);
+
+fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+{
+	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
+	if (raw == null) return false;
+	uint out = ((VkGetPhysicalDeviceWin32PresentationSupportKHRProc)raw)(physical_device, queue_family_index);
+	return out != 0;
+}
+
+fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance)
+{
+	VkSurfaceKHR surface;
+	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateWin32SurfaceKHR");
+	if (!proc) return VULKAN_NOT_LOADED~;
+	VkWin32SurfaceCreateInfoKHR create_info;
+	create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	create_info.pNext = null;
+	create_info.flags = 0;
+	create_info.hinstance = _gfx_ctx.instance;
+	create_info.hwnd = win.src.window;
+	if (proc(instance, &create_info, null, &surface)) return SURFACE_CREATION_FAILED~;
+	return surface;
+}
+
+
 
 module std::gfx @feat(WIN32) @link("user32", "gdi32", "shell32", "advapi32", "dwmapi", "opengl32", "winmm");

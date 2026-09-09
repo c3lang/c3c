@@ -19,6 +19,38 @@ fn void todo_fix_window_captureMousePlatform_Wayland(GfxWindow* win, bool state)
 	zwpLockedPointerV1AddListener(win.src.lockedPointer, &listener, &_gfx_ctx);
 }
 
+WlPointerListener todo_fix_wlPointerListener = {
+	.enter = &todo_fix_wlPointerEnter, .leave = &todo_fix_wlPointerLeave, .motion = &todo_fix_wlPointerMotion,
+	.button = &todo_fix_wlPointerButton, .axis = &todo_fix_wlPointerAxis
+};
+WlKeyboardListener todo_fix_wlKeyboardListener = {
+	.keymap = &todo_fix_wlKeyboardKeymap, .enter = &todo_fix_wlKeyboardEnter, .leave = &todo_fix_wlKeyboardLeave,
+	.key = &todo_fix_wlKeyboardKey, .modifiers = &todo_fix_wlKeyboardModifiers, .repeatInfo = &todo_fix_wlKeyboardRepeatInfo
+};
+
+WlDataSourceListener todo_fix_dataSourceListener = {
+	.target = &todo_fix_wlDataSourceNothingStr, .action = &todo_fix_wlDataSourceNothingU32,
+	.dndDropPerformed = &todo_fix_wlDataSourceNothing, .dndFinished = &todo_fix_wlDataSourceNothing,
+	.send = &todo_fix_wlDataSourceSend, .cancelled = &todo_fix_wlDataSourceCancelled
+};
+
+WlSeatListener todo_fix_wlSeatListener = { .capabilities = &todo_fix_wlSeatCapabilities, .name = &todo_fix_wlSeatName };
+
+WlShmListener todo_fix_wlShmListener = { .format = &todo_fix_wlShmFormatHandler };
+
+
+WlOutputListener todo_fix_wlOutputListener = {
+	.geometry = &todo_fix_wlOutputSetGeometry, .mode = &todo_fix_wlOutputHandleMode, .done = &todo_fix_wlOutputHandleDone,
+	.scale = &todo_fix_wlOutputSetScale, .name = &todo_fix_wlOutputSetName, .description = &todo_fix_wlOutputDescription
+};
+
+ZxdgOutputV1Listener todo_fix_xdgOutputListener = {
+	.name = &todo_fix_xdgOutputNothingStr, .done = &todo_fix_xdgOutputNothing, .description = &todo_fix_xdgOutputNothingStr,
+	.logicalPosition = &todo_fix_xdgOutputLogicalPos, .logicalSize = &todo_fix_xdgOutputLogicalSize
+};
+
+WlRegistryListener todo_fix_registryListener = { .global = &todo_fix_wlGlobalRegistryHandler, .globalRemove = &todo_fix_wlGlobalRegistryRemove };
+
 // public
 fn sz todo_fix_monitor_getGammaRampPtr_Wayland(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => 0;
 
@@ -628,7 +660,7 @@ fn int todo_fix_initPlatform_Wayland(String class_name, GfxInitOption flags)
 	_gfx_ctx.wlDisplay = wlDisplayConnect(null);
 	if (_gfx_ctx.wlDisplay == null)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_WAYLAND, "Failed to load Wayland display");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_WAYLAND, "Failed to load Wayland display");
 		return -1;
 	}
 
@@ -639,7 +671,7 @@ fn int todo_fix_initPlatform_Wayland(String class_name, GfxInitOption flags)
 
 	if (_gfx_ctx.compositor == null)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_WAYLAND, "Can't find compositor.");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_WAYLAND, "Can't find compositor.");
 		return -1;
 	}
 
@@ -873,7 +905,7 @@ fn void todo_fix_window_blitSurface_Wayland(GfxWindow* win, GfxSurface* surface)
 // private
 fn void todo_fix_window_closePlatform_Wayland(GfxWindow* win)
 {
-	todo_fix_debugCallback(TODO_RENAMETYPE_INFO, TODO_RENAMEINFO_WINDOW, "a window was freed");
+	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_WINDOW, "a window was freed");
 	if (win.src.decoration != null) zxdgToplevelDecorationV1Destroy(win.src.decoration);
 	if (win.src.xdgToplevel != null) xdgToplevelDestroy(win.src.xdgToplevel);
 	wlSurfaceDestroy(win.src.customCursorSurface);
@@ -887,7 +919,7 @@ fn void todo_fix_window_closePlatform_Wayland(GfxWindow* win)
 fn bool todo_fix_window_createContextPtr_OpenGL_Wayland(GfxWindow* win, TodoRenameGlContext* ctx, TodoRenameGlHints* hints)
 {
 	bool out = todo_fix_window_createContextPtr_EGL(win, (TodoRenameEglContext*)ctx, hints);
-	win.src.gfxType = TODO_RENAMEGFX_NATIVE_OPEN_GL;
+	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
 	win.opengl_swap_interval(0);
 	return out;
 }
@@ -1100,7 +1132,7 @@ fn bool todo_fix_writeClipboard_Wayland(GfxDataTransfer* data)
 	win.src.dataSource = wlDataDeviceManagerCreateDataSource(_gfx_ctx.dataDeviceManager);
 	if (win.src.dataSource == null)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_CLIPBOARD, "Could not create clipboard data source");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_CLIPBOARD, "Could not create clipboard data source");
 		return false;
 	}
 
@@ -1237,18 +1269,18 @@ fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContex
 	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_ALPHA_SIZE, hints.alpha);
 	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_DEPTH_SIZE, hints.depth);
 	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_STENCIL_SIZE, hints.stencil);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAMEGL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
 	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_NONE, EGL_NONE);
 
 	EglConfig config = null;
 	EglInt num = 0;
 	if (todo_fix_eglChooseConfig((EglDisplay)_gfx_ctx.egl_display, (EglInt*)&cfg, &config, 1, &num) == 0 || num == 0) return false;
-	todo_fix_eglBindApi(hints.profile == TODO_RENAMEGL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
+	todo_fix_eglBindApi(hints.profile == TODO_RENAME_GL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
 
 	EglInt[8] ctxAttribs;
 	TodoRenameAttribStack ctxStack;
 	todo_fix_attribStack_init(&ctxStack, (int*)&ctxAttribs, 8);
-	if (hints.profile == TODO_RENAMEGL_ES) todo_fix_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
+	if (hints.profile == TODO_RENAME_GL_ES) todo_fix_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
 	todo_fix_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
 
 	EglContext share = hints.shareEGL != null ? (EglContext)hints.shareEGL.ctx : null;
@@ -1265,7 +1297,7 @@ fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContex
 		return false;
 	}
 	win.src.ctx.egl = ctx;
-	win.src.gfxType = TODO_RENAMEGFX_EGL;
+	win.src.gfxType = TODO_RENAME_GFX_EGL;
 	todo_fix_window_makeCurrentContext_EGL(win);
 	return true;
 }
@@ -1608,7 +1640,7 @@ fn void todo_fix_wlPointerAxis(void* data, WlProxy* pointer, uint time, uint axi
 	GfxWindow* win = info.mouseOwner;
 	if (win == null) return;
 	Vec2 scroll = {};
-	if (!(win.internal.enabled_events & TODO_RENAMEMOUSE_SCROLL_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAME_MOUSE_SCROLL_FLAG)) return;
 	if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
 	{
 		scroll.x = (float)(-value.to_double() / 10.0);
@@ -1887,4 +1919,55 @@ fn void _wl_data_device_selection(void* data, WlProxy* device, WlProxy* offer)
 
 	libc::close(pfds[0]);
 	wlDataOfferDestroy(offer);
+}
+
+// -- wgpu
+const WGPUSType WGPU_STYPE_SURFACE_SOURCE_WAYLAND_SURFACE = 0x00000007;
+struct WgpuSurfaceSourceWaylandSurface
+{
+	WgpuChainedStruct chain;
+	WlDisplay* display;
+	WlProxy* surface;
+}
+
+// --- Vulkan
+
+
+alias TodoRenameVkGetPhysicalDeviceWaylandPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, WlDisplay*);
+
+
+
+alias TodoRenameVkCreateWaylandSurfaceKHRProc = fn VkResult(VkInstance instance, VkWaylandSurfaceCreateInfoKHR* create_info, void* allocator, VkSurfaceKHR* surface);
+
+
+
+fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+{
+	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
+	if (raw == null) return false;
+	uint out = ((TodoRenameVkGetPhysicalDeviceWaylandPresentationSupportKHRProc)raw)(physical_device, queue_family_index, _gfx_ctx.wlDisplay);
+	return out != 0;
+}
+
+struct VkWaylandSurfaceCreateInfoKHR
+{
+	int sType;
+	void* pNext;
+	uint flags;
+	WlDisplay* display;
+	WlProxy* surface;
+}
+
+fn VkSurfaceKHR? _window_create_vulkan_surface_wayland(GfxWindow* win, VkInstance instance) @private
+{
+	VkSurfaceKHR surface;
+	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateWaylandSurfaceKHR");
+	if (!proc) return VULKAN_NOT_LOADED~;
+	VkWaylandSurfaceCreateInfoKHR create_info = {
+		.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
+		.display = _gfx_ctx.wlDisplay,
+		.surface = win.src.surface
+	};
+	if (proc(instance, &create_info, null, &surface)) return SURFACE_CREATION_FAILED~;
+	return surface;
 }

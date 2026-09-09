@@ -17,6 +17,8 @@ struct GfxNativeImage
 	}
 }
 
+extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
+
 fn GfxMonitorMode[] todo_fix_monitor_getModesPtr(GfxMonitor* monitor)
 {
 	$switch:
@@ -270,7 +272,7 @@ fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 				{
 					int ret = todo_fix_initPlatform_Wayland(class_name, flags);
 					if (ret == 0) return 0;
-					todo_fix_debugCallback(TODO_RENAMETYPE_WARNING, TODO_RENAMEWARNING_WAYLAND, "Falling back to X11");
+					todo_fix_debugCallback(TODO_RENAME_TYPE_WARNING, TODO_RENAME_WARNING_WAYLAND, "Falling back to X11");
 					gfx_use_wayland = false;
 				}
 			}
@@ -1085,5 +1087,21 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 				return todo_fix_window_captureMousePlatform_Wayland(win, state);
 			}
 			return todo_fix_window_captureMousePlatform_X11(win, state);
+	$endswitch
+}
+
+fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance) @private
+{
+	ZString name;
+	int type;
+	$switch:
+		$case WAYLAND_ONLY:
+			return _window_create_vulkan_surface_wayland(win, instance);
+		$case X11_ONLY:
+			return _window_create_vulkan_surface_x11(win, instance);
+		$default:
+			return gfx_use_wayland
+				? _window_create_vulkan_surface_wayland(win, instance)
+				: _window_create_vulkan_surface_x11(win, instance);
 	$endswitch
 }

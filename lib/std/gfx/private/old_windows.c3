@@ -262,17 +262,17 @@ TodoRenameWglSwapIntervalExtProc todo_fix_wglSwapIntervalEXT;
 struct TodoRenameGlContext { void* ctx; } // HGLRC
 struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
 
-const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_FLUSH = 0;
-const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_NONE = 1;
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
 
-const TodoRenameGlProfile TODO_RENAMEGL_CORE = 0;
-const TodoRenameGlProfile TODO_RENAMEGL_FORWARD_COMPATIBILITY = 1;
-const TodoRenameGlProfile TODO_RENAMEGL_COMPATIBILITY = 2;
-const TodoRenameGlProfile TODO_RENAMEGL_ES = 3;
-const TodoRenameGlProfile TODO_RENAMEGL_WEB = 4;
+const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
+const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
+const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
+const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
+const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
 
-const TodoRenameGlRenderer TODO_RENAMEGL_ACCELERATED = 0;
-const TodoRenameGlRenderer TODO_RENAMEGL_SOFTWARE = 1;
+const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
+const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
 
 struct TodoRenameGlHints
 {
@@ -329,39 +329,10 @@ struct TodoRenameWindowSrc
 
 
 
-const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
-const int VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR = 1000009000;
-struct VkWin32SurfaceCreateInfoKHR { int sType; void* pNext; uint flags; void* hinstance; void* hwnd; }
-alias TodoRenameVkCreateWin32SurfaceKHRProc = fn VkResult(VkInstance instance, VkWin32SurfaceCreateInfoKHR* createInfo, void* allocator, VkSurfaceKHR* surface);
-ZString[2] todo_fix_vulkanExtensions = {"VK_KHR_surface", "VK_KHR_win32_surface"};
 
 
 // public
-fn VkResult todo_fix_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
-{
-	if (surface == null || win == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
-	*surface = 0;
-	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateWin32SurfaceKHR");
-	if (raw == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
-	VkWin32SurfaceCreateInfoKHR createInfo;
-	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	createInfo.pNext = null;
-	createInfo.flags = 0;
-	createInfo.hinstance = _gfx_ctx.instance;
-	createInfo.hwnd = win.src.window;
-	return ((TodoRenameVkCreateWin32SurfaceKHRProc)raw)(instance, &createInfo, null, surface);
-}
 
-alias TodoRenameVkGetPhysicalDeviceWin32PresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint);
-
-// public
-fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex)
-{
-	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
-	if (raw == null) return false;
-	uint out = ((TodoRenameVkGetPhysicalDeviceWin32PresentationSupportKHRProc)raw)(physicalDevice, queueFamilyIndex);
-	return out != 0;
-}
 
 const WGPUSType WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND = 0x00000005;
 struct WgpuSurfaceSourceWindowsHWND { WgpuChainedStruct chain; void* hinstance; void* hwnd; }
@@ -447,7 +418,7 @@ fn int todo_fix_window_createSwapChain_DirectX(GfxWindow* win, DxgiFactory* pFac
 	if (hr < 0)
 	{
 
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_DIRECT_X_CONTEXT, "Failed to create DirectX swap chain!");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_DIRECT_X_CONTEXT, "Failed to create DirectX swap chain!");
 		return -2;
 	}
 	return 0;
@@ -696,7 +667,7 @@ fn iptr todo_fix_wndProcW(Win32_HWND* hWnd, uint message, sz wParam, iptr lParam
 		}
 		case 0x0101: case 0x0105: // WM_KEYUP, WM_SYSKEYUP
 		{
-			if (!(win.internal.enabled_events & TODO_RENAMEKEY_RELEASED_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.enabled_events & TODO_RENAME_KEY_RELEASED_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
 			int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
 			if (scancode == 0) scancode = (int)mapVirtualKeyW((uint)wParam, 0 /* MAPVK_VK_TO_VSC */);
 			switch (scancode)
@@ -714,7 +685,7 @@ fn iptr todo_fix_wndProcW(Win32_HWND* hWnd, uint message, sz wParam, iptr lParam
 		}
 		case 0x0100: case 0x0104: // WM_KEYDOWN, WM_SYSKEYDOWN
 		{
-			if (!(win.internal.enabled_events & TODO_RENAMEKEY_PRESSED_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.enabled_events & TODO_RENAME_KEY_PRESSED_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
 			int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
 			if (scancode == 0) scancode = (int)mapVirtualKeyW((uint)wParam, 0);
 			switch (scancode)
@@ -799,7 +770,7 @@ fn iptr todo_fix_wndProcW(Win32_HWND* hWnd, uint message, sz wParam, iptr lParam
 			Point pt;
 			dragQueryPoint(drop, &pt);
 			todo_fix_dataDragCallback(win, FILE, MOVE, { pt.x, pt.y });
-			if (!(win.internal.enabled_events & TODO_RENAMEDATA_DROP_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
 			uint count = dragQueryFileW(drop, 0xffffffff, null, 0);
 			for (uint i = 0; i < count; i++)
 			{
@@ -900,7 +871,7 @@ fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 	_gfx_ctx.wndClass.wndProc = &todo_fix_wndProcW;
 	_gfx_ctx.wndClass.clsExtra = (int)sz::size;
 
-	_gfx_ctx.wndClass.hIcon = (Win32_HICON)loadImageA(_gfx_ctx.instance, "TODO_RENAMEICON", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
+	_gfx_ctx.wndClass.hIcon = (Win32_HICON)loadImageA(_gfx_ctx.instance, "TODO_RENAME_ICON", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
 	if (_gfx_ctx.wndClass.hIcon == null)
 	{
 		_gfx_ctx.wndClass.hIcon = (Win32_HICON)loadImageA(null, (char*)(uptr)32512 /* IDI_APPLICATION */, 1, 0, 0, 0x00000040 | 0x00008000);
@@ -1164,7 +1135,7 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 	ushort[768] values;
 	if (ramp.count != 256)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_PLATFORM, "Win32: Gamma ramp size must be 256");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_PLATFORM, "Win32: Gamma ramp size must be 256");
 		return false;
 	}
 	mem::copy(&values[0], ramp.red, 512);
@@ -1669,7 +1640,7 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx, TodoRenameGlHints* hints)
 {
 	win.src.ctx.native = ctx;
-	win.src.gfxType = TODO_RENAMEGFX_NATIVE_OPEN_GL;
+	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
 
 	PixelFormatDescriptor pfd;
 	pfd.size = (ushort)PixelFormatDescriptor::size;
@@ -1683,7 +1654,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 	pfd.stencilBits = (char)hints.stencil;
 	pfd.auxBuffers = (char)hints.auxBuffers;
 	if (hints.stereo) pfd.flags |= PFD_STEREO;
-	if (hints.renderer == TODO_RENAMEGL_SOFTWARE) pfd.flags |= PFD_GENERIC_FORMAT | PFD_GENERIC_ACCELERATED;
+	if (hints.renderer == TODO_RENAME_GL_SOFTWARE) pfd.flags |= PFD_GENERIC_FORMAT | PFD_GENERIC_ACCELERATED;
 
 	int pixelFormat = choosePixelFormat(win.src.hdc, &pfd);
 	if (todo_fix_wglChoosePixelFormatARB != null)
@@ -1713,7 +1684,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 
 		if (hints.sRGB)
 		{
-			if (hints.profile != TODO_RENAMEGL_ES) { todo_fix_attribStack_pushAttribs(&stack, WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, 1); }
+			if (hints.profile != TODO_RENAME_GL_ES) { todo_fix_attribStack_pushAttribs(&stack, WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, 1); }
 			else { todo_fix_attribStack_pushAttribs(&stack, WGL_COLORSPACE_SRGB_EXT, (int)hints.sRGB); }
 		}
 		todo_fix_attribStack_pushAttribs(&stack, WGL_COVERAGE_SAMPLES_NV, hints.samples);
@@ -1722,7 +1693,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 		int newPixelFormat;
 		uint numFormats;
 		todo_fix_wglChoosePixelFormatARB(win.src.hdc, (int*)&pixelFormatAttribs, null, 1, &newPixelFormat, &numFormats);
-		if (numFormats == 0) { todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to create a pixel format for WGL"); }
+		if (numFormats == 0) { todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create a pixel format for WGL"); }
 		else { pixelFormat = newPixelFormat; }
 	}
 
@@ -1730,7 +1701,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 	if (describePixelFormat(win.src.hdc, pixelFormat, (uint)PixelFormatDescriptor::size, &suggested) == 0 ||
 		setPixelFormat(win.src.hdc, pixelFormat, &pfd) == 0)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to set the WGL pixel format");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to set the WGL pixel format");
 	}
 
 	if (todo_fix_wglCreateContextAttribsARB != null)
@@ -1742,9 +1713,9 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 		int mask = 0;
 		switch (hints.profile)
 		{
-			case TODO_RENAMEGL_ES: mask |= WGL_CONTEXT_ES_PROFILE_BIT_EXT;
-			case TODO_RENAMEGL_COMPATIBILITY: mask |= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
-			case TODO_RENAMEGL_FORWARD_COMPATIBILITY: mask |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
+			case TODO_RENAME_GL_ES: mask |= WGL_CONTEXT_ES_PROFILE_BIT_EXT;
+			case TODO_RENAME_GL_COMPATIBILITY: mask |= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+			case TODO_RENAME_GL_FORWARD_COMPATIBILITY: mask |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
 			default: mask |= WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
 		}
 		todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_PROFILE_MASK_ARB, mask);
@@ -1761,8 +1732,8 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 		char[30] flushControl = "WGL_ARB_context_flush_control";
 		if (todo_fix_extensionSupportedPlatform_OpenGL((ZString)&flushControl, 30))
 		{
-			if (hints.releaseBehavior == TODO_RENAMEGL_RELEASE_FLUSH) { todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB); }
-			else if (hints.releaseBehavior == TODO_RENAMEGL_RELEASE_NONE) { todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB); }
+			if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_FLUSH) { todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB); }
+			else if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_NONE) { todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB); }
 		}
 
 		int flags = 0;
@@ -1777,7 +1748,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 
 	if (todo_fix_wglCreateContextAttribsARB == null || win.src.ctx.native.ctx == null)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to create an accelerated OpenGL Context.");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create an accelerated OpenGL Context.");
 		win.src.ctx.native.ctx = todo_fix_wglCreateContext(win.src.hdc);
 	}
 
@@ -1787,7 +1758,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 	if (hints.share != null) todo_fix_wglShareLists(todo_fix_getCurrentContext_OpenGL(), hints.share.ctx);
 
 	todo_fix_wglMakeCurrent(win.src.hdc, win.src.ctx.native.ctx);
-	todo_fix_debugCallback(TODO_RENAMETYPE_INFO, TODO_RENAMEINFO_OPEN_GL, "OpenGL context initalized.");
+	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context initalized.");
 	return true;
 }
 
@@ -1796,7 +1767,7 @@ fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 {
 	todo_fix_wglDeleteContext(ctx.ctx);
 	win.src.ctx.native.ctx = null;
-	todo_fix_debugCallback(TODO_RENAMETYPE_INFO, TODO_RENAMEINFO_OPEN_GL, "OpenGL context freed.");
+	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context freed.");
 }
 
 // public

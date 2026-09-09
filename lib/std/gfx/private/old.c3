@@ -16,7 +16,7 @@ alias CGDisplayModeRef = void*;
 alias CGEventRef = void*;
 
 struct VkMetalSurfaceCreateInfoEXT { int sType; void* pNext; uint flags; void* pLayer; }
-alias TodoRenameVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* createInfo, void* allocator, VkSurfaceKHR* surface);
+alias TodoRenameVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
 
 extern fn void objc_msgSendRaw(...) @cname("objc_msgSend") @builtin;
 extern fn ObjcSelector sel_registerName(ZString name);
@@ -103,17 +103,17 @@ alias ObjcSendVoidIntPtrNSInteger = fn void(ObjcId, ObjcSelector, int*, NSIntege
 struct TodoRenameGlContext { void* ctx; void* format; }
 struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
 
-const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_FLUSH = 0;
-const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_NONE = 1;
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
 
-const TodoRenameGlProfile TODO_RENAMEGL_CORE = 0;
-const TodoRenameGlProfile TODO_RENAMEGL_FORWARD_COMPATIBILITY = 1;
-const TodoRenameGlProfile TODO_RENAMEGL_COMPATIBILITY = 2;
-const TodoRenameGlProfile TODO_RENAMEGL_ES = 3;
-const TodoRenameGlProfile TODO_RENAMEGL_WEB = 4;
+const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
+const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
+const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
+const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
+const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
 
-const TodoRenameGlRenderer TODO_RENAMEGL_ACCELERATED = 0;
-const TodoRenameGlRenderer TODO_RENAMEGL_SOFTWARE = 1;
+const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
+const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
 
 struct TodoRenameGlHints
 {
@@ -168,31 +168,12 @@ ObjcClass todo_fix_osxViewClass;
 
 
 const int VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT = 1000217000;
-const VkResult VK_ERROR_EXTENSION_NOT_PRESENT = -7;
-ZString[2] todo_fix_vulkanExtensions = {"VK_KHR_surface", "VK_EXT_metal_surface"};
 
 
 // public
-fn VkResult todo_fix_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
-{
-	if (surface == null || win == null || win.src.view == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
-	*surface = 0;
-	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateMetalSurfaceEXT");
-	if (raw == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
-	ObjcId layer = objc_send(objc_class("CAMetalLayer"), ObjcSendId, "layer");
-	if (layer == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
-	objc_send((ObjcId)win.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
-	todo_fix_window_setLayer_OSX(win, layer);
-	VkMetalSurfaceCreateInfoEXT createInfo;
-	createInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
-	createInfo.pNext = null;
-	createInfo.flags = 0;
-	createInfo.pLayer = layer;
-	return ((TodoRenameVkCreateMetalSurfaceEXTProc)raw)(instance, &createInfo, null, surface);
-}
 
 // public
-fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
+fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
 
 
 // public
@@ -306,7 +287,7 @@ fn void nsOpenGLContext_setValues(ObjcId context, int* vals, NSInteger param)
 // public
 fn TodoRenameGlContext* todo_fix_window_getContext_OpenGL(GfxWindow* win)
 {
-	if (win == null || (win.src.gfxType & TODO_RENAMEGFX_EGL)) return null;
+	if (win == null || (win.src.gfxType & TODO_RENAME_GFX_EGL)) return null;
 	return win.src.ctx.native;
 }
 
@@ -346,7 +327,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 {
 	if (win == null || ctx == null || hints == null || win.src.window == null) return false;
 	win.src.ctx.native = ctx;
-	win.src.gfxType = TODO_RENAMEGFX_NATIVE_OPEN_GL;
+	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
 
 	int[40] attribs;
 	TodoRenameAttribStack stack;
@@ -371,7 +352,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 		int accumSize = (hints.accumRed + hints.accumGreen + hints.accumBlue + hints.accumAlpha) / 4;
 		todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_ACCUM_SIZE, accumSize);
 	}
-	if (hints.renderer == TODO_RENAMEGL_SOFTWARE) { todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID); }
+	if (hints.renderer == TODO_RENAME_GL_SOFTWARE) { todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID); }
 	else { todo_fix_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_ACCELERATED); }
 	todo_fix_attribStack_pushAttribs(&stack, 0, 0);
 
@@ -1085,12 +1066,6 @@ fn void* todo_fix_eglContext_wlEGLWindow(TodoRenameEglContext* ctx) => ctx != nu
 
 
 // public
-fn bool todo_fix_extensionSupportedPlatform_EGL(ZString extension, sz len)
-{
-	if (todo_fix_eglQueryString == null || _gfx_ctx.egl_display == null) return false;
-	ZString extensions = todo_fix_eglQueryString((EglDisplay)_gfx_ctx.egl_display, EGL_EXTENSIONS);
-	return todo_fix_extensionSupportedStr(extensions, extension, len);
-}
 
 // public
 fn bool todo_fix_extensionSupported_EGL(ZString extension, sz len)
@@ -1109,7 +1084,7 @@ fn TodoRenameEglContext* todo_fix_window_createContext_EGL(GfxWindow* win, TodoR
 		free(ctx);
 		return null;
 	}
-	win.src.gfxType |= TODO_RENAMEGFX_OWNED_BY_RGFW;
+	win.src.gfxType |= TODO_RENAME_GFX_OWNED_BY_RGFW;
 	return ctx;
 }
 
@@ -1137,16 +1112,16 @@ fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContex
 	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_ALPHA_SIZE, hints.alpha);
 	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_DEPTH_SIZE, hints.depth);
 	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_STENCIL_SIZE, hints.stencil);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAMEGL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
+	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
 	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_NONE, EGL_NONE);
 	EglConfig config = null;
 	EglInt num = 0;
 	if (todo_fix_eglChooseConfig((EglDisplay)_gfx_ctx.egl_display, &cfg, &config, 1, &num) == 0 || num == 0) return false;
-	todo_fix_eglBindApi(hints.profile == TODO_RENAMEGL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
+	todo_fix_eglBindApi(hints.profile == TODO_RENAME_GL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
 	EglInt[8] ctxAttribs;
 	TodoRenameAttribStack ctxStack;
 	todo_fix_attribStack_init(&ctxStack, &ctxAttribs, 8);
-	if (hints.profile == TODO_RENAMEGL_ES) todo_fix_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
+	if (hints.profile == TODO_RENAME_GL_ES) todo_fix_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
 	todo_fix_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
 	EglContext share = hints.shareEGL != null ? (EglContext)hints.shareEGL.ctx : null;
 	ctx.ctx = todo_fix_eglCreateContext((EglDisplay)_gfx_ctx.egl_display, config, share, &ctxAttribs);
@@ -1161,7 +1136,7 @@ fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContex
 		return false;
 	}
 	win.src.ctx.egl = ctx;
-	win.src.gfxType = TODO_RENAMEGFX_EGL;
+	win.src.gfxType = TODO_RENAME_GFX_EGL;
 	todo_fix_window_makeCurrentContext_EGL(win);
 	return true;
 }
@@ -1173,7 +1148,7 @@ fn TodoRenameEglContext* todo_fix_window_getContext_EGL(GfxWindow* win) => win !
 fn void todo_fix_window_deleteContext_EGL(GfxWindow* win, TodoRenameEglContext* ctx)
 {
 	todo_fix_window_deleteContextPtr_EGL(win, ctx);
-	if (win != null && (win.src.gfxType & TODO_RENAMEGFX_OWNED_BY_RGFW)) free(ctx);
+	if (win != null && (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW)) free(ctx);
 }
 
 // public

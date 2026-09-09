@@ -61,8 +61,8 @@ module std::gfx @feat(WASM, MACOS, WIN32);
 
 TodoRenameGlHints todo_fix_global_hints_open_gl_src = {
 	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
-	false, false, false, false, TODO_RENAMEGL_RELEASE_NONE,
-	TODO_RENAMEGL_CORE, 1, 0, null, null, TODO_RENAMEGL_ACCELERATED
+	false, false, false, false, TODO_RENAME_GL_RELEASE_NONE,
+	TODO_RENAME_GL_CORE, 1, 0, null, null, TODO_RENAME_GL_ACCELERATED
 };
 TodoRenameGlHints* todo_fix_global_hints_open_gl = &todo_fix_global_hints_open_gl_src;
 
@@ -82,7 +82,7 @@ fn void todo_fix_setGlobalHints_OpenGL(TodoRenameGlHints* hints)
 fn void todo_fix_window_deleteContext_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx)
 {
 	todo_fix_window_deleteContextPtr_OpenGL(win, ctx);
-	if (win && (win.src.gfxType & TODO_RENAMEGFX_OWNED_BY_RGFW)) free(ctx);
+	if (win && (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW)) free(ctx);
 }
 
 
@@ -96,7 +96,7 @@ fn TodoRenameGlContext* todo_fix_window_createContext_OpenGL(GfxWindow* win, Tod
 		if (win) win.src.ctx.native = null;
 		return null;
 	}
-	win.src.gfxType |= TODO_RENAMEGFX_OWNED_BY_RGFW;
+	win.src.gfxType |= TODO_RENAME_GFX_OWNED_BY_RGFW;
 	return ctx;
 }
 
@@ -105,7 +105,7 @@ module std::gfx @feat(WASM, MACOS);
 // public
 fn void todo_fix_resetGlobalHints_OpenGL()
 {
-	todo_fix_global_hints_open_gl_src = {0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, false, false, false, false, TODO_RENAMEGL_RELEASE_NONE, TODO_RENAMEGL_CORE, 1, 0, null, null, TODO_RENAMEGL_ACCELERATED};
+	todo_fix_global_hints_open_gl_src = {0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, false, false, false, false, TODO_RENAME_GL_RELEASE_NONE, TODO_RENAME_GL_CORE, 1, 0, null, null, TODO_RENAME_GL_ACCELERATED};
 }
 
 module std::gfx @feat(WIN32);
@@ -151,7 +151,7 @@ fn void? _load_opengl_native() @private
 	todo_fix_wglChoosePixelFormatARB = (TodoRenameWglChoosePixelFormatArbProc)_get_opengl_proc_native("wglChoosePixelFormatARB");
 	todo_fix_wglSwapIntervalEXT = (TodoRenameWglSwapIntervalExtProc)_get_opengl_proc_native("wglSwapIntervalEXT");
 
-	if (todo_fix_wglSwapIntervalEXT == null) todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to load swap interval function");
+	if (todo_fix_wglSwapIntervalEXT == null) todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to load swap interval function");
 
 	todo_fix_wglMakeCurrent(dummyDc, cur);
 	todo_fix_wglDeleteContext(dummyContext);

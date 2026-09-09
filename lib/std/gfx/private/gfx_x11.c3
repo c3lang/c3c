@@ -137,7 +137,7 @@ fn bool todo_fix_monitor_setGammaRamp_X11(GfxMonitor* monitor, TodoRenameGammaRa
 	sz size = (sz)xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
 	if (size != ramp.count)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_X11, "X11: Gamma ramp size must match current ramp size");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_X11, "X11: Gamma ramp size must match current ramp size");
 		return false;
 	}
 	XRRCrtcGamma* gamma = xRRAllocGamma((int)ramp.count);
@@ -621,7 +621,7 @@ fn void todo_fix_xHandleEvent()
 	{
 		case 2: // KeyPress
 			{
-				if (!(win.internal.enabled_events & TODO_RENAMEKEY_PRESSED_FLAG)) return;
+				if (!(win.internal.enabled_events & TODO_RENAME_KEY_PRESSED_FLAG)) return;
 				GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW(e.xkey.keycode);
 
 				XkbStateRec state;
@@ -665,7 +665,7 @@ fn void todo_fix_xHandleEvent()
 			}
 		case 3: // KeyRelease
 			{
-				if (!(win.internal.enabled_events & TODO_RENAMEKEY_RELEASED_FLAG)) return;
+				if (!(win.internal.enabled_events & TODO_RENAME_KEY_RELEASED_FLAG)) return;
 				GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW(e.xkey.keycode);
 
 				XkbStateRec state;
@@ -748,7 +748,7 @@ fn void todo_fix_xHandleEvent()
 					break;
 				}
 
-				if (!(win.internal.flags.allow_dnd) || _gfx_ctx.x11Version > 5 /* TODO_RENAMEXDND_VERSION */) return;
+				if (!(win.internal.flags.allow_dnd) || _gfx_ctx.x11Version > 5 /* TODO_RENAME_XDND_VERSION */) return;
 
 				GfxPoint drag;
 
@@ -872,7 +872,7 @@ fn void todo_fix_xHandleEvent()
 			}
 		case 31: // SelectionNotify
 			{
-				if (!(win.internal.enabled_events & TODO_RENAMEDATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
+				if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
 
 				ZString data;
 				CULong result;
@@ -1033,7 +1033,7 @@ fn void todo_fix_window_deleteContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGl
 	if (win.src.ctx.native.window != win.src.window) todo_fix_glXDestroyWindow(_gfx_ctx.display, win.src.ctx.native.window);
 	todo_fix_glXDestroyContext(_gfx_ctx.display, ctx.ctx);
 	win.src.ctx.native = null;
-	todo_fix_debugCallback(TODO_RENAMETYPE_INFO, TODO_RENAMEINFO_OPEN_GL, "OpenGL context freed.");
+	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context freed.");
 }
 
 // private
@@ -1239,7 +1239,7 @@ fn bool todo_fix_writeClipboard_X11(GfxDataTransfer* data)
 	xSetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.helperWindow, 0);
 	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) != _gfx_ctx.helperWindow)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_CLIPBOARD, "X11 failed to become owner of clipboard selection");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_CLIPBOARD, "X11 failed to become owner of clipboard selection");
 		return false;
 	}
 	if (_gfx_ctx.unixClipboard)
@@ -1319,7 +1319,7 @@ fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* b
 fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGlContext* context, TodoRenameGlHints* hints)
 {
 	win.src.ctx.native = context;
-	win.src.gfxType = TODO_RENAMEGFX_NATIVE_OPEN_GL;
+	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
 
 	bool showWindow = false;
 	if (win.src.window != 0)
@@ -1365,7 +1365,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGl
 	GLXFBConfig* fbc = todo_fix_glXChooseFBConfig(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), (int*)&visualAttribs, &fbcount);
 	if (fbc == null || fbcount == 0)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to find any valid GLX visual configs.");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to find any valid GLX visual configs.");
 		return false;
 	}
 
@@ -1386,7 +1386,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGl
 	}
 	if (bestFbcIdx == -1)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to get a valid GLX visual.");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to get a valid GLX visual.");
 		return false;
 	}
 
@@ -1404,9 +1404,9 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGl
 	int mask = 0;
 	switch (hints.profile)
 	{
-		case TODO_RENAMEGL_ES: mask |= 0x4;
-		case TODO_RENAMEGL_FORWARD_COMPATIBILITY: mask |= 0x2;
-		case TODO_RENAMEGL_COMPATIBILITY: mask |= 0x2;
+		case TODO_RENAME_GL_ES: mask |= 0x4;
+		case TODO_RENAME_GL_FORWARD_COMPATIBILITY: mask |= 0x2;
+		case TODO_RENAME_GL_COMPATIBILITY: mask |= 0x2;
 		default: mask |= 0x1; // GLX_CONTEXT_CORE_PROFILE_BIT_ARB
 	}
 	todo_fix_attribStack_pushAttribs(&stack, 0x9126, mask); // GLX_CONTEXT_PROFILE_MASK_ARB
@@ -1419,8 +1419,8 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGl
 	ZString flushStr = "GLX_ARB_context_flush_control";
 	if (todo_fix_extensionSupportedPlatform_OpenGL_X11(flushStr, flushStr.len() + 1))
 	{
-		if (hints.releaseBehavior == TODO_RENAMEGL_RELEASE_FLUSH) { todo_fix_attribStack_pushAttribs(&stack, 0x2097, 0x2098); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB
-		else if (hints.releaseBehavior == TODO_RENAMEGL_RELEASE_NONE) { todo_fix_attribStack_pushAttribs(&stack, 0x2097, 0); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB
+		if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_FLUSH) { todo_fix_attribStack_pushAttribs(&stack, 0x2097, 0x2098); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB
+		else if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_NONE) { todo_fix_attribStack_pushAttribs(&stack, 0x2097, 0); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB
 	}
 
 	ZString robustStr = "GLX_ARB_create_context_robustness";
@@ -1439,7 +1439,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGl
 
 	if (todo_fix_glXCreateContextAttribsARB == null)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to load proc address 'glXCreateContextAttribsARB', loading a generic OpenGL context.");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to load proc address 'glXCreateContextAttribsARB', loading a generic OpenGL context.");
 		win.src.ctx.native.ctx = todo_fix_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
 	}
 	else
@@ -1448,14 +1448,14 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGl
 		win.src.ctx.native.ctx = todo_fix_glXCreateContextAttribsARB(_gfx_ctx.display, bestFbc, ctx, X_TRUE, (int*)&contextAttribs);
 		if (_gfx_ctx.x11Error != null || win.src.ctx.native.ctx == null)
 		{
-			todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL context with AttribsARB, loading a generic OpenGL context.");
+			todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL context with AttribsARB, loading a generic OpenGL context.");
 			win.src.ctx.native.ctx = todo_fix_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
 		}
 	}
 
 	win.src.ctx.native.window = todo_fix_glXCreateWindow(_gfx_ctx.display, bestFbc, win.src.window, null);
 	todo_fix_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
-	todo_fix_debugCallback(TODO_RENAMETYPE_INFO, TODO_RENAMEINFO_OPEN_GL, "OpenGL context initalized.");
+	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context initalized.");
 	win.opengl_swap_interval(0);
 	return true;
 }
@@ -1695,21 +1695,6 @@ fn void todo_fix_unix_parseURI(GfxWindow* win, ZString data)
 	}
 }
 
-// public
-fn VkResult todo_fix_window_createSurface_Vulkan(GfxWindow* win, VkInstance instance, VkSurfaceKHR* surface)
-{
-	if (surface == null || win == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
-	*surface = 0;
-	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateXlibSurfaceKHR");
-	if (raw == null) return VK_ERROR_EXTENSION_NOT_PRESENT;
-	VkXlibSurfaceCreateInfoKHR createInfo;
-	createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-	createInfo.pNext = null;
-	createInfo.flags = 0;
-	createInfo.dpy = _gfx_ctx.display;
-	createInfo.window = win.src.window;
-	return ((TodoRenameVkCreateXlibSurfaceKHRProc)raw)(instance, &createInfo, null, surface);
-}
 
 // public
 fn void todo_fix_window_getVisual(XVisualInfo* visual, bool transparent)
@@ -1719,7 +1704,7 @@ fn void todo_fix_window_getVisual(XVisualInfo* visual, bool transparent)
 	if (transparent)
 	{
 		xMatchVisualInfo(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), 32, 4 /* TrueColor */, visual);
-		if (visual.depth != 32) todo_fix_debugCallback(TODO_RENAMETYPE_WARNING, TODO_RENAMEWARNING_OPEN_GL, "Failed to load a 32-bit depth.");
+		if (visual.depth != 32) todo_fix_debugCallback(TODO_RENAME_TYPE_WARNING, TODO_RENAME_WARNING_OPEN_GL, "Failed to load a 32-bit depth.");
 	}
 }
 
@@ -1796,7 +1781,7 @@ fn int todo_fix_xErrorHandler(XDisplay* display, XErrorEvent* ev)
 {
 	char[512] errorText;
 	xGetErrorText(display, ev.error_code, (char*)&errorText, 512);
-	todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_X11, (ZString)&errorText);
+	todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_X11, (ZString)&errorText);
 	_gfx_ctx.x11Error = ev;
 	return 0;
 }
@@ -2382,4 +2367,41 @@ void* _x11_cursor_handle;
 void* _x11_xi_handle;
 void* _x11_ext_handle;
 
+
+// --- wgpu
+
+const WGPUSType WGPU_STYPE_SURFACE_SOURCE_XLIB_WINDOW = 0x00000006;
+struct WgpuSurfaceSourceXlibWindow
+{
+	WgpuChainedStruct chain;
+	XDisplay* display;
+	XWindow window;
+}
+
+// --- Vulkan
+
+struct VkXlibSurfaceCreateInfoKHR
+{
+	int sType;
+	void* pNext;
+	uint flags;
+	XDisplay* dpy;
+	XWindow window;
+}
+
+fn VkSurfaceKHR? _window_create_vulkan_surface_x11(GfxWindow* win, VkInstance instance) @private
+{
+	VkSurfaceKHR surface;
+	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateXlibSurfaceKHR");
+	if (!proc) return VULKAN_NOT_LOADED~;
+	VkXlibSurfaceCreateInfoKHR create_info = {
+		.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+		.dpy = _gfx_ctx.display,
+		.window = win.src.window
+	};
+	if (proc(instance, &create_info, null, &surface)) return SURFACE_CREATION_FAILED~;
+	return surface;
+}
+
+// ---
 

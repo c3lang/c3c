@@ -19,6 +19,26 @@ fn void? _load_opengl_native()
 	_gfx_ctx.glGetProcAddress = (void*)&_get_opengl_proc_native;
 }
 
+fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance) @private
+{
+	VkSurfaceKHR surface;
+	VkCreateSurfaceKHRProc raw = (VkCreateSurfaceKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateMetalSurfaceEXT");
+	if (!raw) return VULKAN_NOT_LOADED~;
+	ObjcId layer = objc_send(objc_class("CAMetalLayer"), ObjcSendId, "layer");
+	if (!layer) return SURFACE_CREATION_FAILED~;
+	objc_send((ObjcId)win.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
+	todo_fix_window_setLayer_OSX(win, layer);
+	VkMetalSurfaceCreateInfoEXT create_info;
+	create_info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+	create_info.pNext = null;
+	create_info.flags = 0;
+	create_info.pLayer = layer;
+	if (raw(instance, &create_info, null, &surface)) return SURFACE_CREATION_FAILED~;
+	return surface;
+}
+
+
+
 fn bool _window_is_floating_native(GfxWindow* win)
 {
 	if (!win) return false;
@@ -374,7 +394,7 @@ fn NSUInteger _osx_dragging_updated(ObjcId self, ObjcSelector sel, ObjcId sender
 {
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return 0;
-	if (!(win.internal.enabled_events & TODO_RENAMEDATA_DRAG_FLAG)) return 1;
+	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return 1;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
 	todo_fix_dataDragCallback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
 	return 1;
@@ -384,7 +404,7 @@ fn void _osx_dragging_ended(ObjcId self, ObjcSelector sel, ObjcId sender)
 {
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return;
-	if (!(win.internal.enabled_events & TODO_RENAMEDATA_DRAG_FLAG)) return;
+	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return;
 	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
 	todo_fix_dataDragCallback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
 }
@@ -392,7 +412,7 @@ fn void _osx_dragging_ended(ObjcId self, ObjcSelector sel, ObjcId sender)
 fn bool _osx_prepare_for_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender)
 {
 	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win || !(win.internal.enabled_events & TODO_RENAMEDATA_DROP_FLAG)) return true;
+	if (!win || !(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return true;
 	return win.internal.flags.allow_dnd;
 }
 
@@ -400,7 +420,7 @@ fn bool _osx_prepare_for_drag_operation(ObjcId self, ObjcSelector sel, ObjcId se
 fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender)
 {
 	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win || !(win.internal.enabled_events & TODO_RENAMEDATA_DROP_FLAG)) return false;
+	if (!win || !(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return false;
 
 	ObjcId pasteBoard = objc_send(sender, ObjcSendId, "draggingPasteboard");
 	ObjcId types = objc_send(pasteBoard, ObjcSendId, "types");

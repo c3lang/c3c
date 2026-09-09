@@ -130,3 +130,6 @@ fn uint todo_fix_decodeUTF8(ZString string, sz* starting_index)
 	*starting_index += count;
 	return codepoint - offsets[count - 1];
 }
+
+// --- vulkan
+

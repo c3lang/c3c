@@ -6,17 +6,17 @@ extern fn char* strstr(char* haystack, char* needle);
 struct TodoRenameGlContext { void* ctx; void* format; }
 struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
 
-const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_FLUSH = 0;
-const TodoRenameGlReleaseBehavior TODO_RENAMEGL_RELEASE_NONE = 1;
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
 
-const TodoRenameGlProfile TODO_RENAMEGL_CORE = 0;
-const TodoRenameGlProfile TODO_RENAMEGL_FORWARD_COMPATIBILITY = 1;
-const TodoRenameGlProfile TODO_RENAMEGL_COMPATIBILITY = 2;
-const TodoRenameGlProfile TODO_RENAMEGL_ES = 3;
-const TodoRenameGlProfile TODO_RENAMEGL_WEB = 4;
+const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
+const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
+const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
+const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
+const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
 
-const TodoRenameGlRenderer TODO_RENAMEGL_ACCELERATED = 0;
-const TodoRenameGlRenderer TODO_RENAMEGL_SOFTWARE = 1;
+const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
+const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
 
 struct TodoRenameGlHints
 {
@@ -68,7 +68,7 @@ struct TodoRenameWindowSrc
 }
 
 // public
-fn bool todo_fix_getPhysicalDevicePresentationSupport_Vulkan(VkInstance instance, VkPhysicalDevice physicalDevice, uint queueFamilyIndex) => false;
+fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
 
 const WGPUSType WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR = 0x00040000;
 struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector { WgpuChainedStruct chain; WgpuStringView selector; }
@@ -97,7 +97,7 @@ extern fn void rgfwJsSetupWindowListeners() @wasm("env", "emscripten_setup_windo
 extern fn void rgfwJsSetupDropListeners() @wasm("env", "emscripten_setup_drop_listeners");
 
 // Each of the following registers exactly one DOM/window listener, mirroring
-// TODO_RENAMEcreateWindowPlatform's emscripten_set_*_callback calls one-for-one so
+// TODO_RENAME_createWindowPlatform's emscripten_set_*_callback calls one-for-one so
 // the JS host implementation can be checked line-by-line against RGFW.h.
 extern fn void rgfwJsSetResizeCallback() @wasm("env", "emscripten_set_resize_callback");
 extern fn void rgfwJsSetFullscreenChangeCallback() @wasm("env", "emscripten_set_fullscreenchange_callback");
@@ -272,7 +272,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 	// down == 255 is the sentinel for touchmove (no button state change).
 	if (down == 255)
 	{
-		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAMEMOUSE_MOTION_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAME_MOUSE_MOTION_FLAG)) return;
 		for (int i = 0; i < numTouches; i++)
 		{
 			_mouse_motion_callback(_gfx_ctx.root, { xs[i], ys[i] });
@@ -283,11 +283,11 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 
 	if (down)
 	{
-		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAMEMOUSE_BUTTON_PRESSED_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAME_MOUSE_BUTTON_PRESSED_FLAG)) return;
 	}
 	else
 	{
-		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAMEMOUSE_BUTTON_RELEASED_FLAG)) return;
+		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAME_MOUSE_BUTTON_RELEASED_FLAG)) return;
 	}
 
 	for (int i = 0; i < numTouches; i++)
@@ -516,12 +516,12 @@ fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffe
 fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx, TodoRenameGlHints* hints)
 {
 	win.src.ctx.native = ctx;
-	win.src.gfxType = TODO_RENAMEGFX_NATIVE_OPEN_GL;
+	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
 
 	int handle = rgfwJsWebglCreateContext(hints);
 	if (handle == 0)
 	{
-		todo_fix_debugCallback(TODO_RENAMETYPE_ERROR, TODO_RENAMEERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL Context.");
+		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL Context.");
 		return false;
 	}
 	ctx.ctx = (void*)(uptr)handle;
@@ -535,7 +535,7 @@ fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 {
 	rgfwJsWebglDestroyContext((int)(uptr)ctx.ctx);
 	win.src.ctx.native.ctx = null;
-	todo_fix_debugCallback(TODO_RENAMETYPE_INFO, TODO_RENAMEINFO_OPEN_GL, "OpenGL context freed.");
+	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context freed.");
 }
 
 

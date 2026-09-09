@@ -166,3 +166,9 @@ fn void todo_fix_window_swapInterval_EGL(GfxWindow* win, int swapInterval)
 	todo_fix_eglSwapInterval((EglDisplay)_gfx_ctx.egl_display, swapInterval);
 }
 
+fn bool todo_fix_extensionSupportedPlatform_EGL(ZString extension, sz len)
+{
+	if (todo_fix_eglQueryString == null || _gfx_ctx.egl_display == null) return false;
+	ZString extensions = todo_fix_eglQueryString((EglDisplay)_gfx_ctx.egl_display, EGL_EXTENSIONS);
+	return extensions && todo_fix_extensionSupportedStr(extensions, extension, len);
+}
