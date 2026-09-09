@@ -214,9 +214,9 @@ fn void todo_fix_deinitPlatform_X11()
 {
 	if (_gfx_ctx.display != null)
 	{
-		if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helperWindow)
+		if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helper_window)
 		{
-			xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardManager, _gfx_ctx.saveTargets, 0, _gfx_ctx.helperWindow, 0);
+			xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardManager, _gfx_ctx.saveTargets, 0, _gfx_ctx.helper_window, 0);
 			while (todo_fix_xHandleClipboardSelectionHelper() != 0) {}
 		}
 		xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&todo_fix_x11ImInitCallback, null);
@@ -224,7 +224,7 @@ fn void todo_fix_deinitPlatform_X11()
 	if (_gfx_ctx.im != null) { xCloseIM(_gfx_ctx.im); _gfx_ctx.im = null; }
 	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
 	if (_gfx_ctx.hiddenMouse != null) { todo_fix_freeMouse(_gfx_ctx.hiddenMouse); _gfx_ctx.hiddenMouse = null; }
-	if (_gfx_ctx.helperWindow != 0) xDestroyWindow(_gfx_ctx.display, _gfx_ctx.helperWindow);
+	if (_gfx_ctx.helper_window != 0) xDestroyWindow(_gfx_ctx.display, _gfx_ctx.helper_window);
 	if (_gfx_ctx.display != null) xCloseDisplay(_gfx_ctx.display);
 	_gfx_ctx.display = null;
 
@@ -312,9 +312,9 @@ fn int todo_fix_initPlatform_X11(String class_name, GfxInitOption flags)
 
 	XSetWindowAttributes wa;
 	wa.event_mask = 1 << 22; // PropertyChangeMask
-	_gfx_ctx.helperWindow = xCreateWindow(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, 0, 1, 1, 0, 0,
+	_gfx_ctx.helper_window = xCreateWindow(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, 0, 1, 1, 0, 0,
 	2 /* InputOnly */, xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), 1 << 11, &wa);
-	if (_gfx_ctx.helperWindow == 0) return -1;
+	if (_gfx_ctx.helper_window == 0) return -1;
 
 	_x11_cursor_handle = libc::dlopen("libXcursor.so.1", libc::RTLD_LAZY | libc::RTLD_LOCAL);
 	if (_x11_cursor_handle != null)
@@ -1237,8 +1237,8 @@ fn void todo_fix_window_swapBuffers_OpenGL_X11(GfxWindow* win) { todo_fix_glXSwa
 // private
 fn bool todo_fix_writeClipboard_X11(GfxDataTransfer* data)
 {
-	xSetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.helperWindow, 0);
-	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) != _gfx_ctx.helperWindow)
+	xSetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.helper_window, 0);
+	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) != _gfx_ctx.helper_window)
 	{
 		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_CLIPBOARD, "X11 failed to become owner of clipboard selection");
 		return false;
@@ -1268,7 +1268,7 @@ fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* b
 	if (requestedType != TEXT) return false;
 	dataTransfer.data = buffer;
 
-	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helperWindow)
+	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helper_window)
 	{
 		dataTransfer.length = _gfx_ctx.unixClipboard.length;
 		if (buffer != null && _gfx_ctx.unixClipboard.data != null)
@@ -1280,7 +1280,7 @@ fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* b
 		return true;
 	}
 
-	xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.utf8String, _gfx_ctx.xselData, _gfx_ctx.helperWindow, 0);
+	xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.utf8String, _gfx_ctx.xselData, _gfx_ctx.helper_window, 0);
 	xSync(_gfx_ctx.display, 0);
 	XEvent event;
 	while (true)

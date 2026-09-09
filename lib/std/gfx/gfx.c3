@@ -1,6 +1,6 @@
 module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
 
-import std::math, std::os::macos, libc, std::time;
+import std::math, std::os::macos, libc, std::time, std::os::win32;
 
 alias GfxPoint = int[<2>];
 alias GfxSize = int[<2>];
@@ -185,10 +185,10 @@ struct GfxContext
 	}
 	struct @feat(WIN32)
 	{
-		void* instance; // HINSTANCE
-		WndClassW wndClass;
-		ushort[256] wideClassName;
-		void* helperWindow; // HWND
+		Win32_HINSTANCE instance;
+		Win32_WNDCLASSW wndClass;
+		ushort[256]     wideClassName;
+		Win32_HWND      helper_window;
 	}
 	struct @feat(WASM)
 	{
@@ -244,7 +244,7 @@ struct GfxContext
 	{
 		XDisplay* display;
 		int context;
-		XWindow helperWindow;
+		XWindow helper_window;
 		String class_name;
 		XlibIM im;
 		int xrandrEventBase;

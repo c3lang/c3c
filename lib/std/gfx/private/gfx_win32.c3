@@ -40,6 +40,7 @@ fn void _window_show_native(GfxWindow* win)
 	if (!win.internal.flags.maximize) showWindow(win.src.window, (int)SW_RESTORE);
 }
 
+
 fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
 	if (win.src.hIconSmall && type & WINDOW) destroyIcon(win.src.hIconSmall);
@@ -48,20 +49,20 @@ fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFor
 	if (!data)
 	{
 		Win32_HICON defaultIcon = loadIconA(null, (char*)(uptr)32512 /* IDI_APPLICATION */);
-		if (type & WINDOW) sendMessage(win.src.window, 0x0080 /* WM_SETICON */, 0, (iptr)defaultIcon);
-		if (type & TASKBAR) sendMessage(win.src.window, 0x0080, 1, (iptr)defaultIcon);
+		if (type & WINDOW) win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)defaultIcon);
+		if (type & TASKBAR) win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)defaultIcon);
 		return true;
 	}
 
 	if (type & WINDOW)
 	{
 		win.src.hIconSmall = todo_fix_loadHandleImage(data, w, h, format, 1);
-		sendMessage(win.src.window, 0x0080, 0, (iptr)(uptr)win.src.hIconSmall);
+		win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)win.src.hIconSmall);
 	}
 	if (type & TASKBAR)
 	{
 		win.src.hIconBig = todo_fix_loadHandleImage(data, w, h, format, 1);
-		sendMessage(win.src.window, 0x0080, 1, (iptr)(uptr)win.src.hIconBig);
+		win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)win.src.hIconBig);
 	}
 	return true;
 }
@@ -85,9 +86,9 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 		todo_fix_monitor_setMode(mon, &win.internal.oldMode);
 		_window_set_border_native(win, true);
 
-		Rect rect = {0, 0, ...win.internal.old_bounds.size};
-		uint style = todo_fix_winapiWindowGetStyle(win, win.internal.flags);
-		uint exStyle = todo_fix_winapiWindowGetExStyle(win, win.internal.flags);
+		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
+		uint style = _winapi_window_get_style(win.internal.flags);
+		uint exStyle = _winapi_window_get_style_ex(win, win.internal.flags);
 		adjustWindowRectEx(&rect, style, 0, exStyle);
 		setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
 
@@ -112,9 +113,9 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
-	Rect rect = { 0, 0, ...size };
-	uint style = todo_fix_winapiWindowGetStyle(win, win.internal.flags);
-	uint exStyle = todo_fix_winapiWindowGetExStyle(win, win.internal.flags);
+	Win32_RECT rect = { 0, 0, ...size };
+	uint style = _winapi_window_get_style(win.internal.flags);
+	uint exStyle = _winapi_window_get_style_ex(win, win.internal.flags);
 	adjustWindowRectEx(&rect, style, 0, exStyle);
 	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
 }
@@ -125,11 +126,11 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 	List{GfxMonitorMode} modes;
 	for OUTER: (;;)
 	{
-		DevModeW dm = { .size = (ushort)DevModeW::size };
-		if (enumDisplaySettingsW((WString)&monitor.node.adapterName, mode_index, &dm) == 0) break;
-		if (changeDisplaySettingsExW((WString)&monitor.node.adapterName, &dm, null, CDS_TEST, null) != DISP_CHANGE_SUCCESSFUL) continue;
+		Win32_DEVMODEW dm = { .dmSize = (ushort)Win32_DEVMODEW::size };
+		if (win32::enumDisplaySettingsW((WString)&monitor.node.adapterName, mode_index, &dm) == 0) break;
+		if (win32::changeDisplaySettingsExW((WString)&monitor.node.adapterName, &dm, null, CDS_TEST, null) != DISP_CHANGE_SUCCESSFUL) continue;
 		mode_index++;
-		if (dm.bitsPerPel < 15) continue;
+		if (dm.dmBitsPerPel < 15) continue;
 		GfxMonitorMode mode;
 		todo_fix_win32GetMode(&dm, &mode);
 		foreach (&mode2 : modes)
@@ -148,6 +149,36 @@ fn GfxPoint _get_global_mouse_native()
 	return { ...p };
 }
 
+// --- Helpers
+
+
+fn uint _winapi_window_get_style(GfxWindowFlags flags)
+{
+	uint style = win32::WS_CLIPSIBLINGS | win32::WS_CLIPCHILDREN;
+	if (flags.fullscreen)
+	{
+		style |= win32::WS_POPUP;
+		return style;
+	}
+	style |= win32::WS_SYSMENU | win32::WS_MINIMIZEBOX;
+	if (!flags.no_border)
+	{
+		style |= win32::WS_CAPTION;
+		if (!flags.no_resize) style |= win32::WS_MAXIMIZEBOX | win32::WS_THICKFRAME;
+	}
+	else
+	{
+		style |= win32::WS_POPUP;
+	}
+	return style;
+}
+
+fn uint _winapi_window_get_style_ex(GfxWindow* win, GfxWindowFlags flags)
+{
+	uint style = win32::WS_EX_APPWINDOW;
+	if (flags.fullscreen || flags.floating || win.is_floating()) style |= win32::WS_EX_TOPMOST;
+	return style;
+}
 
 // --- Vulkan
 

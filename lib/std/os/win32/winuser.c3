@@ -1,6 +1,8 @@
 module std::os::win32 @feat(WIN32);
 
+const CCHDEVICENAME = 32;
 alias Win32_WNDPROC = fn Win32_LRESULT(Win32_HWND, Win32_UINT, Win32_WPARAM, Win32_LPARAM);
+alias Win32_MONITORENUMPROC = fn Win32_BOOL(Win32_HMONITOR, Win32_HDC, Win32_LPRECT, Win32_LPARAM);
 
 struct Win32_WNDCLASSEXW
 {
@@ -16,6 +18,97 @@ struct Win32_WNDCLASSEXW
 	Win32_LPCWSTR   lpszMenuName;
 	Win32_LPCWSTR   lpszClassName;
 	Win32_HICON     hIconSm;
+}
+
+struct Win32_WNDCLASSW
+{
+	Win32_UINT      style;
+	Win32_WNDPROC   lpfnWndProc;
+	int             cbClsExtra;
+	int             cbWndExtra;
+	Win32_HINSTANCE hInstance;
+	Win32_HICON     hIcon;
+	Win32_HCURSOR   hCursor;
+	Win32_HBRUSH    hbrBackground;
+	Win32_LPCWSTR   lpszMenuName;
+	Win32_LPCWSTR   lpszClassName;
+}
+
+struct Win32_DEVMODEW
+{
+	Win32_WCHAR[CCHDEVICENAME] dmDeviceName;
+	Win32_WORD  dmSpecVersion;
+	Win32_WORD  dmDriverVersion;
+	Win32_WORD  dmSize;
+	Win32_WORD  dmDriverExtra;
+	Win32_DWORD dmFields;
+	union {
+		struct {
+			short dmOrientation;
+			short dmPaperSize;
+			short dmPaperLength;
+			short dmPaperWidth;
+			short dmScale;
+			short dmCopies;
+			short dmDefaultSource;
+			short dmPrintQuality;
+		}
+		Win32_POINTL dmPosition;
+		struct dummy2
+		{
+			Win32_POINTL dmPosition;
+			Win32_DWORD  dmDisplayOrientation;
+			Win32_DWORD  dmDisplayFixedOutput;
+		}
+	}
+	short dmColor;
+	short dmDuplex;
+	short dmYResolution;
+	short dmTTOption;
+	short dmCollate;
+	Win32_WCHAR[CCHDEVICENAME] dmFormName;
+	Win32_WORD  dmLogPixels;
+	Win32_DWORD dmBitsPerPel;
+	Win32_DWORD dmPelsWidth;
+	Win32_DWORD dmPelsHeight;
+	union
+	{
+		Win32_DWORD dmDisplayFlags;
+		Win32_DWORD dmNup;
+	}
+	Win32_DWORD dmDisplayFrequency;
+	Win32_DWORD dmICMMethod;
+	Win32_DWORD dmICMIntent;
+	Win32_DWORD dmMediaType;
+	Win32_DWORD dmDitherType;
+	Win32_DWORD dmReserved1;
+	Win32_DWORD dmReserved2;
+	Win32_DWORD dmPanningWidth;
+	Win32_DWORD dmPanningHeight;
+}
+
+struct Win32_DISPLAY_DEVICEW
+{
+	Win32_DWORD      cb;
+	Win32_WCHAR[32]  deviceName;
+	Win32_WCHAR[128] deviceString;
+	Win32_DWORD      stateFlags;
+	Win32_WCHAR[128] deviceID;
+	Win32_WCHAR[128] deviceKey;
+}
+
+struct Win32_MONITORINFO
+{
+	Win32_DWORD cbSize;
+	Win32_RECT  rcMonitor;
+	Win32_RECT  rcWork;
+	Win32_DWORD dwFlags;
+}
+
+struct Win32_MONITORINFOEXW
+{
+	inline Win32_MONITORINFO parent;
+	Win32_WCHAR[CCHDEVICENAME] szDevice;
 }
 
 struct Win32_MSG
@@ -50,35 +143,77 @@ alias Win32_PMSG = Win32_MSG*;
 alias Win32_LPMSG = Win32_MSG*;
 alias Win32_NPMSG = Win32_MSG*;
 
+alias Win32_PDEVMODEW = Win32_DEVMODEW;
+alias Win32_NPDEVMODEW = Win32_DEVMODEW;
+alias Win32_LPDEVMODEW = Win32_DEVMODEW;
+
+alias Win32_PDISPLAY_DEVICEW = Win32_DISPLAY_DEVICEW*;
+alias Win32_LPDISPLAY_DEVICEW = Win32_DISPLAY_DEVICEW*;
+
+alias Win32_LPMONITORINFO = Win32_MONITORINFO*;
+alias Win32_LPMONITORINFOEXW = Win32_MONITORINFOEXW*;
+
+alias Win32_PWNDCLASSW = Win32_WNDCLASSW*;
+alias Win32_NPWNDCLASSW = Win32_WNDCLASSW*;
+alias Win32_LPWNDCLASSW = Win32_WNDCLASSW*;
+
 alias Win32_ATOM = ushort;
 
-const Win32_DWORD WS_BORDER           = 0x00800000L;
-const Win32_DWORD WS_CAPTION          = 0x00C00000L;
-const Win32_DWORD WS_CHILD            = 0x40000000L;
-const Win32_DWORD WS_CHILDWINDOW      = 0x40000000L;
-const Win32_DWORD WS_CLIPCHILDREN     = 0x02000000L;
-const Win32_DWORD WS_CLIPSIBLINGS     = 0x04000000L;
-const Win32_DWORD WS_DISABLED         = 0x08000000L;
-const Win32_DWORD WS_DLGFRAME         = 0x00400000L;
-const Win32_DWORD WS_GROUP            = 0x00020000L;
-const Win32_DWORD WS_HSCROLL          = 0x00100000L;
-const Win32_DWORD WS_ICONIC           = 0x20000000L;
-const Win32_DWORD WS_MAXIMIZE         = 0x01000000L;
-const Win32_DWORD WS_MAXIMIZEBOX      = 0x00010000L;
-const Win32_DWORD WS_MINIMIZE         = 0x20000000L;
-const Win32_DWORD WS_MINIMIZEBOX      = 0x00020000L;
-const Win32_DWORD WS_OVERLAPPED       = 0x00000000L;
-const Win32_DWORD WS_OVERLAPPEDWINDOW = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-const Win32_DWORD WS_POPUP            = 0x80000000L;
-const Win32_DWORD WS_POPUPWINDOW      = WS_POPUP | WS_BORDER | WS_SYSMENU;
-const Win32_DWORD WS_SIZEBOX          = 0x00040000L;
-const Win32_DWORD WS_SYSMENU          = 0x00080000L;
-const Win32_DWORD WS_TABSTOP          = 0x00010000L;
-const Win32_DWORD WS_THICKFRAME       = 0x00040000L;
-const Win32_DWORD WS_TILED            = 0x00000000L;
-const Win32_DWORD WS_TILEDWINDOW      = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-const Win32_DWORD WS_VISIBLE          = 0x10000000L;
-const Win32_DWORD WS_VSCROLL          = 0x00200000L;
+const Win32_DWORD WS_BORDER               = 0x00800000L;
+const Win32_DWORD WS_CAPTION              = 0x00C00000L;
+const Win32_DWORD WS_CHILD                = 0x40000000L;
+const Win32_DWORD WS_CHILDWINDOW          = 0x40000000L;
+const Win32_DWORD WS_CLIPCHILDREN         = 0x02000000L;
+const Win32_DWORD WS_CLIPSIBLINGS         = 0x04000000L;
+const Win32_DWORD WS_DISABLED             = 0x08000000L;
+const Win32_DWORD WS_DLGFRAME             = 0x00400000L;
+const Win32_DWORD WS_GROUP                = 0x00020000L;
+const Win32_DWORD WS_HSCROLL              = 0x00100000L;
+const Win32_DWORD WS_ICONIC               = 0x20000000L;
+const Win32_DWORD WS_MAXIMIZE             = 0x01000000L;
+const Win32_DWORD WS_MAXIMIZEBOX          = 0x00010000L;
+const Win32_DWORD WS_MINIMIZE             = 0x20000000L;
+const Win32_DWORD WS_MINIMIZEBOX          = 0x00020000L;
+const Win32_DWORD WS_OVERLAPPED           = 0x00000000L;
+const Win32_DWORD WS_OVERLAPPEDWINDOW     = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+const Win32_DWORD WS_POPUP                = 0x80000000L;
+const Win32_DWORD WS_POPUPWINDOW          = WS_POPUP | WS_BORDER | WS_SYSMENU;
+const Win32_DWORD WS_SIZEBOX              = 0x00040000L;
+const Win32_DWORD WS_SYSMENU              = 0x00080000L;
+const Win32_DWORD WS_TABSTOP              = 0x00010000L;
+const Win32_DWORD WS_THICKFRAME           = 0x00040000L;
+const Win32_DWORD WS_TILED                = 0x00000000L;
+const Win32_DWORD WS_TILEDWINDOW          = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+const Win32_DWORD WS_VISIBLE              = 0x10000000L;
+const Win32_DWORD WS_VSCROLL              = 0x00200000L;
+
+const Win32_DWORD WS_EX_ACCEPTFILES       = 0x00000010L;
+const Win32_DWORD WS_EX_APPWINDOW         = 0x00040000L;
+const Win32_DWORD WS_EX_CLIENTEDGE        = 0x00000200L;
+const Win32_DWORD WS_EX_COMPOSITED        = 0x02000000L;
+const Win32_DWORD WS_EX_CONTEXTHELP       = 0x00000400L;
+const Win32_DWORD WS_EX_CONTROLPARENT     = 0x00010000L;
+const Win32_DWORD WS_EX_DLGMODALFRAME     = 0x00000001L;
+const Win32_DWORD WS_EX_LAYERED           = 0x00080000L;
+const Win32_DWORD WS_EX_LAYOUTRTL         = 0x00400000L;
+const Win32_DWORD WS_EX_LEFT              = 0x00000000L;
+const Win32_DWORD WS_EX_LEFTSCROLLBAR     = 0x00004000L;
+const Win32_DWORD WS_EX_LTRREADING        = 0x00000000L;
+const Win32_DWORD WS_EX_MDICHILD          = 0x00000040L;
+const Win32_DWORD WS_EX_NOACTIVATE        = 0x08000000L;
+const Win32_DWORD WS_EX_NOINHERITLAYOUT   = 0x00100000L;
+const Win32_DWORD WS_EX_NOPARENTNOTIFY    = 0x00000004L;
+const Win32_DWORD WS_EX_NOREDIRECTIONBITMAP = 0x00200000L;
+const Win32_DWORD WS_EX_OVERLAPPEDWINDOW  = (WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE);
+const Win32_DWORD WS_EX_PALETTEWINDOW     = (WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST);
+const Win32_DWORD WS_EX_RIGHT             = 0x00001000L;
+const Win32_DWORD WS_EX_RIGHTSCROLLBAR    = 0x00000000L;
+const Win32_DWORD WS_EX_RTLREADING        = 0x00002000L;
+const Win32_DWORD WS_EX_STATICEDGE        = 0x00020000L;
+const Win32_DWORD WS_EX_TOOLWINDOW        = 0x00000080L;
+const Win32_DWORD WS_EX_TOPMOST           = 0x00000008L;
+const Win32_DWORD WS_EX_TRANSPARENT       = 0x00000020L;
+const Win32_DWORD WS_EX_WINDOWEDGE        = 0x00000100L;
 
 const Win32_UINT MB_OK = 0x00000000;
 const Win32_UINT MB_OKCANCEL = 0x00000001;
@@ -96,6 +231,11 @@ const Win32_UINT MB_ICONWARNING = MB_ICONEXCLAMATION;
 const Win32_UINT MB_ICONERROR = MB_ICONHAND;
 const Win32_UINT MB_ICONINFORMATION = MB_ICONASTERISK;
 const Win32_UINT MB_ICONSTOP = MB_ICONHAND;
+
+const WM_DISPLAYCHANGE = 0x007E;
+const WM_SETICON = 0x0080;
+
+const HTCAPTION = 2;
 
 const GWL_WNDPROC @feat(ARCH_32_BIT) = -4;
 const GWL_HINSTANCE @feat(ARCH_32_BIT) = -6;
@@ -124,12 +264,22 @@ extern fn Win32_HCURSOR loadCursorW(Win32_HINSTANCE instance, Win32_LPCWSTR curs
 extern fn Win32_HICON loadIconW(Win32_HINSTANCE instance, Win32_LPCWSTR iconName) @cname("LoadIconW");
 extern fn int messageBoxW(Win32_HWND hWnd, Win32_LPCWSTR lpText, Win32_LPCWSTR lpCaption, Win32_UINT uType) @cname("MessageBoxW");
 extern fn void postQuitMessage(CInt) @cname("PostQuitMessage");
+extern fn Win32_LRESULT sendMessageA(Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("SendMessageA");
 extern fn Win32_ATOM registerClassExW(Win32_WNDCLASSEXW*) @cname("RegisterClassExW");
 extern fn Win32_LONG_PTR setWindowLongPtrW(Win32_HWND hWnd, CInt nIndex, Win32_LONG_PTR dwNewLong) @cname("SetWindowLongPtrW");
 extern fn Win32_LONG setWindowLongW(Win32_HWND hWnd, CInt nIndex, Win32_LONG dwNewLong) @cname("SetWindowLongW");
 extern fn Win32_BOOL showWindow(Win32_HWND, CInt) @cname("ShowWindow");
 extern fn Win32_BOOL translateMessage(Win32_MSG* lpMsg) @cname("TranslateMessage");
 extern fn Win32_BOOL updateWindow(Win32_HWND) @cname("UpdateWindow");
+extern fn Win32_BOOL enumDisplayMonitors(Win32_HDC hdc, Win32_LPCRECT lprcClip, Win32_MONITORENUMPROC* lpfnEnum, Win32_LPARAM dwData) @cname("EnumDisplayMonitors");
+
+extern fn Win32_BOOL getMonitorInfoA(Win32_HMONITOR hMonitor, Win32_LPMONITORINFO lpmi) @cname("GetMonitorInfoA");
+extern fn Win32_BOOL getMonitorInfoW(Win32_HMONITOR hMonitor, Win32_LPMONITORINFO lpmi) @cname("GetMonitorInfoW");
+extern fn Win32_BOOL enumDisplayDevicesW(Win32_LPCWSTR lpDevice, Win32_DWORD devNum, Win32_PDISPLAY_DEVICEW lpDisplayDevice, Win32_DWORD flags) @cname("EnumDisplayDevicesW");
+extern fn Win32_BOOL enumDisplaySettingsW(Win32_LPCWSTR lpszDeviceName, Win32_DWORD modeNum, Win32_DEVMODEW* lpDevMode) @cname("EnumDisplaySettingsW");
+extern fn Win32_BOOL changeDisplaySettingsExW(Win32_LPCWSTR lpszDeviceName, Win32_DEVMODEW* lpDevMode, Win32_HWND hwnd, Win32_DWORD dwflags, Win32_LPVOID lParam) @cname("ChangeDisplaySettingsExW");
+extern fn Win32_ATOM registerClassW(Win32_WNDCLASSW* lpWndClass) @cname("RegisterClassW");
+extern fn Win32_BOOL unregisterClassW(Win32_LPCWSTR lpClassName, Win32_HINSTANCE hInstance) @cname("UnregisterClassW");
 
 macro getWindowLongPtr(Win32_HWND hWnd, CInt nIndex)
 {

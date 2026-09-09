@@ -75,7 +75,6 @@ struct GfxWindowSrc
 	}
 }
 
-extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 {

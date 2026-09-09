@@ -40,9 +40,13 @@ alias Win32_PPOINT = Win32_POINT*;
 alias Win32_NPOINT = Win32_POINT*;
 alias Win32_LPOINT = Win32_POINT*;
 
+alias Win32_POINTL = Win32_POINT;
+alias Win32_PPOINTL = Win32_POINTL*;
+
 alias Win32_PRECT = Win32_RECT*;
 alias Win32_NPRECT = Win32_RECT*;
 alias Win32_LPRECT = Win32_RECT*;
+alias Win32_LPCRECT = Win32_RECT*;
 
 alias Win32_PWSABUF = Win32_WSABUF*;
 alias Win32_LPWSABUF = Win32_WSABUF*;

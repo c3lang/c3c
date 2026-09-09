@@ -1,6 +1,10 @@
 module std::gfx;
 
 const WGPUSType WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER = 0x00000004;
+const WGPUSType WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND = 0x00000005;
+
+extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
+
 alias WGPUInstance = void*;
 alias WGPUSurface = void*;
 alias WGPUSType = int;

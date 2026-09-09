@@ -161,7 +161,7 @@ fn void? _load_opengl_native() @private
 	todo_fix_wglGetCurrentContext = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglGetCurrentContext");
 	todo_fix_wglShareLists = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglShareLists");
 
-	Win32_HWND* dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.className, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
+	Win32_HWND* dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
 	Win32_HDC dummyDc = getDC(dummyWin);
 	uint pfdFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
 

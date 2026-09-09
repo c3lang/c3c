@@ -23,6 +23,7 @@ alias Win32_HCONV = Win32_HANDLE;
 alias Win32_HCONVLIST = Win32_HANDLE;
 alias Win32_HCURSOR = Win32_HICON;
 alias Win32_HDC = Win32_HANDLE;
+alias Win32_HGLRC = Win32_HANDLE;
 alias Win32_HDDEDATA = Win32_HANDLE;
 alias Win32_HDESK = Win32_HANDLE;
 alias Win32_HDROP = Win32_HANDLE;
