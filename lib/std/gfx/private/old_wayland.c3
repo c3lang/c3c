@@ -10,14 +10,10 @@ struct Timespec { CLong tv_sec; CLong tv_nsec; }
 extern fn int shmOpen(ZString name, int oflag, int mode) @cname("shm_open");
 extern fn int shmUnlink(ZString name) @cname("shm_unlink");
 extern fn int ftruncate(int fd, sz length);
-extern fn int poll(Pollfd* fds, CUInt nfds, int timeout);
-
-struct Pollfd { int fd; short events; short revents; }
 
 const int O_RDWR = 0x0002;
 const int O_CREAT = 0x0040;
 const int O_EXCL = 0x0080;
-const int POLLIN = 0x0001;
 
 // ---- Wayland client core (real libwayland-client ABI) ----
 
@@ -36,84 +32,6 @@ const uint WL_MARSHAL_FLAG_DESTROY = 1;
 // private
 fn void rgfwDoNothing() {}
 
-struct TodoRenameGlContext { void* ctx; void* format; }
-struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
-
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
-
-const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
-const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
-const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
-const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
-const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
-
-const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
-const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
-
-struct TodoRenameGlHints
-{
-	int stencil;
-	int samples;
-	int stereo;
-	int auxBuffers;
-	int doubleBuffer;
-	int red, green, blue, alpha;
-	int depth;
-	int accumRed, accumGreen, accumBlue, accumAlpha;
-	bool sRGB;
-	bool robustness;
-	bool debug;
-	bool noError;
-	TodoRenameGlReleaseBehavior releaseBehavior;
-	TodoRenameGlProfile profile;
-	int major, minor;
-	TodoRenameGlContext* share;
-	TodoRenameEglContext* shareEGL;
-	TodoRenameGlRenderer renderer;
-}
-
-union TodoRenameGfxContext
-{
-	TodoRenameGlContext* native;
-	TodoRenameEglContext* egl;
-}
-
-
-struct TodoRenameWindowSrc
-{
-	inline IntRect bounds;
-	void* window;
-	void* view;
-	void* mouse;
-	void* delegate;
-	TodoRenameGfxContext ctx;
-	TodoRenameGfxContextType gfxType;
-	WlProxy* surface;
-	WlProxy* xdgSurface;
-	WlProxy* xdgToplevel;
-	WlProxy* decoration;
-	WlProxy* lockedPointer;
-	WlProxy* icon;
-	WlProxy* dataSource;
-	WlProxy* customCursorSurface;
-	GfxMonitorNode* activeMonitor;
-	uint decorationMode;
-	bool pendingActivated;
-	bool activated;
-	bool resizing;
-	bool pendingMaximized;
-	bool maximized;
-	bool minimized;
-	bool configured;
-	bool usingCustomCursor;
-}
-
-
-
-
-// public
-
 
 // public
 fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
@@ -131,8 +49,8 @@ fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWin
 	xdgWmBaseSetUserData(_gfx_ctx.xdgWmBase, win);
 
 	win.src.xdgToplevel = xdgSurfaceGetToplevel(win.src.xdgSurface);
-	xdgToplevelSetAppId(win.src.xdgToplevel, name.zstr_copy(tmem));
-	xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
+	_xdg_toplevel_set_app_id(win.src.xdgToplevel, name.zstr_copy(tmem));
+	_xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, win.width, win.height);
 
 	if (!(win.internal.flags.transparent)) todo_fix_wlSetOpaque(win);
 

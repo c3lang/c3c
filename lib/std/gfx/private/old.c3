@@ -27,8 +27,6 @@ extern fn void* object_getInstanceVariable(ObjcId obj, ZString name, void* outVa
 extern fn void* objc_autoreleasePoolPush();
 extern fn void objc_autoreleasePoolPop(void* context);
 
-extern fn int cgAssociateMouseAndMouseCursorPosition(bool connected) @cname("CGAssociateMouseAndMouseCursorPosition");
-extern fn int cgWarpMouseCursorPosition(CGPoint p) @cname("CGWarpMouseCursorPosition");
 extern fn void cfRelease(void* ref) @cname("CFRelease");
 extern fn CFStringRef cfStringCreateWithCString(void* alloc, ZString str, uint encoding) @cname("CFStringCreateWithCString");
 extern fn CFBundleRef cfBundleGetBundleWithIdentifier(CFStringRef bundleID) @cname("CFBundleGetBundleWithIdentifier");
@@ -75,65 +73,6 @@ alias ObjcSendCGFloat = fn CGFloat(ObjcId, ObjcSelector);
 alias ObjcSendUShort = fn ushort(ObjcId, ObjcSelector);
 alias ObjcSendNSUInteger = fn NSUInteger(ObjcId, ObjcSelector);
 alias ObjcSendVoidIntPtrNSInteger = fn void(ObjcId, ObjcSelector, int*, NSInteger);
-
-
-
-struct TodoRenameGlContext { void* ctx; void* format; }
-struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
-
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
-
-const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
-const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
-const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
-const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
-const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
-
-const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
-const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
-
-struct TodoRenameGlHints
-{
-	int stencil;
-	int samples;
-	int stereo;
-	int auxBuffers;
-	int doubleBuffer;
-	int red, green, blue, alpha;
-	int depth;
-	int accumRed, accumGreen, accumBlue, accumAlpha;
-	bool sRGB;
-	bool robustness;
-	bool debug;
-	bool noError;
-	TodoRenameGlReleaseBehavior releaseBehavior;
-	TodoRenameGlProfile profile;
-	int major, minor;
-	TodoRenameGlContext* share;
-	TodoRenameEglContext* shareEGL;
-	TodoRenameGlRenderer renderer;
-}
-
-union TodoRenameGfxContext
-{
-	TodoRenameGlContext* native;
-	TodoRenameEglContext* egl;
-}
-
-
-
-struct TodoRenameWindowSrc
-{
-	inline IntRect bounds;
-	void* window;
-	void* view;
-	void* mouse;
-	void* delegate;
-	TodoRenameGfxContext ctx;
-	TodoRenameGfxContextType gfxType;
-}
-
 
 
 ObjcClass todo_fix_osxWindowDelegateClass;
@@ -202,7 +141,7 @@ fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
 
 
 // public
-fn void* todo_fix_glContext_getSourceContext(TodoRenameGlContext* ctx) { return ctx.ctx; }
+fn void* todo_fix_glContext_getSourceContext(GfxGlContext* ctx) { return ctx.ctx; }
 
 struct TodoRenameAttribStack
 {
@@ -249,7 +188,7 @@ fn void nsOpenGLContext_setValues(ObjcId context, int* vals, NSInteger param)
 
 
 // public
-fn TodoRenameGlContext* todo_fix_window_getContext_OpenGL(GfxWindow* win)
+fn GfxGlContext* todo_fix_window_getContext_OpenGL(GfxWindow* win)
 {
 	if (win == null || (win.src.gfxType & TODO_RENAME_GFX_EGL)) return null;
 	return win.src.ctx.native;
@@ -287,7 +226,7 @@ fn GfxFn _get_opengl_proc_native(ZString procname)
 }
 
 // public
-fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx, TodoRenameGlHints* hints)
+fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	if (win == null || ctx == null || hints == null || win.src.window == null) return false;
 	win.src.ctx.native = ctx;
@@ -349,7 +288,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 }
 
 // public
-fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx)
+fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx)
 {
 	if (ctx == null) return;
 	ns_release((ObjcId)ctx.format);
@@ -705,35 +644,14 @@ fn void todo_fix_window_closePlatform(GfxWindow* win)
 }
 
 // public
-fn bool todo_fix_window_setMousePlatform(GfxWindow* win, TodoRenameMouse* mouse)
-{
-	if (mouse == null) return false;
-	objc_send((ObjcId)mouse, ObjcSendVoid, "set");
-	return true;
-}
-
 
 
 // public
-fn void _window_restore_native(GfxWindow* win)
-{
-	if (win == null || win.src.window == null) return;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "deminiaturize:", null);
-	win.internal.flags.minimize = false;
-	win.internal.flags.maximize = false;
-}
 
 // public
 fn void todo_fix_window_minimizePlatform(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "miniaturize:", null); }
 // public
 
-// public
-// public
-fn void _window_maximize_native(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "zoom:", null); }
-// public
-fn void _window_set_capture_mouse_native(GfxWindow* win, bool state) { cgAssociateMouseAndMouseCursorPosition(!state); }
-// public
-fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) { _gfx_ctx.raw_mouse = state; }
 // public
 
 fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
@@ -966,15 +884,6 @@ fn bool _window_is_maximized_native(GfxWindow* win) { if (win == null) return fa
 
 // public
 
-<*
- @param [in] win
-*>
-// public
-fn void todo_fix_window_moveMouse(GfxWindow* win, int x, int y)
-{
-	cgWarpMouseCursorPosition({ x, y });
-	if (win) win.internal.last_mouse = { x, y };
-}
 
 // public
 fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
@@ -1011,11 +920,11 @@ fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
 }
 
 // public
-fn void* todo_fix_eglContext_getSourceContext(TodoRenameEglContext* ctx) => ctx != null ? ctx.ctx : null;
+fn void* todo_fix_eglContext_getSourceContext(GfxEglContext* ctx) => ctx != null ? ctx.ctx : null;
 // public
-fn void* todo_fix_eglContext_getSurface(TodoRenameEglContext* ctx) => ctx != null ? ctx.surface : null;
+fn void* todo_fix_eglContext_getSurface(GfxEglContext* ctx) => ctx != null ? ctx.surface : null;
 // public
-fn void* todo_fix_eglContext_wlEGLWindow(TodoRenameEglContext* ctx) => ctx != null ? ctx.eglWindow : null;
+fn void* todo_fix_eglContext_wlEGLWindow(GfxEglContext* ctx) => ctx != null ? ctx.egl_window : null;
 
 
 // public
@@ -1029,9 +938,9 @@ fn bool todo_fix_extensionSupported_EGL(ZString extension, sz len)
 
 
 // public
-fn TodoRenameEglContext* todo_fix_window_createContext_EGL(GfxWindow* win, TodoRenameGlHints* hints)
+fn GfxEglContext* todo_fix_window_createContext_EGL(GfxWindow* win, GfxGlHints* hints)
 {
-	TodoRenameEglContext* ctx = mem::new(TodoRenameEglContext);
+	GfxEglContext* ctx = mem::new(GfxEglContext);
 	if (!todo_fix_window_createContextPtr_EGL(win, ctx, hints))
 	{
 		free(ctx);
@@ -1042,7 +951,7 @@ fn TodoRenameEglContext* todo_fix_window_createContext_EGL(GfxWindow* win, TodoR
 }
 
 // public
-fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContext* ctx, TodoRenameGlHints* hints)
+fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hints)
 {
 	if (win == null || ctx == null || hints == null) return false;
 	if (@catch(_load_egl_native())) return false;
@@ -1095,17 +1004,17 @@ fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContex
 }
 
 // public
-fn TodoRenameEglContext* todo_fix_window_getContext_EGL(GfxWindow* win) => win != null ? win.src.ctx.egl : null;
+fn GfxEglContext* todo_fix_window_getContext_EGL(GfxWindow* win) => win != null ? win.src.ctx.egl : null;
 
 // public
-fn void todo_fix_window_deleteContext_EGL(GfxWindow* win, TodoRenameEglContext* ctx)
+fn void todo_fix_window_deleteContext_EGL(GfxWindow* win, GfxEglContext* ctx)
 {
 	todo_fix_window_deleteContextPtr_EGL(win, ctx);
 	if (win != null && (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW)) free(ctx);
 }
 
 // public
-fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, TodoRenameEglContext* ctx)
+fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx)
 {
 	if (ctx == null || _gfx_ctx.egl_display == null) return;
 	if (ctx.surface != null) todo_fix_eglDestroySurface((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface);

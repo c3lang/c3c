@@ -259,48 +259,6 @@ TodoRenameWglChoosePixelFormatArbProc todo_fix_wglChoosePixelFormatARB;
 TodoRenameWglSwapIntervalExtProc todo_fix_wglSwapIntervalEXT;
 
 
-struct TodoRenameGlContext { void* ctx; } // HGLRC
-struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
-
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
-
-const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
-const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
-const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
-const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
-const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
-
-const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
-const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
-
-struct TodoRenameGlHints
-{
-	int stencil;
-	int samples;
-	int stereo;
-	int auxBuffers;
-	int doubleBuffer;
-	int red, green, blue, alpha;
-	int depth;
-	int accumRed, accumGreen, accumBlue, accumAlpha;
-	bool sRGB;
-	bool robustness;
-	bool debug;
-	bool noError;
-	TodoRenameGlReleaseBehavior releaseBehavior;
-	TodoRenameGlProfile profile;
-	int major, minor;
-	TodoRenameGlContext* share;
-	TodoRenameEglContext* shareEGL;
-	TodoRenameGlRenderer renderer;
-}
-
-union TodoRenameGfxContext
-{
-	TodoRenameGlContext* native;
-	TodoRenameEglContext* egl;
-}
 
 
 struct GfxNativeImage
@@ -311,21 +269,6 @@ struct GfxNativeImage
 	void* hdcMem; // HDC
 }
 
-struct TodoRenameWindowSrc
-{
-	inline IntRect bounds;
-	void* window; // HWND
-	void* hdc; // HDC
-	void* hIconSmall; // HICON
-	void* hIconBig; // HICON
-	GfxPoint min_size;
-	GfxPoint max_size;
-	int aspectRatioW, aspectRatioH;
-	bool actionFrame;
-	ushort highSurrogate;
-	TodoRenameGfxContext ctx;
-	TodoRenameGfxContextType gfxType;
-}
 
 
 
@@ -1402,7 +1345,7 @@ fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format) => (TodoRenameMouse*)todo_fix_loadHandleImage(data, w, h, format, 0);
 
 // public
-fn bool todo_fix_window_setMousePlatform(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	setClassLongPtrA(win.src.window, -12 /* GCLP_HCURSOR */, (iptr)(uptr)mouse);
 	setCursor((Win32_HCURSOR)mouse);
@@ -1545,11 +1488,6 @@ fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
 }
 
 // public
-fn void todo_fix_window_moveMouse(GfxWindow* win, int x, int y)
-{
-	win.internal.last_mouse = { x - win.x, y - win.y };
-	setCursorPos(x, y);
-}
 
 const int WGL_ACCELERATION_ARB = 0x2003;
 const int WGL_FULL_ACCELERATION_ARB = 0x2027;
@@ -1605,7 +1543,7 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 }
 
 // public
-fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx, TodoRenameGlHints* hints)
+fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
 	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
@@ -1731,7 +1669,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 }
 
 // public
-fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx)
+fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx)
 {
 	todo_fix_wglDeleteContext(ctx.ctx);
 	win.src.ctx.native.ctx = null;

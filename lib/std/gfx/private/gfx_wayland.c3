@@ -1,5 +1,5 @@
 module std::gfx @feat(WAYLAND, X11_WAYLAND) @private @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
-import std::math, std::collections::list, libc, std::os::posix, std::os::env;
+import std::math, std::collections::list, libc, std::os::posix, std::net::os, std::os::env;
 
 // public
 fn void todo_fix_window_captureMousePlatform_Wayland(GfxWindow* win, bool state)
@@ -297,9 +297,9 @@ extern fn WlProxy* wlCursorImageGetBuffer(WlCursorImage* image) @cname("wl_curso
 
 // ---- wl_egl (libwayland-egl) ----
 typedef WlEglWindow = void;
-extern fn WlEglWindow* wlEglWindowCreate(WlProxy* surface, int width, int height) @cname("wl_egl_window_create");
-extern fn void wlEglWindowDestroy(WlEglWindow* window) @cname("wl_egl_window_destroy");
-extern fn void wlEglWindowResize(WlEglWindow* window, int width, int height, int dx, int dy) @cname("wl_egl_window_resize");
+extern fn WlEglWindow* wl_egl_window_create(WlProxy* surface, int width, int height);
+extern fn void wl_egl_window_destroy(WlEglWindow* window);
+extern fn void wl_egl_window_resize(WlEglWindow* window, int width, int height, int dx, int dy);
 
 // ---- xkbcommon ----
 typedef XkbContext = void;
@@ -480,16 +480,16 @@ fn void xdgWmBaseDestroy(WlProxy* base) { wlProxyMarshalFlags(base, 0, null, wlP
 fn void xdgSurfaceAddListener(WlProxy* surface, XdgSurfaceListener* listener, void* data) { wlProxyAddListener(surface, listener, data); }
 fn void xdgSurfaceAckConfigure(WlProxy* surface, uint serial) { wlProxyMarshalFlags(surface, 4, null, wlProxyGetVersion(surface), 0, serial); }
 fn WlProxy* xdgSurfaceGetToplevel(WlProxy* surface) => wlProxyMarshalFlags(surface, 1, &xdgToplevelInterface, wlProxyGetVersion(surface), 0, null);
-fn void xdgSurfaceSetWindowGeometry(WlProxy* surface, int x, int y, int w, int h) { wlProxyMarshalFlags(surface, 3, null, wlProxyGetVersion(surface), 0, x, y, w, h); }
+fn void _xdg_surface_set_window_geometry(WlProxy* surface, int x, int y, int w, int h) { wlProxyMarshalFlags(surface, 3, null, wlProxyGetVersion(surface), 0, x, y, w, h); }
 fn void xdgSurfaceDestroy(WlProxy* surface) { wlProxyMarshalFlags(surface, 0, null, wlProxyGetVersion(surface), WL_MARSHAL_FLAG_DESTROY); }
 
 fn void xdgToplevelAddListener(WlProxy* toplevel, XdgToplevelListener* listener, void* data) { wlProxyAddListener(toplevel, listener, data); }
 fn void xdgToplevelSetTitle(WlProxy* toplevel, ZString title) { wlProxyMarshalFlags(toplevel, 2, null, wlProxyGetVersion(toplevel), 0, title); }
-fn void xdgToplevelSetAppId(WlProxy* toplevel, ZString appId) { wlProxyMarshalFlags(toplevel, 3, null, wlProxyGetVersion(toplevel), 0, appId); }
-fn void xdgToplevelSetMaxSize(WlProxy* toplevel, int w, int h) { wlProxyMarshalFlags(toplevel, 7, null, wlProxyGetVersion(toplevel), 0, w, h); }
+fn void _xdg_toplevel_set_app_id(WlProxy* toplevel, ZString appId) { wlProxyMarshalFlags(toplevel, 3, null, wlProxyGetVersion(toplevel), 0, appId); }
+fn void _xdg_toplevel_set_max_size(WlProxy* toplevel, int w, int h) { wlProxyMarshalFlags(toplevel, 7, null, wlProxyGetVersion(toplevel), 0, w, h); }
 fn void xdgToplevelSetMinSize(WlProxy* toplevel, int w, int h) { wlProxyMarshalFlags(toplevel, 8, null, wlProxyGetVersion(toplevel), 0, w, h); }
 fn void xdgToplevelSetMaximized(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 9, null, wlProxyGetVersion(toplevel), 0); }
-fn void xdgToplevelUnsetMaximized(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 10, null, wlProxyGetVersion(toplevel), 0); }
+fn void _xdg_toplevel_unset_maximized(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 10, null, wlProxyGetVersion(toplevel), 0); }
 fn void xdgToplevelSetFullscreen(WlProxy* toplevel, WlProxy* output) { wlProxyMarshalFlags(toplevel, 11, null, wlProxyGetVersion(toplevel), 0, output); }
 fn void xdgToplevelUnsetFullscreen(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 12, null, wlProxyGetVersion(toplevel), 0); }
 fn void xdgToplevelSetMinimized(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 13, null, wlProxyGetVersion(toplevel), 0); }
@@ -531,7 +531,7 @@ fn void xdgToplevelIconV1AddBuffer(WlProxy* icon, WlProxy* buffer, int scale) { 
 fn void xdgToplevelIconV1Destroy(WlProxy* icon) { wlProxyMarshalFlags(icon, 0, null, wlProxyGetVersion(icon), WL_MARSHAL_FLAG_DESTROY); }
 
 // ---- pointer-warp-v1 ----
-fn void wpPointerWarpV1WarpPointer(WlProxy* warp, WlProxy* surface, WlProxy* pointer, WlFixed x, WlFixed y, uint serial) { wlProxyMarshalFlags(warp, 1, null, wlProxyGetVersion(warp), 0, surface, pointer, x, y, serial); }
+fn void _wp_pointer_warp_v1_warp_pointer(WlProxy* warp, WlProxy* surface, WlProxy* pointer, WlFixed x, WlFixed y, uint serial) { wlProxyMarshalFlags(warp, 1, null, wlProxyGetVersion(warp), 0, surface, pointer, x, y, serial); }
 fn void wpPointerWarpV1Destroy(WlProxy* warp) { wlProxyMarshalFlags(warp, 0, null, wlProxyGetVersion(warp), WL_MARSHAL_FLAG_DESTROY); }
 
 const uint WL_SEAT_CAPABILITY_POINTER = 1;
@@ -611,7 +611,7 @@ fn void todo_fix_deinitPlatform_Wayland()
 	if (_gfx_ctx.dataDeviceManager != null) wlDataDeviceManagerDestroy(_gfx_ctx.dataDeviceManager);
 	if (_gfx_ctx.dataDevice != null) wlDataDeviceDestroy(_gfx_ctx.dataDevice);
 	if (_gfx_ctx.wlCursorTheme != null) wlCursorThemeDestroy(_gfx_ctx.wlCursorTheme);
-	if (_gfx_ctx.wpPointerWarp != null) wpPointerWarpV1Destroy(_gfx_ctx.wpPointerWarp);
+	if (_gfx_ctx.wp_pointer_warp != null) wpPointerWarpV1Destroy(_gfx_ctx.wp_pointer_warp);
 	if (_gfx_ctx.hiddenMouse != null) todo_fix_freeMouse(_gfx_ctx.hiddenMouse);
 	if (_gfx_ctx.cursorSurface != null) wlSurfaceDestroy(_gfx_ctx.cursorSurface);
 	if (_gfx_ctx.shm != null) wlShmDestroy(_gfx_ctx.shm);
@@ -841,9 +841,9 @@ fn void todo_fix_pollEvents_Wayland()
 		}
 	}
 
-	Pollfd fds;
+	Posix_pollfd fds;
 	fds.fd = wlDisplayGetFd(_gfx_ctx.wlDisplay);
-	fds.events = (short)POLLIN;
+	fds.events = (short)os::POLLIN;
 
 	while (true)
 	{
@@ -852,9 +852,9 @@ fn void todo_fix_pollEvents_Wayland()
 			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) > 0) return;
 		}
 
-		if (poll(&fds, 1, 0) == 0) { wlDisplayCancelRead(_gfx_ctx.wlDisplay); return; }
+		if (os::poll(&fds, 1, 0) == 0) { wlDisplayCancelRead(_gfx_ctx.wlDisplay); return; }
 
-		if (fds.revents & POLLIN)
+		if (fds.revents & os::POLLIN)
 		{
 			wlDisplayReadEvents(_gfx_ctx.wlDisplay);
 			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) > 0) return;
@@ -913,9 +913,9 @@ fn void todo_fix_window_closePlatform_Wayland(GfxWindow* win)
 }
 
 // private
-fn bool todo_fix_window_createContextPtr_OpenGL_Wayland(GfxWindow* win, TodoRenameGlContext* ctx, TodoRenameGlHints* hints)
+fn bool todo_fix_window_createContextPtr_OpenGL_Wayland(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
-	bool out = todo_fix_window_createContextPtr_EGL(win, (TodoRenameEglContext*)ctx, hints);
+	bool out = todo_fix_window_createContextPtr_EGL(win, (GfxEglContext*)ctx, hints);
 	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
 	win.opengl_swap_interval(0);
 	return out;
@@ -942,7 +942,7 @@ fn WGPUSurface todo_fix_window_createSurface_WebGPU_Wayland(GfxWindow* window, W
 }
 
 // private
-fn void todo_fix_window_deleteContextPtr_OpenGL_Wayland(GfxWindow* win, TodoRenameGlContext* ctx) { todo_fix_window_deleteContextPtr_EGL(win, (TodoRenameEglContext*)ctx); win.src.ctx.native = null; }
+fn void todo_fix_window_deleteContextPtr_OpenGL_Wayland(GfxWindow* win, GfxGlContext* ctx) { todo_fix_window_deleteContextPtr_EGL(win, (GfxEglContext*)ctx); win.src.ctx.native = null; }
 
 // private
 fn GfxPoint todo_fix_window_fetchSize_Wayland(GfxWindow* win) => win.get_size();
@@ -974,7 +974,7 @@ fn bool _window_is_minimized_wayland(GfxWindow* win) => win.src.minimized;
 fn void todo_fix_window_makeCurrentContext_OpenGL_Wayland(GfxWindow* win) { todo_fix_window_makeCurrentContext_EGL(win); }
 
 // private
-fn void _window_maximize_wayland(GfxWindow* win) => todo_fix_toggleWaylandMaximized(win, true);
+fn void _window_maximize_wayland(GfxWindow* win) => _toggle_wayland_maximized(win, true);
 
 // private
 fn void todo_fix_window_minimizePlatform_Wayland(GfxWindow* win)
@@ -985,13 +985,10 @@ fn void todo_fix_window_minimizePlatform_Wayland(GfxWindow* win)
 	xdgToplevelSetMinimized(win.src.xdgToplevel);
 }
 
-// private
-fn void todo_fix_window_moveMouse_Wayland(GfxWindow* win, int x, int y)
+fn void _window_move_mouse_wayland(GfxWindow* win, GfxPoint where)
 {
-	if (_gfx_ctx.wpPointerWarp != null)
-	{
-		wpPointerWarpV1WarpPointer(_gfx_ctx.wpPointerWarp, win.src.surface, _gfx_ctx.wlPointer, wlFixedFromInt(x), wlFixedFromInt(y), _gfx_ctx.mouseEnterSerial);
-	}
+	if (!_gfx_ctx.wp_pointer_warp) return;
+	_wp_pointer_warp_v1_warp_pointer(_gfx_ctx.wp_pointer_warp, win.src.surface, _gfx_ctx.wlPointer, wlFixedFromInt(where.x), wlFixedFromInt(where.y), _gfx_ctx.mouseEnterSerial);
 }
 
 fn void _window_move_wayland(GfxWindow* win, GfxPoint where)
@@ -1002,25 +999,27 @@ fn void _window_move_wayland(GfxWindow* win, GfxPoint where)
 // private
 fn void todo_fix_window_raise_Wayland(GfxWindow* win) {}
 
-// private
 fn void _window_resize_wayland(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
 	if (_gfx_ctx.compositor != null)
 	{
-		xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, ...size);
-		if (win.src.ctx.egl != null && win.src.ctx.egl.eglWindow != null) wlEglWindowResize((WlEglWindow*)win.src.ctx.egl.eglWindow, ...size, 0, 0);
+		_xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, ...size);
+		if (win.src.ctx.egl && win.src.ctx.egl.egl_window) wl_egl_window_resize((WlEglWindow*)win.src.ctx.egl.egl_window, ...size, 0, 0);
 	}
 }
 
 // private
-fn void todo_fix_window_restorePlatform_Wayland(GfxWindow* win) => todo_fix_toggleWaylandMaximized(win, false);
+fn void _window_restore_wayland(GfxWindow* win)
+{
+	_toggle_wayland_maximized(win, false);
+}
 
-// private
+	// private
 fn void todo_fix_window_setAspectRatio_Wayland(GfxWindow* win, int w, int h)
 {
 	if (w == 0 && h == 0) return;
-	xdgToplevelSetMaxSize(win.src.xdgToplevel, w, h);
+	_xdg_toplevel_set_max_size(win.src.xdgToplevel, w, h);
 }
 
 // private
@@ -1054,7 +1053,7 @@ fn void _window_set_fullscreen_wayland(GfxWindow* win, bool fullscreen)
 
 fn void _window_set_max_size_wayland(GfxWindow* win, GfxSize size)
 {
-	xdgToplevelSetMaxSize(win.src.xdgToplevel, ...size);
+	_xdg_toplevel_set_max_size(win.src.xdgToplevel, ...size);
 }
 
 fn void _window_set_min_size_wayland(GfxWindow* win, GfxSize size)
@@ -1066,7 +1065,7 @@ fn void _window_set_min_size_wayland(GfxWindow* win, GfxSize size)
 fn void todo_fix_window_setMousePassthrough_Wayland(GfxWindow* win, bool passthrough) {}
 
 // private
-fn bool todo_fix_window_setMousePlatform_Wayland(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_wayland(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	GfxSurface* surface = (GfxSurface*)mouse;
 	win.src.usingCustomCursor = true;
@@ -1235,15 +1234,21 @@ fn void todo_fix_wlPointerEnter(void* data, WlProxy* pointer, uint serial, WlPro
 }
 
 // private
-fn void todo_fix_toggleWaylandMaximized(GfxWindow* win, bool maximized)
+fn void _toggle_wayland_maximized(GfxWindow* win, bool maximized)
 {
 	win.src.maximized = maximized;
-	if (maximized) { xdgToplevelSetMaximized(win.src.xdgToplevel); }
-	else { xdgToplevelUnsetMaximized(win.src.xdgToplevel); }
+	if (maximized)
+	{
+		xdgToplevelSetMaximized(win.src.xdgToplevel);
+	}
+	else
+	{
+		_xdg_toplevel_unset_maximized(win.src.xdgToplevel);
+	}
 }
 
 // public
-fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContext* ctx, TodoRenameGlHints* hints)
+fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hints)
 {
 	if (win == null || ctx == null || hints == null) return false;
 	if (@catch(_load_egl_native())) return false;
@@ -1284,9 +1289,9 @@ fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContex
 	ctx.ctx = todo_fix_eglCreateContext((EglDisplay)_gfx_ctx.egl_display, config, share, (EglInt*)&ctxAttribs);
 	if (ctx.ctx == null) return false;
 
-	WlEglWindow* eglWindow = wlEglWindowCreate(win.src.surface, win.width, win.height);
-	ctx.eglWindow = eglWindow;
-	ctx.surface = todo_fix_eglCreateWindowSurface((EglDisplay)_gfx_ctx.egl_display, config, (EglNativeWindowType)eglWindow, null);
+	WlEglWindow* egl_window = wl_egl_window_create(win.src.surface, win.width, win.height);
+	ctx.egl_window = egl_window;
+	ctx.surface = todo_fix_eglCreateWindowSurface((EglDisplay)_gfx_ctx.egl_display, config, (EglNativeWindowType)egl_window, null);
 	if (ctx.surface == null)
 	{
 		todo_fix_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
@@ -1300,15 +1305,15 @@ fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, TodoRenameEglContex
 }
 
 // public
-fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, TodoRenameEglContext* ctx)
+fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx)
 {
 	if (ctx == null || _gfx_ctx.egl_display == null) return;
 	if (ctx.surface != null) todo_fix_eglDestroySurface((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface);
 	if (ctx.ctx != null) todo_fix_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
-	if (ctx.eglWindow != null) wlEglWindowDestroy((WlEglWindow*)ctx.eglWindow);
+	if (ctx.egl_window != null) wl_egl_window_destroy((WlEglWindow*)ctx.egl_window);
 	ctx.surface = null;
 	ctx.ctx = null;
-	ctx.eglWindow = null;
+	ctx.egl_window = null;
 	if (win != null) win.src.ctx.egl = null;
 }
 
@@ -1464,7 +1469,7 @@ fn void todo_fix_wlGlobalRegistryHandler(void* data, WlProxy* registry, uint id,
 	}
 	else if (libc::strstr(iface, zxdgOutputManagerV1Interface.name) == iface) { info.xdgOutputManager = wlRegistryBind(registry, id, &zxdgOutputManagerV1Interface, 1); }
 	else if (libc::strstr(iface, "wl_output") == iface) { todo_fix_wlCreateOutputs(registry, id); }
-	else if (libc::strstr(iface, wpPointerWarpV1Interface.name) == iface) { info.wpPointerWarp = wlRegistryBind(registry, id, &wpPointerWarpV1Interface, 1); }
+	else if (libc::strstr(iface, wpPointerWarpV1Interface.name) == iface) { info.wp_pointer_warp = wlRegistryBind(registry, id, &wpPointerWarpV1Interface, 1); }
 	else if (libc::strstr(iface, "wl_data_device_manager") == iface) { info.dataDeviceManager = wlRegistryBind(registry, id, &wlDataDeviceManagerInterface, 1); }
 }
 
@@ -1806,7 +1811,7 @@ fn void todo_fix_wlXdgSurfaceConfigureHandler(void* data, WlProxy* xdgSurface, u
 
 	if (win.src.maximized != win.src.pendingMaximized)
 	{
-		todo_fix_toggleWaylandMaximized(win, win.src.pendingMaximized);
+		_toggle_wayland_maximized(win, win.src.pendingMaximized);
 		todo_fix_window_checkMode(win);
 	}
 

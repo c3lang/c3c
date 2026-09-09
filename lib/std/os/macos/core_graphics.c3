@@ -43,6 +43,9 @@ extern fn int CGDirectDisplayID.setDisplayMode(self, CGDisplayModeRef mode, void
 extern fn int CGDirectDisplayID.showCursor(self) @cname("CGDisplayShowCursor");
 extern fn int CGDirectDisplayID.hideCursor(self) @cname("CGDisplayHideCursor");
 
+extern fn int associateMouseAndMouseCursorPosition(bool connected) @cname("CGAssociateMouseAndMouseCursorPosition");
+extern fn int warpMouseCursorPosition(CGPoint p) @cname("CGWarpMouseCursorPosition");
+
 extern fn sz CGDisplayMode.getWidth(&self) @cname("CGDisplayModeGetWidth");
 extern fn sz CGDisplayMode.getHeight(&self) @cname("CGDisplayModeGetHeight");
 extern fn double CGDisplayMode.getRefreshRate(&self) @cname("CGDisplayModeGetRefreshRate");

@@ -1,6 +1,8 @@
 module std::gfx @feat(X11, X11_WAYLAND) @private;
 import std::math, std::collections::list, libc;
 
+
+
 fn void todo_fix_surface_freePtr_X11(GfxSurface* surface)
 {
 	if (!surface.data) return;
@@ -268,8 +270,8 @@ fn int todo_fix_initPlatform_X11(String class_name, GfxInitOption flags)
 	if (_gfx_ctx.display == null) return -1;
 
 	_gfx_ctx.netCurrentDesktop = xInternAtom(_gfx_ctx.display, "_NET_CURRENT_DESKTOP", 0);
-	_gfx_ctx.netWmStateMaximizedVert = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_MAXIMIZED_VERT", 0);
-	_gfx_ctx.netWmStateMaximizedHorz = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_MAXIMIZED_HORZ", 0);
+	_gfx_ctx.net_wm_state_maximized_vert = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_MAXIMIZED_VERT", 0);
+	_gfx_ctx.net_wm_state_maximized_horz = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_MAXIMIZED_HORZ", 0);
 	_gfx_ctx.netWmBypassCompositor = xInternAtom(_gfx_ctx.display, "_NET_WM_BYPASS_COMPOSITOR", 0);
 	_gfx_ctx.netWmState = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE", 0);
 	_gfx_ctx.motifWmHints = xInternAtom(_gfx_ctx.display, "_MOTIF_WM_HINTS", 0);
@@ -1027,7 +1029,7 @@ fn void todo_fix_window_closePlatform_X11(GfxWindow* win)
 }
 
 // private
-fn void todo_fix_window_deleteContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGlContext* ctx)
+fn void todo_fix_window_deleteContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext* ctx)
 {
 	if (win.src.ctx.native.window != win.src.window) todo_fix_glXDestroyWindow(_gfx_ctx.display, win.src.ctx.native.window);
 	todo_fix_glXDestroyContext(_gfx_ctx.display, ctx.ctx);
@@ -1072,7 +1074,7 @@ fn bool _window_is_maximized_x11(GfxWindow* win)
 	if (status != 0) { if (propData != null) xFree(propData); return false; }
 	for (CULong i = 0; i < nitems; i++)
 	{
-		if ((Atom)propData[i] == _gfx_ctx.netWmStateMaximizedVert || (Atom)propData[i] == _gfx_ctx.netWmStateMaximizedHorz)
+		if ((Atom)propData[i] == _gfx_ctx.net_wm_state_maximized_vert || (Atom)propData[i] == _gfx_ctx.net_wm_state_maximized_horz)
 		{
 			xFree(propData);
 			return true;
@@ -1109,7 +1111,7 @@ fn void todo_fix_window_makeCurrentContext_OpenGL_X11(GfxWindow* win)
 }
 
 // private
-fn void _window_maximize_x11(GfxWindow* win) => todo_fix_toggleXMaximized(win, true);
+fn void _window_maximize_x11(GfxWindow* win) => _toggle_x_maximized(win, true);
 
 // private
 fn void todo_fix_window_minimizePlatform_X11(GfxWindow* win)
@@ -1121,15 +1123,15 @@ fn void todo_fix_window_minimizePlatform_X11(GfxWindow* win)
 }
 
 // private
-fn void todo_fix_window_moveMouse_X11(GfxWindow* win, int x, int y)
+fn void _window_move_mouse_x11(GfxWindow* win, GfxPoint where)
 {
-	int rootX, rootY, winX, winY;
+	int rootX, rootY, win_x, win_y;
 	uint mask;
-	XWindow rootRet, childRet;
-	xQueryPointer(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &rootRet, &childRet, &rootX, &rootY, &winX, &winY, &mask);
-	win.internal.last_mouse = { x - win.x, y - win.y };
-	if (winX == x && winY == y) return;
-	xWarpPointer(_gfx_ctx.display, 0, win.src.window, 0, 0, 0, 0, x - win.x, y - win.y);
+	XWindow root_ret, child_ret;
+	xQueryPointer(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &root_ret, &child_ret, &rootX, &rootY, &win_x, &win_y, &mask);
+	win.internal.last_mouse = where - win.origin;
+	if (win_x == where.x && win_y == where.y) return;
+	xWarpPointer(_gfx_ctx.display, 0, win.src.window, 0, 0, 0, 0, ...(where - win.origin));
 }
 
 fn void _window_move_x11(GfxWindow* win, GfxPoint where)
@@ -1161,9 +1163,9 @@ fn void _window_resize_x11(GfxWindow* win, GfxSize size)
 }
 
 // private
-fn void todo_fix_window_restorePlatform_X11(GfxWindow* win)
+fn void _window_restore_x11(GfxWindow* win)
 {
-	todo_fix_toggleXMaximized(win, false);
+	_toggle_x_maximized(win, false);
 	xFlush(_gfx_ctx.display);
 }
 
@@ -1216,7 +1218,7 @@ fn void _window_set_min_size_x11(GfxWindow* win, GfxSize size)
 }
 
 // private
-fn bool todo_fix_window_setMousePlatform_X11(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_x11(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	xDefineCursor(_gfx_ctx.display, win.src.window, (XCursor)mouse);
 	return true;
@@ -1315,7 +1317,7 @@ fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* b
 }
 
 // private
-fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, TodoRenameGlContext* context, TodoRenameGlHints* hints)
+fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
 	win.src.ctx.native = context;
 	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
@@ -1623,9 +1625,7 @@ fn bool todo_fix_waitForShowEvent_X11(GfxWindow* win)
 	$endif
 }
 
-
-// private
-fn void todo_fix_toggleXMaximized(GfxWindow* win, bool maximized)
+fn void _toggle_x_maximized(GfxWindow* win, bool maximized)
 {
 	XEvent xev;
 	xev.type = 33; // ClientMessage
@@ -1633,8 +1633,8 @@ fn void todo_fix_toggleXMaximized(GfxWindow* win, bool maximized)
 	xev.xclient.message_type = _gfx_ctx.netWmState;
 	xev.xclient.format = 32;
 	xev.xclient.data.l[0] = (int)maximized;
-	xev.xclient.data.l[1] = (CLong)_gfx_ctx.netWmStateMaximizedHorz;
-	xev.xclient.data.l[2] = (CLong)_gfx_ctx.netWmStateMaximizedVert;
+	xev.xclient.data.l[1] = (CLong)_gfx_ctx.net_wm_state_maximized_horz;
+	xev.xclient.data.l[2] = (CLong)_gfx_ctx.net_wm_state_maximized_vert;
 	xSendEvent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 20) | (1 << 19), &xev);
 }
 
@@ -2222,6 +2222,26 @@ alias XWindow = CULong;
 alias XDrawable = CULong;
 alias XPointer = char*;
 alias RROutput = CULong;
+alias XCursor = CULong;
+alias XlibIC = void*;
+alias XlibIM = void*;
+typedef Screen = void;
+alias Colormap = CULong;
+alias Pixmap = CULong;
+alias GContext = void*;
+alias Atom = CULong;
+alias VisualID = CULong;
+alias KeySym = CULong;
+alias KeyCode = char;
+alias XlibId = CULong;
+alias Region = void*;
+alias XIMStyle = CULong;
+alias RRMode = CULong;
+alias RRCrtc = CULong;
+alias GLXContext = void*;
+alias GLXFBConfig = void*;
+alias GLXDrawable = CULong;
+alias GLXWindow = CULong;
 
 // X11 used functions
 extern fn XDisplay* xOpenDisplay(ZString name) @cname("XOpenDisplay");

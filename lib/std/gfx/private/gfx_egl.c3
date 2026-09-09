@@ -148,7 +148,7 @@ fn void todo_fix_window_makeCurrentContext_EGL(GfxWindow* win)
 		todo_fix_eglMakeCurrent((EglDisplay)_gfx_ctx.egl_display, null, null, null);
 		return;
 	}
-	TodoRenameEglContext* ctx = win.src.ctx.egl;
+	GfxEglContext* ctx = win.src.ctx.egl;
 	todo_fix_eglMakeCurrent((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface, (EglSurface)ctx.surface, (EglContext)ctx.ctx);
 }
 

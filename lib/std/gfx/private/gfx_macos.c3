@@ -1,5 +1,18 @@
 module std::gfx @feat(MACOS) @private @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
-import std::os::macos;
+import std::os::macos, std::math;
+
+struct GfxGlContext
+{
+	void* ctx;
+	void* format;
+}
+
+struct GfxEglContext
+{
+	void* ctx;
+	void* surface;
+	void* egl_window;
+}
 
 struct GfxNativeImage
 {
@@ -8,6 +21,17 @@ struct GfxNativeImage
 	void* native0;
 	void* native1;
 	void* native2;
+}
+
+struct GfxWindowSrc
+{
+	inline IntRect bounds;
+	void* window;
+	void* view;
+	void* mouse;
+	void* delegate;
+	GfxBackingContext ctx;
+	TodoRenameGfxContextType gfxType;
 }
 
 fn void? _load_opengl_native()
@@ -43,7 +67,26 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 	return surface;
 }
 
+fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
+{
+	cg::associateMouseAndMouseCursorPosition(!state);
+}
 
+fn void _window_maximize_native(GfxWindow* win)
+{
+	if (win.src.window) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "zoom:", null);
+}
+
+fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
+{
+	cg::warpMouseCursorPosition({ ...where });
+	if (win) win.internal.last_mouse = where;
+}
+
+fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
+{
+	_gfx_ctx.raw_mouse = state;
+}
 
 fn bool _window_is_floating_native(GfxWindow* win)
 {
@@ -165,6 +208,21 @@ fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setMaxSize:", (CGSize){ ...size });
 }
 
+fn void _window_restore_native(GfxWindow* win)
+{
+	if (!win.src.window) return;
+	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "deminiaturize:", null);
+	win.internal.flags.minimize = false;
+	win.internal.flags.maximize = false;
+}
+
+fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
+{
+	cg::mainDisplayID().showCursor();
+	objc_send((ObjcId)mouse, ObjcSendVoid, "set");
+	win.src.mouse = mouse;
+	return true;
+}
 
 fn void _window_show_native(GfxWindow* win)
 {

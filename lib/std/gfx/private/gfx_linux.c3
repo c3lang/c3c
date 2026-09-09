@@ -17,6 +17,64 @@ struct GfxNativeImage
 	}
 }
 
+struct GfxGlContext
+{
+	struct @feat(X11, X11_WAYLAND)
+	{
+		GLXContext ctx;
+		GLXWindow window;
+	}
+	struct @feat(X11_WAYLAND, WAYLAND)
+	{
+		GfxEglContext egl;
+	}
+}
+
+struct GfxEglContext
+{
+	void* ctx;
+	void* surface;
+	void* egl_window;
+}
+
+struct GfxWindowSrc
+{
+	inline IntRect bounds;
+	GfxBackingContext ctx;
+	TodoRenameGfxContextType gfxType;
+	struct @feat(X11, X11_WAYLAND)
+	{
+		XWindow window;
+		XWindow parent;
+		GContext gc;
+		XlibIC ic;
+		ulong flashEnd;
+		long counter_value;
+		XSyncCounter counter;
+	}
+	struct @feat(X11_WAYLAND, WAYLAND)
+	{
+		WlProxy* surface;
+		WlProxy* xdgSurface;
+		WlProxy* xdgToplevel;
+		WlProxy* decoration;
+		WlProxy* lockedPointer;
+		WlProxy* icon;
+		WlProxy* dataSource;
+		WlProxy* customCursorSurface;
+		GfxMonitorNode* activeMonitor;
+		uint decorationMode;
+		bool pendingActivated;
+		bool activated;
+		bool resizing;
+		bool pendingMaximized;
+		bool maximized;
+		bool minimized;
+		bool configured;
+		bool usingCustomCursor;
+	}
+}
+
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
@@ -455,7 +513,7 @@ fn void todo_fix_window_closePlatform(GfxWindow* win)
 }
 
 // public
-fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* context, TodoRenameGlHints* hints)
+fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
 	$switch:
 		$case WAYLAND_ONLY:
@@ -489,7 +547,7 @@ fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInsta
 }
 
 // public
-fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx)
+fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx)
 {
 	$switch:
 		$case WAYLAND_ONLY:
@@ -673,20 +731,19 @@ fn void todo_fix_window_minimizePlatform(GfxWindow* win)
 	$endswitch
 }
 
-// public
-fn void todo_fix_window_moveMouse(GfxWindow* win, int x, int y)
+fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_moveMouse_Wayland(win, x, y);
+			return _window_move_mouse_wayland(win, where);
 		$case X11_ONLY:
-			return todo_fix_window_moveMouse_X11(win, x, y);
+			return _window_move_mouse_x11(win, where);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_moveMouse_Wayland(win, x, y);
+				return _window_move_mouse_wayland(win, where);
 			}
-			return todo_fix_window_moveMouse_X11(win, x, y);
+			return _window_move_mouse_x11(win, where);
 	$endswitch
 }
 
@@ -746,15 +803,15 @@ fn void _window_restore_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_restorePlatform_Wayland(win);
+			return _window_restore_wayland(win);
 		$case X11_ONLY:
-			return todo_fix_window_restorePlatform_X11(win);
+			return _window_restore_x11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_restorePlatform_Wayland(win);
+				return _window_restore_wayland(win);
 			}
-			return todo_fix_window_restorePlatform_X11(win);
+			return _window_restore_x11(win);
 	$endswitch
 }
 
@@ -878,19 +935,19 @@ fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough)
 }
 
 // public
-fn bool todo_fix_window_setMousePlatform(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_setMousePlatform_Wayland(win, mouse);
+			return _window_set_mouse_wayland(win, mouse);
 		$case X11_ONLY:
-			return todo_fix_window_setMousePlatform_X11(win, mouse);
+			return _window_set_mouse_x11(win, mouse);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_setMousePlatform_Wayland(win, mouse);
+				return _window_set_mouse_wayland(win, mouse);
 			}
-			return todo_fix_window_setMousePlatform_X11(win, mouse);
+			return _window_set_mouse_x11(win, mouse);
 	$endswitch
 }
 

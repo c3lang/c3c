@@ -61,7 +61,7 @@ struct GfxKeyState
 struct GfxWindow
 {
 	inline IntRect bounds;
-	TodoRenameWindowSrc src;
+	GfxWindowSrc src;
 	GfxWindowInternal internal;
 	void* user_ptr;
 }
@@ -119,6 +119,12 @@ struct GfxWindowState
 	GfxWindow* win;
 	GfxWindow* win_leave;
 	sz dataLength;
+}
+
+union GfxBackingContext
+{
+	GfxGlContext* native;
+	GfxEglContext* egl;
 }
 
 struct GfxMonitors
@@ -217,7 +223,7 @@ struct GfxContext
 		WlProxy* relativePointer;
 		WlProxy* iconManager;
 		WlProxy* xdgOutputManager;
-		WlProxy* wpPointerWarp;
+		WlProxy* wp_pointer_warp;
 		WlProxy* dataDeviceManager;
 		WlProxy* dataDevice;
 		WlCursorTheme* wlCursorTheme;
@@ -247,7 +253,7 @@ struct GfxContext
 		int x11Format;
 		GfxDataTransferType x11TransferType;
 		XErrorEvent* x11Error;
-		Atom netCurrentDesktop, netWmStateMaximizedVert, netWmStateMaximizedHorz, netWmBypassCompositor;
+		Atom netCurrentDesktop, net_wm_state_maximized_vert, net_wm_state_maximized_horz, netWmBypassCompositor;
 		Atom netWmState, motifWmHints, wmDeleteWindow, netWmSyncRequestCounter, netWmSyncRequest;
 		Atom atomPair, multiple, targets, saveTargets, utf8String;
 		Atom xdndTypeList, xdndSelection, xdndAware, xdndEnter, xdndPosition, xdndStatus, xdndLeave, xdndDrop, xdndFinished, xdndActionCopy;
@@ -901,7 +907,7 @@ fn void GfxWindow.set_should_close(&win, bool should_close)
 	_window_close_callback(win);
 }
 
-fn TodoRenameWindowSrc* GfxWindow.get_src(&self)
+fn GfxWindowSrc* GfxWindow.get_src(&self)
 {
 	return &self.src;
 }
@@ -1193,7 +1199,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 		case cmpFlags.minimize: win.restore();
 	}
 	if (flags.center) todo_fix_window_center(win);
-	if (flags.center_cursor) todo_fix_window_moveMouse(win, win.x + (win.width / 2), win.y + (win.height / 2));
+	if (flags.center_cursor) _window_move_mouse(win, win.origin + win.size / 2);
 	switch
 	{
 		case flags.fullscreen: _window_set_fullscreen_native(win, true);
@@ -1998,7 +2004,7 @@ fn bool GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
 fn bool GfxWindow.set_mouse(&self, TodoRenameMouse* mouse)
 {
 	if (mouse != _gfx_ctx.hiddenMouse) self.internal.mouse = mouse;
-	return todo_fix_window_setMousePlatform(self, mouse);
+	return _window_set_mouse_native(self, mouse);
 }
 
 

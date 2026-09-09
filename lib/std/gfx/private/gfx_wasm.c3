@@ -1,6 +1,30 @@
 module std::gfx @feat(WASM) @private;
 import std::math;
 
+struct GfxGlContext
+{
+	void* ctx;
+	void* format;
+}
+
+struct GfxEglContext
+{
+	void* ctx;
+	void* surface;
+	void* egl_window;
+}
+
+struct GfxWindowSrc
+{
+	inline IntRect bounds;
+	void* window;
+	void* view;
+	void* mouse;
+	void* delegate;
+	GfxBackingContext ctx;
+	TodoRenameGfxContextType gfxType;
+}
+
 fn void _window_show_native(GfxWindow* win) {}
 fn bool _window_is_hidden_native(GfxWindow* win) => false;
 fn bool _window_is_minimized_native(GfxWindow* win) => false;
@@ -15,6 +39,7 @@ fn bool _window_is_floating_native(GfxWindow* win) => false;
 fn void _window_set_min_size_native(GfxWindow* win, GfxSize size) {}
 fn void _window_focus_native(GfxWindow* win) {}
 fn void _window_set_max_size_native(GfxWindow* win, GfxSize size) {}
+fn void _window_move_mouse(GfxWindow* win, GfxPoint where) {}
 
 fn void _window_maximize_native(GfxWindow* win)
 {

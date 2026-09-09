@@ -1,5 +1,39 @@
 module std::gfx @feat(WIN32) @private;
-import std::os::win32, std::collections::list;
+import std::os::win32, std::collections::list, std::math;
+
+struct GfxGlContext
+{
+	void* ctx; // HGLRC
+}
+
+struct GfxEglContext
+{
+	void* ctx;
+	void* surface;
+	void* egl_window;
+}
+
+struct GfxWindowSrc
+{
+	inline IntRect bounds;
+	void* window; // HWND
+	void* hdc; // HDC
+	void* hIconSmall; // HICON
+	void* hIconBig; // HICON
+	GfxPoint min_size;
+	GfxPoint max_size;
+	int aspectRatioW, aspectRatioH;
+	bool actionFrame;
+	ushort highSurrogate;
+	GfxBackingContext ctx;
+	TodoRenameGfxContextType gfxType;
+}
+
+fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
+{
+	win.internal.last_mouse = where - win.origin;
+	setCursorPos(...where);
+}
 
 fn void _window_show_native(GfxWindow* win)
 {

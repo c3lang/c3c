@@ -1,6 +1,42 @@
 module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
 import std::os::macos;
 
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
+const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
+
+const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
+const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
+const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
+const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
+const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
+
+const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
+const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
+
+struct GfxGlHints
+{
+	int stencil;
+	int samples;
+	int stereo;
+	int auxBuffers;
+	int doubleBuffer;
+	int red, green, blue, alpha;
+	int depth;
+	int accumRed, accumGreen, accumBlue, accumAlpha;
+	bool sRGB;
+	bool robustness;
+	bool debug;
+	bool noError;
+	TodoRenameGlReleaseBehavior releaseBehavior;
+	TodoRenameGlProfile profile;
+	int major, minor;
+	GfxGlContext* share;
+	GfxEglContext* shareEGL;
+	TodoRenameGlRenderer renderer;
+}
+
+
+
 fn void? _load_opengl_native() @private @weak => NOT_IMPLEMENTED~;
 fn void _unload_opengl_native() @private @weak { }
 
@@ -59,27 +95,27 @@ module std::gfx @feat(WASM);
 
 module std::gfx @feat(WASM, MACOS, WIN32);
 
-TodoRenameGlHints todo_fix_global_hints_open_gl_src = {
+GfxGlHints todo_fix_global_hints_open_gl_src = {
 	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
 	false, false, false, false, TODO_RENAME_GL_RELEASE_NONE,
 	TODO_RENAME_GL_CORE, 1, 0, null, null, TODO_RENAME_GL_ACCELERATED
 };
-TodoRenameGlHints* todo_fix_global_hints_open_gl = &todo_fix_global_hints_open_gl_src;
+GfxGlHints* todo_fix_global_hints_open_gl = &todo_fix_global_hints_open_gl_src;
 
 // public
-fn TodoRenameGlHints* todo_fix_getGlobalHints_OpenGL()
+fn GfxGlHints* todo_fix_getGlobalHints_OpenGL()
 {
 	return todo_fix_global_hints_open_gl;
 }
 
 // public
-fn void todo_fix_setGlobalHints_OpenGL(TodoRenameGlHints* hints)
+fn void todo_fix_setGlobalHints_OpenGL(GfxGlHints* hints)
 {
 	todo_fix_global_hints_open_gl = hints;
 }
 
 // public
-fn void todo_fix_window_deleteContext_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx)
+fn void todo_fix_window_deleteContext_OpenGL(GfxWindow* win, GfxGlContext* ctx)
 {
 	todo_fix_window_deleteContextPtr_OpenGL(win, ctx);
 	if (win && (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW)) free(ctx);
@@ -87,9 +123,9 @@ fn void todo_fix_window_deleteContext_OpenGL(GfxWindow* win, TodoRenameGlContext
 
 
 // public
-fn TodoRenameGlContext* todo_fix_window_createContext_OpenGL(GfxWindow* win, TodoRenameGlHints* hints)
+fn GfxGlContext* todo_fix_window_createContext_OpenGL(GfxWindow* win, GfxGlHints* hints)
 {
-	TodoRenameGlContext* ctx = mem::new(TodoRenameGlContext);
+	GfxGlContext* ctx = mem::new(GfxGlContext);
 	if (!todo_fix_window_createContextPtr_OpenGL(win, ctx, hints))
 	{
 		free(ctx);

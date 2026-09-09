@@ -10,27 +10,7 @@ struct Timespec { CLong tv_sec; CLong tv_nsec; }
 
 
 // ---- Xlib core types (ABI-compatible aliases; XDisplay/XVisual/Screen stay opaque) ----
-typedef Screen = void;
-alias Colormap = CULong;
-alias XCursor = CULong;
-alias Pixmap = CULong;
-alias GContext = void*;
-alias Atom = CULong;
-alias VisualID = CULong;
-alias KeySym = CULong;
-alias KeyCode = char;
-alias Time_t = CULong;
-alias XlibId = CULong;
-alias Region = void*;
-alias XlibIC = void*;
-alias XlibIM = void*;
-alias XIMStyle = CULong;
-alias RRMode = CULong;
-alias RRCrtc = CULong;
-alias GLXContext = void*;
-alias GLXFBConfig = void*;
-alias GLXDrawable = CULong;
-alias GLXWindow = CULong;
+
 
 const int X_TRUE = 1;
 const int X_FALSE = 0;
@@ -108,87 +88,6 @@ const char MOD3_MASK = 1 << 5;
 macro sz ximaskLen(event) => (sz)((event >> 3) + 1);
 macro void xiSetMask(char* mask, event) { mask[(sz)(event / 8)] |= (char)(1 << (event % 8)); }
 macro bool ximaskIsSet(char* mask, event) => (mask[(sz)(event / 8)] & (char)(1 << (event % 8))) != 0;
-
-
-struct TodoRenameGlContext { GLXContext ctx; GLXWindow window; }
-struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
-
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
-
-const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
-const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
-const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
-const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
-const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
-
-const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
-const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
-
-struct TodoRenameGlHints
-{
-	int stencil;
-	int samples;
-	int stereo;
-	int auxBuffers;
-	int doubleBuffer;
-	int red, green, blue, alpha;
-	int depth;
-	int accumRed, accumGreen, accumBlue, accumAlpha;
-	bool sRGB;
-	bool robustness;
-	bool debug;
-	bool noError;
-	TodoRenameGlReleaseBehavior releaseBehavior;
-	TodoRenameGlProfile profile;
-	int major, minor;
-	TodoRenameGlContext* share;
-	TodoRenameEglContext* shareEGL;
-	TodoRenameGlRenderer renderer;
-}
-
-union TodoRenameGfxContext
-{
-	TodoRenameGlContext* native;
-	TodoRenameEglContext* egl;
-}
-
-
-
-struct TodoRenameWindowSrc
-{
-	inline IntRect bounds;
-	XWindow window;
-	XWindow parent;
-	GContext gc;
-	XlibIC ic;
-	ulong flashEnd;
-	long counter_value;
-	XSyncCounter counter;
-	TodoRenameGfxContext ctx;
-	TodoRenameGfxContextType gfxType;
-	WlProxy* surface;
-	WlProxy* xdgSurface;
-	WlProxy* xdgToplevel;
-	WlProxy* decoration;
-	WlProxy* lockedPointer;
-	WlProxy* icon;
-	WlProxy* dataSource;
-	WlProxy* customCursorSurface;
-	GfxMonitorNode* activeMonitor;
-	uint decorationMode;
-	bool pendingActivated;
-	bool activated;
-	bool resizing;
-	bool pendingMaximized;
-	bool maximized;
-	bool minimized;
-	bool configured;
-	bool usingCustomCursor;
-}
-
-
-
 
 
 
@@ -369,8 +268,8 @@ fn void? todo_fix_createWindowPlatform_Wayland(String name, GfxWindowFlags flags
 	xdgWmBaseSetUserData(_gfx_ctx.xdgWmBase, win);
 
 	win.src.xdgToplevel = xdgSurfaceGetToplevel(win.src.xdgSurface);
-	xdgToplevelSetAppId(win.src.xdgToplevel, name.zstr_copy(tmem));
-	xdgSurfaceSetWindowGeometry(win.src.xdgSurface, 0, 0, win.width, win.height);
+	_xdg_toplevel_set_app_id(win.src.xdgToplevel, name.zstr_copy(tmem));
+	_xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, win.width, win.height);
 
 	if (!(win.internal.flags.transparent)) todo_fix_wlSetOpaque(win);
 

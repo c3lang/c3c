@@ -3,48 +3,8 @@ import std::math;
 extern fn char* strstr(char* haystack, char* needle);
 
 
-struct TodoRenameGlContext { void* ctx; void* format; }
-struct TodoRenameEglContext { void* ctx; void* surface; void* eglWindow; }
 
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
-const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
 
-const TodoRenameGlProfile TODO_RENAME_GL_CORE = 0;
-const TodoRenameGlProfile TODO_RENAME_GL_FORWARD_COMPATIBILITY = 1;
-const TodoRenameGlProfile TODO_RENAME_GL_COMPATIBILITY = 2;
-const TodoRenameGlProfile TODO_RENAME_GL_ES = 3;
-const TodoRenameGlProfile TODO_RENAME_GL_WEB = 4;
-
-const TodoRenameGlRenderer TODO_RENAME_GL_ACCELERATED = 0;
-const TodoRenameGlRenderer TODO_RENAME_GL_SOFTWARE = 1;
-
-struct TodoRenameGlHints
-{
-	int stencil;
-	int samples;
-	int stereo;
-	int auxBuffers;
-	int doubleBuffer;
-	int red, green, blue, alpha;
-	int depth;
-	int accumRed, accumGreen, accumBlue, accumAlpha;
-	bool sRGB;
-	bool robustness;
-	bool debug;
-	bool noError;
-	TodoRenameGlReleaseBehavior releaseBehavior;
-	TodoRenameGlProfile profile;
-	int major, minor;
-	TodoRenameGlContext* share;
-	TodoRenameEglContext* shareEGL;
-	TodoRenameGlRenderer renderer;
-}
-
-union TodoRenameGfxContext
-{
-	TodoRenameGlContext* native;
-	TodoRenameEglContext* egl;
-}
 
 
 struct GfxNativeImage
@@ -56,16 +16,7 @@ struct GfxNativeImage
 	void* native2;
 }
 
-struct TodoRenameWindowSrc
-{
-	inline IntRect bounds;
-	void* window;
-	void* view;
-	void* mouse;
-	void* delegate;
-	TodoRenameGfxContext ctx;
-	TodoRenameGfxContextType gfxType;
-}
+
 
 // public
 fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
@@ -138,7 +89,7 @@ extern fn void rgfwJsExitPointerLock() @wasm("env", "emscripten_exit_pointer_loc
 extern fn void rgfwJsRequestFullscreen() @wasm("env", "emscripten_request_fullscreen");
 extern fn void rgfwJsExitFullscreen() @wasm("env", "emscripten_exit_fullscreen");
 extern fn void rgfwJsSetOpacity(float opacity) @wasm("env", "emscripten_set_opacity");
-extern fn int rgfwJsWebglCreateContext(TodoRenameGlHints* hints) @wasm("env", "emscripten_webgl_create_context");
+extern fn int rgfwJsWebglCreateContext(GfxGlHints* hints) @wasm("env", "emscripten_webgl_create_context");
 extern fn void rgfwJsWebglDestroyContext(int ctx) @wasm("env", "emscripten_webgl_destroy_context");
 extern fn void rgfwJsWebglMakeCurrent(int ctx) @wasm("env", "emscripten_webgl_make_current");
 extern fn void rgfwJsWebglCommitFrame() @wasm("env", "emscripten_webgl_commit_frame");
@@ -472,12 +423,11 @@ fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 }
 
 // public
-fn void todo_fix_window_moveMouse(GfxWindow* win, int x, int y) {}
 // public
 fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format) => null;
 
 // public
-fn bool todo_fix_window_setMousePlatform(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	ZString name = (ZString)mouse;
 	rgfwJsSetCursor(name, name.len());
@@ -506,7 +456,7 @@ fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffe
 }
 
 // public
-fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx, TodoRenameGlHints* hints)
+fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
 	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
@@ -524,7 +474,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, TodoRenameGlCont
 }
 
 // public
-fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, TodoRenameGlContext* ctx)
+fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx)
 {
 	rgfwJsWebglDestroyContext((int)(uptr)ctx.ctx);
 	win.src.ctx.native.ctx = null;
