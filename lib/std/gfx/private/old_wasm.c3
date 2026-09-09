@@ -434,7 +434,6 @@ fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
 }
 
 // public
-fn void todo_fix_freeMouse(TodoRenameMouse* mouse) {}
 
 
 // public

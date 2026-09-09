@@ -841,7 +841,7 @@ fn void finalize()
 	if (!_gfx_ctx.initialized) return;
 	foreach (icon : GfxMouseIcon::values)
 	{
-		if (_gfx_ctx.standardMice[icon.ordinal]) todo_fix_freeMouse(_gfx_ctx.standardMice[icon.ordinal]);
+		if (_gfx_ctx.standardMice[icon.ordinal]) _free_mouse(_gfx_ctx.standardMice[icon.ordinal]);
 	}
 	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
@@ -2007,6 +2007,10 @@ fn bool GfxWindow.set_mouse(&self, TodoRenameMouse* mouse)
 	return _window_set_mouse_native(self, mouse);
 }
 
+fn void TodoRenameMouse.free_mouse(&self)
+{
+	return _free_mouse(self);
+}
 
 fn void set_raw_mouse_mode(bool enabled)
 {

@@ -228,19 +228,19 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 }
 
 // public
-fn void todo_fix_freeMouse(TodoRenameMouse* mouse)
+fn void _free_mouse(TodoRenameMouse* mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_freeMouse_Wayland(mouse);
+			return _free_mouse_wayland(mouse);
 		$case X11_ONLY:
-			return todo_fix_freeMouse_X11(mouse);
+			return _free_mouse_x11(mouse);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_freeMouse_Wayland(mouse);
+				return _free_mouse_wayland(mouse);
 			}
-			return todo_fix_freeMouse_X11(mouse);
+			return _free_mouse_x11(mouse);
 	$endswitch
 }
 

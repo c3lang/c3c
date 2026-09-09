@@ -223,7 +223,7 @@ fn void todo_fix_deinitPlatform_X11()
 	}
 	if (_gfx_ctx.im != null) { xCloseIM(_gfx_ctx.im); _gfx_ctx.im = null; }
 	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
-	if (_gfx_ctx.hiddenMouse != null) { todo_fix_freeMouse(_gfx_ctx.hiddenMouse); _gfx_ctx.hiddenMouse = null; }
+	if (_gfx_ctx.hiddenMouse != null) { _free_mouse(_gfx_ctx.hiddenMouse); _gfx_ctx.hiddenMouse = null; }
 	if (_gfx_ctx.helper_window != 0) xDestroyWindow(_gfx_ctx.display, _gfx_ctx.helper_window);
 	if (_gfx_ctx.display != null) xCloseDisplay(_gfx_ctx.display);
 	_gfx_ctx.display = null;
@@ -240,8 +240,10 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL_X11(ZString extension, sz len
 	return extensions && todo_fix_extensionSupportedStr(extensions, extension, len);
 }
 
-// private
-fn void todo_fix_freeMouse_X11(TodoRenameMouse* mouse) { xFreeCursor(_gfx_ctx.display, (XCursor)mouse); }
+fn void _free_mouse_x11(TodoRenameMouse* mouse)
+{
+	xFreeCursor(_gfx_ctx.display, (XCursor)mouse);
+}
 
 // private
 fn void* todo_fix_getCurrentContext_OpenGL_X11() => todo_fix_glXGetCurrentContext();

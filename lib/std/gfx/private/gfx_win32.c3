@@ -149,6 +149,11 @@ fn GfxPoint _get_global_mouse_native()
 	return { ...p };
 }
 
+fn void _free_mouse(TodoRenameMouse* mouse)
+{
+	win32::destroyCursor(mouse);
+}
+
 // --- Helpers
 
 
@@ -207,6 +212,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 	return surface;
 }
 
+const Char16[] RENAME_PROP_NAME = {'C', '3', 'G', 'F', 'X', 0};
 
 
 module std::gfx @feat(WIN32) @link("user32", "gdi32", "shell32", "advapi32", "dwmapi", "opengl32", "winmm");

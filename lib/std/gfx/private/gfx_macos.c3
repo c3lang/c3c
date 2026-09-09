@@ -151,6 +151,11 @@ fn bool _window_is_hidden_native(GfxWindow* win) @private
 	return win.internal.flags.hide;
 }
 
+fn void _free_mouse(TodoRenameMouse* mouse)
+{
+	objc::release(mouse);
+}
+
 fn void todo_fix_pollMonitors()
 {
 	if (_gfx_ctx.monitors.count != 0) free_monitors();

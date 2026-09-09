@@ -1,4 +1,4 @@
-module std::os::win32 @feat(WIN32);
+module std::os::win32 @link("user32") @feat(WIN32);
 
 const CCHDEVICENAME = 32;
 alias Win32_WNDPROC = fn Win32_LRESULT(Win32_HWND, Win32_UINT, Win32_WPARAM, Win32_LPARAM);
@@ -232,10 +232,62 @@ const Win32_UINT MB_ICONERROR = MB_ICONHAND;
 const Win32_UINT MB_ICONINFORMATION = MB_ICONASTERISK;
 const Win32_UINT MB_ICONSTOP = MB_ICONHAND;
 
-const WM_DISPLAYCHANGE = 0x007E;
-const WM_SETICON = 0x0080;
+const WM_ACTIVATEAPP                 = 0x001C;
+const WM_CAPTURECHANGED              = 0x0215;
+const WM_CHAR                        = 0x0102;
+const WM_CLOSE                       = 0x0010;
+const WM_CREATE                      = 0x0001;
+const WM_DISPLAYCHANGE               = 0x007E;
+const WM_DPICHANGED                  = 0x02E0;
+const WM_DROPFILES                   = 0x0233;
+const WM_DWMCOLORIZATIONCOLORCHANGED = 0x0320;
+const WM_DWMCOMPOSITIONCHANGED       = 0x031E;
+const WM_ENTERSIZEMOVE               = 0x0231;
+const WM_EXITSIZEMOVE                = 0x0232;
+const WM_GETMINMAXINFO               = 0x0024;
+const WM_INPUT                       = 0x00FF;
+const WM_KEYDOWN                     = 0x0100;
+const WM_KEYUP                       = 0x0101;
+const WM_LBUTTONDOWN                 = 0x0201;
+const WM_LBUTTONUP                   = 0x0202;
+const WM_MBUTTONDOWN                 = 0x0207;
+const WM_MBUTTONUP                   = 0x0208;
+const WM_MOUSEACTIVATE               = 0x0021;
+const WM_MOUSEHWHEEL                 = 0x020E;
+const WM_MOUSELEAVE                  = 0x02A3;
+const WM_MOUSEMOVE                   = 0x0200;
+const WM_MOUSEWHEEL                  = 0x020A;
+const WM_MOVE                        = 0x0003;
+const WM_MOVING                      = 0x0216;
+const WM_NCHITTEST                   = 0x0084;
+const WM_NCLBUTTONDOWN               = 0x00A1;
+const WM_PAINT                       = 0x000F;
+const WM_QUIT                        = 0x0012;
+const WM_RBUTTONDOWN                 = 0x0204;
+const WM_RBUTTONUP                   = 0x0205;
+const WM_SETICON                     = 0x0080;
+const WM_SHOWWINDOW                  = 0x0018;
+const WM_SIZE                        = 0x0005;
+const WM_SIZING                      = 0x0214;
+const WM_SYSCHAR                     = 0x0106;
+const WM_SYSKEYDOWN                  = 0x0104;
+const WM_SYSKEYUP                    = 0x0105;
+const WM_TIMER                       = 0x0113;
+const WM_UNICHAR                     = 0x0109;
+const WM_XBUTTONDOWN                 = 0x020B;
+const WM_XBUTTONUP                   = 0x020C;
 
 const HTCAPTION = 2;
+const HTCLIENT = 1;
+
+const WMSZ_BOTTOM = 6;
+const WMSZ_BOTTOMLEFT = 7;
+const WMSZ_BOTTOMRIGHT = 8;
+const WMSZ_LEFT = 1;
+const WMSZ_RIGHT = 2;
+const WMSZ_TOP = 3;
+const WMSZ_TOPLEFT = 4;
+const WMSZ_TOPRIGHT = 5;
 
 const GWL_WNDPROC @feat(ARCH_32_BIT) = -4;
 const GWL_HINSTANCE @feat(ARCH_32_BIT) = -6;
@@ -250,6 +302,18 @@ const GWLP_HWNDPARENT = -8;
 const GWLP_USERDATA = -21;
 const GWLP_ID = -12;
 
+const GCW_ATOM = -32;
+const GCL_CBCLSEXTRA = -20;
+const GCL_CBWNDEXTRA = -18;
+const GCLP_HBRBACKGROUND = -10;
+const GCLP_HCURSOR = -12;
+const GCLP_HICON = -14;
+const GCLP_HICONSM = -34;
+const GCLP_HMODULE = -16;
+const GCLP_MENUNAME = -8;
+const GCL_STYLE = -26;
+const GCLP_WNDPROC = -24;
+
 extern fn Win32_HDC beginPaint(Win32_HWND, Win32_LPPAINTSTRUCT) @cname("BeginPaint");
 extern fn Win32_LRESULT callWindowProcW(Win32_WNDPROC lpPrevWndFunc, Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("CallWindowProcW");
 extern fn Win32_HWND createWindowExW(Win32_DWORD, Win32_LPCWSTR, Win32_LPCWSTR, Win32_DWORD, CInt, CInt, CInt, CInt, Win32_HWND, Win32_HMENU, Win32_HINSTANCE, Win32_LPVOID) @cname("CreateWindowExW");
@@ -262,6 +326,8 @@ extern fn Win32_LONG_PTR getWindowLongPtrW(Win32_HWND hWnd, CInt nIndex) @cname(
 extern fn Win32_LONG getWindowLongW(Win32_HWND hWnd, CInt nIndex) @cname("GetWindowLongW");
 extern fn Win32_HCURSOR loadCursorW(Win32_HINSTANCE instance, Win32_LPCWSTR cursorName) @cname("LoadCursorW");
 extern fn Win32_HICON loadIconW(Win32_HINSTANCE instance, Win32_LPCWSTR iconName) @cname("LoadIconW");
+extern fn Win32_BOOL destroyCursor(Win32_HCURSOR hCursor) @cname("DestroyCursor");
+
 extern fn int messageBoxW(Win32_HWND hWnd, Win32_LPCWSTR lpText, Win32_LPCWSTR lpCaption, Win32_UINT uType) @cname("MessageBoxW");
 extern fn void postQuitMessage(CInt) @cname("PostQuitMessage");
 extern fn Win32_LRESULT sendMessageA(Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("SendMessageA");
@@ -272,6 +338,7 @@ extern fn Win32_BOOL showWindow(Win32_HWND, CInt) @cname("ShowWindow");
 extern fn Win32_BOOL translateMessage(Win32_MSG* lpMsg) @cname("TranslateMessage");
 extern fn Win32_BOOL updateWindow(Win32_HWND) @cname("UpdateWindow");
 extern fn Win32_BOOL enumDisplayMonitors(Win32_HDC hdc, Win32_LPCRECT lprcClip, Win32_MONITORENUMPROC* lpfnEnum, Win32_LPARAM dwData) @cname("EnumDisplayMonitors");
+extern fn Win32_BOOL setProcessDPIAware() @cname("SetProcessDPIAware");
 
 extern fn Win32_BOOL getMonitorInfoA(Win32_HMONITOR hMonitor, Win32_LPMONITORINFO lpmi) @cname("GetMonitorInfoA");
 extern fn Win32_BOOL getMonitorInfoW(Win32_HMONITOR hMonitor, Win32_LPMONITORINFO lpmi) @cname("GetMonitorInfoW");
@@ -280,6 +347,10 @@ extern fn Win32_BOOL enumDisplaySettingsW(Win32_LPCWSTR lpszDeviceName, Win32_DW
 extern fn Win32_BOOL changeDisplaySettingsExW(Win32_LPCWSTR lpszDeviceName, Win32_DEVMODEW* lpDevMode, Win32_HWND hwnd, Win32_DWORD dwflags, Win32_LPVOID lParam) @cname("ChangeDisplaySettingsExW");
 extern fn Win32_ATOM registerClassW(Win32_WNDCLASSW* lpWndClass) @cname("RegisterClassW");
 extern fn Win32_BOOL unregisterClassW(Win32_LPCWSTR lpClassName, Win32_HINSTANCE hInstance) @cname("UnregisterClassW");
+
+extern fn void* setPropW(Win32_HWND hWnd, Win32_LPCWSTR lpString, Win32_HANDLE hData) @cname("SetPropW");
+extern fn void* getPropW(Win32_HWND hWnd, Win32_LPCWSTR lpString) @cname("GetPropW");
+extern fn void* removePropW(Win32_HWND hWnd, Win32_LPCWSTR lpString) @cname("RemovePropW");
 
 macro getWindowLongPtr(Win32_HWND hWnd, CInt nIndex)
 {

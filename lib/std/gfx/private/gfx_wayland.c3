@@ -612,7 +612,7 @@ fn void todo_fix_deinitPlatform_Wayland()
 	if (_gfx_ctx.dataDevice != null) wlDataDeviceDestroy(_gfx_ctx.dataDevice);
 	if (_gfx_ctx.wlCursorTheme != null) wlCursorThemeDestroy(_gfx_ctx.wlCursorTheme);
 	if (_gfx_ctx.wp_pointer_warp != null) wpPointerWarpV1Destroy(_gfx_ctx.wp_pointer_warp);
-	if (_gfx_ctx.hiddenMouse != null) todo_fix_freeMouse(_gfx_ctx.hiddenMouse);
+	if (_gfx_ctx.hiddenMouse != null) _free_mouse(_gfx_ctx.hiddenMouse);
 	if (_gfx_ctx.cursorSurface != null) wlSurfaceDestroy(_gfx_ctx.cursorSurface);
 	if (_gfx_ctx.shm != null) wlShmDestroy(_gfx_ctx.shm);
 	if (_gfx_ctx.seat != null) wlSeatRelease(_gfx_ctx.seat);
@@ -625,11 +625,10 @@ fn void todo_fix_deinitPlatform_Wayland()
 fn bool todo_fix_extensionSupportedPlatform_OpenGL_Wayland(ZString extension, sz len) => todo_fix_extensionSupportedPlatform_EGL(extension, len);
 
 // private
-fn void todo_fix_freeMouse_Wayland(TodoRenameMouse* mouse)
+fn void _free_mouse_wayland(TodoRenameMouse* mouse)
 {
-	if (mouse == null) return;
 	GfxSurface* surface = (GfxSurface*)mouse;
-	if (surface.native.buffer != null && surface.native.wlBuffer != null) wlBufferDestroy(surface.native.wlBuffer);
+	if (surface.native.buffer && surface.native.wlBuffer) wlBufferDestroy(surface.native.wlBuffer);
 	surface.destroy();
 }
 

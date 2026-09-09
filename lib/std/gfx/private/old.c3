@@ -723,7 +723,6 @@ fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 }
 
 // public
-fn void todo_fix_freeMouse(TodoRenameMouse* mouse) { ns_release((ObjcId)mouse); }
 
 // public
 fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
