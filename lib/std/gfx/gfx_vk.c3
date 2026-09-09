@@ -1,4 +1,4 @@
-module std::gfx;
+module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
 import libc, std::os::win32;
 
 
@@ -28,7 +28,7 @@ fn ZString* todo_fix_getRequiredInstanceExtensions_Vulkan(sz* count) @feat(!WASM
 }
 
 
-module std::gfx @feat(MACOS, LINUX) @private;
+module std::gfx @feat(MACOS, X11, WAYLAND, X11_WAYLAND) @private;
 import libc;
 
 fn void _unload_vulkan_native()

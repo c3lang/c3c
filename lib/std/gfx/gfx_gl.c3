@@ -1,4 +1,4 @@
-module std::gfx;
+module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
 import std::os::macos;
 
 fn void? _load_opengl_native() @private @weak => NOT_IMPLEMENTED~;
@@ -37,7 +37,7 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 }
 
 
-module std::gfx @feat(!WASM);
+module std::gfx  @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WIN32) @feat(!WASM);
 
 // public
 fn void todo_fix_attribStack_init(TodoRenameAttribStack* stack, int* attribs, sz max) { stack.attribs = attribs; stack.count = 0; stack.max = max; }

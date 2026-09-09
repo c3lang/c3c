@@ -1,4 +1,5 @@
-module std::gfx;
+module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
+
 import std::math, std::os::macos, libc;
 
 alias GfxPoint = int[<2>];
