@@ -6,6 +6,8 @@ alias CFIndex = sz;
 
 typedef CFString = inline CFType;
 alias CFStringRef = CFString*;
+typedef CFData = inline CFType;
+alias CFDataRef = CFData*;
 
 struct CFRange
 {
@@ -13,28 +15,9 @@ struct CFRange
 	CFIndex length;
 }
 
-alias CGFloat = env::ARCH_64_BIT ??? double : float;
-
-struct CGPoint
-{
-	CGFloat x;
-	CGFloat y;
-}
-
-struct CGSize
-{
-	CGFloat width;
-	CGFloat height;
-}
-
-struct CGRect
-{
-	CGPoint origin;
-	CGSize size;
-}
-
 extern fn ZString CFString.getCStringPtr(&self, CFStringEncoding encoding) @cname("CFStringGetCStringPtr");
 extern fn ZString CFString.getCString(&self, char* buffer, usz len, CFStringEncoding encoding) @cname("CFStringGetCString");
+extern fn void* CFData.getBytePtr(&self) @cname("CFDataGetBytePtr");
 
 extern fn CFTypeRef CFType.retain(&self) @cname("CFRetain");
 extern fn void CFType.release(&self) @cname("CFRelease");

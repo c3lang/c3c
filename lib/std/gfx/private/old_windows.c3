@@ -14,9 +14,9 @@ alias HGdiObj = void*;
 alias HRawInput = void*;
 alias WndProc = fn iptr(Win32_HWND*, uint, sz, iptr);
 
-struct Point { int x, y; }
+struct Win32_POINT { int x, y; }
 struct Rect { int left, top, right, bottom; }
-struct Msg { Win32_HWND* hwnd; uint message; sz wParam; iptr lParam; uint time; Point pt; }
+struct Msg { Win32_HWND* hwnd; uint message; sz wParam; iptr lParam; uint time; Win32_POINT pt; }
 struct WndClassW { uint style; WndProc wndProc; int clsExtra; int wndExtra; void* hInstance; Win32_HICON hIcon; Win32_HCURSOR hCursor; Win32_HBRUSH hbrBackground; ushort* menuName; ushort* className; }
 
 struct PixelFormatDescriptor
@@ -88,7 +88,7 @@ const int ENUM_CURRENT_SETTINGS = -1;
 struct DisplayDeviceW { uint cb; ushort[32] deviceName; ushort[128] deviceString; uint stateFlags; ushort[128] deviceID; ushort[128] deviceKey; }
 const uint DISPLAY_DEVICE_ACTIVE = 0x1;
 
-struct WindowPlacement { uint length, flags, showCmd; Point ptMinPosition, ptMaxPosition; Rect rcNormalPosition; }
+struct WindowPlacement { uint length, flags, showCmd; Win32_POINT ptMinPosition, ptMaxPosition; Rect rcNormalPosition; }
 const uint SW_SHOWMINIMIZED = 2;
 const uint SW_SHOWMAXIMIZED = 3;
 const uint SW_MAXIMIZE = 3;
@@ -118,7 +118,7 @@ const uint FLASHW_STOP = 0;
 const uint FLASHW_TRAY = 2;
 const uint FLASHW_TIMERNOFG = 12;
 
-struct MinMaxInfo { Point ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize; }
+struct MinMaxInfo { Win32_POINT ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize; }
 
 // ---- extern Win32 functions (kernel32/user32/gdi32/shell32/dwmapi) ----
 extern fn Win32_HMODULE* getModuleHandleW(ushort* name) @cname("GetModuleHandleW");
@@ -188,10 +188,10 @@ extern fn void* loadImageA(void* instance, char* name, uint c_type, int cx, int 
 extern fn int destroyCursor(Win32_HCURSOR cursor) @cname("DestroyCursor");
 extern fn int setCursor(Win32_HCURSOR cursor) @cname("SetCursor");
 extern fn iptr setClassLongPtrA(Win32_HWND* wnd, int index, iptr newLong) @cname("SetClassLongPtrA");
-extern fn int getCursorPos(Point* p) @cname("GetCursorPos");
+extern fn int getCursorPos(Win32_POINT* p) @cname("GetCursorPos");
 extern fn int setCursorPos(int x, int y) @cname("SetCursorPos");
-extern fn int screenToClient(Win32_HWND* wnd, Point* p) @cname("ScreenToClient");
-extern fn int clientToScreen(Win32_HWND* wnd, Point* p) @cname("ClientToScreen");
+extern fn int screenToClient(Win32_HWND* wnd, Win32_POINT* p) @cname("ScreenToClient");
+extern fn int clientToScreen(Win32_HWND* wnd, Win32_POINT* p) @cname("ClientToScreen");
 extern fn int clipCursor(Rect* rect) @cname("ClipCursor");
 extern fn int registerRawInputDevices(RawInputDevice* devices, uint numDevices, uint size) @cname("RegisterRawInputDevices");
 extern fn uint getRawInputData(HRawInput hRawInput, uint command, void* data, uint* size, uint headerSize) @cname("GetRawInputData");
@@ -222,7 +222,7 @@ extern fn uint mapVirtualKeyW(uint code, uint mapType) @cname("MapVirtualKeyW");
 extern fn void* getKeyboardLayout(uint threadId) @cname("GetKeyboardLayout");
 extern fn int toUnicodeEx(uint vk, uint scanCode, char* keyState, ushort* buf, int bufSize, uint flags, void* layout) @cname("ToUnicodeEx");
 
-extern fn int dragQueryPoint(void* drop, Point* p) @cname("DragQueryPoint");
+extern fn int dragQueryPoint(void* drop, Win32_POINT* p) @cname("DragQueryPoint");
 extern fn uint dragQueryFileW(void* drop, uint fileIndex, ushort* file, uint cch) @cname("DragQueryFileW");
 extern fn void dragFinish(void* drop) @cname("DragFinish");
 
@@ -614,7 +614,7 @@ fn iptr todo_fix_wndProcW(Win32_HWND* hWnd, uint message, sz wParam, iptr lParam
 		case 0x00A1: // WM_NCLBUTTONDOWN
 		{
 			// workaround for half-second pause when starting to move window
-			Point point = {0, 0};
+			Win32_POINT point = {0, 0};
 			if (sendMessage(win.src.window, 0x0084 /* WM_NCHITTEST */, wParam, lParam) != 2 /* HTCAPTION */ || getCursorPos(&point) == 0) break;
 
 			screenToClient(win.src.window, &point);
@@ -720,7 +720,7 @@ fn iptr todo_fix_wndProcW(Win32_HWND* hWnd, uint message, sz wParam, iptr lParam
 
 			if (raw.mouse.usFlags & MOUSE_MOVE_ABSOLUTE)
 			{
-				Point pos = {0, 0};
+				Win32_POINT pos = {0, 0};
 				int width, height;
 				if (raw.mouse.usFlags & MOUSE_VIRTUAL_DESKTOP)
 				{
@@ -767,7 +767,7 @@ fn iptr todo_fix_wndProcW(Win32_HWND* hWnd, uint message, sz wParam, iptr lParam
 		case 0x0233: // WM_DROPFILES
 		{
 			void* drop = (void*)wParam;
-			Point pt;
+			Win32_POINT pt;
 			dragQueryPoint(drop, &pt);
 			todo_fix_dataDragCallback(win, FILE, MOVE, { pt.x, pt.y });
 			if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return defWindowProcW(hWnd, message, wParam, lParam);
@@ -942,8 +942,8 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 	}
 
 	uint exStyle = todo_fix_winapiWindowGetExStyle(win, win.internal.flags);
-	clientToScreen(win.src.window, (Point*)&rect.left);
-	clientToScreen(win.src.window, (Point*)&rect.right);
+	clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
+	clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
 	adjustWindowRectEx(&rect, (uint)style, 0, exStyle);
 	setWindowLongW(win.src.window, -16, style);
 	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0 /* HWND_TOP */, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
@@ -951,14 +951,6 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 
 
 // public
-fn bool todo_fix_getGlobalMouse(int* x, int* y)
-{
-	Point p;
-	getCursorPos(&p);
-	if (x != null) *x = p.x;
-	if (y != null) *y = p.y;
-	return true;
-}
 
 // public
 fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
@@ -1160,30 +1152,6 @@ fn void todo_fix_win32GetMode(DevModeW* dm, GfxMonitorMode* mode)
 }
 
 // public
-fn GfxMonitorMode[] todo_fix_monitor_getModesPtr(GfxMonitor* monitor)
-{
-	uint modeIndex = 0;
-	List{GfxMonitorMode} modes;
-	for OUTER: (;;)
-	{
-		DevModeW dm = { .size = (ushort)DevModeW::size };
-
-		if (enumDisplaySettingsW((WString)&monitor.node.adapterName, modeIndex, &dm) == 0) break;
-		if (changeDisplaySettingsExW((WString)&monitor.node.adapterName, &dm, null, CDS_TEST, null) != DISP_CHANGE_SUCCESSFUL) continue;
-		modeIndex++;
-		if (dm.bitsPerPel < 15) continue;
-
-		GfxMonitorMode mode;
-		todo_fix_win32GetMode(&dm, &mode);
-		sz i;
-		foreach (&mode2 : modes)
-		{
-			if (mode2.equals_request(&mode, ALL)) continue OUTER;
-		}
-		modes.push(mode);
-	}
-	return modes.array_view();
-}
 
 // private
 fn int todo_fix_win32GetMonitorHandleCallback(void* hMonitor, void* hdcMonitor, Rect* lprcMonitor, iptr dwData)
@@ -1838,8 +1806,8 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 
 	Rect clipRect;
 	getClientRect(win.src.window, &clipRect);
-	clientToScreen(win.src.window, (Point*)&clipRect.left);
-	clientToScreen(win.src.window, (Point*)&clipRect.right);
+	clientToScreen(win.src.window, (Win32_POINT*)&clipRect.left);
+	clientToScreen(win.src.window, (Win32_POINT*)&clipRect.right);
 	clipCursor(&clipRect);
 }
 

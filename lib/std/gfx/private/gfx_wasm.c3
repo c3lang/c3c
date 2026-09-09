@@ -53,6 +53,13 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	rgfwJsExitFullscreen();
 }
 
+fn GfxPoint _get_global_mouse_native()
+{
+	return { rgfwJsGetMouseX(), rgfwJsGetMouseY() };
+}
+
+fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* mon) => {};
+
 // --- exported
 
 fn void _emscripten_on_drop(char* file, sz size) @export("c3gfx_on_drop")

@@ -181,18 +181,7 @@ struct TodoRenameWindowSrc
 
 
 
-extern fn VisualID xVisualIDFromVisual(XVisual* visual) @cname("XVisualIDFromVisual");
-alias TodoRenameVkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, XDisplay*, VisualID);
 
-// public
-fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
-{
-	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
-	if (!raw) return false;
-	XVisual* visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-	uint out = ((TodoRenameVkGetPhysicalDeviceXlibPresentationSupportKHRProc)raw)(physical_device, queue_family_index, _gfx_ctx.display, xVisualIDFromVisual(visual));
-	return out != 0;
-}
 
 
 

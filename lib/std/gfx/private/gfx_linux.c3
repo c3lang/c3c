@@ -19,19 +19,19 @@ struct GfxNativeImage
 
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 
-fn GfxMonitorMode[] todo_fix_monitor_getModesPtr(GfxMonitor* monitor)
+fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_monitor_getModesPtr_Wayland(monitor);
+			return _monitor_get_modes_wayland(monitor);
 		$case X11_ONLY:
-			return todo_fix_monitor_getModesPtr_X11(monitor);
+			return _monitor_get_modes_x11(monitor);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_monitor_getModesPtr_Wayland(monitor);
+				return _monitor_get_modes_wayland(monitor);
 			}
-			return todo_fix_monitor_getModesPtr_X11(monitor);
+			return _monitor_get_modes_x11(monitor);
 	$endswitch
 }
 
@@ -205,19 +205,19 @@ fn void* todo_fix_getCurrentContext_OpenGL()
 }
 
 // public
-fn bool todo_fix_getGlobalMouse(int* fX, int* fY)
+fn GfxPoint _get_global_mouse_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_getGlobalMouse_Wayland(fX, fY);
+			return _get_global_mouse_wayland();
 		$case X11_ONLY:
-			return todo_fix_getGlobalMouse_X11(fX, fY);
+			return _get_global_mouse_x11();
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_getGlobalMouse_Wayland(fX, fY);
+				return _get_global_mouse_wayland();
 			}
-			return todo_fix_getGlobalMouse_X11(fX, fY);
+			return _get_global_mouse_x11();
 	$endswitch
 }
 
@@ -1103,5 +1103,21 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 			return gfx_use_wayland
 				? _window_create_vulkan_surface_wayland(win, instance)
 				: _window_create_vulkan_surface_x11(win, instance);
+	$endswitch
+}
+
+fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) @private
+{
+	ZString name;
+	int type;
+	$switch:
+		$case WAYLAND_ONLY:
+			return _vulkan_get_physical_device_presentation_support_wayland(instance, physical_device, queue_family_index);
+		$case X11_ONLY:
+			return _vulkan_get_physical_device_presentation_support_x11(instance, physical_device, queue_family_index);
+		$default:
+			return gfx_use_wayland
+			? _vulkan_get_physical_device_presentation_support_wayland(instance, physical_device, queue_family_index)
+			: _vulkan_get_physical_device_presentation_support_x11(instance, physical_device, queue_family_index);
 	$endswitch
 }

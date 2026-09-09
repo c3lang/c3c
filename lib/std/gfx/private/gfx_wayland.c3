@@ -60,7 +60,7 @@ fn bool todo_fix_monitor_setGammaRamp_Wayland(GfxMonitor* monitor, TodoRenameGam
 fn bool todo_fix_monitor_setMode_Wayland(GfxMonitor* mon, GfxMonitorMode* mode) => false;
 
 // public
-fn GfxMonitorMode[] todo_fix_monitor_getModesPtr_Wayland(GfxMonitor* monitor)
+fn GfxMonitorMode[] _monitor_get_modes_wayland(GfxMonitor* monitor)
 {
 	List{GfxMonitorMode} modes;
 	for (int i = 0; i < monitor.node.modeCount; i++)
@@ -636,12 +636,9 @@ fn void todo_fix_freeMouse_Wayland(TodoRenameMouse* mouse)
 // private
 fn void* todo_fix_getCurrentContext_OpenGL_Wayland() => todo_fix_getCurrentContext_EGL();
 
-// private
-fn bool todo_fix_getGlobalMouse_Wayland(int* x, int* y)
+fn GfxPoint _get_global_mouse_wayland()
 {
-	if (x != null) *x = 0;
-	if (y != null) *y = 0;
-	return false;
+	return { -1, -1 };
 }
 
 // private
@@ -1935,13 +1932,7 @@ struct WgpuSurfaceSourceWaylandSurface
 
 alias TodoRenameVkGetPhysicalDeviceWaylandPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, WlDisplay*);
 
-
-
-alias TodoRenameVkCreateWaylandSurfaceKHRProc = fn VkResult(VkInstance instance, VkWaylandSurfaceCreateInfoKHR* create_info, void* allocator, VkSurfaceKHR* surface);
-
-
-
-fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+fn bool _vulkan_get_physical_device_presentation_support_wayland(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
 	if (raw == null) return false;

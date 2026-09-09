@@ -84,14 +84,13 @@ fn void todo_fix_window_blitSurface_X11(GfxWindow* win, GfxSurface* surface)
 	xPutImage(_gfx_ctx.display, win.src.window, win.src.gc, surface.native.bitmap, 0, 0, 0, 0, (uint)min.x, (uint)min.y);
 }
 
-// public
-fn bool todo_fix_getGlobalMouse_X11(int* fX, int* fY)
+fn GfxPoint _get_global_mouse_x11()
 {
-	int x, y;
+	int x, y, fX, fY;
 	uint z;
 	XWindow window1, window2;
-	xQueryPointer(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &window1, &window2, fX, fY, &x, &y, &z);
-	return true;
+	xQueryPointer(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &window1, &window2, &fX, &fY, &x, &y, &z);
+	return { fX, fY };
 }
 
 // public
@@ -390,7 +389,7 @@ fn void? _load_opengl_x11()
 fn void todo_fix_monitorNode_free_X11(GfxMonitorNode* node) {}
 
 // private
-fn GfxMonitorMode[] todo_fix_monitor_getModesPtr_X11(GfxMonitor* monitor)
+fn GfxMonitorMode[] _monitor_get_modes_x11(GfxMonitor* monitor)
 {
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display));
 	if (!res) return {};
@@ -2403,5 +2402,17 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_x11(GfxWindow* win, VkInstance in
 	return surface;
 }
 
+extern fn VisualID xVisualIDFromVisual(XVisual* visual) @cname("XVisualIDFromVisual");
+alias VkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, XDisplay*, VisualID);
+
+// public
+fn bool _vulkan_get_physical_device_presentation_support_x11(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+{
+	VkGetPhysicalDeviceXlibPresentationSupportKHRProc proc = (VkGetPhysicalDeviceXlibPresentationSupportKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
+	if (!proc) return false;
+	XVisual* visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
+	uint out = proc(physical_device, queue_family_index, _gfx_ctx.display, xVisualIDFromVisual(visual));
+	return out != 0;
+}
 // ---
 

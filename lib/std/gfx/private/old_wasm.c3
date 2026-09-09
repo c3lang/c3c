@@ -487,13 +487,6 @@ fn bool todo_fix_window_setMousePlatform(GfxWindow* win, TodoRenameMouse* mouse)
 // public
 fn void todo_fix_freeMouse(TodoRenameMouse* mouse) {}
 
-// public
-fn bool todo_fix_getGlobalMouse(int* x, int* y)
-{
-	if (x != null) *x = rgfwJsGetMouseX();
-	if (y != null) *y = rgfwJsGetMouseY();
-	return true;
-}
 
 // public
 fn void todo_fix_window_setMousePassthrough(GfxWindow* win, char passthrough) { rgfwJsSetPointerEvents(passthrough); }
@@ -599,7 +592,6 @@ fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp*
 // public
 fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => false;
 // public
-fn GfxMonitorMode[] todo_fix_monitor_getModesPtr(GfxMonitor* mon) => {};
 // public
 fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => false;
 

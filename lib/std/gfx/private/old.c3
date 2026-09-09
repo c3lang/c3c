@@ -11,9 +11,6 @@ excuse NSWINDOW_CREATION_FAILED;
 typedef ObjcClass = void*;
 typedef ObjcSelector = void*;
 alias CFBundleRef = void*;
-alias CGDirectDisplayID = uint;
-alias CGDisplayModeRef = void*;
-alias CGEventRef = void*;
 
 struct VkMetalSurfaceCreateInfoEXT { int sType; void* pNext; uint flags; void* pLayer; }
 alias TodoRenameVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
@@ -30,27 +27,8 @@ extern fn void* object_getInstanceVariable(ObjcId obj, ZString name, void* outVa
 extern fn void* objc_autoreleasePoolPush();
 extern fn void objc_autoreleasePoolPop(void* context);
 
-extern fn CGRect cgDisplayBounds(CGDirectDisplayID display) @cname("CGDisplayBounds");
-extern fn CGDirectDisplayID cgMainDisplayID() @cname("CGMainDisplayID");
-extern fn int cgGetActiveDisplayList(uint maxDisplays, CGDirectDisplayID* activeDisplays, uint* displayCount) @cname("CGGetActiveDisplayList");
-extern fn CGDisplayModeRef cgDisplayCopyDisplayMode(CGDirectDisplayID display) @cname("CGDisplayCopyDisplayMode");
-extern fn CFArrayRef cgDisplayCopyAllDisplayModes(CGDirectDisplayID display, void* options) @cname("CGDisplayCopyAllDisplayModes");
-extern fn sz cgDisplayModeGetWidth(CGDisplayModeRef mode) @cname("CGDisplayModeGetWidth");
-extern fn sz cgDisplayModeGetHeight(CGDisplayModeRef mode) @cname("CGDisplayModeGetHeight");
-extern fn double cgDisplayModeGetRefreshRate(CGDisplayModeRef mode) @cname("CGDisplayModeGetRefreshRate");
-extern fn CGSize cgDisplayScreenSize(CGDirectDisplayID display) @cname("CGDisplayScreenSize");
-extern fn uint cgDisplayGammaTableCapacity(CGDirectDisplayID display) @cname("CGDisplayGammaTableCapacity");
-extern fn int cgGetDisplayTransferByTable(CGDirectDisplayID display, uint capacity, float* red, float* green, float* blue, uint* sampleCount) @cname("CGGetDisplayTransferByTable");
-extern fn int cgSetDisplayTransferByTable(CGDirectDisplayID display, uint count, float* red, float* green, float* blue) @cname("CGSetDisplayTransferByTable");
-extern fn int cgDisplaySetDisplayMode(CGDirectDisplayID display, CGDisplayModeRef mode, void* options) @cname("CGDisplaySetDisplayMode");
-extern fn CGEventRef cgEventCreate(void* source) @cname("CGEventCreate");
-extern fn CGPoint cgEventGetLocation(CGEventRef event) @cname("CGEventGetLocation");
-extern fn int cgDisplayShowCursor(CGDirectDisplayID display) @cname("CGDisplayShowCursor");
-extern fn int cgDisplayHideCursor(CGDirectDisplayID display) @cname("CGDisplayHideCursor");
 extern fn int cgAssociateMouseAndMouseCursorPosition(bool connected) @cname("CGAssociateMouseAndMouseCursorPosition");
 extern fn int cgWarpMouseCursorPosition(CGPoint p) @cname("CGWarpMouseCursorPosition");
-extern fn CFIndex cfArrayGetCount(CFArrayRef array) @cname("CFArrayGetCount");
-extern fn void* cfArrayGetValueAtIndex(CFArrayRef array, CFIndex index) @cname("CFArrayGetValueAtIndex");
 extern fn void cfRelease(void* ref) @cname("CFRelease");
 extern fn CFStringRef cfStringCreateWithCString(void* alloc, ZString str, uint encoding) @cname("CFStringCreateWithCString");
 extern fn CFBundleRef cfBundleGetBundleWithIdentifier(CFStringRef bundleID) @cname("CFBundleGetBundleWithIdentifier");
@@ -162,20 +140,6 @@ ObjcClass todo_fix_osxWindowDelegateClass;
 ObjcClass todo_fix_osxViewClass;
 
 
-
-
-// public
-
-
-const int VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT = 1000217000;
-
-
-// public
-
-// public
-fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
-
-
 // public
 fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 {
@@ -196,11 +160,11 @@ fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 }
 
 alias TISInputSourceRef = void*;
-alias CFDataRef = void*;
+
 typedef UCKeyboardLayout = void;
 extern fn TISInputSourceRef tisCopyCurrentKeyboardLayoutInputSource() @cname("TISCopyCurrentKeyboardLayoutInputSource");
 extern fn void* tisGetInputSourceProperty(TISInputSourceRef source, CFStringRef propertyKey) @cname("TISGetInputSourceProperty");
-extern fn char* cfDataGetBytePtr(CFDataRef data) @cname("CFDataGetBytePtr");
+
 extern fn char lmGetKbdType() @cname("LMGetKbdType");
 extern fn int ucKeyTranslate(UCKeyboardLayout* layout, ushort virtualKeyCode, ushort keyAction, uint modifierKeyState, uint keyboardType, uint keyTranslateOptions, uint* deadKeyState, uint maxStringLength, uint* actualStringLength, ushort* unicodeString) @cname("UCKeyTranslate");
 extern CFStringRef kTISPropertyUnicodeKeyLayoutData @cname("kTISPropertyUnicodeKeyLayoutData");
@@ -221,7 +185,7 @@ fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
 		return key;
 	}
 
-	UCKeyboardLayout* layout = (UCKeyboardLayout*)cfDataGetBytePtr(layoutData);
+	UCKeyboardLayout* layout = (UCKeyboardLayout*)layoutData.getBytePtr();
 
 	uint deadKeyState = 0;
 	ushort[4] chars;
@@ -463,7 +427,7 @@ fn CGRect ns_rect(double x, double y, double w, double h)
 fn CGDirectDisplayID todo_fix_monitorDisplay(GfxMonitor* monitor)
 {
 	if (monitor != null && monitor.node != null && monitor.node.nativeId0 != 0) return (CGDirectDisplayID)monitor.node.nativeId0;
-	return cgMainDisplayID();
+	return cg::mainDisplayID();
 }
 
 // private
@@ -846,7 +810,7 @@ fn void todo_fix_freeMouse(TodoRenameMouse* mouse) { ns_release((ObjcId)mouse); 
 // public
 fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
 {
-	CGRect bounds = cgDisplayBounds(todo_fix_monitorDisplay(monitor));
+	CGRect bounds = todo_fix_monitorDisplay(monitor).bounds();
 	if (x != null) *x = (int)bounds.origin.x;
 	if (y != null) *y = (int)bounds.origin.y;
 	if (width != null) *width = (int)bounds.size.width;
@@ -855,24 +819,22 @@ fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* w
 }
 
 // public
-fn GfxMonitorMode[] todo_fix_monitor_getModesPtr(GfxMonitor* monitor)
+fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 {
-	CFArrayRef list = cgDisplayCopyAllDisplayModes(todo_fix_monitorDisplay(monitor), null);
+	CFArrayRef list = todo_fix_monitorDisplay(monitor).copyAllDisplayModes(null);
 	if (!list) return {};
 
 	List{GfxMonitorMode} modes;
-	int count = (int)cfArrayGetCount(list);
-	for (int i = 0; i < count; i++)
+	foreach (CGDisplayModeRef mode : list)
 	{
-		CGDisplayModeRef mode = (CGDisplayModeRef)cfArrayGetValueAtIndex(list, (CFIndex)i);
 		modes.push({
-			.size = { (int)cgDisplayModeGetWidth(mode), (int)cgDisplayModeGetHeight(mode) },
-			.refresh_rate = (float)cgDisplayModeGetRefreshRate(mode),
+			.size = { (int)mode.getWidth(), (int)mode.getHeight() },
+			.refresh_rate = (float)mode.getRefreshRate(),
 			.rgb = (char[<3>])8,
 			.src = mode
 		});
 	}
-	cfRelease(list);
+	list.release();
 	return modes.array_view();
 }
 
@@ -880,13 +842,13 @@ fn GfxMonitorMode[] todo_fix_monitor_getModesPtr(GfxMonitor* monitor)
 fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
 {
 	CGDirectDisplayID display = todo_fix_monitorDisplay(monitor);
-	uint count = cgDisplayGammaTableCapacity(display);
+	uint count = display.gammaTableCapacity();
 	if (ramp == null) return (sz)count;
 	float* red = mem::alloc_array(float, count);
 	float* green = mem::alloc_array(float, count);
 	float* blue = mem::alloc_array(float, count);
 	uint actual = 0;
-	if (red == null || green == null || blue == null || cgGetDisplayTransferByTable(display, count, red, green, blue, &actual) != 0) { free(red); free(green); free(blue); return 0; }
+	if (red == null || green == null || blue == null || display.transferByTable(count, red, green, blue, &actual) != 0) { free(red); free(green); free(blue); return 0; }
 	for (uint i = 0; i < actual; i++)
 	{
 		ramp.red[i] = (ushort)(red[i] * 65535.0);
@@ -912,7 +874,7 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 		green[i] = (float)ramp.green[i] / 65535.0;
 		blue[i] = (float)ramp.blue[i] / 65535.0;
 	}
-	int err = cgSetDisplayTransferByTable(todo_fix_monitorDisplay(monitor), (uint)ramp.count, red, green, blue);
+	int err = todo_fix_monitorDisplay(monitor).setTransferByTable((uint)ramp.count, red, green, blue);
 	free(red); free(green); free(blue);
 	return err == 0;
 }
@@ -920,7 +882,11 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 // public
 fn bool todo_fix_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => todo_fix_monitor_setMode(mon, mode);
 // public
-fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) { if (mode == null || mode.src == null) return false; return cgDisplaySetDisplayMode(todo_fix_monitorDisplay(mon), (CGDisplayModeRef)mode.src, null) == 0; }
+fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
+{
+	if (mode == null || mode.src == null) return false;
+	return todo_fix_monitorDisplay(mon).setDisplayMode((CGDisplayModeRef)mode.src, null) == 0;
+}
 // public
 fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
 // public
@@ -999,19 +965,6 @@ fn bool _window_is_minimized_native(GfxWindow* win) { if (win != null && win.src
 fn bool _window_is_maximized_native(GfxWindow* win) { if (win == null) return false; if (win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isZoomed"); return win.internal.flags.maximize; }
 
 // public
-
-
-// public
-fn bool todo_fix_getGlobalMouse(int* x, int* y)
-{
-	CGEventRef event = cgEventCreate(null);
-	if (event == null) return false;
-	CGPoint point = cgEventGetLocation(event);
-	cfRelease(event);
-	if (x != null) *x = (int)point.x;
-	if (y != null) *y = (int)point.y;
-	return true;
-}
 
 <*
  @param [in] win
@@ -1215,7 +1168,7 @@ fn void todo_fix_osx_initView(GfxWindow* win)
 	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeFirstResponder:", (ObjcId)win.src.view);
 }
 // public
-fn float todo_fix_cocoaYTransform(float y) => (float)(cgDisplayBounds(cgMainDisplayID()).size.height - (double)y - 1.0);
+fn float todo_fix_cocoaYTransform(float y) => (float)(cg::mainDisplayID().bounds().size.height - (double)y - 1.0);
 
 // public
 fn GfxDataTransfer* todo_fix_readClipboard(GfxDataTransferType requestedType)

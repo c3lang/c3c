@@ -36,6 +36,7 @@ const VkResult VK_PIPELINE_COMPILE_REQUIRED               = 1000297000;
 const int VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR   = 1000009000;
 const int VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR = 1000006000;
 const int VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR    = 1000004000;
+const int VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT   = 1000217000;
 
 alias GfxVkGetInstanceProcAddressProc = fn GfxFn(VkInstance instance, ZString procname);
 alias VkCreateSurfaceKHRProc = fn VkResult(VkInstance instance, void* create_info, void* allocator, VkSurfaceKHR* surface);

@@ -1,5 +1,5 @@
 module std::gfx @feat(WIN32) @private;
-import std::os::win32;
+import std::os::win32, std::collections::list;
 
 fn void _window_show_native(GfxWindow* win)
 {
@@ -84,6 +84,36 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 	adjustWindowRectEx(&rect, style, 0, exStyle);
 	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
 }
+
+fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
+{
+	uint mode_index = 0;
+	List{GfxMonitorMode} modes;
+	for OUTER: (;;)
+	{
+		DevModeW dm = { .size = (ushort)DevModeW::size };
+		if (enumDisplaySettingsW((WString)&monitor.node.adapterName, mode_index, &dm) == 0) break;
+		if (changeDisplaySettingsExW((WString)&monitor.node.adapterName, &dm, null, CDS_TEST, null) != DISP_CHANGE_SUCCESSFUL) continue;
+		mode_index++;
+		if (dm.bitsPerPel < 15) continue;
+		GfxMonitorMode mode;
+		todo_fix_win32GetMode(&dm, &mode);
+		foreach (&mode2 : modes)
+		{
+			if (mode2.equals_request(&mode, ALL)) continue OUTER;
+		}
+		modes.push(mode);
+	}
+	return modes.array_view();
+}
+
+fn GfxPoint _get_global_mouse_native()
+{
+	Win32_POINT p;
+	getCursorPos(&p);
+	return { ...p };
+}
+
 
 // --- Vulkan
 

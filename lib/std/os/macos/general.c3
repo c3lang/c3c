@@ -1,5 +1,5 @@
 module std::os::darwin @feat(DARWIN) @link("Foundation.framework");
-import std::os::macos::cf, std::os::macos::objc, std::io;
+import std::os::macos, std::io;
 
 constset NSSearchPathDomainMask : NSUInteger
 {
@@ -8,6 +8,12 @@ constset NSSearchPathDomainMask : NSUInteger
 	NETWORK = 4,
 	SYSTEM = 8,
 	ALL = 0x0ffff
+}
+
+constset NSStatusItemLength : inline CGFloat
+{
+	VARIABLE = -1.0,
+	SQUARE   = -2.0
 }
 
 constset NSSearchPathDirectory : NSUInteger

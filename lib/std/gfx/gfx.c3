@@ -1738,6 +1738,11 @@ fn void free_monitors()
 	}
 }
 
+fn GfxPoint get_global_mouse()
+{
+	return _get_global_mouse_native();
+}
+
 fn GfxMonitor*[] get_monitors()
 {
 	sz count = _gfx_ctx.monitors.count;
@@ -1767,7 +1772,7 @@ fn GfxMonitor*? get_primary_monitor()
 // public
 fn GfxMonitorMode[] GfxMonitor.get_modes(&monitor, Allocator allocator)
 {
-	return alloc::clone_slice(allocator, todo_fix_monitor_getModesPtr(monitor));
+	return alloc::clone_slice(allocator, _monitor_get_modes_native(monitor));
 }
 
 // public
@@ -1775,7 +1780,7 @@ fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mo
 {
 	GfxMonitorMode* chosen;
 	int top_score = 1;
-	foreach (&mode2 : todo_fix_monitor_getModesPtr(monitor))
+	foreach (&mode2 : _monitor_get_modes_native(monitor))
 	{
 		int score = 0;
 		if (mode.size == mode2.size) score += 1000;

@@ -6,8 +6,8 @@ typedef CFArrayCallBacksRef = void*;
 typedef CFMutableArray = inline CFArray;
 typedef CFMutableArrayRef = CFMutableArray*;
 
-extern fn CFIndex CFArray.getCount(&self) @cname("CFArrayGetCount");
-extern fn void* CFArray.getValueAtIndex(&self, CFIndex i) @cname("CFArrayGetValueAtIndex");
+extern fn CFIndex CFArray.getCount(&self) @operator(len) @cname("CFArrayGetCount");
+extern fn void* CFArray.getValueAtIndex(&self, CFIndex i) @operator([]) @cname("CFArrayGetValueAtIndex");
 
 extern fn CFArrayRef macos_CFArrayCreate(CFAllocatorRef allocator, void** values, CFIndex num_values, CFArrayCallBacksRef callBacks) @cname("CFArrayCreate") @builtin;
 extern fn CFArrayRef macos_CFArrayCopy(CFAllocatorRef allocator, CFArrayRef array) @cname("CFArrayCopy") @builtin;

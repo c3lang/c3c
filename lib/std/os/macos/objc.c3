@@ -242,11 +242,6 @@ constset NSWindowTabbingMode : inline NSInteger
 	PREFERRED   = 1,
 }
 
-constset NSStatusItemLength : inline CGFloat
-{
-	VARIABLE = -1.0,
-	SQUARE   = -2.0
-}
 
 constset NSApplicationTerminateReply : inline NSUInteger
 {

@@ -19,6 +19,11 @@ fn void? _load_opengl_native()
 	_gfx_ctx.glGetProcAddress = (void*)&_get_opengl_proc_native;
 }
 
+fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+{
+	return false;
+}
+
 fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance) @private
 {
 	VkSurfaceKHR surface;
@@ -29,6 +34,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 	objc_send((ObjcId)win.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
 	todo_fix_window_setLayer_OSX(win, layer);
 	VkMetalSurfaceCreateInfoEXT create_info;
+
 	create_info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
 	create_info.pNext = null;
 	create_info.flags = 0;
@@ -107,7 +113,7 @@ fn void todo_fix_pollMonitors()
 	if (_gfx_ctx.monitors.count != 0) free_monitors();
 	uint count = 0;
 	CGDirectDisplayID[16] displays;
-	if (cgGetActiveDisplayList(16, &displays, &count) != 0) return;
+	if (cg::getActiveDisplayList(16, &displays, &count) != 0) return;
 	for (uint i = 0; i < count; i++)
 	{
 		GfxMonitor mon;
@@ -115,7 +121,7 @@ fn void todo_fix_pollMonitors()
 		GfxMonitorNode* node = _monitor_add(&mon);
 		if (node == null) continue;
 		node.nativeId0 = (ulong)displays[i];
-		if (displays[i] == cgMainDisplayID()) _gfx_ctx.monitors.primary = node;
+		if (displays[i] == cg::mainDisplayID()) _gfx_ctx.monitors.primary = node;
 	}
 }
 
@@ -123,20 +129,29 @@ fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
 {
 	*mon = {};
 	mem::copy(&mon.name, "Display", 8);
-	CGRect bounds = cgDisplayBounds(display);
-	CGDisplayModeRef mode = cgDisplayCopyDisplayMode(display);
+	CGRect bounds = display.bounds();
+	CGDisplayModeRef mode = display.copyDisplayMode();
 	mon.origin = { (int)bounds.origin.x, (int)bounds.origin.y };
-	mon.mode.size.x = mode ? (int)cgDisplayModeGetWidth(mode) : (int)bounds.size.width;
-	mon.mode.size.y = mode ? (int)cgDisplayModeGetHeight(mode) : (int)bounds.size.height;
-	mon.mode.refresh_rate = mode ? (float)cgDisplayModeGetRefreshRate(mode) : 60.0;
+	mon.mode.size.x = mode ? (int)mode.getWidth() : (int)bounds.size.width;
+	mon.mode.size.y = mode ? (int)mode.getHeight() : (int)bounds.size.height;
+	mon.mode.refresh_rate = mode ? (float)mode.getRefreshRate() : 60.0;
 	mon.mode.rgb = { 8, 8, 8 };
 	mon.mode.src = mode;
-	mon.phys_size = (float[<2>])(double[<2>]){ ...cgDisplayScreenSize(display) };
+	mon.phys_size = (float[<2>])(double[<2>]){ ...display.screenSize() };
 	mon.scale = {
 		mon.mode.size.x > 0 ? (float)bounds.size.width / (float)mon.mode.size.x : 1.0,
 		mon.mode.size.y > 0 ? (float)bounds.size.height / (float)mon.mode.size.y : 1.0
 	};
 	mon.pixelRatio = mon.scale.x;
+}
+
+fn GfxPoint _get_global_mouse_native()
+{
+	CGEventRef event = cg::eventCreate(null);
+	if (!event) return { -1, -1 };
+	defer event.release();
+	CGPoint point = event.getLocation();
+	return { (int)point.x, (int)point.y };
 }
 
 fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
