@@ -1,6 +1,6 @@
 module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
 
-import std::math, std::os::macos, libc;
+import std::math, std::os::macos, libc, std::time;
 
 alias GfxPoint = int[<2>];
 alias GfxSize = int[<2>];
@@ -238,7 +238,7 @@ struct GfxContext
 		int wlRepeatInfoRate;
 		int wlRepeatInfoDelay;
 		uint lastKey;
-		uint lastKeyTime;
+		Clock lastKeyTime;
 	}
 	struct @feat(X11, X11_WAYLAND)
 	{

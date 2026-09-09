@@ -1,5 +1,5 @@
 module std::gfx @feat(X11, X11_WAYLAND) @private;
-import std::math, std::collections::list, libc;
+import std::math, std::collections::list, libc, std::time;
 
 
 
@@ -28,7 +28,7 @@ fn void todo_fix_window_setBorder_X11(GfxWindow* win, bool border)
 fn void todo_fix_window_setRawMouseModePlatform_X11(GfxWindow* win, bool state)
 {
 	char[4] mask;
-	if (state) xiSetMask((char*)&mask, 6 /* XI_RawMotion */);
+	if (state) xi_set_mask((char*)&mask, 6 /* XI_RawMotion */);
 	XIEventMask em;
 	em.deviceid = 1; // XIAllMasterDevices
 	em.mask_len = 4;
@@ -374,7 +374,7 @@ fn void? _load_opengl_x11()
 	todo_fix_glXCreateWindow             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateWindow");
 	todo_fix_glXDestroyWindow            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyWindow");
 	todo_fix_glXQueryExtensionsString    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXQueryExtensionsString");
-	todo_fix_glXCreateContextAttribsARB  = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContextAttribsARB");
+	glx_create_context_attribs_arb  = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContextAttribsARB");
 	todo_fix_glXSwapIntervalEXT          = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapIntervalEXT");
 	if (!todo_fix_glXSwapIntervalEXT)
 	{
@@ -584,12 +584,12 @@ fn void todo_fix_xHandleEvent()
 			if (raw.valuators.mask_len != 0)
 			{
 				int index = 0;
-				if (ximaskIsSet(raw.valuators.mask, 0))
+				if (xi_mask_is_set(raw.valuators.mask, 0))
 				{
 					delta.x += (float)raw.raw_values[index];
 					index++;
 				}
-				if (ximaskIsSet(raw.valuators.mask, 1)) delta.y += (float)raw.raw_values[index];
+				if (xi_mask_is_set(raw.valuators.mask, 1)) delta.y += (float)raw.raw_values[index];
 				_gfx_ctx.vector = delta;
 				_raw_motion_callback(_gfx_ctx.root, delta);
 			}
@@ -601,9 +601,9 @@ fn void todo_fix_xHandleEvent()
 	GfxWindow* win = null;
 	if (xFindContext(_gfx_ctx.display, e.xany.window, _gfx_ctx.context, (XPointer*)&win) != 0) return;
 
-	if (win.src.flashEnd != 0)
+	if (win.src.flashEnd != (Clock)0)
 	{
-		if (win.src.flashEnd <= todo_fix_unix_getTimeNS() || win.has_focus()) win.flash(CANCEL);
+		if (win.src.flashEnd.to_now() > time::NANO_DURATION_ZERO || win.has_focus()) win.flash(CANCEL);
 	}
 
 	bool keyRepeat = false;
@@ -1438,7 +1438,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext
 	GLXContext ctx = null;
 	if (hints.share != null) ctx = hints.share.ctx;
 
-	if (todo_fix_glXCreateContextAttribsARB == null)
+	if (glx_create_context_attribs_arb == null)
 	{
 		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to load proc address 'glXCreateContextAttribsARB', loading a generic OpenGL context.");
 		win.src.ctx.native.ctx = todo_fix_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
@@ -1446,7 +1446,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext
 	else
 	{
 		_gfx_ctx.x11Error = null;
-		win.src.ctx.native.ctx = todo_fix_glXCreateContextAttribsARB(_gfx_ctx.display, bestFbc, ctx, X_TRUE, (int*)&contextAttribs);
+		win.src.ctx.native.ctx = glx_create_context_attribs_arb(_gfx_ctx.display, bestFbc, ctx, X_TRUE, (int*)&contextAttribs);
 		if (_gfx_ctx.x11Error != null || win.src.ctx.native.ctx == null)
 		{
 			todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL context with AttribsARB, loading a generic OpenGL context.");
@@ -1470,12 +1470,12 @@ fn void todo_fix_window_flash_X11(GfxWindow* win, GfxFlashRequest request)
 	if (request)
 	{
 		wmhints.flags |= 1 << 8; // XUrgencyHint
-		if (request == BRIEFLY) win.src.flashEnd = todo_fix_unix_getTimeNS() + (ulong)1e9;
-		if (request == UNTIL_FOCUSED) win.src.flashEnd = (ulong)-1;
+		if (request == BRIEFLY) win.src.flashEnd = clock::now() + time::sec(1).to_nano();
+		if (request == UNTIL_FOCUSED) win.src.flashEnd = clock::FAR_FUTURE;
 	}
 	else
 	{
-		win.src.flashEnd = 0;
+		win.src.flashEnd = {};
 		wmhints.flags &= ~(1 << 8);
 	}
 	xSetWMHints(_gfx_ctx.display, win.src.window, wmhints);
@@ -1721,21 +1721,19 @@ fn void todo_fix_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
 	xSendEvent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 19) | (1 << 20), &xev);
 }
 
-// public
-fn void todo_fix_x11IcCallback(void* ic, char* clientData, char* callData)
+fn void _x11_ic_callback(void* ic, void* client_data, void* call_data)
 {
-	GfxWindow* win = (GfxWindow*)(void*)clientData;
+	GfxWindow* win = client_data;
 	win.src.ic = null;
 }
 
-// public
-fn void todo_fix_x11ImCallback(void* im, char* clientData, char* callData)
+fn void _x11_im_callback(void* im, void* client_data, void* call_data)
 {
 	_gfx_ctx.im = null;
 }
 
 // public
-fn void todo_fix_x11ImInitCallback(XDisplay* d, XPointer clientData, XPointer callData)
+fn void todo_fix_x11ImInitCallback(XDisplay* d, XPointer client_data, XPointer call_data)
 {
 	if (_gfx_ctx.im != null) return;
 
@@ -1770,7 +1768,7 @@ fn void todo_fix_x11ImInitCallback(XDisplay* d, XPointer clientData, XPointer ca
 	}
 
 	XImCallback callback;
-	callback.callback = &todo_fix_x11ImCallback;
+	callback.callback = &_x11_im_callback;
 	callback.client_data = null;
 	xSetIMValues(_gfx_ctx.im, "destroyCallback", &callback, (char*)null);
 }
@@ -2277,8 +2275,8 @@ extern fn XlibIM xOpenIM(XDisplay* d, void* db, ZString res_name, ZString res_cl
 extern fn int xCloseIM(XlibIM im) @cname("XCloseIM");
 extern fn ZString xGetIMValues(XlibIM im, ...) @cname("XGetIMValues");
 extern fn ZString xSetIMValues(XlibIM im, ...) @cname("XSetIMValues");
-extern fn int xRegisterIMInstantiateCallback(XDisplay* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer clientData) @cname("XRegisterIMInstantiateCallback");
-extern fn int xUnregisterIMInstantiateCallback(XDisplay* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer clientData) @cname("XUnregisterIMInstantiateCallback");
+extern fn int xRegisterIMInstantiateCallback(XDisplay* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer client_data) @cname("XRegisterIMInstantiateCallback");
+extern fn int xUnregisterIMInstantiateCallback(XDisplay* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer client_data) @cname("XUnregisterIMInstantiateCallback");
 extern fn ZString xSetLocaleModifiers(ZString modifierList) @cname("XSetLocaleModifiers");
 extern fn sz xutf8LookupString(XlibIC ic, XKeyEvent* event, char* buffer, int bytes, KeySym* keysym, int* status) @cname("Xutf8LookupString");
 extern fn int xutf8SetWMProperties(XDisplay* d, XWindow w, ZString windowName, ZString iconName, ZString* argv, int argc, XSizeHints* hints, XWMHints* wmHints, void* classHints) @cname("Xutf8SetWMProperties");
@@ -2434,5 +2432,86 @@ fn bool _vulkan_get_physical_device_presentation_support_x11(VkInstance instance
 	uint out = proc(physical_device, queue_family_index, _gfx_ctx.display, xVisualIDFromVisual(visual));
 	return out != 0;
 }
-// ---
+// --- GLX
 
+alias GlxCreateContextAttribsARBProc = fn GLXContext(XDisplay*, GLXFBConfig, GLXContext, int, int*);
+alias GlxQueryExtensionsStringProc = fn ZString(XDisplay*, int);
+alias GlxChooseVisualProc = fn XVisualInfo*(XDisplay*, int, int*);
+alias GlxCreateContextProc = fn GLXContext(XDisplay*, XVisualInfo*, GLXContext, int);
+alias GlxMakeCurrentProc = fn int(XDisplay*, GLXDrawable, GLXContext);
+alias GlxGetCurrentContextProc = fn GLXContext();
+alias GlxSwapBuffersProc = fn void(XDisplay*, GLXDrawable);
+alias GlxSwapIntervalEXTProc = fn void(XDisplay*, GLXDrawable, int);
+alias GlxGetProcAddressProc = fn void*(ZString);
+alias GlxGetVisualFromFBConfigProc = fn XVisualInfo*(XDisplay*, GLXFBConfig);
+alias GlxGetFBConfigAttribProc = fn int(XDisplay*, GLXFBConfig, int, int*);
+alias GlxGetProcAddressARBProc = fn void*(ZString);
+alias GlxChooseFBConfigProc = fn GLXFBConfig*(XDisplay*, int, int*, int*);
+alias GlxDestroyContextProc = fn void(XDisplay*, GLXContext);
+alias GlxCreateWindowProc = fn GLXWindow(XDisplay*, GLXFBConfig, XWindow, int*);
+alias GlxDestroyWindowProc = fn void(XDisplay*, GLXWindow);
+alias GlxSwapIntervalNativeProc = fn int(int);
+
+GlxCreateContextAttribsARBProc glx_create_context_attribs_arb;
+GlxQueryExtensionsStringProc todo_fix_glXQueryExtensionsString;
+GlxChooseVisualProc todo_fix_glXChooseVisual;
+GlxCreateContextProc todo_fix_glXCreateContext;
+GlxMakeCurrentProc todo_fix_glXMakeCurrent;
+GlxGetCurrentContextProc todo_fix_glXGetCurrentContext;
+GlxSwapBuffersProc todo_fix_glXSwapBuffers;
+GlxSwapIntervalEXTProc todo_fix_glXSwapIntervalEXT;
+GlxGetVisualFromFBConfigProc todo_fix_glXGetVisualFromFBConfig;
+GlxGetFBConfigAttribProc todo_fix_glXGetFBConfigAttrib;
+GlxGetProcAddressARBProc todo_fix_glXGetProcAddressARB;
+GlxChooseFBConfigProc todo_fix_glXChooseFBConfig;
+GlxDestroyContextProc todo_fix_glXDestroyContext;
+GlxCreateWindowProc todo_fix_glXCreateWindow;
+GlxDestroyWindowProc todo_fix_glXDestroyWindow;
+GlxSwapIntervalNativeProc todo_fix_glXSwapIntervalNative;
+
+// --- XIm
+alias XImCallbackProc = fn void(void* im, void* client_data, void* call_data);
+struct XImCallback
+{
+	XPointer client_data;
+	XImCallbackProc callback;
+}
+
+struct XImStyles
+{
+	ushort count_styles;
+	XIMStyle* supported_styles;
+}
+
+alias XImInstantiateCallbackProc = fn void(XDisplay* d, XPointer client_data, XPointer call_data);
+
+macro void xi_set_mask(char* mask, int event)
+{
+	mask[event / 8] |= (char)(1 << (event % 8));
+}
+
+macro bool xi_mask_is_set(char* mask, int event) => (mask[event / 8] & (char)(1 << (event % 8))) != 0;
+
+const KeySym XK_F1 = 0xffbe; const KeySym XK_F2 = 0xffbf; const KeySym XK_F3 = 0xffc0; const KeySym XK_F4 = 0xffc1;
+const KeySym XK_F5 = 0xffc2; const KeySym XK_F6 = 0xffc3; const KeySym XK_F7 = 0xffc4; const KeySym XK_F8 = 0xffc5;
+const KeySym XK_F9 = 0xffc6; const KeySym XK_F10 = 0xffc7; const KeySym XK_F11 = 0xffc8; const KeySym XK_F12 = 0xffc9;
+const KeySym XK_F13 = 0xffca; const KeySym XK_F14 = 0xffcb; const KeySym XK_F15 = 0xffcc; const KeySym XK_F16 = 0xffcd;
+const KeySym XK_F17 = 0xffce; const KeySym XK_F18 = 0xffcf; const KeySym XK_F19 = 0xffd0; const KeySym XK_F20 = 0xffd1;
+const KeySym XK_F21 = 0xffd2; const KeySym XK_F22 = 0xffd3; const KeySym XK_F23 = 0xffd4; const KeySym XK_F24 = 0xffd5;
+const KeySym XK_F25 = 0xffd6;
+const KeySym XK_SHIFT_L = 0xffe1; const KeySym XK_SHIFT_R = 0xffe2;
+const KeySym XK_CONTROL_L = 0xffe3; const KeySym XK_CONTROL_R = 0xffe4;
+const KeySym XK_ALT_L = 0xffe9; const KeySym XK_ALT_R = 0xffea;
+const KeySym XK_SUPER_L = 0xffeb; const KeySym XK_SUPER_R = 0xffec;
+const KeySym XK_CAPS_LOCK = 0xffe5; const KeySym XK_NUM_LOCK = 0xff7f; const KeySym XK_SCROLL_LOCK = 0xff14;
+const KeySym XK_UP = 0xff52; const KeySym XK_DOWN = 0xff54; const KeySym XK_LEFT = 0xff51; const KeySym XK_RIGHT = 0xff53;
+const KeySym XK_HOME = 0xff50; const KeySym XK_END = 0xff57;
+const KeySym XK_PAGE_UP = 0xff55; const KeySym XK_PAGE_DOWN = 0xff56;
+const KeySym XK_INSERT = 0xff63; const KeySym XK_MENU = 0xff67;
+const KeySym XK_KP_ADD = 0xffab; const KeySym XK_KP_SUBTRACT = 0xffad;
+const KeySym XK_KP_MULTIPLY = 0xffaa; const KeySym XK_KP_DIVIDE = 0xffaf; const KeySym XK_KP_EQUAL = 0xffbd;
+const KeySym XK_KP_ENTER = 0xff8d; const KeySym XK_KP_DECIMAL = 0xffae;
+const KeySym XK_KP_0 = 0xffb0; const KeySym XK_KP_1 = 0xffb1; const KeySym XK_KP_2 = 0xffb2; const KeySym XK_KP_3 = 0xffb3;
+const KeySym XK_KP_4 = 0xffb4; const KeySym XK_KP_5 = 0xffb5; const KeySym XK_KP_6 = 0xffb6; const KeySym XK_KP_7 = 0xffb7;
+const KeySym XK_KP_8 = 0xffb8; const KeySym XK_KP_9 = 0xffb9;
+const KeySym XK_PRINT = 0xff61; const KeySym XK_PAUSE = 0xff13;

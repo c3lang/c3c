@@ -1,5 +1,5 @@
 module std::gfx @feat(WAYLAND, X11_WAYLAND) @private @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
-import std::math, std::collections::list, libc, std::os::posix, std::net::os, std::os::env;
+import std::math, std::collections::list, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
 
 // public
 fn void todo_fix_window_captureMousePlatform_Wayland(GfxWindow* win, bool state)
@@ -833,11 +833,10 @@ fn void todo_fix_pollEvents_Wayland()
 
 	if (_gfx_ctx.wlRepeatInfoRate != 0 && _gfx_ctx.lastKey != 0)
 	{
-		uint now = (uint)(todo_fix_unix_getTimeNS() / 1000000);
-		if (now > _gfx_ctx.lastKeyTime)
+		if (_gfx_ctx.lastKeyTime.to_now() >= time::NANO_DURATION_ZERO)
 		{
 			todo_fix_wlSendKeyEvent(_gfx_ctx.lastKey);
-			_gfx_ctx.lastKeyTime = now + 1000 / (uint)_gfx_ctx.wlRepeatInfoRate;
+			_gfx_ctx.lastKeyTime = clock::now() + time::from_float(1.0 / _gfx_ctx.wlRepeatInfoRate).to_nano();
 		}
 	}
 
@@ -1318,17 +1317,18 @@ fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx)
 }
 
 // private
-fn int todo_fix_wlAnonymousShmOpen()
+fn int _wl_anonymous_shm_open()
 {
-	char[22] name = "/RGFW-wayland-XXXXXX\0\0";
-	int retries = 100;
-	do
+	for (int i = 0; i < 100; i++) @pool()
 	{
-		todo_fix_wlRandname((char*)&name + ((ZString)&name).len() - 6);
-		retries--;
-		int fd = shmOpen((ZString)&name, O_RDWR | O_CREAT | O_EXCL, 384);
-		if (fd >= 0) { shmUnlink((ZString)&name); return fd; }
-	} while (retries > 0);
+		ZString filename = (ZString)string::tformat("/c3gfx-wayland-%x\0\0", rand(0xFFFFFFF));
+		int fd = libc::shm_open(filename, libc::O_RDWR | libc::O_CREAT | libc::O_EXCL, 384);
+		if (fd >= 0)
+		{
+			libc::shm_unlink(filename);
+			return fd;
+		}
+	};
 	return -1;
 }
 
@@ -1385,9 +1385,9 @@ fn void todo_fix_wlCreateOutputs(WlProxy* registry, uint id)
 // private
 fn int todo_fix_wlCreateShmFile(sz size)
 {
-	int fd = todo_fix_wlAnonymousShmOpen();
+	int fd = _wl_anonymous_shm_open();
 	if (fd < 0) return fd;
-	if (ftruncate(fd, size) < 0)
+	if (libc::ftruncate(fd, size) < 0)
 	{
 		libc::close(fd);
 		return -1;
@@ -1506,7 +1506,7 @@ fn void todo_fix_wlKeyboardEnter(void* data, WlProxy* keyboard, uint serial, WlP
 }
 
 // private
-fn void todo_fix_wlKeyboardKey(void* data, WlProxy* keyboard, uint serial, uint time, uint key, uint state)
+fn void todo_fix_wlKeyboardKey(void* data, WlProxy* keyboard, uint serial, Clock time, uint key, uint state)
 {
 	GfxContext* info = data;
 	if (info.kbOwner == null) return;
@@ -1518,7 +1518,7 @@ fn void todo_fix_wlKeyboardKey(void* data, WlProxy* keyboard, uint serial, uint 
 	todo_fix_keyCallback(win, rgfwKey, win.internal.mod, is_key_down(rgfwKey) && state != 0, !!state);
 
 	info.lastKey = state != 0 ? key : 0;
-	info.lastKeyTime = time + (uint)_gfx_ctx.wlRepeatInfoDelay;
+	info.lastKeyTime = time + time::ms(_gfx_ctx.wlRepeatInfoDelay);
 	if (state != 0) todo_fix_wlSendKeyEvent(_gfx_ctx.lastKey);
 }
 
@@ -1699,18 +1699,6 @@ fn void todo_fix_wlPointerMotion(void* data, WlProxy* pointer, uint time, WlFixe
 	_mouse_motion_callback(win, { cx, cy });
 }
 
-// private
-fn void todo_fix_wlRandname(char* buf)
-{
-	Timespec ts;
-	clock_gettime(0, &ts);
-	CLong r = ts.tv_nsec;
-	for (int i = 0; i < 6; i++)
-	{
-		buf[i] = (char)('A' + (r & 15) + (r & 16) * 2);
-		r >>= 5;
-	}
-}
 
 // private
 fn void todo_fix_wlRelativePointerMotion(void* data, WlProxy* relPointer, uint timeHi, uint timeLo, WlFixed dx, WlFixed dy, WlFixed dxUnaccel, WlFixed dyUnaccel)

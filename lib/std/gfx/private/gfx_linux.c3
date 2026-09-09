@@ -1,5 +1,5 @@
 module std::gfx @feat(X11_WAYLAND, X11, WAYLAND);
-import std::math, std::collections::list, libc, std::os::env;
+import std::math, std::collections::list, libc, std::time, std::os::env;
 
 const WAYLAND_ONLY = $feat(WAYLAND) && !$feat(X11_WAYLAND) && !$feat(X11);
 const X11_ONLY = !$feat(WAYLAND) && !$feat(X11_WAYLAND) && $feat(X11);
@@ -48,7 +48,7 @@ struct GfxWindowSrc
 		XWindow parent;
 		GContext gc;
 		XlibIC ic;
-		ulong flashEnd;
+		Clock flashEnd;
 		long counter_value;
 		XSyncCounter counter;
 	}
@@ -1021,13 +1021,6 @@ fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
 
 
 
-// public
-fn ulong todo_fix_unix_getTimeNS()
-{
-	Timespec ts;
-	clock_gettime(1 /* CLOCK_MONOTONIC */, &ts);
-	return (ulong)ts.tv_sec * 1000000000 + (ulong)ts.tv_nsec;
-}
 
 // public
 fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)

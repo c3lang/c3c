@@ -1027,7 +1027,7 @@ fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx)
 // public
 fn void todo_fix_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current = win; }
 
-const WGPUSType WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER = 0x00000004;
+
 struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; void* layer; }
 extern fn WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WgpuSurfaceDescriptor* descriptor) @cname("wgpuInstanceCreateSurface");
 

@@ -2,31 +2,10 @@ module std::gfx @feat(WAYLAND) @link("wayland-client", "wayland-cursor", "waylan
 import std::collections::list, std::math, libc;
 
 
-extern fn int clock_gettime(int clock_id, Timespec* ts);
-
-struct Timespec { CLong tv_sec; CLong tv_nsec; }
-
-// ---- POSIX / libc bits used by the Wayland backend ----
-extern fn int shmOpen(ZString name, int oflag, int mode) @cname("shm_open");
-extern fn int shmUnlink(ZString name) @cname("shm_unlink");
-extern fn int ftruncate(int fd, sz length);
-
-const int O_RDWR = 0x0002;
-const int O_CREAT = 0x0040;
-const int O_EXCL = 0x0080;
 
 // ---- Wayland client core (real libwayland-client ABI) ----
 
-
 const uint WL_MARSHAL_FLAG_DESTROY = 1;
-
-
-// xdg-shell / extension protocol interface tables: NOT part of libwayland-client;
-// these come from wayland-scanner-generated protocol code (wayland-protocols)
-// that a real build must generate and link in, exactly like the original C
-// header's `#include "xdg-shell.h"` implies.
-
-// ---- listener vtables (field order matches each protocol's `_listener` struct) ----
 
 
 // private

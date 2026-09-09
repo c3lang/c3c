@@ -1,12 +1,9 @@
 module std::gfx @feat(X11_WAYLAND) @link("X11", "Xext", "Xrandr", "GL", "wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
-import std::collections::list, std::math, libc;
+import std::collections::list, std::math, libc, std::net::os, std::time;
 
 extern fn char* strtok(char* str, char* delim);
 extern fn char* strtokR(char* str, char* delim, char** saveptr) @cname("strtok_r");
 extern fn CLong strtol(char* str, char** endptr, int base);
-extern fn int clock_gettime(int clock_id, Timespec* ts);
-
-struct Timespec { CLong tv_sec; CLong tv_nsec; }
 
 
 // ---- Xlib core types (ABI-compatible aliases; XDisplay/XVisual/Screen stay opaque) ----
@@ -17,65 +14,13 @@ const int X_FALSE = 0;
 const int NONE = 0;
 const int CURRENT_TIME = 0;
 
-alias GlxGetProcAddressProc = fn GfxFn(ZString);
 
-
-// GLX
-alias TODO_RENAME_glXCreateContextAttribsARBProc = fn GLXContext(XDisplay*, GLXFBConfig, GLXContext, int, int*);
-alias TODO_RENAME_glXQueryExtensionsStringProc = fn ZString(XDisplay*, int);
-alias TODO_RENAME_glXChooseVisualProc = fn XVisualInfo*(XDisplay*, int, int*);
-alias TODO_RENAME_glXCreateContextProc = fn GLXContext(XDisplay*, XVisualInfo*, GLXContext, int);
-alias TODO_RENAME_glXMakeCurrentProc = fn int(XDisplay*, GLXDrawable, GLXContext);
-alias TODO_RENAME_glXGetCurrentContextProc = fn GLXContext();
-alias TODO_RENAME_glXSwapBuffersProc = fn void(XDisplay*, GLXDrawable);
-alias TODO_RENAME_glXSwapIntervalEXTProc = fn void(XDisplay*, GLXDrawable, int);
-alias TODO_RENAME_glXGetProcAddressProc = fn void*(ZString);
-alias TODO_RENAME_glXGetVisualFromFBConfigProc = fn XVisualInfo*(XDisplay*, GLXFBConfig);
-alias TODO_RENAME_glXGetFBConfigAttribProc = fn int(XDisplay*, GLXFBConfig, int, int*);
-alias TODO_RENAME_glXGetProcAddressARBProc = fn void*(ZString);
-alias TODO_RENAME_glXChooseFBConfigProc = fn GLXFBConfig*(XDisplay*, int, int*, int*);
-alias TODO_RENAME_glXDestroyContextProc = fn void(XDisplay*, GLXContext);
-alias TODO_RENAME_glXCreateWindowProc = fn GLXWindow(XDisplay*, GLXFBConfig, XWindow, int*);
-alias TODO_RENAME_glXDestroyWindowProc = fn void(XDisplay*, GLXWindow);
-alias TODO_RENAME_glXSwapIntervalNativeProc = fn int(int);
-
-TODO_RENAME_glXCreateContextAttribsARBProc todo_fix_glXCreateContextAttribsARB;
-TODO_RENAME_glXQueryExtensionsStringProc todo_fix_glXQueryExtensionsString;
-TODO_RENAME_glXChooseVisualProc todo_fix_glXChooseVisual;
-TODO_RENAME_glXCreateContextProc todo_fix_glXCreateContext;
-TODO_RENAME_glXMakeCurrentProc todo_fix_glXMakeCurrent;
-TODO_RENAME_glXGetCurrentContextProc todo_fix_glXGetCurrentContext;
-TODO_RENAME_glXSwapBuffersProc todo_fix_glXSwapBuffers;
-TODO_RENAME_glXSwapIntervalEXTProc todo_fix_glXSwapIntervalEXT;
-TODO_RENAME_glXGetVisualFromFBConfigProc todo_fix_glXGetVisualFromFBConfig;
-TODO_RENAME_glXGetFBConfigAttribProc todo_fix_glXGetFBConfigAttrib;
-TODO_RENAME_glXGetProcAddressARBProc todo_fix_glXGetProcAddressARB;
-TODO_RENAME_glXChooseFBConfigProc todo_fix_glXChooseFBConfig;
-TODO_RENAME_glXDestroyContextProc todo_fix_glXDestroyContext;
-TODO_RENAME_glXCreateWindowProc todo_fix_glXCreateWindow;
-TODO_RENAME_glXDestroyWindowProc todo_fix_glXDestroyWindow;
-TODO_RENAME_glXSwapIntervalNativeProc todo_fix_glXSwapIntervalNative;
 
 
 // ---- Xlib core functions (directly linked, like the original non-dynamic X11 build) ----
 
 // XIMCallback: { XPointer client_data; XIMProc callback; } from Xlib.h. XlibIC/XlibIM
 // are both plain void* in this port, so one function-pointer alias covers the callback.
-alias XImCallbackProc = fn void(void* im, char* clientData, char* callData);
-struct XImCallback
-{
-	XPointer client_data;
-	XImCallbackProc callback;
-}
-// XIMStyles: { unsigned short count_styles; XIMStyle *supported_styles; } from Xlib.h.
-struct XImStyles
-{
-	ushort count_styles;
-	CULong* supported_styles;
-}
-
-// Signature required by XRegisterIMInstantiateCallback / XUnregisterIMInstantiateCallback.
-alias XImInstantiateCallbackProc = fn void(XDisplay* d, XPointer clientData, XPointer callData);
 
 
 const uint XKB_USE_CORE_KBD = 0x0100;
@@ -83,11 +28,6 @@ const char SHIFT_MASK = 1 << 0;
 const char LOCK_MASK = 1 << 1;
 const char MOD2_MASK = 1 << 4;
 const char MOD3_MASK = 1 << 5;
-
-
-macro sz ximaskLen(event) => (sz)((event >> 3) + 1);
-macro void xiSetMask(char* mask, event) { mask[(sz)(event / 8)] |= (char)(1 << (event % 8)); }
-macro bool ximaskIsSet(char* mask, event) => (mask[(sz)(event / 8)] & (char)(1 << (event % 8))) != 0;
 
 
 
@@ -120,7 +60,7 @@ fn void? todo_fix_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags 
 	// CWBorderPixel | CWColormap | CWEventMask
 	if (!win.src.window) return X11_WINDOW_CREATION_FAILED~;
 
-	win.src.flashEnd = 0;
+	win.src.flashEnd = {};
 	xFreeColors(_gfx_ctx.display, cmap, null, 0, 0);
 	xSaveContext(_gfx_ctx.display, win.src.window, _gfx_ctx.context, (XPointer)win);
 	win.src.gc = xCreateGC(_gfx_ctx.display, win.src.window, 0, null);
@@ -128,7 +68,7 @@ fn void? todo_fix_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags 
 	if (_gfx_ctx.im != null)
 	{
 		XImCallback callback;
-		callback.callback = &todo_fix_x11IcCallback;
+		callback.callback = &_x11_ic_callback;
 		callback.client_data = (XPointer)win;
 
 		win.src.ic = xCreateIC(_gfx_ctx.im, "inputStyle", (CULong)(0x0008 | 0x0400) /* XIMPreeditNothing | XIMStatusNothing */,
@@ -168,30 +108,6 @@ fn void? todo_fix_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags 
 }
 
 
-const KeySym XK_F1 = 0xffbe; const KeySym XK_F2 = 0xffbf; const KeySym XK_F3 = 0xffc0; const KeySym XK_F4 = 0xffc1;
-const KeySym XK_F5 = 0xffc2; const KeySym XK_F6 = 0xffc3; const KeySym XK_F7 = 0xffc4; const KeySym XK_F8 = 0xffc5;
-const KeySym XK_F9 = 0xffc6; const KeySym XK_F10 = 0xffc7; const KeySym XK_F11 = 0xffc8; const KeySym XK_F12 = 0xffc9;
-const KeySym XK_F13 = 0xffca; const KeySym XK_F14 = 0xffcb; const KeySym XK_F15 = 0xffcc; const KeySym XK_F16 = 0xffcd;
-const KeySym XK_F17 = 0xffce; const KeySym XK_F18 = 0xffcf; const KeySym XK_F19 = 0xffd0; const KeySym XK_F20 = 0xffd1;
-const KeySym XK_F21 = 0xffd2; const KeySym XK_F22 = 0xffd3; const KeySym XK_F23 = 0xffd4; const KeySym XK_F24 = 0xffd5;
-const KeySym XK_F25 = 0xffd6;
-const KeySym XK_SHIFT_L = 0xffe1; const KeySym XK_SHIFT_R = 0xffe2;
-const KeySym XK_CONTROL_L = 0xffe3; const KeySym XK_CONTROL_R = 0xffe4;
-const KeySym XK_ALT_L = 0xffe9; const KeySym XK_ALT_R = 0xffea;
-const KeySym XK_SUPER_L = 0xffeb; const KeySym XK_SUPER_R = 0xffec;
-const KeySym XK_CAPS_LOCK = 0xffe5; const KeySym XK_NUM_LOCK = 0xff7f; const KeySym XK_SCROLL_LOCK = 0xff14;
-const KeySym XK_UP = 0xff52; const KeySym XK_DOWN = 0xff54; const KeySym XK_LEFT = 0xff51; const KeySym XK_RIGHT = 0xff53;
-const KeySym XK_HOME = 0xff50; const KeySym XK_END = 0xff57;
-const KeySym XK_PAGE_UP = 0xff55; const KeySym XK_PAGE_DOWN = 0xff56;
-const KeySym XK_INSERT = 0xff63; const KeySym XK_MENU = 0xff67;
-const KeySym XK_KP_ADD = 0xffab; const KeySym XK_KP_SUBTRACT = 0xffad;
-const KeySym XK_KP_MULTIPLY = 0xffaa; const KeySym XK_KP_DIVIDE = 0xffaf; const KeySym XK_KP_EQUAL = 0xffbd;
-const KeySym XK_KP_ENTER = 0xff8d; const KeySym XK_KP_DECIMAL = 0xffae;
-const KeySym XK_KP_0 = 0xffb0; const KeySym XK_KP_1 = 0xffb1; const KeySym XK_KP_2 = 0xffb2; const KeySym XK_KP_3 = 0xffb3;
-const KeySym XK_KP_4 = 0xffb4; const KeySym XK_KP_5 = 0xffb5; const KeySym XK_KP_6 = 0xffb6; const KeySym XK_KP_7 = 0xffb7;
-const KeySym XK_KP_8 = 0xffb8; const KeySym XK_KP_9 = 0xffb9;
-const KeySym XK_PRINT = 0xff61; const KeySym XK_PAUSE = 0xff13;
-
 
 // public
 
@@ -206,16 +122,8 @@ struct TodoRenameAttribStack
 // ==================== Wayland-specific declarations & backend ====================
 // ---- POSIX / libc bits used by the Wayland backend ----
 
-extern fn int shmOpen(ZString name, int oflag, int mode) @cname("shm_open");
-
-extern fn int shmUnlink(ZString name) @cname("shm_unlink");
-
 extern fn int ftruncate(int fd, sz length);
 
-
-extern fn int pipe(int[2]* fds);
-
-extern fn int poll(Pollfd* fds, CUInt nfds, int timeout);
 
 extern fn int fcntl(int fd, int cmd, ...) @cname("fcntl");
 const int F_GETFD = 1;
@@ -225,10 +133,7 @@ const int F_GETFL = 3;
 struct Pollfd { int fd; short events; short revents; }
 
 
-const int O_RDWR = 0x0002;
 
-const int O_CREAT = 0x0040;
-const int O_EXCL = 0x0080;
 
 const int POLLIN = 0x0001;
 
@@ -297,7 +202,7 @@ fn void? todo_fix_createWindowPlatform_Wayland(String name, GfxWindowFlags flags
 
 
 module std::gfx @feat(X11_WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
-import std::math, libc;
+import std::math, libc, std::net::os, std::os::posix, std::time;
 // ==================== TODO_RENAME_DYNAMIC runtime dispatch layer ====================
 // Combined X11+Wayland runtime dispatch: every entry point below branches on
 // gfx_use_wayland (set once in todo_fix_initPlatform) instead of a vtable.
@@ -337,7 +242,7 @@ fn void todo_fix_waitForEvent(int waitMS)
 
 	if (_gfx_ctx.eventWait_forceStop[0] == 0 || _gfx_ctx.eventWait_forceStop[1] == 0)
 	{
-		if (pipe((int[2]*)&_gfx_ctx.eventWait_forceStop) != -1)
+		if (posix::pipe((int[2]*)&_gfx_ctx.eventWait_forceStop) != -1)
 		{
 			fcntl(_gfx_ctx.eventWait_forceStop[0], F_GETFL, 0);
 			fcntl(_gfx_ctx.eventWait_forceStop[0], F_GETFD, 0);
@@ -346,7 +251,7 @@ fn void todo_fix_waitForEvent(int waitMS)
 		}
 	}
 
-	Pollfd[2] fds;
+	Posix_pollfd[2] fds;
 	fds[0].fd = 0;
 	fds[0].events = (short)POLLIN;
 	fds[1].fd = _gfx_ctx.eventWait_forceStop[0];
@@ -379,12 +284,12 @@ fn void todo_fix_waitForEvent(int waitMS)
 		fds[0].fd = xConnectionNumber(_gfx_ctx.display);
 	}
 
-	ulong start = todo_fix_unix_getTimeNS();
+	Clock current = clock::now();
 	if (todo_fix_usingWayland())
 	{
 		while (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == 0)
 		{
-			if (poll(&fds[0], 1, waitMS) <= 0)
+			if (os::poll(&fds[0], 1, waitMS) <= 0)
 			{
 				wlDisplayCancelRead(_gfx_ctx.wlDisplay);
 				break;
@@ -396,7 +301,7 @@ fn void todo_fix_waitForEvent(int waitMS)
 
 			if (waitMS != TODO_RENAME_EVENT_WAIT_NEXT)
 			{
-				waitMS -= (int)((todo_fix_unix_getTimeNS() - start) / 1000000);
+				waitMS -= (int)current.to_now().to_duration().to_ms();
 			}
 		}
 
@@ -407,11 +312,11 @@ fn void todo_fix_waitForEvent(int waitMS)
 	{
 		while (xPending(_gfx_ctx.display) == 0)
 		{
-			if (poll(&fds[0], 1, waitMS) <= 0) break;
+			if (os::poll(&fds[0], 1, waitMS) <= 0) break;
 
 			if (waitMS != TODO_RENAME_EVENT_WAIT_NEXT)
 			{
-				waitMS -= (int)((todo_fix_unix_getTimeNS() - start) / 1000000);
+				waitMS -= (int)current.to_now().to_duration().to_ms();
 			}
 		}
 	}

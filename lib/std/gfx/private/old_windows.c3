@@ -2,9 +2,6 @@ module std::gfx @feat(WIN32) @link("user32", "gdi32", "shell32", "advapi32", "dw
 import std::collections::list, std::math, std::os::win32;
 
 
-extern fn int clock_gettime(int clock_id, Timespec* ts);
-
-struct Timespec { long tv_sec; CLong tv_nsec; }
 
 
 // ---- Win32 base types ----
