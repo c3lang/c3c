@@ -444,7 +444,7 @@ fn void todo_fix_pollEvents()
 	while (true)
 	{
 		ObjcId ev = objc_send(_gfx_ctx.ns_app, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, distantPast, mode, true);
-		if (ev == null) break;
+		if (!ev) break;
 		objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "sendEvent:", ev);
 	}
 }

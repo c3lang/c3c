@@ -812,46 +812,32 @@ fn void copy_image_data(char* dest_data, int w, int h, GfxFormat dest_format, ch
 	copy_image_data_64(dest_data, w, h, dest_format, src_data, src_format, false, func);
 }
 
-// public
-fn int init(String class_name, GfxInitOption options)
+<*
+ @require !_gfx_ctx.initialized : "Already initialized"
+ @require class_name.len < 254 : "Class name is too long"
+*>
+fn void? init(String class_name, GfxInitOption options)
 {
-	if (_gfx_ctx.initialized) return 1;
 	class_name = class_name ?: "C3GFX";
 	_gfx_ctx = { .initialized = true };
-	if (options & INIT_OPEN_GL && @catch(load_opengl()))
+	defer catch
 	{
-		log::error("Failed to load the OpenGL library", category: log::CATEGORY_VIDEO);
-		return -1;
-	}
-	if (options & INIT_EGL && @catch(_load_egl_native()))
-	{
-		log::error("Failed to load the EGL library", category: log::CATEGORY_VIDEO);
-		return -1;
-	}
-	if (options & INIT_VULKAN && @catch(_load_vulkan_native()))
-	{
-		log::error("Failed to load the Vulkan library", category: log::CATEGORY_VIDEO);
-		return -1;
-	}
-	todo_fix_initKeycodes();
-	;
-	if (@catch(_init_native(class_name, options)))
-	{
-		log::error("Failed to initialize global context", category: log::CATEGORY_VIDEO);
 		_destroy_native();
 		_gfx_ctx = {};
-		return 1;
 	}
+	if (options & INIT_OPEN_GL) load_opengl()!;
+	if (options & INIT_EGL) load_egl()!;
+	if (options & INIT_VULKAN) load_vulkan()!;
+	todo_fix_initKeycodes();
+	_init_native(class_name, options)!;
 	foreach (icon : GfxMouseIcon::values)
 	{
 		_gfx_ctx.standardMice[icon.ordinal] = todo_fix_createMouseStandard(icon);
 	}
 	todo_fix_pollMonitors();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
-	return 0;
 }
 
-// public
 fn void finalize()
 {
 	if (!_gfx_ctx.initialized) return;
