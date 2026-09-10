@@ -50,32 +50,6 @@ const int SM_CYVIRTUALSCREEN = 79;
 struct MinMaxInfo { Win32_POINT ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize; }
 
 // ---- extern Win32 functions (kernel32/user32/gdi32/shell32/dwmapi) ----
-extern fn int multiByteToWideChar(uint codePage, uint flags, ZString str, int cbMultiByte, ushort* out, int cchWideChar) @cname("MultiByteToWideChar");
-extern fn int wideCharToMultiByte(uint codePage, uint flags, ushort* wstr, int cchWideChar, char* out, int cbMultiByte, char* defChar, int* usedDefChar) @cname("WideCharToMultiByte");
-extern fn uint msgWaitForMultipleObjects(uint count, void* handles, int waitAll, uint milliseconds, uint wakeMask) @cname("MsgWaitForMultipleObjects");
-extern fn uint regGetValueW(void* key, ushort* subKey, ushort* value, uint flags, uint* type, void* data, uint* dataSize) @cname("RegGetValueW");
-extern fn int openClipboard(Win32_HWND* wnd) @cname("OpenClipboard");
-extern fn int closeClipboard() @cname("CloseClipboard");
-extern fn int emptyClipboard() @cname("EmptyClipboard");
-extern fn void* getClipboardData(uint format) @cname("GetClipboardData");
-extern fn void* setClipboardData(uint format, void* mem) @cname("SetClipboardData");
-extern fn void* globalAlloc(uint flags, sz bytes) @cname("GlobalAlloc");
-extern fn void* globalLock(void* mem) @cname("GlobalLock");
-extern fn int globalUnlock(void* mem) @cname("GlobalUnlock");
-extern fn void* globalFree(void* mem) @cname("GlobalFree");
-extern fn int getKeyboardState(char* state) @cname("GetKeyboardState");
-extern fn short getKeyState(int vKey) @cname("GetKeyState");
-extern fn uint mapVirtualKeyW(uint code, uint mapType) @cname("MapVirtualKeyW");
-extern fn void* getKeyboardLayout(uint threadId) @cname("GetKeyboardLayout");
-extern fn int toUnicodeEx(uint vk, uint scanCode, char* keyState, ushort* buf, int bufSize, uint flags, void* layout) @cname("ToUnicodeEx");
-extern fn int dragQueryPoint(void* drop, Win32_POINT* p) @cname("DragQueryPoint");
-extern fn uint dragQueryFileW(void* drop, uint fileIndex, ushort* file, uint cch) @cname("DragQueryFileW");
-extern fn void dragFinish(void* drop) @cname("DragFinish");
-extern fn int getUpdateRect(Win32_HWND* wnd, Win32_RECT* rect, int erase) @cname("GetUpdateRect");
-extern fn int beginPaint(Win32_HWND* wnd, void* ps) @cname("BeginPaint");
-extern fn int endPaint(Win32_HWND* wnd, void* ps) @cname("EndPaint");
-extern fn uint setTimer(Win32_HWND* wnd, uptr idEvent, uint elapse, void* proc) @cname("SetTimer");
-extern fn int killTimer(Win32_HWND* wnd, uptr idEvent) @cname("KillTimer");
 
 alias TodoRenameWglCreateContextProc = fn Win32_HGLRC(Win32_HDC*);
 alias TodoRenameWglDeleteContextProc = fn int(Win32_HGLRC);
@@ -204,10 +178,10 @@ fn int todo_fix_window_createSwapChain_DirectX(GfxWindow* win, DxgiFactory* pFac
 fn bool todo_fix_createUTF8FromWideStringWin32(ushort* source, char* output, sz max)
 {
 	if (source == null) return false;
-	int size = wideCharToMultiByte(65001 /* CP_UTF8 */, 0, source, -1, null, 0, null, null);
+	int size = win32::wideCharToMultiByte(65001 /* CP_UTF8 */, 0, source, -1, null, 0, null, null);
 	if (size == 0) return false;
 	if (size > (int)max) size = (int)max;
-	if (wideCharToMultiByte(65001, 0, source, -1, output, size, null, null) == 0) return false;
+	if (win32::wideCharToMultiByte(65001, 0, source, -1, (void*)output, size, null, null) == 0) return false;
 	output[size] = 0;
 	return true;
 }
@@ -235,7 +209,7 @@ fn bool todo_fix_win32GetDarkModeState()
 	uint len = uint::size;
 	static ushort[61] subKey = {(ushort)'S', (ushort)'o', (ushort)'f', (ushort)'t', (ushort)'w', (ushort)'a', (ushort)'r', (ushort)'e', (ushort)'\\', (ushort)'M', (ushort)'i', (ushort)'c', (ushort)'r', (ushort)'o', (ushort)'s', (ushort)'o', (ushort)'f', (ushort)'t', (ushort)'\\', (ushort)'W', (ushort)'i', (ushort)'n', (ushort)'d', (ushort)'o', (ushort)'w', (ushort)'s', (ushort)'\\', (ushort)'C', (ushort)'u', (ushort)'r', (ushort)'r', (ushort)'e', (ushort)'n', (ushort)'t', (ushort)'V', (ushort)'e', (ushort)'r', (ushort)'s', (ushort)'i', (ushort)'o', (ushort)'n', (ushort)'\\', (ushort)'T', (ushort)'h', (ushort)'e', (ushort)'m', (ushort)'e', (ushort)'s', (ushort)'\\', (ushort)'P', (ushort)'e', (ushort)'r', (ushort)'s', (ushort)'o', (ushort)'n', (ushort)'a', (ushort)'l', (ushort)'i', (ushort)'z', (ushort)'e', 0}; // "Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
 	static ushort[18] valueName = {(ushort)'A', (ushort)'p', (ushort)'p', (ushort)'s', (ushort)'U', (ushort)'s', (ushort)'e', (ushort)'L', (ushort)'i', (ushort)'g', (ushort)'h', (ushort)'t', (ushort)'T', (ushort)'h', (ushort)'e', (ushort)'m', (ushort)'e', 0}; // "AppsUseLightTheme"
-	regGetValueW((void*)(uptr)0x80000001 /* HKEY_CURRENT_USER */, (ushort*)&subKey, (ushort*)&valueName, 0x00000010 /* RRF_RT_REG_DWORD */, null, &lightMode, &len);
+	win32::regGetValueW((void*)(uptr)0x80000001 /* HKEY_CURRENT_USER */, (ushort*)&subKey, (ushort*)&valueName, 0x00000010 /* RRF_RT_REG_DWORD */, null, &lightMode, &len);
 	return lightMode == 0;
 }
 
@@ -346,16 +320,16 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			win32::postMessage(win.src.window, win32::WM_MOUSEMOVE, 0, (iptr)((uint)point.x | ((uint)point.y << 16)));
 		case win32::WM_PAINT:
 			Win32_RECT rect;
-			if (!getUpdateRect(hWnd, &rect, 0))
+			if (!win32::getUpdateRect(hWnd, &rect, 0))
 			{
 				todo_fix_windowRefreshCallback(win, { rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top });
 			}
 			else
 			{
-				char[128] ps;
-				beginPaint(hWnd, &ps);
+				Win32_PAINTSTRUCT ps;
+				win32::beginPaint(hWnd, &ps);
 				todo_fix_windowRefreshCallback(win, { 0, 0, ...win.size });
-				endPaint(hWnd, &ps);
+				win32::endPaint(hWnd, &ps);
 			}
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_DWMCOMPOSITIONCHANGED:
@@ -393,7 +367,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_SYSKEYUP:
 			if (!(win.internal.enabled_events & TODO_RENAME_KEY_RELEASED_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 			int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
-			if (scancode == 0) scancode = (int)mapVirtualKeyW((uint)wParam, 0 /* MAPVK_VK_TO_VSC */);
+			if (scancode == 0) scancode = (int)win32::mapVirtualKeyW((uint)wParam, 0 /* MAPVK_VK_TO_VSC */);
 			switch (scancode)
 			{
 				case 0x54: scancode = 0x137;
@@ -403,14 +377,14 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			}
 			GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW((uint)scancode);
 			if (wParam == 0x11 /* VK_CONTROL */) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
-			_key_update_key_mods(win, getKeyState(0x14) & 1 != 0, getKeyState(0x90) & 1 != 0, getKeyState(0x91) & 1 != 0);
+			_key_update_key_mods(win, win32::getKeyState(0x14) & 1 != 0, win32::getKeyState(0x90) & 1 != 0, win32::getKeyState(0x91) & 1 != 0);
 			todo_fix_keyCallback(win, value, win.internal.mod, false, false);
 		case win32::WM_KEYDOWN:
 		case win32::WM_SYSKEYDOWN:
 		{
 			if (!(win.internal.enabled_events & TODO_RENAME_KEY_PRESSED_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 			int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
-			if (scancode == 0) scancode = (int)mapVirtualKeyW((uint)wParam, 0);
+			if (scancode == 0) scancode = (int)win32::mapVirtualKeyW((uint)wParam, 0);
 			switch (scancode)
 			{
 				case 0x54: scancode = 0x137;
@@ -421,7 +395,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW((uint)scancode);
 			if (wParam == 0x11) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
 			bool repeat = is_key_down(value);
-			_key_update_key_mods(win, getKeyState(0x14) & 1 != 0, getKeyState(0x90) & 1 != 0, getKeyState(0x91) & 1 != 0);
+			_key_update_key_mods(win, win32::getKeyState(0x14) & 1 != 0, win32::getKeyState(0x90) & 1 != 0, win32::getKeyState(0x91) & 1 != 0);
 			todo_fix_keyCallback(win, value, win.internal.mod, repeat, true);
 			break;
 		}
@@ -491,23 +465,23 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_DROPFILES:
 			void* drop = (void*)wParam;
 			Win32_POINT pt;
-			dragQueryPoint(drop, &pt);
+			win32::dragQueryPoint(drop, &pt);
 			todo_fix_dataDragCallback(win, FILE, MOVE, { pt.x, pt.y });
 			if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
-			uint count = dragQueryFileW(drop, 0xffffffff, null, 0);
+			uint count = win32::dragQueryFileW(drop, 0xffffffff, null, 0);
 			for (uint i = 0; i < count; i++)
 			{
-				uint length = dragQueryFileW(drop, i, null, 0);
+				uint length = win32::dragQueryFileW(drop, i, null, 0);
 				if (length == 0) continue;
 				ushort* buffer = (ushort*)malloc((sz)(length + 1) * 2);
 				char* cbuffer = (char*)malloc((sz)length + 1);
-				dragQueryFileW(drop, i, buffer, length + 1);
+				win32::dragQueryFileW(drop, i, buffer, length + 1);
 				todo_fix_createUTF8FromWideStringWin32(buffer, cbuffer, length);
 				todo_fix_dataDropCallback(win, cbuffer, (sz)length + 1, FILE);
 				free(buffer);
 				free(cbuffer);
 			}
-			dragFinish(drop);
+			win32::dragFinish(drop);
 		default:
 			break;
 	}
@@ -577,7 +551,7 @@ fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 	_gfx_ctx.instance = win32::getModuleHandleW(null);
 	@pool()
 	{
-		multiByteToWideChar(65001, 0, class_name.zstr_copy(tmem), -1, (ushort*)&_gfx_ctx.wideClassName, 255);
+		win32::multiByteToWideChar(65001, 0, (void*)class_name.zstr_copy(tmem), -1, (ushort*)&_gfx_ctx.wideClassName, 255);
 	};
 
 	_gfx_ctx.wndClass = {};
@@ -730,7 +704,7 @@ fn void todo_fix_stopCheckEvents()
 	win32::postMessageW(_gfx_ctx.helper_window, 0, 0, 0);
 }
 // public
-fn void todo_fix_waitForEvent(int waitMS) { msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */); }
+fn void todo_fix_waitForEvent(int waitMS) { win32::msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */); }
 
 ushort[8] todo_fix_wideDisplayName = {(ushort)'D', (ushort)'I', (ushort)'S', (ushort)'P', (ushort)'L', (ushort)'A', (ushort)'Y', 0};
 
@@ -746,13 +720,13 @@ fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
 {
 	uint vsc = todo_fix_rgfwToApiKey(key);
 	char[256] keyboardState;
-	if (getKeyboardState((char*)&keyboardState) == 0) return key;
+	if (win32::getKeyboardState((char*)&keyboardState) == 0) return key;
 
-	uint vk = mapVirtualKeyW(vsc, 1 /* MAPVK_VSC_TO_VK */);
-	void* layout = getKeyboardLayout(0);
+	uint vk = win32::mapVirtualKeyW(vsc, 1 /* MAPVK_VSC_TO_VK */);
+	void* layout = win32::getKeyboardLayout(0);
 
 	ushort[4] charBuffer;
-	int result = toUnicodeEx(vk, vsc, (char*)&keyboardState, &charBuffer, 1, 0, layout);
+	int result = win32::toUnicodeEx(vk, vsc, (char*)&keyboardState, &charBuffer, 1, 0, layout);
 	if (result == 1 && charBuffer[0] < 256) return (GfxKey)charBuffer[0];
 
 	switch (vk)
@@ -1154,21 +1128,21 @@ fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough)
 
 
 // public
-fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
+fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, void* buffer, sz capacity, GfxDataTransfer* data)
 {
 	if (requestedType != TEXT) return false;
 
 	sz retry = 0;
 	int isOpen = 0;
-	while (isOpen == 0 && retry < 3) { isOpen = openClipboard(null); retry += 1; }
+	while (isOpen == 0 && retry < 3) { isOpen = win32::openClipboard(null); retry += 1; }
 	if (isOpen == 0) return false;
 
-	void* hData = getClipboardData(13 /* CF_UNICODETEXT */);
-	if (hData == null) { closeClipboard(); return false; }
+	void* hData = win32::getClipboardData(13 /* CF_UNICODETEXT */);
+	if (hData == null) { win32::closeClipboard(); return false; }
 
-	ushort* wstr = (ushort*)globalLock(hData);
+	ushort* wstr = (ushort*)win32::globalLock(hData);
 	bool ret = true;
-	int length = wideCharToMultiByte(65001, 0, wstr, -1, null, 0, null, null);
+	int length = win32::wideCharToMultiByte(65001, 0, wstr, -1, null, 0, null, null);
 	if (length <= 0) return false;
 
 	data.length = (sz)length;
@@ -1177,37 +1151,16 @@ fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffe
 	if (buffer != null && capacity < data.length) { ret = false; }
 	else if (buffer != null && data.length != 0)
 	{
-		if (wideCharToMultiByte(65001, 0, wstr, -1, buffer, length, null, null) <= 0) return false;
+		if (win32::wideCharToMultiByte(65001, 0, wstr, -1, buffer, length, null, null) <= 0) return false;
 		data.data = buffer;
 	}
 
-	globalUnlock(hData);
-	closeClipboard();
+	win32::globalUnlock(hData);
+	win32::closeClipboard();
 	return ret;
 }
 
 // public
-fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
-{
-	void* object = globalAlloc(0x0002 /* GMEM_MOVEABLE */, data.length * 2);
-	if (object == null) return false;
-
-	ushort* buffer = (ushort*)globalLock(object);
-	if (buffer == null) { globalFree(object); return false; }
-
-	multiByteToWideChar(65001, 0, (ZString)data.data, -1, buffer, (int)data.length);
-	globalUnlock(object);
-
-	sz retry = 0;
-	int isOpen = 0;
-	while (isOpen == 0 && retry < 3) { isOpen = openClipboard(null); retry += 1; }
-	if (isOpen == 0) { globalFree(object); return false; }
-
-	emptyClipboard();
-	setClipboardData(13, object);
-	closeClipboard();
-	return true;
-}
 
 // public
 

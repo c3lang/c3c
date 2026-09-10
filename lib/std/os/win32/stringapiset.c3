@@ -1,0 +1,3 @@
+module std::os::win32 @feat(WIN32) @link("kernel32");
+extern fn CInt multiByteToWideChar(Win32_UINT codePage, Win32_DWORD dwFlags, Win32_LPCSTR lpMultiByteStr, CInt cbMultiByte, Win32_LPWSTR lpWideCharStr, CInt cchWideChar) @cname("MultiByteToWideChar");
+extern fn CInt wideCharToMultiByte(Win32_UINT codePage, Win32_DWORD dwFlags, Win32_LPCWSTR lpWideCharStr, CInt cchWideChar, Win32_LPSTR lpMultiByteStr, CInt cbMultiByte, Win32_LPCSTR lpDefaultChar, Win32_LPBOOL lpUsedDefaultChar) @cname("WideCharToMultiByte");

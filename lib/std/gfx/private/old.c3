@@ -820,13 +820,6 @@ fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffe
 }
 
 // public
-fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
-{
-	if (!data || data.type != TEXT || !data.data) return false;
-	ObjcId pb = objc::send(objc::@class("NSPasteboard"), ObjcId, "generalPasteboard");
-	objc::send_void(pb, "clearContents");
-	return objc::send(pb,bool, "setString:forType:", ns_string((ZString)data.data), "public.utf8-plain-text".to_nsstring());
-}
 
 // public
 fn void* todo_fix_eglContext_getSourceContext(GfxEglContext* ctx) => ctx != null ? ctx.ctx : null;

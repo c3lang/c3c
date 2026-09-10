@@ -110,6 +110,11 @@ fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints*
 
 fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx) {}
 
+fn void? _write_clipboard_native(GfxDataTransfer* data)
+{
+	rgfwJsWriteClipboard(data.data, data.length);
+}
+
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* mon) => {};
 
 // --- exported

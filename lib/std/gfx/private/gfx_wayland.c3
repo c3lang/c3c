@@ -1103,36 +1103,37 @@ fn void todo_fix_window_showPlatform_Wayland(GfxWindow* win)
 	wlSurfaceCommit(win.src.surface);
 }
 
-// private
-fn bool todo_fix_writeClipboard_Wayland(GfxDataTransfer* data)
+fn void? _write_clipboard_wayland(GfxDataTransfer* data)
 {
-	if (_gfx_ctx.dataDeviceManager == null) return false;
-	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
+	if (!_gfx_ctx.dataDeviceManager) return CLIPBOARD_COULD_NOT_BE_OPENED~;
+	if (_gfx_ctx.unixClipboard)
+	{
+		free(_gfx_ctx.unixClipboard);
+		_gfx_ctx.unixClipboard = null;
+	}
 
 	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, data.length);
 	sz length = data.length;
 	if (data.data[length - 1] != 0) length += 1;
 
 	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	mem::copy(dataPtr, (void*)data.data, data.length);
+	mem::copy(dataPtr, data.data, data.length);
 	dataPtr[length - 1] = 0;
 	_gfx_ctx.unixClipboard.data = dataPtr;
 	_gfx_ctx.unixClipboard.type = TEXT;
 	_gfx_ctx.unixClipboard.length = length;
 
 	GfxWindow* win = _gfx_ctx.kbOwner;
-	if (win.src.dataSource != null) { wlDataSourceDestroy(win.src.dataSource); win.src.dataSource = null; }
-
-	win.src.dataSource = wlDataDeviceManagerCreateDataSource(_gfx_ctx.dataDeviceManager);
-	if (win.src.dataSource == null)
+	if (win.src.dataSource)
 	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_CLIPBOARD, "Could not create clipboard data source");
-		return false;
+		wlDataSourceDestroy(win.src.dataSource);
+		win.src.dataSource = null;
 	}
 
+	win.src.dataSource = wlDataDeviceManagerCreateDataSource(_gfx_ctx.dataDeviceManager);
+	if (!win.src.dataSource) return CLIPBOARD_COULD_NOT_BE_OPENED~;
 	wlDataSourceAddListener(win.src.dataSource, &todo_fix_dataSourceListener, &_gfx_ctx);
 	wlDataSourceOffer(win.src.dataSource, "text/plain;charset=utf-8");
-	return true;
 }
 
 // private

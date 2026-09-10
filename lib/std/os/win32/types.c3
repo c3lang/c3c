@@ -83,6 +83,7 @@ alias Win32_LPVOID = void*;
 alias Win32_LPWORD = Win32_WORD*;
 alias Win32_LPWSTR = Win32_WCHAR*;
 alias Win32_LRESULT = Win32_LONG_PTR;
+alias Win32_LSTATUS = Win32_LONG;
 alias Win32_NTSTATUS = Win32_LONG;
 alias Win32_PBOOL = Win32_BOOL*;
 alias Win32_PBOOLEAN = Win32_BOOLEAN*;

@@ -295,6 +295,17 @@ fn void _free_mouse(TodoRenameMouse* mouse)
 	objc::release(mouse);
 }
 
+fn void? _write_clipboard_native(GfxDataTransfer* data)
+{
+	if (!data || data.type != TEXT || !data.data) return CLIPBOARD_COULD_NOT_BE_OPENED~;
+	ObjcId pb = objc::send(objc::@class("NSPasteboard"), ObjcId, "generalPasteboard");
+	objc::send_void(pb, "clearContents");
+	if (!objc::send(pb,bool, "setString:forType:", ns_string((ZString)data.data), "public.utf8-plain-text".to_nsstring()))
+	{
+		return CLIPBOARD_COULD_NOT_BE_OPENED~;
+	}
+}
+
 fn void todo_fix_pollMonitors()
 {
 	if (_gfx_ctx.monitors.count != 0) free_monitors();

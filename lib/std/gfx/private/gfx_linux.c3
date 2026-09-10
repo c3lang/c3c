@@ -1033,19 +1033,19 @@ fn void todo_fix_window_swapBuffers_OpenGL(GfxWindow* win)
 }
 
 // public
-fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
+fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_writeClipboard_Wayland(data);
+			return _write_clipboard_wayland(data);
 		$case X11_ONLY:
-			return todo_fix_writeClipboard_X11(data);
+			return _write_clipboard_x11(data);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_writeClipboard_Wayland(data);
+				return _write_clipboard_wayland(data);
 			}
-			return todo_fix_writeClipboard_X11(data);
+			return _write_clipboard_x11(data);
 	$endswitch
 }
 

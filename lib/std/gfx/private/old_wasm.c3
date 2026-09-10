@@ -440,11 +440,7 @@ fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
 fn void todo_fix_window_setMousePassthrough(GfxWindow* win, char passthrough) { rgfwJsSetPointerEvents(passthrough); }
 
 // public
-fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
-{
-	rgfwJsWriteClipboard(data.data, data.length);
-	return true;
-}
+
 
 // public
 fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)

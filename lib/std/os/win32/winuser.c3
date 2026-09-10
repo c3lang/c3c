@@ -3,7 +3,7 @@ module std::os::win32 @link("user32") @feat(WIN32);
 const CCHDEVICENAME = 32;
 alias Win32_WNDPROC = fn Win32_LRESULT(Win32_HWND, Win32_UINT, Win32_WPARAM, Win32_LPARAM);
 alias Win32_MONITORENUMPROC = fn Win32_BOOL(Win32_HMONITOR, Win32_HDC, Win32_LPRECT, Win32_LPARAM);
-
+alias Win32_TIMERPROC = fn void(Win32_HWND, Win32_UINT, Win32_UINT_PTR, Win32_DWORD);
 alias Win32_HRAWINPUT = Win32_HANDLE;
 
 struct Win32_RAWHID
@@ -472,7 +472,6 @@ const PM_NOREMOVE = 0x0000;
 const PM_REMOVE   = 0x0001;
 const PM_NOYIELD  = 0x0002;
 
-extern fn Win32_HDC beginPaint(Win32_HWND, Win32_LPPAINTSTRUCT) @cname("BeginPaint");
 extern fn Win32_LRESULT callWindowProcW(Win32_WNDPROC lpPrevWndFunc, Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("CallWindowProcW");
 extern fn Win32_HWND createWindowExW(Win32_DWORD, Win32_LPCWSTR, Win32_LPCWSTR, Win32_DWORD, CInt, CInt, CInt, CInt, Win32_HWND, Win32_HMENU, Win32_HINSTANCE, Win32_LPVOID) @cname("CreateWindowExW");
 extern fn Win32_LRESULT defWindowProcW(Win32_HWND, Win32_UINT, Win32_WPARAM, Win32_LPARAM) @cname("DefWindowProcW");
@@ -553,6 +552,21 @@ extern fn Win32_BOOL unregisterClassW(Win32_LPCWSTR lpClassName, Win32_HINSTANCE
 extern fn void* setPropW(Win32_HWND hWnd, Win32_LPCWSTR lpString, Win32_HANDLE hData) @cname("SetPropW");
 extern fn void* getPropW(Win32_HWND hWnd, Win32_LPCWSTR lpString) @cname("GetPropW");
 extern fn void* removePropW(Win32_HWND hWnd, Win32_LPCWSTR lpString) @cname("RemovePropW");
+
+extern fn uint msgWaitForMultipleObjects(Win32_DWORD nCount, Win32_HANDLE* pHandles, Win32_BOOL fWaitAll, Win32_DWORD dwMilliseconds, Win32_DWORD dwWakeMask) @cname("MsgWaitForMultipleObjects");
+extern fn Win32_BOOL openClipboard(Win32_HWND hWndNewOwner) @cname("OpenClipboard");
+extern fn Win32_BOOL closeClipboard() @cname("CloseClipboard");
+extern fn Win32_BOOL emptyClipboard() @cname("EmptyClipboard");
+extern fn Win32_HANDLE getClipboardData(Win32_UINT uFormat) @cname("GetClipboardData");
+extern fn Win32_HANDLE setClipboardData(Win32_UINT uFormat, Win32_HANDLE hMem) @cname("SetClipboardData");
+extern fn Win32_BOOL getKeyboardState(Win32_PBYTE lpKeyState) @cname("GetKeyboardState");
+extern fn short getKeyState(CInt nVirtKey) @cname("GetKeyState");
+extern fn Win32_UINT mapVirtualKeyW(Win32_UINT uCode, Win32_UINT uMapType) @cname("MapVirtualKeyW");
+extern fn Win32_HKL getKeyboardLayout(Win32_DWORD idThread) @cname("GetKeyboardLayout");
+extern fn CInt toUnicodeEx(Win32_UINT wVirtKey, Win32_UINT wScanCode, Win32_PBYTE lpKeyState, Win32_LPWSTR pwszBuff, CInt cchBuff, Win32_UINT wFlags, Win32_HKL dwhkl) @cname("ToUnicodeEx");
+extern fn Win32_HDC beginPaint(Win32_HWND hWnd, Win32_LPPAINTSTRUCT lpPaint) @cname("BeginPaint");
+extern fn Win32_UINT_PTR setTimer(Win32_HWND hWnd, Win32_UINT_PTR nIDEvent, Win32_UINT uElapse, Win32_TIMERPROC lpTimerFunc) @cname("SetTimer");
+extern fn Win32_BOOL killTimer(Win32_HWND hWnd, Win32_UINT_PTR uIDEvent) @cname("KillTimer");
 
 macro getWindowLongPtr(Win32_HWND hWnd, CInt nIndex)
 {

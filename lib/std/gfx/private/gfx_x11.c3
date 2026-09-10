@@ -1235,14 +1235,14 @@ fn void todo_fix_window_setOpacity_X11(GfxWindow* win, char opacity)
 fn void todo_fix_window_swapBuffers_OpenGL_X11(GfxWindow* win) { todo_fix_glXSwapBuffers(_gfx_ctx.display, win.src.ctx.native.window); }
 
 // private
-fn bool todo_fix_writeClipboard_X11(GfxDataTransfer* data)
+fn void? _write_clipboard_x11(GfxDataTransfer* data)
 {
 	xSetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.helper_window, 0);
 	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) != _gfx_ctx.helper_window)
 	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_CLIPBOARD, "X11 failed to become owner of clipboard selection");
-		return false;
+		return COULD_NOT_OWN_X11_CLIPBOARD~;
 	}
+
 	if (_gfx_ctx.unixClipboard)
 	{
 		free(_gfx_ctx.unixClipboard);
@@ -1259,7 +1259,7 @@ fn bool todo_fix_writeClipboard_X11(GfxDataTransfer* data)
 	_gfx_ctx.unixClipboard.data = dataPtr;
 	_gfx_ctx.unixClipboard.type = TEXT;
 	_gfx_ctx.unixClipboard.length = length;
-	return true;
+
 }
 
 // private

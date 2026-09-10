@@ -227,6 +227,29 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 	return modes.array_view();
 }
 
+fn void? _write_clipboard_native(GfxDataTransfer* data)
+{
+	void* object = win32::globalAlloc(0x0002 /* GMEM_MOVEABLE */, (Win32_SIZE_T)data.length * 2);
+	if (!object) return mem::OUT_OF_MEMORY~;
+	defer catch win32::globalFree(object);
+	ushort* buffer = (ushort*)win32::globalLock(object);
+	if (!buffer) return CLIPBOARD_COULD_NOT_BE_OPENED~;
+
+	win32::multiByteToWideChar(65001, 0, (void*)data.data, -1, buffer, (int)data.length);
+	win32::globalUnlock(object);
+
+	int is_open = 0;
+	for (int i = 0; i < 3 && !is_open; i++)
+	{
+		is_open = win32::openClipboard(null);
+	}
+	if (!is_open) return CLIPBOARD_COULD_NOT_BE_OPENED~;
+
+	win32::emptyClipboard();
+	win32::setClipboardData(13, object);
+	win32::closeClipboard();
+}
+
 fn GfxPoint _get_global_mouse_native()
 {
 	Win32_POINT p;

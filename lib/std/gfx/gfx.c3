@@ -27,6 +27,8 @@ excuse
 	EGL_CTX_CREATION_FAILED,
 	EGL_CONFIG_NOT_FOUND,
 	EGL_SURFACE_CREATION_FAILED,
+	CLIPBOARD_COULD_NOT_BE_OPENED,
+	COULD_NOT_OWN_X11_CLIPBOARD,
 }
 
 const MAX_EVENTS = 32;
@@ -1136,6 +1138,11 @@ fn GfxEvent? event_queue_pop()
 	return *ev;
 }
 
+
+fn void? write_clipboard(GfxDataTransfer* data) @maydiscard
+{
+	return _write_clipboard_native(data) @inline;
+}
 
 // public
 fn GfxEvent? check_event()
