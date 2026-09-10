@@ -308,17 +308,18 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	win.src.ctx.native = ctx;
 	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
 
-	Win32_PIXELFORMATDESCRIPTOR pfd;
-	pfd.nSize = Win32_PIXELFORMATDESCRIPTOR::size;
-	pfd.nVersion = 1;
-	pfd.dwFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
-	pfd.iPixelType = PFD_TYPE_RGBA;
-	pfd.iLayerType = PFD_MAIN_PLANE;
-	pfd.cColorBits = 32;
-	pfd.cAlphaBits = 8;
-	pfd.cDepthBits = 24;
-	pfd.cStencilBits = (char)hints.stencil;
-	pfd.cAuxBuffers = (char)hints.auxBuffers;
+	Win32_PIXELFORMATDESCRIPTOR pfd = {
+		.nSize = Win32_PIXELFORMATDESCRIPTOR::size,
+		.nVersion = 1,
+		.dwFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER,
+		.iPixelType = win32::PFD_TYPE_RGBA,
+		.iLayerType = win32::PFD_MAIN_PLANE,
+		.cColorBits = 32,
+		.cAlphaBits = 8,
+		.cDepthBits = 24,
+		.cStencilBits = (char)hints.stencil,
+		.cAuxBuffers = (char)hints.auxBuffers,
+	};
 	if (hints.stereo) pfd.dwFlags |= win32::PFD_STEREO;
 	if (hints.renderer == TODO_RENAME_GL_SOFTWARE) pfd.dwFlags |= win32::PFD_GENERIC_FORMAT | win32::PFD_GENERIC_ACCELERATED;
 
@@ -445,6 +446,62 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	win.src.ctx.native.ctx = null;
 }
 
+fn void? _load_opengl_native() @private
+{
+	if (_gfx_ctx.nativeGL_handle && _gfx_ctx.glGetProcAddress) return;
+	if (!(_gfx_ctx.nativeGL_handle = win32::loadLibraryA("opengl32.dll"))) return MISSING_OPENGL_LIB~;
+	_gfx_ctx.glGetProcAddress = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglGetProcAddress");
+	if (!_gfx_ctx.glGetProcAddress) return MISSING_GL_GET_PROC_ADDR~;
+	todo_fix_wglCreateContext = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglCreateContext");
+	wgl_delete_context_fn = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglDeleteContext");
+	todo_fix_wglMakeCurrent = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglMakeCurrent");
+	todo_fix_wglGetCurrentDC = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglGetCurrentDC");
+	todo_fix_wglGetCurrentContext = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglGetCurrentContext");
+	todo_fix_wglShareLists = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglShareLists");
+
+	Win32_HWND dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
+	Win32_HDC dummy_dc = win32::getDC(dummyWin);
+	uint pfdFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
+
+	Win32_PIXELFORMATDESCRIPTOR pfd = {
+		.nSize = Win32_PIXELFORMATDESCRIPTOR::size,
+		.nVersion = 1,
+		.dwFlags = pfdFlags,
+		.iPixelType = win32::PFD_TYPE_RGBA,
+		.cColorBits = 32,
+		.cAlphaBits = 8,
+		.iLayerType = win32::PFD_MAIN_PLANE,
+		.cDepthBits = 32,
+		.cStencilBits = 8
+	};
+
+	int dummyPixelFormat = win32::choosePixelFormat(dummy_dc, &pfd);
+	win32::setPixelFormat(dummy_dc, dummyPixelFormat, &pfd);
+
+	void* dummy_context = todo_fix_wglCreateContext(dummy_dc);
+	void* cur = todo_fix_wglGetCurrentContext();
+	todo_fix_wglMakeCurrent(dummy_dc, dummy_context);
+
+	todo_fix_wglCreateContextAttribsARB = (TodoRenameWglCreateContextAttribsArbProc)_get_opengl_proc_native("wglCreateContextAttribsARB");
+	todo_fix_wglChoosePixelFormatARB = (TodoRenameWglChoosePixelFormatArbProc)_get_opengl_proc_native("wglChoosePixelFormatARB");
+	todo_fix_wglSwapIntervalEXT = (TodoRenameWglSwapIntervalExtProc)_get_opengl_proc_native("wglSwapIntervalEXT");
+
+	if (todo_fix_wglSwapIntervalEXT == null) todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to load swap interval function");
+
+	todo_fix_wglMakeCurrent(dummy_dc, cur);
+	wgl_delete_context_fn(dummy_context);
+	win32::releaseDC(dummyWin, dummy_dc);
+	win32::destroyWindow(dummyWin);
+}
+
+fn GfxFn _get_opengl_proc_native(ZString procname)
+{
+	GfxFn proc = _gfx_ctx.glGetProcAddress ? ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname) : null;
+	if (proc) return proc;
+	return win32::getProcAddress(_gfx_ctx.nativeGL_handle, (Win32_LPCSTR)procname);
+}
+
+// --- Egl
 
 fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints* hints)
 {
@@ -483,4 +540,24 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 const Char16[] RENAME_PROP_NAME = {'C', '3', 'G', 'F', 'X', 0};
 
 
-module std::gfx @feat(WIN32) @link("user32", "gdi32", "shell32", "advapi32", "dwmapi", "opengl32", "winmm");
+// --- helpers
+
+fn void _make_window_transparent(GfxWindow* win)
+{
+	if (!win.internal.flags.transparent) return;
+
+	Win32_DWM_BLURBEHIND bb = { .dwFlags = win32::DWM_BB_ENABLE, .fEnable = 1, .hRgnBlur = null };
+	if (win32::dwmEnableBlurBehindWindow(win.src.window, &bb))
+	{
+		win32::setWindowLongA(win.src.window, win32::GWL_EXSTYLE, win32::WS_EX_LAYERED);
+		win32::setLayeredWindowAttributes(win.src.window, 0, (char)128, win32::LWA_ALPHA);
+	}
+}
+
+fn bool _get_dark_mode_state()
+{
+	uint light_mode = 1;
+	uint len = uint::size;
+	win32::regGetValueA(win32::HKEY_CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Themes\Personalize`, "AppsUseLightTheme", win32::RRF_RT_REG_DWORD, null, &light_mode, &len);
+	return light_mode == 0;
+}

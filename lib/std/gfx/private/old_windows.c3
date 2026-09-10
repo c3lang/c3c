@@ -1,10 +1,6 @@
-module std::gfx @feat(WIN32) @link("user32", "gdi32", "shell32", "advapi32", "dwmapi", "opengl32", "winmm");
+module std::gfx @feat(WIN32);
 import std::collections::list, std::math, std::os::win32;
 
-// ---- Win32 base types ----
-
-const char PFD_TYPE_RGBA = 0;
-const char PFD_MAIN_PLANE = 0;
 
 struct BitmapV5Header
 {
@@ -35,21 +31,8 @@ const int ENUM_CURRENT_SETTINGS = -1;
 
 const uint DISPLAY_DEVICE_ACTIVE = 0x1;
 
-const uint RID_INPUT = 0x10000003;
-const uint RIM_TYPEMOUSE = 0;
-const ushort MOUSE_MOVE_ABSOLUTE = 0x01;
-const ushort MOUSE_VIRTUAL_DESKTOP = 0x02;
-const int SM_CXSCREEN = 0;
-const int SM_CYSCREEN = 1;
-const int SM_XVIRTUALSCREEN = 76;
-const int SM_YVIRTUALSCREEN = 77;
-const int SM_CXVIRTUALSCREEN = 78;
-const int SM_CYVIRTUALSCREEN = 79;
-
-
 struct MinMaxInfo { Win32_POINT ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize; }
 
-// ---- extern Win32 functions (kernel32/user32/gdi32/shell32/dwmapi) ----
 
 alias TodoRenameWglCreateContextProc = fn Win32_HGLRC(Win32_HDC*);
 alias TodoRenameWglDeleteContextProc = fn int(Win32_HGLRC);
@@ -79,10 +62,6 @@ struct GfxNativeImage
 	Win32_HBITMAP bitmap; // HBITMAP
 	Win32_HDC hdcMem; // HDC
 }
-
-
-// public
-
 
 struct WgpuSurfaceSourceWindowsHWND { WgpuChainedStruct chain; void* hinstance; void* hwnd; }
 
@@ -185,34 +164,6 @@ fn bool todo_fix_createUTF8FromWideStringWin32(ushort* source, char* output, sz 
 	output[size] = 0;
 	return true;
 }
-
-// private
-fn void todo_fix_win32MakeWindowTransparent(GfxWindow* win)
-{
-	if (!(win.internal.flags.transparent)) return;
-
-	Win32_DWM_BLURBEHIND bb;
-	bb.dwFlags = win32::DWM_BB_ENABLE;
-	bb.fEnable = 1;
-	bb.hRgnBlur = null;
-	if (win32::dwmEnableBlurBehindWindow(win.src.window, &bb) != 0)
-	{
-		win32::setWindowLongA(win.src.window, win32::GWL_EXSTYLE, win32::WS_EX_LAYERED);
-		win32::setLayeredWindowAttributes(win.src.window, 0, (char)128, 2 /* LWA_ALPHA */);
-	}
-}
-
-// public
-fn bool todo_fix_win32GetDarkModeState()
-{
-	uint lightMode = 1;
-	uint len = uint::size;
-	static ushort[61] subKey = {(ushort)'S', (ushort)'o', (ushort)'f', (ushort)'t', (ushort)'w', (ushort)'a', (ushort)'r', (ushort)'e', (ushort)'\\', (ushort)'M', (ushort)'i', (ushort)'c', (ushort)'r', (ushort)'o', (ushort)'s', (ushort)'o', (ushort)'f', (ushort)'t', (ushort)'\\', (ushort)'W', (ushort)'i', (ushort)'n', (ushort)'d', (ushort)'o', (ushort)'w', (ushort)'s', (ushort)'\\', (ushort)'C', (ushort)'u', (ushort)'r', (ushort)'r', (ushort)'e', (ushort)'n', (ushort)'t', (ushort)'V', (ushort)'e', (ushort)'r', (ushort)'s', (ushort)'i', (ushort)'o', (ushort)'n', (ushort)'\\', (ushort)'T', (ushort)'h', (ushort)'e', (ushort)'m', (ushort)'e', (ushort)'s', (ushort)'\\', (ushort)'P', (ushort)'e', (ushort)'r', (ushort)'s', (ushort)'o', (ushort)'n', (ushort)'a', (ushort)'l', (ushort)'i', (ushort)'z', (ushort)'e', 0}; // "Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
-	static ushort[18] valueName = {(ushort)'A', (ushort)'p', (ushort)'p', (ushort)'s', (ushort)'U', (ushort)'s', (ushort)'e', (ushort)'L', (ushort)'i', (ushort)'g', (ushort)'h', (ushort)'t', (ushort)'T', (ushort)'h', (ushort)'e', (ushort)'m', (ushort)'e', 0}; // "AppsUseLightTheme"
-	win32::regGetValueW((void*)(uptr)0x80000001 /* HKEY_CURRENT_USER */, (ushort*)&subKey, (ushort*)&valueName, 0x00000010 /* RRF_RT_REG_DWORD */, null, &lightMode, &len);
-	return lightMode == 0;
-}
-
 
 fn void todo_fix_win32MakeWindowDarkMode(GfxWindow* win, bool state)
 {
@@ -334,7 +285,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_DWMCOMPOSITIONCHANGED:
 		case win32::WM_DWMCOLORIZATIONCOLORCHANGED:
-			todo_fix_win32MakeWindowTransparent(win);
+			_make_window_transparent(win);
 		case win32::WM_CHAR:
 		case win32::WM_SYSCHAR:
 			if (wParam >= 0xd800 && wParam <= 0xdbff)
@@ -408,28 +359,28 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 
 			Win32_RAWINPUT raw;
 			uint raw_size = Win32_RAWINPUTHEADER::size + Win32_RAWMOUSE::size;
-			win32::getRawInputData((Win32_HRAWINPUT)lParam, RID_INPUT, &raw, &raw_size, Win32_RAWINPUTHEADER::size);
+			win32::getRawInputData((Win32_HRAWINPUT)lParam, win32::RID_INPUT, &raw, &raw_size, Win32_RAWINPUTHEADER::size);
 
-			if (raw.header.dwType != RIM_TYPEMOUSE || (!raw.mouse.lLastX && !raw.mouse.lLastY)) break;
+			if (raw.header.dwType != win32::RIM_TYPEMOUSE || (!raw.mouse.lLastX && !raw.mouse.lLastY)) break;
 
 			float vecX = 0.0f;
 			float vecY = 0.0f;
 
-			if (raw.mouse.usFlags & MOUSE_MOVE_ABSOLUTE)
+			if (raw.mouse.usFlags & win32::MOUSE_MOVE_ABSOLUTE)
 			{
 				Win32_POINT pos = {0, 0};
 				int width, height;
-				if (raw.mouse.usFlags & MOUSE_VIRTUAL_DESKTOP)
+				if (raw.mouse.usFlags & win32::MOUSE_VIRTUAL_DESKTOP)
 				{
-					pos.x += win32::getSystemMetrics(SM_XVIRTUALSCREEN);
-					pos.y += win32::getSystemMetrics(SM_YVIRTUALSCREEN);
-					width = win32::getSystemMetrics(SM_CXVIRTUALSCREEN);
-					height = win32::getSystemMetrics(SM_CYVIRTUALSCREEN);
+					pos.x += win32::getSystemMetrics(win32::SM_XVIRTUALSCREEN);
+					pos.y += win32::getSystemMetrics(win32::SM_YVIRTUALSCREEN);
+					width  = win32::getSystemMetrics(win32::SM_CXVIRTUALSCREEN);
+					height = win32::getSystemMetrics(win32::SM_CYVIRTUALSCREEN);
 				}
 				else
 				{
-					width = win32::getSystemMetrics(SM_CXSCREEN);
-					height = win32::getSystemMetrics(SM_CYSCREEN);
+					width  = win32::getSystemMetrics(win32::SM_CXSCREEN);
+					height = win32::getSystemMetrics(win32::SM_CYSCREEN);
 				}
 
 				pos.x += (int)(((float)raw.mouse.lLastX / 65535.0f) * (float)width);
@@ -612,8 +563,8 @@ fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWin
 	}
 	win.src.hdc = win32::getDC(win.src.window);
 
-	todo_fix_win32MakeWindowDarkMode(win, todo_fix_win32GetDarkModeState());
-	todo_fix_win32MakeWindowTransparent(win);
+	todo_fix_win32MakeWindowDarkMode(win, _get_dark_mode_state());
+	_make_window_transparent(win);
 }
 
 // public

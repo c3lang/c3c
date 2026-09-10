@@ -103,10 +103,6 @@ fn void _unload_opengl_native() @private
 	_gfx_ctx.glGetProcAddress = null;
 }
 
-
-module std::gfx @feat(WASM);
-
-
 module std::gfx @feat(WASM, MACOS, WIN32);
 
 GfxGlHints todo_fix_global_hints_open_gl_src = {
@@ -135,61 +131,4 @@ module std::gfx @feat(WASM, MACOS);
 fn void todo_fix_resetGlobalHints_OpenGL()
 {
 	todo_fix_global_hints_open_gl_src = {0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, false, false, false, false, TODO_RENAME_GL_RELEASE_NONE, TODO_RENAME_GL_CORE, 1, 0, null, null, TODO_RENAME_GL_ACCELERATED};
-}
-
-module std::gfx @feat(WIN32);
-import std::os::win32;
-
-// public
-fn void? _load_opengl_native() @private
-{
-	if (_gfx_ctx.nativeGL_handle && _gfx_ctx.glGetProcAddress) return;
-	if (!(_gfx_ctx.nativeGL_handle = win32::loadLibraryA("opengl32.dll"))) return MISSING_OPENGL_LIB~;
-	_gfx_ctx.glGetProcAddress = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglGetProcAddress");
-	if (!_gfx_ctx.glGetProcAddress) return MISSING_GL_GET_PROC_ADDR~;
-	todo_fix_wglCreateContext = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglCreateContext");
-	wgl_delete_context_fn = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglDeleteContext");
-	todo_fix_wglMakeCurrent = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglMakeCurrent");
-	todo_fix_wglGetCurrentDC = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglGetCurrentDC");
-	todo_fix_wglGetCurrentContext = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglGetCurrentContext");
-	todo_fix_wglShareLists = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglShareLists");
-
-	Win32_HWND dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
-	Win32_HDC dummy_dc = win32::getDC(dummyWin);
-	uint pfdFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
-
-	Win32_PIXELFORMATDESCRIPTOR pfd = { .nSize = Win32_PIXELFORMATDESCRIPTOR::size };
-	pfd.nVersion = 1;
-	pfd.dwFlags = pfdFlags;
-	pfd.iPixelType = PFD_TYPE_RGBA;
-	pfd.cColorBits = 32;
-	pfd.cAlphaBits = 8;
-	pfd.iLayerType = PFD_MAIN_PLANE;
-	pfd.cDepthBits = 32;
-	pfd.cStencilBits = 8;
-
-	int dummyPixelFormat = win32::choosePixelFormat(dummy_dc, &pfd);
-	win32::setPixelFormat(dummy_dc, dummyPixelFormat, &pfd);
-
-	void* dummy_context = todo_fix_wglCreateContext(dummy_dc);
-	void* cur = todo_fix_wglGetCurrentContext();
-	todo_fix_wglMakeCurrent(dummy_dc, dummy_context);
-
-	todo_fix_wglCreateContextAttribsARB = (TodoRenameWglCreateContextAttribsArbProc)_get_opengl_proc_native("wglCreateContextAttribsARB");
-	todo_fix_wglChoosePixelFormatARB = (TodoRenameWglChoosePixelFormatArbProc)_get_opengl_proc_native("wglChoosePixelFormatARB");
-	todo_fix_wglSwapIntervalEXT = (TodoRenameWglSwapIntervalExtProc)_get_opengl_proc_native("wglSwapIntervalEXT");
-
-	if (todo_fix_wglSwapIntervalEXT == null) todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to load swap interval function");
-
-	todo_fix_wglMakeCurrent(dummy_dc, cur);
-	wgl_delete_context_fn(dummy_context);
-	win32::releaseDC(dummyWin, dummy_dc);
-	win32::destroyWindow(dummyWin);
-}
-
-fn GfxFn _get_opengl_proc_native(ZString procname)
-{
-	GfxFn proc = _gfx_ctx.glGetProcAddress ? ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname) : null;
-	if (proc) return proc;
-	return win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, (Win32_LPCSTR)procname);
 }

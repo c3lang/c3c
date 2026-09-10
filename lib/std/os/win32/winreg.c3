@@ -1,3 +1,32 @@
 module std::os::win32 @feat(WIN32) @link("advapi32");
 
+const RRF_RT_REG_NONE       = 0x00000001;
+const RRF_RT_REG_SZ         = 0x00000002;
+const RRF_RT_REG_EXPAND_SZ  = 0x00000004;
+const RRF_RT_REG_BINARY     = 0x00000008;
+const RRF_RT_REG_DWORD      = 0x00000010;
+const RRF_RT_REG_MULTI_SZ   = 0x00000020;
+const RRF_RT_REG_QWORD      = 0x00000040;
+const RRF_RT_DWORD          = 0x00000018;
+const RRF_RT_QWORD          = 0x00000048;
+const RRF_RT_ANY            = 0x0000ffff;
+
+const RRF_NOEXPAND          = 0x10000000;
+const RRF_ZEROONFAILURE     = 0x20000000;
+const RRF_SUBKEY_WOW6464KEY = 0x00010000;
+const RRF_SUBKEY_WOW6432KEY = 0x00020000;
+
+const Win32_HKEY HKEY_CLASSES_ROOT     = (Win32_HKEY)0x80000000;
+const Win32_HKEY HKEY_CURRENT_USER     = (Win32_HKEY)0x80000001;
+const Win32_HKEY HKEY_LOCAL_MACHINE    = (Win32_HKEY)0x80000002;
+const Win32_HKEY HKEY_USERS            = (Win32_HKEY)0x80000003;
+const Win32_HKEY HKEY_PERFORMANCE_DATA = (Win32_HKEY)0x80000004;
+const Win32_HKEY HKEY_CURRENT_CONFIG   = (Win32_HKEY)0x80000005;
+
+const Win32_HKEY HKEY_DYN_DATA                    = (Win32_HKEY)0x80000006;
+const Win32_HKEY HKEY_CURRENT_USER_LOCAL_SETTINGS = (Win32_HKEY)0x80000007;
+const Win32_HKEY HKEY_PERFORMANCE_TEXT            = (Win32_HKEY)0x80000050;
+const Win32_HKEY HKEY_PERFORMANCE_NLSTEXT         = (Win32_HKEY)0x80000060;
+
+extern fn Win32_LSTATUS regGetValueA(Win32_HKEY hkey, Win32_LPCSTR lpSubKey, Win32_LPCSTR lpValue, Win32_DWORD dwFlags, Win32_LPDWORD pdwType, Win32_LPVOID pvData, Win32_LPDWORD pcbData) @cname("RegGetValueA");
 extern fn Win32_LSTATUS regGetValueW(Win32_HKEY hkey, Win32_LPCWSTR lpSubKey, Win32_LPCWSTR lpValue, Win32_DWORD dwFlags, Win32_LPDWORD pdwType, Win32_LPVOID pvData, Win32_LPDWORD pcbData) @cname("RegGetValueW");

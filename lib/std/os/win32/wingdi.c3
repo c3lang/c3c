@@ -46,6 +46,13 @@ const PFD_DOUBLEBUFFER        = 0x00000001;
 const PFD_STEREO              = 0x00000002;
 const PFD_SWAP_LAYER_BUFFERS  = 0x00000800;
 
+const PFD_TYPE_RGBA       = 0;
+const PFD_TYPE_COLORINDEX = 1;
+
+const PFD_MAIN_PLANE      = 0;
+const PFD_OVERLAY_PLANE   = 1;
+const PFD_UNDERLAY_PLANE  = -1;
+
 extern fn CInt choosePixelFormat(Win32_HDC hdc, Win32_PIXELFORMATDESCRIPTOR* ppfd) @cname("ChoosePixelFormat");
 extern fn Win32_BOOL setPixelFormat(Win32_HDC hdc, CInt format, Win32_PIXELFORMATDESCRIPTOR* ppfd) @cname("SetPixelFormat");
 extern fn CInt describePixelFormat(Win32_HDC hdc, CInt iPixelFormat, Win32_UINT nBytes, Win32_PIXELFORMATDESCRIPTOR* ppfd) @cname("DescribePixelFormat");
