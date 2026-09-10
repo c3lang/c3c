@@ -52,13 +52,8 @@ struct MinMaxInfo { Win32_POINT ptReserved, ptMaxSize, ptMaxPosition, ptMinTrack
 // ---- extern Win32 functions (kernel32/user32/gdi32/shell32/dwmapi) ----
 extern fn int multiByteToWideChar(uint codePage, uint flags, ZString str, int cbMultiByte, ushort* out, int cchWideChar) @cname("MultiByteToWideChar");
 extern fn int wideCharToMultiByte(uint codePage, uint flags, ushort* wstr, int cchWideChar, char* out, int cbMultiByte, char* defChar, int* usedDefChar) @cname("WideCharToMultiByte");
-
 extern fn uint msgWaitForMultipleObjects(uint count, void* handles, int waitAll, uint milliseconds, uint wakeMask) @cname("MsgWaitForMultipleObjects");
-
-
-
 extern fn uint regGetValueW(void* key, ushort* subKey, ushort* value, uint flags, uint* type, void* data, uint* dataSize) @cname("RegGetValueW");
-
 extern fn int openClipboard(Win32_HWND* wnd) @cname("OpenClipboard");
 extern fn int closeClipboard() @cname("CloseClipboard");
 extern fn int emptyClipboard() @cname("EmptyClipboard");
@@ -68,17 +63,14 @@ extern fn void* globalAlloc(uint flags, sz bytes) @cname("GlobalAlloc");
 extern fn void* globalLock(void* mem) @cname("GlobalLock");
 extern fn int globalUnlock(void* mem) @cname("GlobalUnlock");
 extern fn void* globalFree(void* mem) @cname("GlobalFree");
-
 extern fn int getKeyboardState(char* state) @cname("GetKeyboardState");
 extern fn short getKeyState(int vKey) @cname("GetKeyState");
 extern fn uint mapVirtualKeyW(uint code, uint mapType) @cname("MapVirtualKeyW");
 extern fn void* getKeyboardLayout(uint threadId) @cname("GetKeyboardLayout");
 extern fn int toUnicodeEx(uint vk, uint scanCode, char* keyState, ushort* buf, int bufSize, uint flags, void* layout) @cname("ToUnicodeEx");
-
 extern fn int dragQueryPoint(void* drop, Win32_POINT* p) @cname("DragQueryPoint");
 extern fn uint dragQueryFileW(void* drop, uint fileIndex, ushort* file, uint cch) @cname("DragQueryFileW");
 extern fn void dragFinish(void* drop) @cname("DragFinish");
-
 extern fn int getUpdateRect(Win32_HWND* wnd, Win32_RECT* rect, int erase) @cname("GetUpdateRect");
 extern fn int beginPaint(Win32_HWND* wnd, void* ps) @cname("BeginPaint");
 extern fn int endPaint(Win32_HWND* wnd, void* ps) @cname("EndPaint");
@@ -96,7 +88,7 @@ alias TodoRenameWglChoosePixelFormatArbProc = fn int(Win32_HDC*, int*, float*, u
 alias TodoRenameWglSwapIntervalExtProc = fn int(int);
 
 TodoRenameWglCreateContextProc todo_fix_wglCreateContext;
-TodoRenameWglDeleteContextProc todo_fix_wglDeleteContext;
+TodoRenameWglDeleteContextProc wgl_delete_context_fn;
 TodoRenameWglMakeCurrentProc todo_fix_wglMakeCurrent;
 TodoRenameWglGetCurrentDcProc todo_fix_wglGetCurrentDC;
 TodoRenameWglGetCurrentContextProc todo_fix_wglGetCurrentContext;
@@ -1270,146 +1262,6 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 	if (proc != null) { extensions = ((GetExtStringArbFn)proc)(todo_fix_wglGetCurrentDC()); }
 	else if (proc2 != null) { extensions = ((GetExtStringExtFn)proc2)(); }
 	return extensions && todo_fix_extensionSupportedStr(extensions, extension, len);
-}
-
-// public
-fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
-{
-	win.src.ctx.native = ctx;
-	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
-
-	Win32_PIXELFORMATDESCRIPTOR pfd;
-	pfd.nSize = Win32_PIXELFORMATDESCRIPTOR::size;
-	pfd.nVersion = 1;
-	pfd.dwFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
-	pfd.iPixelType = PFD_TYPE_RGBA;
-	pfd.iLayerType = PFD_MAIN_PLANE;
-	pfd.cColorBits = 32;
-	pfd.cAlphaBits = 8;
-	pfd.cDepthBits = 24;
-	pfd.cStencilBits = (char)hints.stencil;
-	pfd.cAuxBuffers = (char)hints.auxBuffers;
-	if (hints.stereo) pfd.dwFlags |= win32::PFD_STEREO;
-	if (hints.renderer == TODO_RENAME_GL_SOFTWARE) pfd.dwFlags |= win32::PFD_GENERIC_FORMAT | win32::PFD_GENERIC_ACCELERATED;
-
-	int pixelFormat = win32::choosePixelFormat(win.src.hdc, &pfd);
-	if (todo_fix_wglChoosePixelFormatARB != null)
-	{
-		int[50] pixelFormatAttribs;
-		TodoRenameAttribStack stack;
-		todo_fix_attribStack_init(&stack, (int*)&pixelFormatAttribs, 50);
-
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_DRAW_TO_WINDOW_ARB, 1);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_SUPPORT_OPENGL_ARB, 1);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_COLOR_BITS_ARB, 32);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_DOUBLE_BUFFER_ARB, 1);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ALPHA_BITS_ARB, hints.alpha);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_DEPTH_BITS_ARB, hints.depth);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_STENCIL_BITS_ARB, hints.stencil);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_STEREO_ARB, hints.stereo);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_AUX_BUFFERS_ARB, hints.auxBuffers);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_RED_BITS_ARB, hints.red);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_GREEN_BITS_ARB, hints.blue);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_BLUE_BITS_ARB, hints.green);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCUM_RED_BITS_ARB, hints.accumRed);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCUM_GREEN_BITS_ARB, hints.accumGreen);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCUM_BLUE_BITS_ARB, hints.accumBlue);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCUM_ALPHA_BITS_ARB, hints.accumAlpha);
-
-		if (hints.sRGB)
-		{
-			if (hints.profile != TODO_RENAME_GL_ES)
-			{
-				todo_fix_attribStack_pushAttribs(&stack, WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, 1);
-			}
-			else
-			{
-				todo_fix_attribStack_pushAttribs(&stack, WGL_COLORSPACE_SRGB_EXT, (int)hints.sRGB);
-			}
-		}
-		todo_fix_attribStack_pushAttribs(&stack, WGL_COVERAGE_SAMPLES_NV, hints.samples);
-		todo_fix_attribStack_pushAttribs(&stack, 0, 0);
-
-		int newPixelFormat;
-		uint numFormats;
-		todo_fix_wglChoosePixelFormatARB(win.src.hdc, (int*)&pixelFormatAttribs, null, 1, &newPixelFormat, &numFormats);
-		if (numFormats == 0) { todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create a pixel format for WGL"); }
-		else { pixelFormat = newPixelFormat; }
-	}
-
-	Win32_PIXELFORMATDESCRIPTOR suggested;
-	if (!win32::describePixelFormat(win.src.hdc, pixelFormat, Win32_PIXELFORMATDESCRIPTOR::size, &suggested)
-		|| !win32::setPixelFormat(win.src.hdc, pixelFormat, &pfd))
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to set the WGL pixel format");
-	}
-
-	if (todo_fix_wglCreateContextAttribsARB != null)
-	{
-		int[40] attribs;
-		TodoRenameAttribStack stack;
-		todo_fix_attribStack_init(&stack, (int*)&attribs, 40);
-
-		int mask = 0;
-		switch (hints.profile)
-		{
-			case TODO_RENAME_GL_ES: mask |= WGL_CONTEXT_ES_PROFILE_BIT_EXT;
-			case TODO_RENAME_GL_COMPATIBILITY: mask |= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
-			case TODO_RENAME_GL_FORWARD_COMPATIBILITY: mask |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
-			default: mask |= WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
-		}
-		todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_PROFILE_MASK_ARB, mask);
-
-		if (hints.minor != 0 || hints.major != 0)
-		{
-			todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_MAJOR_VERSION_ARB, hints.major);
-			todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_MINOR_VERSION_ARB, hints.minor);
-		}
-
-		char[32] noError = "WGL_ARB_create_context_no_error";
-		if (todo_fix_extensionSupportedPlatform_OpenGL((ZString)&noError, 31)) todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError);
-
-		char[30] flushControl = "WGL_ARB_context_flush_control";
-		if (todo_fix_extensionSupportedPlatform_OpenGL((ZString)&flushControl, 30))
-		{
-			if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_FLUSH) { todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB); }
-			else if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_NONE) { todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB); }
-		}
-
-		int flags = 0;
-		if (hints.debug) flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
-		char[34] robustness = "WGL_ARB_create_context_robustness";
-		if (hints.robustness && todo_fix_extensionSupportedPlatform_OpenGL((ZString)&robustness, 33)) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
-		if (flags != 0) todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_FLAGS_ARB, flags);
-
-		todo_fix_attribStack_pushAttribs(&stack, 0, 0);
-		win.src.ctx.native.ctx = todo_fix_wglCreateContextAttribsARB(win.src.hdc, null, (int*)&attribs);
-	}
-
-	if (todo_fix_wglCreateContextAttribsARB == null || win.src.ctx.native.ctx == null)
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create an accelerated OpenGL Context.");
-		win.src.ctx.native.ctx = todo_fix_wglCreateContext(win.src.hdc);
-	}
-
-	win32::releaseDC(win.src.window, win.src.hdc);
-	win.src.hdc = win32::getDC(win.src.window);
-
-	if (hints.share != null) todo_fix_wglShareLists(todo_fix_getCurrentContext_OpenGL(), hints.share.ctx);
-
-	todo_fix_wglMakeCurrent(win.src.hdc, win.src.ctx.native.ctx);
-	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context initalized.");
-	return true;
-}
-
-// public
-fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx)
-{
-	todo_fix_wglDeleteContext(ctx.ctx);
-	win.src.ctx.native.ctx = null;
-	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context freed.");
 }
 
 // public

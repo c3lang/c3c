@@ -15,7 +15,6 @@ fn void rgfwDoNothing() {}
 // public
 fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
 {
-	todo_fix_debugCallback(TODO_RENAME_TYPE_WARNING, TODO_RENAME_WARNING_WAYLAND, "RGFW Wayland support is experimental");
 
 	win.src.surface = wlCompositorCreateSurface(_gfx_ctx.compositor);
 	wlSurfaceAddListener(win.src.surface, &todo_fix_windowSurfaceListener, win);

@@ -36,6 +36,20 @@ struct GfxGlHints
 }
 
 
+fn GfxGlContext*? _window_create_opengl_context_native(GfxWindow* win, GfxGlHints* hints)
+{
+	GfxGlContext* context = mem::new(GfxGlContext);
+	defer catch free(context);
+	_window_init_opengl_context_native(win, context, hints)!;
+	win.src.gfxType |= TODO_RENAME_GFX_OWNED_BY_RGFW;
+	return context;
+}
+
+fn void _window_destroy_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
+{
+	_window_release_opengl_context_native(win, ctx);
+	if (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW) free(ctx);
+}
 
 fn void? _load_opengl_native() @private @weak => NOT_IMPLEMENTED~;
 fn void _unload_opengl_native() @private @weak { }
@@ -114,27 +128,6 @@ fn void todo_fix_setGlobalHints_OpenGL(GfxGlHints* hints)
 	todo_fix_global_hints_open_gl = hints;
 }
 
-// public
-fn void todo_fix_window_deleteContext_OpenGL(GfxWindow* win, GfxGlContext* ctx)
-{
-	todo_fix_window_deleteContextPtr_OpenGL(win, ctx);
-	if (win && (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW)) free(ctx);
-}
-
-
-// public
-fn GfxGlContext* todo_fix_window_createContext_OpenGL(GfxWindow* win, GfxGlHints* hints)
-{
-	GfxGlContext* ctx = mem::new(GfxGlContext);
-	if (!todo_fix_window_createContextPtr_OpenGL(win, ctx, hints))
-	{
-		free(ctx);
-		if (win) win.src.ctx.native = null;
-		return null;
-	}
-	win.src.gfxType |= TODO_RENAME_GFX_OWNED_BY_RGFW;
-	return ctx;
-}
 
 module std::gfx @feat(WASM, MACOS);
 
@@ -155,7 +148,7 @@ fn void? _load_opengl_native() @private
 	_gfx_ctx.glGetProcAddress = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglGetProcAddress");
 	if (!_gfx_ctx.glGetProcAddress) return MISSING_GL_GET_PROC_ADDR~;
 	todo_fix_wglCreateContext = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglCreateContext");
-	todo_fix_wglDeleteContext = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglDeleteContext");
+	wgl_delete_context_fn = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglDeleteContext");
 	todo_fix_wglMakeCurrent = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglMakeCurrent");
 	todo_fix_wglGetCurrentDC = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglGetCurrentDC");
 	todo_fix_wglGetCurrentContext = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglGetCurrentContext");
@@ -189,7 +182,7 @@ fn void? _load_opengl_native() @private
 	if (todo_fix_wglSwapIntervalEXT == null) todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to load swap interval function");
 
 	todo_fix_wglMakeCurrent(dummy_dc, cur);
-	todo_fix_wglDeleteContext(dummy_context);
+	wgl_delete_context_fn(dummy_context);
 	win32::releaseDC(dummyWin, dummy_dc);
 	win32::destroyWindow(dummyWin);
 }

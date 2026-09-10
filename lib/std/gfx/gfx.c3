@@ -18,6 +18,15 @@ excuse
 	EGL_BINDING_FAILED,
 	X11_WINDOW_CREATION_FAILED,
 	VULKAN_NOT_LOADED,
+	GLX_VISUAL_CONFIGS_NOT_FOUND,
+	GLX_NO_VALID_VISUAL,
+	OPENGL_CTX_CREATION_FAILED,
+	OPENGL_PIXEL_FORMAT_LOAD_FAILED,
+	EGL_DISPLAY_NOT_FOUND,
+	EGL_DISPLAY_FAILED_TO_INITIALIZE,
+	EGL_CTX_CREATION_FAILED,
+	EGL_CONFIG_NOT_FOUND,
+	EGL_SURFACE_CREATION_FAILED,
 }
 
 const MAX_EVENTS = 32;
@@ -1048,19 +1057,19 @@ fn void GfxWindow.release(&self)
 	$if $feat(MACOS):
 	if ((self.src.gfxType & TODO_RENAME_GFX_EGL) && self.src.ctx.egl != null)
 	{
-		todo_fix_window_deleteContext_EGL(self, self.src.ctx.egl);
+		_window_destroy_egl_context_native(self, self.src.ctx.egl);
 		self.src.ctx.egl = null;
 	}
 	if ((self.src.gfxType & TODO_RENAME_GFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
 	{
-		todo_fix_window_deleteContext_OpenGL(self, self.src.ctx.native);
+		_window_destroy_opengl_context_native(self, self.src.ctx.native);
 		self.src.ctx.native = null;
 	}
 	$endif
 	$if $feat(WASM) || $feat(WIN32):
 	if ((self.src.gfxType & TODO_RENAME_GFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
 	{
-		todo_fix_window_deleteContext_OpenGL(self, self.src.ctx.native);
+		_window_destroy_opengl_context_native(self, self.src.ctx.native);
 		self.src.ctx.native = null;
 	}
 	$endif
@@ -1882,13 +1891,10 @@ fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindo
 	_window_set_flags(self, flags, {});
 	self.src.gfxType = 0;
 	$if $feat(MACOS) || $feat(WIN32) || $feat(WASM):
-		if (flags.open_gl)
-		{
-			todo_fix_window_createContext_OpenGL(self, todo_fix_getGlobalHints_OpenGL());
-		}
+		if (flags.open_gl) _window_create_opengl_context_native(self, todo_fix_getGlobalHints_OpenGL())!;
 	$endif
 	$if $feat(MACOS):
-		if (flags.egl) todo_fix_window_createContext_EGL(self, todo_fix_getGlobalHints_OpenGL());
+		if (flags.egl) _window_create_egl_context_native(self, todo_fix_getGlobalHints_OpenGL())!;
 	$endif
 	if (!flags.hide_mouse) self.set_mouse_default();
 	self.set_name(name);
@@ -2079,6 +2085,25 @@ fn void GfxWindow.show_mouse(&self, bool show)
 	_window_show_mouse_native(self, show);
 }
 
+fn GfxGlContext*? GfxWindow.create_opengl_context(&self, GfxGlHints* hints)
+{
+	return _window_create_opengl_context_native(self, hints);
+}
+
+fn void GfxWindow.destroy_opengl_context(&self, GfxGlContext* context)
+{
+	_window_destroy_opengl_context_native(self, context);
+}
+
+fn void GfxWindow.destroy_egl_context(&self, GfxEglContext* context)
+{
+	_window_destroy_egl_context_native(self, context);
+}
+
+fn GfxEglContext*? GfxWindow.create_egl_context(&self, GfxGlHints* hints)
+{
+	return _window_create_egl_context_native(self, hints);
+}
 
 fn void GfxWindow.set_dnd(&self, bool allow)
 {

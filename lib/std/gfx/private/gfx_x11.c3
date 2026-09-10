@@ -370,9 +370,9 @@ fn void? _load_opengl_x11()
 	todo_fix_glXGetFBConfigAttrib        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetFBConfigAttrib");
 	todo_fix_glXGetProcAddressARB        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetProcAddressARB");
 	todo_fix_glXChooseFBConfig           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseFBConfig");
-	todo_fix_glXDestroyContext           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyContext");
+	glx_destroy_context_fn           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyContext");
 	todo_fix_glXCreateWindow             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateWindow");
-	todo_fix_glXDestroyWindow            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyWindow");
+	glx_destroy_window_fn            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyWindow");
 	todo_fix_glXQueryExtensionsString    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXQueryExtensionsString");
 	glx_create_context_attribs_arb  = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContextAttribsARB");
 	todo_fix_glXSwapIntervalEXT          = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapIntervalEXT");
@@ -1028,14 +1028,14 @@ fn void todo_fix_window_closePlatform_X11(GfxWindow* win)
 	xDestroyWindow(_gfx_ctx.display, win.src.window);
 }
 
-// private
-fn void todo_fix_window_deleteContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext* ctx)
+fn void _window_release_opengl_context_x11(GfxWindow* win, GfxGlContext* ctx)
 {
-	if (win.src.ctx.native.window != win.src.window) todo_fix_glXDestroyWindow(_gfx_ctx.display, win.src.ctx.native.window);
-	todo_fix_glXDestroyContext(_gfx_ctx.display, ctx.ctx);
+	if (win.src.ctx.native.window != win.src.window) glx_destroy_window_fn(_gfx_ctx.display, win.src.ctx.native.window);
+	glx_destroy_context_fn(_gfx_ctx.display, ctx.ctx);
 	win.src.ctx.native = null;
-	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context freed.");
 }
+
+fn void _window_release_egl_context_x11(GfxWindow* win, GfxEglContext* ctx) {}
 
 // private
 fn void todo_fix_window_focus_X11(GfxWindow* win)
@@ -1317,15 +1317,15 @@ fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* b
 }
 
 // private
-fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
+fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
 	win.src.ctx.native = context;
 	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
 
-	bool showWindow = false;
-	if (win.src.window != 0)
+	bool show_window = false;
+	if (win.src.window)
 	{
-		showWindow = !_window_is_minimized_native(win);
+		show_window = !_window_is_minimized_native(win);
 		todo_fix_window_closePlatform(win);
 	}
 
@@ -1364,11 +1364,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext
 
 	int fbcount;
 	GLXFBConfig* fbc = todo_fix_glXChooseFBConfig(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), (int*)&visualAttribs, &fbcount);
-	if (fbc == null || fbcount == 0)
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to find any valid GLX visual configs.");
-		return false;
-	}
+	if (!fbc || !fbcount) return GLX_VISUAL_CONFIGS_NOT_FOUND~;
 
 	int bestFbcIdx = -1;
 	int bestDepth = 0;
@@ -1385,11 +1381,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext
 		if ((!transparent || vi.depth == 32) && samples <= hints.samples && samples > bestSamples) { bestFbcIdx = i; bestDepth = vi.depth; bestSamples = samples; }
 		xFree(vi);
 	}
-	if (bestFbcIdx == -1)
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to get a valid GLX visual.");
-		return false;
-	}
+	if (bestFbcIdx == -1) return GLX_NO_VALID_VISUAL~;
 
 	GLXFBConfig bestFbc = fbc[bestFbcIdx];
 	XVisualInfo* vi = todo_fix_glXGetVisualFromFBConfig(_gfx_ctx.display, bestFbc);
@@ -1397,8 +1389,9 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext
 	XVisualInfo visual = *vi;
 	xFree(vi);
 
-	if (catch todo_fix_xCreateWindow(visual, "", win.internal.flags, win)) return false;
-	if (showWindow) win.show();
+	todo_fix_xCreateWindow(visual, "", win.internal.flags, win)!;
+
+	if (show_window) win.show();
 
 	int[40] contextAttribs;
 	todo_fix_attribStack_init(&stack, (int*)&contextAttribs, 40);
@@ -1436,7 +1429,7 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext
 	todo_fix_attribStack_pushAttribs(&stack, 0, 0);
 
 	GLXContext ctx = null;
-	if (hints.share != null) ctx = hints.share.ctx;
+	if (hints.share) ctx = hints.share.ctx;
 
 	if (glx_create_context_attribs_arb == null)
 	{
@@ -1456,9 +1449,8 @@ fn bool todo_fix_window_createContextPtr_OpenGL_X11(GfxWindow* win, GfxGlContext
 
 	win.src.ctx.native.window = todo_fix_glXCreateWindow(_gfx_ctx.display, bestFbc, win.src.window, null);
 	todo_fix_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
-	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context initalized.");
+	log::info("OpenGL context initalized.", category: log::CATEGORY_VIDEO);
 	win.opengl_swap_interval(0);
-	return true;
 }
 
 // private
@@ -2464,9 +2456,9 @@ GlxGetVisualFromFBConfigProc todo_fix_glXGetVisualFromFBConfig;
 GlxGetFBConfigAttribProc todo_fix_glXGetFBConfigAttrib;
 GlxGetProcAddressARBProc todo_fix_glXGetProcAddressARB;
 GlxChooseFBConfigProc todo_fix_glXChooseFBConfig;
-GlxDestroyContextProc todo_fix_glXDestroyContext;
+GlxDestroyContextProc glx_destroy_context_fn;
 GlxCreateWindowProc todo_fix_glXCreateWindow;
-GlxDestroyWindowProc todo_fix_glXDestroyWindow;
+GlxDestroyWindowProc glx_destroy_window_fn;
 GlxSwapIntervalNativeProc todo_fix_glXSwapIntervalNative;
 
 // --- XIm

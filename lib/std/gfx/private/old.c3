@@ -212,77 +212,8 @@ fn GfxFn _get_opengl_proc_native(ZString procname)
 }
 
 // public
-fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
-{
-	if (win == null || ctx == null || hints == null || win.src.window == null) return false;
-	win.src.ctx.native = ctx;
-	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
-
-	int[40] attribs;
-	TodoRenameAttribStack stack;
-	todo_fix_attribStack_init(&stack, &attribs, 40);
-	int colorBits = (hints.red + hints.green + hints.blue + hints.alpha) / 4;
-	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_COLOR_SIZE, colorBits);
-	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_ALPHA_SIZE, hints.alpha);
-	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth);
-	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil);
-	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_AUX_BUFFERS, hints.auxBuffers);
-	todo_fix_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_CLOSEST_POLICY);
-	if (hints.samples != 0)
-	{
-		todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1);
-		todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_SAMPLES, hints.samples);
-	}
-	else { todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0); }
-	if (hints.doubleBuffer != 0) todo_fix_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_DOUBLE_BUFFER);
-	todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_OPEN_GL_PROFILE, hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
-	if (hints.major <= 2)
-	{
-		int accumSize = (hints.accumRed + hints.accumGreen + hints.accumBlue + hints.accumAlpha) / 4;
-		todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_ACCUM_SIZE, accumSize);
-	}
-	if (hints.renderer == TODO_RENAME_GL_SOFTWARE) { todo_fix_attribStack_pushAttribs(&stack, NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID); }
-	else { todo_fix_attribStack_pushAttrib(&stack, NS_OPEN_GL_PFA_ACCELERATED); }
-	todo_fix_attribStack_pushAttribs(&stack, 0, 0);
-
-	ObjcId format = objc_send(ns_alloc("NSOpenGLPixelFormat"), ObjcSendIdU32Ptr, "initWithAttributes:", (uint*)&attribs);
-	if (format == null)
-	{
-		log::error("Failed to load pixel format for OpenGL.", category: log::CATEGORY_VIDEO);
-		return false;
-	}
-
-	ObjcId share = hints.share != null ? (ObjcId)hints.share.ctx : null;
-	ctx.ctx = objc_send(ns_alloc("NSOpenGLContext"), ObjcSendIdIdId, "initWithFormat:shareContext:", format, share);
-	if (ctx.ctx == null)
-	{
-		objc::release(format);
-		log::error("Failed to create an OpenGL context", category: log::CATEGORY_VIDEO);
-		return false;
-	}
-	ctx.format = format;
-	objc_send((ObjcId)ctx.ctx, ObjcSendVoidId, "setView:", (ObjcId)win.src.view);
-	if (win.internal.flags.transparent)
-	{
-		int opacity = 0;
-		nsOpenGLContext_setValues((ObjcId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
-	}
-	todo_fix_window_makeCurrentContext_OpenGL(win);
-	win.opengl_swap_interval(0);
-	log::info("OpenGL context initialized", category: log::CATEGORY_VIDEO);
-	return true;
-}
 
 // public
-fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx)
-{
-	if (ctx == null) return;
-	objc::release(ctx.format);
-	objc::release(ctx.ctx);
-	ctx.format = null;
-	ctx.ctx = null;
-	if (win != null) win.src.ctx.native = null;
-}
 
 // public
 fn void todo_fix_window_makeCurrentContext_OpenGL(GfxWindow* win)
@@ -915,71 +846,9 @@ fn bool todo_fix_extensionSupported_EGL(ZString extension, sz len)
 }
 
 
-// public
-fn GfxEglContext* todo_fix_window_createContext_EGL(GfxWindow* win, GfxGlHints* hints)
-{
-	GfxEglContext* ctx = mem::new(GfxEglContext);
-	if (!todo_fix_window_createContextPtr_EGL(win, ctx, hints))
-	{
-		free(ctx);
-		return null;
-	}
-	win.src.gfxType |= TODO_RENAME_GFX_OWNED_BY_RGFW;
-	return ctx;
-}
+
 
 // public
-fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hints)
-{
-	if (win == null || ctx == null || hints == null) return false;
-	if (@catch(_load_egl_native())) return false;
-	if (_gfx_ctx.egl_display == null)
-	{
-		_gfx_ctx.egl_display = todo_fix_eglGetDisplay(null);
-		if (_gfx_ctx.egl_display == null) return false;
-		EglInt major = 0;
-		EglInt minor = 0;
-		if (todo_fix_eglInitialize((EglDisplay)_gfx_ctx.egl_display, &major, &minor) == 0) return false;
-	}
-
-	EglInt[32] cfg;
-	TodoRenameAttribStack cfgStack;
-	todo_fix_attribStack_init(&cfgStack, &cfg, 32);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RED_SIZE, hints.red);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_GREEN_SIZE, hints.green);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_BLUE_SIZE, hints.blue);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_ALPHA_SIZE, hints.alpha);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_DEPTH_SIZE, hints.depth);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_STENCIL_SIZE, hints.stencil);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_NONE, EGL_NONE);
-	EglConfig config = null;
-	EglInt num = 0;
-	if (todo_fix_eglChooseConfig((EglDisplay)_gfx_ctx.egl_display, &cfg, &config, 1, &num) == 0 || num == 0) return false;
-	todo_fix_eglBindApi(hints.profile == TODO_RENAME_GL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
-	EglInt[8] ctxAttribs;
-	TodoRenameAttribStack ctxStack;
-	todo_fix_attribStack_init(&ctxStack, &ctxAttribs, 8);
-	if (hints.profile == TODO_RENAME_GL_ES) todo_fix_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
-	todo_fix_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
-	EglContext share = hints.shareEGL != null ? (EglContext)hints.shareEGL.ctx : null;
-	ctx.ctx = todo_fix_eglCreateContext((EglDisplay)_gfx_ctx.egl_display, config, share, &ctxAttribs);
-	if (ctx.ctx == null) return false;
-	EglNativeWindowType nativeWindow = win.src.window;
-	if (win.src.view != null) nativeWindow = todo_fix_getLayer_OSX();
-	ctx.surface = todo_fix_eglCreateWindowSurface((EglDisplay)_gfx_ctx.egl_display, config, nativeWindow, null);
-	if (ctx.surface == null)
-	{
-		todo_fix_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
-		ctx.ctx = null;
-		return false;
-	}
-	win.src.ctx.egl = ctx;
-	win.src.gfxType = TODO_RENAME_GFX_EGL;
-	todo_fix_window_makeCurrentContext_EGL(win);
-	return true;
-}
 
 // public
 fn GfxEglContext* todo_fix_window_getContext_EGL(GfxWindow* win) => win != null ? win.src.ctx.egl : null;
@@ -987,20 +856,11 @@ fn GfxEglContext* todo_fix_window_getContext_EGL(GfxWindow* win) => win != null 
 // public
 fn void todo_fix_window_deleteContext_EGL(GfxWindow* win, GfxEglContext* ctx)
 {
-	todo_fix_window_deleteContextPtr_EGL(win, ctx);
+	_window_release_egl_context_native(win, ctx);
 	if (win != null && (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW)) free(ctx);
 }
 
-// public
-fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx)
-{
-	if (ctx == null || _gfx_ctx.egl_display == null) return;
-	if (ctx.surface != null) todo_fix_eglDestroySurface((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface);
-	if (ctx.ctx != null) todo_fix_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
-	ctx.surface = null;
-	ctx.ctx = null;
-	if (win != null) win.src.ctx.egl = null;
-}
+
 
 // public
 fn void todo_fix_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current = win; }

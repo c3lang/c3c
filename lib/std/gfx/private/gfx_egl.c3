@@ -1,7 +1,14 @@
-module std::gfx @private;
+module std::gfx @private @feat(MACOS, WAYLAND, X11, X11_WAYLAND, WASM, WIN32);
 
 fn void? _load_egl_native() @private @weak => NOT_IMPLEMENTED~;
 fn void _unload_egl_native() @private @weak { }
+
+
+fn void _window_destroy_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
+{
+	_window_release_egl_context_native(win, ctx);
+	if (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW) free(ctx);
+}
 
 module std::gfx @feat(MACOS, WAYLAND, X11, X11_WAYLAND);
 import libc;
@@ -49,15 +56,15 @@ alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
 alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
 
 EglGetProcAddressProc todo_fix_eglGetProcAddress;
-EglGetDisplayProc todo_fix_eglGetDisplay;
-EglInitializeProc todo_fix_eglInitialize;
+EglGetDisplayProc egl_get_display_fn;
+EglInitializeProc egl_initialize_fn;
 EglTerminateProc todo_fix_eglTerminate;
-EglBindApiProc todo_fix_eglBindApi;
-EglChooseConfigProc todo_fix_eglChooseConfig;
-EglCreateContextProc todo_fix_eglCreateContext;
-EglDestroyContextProc todo_fix_eglDestroyContext;
-EglCreateWindowSurfaceProc todo_fix_eglCreateWindowSurface;
-EglDestroySurfaceProc todo_fix_eglDestroySurface;
+EglBindApiProc egl_bind_api_fn;
+EglChooseConfigProc egl_choose_config_fn;
+EglCreateContextProc egl_create_context_fn;
+EglDestroyContextProc egl_destroy_context_fn;
+EglCreateWindowSurfaceProc egl_create_window_surface;
+EglDestroySurfaceProc egl_destroy_surface_fn;
 EglMakeCurrentProc todo_fix_eglMakeCurrent;
 EglSwapBuffersProc todo_fix_eglSwapBuffers;
 EglSwapIntervalProc todo_fix_eglSwapInterval;
@@ -66,6 +73,7 @@ EglQueryStringProc todo_fix_eglQueryString;
 EglGetConfigAttribProc todo_fix_eglGetConfigAttrib;
 
 excuse PROC_LOAD_FAILED;
+
 
 // public
 fn void _unload_egl_native() @private
@@ -100,19 +108,28 @@ fn void*? todo_fix_eglProc(ZString name)
 	return proc;
 }
 
+fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints* hints)
+{
+	GfxEglContext* context = mem::new(GfxEglContext);
+	defer catch free(context);
+	_window_init_egl_context_native(win, context, hints)!;
+	win.src.gfxType |= TODO_RENAME_GFX_OWNED_BY_RGFW;
+	return context;
+}
+
 
 // private
 fn void? bind_egl() @local
 {
-	todo_fix_eglGetDisplay = todo_fix_eglProc("eglGetDisplay")!;
-	todo_fix_eglInitialize = todo_fix_eglProc("eglInitialize")!;
+	egl_get_display_fn = todo_fix_eglProc("eglGetDisplay")!;
+	egl_initialize_fn = todo_fix_eglProc("eglInitialize")!;
 	todo_fix_eglTerminate = todo_fix_eglProc("eglTerminate")!;
-	todo_fix_eglBindApi = todo_fix_eglProc("eglBindAPI")!;
-	todo_fix_eglChooseConfig = todo_fix_eglProc("eglChooseConfig")!;
-	todo_fix_eglCreateContext = todo_fix_eglProc("eglCreateContext")!;
-	todo_fix_eglDestroyContext = todo_fix_eglProc("eglDestroyContext")!;
-	todo_fix_eglCreateWindowSurface = todo_fix_eglProc("eglCreateWindowSurface")!;
-	todo_fix_eglDestroySurface = todo_fix_eglProc("eglDestroySurface")!;
+	egl_bind_api_fn = todo_fix_eglProc("eglBindAPI")!;
+	egl_choose_config_fn = todo_fix_eglProc("eglChooseConfig")!;
+	egl_create_context_fn = todo_fix_eglProc("eglCreateContext")!;
+	egl_destroy_context_fn = todo_fix_eglProc("eglDestroyContext")!;
+	egl_create_window_surface = todo_fix_eglProc("eglCreateWindowSurface")!;
+	egl_destroy_surface_fn = todo_fix_eglProc("eglDestroySurface")!;
 	todo_fix_eglMakeCurrent = todo_fix_eglProc("eglMakeCurrent")!;
 	todo_fix_eglSwapBuffers = todo_fix_eglProc("eglSwapBuffers")!;
 	todo_fix_eglSwapInterval = todo_fix_eglProc("eglSwapInterval")!;

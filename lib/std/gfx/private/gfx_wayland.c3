@@ -909,13 +909,11 @@ fn void todo_fix_window_closePlatform_Wayland(GfxWindow* win)
 	wlSurfaceDestroy(win.src.surface);
 }
 
-// private
-fn bool todo_fix_window_createContextPtr_OpenGL_Wayland(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
+fn void? _window_init_opengl_context_wayland(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
-	bool out = todo_fix_window_createContextPtr_EGL(win, (GfxEglContext*)ctx, hints);
+	_window_init_egl_context_wayland(win, (GfxEglContext*)context, hints)!;
 	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
 	win.opengl_swap_interval(0);
-	return out;
 }
 
 // public
@@ -938,8 +936,11 @@ fn WGPUSurface todo_fix_window_createSurface_WebGPU_Wayland(GfxWindow* window, W
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
-// private
-fn void todo_fix_window_deleteContextPtr_OpenGL_Wayland(GfxWindow* win, GfxGlContext* ctx) { todo_fix_window_deleteContextPtr_EGL(win, (GfxEglContext*)ctx); win.src.ctx.native = null; }
+fn void _window_release_opengl_context_wayland(GfxWindow* win, GfxGlContext* ctx)
+{
+	_window_release_egl_context_wayland(win, (GfxEglContext*)ctx);
+	win.src.ctx.native = null;
+}
 
 // private
 fn GfxPoint todo_fix_window_fetchSize_Wayland(GfxWindow* win) => win.get_size();
@@ -1244,37 +1245,35 @@ fn void _toggle_wayland_maximized(GfxWindow* win, bool maximized)
 	}
 }
 
-// public
-fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hints)
+fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hints)
 {
-	if (win == null || ctx == null || hints == null) return false;
-	if (@catch(_load_egl_native())) return false;
-	if (_gfx_ctx.egl_display == null)
+	_load_egl_native()!;
+
+	if (!_gfx_ctx.egl_display)
 	{
-		_gfx_ctx.egl_display = todo_fix_eglGetDisplay((EglNativeDisplayType)_gfx_ctx.wlDisplay);
-		if (_gfx_ctx.egl_display == null) return false;
-		EglInt major = 0;
-		EglInt minor = 0;
-		if (todo_fix_eglInitialize((EglDisplay)_gfx_ctx.egl_display, &major, &minor) == 0) return false;
+		_gfx_ctx.egl_display = egl_get_display_fn(_gfx_ctx.wlDisplay);
+		if (!_gfx_ctx.egl_display) return EGL_DISPLAY_NOT_FOUND~;
+		EglInt major, minor;
+		if (!egl_initialize_fn(_gfx_ctx.egl_display, &major, &minor)) return EGL_DISPLAY_FAILED_TO_INITIALIZE~;
 	}
 
 	EglInt[32] cfg;
-	TodoRenameAttribStack cfgStack;
-	todo_fix_attribStack_init(&cfgStack, (int*)&cfg, 32);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RED_SIZE, hints.red);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_GREEN_SIZE, hints.green);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_BLUE_SIZE, hints.blue);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_ALPHA_SIZE, hints.alpha);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_DEPTH_SIZE, hints.depth);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_STENCIL_SIZE, hints.stencil);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
-	todo_fix_attribStack_pushAttribs(&cfgStack, EGL_NONE, EGL_NONE);
+	TodoRenameAttribStack cfg_stack;
+	todo_fix_attribStack_init(&cfg_stack, (int*)&cfg, 32);
+	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
+	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_RED_SIZE, hints.red);
+	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_GREEN_SIZE, hints.green);
+	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_BLUE_SIZE, hints.blue);
+	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_ALPHA_SIZE, hints.alpha);
+	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_DEPTH_SIZE, hints.depth);
+	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_STENCIL_SIZE, hints.stencil);
+	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
+	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_NONE, EGL_NONE);
 
 	EglConfig config = null;
 	EglInt num = 0;
-	if (todo_fix_eglChooseConfig((EglDisplay)_gfx_ctx.egl_display, (EglInt*)&cfg, &config, 1, &num) == 0 || num == 0) return false;
-	todo_fix_eglBindApi(hints.profile == TODO_RENAME_GL_ES ? (uint)EGL_OPENGL_ES_API : (uint)EGL_OPENGL_API);
+	if (!egl_choose_config_fn((EglDisplay)_gfx_ctx.egl_display, &cfg, &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
+	egl_bind_api_fn(hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
 
 	EglInt[8] ctxAttribs;
 	TodoRenameAttribStack ctxStack;
@@ -1282,36 +1281,33 @@ fn bool todo_fix_window_createContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx,
 	if (hints.profile == TODO_RENAME_GL_ES) todo_fix_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
 	todo_fix_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
 
-	EglContext share = hints.shareEGL != null ? (EglContext)hints.shareEGL.ctx : null;
-	ctx.ctx = todo_fix_eglCreateContext((EglDisplay)_gfx_ctx.egl_display, config, share, (EglInt*)&ctxAttribs);
-	if (ctx.ctx == null) return false;
-
+	EglContext share = hints.shareEGL ? hints.shareEGL.ctx : null;
+	ctx.ctx = egl_create_context_fn(_gfx_ctx.egl_display, config, share, &ctxAttribs);
+	if (!ctx.ctx) return EGL_CTX_CREATION_FAILED~;
+	defer catch
+	{
+		egl_destroy_context_fn(_gfx_ctx.egl_display, ctx.ctx);
+		ctx.ctx = null;
+	}
 	WlEglWindow* egl_window = wl_egl_window_create(win.src.surface, win.width, win.height);
 	ctx.egl_window = egl_window;
-	ctx.surface = todo_fix_eglCreateWindowSurface((EglDisplay)_gfx_ctx.egl_display, config, (EglNativeWindowType)egl_window, null);
-	if (ctx.surface == null)
-	{
-		todo_fix_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
-		ctx.ctx = null;
-		return false;
-	}
+	ctx.surface = egl_create_window_surface(_gfx_ctx.egl_display, config, egl_window, null);
+	if (!ctx.surface) return EGL_SURFACE_CREATION_FAILED~;
 	win.src.ctx.egl = ctx;
 	win.src.gfxType = TODO_RENAME_GFX_EGL;
 	todo_fix_window_makeCurrentContext_EGL(win);
-	return true;
 }
 
-// public
-fn void todo_fix_window_deleteContextPtr_EGL(GfxWindow* win, GfxEglContext* ctx)
+
+fn void _window_release_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx)
 {
-	if (ctx == null || _gfx_ctx.egl_display == null) return;
-	if (ctx.surface != null) todo_fix_eglDestroySurface((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface);
-	if (ctx.ctx != null) todo_fix_eglDestroyContext((EglDisplay)_gfx_ctx.egl_display, (EglContext)ctx.ctx);
-	if (ctx.egl_window != null) wl_egl_window_destroy((WlEglWindow*)ctx.egl_window);
+	if (ctx.surface) egl_destroy_surface_fn(_gfx_ctx.egl_display, ctx.surface);
+	if (ctx.ctx) egl_destroy_context_fn(_gfx_ctx.egl_display, ctx.ctx);
+	if (ctx.egl_window) wl_egl_window_destroy(ctx.egl_window);
 	ctx.surface = null;
 	ctx.ctx = null;
 	ctx.egl_window = null;
-	if (win != null) win.src.ctx.egl = null;
+	if (win) win.src.ctx.egl = null;
 }
 
 // private

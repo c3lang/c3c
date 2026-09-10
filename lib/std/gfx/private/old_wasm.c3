@@ -454,30 +454,6 @@ fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffe
 }
 
 // public
-fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
-{
-	win.src.ctx.native = ctx;
-	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
-
-	int handle = rgfwJsWebglCreateContext(hints);
-	if (handle == 0)
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL Context.");
-		return false;
-	}
-	ctx.ctx = (void*)(uptr)handle;
-	rgfwJsWebglMakeCurrent(handle);
-	win.opengl_swap_interval(0);
-	return true;
-}
-
-// public
-fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx)
-{
-	rgfwJsWebglDestroyContext((int)(uptr)ctx.ctx);
-	win.src.ctx.native.ctx = null;
-	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context freed.");
-}
 
 
 // public

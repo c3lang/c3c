@@ -85,6 +85,31 @@ fn GfxPoint _get_global_mouse_native()
 	return { rgfwJsGetMouseX(), rgfwJsGetMouseY() };
 }
 
+
+fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
+{
+	win.src.ctx.native = ctx;
+	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
+	int handle = rgfwJsWebglCreateContext(hints);
+	if (!handle) return OPENGL_CTX_CREATION_FAILED~;
+	ctx.ctx = (void*)(uptr)handle;
+	rgfwJsWebglMakeCurrent(handle);
+	win.opengl_swap_interval(0);
+}
+
+fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
+{
+	rgfwJsWebglDestroyContext((int)(uptr)ctx.ctx);
+	win.src.ctx.native.ctx = null;
+}
+
+fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints* hints)
+{
+	return NOT_IMPLEMENTED~;
+}
+
+fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx) {}
+
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* mon) => {};
 
 // --- exported

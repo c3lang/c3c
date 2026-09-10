@@ -511,20 +511,35 @@ fn void todo_fix_window_closePlatform(GfxWindow* win)
 	$endswitch
 }
 
-// public
-fn bool todo_fix_window_createContextPtr_OpenGL(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
+fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_createContextPtr_OpenGL_Wayland(win, context, hints);
+			return _window_init_opengl_context_wayland(win, context, hints);
 		$case X11_ONLY:
-			return todo_fix_window_createContextPtr_OpenGL_X11(win, context, hints);
+			return _window_init_opengl_context_x11(win, context, hints);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_createContextPtr_OpenGL_Wayland(win, context, hints);
+				return _window_init_opengl_context_wayland(win, context, hints);
 			}
-			return todo_fix_window_createContextPtr_OpenGL_X11(win, context, hints);
+			return _window_init_opengl_context_x11(win, context, hints);
+	$endswitch
+}
+
+fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* context, GfxGlHints* hints)
+{
+	$switch:
+		$case WAYLAND_ONLY:
+			return _window_init_egl_context_wayland(win, context, hints);
+		$case X11_ONLY:
+			return NOT_IMPLEMENTED~;
+		$default:
+			if (gfx_use_wayland)
+			{
+				return _window_init_egl_context_wayland(win, context, hints);
+			}
+			return NOT_IMPLEMENTED~;
 	$endswitch
 }
 
@@ -546,19 +561,35 @@ fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInsta
 }
 
 // public
-fn void todo_fix_window_deleteContextPtr_OpenGL(GfxWindow* win, GfxGlContext* ctx)
+fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_deleteContextPtr_OpenGL_Wayland(win, ctx);
+			return _window_release_opengl_context_wayland(win, ctx);
 		$case X11_ONLY:
-			return todo_fix_window_deleteContextPtr_OpenGL_X11(win, ctx);
+			return _window_release_opengl_context_x11(win, ctx);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_deleteContextPtr_OpenGL_Wayland(win, ctx);
+				return _window_release_opengl_context_wayland(win, ctx);
 			}
-			return todo_fix_window_deleteContextPtr_OpenGL_X11(win, ctx);
+			return _window_release_opengl_context_x11(win, ctx);
+	$endswitch
+}
+
+fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
+{
+	$switch:
+		$case WAYLAND_ONLY:
+			return _window_release_egl_context_wayland(win, ctx);
+		$case X11_ONLY:
+			return _window_release_egl_context_x11(win, ctx);
+		$default:
+			if (gfx_use_wayland)
+			{
+				return _window_release_egl_context_wayland(win, ctx);
+			}
+			return _window_release_egl_context_x11(win, ctx);
 	$endswitch
 }
 
