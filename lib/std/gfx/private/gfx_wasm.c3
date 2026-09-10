@@ -25,6 +25,7 @@ struct GfxWindowSrc
 	TodoRenameGfxContextType gfxType;
 }
 
+fn void _destroy_native() {}
 fn void _free_mouse(TodoRenameMouse* mouse) {}
 fn void _window_show_native(GfxWindow* win) {}
 fn bool _window_is_hidden_native(GfxWindow* win) => false;

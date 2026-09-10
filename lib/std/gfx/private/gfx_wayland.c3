@@ -595,30 +595,29 @@ fn TodoRenameMouse* todo_fix_createMouseStandard_Wayland(GfxMouseIcon mouse)
 	return (TodoRenameMouse*)surface;
 }
 
-// private
-fn void todo_fix_deinitPlatform_Wayland()
+fn void _destroy_wayland()
 {
-	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
-	if (_gfx_ctx.wlPointer != null) wlPointerDestroy(_gfx_ctx.wlPointer);
-	if (_gfx_ctx.wlKeyboard != null) wlKeyboardDestroy(_gfx_ctx.wlKeyboard);
-	if (_gfx_ctx.registry != null) wlRegistryDestroy(_gfx_ctx.registry);
-	if (_gfx_ctx.decorationManager != null) zxdgDecorationManagerV1Destroy(_gfx_ctx.decorationManager);
-	if (_gfx_ctx.relativePointerManager != null) zwpRelativePointerManagerV1Destroy(_gfx_ctx.relativePointerManager);
-	if (_gfx_ctx.relativePointer != null) zwpRelativePointerV1Destroy(_gfx_ctx.relativePointer);
-	if (_gfx_ctx.constraintManager != null) zwpPointerConstraintsV1Destroy(_gfx_ctx.constraintManager);
-	if (_gfx_ctx.iconManager != null) xdgToplevelIconManagerV1Destroy(_gfx_ctx.iconManager);
-	if (_gfx_ctx.xdgOutputManager != null) zxdgOutputManagerV1Destroy(_gfx_ctx.xdgOutputManager);
-	if (_gfx_ctx.dataDeviceManager != null) wlDataDeviceManagerDestroy(_gfx_ctx.dataDeviceManager);
-	if (_gfx_ctx.dataDevice != null) wlDataDeviceDestroy(_gfx_ctx.dataDevice);
-	if (_gfx_ctx.wlCursorTheme != null) wlCursorThemeDestroy(_gfx_ctx.wlCursorTheme);
-	if (_gfx_ctx.wp_pointer_warp != null) wpPointerWarpV1Destroy(_gfx_ctx.wp_pointer_warp);
-	if (_gfx_ctx.hiddenMouse != null) _free_mouse(_gfx_ctx.hiddenMouse);
-	if (_gfx_ctx.cursorSurface != null) wlSurfaceDestroy(_gfx_ctx.cursorSurface);
-	if (_gfx_ctx.shm != null) wlShmDestroy(_gfx_ctx.shm);
-	if (_gfx_ctx.seat != null) wlSeatRelease(_gfx_ctx.seat);
-	if (_gfx_ctx.xdgWmBase != null) xdgWmBaseDestroy(_gfx_ctx.xdgWmBase);
-	if (_gfx_ctx.compositor != null) wlCompositorDestroy(_gfx_ctx.compositor);
-	if (_gfx_ctx.wlDisplay != null) wlDisplayDisconnect(_gfx_ctx.wlDisplay);
+	if (_gfx_ctx.unixClipboard) free(_gfx_ctx.unixClipboard);
+	if (_gfx_ctx.wlPointer) wlPointerDestroy(_gfx_ctx.wlPointer);
+	if (_gfx_ctx.wlKeyboard) wlKeyboardDestroy(_gfx_ctx.wlKeyboard);
+	if (_gfx_ctx.registry) wlRegistryDestroy(_gfx_ctx.registry);
+	if (_gfx_ctx.decorationManager) zxdgDecorationManagerV1Destroy(_gfx_ctx.decorationManager);
+	if (_gfx_ctx.relativePointerManager) zwpRelativePointerManagerV1Destroy(_gfx_ctx.relativePointerManager);
+	if (_gfx_ctx.relativePointer) zwpRelativePointerV1Destroy(_gfx_ctx.relativePointer);
+	if (_gfx_ctx.constraintManager) zwpPointerConstraintsV1Destroy(_gfx_ctx.constraintManager);
+	if (_gfx_ctx.iconManager) xdgToplevelIconManagerV1Destroy(_gfx_ctx.iconManager);
+	if (_gfx_ctx.xdgOutputManager) zxdgOutputManagerV1Destroy(_gfx_ctx.xdgOutputManager);
+	if (_gfx_ctx.dataDeviceManager) wlDataDeviceManagerDestroy(_gfx_ctx.dataDeviceManager);
+	if (_gfx_ctx.dataDevice) wlDataDeviceDestroy(_gfx_ctx.dataDevice);
+	if (_gfx_ctx.wlCursorTheme) wlCursorThemeDestroy(_gfx_ctx.wlCursorTheme);
+	if (_gfx_ctx.wp_pointer_warp) wpPointerWarpV1Destroy(_gfx_ctx.wp_pointer_warp);
+	if (_gfx_ctx.hiddenMouse) _free_mouse(_gfx_ctx.hiddenMouse);
+	if (_gfx_ctx.cursorSurface) wlSurfaceDestroy(_gfx_ctx.cursorSurface);
+	if (_gfx_ctx.shm) wlShmDestroy(_gfx_ctx.shm);
+	if (_gfx_ctx.seat) wlSeatRelease(_gfx_ctx.seat);
+	if (_gfx_ctx.xdgWmBase) xdgWmBaseDestroy(_gfx_ctx.xdgWmBase);
+	if (_gfx_ctx.compositor) wlCompositorDestroy(_gfx_ctx.compositor);
+	if (_gfx_ctx.wlDisplay) wlDisplayDisconnect(_gfx_ctx.wlDisplay);
 }
 
 // private

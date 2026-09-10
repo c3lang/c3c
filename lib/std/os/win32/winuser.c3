@@ -4,6 +4,79 @@ const CCHDEVICENAME = 32;
 alias Win32_WNDPROC = fn Win32_LRESULT(Win32_HWND, Win32_UINT, Win32_WPARAM, Win32_LPARAM);
 alias Win32_MONITORENUMPROC = fn Win32_BOOL(Win32_HMONITOR, Win32_HDC, Win32_LPRECT, Win32_LPARAM);
 
+alias Win32_HRAWINPUT = Win32_HANDLE;
+
+struct Win32_RAWHID
+{
+	Win32_DWORD    dwSizeHid;
+	Win32_DWORD    dwCount;
+	Win32_BYTE[1]  bRawData;
+}
+
+struct Win32_RAWINPUT
+{
+	Win32_RAWINPUTHEADER header;
+	union
+	{
+		Win32_RAWMOUSE    mouse;
+		Win32_RAWKEYBOARD keyboard;
+		Win32_RAWHID      hid;
+	}
+}
+
+struct Win32_ICONINFO
+{
+	Win32_BOOL    fIcon;
+	Win32_DWORD   xHotspot;
+	Win32_DWORD   yHotspot;
+	Win32_HBITMAP hbmMask;
+	Win32_HBITMAP hbmColor;
+}
+
+struct Win32_RAWINPUTHEADER
+{
+	Win32_DWORD  dwType;
+	Win32_DWORD  dwSize;
+	Win32_HANDLE hDevice;
+	Win32_WPARAM wParam;
+}
+
+struct Win32_RAWKEYBOARD
+{
+	Win32_USHORT makeCode;
+	Win32_USHORT flags;
+	Win32_USHORT reserved;
+	Win32_USHORT vKey;
+	Win32_UINT   message;
+	Win32_ULONG  extraInformation;
+}
+
+struct Win32_RAWINPUTDEVICE
+{
+	Win32_USHORT usUsagePage;
+	Win32_USHORT usUsage;
+	Win32_DWORD  dwFlags;
+	Win32_HWND   hwndTarget;
+}
+
+struct Win32_RAWMOUSE
+{
+	Win32_USHORT usFlags;
+	union
+	{
+		Win32_ULONG ulButtons;
+		struct
+		{
+			Win32_USHORT usButtonFlags;
+			Win32_USHORT usButtonData;
+		}
+	}
+	Win32_ULONG  ulRawButtons;
+	Win32_LONG   lLastX;
+	Win32_LONG   lLastY;
+	Win32_ULONG  ulExtraInformation;
+}
+
 struct Win32_WNDCLASSEXW
 {
 	Win32_UINT      cbSize;
@@ -18,6 +91,15 @@ struct Win32_WNDCLASSEXW
 	Win32_LPCWSTR   lpszMenuName;
 	Win32_LPCWSTR   lpszClassName;
 	Win32_HICON     hIconSm;
+}
+
+struct Win32_FLASHWINFO
+{
+	Win32_UINT  cbSize;
+	Win32_HWND  hwnd;
+	Win32_DWORD dwFlags;
+	Win32_UINT  uCount;
+	Win32_DWORD dwTimeout;
 }
 
 struct Win32_WNDCLASSW
@@ -97,6 +179,17 @@ struct Win32_DISPLAY_DEVICEW
 	Win32_WCHAR[128] deviceKey;
 }
 
+struct Win32_WINDOWPLACEMENT
+{
+	Win32_UINT  length;
+	Win32_UINT  flags;
+	Win32_UINT  showCmd;
+	Win32_POINT ptMinPosition;
+	Win32_POINT ptMaxPosition;
+	Win32_RECT  rcNormalPosition;
+	Win32_RECT  rcDevice;
+}
+
 struct Win32_MONITORINFO
 {
 	Win32_DWORD cbSize;
@@ -143,15 +236,35 @@ alias Win32_PMSG = Win32_MSG*;
 alias Win32_LPMSG = Win32_MSG*;
 alias Win32_NPMSG = Win32_MSG*;
 
-alias Win32_PDEVMODEW = Win32_DEVMODEW;
-alias Win32_NPDEVMODEW = Win32_DEVMODEW;
-alias Win32_LPDEVMODEW = Win32_DEVMODEW;
+alias Win32_PDEVMODEW = Win32_DEVMODEW*;
+alias Win32_NPDEVMODEW = Win32_DEVMODEW*;
+alias Win32_LPDEVMODEW = Win32_DEVMODEW*;
+
+alias Win32_PRAWMOUSE = Win32_RAWMOUSE*;
+alias Win32_LPRAWMOUSE = Win32_RAWMOUSE*;
+
+alias Win32_PRAWKEYBOARD = Win32_RAWKEYBOARD*;
+alias Win32_LPRAWKEYBOARD = Win32_RAWKEYBOARD*;
+
+alias Win32_PRAWINPUT = Win32_RAWINPUT*;
+alias Win32_LPRAWINPUT = Win32_RAWINPUT*;
+
+alias Win32_PFLASHWINFO = Win32_FLASHWINFO*;
+
+alias Win32_PRAWINPUTDEVICE = Win32_RAWINPUTDEVICE*;
+alias Win32_LPRAWINPUTDEVICE = Win32_RAWINPUTDEVICE*;
 
 alias Win32_PDISPLAY_DEVICEW = Win32_DISPLAY_DEVICEW*;
 alias Win32_LPDISPLAY_DEVICEW = Win32_DISPLAY_DEVICEW*;
 
 alias Win32_LPMONITORINFO = Win32_MONITORINFO*;
 alias Win32_LPMONITORINFOEXW = Win32_MONITORINFOEXW*;
+
+alias Win32_PRAWINPUTHEADER = Win32_RAWINPUTHEADER*;
+alias Win32_LPRAWINPUTHEADER = Win32_RAWINPUTHEADER*;
+
+alias Win32_PRAWHID = Win32_RAWHID*;
+alias Win32_LPRAWHID = Win32_RAWHID*;
 
 alias Win32_PWNDCLASSW = Win32_WNDCLASSW*;
 alias Win32_NPWNDCLASSW = Win32_WNDCLASSW*;
@@ -215,6 +328,9 @@ const Win32_DWORD WS_EX_TOPMOST           = 0x00000008L;
 const Win32_DWORD WS_EX_TRANSPARENT       = 0x00000020L;
 const Win32_DWORD WS_EX_WINDOWEDGE        = 0x00000100L;
 
+const Win32_HWND HWND_TOPMOST = (Win32_HWND)(uptr)(-1);
+const Win32_HWND HWND_TOP = (Win32_HWND)(uptr)0;
+
 const Win32_UINT MB_OK = 0x00000000;
 const Win32_UINT MB_OKCANCEL = 0x00000001;
 const Win32_UINT MB_ABORTRETRYIGNORE = 0x00000002;
@@ -231,6 +347,13 @@ const Win32_UINT MB_ICONWARNING = MB_ICONEXCLAMATION;
 const Win32_UINT MB_ICONERROR = MB_ICONHAND;
 const Win32_UINT MB_ICONINFORMATION = MB_ICONASTERISK;
 const Win32_UINT MB_ICONSTOP = MB_ICONHAND;
+
+const FLASHW_ALL       = 0x00000003;
+const FLASHW_CAPTION   = 0x00000001;
+const FLASHW_STOP      = 0;
+const FLASHW_TIMER     = 0x00000004;
+const FLASHW_TIMERNOFG = 0x0000000C;
+const FLASHW_TRAY      = 0x00000002;
 
 const WM_ACTIVATEAPP                 = 0x001C;
 const WM_CAPTURECHANGED              = 0x0215;
@@ -280,6 +403,18 @@ const WM_XBUTTONUP                   = 0x020C;
 const HTCAPTION = 2;
 const HTCLIENT = 1;
 
+const RIDEV_REMOVE       = 0x00000001;
+const RIDEV_EXCLUDE      = 0x00000010;
+const RIDEV_PAGEONLY     = 0x00000020;
+const RIDEV_NOLEGACY     = 0x00000030;
+const RIDEV_INPUTSINK    = 0x00000100;
+const RIDEV_CAPTUREMOUSE = 0x00000200;
+const RIDEV_NOHOTKEYS    = 0x00000200;
+const RIDEV_APPKEYS      = 0x00000400;
+const RIDEV_EXINPUTSINK  = 0x00001000;
+const RIDEV_DEVNOTIFY    = 0x00002000;
+
+
 const WMSZ_BOTTOM = 6;
 const WMSZ_BOTTOMLEFT = 7;
 const WMSZ_BOTTOMRIGHT = 8;
@@ -288,6 +423,25 @@ const WMSZ_RIGHT = 2;
 const WMSZ_TOP = 3;
 const WMSZ_TOPLEFT = 4;
 const WMSZ_TOPRIGHT = 5;
+
+const WPF_ASYNCWINDOWPLACEMENT = 0x0004;
+const WPF_RESTORETOMAXIMIZED   = 0x0002;
+const WPF_SETMINPOSITION       = 0x0001;
+
+const SW_HIDE            = 0;
+const SW_SHOWNORMAL      = 1;
+const SW_NORMAL          = 1;
+const SW_SHOWMINIMIZED   = 2;
+const SW_SHOWMAXIMIZED   = 3;
+const SW_MAXIMIZE        = 3;
+const SW_SHOWNOACTIVATE  = 4;
+const SW_SHOW            = 5;
+const SW_MINIMIZE        = 6;
+const SW_SHOWMINNOACTIVE = 7;
+const SW_SHOWNA          = 8;
+const SW_RESTORE         = 9;
+const SW_SHOWDEFAULT     = 10;
+const SW_FORCEMINIMIZE   = 11;
 
 const GWL_WNDPROC @feat(ARCH_32_BIT) = -4;
 const GWL_HINSTANCE @feat(ARCH_32_BIT) = -6;
@@ -314,6 +468,10 @@ const GCLP_MENUNAME = -8;
 const GCL_STYLE = -26;
 const GCLP_WNDPROC = -24;
 
+const PM_NOREMOVE = 0x0000;
+const PM_REMOVE   = 0x0001;
+const PM_NOYIELD  = 0x0002;
+
 extern fn Win32_HDC beginPaint(Win32_HWND, Win32_LPPAINTSTRUCT) @cname("BeginPaint");
 extern fn Win32_LRESULT callWindowProcW(Win32_WNDPROC lpPrevWndFunc, Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("CallWindowProcW");
 extern fn Win32_HWND createWindowExW(Win32_DWORD, Win32_LPCWSTR, Win32_LPCWSTR, Win32_DWORD, CInt, CInt, CInt, CInt, Win32_HWND, Win32_HMENU, Win32_HINSTANCE, Win32_LPVOID) @cname("CreateWindowExW");
@@ -322,23 +480,67 @@ extern fn Win32_BOOL dispatchMessage(Win32_MSG* lpMsg) @cname("DispatchMessageW"
 extern fn Win32_BOOL endPaint(Win32_HWND, Win32_LPPAINTSTRUCT) @cname("EndPaint");
 extern fn Win32_BOOL getMessageW(Win32_LPMSG, Win32_HWND, Win32_UINT, Win32_UINT) @cname("GetMessageW");
 extern fn Win32_BOOL getUpdateRect(Win32_HWND hWnd, Win32_LPRECT lpRect, Win32_BOOL bErase) @cname("GetUpdateRect");
-extern fn Win32_LONG_PTR getWindowLongPtrW(Win32_HWND hWnd, CInt nIndex) @cname("GetWindowLongPtrW");
-extern fn Win32_LONG getWindowLongW(Win32_HWND hWnd, CInt nIndex) @cname("GetWindowLongW");
 extern fn Win32_HCURSOR loadCursorW(Win32_HINSTANCE instance, Win32_LPCWSTR cursorName) @cname("LoadCursorW");
 extern fn Win32_HICON loadIconW(Win32_HINSTANCE instance, Win32_LPCWSTR iconName) @cname("LoadIconW");
 extern fn Win32_BOOL destroyCursor(Win32_HCURSOR hCursor) @cname("DestroyCursor");
+extern fn Win32_BOOL destroyWindow(Win32_HWND wnd) @cname("DestroyWindow");
 
 extern fn int messageBoxW(Win32_HWND hWnd, Win32_LPCWSTR lpText, Win32_LPCWSTR lpCaption, Win32_UINT uType) @cname("MessageBoxW");
-extern fn void postQuitMessage(CInt) @cname("PostQuitMessage");
-extern fn Win32_LRESULT sendMessageA(Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("SendMessageA");
-extern fn Win32_ATOM registerClassExW(Win32_WNDCLASSEXW*) @cname("RegisterClassExW");
-extern fn Win32_LONG_PTR setWindowLongPtrW(Win32_HWND hWnd, CInt nIndex, Win32_LONG_PTR dwNewLong) @cname("SetWindowLongPtrW");
-extern fn Win32_LONG setWindowLongW(Win32_HWND hWnd, CInt nIndex, Win32_LONG dwNewLong) @cname("SetWindowLongW");
-extern fn Win32_BOOL showWindow(Win32_HWND, CInt) @cname("ShowWindow");
+extern fn Win32_BOOL peekMessageA(Win32_LPMSG lpMsg, Win32_HWND hWnd, Win32_UINT wMsgFilterMin, Win32_UINT wMsgFilterMax, Win32_UINT wRemoveMsg) @cname("PeekMessageA");
+extern fn Win32_BOOL peekMessageW(Win32_LPMSG lpMsg, Win32_HWND hWnd, Win32_UINT wMsgFilterMin, Win32_UINT wMsgFilterMax, Win32_UINT wRemoveMsg) @cname("PeekMessageW");
 extern fn Win32_BOOL translateMessage(Win32_MSG* lpMsg) @cname("TranslateMessage");
-extern fn Win32_BOOL updateWindow(Win32_HWND) @cname("UpdateWindow");
+extern fn Win32_LRESULT dispatchMessageA(Win32_MSG* lpMsg) @cname("DispatchMessageA");
+extern fn Win32_BOOL postMessageW(Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("PostMessageW");
+extern fn Win32_BOOL postMessage(Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("PostMessageA");
+extern fn Win32_LRESULT sendMessageA(Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("SendMessageA");
+extern fn void postQuitMessage(CInt) @cname("PostQuitMessage");
+extern fn Win32_BOOL deleteDC(Win32_HDC hDC) @cname("DeleteDC");
+extern fn Win32_HDC getDC(Win32_HWND hWnd) @cname("GetDC");
+extern fn int releaseDC(Win32_HWND hWnd, Win32_HDC hDC) @cname("ReleaseDC");
+extern fn Win32_ATOM registerClassExW(Win32_WNDCLASSEXW*) @cname("RegisterClassExW");
+
+extern fn Win32_BOOL getWindowRect(Win32_HWND hWnd, Win32_LPRECT lpRect) @cname("GetWindowRect");
+extern fn Win32_BOOL getClientRect(Win32_HWND hWnd, Win32_LPRECT lpRect) @cname("GetClientRect");
+extern fn Win32_BOOL adjustWindowRectEx(Win32_LPRECT lpRect, Win32_DWORD dwStyle, Win32_DWORD bMenu, Win32_DWORD dwExStyle) @cname("AdjustWindowRectEx");
+extern fn int setWindowPos(Win32_HWND hWnd, Win32_HWND hWndInsertAfter, int x, int y, int cx, int cy, Win32_UINT uFlags) @cname("SetWindowPos");
+extern fn Win32_LONG setWindowLongW(Win32_HWND hWnd, int nIndex, Win32_LONG dwNewLong) @cname("SetWindowLongW");
+extern fn Win32_LONG setWindowLongA(Win32_HWND hWnd, int nIndex, Win32_LONG dwNewLong) @cname("SetWindowLongA");
+extern fn Win32_LONG getWindowLongA(Win32_HWND hWnd, int nIndex) @cname("GetWindowLongA");
+extern fn Win32_LONG getWindowLongW(Win32_HWND hWnd, int nIndex) @cname("GetWindowLongW");
+extern fn Win32_LONG_PTR getWindowLongPtrA(Win32_HWND hWnd, int nIndex) @cname("GetWindowLongPtrA");
+extern fn Win32_LONG_PTR getWindowLongPtrW(Win32_HWND hWnd, int nIndex) @cname("GetWindowLongPtrW");
+extern fn Win32_BOOL showWindow(Win32_HWND wnd, int nCmdShow) @cname("ShowWindow");
+extern fn Win32_BOOL isWindowVisible(Win32_HWND hWnd) @cname("IsWindowVisible");
+extern fn Win32_BOOL isZoomed(Win32_HWND hWnd) @cname("IsZoomed");
+extern fn Win32_BOOL getWindowPlacement(Win32_HWND hWnd, Win32_WINDOWPLACEMENT* lpwndpl) @cname("GetWindowPlacement");
+extern fn Win32_BOOL bringWindowToTop(Win32_HWND hWnd) @cname("BringWindowToTop");
+
+extern fn Win32_LONG_PTR setWindowLongPtrW(Win32_HWND hWnd, CInt nIndex, Win32_LONG_PTR dwNewLong) @cname("SetWindowLongPtrW");
+extern fn Win32_BOOL updateWindow(Win32_HWND hWnd) @cname("UpdateWindow");
 extern fn Win32_BOOL enumDisplayMonitors(Win32_HDC hdc, Win32_LPCRECT lprcClip, Win32_MONITORENUMPROC* lpfnEnum, Win32_LPARAM dwData) @cname("EnumDisplayMonitors");
 extern fn Win32_BOOL setProcessDPIAware() @cname("SetProcessDPIAware");
+extern fn Win32_BOOL setForegroundWindow(Win32_HWND hWnd) @cname("SetForegroundWindow");
+extern fn Win32_HWND setFocus(Win32_HWND hWnd) @cname("SetFocus");
+extern fn Win32_BOOL setWindowTextW(Win32_HWND hWnd, Win32_LPCWSTR lpString) @cname("SetWindowTextW");
+extern fn Win32_BOOL setLayeredWindowAttributes(Win32_HWND hwnd, Win32_COLORREF crKey, Win32_BYTE bAlpha, Win32_DWORD dwFlags) @cname("SetLayeredWindowAttributes");
+extern fn Win32_BOOL getLayeredWindowAttributes(Win32_HWND hwnd, Win32_COLORREF* pcrKey, Win32_BYTE* pbAlpha, Win32_DWORD* pdwFlags) @cname("GetLayeredWindowAttributes");
+extern fn Win32_HMONITOR monitorFromWindow(Win32_HWND hwnd, Win32_DWORD dwFlags) @cname("MonitorFromWindow");
+extern fn Win32_BOOL flashWindowEx(Win32_FLASHWINFO* pfwi) @cname("FlashWindowEx");
+extern fn Win32_HICON createIconIndirect(Win32_ICONINFO* piconinfo) @cname("CreateIconIndirect");
+extern fn Win32_BOOL destroyIcon(Win32_HICON hIcon) @cname("DestroyIcon");
+extern fn Win32_HCURSOR loadCursorA(Win32_HINSTANCE hInstance, Win32_LPCSTR lpCursorName) @cname("LoadCursorA");
+extern fn Win32_HICON loadIconA(Win32_HINSTANCE hInstance, Win32_LPCSTR lpIconName) @cname("LoadIconA");
+extern fn Win32_HANDLE loadImageA(Win32_HINSTANCE hInst, Win32_LPCSTR name, Win32_UINT type, CInt cx, CInt cy, Win32_UINT fuLoad) @cname("LoadImageA");
+extern fn Win32_HCURSOR setCursor(Win32_HCURSOR hCursor) @cname("SetCursor");
+extern fn Win32_ULONG_PTR setClassLongPtrA(Win32_HWND hWnd, CInt nIndex, Win32_LONG_PTR dwNewLong) @cname("SetClassLongPtrA");
+extern fn Win32_BOOL getCursorPos(Win32_LPOINT lpPoint) @cname("GetCursorPos");
+extern fn Win32_BOOL setCursorPos(CInt x, CInt y) @cname("SetCursorPos");
+extern fn Win32_BOOL screenToClient(Win32_HWND hWnd, Win32_LPOINT lpPoint) @cname("ScreenToClient");
+extern fn Win32_BOOL clientToScreen(Win32_HWND hWnd, Win32_LPOINT lpPoint) @cname("ClientToScreen");
+extern fn Win32_BOOL clipCursor(Win32_LPRECT lpRect) @cname("ClipCursor");
+extern fn Win32_BOOL registerRawInputDevices(Win32_RAWINPUTDEVICE* pRawInputDevices, Win32_UINT uiNumDevices, Win32_UINT cbSize) @cname("RegisterRawInputDevices");
+extern fn Win32_UINT getRawInputData(Win32_HRAWINPUT hRawInput, Win32_UINT uiCommand, Win32_LPVOID pData, Win32_UINT* pcbSize, Win32_UINT cbSizeHeader) @cname("GetRawInputData");
+extern fn CInt getSystemMetrics(CInt nIndex) @cname("GetSystemMetrics");
 
 extern fn Win32_BOOL getMonitorInfoA(Win32_HMONITOR hMonitor, Win32_LPMONITORINFO lpmi) @cname("GetMonitorInfoA");
 extern fn Win32_BOOL getMonitorInfoW(Win32_HMONITOR hMonitor, Win32_LPMONITORINFO lpmi) @cname("GetMonitorInfoW");
@@ -369,3 +571,5 @@ macro setWindowLongPtr(Win32_HWND hWnd, CInt nIndex, dwNewLong)
 		return setWindowLongW(hWnd, nIndex, dwNewLong);
 	$endif
 }
+
+

@@ -53,7 +53,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 	VkSurfaceKHR surface;
 	VkCreateSurfaceKHRProc raw = (VkCreateSurfaceKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateMetalSurfaceEXT");
 	if (!raw) return VULKAN_NOT_LOADED~;
-	ObjcId layer = objc_send(objc_class("CAMetalLayer"), ObjcSendId, "layer");
+	ObjcId layer = objc::send(objc::@class("CAMetalLayer"), ObjcId, "layer");
 	if (!layer) return SURFACE_CREATION_FAILED~;
 	objc::send_void(win.src.view, "setWantsLayer:", true);
 	todo_fix_window_setLayer_OSX(win, layer);
@@ -240,6 +240,15 @@ fn void _window_show_native(GfxWindow* win)
 	objc::send_void(win.src.window, "makeKeyAndOrderFront:", null);
 	if (_gfx_ctx.ns_app) objc::send_void(_gfx_ctx.ns_app, "activateIgnoringOtherApps:", true);
 	win.internal.flags.hide = false;
+}
+
+fn void _destroy_native()
+{
+	if (_gfx_ctx.ns_pool)
+	{
+		objc::pool_pop(_gfx_ctx.ns_pool);
+		_gfx_ctx.ns_pool = null;
+	}
 }
 
 // MacOS callbacks
@@ -505,19 +514,19 @@ fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win || !(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return false;
 
-	ObjcId pasteBoard = objc_send(sender, ObjcSendId, "draggingPasteboard");
-	ObjcId types = objc_send(pasteBoard, ObjcSendId, "types");
-	ObjcId fileURLsType = ns_string("NSFilenamesPboardType");
+	ObjcId pasteBoard = objc::send(sender, ObjcId, "draggingPasteboard");
+	ObjcId types = objc::send(pasteBoard, ObjcId, "types");
+	ObjcId file_urls_type = "NSFilenamesPboardType".to_nsstring();
 
-	if (!objc_send(types, ObjcSendBoolId, "containsObject:", fileURLsType))
+	if (!objc::send(types, ObjcId, "containsObject:", file_urls_type))
 	{
 		log::warn("No files found on the pasteboard", category: log::CATEGORY_VIDEO);
 		return false;
 	}
 
-	ObjcId propertyList = objc_send(pasteBoard, ObjcSendIdId, "propertyListForType:", fileURLsType);
+	ObjcId propertyList = objc::send(pasteBoard, ObjcId, "propertyListForType:", file_urls_type);
 
-	if (objc_send(propertyList, ObjcSendBoolId, "isKindOfClass:", objc_class("NSString")))
+	if (objc::send(propertyList, bool, "isKindOfClass:", objc_class("NSString")))
 	{
 		NSUInteger stringCount = objc_send(propertyList, ObjcSendNSUInteger, "length");
 		ZString filePath = ns_utf8(propertyList);

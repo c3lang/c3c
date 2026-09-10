@@ -822,7 +822,7 @@ fn int init(String class_name, GfxInitOption options)
 	if (out != 0)
 	{
 		log::error("Failed to initialize global context", category: log::CATEGORY_VIDEO);
-		todo_fix_deinitPlatform();
+		_destroy_native();
 		_gfx_ctx = {};
 		return out;
 	}
@@ -845,7 +845,7 @@ fn void finalize()
 	}
 	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
-	todo_fix_deinitPlatform();
+	_destroy_native();
 	unload_egl();
 	unload_opengl();
 	_gfx_ctx.root = null;
@@ -2084,7 +2084,7 @@ fn void GfxWindow.set_dnd(&self, bool allow)
 {
 	self.internal.flags.allow_dnd = allow;
 	$if $feat(WIN32):
-		dragAcceptFiles(self.src.window, (int)allow);
+		win32::dragAcceptFiles(self.src.window, (int)allow);
 	$endif
 }
 

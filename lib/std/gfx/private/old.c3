@@ -63,7 +63,6 @@ alias ObjcSendRect = fn CGRect(ObjcId, ObjcSelector);
 alias ObjcSendRectRect = fn CGRect(ObjcId, ObjcSelector, CGRect);
 alias ObjcSendBool = fn bool(ObjcId, ObjcSelector);
 alias ObjcSendBoolId = fn bool(ObjcId, ObjcSelector, ObjcId);
-alias ObjcSendBoolIdId = fn bool(ObjcId, ObjcSelector, ObjcId, ObjcId);
 alias ObjcSendIntegerNSUInteger = fn NSInteger(ObjcId, ObjcSelector, NSUInteger);
 alias ObjcSendInteger = fn NSInteger(ObjcId, ObjcSelector);
 alias ObjcSendCGFloat = fn CGFloat(ObjcId, ObjcSelector);
@@ -401,14 +400,7 @@ fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 }
 
 // public
-fn void todo_fix_deinitPlatform()
-{
-	if (_gfx_ctx.ns_pool)
-	{
-		objc::pool_pop(_gfx_ctx.ns_pool);
-		_gfx_ctx.ns_pool = null;
-	}
-}
+
 
 // public
 fn void todo_fix_initKeycodesPlatform()
@@ -900,9 +892,9 @@ fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffe
 fn bool todo_fix_writeClipboard(GfxDataTransfer* data)
 {
 	if (!data || data.type != TEXT || !data.data) return false;
-	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
-	objc_send(pb, ObjcSendVoid, "clearContents");
-	return objc_send(pb, ObjcSendBoolIdId, "setString:forType:", ns_string((ZString)data.data), ns_string("public.utf8-plain-text"));
+	ObjcId pb = objc::send(objc::@class("NSPasteboard"), ObjcId, "generalPasteboard");
+	objc::send_void(pb, "clearContents");
+	return objc::send(pb,bool, "setString:forType:", ns_string((ZString)data.data), "public.utf8-plain-text".to_nsstring());
 }
 
 // public

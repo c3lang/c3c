@@ -194,19 +194,19 @@ fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 }
 
 // public
-fn void todo_fix_deinitPlatform()
+fn void _destroy_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_deinitPlatform_Wayland();
+			return _destroy_wayland();
 		$case X11_ONLY:
-			return todo_fix_deinitPlatform_X11();
+			return _destroy_x11();
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_deinitPlatform_Wayland();
+				return _destroy_wayland();
 			}
-			return todo_fix_deinitPlatform_X11();
+			return _destroy_x11();
 	$endswitch
 }
 

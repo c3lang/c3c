@@ -209,10 +209,9 @@ fn void? todo_fix_createWindowPlatform_X11(String name, GfxWindowFlags flags, Gf
 	return todo_fix_xCreateWindow(visual, name, flags, win);
 }
 
-// private
-fn void todo_fix_deinitPlatform_X11()
+fn void _destroy_x11()
 {
-	if (_gfx_ctx.display != null)
+	if (_gfx_ctx.display)
 	{
 		if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helper_window)
 		{
@@ -221,16 +220,15 @@ fn void todo_fix_deinitPlatform_X11()
 		}
 		xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&todo_fix_x11ImInitCallback, null);
 	}
-	if (_gfx_ctx.im != null) { xCloseIM(_gfx_ctx.im); _gfx_ctx.im = null; }
-	if (_gfx_ctx.unixClipboard != null) { free(_gfx_ctx.unixClipboard); _gfx_ctx.unixClipboard = null; }
-	if (_gfx_ctx.hiddenMouse != null) { _free_mouse(_gfx_ctx.hiddenMouse); _gfx_ctx.hiddenMouse = null; }
-	if (_gfx_ctx.helper_window != 0) xDestroyWindow(_gfx_ctx.display, _gfx_ctx.helper_window);
-	if (_gfx_ctx.display != null) xCloseDisplay(_gfx_ctx.display);
-	_gfx_ctx.display = null;
+	if (_gfx_ctx.im) xCloseIM(_gfx_ctx.im);
+	if (_gfx_ctx.unixClipboard) free(_gfx_ctx.unixClipboard);
+	if (_gfx_ctx.hiddenMouse) _free_mouse(_gfx_ctx.hiddenMouse);
+	if (_gfx_ctx.helper_window) xDestroyWindow(_gfx_ctx.display, _gfx_ctx.helper_window);
+	if (_gfx_ctx.display) xCloseDisplay(_gfx_ctx.display);
 
-	if (_x11_cursor_handle != null) { libc::dlclose(_x11_cursor_handle); _x11_cursor_handle = null; }
-	if (_x11_xi_handle != null) { libc::dlclose(_x11_xi_handle); _x11_xi_handle = null; }
-	if (_x11_ext_handle != null) { libc::dlclose(_x11_ext_handle); _x11_ext_handle = null; }
+	if (_x11_cursor_handle) libc::dlclose(_x11_cursor_handle);
+	if (_x11_xi_handle) libc::dlclose(_x11_xi_handle);
+	if (_x11_ext_handle) libc::dlclose(_x11_ext_handle);
 }
 
 // private

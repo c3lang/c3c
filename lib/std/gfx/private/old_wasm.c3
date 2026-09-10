@@ -497,7 +497,6 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len) =>
 fn GfxFn _get_opengl_proc_native(ZString procname) => rgfwJsGetProcAddress(procname);
 
 // public
-fn void todo_fix_deinitPlatform() {}
 // public
 fn void todo_fix_window_closePlatform(GfxWindow* win) {}
 

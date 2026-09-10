@@ -161,27 +161,26 @@ fn void? _load_opengl_native() @private
 	todo_fix_wglGetCurrentContext = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglGetCurrentContext");
 	todo_fix_wglShareLists = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.nativeGL_handle, "wglShareLists");
 
-	Win32_HWND* dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
-	Win32_HDC dummyDc = getDC(dummyWin);
-	uint pfdFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+	Win32_HWND dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
+	Win32_HDC dummy_dc = win32::getDC(dummyWin);
+	uint pfdFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
 
-	PixelFormatDescriptor pfd;
-	pfd.size = (ushort)PixelFormatDescriptor::size;
-	pfd.version = 1;
-	pfd.flags = pfdFlags;
-	pfd.pixelType = PFD_TYPE_RGBA;
-	pfd.colorBits = 32;
-	pfd.alphaBits = 8;
-	pfd.layerType = PFD_MAIN_PLANE;
-	pfd.depthBits = 32;
-	pfd.stencilBits = 8;
+	Win32_PIXELFORMATDESCRIPTOR pfd = { .nSize = Win32_PIXELFORMATDESCRIPTOR::size };
+	pfd.nVersion = 1;
+	pfd.dwFlags = pfdFlags;
+	pfd.iPixelType = PFD_TYPE_RGBA;
+	pfd.cColorBits = 32;
+	pfd.cAlphaBits = 8;
+	pfd.iLayerType = PFD_MAIN_PLANE;
+	pfd.cDepthBits = 32;
+	pfd.cStencilBits = 8;
 
-	int dummyPixelFormat = choosePixelFormat(dummyDc, &pfd);
-	setPixelFormat(dummyDc, dummyPixelFormat, &pfd);
+	int dummyPixelFormat = win32::choosePixelFormat(dummy_dc, &pfd);
+	win32::setPixelFormat(dummy_dc, dummyPixelFormat, &pfd);
 
-	void* dummyContext = todo_fix_wglCreateContext(dummyDc);
+	void* dummy_context = todo_fix_wglCreateContext(dummy_dc);
 	void* cur = todo_fix_wglGetCurrentContext();
-	todo_fix_wglMakeCurrent(dummyDc, dummyContext);
+	todo_fix_wglMakeCurrent(dummy_dc, dummy_context);
 
 	todo_fix_wglCreateContextAttribsARB = (TodoRenameWglCreateContextAttribsArbProc)_get_opengl_proc_native("wglCreateContextAttribsARB");
 	todo_fix_wglChoosePixelFormatARB = (TodoRenameWglChoosePixelFormatArbProc)_get_opengl_proc_native("wglChoosePixelFormatARB");
@@ -189,10 +188,10 @@ fn void? _load_opengl_native() @private
 
 	if (todo_fix_wglSwapIntervalEXT == null) todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to load swap interval function");
 
-	todo_fix_wglMakeCurrent(dummyDc, cur);
-	todo_fix_wglDeleteContext(dummyContext);
-	releaseDC(dummyWin, dummyDc);
-	destroyWindow(dummyWin);
+	todo_fix_wglMakeCurrent(dummy_dc, cur);
+	todo_fix_wglDeleteContext(dummy_context);
+	win32::releaseDC(dummyWin, dummy_dc);
+	win32::destroyWindow(dummyWin);
 }
 
 fn GfxFn _get_opengl_proc_native(ZString procname)

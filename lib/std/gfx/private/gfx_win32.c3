@@ -32,23 +32,70 @@ struct GfxWindowSrc
 fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	win.internal.last_mouse = where - win.origin;
-	setCursorPos(...where);
+	win32::setCursorPos(...where);
 }
 
 fn void _window_show_native(GfxWindow* win)
 {
-	if (!win.internal.flags.maximize) showWindow(win.src.window, (int)SW_RESTORE);
+	if (!win.internal.flags.maximize) win32::showWindow(win.src.window, win32::SW_RESTORE);
 }
 
+fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
+{
+	win32::setClassLongPtrA(win.src.window, win32::GCLP_HCURSOR, (iptr)mouse);
+	win32::setCursor(mouse);
+	return false;
+}
+
+fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) @private
+{
+	if (win.has_focus() && request != CANCEL) return;
+	Win32_FLASHWINFO desc = { .cbSize = Win32_FLASHWINFO::size, .hwnd = win.src.window };
+	switch (request)
+	{
+		case CANCEL:
+			desc.dwFlags = win32::FLASHW_STOP;
+		case BRIEFLY:
+			desc.dwFlags = win32::FLASHW_TRAY;
+			desc.uCount = 1;
+		case UNTIL_FOCUSED:
+			desc.dwFlags = win32::FLASHW_TRAY | win32::FLASHW_TIMERNOFG;
+		default:
+			break;
+	}
+	win32::flashWindowEx(&desc);
+}
+
+fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
+{
+	if (!state)
+	{
+		win32::clipCursor(null);
+		return;
+	}
+
+	Win32_RECT clip_rect;
+	win32::getClientRect(win.src.window, &clip_rect);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&clip_rect.left);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&clip_rect.right);
+	win32::clipCursor(&clip_rect);
+}
+
+fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
+{
+	Win32_RAWINPUTDEVICE id = {0x01, 0x02, 0, win.src.window};
+	id.dwFlags = state ? 0 : win32::RIDEV_REMOVE;
+	win32::registerRawInputDevices(&id, 1, Win32_RAWINPUTDEVICE::size);
+}
 
 fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
-	if (win.src.hIconSmall && type & WINDOW) destroyIcon(win.src.hIconSmall);
-	if (win.src.hIconBig && type & TASKBAR) destroyIcon(win.src.hIconBig);
+	if (win.src.hIconSmall && type & WINDOW) win32::destroyIcon(win.src.hIconSmall);
+	if (win.src.hIconBig && type & TASKBAR) win32::destroyIcon(win.src.hIconBig);
 
 	if (!data)
 	{
-		Win32_HICON defaultIcon = loadIconA(null, (char*)(uptr)32512 /* IDI_APPLICATION */);
+		Win32_HICON defaultIcon = win32::loadIconA(null, (Win32_LPCSTR)(uptr)32512 /* IDI_APPLICATION */);
 		if (type & WINDOW) win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)defaultIcon);
 		if (type & TASKBAR) win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)defaultIcon);
 		return true;
@@ -74,7 +121,12 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 
 fn bool _window_is_floating_native(GfxWindow* win)
 {
-	return getWindowLongPtr(win.src.window, -20) & 0x00000008 != 0;
+	return win32::getWindowLongPtr(win.src.window, -20) & 0x00000008 != 0;
+}
+
+fn bool _window_is_hidden_native(GfxWindow* win)
+{
+	return !win32::isWindowVisible(win.src.window) && !_window_is_minimized_native(win);
 }
 
 fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
@@ -89,8 +141,8 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
 		uint style = _winapi_window_get_style(win.internal.flags);
 		uint exStyle = _winapi_window_get_style_ex(win, win.internal.flags);
-		adjustWindowRectEx(&rect, style, 0, exStyle);
-		setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
+		win32::adjustWindowRectEx(&rect, style, 0, exStyle);
+		win32::setWindowPos(win.src.window, null, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
 
 		win.internal.flags.fullscreen = false;
 		win.bounds = win.internal.old_bounds;
@@ -102,12 +154,30 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	win.internal.flags.fullscreen = true;
 	_window_set_border_native(win, false);
 
-	setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1) /* HWND_TOPMOST */, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
+	win32::setWindowPos(win.src.window, win32::HWND_TOPMOST, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
 	win.origin = mon.origin;
 
 	todo_fix_monitor_scaleToWindow(mon, win);
-	setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, ...mon.mode.size, 0x0200 | 0x0020 | 0x0040 | 0x0002);
+	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, ...mon.mode.size, 0x0200 | 0x0020 | 0x0040 | 0x0002);
 	win.size = mon.mode.size;
+}
+
+fn void _window_hide_native(GfxWindow* win)
+{
+	win32::showWindow(win.src.window, win32::SW_HIDE);
+}
+
+fn void _window_focus_native(GfxWindow* win)
+{
+	win32::setForegroundWindow(win.src.window);
+	win32::setFocus(win.src.window);
+}
+
+fn bool _window_is_minimized_native(GfxWindow* win)
+{
+	Win32_WINDOWPLACEMENT placement;
+	win32::getWindowPlacement(win.src.window, &placement);
+	return placement.showCmd == win32::SW_SHOWMINIMIZED;
 }
 
 fn void _window_resize_native(GfxWindow* win, GfxSize size)
@@ -116,8 +186,23 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 	Win32_RECT rect = { 0, 0, ...size };
 	uint style = _winapi_window_get_style(win.internal.flags);
 	uint exStyle = _winapi_window_get_style_ex(win, win.internal.flags);
-	adjustWindowRectEx(&rect, style, 0, exStyle);
-	setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
+	win32::adjustWindowRectEx(&rect, style, 0, exStyle);
+	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
+}
+
+fn GfxPoint _window_fetch_size_native(GfxWindow* win)
+{
+	Win32_RECT area;
+	win32::getClientRect(win.src.window, &area);
+	win.width = area.right;
+	win.height = area.bottom;
+	return win.get_size();
+}
+fn bool _window_is_maximized_native(GfxWindow* win)
+{
+	Win32_WINDOWPLACEMENT placement;
+	win32::getWindowPlacement(win.src.window, &placement);
+	return placement.showCmd == win32::SW_SHOWMAXIMIZED || win32::isZoomed(win.src.window);
 }
 
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
@@ -145,13 +230,21 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 fn GfxPoint _get_global_mouse_native()
 {
 	Win32_POINT p;
-	getCursorPos(&p);
+	win32::getCursorPos(&p);
 	return { ...p };
 }
 
 fn void _free_mouse(TodoRenameMouse* mouse)
 {
 	win32::destroyCursor(mouse);
+}
+
+fn void _destroy_native()
+{
+	win32::timeEndPeriod(1);
+	if (_gfx_ctx.helper_window) win32::destroyWindow(_gfx_ctx.helper_window);
+	if (_gfx_ctx.instance) win32::unregisterClassW(_gfx_ctx.wndClass.lpszClassName, _gfx_ctx.instance);
+	if (_gfx_ctx.hiddenMouse != null) _free_mouse(_gfx_ctx.hiddenMouse);
 }
 
 // --- Helpers
