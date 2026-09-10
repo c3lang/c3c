@@ -628,24 +628,22 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 	$endswitch
 }
 
-// public
-fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) @private
+fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_flash_Wayland(win, request);
+			return _window_flash_wayland(win, request);
 		$case X11_ONLY:
-			return todo_fix_window_flash_X11(win, request);
+			return _window_flash_x11(win, request);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_flash_Wayland(win, request);
+				return _window_flash_wayland(win, request);
 			}
-			return todo_fix_window_flash_X11(win, request);
+			return _window_flash_x11(win, request);
 	$endswitch
 }
 
-// public
 fn void _window_focus_native(GfxWindow* win)
 {
 	$switch:
@@ -666,15 +664,15 @@ fn void _window_hide_native(GfxWindow* win) @private
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_hide_Wayland(win);
+			return _window_hide_wayland(win);
 		$case X11_ONLY:
-			return todo_fix_window_hide_X11(win);
+			return _window_hide_x11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_hide_Wayland(win);
+				return _window_hide_wayland(win);
 			}
-			return todo_fix_window_hide_X11(win);
+			return _window_hide_x11(win);
 	$endswitch
 }
 

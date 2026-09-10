@@ -977,14 +977,13 @@ fn void _window_release_opengl_context_wayland(GfxWindow* win, GfxGlContext* ctx
 // private
 fn GfxPoint todo_fix_window_fetchSize_Wayland(GfxWindow* win) => win.get_size();
 
-// private
-fn void todo_fix_window_flash_Wayland(GfxWindow* win, GfxFlashRequest request) {}
+fn void _window_flash_wayland(GfxWindow* win, GfxFlashRequest request) {}
 
 // private
 fn void todo_fix_window_focus_Wayland(GfxWindow* win) {}
 
 // private
-fn void todo_fix_window_hide_Wayland(GfxWindow* win)
+fn void _window_hide_wayland(GfxWindow* win)
 {
 	wlSurfaceAttach(win.src.surface, null, 0, 0);
 	wlSurfaceCommit(win.src.surface);

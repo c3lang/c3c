@@ -37,7 +37,7 @@ struct GfxWindowSrc
 fn void? _load_opengl_native()
 {
 	CFStringRef bundleName = cfStringCreateWithCString(null, "com.apple.opengl", 0x0600);
-	defer cfRelease(bundleName);
+	defer bundleName.release();
 	_gfx_ctx.nativeGL_handle = cfBundleGetBundleWithIdentifier(bundleName);
 	if (!_gfx_ctx.nativeGL_handle) return MISSING_OPENGL_LIB~;
 	_gfx_ctx.glGetProcAddress = (void*)&_get_opengl_proc_native;
@@ -215,6 +215,23 @@ fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	cg::warpMouseCursorPosition({ ...where });
 	if (win) win.internal.last_mouse = where;
+}
+
+fn void _window_hide_native(GfxWindow* win)
+{
+	objc::send_void(win.src.window, "orderOut:", null);
+	win.internal.flags.hide = true;
+}
+
+fn bool _window_is_minimized_native(GfxWindow* win)
+{
+	if (win.src.window) return objc::send(win.src.window, bool, "isMiniaturized");
+	return win.internal.flags.minimize;
+}
+
+fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request)
+{
+	objc::send(_gfx_ctx.ns_app, NSInteger, "requestUserAttention:", (NSUInteger)request);
 }
 
 fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
@@ -850,4 +867,20 @@ fn GfxKeyModifier _osx_modifiers_to_gfx(NSUInteger flags)
 		.super     = flags & 0x00100000 != 0,
 		.caps_lock = flags & 0x00010000 != 0,
 	};
+}
+
+fn ObjcId _get_nsscreen_for_display(uint display_id)
+{
+	ObjcId screens = objc::send(objc_class("NSScreen"), ObjcId, "screens");
+	if (!screens) return null;
+	NSUInteger count = objc::send(screens, NSUInteger, "count");
+	for (NSUInteger i = 0; i < count; i++)
+	{
+		ObjcId screen = objc::send(screens, ObjcId, "objectAtIndex:", i);
+		ObjcId desc = objc::send(screen, ObjcId, "deviceDescription");
+		ObjcId number = objc::send(desc, ObjcId, "objectForKey:", ns_string("NSScreenNumber"));
+		uint display = (uint)objc::send(number, NSUInteger, "unsignedIntValue");
+		if (display == display_id) return screen;
+	}
+	return null;
 }

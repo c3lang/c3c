@@ -1045,7 +1045,7 @@ fn void todo_fix_window_focus_X11(GfxWindow* win)
 }
 
 // private
-fn void todo_fix_window_hide_X11(GfxWindow* win)
+fn void _window_hide_x11(GfxWindow* win)
 {
 	win.internal.flags.hide = true;
 	xUnmapWindow(_gfx_ctx.display, win.src.window);
@@ -1451,11 +1451,11 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 }
 
 // private
-fn void todo_fix_window_flash_X11(GfxWindow* win, GfxFlashRequest request)
+fn void _window_flash_x11(GfxWindow* win, GfxFlashRequest request)
 {
 	if (win.has_focus() && request != CANCEL) return;
 	XWMHints* wmhints = xGetWMHints(_gfx_ctx.display, win.src.window);
-	if (wmhints == null) return;
+	if (!wmhints) return;
 	if (request)
 	{
 		wmhints.flags |= 1 << 8; // XUrgencyHint
