@@ -509,6 +509,34 @@ const MOUSE_VIRTUAL_DESKTOP    = 0x02;
 const MOUSE_ATTRIBUTES_CHANGED = 0x04;
 const MOUSE_MOVE_NOCOALESCE    = 0x08;
 
+const IDC_ARROW       = 32512;
+const IDC_IBEAM       = 32513;
+const IDC_WAIT        = 32514;
+const IDC_CROSS       = 32515;
+const IDC_UPARROW     = 32516;
+const IDC_SIZENWSE    = 32642;
+const IDC_SIZENESW    = 32643;
+const IDC_SIZEWE      = 32644;
+const IDC_SIZENS      = 32645;
+const IDC_SIZEALL     = 32646;
+const IDC_NO          = 32648;
+const IDC_HAND        = 32649;
+const IDC_APPSTARTING = 32650;
+const IDC_HELP        = 32651;
+const IDC_PIN         = 32671;
+const IDC_PERSON      = 32672;
+
+const IDI_APPLICATION = 32512;
+const IDI_HAND        = 32513;
+const IDI_QUESTION    = 32514;
+const IDI_EXCLAMATION = 32515;
+const IDI_ASTERISK    = 32516;
+const IDI_WINLOGO     = 32517;
+const IDI_SHIELD      = 32518;
+const IDI_WARNING     = IDI_EXCLAMATION;
+const IDI_ERROR       = IDI_HAND;
+const IDI_INFORMATION = IDI_ASTERISK;
+
 const HTCAPTION = 2;
 const HTCLIENT = 1;
 

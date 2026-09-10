@@ -260,14 +260,13 @@ fn void todo_fix_initKeycodesPlatform_X11()
 	// out of this mechanical pass; keycodes[] stays zeroed (_KEY_NULL).
 }
 
-// private
-fn int todo_fix_initPlatform_X11(String class_name, GfxInitOption flags)
+fn void? _init_x11(String class_name, GfxInitOption flags)
 {
 	_gfx_ctx.class_name = class_name;
 
 	xInitThreads();
 	_gfx_ctx.display = xOpenDisplay(null);
-	if (_gfx_ctx.display == null) return -1;
+	if (!_gfx_ctx.display) return X11_DISPLAY_NOT_LOADED~;
 
 	_gfx_ctx.netCurrentDesktop = xInternAtom(_gfx_ctx.display, "_NET_CURRENT_DESKTOP", 0);
 	_gfx_ctx.net_wm_state_maximized_vert = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_MAXIMIZED_VERT", 0);
@@ -308,34 +307,34 @@ fn int todo_fix_initPlatform_X11(String class_name, GfxInitOption flags)
 	_gfx_ctx.xtextPlain = xInternAtom(_gfx_ctx.display, "text/plain", 0);
 
 	_gfx_ctx.context = xUniqueContext();
-	if (_gfx_ctx.context == 0) return -1;
+	if (!_gfx_ctx.context) return X11_CTX_CREATION_FAILED~;
 
 	XSetWindowAttributes wa;
 	wa.event_mask = 1 << 22; // PropertyChangeMask
 	_gfx_ctx.helper_window = xCreateWindow(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, 0, 1, 1, 0, 0,
-	2 /* InputOnly */, xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), 1 << 11, &wa);
-	if (_gfx_ctx.helper_window == 0) return -1;
+		2 /* InputOnly */, xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), 1 << 11, &wa);
+	if (_gfx_ctx.helper_window == 0) return X11_WINDOW_CREATION_FAILED~;
 
 	_x11_cursor_handle = libc::dlopen("libXcursor.so.1", libc::RTLD_LAZY | libc::RTLD_LOCAL);
-	if (_x11_cursor_handle != null)
+	if (_x11_cursor_handle)
 	{
 		_xcursor_image_create_src = (PFN_XcursorImageCreate)libc::dlsym(_x11_cursor_handle, "XcursorImageCreate");
 		_xcursor_image_destroy_src = (PFN_XcursorImageDestroy)libc::dlsym(_x11_cursor_handle, "XcursorImageDestroy");
 		_xcursor_image_load_cursor_src = (PFN_XcursorImageLoadCursor)libc::dlsym(_x11_cursor_handle, "XcursorImageLoadCursor");
 	}
 	_x11_xi_handle = libc::dlopen("libXi.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
-	if (_x11_xi_handle != null) _xi_select_events_src = (PFN_XISelectEvents)libc::dlsym(_x11_xi_handle, "XISelectEvents");
+	if (_x11_xi_handle) _xi_select_events_src = (PFN_XISelectEvents)libc::dlsym(_x11_xi_handle, "XISelectEvents");
 	_x11_ext_handle = libc::dlopen("libXext.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
-	if (_x11_ext_handle != null)
+	if (_x11_ext_handle)
 	{
-		_xsync_create_counter_src = (PFN_XSyncCreateCounter)libc::dlsym(_x11_ext_handle, "XSyncCreateCounter");
-		_xsync_int_to_value_src = (PFN_XSyncIntToValue)libc::dlsym(_x11_ext_handle, "XSyncIntToValue");
-		_xsync_set_counter_src = (PFN_XSyncSetCounter)libc::dlsym(_x11_ext_handle, "XSyncSetCounter");
-		_xshape_combine_region_src = (PFN_XShapeCombineRegion)libc::dlsym(_x11_ext_handle, "XShapeCombineRegion");
-		_xshape_combine_mask_src = (PFN_XShapeCombineMask)libc::dlsym(_x11_ext_handle, "XShapeCombineMask");
+		_xsync_create_counter_src = libc::dlsym(_x11_ext_handle, "XSyncCreateCounter");
+		_xsync_int_to_value_src = libc::dlsym(_x11_ext_handle, "XSyncIntToValue");
+		_xsync_set_counter_src = libc::dlsym(_x11_ext_handle, "XSyncSetCounter");
+		_xshape_combine_region_src = libc::dlsym(_x11_ext_handle, "XShapeCombineRegion");
+		_xshape_combine_mask_src = libc::dlsym(_x11_ext_handle, "XShapeCombineMask");
 	}
 
-	char[4] blk = {0, 0, 0, 0};
+	char[4] blk;
 	_gfx_ctx.hiddenMouse = todo_fix_createMouse((char*)&blk, 1, 1, RGBA8);
 	_gfx_ctx.unixClipboard = null;
 
@@ -350,7 +349,6 @@ fn int todo_fix_initPlatform_X11(String class_name, GfxInitOption flags)
 	{
 		xRRSelectInput(_gfx_ctx.display, xRootWindow(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), 1 << 4); // RROutputChangeNotifyMask
 	}
-	return 0;
 }
 
 // private

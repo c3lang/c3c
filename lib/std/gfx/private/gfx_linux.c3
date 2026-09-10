@@ -313,13 +313,13 @@ fn void todo_fix_initKeycodesPlatform()
 }
 
 // public
-fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
+fn void? _init_native(String class_name, GfxInitOption flags)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_initPlatform_Wayland(class_name, flags);
+			return _init_wayland(class_name, flags);
 		$case X11_ONLY:
-			return todo_fix_initPlatform_X11(class_name, flags);
+			return _init_x11(class_name, flags);
 		$default:
 			if (!(flags & ENABLE_X11))
 			{
@@ -327,8 +327,7 @@ fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 				gfx_use_wayland = wayland_display != "";;
 				if (gfx_use_wayland)
 				{
-					int ret = todo_fix_initPlatform_Wayland(class_name, flags);
-					if (ret == 0) return 0;
+					if (try _init_wayland(class_name, flags)) return;
 					todo_fix_debugCallback(TODO_RENAME_TYPE_WARNING, TODO_RENAME_WARNING_WAYLAND, "Falling back to X11");
 					gfx_use_wayland = false;
 				}
@@ -337,7 +336,7 @@ fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 			{
 				gfx_use_wayland = false;
 			}
-			return todo_fix_initPlatform_X11(class_name, flags);
+			return _init_x11(class_name, flags);
 	$endswitch
 }
 

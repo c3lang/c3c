@@ -335,32 +335,6 @@ fn void todo_fix_initKeycodesPlatform()
 }
 
 // public
-fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
-{
-	_gfx_ctx.usingAsyncify = -1;
-	GfxMonitor monitor;
-	monitor.origin = {};
-	monitor.pixelRatio = (float)rgfwJsDevicePixelRatio();
-	monitor.mode.size = { rgfwJsInnerWidth(), rgfwJsInnerHeight() };
-	monitor.phys_size = {
-		(float)(int)(monitor.mode.size.x * monitor.pixelRatio + 0.5f),
-		(float)(int)(monitor.mode.size.y * monitor.pixelRatio + 0.5f)
-	};
-
-	float dpi = 96.0f * monitor.pixelRatio;
-	monitor.scale = (Vec2)(dpi / 96.0f);
-
-	todo_fix_splitBPP(32, &monitor.mode);
-	monitor.mode.refresh_rate = 0;
-
-	GfxMonitorNode* node = _monitor_add(&monitor);
-	if (node != null)
-	{
-		_gfx_ctx.monitors.primary = node;
-		todo_fix_monitorCallback(_gfx_ctx.root, &node.mon, true);
-	}
-	return 0;
-}
 
 // public
 fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)

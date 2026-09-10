@@ -9,6 +9,12 @@ excuse
 {
 	GFX_CONTEXT_NOT_INITIALIZED,
 	SURFACE_CREATION_FAILED,
+	WAYLAND_DISPLAY_NOT_LOADED,
+	WAYLAND_COMPOSITOR_NOT_FOUND,
+	X11_DISPLAY_NOT_LOADED,
+	X11_WINDOW_CREATION_FAILED,
+	X11_CTX_CREATION_FAILED,
+	NSAPP_CREATION_FAILED,
 	MISSING_VULKAN_LIB,
 	MISSING_OPENGL_LIB,
 	MISSING_EGL_LIB,
@@ -16,7 +22,6 @@ excuse
 	MISSING_GL_GET_PROC_ADDR,
 	MISSING_EGL_GET_PROC_ADDR,
 	EGL_BINDING_FAILED,
-	X11_WINDOW_CREATION_FAILED,
 	VULKAN_NOT_LOADED,
 	GLX_VISUAL_CONFIGS_NOT_FOUND,
 	GLX_NO_VALID_VISUAL,
@@ -829,13 +834,13 @@ fn int init(String class_name, GfxInitOption options)
 		return -1;
 	}
 	todo_fix_initKeycodes();
-	int out = todo_fix_initPlatform(class_name, options);
-	if (out != 0)
+	;
+	if (@catch(_init_native(class_name, options)))
 	{
 		log::error("Failed to initialize global context", category: log::CATEGORY_VIDEO);
 		_destroy_native();
 		_gfx_ctx = {};
-		return out;
+		return 1;
 	}
 	foreach (icon : GfxMouseIcon::values)
 	{
@@ -843,7 +848,7 @@ fn int init(String class_name, GfxInitOption options)
 	}
 	todo_fix_pollMonitors();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
-	return out;
+	return 0;
 }
 
 // public

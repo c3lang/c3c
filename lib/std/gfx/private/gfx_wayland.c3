@@ -409,7 +409,7 @@ const XkbKeysym XKB_KEY_PAUSE = 0xff13;
 // ==== thin wl_proxy_marshal_flags wrappers (normally wayland-scanner "static inline") ====
 fn WlProxy* wlDisplayGetRegistry(WlDisplay* display) => wlProxyMarshalFlags((WlProxy*)display, 1, &wlRegistryInterface, wlProxyGetVersion((WlProxy*)display), 0, null);
 fn void* wlRegistryBind(WlProxy* registry, uint name, WlInterface* iface, uint version) => (void*)wlProxyMarshalFlags(registry, 0, iface, version, 0, name, iface.name, version, null);
-fn int wlRegistryAddListener(WlProxy* registry, WlRegistryListener* listener, void* data) => wlProxyAddListener(registry, listener, data);
+fn int wl_registry_add_listener(WlProxy* registry, WlRegistryListener* listener, void* data) => wlProxyAddListener(registry, listener, data);
 fn void wlRegistryDestroy(WlProxy* registry) { wlProxyDestroy(registry); }
 
 fn WlProxy* wlCompositorCreateSurface(WlProxy* compositor) => wlProxyMarshalFlags(compositor, 0, &wlSurfaceInterface, wlProxyGetVersion(compositor), 0, null);
@@ -650,34 +650,26 @@ fn void todo_fix_initKeycodesPlatform_Wayland()
 }
 
 // private
-fn int todo_fix_initPlatform_Wayland(String class_name, GfxInitOption flags)
+fn void? _init_wayland(String class_name, GfxInitOption flags)
 {
 	_gfx_ctx.wlDisplay = wlDisplayConnect(null);
-	if (_gfx_ctx.wlDisplay == null)
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_WAYLAND, "Failed to load Wayland display");
-		return -1;
-	}
+	if (!_gfx_ctx.wlDisplay) return WAYLAND_DISPLAY_NOT_LOADED~;
 
 	_gfx_ctx.compositor = null;
 	_gfx_ctx.registry = wlDisplayGetRegistry(_gfx_ctx.wlDisplay);
-	wlRegistryAddListener(_gfx_ctx.registry, &todo_fix_registryListener, &_gfx_ctx);
+	wl_registry_add_listener(_gfx_ctx.registry, &todo_fix_registryListener, &_gfx_ctx);
 	wlDisplayRoundtrip(_gfx_ctx.wlDisplay);
 
-	if (_gfx_ctx.compositor == null)
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_WAYLAND, "Can't find compositor.");
-		return -1;
-	}
+	if (!_gfx_ctx.compositor) return WAYLAND_COMPOSITOR_NOT_FOUND~;
 
-	if (_gfx_ctx.wlCursorTheme == null)
+	if (!_gfx_ctx.wlCursorTheme)
 	{
 		_gfx_ctx.wlCursorTheme = wlCursorThemeLoad(null, 24, _gfx_ctx.shm);
 		_gfx_ctx.cursorSurface = wlCompositorCreateSurface(_gfx_ctx.compositor);
 	}
 
-	char[4] blk = {0, 0, 0, 0};
-	_gfx_ctx.hiddenMouse = todo_fix_createMouse((char*)&blk, 1, 1, RGBA8);
+	char[4] blk;
+	_gfx_ctx.hiddenMouse = todo_fix_createMouse(&blk, 1, 1, RGBA8);
 
 	static XdgWmBaseListener wmBaseListener = { .ping = &todo_fix_wlXdgWmBasePingHandler };
 	xdgWmBaseAddListener(_gfx_ctx.xdgWmBase, &wmBaseListener, null);
@@ -689,13 +681,11 @@ fn int todo_fix_initPlatform_Wayland(String class_name, GfxInitOption flags)
 		.motion = &todo_fix_wlDataDeviceNothingMotion, .drop = &todo_fix_wlDataDeviceNothing, .selection = &_wl_data_device_selection
 	};
 
-	if (_gfx_ctx.seat != null && _gfx_ctx.dataDeviceManager != null)
+	if (_gfx_ctx.seat && _gfx_ctx.dataDeviceManager)
 	{
 		_gfx_ctx.dataDevice = wlDataDeviceManagerGetDataDevice(_gfx_ctx.dataDeviceManager, _gfx_ctx.seat);
 		wlDataDeviceAddListener(_gfx_ctx.dataDevice, &dataDeviceListener, null);
 	}
-
-	return 0;
 }
 
 // private

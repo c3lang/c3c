@@ -314,21 +314,6 @@ fn void todo_fix_monitorNode_free(GfxMonitorNode* node) { if (node != null && no
 
 
 // public
-fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
-{
-	_gfx_ctx.ns_pool = objc::pool_push();
-	_gfx_ctx.ns_app = objc::send(objc::class_by_name("NSApplication")!!, ObjcId, "sharedApplication");
-	if (!_gfx_ctx.ns_app)
-	{
-		log::error("NSApplication sharedApplication failed.", category: log::CATEGORY_VIDEO);
-		return -1;
-	}
-	objc::send_void(_gfx_ctx.ns_app, "setActivationPolicy:", (NSUInteger)NS_APP_ACTIVATION_POLICY_REGULAR);
-	objc::send_void(_gfx_ctx.ns_app, "finishLaunching");
-	_osx_register_classes();
-	todo_fix_pollMonitors();
-	return 0;
-}
 
 // public
 

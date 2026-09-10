@@ -95,7 +95,7 @@ fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFor
 
 	if (!data)
 	{
-		Win32_HICON defaultIcon = win32::loadIconA(null, (Win32_LPCSTR)(uptr)32512 /* IDI_APPLICATION */);
+		Win32_HICON defaultIcon = win32::loadIconA(null, (Win32_LPCSTR)win32::IDI_APPLICATION);
 		if (type & WINDOW) win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)defaultIcon);
 		if (type & TASKBAR) win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)defaultIcon);
 		return true;
@@ -255,6 +255,41 @@ fn GfxPoint _get_global_mouse_native()
 	Win32_POINT p;
 	win32::getCursorPos(&p);
 	return { ...p };
+}
+
+fn void? _init_native(String class_name, GfxInitOption flags)
+{
+	win32::setProcessDPIAware();
+	win32::timeBeginPeriod(1);
+
+	_gfx_ctx.instance = win32::getModuleHandleW(null);
+	@pool()
+	{
+		assert(class_name.len < 254);
+		WString str = class_name.to_temp_wstring()!;
+		sz len = str.len();
+		mem::copy(&_gfx_ctx.wideClassName, str, len);
+		_gfx_ctx.wideClassName[len] = 0;
+	};
+
+	_gfx_ctx.wndClass = {};
+	_gfx_ctx.wndClass.lpszClassName = (WString)&_gfx_ctx.wideClassName;
+	_gfx_ctx.wndClass.hInstance = _gfx_ctx.instance;
+	_gfx_ctx.wndClass.hCursor = win32::loadCursorA(null, (Win32_LPCSTR)win32::IDC_ARROW);
+	_gfx_ctx.wndClass.lpfnWndProc = &_wnd_proc;
+	_gfx_ctx.wndClass.cbClsExtra = sz::size;
+
+	_gfx_ctx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(_gfx_ctx.instance, "C3GFX", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
+	if (!_gfx_ctx.wndClass.hIcon)
+	{
+		_gfx_ctx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(null, (Win32_LPCSTR)win32::IDI_APPLICATION, 1, 0, 0, 0x00000040 | 0x00008000);
+	}
+
+	win32::registerClassW(&_gfx_ctx.wndClass);
+	_gfx_ctx.helper_window = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
+
+	char[4] blk;
+	_gfx_ctx.hiddenMouse = todo_fix_createMouse(&blk, 1, 1, RGBA8);
 }
 
 fn void _free_mouse(TodoRenameMouse* mouse)

@@ -295,6 +295,17 @@ fn void _free_mouse(TodoRenameMouse* mouse)
 	objc::release(mouse);
 }
 
+fn void? _init_native(String class_name, GfxInitOption flags)
+{
+	_gfx_ctx.ns_pool = objc::pool_push();
+	_gfx_ctx.ns_app = objc::send(objc::class_by_name("NSApplication")!, ObjcId, "sharedApplication");
+	if (!_gfx_ctx.ns_app) return NSAPP_CREATION_FAILED~;
+	objc::send_void(_gfx_ctx.ns_app, "setActivationPolicy:", (NSUInteger)NS_APP_ACTIVATION_POLICY_REGULAR);
+	objc::send_void(_gfx_ctx.ns_app, "finishLaunching");
+	_osx_register_classes();
+	todo_fix_pollMonitors();
+}
+
 fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
 	if (!data || data.type != TEXT || !data.data) return CLIPBOARD_COULD_NOT_BE_OPENED~;

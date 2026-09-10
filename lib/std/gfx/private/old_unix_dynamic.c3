@@ -205,7 +205,7 @@ module std::gfx @feat(X11_WAYLAND) @link("wayland-client", "wayland-cursor", "wa
 import std::math, libc, std::net::os, std::os::posix, std::time;
 // ==================== TODO_RENAME_DYNAMIC runtime dispatch layer ====================
 // Combined X11+Wayland runtime dispatch: every entry point below branches on
-// gfx_use_wayland (set once in todo_fix_initPlatform) instead of a vtable.
+// gfx_use_wayland (set once in _init_native) instead of a vtable.
 
 bool gfx_use_wayland = false;
 
