@@ -68,6 +68,13 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show)
 	}
 }
 
+fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
+{
+	int minH = win.height < surface.size.y ? win.height : surface.size.y;
+	copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
+	rgfwJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
+}
+
 fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
@@ -136,10 +143,16 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	}
 }
 
+fn void _surface_release_native(GfxSurface* surface)
+{
+	*surface = {};
+}
+
 fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
 	rgfwJsWriteClipboard(data.data, data.length);
 }
+
 
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* mon) => {};
 
@@ -175,9 +188,9 @@ fn void _emscripten_on_mousedown(int button) @export("c3gfx_on_mousedown")
 }
 
 // public
-fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
+fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
-	self.data = data;
-	self.size = { w, h };
-	self.format = format;
+	surface.data = data;
+	surface.size = { w, h };
+	surface.format = format;
 }

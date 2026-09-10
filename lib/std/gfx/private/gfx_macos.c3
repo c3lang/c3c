@@ -217,6 +217,25 @@ fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 	if (win) win.internal.last_mouse = where;
 }
 
+fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
+{
+	if (!surface.data) return;
+	GfxPoint min = math::min(win.size, surface.size);
+	GfxMonitor* mon = find_monitor(win);
+	if (mon) min = (GfxPoint)((Vec2)min * mon.pixelRatio);
+	ObjcId rep = ns_bitmapRep(...min);
+	char* pixels = ns_bitmapData(rep);
+	defer objc::release(rep);
+	if (!pixels) return;
+	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
+	ObjcId image = ns_imageWithRep(rep, ...min);
+	objc::send_void(win.src.view, "setWantsLayer:", true);
+	ObjcId layer = objc::send(win.src.view, ObjcId, "layer");
+	if (layer) objc::send_void(layer, "setContents:", image);
+	objc::release(image);
+}
+
+
 fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 {
 	_gfx_ctx.raw_mouse = state;
@@ -388,6 +407,51 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 	if (flags.fullscreen) _window_set_fullscreen_native(win, true);
 }
 
+
+fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
+{
+	if (!win.src.window) return;
+	if (size == { 0, 0 })
+	{
+		GfxMonitor* mon = find_monitor(win);
+		if (mon) size = mon.mode.size;
+	}
+	objc::send_void(win.src.window, "setMaxSize:", (CGSize){ ...size });
+}
+
+fn void _window_restore_native(GfxWindow* win)
+{
+	if (!win.src.window) return;
+	objc::send_void(win.src.window, "deminiaturize:", null);
+	win.internal.flags.minimize = false;
+	win.internal.flags.maximize = false;
+}
+
+fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
+{
+	cg::mainDisplayID().showCursor();
+	objc::send_void(mouse, "set");
+	win.src.mouse = mouse;
+	return true;
+}
+
+fn void _window_show_native(GfxWindow* win)
+{
+	if (!win.src.window) return;
+	objc::send_void(win.src.window, "makeKeyAndOrderFront:", null);
+	if (_gfx_ctx.ns_app) objc::send_void(_gfx_ctx.ns_app, "activateIgnoringOtherApps:", true);
+	win.internal.flags.hide = false;
+}
+
+fn void _destroy_native()
+{
+	if (_gfx_ctx.ns_pool)
+	{
+		objc::pool_pop(_gfx_ctx.ns_pool);
+		_gfx_ctx.ns_pool = null;
+	}
+}
+
 fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
 	if (!data || data.type != TEXT || !data.data) return CLIPBOARD_COULD_NOT_BE_OPENED~;
@@ -445,48 +509,21 @@ fn GfxPoint _get_global_mouse_native()
 	return { (int)point.x, (int)point.y };
 }
 
-fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
+fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
-	if (!win.src.window) return;
-	if (size == { 0, 0 })
-	{
-		GfxMonitor* mon = find_monitor(win);
-		if (mon) size = mon.mode.size;
-	}
-	objc::send_void(win.src.window, "setMaxSize:", (CGSize){ ...size });
+	surface.data = data;
+	surface.size = { w, h };
+	surface.format = format;
+	surface.native.format = RGBA8;
+	surface.native.buffer = malloc((sz)w * h * 4);
 }
 
-fn void _window_restore_native(GfxWindow* win)
+fn void _surface_release_native(GfxSurface* surface)
 {
-	if (!win.src.window) return;
-	objc::send_void(win.src.window, "deminiaturize:", null);
-	win.internal.flags.minimize = false;
-	win.internal.flags.maximize = false;
-}
-
-fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
-{
-	cg::mainDisplayID().showCursor();
-	objc::send_void(mouse, "set");
-	win.src.mouse = mouse;
-	return true;
-}
-
-fn void _window_show_native(GfxWindow* win)
-{
-	if (!win.src.window) return;
-	objc::send_void(win.src.window, "makeKeyAndOrderFront:", null);
-	if (_gfx_ctx.ns_app) objc::send_void(_gfx_ctx.ns_app, "activateIgnoringOtherApps:", true);
-	win.internal.flags.hide = false;
-}
-
-fn void _destroy_native()
-{
-	if (_gfx_ctx.ns_pool)
-	{
-		objc::pool_pop(_gfx_ctx.ns_pool);
-		_gfx_ctx.ns_pool = null;
-	}
+	if (!surface.data) return;
+	if (surface.native.native0) objc::release(surface.native.native0);
+	if (surface.native.buffer) free(surface.native.buffer);
+	*surface = {};
 }
 
 // MacOS callbacks

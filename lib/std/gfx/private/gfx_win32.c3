@@ -88,6 +88,13 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 	win32::registerRawInputDevices(&id, 1, Win32_RAWINPUTDEVICE::size);
 }
 
+fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
+{
+	GfxPoint blit = math::min(win.size, surface.size);
+	copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
+	win32::bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdcMem, 0, 0, win32::SRCCOPY);
+}
+
 fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
 	if (win.src.hIconSmall && type & WINDOW) win32::destroyIcon(win.src.hIconSmall);
@@ -248,6 +255,38 @@ fn void? _write_clipboard_native(GfxDataTransfer* data)
 	win32::emptyClipboard();
 	win32::setClipboardData(13, object);
 	win32::closeClipboard();
+}
+
+fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+{
+	surface.data = data;
+	surface.size = { w, h };
+	surface.format = format;
+
+	BitmapV5Header bi;
+	bi.size = BitmapV5Header::size;
+	bi.width = w;
+	bi.height = -h;
+	bi.planes = 1;
+	bi.bitCount = (ushort)format.channels * 8;
+	bi.compression = BI_RGB;
+	surface.native.format = format.channels > 3 ? BGRA8 : BGR8;
+	surface.native.bitmap = win32::createDIBSection(_gfx_ctx.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
+	if (!surface.native.bitmap) return SURFACE_CREATION_FAILED~;
+	defer catch surface.release();
+	surface.native.hdcMem = win32::createCompatibleDC(_gfx_ctx.root.src.hdc);
+	win32::selectObject(surface.native.hdcMem, surface.native.bitmap);
+}
+
+fn void _surface_release_native(GfxSurface* surface)
+{
+	if (!surface.data) return;
+	if (surface.native.hdcMem)
+	{
+		win32::deleteDC(surface.native.hdcMem);
+		win32::deleteObject(surface.native.bitmap);
+	}
+	*surface = {};
 }
 
 fn GfxPoint _get_global_mouse_native()

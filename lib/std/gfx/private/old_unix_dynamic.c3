@@ -119,60 +119,12 @@ struct TodoRenameAttribStack
 }
 
 
-// ==================== Wayland-specific declarations & backend ====================
-// ---- POSIX / libc bits used by the Wayland backend ----
-
-extern fn int ftruncate(int fd, sz length);
-
-
-extern fn int fcntl(int fd, int cmd, ...) @cname("fcntl");
-const int F_GETFD = 1;
-const int F_GETFL = 3;
-
-
-struct Pollfd { int fd; short events; short revents; }
-
-
-
-
-const int POLLIN = 0x0001;
-
-// ---- Wayland client core (real libwayland-client ABI) ----
-
-
-
-const uint WL_MARSHAL_FLAG_DESTROY = 1;
-
-
-// ---- listener vtables (field order matches each protocol's `_listener` struct) ----
-
-
-// private
-fn void rgfwDoNothing() {}
-
-
-
-// private
-
-
-
-
-// public
-
 
 
 
 
 module std::gfx @feat(X11_WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
 import std::math, libc, std::net::os, std::os::posix, std::time;
-// ==================== TODO_RENAME_DYNAMIC runtime dispatch layer ====================
-// Combined X11+Wayland runtime dispatch: every entry point below branches on
-// gfx_use_wayland (set once in _init_native) instead of a vtable.
-
-bool gfx_use_wayland = false;
-
-// public
-fn bool todo_fix_usingWayland() => gfx_use_wayland;
 
 
 
@@ -197,20 +149,20 @@ fn void todo_fix_waitForEvent(int waitMS)
 	{
 		if (posix::pipe((int[2]*)&_gfx_ctx.eventWait_forceStop) != -1)
 		{
-			fcntl(_gfx_ctx.eventWait_forceStop[0], F_GETFL, 0);
-			fcntl(_gfx_ctx.eventWait_forceStop[0], F_GETFD, 0);
-			fcntl(_gfx_ctx.eventWait_forceStop[1], F_GETFL, 0);
-			fcntl(_gfx_ctx.eventWait_forceStop[1], F_GETFD, 0);
+			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[0], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[0], os::F_GETFD, 0);
+			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[1], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[1], os::F_GETFD, 0);
 		}
 	}
 
 	Posix_pollfd[2] fds;
 	fds[0].fd = 0;
-	fds[0].events = (short)POLLIN;
+	fds[0].events = (short)os::POLLIN;
 	fds[1].fd = _gfx_ctx.eventWait_forceStop[0];
-	fds[1].events = (short)POLLIN;
+	fds[1].events = (short)os::POLLIN;
 
-	if (todo_fix_usingWayland())
+	if (gfx_use_wayland)
 	{
 		fds[0].fd = wlDisplayGetFd(_gfx_ctx.wlDisplay);
 
@@ -238,7 +190,7 @@ fn void todo_fix_waitForEvent(int waitMS)
 	}
 
 	Clock current = clock::now();
-	if (todo_fix_usingWayland())
+	if (gfx_use_wayland)
 	{
 		while (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == 0)
 		{

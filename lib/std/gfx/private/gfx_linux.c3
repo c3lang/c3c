@@ -4,6 +4,8 @@ import std::math, std::collections::list, libc, std::time, std::os::env;
 const WAYLAND_ONLY = $feat(WAYLAND) && !$feat(X11_WAYLAND) && !$feat(X11);
 const X11_ONLY = !$feat(WAYLAND) && !$feat(X11_WAYLAND) && $feat(X11);
 
+bool gfx_use_wayland = false;
+
 struct GfxNativeImage
 {
 	GfxFormat format;
@@ -494,19 +496,19 @@ fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffe
 }
 
 // public
-fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
+fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_blitSurface_Wayland(win, surface);
+			return _window_blit_surface_wayland(win, surface);
 		$case X11_ONLY:
-			return todo_fix_window_blitSurface_X11(win, surface);
+			return _window_blit_surface_x11(win, surface);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_blitSurface_Wayland(win, surface);
+				return _window_blit_surface_wayland(win, surface);
 			}
-			return todo_fix_window_blitSurface_X11(win, surface);
+			return _window_blit_surface_x11(win, surface);
 	$endswitch
 }
 
@@ -1069,36 +1071,36 @@ fn void? _write_clipboard_native(GfxDataTransfer* data)
 
 
 // public
-fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
+fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_createSurfacePtr_Wayland(data, w, h, format, self, window);
+			return _init_surface_wayland(surface, data, w, h, format, window);
 		$case X11_ONLY:
-			return todo_fix_createSurfacePtr_X11(data, w, h, format, self, window);
+			return _init_surface_x11(surface, data, w, h, format, window);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_createSurfacePtr_Wayland(data, w, h, format, self, window);
+				return _init_surface_wayland(surface, data, w, h, format, window);
 			}
-			return todo_fix_createSurfacePtr_X11(data, w, h, format, self, window);
+			return _init_surface_x11(surface, data, w, h, format, window);
 	$endswitch
 }
 
 // public
-fn void GfxSurface.release(&self)
+fn void _surface_release_native(GfxSurface* surface)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_surface_freePtr_Wayland(self);
+			return _surface_release_wayland(surface);
 		$case X11_ONLY:
-			return todo_fix_surface_freePtr_X11(self);
+			return _surface_release_x11(surface);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_surface_freePtr_Wayland(self);
+				return _surface_release_wayland(surface);
 			}
-			return todo_fix_surface_freePtr_X11(self);
+			return _surface_release_x11(surface);
 	$endswitch
 }
 

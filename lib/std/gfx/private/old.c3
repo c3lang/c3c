@@ -76,23 +76,6 @@ ObjcClass todo_fix_osxViewClass;
 
 
 // public
-fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
-{
-	if (win == null || surface == null || surface.data == null) return;
-	GfxPoint min = math::min(win.size, surface.size);
-	GfxMonitor* mon = find_monitor(win);
-	if (mon) min = (GfxPoint)((Vec2)min * mon.pixelRatio);
-	ObjcId rep = ns_bitmapRep(...min);
-	char* pixels = ns_bitmapData(rep);
-	defer objc::release(rep);
-	if (!pixels) return;
-	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
-	ObjcId image = ns_imageWithRep(rep, ...min);
-	objc::send_void(win.src.view, "setWantsLayer:", true);
-	ObjcId layer = objc_send((ObjcId)win.src.view, ObjcSendId, "layer");
-	if (layer) objc_send(layer, ObjcSendVoidId, "setContents:", image);
-	objc::release(image);
-}
 
 typedef UCKeyboardLayout = void;
 
@@ -499,26 +482,6 @@ fn void todo_fix_window_closePlatform(GfxWindow* win)
 // public
 fn void todo_fix_window_minimizePlatform(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "miniaturize:", null); }
 // public
-
-// public
-
-fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
-{
-	self.data = data;
-	self.size = { w, h };
-	self.format = format;
-	self.native.format = RGBA8;
-	self.native.buffer = malloc((sz)w * h * 4);
-}
-
-// public
-fn void GfxSurface.release(&self)
-{
-	if (!self.data) return;
-	if (self.native.native0) objc::release(self.native.native0);
-	if (self.native.buffer) free(self.native.buffer);
-	*self = {};
-}
 
 // public
 fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)

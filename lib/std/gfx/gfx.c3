@@ -864,6 +864,15 @@ fn GfxSurface*? create_surface(char* data, int w, int h, GfxFormat format, GfxWi
 	return s;
 }
 
+fn void GfxSurface.release(&self)
+{
+	_surface_release_native(self);
+}
+fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
+{
+	return _surface_init_native(self, data, w, h, format, window);
+}
+
 // public
 fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
 {
@@ -1914,6 +1923,11 @@ fn bool GfxWindow.is_raw_mouse(&self) => self.internal.raw_mouse;
 fn bool GfxWindow.is_hidden(&self)
 {
 	return _window_is_hidden_native(self);
+}
+
+fn void GfxWindow.blit_surface(&self, GfxSurface* surface)
+{
+	_window_blit_surface_native(self, surface);
 }
 
 fn bool GfxWindow.is_maximized(&self)

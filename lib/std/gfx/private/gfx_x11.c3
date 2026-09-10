@@ -3,7 +3,7 @@ import std::math, std::collections::list, libc, std::time;
 
 
 
-fn void todo_fix_surface_freePtr_X11(GfxSurface* surface)
+fn void _surface_release_x11(GfxSurface* surface)
 {
 	if (!surface.data) return;
 	if (surface.native.buffer) free(surface.native.buffer);
@@ -77,9 +77,8 @@ fn void todo_fix_window_setAspectRatio_X11(GfxWindow* win, int w, int h)
 }
 
 // public
-fn void todo_fix_window_blitSurface_X11(GfxWindow* win, GfxSurface* surface)
+fn void _window_blit_surface_x11(GfxWindow* win, GfxSurface* surface)
 {
-	if (surface == null) return;
 	// surface.native.bitmap->data = surface.native.buffer would go here in real Xlib
 	// (XImage.data is a char* at a fixed offset); left to the caller's XImage helper.
 	GfxPoint min = math::min(win.size, surface.size);
@@ -1473,29 +1472,21 @@ fn void todo_fix_window_flash_X11(GfxWindow* win, GfxFlashRequest request)
 }
 
 // private
-fn void? todo_fix_createSurfacePtr_X11(void* data, int w, int h, GfxFormat format, GfxSurface* self, GfxWindow* window)
+fn void? _init_surface_x11(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
 	if (!window) window = _gfx_ctx.root;
-	self.data = data;
-	self.size = { w, h };
-	self.format = format;
+	surface.data = data;
+	surface.size = { w, h };
+	surface.format = format;
 
 	XWindowAttributes attrs;
-	if (xGetWindowAttributes(_gfx_ctx.display, window.src.window, &attrs) == 0)
-	{
-		log::error("Failed to get window attributes.", category: log::CATEGORY_VIDEO);
-		return SURFACE_CREATION_FAILED~;
-	}
-	defer catch self.release();
-	self.native.bitmap = xCreateImage(_gfx_ctx.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])self.size, 32, 0);
-	self.native.buffer = malloc((sz)w * h * 4);
-	self.native.format = todo_fix_xImageGetFormat(self.native.bitmap);
+	if (!xGetWindowAttributes(_gfx_ctx.display, window.src.window, &attrs)) return SURFACE_CREATION_FAILED~;
+	defer catch surface.release();
+	surface.native.bitmap = xCreateImage(_gfx_ctx.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])surface.size, 32, 0);
+	surface.native.buffer = malloc((sz)w * h * 4);
+	surface.native.format = todo_fix_xImageGetFormat(surface.native.bitmap);
 
-	if (!self.native.bitmap)
-	{
-		log::error("Failed to create XImage.", category: log::CATEGORY_VIDEO);
-		return SURFACE_CREATION_FAILED~;
-	}
+	if (!surface.native.bitmap) return SURFACE_CREATION_FAILED~;
 }
 
 // private

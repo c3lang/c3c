@@ -1,6 +1,7 @@
 module std::net::os @feat(POSIX);
 import std::io, libc;
 
+const int F_GETFD = 1;
 const int F_GETFL = 3;
 const int F_SETFL = 4;
 

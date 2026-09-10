@@ -1,6 +1,10 @@
 module std::gfx @feat(WAYLAND, X11_WAYLAND) @private @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
 import std::math, std::collections::list, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
 
+const uint WL_MARSHAL_FLAG_DESTROY = 1;
+
+fn void _do_nothing() {}
+
 // public
 fn void todo_fix_window_captureMousePlatform_Wayland(GfxWindow* win, bool state)
 {
@@ -911,7 +915,7 @@ fn bool todo_fix_readClipboardPtr_Wayland(GfxDataTransferType requestedType, cha
 }
 
 // private
-fn void todo_fix_window_blitSurface_Wayland(GfxWindow* win, GfxSurface* surface)
+fn void _window_blit_surface_wayland(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint min = math::min(win.size, surface.size);
 	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...min, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
@@ -1165,35 +1169,29 @@ fn void? _write_clipboard_wayland(GfxDataTransfer* data)
 }
 
 // private
-fn void? todo_fix_createSurfacePtr_Wayland(void* data, int w, int h, GfxFormat format, GfxSurface* self, GfxWindow* window)
+fn void? _init_surface_wayland(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
-	self.data = data;
-	self.size = { w, h };
-	self.format = format;
+	surface.data = data;
+	surface.size = { w, h };
+	surface.format = format;
 
 	int size = w * h * 4;
 	int fd = todo_fix_wlCreateShmFile((sz)size);
-	if (fd < 0)
-	{
-		log::error("Failed to create a buffer", category: log::CATEGORY_VIDEO);
-		return SURFACE_CREATION_FAILED~;
-	}
-	defer catch self.release();
-	self.native.pool = wlShmCreatePool(_gfx_ctx.shm, fd, (int)size);
-	self.native.buffer = posix::mmap(null, (usz)size, posix::PROT_READ | posix::PROT_WRITE, posix::MAP_SHARED, fd, 0);
-	self.native.fd = fd;
-	self.native.format = BGRA8;
+	if (fd < 0) return SURFACE_CREATION_FAILED~;
+	defer catch surface.release();
+	surface.native.pool = wlShmCreatePool(_gfx_ctx.shm, fd, (int)size);
+	surface.native.buffer = posix::mmap(null, (usz)size, posix::PROT_READ | posix::PROT_WRITE, posix::MAP_SHARED, fd, 0);
+	surface.native.fd = fd;
+	surface.native.format = BGRA8;
 
-	if (self.native.buffer == posix::MAP_FAILED)
+	if (surface.native.buffer == posix::MAP_FAILED)
 	{
-		log::error("mmap failed", category: log::CATEGORY_VIDEO);
-		self.native.buffer = null;
+		surface.native.buffer = null;
 		return SURFACE_CREATION_FAILED~;
 	}
 }
 
-// private
-fn void todo_fix_surface_freePtr_Wayland(GfxSurface* surface)
+fn void _surface_release_wayland(GfxSurface* surface)
 {
 	if (!surface.data) return;
 	if (surface.native.pool) wlShmPoolDestroy(surface.native.pool);

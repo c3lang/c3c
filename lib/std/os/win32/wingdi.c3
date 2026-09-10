@@ -53,6 +53,23 @@ const PFD_MAIN_PLANE      = 0;
 const PFD_OVERLAY_PLANE   = 1;
 const PFD_UNDERLAY_PLANE  = -1;
 
+const Win32_DWORD SRCCOPY     = 0x00CC0020;
+const Win32_DWORD SRCPAINT    = 0x00EE0086;
+const Win32_DWORD SRCAND      = 0x008800C6;
+const Win32_DWORD SRCINVERT   = 0x00660046;
+const Win32_DWORD SRCERASE    = 0x00440328;
+const Win32_DWORD NOTSRCCOPY  = 0x00330008;
+const Win32_DWORD NOTSRCERASE = 0x001100A6;
+const Win32_DWORD MERGECOPY   = 0x00C000CA;
+const Win32_DWORD MERGEPAINT  = 0x00BB0226;
+const Win32_DWORD PATCOPY     = 0x00F00021;
+const Win32_DWORD PATPAINT    = 0x00FB0A09;
+const Win32_DWORD PATINVERT   = 0x005A0049;
+const Win32_DWORD DSTINVERT   = 0x00550009;
+const Win32_DWORD BLACKNESS   = 0x00000042;
+const Win32_DWORD WHITENESS   = 0x00FF0062;
+const Win32_DWORD NOOP        = 0x00AA0029;
+
 extern fn CInt choosePixelFormat(Win32_HDC hdc, Win32_PIXELFORMATDESCRIPTOR* ppfd) @cname("ChoosePixelFormat");
 extern fn Win32_BOOL setPixelFormat(Win32_HDC hdc, CInt format, Win32_PIXELFORMATDESCRIPTOR* ppfd) @cname("SetPixelFormat");
 extern fn CInt describePixelFormat(Win32_HDC hdc, CInt iPixelFormat, Win32_UINT nBytes, Win32_PIXELFORMATDESCRIPTOR* ppfd) @cname("DescribePixelFormat");

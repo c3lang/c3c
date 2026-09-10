@@ -273,16 +273,6 @@ fn void todo_fix_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
 
 
 
-// public
-fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
-{
-	int minH = win.height < surface.size.y ? win.height : surface.size.y;
-	copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
-	rgfwJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
-}
-
-// public
-fn void GfxSurface.release(&self) { *self = {}; }
 
 // public
 fn void todo_fix_initKeycodesPlatform()

@@ -1152,46 +1152,8 @@ fn void todo_fix_window_swapBuffers_OpenGL(GfxWindow* win)
 	win32::swapBuffers(win.src.hdc);
 }
 
-// public
-fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
-{
-	self.data = data;
-	self.size = { w, h };
-	self.format = format;
-
-	BitmapV5Header bi;
-	bi.size = BitmapV5Header::size;
-	bi.width = w;
-	bi.height = -h;
-	bi.planes = 1;
-	bi.bitCount = (ushort)format.channels * 8;
-	bi.compression = BI_RGB;
-	self.native.format = format.channels > 3 ? BGRA8 : BGR8;
-	self.native.bitmap = win32::createDIBSection(_gfx_ctx.root.src.hdc, &bi, 0, (void**)&self.native.buffer, null, 0);
-
-	if (self.native.bitmap == null)
-	{
-		log::error("Failed to create DIB section.", category: log::CATEGORY_VIDEO);
-		return SURFACE_CREATION_FAILED~;
-	}
-	defer catch self.release();
-	self.native.hdcMem = win32::createCompatibleDC(_gfx_ctx.root.src.hdc);
-	win32::selectObject(self.native.hdcMem, self.native.bitmap);
-}
 
 // public
-fn void GfxSurface.release(&self)
-{
-	if (!self.data) return;
-	win32::deleteDC(self.native.hdcMem);
-	win32::deleteObject(self.native.bitmap);
-	*self = {};
-}
+
 
 // public
-fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
-{
-	GfxPoint blit = math::min(win.size, surface.size);
-	copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
-	win32::bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdcMem, 0, 0, 0x00CC0020 /* SRCCOPY */);
-}
