@@ -24,8 +24,6 @@ extern fn bool class_addIvar(ObjcClass cls, ZString name, sz size, char alignmen
 extern fn bool class_addMethod(ObjcClass cls, ObjcSelector name, void* imp, char* types);
 extern fn void* object_setInstanceVariable(ObjcId obj, ZString name, void* value);
 extern fn void* object_getInstanceVariable(ObjcId obj, ZString name, void* outValue);
-extern fn void* objc_autoreleasePoolPush();
-extern fn void objc_autoreleasePoolPop(void* context);
 
 extern fn void cfRelease(void* ref) @cname("CFRelease");
 extern fn CFStringRef cfStringCreateWithCString(void* alloc, ZString str, uint encoding) @cname("CFStringCreateWithCString");
@@ -38,11 +36,10 @@ macro objc_send(id, $FunctionType, ZString $selector, ...)
 }
 
 alias ObjcSendId = fn ObjcId(ObjcId, ObjcSelector);
-alias ObjcSendIdCharPtr = fn ObjcId(ObjcId, ObjcSelector, ZString);
 alias ObjcSendCharPtr = fn ZString(ObjcId, ObjcSelector);
 alias ObjcSendVoid = fn void(ObjcId, ObjcSelector);
 alias ObjcSendVoidId = fn void(ObjcId, ObjcSelector, ObjcId);
-alias ObjcSendVoidBool = fn void(ObjcId, ObjcSelector, bool);
+
 alias ObjcSendVoidNSUInteger = fn void(ObjcId, ObjcSelector, NSUInteger);
 alias ObjcSendVoidNSInteger = fn void(ObjcId, ObjcSelector, NSInteger);
 alias ObjcSendVoidCGFloat = fn void(ObjcId, ObjcSelector, CGFloat);
@@ -92,21 +89,16 @@ fn void todo_fix_window_blitSurface(GfxWindow* win, GfxSurface* surface)
 	if (!pixels) return;
 	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
 	ObjcId image = ns_imageWithRep(rep, ...min);
-	objc_send((ObjcId)win.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
+	objc::send_void(win.src.view, "setWantsLayer:", true);
 	ObjcId layer = objc_send((ObjcId)win.src.view, ObjcSendId, "layer");
 	if (layer) objc_send(layer, ObjcSendVoidId, "setContents:", image);
 	objc::release(image);
 }
 
-alias TISInputSourceRef = void*;
-
 typedef UCKeyboardLayout = void;
-extern fn TISInputSourceRef tisCopyCurrentKeyboardLayoutInputSource() @cname("TISCopyCurrentKeyboardLayoutInputSource");
-extern fn void* tisGetInputSourceProperty(TISInputSourceRef source, CFStringRef propertyKey) @cname("TISGetInputSourceProperty");
 
 extern fn char lmGetKbdType() @cname("LMGetKbdType");
 extern fn int ucKeyTranslate(UCKeyboardLayout* layout, ushort virtualKeyCode, ushort keyAction, uint modifierKeyState, uint keyboardType, uint keyTranslateOptions, uint* deadKeyState, uint maxStringLength, uint* actualStringLength, ushort* unicodeString) @cname("UCKeyTranslate");
-extern CFStringRef kTISPropertyUnicodeKeyLayoutData @cname("kTISPropertyUnicodeKeyLayoutData");
 const uint UC_KEY_ACTION_DOWN = 0;
 const uint UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT = 0;
 
@@ -114,15 +106,12 @@ const uint UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT = 0;
 fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
 {
 	ushort keycode = (ushort)todo_fix_rgfwToApiKey(key);
-	TISInputSourceRef source = tisCopyCurrentKeyboardLayoutInputSource();
-	if (source == null) return key;
+	TISInputSourceRef source = macos::tisCopyCurrentKeyboardLayoutInputSource();
+	if (!source) return key;
 
-	CFDataRef layoutData = tisGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData);
-	if (layoutData == null)
-	{
-		cfRelease(source);
-		return key;
-	}
+	CFDataRef layoutData = source.getProperty(macos::kTISPropertyUnicodeKeyLayoutData);
+	defer source.release();
+	if (!layoutData) return key;
 
 	UCKeyboardLayout* layout = (UCKeyboardLayout*)layoutData.getBytePtr();
 
@@ -131,8 +120,6 @@ fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
 	uint len = 0;
 	uint type = (uint)lmGetKbdType();
 	int status = ucKeyTranslate(layout, keycode, (ushort)UC_KEY_ACTION_DOWN, 0, type, UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT, &deadKeyState, 4, &len, &chars[0]);
-
-	cfRelease(source);
 
 	if (status == 0 && len == 1 && chars[0] < 256) return (GfxKey)chars[0];
 
@@ -325,7 +312,8 @@ const NSInteger NS_WINDOW_LEVEL_FLOATING = 3;
 
 fn ObjcId objc_class(ZString name) => (ObjcId)objc_getClass(name);
 fn ObjcId ns_alloc(ZString className) => objc_send(objc_class(className), ObjcSendId, "alloc");
-fn ObjcId ns_string(ZString str) => objc_send(objc_class("NSString"), ObjcSendIdCharPtr, "stringWithUTF8String:", str);
+
+fn ObjcId ns_string(ZString str) => objc::send(objc_class("NSString"), ObjcId, "stringWithUTF8String:", str);
 fn ZString ns_utf8(ObjcId str) { if (str == null) return null; return objc_send(str, ObjcSendCharPtr, "UTF8String"); }
 fn ObjcId String.to_nsstring(self) => @pool()
 {
@@ -346,8 +334,8 @@ fn ObjcId ns_imageWithRep(ObjcId rep, int w, int h)
 	CGSize size;
 	size.width = (CGFloat)w;
 	size.height = (CGFloat)h;
-	ObjcId image = objc_send(ns_alloc("NSImage"), ObjcSendIdSize, "initWithSize:", size);
-	if (image != null && rep != null) objc_send(image, ObjcSendVoidId, "addRepresentation:", rep);
+	ObjcId image = objc::send(ns_alloc("NSImage"), ObjcId, "initWithSize:", size);
+	if (rep) objc::send_void(image, "addRepresentation:", rep);
 	return image;
 }
 
@@ -393,24 +381,20 @@ fn void todo_fix_monitorNode_free(GfxMonitorNode* node) { if (node != null && no
 
 
 // public
-fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
-{
-	if (!win.src.window) return;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setMinSize:", (CGSize) { ...size });
-}
+
 
 // public
 fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 {
-	_gfx_ctx.nsPool = objc_autoreleasePoolPush();
-	_gfx_ctx.nsApp = objc_send(objc_class("NSApplication"), ObjcSendId, "sharedApplication");
-	if (_gfx_ctx.nsApp == null)
+	_gfx_ctx.ns_pool = objc::pool_push();
+	_gfx_ctx.ns_app = objc::send(objc::class_by_name("NSApplication")!!, ObjcId, "sharedApplication");
+	if (!_gfx_ctx.ns_app)
 	{
 		log::error("NSApplication sharedApplication failed.", category: log::CATEGORY_VIDEO);
 		return -1;
 	}
-	objc_send(_gfx_ctx.nsApp, ObjcSendVoidNSUInteger, "setActivationPolicy:", NS_APP_ACTIVATION_POLICY_REGULAR);
-	objc_send(_gfx_ctx.nsApp, ObjcSendVoid, "finishLaunching");
+	objc::send_void(_gfx_ctx.ns_app, "setActivationPolicy:", (NSUInteger)NS_APP_ACTIVATION_POLICY_REGULAR);
+	objc::send_void(_gfx_ctx.ns_app, "finishLaunching");
 	_osx_register_classes();
 	todo_fix_pollMonitors();
 	return 0;
@@ -419,10 +403,10 @@ fn int todo_fix_initPlatform(String class_name, GfxInitOption flags)
 // public
 fn void todo_fix_deinitPlatform()
 {
-	if (_gfx_ctx.nsPool != null)
+	if (_gfx_ctx.ns_pool)
 	{
-		objc_autoreleasePoolPop(_gfx_ctx.nsPool);
-		_gfx_ctx.nsPool = null;
+		objc::pool_pop(_gfx_ctx.ns_pool);
+		_gfx_ctx.ns_pool = null;
 	}
 }
 
@@ -546,14 +530,14 @@ fn void todo_fix_initKeycodesPlatform()
 fn void todo_fix_pollEvents()
 {
 	todo_fix_resetPrevState();
-	if (!_gfx_ctx.nsApp) return;
+	if (!_gfx_ctx.ns_app) return;
 	ObjcId distantPast = objc_send(objc_class("NSDate"), ObjcSendId, "distantPast");
 	ObjcId mode = ns_string("kCFRunLoopDefaultMode");
 	while (true)
 	{
-		ObjcId ev = objc_send(_gfx_ctx.nsApp, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, distantPast, mode, true);
+		ObjcId ev = objc_send(_gfx_ctx.ns_app, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, distantPast, mode, true);
 		if (ev == null) break;
-		objc_send(_gfx_ctx.nsApp, ObjcSendVoidId, "sendEvent:", ev);
+		objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "sendEvent:", ev);
 	}
 }
 
@@ -563,11 +547,11 @@ fn void todo_fix_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
 // public
 fn void todo_fix_waitForEvent(int waitMS)
 {
-	if (!_gfx_ctx.nsApp) return;
+	if (!_gfx_ctx.ns_app) return;
 	ObjcId date = objc_send(objc_class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)waitMS / 1000.0);
 	ObjcId mode = ns_string("kCFRunLoopDefaultMode");
-	ObjcId ev = objc_send(_gfx_ctx.nsApp, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, date, mode, true);
-	if (ev != null) objc_send(_gfx_ctx.nsApp, ObjcSendVoidIdBool, "postEvent:atStart:", ev, true);
+	ObjcId ev = objc_send(_gfx_ctx.ns_app, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, date, mode, true);
+	if (ev != null) objc_send(_gfx_ctx.ns_app, ObjcSendVoidIdBool, "postEvent:atStart:", ev, true);
 }
 // public
 fn bool todo_fix_usingWayland() => _gfx_ctx.wl_display != null;
@@ -619,7 +603,7 @@ fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWin
 	win.src.bounds = win.bounds;
 	objc_send(nswin, ObjcSendVoidId, "setContentView:", view);
 	objc_send(nswin, ObjcSendVoidId, "makeFirstResponder:", view);
-	objc_send(nswin, ObjcSendVoidBool, "setAcceptsMouseMovedEvents:", true);
+	objc::send_void(nswin, "setAcceptsMouseMovedEvents:", true);
 	win.set_name(name);
 	todo_fix_window_setFloating(win, flags.floating);
 	if (!(flags.hide)) _window_show_native(win);
@@ -843,7 +827,7 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 	{
 		ObjcId miniaturizeButton = objc_send((ObjcId)win.src.window, ObjcSendIdNSUInteger, "standardWindowButton:", NS_WINDOW_MINIATURIZE_BUTTON);
 		ObjcId titleBarView = objc_send(miniaturizeButton, ObjcSendId, "superview");
-		objc_send(titleBarView, ObjcSendVoidBool, "setHidden:", true);
+		objc::send_void(titleBarView, "setHidden:", true);
 		offset = (double)(frame.size.height - content.size.height);
 	}
 
@@ -851,29 +835,36 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 	win.height -= (int)offset;
 }
 // public
-fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidBool, "setIgnoresMouseEvents:", passthrough); }
+fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough)
+{
+	if (win.src.window) objc::send_void(win.src.window, "setIgnoresMouseEvents:", passthrough);
+}
 
 
 fn void GfxWindow.set_name(&self, String name)
 {
-	if (self.src.window) objc_send((ObjcId)self.src.window, ObjcSendVoidId, "setTitle:", name.to_nsstring());
+	if (self.src.window) objc::send_void(self.src.window, "setTitle:", name.to_nsstring());
 }
 
 // public
 
 fn void _window_hide_native(GfxWindow* win) @private
 {
-	if (win.src.window) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderOut:", null);
+	if (win.src.window) objc::send_void(win.src.window, "orderOut:", null);
 	win.internal.flags.hide = true;
 }
 
 fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) @private
 {
-	if (_gfx_ctx.nsApp) objc_send(_gfx_ctx.nsApp, ObjcSendIntegerNSUInteger, "requestUserAttention:", (NSUInteger)request);
+	objc::send(_gfx_ctx.ns_app, NSInteger, "requestUserAttention:", (NSUInteger)request);
 }
 
 // public
-fn bool _window_is_minimized_native(GfxWindow* win) { if (win != null && win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isMiniaturized"); return win.internal.flags.minimize; }
+fn bool _window_is_minimized_native(GfxWindow* win)
+{
+	if (win.src.window) return objc::send(win.src.window, bool, "isMiniaturized");
+	return win.internal.flags.minimize;
+}
 // public
 fn bool _window_is_maximized_native(GfxWindow* win) { if (win == null) return false; if (win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isZoomed"); return win.internal.flags.maximize; }
 
@@ -1033,7 +1024,7 @@ fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInsta
 		log::error("NSView is NULL for macOS window", category: log::CATEGORY_VIDEO);
 		return null;
 	}
-	objc_send((ObjcId)window.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
+	objc::send_void(window.src.view, "setWantsLayer:", true);
 	void* layer = todo_fix_getLayer_OSX();
 	if (layer == null) return null;
 	todo_fix_window_setLayer_OSX(window, layer);

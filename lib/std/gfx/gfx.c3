@@ -201,8 +201,8 @@ struct GfxContext
 		CULong x11_root;
 		void* wayland_handle;
 		void* wl_display;
-		ObjcId nsApp;
-		ObjcId nsPool;
+		ObjcId ns_app;
+		ObjcId ns_pool;
 		NSUInteger windowNumberSeed;
 	}
 	GfxDataTransfer* unixClipboard @feat(WAYLAND, X11_WAYLAND, X11);

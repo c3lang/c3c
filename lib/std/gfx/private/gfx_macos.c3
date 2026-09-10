@@ -55,7 +55,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 	if (!raw) return VULKAN_NOT_LOADED~;
 	ObjcId layer = objc_send(objc_class("CAMetalLayer"), ObjcSendId, "layer");
 	if (!layer) return SURFACE_CREATION_FAILED~;
-	objc_send((ObjcId)win.src.view, ObjcSendVoidBool, "setWantsLayer:", true);
+	objc::send_void(win.src.view, "setWantsLayer:", true);
 	todo_fix_window_setLayer_OSX(win, layer);
 	VkMetalSurfaceCreateInfoEXT create_info;
 
@@ -111,15 +111,20 @@ fn void _window_move_native(GfxWindow* win, GfxPoint where)
 	win.x = where.x;
 	win.y = (int)todo_fix_cocoaYTransform((float)where.y + (float)content.size.height - 1.0f);
 	CGPoint origin = { ...where };
-	objc_send((ObjcId)win.src.window, ObjcSendVoidPoint, "setFrameOrigin:", origin);
+	objc::send_void(win.src.window, "setFrameOrigin:", origin);
+}
+
+fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
+{
+	objc::send_void(win.src.window, "setMinSize:", (CGSize) { ...size });
 }
 
 fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
-	if (!_gfx_ctx.nsApp) return false;
+	if (!_gfx_ctx.ns_app) return false;
 	if (!data)
 	{
-		objc_send(_gfx_ctx.nsApp, ObjcSendVoidId, "setApplicationIconImage:", null);
+		objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "setApplicationIconImage:", null);
 		return true;
 	}
 	ObjcId rep = ns_bitmapRep(w, h);
@@ -129,7 +134,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFor
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjcId image = ns_imageWithRep(rep, w, h);
 	defer objc::release(image);
-	objc_send(_gfx_ctx.nsApp, ObjcSendVoidId, "setApplicationIconImage:", image);
+	objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "setApplicationIconImage:", image);
 	return true;
 }
 
@@ -232,8 +237,8 @@ fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
 fn void _window_show_native(GfxWindow* win)
 {
 	if (win == null || win.src.window == null) return;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyAndOrderFront:", null);
-	if (_gfx_ctx.nsApp != null) objc_send(_gfx_ctx.nsApp, ObjcSendVoidBool, "activateIgnoringOtherApps:", true);
+	objc::send_void(win.src.window, "makeKeyAndOrderFront:", null);
+	if (_gfx_ctx.ns_app) objc::send_void(_gfx_ctx.ns_app, "activateIgnoringOtherApps:", true);
 	win.internal.flags.hide = false;
 }
 
@@ -295,8 +300,8 @@ fn void _osx_key_updown(ObjcId self, ObjcId event, bool down)
 	GfxKey key = _gfx_ctx.keycodes[(sz)keyCode];
 	// Unmapped key
 	if (!key) return;
-	bool repeat = down ? objc_send(event, ObjcSendBool, "isARepeat") : false;
-	GfxKeyModifier mods = _osx_modifiers_to_gfx(objc_send(event, ObjcSendNSUInteger, "modifierFlags"));
+	bool repeat = down ? objc::send(event, bool, "isARepeat") : false;
+	GfxKeyModifier mods = _osx_modifiers_to_gfx(objc::send(event, NSUInteger, "modifierFlags"));
 	todo_fix_keyCallback(win, key, mods, repeat, down);
 }
 

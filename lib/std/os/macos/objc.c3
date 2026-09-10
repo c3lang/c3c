@@ -7,6 +7,7 @@ typedef ObjcSelector = void*;
 alias ObjcId = void*;
 alias SendVoid = fn void(ObjcId, ObjcSelector);
 alias SendId = fn ObjcId(ObjcId, ObjcSelector);
+alias ObjcVoidBool = fn void(ObjcId, ObjcSelector, bool);
 
 excuse { CLASS_NOT_FOUND, UNKNOWN_EVENT }
 
@@ -35,6 +36,13 @@ macro ObjcClass? class_by_name(ZString c)
 	return cls ?: CLASS_NOT_FOUND~;
 }
 
+macro ObjcClass @class(ZString $class)
+{
+	static ObjcClass cls;
+	if (cls) return cls;
+	return cls = class_by_name($class)!!;
+}
+
 macro ObjcClass[] class_get_list(Allocator allocator)
 {
 	int num_classes = objc::getClassList(null, 0);
@@ -52,12 +60,48 @@ macro msg_send(id, $FunctionType, ZString $selector, ...)
 	return (($FunctionType)&msgSend)((ObjcId)id, sel_getUid($selector), ...$vaarg);
 }
 
+macro send_void(id, ZString $selector, ...)
+{
+	typeid[] $types = { };
+	var $string = "var $FunctionType = $Typeof(fn void(ObjcId, ObjcSelector";
+	$for sz $i = 0; $i < $vaarg.len; $i++:
+		$types = $types +++ $Typeof($vaarg[$i]);
+		$string = $string +++ @sprintf(",$Typefrom($types[%s])", $i);
+	$endfor
+	$string = $string +++ ") => {});";
+	$expand($string);
+	if (id)
+	{
+		return (($FunctionType)&msgSend)((ObjcId)id, sel_getUid($selector), ...$vaarg);
+	}
+}
+
+macro send(id, $RType, ZString $selector, ...)
+{
+	typeid[] $types = { };
+	var $string = "var $FunctionType = $Typeof(fn $RType(ObjcId, ObjcSelector";
+	$for sz $i = 0; $i < $vaarg.len; $i++:
+		$types = $types +++ $Typeof($vaarg[$i]);
+		$string = $string +++ @sprintf(",$Typefrom($types[%s])", $i);
+	$endfor
+	$string = $string +++ ") => {});";
+	$expand($string);
+	if (id)
+	{
+		return (($FunctionType)&msgSend)((ObjcId)id, sel_getUid($selector), ...$vaarg);
+	}
+	return ($RType){};
+}
+
 macro void @autoreleasepool(;@body())
 {
 	void* ctx = objc_autoreleasePoolPush();
 	defer objc_autoreleasePoolPop(ctx);
 	@body();
 }
+
+alias pool_push = objc_autoreleasePoolPush;
+alias pool_pop = objc_autoreleasePoolPop;
 
 extern fn void* objc_autoreleasePoolPush();
 extern fn void objc_autoreleasePoolPop(void* context);
