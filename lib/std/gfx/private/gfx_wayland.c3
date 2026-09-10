@@ -975,12 +975,12 @@ fn void _window_release_opengl_context_wayland(GfxWindow* win, GfxGlContext* ctx
 }
 
 // private
-fn GfxPoint todo_fix_window_fetchSize_Wayland(GfxWindow* win) => win.get_size();
+fn GfxPoint _window_fetch_size_wayland(GfxWindow* win) => win.get_size();
 
 fn void _window_flash_wayland(GfxWindow* win, GfxFlashRequest request) {}
 
 // private
-fn void todo_fix_window_focus_Wayland(GfxWindow* win) {}
+fn void _window_focus_wayland(GfxWindow* win) {}
 
 // private
 fn void _window_hide_wayland(GfxWindow* win)
@@ -1044,27 +1044,24 @@ fn void _window_restore_wayland(GfxWindow* win)
 	_toggle_wayland_maximized(win, false);
 }
 
-	// private
-fn void todo_fix_window_setAspectRatio_Wayland(GfxWindow* win, int w, int h)
+fn void _window_set_aspect_ratio_wayland(GfxWindow* win, int w, int h)
 {
 	if (w == 0 && h == 0) return;
 	_xdg_toplevel_set_max_size(win.src.xdgToplevel, w, h);
 }
 
 // private
-fn void todo_fix_window_setBorder_Wayland(GfxWindow* win, bool border)
+fn void _window_set_border_wayland(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
-	if (_gfx_ctx.decorationManager != null)
+	if (_gfx_ctx.decorationManager)
 	{
 		zxdgToplevelDecorationV1SetMode(win.src.decoration, border ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE : ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
 	}
 }
 
-// private
-fn void todo_fix_window_setFloating_Wayland(GfxWindow* win, bool floating) {}
+fn void _window_set_floating_wayland(GfxWindow* win, bool floating) {}
 
-// private
 fn void _window_set_fullscreen_wayland(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
@@ -1090,10 +1087,9 @@ fn void _window_set_min_size_wayland(GfxWindow* win, GfxSize size)
 	xdgToplevelSetMinSize(win.src.xdgToplevel, ...size);
 }
 
-// private
-fn void todo_fix_window_setMousePassthrough_Wayland(GfxWindow* win, bool passthrough) {}
+fn void _window_set_mouse_passthrough_wayland(GfxWindow* win, bool passthrough)
+{}
 
-// private
 fn bool _window_set_mouse_wayland(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	GfxSurface* surface = (GfxSurface*)mouse;
@@ -1104,8 +1100,7 @@ fn bool _window_set_mouse_wayland(GfxWindow* win, TodoRenameMouse* mouse)
 	return true;
 }
 
-// private
-fn void todo_fix_window_setOpacity_Wayland(GfxWindow* win, char opacity) {}
+fn void _window_set_opacity_wayland(GfxWindow* win, char opacity) {}
 
 // private
 fn void todo_fix_window_setRawMouseModePlatform_Wayland(GfxWindow* win, bool state)
@@ -1199,11 +1194,9 @@ fn void _surface_release_wayland(GfxSurface* surface)
 	*surface = {};
 }
 
-// private
 fn bool _window_is_floating_wayland(GfxWindow* win) => !win.is_fullscreen() && !_window_is_maximized_native(win);
 
-// private
-fn void todo_fix_window_setName_Wayland(GfxWindow* win, String name)
+fn void _window_set_name_wayland(GfxWindow* win, String name)
 {
 	if (_gfx_ctx.compositor) @pool()
 	{
@@ -1214,7 +1207,7 @@ fn void todo_fix_window_setName_Wayland(GfxWindow* win, String name)
 // private
 fn bool _window_set_icon_wayland(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
-	if (_gfx_ctx.iconManager == null || w != h) return false;
+	if (!_gfx_ctx.iconManager || w != h) return false;
 
 	if (win.src.icon != null) { xdgToplevelIconV1Destroy(win.src.icon); win.src.icon = null; }
 
@@ -1233,7 +1226,6 @@ fn bool _window_set_icon_wayland(GfxWindow* win, char* data, int w, int h, GfxFo
 	return true;
 }
 
-// private
 fn GfxMonitor* todo_fix_window_getMonitor_Wayland(GfxWindow* win)
 {
 	if (win.src.activeMonitor == null) return get_primary_monitor() ?? null;

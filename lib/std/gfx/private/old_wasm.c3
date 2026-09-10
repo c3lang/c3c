@@ -38,7 +38,6 @@ fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInsta
 }
 
 
-fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private {}
 
 // TODO All of this is horribly broken
 extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "emscripten_set_canvas_size");
@@ -341,7 +340,6 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 // public
 fn GfxKey todo_fix_physicalToMappedKey(GfxKey key) => key;
 // public
-fn GfxPoint _window_fetch_size_native(GfxWindow* win) => win.get_size();
 
 // public
 fn void todo_fix_pollEvents()

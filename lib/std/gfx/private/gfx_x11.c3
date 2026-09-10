@@ -63,9 +63,8 @@ fn WGPUSurface todo_fix_window_createSurface_WebGPU_X11(GfxWindow* window, WGPUI
 }
 
 // public
-fn void todo_fix_window_setAspectRatio_X11(GfxWindow* win, int w, int h)
+fn void _window_set_aspect_ratio_x11(GfxWindow* win, int w, int h)
 {
-	if (win == null) return;
 	if (w == 0 && h == 0) return;
 	XSizeHints hints;
 	CLong flags;
@@ -95,7 +94,7 @@ fn GfxPoint _get_global_mouse_x11()
 }
 
 // public
-fn GfxPoint todo_fix_window_fetchSize_X11(GfxWindow* win)
+fn GfxPoint _window_fetch_size_x11(GfxWindow* win)
 {
 	XWindowAttributes attribs;
 	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attribs);
@@ -1034,8 +1033,7 @@ fn void _window_release_opengl_context_x11(GfxWindow* win, GfxGlContext* ctx)
 
 fn void _window_release_egl_context_x11(GfxWindow* win, GfxEglContext* ctx) {}
 
-// private
-fn void todo_fix_window_focus_X11(GfxWindow* win)
+fn void _window_focus_x11(GfxWindow* win)
 {
 	XWindowAttributes attr;
 	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attr);
@@ -1044,7 +1042,6 @@ fn void todo_fix_window_focus_X11(GfxWindow* win)
 	xFlush(_gfx_ctx.display);
 }
 
-// private
 fn void _window_hide_x11(GfxWindow* win)
 {
 	win.internal.flags.hide = true;
@@ -1052,7 +1049,6 @@ fn void _window_hide_x11(GfxWindow* win)
 	xFlush(_gfx_ctx.display);
 }
 
-// private
 fn bool _window_is_hidden_x11(GfxWindow* win)
 {
 	XWindowAttributes windowAttributes;

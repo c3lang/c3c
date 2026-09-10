@@ -197,6 +197,12 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
 }
 
+fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
+{
+	win.src.aspectRatioW = w;
+	win.src.aspectRatioH = h;
+}
+
 fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 {
 	Win32_RECT area;

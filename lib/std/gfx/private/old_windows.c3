@@ -564,11 +564,6 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 // public
 
 // public
-fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
-{
-	win.src.aspectRatioW = w;
-	win.src.aspectRatioH = h;
-}
 // public
 // public
 fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)

@@ -616,15 +616,15 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_fetchSize_Wayland(win);
+			return _window_fetch_size_wayland(win);
 		$case X11_ONLY:
-			return todo_fix_window_fetchSize_X11(win);
+			return _window_fetch_size_x11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_fetchSize_Wayland(win);
+				return _window_fetch_size_wayland(win);
 			}
-			return todo_fix_window_fetchSize_X11(win);
+			return _window_fetch_size_x11(win);
 	$endswitch
 }
 
@@ -648,15 +648,15 @@ fn void _window_focus_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_focus_Wayland(win);
+			return _window_focus_wayland(win);
 		$case X11_ONLY:
-			return todo_fix_window_focus_X11(win);
+			return _window_focus_x11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_focus_Wayland(win);
+				return _window_focus_wayland(win);
 			}
-			return todo_fix_window_focus_X11(win);
+			return _window_focus_x11(win);
 	$endswitch
 }
 
@@ -861,20 +861,19 @@ fn void _window_restore_native(GfxWindow* win)
 	$endswitch
 }
 
-// public
-fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
+fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_setAspectRatio_Wayland(win, w, h);
+			return _window_set_aspect_ratio_wayland(win, w, h);
 		$case X11_ONLY:
-			return todo_fix_window_setAspectRatio_X11(win, w, h);
+			return _window_set_aspect_ratio_x11(win, w, h);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_setAspectRatio_Wayland(win, w, h);
+				return _window_set_aspect_ratio_wayland(win, w, h);
 			}
-			return todo_fix_window_setAspectRatio_X11(win, w, h);
+			return _window_set_aspect_ratio_x11(win, w, h);
 	$endswitch
 }
 
@@ -883,13 +882,13 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_setBorder_Wayland(win, border);
+			return _window_set_border_wayland(win, border);
 		$case X11_ONLY:
 			return todo_fix_window_setBorder_X11(win, border);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_setBorder_Wayland(win, border);
+				return _window_set_border_wayland(win, border);
 			}
 			return todo_fix_window_setBorder_X11(win, border);
 	$endswitch
@@ -900,13 +899,13 @@ fn void todo_fix_window_setFloating(GfxWindow* win, bool floating)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_setFloating_Wayland(win, floating);
+			return _window_set_floating_wayland(win, floating);
 		$case X11_ONLY:
 			return todo_fix_window_setFloating_X11(win, floating);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_setFloating_Wayland(win, floating);
+				return _window_set_floating_wayland(win, floating);
 			}
 			return todo_fix_window_setFloating_X11(win, floating);
 	$endswitch
@@ -968,13 +967,13 @@ fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_setMousePassthrough_Wayland(win, passthrough);
+			return _window_set_mouse_passthrough_wayland(win, passthrough);
 		$case X11_ONLY:
 			return todo_fix_window_setMousePassthrough_X11(win, passthrough);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_setMousePassthrough_Wayland(win, passthrough);
+				return _window_set_mouse_passthrough_wayland(win, passthrough);
 			}
 			return todo_fix_window_setMousePassthrough_X11(win, passthrough);
 	$endswitch
@@ -1002,13 +1001,13 @@ fn void todo_fix_window_setOpacity(GfxWindow* win, char opacity)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_setOpacity_Wayland(win, opacity);
+			return _window_set_opacity_wayland(win, opacity);
 		$case X11_ONLY:
 			return todo_fix_window_setOpacity_X11(win, opacity);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_setOpacity_Wayland(win, opacity);
+				return _window_set_opacity_wayland(win, opacity);
 			}
 			return todo_fix_window_setOpacity_X11(win, opacity);
 	$endswitch
@@ -1123,13 +1122,13 @@ fn void GfxWindow.set_name(&self, String name)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_setName_Wayland(self, name);
+			return _window_set_name_wayland(self, name);
 		$case X11_ONLY:
 			return todo_fix_window_setName_X11(self, name);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_setName_Wayland(self, name);
+				return _window_set_name_wayland(self, name);
 			}
 			return todo_fix_window_setName_X11(self, name);
 	$endswitch

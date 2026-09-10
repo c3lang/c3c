@@ -42,6 +42,7 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size) {}
 fn void _window_focus_native(GfxWindow* win) {}
 fn void _window_set_max_size_native(GfxWindow* win, GfxSize size) {}
 fn void _window_move_mouse(GfxWindow* win, GfxPoint where) {}
+fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) {}
 
 fn void _window_maximize_native(GfxWindow* win)
 {
@@ -102,6 +103,11 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	ctx.ctx = (void*)(uptr)handle;
 	rgfwJsWebglMakeCurrent(handle);
 	win.opengl_swap_interval(0);
+}
+
+fn GfxPoint _window_fetch_size_native(GfxWindow* win)
+{
+	return win.get_size();
 }
 
 fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
