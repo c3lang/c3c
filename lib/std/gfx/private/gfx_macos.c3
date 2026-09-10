@@ -1,5 +1,5 @@
 module std::gfx @feat(MACOS) @private @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
-import std::os::macos, std::math;
+import std::os::macos, std::math, std::os::darwin;
 
 struct GfxGlContext
 {
@@ -84,7 +84,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	}
 	todo_fix_attribStack_pushAttribs(&stack, 0, 0);
 
-	ObjcId format = objc_send(ns_alloc("NSOpenGLPixelFormat"), ObjcSendIdU32Ptr, "initWithAttributes:", (uint*)&attribs);
+	ObjcId format = objc::send(ns_alloc("NSOpenGLPixelFormat"), ObjcId, "initWithAttributes:", (uint*)&attribs);
 	if (!format) return OPENGL_PIXEL_FORMAT_LOAD_FAILED~;
 	defer catch objc::release(format);
 
@@ -208,7 +208,7 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 
 fn void _window_maximize_native(GfxWindow* win)
 {
-	if (win.src.window) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "zoom:", null);
+	if (win.src.window) objc::send_void(win.src.window, "zoom:", null);
 }
 
 fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
@@ -225,23 +225,71 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 fn bool _window_is_floating_native(GfxWindow* win)
 {
 	if (!win) return false;
-	if (win.src.window) return objc_send((ObjcId)win.src.window, ObjcSendInteger, "level") > NS_WINDOW_LEVEL_NORMAL;
+	if (win.src.window) return objc::send(win.src.window, NSInteger, "level") > cocoa::NS_WINDOW_LEVEL_NORMAL;
 	return win.internal.flags.floating;
+}
+
+fn void _window_set_border_native(GfxWindow* win, bool border)
+{
+	if (!win.src.window) return;
+	CGRect frame = objc::send(win.src.window, CGRect, "frame");
+	CGRect content = objc::send(win.src.view, CGRect, "frame");
+	double offset = 0;
+
+	win.internal.flags.no_border = !border;
+	NSUInteger styleMask = cocoa::NS_WINDOW_STYLE_BORDERLESS | cocoa::NS_WINDOW_STYLE_FULL_SIZE_CONTENT_VIEW;
+	if (border) styleMask = cocoa::NS_WINDOW_STYLE_TITLED | cocoa::NS_WINDOW_STYLE_CLOSABLE | cocoa::NS_WINDOW_STYLE_MINIATURIZABLE;
+	if (!win.internal.flags.no_resize) styleMask |= cocoa::NS_WINDOW_STYLE_RESIZABLE;
+
+	objc::send_void(win.src.window, "setStyleMask:", styleMask);
+
+	if (!border)
+	{
+		ObjcId miniaturizeButton = objc::send(win.src.window, ObjcId, "standardWindowButton:", cocoa::NS_WINDOW_MINIATURIZE_BUTTON);
+		ObjcId titleBarView = objc::send(miniaturizeButton, ObjcId, "superview");
+		objc::send_void(titleBarView, "setHidden:", true);
+		offset = (double)(frame.size.height - content.size.height);
+	}
+
+	win.resize(win.size + { 0, (int)offset });
+	win.height -= (int)offset;
+}
+
+fn GfxPoint _window_fetch_size_native(GfxWindow* win)
+{
+	if (win.src.window)
+	{
+		CGRect frame = objc::send(win.src.window, CGRect, "frame");
+		win.size = { (int)frame.size.width, (int)frame.size.height };
+	}
+	return win.size;
+}
+
+fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
+{
+	if (win.src.window) objc::send_void(win.src.window, "toggleFullScreen:", null);
+	win.internal.flags.fullscreen = fullscreen;
+}
+
+fn void _window_focus_native(GfxWindow* win)
+{
+	if (win.src.window) objc::send_void(win.src.window, "makeKeyWindow", null);
+	win.internal.inFocus = true;
 }
 
 fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
 	if (!win.src.window) return;
-	CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
-	CGRect content = objc_send((ObjcId)win.src.window, ObjcSendRectRect, "contentRectForFrameRect:", frame);
+	CGRect frame = objc::send(win.src.window, CGRect, "frame");
+	CGRect content = objc::send(win.src.window, CGRect, "contentRectForFrameRect:", frame);
 	double offset = frame.size.height - content.size.height;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidRectBool, "setFrame:display:", ns_rect((double)win.x, (double)win.y, (double)size.x, (double)size.y + offset), true);
+	objc::send_void((ObjcId)win.src.window, "setFrame:display:", ns_rect((double)win.x, (double)win.y, (double)size.x, (double)size.y + offset), true);
 }
 
 fn void _window_move_native(GfxWindow* win, GfxPoint where)
 {
 	if (!win.src.window) return;
-	CGRect content = objc_send((ObjcId)win.src.view, ObjcSendRect, "frame");
+	CGRect content = objc::send((ObjcId)win.src.view, CGRect, "frame");
 	win.x = where.x;
 	win.y = (int)todo_fix_cocoaYTransform((float)where.y + (float)content.size.height - 1.0f);
 	CGPoint origin = { ...where };
@@ -258,7 +306,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFor
 	if (!_gfx_ctx.ns_app) return false;
 	if (!data)
 	{
-		objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "setApplicationIconImage:", null);
+		objc::send_void(_gfx_ctx.ns_app, "setApplicationIconImage:", null);
 		return true;
 	}
 	ObjcId rep = ns_bitmapRep(w, h);
@@ -268,7 +316,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFor
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjcId image = ns_imageWithRep(rep, w, h);
 	defer objc::release(image);
-	objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "setApplicationIconImage:", image);
+	objc::send_void(_gfx_ctx.ns_app, "setApplicationIconImage:", image);
 	return true;
 }
 
@@ -281,12 +329,12 @@ fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
 		h = 1;
 	}
 	CGSize size = { w, h };
-	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setContentAspectRatio:", size);
+	objc::send_void(win.src.window, "setContentAspectRatio:", size);
 }
 
 fn bool _window_is_hidden_native(GfxWindow* win) @private
 {
-	if (win.src.window) return !objc_send((ObjcId)win.src.window, ObjcSendBool, "isVisible");
+	if (win.src.window) return !objc::send(win.src.window, bool, "isVisible");
 	return win.internal.flags.hide;
 }
 
@@ -304,6 +352,40 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	objc::send_void(_gfx_ctx.ns_app, "finishLaunching");
 	_osx_register_classes();
 	todo_fix_pollMonitors();
+}
+
+fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
+{
+	NSUInteger style = cocoa::NS_WINDOW_STYLE_TITLED | cocoa::NS_WINDOW_STYLE_CLOSABLE | cocoa::NS_WINDOW_STYLE_MINIATURIZABLE;
+	if (!flags.no_resize) style |= cocoa::NS_WINDOW_STYLE_RESIZABLE;
+	if (flags.no_border) style = cocoa::NS_WINDOW_STYLE_BORDERLESS;
+	CGRect rect = { { win.x, todo_fix_cocoaYTransform((float)(win.y + win.height - 1)) } , { ...win.size }};
+	ObjcId nswin = objc::send(ns_alloc("NSWindow"), ObjcSendIdWindowInit, "initWithContentRect:styleMask:backing:defer:", rect, style, NS_BACKING_STORE_BUFFERED, false);
+	if (!nswin) return NSWINDOW_CREATION_FAILED~;
+	ObjcId view = todo_fix_osxViewClass ? objc::send(todo_fix_osxViewClass, ObjcId, "alloc") : ns_alloc("NSView");
+	view = objc::send(view, ObjcId, "initWithFrame:", (CGRect) { { } , { ...win.size } });
+	if (todo_fix_osxViewClass) object_setInstanceVariable(view, "gfx_window", win);
+	ObjcId delegate = null;
+	if (todo_fix_osxWindowDelegateClass)
+	{
+		delegate = objc::send(todo_fix_osxWindowDelegateClass, ObjcId, "alloc");
+		delegate = objc::send(delegate, ObjcId, "init");
+		object_setInstanceVariable(delegate, "gfx_window", win);
+		objc::send_void(nswin, "setDelegate:", delegate);
+	}
+	win.src.window = objc::retain(nswin);
+	win.src.view = objc::retain(view);
+	win.src.delegate = delegate;
+	win.src.bounds = win.bounds;
+	objc::send_void(nswin, "setContentView:", view);
+	objc::send_void(nswin, "makeFirstResponder:", view);
+	objc::send_void(nswin, "setAcceptsMouseMovedEvents:", true);
+	win.set_name(name);
+	todo_fix_window_setFloating(win, flags.floating);
+	if (!(flags.hide)) _window_show_native(win);
+	if (flags.maximize) _window_maximize_native(win);
+	if (flags.minimize) todo_fix_window_minimizePlatform(win);
+	if (flags.fullscreen) _window_set_fullscreen_native(win, true);
 }
 
 fn void? _write_clipboard_native(GfxDataTransfer* data)
@@ -371,13 +453,13 @@ fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 		GfxMonitor* mon = find_monitor(win);
 		if (mon) size = mon.mode.size;
 	}
-	objc_send((ObjcId)win.src.window, ObjcSendVoidSize, "setMaxSize:", (CGSize){ ...size });
+	objc::send_void(win.src.window, "setMaxSize:", (CGSize){ ...size });
 }
 
 fn void _window_restore_native(GfxWindow* win)
 {
 	if (!win.src.window) return;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "deminiaturize:", null);
+	objc::send_void(win.src.window, "deminiaturize:", null);
 	win.internal.flags.minimize = false;
 	win.internal.flags.maximize = false;
 }
@@ -385,14 +467,14 @@ fn void _window_restore_native(GfxWindow* win)
 fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	cg::mainDisplayID().showCursor();
-	objc_send((ObjcId)mouse, ObjcSendVoid, "set");
+	objc::send_void(mouse, "set");
 	win.src.mouse = mouse;
 	return true;
 }
 
 fn void _window_show_native(GfxWindow* win)
 {
-	if (win == null || win.src.window == null) return;
+	if (!win.src.window) return;
 	objc::send_void(win.src.window, "makeKeyAndOrderFront:", null);
 	if (_gfx_ctx.ns_app) objc::send_void(_gfx_ctx.ns_app, "activateIgnoringOtherApps:", true);
 	win.internal.flags.hide = false;
@@ -460,7 +542,7 @@ fn void _osx_key_updown(ObjcId self, ObjcId event, bool down)
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	// No window
 	if (!win) return;
-	ushort keyCode = objc_send(event, ObjcSendUShort, "keyCode");
+	ushort keyCode = objc::send(event, ushort, "keyCode");
 	if (keyCode >= 256) return;
 	GfxKey key = _gfx_ctx.keycodes[(sz)keyCode];
 	// Unmapped key
@@ -477,7 +559,7 @@ fn void _osx_mouse_entered(ObjcId self, ObjcSelector sel, ObjcId event)
 {
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return;
-	CGPoint p = objc_send(event, ObjcSendPoint, "locationInWindow");
+	CGPoint p = objc::send(event, CGPoint, "locationInWindow");
 	_mouse_notify_callback(win, { (int)p.x, win.height - (int)p.y }, true);
 }
 
@@ -490,8 +572,8 @@ fn void _osx_window_did_move(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
 	GfxWindow* win = todo_fix_osxDelegateWindow(self);
 	if (!win || !win.src.window) return;
-	CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
-	CGRect content = objc_send((ObjcId)win.src.window, ObjcSendRectRect, "contentRectForFrameRect:", frame);
+	CGRect frame = objc::send(win.src.window, CGRect, "frame");
+	CGRect content = objc::send(win.src.window, CGRect, "contentRectForFrameRect:", frame);
 	float y = todo_fix_cocoaYTransform((float)(content.origin.y + content.size.height - 1));
 	_window_moved_callback(win, { (int)content.origin.x, (int)y });
 }
@@ -529,7 +611,7 @@ fn void _osx_mouse_moved_common(ObjcId self, ObjcId event)
 {
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return;
-	CGPoint p = objc_send(event, ObjcSendPoint, "locationInWindow");
+	CGPoint p = objc::send(event, CGPoint, "locationInWindow");
 	_mouse_motion_callback(win, { (int)p.x, win.height - (int)p.y });
 }
 
@@ -541,7 +623,7 @@ fn void _osx_mouse_button_common(ObjcId self, ObjcId event, bool down, GfxMouseB
 {
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return;
-	NSUInteger button = objc_send(event, ObjcSendNSUInteger, "buttonNumber");
+	NSUInteger button = objc::send(event, NSUInteger, "buttonNumber");
 	GfxMouseButton gfx_button = fallback;
 	switch (button)
 	{
@@ -565,8 +647,8 @@ fn void _osx_scroll_wheel(ObjcId self, ObjcSelector sel, ObjcId event)
 {
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return;
-	CGFloat x = objc_send(event, ObjcSendCGFloat, "scrollingDeltaX");
-	CGFloat y = objc_send(event, ObjcSendCGFloat, "scrollingDeltaY");
+	CGFloat x = objc::send(event, CGFloat, "scrollingDeltaX");
+	CGFloat y = objc::send(event, CGFloat, "scrollingDeltaY");
 	todo_fix_mouseScrollCallback(win, { (float)x, (float)y });
 }
 
@@ -578,7 +660,7 @@ fn void _osx_flags_changed(ObjcId self, ObjcSelector sel, ObjcId event)
 	GfxKey value = NULL;
 	bool pressed = false;
 
-	NSUInteger flags = objc_send(event, ObjcSendNSUInteger, "modifierFlags");
+	NSUInteger flags = objc::send(event, NSUInteger, "modifierFlags");
 	_key_update_key_mods_ex(win,
 		flags & 0x00010000 != 0,
 		flags & 0x00200000 != 0,
@@ -633,7 +715,7 @@ fn NSUInteger _osx_dragging_entered(ObjcId self, ObjcSelector sel, ObjcId sender
 {
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return 0;
-	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
+	CGPoint p = objc::send(sender, CGPoint, "draggingLocation");
 	todo_fix_dataDragCallback(win, FILE, ENTER, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
@@ -643,7 +725,7 @@ fn NSUInteger _osx_dragging_updated(ObjcId self, ObjcSelector sel, ObjcId sender
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return 0;
 	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return 1;
-	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
+	CGPoint p = objc::send(sender, CGPoint, "draggingLocation");
 	todo_fix_dataDragCallback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
@@ -653,7 +735,7 @@ fn void _osx_dragging_ended(ObjcId self, ObjcSelector sel, ObjcId sender)
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return;
 	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return;
-	CGPoint p = objc_send(sender, ObjcSendPoint, "draggingLocation");
+	CGPoint p = objc::send(sender, CGPoint, "draggingLocation");
 	todo_fix_dataDragCallback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
 }
 
@@ -684,20 +766,20 @@ fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender
 
 	if (objc::send(propertyList, bool, "isKindOfClass:", objc_class("NSString")))
 	{
-		NSUInteger stringCount = objc_send(propertyList, ObjcSendNSUInteger, "length");
+		NSUInteger stringCount = objc::send(propertyList, NSUInteger, "length");
 		ZString filePath = ns_utf8(propertyList);
 		todo_fix_dataDropCallback(win, filePath, (sz)stringCount + 1, FILE);
 	}
-	if (!objc_send(propertyList, ObjcSendBoolId, "isKindOfClass:", objc_class("NSArray"))) return false;
+	if (!objc::send(propertyList, bool, "isKindOfClass:", objc_class("NSArray"))) return false;
 
-	NSUInteger count = objc_send(propertyList, ObjcSendNSUInteger, "count");
+	NSUInteger count = objc::send(propertyList, NSUInteger, "count");
 	if (!count) return false;
 
 	for (NSUInteger i = 0; i < count; i++)
 	{
-		ObjcId fileURL = objc_send(propertyList, ObjcSendIdNSUInteger, "objectAtIndex:", i);
+		ObjcId fileURL = objc::send(propertyList, ObjcId, "objectAtIndex:", i);
 		ZString filePath = ns_utf8(fileURL);
-		NSUInteger stringCount = objc_send(fileURL, ObjcSendNSUInteger, "length");
+		NSUInteger stringCount = objc::send(fileURL, NSUInteger, "length");
 		todo_fix_dataDropCallback(win, filePath, (sz)stringCount + 1, FILE);
 	}
 	return false;

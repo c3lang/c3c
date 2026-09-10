@@ -1885,7 +1885,7 @@ fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindo
 	self.internal.mouse = _gfx_ctx.standardMice[GfxMouseIcon.NORMAL.ordinal];
 	self.internal.flags = flags;
 	self.internal.enabled_events = TODO_RENAME_ALL_EVENT_FLAGS;
-	todo_fix_createWindowPlatform(name, flags, self)!;
+	_create_window_native(name, flags, self)!;
 	_window_set_flags(self, flags, {});
 	self.src.gfxType = 0;
 	$if $feat(MACOS) || $feat(WIN32) || $feat(WASM):

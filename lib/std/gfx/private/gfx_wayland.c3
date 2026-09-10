@@ -695,6 +695,44 @@ fn void? _load_opengl_wayland()
 	return load_egl();
 }
 
+fn void? todo_fix_createWindowPlatform_Wayland(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
+{
+	win.src.surface = wlCompositorCreateSurface(_gfx_ctx.compositor);
+	wlSurfaceAddListener(win.src.surface, &todo_fix_windowSurfaceListener, win);
+	wlSurfaceSetUserData(win.src.surface, win);
+
+	win.src.customCursorSurface = wlCompositorCreateSurface(_gfx_ctx.compositor);
+
+	win.src.xdgSurface = xdgWmBaseGetXdgSurface(_gfx_ctx.xdgWmBase, win.src.surface);
+	xdgSurfaceAddListener(win.src.xdgSurface, &todo_fix_xdgSurfaceListener, win);
+	xdgWmBaseSetUserData(_gfx_ctx.xdgWmBase, win);
+
+	win.src.xdgToplevel = xdgSurfaceGetToplevel(win.src.xdgSurface);
+	_xdg_toplevel_set_app_id(win.src.xdgToplevel, name.zstr_copy(tmem));
+	_xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, win.width, win.height);
+
+	if (!win.internal.flags.transparent) todo_fix_wlSetOpaque(win);
+
+
+	xdgToplevelAddListener(win.src.xdgToplevel, &todo_fix_xdgToplevelListener, win);
+
+	if (_gfx_ctx.decorationManager)
+	{
+		uint decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+		win.src.decoration = zxdgDecorationManagerV1GetToplevelDecoration(_gfx_ctx.decorationManager, win.src.xdgToplevel);
+		zxdgToplevelDecorationV1AddListener(win.src.decoration, &todo_fix_xdgDecorationListener, win);
+		if (flags.no_border) decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
+		zxdgToplevelDecorationV1SetMode(win.src.decoration, decorationMode);
+	}
+
+	if (_gfx_ctx.iconManager) xdgToplevelIconManagerV1SetIcon(_gfx_ctx.iconManager, win.src.xdgToplevel, null);
+
+	wlSurfaceCommit(win.src.surface);
+
+	while (!win.src.configured) wlDisplayDispatch(_gfx_ctx.wlDisplay);
+
+}
+
 // private
 fn void todo_fix_monitorNode_free_Wayland(GfxMonitorNode* node)
 {

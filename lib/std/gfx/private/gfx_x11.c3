@@ -197,7 +197,7 @@ fn TodoRenameMouse* todo_fix_createMouseStandard_X11(GfxMouseIcon mouse)
 }
 
 // private
-fn void? todo_fix_createWindowPlatform_X11(String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? _create_window_x11(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	if (flags.open_gl || flags.egl)
 	{

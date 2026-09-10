@@ -496,7 +496,7 @@ fn void todo_fix_initKeycodesPlatform()
 // public
 
 // public
-fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
+fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
 {
 	if (!name.len) name = " ";
 	win.src.hIconSmall = null; win.src.hIconBig = null;

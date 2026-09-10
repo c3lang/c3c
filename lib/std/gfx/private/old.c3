@@ -1,6 +1,6 @@
 module std::gfx @feat(MACOS) @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
 
-import std::collections, std::math, libc, std::os::macos, std::io;
+import std::collections, std::math, libc, std::os::macos, std::io, std::os::darwin;
 // C3 port of the shared RGFW implementation from /Users/lerno/Downloads/RGFW.h.
 // This file intentionally imports no C3 standard-library modules. It only
 // declares the small C runtime hooks RGFW's C header also expects from the host.
@@ -227,18 +227,9 @@ fn void* todo_fix_getCurrentContext_OpenGL() => objc_send(objc_class("NSOpenGLCo
 // public
 fn void todo_fix_window_swapBuffers_OpenGL(GfxWindow* win) { if (win != null && win.src.ctx.native != null && win.src.ctx.native.ctx != null) objc_send((ObjcId)win.src.ctx.native.ctx, ObjcSendVoid, "flushBuffer"); }
 
-const NSUInteger NS_WINDOW_STYLE_TITLED = 1;
-const NSUInteger NS_WINDOW_STYLE_CLOSABLE = 2;
-const NSUInteger NS_WINDOW_STYLE_MINIATURIZABLE = 4;
-const NSUInteger NS_WINDOW_STYLE_RESIZABLE = 8;
-const NSUInteger NS_WINDOW_STYLE_BORDERLESS = 0;
-const NSUInteger NS_WINDOW_STYLE_FULL_SIZE_CONTENT_VIEW = 1 << 15;
-const NSUInteger NS_WINDOW_MINIATURIZE_BUTTON = 1;
 const NSUInteger NS_BACKING_STORE_BUFFERED = 2;
 const NSUInteger NS_APP_ACTIVATION_POLICY_REGULAR = 0;
 const NSUInteger NS_EVENT_MASK_ANY = 0xffffffffffffffff;
-const NSInteger NS_WINDOW_LEVEL_NORMAL = 0;
-const NSInteger NS_WINDOW_LEVEL_FLOATING = 3;
 
 fn ObjcId objc_class(ZString name) => (ObjcId)objc_getClass(name);
 fn ObjcId ns_alloc(ZString className) => objc_send(objc_class(className), ObjcSendId, "alloc");
@@ -486,39 +477,6 @@ fn void todo_fix_window_setLayer_OSX(GfxWindow* win, void* layer) { if (win != n
 fn void* todo_fix_window_getWindow_OSX(GfxWindow* win) => win != null ? win.src.window : null;
 
 // public
-fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
-{
-	NSUInteger style = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
-	if (!flags.no_resize) style |= NS_WINDOW_STYLE_RESIZABLE;
-	if (flags.no_border) style = NS_WINDOW_STYLE_BORDERLESS;
-	CGRect rect = ns_rect((double)win.x, (double)todo_fix_cocoaYTransform((float)(win.y + win.height - 1)), (double)win.width, (double)win.height);
-	ObjcId nswin = objc_send(ns_alloc("NSWindow"), ObjcSendIdWindowInit, "initWithContentRect:styleMask:backing:defer:", rect, style, NS_BACKING_STORE_BUFFERED, false);
-	if (!nswin) return NSWINDOW_CREATION_FAILED~;
-	ObjcId view = todo_fix_osxViewClass != (ObjcClass)null ? objc_send((ObjcId)todo_fix_osxViewClass, ObjcSendId, "alloc") : ns_alloc("NSView");
-	view = objc_send(view, ObjcSendIdRect, "initWithFrame:", ns_rect(0.0, 0.0, (double)win.width, (double)win.height));
-	if (todo_fix_osxViewClass != (ObjcClass)null) object_setInstanceVariable(view, "gfx_window", win);
-	ObjcId delegate = null;
-	if (todo_fix_osxWindowDelegateClass != (ObjcClass)null)
-	{
-		delegate = objc_send((ObjcId)todo_fix_osxWindowDelegateClass, ObjcSendId, "alloc");
-		delegate = objc_send(delegate, ObjcSendId, "init");
-		object_setInstanceVariable(delegate, "gfx_window", win);
-		objc_send(nswin, ObjcSendVoidId, "setDelegate:", delegate);
-	}
-	win.src.window = objc::retain(nswin);
-	win.src.view = objc::retain(view);
-	win.src.delegate = delegate;
-	win.src.bounds = win.bounds;
-	objc_send(nswin, ObjcSendVoidId, "setContentView:", view);
-	objc_send(nswin, ObjcSendVoidId, "makeFirstResponder:", view);
-	objc::send_void(nswin, "setAcceptsMouseMovedEvents:", true);
-	win.set_name(name);
-	todo_fix_window_setFloating(win, flags.floating);
-	if (!(flags.hide)) _window_show_native(win);
-	if (flags.maximize) _window_maximize_native(win);
-	if (flags.minimize) todo_fix_window_minimizePlatform(win);
-	if (flags.fullscreen) _window_set_fullscreen_native(win, true);
-}
 
 // public
 fn void todo_fix_window_closePlatform(GfxWindow* win)
@@ -695,53 +653,14 @@ fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
 // public
 fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
 // public
-fn GfxPoint _window_fetch_size_native(GfxWindow* win)
-{
-	if (win.src.window != null)
-	{
-		CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
-		win.size = { (int)frame.size.width, (int)frame.size.height };
-	}
-	return win.size;
-}
 
-// public
-fn void _window_focus_native(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeKeyWindow", null); if (win != null) win.internal.inFocus = true; }
-// public
 fn void todo_fix_window_raise(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderFrontRegardless", null); }
 
-// public
-fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "toggleFullScreen:", null); if (win != null) win.internal.flags.fullscreen = fullscreen; }
-// public
-fn void todo_fix_window_setFloating(GfxWindow* win, bool floating) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidNSInteger, "setLevel:", floating ? NS_WINDOW_LEVEL_FLOATING : NS_WINDOW_LEVEL_NORMAL); if (win != null) win.internal.flags.floating = floating; }
+fn void todo_fix_window_setFloating(GfxWindow* win, bool floating) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidNSInteger, "setLevel:", floating ? cocoa::NS_WINDOW_LEVEL_FLOATING : cocoa::NS_WINDOW_LEVEL_NORMAL); if (win != null) win.internal.flags.floating = floating; }
 // public
 fn void todo_fix_window_setOpacity(GfxWindow* win, char opacity) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidCGFloat, "setAlphaValue:", (CGFloat)opacity / 255.0); }
 // public
-fn void _window_set_border_native(GfxWindow* win, bool border)
-{
-	if (win == null || win.src.window == null) return;
-	CGRect frame = objc_send((ObjcId)win.src.window, ObjcSendRect, "frame");
-	CGRect content = objc_send((ObjcId)win.src.view, ObjcSendRect, "frame");
-	double offset = 0;
 
-	win.internal.flags.no_border = !border;
-	NSUInteger styleMask = NS_WINDOW_STYLE_BORDERLESS | NS_WINDOW_STYLE_FULL_SIZE_CONTENT_VIEW;
-	if (border) styleMask = NS_WINDOW_STYLE_TITLED | NS_WINDOW_STYLE_CLOSABLE | NS_WINDOW_STYLE_MINIATURIZABLE;
-	if (!win.internal.flags.no_resize) styleMask |= NS_WINDOW_STYLE_RESIZABLE;
-
-	objc_send((ObjcId)win.src.window, ObjcSendVoidNSUInteger, "setStyleMask:", styleMask);
-
-	if (!border)
-	{
-		ObjcId miniaturizeButton = objc_send((ObjcId)win.src.window, ObjcSendIdNSUInteger, "standardWindowButton:", NS_WINDOW_MINIATURIZE_BUTTON);
-		ObjcId titleBarView = objc_send(miniaturizeButton, ObjcSendId, "superview");
-		objc::send_void(titleBarView, "setHidden:", true);
-		offset = (double)(frame.size.height - content.size.height);
-	}
-
-	win.resize(win.size + { 0, (int)offset });
-	win.height -= (int)offset;
-}
 // public
 fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough)
 {

@@ -337,7 +337,7 @@ fn void todo_fix_initKeycodesPlatform()
 // public
 
 // public
-fn void? todo_fix_createWindowPlatform(String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	rgfwJsSetCanvasSize(win.width, win.height);
 	rgfwJsSetWindowTitle((ZString)name, name.len);

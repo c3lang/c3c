@@ -312,6 +312,23 @@ fn void todo_fix_initKeycodesPlatform()
 	$endswitch
 }
 
+fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
+{
+	$switch:
+		$case WAYLAND_ONLY:
+			return todo_fix_createWindowPlatform_Wayland(name, flags, win);
+		$case X11_ONLY:
+			return _create_window_x11(name, flags, win);
+		$default:
+			if (gfx_use_wayland)
+			{
+				return todo_fix_createWindowPlatform_Wayland(name, flags, win);
+			}
+			return _create_window_x11(name, flags, win);
+	$endswitch
+}
+
+
 // public
 fn void? _init_native(String class_name, GfxInitOption flags)
 {
