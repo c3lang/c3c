@@ -1,5 +1,5 @@
 module std::gfx @feat(WIN32) @private;
-import std::os::win32, std::collections::list, std::math;
+import std::os::win32, std::collections, std::math;
 
 struct GfxGlContext
 {
@@ -406,46 +406,43 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	int pixelFormat = win32::choosePixelFormat(win.src.hdc, &pfd);
 	if (todo_fix_wglChoosePixelFormatARB)
 	{
-		int[50] pixelFormatAttribs;
-		TodoRenameAttribStack stack;
-		todo_fix_attribStack_init(&stack, (int*)&pixelFormatAttribs, 50);
-
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_DRAW_TO_WINDOW_ARB, 1);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_SUPPORT_OPENGL_ARB, 1);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_COLOR_BITS_ARB, 32);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_DOUBLE_BUFFER_ARB, 1);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ALPHA_BITS_ARB, hints.alpha);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_DEPTH_BITS_ARB, hints.depth);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_STENCIL_BITS_ARB, hints.stencil);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_STEREO_ARB, hints.stereo);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_AUX_BUFFERS_ARB, hints.auxBuffers);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_RED_BITS_ARB, hints.red);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_GREEN_BITS_ARB, hints.blue);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_BLUE_BITS_ARB, hints.green);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCUM_RED_BITS_ARB, hints.accumRed);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCUM_GREEN_BITS_ARB, hints.accumGreen);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCUM_BLUE_BITS_ARB, hints.accumBlue);
-		todo_fix_attribStack_pushAttribs(&stack, WGL_ACCUM_ALPHA_BITS_ARB, hints.accumAlpha);
-
+		FixedList{int, 50} stack;
+		stack.push_all({
+			WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+			WGL_DRAW_TO_WINDOW_ARB, 1,
+			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+			WGL_SUPPORT_OPENGL_ARB, 1,
+			WGL_COLOR_BITS_ARB, 32,
+			WGL_DOUBLE_BUFFER_ARB, 1,
+			WGL_ALPHA_BITS_ARB, hints.alpha,
+			WGL_DEPTH_BITS_ARB, hints.depth,
+			WGL_STENCIL_BITS_ARB, hints.stencil,
+			WGL_STEREO_ARB, hints.stereo,
+			WGL_AUX_BUFFERS_ARB, hints.auxBuffers,
+			WGL_RED_BITS_ARB, hints.red,
+			WGL_GREEN_BITS_ARB, hints.blue,
+			WGL_BLUE_BITS_ARB, hints.green,
+			WGL_ACCUM_RED_BITS_ARB, hints.accumRed,
+			WGL_ACCUM_GREEN_BITS_ARB, hints.accumGreen,
+			WGL_ACCUM_BLUE_BITS_ARB, hints.accumBlue,
+			WGL_ACCUM_ALPHA_BITS_ARB, hints.accumAlpha,
+		});
 		if (hints.sRGB)
 		{
 			if (hints.profile != TODO_RENAME_GL_ES)
 			{
-				todo_fix_attribStack_pushAttribs(&stack, WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, 1);
+				stack.push_all({WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, 1});
 			}
 			else
 			{
-				todo_fix_attribStack_pushAttribs(&stack, WGL_COLORSPACE_SRGB_EXT, (int)hints.sRGB);
+				stack.push_all({WGL_COLORSPACE_SRGB_EXT, (int)hints.sRGB});
 			}
 		}
-		todo_fix_attribStack_pushAttribs(&stack, WGL_COVERAGE_SAMPLES_NV, hints.samples);
-		todo_fix_attribStack_pushAttribs(&stack, 0, 0);
+		stack.push_all({ WGL_COVERAGE_SAMPLES_NV, hints.samples, 0, 0 });
 
 		int newPixelFormat;
 		uint numFormats;
-		todo_fix_wglChoosePixelFormatARB(win.src.hdc, (int*)&pixelFormatAttribs, null, 1, &newPixelFormat, &numFormats);
+		todo_fix_wglChoosePixelFormatARB(win.src.hdc, stack.array_view(), null, 1, &newPixelFormat, &numFormats);
 		if (numFormats == 0)
 		{
 			todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create a pixel format for WGL");
@@ -465,9 +462,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 
 	if (todo_fix_wglCreateContextAttribsARB != null)
 	{
-		int[40] attribs;
-		TodoRenameAttribStack stack;
-		todo_fix_attribStack_init(&stack, (int*)&attribs, 40);
+		FixedList{int, 40} stack;
 
 		int mask = 0;
 		switch (hints.profile)
@@ -477,32 +472,36 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 			case TODO_RENAME_GL_FORWARD_COMPATIBILITY: mask |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
 			default: mask |= WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
 		}
-		todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_PROFILE_MASK_ARB, mask);
+		stack.push_all({ WGL_CONTEXT_PROFILE_MASK_ARB, mask });
 
-		if (hints.minor != 0 || hints.major != 0)
+		if (hints.minor || hints.major)
 		{
-			todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_MAJOR_VERSION_ARB, hints.major);
-			todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_MINOR_VERSION_ARB, hints.minor);
+			stack.push_all({
+				WGL_CONTEXT_MAJOR_VERSION_ARB, hints.major,
+				WGL_CONTEXT_MINOR_VERSION_ARB, hints.minor
+			});
 		}
 
 		char[32] noError = "WGL_ARB_create_context_no_error";
-		if (todo_fix_extensionSupportedPlatform_OpenGL((ZString)&noError, 31)) todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError);
+		if (todo_fix_extensionSupportedPlatform_OpenGL((ZString)&noError, 31)) stack.push_all({ WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError });
 
 		char[30] flushControl = "WGL_ARB_context_flush_control";
 		if (todo_fix_extensionSupportedPlatform_OpenGL((ZString)&flushControl, 30))
 		{
-			if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_FLUSH) { todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB); }
-			else if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_NONE) { todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_RELEASE_BEHAVIOR_ARB, WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB); }
+			stack.push(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB);
+			stack.push(hints.releaseBehavior == TODO_RENAME_GL_RELEASE_FLUSH
+				? WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB
+				: WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB);
 		}
 
 		int flags = 0;
 		if (hints.debug) flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
 		char[34] robustness = "WGL_ARB_create_context_robustness";
 		if (hints.robustness && todo_fix_extensionSupportedPlatform_OpenGL((ZString)&robustness, 33)) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
-		if (flags != 0) todo_fix_attribStack_pushAttribs(&stack, WGL_CONTEXT_FLAGS_ARB, flags);
+		if (flags) stack.push_all({ WGL_CONTEXT_FLAGS_ARB, flags });
 
-		todo_fix_attribStack_pushAttribs(&stack, 0, 0);
-		win.src.ctx.native.ctx = todo_fix_wglCreateContextAttribsARB(win.src.hdc, null, (int*)&attribs);
+		stack.push_all({ 0, 0 });
+		win.src.ctx.native.ctx = todo_fix_wglCreateContextAttribsARB(win.src.hdc, null, stack.array_view());
 	}
 
 	if (todo_fix_wglCreateContextAttribsARB == null || win.src.ctx.native.ctx == null)

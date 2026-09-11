@@ -3,17 +3,4 @@ import std::collections::list, std::math, libc;
 
 
 
-// public
-
-struct TodoRenameAttribStack
-{
-	int* attribs;
-	sz count;
-	sz max;
-}
-
-
-
-
-
 

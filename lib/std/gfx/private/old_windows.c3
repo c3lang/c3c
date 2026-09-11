@@ -623,13 +623,6 @@ fn void todo_fix_waitForEvent(int waitMS) { win32::msgWaitForMultipleObjects(0, 
 
 ushort[8] todo_fix_wideDisplayName = {(ushort)'D', (ushort)'I', (ushort)'S', (ushort)'P', (ushort)'L', (ushort)'A', (ushort)'Y', 0};
 
-struct TodoRenameAttribStack
-{
-	int* attribs;
-	sz count;
-	sz max;
-}
-
 // public
 fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
 {

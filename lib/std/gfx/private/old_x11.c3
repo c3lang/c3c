@@ -103,10 +103,4 @@ fn void? todo_fix_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags 
 	xSetWindowBackgroundPixmap(_gfx_ctx.display, win.src.window, 0);
 }
 
-struct TodoRenameAttribStack
-{
-	int* attribs;
-	sz count;
-	sz max;
-}
 

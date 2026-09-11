@@ -1,7 +1,74 @@
 module std::gfx @feat(X11, X11_WAYLAND) @private;
-import std::math, std::collections::list, libc, std::time;
+import std::math, std::collections, libc, std::time;
 
+// core GLX 1.0 attributes
+const GLX_USE_GL           = 1;
+const GLX_BUFFER_SIZE      = 2;
+const GLX_LEVEL            = 3;
+const GLX_RGBA             = 4;
+const GLX_DOUBLEBUFFER     = 5;
+const GLX_STEREO           = 6;
+const GLX_AUX_BUFFERS      = 7;
+const GLX_RED_SIZE         = 8;
+const GLX_GREEN_SIZE       = 9;
+const GLX_BLUE_SIZE        = 10;
+const GLX_ALPHA_SIZE       = 11;
+const GLX_DEPTH_SIZE       = 12;
+const GLX_STENCIL_SIZE     = 13;
+const GLX_ACCUM_RED_SIZE   = 14;
+const GLX_ACCUM_GREEN_SIZE = 15;
+const GLX_ACCUM_BLUE_SIZE  = 16;
+const GLX_ACCUM_ALPHA_SIZE = 17;
 
+// GLX 1.3 FBConfig attributes
+const GLX_CONFIG_CAVEAT     = 0x20;
+const GLX_X_VISUAL_TYPE     = 0x22;
+const GLX_DRAWABLE_TYPE     = 0x8010;
+const GLX_RENDER_TYPE       = 0x8011;
+const GLX_X_RENDERABLE      = 0x8012;
+const GLX_FBCONFIG_ID       = 0x8013;
+const GLX_RGBA_TYPE         = 0x8014;
+const GLX_COLOR_INDEX_TYPE  = 0x8015;
+
+// GLX_X_VISUAL_TYPE values
+const GLX_NONE         = 0x8000;
+const GLX_TRUE_COLOR   = 0x8002;
+const GLX_DIRECT_COLOR = 0x8003;
+const GLX_PSEUDO_COLOR = 0x8004;
+const GLX_STATIC_COLOR = 0x8005;
+const GLX_GRAY_SCALE   = 0x8006;
+const GLX_STATIC_GRAY  = 0x8007;
+
+// GLX_DRAWABLE_TYPE / GLX_RENDER_TYPE bits
+const GLX_RGBA_BIT        = 0x00000001;
+const GLX_COLOR_INDEX_BIT = 0x00000002;
+const GLX_WINDOW_BIT      = 0x00000001;
+const GLX_PIXMAP_BIT      = 0x00000002;
+const GLX_PBUFFER_BIT     = 0x00000004;
+
+// GLX_ARB_multisample
+const GLX_SAMPLE_BUFFERS = 100000;
+const GLX_SAMPLES        = 100001;
+
+// GLX_ARB_create_context and friends
+const GLX_CONTEXT_MAJOR_VERSION_ARB             = 0x2091;
+const GLX_CONTEXT_MINOR_VERSION_ARB             = 0x2092;
+const GLX_CONTEXT_FLAGS_ARB                     = 0x2094;
+const GLX_CONTEXT_PROFILE_MASK_ARB              = 0x9126;
+const GLX_CONTEXT_CORE_PROFILE_BIT_ARB          = 0x00000001;
+const GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB = 0x00000002;
+const GLX_CONTEXT_DEBUG_BIT_ARB                 = 0x00000001;
+const GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB    = 0x00000002;
+const GLX_CONTEXT_ES_PROFILE_BIT_EXT            = 0x00000004;
+const GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB         = 0x00000004;
+const GLX_CONTEXT_RELEASE_BEHAVIOR_ARB          = 0x2097;
+const GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB     = 0x0;
+const GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB    = 0x2098;
+const GLX_CONTEXT_OPENGL_NO_ERROR_ARB           = 0x31B3;
+
+// GLX_ARB_framebuffer_sRGB / GLX_EXT_framebuffer_sRGB — same value, different extension namespace
+const GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB = 0x20B2;
+const GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT = 0x20B2;
 
 fn void _surface_release_x11(GfxSurface* surface)
 {
@@ -1324,39 +1391,39 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 
 	bool transparent = win.internal.flags.transparent;
 
-	int[40] visualAttribs;
-	TodoRenameAttribStack stack;
-	todo_fix_attribStack_init(&stack, (int*)&visualAttribs, 40);
-	todo_fix_attribStack_pushAttribs(&stack, 0x22, 0x8002); // GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR
-	todo_fix_attribStack_pushAttribs(&stack, 0x8012, 1); // GLX_X_RENDERABLE
-	todo_fix_attribStack_pushAttribs(&stack, 0x8011, 0x1); // GLX_RENDER_TYPE, GLX_RGBA_BIT
-	todo_fix_attribStack_pushAttribs(&stack, 0x8010, 0x1); // GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT
-	todo_fix_attribStack_pushAttribs(&stack, 5, 1); // GLX_DOUBLEBUFFER
-	todo_fix_attribStack_pushAttribs(&stack, 11, hints.alpha); // GLX_ALPHA_SIZE
-	todo_fix_attribStack_pushAttribs(&stack, 12, hints.depth); // GLX_DEPTH_SIZE
-	todo_fix_attribStack_pushAttribs(&stack, 13, hints.stencil); // GLX_STENCIL_SIZE
-	todo_fix_attribStack_pushAttribs(&stack, 6, hints.stereo); // GLX_STEREO
-	todo_fix_attribStack_pushAttribs(&stack, 7, hints.auxBuffers); // GLX_AUX_BUFFERS
-	todo_fix_attribStack_pushAttribs(&stack, 8, hints.red); // GLX_RED_SIZE
-	todo_fix_attribStack_pushAttribs(&stack, 9, hints.green); // GLX_GREEN_SIZE
-	todo_fix_attribStack_pushAttribs(&stack, 10, hints.blue); // GLX_BLUE_SIZE
-	todo_fix_attribStack_pushAttribs(&stack, 14, hints.accumRed); // GLX_ACCUM_RED_SIZE
-	todo_fix_attribStack_pushAttribs(&stack, 15, hints.accumGreen);
-	todo_fix_attribStack_pushAttribs(&stack, 16, hints.accumBlue);
-	todo_fix_attribStack_pushAttribs(&stack, 17, hints.accumAlpha);
+	FixedList{int, 40} stack;
+	stack.push_all({
+		GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
+		GLX_X_RENDERABLE, 1,
+		GLX_RENDER_TYPE, GLX_RGBA_BIT,
+		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+		GLX_DOUBLEBUFFER, 1,
+		GLX_ALPHA_SIZE, hints.alpha,
+		GLX_DEPTH_SIZE, hints.depth,
+		GLX_STENCIL_SIZE, hints.stencil,
+		GLX_STEREO, hints.stereo,
+		GLX_AUX_BUFFERS, hints.auxBuffers,
+		GLX_RED_SIZE, hints.red,
+		GLX_GREEN_SIZE, hints.green,
+		GLX_BLUE_SIZE, hints.blue,
+		GLX_ACCUM_RED_SIZE, hints.accumRed,
+		GLX_ACCUM_GREEN_SIZE, hints.accumGreen,
+		GLX_ACCUM_BLUE_SIZE, hints.accumBlue,
+		GLX_ACCUM_ALPHA_SIZE, hints.accumAlpha,
+	});
 
 	if (hints.sRGB)
 	{
 		ZString srgbArbStr = "GLX_ARB_framebuffer_sRGB";
 		ZString srgbExtStr = "GLX_EXT_framebuffer_sRGB";
-		if (todo_fix_extensionSupportedPlatform_OpenGL_X11(srgbArbStr, srgbArbStr.len() + 1)) todo_fix_attribStack_pushAttribs(&stack, 0x20B2, (int)hints.sRGB); // GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB
-		if (todo_fix_extensionSupportedPlatform_OpenGL_X11(srgbExtStr, srgbExtStr.len() + 1)) todo_fix_attribStack_pushAttribs(&stack, 0x20B2, (int)hints.sRGB); // GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT
+		if (todo_fix_extensionSupportedPlatform_OpenGL_X11(srgbArbStr, srgbArbStr.len() + 1)) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB, (int)hints.sRGB });
+		if (todo_fix_extensionSupportedPlatform_OpenGL_X11(srgbExtStr, srgbExtStr.len() + 1)) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT, (int)hints.sRGB });
 	}
 
-	todo_fix_attribStack_pushAttribs(&stack, 0, 0);
+	stack.push_all({0, 0});
 
 	int fbcount;
-	GLXFBConfig* fbc = todo_fix_glXChooseFBConfig(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), (int*)&visualAttribs, &fbcount);
+	GLXFBConfig* fbc = todo_fix_glXChooseFBConfig(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), stack.array_view(), &fbcount);
 	if (!fbc || !fbcount) return GLX_VISUAL_CONFIGS_NOT_FOUND~;
 
 	int bestFbcIdx = -1;
@@ -1367,8 +1434,8 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 		XVisualInfo* vi = todo_fix_glXGetVisualFromFBConfig(_gfx_ctx.display, fbc[i]);
 		if (vi == null) continue;
 		int sampBuf, samples;
-		todo_fix_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], 100000, &sampBuf); // GLX_SAMPLE_BUFFERS
-		todo_fix_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], 100001, &samples); // GLX_SAMPLES
+		todo_fix_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], GLX_SAMPLE_BUFFERS, &sampBuf);
+		todo_fix_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], GLX_SAMPLES, &samples);
 		if (bestFbcIdx == -1) bestFbcIdx = i;
 		if ((!transparent || vi.depth == 32) && bestDepth == 0) { bestFbcIdx = i; bestDepth = vi.depth; }
 		if ((!transparent || vi.depth == 32) && samples <= hints.samples && samples > bestSamples) { bestFbcIdx = i; bestDepth = vi.depth; bestSamples = samples; }
@@ -1386,40 +1453,44 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 
 	if (show_window) win.show();
 
-	int[40] contextAttribs;
-	todo_fix_attribStack_init(&stack, (int*)&contextAttribs, 40);
+	stack.clear();
 	int mask = 0;
 	switch (hints.profile)
 	{
-		case TODO_RENAME_GL_ES: mask |= 0x4;
-		case TODO_RENAME_GL_FORWARD_COMPATIBILITY: mask |= 0x2;
-		case TODO_RENAME_GL_COMPATIBILITY: mask |= 0x2;
-		default: mask |= 0x1; // GLX_CONTEXT_CORE_PROFILE_BIT_ARB
+		case TODO_RENAME_GL_ES: mask |= GLX_CONTEXT_ES_PROFILE_BIT_EXT;
+		case TODO_RENAME_GL_FORWARD_COMPATIBILITY: mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+		case TODO_RENAME_GL_COMPATIBILITY: mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+		default: mask |= GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
 	}
-	todo_fix_attribStack_pushAttribs(&stack, 0x9126, mask); // GLX_CONTEXT_PROFILE_MASK_ARB
-	if (hints.minor != 0 || hints.major != 0)
+	stack.push_all({ GLX_CONTEXT_PROFILE_MASK_ARB, mask });
+	if (hints.minor || hints.major)
 	{
-		todo_fix_attribStack_pushAttribs(&stack, 0x2091, hints.major);
-		todo_fix_attribStack_pushAttribs(&stack, 0x2092, hints.minor);
+		stack.push_all({ GLX_CONTEXT_MAJOR_VERSION_ARB, hints.major, GLX_CONTEXT_MINOR_VERSION_ARB, hints.minor });
 	}
 
 	ZString flushStr = "GLX_ARB_context_flush_control";
 	if (todo_fix_extensionSupportedPlatform_OpenGL_X11(flushStr, flushStr.len() + 1))
 	{
-		if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_FLUSH) { todo_fix_attribStack_pushAttribs(&stack, 0x2097, 0x2098); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB
-		else if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_NONE) { todo_fix_attribStack_pushAttribs(&stack, 0x2097, 0); } // GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB
+		if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_FLUSH)
+		{
+			stack.push_all({ GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB });
+		}
+		else if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_NONE)
+		{
+			stack.push_all({ GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB });
+		}
 	}
 
 	ZString robustStr = "GLX_ARB_create_context_robustness";
 	int glFlags = 0;
-	if (hints.debug) glFlags |= 0x00000001; // GLX_CONTEXT_DEBUG_BIT_ARB
-	if (hints.robustness && todo_fix_extensionSupportedPlatform_OpenGL_X11(robustStr, robustStr.len() + 1)) glFlags |= 0x00000004; // GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB
-	if (glFlags != 0) todo_fix_attribStack_pushAttribs(&stack, 0x2094, glFlags); // GLX_CONTEXT_FLAGS_ARB
+	if (hints.debug) glFlags |= GLX_CONTEXT_DEBUG_BIT_ARB;
+	if (hints.robustness && todo_fix_extensionSupportedPlatform_OpenGL_X11(robustStr, robustStr.len() + 1)) glFlags |= GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB;
+	if (glFlags != 0) stack.push_all({ GLX_CONTEXT_FLAGS_ARB, glFlags });
 
 	ZString noErrorStr = "GLX_ARB_create_context_no_error";
-	if (todo_fix_extensionSupportedPlatform_OpenGL_X11(noErrorStr, noErrorStr.len() + 1)) todo_fix_attribStack_pushAttribs(&stack, 0x31B3, (int)hints.noError); // GLX_CONTEXT_OPENGL_NO_ERROR_ARB
+	if (todo_fix_extensionSupportedPlatform_OpenGL_X11(noErrorStr, noErrorStr.len() + 1)) stack.push_all({ GLX_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError });
 
-	todo_fix_attribStack_pushAttribs(&stack, 0, 0);
+	stack.push_all({0, 0});
 
 	GLXContext ctx = null;
 	if (hints.share) ctx = hints.share.ctx;
@@ -1432,7 +1503,7 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	else
 	{
 		_gfx_ctx.x11Error = null;
-		win.src.ctx.native.ctx = glx_create_context_attribs_arb(_gfx_ctx.display, bestFbc, ctx, X_TRUE, (int*)&contextAttribs);
+		win.src.ctx.native.ctx = glx_create_context_attribs_arb(_gfx_ctx.display, bestFbc, ctx, X_TRUE, stack.array_view());
 		if (_gfx_ctx.x11Error != null || win.src.ctx.native.ctx == null)
 		{
 			todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL context with AttribsARB, loading a generic OpenGL context.");

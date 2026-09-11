@@ -90,13 +90,6 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 module std::gfx  @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WIN32) @feat(!WASM);
 
 // public
-fn void todo_fix_attribStack_init(TodoRenameAttribStack* stack, int* attribs, sz max) { stack.attribs = attribs; stack.count = 0; stack.max = max; }
-// public
-fn void todo_fix_attribStack_pushAttrib(TodoRenameAttribStack* stack, int attrib) { stack.attribs[stack.count] = attrib; stack.count += 1; }
-// public
-fn void todo_fix_attribStack_pushAttribs(TodoRenameAttribStack* stack, int attrib1, int attrib2) { todo_fix_attribStack_pushAttrib(stack, attrib1); todo_fix_attribStack_pushAttrib(stack, attrib2); }
-
-// public
 fn void _unload_opengl_native() @private
 {
 	_gfx_ctx.nativeGL_handle = null;

@@ -107,13 +107,6 @@ fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
 // public
 fn void* todo_fix_glContext_getSourceContext(GfxGlContext* ctx) { return ctx.ctx; }
 
-struct TodoRenameAttribStack
-{
-	int* attribs;
-	sz count;
-	sz max;
-}
-
 
 alias TodoRenameGetProcAddressFunc = fn GfxFn(ZString procname);
 

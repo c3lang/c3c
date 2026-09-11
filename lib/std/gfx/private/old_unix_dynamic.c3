@@ -109,16 +109,6 @@ fn void? todo_fix_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags 
 
 
 
-// public
-
-struct TodoRenameAttribStack
-{
-	int* attribs;
-	sz count;
-	sz max;
-}
-
-
 
 
 

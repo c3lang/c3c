@@ -1,5 +1,5 @@
 module std::gfx @feat(WAYLAND, X11_WAYLAND) @private @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
-import std::math, std::collections::list, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
+import std::math, std::collections, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
 
 const uint WL_MARSHAL_FLAG_DESTROY = 1;
 
@@ -1275,32 +1275,29 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 		if (!egl_initialize_fn(_gfx_ctx.egl_display, &major, &minor)) return EGL_DISPLAY_FAILED_TO_INITIALIZE~;
 	}
 
-	EglInt[32] cfg;
-	TodoRenameAttribStack cfg_stack;
-	todo_fix_attribStack_init(&cfg_stack, (int*)&cfg, 32);
-	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
-	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_RED_SIZE, hints.red);
-	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_GREEN_SIZE, hints.green);
-	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_BLUE_SIZE, hints.blue);
-	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_ALPHA_SIZE, hints.alpha);
-	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_DEPTH_SIZE, hints.depth);
-	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_STENCIL_SIZE, hints.stencil);
-	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT);
-	todo_fix_attribStack_pushAttribs(&cfg_stack, EGL_NONE, EGL_NONE);
-
+	FixedList{EglInt, 32} stack;
+	stack.push_all( {
+		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+		EGL_RED_SIZE, hints.red,
+		EGL_GREEN_SIZE, hints.green,
+		EGL_BLUE_SIZE, hints.blue,
+		EGL_ALPHA_SIZE, hints.alpha,
+		EGL_DEPTH_SIZE, hints.depth,
+		EGL_STENCIL_SIZE, hints.stencil,
+		EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT,
+		EGL_NONE, EGL_NONE,
+	});
 	EglConfig config = null;
 	EglInt num = 0;
-	if (!egl_choose_config_fn((EglDisplay)_gfx_ctx.egl_display, &cfg, &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
+	if (!egl_choose_config_fn((EglDisplay)_gfx_ctx.egl_display, stack.array_view(), &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
 	egl_bind_api_fn(hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
 
-	EglInt[8] ctxAttribs;
-	TodoRenameAttribStack ctxStack;
-	todo_fix_attribStack_init(&ctxStack, (int*)&ctxAttribs, 8);
-	if (hints.profile == TODO_RENAME_GL_ES) todo_fix_attribStack_pushAttribs(&ctxStack, EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2);
-	todo_fix_attribStack_pushAttribs(&ctxStack, EGL_NONE, EGL_NONE);
+	stack.clear();
+	if (hints.profile == TODO_RENAME_GL_ES) stack.push_all({ EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2 });
+	stack.push_all({ EGL_NONE, EGL_NONE });
 
 	EglContext share = hints.shareEGL ? hints.shareEGL.ctx : null;
-	ctx.ctx = egl_create_context_fn(_gfx_ctx.egl_display, config, share, &ctxAttribs);
+	ctx.ctx = egl_create_context_fn(_gfx_ctx.egl_display, config, share, stack.array_view());
 	if (!ctx.ctx) return EGL_CTX_CREATION_FAILED~;
 	defer catch
 	{
