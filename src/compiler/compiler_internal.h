@@ -2422,6 +2422,7 @@ void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
+const char *c_codegen(void *context);
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
 void **c_gen(Module** modules, int module_count);

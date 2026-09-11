@@ -553,6 +553,7 @@ BUILD:
 	target->read_stdin = options->read_stdin;
 
 	if (options->cc) target->cc = options->cc;
+	if (options->cflags) target->cflags = options->cflags;
 	set_if_updated(target->optlevel, options->optlevel);
 	set_if_updated(target->optsize, options->optsize);
 	set_if_updated(target->optsetting, options->optsetting);

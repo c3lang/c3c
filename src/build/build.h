@@ -290,6 +290,7 @@ typedef struct BuildOptions_
 	const char *benchfn;
 	const char *testfn;
 	const char *cc;
+	const char *cflags;
 	const char *build_dir;
 	const char *output_dir;
 	const char *llvm_out;
