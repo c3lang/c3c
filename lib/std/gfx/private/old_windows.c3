@@ -991,7 +991,7 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 }
 
 // public
-fn void _window_make_opengl_current_context_platform(GfxWindow* win)
+fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
 	if (win == null) { todo_fix_wglMakeCurrent(null, null); }
 	else { todo_fix_wglMakeCurrent(win.src.hdc, win.src.ctx.native.ctx); }

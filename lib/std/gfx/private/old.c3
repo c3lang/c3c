@@ -142,7 +142,7 @@ fn bool todo_fix_extensionSupported_OpenGL(ZString extension, sz len)
 fn void todo_fix_window_makeCurrentWindow_OpenGL(GfxWindow* win)
 {
 	if (win != null) _gfx_ctx.current = win;
-	_window_make_opengl_current_context_platform(win);
+	_window_make_opengl_current_context_native(win);
 }
 
 // public

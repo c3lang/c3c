@@ -725,19 +725,19 @@ fn bool _window_is_minimized_native(GfxWindow* win)
 }
 
 // public
-fn void _window_make_opengl_current_context_platform(GfxWindow* win)
+fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_opengl_make_current_context_wayland(win);
+			return _window_make_opengl_current_context_wayland(win);
 		$case X11_ONLY:
-			return _win_make_opengl_current_platform_X11(win);
+			return _window_make_opengl_current_x11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return _window_opengl_make_current_context_wayland(win);
+				return _window_make_opengl_current_context_wayland(win);
 			}
-			return _win_make_opengl_current_platform_X11(win);
+			return _window_make_opengl_current_x11(win);
 	$endswitch
 }
 

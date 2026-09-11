@@ -98,7 +98,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 		int opacity = 0;
 		nsOpenGLContext_setValues((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
 	}
-	_window_make_opengl_current_context_platform(win);
+	_window_make_opengl_current_context_native(win);
 	win.opengl_swap_interval(0);
 }
 
@@ -112,7 +112,7 @@ fn void _window_swap_opengl_buffers_native(GfxWindow* win)
 	if (win.src.ctx.native && win.src.ctx.native.ctx) objc::send_void(win.src.ctx.native.ctx, "flushBuffer");
 }
 
-fn void _window_make_opengl_current_context_platform(GfxWindow* win)
+fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
 	if (win && win.src.ctx.native && win.src.ctx.native.ctx)
 	{

@@ -977,7 +977,7 @@ fn void _window_hide_wayland(GfxWindow* win)
 	win.internal.flags.hide = true;
 }
 
-fn void _window_opengl_make_current_context_wayland(GfxWindow* win)
+fn void _window_make_opengl_current_context_wayland(GfxWindow* win)
 {
 	todo_fix_window_makeCurrentContext_EGL(win);
 }

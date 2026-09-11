@@ -73,11 +73,6 @@ fn String[] get_required_vulkan_extensions()
 	return ext;
 }
 
-fn VkSurfaceKHR? GfxWindow.create_vulkan_surface(&self, VkInstance instance)
-{
-	return _window_create_vulkan_surface_native(self, instance);
-}
-
 fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance) @weak @private => NOT_IMPLEMENTED~;
 
 fn void? _load_vulkan_native() @weak @private => NOT_IMPLEMENTED~;
@@ -138,8 +133,3 @@ fn void _unload_vulkan_native()
 	_gfx_ctx.vulkan_handle = null;
 	_gfx_ctx.vk_get_instance_proc_address = null;
 }
-
-
-
-// public
-

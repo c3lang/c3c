@@ -941,6 +941,11 @@ fn GfxPoint GfxWindow.get_size(&self)
 	return self.size;
 }
 
+fn VkSurfaceKHR? GfxWindow.create_vulkan_surface(&self, VkInstance instance)
+{
+	return _window_create_vulkan_surface_native(self, instance);
+}
+
 fn void GfxWindow.swap_opengl_buffers(&self)
 {
 	_window_swap_opengl_buffers_native(self);
@@ -948,7 +953,7 @@ fn void GfxWindow.swap_opengl_buffers(&self)
 
 fn void make_window_current_opengl_context(GfxWindow* win)
 {
-	_window_make_opengl_current_context_platform(win);
+	_window_make_opengl_current_context_native(win);
 }
 
 fn void* get_current_opengl_context()

@@ -246,7 +246,7 @@ fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, Gfx
 	surface.format = format;
 }
 
-fn void _window_make_opengl_current_context_platform(GfxWindow* win)
+fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
 	if (!win)
 	{
