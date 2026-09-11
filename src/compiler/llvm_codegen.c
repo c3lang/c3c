@@ -1109,7 +1109,8 @@ static inline void llvm_optimize(GenContext *c)
 			.opt.merge_functions = compiler.build.merge_functions == MERGE_FUNCTIONS_ON,
 			.sanitizer.address_sanitize = compiler.build.feature.sanitize_address,
 			.sanitizer.mem_sanitize = compiler.build.feature.sanitize_memory,
-			.sanitizer.thread_sanitize = compiler.build.feature.sanitize_thread
+			.sanitizer.thread_sanitize = compiler.build.feature.sanitize_thread,
+			.sanitizer.fuzzer = compiler.build.feature.sanitize_fuzzer
 	};
 	if (!llvm_run_passes(c->module, c->machine, &passes))
 	{

@@ -58,7 +58,7 @@ const char *project_default_keys[][2] = {
 		{"riscv-cpu", "Set general level of RISC-V cpu: `rvi`, `rvimac`, `rvimafc`, `rvgc` or `rvgcv`."},
 		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
-		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
+		{"sanitize", "Enable sanitizer: none, address, memory, thread or fuzzer."},
 		{"script-dir", "The directory where 'exec' scripts are found."},
 		{"exec-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
@@ -156,7 +156,7 @@ const char* project_target_keys[][2] = {
 		{"riscv-abi", "RiscV ABI: int-only, float, double."},
 		{"run-dir", "Override run directory for 'run'."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
-		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
+		{"sanitize", "Enable sanitizer: none, address, memory, thread or fuzzer."},
 		{"script-dir", "The directory where scripts are found."},
 		{"exec-dir", "The directory where 'exec' is run."},
 		{"show-backtrace", "Print backtrace on signals."},
@@ -429,7 +429,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	if (reloc != RELOC_DEFAULT) target->reloc_model = reloc;
 
 	// Sanitize
-	SanitizeMode sanitize_mode = GET_SETTING(SanitizeMode, "sanitize", sanitize_modes, "'none', 'address', 'memory' or 'thread'.");
+	SanitizeMode sanitize_mode = GET_SETTING(SanitizeMode, "sanitize", sanitize_modes, "'none', 'address', 'memory', 'thread' or 'fuzzer'.");
 	switch (sanitize_mode)
 	{
 		case SANITIZE_NOT_SET: break;
@@ -437,10 +437,12 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 			target->feature.sanitize_address = false;
 			target->feature.sanitize_memory = false;
 			target->feature.sanitize_thread = false;
+			target->feature.sanitize_fuzzer = false;
 			break;
 		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
 		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
 		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
+		case SANITIZE_FUZZER: target->feature.sanitize_fuzzer = true; break;
 		default: UNREACHABLE_VOID;
 	}
 
