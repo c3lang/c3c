@@ -107,15 +107,8 @@ fn void? todo_fix_xCreateWindow(XVisualInfo visual, String name, GfxWindowFlags 
 	xSetWindowBackgroundPixmap(_gfx_ctx.display, win.src.window, 0);
 }
 
-
-
-
-
-
-
 module std::gfx @feat(X11_WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
 import std::math, libc, std::net::os, std::os::posix, std::time;
-
 
 
 // public

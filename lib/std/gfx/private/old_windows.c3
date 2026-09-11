@@ -199,7 +199,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			return 0;
 		case win32::WM_ACTIVATEAPP:
 			bool inFocus = (wParam & 0xffff) != 0;
-			todo_fix_windowFocusCallback(win, inFocus);
+			_window_focus_callback(win, inFocus);
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_MOVE:
 			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
@@ -208,7 +208,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_SIZE:
 			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
 			_window_resized_callback(win, _param_to_point(lParam));
-			todo_fix_window_checkMode(win);
+			_window_check_mode(win);
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_MOUSEACTIVATE:
 			if ((lParam >> 16) & 0xffff == win32::WM_LBUTTONDOWN)
@@ -224,7 +224,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_DPICHANGED:
 			float scaleX = (float)((wParam >> 16) & 0xffff) / 96.0f;
 			float scaleY = (float)(wParam & 0xffff) / 96.0f;
-			todo_fix_scaleUpdatedCallback(win, { scaleX, scaleY});
+			_scale_updated_callback(win, { scaleX, scaleY});
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_SIZING:
 			if (!win.src.aspectRatioW && !win.src.aspectRatioH) break;
@@ -262,7 +262,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_EXITSIZEMOVE:
 			if (win.src.actionFrame) _window_set_capture_mouse_native(win, win.internal.capture_mouse);
 		case win32::WM_TIMER:
-			todo_fix_windowRefreshCallback(win, { 0, 0, ...win.size });
+			_window_refresh_callback(win, { 0, 0, ...win.size });
 		case win32::WM_NCLBUTTONDOWN:
 			// workaround for half-second pause when starting to move window
 			Win32_POINT point = {};
@@ -273,13 +273,13 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			Win32_RECT rect;
 			if (!win32::getUpdateRect(hWnd, &rect, 0))
 			{
-				todo_fix_windowRefreshCallback(win, { rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top });
+				_window_refresh_callback(win, { rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top });
 			}
 			else
 			{
 				Win32_PAINTSTRUCT ps;
 				win32::beginPaint(hWnd, &ps);
-				todo_fix_windowRefreshCallback(win, { 0, 0, ...win.size });
+				_window_refresh_callback(win, { 0, 0, ...win.size });
 				win32::endPaint(hWnd, &ps);
 			}
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
@@ -308,11 +308,11 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 				codepoint = (ushort)wParam;
 			}
 			win.src.highSurrogate = 0;
-			todo_fix_keyCharCallback(win, codepoint);
+			_key_char_callback(win, codepoint);
 			return 0;
 		case win32::WM_UNICHAR:
 			if (wParam == 0xFFFF /* UNICODE_NOCHAR */) return 1;
-			todo_fix_keyCharCallback(win, (uint)wParam);
+			_key_char_callback(win, (uint)wParam);
 			return 0;
 		case win32::WM_KEYUP:
 		case win32::WM_SYSKEYUP:
@@ -329,7 +329,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW((uint)scancode);
 			if (wParam == 0x11 /* VK_CONTROL */) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
 			_key_update_key_mods(win, win32::getKeyState(0x14) & 1 != 0, win32::getKeyState(0x90) & 1 != 0, win32::getKeyState(0x91) & 1 != 0);
-			todo_fix_keyCallback(win, value, win.internal.mod, false, false);
+			_key_callback(win, value, win.internal.mod, false, false);
 		case win32::WM_KEYDOWN:
 		case win32::WM_SYSKEYDOWN:
 		{
@@ -347,7 +347,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			if (wParam == 0x11) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
 			bool repeat = is_key_down(value);
 			_key_update_key_mods(win, win32::getKeyState(0x14) & 1 != 0, win32::getKeyState(0x90) & 1 != 0, win32::getKeyState(0x91) & 1 != 0);
-			todo_fix_keyCallback(win, value, win.internal.mod, repeat, true);
+			_key_callback(win, value, win.internal.mod, repeat, true);
 			break;
 		}
 		case win32::WM_MOUSEMOVE:
@@ -399,25 +399,25 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			_raw_motion_callback(win, { vecX, vecY });
 		case win32::WM_MOUSELEAVE:
 			_mouse_notify_callback(win, win.internal.last_mouse, false);
-		case 0x0201: todo_fix_mouseButtonCallback(win, LEFT, true);
-		case 0x0204: todo_fix_mouseButtonCallback(win, RIGHT, true);
-		case 0x0207: todo_fix_mouseButtonCallback(win, MIDDLE, true);
-		case 0x020B: todo_fix_mouseButtonCallback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), true);
-		case 0x0202: todo_fix_mouseButtonCallback(win, LEFT, false);
-		case 0x0205: todo_fix_mouseButtonCallback(win, RIGHT, false);
-		case 0x0208: todo_fix_mouseButtonCallback(win, MIDDLE, false);
-		case 0x020C: todo_fix_mouseButtonCallback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), false);
+		case 0x0201: _mouse_button_callback(win, LEFT, true);
+		case 0x0204: _mouse_button_callback(win, RIGHT, true);
+		case 0x0207: _mouse_button_callback(win, MIDDLE, true);
+		case 0x020B: _mouse_button_callback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), true);
+		case 0x0202: _mouse_button_callback(win, LEFT, false);
+		case 0x0205: _mouse_button_callback(win, RIGHT, false);
+		case 0x0208: _mouse_button_callback(win, MIDDLE, false);
+		case 0x020C: _mouse_button_callback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), false);
 		case win32::WM_MOUSEWHEEL:
 			float scrollY = (float)((short)((wParam >> 16) & 0xffff)) / 120.0f; // WHEEL_DELTA
-			todo_fix_mouseScrollCallback(win, { 0.0f, scrollY });
+			_mouse_scroll_callback(win, { 0.0f, scrollY });
 		case win32::WM_MOUSEHWHEEL:
 			float scrollX = -(float)((short)((wParam >> 16) & 0xffff)) / 120.0f;
-			todo_fix_mouseScrollCallback(win, { scrollX, 0.0f });
+			_mouse_scroll_callback(win, { scrollX, 0.0f });
 		case win32::WM_DROPFILES:
 			void* drop = (void*)wParam;
 			Win32_POINT pt;
 			win32::dragQueryPoint(drop, &pt);
-			todo_fix_dataDragCallback(win, FILE, MOVE, { pt.x, pt.y });
+			_data_drag_callback(win, FILE, MOVE, { pt.x, pt.y });
 			if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 			uint count = win32::dragQueryFileW(drop, 0xffffffff, null, 0);
 			for (uint i = 0; i < count; i++)
@@ -428,7 +428,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 				char* cbuffer = (char*)malloc((sz)length + 1);
 				win32::dragQueryFileW(drop, i, buffer, length + 1);
 				todo_fix_createUTF8FromWideStringWin32(buffer, cbuffer, length);
-				todo_fix_dataDropCallback(win, cbuffer, (sz)length + 1, FILE);
+				_data_drop_callback(win, cbuffer, (sz)length + 1, FILE);
 				free(buffer);
 				free(cbuffer);
 			}
@@ -797,7 +797,7 @@ fn void todo_fix_win32CreateMonitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLA
 	win32::deleteDC(hdc);
 
 	if (monitorInfo.dwFlags & MONITORINFOF_PRIMARY) _gfx_ctx.monitors.primary = node;
-	todo_fix_monitorCallback(_gfx_ctx.root, &node.mon, true);
+	_monitor_callback(_gfx_ctx.root, &node.mon, true);
 }
 
 // public

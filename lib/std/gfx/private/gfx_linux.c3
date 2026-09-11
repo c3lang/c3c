@@ -98,13 +98,13 @@ fn void _window_show_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_showPlatform_Wayland(win);
+			return _window_show_wayland(win);
 		$case X11_ONLY:
 			return todo_fix_window_showPlatform_X11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_showPlatform_Wayland(win);
+				return _window_show_wayland(win);
 			}
 			return todo_fix_window_showPlatform_X11(win);
 	$endswitch
@@ -115,13 +115,13 @@ fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp*
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_monitor_getGammaRampPtr_Wayland(monitor, ramp);
+			return _monitor_get_gama_ramp_wayland(monitor, ramp);
 		$case X11_ONLY:
 			return todo_fix_monitor_getGammaRampPtr_X11(monitor, ramp);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_monitor_getGammaRampPtr_Wayland(monitor, ramp);
+				return _monitor_get_gama_ramp_wayland(monitor, ramp);
 			}
 			return todo_fix_monitor_getGammaRampPtr_X11(monitor, ramp);
 	$endswitch
@@ -132,13 +132,13 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_monitor_setGammaRamp_Wayland(monitor, ramp);
+			return _monitor_set_gama_ramp_wayland(monitor, ramp);
 		$case X11_ONLY:
 			return todo_fix_monitor_setGammaRamp_X11(monitor, ramp);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_monitor_setGammaRamp_Wayland(monitor, ramp);
+				return _monitor_set_gama_ramp_wayland(monitor, ramp);
 			}
 			return todo_fix_monitor_setGammaRamp_X11(monitor, ramp);
 	$endswitch
@@ -149,13 +149,13 @@ fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_monitor_setMode_Wayland(mon, mode);
+			return _monitor_set_set_mode_wayland(mon, mode);
 		$case X11_ONLY:
 			return todo_fix_monitor_setMode_X11(mon, mode);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_monitor_setMode_Wayland(mon, mode);
+				return _monitor_set_set_mode_wayland(mon, mode);
 			}
 			return todo_fix_monitor_setMode_X11(mon, mode);
 	$endswitch
@@ -318,13 +318,13 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_createWindowPlatform_Wayland(name, flags, win);
+			return _create_window_wayland(name, flags, win);
 		$case X11_ONLY:
 			return _create_window_x11(name, flags, win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_createWindowPlatform_Wayland(name, flags, win);
+				return _create_window_wayland(name, flags, win);
 			}
 			return _create_window_x11(name, flags, win);
 	$endswitch
@@ -381,32 +381,32 @@ fn void todo_fix_monitorNode_free(GfxMonitorNode* node)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_monitorNode_free_Wayland(node);
+			return _monitornode_free_wayland(node);
 		$case X11_ONLY:
 			return todo_fix_monitorNode_free_X11(node);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_monitorNode_free_Wayland(node);
+				return _monitornode_free_wayland(node);
 			}
 			return todo_fix_monitorNode_free_X11(node);
 	$endswitch
 }
 
 // public
-fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
+fn IntRect todo_fix_monitor_getWorkarea(GfxMonitor* monitor)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_monitor_getWorkarea_Wayland(monitor, x, y, width, height);
+			return _monitor_get_workarea_wayland(monitor);
 		$case X11_ONLY:
-			return todo_fix_monitor_getWorkarea_X11(monitor, x, y, width, height);
+			return _monitor_get_workarea_x11(monitor);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_monitor_getWorkarea_Wayland(monitor, x, y, width, height);
+				return _monitor_get_workarea_wayland(monitor);
 			}
-			return todo_fix_monitor_getWorkarea_X11(monitor, x, y, width, height);
+			return _monitor_get_workarea_x11(monitor);
 	$endswitch
 }
 
@@ -415,13 +415,13 @@ fn bool todo_fix_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxM
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_monitor_requestMode_Wayland(mon, mode, request);
+			return _monitor_request_mode_wayland(mon, mode, request);
 		$case X11_ONLY:
 			return todo_fix_monitor_requestMode_X11(mon, mode, request);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_monitor_requestMode_Wayland(mon, mode, request);
+				return _monitor_request_mode_wayland(mon, mode, request);
 			}
 			return todo_fix_monitor_requestMode_X11(mon, mode, request);
 	$endswitch
@@ -466,13 +466,13 @@ fn void todo_fix_pollMonitors()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_pollMonitors_Wayland();
+			return _poll_monitors_wayland();
 		$case X11_ONLY:
 			return todo_fix_pollMonitors_X11();
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_pollMonitors_Wayland();
+				return _poll_monitors_wayland();
 			}
 			return todo_fix_pollMonitors_X11();
 	$endswitch
@@ -517,13 +517,13 @@ fn void todo_fix_window_closePlatform(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_closePlatform_Wayland(win);
+			return _window_close_wayland(win);
 		$case X11_ONLY:
 			return todo_fix_window_closePlatform_X11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_closePlatform_Wayland(win);
+				return _window_close_wayland(win);
 			}
 			return todo_fix_window_closePlatform_X11(win);
 	$endswitch
@@ -566,13 +566,13 @@ fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInsta
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_createSurface_WebGPU_Wayland(window, instance);
+			return _window_wgpu_create_surface_wayland(window, instance);
 		$case X11_ONLY:
 			return todo_fix_window_createSurface_WebGPU_X11(window, instance);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_createSurface_WebGPU_Wayland(window, instance);
+				return _window_wgpu_create_surface_wayland(window, instance);
 			}
 			return todo_fix_window_createSurface_WebGPU_X11(window, instance);
 	$endswitch
@@ -731,13 +731,13 @@ fn void todo_fix_window_makeCurrentContext_OpenGL(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_makeCurrentContext_OpenGL_Wayland(win);
+			return _window_opengl_make_current_context_wayland(win);
 		$case X11_ONLY:
 			return todo_fix_window_makeCurrentContext_OpenGL_X11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_makeCurrentContext_OpenGL_Wayland(win);
+				return _window_opengl_make_current_context_wayland(win);
 			}
 			return todo_fix_window_makeCurrentContext_OpenGL_X11(win);
 	$endswitch
@@ -765,13 +765,13 @@ fn void todo_fix_window_minimizePlatform(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_minimizePlatform_Wayland(win);
+			return _window_minimize_wayland(win);
 		$case X11_ONLY:
 			return todo_fix_window_minimizePlatform_X11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_minimizePlatform_Wayland(win);
+				return _window_minimize_wayland(win);
 			}
 			return todo_fix_window_minimizePlatform_X11(win);
 	$endswitch
@@ -815,13 +815,13 @@ fn void todo_fix_window_raise(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_raise_Wayland(win);
+			return _window_raise_wayland(win);
 		$case X11_ONLY:
 			return todo_fix_window_raise_X11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_raise_Wayland(win);
+				return _window_raise_wayland(win);
 			}
 			return todo_fix_window_raise_X11(win);
 	$endswitch
@@ -1018,13 +1018,13 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_setRawMouseModePlatform_Wayland(win, state);
+			return _window_set_raw_mouse_mode_wayland(win, state);
 		$case X11_ONLY:
 			return todo_fix_window_setRawMouseModePlatform_X11(win, state);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_setRawMouseModePlatform_Wayland(win, state);
+				return _window_set_raw_mouse_mode_wayland(win, state);
 			}
 			return todo_fix_window_setRawMouseModePlatform_X11(win, state);
 	$endswitch
@@ -1035,13 +1035,13 @@ fn void todo_fix_window_swapBuffers_OpenGL(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_swapBuffers_OpenGL_Wayland(win);
+			return _window_opengl_swap_buffers_wayland(win);
 		$case X11_ONLY:
 			return todo_fix_window_swapBuffers_OpenGL_X11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_swapBuffers_OpenGL_Wayland(win);
+				return _window_opengl_swap_buffers_wayland(win);
 			}
 			return todo_fix_window_swapBuffers_OpenGL_X11(win);
 	$endswitch
@@ -1156,13 +1156,13 @@ fn GfxMonitor* find_monitor(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_getMonitor_Wayland(win);
+			return _window_get_monitor(win);
 		$case X11_ONLY:
 			return todo_fix_window_getMonitor_X11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_getMonitor_Wayland(win);
+				return _window_get_monitor(win);
 			}
 			return todo_fix_window_getMonitor_X11(win);
 	$endswitch

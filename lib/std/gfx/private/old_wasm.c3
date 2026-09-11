@@ -194,9 +194,9 @@ fn void rgfwEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
 // private
 
 // private
-fn void rgfwEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { todo_fix_windowFocusCallback(_gfx_ctx.root, true); }
+fn void rgfwEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { _window_focus_callback(_gfx_ctx.root, true); }
 // private
-fn void rgfwEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { todo_fix_windowFocusCallback(_gfx_ctx.root, false); }
+fn void rgfwEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { _window_focus_callback(_gfx_ctx.root, false); }
 
 // private
 fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("c3gfx_on_mousemove")
@@ -209,11 +209,11 @@ fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @e
 fn void rgfwEmscriptenOnMouseUp(int button) @export("c3gfx_on_mouseup")
 {
 	if (button > 2) button += 2;
-	todo_fix_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, false);
+	_mouse_button_callback(_gfx_ctx.root, (GfxMouseButton)button, false);
 }
 
 // private
-fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { todo_fix_mouseScrollCallback(_gfx_ctx.root, { deltaX, deltaY }); }
+fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { _mouse_scroll_callback(_gfx_ctx.root, { deltaX, deltaY }); }
 
 // private
 fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("c3gfx_on_touch")
@@ -243,7 +243,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 	{
 		_mouse_motion_callback(_gfx_ctx.root, { xs[i], ys[i] });
 		_raw_motion_callback(_gfx_ctx.root, { });
-		todo_fix_mouseButtonCallback(_gfx_ctx.root, LEFT, (bool)down);
+		_mouse_button_callback(_gfx_ctx.root, LEFT, (bool)down);
 	}
 }
 
@@ -255,8 +255,8 @@ fn void todo_fix_handleKeyEvent(ZString code, uint codepoint, bool press) @expor
 	while (iCode[0] != 0) { hash = ((hash ^ 0x7E057D79u) << 3) ^ (uint)iCode[0]; iCode++; }
 
 	GfxKey physicalKey = todo_fix_wasmPhysicalToRGFW(hash);
-	todo_fix_keyCallback(_gfx_ctx.root, physicalKey, _gfx_ctx.root.internal.mod, is_key_down(physicalKey) && press, press);
-	if (press) todo_fix_keyCharCallback(_gfx_ctx.root, codepoint);
+	_key_callback(_gfx_ctx.root, physicalKey, _gfx_ctx.root.internal.mod, is_key_down(physicalKey) && press, press);
+	if (press) _key_char_callback(_gfx_ctx.root, codepoint);
 }
 
 // private

@@ -145,7 +145,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	if (node)
 	{
 		_gfx_ctx.monitors.primary = node;
-		todo_fix_monitorCallback(_gfx_ctx.root, &node.mon, true);
+		_monitor_callback(_gfx_ctx.root, &node.mon, true);
 	}
 }
 
@@ -166,7 +166,7 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* mon) => {};
 
 fn void _emscripten_on_drop(char* file, sz size) @export("c3gfx_on_drop")
 {
-	todo_fix_dataDropCallback(_gfx_ctx.root, file, size, FILE);
+	_data_drop_callback(_gfx_ctx.root, file, size, FILE);
 }
 
 fn void _emscripten_on_fullscreenchange(int screenW, int screenH, bool entering) @export("c3gfx_on_fullscreenchange")
@@ -190,7 +190,7 @@ fn void _emscripten_on_fullscreenchange(int screenW, int screenH, bool entering)
 fn void _emscripten_on_mousedown(int button) @export("c3gfx_on_mousedown")
 {
 	if (button > 2) button += 2;
-	todo_fix_mouseButtonCallback(_gfx_ctx.root, (GfxMouseButton)button, true);
+	_mouse_button_callback(_gfx_ctx.root, (GfxMouseButton)button, true);
 }
 
 // public

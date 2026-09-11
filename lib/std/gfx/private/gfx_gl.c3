@@ -71,13 +71,13 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 		$case $feat(LINUX):
 			$switch:
 				$case WAYLAND_ONLY:
-					return todo_fix_window_swapInterval_OpenGL_Wayland(self, swap_interval);
+					return _window_opengl_swap_interval_wayland(self, swap_interval);
 				$case X11_ONLY:
 					return todo_fix_window_swapInterval_OpenGL_X11(self, swap_interval);
 				$default:
 					if (gfx_use_wayland)
 					{
-						return todo_fix_window_swapInterval_OpenGL_Wayland(self, swap_interval);
+						return _window_opengl_swap_interval_wayland(self, swap_interval);
 					}
 					return todo_fix_window_swapInterval_OpenGL_X11(self, swap_interval);
 			$endswitch

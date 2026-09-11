@@ -601,7 +601,7 @@ fn void _osx_key_updown(ObjcId self, ObjcId event, bool down)
 	if (!key) return;
 	bool repeat = down ? objc::send(event, bool, "isARepeat") : false;
 	GfxKeyModifier mods = _osx_modifiers_to_gfx(objc::send(event, NSUInteger, "modifierFlags"));
-	todo_fix_keyCallback(win, key, mods, repeat, down);
+	_key_callback(win, key, mods, repeat, down);
 }
 
 fn void _osx_key_down(ObjcId self, ObjcSelector sel, ObjcId event) => _osx_key_updown(self, event, true);
@@ -632,7 +632,7 @@ fn void _osx_window_did_move(ObjcId self, ObjcSelector sel, ObjcId notification)
 
 fn void _osx_window_did_miniaturize(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
-	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) todo_fix_windowMinimizedCallback(win);
+	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) _window_minimized_callback(win);
 }
 
 fn void _osx_window_did_deminiaturize(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -642,7 +642,7 @@ fn void _osx_window_did_deminiaturize(ObjcId self, ObjcSelector sel, ObjcId noti
 
 fn void _osx_window_did_become_key(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
-	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) todo_fix_windowFocusCallback(win, true);
+	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) _window_focus_callback(win, true);
 }
 
 fn void _osx_window_will_close(ObjcId self, ObjcSelector sel, ObjcId notification)
@@ -656,7 +656,7 @@ fn void _osx_window_did_resize(ObjcId self, ObjcSelector sel, ObjcId notificatio
 }
 fn void _osx_window_did_resign_key(ObjcId self, ObjcSelector sel, ObjcId notification)
 {
-	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) todo_fix_windowFocusCallback(win, false);
+	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) _window_focus_callback(win, false);
 }
 
 fn void _osx_mouse_moved_common(ObjcId self, ObjcId event)
@@ -684,7 +684,7 @@ fn void _osx_mouse_button_common(ObjcId self, ObjcId event, bool down, GfxMouseB
 		case 2: gfx_button = MIDDLE;
 		default: gfx_button = (GfxMouseButton)button;
 	}
-	todo_fix_mouseButtonCallback(win, gfx_button, down);
+	_mouse_button_callback(win, gfx_button, down);
 	_osx_mouse_moved_common(self, event);
 }
 
@@ -701,7 +701,7 @@ fn void _osx_scroll_wheel(ObjcId self, ObjcSelector sel, ObjcId event)
 	if (!win) return;
 	CGFloat x = objc::send(event, CGFloat, "scrollingDeltaX");
 	CGFloat y = objc::send(event, CGFloat, "scrollingDeltaY");
-	todo_fix_mouseScrollCallback(win, { (float)x, (float)y });
+	_mouse_scroll_callback(win, { (float)x, (float)y });
 }
 
 fn void _osx_flags_changed(ObjcId self, ObjcSelector sel, ObjcId event)
@@ -746,11 +746,11 @@ fn void _osx_flags_changed(ObjcId self, ObjcSelector sel, ObjcId event)
 		}
 	}
 
-	todo_fix_keyCallback(win, value, win.internal.mod, is_key_down(value) && pressed, pressed);
+	_key_callback(win, value, win.internal.mod, is_key_down(value) && pressed, pressed);
 	if (value != CAPS_LOCK)
 	{
 		GfxKey other = (GfxKey)(value + 4);
-		todo_fix_keyCallback(win, other, win.internal.mod, is_key_down(other) && pressed, pressed);
+		_key_callback(win, other, win.internal.mod, is_key_down(other) && pressed, pressed);
 	}
 }
 
@@ -760,7 +760,7 @@ fn void _osx_view_did_change_backing_properties(ObjcId self, ObjcSelector sel)
 	if (!win) return;
 	GfxMonitor* mon = find_monitor(win);
 	if (!mon) return;
-	todo_fix_scaleUpdatedCallback(win, mon.scale);
+	_scale_updated_callback(win, mon.scale);
 }
 
 fn NSUInteger _osx_dragging_entered(ObjcId self, ObjcSelector sel, ObjcId sender)
@@ -768,7 +768,7 @@ fn NSUInteger _osx_dragging_entered(ObjcId self, ObjcSelector sel, ObjcId sender
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return 0;
 	CGPoint p = objc::send(sender, CGPoint, "draggingLocation");
-	todo_fix_dataDragCallback(win, FILE, ENTER, { (int)p.x, win.height - (int)p.y });
+	_data_drag_callback(win, FILE, ENTER, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -778,7 +778,7 @@ fn NSUInteger _osx_dragging_updated(ObjcId self, ObjcSelector sel, ObjcId sender
 	if (!win) return 0;
 	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return 1;
 	CGPoint p = objc::send(sender, CGPoint, "draggingLocation");
-	todo_fix_dataDragCallback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
+	_data_drag_callback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -788,7 +788,7 @@ fn void _osx_dragging_ended(ObjcId self, ObjcSelector sel, ObjcId sender)
 	if (!win) return;
 	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return;
 	CGPoint p = objc::send(sender, CGPoint, "draggingLocation");
-	todo_fix_dataDragCallback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
+	_data_drag_callback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
 }
 
 fn bool _osx_prepare_for_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender)
@@ -820,7 +820,7 @@ fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender
 	{
 		NSUInteger stringCount = objc::send(propertyList, NSUInteger, "length");
 		ZString filePath = ns_utf8(propertyList);
-		todo_fix_dataDropCallback(win, filePath, (sz)stringCount + 1, FILE);
+		_data_drop_callback(win, filePath, (sz)stringCount + 1, FILE);
 	}
 	if (!objc::send(propertyList, bool, "isKindOfClass:", objc_class("NSArray"))) return false;
 
@@ -832,7 +832,7 @@ fn bool _osx_perform_drag_operation(ObjcId self, ObjcSelector sel, ObjcId sender
 		ObjcId fileURL = objc::send(propertyList, ObjcId, "objectAtIndex:", i);
 		ZString filePath = ns_utf8(fileURL);
 		NSUInteger stringCount = objc::send(fileURL, NSUInteger, "length");
-		todo_fix_dataDropCallback(win, filePath, (sz)stringCount + 1, FILE);
+		_data_drop_callback(win, filePath, (sz)stringCount + 1, FILE);
 	}
 	return false;
 }
@@ -841,7 +841,7 @@ fn bool _osx_wants_update_layer(ObjcId self, ObjcSelector sel) => true;
 
 fn void _osx_update_layer(ObjcId self, ObjcSelector sel)
 {
-	if (GfxWindow* win = todo_fix_osxViewWindow(self)) todo_fix_windowRefreshCallback(win, { 0, 0, ...win.size });
+	if (GfxWindow* win = todo_fix_osxViewWindow(self)) _window_refresh_callback(win, { 0, 0, ...win.size });
 }
 
 fn bool _osx_accepts_first_responder(ObjcId self, ObjcSelector sel) => true;
@@ -851,7 +851,7 @@ fn void _osx_draw_rect(ObjcId self, ObjcSelector sel, CGRect rect)
 	GfxWindow* win = todo_fix_osxViewWindow(self);
 	if (!win) return;
 	float y = todo_fix_cocoaYTransform((float)(rect.size.height - 1));
-	todo_fix_windowRefreshCallback(win, { (int)rect.origin.x, (int)y, (int)rect.size.width, (int)rect.size.height });
+	_window_refresh_callback(win, { (int)rect.origin.x, (int)y, (int)rect.size.width, (int)rect.size.height });
 }
 
 // --- helpers

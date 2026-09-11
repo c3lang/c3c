@@ -474,8 +474,7 @@ fn GfxMonitorMode[] _monitor_get_modes_x11(GfxMonitor* monitor)
 	return modes.array_view();
 }
 
-// private
-fn bool todo_fix_monitor_getWorkarea_X11(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
+fn IntRect _monitor_get_workarea_x11(GfxMonitor* monitor)
 {
 	XWindow root = xDefaultRootWindow(_gfx_ctx.display);
 	int areaX = monitor.origin.x;
@@ -506,11 +505,7 @@ fn bool todo_fix_monitor_getWorkarea_X11(GfxMonitor* monitor, int* x, int* y, in
 		if (desktop != null) xFree(desktop);
 	}
 
-	if (x != null) *x = areaX;
-	if (y != null) *y = areaY;
-	if (width != null) *width = areaW;
-	if (height != null) *height = areaH;
-	return true;
+	return { areaX, areaY, areaW, areaH };
 }
 
 // private
@@ -703,7 +698,7 @@ fn void todo_fix_xHandleEvent()
 						sz index = 0;
 						while (index < count)
 						{
-							todo_fix_keyCharCallback(win, todo_fix_decodeUTF8((ZString)&buffer, &index));
+							_key_char_callback(win, todo_fix_decodeUTF8((ZString)&buffer, &index));
 						}
 					}
 				}
@@ -721,10 +716,10 @@ fn void todo_fix_xHandleEvent()
 					}
 					if ((KeySym)(char)sym != sym) sym = 0;
 
-					todo_fix_keyCharCallback(win, (uint)(char)sym);
+					_key_char_callback(win, (uint)(char)sym);
 				}
 
-				todo_fix_keyCallback(win, value, win.internal.mod, keyRepeat, true);
+				_key_callback(win, value, win.internal.mod, keyRepeat, true);
 				break;
 			}
 		case 3: // KeyRelease
@@ -736,7 +731,7 @@ fn void todo_fix_xHandleEvent()
 				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
 				_key_update_key_mods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
 
-				todo_fix_keyCallback(win, value, win.internal.mod, false, false);
+				_key_callback(win, value, win.internal.mod, false, false);
 				break;
 			}
 		case 4: // ButtonPress
@@ -757,10 +752,10 @@ fn void todo_fix_xHandleEvent()
 				}
 				if (scroll)
 				{
-					todo_fix_mouseScrollCallback(win, scroll_delta);
+					_mouse_scroll_callback(win, scroll_delta);
 					break;
 				}
-				todo_fix_mouseButtonCallback(win, value, true);
+				_mouse_button_callback(win, value, true);
 				break;
 			}
 		case 5: // ButtonRelease
@@ -774,11 +769,11 @@ fn void todo_fix_xHandleEvent()
 					case 3: value = RIGHT;
 					default: value = (GfxMouseButton)(e.xbutton.button - 1 - 4);
 				}
-				todo_fix_mouseButtonCallback(win, value, false);
+				_mouse_button_callback(win, value, false);
 				break;
 			}
 		case 6: _mouse_motion_callback(win, { e.xmotion.x, e.xmotion.y }); // MotionNotify
-		case 12: todo_fix_windowRefreshCallback(win, { e.xexpose.x, e.xexpose.y, e.xexpose.width, e.xexpose.height }); // Expose
+		case 12: _window_refresh_callback(win, { e.xexpose.x, e.xexpose.y, e.xexpose.width, e.xexpose.height }); // Expose
 		case 28: // PropertyNotify
 			if (e.xproperty.state == 0 /* PropertyNewValue */)
 			{
@@ -787,7 +782,7 @@ fn void todo_fix_xHandleEvent()
 				{
 					if (_window_is_minimized_native(win) && !(win.internal.flags.minimize))
 					{
-						todo_fix_windowMinimizedCallback(win);
+						_window_minimized_callback(win);
 						handled = true;
 					}
 				}
@@ -795,14 +790,14 @@ fn void todo_fix_xHandleEvent()
 				{
 					if (_window_is_maximized_native(win) && !(win.internal.flags.maximize))
 					{
-						todo_fix_windowMaximizedCallback(win, win.bounds);
+						_window_maximized_callback(win, win.bounds);
 						handled = true;
 					}
 				}
-				if (!handled) todo_fix_window_checkMode(win);
+				if (!handled) _window_check_mode(win);
 			}
 		case 19: case 18: // MapNotify, UnmapNotify
-			todo_fix_window_checkMode(win);
+			_window_check_mode(win);
 			break;
 		case 33: // ClientMessage
 			{
@@ -869,7 +864,7 @@ fn void todo_fix_xHandleEvent()
 
 					if (list != 0 && formats != null) xFree(formats);
 
-					todo_fix_dataDragCallback(win, _gfx_ctx.x11TransferType, ENTER, drag);
+					_data_drag_callback(win, _gfx_ctx.x11TransferType, ENTER, drag);
 				}
 				else if (e.xclient.message_type == _gfx_ctx.xdndPosition)
 				{
@@ -903,11 +898,11 @@ fn void todo_fix_xHandleEvent()
 					xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
 					xFlush(_gfx_ctx.display);
 
-					todo_fix_dataDragCallback(win, _gfx_ctx.x11TransferType, MOVE, drag);
+					_data_drag_callback(win, _gfx_ctx.x11TransferType, MOVE, drag);
 				}
 				else if (e.xclient.message_type == _gfx_ctx.xdndLeave)
 				{
-					todo_fix_dataDragCallback(win, _gfx_ctx.x11TransferType, EXIT, drag);
+					_data_drag_callback(win, _gfx_ctx.x11TransferType, EXIT, drag);
 				}
 				else if (e.xclient.message_type == _gfx_ctx.xdndDrop)
 				{
@@ -972,7 +967,7 @@ fn void todo_fix_xHandleEvent()
 			{
 				if (e.xconfigure.width != win.src.width || e.xconfigure.height != win.src.height)
 				{
-					todo_fix_window_checkMode(win);
+					_window_check_mode(win);
 					win.src.size = { e.xconfigure.width, e.xconfigure.height };
 					_window_resized_callback(win, win.src.size);
 				}
@@ -996,10 +991,10 @@ fn void todo_fix_xHandleEvent()
 			}
 		case 9: // FocusIn
 			if (win.src.ic) xSetICFocus(win.src.ic);
-			todo_fix_windowFocusCallback(win, true);
+			_window_focus_callback(win, true);
 		case 10: // FocusOut
 			if (win.src.ic) xUnsetICFocus(win.src.ic);
-			todo_fix_windowFocusCallback(win, false);
+			_window_focus_callback(win, false);
 		case 7: _mouse_notify_callback(win, { e.xcrossing.x, e.xcrossing.y }, true); // EnterNotify
 		case 8: _mouse_notify_callback(win, win.internal.last_mouse, false); // LeaveNotify
 		case 21: win.src.parent = e.xreparent.parent; // ReparentNotify
@@ -1075,7 +1070,7 @@ fn void todo_fix_pollMonitors_X11()
 		node.nativeId1 = info.crtc;
 		if (node.nativeId0 == primary) _gfx_ctx.monitors.primary = node;
 		xRRFreeOutputInfo(info);
-		todo_fix_monitorCallback(_gfx_ctx.root, &node.mon, true);
+		_monitor_callback(_gfx_ctx.root, &node.mon, true);
 	}
 
 	xRRFreeScreenResources(res);
@@ -1737,7 +1732,7 @@ fn void todo_fix_unix_parseURI(GfxWindow* win, ZString data)
 		}
 
 		path[len] = 0;
-		todo_fix_dataDropCallback(win, path, len + 1, FILE);
+		_data_drop_callback(win, path, len + 1, FILE);
 		free(path);
 	}
 }
