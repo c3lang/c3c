@@ -10,6 +10,11 @@
 ### Fixes
 - Regression for `vec.pow(x)`.
 
+### Changes / improvements
+
+### Stdlib changes
+- Add `std::collections::Ref`
+
 ## 0.8.4 Change list
 
 ### Changes / improvements
