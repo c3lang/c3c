@@ -151,8 +151,179 @@ static void copy_to_msvc_sdk(const char *src, const char *dst)
 				{ "ole32.lib", "Ole32.lib" },
 				{ "oleaut32.lib", "OleAut32.lib" },
 				{ "uuid.lib", "Uuid.lib" },
+				{ "winhttp.lib", "Winhttp.lib" },
 				{ "comdlg32.lib", "ComDlg32.lib" },
+				{ "activitycoordinatortypes.h", "ActivityCoordinatorTypes.h" },
+				{ "activscp.h", "ActivScp.h" },
+				{ "adogpool_backcompat.h", "adogpool_Backcompat.h" },
+				{ "adoguids.h", "ADOGuids.h" },
+				{ "adoint_backcompat.h", "adoint_Backcompat.h" },
+				{ "atlbase.h", "ATLBASE.h" },
+				{ "atlconv.h", "ATLCONV.H" },
+				{ "audioapotypes.h", "AudioAPOTypes.h" },
+				{ "audioclient.h", "AudioClient.h" },
+				{ "audioenginebaseapo.h", "AudioEngineBaseAPO.h" },
+				{ "audiosessiontypes.h", "AudioSessionTypes.h" },
+				{ "bdatypes.h", "BdaTypes.h" },
+				{ "bridgedeviceservice.h", "BridgeDeviceService.h" },
+				{ "bthledef.h", "BthLEDef.h" },
+				{ "chptrarr.h", "CHPtrArr.h" },
+				{ "chstrarr.h", "CHStrArr.h" },
+				{ "chstring.h", "CHString.h" },
+				{ "computedefs.h", "ComputeDefs.h" },
+				{ "d2d1effectauthor.h", "D2D1EffectAuthor.h" },
+				{ "d2dbasetypes.h", "D2DBaseTypes.h" },
+				{ "d2derr.h", "D2DErr.h" },
+				{ "deviceservices.h", "DeviceServices.h" },
+				{ "directxcollision.inl", "DirectXCollision.inl" },
+				{ "directxmath.h", "DirectXMath.h" },
+				{ "directxmathconvert.inl", "DirectXMathConvert.inl" },
+				{ "directxmathmatrix.inl", "DirectXMathMatrix.inl" },
+				{ "directxmathmisc.inl", "DirectXMathMisc.inl" },
+				{ "directxmathvector.inl", "DirectXMathVector.inl" },
+				{ "directxpackedvector.inl", "DirectXPackedVector.inl" },
+				{ "driverspecs.h", "DriverSpecs.h" },
+				{ "dwrite.h", "DWrite.h" },
+				{ "dwrite_1.h", "DWrite_1.h" },
+				{ "dwrite_2.h", "DWrite_2.h" },
+				{ "eapauthenticatoractiondefine.h", "EapAuthenticatorActionDefine.h" },
+				{ "eapauthenticatortypes.h", "EapAuthenticatorTypes.h" },
+				{ "eapmethodtypes.h", "EapMethodTypes.h" },
+				{ "eaptypes.h", "EapTypes.h" },
+				{ "eventtoken.h", "EventToken.h" },
+				{ "fltuserstructures.h", "fltUserStructures.h" },
+				{ "frquery.h", "FRQuery.h" },
+				{ "functiondiscoveryapi.h", "FunctionDiscoveryAPI.h" },
+				{ "functiondiscoverycategories.h", "FunctionDiscoveryCategories.h" },
+				{ "functiondiscoveryconstraints.h", "FunctionDiscoveryConstraints.h" },
+				{ "functiondiscoveryerror.h", "FunctionDiscoveryError.h" },
+				{ "functiondiscoverykeys.h", "FunctionDiscoveryKeys.h" },
+				{ "functiondiscoverykeys_devpkey.h", "FunctionDiscoveryKeys_devpkey.h" },
+				{ "functiondiscoverynotification.h", "FunctionDiscoveryNotification.h" },
+				{ "functiondiscoveryprovider.h", "FunctionDiscoveryProvider.h" },
+				{ "functiondiscoveryserviceids.h", "FunctionDiscoveryServiceIDs.h" },
+				{ "gdiplusbase.h", "GdiplusBase.h" },
+				{ "gdiplusbitmap.h", "GdiplusBitmap.h" },
+				{ "gdiplusbrush.h", "GdiplusBrush.h" },
+				{ "gdipluscachedbitmap.h", "GdiplusCachedBitmap.h" },
+				{ "gdipluscolor.h", "GdiplusColor.h" },
+				{ "gdipluscolormatrix.h", "GdiplusColorMatrix.h" },
+				{ "gdipluseffects.h", "GdiplusEffects.h" },
+				{ "gdiplusenums.h", "GdiplusEnums.h" },
+				{ "gdiplusflat.h", "GdiplusFlat.h" },
+				{ "gdiplusfont.h", "GdiplusFont.h" },
+				{ "gdiplusfontcollection.h", "GdiplusFontCollection.h" },
+				{ "gdiplusfontfamily.h", "GdiplusFontFamily.h" },
+				{ "gdiplusgpstubs.h", "GdiplusGpStubs.h" },
+				{ "gdiplusgraphics.h", "GdiplusGraphics.h" },
+				{ "gdiplusheaders.h", "GdiplusHeaders.h" },
+				{ "gdiplusimageattributes.h", "GdiplusImageAttributes.h" },
+				{ "gdiplusimagecodec.h", "GdiplusImageCodec.h" },
+				{ "gdiplusimaging.h", "GdiplusImaging.h" },
+				{ "gdiplusinit.h", "GdiplusInit.h" },
+				{ "gdipluslinecaps.h", "GdiplusLineCaps.h" },
+				{ "gdiplusmatrix.h", "GdiplusMatrix.h" },
+				{ "gdiplusmem.h", "GdiplusMem.h" },
+				{ "gdiplusmetafile.h", "GdiplusMetafile.h" },
+				{ "gdiplusmetaheader.h", "GdiplusMetaHeader.h" },
+				{ "gdipluspath.h", "GdiplusPath.h" },
+				{ "gdipluspen.h", "GdiplusPen.h" },
+				{ "gdipluspixelformats.h", "GdiplusPixelFormats.h" },
+				{ "gdiplusregion.h", "GdiplusRegion.h" },
+				{ "gdiplusstringformat.h", "GdiplusStringFormat.h" },
+				{ "gdiplustypes.h", "GdiplusTypes.h" },
+				{ "genlex.h", "GenLex.h" },
+				{ "identitycommon.h", "IdentityCommon.h" },
+				{ "inputeventflags.h", "InputEventFlags.h" },
+				{ "inspectable.h", "Inspectable.h" },
+				{ "messagedeviceservice.h", "MessageDeviceService.h" },
+				{ "methodco.h", "MethodCo.h" },
+				{ "mfmediaengine.h", "MFMediaEngine.h" },
+				{ "mfsharingengine.h", "MFSharingEngine.h" },
+				{ "mftransform.h", "MFTransform.h" },
+				{ "mpeg2bits.h", "Mpeg2Bits.h" },
+				{ "mshtml.h", "Mshtml.h" },
+				{ "objectarray.h", "ObjectArray.h" },
+				{ "objpath.h", "ObjPath.h" },
+				{ "objsafe.h", "Objsafe.h" },
+				{ "ole2.h", "Ole2.h" },
+				{ "olectl.h", "OleCtl.h" },
+				{ "opathlex.h", "OPathLex.h" },
+				{ "perceptiondevicecore.h", "PerceptionDeviceCore.h" },
+				{ "photoacquireproperties.h", "PhotoAcquireProperties.h" },
+				{ "physicalmonitorenumerationapi.h", "PhysicalMonitorEnumerationAPI.h" },
+				{ "polarity.h", "Polarity.h" },
+				{ "poppack.h", "POPPACK.H" },
+				{ "portabledeviceconnectimports.h", "PortableDeviceConnectImports.h" },
+				{ "portabledevicetypes.h", "PortableDeviceTypes.h" },
+				{ "presentationtypes.h", "PresentationTypes.h" },
+				{ "printerextension.h", "PrinterExtension.h" },
+				{ "printerextensiondispid.h", "PrinterExtensionDispId.h" },
+				{ "propkeydef.h", "PropKeyDef.h" },
+				{ "provexce.h", "ProvExce.h" },
+				{ "pshpack1.h", "PSHPACK1.H" },
+				{ "recdefs.h", "RecDefs.h" },
+				{ "rectypes.h", "RecTypes.h" },
+				{ "refptrco.h", "RefPtrCo.h" },
+				{ "rilapitypes.h", "RilAPITypes.h" },
+				{ "scarderr.h", "SCardErr.h" },
+				{ "scsiscan.h", "SCSISCAN.H" },
+				{ "searchadmin.idl", "SearchAdmin.idl" },
+				{ "searchcatalog.idl", "SearchCatalog.idl" },
+				{ "searchcrawlscopemanager.idl", "SearchCrawlScopeManager.idl" },
+				{ "searchlanguagesupport.idl", "SearchLanguageSupport.idl" },
+				{ "searchnotifications.idl", "SearchNotifications.idl" },
+				{ "searchquery.idl", "SearchQuery.idl" },
+				{ "sensorsapi.h", "SensorsApi.h" },
+				{ "sensorsstructures.h", "SensorsStructures.h" },
+				{ "sessdirpublictypes.h", "SessdirPublicTypes.h" },
+				{ "shellapi.h", "Shellapi.h" },
+				{ "spatialaudioclient.h", "SpatialAudioClient.h" },
+				{ "spatialaudiometadata.h", "SpatialAudioMetadata.h" },
+				{ "specstrings.h", "SpecStrings.h" },
+				{ "spellcheck.h", "SpellCheck.h" },
+				{ "sperror.h", "SPError.h" },
+				{ "sphelper.h", "SPHelper.h" },
+				{ "structuredquery.h", "StructuredQuery.h" },
+				{ "structuredquerycondition.h", "StructuredQueryCondition.h" },
+				{ "syncdeviceservice.h", "SyncDeviceService.h" },
+				{ "thrdbase.h", "ThrdBase.h" },
+				{ "tpcerror.h", "TPCError.h" },
+				{ "tpmvscattestation.h", "TpmVscAttestation.h" },
+				{ "traceloggingactivity.h", "TraceLoggingActivity.h" },
+				{ "traceloggingprovider.h", "TraceLoggingProvider.h" },
+				{ "uiautomationclient.h", "UIAutomationClient.h" },
+				{ "uiautomationcore.h", "UIAutomationCore.h" },
+				{ "uiautomationcoreapi.h", "UIAutomationCoreApi.h" },
+				{ "uiribbonkeydef.h", "UIRibbonKeyDef.h" },
+				{ "unknwn.h", "Unknwn.h" },
+				{ "vfwmsgs.h", "VFWMSGS.H" },
+				{ "vmrender.idl", "VMRender.idl" },
+				{ "vmsavedstatedumpdefs.h", "VmSavedStateDumpDefs.h" },
+				{ "vsstyle.h", "VSStyle.h" },
+				{ "waasapitypes.h", "WaaSAPITypes.h" },
+				{ "wbemtime.h", "WbemTime.h" },
+				{ "wcndevice.h", "WcnDevice.h" },
+				{ "wcntypes.h", "WcnTypes.h" },
+				{ "winadapter.h", "WinAdapter.h" },
+				{ "wincodec.h", "Wincodec.h" },
+				{ "windef.h", "WinDef.h" },
+				{ "windows.foundation.h", "Windows.Foundation.h" },
+				{ "windows.h", "Windows.h" },
+				{ "windows.system.h", "Windows.System.h" },
+				{ "windows.ui.h", "Windows.UI.h" },
+				{ "windowsnumerics.impl.h", "WindowsNumerics.impl.h" },
+				{ "windowsnumerics.inl", "WindowsNumerics.inl" },
+				{ "winhvplatformdefs.h", "WinHvPlatformDefs.h" },
+				{ "wlanihvtypes.h", "WlanIhvTypes.h" },
+				{ "wlantypes.h", "WlanTypes.h" },
+				{ "wpcapi.h", "WpcApi.h" },
+				{ "wpcevent.h", "WpcEvent.h" },
+				{ "xapo.h", "XAPO.h" },
+				{ "xpsobjectmodel.h", "XpsObjectModel.h" },
+				{ "xpsobjectmodel_1.h", "XpsObjectModel_1.h" },
 			};
+
 			for (size_t i = 0; i < ELEMENTLEN(remaps); i++)
 			{
 				if (str_eq(low_name, remaps[i][0]))
@@ -427,6 +598,11 @@ void fetch_winsdk(BuildOptions *options)
 #endif
 	}
 
+	if (options->msvc_fetch_headers && vec_size(archs) != 1)
+	{
+		error_exit("Due to Microsoft overlaying headers during unpacking, please do not specify more than single architecture!");
+	}
+
 	const char *tmp_dir_base = dir_make_temp_dir();
 	if (!tmp_dir_base) error_exit("Failed to create temp directory");
 	if (verbose_level >= 1) printf("Temp dir: %s\n", tmp_dir_base);
@@ -451,8 +627,6 @@ void fetch_winsdk(BuildOptions *options)
 	const char *vsu = json_map_get(payloads->elements[0], "url")->str;
 	const char *vs_path_manifest = file_append_path(tmp_dir_base, "vs_manifest.json");
 	JSONObject *vsroot = load_manifest(vsu, vs_path_manifest, "VS packages");
-
-
 
 	JSONObject *pkgs = json_map_get(vsroot, "packages");
 	JSONObject *msvc_vers, *sdk_paths;
@@ -537,12 +711,35 @@ void fetch_winsdk(BuildOptions *options)
 
 	// Dynamically prepare MSIs list based on requested archs
 	const char **msi_names = NULL;
+
 	vec_add(msi_names, "Windows SDK for Windows Store Apps Libs-x86_en-us.msi");
 	vec_add(msi_names, "Universal CRT Headers Libraries and Sources-x86_en-us.msi");
+
+	if (options->msvc_fetch_headers)
+	{
+		// Should be universal headers, or at least according the manifest
+		vec_add(msi_names, "Windows SDK for Windows Store Apps Headers-x86_en-us.msi");
+		vec_add(msi_names, "Windows SDK for Windows Store Apps Headers OnecoreUap-x86_en-us.msi");
+		if (str_eq(archs[0], "x64") || str_eq(archs[0], "arm64"))
+		{
+			// Microsoft hid the rest of the desktop headers here, %$#!
+			// A64 would be lacking headers just like x64
+			vec_add(msi_names, "Windows SDK Desktop Headers x86-x86_en-us.msi");
+			vec_add(msi_names, "Windows SDK OnecoreUap Headers x86-x86_en-us.msi");
+		}
+	}
+
 	for (int i = 0; i < (int)vec_size(archs); i++)
 	{
 		char *msi_name = str_printf("Windows SDK Desktop Libs %s-x86_en-us.msi", archs[i]);
 		vec_add(msi_names, msi_name);
+		if (options->msvc_fetch_headers)
+		{
+			msi_name = str_printf("Windows SDK Desktop Headers %s-x86_en-us.msi", archs[i]);
+			vec_add(msi_names, msi_name);
+			msi_name = str_printf("Windows SDK OnecoreUap Headers %s-x86_en-us.msi", archs[i]);
+			vec_add(msi_names, msi_name);
+		}
 	}
 
 	int msi_count = (int)vec_size(msi_names);
@@ -602,7 +799,7 @@ void fetch_winsdk(BuildOptions *options)
 	for (int i = 0; i < (int)vec_size(archs); i++)
 	{
 		const char *arch = archs[i];
-		const char *arch_suffixes[] = {"crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base"};
+		const char *arch_suffixes[] = {"crt.headers.base", "crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base"};
 		for (int j = 0; j < (int)ELEMENTLEN(arch_suffixes); j++)
 		{
 			char *suffix = str_printf(arch_suffixes[j], arch);
@@ -706,6 +903,52 @@ void fetch_winsdk(BuildOptions *options)
 		if (verbose_level >= 0)
 			eprintf("UCRT: %s, UM: %s, MSVC: %s\n", s_ucrt ? "OK" : "MISSING", s_um ? "OK" : "MISSING", s_msvc ? "OK" : "MISSING");
 		error_exit("Missing library components");
+	}
+
+	if (options->msvc_fetch_headers)
+	{
+
+		char *s_msvc_inc = s_msvc_base ? find_folder_inf(s_msvc_base, "include", true) : NULL;
+		char *s_inc = s_kits ? find_folder_inf(s_kits, "include", true) : NULL;
+		char *s_inc_v = s_lib ? find_folder_inf(s_inc, sdk_key, false) : NULL;
+
+		char *s_inc_ucrt = s_inc_v ? find_folder_inf(s_inc_v, "ucrt", true) : NULL;
+		char *s_inc_um = s_inc_v ? find_folder_inf(s_inc_v, "um", true) : NULL;
+		char *s_inc_shared = s_inc_v ? find_folder_inf(s_inc_v, "shared", true) : NULL;
+		char *s_inc_winrt = s_inc_v ? find_folder_inf(s_inc_v, "winrt", true) : NULL;
+		char *s_inc_cppwinrt = s_inc_v ? find_folder_inf(s_inc_v, "cppwinrt", true) : NULL;
+
+		if (!s_msvc_inc || !s_inc_ucrt || !s_inc_um || !s_inc_shared || !s_inc_winrt || !s_inc_cppwinrt)
+		{
+			if (verbose_level >= 0)
+				eprintf("MSVC: %s, UCRT: %s, UM: %s, SHARED: %s, WINRT: %s, CPPWINRT: %s\n", s_msvc_inc ? "OK" : "MISSING",
+					s_inc_ucrt ? "OK" : "MISSING", s_inc_um ? "OK" : "MISSING", s_inc_shared ? "OK" : "MISSING",
+					s_inc_winrt ? "OK" : "MISSING", s_inc_cppwinrt ? "OK" : "MISSING");
+			error_exit("Missing header components");
+		}
+
+		char *include_path = file_append_path(sdk_output, "include");
+		char *crt_inc = file_append_path(include_path, "crt");
+		char *sdk_inc_root = file_append_path(include_path, archs[0]);
+		char *sdk_inc_ucrt = file_append_path(sdk_inc_root, "ucrt");
+		char *sdk_inc_um = file_append_path(sdk_inc_root, "um");
+		char *sdk_inc_shared = file_append_path(sdk_inc_root, "shared");
+		char *sdk_inc_winrt = file_append_path(sdk_inc_root, "winrt");
+		char *sdk_inc_cppwinrt = file_append_path(sdk_inc_root, "cppwinrt");
+
+		dir_make_recursive(crt_inc);
+		dir_make_recursive(sdk_inc_ucrt);
+		dir_make_recursive(sdk_inc_um);
+		dir_make_recursive(sdk_inc_shared);
+		dir_make_recursive(sdk_inc_winrt);
+		dir_make_recursive(sdk_inc_cppwinrt);
+
+		copy_to_msvc_sdk(s_msvc_inc, crt_inc);
+		copy_to_msvc_sdk(s_inc_ucrt, sdk_inc_ucrt);
+		copy_to_msvc_sdk(s_inc_um, sdk_inc_um);
+		copy_to_msvc_sdk(s_inc_shared, sdk_inc_shared);
+		copy_to_msvc_sdk(s_inc_winrt, sdk_inc_winrt);
+		copy_to_msvc_sdk(s_inc_cppwinrt, sdk_inc_cppwinrt);
 	}
 
 	// Finalizing and copying files for all requested target architectures
