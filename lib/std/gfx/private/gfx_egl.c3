@@ -7,7 +7,7 @@ fn void _unload_egl_native() @private @weak { }
 fn void _window_destroy_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
 {
 	_window_release_egl_context_native(win, ctx);
-	if (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW) free(ctx);
+	if (win.src.backing.owned) free(ctx);
 }
 
 module std::gfx @feat(MACOS, WAYLAND, X11, X11_WAYLAND);
@@ -113,7 +113,7 @@ fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints*
 	GfxEglContext* context = mem::new(GfxEglContext);
 	defer catch free(context);
 	_window_init_egl_context_native(win, context, hints)!;
-	win.src.gfxType |= TODO_RENAME_GFX_OWNED_BY_RGFW;
+	win.src.backing.owned = true;
 	return context;
 }
 

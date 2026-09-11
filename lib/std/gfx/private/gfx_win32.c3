@@ -26,7 +26,7 @@ struct GfxWindowSrc
 	bool actionFrame;
 	ushort highSurrogate;
 	GfxBackingContext ctx;
-	TodoRenameGfxContextType gfxType;
+	GfxBacking backing;
 }
 
 fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
@@ -64,6 +64,135 @@ fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) @private
 			break;
 	}
 	win32::flashWindowEx(&desc);
+}
+
+fn void _window_minimize_native(GfxWindow* win)
+{
+	win32::showWindow(win.src.window, win32::SW_MINIMIZE);
+}
+
+fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
+{
+	win.src.max_size = size;
+}
+
+fn void _window_set_border_native(GfxWindow* win, bool border)
+{
+	win.internal.flags.no_border = !border;
+	Win32_RECT rect;
+	win32::getClientRect(win.src.window, &rect);
+	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
+	style |= (Win32_LONG)_winapi_window_get_style(win.internal.flags);
+
+	if (!border)
+	{
+		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
+	}
+	else
+	{
+		if (win.internal.flags.no_resize) style &= ~(Win32_LONG)win32::WS_MAXIMIZEBOX;
+		style |= win32::WS_OVERLAPPEDWINDOW;
+	}
+
+	Win32_DWORD exStyle = _winapi_window_get_style_ex(win, win.internal.flags);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
+	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, exStyle);
+	win32::setWindowLongW(win.src.window, -16, style);
+	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
+}
+
+fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
+{
+	if (!name.len) name = " ";
+	win.src.hIconSmall = null; win.src.hIconBig = null;
+	win.src.max_size = {};
+	win.src.min_size = {};
+	win.src.aspectRatioW = 0; win.src.aspectRatioH = 0;
+
+	uint window_style = win32::WS_CLIPSIBLINGS | win32::WS_CLIPCHILDREN;
+	if (!flags.no_border)
+	{
+		window_style |= win32::WS_CAPTION | win32::WS_SYSMENU | win32::WS_BORDER | win32::WS_MINIMIZEBOX;
+		if (!flags.no_resize) window_style |= win32::WS_SIZEBOX | win32::WS_MAXIMIZEBOX;
+	}
+	else
+	{
+		window_style |= win32::WS_POPUP | win32::WS_VISIBLE | win32::WS_SYSMENU;
+	}
+
+	Win32_RECT rect = {0, 0, win.width, win.height};
+	uint style = _winapi_window_get_style(flags);
+	uint exStyle = _winapi_window_get_style_ex(win, flags);
+	win32::adjustWindowRectEx(&rect, style, 0, exStyle);
+
+	win.src.window = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, name.to_wstring(tmem)!!, window_style, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx_ctx.instance, null);
+	win32::setPropW(win.src.window, RENAME_PROP_NAME, win);
+	win.resize(win.size);
+
+	if (flags.allow_dnd)
+	{
+		win.internal.flags.allow_dnd = true;
+		win.set_dnd(true);
+	}
+	win.src.hdc = win32::getDC(win.src.window);
+
+	_win32_make_window_dark_mode(win, _get_dark_mode_state());
+	_make_window_transparent(win);
+
+	_window_set_flags(win, flags, {});
+	win.src.backing = {};
+	if (flags.open_gl) _window_create_opengl_context_native(win, get_global_opengl_hints())!;
+	if (flags.egl) _window_create_egl_context_native(win, get_global_opengl_hints())!;
+}
+
+fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
+{
+	Win32_MONITORINFOEXW mi;
+	mi.cbSize = Win32_MONITORINFOEXW::size;
+	win32::getMonitorInfoW(monitor.node.hMonitor, &mi);
+	return { mi.rcWork.left, mi.rcWork.top, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top };
+}
+
+fn void _window_restore_native(GfxWindow* win) {}
+
+fn void _window_close_native(GfxWindow* win)
+{
+	win32::removePropW(win.src.window, RENAME_PROP_NAME);
+	win32::releaseDC(win.src.window, win.src.hdc);
+	win32::destroyWindow(win.src.window);
+	if (win.src.hIconSmall) win32::destroyIcon(win.src.hIconSmall);
+	if (win.src.hIconBig) win32::destroyIcon(win.src.hIconBig);
+}
+
+fn void _window_set_floating_native(GfxWindow* win, bool floating)
+{
+	if (floating)
+	{
+		win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040);
+	}
+	else
+	{
+		win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-2) /* HWND_NOTOPMOST */, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040);
+	}
+}
+
+fn void _window_maximize_native(GfxWindow* win)
+{
+	win.hide();
+	win32::showWindow(win.src.window, win32::SW_MAXIMIZE);
+}
+
+fn void _window_set_opacity_native(GfxWindow* win, char opacity)
+{
+	win32::setWindowLongA(win.src.window, -20, 0x00080000);
+	win32::setLayeredWindowAttributes(win.src.window, 0, opacity, 2);
+}
+
+fn void _window_raise_native(GfxWindow* win)
+{
+	win32::bringWindowToTop(win.src.window);
+	win32::setWindowPos(win.src.window, null, win.x, win.y, win.width, win.height, 0x0001 | 0x0002 | 0x0200 | 0x0020); // |NOMOVE|NOOWNERZORDER|FRAMECHANGED
 }
 
 fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
@@ -386,7 +515,7 @@ fn uint _winapi_window_get_style_ex(GfxWindow* win, GfxWindowFlags flags)
 fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
-	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
+	win.src.backing = { .opengl };
 
 	Win32_PIXELFORMATDESCRIPTOR pfd = {
 		.nSize = Win32_PIXELFORMATDESCRIPTOR::size,
@@ -513,7 +642,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	win32::releaseDC(win.src.window, win.src.hdc);
 	win.src.hdc = win32::getDC(win.src.window);
 
-	if (hints.share != null) todo_fix_wglShareLists(todo_fix_getCurrentContext_OpenGL(), hints.share.ctx);
+	if (hints.share != null) todo_fix_wglShareLists(_get_current_opengl_context_native(), hints.share.ctx);
 
 	todo_fix_wglMakeCurrent(win.src.hdc, win.src.ctx.native.ctx);
 	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context initalized.");
@@ -524,6 +653,7 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	wgl_delete_context_fn(ctx.ctx);
 	win.src.ctx.native.ctx = null;
 }
+
 
 fn void? _load_opengl_native() @private
 {

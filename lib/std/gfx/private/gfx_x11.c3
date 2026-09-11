@@ -264,14 +264,20 @@ fn TodoRenameMouse* todo_fix_createMouseStandard_X11(GfxMouseIcon mouse)
 // private
 fn void? _create_window_x11(String name, GfxWindowFlags flags, GfxWindow* win)
 {
+	win.src.backing = {};
 	if (flags.open_gl || flags.egl)
 	{
 		win.src.window = 0;
-		return;
+		if (flags.open_gl) _window_create_opengl_context_native(win, get_global_opengl_hints())!;
+		if (flags.egl) _window_create_egl_context_native(win, get_global_opengl_hints())!;
 	}
-	XVisualInfo visual;
-	todo_fix_window_getVisual(&visual, win.internal.flags.transparent);
-	return todo_fix_xCreateWindow(visual, name, flags, win);
+	else
+	{
+		XVisualInfo visual;
+		todo_fix_window_getVisual(&visual, win.internal.flags.transparent);
+		todo_fix_xCreateWindow(visual, name, flags, win)!;
+	}
+	_window_set_flags(win, flags, {});
 }
 
 fn void _destroy_x11()
@@ -1078,9 +1084,13 @@ fn void todo_fix_pollMonitors_X11()
 }
 
 // private
-fn void todo_fix_window_closePlatform_X11(GfxWindow* win)
+fn void _window_close_native_x11(GfxWindow* win)
 {
-	if (win.src.ic != null) { xDestroyIC(win.src.ic); win.src.ic = null; }
+	if (win.src.ic)
+	{
+		xDestroyIC(win.src.ic);
+		win.src.ic = null;
+	}
 	xFreeGC(_gfx_ctx.display, win.src.gc);
 	xDeleteContext(_gfx_ctx.display, win.src.window, _gfx_ctx.context);
 	xDestroyWindow(_gfx_ctx.display, win.src.window);
@@ -1159,17 +1169,15 @@ fn bool _window_is_minimized_x11(GfxWindow* win)
 }
 
 // private
-fn void todo_fix_window_makeCurrentContext_OpenGL_X11(GfxWindow* win)
+fn void _win_make_opengl_current_platform_X11(GfxWindow* win)
 {
 	if (win == null) { todo_fix_glXMakeCurrent(null, 0, null); }
 	else { todo_fix_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx); }
 }
 
-// private
 fn void _window_maximize_x11(GfxWindow* win) => _toggle_x_maximized(win, true);
 
-// private
-fn void todo_fix_window_minimizePlatform_X11(GfxWindow* win)
+fn void _window_minimize_x11(GfxWindow* win)
 {
 	if (_window_is_maximized_native(win)) return;
 	win.internal.old_bounds = win.bounds;
@@ -1177,7 +1185,6 @@ fn void todo_fix_window_minimizePlatform_X11(GfxWindow* win)
 	xFlush(_gfx_ctx.display);
 }
 
-// private
 fn void _window_move_mouse_x11(GfxWindow* win, GfxPoint where)
 {
 	int rootX, rootY, win_x, win_y;
@@ -1195,8 +1202,7 @@ fn void _window_move_x11(GfxWindow* win, GfxPoint where)
 	xMoveWindow(_gfx_ctx.display, win.src.window, ...where);
 }
 
-// private
-fn void todo_fix_window_raise_X11(GfxWindow* win)
+fn void _window_raise_x11(GfxWindow* win)
 {
 	xMapRaised(_gfx_ctx.display, win.src.window);
 	_window_set_fullscreen_native(win, win.is_fullscreen());
@@ -1272,21 +1278,18 @@ fn void _window_set_min_size_x11(GfxWindow* win, GfxSize size)
 	xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
 }
 
-// private
 fn bool _window_set_mouse_x11(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	xDefineCursor(_gfx_ctx.display, win.src.window, (XCursor)mouse);
 	return true;
 }
 
-// private
-fn void todo_fix_window_setOpacity_X11(GfxWindow* win, char opacity)
+fn void _window_set_opacity_x11(GfxWindow* win, char opacity)
 {
 	uint value = (uint)(4294967295.0 * (double)opacity);
 	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmWindowOpacity, 6, 32, 0, (char*)&value, 1);
 }
 
-// private
 fn void todo_fix_window_swapBuffers_OpenGL_X11(GfxWindow* win) { todo_fix_glXSwapBuffers(_gfx_ctx.display, win.src.ctx.native.window); }
 
 // private
@@ -1375,13 +1378,13 @@ fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* b
 fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
 	win.src.ctx.native = context;
-	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
+	win.src.backing = { .opengl };
 
 	bool show_window = false;
 	if (win.src.window)
 	{
 		show_window = !_window_is_minimized_native(win);
-		todo_fix_window_closePlatform(win);
+		_window_close_native(win);
 	}
 
 	bool transparent = win.internal.flags.transparent;

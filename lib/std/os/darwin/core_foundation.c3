@@ -1,8 +1,9 @@
-module std::os::macos::cf @feat(DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
+module std::os::darwin::cf @feat(DARWIN) @link("CoreFoundation.framework");
 
 alias OSStatus = int;
 typedef CFType = void;
 typedef CFTypeRef = CFType*;
+
 alias CFIndex = sz;
 
 typedef CFUrl = inline CFType;

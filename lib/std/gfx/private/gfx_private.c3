@@ -53,11 +53,11 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	}
 	if (flags.floating)
 	{
-		todo_fix_window_setFloating(win, true);
+		_window_set_floating_native(win, true);
 	}
 	else if (cmpFlags.floating)
 	{
-		todo_fix_window_setFloating(win, false);
+		_window_set_floating_native(win, false);
 	}
 	if (flags.raw_mouse)
 	{
@@ -131,7 +131,7 @@ fn void _window_focus_callback(GfxWindow* win, bool inFocus)
 	event.focus.state = inFocus;
 	if (inFocus == true)
 	{
-		if (win.internal.flags.fullscreen) todo_fix_window_raise(win);
+		if (win.internal.flags.fullscreen) _window_raise_native(win);
 		event.type = WINDOW_FOCUS_IN;
 	}
 	else

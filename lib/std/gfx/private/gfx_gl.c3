@@ -1,5 +1,5 @@
 module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
-import std::os::macos;
+import std::os::macos, std::os::darwin;
 
 const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_FLUSH = 0;
 const TodoRenameGlReleaseBehavior TODO_RENAME_GL_RELEASE_NONE = 1;
@@ -41,27 +41,28 @@ fn GfxGlContext*? _window_create_opengl_context_native(GfxWindow* win, GfxGlHint
 	GfxGlContext* context = mem::new(GfxGlContext);
 	defer catch free(context);
 	_window_init_opengl_context_native(win, context, hints)!;
-	win.src.gfxType |= TODO_RENAME_GFX_OWNED_BY_RGFW;
+	win.src.backing.owned = true;
 	return context;
 }
 
 fn void _window_destroy_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 {
 	_window_release_opengl_context_native(win, ctx);
-	if (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW) free(ctx);
+	if (win.src.backing.owned) free(ctx);
 }
 
 fn void? _load_opengl_native() @private @weak => NOT_IMPLEMENTED~;
 fn void _unload_opengl_native() @private @weak { }
 
-// public
+
+
 fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 {
 	$switch:
 		$case $feat(MACOS):
 			if (self.src.ctx.native && self.src.ctx.native.ctx)
 			{
-				nsOpenGLContext_setValues((ObjcId)self.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
+				nsOpenGLContext_setValues((ObjId)self.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
 			}
 		$case $feat(WIN32):
 			if (!todo_fix_wglSwapIntervalEXT || !todo_fix_wglSwapIntervalEXT(swap_interval))
@@ -87,6 +88,14 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 }
 
 
+const GfxGlHints GLOBAL_HINTS = {
+	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
+	false, false, false, false, TODO_RENAME_GL_RELEASE_NONE,
+	TODO_RENAME_GL_CORE, 1, 0, null, null, TODO_RENAME_GL_ACCELERATED
+};
+
+GfxGlHints _global_hints_open_gl = GLOBAL_HINTS;
+
 module std::gfx  @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WIN32) @feat(!WASM);
 
 // public
@@ -96,32 +105,3 @@ fn void _unload_opengl_native() @private
 	_gfx_ctx.glGetProcAddress = null;
 }
 
-module std::gfx @feat(WASM, MACOS, WIN32);
-
-GfxGlHints todo_fix_global_hints_open_gl_src = {
-	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
-	false, false, false, false, TODO_RENAME_GL_RELEASE_NONE,
-	TODO_RENAME_GL_CORE, 1, 0, null, null, TODO_RENAME_GL_ACCELERATED
-};
-GfxGlHints* todo_fix_global_hints_open_gl = &todo_fix_global_hints_open_gl_src;
-
-// public
-fn GfxGlHints* todo_fix_getGlobalHints_OpenGL()
-{
-	return todo_fix_global_hints_open_gl;
-}
-
-// public
-fn void todo_fix_setGlobalHints_OpenGL(GfxGlHints* hints)
-{
-	todo_fix_global_hints_open_gl = hints;
-}
-
-
-module std::gfx @feat(WASM, MACOS);
-
-// public
-fn void todo_fix_resetGlobalHints_OpenGL()
-{
-	todo_fix_global_hints_open_gl_src = {0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, false, false, false, false, TODO_RENAME_GL_RELEASE_NONE, TODO_RENAME_GL_CORE, 1, 0, null, null, TODO_RENAME_GL_ACCELERATED};
-}

@@ -8,22 +8,16 @@ import std::collections, std::math, libc, std::os::macos, std::io, std::os::darw
 excuse NSWINDOW_CREATION_FAILED;
 
 
-typedef ObjcClass = void*;
-typedef ObjcSelector = void*;
 alias CFBundleRef = void*;
 
 struct VkMetalSurfaceCreateInfoEXT { int sType; void* pNext; uint flags; void* pLayer; }
 alias TodoRenameVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
 
 extern fn void objc_msgSendRaw(...) @cname("objc_msgSend") @builtin;
-extern fn ObjcSelector sel_registerName(ZString name);
-extern fn ObjcClass objc_getClass(ZString name);
-extern fn ObjcClass objc_allocateClassPair(ObjcClass superclass, ZString name, sz extraBytes);
-extern fn void objc_registerClassPair(ObjcClass cls);
-extern fn bool class_addIvar(ObjcClass cls, ZString name, sz size, char alignment, char* types);
-extern fn bool class_addMethod(ObjcClass cls, ObjcSelector name, void* imp, char* types);
-extern fn void* object_setInstanceVariable(ObjcId obj, ZString name, void* value);
-extern fn void* object_getInstanceVariable(ObjcId obj, ZString name, void* outValue);
+extern fn ObjSel sel_registerName(ZString name);
+extern fn ObjClass objc_allocateClassPair(ObjClass superclass, ZString name, sz extraBytes);
+extern fn void* object_setInstanceVariable(ObjId obj, ZString name, void* value);
+extern fn void* object_getInstanceVariable(ObjId obj, ZString name, void* outValue);
 
 extern fn CFStringRef cfStringCreateWithCString(void* alloc, ZString str, uint encoding) @cname("CFStringCreateWithCString");
 extern fn CFBundleRef cfBundleGetBundleWithIdentifier(CFStringRef bundleID) @cname("CFBundleGetBundleWithIdentifier");
@@ -31,43 +25,41 @@ extern fn void* cfBundleGetFunctionPointerForName(CFBundleRef bundle, CFStringRe
 
 macro objc_send(id, $FunctionType, ZString $selector, ...)
 {
-	return (($FunctionType)&objc_msgSendRaw)((ObjcId)id, sel_registerName($selector), ...$vaarg);
+	return (($FunctionType)&objc_msgSendRaw)((ObjId)id, sel_registerName($selector), ...$vaarg);
 }
 
-alias ObjcSendId = fn ObjcId(ObjcId, ObjcSelector);
-alias ObjcSendCharPtr = fn ZString(ObjcId, ObjcSelector);
-alias ObjcSendVoidId = fn void(ObjcId, ObjcSelector, ObjcId);
+alias ObjcSendId = fn ObjId(ObjId, ObjSel);
+alias ObjcSendCharPtr = fn ZString(ObjId, ObjSel);
+alias ObjcSendVoidId = fn void(ObjId, ObjSel, ObjId);
 
-alias ObjcSendVoidNSUInteger = fn void(ObjcId, ObjcSelector, NSUInteger);
-alias ObjcSendVoidNSInteger = fn void(ObjcId, ObjcSelector, NSInteger);
-alias ObjcSendVoidCGFloat = fn void(ObjcId, ObjcSelector, CGFloat);
-alias ObjcSendVoidSize = fn void(ObjcId, ObjcSelector, CGSize);
-alias ObjcSendVoidPoint = fn void(ObjcId, ObjcSelector, CGPoint);
+alias ObjcSendVoidNSUInteger = fn void(ObjId, ObjSel, NSUInteger);
+alias ObjcSendVoidNSInteger = fn void(ObjId, ObjSel, NSInteger);
+alias ObjcSendVoidCGFloat = fn void(ObjId, ObjSel, CGFloat);
+alias ObjcSendVoidSize = fn void(ObjId, ObjSel, CGSize);
+alias ObjcSendVoidPoint = fn void(ObjId, ObjSel, CGPoint);
 
-alias ObjcSendIdRect = fn ObjcId(ObjcId, ObjcSelector, CGRect);
-alias ObjcSendIdSize = fn ObjcId(ObjcId, ObjcSelector, CGSize);
-alias ObjcSendBitmapRepInit = fn ObjcId(ObjcId, ObjcSelector, ZString*, NSInteger, NSInteger, NSInteger, NSInteger, bool, bool, ObjcId, NSUInteger, NSInteger, NSInteger);
-alias ObjcSendIdEvent = fn ObjcId(ObjcId, ObjcSelector, NSUInteger, ObjcId, ObjcId, bool);
-alias ObjcSendIdDouble = fn ObjcId(ObjcId, ObjcSelector, double);
-alias ObjcSendVoidIdBool = fn void(ObjcId, ObjcSelector, ObjcId, bool);
-alias ObjcSendIdWindowInit = fn ObjcId(ObjcId, ObjcSelector, CGRect, NSUInteger, NSUInteger, bool);
-alias ObjcSendIdU32Ptr = fn ObjcId(ObjcId, ObjcSelector, uint*);
-alias ObjcSendIdIdId = fn ObjcId(ObjcId, ObjcSelector, ObjcId, ObjcId);
-alias ObjcSendPoint = fn CGPoint(ObjcId, ObjcSelector);
-alias ObjcSendRect = fn CGRect(ObjcId, ObjcSelector);
-alias ObjcSendRectRect = fn CGRect(ObjcId, ObjcSelector, CGRect);
-alias ObjcSendBool = fn bool(ObjcId, ObjcSelector);
-alias ObjcSendBoolId = fn bool(ObjcId, ObjcSelector, ObjcId);
-alias ObjcSendIntegerNSUInteger = fn NSInteger(ObjcId, ObjcSelector, NSUInteger);
-alias ObjcSendInteger = fn NSInteger(ObjcId, ObjcSelector);
-alias ObjcSendCGFloat = fn CGFloat(ObjcId, ObjcSelector);
-alias ObjcSendUShort = fn ushort(ObjcId, ObjcSelector);
-alias ObjcSendNSUInteger = fn NSUInteger(ObjcId, ObjcSelector);
-alias ObjcSendVoidIntPtrNSInteger = fn void(ObjcId, ObjcSelector, int*, NSInteger);
+alias ObjcSendIdRect = fn ObjId(ObjId, ObjSel, CGRect);
+alias ObjcSendIdSize = fn ObjId(ObjId, ObjSel, CGSize);
+alias ObjcSendBitmapRepInit = fn ObjId(ObjId, ObjSel, ZString*, NSInteger, NSInteger, NSInteger, NSInteger, bool, bool, ObjId, NSUInteger, NSInteger, NSInteger);
+alias ObjcSendIdEvent = fn ObjId(ObjId, ObjSel, NSUInteger, ObjId, ObjId, bool);
+alias ObjcSendIdDouble = fn ObjId(ObjId, ObjSel, double);
+alias ObjcSendVoidIdBool = fn void(ObjId, ObjSel, ObjId, bool);
+alias ObjcSendIdWindowInit = fn ObjId(ObjId, ObjSel, CGRect, NSUInteger, NSUInteger, bool);
+alias ObjcSendIdU32Ptr = fn ObjId(ObjId, ObjSel, uint*);
+alias ObjcSendIdIdId = fn ObjId(ObjId, ObjSel, ObjId, ObjId);
+alias ObjcSendPoint = fn CGPoint(ObjId, ObjSel);
+alias ObjcSendRect = fn CGRect(ObjId, ObjSel);
+alias ObjcSendRectRect = fn CGRect(ObjId, ObjSel, CGRect);
+alias ObjcSendBool = fn bool(ObjId, ObjSel);
+alias ObjcSendBoolId = fn bool(ObjId, ObjSel, ObjId);
+alias ObjcSendIntegerNSUInteger = fn NSInteger(ObjId, ObjSel, NSUInteger);
+alias ObjcSendInteger = fn NSInteger(ObjId, ObjSel);
+alias ObjcSendCGFloat = fn CGFloat(ObjId, ObjSel);
+alias ObjcSendUShort = fn ushort(ObjId, ObjSel);
+alias ObjcSendNSUInteger = fn NSUInteger(ObjId, ObjSel);
+alias ObjcSendVoidIntPtrNSInteger = fn void(ObjId, ObjSel, int*, NSInteger);
 
 
-ObjcClass todo_fix_osxWindowDelegateClass;
-ObjcClass todo_fix_osxViewClass;
 
 
 // public
@@ -103,11 +95,6 @@ fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
 	return key;
 }
 
-
-// public
-fn void* todo_fix_glContext_getSourceContext(GfxGlContext* ctx) { return ctx.ctx; }
-
-
 alias TodoRenameGetProcAddressFunc = fn GfxFn(ZString procname);
 
 // public
@@ -138,17 +125,9 @@ const int NS_OPEN_GL_CP_SURFACE_OPACITY = 236;
 const int NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL = 222;
 const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 
-fn void nsOpenGLContext_setValues(ObjcId context, int* vals, NSInteger param)
+fn void nsOpenGLContext_setValues(ObjId context, int* vals, NSInteger param)
 {
 	objc_send(context, ObjcSendVoidIntPtrNSInteger, "setValues:forParameter:", vals, param);
-}
-
-
-// public
-fn GfxGlContext* todo_fix_window_getContext_OpenGL(GfxWindow* win)
-{
-	if (win == null || (win.src.gfxType & TODO_RENAME_GFX_EGL)) return null;
-	return win.src.ctx.native;
 }
 
 
@@ -163,7 +142,7 @@ fn bool todo_fix_extensionSupported_OpenGL(ZString extension, sz len)
 fn void todo_fix_window_makeCurrentWindow_OpenGL(GfxWindow* win)
 {
 	if (win != null) _gfx_ctx.current = win;
-	todo_fix_window_makeCurrentContext_OpenGL(win);
+	_window_make_opengl_current_context_platform(win);
 }
 
 // public
@@ -181,60 +160,30 @@ fn GfxFn _get_opengl_proc_native(ZString procname)
 	return cfBundleGetFunctionPointerForName((CFBundleRef)_gfx_ctx.nativeGL_handle, symbol_name);
 }
 
-// public
 
-// public
 
-// public
-fn void todo_fix_window_makeCurrentContext_OpenGL(GfxWindow* win)
-{
-	if (win != null && win.src.ctx.native != null && win.src.ctx.native.ctx != null)
-	{
-		objc::send_void(win.src.ctx.native.ctx,  "makeCurrentContext");
-	}
-	else
-	{
-		objc::send_void(objc::@class("NSOpenGLContext"), "clearCurrentContext");
-	}
-}
-
-// public
-fn void* todo_fix_getCurrentContext_OpenGL() => objc_send(objc_class("NSOpenGLContext"), ObjcSendId, "currentContext");
-// public
-fn void todo_fix_window_swapBuffers_OpenGL(GfxWindow* win)
-{
-	if (win != null && win.src.ctx.native != null && win.src.ctx.native.ctx != null) objc::send_void(win.src.ctx.native.ctx, "flushBuffer");
-}
 
 const NSUInteger NS_BACKING_STORE_BUFFERED = 2;
 const NSUInteger NS_APP_ACTIVATION_POLICY_REGULAR = 0;
 const NSUInteger NS_EVENT_MASK_ANY = 0xffffffffffffffff;
 
-fn ObjcId objc_class(ZString name) => (ObjcId)objc_getClass(name);
-fn ObjcId ns_alloc(ZString className) => objc_send(objc_class(className), ObjcSendId, "alloc");
 
-fn ObjcId ns_string(ZString str) => objc::send(objc_class("NSString"), ObjcId, "stringWithUTF8String:", str);
-fn ZString ns_utf8(ObjcId str) { if (str == null) return null; return objc_send(str, ObjcSendCharPtr, "UTF8String"); }
-fn ObjcId String.to_nsstring(self) => @pool()
-{
-	return ns_string(self.zstr_copy(tmem));
-}
 
-fn ObjcId ns_bitmapRep(int w, int h)
+fn ObjId ns_bitmapRep(int w, int h)
 {
-	return objc_send(ns_alloc("NSBitmapImageRep"), ObjcSendBitmapRepInit,
+	return objc_send(objc::alloc_by_name("NSBitmapImageRep"), ObjcSendBitmapRepInit,
 		"initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bitmapFormat:bytesPerRow:bitsPerPixel:",
-		(ZString*)null, (NSInteger)w, (NSInteger)h, 8, 4, true, false, ns_string("NSCalibratedRGBColorSpace"), (NSUInteger)2, (NSInteger)(w * 4), 32);
+		(ZString*)null, (NSInteger)w, (NSInteger)h, 8, 4, true, false, darwin::string("NSCalibratedRGBColorSpace"), (NSUInteger)2, (NSInteger)(w * 4), 32);
 }
 
-fn char* ns_bitmapData(ObjcId rep) => rep == null ? null : objc_send(rep, ObjcSendCharPtr, "bitmapData");
+fn char* ns_bitmapData(ObjId rep) => rep ? objc_send(rep, ObjcSendCharPtr, "bitmapData") : null;
 
-fn ObjcId ns_imageWithRep(ObjcId rep, int w, int h)
+fn ObjId ns_imageWithRep(ObjId rep, int w, int h)
 {
 	CGSize size;
 	size.width = (CGFloat)w;
 	size.height = (CGFloat)h;
-	ObjcId image = objc::send(ns_alloc("NSImage"), ObjcId, "initWithSize:", size);
+	ObjId image = objc::send(objc::alloc_by_name("NSImage"), ObjId, "initWithSize:", size);
 	if (rep) objc::send_void(image, "addRepresentation:", rep);
 	return image;
 }
@@ -256,7 +205,7 @@ fn CGDirectDisplayID todo_fix_monitorDisplay(GfxMonitor* monitor)
 }
 
 // private
-fn GfxWindow* todo_fix_osxDelegateWindow(ObjcId self)
+fn GfxWindow* todo_fix_osxDelegateWindow(ObjId self)
 {
 	void* out = null;
 	object_getInstanceVariable(self, "gfx_window", &out);
@@ -266,7 +215,7 @@ fn GfxWindow* todo_fix_osxDelegateWindow(ObjcId self)
 
 
 // private
-fn GfxWindow* todo_fix_osxViewWindow(ObjcId self)
+fn GfxWindow* todo_fix_osxViewWindow(ObjId self)
 {
 	void* out = null;
 	object_getInstanceVariable(self, "gfx_window", &out);
@@ -281,15 +230,6 @@ fn void todo_fix_monitorNode_free(GfxMonitorNode* node)
 {
 	if (node.mon.mode.src) CFType.release(node.mon.mode.src);
 }
-
-
-// public
-
-
-// public
-
-// public
-
 
 // public
 fn void todo_fix_initKeycodesPlatform()
@@ -412,11 +352,11 @@ fn void todo_fix_pollEvents()
 {
 	todo_fix_resetPrevState();
 	if (!_gfx_ctx.ns_app) return;
-	ObjcId distantPast = objc_send(objc_class("NSDate"), ObjcSendId, "distantPast");
-	ObjcId mode = ns_string("kCFRunLoopDefaultMode");
+	ObjId distantPast = objc_send(objc::@class("NSDate"), ObjcSendId, "distantPast");
+	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
 	while (true)
 	{
-		ObjcId ev = objc_send(_gfx_ctx.ns_app, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, distantPast, mode, true);
+		ObjId ev = objc::send(_gfx_ctx.ns_app, ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
 		if (!ev) break;
 		objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "sendEvent:", ev);
 	}
@@ -429,15 +369,14 @@ fn void todo_fix_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
 fn void todo_fix_waitForEvent(int waitMS)
 {
 	if (!_gfx_ctx.ns_app) return;
-	ObjcId date = objc_send(objc_class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)waitMS / 1000.0);
-	ObjcId mode = ns_string("kCFRunLoopDefaultMode");
-	ObjcId ev = objc_send(_gfx_ctx.ns_app, ObjcSendIdEvent, "nextEventMatchingMask:untilDate:inMode:dequeue:", NS_EVENT_MASK_ANY, date, mode, true);
-	if (ev != null) objc_send(_gfx_ctx.ns_app, ObjcSendVoidIdBool, "postEvent:atStart:", ev, true);
+	ObjId date = objc_send(objc::@class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)waitMS / 1000.0);
+	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
+	ObjId ev = objc::send(_gfx_ctx.ns_app, ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
+	if (ev) objc::send_void(_gfx_ctx.ns_app, "postEvent:atStart:", ev, true);
 }
 // public
 fn bool todo_fix_usingWayland() => _gfx_ctx.wl_display != null;
 // public
-fn void* todo_fix_getLayer_OSX() { if (_gfx_ctx.current == null || _gfx_ctx.current.src.view == null) return null; return objc_send((ObjcId)_gfx_ctx.current.src.view, ObjcSendId, "layer"); }
 // public
 fn void* todo_fix_getDisplay_X11() => _gfx_ctx.x11_display;
 // public
@@ -445,55 +384,33 @@ fn void* todo_fix_getDisplay_Wayland() => _gfx_ctx.wl_display;
 // public
 fn void todo_fix_moveToMacOSResourceDir()
 {
-	ObjcId bundle = objc_send(objc_class("NSBundle"), ObjcSendId, "mainBundle");
-	if (bundle == null) return;
-	ObjcId path = objc_send(bundle, ObjcSendId, "resourcePath");
-	ZString raw = ns_utf8(path);
+	ObjId path = objc::send(objc::send(objc::class("NSBundle"), ObjId, "mainBundle"), ObjId, "resourcePath");
+	ZString raw = darwin::string_to_zstr(path);
 	if (raw) (void)path::chdir(raw.str_view());
 }
-// public
-fn void* todo_fix_window_getView_OSX(GfxWindow* win) => win != null ? win.src.view : null;
-// public
-fn void todo_fix_window_setLayer_OSX(GfxWindow* win, void* layer) { if (win != null && win.src.view != null) objc_send((ObjcId)win.src.view, ObjcSendVoidId, "setLayer:", (ObjcId)layer); }
-// public
-fn void* todo_fix_window_getWindow_OSX(GfxWindow* win) => win != null ? win.src.window : null;
 
 // public
 
-// public
-fn void todo_fix_window_closePlatform(GfxWindow* win)
-{
-	if (win.src.window) objc::send_void((ObjcId)win.src.window, "close");
-	objc::release(win.src.delegate);
-	objc::release(win.src.view);
-	objc::release(win.src.window);
-	win.src.delegate = null;
-	win.src.view = null;
-	win.src.window = null;
-}
-
-// public
 
 
 // public
 
 // public
-fn void todo_fix_window_minimizePlatform(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "miniaturize:", null); }
 // public
 
 // public
 fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)
 {
 	if (data == null) return null;
-	ObjcId rep = ns_bitmapRep(w, h);
+	ObjId rep = ns_bitmapRep(w, h);
 	defer objc::release(rep);
 	char* pixels = ns_bitmapData(rep);
 	if (!pixels) return null;
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
-	ObjcId image = ns_imageWithRep(rep, w, h);
+	ObjId image = ns_imageWithRep(rep, w, h);
 	CGPoint hot;
 	hot.x = 0.0; hot.y = 0.0;
-	ObjcId cursor = objc::send(ns_alloc("NSCursor"), ObjcId, "initWithImage:hotSpot:", image, hot);
+	ObjId cursor = objc::send(objc::alloc_by_name("NSCursor"), ObjId, "initWithImage:hotSpot:", image, hot);
 	objc::release(image);
 	return (TodoRenameMouse*)cursor;
 }
@@ -501,66 +418,40 @@ fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat for
 // public
 fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 {
-	ObjcId cls = objc_class("NSCursor");
-	ObjcId cursor = null;
+	ObjClass cls = objc::class("NSCursor");
+	if (!cls) return null;
+	ObjId cursor = null;
 	switch (mouse)
 	{
-		case NORMAL:        cursor = objc::send(cls, ObjcId, "arrowCursor");
-		case ARROW:         cursor = objc::send(cls, ObjcId, "arrowCursor");
-		case IBEAM:         cursor = objc::send(cls, ObjcId, "IBeamCursor");
-		case CROSSHAIR:     cursor = objc::send(cls, ObjcId, "crosshairCursor");
-		case POINTING_HAND: cursor = objc::send(cls, ObjcId, "pointingHandCursor");
-		case RESIZE_EW:     cursor = objc::send(cls, ObjcId, "resizeLeftRightCursor");
-		case RESIZE_E:      cursor = objc::send(cls, ObjcId, "resizeLeftRightCursor");
-		case RESIZE_W:      cursor = objc::send(cls, ObjcId, "resizeLeftRightCursor");
-		case RESIZE_NS:     cursor = objc::send(cls, ObjcId, "resizeUpDownCursor");
-		case RESIZE_N:      cursor = objc::send(cls, ObjcId, "resizeUpDownCursor");
-		case RESIZE_S:      cursor = objc::send(cls, ObjcId, "resizeUpDownCursor");
-		case RESIZE_NWSE:   cursor = objc::send(cls, ObjcId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_NW:     cursor = objc::send(cls, ObjcId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_SE:     cursor = objc::send(cls, ObjcId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_NESW:   cursor = objc::send(cls, ObjcId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_NE:     cursor = objc::send(cls, ObjcId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_SW:     cursor = objc::send(cls, ObjcId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_ALL:    cursor = objc::send(cls, ObjcId, "openHandCursor");
-		case NOT_ALLOWED:   cursor = objc::send(cls, ObjcId, "operationNotAllowedCursor");
-		case WAIT:          cursor = objc::send(cls, ObjcId, "arrowCursor");
-		case PROGRESS:      cursor = objc::send(cls, ObjcId, "arrowCursor");
-		default:            cursor = objc::send(cls, ObjcId, "arrowCursor");
+		case NORMAL:        cursor = objc::send(cls, ObjId, "arrowCursor");
+		case ARROW:         cursor = objc::send(cls, ObjId, "arrowCursor");
+		case IBEAM:         cursor = objc::send(cls, ObjId, "IBeamCursor");
+		case CROSSHAIR:     cursor = objc::send(cls, ObjId, "crosshairCursor");
+		case POINTING_HAND: cursor = objc::send(cls, ObjId, "pointingHandCursor");
+		case RESIZE_EW:     cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
+		case RESIZE_E:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
+		case RESIZE_W:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
+		case RESIZE_NS:     cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
+		case RESIZE_N:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
+		case RESIZE_S:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
+		case RESIZE_NWSE:   cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_SE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NESW:   cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_NE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_SW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_ALL:    cursor = objc::send(cls, ObjId, "openHandCursor");
+		case NOT_ALLOWED:   cursor = objc::send(cls, ObjId, "operationNotAllowedCursor");
+		case WAIT:          cursor = objc::send(cls, ObjId, "arrowCursor");
+		case PROGRESS:      cursor = objc::send(cls, ObjId, "arrowCursor");
+		default:            cursor = objc::send(cls, ObjId, "arrowCursor");
 	}
 	return (TodoRenameMouse*)objc::retain(cursor);
 }
 
-// public
-fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
-{
-	CGRect bounds = todo_fix_monitorDisplay(monitor).bounds();
-	if (x != null) *x = (int)bounds.origin.x;
-	if (y != null) *y = (int)bounds.origin.y;
-	if (width != null) *width = (int)bounds.size.width;
-	if (height != null) *height = (int)bounds.size.height;
-	return true;
-}
+
 
 // public
-fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
-{
-	CFArrayRef list = todo_fix_monitorDisplay(monitor).copyAllDisplayModes(null);
-	if (!list) return {};
-
-	List{GfxMonitorMode} modes;
-	foreach (CGDisplayModeRef mode : list)
-	{
-		modes.push({
-			.size = { (int)mode.getWidth(), (int)mode.getHeight() },
-			.refresh_rate = (float)mode.getRefreshRate(),
-			.rgb = (char[<3>])8,
-			.src = mode
-		});
-	}
-	list.release();
-	return modes.array_view();
-}
 
 // public
 fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
@@ -615,11 +506,8 @@ fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
 fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
 // public
 
-fn void todo_fix_window_raise(GfxWindow* win) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidId, "orderFrontRegardless", null); }
 
-fn void todo_fix_window_setFloating(GfxWindow* win, bool floating) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidNSInteger, "setLevel:", floating ? cocoa::NS_WINDOW_LEVEL_FLOATING : cocoa::NS_WINDOW_LEVEL_NORMAL); if (win != null) win.internal.flags.floating = floating; }
 // public
-fn void todo_fix_window_setOpacity(GfxWindow* win, char opacity) { if (win != null && win.src.window != null) objc_send((ObjcId)win.src.window, ObjcSendVoidCGFloat, "setAlphaValue:", (CGFloat)opacity / 255.0); }
 // public
 
 // public
@@ -636,20 +524,12 @@ fn void GfxWindow.set_name(&self, String name)
 
 
 // public
-
-// public
-fn bool _window_is_maximized_native(GfxWindow* win) { if (win == null) return false; if (win.src.window != null) return objc_send((ObjcId)win.src.window, ObjcSendBool, "isZoomed"); return win.internal.flags.maximize; }
-
-// public
-
-
-// public
 fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
 	if (requestedType != TEXT || data == null) return false;
-	ObjcId pb = objc_send(objc_class("NSPasteboard"), ObjcSendId, "generalPasteboard");
-	ObjcId str = objc::send(pb, ObjcId, "stringForType:", "public.utf8-plain-text".to_nsstring());
-	ZString raw = ns_utf8(str);
+	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
+	ObjId str = objc::send(pb, ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
+	ZString raw = darwin::string_to_zstr(str);
 	if (raw == null) return false;
 	sz len = raw.len();
 	if (buffer != null && capacity > 0)
@@ -693,14 +573,8 @@ fn bool todo_fix_extensionSupported_EGL(ZString extension, sz len)
 // public
 
 // public
-fn GfxEglContext* todo_fix_window_getContext_EGL(GfxWindow* win) => win != null ? win.src.ctx.egl : null;
 
-// public
-fn void todo_fix_window_deleteContext_EGL(GfxWindow* win, GfxEglContext* ctx)
-{
-	_window_release_egl_context_native(win, ctx);
-	if (win != null && (win.src.gfxType & TODO_RENAME_GFX_OWNED_BY_RGFW)) free(ctx);
-}
+
 
 
 
@@ -708,20 +582,20 @@ fn void todo_fix_window_deleteContext_EGL(GfxWindow* win, GfxEglContext* ctx)
 fn void todo_fix_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current = win; }
 
 
-struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; void* layer; }
+struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
 
 // public
 fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance)
 {
-	if (window == null || window.src.view == null)
+	if (!window || !window.src.view)
 	{
 		log::error("NSView is NULL for macOS window", category: log::CATEGORY_VIDEO);
 		return null;
 	}
 	objc::send_void(window.src.view, "setWantsLayer:", true);
-	void* layer = todo_fix_getLayer_OSX();
-	if (layer == null) return null;
-	todo_fix_window_setLayer_OSX(window, layer);
+	ObjId layer = _get_layer_macos();
+	if (!layer) return null;
+	_window_set_layer_macos(window, layer);
 
 	WgpuSurfaceSourceMetalLayer fromMetal;
 	fromMetal.chain.next = null;
@@ -734,12 +608,7 @@ fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInsta
 // public
 
 // public
-fn void todo_fix_osx_initView(GfxWindow* win)
-{
-	if (win == null || win.src.window == null || win.src.view == null) return;
-	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "setContentView:", (ObjcId)win.src.view);
-	objc_send((ObjcId)win.src.window, ObjcSendVoidId, "makeFirstResponder:", (ObjcId)win.src.view);
-}
+
 // public
 fn float todo_fix_cocoaYTransform(float y) => (float)(cg::mainDisplayID().bounds().size.height - (double)y - 1.0);
 

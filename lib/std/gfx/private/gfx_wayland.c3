@@ -23,9 +23,9 @@ fn void _window_capture_mouse_wayland(GfxWindow* win, bool state)
 }
 
 
-fn sz _monitor_get_gama_ramp_wayland(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => 0;
-fn bool _monitor_set_gama_ramp_wayland(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => false;
-fn bool _monitor_set_set_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode) => false;
+fn sz _monitor_get_gamma_ramp_wayland(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => 0;
+fn bool _monitor_set_gamma_ramp_wayland(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => false;
+fn bool _monitor_set_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode) => false;
 
 fn GfxMonitorMode[] _monitor_get_modes_wayland(GfxMonitor* monitor)
 {
@@ -705,6 +705,20 @@ fn void? _create_window_wayland(String name, GfxWindowFlags flags, GfxWindow* wi
 
 	while (!win.src.configured) wlDisplayDispatch(_gfx_ctx.wlDisplay);
 
+	_window_set_flags(win, flags, {});
+	win.src.backing = {};
+	if (flags.open_gl) _window_create_opengl_context_native(win, get_global_opengl_hints())!;
+	if (flags.egl) _window_create_egl_context_native(win, get_global_opengl_hints())!;
+	if (!flags.open_gl && !flags.egl)
+	{
+		sz blank_size = (sz)win.width * win.height * 3;
+		char* blank = calloc(blank_size);
+		GfxSurface* blank_surface = create_surface(blank, ...win.size, BGR8, win)!;
+		win.blit_surface(blank_surface);
+		free(blank);
+		blank_surface.release();
+	}
+
 }
 
 // private
@@ -916,7 +930,7 @@ fn void _window_close_wayland(GfxWindow* win)
 fn void? _window_init_opengl_context_wayland(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
 	_window_init_egl_context_wayland(win, (GfxEglContext*)context, hints)!;
-	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
+	win.src.backing = { .opengl };
 	win.opengl_swap_interval(0);
 }
 
@@ -1282,7 +1296,7 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 	ctx.surface = egl_create_window_surface(_gfx_ctx.egl_display, config, egl_window, null);
 	if (!ctx.surface) return EGL_SURFACE_CREATION_FAILED~;
 	win.src.ctx.egl = ctx;
-	win.src.gfxType = TODO_RENAME_GFX_EGL;
+	win.src.backing = { .egl };
 	todo_fix_window_makeCurrentContext_EGL(win);
 }
 

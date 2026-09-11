@@ -22,7 +22,7 @@ struct GfxWindowSrc
 	void* mouse;
 	void* delegate;
 	GfxBackingContext ctx;
-	TodoRenameGfxContextType gfxType;
+	GfxBacking backing;
 }
 
 fn void _destroy_native() {}
@@ -43,6 +43,17 @@ fn void _window_focus_native(GfxWindow* win) {}
 fn void _window_set_max_size_native(GfxWindow* win, GfxSize size) {}
 fn void _window_move_mouse(GfxWindow* win, GfxPoint where) {}
 fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) {}
+fn void _window_minimize_native(GfxWindow* win) {}
+fn void _window_raise_native(GfxWindow* win) {}
+fn IntRect _monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
+fn void _window_set_floating_native(GfxWindow* win, bool floating) {}
+fn void _window_close_native(GfxWindow* win) {}
+fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) {}
+
+fn void _window_set_opacity_native(GfxWindow* win, char opacity)
+{
+	rgfwJsSetOpacity((float)opacity / 255.0f);
+}
 
 fn void _window_maximize_native(GfxWindow* win)
 {
@@ -76,6 +87,19 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 	rgfwJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
 }
 
+fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
+{
+	if (state)
+	{
+		rgfwJsRequestPointerLock();
+	}
+	else
+	{
+		rgfwJsExitPointerLock();
+	}
+}
+
+
 fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
@@ -97,7 +121,7 @@ fn GfxPoint _get_global_mouse_native()
 fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
-	win.src.gfxType = TODO_RENAME_GFX_NATIVE_OPEN_GL;
+	win.src.backing = { .opengl };
 	int handle = rgfwJsWebglCreateContext(hints);
 	if (!handle) return OPENGL_CTX_CREATION_FAILED~;
 	ctx.ctx = (void*)(uptr)handle;
@@ -116,9 +140,30 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	win.src.ctx.native.ctx = null;
 }
 
+fn void _window_swap_opengl_buffers_native(GfxWindow* win)
+{
+	rgfwJsWebglCommitFrame();
+}
+
 fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints* hints)
 {
 	return NOT_IMPLEMENTED~;
+}
+
+fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
+{
+	rgfwJsSetCanvasSize(win.width, win.height);
+	rgfwJsSetWindowTitle((ZString)name, name.len);
+	rgfwJsSetupWindowListeners();
+
+	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
+
+	rgfwJsSetupDropListeners();
+
+	_window_set_flags(win, flags, {});
+	win.src.backing = {};
+	if (flags.open_gl) _window_create_opengl_context_native(win, get_global_opengl_hints())!;
+	if (flags.egl) _window_create_egl_context_native(win, get_global_opengl_hints())!;
 }
 
 fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx) {}
@@ -200,3 +245,21 @@ fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, Gfx
 	surface.size = { w, h };
 	surface.format = format;
 }
+
+fn void _window_make_opengl_current_context_platform(GfxWindow* win)
+{
+	if (!win)
+	{
+		rgfwJsWebglMakeCurrent(0);
+	}
+	else
+	{
+		rgfwJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx);
+	}
+}
+
+fn void* _get_current_opengl_context_native()
+{
+	return (void*)(uptr)rgfwJsWebglGetCurrentContext();
+}
+

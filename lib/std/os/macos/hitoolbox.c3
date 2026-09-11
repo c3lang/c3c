@@ -1,4 +1,5 @@
-module std::os::macos @feat(DARWIN);
+module std::os::macos @feat(MACOS);
+import std::os::darwin;
 
 typedef UCKeyboardLayout = void;
 

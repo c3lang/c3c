@@ -1,6 +1,6 @@
 module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
 
-import std::math, std::os::macos, libc, std::time, std::os::win32;
+import std::math, std::os::macos, std::os::darwin, libc, std::time, std::os::win32;
 
 
 excuse
@@ -14,6 +14,7 @@ excuse
 	X11_WINDOW_CREATION_FAILED,
 	X11_CTX_CREATION_FAILED,
 	NSAPP_CREATION_FAILED,
+	DELEGATE_CREATION_FAILED,
 	MISSING_VULKAN_LIB,
 	MISSING_OPENGL_LIB,
 	MISSING_EGL_LIB,
@@ -220,8 +221,8 @@ struct GfxContext
 		CULong x11_root;
 		void* wayland_handle;
 		void* wl_display;
-		ObjcId ns_app;
-		ObjcId ns_pool;
+		ObjId ns_app;
+		void* ns_pool;
 		NSUInteger windowNumberSeed;
 	}
 	GfxDataTransfer* unixClipboard @feat(WAYLAND, X11_WAYLAND, X11);
@@ -890,6 +891,10 @@ fn bool is_mouse_pressed(GfxMouseButton button) => _gfx_ctx.mouseButtons[(sz)but
 
 fn void GfxWindow.flash(&self, GfxFlashRequest request) => _window_flash_native(self, request);
 
+fn void GfxWindow.set_floating(&self, bool floating)
+{
+	return _window_set_floating_native(self, floating);
+}
 <*
  Get the (last) mouse position inside of a window.
 *>
@@ -934,6 +939,34 @@ fn GfxPoint GfxWindow.get_origin(&win)
 fn GfxPoint GfxWindow.get_size(&self)
 {
 	return self.size;
+}
+
+fn void GfxWindow.swap_opengl_buffers(&self)
+{
+	_window_swap_opengl_buffers_native(self);
+}
+
+fn void make_window_current_opengl_context(GfxWindow* win)
+{
+	_window_make_opengl_current_context_platform(win);
+}
+
+fn void* get_current_opengl_context()
+{
+	return _get_current_opengl_context_native();
+}
+
+fn GfxGlContext* GfxWindow.get_opengl_context(&self)
+{
+	if (!self.src.backing.opengl) return null;
+	return self.src.ctx.native;
+}
+
+
+fn GfxEglContext* GfxWindow.get_egl_context(&self)
+{
+	if (!self.src.backing.egl) return null;
+	return self.src.ctx.egl;
 }
 
 fn GfxWindowFlags GfxWindow.get_flags(&self)
@@ -1106,26 +1139,17 @@ fn Vec2 get_mouse_delta() => _gfx_ctx.vector;
 fn void GfxWindow.release(&self)
 {
 	if (self.internal.capture_mouse) self.set_capture_mouse(false);
-	$if $feat(MACOS):
-	if ((self.src.gfxType & TODO_RENAME_GFX_EGL) && self.src.ctx.egl != null)
+	if (self.src.backing.egl && self.src.ctx.egl != null)
 	{
 		_window_destroy_egl_context_native(self, self.src.ctx.egl);
 		self.src.ctx.egl = null;
 	}
-	if ((self.src.gfxType & TODO_RENAME_GFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
+	if (self.src.backing.opengl && self.src.ctx.native != null)
 	{
 		_window_destroy_opengl_context_native(self, self.src.ctx.native);
 		self.src.ctx.native = null;
 	}
-	$endif
-	$if $feat(WASM) || $feat(WIN32):
-	if ((self.src.gfxType & TODO_RENAME_GFX_NATIVE_OPEN_GL) && self.src.ctx.native != null)
-	{
-		_window_destroy_opengl_context_native(self, self.src.ctx.native);
-		self.src.ctx.native = null;
-	}
-	$endif
-	todo_fix_window_closePlatform(self);
+	_window_close_native(self);
 	if (_gfx_ctx.clipboard) free(_gfx_ctx.clipboard);
 	_gfx_ctx.clipboard = null;
 	_gfx_ctx.windowCount--;
@@ -1449,6 +1473,10 @@ fn GfxMonitorMode[] GfxMonitor.get_modes(&monitor, Allocator allocator)
 	return alloc::clone_slice(allocator, _monitor_get_modes_native(monitor));
 }
 
+fn IntRect GfxMonitor.get_workarea(&monitor)
+{
+	return _monitor_get_workarea(monitor);
+}
 // public
 fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mode) => @pool()
 {
@@ -1547,15 +1575,8 @@ fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindo
 	self.internal.flags = flags;
 	self.internal.enabled_events = TODO_RENAME_ALL_EVENT_FLAGS;
 	_create_window_native(name, flags, self)!;
-	_window_set_flags(self, flags, {});
-	self.src.gfxType = 0;
-	$if $feat(MACOS) || $feat(WIN32) || $feat(WASM):
-		if (flags.open_gl) _window_create_opengl_context_native(self, todo_fix_getGlobalHints_OpenGL())!;
-	$endif
-	$if $feat(MACOS):
-		if (flags.egl) _window_create_egl_context_native(self, todo_fix_getGlobalHints_OpenGL())!;
-	$endif
 	if (!flags.hide_mouse) self.set_mouse_default();
+
 	self.set_name(name);
 	switch
 	{
@@ -1713,7 +1734,7 @@ fn void GfxWindow.restore(&self)
 
 fn void GfxWindow.minimize(&self)
 {
-	todo_fix_window_minimizePlatform(self);
+	_window_minimize_native(self);
 	self.internal.flags.maximize = false;
 }
 
@@ -1787,6 +1808,20 @@ fn GfxFn get_opengl_proc(ZString s)
 	return _get_opengl_proc_native(s);
 }
 
+fn GfxGlHints* get_global_opengl_hints()
+{
+	return &_global_hints_open_gl;
+}
+
+fn void set_global_opengl_hints(GfxGlHints* hints)
+{
+	_global_hints_open_gl = *hints;
+}
+
+fn void reset_global_opengl_hints()
+{
+	_global_hints_open_gl = GLOBAL_HINTS;
+}
 
 // public
 fn bool todo_fix_extensionSupportedStr(ZString extensions, ZString ext, sz len) @feat(!WASM)
@@ -1842,7 +1877,6 @@ alias TodoRenameErrorCode = char;
 alias TodoRenameGlReleaseBehavior = int;
 alias TodoRenameGlProfile = int;
 alias TodoRenameGlRenderer = int;
-alias TodoRenameGfxContextType = uint;
 typedef TodoRenameMouse = void;
 
 alias GfxFn = fn void();
@@ -1859,9 +1893,12 @@ struct TodoRenameGammaRamp
 	sz count;
 }
 
-const TodoRenameGfxContextType TODO_RENAME_GFX_NATIVE_OPEN_GL = 1;
-const TodoRenameGfxContextType TODO_RENAME_GFX_EGL = 2;
-const TodoRenameGfxContextType TODO_RENAME_GFX_OWNED_BY_RGFW = 4;
+bitstruct GfxBacking : char
+{
+	bool egl;
+	bool opengl;
+	bool owned;
+}
 
 fn void _event_queue_call_push(GfxEvent* event)
 {

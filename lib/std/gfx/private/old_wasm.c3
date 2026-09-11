@@ -1,10 +1,5 @@
 module std::gfx @feat(WASM);
 import std::math;
-extern fn char* strstr(char* haystack, char* needle);
-
-
-
-
 
 
 struct GfxNativeImage
@@ -15,8 +10,6 @@ struct GfxNativeImage
 	void* native1;
 	void* native2;
 }
-
-
 
 // public
 fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
@@ -326,16 +319,6 @@ fn void todo_fix_initKeycodesPlatform()
 // public
 
 // public
-fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
-{
-	rgfwJsSetCanvasSize(win.width, win.height);
-	rgfwJsSetWindowTitle((ZString)name, name.len);
-	rgfwJsSetupWindowListeners();
-
-	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
-
-	rgfwJsSetupDropListeners();
-}
 
 // public
 fn GfxKey todo_fix_physicalToMappedKey(GfxKey key) => key;
@@ -411,37 +394,9 @@ fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffe
 	return false;
 }
 
-// public
-
-
-// public
-fn void todo_fix_window_makeCurrentContext_OpenGL(GfxWindow* win)
-{
-	if (win == null) { rgfwJsWebglMakeCurrent(0); }
-	else { rgfwJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx); }
-}
-
-// public
-fn void todo_fix_window_swapBuffers_OpenGL(GfxWindow* win) { rgfwJsWebglCommitFrame(); }
-// public
-fn void* todo_fix_getCurrentContext_OpenGL() => (void*)(uptr)rgfwJsWebglGetCurrentContext();
-// public
 fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfwJsExtensionSupported(extension, len) != 0;
 // public
 fn GfxFn _get_opengl_proc_native(ZString procname) => rgfwJsGetProcAddress(procname);
-
-// public
-// public
-fn void todo_fix_window_closePlatform(GfxWindow* win) {}
-
-// public
-fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) {}
-// public
-fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
-{
-	if (state) { rgfwJsRequestPointerLock(); }
-	else { rgfwJsExitPointerLock(); }
-}
 
 // public
 fn void GfxWindow.set_name(&self, String name)
@@ -450,7 +405,6 @@ fn void GfxWindow.set_name(&self, String name)
 }
 
 // public
-fn void todo_fix_window_setOpacity(GfxWindow* win, char opacity) { rgfwJsSetOpacity((float)opacity / 255.0f); }
 
 // public
 fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
@@ -463,12 +417,8 @@ fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}
 // public
 
 // public
-fn void todo_fix_window_raise(GfxWindow* win) {}
 // public
 fn bool todo_fix_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => false;
-// public
-fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height) => false;
-// public
 fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => 0;
 // public
 fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => false;
@@ -476,7 +426,6 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 // public
 fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode) => false;
 
-fn void todo_fix_window_minimizePlatform(GfxWindow* win) {}
-fn void todo_fix_window_setFloating(GfxWindow* win, bool floating) {}
+
 fn void todo_fix_waitForEvent(int waitMS) {}
 

@@ -1,5 +1,5 @@
 module std::os::macos::cg @feat(DARWIN);
-import std::os::macos::cf;
+import std::os::darwin::cf;
 
 typedef CGDirectDisplayID = uint;
 typedef CGDisplayMode = inline CFType;

@@ -165,7 +165,7 @@ fn bool todo_fix_createUTF8FromWideStringWin32(ushort* source, char* output, sz 
 	return true;
 }
 
-fn void todo_fix_win32MakeWindowDarkMode(GfxWindow* win, bool state)
+fn void _win32_make_window_dark_mode(GfxWindow* win, bool state)
 {
 	int value = (state == true) ? 1 : 0;
 	win32::dwmSetWindowAttribute(win.src.window,USE_IMMERSIVE_DARK_MODE, &value, (uint)int::size);
@@ -496,124 +496,8 @@ fn void todo_fix_initKeycodesPlatform()
 // public
 
 // public
-fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
-{
-	if (!name.len) name = " ";
-	win.src.hIconSmall = null; win.src.hIconBig = null;
-	win.src.max_size = {};
-	win.src.min_size = {};
-	win.src.aspectRatioW = 0; win.src.aspectRatioH = 0;
-
-	uint window_style = win32::WS_CLIPSIBLINGS | win32::WS_CLIPCHILDREN; 
-	if (!flags.no_border)
-	{
-		window_style |= win32::WS_CAPTION | win32::WS_SYSMENU | win32::WS_BORDER | win32::WS_MINIMIZEBOX;
-		if (!flags.no_resize) window_style |= win32::WS_SIZEBOX | win32::WS_MAXIMIZEBOX;
-	}
-	else
-	{
-		window_style |= win32::WS_POPUP | win32::WS_VISIBLE | win32::WS_SYSMENU;
-	}
 
 
-	Win32_RECT rect = {0, 0, win.width, win.height};
-	uint style = _winapi_window_get_style(flags);
-	uint exStyle = _winapi_window_get_style_ex(win, flags);
-	win32::adjustWindowRectEx(&rect, style, 0, exStyle);
-
-	win.src.window = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, name.to_wstring(tmem)!!, window_style, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx_ctx.instance, null);
-	win32::setPropW(win.src.window, RENAME_PROP_NAME, win);
-	win.resize(win.size);
-
-	if (flags.allow_dnd)
-	{
-		win.internal.flags.allow_dnd = true;
-		win.set_dnd(true);
-	}
-	win.src.hdc = win32::getDC(win.src.window);
-
-	todo_fix_win32MakeWindowDarkMode(win, _get_dark_mode_state());
-	_make_window_transparent(win);
-}
-
-// public
-fn void _window_set_border_native(GfxWindow* win, bool border)
-{
-	win.internal.flags.no_border = !border;
-	Win32_RECT rect;
-	win32::getClientRect(win.src.window, &rect);
-	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
-	style |= (Win32_LONG)_winapi_window_get_style(win.internal.flags);
-
-	if (!border) { style &= ~(Win32_LONG)0x00CF0000; } // ~WS_OVERLAPPEDWINDOW
-	else
-	{
-		if (win.internal.flags.no_resize) style &= ~(Win32_LONG)win32::WS_MAXIMIZEBOX;
-		style |= win32::WS_OVERLAPPEDWINDOW;
-	}
-
-	Win32_DWORD exStyle = _winapi_window_get_style_ex(win, win.internal.flags);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
-	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, exStyle);
-	win32::setWindowLongW(win.src.window, -16, style);
-	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
-}
-
-
-// public
-
-// public
-// public
-// public
-fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
-{
-	win.src.max_size = size;
-}
-
-// public
-// public
-fn void todo_fix_window_raise(GfxWindow* win)
-{
-	win32::bringWindowToTop(win.src.window);
-	win32::setWindowPos(win.src.window, null, win.x, win.y, win.width, win.height, 0x0001 | 0x0002 | 0x0200 | 0x0020); // |NOMOVE|NOOWNERZORDER|FRAMECHANGED
-}
-
-// public
-
-// public
-fn void _window_maximize_native(GfxWindow* win)
-{
-	win.hide();
-	win32::showWindow(win.src.window, win32::SW_MAXIMIZE);
-}
-// public
-fn void todo_fix_window_minimizePlatform(GfxWindow* win)
-{
-	win32::showWindow(win.src.window, win32::SW_MINIMIZE);
-}
-// public
-fn void todo_fix_window_setFloating(GfxWindow* win, bool floating)
-{
-	if (floating)
-	{
-		win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040);
-	}
-	else
-	{
-		win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-2) /* HWND_NOTOPMOST */, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040);
-	}
-}
-// public
-fn void todo_fix_window_setOpacity(GfxWindow* win, char opacity)
-{
-	win32::setWindowLongA(win.src.window, -20, 0x00080000);
-	win32::setLayeredWindowAttributes(win.src.window, 0, opacity, 2);
-}
-// public
-fn void _window_restore_native(GfxWindow* win) {}
-// public
-// public
 fn void todo_fix_stopCheckEvents()
 {
 	win32::postMessageW(_gfx_ctx.helper_window, 0, 0, 0);
@@ -680,18 +564,7 @@ fn void todo_fix_pollEvents()
 
 
 
-// public
-fn bool todo_fix_monitor_getWorkarea(GfxMonitor* monitor, int* x, int* y, int* width, int* height)
-{
-	Win32_MONITORINFOEXW mi;
-	mi.cbSize = Win32_MONITORINFOEXW::size;
-	win32::getMonitorInfoW(monitor.node.hMonitor, &mi);
-	if (x != null) *x = mi.rcWork.left;
-	if (y != null) *y = mi.rcWork.top;
-	if (width != null) *width = mi.rcWork.right - mi.rcWork.left;
-	if (height != null) *height = mi.rcWork.bottom - mi.rcWork.top;
-	return true;
-}
+
 
 // public
 fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
@@ -987,14 +860,6 @@ fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat for
 
 
 // public
-fn void todo_fix_window_closePlatform(GfxWindow* win)
-{
-	win32::removePropW(win.src.window, RENAME_PROP_NAME);
-	win32::releaseDC(win.src.window, win.src.hdc);
-	win32::destroyWindow(win.src.window);
-	if (win.src.hIconSmall) win32::destroyIcon(win.src.hIconSmall);
-	if (win.src.hIconBig) win32::destroyIcon(win.src.hIconBig);
-}
 
 // public
 fn void _window_move_native(GfxWindow* win, GfxPoint where)
@@ -1126,16 +991,16 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 }
 
 // public
-fn void todo_fix_window_makeCurrentContext_OpenGL(GfxWindow* win)
+fn void _window_make_opengl_current_context_platform(GfxWindow* win)
 {
 	if (win == null) { todo_fix_wglMakeCurrent(null, null); }
 	else { todo_fix_wglMakeCurrent(win.src.hdc, win.src.ctx.native.ctx); }
 }
 
 // public
-fn void* todo_fix_getCurrentContext_OpenGL() => todo_fix_wglGetCurrentContext();
+fn void* _get_current_opengl_context_native() => todo_fix_wglGetCurrentContext();
 // public
-fn void todo_fix_window_swapBuffers_OpenGL(GfxWindow* win)
+fn void _window_swap_opengl_buffers_native(GfxWindow* win)
 {
 	win32::swapBuffers(win.src.hdc);
 }
