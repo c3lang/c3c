@@ -1173,13 +1173,13 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_window_captureMousePlatform_Wayland(win, state);
+			return _window_capture_mouse_wayland(win, state);
 		$case X11_ONLY:
 			return todo_fix_window_captureMousePlatform_X11(win, state);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_window_captureMousePlatform_Wayland(win, state);
+				return _window_capture_mouse_wayland(win, state);
 			}
 			return todo_fix_window_captureMousePlatform_X11(win, state);
 	$endswitch
