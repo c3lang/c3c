@@ -44,6 +44,7 @@ macro ObjClass class(ZString c) => objc::lookUpClass(c);
 macro void register_new_subclass(ObjClass cls) => registerClassPair(cls);
 
 macro ObjIvar ObjId.set_ivar(self, ZString name, void* value) => object_setInstanceVariable(self, name, value);
+macro ObjIvar ObjId.get_ivar(self, ZString name, void* value) => object_getInstanceVariable(self, name, value);
 macro void ObjId.release(self) => objc::msg_send(self, SendVoid, "release");
 macro ObjId ObjId.retain(self) => retain(self);
 

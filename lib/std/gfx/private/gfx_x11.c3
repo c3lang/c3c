@@ -1,5 +1,5 @@
 module std::gfx @feat(X11, X11_WAYLAND) @link("X11", "Xext", "Xrandr", "GL", "xkbcommon") @private;
-import std::math, std::collections, libc, std::time, std::net;
+import std::math, std::collections, libc, std::time, std::time::clock, std::net, std::net::os;
 
 const int X_TRUE = 1;
 const int X_FALSE = 0;
@@ -126,8 +126,7 @@ fn void todo_fix_window_captureMousePlatform_X11(GfxWindow* win, bool state)
 	}
 }
 
-// private
-fn WGPUSurface todo_fix_window_createSurface_WebGPU_X11(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface _window_create_wgpu_surface_x11(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuSurfaceSourceXlibWindow fromXlib;
 	fromXlib.chain.next = null;
@@ -180,7 +179,7 @@ fn GfxPoint _window_fetch_size_x11(GfxWindow* win)
 }
 
 // public
-fn void todo_fix_window_setMousePassthrough_X11(GfxWindow* win, bool passthrough)
+fn void _window_set_mouse_passthrough_x11(GfxWindow* win, bool passthrough)
 {
 	if (passthrough)
 	{
@@ -403,7 +402,7 @@ fn GfxFn todo_fix_getProcAddress_OpenGL_X11(ZString procname)
 }
 
 // private
-fn void todo_fix_initKeycodesPlatform_X11()
+fn void _init_keycodes_native_x11()
 {
 	// A full evdev-keycode -> _KEY table walk (xkbGetKeyboardByName) is left
 	// out of this mechanical pass; keycodes[] stays zeroed (_KEY_NULL).
@@ -592,12 +591,11 @@ fn IntRect _monitor_get_workarea_x11(GfxMonitor* monitor)
 	return { areaX, areaY, areaW, areaH };
 }
 
-// private
-fn bool todo_fix_monitor_requestMode_X11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+fn void? _monitor_request_mode_x11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	bool output = false;
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display));
-	if (res == null) return false;
+	if (!res) return MONITOR_MODE_CHANGE_FAILED~;
 	XRRCrtcInfo* ci = xRRGetCrtcInfo(_gfx_ctx.display, res, mon.node.nativeId1);
 	GfxXRROutputInfo* oi = xRRGetOutputInfo(_gfx_ctx.display, res, mon.node.nativeId0);
 	RRMode native = 0;
@@ -619,11 +617,10 @@ fn bool todo_fix_monitor_requestMode_X11(GfxMonitor* mon, GfxMonitorMode* mode, 
 	xRRFreeOutputInfo(oi);
 	xRRFreeCrtcInfo(ci);
 	xRRFreeScreenResources(res);
-	return output;
+	if (!output) return MONITOR_MODE_CHANGE_FAILED~;
 }
 
-// private
-fn bool todo_fix_monitor_setMode_X11(GfxMonitor* mon, GfxMonitorMode* mode)
+fn void? _monitor_set_mode_native_x11(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	bool out = false;
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display));
@@ -631,11 +628,11 @@ fn bool todo_fix_monitor_setMode_X11(GfxMonitor* mon, GfxMonitorMode* mode)
 	if (xRRSetCrtcConfig(_gfx_ctx.display, res, mon.node.nativeId1, 0, ci.x, ci.y, (RRMode)(uptr)mode.src, ci.rotation, ci.outputs, ci.noutput) == 0) out = true;
 	xRRFreeCrtcInfo(ci);
 	xRRFreeScreenResources(res);
-	return out;
+	if (!out) return MONITOR_MODE_CHANGE_FAILED~;
 }
 
 // private
-fn GfxKey todo_fix_physicalToMappedKey_X11(GfxKey key)
+fn GfxKey _physical_to_mapped_key_native_x11(GfxKey key)
 {
 	KeyCode keycode = (KeyCode)todo_fix_rgfwToApiKey(key);
 	KeySym sym = xkbKeycodeToKeysym(_gfx_ctx.display, keycode, 0, 0);
@@ -686,7 +683,23 @@ fn GfxKey todo_fix_physicalToMappedKey_X11(GfxKey key)
 }
 
 // private
-fn void todo_fix_pollEvents_X11()
+fn void _wait_for_event_x11(Posix_pollfd[] fds, int waitMS)
+{
+	fds[0].fd = xConnectionNumber(_gfx_ctx.display);
+
+	Clock current = clock::now();
+	while (!xPending(_gfx_ctx.display))
+	{
+		if (os::poll(&fds[0], 1, waitMS) <= 0) break;
+
+		if (waitMS != TODO_RENAME_EVENT_WAIT_NEXT)
+		{
+			waitMS -= (int)current.to_now().to_duration().to_ms();
+		}
+	}
+}
+
+fn void _poll_events_x11()
 {
 	todo_fix_resetPrevState();
 	xPending(_gfx_ctx.display);
@@ -1653,7 +1666,7 @@ fn bool _window_is_floating_x11(GfxWindow* win)
 }
 
 // private
-fn void todo_fix_window_setName_X11(GfxWindow* win, String name) => @pool()
+fn void _window_set_name_x11(GfxWindow* win, String name) => @pool()
 {
 	ZString cstring = name.zstr_copy(tmem);
 	xutf8SetWMProperties(_gfx_ctx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
@@ -1704,11 +1717,10 @@ fn bool _window_set_icon_x11(GfxWindow* win, char* dataSrc, int w, int h, GfxFor
 	return res;
 }
 
-// private
-fn GfxMonitor* todo_fix_window_getMonitor_X11(GfxWindow* win)
+fn GfxMonitor*? _window_find_monitor_x11(GfxWindow* win)
 {
 	XWindowAttributes attrs;
-	if (xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attrs) == 0) return null;
+	if (xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attrs) == 0) return NOT_FOUND~;
 	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
 	{
 		if ((attrs.x < node.mon.origin.x + node.mon.mode.size.x) && (attrs.x + attrs.width > node.mon.origin.x) &&
@@ -1717,7 +1729,7 @@ fn GfxMonitor* todo_fix_window_getMonitor_X11(GfxWindow* win)
 			return &node.mon;
 		}
 	}
-	return _gfx_ctx.monitors.list.head != null ? &_gfx_ctx.monitors.list.head.mon : null;
+	return _gfx_ctx.monitors.list.head ? &_gfx_ctx.monitors.list.head.mon : NOT_FOUND~;
 }
 
 // public
@@ -1735,24 +1747,12 @@ fn void todo_fix_window_showPlatform_X11(GfxWindow* win)
 // public
 fn bool todo_fix_waitForShowEvent_X11(GfxWindow* win)
 {
-	$if $feat(X11_WAYLAND):
-		XEvent dummy;
-		while (xCheckTypedWindowEvent(_gfx_ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
-		{
-			todo_fix_waitForEvent(100);
-		}
-		return true;
-	$else
-		XEvent dummy;
-		while (true)
-		{
-			// XCheckTypedWindowEvent(display, window, VisibilityNotify, &dummy)
-			if (xPending(_gfx_ctx.display) == 0) break;
-			xNextEvent(_gfx_ctx.display, &dummy);
-			if (dummy.type == 15 /* VisibilityNotify */ && dummy.xany.window == win.src.window) break;
-		}
-		return true;
-	$endif
+	XEvent dummy;
+	while (xCheckTypedWindowEvent(_gfx_ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
+	{
+		_wait_for_event_native(100);
+	}
+	return true;
 }
 
 fn void _toggle_x_maximized(GfxWindow* win, bool maximized)
@@ -1885,7 +1885,7 @@ fn void* todo_fix_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode
 		found_mode.size = found_mode.size.yx;
 	}
 
-	todo_fix_splitBPP((uint)xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), found_mode);
+	_split_bpp((uint)xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), found_mode);
 	found_mode.src = (void*)(uptr)mode;
 	found_mode.refresh_rate = 0;
 	if (mi.hTotal == 0 || mi.vTotal == 0) return mi;

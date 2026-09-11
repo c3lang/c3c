@@ -1,5 +1,5 @@
 module std::gfx @feat(X11_WAYLAND, X11, WAYLAND);
-import std::math, std::collections::list, libc, std::time, std::os::env;
+import std::math, std::collections::list, libc, std::time, std::os::env, std::os::posix, std::net::os;
 
 const WAYLAND_ONLY = $feat(WAYLAND) && !$feat(X11_WAYLAND) && !$feat(X11);
 const X11_ONLY = !$feat(WAYLAND) && !$feat(X11_WAYLAND) && $feat(X11);
@@ -144,20 +144,19 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 	$endswitch
 }
 
-// public
-fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
+fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	$switch:
 		$case WAYLAND_ONLY:
 			return _monitor_set_mode_wayland(mon, mode);
 		$case X11_ONLY:
-			return todo_fix_monitor_setMode_X11(mon, mode);
+			return _monitor_set_mode_native_x11(mon, mode);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _monitor_set_mode_wayland(mon, mode);
 			}
-			return todo_fix_monitor_setMode_X11(mon, mode);
+			return _monitor_set_mode_native_x11(mon, mode);
 	$endswitch
 }
 
@@ -298,19 +297,19 @@ fn GfxFn _get_opengl_proc_native(ZString procname)
 }
 
 // public
-fn void todo_fix_initKeycodesPlatform()
+fn void _init_keycodes_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_initKeycodesPlatform_Wayland();
+			return _init_keycodes_native_wayland();
 		$case X11_ONLY:
-			return todo_fix_initKeycodesPlatform_X11();
+			return _init_keycodes_native_x11();
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_initKeycodesPlatform_Wayland();
+				return _init_keycodes_native_wayland();
 			}
-			return todo_fix_initKeycodesPlatform_X11();
+			return _init_keycodes_native_x11();
 	$endswitch
 }
 
@@ -343,7 +342,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 			if (!(flags & ENABLE_X11))
 			{
 				String wayland_display = env::tget_var("WAYLAND_DISPLAY") ?? "";
-				gfx_use_wayland = wayland_display != "";;
+				gfx_use_wayland = wayland_display != "";
 				if (gfx_use_wayland)
 				{
 					if (try _init_wayland(class_name, flags)) return;
@@ -409,55 +408,112 @@ fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 	$endswitch
 }
 
-// public
-fn bool todo_fix_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	$switch:
 		$case WAYLAND_ONLY:
 			return _monitor_request_mode_wayland(mon, mode, request);
 		$case X11_ONLY:
-			return todo_fix_monitor_requestMode_X11(mon, mode, request);
+			return _monitor_request_mode_x11(mon, mode, request);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _monitor_request_mode_wayland(mon, mode, request);
 			}
-			return todo_fix_monitor_requestMode_X11(mon, mode, request);
+			return _monitor_request_mode_x11(mon, mode, request);
 	$endswitch
 }
 
 // public
-fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
+fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_physicalToMappedKey_Wayland(key);
+			return _physical_to_mapped_key_native_wayland(key);
 		$case X11_ONLY:
-			return todo_fix_physicalToMappedKey_X11(key);
+			return _physical_to_mapped_key_native_x11(key);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_physicalToMappedKey_Wayland(key);
+				return _physical_to_mapped_key_native_wayland(key);
 			}
-			return todo_fix_physicalToMappedKey_X11(key);
+			return _physical_to_mapped_key_native_x11(key);
 	$endswitch
 }
 
 // public
-fn void todo_fix_pollEvents()
+fn void _poll_events_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_pollEvents_Wayland();
+			return _poll_events_wayland();
 		$case X11_ONLY:
-			return todo_fix_pollEvents_X11();
+			return _poll_events_x11();
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_pollEvents_Wayland();
+				return _poll_events_wayland();
 			}
-			return todo_fix_pollEvents_X11();
+			return _poll_events_x11();
 	$endswitch
+}
+
+fn void _stop_check_events_native()
+{
+	_gfx_ctx.eventWait_forceStop[2] = 1;
+	while (true)
+	{
+		char byte = 0;
+		sz result = libc::write(_gfx_ctx.eventWait_forceStop[1], &byte, 1);
+		if (result == 1 || result == -1) break;
+	}
+}
+
+fn void _wait_for_event_native(int waitMS)
+{
+	if (waitMS == 0) return;
+
+	if (_gfx_ctx.eventWait_forceStop[0] == 0 || _gfx_ctx.eventWait_forceStop[1] == 0)
+	{
+		if (posix::pipe((int[2]*)&_gfx_ctx.eventWait_forceStop) != -1)
+		{
+			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[0], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[0], os::F_GETFD, 0);
+			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[1], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[1], os::F_GETFD, 0);
+		}
+	}
+
+	Posix_pollfd[2] fds;
+	fds[0].fd = 0;
+	fds[0].events = (short)os::POLLIN;
+	fds[1].fd = _gfx_ctx.eventWait_forceStop[0];
+	fds[1].events = (short)os::POLLIN;
+
+	$switch:
+		$case WAYLAND_ONLY:
+			_wait_for_event_wayland(fds[..], waitMS);
+		$case X11_ONLY:
+			_wait_for_event_x11(fds[..], waitMS);
+		$default:
+			if (gfx_use_wayland)
+			{
+				_wait_for_event_wayland(fds[..], waitMS);
+			}
+			else
+			{
+				_wait_for_event_x11(fds[..], waitMS);
+			}
+	$endswitch
+
+	// drain any data in the stop request
+	if (_gfx_ctx.eventWait_forceStop[2])
+	{
+		char[64] data;
+		libc::read(_gfx_ctx.eventWait_forceStop[0], &data, 64);
+
+		_gfx_ctx.eventWait_forceStop[2] = 0;
+	}
 }
 
 // public
@@ -560,19 +616,19 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* context,
 }
 
 // public
-fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_wgpu_create_surface_wayland(window, instance);
+			return _window_create_wgpu_surface_wayland(window, instance);
 		$case X11_ONLY:
-			return todo_fix_window_createSurface_WebGPU_X11(window, instance);
+			return _window_create_wgpu_surface_x11(window, instance);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return _window_wgpu_create_surface_wayland(window, instance);
+				return _window_create_wgpu_surface_wayland(window, instance);
 			}
-			return todo_fix_window_createSurface_WebGPU_X11(window, instance);
+			return _window_create_wgpu_surface_x11(window, instance);
 	$endswitch
 }
 
@@ -960,23 +1016,22 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 }
 
 // public
-fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough)
+fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 {
 	$switch:
 		$case WAYLAND_ONLY:
 			return _window_set_mouse_passthrough_wayland(win, passthrough);
 		$case X11_ONLY:
-			return todo_fix_window_setMousePassthrough_X11(win, passthrough);
+			return _window_set_mouse_passthrough_x11(win, passthrough);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _window_set_mouse_passthrough_wayland(win, passthrough);
 			}
-			return todo_fix_window_setMousePassthrough_X11(win, passthrough);
+			return _window_set_mouse_passthrough_x11(win, passthrough);
 	$endswitch
 }
 
-// public
 fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	$switch:
@@ -1114,20 +1169,19 @@ fn bool _window_is_floating_native(GfxWindow* win) @private
 	$endswitch
 }
 
-// public
-fn void GfxWindow.set_name(&self, String name)
+fn void _window_set_name_native(GfxWindow* win, String name)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_name_wayland(self, name);
+			return _window_set_name_wayland(win, name);
 		$case X11_ONLY:
-			return todo_fix_window_setName_X11(self, name);
+			return _window_set_name_x11(win, name);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return _window_set_name_wayland(self, name);
+				return _window_set_name_wayland(win, name);
 			}
-			return todo_fix_window_setName_X11(self, name);
+			return _window_set_name_x11(win, name);
 	$endswitch
 }
 
@@ -1149,19 +1203,19 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data_src, int w, int h, Gf
 }
 
 // public
-fn GfxMonitor* find_monitor(GfxWindow* win)
+fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_get_monitor(win);
+			return _window_find_monitor_wayland(win);
 		$case X11_ONLY:
-			return todo_fix_window_getMonitor_X11(win);
+			return _window_find_monitor_x11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return _window_get_monitor(win);
+				return _window_find_monitor_wayland(win);
 			}
-			return todo_fix_window_getMonitor_X11(win);
+			return _window_find_monitor_x11(win);
 	$endswitch
 }
 

@@ -66,17 +66,6 @@ struct GfxNativeImage
 struct WgpuSurfaceSourceWindowsHWND { WgpuChainedStruct chain; void* hinstance; void* hwnd; }
 
 // public
-fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance)
-{
-	WgpuSurfaceSourceWindowsHWND fromHwnd;
-	fromHwnd.chain.next = null;
-	fromHwnd.chain.sType = WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND;
-	fromHwnd.hwnd = window.src.window;
-	fromHwnd.hinstance = _gfx_ctx.instance;
-	WgpuSurfaceDescriptor surfaceDesc;
-	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromHwnd;
-	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
-}
 
 alias HResult = int;
 const int DXGI_FORMAT_R8G8B8A8_UNORM = 28;
@@ -165,11 +154,7 @@ fn bool todo_fix_createUTF8FromWideStringWin32(ushort* source, char* output, sz 
 	return true;
 }
 
-fn void _win32_make_window_dark_mode(GfxWindow* win, bool state)
-{
-	int value = (state == true) ? 1 : 0;
-	win32::dwmSetWindowAttribute(win.src.window,USE_IMMERSIVE_DARK_MODE, &value, (uint)int::size);
-}
+
 
 macro GfxPoint _param_to_point(iptr lParam)
 {
@@ -442,127 +427,14 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 
 
 // public
-fn void todo_fix_initKeycodesPlatform()
-{
-	_gfx_ctx.keycodes[0x00B] = NUM0; _gfx_ctx.keycodes[0x002] = NUM1; _gfx_ctx.keycodes[0x003] = NUM2;
-	_gfx_ctx.keycodes[0x004] = NUM3; _gfx_ctx.keycodes[0x005] = NUM4; _gfx_ctx.keycodes[0x006] = NUM5;
-	_gfx_ctx.keycodes[0x007] = NUM6; _gfx_ctx.keycodes[0x008] = NUM7; _gfx_ctx.keycodes[0x009] = NUM8;
-	_gfx_ctx.keycodes[0x00A] = NUM9;
-	_gfx_ctx.keycodes[0x01E] = A; _gfx_ctx.keycodes[0x030] = B; _gfx_ctx.keycodes[0x02E] = C;
-	_gfx_ctx.keycodes[0x020] = D; _gfx_ctx.keycodes[0x012] = E; _gfx_ctx.keycodes[0x021] = F;
-	_gfx_ctx.keycodes[0x022] = G; _gfx_ctx.keycodes[0x023] = H; _gfx_ctx.keycodes[0x017] = I;
-	_gfx_ctx.keycodes[0x024] = J; _gfx_ctx.keycodes[0x025] = K; _gfx_ctx.keycodes[0x026] = L;
-	_gfx_ctx.keycodes[0x032] = M; _gfx_ctx.keycodes[0x031] = N; _gfx_ctx.keycodes[0x018] = O;
-	_gfx_ctx.keycodes[0x019] = P; _gfx_ctx.keycodes[0x010] = Q; _gfx_ctx.keycodes[0x013] = R;
-	_gfx_ctx.keycodes[0x01F] = S; _gfx_ctx.keycodes[0x014] = T; _gfx_ctx.keycodes[0x016] = U;
-	_gfx_ctx.keycodes[0x02F] = V; _gfx_ctx.keycodes[0x011] = W; _gfx_ctx.keycodes[0x02D] = X;
-	_gfx_ctx.keycodes[0x015] = Y; _gfx_ctx.keycodes[0x02C] = Z;
-	_gfx_ctx.keycodes[0x028] = APOSTROPHE; _gfx_ctx.keycodes[0x02B] = BACK_SLASH;
-	_gfx_ctx.keycodes[0x033] = COMMA; _gfx_ctx.keycodes[0x00D] = EQUALS;
-	_gfx_ctx.keycodes[0x029] = BACKTICK; _gfx_ctx.keycodes[0x01A] = BRACKET;
-	_gfx_ctx.keycodes[0x00C] = MINUS; _gfx_ctx.keycodes[0x034] = PERIOD;
-	_gfx_ctx.keycodes[0x01B] = CLOSE_BRACKET; _gfx_ctx.keycodes[0x027] = SEMICOLON;
-	_gfx_ctx.keycodes[0x035] = SLASH; _gfx_ctx.keycodes[0x056] = WORLD2;
-	_gfx_ctx.keycodes[0x00E] = BACK_SPACE; _gfx_ctx.keycodes[0x153] = DELETE;
-	_gfx_ctx.keycodes[0x14F] = END; _gfx_ctx.keycodes[0x01C] = ENTER;
-	_gfx_ctx.keycodes[0x001] = ESCAPE; _gfx_ctx.keycodes[0x147] = HOME;
-	_gfx_ctx.keycodes[0x152] = INSERT; _gfx_ctx.keycodes[0x15D] = MENU;
-	_gfx_ctx.keycodes[0x151] = PAGE_DOWN; _gfx_ctx.keycodes[0x149] = PAGE_UP;
-	_gfx_ctx.keycodes[0x045] = PAUSE; _gfx_ctx.keycodes[0x039] = SPACE;
-	_gfx_ctx.keycodes[0x00F] = TAB; _gfx_ctx.keycodes[0x03A] = CAPS_LOCK;
-	_gfx_ctx.keycodes[0x145] = NUM_LOCK; _gfx_ctx.keycodes[0x046] = SCROLL_LOCK;
-	_gfx_ctx.keycodes[0x03B] = F1; _gfx_ctx.keycodes[0x03C] = F2; _gfx_ctx.keycodes[0x03D] = F3;
-	_gfx_ctx.keycodes[0x03E] = F4; _gfx_ctx.keycodes[0x03F] = F5; _gfx_ctx.keycodes[0x040] = F6;
-	_gfx_ctx.keycodes[0x041] = F7; _gfx_ctx.keycodes[0x042] = F8; _gfx_ctx.keycodes[0x043] = F9;
-	_gfx_ctx.keycodes[0x044] = F10; _gfx_ctx.keycodes[0x057] = F11; _gfx_ctx.keycodes[0x058] = F12;
-	_gfx_ctx.keycodes[0x064] = F13; _gfx_ctx.keycodes[0x065] = F14; _gfx_ctx.keycodes[0x066] = F15;
-	_gfx_ctx.keycodes[0x067] = F16; _gfx_ctx.keycodes[0x068] = F17; _gfx_ctx.keycodes[0x069] = F18;
-	_gfx_ctx.keycodes[0x06A] = F19; _gfx_ctx.keycodes[0x06B] = F20; _gfx_ctx.keycodes[0x06C] = F21;
-	_gfx_ctx.keycodes[0x06D] = F22; _gfx_ctx.keycodes[0x06E] = F23; _gfx_ctx.keycodes[0x076] = F24;
-	_gfx_ctx.keycodes[0x038] = ALT_L; _gfx_ctx.keycodes[0x01D] = CONTROL_L; _gfx_ctx.keycodes[0x02A] = SHIFT_L;
-	_gfx_ctx.keycodes[0x15B] = SUPER_L; _gfx_ctx.keycodes[0x137] = PRINT_SCREEN;
-	_gfx_ctx.keycodes[0x138] = ALT_R; _gfx_ctx.keycodes[0x11D] = CONTROL_R;
-	_gfx_ctx.keycodes[0x036] = SHIFT_R; _gfx_ctx.keycodes[0x15C] = SUPER_R;
-	_gfx_ctx.keycodes[0x150] = DOWN; _gfx_ctx.keycodes[0x14B] = LEFT;
-	_gfx_ctx.keycodes[0x14D] = RIGHT; _gfx_ctx.keycodes[0x148] = UP;
-	_gfx_ctx.keycodes[0x052] = PAD0; _gfx_ctx.keycodes[0x04F] = PAD1; _gfx_ctx.keycodes[0x050] = PAD2;
-	_gfx_ctx.keycodes[0x051] = PAD3; _gfx_ctx.keycodes[0x04B] = PAD4; _gfx_ctx.keycodes[0x04C] = PAD5;
-	_gfx_ctx.keycodes[0x04D] = PAD6; _gfx_ctx.keycodes[0x047] = PAD7; _gfx_ctx.keycodes[0x048] = PAD8;
-	_gfx_ctx.keycodes[0x049] = PAD9; _gfx_ctx.keycodes[0x04E] = PAD_PLUS; _gfx_ctx.keycodes[0x053] = PAD_PERIOD;
-	_gfx_ctx.keycodes[0x135] = PAD_SLASH; _gfx_ctx.keycodes[0x11C] = PAD_RETURN;
-	_gfx_ctx.keycodes[0x059] = PAD_EQUAL; _gfx_ctx.keycodes[0x037] = PAD_MULTIPLY; _gfx_ctx.keycodes[0x04A] = PAD_MINUS;
-}
-
-// public
-
-// public
-
-
-fn void todo_fix_stopCheckEvents()
-{
-	win32::postMessageW(_gfx_ctx.helper_window, 0, 0, 0);
-}
-// public
-fn void todo_fix_waitForEvent(int waitMS) { win32::msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */); }
+fn void _wait_for_event_native(int waitMS) { win32::msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */); }
 
 ushort[8] todo_fix_wideDisplayName = {(ushort)'D', (ushort)'I', (ushort)'S', (ushort)'P', (ushort)'L', (ushort)'A', (ushort)'Y', 0};
 
 // public
-fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
-{
-	uint vsc = todo_fix_rgfwToApiKey(key);
-	char[256] keyboardState;
-	if (win32::getKeyboardState((char*)&keyboardState) == 0) return key;
-
-	uint vk = win32::mapVirtualKeyW(vsc, 1 /* MAPVK_VSC_TO_VK */);
-	void* layout = win32::getKeyboardLayout(0);
-
-	ushort[4] charBuffer;
-	int result = win32::toUnicodeEx(vk, vsc, (char*)&keyboardState, &charBuffer, 1, 0, layout);
-	if (result == 1 && charBuffer[0] < 256) return (GfxKey)charBuffer[0];
-
-	switch (vk)
-	{
-		case 0x70: return F1; case 0x71: return F2; case 0x72: return F3;
-		case 0x73: return F4; case 0x74: return F5; case 0x75: return F6;
-		case 0x76: return F7; case 0x77: return F8; case 0x78: return F9;
-		case 0x79: return F10; case 0x7A: return F11; case 0x7B: return F12;
-		case 0x7C: return F13; case 0x7D: return F14; case 0x7E: return F15;
-		case 0x7F: return F16; case 0x80: return F17; case 0x81: return F18;
-		case 0x82: return F19; case 0x83: return F20; case 0x84: return F21;
-		case 0x85: return F22; case 0x86: return F23; case 0x87: return F24;
-		case 0xA0: return SHIFT_L; case 0xA1: return SHIFT_R;
-		case 0xA2: return CONTROL_L; case 0xA3: return CONTROL_R;
-		case 0xA4: return ALT_L; case 0xA5: return ALT_R;
-		case 0x5B: return SUPER_L; case 0x5C: return SUPER_R;
-		case 0x14: return CAPS_LOCK; case 0x90: return NUM_LOCK; case 0x91: return SCROLL_LOCK;
-		case 0x26: return UP; case 0x28: return DOWN; case 0x25: return LEFT; case 0x27: return RIGHT;
-		case 0x24: return HOME; case 0x23: return END; case 0x21: return PAGE_UP; case 0x22: return PAGE_DOWN;
-		case 0x2D: return INSERT; case 0x5D: return MENU;
-		case 0x6B: return PAD_PLUS; case 0x6D: return PAD_MINUS; case 0x6A: return PAD_MULTIPLY;
-		case 0x6F: return PAD_SLASH; case 0x0D: return PAD_RETURN; case 0x6E: return PAD_PERIOD;
-		case 0x60: return PAD0; case 0x61: return PAD1; case 0x62: return PAD2;
-		case 0x63: return PAD3; case 0x64: return PAD4; case 0x65: return PAD5;
-		case 0x66: return PAD6; case 0x67: return PAD7; case 0x68: return PAD8; case 0x69: return PAD9;
-		case 0x2C: return PRINT_SCREEN; case 0x13: return PAUSE;
-		default: return NULL;
-	}
-}
 
 
 // public
-fn void todo_fix_pollEvents()
-{
-	todo_fix_resetPrevState();
-	Win32_MSG msg;
-	while (win32::peekMessageA(&msg, null, 0, 0, win32::PM_REMOVE))
-	{
-		win32::translateMessage(&msg);
-		win32::dispatchMessageA(&msg);
-	}
-}
-
-
 
 
 
@@ -604,7 +476,7 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 fn void todo_fix_win32GetMode(Win32_DEVMODEW* dm, GfxMonitorMode* mode)
 {
 	mode.size = { (int)dm.dmPelsWidth, (int)dm.dmPelsHeight };
-	todo_fix_splitBPP(dm.dmBitsPerPel, mode);
+	_split_bpp(dm.dmBitsPerPel, mode);
 	switch (dm.dmDisplayFrequency)
 	{
 		case 119: case 59: case 29: mode.refresh_rate = ((float)(dm.dmDisplayFrequency + 1) * 1000.0f) / 1001.0f;
@@ -727,18 +599,9 @@ fn void todo_fix_pollMonitors()
 fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}
 
 // public
-fn GfxMonitor* find_monitor(GfxWindow* win)
-{
-	Win32_HMONITOR src = win32::monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
-	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
-	{
-		if (node.hMonitor == src) return &node.mon;
-	}
-	return get_primary_monitor() ?? null;
-}
 
 // public
-fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
+fn bool _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	Win32_DEVMODEW dm;
 	dm.dmSize = (ushort)Win32_DEVMODEW::size;
@@ -762,32 +625,6 @@ fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
 	return false;
 }
 
-// public
-fn bool todo_fix_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
-{
-	Win32_DEVMODEW dm = { .dmSize = Win32_DEVMODEW::size };
-	uint index = 0;
-	for (;;)
-	{
-		if (win32::enumDisplaySettingsW((ushort*)&mon.node.adapterName, index, &dm) == 0) break;
-		index += 1;
-
-		if (request & SCALE) { dm.dmFields |= DM_PELSWIDTH | DM_PELSHEIGHT; dm.dmPelsWidth = (uint)mode.size.x; dm.dmPelsHeight = (uint)mode.size.y; }
-		if (request & REFRESH) { dm.dmFields |= DM_DISPLAYFREQUENCY; dm.dmDisplayFrequency = (uint)mode.refresh_rate; }
-		if (request & RGB) { dm.dmFields |= DM_BITSPERPEL; dm.dmBitsPerPel = (uint)(mode.rgb.sum()); }
-
-		if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapterName, &dm, null, CDS_TEST, null) == DISP_CHANGE_SUCCESSFUL)
-		{
-			if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapterName, &dm, null, CDS_UPDATEREGISTRY, null) == DISP_CHANGE_SUCCESSFUL)
-			{
-				todo_fix_win32GetMode(&dm, &mon.mode);
-				return true;
-			}
-			return false;
-		}
-	}
-	return false;
-}
 
 // private
 fn Win32_HICON todo_fix_loadHandleImage(char* data, int w, int h, GfxFormat format, int icon)
@@ -871,33 +708,9 @@ fn void _window_move_native(GfxWindow* win, GfxPoint where)
 // public
 
 // public
-fn void GfxWindow.set_name(&self, String name)
-{
-	win32::setWindowTextW(self.src.window, name.to_wstring(tmem)!!);
-}
+
 
 // public
-fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough)
-{
-	uint key = 0;
-	char alpha = 0;
-	uint flags = 0;
-	CLong exStyle = win32::getWindowLongW(win.src.window, win32::GWL_EXSTYLE);
-	if (exStyle & (CLong)win32::WS_EX_LAYERED) win32::getLayeredWindowAttributes(win.src.window, &key, &alpha, &flags);
-
-	if (passthrough)
-	{
-		exStyle |= (CLong)(win32::WS_EX_TRANSPARENT | win32::WS_EX_LAYERED);
-	}
-	else
-	{
-		exStyle &= ~(CLong)win32::WS_EX_TRANSPARENT;
-		if (exStyle & (CLong)win32::WS_EX_LAYERED && flags & 2 == 0) exStyle &= ~(CLong)win32::WS_EX_LAYERED;
-	}
-
-	win32::setWindowLongW(win.src.window, win32::GWL_EXSTYLE, exStyle);
-	if (passthrough) win32::setLayeredWindowAttributes(win.src.window, key, alpha, flags);
-}
 
 
 // public

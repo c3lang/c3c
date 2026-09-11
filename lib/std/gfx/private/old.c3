@@ -72,7 +72,7 @@ const uint UC_KEY_ACTION_DOWN = 0;
 const uint UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT = 0;
 
 // public
-fn GfxKey todo_fix_physicalToMappedKey(GfxKey key)
+fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 {
 	ushort keycode = (ushort)todo_fix_rgfwToApiKey(key);
 	TISInputSourceRef source = macos::tisCopyCurrentKeyboardLayoutInputSource();
@@ -204,26 +204,7 @@ fn CGDirectDisplayID todo_fix_monitorDisplay(GfxMonitor* monitor)
 	return cg::mainDisplayID();
 }
 
-// private
-fn GfxWindow* todo_fix_osxDelegateWindow(ObjId self)
-{
-	void* out = null;
-	object_getInstanceVariable(self, "gfx_window", &out);
-	return (GfxWindow*)out;
-}
 
-
-
-// private
-fn GfxWindow* todo_fix_osxViewWindow(ObjId self)
-{
-	void* out = null;
-	object_getInstanceVariable(self, "gfx_window", &out);
-	return (GfxWindow*)out;
-}
-
-
-// private
 
 // public
 fn void todo_fix_monitorNode_free(GfxMonitorNode* node)
@@ -231,142 +212,8 @@ fn void todo_fix_monitorNode_free(GfxMonitorNode* node)
 	if (node.mon.mode.src) CFType.release(node.mon.mode.src);
 }
 
-// public
-fn void todo_fix_initKeycodesPlatform()
-{
-	_gfx_ctx.keycodes[0x00] = A;
-	_gfx_ctx.keycodes[0x01] = S;
-	_gfx_ctx.keycodes[0x02] = D;
-	_gfx_ctx.keycodes[0x03] = F;
-	_gfx_ctx.keycodes[0x04] = H;
-	_gfx_ctx.keycodes[0x05] = G;
-	_gfx_ctx.keycodes[0x06] = Z;
-	_gfx_ctx.keycodes[0x07] = X;
-	_gfx_ctx.keycodes[0x08] = C;
-	_gfx_ctx.keycodes[0x09] = V;
-	_gfx_ctx.keycodes[0x0B] = B;
-	_gfx_ctx.keycodes[0x0C] = Q;
-	_gfx_ctx.keycodes[0x0D] = W;
-	_gfx_ctx.keycodes[0x0E] = E;
-	_gfx_ctx.keycodes[0x0F] = R;
-	_gfx_ctx.keycodes[0x10] = Y;
-	_gfx_ctx.keycodes[0x11] = T;
-	_gfx_ctx.keycodes[0x12] = NUM1;
-	_gfx_ctx.keycodes[0x13] = NUM2;
-	_gfx_ctx.keycodes[0x14] = NUM3;
-	_gfx_ctx.keycodes[0x15] = NUM4;
-	_gfx_ctx.keycodes[0x16] = NUM6;
-	_gfx_ctx.keycodes[0x17] = NUM5;
-	_gfx_ctx.keycodes[0x18] = EQUAL;
-	_gfx_ctx.keycodes[0x19] = NUM9;
-	_gfx_ctx.keycodes[0x1A] = NUM7;
-	_gfx_ctx.keycodes[0x1B] = MINUS;
-	_gfx_ctx.keycodes[0x1C] = NUM8;
-	_gfx_ctx.keycodes[0x1D] = NUM0;
-	_gfx_ctx.keycodes[0x1E] = CLOSE_BRACKET;
-	_gfx_ctx.keycodes[0x1F] = O;
-	_gfx_ctx.keycodes[0x20] = U;
-	_gfx_ctx.keycodes[0x21] = BRACKET;
-	_gfx_ctx.keycodes[0x22] = I;
-	_gfx_ctx.keycodes[0x23] = P;
-	_gfx_ctx.keycodes[0x24] = RETURN;
-	_gfx_ctx.keycodes[0x25] = L;
-	_gfx_ctx.keycodes[0x26] = J;
-	_gfx_ctx.keycodes[0x27] = APOSTROPHE;
-	_gfx_ctx.keycodes[0x28] = K;
-	_gfx_ctx.keycodes[0x29] = SEMICOLON;
-	_gfx_ctx.keycodes[0x2A] = BACK_SLASH;
-	_gfx_ctx.keycodes[0x2B] = COMMA;
-	_gfx_ctx.keycodes[0x2C] = SLASH;
-	_gfx_ctx.keycodes[0x2D] = N;
-	_gfx_ctx.keycodes[0x2E] = M;
-	_gfx_ctx.keycodes[0x2F] = PERIOD;
-	_gfx_ctx.keycodes[0x31] = SPACE;
-	_gfx_ctx.keycodes[0x32] = BACKTICK;
-	_gfx_ctx.keycodes[0x33] = BACK_SPACE;
-	_gfx_ctx.keycodes[0x35] = ESCAPE;
-	_gfx_ctx.keycodes[0x30] = TAB;
-	_gfx_ctx.keycodes[0x7B] = LEFT;
-	_gfx_ctx.keycodes[0x7C] = RIGHT;
-	_gfx_ctx.keycodes[0x7D] = DOWN;
-	_gfx_ctx.keycodes[0x7E] = UP;
-	_gfx_ctx.keycodes[0x38] = SHIFT_L;
-	_gfx_ctx.keycodes[0x3B] = CONTROL_L;
-	_gfx_ctx.keycodes[0x3A] = ALT_L;
-	_gfx_ctx.keycodes[0x37] = SUPER_L;
-	_gfx_ctx.keycodes[0x3C] = SHIFT_R;
-	_gfx_ctx.keycodes[0x3E] = CONTROL_R;
-	_gfx_ctx.keycodes[0x3D] = ALT_R;
-	_gfx_ctx.keycodes[0x36] = SUPER_R;
-	_gfx_ctx.keycodes[0x7A] = F1;
-	_gfx_ctx.keycodes[0x78] = F2;
-	_gfx_ctx.keycodes[0x63] = F3;
-	_gfx_ctx.keycodes[0x76] = F4;
-	_gfx_ctx.keycodes[0x60] = F5;
-	_gfx_ctx.keycodes[0x61] = F6;
-	_gfx_ctx.keycodes[0x62] = F7;
-	_gfx_ctx.keycodes[0x64] = F8;
-	_gfx_ctx.keycodes[0x65] = F9;
-	_gfx_ctx.keycodes[0x6D] = F10;
-	_gfx_ctx.keycodes[0x67] = F11;
-	_gfx_ctx.keycodes[0x6F] = F12;
-	_gfx_ctx.keycodes[0x69] = PRINT_SCREEN;
-	_gfx_ctx.keycodes[0x6B] = F14;
-	_gfx_ctx.keycodes[0x71] = F15;
-	_gfx_ctx.keycodes[0x6A] = F16;
-	_gfx_ctx.keycodes[0x40] = F17;
-	_gfx_ctx.keycodes[0x4F] = F18;
-	_gfx_ctx.keycodes[0x50] = F19;
-	_gfx_ctx.keycodes[0x5A] = F20;
-	_gfx_ctx.keycodes[0x0A] = WORLD1;
-	_gfx_ctx.keycodes[0x39] = CAPS_LOCK;
-	_gfx_ctx.keycodes[0x75] = DELETE;
-	_gfx_ctx.keycodes[0x77] = END;
-	_gfx_ctx.keycodes[0x73] = HOME;
-	_gfx_ctx.keycodes[0x72] = INSERT;
-	_gfx_ctx.keycodes[0x6E] = MENU;
-	_gfx_ctx.keycodes[0x47] = NUM_LOCK;
-	_gfx_ctx.keycodes[0x79] = PAGE_DOWN;
-	_gfx_ctx.keycodes[0x74] = PAGE_UP;
-	_gfx_ctx.keycodes[0x52] = PAD0;
-	_gfx_ctx.keycodes[0x53] = PAD1;
-	_gfx_ctx.keycodes[0x54] = PAD2;
-	_gfx_ctx.keycodes[0x55] = PAD3;
-	_gfx_ctx.keycodes[0x56] = PAD4;
-	_gfx_ctx.keycodes[0x57] = PAD5;
-	_gfx_ctx.keycodes[0x58] = PAD6;
-	_gfx_ctx.keycodes[0x59] = PAD7;
-	_gfx_ctx.keycodes[0x5B] = PAD8;
-	_gfx_ctx.keycodes[0x5C] = PAD9;
-	_gfx_ctx.keycodes[0x45] = PAD_SLASH;
-	_gfx_ctx.keycodes[0x41] = PAD_PERIOD;
-	_gfx_ctx.keycodes[0x4B] = PAD_SLASH;
-	_gfx_ctx.keycodes[0x4C] = PAD_RETURN;
-	_gfx_ctx.keycodes[0x51] = PAD_EQUAL;
-	_gfx_ctx.keycodes[0x43] = PAD_MULTIPLY;
-	_gfx_ctx.keycodes[0x4E] = PAD_MINUS;
-}
 
-// public
-fn void todo_fix_pollEvents()
-{
-	todo_fix_resetPrevState();
-	if (!_gfx_ctx.ns_app) return;
-	ObjId distantPast = objc_send(objc::@class("NSDate"), ObjcSendId, "distantPast");
-	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
-	while (true)
-	{
-		ObjId ev = objc::send(_gfx_ctx.ns_app, ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
-		if (!ev) break;
-		objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "sendEvent:", ev);
-	}
-}
-
-
-// public
-fn void todo_fix_stopCheckEvents() { _gfx_ctx.stopCheckEvents_bool = true; }
-// public
-fn void todo_fix_waitForEvent(int waitMS)
+fn void _wait_for_event_native(int waitMS)
 {
 	if (!_gfx_ctx.ns_app) return;
 	ObjId date = objc_send(objc::@class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)waitMS / 1000.0);
@@ -374,14 +221,7 @@ fn void todo_fix_waitForEvent(int waitMS)
 	ObjId ev = objc::send(_gfx_ctx.ns_app, ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
 	if (ev) objc::send_void(_gfx_ctx.ns_app, "postEvent:atStart:", ev, true);
 }
-// public
-fn bool todo_fix_usingWayland() => _gfx_ctx.wl_display != null;
-// public
-// public
-fn void* todo_fix_getDisplay_X11() => _gfx_ctx.x11_display;
-// public
-fn void* todo_fix_getDisplay_Wayland() => _gfx_ctx.wl_display;
-// public
+
 fn void todo_fix_moveToMacOSResourceDir()
 {
 	ObjId path = objc::send(objc::send(objc::class("NSBundle"), ObjId, "mainBundle"), ObjId, "resourcePath");
@@ -494,33 +334,8 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 	return err == 0;
 }
 
-// public
-fn bool todo_fix_monitor_requestMode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => todo_fix_monitor_setMode(mon, mode);
-// public
-fn bool todo_fix_monitor_setMode(GfxMonitor* mon, GfxMonitorMode* mode)
-{
-	if (mode == null || mode.src == null) return false;
-	return todo_fix_monitorDisplay(mon).setDisplayMode((CGDisplayModeRef)mode.src, null) == 0;
-}
-// public
-fn GfxMonitor* find_monitor(GfxWindow* win) => get_primary_monitor() ?? null;
-// public
 
 
-// public
-// public
-
-// public
-fn void todo_fix_window_setMousePassthrough(GfxWindow* win, bool passthrough)
-{
-	if (win.src.window) objc::send_void(win.src.window, "setIgnoresMouseEvents:", passthrough);
-}
-
-
-fn void GfxWindow.set_name(&self, String name)
-{
-	if (self.src.window) objc::send_void(self.src.window, "setTitle:", name.to_nsstring());
-}
 
 
 // public
@@ -567,17 +382,6 @@ fn bool todo_fix_extensionSupported_EGL(ZString extension, sz len)
 	return todo_fix_extensionSupportedPlatform_EGL(extension, len);
 }
 
-
-
-
-// public
-
-// public
-
-
-
-
-
 // public
 fn void todo_fix_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current = win; }
 
@@ -585,32 +389,6 @@ fn void todo_fix_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current
 struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
 
 // public
-fn WGPUSurface todo_fix_window_createSurface_WebGPU(GfxWindow* window, WGPUInstance instance)
-{
-	if (!window || !window.src.view)
-	{
-		log::error("NSView is NULL for macOS window", category: log::CATEGORY_VIDEO);
-		return null;
-	}
-	objc::send_void(window.src.view, "setWantsLayer:", true);
-	ObjId layer = _get_layer_macos();
-	if (!layer) return null;
-	_window_set_layer_macos(window, layer);
-
-	WgpuSurfaceSourceMetalLayer fromMetal;
-	fromMetal.chain.next = null;
-	fromMetal.chain.sType = WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER;
-	fromMetal.layer = layer;
-	WgpuSurfaceDescriptor surfaceDesc;
-	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromMetal;
-	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
-}
-// public
-
-// public
-
-// public
-fn float todo_fix_cocoaYTransform(float y) => (float)(cg::mainDisplayID().bounds().size.height - (double)y - 1.0);
 
 // public
 fn GfxDataTransfer* todo_fix_readClipboard(GfxDataTransferType requestedType)

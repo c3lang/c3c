@@ -25,7 +25,7 @@ fn void _window_capture_mouse_wayland(GfxWindow* win, bool state)
 
 fn sz _monitor_get_gamma_ramp_wayland(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => 0;
 fn bool _monitor_set_gamma_ramp_wayland(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => false;
-fn bool _monitor_set_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode) => false;
+fn void? _monitor_set_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode) => MONITOR_MODE_CHANGE_FAILED~;
 
 fn GfxMonitorMode[] _monitor_get_modes_wayland(GfxMonitor* monitor)
 {
@@ -36,8 +36,6 @@ fn GfxMonitorMode[] _monitor_get_modes_wayland(GfxMonitor* monitor)
 	}
 	return modes.array_view();
 }
-
-
 
 typedef WlDisplay = void;
 typedef WlProxy = void;
@@ -604,7 +602,7 @@ fn GfxPoint _get_global_mouse_wayland()
 fn GfxFn todo_fix_getProcAddress_OpenGL_Wayland(ZString procname) => todo_fix_getProcAddress_EGL(procname);
 
 // private
-fn void todo_fix_initKeycodesPlatform_Wayland()
+fn void _init_keycodes_native_wayland()
 {
 	// Wayland keycodes come directly from the evdev-based xkb keymap (key+8);
 	// no separate keycode table walk is needed the way X11's is.
@@ -740,19 +738,19 @@ fn IntRect _monitor_get_workarea_wayland(GfxMonitor* monitor)
 }
 
 // private
-fn bool _monitor_request_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+fn void? _monitor_request_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	for (sz i = 0; i < mon.node.mode_count; i++)
 	{
 		if (!mode.equals_request(&mon.node.modes[i], request)) continue;
-		todo_fix_monitor_setMode(mon, &mon.node.modes[i]);
-		return true;
+		(void)_monitor_set_mode_native(mon, &mon.node.modes[i]);
+		return;
 	}
-	return false;
+	return MONITOR_MODE_CHANGE_FAILED~;
 }
 
 // private
-fn GfxKey todo_fix_physicalToMappedKey_Wayland(GfxKey key)
+fn GfxKey _physical_to_mapped_key_native_wayland(GfxKey key)
 {
 	uint keycode = todo_fix_rgfwToApiKey(key);
 	XkbKeycode kc = keycode + 8;
@@ -832,7 +830,56 @@ fn GfxKey todo_fix_physicalToMappedKey_Wayland(GfxKey key)
 }
 
 // private
-fn void todo_fix_pollEvents_Wayland()
+fn void _wait_for_event_wayland(Posix_pollfd[] fds, int waitMS)
+{
+	fds[0].fd = wlDisplayGetFd(_gfx_ctx.wlDisplay);
+
+	// empty the queue
+	while (wlDisplayPrepareRead(_gfx_ctx.wlDisplay))
+	{
+		// error occured when dispatching the queue
+		if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == -1) return;
+	}
+
+	// send any pending requests to the compositor
+	while (wlDisplayFlush(_gfx_ctx.wlDisplay) == -1)
+	{
+		// queue is full dispatch them
+		if (libc::errno() == EAGAIN)
+		{
+			if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == -1) return;
+		}
+		else
+		{
+			return;
+		}
+	}
+
+	Clock current = clock::now();
+	while (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == 0)
+	{
+		if (os::poll(&fds[0], 1, waitMS) <= 0)
+		{
+			wlDisplayCancelRead(_gfx_ctx.wlDisplay);
+			break;
+		}
+		else
+		{
+			if (wlDisplayReadEvents(_gfx_ctx.wlDisplay) == -1) return;
+		}
+
+		if (waitMS != TODO_RENAME_EVENT_WAIT_NEXT)
+		{
+			waitMS -= (int)current.to_now().to_duration().to_ms();
+		}
+	}
+
+	// queue contains events from read, dispatch them
+	if (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == -1) return;
+}
+
+// private
+fn void _poll_events_wayland()
 {
 	todo_fix_resetPrevState();
 
@@ -941,7 +988,7 @@ fn void _window_opengl_swap_interval_wayland(GfxWindow* win, int swapInterval)
 }
 
 
-fn WGPUSurface _window_wgpu_create_surface_wayland(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface _window_create_wgpu_surface_wayland(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuSurfaceSourceWaylandSurface fromWl;
 	fromWl.chain.next = null;
@@ -1208,9 +1255,9 @@ fn bool _window_set_icon_wayland(GfxWindow* win, char* data, int w, int h, GfxFo
 	return true;
 }
 
-fn GfxMonitor* _window_get_monitor(GfxWindow* win)
+fn GfxMonitor*? _window_find_monitor_wayland(GfxWindow* win)
 {
-	if (!win.src.activeMonitor) return get_primary_monitor() ?? null;
+	if (!win.src.activeMonitor) return get_primary_monitor();
 	return &win.src.activeMonitor.mon;
 }
 

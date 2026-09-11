@@ -188,7 +188,6 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, Gfx
 	todo_fix_window_makeCurrentContext_EGL(win);
 }
 
-// public
 fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
 {
 	if (ctx.surface) egl_destroy_surface_fn(_gfx_ctx.egl_display, ctx.surface);
@@ -259,8 +258,10 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 {
 	if (!surface.data) return;
 	GfxPoint min = math::min(win.size, surface.size);
-	GfxMonitor* mon = find_monitor(win);
-	if (mon) min = (GfxPoint)((Vec2)min * mon.pixelRatio);
+	if (try mon = _window_find_monitor_native(win))
+	{
+		min = (GfxPoint)((Vec2)min * mon.pixelRatio);
+	}
 	ObjId rep = ns_bitmapRep(...min);
 	char* pixels = ns_bitmapData(rep);
 	defer objc::release(rep);
@@ -314,9 +315,9 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 
 fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 {
-	if (win.src.window)
+	if (win.src.view)
 	{
-		CGRect frame = objc::send(win.src.window, CGRect, "frame");
+		CGRect frame = objc::send(win.src.view, CGRect, "frame");
 		win.size = { (int)frame.size.width, (int)frame.size.height };
 	}
 	return win.size;
@@ -348,7 +349,7 @@ fn void _window_move_native(GfxWindow* win, GfxPoint where)
 	if (!win.src.window) return;
 	CGRect content = objc::send((ObjId)win.src.view, CGRect, "frame");
 	win.x = where.x;
-	win.y = (int)todo_fix_cocoaYTransform((float)where.y + (float)content.size.height - 1.0f);
+	win.y = (int)flip_y((float)where.y + (float)content.size.height - 1.0f);
 	CGPoint origin = { ...where };
 	objc::send_void(win.src.window, "setFrameOrigin:", origin);
 }
@@ -411,12 +412,34 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	todo_fix_pollMonitors();
 }
 
+fn void _poll_events_native()
+{
+	objc::@autoreleasepool()
+	{
+		todo_fix_resetPrevState();
+		if (!_gfx_ctx.ns_app) return;
+		ObjId distantPast = objc_send(objc::@class("NSDate"), ObjcSendId, "distantPast");
+		ObjId mode = darwin::string("kCFRunLoopDefaultMode");
+		while (true)
+		{
+			objc::@autoreleasepool()
+			{
+				ObjId ev = objc::send(_gfx_ctx.ns_app, ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
+				if (!ev) break;
+				objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "sendEvent:", ev);
+			};
+		}
+	};
+
+}
+
+
 fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	NSWindowStyleMask style = TITLED | CLOSABLE | MINIATURIZABLE;
 	if (!flags.no_resize) style |= RESIZABLE;
 	if (flags.no_border) style = BORDERLESS;
-	CGRect rect = { { win.x, todo_fix_cocoaYTransform((float)(win.y + win.height - 1)) } , { ...win.size }};
+	CGRect rect = { { win.x, flip_y((float)(win.y + win.height - 1)) } , { ...win.size }};
 	ObjId nswin = objc::send(objc::alloc_by_name("NSWindow"), ObjId, "initWithContentRect:styleMask:backing:defer:", rect, style, NSBackingStoreType.BUFFERED, false);
 	if (!nswin) return NSWINDOW_CREATION_FAILED~;
 	ObjId view = _macos_view_class ? objc::send(_macos_view_class, ObjId, "alloc") : objc::alloc_by_name("NSView");
@@ -450,6 +473,8 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 	_macos_init_view(win);
 }
 
+fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win) => get_primary_monitor();
+
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 {
 	CFArrayRef list = todo_fix_monitorDisplay(monitor).copyAllDisplayModes(null);
@@ -480,10 +505,14 @@ fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 	if (!win.src.window) return;
 	if (size == { 0, 0 })
 	{
-		GfxMonitor* mon = find_monitor(win);
-		if (mon) size = mon.mode.size;
+		if (try mon = _window_find_monitor_native(win)) size = mon.mode.size;
 	}
 	objc::send_void(win.src.window, "setMaxSize:", (CGSize){ ...size });
+}
+
+fn void _window_set_name_native(GfxWindow* win, String name)
+{
+	objc::send_void(win.src.window, "setTitle:", name.to_nsstring());
 }
 
 fn void _window_restore_native(GfxWindow* win)
@@ -497,6 +526,11 @@ fn void _window_restore_native(GfxWindow* win)
 fn void _window_raise_native(GfxWindow* win)
 {
 	win.src.window.send_void("orderFrontRegardless", null);
+}
+
+fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
+{
+	if (win.src.window) objc::send_void(win.src.window, "setIgnoresMouseEvents:", passthrough);
 }
 
 fn bool _window_is_maximized_native(GfxWindow* win)
@@ -605,6 +639,17 @@ fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
 	mon.pixelRatio = mon.scale.x;
 }
 
+fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+{
+	return _monitor_set_mode_native(mon, mode);
+}
+
+fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
+{
+	if (!mode.src) return MONITOR_MODE_CHANGE_FAILED~;
+	if (todo_fix_monitorDisplay(mon).setDisplayMode((CGDisplayModeRef)mode.src, null)) return MONITOR_MODE_CHANGE_FAILED~;
+}
+
 fn GfxPoint _get_global_mouse_native()
 {
 	CGEventRef event = cg::eventCreate(null);
@@ -630,6 +675,33 @@ fn void _surface_release_native(GfxSurface* surface)
 	if (surface.native.buffer) free(surface.native.buffer);
 	*surface = {};
 }
+
+fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)
+{
+	if (!window.src.view)
+	{
+		log::error("NSView is NULL for macOS window", category: log::CATEGORY_VIDEO);
+		return null;
+	}
+	objc::send_void(window.src.view, "setWantsLayer:", true);
+	ObjId layer = _get_layer_macos();
+	if (!layer) return null;
+	_window_set_layer_macos(window, layer);
+
+	WgpuSurfaceSourceMetalLayer fromMetal;
+	fromMetal.chain.next = null;
+	fromMetal.chain.sType = WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER;
+	fromMetal.layer = layer;
+	WgpuSurfaceDescriptor surfaceDesc;
+	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromMetal;
+	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
+}
+
+fn void _stop_check_events_native()
+{
+	_gfx_ctx.stop_check_events = true;
+}
+
 
 // MacOS callbacks
 
@@ -687,9 +759,8 @@ fn void? _osx_register_classes()
 }
 fn void _osx_key_updown(ObjId self, ObjId event, bool down)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	// No window
-	if (!win) return;
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
 	ushort keyCode = objc::send(event, ushort, "keyCode");
 	if (keyCode >= 256) return;
 	GfxKey key = _gfx_ctx.keycodes[(sz)keyCode];
@@ -705,61 +776,82 @@ fn void _osx_key_up(ObjId self, ObjSel sel, ObjId event) => _osx_key_updown(self
 
 fn void _osx_mouse_entered(ObjId self, ObjSel sel, ObjId event)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return;
-	CGPoint p = objc::send(event, CGPoint, "locationInWindow");
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	CGPoint p = event.send(CGPoint, "locationInWindow");
 	_mouse_notify_callback(win, { (int)p.x, win.height - (int)p.y }, true);
 }
 
 fn void _osx_mouse_exited(ObjId self, ObjSel sel, ObjId event)
 {
-	if (GfxWindow* win = todo_fix_osxViewWindow(self)) _mouse_notify_callback(win, win.internal.last_mouse, false);
+	if (try win = _fetch_win(self)) _mouse_notify_callback(win, win.internal.last_mouse, false);
 }
 
 fn void _osx_window_did_move(ObjId self, ObjSel sel, ObjId notification)
 {
-	GfxWindow* win = todo_fix_osxDelegateWindow(self);
-	if (!win || !win.src.window) return;
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	if (!win.src.window) return;
 	CGRect frame = objc::send(win.src.window, CGRect, "frame");
 	CGRect content = objc::send(win.src.window, CGRect, "contentRectForFrameRect:", frame);
-	float y = todo_fix_cocoaYTransform((float)(content.origin.y + content.size.height - 1));
+	float y = flip_y((float)(content.origin.y + content.size.height - 1));
 	_window_moved_callback(win, { (int)content.origin.x, (int)y });
 }
 
 fn void _osx_window_did_miniaturize(ObjId self, ObjSel sel, ObjId notification)
 {
-	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) _window_minimized_callback(win);
+	(void)_window_minimized_callback(_fetch_win(self));
 }
 
 fn void _osx_window_did_deminiaturize(ObjId self, ObjSel sel, ObjId notification)
 {
-	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) _window_restored_callback(win, win.bounds);
+	if (try win = _fetch_win(self)) _window_restored_callback(win, win.bounds);
 }
 
 fn void _osx_window_did_become_key(ObjId self, ObjSel sel, ObjId notification)
 {
-	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) _window_focus_callback(win, true);
+	(void)_window_focus_callback(_fetch_win(self), true);
 }
 
 fn void _osx_window_will_close(ObjId self, ObjSel sel, ObjId notification)
 {
-	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) _window_close_callback(win);
+	(void)_window_close_callback(_fetch_win(self));
 }
 
 fn void _osx_window_did_resize(ObjId self, ObjSel sel, ObjId notification)
 {
-	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) _window_resized_callback(win, _window_fetch_size_native(win));
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	if (!win.src.view) return;
+
+	CGRect frame = win.src.view.send(CGRect, "frame");
+	GfxSize size = { (int)frame.size.width, (int)frame.size.height };
+	if (!size.x || !size.y) return;
+	win.size = size;
+
+	GfxMonitor*? mon = _window_find_monitor_native(win);
+	if (catch mon) return;
+
+	switch
+	{
+		case mon.mode.size.x == size.x && mon.mode.size.y - 102 <= size.y:
+			_window_maximized_callback(win, { 0, 0, ...size });
+		case win.internal.flags.maximize:
+			_window_restored_callback(win, { ...win.origin, ...size });
+	}
+	_window_resized_callback(win, size);
 }
+
 fn void _osx_window_did_resign_key(ObjId self, ObjSel sel, ObjId notification)
 {
-	if (GfxWindow* win = todo_fix_osxDelegateWindow(self)) _window_focus_callback(win, false);
+	(void)_window_focus_callback(_fetch_win(self), false);
 }
 
 fn void _osx_mouse_moved_common(ObjId self, ObjId event)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return;
-	CGPoint p = objc::send(event, CGPoint, "locationInWindow");
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	CGPoint p = event.send(CGPoint, "locationInWindow");
 	_mouse_motion_callback(win, { (int)p.x, win.height - (int)p.y });
 }
 
@@ -769,9 +861,9 @@ fn void _osx_mouse_dragged(ObjId self, ObjSel sel, ObjId event) => _osx_mouse_mo
 // private
 fn void _osx_mouse_button_common(ObjId self, ObjId event, bool down, GfxMouseButton fallback)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return;
-	NSUInteger button = objc::send(event, NSUInteger, "buttonNumber");
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	NSUInteger button = event.send(NSUInteger, "buttonNumber");
 	GfxMouseButton gfx_button = fallback;
 	switch (button)
 	{
@@ -793,17 +885,17 @@ fn void _osx_other_mouse_button_up(ObjId self, ObjSel sel, ObjId event) { _osx_m
 
 fn void _osx_scroll_wheel(ObjId self, ObjSel sel, ObjId event)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return;
-	CGFloat x = objc::send(event, CGFloat, "scrollingDeltaX");
-	CGFloat y = objc::send(event, CGFloat, "scrollingDeltaY");
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	CGFloat x = event.send(CGFloat, "scrollingDeltaX");
+	CGFloat y = event.send(CGFloat, "scrollingDeltaY");
 	_mouse_scroll_callback(win, { (float)x, (float)y });
 }
 
 fn void _osx_flags_changed(ObjId self, ObjSel sel, ObjId event)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return;
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
 
 	GfxKey value = NULL;
 	bool pressed = false;
@@ -852,59 +944,59 @@ fn void _osx_flags_changed(ObjId self, ObjSel sel, ObjId event)
 
 fn void _osx_view_did_change_backing_properties(ObjId self, ObjSel sel)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return;
-	GfxMonitor* mon = find_monitor(win);
-	if (!mon) return;
-	_scale_updated_callback(win, mon.scale);
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	(void)_scale_updated_callback(win, _window_find_monitor_native(win).scale);
 }
 
 fn NSUInteger _osx_dragging_entered(ObjId self, ObjSel sel, ObjId sender)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return 0;
-	CGPoint p = objc::send(sender, CGPoint, "draggingLocation");
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return 0;
+	CGPoint p = sender.send(CGPoint, "draggingLocation");
 	_data_drag_callback(win, FILE, ENTER, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
 fn NSUInteger _osx_dragging_updated(ObjId self, ObjSel sel, ObjId sender)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return 0;
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return 0;
 	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return 1;
-	CGPoint p = objc::send(sender, CGPoint, "draggingLocation");
+	CGPoint p = sender.send(CGPoint, "draggingLocation");
 	_data_drag_callback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
 fn void _osx_dragging_ended(ObjId self, ObjSel sel, ObjId sender)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return;
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
 	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return;
-	CGPoint p = objc::send(sender, CGPoint, "draggingLocation");
+	CGPoint p = sender.send(CGPoint, "draggingLocation");
 	_data_drag_callback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
 }
 
 fn bool _osx_prepare_for_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win || !(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return true;
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return true;
+	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return true;
 	return win.internal.flags.allow_dnd;
 }
 
 // private
 fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win || !(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return false;
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return false;
+	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return false;
 
-	ObjId pasteBoard = objc::send(sender, ObjId, "draggingPasteboard");
-	ObjId types = objc::send(pasteBoard, ObjId, "types");
+	ObjId pasteBoard = sender.send(ObjId, "draggingPasteboard");
+	ObjId types = pasteBoard.send(ObjId, "types");
 	ObjId file_urls_type = "NSFilenamesPboardType".to_nsstring();
 
-	if (!objc::send(types, ObjId, "containsObject:", file_urls_type))
+	if (!types.send(bool, "containsObject:", file_urls_type))
 	{
 		log::warn("No files found on the pasteboard", category: log::CATEGORY_VIDEO);
 		return false;
@@ -937,20 +1029,32 @@ fn bool _osx_wants_update_layer(ObjId self, ObjSel sel) => true;
 
 fn void _osx_update_layer(ObjId self, ObjSel sel)
 {
-	if (GfxWindow* win = todo_fix_osxViewWindow(self)) _window_refresh_callback(win, { 0, 0, ...win.size });
+	if (try win = _fetch_win(self)) _window_refresh_callback(win, { 0, 0, ...win.size });
 }
 
 fn bool _osx_accepts_first_responder(ObjId self, ObjSel sel) => true;
 
 fn void _osx_draw_rect(ObjId self, ObjSel sel, CGRect rect)
 {
-	GfxWindow* win = todo_fix_osxViewWindow(self);
-	if (!win) return;
-	float y = todo_fix_cocoaYTransform((float)(rect.size.height - 1));
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	float y = flip_y((float)(rect.size.height - 1));
 	_window_refresh_callback(win, { (int)rect.origin.x, (int)y, (int)rect.size.width, (int)rect.size.height });
 }
 
 // --- helpers
+
+fn GfxWindow*? _fetch_win(ObjId self)
+{
+	void* out = null;
+	self.get_ivar("gfx_window", &out);
+	return out ?: NOT_FOUND~;
+}
+
+fn float flip_y(float y)
+{
+	return (float)(cg::mainDisplayID().bounds().size.height - (double)y - 1.0);
+}
 
 fn ObjId _get_layer_macos()
 {
@@ -1008,6 +1112,49 @@ fn ObjId _get_nsscreen_for_display(uint display_id)
 		if (display == display_id) return screen;
 	}
 	return null;
+}
+
+fn void _init_keycodes_native()
+{
+	_gfx_ctx.keycodes = {
+		[0x00] = A,             [0x01] = S,             [0x02] = D,
+		[0x03] = F,             [0x04] = H,             [0x05] = G,
+		[0x06] = Z,             [0x07] = X,             [0x08] = C,
+		[0x09] = V,             [0x0B] = B,             [0x0C] = Q,
+		[0x0D] = W,             [0x0E] = E,             [0x0F] = R,
+		[0x10] = Y,             [0x11] = T,             [0x12] = NUM1,
+		[0x13] = NUM2,          [0x14] = NUM3,          [0x15] = NUM4,
+		[0x16] = NUM6,          [0x17] = NUM5,          [0x18] = EQUAL,
+		[0x19] = NUM9,          [0x1A] = NUM7,          [0x1B] = MINUS,
+		[0x1C] = NUM8,          [0x1D] = NUM0,          [0x1E] = CLOSE_BRACKET,
+		[0x1F] = O,             [0x20] = U,             [0x21] = BRACKET,
+		[0x22] = I,             [0x23] = P,             [0x24] = RETURN,
+		[0x25] = L,             [0x26] = J,             [0x27] = APOSTROPHE,
+		[0x28] = K,             [0x29] = SEMICOLON,     [0x2A] = BACK_SLASH,
+		[0x2B] = COMMA,         [0x2C] = SLASH,         [0x2D] = N,
+		[0x2E] = M,             [0x2F] = PERIOD,        [0x31] = SPACE,
+		[0x32] = BACKTICK,      [0x33] = BACK_SPACE,    [0x35] = ESCAPE,
+		[0x30] = TAB,           [0x7B] = LEFT,          [0x7C] = RIGHT,
+		[0x7D] = DOWN,          [0x7E] = UP,            [0x38] = SHIFT_L,
+		[0x3B] = CONTROL_L,     [0x3A] = ALT_L,         [0x37] = SUPER_L,
+		[0x3C] = SHIFT_R,       [0x3E] = CONTROL_R,     [0x3D] = ALT_R,
+		[0x36] = SUPER_R,       [0x7A] = F1,            [0x78] = F2,
+		[0x63] = F3,            [0x76] = F4,            [0x60] = F5,
+		[0x61] = F6,            [0x62] = F7,            [0x64] = F8,
+		[0x65] = F9,            [0x6D] = F10,           [0x67] = F11,
+		[0x6F] = F12,           [0x69] = PRINT_SCREEN,  [0x6B] = F14,
+		[0x71] = F15,           [0x6A] = F16,           [0x40] = F17,
+		[0x4F] = F18,           [0x50] = F19,           [0x5A] = F20,
+		[0x0A] = WORLD1,        [0x39] = CAPS_LOCK,     [0x75] = DELETE,
+		[0x77] = END,           [0x73] = HOME,          [0x72] = INSERT,
+		[0x6E] = MENU,          [0x47] = NUM_LOCK,      [0x79] = PAGE_DOWN,
+		[0x74] = PAGE_UP,       [0x52] = PAD0,          [0x53] = PAD1,
+		[0x54] = PAD2,          [0x55] = PAD3,          [0x56] = PAD4,
+		[0x57] = PAD5,          [0x58] = PAD6,          [0x59] = PAD7,
+		[0x5B] = PAD8,          [0x5C] = PAD9,          [0x45] = PAD_SLASH,
+		[0x41] = PAD_PERIOD,    [0x4B] = PAD_SLASH,     [0x4C] = PAD_RETURN,
+		[0x51] = PAD_EQUAL,     [0x43] = PAD_MULTIPLY,  [0x4E] = PAD_MINUS,
+	};
 }
 
 // -- globals

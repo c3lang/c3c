@@ -15,6 +15,7 @@ excuse
 	X11_CTX_CREATION_FAILED,
 	NSAPP_CREATION_FAILED,
 	DELEGATE_CREATION_FAILED,
+	MONITOR_MODE_CHANGE_FAILED,
 	MISSING_VULKAN_LIB,
 	MISSING_OPENGL_LIB,
 	MISSING_EGL_LIB,
@@ -183,9 +184,9 @@ struct GfxContext
 	bool polledEvents;
 	uint[GFX_KEYS] apiKeycodes;
 	GfxKey[$feat(WIN32) ? 512 : 256] keycodes;
-	bool stopCheckEvents_bool;
+	bool stop_check_events;
 	ulong timerOffset;
-	int[3] eventWait_forceStop @feat(X11_WAYLAND);
+	int[3] eventWait_forceStop @feat(X11_WAYLAND, X11, WAYLAND);
 	GfxDataTransfer* clipboard;
 	bool dnd_build;
 	GfxDataDropNode* dndRoot;
@@ -946,6 +947,11 @@ fn VkSurfaceKHR? GfxWindow.create_vulkan_surface(&self, VkInstance instance)
 	return _window_create_vulkan_surface_native(self, instance);
 }
 
+fn WGPUSurface GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
+{
+	return _window_create_wgpu_surface_native(self, instance);
+}
+
 fn void GfxWindow.swap_opengl_buffers(&self)
 {
 	_window_swap_opengl_buffers_native(self);
@@ -1011,7 +1017,7 @@ fn void GfxWindow.set_disabled_events(&self, TodoRenameEventFlag events)
 
 fn void GfxWindow.scale_to_monitor(&self)
 {
-	if (GfxMonitor* monitor = find_monitor(self)) self.resize((GfxSize)(monitor.scale * (Vec2)self.size));
+	(void)self.resize((GfxSize)(_window_find_monitor_native(self).scale * (Vec2)self.size));
 }
 
 fn void GfxWindow.move_to_monitor(&self, GfxMonitor* m)
@@ -1046,9 +1052,7 @@ fn void GfxWindow.set_user_ptr(&self, void* ptr)
 
 fn GfxPoint GfxWindow.get_size_in_pixels(&self)
 {
-	GfxMonitor* mon = find_monitor(self);
-	if (!mon) return { -1, -1 };
-	return (GfxPoint)((Vec2)self.size * mon.pixelRatio);
+	return (GfxPoint)((Vec2)self.size * _window_find_monitor_native(self).pixelRatio) ?? { -1, -1 };
 }
 
 fn bool GfxWindow.did_mouse_leave(&self)
@@ -1064,6 +1068,16 @@ fn bool GfxWindow.did_mouse_enter(&self)
 fn bool GfxWindow.is_mouse_inside(&self)
 {
 	return self.internal.mouse_inside;
+}
+
+fn void GfxWindow.set_name(&self, String name)
+{
+	_window_set_name_native(self, name);
+}
+
+fn void GfxWindow.set_mouse_passthrough(&self, bool passthrough)
+{
+	_window_set_mouse_passthrough_native(self, passthrough);
 }
 
 fn bool GfxWindow.is_data_dragging(&self)
@@ -1137,10 +1151,6 @@ fn bool is_mouse_released(GfxMouseButton button, GfxWindow* window = null)
 fn Vec2 get_mouse_scroll() => _gfx_ctx.scroll;
 fn Vec2 get_mouse_delta() => _gfx_ctx.vector;
 
-
-
-
-// public
 fn void GfxWindow.release(&self)
 {
 	if (self.internal.capture_mouse) self.set_capture_mouse(false);
@@ -1161,7 +1171,6 @@ fn void GfxWindow.release(&self)
 	log::debug("A window was freed", category: log::CATEGORY_VIDEO);
 }
 
-// public
 fn GfxGenericFunc set_event_callback(GfxEventType type, GfxGenericFunc func)
 {
 	GfxGenericFunc old = _gfx_ctx.callbacks[type];
@@ -1229,7 +1238,7 @@ fn GfxEvent? check_event()
 	if (!_gfx_ctx.eventLen && !_gfx_ctx.polledEvents)
 	{
 		_gfx_ctx.queueEvents = true;
-		todo_fix_pollEvents();
+		_poll_events_native();
 		_gfx_ctx.polledEvents = true;
 	}
 	defer catch _gfx_ctx.polledEvents = false;
@@ -1259,6 +1268,7 @@ fn GfxEvent? window_event_queue_pop(GfxWindow* win)
 // public
 fn GfxEvent? check_queued_window_event(GfxWindow* win)
 {
+	_gfx_ctx.queueEvents = true;
 	return window_event_queue_pop(win);
 }
 
@@ -1268,7 +1278,7 @@ fn GfxEvent? check_window_event(GfxWindow* win)
 	if (!_gfx_ctx.eventLen && !_gfx_ctx.polledEvents)
 	{
 		_gfx_ctx.queueEvents = true;
-		todo_fix_pollEvents();
+		_poll_events_native();
 		_gfx_ctx.polledEvents = true;
 	}
 	defer catch _gfx_ctx.polledEvents = false;
@@ -1279,7 +1289,7 @@ fn GfxEvent? check_window_event(GfxWindow* win)
 fn void todo_fix_initKeycodes()
 {
 	_gfx_ctx.keycodes = {};
-	todo_fix_initKeycodesPlatform();
+	_init_keycodes_native();
 	for (int i = 0; i < GFX_KEYS; i++)
 	{
 		for (int y = 0; y < _gfx_ctx.keycodes.len; y++)
@@ -1358,33 +1368,28 @@ fn void todo_fix_setBit(uint* value, uint mask, bool set)
 	else { *value &= ~mask; }
 }
 
-
-// public
-fn void todo_fix_window_center(GfxWindow* win)
+fn GfxMonitor*? GfxWindow.find_monitor(&self)
 {
-	GfxMonitor* mon = find_monitor(win);
-	if (!mon) return;
-	win.move(mon.origin + (mon.mode.size - win.size) / 2);
+	return _window_find_monitor_native(self);
 }
 
-// public
-fn bool todo_fix_monitor_scaleToWindow(GfxMonitor* mon, GfxWindow* win)
+fn void GfxWindow.center_on_screen(&self)
+{
+	GfxMonitor*? mon = _window_find_monitor_native(self);
+	(void)self.move(mon.origin + (mon.mode.size - self.size) / 2);
+}
+
+fn void? GfxMonitor.scale_to_window(&self, GfxWindow* win)
 {
 	GfxMonitorMode mode;
 	mode.size = win.size;
-	bool ret = todo_fix_monitor_requestMode(mon, &mode, SCALE);
-	win.move(mon.origin);
-	return ret;
+	defer win.move(self.origin);
+	return _monitor_request_mode_native(self, &mode, SCALE);
 }
 
-// public
-fn void todo_fix_splitBPP(uint bpp, GfxMonitorMode* mode)
+fn void? GfxMonitor.request_mode(&self, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
-	if (bpp == 32) bpp = 24;
-	mode.rgb.r = mode.rgb.g = mode.rgb.b = (char)(bpp / 3);
-	uint delta = bpp - (mode.rgb.r * 3);
-	if (delta >= 1) mode.rgb.g = mode.rgb.g + 1;
-	if (delta == 2) mode.rgb.r = mode.rgb.r + 1;
+	return _monitor_request_mode_native(self, mode, request);
 }
 
 fn GfxNativeImage* GfxSurface.get_native_image(&self)
@@ -1708,6 +1713,10 @@ fn void TodoRenameMouse.free_mouse(&self)
 	return _free_mouse(self);
 }
 
+fn void stop_check_events()
+{
+	_stop_check_events_native();
+}
 fn void set_raw_mouse_mode(bool enabled)
 {
 	_gfx_ctx.raw_mouse = enabled;

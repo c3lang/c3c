@@ -11,6 +11,15 @@ fn void*? _dlopen_any(ZString... names) @feat(POSIX)
 	return NOT_FOUND~;
 }
 
+fn void _split_bpp(uint bpp, GfxMonitorMode* mode)
+{
+	if (bpp == 32) bpp = 24;
+	mode.rgb.r = mode.rgb.g = mode.rgb.b = (char)(bpp / 3);
+	uint delta = bpp - (mode.rgb.r * 3);
+	if (delta >= 1) mode.rgb.g = mode.rgb.g + 1;
+	if (delta == 2) mode.rgb.r = mode.rgb.r + 1;
+}
+
 fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags cmpFlags) @private
 {
 	switch
@@ -28,7 +37,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 		case flags.minimize: win.minimize();
 		case cmpFlags.minimize: win.restore();
 	}
-	if (flags.center) todo_fix_window_center(win);
+	if (flags.center) win.center_on_screen();
 	if (flags.center_cursor) _window_move_mouse(win, win.origin + win.size / 2);
 	switch
 	{

@@ -29,6 +29,22 @@ struct GfxWindowSrc
 	GfxBacking backing;
 }
 
+fn void _stop_check_events_native()
+{
+	win32::postMessageW(_gfx_ctx.helper_window, 0, 0, 0);
+}
+
+fn void _poll_events_native()
+{
+	todo_fix_resetPrevState();
+	Win32_MSG msg;
+	while (win32::peekMessageA(&msg, null, 0, 0, win32::PM_REMOVE))
+	{
+		win32::translateMessage(&msg);
+		win32::dispatchMessageA(&msg);
+	}
+}
+
 fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	win.internal.last_mouse = where - win.origin;
@@ -137,7 +153,7 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 	}
 	win.src.hdc = win32::getDC(win.src.window);
 
-	_win32_make_window_dark_mode(win, _get_dark_mode_state());
+	_win32_window_set_dark_mode(win, _get_dark_mode_state());
 	_make_window_transparent(win);
 
 	_window_set_flags(win, flags, {});
@@ -255,6 +271,33 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 	win.src.min_size = size;
 }
 
+fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
+{
+	uint key = 0;
+	char alpha = 0;
+	uint flags = 0;
+	CLong exStyle = win32::getWindowLongW(win.src.window, win32::GWL_EXSTYLE);
+	if (exStyle & (CLong)win32::WS_EX_LAYERED) win32::getLayeredWindowAttributes(win.src.window, &key, &alpha, &flags);
+
+	if (passthrough)
+	{
+		exStyle |= (CLong)(win32::WS_EX_TRANSPARENT | win32::WS_EX_LAYERED);
+	}
+	else
+	{
+		exStyle &= ~(CLong)win32::WS_EX_TRANSPARENT;
+		if (exStyle & (CLong)win32::WS_EX_LAYERED && flags & 2 == 0) exStyle &= ~(CLong)win32::WS_EX_LAYERED;
+	}
+
+	win32::setWindowLongW(win.src.window, win32::GWL_EXSTYLE, exStyle);
+	if (passthrough) win32::setLayeredWindowAttributes(win.src.window, key, alpha, flags);
+}
+
+fn void _window_set_name_native(GfxWindow* win, String name) => @pool()
+{
+	win32::setWindowTextW(win.src.window, name.to_wstring(tmem)!!);
+}
+
 fn bool _window_is_floating_native(GfxWindow* win)
 {
 	return win32::getWindowLongPtr(win.src.window, -20) & 0x00000008 != 0;
@@ -265,13 +308,24 @@ fn bool _window_is_hidden_native(GfxWindow* win)
 	return !win32::isWindowVisible(win.src.window) && !_window_is_minimized_native(win);
 }
 
+fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
+{
+	Win32_HMONITOR src = win32::monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
+	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
+	{
+		if (node.hMonitor == src) return &node.mon;
+	}
+	return get_primary_monitor();
+}
+
 fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 {
-	GfxMonitor* mon = find_monitor(win);
+	GfxMonitor*? mon = _window_find_monitor_native(win);
+	if (catch mon) return;
 
 	if (!fullscreen)
 	{
-		todo_fix_monitor_setMode(mon, &win.internal.oldMode);
+		_monitor_set_mode_native(mon, &win.internal.oldMode);
 		_window_set_border_native(win, true);
 
 		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
@@ -293,7 +347,7 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	win32::setWindowPos(win.src.window, win32::HWND_TOPMOST, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
 	win.origin = mon.origin;
 
-	todo_fix_monitor_scaleToWindow(mon, win);
+	(void)mon.scale_to_window(win);
 	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, ...mon.mode.size, 0x0200 | 0x0020 | 0x0040 | 0x0002);
 	win.size = mon.mode.size;
 }
@@ -367,6 +421,32 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 		modes.push(mode);
 	}
 	return modes.array_view();
+}
+
+fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+{
+	Win32_DEVMODEW dm = { .dmSize = Win32_DEVMODEW::size };
+	uint index = 0;
+	for (;;)
+	{
+		if (win32::enumDisplaySettingsW((ushort*)&mon.node.adapterName, index, &dm) == 0) break;
+		index += 1;
+
+		if (request & SCALE) { dm.dmFields |= DM_PELSWIDTH | DM_PELSHEIGHT; dm.dmPelsWidth = (uint)mode.size.x; dm.dmPelsHeight = (uint)mode.size.y; }
+		if (request & REFRESH) { dm.dmFields |= DM_DISPLAYFREQUENCY; dm.dmDisplayFrequency = (uint)mode.refresh_rate; }
+		if (request & RGB) { dm.dmFields |= DM_BITSPERPEL; dm.dmBitsPerPel = (uint)(mode.rgb.sum()); }
+
+		if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapterName, &dm, null, CDS_TEST, null) == DISP_CHANGE_SUCCESSFUL)
+		{
+			if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapterName, &dm, null, CDS_UPDATEREGISTRY, null) == DISP_CHANGE_SUCCESSFUL)
+			{
+				todo_fix_win32GetMode(&dm, &mon.mode);
+				return;
+			}
+			return MONITOR_MODE_CHANGE_FAILED~;
+		}
+	}
+	return MONITOR_MODE_CHANGE_FAILED~;
 }
 
 fn void? _write_clipboard_native(GfxDataTransfer* data)
@@ -748,6 +828,106 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 
 const Char16[] RENAME_PROP_NAME = {'C', '3', 'G', 'F', 'X', 0};
 
+// wgpu
+
+fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)
+{
+	WgpuSurfaceSourceWindowsHWND fromHwnd;
+	fromHwnd.chain.next = null;
+	fromHwnd.chain.sType = WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND;
+	fromHwnd.hwnd = window.src.window;
+	fromHwnd.hinstance = _gfx_ctx.instance;
+	WgpuSurfaceDescriptor surfaceDesc;
+	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromHwnd;
+	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
+}
+
+fn void _init_keycodes_native()
+{
+	_gfx_ctx.keycodes = {
+		[0x00B] = NUM0,          [0x002] = NUM1,          [0x003] = NUM2,
+		[0x004] = NUM3,          [0x005] = NUM4,          [0x006] = NUM5,
+		[0x007] = NUM6,          [0x008] = NUM7,          [0x009] = NUM8,
+		[0x00A] = NUM9,          [0x01E] = A,             [0x030] = B,
+		[0x02E] = C,             [0x020] = D,             [0x012] = E,
+		[0x021] = F,             [0x022] = G,             [0x023] = H,
+		[0x017] = I,             [0x024] = J,             [0x025] = K,
+		[0x026] = L,             [0x032] = M,             [0x031] = N,
+		[0x018] = O,             [0x019] = P,             [0x010] = Q,
+		[0x013] = R,             [0x01F] = S,             [0x014] = T,
+		[0x016] = U,             [0x02F] = V,             [0x011] = W,
+		[0x02D] = X,             [0x015] = Y,             [0x02C] = Z,
+		[0x028] = APOSTROPHE,    [0x02B] = BACK_SLASH,    [0x033] = COMMA,
+		[0x00D] = EQUALS,        [0x029] = BACKTICK,      [0x01A] = BRACKET,
+		[0x00C] = MINUS,         [0x034] = PERIOD,        [0x01B] = CLOSE_BRACKET,
+		[0x027] = SEMICOLON,     [0x035] = SLASH,         [0x056] = WORLD2,
+		[0x00E] = BACK_SPACE,    [0x153] = DELETE,        [0x14F] = END,
+		[0x01C] = ENTER,         [0x001] = ESCAPE,        [0x147] = HOME,
+		[0x152] = INSERT,        [0x15D] = MENU,          [0x151] = PAGE_DOWN,
+		[0x149] = PAGE_UP,       [0x045] = PAUSE,         [0x039] = SPACE,
+		[0x00F] = TAB,           [0x03A] = CAPS_LOCK,     [0x145] = NUM_LOCK,
+		[0x046] = SCROLL_LOCK,   [0x03B] = F1,            [0x03C] = F2,
+		[0x03D] = F3,            [0x03E] = F4,            [0x03F] = F5,
+		[0x040] = F6,            [0x041] = F7,            [0x042] = F8,
+		[0x043] = F9,            [0x044] = F10,           [0x057] = F11,
+		[0x058] = F12,           [0x064] = F13,           [0x065] = F14,
+		[0x066] = F15,           [0x067] = F16,           [0x068] = F17,
+		[0x069] = F18,           [0x06A] = F19,           [0x06B] = F20,
+		[0x06C] = F21,           [0x06D] = F22,           [0x06E] = F23,
+		[0x076] = F24,           [0x038] = ALT_L,         [0x01D] = CONTROL_L,
+		[0x02A] = SHIFT_L,       [0x15B] = SUPER_L,       [0x137] = PRINT_SCREEN,
+		[0x138] = ALT_R,         [0x11D] = CONTROL_R,     [0x036] = SHIFT_R,
+		[0x15C] = SUPER_R,       [0x150] = DOWN,          [0x14B] = LEFT,
+		[0x14D] = RIGHT,         [0x148] = UP,            [0x052] = PAD0,
+		[0x04F] = PAD1,          [0x050] = PAD2,          [0x051] = PAD3,
+		[0x04B] = PAD4,          [0x04C] = PAD5,          [0x04D] = PAD6,
+		[0x047] = PAD7,          [0x048] = PAD8,          [0x049] = PAD9,
+		[0x04E] = PAD_PLUS,      [0x053] = PAD_PERIOD,    [0x135] = PAD_SLASH,
+		[0x11C] = PAD_RETURN,    [0x059] = PAD_EQUAL,     [0x037] = PAD_MULTIPLY,
+		[0x04A] = PAD_MINUS,
+	};
+}
+
+fn GfxKey _physical_to_mapped_key_native(GfxKey key)
+{
+	uint vsc = todo_fix_rgfwToApiKey(key);
+	char[256] keyboardState;
+	if (win32::getKeyboardState((char*)&keyboardState) == 0) return key;
+
+	uint vk = win32::mapVirtualKeyW(vsc, 1 /* MAPVK_VSC_TO_VK */);
+	void* layout = win32::getKeyboardLayout(0);
+
+	ushort[4] charBuffer;
+	int result = win32::toUnicodeEx(vk, vsc, (char*)&keyboardState, &charBuffer, 1, 0, layout);
+	if (result == 1 && charBuffer[0] < 256) return (GfxKey)charBuffer[0];
+
+	switch (vk)
+	{
+		case 0x70: return F1; case 0x71: return F2; case 0x72: return F3;
+		case 0x73: return F4; case 0x74: return F5; case 0x75: return F6;
+		case 0x76: return F7; case 0x77: return F8; case 0x78: return F9;
+		case 0x79: return F10; case 0x7A: return F11; case 0x7B: return F12;
+		case 0x7C: return F13; case 0x7D: return F14; case 0x7E: return F15;
+		case 0x7F: return F16; case 0x80: return F17; case 0x81: return F18;
+		case 0x82: return F19; case 0x83: return F20; case 0x84: return F21;
+		case 0x85: return F22; case 0x86: return F23; case 0x87: return F24;
+		case 0xA0: return SHIFT_L; case 0xA1: return SHIFT_R;
+		case 0xA2: return CONTROL_L; case 0xA3: return CONTROL_R;
+		case 0xA4: return ALT_L; case 0xA5: return ALT_R;
+		case 0x5B: return SUPER_L; case 0x5C: return SUPER_R;
+		case 0x14: return CAPS_LOCK; case 0x90: return NUM_LOCK; case 0x91: return SCROLL_LOCK;
+		case 0x26: return UP; case 0x28: return DOWN; case 0x25: return LEFT; case 0x27: return RIGHT;
+		case 0x24: return HOME; case 0x23: return END; case 0x21: return PAGE_UP; case 0x22: return PAGE_DOWN;
+		case 0x2D: return INSERT; case 0x5D: return MENU;
+		case 0x6B: return PAD_PLUS; case 0x6D: return PAD_MINUS; case 0x6A: return PAD_MULTIPLY;
+		case 0x6F: return PAD_SLASH; case 0x0D: return PAD_RETURN; case 0x6E: return PAD_PERIOD;
+		case 0x60: return PAD0; case 0x61: return PAD1; case 0x62: return PAD2;
+		case 0x63: return PAD3; case 0x64: return PAD4; case 0x65: return PAD5;
+		case 0x66: return PAD6; case 0x67: return PAD7; case 0x68: return PAD8; case 0x69: return PAD9;
+		case 0x2C: return PRINT_SCREEN; case 0x13: return PAUSE;
+		default: return NULL;
+	}
+}
 
 // --- helpers
 
@@ -769,4 +949,10 @@ fn bool _get_dark_mode_state()
 	uint len = uint::size;
 	win32::regGetValueA(win32::HKEY_CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Themes\Personalize`, "AppsUseLightTheme", win32::RRF_RT_REG_DWORD, null, &light_mode, &len);
 	return light_mode == 0;
+}
+
+fn void _win32_window_set_dark_mode(GfxWindow* win, bool dark)
+{
+	int value = (int)dark;
+	win32::dwmSetWindowAttribute(win.src.window,USE_IMMERSIVE_DARK_MODE, &value, int::size);
 }

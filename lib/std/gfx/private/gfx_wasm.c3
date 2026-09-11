@@ -26,6 +26,16 @@ struct GfxWindowSrc
 }
 
 fn void _destroy_native() {}
+
+fn void _stop_check_events_native()
+{
+	_gfx_ctx.stop_check_events = true;
+}
+
+fn IntRect _monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
+fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => MONITOR_MODE_CHANGE_FAILED~;
+fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode) => MONITOR_MODE_CHANGE_FAILED~;
+
 fn void _free_mouse(TodoRenameMouse* mouse) {}
 fn void _window_show_native(GfxWindow* win) {}
 fn bool _window_is_hidden_native(GfxWindow* win) => false;
@@ -45,10 +55,16 @@ fn void _window_move_mouse(GfxWindow* win, GfxPoint where) {}
 fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) {}
 fn void _window_minimize_native(GfxWindow* win) {}
 fn void _window_raise_native(GfxWindow* win) {}
-fn IntRect _monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
 fn void _window_set_floating_native(GfxWindow* win, bool floating) {}
 fn void _window_close_native(GfxWindow* win) {}
 fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) {}
+
+fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
+{
+	ZString name = (ZString)mouse;
+	rgfwJsSetCursor(name, name.len());
+	return true;
+}
 
 fn void _window_set_opacity_native(GfxWindow* win, char opacity)
 {
@@ -57,10 +73,11 @@ fn void _window_set_opacity_native(GfxWindow* win, char opacity)
 
 fn void _window_maximize_native(GfxWindow* win)
 {
-	GfxMonitor* mon = find_monitor(win);
-	if (mon) win.resize(mon.mode.size);
+	(void)win.resize(_window_find_monitor_native(win).mode.size);
 	win.move({});
 }
+
+fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win) => get_primary_monitor();
 
 fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
@@ -117,6 +134,15 @@ fn GfxPoint _get_global_mouse_native()
 	return { rgfwJsGetMouseX(), rgfwJsGetMouseY() };
 }
 
+fn void _window_set_name_native(GfxWindow* win, String name)
+{
+	rgfwJsSetWindowTitle((ZString)name, name.len);
+}
+
+fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
+{
+	rgfwJsSetPointerEvents((int)passthrough);
+}
 
 fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
@@ -127,6 +153,18 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	ctx.ctx = (void*)(uptr)handle;
 	rgfwJsWebglMakeCurrent(handle);
 	win.opengl_swap_interval(0);
+}
+
+fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)
+{
+	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
+	canvasDesc.chain.next = null;
+	canvasDesc.chain.sType = WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR;
+	canvasDesc.selector.data = "#canvas";
+	canvasDesc.selector.length = 7;
+	WgpuSurfaceDescriptor surfaceDesc;
+	surfaceDesc.nextInChain = (WgpuChainedStruct*)&canvasDesc;
+	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
 fn GfxPoint _window_fetch_size_native(GfxWindow* win)
@@ -183,7 +221,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	float dpi = 96.0f * monitor.pixelRatio;
 	monitor.scale = (Vec2)(dpi / 96.0f);
 
-	todo_fix_splitBPP(32, &monitor.mode);
+	_split_bpp(32, &monitor.mode);
 	monitor.mode.refresh_rate = 0;
 
 	GfxMonitorNode* node = _monitor_add(&monitor);
@@ -192,6 +230,13 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 		_gfx_ctx.monitors.primary = node;
 		_monitor_callback(_gfx_ctx.root, &node.mon, true);
 	}
+}
+
+fn void _poll_events_native()
+{
+	if (_gfx_ctx.usingAsyncify == -1) _gfx_ctx.usingAsyncify = rgfwJsUsingAsyncify();
+	todo_fix_resetPrevState();
+	if (_gfx_ctx.usingAsyncify) rgfwJsSleep(0);
 }
 
 fn void _surface_release_native(GfxSurface* surface)
@@ -263,3 +308,106 @@ fn void* _get_current_opengl_context_native()
 	return (void*)(uptr)rgfwJsWebglGetCurrentContext();
 }
 
+fn GfxKey _physical_to_mapped_key_native(GfxKey key) => key;
+
+fn void _init_keycodes_native()
+{
+	_gfx_ctx.keycodes = {
+		[DOM_VK_BACK_QUOTE] = BACKTICK,         [DOM_VK_0] = NUM0,                      [DOM_VK_1] = NUM1,
+		[DOM_VK_2] = NUM2,                      [DOM_VK_3] = NUM3,                      [DOM_VK_4] = NUM4,
+		[DOM_VK_5] = NUM5,                      [DOM_VK_6] = NUM6,                      [DOM_VK_7] = NUM7,
+		[DOM_VK_8] = NUM8,                      [DOM_VK_9] = NUM9,                      [DOM_VK_SPACE] = SPACE,
+		[DOM_VK_A] = A,                         [DOM_VK_B] = B,                         [DOM_VK_C] = C,
+		[DOM_VK_D] = D,                         [DOM_VK_E] = E,                         [DOM_VK_F] = F,
+		[DOM_VK_G] = G,                         [DOM_VK_H] = H,                         [DOM_VK_I] = I,
+		[DOM_VK_J] = J,                         [DOM_VK_K] = K,                         [DOM_VK_L] = L,
+		[DOM_VK_M] = M,                         [DOM_VK_N] = N,                         [DOM_VK_O] = O,
+		[DOM_VK_P] = P,                         [DOM_VK_Q] = Q,                         [DOM_VK_R] = R,
+		[DOM_VK_S] = S,                         [DOM_VK_T] = T,                         [DOM_VK_U] = U,
+		[DOM_VK_V] = V,                         [DOM_VK_W] = W,                         [DOM_VK_X] = X,
+		[DOM_VK_Y] = Y,                         [DOM_VK_Z] = Z,                         [DOM_VK_PERIOD] = PERIOD,
+		[DOM_VK_COMMA] = COMMA,                 [DOM_VK_SLASH] = SLASH,                 [DOM_VK_OPEN_BRACKET] = BRACKET,
+		[DOM_VK_CLOSE_BRACKET] = CLOSE_BRACKET, [DOM_VK_SEMICOLON] = SEMICOLON,         [DOM_VK_QUOTE] = APOSTROPHE,
+		[DOM_VK_BACK_SLASH] = BACK_SLASH,       [DOM_VK_RETURN] = RETURN,               [DOM_VK_DELETE] = DELETE,
+		[DOM_VK_NUM_LOCK] = NUM_LOCK,           [DOM_VK_DIVIDE] = PAD_SLASH,            [DOM_VK_MULTIPLY] = PAD_MULTIPLY,
+		[DOM_VK_SUBTRACT] = PAD_MINUS,          [DOM_VK_NUMPAD1] = PAD1,                [DOM_VK_NUMPAD2] = PAD2,
+		[DOM_VK_NUMPAD3] = PAD3,                [DOM_VK_NUMPAD4] = PAD4,                [DOM_VK_NUMPAD5] = PAD5,
+		[DOM_VK_NUMPAD6] = PAD6,                [DOM_VK_NUMPAD9] = PAD9,                [DOM_VK_NUMPAD0] = PAD0,
+		[DOM_VK_DECIMAL] = PAD_PERIOD,          [DOM_VK_HYPHEN_MINUS] = MINUS,          [DOM_VK_EQUALS] = EQUALS,
+		[DOM_VK_BACK_SPACE] = BACK_SPACE,       [DOM_VK_TAB] = TAB,                     [DOM_VK_CAPS_LOCK] = CAPS_LOCK,
+		[DOM_VK_SHIFT] = SHIFT_L,               [DOM_VK_CONTROL] = CONTROL_L,           [DOM_VK_ALT] = ALT_L,
+		[DOM_VK_META] = SUPER_L,                [DOM_VK_F1] = F1,                       [DOM_VK_F2] = F2,
+		[DOM_VK_F3] = F3,                       [DOM_VK_F4] = F4,                       [DOM_VK_F5] = F5,
+		[DOM_VK_F6] = F6,                       [DOM_VK_F7] = F7,                       [DOM_VK_F8] = F8,
+		[DOM_VK_F9] = F9,                       [DOM_VK_F10] = F10,                     [DOM_VK_F11] = F11,
+		[DOM_VK_F12] = F12,                     [DOM_VK_UP] = UP,                       [DOM_VK_DOWN] = DOWN,
+		[DOM_VK_LEFT] = LEFT,                   [DOM_VK_RIGHT] = RIGHT,                 [DOM_VK_INSERT] = INSERT,
+		[DOM_VK_END] = END,                     [DOM_VK_PAGE_UP] = PAGE_UP,             [DOM_VK_PAGE_DOWN] = PAGE_DOWN,
+		[DOM_VK_ESCAPE] = ESCAPE,               [DOM_VK_HOME] = HOME,                   [DOM_VK_SCROLL_LOCK] = SCROLL_LOCK,
+		[DOM_VK_PRINTSCREEN] = PRINT_SCREEN,    [DOM_VK_PAUSE] = PAUSE,                 [DOM_VK_F13] = F13,
+		[DOM_VK_F14] = F14,                     [DOM_VK_F15] = F15,                     [DOM_VK_F16] = F16,
+		[DOM_VK_F17] = F17,                     [DOM_VK_F18] = F18,                     [DOM_VK_F19] = F19,
+		[DOM_VK_F20] = F20,                     [DOM_VK_F21] = F21,                     [DOM_VK_F22] = F22,
+		[DOM_VK_F23] = F23,                     [DOM_VK_F24] = F24,
+	};
+}
+
+// ---
+
+// TODO All of this is horribly broken
+extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "emscripten_set_canvas_size");
+extern fn void rgfwJsSetWindowTitle(ZString name, sz len) @wasm("env", "emscripten_set_window_title");
+extern fn void rgfwJsSetupWindowListeners() @wasm("env", "emscripten_setup_window_listeners");
+extern fn void rgfwJsSetupDropListeners() @wasm("env", "emscripten_setup_drop_listeners");
+
+// Each of the following registers exactly one DOM/window listener, mirroring
+// TODO_RENAME_createWindowPlatform's emscripten_set_*_callback calls one-for-one so
+// the JS host implementation can be checked line-by-line against RGFW.h.
+extern fn void rgfwJsSetResizeCallback() @wasm("env", "emscripten_set_resize_callback");
+extern fn void rgfwJsSetFullscreenChangeCallback() @wasm("env", "emscripten_set_fullscreenchange_callback");
+extern fn void rgfwJsSetMouseMoveCallback() @wasm("env", "emscripten_set_mousemove_callback");
+extern fn void rgfwJsSetTouchStartCallback() @wasm("env", "emscripten_set_touchstart_callback");
+extern fn void rgfwJsSetTouchEndCallback() @wasm("env", "emscripten_set_touchend_callback");
+extern fn void rgfwJsSetTouchMoveCallback() @wasm("env", "emscripten_set_touchmove_callback");
+// RGFW's own Emscripten_on_touchcancel is a no-op; registered anyway to match
+// RGFW.h exactly (the JS host's listener may itself do nothing).
+extern fn void rgfwJsSetTouchCancelCallback() @wasm("env", "emscripten_set_touchcancel_callback");
+extern fn void rgfwJsSetMouseDownCallback() @wasm("env", "emscripten_set_mousedown_callback");
+extern fn void rgfwJsSetMouseUpCallback() @wasm("env", "emscripten_set_mouseup_callback");
+extern fn void rgfwJsSetWheelCallback() @wasm("env", "emscripten_set_wheel_callback");
+extern fn void rgfwJsSetFocusInCallback() @wasm("env", "emscripten_set_focusin_callback");
+extern fn void rgfwJsSetFocusOutCallback() @wasm("env", "emscripten_set_focusout_callback");
+// Combined registrations: RGFW.h wires each of these pairs from a single
+// EM_ASM block (keydown+keyup; drop+dragover) rather than as separate
+// emscripten_set_*_callback calls, so one host call covers each pair.
+extern fn void rgfwJsSetKeyCallbacks() @wasm("env", "emscripten_set_key_callbacks");
+extern fn void rgfwJsSetDropCallbacks() @wasm("env", "emscripten_set_drop_callbacks");
+// RGFW.h calls `EM_ASM("Module.canvas.focus();")` after every fullscreen
+// transition so keyboard events keep targeting the canvas.
+extern fn void rgfwJsFocusCanvas() @wasm("env", "emscripten_focus_canvas");
+extern fn void rgfwJsBlitSurface(char* data, int w, int h, int minH) @wasm("env", "emscripten_blit_surface");
+extern fn void rgfwJsSetCursor(ZString name, sz len) @wasm("env", "emscripten_set_cursor");
+extern fn void rgfwJsHideCursor() @wasm("env", "emscripten_hide_cursor");
+extern fn int rgfwJsGetMouseX() @wasm("env", "emscripten_get_mouse_x");
+extern fn int rgfwJsGetMouseY() @wasm("env", "emscripten_get_mouse_y");
+extern fn void rgfwJsSetPointerEvents(int passthrough) @wasm("env", "emscripten_set_pointer_events");
+extern fn void rgfwJsWriteClipboard(char* data, sz len) @wasm("env", "emscripten_write_clipboard");
+extern fn int rgfwJsUsingAsyncify() @wasm("env", "emscripten_using_asyncify");
+extern fn void rgfwJsSleep(int ms) @wasm("env", "emscripten_sleep");
+extern fn double rgfwJsDevicePixelRatio() @wasm("env", "emscripten_device_pixel_ratio");
+extern fn int rgfwJsInnerWidth() @wasm("env", "emscripten_inner_width");
+extern fn int rgfwJsInnerHeight() @wasm("env", "emscripten_inner_height");
+extern fn void rgfwJsRequestPointerLock() @wasm("env", "emscripten_request_pointer_lock");
+extern fn void rgfwJsExitPointerLock() @wasm("env", "emscripten_exit_pointer_lock");
+extern fn void rgfwJsRequestFullscreen() @wasm("env", "emscripten_request_fullscreen");
+extern fn void rgfwJsExitFullscreen() @wasm("env", "emscripten_exit_fullscreen");
+extern fn void rgfwJsSetOpacity(float opacity) @wasm("env", "emscripten_set_opacity");
+extern fn int rgfwJsWebglCreateContext(GfxGlHints* hints) @wasm("env", "emscripten_webgl_create_context");
+extern fn void rgfwJsWebglDestroyContext(int ctx) @wasm("env", "emscripten_webgl_destroy_context");
+extern fn void rgfwJsWebglMakeCurrent(int ctx) @wasm("env", "emscripten_webgl_make_current");
+extern fn void rgfwJsWebglCommitFrame() @wasm("env", "emscripten_webgl_commit_frame");
+extern fn int rgfwJsWebglGetCurrentContext() @wasm("env", "emscripten_webgl_get_current_context");
+extern fn int rgfwJsExtensionSupported(ZString name, sz len) @wasm("env", "emscripten_extension_supported");
+extern fn GfxFn rgfwJsGetProcAddress(ZString name) @wasm("env", "emscripten_webgl_get_proc_address");
+extern fn void rgfwJsMkdir(ZString name) @wasm("env", "emscripten_mkdir");
+extern fn void rgfwJsWriteFile(ZString path, char* data, sz len) @wasm("env", "emscripten_write_file");
