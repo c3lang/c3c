@@ -1,5 +1,14 @@
 # C3C Release Notes
 
+## 0.8.5 Change list
+
+### Changes / improvements
+
+### Stdlib changes
+- Add `std::collections::Ref`
+
+### Fixes
+
 ## 0.8.4 Change list
 
 ### Changes / improvements
