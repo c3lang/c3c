@@ -516,20 +516,19 @@ fn void _wait_for_event_native(int waitMS)
 	}
 }
 
-// public
-fn void todo_fix_pollMonitors()
+fn void _poll_monitors_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
 			return _poll_monitors_wayland();
 		$case X11_ONLY:
-			return todo_fix_pollMonitors_X11();
+			return _poll_monitors_x11();
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _poll_monitors_wayland();
 			}
-			return todo_fix_pollMonitors_X11();
+			return _poll_monitors_x11();
 	$endswitch
 }
 

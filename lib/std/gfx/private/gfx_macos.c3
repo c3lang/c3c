@@ -409,7 +409,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	app.send_void("setActivationPolicy:", (NSUInteger)NS_APP_ACTIVATION_POLICY_REGULAR);
 	app.send_void("finishLaunching");
 	_osx_register_classes()!;
-	todo_fix_pollMonitors();
+	_poll_monitors_native();
 }
 
 fn void _poll_events_native()
@@ -602,7 +602,7 @@ fn void? _write_clipboard_native(GfxDataTransfer* data)
 	}
 }
 
-fn void todo_fix_pollMonitors()
+fn void _poll_monitors_native()
 {
 	if (_gfx_ctx.monitors.count != 0) free_monitors();
 	uint count = 0;

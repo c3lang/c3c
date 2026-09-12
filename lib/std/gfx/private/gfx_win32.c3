@@ -521,6 +521,60 @@ fn GfxPoint _get_global_mouse_native()
 	return { ...p };
 }
 
+fn void _poll_monitors_native()
+{
+	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next) node.disconnected = true;
+
+	for (uint adapterNum = 0;; adapterNum++)
+	{
+		Win32_DISPLAY_DEVICEW adapter = { .cb = Win32_DISPLAY_DEVICEW::size };
+		if (!win32::enumDisplayDevicesW(null, adapterNum, &adapter, 0)) break;
+		if (!(adapter.stateFlags & win32::DISPLAY_DEVICE_ACTIVE)) continue;
+
+		Win32_DWORD device_num;
+		for (device_num = 0;; device_num++)
+		{
+			Win32_DISPLAY_DEVICEW dd = { .cb = Win32_DISPLAY_DEVICEW::size };
+			if (win32::enumDisplayDevicesW((WString)&adapter.deviceName, device_num, &dd, 0) == 0) break;
+			if (!(dd.stateFlags & win32::DISPLAY_DEVICE_ACTIVE)) continue;
+
+			GfxMonitorNode* node;
+			for (node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
+			{
+				sz i;
+				for (i = 0; dd.deviceName[i] != 0 && node.deviceName[i] != 0 && dd.deviceName[i] == node.deviceName[i]; i++) {}
+				if (node.disconnected == true && dd.deviceName[i] == 0 && node.deviceName[i] == 0)
+				{
+					node.disconnected = false;
+					win32::enumDisplayMonitors(null, null, (void*)&_get_monitor_handle_callback, (iptr)(void*)&node.mon);
+					break;
+				}
+			}
+			if (node) continue;
+			_create_monitor(&adapter, &dd);
+		}
+
+		if (!device_num)
+		{
+			GfxMonitorNode* node;
+			for (node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
+			{
+				sz i;
+				for (i = 0; adapter.deviceName[i] != 0 && node.adapterName[i] != 0 && adapter.deviceName[i] == node.adapterName[i]; i++)
+				{}
+				if (node.disconnected == true && adapter.deviceName[i] == 0 && node.adapterName[i] == 0)
+				{
+					node.disconnected = false;
+					break;
+				}
+			}
+			if (node != null) continue;
+			_create_monitor(&adapter, null);
+		}
+	}
+	refresh_monitors();
+}
+
 fn void? _init_native(String class_name, GfxInitOption flags)
 {
 	win32::setProcessDPIAware();
@@ -574,7 +628,7 @@ fn void _destroy_native()
 
 fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wParam, Win32_LPARAM lParam)
 {
-	if (message == win32::WM_DISPLAYCHANGE) todo_fix_pollMonitors();
+	if (message == win32::WM_DISPLAYCHANGE) _poll_monitors_native();
 
 	if (hWnd == _gfx_ctx.helper_window) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 
@@ -838,6 +892,67 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 }
 
 // --- Helpers
+
+fn void _create_monitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLAY_DEVICEW* dd)
+{
+	Win32_DEVMODEW dm = { .dmSize = Win32_DEVMODEW::size };
+	if (!win32::enumDisplaySettingsW((WString)&adapter.deviceName, (uint)win32::ENUM_CURRENT_SETTINGS, &dm)) return;
+
+	GfxMonitorNode* node = _monitor_add(null);
+	node.adapterName = adapter.deviceName;
+	if (dd) @pool()
+	{
+		node.deviceName = dd.deviceName;
+		String s = string::tfrom_wstring((WString)&dd.deviceString) ?? "<invalid>";
+		if (s.len > 127) s = s[:127];
+		node.mon.name[:s.len] = s[..];
+		node.mon.name[s.len] = 0;
+	};
+	node.mon.name[127] = 0;
+
+	Win32_RECT rect;
+	rect.left = dm.dmPosition.x;
+	rect.top = dm.dmPosition.y;
+	rect.right = dm.dmPosition.x + (int)dm.dmPelsWidth;
+	rect.bottom = dm.dmPosition.y + (int)dm.dmPelsHeight;
+	win32::enumDisplayMonitors(null, &rect, (void*)&_get_monitor_handle_callback, (iptr)(void*)node);
+
+	_win32_get_mode(&dm, &node.mon.mode);
+
+	Win32_MONITORINFOEXW monitorInfo;
+	monitorInfo.cbSize = Win32_MONITORINFOEXW::size;
+	win32::getMonitorInfoW(node.hMonitor, &monitorInfo);
+
+	node.mon.origin = { monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top};
+
+	Win32_HDC hdc = win32::createDCW((WString)&monitorInfo.szDevice, null, null, null);
+	float dpiX = win32::getDeviceCaps(hdc, 88 /* LOGPIXELSX */);
+	float dpiY = win32::getDeviceCaps(hdc, 90 /* LOGPIXELSY */);
+	node.mon.scale = { dpiX / 96.0f, dpiY / 96.0f };
+	node.mon.pixelRatio = dpiX >= 192.0f ? 2.0f : 1.0f;
+	node.mon.phys_size = {
+		win32::getDeviceCaps(hdc, 4 /* HORZSIZE */) / 25.4f,
+		win32::getDeviceCaps(hdc, 6 /* VERTSIZE */) / 25.4f
+	};
+	win32::deleteDC(hdc);
+
+	if (monitorInfo.dwFlags & win32::MONITORINFOF_PRIMARY) _gfx_ctx.monitors.primary = node;
+	_monitor_callback(_gfx_ctx.root, &node.mon, true);
+}
+
+fn int _get_monitor_handle_callback(void* hMonitor, void* hdcMonitor, Win32_RECT* lprcMonitor, iptr dwData)
+{
+	Win32_MONITORINFOEXW mi;
+	mi.cbSize = Win32_MONITORINFOEXW::size;
+	if (win32::getMonitorInfoW(hMonitor, &mi))
+	{
+		GfxMonitorNode* node = (void*)dwData;
+		sz i;
+		for (i = 0; mi.szDevice[i] && node.adapterName[i] && mi.szDevice[i] == node.adapterName[i]; i++) {}
+		if (mi.szDevice[i] == 0 && node.adapterName[i] == 0) node.hMonitor = hMonitor;
+	}
+	return 1;
+}
 
 macro GfxPoint _param_to_point(iptr lParam)
 {

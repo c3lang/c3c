@@ -36,6 +36,7 @@ fn IntRect _monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
 fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => MONITOR_MODE_CHANGE_FAILED~;
 fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode) => MONITOR_MODE_CHANGE_FAILED~;
 
+fn void _poll_monitors_native() {}
 fn void _free_mouse(TodoRenameMouse* mouse) {}
 fn void _window_show_native(GfxWindow* win) {}
 fn bool _window_is_hidden_native(GfxWindow* win) => false;

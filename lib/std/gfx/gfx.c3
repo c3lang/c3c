@@ -840,7 +840,7 @@ fn void? init(String class_name, GfxInitOption options)
 	{
 		_gfx_ctx.standardMice[icon.ordinal] = todo_fix_createMouseStandard(icon);
 	}
-	todo_fix_pollMonitors();
+	_poll_monitors_native();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
 }
 
@@ -861,7 +861,11 @@ fn void finalize()
 	_gfx_ctx = {};
 }
 
-// public
+fn void poll_monitors()
+{
+	_poll_monitors_native();
+}
+
 fn GfxSurface*? create_surface(char* data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
 	GfxSurface* s = mem::new(GfxSurface);
@@ -953,7 +957,7 @@ fn WGPUSurface GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
 	return _window_create_wgpu_surface_native(self, instance);
 }
 
-fn void? GfxWindow.create_dirext_swap_chain(&self, Win32_IDXGIFactory* factory, void* device, void** swapchain) @feat(WIN32)
+fn void? GfxWindow.create_directx_swap_chain(&self, Win32_IDXGIFactory* factory, void* device, void** swapchain) @feat(WIN32)
 {
 	return _window_create_directx_swap_chain_native(self, factory, device, swapchain);
 }

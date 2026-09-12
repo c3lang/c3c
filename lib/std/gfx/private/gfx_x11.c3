@@ -720,7 +720,7 @@ fn void todo_fix_xHandleEvent()
 
 	if (e.type == _gfx_ctx.xrandrEventBase + 0 /* RRNotify */)
 	{
-		todo_fix_pollMonitors();
+		_poll_monitors_native();
 		return;
 	}
 
@@ -1102,7 +1102,7 @@ fn void todo_fix_xHandleEvent()
 }
 
 // private
-fn void todo_fix_pollMonitors_X11()
+fn void _poll_monitors_x11()
 {
 	XWindow root = xDefaultRootWindow(_gfx_ctx.display);
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, root);

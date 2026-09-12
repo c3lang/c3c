@@ -1,25 +1,8 @@
 module std::gfx @feat(WIN32);
 import std::collections::list, std::math, std::os::win32;
 
-
-
-
-// private
-fn bool todo_fix_createUTF8FromWideStringWin32(ushort* source, char* output, sz max)
-{
-	if (source == null) return false;
-	int size = win32::wideCharToMultiByte(65001 /* CP_UTF8 */, 0, source, -1, null, 0, null, null);
-	if (size == 0) return false;
-	if (size > (int)max) size = (int)max;
-	if (win32::wideCharToMultiByte(65001, 0, source, -1, (void*)output, size, null, null) == 0) return false;
-	output[size] = 0;
-	return true;
-}
-
-
 // public
 fn void _wait_for_event_native(int waitMS) { win32::msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */); }
-
 
 const WString WIDE_DISPLAY_NAME = @wstring("DISPLAY\0");
 
@@ -57,121 +40,8 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 }
 
 // private
-fn int todo_fix_win32GetMonitorHandleCallback(void* hMonitor, void* hdcMonitor, Win32_RECT* lprcMonitor, iptr dwData)
-{
-	Win32_MONITORINFOEXW mi;
-	mi.cbSize = Win32_MONITORINFOEXW::size;
-	if (win32::getMonitorInfoW(hMonitor, &mi) != 0)
-	{
-		GfxMonitorNode* node = (GfxMonitorNode*)(void*)dwData;
-		sz i;
-		for (i = 0; mi.szDevice[i] != 0 && node.adapterName[i] != 0 && mi.szDevice[i] == node.adapterName[i]; i++) {}
-		if (mi.szDevice[i] == 0 && node.adapterName[i] == 0) node.hMonitor = hMonitor;
-	}
-	return 1;
-}
 
-// public
-fn void todo_fix_win32CreateMonitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLAY_DEVICEW* dd)
-{
-	Win32_DEVMODEW dm;
-	dm.dmSize = (ushort)Win32_DEVMODEW::size;
-	if (win32::enumDisplaySettingsW((ushort*)&adapter.deviceName, (uint)win32::ENUM_CURRENT_SETTINGS, &dm) == 0) return;
-
-	GfxMonitorNode* node = _monitor_add(null);
-	mem::copy(&node.adapterName, &adapter.deviceName, 64);
-	if (dd != null) mem::copy(&node.deviceName, &dd.deviceName, 64);
-
-	if (dd != null) todo_fix_createUTF8FromWideStringWin32((ushort*)&dd.deviceString, (char*)&node.mon.name, 127);
-	node.mon.name[127] = 0;
-
-	Win32_RECT rect;
-	rect.left = dm.dmPosition.x;
-	rect.top = dm.dmPosition.y;
-	rect.right = dm.dmPosition.x + (int)dm.dmPelsWidth;
-	rect.bottom = dm.dmPosition.y + (int)dm.dmPelsHeight;
-	win32::enumDisplayMonitors(null, &rect, (void*)&todo_fix_win32GetMonitorHandleCallback, (iptr)(void*)node);
-
-	_win32_get_mode(&dm, &node.mon.mode);
-
-	Win32_MONITORINFOEXW monitorInfo;
-	monitorInfo.cbSize = Win32_MONITORINFOEXW::size;
-	win32::getMonitorInfoW(node.hMonitor, &monitorInfo);
-
-	node.mon.origin = { monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top};
-
-	Win32_HDC hdc = win32::createDCW((WString)&monitorInfo.szDevice, null, null, null);
-	float dpiX = win32::getDeviceCaps(hdc, 88 /* LOGPIXELSX */);
-	float dpiY = win32::getDeviceCaps(hdc, 90 /* LOGPIXELSY */);
-	node.mon.scale = { dpiX / 96.0f, dpiY / 96.0f };
-	node.mon.pixelRatio = dpiX >= 192.0f ? 2.0f : 1.0f;
-	node.mon.phys_size = {
-		win32::getDeviceCaps(hdc, 4 /* HORZSIZE */) / 25.4f,
-		win32::getDeviceCaps(hdc, 6 /* VERTSIZE */) / 25.4f
-	};
-	win32::deleteDC(hdc);
-
-	if (monitorInfo.dwFlags & win32::MONITORINFOF_PRIMARY) _gfx_ctx.monitors.primary = node;
-	_monitor_callback(_gfx_ctx.root, &node.mon, true);
-}
-
-// public
-fn void todo_fix_pollMonitors()
-{
-	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next) node.disconnected = true;
-
-	for (uint adapterNum = 0;; adapterNum++)
-	{
-		Win32_DISPLAY_DEVICEW adapter = { .cb = Win32_DISPLAY_DEVICEW::size };
-		if (win32::enumDisplayDevicesW(null, adapterNum, &adapter, 0) == 0) break;
-		if (!(adapter.stateFlags & win32::DISPLAY_DEVICE_ACTIVE)) continue;
-
-		Win32_DWORD deviceNum;
-		for (deviceNum = 0;; deviceNum++)
-		{
-			Win32_DISPLAY_DEVICEW dd = { .cb = Win32_DISPLAY_DEVICEW::size };
-			if (win32::enumDisplayDevicesW((WString)&adapter.deviceName, deviceNum, &dd, 0) == 0) break;
-			if (!(dd.stateFlags & win32::DISPLAY_DEVICE_ACTIVE)) continue;
-
-			GfxMonitorNode* node;
-			for (node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
-			{
-				sz i;
-				for (i = 0; dd.deviceName[i] != 0 && node.deviceName[i] != 0 && dd.deviceName[i] == node.deviceName[i]; i++) {}
-				if (node.disconnected == true && dd.deviceName[i] == 0 && node.deviceName[i] == 0)
-				{
-					node.disconnected = false;
-					win32::enumDisplayMonitors(null, null, (void*)&todo_fix_win32GetMonitorHandleCallback, (iptr)(void*)&node.mon);
-					break;
-				}
-			}
-			if (node != null) continue;
-			todo_fix_win32CreateMonitor(&adapter, &dd);
-		}
-
-		if (deviceNum == 0)
-		{
-			GfxMonitorNode* node;
-			for (node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
-			{
-				sz i;
-				for (i = 0; adapter.deviceName[i] != 0 && node.adapterName[i] != 0 && adapter.deviceName[i] == node.adapterName[i]; i++) {}
-				if (node.disconnected == true && adapter.deviceName[i] == 0 && node.adapterName[i] == 0) { node.disconnected = false; break; }
-			}
-			if (node != null) continue;
-			todo_fix_win32CreateMonitor(&adapter, null);
-		}
-	}
-	refresh_monitors();
-}
-
-// public
 fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}
-
-// public
-
-// public
-
 
 
 // private

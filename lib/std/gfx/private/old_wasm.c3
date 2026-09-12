@@ -234,7 +234,7 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len) =>
 fn GfxFn _get_opengl_proc_native(ZString procname) => rgfwJsGetProcAddress(procname);
 
 
-fn void todo_fix_pollMonitors() {}
+
 // public
 fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}
 
