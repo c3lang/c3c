@@ -93,6 +93,15 @@ struct Win32_WNDCLASSEXW
 	Win32_HICON     hIconSm;
 }
 
+struct Win32_MINMAXINFO
+{
+	Win32_POINT ptReserved;
+	Win32_POINT ptMaxSize;
+	Win32_POINT ptMaxPosition;
+	Win32_POINT ptMinTrackSize;
+	Win32_POINT ptMaxTrackSize;
+}
+
 struct Win32_FLASHWINFO
 {
 	Win32_UINT  cbSize;
@@ -269,6 +278,9 @@ alias Win32_LPRAWHID = Win32_RAWHID*;
 alias Win32_PWNDCLASSW = Win32_WNDCLASSW*;
 alias Win32_NPWNDCLASSW = Win32_WNDCLASSW*;
 alias Win32_LPWNDCLASSW = Win32_WNDCLASSW*;
+
+alias Win32_PMINMAXINFO = Win32_MINMAXINFO*;
+alias Win32_LPMINMAXINFO = Win32_MINMAXINFO*;
 
 alias Win32_ATOM = ushort;
 
@@ -610,6 +622,33 @@ const GCLP_WNDPROC = -24;
 const PM_NOREMOVE = 0x0000;
 const PM_REMOVE   = 0x0001;
 const PM_NOYIELD  = 0x0002;
+
+// MONITORINFO.dwFlags
+const Win32_DWORD MONITORINFOF_PRIMARY = 0x00000001;
+
+// ChangeDisplaySettings / ChangeDisplaySettingsEx dwflags
+const Win32_DWORD CDS_UPDATEREGISTRY  = 0x00000001;
+const Win32_DWORD CDS_TEST            = 0x00000002;
+const Win32_DWORD CDS_FULLSCREEN      = 0x00000004;
+const Win32_DWORD CDS_GLOBAL          = 0x00000008;
+const Win32_DWORD CDS_SET_PRIMARY     = 0x00000010;
+const Win32_DWORD CDS_VIDEOPARAMETERS = 0x00000020;
+const Win32_DWORD CDS_NORESET         = 0x10000000;
+const Win32_DWORD CDS_RESET           = 0x40000000;
+
+// ChangeDisplaySettings* return values
+const Win32_LONG DISP_CHANGE_SUCCESSFUL   =  0;
+const Win32_LONG DISP_CHANGE_RESTART      =  1;
+const Win32_LONG DISP_CHANGE_FAILED       = -1;
+const Win32_LONG DISP_CHANGE_BADMODE      = -2;
+const Win32_LONG DISP_CHANGE_NOTUPDATED   = -3;
+const Win32_LONG DISP_CHANGE_BADFLAGS     = -4;
+const Win32_LONG DISP_CHANGE_BADPARAM     = -5;
+const Win32_LONG DISP_CHANGE_BADDUALVIEW  = -6;
+
+// EnumDisplaySettings iModeNum
+const Win32_DWORD ENUM_CURRENT_SETTINGS  = 0xFFFFFFFF; // ((DWORD)-1)
+const Win32_DWORD ENUM_REGISTRY_SETTINGS = 0xFFFFFFFE; // ((DWORD)-2)
 
 extern fn Win32_LRESULT callWindowProcW(Win32_WNDPROC lpPrevWndFunc, Win32_HWND hWnd, Win32_UINT msg, Win32_WPARAM wParam, Win32_LPARAM lParam) @cname("CallWindowProcW");
 extern fn Win32_HWND createWindowExW(Win32_DWORD, Win32_LPCWSTR, Win32_LPCWSTR, Win32_DWORD, CInt, CInt, CInt, CInt, Win32_HWND, Win32_HMENU, Win32_HINSTANCE, Win32_LPVOID) @cname("CreateWindowExW");

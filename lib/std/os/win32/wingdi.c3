@@ -1,6 +1,49 @@
 module std::os::win32 @link("gdi32") @feat(WIN32);
 
 
+struct Win32_BITMAPV5HEADER
+{
+	Win32_DWORD        bV5Size;
+	Win32_LONG         bV5Width;
+	Win32_LONG         bV5Height;
+	Win32_WORD         bV5Planes;
+	Win32_WORD         bV5BitCount;
+	Win32_DWORD        bV5Compression;
+	Win32_DWORD        bV5SizeImage;
+	Win32_LONG         bV5XPelsPerMeter;
+	Win32_LONG         bV5YPelsPerMeter;
+	Win32_DWORD        bV5ClrUsed;
+	Win32_DWORD        bV5ClrImportant;
+	Win32_DWORD        bV5RedMask;
+	Win32_DWORD        bV5GreenMask;
+	Win32_DWORD        bV5BlueMask;
+	Win32_DWORD        bV5AlphaMask;
+	Win32_DWORD        bV5CSType;
+	Win32_CIEXYZTRIPLE bV5Endpoints;
+	Win32_DWORD        bV5GammaRed;
+	Win32_DWORD        bV5GammaGreen;
+	Win32_DWORD        bV5GammaBlue;
+	Win32_DWORD        bV5Intent;
+	Win32_DWORD        bV5ProfileData;
+	Win32_DWORD        bV5ProfileSize;
+	Win32_DWORD        bV5Reserved;
+}
+
+struct Win32_CIEXYZ
+{
+	Win32_FXPT2DOT30 ciexyzX;
+	Win32_FXPT2DOT30 ciexyzY;
+	Win32_FXPT2DOT30 ciexyzZ;
+}
+
+struct Win32_CIEXYZTRIPLE
+{
+	Win32_CIEXYZ ciexyzRed;
+	Win32_CIEXYZ ciexyzGreen;
+	Win32_CIEXYZ ciexyzBlue;
+}
+
+
 struct Win32_PIXELFORMATDESCRIPTOR
 {
 	Win32_WORD  nSize;
@@ -33,6 +76,10 @@ struct Win32_PIXELFORMATDESCRIPTOR
 
 alias Win32_PPIXELFORMATDESCRIPTOR = Win32_PIXELFORMATDESCRIPTOR*;
 alias Win32_LPPIXELFORMATDESCRIPTOR = Win32_PIXELFORMATDESCRIPTOR*;
+alias Win32_LPBITMAPV5HEADER = Win32_BITMAPV5HEADER*;
+alias Win32_PBITMAPV5HEADER = Win32_BITMAPV5HEADER*;
+alias Win32_FXPT2DOT30 = CLong;
+alias Win32_LPFXPT2DOT30 = Win32_FXPT2DOT30*;
 
 const PFD_DRAW_TO_WINDOW      = 0x00000004;
 const PFD_DRAW_TO_BITMAP      = 0x00000008;
@@ -52,6 +99,37 @@ const PFD_TYPE_COLORINDEX = 1;
 const PFD_MAIN_PLANE      = 0;
 const PFD_OVERLAY_PLANE   = 1;
 const PFD_UNDERLAY_PLANE  = -1;
+
+// biCompression values (wingdi.h)
+const Win32_DWORD BI_RGB       = 0;
+const Win32_DWORD BI_RLE8      = 1;
+const Win32_DWORD BI_RLE4      = 2;
+const Win32_DWORD BI_BITFIELDS = 3;
+const Win32_DWORD BI_JPEG      = 4;
+const Win32_DWORD BI_PNG       = 5;
+
+const Win32_UINT DIB_RGB_COLORS = 0;   // color table holds RGBs
+const Win32_UINT DIB_PAL_COLORS = 1;   // color table holds palette indices
+
+// DEVMODE.dmFields bits — only the display-related ones your code needs
+const Win32_DWORD DM_BITSPERPEL       = 0x00040000;
+const Win32_DWORD DM_PELSWIDTH        = 0x00080000;
+const Win32_DWORD DM_PELSHEIGHT       = 0x00100000;
+const Win32_DWORD DM_DISPLAYFLAGS     = 0x00200000;
+const Win32_DWORD DM_DISPLAYFREQUENCY = 0x00400000;
+
+// DISPLAY_DEVICE.StateFlags
+const Win32_DWORD DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x00000001;
+const Win32_DWORD DISPLAY_DEVICE_ACTIVE              = 0x00000001;
+const Win32_DWORD DISPLAY_DEVICE_MULTI_DRIVER        = 0x00000002;
+const Win32_DWORD DISPLAY_DEVICE_ATTACHED            = 0x00000002;
+const Win32_DWORD DISPLAY_DEVICE_PRIMARY_DEVICE      = 0x00000004;
+const Win32_DWORD DISPLAY_DEVICE_MIRRORING_DRIVER    = 0x00000008;
+const Win32_DWORD DISPLAY_DEVICE_VGA_COMPATIBLE      = 0x00000010;
+const Win32_DWORD DISPLAY_DEVICE_REMOVABLE           = 0x00000020;
+const Win32_DWORD DISPLAY_DEVICE_DISCONNECT          = 0x02000000;
+const Win32_DWORD DISPLAY_DEVICE_REMOTE              = 0x04000000;
+const Win32_DWORD DISPLAY_DEVICE_MODESPRUNED         = 0x08000000;
 
 const Win32_DWORD SRCCOPY     = 0x00CC0020;
 const Win32_DWORD SRCPAINT    = 0x00EE0086;

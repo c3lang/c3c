@@ -28,6 +28,7 @@ excuse
 	GLX_NO_VALID_VISUAL,
 	OPENGL_CTX_CREATION_FAILED,
 	OPENGL_PIXEL_FORMAT_LOAD_FAILED,
+	DIRECTX_SWAP_CHAIN_CREATION_FAILED,
 	EGL_DISPLAY_NOT_FOUND,
 	EGL_DISPLAY_FAILED_TO_INITIALIZE,
 	EGL_CTX_CREATION_FAILED,
@@ -952,6 +953,11 @@ fn WGPUSurface GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
 	return _window_create_wgpu_surface_native(self, instance);
 }
 
+fn void? GfxWindow.create_dirext_swap_chain(&self, Win32_IDXGIFactory* factory, void* device, void** swapchain) @feat(WIN32)
+{
+	return _window_create_directx_swap_chain_native(self, factory, device, swapchain);
+}
+
 fn void GfxWindow.swap_opengl_buffers(&self)
 {
 	_window_swap_opengl_buffers_native(self);
@@ -1385,6 +1391,11 @@ fn void? GfxMonitor.scale_to_window(&self, GfxWindow* win)
 	mode.size = win.size;
 	defer win.move(self.origin);
 	return _monitor_request_mode_native(self, &mode, SCALE);
+}
+
+fn void? GfxMonitor.set_mode_native(&self, GfxMonitorMode* mode)
+{
+	return _monitor_set_mode_native(self, mode);
 }
 
 fn void? GfxMonitor.request_mode(&self, GfxMonitorMode* mode, GfxMonitorModeRequest request)

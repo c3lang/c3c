@@ -2,144 +2,6 @@ module std::gfx @feat(WIN32);
 import std::collections::list, std::math, std::os::win32;
 
 
-struct BitmapV5Header
-{
-	uint size;
-	int width, height;
-	ushort planes, bitCount;
-	uint compression, sizeImage;
-	int xPelsPerMeter, yPelsPerMeter;
-	uint clrUsed, clrImportant;
-	uint redMask, greenMask, blueMask, alphaMask;
-	uint csType;
-	int[9] endpoints;
-	uint gammaRed, gammaGreen, gammaBlue;
-	uint intent, profileData, profileSize, reserved;
-}
-const uint BI_RGB = 0;
-
-const uint MONITORINFOF_PRIMARY = 1;
-
-const uint DM_PELSWIDTH = 0x80000;
-const uint DM_PELSHEIGHT = 0x100000;
-const uint DM_DISPLAYFREQUENCY = 0x400000;
-const uint DM_BITSPERPEL = 0x40000;
-const int CDS_TEST = 0x2;
-const int CDS_UPDATEREGISTRY = 0x1;
-const int DISP_CHANGE_SUCCESSFUL = 0;
-const int ENUM_CURRENT_SETTINGS = -1;
-
-const uint DISPLAY_DEVICE_ACTIVE = 0x1;
-
-struct MinMaxInfo { Win32_POINT ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize; }
-
-
-alias TodoRenameWglCreateContextProc = fn Win32_HGLRC(Win32_HDC*);
-alias TodoRenameWglDeleteContextProc = fn int(Win32_HGLRC);
-alias TodoRenameWglMakeCurrentProc = fn int(Win32_HDC*, Win32_HGLRC);
-alias TodoRenameWglGetCurrentDcProc = fn Win32_HDC*();
-alias TodoRenameWglGetCurrentContextProc = fn Win32_HGLRC();
-alias TodoRenameWglShareListsProc = fn int(Win32_HGLRC, Win32_HGLRC);
-alias TodoRenameWglCreateContextAttribsArbProc = fn Win32_HGLRC(Win32_HDC*, Win32_HGLRC, int*);
-alias TodoRenameWglChoosePixelFormatArbProc = fn int(Win32_HDC*, int*, float*, uint, int*, uint*);
-alias TodoRenameWglSwapIntervalExtProc = fn int(int);
-
-TodoRenameWglCreateContextProc todo_fix_wglCreateContext;
-TodoRenameWglDeleteContextProc wgl_delete_context_fn;
-TodoRenameWglMakeCurrentProc todo_fix_wglMakeCurrent;
-TodoRenameWglGetCurrentDcProc todo_fix_wglGetCurrentDC;
-TodoRenameWglGetCurrentContextProc todo_fix_wglGetCurrentContext;
-TodoRenameWglShareListsProc todo_fix_wglShareLists;
-TodoRenameWglCreateContextAttribsArbProc todo_fix_wglCreateContextAttribsARB;
-TodoRenameWglChoosePixelFormatArbProc todo_fix_wglChoosePixelFormatARB;
-TodoRenameWglSwapIntervalExtProc todo_fix_wglSwapIntervalEXT;
-
-
-struct GfxNativeImage
-{
-	GfxFormat format;
-	char* buffer; // bitmapBits
-	Win32_HBITMAP bitmap; // HBITMAP
-	Win32_HDC hdcMem; // HDC
-}
-
-struct WgpuSurfaceSourceWindowsHWND { WgpuChainedStruct chain; void* hinstance; void* hwnd; }
-
-// public
-
-alias HResult = int;
-const int DXGI_FORMAT_R8G8B8A8_UNORM = 28;
-const uint DXGI_USAGE_RENDER_TARGET_OUTPUT = 0x20;
-const uint DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH = 2;
-const int DXGI_SWAP_EFFECT_DISCARD = 0;
-
-struct DxgiRational { uint numerator; uint denominator; }
-struct DxgiSampleDesc { uint count; uint quality; }
-struct DxgiModeDesc
-{
-	uint width;
-	uint height;
-	DxgiRational refresh_rate;
-	int format;
-	int scanlineOrdering;
-	int scaling;
-}
-struct DxgiSwapChainDesc
-{
-	DxgiModeDesc bufferDesc;
-	DxgiSampleDesc sampleDesc;
-	uint bufferUsage;
-	uint bufferCount;
-	void* outputWindow;
-	int windowed;
-	int swapEffect;
-	uint flags;
-}
-
-alias DxgiCreateSwapChainFn = fn HResult(void* self, void* pDevice, DxgiSwapChainDesc* pDesc, void** ppSwapChain);
-struct DxgiFactoryVtbl
-{
-	void* queryInterface;
-	void* addRef;
-	void* release;
-	void* setPrivateData;
-	void* setPrivateDataInterface;
-	void* getPrivateData;
-	void* getParent;
-	void* enumAdapters;
-	void* makeWindowAssociation;
-	void* getWindowAssociation;
-	DxgiCreateSwapChainFn createSwapChain;
-}
-struct DxgiFactory { DxgiFactoryVtbl* lpVtbl; }
-
-// public
-fn int todo_fix_window_createSwapChain_DirectX(GfxWindow* win, DxgiFactory* pFactory, void* pDevice, void** swapchain)
-{
-	if (win == null || pFactory == null || pDevice == null || swapchain == null) return -1;
-
-	DxgiSwapChainDesc swapChainDesc;
-	swapChainDesc.bufferCount = 2;
-	swapChainDesc.bufferDesc.width = (uint)win.width;
-	swapChainDesc.bufferDesc.height = (uint)win.height;
-	swapChainDesc.bufferDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	swapChainDesc.bufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.outputWindow = win.src.window;
-	swapChainDesc.sampleDesc.count = 1;
-	swapChainDesc.sampleDesc.quality = 0;
-	swapChainDesc.windowed = 1;
-	swapChainDesc.flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-
-	HResult hr = pFactory.lpVtbl.createSwapChain(pFactory, pDevice, &swapChainDesc, swapchain);
-	if (hr < 0)
-	{
-
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_DIRECT_X_CONTEXT, "Failed to create DirectX swap chain!");
-		return -2;
-	}
-	return 0;
-}
-
 
 
 // private
@@ -155,289 +17,16 @@ fn bool todo_fix_createUTF8FromWideStringWin32(ushort* source, char* output, sz 
 }
 
 
-
-macro GfxPoint _param_to_point(iptr lParam)
-{
-	return { (int)(lParam & 0xffff), (int)((lParam >> 16) & 0xffff) };
-}
-
-// private
-fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wParam, Win32_LPARAM lParam)
-{
-	if (message == win32::WM_DISPLAYCHANGE) todo_fix_pollMonitors();
-
-	if (hWnd == _gfx_ctx.helper_window) return win32::defWindowProcW(hWnd, message, wParam, lParam);
-
-	GfxWindow* win = win32::getPropW(hWnd, RENAME_PROP_NAME);
-	if (!win) return win32::defWindowProcW(hWnd, message, wParam, lParam);
-
-	Win32_RECT frame;
-	uint style = _winapi_window_get_style(win.internal.flags);
-	uint exStyle = _winapi_window_get_style_ex(win, win.internal.flags);
-	win32::adjustWindowRectEx(&frame, style, 0, exStyle);
-
-	switch (message)
-	{
-		case win32::WM_CLOSE:
-		case win32::WM_QUIT:
-			_window_close_callback(win);
-			return 0;
-		case win32::WM_ACTIVATEAPP:
-			bool inFocus = (wParam & 0xffff) != 0;
-			_window_focus_callback(win, inFocus);
-			return win32::defWindowProcW(hWnd, message, wParam, lParam);
-		case win32::WM_MOVE:
-			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
-			_window_moved_callback(win, _param_to_point(lParam));
-			return win32::defWindowProcW(hWnd, message, wParam, lParam);
-		case win32::WM_SIZE:
-			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
-			_window_resized_callback(win, _param_to_point(lParam));
-			_window_check_mode(win);
-			return win32::defWindowProcW(hWnd, message, wParam, lParam);
-		case win32::WM_MOUSEACTIVATE:
-			if ((lParam >> 16) & 0xffff == win32::WM_LBUTTONDOWN)
-			{
-				if ((lParam & 0xffff) != win32::HTCLIENT) win.src.actionFrame = true;
-			}
-		case win32::WM_CAPTURECHANGED:
-			if (!lParam && win.src.actionFrame)
-			{
-				_window_set_capture_mouse_native(win, win.internal.capture_mouse);
-				win.src.actionFrame = false;
-			}
-		case win32::WM_DPICHANGED:
-			float scaleX = (float)((wParam >> 16) & 0xffff) / 96.0f;
-			float scaleY = (float)(wParam & 0xffff) / 96.0f;
-			_scale_updated_callback(win, { scaleX, scaleY});
-			return win32::defWindowProcW(hWnd, message, wParam, lParam);
-		case win32::WM_SIZING:
-			if (!win.src.aspectRatioW && !win.src.aspectRatioH) break;
-			Win32_RECT* area = (Win32_RECT*)(uptr)lParam;
-			int edge = (int)wParam;
-			double ratio = (double)win.src.aspectRatioW / (double)win.src.aspectRatioH;
-			switch (edge)
-			{
-				case win32::WMSZ_LEFT:
-				case win32::WMSZ_BOTTOMLEFT:
-				case win32::WMSZ_RIGHT:
-				case win32::WMSZ_BOTTOMRIGHT:
-					area.bottom = area.top + (frame.bottom - frame.top) + (int)(((double)((area.right - area.left) - (frame.right - frame.left))) / ratio);
-				case win32::WMSZ_TOPLEFT:
-				case win32::WMSZ_TOPRIGHT:
-					area.top = area.bottom - (frame.bottom - frame.top) - (int)(((double)((area.right - area.left) - (frame.right - frame.left))) / ratio);
-				case win32::WMSZ_TOP:
-				case win32::WMSZ_BOTTOM:
-					area.right = area.left + (frame.right - frame.left) + (int)(((double)((area.bottom - area.top) - (frame.bottom - frame.top))) * ratio);
-			}
-			return 1;
-		case win32::WM_GETMINMAXINFO:
-			MinMaxInfo* mmi = (MinMaxInfo*)(uptr)lParam;
-			bool resize = win.src.min_size == win.src.max_size;
-			win.internal.flags.no_resize = resize;
-
-			mmi.ptMinTrackSize.x = win.src.min_size.x + (frame.right - frame.left);
-			mmi.ptMinTrackSize.y = win.src.min_size.y + (frame.bottom - frame.top);
-			if (win.src.max_size == { 0, 0 }) return win32::defWindowProcW(hWnd, message, wParam, lParam);
-
-			mmi.ptMaxTrackSize.x = win.src.max_size.x + (frame.right - frame.left);
-			mmi.ptMaxTrackSize.y = win.src.max_size.y + (frame.bottom - frame.top);
-			return win32::defWindowProcW(hWnd, message, wParam, lParam);
-		case win32::WM_ENTERSIZEMOVE:
-		case win32::WM_EXITSIZEMOVE:
-			if (win.src.actionFrame) _window_set_capture_mouse_native(win, win.internal.capture_mouse);
-		case win32::WM_TIMER:
-			_window_refresh_callback(win, { 0, 0, ...win.size });
-		case win32::WM_NCLBUTTONDOWN:
-			// workaround for half-second pause when starting to move window
-			Win32_POINT point = {};
-			if (win32::sendMessageA(win.src.window, win32::WM_NCHITTEST, wParam, lParam) != win32::HTCAPTION || !win32::getCursorPos(&point)) break;
-			win32::screenToClient(win.src.window, &point);
-			win32::postMessage(win.src.window, win32::WM_MOUSEMOVE, 0, (iptr)((uint)point.x | ((uint)point.y << 16)));
-		case win32::WM_PAINT:
-			Win32_RECT rect;
-			if (!win32::getUpdateRect(hWnd, &rect, 0))
-			{
-				_window_refresh_callback(win, { rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top });
-			}
-			else
-			{
-				Win32_PAINTSTRUCT ps;
-				win32::beginPaint(hWnd, &ps);
-				_window_refresh_callback(win, { 0, 0, ...win.size });
-				win32::endPaint(hWnd, &ps);
-			}
-			return win32::defWindowProcW(hWnd, message, wParam, lParam);
-		case win32::WM_DWMCOMPOSITIONCHANGED:
-		case win32::WM_DWMCOLORIZATIONCOLORCHANGED:
-			_make_window_transparent(win);
-		case win32::WM_CHAR:
-		case win32::WM_SYSCHAR:
-			if (wParam >= 0xd800 && wParam <= 0xdbff)
-			{
-				win.src.highSurrogate = (ushort)wParam;
-				return 0;
-			}
-			uint codepoint = 0;
-			if (wParam >= 0xdc00 && wParam <= 0xdfff)
-			{
-				if (win.src.highSurrogate != 0)
-				{
-					codepoint += (uint)((win.src.highSurrogate - 0xd800) << 10);
-					codepoint += (uint)((ushort)wParam - 0xdc00);
-					codepoint += 0x10000;
-				}
-			}
-			else
-			{
-				codepoint = (ushort)wParam;
-			}
-			win.src.highSurrogate = 0;
-			_key_char_callback(win, codepoint);
-			return 0;
-		case win32::WM_UNICHAR:
-			if (wParam == 0xFFFF /* UNICODE_NOCHAR */) return 1;
-			_key_char_callback(win, (uint)wParam);
-			return 0;
-		case win32::WM_KEYUP:
-		case win32::WM_SYSKEYUP:
-			if (!(win.internal.enabled_events & TODO_RENAME_KEY_RELEASED_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
-			int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
-			if (scancode == 0) scancode = (int)win32::mapVirtualKeyW((uint)wParam, 0 /* MAPVK_VK_TO_VSC */);
-			switch (scancode)
-			{
-				case 0x54: scancode = 0x137;
-				case 0x146: scancode = 0x45;
-				case 0x136: scancode = 0x36;
-				default: break;
-			}
-			GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW((uint)scancode);
-			if (wParam == 0x11 /* VK_CONTROL */) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
-			_key_update_key_mods(win, win32::getKeyState(0x14) & 1 != 0, win32::getKeyState(0x90) & 1 != 0, win32::getKeyState(0x91) & 1 != 0);
-			_key_callback(win, value, win.internal.mod, false, false);
-		case win32::WM_KEYDOWN:
-		case win32::WM_SYSKEYDOWN:
-		{
-			if (!(win.internal.enabled_events & TODO_RENAME_KEY_PRESSED_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
-			int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
-			if (scancode == 0) scancode = (int)win32::mapVirtualKeyW((uint)wParam, 0);
-			switch (scancode)
-			{
-				case 0x54: scancode = 0x137;
-				case 0x146: scancode = 0x45;
-				case 0x136: scancode = 0x36;
-				default: break;
-			}
-			GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW((uint)scancode);
-			if (wParam == 0x11) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
-			bool repeat = is_key_down(value);
-			_key_update_key_mods(win, win32::getKeyState(0x14) & 1 != 0, win32::getKeyState(0x90) & 1 != 0, win32::getKeyState(0x91) & 1 != 0);
-			_key_callback(win, value, win.internal.mod, repeat, true);
-			break;
-		}
-		case win32::WM_MOUSEMOVE:
-			GfxPoint where = _param_to_point(lParam);
-			if (win.internal.mouse_inside == false) _mouse_notify_callback(win, where, true);
-			_mouse_motion_callback(win, where);
-		case win32::WM_INPUT:
-			if (!(win.internal.raw_mouse || _gfx_ctx.raw_mouse)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
-
-			Win32_RAWINPUT raw;
-			uint raw_size = Win32_RAWINPUTHEADER::size + Win32_RAWMOUSE::size;
-			win32::getRawInputData((Win32_HRAWINPUT)lParam, win32::RID_INPUT, &raw, &raw_size, Win32_RAWINPUTHEADER::size);
-
-			if (raw.header.dwType != win32::RIM_TYPEMOUSE || (!raw.mouse.lLastX && !raw.mouse.lLastY)) break;
-
-			float vecX = 0.0f;
-			float vecY = 0.0f;
-
-			if (raw.mouse.usFlags & win32::MOUSE_MOVE_ABSOLUTE)
-			{
-				Win32_POINT pos = {0, 0};
-				int width, height;
-				if (raw.mouse.usFlags & win32::MOUSE_VIRTUAL_DESKTOP)
-				{
-					pos.x += win32::getSystemMetrics(win32::SM_XVIRTUALSCREEN);
-					pos.y += win32::getSystemMetrics(win32::SM_YVIRTUALSCREEN);
-					width  = win32::getSystemMetrics(win32::SM_CXVIRTUALSCREEN);
-					height = win32::getSystemMetrics(win32::SM_CYVIRTUALSCREEN);
-				}
-				else
-				{
-					width  = win32::getSystemMetrics(win32::SM_CXSCREEN);
-					height = win32::getSystemMetrics(win32::SM_CYSCREEN);
-				}
-
-				pos.x += (int)(((float)raw.mouse.lLastX / 65535.0f) * (float)width);
-				pos.y += (int)(((float)raw.mouse.lLastY / 65535.0f) * (float)height);
-				win32::screenToClient(win.src.window, &pos);
-
-				vecX = (float)(pos.x - win.internal.last_mouse.x);
-				vecY = (float)(pos.y - win.internal.last_mouse.y);
-			}
-			else
-			{
-				vecX = (float)raw.mouse.lLastX;
-				vecY = (float)raw.mouse.lLastY;
-			}
-
-			_raw_motion_callback(win, { vecX, vecY });
-		case win32::WM_MOUSELEAVE:
-			_mouse_notify_callback(win, win.internal.last_mouse, false);
-		case 0x0201: _mouse_button_callback(win, LEFT, true);
-		case 0x0204: _mouse_button_callback(win, RIGHT, true);
-		case 0x0207: _mouse_button_callback(win, MIDDLE, true);
-		case 0x020B: _mouse_button_callback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), true);
-		case 0x0202: _mouse_button_callback(win, LEFT, false);
-		case 0x0205: _mouse_button_callback(win, RIGHT, false);
-		case 0x0208: _mouse_button_callback(win, MIDDLE, false);
-		case 0x020C: _mouse_button_callback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), false);
-		case win32::WM_MOUSEWHEEL:
-			float scrollY = (float)((short)((wParam >> 16) & 0xffff)) / 120.0f; // WHEEL_DELTA
-			_mouse_scroll_callback(win, { 0.0f, scrollY });
-		case win32::WM_MOUSEHWHEEL:
-			float scrollX = -(float)((short)((wParam >> 16) & 0xffff)) / 120.0f;
-			_mouse_scroll_callback(win, { scrollX, 0.0f });
-		case win32::WM_DROPFILES:
-			void* drop = (void*)wParam;
-			Win32_POINT pt;
-			win32::dragQueryPoint(drop, &pt);
-			_data_drag_callback(win, FILE, MOVE, { pt.x, pt.y });
-			if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
-			uint count = win32::dragQueryFileW(drop, 0xffffffff, null, 0);
-			for (uint i = 0; i < count; i++)
-			{
-				uint length = win32::dragQueryFileW(drop, i, null, 0);
-				if (length == 0) continue;
-				ushort* buffer = (ushort*)malloc((sz)(length + 1) * 2);
-				char* cbuffer = (char*)malloc((sz)length + 1);
-				win32::dragQueryFileW(drop, i, buffer, length + 1);
-				todo_fix_createUTF8FromWideStringWin32(buffer, cbuffer, length);
-				_data_drop_callback(win, cbuffer, (sz)length + 1, FILE);
-				free(buffer);
-				free(cbuffer);
-			}
-			win32::dragFinish(drop);
-		default:
-			break;
-	}
-
-	return win32::defWindowProcW(hWnd, message, wParam, lParam);
-}
-
-
 // public
 fn void _wait_for_event_native(int waitMS) { win32::msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */); }
 
-ushort[8] todo_fix_wideDisplayName = {(ushort)'D', (ushort)'I', (ushort)'S', (ushort)'P', (ushort)'L', (ushort)'A', (ushort)'Y', 0};
 
+const WString WIDE_DISPLAY_NAME = @wstring("DISPLAY\0");
 
-
-// public
 fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
 {
 	ushort[768] values; // 3 x 256
-	Win32_HDC dc = win32::createDCW(&todo_fix_wideDisplayName, (WString)&monitor.node.adapterName, null, null);
+	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapterName, null, null);
 	win32::getDeviceGammaRamp(dc, &values);
 	win32::deleteDC(dc);
 	if (ramp != null)
@@ -461,25 +50,11 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 	mem::copy(&values[0], ramp.red, 512);
 	mem::copy(&values[256], ramp.green, 512);
 	mem::copy(&values[512], ramp.blue, 512);
-	Win32_HDC dc = win32::createDCW(&todo_fix_wideDisplayName, (ushort*)&monitor.node.adapterName, null, null);
+	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapterName, null, null);
 	win32::setDeviceGammaRamp(dc, &values);
 	win32::deleteDC(dc);
 	return true;
 }
-
-// public
-fn void todo_fix_win32GetMode(Win32_DEVMODEW* dm, GfxMonitorMode* mode)
-{
-	mode.size = { (int)dm.dmPelsWidth, (int)dm.dmPelsHeight };
-	_split_bpp(dm.dmBitsPerPel, mode);
-	switch (dm.dmDisplayFrequency)
-	{
-		case 119: case 59: case 29: mode.refresh_rate = ((float)(dm.dmDisplayFrequency + 1) * 1000.0f) / 1001.0f;
-		default: mode.refresh_rate = (float)dm.dmDisplayFrequency;
-	}
-}
-
-// public
 
 // private
 fn int todo_fix_win32GetMonitorHandleCallback(void* hMonitor, void* hdcMonitor, Win32_RECT* lprcMonitor, iptr dwData)
@@ -501,7 +76,7 @@ fn void todo_fix_win32CreateMonitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLA
 {
 	Win32_DEVMODEW dm;
 	dm.dmSize = (ushort)Win32_DEVMODEW::size;
-	if (win32::enumDisplaySettingsW((ushort*)&adapter.deviceName, (uint)ENUM_CURRENT_SETTINGS, &dm) == 0) return;
+	if (win32::enumDisplaySettingsW((ushort*)&adapter.deviceName, (uint)win32::ENUM_CURRENT_SETTINGS, &dm) == 0) return;
 
 	GfxMonitorNode* node = _monitor_add(null);
 	mem::copy(&node.adapterName, &adapter.deviceName, 64);
@@ -517,7 +92,7 @@ fn void todo_fix_win32CreateMonitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLA
 	rect.bottom = dm.dmPosition.y + (int)dm.dmPelsHeight;
 	win32::enumDisplayMonitors(null, &rect, (void*)&todo_fix_win32GetMonitorHandleCallback, (iptr)(void*)node);
 
-	todo_fix_win32GetMode(&dm, &node.mon.mode);
+	_win32_get_mode(&dm, &node.mon.mode);
 
 	Win32_MONITORINFOEXW monitorInfo;
 	monitorInfo.cbSize = Win32_MONITORINFOEXW::size;
@@ -536,7 +111,7 @@ fn void todo_fix_win32CreateMonitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLA
 	};
 	win32::deleteDC(hdc);
 
-	if (monitorInfo.dwFlags & MONITORINFOF_PRIMARY) _gfx_ctx.monitors.primary = node;
+	if (monitorInfo.dwFlags & win32::MONITORINFOF_PRIMARY) _gfx_ctx.monitors.primary = node;
 	_monitor_callback(_gfx_ctx.root, &node.mon, true);
 }
 
@@ -549,14 +124,14 @@ fn void todo_fix_pollMonitors()
 	{
 		Win32_DISPLAY_DEVICEW adapter = { .cb = Win32_DISPLAY_DEVICEW::size };
 		if (win32::enumDisplayDevicesW(null, adapterNum, &adapter, 0) == 0) break;
-		if (!(adapter.stateFlags & DISPLAY_DEVICE_ACTIVE)) continue;
+		if (!(adapter.stateFlags & win32::DISPLAY_DEVICE_ACTIVE)) continue;
 
 		Win32_DWORD deviceNum;
 		for (deviceNum = 0;; deviceNum++)
 		{
 			Win32_DISPLAY_DEVICEW dd = { .cb = Win32_DISPLAY_DEVICEW::size };
 			if (win32::enumDisplayDevicesW((WString)&adapter.deviceName, deviceNum, &dd, 0) == 0) break;
-			if (!(dd.stateFlags & DISPLAY_DEVICE_ACTIVE)) continue;
+			if (!(dd.stateFlags & win32::DISPLAY_DEVICE_ACTIVE)) continue;
 
 			GfxMonitorNode* node;
 			for (node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
@@ -596,41 +171,20 @@ fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}
 // public
 
 // public
-fn bool _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
-{
-	Win32_DEVMODEW dm;
-	dm.dmSize = (ushort)Win32_DEVMODEW::size;
-	dm.dmFields |= DM_PELSWIDTH | DM_PELSHEIGHT;
-	dm.dmPelsWidth = (uint)mode.size.x;
-	dm.dmPelsHeight = (uint)mode.size.y;
-	dm.dmFields |= DM_DISPLAYFREQUENCY;
-	dm.dmDisplayFrequency = (uint)mode.refresh_rate;
-	dm.dmFields |= DM_BITSPERPEL;
-	dm.dmBitsPerPel = (uint)(mode.rgb.sum());
 
-	if (win32::changeDisplaySettingsExW((WString)&mon.node.adapterName, &dm, null, CDS_TEST, null) == DISP_CHANGE_SUCCESSFUL)
-	{
-		if (win32::changeDisplaySettingsExW((WString)&mon.node.adapterName, &dm, null, CDS_UPDATEREGISTRY, null) == DISP_CHANGE_SUCCESSFUL)
-		{
-			todo_fix_win32GetMode(&dm, &mon.mode);
-			return true;
-		}
-		return false;
-	}
-	return false;
-}
 
 
 // private
 fn Win32_HICON todo_fix_loadHandleImage(char* data, int w, int h, GfxFormat format, int icon)
 {
-	BitmapV5Header bi;
-	bi.size = BitmapV5Header::size;
-	bi.width = w;
-	bi.height = -h;
-	bi.planes = 1;
-	bi.bitCount = 32;
-	bi.compression = BI_RGB;
+	Win32_BITMAPV5HEADER bi = {
+		.bV5Size = Win32_BITMAPV5HEADER::size,
+		.bV5Width = w,
+		.bV5Height = -h,
+		.bV5Planes = 1,
+		.bV5BitCount = 32,
+		.bV5Compression = win32::BI_RGB,
+	};
 
 	Win32_HDC dc = win32::getDC(null);
 	char* target;
@@ -793,7 +347,7 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 	ZString extensions = null;
 	GfxFn proc = _get_opengl_proc_native("wglGetExtensionsStringARB");
 	GfxFn proc2 = _get_opengl_proc_native("wglGetExtensionsStringEXT");
-	if (proc != null) { extensions = ((GetExtStringArbFn)proc)(todo_fix_wglGetCurrentDC()); }
+	if (proc != null) { extensions = ((GetExtStringArbFn)proc)(wgl_get_current_dc_fn()); }
 	else if (proc2 != null) { extensions = ((GetExtStringExtFn)proc2)(); }
 	return extensions && todo_fix_extensionSupportedStr(extensions, extension, len);
 }
@@ -801,12 +355,12 @@ fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
 // public
 fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
-	if (win == null) { todo_fix_wglMakeCurrent(null, null); }
-	else { todo_fix_wglMakeCurrent(win.src.hdc, win.src.ctx.native.ctx); }
+	if (win == null) { wgl_make_current_fn(null, null); }
+	else { wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx); }
 }
 
 // public
-fn void* _get_current_opengl_context_native() => todo_fix_wglGetCurrentContext();
+fn void* _get_current_opengl_context_native() => wgl_get_current_context_fn();
 // public
 fn void _window_swap_opengl_buffers_native(GfxWindow* win)
 {

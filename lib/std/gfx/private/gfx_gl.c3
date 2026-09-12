@@ -65,7 +65,7 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 				nsOpenGLContext_setValues((ObjId)self.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
 			}
 		$case $feat(WIN32):
-			if (!todo_fix_wglSwapIntervalEXT || !todo_fix_wglSwapIntervalEXT(swap_interval))
+			if (!wgl_swap_interval_ext_fn || !wgl_swap_interval_ext_fn(swap_interval))
 			{
 				log::error("Failed to set OpenGL swap interval", category: log::CATEGORY_VIDEO);
 			}
