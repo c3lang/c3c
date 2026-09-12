@@ -1,6 +1,13 @@
 module std::os::macos @feat(MACOS);
 import std::os::darwin;
 
+const uint UC_KEY_ACTION_DOWN = 0;
+const uint UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT = 0;
+
+extern fn char lmGetKbdType() @cname("LMGetKbdType");
+
+extern fn int ucKeyTranslate(UCKeyboardLayout* layout, ushort virtualKeyCode, ushort keyAction, uint modifierKeyState, uint keyboardType, uint keyTranslateOptions, uint* deadKeyState, uint maxStringLength, uint* actualStringLength, ushort* unicodeString) @cname("UCKeyTranslate");
+
 typedef UCKeyboardLayout = void;
 
 typedef TISInputSource = inline CFType;

@@ -241,7 +241,7 @@ fn void? monitor_set_gamma_x11(GfxMonitor* monitor, float gamma)
 }
 
 // private
-fn TodoRenameMouse* todo_fix_createMouse_X11(char* data, int w, int h, GfxFormat format)
+fn GfxMouse* todo_fix_createMouse_X11(char* data, int w, int h, GfxFormat format)
 {
 	if (_xcursor_image_create_src == null) return null;
 	XcursorImage* native = _xcursor_image_create_src(w, h);
@@ -250,11 +250,11 @@ fn TodoRenameMouse* todo_fix_createMouse_X11(char* data, int w, int h, GfxFormat
 	mem::copy(native.pixels, data, (sz)(w * h * 4));
 	XCursor cursor = _xcursor_image_load_cursor_src(_gfx_ctx.display, native);
 	_xcursor_image_destroy_src(native);
-	return (TodoRenameMouse*)cursor;
+	return (GfxMouse*)cursor;
 }
 
 // private
-fn TodoRenameMouse* todo_fix_createMouseStandard_X11(GfxMouseIcon mouse)
+fn GfxMouse* todo_fix_createMouseStandard_X11(GfxMouseIcon mouse)
 {
 	uint mouseIcon = 0;
 	switch (mouse)
@@ -283,7 +283,7 @@ fn TodoRenameMouse* todo_fix_createMouseStandard_X11(GfxMouseIcon mouse)
 		default: return null;
 	}
 	XCursor cursor = xCreateFontCursor(_gfx_ctx.display, mouseIcon);
-	return (TodoRenameMouse*)cursor;
+	return (GfxMouse*)cursor;
 }
 
 
@@ -396,13 +396,13 @@ fn void _destroy_x11()
 }
 
 // private
-fn bool todo_fix_extensionSupportedPlatform_OpenGL_X11(ZString extension, sz len)
+fn bool _opengl_extension_is_supported_x11(String extension)
 {
 	ZString extensions = todo_fix_glXQueryExtensionsString(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-	return extensions && todo_fix_extensionSupportedStr(extensions, extension, len);
+	return extensions && _extension_is_in_list(extensions.str_view(), extension);
 }
 
-fn void _free_mouse_x11(TodoRenameMouse* mouse)
+fn void _free_mouse_x11(GfxMouse* mouse)
 {
 	xFreeCursor(_gfx_ctx.display, (XCursor)mouse);
 }
@@ -1391,7 +1391,7 @@ fn void _window_set_min_size_x11(GfxWindow* win, GfxSize size)
 	xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
 }
 
-fn bool _window_set_mouse_x11(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_x11(GfxWindow* win, GfxMouse* mouse)
 {
 	xDefineCursor(_gfx_ctx.display, win.src.window, (XCursor)mouse);
 	return true;
@@ -1501,10 +1501,8 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 
 	if (hints.sRGB)
 	{
-		ZString srgbArbStr = "GLX_ARB_framebuffer_sRGB";
-		ZString srgbExtStr = "GLX_EXT_framebuffer_sRGB";
-		if (todo_fix_extensionSupportedPlatform_OpenGL_X11(srgbArbStr, srgbArbStr.len() + 1)) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB, (int)hints.sRGB });
-		if (todo_fix_extensionSupportedPlatform_OpenGL_X11(srgbExtStr, srgbExtStr.len() + 1)) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT, (int)hints.sRGB });
+		if (_opengl_extension_is_supported_x11("GLX_ARB_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB, (int)hints.sRGB });
+		if (_opengl_extension_is_supported_x11("GLX_EXT_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT, (int)hints.sRGB });
 	}
 
 	stack.push_all({0, 0});
@@ -1544,10 +1542,10 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	int mask = 0;
 	switch (hints.profile)
 	{
-		case TODO_RENAME_GL_ES: mask |= GLX_CONTEXT_ES_PROFILE_BIT_EXT;
-		case TODO_RENAME_GL_FORWARD_COMPATIBILITY: mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
-		case TODO_RENAME_GL_COMPATIBILITY: mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
-		default: mask |= GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
+		case ES:                    mask |= GLX_CONTEXT_ES_PROFILE_BIT_EXT;
+		case FORWARD_COMPATIBILITY: mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+		case COMPATIBILITY:         mask |= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+		default:                    mask |= GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
 	}
 	stack.push_all({ GLX_CONTEXT_PROFILE_MASK_ARB, mask });
 	if (hints.minor || hints.major)
@@ -1555,27 +1553,23 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 		stack.push_all({ GLX_CONTEXT_MAJOR_VERSION_ARB, hints.major, GLX_CONTEXT_MINOR_VERSION_ARB, hints.minor });
 	}
 
-	ZString flushStr = "GLX_ARB_context_flush_control";
-	if (todo_fix_extensionSupportedPlatform_OpenGL_X11(flushStr, flushStr.len() + 1))
+	if (_opengl_extension_is_supported_x11("GLX_ARB_context_flush_control"))
 	{
-		if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_FLUSH)
+		switch (hints.release_behavior)
 		{
-			stack.push_all({ GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB });
-		}
-		else if (hints.releaseBehavior == TODO_RENAME_GL_RELEASE_NONE)
-		{
-			stack.push_all({ GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB });
+			case FLUSH:
+				stack.push_all({ GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB });
+			case NONE:
+				stack.push_all({ GLX_CONTEXT_RELEASE_BEHAVIOR_ARB, GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB });
 		}
 	}
 
-	ZString robustStr = "GLX_ARB_create_context_robustness";
 	int glFlags = 0;
 	if (hints.debug) glFlags |= GLX_CONTEXT_DEBUG_BIT_ARB;
-	if (hints.robustness && todo_fix_extensionSupportedPlatform_OpenGL_X11(robustStr, robustStr.len() + 1)) glFlags |= GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB;
+	if (hints.robustness && _opengl_extension_is_supported_x11("GLX_ARB_create_context_robustness")) glFlags |= GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 	if (glFlags != 0) stack.push_all({ GLX_CONTEXT_FLAGS_ARB, glFlags });
 
-	ZString noErrorStr = "GLX_ARB_create_context_no_error";
-	if (todo_fix_extensionSupportedPlatform_OpenGL_X11(noErrorStr, noErrorStr.len() + 1)) stack.push_all({ GLX_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError });
+	if (_opengl_extension_is_supported_x11("GLX_ARB_create_context_no_error")) stack.push_all({ GLX_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError });
 
 	stack.push_all({0, 0});
 

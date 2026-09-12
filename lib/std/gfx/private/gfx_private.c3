@@ -27,6 +27,33 @@ fn float _gamma_for_index(float gamma, sz index, sz count)
 	return min(value, 65535.0f);
 }
 
+fn bool _extension_is_in_list(String extensions, String extension)
+{
+	if (!extensions || !extension) return false;
+	Splitter split = extensions.tokenize(" ");
+	while (try s = split.next())
+	{
+		if (s == extension) return true;
+	}
+	return false;
+}
+
+fn bool todo_fix_extensionSupportedStr(ZString extensions, ZString ext, sz len) @feat(!WASM)
+{
+	if (extensions == null || ext == null) return false;
+	while (ext[len - 1] == 0 && len > 3) len--;
+	ZString start = extensions;
+	ZString where = (ZString)libc::strstr(extensions, ext);
+	while (where != null)
+	{
+		ZString terminator = where + len;
+		if (((char*)where == (char*)start || *((char*)where - 1) == ' ') && (terminator[0] == ' ' || terminator[0] == 0)) return true;
+		where = (ZString)libc::strstr(terminator, ext);
+	}
+	return false;
+}
+
+
 fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags cmpFlags) @private
 {
 	switch

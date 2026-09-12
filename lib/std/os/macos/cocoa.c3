@@ -153,7 +153,6 @@ constset NSBackingStoreType : inline NSUInteger
 	BUFFERED     = 2,
 }
 
-
 constset NSTrackingAreaOptions : inline NSUInteger
 {
 	MOUSE_ENTERED_AND_EXITED      = 0x01,

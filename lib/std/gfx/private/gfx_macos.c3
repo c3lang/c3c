@@ -41,6 +41,12 @@ fn void? _load_opengl_native()
 	_gfx_ctx.glGetProcAddress = (void*)&_get_opengl_proc_native;
 }
 
+fn bool _opengl_extension_is_supported_native(String extension)
+{
+	if (_opengl_extension_supported_base(extension, &_get_opengl_proc_native)) return true;
+	return _opengl_extension_is_supported_native(extension);
+}
+
 fn void* _get_opengl_proc_native(ZString procname)
 {
 	if (!_gfx_ctx.native_gl_handle || !procname) return null;
@@ -80,7 +86,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 		int accumSize = (hints.accumRed + hints.accumGreen + hints.accumBlue + hints.accumAlpha) / 4;
 		stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, accumSize });
 	}
-	if (hints.renderer == TODO_RENAME_GL_SOFTWARE)
+	if (hints.renderer == SOFTWARE)
 	{
 		stack.push_all({ NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID });
 	}
@@ -163,20 +169,20 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, Gfx
 		EGL_ALPHA_SIZE, hints.alpha,
 		EGL_DEPTH_SIZE, hints.depth,
 		EGL_STENCIL_SIZE, hints.stencil,
-		EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT,
+		EGL_RENDERABLE_TYPE, hints.profile == ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT,
 		EGL_NONE, EGL_NONE
 	});
 
 	EglConfig config = null;
 	EglInt num = 0;
 	if (!egl_choose_config_fn((EglDisplay)_gfx_ctx.egl_display, &cfg, &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
-	egl_bind_api_fn(hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
+	egl_bind_api_fn(hints.profile == ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
 
 	stack.clear();
-	if (hints.profile == TODO_RENAME_GL_ES) stack.push_all({EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2});
+	if (hints.profile == ES) stack.push_all({EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2});
 	stack.push_all({EGL_NONE, EGL_NONE});
 
-	EglContext share = hints.shareEGL ? hints.shareEGL.ctx : null;
+	EglContext share = hints.share_egl ? hints.share_egl.ctx : null;
 	ctx.ctx = egl_create_context_fn(_gfx_ctx.egl_display, config, share, stack.array_view());
 	if (!ctx.ctx) return EGL_CTX_CREATION_FAILED~;
 	defer catch
@@ -187,7 +193,7 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, Gfx
 
 	ObjId nativeWindow = win.src.window;
 	if (win.src.view) nativeWindow = _get_layer_macos();
-	ctx.surface = egl_create_window_surface((EglDisplay)_gfx_ctx.egl_display, config, (void*)nativeWindow, null);
+	ctx.surface = egl_create_window_surface_fn((EglDisplay)_gfx_ctx.egl_display, config, (void*)nativeWindow, null);
 	if (!ctx.surface) return EGL_SURFACE_CREATION_FAILED~;
 
 	win.src.ctx.egl = ctx;
@@ -203,6 +209,16 @@ fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
 	ctx.ctx = null;
 	win.src.ctx.egl = null;
 }
+
+struct VkMetalSurfaceCreateInfoEXT
+{
+	int sType;
+	void* pNext;
+	uint flags;
+	void* pLayer;
+}
+alias VkCreateMetalSurfaceExtFn = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
+
 
 fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
@@ -274,7 +290,7 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 	defer objc::release(rep);
 	if (!pixels) return;
 	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
-	ObjId image = ns_imageWithRep(rep, ...min);
+	ObjId image = _new_nsimage(...min, rep);
 	win.src.view.send_void("setWantsLayer:", true);
 	ObjId layer = win.src.view.send(ObjId, "layer");
 	layer.send_void("setContents:", image);
@@ -348,7 +364,7 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 	CGRect frame = win.src.window.send(CGRect, "frame");
 	CGRect content = win.src.window.send(CGRect, "contentRectForFrameRect:", frame);
 	double offset = frame.size.height - content.size.height;
-	win.src.window.send_void("setFrame:display:", ns_rect((double)win.x, (double)win.y, (double)size.x, (double)size.y + offset), true);
+	win.src.window.send_void("setFrame:display:", (CGRect){{ ...win.origin }, { size.x, (double)size.y + offset}}, true);
 }
 
 fn void _window_move_native(GfxWindow* win, GfxPoint where)
@@ -379,7 +395,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFor
 	char* pixels = rep.send(char*, "bitmapData");
 	if (!pixels) return false;
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
-	ObjId image = ns_imageWithRep(rep, w, h);
+	ObjId image = _new_nsimage(w, h, rep);
 	defer objc::release(image);
 	_gfx_ctx.ns_app.send_void("setApplicationIconImage:", image);
 	return true;
@@ -403,7 +419,7 @@ fn bool _window_is_hidden_native(GfxWindow* win) @private
 	return win.internal.flags.hide;
 }
 
-fn void _free_mouse(TodoRenameMouse* mouse)
+fn void _free_mouse(GfxMouse* mouse)
 {
 	objc::release((ObjId)mouse);
 }
@@ -413,7 +429,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	_gfx_ctx.ns_pool = objc::pool_push();
 	ObjId app = _gfx_ctx.ns_app = objc::send(objc::class("NSApplication"), ObjId, "sharedApplication");
 	if (!app) return NSAPP_CREATION_FAILED~;
-	app.send_void("setActivationPolicy:", (NSUInteger)NS_APP_ACTIVATION_POLICY_REGULAR);
+	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
 	app.send_void("finishLaunching");
 	_osx_register_classes()!;
 	_poll_monitors_native();
@@ -619,7 +635,7 @@ fn void _window_close_native(GfxWindow* win)
 	win.src.view = null;
 	win.src.window = null;
 }
-fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 {
 	ObjId mouse_native = (ObjId)mouse;
 	cg::mainDisplayID().showCursor();
@@ -761,6 +777,12 @@ fn void _surface_release_native(GfxSurface* surface)
 	if (surface.native.native0) objc::release(surface.native.native0);
 	if (surface.native.buffer) free(surface.native.buffer);
 	*surface = {};
+}
+
+struct WgpuSurfaceSourceMetalLayer
+{
+	WgpuChainedStruct chain;
+	ObjId layer;
 }
 
 fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)
@@ -1131,6 +1153,13 @@ fn void _osx_draw_rect(ObjId self, ObjSel sel, CGRect rect)
 
 // --- helpers
 
+fn ObjId _new_nsimage(int w, int h, ObjId rep = null)
+{
+	CGSize size = { w, h };
+	ObjId image = objc::alloc_by_name("NSImage").send(ObjId, "initWithSize:", size);
+	if (rep) image.send_void("addRepresentation:", rep);
+	return image;
+}
 fn ObjId _new_nsbitmap_image_rep(int w, int h)
 {
 	return objc::send(objc::alloc_by_name("NSBitmapImageRep"), ObjId,
@@ -1251,6 +1280,30 @@ fn void _init_keycodes_native()
 		[0x51] = PAD_EQUAL,     [0x43] = PAD_MULTIPLY,  [0x4E] = PAD_MINUS,
 	};
 }
+
+fn GfxKey _physical_to_mapped_key_native(GfxKey key)
+{
+	ushort keycode = (ushort)todo_fix_rgfwToApiKey(key);
+	TISInputSourceRef source = macos::tisCopyCurrentKeyboardLayoutInputSource();
+	if (!source) return key;
+
+	CFDataRef layoutData = source.getProperty(macos::kTISPropertyUnicodeKeyLayoutData);
+	defer source.release();
+	if (!layoutData) return key;
+
+	UCKeyboardLayout* layout = (UCKeyboardLayout*)layoutData.getBytePtr();
+
+	uint deadKeyState = 0;
+	ushort[4] chars;
+	uint len = 0;
+	uint type = macos::lmGetKbdType();
+	int status = macos::ucKeyTranslate(layout, keycode, macos::UC_KEY_ACTION_DOWN, 0, type, macos::UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT, &deadKeyState, 4, &len, &chars[0]);
+
+	if (status == 0 && len == 1 && chars[0] < 256) return (GfxKey)chars[0];
+
+	return key;
+}
+
 
 // -- globals
 

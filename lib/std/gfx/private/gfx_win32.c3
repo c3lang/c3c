@@ -42,6 +42,11 @@ fn void _stop_check_events_native()
 	win32::postMessageW(_gfx_ctx.helper_window, 0, 0, 0);
 }
 
+fn void _wait_for_event_native(int waitMS)
+{
+	win32::msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */);
+}
+
 fn void _poll_events_native()
 {
 	todo_fix_resetPrevState();
@@ -64,7 +69,7 @@ fn void _window_show_native(GfxWindow* win)
 	if (!win.internal.flags.maximize) win32::showWindow(win.src.window, win32::SW_RESTORE);
 }
 
-fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 {
 	win32::setClassLongPtrA(win.src.window, win32::GCLP_HCURSOR, (iptr)mouse);
 	win32::setCursor(mouse);
@@ -263,12 +268,12 @@ fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFor
 
 	if (type & WINDOW)
 	{
-		win.src.hIconSmall = todo_fix_loadHandleImage(data, w, h, format, 1);
+		win.src.hIconSmall = _load_handle_image(data, w, h, format, 1);
 		win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)win.src.hIconSmall);
 	}
 	if (type & TASKBAR)
 	{
-		win.src.hIconBig = todo_fix_loadHandleImage(data, w, h, format, 1);
+		win.src.hIconBig = _load_handle_image(data, w, h, format, 1);
 		win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)win.src.hIconBig);
 	}
 	return true;
@@ -624,7 +629,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	_gfx_ctx.hiddenMouse = todo_fix_createMouse(&blk, 1, 1, RGBA8);
 }
 
-fn void _free_mouse(TodoRenameMouse* mouse)
+fn void _free_mouse(GfxMouse* mouse)
 {
 	win32::destroyCursor(mouse);
 }
@@ -1148,7 +1153,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 		.cAuxBuffers = (char)hints.auxBuffers,
 	};
 	if (hints.stereo) pfd.dwFlags |= win32::PFD_STEREO;
-	if (hints.renderer == TODO_RENAME_GL_SOFTWARE) pfd.dwFlags |= win32::PFD_GENERIC_FORMAT | win32::PFD_GENERIC_ACCELERATED;
+	if (hints.renderer == SOFTWARE) pfd.dwFlags |= win32::PFD_GENERIC_FORMAT | win32::PFD_GENERIC_ACCELERATED;
 
 	int pixelFormat = win32::choosePixelFormat(win.src.hdc, &pfd);
 	if (wgl_choose_pixel_format_arb_fn)
@@ -1176,7 +1181,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 		});
 		if (hints.sRGB)
 		{
-			if (hints.profile != TODO_RENAME_GL_ES)
+			if (hints.profile != ES)
 			{
 				stack.push_all({WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, 1});
 			}
@@ -1214,9 +1219,9 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 		int mask = 0;
 		switch (hints.profile)
 		{
-			case TODO_RENAME_GL_ES: mask |= WGL_CONTEXT_ES_PROFILE_BIT_EXT;
-			case TODO_RENAME_GL_COMPATIBILITY: mask |= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
-			case TODO_RENAME_GL_FORWARD_COMPATIBILITY: mask |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
+			case ES: mask |= WGL_CONTEXT_ES_PROFILE_BIT_EXT;
+			case COMPATIBILITY: mask |= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+			case FORWARD_COMPATIBILITY: mask |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
 			default: mask |= WGL_CONTEXT_CORE_PROFILE_BIT_ARB;
 		}
 		stack.push_all({ WGL_CONTEXT_PROFILE_MASK_ARB, mask });
@@ -1229,22 +1234,19 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 			});
 		}
 
-		char[32] noError = "WGL_ARB_create_context_no_error";
-		if (todo_fix_extensionSupportedPlatform_OpenGL((ZString)&noError, 31)) stack.push_all({ WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError });
+		if (_opengl_extension_is_supported_native("WGL_ARB_create_context_no_error")) stack.push_all({ WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError });
 
-		char[30] flushControl = "WGL_ARB_context_flush_control";
-		if (todo_fix_extensionSupportedPlatform_OpenGL((ZString)&flushControl, 30))
+		if (_opengl_extension_is_supported_native("WGL_ARB_context_flush_control"))
 		{
 			stack.push(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB);
-			stack.push(hints.releaseBehavior == TODO_RENAME_GL_RELEASE_FLUSH
+			stack.push(hints.release_behavior == FLUSH
 				? WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB
 				: WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB);
 		}
 
 		int flags = 0;
 		if (hints.debug) flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
-		char[34] robustness = "WGL_ARB_create_context_robustness";
-		if (hints.robustness && todo_fix_extensionSupportedPlatform_OpenGL((ZString)&robustness, 33)) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
+		if (hints.robustness && _opengl_extension_is_supported_native("WGL_ARB_create_context_robustness")) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 		if (flags) stack.push_all({ WGL_CONTEXT_FLAGS_ARB, flags });
 
 		stack.push_all({ 0, 0 });
@@ -1264,6 +1266,20 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 
 	wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
 	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context initalized.");
+}
+
+fn bool _opengl_extension_is_supported_native(String extension)
+{
+	ZString extensions = null;
+	if (GetExtStringArbFn proc = _get_opengl_proc_native("wglGetExtensionsStringARB"))
+	{
+		extensions = proc(wgl_get_current_dc_fn());
+	}
+	else if (GetExtStringExtFn proc2 = _get_opengl_proc_native("wglGetExtensionsStringEXT"))
+	{
+		extensions = proc2();
+	}
+	return extensions && _extension_is_in_list(extensions.str_view(), extension);
 }
 
 fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
@@ -1514,6 +1530,38 @@ fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 }
 
 // --- helpers
+
+fn Win32_HICON _load_handle_image(char* data, int w, int h, GfxFormat format, int icon)
+{
+	Win32_BITMAPV5HEADER bi = {
+		.bV5Size = Win32_BITMAPV5HEADER::size,
+		.bV5Width = w,
+		.bV5Height = -h,
+		.bV5Planes = 1,
+		.bV5BitCount = 32,
+		.bV5Compression = win32::BI_RGB,
+	};
+
+	Win32_HDC dc = win32::getDC(null);
+	char* target;
+	Win32_HBITMAP color = win32::createDIBSection(dc, &bi, 0, &target, null, 0);
+	copy_image_data(target, w, h, BGRA8, data, format, null);
+	win32::releaseDC(null, dc);
+
+	Win32_HBITMAP mask = win32::createBitmap(w, h, 1, 1, null);
+
+	Win32_ICONINFO ii;
+	ii.fIcon = icon;
+	ii.xHotspot = (uint)w / 2;
+	ii.yHotspot = (uint)h / 2;
+	ii.hbmMask = mask;
+	ii.hbmColor = color;
+
+	Win32_HICON handle = win32::createIconIndirect(&ii);
+	win32::deleteObject(color);
+	win32::deleteObject(mask);
+	return handle;
+}
 
 fn void? _open_clipboard()
 {

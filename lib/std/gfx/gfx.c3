@@ -14,6 +14,7 @@ excuse
 	X11_WINDOW_CREATION_FAILED,
 	X11_CTX_CREATION_FAILED,
 	NSAPP_CREATION_FAILED,
+	NSWINDOW_CREATION_FAILED,
 	DELEGATE_CREATION_FAILED,
 	MONITOR_MODE_CHANGE_FAILED,
 	MISSING_VULKAN_LIB,
@@ -131,7 +132,7 @@ struct GfxWindowInternal
 	GfxWindowFlags flags;
 	IntRect old_bounds;
 	GfxMonitorMode oldMode;
-	TodoRenameMouse* mouse;
+	GfxMouse* mouse;
 }
 
 
@@ -177,8 +178,8 @@ struct GfxContext
 	bool initialized;
 	GfxWindow* root;
 	int windowCount;
-	TodoRenameMouse* hiddenMouse;
-	TodoRenameMouse*[21] standardMice;
+	GfxMouse* hiddenMouse;
+	GfxMouse*[21] standardMice;
 	TodoRenameDebugFunc debugCallbackSrc;
 	GfxGenericFunc[25] callbacks;
 	GfxEvent[MAX_EVENTS] events;
@@ -408,6 +409,27 @@ constset GfxWindowIconType
 	TASKBAR  = 1,
 	WINDOW   = 2,
 	BOTH     = 3,
+}
+
+enum GfxGlReleaseBehavior
+{
+	FLUSH,
+	NONE
+}
+
+enum GfxGlProfile
+{
+	CORE,
+	FORWARD_COMPATIBILITY,
+	COMPATIBILITY,
+	ES,
+	WEB
+}
+
+enum GfxGlRenderer
+{
+	ACCELERATED,
+	SOFTWARE
 }
 
 constset GfxMonitorModeRequest : char
@@ -842,7 +864,7 @@ fn void? init(String class_name, GfxInitOption options)
 	_init_native(class_name, options)!;
 	foreach (icon : GfxMouseIcon::values)
 	{
-		_gfx_ctx.standardMice[icon.ordinal] = todo_fix_createMouseStandard(icon);
+		_gfx_ctx.standardMice[icon.ordinal] = _create_standard_mouse_native(icon);
 	}
 	_poll_monitors_native();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
@@ -979,6 +1001,17 @@ fn void make_window_current_opengl_context(GfxWindow* win)
 fn void* get_current_opengl_context()
 {
 	return _get_current_opengl_context_native();
+}
+
+fn bool opengl_extension_is_supported(String extension)
+{
+	if (_opengl_extension_supported_base(extension, &_get_opengl_proc_native)) return true;
+	return _opengl_extension_is_supported_native(extension);
+}
+
+fn bool egl_extension_is_supported(String extension)
+{
+	return _egl_extension_is_supported_native(extension);
 }
 
 fn GfxGlContext* GfxWindow.get_opengl_context(&self)
@@ -1200,6 +1233,12 @@ fn void set_dual_event_callback(GfxEventType type, GfxGenericFunc func, GfxGener
 	if (first != null) *first = func1;
 	if (second != null) *second = func2;
 }
+
+fn void _wait_for_event(int wait_ms)
+{
+	_wait_for_event_native(wait_ms);
+}
+
 
 // public
 fn void set_all_event_callback(GfxGenericFunc func, TodoRenameCallbacks* callbacks)
@@ -1697,13 +1736,13 @@ fn bool GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
 	return self.set_mouse(_gfx_ctx.standardMice[(sz)icon]);
 }
 
-fn bool GfxWindow.set_mouse(&self, TodoRenameMouse* mouse)
+fn bool GfxWindow.set_mouse(&self, GfxMouse* mouse)
 {
 	if (mouse != _gfx_ctx.hiddenMouse) self.internal.mouse = mouse;
 	return _window_set_mouse_native(self, mouse);
 }
 
-fn void TodoRenameMouse.free_mouse(&self)
+fn void GfxMouse.free_mouse(&self)
 {
 	return _free_mouse(self);
 }
@@ -1832,21 +1871,6 @@ fn void reset_global_opengl_hints()
 	_global_hints_open_gl = GLOBAL_HINTS;
 }
 
-// public
-fn bool todo_fix_extensionSupportedStr(ZString extensions, ZString ext, sz len) @feat(!WASM)
-{
-	if (extensions == null || ext == null) return false;
-	while (ext[len - 1] == 0 && len > 3) len--;
-	ZString start = extensions;
-	ZString where = (ZString)libc::strstr(extensions, ext);
-	while (where != null)
-	{
-		ZString terminator = where + len;
-		if (((char*)where == (char*)start || *((char*)where - 1) == ' ') && (terminator[0] == ' ' || terminator[0] == 0)) return true;
-		where = (ZString)libc::strstr(terminator, ext);
-	}
-	return false;
-}
 
 fn void? load_egl()
 {
@@ -1883,10 +1907,8 @@ alias TodoRenameEventFlag = uint;
 alias TodoRenameEventWait = int;
 alias TodoRenameDebugType = char;
 alias TodoRenameErrorCode = char;
-alias TodoRenameGlReleaseBehavior = int;
-alias TodoRenameGlProfile = int;
-alias TodoRenameGlRenderer = int;
-typedef TodoRenameMouse = void;
+
+typedef GfxMouse = void;
 
 alias GfxFn = fn void();
 alias GfxGenericFunc = fn void(GfxEvent* e);

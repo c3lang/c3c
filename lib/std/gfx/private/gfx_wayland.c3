@@ -502,7 +502,7 @@ const uint WL_OUTPUT_MODE_CURRENT = 1;
 const uint WL_SHM_FORMAT_ARGB8888 = 0;
 
 // private
-fn TodoRenameMouse* todo_fix_createMouse_Wayland(char* data, int w, int h, GfxFormat format)
+fn GfxMouse* todo_fix_createMouse_Wayland(char* data, int w, int h, GfxFormat format)
 {
 	GfxSurface*? surface = create_surface(data, w, h, format);
 	if (catch surface) return null;
@@ -511,11 +511,11 @@ fn TodoRenameMouse* todo_fix_createMouse_Wayland(char* data, int w, int h, GfxFo
 	int minW = w < surface.size.x ? w : surface.size.x;
 	int minH = h < surface.size.y ? h : surface.size.y;
 	copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
-	return (TodoRenameMouse*)surface;
+	return (GfxMouse*)surface;
 }
 
 // private
-fn TodoRenameMouse* todo_fix_createMouseStandard_Wayland(GfxMouseIcon mouse)
+fn GfxMouse* todo_fix_createMouseStandard_Wayland(GfxMouseIcon mouse)
 {
 	ZString cursorName;
 	switch (mouse)
@@ -552,7 +552,7 @@ fn TodoRenameMouse* todo_fix_createMouseStandard_Wayland(GfxMouseIcon mouse)
 	GfxSurface* surface = mem::new(GfxSurface);
 	surface.size = { (int)cursorImage.width, (int)cursorImage.height };
 	surface.native.wlBuffer = cursorBuffer;
-	return (TodoRenameMouse*)surface;
+	return (GfxMouse*)surface;
 }
 
 fn void _destroy_wayland()
@@ -580,11 +580,13 @@ fn void _destroy_wayland()
 	if (_gfx_ctx.wlDisplay) wlDisplayDisconnect(_gfx_ctx.wlDisplay);
 }
 
-// private
-fn bool todo_fix_extensionSupportedPlatform_OpenGL_Wayland(ZString extension, sz len) => todo_fix_extensionSupportedPlatform_EGL(extension, len);
+fn bool _opengl_extension_is_supported_wayland(String extension)
+{
+	return egl_extension_is_supported(extension);
+}
 
 // private
-fn void _free_mouse_wayland(TodoRenameMouse* mouse)
+fn void _free_mouse_wayland(GfxMouse* mouse)
 {
 	GfxSurface* surface = (GfxSurface*)mouse;
 	if (surface.native.buffer && surface.native.wlBuffer) wlBufferDestroy(surface.native.wlBuffer);
@@ -600,7 +602,7 @@ fn GfxPoint _get_global_mouse_wayland()
 }
 
 // private
-fn GfxFn todo_fix_getProcAddress_OpenGL_Wayland(ZString procname) => todo_fix_getProcAddress_EGL(procname);
+fn GfxFn todo_fix_getProcAddress_OpenGL_Wayland(ZString procname) => _get_egl_proc_address(procname);
 
 // private
 fn void _init_keycodes_native_wayland()
@@ -1097,7 +1099,7 @@ fn void _window_set_min_size_wayland(GfxWindow* win, GfxSize size)
 	xdgToplevelSetMinSize(win.src.xdgToplevel, ...size);
 }
 
-fn bool _window_set_mouse_wayland(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_wayland(GfxWindow* win, GfxMouse* mouse)
 {
 	GfxSurface* surface = (GfxSurface*)mouse;
 	win.src.usingCustomCursor = true;
@@ -1304,19 +1306,19 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 		EGL_ALPHA_SIZE, hints.alpha,
 		EGL_DEPTH_SIZE, hints.depth,
 		EGL_STENCIL_SIZE, hints.stencil,
-		EGL_RENDERABLE_TYPE, hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT,
+		EGL_RENDERABLE_TYPE, hints.profile == ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT,
 		EGL_NONE, EGL_NONE,
 	});
 	EglConfig config = null;
 	EglInt num = 0;
 	if (!egl_choose_config_fn((EglDisplay)_gfx_ctx.egl_display, stack.array_view(), &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
-	egl_bind_api_fn(hints.profile == TODO_RENAME_GL_ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
+	egl_bind_api_fn(hints.profile == ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
 
 	stack.clear();
-	if (hints.profile == TODO_RENAME_GL_ES) stack.push_all({ EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2 });
+	if (hints.profile == ES) stack.push_all({ EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2 });
 	stack.push_all({ EGL_NONE, EGL_NONE });
 
-	EglContext share = hints.shareEGL ? hints.shareEGL.ctx : null;
+	EglContext share = hints.share_egl ? hints.share_egl.ctx : null;
 	ctx.ctx = egl_create_context_fn(_gfx_ctx.egl_display, config, share, stack.array_view());
 	if (!ctx.ctx) return EGL_CTX_CREATION_FAILED~;
 	defer catch
@@ -1326,7 +1328,7 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 	}
 	WlEglWindow* egl_window = wl_egl_window_create(win.src.surface, win.width, win.height);
 	ctx.egl_window = egl_window;
-	ctx.surface = egl_create_window_surface(_gfx_ctx.egl_display, config, egl_window, null);
+	ctx.surface = egl_create_window_surface_fn(_gfx_ctx.egl_display, config, egl_window, null);
 	if (!ctx.surface) return EGL_SURFACE_CREATION_FAILED~;
 	win.src.ctx.egl = ctx;
 	win.src.backing = { .egl };

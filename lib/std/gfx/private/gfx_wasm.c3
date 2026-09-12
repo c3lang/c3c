@@ -7,6 +7,15 @@ struct GfxGlContext
 	void* format;
 }
 
+struct GfxNativeImage
+{
+	GfxFormat format;
+	char* buffer;
+	void* native0;
+	void* native1;
+	void* native2;
+}
+
 struct GfxEglContext
 {
 	void* ctx;
@@ -42,7 +51,8 @@ fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma) => NOT_IMPL
 fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
 
 fn void _poll_monitors_native() {}
-fn void _free_mouse(TodoRenameMouse* mouse) {}
+fn void _free_mouse(GfxMouse* mouse) {}
+fn void _wait_for_event_native(int wait_ms) {}
 fn void _window_show_native(GfxWindow* win) {}
 fn bool _window_is_hidden_native(GfxWindow* win) => false;
 fn bool _window_is_minimized_native(GfxWindow* win) => false;
@@ -65,7 +75,7 @@ fn void _window_set_floating_native(GfxWindow* win, bool floating) {}
 fn void _window_close_native(GfxWindow* win) {}
 fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) {}
 
-fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 {
 	ZString name = (ZString)mouse;
 	rgfwJsSetCursor(name, name.len());
@@ -150,6 +160,13 @@ fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 	rgfwJsSetPointerEvents((int)passthrough);
 }
 
+fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
+
+fn bool _opengl_extension_is_supported_native(String extension)
+{
+	return rgfwJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
+}
+
 fn GfxFn _get_opengl_proc_native(ZString procname)
 {
 	return rgfwJsGetProcAddress(procname);
@@ -164,6 +181,12 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	ctx.ctx = (void*)(uptr)handle;
 	rgfwJsWebglMakeCurrent(handle);
 	win.opengl_swap_interval(0);
+}
+
+struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector
+{
+	WgpuChainedStruct chain;
+	WgpuStringView selector;
 }
 
 fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)
@@ -317,6 +340,37 @@ fn void _window_make_opengl_current_context_native(GfxWindow* win)
 fn void* _get_current_opengl_context_native()
 {
 	return (void*)(uptr)rgfwJsWebglGetCurrentContext();
+}
+
+fn GfxMouse* _create_standard_mouse_native(GfxMouseIcon mouse)
+{
+	ZString cursor_name;
+	switch (mouse)
+	{
+		case NORMAL: cursor_name = "default";
+		case ARROW: cursor_name = "default";
+		case IBEAM: cursor_name = "text";
+		case CROSSHAIR: cursor_name = "crosshair";
+		case POINTING_HAND: cursor_name = "pointer";
+		case RESIZE_EW: cursor_name = "ew-resize";
+		case RESIZE_NS: cursor_name = "ns-resize";
+		case RESIZE_NWSE: cursor_name = "nwse-resize";
+		case RESIZE_NESW: cursor_name = "nesw-resize";
+		case RESIZE_NW: cursor_name = "nw-resize";
+		case RESIZE_N: cursor_name = "n-resize";
+		case RESIZE_NE: cursor_name = "ne-resize";
+		case RESIZE_E: cursor_name = "e-resize";
+		case RESIZE_SE: cursor_name = "se-resize";
+		case RESIZE_S: cursor_name = "s-resize";
+		case RESIZE_SW: cursor_name = "sw-resize";
+		case RESIZE_W: cursor_name = "w-resize";
+		case RESIZE_ALL: cursor_name = "move";
+		case NOT_ALLOWED: cursor_name = "not-allowed";
+		case WAIT: cursor_name = "wait";
+		case PROGRESS: cursor_name = "progress";
+		default: return null;
+	}
+	return (GfxMouse*)cursor_name;
 }
 
 fn GfxKey _physical_to_mapped_key_native(GfxKey key) => key;

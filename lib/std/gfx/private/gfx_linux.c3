@@ -176,7 +176,7 @@ fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 }
 
 // public
-fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)
+fn GfxMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)
 {
 	$switch:
 		$case WAYLAND_ONLY:
@@ -193,7 +193,7 @@ fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat for
 }
 
 // public
-fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
+fn GfxMouse* _create_standard_mouse_native(GfxMouseIcon mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:
@@ -226,25 +226,24 @@ fn void _destroy_native()
 	$endswitch
 }
 
-// public
-fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len)
+fn bool _opengl_extension_is_supported_native(String extension)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_extensionSupportedPlatform_OpenGL_Wayland(extension, len);
+			return _opengl_extension_is_supported_wayland(extension);
 		$case X11_ONLY:
-			return todo_fix_extensionSupportedPlatform_OpenGL_X11(extension, len);
+			return _opengl_extension_is_supported_x11(extension);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_extensionSupportedPlatform_OpenGL_Wayland(extension, len);
+				return _opengl_extension_is_supported_wayland(extension);
 			}
-			return todo_fix_extensionSupportedPlatform_OpenGL_X11(extension, len);
+			return _opengl_extension_is_supported_x11(extension);
 	$endswitch
 }
 
 // public
-fn void _free_mouse(TodoRenameMouse* mouse)
+fn void _free_mouse(GfxMouse* mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:
@@ -1045,7 +1044,7 @@ fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 	$endswitch
 }
 
-fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
+fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:

@@ -2,26 +2,6 @@ module std::gfx @feat(WASM);
 import std::math;
 
 
-struct GfxNativeImage
-{
-	GfxFormat format;
-	char* buffer;
-	void* native0;
-	void* native1;
-	void* native2;
-}
-
-// public
-fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
-
-const WGPUSType WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR = 0x00040000;
-struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector { WgpuChainedStruct chain; WgpuStringView selector; }
-
-// public
-
-
-
-
 const int DOM_VK_BACK_QUOTE = 192; const int DOM_VK_0 = 48; const int DOM_VK_1 = 49; const int DOM_VK_2 = 50;
 const int DOM_VK_3 = 51; const int DOM_VK_4 = 52; const int DOM_VK_5 = 53; const int DOM_VK_6 = 54;
 const int DOM_VK_7 = 55; const int DOM_VK_8 = 56; const int DOM_VK_9 = 57; const int DOM_VK_SPACE = 32;
@@ -114,10 +94,6 @@ fn void rgfwEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
 {
 	_window_resized_callback(_gfx_ctx.root, { w, h });
 }
-
-// private
-
-// private
 fn void rgfwEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { _window_focus_callback(_gfx_ctx.root, true); }
 // private
 fn void rgfwEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { _window_focus_callback(_gfx_ctx.root, false); }
@@ -189,49 +165,14 @@ fn void todo_fix_handleKeyMods(bool capital, bool numlock, bool control, bool al
 	_key_update_key_mods_ex(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
 }
 
-fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
-{
-	ZString cursorName;
-	switch (mouse)
-	{
-		case NORMAL: cursorName = "default";
-		case ARROW: cursorName = "default";
-		case IBEAM: cursorName = "text";
-		case CROSSHAIR: cursorName = "crosshair";
-		case POINTING_HAND: cursorName = "pointer";
-		case RESIZE_EW: cursorName = "ew-resize";
-		case RESIZE_NS: cursorName = "ns-resize";
-		case RESIZE_NWSE: cursorName = "nwse-resize";
-		case RESIZE_NESW: cursorName = "nesw-resize";
-		case RESIZE_NW: cursorName = "nw-resize";
-		case RESIZE_N: cursorName = "n-resize";
-		case RESIZE_NE: cursorName = "ne-resize";
-		case RESIZE_E: cursorName = "e-resize";
-		case RESIZE_SE: cursorName = "se-resize";
-		case RESIZE_S: cursorName = "s-resize";
-		case RESIZE_SW: cursorName = "sw-resize";
-		case RESIZE_W: cursorName = "w-resize";
-		case RESIZE_ALL: cursorName = "move";
-		case NOT_ALLOWED: cursorName = "not-allowed";
-		case WAIT: cursorName = "wait";
-		case PROGRESS: cursorName = "progress";
-		default: return null;
-	}
-	return (TodoRenameMouse*)cursorName;
-}
 
-fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format) => null;
-
-fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfwJsExtensionSupported(extension, len) != 0;
-// public
+fn GfxMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format) => null;
 
 
-
-// public
 fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}
 
 // public
 
 
-fn void _wait_for_event_native(int waitMS) {}
+
 
