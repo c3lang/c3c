@@ -150,6 +150,11 @@ fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 	rgfwJsSetPointerEvents((int)passthrough);
 }
 
+fn GfxFn _get_opengl_proc_native(ZString procname)
+{
+	return rgfwJsGetProcAddress(procname);
+}
+
 fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;

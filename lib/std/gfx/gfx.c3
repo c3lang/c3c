@@ -198,7 +198,8 @@ struct GfxContext
 
 	GfxMonitors monitors;
 	GfxWindow* current;
-	void* nativeGL_handle;
+	CFBundleRef native_gl_handle @feat(MACOS);
+	void* native_gl_handle @feat(!MACOS);
 	void* glGetProcAddress;
 	void* vulkan_handle;
 	GfxVkGetInstanceProcAddressProc vk_get_instance_proc_address;
@@ -1811,7 +1812,7 @@ fn void GfxWindow.set_dnd(&self, bool allow)
 	$endif
 }
 
-fn GfxFn get_opengl_proc(ZString s)
+fn void* get_opengl_proc(ZString s)
 {
 	return _get_opengl_proc_native(s);
 }

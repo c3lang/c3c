@@ -13,11 +13,25 @@ typedef CFString = inline CFType;
 alias CFStringRef = CFString*;
 typedef CFData = inline CFType;
 alias CFDataRef = CFData*;
+typedef CFBundle = CFType;
+alias CFBundleRef = CFBundle*;
 
 struct CFRange
 {
 	CFIndex location;
 	CFIndex length;
+}
+
+extern fn CFStringRef stringCreateWithCString(void* alloc, ZString str, uint encoding) @cname("CFStringCreateWithCString");
+extern fn CFBundleRef bundleGetBundleWithIdentifier(CFStringRef bundleID) @cname("CFBundleGetBundleWithIdentifier");
+extern fn void* bundleGetFunctionPointerForName(CFBundleRef bundle, CFStringRef functionName) @cname("CFBundleGetFunctionPointerForName");
+
+fn CFBundleRef bundle_for_name(ZString name)
+{
+	CFStringRef bundle_name = stringCreateWithCString(null, name, 0x0600);
+	if (!bundle_name) return null;
+	defer bundle_name.release();
+	return bundleGetBundleWithIdentifier(bundle_name);
 }
 
 extern fn ZString CFString.getCStringPtr(&self, CFStringEncoding encoding) @cname("CFStringGetCStringPtr");

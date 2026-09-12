@@ -518,32 +518,32 @@ fn void? _init_x11(String class_name, GfxInitOption flags)
 // private
 fn void? _load_opengl_x11()
 {
-	if (_gfx_ctx.nativeGL_handle && _gfx_ctx.glGetProcAddress) return;
-	_gfx_ctx.nativeGL_handle = _dlopen_any("libGLX.so.0", "libGL.so.1", "libGL.so") ?? MISSING_OPENGL_LIB~!;
-	void* ptr = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetProcAddress");
+	if (_gfx_ctx.native_gl_handle && _gfx_ctx.glGetProcAddress) return;
+	_gfx_ctx.native_gl_handle = _dlopen_any("libGLX.so.0", "libGL.so.1", "libGL.so") ?? MISSING_OPENGL_LIB~!;
+	void* ptr = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddress");
 	if (!ptr) return MISSING_GL_GET_PROC_ADDR~;
 	_gfx_ctx.glGetProcAddress        = ptr;
-	todo_fix_glXChooseVisual             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseVisual");
-	todo_fix_glXCreateContext            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContext");
-	todo_fix_glXMakeCurrent              = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXMakeCurrent");
-	todo_fix_glXGetCurrentContext        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetCurrentContext");
-	todo_fix_glXSwapBuffers              = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapBuffers");
-	todo_fix_glXGetVisualFromFBConfig    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetVisualFromFBConfig");
-	todo_fix_glXGetFBConfigAttrib        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetFBConfigAttrib");
-	todo_fix_glXGetProcAddressARB        = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXGetProcAddressARB");
-	todo_fix_glXChooseFBConfig           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXChooseFBConfig");
-	glx_destroy_context_fn           = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyContext");
-	todo_fix_glXCreateWindow             = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateWindow");
-	glx_destroy_window_fn            = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXDestroyWindow");
-	todo_fix_glXQueryExtensionsString    = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXQueryExtensionsString");
-	glx_create_context_attribs_arb  = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXCreateContextAttribsARB");
-	todo_fix_glXSwapIntervalEXT          = libc::dlsym(_gfx_ctx.nativeGL_handle, "glXSwapIntervalEXT");
+	todo_fix_glXChooseVisual             = libc::dlsym(_gfx_ctx.native_gl_handle, "glXChooseVisual");
+	todo_fix_glXCreateContext            = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContext");
+	todo_fix_glXMakeCurrent              = libc::dlsym(_gfx_ctx.native_gl_handle, "glXMakeCurrent");
+	todo_fix_glXGetCurrentContext        = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetCurrentContext");
+	todo_fix_glXSwapBuffers              = libc::dlsym(_gfx_ctx.native_gl_handle, "glXSwapBuffers");
+	todo_fix_glXGetVisualFromFBConfig    = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetVisualFromFBConfig");
+	todo_fix_glXGetFBConfigAttrib        = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetFBConfigAttrib");
+	todo_fix_glXGetProcAddressARB        = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddressARB");
+	todo_fix_glXChooseFBConfig           = libc::dlsym(_gfx_ctx.native_gl_handle, "glXChooseFBConfig");
+	glx_destroy_context_fn           = libc::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyContext");
+	todo_fix_glXCreateWindow             = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateWindow");
+	glx_destroy_window_fn            = libc::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyWindow");
+	todo_fix_glXQueryExtensionsString    = libc::dlsym(_gfx_ctx.native_gl_handle, "glXQueryExtensionsString");
+	glx_create_context_attribs_arb  = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContextAttribsARB");
+	todo_fix_glXSwapIntervalEXT          = libc::dlsym(_gfx_ctx.native_gl_handle, "glXSwapIntervalEXT");
 	if (!todo_fix_glXSwapIntervalEXT)
 	{
 		ZString[2] array = {"GLX_MESA_swap_control", "GLX_SGI_swap_control"};
 		foreach (name : array)
 		{
-			todo_fix_glXSwapIntervalNative = libc::dlsym(_gfx_ctx.nativeGL_handle, name);
+			todo_fix_glXSwapIntervalNative = libc::dlsym(_gfx_ctx.native_gl_handle, name);
 			if (todo_fix_glXSwapIntervalNative) break;
 		}
 	}

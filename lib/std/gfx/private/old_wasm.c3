@@ -224,7 +224,6 @@ fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat for
 
 fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfwJsExtensionSupported(extension, len) != 0;
 // public
-fn GfxFn _get_opengl_proc_native(ZString procname) => rgfwJsGetProcAddress(procname);
 
 
 

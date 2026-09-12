@@ -101,7 +101,7 @@ module std::gfx  @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WIN32) @feat(!WASM);
 // public
 fn void _unload_opengl_native() @private
 {
-	_gfx_ctx.nativeGL_handle = null;
+	_gfx_ctx.native_gl_handle = null;
 	_gfx_ctx.glGetProcAddress = null;
 }
 

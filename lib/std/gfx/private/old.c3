@@ -8,51 +8,8 @@ import std::collections, std::math, libc, std::os::macos, std::io, std::os::darw
 excuse NSWINDOW_CREATION_FAILED;
 
 
-alias CFBundleRef = void*;
-
 struct VkMetalSurfaceCreateInfoEXT { int sType; void* pNext; uint flags; void* pLayer; }
 alias TodoRenameVkCreateMetalSurfaceEXTProc = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
-
-extern fn void objc_msgSendRaw(...) @cname("objc_msgSend") @builtin;
-extern fn ObjSel sel_registerName(ZString name);
-extern fn ObjClass objc_allocateClassPair(ObjClass superclass, ZString name, sz extraBytes);
-extern fn void* object_setInstanceVariable(ObjId obj, ZString name, void* value);
-extern fn void* object_getInstanceVariable(ObjId obj, ZString name, void* outValue);
-
-extern fn CFStringRef cfStringCreateWithCString(void* alloc, ZString str, uint encoding) @cname("CFStringCreateWithCString");
-extern fn CFBundleRef cfBundleGetBundleWithIdentifier(CFStringRef bundleID) @cname("CFBundleGetBundleWithIdentifier");
-extern fn void* cfBundleGetFunctionPointerForName(CFBundleRef bundle, CFStringRef functionName) @cname("CFBundleGetFunctionPointerForName");
-
-macro objc_send(id, $FunctionType, ZString $selector, ...)
-{
-	return (($FunctionType)&objc_msgSendRaw)((ObjId)id, sel_registerName($selector), ...$vaarg);
-}
-
-alias ObjcSendId = fn ObjId(ObjId, ObjSel);
-alias ObjcSendCharPtr = fn ZString(ObjId, ObjSel);
-alias ObjcSendVoidId = fn void(ObjId, ObjSel, ObjId);
-
-
-alias ObjcSendIdSize = fn ObjId(ObjId, ObjSel, CGSize);
-alias ObjcSendBitmapRepInit = fn ObjId(ObjId, ObjSel, ZString*, NSInteger, NSInteger, NSInteger, NSInteger, bool, bool, ObjId, NSUInteger, NSInteger, NSInteger);
-alias ObjcSendIdEvent = fn ObjId(ObjId, ObjSel, NSUInteger, ObjId, ObjId, bool);
-alias ObjcSendIdDouble = fn ObjId(ObjId, ObjSel, double);
-alias ObjcSendVoidIdBool = fn void(ObjId, ObjSel, ObjId, bool);
-alias ObjcSendIdWindowInit = fn ObjId(ObjId, ObjSel, CGRect, NSUInteger, NSUInteger, bool);
-alias ObjcSendIdU32Ptr = fn ObjId(ObjId, ObjSel, uint*);
-alias ObjcSendIdIdId = fn ObjId(ObjId, ObjSel, ObjId, ObjId);
-alias ObjcSendPoint = fn CGPoint(ObjId, ObjSel);
-alias ObjcSendRect = fn CGRect(ObjId, ObjSel);
-alias ObjcSendRectRect = fn CGRect(ObjId, ObjSel, CGRect);
-alias ObjcSendBool = fn bool(ObjId, ObjSel);
-alias ObjcSendBoolId = fn bool(ObjId, ObjSel, ObjId);
-alias ObjcSendIntegerNSUInteger = fn NSInteger(ObjId, ObjSel, NSUInteger);
-alias ObjcSendInteger = fn NSInteger(ObjId, ObjSel);
-alias ObjcSendCGFloat = fn CGFloat(ObjId, ObjSel);
-alias ObjcSendUShort = fn ushort(ObjId, ObjSel);
-alias ObjcSendNSUInteger = fn NSUInteger(ObjId, ObjSel);
-
-
 
 
 // public
@@ -88,7 +45,7 @@ fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 	return key;
 }
 
-alias TodoRenameGetProcAddressFunc = fn GfxFn(ZString procname);
+alias TodoRenameGetProcAddressFunc = fn void*(ZString procname);
 
 // public
 fn bool todo_fix_extensionSupported_base(ZString extension, sz len, TodoRenameGetProcAddressFunc getProcAddress)
@@ -144,14 +101,6 @@ fn GfxWindow* todo_fix_getCurrentWindow_OpenGL() => _gfx_ctx.current;
 // public
 fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => false;
 
-// public
-fn GfxFn _get_opengl_proc_native(ZString procname)
-{
-	if (!_gfx_ctx.nativeGL_handle || !procname) return null;
-	CFStringRef symbol_name = cfStringCreateWithCString(null, procname, 0x0600);
-	defer { if (symbol_name) symbol_name.release(); }
-	return cfBundleGetFunctionPointerForName((CFBundleRef)_gfx_ctx.nativeGL_handle, symbol_name);
-}
 
 
 const NSUInteger NS_BACKING_STORE_BUFFERED = 2;
@@ -160,14 +109,7 @@ const NSUInteger NS_EVENT_MASK_ANY = 0xffffffffffffffff;
 
 
 
-fn ObjId ns_bitmapRep(int w, int h)
-{
-	return objc_send(objc::alloc_by_name("NSBitmapImageRep"), ObjcSendBitmapRepInit,
-		"initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bitmapFormat:bytesPerRow:bitsPerPixel:",
-		(ZString*)null, (NSInteger)w, (NSInteger)h, 8, 4, true, false, darwin::string("NSCalibratedRGBColorSpace"), (NSUInteger)2, (NSInteger)(w * 4), 32);
-}
 
-fn char* ns_bitmapData(ObjId rep) => rep ? objc_send(rep, ObjcSendCharPtr, "bitmapData") : null;
 
 fn ObjId ns_imageWithRep(ObjId rep, int w, int h)
 {
@@ -205,9 +147,9 @@ fn void todo_fix_monitorNode_free(GfxMonitorNode* node)
 fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)
 {
 	if (data == null) return null;
-	ObjId rep = ns_bitmapRep(w, h);
+	ObjId rep = gfx::_new_nsbitmap_image_rep(w, h);
 	defer objc::release(rep);
-	char* pixels = ns_bitmapData(rep);
+	char* pixels = rep.send(char*, "bitmapData");
 	if (!pixels) return null;
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjId image = ns_imageWithRep(rep, w, h);

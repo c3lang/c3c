@@ -295,7 +295,7 @@ fn GfxPoint _get_global_mouse_native()
 }
 
 // public
-fn GfxFn _get_opengl_proc_native(ZString procname)
+fn void* _get_opengl_proc_native(ZString procname)
 {
 	$switch:
 		$case WAYLAND_ONLY:

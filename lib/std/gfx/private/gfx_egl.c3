@@ -88,7 +88,7 @@ fn void _unload_egl_native() @private
 }
 
 // public
-fn GfxFn todo_fix_getProcAddress_EGL(ZString procname)
+fn void* todo_fix_getProcAddress_EGL(ZString procname)
 {
 	if (procname == null) return null;
 	if (try proc = todo_fix_eglProc(procname))

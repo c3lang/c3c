@@ -36,11 +36,18 @@ struct GfxWindowSrc
 
 fn void? _load_opengl_native()
 {
-	CFStringRef bundleName = cfStringCreateWithCString(null, "com.apple.opengl", 0x0600);
-	defer bundleName.release();
-	_gfx_ctx.nativeGL_handle = cfBundleGetBundleWithIdentifier(bundleName);
-	if (!_gfx_ctx.nativeGL_handle) return MISSING_OPENGL_LIB~;
+	_gfx_ctx.native_gl_handle = cf::bundle_for_name("com.apple.opengl");
+	if (!_gfx_ctx.native_gl_handle) return MISSING_OPENGL_LIB~;
 	_gfx_ctx.glGetProcAddress = (void*)&_get_opengl_proc_native;
+}
+
+fn void* _get_opengl_proc_native(ZString procname)
+{
+	if (!_gfx_ctx.native_gl_handle || !procname) return null;
+	CFStringRef symbol_name = cf::stringCreateWithCString(null, procname, 0x0600);
+	if (!symbol_name) return null;
+	defer symbol_name.release();
+	return cf::bundleGetFunctionPointerForName((CFBundleRef)_gfx_ctx.native_gl_handle, symbol_name);
 }
 
 fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
@@ -262,8 +269,8 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 	{
 		min = (GfxPoint)((Vec2)min * mon.pixelRatio);
 	}
-	ObjId rep = ns_bitmapRep(...min);
-	char* pixels = ns_bitmapData(rep);
+	ObjId rep = _new_nsbitmap_image_rep(...min);
+	char* pixels = rep.send(char*, "bitmapData");
 	defer objc::release(rep);
 	if (!pixels) return;
 	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
@@ -367,9 +374,9 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFor
 		_gfx_ctx.ns_app.send_void("setApplicationIconImage:", null);
 		return true;
 	}
-	ObjId rep = ns_bitmapRep(w, h);
+	ObjId rep = _new_nsbitmap_image_rep(w, h);
 	defer objc::release(rep);
-	char* pixels = ns_bitmapData(rep);
+	char* pixels = rep.send(char*, "bitmapData");
 	if (!pixels) return false;
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjId image = ns_imageWithRep(rep, w, h);
@@ -418,7 +425,7 @@ fn void _poll_events_native()
 	{
 		todo_fix_resetPrevState();
 		if (!_gfx_ctx.ns_app) return;
-		ObjId distantPast = objc_send(objc::@class("NSDate"), ObjcSendId, "distantPast");
+		ObjId distantPast = objc::send(objc::@class("NSDate"), ObjId, "distantPast");
 		ObjId mode = darwin::string("kCFRunLoopDefaultMode");
 		while (true)
 		{
@@ -426,7 +433,7 @@ fn void _poll_events_native()
 			{
 				ObjId ev = _gfx_ctx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
 				if (!ev) break;
-				objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "sendEvent:", ev);
+				_gfx_ctx.ns_app.send_void("sendEvent:", ev);
 			};
 		}
 	};
@@ -676,7 +683,7 @@ fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferT
 fn void _wait_for_event_native(int wait_ms)
 {
 	if (!_gfx_ctx.ns_app) return;
-	ObjId date = objc_send(objc::@class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)wait_ms / 1000.0);
+	ObjId date = objc::send(objc::@class("NSDate"), ObjId, "dateWithTimeIntervalSinceNow:", (double)wait_ms / 1000.0);
 	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
 	ObjId ev = _gfx_ctx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
 	if (ev) _gfx_ctx.ns_app.send_void("postEvent:atStart:", ev, true);
@@ -1123,6 +1130,14 @@ fn void _osx_draw_rect(ObjId self, ObjSel sel, CGRect rect)
 }
 
 // --- helpers
+
+fn ObjId _new_nsbitmap_image_rep(int w, int h)
+{
+	return objc::send(objc::alloc_by_name("NSBitmapImageRep"), ObjId,
+		"initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bitmapFormat:bytesPerRow:bitsPerPixel:",
+		(ZString*)null, (NSInteger)w, (NSInteger)h, (NSInteger)8, (NSInteger)4, true, false, darwin::string("NSCalibratedRGBColorSpace"),
+		(NSUInteger)2, (NSInteger)(w * 4), (NSInteger)32);
+}
 
 fn GfxWindow*? _fetch_win(ObjId self)
 {

@@ -1294,16 +1294,16 @@ fn void* _get_current_opengl_context_native()
 
 fn void? _load_opengl_native() @private
 {
-	if (_gfx_ctx.nativeGL_handle && _gfx_ctx.glGetProcAddress) return;
-	if (!(_gfx_ctx.nativeGL_handle = win32::loadLibraryA("opengl32.dll"))) return MISSING_OPENGL_LIB~;
-	_gfx_ctx.glGetProcAddress = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglGetProcAddress");
+	if (_gfx_ctx.native_gl_handle && _gfx_ctx.glGetProcAddress) return;
+	if (!(_gfx_ctx.native_gl_handle = win32::loadLibraryA("opengl32.dll"))) return MISSING_OPENGL_LIB~;
+	_gfx_ctx.glGetProcAddress = win32::getProcAddress(_gfx_ctx.native_gl_handle, "wglGetProcAddress");
 	if (!_gfx_ctx.glGetProcAddress) return MISSING_GL_GET_PROC_ADDR~;
-	wgl_create_context_fn = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglCreateContext");
-	wgl_delete_context_fn = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglDeleteContext");
-	wgl_make_current_fn = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglMakeCurrent");
-	wgl_get_current_dc_fn = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglGetCurrentDC");
-	wgl_get_current_context_fn = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglGetCurrentContext");
-	wgl_share_lists_fn = win32::getProcAddress(_gfx_ctx.nativeGL_handle, "wglShareLists");
+	wgl_create_context_fn = win32::getProcAddress(_gfx_ctx.native_gl_handle, "wglCreateContext");
+	wgl_delete_context_fn = win32::getProcAddress(_gfx_ctx.native_gl_handle, "wglDeleteContext");
+	wgl_make_current_fn = win32::getProcAddress(_gfx_ctx.native_gl_handle, "wglMakeCurrent");
+	wgl_get_current_dc_fn = win32::getProcAddress(_gfx_ctx.native_gl_handle, "wglGetCurrentDC");
+	wgl_get_current_context_fn = win32::getProcAddress(_gfx_ctx.native_gl_handle, "wglGetCurrentContext");
+	wgl_share_lists_fn = win32::getProcAddress(_gfx_ctx.native_gl_handle, "wglShareLists");
 
 	Win32_HWND dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
 	Win32_HDC dummy_dc = win32::getDC(dummyWin);
@@ -1340,11 +1340,11 @@ fn void? _load_opengl_native() @private
 	win32::destroyWindow(dummyWin);
 }
 
-fn GfxFn _get_opengl_proc_native(ZString procname)
+fn void* _get_opengl_proc_native(ZString procname)
 {
-	GfxFn proc = _gfx_ctx.glGetProcAddress ? ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname) : null;
+	void* proc = _gfx_ctx.glGetProcAddress ? ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname) : null;
 	if (proc) return proc;
-	return win32::getProcAddress(_gfx_ctx.nativeGL_handle, (Win32_LPCSTR)procname);
+	return win32::getProcAddress(_gfx_ctx.native_gl_handle, (Win32_LPCSTR)procname);
 }
 
 // --- DirectX
