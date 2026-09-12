@@ -38,6 +38,8 @@ excuse
 	CLIPBOARD_COULD_NOT_BE_OPENED,
 	COULD_NOT_OWN_X11_CLIPBOARD,
 	GAMMA_COULD_NOT_BE_SET,
+	CLIPBOARD_DID_NOT_CONTAIN_TYPE,
+	CLIPBOARD_WRITE_FAILED,
 }
 
 const MAX_EVENTS = 32;
@@ -166,8 +168,7 @@ struct GfxMonitorList
 
 struct GfxDataTransfer
 {
-	char* data;
-	sz length;
+	String text;
 	GfxDataTransferType type;
 }
 
@@ -1242,6 +1243,11 @@ fn GfxEvent? event_queue_pop()
 fn void? write_clipboard(GfxDataTransfer* data) @maydiscard
 {
 	return _write_clipboard_native(data) @inline;
+}
+
+fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type)
+{
+	return _read_clipboard_native(allocator, type) @inline;
 }
 
 // public

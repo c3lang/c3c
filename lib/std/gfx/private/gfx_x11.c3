@@ -1420,35 +1420,21 @@ fn void? _write_clipboard_x11(GfxDataTransfer* data)
 		_gfx_ctx.unixClipboard = null;
 	}
 
-	sz length = data.length;
-	if (data.data[data.length - 1] != 0) length += 1;
-
-	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, data.length);
-	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	mem::copy(dataPtr, data.data, data.length);
-	dataPtr[length - 1] = 0;
-	_gfx_ctx.unixClipboard.data = dataPtr;
+	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, data.text.len);
+	char* data_ptr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
+	data_ptr[:data.text.len] = data.text[..];
+	_gfx_ctx.unixClipboard.text = (String)data_ptr[:data.text.len];
 	_gfx_ctx.unixClipboard.type = TEXT;
-	_gfx_ctx.unixClipboard.length = length;
-
 }
 
-// private
-fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* dataTransfer)
+fn GfxDataTransfer? _read_clipboard_x11(Allocator allocator, GfxDataTransferType type)
 {
-	if (requestedType != TEXT) return false;
-	dataTransfer.data = buffer;
+	if (type != TEXT) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
 	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helper_window)
 	{
-		dataTransfer.length = _gfx_ctx.unixClipboard.length;
-		if (buffer != null && _gfx_ctx.unixClipboard.data != null)
-		{
-			if (_gfx_ctx.unixClipboard.length > capacity) return false;
-			mem::copy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
-		}
-		dataTransfer.type = TEXT;
-		return true;
+		if (!_gfx_ctx.unixClipboard.text) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+		return { .type = TEXT, .text = _gfx_ctx.unixClipboard.text.copy(allocator) };
 	}
 
 	xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.utf8String, _gfx_ctx.xselData, _gfx_ctx.helper_window, 0);
@@ -1458,7 +1444,7 @@ fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* b
 	{
 		xNextEvent(_gfx_ctx.display, &event);
 		if (event.type != 31 /* SelectionNotify */) continue;
-		if (event.xselection.selection != _gfx_ctx.clipboardAtom || event.xselection.property == 0) return false;
+		if (event.xselection.selection != _gfx_ctx.clipboardAtom || event.xselection.property == 0) return CLIPBOARD_COULD_NOT_BE_OPENED~;
 		break;
 	}
 
@@ -1467,24 +1453,14 @@ fn bool todo_fix_readClipboardPtr_X11(GfxDataTransferType requestedType, char* b
 	CULong n, size;
 	char* data;
 	xGetWindowProperty(_gfx_ctx.display, event.xselection.requestor, event.xselection.property, 0, ~0, 0, 0, &target, &format, &size, &n, (char**)&data);
+	defer xDeleteProperty(_gfx_ctx.display, event.xselection.requestor, event.xselection.property);
 
-	bool ret = true;
-	sz length = (sz)size;
-	if (data[size - 1] != 0) length += 1;
-
-	if (size > (CULong)capacity && buffer != null) { ret = false; }
-	else if ((target == _gfx_ctx.utf8String || target == 31) && buffer != null)
+	if (target == _gfx_ctx.utf8String || target == 31)
 	{
-		mem::copy(buffer, data, (sz)size);
-		buffer[length - 1] = 0;
-		xFree(data);
+		defer xFree(data);
+		return { .type = TEXT, .text = (String)alloc::clone_slice(allocator, data[:size]) };
 	}
-	else if (buffer != null) { ret = false; }
-
-	xDeleteProperty(_gfx_ctx.display, event.xselection.requestor, event.xselection.property);
-	dataTransfer.length = length;
-	dataTransfer.type = TEXT;
-	return ret;
+	return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 }
 
 // private
@@ -1955,7 +1931,7 @@ fn void todo_fix_xHandleClipboardSelection(XEvent* event)
 			if (targets[i] == _gfx_ctx.utf8String || targets[i] == 31 /* XA_STRING */)
 			{
 				xChangeProperty(_gfx_ctx.display, request.requestor, targets[i + 1], targets[i],
-				8, 0, _gfx_ctx.unixClipboard.data, (int)_gfx_ctx.unixClipboard.length);
+				8, 0, _gfx_ctx.unixClipboard.text, (int)_gfx_ctx.unixClipboard.text.len);
 			}
 			else
 			{
@@ -1976,8 +1952,7 @@ fn void todo_fix_xHandleClipboardSelection(XEvent* event)
 		for (sz i = 0; i < 2; i++)
 		{
 			if (request.target != formats[i]) continue;
-			xChangeProperty(_gfx_ctx.display, request.requestor, request.property, request.target,
-			8, 0, _gfx_ctx.unixClipboard.data, (int)_gfx_ctx.unixClipboard.length);
+			xChangeProperty(_gfx_ctx.display, request.requestor, request.property, request.target, 8, 0, _gfx_ctx.unixClipboard.text, (int)_gfx_ctx.unixClipboard.text.len);
 		}
 	}
 

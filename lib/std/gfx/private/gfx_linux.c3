@@ -547,20 +547,19 @@ fn void _poll_monitors_native()
 	$endswitch
 }
 
-// public
-fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* dataTransfer)
+fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType type)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_readClipboardPtr_Wayland(requestedType, buffer, capacity, dataTransfer);
+			return _read_clipboard_wayland(allocator, type);
 		$case X11_ONLY:
-			return todo_fix_readClipboardPtr_X11(requestedType, buffer, capacity, dataTransfer);
+			return _read_clipboard_x11(allocator, type);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_readClipboardPtr_Wayland(requestedType, buffer, capacity, dataTransfer);
+				return _read_clipboard_wayland(allocator, type);
 			}
-			return todo_fix_readClipboardPtr_X11(requestedType, buffer, capacity, dataTransfer);
+			return _read_clipboard_x11(allocator, type);
 	$endswitch
 }
 

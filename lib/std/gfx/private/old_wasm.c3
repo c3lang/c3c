@@ -222,13 +222,6 @@ fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 
 fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format) => null;
 
-// public
-fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
-{
-	if (requestedType != TEXT) return false;
-	return false;
-}
-
 fn bool todo_fix_extensionSupportedPlatform_OpenGL(ZString extension, sz len) => rgfwJsExtensionSupported(extension, len) != 0;
 // public
 fn GfxFn _get_opengl_proc_native(ZString procname) => rgfwJsGetProcAddress(procname);

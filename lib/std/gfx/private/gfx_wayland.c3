@@ -930,23 +930,11 @@ fn void _poll_monitors_wayland()
 	_gfx_ctx.monitors.primary = _gfx_ctx.monitors.list.head;
 }
 
-// private
-fn bool todo_fix_readClipboardPtr_Wayland(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
+fn GfxDataTransfer? _read_clipboard_wayland(Allocator allocator, GfxDataTransferType type)
 {
-	if (requestedType != TEXT) return false;
-	if (_gfx_ctx.unixClipboard == null || _gfx_ctx.unixClipboard.length == 0)
-	{
-		data.length = 0;
-		data.type = NONE;
-		return false;
-	}
-	data.length = _gfx_ctx.unixClipboard.length;
-	data.type = TEXT;
-	if (buffer == null) return true;
-	if (_gfx_ctx.unixClipboard.length > capacity) return false;
-	mem::copy(buffer, (void*)_gfx_ctx.unixClipboard.data, _gfx_ctx.unixClipboard.length);
-	data.data = buffer;
-	return true;
+	if (type != TEXT || !_gfx_ctx.unixClipboard || !_gfx_ctx.unixClipboard.text) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+
+	return { .type = TEXT, .text = _gfx_ctx.unixClipboard.text.copy(allocator) };
 }
 
 // private
@@ -1158,16 +1146,13 @@ fn void? _write_clipboard_wayland(GfxDataTransfer* data)
 		_gfx_ctx.unixClipboard = null;
 	}
 
-	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, data.length);
-	sz length = data.length;
-	if (data.data[length - 1] != 0) length += 1;
-
-	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	mem::copy(dataPtr, data.data, data.length);
-	dataPtr[length - 1] = 0;
-	_gfx_ctx.unixClipboard.data = dataPtr;
+	sz length = data.text.len;
+	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, length + 1);
+	char* data_ptr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
+	String s = (String)data_ptr[:length];
+	s[..] = data.text[..];
+	_gfx_ctx.unixClipboard.text = s;
 	_gfx_ctx.unixClipboard.type = TEXT;
-	_gfx_ctx.unixClipboard.length = length;
 
 	GfxWindow* win = _gfx_ctx.kbOwner;
 	if (win.src.dataSource)
@@ -1490,9 +1475,8 @@ fn void _wl_data_source_send_cb(void* data, WlProxy* source, ZString mime_type, 
 {
 	if (mime_type && mime_type.str_view().contains("text/plain"))
 	{
-		sz length = _gfx_ctx.unixClipboard.length;
-		if (_gfx_ctx.unixClipboard.data[0] == 0) length -= 1;
-		libc::write(fd, (void*)_gfx_ctx.unixClipboard.data, (usz)length);
+		String s = _gfx_ctx.unixClipboard.text;
+		libc::write(fd, s, s.len);
 	}
 	libc::close(fd);
 }
@@ -1904,13 +1888,12 @@ fn void _wl_data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer
 	if (buf[n - 1] != 0) length += 1;
 
 	if (_gfx_ctx.unixClipboard != null) free(_gfx_ctx.unixClipboard);
-	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, n);
-	char* dataPtr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
-	mem::copy(dataPtr, &buf, n);
-	dataPtr[length - 1] = 0;
-	_gfx_ctx.unixClipboard.data = dataPtr;
+	_gfx_ctx.unixClipboard = mem::new_with_padding(GfxDataTransfer, length);
+	char* data_ptr = (char*)_gfx_ctx.unixClipboard + GfxDataTransfer::size - 1;
+	String s = (String)data_ptr[:length - 1];
+	data_ptr[:s.len] = buf[:s.len];
+	_gfx_ctx.unixClipboard.text = s;
 	_gfx_ctx.unixClipboard.type = TEXT;
-	_gfx_ctx.unixClipboard.length = length;
 
 	libc::close(pfds[0]);
 	wlDataOfferDestroy(offer);

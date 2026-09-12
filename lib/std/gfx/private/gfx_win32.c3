@@ -361,6 +361,12 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	win.size = mon.mode.size;
 }
 
+fn void _window_move_native(GfxWindow* win, GfxPoint where)
+{
+	win.origin = where;
+	win32::setWindowPos(win.src.window, (Win32_HWND){}, ...where, 0, 0, 0x0001 /* SWP_NOSIZE */);
+}
+
 fn void _window_hide_native(GfxWindow* win)
 {
 	win32::showWindow(win.src.window, win32::SW_HIDE);
@@ -458,24 +464,32 @@ fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, Gfx
 	return MONITOR_MODE_CHANGE_FAILED~;
 }
 
-fn void? _write_clipboard_native(GfxDataTransfer* data)
+fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType requested_type) => @pool()
 {
-	void* object = win32::globalAlloc(0x0002 /* GMEM_MOVEABLE */, (Win32_SIZE_T)data.length * 2);
+	if (requested_type != TEXT) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+
+	_open_clipboard()!;
+	defer win32::closeClipboard();
+	void* hdata = win32::getClipboardData(13 /* CF_UNICODETEXT */);
+	if (!hdata) return CLIPBOARD_COULD_NOT_BE_OPENED~;
+
+	WString data = (WString)win32::globalLock(hdata);
+	defer win32::globalUnlock(hdata);
+	return { .text = string::from_wstring(allocator, data), .type = TEXT };
+}
+
+fn void? _write_clipboard_native(GfxDataTransfer* data) => @pool()
+{
+	WString wstring = data.text.to_wstring(tmem)!;
+	void* object = win32::globalAlloc(0x0002 /* GMEM_MOVEABLE */, (Win32_SIZE_T)data.text.len * 2);
 	if (!object) return mem::OUT_OF_MEMORY~;
 	defer catch win32::globalFree(object);
-	ushort* buffer = (ushort*)win32::globalLock(object);
+	Char16* buffer = (ushort*)win32::globalLock(object);
 	if (!buffer) return CLIPBOARD_COULD_NOT_BE_OPENED~;
-
-	win32::multiByteToWideChar(65001, 0, (void*)data.data, -1, buffer, (int)data.length);
-	win32::globalUnlock(object);
-
-	int is_open = 0;
-	for (int i = 0; i < 3 && !is_open; i++)
-	{
-		is_open = win32::openClipboard(null);
-	}
-	if (!is_open) return CLIPBOARD_COULD_NOT_BE_OPENED~;
-
+	defer win32::globalUnlock(object);
+	sz len = data.text.len + 1;
+	buffer[:len] = wstring[:len];
+	_open_clipboard()!;
 	win32::emptyClipboard();
 	win32::setClipboardData(13, object);
 	win32::closeClipboard();
@@ -1058,6 +1072,44 @@ fn uint _winapi_window_get_style_ex(GfxWindow* win, GfxWindowFlags flags)
 
 // --- OpenGL
 
+const int WGL_ACCELERATION_ARB = 0x2003;
+const int WGL_FULL_ACCELERATION_ARB = 0x2027;
+const int WGL_DRAW_TO_WINDOW_ARB = 0x2001;
+const int WGL_PIXEL_TYPE_ARB = 0x2013;
+const int WGL_TYPE_RGBA_ARB = 0x202b;
+const int WGL_SUPPORT_OPENGL_ARB = 0x2010;
+const int WGL_COLOR_BITS_ARB = 0x2014;
+const int WGL_DOUBLE_BUFFER_ARB = 0x2011;
+const int WGL_ALPHA_BITS_ARB = 0x201b;
+const int WGL_DEPTH_BITS_ARB = 0x2022;
+const int WGL_STENCIL_BITS_ARB = 0x2023;
+const int WGL_STEREO_ARB = 0x2012;
+const int WGL_AUX_BUFFERS_ARB = 0x2024;
+const int WGL_RED_BITS_ARB = 0x2015;
+const int WGL_GREEN_BITS_ARB = 0x2017;
+const int WGL_BLUE_BITS_ARB = 0x2019;
+const int WGL_ACCUM_RED_BITS_ARB = 0x201e;
+const int WGL_ACCUM_GREEN_BITS_ARB = 0x201f;
+const int WGL_ACCUM_BLUE_BITS_ARB = 0x2020;
+const int WGL_ACCUM_ALPHA_BITS_ARB = 0x2021;
+const int WGL_COLORSPACE_SRGB_EXT = 0x3089;
+const int WGL_CONTEXT_OPENGL_NO_ERROR_ARB = 0x31b3;
+const int WGL_CONTEXT_RELEASE_BEHAVIOR_ARB = 0x2097;
+const int WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB = 0x0000;
+const int WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB = 0x2098;
+const int WGL_CONTEXT_FLAGS_ARB = 0x2094;
+const int WGL_COVERAGE_SAMPLES_NV = 0x2042;
+const int WGL_CONTEXT_ES_PROFILE_BIT_EXT = 0x00000004;
+const int WGL_CONTEXT_PROFILE_MASK_ARB = 0x9126;
+const int WGL_CONTEXT_CORE_PROFILE_BIT_ARB = 0x00000001;
+const int WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB = 0x00000002;
+const int WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB = 0x00000002;
+const int WGL_CONTEXT_MAJOR_VERSION_ARB = 0x2091;
+const int WGL_CONTEXT_MINOR_VERSION_ARB = 0x2092;
+const int WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB = 0x20A9;
+const int WGL_CONTEXT_DEBUG_BIT_ARB = 0x00000001;
+const int WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB = 0x00000004;
+
 alias WglCreateContextProc = fn Win32_HGLRC(Win32_HDC*);
 alias WglDeleteContextProc = fn int(Win32_HGLRC);
 alias WglMakeCurrentProc = fn int(Win32_HDC*, Win32_HGLRC);
@@ -1220,6 +1272,25 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	win.src.ctx.native.ctx = null;
 }
 
+fn void _window_make_opengl_current_context_native(GfxWindow* win)
+{
+	if (!win)
+	{
+		wgl_make_current_fn(null, null);
+		return;
+	}
+	wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
+}
+
+fn void _window_swap_opengl_buffers_native(GfxWindow* win)
+{
+	win32::swapBuffers(win.src.hdc);
+}
+
+fn void* _get_current_opengl_context_native()
+{
+	return wgl_get_current_context_fn();
+}
 
 fn void? _load_opengl_native() @private
 {
@@ -1443,6 +1514,15 @@ fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 }
 
 // --- helpers
+
+fn void? _open_clipboard()
+{
+	for (int i = 0; i < 3; i++)
+	{
+		if (win32::openClipboard(null)) return;
+	}
+	return CLIPBOARD_COULD_NOT_BE_OPENED~;
+}
 
 fn void _make_window_transparent(GfxWindow* win)
 {

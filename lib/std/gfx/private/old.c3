@@ -32,13 +32,7 @@ alias ObjcSendId = fn ObjId(ObjId, ObjSel);
 alias ObjcSendCharPtr = fn ZString(ObjId, ObjSel);
 alias ObjcSendVoidId = fn void(ObjId, ObjSel, ObjId);
 
-alias ObjcSendVoidNSUInteger = fn void(ObjId, ObjSel, NSUInteger);
-alias ObjcSendVoidNSInteger = fn void(ObjId, ObjSel, NSInteger);
-alias ObjcSendVoidCGFloat = fn void(ObjId, ObjSel, CGFloat);
-alias ObjcSendVoidSize = fn void(ObjId, ObjSel, CGSize);
-alias ObjcSendVoidPoint = fn void(ObjId, ObjSel, CGPoint);
 
-alias ObjcSendIdRect = fn ObjId(ObjId, ObjSel, CGRect);
 alias ObjcSendIdSize = fn ObjId(ObjId, ObjSel, CGSize);
 alias ObjcSendBitmapRepInit = fn ObjId(ObjId, ObjSel, ZString*, NSInteger, NSInteger, NSInteger, NSInteger, bool, bool, ObjId, NSUInteger, NSInteger, NSInteger);
 alias ObjcSendIdEvent = fn ObjId(ObjId, ObjSel, NSUInteger, ObjId, ObjId, bool);
@@ -57,7 +51,6 @@ alias ObjcSendInteger = fn NSInteger(ObjId, ObjSel);
 alias ObjcSendCGFloat = fn CGFloat(ObjId, ObjSel);
 alias ObjcSendUShort = fn ushort(ObjId, ObjSel);
 alias ObjcSendNSUInteger = fn NSUInteger(ObjId, ObjSel);
-alias ObjcSendVoidIntPtrNSInteger = fn void(ObjId, ObjSel, int*, NSInteger);
 
 
 
@@ -127,7 +120,7 @@ const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 
 fn void nsOpenGLContext_setValues(ObjId context, int* vals, NSInteger param)
 {
-	objc_send(context, ObjcSendVoidIntPtrNSInteger, "setValues:forParameter:", vals, param);
+	context.send_void("setValues:forParameter:", vals, param);
 }
 
 
@@ -159,8 +152,6 @@ fn GfxFn _get_opengl_proc_native(ZString procname)
 	defer { if (symbol_name) symbol_name.release(); }
 	return cfBundleGetFunctionPointerForName((CFBundleRef)_gfx_ctx.nativeGL_handle, symbol_name);
 }
-
-
 
 
 const NSUInteger NS_BACKING_STORE_BUFFERED = 2;
@@ -204,30 +195,12 @@ fn CGDirectDisplayID todo_fix_monitorDisplay(GfxMonitor* monitor)
 	return cg::mainDisplayID();
 }
 
-
-
 // public
 fn void todo_fix_monitorNode_free(GfxMonitorNode* node)
 {
 	if (node.mon.mode.src) CFType.release(node.mon.mode.src);
 }
 
-
-fn void _wait_for_event_native(int waitMS)
-{
-	if (!_gfx_ctx.ns_app) return;
-	ObjId date = objc_send(objc::@class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)waitMS / 1000.0);
-	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
-	ObjId ev = _gfx_ctx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
-	if (ev) _gfx_ctx.ns_app.send_void("postEvent:atStart:", ev, true);
-}
-
-fn void todo_fix_moveToMacOSResourceDir()
-{
-	ObjId path = objc::send(objc::class("NSBundle"), ObjId, "mainBundle").send(ObjId, "resourcePath");
-	ZString raw = darwin::string_to_zstr(path);
-	if (raw) (void)path::chdir(raw.str_view());
-}
 
 fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)
 {
@@ -281,44 +254,6 @@ fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 
 
 
-// public
-
-
-
-
-fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
-{
-	if (requestedType != TEXT || data == null) return false;
-	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
-	ObjId str = pb.send(ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
-	ZString raw = darwin::string_to_zstr(str);
-	if (raw == null) return false;
-	sz len = raw.len();
-	if (buffer != null && capacity > 0)
-	{
-		sz copyLen = len < capacity - 1 ? len : capacity - 1;
-		mem::copy(buffer, raw, copyLen);
-		buffer[copyLen] = 0;
-		data.data = buffer;
-	}
-	else
-	{
-		data.data = raw;
-	}
-	data.length = len;
-	data.type = TEXT;
-	return true;
-}
-
-// public
-
-// public
-fn void* todo_fix_eglContext_getSourceContext(GfxEglContext* ctx) => ctx != null ? ctx.ctx : null;
-// public
-fn void* todo_fix_eglContext_getSurface(GfxEglContext* ctx) => ctx != null ? ctx.surface : null;
-// public
-fn void* todo_fix_eglContext_wlEGLWindow(GfxEglContext* ctx) => ctx != null ? ctx.egl_window : null;
-
 
 // public
 
@@ -335,18 +270,3 @@ fn void todo_fix_window_makeCurrentWindow_EGL(GfxWindow* win) { _gfx_ctx.current
 
 struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
 
-// public
-
-// public
-fn GfxDataTransfer* todo_fix_readClipboard(GfxDataTransferType requestedType)
-{
-	return _gfx_ctx.clipboard;
-}
-
-// public
-fn GfxDataTransfer* todo_fix_readClipboardString()
-{
-	return todo_fix_readClipboard(TEXT);
-}
-// public
-fn bool todo_fix_readClipboardStringPtr(char* buffer, sz capacity, GfxDataTransfer* data) { return todo_fix_readClipboardPtr(TEXT, buffer, capacity, data); }

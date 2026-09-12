@@ -39,6 +39,8 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a
 fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
 fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
 
+fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
+
 fn void _poll_monitors_native() {}
 fn void _free_mouse(TodoRenameMouse* mouse) {}
 fn void _window_show_native(GfxWindow* win) {}
@@ -250,7 +252,7 @@ fn void _surface_release_native(GfxSurface* surface)
 
 fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
-	rgfwJsWriteClipboard(data.data, data.length);
+	rgfwJsWriteClipboard(data.text, data.text.len);
 }
 
 

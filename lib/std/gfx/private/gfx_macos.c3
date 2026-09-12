@@ -646,13 +646,40 @@ fn void _destroy_native()
 
 fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
-	if (!data || data.type != TEXT || !data.data) return CLIPBOARD_COULD_NOT_BE_OPENED~;
+	if (data.type != TEXT || !data.text) return NOT_IMPLEMENTED~;
 	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
+	if (!pb) return CLIPBOARD_COULD_NOT_BE_OPENED~;
 	pb.send_void("clearContents");
-	if (!pb.send(bool, "setString:forType:", darwin::string((ZString)data.data), "public.utf8-plain-text".to_nsstring()))
+
+	if (!pb.send(bool, "setString:forType:", data.text.to_nsstring(), "public.utf8-plain-text".to_nsstring()))
 	{
-		return CLIPBOARD_COULD_NOT_BE_OPENED~;
+		return CLIPBOARD_WRITE_FAILED~;
 	}
+}
+
+fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType type)
+{
+	if (type != TEXT) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+
+	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
+	if (!pb) return CLIPBOARD_COULD_NOT_BE_OPENED~;
+
+	ObjId str = pb.send(ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
+	if (!str) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+
+	ZString raw = darwin::string_to_zstr(str);
+	if (!raw) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+
+	return { .text = raw.str_view().copy(allocator), .type = TEXT };
+}
+
+fn void _wait_for_event_native(int wait_ms)
+{
+	if (!_gfx_ctx.ns_app) return;
+	ObjId date = objc_send(objc::@class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)wait_ms / 1000.0);
+	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
+	ObjId ev = _gfx_ctx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
+	if (ev) _gfx_ctx.ns_app.send_void("postEvent:atStart:", ev, true);
 }
 
 fn void _poll_monitors_native()
