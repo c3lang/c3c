@@ -346,7 +346,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 				if (gfx_use_wayland)
 				{
 					if (try _init_wayland(class_name, flags)) return;
-					todo_fix_debugCallback(TODO_RENAME_TYPE_WARNING, TODO_RENAME_WARNING_WAYLAND, "Falling back to X11");
+					log::info("Falling back to X11", category: log::CATEGORY_VIDEO);
 					gfx_use_wayland = false;
 				}
 			}

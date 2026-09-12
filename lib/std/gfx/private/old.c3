@@ -183,8 +183,8 @@ fn ObjId ns_imageWithRep(ObjId rep, int w, int h)
 	CGSize size;
 	size.width = (CGFloat)w;
 	size.height = (CGFloat)h;
-	ObjId image = objc::send(objc::alloc_by_name("NSImage"), ObjId, "initWithSize:", size);
-	if (rep) objc::send_void(image, "addRepresentation:", rep);
+	ObjId image = objc::alloc_by_name("NSImage").send(ObjId, "initWithSize:", size);
+	if (rep) image.send_void("addRepresentation:", rep);
 	return image;
 }
 
@@ -218,27 +218,17 @@ fn void _wait_for_event_native(int waitMS)
 	if (!_gfx_ctx.ns_app) return;
 	ObjId date = objc_send(objc::@class("NSDate"), ObjcSendIdDouble, "dateWithTimeIntervalSinceNow:", (double)waitMS / 1000.0);
 	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
-	ObjId ev = objc::send(_gfx_ctx.ns_app, ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
-	if (ev) objc::send_void(_gfx_ctx.ns_app, "postEvent:atStart:", ev, true);
+	ObjId ev = _gfx_ctx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
+	if (ev) _gfx_ctx.ns_app.send_void("postEvent:atStart:", ev, true);
 }
 
 fn void todo_fix_moveToMacOSResourceDir()
 {
-	ObjId path = objc::send(objc::send(objc::class("NSBundle"), ObjId, "mainBundle"), ObjId, "resourcePath");
+	ObjId path = objc::send(objc::class("NSBundle"), ObjId, "mainBundle").send(ObjId, "resourcePath");
 	ZString raw = darwin::string_to_zstr(path);
 	if (raw) (void)path::chdir(raw.str_view());
 }
 
-// public
-
-
-
-// public
-
-// public
-// public
-
-// public
 fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)
 {
 	if (data == null) return null;
@@ -250,7 +240,7 @@ fn TodoRenameMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat for
 	ObjId image = ns_imageWithRep(rep, w, h);
 	CGPoint hot;
 	hot.x = 0.0; hot.y = 0.0;
-	ObjId cursor = objc::send(objc::alloc_by_name("NSCursor"), ObjId, "initWithImage:hotSpot:", image, hot);
+	ObjId cursor = objc::alloc_by_name("NSCursor").send(ObjId, "initWithImage:hotSpot:", image, hot);
 	objc::release(image);
 	return (TodoRenameMouse*)cursor;
 }
@@ -336,14 +326,11 @@ fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* 
 
 
 
-
-
-// public
 fn bool todo_fix_readClipboardPtr(GfxDataTransferType requestedType, char* buffer, sz capacity, GfxDataTransfer* data)
 {
 	if (requestedType != TEXT || data == null) return false;
 	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
-	ObjId str = objc::send(pb, ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
+	ObjId str = pb.send(ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
 	ZString raw = darwin::string_to_zstr(str);
 	if (raw == null) return false;
 	sz len = raw.len();

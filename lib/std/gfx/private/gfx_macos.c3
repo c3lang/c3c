@@ -83,16 +83,16 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	}
 	stack.push_all({0, 0});
 
-	ObjId format = objc::send(objc::alloc_by_name("NSOpenGLPixelFormat"), ObjId, "initWithAttributes:", stack.array_view());
+	ObjId format = objc::alloc_by_name("NSOpenGLPixelFormat").send(ObjId, "initWithAttributes:", stack.array_view());
 	if (!format) return OPENGL_PIXEL_FORMAT_LOAD_FAILED~;
 	defer catch objc::release(format);
 
 	ObjId share = hints.share ? hints.share.ctx : null;
-	ctx.ctx = objc::send(objc::alloc_by_name("NSOpenGLContext"), ObjId, "initWithFormat:shareContext:", format, share);
+	ctx.ctx = objc::alloc_by_name("NSOpenGLContext").send(ObjId, "initWithFormat:shareContext:", format, share);
 	if (!ctx.ctx) return OPENGL_CTX_CREATION_FAILED~;
 	ctx.format = format;
 
-	objc::send_void(ctx.ctx, "setView:", win.src.view);
+	ctx.ctx.send_void("setView:", win.src.view);
 	if (win.internal.flags.transparent)
 	{
 		int opacity = 0;
@@ -109,14 +109,14 @@ fn void* _get_current_opengl_context_native()
 
 fn void _window_swap_opengl_buffers_native(GfxWindow* win)
 {
-	if (win.src.ctx.native && win.src.ctx.native.ctx) objc::send_void(win.src.ctx.native.ctx, "flushBuffer");
+	if (win.src.ctx.native && win.src.ctx.native.ctx) win.src.ctx.native.ctx.send_void("flushBuffer");
 }
 
 fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
 	if (win && win.src.ctx.native && win.src.ctx.native.ctx)
 	{
-		objc::send_void(win.src.ctx.native.ctx,  "makeCurrentContext");
+		win.src.ctx.native.ctx.send_void("makeCurrentContext");
 	}
 	else
 	{
@@ -209,7 +209,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 	if (!raw) return VULKAN_NOT_LOADED~;
 	ObjId layer = objc::send(objc::@class("CAMetalLayer"), ObjId, "layer");
 	if (!layer) return SURFACE_CREATION_FAILED~;
-	objc::send_void(win.src.view, "setWantsLayer:", true);
+	win.src.view.send_void("setWantsLayer:", true);
 	_window_set_layer_macos(win, layer);
 	VkMetalSurfaceCreateInfoEXT create_info;
 
@@ -228,7 +228,7 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 
 fn void _window_maximize_native(GfxWindow* win)
 {
-	if (win.src.window) objc::send_void(win.src.window, "zoom:", null);
+	win.src.window.send_void("zoom:", null);
 }
 
 fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
@@ -239,19 +239,19 @@ fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 
 fn void _window_hide_native(GfxWindow* win)
 {
-	objc::send_void(win.src.window, "orderOut:", null);
+	win.src.window.send_void("orderOut:", null);
 	win.internal.flags.hide = true;
 }
 
 fn bool _window_is_minimized_native(GfxWindow* win)
 {
-	if (win.src.window) return objc::send(win.src.window, bool, "isMiniaturized");
+	if (win.src.window) return win.src.window.send(bool, "isMiniaturized");
 	return win.internal.flags.minimize;
 }
 
 fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request)
 {
-	objc::send(_gfx_ctx.ns_app, NSInteger, "requestUserAttention:", (NSUInteger)request);
+	_gfx_ctx.ns_app.send(NSInteger, "requestUserAttention:", (NSUInteger)request);
 }
 
 fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
@@ -268,9 +268,9 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 	if (!pixels) return;
 	copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
 	ObjId image = ns_imageWithRep(rep, ...min);
-	objc::send_void(win.src.view, "setWantsLayer:", true);
-	ObjId layer = objc::send(win.src.view, ObjId, "layer");
-	if (layer) objc::send_void(layer, "setContents:", image);
+	win.src.view.send_void("setWantsLayer:", true);
+	ObjId layer = win.src.view.send(ObjId, "layer");
+	layer.send_void("setContents:", image);
 	objc::release(image);
 }
 
@@ -283,15 +283,15 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 fn bool _window_is_floating_native(GfxWindow* win)
 {
 	if (!win) return false;
-	if (win.src.window) return objc::send(win.src.window, NSInteger, "level") > NSWindowLevel.NORMAL;
+	if (win.src.window) return win.src.window.send(NSInteger, "level") > NSWindowLevel.NORMAL;
 	return win.internal.flags.floating;
 }
 
 fn void _window_set_border_native(GfxWindow* win, bool border)
 {
 	if (!win.src.window) return;
-	CGRect frame = objc::send(win.src.window, CGRect, "frame");
-	CGRect content = objc::send(win.src.view, CGRect, "frame");
+	CGRect frame = win.src.window.send(CGRect, "frame");
+	CGRect content = win.src.view.send(CGRect, "frame");
 	double offset = 0;
 
 	win.internal.flags.no_border = !border;
@@ -299,13 +299,13 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 	if (border) styleMask = TITLED | CLOSABLE | MINIATURIZABLE;
 	if (!win.internal.flags.no_resize) styleMask |= RESIZABLE;
 
-	objc::send_void(win.src.window, "setStyleMask:", styleMask);
+	win.src.window.send_void("setStyleMask:", styleMask);
 
 	if (!border)
 	{
-		ObjId miniaturizeButton = objc::send(win.src.window, ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
-		ObjId titleBarView = objc::send(miniaturizeButton, ObjId, "superview");
-		objc::send_void(titleBarView, "setHidden:", true);
+		ObjId miniaturizeButton = win.src.window.send(ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
+		ObjId titleBarView = miniaturizeButton.send(ObjId, "superview");
+		titleBarView.send_void("setHidden:", true);
 		offset = (double)(frame.size.height - content.size.height);
 	}
 
@@ -317,7 +317,7 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 {
 	if (win.src.view)
 	{
-		CGRect frame = objc::send(win.src.view, CGRect, "frame");
+		CGRect frame = win.src.view.send(CGRect, "frame");
 		win.size = { (int)frame.size.width, (int)frame.size.height };
 	}
 	return win.size;
@@ -325,38 +325,38 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 
 fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 {
-	if (win.src.window) objc::send_void(win.src.window, "toggleFullScreen:", null);
+	if (win.src.window) win.src.window.send_void("toggleFullScreen:", null);
 	win.internal.flags.fullscreen = fullscreen;
 }
 
 fn void _window_focus_native(GfxWindow* win)
 {
-	if (win.src.window) objc::send_void(win.src.window, "makeKeyWindow", null);
+	win.src.window.send_void("makeKeyWindow", null);
 	win.internal.inFocus = true;
 }
 
 fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
 	if (!win.src.window) return;
-	CGRect frame = objc::send(win.src.window, CGRect, "frame");
-	CGRect content = objc::send(win.src.window, CGRect, "contentRectForFrameRect:", frame);
+	CGRect frame = win.src.window.send(CGRect, "frame");
+	CGRect content = win.src.window.send(CGRect, "contentRectForFrameRect:", frame);
 	double offset = frame.size.height - content.size.height;
-	objc::send_void((ObjId)win.src.window, "setFrame:display:", ns_rect((double)win.x, (double)win.y, (double)size.x, (double)size.y + offset), true);
+	win.src.window.send_void("setFrame:display:", ns_rect((double)win.x, (double)win.y, (double)size.x, (double)size.y + offset), true);
 }
 
 fn void _window_move_native(GfxWindow* win, GfxPoint where)
 {
 	if (!win.src.window) return;
-	CGRect content = objc::send((ObjId)win.src.view, CGRect, "frame");
+	CGRect content = win.src.view.send(CGRect, "frame");
 	win.x = where.x;
 	win.y = (int)flip_y((float)where.y + (float)content.size.height - 1.0f);
 	CGPoint origin = { ...where };
-	objc::send_void(win.src.window, "setFrameOrigin:", origin);
+	win.src.window.send_void("setFrameOrigin:", origin);
 }
 
 fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 {
-	objc::send_void(win.src.window, "setMinSize:", (CGSize) { ...size });
+	win.src.window.send_void("setMinSize:", (CGSize) { ...size });
 }
 
 fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
@@ -364,7 +364,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFor
 	if (!_gfx_ctx.ns_app) return false;
 	if (!data)
 	{
-		objc::send_void(_gfx_ctx.ns_app, "setApplicationIconImage:", null);
+		_gfx_ctx.ns_app.send_void("setApplicationIconImage:", null);
 		return true;
 	}
 	ObjId rep = ns_bitmapRep(w, h);
@@ -374,7 +374,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFor
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjId image = ns_imageWithRep(rep, w, h);
 	defer objc::release(image);
-	objc::send_void(_gfx_ctx.ns_app, "setApplicationIconImage:", image);
+	_gfx_ctx.ns_app.send_void("setApplicationIconImage:", image);
 	return true;
 }
 
@@ -387,12 +387,12 @@ fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
 		h = 1;
 	}
 	CGSize size = { w, h };
-	objc::send_void(win.src.window, "setContentAspectRatio:", size);
+	win.src.window.send_void("setContentAspectRatio:", size);
 }
 
 fn bool _window_is_hidden_native(GfxWindow* win) @private
 {
-	if (win.src.window) return !objc::send(win.src.window, bool, "isVisible");
+	if (win.src.window) return !win.src.window.send(bool, "isVisible");
 	return win.internal.flags.hide;
 }
 
@@ -406,8 +406,8 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	_gfx_ctx.ns_pool = objc::pool_push();
 	ObjId app = _gfx_ctx.ns_app = objc::send(objc::class("NSApplication"), ObjId, "sharedApplication");
 	if (!app) return NSAPP_CREATION_FAILED~;
-	objc::send_void(app, "setActivationPolicy:", (NSUInteger)NS_APP_ACTIVATION_POLICY_REGULAR);
-	objc::send_void(app, "finishLaunching");
+	app.send_void("setActivationPolicy:", (NSUInteger)NS_APP_ACTIVATION_POLICY_REGULAR);
+	app.send_void("finishLaunching");
 	_osx_register_classes()!;
 	todo_fix_pollMonitors();
 }
@@ -424,7 +424,7 @@ fn void _poll_events_native()
 		{
 			objc::@autoreleasepool()
 			{
-				ObjId ev = objc::send(_gfx_ctx.ns_app, ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
+				ObjId ev = _gfx_ctx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
 				if (!ev) break;
 				objc_send(_gfx_ctx.ns_app, ObjcSendVoidId, "sendEvent:", ev);
 			};
@@ -440,25 +440,25 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 	if (!flags.no_resize) style |= RESIZABLE;
 	if (flags.no_border) style = BORDERLESS;
 	CGRect rect = { { win.x, flip_y((float)(win.y + win.height - 1)) } , { ...win.size }};
-	ObjId nswin = objc::send(objc::alloc_by_name("NSWindow"), ObjId, "initWithContentRect:styleMask:backing:defer:", rect, style, NSBackingStoreType.BUFFERED, false);
+	ObjId nswin = objc::alloc_by_name("NSWindow").send(ObjId, "initWithContentRect:styleMask:backing:defer:", rect, style, NSBackingStoreType.BUFFERED, false);
 	if (!nswin) return NSWINDOW_CREATION_FAILED~;
 	ObjId view = _macos_view_class ? objc::send(_macos_view_class, ObjId, "alloc") : objc::alloc_by_name("NSView");
-	view = objc::send(view, ObjId, "initWithFrame:", (CGRect) { { } , { ...win.size } });
+	view = view.send(ObjId, "initWithFrame:", (CGRect) { { } , { ...win.size } });
 	if (_macos_view_class) view.set_ivar("gfx_window", win);
 	ObjId delegate = null;
 	if (_macos_window_delegate_class)
 	{
-		delegate = objc::send(objc::alloc(_macos_window_delegate_class), ObjId, "init");
+		delegate = objc::alloc(_macos_window_delegate_class).send(ObjId, "init");
 		delegate.set_ivar("gfx_window", win);
-		objc::send_void(nswin, "setDelegate:", delegate);
+		nswin.send_void("setDelegate:", delegate);
 	}
 	win.src.window = nswin.retain();
 	win.src.view = view.retain();
 	win.src.delegate = delegate;
 	win.src.bounds = win.bounds;
-	objc::send_void(nswin, "setContentView:", view);
-	objc::send_void(nswin, "makeFirstResponder:", view);
-	objc::send_void(nswin, "setAcceptsMouseMovedEvents:", true);
+	nswin.send_void("setContentView:", view);
+	nswin.send_void("makeFirstResponder:", view);
+	nswin.send_void("setAcceptsMouseMovedEvents:", true);
 	win.set_name(name);
 	_window_set_floating_native(win, flags.floating);
 	if (!(flags.hide)) _window_show_native(win);
@@ -507,18 +507,18 @@ fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 	{
 		if (try mon = _window_find_monitor_native(win)) size = mon.mode.size;
 	}
-	objc::send_void(win.src.window, "setMaxSize:", (CGSize){ ...size });
+	win.src.window.send_void("setMaxSize:", (CGSize){ ...size });
 }
 
 fn void _window_set_name_native(GfxWindow* win, String name)
 {
-	objc::send_void(win.src.window, "setTitle:", name.to_nsstring());
+	win.src.window.send_void("setTitle:", name.to_nsstring());
 }
 
 fn void _window_restore_native(GfxWindow* win)
 {
 	if (!win.src.window) return;
-	objc::send_void(win.src.window, "deminiaturize:", null);
+	win.src.window.send_void("deminiaturize:", null);
 	win.internal.flags.minimize = false;
 	win.internal.flags.maximize = false;
 }
@@ -530,7 +530,7 @@ fn void _window_raise_native(GfxWindow* win)
 
 fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 {
-	if (win.src.window) objc::send_void(win.src.window, "setIgnoresMouseEvents:", passthrough);
+	if (win.src.window) win.src.window.send_void("setIgnoresMouseEvents:", passthrough);
 }
 
 fn bool _window_is_maximized_native(GfxWindow* win)
@@ -563,22 +563,22 @@ fn bool _window_set_mouse_native(GfxWindow* win, TodoRenameMouse* mouse)
 {
 	ObjId mouse_native = (ObjId)mouse;
 	cg::mainDisplayID().showCursor();
-	objc::send_void(mouse_native, "set");
+	mouse_native.send_void("set");
 	win.src.mouse = mouse_native;
 	return true;
 }
 
 fn void _window_set_floating_native(GfxWindow* win, bool floating)
 {
-	if (win.src.window) objc::send_void(win.src.window, "setLevel:", floating ? NSWindowLevel.FLOATING : NSWindowLevel.NORMAL);
+	if (win.src.window) win.src.window.send_void("setLevel:", floating ? NSWindowLevel.FLOATING : NSWindowLevel.NORMAL);
 	win.internal.flags.floating = floating;
 }
 
 fn void _window_show_native(GfxWindow* win)
 {
 	if (!win.src.window) return;
-	objc::send_void(win.src.window, "makeKeyAndOrderFront:", null);
-	if (_gfx_ctx.ns_app) objc::send_void(_gfx_ctx.ns_app, "activateIgnoringOtherApps:", true);
+	win.src.window.send_void("makeKeyAndOrderFront:", null);
+	if (_gfx_ctx.ns_app) _gfx_ctx.ns_app.send_void("activateIgnoringOtherApps:", true);
 	win.internal.flags.hide = false;
 }
 
@@ -595,8 +595,8 @@ fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
 	if (!data || data.type != TEXT || !data.data) return CLIPBOARD_COULD_NOT_BE_OPENED~;
 	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
-	objc::send_void(pb, "clearContents");
-	if (!objc::send(pb,bool, "setString:forType:", darwin::string((ZString)data.data), "public.utf8-plain-text".to_nsstring()))
+	pb.send_void("clearContents");
+	if (!pb.send(bool, "setString:forType:", darwin::string((ZString)data.data), "public.utf8-plain-text".to_nsstring()))
 	{
 		return CLIPBOARD_COULD_NOT_BE_OPENED~;
 	}
@@ -683,7 +683,7 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 		log::error("NSView is NULL for macOS window", category: log::CATEGORY_VIDEO);
 		return null;
 	}
-	objc::send_void(window.src.view, "setWantsLayer:", true);
+	window.src.view.send_void("setWantsLayer:", true);
 	ObjId layer = _get_layer_macos();
 	if (!layer) return null;
 	_window_set_layer_macos(window, layer);
@@ -761,13 +761,13 @@ fn void _osx_key_updown(ObjId self, ObjId event, bool down)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
-	ushort keyCode = objc::send(event, ushort, "keyCode");
+	ushort keyCode = event.send(ushort, "keyCode");
 	if (keyCode >= 256) return;
 	GfxKey key = _gfx_ctx.keycodes[(sz)keyCode];
 	// Unmapped key
 	if (!key) return;
-	bool repeat = down ? objc::send(event, bool, "isARepeat") : false;
-	GfxKeyModifier mods = _osx_modifiers_to_gfx(objc::send(event, NSUInteger, "modifierFlags"));
+	bool repeat = down ? event.send(bool, "isARepeat") : false;
+	GfxKeyModifier mods = _osx_modifiers_to_gfx(event.send(NSUInteger, "modifierFlags"));
 	_key_callback(win, key, mods, repeat, down);
 }
 
@@ -792,8 +792,8 @@ fn void _osx_window_did_move(ObjId self, ObjSel sel, ObjId notification)
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
 	if (!win.src.window) return;
-	CGRect frame = objc::send(win.src.window, CGRect, "frame");
-	CGRect content = objc::send(win.src.window, CGRect, "contentRectForFrameRect:", frame);
+	CGRect frame = win.src.window.send(CGRect, "frame");
+	CGRect content = win.src.window.send(CGRect, "contentRectForFrameRect:", frame);
 	float y = flip_y((float)(content.origin.y + content.size.height - 1));
 	_window_moved_callback(win, { (int)content.origin.x, (int)y });
 }
@@ -900,7 +900,7 @@ fn void _osx_flags_changed(ObjId self, ObjSel sel, ObjId event)
 	GfxKey value = NULL;
 	bool pressed = false;
 
-	NSUInteger flags = objc::send(event, NSUInteger, "modifierFlags");
+	NSUInteger flags = event.send(NSUInteger, "modifierFlags");
 	_key_update_key_mods_ex(win,
 		flags & 0x00010000 != 0,
 		flags & 0x00200000 != 0,
@@ -1002,24 +1002,24 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 		return false;
 	}
 
-	ObjId propertyList = objc::send(pasteBoard, ObjId, "propertyListForType:", file_urls_type);
+	ObjId propertyList = pasteBoard.send(ObjId, "propertyListForType:", file_urls_type);
 
-	if (objc::send(propertyList, bool, "isKindOfClass:", objc::@class("NSString")))
+	if (propertyList.send(bool, "isKindOfClass:", objc::@class("NSString")))
 	{
-		NSUInteger stringCount = objc::send(propertyList, NSUInteger, "length");
+		NSUInteger stringCount = propertyList.send(NSUInteger, "length");
 		ZString filePath = darwin::string_to_zstr(propertyList);
 		_data_drop_callback(win, filePath, (sz)stringCount + 1, FILE);
 	}
-	if (!objc::send(propertyList, bool, "isKindOfClass:", objc::@class("NSArray"))) return false;
+	if (!propertyList.send(bool, "isKindOfClass:", objc::@class("NSArray"))) return false;
 
-	NSUInteger count = objc::send(propertyList, NSUInteger, "count");
+	NSUInteger count = propertyList.send(NSUInteger, "count");
 	if (!count) return false;
 
 	for (NSUInteger i = 0; i < count; i++)
 	{
-		ObjId file_url = objc::send(propertyList, ObjId, "objectAtIndex:", i);
+		ObjId file_url = propertyList.send(ObjId, "objectAtIndex:", i);
 		ZString filePath = darwin::string_to_zstr(file_url);
-		NSUInteger string_count = objc::send(file_url, NSUInteger, "length");
+		NSUInteger string_count = file_url.send(NSUInteger, "length");
 		_data_drop_callback(win, filePath, (sz)string_count + 1, FILE);
 	}
 	return false;
@@ -1059,21 +1059,21 @@ fn float flip_y(float y)
 fn ObjId _get_layer_macos()
 {
 	if (!_gfx_ctx.current || !_gfx_ctx.current.src.view) return null;
-	return objc::send(_gfx_ctx.current.src.view, ObjId, "layer");
+	return _gfx_ctx.current.src.view.send(ObjId, "layer");
 }
 
 fn void _window_set_layer_macos(GfxWindow* win, ObjId layer)
 {
-	if (win.src.view) objc::send_void(win.src.view, "setLayer:", layer);
+	if (win.src.view) win.src.view.send_void("setLayer:", layer);
 }
 
 fn void _macos_init_view(GfxWindow* win)
 {
 	CGRect content_rect = { .size = { ...win.size } };
 
-	objc::send_void(win.src.view, "setFrame:", content_rect);
+	win.src.view.send_void("setFrame:", content_rect);
 
-	// objc::send_void(win.src.view, "setFrameAutosaveName:", <todo>);
+	// win.src.view.send_void("setFrameAutosaveName:", <todo>);
 
 	win.src.view.set_ivar("gfx_window", win);
 	win.src.window.send_void("setContentView:", win.src.view);
@@ -1102,13 +1102,13 @@ fn ObjId _get_nsscreen_for_display(uint display_id)
 {
 	ObjId screens = objc::send(objc::@class("NSScreen"), ObjId, "screens");
 	if (!screens) return null;
-	NSUInteger count = objc::send(screens, NSUInteger, "count");
+	NSUInteger count = screens.send(NSUInteger, "count");
 	for (NSUInteger i = 0; i < count; i++)
 	{
-		ObjId screen = objc::send(screens, ObjId, "objectAtIndex:", i);
-		ObjId desc = objc::send(screen, ObjId, "deviceDescription");
-		ObjId number = objc::send(desc, ObjId, "objectForKey:", darwin::string("NSScreenNumber"));
-		uint display = (uint)objc::send(number, NSUInteger, "unsignedIntValue");
+		ObjId screen = screens.send(ObjId, "objectAtIndex:", i);
+		ObjId desc = screen.send(ObjId, "deviceDescription");
+		ObjId number = desc.send(ObjId, "objectForKey:", darwin::string("NSScreenNumber"));
+		uint display = (uint)number.send(NSUInteger, "unsignedIntValue");
 		if (display == display_id) return screen;
 	}
 	return null;

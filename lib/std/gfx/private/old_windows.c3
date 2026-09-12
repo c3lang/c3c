@@ -431,11 +431,6 @@ fn void _wait_for_event_native(int waitMS) { win32::msgWaitForMultipleObjects(0,
 
 ushort[8] todo_fix_wideDisplayName = {(ushort)'D', (ushort)'I', (ushort)'S', (ushort)'P', (ushort)'L', (ushort)'A', (ushort)'Y', 0};
 
-// public
-
-
-// public
-
 
 
 // public

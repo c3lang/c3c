@@ -189,14 +189,6 @@ fn void todo_fix_handleKeyMods(bool capital, bool numlock, bool control, bool al
 	_key_update_key_mods_ex(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
 }
 
-
-
-// public
-
-
-// public
-
-// public
 fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 {
 	ZString cursorName;

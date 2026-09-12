@@ -12,7 +12,7 @@ fn ObjId string(ZString str)
 
 fn ZString string_to_zstr(ObjId str)
 {
-	return str ? objc::send(str, ZString, "UTF8String") : null;
+	return str.send(ZString, "UTF8String");
 }
 
 fn ObjId String.to_nsstring(self) => @pool()
