@@ -283,46 +283,6 @@ fn TodoRenameMouse* todo_fix_createMouseStandard(GfxMouseIcon mouse)
 
 // public
 
-// public
-fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
-{
-	CGDirectDisplayID display = todo_fix_monitorDisplay(monitor);
-	uint count = display.gammaTableCapacity();
-	if (ramp == null) return (sz)count;
-	float* red = mem::alloc_array(float, count);
-	float* green = mem::alloc_array(float, count);
-	float* blue = mem::alloc_array(float, count);
-	uint actual = 0;
-	if (red == null || green == null || blue == null || display.transferByTable(count, red, green, blue, &actual) != 0) { free(red); free(green); free(blue); return 0; }
-	for (uint i = 0; i < actual; i++)
-	{
-		ramp.red[i] = (ushort)(red[i] * 65535.0);
-		ramp.green[i] = (ushort)(green[i] * 65535.0);
-		ramp.blue[i] = (ushort)(blue[i] * 65535.0);
-	}
-	ramp.count = (sz)actual;
-	free(red); free(green); free(blue);
-	return (sz)actual;
-}
-
-// public
-fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
-{
-	if (ramp == null || ramp.count == 0) return false;
-	float* red = mem::alloc_array(float, ramp.count);
-	float* green = mem::alloc_array(float, ramp.count);
-	float* blue = mem::alloc_array(float, ramp.count);
-	if (red == null || green == null || blue == null) { free(red); free(green); free(blue); return false; }
-	for (sz i = 0; i < ramp.count; i++)
-	{
-		red[i] = (float)ramp.red[i] / 65535.0;
-		green[i] = (float)ramp.green[i] / 65535.0;
-		blue[i] = (float)ramp.blue[i] / 65535.0;
-	}
-	int err = todo_fix_monitorDisplay(monitor).setTransferByTable((uint)ramp.count, red, green, blue);
-	free(red); free(green); free(blue);
-	return err == 0;
-}
 
 
 

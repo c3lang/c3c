@@ -111,36 +111,51 @@ fn void _window_show_native(GfxWindow* win)
 }
 
 // public
-fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
+fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitor_get_gamma_ramp_wayland(monitor, ramp);
+			return _monitor_get_gamma_ramp_wayland(monitor, a);
 		$case X11_ONLY:
-			return todo_fix_monitor_getGammaRampPtr_X11(monitor, ramp);
+			return _monitor_get_gamma_ramp_x11(monitor, a);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return _monitor_get_gamma_ramp_wayland(monitor, ramp);
+				return _monitor_get_gamma_ramp_wayland(monitor, a);
 			}
-			return todo_fix_monitor_getGammaRampPtr_X11(monitor, ramp);
+			return _monitor_get_gamma_ramp_x11(monitor, a);
 	$endswitch
 }
 
-// public
-fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
+fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
 	$switch:
 		$case WAYLAND_ONLY:
 			return _monitor_set_gamma_ramp_wayland(monitor, ramp);
 		$case X11_ONLY:
-			return todo_fix_monitor_setGammaRamp_X11(monitor, ramp);
+			return monitor_set_gamma_ramp_x11(monitor, ramp);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _monitor_set_gamma_ramp_wayland(monitor, ramp);
 			}
-			return todo_fix_monitor_setGammaRamp_X11(monitor, ramp);
+			return monitor_set_gamma_ramp_x11(monitor, ramp);
+	$endswitch
+}
+
+fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
+{
+	$switch:
+		$case WAYLAND_ONLY:
+			return _monitor_set_gamma_wayland(monitor, gamma);
+		$case X11_ONLY:
+			return monitor_set_gamma_x11(monitor, gamma);
+		$default:
+			if (gfx_use_wayland)
+			{
+				return _monitor_set_gamma_wayland(monitor, gamma);
+			}
+			return monitor_set_gamma_x11(monitor, gamma);
 	$endswitch
 }
 

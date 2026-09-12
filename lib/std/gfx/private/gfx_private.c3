@@ -20,6 +20,13 @@ fn void _split_bpp(uint bpp, GfxMonitorMode* mode)
 	if (delta == 2) mode.rgb.r = mode.rgb.r + 1;
 }
 
+fn float _gamma_for_index(float gamma, sz index, sz count)
+{
+	float value = index / (count - 1.0f);
+	value = math::pow(value, 1.0f / gamma) * 65535.0f + 0.5f;
+	return min(value, 65535.0f);
+}
+
 fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags cmpFlags) @private
 {
 	switch

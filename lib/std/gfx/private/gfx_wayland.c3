@@ -23,9 +23,10 @@ fn void _window_capture_mouse_wayland(GfxWindow* win, bool state)
 }
 
 
-fn sz _monitor_get_gamma_ramp_wayland(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => 0;
-fn bool _monitor_set_gamma_ramp_wayland(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => false;
-fn void? _monitor_set_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode) => MONITOR_MODE_CHANGE_FAILED~;
+fn GfxGammaRamp _monitor_get_gamma_ramp_wayland(GfxMonitor* monitor, Allocator a) => {};
+fn void? _monitor_set_gamma_ramp_wayland(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
+fn void? _monitor_set_gamma_wayland(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
+fn void? _monitor_set_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
 
 fn GfxMonitorMode[] _monitor_get_modes_wayland(GfxMonitor* monitor)
 {

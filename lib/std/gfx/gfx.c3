@@ -33,9 +33,11 @@ excuse
 	EGL_DISPLAY_FAILED_TO_INITIALIZE,
 	EGL_CTX_CREATION_FAILED,
 	EGL_CONFIG_NOT_FOUND,
+	CANNOT_RETRIEVE_GAMMA,
 	EGL_SURFACE_CREATION_FAILED,
 	CLIPBOARD_COULD_NOT_BE_OPENED,
 	COULD_NOT_OWN_X11_CLIPBOARD,
+	GAMMA_COULD_NOT_BE_SET,
 }
 
 const MAX_EVENTS = 32;
@@ -1543,51 +1545,22 @@ fn GfxMonitorMode GfxMonitor.get_mode(&self)
 	return self.mode;
 }
 
-fn bool GfxMonitor.set_gamma(&self, float gamma)
+fn void? GfxMonitor.set_gamma(&self, float gamma) => @pool()
 {
-	sz count = todo_fix_monitor_getGammaRampPtr(self, null);
-	ushort* ptr = mem::alloc_array(ushort, count);
-	bool ret = todo_fix_monitor_setGammaPtr(self, gamma, ptr, count);
-	free(ptr);
-	return ret;
+	return _monitor_set_gamma_native(self, gamma);
 }
 
-
-// public
-fn TodoRenameGammaRamp* todo_fix_monitor_getGammaRamp(GfxMonitor* monitor)
+fn GfxGammaRamp? GfxMonitor.get_gamma_ramp(&self, Allocator allocator)
 {
-	TodoRenameGammaRamp* ramp = mem::new(TodoRenameGammaRamp);
-	ramp.count = todo_fix_monitor_getGammaRampPtr(monitor, null);
-	ramp.red = mem::alloc_array(ushort, ramp.count);
-	ramp.green = mem::alloc_array(ushort, ramp.count);
-	ramp.blue = mem::alloc_array(ushort, ramp.count);
-	ramp.count = todo_fix_monitor_getGammaRampPtr(monitor, ramp);
-	return ramp;
+	return _monitor_get_gamma_ramp_native(self, allocator);
 }
 
-// public
-fn void todo_fix_freeGammaRamp(TodoRenameGammaRamp* ramp)
+fn void GfxGammaRamp.free(&self)
 {
-	free(ramp.red);
-	free(ramp.green);
-	free(ramp.blue);
-	free(ramp);
+	if (self.red.ptr) alloc::free(self.a, self.red.ptr);
+	*self = {};
 }
 
-// public
-fn bool todo_fix_monitor_setGammaPtr(GfxMonitor* monitor, float gamma, ushort* ptr, sz count)
-{
-	for (sz i = 0; i < count; i++)
-	{
-		float value = (float)i / (float)(count - 1);
-		value = math::pow(value, 1.0f / gamma) * 65535.0f + 0.5f;
-		value = min(value, 65535.0f);
-		ptr[i] = (ushort)value;
-	}
-	TodoRenameGammaRamp ramp;
-	ramp.red = ptr; ramp.green = ptr; ramp.blue = ptr; ramp.count = count;
-	return todo_fix_monitor_setGammaRamp(monitor, &ramp);
-}
 
 fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindowFlags flags)
 {
@@ -1912,14 +1885,18 @@ alias GfxFn = fn void();
 alias GfxGenericFunc = fn void(GfxEvent* e);
 alias TodoRenameDebugFunc = fn void(TodoRenameDebugInfo* info);
 
-struct GfxColorLayout { int r, g, b, a; int channels; }
-
-struct TodoRenameGammaRamp
+struct GfxColorLayout
 {
-	ushort* red;
-	ushort* green;
-	ushort* blue;
-	sz count;
+	int r, g, b, a;
+	int channels;
+}
+
+struct GfxGammaRamp
+{
+	ushort[] red;
+	ushort[] green;
+	ushort[] blue;
+	Allocator a;
 }
 
 bitstruct GfxBacking : char

@@ -991,6 +991,43 @@ fn void _win32_get_mode(Win32_DEVMODEW* dm, GfxMonitorMode* mode)
 	}
 }
 
+const WString WIDE_DISPLAY_NAME = @wstring("DISPLAY\0");
+
+fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a)
+{
+	ushort[] colors = mem::alloc::alloc_array(a, ushort, 768);
+	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapterName, null, null);
+	if (!dc) return CANNOT_RETRIEVE_GAMMA~;
+	defer win32::deleteDC(dc);
+	if (!win32::getDeviceGammaRamp(dc, colors)) return CANNOT_RETRIEVE_GAMMA~;
+	return { colors[:256], colors[256:256], colors[512:256], a };
+}
+
+fn void? _gamma_set(GfxMonitor* monitor, ushort* gamma)
+{
+	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapterName, null, null);
+	if (!dc) return GAMMA_COULD_NOT_BE_SET~;
+	defer win32::deleteDC(dc);
+	if (!win32::setDeviceGammaRamp(dc, gamma)) return GAMMA_COULD_NOT_BE_SET~;
+}
+
+fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
+{
+	if (ramp.red.len != 256) return GAMMA_COULD_NOT_BE_SET~;
+	return _gamma_set(monitor, ramp.red);
+}
+
+fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
+{
+	ushort[768] g;
+	for (int i = 0; i < 256; i++)
+	{
+		ushort v = (ushort)_gamma_for_index(gamma, i, 256);
+		g[i] = g[i + 256] = g[i + 512] = v;
+	}
+	return _gamma_set(monitor, &g);
+}
+
 fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	Win32_DEVMODEW dm = {

@@ -191,37 +191,53 @@ fn void _window_set_mouse_passthrough_x11(GfxWindow* win, bool passthrough)
 	if (_xshape_combine_mask_src) _xshape_combine_mask_src(_gfx_ctx.display, win.src.window, 2, 0, 0, 0, 0);
 }
 
-// public
-fn sz todo_fix_monitor_getGammaRampPtr_X11(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
+fn GfxGammaRamp? _monitor_get_gamma_ramp_x11(GfxMonitor* monitor, Allocator a)
 {
 	sz size = (sz)xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
+	if (!size) return CANNOT_RETRIEVE_GAMMA~;
 	XRRCrtcGamma* gamma = xRRGetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1);
-	if (ramp != null)
-	{
-		mem::copy(ramp.red, gamma.red, size * ushort::size);
-		mem::copy(ramp.green, gamma.green, size * ushort::size);
-		mem::copy(ramp.blue, gamma.blue, size * ushort::size);
-	}
-	xRRFreeGamma(gamma);
-	return size;
+	if (!gamma) return CANNOT_RETRIEVE_GAMMA~;
+	defer xRRFreeGamma(gamma);
+	ushort[] rgb = alloc::alloc_array(a, ushort, size * 3);
+	ushort[] red = rgb[:size];
+	ushort[] green = rgb[size:size];
+	ushort[] blue = rgb[size * 2:size];
+	red[:size] = gamma.red[:size];
+	green[:size] = gamma.green[:size];
+	blue[:size] = gamma.blue[:size];
+	return { red, green, blue, a };
 }
 
-// public
-fn bool todo_fix_monitor_setGammaRamp_X11(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
+fn void? monitor_set_gamma_ramp_x11(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
 	sz size = (sz)xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
-	if (size != ramp.count)
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_X11, "X11: Gamma ramp size must match current ramp size");
-		return false;
-	}
-	XRRCrtcGamma* gamma = xRRAllocGamma((int)ramp.count);
-	mem::copy(gamma.red, ramp.red, ramp.count * ushort::size);
-	mem::copy(gamma.green, ramp.green, ramp.count * ushort::size);
-	mem::copy(gamma.blue, ramp.blue, ramp.count * ushort::size);
+	if (size != ramp.red.len) return GAMMA_COULD_NOT_BE_SET~;
+
+	XRRCrtcGamma* gamma = xRRAllocGamma((int)size);
+	if (!gamma) return GAMMA_COULD_NOT_BE_SET~;
+	defer xRRFreeGamma(gamma);
+
+	gamma.red[:size] = ramp.red[..];
+	gamma.green[:size] = ramp.green[..];
+	gamma.blue[:size] = ramp.blue[..];
 	xRRSetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1, gamma);
-	xRRFreeGamma(gamma);
-	return true;
+}
+
+fn void? monitor_set_gamma_x11(GfxMonitor* monitor, float gamma)
+{
+	sz size = (sz)xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
+	if (!size) return GAMMA_COULD_NOT_BE_SET~;
+
+	XRRCrtcGamma* gamma_data = xRRAllocGamma((int)size);
+	defer xRRFreeGamma(gamma_data);
+	for (sz i = 0; i < size; i++)
+	{
+		ushort g = (ushort)_gamma_for_index(gamma, i, size);
+		gamma_data.red[i] = g;
+		gamma_data.green[i] = g;
+		gamma_data.blue[i] = g;
+	}
+	xRRSetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1, gamma_data);
 }
 
 // private

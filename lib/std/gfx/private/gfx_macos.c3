@@ -475,6 +475,59 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 
 fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win) => get_primary_monitor();
 
+fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp) => @pool()
+{
+	if (!ramp.red) return GAMMA_COULD_NOT_BE_SET~;
+	sz len = ramp.red.len;
+	float[] rgb = mem::temp_array(float, len * 3);
+	float[] g = rgb[len:len];
+	float[] b = rgb[len * 2..];
+	foreach (i, red : ramp.red)
+	{
+		rgb[i] = red / 65535.0f;
+		g[i] = ramp.green[i] / 65535.0f;
+		b[i] = ramp.blue[i] / 65535.0f;
+	}
+	if (!todo_fix_monitorDisplay(monitor).setTransferByTable((uint)len, rgb.ptr, g, b)) return GAMMA_COULD_NOT_BE_SET~;
+}
+
+fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma) => @pool()
+{
+	CGDirectDisplayID display = todo_fix_monitorDisplay(monitor);
+	uint len = display.gammaTableCapacity();
+	if (!len) return CANNOT_RETRIEVE_GAMMA~;
+	float[] gamma_array = mem::temp_array(float, len);
+	foreach (i, &g : gamma_array)
+	{
+		*g = _gamma_for_index(gamma, i, len) / 65535.0f;
+	}
+	if (!todo_fix_monitorDisplay(monitor).setTransferByTable((uint)len, gamma_array, gamma_array, gamma_array)) return GAMMA_COULD_NOT_BE_SET~;
+}
+
+fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a) => @pool()
+{
+	CGDirectDisplayID display = todo_fix_monitorDisplay(monitor);
+	sz count = (sz)display.gammaTableCapacity();
+	if (!count) return CANNOT_RETRIEVE_GAMMA~;
+	float[] rgb = mem::temp_array(float, (sz)count * 3);
+	uint actual = 0;
+	float[] red = rgb[:count];
+	float[] green = rgb[count:count];
+	float[] blue = rgb[count * 2:count];
+	if (!display.transferByTable((uint)count, red, green, blue, &actual)) return CANNOT_RETRIEVE_GAMMA~;
+	ushort[] ramp = alloc::alloc_array(a, ushort, (sz)actual * 3);
+	ushort[] ramp_r = ramp[:actual];
+	ushort[] ramp_g = ramp[actual:actual];
+	ushort[] ramp_b = ramp[actual * 2:actual];
+	for (sz i = 0; i < (sz)actual; i++)
+	{
+		ramp_r[i] = (ushort)(red[i] * 65535.0);
+		ramp_g[i] = (ushort)(green[i] * 65535.0);
+		ramp_b[i] = (ushort)(blue[i] * 65535.0);
+	}
+	return { ramp_r, ramp_g, ramp_b, a };
+}
+
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 {
 	CFArrayRef list = todo_fix_monitorDisplay(monitor).copyAllDisplayModes(null);

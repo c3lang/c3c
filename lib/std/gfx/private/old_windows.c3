@@ -4,40 +4,8 @@ import std::collections::list, std::math, std::os::win32;
 // public
 fn void _wait_for_event_native(int waitMS) { win32::msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */); }
 
-const WString WIDE_DISPLAY_NAME = @wstring("DISPLAY\0");
 
-fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
-{
-	ushort[768] values; // 3 x 256
-	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapterName, null, null);
-	win32::getDeviceGammaRamp(dc, &values);
-	win32::deleteDC(dc);
-	if (ramp != null)
-	{
-		mem::copy(ramp.red, &values[0], 512);
-		mem::copy(ramp.green, &values[256], 512);
-		mem::copy(ramp.blue, &values[512], 512);
-	}
-	return 256;
-}
 
-// public
-fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* ramp)
-{
-	ushort[768] values;
-	if (ramp.count != 256)
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_PLATFORM, "Win32: Gamma ramp size must be 256");
-		return false;
-	}
-	mem::copy(&values[0], ramp.red, 512);
-	mem::copy(&values[256], ramp.green, 512);
-	mem::copy(&values[512], ramp.blue, 512);
-	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapterName, null, null);
-	win32::setDeviceGammaRamp(dc, &values);
-	win32::deleteDC(dc);
-	return true;
-}
 
 // private
 

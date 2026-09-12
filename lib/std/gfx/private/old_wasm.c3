@@ -238,9 +238,7 @@ fn GfxFn _get_opengl_proc_native(ZString procname) => rgfwJsGetProcAddress(procn
 // public
 fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}
 
-fn sz todo_fix_monitor_getGammaRampPtr(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => 0;
 // public
-fn bool todo_fix_monitor_setGammaRamp(GfxMonitor* monitor, TodoRenameGammaRamp* ramp) => false;
 
 
 fn void _wait_for_event_native(int waitMS) {}

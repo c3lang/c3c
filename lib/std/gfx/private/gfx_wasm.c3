@@ -33,8 +33,11 @@ fn void _stop_check_events_native()
 }
 
 fn IntRect _monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
-fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => MONITOR_MODE_CHANGE_FAILED~;
-fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode) => MONITOR_MODE_CHANGE_FAILED~;
+fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
+fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
+fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
+fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
+fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
 
 fn void _poll_monitors_native() {}
 fn void _free_mouse(TodoRenameMouse* mouse) {}
