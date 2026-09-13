@@ -1,5 +1,5 @@
 module std::gfx @feat(WASM) @private;
-import std::math;
+import std::math, std::time;
 
 struct GfxGlContext
 {
@@ -52,7 +52,7 @@ fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferT
 
 fn void _poll_monitors_native() {}
 fn void _free_mouse(GfxMouse* mouse) {}
-fn void _wait_for_event_native(int wait_ms) {}
+fn void _wait_for_event_native(Duration duration) {}
 fn void _window_show_native(GfxWindow* win) {}
 fn bool _window_is_hidden_native(GfxWindow* win) => false;
 fn bool _window_is_minimized_native(GfxWindow* win) => false;

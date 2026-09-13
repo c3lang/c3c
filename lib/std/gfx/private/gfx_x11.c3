@@ -382,7 +382,7 @@ fn void _destroy_x11()
 			xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardManager, _gfx_ctx.saveTargets, 0, _gfx_ctx.helper_window, 0);
 			while (todo_fix_xHandleClipboardSelectionHelper() != 0) {}
 		}
-		xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&todo_fix_x11ImInitCallback, null);
+		xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&_x11_im_init_callback, null);
 	}
 	if (_gfx_ctx.im) xCloseIM(_gfx_ctx.im);
 	if (_gfx_ctx.unixClipboard) free(_gfx_ctx.unixClipboard);
@@ -506,7 +506,7 @@ fn void? _init_x11(String class_name, GfxInitOption flags)
 	xSync(_gfx_ctx.display, 0);
 
 	xSetLocaleModifiers("");
-	xRegisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&todo_fix_x11ImInitCallback, null);
+	xRegisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&_x11_im_init_callback, null);
 
 	int errorBase;
 	if (xRRQueryExtension(_gfx_ctx.display, &_gfx_ctx.xrandrEventBase, &errorBase) != 0)
@@ -564,7 +564,7 @@ fn GfxMonitorMode[] _monitor_get_modes_x11(GfxMonitor* monitor)
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode mode;
-		todo_fix_xGetMode(ci, res, oi.modes[i], &mode);
+		_x_get_mode(ci, res, oi.modes[i], &mode);
 		modes.push(mode);
 	}
 	xRRFreeOutputInfo(oi);
@@ -619,7 +619,7 @@ fn void? _monitor_request_mode_x11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMon
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode found_mode;
-		void* mi = todo_fix_xGetMode(ci, res, oi.modes[i], &found_mode);
+		void* mi = _x_get_mode(ci, res, oi.modes[i], &found_mode);
 		if (mi == null) continue;
 		if (mode.equals_request(&found_mode, request))
 		{
@@ -699,19 +699,25 @@ fn GfxKey _physical_to_mapped_key_native_x11(GfxKey key)
 }
 
 // private
-fn void _wait_for_event_x11(Posix_pollfd[] fds, int waitMS)
+fn void _wait_for_event_x11(Posix_pollfd[] fds, Duration duration)
 {
 	fds[0].fd = xConnectionNumber(_gfx_ctx.display);
 
-	Clock current = clock::now();
+	bool infinity = duration == WAIT_FOREVER;
+	bool once = true;
+	Clock start = clock::now();
 	while (!xPending(_gfx_ctx.display))
 	{
-		if (os::poll(&fds[0], 1, waitMS) <= 0) break;
-
-		if (waitMS != TODO_RENAME_EVENT_WAIT_NEXT)
+		Duration diff = duration - start.to_now().to_duration();
+		long ms = diff.to_ms();
+		if (ms < 0)
 		{
-			waitMS -= (int)current.to_now().to_duration().to_ms();
+			if (!once) break;
+			ms = 0;
 		}
+		if (infinity || ms > CInt::max) ms = -1;
+		if (os::poll(&fds[0], 1, (CInt)ms) <= 0) break;
+		once = false;
 	}
 }
 
@@ -1173,7 +1179,7 @@ fn void _poll_monitors_x11()
 		monitor.scale = (Vec2)(dpi / 96.0f);
 		monitor.pixelRatio = dpi >= 192.0f ? 2.0f : 1.0f;
 
-		void* mi = todo_fix_xGetMode(ci, res, ci.mode, &monitor.mode);
+		void* mi = _x_get_mode(ci, res, ci.mode, &monitor.mode);
 		if (mi == null) break;
 
 		xRRFreeCrtcInfo(ci);
@@ -1576,18 +1582,18 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	GLXContext ctx = null;
 	if (hints.share) ctx = hints.share.ctx;
 
-	if (glx_create_context_attribs_arb == null)
+	if (!glx_create_context_attribs_arb)
 	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to load proc address 'glXCreateContextAttribsARB', loading a generic OpenGL context.");
+		log::warn("Failed to load proc address 'glXCreateContextAttribsARB', loading a generic OpenGL context.", category: log::CATEGORY_VIDEO);
 		win.src.ctx.native.ctx = todo_fix_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
 	}
 	else
 	{
 		_gfx_ctx.x11Error = null;
 		win.src.ctx.native.ctx = glx_create_context_attribs_arb(_gfx_ctx.display, bestFbc, ctx, X_TRUE, stack.array_view());
-		if (_gfx_ctx.x11Error != null || win.src.ctx.native.ctx == null)
+		if (_gfx_ctx.x11Error || !win.src.ctx.native.ctx)
 		{
-			todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create an OpenGL context with AttribsARB, loading a generic OpenGL context.");
+			log::warn("Failed to create an OpenGL context with AttribsARB, loading a generic OpenGL context.", category: log::CATEGORY_VIDEO);
 			win.src.ctx.native.ctx = todo_fix_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
 		}
 	}
@@ -1736,7 +1742,7 @@ fn bool todo_fix_waitForShowEvent_X11(GfxWindow* win)
 	XEvent dummy;
 	while (xCheckTypedWindowEvent(_gfx_ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
 	{
-		_wait_for_event_native(100);
+		_wait_for_event_native(time::ms(100));
 	}
 	return true;
 }
@@ -1778,7 +1784,10 @@ fn void todo_fix_window_getVisual(XVisualInfo* visual, bool transparent)
 	if (transparent)
 	{
 		xMatchVisualInfo(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), 32, 4 /* TrueColor */, visual);
-		if (visual.depth != 32) todo_fix_debugCallback(TODO_RENAME_TYPE_WARNING, TODO_RENAME_WARNING_OPEN_GL, "Failed to load a 32-bit depth.");
+		if (visual.depth != 32)
+		{
+			log::warn("Failed to load a 32-bit depth.", category: log::CATEGORY_VIDEO);
+		}
 	}
 }
 
@@ -1808,7 +1817,7 @@ fn void _x11_im_callback(void* im, void* client_data, void* call_data)
 }
 
 // public
-fn void todo_fix_x11ImInitCallback(XDisplay* d, XPointer client_data, XPointer call_data)
+fn void _x11_im_init_callback(XDisplay* d, XPointer client_data, XPointer call_data)
 {
 	if (_gfx_ctx.im != null) return;
 
@@ -1835,7 +1844,7 @@ fn void todo_fix_x11ImInitCallback(XDisplay* d, XPointer client_data, XPointer c
 		xFree(styles);
 	}
 
-	if (found == false)
+	if (!found)
 	{
 		xCloseIM(_gfx_ctx.im);
 		_gfx_ctx.im = null;
@@ -1848,18 +1857,17 @@ fn void todo_fix_x11ImInitCallback(XDisplay* d, XPointer client_data, XPointer c
 	xSetIMValues(_gfx_ctx.im, "destroyCallback", &callback, (char*)null);
 }
 
-// public
 fn int todo_fix_xErrorHandler(XDisplay* display, XErrorEvent* ev)
 {
 	char[512] errorText;
 	xGetErrorText(display, ev.error_code, (char*)&errorText, 512);
-	todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_X11, (ZString)&errorText);
+	log::warn("X Error callback :%s", (ZString)&errorText, category: log::CATEGORY_VIDEO);
 	_gfx_ctx.x11Error = ev;
 	return 0;
 }
 
 // public
-fn void* todo_fix_xGetMode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxMonitorMode* found_mode)
+fn void* _x_get_mode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxMonitorMode* found_mode)
 {
 	XRRModeInfoNative* mi = null;
 	for (int j = 0; j < res.nmode; j++) if (res.modes[j].id == mode) mi = &res.modes[j];

@@ -1,5 +1,5 @@
 module std::gfx @feat(WIN32) @private;
-import std::os::win32, std::collections, std::math;
+import std::os::win32, std::collections, std::time, std::math;
 
 struct GfxGlContext
 {
@@ -42,9 +42,12 @@ fn void _stop_check_events_native()
 	win32::postMessageW(_gfx_ctx.helper_window, 0, 0, 0);
 }
 
-fn void _wait_for_event_native(int waitMS)
+fn void _wait_for_event_native(Duration duration)
 {
-	win32::msgWaitForMultipleObjects(0, null, 0, (uint)waitMS, 0x04FF /* QS_ALLINPUT */);
+	if (duration < time::DURATION_ZERO) duration = time::DURATION_ZERO;
+	long duration_ms = duration.to_ms();
+	Win32_DWORD ms = duration_ms > Win32_DWORD::max ? win32::INFINITE : (uint)duration_ms;
+	win32::msgWaitForMultipleObjects(0, null, 0, ms, 0x04FF /* QS_ALLINPUT */);
 }
 
 fn void _poll_events_native()
@@ -1195,22 +1198,13 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 		int newPixelFormat;
 		uint numFormats;
 		wgl_choose_pixel_format_arb_fn(win.src.hdc, stack.array_view(), null, 1, &newPixelFormat, &numFormats);
-		if (numFormats == 0)
-		{
-			todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create a pixel format for WGL");
-		}
-		else
-		{
-			pixelFormat = newPixelFormat;
-		}
+		if (!numFormats) return FAILED_TO_CREATE_WGL_PIXEL_FORMAT~;
+		pixelFormat = newPixelFormat;
 	}
 
 	Win32_PIXELFORMATDESCRIPTOR suggested;
 	if (!win32::describePixelFormat(win.src.hdc, pixelFormat, Win32_PIXELFORMATDESCRIPTOR::size, &suggested)
-	|| !win32::setPixelFormat(win.src.hdc, pixelFormat, &pfd))
-	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to set the WGL pixel format");
-	}
+		|| !win32::setPixelFormat(win.src.hdc, pixelFormat, &pfd)) return FAILED_TO_SET_WGL_PIXEL_FORMAT~;
 
 	if (wgl_create_context_attribs_arb_fn != null)
 	{
@@ -1255,7 +1249,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 
 	if (wgl_create_context_attribs_arb_fn == null || win.src.ctx.native.ctx == null)
 	{
-		todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to create an accelerated OpenGL Context.");
+		log::warn("Failed to create accelerated OpenGL context", category: log::CATEGORY_VIDEO);
 		win.src.ctx.native.ctx = wgl_create_context_fn(win.src.hdc);
 	}
 
@@ -1265,7 +1259,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	if (hints.share != null) wgl_share_lists_fn(_get_current_opengl_context_native(), hints.share.ctx);
 
 	wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
-	todo_fix_debugCallback(TODO_RENAME_TYPE_INFO, TODO_RENAME_INFO_OPEN_GL, "OpenGL context initalized.");
+	log::info("Failed to create accelerated OpenGL context", category: log::CATEGORY_VIDEO);
 }
 
 fn bool _opengl_extension_is_supported_native(String extension)
@@ -1322,7 +1316,9 @@ fn void? _load_opengl_native() @private
 	wgl_share_lists_fn = win32::getProcAddress(_gfx_ctx.native_gl_handle, "wglShareLists");
 
 	Win32_HWND dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
+	defer win32::destroyWindow(dummyWin);
 	Win32_HDC dummy_dc = win32::getDC(dummyWin);
+	defer win32::releaseDC(dummyWin, dummy_dc);
 	uint pfdFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
 
 	Win32_PIXELFORMATDESCRIPTOR pfd = {
@@ -1343,17 +1339,15 @@ fn void? _load_opengl_native() @private
 	void* dummy_context = wgl_create_context_fn(dummy_dc);
 	void* cur = wgl_get_current_context_fn();
 	wgl_make_current_fn(dummy_dc, dummy_context);
+	defer wgl_delete_context_fn(dummy_context);
 
 	wgl_create_context_attribs_arb_fn = (WglCreateContextAttribsArbProc)_get_opengl_proc_native("wglCreateContextAttribsARB");
 	wgl_choose_pixel_format_arb_fn = (WglChoosePixelFormatArbProc)_get_opengl_proc_native("wglChoosePixelFormatARB");
 	wgl_swap_interval_ext_fn = (WglSwapIntervalExtProc)_get_opengl_proc_native("wglSwapIntervalEXT");
 
-	if (wgl_swap_interval_ext_fn == null) todo_fix_debugCallback(TODO_RENAME_TYPE_ERROR, TODO_RENAME_ERR_OPEN_GL_CONTEXT, "Failed to load swap interval function");
+	if (!wgl_swap_interval_ext_fn) return FAILED_TO_LOAD_SWAP_INTERVAL_FN~;
 
 	wgl_make_current_fn(dummy_dc, cur);
-	wgl_delete_context_fn(dummy_context);
-	win32::releaseDC(dummyWin, dummy_dc);
-	win32::destroyWindow(dummyWin);
 }
 
 fn void* _get_opengl_proc_native(ZString procname)

@@ -503,23 +503,6 @@ fn GfxMonitorNode* _monitor_add(GfxMonitor* mon)
 }
 
 
-// To remove
-fn void todo_fix_debugCallback(TodoRenameDebugType type, TodoRenameErrorCode code, ZString msg)
-{
-	TodoRenameDebugInfo info;
-	info.type = type;
-	info.code = code;
-	info.msg = msg;
-	if (_gfx_ctx.debugCallbackSrc != null) _gfx_ctx.debugCallbackSrc(&info);
-}
-
-// To remove
-fn TodoRenameDebugFunc todo_fix_setDebugCallback(TodoRenameDebugFunc func)
-{
-	TodoRenameDebugFunc prev = _gfx_ctx.debugCallbackSrc;
-	_gfx_ctx.debugCallbackSrc = func;
-	return prev;
-}
 
 fn void _remove_monitor(GfxMonitorNode* node, GfxMonitorNode* prev)
 {

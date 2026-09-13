@@ -483,10 +483,8 @@ fn void _stop_check_events_native()
 	}
 }
 
-fn void _wait_for_event_native(int waitMS)
+fn void _wait_for_event_native(Duration duration)
 {
-	if (waitMS == 0) return;
-
 	if (_gfx_ctx.eventWait_forceStop[0] == 0 || _gfx_ctx.eventWait_forceStop[1] == 0)
 	{
 		if (posix::pipe((int[2]*)&_gfx_ctx.eventWait_forceStop) != -1)
@@ -506,17 +504,17 @@ fn void _wait_for_event_native(int waitMS)
 
 	$switch:
 		$case WAYLAND_ONLY:
-			_wait_for_event_wayland(fds[..], waitMS);
+			_wait_for_event_wayland(fds[..], duration);
 		$case X11_ONLY:
-			_wait_for_event_x11(fds[..], waitMS);
+			_wait_for_event_x11(fds[..], duration);
 		$default:
 			if (gfx_use_wayland)
 			{
-				_wait_for_event_wayland(fds[..], waitMS);
+				_wait_for_event_wayland(fds[..], duration);
 			}
 			else
 			{
-				_wait_for_event_x11(fds[..], waitMS);
+				_wait_for_event_x11(fds[..], duration);
 			}
 	$endswitch
 

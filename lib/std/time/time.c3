@@ -110,7 +110,9 @@ fn double Time.diff_weeks(time, Time other) => (long)time.diff_us(other) / (doub
 fn double NanoDuration.to_sec(nd) => (double)nd / 1_000_000_000.0;
 fn long NanoDuration.to_ms(nd) => (long)nd / 1_000_000;
 fn Duration NanoDuration.to_duration(nd) => (Duration)nd / 1_000;
+
 fn NanoDuration Duration.to_nano(td) => (NanoDuration)td * 1_000;
+fn double Duration.to_sec(nd) => (double)nd / 1_000.0;
 fn long Duration.to_ms(td) => (long)td / 1_000;
 macro Duration Duration.mult(#td, long #val) @operator_s(*) @safemacro => (Duration)((long)#td * #val);
 

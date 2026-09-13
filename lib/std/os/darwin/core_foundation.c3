@@ -22,6 +22,7 @@ struct CFRange
 	CFIndex length;
 }
 
+alias CFTimeInterval = double;
 extern fn CFStringRef stringCreateWithCString(void* alloc, ZString str, uint encoding) @cname("CFStringCreateWithCString");
 extern fn CFBundleRef bundleGetBundleWithIdentifier(CFStringRef bundleID) @cname("CFBundleGetBundleWithIdentifier");
 extern fn void* bundleGetFunctionPointerForName(CFBundleRef bundle, CFStringRef functionName) @cname("CFBundleGetFunctionPointerForName");

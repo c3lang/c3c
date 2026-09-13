@@ -831,8 +831,7 @@ fn GfxKey _physical_to_mapped_key_native_wayland(GfxKey key)
 	return NULL;
 }
 
-// private
-fn void _wait_for_event_wayland(Posix_pollfd[] fds, int waitMS)
+fn void _wait_for_event_wayland(Posix_pollfd[] fds, Duration duration)
 {
 	fds[0].fd = wlDisplayGetFd(_gfx_ctx.wlDisplay);
 
@@ -857,23 +856,25 @@ fn void _wait_for_event_wayland(Posix_pollfd[] fds, int waitMS)
 		}
 	}
 
-	Clock current = clock::now();
-	while (wlDisplayDispatchPending(_gfx_ctx.wlDisplay) == 0)
+	bool infinity = duration == WAIT_FOREVER;
+	bool once = true;
+	Clock start = clock::now();
+	while (!wlDisplayDispatchPending(_gfx_ctx.wlDisplay))
 	{
-		if (os::poll(&fds[0], 1, waitMS) <= 0)
+		Duration diff = duration - start.to_now().to_duration();
+		long ms = diff.to_ms();
+		if (ms < 0 && once)
+		{
+			once = false;
+			ms = 0;
+		}
+		if (ms < 0 || os::poll(&fds[0], 1, infinity || ms > CInt::max ? -1 : (CInt)ms) <= 0)
 		{
 			wlDisplayCancelRead(_gfx_ctx.wlDisplay);
 			break;
 		}
-		else
-		{
-			if (wlDisplayReadEvents(_gfx_ctx.wlDisplay) == -1) return;
-		}
-
-		if (waitMS != TODO_RENAME_EVENT_WAIT_NEXT)
-		{
-			waitMS -= (int)current.to_now().to_duration().to_ms();
-		}
+		once = false;
+		if (wlDisplayReadEvents(_gfx_ctx.wlDisplay) == -1) return;
 	}
 
 	// queue contains events from read, dispatch them

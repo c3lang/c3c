@@ -41,22 +41,21 @@ excuse
 	GAMMA_COULD_NOT_BE_SET,
 	CLIPBOARD_DID_NOT_CONTAIN_TYPE,
 	CLIPBOARD_WRITE_FAILED,
+	FAILED_TO_CREATE_WGL_PIXEL_FORMAT,
+	FAILED_TO_SET_WGL_PIXEL_FORMAT,
+	FAILED_TO_LOAD_SWAP_INTERVAL_FN
 }
 
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
+const Duration WAIT_FOREVER = Duration::max;
 
 alias TodoRenameEventFlag = uint;
-alias TodoRenameEventWait = int;
-alias TodoRenameDebugType = char;
-alias TodoRenameErrorCode = char;
 
 typedef GfxMouse = void;
 
 alias GfxFn = fn void();
 alias GfxGenericFunc = fn void(GfxEvent* e);
-alias TodoRenameDebugFunc = fn void(TodoRenameDebugInfo* info);
-
 alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
 alias GfxPoint = int[<2>];
 alias GfxSize = int[<2>];
@@ -191,7 +190,6 @@ struct GfxContext
 	int windowCount;
 	GfxMouse* hiddenMouse;
 	GfxMouse*[21] standardMice;
-	TodoRenameDebugFunc debugCallbackSrc;
 	GfxGenericFunc[25] callbacks;
 	GfxEvent[MAX_EVENTS] events;
 	int eventBottom;
@@ -403,16 +401,9 @@ union GfxEvent
 	GfxMonitorEvent monitor;
 }
 
-struct TodoRenameCallbacks
+struct GfxEventCallbacks
 {
 	GfxGenericFunc[25] arr;
-}
-
-struct TodoRenameDebugInfo
-{
-	TodoRenameDebugType type;
-	TodoRenameErrorCode code;
-	ZString msg;
 }
 
 constset GfxWindowIconType
@@ -717,9 +708,6 @@ const GfxEventMask DATA_DRAG_DROP_EVENTS = { .data_drop, .data_drag };
 const GfxEventMask MONITOR_EVENTS        = { .monitor_connected, .monitor_disconnected };
 const GfxEventMask ALL_EVENTS            = (GfxEventMask)uint::max;
 
-const TodoRenameEventWait TODO_RENAME_EVENT_NO_WAIT = 0;
-const TodoRenameEventWait TODO_RENAME_EVENT_WAIT_NEXT = -1;
-
 
 
 bitstruct GfxWindowFlags : uint
@@ -780,33 +768,6 @@ constset GfxFlashRequest
 	BRIEFLY,
 	UNTIL_FOCUSED
 }
-
-
-const TodoRenameDebugType TODO_RENAME_TYPE_ERROR = 0;
-const TodoRenameDebugType TODO_RENAME_TYPE_WARNING = 1;
-const TodoRenameDebugType TODO_RENAME_TYPE_INFO = 2;
-
-const TodoRenameErrorCode TODO_RENAME_NO_ERROR = 0;
-const TodoRenameErrorCode TODO_RENAME_ERR_OUT_OF_MEMORY = 1;
-const TodoRenameErrorCode TODO_RENAME_ERR_OPEN_GL_CONTEXT = 2;
-const TodoRenameErrorCode TODO_RENAME_ERR_EGL_CONTEXT = 3;
-const TodoRenameErrorCode TODO_RENAME_ERR_WAYLAND = 4;
-const TodoRenameErrorCode TODO_RENAME_ERR_X11 = 5;
-const TodoRenameErrorCode TODO_RENAME_ERR_DIRECT_X_CONTEXT = 6;
-const TodoRenameErrorCode TODO_RENAME_ERR_IO_KIT = 7;
-const TodoRenameErrorCode TODO_RENAME_ERR_CLIPBOARD = 8;
-const TodoRenameErrorCode TODO_RENAME_ERR_FAILED_FUNC_LOAD = 9;
-const TodoRenameErrorCode TODO_RENAME_ERR_BUFFER = 10;
-const TodoRenameErrorCode TODO_RENAME_ERR_METAL = 11;
-const TodoRenameErrorCode TODO_RENAME_ERR_PLATFORM = 12;
-const TodoRenameErrorCode TODO_RENAME_ERR_EVENT_QUEUE = 13;
-const TodoRenameErrorCode TODO_RENAME_ERR_NO_INIT = 14;
-const TodoRenameErrorCode TODO_RENAME_INFO_WINDOW = 15;
-const TodoRenameErrorCode TODO_RENAME_INFO_BUFFER = 16;
-const TodoRenameErrorCode TODO_RENAME_INFO_GLOBAL = 17;
-const TodoRenameErrorCode TODO_RENAME_INFO_OPEN_GL = 18;
-const TodoRenameErrorCode TODO_RENAME_WARNING_WAYLAND = 19;
-const TodoRenameErrorCode TODO_RENAME_WARNING_OPEN_GL = 20;
 
 
 // public
@@ -1251,14 +1212,14 @@ fn void set_dual_event_callback(GfxEventType type, GfxGenericFunc func, GfxGener
 	if (second != null) *second = func2;
 }
 
-fn void _wait_for_event(int wait_ms)
+fn void _wait_for_event(Duration duration)
 {
-	_wait_for_event_native(wait_ms);
+	_wait_for_event_native(duration);
 }
 
 
 // public
-fn void set_all_event_callback(GfxGenericFunc func, TodoRenameCallbacks* callbacks)
+fn void set_all_event_callback(GfxGenericFunc func, GfxEventCallbacks* callbacks)
 {
 	foreach (i : GfxEventType::values[1..])
 	{

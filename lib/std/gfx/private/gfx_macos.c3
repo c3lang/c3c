@@ -1,5 +1,5 @@
 module std::gfx @feat(MACOS) @private @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
-import std::os::macos, std::math, std::os::darwin, std::collections;
+import std::os::macos, std::math, std::time, std::os::darwin, std::collections;
 
 struct GfxGlContext
 {
@@ -696,10 +696,13 @@ fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferT
 	return { .text = raw.str_view().copy(allocator), .type = TEXT };
 }
 
-fn void _wait_for_event_native(int wait_ms)
+fn void _wait_for_event_native(Duration duration)
 {
 	if (!_gfx_ctx.ns_app) return;
-	ObjId date = objc::send(objc::@class("NSDate"), ObjId, "dateWithTimeIntervalSinceNow:", (double)wait_ms / 1000.0);
+	CFTimeInterval time = duration.to_sec();
+	if (duration == WAIT_FOREVER) time = CFTimeInterval::max;
+	if (time < 0) time = 0;
+	ObjId date = objc::send(objc::@class("NSDate"), ObjId, "dateWithTimeIntervalSinceNow:", time);
 	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
 	ObjId ev = _gfx_ctx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
 	if (ev) _gfx_ctx.ns_app.send_void("postEvent:atStart:", ev, true);
