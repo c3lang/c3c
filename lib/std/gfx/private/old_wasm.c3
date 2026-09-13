@@ -164,14 +164,3 @@ fn void todo_fix_handleKeyMods(bool capital, bool numlock, bool control, bool al
 {
 	_key_update_key_mods_ex(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
 }
-
-
-
-
-fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}
-
-// public
-
-
-
-

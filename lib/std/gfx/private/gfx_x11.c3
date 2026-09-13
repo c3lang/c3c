@@ -552,8 +552,7 @@ fn void? _load_opengl_x11()
 	}
 }
 
-// private
-fn void todo_fix_monitorNode_free_X11(GfxMonitorNode* node) {}
+fn void _monitor_node_free_x11(GfxMonitorNode* node) {}
 
 // private
 fn GfxMonitorMode[] _monitor_get_modes_x11(GfxMonitor* monitor)

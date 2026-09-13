@@ -386,19 +386,19 @@ fn void? _load_opengl_native() @private
 }
 
 // public
-fn void todo_fix_monitorNode_free(GfxMonitorNode* node)
+fn void _monitor_node_free_native(GfxMonitorNode* node)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitornode_free_wayland(node);
+			return _monitor_node_free_wayland(node);
 		$case X11_ONLY:
-			return todo_fix_monitorNode_free_X11(node);
+			return _monitor_node_free_x11(node);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return _monitornode_free_wayland(node);
+				return _monitor_node_free_wayland(node);
 			}
-			return todo_fix_monitorNode_free_X11(node);
+			return _monitor_node_free_x11(node);
 	$endswitch
 }
 

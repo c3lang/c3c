@@ -716,8 +716,7 @@ fn void? _create_window_wayland(String name, GfxWindowFlags flags, GfxWindow* wi
 
 }
 
-// private
-fn void _monitornode_free_wayland(GfxMonitorNode* node)
+fn void _monitor_node_free_wayland(GfxMonitorNode* node)
 {
 	if (node.output) wlOutputDestroy(node.output);
 	if (node.xdgOutput) zxdgOutputV1Destroy(node.xdgOutput);

@@ -49,6 +49,7 @@ fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_
 fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
 fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
 fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
+fn void _monitor_node_free_native(GfxMonitorNode* node) {}
 
 fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
 

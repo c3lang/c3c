@@ -81,7 +81,7 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 		$case $feat(MACOS):
 			if (self.src.ctx.native && self.src.ctx.native.ctx)
 			{
-				nsOpenGLContext_setValues((ObjId)self.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
+				_opengl_context_set_values((ObjId)self.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
 			}
 		$case $feat(WIN32):
 			if (!wgl_swap_interval_ext_fn || !wgl_swap_interval_ext_fn(swap_interval))

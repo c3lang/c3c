@@ -1,6 +1,7 @@
 module std::gfx @feat(WIN32) @private;
 import std::os::win32, std::collections, std::time, std::math;
 
+
 struct GfxGlContext
 {
 	void* ctx; // HGLRC
@@ -225,6 +226,9 @@ fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 	win32::getMonitorInfoW(monitor.node.hMonitor, &mi);
 	return { mi.rcWork.left, mi.rcWork.top, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top };
 }
+
+fn void _monitor_node_free_native(GfxMonitorNode* node)
+{}
 
 fn void _window_restore_native(GfxWindow* win) {}
 
@@ -1389,6 +1393,10 @@ fn void? _load_opengl_native() @private
 
 	wgl_make_current_fn(dummy_dc, cur);
 }
+
+alias GetExtStringArbFn = fn ZString(Win32_HDC*);
+alias GetExtStringExtFn = fn ZString();
+alias GlxGetProcAddressProc = fn GfxFn(ZString);
 
 fn void* _get_opengl_proc_native(ZString procname)
 {

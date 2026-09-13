@@ -34,6 +34,26 @@ struct GfxWindowSrc
 	GfxBacking backing;
 }
 
+const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
+const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;
+const int NS_OPEN_GL_PFA_COLOR_SIZE = 8;
+const int NS_OPEN_GL_PFA_ALPHA_SIZE = 11;
+const int NS_OPEN_GL_PFA_DEPTH_SIZE = 12;
+const int NS_OPEN_GL_PFA_STENCIL_SIZE = 13;
+const int NS_OPEN_GL_PFA_ACCUM_SIZE = 14;
+const int NS_OPEN_GL_PFA_CLOSEST_POLICY = 74;
+const int NS_OPEN_GL_PFA_ACCELERATED = 73;
+const int NS_OPEN_GL_PFA_SAMPLE_BUFFERS = 55;
+const int NS_OPEN_GL_PFA_SAMPLES = 56;
+const int NS_OPEN_GL_PFA_RENDERER_ID = 70;
+const int NS_OPEN_GL_PFA_OPEN_GL_PROFILE = 99;
+const int NS_OPEN_GL_PROFILE_LEGACY = 0x1000;
+const int NS_OPEN_GL_PROFILE_3_2_CORE = 0x3200;
+const int NS_OPEN_GL_PROFILE_4_1_CORE = 0x3200;
+const int NS_OPEN_GL_CP_SURFACE_OPACITY = 236;
+const int NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL = 222;
+const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
+
 fn void? _load_opengl_native()
 {
 	_gfx_ctx.native_gl_handle = cf::bundle_for_name("com.apple.opengl");
@@ -109,7 +129,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	if (win.internal.flags.transparent)
 	{
 		int opacity = 0;
-		nsOpenGLContext_setValues((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
+		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
 	}
 	_window_make_opengl_current_context_native(win);
 	win.opengl_swap_interval(0);
@@ -145,6 +165,11 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	ctx.format = null;
 	ctx.ctx = null;
 	win.src.ctx.native = null;
+}
+
+fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param)
+{
+	context.send_void("setValues:forParameter:", vals, param);
 }
 
 
@@ -511,12 +536,12 @@ fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp) 
 		g[i] = ramp.green[i] / 65535.0f;
 		b[i] = ramp.blue[i] / 65535.0f;
 	}
-	if (!todo_fix_monitorDisplay(monitor).setTransferByTable((uint)len, rgb.ptr, g, b)) return GAMMA_COULD_NOT_BE_SET~;
+	if (!_monitor_display(monitor).setTransferByTable((uint)len, rgb.ptr, g, b)) return GAMMA_COULD_NOT_BE_SET~;
 }
 
 fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma) => @pool()
 {
-	CGDirectDisplayID display = todo_fix_monitorDisplay(monitor);
+	CGDirectDisplayID display = _monitor_display(monitor);
 	uint len = display.gammaTableCapacity();
 	if (!len) return CANNOT_RETRIEVE_GAMMA~;
 	float[] gamma_array = mem::temp_array(float, len);
@@ -524,12 +549,12 @@ fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma) => @pool()
 	{
 		*g = _gamma_for_index(gamma, i, len) / 65535.0f;
 	}
-	if (!todo_fix_monitorDisplay(monitor).setTransferByTable((uint)len, gamma_array, gamma_array, gamma_array)) return GAMMA_COULD_NOT_BE_SET~;
+	if (!_monitor_display(monitor).setTransferByTable((uint)len, gamma_array, gamma_array, gamma_array)) return GAMMA_COULD_NOT_BE_SET~;
 }
 
 fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a) => @pool()
 {
-	CGDirectDisplayID display = todo_fix_monitorDisplay(monitor);
+	CGDirectDisplayID display = _monitor_display(monitor);
 	sz count = (sz)display.gammaTableCapacity();
 	if (!count) return CANNOT_RETRIEVE_GAMMA~;
 	float[] rgb = mem::temp_array(float, (sz)count * 3);
@@ -553,7 +578,7 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a
 
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 {
-	CFArrayRef list = todo_fix_monitorDisplay(monitor).copyAllDisplayModes(null);
+	CFArrayRef list = _monitor_display(monitor).copyAllDisplayModes(null);
 	if (!list) return {};
 
 	List{GfxMonitorMode} modes;
@@ -572,7 +597,7 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 
 fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 {
-	CGRect bounds = todo_fix_monitorDisplay(monitor).bounds();
+	CGRect bounds = _monitor_display(monitor).bounds();
 	return { (int)bounds.origin.x, (int)bounds.origin.y, (int)bounds.size.width, (int)bounds.size.height };
 }
 
@@ -776,6 +801,11 @@ fn void _poll_monitors_native()
 	}
 }
 
+fn void _monitor_node_free_native(GfxMonitorNode* node)
+{
+	if (node.mon.mode.src) CFType.release(node.mon.mode.src);
+}
+
 fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
 {
 	*mon = {};
@@ -804,7 +834,7 @@ fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, Gfx
 fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	if (!mode.src) return MONITOR_MODE_CHANGE_FAILED~;
-	if (todo_fix_monitorDisplay(mon).setDisplayMode((CGDisplayModeRef)mode.src, null)) return MONITOR_MODE_CHANGE_FAILED~;
+	if (_monitor_display(mon).setDisplayMode((CGDisplayModeRef)mode.src, null)) return MONITOR_MODE_CHANGE_FAILED~;
 }
 
 fn GfxPoint _get_global_mouse_native()
@@ -1206,6 +1236,12 @@ fn void _osx_draw_rect(ObjId self, ObjSel sel, CGRect rect)
 }
 
 // --- helpers
+
+fn CGDirectDisplayID _monitor_display(GfxMonitor* monitor)
+{
+	if (monitor && monitor.node && monitor.node.nativeId0) return (CGDirectDisplayID)monitor.node.nativeId0;
+	return cg::mainDisplayID();
+}
 
 fn ObjId _new_nsimage(int w, int h, ObjId rep = null)
 {
