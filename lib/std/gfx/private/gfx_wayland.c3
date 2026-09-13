@@ -1550,10 +1550,10 @@ fn void _wl_keyboard_key_cb(void* data, WlProxy* keyboard, uint serial, Clock ti
 	if (!info.kbOwner) return;
 
 	GfxWindow* win = info.kbOwner;
-	GfxKey rgfwKey = key_from_api(key + 8);
+	GfxKey gfx_key = key_from_api(key + 8);
 
 	_key_update_key_mods(win, xkbKeymapModGetIndex(info.keymap, "Lock") != 0, xkbKeymapModGetIndex(info.keymap, "Mod2") != 0, xkbKeymapModGetIndex(info.keymap, "ScrollLock") != 0);
-	_key_callback(win, rgfwKey, win.internal.mod, is_key_down(rgfwKey) && state != 0, !!state);
+	_key_callback(win, gfx_key, win.internal.mod, is_key_down(gfx_key) && state, !!state);
 
 	info.lastKey = state ? key : 0;
 	info.lastKeyTime = time + time::ms(_gfx_ctx.wlRepeatInfoDelay);

@@ -34,7 +34,7 @@ const int DOM_VK_INSERT = 45; const int DOM_VK_END = 35; const int DOM_VK_PAGE_U
 const int DOM_VK_ESCAPE = 27; const int DOM_VK_HOME = 36; const int DOM_VK_SCROLL_LOCK = 145;
 const int DOM_VK_PRINTSCREEN = 44; const int DOM_VK_PAUSE = 19;
 
-fn GfxKey todo_fix_wasmPhysicalToRGFW(uint hash)
+fn GfxKey _wasm_physical_to_gfx(uint hash)
 {
 	switch (hash)
 	{
@@ -90,33 +90,33 @@ fn GfxKey todo_fix_wasmPhysicalToRGFW(uint hash)
 }
 
 // private
-fn void rgfwEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
+fn void gfxEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
 {
 	_window_resized_callback(_gfx_ctx.root, { w, h });
 }
-fn void rgfwEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { _window_focus_callback(_gfx_ctx.root, true); }
+fn void gfxEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { _window_focus_callback(_gfx_ctx.root, true); }
 // private
-fn void rgfwEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { _window_focus_callback(_gfx_ctx.root, false); }
+fn void gfxEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { _window_focus_callback(_gfx_ctx.root, false); }
 
 // private
-fn void rgfwEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("c3gfx_on_mousemove")
+fn void gfxEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("c3gfx_on_mousemove")
 {
 	_mouse_motion_callback(_gfx_ctx.root, { x, y });
 	_raw_motion_callback(_gfx_ctx.root, { (float)movementX, (float)movementY });
 }
 
 // private
-fn void rgfwEmscriptenOnMouseUp(int button) @export("c3gfx_on_mouseup")
+fn void gfxEmscriptenOnMouseUp(int button) @export("c3gfx_on_mouseup")
 {
 	if (button > 2) button += 2;
 	_mouse_button_callback(_gfx_ctx.root, (GfxMouseButton)button, false);
 }
 
 // private
-fn void rgfwEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { _mouse_scroll_callback(_gfx_ctx.root, { deltaX, deltaY }); }
+fn void gfxEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { _mouse_scroll_callback(_gfx_ctx.root, { deltaX, deltaY }); }
 
 // private
-fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("c3gfx_on_touch")
+fn void gfxEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("c3gfx_on_touch")
 {
 	// down == 255 is the sentinel for touchmove (no button state change).
 	if (down == 255)
@@ -154,7 +154,7 @@ fn void todo_fix_handleKeyEvent(ZString code, uint codepoint, bool press) @expor
 	uint hash = 0;
 	while (iCode[0] != 0) { hash = ((hash ^ 0x7E057D79u) << 3) ^ (uint)iCode[0]; iCode++; }
 
-	GfxKey physicalKey = todo_fix_wasmPhysicalToRGFW(hash);
+	GfxKey physicalKey = _wasm_physical_to_gfx(hash);
 	_key_callback(_gfx_ctx.root, physicalKey, _gfx_ctx.root.internal.mod, is_key_down(physicalKey) && press, press);
 	if (press) _key_char_callback(_gfx_ctx.root, codepoint);
 }

@@ -727,10 +727,10 @@ fn void _poll_events_x11()
 {
 	_reset_prev_state();
 	xPending(_gfx_ctx.display);
-	while (qLength(_gfx_ctx.display) != 0) todo_fix_xHandleEvent();
+	while (qLength(_gfx_ctx.display)) _x_handle_event();
 }
 
-fn void todo_fix_xHandleEvent()
+fn void _x_handle_event()
 {
 	static Vec2 delta = {};
 

@@ -82,13 +82,13 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) {}
 fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 {
 	ZString name = (ZString)mouse;
-	rgfwJsSetCursor(name, name.len());
+	gfxJsSetCursor(name, name.len());
 	return true;
 }
 
 fn void _window_set_opacity_native(GfxWindow* win, char opacity)
 {
-	rgfwJsSetOpacity((float)opacity / 255.0f);
+	gfxJsSetOpacity((float)opacity / 255.0f);
 }
 
 fn void _window_maximize_native(GfxWindow* win)
@@ -101,7 +101,7 @@ fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win) => get_primary_monit
 
 fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
-	rgfwJsSetCanvasSize(...size);
+	gfxJsSetCanvasSize(...size);
 }
 
 fn void _window_show_mouse_native(GfxWindow* win, bool show)
@@ -113,7 +113,7 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show)
 	}
 	else
 	{
-		rgfwJsHideCursor();
+		gfxJsHideCursor();
 	}
 }
 
@@ -121,18 +121,18 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 {
 	int minH = win.height < surface.size.y ? win.height : surface.size.y;
 	copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
-	rgfwJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
+	gfxJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
 }
 
 fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 {
 	if (state)
 	{
-		rgfwJsRequestPointerLock();
+		gfxJsRequestPointerLock();
 	}
 	else
 	{
-		rgfwJsExitPointerLock();
+		gfxJsExitPointerLock();
 	}
 }
 
@@ -142,48 +142,48 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	if (fullscreen)
 	{
 		win.internal.flags.fullscreen = true;
-		rgfwJsRequestFullscreen();
+		gfxJsRequestFullscreen();
 		return;
 	}
 	win.internal.flags.fullscreen = false;
-	rgfwJsExitFullscreen();
+	gfxJsExitFullscreen();
 }
 
 fn GfxPoint _get_global_mouse_native()
 {
-	return { rgfwJsGetMouseX(), rgfwJsGetMouseY() };
+	return { gfxJsGetMouseX(), gfxJsGetMouseY() };
 }
 
 fn void _window_set_name_native(GfxWindow* win, String name)
 {
-	rgfwJsSetWindowTitle((ZString)name, name.len);
+	gfxJsSetWindowTitle((ZString)name, name.len);
 }
 
 fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 {
-	rgfwJsSetPointerEvents((int)passthrough);
+	gfxJsSetPointerEvents((int)passthrough);
 }
 
 fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
 
 fn bool _opengl_extension_is_supported_native(String extension)
 {
-	return rgfwJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
+	return gfxJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
 }
 
 fn GfxFn _get_opengl_proc_native(ZString procname)
 {
-	return rgfwJsGetProcAddress(procname);
+	return gfxJsGetProcAddress(procname);
 }
 
 fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
 	win.src.backing = { .opengl };
-	int handle = rgfwJsWebglCreateContext(hints);
+	int handle = gfxJsWebglCreateContext(hints);
 	if (!handle) return OPENGL_CTX_CREATION_FAILED~;
 	ctx.ctx = (void*)(uptr)handle;
-	rgfwJsWebglMakeCurrent(handle);
+	gfxJsWebglMakeCurrent(handle);
 	win.opengl_swap_interval(0);
 }
 
@@ -212,13 +212,13 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 
 fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 {
-	rgfwJsWebglDestroyContext((int)(uptr)ctx.ctx);
+	gfxJsWebglDestroyContext((int)(uptr)ctx.ctx);
 	win.src.ctx.native.ctx = null;
 }
 
 fn void _window_swap_opengl_buffers_native(GfxWindow* win)
 {
-	rgfwJsWebglCommitFrame();
+	gfxJsWebglCommitFrame();
 }
 
 fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints* hints)
@@ -228,13 +228,13 @@ fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints*
 
 fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
 {
-	rgfwJsSetCanvasSize(win.width, win.height);
-	rgfwJsSetWindowTitle((ZString)name, name.len);
-	rgfwJsSetupWindowListeners();
+	gfxJsSetCanvasSize(win.width, win.height);
+	gfxJsSetWindowTitle((ZString)name, name.len);
+	gfxJsSetupWindowListeners();
 
 	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
 
-	rgfwJsSetupDropListeners();
+	gfxJsSetupDropListeners();
 
 	_window_set_flags(win, flags, {});
 	win.src.backing = {};
@@ -249,8 +249,8 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	_gfx_ctx.usingAsyncify = -1;
 	GfxMonitor monitor;
 	monitor.origin = {};
-	monitor.pixelRatio = (float)rgfwJsDevicePixelRatio();
-	monitor.mode.size = { rgfwJsInnerWidth(), rgfwJsInnerHeight() };
+	monitor.pixelRatio = (float)gfxJsDevicePixelRatio();
+	monitor.mode.size = { gfxJsInnerWidth(), gfxJsInnerHeight() };
 	monitor.phys_size = {
 		(float)(int)(monitor.mode.size.x * monitor.pixelRatio + 0.5f),
 		(float)(int)(monitor.mode.size.y * monitor.pixelRatio + 0.5f)
@@ -272,9 +272,9 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 
 fn void _poll_events_native()
 {
-	if (_gfx_ctx.usingAsyncify == -1) _gfx_ctx.usingAsyncify = rgfwJsUsingAsyncify();
+	if (_gfx_ctx.usingAsyncify == -1) _gfx_ctx.usingAsyncify = gfxJsUsingAsyncify();
 	_reset_prev_state();
-	if (_gfx_ctx.usingAsyncify) rgfwJsSleep(0);
+	if (_gfx_ctx.usingAsyncify) gfxJsSleep(0);
 }
 
 fn void _surface_release_native(GfxSurface* surface)
@@ -284,7 +284,7 @@ fn void _surface_release_native(GfxSurface* surface)
 
 fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
-	rgfwJsWriteClipboard(data.text, data.text.len);
+	gfxJsWriteClipboard(data.text, data.text.len);
 }
 
 
@@ -310,8 +310,8 @@ fn void _emscripten_on_fullscreenchange(int screenW, int screenH, bool entering)
 	{
 		_gfx_ctx.root.size = original;
 	}
-	rgfwJsFocusCanvas();
-	rgfwJsSetCanvasSize(..._gfx_ctx.root.size);
+	gfxJsFocusCanvas();
+	gfxJsSetCanvasSize(..._gfx_ctx.root.size);
 	_window_resized_callback(_gfx_ctx.root, _gfx_ctx.root.size);
 }
 
@@ -333,17 +333,17 @@ fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
 	if (!win)
 	{
-		rgfwJsWebglMakeCurrent(0);
+		gfxJsWebglMakeCurrent(0);
 	}
 	else
 	{
-		rgfwJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx);
+		gfxJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx);
 	}
 }
 
 fn void* _get_current_opengl_context_native()
 {
-	return (void*)(uptr)rgfwJsWebglGetCurrentContext();
+	return (void*)(uptr)gfxJsWebglGetCurrentContext();
 }
 
 fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
@@ -424,59 +424,56 @@ fn void _init_keycodes_native()
 // ---
 
 // TODO All of this is horribly broken
-extern fn void rgfwJsSetCanvasSize(int w, int h) @wasm("env", "emscripten_set_canvas_size");
-extern fn void rgfwJsSetWindowTitle(ZString name, sz len) @wasm("env", "emscripten_set_window_title");
-extern fn void rgfwJsSetupWindowListeners() @wasm("env", "emscripten_setup_window_listeners");
-extern fn void rgfwJsSetupDropListeners() @wasm("env", "emscripten_setup_drop_listeners");
+extern fn void gfxJsSetCanvasSize(int w, int h) @wasm("env", "emscripten_set_canvas_size");
+extern fn void gfxJsSetWindowTitle(ZString name, sz len) @wasm("env", "emscripten_set_window_title");
+extern fn void gfxJsSetupWindowListeners() @wasm("env", "emscripten_setup_window_listeners");
+extern fn void gfxJsSetupDropListeners() @wasm("env", "emscripten_setup_drop_listeners");
 
 // Each of the following registers exactly one DOM/window listener, mirroring
-// TODO_RENAME_createWindowPlatform's emscripten_set_*_callback calls one-for-one so
-// the JS host implementation can be checked line-by-line against RGFW.h.
-extern fn void rgfwJsSetResizeCallback() @wasm("env", "emscripten_set_resize_callback");
-extern fn void rgfwJsSetFullscreenChangeCallback() @wasm("env", "emscripten_set_fullscreenchange_callback");
-extern fn void rgfwJsSetMouseMoveCallback() @wasm("env", "emscripten_set_mousemove_callback");
-extern fn void rgfwJsSetTouchStartCallback() @wasm("env", "emscripten_set_touchstart_callback");
-extern fn void rgfwJsSetTouchEndCallback() @wasm("env", "emscripten_set_touchend_callback");
-extern fn void rgfwJsSetTouchMoveCallback() @wasm("env", "emscripten_set_touchmove_callback");
-// RGFW's own Emscripten_on_touchcancel is a no-op; registered anyway to match
-// RGFW.h exactly (the JS host's listener may itself do nothing).
-extern fn void rgfwJsSetTouchCancelCallback() @wasm("env", "emscripten_set_touchcancel_callback");
-extern fn void rgfwJsSetMouseDownCallback() @wasm("env", "emscripten_set_mousedown_callback");
-extern fn void rgfwJsSetMouseUpCallback() @wasm("env", "emscripten_set_mouseup_callback");
-extern fn void rgfwJsSetWheelCallback() @wasm("env", "emscripten_set_wheel_callback");
-extern fn void rgfwJsSetFocusInCallback() @wasm("env", "emscripten_set_focusin_callback");
-extern fn void rgfwJsSetFocusOutCallback() @wasm("env", "emscripten_set_focusout_callback");
-// Combined registrations: RGFW.h wires each of these pairs from a single
-// EM_ASM block (keydown+keyup; drop+dragover) rather than as separate
-// emscripten_set_*_callback calls, so one host call covers each pair.
-extern fn void rgfwJsSetKeyCallbacks() @wasm("env", "emscripten_set_key_callbacks");
-extern fn void rgfwJsSetDropCallbacks() @wasm("env", "emscripten_set_drop_callbacks");
-// RGFW.h calls `EM_ASM("Module.canvas.focus();")` after every fullscreen
+// _createWindowPlatform's emscripten_set_*_callback calls one-for-one so
+
+extern fn void gfxJsSetResizeCallback() @wasm("env", "emscripten_set_resize_callback");
+extern fn void gfxJsSetFullscreenChangeCallback() @wasm("env", "emscripten_set_fullscreenchange_callback");
+extern fn void gfxJsSetMouseMoveCallback() @wasm("env", "emscripten_set_mousemove_callback");
+extern fn void gfxJsSetTouchStartCallback() @wasm("env", "emscripten_set_touchstart_callback");
+extern fn void gfxJsSetTouchEndCallback() @wasm("env", "emscripten_set_touchend_callback");
+extern fn void gfxJsSetTouchMoveCallback() @wasm("env", "emscripten_set_touchmove_callback");
+
+extern fn void gfxJsSetTouchCancelCallback() @wasm("env", "emscripten_set_touchcancel_callback");
+extern fn void gfxJsSetMouseDownCallback() @wasm("env", "emscripten_set_mousedown_callback");
+extern fn void gfxJsSetMouseUpCallback() @wasm("env", "emscripten_set_mouseup_callback");
+extern fn void gfxJsSetWheelCallback() @wasm("env", "emscripten_set_wheel_callback");
+extern fn void gfxJsSetFocusInCallback() @wasm("env", "emscripten_set_focusin_callback");
+extern fn void gfxJsSetFocusOutCallback() @wasm("env", "emscripten_set_focusout_callback");
+
+extern fn void gfxJsSetKeyCallbacks() @wasm("env", "emscripten_set_key_callbacks");
+extern fn void gfxJsSetDropCallbacks() @wasm("env", "emscripten_set_drop_callbacks");
+// Needs `EM_ASM("Module.canvas.focus();")` after every fullscreen
 // transition so keyboard events keep targeting the canvas.
-extern fn void rgfwJsFocusCanvas() @wasm("env", "emscripten_focus_canvas");
-extern fn void rgfwJsBlitSurface(char* data, int w, int h, int minH) @wasm("env", "emscripten_blit_surface");
-extern fn void rgfwJsSetCursor(ZString name, sz len) @wasm("env", "emscripten_set_cursor");
-extern fn void rgfwJsHideCursor() @wasm("env", "emscripten_hide_cursor");
-extern fn int rgfwJsGetMouseX() @wasm("env", "emscripten_get_mouse_x");
-extern fn int rgfwJsGetMouseY() @wasm("env", "emscripten_get_mouse_y");
-extern fn void rgfwJsSetPointerEvents(int passthrough) @wasm("env", "emscripten_set_pointer_events");
-extern fn void rgfwJsWriteClipboard(char* data, sz len) @wasm("env", "emscripten_write_clipboard");
-extern fn int rgfwJsUsingAsyncify() @wasm("env", "emscripten_using_asyncify");
-extern fn void rgfwJsSleep(int ms) @wasm("env", "emscripten_sleep");
-extern fn double rgfwJsDevicePixelRatio() @wasm("env", "emscripten_device_pixel_ratio");
-extern fn int rgfwJsInnerWidth() @wasm("env", "emscripten_inner_width");
-extern fn int rgfwJsInnerHeight() @wasm("env", "emscripten_inner_height");
-extern fn void rgfwJsRequestPointerLock() @wasm("env", "emscripten_request_pointer_lock");
-extern fn void rgfwJsExitPointerLock() @wasm("env", "emscripten_exit_pointer_lock");
-extern fn void rgfwJsRequestFullscreen() @wasm("env", "emscripten_request_fullscreen");
-extern fn void rgfwJsExitFullscreen() @wasm("env", "emscripten_exit_fullscreen");
-extern fn void rgfwJsSetOpacity(float opacity) @wasm("env", "emscripten_set_opacity");
-extern fn int rgfwJsWebglCreateContext(GfxGlHints* hints) @wasm("env", "emscripten_webgl_create_context");
-extern fn void rgfwJsWebglDestroyContext(int ctx) @wasm("env", "emscripten_webgl_destroy_context");
-extern fn void rgfwJsWebglMakeCurrent(int ctx) @wasm("env", "emscripten_webgl_make_current");
-extern fn void rgfwJsWebglCommitFrame() @wasm("env", "emscripten_webgl_commit_frame");
-extern fn int rgfwJsWebglGetCurrentContext() @wasm("env", "emscripten_webgl_get_current_context");
-extern fn int rgfwJsExtensionSupported(ZString name, sz len) @wasm("env", "emscripten_extension_supported");
-extern fn GfxFn rgfwJsGetProcAddress(ZString name) @wasm("env", "emscripten_webgl_get_proc_address");
-extern fn void rgfwJsMkdir(ZString name) @wasm("env", "emscripten_mkdir");
-extern fn void rgfwJsWriteFile(ZString path, char* data, sz len) @wasm("env", "emscripten_write_file");
+extern fn void gfxJsFocusCanvas() @wasm("env", "emscripten_focus_canvas");
+extern fn void gfxJsBlitSurface(char* data, int w, int h, int minH) @wasm("env", "emscripten_blit_surface");
+extern fn void gfxJsSetCursor(ZString name, sz len) @wasm("env", "emscripten_set_cursor");
+extern fn void gfxJsHideCursor() @wasm("env", "emscripten_hide_cursor");
+extern fn int gfxJsGetMouseX() @wasm("env", "emscripten_get_mouse_x");
+extern fn int gfxJsGetMouseY() @wasm("env", "emscripten_get_mouse_y");
+extern fn void gfxJsSetPointerEvents(int passthrough) @wasm("env", "emscripten_set_pointer_events");
+extern fn void gfxJsWriteClipboard(char* data, sz len) @wasm("env", "emscripten_write_clipboard");
+extern fn int gfxJsUsingAsyncify() @wasm("env", "emscripten_using_asyncify");
+extern fn void gfxJsSleep(int ms) @wasm("env", "emscripten_sleep");
+extern fn double gfxJsDevicePixelRatio() @wasm("env", "emscripten_device_pixel_ratio");
+extern fn int gfxJsInnerWidth() @wasm("env", "emscripten_inner_width");
+extern fn int gfxJsInnerHeight() @wasm("env", "emscripten_inner_height");
+extern fn void gfxJsRequestPointerLock() @wasm("env", "emscripten_request_pointer_lock");
+extern fn void gfxJsExitPointerLock() @wasm("env", "emscripten_exit_pointer_lock");
+extern fn void gfxJsRequestFullscreen() @wasm("env", "emscripten_request_fullscreen");
+extern fn void gfxJsExitFullscreen() @wasm("env", "emscripten_exit_fullscreen");
+extern fn void gfxJsSetOpacity(float opacity) @wasm("env", "emscripten_set_opacity");
+extern fn int gfxJsWebglCreateContext(GfxGlHints* hints) @wasm("env", "emscripten_webgl_create_context");
+extern fn void gfxJsWebglDestroyContext(int ctx) @wasm("env", "emscripten_webgl_destroy_context");
+extern fn void gfxJsWebglMakeCurrent(int ctx) @wasm("env", "emscripten_webgl_make_current");
+extern fn void gfxJsWebglCommitFrame() @wasm("env", "emscripten_webgl_commit_frame");
+extern fn int gfxJsWebglGetCurrentContext() @wasm("env", "emscripten_webgl_get_current_context");
+extern fn int gfxJsExtensionSupported(ZString name, sz len) @wasm("env", "emscripten_extension_supported");
+extern fn GfxFn gfxJsGetProcAddress(ZString name) @wasm("env", "emscripten_webgl_get_proc_address");
+extern fn void gfxJsMkdir(ZString name) @wasm("env", "emscripten_mkdir");
+extern fn void gfxJsWriteFile(ZString path, char* data, sz len) @wasm("env", "emscripten_write_file");
