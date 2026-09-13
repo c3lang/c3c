@@ -52,7 +52,6 @@ const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
 const Duration WAIT_FOREVER = Duration::max;
 
-alias TodoRenameEventFlag = uint;
 
 typedef GfxMouse = void;
 
@@ -970,7 +969,7 @@ fn void? GfxWindow.create_directx_swap_chain(&self, Win32_IDXGIFactory* factory,
 
 fn void GfxWindow.swap_opengl_buffers(&self)
 {
-	_window_swap_opengl_buffers_native(self);
+	_window_opengl_swap_buffers_native(self);
 }
 
 fn void make_window_current_opengl_context(GfxWindow* win)
@@ -1236,17 +1235,18 @@ fn void set_all_event_callback(GfxGenericFunc func, GfxEventCallbacks* callbacks
 }
 
 
-// public
-fn void todo_fix_eventQueueFlush() { _gfx_ctx.eventLen = 0; }
+fn void event_queue_flush()
+{
+	_gfx_ctx.eventLen = 0;
+}
 
-// public
 fn void event_queue_push(GfxEvent* event)
 {
 	if (!_gfx_ctx.queueEvents) return;
 	if (_gfx_ctx.eventLen >= MAX_EVENTS)
 	{
 		log::error("Event queue limit 'MAX_EVENTS' has been reached automatically flushing queue.", category: log::CATEGORY_VIDEO);
-		todo_fix_eventQueueFlush();
+		event_queue_flush();
 		return;
 	}
 	int eventTop = (_gfx_ctx.eventBottom + _gfx_ctx.eventLen) % MAX_EVENTS;

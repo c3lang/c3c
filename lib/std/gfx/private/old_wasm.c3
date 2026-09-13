@@ -148,7 +148,7 @@ fn void gfxEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expor
 }
 
 // private
-fn void todo_fix_handleKeyEvent(ZString code, uint codepoint, bool press) @export("c3gfx_handleKeyEvent")
+fn void handle_key_event_callback(ZString code, uint codepoint, bool press) @export("c3gfx_handleKeyEvent")
 {
 	ZString iCode = code;
 	uint hash = 0;
@@ -159,8 +159,7 @@ fn void todo_fix_handleKeyEvent(ZString code, uint codepoint, bool press) @expor
 	if (press) _key_char_callback(_gfx_ctx.root, codepoint);
 }
 
-// private
-fn void todo_fix_handleKeyMods(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("c3gfx_handleKeyMods")
+fn void handle_key_mods_callback(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("c3gfx_handleKeyMods")
 {
 	_key_update_key_mods_ex(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
 }

@@ -100,13 +100,13 @@ fn void _window_show_native(GfxWindow* win)
 		$case WAYLAND_ONLY:
 			return _window_show_wayland(win);
 		$case X11_ONLY:
-			return todo_fix_window_showPlatform_X11(win);
+			return _window_show_x11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _window_show_wayland(win);
 			}
-			return todo_fix_window_showPlatform_X11(win);
+			return _window_show_x11(win);
 	$endswitch
 }
 
@@ -294,15 +294,15 @@ fn void* _get_opengl_proc_native(ZString procname)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_getProcAddress_OpenGL_Wayland(procname);
+			return _get_egl_proc_address(procname);
 		$case X11_ONLY:
-			return todo_fix_getProcAddress_OpenGL_X11(procname);
+			return _get_opengl_proc(procname);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_getProcAddress_OpenGL_Wayland(procname);
+				return _get_egl_proc_address(procname);
 			}
-			return todo_fix_getProcAddress_OpenGL_X11(procname);
+			return _get_opengl_proc(procname);
 	$endswitch
 }
 
@@ -943,13 +943,13 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 		$case WAYLAND_ONLY:
 			return _window_set_border_wayland(win, border);
 		$case X11_ONLY:
-			return todo_fix_window_setBorder_X11(win, border);
+			return _window_set_border_x11(win, border);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _window_set_border_wayland(win, border);
 			}
-			return todo_fix_window_setBorder_X11(win, border);
+			return _window_set_border_x11(win, border);
 	$endswitch
 }
 
@@ -960,13 +960,13 @@ fn void _window_set_floating_native(GfxWindow* win, bool floating)
 		$case WAYLAND_ONLY:
 			return _window_set_floating_wayland(win, floating);
 		$case X11_ONLY:
-			return todo_fix_window_setFloating_X11(win, floating);
+			return _window_set_floating_x11(win, floating);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _window_set_floating_wayland(win, floating);
 			}
-			return todo_fix_window_setFloating_X11(win, floating);
+			return _window_set_floating_x11(win, floating);
 	$endswitch
 }
 
@@ -1078,30 +1078,30 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 		$case WAYLAND_ONLY:
 			return _window_set_raw_mouse_mode_wayland(win, state);
 		$case X11_ONLY:
-			return todo_fix_window_setRawMouseModePlatform_X11(win, state);
+			return _window_set_raw_mouse_mode_x11(win, state);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _window_set_raw_mouse_mode_wayland(win, state);
 			}
-			return todo_fix_window_setRawMouseModePlatform_X11(win, state);
+			return _window_set_raw_mouse_mode_x11(win, state);
 	$endswitch
 }
 
 // public
-fn void _window_swap_opengl_buffers_native(GfxWindow* win)
+fn void _window_opengl_swap_buffers_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
 			return _window_opengl_swap_buffers_wayland(win);
 		$case X11_ONLY:
-			return todo_fix_window_swapBuffers_OpenGL_X11(win);
+			return _window_opengl_swap_buffers_x11(win);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _window_opengl_swap_buffers_wayland(win);
 			}
-			return todo_fix_window_swapBuffers_OpenGL_X11(win);
+			return _window_opengl_swap_buffers_x11(win);
 	$endswitch
 }
 
@@ -1232,13 +1232,13 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 		$case WAYLAND_ONLY:
 			return _window_capture_mouse_wayland(win, state);
 		$case X11_ONLY:
-			return todo_fix_window_captureMousePlatform_X11(win, state);
+			return _window_capture_mouse_x11(win, state);
 		$default:
 			if (gfx_use_wayland)
 			{
 				return _window_capture_mouse_wayland(win, state);
 			}
-			return todo_fix_window_captureMousePlatform_X11(win, state);
+			return _window_capture_mouse_x11(win, state);
 	$endswitch
 }
 

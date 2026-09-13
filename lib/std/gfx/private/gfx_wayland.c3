@@ -588,17 +588,14 @@ fn void _free_mouse_wayland(GfxMouse* mouse)
 	surface.destroy();
 }
 
-fn void* _get_current_opengl_context_wayland() => todo_fix_getCurrentContext_EGL();
+fn void* _get_current_opengl_context_wayland() => _get_current_egl_context();
 
 fn GfxPoint _get_global_mouse_wayland()
 {
 	return { -1, -1 };
 }
 
-// private
-fn GfxFn todo_fix_getProcAddress_OpenGL_Wayland(ZString procname) => _get_egl_proc_address(procname);
 
-// private
 fn void _init_keycodes_native_wayland()
 {
 	// Wayland keycodes come directly from the evdev-based xkb keymap (key+8);
@@ -966,7 +963,7 @@ fn void? _window_init_opengl_context_wayland(GfxWindow* win, GfxGlContext* conte
 // public
 fn void _window_opengl_swap_interval_wayland(GfxWindow* win, int swapInterval)
 {
-	todo_fix_window_swapInterval_EGL(win, swapInterval);
+	_window_egl_swap_interval(win, swapInterval);
 }
 
 
@@ -1008,7 +1005,7 @@ fn void _window_hide_wayland(GfxWindow* win)
 
 fn void _window_make_opengl_current_context_wayland(GfxWindow* win)
 {
-	todo_fix_window_makeCurrentContext_EGL(win);
+	_window_make_current_egl_context(win);
 }
 
 fn void _window_maximize_wayland(GfxWindow* win)
@@ -1121,7 +1118,7 @@ fn void _window_set_raw_mouse_mode_wayland(GfxWindow* win, bool state)
 
 fn void _window_opengl_swap_buffers_wayland(GfxWindow* win)
 {
-	todo_fix_window_swapBuffers_EGL(win);
+	_window_swap_egl_buffers(win);
 }
 
 fn void _window_show_wayland(GfxWindow* win)
@@ -1323,7 +1320,7 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 	if (!ctx.surface) return EGL_SURFACE_CREATION_FAILED~;
 	win.src.ctx.egl = ctx;
 	win.src.backing = { .egl };
-	todo_fix_window_makeCurrentContext_EGL(win);
+	_window_make_current_egl_context(win);
 }
 
 
@@ -1927,13 +1924,13 @@ struct WgpuSurfaceSourceWaylandSurface
 // --- Vulkan
 
 
-alias TodoRenameVkGetPhysicalDeviceWaylandPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, WlDisplay*);
+alias VkGetPhysicalDeviceWaylandPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, WlDisplay*);
 
 fn bool _vulkan_get_physical_device_presentation_support_wayland(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
+	GfxFn raw = _get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
 	if (raw == null) return false;
-	uint out = ((TodoRenameVkGetPhysicalDeviceWaylandPresentationSupportKHRProc)raw)(physical_device, queue_family_index, _gfx_ctx.wlDisplay);
+	uint out = ((VkGetPhysicalDeviceWaylandPresentationSupportKHRProc)raw)(physical_device, queue_family_index, _gfx_ctx.wlDisplay);
 	return out != 0;
 }
 
@@ -1949,7 +1946,7 @@ struct VkWaylandSurfaceCreateInfoKHR
 fn VkSurfaceKHR? _window_create_vulkan_surface_wayland(GfxWindow* win, VkInstance instance) @private
 {
 	VkSurfaceKHR surface;
-	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateWaylandSurfaceKHR");
+	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)_get_instance_proc_vulkan(instance, "vkCreateWaylandSurfaceKHR");
 	if (!proc) return VULKAN_NOT_LOADED~;
 	VkWaylandSurfaceCreateInfoKHR create_info = {
 		.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,

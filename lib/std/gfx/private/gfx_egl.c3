@@ -69,7 +69,7 @@ alias EglGetCurrentContextProc = fn EglContext();
 alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
 alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
 
-EglGetProcAddressProc todo_fix_eglGetProcAddress;
+EglGetProcAddressProc _egl_get_proc_address;
 EglGetDisplayProc egl_get_display_fn;
 EglInitializeProc egl_initialize_fn;
 EglTerminateProc egl_terminate_fn;
@@ -98,25 +98,19 @@ fn void _unload_egl_native() @private
 	_gfx_ctx.egl_handle = null;
 	_gfx_ctx.egl_display = null;
 	_gfx_ctx.eglGetProcAddress = null;
-	todo_fix_eglGetProcAddress = null;
+	_egl_get_proc_address = null;
 }
 
-// public
 fn void* _get_egl_proc_address(ZString procname)
 {
-	if (try proc = todo_fix_eglProc(procname))
-	{
-		return (GfxFn)proc;
-	}
-	return null;
+	return _find_egl_proc(procname) ?? null;
 }
 
-// private
-fn void*? todo_fix_eglProc(ZString name)
+fn void*? _find_egl_proc(ZString name)
 {
-	if (_gfx_ctx.egl_handle == null) return PROC_LOAD_FAILED~;
+	if (!_gfx_ctx.egl_handle) return PROC_LOAD_FAILED~;
 	void* proc = libc::dlsym(_gfx_ctx.egl_handle, name);
-	if (!proc && todo_fix_eglGetProcAddress) proc = (void*)todo_fix_eglGetProcAddress(name);
+	if (!proc && _egl_get_proc_address) proc = (void*)_egl_get_proc_address(name);
 	if (!proc) return PROC_LOAD_FAILED~;
 	return proc;
 }
@@ -130,26 +124,25 @@ fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints*
 	return context;
 }
 
-
-// private
 fn void? bind_egl() @local
 {
-	egl_get_display_fn = todo_fix_eglProc("eglGetDisplay")!;
-	egl_initialize_fn = todo_fix_eglProc("eglInitialize")!;
-	egl_terminate_fn = todo_fix_eglProc("eglTerminate")!;
-	egl_bind_api_fn = todo_fix_eglProc("eglBindAPI")!;
-	egl_choose_config_fn = todo_fix_eglProc("eglChooseConfig")!;
-	egl_create_context_fn = todo_fix_eglProc("eglCreateContext")!;
-	egl_destroy_context_fn = todo_fix_eglProc("eglDestroyContext")!;
-	egl_create_window_surface_fn = todo_fix_eglProc("eglCreateWindowSurface")!;
-	egl_destroy_surface_fn = todo_fix_eglProc("eglDestroySurface")!;
-	egl_make_current_fn = todo_fix_eglProc("eglMakeCurrent")!;
-	egl_swap_buffers_fn = todo_fix_eglProc("eglSwapBuffers")!;
-	egl_swap_interval_fn = todo_fix_eglProc("eglSwapInterval")!;
-	egl_get_current_context_fn = todo_fix_eglProc("eglGetCurrentContext")!;
-	egl_query_string_fn = todo_fix_eglProc("eglQueryString")!;
-	egl_get_config_attrib_fn = todo_fix_eglProc("eglGetConfigAttrib")!;
+	egl_get_display_fn           = _find_egl_proc("eglGetDisplay")!;
+	egl_initialize_fn            = _find_egl_proc("eglInitialize")!;
+	egl_terminate_fn             = _find_egl_proc("eglTerminate")!;
+	egl_bind_api_fn              = _find_egl_proc("eglBindAPI")!;
+	egl_choose_config_fn         = _find_egl_proc("eglChooseConfig")!;
+	egl_create_context_fn        = _find_egl_proc("eglCreateContext")!;
+	egl_destroy_context_fn       = _find_egl_proc("eglDestroyContext")!;
+	egl_create_window_surface_fn = _find_egl_proc("eglCreateWindowSurface")!;
+	egl_destroy_surface_fn       = _find_egl_proc("eglDestroySurface")!;
+	egl_make_current_fn          = _find_egl_proc("eglMakeCurrent")!;
+	egl_swap_buffers_fn          = _find_egl_proc("eglSwapBuffers")!;
+	egl_swap_interval_fn         = _find_egl_proc("eglSwapInterval")!;
+	egl_get_current_context_fn   = _find_egl_proc("eglGetCurrentContext")!;
+	egl_query_string_fn          = _find_egl_proc("eglQueryString")!;
+	egl_get_config_attrib_fn     = _find_egl_proc("eglGetConfigAttrib")!;
 }
+
 // public
 fn void? _load_egl_native() @private
 {
@@ -157,20 +150,14 @@ fn void? _load_egl_native() @private
 	_gfx_ctx.egl_handle = _dlopen_any("libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll") ?? MISSING_EGL_LIB~!;
 	void* getProc = libc::dlsym(_gfx_ctx.egl_handle, "eglGetProcAddress");
 	if (!getProc) return MISSING_EGL_GET_PROC_ADDR~;
-	todo_fix_eglGetProcAddress = (EglGetProcAddressProc)getProc;
+	_egl_get_proc_address = (EglGetProcAddressProc)getProc;
 	_gfx_ctx.eglGetProcAddress = getProc;
 	if (catch bind_egl()) return EGL_BINDING_FAILED~;
 }
 
-// public
-fn void* todo_fix_getCurrentContext_EGL() => egl_get_current_context_fn != null ? egl_get_current_context_fn() : null;
-// public
-fn GfxWindow* todo_fix_getCurrentWindow_EGL() => _gfx_ctx.current;
-// public
-fn void* todo_fix_getDisplay_EGL() => _gfx_ctx.egl_display;
+fn void* _get_current_egl_context() => egl_get_current_context_fn ? egl_get_current_context_fn() : null;
 
-// public
-fn void todo_fix_window_makeCurrentContext_EGL(GfxWindow* win)
+fn void _window_make_current_egl_context(GfxWindow* win)
 {
 	if (!_gfx_ctx.egl_display || !egl_make_current_fn) return;
 	if (!win || !win.src.ctx.egl)
@@ -182,15 +169,13 @@ fn void todo_fix_window_makeCurrentContext_EGL(GfxWindow* win)
 	egl_make_current_fn((EglDisplay)_gfx_ctx.egl_display, (EglSurface)ctx.surface, (EglSurface)ctx.surface, (EglContext)ctx.ctx);
 }
 
-// public
-fn void todo_fix_window_swapBuffers_EGL(GfxWindow* win)
+fn void _window_swap_egl_buffers(GfxWindow* win)
 {
 	if (!win || !win.src.ctx.egl || !egl_swap_buffers_fn) return;
 	egl_swap_buffers_fn((EglDisplay)_gfx_ctx.egl_display, (EglSurface)win.src.ctx.egl.surface);
 }
 
-// public
-fn void todo_fix_window_swapInterval_EGL(GfxWindow* win, int swapInterval)
+fn void _window_egl_swap_interval(GfxWindow* win, int swapInterval)
 {
 	if (!egl_swap_interval_fn) return;
 	egl_swap_interval_fn((EglDisplay)_gfx_ctx.egl_display, swapInterval);

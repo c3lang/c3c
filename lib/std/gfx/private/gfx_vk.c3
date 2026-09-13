@@ -47,7 +47,7 @@ fn bool vulkan_get_physical_device_presentation_support_native(VkInstance instan
 }
 
 // public
-fn GfxFn todo_fix_getInstanceProcAddress_Vulkan(VkInstance instance, ZString procname) @feat(!WASM)
+fn GfxFn _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(!WASM)
 {
 	if (!_gfx_ctx.vk_get_instance_proc_address) return null;
 	return _gfx_ctx.vk_get_instance_proc_address(instance, procname);

@@ -140,7 +140,7 @@ fn void* _get_current_opengl_context_native()
 	return (void*)objc::send(objc::@class("NSOpenGLContext"), ObjId, "currentContext");
 }
 
-fn void _window_swap_opengl_buffers_native(GfxWindow* win)
+fn void _window_opengl_swap_buffers_native(GfxWindow* win)
 {
 	if (win.src.ctx.native && win.src.ctx.native.ctx) win.src.ctx.native.ctx.send_void("flushBuffer");
 }
@@ -223,7 +223,7 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, Gfx
 
 	win.src.ctx.egl = ctx;
 	win.src.backing = { .egl };
-	todo_fix_window_makeCurrentContext_EGL(win);
+	_window_make_current_egl_context(win);
 }
 
 fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
@@ -253,7 +253,7 @@ fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance insta
 fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance) @private
 {
 	VkSurfaceKHR surface;
-	VkCreateSurfaceKHRProc raw = (VkCreateSurfaceKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateMetalSurfaceEXT");
+	VkCreateSurfaceKHRProc raw = (VkCreateSurfaceKHRProc)_get_instance_proc_vulkan(instance, "vkCreateMetalSurfaceEXT");
 	if (!raw) return VULKAN_NOT_LOADED~;
 	ObjId layer = objc::send(objc::@class("CAMetalLayer"), ObjId, "layer");
 	if (!layer) return SURFACE_CREATION_FAILED~;

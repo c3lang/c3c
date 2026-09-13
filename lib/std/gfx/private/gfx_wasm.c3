@@ -216,7 +216,7 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	win.src.ctx.native.ctx = null;
 }
 
-fn void _window_swap_opengl_buffers_native(GfxWindow* win)
+fn void _window_opengl_swap_buffers_native(GfxWindow* win)
 {
 	gfxJsWebglCommitFrame();
 }

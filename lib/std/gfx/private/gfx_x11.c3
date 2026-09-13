@@ -88,7 +88,7 @@ fn void _surface_release_x11(GfxSurface* surface)
 	*surface = {};
 }
 
-fn void todo_fix_window_setBorder_X11(GfxWindow* win, bool border)
+fn void _window_set_border_x11(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
 	X11WindowHints hints;
@@ -102,7 +102,7 @@ fn void todo_fix_window_setBorder_X11(GfxWindow* win, bool border)
 	}
 }
 
-fn void todo_fix_window_setRawMouseModePlatform_X11(GfxWindow* win, bool state)
+fn void _window_set_raw_mouse_mode_x11(GfxWindow* win, bool state)
 {
 	char[4] mask;
 	if (state) xi_set_mask((char*)&mask, 6 /* XI_RawMotion */);
@@ -113,7 +113,7 @@ fn void todo_fix_window_setRawMouseModePlatform_X11(GfxWindow* win, bool state)
 	if (_xi_select_events_src) _xi_select_events_src(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &em, 1);
 }
 
-fn void todo_fix_window_captureMousePlatform_X11(GfxWindow* win, bool state)
+fn void _window_capture_mouse_x11(GfxWindow* win, bool state)
 {
 	if (state)
 	{
@@ -370,7 +370,7 @@ fn void? _create_window_x11(String name, GfxWindowFlags flags, GfxWindow* win)
 	else
 	{
 		XVisualInfo visual;
-		todo_fix_window_getVisual(&visual, win.internal.flags.transparent);
+		_get_visual_for_window(&visual, win.internal.flags.transparent);
 		_x_create_window(visual, name, flags, win)!;
 	}
 	_window_set_flags(win, flags, {});
@@ -383,7 +383,7 @@ fn void _destroy_x11()
 		if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helper_window)
 		{
 			xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardManager, _gfx_ctx.saveTargets, 0, _gfx_ctx.helper_window, 0);
-			while (todo_fix_xHandleClipboardSelectionHelper() != 0) {}
+			while (x_handle_clipboard_selection_helper() != 0) {}
 		}
 		xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&_x11_im_init_callback, null);
 	}
@@ -401,7 +401,7 @@ fn void _destroy_x11()
 // private
 fn bool _opengl_extension_is_supported_x11(String extension)
 {
-	ZString extensions = todo_fix_glXQueryExtensionsString(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
+	ZString extensions = _glx_query_extensions_string_fn(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
 	return extensions && _extension_is_in_list(extensions.str_view(), extension);
 }
 
@@ -411,12 +411,12 @@ fn void _free_mouse_x11(GfxMouse* mouse)
 }
 
 // private
-fn void* _get_current_opengl_context_x11() => todo_fix_glXGetCurrentContext();
+fn void* _get_current_opengl_context_x11() => _glx_get_current_context_fn();
 
 // private
-fn GfxFn todo_fix_getProcAddress_OpenGL_X11(ZString procname)
+fn GfxFn _get_opengl_proc(ZString procname)
 {
-	if (_gfx_ctx.glGetProcAddress == null) return null;
+	if (!_gfx_ctx.glGetProcAddress) return null;
 	return ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname);
 }
 
@@ -505,7 +505,7 @@ fn void? _init_x11(String class_name, GfxInitOption flags)
 	_gfx_ctx.hiddenMouse = _create_mouse_native((void*)&blk, { 1, 1 }, RGBA8) ?? null;
 	_gfx_ctx.unixClipboard = null;
 
-	xSetErrorHandler((void*)&todo_fix_xErrorHandler);
+	xSetErrorHandler(&_x_error_handler);
 	xSync(_gfx_ctx.display, 0);
 
 	xSetLocaleModifiers("");
@@ -526,28 +526,28 @@ fn void? _load_opengl_x11()
 	void* ptr = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddress");
 	if (!ptr) return MISSING_GL_GET_PROC_ADDR~;
 	_gfx_ctx.glGetProcAddress        = ptr;
-	todo_fix_glXChooseVisual             = libc::dlsym(_gfx_ctx.native_gl_handle, "glXChooseVisual");
-	todo_fix_glXCreateContext            = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContext");
-	todo_fix_glXMakeCurrent              = libc::dlsym(_gfx_ctx.native_gl_handle, "glXMakeCurrent");
-	todo_fix_glXGetCurrentContext        = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetCurrentContext");
-	todo_fix_glXSwapBuffers              = libc::dlsym(_gfx_ctx.native_gl_handle, "glXSwapBuffers");
-	todo_fix_glXGetVisualFromFBConfig    = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetVisualFromFBConfig");
-	todo_fix_glXGetFBConfigAttrib        = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetFBConfigAttrib");
-	todo_fix_glXGetProcAddressARB        = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddressARB");
-	todo_fix_glXChooseFBConfig           = libc::dlsym(_gfx_ctx.native_gl_handle, "glXChooseFBConfig");
-	glx_destroy_context_fn           = libc::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyContext");
-	todo_fix_glXCreateWindow             = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateWindow");
-	glx_destroy_window_fn            = libc::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyWindow");
-	todo_fix_glXQueryExtensionsString    = libc::dlsym(_gfx_ctx.native_gl_handle, "glXQueryExtensionsString");
-	glx_create_context_attribs_arb  = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContextAttribsARB");
-	todo_fix_glXSwapIntervalEXT          = libc::dlsym(_gfx_ctx.native_gl_handle, "glXSwapIntervalEXT");
-	if (!todo_fix_glXSwapIntervalEXT)
+	_glx_choose_visual_fn                = libc::dlsym(_gfx_ctx.native_gl_handle, "glXChooseVisual");
+	_glx_create_context_fn               = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContext");
+	_glx_make_current_fn                 = libc::dlsym(_gfx_ctx.native_gl_handle, "glXMakeCurrent");
+	_glx_get_current_context_fn          = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetCurrentContext");
+	_glx_swap_buffers_fn                 = libc::dlsym(_gfx_ctx.native_gl_handle, "glXSwapBuffers");
+	_glx_get_visual_from_fb_config_fn    = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetVisualFromFBConfig");
+	_glx_get_fb_config_attrib_fn         = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetFBConfigAttrib");
+	_glx_get_proc_address_arb_fn         = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddressARB");
+	_glx_choose_fb_config_fn             = libc::dlsym(_gfx_ctx.native_gl_handle, "glXChooseFBConfig");
+	_glx_destroy_context_fn              = libc::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyContext");
+	_glx_create_window_fn                = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateWindow");
+	_glx_destroy_window_fn               = libc::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyWindow");
+	_glx_query_extensions_string_fn      = libc::dlsym(_gfx_ctx.native_gl_handle, "glXQueryExtensionsString");
+	_glx_create_context_attribs_arb_fn   = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContextAttribsARB");
+	_glx_swap_interval_ext_fn            = libc::dlsym(_gfx_ctx.native_gl_handle, "glXSwapIntervalEXT");
+	if (!_glx_swap_interval_ext_fn)
 	{
 		ZString[2] array = {"GLX_MESA_swap_control", "GLX_SGI_swap_control"};
 		foreach (name : array)
 		{
-			todo_fix_glXSwapIntervalNative = libc::dlsym(_gfx_ctx.native_gl_handle, name);
-			if (todo_fix_glXSwapIntervalNative) break;
+			_glx_swap_interval_native_fn = libc::dlsym(_gfx_ctx.native_gl_handle, name);
+			if (_glx_swap_interval_native_fn) break;
 		}
 	}
 }
@@ -750,7 +750,7 @@ fn void _x_handle_event()
 
 	if (e.type == 30 /* SelectionRequest */)
 	{
-		todo_fix_xHandleClipboardSelection(&e);
+		_x_handle_clipboard_selection(&e);
 		return;
 	}
 
@@ -816,10 +816,10 @@ fn void _x_handle_event()
 					if (status == 2 /* XLookupChars */ || status == 4 /* XLookupBoth */)
 					{
 						buffer[count] = 0;
-						sz index = 0;
-						while (index < count)
+						StringIterator iterator = ((ZString)&buffer).str_view().iterator();
+						while (try c32 = iterator.next())
 						{
-							_key_char_callback(win, todo_fix_decodeUTF8((ZString)&buffer, &index));
+							_key_char_callback(win, c32);
 						}
 					}
 				}
@@ -928,7 +928,7 @@ fn void _x_handle_event()
 					break;
 				}
 
-				if (!(win.internal.flags.allow_dnd) || _gfx_ctx.x11Version > 5 /* TODO_RENAME_XDND_VERSION */) return;
+				if (!(win.internal.flags.allow_dnd) || _gfx_ctx.x11Version > 5 /* _XDND_VERSION */) return;
 
 				GfxPoint drag;
 
@@ -1177,7 +1177,7 @@ fn void _poll_monitors_x11()
 		monitor.origin = { ci.x, ci.y };
 
 		float dpi = 96.0f;
-		todo_fix_xGetSystemContentDPI(&dpi);
+		_x_get_system_content_dpi(&dpi);
 		monitor.scale = (Vec2)(dpi / 96.0f);
 		monitor.pixelRatio = dpi >= 192.0f ? 2.0f : 1.0f;
 
@@ -1213,8 +1213,8 @@ fn void _window_close_native_x11(GfxWindow* win)
 
 fn void _window_release_opengl_context_x11(GfxWindow* win, GfxGlContext* ctx)
 {
-	if (win.src.ctx.native.window != win.src.window) glx_destroy_window_fn(_gfx_ctx.display, win.src.ctx.native.window);
-	glx_destroy_context_fn(_gfx_ctx.display, ctx.ctx);
+	if (win.src.ctx.native.window != win.src.window) _glx_destroy_window_fn(_gfx_ctx.display, win.src.ctx.native.window);
+	_glx_destroy_context_fn(_gfx_ctx.display, ctx.ctx);
 	win.src.ctx.native = null;
 }
 
@@ -1288,11 +1288,11 @@ fn void _window_make_opengl_current_x11(GfxWindow* win)
 {
 	if (!win)
 	{
-		todo_fix_glXMakeCurrent(null, 0, null);
+		_glx_make_current_fn(null, 0, null);
 	}
 	else
 	{
-		todo_fix_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
+		_glx_make_current_fn(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
 	}
 }
 
@@ -1351,10 +1351,8 @@ fn void _window_restore_x11(GfxWindow* win)
 	xFlush(_gfx_ctx.display);
 }
 
-// private
-fn void todo_fix_window_setFloating_X11(GfxWindow* win, bool floating) => todo_fix_window_setXAtom(win, _gfx_ctx.netWmStateAbove, floating);
+fn void _window_set_floating_x11(GfxWindow* win, bool floating) => _window_set_x_atom(win, _gfx_ctx.netWmStateAbove, floating);
 
-// private
 fn void _window_set_fullscreen_x11(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
@@ -1368,7 +1366,7 @@ fn void _window_set_fullscreen_x11(GfxWindow* win, bool fullscreen)
 	}
 
 	xRaiseWindow(_gfx_ctx.display, win.src.window);
-	todo_fix_window_setXAtom(win, _gfx_ctx.netWmStateFullscreen, fullscreen);
+	_window_set_x_atom(win, _gfx_ctx.netWmStateFullscreen, fullscreen);
 
 	if (!(win.internal.flags.transparent))
 	{
@@ -1411,7 +1409,7 @@ fn void _window_set_opacity_x11(GfxWindow* win, char opacity)
 	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmWindowOpacity, 6, 32, 0, (char*)&value, 1);
 }
 
-fn void todo_fix_window_swapBuffers_OpenGL_X11(GfxWindow* win) { todo_fix_glXSwapBuffers(_gfx_ctx.display, win.src.ctx.native.window); }
+fn void _window_opengl_swap_buffers_x11(GfxWindow* win) { _glx_swap_buffers_fn(_gfx_ctx.display, win.src.ctx.native.window); }
 
 // private
 fn void? _write_clipboard_x11(GfxDataTransfer* data)
@@ -1516,7 +1514,7 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	stack.push_all({0, 0});
 
 	int fbcount;
-	GLXFBConfig* fbc = todo_fix_glXChooseFBConfig(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), stack.array_view(), &fbcount);
+	GLXFBConfig* fbc = _glx_choose_fb_config_fn(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), stack.array_view(), &fbcount);
 	if (!fbc || !fbcount) return GLX_VISUAL_CONFIGS_NOT_FOUND~;
 
 	int bestFbcIdx = -1;
@@ -1524,11 +1522,11 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	int bestSamples = 0;
 	for (int i = 0; i < fbcount; i++)
 	{
-		XVisualInfo* vi = todo_fix_glXGetVisualFromFBConfig(_gfx_ctx.display, fbc[i]);
+		XVisualInfo* vi = _glx_get_visual_from_fb_config_fn(_gfx_ctx.display, fbc[i]);
 		if (vi == null) continue;
 		int sampBuf, samples;
-		todo_fix_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], GLX_SAMPLE_BUFFERS, &sampBuf);
-		todo_fix_glXGetFBConfigAttrib(_gfx_ctx.display, fbc[i], GLX_SAMPLES, &samples);
+		_glx_get_fb_config_attrib_fn(_gfx_ctx.display, fbc[i], GLX_SAMPLE_BUFFERS, &sampBuf);
+		_glx_get_fb_config_attrib_fn(_gfx_ctx.display, fbc[i], GLX_SAMPLES, &samples);
 		if (bestFbcIdx == -1) bestFbcIdx = i;
 		if ((!transparent || vi.depth == 32) && bestDepth == 0) { bestFbcIdx = i; bestDepth = vi.depth; }
 		if ((!transparent || vi.depth == 32) && samples <= hints.samples && samples > bestSamples) { bestFbcIdx = i; bestDepth = vi.depth; bestSamples = samples; }
@@ -1537,7 +1535,7 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	if (bestFbcIdx == -1) return GLX_NO_VALID_VISUAL~;
 
 	GLXFBConfig bestFbc = fbc[bestFbcIdx];
-	XVisualInfo* vi = todo_fix_glXGetVisualFromFBConfig(_gfx_ctx.display, bestFbc);
+	XVisualInfo* vi = _glx_get_visual_from_fb_config_fn(_gfx_ctx.display, bestFbc);
 	xFree(fbc);
 	XVisualInfo visual = *vi;
 	xFree(vi);
@@ -1584,24 +1582,24 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	GLXContext ctx = null;
 	if (hints.share) ctx = hints.share.ctx;
 
-	if (!glx_create_context_attribs_arb)
+	if (!_glx_create_context_attribs_arb_fn)
 	{
 		log::warn("Failed to load proc address 'glXCreateContextAttribsARB', loading a generic OpenGL context.", category: log::CATEGORY_VIDEO);
-		win.src.ctx.native.ctx = todo_fix_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
+		win.src.ctx.native.ctx = _glx_create_context_fn(_gfx_ctx.display, &visual, ctx, X_TRUE);
 	}
 	else
 	{
 		_gfx_ctx.x11Error = null;
-		win.src.ctx.native.ctx = glx_create_context_attribs_arb(_gfx_ctx.display, bestFbc, ctx, X_TRUE, stack.array_view());
+		win.src.ctx.native.ctx = _glx_create_context_attribs_arb_fn(_gfx_ctx.display, bestFbc, ctx, X_TRUE, stack.array_view());
 		if (_gfx_ctx.x11Error || !win.src.ctx.native.ctx)
 		{
 			log::warn("Failed to create an OpenGL context with AttribsARB, loading a generic OpenGL context.", category: log::CATEGORY_VIDEO);
-			win.src.ctx.native.ctx = todo_fix_glXCreateContext(_gfx_ctx.display, &visual, ctx, X_TRUE);
+			win.src.ctx.native.ctx = _glx_create_context_fn(_gfx_ctx.display, &visual, ctx, X_TRUE);
 		}
 	}
 
-	win.src.ctx.native.window = todo_fix_glXCreateWindow(_gfx_ctx.display, bestFbc, win.src.window, null);
-	todo_fix_glXMakeCurrent(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
+	win.src.ctx.native.window = _glx_create_window_fn(_gfx_ctx.display, bestFbc, win.src.window, null);
+	_glx_make_current_fn(_gfx_ctx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
 	log::info("OpenGL context initalized.", category: log::CATEGORY_VIDEO);
 	win.opengl_swap_interval(0);
 }
@@ -1640,7 +1638,7 @@ fn void? _init_surface_x11(GfxSurface* surface, void* data, int w, int h, GfxFor
 	defer catch surface.release();
 	surface.native.bitmap = xCreateImage(_gfx_ctx.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])surface.size, 32, 0);
 	surface.native.buffer = malloc((sz)w * h * 4);
-	surface.native.format = todo_fix_xImageGetFormat(surface.native.bitmap);
+	surface.native.format = _x_image_get_format(surface.native.bitmap);
 
 	if (!surface.native.bitmap) return SURFACE_CREATION_FAILED~;
 }
@@ -1727,19 +1725,19 @@ fn GfxMonitor*? _window_find_monitor_x11(GfxWindow* win)
 }
 
 // public
-fn void todo_fix_window_showPlatform_X11(GfxWindow* win)
+fn void _window_show_x11(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
 	if (!_window_is_hidden_native(win)) return;
 	xMapWindow(_gfx_ctx.display, win.src.window);
 	win.move(win.origin);
 
-	todo_fix_waitForShowEvent_X11(win);
+	_wait_for_show_event_x11(win);
 	_window_set_fullscreen_native(win, win.is_fullscreen());
 }
 
 // public
-fn bool todo_fix_waitForShowEvent_X11(GfxWindow* win)
+fn bool _wait_for_show_event_x11(GfxWindow* win)
 {
 	XEvent dummy;
 	while (xCheckTypedWindowEvent(_gfx_ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
@@ -1779,7 +1777,7 @@ fn void _drop_url(GfxWindow* win, ZString data) => @pool()
 }
 
 // public
-fn void todo_fix_window_getVisual(XVisualInfo* visual, bool transparent)
+fn void _get_visual_for_window(XVisualInfo* visual, bool transparent)
 {
 	visual.visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
 	visual.depth = xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
@@ -1794,7 +1792,7 @@ fn void todo_fix_window_getVisual(XVisualInfo* visual, bool transparent)
 }
 
 // private
-fn void todo_fix_window_setXAtom(GfxWindow* win, Atom netAtom, bool fullscreen)
+fn void _window_set_x_atom(GfxWindow* win, Atom netAtom, bool fullscreen)
 {
 	XEvent xev;
 	xev.xclient.type = 33;
@@ -1859,7 +1857,7 @@ fn void _x11_im_init_callback(XDisplay* d, XPointer client_data, XPointer call_d
 	xSetIMValues(_gfx_ctx.im, "destroyCallback", &callback, (char*)null);
 }
 
-fn int todo_fix_xErrorHandler(XDisplay* display, XErrorEvent* ev)
+fn int _x_error_handler(XDisplay* display, XErrorEvent* ev)
 {
 	char[512] errorText;
 	xGetErrorText(display, ev.error_code, (char*)&errorText, 512);
@@ -1896,7 +1894,7 @@ fn void* _x_get_mode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxM
 }
 
 // public
-fn void todo_fix_xGetSystemContentDPI(float* dpi)
+fn void _x_get_system_content_dpi(float* dpi)
 {
 	if (dpi == null) return;
 	float dpiOutput = 96.0f;
@@ -1911,7 +1909,7 @@ fn void todo_fix_xGetSystemContentDPI(float* dpi)
 }
 
 // public
-fn void todo_fix_xHandleClipboardSelection(XEvent* event)
+fn void _x_handle_clipboard_selection(XEvent* event)
 {
 	XSelectionRequestEvent* request = &event.xselectionrequest;
 	Atom[2] formats = {_gfx_ctx.utf8String, 31 /* XA_STRING */};
@@ -1973,7 +1971,7 @@ fn void todo_fix_xHandleClipboardSelection(XEvent* event)
 }
 
 // private
-fn int todo_fix_xHandleClipboardSelectionHelper()
+fn int x_handle_clipboard_selection_helper()
 {
 	XEvent event;
 	xPending(_gfx_ctx.display);
@@ -1986,12 +1984,12 @@ fn int todo_fix_xHandleClipboardSelectionHelper()
 		return 0;
 	}
 
-	if (event.type == 30) { todo_fix_xHandleClipboardSelection(&event); return 0; } // SelectionRequest
+	if (event.type == 30) { _x_handle_clipboard_selection(&event); return 0; } // SelectionRequest
 	return 0;
 }
 
 // public
-fn GfxFormat todo_fix_xImageGetFormat(void* imagePtr)
+fn GfxFormat _x_image_get_format(void* imagePtr)
 {
 	// XImage*: bits_per_pixel/red_mask/green_mask/blue_mask live at a fixed
 	// offset in the real struct; here we only ever set the format ourselves
@@ -2000,14 +1998,14 @@ fn GfxFormat todo_fix_xImageGetFormat(void* imagePtr)
 }
 
 // public
-fn void todo_fix_window_swapInterval_OpenGL_X11(GfxWindow* win, int swapInterval)
+fn void _window_opengl_swap_interval_x11(GfxWindow* win, int swapInterval)
 {
 	switch
 	{
-		case todo_fix_glXSwapIntervalEXT != null:
-			todo_fix_glXSwapIntervalEXT(_gfx_ctx.display, win.src.ctx.native.window, swapInterval);
-		case todo_fix_glXSwapIntervalNative != null:
-			todo_fix_glXSwapIntervalNative(swapInterval);
+		case _glx_swap_interval_ext_fn != null:
+			_glx_swap_interval_ext_fn(_gfx_ctx.display, win.src.ctx.native.window, swapInterval);
+		case _glx_swap_interval_native_fn != null:
+			_glx_swap_interval_native_fn(swapInterval);
 		default:
 			log::warn("Failed to load swap interval function", category: log::CATEGORY_VIDEO);
 	}
@@ -2493,7 +2491,7 @@ struct VkXlibSurfaceCreateInfoKHR
 fn VkSurfaceKHR? _window_create_vulkan_surface_x11(GfxWindow* win, VkInstance instance) @private
 {
 	VkSurfaceKHR surface;
-	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateXlibSurfaceKHR");
+	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)_get_instance_proc_vulkan(instance, "vkCreateXlibSurfaceKHR");
 	if (!proc) return VULKAN_NOT_LOADED~;
 	VkXlibSurfaceCreateInfoKHR create_info = {
 		.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
@@ -2510,7 +2508,7 @@ alias VkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevi
 // public
 fn bool _vulkan_get_physical_device_presentation_support_x11(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	VkGetPhysicalDeviceXlibPresentationSupportKHRProc proc = (VkGetPhysicalDeviceXlibPresentationSupportKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
+	VkGetPhysicalDeviceXlibPresentationSupportKHRProc proc = (VkGetPhysicalDeviceXlibPresentationSupportKHRProc)_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
 	if (!proc) return false;
 	XVisual* visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
 	uint out = proc(physical_device, queue_family_index, _gfx_ctx.display, xVisualIDFromVisual(visual));
@@ -2536,22 +2534,22 @@ alias GlxCreateWindowProc = fn GLXWindow(XDisplay*, GLXFBConfig, XWindow, int*);
 alias GlxDestroyWindowProc = fn void(XDisplay*, GLXWindow);
 alias GlxSwapIntervalNativeProc = fn int(int);
 
-GlxCreateContextAttribsARBProc glx_create_context_attribs_arb;
-GlxQueryExtensionsStringProc todo_fix_glXQueryExtensionsString;
-GlxChooseVisualProc todo_fix_glXChooseVisual;
-GlxCreateContextProc todo_fix_glXCreateContext;
-GlxMakeCurrentProc todo_fix_glXMakeCurrent;
-GlxGetCurrentContextProc todo_fix_glXGetCurrentContext;
-GlxSwapBuffersProc todo_fix_glXSwapBuffers;
-GlxSwapIntervalEXTProc todo_fix_glXSwapIntervalEXT;
-GlxGetVisualFromFBConfigProc todo_fix_glXGetVisualFromFBConfig;
-GlxGetFBConfigAttribProc todo_fix_glXGetFBConfigAttrib;
-GlxGetProcAddressARBProc todo_fix_glXGetProcAddressARB;
-GlxChooseFBConfigProc todo_fix_glXChooseFBConfig;
-GlxDestroyContextProc glx_destroy_context_fn;
-GlxCreateWindowProc todo_fix_glXCreateWindow;
-GlxDestroyWindowProc glx_destroy_window_fn;
-GlxSwapIntervalNativeProc todo_fix_glXSwapIntervalNative;
+GlxCreateContextAttribsARBProc _glx_create_context_attribs_arb_fn;
+GlxQueryExtensionsStringProc _glx_query_extensions_string_fn;
+GlxChooseVisualProc _glx_choose_visual_fn;
+GlxCreateContextProc _glx_create_context_fn;
+GlxMakeCurrentProc _glx_make_current_fn;
+GlxGetCurrentContextProc _glx_get_current_context_fn;
+GlxSwapBuffersProc _glx_swap_buffers_fn;
+GlxSwapIntervalEXTProc _glx_swap_interval_ext_fn;
+GlxGetVisualFromFBConfigProc _glx_get_visual_from_fb_config_fn;
+GlxGetFBConfigAttribProc _glx_get_fb_config_attrib_fn;
+GlxGetProcAddressARBProc _glx_get_proc_address_arb_fn;
+GlxChooseFBConfigProc _glx_choose_fb_config_fn;
+GlxDestroyContextProc _glx_destroy_context_fn;
+GlxCreateWindowProc _glx_create_window_fn;
+GlxDestroyWindowProc _glx_destroy_window_fn;
+GlxSwapIntervalNativeProc _glx_swap_interval_native_fn;
 
 // --- XIm
 alias XImCallbackProc = fn void(void* im, void* client_data, void* call_data);

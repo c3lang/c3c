@@ -1336,7 +1336,7 @@ fn void _window_make_opengl_current_context_native(GfxWindow* win)
 	wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
 }
 
-fn void _window_swap_opengl_buffers_native(GfxWindow* win)
+fn void _window_opengl_swap_buffers_native(GfxWindow* win)
 {
 	win32::swapBuffers(win.src.hdc);
 }
@@ -1440,7 +1440,7 @@ alias VkGetPhysicalDeviceWin32PresentationSupportKHRProc = fn uint(VkPhysicalDev
 
 fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	GfxFn raw = todo_fix_getInstanceProcAddress_Vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
+	GfxFn raw = _get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
 	if (raw == null) return false;
 	uint out = ((VkGetPhysicalDeviceWin32PresentationSupportKHRProc)raw)(physical_device, queue_family_index);
 	return out != 0;
@@ -1449,7 +1449,7 @@ fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance insta
 fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance)
 {
 	VkSurfaceKHR surface;
-	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)todo_fix_getInstanceProcAddress_Vulkan(instance, "vkCreateWin32SurfaceKHR");
+	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)_get_instance_proc_vulkan(instance, "vkCreateWin32SurfaceKHR");
 	if (!proc) return VULKAN_NOT_LOADED~;
 	VkWin32SurfaceCreateInfoKHR create_info;
 	create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
