@@ -83,8 +83,12 @@ const GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT = 0x20B2;
 fn void _surface_release_x11(GfxSurface* surface)
 {
 	if (!surface.data) return;
+	if (surface.native.bitmap)
+	{
+		((XImageHeader*)surface.native.bitmap).data = null;
+		xDestroyImage(surface.native.bitmap);
+	}
 	if (surface.native.buffer) free(surface.native.buffer);
-	if (surface.native.bitmap) xDestroyImage(surface.native.bitmap);
 	*surface = {};
 }
 
@@ -154,9 +158,8 @@ fn void _window_set_aspect_ratio_x11(GfxWindow* win, int w, int h)
 // public
 fn void _window_blit_surface_x11(GfxWindow* win, GfxSurface* surface)
 {
-	// surface.native.bitmap->data = surface.native.buffer would go here in real Xlib
-	// (XImage.data is a char* at a fixed offset); left to the caller's XImage helper.
 	GfxPoint min = math::min(win.size, surface.size);
+	copy_image_data(surface.native.buffer, surface.size.x, min.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
 	xPutImage(_gfx_ctx.display, win.src.window, win.src.gc, surface.native.bitmap, 0, 0, 0, 0, (uint)min.x, (uint)min.y);
 }
 
@@ -1637,10 +1640,11 @@ fn void? _init_surface_x11(GfxSurface* surface, void* data, int w, int h, GfxFor
 	if (!xGetWindowAttributes(_gfx_ctx.display, window.src.window, &attrs)) return SURFACE_CREATION_FAILED~;
 	defer catch surface.release();
 	surface.native.bitmap = xCreateImage(_gfx_ctx.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])surface.size, 32, 0);
+	if (!surface.native.bitmap) return SURFACE_CREATION_FAILED~;
 	surface.native.buffer = malloc((sz)w * h * 4);
+	((XImageHeader*)surface.native.bitmap).data = surface.native.buffer;
 	surface.native.format = _x_image_get_format(surface.native.bitmap);
 
-	if (!surface.native.bitmap) return SURFACE_CREATION_FAILED~;
 }
 
 // private
@@ -1730,9 +1734,8 @@ fn void _window_show_x11(GfxWindow* win)
 	win.internal.flags.hide = false;
 	if (!_window_is_hidden_native(win)) return;
 	xMapWindow(_gfx_ctx.display, win.src.window);
-	win.move(win.origin);
-
 	_wait_for_show_event_x11(win);
+	win.move(win.origin);
 	_window_set_fullscreen_native(win, win.is_fullscreen());
 }
 

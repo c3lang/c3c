@@ -508,7 +508,7 @@ fn void _remove_monitor(GfxMonitorNode* node, GfxMonitorNode* prev)
 {
 	_gfx_ctx.monitors.count--;
 	_monitor_node_free_native(node);
-	if (prev != node)
+	if (prev)
 	{
 		prev.next = node.next;
 	}
@@ -516,6 +516,7 @@ fn void _remove_monitor(GfxMonitorNode* node, GfxMonitorNode* prev)
 	{
 		_gfx_ctx.monitors.list.head = node.next;
 	}
+	if (_gfx_ctx.monitors.primary == node) _gfx_ctx.monitors.primary = null;
 	node.next = null;
 	free(node);
 }

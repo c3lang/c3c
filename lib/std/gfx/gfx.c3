@@ -1426,17 +1426,20 @@ fn bool GfxMonitorMode.equals_request(&self, GfxMonitorMode* mon2, GfxMonitorMod
 
 fn void refresh_monitors()
 {
-	GfxMonitorNode* prev = _gfx_ctx.monitors.list.head;
+	GfxMonitorNode* prev = null;
 	GfxMonitorNode* node = _gfx_ctx.monitors.list.head;
 	while (node)
 	{
 		GfxMonitorNode* next = node.next;
-		if (!node.disconnected)
+		if (node.disconnected)
 		{
 			_monitor_callback(_gfx_ctx.root, &node.mon, false);
 			_remove_monitor(node, prev);
 		}
-		prev = node;
+		else
+		{
+			prev = node;
+		}
 		node = next;
 	}
 }
@@ -1447,7 +1450,7 @@ fn void free_monitors()
 	while (node)
 	{
 		GfxMonitorNode* next = node.next;
-		_remove_monitor(node, node);
+		_remove_monitor(node, null);
 		node = next;
 	}
 }

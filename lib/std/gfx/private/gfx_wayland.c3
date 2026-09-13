@@ -103,21 +103,6 @@ extern WlInterface wlDataDeviceInterface @cname("wl_data_device_interface");
 extern WlInterface wlDataSourceInterface @cname("wl_data_source_interface");
 extern WlInterface wlDataOfferInterface @cname("wl_data_offer_interface");
 
-extern WlInterface xdgWmBaseInterface @cname("xdg_wm_base_interface");
-extern WlInterface xdgSurfaceInterface @cname("xdg_surface_interface");
-extern WlInterface xdgToplevelInterface @cname("xdg_toplevel_interface");
-extern WlInterface zxdgDecorationManagerV1Interface @cname("zxdg_decoration_manager_v1_interface");
-extern WlInterface zxdgToplevelDecorationV1Interface @cname("zxdg_toplevel_decoration_v1_interface");
-extern WlInterface zwpRelativePointerManagerV1Interface @cname("zwp_relative_pointer_manager_v1_interface");
-extern WlInterface zwpRelativePointerV1Interface @cname("zwp_relative_pointer_v1_interface");
-extern WlInterface zwpPointerConstraintsV1Interface @cname("zwp_pointer_constraints_v1_interface");
-extern WlInterface zwpLockedPointerV1Interface @cname("zwp_locked_pointer_v1_interface");
-extern WlInterface zxdgOutputManagerV1Interface @cname("zxdg_output_manager_v1_interface");
-extern WlInterface zxdgOutputV1Interface @cname("zxdg_output_v1_interface");
-extern WlInterface xdgToplevelIconManagerV1Interface @cname("xdg_toplevel_icon_manager_v1_interface");
-extern WlInterface xdgToplevelIconV1Interface @cname("xdg_toplevel_icon_v1_interface");
-extern WlInterface wpPointerWarpV1Interface @cname("wp_pointer_warp_v1_interface");
-
 struct WlRegistryListener
 {
 	void* global;
@@ -1511,23 +1496,19 @@ fn void _wl_global_registry_cb(void* data, WlProxy* registry, uint id, ZString i
 fn void _wl_global_registry_remove_cb(void* data, WlProxy* registry, uint id)
 {
 	GfxContext* info = data;
-	GfxMonitorNode* prev = info.monitors.list.head;
-	GfxMonitorNode* node = null;
-	if (!prev) return;
-
-	if (prev.id != id)
+	GfxMonitorNode* prev = null;
+	GfxMonitorNode* node = info.monitors.list.head;
+	while (node)
 	{
-		while (prev.next && prev.next.id != id) prev = prev.next;
-		if (!prev.next) return;
-		node = prev.next;
+		if (node.id == id)
+		{
+			_monitor_callback(_gfx_ctx.root, &node.mon, false);
+			_remove_monitor(node, prev);
+			return;
+		}
+		prev = node;
+		node = node.next;
 	}
-	else
-	{
-		node = prev;
-	}
-
-	_monitor_callback(_gfx_ctx.root, &node.mon, false);
-	_remove_monitor(node, prev);
 }
 
 fn void _wl_keyboard_enter_cb(void* data, WlProxy* keyboard, uint serial, WlProxy* surface, WlArray* keys)
@@ -1956,3 +1937,205 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_wayland(GfxWindow* win, VkInstanc
 	if (proc(instance, &create_info, null, &surface)) return SURFACE_CREATION_FAILED~;
 	return surface;
 }
+
+// xdg_wm_base
+WlMessage[4] xdg_wm_base_requests = {
+	{ "destroy", "", null },
+	{ "create_positioner", "n", null },
+	{ "get_xdg_surface", "no", null },
+	{ "pong", "u", null },
+};
+WlMessage[1] xdg_wm_base_events = {
+	{ "ping", "u", null },
+};
+WlInterface xdgWmBaseInterface @weak @export("xdg_wm_base_interface") = {
+	.name = "xdg_wm_base", .version = 7,
+	.methodCount = 4, .methods = &xdg_wm_base_requests[0],
+	.eventCount = 1, .events = &xdg_wm_base_events[0],
+};
+
+// xdg_surface
+WlMessage[5] xdg_surface_requests = {
+	{ "destroy", "", null },
+	{ "get_toplevel", "n", null },
+	{ "get_popup", "n?oo", null },
+	{ "set_window_geometry", "iiii", null },
+	{ "ack_configure", "u", null },
+};
+WlMessage[1] xdg_surface_events = {
+	{ "configure", "u", null },
+};
+WlInterface xdgSurfaceInterface @weak @export("xdg_surface_interface") = {
+	.name = "xdg_surface", .version = 7,
+	.methodCount = 5, .methods = &xdg_surface_requests[0],
+	.eventCount = 1, .events = &xdg_surface_events[0],
+};
+
+// xdg_toplevel
+WlMessage[14] xdg_toplevel_requests = {
+	{ "destroy", "", null },
+	{ "set_parent", "?o", null },
+	{ "set_title", "s", null },
+	{ "set_app_id", "s", null },
+	{ "show_window_menu", "ouii", null },
+	{ "move", "ou", null },
+	{ "resize", "ouu", null },
+	{ "set_max_size", "ii", null },
+	{ "set_min_size", "ii", null },
+	{ "set_maximized", "", null },
+	{ "unset_maximized", "", null },
+	{ "set_fullscreen", "?o", null },
+	{ "unset_fullscreen", "", null },
+	{ "set_minimized", "", null },
+};
+WlMessage[4] xdg_toplevel_events = {
+	{ "configure", "iia", null },
+	{ "close", "", null },
+	{ "configure_bounds", "4ii", null },
+	{ "wm_capabilities", "5a", null },
+};
+WlInterface xdgToplevelInterface @weak @export("xdg_toplevel_interface") = {
+	.name = "xdg_toplevel", .version = 7,
+	.methodCount = 14, .methods = &xdg_toplevel_requests[0],
+	.eventCount = 4, .events = &xdg_toplevel_events[0],
+};
+
+// zxdg_decoration_manager_v1
+WlMessage[2] zxdg_decoration_manager_v1_requests = {
+	{ "destroy", "", null },
+	{ "get_toplevel_decoration", "no", null },
+};
+WlInterface zxdgDecorationManagerV1Interface @weak @export("zxdg_decoration_manager_v1_interface") = {
+	.name = "zxdg_decoration_manager_v1", .version = 2,
+	.methodCount = 2, .methods = &zxdg_decoration_manager_v1_requests[0],
+	.eventCount = 0, .events = null,
+};
+
+WlMessage[3] zxdg_toplevel_decoration_v1_requests = {
+	{ "destroy", "", null },
+	{ "set_mode", "u", null },
+	{ "unset_mode", "", null },
+};
+WlMessage[1] zxdg_toplevel_decoration_v1_events = {
+	{ "configure", "u", null },
+};
+WlInterface zxdgToplevelDecorationV1Interface @weak @export("zxdg_toplevel_decoration_v1_interface") = {
+	.name = "zxdg_toplevel_decoration_v1", .version = 2,
+	.methodCount = 3, .methods = &zxdg_toplevel_decoration_v1_requests[0],
+	.eventCount = 1, .events = &zxdg_toplevel_decoration_v1_events[0],
+};
+
+// zwp_pointer_constraints_v1
+WlMessage[3] zwp_pointer_constraints_v1_requests = {
+	{ "destroy", "", null },
+	{ "lock_pointer", "noo?ou", null },
+	{ "confine_pointer", "noo?ou", null },
+};
+WlInterface zwpPointerConstraintsV1Interface @weak @export("zwp_pointer_constraints_v1_interface") = {
+	.name = "zwp_pointer_constraints_v1", .version = 1,
+	.methodCount = 3, .methods = &zwp_pointer_constraints_v1_requests[0],
+	.eventCount = 0, .events = null,
+};
+
+WlMessage[3] zwp_locked_pointer_v1_requests = {
+	{ "destroy", "", null },
+	{ "set_cursor_position_hint", "ff", null },
+	{ "set_region", "?o", null },
+};
+WlMessage[2] zwp_locked_pointer_v1_events = {
+	{ "locked", "", null },
+	{ "unlocked", "", null },
+};
+WlInterface zwpLockedPointerV1Interface @weak @export("zwp_locked_pointer_v1_interface") = {
+	.name = "zwp_locked_pointer_v1", .version = 1,
+	.methodCount = 3, .methods = &zwp_locked_pointer_v1_requests[0],
+	.eventCount = 2, .events = &zwp_locked_pointer_v1_events[0],
+};
+
+// zwp_relative_pointer_manager_v1
+WlMessage[2] zwp_relative_pointer_manager_v1_requests = {
+	{ "destroy", "", null },
+	{ "get_relative_pointer", "no", null },
+};
+WlInterface zwpRelativePointerManagerV1Interface @weak @export("zwp_relative_pointer_manager_v1_interface") = {
+	.name = "zwp_relative_pointer_manager_v1", .version = 1,
+	.methodCount = 2, .methods = &zwp_relative_pointer_manager_v1_requests[0],
+	.eventCount = 0, .events = null,
+};
+
+WlMessage[1] zwp_relative_pointer_v1_requests = {
+	{ "destroy", "", null },
+};
+WlMessage[1] zwp_relative_pointer_v1_events = {
+	{ "relative_motion", "uuffff", null },
+};
+WlInterface zwpRelativePointerV1Interface @weak @export("zwp_relative_pointer_v1_interface") = {
+	.name = "zwp_relative_pointer_v1", .version = 1,
+	.methodCount = 1, .methods = &zwp_relative_pointer_v1_requests[0],
+	.eventCount = 1, .events = &zwp_relative_pointer_v1_events[0],
+};
+
+// zxdg_output_manager_v1
+WlMessage[2] zxdg_output_manager_v1_requests = {
+	{ "destroy", "", null },
+	{ "get_xdg_output", "no", null },
+};
+WlInterface zxdgOutputManagerV1Interface @weak @export("zxdg_output_manager_v1_interface") = {
+	.name = "zxdg_output_manager_v1", .version = 3,
+	.methodCount = 2, .methods = &zxdg_output_manager_v1_requests[0],
+	.eventCount = 0, .events = null,
+};
+
+WlMessage[1] zxdg_output_v1_requests = {
+	{ "destroy", "", null },
+};
+WlMessage[5] zxdg_output_v1_events = {
+	{ "logical_position", "ii", null },
+	{ "logical_size", "ii", null },
+	{ "done", "", null },
+	{ "name", "2s", null },
+	{ "description", "2s", null },
+};
+WlInterface zxdgOutputV1Interface @weak @export("zxdg_output_v1_interface") = {
+	.name = "zxdg_output_v1", .version = 3,
+	.methodCount = 1, .methods = &zxdg_output_v1_requests[0],
+	.eventCount = 5, .events = &zxdg_output_v1_events[0],
+};
+
+// xdg_toplevel_icon_manager_v1
+WlMessage[3] xdg_toplevel_icon_manager_v1_requests = {
+	{ "destroy", "", null },
+	{ "create_icon", "n", null },
+	{ "set_icon", "o?o", null },
+};
+WlMessage[2] xdg_toplevel_icon_manager_v1_events = {
+	{ "icon_size", "i", null },
+	{ "done", "", null },
+};
+WlInterface xdgToplevelIconManagerV1Interface @weak @export("xdg_toplevel_icon_manager_v1_interface") = {
+	.name = "xdg_toplevel_icon_manager_v1", .version = 1,
+	.methodCount = 3, .methods = &xdg_toplevel_icon_manager_v1_requests[0],
+	.eventCount = 2, .events = &xdg_toplevel_icon_manager_v1_events[0],
+};
+
+WlMessage[3] xdg_toplevel_icon_v1_requests = {
+	{ "destroy", "", null },
+	{ "set_name", "s", null },
+	{ "add_buffer", "oi", null },
+};
+WlInterface xdgToplevelIconV1Interface @weak @export("xdg_toplevel_icon_v1_interface") = {
+	.name = "xdg_toplevel_icon_v1", .version = 1,
+	.methodCount = 3, .methods = &xdg_toplevel_icon_v1_requests[0],
+	.eventCount = 0, .events = null,
+};
+
+// wp_pointer_warp_v1
+WlMessage[2] wp_pointer_warp_v1_requests = {
+	{ "destroy", "", null },
+	{ "warp_pointer", "ooffu", null },
+};
+WlInterface wpPointerWarpV1Interface @weak @export("wp_pointer_warp_v1_interface") = {
+	.name = "wp_pointer_warp_v1", .version = 1,
+	.methodCount = 2, .methods = &wp_pointer_warp_v1_requests[0],
+	.eventCount = 0, .events = null,
+};
