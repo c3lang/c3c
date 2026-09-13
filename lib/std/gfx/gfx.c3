@@ -46,6 +46,17 @@ excuse
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
 
+alias TodoRenameEventFlag = uint;
+alias TodoRenameEventWait = int;
+alias TodoRenameDebugType = char;
+alias TodoRenameErrorCode = char;
+
+typedef GfxMouse = void;
+
+alias GfxFn = fn void();
+alias GfxGenericFunc = fn void(GfxEvent* e);
+alias TodoRenameDebugFunc = fn void(TodoRenameDebugInfo* info);
+
 alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
 alias GfxPoint = int[<2>];
 alias GfxSize = int[<2>];
@@ -128,7 +139,7 @@ struct GfxWindowInternal
 	bool inFocus;
 	bool mouse_inside;
 	GfxKeyModifier mod;
-	TodoRenameEventFlag enabled_events;
+	GfxEventMask enabled_events;
 	GfxWindowFlags flags;
 	IntRect old_bounds;
 	GfxMonitorMode oldMode;
@@ -668,42 +679,48 @@ enum GfxEventType : char
 	MONITOR_DISCONNECTED,
 }
 
-const TodoRenameEventFlag TODO_RENAME_KEY_PRESSED_FLAG = 2;
-const TodoRenameEventFlag TODO_RENAME_KEY_RELEASED_FLAG = 4;
-const TodoRenameEventFlag TODO_RENAME_KEY_CHAR_FLAG = 8;
-const TodoRenameEventFlag TODO_RENAME_MOUSE_SCROLL_FLAG = 64;
-const TodoRenameEventFlag TODO_RENAME_MOUSE_BUTTON_PRESSED_FLAG = 16;
-const TodoRenameEventFlag TODO_RENAME_MOUSE_BUTTON_RELEASED_FLAG = 32;
-const TodoRenameEventFlag TODO_RENAME_MOUSE_MOTION_FLAG = 128;
-const TodoRenameEventFlag TODO_RENAME_MOUSE_RAW_MOTION_FLAG = 256;
-const TodoRenameEventFlag TODO_RENAME_MOUSE_ENTER_FLAG = 512;
-const TodoRenameEventFlag TODO_RENAME_MOUSE_LEAVE_FLAG = 1024;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_MOVED_FLAG = 2048;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_RESIZED_FLAG = 4096;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_FOCUS_IN_FLAG = 8192;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_FOCUS_OUT_FLAG = 16384;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_REFRESH_FLAG = 32768;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_MAXIMIZED_FLAG = 131072;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_MINIMIZED_FLAG = 262144;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_RESTORED_FLAG = 524288;
-const TodoRenameEventFlag TODO_RENAME_SCALE_UPDATED_FLAG = 4194304;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_CLOSE_FLAG = 65536;
-const TodoRenameEventFlag TODO_RENAME_DATA_DROP_FLAG = 1048576;
-const TodoRenameEventFlag TODO_RENAME_DATA_DRAG_FLAG = 2097152;
-const TodoRenameEventFlag TODO_RENAME_MONITOR_CONNECTED_FLAG = 8388608;
-const TodoRenameEventFlag TODO_RENAME_MONITOR_DISCONNECTED_FLAG = 16777216;
-const TodoRenameEventFlag TODO_RENAME_MOUSE_POS_CHANGED_FLAG = 128;
-const TodoRenameEventFlag TODO_RENAME_KEY_EVENTS_FLAG = 14;
-const TodoRenameEventFlag TODO_RENAME_MOUSE_EVENTS_FLAG = 2032;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_EVENTS_FLAG = 5150720;
-const TodoRenameEventFlag TODO_RENAME_WINDOW_FOCUS_EVENTS_FLAG = 24576;
-const TodoRenameEventFlag TODO_RENAME_DATA_DRAG_DROP_EVENTS_FLAG = 3145728;
-const TodoRenameEventFlag TODO_RENAME_MONITOR_EVENTS_FLAG = 25165824;
-const TodoRenameEventFlag TODO_RENAME_ALL_EVENT_FLAGS = 33554430;
+bitstruct GfxEventMask : uint
+{
+	bool key_pressed           : 1;
+	bool key_released          : 2;
+	bool key_char              : 3;
+	bool mouse_button_pressed  : 4;
+	bool mouse_button_released : 5;
+	bool mouse_scroll          : 6;
+	bool mouse_motion          : 7;
+	bool mouse_raw_motion      : 8;
+	bool mouse_enter           : 9;
+	bool mouse_leave           : 10;
+	bool window_moved          : 11;
+	bool window_resized        : 12;
+	bool window_focus_in       : 13;
+	bool window_focus_out      : 14;
+	bool window_refresh        : 15;
+	bool window_close          : 16;
+	bool window_maximized      : 17;
+	bool window_minimized      : 18;
+	bool window_restored       : 19;
+	bool data_drop             : 20;
+	bool data_drag             : 21;
+	bool scale_updated         : 22;
+	bool monitor_connected     : 23;
+	bool monitor_disconnected  : 24;
+}
 
+const GfxEventMask KEY_EVENTS            = { .key_pressed, .key_released, .key_char };
+const GfxEventMask MOUSE_EVENTS          = { .mouse_button_pressed, .mouse_button_released, .mouse_scroll,
+.mouse_motion, .mouse_raw_motion, .mouse_enter, .mouse_leave };
+const GfxEventMask WINDOW_EVENTS         = { .window_moved, .window_resized, .window_refresh,
+.window_maximized, .window_minimized, .window_restored, .scale_updated };
+const GfxEventMask WINDOW_FOCUS_EVENTS   = { .window_focus_in, .window_focus_out };
+const GfxEventMask DATA_DRAG_DROP_EVENTS = { .data_drop, .data_drag };
+const GfxEventMask MONITOR_EVENTS        = { .monitor_connected, .monitor_disconnected };
+const GfxEventMask ALL_EVENTS            = (GfxEventMask)uint::max;
 
 const TodoRenameEventWait TODO_RENAME_EVENT_NO_WAIT = 0;
 const TodoRenameEventWait TODO_RENAME_EVENT_WAIT_NEXT = -1;
+
+
 
 bitstruct GfxWindowFlags : uint
 {
@@ -860,7 +877,7 @@ fn void? init(String class_name, GfxInitOption options)
 	if (options & INIT_OPEN_GL) load_opengl()!;
 	if (options & INIT_EGL) load_egl()!;
 	if (options & INIT_VULKAN) load_vulkan()!;
-	todo_fix_initKeycodes();
+	_init_keycodes();
 	_init_native(class_name, options)!;
 	foreach (icon : GfxMouseIcon::values)
 	{
@@ -1046,19 +1063,19 @@ fn void GfxWindow.set_exit_key(&self, GfxKey key)
 	self.internal.exit_key = key;
 }
 
-fn void GfxWindow.set_enabled_events(&self, TodoRenameEventFlag events)
+fn void GfxWindow.set_enabled_events(&self, GfxEventMask events)
 {
 	self.internal.enabled_events = events;
 }
 
-fn TodoRenameEventFlag GfxWindow.get_enabled_events(&self)
+fn GfxEventMask GfxWindow.get_enabled_events(&self)
 {
 	return self.internal.enabled_events;
 }
 
-fn void GfxWindow.set_disabled_events(&self, TodoRenameEventFlag events)
+fn void GfxWindow.set_disabled_events(&self, GfxEventMask events)
 {
-	self.internal.enabled_events = TODO_RENAME_ALL_EVENT_FLAGS & ~events;
+	self.internal.enabled_events = ALL_EVENTS & ~events;
 }
 
 
@@ -1134,7 +1151,7 @@ fn bool GfxWindow.is_data_dragging(&self)
 
 fn bool GfxWindow.did_data_drop(&self)
 {
-	return todo_fix_window_getDataDrop(self) != null;
+	return self.get_data_drop() != null;
 }
 
 fn GfxPoint? GfxWindow.get_data_drag(&self)
@@ -1343,87 +1360,45 @@ fn GfxEvent? check_window_event(GfxWindow* win)
 	return check_queued_window_event(win);
 }
 
-// public
-fn void todo_fix_initKeycodes()
-{
-	_gfx_ctx.keycodes = {};
-	_init_keycodes_native();
-	for (int i = 0; i < GFX_KEYS; i++)
-	{
-		for (int y = 0; y < _gfx_ctx.keycodes.len; y++)
-		{
-			if (_gfx_ctx.keycodes[y] == (GfxKey)i)
-			{
-				_gfx_ctx.apiKeycodes[i] = (uint)y;
-				break;
-			}
-		}
-	}
-	todo_fix_resetKey();
-}
 
-// public
-fn GfxKey todo_fix_apiKeyToRGFW(uint keycode)
+fn GfxKey key_from_api(uint keycode)
 {
 	if (keycode >= _gfx_ctx.keycodes.len) return NULL;
 	return _gfx_ctx.keycodes[keycode];
 }
 
-// public
-fn uint todo_fix_rgfwToApiKey(GfxKey keycode)
+fn uint GfxKey.to_api(self)
 {
-	return _gfx_ctx.apiKeycodes[keycode];
+	return _gfx_ctx.apiKeycodes[self];
 }
 
-// public
-fn void todo_fix_resetKey()
+fn void reset_key()
 {
 	_gfx_ctx.keyboard = {};
 }
 
-// public
-fn void todo_fix_setQueueEvents(bool queue) { _gfx_ctx.queueEvents = queue; }
 
-// public
-fn void todo_fix_resetPrevState()
+fn void set_queue_events(bool queue)
 {
-	foreach (&entry : _gfx_ctx.keyboard) entry.prev = entry.current;
-	foreach (mouse : GfxMouseButton::values)
-	{
-		_gfx_ctx.mouseButtons[mouse.ordinal].prev = _gfx_ctx.mouseButtons[mouse.ordinal].current;
-	}
-	_gfx_ctx.scroll = {};
-	_gfx_ctx.vector = {};
-	_gfx_ctx.window_state = {};
-	GfxDataDropNode* node = _gfx_ctx.dndRoot;
-	while (node != null)
-	{
-		GfxDataDropNode* next = node.next;
-		free(node);
-		node = next;
-	}
-	_gfx_ctx.dndRoot = null;
-	_gfx_ctx.dndCur = null;
+	_gfx_ctx.queueEvents = queue;
 }
 
 
-// public
-fn GfxDataDropNode* todo_fix_window_getDataDrop(GfxWindow* win)
+fn GfxDataDropNode* GfxWindow.get_data_drop(&self)
 {
-	if (_gfx_ctx.window_state.win != win || _gfx_ctx.window_state.dataDrop == false) return null;
+	if (_gfx_ctx.window_state.win != self || !_gfx_ctx.window_state.dataDrop) return null;
 	return _gfx_ctx.dndRoot;
 }
 
-// public
-fn void todo_fix_setRootWindow(GfxWindow* win) { _gfx_ctx.root = win; }
-// public
-fn GfxWindow* todo_fix_getRootWindow() { return _gfx_ctx.root; }
 
-// public
-fn void todo_fix_setBit(uint* value, uint mask, bool set)
+fn void set_root_window(GfxWindow* win)
 {
-	if (set) { *value |= mask; }
-	else { *value &= ~mask; }
+	_gfx_ctx.root = win;
+}
+
+fn GfxWindow* get_root_window()
+{
+	return _gfx_ctx.root;
 }
 
 fn GfxMonitor*? GfxWindow.find_monitor(&self)
@@ -1613,11 +1588,11 @@ fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindo
 	if (!_gfx_ctx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
 	*self = {};
 	_gfx_ctx.windowCount++;
-	if (!_gfx_ctx.root) todo_fix_setRootWindow(self);
+	if (!_gfx_ctx.root) set_root_window(self);
 	self.bounds = { x, y, w, h };
 	self.internal.mouse = _gfx_ctx.standardMice[GfxMouseIcon.NORMAL.ordinal];
 	self.internal.flags = flags;
-	self.internal.enabled_events = TODO_RENAME_ALL_EVENT_FLAGS;
+	self.internal.enabled_events = ALL_EVENTS;
 	_create_window_native(name, flags, self)!;
 	if (!flags.hide_mouse) self.set_mouse_default();
 
@@ -1791,9 +1766,16 @@ fn GfxPoint GfxWindow.fetch_size(&self)
 	return _window_fetch_size_native(self);
 }
 
-fn void GfxWindow.set_event_state(&self, TodoRenameEventFlag event, bool state)
+fn void GfxWindow.set_event_state(&self, GfxEventMask event, bool state)
 {
-	todo_fix_setBit(&self.internal.enabled_events, event, state);
+	if (state)
+	{
+		self.internal.enabled_events |= event;
+	}
+	else
+	{
+		self.internal.enabled_events &= ~event;
+	}
 }
 
 fn void GfxWindow.maximize(&self)
@@ -1903,16 +1885,6 @@ fn void unload_vulkan()
 	_unload_vulkan_native() @inline;
 }
 
-alias TodoRenameEventFlag = uint;
-alias TodoRenameEventWait = int;
-alias TodoRenameDebugType = char;
-alias TodoRenameErrorCode = char;
-
-typedef GfxMouse = void;
-
-alias GfxFn = fn void();
-alias GfxGenericFunc = fn void(GfxEvent* e);
-alias TodoRenameDebugFunc = fn void(TodoRenameDebugInfo* info);
 
 struct GfxColorLayout
 {

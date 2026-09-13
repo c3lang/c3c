@@ -269,7 +269,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 fn void _poll_events_native()
 {
 	if (_gfx_ctx.usingAsyncify == -1) _gfx_ctx.usingAsyncify = rgfwJsUsingAsyncify();
-	todo_fix_resetPrevState();
+	_reset_prev_state();
 	if (_gfx_ctx.usingAsyncify) rgfwJsSleep(0);
 }
 
@@ -295,7 +295,7 @@ fn void _emscripten_on_drop(char* file, sz size) @export("c3gfx_on_drop")
 
 fn void _emscripten_on_fullscreenchange(int screenW, int screenH, bool entering) @export("c3gfx_on_fullscreenchange")
 {
-	if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAME_WINDOW_RESIZED_FLAG)) return;
+	if (!(_gfx_ctx.root.internal.enabled_events.window_resized)) return;
 	static GfxPoint original;
 	if (entering)
 	{

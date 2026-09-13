@@ -121,7 +121,7 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 	// down == 255 is the sentinel for touchmove (no button state change).
 	if (down == 255)
 	{
-		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAME_MOUSE_MOTION_FLAG)) return;
+		if (!_gfx_ctx.root.internal.enabled_events.mouse_motion) return;
 		for (int i = 0; i < numTouches; i++)
 		{
 			_mouse_motion_callback(_gfx_ctx.root, { xs[i], ys[i] });
@@ -132,11 +132,11 @@ fn void rgfwEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expo
 
 	if (down)
 	{
-		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAME_MOUSE_BUTTON_PRESSED_FLAG)) return;
+		if (!_gfx_ctx.root.internal.enabled_events.mouse_button_pressed) return;
 	}
 	else
 	{
-		if (!(_gfx_ctx.root.internal.enabled_events & TODO_RENAME_MOUSE_BUTTON_RELEASED_FLAG)) return;
+		if (!_gfx_ctx.root.internal.enabled_events.mouse_button_released) return;
 	}
 
 	for (int i = 0; i < numTouches; i++)

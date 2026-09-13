@@ -11,6 +11,24 @@ fn void*? _dlopen_any(ZString... names) @feat(POSIX)
 	return NOT_FOUND~;
 }
 
+fn void _init_keycodes()
+{
+	_gfx_ctx.keycodes = {};
+	_init_keycodes_native();
+	for (int i = 0; i < GFX_KEYS; i++)
+	{
+		for (int y = 0; y < _gfx_ctx.keycodes.len; y++)
+		{
+			if (_gfx_ctx.keycodes[y] == (GfxKey)i)
+			{
+				_gfx_ctx.apiKeycodes[i] = (uint)y;
+				break;
+			}
+		}
+	}
+	reset_key();
+}
+
 fn void _split_bpp(uint bpp, GfxMonitorMode* mode)
 {
 	if (bpp == 32) bpp = 24;
@@ -38,19 +56,26 @@ fn bool _extension_is_in_list(String extensions, String extension)
 	return false;
 }
 
-fn bool todo_fix_extensionSupportedStr(ZString extensions, ZString ext, sz len) @feat(!WASM)
+
+fn void _reset_prev_state()
 {
-	if (extensions == null || ext == null) return false;
-	while (ext[len - 1] == 0 && len > 3) len--;
-	ZString start = extensions;
-	ZString where = (ZString)libc::strstr(extensions, ext);
-	while (where != null)
+	foreach (&entry : _gfx_ctx.keyboard) entry.prev = entry.current;
+	foreach (mouse : GfxMouseButton::values)
 	{
-		ZString terminator = where + len;
-		if (((char*)where == (char*)start || *((char*)where - 1) == ' ') && (terminator[0] == ' ' || terminator[0] == 0)) return true;
-		where = (ZString)libc::strstr(terminator, ext);
+		_gfx_ctx.mouseButtons[mouse.ordinal].prev = _gfx_ctx.mouseButtons[mouse.ordinal].current;
 	}
-	return false;
+	_gfx_ctx.scroll = {};
+	_gfx_ctx.vector = {};
+	_gfx_ctx.window_state = {};
+	GfxDataDropNode* node = _gfx_ctx.dndRoot;
+	while (node != null)
+	{
+		GfxDataDropNode* next = node.next;
+		free(node);
+		node = next;
+	}
+	_gfx_ctx.dndRoot = null;
+	_gfx_ctx.dndCur = null;
 }
 
 
@@ -137,12 +162,12 @@ fn void _mouse_button_callback(GfxWindow* win, GfxMouseButton button, bool press
 	GfxEvent event;
 	if (press)
 	{
-		if (!(win.internal.enabled_events & TODO_RENAME_MOUSE_BUTTON_PRESSED_FLAG)) return;
+		if (!win.internal.enabled_events.mouse_button_pressed) return;
 		event.type = MOUSE_BUTTON_PRESSED;
 	}
 	else
 	{
-		if (!(win.internal.enabled_events & TODO_RENAME_MOUSE_BUTTON_RELEASED_FLAG)) return;
+		if (!win.internal.enabled_events.mouse_button_released) return;
 		event.type = MOUSE_BUTTON_RELEASED;
 	}
 	_gfx_ctx.mouseButtons[(sz)button].prev = _gfx_ctx.mouseButtons[(sz)button].current;
@@ -157,7 +182,7 @@ fn void _window_maximized_callback(GfxWindow* win, IntRect bounds)
 {
 	win.internal.flags.maximize = true;
 	win.bounds = bounds;
-	if (!(win.internal.enabled_events & TODO_RENAME_WINDOW_MAXIMIZED_FLAG)) return;
+	if (!win.internal.enabled_events.window_maximized) return;
 	GfxEvent event;
 	event.type = WINDOW_MAXIMIZED;
 	event.update.bounds = bounds;
@@ -185,9 +210,9 @@ fn void _window_focus_callback(GfxWindow* win, bool inFocus)
 			GfxKey key = (GfxKey)i;
 			if (!is_key_down(key)) continue;
 			_gfx_ctx.keyboard[i].current = false;
-			if (win.internal.enabled_events & TODO_RENAME_KEY_RELEASED_FLAG) _key_callback(win, key, win.internal.mod, false, false);
+			if (win.internal.enabled_events.key_released) _key_callback(win, key, win.internal.mod, false, false);
 		}
-		todo_fix_resetKey();
+		reset_key();
 		event.type = WINDOW_FOCUS_OUT;
 	}
 	_event_queue_call_push(&event);
@@ -195,7 +220,7 @@ fn void _window_focus_callback(GfxWindow* win, bool inFocus)
 
 fn void _data_drag_callback(GfxWindow* win, GfxDataTransferType dataType, GfxDndActionType action, GfxPoint pos)
 {
-	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG) || !win.internal.flags.allow_dnd) return;
+	if (!win.internal.enabled_events.data_drag || !win.internal.flags.allow_dnd) return;
 	_gfx_ctx.window_state.win = win;
 	_gfx_ctx.window_state.dataDragging = true;
 	_gfx_ctx.window_state.drop = pos;
@@ -211,7 +236,7 @@ fn void _data_drag_callback(GfxWindow* win, GfxDataTransferType dataType, GfxDnd
 fn void _window_minimized_callback(GfxWindow* win)
 {
 	win.internal.flags.minimize = true;
-	if (!(win.internal.enabled_events & TODO_RENAME_WINDOW_MINIMIZED_FLAG)) return;
+	if (!win.internal.enabled_events.window_minimized) return;
 	GfxEvent event;
 	event.type = WINDOW_MINIMIZED;
 	event.update.bounds = win.bounds;
@@ -223,8 +248,8 @@ fn void _monitor_callback(GfxWindow* win, GfxMonitor* monitor, bool connected)
 {
 	if (win)
 	{
-		if (connected && !(win.internal.enabled_events & TODO_RENAME_MONITOR_CONNECTED_FLAG)) return;
-		if (!connected && !(win.internal.enabled_events & TODO_RENAME_MONITOR_DISCONNECTED_FLAG)) return;
+		if (connected && !win.internal.enabled_events.monitor_connected) return;
+		if (!connected && !win.internal.enabled_events.monitor_disconnected) return;
 	}
 	GfxEvent event;
 	event.type = connected ? MONITOR_CONNECTED : MONITOR_DISCONNECTED;
@@ -236,7 +261,7 @@ fn void _monitor_callback(GfxWindow* win, GfxMonitor* monitor, bool connected)
 
 fn void _scale_updated_callback(GfxWindow* win, Vec2 scale)
 {
-	if (!(win.internal.enabled_events & TODO_RENAME_SCALE_UPDATED_FLAG)) return;
+	if (!win.internal.enabled_events.scale_updated) return;
 	GfxEvent event;
 	event.type = SCALE_UPDATED;
 	event.scale.scale = scale;
@@ -247,7 +272,7 @@ fn void _scale_updated_callback(GfxWindow* win, Vec2 scale)
 
 fn void _mouse_scroll_callback(GfxWindow* win, Vec2 delta)
 {
-	if (!(win.internal.enabled_events & TODO_RENAME_MOUSE_SCROLL_FLAG)) return;
+	if (!win.internal.enabled_events.mouse_scroll) return;
 	_gfx_ctx.scroll = delta;
 	GfxEvent event;
 	event.type = MOUSE_SCROLL;
@@ -258,7 +283,7 @@ fn void _mouse_scroll_callback(GfxWindow* win, Vec2 delta)
 
 fn void _window_refresh_callback(GfxWindow* win, IntRect bounds)
 {
-	if (!(win.internal.enabled_events & TODO_RENAME_WINDOW_REFRESH_FLAG)) return;
+	if (!win.internal.enabled_events.window_refresh) return;
 	GfxEvent event;
 	event.type = WINDOW_REFRESH;
 	event.update.bounds = bounds;
@@ -269,7 +294,7 @@ fn void _window_refresh_callback(GfxWindow* win, IntRect bounds)
 fn void _raw_motion_callback(GfxWindow* win, Vec2 delta)
 {
 	_gfx_ctx.vector = delta;
-	if (!(win.internal.enabled_events & TODO_RENAME_MOUSE_RAW_MOTION_FLAG)) return;
+	if (!win.internal.enabled_events.mouse_raw_motion) return;
 	GfxEvent event;
 	event.type = MOUSE_RAW_MOTION;
 	event.delta.vector = delta;
@@ -280,7 +305,7 @@ fn void _raw_motion_callback(GfxWindow* win, Vec2 delta)
 fn void _window_resized_callback(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
-	if (!(win.internal.enabled_events & TODO_RENAME_WINDOW_RESIZED_FLAG)) return;
+	if (!win.internal.enabled_events.window_resized) return;
 	GfxEvent event;
 	event.type = WINDOW_RESIZED;
 	event.update.bounds = win.bounds;
@@ -291,7 +316,7 @@ fn void _window_resized_callback(GfxWindow* win, GfxSize size)
 fn void _window_moved_callback(GfxWindow* win, GfxPoint where)
 {
 	win.origin = where;
-	if (!(win.internal.enabled_events & TODO_RENAME_WINDOW_MOVED_FLAG)) return;
+	if (!win.internal.enabled_events.window_moved) return;
 	GfxEvent event;
 	event.type = WINDOW_MOVED;
 	event.update.bounds = win.bounds;
@@ -303,19 +328,19 @@ fn void _window_check_mode(GfxWindow* win)
 {
 	switch
 	{
-		case _window_is_minimized_native(win) && (win.internal.enabled_events & TODO_RENAME_WINDOW_MINIMIZED_FLAG):
+		case _window_is_minimized_native(win) && win.internal.enabled_events.window_minimized:
 			_window_minimized_callback(win);
-		case _window_is_maximized_native(win)&& (win.internal.enabled_events & TODO_RENAME_WINDOW_MAXIMIZED_FLAG):
+		case _window_is_maximized_native(win) && win.internal.enabled_events.window_maximized:
 			_window_maximized_callback(win, win.bounds);
 		case (win.internal.flags.minimize && !_window_is_maximized_native(win)) ||
 		(win.internal.flags.maximize && !_window_is_maximized_native(win)):
-			if (win.internal.enabled_events & TODO_RENAME_WINDOW_RESTORED_FLAG) _window_restored_callback(win, win.bounds);
+			if (win.internal.enabled_events.window_restored) _window_restored_callback(win, win.bounds);
 	}
 }
 
 fn void _data_drop_callback(GfxWindow* win, char* data, sz length, GfxDataTransferType dataType)
 {
-	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG) || !win.internal.flags.allow_dnd) return;
+	if (!win.internal.enabled_events.data_drop || !win.internal.flags.allow_dnd) return;
 	_gfx_ctx.window_state.win = win;
 	_gfx_ctx.window_state.dataDrop = true;
 	_gfx_ctx.window_state.dataLength = length;
@@ -350,12 +375,12 @@ fn void _key_callback(GfxWindow* win, GfxKey key, GfxKeyModifier mod, bool repea
 	GfxEvent event;
 	if (state)
 	{
-		if (!(win.internal.enabled_events & TODO_RENAME_KEY_PRESSED_FLAG)) return;
+		if (!win.internal.enabled_events.key_pressed) return;
 		event.type = KEY_PRESSED;
 	}
 	else
 	{
-		if (!(win.internal.enabled_events & TODO_RENAME_KEY_RELEASED_FLAG)) return;
+		if (!win.internal.enabled_events.key_released) return;
 		event.type = KEY_RELEASED;
 	}
 	_gfx_ctx.keyboard[(sz)key].prev = _gfx_ctx.keyboard[(sz)key].current;
@@ -368,7 +393,7 @@ fn void _key_callback(GfxWindow* win, GfxKey key, GfxKeyModifier mod, bool repea
 fn void _mouse_motion_callback(GfxWindow* win, GfxPoint where)
 {
 	win.internal.last_mouse = where;
-	if (!(win.internal.enabled_events & TODO_RENAME_MOUSE_MOTION_FLAG)) return;
+	if (!win.internal.enabled_events.mouse_motion) return;
 	GfxEvent event;
 	event.type = MOUSE_MOTION;
 	event.mouse.pos = where;
@@ -388,13 +413,13 @@ fn void _mouse_notify_callback(GfxWindow* win, GfxPoint where, bool status)
 	event.mouse.in_window = win.internal.mouse_inside;
 	if (status)
 	{
-		if (!(win.internal.enabled_events & TODO_RENAME_MOUSE_ENTER_FLAG)) return;
+		if (!win.internal.enabled_events.mouse_enter) return;
 		_gfx_ctx.window_state.mouse_enter = true;
 		event.type = MOUSE_ENTER;
 	}
 	else
 	{
-		if (!(win.internal.enabled_events & TODO_RENAME_MOUSE_LEAVE_FLAG)) return;
+		if (!win.internal.enabled_events.mouse_leave) return;
 		_gfx_ctx.window_state.win_leave = win;
 		_gfx_ctx.window_state.mouse_leave = true;
 		event.type = MOUSE_LEAVE;
@@ -404,7 +429,7 @@ fn void _mouse_notify_callback(GfxWindow* win, GfxPoint where, bool status)
 
 fn void _key_char_callback(GfxWindow* win, uint codepoint)
 {
-	if (!(win.internal.enabled_events & TODO_RENAME_KEY_CHAR_FLAG)) return;
+	if (!win.internal.enabled_events.key_char) return;
 	GfxEvent event;
 	event.type = KEY_CHAR;
 	event.keyChar.value = codepoint;
@@ -417,7 +442,7 @@ fn void _window_restored_callback(GfxWindow* win, IntRect bounds)
 	win.internal.flags.minimize = false;
 	win.bounds = bounds;
 	if (!_window_is_maximized_native(win)) win.internal.flags.maximize = false;
-	if (win.internal.enabled_events & TODO_RENAME_WINDOW_RESTORED_FLAG == 0) return;
+	if (!win.internal.enabled_events.window_restored) return;
 	GfxEvent event;
 	event.type = WINDOW_RESTORED;
 	event.update.bounds = bounds;
@@ -427,6 +452,7 @@ fn void _window_restored_callback(GfxWindow* win, IntRect bounds)
 fn void _window_close_callback(GfxWindow* win)
 {
 	win.internal.shouldClose = true;
+	if (!win.internal.enabled_events.window_close) return;
 	GfxEvent event;
 	event.type = WINDOW_CLOSE;
 	event.common.win = win;

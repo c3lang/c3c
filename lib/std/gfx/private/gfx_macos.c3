@@ -439,7 +439,7 @@ fn void _poll_events_native()
 {
 	objc::@autoreleasepool()
 	{
-		todo_fix_resetPrevState();
+		_reset_prev_state();
 		if (!_gfx_ctx.ns_app) return;
 		ObjId distantPast = objc::send(objc::@class("NSDate"), ObjId, "distantPast");
 		ObjId mode = darwin::string("kCFRunLoopDefaultMode");
@@ -1071,7 +1071,7 @@ fn NSUInteger _osx_dragging_updated(ObjId self, ObjSel sel, ObjId sender)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return 0;
-	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return 1;
+	if (!win.internal.enabled_events.data_drag) return 1;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
 	_data_drag_callback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
 	return 1;
@@ -1081,7 +1081,7 @@ fn void _osx_dragging_ended(ObjId self, ObjSel sel, ObjId sender)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
-	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DRAG_FLAG)) return;
+	if (!win.internal.enabled_events.data_drag) return;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
 	_data_drag_callback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
 }
@@ -1090,7 +1090,7 @@ fn bool _osx_prepare_for_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return true;
-	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return true;
+	if (!win.internal.enabled_events.data_drop) return true;
 	return win.internal.flags.allow_dnd;
 }
 
@@ -1099,7 +1099,7 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return false;
-	if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return false;
+	if (!win.internal.enabled_events.data_drop) return false;
 
 	ObjId pasteBoard = sender.send(ObjId, "draggingPasteboard");
 	ObjId types = pasteBoard.send(ObjId, "types");
@@ -1283,7 +1283,7 @@ fn void _init_keycodes_native()
 
 fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 {
-	ushort keycode = (ushort)todo_fix_rgfwToApiKey(key);
+	ushort keycode = (ushort)key.to_api();
 	TISInputSourceRef source = macos::tisCopyCurrentKeyboardLayoutInputSource();
 	if (!source) return key;
 

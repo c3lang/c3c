@@ -755,8 +755,7 @@ fn void? _monitor_request_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode, Gf
 // private
 fn GfxKey _physical_to_mapped_key_native_wayland(GfxKey key)
 {
-	uint keycode = todo_fix_rgfwToApiKey(key);
-	XkbKeycode kc = keycode + 8;
+	XkbKeycode kc = key.to_api() + 8;
 	XkbKeysym sym = xkbStateKeyGetOneSym(_gfx_ctx.xkbState, kc);
 	if (sym < 256) return (GfxKey)sym;
 
@@ -884,7 +883,7 @@ fn void _wait_for_event_wayland(Posix_pollfd[] fds, int waitMS)
 // private
 fn void _poll_events_wayland()
 {
-	todo_fix_resetPrevState();
+	_reset_prev_state();
 
 	while (wlDisplayFlush(_gfx_ctx.wlDisplay) == -1)
 	{
@@ -1559,7 +1558,7 @@ fn void _wl_keyboard_key_cb(void* data, WlProxy* keyboard, uint serial, Clock ti
 	if (!info.kbOwner) return;
 
 	GfxWindow* win = info.kbOwner;
-	GfxKey rgfwKey = todo_fix_apiKeyToRGFW(key + 8);
+	GfxKey rgfwKey = key_from_api(key + 8);
 
 	_key_update_key_mods(win, xkbKeymapModGetIndex(info.keymap, "Lock") != 0, xkbKeymapModGetIndex(info.keymap, "Mod2") != 0, xkbKeymapModGetIndex(info.keymap, "ScrollLock") != 0);
 	_key_callback(win, rgfwKey, win.internal.mod, is_key_down(rgfwKey) && state != 0, !!state);
@@ -1677,7 +1676,7 @@ fn void _wl_pointer_axis_cb(void* data, WlProxy* pointer, uint time, uint axis, 
 	GfxWindow* win = info.mouseOwner;
 	if (!win) return;
 	Vec2 scroll = {};
-	if (!(win.internal.enabled_events & TODO_RENAME_MOUSE_SCROLL_FLAG)) return;
+	if (!(win.internal.enabled_events.mouse_scroll)) return;
 	if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
 	{
 		scroll.x = (float)(-value.to_double() / 10.0);

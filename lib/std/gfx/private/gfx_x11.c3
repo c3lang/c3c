@@ -650,7 +650,7 @@ fn void? _monitor_set_mode_native_x11(GfxMonitor* mon, GfxMonitorMode* mode)
 // private
 fn GfxKey _physical_to_mapped_key_native_x11(GfxKey key)
 {
-	KeyCode keycode = (KeyCode)todo_fix_rgfwToApiKey(key);
+	KeyCode keycode = (KeyCode)key.to_api();
 	KeySym sym = xkbKeycodeToKeysym(_gfx_ctx.display, keycode, 0, 0);
 	if (sym < 256) return (GfxKey)sym;
 
@@ -717,7 +717,7 @@ fn void _wait_for_event_x11(Posix_pollfd[] fds, int waitMS)
 
 fn void _poll_events_x11()
 {
-	todo_fix_resetPrevState();
+	_reset_prev_state();
 	xPending(_gfx_ctx.display);
 	while (qLength(_gfx_ctx.display) != 0) todo_fix_xHandleEvent();
 }
@@ -793,8 +793,8 @@ fn void todo_fix_xHandleEvent()
 	{
 		case 2: // KeyPress
 			{
-				if (!(win.internal.enabled_events & TODO_RENAME_KEY_PRESSED_FLAG)) return;
-				GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW(e.xkey.keycode);
+				if (!win.internal.enabled_events.key_pressed) return;
+				GfxKey value = key_from_api(e.xkey.keycode);
 
 				XkbStateRec state;
 				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
@@ -837,8 +837,8 @@ fn void todo_fix_xHandleEvent()
 			}
 		case 3: // KeyRelease
 			{
-				if (!(win.internal.enabled_events & TODO_RENAME_KEY_RELEASED_FLAG)) return;
-				GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW(e.xkey.keycode);
+				if (!win.internal.enabled_events.key_released) return;
+				GfxKey value = key_from_api(e.xkey.keycode);
 
 				XkbStateRec state;
 				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
@@ -1044,7 +1044,7 @@ fn void todo_fix_xHandleEvent()
 			}
 		case 31: // SelectionNotify
 			{
-				if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG) || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
+				if (!win.internal.enabled_events.data_drop || e.xselection.property != _gfx_ctx.xdndSelection || !(win.internal.flags.allow_dnd)) return;
 
 				ZString data;
 				CULong result;

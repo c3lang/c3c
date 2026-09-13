@@ -49,7 +49,7 @@ fn void _wait_for_event_native(int waitMS)
 
 fn void _poll_events_native()
 {
-	todo_fix_resetPrevState();
+	_reset_prev_state();
 	Win32_MSG msg;
 	while (win32::peekMessageA(&msg, null, 0, 0, win32::PM_REMOVE))
 	{
@@ -784,7 +784,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			return 0;
 		case win32::WM_KEYUP:
 		case win32::WM_SYSKEYUP:
-			if (!(win.internal.enabled_events & TODO_RENAME_KEY_RELEASED_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.enabled_events.key_released)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 			int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
 			if (scancode == 0) scancode = (int)win32::mapVirtualKeyW((uint)wParam, 0 /* MAPVK_VK_TO_VSC */);
 			switch (scancode)
@@ -794,14 +794,14 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 				case 0x136: scancode = 0x36;
 				default: break;
 			}
-			GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW((uint)scancode);
+			GfxKey value = key_from_api((uint)scancode);
 			if (wParam == 0x11 /* VK_CONTROL */) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
 			_key_update_key_mods(win, win32::getKeyState(0x14) & 1 != 0, win32::getKeyState(0x90) & 1 != 0, win32::getKeyState(0x91) & 1 != 0);
 			_key_callback(win, value, win.internal.mod, false, false);
 		case win32::WM_KEYDOWN:
 		case win32::WM_SYSKEYDOWN:
 			{
-				if (!(win.internal.enabled_events & TODO_RENAME_KEY_PRESSED_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
+				if (!win.internal.enabled_events.key_pressed) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 				int scancode = (int)((lParam >> 16) & (0x0100 | 0xff));
 				if (scancode == 0) scancode = (int)win32::mapVirtualKeyW((uint)wParam, 0);
 				switch (scancode)
@@ -811,7 +811,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 					case 0x136: scancode = 0x36;
 					default: break;
 				}
-				GfxKey value = (GfxKey)todo_fix_apiKeyToRGFW((uint)scancode);
+				GfxKey value = key_from_api((uint)scancode);
 				if (wParam == 0x11) { value = ((lParam >> 16) & 0x0100) != 0 ? CONTROL_R : CONTROL_L; }
 				bool repeat = is_key_down(value);
 				_key_update_key_mods(win, win32::getKeyState(0x14) & 1 != 0, win32::getKeyState(0x90) & 1 != 0, win32::getKeyState(0x91) & 1 != 0);
@@ -886,7 +886,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			Win32_POINT pt;
 			win32::dragQueryPoint(drop, &pt);
 			_data_drag_callback(win, FILE, MOVE, { pt.x, pt.y });
-			if (!(win.internal.enabled_events & TODO_RENAME_DATA_DROP_FLAG)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
+			if (!win.internal.enabled_events.data_drop) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 			uint count = win32::dragQueryFileW(drop, 0xffffffff, null, 0);
 			for (uint i = 0; i < count; i++) @pool()
 			{
@@ -1490,7 +1490,7 @@ fn void _init_keycodes_native()
 
 fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 {
-	uint vsc = todo_fix_rgfwToApiKey(key);
+	uint vsc = key.to_api();
 	char[256] keyboardState;
 	if (win32::getKeyboardState((char*)&keyboardState) == 0) return key;
 
