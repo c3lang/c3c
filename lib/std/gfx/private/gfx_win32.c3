@@ -50,6 +50,45 @@ fn void _wait_for_event_native(Duration duration)
 	win32::msgWaitForMultipleObjects(0, null, 0, ms, 0x04FF /* QS_ALLINPUT */);
 }
 
+fn GfxMouse*? _create_mouse_native(char* data, GfxSize size, GfxFormat format)
+{
+	return (GfxMouse*)_load_handle_image(data, ...size, format, 0);
+}
+
+fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
+{
+	iptr mouseIcon;
+	switch (mouse)
+	{
+		case NORMAL:
+		case ARROW:          mouseIcon = win32::IDC_ARROW;
+		case IBEAM:          mouseIcon = win32::IDC_IBEAM;
+		case WAIT:           mouseIcon = win32::IDC_WAIT;
+		case CROSSHAIR:      mouseIcon = win32::IDC_CROSS;
+		case PROGRESS:       mouseIcon = win32::IDC_APPSTARTING;
+		case RESIZE_NW:
+		case RESIZE_SE:
+		case RESIZE_NWSE:    mouseIcon = win32::IDC_SIZENWSE;
+		case RESIZE_NE:
+		case RESIZE_SW:
+		case RESIZE_NESW:    mouseIcon = win32::IDC_SIZENESW;
+		case RESIZE_E:
+		case RESIZE_W:
+		case RESIZE_EW:      mouseIcon = win32::IDC_SIZEWE;
+		case RESIZE_N:
+		case RESIZE_S:
+		case RESIZE_NS:      mouseIcon = win32::IDC_SIZENS;
+		case RESIZE_ALL:     mouseIcon = win32::IDC_SIZEALL;
+		case NOT_ALLOWED:    mouseIcon = win32::IDC_NO;
+		case POINTING_HAND:  mouseIcon = win32::IDC_HAND;
+		default: return MOUSE_NOT_SUPPORTED~;
+	}
+	void* cursor = win32::loadCursorA(null, (Win32_LPCSTR)mouseIcon);
+	if (!cursor) return MOUSE_NOT_SUPPORTED~;
+	return cursor;
+}
+
+
 fn void _poll_events_native()
 {
 	_reset_prev_state();
@@ -74,9 +113,10 @@ fn void _window_show_native(GfxWindow* win)
 
 fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 {
+	if (!mouse) return false;
 	win32::setClassLongPtrA(win.src.window, win32::GCLP_HCURSOR, (iptr)mouse);
 	win32::setCursor(mouse);
-	return false;
+	return true;
 }
 
 fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) @private
@@ -629,7 +669,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	_gfx_ctx.helper_window = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
 
 	char[4] blk;
-	_gfx_ctx.hiddenMouse = todo_fix_createMouse(&blk, 1, 1, RGBA8);
+	_gfx_ctx.hiddenMouse = _create_mouse_native(&blk, { 1, 1 }, RGBA8) ?? null;
 }
 
 fn void _free_mouse(GfxMouse* mouse)

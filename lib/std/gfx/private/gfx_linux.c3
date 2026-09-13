@@ -175,37 +175,36 @@ fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 	$endswitch
 }
 
-// public
-fn GfxMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)
+fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_createMouse_Wayland(data, w, h, format);
+			return _create_mouse_wayland(data, size, format);
 		$case X11_ONLY:
-			return todo_fix_createMouse_X11(data, w, h, format);
+			return _create_mouse_x11(data, size, format);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_createMouse_Wayland(data, w, h, format);
+				return _create_mouse_wayland(data, size, format);
 			}
-			return todo_fix_createMouse_X11(data, w, h, format);
+			return _create_mouse_x11(data, size, format);
 	$endswitch
 }
 
 // public
-fn GfxMouse* _create_standard_mouse_native(GfxMouseIcon mouse)
+fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_createMouseStandard_Wayland(mouse);
+			return _create_mouse_standard_wayland(mouse);
 		$case X11_ONLY:
-			return todo_fix_createMouseStandard_X11(mouse);
+			return _create_mouse_standard_x11(mouse);
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_createMouseStandard_Wayland(mouse);
+				return _create_mouse_standard_wayland(mouse);
 			}
-			return todo_fix_createMouseStandard_X11(mouse);
+			return _create_mouse_standard_x11(mouse);
 	$endswitch
 }
 
@@ -259,24 +258,22 @@ fn void _free_mouse(GfxMouse* mouse)
 	$endswitch
 }
 
-// public
 fn void* _get_current_opengl_context_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return todo_fix_getCurrentContext_OpenGL_Wayland();
+			return _get_current_opengl_context_wayland();
 		$case X11_ONLY:
-			return todo_fix_getCurrentContext_OpenGL_X11();
+			return _get_current_opengl_context_x11();
 		$default:
 			if (gfx_use_wayland)
 			{
-				return todo_fix_getCurrentContext_OpenGL_Wayland();
+				return _get_current_opengl_context_wayland();
 			}
-			return todo_fix_getCurrentContext_OpenGL_X11();
+			return _get_current_opengl_context_x11();
 	$endswitch
 }
 
-// public
 fn GfxPoint _get_global_mouse_native()
 {
 	$switch:
@@ -293,7 +290,6 @@ fn GfxPoint _get_global_mouse_native()
 	$endswitch
 }
 
-// public
 fn void* _get_opengl_proc_native(ZString procname)
 {
 	$switch:

@@ -43,7 +43,9 @@ excuse
 	CLIPBOARD_WRITE_FAILED,
 	FAILED_TO_CREATE_WGL_PIXEL_FORMAT,
 	FAILED_TO_SET_WGL_PIXEL_FORMAT,
-	FAILED_TO_LOAD_SWAP_INTERVAL_FN
+	FAILED_TO_LOAD_SWAP_INTERVAL_FN,
+	MOUSE_NOT_SUPPORTED,
+	IMAGE_COULD_NOT_LOAD,
 }
 
 const MAX_EVENTS = 32;
@@ -842,7 +844,7 @@ fn void? init(String class_name, GfxInitOption options)
 	_init_native(class_name, options)!;
 	foreach (icon : GfxMouseIcon::values)
 	{
-		_gfx_ctx.standardMice[icon.ordinal] = _create_standard_mouse_native(icon);
+		_gfx_ctx.standardMice[icon.ordinal] = _create_standard_mouse_native(icon) ?? null;
 	}
 	_poll_monitors_native();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
@@ -1212,9 +1214,14 @@ fn void set_dual_event_callback(GfxEventType type, GfxGenericFunc func, GfxGener
 	if (second != null) *second = func2;
 }
 
-fn void _wait_for_event(Duration duration)
+fn void wait_for_event(Duration duration)
 {
 	_wait_for_event_native(duration);
+}
+
+fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
+{
+	return _create_mouse_native(data, size, format);
 }
 
 
@@ -1674,6 +1681,7 @@ fn bool GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
 
 fn bool GfxWindow.set_mouse(&self, GfxMouse* mouse)
 {
+	if (!mouse) return false;
 	if (mouse != _gfx_ctx.hiddenMouse) self.internal.mouse = mouse;
 	return _window_set_mouse_native(self, mouse);
 }

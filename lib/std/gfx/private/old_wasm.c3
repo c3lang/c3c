@@ -166,7 +166,6 @@ fn void todo_fix_handleKeyMods(bool capital, bool numlock, bool control, bool al
 }
 
 
-fn GfxMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format) => null;
 
 
 fn void todo_fix_monitorNode_free(GfxMonitorNode* node) {}

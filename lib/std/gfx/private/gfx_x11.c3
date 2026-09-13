@@ -240,21 +240,23 @@ fn void? monitor_set_gamma_x11(GfxMonitor* monitor, float gamma)
 	xRRSetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1, gamma_data);
 }
 
-// private
-fn GfxMouse* todo_fix_createMouse_X11(char* data, int w, int h, GfxFormat format)
+fn GfxMouse*? _create_mouse_x11(char* data, GfxSize size, GfxFormat format)
 {
-	if (_xcursor_image_create_src == null) return null;
-	XcursorImage* native = _xcursor_image_create_src(w, h);
-	native.xhot = 0; native.yhot = 0;
-	mem::clear(native.pixels, (sz)(w * h * 4));
-	mem::copy(native.pixels, data, (sz)(w * h * 4));
+	if (!_xcursor_image_create_src) return IMAGE_COULD_NOT_LOAD~;
+	XcursorImage* native = _xcursor_image_create_src(...size);
+	if (!native) return IMAGE_COULD_NOT_LOAD~;
+	defer _xcursor_image_destroy_src(native);
+	sz bytesize = (sz)size.x * size.y * 4;
+	native.xhot = 0;
+	native.yhot = 0;
+	mem::clear(native.pixels, bytesize);
+	mem::copy(native.pixels, data, bytesize);
 	XCursor cursor = _xcursor_image_load_cursor_src(_gfx_ctx.display, native);
-	_xcursor_image_destroy_src(native);
+	if (!cursor) return MOUSE_NOT_SUPPORTED~;
 	return (GfxMouse*)cursor;
 }
 
-// private
-fn GfxMouse* todo_fix_createMouseStandard_X11(GfxMouseIcon mouse)
+fn GfxMouse*? _create_mouse_standard_x11(GfxMouseIcon mouse)
 {
 	uint mouseIcon = 0;
 	switch (mouse)
@@ -280,9 +282,10 @@ fn GfxMouse* todo_fix_createMouseStandard_X11(GfxMouseIcon mouse)
 		case RESIZE_ALL: mouseIcon = 52; // XC_fleur
 		case NOT_ALLOWED: mouseIcon = 88; // XC_pirate
 		case POINTING_HAND: mouseIcon = 60; // XC_hand2
-		default: return null;
+		default: return MOUSE_NOT_SUPPORTED~;
 	}
 	XCursor cursor = xCreateFontCursor(_gfx_ctx.display, mouseIcon);
+	if (!cursor) return MOUSE_NOT_SUPPORTED~;
 	return (GfxMouse*)cursor;
 }
 
@@ -408,7 +411,7 @@ fn void _free_mouse_x11(GfxMouse* mouse)
 }
 
 // private
-fn void* todo_fix_getCurrentContext_OpenGL_X11() => todo_fix_glXGetCurrentContext();
+fn void* _get_current_opengl_context_x11() => todo_fix_glXGetCurrentContext();
 
 // private
 fn GfxFn todo_fix_getProcAddress_OpenGL_X11(ZString procname)
@@ -499,7 +502,7 @@ fn void? _init_x11(String class_name, GfxInitOption flags)
 	}
 
 	char[4] blk;
-	_gfx_ctx.hiddenMouse = todo_fix_createMouse((char*)&blk, 1, 1, RGBA8);
+	_gfx_ctx.hiddenMouse = _create_mouse_native((void*)&blk, { 1, 1 }, RGBA8) ?? null;
 	_gfx_ctx.unixClipboard = null;
 
 	xSetErrorHandler((void*)&todo_fix_xErrorHandler);

@@ -501,21 +501,16 @@ const uint WL_POINTER_AXIS_HORIZONTAL_SCROLL = 1;
 const uint WL_OUTPUT_MODE_CURRENT = 1;
 const uint WL_SHM_FORMAT_ARGB8888 = 0;
 
-// private
-fn GfxMouse* todo_fix_createMouse_Wayland(char* data, int w, int h, GfxFormat format)
+fn GfxMouse*? _create_mouse_wayland(char* data, GfxSize size, GfxFormat format)
 {
-	GfxSurface*? surface = create_surface(data, w, h, format);
-	if (catch surface) return null;
-
+	GfxSurface* surface = create_surface(data, ...size, format)!;
 	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...surface.size, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
-	int minW = w < surface.size.x ? w : surface.size.x;
-	int minH = h < surface.size.y ? h : surface.size.y;
-	copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
+	GfxSize min = math::min(size, surface.size);
+	copy_image_data(surface.native.buffer, min.x, min.y, surface.native.format, surface.data, surface.format, null);
 	return (GfxMouse*)surface;
 }
 
-// private
-fn GfxMouse* todo_fix_createMouseStandard_Wayland(GfxMouseIcon mouse)
+fn GfxMouse*? _create_mouse_standard_wayland(GfxMouseIcon mouse)
 {
 	ZString cursorName;
 	switch (mouse)
@@ -541,11 +536,11 @@ fn GfxMouse* todo_fix_createMouseStandard_Wayland(GfxMouseIcon mouse)
 		case NOT_ALLOWED: cursorName = "not-allowed";
 		case WAIT: cursorName = "watch";
 		case PROGRESS: cursorName = "watch";
-		default: return null;
+		default: return MOUSE_NOT_SUPPORTED~;
 	}
 
 	WlCursor* wlcursor = wlCursorThemeGetCursor(_gfx_ctx.wlCursorTheme, cursorName);
-	if (wlcursor == null) return null;
+	if (!wlcursor) return MOUSE_NOT_SUPPORTED~;
 	WlCursorImage* cursorImage = wlcursor.images[0];
 	WlProxy* cursorBuffer = wlCursorImageGetBuffer(cursorImage);
 
@@ -593,8 +588,7 @@ fn void _free_mouse_wayland(GfxMouse* mouse)
 	surface.destroy();
 }
 
-// private
-fn void* todo_fix_getCurrentContext_OpenGL_Wayland() => todo_fix_getCurrentContext_EGL();
+fn void* _get_current_opengl_context_wayland() => todo_fix_getCurrentContext_EGL();
 
 fn GfxPoint _get_global_mouse_wayland()
 {
@@ -633,7 +627,7 @@ fn void? _init_wayland(String class_name, GfxInitOption flags)
 	}
 
 	char[4] blk;
-	_gfx_ctx.hiddenMouse = todo_fix_createMouse(&blk, 1, 1, RGBA8);
+	_gfx_ctx.hiddenMouse = _create_mouse_native(&blk, { 1, 1 }, RGBA8) ?? null;
 
 	static XdgWmBaseListener wmBaseListener = { .ping = &_wl_xdg_wm_base_ping_cb };
 	xdgWmBaseAddListener(_gfx_ctx.xdgWmBase, &wmBaseListener, null);
@@ -734,13 +728,11 @@ fn void _monitornode_free_wayland(GfxMonitorNode* node)
 	}
 }
 
-// private
 fn IntRect _monitor_get_workarea_wayland(GfxMonitor* monitor)
 {
 	return { ...monitor.origin, ...monitor.mode.size };
 }
 
-// private
 fn void? _monitor_request_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	for (sz i = 0; i < mon.node.mode_count; i++)

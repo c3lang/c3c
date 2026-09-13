@@ -696,6 +696,57 @@ fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferT
 	return { .text = raw.str_view().copy(allocator), .type = TEXT };
 }
 
+fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
+{
+	ObjClass cls = objc::class("NSCursor");
+	if (!cls) return MOUSE_NOT_SUPPORTED~;
+	ObjId cursor = null;
+	switch (mouse)
+	{
+		case NORMAL:        cursor = objc::send(cls, ObjId, "arrowCursor");
+		case ARROW:         cursor = objc::send(cls, ObjId, "arrowCursor");
+		case IBEAM:         cursor = objc::send(cls, ObjId, "IBeamCursor");
+		case CROSSHAIR:     cursor = objc::send(cls, ObjId, "crosshairCursor");
+		case POINTING_HAND: cursor = objc::send(cls, ObjId, "pointingHandCursor");
+		case RESIZE_EW:     cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
+		case RESIZE_E:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
+		case RESIZE_W:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
+		case RESIZE_NS:     cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
+		case RESIZE_N:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
+		case RESIZE_S:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
+		case RESIZE_NWSE:   cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_SE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NESW:   cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_NE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_SW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_ALL:    cursor = objc::send(cls, ObjId, "openHandCursor");
+		case NOT_ALLOWED:   cursor = objc::send(cls, ObjId, "operationNotAllowedCursor");
+		case WAIT:          cursor = objc::send(cls, ObjId, "arrowCursor");
+		case PROGRESS:      cursor = objc::send(cls, ObjId, "arrowCursor");
+		default:            cursor = objc::send(cls, ObjId, "arrowCursor");
+	}
+	if (cursor) return MOUSE_NOT_SUPPORTED~;
+	return (GfxMouse*)objc::retain(cursor);
+}
+
+fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format)
+{
+	if (!data) return IMAGE_COULD_NOT_LOAD~;
+	ObjId rep = _new_nsbitmap_image_rep(...size);
+	defer objc::release(rep);
+	char* pixels = rep.send(char*, "bitmapData");
+	if (!pixels) return IMAGE_COULD_NOT_LOAD~;
+	copy_image_data(pixels, ...size, RGBA8, data, format, null);
+	ObjId image = _new_nsimage(...size, rep);
+	CGPoint hot;
+	hot.x = 0.0; hot.y = 0.0;
+	ObjId cursor = objc::alloc_by_name("NSCursor").send(ObjId, "initWithImage:hotSpot:", image, hot);
+	objc::release(image);
+	if (!cursor) return IMAGE_COULD_NOT_LOAD~;
+	return (GfxMouse*)cursor;
+}
+
 fn void _wait_for_event_native(Duration duration)
 {
 	if (!_gfx_ctx.ns_app) return;

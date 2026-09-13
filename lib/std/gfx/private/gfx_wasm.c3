@@ -41,6 +41,8 @@ fn void _stop_check_events_native()
 	_gfx_ctx.stop_check_events = true;
 }
 
+fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
+
 fn IntRect _monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
 fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
 fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
@@ -74,6 +76,7 @@ fn void _window_raise_native(GfxWindow* win) {}
 fn void _window_set_floating_native(GfxWindow* win, bool floating) {}
 fn void _window_close_native(GfxWindow* win) {}
 fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) {}
+
 
 fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 {
@@ -342,7 +345,7 @@ fn void* _get_current_opengl_context_native()
 	return (void*)(uptr)rgfwJsWebglGetCurrentContext();
 }
 
-fn GfxMouse* _create_standard_mouse_native(GfxMouseIcon mouse)
+fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
 {
 	ZString cursor_name;
 	switch (mouse)
@@ -368,7 +371,7 @@ fn GfxMouse* _create_standard_mouse_native(GfxMouseIcon mouse)
 		case NOT_ALLOWED: cursor_name = "not-allowed";
 		case WAIT: cursor_name = "wait";
 		case PROGRESS: cursor_name = "progress";
-		default: return null;
+		default: return MOUSE_NOT_SUPPORTED~;
 	}
 	return (GfxMouse*)cursor_name;
 }

@@ -44,55 +44,7 @@ fn void todo_fix_monitorNode_free(GfxMonitorNode* node)
 }
 
 
-fn GfxMouse* todo_fix_createMouse(char* data, int w, int h, GfxFormat format)
-{
-	if (data == null) return null;
-	ObjId rep = _new_nsbitmap_image_rep(w, h);
-	defer objc::release(rep);
-	char* pixels = rep.send(char*, "bitmapData");
-	if (!pixels) return null;
-	copy_image_data(pixels, w, h, RGBA8, data, format, null);
-	ObjId image = _new_nsimage(w, h, rep);
-	CGPoint hot;
-	hot.x = 0.0; hot.y = 0.0;
-	ObjId cursor = objc::alloc_by_name("NSCursor").send(ObjId, "initWithImage:hotSpot:", image, hot);
-	objc::release(image);
-	return (GfxMouse*)cursor;
-}
 
-// public
-fn GfxMouse* _create_standard_mouse_native(GfxMouseIcon mouse)
-{
-	ObjClass cls = objc::class("NSCursor");
-	if (!cls) return null;
-	ObjId cursor = null;
-	switch (mouse)
-	{
-		case NORMAL:        cursor = objc::send(cls, ObjId, "arrowCursor");
-		case ARROW:         cursor = objc::send(cls, ObjId, "arrowCursor");
-		case IBEAM:         cursor = objc::send(cls, ObjId, "IBeamCursor");
-		case CROSSHAIR:     cursor = objc::send(cls, ObjId, "crosshairCursor");
-		case POINTING_HAND: cursor = objc::send(cls, ObjId, "pointingHandCursor");
-		case RESIZE_EW:     cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
-		case RESIZE_E:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
-		case RESIZE_W:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
-		case RESIZE_NS:     cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
-		case RESIZE_N:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
-		case RESIZE_S:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
-		case RESIZE_NWSE:   cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_NW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_SE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_NESW:   cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_NE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_SW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_ALL:    cursor = objc::send(cls, ObjId, "openHandCursor");
-		case NOT_ALLOWED:   cursor = objc::send(cls, ObjId, "operationNotAllowedCursor");
-		case WAIT:          cursor = objc::send(cls, ObjId, "arrowCursor");
-		case PROGRESS:      cursor = objc::send(cls, ObjId, "arrowCursor");
-		default:            cursor = objc::send(cls, ObjId, "arrowCursor");
-	}
-	return (GfxMouse*)objc::retain(cursor);
-}
 
 
 // public
