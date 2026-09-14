@@ -203,25 +203,33 @@ struct GfxMonitorNode
 	GfxMonitor mon;
 	bool disconnected;
 	GfxMonitorNode* next;
-	void* native0;
-	void* native1;
-	ulong nativeId0;
-	ulong nativeId1;
 	struct @feat(WAYLAND)
 	{
 		uint id;
 		WlProxy* output;
-		WlProxy* xdgOutput;
+		WlProxy* xdg_output;
 		GfxMonitorMode* modes;
 		sz mode_count;
 	}
+	struct @feat(BSD, LINUX) @feat(!NO_X11)
+	{
+		RROutput rr_output;
+		RRCrtc crtc;
+	}
 	struct @feat(WIN32)
 	{
-		Win32_HMONITOR hMonitor;
-		ushort[32] adapterName;
-		ushort[32] deviceName;
+		Win32_HMONITOR monitor;
+		Char16[32]     adapter_name;
+		Char16[32]     device_name;
+	}
+	struct @feat(MACOS)
+	{
+		void* screen;
+		CGDirectDisplayID display;
+		uint num;
 	}
 }
+
 
 alias GfxGetProcFn = fn void*(ZString);
 

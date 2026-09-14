@@ -197,9 +197,9 @@ fn void _window_set_mouse_passthrough_x11(GfxWindow* win, bool passthrough)
 
 fn GfxGammaRamp? _monitor_get_gamma_ramp_x11(GfxMonitor* monitor, Allocator a)
 {
-	sz size = (sz)x11::xRRGetCrtcGammaSize(_gfx.display, monitor.node.nativeId1);
+	sz size = (sz)x11::xRRGetCrtcGammaSize(_gfx.display, monitor.node.crtc);
 	if (!size) return CANNOT_RETRIEVE_GAMMA~;
-	XRRCrtcGamma* gamma = x11::xRRGetCrtcGamma(_gfx.display, monitor.node.nativeId1);
+	XRRCrtcGamma* gamma = x11::xRRGetCrtcGamma(_gfx.display, monitor.node.crtc);
 	if (!gamma) return CANNOT_RETRIEVE_GAMMA~;
 	defer x11::xRRFreeGamma(gamma);
 	ushort[] rgb = alloc::alloc_array(a, ushort, size * 3);
@@ -214,7 +214,7 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_x11(GfxMonitor* monitor, Allocator a)
 
 fn void? monitor_set_gamma_ramp_x11(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
-	sz size = (sz)x11::xRRGetCrtcGammaSize(_gfx.display, monitor.node.nativeId1);
+	sz size = (sz)x11::xRRGetCrtcGammaSize(_gfx.display, monitor.node.crtc);
 	if (size != ramp.red.len) return GAMMA_COULD_NOT_BE_SET~;
 
 	XRRCrtcGamma* gamma = x11::xRRAllocGamma((int)size);
@@ -224,12 +224,12 @@ fn void? monitor_set_gamma_ramp_x11(GfxMonitor* monitor, GfxGammaRamp ramp)
 	gamma.red[:size] = ramp.red[..];
 	gamma.green[:size] = ramp.green[..];
 	gamma.blue[:size] = ramp.blue[..];
-	x11::xRRSetCrtcGamma(_gfx.display, monitor.node.nativeId1, gamma);
+	x11::xRRSetCrtcGamma(_gfx.display, monitor.node.crtc, gamma);
 }
 
 fn void? monitor_set_gamma_x11(GfxMonitor* monitor, float gamma)
 {
-	sz size = (sz)x11::xRRGetCrtcGammaSize(_gfx.display, monitor.node.nativeId1);
+	sz size = (sz)x11::xRRGetCrtcGammaSize(_gfx.display, monitor.node.crtc);
 	if (!size) return GAMMA_COULD_NOT_BE_SET~;
 
 	XRRCrtcGamma* gamma_data = x11::xRRAllocGamma((int)size);
@@ -241,7 +241,7 @@ fn void? monitor_set_gamma_x11(GfxMonitor* monitor, float gamma)
 		gamma_data.green[i] = g;
 		gamma_data.blue[i] = g;
 	}
-	x11::xRRSetCrtcGamma(_gfx.display, monitor.node.nativeId1, gamma_data);
+	x11::xRRSetCrtcGamma(_gfx.display, monitor.node.crtc, gamma_data);
 }
 
 fn GfxMouse*? _create_mouse_x11(char* data, GfxSize size, GfxFormat format)
@@ -542,8 +542,8 @@ fn GfxMonitorMode[] _monitor_get_modes_x11(GfxMonitor* monitor)
 {
 	XRRScreenResources* res = x11::xRRGetScreenResourcesCurrent(_gfx.display, x11::xDefaultRootWindow(_gfx.display));
 	if (!res) return {};
-	XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx.display, res, monitor.node.nativeId1);
-	GfxXRROutputInfo* oi = x11::xRRGetOutputInfo(_gfx.display, res, monitor.node.nativeId0);
+	XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx.display, res, monitor.node.crtc);
+	GfxXRROutputInfo* oi = x11::xRRGetOutputInfo(_gfx.display, res, monitor.node.rr_output);
 	sz count = (sz)oi.nmode;
 	List{GfxMonitorMode} modes;
 	for (int i = 0; i < oi.nmode; i++)
@@ -597,8 +597,8 @@ fn void? _monitor_request_mode_x11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMon
 	bool output = false;
 	XRRScreenResources* res = x11::xRRGetScreenResourcesCurrent(_gfx.display, x11::xDefaultRootWindow(_gfx.display));
 	if (!res) return MONITOR_MODE_CHANGE_FAILED~;
-	XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx.display, res, mon.node.nativeId1);
-	GfxXRROutputInfo* oi = x11::xRRGetOutputInfo(_gfx.display, res, mon.node.nativeId0);
+	XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx.display, res, mon.node.crtc);
+	GfxXRROutputInfo* oi = x11::xRRGetOutputInfo(_gfx.display, res, mon.node.rr_output);
 	RRMode native = 0;
 
 	for (int i = 0; i < oi.nmode; i++)
@@ -614,7 +614,7 @@ fn void? _monitor_request_mode_x11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMon
 			break;
 		}
 	}
-	if (native != 0) x11::xRRSetCrtcConfig(_gfx.display, res, mon.node.nativeId1, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
+	if (native != 0) x11::xRRSetCrtcConfig(_gfx.display, res, mon.node.crtc, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
 	x11::xRRFreeOutputInfo(oi);
 	x11::xRRFreeCrtcInfo(ci);
 	x11::xRRFreeScreenResources(res);
@@ -625,8 +625,8 @@ fn void? _monitor_set_mode_native_x11(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	bool out = false;
 	XRRScreenResources* res = x11::xRRGetScreenResourcesCurrent(_gfx.display, x11::xDefaultRootWindow(_gfx.display));
-	XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx.display, res, mon.node.nativeId1);
-	if (x11::xRRSetCrtcConfig(_gfx.display, res, mon.node.nativeId1, 0, ci.x, ci.y, (RRMode)(uptr)mode.src, ci.rotation, ci.outputs, ci.noutput) == 0) out = true;
+	XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx.display, res, mon.node.crtc);
+	if (x11::xRRSetCrtcConfig(_gfx.display, res, mon.node.crtc, 0, ci.x, ci.y, (RRMode)(uptr)mode.src, ci.rotation, ci.outputs, ci.noutput) == 0) out = true;
 	x11::xRRFreeCrtcInfo(ci);
 	x11::xRRFreeScreenResources(res);
 	if (!out) return MONITOR_MODE_CHANGE_FAILED~;
@@ -1123,12 +1123,12 @@ fn void _poll_monitors_x11()
 		GfxMonitorNode* node = null;
 		for (node = _gfx.monitors.list.head; node != null; node = node.next)
 		{
-			if (node.nativeId0 == res.outputs[i]) break;
+			if (node.rr_output == res.outputs[i]) break;
 		}
 		if (node != null)
 		{
 			node.disconnected = false;
-			if (node.nativeId0 == primary) _gfx.monitors.primary = node;
+			if (node.rr_output == primary) _gfx.monitors.primary = node;
 			continue;
 		}
 
@@ -1170,9 +1170,9 @@ fn void _poll_monitors_x11()
 		x11::xRRFreeCrtcInfo(ci);
 		node = _monitor_add(&monitor);
 		if (node == null) break;
-		node.nativeId0 = res.outputs[i];
-		node.nativeId1 = info.crtc;
-		if (node.nativeId0 == primary) _gfx.monitors.primary = node;
+		node.rr_output = res.outputs[i];
+		node.crtc = info.crtc;
+		if (node.rr_output == primary) _gfx.monitors.primary = node;
 		x11::xRRFreeOutputInfo(info);
 		_monitor_callback(_gfx.root, &node.mon, true);
 	}

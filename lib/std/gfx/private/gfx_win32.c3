@@ -208,7 +208,7 @@ fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 {
 	Win32_MONITORINFOEXW mi;
 	mi.cbSize = Win32_MONITORINFOEXW::size;
-	win32::getMonitorInfoW(monitor.node.hMonitor, &mi);
+	win32::getMonitorInfoW(monitor.node.monitor, &mi);
 	return { mi.rcWork.left, mi.rcWork.top, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top };
 }
 
@@ -358,7 +358,7 @@ fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
 	Win32_HMONITOR src = win32::monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
 	for (GfxMonitorNode* node = _gfx.monitors.list.head; node != null; node = node.next)
 	{
-		if (node.hMonitor == src) return &node.mon;
+		if (node.monitor == src) return &node.mon;
 	}
 	return get_primary_monitor();
 }
@@ -460,8 +460,8 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 	for OUTER: (;;)
 	{
 		Win32_DEVMODEW dm = { .dmSize = (ushort)Win32_DEVMODEW::size };
-		if (win32::enumDisplaySettingsW((WString)&monitor.node.adapterName, mode_index, &dm) == 0) break;
-		if (win32::changeDisplaySettingsExW((WString)&monitor.node.adapterName, &dm, null, win32::CDS_TEST, null) != win32::DISP_CHANGE_SUCCESSFUL) continue;
+		if (win32::enumDisplaySettingsW((WString)&monitor.node.adapter_name, mode_index, &dm) == 0) break;
+		if (win32::changeDisplaySettingsExW((WString)&monitor.node.adapter_name, &dm, null, win32::CDS_TEST, null) != win32::DISP_CHANGE_SUCCESSFUL) continue;
 		mode_index++;
 		if (dm.dmBitsPerPel < 15) continue;
 		GfxMonitorMode mode;
@@ -481,16 +481,16 @@ fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, Gfx
 	uint index = 0;
 	for (;;)
 	{
-		if (win32::enumDisplaySettingsW((ushort*)&mon.node.adapterName, index, &dm) == 0) break;
+		if (win32::enumDisplaySettingsW((ushort*)&mon.node.adapter_name, index, &dm) == 0) break;
 		index += 1;
 
 		if (request & SCALE) { dm.dmFields |= win32::DM_PELSWIDTH | win32::DM_PELSHEIGHT; dm.dmPelsWidth = (uint)mode.size.x; dm.dmPelsHeight = (uint)mode.size.y; }
 		if (request & REFRESH) { dm.dmFields |= win32::DM_DISPLAYFREQUENCY; dm.dmDisplayFrequency = (uint)mode.refresh_rate; }
 		if (request & RGB) { dm.dmFields |= win32::DM_BITSPERPEL; dm.dmBitsPerPel = (uint)(mode.rgb.sum()); }
 
-		if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapterName, &dm, null, win32::CDS_TEST, null) == win32::DISP_CHANGE_SUCCESSFUL)
+		if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapter_name, &dm, null, win32::CDS_TEST, null) == win32::DISP_CHANGE_SUCCESSFUL)
 		{
-			if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapterName, &dm, null, win32::CDS_UPDATEREGISTRY, null) == win32::DISP_CHANGE_SUCCESSFUL)
+			if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapter_name, &dm, null, win32::CDS_UPDATEREGISTRY, null) == win32::DISP_CHANGE_SUCCESSFUL)
 			{
 				_win32_get_mode(&dm, &mon.mode);
 				return;
@@ -593,8 +593,8 @@ fn void _poll_monitors_native()
 			for (node = _gfx.monitors.list.head; node != null; node = node.next)
 			{
 				sz i;
-				for (i = 0; dd.deviceName[i] != 0 && node.deviceName[i] != 0 && dd.deviceName[i] == node.deviceName[i]; i++) {}
-				if (node.disconnected == true && dd.deviceName[i] == 0 && node.deviceName[i] == 0)
+				for (i = 0; dd.deviceName[i] != 0 && node.device_name[i] != 0 && dd.deviceName[i] == node.device_name[i]; i++) {}
+				if (node.disconnected == true && dd.deviceName[i] == 0 && node.device_name[i] == 0)
 				{
 					node.disconnected = false;
 					win32::enumDisplayMonitors(null, null, (void*)&_get_monitor_handle_callback, (iptr)(void*)&node.mon);
@@ -611,9 +611,9 @@ fn void _poll_monitors_native()
 			for (node = _gfx.monitors.list.head; node != null; node = node.next)
 			{
 				sz i;
-				for (i = 0; adapter.deviceName[i] != 0 && node.adapterName[i] != 0 && adapter.deviceName[i] == node.adapterName[i]; i++)
+				for (i = 0; adapter.deviceName[i] != 0 && node.adapter_name[i] != 0 && adapter.deviceName[i] == node.adapter_name[i]; i++)
 				{}
-				if (node.disconnected == true && adapter.deviceName[i] == 0 && node.adapterName[i] == 0)
+				if (node.disconnected == true && adapter.deviceName[i] == 0 && node.adapter_name[i] == 0)
 				{
 					node.disconnected = false;
 					break;
@@ -950,10 +950,10 @@ fn void _create_monitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLAY_DEVICEW* d
 	if (!win32::enumDisplaySettingsW((WString)&adapter.deviceName, (uint)win32::ENUM_CURRENT_SETTINGS, &dm)) return;
 
 	GfxMonitorNode* node = _monitor_add(null);
-	node.adapterName = adapter.deviceName;
+	node.adapter_name = adapter.deviceName;
 	if (dd) @pool()
 	{
-		node.deviceName = dd.deviceName;
+		node.device_name = dd.deviceName;
 		String s = string::tfrom_wstring((WString)&dd.deviceString) ?? "<invalid>";
 		if (s.len > 127) s = s[:127];
 		node.mon.name[:s.len] = s[..];
@@ -972,7 +972,7 @@ fn void _create_monitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLAY_DEVICEW* d
 
 	Win32_MONITORINFOEXW monitorInfo;
 	monitorInfo.cbSize = Win32_MONITORINFOEXW::size;
-	win32::getMonitorInfoW(node.hMonitor, &monitorInfo);
+	win32::getMonitorInfoW(node.monitor, &monitorInfo);
 
 	node.mon.origin = { monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top};
 
@@ -991,16 +991,16 @@ fn void _create_monitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLAY_DEVICEW* d
 	_monitor_callback(_gfx.root, &node.mon, true);
 }
 
-fn int _get_monitor_handle_callback(void* hMonitor, void* hdcMonitor, Win32_RECT* lprcMonitor, iptr dwData)
+fn int _get_monitor_handle_callback(void* monitor, void* hdcMonitor, Win32_RECT* lprcMonitor, iptr dwData)
 {
 	Win32_MONITORINFOEXW mi;
 	mi.cbSize = Win32_MONITORINFOEXW::size;
-	if (win32::getMonitorInfoW(hMonitor, &mi))
+	if (win32::getMonitorInfoW(monitor, &mi))
 	{
 		GfxMonitorNode* node = (void*)dwData;
 		sz i;
-		for (i = 0; mi.szDevice[i] && node.adapterName[i] && mi.szDevice[i] == node.adapterName[i]; i++) {}
-		if (mi.szDevice[i] == 0 && node.adapterName[i] == 0) node.hMonitor = hMonitor;
+		for (i = 0; mi.szDevice[i] && node.adapter_name[i] && mi.szDevice[i] == node.adapter_name[i]; i++) {}
+		if (mi.szDevice[i] == 0 && node.adapter_name[i] == 0) node.monitor = monitor;
 	}
 	return 1;
 }
@@ -1047,7 +1047,7 @@ const WString WIDE_DISPLAY_NAME = @wstring("DISPLAY\0");
 fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a)
 {
 	ushort[] colors = mem::alloc::alloc_array(a, ushort, 768);
-	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapterName, null, null);
+	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapter_name, null, null);
 	if (!dc) return CANNOT_RETRIEVE_GAMMA~;
 	defer win32::deleteDC(dc);
 	if (!win32::getDeviceGammaRamp(dc, colors)) return CANNOT_RETRIEVE_GAMMA~;
@@ -1056,7 +1056,7 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a
 
 fn void? _gamma_set(GfxMonitor* monitor, ushort* gamma)
 {
-	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapterName, null, null);
+	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapter_name, null, null);
 	if (!dc) return GAMMA_COULD_NOT_BE_SET~;
 	defer win32::deleteDC(dc);
 	if (!win32::setDeviceGammaRamp(dc, gamma)) return GAMMA_COULD_NOT_BE_SET~;
@@ -1089,11 +1089,11 @@ fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 		.dmDisplayFrequency = (uint)mode.refresh_rate,
 		.dmBitsPerPel = (uint)(mode.rgb.sum())
 	};
-	if (win32::changeDisplaySettingsExW((WString)&mon.node.adapterName, &dm, null, win32::CDS_TEST, null) != win32::DISP_CHANGE_SUCCESSFUL)
+	if (win32::changeDisplaySettingsExW((WString)&mon.node.adapter_name, &dm, null, win32::CDS_TEST, null) != win32::DISP_CHANGE_SUCCESSFUL)
 	{
 		return MONITOR_MODE_CHANGE_FAILED~;
 	}
-	if (win32::changeDisplaySettingsExW((WString)&mon.node.adapterName, &dm, null, win32::CDS_UPDATEREGISTRY, null) != win32::DISP_CHANGE_SUCCESSFUL)
+	if (win32::changeDisplaySettingsExW((WString)&mon.node.adapter_name, &dm, null, win32::CDS_UPDATEREGISTRY, null) != win32::DISP_CHANGE_SUCCESSFUL)
 	{
 		return MONITOR_MODE_CHANGE_FAILED~;
 	}

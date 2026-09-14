@@ -557,7 +557,7 @@ fn void? _create_window_wayland(String name, GfxWindowFlags flags, GfxWindow* wi
 fn void _monitor_node_free_wayland(GfxMonitorNode* node)
 {
 	if (node.output) wlOutputDestroy(node.output);
-	if (node.xdgOutput) zxdgOutputV1Destroy(node.xdgOutput);
+	if (node.xdg_output) zxdgOutputV1Destroy(node.xdg_output);
 	if (node.modes)
 	{
 		free(node.modes);
@@ -1241,7 +1241,7 @@ fn void _wl_create_outputs(WlProxy* registry, uint id)
 
 	if (!_gfx.xdgOutputManager) return;
 
-	node.xdgOutput = zxdgOutputManagerV1GetXdgOutput(_gfx.xdgOutputManager, node.output);
+	node.xdg_output = zxdgOutputManagerV1GetXdgOutput(_gfx.xdgOutputManager, node.output);
 	
 	static ZxdgOutputV1Listener xdg_output_listener = {
 		.name = &_wl_xdg_output_nothing_string_cb,
@@ -1251,7 +1251,7 @@ fn void _wl_create_outputs(WlProxy* registry, uint id)
 		.logicalSize = &_wl_xdg_output_logical_size_cb
 	};
 
-	zxdgOutputV1AddListener(node.xdgOutput, &xdg_output_listener, node);
+	zxdgOutputV1AddListener(node.xdg_output, &xdg_output_listener, node);
 }
 
 fn int _wl_create_shm_file(sz size)

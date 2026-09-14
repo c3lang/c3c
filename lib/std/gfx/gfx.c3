@@ -1,6 +1,12 @@
+// Copyright (c) 2026 Christoffer Lernö. All rights reserved.
+// Use of this source code is governed by the MIT license
+// a copy of which can be found in the LICENSE_STDLIB file.
 module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import std::math, std::os, std::os::darwin, libc, std::time;
 import std::gfx::x11 @public;
+
+// The GFX module provides basic window handling across multiple platforms.
+// This implementation was strongly based on RGFW 2.0 by Riley Mabb
 
 excuse
 {
