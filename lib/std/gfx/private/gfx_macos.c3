@@ -23,8 +23,6 @@ struct GfxNativeImage
 	void* native2;
 }
 
-
-
 const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
 const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;
 const int NS_OPEN_GL_PFA_COLOR_SIZE = 8;

@@ -1,5 +1,5 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @private;
-import libc, std::math, std::os, std::gfx::x11 @public, std::time;
+import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::time;
 
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
@@ -11,8 +11,9 @@ const X11_WAYLAND = $feat(BSD) || $feat(LINUX);
 struct GfxContext
 {
 	bool initialized;
+	List{GfxWindow} windows;
 	GfxWindow* root;
-	int windowCount;
+	int active_windows;
 	GfxMouse* hiddenMouse;
 	GfxMouse*[21] standardMice;
 	GfxGenericFunc[25] callbacks;
@@ -179,8 +180,10 @@ struct GfxKeyState
 
 struct GfxWindowInternal
 {
+	int id;
 	GfxKey exit_key;
 	GfxPoint last_mouse;
+	bool is_collected;
 	bool shouldClose;
 	bool raw_mouse;
 	bool capture_mouse;
@@ -295,35 +298,76 @@ fn void _reset_prev_state()
 	_gfx.dndCur = null;
 }
 
-fn void? _window_init(GfxWindow* self, String name, int x, int y, int w, int h, GfxWindowFlags flags)
+<*
+ @require !win.internal.is_collected : "Releasing already collected window"
+*>
+fn void _window_release(GfxWindow* win)
 {
-	if (!_gfx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
-	*self = {};
-	_gfx.windowCount++;
-	if (!_gfx.root) set_root_window(self);
-	self.bounds = { x, y, w, h };
-	self.internal.mouse = _gfx.standardMice[GfxMouseIcon.NORMAL.ordinal];
-	self.internal.flags = flags;
-	self.internal.enabled_events = ALL_EVENTS;
-	_create_window_native(name, flags, self)!;
-	if (!flags.hide_mouse) self.set_mouse_default();
-
-	self.set_name(name);
-	switch
+	if (win.internal.is_collected) return;
+	if (win.internal.capture_mouse) win.set_capture_mouse(false);
+	if (win.src.backing.egl && win.src.ctx.egl != null)
 	{
-		case !flags.hide:
-			flags.hide = true;
-			self.show();
-		case flags.maximize || flags.fullscreen:
-			self.hide();
+		_window_destroy_egl_context_native(win, win.src.ctx.egl);
+		win.src.ctx.egl = null;
 	}
+	if (win.src.backing.opengl && win.src.ctx.native != null)
+	{
+		_window_destroy_opengl_context_native(win, win.src.ctx.native);
+		win.src.ctx.native = null;
+	}
+	_window_close_native(win);
+	if (_gfx.clipboard) free(_gfx.clipboard);
+	_gfx.clipboard = null;
+	_gfx.active_windows--;
+	*win = { .internal = { .is_collected = true, .id = win.internal.id } };
+	log::debug("A window was freed", category: log::CATEGORY_VIDEO);
 }
 
 fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
 {
-	GfxWindow* win = mem::new(GfxWindow);
-	defer catch free(win);
-	_window_init(win, name, x, y, w, h, flags)!;
+	if (!_gfx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
+
+	GfxWindow* win;
+	// All full!
+	if (_gfx.active_windows == _gfx.windows.len())
+	{
+		_gfx.windows.push({ .internal.id = (int)_gfx.windows.len() });
+		win = &_gfx.windows[^1];
+	}
+	else
+	{
+		foreach (int i, &existing : _gfx.windows)
+		{
+			if (existing.internal.is_collected)
+			{
+				*existing = { .internal.id = i };
+				win = existing;
+				break;
+			}
+		}
+	}
+
+	assert (win, "A window should always be found");
+	defer catch win.internal.is_collected = true;
+
+	_gfx.active_windows++;
+	if (!_gfx.root) set_root_window(win);
+	win.bounds = { x, y, w, h };
+	win.internal.mouse = _gfx.standardMice[GfxMouseIcon.NORMAL.ordinal];
+	win.internal.flags = flags;
+	win.internal.enabled_events = ALL_EVENTS;
+	_create_window_native(name, flags, win)!;
+	if (!flags.hide_mouse) win.set_mouse_default();
+
+	win.set_name(name);
+	switch
+	{
+		case !flags.hide:
+			flags.hide = true;
+			win.show();
+		case flags.maximize || flags.fullscreen:
+			win.hide();
+	}
 	return win;
 }
 

@@ -709,6 +709,7 @@ fn void? init(String class_name, GfxInitOption options)
 {
 	class_name = class_name ?: "C3GFX";
 	_gfx = { .initialized = true };
+	_gfx.windows.init(mem);
 	defer catch
 	{
 		_destroy_native();
@@ -730,6 +731,13 @@ fn void? init(String class_name, GfxInitOption options)
 fn void finalize()
 {
 	if (!_gfx.initialized) return;
+	foreach (&win : _gfx.windows)
+	{
+		if (!win.internal.is_collected) win.destroy();
+	}
+	assert (_gfx.active_windows == 0);
+	_gfx.windows.free();
+
 	foreach (icon : GfxMouseIcon::values)
 	{
 		if (_gfx.standardMice[icon.ordinal]) _free_mouse(_gfx.standardMice[icon.ordinal]);
@@ -740,7 +748,6 @@ fn void finalize()
 	unload_egl();
 	unload_opengl();
 	_gfx.root = null;
-	_gfx.windowCount = 0;
 	_gfx = {};
 }
 
@@ -1005,13 +1012,13 @@ fn bool GfxWindow.has_focus(&win) => win.internal.inFocus;
 
 
 <*
- Completely release a window and free its pointer.
+ Completely release a window
 *>
 fn void GfxWindow.destroy(&self)
 {
-	self.release();
-	free(self);
+	_window_release(self);
 }
+
 <*
  Toggles building the drag-and-drop (DND) linked list
  @param allow : "set to true to allow DND building"
@@ -1051,25 +1058,7 @@ fn bool is_mouse_released(GfxMouseButton button, GfxWindow* window = null)
 fn Vec2 get_mouse_scroll() => _gfx.scroll;
 fn Vec2 get_mouse_delta() => _gfx.vector;
 
-fn void GfxWindow.release(&self)
-{
-	if (self.internal.capture_mouse) self.set_capture_mouse(false);
-	if (self.src.backing.egl && self.src.ctx.egl != null)
-	{
-		_window_destroy_egl_context_native(self, self.src.ctx.egl);
-		self.src.ctx.egl = null;
-	}
-	if (self.src.backing.opengl && self.src.ctx.native != null)
-	{
-		_window_destroy_opengl_context_native(self, self.src.ctx.native);
-		self.src.ctx.native = null;
-	}
-	_window_close_native(self);
-	if (_gfx.clipboard) free(_gfx.clipboard);
-	_gfx.clipboard = null;
-	_gfx.windowCount--;
-	log::debug("A window was freed", category: log::CATEGORY_VIDEO);
-}
+
 
 fn GfxGenericFunc set_event_callback(GfxEventType type, GfxGenericFunc func)
 {
