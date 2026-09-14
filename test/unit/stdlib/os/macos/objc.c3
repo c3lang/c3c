@@ -1,4 +1,5 @@
-module std::os::macos::objc @test @feat(DARWIN);
+module std::os::macos @test @feat(DARWIN);
+import std::os::darwin;
 
 fn void test_application_activation_policy()
 {
@@ -14,7 +15,7 @@ fn void test_application_activation_policy()
 fn void test_backing_store_type()
 {
 	NSBackingStoreType retained = NSBackingStoreType.RETAINED;
-	NSBackingStoreType nonretained = NSBackingStoreType.NONRETAINED;
+	NSBackingStoreType nonretained = NSBackingStoreType.NON_RETAINED;
 	NSBackingStoreType buffered = NSBackingStoreType.BUFFERED;
 
 	assert(retained == 0);
@@ -43,11 +44,11 @@ fn void test_event_type()
 
 fn void test_event_mask_from_type()
 {
-	NSEventMask maskMouseDown = ns::event_mask_from_type(NSEventType.LEFT_MOUSE_DOWN);
-	NSEventMask maskKeyDown = ns::event_mask_from_type(NSEventType.KEY_DOWN);
-	NSEventMask maskKeyUp = ns::event_mask_from_type(NSEventType.KEY_UP);
-	NSEventMask maskSmartMagnify = ns::event_mask_from_type(NSEventType.SMART_MAGNIFY);
-	NSEventMask maskDirectTouch = ns::event_mask_from_type(NSEventType.DIRECT_TOUCH);
+	NSEventMask maskMouseDown = macos::nsevent_mask_from_type(NSEventType.LEFT_MOUSE_DOWN);
+	NSEventMask maskKeyDown = macos::nsevent_mask_from_type(NSEventType.KEY_DOWN);
+	NSEventMask maskKeyUp = macos::nsevent_mask_from_type(NSEventType.KEY_UP);
+	NSEventMask maskSmartMagnify = macos::nsevent_mask_from_type(NSEventType.SMART_MAGNIFY);
+	NSEventMask maskDirectTouch = macos::nsevent_mask_from_type(NSEventType.DIRECT_TOUCH);
 
 	assert(maskMouseDown == NSEventMask.LEFT_MOUSE_DOWN);
 	assert(maskKeyDown == NSEventMask.KEY_DOWN);

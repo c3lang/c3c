@@ -1,5 +1,5 @@
-module std::os::darwin::cocoa @feat(MACOS) @link("Cocoa.framework");
-import std::os::macos;
+module std::os::macos @feat(MACOS) @link("Cocoa.framework");
+import std::os::darwin;
 
 extern fn int nsApplicationMain(int argc, char **argv) @cname("NSApplicationMain");
 
@@ -97,7 +97,7 @@ constset NSEventMask : inline ulong
 	ANY                 = ulong::max,
 }
 
-fn NSEventMask event_mask_from_type(NSEventType type) => (NSEventMask)1ul << type;
+fn NSEventMask nsevent_mask_from_type(NSEventType type) => (NSEventMask)1ul << type;
 
 
 constset NSEventModifierFlags : inline NSUInteger
