@@ -22,21 +22,6 @@ struct GfxEglContext
 	void* egl_window;
 }
 
-struct GfxWindowSrc
-{
-	inline IntRect bounds;
-	void* window; // HWND
-	void* hdc; // HDC
-	void* hIconSmall; // HICON
-	void* hIconBig; // HICON
-	GfxPoint min_size;
-	GfxPoint max_size;
-	int aspectRatioW, aspectRatioH;
-	bool actionFrame;
-	ushort highSurrogate;
-	GfxBackingContext ctx;
-	GfxBacking backing;
-}
 
 fn void _stop_check_events_native()
 {

@@ -23,16 +23,6 @@ struct GfxEglContext
 	void* egl_window;
 }
 
-struct GfxWindowSrc
-{
-	inline IntRect bounds;
-	void* window;
-	void* view;
-	void* mouse;
-	void* delegate;
-	GfxBackingContext ctx;
-	GfxBacking backing;
-}
 
 fn void _destroy_native() {}
 

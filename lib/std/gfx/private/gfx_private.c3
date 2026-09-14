@@ -1,6 +1,226 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @private;
-import libc, std::math;
+import libc, std::math, std::os, std::gfx::x11 @public, std::time;
 
+const MAX_EVENTS = 32;
+const PREALLOCATED_MONITORS = 0;
+
+const WAYLAND_ONLY = $feat(WAYLAND) && $feat(NO_X11);
+const X11_ONLY = !$feat(WAYLAND);
+const X11_WAYLAND = $feat(BSD) || $feat(LINUX);
+
+struct GfxContext
+{
+	bool initialized;
+	GfxWindow* root;
+	int windowCount;
+	GfxMouse* hiddenMouse;
+	GfxMouse*[21] standardMice;
+	GfxGenericFunc[25] callbacks;
+	GfxEvent[MAX_EVENTS] events;
+	int eventBottom;
+	int eventLen;
+	bool queueEvents;
+	bool polledEvents;
+	uint[GFX_KEYS] apiKeycodes;
+	GfxKey[$feat(WIN32) ? 512 : 256] keycodes;
+	bool stop_check_events;
+	ulong timerOffset;
+	int[3] eventWait_forceStop @feat(LINUX, BSD);
+	GfxDataTransfer* clipboard;
+	bool dnd_build;
+	GfxDataDropNode* dndRoot;
+	GfxDataDropNode* dndCur;
+
+	struct monitors
+	{
+		GfxMonitorList list;
+		sz count;
+		GfxMonitorNode* primary;
+	}
+	GfxWindow* current;
+
+	struct gl
+	{
+		CFBundleRef native_handle @feat(MACOS);
+		DylibHandle native_handle @feat(!MACOS);
+		GfxGetProcFn get_proc_addr_fn;
+	}
+	DylibHandle vulkan_handle;
+	GfxVkGetInstanceProcAddressProc vk_get_instance_proc_address;
+	struct egl
+	{
+		void* display;
+		DylibHandle handle;
+		GfxGetProcFn get_proc_addr_fn;
+	}
+	struct @feat(WIN32)
+	{
+		Win32_HINSTANCE instance;
+		Win32_WNDCLASSW wndClass;
+		ushort[256]     wideClassName;
+		Win32_HWND      helper_window;
+	}
+	struct @feat(WASM)
+	{
+		int usingAsyncify;
+	}
+	struct @feat(MACOS)
+	{
+		void* x11_handle;
+		void* x11_display;
+		CULong x11_root;
+		void* wayland_handle;
+		void* wl_display;
+		ObjId ns_app;
+		void* ns_pool;
+		NSUInteger windowNumberSeed;
+	}
+	GfxDataTransfer* unixClipboard @feat(LINUX, BSD);
+
+	struct @feat(WAYLAND)
+	{
+		WlDisplay* wlDisplay;
+		WlProxy* registry;
+		WlProxy* compositor;
+		WlProxy* seat;
+		WlProxy* shm;
+		WlProxy* wlPointer;
+		WlProxy* wlKeyboard;
+		WlProxy* xdgWmBase;
+		WlProxy* decorationManager;
+		WlProxy* constraintManager;
+		WlProxy* relativePointerManager;
+		WlProxy* relativePointer;
+		WlProxy* iconManager;
+		WlProxy* xdgOutputManager;
+		WlProxy* wp_pointer_warp;
+		WlProxy* dataDeviceManager;
+		WlProxy* dataDevice;
+		WlCursorTheme* wlCursorTheme;
+		WlProxy* cursorSurface;
+		GfxWindow* mouseOwner;
+		GfxWindow* kbOwner;
+		uint mouseEnterSerial;
+		XkbContext* xkbContext;
+		XkbKeymap* keymap;
+		XkbState* xkbState;
+		XkbComposeState* composeState;
+		int wlRepeatInfoRate;
+		int wlRepeatInfoDelay;
+		uint lastKey;
+		Clock lastKeyTime;
+	}
+	struct @feat(LINUX, BSD) @feat(!NO_X11)
+	{
+		XDisplay* display;
+		int context;
+		XWindow helper_window;
+		String class_name;
+		XlibIM im;
+		int xrandrEventBase;
+		XWindow x11Source;
+		int x11Version;
+		int x11Format;
+		GfxDataTransferType x11TransferType;
+		XErrorEvent* x11Error;
+		Atom netCurrentDesktop, net_wm_state_maximized_vert, net_wm_state_maximized_horz, netWmBypassCompositor;
+		Atom netWmState, motifWmHints, wmDeleteWindow, netWmSyncRequestCounter, netWmSyncRequest;
+		Atom atomPair, multiple, targets, saveTargets, utf8String;
+		Atom xdndTypeList, xdndSelection, xdndAware, xdndEnter, xdndPosition, xdndStatus, xdndLeave, xdndDrop, xdndFinished, xdndActionCopy;
+		Atom wmProtocols, wmState, netWmStateFullscreen, netWmStateAbove, netWmWindowOpacity;
+		Atom netWmName, netWmIcon, xselData, clipboardAtom, clipboardManager;
+		Atom xtextUriList, xtextPlain, netWorkarea;
+	}
+	bool use_wayland @feat(WAYLAND & !NO_X11);
+	bool raw_mouse;
+	struct window_state
+	{
+		GfxPoint drop;
+		bool mouse_enter;
+		bool dataDragging;
+		bool dataDrop;
+		bool mouse_leave;
+		GfxWindow* win;
+		GfxWindow* win_leave;
+		sz dataLength;
+	}
+	GfxKeyState[8] mouseButtons;
+	GfxKeyState[GFX_KEYS] keyboard;
+	Vec2 scroll;
+	Vec2 vector;
+}
+
+GfxContext _gfx;
+
+bitstruct GfxBacking : char
+{
+	bool egl;
+	bool opengl;
+	bool owned;
+}
+
+union GfxBackingContext
+{
+	GfxGlContext* native;
+	GfxEglContext* egl;
+}
+
+struct GfxMonitorList
+{
+	GfxMonitorNode* head;
+	GfxMonitorNode* cur;
+}
+
+struct GfxKeyState
+{
+	bool current;
+	bool prev;
+}
+
+struct GfxWindowInternal
+{
+	GfxKey exit_key;
+	GfxPoint last_mouse;
+	bool shouldClose;
+	bool raw_mouse;
+	bool capture_mouse;
+	bool inFocus;
+	bool mouse_inside;
+	GfxKeyModifier mod;
+	GfxEventMask enabled_events;
+	GfxWindowFlags flags;
+	IntRect old_bounds;
+	GfxMonitorMode oldMode;
+	GfxMouse* mouse;
+}
+
+
+struct GfxMonitorNode
+{
+	GfxMonitor mon;
+	bool disconnected;
+	GfxMonitorNode* next;
+	void* native0;
+	void* native1;
+	ulong nativeId0;
+	ulong nativeId1;
+	struct @feat(WAYLAND)
+	{
+		uint id;
+		WlProxy* output;
+		WlProxy* xdgOutput;
+		GfxMonitorMode* modes;
+		sz mode_count;
+	}
+	struct @feat(WIN32)
+	{
+		Win32_HMONITOR hMonitor;
+		ushort[32] adapterName;
+		ushort[32] deviceName;
+	}
+}
+
+alias GfxGetProcFn = fn void*(ZString);
 
 fn void _init_keycodes()
 {
@@ -47,6 +267,12 @@ fn bool _extension_is_in_list(String extensions, String extension)
 	return false;
 }
 
+fn void _event_queue_call_push(GfxEvent* event)
+{
+	if (_gfx.callbacks[event.type]) _gfx.callbacks[event.type](event);
+	event_queue_push(event);
+}
+
 
 fn void _reset_prev_state()
 {
@@ -67,6 +293,38 @@ fn void _reset_prev_state()
 	}
 	_gfx.dndRoot = null;
 	_gfx.dndCur = null;
+}
+
+fn void? _window_init(GfxWindow* self, String name, int x, int y, int w, int h, GfxWindowFlags flags)
+{
+	if (!_gfx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
+	*self = {};
+	_gfx.windowCount++;
+	if (!_gfx.root) set_root_window(self);
+	self.bounds = { x, y, w, h };
+	self.internal.mouse = _gfx.standardMice[GfxMouseIcon.NORMAL.ordinal];
+	self.internal.flags = flags;
+	self.internal.enabled_events = ALL_EVENTS;
+	_create_window_native(name, flags, self)!;
+	if (!flags.hide_mouse) self.set_mouse_default();
+
+	self.set_name(name);
+	switch
+	{
+		case !flags.hide:
+			flags.hide = true;
+			self.show();
+		case flags.maximize || flags.fullscreen:
+			self.hide();
+	}
+}
+
+fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
+{
+	GfxWindow* win = mem::new(GfxWindow);
+	defer catch free(win);
+	_window_init(win, name, x, y, w, h, flags)!;
+	return win;
 }
 
 

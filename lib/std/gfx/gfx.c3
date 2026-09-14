@@ -47,19 +47,15 @@ excuse
 	IMAGE_COULD_NOT_LOAD,
 }
 
-const MAX_EVENTS = 32;
-const PREALLOCATED_MONITORS = 0;
+
 const Duration WAIT_FOREVER = Duration::max;
-
-
-typedef GfxMouse = void;
 
 alias GfxFn = fn void();
 alias GfxGenericFunc = fn void(GfxEvent* e);
 alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
 alias GfxPoint = int[<2>];
 alias GfxSize = int[<2>];
-alias GfxGetProcFn = fn void*(ZString);
+typedef GfxMouse = void;
 
 struct GfxSurface
 {
@@ -78,6 +74,20 @@ struct GfxMonitorMode
 	void* src;
 }
 
+struct GfxColorLayout
+{
+	int r, g, b, a;
+	int channels;
+}
+
+struct GfxGammaRamp
+{
+	ushort[] red;
+	ushort[] green;
+	ushort[] blue;
+	Allocator a;
+}
+
 struct GfxMonitor
 {
 	GfxPoint origin;
@@ -90,12 +100,6 @@ struct GfxMonitor
 	GfxMonitorNode* node;
 }
 
-struct GfxKeyState
-{
-	bool current;
-	bool prev;
-}
-
 struct GfxWindow
 {
 	inline IntRect bounds;
@@ -104,213 +108,11 @@ struct GfxWindow
 	void* user_ptr;
 }
 
-struct GfxMonitorNode
-{
-	GfxMonitor mon;
-	bool disconnected;
-	GfxMonitorNode* next;
-	void* native0;
-	void* native1;
-	ulong nativeId0;
-	ulong nativeId1;
-	struct @feat(WAYLAND)
-	{
-		uint id;
-		WlProxy* output;
-		WlProxy* xdgOutput;
-		GfxMonitorMode* modes;
-		sz mode_count;
-	}
-	struct @feat(WIN32)
-	{
-		void* hMonitor; // HMONITOR
-		ushort[32] adapterName;
-		ushort[32] deviceName;
-	}
-}
-
-struct GfxWindowInternal
-{
-	GfxKey exit_key;
-	GfxPoint last_mouse;
-	bool shouldClose;
-	bool raw_mouse;
-	bool capture_mouse;
-	bool inFocus;
-	bool mouse_inside;
-	GfxKeyModifier mod;
-	GfxEventMask enabled_events;
-	GfxWindowFlags flags;
-	IntRect old_bounds;
-	GfxMonitorMode oldMode;
-	GfxMouse* mouse;
-}
-
-
-struct GfxWindowState
-{
-	GfxPoint drop;
-	bool mouse_enter;
-	bool dataDragging;
-	bool dataDrop;
-	bool mouse_leave;
-	GfxWindow* win;
-	GfxWindow* win_leave;
-	sz dataLength;
-}
-
-union GfxBackingContext
-{
-	GfxGlContext* native;
-	GfxEglContext* egl;
-}
-
-struct GfxMonitors
-{
-	GfxMonitorList list;
-	sz count;
-	GfxMonitorNode* primary;
-}
-
-struct GfxMonitorList
-{
-	GfxMonitorNode* head;
-	GfxMonitorNode* cur;
-}
-
 struct GfxDataTransfer
 {
 	String text;
 	GfxDataTransferType type;
 }
-
-struct GfxContext
-{
-	bool initialized;
-	GfxWindow* root;
-	int windowCount;
-	GfxMouse* hiddenMouse;
-	GfxMouse*[21] standardMice;
-	GfxGenericFunc[25] callbacks;
-	GfxEvent[MAX_EVENTS] events;
-	int eventBottom;
-	int eventLen;
-	bool queueEvents;
-	bool polledEvents;
-	uint[GFX_KEYS] apiKeycodes;
-	GfxKey[$feat(WIN32) ? 512 : 256] keycodes;
-	bool stop_check_events;
-	ulong timerOffset;
-	int[3] eventWait_forceStop @feat(LINUX, BSD);
-	GfxDataTransfer* clipboard;
-	bool dnd_build;
-	GfxDataDropNode* dndRoot;
-	GfxDataDropNode* dndCur;
-
-	GfxMonitors monitors;
-	GfxWindow* current;
-
-	struct gl
-	{
-		CFBundleRef native_handle @feat(MACOS);
-		DylibHandle native_handle @feat(!MACOS);
-		GfxGetProcFn get_proc_addr_fn;
-	}
-	DylibHandle vulkan_handle;
-	GfxVkGetInstanceProcAddressProc vk_get_instance_proc_address;
-	struct egl
-	{
-		void* display;
-		DylibHandle handle;
-		GfxGetProcFn get_proc_addr_fn;
-	}
-	struct @feat(WIN32)
-	{
-		Win32_HINSTANCE instance;
-		Win32_WNDCLASSW wndClass;
-		ushort[256]     wideClassName;
-		Win32_HWND      helper_window;
-	}
-	struct @feat(WASM)
-	{
-		int usingAsyncify;
-	}
-	struct @feat(MACOS)
-	{
-		void* x11_handle;
-		void* x11_display;
-		CULong x11_root;
-		void* wayland_handle;
-		void* wl_display;
-		ObjId ns_app;
-		void* ns_pool;
-		NSUInteger windowNumberSeed;
-	}
-	GfxDataTransfer* unixClipboard @feat(LINUX, BSD);
-
-	struct @feat(WAYLAND)
-	{
-		WlDisplay* wlDisplay;
-		WlProxy* registry;
-		WlProxy* compositor;
-		WlProxy* seat;
-		WlProxy* shm;
-		WlProxy* wlPointer;
-		WlProxy* wlKeyboard;
-		WlProxy* xdgWmBase;
-		WlProxy* decorationManager;
-		WlProxy* constraintManager;
-		WlProxy* relativePointerManager;
-		WlProxy* relativePointer;
-		WlProxy* iconManager;
-		WlProxy* xdgOutputManager;
-		WlProxy* wp_pointer_warp;
-		WlProxy* dataDeviceManager;
-		WlProxy* dataDevice;
-		WlCursorTheme* wlCursorTheme;
-		WlProxy* cursorSurface;
-		GfxWindow* mouseOwner;
-		GfxWindow* kbOwner;
-		uint mouseEnterSerial;
-		XkbContext* xkbContext;
-		XkbKeymap* keymap;
-		XkbState* xkbState;
-		XkbComposeState* composeState;
-		int wlRepeatInfoRate;
-		int wlRepeatInfoDelay;
-		uint lastKey;
-		Clock lastKeyTime;
-	}
-	struct @feat(LINUX, BSD) @feat(!NO_X11)
-	{
-		XDisplay* display;
-		int context;
-		XWindow helper_window;
-		String class_name;
-		XlibIM im;
-		int xrandrEventBase;
-		XWindow x11Source;
-		int x11Version;
-		int x11Format;
-		GfxDataTransferType x11TransferType;
-		XErrorEvent* x11Error;
-		Atom netCurrentDesktop, net_wm_state_maximized_vert, net_wm_state_maximized_horz, netWmBypassCompositor;
-		Atom netWmState, motifWmHints, wmDeleteWindow, netWmSyncRequestCounter, netWmSyncRequest;
-		Atom atomPair, multiple, targets, saveTargets, utf8String;
-		Atom xdndTypeList, xdndSelection, xdndAware, xdndEnter, xdndPosition, xdndStatus, xdndLeave, xdndDrop, xdndFinished, xdndActionCopy;
-		Atom wmProtocols, wmState, netWmStateFullscreen, netWmStateAbove, netWmWindowOpacity;
-		Atom netWmName, netWmIcon, xselData, clipboardAtom, clipboardManager;
-		Atom xtextUriList, xtextPlain, netWorkarea;
-	}
-	bool useWaylandBool @feat(WAYLAND & !NO_X11);
-	bool raw_mouse;
-	GfxWindowState window_state;
-	GfxKeyState[8] mouseButtons;
-	GfxKeyState[GFX_KEYS] keyboard;
-	Vec2 scroll;
-	Vec2 vector;
-}
-
 
 struct GfxDataDropNode
 {
@@ -319,6 +121,85 @@ struct GfxDataDropNode
 	GfxDataTransferType type;
 	GfxDataDropNode* next;
 }
+
+struct GfxWindowSrc @feat(WASM)
+{
+	inline IntRect    bounds;
+	void*             window;
+	void*             view;
+	void*             mouse;
+	void*             delegate;
+	GfxBackingContext ctx;
+	GfxBacking        backing;
+}
+
+
+struct GfxWindowSrc @feat(MACOS)
+{
+	inline IntRect    bounds;
+	ObjId             window;
+	ObjId             view;
+	ObjId             mouse;
+	ObjId             delegate;
+	GfxBackingContext ctx;
+	GfxBacking        backing;
+}
+
+struct GfxWindowSrc @feat(WIN32)
+{
+	inline IntRect      bounds;
+	Win32_HWND          window;
+	Win32_HDC           hdc;
+	Win32_HICON         hIconSmall;
+	Win32_HICON         hIconBig;
+	GfxPoint            min_size;
+	GfxPoint            max_size;
+	int                 aspectRatioW, aspectRatioH;
+	bool                actionFrame;
+	ushort              highSurrogate;
+	GfxBackingContext   ctx;
+	GfxBacking          backing;
+}
+
+struct GfxWindowSrc @feat(BSD, LINUX)
+{
+	inline IntRect bounds;
+	GfxBackingContext ctx;
+	GfxBacking backing;
+	struct @feat(!NO_X11)
+	{
+		XWindow window;
+		XWindow parent;
+		GContext gc;
+		XlibIC ic;
+		Clock flashEnd;
+		long counter_value;
+		XSyncCounter counter;
+	}
+	struct @feat(WAYLAND)
+	{
+		WlProxy* surface;
+		WlProxy* xdgSurface;
+		WlProxy* xdgToplevel;
+		WlProxy* decoration;
+		WlProxy* lockedPointer;
+		WlProxy* icon;
+		WlProxy* dataSource;
+		WlProxy* customCursorSurface;
+		GfxMonitorNode* activeMonitor;
+		uint decorationMode;
+		bool pendingActivated;
+		bool activated;
+		bool resizing;
+		bool pendingMaximized;
+		bool maximized;
+		bool minimized;
+		bool configured;
+		bool usingCustomCursor;
+	}
+}
+
+
 
 struct GfxCommonEvent
 {
@@ -704,10 +585,8 @@ bitstruct GfxEventMask : uint
 }
 
 const GfxEventMask KEY_EVENTS            = { .key_pressed, .key_released, .key_char };
-const GfxEventMask MOUSE_EVENTS          = { .mouse_button_pressed, .mouse_button_released, .mouse_scroll,
-.mouse_motion, .mouse_raw_motion, .mouse_enter, .mouse_leave };
-const GfxEventMask WINDOW_EVENTS         = { .window_moved, .window_resized, .window_refresh,
-.window_maximized, .window_minimized, .window_restored, .scale_updated };
+const GfxEventMask MOUSE_EVENTS          = { .mouse_button_pressed, .mouse_button_released, .mouse_scroll, .mouse_motion, .mouse_raw_motion, .mouse_enter, .mouse_leave };
+const GfxEventMask WINDOW_EVENTS         = { .window_moved, .window_resized, .window_refresh, .window_maximized, .window_minimized, .window_restored, .scale_updated };
 const GfxEventMask WINDOW_FOCUS_EVENTS   = { .window_focus_in, .window_focus_out };
 const GfxEventMask DATA_DRAG_DROP_EVENTS = { .data_drop, .data_drag };
 const GfxEventMask MONITOR_EVENTS        = { .monitor_connected, .monitor_disconnected };
@@ -741,7 +620,6 @@ bitstruct GfxWindowFlags : uint
 const GfxWindowFlags WINDOWED_FULLSCREEN = { .no_border, .maximize };
 const GfxWindowFlags CAPTURE_RAW_MOUSE = { .capture_mouse, .raw_mouse };
 
-
 enum GfxMouseIcon : char
 {
 	NORMAL,
@@ -774,8 +652,6 @@ constset GfxFlashRequest
 	UNTIL_FOCUSED
 }
 
-
-// public
 fn void convert_image_data_64(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count, bool is64bit)
 {
 	char[4] rgba = {0, 0, 0, 0};
@@ -799,7 +675,6 @@ fn void convert_image_data_64(char* dest_data, char* src_data, GfxColorLayout* s
 <*
  @require !@catch(dest_w.overflow_mul(dest_h))
 *>
-// public
 fn void copy_image_data_64(char* dest_data, int dest_w, int dest_h, GfxFormat dest_format, char* src_data, GfxFormat src_format, bool is64bit, GfxConvertImageDataFn func)
 {
 	sz count = (sz)dest_w * dest_h;
@@ -821,7 +696,6 @@ fn void copy_image_data_64(char* dest_data, int dest_w, int dest_h, GfxFormat de
 	}
 }
 
-// public
 fn void copy_image_data(char* dest_data, int w, int h, GfxFormat dest_format, char* src_data, GfxFormat src_format, GfxConvertImageDataFn func)
 {
 	copy_image_data_64(dest_data, w, h, dest_format, src_data, src_format, false, func);
@@ -895,14 +769,10 @@ fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxW
 // public
 fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
 {
-	GfxWindow* win = mem::new(GfxWindow);
-	defer catch free(win);
-	win.init(name, x, y, w, h, flags)!;
-	return win;
+	return _create_window(name, x, y, w, h, flags);
 }
 
 fn bool is_mouse_pressed(GfxMouseButton button) => _gfx.mouseButtons[(sz)button].current && !_gfx.mouseButtons[(sz)button].prev;
-
 
 fn void GfxWindow.flash(&self, GfxFlashRequest request) => _window_flash_native(self, request);
 
@@ -1557,32 +1427,6 @@ fn void GfxGammaRamp.free(&self)
 	*self = {};
 }
 
-
-fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindowFlags flags)
-{
-	if (!_gfx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
-	*self = {};
-	_gfx.windowCount++;
-	if (!_gfx.root) set_root_window(self);
-	self.bounds = { x, y, w, h };
-	self.internal.mouse = _gfx.standardMice[GfxMouseIcon.NORMAL.ordinal];
-	self.internal.flags = flags;
-	self.internal.enabled_events = ALL_EVENTS;
-	_create_window_native(name, flags, self)!;
-	if (!flags.hide_mouse) self.set_mouse_default();
-
-	self.set_name(name);
-	switch
-	{
-		case !flags.hide:
-			flags.hide = true;
-			self.show();
-		case flags.maximize || flags.fullscreen:
-			self.hide();
-	}
-}
-
-
 fn bool GfxWindow.will_capture_mouse(&self) => self.internal.capture_mouse;
 
 fn bool GfxWindow.is_raw_mouse(&self) => self.internal.raw_mouse;
@@ -1854,7 +1698,7 @@ fn void? load_opengl()
 		$case X11_WAYLAND && X11_ONLY:
 			return _load_opengl_x11();
 		$case X11_WAYLAND:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _load_opengl_wayland();
 			}
@@ -1883,37 +1727,3 @@ fn void unload_vulkan()
 {
 	_unload_vulkan_native() @inline;
 }
-
-
-struct GfxColorLayout
-{
-	int r, g, b, a;
-	int channels;
-}
-
-struct GfxGammaRamp
-{
-	ushort[] red;
-	ushort[] green;
-	ushort[] blue;
-	Allocator a;
-}
-
-bitstruct GfxBacking : char
-{
-	bool egl;
-	bool opengl;
-	bool owned;
-}
-
-fn void _event_queue_call_push(GfxEvent* event)
-{
-	if (_gfx.callbacks[event.type]) _gfx.callbacks[event.type](event);
-	event_queue_push(event);
-}
-
-GfxContext _gfx;
-
-const WAYLAND_ONLY = $feat(WAYLAND) && $feat(NO_X11);
-const X11_ONLY = !$feat(WAYLAND);
-const X11_WAYLAND = $feat(BSD) || $feat(LINUX);

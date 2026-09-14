@@ -1,9 +1,6 @@
-module std::gfx @feat(LINUX, BSD);
+module std::gfx @feat(LINUX, BSD) @private;
 import std::math, std::collections::list, libc, std::time, std::os::env, std::os::posix, std::net::os;
 import std::gfx::x11 @public;
-
-
-bool gfx_use_wayland = false;
 
 struct GfxNativeImage
 {
@@ -38,43 +35,6 @@ struct GfxEglContext
 	void* egl_window;
 }
 
-struct GfxWindowSrc
-{
-	inline IntRect bounds;
-	GfxBackingContext ctx;
-	GfxBacking backing;
-	struct @feat(!NO_X11)
-	{
-		XWindow window;
-		XWindow parent;
-		GContext gc;
-		XlibIC ic;
-		Clock flashEnd;
-		long counter_value;
-		XSyncCounter counter;
-	}
-	struct @feat(WAYLAND)
-	{
-		WlProxy* surface;
-		WlProxy* xdgSurface;
-		WlProxy* xdgToplevel;
-		WlProxy* decoration;
-		WlProxy* lockedPointer;
-		WlProxy* icon;
-		WlProxy* dataSource;
-		WlProxy* customCursorSurface;
-		GfxMonitorNode* activeMonitor;
-		uint decorationMode;
-		bool pendingActivated;
-		bool activated;
-		bool resizing;
-		bool pendingMaximized;
-		bool maximized;
-		bool minimized;
-		bool configured;
-		bool usingCustomCursor;
-	}
-}
 
 
 fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
@@ -85,7 +45,7 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 		$case X11_ONLY:
 			return _monitor_get_modes_x11(monitor);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _monitor_get_modes_wayland(monitor);
 			}
@@ -101,7 +61,7 @@ fn void _window_show_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_show_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_show_wayland(win);
 			}
@@ -118,7 +78,7 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a
 		$case X11_ONLY:
 			return _monitor_get_gamma_ramp_x11(monitor, a);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _monitor_get_gamma_ramp_wayland(monitor, a);
 			}
@@ -134,7 +94,7 @@ fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
 		$case X11_ONLY:
 			return monitor_set_gamma_ramp_x11(monitor, ramp);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _monitor_set_gamma_ramp_wayland(monitor, ramp);
 			}
@@ -150,7 +110,7 @@ fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
 		$case X11_ONLY:
 			return monitor_set_gamma_x11(monitor, gamma);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _monitor_set_gamma_wayland(monitor, gamma);
 			}
@@ -166,7 +126,7 @@ fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 		$case X11_ONLY:
 			return _monitor_set_mode_native_x11(mon, mode);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _monitor_set_mode_wayland(mon, mode);
 			}
@@ -182,7 +142,7 @@ fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format)
 		$case X11_ONLY:
 			return _create_mouse_x11(data, size, format);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _create_mouse_wayland(data, size, format);
 			}
@@ -199,7 +159,7 @@ fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
 		$case X11_ONLY:
 			return _create_mouse_standard_x11(mouse);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _create_mouse_standard_wayland(mouse);
 			}
@@ -216,7 +176,7 @@ fn void _destroy_native()
 		$case X11_ONLY:
 			return _destroy_x11();
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _destroy_wayland();
 			}
@@ -232,7 +192,7 @@ fn bool _opengl_extension_is_supported_native(String extension)
 		$case X11_ONLY:
 			return _opengl_extension_is_supported_x11(extension);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _opengl_extension_is_supported_wayland(extension);
 			}
@@ -249,7 +209,7 @@ fn void _free_mouse(GfxMouse* mouse)
 		$case X11_ONLY:
 			return _free_mouse_x11(mouse);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _free_mouse_wayland(mouse);
 			}
@@ -265,7 +225,7 @@ fn void* _get_current_opengl_context_native()
 		$case X11_ONLY:
 			return _get_current_opengl_context_x11();
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _get_current_opengl_context_wayland();
 			}
@@ -281,7 +241,7 @@ fn GfxPoint _get_global_mouse_native()
 		$case X11_ONLY:
 			return _get_global_mouse_x11();
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _get_global_mouse_wayland();
 			}
@@ -297,7 +257,7 @@ fn void* _get_opengl_proc_native(ZString procname)
 		$case X11_ONLY:
 			return _get_opengl_proc(procname);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _get_egl_proc_address(procname);
 			}
@@ -314,7 +274,7 @@ fn void _init_keycodes_native()
 		$case X11_ONLY:
 			return _init_keycodes_native_x11();
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _init_keycodes_native_wayland();
 			}
@@ -330,7 +290,7 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 		$case X11_ONLY:
 			return _create_window_x11(name, flags, win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _create_window_wayland(name, flags, win);
 			}
@@ -350,17 +310,17 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 			if (!(flags & ENABLE_X11))
 			{
 				String wayland_display = env::tget_var("WAYLAND_DISPLAY") ?? "";
-				gfx_use_wayland = wayland_display != "";
-				if (gfx_use_wayland)
+				_gfx.use_wayland = wayland_display != "";
+				if (_gfx.use_wayland)
 				{
 					if (try _init_wayland(class_name, flags)) return;
 					log::info("Falling back to X11", category: log::CATEGORY_VIDEO);
-					gfx_use_wayland = false;
+					_gfx.use_wayland = false;
 				}
 			}
 			else
 			{
-				gfx_use_wayland = false;
+				_gfx.use_wayland = false;
 			}
 			return _init_x11(class_name, flags);
 	$endswitch
@@ -376,7 +336,7 @@ fn void _monitor_node_free_native(GfxMonitorNode* node)
 		$case X11_ONLY:
 			return _monitor_node_free_x11(node);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _monitor_node_free_wayland(node);
 			}
@@ -392,7 +352,7 @@ fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 		$case X11_ONLY:
 			return _monitor_get_workarea_x11(monitor);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _monitor_get_workarea_wayland(monitor);
 			}
@@ -408,7 +368,7 @@ fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, Gfx
 		$case X11_ONLY:
 			return _monitor_request_mode_x11(mon, mode, request);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _monitor_request_mode_wayland(mon, mode, request);
 			}
@@ -425,7 +385,7 @@ fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 		$case X11_ONLY:
 			return _physical_to_mapped_key_native_x11(key);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _physical_to_mapped_key_native_wayland(key);
 			}
@@ -442,7 +402,7 @@ fn void _poll_events_native()
 		$case X11_ONLY:
 			return _poll_events_x11();
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _poll_events_wayland();
 			}
@@ -486,7 +446,7 @@ fn void _wait_for_event_native(Duration duration)
 		$case X11_ONLY:
 			_wait_for_event_x11(fds[..], duration);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				_wait_for_event_wayland(fds[..], duration);
 			}
@@ -514,7 +474,7 @@ fn void _poll_monitors_native()
 		$case X11_ONLY:
 			return _poll_monitors_x11();
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _poll_monitors_wayland();
 			}
@@ -530,7 +490,7 @@ fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferT
 		$case X11_ONLY:
 			return _read_clipboard_x11(allocator, type);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _read_clipboard_wayland(allocator, type);
 			}
@@ -547,7 +507,7 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 		$case X11_ONLY:
 			return _window_blit_surface_x11(win, surface);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_blit_surface_wayland(win, surface);
 			}
@@ -563,7 +523,7 @@ fn void _window_close_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_close_native_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_close_wayland(win);
 			}
@@ -579,7 +539,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* contex
 		$case X11_ONLY:
 			return _window_init_opengl_context_x11(win, context, hints);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_init_opengl_context_wayland(win, context, hints);
 			}
@@ -595,7 +555,7 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* context,
 		$case X11_ONLY:
 			return NOT_IMPLEMENTED~;
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_init_egl_context_wayland(win, context, hints);
 			}
@@ -612,7 +572,7 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 		$case X11_ONLY:
 			return _window_create_wgpu_surface_x11(window, instance);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_create_wgpu_surface_wayland(window, instance);
 			}
@@ -629,7 +589,7 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 		$case X11_ONLY:
 			return _window_release_opengl_context_x11(win, ctx);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_release_opengl_context_wayland(win, ctx);
 			}
@@ -645,7 +605,7 @@ fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
 		$case X11_ONLY:
 			return _window_release_egl_context_x11(win, ctx);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_release_egl_context_wayland(win, ctx);
 			}
@@ -662,7 +622,7 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_fetch_size_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_fetch_size_wayland(win);
 			}
@@ -678,7 +638,7 @@ fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request)
 		$case X11_ONLY:
 			return _window_flash_x11(win, request);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_flash_wayland(win, request);
 			}
@@ -694,7 +654,7 @@ fn void _window_focus_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_focus_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_focus_wayland(win);
 			}
@@ -710,7 +670,7 @@ fn void _window_hide_native(GfxWindow* win) @private
 		$case X11_ONLY:
 			return _window_hide_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_hide_wayland(win);
 			}
@@ -727,7 +687,7 @@ fn bool _window_is_hidden_native(GfxWindow* win) @private
 		$case X11_ONLY:
 			return _window_is_hidden_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_is_hidden_wayland(win);
 			}
@@ -743,7 +703,7 @@ fn bool _window_is_maximized_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_is_maximized_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_is_maximized_wayland(win);
 			}
@@ -760,7 +720,7 @@ fn bool _window_is_minimized_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_is_minimized_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_is_minimized_wayland(win);
 			}
@@ -777,7 +737,7 @@ fn void _window_make_opengl_current_context_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_make_opengl_current_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_make_opengl_current_context_wayland(win);
 			}
@@ -794,7 +754,7 @@ fn void _window_maximize_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_maximize_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_maximize_wayland(win);
 			}
@@ -811,7 +771,7 @@ fn void _window_minimize_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_minimize_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_minimize_wayland(win);
 			}
@@ -827,7 +787,7 @@ fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 		$case X11_ONLY:
 			return _window_move_mouse_x11(win, where);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_move_mouse_wayland(win, where);
 			}
@@ -844,7 +804,7 @@ fn void _window_move_native(GfxWindow* win, GfxPoint where)
 		$case X11_ONLY:
 			return _window_move_x11(win, where);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_move_wayland(win, where);
 			}
@@ -860,7 +820,7 @@ fn void _window_raise_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_raise_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_raise_wayland(win);
 			}
@@ -877,7 +837,7 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 		$case X11_ONLY:
 			return _window_resize_x11(win, size);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_resize_wayland(win, size);
 			}
@@ -894,7 +854,7 @@ fn void _window_restore_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_restore_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_restore_wayland(win);
 			}
@@ -910,7 +870,7 @@ fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h)
 		$case X11_ONLY:
 			return _window_set_aspect_ratio_x11(win, w, h);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_aspect_ratio_wayland(win, w, h);
 			}
@@ -927,7 +887,7 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 		$case X11_ONLY:
 			return _window_set_border_x11(win, border);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_border_wayland(win, border);
 			}
@@ -944,7 +904,7 @@ fn void _window_set_floating_native(GfxWindow* win, bool floating)
 		$case X11_ONLY:
 			return _window_set_floating_x11(win, floating);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_floating_wayland(win, floating);
 			}
@@ -961,7 +921,7 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 		$case X11_ONLY:
 			return _window_set_fullscreen_x11(win, fullscreen);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_fullscreen_wayland(win, fullscreen);
 			}
@@ -978,7 +938,7 @@ fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 		$case X11_ONLY:
 			return _window_set_max_size_x11(win, size);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_max_size_wayland(win, size);
 			}
@@ -995,7 +955,7 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 		$case X11_ONLY:
 			return _window_set_min_size_x11(win, size);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_min_size_wayland(win, size);
 			}
@@ -1012,7 +972,7 @@ fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 		$case X11_ONLY:
 			return _window_set_mouse_passthrough_x11(win, passthrough);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_mouse_passthrough_wayland(win, passthrough);
 			}
@@ -1028,7 +988,7 @@ fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 		$case X11_ONLY:
 			return _window_set_mouse_x11(win, mouse);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_mouse_wayland(win, mouse);
 			}
@@ -1045,7 +1005,7 @@ fn void _window_set_opacity_native(GfxWindow* win, char opacity)
 		$case X11_ONLY:
 			return _window_set_opacity_x11(win, opacity);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_opacity_wayland(win, opacity);
 			}
@@ -1062,7 +1022,7 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 		$case X11_ONLY:
 			return _window_set_raw_mouse_mode_x11(win, state);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_raw_mouse_mode_wayland(win, state);
 			}
@@ -1079,7 +1039,7 @@ fn void _window_opengl_swap_buffers_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_opengl_swap_buffers_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_opengl_swap_buffers_wayland(win);
 			}
@@ -1096,7 +1056,7 @@ fn void? _write_clipboard_native(GfxDataTransfer* data)
 		$case X11_ONLY:
 			return _write_clipboard_x11(data);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _write_clipboard_wayland(data);
 			}
@@ -1116,7 +1076,7 @@ fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, Gfx
 		$case X11_ONLY:
 			return _init_surface_x11(surface, data, w, h, format, window);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _init_surface_wayland(surface, data, w, h, format, window);
 			}
@@ -1133,7 +1093,7 @@ fn void _surface_release_native(GfxSurface* surface)
 		$case X11_ONLY:
 			return _surface_release_x11(surface);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _surface_release_wayland(surface);
 			}
@@ -1149,7 +1109,7 @@ fn bool _window_is_floating_native(GfxWindow* win) @private
 		$case X11_ONLY:
 			return _window_is_floating_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_is_floating_wayland(win);
 			}
@@ -1165,7 +1125,7 @@ fn void _window_set_name_native(GfxWindow* win, String name)
 		$case X11_ONLY:
 			return _window_set_name_x11(win, name);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_name_wayland(win, name);
 			}
@@ -1182,7 +1142,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data_src, int w, int h, Gf
 		$case X11_ONLY:
 			return _window_set_icon_x11(win, data_src, w, h, format, type);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_set_icon_wayland(win, data_src, w, h, format, type);
 			}
@@ -1199,7 +1159,7 @@ fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
 		$case X11_ONLY:
 			return _window_find_monitor_x11(win);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_find_monitor_wayland(win);
 			}
@@ -1216,7 +1176,7 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 		$case X11_ONLY:
 			return _window_capture_mouse_x11(win, state);
 		$default:
-			if (gfx_use_wayland)
+			if (_gfx.use_wayland)
 			{
 				return _window_capture_mouse_wayland(win, state);
 			}
@@ -1234,7 +1194,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 		$case X11_ONLY:
 			return _window_create_vulkan_surface_x11(win, instance);
 		$default:
-			return gfx_use_wayland
+			return _gfx.use_wayland
 				? _window_create_vulkan_surface_wayland(win, instance)
 				: _window_create_vulkan_surface_x11(win, instance);
 	$endswitch
@@ -1250,7 +1210,7 @@ fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance insta
 		$case X11_ONLY:
 			return _vulkan_get_physical_device_presentation_support_x11(instance, physical_device, queue_family_index);
 		$default:
-			return gfx_use_wayland
+			return _gfx.use_wayland
 			? _vulkan_get_physical_device_presentation_support_wayland(instance, physical_device, queue_family_index)
 			: _vulkan_get_physical_device_presentation_support_x11(instance, physical_device, queue_family_index);
 	$endswitch

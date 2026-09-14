@@ -23,16 +23,7 @@ struct GfxNativeImage
 	void* native2;
 }
 
-struct GfxWindowSrc
-{
-	inline IntRect bounds;
-	ObjId window;
-	ObjId view;
-	ObjId mouse;
-	ObjId delegate;
-	GfxBackingContext ctx;
-	GfxBacking backing;
-}
+
 
 const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
 const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;

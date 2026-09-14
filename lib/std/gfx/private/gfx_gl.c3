@@ -97,7 +97,7 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 				$case X11_ONLY:
 					return _window_opengl_swap_interval_x11(self, swap_interval);
 				$default:
-					if (gfx_use_wayland)
+					if (_gfx.use_wayland)
 					{
 						return _window_opengl_swap_interval_wayland(self, swap_interval);
 					}
