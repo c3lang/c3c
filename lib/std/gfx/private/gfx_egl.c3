@@ -1,4 +1,4 @@
-module std::gfx @private;
+module std::gfx @feat(MACOS, BSD, LINUX, WASM, WIN32) @private;
 import libc, std::os;
 
 fn void? _load_egl_native() @private
