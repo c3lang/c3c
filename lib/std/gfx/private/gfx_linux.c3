@@ -1,8 +1,9 @@
-module std::gfx @feat(X11_WAYLAND, X11, WAYLAND);
+module std::gfx @feat(LINUX, BSD);
 import std::math, std::collections::list, libc, std::time, std::os::env, std::os::posix, std::net::os;
+import std::gfx::x11 @public;
 
-const WAYLAND_ONLY = $feat(WAYLAND) && !$feat(X11_WAYLAND) && !$feat(X11);
-const X11_ONLY = !$feat(WAYLAND) && !$feat(X11_WAYLAND) && $feat(X11);
+const WAYLAND_ONLY = $feat(WAYLAND) && $feat(NO_X11);
+const X11_ONLY = !$feat(WAYLAND);
 
 bool gfx_use_wayland = false;
 
@@ -11,7 +12,7 @@ struct GfxNativeImage
 	GfxFormat format;
 	char* buffer;
 	void* bitmap; // XImage* (X11)
-	struct @feat(WAYLAND, X11_WAYLAND)
+	struct @feat(WAYLAND)
 	{
 		WlProxy* pool; // wl_shm_pool* (Wayland)
 		int fd; // Wayland
@@ -21,12 +22,12 @@ struct GfxNativeImage
 
 struct GfxGlContext
 {
-	struct @feat(X11, X11_WAYLAND)
+	struct @feat(!NO_X11)
 	{
 		GLXContext ctx;
 		GLXWindow window;
 	}
-	struct @feat(X11_WAYLAND, WAYLAND)
+	struct @feat(WAYLAND)
 	{
 		GfxEglContext egl;
 	}
@@ -44,7 +45,7 @@ struct GfxWindowSrc
 	inline IntRect bounds;
 	GfxBackingContext ctx;
 	GfxBacking backing;
-	struct @feat(X11, X11_WAYLAND)
+	struct @feat(!NO_X11)
 	{
 		XWindow window;
 		XWindow parent;
@@ -54,7 +55,7 @@ struct GfxWindowSrc
 		long counter_value;
 		XSyncCounter counter;
 	}
-	struct @feat(X11_WAYLAND, WAYLAND)
+	struct @feat(WAYLAND)
 	{
 		WlProxy* surface;
 		WlProxy* xdgSurface;

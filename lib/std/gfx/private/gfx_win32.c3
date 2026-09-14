@@ -1427,11 +1427,6 @@ fn void? _window_create_directx_swap_chain_native(GfxWindow* win, Win32_IDXGIFac
 
 // --- Egl
 
-fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints* hints)
-{
-	return NOT_IMPLEMENTED~;
-}
-
 fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx) {}
 
 // --- Vulkan

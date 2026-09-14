@@ -1,4 +1,4 @@
-module std::gfx @feat(WAYLAND, X11_WAYLAND) @private @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon", "EGL");
+module std::gfx @feat(WAYLAND) @private;
 import std::math, std::collections, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
 
 const uint WL_MARSHAL_FLAG_DESTROY = 1;
@@ -63,45 +63,12 @@ struct WlArray
 	void* data;
 }
 
-extern fn WlDisplay* wlDisplayConnect(ZString name) @cname("wl_display_connect");
-extern fn void wlDisplayDisconnect(WlDisplay* display) @cname("wl_display_disconnect");
-extern fn int wlDisplayGetFd(WlDisplay* display) @cname("wl_display_get_fd");
-extern fn int wlDisplayDispatch(WlDisplay* display) @cname("wl_display_dispatch");
-extern fn int wlDisplayDispatchPending(WlDisplay* display) @cname("wl_display_dispatch_pending");
-extern fn int wlDisplayFlush(WlDisplay* display) @cname("wl_display_flush");
-extern fn int wlDisplayRoundtrip(WlDisplay* display) @cname("wl_display_roundtrip");
-extern fn int wlDisplayPrepareRead(WlDisplay* display) @cname("wl_display_prepare_read");
-extern fn int wlDisplayReadEvents(WlDisplay* display) @cname("wl_display_read_events");
-extern fn void wlDisplayCancelRead(WlDisplay* display) @cname("wl_display_cancel_read");
-extern fn int wlDisplayGetError(WlDisplay* display) @cname("wl_display_get_error");
-extern fn WlProxy* wlProxyMarshalFlags(WlProxy* proxy, uint opcode, WlInterface* iface, uint version, uint flags, ...) @cname("wl_proxy_marshal_flags");
-extern fn int wlProxyAddListener(WlProxy* proxy, void* implementation, void* data) @cname("wl_proxy_add_listener");
-extern fn void* wlProxyGetUserData(WlProxy* proxy) @cname("wl_proxy_get_user_data");
-extern fn void wlProxySetUserData(WlProxy* proxy, void* data) @cname("wl_proxy_set_user_data");
-extern fn uint wlProxyGetVersion(WlProxy* proxy) @cname("wl_proxy_get_version");
-extern fn void wlProxyDestroy(WlProxy* proxy) @cname("wl_proxy_destroy");
-extern fn void wlProxyMarshal(WlProxy* proxy, uint opcode, ...) @cname("wl_proxy_marshal");
 
 macro WlFixed wlFixedFromInt(int i) => (WlFixed)(i * 256);
 macro int WlFixed.to_int(self) => self / 256;
 macro double WlFixed.to_double(self) => (double)self / 256.0;
 macro WlFixed wlFixedFromDouble(double d) => (WlFixed)(d * 256.0);
 
-extern WlInterface wlRegistryInterface @cname("wl_registry_interface");
-extern WlInterface wlCompositorInterface @cname("wl_compositor_interface");
-extern WlInterface wlSurfaceInterface @cname("wl_surface_interface");
-extern WlInterface wlSeatInterface @cname("wl_seat_interface");
-extern WlInterface wlPointerInterface @cname("wl_pointer_interface");
-extern WlInterface wlKeyboardInterface @cname("wl_keyboard_interface");
-extern WlInterface wlOutputInterface @cname("wl_output_interface");
-extern WlInterface wlShmInterface @cname("wl_shm_interface");
-extern WlInterface wlShmPoolInterface @cname("wl_shm_pool_interface");
-extern WlInterface wlBufferInterface @cname("wl_buffer_interface");
-extern WlInterface wlRegionInterface @cname("wl_region_interface");
-extern WlInterface wlDataDeviceManagerInterface @cname("wl_data_device_manager_interface");
-extern WlInterface wlDataDeviceInterface @cname("wl_data_device_interface");
-extern WlInterface wlDataSourceInterface @cname("wl_data_source_interface");
-extern WlInterface wlDataOfferInterface @cname("wl_data_offer_interface");
 
 struct WlRegistryListener
 {
@@ -234,122 +201,11 @@ struct WlCursor
 	WlCursorImage** images;
 	ZString name;
 }
-extern fn WlCursorTheme* wlCursorThemeLoad(ZString name, int size, void* shm) @cname("wl_cursor_theme_load");
-extern fn void wlCursorThemeDestroy(WlCursorTheme* theme) @cname("wl_cursor_theme_destroy");
-extern fn WlCursor* wlCursorThemeGetCursor(WlCursorTheme* theme, ZString name) @cname("wl_cursor_theme_get_cursor");
-extern fn WlProxy* wlCursorImageGetBuffer(WlCursorImage* image) @cname("wl_cursor_image_get_buffer");
 
 
 // ---- wl_egl (libwayland-egl) ----
-typedef WlEglWindow = void;
-extern fn WlEglWindow* wl_egl_window_create(WlProxy* surface, int width, int height);
-extern fn void wl_egl_window_destroy(WlEglWindow* window);
-extern fn void wl_egl_window_resize(WlEglWindow* window, int width, int height, int dx, int dy);
 
 // ---- xkbcommon ----
-typedef XkbContext = void;
-typedef XkbKeymap = void;
-typedef XkbState = void;
-typedef XkbComposeTable = void;
-typedef XkbComposeState = void;
-alias XkbKeysym = uint;
-alias XkbKeycode = uint;
-extern fn XkbContext* xkbContextNew(int flags) @cname("xkb_context_new");
-extern fn void xkbContextUnref(XkbContext* ctx) @cname("xkb_context_unref");
-extern fn XkbKeymap* xkbKeymapNewFromString(XkbContext* ctx, ZString string, int format, int flags) @cname("xkb_keymap_new_from_string");
-extern fn void xkbKeymapUnref(XkbKeymap* keymap) @cname("xkb_keymap_unref");
-extern fn int xkbKeymapModGetIndex(XkbKeymap* keymap, ZString name) @cname("xkb_keymap_mod_get_index");
-extern fn XkbState* xkbStateNew(XkbKeymap* keymap) @cname("xkb_state_new");
-extern fn void xkbStateUnref(XkbState* state) @cname("xkb_state_unref");
-extern fn uint xkbStateUpdateMask(XkbState* state, uint depressed, uint latched, uint locked, uint depressedLayout, uint latchedLayout, uint lockedLayout) @cname("xkb_state_update_mask");
-extern fn int xkbStateKeyGetSyms(XkbState* state, XkbKeycode key, XkbKeysym** syms) @cname("xkb_state_key_get_syms");
-extern fn XkbKeysym xkbStateKeyGetOneSym(XkbState* state, XkbKeycode key) @cname("xkb_state_key_get_one_sym");
-extern fn uint xkbKeysymToUtf32(XkbKeysym sym) @cname("xkb_keysym_to_utf32");
-extern fn XkbComposeTable* xkbComposeTableNewFromLocale(XkbContext* ctx, ZString locale, int flags) @cname("xkb_compose_table_new_from_locale");
-extern fn void xkbComposeTableUnref(XkbComposeTable* table) @cname("xkb_compose_table_unref");
-extern fn XkbComposeState* xkbComposeStateNew(XkbComposeTable* table, int flags) @cname("xkb_compose_state_new");
-extern fn void xkbComposeStateUnref(XkbComposeState* state) @cname("xkb_compose_state_unref");
-extern fn int xkbComposeStateFeed(XkbComposeState* state, XkbKeysym sym) @cname("xkb_compose_state_feed");
-extern fn int xkbComposeStateGetStatus(XkbComposeState* state) @cname("xkb_compose_state_get_status");
-extern fn XkbKeysym xkbComposeStateGetOneSym(XkbComposeState* state) @cname("xkb_compose_state_get_one_sym");
-
-const int XKB_CONTEXT_NO_FLAGS = 0;
-const int XKB_KEYMAP_FORMAT_TEXT_V1 = 1;
-const int XKB_KEYMAP_COMPILE_NO_FLAGS = 0;
-const int XKB_COMPOSE_COMPILE_NO_FLAGS = 0;
-const int XKB_COMPOSE_STATE_NO_FLAGS = 0;
-const int XKB_COMPOSE_FEED_IGNORED = 0;
-const int XKB_COMPOSE_FEED_ACCEPTED = 1;
-const int XKB_COMPOSE_NOTHING = 0;
-const int XKB_COMPOSE_COMPOSING = 1;
-const int XKB_COMPOSE_COMPOSED = 2;
-const int XKB_COMPOSE_CANCELLED = 3;
-const XkbKeysym XKB_KEY_NO_SYMBOL = 0;
-const XkbKeysym XKB_KEY_F1 = 0xffbe;
-const XkbKeysym XKB_KEY_F2 = 0xffbf;
-const XkbKeysym XKB_KEY_F3 = 0xffc0;
-const XkbKeysym XKB_KEY_F4 = 0xffc1;
-const XkbKeysym XKB_KEY_F5 = 0xffc2;
-const XkbKeysym XKB_KEY_F6 = 0xffc3;
-const XkbKeysym XKB_KEY_F7 = 0xffc4;
-const XkbKeysym XKB_KEY_F8 = 0xffc5;
-const XkbKeysym XKB_KEY_F9 = 0xffc6;
-const XkbKeysym XKB_KEY_F10 = 0xffc7;
-const XkbKeysym XKB_KEY_F11 = 0xffc8;
-const XkbKeysym XKB_KEY_F12 = 0xffc9;
-const XkbKeysym XKB_KEY_F13 = 0xffca;
-const XkbKeysym XKB_KEY_F14 = 0xffcb;
-const XkbKeysym XKB_KEY_F15 = 0xffcc;
-const XkbKeysym XKB_KEY_F16 = 0xffcd;
-const XkbKeysym XKB_KEY_F17 = 0xffce;
-const XkbKeysym XKB_KEY_F18 = 0xffcf;
-const XkbKeysym XKB_KEY_F19 = 0xffd0;
-const XkbKeysym XKB_KEY_F20 = 0xffd1;
-const XkbKeysym XKB_KEY_F21 = 0xffd2;
-const XkbKeysym XKB_KEY_F22 = 0xffd3;
-const XkbKeysym XKB_KEY_F23 = 0xffd4;
-const XkbKeysym XKB_KEY_F24 = 0xffd5;
-const XkbKeysym XKB_KEY_F25 = 0xffd6;
-const XkbKeysym XKB_KEY_SHIFT_L = 0xffe1;
-const XkbKeysym XKB_KEY_SHIFT_R = 0xffe2;
-const XkbKeysym XKB_KEY_CONTROL_L = 0xffe3;
-const XkbKeysym XKB_KEY_CONTROL_R = 0xffe4;
-const XkbKeysym XKB_KEY_CAPS_LOCK = 0xffe5;
-const XkbKeysym XKB_KEY_ALT_L = 0xffe9;
-const XkbKeysym XKB_KEY_ALT_R = 0xffea;
-const XkbKeysym XKB_KEY_SUPER_L = 0xffeb;
-const XkbKeysym XKB_KEY_SUPER_R = 0xffec;
-const XkbKeysym XKB_KEY_NUM_LOCK = 0xff7f;
-const XkbKeysym XKB_KEY_SCROLL_LOCK = 0xff14;
-const XkbKeysym XKB_KEY_UP = 0xff52;
-const XkbKeysym XKB_KEY_DOWN = 0xff54;
-const XkbKeysym XKB_KEY_LEFT = 0xff51;
-const XkbKeysym XKB_KEY_RIGHT = 0xff53;
-const XkbKeysym XKB_KEY_HOME = 0xff50;
-const XkbKeysym XKB_KEY_END = 0xff57;
-const XkbKeysym XKB_KEY_PAGE_UP = 0xff55;
-const XkbKeysym XKB_KEY_PAGE_DOWN = 0xff56;
-const XkbKeysym XKB_KEY_INSERT = 0xff63;
-const XkbKeysym XKB_KEY_MENU = 0xff67;
-const XkbKeysym XKB_KEY_KP_ADD = 0xffab;
-const XkbKeysym XKB_KEY_KP_SUBTRACT = 0xffad;
-const XkbKeysym XKB_KEY_KP_MULTIPLY = 0xffaa;
-const XkbKeysym XKB_KEY_KP_DIVIDE = 0xffaf;
-const XkbKeysym XKB_KEY_KP_EQUAL = 0xffbd;
-const XkbKeysym XKB_KEY_KP_ENTER = 0xff8d;
-const XkbKeysym XKB_KEY_KP_DECIMAL = 0xffae;
-const XkbKeysym XKB_KEY_KP_0 = 0xffb0;
-const XkbKeysym XKB_KEY_KP_1 = 0xffb1;
-const XkbKeysym XKB_KEY_KP_2 = 0xffb2;
-const XkbKeysym XKB_KEY_KP_3 = 0xffb3;
-const XkbKeysym XKB_KEY_KP_4 = 0xffb4;
-const XkbKeysym XKB_KEY_KP_5 = 0xffb5;
-const XkbKeysym XKB_KEY_KP_6 = 0xffb6;
-const XkbKeysym XKB_KEY_KP_7 = 0xffb7;
-const XkbKeysym XKB_KEY_KP_8 = 0xffb8;
-const XkbKeysym XKB_KEY_KP_9 = 0xffb9;
-const XkbKeysym XKB_KEY_PRINT = 0xff61;
-const XkbKeysym XKB_KEY_PAUSE = 0xff13;
 
 // ==== thin wl_proxy_marshal_flags wrappers (normally wayland-scanner "static inline") ====
 fn WlProxy* wlDisplayGetRegistry(WlDisplay* display) => wlProxyMarshalFlags((WlProxy*)display, 1, &wlRegistryInterface, wlProxyGetVersion((WlProxy*)display), 0, null);

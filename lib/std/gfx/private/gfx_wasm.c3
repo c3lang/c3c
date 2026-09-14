@@ -221,10 +221,6 @@ fn void _window_opengl_swap_buffers_native(GfxWindow* win)
 	gfxJsWebglCommitFrame();
 }
 
-fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints* hints)
-{
-	return NOT_IMPLEMENTED~;
-}
 
 fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
 {

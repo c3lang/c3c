@@ -1,4 +1,4 @@
-module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
+module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import std::os::macos, std::os::darwin;
 
 struct GfxGlHints
@@ -115,7 +115,7 @@ const GfxGlHints GLOBAL_HINTS = {
 
 GfxGlHints _global_hints_open_gl = GLOBAL_HINTS;
 
-module std::gfx  @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WIN32) @feat(!WASM);
+module std::gfx  @feat(MACOS, LINUX, BSD, WIN32) @feat(!WASM);
 
 // public
 fn void _unload_opengl_native() @private
@@ -123,4 +123,5 @@ fn void _unload_opengl_native() @private
 	_gfx_ctx.native_gl_handle = null;
 	_gfx_ctx.glGetProcAddress = null;
 }
+
 

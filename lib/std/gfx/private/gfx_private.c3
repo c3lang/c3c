@@ -1,4 +1,4 @@
-module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32) @private;
+module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @private;
 import libc, std::math;
 
 fn void*? _dlopen_any(ZString... names) @feat(POSIX)

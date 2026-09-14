@@ -1,5 +1,6 @@
-module std::gfx @feat(X11, X11_WAYLAND) @link("X11", "Xext", "Xrandr", "GL", "xkbcommon") @private;
+module std::gfx @feat(LINUX, BSD) @feat(!NO_X11) @private;
 import std::math, std::collections, libc, std::time, std::time::clock, std::net, std::net::os;
+import std::gfx::x11 @public;
 
 const int X_TRUE = 1;
 const int X_FALSE = 0;
@@ -86,7 +87,7 @@ fn void _surface_release_x11(GfxSurface* surface)
 	if (surface.native.bitmap)
 	{
 		((XImageHeader*)surface.native.bitmap).data = null;
-		xDestroyImage(surface.native.bitmap);
+		x11::xDestroyImage(surface.native.bitmap);
 	}
 	if (surface.native.buffer) free(surface.native.buffer);
 	*surface = {};
@@ -98,7 +99,7 @@ fn void _window_set_border_x11(GfxWindow* win, bool border)
 	X11WindowHints hints;
 	hints.flags = 2;
 	hints.decorations = (CULong)border;
-	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.motifWmHints, _gfx_ctx.motifWmHints, 32, 0, (char*)&hints, 5);
+	x11::xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.motifWmHints, _gfx_ctx.motifWmHints, 32, 0, (char*)&hints, 5);
 	if (!_window_is_hidden_x11(win))
 	{
 		win.hide();
@@ -114,7 +115,7 @@ fn void _window_set_raw_mouse_mode_x11(GfxWindow* win, bool state)
 	em.deviceid = 1; // XIAllMasterDevices
 	em.mask_len = 4;
 	em.mask = (char*)&mask;
-	if (_xi_select_events_src) _xi_select_events_src(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &em, 1);
+	if (x11::xi_select_events_fn) x11::xi_select_events_fn(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display), &em, 1);
 }
 
 fn void _window_capture_mouse_x11(GfxWindow* win, bool state)
@@ -122,11 +123,11 @@ fn void _window_capture_mouse_x11(GfxWindow* win, bool state)
 	if (state)
 	{
 		uint eventMask = (1 << 2) | (1 << 3) | (1 << 6); // Button press/release + pointer motion
-		xGrabPointer(_gfx_ctx.display, win.src.window, X_TRUE, eventMask, 1, 1, win.src.window, 0, 0);
+		x11::xGrabPointer(_gfx_ctx.display, win.src.window, X_TRUE, eventMask, 1, 1, win.src.window, 0, 0);
 	}
 	else
 	{
-		xUngrabPointer(_gfx_ctx.display, 0);
+		x11::xUngrabPointer(_gfx_ctx.display, 0);
 	}
 }
 
@@ -148,11 +149,11 @@ fn void _window_set_aspect_ratio_x11(GfxWindow* win, int w, int h)
 	if (w == 0 && h == 0) return;
 	XSizeHints hints;
 	CLong flags;
-	xGetWMNormalHints(_gfx_ctx.display, win.src.window, &hints, &flags);
+	x11::xGetWMNormalHints(_gfx_ctx.display, win.src.window, &hints, &flags);
 	hints.flags |= (1 << 6); // PAspect
 	hints.min_aspect.x = w; hints.max_aspect.x = w;
 	hints.min_aspect.y = h; hints.max_aspect.y = h;
-	xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
+	x11::xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
 }
 
 // public
@@ -160,7 +161,7 @@ fn void _window_blit_surface_x11(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint min = math::min(win.size, surface.size);
 	copy_image_data(surface.native.buffer, surface.size.x, min.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
-	xPutImage(_gfx_ctx.display, win.src.window, win.src.gc, surface.native.bitmap, 0, 0, 0, 0, (uint)min.x, (uint)min.y);
+	x11::xPutImage(_gfx_ctx.display, win.src.window, win.src.gc, surface.native.bitmap, 0, 0, 0, 0, (uint)min.x, (uint)min.y);
 }
 
 fn GfxPoint _get_global_mouse_x11()
@@ -168,7 +169,7 @@ fn GfxPoint _get_global_mouse_x11()
 	int x, y, fX, fY;
 	uint z;
 	XWindow window1, window2;
-	xQueryPointer(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &window1, &window2, &fX, &fY, &x, &y, &z);
+	x11::xQueryPointer(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display), &window1, &window2, &fX, &fY, &x, &y, &z);
 	return { fX, fY };
 }
 
@@ -176,7 +177,7 @@ fn GfxPoint _get_global_mouse_x11()
 fn GfxPoint _window_fetch_size_x11(GfxWindow* win)
 {
 	XWindowAttributes attribs;
-	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attribs);
+	x11::xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attribs);
 	win.size = { attribs.width, attribs.height };
 	return win.get_size();
 }
@@ -186,21 +187,21 @@ fn void _window_set_mouse_passthrough_x11(GfxWindow* win, bool passthrough)
 {
 	if (passthrough)
 	{
-		Region region = xCreateRegion();
-		if (_xshape_combine_region_src) _xshape_combine_region_src(_gfx_ctx.display, win.src.window, 2, 0, 0, region, 0);
-		xDestroyRegion(region);
+		Region region = x11::xCreateRegion();
+		if (x11::xshape_combine_region_fn) x11::xshape_combine_region_fn(_gfx_ctx.display, win.src.window, 2, 0, 0, region, 0);
+		x11::xDestroyRegion(region);
 		return;
 	}
-	if (_xshape_combine_mask_src) _xshape_combine_mask_src(_gfx_ctx.display, win.src.window, 2, 0, 0, 0, 0);
+	if (x11::xshape_combine_mask_fn) x11::xshape_combine_mask_fn(_gfx_ctx.display, win.src.window, 2, 0, 0, 0, 0);
 }
 
 fn GfxGammaRamp? _monitor_get_gamma_ramp_x11(GfxMonitor* monitor, Allocator a)
 {
-	sz size = (sz)xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
+	sz size = (sz)x11::xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
 	if (!size) return CANNOT_RETRIEVE_GAMMA~;
-	XRRCrtcGamma* gamma = xRRGetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1);
+	XRRCrtcGamma* gamma = x11::xRRGetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1);
 	if (!gamma) return CANNOT_RETRIEVE_GAMMA~;
-	defer xRRFreeGamma(gamma);
+	defer x11::xRRFreeGamma(gamma);
 	ushort[] rgb = alloc::alloc_array(a, ushort, size * 3);
 	ushort[] red = rgb[:size];
 	ushort[] green = rgb[size:size];
@@ -213,26 +214,26 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_x11(GfxMonitor* monitor, Allocator a)
 
 fn void? monitor_set_gamma_ramp_x11(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
-	sz size = (sz)xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
+	sz size = (sz)x11::xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
 	if (size != ramp.red.len) return GAMMA_COULD_NOT_BE_SET~;
 
-	XRRCrtcGamma* gamma = xRRAllocGamma((int)size);
+	XRRCrtcGamma* gamma = x11::xRRAllocGamma((int)size);
 	if (!gamma) return GAMMA_COULD_NOT_BE_SET~;
-	defer xRRFreeGamma(gamma);
+	defer x11::xRRFreeGamma(gamma);
 
 	gamma.red[:size] = ramp.red[..];
 	gamma.green[:size] = ramp.green[..];
 	gamma.blue[:size] = ramp.blue[..];
-	xRRSetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1, gamma);
+	x11::xRRSetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1, gamma);
 }
 
 fn void? monitor_set_gamma_x11(GfxMonitor* monitor, float gamma)
 {
-	sz size = (sz)xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
+	sz size = (sz)x11::xRRGetCrtcGammaSize(_gfx_ctx.display, monitor.node.nativeId1);
 	if (!size) return GAMMA_COULD_NOT_BE_SET~;
 
-	XRRCrtcGamma* gamma_data = xRRAllocGamma((int)size);
-	defer xRRFreeGamma(gamma_data);
+	XRRCrtcGamma* gamma_data = x11::xRRAllocGamma((int)size);
+	defer x11::xRRFreeGamma(gamma_data);
 	for (sz i = 0; i < size; i++)
 	{
 		ushort g = (ushort)_gamma_for_index(gamma, i, size);
@@ -240,21 +241,21 @@ fn void? monitor_set_gamma_x11(GfxMonitor* monitor, float gamma)
 		gamma_data.green[i] = g;
 		gamma_data.blue[i] = g;
 	}
-	xRRSetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1, gamma_data);
+	x11::xRRSetCrtcGamma(_gfx_ctx.display, monitor.node.nativeId1, gamma_data);
 }
 
 fn GfxMouse*? _create_mouse_x11(char* data, GfxSize size, GfxFormat format)
 {
-	if (!_xcursor_image_create_src) return IMAGE_COULD_NOT_LOAD~;
-	XcursorImage* native = _xcursor_image_create_src(...size);
+	if (!x11::xcursor_image_create_fn) return IMAGE_COULD_NOT_LOAD~;
+	XcursorImage* native = x11::xcursor_image_create_fn(...size);
 	if (!native) return IMAGE_COULD_NOT_LOAD~;
-	defer _xcursor_image_destroy_src(native);
+	defer x11::xcursor_image_destroy_fn(native);
 	sz bytesize = (sz)size.x * size.y * 4;
 	native.xhot = 0;
 	native.yhot = 0;
 	mem::clear(native.pixels, bytesize);
 	mem::copy(native.pixels, data, bytesize);
-	XCursor cursor = _xcursor_image_load_cursor_src(_gfx_ctx.display, native);
+	XCursor cursor = x11::xcursor_image_load_cursor_fn(_gfx_ctx.display, native);
 	if (!cursor) return MOUSE_NOT_SUPPORTED~;
 	return (GfxMouse*)cursor;
 }
@@ -287,7 +288,7 @@ fn GfxMouse*? _create_mouse_standard_x11(GfxMouseIcon mouse)
 		case POINTING_HAND: mouseIcon = 60; // XC_hand2
 		default: return MOUSE_NOT_SUPPORTED~;
 	}
-	XCursor cursor = xCreateFontCursor(_gfx_ctx.display, mouseIcon);
+	XCursor cursor = x11::xCreateFontCursor(_gfx_ctx.display, mouseIcon);
 	if (!cursor) return MOUSE_NOT_SUPPORTED~;
 	return (GfxMouse*)cursor;
 }
@@ -302,22 +303,22 @@ fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags,
 	(1 << 5) | (1 << 4) | (1 << 15) | (1 << 16) | (1 << 22);
 
 	XSetWindowAttributes swa;
-	win.src.parent = xDefaultRootWindow(_gfx_ctx.display);
+	win.src.parent = x11::xDefaultRootWindow(_gfx_ctx.display);
 
-	Colormap cmap = xCreateColormap(_gfx_ctx.display, win.src.parent, visual.visual, 0);
+	Colormap cmap = x11::xCreateColormap(_gfx_ctx.display, win.src.parent, visual.visual, 0);
 	swa.colormap = cmap;
 	swa.event_mask = eventMask;
 	swa.background_pixmap = 0;
 
-	win.src.window = xCreateWindow(_gfx_ctx.display, win.src.parent, win.x, win.y, (uint)win.width, (uint)win.height,
+	win.src.window = x11::xCreateWindow(_gfx_ctx.display, win.src.parent, win.x, win.y, (uint)win.width, (uint)win.height,
 	0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 13) | (1 << 11), &swa);
 	// CWBorderPixel | CWColormap | CWEventMask
 	if (!win.src.window) return X11_WINDOW_CREATION_FAILED~;
 
 	win.src.flashEnd = {};
-	xFreeColors(_gfx_ctx.display, cmap, null, 0, 0);
-	xSaveContext(_gfx_ctx.display, win.src.window, _gfx_ctx.context, (XPointer)win);
-	win.src.gc = xCreateGC(_gfx_ctx.display, win.src.window, 0, null);
+	x11::xFreeColors(_gfx_ctx.display, cmap, null, 0, 0);
+	x11::xSaveContext(_gfx_ctx.display, win.src.window, _gfx_ctx.context, (XPointer)win);
+	win.src.gc = x11::xCreateGC(_gfx_ctx.display, win.src.window, 0, null);
 
 	if (_gfx_ctx.im != null)
 	{
@@ -325,7 +326,7 @@ fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags,
 		callback.callback = &_x11_ic_callback;
 		callback.client_data = (XPointer)win;
 
-		win.src.ic = xCreateIC(_gfx_ctx.im, "inputStyle", (CULong)(0x0008 | 0x0400) /* XIMPreeditNothing | XIMStatusNothing */,
+		win.src.ic = x11::xCreateIC(_gfx_ctx.im, "inputStyle", (CULong)(0x0008 | 0x0400) /* XIMPreeditNothing | XIMStatusNothing */,
 		"clientWindow", win.src.window, "focusWindow", win.src.window,
 		"destroyCallback", &callback, (char*)null);
 	}
@@ -335,30 +336,30 @@ fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags,
 		XClassHint hint;
 		hint.res_name = name.zstr_copy(tmem);
 		hint.res_class = _gfx_ctx.class_name.zstr_copy(tmem);
-		xSetClassHint(_gfx_ctx.display, win.src.window, &hint);
+		x11::xSetClassHint(_gfx_ctx.display, win.src.window, &hint);
 	};
 
 	XWMHints hints;
 	hints.flags = 1 << 1; // StateHint
 	hints.initial_state = 1; // NormalState
-	xSetWMHints(_gfx_ctx.display, win.src.window, &hints);
+	x11::xSetWMHints(_gfx_ctx.display, win.src.window, &hints);
 
-	xSelectInput(_gfx_ctx.display, win.src.window, eventMask);
-	xSetWMProtocols(_gfx_ctx.display, win.src.window, &_gfx_ctx.wmDeleteWindow, 1);
+	x11::xSelectInput(_gfx_ctx.display, win.src.window, eventMask);
+	x11::xSetWMProtocols(_gfx_ctx.display, win.src.window, &_gfx_ctx.wmDeleteWindow, 1);
 	win.set_name(name);
-	xMoveWindow(_gfx_ctx.display, win.src.window, win.x, win.y);
+	x11::xMoveWindow(_gfx_ctx.display, win.src.window, win.x, win.y);
 
 	if (flags.allow_dnd)
 	{
 		win.internal.flags.allow_dnd = true;
 		char version = 5;
-		xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.xdndAware, 4, 32, 0, &version, 1);
+		x11::xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.xdndAware, 4, 32, 0, &version, 1);
 	}
 
 	win.src.bounds = win.bounds;
-	xSetWindowBackground(_gfx_ctx.display, win.src.window, 0);
-	xClearWindow(_gfx_ctx.display, win.src.window);
-	xSetWindowBackgroundPixmap(_gfx_ctx.display, win.src.window, 0);
+	x11::xSetWindowBackground(_gfx_ctx.display, win.src.window, 0);
+	x11::xClearWindow(_gfx_ctx.display, win.src.window);
+	x11::xSetWindowBackgroundPixmap(_gfx_ctx.display, win.src.window, 0);
 }
 
 fn void? _create_window_x11(String name, GfxWindowFlags flags, GfxWindow* win)
@@ -383,34 +384,32 @@ fn void _destroy_x11()
 {
 	if (_gfx_ctx.display)
 	{
-		if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helper_window)
+		if (x11::xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helper_window)
 		{
-			xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardManager, _gfx_ctx.saveTargets, 0, _gfx_ctx.helper_window, 0);
+			x11::xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardManager, _gfx_ctx.saveTargets, 0, _gfx_ctx.helper_window, 0);
 			while (x_handle_clipboard_selection_helper() != 0) {}
 		}
-		xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&_x11_im_init_callback, null);
+		x11::xUnregisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&_x11_im_init_callback, null);
 	}
-	if (_gfx_ctx.im) xCloseIM(_gfx_ctx.im);
+	if (_gfx_ctx.im) x11::xCloseIM(_gfx_ctx.im);
 	if (_gfx_ctx.unixClipboard) free(_gfx_ctx.unixClipboard);
 	if (_gfx_ctx.hiddenMouse) _free_mouse(_gfx_ctx.hiddenMouse);
-	if (_gfx_ctx.helper_window) xDestroyWindow(_gfx_ctx.display, _gfx_ctx.helper_window);
-	if (_gfx_ctx.display) xCloseDisplay(_gfx_ctx.display);
+	if (_gfx_ctx.helper_window) x11::xDestroyWindow(_gfx_ctx.display, _gfx_ctx.helper_window);
+	if (_gfx_ctx.display) x11::xCloseDisplay(_gfx_ctx.display);
 
-	if (_x11_cursor_handle) libc::dlclose(_x11_cursor_handle);
-	if (_x11_xi_handle) libc::dlclose(_x11_xi_handle);
-	if (_x11_ext_handle) libc::dlclose(_x11_ext_handle);
+	x11::dlclose_cursor_xi_ext();
 }
 
 // private
 fn bool _opengl_extension_is_supported_x11(String extension)
 {
-	ZString extensions = _glx_query_extensions_string_fn(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
+	ZString extensions = _glx_query_extensions_string_fn(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display));
 	return extensions && _extension_is_in_list(extensions.str_view(), extension);
 }
 
 fn void _free_mouse_x11(GfxMouse* mouse)
 {
-	xFreeCursor(_gfx_ctx.display, (XCursor)mouse);
+	x11::xFreeCursor(_gfx_ctx.display, (XCursor)mouse);
 }
 
 // private
@@ -434,90 +433,73 @@ fn void? _init_x11(String class_name, GfxInitOption flags)
 {
 	_gfx_ctx.class_name = class_name;
 
-	xInitThreads();
-	_gfx_ctx.display = xOpenDisplay(null);
+	x11::xInitThreads();
+	_gfx_ctx.display = x11::xOpenDisplay(null);
 	if (!_gfx_ctx.display) return X11_DISPLAY_NOT_LOADED~;
 
-	_gfx_ctx.netCurrentDesktop = xInternAtom(_gfx_ctx.display, "_NET_CURRENT_DESKTOP", 0);
-	_gfx_ctx.net_wm_state_maximized_vert = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_MAXIMIZED_VERT", 0);
-	_gfx_ctx.net_wm_state_maximized_horz = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_MAXIMIZED_HORZ", 0);
-	_gfx_ctx.netWmBypassCompositor = xInternAtom(_gfx_ctx.display, "_NET_WM_BYPASS_COMPOSITOR", 0);
-	_gfx_ctx.netWmState = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE", 0);
-	_gfx_ctx.motifWmHints = xInternAtom(_gfx_ctx.display, "_MOTIF_WM_HINTS", 0);
-	_gfx_ctx.wmDeleteWindow = xInternAtom(_gfx_ctx.display, "WM_DELETE_WINDOW", 0);
-	_gfx_ctx.netWmSyncRequestCounter = xInternAtom(_gfx_ctx.display, "_NET_WM_SYNC_REQUEST_COUNTER", 0);
-	_gfx_ctx.netWmSyncRequest = xInternAtom(_gfx_ctx.display, "_NET_WM_SYNC_REQUEST", 0);
-	_gfx_ctx.atomPair = xInternAtom(_gfx_ctx.display, "ATOM_PAIR", 0);
-	_gfx_ctx.multiple = xInternAtom(_gfx_ctx.display, "MULTIPLE", 0);
-	_gfx_ctx.targets = xInternAtom(_gfx_ctx.display, "TARGETS", 0);
-	_gfx_ctx.saveTargets = xInternAtom(_gfx_ctx.display, "SAVE_TARGETS", 0);
-	_gfx_ctx.utf8String = xInternAtom(_gfx_ctx.display, "UTF8_STRING", 0);
-	_gfx_ctx.xdndTypeList = xInternAtom(_gfx_ctx.display, "XdndTypeList", 0);
-	_gfx_ctx.xdndSelection = xInternAtom(_gfx_ctx.display, "XdndSelection", 0);
-	_gfx_ctx.xdndAware = xInternAtom(_gfx_ctx.display, "XdndAware", 0);
-	_gfx_ctx.xdndEnter = xInternAtom(_gfx_ctx.display, "XdndEnter", 0);
-	_gfx_ctx.xdndPosition = xInternAtom(_gfx_ctx.display, "XdndPosition", 0);
-	_gfx_ctx.xdndStatus = xInternAtom(_gfx_ctx.display, "XdndStatus", 0);
-	_gfx_ctx.xdndLeave = xInternAtom(_gfx_ctx.display, "XdndLeave", 0);
-	_gfx_ctx.xdndDrop = xInternAtom(_gfx_ctx.display, "XdndDrop", 0);
-	_gfx_ctx.xdndFinished = xInternAtom(_gfx_ctx.display, "XdndFinished", 0);
-	_gfx_ctx.xdndActionCopy = xInternAtom(_gfx_ctx.display, "XdndActionCopy", 0);
-	_gfx_ctx.wmProtocols = xInternAtom(_gfx_ctx.display, "WM_PROTOCOLS", 0);
-	_gfx_ctx.wmState = xInternAtom(_gfx_ctx.display, "WM_STATE", 0);
-	_gfx_ctx.netWmStateFullscreen = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_FULLSCREEN", 0);
-	_gfx_ctx.netWmStateAbove = xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_ABOVE", 0);
-	_gfx_ctx.netWmWindowOpacity = xInternAtom(_gfx_ctx.display, "_NET_WM_WINDOW_OPACITY", 0);
-	_gfx_ctx.netWmName = xInternAtom(_gfx_ctx.display, "_NET_WM_NAME", 0);
-	_gfx_ctx.netWmIcon = xInternAtom(_gfx_ctx.display, "_NET_WM_ICON", 0);
-	_gfx_ctx.xselData = xInternAtom(_gfx_ctx.display, "XSEL_DATA", 0);
-	_gfx_ctx.clipboardAtom = xInternAtom(_gfx_ctx.display, "CLIPBOARD", 0);
-	_gfx_ctx.clipboardManager = xInternAtom(_gfx_ctx.display, "CLIPBOARD_MANAGER", 0);
-	_gfx_ctx.netWorkarea = xInternAtom(_gfx_ctx.display, "_NET_WORKAREA", 0);
-	_gfx_ctx.xtextUriList = xInternAtom(_gfx_ctx.display, "text/uri-list", 0);
-	_gfx_ctx.xtextPlain = xInternAtom(_gfx_ctx.display, "text/plain", 0);
+	_gfx_ctx.netCurrentDesktop = x11::xInternAtom(_gfx_ctx.display, "_NET_CURRENT_DESKTOP", 0);
+	_gfx_ctx.net_wm_state_maximized_vert = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_MAXIMIZED_VERT", 0);
+	_gfx_ctx.net_wm_state_maximized_horz = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_MAXIMIZED_HORZ", 0);
+	_gfx_ctx.netWmBypassCompositor = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_BYPASS_COMPOSITOR", 0);
+	_gfx_ctx.netWmState = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_STATE", 0);
+	_gfx_ctx.motifWmHints = x11::xInternAtom(_gfx_ctx.display, "_MOTIF_WM_HINTS", 0);
+	_gfx_ctx.wmDeleteWindow = x11::xInternAtom(_gfx_ctx.display, "WM_DELETE_WINDOW", 0);
+	_gfx_ctx.netWmSyncRequestCounter = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_SYNC_REQUEST_COUNTER", 0);
+	_gfx_ctx.netWmSyncRequest = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_SYNC_REQUEST", 0);
+	_gfx_ctx.atomPair = x11::xInternAtom(_gfx_ctx.display, "ATOM_PAIR", 0);
+	_gfx_ctx.multiple = x11::xInternAtom(_gfx_ctx.display, "MULTIPLE", 0);
+	_gfx_ctx.targets = x11::xInternAtom(_gfx_ctx.display, "TARGETS", 0);
+	_gfx_ctx.saveTargets = x11::xInternAtom(_gfx_ctx.display, "SAVE_TARGETS", 0);
+	_gfx_ctx.utf8String = x11::xInternAtom(_gfx_ctx.display, "UTF8_STRING", 0);
+	_gfx_ctx.xdndTypeList = x11::xInternAtom(_gfx_ctx.display, "XdndTypeList", 0);
+	_gfx_ctx.xdndSelection = x11::xInternAtom(_gfx_ctx.display, "XdndSelection", 0);
+	_gfx_ctx.xdndAware = x11::xInternAtom(_gfx_ctx.display, "XdndAware", 0);
+	_gfx_ctx.xdndEnter = x11::xInternAtom(_gfx_ctx.display, "XdndEnter", 0);
+	_gfx_ctx.xdndPosition = x11::xInternAtom(_gfx_ctx.display, "XdndPosition", 0);
+	_gfx_ctx.xdndStatus = x11::xInternAtom(_gfx_ctx.display, "XdndStatus", 0);
+	_gfx_ctx.xdndLeave = x11::xInternAtom(_gfx_ctx.display, "XdndLeave", 0);
+	_gfx_ctx.xdndDrop = x11::xInternAtom(_gfx_ctx.display, "XdndDrop", 0);
+	_gfx_ctx.xdndFinished = x11::xInternAtom(_gfx_ctx.display, "XdndFinished", 0);
+	_gfx_ctx.xdndActionCopy = x11::xInternAtom(_gfx_ctx.display, "XdndActionCopy", 0);
+	_gfx_ctx.wmProtocols = x11::xInternAtom(_gfx_ctx.display, "WM_PROTOCOLS", 0);
+	_gfx_ctx.wmState = x11::xInternAtom(_gfx_ctx.display, "WM_STATE", 0);
+	_gfx_ctx.netWmStateFullscreen = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_FULLSCREEN", 0);
+	_gfx_ctx.netWmStateAbove = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_STATE_ABOVE", 0);
+	_gfx_ctx.netWmWindowOpacity = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_WINDOW_OPACITY", 0);
+	_gfx_ctx.netWmName = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_NAME", 0);
+	_gfx_ctx.netWmIcon = x11::xInternAtom(_gfx_ctx.display, "_NET_WM_ICON", 0);
+	_gfx_ctx.xselData = x11::xInternAtom(_gfx_ctx.display, "XSEL_DATA", 0);
+	_gfx_ctx.clipboardAtom = x11::xInternAtom(_gfx_ctx.display, "CLIPBOARD", 0);
+	_gfx_ctx.clipboardManager = x11::xInternAtom(_gfx_ctx.display, "CLIPBOARD_MANAGER", 0);
+	_gfx_ctx.netWorkarea = x11::xInternAtom(_gfx_ctx.display, "_NET_WORKAREA", 0);
+	_gfx_ctx.xtextUriList = x11::xInternAtom(_gfx_ctx.display, "text/uri-list", 0);
+	_gfx_ctx.xtextPlain = x11::xInternAtom(_gfx_ctx.display, "text/plain", 0);
 
-	_gfx_ctx.context = xUniqueContext();
+	_gfx_ctx.context = x11::xUniqueContext();
 	if (!_gfx_ctx.context) return X11_CTX_CREATION_FAILED~;
 
 	XSetWindowAttributes wa;
 	wa.event_mask = 1 << 22; // PropertyChangeMask
-	_gfx_ctx.helper_window = xCreateWindow(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, 0, 1, 1, 0, 0,
-		2 /* InputOnly */, xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), 1 << 11, &wa);
+	_gfx_ctx.helper_window = x11::xCreateWindow(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display), 0, 0, 1, 1, 0, 0,
+		2 /* InputOnly */, x11::xDefaultVisual(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display)), 1 << 11, &wa);
 	if (_gfx_ctx.helper_window == 0) return X11_WINDOW_CREATION_FAILED~;
 
-	_x11_cursor_handle = libc::dlopen("libXcursor.so.1", libc::RTLD_LAZY | libc::RTLD_LOCAL);
-	if (_x11_cursor_handle)
-	{
-		_xcursor_image_create_src = (PFN_XcursorImageCreate)libc::dlsym(_x11_cursor_handle, "XcursorImageCreate");
-		_xcursor_image_destroy_src = (PFN_XcursorImageDestroy)libc::dlsym(_x11_cursor_handle, "XcursorImageDestroy");
-		_xcursor_image_load_cursor_src = (PFN_XcursorImageLoadCursor)libc::dlsym(_x11_cursor_handle, "XcursorImageLoadCursor");
-	}
-	_x11_xi_handle = libc::dlopen("libXi.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
-	if (_x11_xi_handle) _xi_select_events_src = (PFN_XISelectEvents)libc::dlsym(_x11_xi_handle, "XISelectEvents");
-	_x11_ext_handle = libc::dlopen("libXext.so.6", libc::RTLD_LAZY | libc::RTLD_LOCAL);
-	if (_x11_ext_handle)
-	{
-		_xsync_create_counter_src = libc::dlsym(_x11_ext_handle, "XSyncCreateCounter");
-		_xsync_int_to_value_src = libc::dlsym(_x11_ext_handle, "XSyncIntToValue");
-		_xsync_set_counter_src = libc::dlsym(_x11_ext_handle, "XSyncSetCounter");
-		_xshape_combine_region_src = libc::dlsym(_x11_ext_handle, "XShapeCombineRegion");
-		_xshape_combine_mask_src = libc::dlsym(_x11_ext_handle, "XShapeCombineMask");
-	}
+	x11::dload_cursor_xi_ext();
 
 	char[4] blk;
 	_gfx_ctx.hiddenMouse = _create_mouse_native((void*)&blk, { 1, 1 }, RGBA8) ?? null;
 	_gfx_ctx.unixClipboard = null;
 
-	xSetErrorHandler(&_x_error_handler);
-	xSync(_gfx_ctx.display, 0);
+	x11::xSetErrorHandler(&_x_error_handler);
+	x11::xSync(_gfx_ctx.display, 0);
 
-	xSetLocaleModifiers("");
-	xRegisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&_x11_im_init_callback, null);
+	x11::xSetLocaleModifiers("");
+	x11::xRegisterIMInstantiateCallback(_gfx_ctx.display, null, null, null, (void*)&_x11_im_init_callback, null);
 
 	int errorBase;
-	if (xRRQueryExtension(_gfx_ctx.display, &_gfx_ctx.xrandrEventBase, &errorBase) != 0)
+	if (x11::xRRQueryExtension(_gfx_ctx.display, &_gfx_ctx.xrandrEventBase, &errorBase) != 0)
 	{
-		xRRSelectInput(_gfx_ctx.display, xRootWindow(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), 1 << 4); // RROutputChangeNotifyMask
+		x11::xRRSelectInput(_gfx_ctx.display, x11::xRootWindow(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display)), 1 << 4); // RROutputChangeNotifyMask
 	}
 }
 
@@ -560,10 +542,10 @@ fn void _monitor_node_free_x11(GfxMonitorNode* node) {}
 // private
 fn GfxMonitorMode[] _monitor_get_modes_x11(GfxMonitor* monitor)
 {
-	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display));
+	XRRScreenResources* res = x11::xRRGetScreenResourcesCurrent(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display));
 	if (!res) return {};
-	XRRCrtcInfo* ci = xRRGetCrtcInfo(_gfx_ctx.display, res, monitor.node.nativeId1);
-	GfxXRROutputInfo* oi = xRRGetOutputInfo(_gfx_ctx.display, res, monitor.node.nativeId0);
+	XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx_ctx.display, res, monitor.node.nativeId1);
+	GfxXRROutputInfo* oi = x11::xRRGetOutputInfo(_gfx_ctx.display, res, monitor.node.nativeId0);
 	sz count = (sz)oi.nmode;
 	List{GfxMonitorMode} modes;
 	for (int i = 0; i < oi.nmode; i++)
@@ -572,15 +554,15 @@ fn GfxMonitorMode[] _monitor_get_modes_x11(GfxMonitor* monitor)
 		_x_get_mode(ci, res, oi.modes[i], &mode);
 		modes.push(mode);
 	}
-	xRRFreeOutputInfo(oi);
-	xRRFreeCrtcInfo(ci);
-	xRRFreeScreenResources(res);
+	x11::xRRFreeOutputInfo(oi);
+	x11::xRRFreeCrtcInfo(ci);
+	x11::xRRFreeScreenResources(res);
 	return modes.array_view();
 }
 
 fn IntRect _monitor_get_workarea_x11(GfxMonitor* monitor)
 {
-	XWindow root = xDefaultRootWindow(_gfx_ctx.display);
+	XWindow root = x11::xDefaultRootWindow(_gfx_ctx.display);
 	int areaX = monitor.origin.x;
 	int areaY = monitor.origin.y;
 	int areaW = monitor.mode.size.x;
@@ -591,8 +573,8 @@ fn IntRect _monitor_get_workarea_x11(GfxMonitor* monitor)
 		Atom* extents = null;
 		Atom* desktop = null;
 		Atom actualType; int actualFormat; CULong extentCount, bytesAfter, count;
-		xGetWindowProperty(_gfx_ctx.display, root, _gfx_ctx.netWorkarea, 0, ~0, 0, 6, &actualType, &actualFormat, &extentCount, &bytesAfter, (char**)&extents);
-		xGetWindowProperty(_gfx_ctx.display, root, _gfx_ctx.netCurrentDesktop, 0, ~0, 0, 6, &actualType, &actualFormat, &count, &bytesAfter, (char**)&desktop);
+		x11::xGetWindowProperty(_gfx_ctx.display, root, _gfx_ctx.netWorkarea, 0, ~0, 0, 6, &actualType, &actualFormat, &extentCount, &bytesAfter, (char**)&extents);
+		x11::xGetWindowProperty(_gfx_ctx.display, root, _gfx_ctx.netCurrentDesktop, 0, ~0, 0, 6, &actualType, &actualFormat, &count, &bytesAfter, (char**)&desktop);
 
 		if (count != 0 && extentCount >= 4 && *desktop < extentCount / 4)
 		{
@@ -605,8 +587,8 @@ fn IntRect _monitor_get_workarea_x11(GfxMonitor* monitor)
 			if (areaX + areaW > globalX + globalW) areaW = globalX - areaX + globalW;
 			if (areaY + areaH > globalY + globalH) areaH = globalY - areaY + globalH;
 		}
-		if (extents != null) xFree(extents);
-		if (desktop != null) xFree(desktop);
+		if (extents != null) x11::xFree(extents);
+		if (desktop != null) x11::xFree(desktop);
 	}
 
 	return { areaX, areaY, areaW, areaH };
@@ -615,10 +597,10 @@ fn IntRect _monitor_get_workarea_x11(GfxMonitor* monitor)
 fn void? _monitor_request_mode_x11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	bool output = false;
-	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display));
+	XRRScreenResources* res = x11::xRRGetScreenResourcesCurrent(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display));
 	if (!res) return MONITOR_MODE_CHANGE_FAILED~;
-	XRRCrtcInfo* ci = xRRGetCrtcInfo(_gfx_ctx.display, res, mon.node.nativeId1);
-	GfxXRROutputInfo* oi = xRRGetOutputInfo(_gfx_ctx.display, res, mon.node.nativeId0);
+	XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx_ctx.display, res, mon.node.nativeId1);
+	GfxXRROutputInfo* oi = x11::xRRGetOutputInfo(_gfx_ctx.display, res, mon.node.nativeId0);
 	RRMode native = 0;
 
 	for (int i = 0; i < oi.nmode; i++)
@@ -634,21 +616,21 @@ fn void? _monitor_request_mode_x11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMon
 			break;
 		}
 	}
-	if (native != 0) xRRSetCrtcConfig(_gfx_ctx.display, res, mon.node.nativeId1, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
-	xRRFreeOutputInfo(oi);
-	xRRFreeCrtcInfo(ci);
-	xRRFreeScreenResources(res);
+	if (native != 0) x11::xRRSetCrtcConfig(_gfx_ctx.display, res, mon.node.nativeId1, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
+	x11::xRRFreeOutputInfo(oi);
+	x11::xRRFreeCrtcInfo(ci);
+	x11::xRRFreeScreenResources(res);
 	if (!output) return MONITOR_MODE_CHANGE_FAILED~;
 }
 
 fn void? _monitor_set_mode_native_x11(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	bool out = false;
-	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display));
-	XRRCrtcInfo* ci = xRRGetCrtcInfo(_gfx_ctx.display, res, mon.node.nativeId1);
-	if (xRRSetCrtcConfig(_gfx_ctx.display, res, mon.node.nativeId1, 0, ci.x, ci.y, (RRMode)(uptr)mode.src, ci.rotation, ci.outputs, ci.noutput) == 0) out = true;
-	xRRFreeCrtcInfo(ci);
-	xRRFreeScreenResources(res);
+	XRRScreenResources* res = x11::xRRGetScreenResourcesCurrent(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display));
+	XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx_ctx.display, res, mon.node.nativeId1);
+	if (x11::xRRSetCrtcConfig(_gfx_ctx.display, res, mon.node.nativeId1, 0, ci.x, ci.y, (RRMode)(uptr)mode.src, ci.rotation, ci.outputs, ci.noutput) == 0) out = true;
+	x11::xRRFreeCrtcInfo(ci);
+	x11::xRRFreeScreenResources(res);
 	if (!out) return MONITOR_MODE_CHANGE_FAILED~;
 }
 
@@ -656,7 +638,7 @@ fn void? _monitor_set_mode_native_x11(GfxMonitor* mon, GfxMonitorMode* mode)
 fn GfxKey _physical_to_mapped_key_native_x11(GfxKey key)
 {
 	KeyCode keycode = (KeyCode)key.to_api();
-	KeySym sym = xkbKeycodeToKeysym(_gfx_ctx.display, keycode, 0, 0);
+	KeySym sym = x11::xkbKeycodeToKeysym(_gfx_ctx.display, keycode, 0, 0);
 	if (sym < 256) return (GfxKey)sym;
 
 	switch (sym)
@@ -706,12 +688,12 @@ fn GfxKey _physical_to_mapped_key_native_x11(GfxKey key)
 // private
 fn void _wait_for_event_x11(Posix_pollfd[] fds, Duration duration)
 {
-	fds[0].fd = xConnectionNumber(_gfx_ctx.display);
+	fds[0].fd = x11::xConnectionNumber(_gfx_ctx.display);
 
 	bool infinity = duration == WAIT_FOREVER;
 	bool once = true;
 	Clock start = clock::now();
-	while (!xPending(_gfx_ctx.display))
+	while (!x11::xPending(_gfx_ctx.display))
 	{
 		Duration diff = duration - start.to_now().to_duration();
 		long ms = diff.to_ms();
@@ -729,8 +711,8 @@ fn void _wait_for_event_x11(Posix_pollfd[] fds, Duration duration)
 fn void _poll_events_x11()
 {
 	_reset_prev_state();
-	xPending(_gfx_ctx.display);
-	while (qLength(_gfx_ctx.display)) _x_handle_event();
+	x11::xPending(_gfx_ctx.display);
+	while (x11::xQLength(_gfx_ctx.display)) _x_handle_event();
 }
 
 fn void _x_handle_event()
@@ -738,7 +720,7 @@ fn void _x_handle_event()
 	static Vec2 delta = {};
 
 	XEvent e;
-	xNextEvent(_gfx_ctx.display, &e);
+	x11::xNextEvent(_gfx_ctx.display, &e);
 
 	if (e.type != 35 /* GenericEvent */)
 	{
@@ -759,7 +741,7 @@ fn void _x_handle_event()
 
 	if (e.type == 35 /* GenericEvent */)
 	{
-		xGetEventData(_gfx_ctx.display, &e.xcookie);
+		x11::xGetEventData(_gfx_ctx.display, &e.xcookie);
 		if (e.xcookie.evtype == 17 /* XI_RawMotion */)
 		{
 			XIRawEvent* raw = (XIRawEvent*)e.xcookie.data;
@@ -776,12 +758,12 @@ fn void _x_handle_event()
 				_raw_motion_callback(_gfx_ctx.root, delta);
 			}
 		}
-		xFreeEventData(_gfx_ctx.display, &e.xcookie);
+		x11::xFreeEventData(_gfx_ctx.display, &e.xcookie);
 		return;
 	}
 
 	GfxWindow* win = null;
-	if (xFindContext(_gfx_ctx.display, e.xany.window, _gfx_ctx.context, (XPointer*)&win) != 0) return;
+	if (x11::xFindContext(_gfx_ctx.display, e.xany.window, _gfx_ctx.context, (XPointer*)&win) != 0) return;
 
 	if (win.src.flashEnd != (Clock)0)
 	{
@@ -789,13 +771,13 @@ fn void _x_handle_event()
 	}
 
 	bool keyRepeat = false;
-	if (e.type == 3 /* KeyRelease */ && xEventsQueued(_gfx_ctx.display, 1) != 0)
+	if (e.type == 3 /* KeyRelease */ && x11::xEventsQueued(_gfx_ctx.display, 1) != 0)
 	{
 		XEvent ne;
-		xPeekEvent(_gfx_ctx.display, &ne);
+		x11::xPeekEvent(_gfx_ctx.display, &ne);
 		if (ne.type == 2 /* KeyPress */ && e.xkey.time == ne.xkey.time && e.xkey.keycode == ne.xkey.keycode)
 		{
-			xNextEvent(_gfx_ctx.display, &e);
+			x11::xNextEvent(_gfx_ctx.display, &e);
 			keyRepeat = true;
 		}
 	}
@@ -808,14 +790,14 @@ fn void _x_handle_event()
 				GfxKey value = key_from_api(e.xkey.keycode);
 
 				XkbStateRec state;
-				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
+				x11::xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
 				_key_update_key_mods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
 
-				if (win.src.ic != null && xFilterEvent(&e, 0) == 0)
+				if (win.src.ic != null && x11::xFilterEvent(&e, 0) == 0)
 				{
 					char[100] buffer;
 					int status;
-					sz count = xutf8LookupString(win.src.ic, &e.xkey, (char*)&buffer, 99, null, &status);
+					sz count = x11::xutf8LookupString(win.src.ic, &e.xkey, (char*)&buffer, 99, null, &status);
 					if (status == 2 /* XLookupChars */ || status == 4 /* XLookupBoth */)
 					{
 						buffer[count] = 0;
@@ -831,8 +813,8 @@ fn void _x_handle_event()
 					XWindow rootRet, childRet;
 					int rootX, rootY, winX, winY;
 					uint mask;
-					xQueryPointer(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &rootRet, &childRet, &rootX, &rootY, &winX, &winY, &mask);
-					KeySym sym = xkbKeycodeToKeysym(_gfx_ctx.display, (KeyCode)e.xkey.keycode, 0, (mask & SHIFT_MASK) ? 1 : 0);
+					x11::xQueryPointer(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display), &rootRet, &childRet, &rootX, &rootY, &winX, &winY, &mask);
+					KeySym sym = x11::xkbKeycodeToKeysym(_gfx_ctx.display, (KeyCode)e.xkey.keycode, 0, (mask & SHIFT_MASK) ? 1 : 0);
 
 					if ((mask & LOCK_MASK) && sym >= 0x0061 /* XK_a */ && sym <= 0x007a /* XK_z */)
 					{
@@ -852,7 +834,7 @@ fn void _x_handle_event()
 				GfxKey value = key_from_api(e.xkey.keycode);
 
 				XkbStateRec state;
-				xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
+				x11::xkbGetState(_gfx_ctx.display, XKB_USE_CORE_KBD, &state);
 				_key_update_key_mods(win, state.locked_mods & LOCK_MASK != 0, state.locked_mods & MOD2_MASK != 0, state.locked_mods & MOD3_MASK != 0);
 
 				_key_callback(win, value, win.internal.mod, false, false);
@@ -950,7 +932,7 @@ fn void _x_handle_event()
 						Atom actualType;
 						int actualFormat;
 						CULong bytesAfter;
-						xGetWindowProperty(_gfx_ctx.display, _gfx_ctx.x11Source, _gfx_ctx.xdndTypeList, 0, ~0, 0, 4,
+						x11::xGetWindowProperty(_gfx_ctx.display, _gfx_ctx.x11Source, _gfx_ctx.xdndTypeList, 0, ~0, 0, 4,
 						&actualType, &actualFormat, &count, &bytesAfter, (char**)&formats);
 					}
 					else
@@ -986,7 +968,7 @@ fn void _x_handle_event()
 						break;
 					}
 
-					if (list != 0 && formats != null) xFree(formats);
+					if (list != 0 && formats != null) x11::xFree(formats);
 
 					_data_drag_callback(win, _gfx_ctx.x11TransferType, ENTER, drag);
 				}
@@ -997,7 +979,7 @@ fn void _x_handle_event()
 					XWindow dummy;
 					int xpos, ypos;
 
-					xTranslateCoordinates(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), win.src.window,
+					x11::xTranslateCoordinates(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display), win.src.window,
 					xabs, yabs, &xpos, &ypos, &dummy);
 
 					drag = { xpos, ypos };
@@ -1019,8 +1001,8 @@ fn void _x_handle_event()
 						if (_gfx_ctx.x11Version >= 2) reply.xclient.data.l[4] = (CLong)_gfx_ctx.xdndActionCopy;
 					}
 
-					xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
-					xFlush(_gfx_ctx.display);
+					x11::xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
+					x11::xFlush(_gfx_ctx.display);
 
 					_data_drag_callback(win, _gfx_ctx.x11TransferType, MOVE, drag);
 				}
@@ -1033,7 +1015,7 @@ fn void _x_handle_event()
 					if (_gfx_ctx.x11Format != 0)
 					{
 						Time_t time = _gfx_ctx.x11Version >= 1 ?(Time_t)e.xclient.data.l[2] : 0; // CurrentTime
-						xConvertSelection(_gfx_ctx.display, _gfx_ctx.xdndSelection, (Atom)_gfx_ctx.x11Format,
+						x11::xConvertSelection(_gfx_ctx.display, _gfx_ctx.xdndSelection, (Atom)_gfx_ctx.x11Format,
 						_gfx_ctx.xdndSelection, win.src.window, time);
 					}
 					else if (_gfx_ctx.x11Version >= 2)
@@ -1047,8 +1029,8 @@ fn void _x_handle_event()
 						reply.xclient.data.l[1] = 0;
 						reply.xclient.data.l[2] = 0;
 
-						xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
-						xFlush(_gfx_ctx.display);
+						x11::xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
+						x11::xFlush(_gfx_ctx.display);
 					}
 				}
 				break;
@@ -1063,13 +1045,13 @@ fn void _x_handle_event()
 				int actualFormat;
 				CULong bytesAfter;
 
-				xGetWindowProperty(_gfx_ctx.display, e.xselection.requestor, e.xselection.property, 0, ~0, 0, e.xselection.target,
+				x11::xGetWindowProperty(_gfx_ctx.display, e.xselection.requestor, e.xselection.property, 0, ~0, 0, e.xselection.target,
 				&actualType, &actualFormat, &result, &bytesAfter, (char**)&data);
 
 				if (result != 0)
 				{
 					_drop_url(win, data);
-					if (data != null) xFree(data);
+					if (data != null) x11::xFree(data);
 				}
 
 				if (_gfx_ctx.x11Version >= 2)
@@ -1082,8 +1064,8 @@ fn void _x_handle_event()
 					reply.xclient.data.l[0] = (CLong)win.src.window;
 					reply.xclient.data.l[1] = (CLong)result;
 					reply.xclient.data.l[2] = (CLong)_gfx_ctx.xdndActionCopy;
-					xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
-					xFlush(_gfx_ctx.display);
+					x11::xSendEvent(_gfx_ctx.display, _gfx_ctx.x11Source, 0, 0, &reply);
+					x11::xFlush(_gfx_ctx.display);
 				}
 				break;
 			}
@@ -1099,11 +1081,11 @@ fn void _x_handle_event()
 
 				// if the event came from the server and we're not a direct child of the root window then
 				// we're using local coords which need to be translated into screen coords
-				XWindow root = xDefaultRootWindow(_gfx_ctx.display);
+				XWindow root = x11::xDefaultRootWindow(_gfx_ctx.display);
 				if (e.xany.send_event == 0 && win.src.parent != root)
 				{
 					XWindow dummy;
-					xTranslateCoordinates(_gfx_ctx.display, win.src.parent, root, ...configure, &configure.x, &configure.y, &dummy);
+					x11::xTranslateCoordinates(_gfx_ctx.display, win.src.parent, root, ...configure, &configure.x, &configure.y, &dummy);
 				}
 
 				if (configure != win.origin)
@@ -1114,10 +1096,10 @@ fn void _x_handle_event()
 				return;
 			}
 		case 9: // FocusIn
-			if (win.src.ic) xSetICFocus(win.src.ic);
+			if (win.src.ic) x11::xSetICFocus(win.src.ic);
 			_window_focus_callback(win, true);
 		case 10: // FocusOut
-			if (win.src.ic) xUnsetICFocus(win.src.ic);
+			if (win.src.ic) x11::xUnsetICFocus(win.src.ic);
 			_window_focus_callback(win, false);
 		case 7: _mouse_notify_callback(win, { e.xcrossing.x, e.xcrossing.y }, true); // EnterNotify
 		case 8: _mouse_notify_callback(win, win.internal.last_mouse, false); // LeaveNotify
@@ -1125,16 +1107,16 @@ fn void _x_handle_event()
 		default: break;
 	}
 
-	xFlush(_gfx_ctx.display);
+	x11::xFlush(_gfx_ctx.display);
 }
 
 // private
 fn void _poll_monitors_x11()
 {
-	XWindow root = xDefaultRootWindow(_gfx_ctx.display);
-	XRRScreenResources* res = xRRGetScreenResourcesCurrent(_gfx_ctx.display, root);
+	XWindow root = x11::xDefaultRootWindow(_gfx_ctx.display);
+	XRRScreenResources* res = x11::xRRGetScreenResourcesCurrent(_gfx_ctx.display, root);
 	if (res == null) return;
-	RROutput primary = xRRGetOutputPrimary(_gfx_ctx.display, root);
+	RROutput primary = x11::xRRGetOutputPrimary(_gfx_ctx.display, root);
 
 	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next) node.disconnected = true;
 
@@ -1153,11 +1135,11 @@ fn void _poll_monitors_x11()
 		}
 
 		GfxMonitor monitor;
-		GfxXRROutputInfo* info = xRRGetOutputInfo(_gfx_ctx.display, res, res.outputs[i]);
+		GfxXRROutputInfo* info = x11::xRRGetOutputInfo(_gfx_ctx.display, res, res.outputs[i]);
 		if (info == null) continue;
-		if (info.connection != 0 || info.crtc == 0) { xRRFreeOutputInfo(info); continue; }
+		if (info.connection != 0 || info.crtc == 0) { x11::xRRFreeOutputInfo(info); continue; }
 
-		XRRCrtcInfo* ci = xRRGetCrtcInfo(_gfx_ctx.display, res, info.crtc);
+		XRRCrtcInfo* ci = x11::xRRGetCrtcInfo(_gfx_ctx.display, res, info.crtc);
 		if (ci == null) continue;
 
 		float physW = (float)info.mm_width / 25.4f;
@@ -1187,17 +1169,17 @@ fn void _poll_monitors_x11()
 		void* mi = _x_get_mode(ci, res, ci.mode, &monitor.mode);
 		if (mi == null) break;
 
-		xRRFreeCrtcInfo(ci);
+		x11::xRRFreeCrtcInfo(ci);
 		node = _monitor_add(&monitor);
 		if (node == null) break;
 		node.nativeId0 = res.outputs[i];
 		node.nativeId1 = info.crtc;
 		if (node.nativeId0 == primary) _gfx_ctx.monitors.primary = node;
-		xRRFreeOutputInfo(info);
+		x11::xRRFreeOutputInfo(info);
 		_monitor_callback(_gfx_ctx.root, &node.mon, true);
 	}
 
-	xRRFreeScreenResources(res);
+	x11::xRRFreeScreenResources(res);
 	refresh_monitors();
 }
 
@@ -1206,12 +1188,12 @@ fn void _window_close_native_x11(GfxWindow* win)
 {
 	if (win.src.ic)
 	{
-		xDestroyIC(win.src.ic);
+		x11::xDestroyIC(win.src.ic);
 		win.src.ic = null;
 	}
-	xFreeGC(_gfx_ctx.display, win.src.gc);
-	xDeleteContext(_gfx_ctx.display, win.src.window, _gfx_ctx.context);
-	xDestroyWindow(_gfx_ctx.display, win.src.window);
+	x11::xFreeGC(_gfx_ctx.display, win.src.gc);
+	x11::xDeleteContext(_gfx_ctx.display, win.src.window, _gfx_ctx.context);
+	x11::xDestroyWindow(_gfx_ctx.display, win.src.window);
 }
 
 fn void _window_release_opengl_context_x11(GfxWindow* win, GfxGlContext* ctx)
@@ -1226,23 +1208,23 @@ fn void _window_release_egl_context_x11(GfxWindow* win, GfxEglContext* ctx) {}
 fn void _window_focus_x11(GfxWindow* win)
 {
 	XWindowAttributes attr;
-	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attr);
+	x11::xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attr);
 	if (attr.map_state != 2 /* IsViewable */) return;
-	xSetInputFocus(_gfx_ctx.display, win.src.window, 1 /* RevertToPointerRoot */, 0);
-	xFlush(_gfx_ctx.display);
+	x11::xSetInputFocus(_gfx_ctx.display, win.src.window, 1 /* RevertToPointerRoot */, 0);
+	x11::xFlush(_gfx_ctx.display);
 }
 
 fn void _window_hide_x11(GfxWindow* win)
 {
 	win.internal.flags.hide = true;
-	xUnmapWindow(_gfx_ctx.display, win.src.window);
-	xFlush(_gfx_ctx.display);
+	x11::xUnmapWindow(_gfx_ctx.display, win.src.window);
+	x11::xFlush(_gfx_ctx.display);
 }
 
 fn bool _window_is_hidden_x11(GfxWindow* win)
 {
 	XWindowAttributes windowAttributes;
-	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &windowAttributes);
+	x11::xGetWindowAttributes(_gfx_ctx.display, win.src.window, &windowAttributes);
 	return windowAttributes.map_state != 2;
 }
 
@@ -1253,17 +1235,17 @@ fn bool _window_is_maximized_x11(GfxWindow* win)
 	int actualFormat;
 	CULong nitems, bytesAfter;
 	char* propData;
-	int status = xGetWindowProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmState, 0, 1024, 0, 4, &actualType, &actualFormat, &nitems, &bytesAfter, &propData);
-	if (status != 0) { if (propData != null) xFree(propData); return false; }
+	int status = x11::xGetWindowProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmState, 0, 1024, 0, 4, &actualType, &actualFormat, &nitems, &bytesAfter, &propData);
+	if (status != 0) { if (propData != null) x11::xFree(propData); return false; }
 	for (CULong i = 0; i < nitems; i++)
 	{
 		if ((Atom)propData[i] == _gfx_ctx.net_wm_state_maximized_vert || (Atom)propData[i] == _gfx_ctx.net_wm_state_maximized_horz)
 		{
-			xFree(propData);
+			x11::xFree(propData);
 			return true;
 		}
 	}
-	if (propData != null) xFree(propData);
+	if (propData != null) x11::xFree(propData);
 	return false;
 }
 
@@ -1274,15 +1256,15 @@ fn bool _window_is_minimized_x11(GfxWindow* win)
 	int actualFormat;
 	CULong nitems, bytesAfter;
 	char* propData;
-	int status = xGetWindowProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.wmState, 0, 2, 0, 0, &actualType, &actualFormat, &nitems, &bytesAfter, &propData);
+	int status = x11::xGetWindowProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.wmState, 0, 2, 0, 0, &actualType, &actualFormat, &nitems, &bytesAfter, &propData);
 	if (status == 0 && nitems >= 1 && propData == (char*)(uptr)3 /* IconicState */)
 	{
-		xFree(propData);
+		x11::xFree(propData);
 		return true;
 	}
-	if (propData != null) xFree(propData);
+	if (propData != null) x11::xFree(propData);
 	XWindowAttributes windowAttributes;
-	xGetWindowAttributes(_gfx_ctx.display, win.src.window, &windowAttributes);
+	x11::xGetWindowAttributes(_gfx_ctx.display, win.src.window, &windowAttributes);
 	return windowAttributes.map_state != 2;
 }
 
@@ -1305,8 +1287,8 @@ fn void _window_minimize_x11(GfxWindow* win)
 {
 	if (_window_is_maximized_native(win)) return;
 	win.internal.old_bounds = win.bounds;
-	xIconifyWindow(_gfx_ctx.display, win.src.window, xDefaultScreen(_gfx_ctx.display));
-	xFlush(_gfx_ctx.display);
+	x11::xIconifyWindow(_gfx_ctx.display, win.src.window, x11::xDefaultScreen(_gfx_ctx.display));
+	x11::xFlush(_gfx_ctx.display);
 }
 
 fn void _window_move_mouse_x11(GfxWindow* win, GfxPoint where)
@@ -1314,21 +1296,21 @@ fn void _window_move_mouse_x11(GfxWindow* win, GfxPoint where)
 	int rootX, rootY, win_x, win_y;
 	uint mask;
 	XWindow root_ret, child_ret;
-	xQueryPointer(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), &root_ret, &child_ret, &rootX, &rootY, &win_x, &win_y, &mask);
+	x11::xQueryPointer(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display), &root_ret, &child_ret, &rootX, &rootY, &win_x, &win_y, &mask);
 	win.internal.last_mouse = where - win.origin;
 	if (win_x == where.x && win_y == where.y) return;
-	xWarpPointer(_gfx_ctx.display, 0, win.src.window, 0, 0, 0, 0, ...(where - win.origin));
+	x11::xWarpPointer(_gfx_ctx.display, 0, win.src.window, 0, 0, 0, 0, ...(where - win.origin));
 }
 
 fn void _window_move_x11(GfxWindow* win, GfxPoint where)
 {
 	win.origin = where;
-	xMoveWindow(_gfx_ctx.display, win.src.window, ...where);
+	x11::xMoveWindow(_gfx_ctx.display, win.src.window, ...where);
 }
 
 fn void _window_raise_x11(GfxWindow* win)
 {
-	xMapRaised(_gfx_ctx.display, win.src.window);
+	x11::xMapRaised(_gfx_ctx.display, win.src.window);
 	_window_set_fullscreen_native(win, win.is_fullscreen());
 }
 
@@ -1336,14 +1318,14 @@ fn void _window_raise_x11(GfxWindow* win)
 fn void _window_resize_x11(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
-	xResizeWindow(_gfx_ctx.display, win.src.window, (uint)size.x, (uint)size.y);
+	x11::xResizeWindow(_gfx_ctx.display, win.src.window, (uint)size.x, (uint)size.y);
 	if (win.internal.flags.no_resize)
 	{
 		XSizeHints sh;
 		sh.flags = (1 << 4) | (1 << 5);
 		sh.min_width = sh.max_width = size.x;
 		sh.min_height = sh.max_height = size.y;
-		xSetWMSizeHints(_gfx_ctx.display, win.src.window, &sh, 0);
+		x11::xSetWMSizeHints(_gfx_ctx.display, win.src.window, &sh, 0);
 	}
 }
 
@@ -1351,7 +1333,7 @@ fn void _window_resize_x11(GfxWindow* win, GfxSize size)
 fn void _window_restore_x11(GfxWindow* win)
 {
 	_toggle_x_maximized(win, false);
-	xFlush(_gfx_ctx.display);
+	x11::xFlush(_gfx_ctx.display);
 }
 
 fn void _window_set_floating_x11(GfxWindow* win, bool floating) => _window_set_x_atom(win, _gfx_ctx.netWmStateAbove, floating);
@@ -1368,13 +1350,13 @@ fn void _window_set_fullscreen_x11(GfxWindow* win, bool fullscreen)
 		win.internal.flags.fullscreen = false;
 	}
 
-	xRaiseWindow(_gfx_ctx.display, win.src.window);
+	x11::xRaiseWindow(_gfx_ctx.display, win.src.window);
 	_window_set_x_atom(win, _gfx_ctx.netWmStateFullscreen, fullscreen);
 
 	if (!(win.internal.flags.transparent))
 	{
 		char value = (char)fullscreen;
-		xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmBypassCompositor, 6 /* XA_CARDINAL */, 32, 0, &value, 1);
+		x11::xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmBypassCompositor, 6 /* XA_CARDINAL */, 32, 0, &value, 1);
 	}
 }
 
@@ -1383,10 +1365,10 @@ fn void _window_set_max_size_x11(GfxWindow* win, GfxSize size)
 {
 	CLong flags;
 	XSizeHints hints;
-	xGetWMNormalHints(_gfx_ctx.display, win.src.window, &hints, &flags);
+	x11::xGetWMNormalHints(_gfx_ctx.display, win.src.window, &hints, &flags);
 	hints.flags |= 1 << 5; // PMaxSize
 	hints.max_width = size.x; hints.max_height = size.y;
-	xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
+	x11::xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
 }
 
 // private
@@ -1394,22 +1376,22 @@ fn void _window_set_min_size_x11(GfxWindow* win, GfxSize size)
 {
 	CLong flags;
 	XSizeHints hints;
-	xGetWMNormalHints(_gfx_ctx.display, win.src.window, &hints, &flags);
+	x11::xGetWMNormalHints(_gfx_ctx.display, win.src.window, &hints, &flags);
 	hints.flags |= 1 << 4; // PMinSize
 	hints.min_width = size.x; hints.min_height = size.y;
-	xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
+	x11::xSetWMNormalHints(_gfx_ctx.display, win.src.window, &hints);
 }
 
 fn bool _window_set_mouse_x11(GfxWindow* win, GfxMouse* mouse)
 {
-	xDefineCursor(_gfx_ctx.display, win.src.window, (XCursor)mouse);
+	x11::xDefineCursor(_gfx_ctx.display, win.src.window, (XCursor)mouse);
 	return true;
 }
 
 fn void _window_set_opacity_x11(GfxWindow* win, char opacity)
 {
 	uint value = (uint)(4294967295.0 * (double)opacity);
-	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmWindowOpacity, 6, 32, 0, (char*)&value, 1);
+	x11::xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmWindowOpacity, 6, 32, 0, (char*)&value, 1);
 }
 
 fn void _window_opengl_swap_buffers_x11(GfxWindow* win) { _glx_swap_buffers_fn(_gfx_ctx.display, win.src.ctx.native.window); }
@@ -1417,8 +1399,8 @@ fn void _window_opengl_swap_buffers_x11(GfxWindow* win) { _glx_swap_buffers_fn(_
 // private
 fn void? _write_clipboard_x11(GfxDataTransfer* data)
 {
-	xSetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.helper_window, 0);
-	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) != _gfx_ctx.helper_window)
+	x11::xSetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.helper_window, 0);
+	if (x11::xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) != _gfx_ctx.helper_window)
 	{
 		return COULD_NOT_OWN_X11_CLIPBOARD~;
 	}
@@ -1440,18 +1422,18 @@ fn GfxDataTransfer? _read_clipboard_x11(Allocator allocator, GfxDataTransferType
 {
 	if (type != TEXT) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
-	if (xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helper_window)
+	if (x11::xGetSelectionOwner(_gfx_ctx.display, _gfx_ctx.clipboardAtom) == _gfx_ctx.helper_window)
 	{
 		if (!_gfx_ctx.unixClipboard.text) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 		return { .type = TEXT, .text = _gfx_ctx.unixClipboard.text.copy(allocator) };
 	}
 
-	xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.utf8String, _gfx_ctx.xselData, _gfx_ctx.helper_window, 0);
-	xSync(_gfx_ctx.display, 0);
+	x11::xConvertSelection(_gfx_ctx.display, _gfx_ctx.clipboardAtom, _gfx_ctx.utf8String, _gfx_ctx.xselData, _gfx_ctx.helper_window, 0);
+	x11::xSync(_gfx_ctx.display, 0);
 	XEvent event;
 	while (true)
 	{
-		xNextEvent(_gfx_ctx.display, &event);
+		x11::xNextEvent(_gfx_ctx.display, &event);
 		if (event.type != 31 /* SelectionNotify */) continue;
 		if (event.xselection.selection != _gfx_ctx.clipboardAtom || event.xselection.property == 0) return CLIPBOARD_COULD_NOT_BE_OPENED~;
 		break;
@@ -1461,12 +1443,12 @@ fn GfxDataTransfer? _read_clipboard_x11(Allocator allocator, GfxDataTransferType
 	int format;
 	CULong n, size;
 	char* data;
-	xGetWindowProperty(_gfx_ctx.display, event.xselection.requestor, event.xselection.property, 0, ~0, 0, 0, &target, &format, &size, &n, (char**)&data);
-	defer xDeleteProperty(_gfx_ctx.display, event.xselection.requestor, event.xselection.property);
+	x11::xGetWindowProperty(_gfx_ctx.display, event.xselection.requestor, event.xselection.property, 0, ~0, 0, 0, &target, &format, &size, &n, (char**)&data);
+	defer x11::xDeleteProperty(_gfx_ctx.display, event.xselection.requestor, event.xselection.property);
 
 	if (target == _gfx_ctx.utf8String || target == 31)
 	{
-		defer xFree(data);
+		defer x11::xFree(data);
 		return { .type = TEXT, .text = (String)alloc::clone_slice(allocator, data[:size]) };
 	}
 	return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
@@ -1517,7 +1499,7 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	stack.push_all({0, 0});
 
 	int fbcount;
-	GLXFBConfig* fbc = _glx_choose_fb_config_fn(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), stack.array_view(), &fbcount);
+	GLXFBConfig* fbc = _glx_choose_fb_config_fn(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display), stack.array_view(), &fbcount);
 	if (!fbc || !fbcount) return GLX_VISUAL_CONFIGS_NOT_FOUND~;
 
 	int bestFbcIdx = -1;
@@ -1533,15 +1515,15 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 		if (bestFbcIdx == -1) bestFbcIdx = i;
 		if ((!transparent || vi.depth == 32) && bestDepth == 0) { bestFbcIdx = i; bestDepth = vi.depth; }
 		if ((!transparent || vi.depth == 32) && samples <= hints.samples && samples > bestSamples) { bestFbcIdx = i; bestDepth = vi.depth; bestSamples = samples; }
-		xFree(vi);
+		x11::xFree(vi);
 	}
 	if (bestFbcIdx == -1) return GLX_NO_VALID_VISUAL~;
 
 	GLXFBConfig bestFbc = fbc[bestFbcIdx];
 	XVisualInfo* vi = _glx_get_visual_from_fb_config_fn(_gfx_ctx.display, bestFbc);
-	xFree(fbc);
+	x11::xFree(fbc);
 	XVisualInfo visual = *vi;
-	xFree(vi);
+	x11::xFree(vi);
 
 	_x_create_window(visual, "", win.internal.flags, win)!;
 
@@ -1611,7 +1593,7 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 fn void _window_flash_x11(GfxWindow* win, GfxFlashRequest request)
 {
 	if (win.has_focus() && request != CANCEL) return;
-	XWMHints* wmhints = xGetWMHints(_gfx_ctx.display, win.src.window);
+	XWMHints* wmhints = x11::xGetWMHints(_gfx_ctx.display, win.src.window);
 	if (!wmhints) return;
 	if (request)
 	{
@@ -1624,8 +1606,8 @@ fn void _window_flash_x11(GfxWindow* win, GfxFlashRequest request)
 		win.src.flashEnd = {};
 		wmhints.flags &= ~(1 << 8);
 	}
-	xSetWMHints(_gfx_ctx.display, win.src.window, wmhints);
-	xFree(wmhints);
+	x11::xSetWMHints(_gfx_ctx.display, win.src.window, wmhints);
+	x11::xFree(wmhints);
 }
 
 // private
@@ -1637,9 +1619,9 @@ fn void? _init_surface_x11(GfxSurface* surface, void* data, int w, int h, GfxFor
 	surface.format = format;
 
 	XWindowAttributes attrs;
-	if (!xGetWindowAttributes(_gfx_ctx.display, window.src.window, &attrs)) return SURFACE_CREATION_FAILED~;
+	if (!x11::xGetWindowAttributes(_gfx_ctx.display, window.src.window, &attrs)) return SURFACE_CREATION_FAILED~;
 	defer catch surface.release();
-	surface.native.bitmap = xCreateImage(_gfx_ctx.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])surface.size, 32, 0);
+	surface.native.bitmap = x11::xCreateImage(_gfx_ctx.display, attrs.visual, (uint)attrs.depth, 2 /* ZPixmap */, 0, null, ...(uint[<2>])surface.size, 32, 0);
 	if (!surface.native.bitmap) return SURFACE_CREATION_FAILED~;
 	surface.native.buffer = malloc((sz)w * h * 4);
 	((XImageHeader*)surface.native.bitmap).data = surface.native.buffer;
@@ -1654,10 +1636,10 @@ fn bool _window_is_floating_x11(GfxWindow* win)
 	int actualFormat;
 	CULong nitems, bytesAfter;
 	Atom* propReturn = null;
-	int status = xGetWindowProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmState, 0, ~0, 0, 4, &actualType, &actualFormat, &nitems, &bytesAfter, (char**)&propReturn);
+	int status = x11::xGetWindowProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmState, 0, ~0, 0, 4, &actualType, &actualFormat, &nitems, &bytesAfter, (char**)&propReturn);
 	if (status != 0 || actualType != 4) return false;
 	for (CULong i = 0; i < nitems; i++) if (propReturn[i] == _gfx_ctx.netWmStateAbove) return true;
-	if (propReturn != null) xFree(propReturn);
+	if (propReturn != null) x11::xFree(propReturn);
 	return false;
 }
 
@@ -1665,9 +1647,9 @@ fn bool _window_is_floating_x11(GfxWindow* win)
 fn void _window_set_name_x11(GfxWindow* win, String name) => @pool()
 {
 	ZString cstring = name.zstr_copy(tmem);
-	xutf8SetWMProperties(_gfx_ctx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
-	xStoreName(_gfx_ctx.display, win.src.window, cstring);
-	xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmName, _gfx_ctx.utf8String, 8, 0, cstring, name.len);
+	x11::xutf8SetWMProperties(_gfx_ctx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
+	x11::xStoreName(_gfx_ctx.display, win.src.window, cstring);
+	x11::xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmName, _gfx_ctx.utf8String, 8, 0, cstring, name.len);
 }
 
 // private
@@ -1675,7 +1657,7 @@ fn bool _window_set_icon_x11(GfxWindow* win, char* dataSrc, int w, int h, GfxFor
 {
 	if (dataSrc == null)
 	{
-		return !!xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmIcon, 6, 32, 0, null, 0);
+		return !!x11::xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmIcon, 6, 32, 0, null, 0);
 	}
 	int count = 2 + (w * h);
 	CULong* data = calloc((sz)count * CULong::size);
@@ -1686,7 +1668,7 @@ fn bool _window_set_icon_x11(GfxWindow* win, char* dataSrc, int w, int h, GfxFor
 	bool res = true;
 	if (type & TASKBAR)
 	{
-		res = !!xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmIcon, 6, 32, 0, (char*)data, count);
+		res = !!x11::xChangeProperty(_gfx_ctx.display, win.src.window, _gfx_ctx.netWmIcon, 6, 32, 0, (char*)data, count);
 	}
 
 	copy_image_data_64((char*)&data[2], w, h, BGRA8, dataSrc, format, false, null);
@@ -1696,27 +1678,27 @@ fn bool _window_set_icon_x11(GfxWindow* win, char* dataSrc, int w, int h, GfxFor
 		XWMHints wmHints;
 		wmHints.flags = 1 << 2; // IconPixmapHint
 
-		int depth = xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-		void* image = xCreateImage(_gfx_ctx.display, xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)),
+		int depth = x11::xDefaultDepth(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display));
+		void* image = x11::xCreateImage(_gfx_ctx.display, x11::xDefaultVisual(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display)),
 		(uint)depth, 2 /* ZPixmap */, 0, (char*)&data[2], (uint)w, (uint)h, 32, 0);
 
-		wmHints.icon_pixmap = xCreatePixmap(_gfx_ctx.display, win.src.window, (uint)w, (uint)h, (uint)depth);
-		xPutImage(_gfx_ctx.display, wmHints.icon_pixmap, xDefaultGC(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), image, 0, 0, 0, 0, (uint)w, (uint)h);
+		wmHints.icon_pixmap = x11::xCreatePixmap(_gfx_ctx.display, win.src.window, (uint)w, (uint)h, (uint)depth);
+		x11::xPutImage(_gfx_ctx.display, wmHints.icon_pixmap, x11::xDefaultGC(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display)), image, 0, 0, 0, 0, (uint)w, (uint)h);
 		((XImageHeader*)image).data = null;
-		xDestroyImage(image);
+		x11::xDestroyImage(image);
 
-		xSetWMHints(_gfx_ctx.display, win.src.window, &wmHints);
+		x11::xSetWMHints(_gfx_ctx.display, win.src.window, &wmHints);
 	}
 
 	free(data);
-	xFlush(_gfx_ctx.display);
+	x11::xFlush(_gfx_ctx.display);
 	return res;
 }
 
 fn GfxMonitor*? _window_find_monitor_x11(GfxWindow* win)
 {
 	XWindowAttributes attrs;
-	if (xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attrs) == 0) return NOT_FOUND~;
+	if (x11::xGetWindowAttributes(_gfx_ctx.display, win.src.window, &attrs) == 0) return NOT_FOUND~;
 	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
 	{
 		if ((attrs.x < node.mon.origin.x + node.mon.mode.size.x) && (attrs.x + attrs.width > node.mon.origin.x) &&
@@ -1733,7 +1715,7 @@ fn void _window_show_x11(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
 	if (!_window_is_hidden_native(win)) return;
-	xMapWindow(_gfx_ctx.display, win.src.window);
+	x11::xMapWindow(_gfx_ctx.display, win.src.window);
 	_wait_for_show_event_x11(win);
 	win.move(win.origin);
 	_window_set_fullscreen_native(win, win.is_fullscreen());
@@ -1743,7 +1725,7 @@ fn void _window_show_x11(GfxWindow* win)
 fn bool _wait_for_show_event_x11(GfxWindow* win)
 {
 	XEvent dummy;
-	while (xCheckTypedWindowEvent(_gfx_ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
+	while (x11::xCheckTypedWindowEvent(_gfx_ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
 	{
 		_wait_for_event_native(time::ms(100));
 	}
@@ -1760,7 +1742,7 @@ fn void _toggle_x_maximized(GfxWindow* win, bool maximized)
 	xev.xclient.data.l[0] = (int)maximized;
 	xev.xclient.data.l[1] = (CLong)_gfx_ctx.net_wm_state_maximized_horz;
 	xev.xclient.data.l[2] = (CLong)_gfx_ctx.net_wm_state_maximized_vert;
-	xSendEvent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 20) | (1 << 19), &xev);
+	x11::xSendEvent(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 20) | (1 << 19), &xev);
 }
 
 fn void _drop_url(GfxWindow* win, ZString data) => @pool()
@@ -1782,11 +1764,11 @@ fn void _drop_url(GfxWindow* win, ZString data) => @pool()
 // public
 fn void _get_visual_for_window(XVisualInfo* visual, bool transparent)
 {
-	visual.visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-	visual.depth = xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
+	visual.visual = x11::xDefaultVisual(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display));
+	visual.depth = x11::xDefaultDepth(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display));
 	if (transparent)
 	{
-		xMatchVisualInfo(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display), 32, 4 /* TrueColor */, visual);
+		x11::xMatchVisualInfo(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display), 32, 4 /* TrueColor */, visual);
 		if (visual.depth != 32)
 		{
 			log::warn("Failed to load a 32-bit depth.", category: log::CATEGORY_VIDEO);
@@ -1805,7 +1787,7 @@ fn void _window_set_x_atom(GfxWindow* win, Atom netAtom, bool fullscreen)
 	xev.xclient.format = 32;
 	xev.xclient.data.l[0] = (int)fullscreen;
 	xev.xclient.data.l[1] = (CLong)netAtom;
-	xSendEvent(_gfx_ctx.display, xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 19) | (1 << 20), &xev);
+	x11::xSendEvent(_gfx_ctx.display, x11::xDefaultRootWindow(_gfx_ctx.display), 0, (1 << 19) | (1 << 20), &xev);
 }
 
 fn void _x11_ic_callback(void* ic, void* client_data, void* call_data)
@@ -1824,13 +1806,13 @@ fn void _x11_im_init_callback(XDisplay* d, XPointer client_data, XPointer call_d
 {
 	if (_gfx_ctx.im != null) return;
 
-	_gfx_ctx.im = xOpenIM(_gfx_ctx.display, null, null, null);
+	_gfx_ctx.im = x11::xOpenIM(_gfx_ctx.display, null, null, null);
 	if (_gfx_ctx.im == null) return;
 
 	bool found = false;
 	XImStyles* styles = null;
 
-	if (xGetIMValues(_gfx_ctx.im, "queryInputStyle", &styles, (char*)null) != null)
+	if (x11::xGetIMValues(_gfx_ctx.im, "queryInputStyle", &styles, (char*)null) != null)
 	{
 		found = false;
 	}
@@ -1844,12 +1826,12 @@ fn void _x11_im_init_callback(XDisplay* d, XPointer client_data, XPointer call_d
 				break;
 			}
 		}
-		xFree(styles);
+		x11::xFree(styles);
 	}
 
 	if (!found)
 	{
-		xCloseIM(_gfx_ctx.im);
+		x11::xCloseIM(_gfx_ctx.im);
 		_gfx_ctx.im = null;
 		return;
 	}
@@ -1857,13 +1839,13 @@ fn void _x11_im_init_callback(XDisplay* d, XPointer client_data, XPointer call_d
 	XImCallback callback;
 	callback.callback = &_x11_im_callback;
 	callback.client_data = null;
-	xSetIMValues(_gfx_ctx.im, "destroyCallback", &callback, (char*)null);
+	x11::xSetIMValues(_gfx_ctx.im, "destroyCallback", &callback, (char*)null);
 }
 
 fn int _x_error_handler(XDisplay* display, XErrorEvent* ev)
 {
 	char[512] errorText;
-	xGetErrorText(display, ev.error_code, (char*)&errorText, 512);
+	x11::xGetErrorText(display, ev.error_code, (char*)&errorText, 512);
 	log::warn("X Error callback :%s", (ZString)&errorText, category: log::CATEGORY_VIDEO);
 	_gfx_ctx.x11Error = ev;
 	return 0;
@@ -1882,7 +1864,7 @@ fn void* _x_get_mode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxM
 		found_mode.size = found_mode.size.yx;
 	}
 
-	_split_bpp((uint)xDefaultDepth(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display)), found_mode);
+	_split_bpp((uint)x11::xDefaultDepth(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display)), found_mode);
 	found_mode.src = (void*)(uptr)mode;
 	found_mode.refresh_rate = 0;
 	if (mi.hTotal == 0 || mi.vTotal == 0) return mi;
@@ -1901,13 +1883,13 @@ fn void _x_get_system_content_dpi(float* dpi)
 {
 	if (dpi == null) return;
 	float dpiOutput = 96.0f;
-	ZString rms = xResourceManagerString(_gfx_ctx.display);
+	ZString rms = x11::xResourceManagerString(_gfx_ctx.display);
 	if (rms == null) return;
-	void* db = xrmGetStringDatabase(rms);
+	void* db = x11::xrmGetStringDatabase(rms);
 	if (db == null) return;
 	ZString type = null;
 	// xrmGetResource's value-out parameter is a small {len,addr} struct; omitted here.
-	xrmDestroyDatabase(db);
+	x11::xrmDestroyDatabase(db);
 	*dpi = dpiOutput;
 }
 
@@ -1920,7 +1902,7 @@ fn void _x_handle_clipboard_selection(XEvent* event)
 	if (request.target == _gfx_ctx.targets)
 	{
 		Atom[4] targets = {_gfx_ctx.targets, _gfx_ctx.multiple, _gfx_ctx.utf8String, 31};
-		xChangeProperty(_gfx_ctx.display, request.requestor, request.property, 4 /* XA_ATOM */, 32, 0, (char*)&targets, 4);
+		x11::xChangeProperty(_gfx_ctx.display, request.requestor, request.property, 4 /* XA_ATOM */, 32, 0, (char*)&targets, 4);
 	}
 	else if (request.target == _gfx_ctx.multiple)
 	{
@@ -1928,14 +1910,14 @@ fn void _x_handle_clipboard_selection(XEvent* event)
 		Atom actualType;
 		int actualFormat;
 		CULong count, bytesAfter;
-		xGetWindowProperty(_gfx_ctx.display, request.requestor, request.property, 0, ~0, 0, _gfx_ctx.atomPair,
+		x11::xGetWindowProperty(_gfx_ctx.display, request.requestor, request.property, 0, ~0, 0, _gfx_ctx.atomPair,
 		&actualType, &actualFormat, &count, &bytesAfter, (char**)&targets);
 
 		for (CULong i = 0; i < count; i += 2)
 		{
 			if (targets[i] == _gfx_ctx.utf8String || targets[i] == 31 /* XA_STRING */)
 			{
-				xChangeProperty(_gfx_ctx.display, request.requestor, targets[i + 1], targets[i],
+				x11::xChangeProperty(_gfx_ctx.display, request.requestor, targets[i + 1], targets[i],
 				8, 0, _gfx_ctx.unixClipboard.text, (int)_gfx_ctx.unixClipboard.text.len);
 			}
 			else
@@ -1944,20 +1926,20 @@ fn void _x_handle_clipboard_selection(XEvent* event)
 			}
 		}
 
-		xChangeProperty(_gfx_ctx.display, request.requestor, request.property, _gfx_ctx.atomPair, 32, 0, (char*)targets, (int)count);
-		xFlush(_gfx_ctx.display);
-		xFree(targets);
+		x11::xChangeProperty(_gfx_ctx.display, request.requestor, request.property, _gfx_ctx.atomPair, 32, 0, (char*)targets, (int)count);
+		x11::xFlush(_gfx_ctx.display);
+		x11::xFree(targets);
 	}
 	else if (request.target == _gfx_ctx.saveTargets)
 	{
-		xChangeProperty(_gfx_ctx.display, request.requestor, request.property, 0, 32, 0, null, 0);
+		x11::xChangeProperty(_gfx_ctx.display, request.requestor, request.property, 0, 32, 0, null, 0);
 	}
 	else
 	{
 		for (sz i = 0; i < 2; i++)
 		{
 			if (request.target != formats[i]) continue;
-			xChangeProperty(_gfx_ctx.display, request.requestor, request.property, request.target, 8, 0, _gfx_ctx.unixClipboard.text, (int)_gfx_ctx.unixClipboard.text.len);
+			x11::xChangeProperty(_gfx_ctx.display, request.requestor, request.property, request.target, 8, 0, _gfx_ctx.unixClipboard.text, (int)_gfx_ctx.unixClipboard.text.len);
 		}
 	}
 
@@ -1969,18 +1951,18 @@ fn void _x_handle_clipboard_selection(XEvent* event)
 	reply.xselection.selection = request.selection;
 	reply.xselection.target = request.target;
 	reply.xselection.time = request.time;
-	xSendEvent(_gfx_ctx.display, request.requestor, 0, 0, &reply);
-	xFlush(_gfx_ctx.display);
+	x11::xSendEvent(_gfx_ctx.display, request.requestor, 0, 0, &reply);
+	x11::xFlush(_gfx_ctx.display);
 }
 
 // private
 fn int x_handle_clipboard_selection_helper()
 {
 	XEvent event;
-	xPending(_gfx_ctx.display);
-	if (qLength(_gfx_ctx.display) != 0 || xEventsQueued(_gfx_ctx.display, 0) + xEventsQueued(_gfx_ctx.display, 1) != 0)
+	x11::xPending(_gfx_ctx.display);
+	if (x11::xQLength(_gfx_ctx.display) != 0 || x11::xEventsQueued(_gfx_ctx.display, 0) + x11::xEventsQueued(_gfx_ctx.display, 1) != 0)
 	{
-		xNextEvent(_gfx_ctx.display, &event);
+		x11::xNextEvent(_gfx_ctx.display, &event);
 	}
 	else
 	{
@@ -2013,461 +1995,6 @@ fn void _window_opengl_swap_interval_x11(GfxWindow* win, int swapInterval)
 			log::warn("Failed to load swap interval function", category: log::CATEGORY_VIDEO);
 	}
 }
-
-
-module std::gfx @feat(X11, X11_WAYLAND) @link("X11", "Xext", "Xrandr", "GL") @private;
-import std::math, libc;
-
-// Leading fields of the real XImage struct (ABI-compatible prefix; only used to null
-// out `data` before XDestroyImage, since that buffer is owned by our own allocation).
-struct XImageHeader
-{
-	int width;
-	int height;
-	int xoffset;
-	int format;
-	char* data;
-}
-
-struct XVisualInfo
-{
-	XVisual* visual;
-	VisualID visualid;
-	int screen;
-	int depth;
-	int c_class;
-	CULong red_mask, green_mask, blue_mask;
-	int colormap_size;
-	int bits_per_rgb;
-}
-// X11 types
-
-// XRandr
-struct XRRScreenResources
-{
-	Time_t timestamp;
-	Time_t configTimestamp;
-	int ncrtc;
-	RRCrtc* crtcs;
-	int noutput;
-	RROutput* outputs;
-	int nmode;
-	XRRModeInfoNative* modes;
-}
-
-struct XRRModeInfoNative
-{
-	RRMode id;
-	uint width;
-	uint height;
-	CULong dotClock;
-	uint hSyncStart;
-	uint hSyncEnd;
-	uint hTotal;
-	uint hSkew;
-	uint vSyncStart;
-	uint vSyncEnd;
-	uint vTotal;
-	char* name;
-	uint nameLength;
-	CULong modeFlags;
-}
-
-struct XRRCrtcInfo
-{
-	Time_t timestamp;
-	int x, y;
-	uint width, height;
-	RRMode mode;
-	int rotation;
-	int noutput;
-	RROutput* outputs;
-	int rotations;
-	int npossible;
-	RROutput* possible;
-}
-struct GfxXRROutputInfo
-{
-	Time_t timestamp;
-	RRCrtc crtc;
-	ZString name;
-	int nameLen;
-	CULong mm_width;
-	CULong mm_height;
-	int connection;
-	int subpixel_order;
-	int ncrtc;
-	RRCrtc* crtcs;
-	int nclone;
-	RROutput* clones;
-	int nmode;
-	int npreferred;
-	RRMode* modes;
-}
-struct XRRCrtcGamma
-{
-	int size;
-	ushort* red;
-	ushort* green;
-	ushort* blue;
-}
-
-// ---- Xcursor / XInput2 / Xext sync+shape (dlopen'd like the original) ----
-struct XcursorImage
-{
-	uint version;
-	uint size;
-	uint width, height;
-	uint xhot, yhot;
-	uint delay;
-	uint* pixels;
-}
-struct XIEventMask
-{
-	int deviceid;
-	int mask_len;
-	char* mask;
-}
-struct XIValuatorState
-{
-	int mask_len;
-	char* mask;
-	double* values;
-}
-struct XIRawEvent
-{
-	int type;
-	CULong serial;
-	int send_event;
-	XDisplay* display;
-	int extension;
-	int evtype;
-	Time_t time;
-	int deviceid;
-	int sourceid;
-	int detail;
-	int flags;
-	XIValuatorState valuators;
-	double* raw_values;
-}
-struct XSyncValue
-{
-	int hi;
-	uint lo;
-}
-alias XSyncCounter = XlibId;
-
-struct XAspect
-{
-	int x, y;
-}
-struct X11WindowHints
-{
-	CULong flags, functions, decorations, status;
-	CLong input_mode;
-}
-
-struct XSetWindowAttributes
-{
-	Pixmap background_pixmap;
-	CULong background_pixel;
-	Pixmap border_pixmap;
-	CULong border_pixel;
-	int bit_gravity;
-	int win_gravity;
-	int backing_store;
-	CULong backing_planes;
-	CULong backing_pixel;
-	int save_under;
-	CLong event_mask;
-	CLong do_not_propagate_mask;
-	int override_redirect;
-	Colormap colormap;
-	XCursor cursor;
-}
-
-
-struct XWindowAttributes
-{
-	int x, y;
-	int width, height;
-	int border_width;
-	int depth;
-	XVisual* visual;
-	XWindow root;
-	int c_class;
-	int bit_gravity;
-	int win_gravity;
-	int backing_store;
-	CULong backing_planes;
-	CULong backing_pixel;
-	int save_under;
-	Colormap colormap;
-	int map_installed;
-	int map_state;
-	CLong all_event_masks;
-	CLong your_event_mask;
-	CLong do_not_propagate_mask;
-	int override_redirect;
-	Screen* screen;
-}
-
-struct XkbStateRec
-{
-	char group;
-	char locked_group;
-	ushort base_group;
-	ushort latched_group;
-	char mods;
-	char base_mods;
-	char latched_mods;
-	char locked_mods;
-	char compat_state;
-	char grab_mods;
-	char compat_grab_mods;
-	char lookup_mods;
-	char compat_lookup_mods;
-	ushort ptr_buttons;
-}
-
-struct XClassHint { ZString res_name; ZString res_class; }
-
-struct XWMHints
-{
-	CLong flags;
-	int input;
-	int initial_state;
-	Pixmap icon_pixmap;
-	XWindow icon_window;
-	int icon_x, icon_y;
-	Pixmap icon_mask;
-	XlibId window_group;
-}
-
-struct XSizeHints
-{
-	CLong flags;
-	int x, y, width, height;
-	int min_width, min_height;
-	int max_width, max_height;
-	int width_inc, height_inc;
-	XAspect min_aspect;
-	XAspect max_aspect;
-	int base_width, base_height;
-	int win_gravity;
-}
-
-struct XAnyEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow window; }
-struct XKeyEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow window; XWindow root; XWindow subwindow; Time_t time; int x, y; int x_root, y_root; uint state; uint keycode; int same_screen; }
-struct XButtonEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow window; XWindow root; XWindow subwindow; Time_t time; int x, y; int x_root, y_root; uint state; uint button; int same_screen; }
-struct XMotionEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow window; XWindow root; XWindow subwindow; Time_t time; int x, y; int x_root, y_root; uint state; char is_hint; int same_screen; }
-struct XCrossingEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow window; XWindow root; XWindow subwindow; Time_t time; int x, y; int x_root, y_root; int mode; int detail; int same_screen; int focus; uint state; }
-struct XFocusChangeEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow window; int mode; int detail; }
-struct XExposeEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow window; int x, y, width, height; int count; }
-struct XConfigureEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow event; XWindow window; int x, y, width, height; int border_width; XWindow above; int override_redirect; }
-struct XPropertyEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow window; Atom atom; Time_t time; int state; }
-struct XClientMessageDataL { CLong[5] l; }
-struct XClientMessageEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow window; Atom message_type; int format; XClientMessageDataL data; }
-struct XSelectionRequestEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow owner; XWindow requestor; Atom selection; Atom target; Atom property; Time_t time; }
-struct XSelectionEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow requestor; Atom selection; Atom target; Atom property; Time_t time; }
-struct XReparentEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow event; XWindow window; XWindow parent; int x, y; int override_redirect; }
-struct XMapEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow event; XWindow window; int override_redirect; }
-struct XUnmapEvent { int type; CULong serial; int send_event; XDisplay* display; XWindow event; XWindow window; int from_configure; }
-struct XErrorEvent { int type; XDisplay* display; CULong resourceid; CULong serial; char error_code; char request_code; char minor_code; }
-struct XGenericEventCookie { int type; CULong serial; int send_event; XDisplay* display; int extension; int evtype; uint cookie_data_len; void* data; }
-
-union XEvent
-{
-	int type;
-	XAnyEvent xany;
-	XKeyEvent xkey;
-	XButtonEvent xbutton;
-	XMotionEvent xmotion;
-	XCrossingEvent xcrossing;
-	XFocusChangeEvent xfocus;
-	XExposeEvent xexpose;
-	XConfigureEvent xconfigure;
-	XPropertyEvent xproperty;
-	XClientMessageEvent xclient;
-	XSelectionRequestEvent xselectionrequest;
-	XSelectionEvent xselection;
-	XReparentEvent xreparent;
-	XMapEvent xmap;
-	XUnmapEvent xunmap;
-	XErrorEvent xerror;
-	XGenericEventCookie xcookie;
-	CLong[24] pad;
-}
-
-typedef XDisplay = void;
-typedef XVisual = void;
-alias XWindow = CULong;
-alias XDrawable = CULong;
-alias XPointer = char*;
-alias RROutput = CULong;
-alias XCursor = CULong;
-alias XlibIC = void*;
-alias XlibIM = void*;
-typedef Screen = void;
-alias Colormap = CULong;
-alias Pixmap = CULong;
-alias GContext = void*;
-alias Atom = CULong;
-alias VisualID = CULong;
-alias KeySym = CULong;
-alias KeyCode = char;
-alias XlibId = CULong;
-alias Region = void*;
-alias XIMStyle = CULong;
-alias RRMode = CULong;
-alias RRCrtc = CULong;
-alias GLXContext = void*;
-alias GLXFBConfig = void*;
-alias GLXDrawable = CULong;
-alias GLXWindow = CULong;
-
-// X11 used functions
-extern fn XDisplay* xOpenDisplay(ZString name) @cname("XOpenDisplay");
-extern fn int xCloseDisplay(XDisplay* d) @cname("XCloseDisplay");
-extern fn int xInitThreads() @cname("XInitThreads");
-extern fn XWindow xDefaultRootWindow(XDisplay* d) @cname("XDefaultRootWindow");
-extern fn XWindow xRootWindow(XDisplay* d, int screen) @cname("XRootWindow");
-extern fn int xDefaultScreen(XDisplay* d) @cname("XDefaultScreen");
-extern fn XVisual* xDefaultVisual(XDisplay* d, int screen) @cname("XDefaultVisual");
-extern fn int xDefaultDepth(XDisplay* d, int screen) @cname("XDefaultDepth");
-extern fn GContext xDefaultGC(XDisplay* d, int screen) @cname("XDefaultGC");
-extern fn Colormap xCreateColormap(XDisplay* d, XWindow win, XVisual* visual, int alloc) @cname("XCreateColormap");
-extern fn int xFreeColors(XDisplay* d, Colormap cm, CULong* pixels, int n, CULong planes) @cname("XFreeColors");
-extern fn XWindow xCreateWindow(XDisplay* d, XWindow parent, int x, int y, uint w, uint h, uint borderWidth, int depth, uint c_class, XVisual* visual, CULong valuemask, XSetWindowAttributes* attrs) @cname("XCreateWindow");
-extern fn int xDestroyWindow(XDisplay* d, XWindow w) @cname("XDestroyWindow");
-extern fn int xMapWindow(XDisplay* d, XWindow w) @cname("XMapWindow");
-extern fn int xMapRaised(XDisplay* d, XWindow w) @cname("XMapRaised");
-extern fn int xUnmapWindow(XDisplay* d, XWindow w) @cname("XUnmapWindow");
-extern fn int xMoveWindow(XDisplay* d, XWindow w, int x, int y) @cname("XMoveWindow");
-extern fn int xResizeWindow(XDisplay* d, XWindow w, uint width, uint height) @cname("XResizeWindow");
-extern fn int xRaiseWindow(XDisplay* d, XWindow w) @cname("XRaiseWindow");
-extern fn GContext xCreateGC(XDisplay* d, XDrawable draw, CULong valuemask, void* values) @cname("XCreateGC");
-extern fn int xFreeGC(XDisplay* d, GContext gc) @cname("XFreeGC");
-extern fn int xSaveContext(XDisplay* d, XlibId xid, int context, XPointer data) @cname("XSaveContext");
-extern fn int xFindContext(XDisplay* d, XlibId xid, int context, XPointer* dataOut) @cname("XFindContext");
-extern fn int xDeleteContext(XDisplay* d, XlibId xid, int context) @cname("XDeleteContext");
-extern fn int xUniqueContext() @cname("XrmUniqueQuark");
-extern fn XlibIC xCreateIC(XlibIM im, ...) @cname("XCreateIC");
-extern fn int xDestroyIC(XlibIC ic) @cname("XDestroyIC");
-extern fn int xSetICFocus(XlibIC ic) @cname("XSetICFocus");
-extern fn int xUnsetICFocus(XlibIC ic) @cname("XUnsetICFocus");
-extern fn XlibIM xOpenIM(XDisplay* d, void* db, ZString res_name, ZString res_class) @cname("XOpenIM");
-extern fn int xCloseIM(XlibIM im) @cname("XCloseIM");
-extern fn ZString xGetIMValues(XlibIM im, ...) @cname("XGetIMValues");
-extern fn ZString xSetIMValues(XlibIM im, ...) @cname("XSetIMValues");
-extern fn int xRegisterIMInstantiateCallback(XDisplay* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer client_data) @cname("XRegisterIMInstantiateCallback");
-extern fn int xUnregisterIMInstantiateCallback(XDisplay* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer client_data) @cname("XUnregisterIMInstantiateCallback");
-extern fn ZString xSetLocaleModifiers(ZString modifierList) @cname("XSetLocaleModifiers");
-extern fn sz xutf8LookupString(XlibIC ic, XKeyEvent* event, char* buffer, int bytes, KeySym* keysym, int* status) @cname("Xutf8LookupString");
-extern fn int xutf8SetWMProperties(XDisplay* d, XWindow w, ZString windowName, ZString iconName, ZString* argv, int argc, XSizeHints* hints, XWMHints* wmHints, void* classHints) @cname("Xutf8SetWMProperties");
-extern fn int xSetClassHint(XDisplay* d, XWindow w, XClassHint* hint) @cname("XSetClassHint");
-extern fn int xSetWMHints(XDisplay* d, XWindow w, XWMHints* hints) @cname("XSetWMHints");
-extern fn XWMHints* xGetWMHints(XDisplay* d, XWindow w) @cname("XGetWMHints");
-extern fn int xSetWMProtocols(XDisplay* d, XWindow w, Atom* protocols, int count) @cname("XSetWMProtocols");
-extern fn int xSetWMSizeHints(XDisplay* d, XDrawable w, XSizeHints* hints, Atom property) @cname("XSetWMSizeHints");
-extern fn int xGetWMNormalHints(XDisplay* d, XWindow w, XSizeHints* hints, CLong* flags) @cname("XGetWMNormalHints");
-extern fn int xSetWMNormalHints(XDisplay* d, XWindow w, XSizeHints* hints) @cname("XSetWMNormalHints");
-extern fn int xSelectInput(XDisplay* d, XDrawable w, CLong eventMask) @cname("XSelectInput");
-extern fn int xStoreName(XDisplay* d, XWindow w, ZString name) @cname("XStoreName");
-extern fn int xSetWindowBackground(XDisplay* d, XWindow w, CULong background) @cname("XSetWindowBackground");
-extern fn int xSetWindowBackgroundPixmap(XDisplay* d, XWindow w, Pixmap pixmap) @cname("XSetWindowBackgroundPixmap");
-extern fn int xClearWindow(XDisplay* d, XWindow w) @cname("XClearWindow");
-extern fn int xFlush(XDisplay* d) @cname("XFlush");
-extern fn int xSync(XDisplay* d, int discard) @cname("XSync");
-extern fn int xPending(XDisplay* d) @cname("XPending");
-extern fn int xConnectionNumber(XDisplay* d) @cname("XConnectionNumber");
-extern fn int qLength(XDisplay* d) @cname("XQLength");
-extern fn int xEventsQueued(XDisplay* d, int mode) @cname("XEventsQueued");
-extern fn int xNextEvent(XDisplay* d, XEvent* ev) @cname("XNextEvent");
-extern fn int xPeekEvent(XDisplay* d, XEvent* ev) @cname("XPeekEvent");
-extern fn int xCheckTypedWindowEvent(XDisplay* d, XWindow w, int eventType, XEvent* ev) @cname("XCheckTypedWindowEvent");
-extern fn int xFilterEvent(XEvent* ev, XWindow w) @cname("XFilterEvent");
-extern fn int xSendEvent(XDisplay* d, XWindow w, int propagate, CLong eventMask, XEvent* ev) @cname("XSendEvent");
-extern fn int xGetEventData(XDisplay* d, XGenericEventCookie* cookie) @cname("XGetEventData");
-extern fn int xFreeEventData(XDisplay* d, XGenericEventCookie* cookie) @cname("XFreeEventData");
-extern fn int xGetWindowAttributes(XDisplay* d, XWindow w, XWindowAttributes* attrs) @cname("XGetWindowAttributes");
-extern fn int xChangeProperty(XDisplay* d, XWindow w, Atom property, Atom type, int format, int mode, char* data, int nelements) @cname("XChangeProperty");
-extern fn int xGetWindowProperty(XDisplay* d, XWindow w, Atom property, CLong offset, CLong length, int delet, Atom reqType, Atom* actualType, int* actualFormat, CULong* nitems, CULong* bytesAfter, char** propReturn) @cname("XGetWindowProperty");
-extern fn int xDeleteProperty(XDisplay* d, XWindow w, Atom property) @cname("XDeleteProperty");
-extern fn Atom xInternAtom(XDisplay* d, ZString name, int onlyIfExists) @cname("XInternAtom");
-extern fn int xConvertSelection(XDisplay* d, Atom selection, Atom target, Atom property, XWindow requestor, Time_t time) @cname("XConvertSelection");
-extern fn XWindow xGetSelectionOwner(XDisplay* d, Atom selection) @cname("XGetSelectionOwner");
-extern fn int xSetSelectionOwner(XDisplay* d, Atom selection, XWindow owner, Time_t time) @cname("XSetSelectionOwner");
-extern fn int xFree(void* data) @cname("XFree");
-extern fn int xSetErrorHandler(void* handler) @cname("XSetErrorHandler");
-extern fn int xGetErrorText(XDisplay* d, int code, char* buffer, int len) @cname("XGetErrorText");
-extern fn int xQueryPointer(XDisplay* d, XWindow w, XWindow* rootRet, XWindow* childRet, int* rootX, int* rootY, int* winX, int* winY, uint* mask) @cname("XQueryPointer");
-extern fn int xWarpPointer(XDisplay* d, XWindow src, XWindow dest, int srcX, int srcY, uint srcW, uint srcH, int destX, int destY) @cname("XWarpPointer");
-extern fn int xTranslateCoordinates(XDisplay* d, XWindow src, XWindow dest, int srcX, int srcY, int* destXRet, int* destYRet, XWindow* childRet) @cname("XTranslateCoordinates");
-extern fn int xSetInputFocus(XDisplay* d, XWindow w, int revert, Time_t time) @cname("XSetInputFocus");
-extern fn int xGrabPointer(XDisplay* d, XWindow w, int ownerEvents, uint eventMask, int pointerMode, int keyboardMode, XWindow confineTo, XCursor cursor, Time_t time) @cname("XGrabPointer");
-extern fn int xUngrabPointer(XDisplay* d, Time_t time) @cname("XUngrabPointer");
-extern fn int xIconifyWindow(XDisplay* d, XWindow w, int screen) @cname("XIconifyWindow");
-extern fn int xDefineCursor(XDisplay* d, XWindow w, XCursor cursor) @cname("XDefineCursor");
-extern fn int xFreeCursor(XDisplay* d, XCursor cursor) @cname("XFreeCursor");
-extern fn XCursor xCreateFontCursor(XDisplay* d, uint shape) @cname("XCreateFontCursor");
-extern fn KeySym xkbKeycodeToKeysym(XDisplay* d, KeyCode kc, int group, int level) @cname("XkbKeycodeToKeysym");
-extern fn int xkbGetState(XDisplay* d, uint deviceSpec, void* stateRet) @cname("XkbGetState");
-extern fn void* xkbGetMap(XDisplay* d, uint which, uint deviceSpec) @cname("XkbGetMap");
-extern fn int xkbGetNames(XDisplay* d, uint which, void* xkb) @cname("XkbGetNames");
-extern fn void* xkbGetKeyboardByName(XDisplay* d, uint deviceSpec, void* names, uint want, uint need, int loadKeycodes) @cname("XkbGetKeyboardByName");
-extern fn int xkbFreeKeyboard(void* xkb, uint which, int freeAll) @cname("XkbFreeKeyboard");
-extern fn int xMatchVisualInfo(XDisplay* d, int screen, int depth, int c_class, XVisualInfo* visualOut) @cname("XMatchVisualInfo");
-extern fn int xChangeWindowAttributes(XDisplay* d, XWindow w, CULong valuemask, XSetWindowAttributes* attrs) @cname("XChangeWindowAttributes");
-extern fn Region xCreateRegion() @cname("XCreateRegion");
-extern fn int xDestroyRegion(Region r) @cname("XDestroyRegion");
-extern fn XCursor xCreatePixmap(XDisplay* d, XDrawable draw, uint w, uint h, uint depth) @cname("XCreatePixmap");
-extern fn void* xCreateImage(XDisplay* d, XVisual* visual, uint depth, int format, int offset, char* data, uint w, uint h, int bitmapPad, int bytesPerLine) @cname("XCreateImage");
-extern fn int xPutImage(XDisplay* d, XDrawable draw, GContext gc, void* image, int srcX, int srcY, int destX, int destY, uint w, uint h) @cname("XPutImage");
-extern fn int xDestroyImage(void* image) @cname("XDestroyImage");
-extern fn ZString xResourceManagerString(XDisplay* d) @cname("XResourceManagerString");
-extern fn void* xrmGetStringDatabase(ZString data) @cname("XrmGetStringDatabase");
-extern fn int xrmGetResource(void* db, ZString name, ZString c_class, ZString* typeOut, void* valueOut) @cname("XrmGetResource");
-extern fn int xrmDestroyDatabase(void* db) @cname("XrmDestroyDatabase");
-extern fn XRRScreenResources* xRRGetScreenResourcesCurrent(XDisplay* d, XWindow w) @cname("XRRGetScreenResourcesCurrent");
-extern fn int xRRFreeScreenResources(XRRScreenResources* res) @cname("XRRFreeScreenResources");
-extern fn RROutput xRRGetOutputPrimary(XDisplay* d, XWindow w) @cname("XRRGetOutputPrimary");
-extern fn GfxXRROutputInfo* xRRGetOutputInfo(XDisplay* d, XRRScreenResources* res, RROutput output) @cname("XRRGetOutputInfo");
-extern fn int xRRFreeOutputInfo(GfxXRROutputInfo* info) @cname("XRRFreeOutputInfo");
-extern fn XRRCrtcInfo* xRRGetCrtcInfo(XDisplay* d, XRRScreenResources* res, RRCrtc crtc) @cname("XRRGetCrtcInfo");
-extern fn int xRRFreeCrtcInfo(XRRCrtcInfo* info) @cname("XRRFreeCrtcInfo");
-extern fn int xRRSetCrtcConfig(XDisplay* d, XRRScreenResources* res, RRCrtc crtc, Time_t time, int x, int y, RRMode mode, int rotation, RROutput* outputs, int noutputs) @cname("XRRSetCrtcConfig");
-extern fn int xRRGetCrtcGammaSize(XDisplay* d, RRCrtc crtc) @cname("XRRGetCrtcGammaSize");
-extern fn XRRCrtcGamma* xRRGetCrtcGamma(XDisplay* d, RRCrtc crtc) @cname("XRRGetCrtcGamma");
-extern fn XRRCrtcGamma* xRRAllocGamma(int size) @cname("XRRAllocGamma");
-extern fn int xRRSetCrtcGamma(XDisplay* d, RRCrtc crtc, XRRCrtcGamma* gamma) @cname("XRRSetCrtcGamma");
-extern fn int xRRFreeGamma(XRRCrtcGamma* gamma) @cname("XRRFreeGamma");
-extern fn int xRRQueryExtension(XDisplay* d, int* eventBase, int* errorBase) @cname("XRRQueryExtension");
-extern fn int xRRSelectInput(XDisplay* d, XWindow w, int mask) @cname("XRRSelectInput");
-
-alias PFN_XcursorImageCreate = fn XcursorImage*(int, int);
-alias PFN_XcursorImageDestroy = fn void(XcursorImage*);
-alias PFN_XcursorImageLoadCursor = fn XCursor(XDisplay*, XcursorImage*);
-alias PFN_XISelectEvents = fn int(XDisplay*, XWindow, XIEventMask*, int);
-alias PFN_XSyncIntToValue = fn void(XSyncValue*, int);
-alias PFN_XSyncSetCounter = fn int(XDisplay*, XSyncCounter, XSyncValue);
-alias PFN_XSyncCreateCounter = fn XSyncCounter(XDisplay*, XSyncValue);
-alias PFN_XShapeCombineMask = fn void(XDisplay*, XWindow, int, int, int, Pixmap, int);
-alias PFN_XShapeCombineRegion = fn void(XDisplay*, XWindow, int, int, int, Region, int);
-
-PFN_XcursorImageCreate _xcursor_image_create_src;
-PFN_XcursorImageDestroy _xcursor_image_destroy_src;
-PFN_XcursorImageLoadCursor _xcursor_image_load_cursor_src;
-PFN_XISelectEvents _xi_select_events_src;
-PFN_XSyncIntToValue _xsync_int_to_value_src;
-PFN_XSyncSetCounter _xsync_set_counter_src;
-PFN_XSyncCreateCounter _xsync_create_counter_src;
-PFN_XShapeCombineMask _xshape_combine_mask_src;
-PFN_XShapeCombineRegion _xshape_combine_region_src;
-
-void* _x11_cursor_handle;
-void* _x11_xi_handle;
-void* _x11_ext_handle;
 
 
 // --- wgpu
@@ -2505,7 +2032,6 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_x11(GfxWindow* win, VkInstance in
 	return surface;
 }
 
-extern fn VisualID xVisualIDFromVisual(XVisual* visual) @cname("XVisualIDFromVisual");
 alias VkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, XDisplay*, VisualID);
 
 // public
@@ -2513,8 +2039,8 @@ fn bool _vulkan_get_physical_device_presentation_support_x11(VkInstance instance
 {
 	VkGetPhysicalDeviceXlibPresentationSupportKHRProc proc = (VkGetPhysicalDeviceXlibPresentationSupportKHRProc)_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
 	if (!proc) return false;
-	XVisual* visual = xDefaultVisual(_gfx_ctx.display, xDefaultScreen(_gfx_ctx.display));
-	uint out = proc(physical_device, queue_family_index, _gfx_ctx.display, xVisualIDFromVisual(visual));
+	XVisual* visual = x11::xDefaultVisual(_gfx_ctx.display, x11::xDefaultScreen(_gfx_ctx.display));
+	uint out = proc(physical_device, queue_family_index, _gfx_ctx.display, x11::xVisualIDFromVisual(visual));
 	return out != 0;
 }
 // --- GLX

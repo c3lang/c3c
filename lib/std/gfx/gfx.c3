@@ -1,7 +1,7 @@
-module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
+module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 
 import std::math, std::os::macos, std::os::darwin, libc, std::time, std::os::win32;
-
+import std::gfx::x11 @public;
 
 excuse
 {
@@ -113,7 +113,7 @@ struct GfxMonitorNode
 	void* native1;
 	ulong nativeId0;
 	ulong nativeId1;
-	struct @feat(X11_WAYLAND, WAYLAND)
+	struct @feat(WAYLAND)
 	{
 		uint id;
 		WlProxy* output;
@@ -201,7 +201,7 @@ struct GfxContext
 	GfxKey[$feat(WIN32) ? 512 : 256] keycodes;
 	bool stop_check_events;
 	ulong timerOffset;
-	int[3] eventWait_forceStop @feat(X11_WAYLAND, X11, WAYLAND);
+	int[3] eventWait_forceStop @feat(LINUX, BSD);
 	GfxDataTransfer* clipboard;
 	bool dnd_build;
 	GfxDataDropNode* dndRoot;
@@ -242,9 +242,9 @@ struct GfxContext
 		void* ns_pool;
 		NSUInteger windowNumberSeed;
 	}
-	GfxDataTransfer* unixClipboard @feat(WAYLAND, X11_WAYLAND, X11);
+	GfxDataTransfer* unixClipboard @feat(LINUX, BSD);
 
-	struct @feat(WAYLAND, X11_WAYLAND)
+	struct @feat(WAYLAND)
 	{
 		WlDisplay* wlDisplay;
 		WlProxy* registry;
@@ -277,7 +277,7 @@ struct GfxContext
 		uint lastKey;
 		Clock lastKeyTime;
 	}
-	struct @feat(X11, X11_WAYLAND)
+	struct @feat(LINUX, BSD) @feat(!NO_X11)
 	{
 		XDisplay* display;
 		int context;
@@ -298,7 +298,7 @@ struct GfxContext
 		Atom netWmName, netWmIcon, xselData, clipboardAtom, clipboardManager;
 		Atom xtextUriList, xtextPlain, netWorkarea;
 	}
-	bool useWaylandBool @feat(X11_WAYLAND);
+	bool useWaylandBool @feat(WAYLAND & !NO_X11);
 	bool raw_mouse;
 	GfxWindowState window_state;
 	GfxKeyState[8] mouseButtons;

@@ -1,4 +1,4 @@
-module std::gfx @feat(MACOS, X11, X11_WAYLAND, WAYLAND, WASM, WIN32);
+module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import libc, std::os::win32;
 
 
@@ -78,7 +78,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 fn void? _load_vulkan_native() @weak @private => NOT_IMPLEMENTED~;
 fn void _unload_vulkan_native() @weak @private {}
 
-module std::gfx @feat(MACOS, X11, WAYLAND, X11_WAYLAND) @private;
+module std::gfx @feat(MACOS, LINUX, BSD) @private;
 import libc;
 
 fn void _unload_vulkan_native()

@@ -1,8 +1,13 @@
-module std::gfx @private @feat(MACOS, WAYLAND, X11, X11_WAYLAND, WASM, WIN32);
+module std::gfx @private @feat(WASM, WIN32);
 
-fn void? _load_egl_native() @private @weak => NOT_IMPLEMENTED~;
-fn void _unload_egl_native() @private @weak { }
+fn void? _load_egl_native() @private => NOT_IMPLEMENTED~;
+fn void _unload_egl_native() @private { }
+fn bool _egl_extension_is_supported_native(String extension) @private => false;
+fn GfxEglContext*? _window_create_egl_context_native(GfxWindow* win, GfxGlHints* hints) => NOT_IMPLEMENTED~;
+fn void _window_destroy_egl_context_native(GfxWindow* win, GfxEglContext* ctx) {}
 
+module std::gfx @private @feat(MACOS, BSD, LINUX);
+import libc;
 
 fn void _window_destroy_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
 {
@@ -12,20 +17,11 @@ fn void _window_destroy_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
 
 fn bool _egl_extension_is_supported_native(String extension) @private
 {
-	$if $feat(WASM) || $feat(WIN32):
-		return false;
-	$else
-		if (_opengl_extension_supported_base(extension, &_get_egl_proc_address)) return true;
-		if (!egl_query_string_fn || !_gfx_ctx.egl_display) return false;
-		ZString extensions = egl_query_string_fn((EglDisplay)_gfx_ctx.egl_display, EGL_EXTENSIONS);
-		return extensions && _extension_is_in_list(extensions.str_view(), extension);
-	$endif
+	if (_opengl_extension_supported_base(extension, &_get_egl_proc_address)) return true;
+	if (!egl_query_string_fn || !_gfx_ctx.egl_display) return false;
+	ZString extensions = egl_query_string_fn((EglDisplay)_gfx_ctx.egl_display, EGL_EXTENSIONS);
+	return extensions && _extension_is_in_list(extensions.str_view(), extension);
 }
-
-fn bool _egl_extension_is_supported_native(String extension) @private @weak => false;
-
-module std::gfx @feat(MACOS, WAYLAND, X11, X11_WAYLAND);
-import libc;
 
 const EglInt EGL_NONE = 0x3038;
 const EglInt EGL_RED_SIZE = 0x3024;
@@ -88,8 +84,6 @@ EglGetConfigAttribProc egl_get_config_attrib_fn;
 
 excuse PROC_LOAD_FAILED;
 
-
-// public
 fn void _unload_egl_native() @private
 {
 	if (_gfx_ctx.egl_handle == null) return;
