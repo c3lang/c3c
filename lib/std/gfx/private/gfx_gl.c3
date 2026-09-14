@@ -1,6 +1,15 @@
 module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import std::os::macos, std::os::darwin;
 
+const GfxGlHints GLOBAL_HINTS = {
+	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
+	false, false, false, false, NONE,
+	CORE, 1, 0, null, null, ACCELERATED
+};
+
+GfxGlHints _global_hints_open_gl = GLOBAL_HINTS;
+
+
 struct GfxGlHints
 {
 	int stencil;
@@ -29,15 +38,13 @@ const uint GL_NUM_EXTENSIONS = 0x821D;
 alias GlGetString      = fn ZString(uint name);
 alias GlGetStringi     = fn ZString(uint name, uint index);
 alias GlGetIntegerv    = fn void(uint pname, int* data);
-alias GetProcAddressFn = fn void*(ZString procname);
 
-fn bool _opengl_extension_supported_base(String extension, void* proc)
+fn bool _opengl_extension_supported_base(String extension, GfxGetProcFn proc)
 {
-	GetProcAddressFn get_proc = proc;
 	if (get_global_opengl_hints().major >= 3)
 	{
-		GlGetIntegerv get_integerv = get_proc("glGetIntegerv");
-		GlGetStringi get_stringi = get_proc("glGetStringi");
+		GlGetIntegerv get_integerv = proc("glGetIntegerv");
+		GlGetStringi get_stringi = proc("glGetStringi");
 		if (!get_integerv || !get_stringi) return false;
 		int count = 0;
 		get_integerv(GL_NUM_EXTENSIONS, &count);
@@ -49,7 +56,7 @@ fn bool _opengl_extension_supported_base(String extension, void* proc)
 		return false;
 	}
 
-	GlGetString get_string = get_proc("glGetString");
+	GlGetString get_string = proc("glGetString");
 	if (!get_string) return false;
 	ZString extensions = get_string(GL_EXTENSIONS);
 	return extensions && _extension_is_in_list(extensions.str_view(), extension);
@@ -70,11 +77,6 @@ fn void _window_destroy_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	if (win.src.backing.owned) free(ctx);
 }
 
-fn void? _load_opengl_native() @private @weak => NOT_IMPLEMENTED~;
-fn void _unload_opengl_native() @private @weak { }
-
-
-
 fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 {
 	$switch:
@@ -88,7 +90,7 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 			{
 				log::error("Failed to set OpenGL swap interval", category: log::CATEGORY_VIDEO);
 			}
-		$case $feat(LINUX):
+		$case X11_WAYLAND:
 			$switch:
 				$case WAYLAND_ONLY:
 					return _window_opengl_swap_interval_wayland(self, swap_interval);
@@ -104,28 +106,6 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 		$default:
 		// Nothing
 	$endswitch
-}
-
-
-const GfxGlHints GLOBAL_HINTS = {
-	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
-	false, false, false, false, NONE,
-	CORE, 1, 0, null, null, ACCELERATED
-};
-
-GfxGlHints _global_hints_open_gl = GLOBAL_HINTS;
-
-module std::gfx  @feat(MACOS, LINUX, BSD, WIN32) @feat(!WASM);
-
-// public
-fn void _unload_opengl_native() @private
-{
-	$if !$feat(MACOS):
-		_gfx_ctx.gl.native_handle.close();
-	$else
-		_gfx_ctx.gl.native_handle = null;
-	$endif
-	_gfx_ctx.gl.get_proc_addr_fn = null;
 }
 
 

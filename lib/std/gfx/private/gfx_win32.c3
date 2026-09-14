@@ -1346,7 +1346,7 @@ fn void* _get_current_opengl_context_native()
 	return wgl_get_current_context_fn();
 }
 
-fn void? _load_opengl_native() @private
+fn void? _load_opengl_win32() @private
 {
 	if (_gfx_ctx.gl.native_handle && _gfx_ctx.gl.get_proc_addr_fn) return;
 	_gfx_ctx.gl.native_handle = os::dlopen("opengl32.dll") ?: MISSING_OPENGL_LIB~!;

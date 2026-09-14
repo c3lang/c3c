@@ -2,8 +2,6 @@ module std::gfx @feat(LINUX, BSD);
 import std::math, std::collections::list, libc, std::time, std::os::env, std::os::posix, std::net::os;
 import std::gfx::x11 @public;
 
-const WAYLAND_ONLY = $feat(WAYLAND) && $feat(NO_X11);
-const X11_ONLY = !$feat(WAYLAND);
 
 bool gfx_use_wayland = false;
 
@@ -341,7 +339,6 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 }
 
 
-// public
 fn void? _init_native(String class_name, GfxInitOption flags)
 {
 	$switch:
@@ -369,22 +366,6 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	$endswitch
 }
 
-// public
-fn void? _load_opengl_native() @private
-{
-	$switch:
-		$case WAYLAND_ONLY:
-			return _load_opengl_wayland();
-		$case X11_ONLY:
-			return _load_opengl_x11();
-		$default:
-			if (gfx_use_wayland)
-			{
-				return _load_opengl_wayland();
-			}
-			return _load_opengl_x11();
-	$endswitch
-}
 
 // public
 fn void _monitor_node_free_native(GfxMonitorNode* node)

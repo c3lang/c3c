@@ -171,7 +171,7 @@ fn bool _opengl_extension_is_supported_native(String extension)
 	return gfxJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
 }
 
-fn GfxFn _get_opengl_proc_native(ZString procname)
+fn void* _get_opengl_proc_native(ZString procname)
 {
 	return gfxJsGetProcAddress(procname);
 }

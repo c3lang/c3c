@@ -1842,13 +1842,36 @@ fn void unload_egl()
 
 fn void? load_opengl()
 {
-	return _load_opengl_native() @inline;
-
+	$switch:
+		$case $feat(MACOS):
+			return _load_opengl_macos();
+		$case $feat(WIN32):
+			return _load_opengl_win32();
+		$case $feat(WASM):
+			return;
+		$case X11_WAYLAND && WAYLAND_ONLY:
+			return _load_opengl_wayland();
+		$case X11_WAYLAND && X11_ONLY:
+			return _load_opengl_x11();
+		$case X11_WAYLAND:
+			if (gfx_use_wayland)
+			{
+				return _load_opengl_wayland();
+			}
+			return _load_opengl_x11();
+		$default:
+			return NOT_IMPLEMENTED~;
+	$endswitch
 }
 
 fn void unload_opengl()
 {
-	_unload_opengl_native() @inline;
+	$if !$feat(MACOS):
+		_gfx_ctx.gl.native_handle.close();
+	$else
+		_gfx_ctx.gl.native_handle = null;
+	$endif
+	_gfx_ctx.gl.get_proc_addr_fn = null;
 }
 
 fn void? load_vulkan()
@@ -1891,3 +1914,6 @@ fn void _event_queue_call_push(GfxEvent* event)
 
 GfxContext _gfx_ctx;
 
+const WAYLAND_ONLY = $feat(WAYLAND) && $feat(NO_X11);
+const X11_ONLY = !$feat(WAYLAND);
+const X11_WAYLAND = $feat(BSD) || $feat(LINUX);

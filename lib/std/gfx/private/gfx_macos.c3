@@ -54,8 +54,9 @@ const int NS_OPEN_GL_CP_SURFACE_OPACITY = 236;
 const int NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL = 222;
 const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 
-fn void? _load_opengl_native()
+fn void? _load_opengl_macos()
 {
+	if (_gfx_ctx.gl.native_handle) return;
 	_gfx_ctx.gl.native_handle = cf::bundle_for_name("com.apple.opengl");
 	if (!_gfx_ctx.gl.native_handle) return MISSING_OPENGL_LIB~;
 	_gfx_ctx.gl.get_proc_addr_fn = &_get_opengl_proc_native;
