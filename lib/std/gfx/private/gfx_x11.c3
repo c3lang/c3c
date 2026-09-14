@@ -418,8 +418,8 @@ fn void* _get_current_opengl_context_x11() => _glx_get_current_context_fn();
 // private
 fn GfxFn _get_opengl_proc(ZString procname)
 {
-	if (!_gfx_ctx.glGetProcAddress) return null;
-	return ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname);
+	if (!_gfx_ctx.gl.get_proc_addr_fn) return null;
+	return _gfx_ctx.gl.get_proc_addr_fn(procname);
 }
 
 // private
@@ -506,32 +506,30 @@ fn void? _init_x11(String class_name, GfxInitOption flags)
 // private
 fn void? _load_opengl_x11()
 {
-	if (_gfx_ctx.native_gl_handle && _gfx_ctx.glGetProcAddress) return;
-	_gfx_ctx.native_gl_handle = os::dlopen_any("libGLX.so.0", "libGL.so.1", "libGL.so") ?? MISSING_OPENGL_LIB~!;
-	void* ptr = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddress");
-	if (!ptr) return MISSING_GL_GET_PROC_ADDR~;
-	_gfx_ctx.glGetProcAddress        = ptr;
-	_glx_choose_visual_fn                = os::dlsym(_gfx_ctx.native_gl_handle, "glXChooseVisual");
-	_glx_create_context_fn               = os::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContext");
-	_glx_make_current_fn                 = os::dlsym(_gfx_ctx.native_gl_handle, "glXMakeCurrent");
-	_glx_get_current_context_fn          = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetCurrentContext");
-	_glx_swap_buffers_fn                 = os::dlsym(_gfx_ctx.native_gl_handle, "glXSwapBuffers");
-	_glx_get_visual_from_fb_config_fn    = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetVisualFromFBConfig");
-	_glx_get_fb_config_attrib_fn         = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetFBConfigAttrib");
-	_glx_get_proc_address_arb_fn         = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddressARB");
-	_glx_choose_fb_config_fn             = os::dlsym(_gfx_ctx.native_gl_handle, "glXChooseFBConfig");
-	_glx_destroy_context_fn              = os::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyContext");
-	_glx_create_window_fn                = os::dlsym(_gfx_ctx.native_gl_handle, "glXCreateWindow");
-	_glx_destroy_window_fn               = os::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyWindow");
-	_glx_query_extensions_string_fn      = os::dlsym(_gfx_ctx.native_gl_handle, "glXQueryExtensionsString");
-	_glx_create_context_attribs_arb_fn   = os::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContextAttribsARB");
-	_glx_swap_interval_ext_fn            = os::dlsym(_gfx_ctx.native_gl_handle, "glXSwapIntervalEXT");
+	if (_gfx_ctx.gl.native_handle && _gfx_ctx.gl.get_proc_addr_fn) return;
+	_gfx_ctx.gl.native_handle = os::dlopen_any("libGLX.so.0", "libGL.so.1", "libGL.so") ?? MISSING_OPENGL_LIB~!;
+	_gfx_ctx.gl.get_proc_addr_fn         = os::dlsym(_gfx_ctx.gl.native_handle, "glXGetProcAddress") ?: MISSING_GL_GET_PROC_ADDR~!;
+	_glx_choose_visual_fn                = os::dlsym(_gfx_ctx.gl.native_handle, "glXChooseVisual");
+	_glx_create_context_fn               = os::dlsym(_gfx_ctx.gl.native_handle, "glXCreateContext");
+	_glx_make_current_fn                 = os::dlsym(_gfx_ctx.gl.native_handle, "glXMakeCurrent");
+	_glx_get_current_context_fn          = os::dlsym(_gfx_ctx.gl.native_handle, "glXGetCurrentContext");
+	_glx_swap_buffers_fn                 = os::dlsym(_gfx_ctx.gl.native_handle, "glXSwapBuffers");
+	_glx_get_visual_from_fb_config_fn    = os::dlsym(_gfx_ctx.gl.native_handle, "glXGetVisualFromFBConfig");
+	_glx_get_fb_config_attrib_fn         = os::dlsym(_gfx_ctx.gl.native_handle, "glXGetFBConfigAttrib");
+	_glx_get_proc_address_arb_fn         = os::dlsym(_gfx_ctx.gl.native_handle, "glXGetProcAddressARB");
+	_glx_choose_fb_config_fn             = os::dlsym(_gfx_ctx.gl.native_handle, "glXChooseFBConfig");
+	_glx_destroy_context_fn              = os::dlsym(_gfx_ctx.gl.native_handle, "glXDestroyContext");
+	_glx_create_window_fn                = os::dlsym(_gfx_ctx.gl.native_handle, "glXCreateWindow");
+	_glx_destroy_window_fn               = os::dlsym(_gfx_ctx.gl.native_handle, "glXDestroyWindow");
+	_glx_query_extensions_string_fn      = os::dlsym(_gfx_ctx.gl.native_handle, "glXQueryExtensionsString");
+	_glx_create_context_attribs_arb_fn   = os::dlsym(_gfx_ctx.gl.native_handle, "glXCreateContextAttribsARB");
+	_glx_swap_interval_ext_fn            = os::dlsym(_gfx_ctx.gl.native_handle, "glXSwapIntervalEXT");
 	if (!_glx_swap_interval_ext_fn)
 	{
 		ZString[2] array = {"GLX_MESA_swap_control", "GLX_SGI_swap_control"};
 		foreach (name : array)
 		{
-			_glx_swap_interval_native_fn = os::dlsym(_gfx_ctx.native_gl_handle, name);
+			_glx_swap_interval_native_fn = os::dlsym(_gfx_ctx.gl.native_handle, name);
 			if (_glx_swap_interval_native_fn) break;
 		}
 	}
@@ -2053,7 +2051,6 @@ alias GlxMakeCurrentProc = fn int(XDisplay*, GLXDrawable, GLXContext);
 alias GlxGetCurrentContextProc = fn GLXContext();
 alias GlxSwapBuffersProc = fn void(XDisplay*, GLXDrawable);
 alias GlxSwapIntervalEXTProc = fn void(XDisplay*, GLXDrawable, int);
-alias GlxGetProcAddressProc = fn void*(ZString);
 alias GlxGetVisualFromFBConfigProc = fn XVisualInfo*(XDisplay*, GLXFBConfig);
 alias GlxGetFBConfigAttribProc = fn int(XDisplay*, GLXFBConfig, int, int*);
 alias GlxGetProcAddressARBProc = fn void*(ZString);

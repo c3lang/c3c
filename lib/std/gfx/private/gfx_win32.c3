@@ -1348,15 +1348,15 @@ fn void* _get_current_opengl_context_native()
 
 fn void? _load_opengl_native() @private
 {
-	if (_gfx_ctx.native_gl_handle && _gfx_ctx.glGetProcAddress) return;
-	_gfx_ctx.native_gl_handle = os::dlopen("opengl32.dll") ?: MISSING_OPENGL_LIB~!;
-	_gfx_ctx.glGetProcAddress = os::dlsym(_gfx_ctx.native_gl_handle, "wglGetProcAddress") ?: MISSING_GL_GET_PROC_ADDR~!;
-	wgl_create_context_fn = os::dlsym_try(_gfx_ctx.native_gl_handle, "wglCreateContext")!;
-	wgl_delete_context_fn = os::dlsym_try(_gfx_ctx.native_gl_handle, "wglDeleteContext")!;
-	wgl_make_current_fn = os::dlsym_try(_gfx_ctx.native_gl_handle, "wglMakeCurrent")!;
-	wgl_get_current_dc_fn = os::dlsym_try(_gfx_ctx.native_gl_handle, "wglGetCurrentDC")!;
-	wgl_get_current_context_fn = os::dlsym_try(_gfx_ctx.native_gl_handle, "wglGetCurrentContext")!;
-	wgl_share_lists_fn = os::dlsym_try(_gfx_ctx.native_gl_handle, "wglShareLists")!;
+	if (_gfx_ctx.gl.native_handle && _gfx_ctx.gl.get_proc_addr_fn) return;
+	_gfx_ctx.gl.native_handle = os::dlopen("opengl32.dll") ?: MISSING_OPENGL_LIB~!;
+	_gfx_ctx.gl.get_proc_addr_fn = os::dlsym(_gfx_ctx.gl.native_handle, "wglGetProcAddress") ?: MISSING_GL_GET_PROC_ADDR~!;
+	wgl_create_context_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglCreateContext")!;
+	wgl_delete_context_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglDeleteContext")!;
+	wgl_make_current_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglMakeCurrent")!;
+	wgl_get_current_dc_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglGetCurrentDC")!;
+	wgl_get_current_context_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglGetCurrentContext")!;
+	wgl_share_lists_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglShareLists")!;
 
 	Win32_HWND dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
 	defer win32::destroyWindow(dummyWin);
@@ -1384,9 +1384,9 @@ fn void? _load_opengl_native() @private
 	wgl_make_current_fn(dummy_dc, dummy_context);
 	defer wgl_delete_context_fn(dummy_context);
 
-	wgl_create_context_attribs_arb_fn = (WglCreateContextAttribsArbProc)_get_opengl_proc_native("wglCreateContextAttribsARB");
-	wgl_choose_pixel_format_arb_fn = (WglChoosePixelFormatArbProc)_get_opengl_proc_native("wglChoosePixelFormatARB");
-	wgl_swap_interval_ext_fn = (WglSwapIntervalExtProc)_get_opengl_proc_native("wglSwapIntervalEXT");
+	wgl_create_context_attribs_arb_fn = _get_opengl_proc_native("wglCreateContextAttribsARB");
+	wgl_choose_pixel_format_arb_fn = _get_opengl_proc_native("wglChoosePixelFormatARB");
+	wgl_swap_interval_ext_fn = _get_opengl_proc_native("wglSwapIntervalEXT");
 
 	if (!wgl_swap_interval_ext_fn) return FAILED_TO_LOAD_SWAP_INTERVAL_FN~;
 
@@ -1395,13 +1395,12 @@ fn void? _load_opengl_native() @private
 
 alias GetExtStringArbFn = fn ZString(Win32_HDC*);
 alias GetExtStringExtFn = fn ZString();
-alias GlxGetProcAddressProc = fn GfxFn(ZString);
 
 fn void* _get_opengl_proc_native(ZString procname)
 {
-	void* proc = _gfx_ctx.glGetProcAddress ? ((GlxGetProcAddressProc)_gfx_ctx.glGetProcAddress)(procname) : null;
+	void* proc = _gfx_ctx.gl.get_proc_addr_fn ? _gfx_ctx.gl.get_proc_addr_fn(procname) : null;
 	if (proc) return proc;
-	return os::dlsym(_gfx_ctx.native_gl_handle, procname);
+	return os::dlsym(_gfx_ctx.gl.native_handle, procname);
 }
 
 // --- DirectX

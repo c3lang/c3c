@@ -56,9 +56,9 @@ const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 
 fn void? _load_opengl_native()
 {
-	_gfx_ctx.native_gl_handle = cf::bundle_for_name("com.apple.opengl");
-	if (!_gfx_ctx.native_gl_handle) return MISSING_OPENGL_LIB~;
-	_gfx_ctx.glGetProcAddress = (void*)&_get_opengl_proc_native;
+	_gfx_ctx.gl.native_handle = cf::bundle_for_name("com.apple.opengl");
+	if (!_gfx_ctx.gl.native_handle) return MISSING_OPENGL_LIB~;
+	_gfx_ctx.gl.get_proc_addr_fn = &_get_opengl_proc_native;
 }
 
 fn bool _opengl_extension_is_supported_native(String extension)
@@ -69,11 +69,11 @@ fn bool _opengl_extension_is_supported_native(String extension)
 
 fn void* _get_opengl_proc_native(ZString procname)
 {
-	if (!_gfx_ctx.native_gl_handle || !procname) return null;
+	if (!_gfx_ctx.gl.native_handle || !procname) return null;
 	CFStringRef symbol_name = cf::stringCreateWithCString(null, procname, 0x0600);
 	if (!symbol_name) return null;
 	defer symbol_name.release();
-	return cf::bundleGetFunctionPointerForName((CFBundleRef)_gfx_ctx.native_gl_handle, symbol_name);
+	return cf::bundleGetFunctionPointerForName((CFBundleRef)_gfx_ctx.gl.native_handle, symbol_name);
 }
 
 fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)

@@ -57,7 +57,7 @@ fn void*? _find_egl_proc(ZString name)
 {
 	if (!_gfx_ctx.egl.handle) return PROC_LOAD_FAILED~;
 	void* proc = os::dlsym(_gfx_ctx.egl.handle, name);
-	if (!proc && _gfx_ctx.egl.get_proc_addr_fn) proc = ((EglGetProcAddressProc)_gfx_ctx.egl.get_proc_addr_fn)(name);
+	if (!proc && _gfx_ctx.egl.get_proc_addr_fn) proc = _gfx_ctx.egl.get_proc_addr_fn(name);
 	if (!proc) return PROC_LOAD_FAILED~;
 	return proc;
 }

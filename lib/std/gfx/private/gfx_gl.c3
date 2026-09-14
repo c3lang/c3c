@@ -120,8 +120,12 @@ module std::gfx  @feat(MACOS, LINUX, BSD, WIN32) @feat(!WASM);
 // public
 fn void _unload_opengl_native() @private
 {
-	_gfx_ctx.native_gl_handle = null;
-	_gfx_ctx.glGetProcAddress = null;
+	$if !$feat(MACOS):
+		_gfx_ctx.gl.native_handle.close();
+	$else
+		_gfx_ctx.gl.native_handle = null;
+	$endif
+	_gfx_ctx.gl.get_proc_addr_fn = null;
 }
 
 

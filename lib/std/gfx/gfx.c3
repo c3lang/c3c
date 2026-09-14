@@ -59,6 +59,7 @@ alias GfxGenericFunc = fn void(GfxEvent* e);
 alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
 alias GfxPoint = int[<2>];
 alias GfxSize = int[<2>];
+alias GfxGetProcFn = fn void*(ZString);
 
 struct GfxSurface
 {
@@ -208,16 +209,20 @@ struct GfxContext
 
 	GfxMonitors monitors;
 	GfxWindow* current;
-	CFBundleRef native_gl_handle @feat(MACOS);
-	DylibHandle native_gl_handle @feat(!MACOS);
-	void* glGetProcAddress;
+
+	struct gl
+	{
+		CFBundleRef native_handle @feat(MACOS);
+		DylibHandle native_handle @feat(!MACOS);
+		GfxGetProcFn get_proc_addr_fn;
+	}
 	DylibHandle vulkan_handle;
 	GfxVkGetInstanceProcAddressProc vk_get_instance_proc_address;
 	struct egl
 	{
 		void* display;
 		DylibHandle handle;
-		void* get_proc_addr_fn;
+		GfxGetProcFn get_proc_addr_fn;
 	}
 	struct @feat(WIN32)
 	{
