@@ -1,4 +1,4 @@
-module std::os::macos @test @feat(DARWIN);
+module std::os::macos @test @feat(MACOS);
 import std::os::darwin;
 
 fn void test_application_activation_policy()

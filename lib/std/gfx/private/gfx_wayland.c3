@@ -1,4 +1,4 @@
-module std::gfx @feat(WAYLAND) @private;
+module std::gfx @feat(BSD, LINUX) @feat(WAYLAND) @private;
 import std::math, std::collections, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
 
 const uint WL_MARSHAL_FLAG_DESTROY = 1;

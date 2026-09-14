@@ -1,4 +1,4 @@
-module std::gfx @feat(WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon") @private;
+module std::gfx @feat(BSD, LINUX) @feat(WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon") @private;
 
 extern fn WlDisplay* wlDisplayConnect(ZString name) @cname("wl_display_connect");
 extern fn void wlDisplayDisconnect(WlDisplay* display) @cname("wl_display_disconnect");
