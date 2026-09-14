@@ -56,10 +56,10 @@ const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 
 fn void? _load_opengl_macos()
 {
-	if (_gfx_ctx.gl.native_handle) return;
-	_gfx_ctx.gl.native_handle = cf::bundle_for_name("com.apple.opengl");
-	if (!_gfx_ctx.gl.native_handle) return MISSING_OPENGL_LIB~;
-	_gfx_ctx.gl.get_proc_addr_fn = &_get_opengl_proc_native;
+	if (_gfx.gl.native_handle) return;
+	_gfx.gl.native_handle = cf::bundle_for_name("com.apple.opengl");
+	if (!_gfx.gl.native_handle) return MISSING_OPENGL_LIB~;
+	_gfx.gl.get_proc_addr_fn = &_get_opengl_proc_native;
 }
 
 fn bool _opengl_extension_is_supported_native(String extension)
@@ -70,11 +70,11 @@ fn bool _opengl_extension_is_supported_native(String extension)
 
 fn void* _get_opengl_proc_native(ZString procname)
 {
-	if (!_gfx_ctx.gl.native_handle || !procname) return null;
+	if (!_gfx.gl.native_handle || !procname) return null;
 	CFStringRef symbol_name = cf::stringCreateWithCString(null, procname, 0x0600);
 	if (!symbol_name) return null;
 	defer symbol_name.release();
-	return cf::bundleGetFunctionPointerForName((CFBundleRef)_gfx_ctx.gl.native_handle, symbol_name);
+	return cf::bundleGetFunctionPointerForName((CFBundleRef)_gfx.gl.native_handle, symbol_name);
 }
 
 fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
@@ -177,12 +177,12 @@ fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param)
 fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hints)
 {
 	_load_egl_native()!;
-	if (!_gfx_ctx.egl.display)
+	if (!_gfx.egl.display)
 	{
-		_gfx_ctx.egl.display = egl_get_display_fn(null);
-		if (!_gfx_ctx.egl.display) return EGL_DISPLAY_NOT_FOUND~;
+		_gfx.egl.display = egl_get_display_fn(null);
+		if (!_gfx.egl.display) return EGL_DISPLAY_NOT_FOUND~;
 		EglInt major, minor;
-		if (!egl_initialize_fn(_gfx_ctx.egl.display, &major, &minor)) return EGL_DISPLAY_FAILED_TO_INITIALIZE~;
+		if (!egl_initialize_fn(_gfx.egl.display, &major, &minor)) return EGL_DISPLAY_FAILED_TO_INITIALIZE~;
 	}
 
 	EglInt[32] cfg;
@@ -201,7 +201,7 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, Gfx
 
 	EglConfig config = null;
 	EglInt num = 0;
-	if (!egl_choose_config_fn((EglDisplay)_gfx_ctx.egl.display, &cfg, &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
+	if (!egl_choose_config_fn((EglDisplay)_gfx.egl.display, &cfg, &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
 	egl_bind_api_fn(hints.profile == ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
 
 	stack.clear();
@@ -209,17 +209,17 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, Gfx
 	stack.push_all({EGL_NONE, EGL_NONE});
 
 	EglContext share = hints.share_egl ? hints.share_egl.ctx : null;
-	ctx.ctx = egl_create_context_fn(_gfx_ctx.egl.display, config, share, stack.array_view());
+	ctx.ctx = egl_create_context_fn(_gfx.egl.display, config, share, stack.array_view());
 	if (!ctx.ctx) return EGL_CTX_CREATION_FAILED~;
 	defer catch
 	{
-		egl_destroy_context_fn(_gfx_ctx.egl.display, ctx.ctx);
+		egl_destroy_context_fn(_gfx.egl.display, ctx.ctx);
 		ctx.ctx = null;
 	}
 
 	ObjId nativeWindow = win.src.window;
 	if (win.src.view) nativeWindow = _get_layer_macos();
-	ctx.surface = egl_create_window_surface_fn((EglDisplay)_gfx_ctx.egl.display, config, (void*)nativeWindow, null);
+	ctx.surface = egl_create_window_surface_fn((EglDisplay)_gfx.egl.display, config, (void*)nativeWindow, null);
 	if (!ctx.surface) return EGL_SURFACE_CREATION_FAILED~;
 
 	win.src.ctx.egl = ctx;
@@ -229,8 +229,8 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, Gfx
 
 fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
 {
-	if (ctx.surface) egl_destroy_surface_fn(_gfx_ctx.egl.display, ctx.surface);
-	if (ctx.ctx) egl_destroy_context_fn(_gfx_ctx.egl.display, ctx.ctx);
+	if (ctx.surface) egl_destroy_surface_fn(_gfx.egl.display, ctx.surface);
+	if (ctx.ctx) egl_destroy_context_fn(_gfx.egl.display, ctx.ctx);
 	ctx.surface = null;
 	ctx.ctx = null;
 	win.src.ctx.egl = null;
@@ -300,7 +300,7 @@ fn bool _window_is_minimized_native(GfxWindow* win)
 
 fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request)
 {
-	_gfx_ctx.ns_app.send(NSInteger, "requestUserAttention:", (NSUInteger)request);
+	_gfx.ns_app.send(NSInteger, "requestUserAttention:", (NSUInteger)request);
 }
 
 fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
@@ -326,7 +326,7 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 
 fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 {
-	_gfx_ctx.raw_mouse = state;
+	_gfx.raw_mouse = state;
 }
 
 fn bool _window_is_floating_native(GfxWindow* win)
@@ -410,10 +410,10 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 
 fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
-	if (!_gfx_ctx.ns_app) return false;
+	if (!_gfx.ns_app) return false;
 	if (!data)
 	{
-		_gfx_ctx.ns_app.send_void("setApplicationIconImage:", null);
+		_gfx.ns_app.send_void("setApplicationIconImage:", null);
 		return true;
 	}
 	ObjId rep = _new_nsbitmap_image_rep(w, h);
@@ -423,7 +423,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFor
 	copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjId image = _new_nsimage(w, h, rep);
 	defer objc::release(image);
-	_gfx_ctx.ns_app.send_void("setApplicationIconImage:", image);
+	_gfx.ns_app.send_void("setApplicationIconImage:", image);
 	return true;
 }
 
@@ -452,8 +452,8 @@ fn void _free_mouse(GfxMouse* mouse)
 
 fn void? _init_native(String class_name, GfxInitOption flags)
 {
-	_gfx_ctx.ns_pool = objc::pool_push();
-	ObjId app = _gfx_ctx.ns_app = objc::send(objc::class("NSApplication"), ObjId, "sharedApplication");
+	_gfx.ns_pool = objc::pool_push();
+	ObjId app = _gfx.ns_app = objc::send(objc::class("NSApplication"), ObjId, "sharedApplication");
 	if (!app) return NSAPP_CREATION_FAILED~;
 	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
 	app.send_void("finishLaunching");
@@ -466,16 +466,16 @@ fn void _poll_events_native()
 	objc::@autoreleasepool()
 	{
 		_reset_prev_state();
-		if (!_gfx_ctx.ns_app) return;
+		if (!_gfx.ns_app) return;
 		ObjId distantPast = objc::send(objc::@class("NSDate"), ObjId, "distantPast");
 		ObjId mode = darwin::string("kCFRunLoopDefaultMode");
 		while (true)
 		{
 			objc::@autoreleasepool()
 			{
-				ObjId ev = _gfx_ctx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
+				ObjId ev = _gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
 				if (!ev) break;
-				_gfx_ctx.ns_app.send_void("sendEvent:", ev);
+				_gfx.ns_app.send_void("sendEvent:", ev);
 			};
 		}
 	};
@@ -680,16 +680,16 @@ fn void _window_show_native(GfxWindow* win)
 {
 	if (!win.src.window) return;
 	win.src.window.send_void("makeKeyAndOrderFront:", null);
-	if (_gfx_ctx.ns_app) _gfx_ctx.ns_app.send_void("activateIgnoringOtherApps:", true);
+	if (_gfx.ns_app) _gfx.ns_app.send_void("activateIgnoringOtherApps:", true);
 	win.internal.flags.hide = false;
 }
 
 fn void _destroy_native()
 {
-	if (_gfx_ctx.ns_pool)
+	if (_gfx.ns_pool)
 	{
-		objc::pool_pop(_gfx_ctx.ns_pool);
-		_gfx_ctx.ns_pool = null;
+		objc::pool_pop(_gfx.ns_pool);
+		_gfx.ns_pool = null;
 	}
 }
 
@@ -775,19 +775,19 @@ fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format)
 
 fn void _wait_for_event_native(Duration duration)
 {
-	if (!_gfx_ctx.ns_app) return;
+	if (!_gfx.ns_app) return;
 	CFTimeInterval time = duration.to_sec();
 	if (duration == WAIT_FOREVER) time = CFTimeInterval::max;
 	if (time < 0) time = 0;
 	ObjId date = objc::send(objc::@class("NSDate"), ObjId, "dateWithTimeIntervalSinceNow:", time);
 	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
-	ObjId ev = _gfx_ctx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
-	if (ev) _gfx_ctx.ns_app.send_void("postEvent:atStart:", ev, true);
+	ObjId ev = _gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
+	if (ev) _gfx.ns_app.send_void("postEvent:atStart:", ev, true);
 }
 
 fn void _poll_monitors_native()
 {
-	if (_gfx_ctx.monitors.count != 0) free_monitors();
+	if (_gfx.monitors.count != 0) free_monitors();
 	uint count = 0;
 	CGDirectDisplayID[16] displays;
 	if (cg::getActiveDisplayList(16, &displays, &count) != 0) return;
@@ -798,7 +798,7 @@ fn void _poll_monitors_native()
 		GfxMonitorNode* node = _monitor_add(&mon);
 		if (node == null) continue;
 		node.nativeId0 = (ulong)displays[i];
-		if (displays[i] == cg::mainDisplayID()) _gfx_ctx.monitors.primary = node;
+		if (displays[i] == cg::mainDisplayID()) _gfx.monitors.primary = node;
 	}
 }
 
@@ -893,7 +893,7 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 
 fn void _stop_check_events_native()
 {
-	_gfx_ctx.stop_check_events = true;
+	_gfx.stop_check_events = true;
 }
 
 
@@ -957,7 +957,7 @@ fn void _osx_key_updown(ObjId self, ObjId event, bool down)
 	if (catch win) return;
 	ushort keyCode = event.send(ushort, "keyCode");
 	if (keyCode >= 256) return;
-	GfxKey key = _gfx_ctx.keycodes[(sz)keyCode];
+	GfxKey key = _gfx.keycodes[(sz)keyCode];
 	// Unmapped key
 	if (!key) return;
 	bool repeat = down ? event.send(bool, "isARepeat") : false;
@@ -1107,7 +1107,7 @@ fn void _osx_flags_changed(ObjId self, ObjSel sel, ObjId event)
 	for (int i = 0; i < 9; i++)
 	{
 		GfxKey modKey = CAPS_LOCK + (GfxKey)i;
-		_gfx_ctx.keyboard[modKey].prev = _gfx_ctx.keyboard[modKey].current;
+		_gfx.keyboard[modKey].prev = _gfx.keyboard[modKey].current;
 	}
 
 	for (int i = 0; i < 5; i++)
@@ -1273,8 +1273,8 @@ fn float flip_y(float y)
 
 fn ObjId _get_layer_macos()
 {
-	if (!_gfx_ctx.current || !_gfx_ctx.current.src.view) return null;
-	return _gfx_ctx.current.src.view.send(ObjId, "layer");
+	if (!_gfx.current || !_gfx.current.src.view) return null;
+	return _gfx.current.src.view.send(ObjId, "layer");
 }
 
 fn void _window_set_layer_macos(GfxWindow* win, ObjId layer)
@@ -1331,7 +1331,7 @@ fn ObjId _get_nsscreen_for_display(uint display_id)
 
 fn void _init_keycodes_native()
 {
-	_gfx_ctx.keycodes = {
+	_gfx.keycodes = {
 		[0x00] = A,             [0x01] = S,             [0x02] = D,
 		[0x03] = F,             [0x04] = H,             [0x05] = G,
 		[0x06] = Z,             [0x07] = X,             [0x08] = C,

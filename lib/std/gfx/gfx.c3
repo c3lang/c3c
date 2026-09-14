@@ -828,17 +828,17 @@ fn void copy_image_data(char* dest_data, int w, int h, GfxFormat dest_format, ch
 }
 
 <*
- @require !_gfx_ctx.initialized : "Already initialized"
+ @require !_gfx.initialized : "Already initialized"
  @require class_name.len < 254 : "Class name is too long"
 *>
 fn void? init(String class_name, GfxInitOption options)
 {
 	class_name = class_name ?: "C3GFX";
-	_gfx_ctx = { .initialized = true };
+	_gfx = { .initialized = true };
 	defer catch
 	{
 		_destroy_native();
-		_gfx_ctx = {};
+		_gfx = {};
 	}
 	if (options & INIT_OPEN_GL) load_opengl()!;
 	if (options & INIT_EGL) load_egl()!;
@@ -847,7 +847,7 @@ fn void? init(String class_name, GfxInitOption options)
 	_init_native(class_name, options)!;
 	foreach (icon : GfxMouseIcon::values)
 	{
-		_gfx_ctx.standardMice[icon.ordinal] = _create_standard_mouse_native(icon) ?? null;
+		_gfx.standardMice[icon.ordinal] = _create_standard_mouse_native(icon) ?? null;
 	}
 	_poll_monitors_native();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
@@ -855,19 +855,19 @@ fn void? init(String class_name, GfxInitOption options)
 
 fn void finalize()
 {
-	if (!_gfx_ctx.initialized) return;
+	if (!_gfx.initialized) return;
 	foreach (icon : GfxMouseIcon::values)
 	{
-		if (_gfx_ctx.standardMice[icon.ordinal]) _free_mouse(_gfx_ctx.standardMice[icon.ordinal]);
+		if (_gfx.standardMice[icon.ordinal]) _free_mouse(_gfx.standardMice[icon.ordinal]);
 	}
 	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
 	_destroy_native();
 	unload_egl();
 	unload_opengl();
-	_gfx_ctx.root = null;
-	_gfx_ctx.windowCount = 0;
-	_gfx_ctx = {};
+	_gfx.root = null;
+	_gfx.windowCount = 0;
+	_gfx = {};
 }
 
 fn void poll_monitors()
@@ -901,7 +901,7 @@ fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowF
 	return win;
 }
 
-fn bool is_mouse_pressed(GfxMouseButton button) => _gfx_ctx.mouseButtons[(sz)button].current && !_gfx_ctx.mouseButtons[(sz)button].prev;
+fn bool is_mouse_pressed(GfxMouseButton button) => _gfx.mouseButtons[(sz)button].current && !_gfx.mouseButtons[(sz)button].prev;
 
 
 fn void GfxWindow.flash(&self, GfxFlashRequest request) => _window_flash_native(self, request);
@@ -1087,12 +1087,12 @@ fn GfxPoint GfxWindow.get_size_in_pixels(&self)
 
 fn bool GfxWindow.did_mouse_leave(&self)
 {
-	return _gfx_ctx.window_state.win_leave == self && _gfx_ctx.window_state.mouse_leave;
+	return _gfx.window_state.win_leave == self && _gfx.window_state.mouse_leave;
 }
 
 fn bool GfxWindow.did_mouse_enter(&self)
 {
-	return _gfx_ctx.window_state.win == self && _gfx_ctx.window_state.mouse_enter;
+	return _gfx.window_state.win == self && _gfx.window_state.mouse_enter;
 }
 
 fn bool GfxWindow.is_mouse_inside(&self)
@@ -1112,7 +1112,7 @@ fn void GfxWindow.set_mouse_passthrough(&self, bool passthrough)
 
 fn bool GfxWindow.is_data_dragging(&self)
 {
-	return _gfx_ctx.window_state.win == self && _gfx_ctx.window_state.dataDragging;
+	return _gfx.window_state.win == self && _gfx.window_state.dataDragging;
 }
 
 fn bool GfxWindow.did_data_drop(&self)
@@ -1123,7 +1123,7 @@ fn bool GfxWindow.did_data_drop(&self)
 fn GfxPoint? GfxWindow.get_data_drag(&self)
 {
 	if (!self.is_data_dragging()) return NO_DATA_DRAG~;
-	return { _gfx_ctx.window_state.drop.x, _gfx_ctx.window_state.drop.y };
+	return { _gfx.window_state.drop.x, _gfx.window_state.drop.y };
 }
 
 fn void GfxWindow.set_flags(&win, GfxWindowFlags flags)
@@ -1148,38 +1148,38 @@ fn void GfxWindow.destroy(&self)
 *>
 fn void set_build_dnd(bool allow)
 {
-	_gfx_ctx.dnd_build = allow;
+	_gfx.dnd_build = allow;
 }
 
 // public
 fn bool is_key_pressed(GfxKey key, GfxWindow* window = null)
 {
-	return _gfx_ctx.keyboard[key].current && !_gfx_ctx.keyboard[key].prev && (!window || window.has_focus());
+	return _gfx.keyboard[key].current && !_gfx.keyboard[key].prev && (!window || window.has_focus());
 }
 // public
 fn bool is_key_down(GfxKey key, GfxWindow* window = null)
 {
-	return _gfx_ctx.keyboard[key].current && (!window || window.has_focus());
+	return _gfx.keyboard[key].current && (!window || window.has_focus());
 }
 // public
 fn bool is_key_released(GfxKey key, GfxWindow* window = null)
 {
-	return !_gfx_ctx.keyboard[key].current && _gfx_ctx.keyboard[key].prev && (!window || window.has_focus());
+	return !_gfx.keyboard[key].current && _gfx.keyboard[key].prev && (!window || window.has_focus());
 }
 // public
 fn bool is_mouse_down(GfxMouseButton button, GfxWindow* window = null)
 {
-	return _gfx_ctx.mouseButtons[(sz)button].current && (!window || window.has_focus());
+	return _gfx.mouseButtons[(sz)button].current && (!window || window.has_focus());
 }
 
 // public
 fn bool is_mouse_released(GfxMouseButton button, GfxWindow* window = null)
 {
-	return !_gfx_ctx.mouseButtons[button].current && _gfx_ctx.mouseButtons[button].prev && (!window || window.has_focus());
+	return !_gfx.mouseButtons[button].current && _gfx.mouseButtons[button].prev && (!window || window.has_focus());
 }
 
-fn Vec2 get_mouse_scroll() => _gfx_ctx.scroll;
-fn Vec2 get_mouse_delta() => _gfx_ctx.vector;
+fn Vec2 get_mouse_scroll() => _gfx.scroll;
+fn Vec2 get_mouse_delta() => _gfx.vector;
 
 fn void GfxWindow.release(&self)
 {
@@ -1195,16 +1195,16 @@ fn void GfxWindow.release(&self)
 		self.src.ctx.native = null;
 	}
 	_window_close_native(self);
-	if (_gfx_ctx.clipboard) free(_gfx_ctx.clipboard);
-	_gfx_ctx.clipboard = null;
-	_gfx_ctx.windowCount--;
+	if (_gfx.clipboard) free(_gfx.clipboard);
+	_gfx.clipboard = null;
+	_gfx.windowCount--;
 	log::debug("A window was freed", category: log::CATEGORY_VIDEO);
 }
 
 fn GfxGenericFunc set_event_callback(GfxEventType type, GfxGenericFunc func)
 {
-	GfxGenericFunc old = _gfx_ctx.callbacks[type];
-	_gfx_ctx.callbacks[type] = func;
+	GfxGenericFunc old = _gfx.callbacks[type];
+	_gfx.callbacks[type] = func;
 	return old;
 }
 
@@ -1233,7 +1233,7 @@ fn void set_all_event_callback(GfxGenericFunc func, GfxEventCallbacks* callbacks
 {
 	foreach (i : GfxEventType::values[1..])
 	{
-		if (callbacks != null) callbacks.arr[i.ordinal] = _gfx_ctx.callbacks[i.ordinal];
+		if (callbacks != null) callbacks.arr[i.ordinal] = _gfx.callbacks[i.ordinal];
 		set_event_callback(i, func);
 	}
 }
@@ -1241,30 +1241,30 @@ fn void set_all_event_callback(GfxGenericFunc func, GfxEventCallbacks* callbacks
 
 fn void event_queue_flush()
 {
-	_gfx_ctx.eventLen = 0;
+	_gfx.eventLen = 0;
 }
 
 fn void event_queue_push(GfxEvent* event)
 {
-	if (!_gfx_ctx.queueEvents) return;
-	if (_gfx_ctx.eventLen >= MAX_EVENTS)
+	if (!_gfx.queueEvents) return;
+	if (_gfx.eventLen >= MAX_EVENTS)
 	{
 		log::error("Event queue limit 'MAX_EVENTS' has been reached automatically flushing queue.", category: log::CATEGORY_VIDEO);
 		event_queue_flush();
 		return;
 	}
-	int eventTop = (_gfx_ctx.eventBottom + _gfx_ctx.eventLen) % MAX_EVENTS;
-	_gfx_ctx.eventLen += 1;
-	_gfx_ctx.events[eventTop] = *event;
+	int eventTop = (_gfx.eventBottom + _gfx.eventLen) % MAX_EVENTS;
+	_gfx.eventLen += 1;
+	_gfx.events[eventTop] = *event;
 }
 
 // public
 fn GfxEvent? event_queue_pop()
 {
-	if (!_gfx_ctx.eventLen) return NO_MORE_ELEMENT~;
-	GfxEvent* ev = &_gfx_ctx.events[_gfx_ctx.eventBottom];
-	_gfx_ctx.eventLen--;
-	_gfx_ctx.eventBottom = (_gfx_ctx.eventBottom + 1) % MAX_EVENTS;
+	if (!_gfx.eventLen) return NO_MORE_ELEMENT~;
+	GfxEvent* ev = &_gfx.events[_gfx.eventBottom];
+	_gfx.eventLen--;
+	_gfx.eventBottom = (_gfx.eventBottom + 1) % MAX_EVENTS;
 	return *ev;
 }
 
@@ -1282,20 +1282,20 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 // public
 fn GfxEvent? check_event()
 {
-	if (!_gfx_ctx.eventLen && !_gfx_ctx.polledEvents)
+	if (!_gfx.eventLen && !_gfx.polledEvents)
 	{
-		_gfx_ctx.queueEvents = true;
+		_gfx.queueEvents = true;
 		_poll_events_native();
-		_gfx_ctx.polledEvents = true;
+		_gfx.polledEvents = true;
 	}
-	defer catch _gfx_ctx.polledEvents = false;
+	defer catch _gfx.polledEvents = false;
 	return check_queued_event();
 }
 
 // public
 fn GfxEvent? check_queued_event()
 {
-	_gfx_ctx.queueEvents = true;
+	_gfx.queueEvents = true;
 	return event_queue_pop();
 }
 
@@ -1303,7 +1303,7 @@ fn GfxEvent? check_queued_event()
 fn GfxEvent? window_event_queue_pop(GfxWindow* win)
 {
 	GfxEvent ev = event_queue_pop()!;
-	for (int i = 1; i < _gfx_ctx.eventLen && ev.common.win != win && ev.common.win != null; i++)
+	for (int i = 1; i < _gfx.eventLen && ev.common.win != win && ev.common.win != null; i++)
 	{
 		event_queue_push(&ev);
 		ev = event_queue_pop()!!;
@@ -1315,62 +1315,62 @@ fn GfxEvent? window_event_queue_pop(GfxWindow* win)
 // public
 fn GfxEvent? check_queued_window_event(GfxWindow* win)
 {
-	_gfx_ctx.queueEvents = true;
+	_gfx.queueEvents = true;
 	return window_event_queue_pop(win);
 }
 
 // public
 fn GfxEvent? check_window_event(GfxWindow* win)
 {
-	if (!_gfx_ctx.eventLen && !_gfx_ctx.polledEvents)
+	if (!_gfx.eventLen && !_gfx.polledEvents)
 	{
-		_gfx_ctx.queueEvents = true;
+		_gfx.queueEvents = true;
 		_poll_events_native();
-		_gfx_ctx.polledEvents = true;
+		_gfx.polledEvents = true;
 	}
-	defer catch _gfx_ctx.polledEvents = false;
+	defer catch _gfx.polledEvents = false;
 	return check_queued_window_event(win);
 }
 
 
 fn GfxKey key_from_api(uint keycode)
 {
-	if (keycode >= _gfx_ctx.keycodes.len) return NULL;
-	return _gfx_ctx.keycodes[keycode];
+	if (keycode >= _gfx.keycodes.len) return NULL;
+	return _gfx.keycodes[keycode];
 }
 
 fn uint GfxKey.to_api(self)
 {
-	return _gfx_ctx.apiKeycodes[self];
+	return _gfx.apiKeycodes[self];
 }
 
 fn void reset_key()
 {
-	_gfx_ctx.keyboard = {};
+	_gfx.keyboard = {};
 }
 
 
 fn void set_queue_events(bool queue)
 {
-	_gfx_ctx.queueEvents = queue;
+	_gfx.queueEvents = queue;
 }
 
 
 fn GfxDataDropNode* GfxWindow.get_data_drop(&self)
 {
-	if (_gfx_ctx.window_state.win != self || !_gfx_ctx.window_state.dataDrop) return null;
-	return _gfx_ctx.dndRoot;
+	if (_gfx.window_state.win != self || !_gfx.window_state.dataDrop) return null;
+	return _gfx.dndRoot;
 }
 
 
 fn void set_root_window(GfxWindow* win)
 {
-	_gfx_ctx.root = win;
+	_gfx.root = win;
 }
 
 fn GfxWindow* get_root_window()
 {
-	return _gfx_ctx.root;
+	return _gfx.root;
 }
 
 fn GfxMonitor*? GfxWindow.find_monitor(&self)
@@ -1431,13 +1431,13 @@ fn bool GfxMonitorMode.equals_request(&self, GfxMonitorMode* mon2, GfxMonitorMod
 fn void refresh_monitors()
 {
 	GfxMonitorNode* prev = null;
-	GfxMonitorNode* node = _gfx_ctx.monitors.list.head;
+	GfxMonitorNode* node = _gfx.monitors.list.head;
 	while (node)
 	{
 		GfxMonitorNode* next = node.next;
 		if (node.disconnected)
 		{
-			_monitor_callback(_gfx_ctx.root, &node.mon, false);
+			_monitor_callback(_gfx.root, &node.mon, false);
 			_remove_monitor(node, prev);
 		}
 		else
@@ -1450,7 +1450,7 @@ fn void refresh_monitors()
 
 fn void free_monitors()
 {
-	GfxMonitorNode* node = _gfx_ctx.monitors.list.head;
+	GfxMonitorNode* node = _gfx.monitors.list.head;
 	while (node)
 	{
 		GfxMonitorNode* next = node.next;
@@ -1466,11 +1466,11 @@ fn GfxPoint get_global_mouse()
 
 fn GfxMonitor*[] get_monitors()
 {
-	sz count = _gfx_ctx.monitors.count;
+	sz count = _gfx.monitors.count;
 	if (!count) return {};
 	GfxMonitor*[] monitors = mem::temp_array(GfxMonitor*, count);
 	sz i = 0;
-	GfxMonitorNode* cur_node = _gfx_ctx.monitors.list.head;
+	GfxMonitorNode* cur_node = _gfx.monitors.list.head;
 	while (cur_node)
 	{
 		monitors[i++] = &cur_node.mon;
@@ -1485,9 +1485,9 @@ fn GfxMonitor*[] get_monitors()
 *> 
 fn GfxMonitor*? get_primary_monitor()
 {
-	if (!_gfx_ctx.monitors.primary) _gfx_ctx.monitors.primary = _gfx_ctx.monitors.list.head;
-	if (!_gfx_ctx.monitors.primary) return NOT_FOUND~;
-	return &_gfx_ctx.monitors.primary.mon;
+	if (!_gfx.monitors.primary) _gfx.monitors.primary = _gfx.monitors.list.head;
+	if (!_gfx.monitors.primary) return NOT_FOUND~;
+	return &_gfx.monitors.primary.mon;
 }
 
 // public
@@ -1560,12 +1560,12 @@ fn void GfxGammaRamp.free(&self)
 
 fn void? GfxWindow.init(&self, String name, int x, int y, int w, int h, GfxWindowFlags flags)
 {
-	if (!_gfx_ctx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
+	if (!_gfx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
 	*self = {};
-	_gfx_ctx.windowCount++;
-	if (!_gfx_ctx.root) set_root_window(self);
+	_gfx.windowCount++;
+	if (!_gfx.root) set_root_window(self);
 	self.bounds = { x, y, w, h };
-	self.internal.mouse = _gfx_ctx.standardMice[GfxMouseIcon.NORMAL.ordinal];
+	self.internal.mouse = _gfx.standardMice[GfxMouseIcon.NORMAL.ordinal];
 	self.internal.flags = flags;
 	self.internal.enabled_events = ALL_EVENTS;
 	_create_window_native(name, flags, self)!;
@@ -1683,13 +1683,13 @@ fn bool GfxWindow.set_mouse_default(&self)
 
 fn bool GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
 {
-	return self.set_mouse(_gfx_ctx.standardMice[(sz)icon]);
+	return self.set_mouse(_gfx.standardMice[(sz)icon]);
 }
 
 fn bool GfxWindow.set_mouse(&self, GfxMouse* mouse)
 {
 	if (!mouse) return false;
-	if (mouse != _gfx_ctx.hiddenMouse) self.internal.mouse = mouse;
+	if (mouse != _gfx.hiddenMouse) self.internal.mouse = mouse;
 	return _window_set_mouse_native(self, mouse);
 }
 
@@ -1704,8 +1704,8 @@ fn void stop_check_events()
 }
 fn void set_raw_mouse_mode(bool enabled)
 {
-	_gfx_ctx.raw_mouse = enabled;
-	if (_gfx_ctx.root) _window_set_raw_mouse_mode_native(_gfx_ctx.root, enabled);
+	_gfx.raw_mouse = enabled;
+	if (_gfx.root) _window_set_raw_mouse_mode_native(_gfx.root, enabled);
 }
 
 
@@ -1867,11 +1867,11 @@ fn void? load_opengl()
 fn void unload_opengl()
 {
 	$if !$feat(MACOS):
-		_gfx_ctx.gl.native_handle.close();
+		_gfx.gl.native_handle.close();
 	$else
-		_gfx_ctx.gl.native_handle = null;
+		_gfx.gl.native_handle = null;
 	$endif
-	_gfx_ctx.gl.get_proc_addr_fn = null;
+	_gfx.gl.get_proc_addr_fn = null;
 }
 
 fn void? load_vulkan()
@@ -1908,11 +1908,11 @@ bitstruct GfxBacking : char
 
 fn void _event_queue_call_push(GfxEvent* event)
 {
-	if (_gfx_ctx.callbacks[event.type]) _gfx_ctx.callbacks[event.type](event);
+	if (_gfx.callbacks[event.type]) _gfx.callbacks[event.type](event);
 	event_queue_push(event);
 }
 
-GfxContext _gfx_ctx;
+GfxContext _gfx;
 
 const WAYLAND_ONLY = $feat(WAYLAND) && $feat(NO_X11);
 const X11_ONLY = !$feat(WAYLAND);

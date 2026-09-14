@@ -49,8 +49,8 @@ fn bool vulkan_get_physical_device_presentation_support_native(VkInstance instan
 // public
 fn GfxFn _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(!WASM)
 {
-	if (!_gfx_ctx.vk_get_instance_proc_address) return null;
-	return _gfx_ctx.vk_get_instance_proc_address(instance, procname);
+	if (!_gfx.vk_get_instance_proc_address) return null;
+	return _gfx.vk_get_instance_proc_address(instance, procname);
 }
 
 macro get_required_vulkan_extensions()
@@ -73,14 +73,14 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 
 fn void _unload_vulkan_native()
 {
-	if (!_gfx_ctx.vulkan_handle) return;
-	_gfx_ctx.vulkan_handle.close();
-	_gfx_ctx.vk_get_instance_proc_address = null;
+	if (!_gfx.vulkan_handle) return;
+	_gfx.vulkan_handle.close();
+	_gfx.vk_get_instance_proc_address = null;
 }
 
 fn void? _load_vulkan_native()
 {
-	if (_gfx_ctx.vulkan_handle) return;
+	if (_gfx.vulkan_handle) return;
 	DylibHandle? handle;
 	$switch:
 		$case $feat(MACOS):
@@ -91,7 +91,7 @@ fn void? _load_vulkan_native()
 			handle = os::dlopen_any("libvulkan.so.1", "libvulkan.so", "libMoltenVK.so");
 	$endswitch
 	if (catch handle) return MISSING_VULKAN_LIB~;
-	_gfx_ctx.vulkan_handle = handle;
+	_gfx.vulkan_handle = handle;
 	void* proc = os::dlsym(handle, "vkGetInstanceProcAddr") ?: MISSING_VK_GET_INSTANCE_PROC_ADDR~!;
-	_gfx_ctx.vk_get_instance_proc_address = proc;
+	_gfx.vk_get_instance_proc_address = proc;
 }

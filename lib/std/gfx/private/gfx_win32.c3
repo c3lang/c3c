@@ -4,7 +4,7 @@ import std::os::win32, std::collections, std::time, std::math, std::os;
 
 struct GfxGlContext
 {
-	void* ctx; // HGLRC
+	Win32_HGLRC ctx;
 }
 
 struct GfxNativeImage
@@ -40,7 +40,7 @@ struct GfxWindowSrc
 
 fn void _stop_check_events_native()
 {
-	win32::postMessageW(_gfx_ctx.helper_window, 0, 0, 0);
+	win32::postMessageW(_gfx.helper_window, 0, 0, 0);
 }
 
 fn void _wait_for_event_native(Duration duration)
@@ -199,7 +199,7 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 	uint exStyle = _winapi_window_get_style_ex(win, flags);
 	win32::adjustWindowRectEx(&rect, style, 0, exStyle);
 
-	win.src.window = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, name.to_wstring(tmem)!!, window_style, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx_ctx.instance, null);
+	win.src.window = win32::createWindowExW(0, _gfx.wndClass.lpszClassName, name.to_wstring(tmem)!!, window_style, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, _gfx.instance, null);
 	win32::setPropW(win.src.window, RENAME_PROP_NAME, win);
 	win.resize(win.size);
 
@@ -371,7 +371,7 @@ fn bool _window_is_hidden_native(GfxWindow* win)
 fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
 {
 	Win32_HMONITOR src = win32::monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
-	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
+	for (GfxMonitorNode* node = _gfx.monitors.list.head; node != null; node = node.next)
 	{
 		if (node.hMonitor == src) return &node.mon;
 	}
@@ -562,10 +562,10 @@ fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, Gfx
 	    .bV5Compression = win32::BI_RGB,
 	};
 	surface.native.format = format.channels > 3 ? BGRA8 : BGR8;
-	surface.native.bitmap = win32::createDIBSection(_gfx_ctx.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
+	surface.native.bitmap = win32::createDIBSection(_gfx.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
 	if (!surface.native.bitmap) return SURFACE_CREATION_FAILED~;
 	defer catch surface.release();
-	surface.native.hdcMem = win32::createCompatibleDC(_gfx_ctx.root.src.hdc);
+	surface.native.hdcMem = win32::createCompatibleDC(_gfx.root.src.hdc);
 	win32::selectObject(surface.native.hdcMem, surface.native.bitmap);
 }
 
@@ -589,7 +589,7 @@ fn GfxPoint _get_global_mouse_native()
 
 fn void _poll_monitors_native()
 {
-	for (GfxMonitorNode* node = _gfx_ctx.monitors.list.head; node != null; node = node.next) node.disconnected = true;
+	for (GfxMonitorNode* node = _gfx.monitors.list.head; node != null; node = node.next) node.disconnected = true;
 
 	for (uint adapterNum = 0;; adapterNum++)
 	{
@@ -605,7 +605,7 @@ fn void _poll_monitors_native()
 			if (!(dd.stateFlags & win32::DISPLAY_DEVICE_ACTIVE)) continue;
 
 			GfxMonitorNode* node;
-			for (node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
+			for (node = _gfx.monitors.list.head; node != null; node = node.next)
 			{
 				sz i;
 				for (i = 0; dd.deviceName[i] != 0 && node.deviceName[i] != 0 && dd.deviceName[i] == node.deviceName[i]; i++) {}
@@ -623,7 +623,7 @@ fn void _poll_monitors_native()
 		if (!device_num)
 		{
 			GfxMonitorNode* node;
-			for (node = _gfx_ctx.monitors.list.head; node != null; node = node.next)
+			for (node = _gfx.monitors.list.head; node != null; node = node.next)
 			{
 				sz i;
 				for (i = 0; adapter.deviceName[i] != 0 && node.adapterName[i] != 0 && adapter.deviceName[i] == node.adapterName[i]; i++)
@@ -646,34 +646,34 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	win32::setProcessDPIAware();
 	win32::timeBeginPeriod(1);
 
-	_gfx_ctx.instance = win32::getModuleHandleW(null);
+	_gfx.instance = win32::getModuleHandleW(null);
 	@pool()
 	{
 		assert(class_name.len < 254);
 		WString str = class_name.to_temp_wstring()!;
 		sz len = str.len();
-		mem::copy(&_gfx_ctx.wideClassName, str, len);
-		_gfx_ctx.wideClassName[len] = 0;
+		mem::copy(&_gfx.wideClassName, str, len);
+		_gfx.wideClassName[len] = 0;
 	};
 
-	_gfx_ctx.wndClass = {};
-	_gfx_ctx.wndClass.lpszClassName = (WString)&_gfx_ctx.wideClassName;
-	_gfx_ctx.wndClass.hInstance = _gfx_ctx.instance;
-	_gfx_ctx.wndClass.hCursor = win32::loadCursorA(null, (Win32_LPCSTR)win32::IDC_ARROW);
-	_gfx_ctx.wndClass.lpfnWndProc = &_wnd_proc;
-	_gfx_ctx.wndClass.cbClsExtra = sz::size;
+	_gfx.wndClass = {};
+	_gfx.wndClass.lpszClassName = (WString)&_gfx.wideClassName;
+	_gfx.wndClass.hInstance = _gfx.instance;
+	_gfx.wndClass.hCursor = win32::loadCursorA(null, (Win32_LPCSTR)win32::IDC_ARROW);
+	_gfx.wndClass.lpfnWndProc = &_wnd_proc;
+	_gfx.wndClass.cbClsExtra = sz::size;
 
-	_gfx_ctx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(_gfx_ctx.instance, "C3GFX", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
-	if (!_gfx_ctx.wndClass.hIcon)
+	_gfx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(_gfx.instance, "C3GFX", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
+	if (!_gfx.wndClass.hIcon)
 	{
-		_gfx_ctx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(null, (Win32_LPCSTR)win32::IDI_APPLICATION, 1, 0, 0, 0x00000040 | 0x00008000);
+		_gfx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(null, (Win32_LPCSTR)win32::IDI_APPLICATION, 1, 0, 0, 0x00000040 | 0x00008000);
 	}
 
-	win32::registerClassW(&_gfx_ctx.wndClass);
-	_gfx_ctx.helper_window = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
+	win32::registerClassW(&_gfx.wndClass);
+	_gfx.helper_window = win32::createWindowExW(0, _gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx.instance, null);
 
 	char[4] blk;
-	_gfx_ctx.hiddenMouse = _create_mouse_native(&blk, { 1, 1 }, RGBA8) ?? null;
+	_gfx.hiddenMouse = _create_mouse_native(&blk, { 1, 1 }, RGBA8) ?? null;
 }
 
 fn void _free_mouse(GfxMouse* mouse)
@@ -684,9 +684,9 @@ fn void _free_mouse(GfxMouse* mouse)
 fn void _destroy_native()
 {
 	win32::timeEndPeriod(1);
-	if (_gfx_ctx.helper_window) win32::destroyWindow(_gfx_ctx.helper_window);
-	if (_gfx_ctx.instance) win32::unregisterClassW(_gfx_ctx.wndClass.lpszClassName, _gfx_ctx.instance);
-	if (_gfx_ctx.hiddenMouse != null) _free_mouse(_gfx_ctx.hiddenMouse);
+	if (_gfx.helper_window) win32::destroyWindow(_gfx.helper_window);
+	if (_gfx.instance) win32::unregisterClassW(_gfx.wndClass.lpszClassName, _gfx.instance);
+	if (_gfx.hiddenMouse != null) _free_mouse(_gfx.hiddenMouse);
 }
 
 
@@ -696,7 +696,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 {
 	if (message == win32::WM_DISPLAYCHANGE) _poll_monitors_native();
 
-	if (hWnd == _gfx_ctx.helper_window) return win32::defWindowProcW(hWnd, message, wParam, lParam);
+	if (hWnd == _gfx.helper_window) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 
 	GfxWindow* win = win32::getPropW(hWnd, RENAME_PROP_NAME);
 	if (!win) return win32::defWindowProcW(hWnd, message, wParam, lParam);
@@ -870,7 +870,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			if (win.internal.mouse_inside == false) _mouse_notify_callback(win, where, true);
 			_mouse_motion_callback(win, where);
 		case win32::WM_INPUT:
-			if (!(win.internal.raw_mouse || _gfx_ctx.raw_mouse)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
+			if (!(win.internal.raw_mouse || _gfx.raw_mouse)) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 
 			Win32_RAWINPUT raw;
 			uint raw_size = Win32_RAWINPUTHEADER::size + Win32_RAWMOUSE::size;
@@ -1002,8 +1002,8 @@ fn void _create_monitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLAY_DEVICEW* d
 	};
 	win32::deleteDC(hdc);
 
-	if (monitorInfo.dwFlags & win32::MONITORINFOF_PRIMARY) _gfx_ctx.monitors.primary = node;
-	_monitor_callback(_gfx_ctx.root, &node.mon, true);
+	if (monitorInfo.dwFlags & win32::MONITORINFOF_PRIMARY) _gfx.monitors.primary = node;
+	_monitor_callback(_gfx.root, &node.mon, true);
 }
 
 fn int _get_monitor_handle_callback(void* hMonitor, void* hdcMonitor, Win32_RECT* lprcMonitor, iptr dwData)
@@ -1348,17 +1348,17 @@ fn void* _get_current_opengl_context_native()
 
 fn void? _load_opengl_win32() @private
 {
-	if (_gfx_ctx.gl.native_handle && _gfx_ctx.gl.get_proc_addr_fn) return;
-	_gfx_ctx.gl.native_handle = os::dlopen("opengl32.dll") ?: MISSING_OPENGL_LIB~!;
-	_gfx_ctx.gl.get_proc_addr_fn = os::dlsym(_gfx_ctx.gl.native_handle, "wglGetProcAddress") ?: MISSING_GL_GET_PROC_ADDR~!;
-	wgl_create_context_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglCreateContext")!;
-	wgl_delete_context_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglDeleteContext")!;
-	wgl_make_current_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglMakeCurrent")!;
-	wgl_get_current_dc_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglGetCurrentDC")!;
-	wgl_get_current_context_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglGetCurrentContext")!;
-	wgl_share_lists_fn = os::dlsym_try(_gfx_ctx.gl.native_handle, "wglShareLists")!;
+	if (_gfx.gl.native_handle && _gfx.gl.get_proc_addr_fn) return;
+	_gfx.gl.native_handle = os::dlopen("opengl32.dll") ?: MISSING_OPENGL_LIB~!;
+	_gfx.gl.get_proc_addr_fn = os::dlsym(_gfx.gl.native_handle, "wglGetProcAddress") ?: MISSING_GL_GET_PROC_ADDR~!;
+	wgl_create_context_fn = os::dlsym_try(_gfx.gl.native_handle, "wglCreateContext")!;
+	wgl_delete_context_fn = os::dlsym_try(_gfx.gl.native_handle, "wglDeleteContext")!;
+	wgl_make_current_fn = os::dlsym_try(_gfx.gl.native_handle, "wglMakeCurrent")!;
+	wgl_get_current_dc_fn = os::dlsym_try(_gfx.gl.native_handle, "wglGetCurrentDC")!;
+	wgl_get_current_context_fn = os::dlsym_try(_gfx.gl.native_handle, "wglGetCurrentContext")!;
+	wgl_share_lists_fn = os::dlsym_try(_gfx.gl.native_handle, "wglShareLists")!;
 
-	Win32_HWND dummyWin = win32::createWindowExW(0, _gfx_ctx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx_ctx.instance, null);
+	Win32_HWND dummyWin = win32::createWindowExW(0, _gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx.instance, null);
 	defer win32::destroyWindow(dummyWin);
 	Win32_HDC dummy_dc = win32::getDC(dummyWin);
 	defer win32::releaseDC(dummyWin, dummy_dc);
@@ -1398,9 +1398,9 @@ alias GetExtStringExtFn = fn ZString();
 
 fn void* _get_opengl_proc_native(ZString procname)
 {
-	void* proc = _gfx_ctx.gl.get_proc_addr_fn ? _gfx_ctx.gl.get_proc_addr_fn(procname) : null;
+	void* proc = _gfx.gl.get_proc_addr_fn ? _gfx.gl.get_proc_addr_fn(procname) : null;
 	if (proc) return proc;
-	return os::dlsym(_gfx_ctx.gl.native_handle, procname);
+	return os::dlsym(_gfx.gl.native_handle, procname);
 }
 
 // --- DirectX
@@ -1457,7 +1457,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 	create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	create_info.pNext = null;
 	create_info.flags = 0;
-	create_info.hinstance = _gfx_ctx.instance;
+	create_info.hinstance = _gfx.instance;
 	create_info.hwnd = win.src.window;
 	if (proc(instance, &create_info, null, &surface)) return SURFACE_CREATION_FAILED~;
 	return surface;
@@ -1480,7 +1480,7 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 	fromHwnd.chain.next = null;
 	fromHwnd.chain.sType = WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND;
 	fromHwnd.hwnd = window.src.window;
-	fromHwnd.hinstance = _gfx_ctx.instance;
+	fromHwnd.hinstance = _gfx.instance;
 	WgpuSurfaceDescriptor surfaceDesc;
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromHwnd;
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
@@ -1488,7 +1488,7 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 
 fn void _init_keycodes_native()
 {
-	_gfx_ctx.keycodes = {
+	_gfx.keycodes = {
 		[0x00B] = NUM0,          [0x002] = NUM1,          [0x003] = NUM2,
 		[0x004] = NUM3,          [0x005] = NUM4,          [0x006] = NUM5,
 		[0x007] = NUM6,          [0x008] = NUM7,          [0x009] = NUM8,

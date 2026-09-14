@@ -38,7 +38,7 @@ fn void _destroy_native() {}
 
 fn void _stop_check_events_native()
 {
-	_gfx_ctx.stop_check_events = true;
+	_gfx.stop_check_events = true;
 }
 
 fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
@@ -242,7 +242,7 @@ fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx) {
 
 fn void? _init_native(String class_name, GfxInitOption flags)
 {
-	_gfx_ctx.usingAsyncify = -1;
+	_gfx.usingAsyncify = -1;
 	GfxMonitor monitor;
 	monitor.origin = {};
 	monitor.pixelRatio = (float)gfxJsDevicePixelRatio();
@@ -261,16 +261,16 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	GfxMonitorNode* node = _monitor_add(&monitor);
 	if (node)
 	{
-		_gfx_ctx.monitors.primary = node;
-		_monitor_callback(_gfx_ctx.root, &node.mon, true);
+		_gfx.monitors.primary = node;
+		_monitor_callback(_gfx.root, &node.mon, true);
 	}
 }
 
 fn void _poll_events_native()
 {
-	if (_gfx_ctx.usingAsyncify == -1) _gfx_ctx.usingAsyncify = gfxJsUsingAsyncify();
+	if (_gfx.usingAsyncify == -1) _gfx.usingAsyncify = gfxJsUsingAsyncify();
 	_reset_prev_state();
-	if (_gfx_ctx.usingAsyncify) gfxJsSleep(0);
+	if (_gfx.usingAsyncify) gfxJsSleep(0);
 }
 
 fn void _surface_release_native(GfxSurface* surface)
@@ -290,31 +290,31 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* mon) => {};
 
 fn void _emscripten_on_drop(char* file, sz size) @export("c3gfx_on_drop")
 {
-	_data_drop_callback(_gfx_ctx.root, file, size, FILE);
+	_data_drop_callback(_gfx.root, file, size, FILE);
 }
 
 fn void _emscripten_on_fullscreenchange(int screenW, int screenH, bool entering) @export("c3gfx_on_fullscreenchange")
 {
-	if (!(_gfx_ctx.root.internal.enabled_events.window_resized)) return;
+	if (!(_gfx.root.internal.enabled_events.window_resized)) return;
 	static GfxPoint original;
 	if (entering)
 	{
-		original = _gfx_ctx.root.size;
-		_gfx_ctx.root.size = { screenW, screenH };
+		original = _gfx.root.size;
+		_gfx.root.size = { screenW, screenH };
 	}
 	else
 	{
-		_gfx_ctx.root.size = original;
+		_gfx.root.size = original;
 	}
 	gfxJsFocusCanvas();
-	gfxJsSetCanvasSize(..._gfx_ctx.root.size);
-	_window_resized_callback(_gfx_ctx.root, _gfx_ctx.root.size);
+	gfxJsSetCanvasSize(..._gfx.root.size);
+	_window_resized_callback(_gfx.root, _gfx.root.size);
 }
 
 fn void _emscripten_on_mousedown(int button) @export("c3gfx_on_mousedown")
 {
 	if (button > 2) button += 2;
-	_mouse_button_callback(_gfx_ctx.root, (GfxMouseButton)button, true);
+	_mouse_button_callback(_gfx.root, (GfxMouseButton)button, true);
 }
 
 fn void handle_key_event_callback(ZString code, uint codepoint, bool press) @export("c3gfx_handleKeyEvent")
@@ -324,13 +324,13 @@ fn void handle_key_event_callback(ZString code, uint codepoint, bool press) @exp
 	while (iCode[0] != 0) { hash = ((hash ^ 0x7E057D79u) << 3) ^ (uint)iCode[0]; iCode++; }
 
 	GfxKey physicalKey = _wasm_physical_to_gfx(hash);
-	_key_callback(_gfx_ctx.root, physicalKey, _gfx_ctx.root.internal.mod, is_key_down(physicalKey) && press, press);
-	if (press) _key_char_callback(_gfx_ctx.root, codepoint);
+	_key_callback(_gfx.root, physicalKey, _gfx.root.internal.mod, is_key_down(physicalKey) && press, press);
+	if (press) _key_char_callback(_gfx.root, codepoint);
 }
 
 fn void handle_key_mods_callback(bool capital, bool numlock, bool control, bool alt, bool shift, bool super, bool scroll) @export("c3gfx_handleKeyMods")
 {
-	_key_update_key_mods_ex(_gfx_ctx.root, capital, numlock, control, alt, shift, super, scroll);
+	_key_update_key_mods_ex(_gfx.root, capital, numlock, control, alt, shift, super, scroll);
 }
 
 
@@ -394,7 +394,7 @@ fn GfxKey _physical_to_mapped_key_native(GfxKey key) => key;
 
 fn void _init_keycodes_native()
 {
-	_gfx_ctx.keycodes = {
+	_gfx.keycodes = {
 		[DOM_VK_BACK_QUOTE] = BACKTICK,         [DOM_VK_0] = NUM0,                      [DOM_VK_1] = NUM1,
 		[DOM_VK_2] = NUM2,                      [DOM_VK_3] = NUM3,                      [DOM_VK_4] = NUM4,
 		[DOM_VK_5] = NUM5,                      [DOM_VK_6] = NUM6,                      [DOM_VK_7] = NUM7,
@@ -493,25 +493,25 @@ extern fn void gfxJsWriteFile(ZString path, char* data, sz len) @wasm("env", "em
 
 fn void gfxEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
 {
-	_window_resized_callback(_gfx_ctx.root, { w, h });
+	_window_resized_callback(_gfx.root, { w, h });
 }
-fn void gfxEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { _window_focus_callback(_gfx_ctx.root, true); }
+fn void gfxEmscriptenOnFocusIn() @export("c3gfx_on_focusin") { _window_focus_callback(_gfx.root, true); }
 
-fn void gfxEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { _window_focus_callback(_gfx_ctx.root, false); }
+fn void gfxEmscriptenOnFocusOut() @export("c3gfx_on_focusout") { _window_focus_callback(_gfx.root, false); }
 
 fn void gfxEmscriptenOnMouseMove(int x, int y, int movementX, int movementY) @export("c3gfx_on_mousemove")
 {
-	_mouse_motion_callback(_gfx_ctx.root, { x, y });
-	_raw_motion_callback(_gfx_ctx.root, { (float)movementX, (float)movementY });
+	_mouse_motion_callback(_gfx.root, { x, y });
+	_raw_motion_callback(_gfx.root, { (float)movementX, (float)movementY });
 }
 
 fn void gfxEmscriptenOnMouseUp(int button) @export("c3gfx_on_mouseup")
 {
 	if (button > 2) button += 2;
-	_mouse_button_callback(_gfx_ctx.root, (GfxMouseButton)button, false);
+	_mouse_button_callback(_gfx.root, (GfxMouseButton)button, false);
 }
 
-fn void gfxEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { _mouse_scroll_callback(_gfx_ctx.root, { deltaX, deltaY }); }
+fn void gfxEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { _mouse_scroll_callback(_gfx.root, { deltaX, deltaY }); }
 
 // private
 fn void gfxEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("c3gfx_on_touch")
@@ -519,29 +519,29 @@ fn void gfxEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expor
 	// down == 255 is the sentinel for touchmove (no button state change).
 	if (down == 255)
 	{
-		if (!_gfx_ctx.root.internal.enabled_events.mouse_motion) return;
+		if (!_gfx.root.internal.enabled_events.mouse_motion) return;
 		for (int i = 0; i < numTouches; i++)
 		{
-			_mouse_motion_callback(_gfx_ctx.root, { xs[i], ys[i] });
-			_raw_motion_callback(_gfx_ctx.root, {});
+			_mouse_motion_callback(_gfx.root, { xs[i], ys[i] });
+			_raw_motion_callback(_gfx.root, {});
 		}
 		return;
 	}
 
 	if (down)
 	{
-		if (!_gfx_ctx.root.internal.enabled_events.mouse_button_pressed) return;
+		if (!_gfx.root.internal.enabled_events.mouse_button_pressed) return;
 	}
 	else
 	{
-		if (!_gfx_ctx.root.internal.enabled_events.mouse_button_released) return;
+		if (!_gfx.root.internal.enabled_events.mouse_button_released) return;
 	}
 
 	for (int i = 0; i < numTouches; i++)
 	{
-		_mouse_motion_callback(_gfx_ctx.root, { xs[i], ys[i] });
-		_raw_motion_callback(_gfx_ctx.root, { });
-		_mouse_button_callback(_gfx_ctx.root, LEFT, (bool)down);
+		_mouse_motion_callback(_gfx.root, { xs[i], ys[i] });
+		_raw_motion_callback(_gfx.root, { });
+		_mouse_button_callback(_gfx.root, LEFT, (bool)down);
 	}
 }
 

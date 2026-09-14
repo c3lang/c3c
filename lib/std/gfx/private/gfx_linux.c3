@@ -452,32 +452,32 @@ fn void _poll_events_native()
 
 fn void _stop_check_events_native()
 {
-	_gfx_ctx.eventWait_forceStop[2] = 1;
+	_gfx.eventWait_forceStop[2] = 1;
 	while (true)
 	{
 		char byte = 0;
-		sz result = libc::write(_gfx_ctx.eventWait_forceStop[1], &byte, 1);
+		sz result = libc::write(_gfx.eventWait_forceStop[1], &byte, 1);
 		if (result == 1 || result == -1) break;
 	}
 }
 
 fn void _wait_for_event_native(Duration duration)
 {
-	if (_gfx_ctx.eventWait_forceStop[0] == 0 || _gfx_ctx.eventWait_forceStop[1] == 0)
+	if (_gfx.eventWait_forceStop[0] == 0 || _gfx.eventWait_forceStop[1] == 0)
 	{
-		if (posix::pipe((int[2]*)&_gfx_ctx.eventWait_forceStop) != -1)
+		if (posix::pipe((int[2]*)&_gfx.eventWait_forceStop) != -1)
 		{
-			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[0], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[0], os::F_GETFD, 0);
-			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[1], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)_gfx_ctx.eventWait_forceStop[1], os::F_GETFD, 0);
+			os::fcntl((NativeSocket)_gfx.eventWait_forceStop[0], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)_gfx.eventWait_forceStop[0], os::F_GETFD, 0);
+			os::fcntl((NativeSocket)_gfx.eventWait_forceStop[1], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)_gfx.eventWait_forceStop[1], os::F_GETFD, 0);
 		}
 	}
 
 	Posix_pollfd[2] fds;
 	fds[0].fd = 0;
 	fds[0].events = (short)os::POLLIN;
-	fds[1].fd = _gfx_ctx.eventWait_forceStop[0];
+	fds[1].fd = _gfx.eventWait_forceStop[0];
 	fds[1].events = (short)os::POLLIN;
 
 	$switch:
@@ -497,12 +497,12 @@ fn void _wait_for_event_native(Duration duration)
 	$endswitch
 
 	// drain any data in the stop request
-	if (_gfx_ctx.eventWait_forceStop[2])
+	if (_gfx.eventWait_forceStop[2])
 	{
 		char[64] data;
-		libc::read(_gfx_ctx.eventWait_forceStop[0], &data, 64);
+		libc::read(_gfx.eventWait_forceStop[0], &data, 64);
 
-		_gfx_ctx.eventWait_forceStop[2] = 0;
+		_gfx.eventWait_forceStop[2] = 0;
 	}
 }
 

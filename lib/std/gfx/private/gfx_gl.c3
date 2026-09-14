@@ -1,5 +1,5 @@
 module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
-import std::os::macos, std::os::darwin;
+import std::os::macos, std::os::darwin, std::os::win32;
 
 const GfxGlHints GLOBAL_HINTS = {
 	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
