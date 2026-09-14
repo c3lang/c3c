@@ -1,5 +1,5 @@
 module std::gfx @feat(LINUX, BSD) @feat(!NO_X11) @private;
-import std::math, std::collections, libc, std::time, std::time::clock, std::net, std::net::os;
+import std::math, std::collections, std::os, libc, std::time, std::time::clock, std::net, std::net::os;
 import std::gfx::x11 @public;
 
 const int X_TRUE = 1;
@@ -507,31 +507,31 @@ fn void? _init_x11(String class_name, GfxInitOption flags)
 fn void? _load_opengl_x11()
 {
 	if (_gfx_ctx.native_gl_handle && _gfx_ctx.glGetProcAddress) return;
-	_gfx_ctx.native_gl_handle = _dlopen_any("libGLX.so.0", "libGL.so.1", "libGL.so") ?? MISSING_OPENGL_LIB~!;
-	void* ptr = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddress");
+	_gfx_ctx.native_gl_handle = os::dlopen_any("libGLX.so.0", "libGL.so.1", "libGL.so") ?? MISSING_OPENGL_LIB~!;
+	void* ptr = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddress");
 	if (!ptr) return MISSING_GL_GET_PROC_ADDR~;
 	_gfx_ctx.glGetProcAddress        = ptr;
-	_glx_choose_visual_fn                = libc::dlsym(_gfx_ctx.native_gl_handle, "glXChooseVisual");
-	_glx_create_context_fn               = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContext");
-	_glx_make_current_fn                 = libc::dlsym(_gfx_ctx.native_gl_handle, "glXMakeCurrent");
-	_glx_get_current_context_fn          = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetCurrentContext");
-	_glx_swap_buffers_fn                 = libc::dlsym(_gfx_ctx.native_gl_handle, "glXSwapBuffers");
-	_glx_get_visual_from_fb_config_fn    = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetVisualFromFBConfig");
-	_glx_get_fb_config_attrib_fn         = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetFBConfigAttrib");
-	_glx_get_proc_address_arb_fn         = libc::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddressARB");
-	_glx_choose_fb_config_fn             = libc::dlsym(_gfx_ctx.native_gl_handle, "glXChooseFBConfig");
-	_glx_destroy_context_fn              = libc::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyContext");
-	_glx_create_window_fn                = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateWindow");
-	_glx_destroy_window_fn               = libc::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyWindow");
-	_glx_query_extensions_string_fn      = libc::dlsym(_gfx_ctx.native_gl_handle, "glXQueryExtensionsString");
-	_glx_create_context_attribs_arb_fn   = libc::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContextAttribsARB");
-	_glx_swap_interval_ext_fn            = libc::dlsym(_gfx_ctx.native_gl_handle, "glXSwapIntervalEXT");
+	_glx_choose_visual_fn                = os::dlsym(_gfx_ctx.native_gl_handle, "glXChooseVisual");
+	_glx_create_context_fn               = os::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContext");
+	_glx_make_current_fn                 = os::dlsym(_gfx_ctx.native_gl_handle, "glXMakeCurrent");
+	_glx_get_current_context_fn          = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetCurrentContext");
+	_glx_swap_buffers_fn                 = os::dlsym(_gfx_ctx.native_gl_handle, "glXSwapBuffers");
+	_glx_get_visual_from_fb_config_fn    = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetVisualFromFBConfig");
+	_glx_get_fb_config_attrib_fn         = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetFBConfigAttrib");
+	_glx_get_proc_address_arb_fn         = os::dlsym(_gfx_ctx.native_gl_handle, "glXGetProcAddressARB");
+	_glx_choose_fb_config_fn             = os::dlsym(_gfx_ctx.native_gl_handle, "glXChooseFBConfig");
+	_glx_destroy_context_fn              = os::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyContext");
+	_glx_create_window_fn                = os::dlsym(_gfx_ctx.native_gl_handle, "glXCreateWindow");
+	_glx_destroy_window_fn               = os::dlsym(_gfx_ctx.native_gl_handle, "glXDestroyWindow");
+	_glx_query_extensions_string_fn      = os::dlsym(_gfx_ctx.native_gl_handle, "glXQueryExtensionsString");
+	_glx_create_context_attribs_arb_fn   = os::dlsym(_gfx_ctx.native_gl_handle, "glXCreateContextAttribsARB");
+	_glx_swap_interval_ext_fn            = os::dlsym(_gfx_ctx.native_gl_handle, "glXSwapIntervalEXT");
 	if (!_glx_swap_interval_ext_fn)
 	{
 		ZString[2] array = {"GLX_MESA_swap_control", "GLX_SGI_swap_control"};
 		foreach (name : array)
 		{
-			_glx_swap_interval_native_fn = libc::dlsym(_gfx_ctx.native_gl_handle, name);
+			_glx_swap_interval_native_fn = os::dlsym(_gfx_ctx.native_gl_handle, name);
 			if (_glx_swap_interval_native_fn) break;
 		}
 	}

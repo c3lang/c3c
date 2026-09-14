@@ -1,15 +1,6 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @private;
 import libc, std::math;
 
-fn void*? _dlopen_any(ZString... names) @feat(POSIX)
-{
-	foreach (name : names)
-	{
-		void* proc = libc::dlopen(name, libc::RTLD_LAZY | libc::RTLD_LOCAL);
-		if (proc) return proc;
-	}
-	return NOT_FOUND~;
-}
 
 fn void _init_keycodes()
 {

@@ -1,6 +1,5 @@
 module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
-
-import std::math, std::os::macos, std::os::darwin, libc, std::time, std::os::win32;
+import std::math, std::os, std::os::darwin, libc, std::time;
 import std::gfx::x11 @public;
 
 excuse
@@ -210,15 +209,15 @@ struct GfxContext
 	GfxMonitors monitors;
 	GfxWindow* current;
 	CFBundleRef native_gl_handle @feat(MACOS);
-	void* native_gl_handle @feat(!MACOS);
+	DylibHandle native_gl_handle @feat(!MACOS);
 	void* glGetProcAddress;
-	void* vulkan_handle;
+	DylibHandle vulkan_handle;
 	GfxVkGetInstanceProcAddressProc vk_get_instance_proc_address;
-	struct @feat(!WASM)
+	struct egl
 	{
-		void* egl_display;
-		void* egl_handle;
-		void* eglGetProcAddress;
+		void* display;
+		DylibHandle handle;
+		void* get_proc_addr_fn;
 	}
 	struct @feat(WIN32)
 	{

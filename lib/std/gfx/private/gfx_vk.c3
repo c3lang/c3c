@@ -1,5 +1,5 @@
 module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
-import libc, std::os::win32;
+import libc, std::os;
 
 
 alias VkResult = int;
@@ -53,83 +53,45 @@ fn GfxFn _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(
 	return _gfx_ctx.vk_get_instance_proc_address(instance, procname);
 }
 
-// public
-fn String[] get_required_vulkan_extensions()
+macro get_required_vulkan_extensions()
 {
+	String[1] $ext = { "VK_KHR_surface" };
 	$switch:
-		$case $feat(LINUX) &&& WAYLAND_ONLY:
-			static String[] ext = { "VK_KHR_surface", "VK_KHR_wayland_surface" };
-		$case $feat(LINUX) &&& X11_ONLY:
-			static String[] ext = { "VK_KHR_surface", "VK_KHR_xlib_surface" };
-		$case $feat(LINUX):
-			static String[] ext = { "VK_KHR_surface", "VK_KHR_xlib_surface", "VK_KHR_wayland_surface" };
+		$case $feat(LINUX) || $feat(BSD):
+			$if !$feat(NO_X11): $ext +++= "VK_KHR_xlib_surface"; $endif
+			$if $feat(WAYLAND): $ext +++= "VK_KHR_wayland_surface"; $endif
 		$case $feat(MACOS):
-			static String[] ext = { "VK_KHR_surface", "VK_EXT_metal_surface"};
+			$ext +++= "VK_EXT_metal_surface";
 		$case $feat(WIN32):
-			static String[] ext = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+			$ext +++= "VK_KHR_win32_surface";
 		$default:
-			static String[] ext = {};
 	$endswitch
-	return ext;
+	return $ext;
 }
 
 fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance) @weak @private => NOT_IMPLEMENTED~;
 
-fn void? _load_vulkan_native() @weak @private => NOT_IMPLEMENTED~;
-fn void _unload_vulkan_native() @weak @private {}
-
-module std::gfx @feat(MACOS, LINUX, BSD) @private;
-import libc;
-
 fn void _unload_vulkan_native()
 {
 	if (!_gfx_ctx.vulkan_handle) return;
-	libc::dlclose(_gfx_ctx.vulkan_handle);
-	_gfx_ctx.vulkan_handle = null;
+	_gfx_ctx.vulkan_handle.close();
 	_gfx_ctx.vk_get_instance_proc_address = null;
 }
 
 fn void? _load_vulkan_native()
 {
 	if (_gfx_ctx.vulkan_handle) return;
-	$if $feat(MACOS):
-		ZString[3] names = {"libvulkan.1.dylib", "libvulkan.dylib", "libMoltenVK.dylib"};
-	$else
-		ZString[3] names = {"libvulkan.so.1", "libvulkan.so", "libMoltenVK.so"};
-	$endif
-	_gfx_ctx.vulkan_handle = _dlopen_any(...names) ?? MISSING_VULKAN_LIB~!;
-	void* proc = libc::dlsym(_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
-	if (!proc) return MISSING_VK_GET_INSTANCE_PROC_ADDR~;
+	DylibHandle? handle;
+	$switch:
+		$case $feat(MACOS):
+			handle = os::dlopen_any("libvulkan.1.dylib", "libvulkan.dylib", "libMoltenVK.dylib");
+		$case $feat(WIN32):
+			handle = os::dlopen_try("vulkan-1.dll", { .system_only });
+		$default:
+			handle = os::dlopen_any("libvulkan.so.1", "libvulkan.so", "libMoltenVK.so");
+	$endswitch
+	if (catch handle) return MISSING_VULKAN_LIB~;
+	_gfx_ctx.vulkan_handle = handle;
+	void* proc = os::dlsym(handle, "vkGetInstanceProcAddr") ?: MISSING_VK_GET_INSTANCE_PROC_ADDR~!;
 	_gfx_ctx.vk_get_instance_proc_address = proc;
-}
-
-module std::gfx @feat(WIN32) @private;
-import libc, std::os::win32;
-
-struct VkWin32SurfaceCreateInfoKHR
-{
-	int sType;
-	void* pNext;
-	uint flags;
-	void* hinstance;
-	void* hwnd;
-}
-
-
-fn void? _load_vulkan_native()
-{
-	if (_gfx_ctx.vulkan_handle) return;
-	_gfx_ctx.vulkan_handle = win32::loadLibraryA("vulkan-1.dll");
-	if (!_gfx_ctx.vulkan_handle) return MISSING_VULKAN_LIB~;
-	void* proc = win32::getProcAddress((Win32_HMODULE*)_gfx_ctx.vulkan_handle, "vkGetInstanceProcAddr");
-	if (!proc) return MISSING_VK_GET_INSTANCE_PROC_ADDR~;
-	_gfx_ctx.vk_get_instance_proc_address = proc;
-}
-
-fn void _unload_vulkan_native()
-{
-	if (!_gfx_ctx.vulkan_handle) return;
-	win32::freeLibrary((Win32_HMODULE*)_gfx_ctx.vulkan_handle);
-	_gfx_ctx.vulkan_handle = null;
-	_gfx_ctx.vk_get_instance_proc_address = null;
 }

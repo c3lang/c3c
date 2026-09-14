@@ -1118,12 +1118,12 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 {
 	_load_egl_native()!;
 
-	if (!_gfx_ctx.egl_display)
+	if (!_gfx_ctx.egl.display)
 	{
-		_gfx_ctx.egl_display = egl_get_display_fn(_gfx_ctx.wlDisplay);
-		if (!_gfx_ctx.egl_display) return EGL_DISPLAY_NOT_FOUND~;
+		_gfx_ctx.egl.display = egl_get_display_fn(_gfx_ctx.wlDisplay);
+		if (!_gfx_ctx.egl.display) return EGL_DISPLAY_NOT_FOUND~;
 		EglInt major, minor;
-		if (!egl_initialize_fn(_gfx_ctx.egl_display, &major, &minor)) return EGL_DISPLAY_FAILED_TO_INITIALIZE~;
+		if (!egl_initialize_fn(_gfx_ctx.egl.display, &major, &minor)) return EGL_DISPLAY_FAILED_TO_INITIALIZE~;
 	}
 
 	FixedList{EglInt, 32} stack;
@@ -1140,7 +1140,7 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 	});
 	EglConfig config = null;
 	EglInt num = 0;
-	if (!egl_choose_config_fn((EglDisplay)_gfx_ctx.egl_display, stack.array_view(), &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
+	if (!egl_choose_config_fn((EglDisplay)_gfx_ctx.egl.display, stack.array_view(), &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
 	egl_bind_api_fn(hints.profile == ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
 
 	stack.clear();
@@ -1148,16 +1148,16 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 	stack.push_all({ EGL_NONE, EGL_NONE });
 
 	EglContext share = hints.share_egl ? hints.share_egl.ctx : null;
-	ctx.ctx = egl_create_context_fn(_gfx_ctx.egl_display, config, share, stack.array_view());
+	ctx.ctx = egl_create_context_fn(_gfx_ctx.egl.display, config, share, stack.array_view());
 	if (!ctx.ctx) return EGL_CTX_CREATION_FAILED~;
 	defer catch
 	{
-		egl_destroy_context_fn(_gfx_ctx.egl_display, ctx.ctx);
+		egl_destroy_context_fn(_gfx_ctx.egl.display, ctx.ctx);
 		ctx.ctx = null;
 	}
 	WlEglWindow* egl_window = wl_egl_window_create(win.src.surface, win.width, win.height);
 	ctx.egl_window = egl_window;
-	ctx.surface = egl_create_window_surface_fn(_gfx_ctx.egl_display, config, egl_window, null);
+	ctx.surface = egl_create_window_surface_fn(_gfx_ctx.egl.display, config, egl_window, null);
 	if (!ctx.surface) return EGL_SURFACE_CREATION_FAILED~;
 	win.src.ctx.egl = ctx;
 	win.src.backing = { .egl };
@@ -1167,8 +1167,8 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 
 fn void _window_release_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx)
 {
-	if (ctx.surface) egl_destroy_surface_fn(_gfx_ctx.egl_display, ctx.surface);
-	if (ctx.ctx) egl_destroy_context_fn(_gfx_ctx.egl_display, ctx.ctx);
+	if (ctx.surface) egl_destroy_surface_fn(_gfx_ctx.egl.display, ctx.surface);
+	if (ctx.ctx) egl_destroy_context_fn(_gfx_ctx.egl.display, ctx.ctx);
 	if (ctx.egl_window) wl_egl_window_destroy(ctx.egl_window);
 	ctx.surface = null;
 	ctx.ctx = null;
