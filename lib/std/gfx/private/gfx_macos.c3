@@ -786,7 +786,7 @@ fn void _poll_monitors_native()
 		_monitor_from_display(displays[i], &mon);
 		GfxMonitorNode* node = _monitor_add(&mon);
 		if (node == null) continue;
-		node.nativeId0 = (ulong)displays[i];
+		node.display = displays[i];
 		if (displays[i] == cg::mainDisplayID()) _gfx.monitors.primary = node;
 	}
 }
@@ -1229,7 +1229,7 @@ fn void _osx_draw_rect(ObjId self, ObjSel sel, CGRect rect)
 
 fn CGDirectDisplayID _monitor_display(GfxMonitor* monitor)
 {
-	if (monitor && monitor.node && monitor.node.nativeId0) return (CGDirectDisplayID)monitor.node.nativeId0;
+	if (monitor && monitor.node && monitor.node.display) return (CGDirectDisplayID)monitor.node.display;
 	return cg::mainDisplayID();
 }
 
