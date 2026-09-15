@@ -1,6 +1,7 @@
 module std::gfx @feat(LINUX, BSD) @private;
 import std::math, std::collections::list, libc, std::time, std::os::env, std::os::posix, std::net::os;
 import std::gfx::x11 @public;
+import std::gfx::egl @public;
 
 struct GfxNativeImage
 {
@@ -253,13 +254,13 @@ fn void* _get_opengl_proc_native(ZString procname)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _get_egl_proc_address(procname);
+			return egl::get_proc(procname);
 		$case X11_ONLY:
 			return _get_opengl_proc(procname);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _get_egl_proc_address(procname);
+				return egl::get_proc(procname);
 			}
 			return _get_opengl_proc(procname);
 	$endswitch
@@ -582,21 +583,6 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	$endswitch
 }
 
-fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
-{
-	$switch:
-		$case WAYLAND_ONLY:
-			return _window_release_egl_context_wayland(win, ctx);
-		$case X11_ONLY:
-			return _window_release_egl_context_x11(win, ctx);
-		$default:
-			if (_gfx.use_wayland)
-			{
-				return _window_release_egl_context_wayland(win, ctx);
-			}
-			return _window_release_egl_context_x11(win, ctx);
-	$endswitch
-}
 
 // public
 fn GfxPoint _window_fetch_size_native(GfxWindow* win)

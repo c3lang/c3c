@@ -1,4 +1,4 @@
-module std::gfx::egl @weak @private @feat(MACOS, BSD, LINUX);
+module std::gfx::egl @weak @private @feat(MACOS, BSD, LINUX, WIN32);
 import std::gfx @public;
 
 const EglInt EGL_NONE = 0x3038;
@@ -60,19 +60,19 @@ alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig confi
 
 fn void? bind_egl()
 {
-	get_display_fn           = gfx::_find_egl_proc("eglGetDisplay")!;
-	initialize_fn            = gfx::_find_egl_proc("eglInitialize")!;
-	terminate_fn             = gfx::_find_egl_proc("eglTerminate")!;
-	bind_api_fn              = gfx::_find_egl_proc("eglBindAPI")!;
-	choose_config_fn         = gfx::_find_egl_proc("eglChooseConfig")!;
-	create_context_fn        = gfx::_find_egl_proc("eglCreateContext")!;
-	destroy_context_fn       = gfx::_find_egl_proc("eglDestroyContext")!;
-	create_window_surface_fn = gfx::_find_egl_proc("eglCreateWindowSurface")!;
-	destroy_surface_fn       = gfx::_find_egl_proc("eglDestroySurface")!;
-	make_current_fn          = gfx::_find_egl_proc("eglMakeCurrent")!;
-	swap_buffers_fn          = gfx::_find_egl_proc("eglSwapBuffers")!;
-	swap_interval_fn         = gfx::_find_egl_proc("eglSwapInterval")!;
-	get_current_context_fn   = gfx::_find_egl_proc("eglGetCurrentContext")!;
-	query_string_fn          = gfx::_find_egl_proc("eglQueryString")!;
-	get_config_attrib_fn     = gfx::_find_egl_proc("eglGetConfigAttrib")!;
+	get_display_fn           = find_proc("eglGetDisplay")!;
+	initialize_fn            = find_proc("eglInitialize")!;
+	terminate_fn             = find_proc("eglTerminate")!;
+	bind_api_fn              = find_proc("eglBindAPI")!;
+	choose_config_fn         = find_proc("eglChooseConfig")!;
+	create_context_fn        = find_proc("eglCreateContext")!;
+	destroy_context_fn       = find_proc("eglDestroyContext")!;
+	create_window_surface_fn = find_proc("eglCreateWindowSurface")!;
+	destroy_surface_fn       = find_proc("eglDestroySurface")!;
+	make_current_fn          = find_proc("eglMakeCurrent")!;
+	swap_buffers_fn          = find_proc("eglSwapBuffers")!;
+	swap_interval_fn         = find_proc("eglSwapInterval")!;
+	get_current_context_fn   = find_proc("eglGetCurrentContext")!;
+	query_string_fn          = find_proc("eglQueryString")!;
+	get_config_attrib_fn     = find_proc("eglGetConfigAttrib")!;
 }

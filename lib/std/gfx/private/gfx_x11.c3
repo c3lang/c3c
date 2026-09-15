@@ -1,6 +1,6 @@
 module std::gfx @feat(LINUX, BSD) @feat(!NO_X11) @private;
 import std::math, std::collections, std::os, libc, std::time, std::time::clock, std::net, std::net::os;
-import std::gfx::x11 @public;
+import std::gfx::x11 @public, std::gfx::egl @public;
 
 const int X_TRUE = 1;
 const int X_FALSE = 0;
@@ -369,7 +369,7 @@ fn void? _create_window_x11(String name, GfxWindowFlags flags, GfxWindow* win)
 	{
 		win.src.window = 0;
 		if (flags.open_gl) _window_create_opengl_context_native(win, get_global_opengl_hints())!;
-		if (flags.egl) _window_create_egl_context_native(win, get_global_opengl_hints())!;
+		if (flags.egl) egl::create_context(win, get_global_opengl_hints())!;
 	}
 	else
 	{
@@ -1201,7 +1201,6 @@ fn void _window_release_opengl_context_x11(GfxWindow* win, GfxGlContext* ctx)
 	win.src.ctx.native = null;
 }
 
-fn void _window_release_egl_context_x11(GfxWindow* win, GfxEglContext* ctx) {}
 
 fn void _window_focus_x11(GfxWindow* win)
 {

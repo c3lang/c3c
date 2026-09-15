@@ -1,12 +1,15 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @private;
-import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::time;
+import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time;
 
 const MAX_EVENTS = 32;
 const PREALLOCATED_MONITORS = 0;
 
-const WAYLAND_ONLY = $feat(WAYLAND) && $feat(NO_X11);
-const X11_ONLY = !$feat(WAYLAND);
-const X11_WAYLAND = $feat(BSD) || $feat(LINUX);
+const X11 = ($feat(BSD) || $feat(LINUX)) && !$feat(NO_X11);
+const WAYLAND = ($feat(BSD) || $feat(LINUX)) && $feat(WAYLAND);
+const WAYLAND_ONLY = WAYLAND && !X11;
+const X11_ONLY = !WAYLAND && X11;
+const X11_OR_WAYLAND = WAYLAND && X11;
+const NO_GFX_UNIX = !WAYLAND && !X11;
 
 struct GfxContext
 {
@@ -315,7 +318,7 @@ fn void _window_release(GfxWindow* win)
 	if (win.internal.capture_mouse) win.set_capture_mouse(false);
 	if (win.src.backing.egl && win.src.ctx.egl != null)
 	{
-		_window_destroy_egl_context_native(win, win.src.ctx.egl);
+		egl::destroy_context_in_window(win.src.ctx.egl, win);
 		win.src.ctx.egl = null;
 	}
 	if (win.src.backing.opengl && win.src.ctx.native != null)

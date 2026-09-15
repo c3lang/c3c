@@ -164,14 +164,6 @@ fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param)
 
 
 
-fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
-{
-	if (ctx.surface) egl::destroy_surface_fn(_gfx.egl.display, ctx.surface);
-	if (ctx.ctx) egl::destroy_context_fn(_gfx.egl.display, ctx.ctx);
-	ctx.surface = null;
-	ctx.ctx = null;
-	win.src.ctx.egl = null;
-}
 
 struct VkMetalSurfaceCreateInfoEXT
 {
@@ -455,7 +447,7 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 	_window_set_flags(win, flags, {});
 	win.src.backing = {};
 	if (flags.open_gl) _window_create_opengl_context_native(win, get_global_opengl_hints())!;
-	if (flags.egl) _window_create_egl_context_native(win, get_global_opengl_hints())!;
+	if (flags.egl) egl::create_context(win, get_global_opengl_hints())!;
 	_macos_init_view(win);
 }
 

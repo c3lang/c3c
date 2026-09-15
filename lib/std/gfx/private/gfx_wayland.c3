@@ -430,7 +430,7 @@ fn void _free_mouse_wayland(GfxMouse* mouse)
 	surface.destroy();
 }
 
-fn void* _get_current_opengl_context_wayland() => _get_current_egl_context();
+fn void* _get_current_opengl_context_wayland() => egl::get_current_context();
 
 fn GfxPoint _get_global_mouse_wayland()
 {
@@ -542,7 +542,7 @@ fn void? _create_window_wayland(String name, GfxWindowFlags flags, GfxWindow* wi
 	_window_set_flags(win, flags, {});
 	win.src.backing = {};
 	if (flags.open_gl) _window_create_opengl_context_native(win, get_global_opengl_hints())!;
-	if (flags.egl) _window_create_egl_context_native(win, get_global_opengl_hints())!;
+	if (flags.egl) egl::create_context(win, get_global_opengl_hints())!;
 	if (!flags.open_gl && !flags.egl)
 	{
 		sz blank_size = (sz)win.width * win.height * 3;
@@ -797,7 +797,7 @@ fn void _window_close_wayland(GfxWindow* win)
 
 fn void? _window_init_opengl_context_wayland(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
-	_window_init_egl_context_native(win, (GfxEglContext*)context, hints, _gfx.wlDisplay)!;
+	egl::init_window_context(win, (GfxEglContext*)context, hints, _gfx.wlDisplay)!;
 	win.src.backing = { .opengl };
 	_window_set_opengl_swap_interval(win, 0);
 }
@@ -805,7 +805,7 @@ fn void? _window_init_opengl_context_wayland(GfxWindow* win, GfxGlContext* conte
 // public
 fn void _window_opengl_swap_interval_wayland(GfxWindow* win, int swapInterval)
 {
-	_window_egl_swap_interval(win, swapInterval);
+	egl::set_swap_interval(win, swapInterval);
 }
 
 
@@ -823,7 +823,7 @@ fn WGPUSurface _window_create_wgpu_surface_wayland(GfxWindow* window, WGPUInstan
 
 fn void _window_release_opengl_context_wayland(GfxWindow* win, GfxGlContext* ctx)
 {
-	_window_release_egl_context_wayland(win, (GfxEglContext*)ctx);
+	egl::destroy_context_in_window((GfxEglContext*)ctx, null);
 	win.src.ctx.native = null;
 }
 
@@ -847,7 +847,7 @@ fn void _window_hide_wayland(GfxWindow* win)
 
 fn void _window_make_opengl_current_context_wayland(GfxWindow* win)
 {
-	_window_make_current_egl_context(win);
+	egl::set_current_window(win);
 }
 
 fn void _window_maximize_wayland(GfxWindow* win)
@@ -960,7 +960,7 @@ fn void _window_set_raw_mouse_mode_wayland(GfxWindow* win, bool state)
 
 fn void _window_opengl_swap_buffers_wayland(GfxWindow* win)
 {
-	_window_swap_egl_buffers(win);
+	egl::swap_window_buffers(win);
 }
 
 fn void _window_show_wayland(GfxWindow* win)
@@ -1116,17 +1116,6 @@ fn void _toggle_wayland_maximized(GfxWindow* win, bool maximized)
 }
 
 
-
-fn void _window_release_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx)
-{
-	if (ctx.surface) egl::destroy_surface_fn(_gfx.egl.display, ctx.surface);
-	if (ctx.ctx) egl::destroy_context_fn(_gfx.egl.display, ctx.ctx);
-	if (ctx.egl_window) wl_egl_window_destroy(ctx.egl_window);
-	ctx.surface = null;
-	ctx.ctx = null;
-	ctx.egl_window = null;
-	if (win) win.src.ctx.egl = null;
-}
 
 fn int _wl_anonymous_shm_open()
 {

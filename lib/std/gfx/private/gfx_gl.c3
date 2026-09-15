@@ -93,19 +93,16 @@ fn void _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 			{
 				log::error("Failed to set OpenGL swap interval", category: log::CATEGORY_VIDEO);
 			}
-		$case X11_WAYLAND:
-			$switch:
-				$case WAYLAND_ONLY:
-					return _window_opengl_swap_interval_wayland(win, swap_interval);
-				$case X11_ONLY:
-					return _window_opengl_swap_interval_x11(win, swap_interval);
-				$default:
-					if (_gfx.use_wayland)
-					{
-						return _window_opengl_swap_interval_wayland(win, swap_interval);
-					}
-					return _window_opengl_swap_interval_x11(win, swap_interval);
-			$endswitch
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland)
+			{
+				return _window_opengl_swap_interval_wayland(win, swap_interval);
+			}
+			return _window_opengl_swap_interval_x11(win, swap_interval);
+		$case X11:
+			return _window_opengl_swap_interval_x11(win, swap_interval);
+		$case WAYLAND:
+			return _window_opengl_swap_interval_wayland(win, swap_interval);
 		$default:
 		// Nothing
 	$endswitch

@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import std::math, std::os, std::os::darwin, libc, std::time;
-import std::gfx::x11 @public;
+import std::gfx::x11 @public, std::gfx::egl @public;
 
 // The GFX module provides basic window handling across multiple platforms.
 // This implementation was strongly based on RGFW 2.0 by Riley Mabb
@@ -24,23 +24,15 @@ excuse
 	MONITOR_MODE_CHANGE_FAILED,
 	MISSING_VULKAN_LIB,
 	MISSING_OPENGL_LIB,
-	MISSING_EGL_LIB,
 	MISSING_VK_GET_INSTANCE_PROC_ADDR,
 	MISSING_GL_GET_PROC_ADDR,
-	MISSING_EGL_GET_PROC_ADDR,
-	EGL_BINDING_FAILED,
 	VULKAN_NOT_LOADED,
 	GLX_VISUAL_CONFIGS_NOT_FOUND,
 	GLX_NO_VALID_VISUAL,
 	OPENGL_CTX_CREATION_FAILED,
 	OPENGL_PIXEL_FORMAT_LOAD_FAILED,
 	DIRECTX_SWAP_CHAIN_CREATION_FAILED,
-	EGL_DISPLAY_NOT_FOUND,
-	EGL_DISPLAY_FAILED_TO_INITIALIZE,
-	EGL_CTX_CREATION_FAILED,
-	EGL_CONFIG_NOT_FOUND,
 	CANNOT_RETRIEVE_GAMMA,
-	EGL_SURFACE_CREATION_FAILED,
 	CLIPBOARD_COULD_NOT_BE_OPENED,
 	COULD_NOT_OWN_X11_CLIPBOARD,
 	GAMMA_COULD_NOT_BE_SET,
@@ -854,6 +846,11 @@ fn void GfxWindow.set_opengl_swap_interval(&self, int swap_interval)
 	_window_set_opengl_swap_interval(self, swap_interval);
 }
 
+fn void GfxWindow.set_egl_swap_interval(&self, int swap_interval)
+{
+	egl::set_swap_interval(self, swap_interval);
+}
+
 fn void? GfxWindow.create_directx_swap_chain(&self, Win32_IDXGIFactory* factory, void* device, void** swapchain) @feat(WIN32)
 {
 	return _window_create_directx_swap_chain_native(self, factory, device, swapchain);
@@ -864,9 +861,24 @@ fn void GfxWindow.swap_opengl_buffers(&self)
 	_window_opengl_swap_buffers_native(self);
 }
 
-fn void make_window_current_opengl_context(GfxWindow* win)
+fn void GfxWindow.swap_egl_buffers(&self)
+{
+	egl::swap_window_buffers(self);
+}
+
+fn void set_current_opengl_window(GfxWindow* win)
 {
 	_window_make_opengl_current_context_native(win);
+}
+
+fn void set_current_egl_window(GfxWindow* win)
+{
+	egl::set_current_window(win);
+}
+
+fn void* get_current_egl_context()
+{
+	return egl::get_current_context();
 }
 
 fn void* get_current_opengl_context()
@@ -882,7 +894,7 @@ fn bool opengl_extension_is_supported(String extension)
 
 fn bool egl_extension_is_supported(String extension)
 {
-	return _egl_extension_is_supported_native(extension);
+	return egl::is_extension_supported(extension);
 }
 
 fn GfxGlContext* GfxWindow.get_opengl_context(&self)
@@ -907,6 +919,7 @@ fn void GfxWindow.set_fullscreen(&self, bool fullscreen)
 {
 	_window_set_fullscreen_native(self, fullscreen);
 }
+
 fn GfxKey GfxWindow.get_exit_key(&self)
 {
 	return self.internal.exit_key;
@@ -1352,7 +1365,7 @@ fn GfxMonitor*[] get_monitors()
 <*
  @return? NOT_FOUND : "If there is no monitor found"
  @ensure return != null : "Return value cannot be null"
-*> 
+*>
 fn GfxMonitor*? get_primary_monitor()
 {
 	if (!_gfx.monitors.primary) _gfx.monitors.primary = _gfx.monitors.list.head;
@@ -1637,12 +1650,12 @@ fn void GfxWindow.destroy_opengl_context(&self, GfxGlContext* context)
 
 fn void GfxWindow.destroy_egl_context(&self, GfxEglContext* context)
 {
-	_window_destroy_egl_context_native(self, context);
+	egl::destroy_context_in_window(context, self);
 }
 
 fn GfxEglContext*? GfxWindow.create_egl_context(&self, GfxGlHints* hints)
 {
-	return _window_create_egl_context_native(self, hints);
+	return egl::create_context(self, hints);
 }
 
 fn void GfxWindow.set_dnd(&self, bool allow)
@@ -1656,6 +1669,20 @@ fn void GfxWindow.set_dnd(&self, bool allow)
 fn void* get_opengl_proc(ZString s)
 {
 	return _get_opengl_proc_native(s);
+}
+
+<*
+ Find an egl function.
+
+ @param [in] name : "The name of the function to load"
+
+ @return "the function pointer"
+
+ @ensure return != null
+*>
+fn void*? find_egl_proc(ZString name)
+{
+	return egl::find_proc(name);
 }
 
 fn GfxGlHints* get_global_opengl_hints()
@@ -1676,12 +1703,12 @@ fn void reset_global_opengl_hints()
 
 fn void? load_egl()
 {
-	return _load_egl_native() @inline;
+	return egl::load_lib() @inline;
 }
 
 fn void unload_egl()
 {
-	_unload_egl_native() @inline;
+	egl::unload_lib() @inline;
 }
 
 fn void? load_opengl()
@@ -1693,11 +1720,11 @@ fn void? load_opengl()
 			return _load_opengl_win32();
 		$case $feat(WASM):
 			return;
-		$case X11_WAYLAND && WAYLAND_ONLY:
+		$case WAYLAND_ONLY:
 			return _load_opengl_wayland();
-		$case X11_WAYLAND && X11_ONLY:
+		$case X11_ONLY:
 			return _load_opengl_x11();
-		$case X11_WAYLAND:
+		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland)
 			{
 				return _load_opengl_wayland();
