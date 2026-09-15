@@ -1,7 +1,6 @@
 module std::gfx @feat(LINUX, BSD) @private;
 import std::math, std::collections::list, libc, std::time, std::os::env, std::os::posix, std::net::os;
-import std::gfx::x11 @public;
-import std::gfx::egl @public;
+import std::gfx::x11 @public, std::gfx::wl @public, std::gfx::egl @public;
 
 struct GfxNativeImage
 {
@@ -42,13 +41,13 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitor_get_modes_wayland(monitor);
+			return wl::_monitor_get_modes_wayland(monitor);
 		$case X11_ONLY:
 			return _monitor_get_modes_x11(monitor);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _monitor_get_modes_wayland(monitor);
+				return wl::_monitor_get_modes_wayland(monitor);
 			}
 			return _monitor_get_modes_x11(monitor);
 	$endswitch
@@ -58,13 +57,13 @@ fn void _window_show_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_show_wayland(win);
+			return wl::_window_show_wayland(win);
 		$case X11_ONLY:
 			return _window_show_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_show_wayland(win);
+				return wl::_window_show_wayland(win);
 			}
 			return _window_show_x11(win);
 	$endswitch
@@ -75,13 +74,13 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitor_get_gamma_ramp_wayland(monitor, a);
+			return wl::_monitor_get_gamma_ramp_wayland(monitor, a);
 		$case X11_ONLY:
 			return _monitor_get_gamma_ramp_x11(monitor, a);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _monitor_get_gamma_ramp_wayland(monitor, a);
+				return wl::_monitor_get_gamma_ramp_wayland(monitor, a);
 			}
 			return _monitor_get_gamma_ramp_x11(monitor, a);
 	$endswitch
@@ -91,13 +90,13 @@ fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitor_set_gamma_ramp_wayland(monitor, ramp);
+			return wl::_monitor_set_gamma_ramp_wayland(monitor, ramp);
 		$case X11_ONLY:
 			return monitor_set_gamma_ramp_x11(monitor, ramp);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _monitor_set_gamma_ramp_wayland(monitor, ramp);
+				return wl::_monitor_set_gamma_ramp_wayland(monitor, ramp);
 			}
 			return monitor_set_gamma_ramp_x11(monitor, ramp);
 	$endswitch
@@ -107,13 +106,13 @@ fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitor_set_gamma_wayland(monitor, gamma);
+			return wl::_monitor_set_gamma_wayland(monitor, gamma);
 		$case X11_ONLY:
 			return monitor_set_gamma_x11(monitor, gamma);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _monitor_set_gamma_wayland(monitor, gamma);
+				return wl::_monitor_set_gamma_wayland(monitor, gamma);
 			}
 			return monitor_set_gamma_x11(monitor, gamma);
 	$endswitch
@@ -123,13 +122,13 @@ fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitor_set_mode_wayland(mon, mode);
+			return wl::_monitor_set_mode_wayland(mon, mode);
 		$case X11_ONLY:
 			return _monitor_set_mode_native_x11(mon, mode);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _monitor_set_mode_wayland(mon, mode);
+				return wl::_monitor_set_mode_wayland(mon, mode);
 			}
 			return _monitor_set_mode_native_x11(mon, mode);
 	$endswitch
@@ -139,13 +138,13 @@ fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _create_mouse_wayland(data, size, format);
+			return wl::_create_mouse_wayland(data, size, format);
 		$case X11_ONLY:
 			return _create_mouse_x11(data, size, format);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _create_mouse_wayland(data, size, format);
+				return wl::_create_mouse_wayland(data, size, format);
 			}
 			return _create_mouse_x11(data, size, format);
 	$endswitch
@@ -156,13 +155,13 @@ fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _create_mouse_standard_wayland(mouse);
+			return wl::_create_mouse_standard_wayland(mouse);
 		$case X11_ONLY:
 			return _create_mouse_standard_x11(mouse);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _create_mouse_standard_wayland(mouse);
+				return wl::_create_mouse_standard_wayland(mouse);
 			}
 			return _create_mouse_standard_x11(mouse);
 	$endswitch
@@ -173,13 +172,13 @@ fn void _destroy_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _destroy_wayland();
+			return wl::_destroy_wayland();
 		$case X11_ONLY:
 			return _destroy_x11();
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _destroy_wayland();
+				return wl::_destroy_wayland();
 			}
 			return _destroy_x11();
 	$endswitch
@@ -189,13 +188,13 @@ fn bool _opengl_extension_is_supported_native(String extension)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _opengl_extension_is_supported_wayland(extension);
+			return wl::_opengl_extension_is_supported_wayland(extension);
 		$case X11_ONLY:
 			return _opengl_extension_is_supported_x11(extension);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _opengl_extension_is_supported_wayland(extension);
+				return wl::_opengl_extension_is_supported_wayland(extension);
 			}
 			return _opengl_extension_is_supported_x11(extension);
 	$endswitch
@@ -206,13 +205,13 @@ fn void _free_mouse(GfxMouse* mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _free_mouse_wayland(mouse);
+			return wl::_free_mouse_wayland(mouse);
 		$case X11_ONLY:
 			return _free_mouse_x11(mouse);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _free_mouse_wayland(mouse);
+				return wl::_free_mouse_wayland(mouse);
 			}
 			return _free_mouse_x11(mouse);
 	$endswitch
@@ -222,13 +221,13 @@ fn void* _get_current_opengl_context_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _get_current_opengl_context_wayland();
+			return wl::_get_current_opengl_context_wayland();
 		$case X11_ONLY:
 			return _get_current_opengl_context_x11();
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _get_current_opengl_context_wayland();
+				return wl::_get_current_opengl_context_wayland();
 			}
 			return _get_current_opengl_context_x11();
 	$endswitch
@@ -238,13 +237,13 @@ fn GfxPoint _get_global_mouse_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _get_global_mouse_wayland();
+			return wl::_get_global_mouse_wayland();
 		$case X11_ONLY:
 			return _get_global_mouse_x11();
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _get_global_mouse_wayland();
+				return wl::_get_global_mouse_wayland();
 			}
 			return _get_global_mouse_x11();
 	$endswitch
@@ -271,13 +270,13 @@ fn void _init_keycodes_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _init_keycodes_native_wayland();
+			return wl::_init_keycodes_native_wayland();
 		$case X11_ONLY:
 			return _init_keycodes_native_x11();
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _init_keycodes_native_wayland();
+				return wl::_init_keycodes_native_wayland();
 			}
 			return _init_keycodes_native_x11();
 	$endswitch
@@ -287,13 +286,13 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _create_window_wayland(name, flags, win);
+			return wl::_create_window_wayland(name, flags, win);
 		$case X11_ONLY:
 			return _create_window_x11(name, flags, win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _create_window_wayland(name, flags, win);
+				return wl::_create_window_wayland(name, flags, win);
 			}
 			return _create_window_x11(name, flags, win);
 	$endswitch
@@ -304,7 +303,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _init_wayland(class_name, flags);
+			return wl::_init_wayland(class_name, flags);
 		$case X11_ONLY:
 			return _init_x11(class_name, flags);
 		$default:
@@ -314,7 +313,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 				_gfx.use_wayland = wayland_display != "";
 				if (_gfx.use_wayland)
 				{
-					if (try _init_wayland(class_name, flags)) return;
+					if (try wl::_init_wayland(class_name, flags)) return;
 					log::info("Falling back to X11", category: log::CATEGORY_VIDEO);
 					_gfx.use_wayland = false;
 				}
@@ -333,13 +332,13 @@ fn void _monitor_node_free_native(GfxMonitorNode* node)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitor_node_free_wayland(node);
+			return wl::_monitor_node_free_wayland(node);
 		$case X11_ONLY:
 			return _monitor_node_free_x11(node);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _monitor_node_free_wayland(node);
+				return wl::_monitor_node_free_wayland(node);
 			}
 			return _monitor_node_free_x11(node);
 	$endswitch
@@ -349,13 +348,13 @@ fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitor_get_workarea_wayland(monitor);
+			return wl::_monitor_get_workarea_wayland(monitor);
 		$case X11_ONLY:
 			return _monitor_get_workarea_x11(monitor);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _monitor_get_workarea_wayland(monitor);
+				return wl::_monitor_get_workarea_wayland(monitor);
 			}
 			return _monitor_get_workarea_x11(monitor);
 	$endswitch
@@ -365,13 +364,13 @@ fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, Gfx
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _monitor_request_mode_wayland(mon, mode, request);
+			return wl::_monitor_request_mode_wayland(mon, mode, request);
 		$case X11_ONLY:
 			return _monitor_request_mode_x11(mon, mode, request);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _monitor_request_mode_wayland(mon, mode, request);
+				return wl::_monitor_request_mode_wayland(mon, mode, request);
 			}
 			return _monitor_request_mode_x11(mon, mode, request);
 	$endswitch
@@ -382,13 +381,13 @@ fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _physical_to_mapped_key_native_wayland(key);
+			return wl::_physical_to_mapped_key_native_wayland(key);
 		$case X11_ONLY:
 			return _physical_to_mapped_key_native_x11(key);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _physical_to_mapped_key_native_wayland(key);
+				return wl::_physical_to_mapped_key_native_wayland(key);
 			}
 			return _physical_to_mapped_key_native_x11(key);
 	$endswitch
@@ -399,13 +398,13 @@ fn void _poll_events_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _poll_events_wayland();
+			return wl::_poll_events_wayland();
 		$case X11_ONLY:
 			return _poll_events_x11();
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _poll_events_wayland();
+				return wl::_poll_events_wayland();
 			}
 			return _poll_events_x11();
 	$endswitch
@@ -443,13 +442,13 @@ fn void _wait_for_event_native(Duration duration)
 
 	$switch:
 		$case WAYLAND_ONLY:
-			_wait_for_event_wayland(fds[..], duration);
+wl::_wait_for_event_wayland(fds[..], duration);
 		$case X11_ONLY:
 			_wait_for_event_x11(fds[..], duration);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				_wait_for_event_wayland(fds[..], duration);
+				wl::_wait_for_event_wayland(fds[..], duration);
 			}
 			else
 			{
@@ -471,13 +470,13 @@ fn void _poll_monitors_native()
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _poll_monitors_wayland();
+			return wl::_poll_monitors_wayland();
 		$case X11_ONLY:
 			return _poll_monitors_x11();
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _poll_monitors_wayland();
+				return wl::_poll_monitors_wayland();
 			}
 			return _poll_monitors_x11();
 	$endswitch
@@ -487,13 +486,13 @@ fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferT
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _read_clipboard_wayland(allocator, type);
+			return wl::_read_clipboard_wayland(allocator, type);
 		$case X11_ONLY:
 			return _read_clipboard_x11(allocator, type);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _read_clipboard_wayland(allocator, type);
+				return wl::_read_clipboard_wayland(allocator, type);
 			}
 			return _read_clipboard_x11(allocator, type);
 	$endswitch
@@ -504,13 +503,13 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_blit_surface_wayland(win, surface);
+			return wl::_window_blit_surface_wayland(win, surface);
 		$case X11_ONLY:
 			return _window_blit_surface_x11(win, surface);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_blit_surface_wayland(win, surface);
+				return wl::_window_blit_surface_wayland(win, surface);
 			}
 			return _window_blit_surface_x11(win, surface);
 	$endswitch
@@ -520,13 +519,13 @@ fn void _window_close_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_close_wayland(win);
+			return wl::_window_close_wayland(win);
 		$case X11_ONLY:
 			return _window_close_native_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_close_wayland(win);
+				return wl::_window_close_wayland(win);
 			}
 			return _window_close_native_x11(win);
 	$endswitch
@@ -536,13 +535,13 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* contex
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_init_opengl_context_wayland(win, context, hints);
+			return wl::_window_init_opengl_context_wayland(win, context, hints);
 		$case X11_ONLY:
 			return _window_init_opengl_context_x11(win, context, hints);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_init_opengl_context_wayland(win, context, hints);
+				return wl::_window_init_opengl_context_wayland(win, context, hints);
 			}
 			return _window_init_opengl_context_x11(win, context, hints);
 	$endswitch
@@ -554,13 +553,13 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_create_wgpu_surface_wayland(window, instance);
+			return wl::_window_create_wgpu_surface_wayland(window, instance);
 		$case X11_ONLY:
 			return _window_create_wgpu_surface_x11(window, instance);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_create_wgpu_surface_wayland(window, instance);
+				return wl::_window_create_wgpu_surface_wayland(window, instance);
 			}
 			return _window_create_wgpu_surface_x11(window, instance);
 	$endswitch
@@ -571,13 +570,13 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_release_opengl_context_wayland(win, ctx);
+			return wl::_window_release_opengl_context_wayland(win, ctx);
 		$case X11_ONLY:
 			return _window_release_opengl_context_x11(win, ctx);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_release_opengl_context_wayland(win, ctx);
+				return wl::_window_release_opengl_context_wayland(win, ctx);
 			}
 			return _window_release_opengl_context_x11(win, ctx);
 	$endswitch
@@ -589,13 +588,13 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_fetch_size_wayland(win);
+			return wl::_window_fetch_size_wayland(win);
 		$case X11_ONLY:
 			return _window_fetch_size_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_fetch_size_wayland(win);
+				return wl::_window_fetch_size_wayland(win);
 			}
 			return _window_fetch_size_x11(win);
 	$endswitch
@@ -605,13 +604,13 @@ fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_flash_wayland(win, request);
+			return wl::_window_flash_wayland(win, request);
 		$case X11_ONLY:
 			return _window_flash_x11(win, request);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_flash_wayland(win, request);
+				return wl::_window_flash_wayland(win, request);
 			}
 			return _window_flash_x11(win, request);
 	$endswitch
@@ -621,13 +620,13 @@ fn void _window_focus_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_focus_wayland(win);
+			return wl::_window_focus_wayland(win);
 		$case X11_ONLY:
 			return _window_focus_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_focus_wayland(win);
+				return wl::_window_focus_wayland(win);
 			}
 			return _window_focus_x11(win);
 	$endswitch
@@ -637,13 +636,13 @@ fn void _window_hide_native(GfxWindow* win) @private
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_hide_wayland(win);
+			return wl::_window_hide_wayland(win);
 		$case X11_ONLY:
 			return _window_hide_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_hide_wayland(win);
+				return wl::_window_hide_wayland(win);
 			}
 			return _window_hide_x11(win);
 	$endswitch
@@ -654,13 +653,13 @@ fn bool _window_is_hidden_native(GfxWindow* win) @private
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_is_hidden_wayland(win);
+			return wl::_window_is_hidden_wayland(win);
 		$case X11_ONLY:
 			return _window_is_hidden_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_is_hidden_wayland(win);
+				return wl::_window_is_hidden_wayland(win);
 			}
 			return _window_is_hidden_x11(win);
 	$endswitch
@@ -670,13 +669,13 @@ fn bool _window_is_maximized_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_is_maximized_wayland(win);
+			return wl::_window_is_maximized_wayland(win);
 		$case X11_ONLY:
 			return _window_is_maximized_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_is_maximized_wayland(win);
+				return wl::_window_is_maximized_wayland(win);
 			}
 			return _window_is_maximized_x11(win);
 	$endswitch
@@ -687,13 +686,13 @@ fn bool _window_is_minimized_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_is_minimized_wayland(win);
+			return wl::_window_is_minimized_wayland(win);
 		$case X11_ONLY:
 			return _window_is_minimized_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_is_minimized_wayland(win);
+				return wl::_window_is_minimized_wayland(win);
 			}
 			return _window_is_minimized_x11(win);
 	$endswitch
@@ -704,13 +703,13 @@ fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_make_opengl_current_context_wayland(win);
+			return wl::_window_make_opengl_current_context_wayland(win);
 		$case X11_ONLY:
 			return _window_make_opengl_current_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_make_opengl_current_context_wayland(win);
+				return wl::_window_make_opengl_current_context_wayland(win);
 			}
 			return _window_make_opengl_current_x11(win);
 	$endswitch
@@ -721,13 +720,13 @@ fn void _window_maximize_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_maximize_wayland(win);
+			return wl::_window_maximize_wayland(win);
 		$case X11_ONLY:
 			return _window_maximize_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_maximize_wayland(win);
+				return wl::_window_maximize_wayland(win);
 			}
 			return _window_maximize_x11(win);
 	$endswitch
@@ -738,13 +737,13 @@ fn void _window_minimize_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_minimize_wayland(win);
+			return wl::_window_minimize_wayland(win);
 		$case X11_ONLY:
 			return _window_minimize_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_minimize_wayland(win);
+				return wl::_window_minimize_wayland(win);
 			}
 			return _window_minimize_x11(win);
 	$endswitch
@@ -754,13 +753,13 @@ fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_move_mouse_wayland(win, where);
+			return wl::_window_move_mouse_wayland(win, where);
 		$case X11_ONLY:
 			return _window_move_mouse_x11(win, where);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_move_mouse_wayland(win, where);
+				return wl::_window_move_mouse_wayland(win, where);
 			}
 			return _window_move_mouse_x11(win, where);
 	$endswitch
@@ -771,13 +770,13 @@ fn void _window_move_native(GfxWindow* win, GfxPoint where)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_move_wayland(win, where);
+			return wl::_window_move_wayland(win, where);
 		$case X11_ONLY:
 			return _window_move_x11(win, where);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_move_wayland(win, where);
+				return wl::_window_move_wayland(win, where);
 			}
 			return _window_move_x11(win, where);
 	$endswitch
@@ -787,13 +786,13 @@ fn void _window_raise_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_raise_wayland(win);
+			return wl::_window_raise_wayland(win);
 		$case X11_ONLY:
 			return _window_raise_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_raise_wayland(win);
+				return wl::_window_raise_wayland(win);
 			}
 			return _window_raise_x11(win);
 	$endswitch
@@ -804,13 +803,13 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_resize_wayland(win, size);
+			return wl::_window_resize_wayland(win, size);
 		$case X11_ONLY:
 			return _window_resize_x11(win, size);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_resize_wayland(win, size);
+				return wl::_window_resize_wayland(win, size);
 			}
 			return _window_resize_x11(win, size);
 	$endswitch
@@ -821,13 +820,13 @@ fn void _window_restore_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_restore_wayland(win);
+			return wl::_window_restore_wayland(win);
 		$case X11_ONLY:
 			return _window_restore_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_restore_wayland(win);
+				return wl::_window_restore_wayland(win);
 			}
 			return _window_restore_x11(win);
 	$endswitch
@@ -837,13 +836,13 @@ fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_aspect_ratio_wayland(win, w, h);
+			return wl::_window_set_aspect_ratio_wayland(win, w, h);
 		$case X11_ONLY:
 			return _window_set_aspect_ratio_x11(win, w, h);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_aspect_ratio_wayland(win, w, h);
+				return wl::_window_set_aspect_ratio_wayland(win, w, h);
 			}
 			return _window_set_aspect_ratio_x11(win, w, h);
 	$endswitch
@@ -854,13 +853,13 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_border_wayland(win, border);
+			return wl::_window_set_border_wayland(win, border);
 		$case X11_ONLY:
 			return _window_set_border_x11(win, border);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_border_wayland(win, border);
+				return wl::_window_set_border_wayland(win, border);
 			}
 			return _window_set_border_x11(win, border);
 	$endswitch
@@ -871,13 +870,13 @@ fn void _window_set_floating_native(GfxWindow* win, bool floating)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_floating_wayland(win, floating);
+			return wl::_window_set_floating_wayland(win, floating);
 		$case X11_ONLY:
 			return _window_set_floating_x11(win, floating);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_floating_wayland(win, floating);
+				return wl::_window_set_floating_wayland(win, floating);
 			}
 			return _window_set_floating_x11(win, floating);
 	$endswitch
@@ -888,13 +887,13 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_fullscreen_wayland(win, fullscreen);
+			return wl::_window_set_fullscreen_wayland(win, fullscreen);
 		$case X11_ONLY:
 			return _window_set_fullscreen_x11(win, fullscreen);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_fullscreen_wayland(win, fullscreen);
+				return wl::_window_set_fullscreen_wayland(win, fullscreen);
 			}
 			return _window_set_fullscreen_x11(win, fullscreen);
 	$endswitch
@@ -905,13 +904,13 @@ fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_max_size_wayland(win, size);
+			return wl::_window_set_max_size_wayland(win, size);
 		$case X11_ONLY:
 			return _window_set_max_size_x11(win, size);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_max_size_wayland(win, size);
+				return wl::_window_set_max_size_wayland(win, size);
 			}
 			return _window_set_max_size_x11(win, size);
 	$endswitch
@@ -922,13 +921,13 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_min_size_wayland(win, size);
+			return wl::_window_set_min_size_wayland(win, size);
 		$case X11_ONLY:
 			return _window_set_min_size_x11(win, size);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_min_size_wayland(win, size);
+				return wl::_window_set_min_size_wayland(win, size);
 			}
 			return _window_set_min_size_x11(win, size);
 	$endswitch
@@ -939,13 +938,13 @@ fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_mouse_passthrough_wayland(win, passthrough);
+			return wl::_window_set_mouse_passthrough_wayland(win, passthrough);
 		$case X11_ONLY:
 			return _window_set_mouse_passthrough_x11(win, passthrough);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_mouse_passthrough_wayland(win, passthrough);
+				return wl::_window_set_mouse_passthrough_wayland(win, passthrough);
 			}
 			return _window_set_mouse_passthrough_x11(win, passthrough);
 	$endswitch
@@ -955,13 +954,13 @@ fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_mouse_wayland(win, mouse);
+			return wl::_window_set_mouse_wayland(win, mouse);
 		$case X11_ONLY:
 			return _window_set_mouse_x11(win, mouse);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_mouse_wayland(win, mouse);
+				return wl::_window_set_mouse_wayland(win, mouse);
 			}
 			return _window_set_mouse_x11(win, mouse);
 	$endswitch
@@ -972,13 +971,13 @@ fn void _window_set_opacity_native(GfxWindow* win, char opacity)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_opacity_wayland(win, opacity);
+			return wl::_window_set_opacity_wayland(win, opacity);
 		$case X11_ONLY:
 			return _window_set_opacity_x11(win, opacity);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_opacity_wayland(win, opacity);
+				return wl::_window_set_opacity_wayland(win, opacity);
 			}
 			return _window_set_opacity_x11(win, opacity);
 	$endswitch
@@ -989,13 +988,13 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_raw_mouse_mode_wayland(win, state);
+			return wl::_window_set_raw_mouse_mode_wayland(win, state);
 		$case X11_ONLY:
 			return _window_set_raw_mouse_mode_x11(win, state);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_raw_mouse_mode_wayland(win, state);
+				return wl::_window_set_raw_mouse_mode_wayland(win, state);
 			}
 			return _window_set_raw_mouse_mode_x11(win, state);
 	$endswitch
@@ -1006,13 +1005,13 @@ fn void _window_opengl_swap_buffers_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_opengl_swap_buffers_wayland(win);
+			return wl::_window_opengl_swap_buffers_wayland(win);
 		$case X11_ONLY:
 			return _window_opengl_swap_buffers_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_opengl_swap_buffers_wayland(win);
+				return wl::_window_opengl_swap_buffers_wayland(win);
 			}
 			return _window_opengl_swap_buffers_x11(win);
 	$endswitch
@@ -1023,13 +1022,13 @@ fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _write_clipboard_wayland(data);
+			return wl::_write_clipboard_wayland(data);
 		$case X11_ONLY:
 			return _write_clipboard_x11(data);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _write_clipboard_wayland(data);
+				return wl::_write_clipboard_wayland(data);
 			}
 			return _write_clipboard_x11(data);
 	$endswitch
@@ -1043,13 +1042,13 @@ fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, Gfx
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _init_surface_wayland(surface, data, w, h, format, window);
+			return wl::_init_surface_wayland(surface, data, w, h, format, window);
 		$case X11_ONLY:
 			return _init_surface_x11(surface, data, w, h, format, window);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _init_surface_wayland(surface, data, w, h, format, window);
+				return wl::_init_surface_wayland(surface, data, w, h, format, window);
 			}
 			return _init_surface_x11(surface, data, w, h, format, window);
 	$endswitch
@@ -1060,13 +1059,13 @@ fn void _surface_release_native(GfxSurface* surface)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _surface_release_wayland(surface);
+			return wl::_surface_release_wayland(surface);
 		$case X11_ONLY:
 			return _surface_release_x11(surface);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _surface_release_wayland(surface);
+				return wl::_surface_release_wayland(surface);
 			}
 			return _surface_release_x11(surface);
 	$endswitch
@@ -1076,13 +1075,13 @@ fn bool _window_is_floating_native(GfxWindow* win) @private
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_is_floating_wayland(win);
+			return wl::_window_is_floating_wayland(win);
 		$case X11_ONLY:
 			return _window_is_floating_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_is_floating_wayland(win);
+				return wl::_window_is_floating_wayland(win);
 			}
 			return _window_is_floating_x11(win);
 	$endswitch
@@ -1092,13 +1091,13 @@ fn void _window_set_name_native(GfxWindow* win, String name)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_name_wayland(win, name);
+			return wl::_window_set_name_wayland(win, name);
 		$case X11_ONLY:
 			return _window_set_name_x11(win, name);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_name_wayland(win, name);
+				return wl::_window_set_name_wayland(win, name);
 			}
 			return _window_set_name_x11(win, name);
 	$endswitch
@@ -1109,13 +1108,13 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data_src, int w, int h, Gf
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_set_icon_wayland(win, data_src, w, h, format, type);
+			return wl::_window_set_icon_wayland(win, data_src, w, h, format, type);
 		$case X11_ONLY:
 			return _window_set_icon_x11(win, data_src, w, h, format, type);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_set_icon_wayland(win, data_src, w, h, format, type);
+				return wl::_window_set_icon_wayland(win, data_src, w, h, format, type);
 			}
 			return _window_set_icon_x11(win, data_src, w, h, format, type);
 	$endswitch
@@ -1126,13 +1125,13 @@ fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_find_monitor_wayland(win);
+			return wl::_window_find_monitor_wayland(win);
 		$case X11_ONLY:
 			return _window_find_monitor_x11(win);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_find_monitor_wayland(win);
+				return wl::_window_find_monitor_wayland(win);
 			}
 			return _window_find_monitor_x11(win);
 	$endswitch
@@ -1143,13 +1142,13 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_capture_mouse_wayland(win, state);
+			return wl::_window_capture_mouse_wayland(win, state);
 		$case X11_ONLY:
 			return _window_capture_mouse_x11(win, state);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return _window_capture_mouse_wayland(win, state);
+				return wl::_window_capture_mouse_wayland(win, state);
 			}
 			return _window_capture_mouse_x11(win, state);
 	$endswitch
@@ -1161,12 +1160,12 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 	int type;
 	$switch:
 		$case WAYLAND_ONLY:
-			return _window_create_vulkan_surface_wayland(win, instance);
+			return wl::_window_create_vulkan_surface_wayland(win, instance);
 		$case X11_ONLY:
 			return _window_create_vulkan_surface_x11(win, instance);
 		$default:
 			return _gfx.use_wayland
-				? _window_create_vulkan_surface_wayland(win, instance)
+				? wl::_window_create_vulkan_surface_wayland(win, instance)
 				: _window_create_vulkan_surface_x11(win, instance);
 	$endswitch
 }
@@ -1177,12 +1176,12 @@ fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance insta
 	int type;
 	$switch:
 		$case WAYLAND_ONLY:
-			return _vulkan_get_physical_device_presentation_support_wayland(instance, physical_device, queue_family_index);
+			return wl::_vulkan_get_physical_device_presentation_support_wayland(instance, physical_device, queue_family_index);
 		$case X11_ONLY:
 			return _vulkan_get_physical_device_presentation_support_x11(instance, physical_device, queue_family_index);
 		$default:
 			return _gfx.use_wayland
-			? _vulkan_get_physical_device_presentation_support_wayland(instance, physical_device, queue_family_index)
+			? wl::_vulkan_get_physical_device_presentation_support_wayland(instance, physical_device, queue_family_index)
 			: _vulkan_get_physical_device_presentation_support_x11(instance, physical_device, queue_family_index);
 	$endswitch
 }

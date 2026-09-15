@@ -1,4 +1,51 @@
-module std::gfx @feat(BSD, LINUX) @feat(WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon") @private;
+module std::gfx::wl @feat(BSD, LINUX) @feat(WAYLAND) @link("wayland-client", "wayland-cursor", "wayland-egl", "xkbcommon") @private;
+
+typedef WlDisplay = void;
+typedef WlProxy = void;
+alias WlFixed = int;
+
+macro WlFixed wlFixedFromInt(int i) => (WlFixed)(i * 256);
+macro int WlFixed.to_int(self) => self / 256;
+macro double WlFixed.to_double(self) => (double)self / 256.0;
+macro WlFixed wlFixedFromDouble(double d) => (WlFixed)(d * 256.0);
+
+struct WlMessage
+{
+	ZString name;
+	ZString signature;
+	void* types;
+}
+struct WlInterface
+{
+	ZString name;
+	int version;
+	int methodCount;
+	WlMessage* methods;
+	int eventCount;
+	WlMessage* events;
+}
+struct WlArray
+{
+	sz size;
+	sz alloc;
+	void* data;
+}
+
+typedef WlCursorTheme = void;
+struct WlCursorImage
+{
+	uint width;
+	uint height;
+	uint hotspotX;
+	uint hotspotY;
+	uint delay;
+}
+struct WlCursor
+{
+	uint imageCount;
+	WlCursorImage** images;
+	ZString name;
+}
 
 extern fn WlDisplay* wlDisplayConnect(ZString name) @cname("wl_display_connect");
 extern fn void wlDisplayDisconnect(WlDisplay* display) @cname("wl_display_disconnect");
@@ -37,7 +84,7 @@ extern WlInterface wlDataOfferInterface @cname("wl_data_offer_interface");
 
 typedef WlEglWindow = void;
 extern fn WlEglWindow* wl_egl_window_create(WlProxy* surface, int width, int height);
-extern fn void wl_egl_window_destroy(WlEglWindow* window);
+extern fn void egl_window_destroy(WlEglWindow* window);
 extern fn void wl_egl_window_resize(WlEglWindow* window, int width, int height, int dx, int dy);
 
 extern fn WlCursorTheme* wlCursorThemeLoad(ZString name, int size, void* shm) @cname("wl_cursor_theme_load");

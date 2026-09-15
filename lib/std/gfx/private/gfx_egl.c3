@@ -15,6 +15,7 @@ excuse
 
 module std::gfx::egl @feat(MACOS, BSD, LINUX, WASM, WIN32) @private;
 import libc, std::os, std::gfx @public;
+import std::gfx::wl @public;
 import std::collections::fixedlist;
 
 
@@ -84,7 +85,7 @@ fn void destroy_context_in_window(GfxEglContext* ctx, GfxWindow* win)
 		if (ctx.ctx) egl::destroy_context_fn(gfx::_gfx.egl.display, ctx.ctx);
 
 		$if (gfx::WAYLAND):
-			if (ctx.egl_window) gfx::wl_egl_window_destroy(ctx.egl_window);
+			if (ctx.egl_window) wl::egl_window_destroy(ctx.egl_window);
 			ctx.egl_window = null;
 		$endif
 		ctx.surface = null;
@@ -201,7 +202,7 @@ fn void? init_window_context(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hin
 			ctx.surface = create_window_surface_fn((EglDisplay)gfx::_gfx.egl.display, config, (void*)nativeWindow, null);
 			if (!ctx.surface) return SURFACE_CREATION_FAILED~;
 		$case gfx::WAYLAND:
-			WlEglWindow* egl_window = gfx::wl_egl_window_create(win.src.surface, win.width, win.height);
+			WlEglWindow* egl_window = wl::wl_egl_window_create(win.src.surface, win.width, win.height);
 			ctx.egl_window = egl_window;
 			ctx.surface = create_window_surface_fn(gfx::_gfx.egl.display, config, egl_window, null);
 			if (!ctx.surface) return SURFACE_CREATION_FAILED~;
