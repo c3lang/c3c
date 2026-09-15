@@ -40,6 +40,7 @@
 - Add `log::get_logger`.
 - `RefCounted` now correctly makes a difference between dealloc and free.
 - `Path.is_link` added.
+- Rewrite `encoding::csv` module. #3282
 
 ### Fixes
 - Vmem incorrectly handled reserve page sizes.
