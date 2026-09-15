@@ -25,72 +25,72 @@ struct GfxEglContext
 }
 
 
-fn void _destroy_native() {}
+fn void _destroy_native_wasm() {}
 
 fn void _stop_check_events_native()
 {
 	_gfx.stop_check_events = true;
 }
 
-fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
+fn GfxMouse*? _create_mouse_native_wasm(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
 
-fn IntRect _monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
-fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
-fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
-fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
-fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
-fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
-fn void _monitor_node_free_native(GfxMonitorNode* node) {}
+fn IntRect _monitor_get_workarea_wasm(GfxMonitor* monitor) => { -1, -1, -1, -1 };
+fn void? _monitor_request_mode_native_wasm(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
+fn void? _monitor_set_mode_native_wasm(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
+fn GfxGammaRamp? _monitor_get_gamma_ramp_native_wasm(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
+fn void? _monitor_set_gamma_ramp_native_wasm(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
+fn void? _monitor_set_gamma_native_wasm(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
+fn void _monitor_node_free_native_wasm(GfxMonitorNode* node) {}
 
-fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
+fn GfxDataTransfer? _read_clipboard_native_wasm(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
 
-fn void _poll_monitors_native() {}
-fn void _free_mouse(GfxMouse* mouse) {}
+fn void _poll_monitors_native_wasm() {}
+fn void _free_mouse_wasm(GfxMouse* mouse) {}
 fn void _wait_for_event_native(Duration duration) {}
-fn void _window_show_native(GfxWindow* win) {}
-fn bool _window_is_hidden_native(GfxWindow* win) => false;
-fn bool _window_is_minimized_native(GfxWindow* win) => false;
-fn bool _window_is_maximized_native(GfxWindow* win) => false;
-fn void _window_hide_native(GfxWindow* win) {}
-fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) {}
-fn void _window_move_native(GfxWindow* win, GfxPoint where) {}
-fn void _window_restore_native(GfxWindow* win) {}
-fn void _window_set_border_native(GfxWindow* win, bool border) {}
-fn bool _window_set_icon_native(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type) => false;
-fn bool _window_is_floating_native(GfxWindow* win) => false;
-fn void _window_set_min_size_native(GfxWindow* win, GfxSize size) {}
-fn void _window_focus_native(GfxWindow* win) {}
-fn void _window_set_max_size_native(GfxWindow* win, GfxSize size) {}
-fn void _window_move_mouse(GfxWindow* win, GfxPoint where) {}
-fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) {}
-fn void _window_minimize_native(GfxWindow* win) {}
-fn void _window_raise_native(GfxWindow* win) {}
-fn void _window_set_floating_native(GfxWindow* win, bool floating) {}
-fn void _window_close_native(GfxWindow* win) {}
-fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state) {}
+fn void _window_show_native_wasm(GfxWindow* win) {}
+fn bool _window_is_hidden_native_wasm(GfxWindow* win) => false;
+fn bool _window_is_minimized_native_wasm(GfxWindow* win) => false;
+fn bool _window_is_maximized_native_wasm(GfxWindow* win) => false;
+fn void _window_hide_native_wasm(GfxWindow* win) {}
+fn void _window_flash_native_wasm(GfxWindow* win, GfxFlashRequest request) {}
+fn void _window_move_native_wasm(GfxWindow* win, GfxPoint where) {}
+fn void _window_restore_native_wasm(GfxWindow* win) {}
+fn void _window_set_border_native_wasm(GfxWindow* win, bool border) {}
+fn bool _window_set_icon_native_wasm(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type) => false;
+fn bool _window_is_floating_native_wasm(GfxWindow* win) => false;
+fn void _window_set_min_size_native_wasm(GfxWindow* win, GfxSize size) {}
+fn void _window_focus_native_wasm(GfxWindow* win) {}
+fn void _window_set_max_size_native_wasm(GfxWindow* win, GfxSize size) {}
+fn void _window_move_mouse_wasm(GfxWindow* win, GfxPoint where) {}
+fn void _window_set_aspect_ratio_native_wasm(GfxWindow* win, int w, int h) {}
+fn void _window_minimize_native_wasm(GfxWindow* win) {}
+fn void _window_raise_native_wasm(GfxWindow* win) {}
+fn void _window_set_floating_native_wasm(GfxWindow* win, bool floating) {}
+fn void _window_close_native_wasm(GfxWindow* win) {}
+fn void _window_set_raw_mouse_mode_native_wasm(GfxWindow* win, bool state) {}
 
 
-fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
+fn bool _window_set_mouse_native_wasm(GfxWindow* win, GfxMouse* mouse)
 {
 	ZString name = (ZString)mouse;
 	gfxJsSetCursor(name, name.len());
 	return true;
 }
 
-fn void _window_set_opacity_native(GfxWindow* win, char opacity)
+fn void _window_set_opacity_native_wasm(GfxWindow* win, char opacity)
 {
 	gfxJsSetOpacity((float)opacity / 255.0f);
 }
 
-fn void _window_maximize_native(GfxWindow* win)
+fn void _window_maximize_native_wasm(GfxWindow* win)
 {
-	(void)win.resize(_window_find_monitor_native(win).mode.size);
+	(void)win.resize(_window_find_monitor_native_wasm(win).mode.size);
 	win.move({});
 }
 
-fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win) => get_primary_monitor();
+fn GfxMonitor*? _window_find_monitor_native_wasm(GfxWindow* win) => get_primary_monitor();
 
-fn void _window_resize_native(GfxWindow* win, GfxSize size)
+fn void _window_resize_native_wasm(GfxWindow* win, GfxSize size)
 {
 	gfxJsSetCanvasSize(...size);
 }
@@ -108,14 +108,14 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show)
 	}
 }
 
-fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
+fn void _window_blit_surface_native_wasm(GfxWindow* win, GfxSurface* surface)
 {
 	int minH = win.height < surface.size.y ? win.height : surface.size.y;
 	copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
 	gfxJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
 }
 
-fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
+fn void _window_set_capture_mouse_native_wasm(GfxWindow* win, bool state)
 {
 	if (state)
 	{
@@ -128,7 +128,7 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 }
 
 
-fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
+fn void _window_set_fullscreen_native_wasm(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
@@ -140,34 +140,34 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	gfxJsExitFullscreen();
 }
 
-fn GfxPoint _get_global_mouse_native()
+fn GfxPoint _get_global_mouse_native_wasm()
 {
 	return { gfxJsGetMouseX(), gfxJsGetMouseY() };
 }
 
-fn void _window_set_name_native(GfxWindow* win, String name)
+fn void _window_set_name_native_wasm(GfxWindow* win, String name)
 {
 	gfxJsSetWindowTitle((ZString)name, name.len);
 }
 
-fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
+fn void _window_set_mouse_passthrough_native_wasm(GfxWindow* win, bool passthrough)
 {
 	gfxJsSetPointerEvents((int)passthrough);
 }
 
-fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
+fn bool _vulkan_get_physical_device_presentation_support_native_wasm(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
 
-fn bool _opengl_extension_is_supported_native(String extension)
+fn bool _opengl_extension_is_supported_native_wasm(String extension)
 {
 	return gfxJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
 }
 
-fn void* _get_opengl_proc_native(ZString procname)
+fn void* _get_opengl_proc_native_wasm(ZString procname)
 {
 	return gfxJsGetProcAddress(procname);
 }
 
-fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
+fn void? _window_init_opengl_context_native_wasm(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
 	win.src.backing = { .opengl };
@@ -184,7 +184,7 @@ struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector
 	WgpuStringView selector;
 }
 
-fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface _window_create_wgpu_surface_native_wasm(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
 	canvasDesc.chain.next = null;
@@ -196,24 +196,24 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
-fn GfxPoint _window_fetch_size_native(GfxWindow* win)
+fn GfxPoint _window_fetch_size_native_wasm(GfxWindow* win)
 {
 	return win.get_size();
 }
 
-fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
+fn void _window_release_opengl_context_native_wasm(GfxWindow* win, GfxGlContext* ctx)
 {
 	gfxJsWebglDestroyContext((int)(uptr)ctx.ctx);
 	win.src.ctx.native.ctx = null;
 }
 
-fn void _window_opengl_swap_buffers_native(GfxWindow* win)
+fn void _window_opengl_swap_buffers_native_wasm(GfxWindow* win)
 {
 	gfxJsWebglCommitFrame();
 }
 
 
-fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? _create_window_native_wasm(String name, GfxWindowFlags flags, GfxWindow* win)
 {
 	gfxJsSetCanvasSize(win.width, win.height);
 	gfxJsSetWindowTitle((ZString)name, name.len);
@@ -256,25 +256,25 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	}
 }
 
-fn void _poll_events_native()
+fn void _poll_events_native_wasm()
 {
 	if (_gfx.usingAsyncify == -1) _gfx.usingAsyncify = gfxJsUsingAsyncify();
 	_reset_prev_state();
 	if (_gfx.usingAsyncify) gfxJsSleep(0);
 }
 
-fn void _surface_release_native(GfxSurface* surface)
+fn void _surface_release_native_wasm(GfxSurface* surface)
 {
 	*surface = {};
 }
 
-fn void? _write_clipboard_native(GfxDataTransfer* data)
+fn void? _write_clipboard_native_wasm(GfxDataTransfer* data)
 {
 	gfxJsWriteClipboard(data.text, data.text.len);
 }
 
 
-fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* mon) => {};
+fn GfxMonitorMode[] _monitor_get_modes_native_wasm(GfxMonitor* mon) => {};
 
 // --- exported
 
@@ -325,14 +325,14 @@ fn void handle_key_mods_callback(bool capital, bool numlock, bool control, bool 
 
 
 // public
-fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+fn void? _surface_init_native_wasm(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
 	surface.data = data;
 	surface.size = { w, h };
 	surface.format = format;
 }
 
-fn void _window_make_opengl_current_context_native(GfxWindow* win)
+fn void _window_make_opengl_current_context_native_wasm(GfxWindow* win)
 {
 	if (!win)
 	{
@@ -344,12 +344,12 @@ fn void _window_make_opengl_current_context_native(GfxWindow* win)
 	}
 }
 
-fn void* _get_current_opengl_context_native()
+fn void* _get_current_opengl_context_native_wasm()
 {
 	return (void*)(uptr)gfxJsWebglGetCurrentContext();
 }
 
-fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
+fn GfxMouse*? _create_standard_mouse_native_wasm(GfxMouseIcon mouse)
 {
 	ZString cursor_name;
 	switch (mouse)
@@ -380,9 +380,9 @@ fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
 	return (GfxMouse*)cursor_name;
 }
 
-fn GfxKey _physical_to_mapped_key_native(GfxKey key) => key;
+fn GfxKey _physical_to_mapped_key_native_wasm(GfxKey key) => key;
 
-fn void _init_keycodes_native()
+fn void _init_keycodes_native_wasm()
 {
 	_gfx.keycodes = {
 		[DOM_VK_BACK_QUOTE] = BACKTICK,         [DOM_VK_0] = NUM0,                      [DOM_VK_1] = NUM1,

@@ -37,12 +37,12 @@ fn void _wait_for_event_native(Duration duration)
 	win32::msgWaitForMultipleObjects(0, null, 0, ms, 0x04FF /* QS_ALLINPUT */);
 }
 
-fn GfxMouse*? _create_mouse_native(char* data, GfxSize size, GfxFormat format)
+fn GfxMouse*? _create_mouse_native_win32(char* data, GfxSize size, GfxFormat format)
 {
 	return (GfxMouse*)_load_handle_image(data, ...size, format, 0);
 }
 
-fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
+fn GfxMouse*? _create_standard_mouse_native_win32(GfxMouseIcon mouse)
 {
 	iptr mouseIcon;
 	switch (mouse)
@@ -76,7 +76,7 @@ fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
 }
 
 
-fn void _poll_events_native()
+fn void _poll_events_native_win32()
 {
 	_reset_prev_state();
 	Win32_MSG msg;
@@ -87,18 +87,18 @@ fn void _poll_events_native()
 	}
 }
 
-fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
+fn void _window_move_mouse_win32(GfxWindow* win, GfxPoint where)
 {
 	win.internal.last_mouse = where - win.origin;
 	win32::setCursorPos(...where);
 }
 
-fn void _window_show_native(GfxWindow* win)
+fn void _window_show_native_win32(GfxWindow* win)
 {
 	if (!win.internal.flags.maximize) win32::showWindow(win.src.window, win32::SW_RESTORE);
 }
 
-fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
+fn bool _window_set_mouse_native_win32(GfxWindow* win, GfxMouse* mouse)
 {
 	if (!mouse) return false;
 	win32::setClassLongPtrA(win.src.window, win32::GCLP_HCURSOR, (iptr)mouse);
@@ -106,7 +106,7 @@ fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 	return true;
 }
 
-fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) @private
+fn void _window_flash_native_win32(GfxWindow* win, GfxFlashRequest request) @private
 {
 	if (win.has_focus() && request != CANCEL) return;
 	Win32_FLASHWINFO desc = { .cbSize = Win32_FLASHWINFO::size, .hwnd = win.src.window };
@@ -125,17 +125,17 @@ fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request) @private
 	win32::flashWindowEx(&desc);
 }
 
-fn void _window_minimize_native(GfxWindow* win)
+fn void _window_minimize_native_win32(GfxWindow* win)
 {
 	win32::showWindow(win.src.window, win32::SW_MINIMIZE);
 }
 
-fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
+fn void _window_set_max_size_native_win32(GfxWindow* win, GfxSize size)
 {
 	win.src.max_size = size;
 }
 
-fn void _window_set_border_native(GfxWindow* win, bool border)
+fn void _window_set_border_native_win32(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
 	Win32_RECT rect;
@@ -161,7 +161,7 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
 }
 
-fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
+fn void? _create_window_native_win32(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
 {
 	if (!name.len) name = " ";
 	win.src.hIconSmall = null; win.src.hIconBig = null;
@@ -205,7 +205,7 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 	if (flags.egl) egl::create_context(win, get_global_opengl_hints())!;
 }
 
-fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
+fn IntRect _monitor_get_workarea_win32(GfxMonitor* monitor)
 {
 	Win32_MONITORINFOEXW mi;
 	mi.cbSize = Win32_MONITORINFOEXW::size;
@@ -213,12 +213,12 @@ fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 	return { mi.rcWork.left, mi.rcWork.top, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top };
 }
 
-fn void _monitor_node_free_native(GfxMonitorNode* node)
+fn void _monitor_node_free_native_win32(GfxMonitorNode* node)
 {}
 
-fn void _window_restore_native(GfxWindow* win) {}
+fn void _window_restore_native_win32(GfxWindow* win) {}
 
-fn void _window_close_native(GfxWindow* win)
+fn void _window_close_native_win32(GfxWindow* win)
 {
 	win32::removePropW(win.src.window, RENAME_PROP_NAME);
 	win32::releaseDC(win.src.window, win.src.hdc);
@@ -227,7 +227,7 @@ fn void _window_close_native(GfxWindow* win)
 	if (win.src.hIconBig) win32::destroyIcon(win.src.hIconBig);
 }
 
-fn void _window_set_floating_native(GfxWindow* win, bool floating)
+fn void _window_set_floating_native_win32(GfxWindow* win, bool floating)
 {
 	if (floating)
 	{
@@ -239,25 +239,25 @@ fn void _window_set_floating_native(GfxWindow* win, bool floating)
 	}
 }
 
-fn void _window_maximize_native(GfxWindow* win)
+fn void _window_maximize_native_win32(GfxWindow* win)
 {
 	win.hide();
 	win32::showWindow(win.src.window, win32::SW_MAXIMIZE);
 }
 
-fn void _window_set_opacity_native(GfxWindow* win, char opacity)
+fn void _window_set_opacity_native_win32(GfxWindow* win, char opacity)
 {
 	win32::setWindowLongA(win.src.window, -20, 0x00080000);
 	win32::setLayeredWindowAttributes(win.src.window, 0, opacity, 2);
 }
 
-fn void _window_raise_native(GfxWindow* win)
+fn void _window_raise_native_win32(GfxWindow* win)
 {
 	win32::bringWindowToTop(win.src.window);
 	win32::setWindowPos(win.src.window, null, win.x, win.y, win.width, win.height, 0x0001 | 0x0002 | 0x0200 | 0x0020); // |NOMOVE|NOOWNERZORDER|FRAMECHANGED
 }
 
-fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
+fn void _window_set_capture_mouse_native_win32(GfxWindow* win, bool state)
 {
 	if (!state)
 	{
@@ -272,21 +272,21 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 	win32::clipCursor(&clip_rect);
 }
 
-fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
+fn void _window_set_raw_mouse_mode_native_win32(GfxWindow* win, bool state)
 {
 	Win32_RAWINPUTDEVICE id = {0x01, 0x02, 0, win.src.window};
 	id.dwFlags = state ? 0 : win32::RIDEV_REMOVE;
 	win32::registerRawInputDevices(&id, 1, Win32_RAWINPUTDEVICE::size);
 }
 
-fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
+fn void _window_blit_surface_native_win32(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint blit = math::min(win.size, surface.size);
 	copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
 	win32::bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdcMem, 0, 0, win32::SRCCOPY);
 }
 
-fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
+fn bool _window_set_icon_native_win32(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
 	if (win.src.hIconSmall && type & WINDOW) win32::destroyIcon(win.src.hIconSmall);
 	if (win.src.hIconBig && type & TASKBAR) win32::destroyIcon(win.src.hIconBig);
@@ -312,12 +312,12 @@ fn bool _window_set_icon_native(GfxWindow* win, char* data, int w, int h, GfxFor
 	return true;
 }
 
-fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
+fn void _window_set_min_size_native_win32(GfxWindow* win, GfxSize size)
 {
 	win.src.min_size = size;
 }
 
-fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
+fn void _window_set_mouse_passthrough_native_win32(GfxWindow* win, bool passthrough)
 {
 	uint key = 0;
 	char alpha = 0;
@@ -339,22 +339,22 @@ fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 	if (passthrough) win32::setLayeredWindowAttributes(win.src.window, key, alpha, flags);
 }
 
-fn void _window_set_name_native(GfxWindow* win, String name) => @pool()
+fn void _window_set_name_native_win32(GfxWindow* win, String name) => @pool()
 {
 	win32::setWindowTextW(win.src.window, name.to_wstring(tmem)!!);
 }
 
-fn bool _window_is_floating_native(GfxWindow* win)
+fn bool _window_is_floating_native_win32(GfxWindow* win)
 {
 	return win32::getWindowLongPtr(win.src.window, -20) & 0x00000008 != 0;
 }
 
-fn bool _window_is_hidden_native(GfxWindow* win)
+fn bool _window_is_hidden_native_win32(GfxWindow* win)
 {
-	return !win32::isWindowVisible(win.src.window) && !_window_is_minimized_native(win);
+	return !win32::isWindowVisible(win.src.window) && !_window_is_minimized_native_win32(win);
 }
 
-fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
+fn GfxMonitor*? _window_find_monitor_native_win32(GfxWindow* win)
 {
 	Win32_HMONITOR src = win32::monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
 	for (GfxMonitorNode* node = _gfx.monitors.list.head; node != null; node = node.next)
@@ -364,16 +364,16 @@ fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
 	return get_primary_monitor();
 }
 
-fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
+fn void _window_set_fullscreen_native_win32(GfxWindow* win, bool fullscreen)
 {
-	GfxMonitor*? mon = _window_find_monitor_native(win);
+	GfxMonitor*? mon = _window_find_monitor_native_win32(win);
 	if (catch mon) return;
 
 	if (!fullscreen)
 	{
 		// Ignore errors
-		(void)_monitor_set_mode_native(mon, &win.internal.oldMode);
-		_window_set_border_native(win, true);
+		(void)_monitor_set_mode_native_win32(mon, &win.internal.oldMode);
+		_window_set_border_native_win32(win, true);
 
 		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
 		uint style = _winapi_window_get_style(win.internal.flags);
@@ -389,7 +389,7 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	win.internal.old_bounds = win.bounds;
 	win.internal.oldMode = mon.mode;
 	win.internal.flags.fullscreen = true;
-	_window_set_border_native(win, false);
+	_window_set_border_native_win32(win, false);
 
 	win32::setWindowPos(win.src.window, win32::HWND_TOPMOST, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
 	win.origin = mon.origin;
@@ -399,31 +399,31 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 	win.size = mon.mode.size;
 }
 
-fn void _window_move_native(GfxWindow* win, GfxPoint where)
+fn void _window_move_native_win32(GfxWindow* win, GfxPoint where)
 {
 	win.origin = where;
 	win32::setWindowPos(win.src.window, (Win32_HWND){}, ...where, 0, 0, 0x0001 /* SWP_NOSIZE */);
 }
 
-fn void _window_hide_native(GfxWindow* win)
+fn void _window_hide_native_win32(GfxWindow* win)
 {
 	win32::showWindow(win.src.window, win32::SW_HIDE);
 }
 
-fn void _window_focus_native(GfxWindow* win)
+fn void _window_focus_native_win32(GfxWindow* win)
 {
 	win32::setForegroundWindow(win.src.window);
 	win32::setFocus(win.src.window);
 }
 
-fn bool _window_is_minimized_native(GfxWindow* win)
+fn bool _window_is_minimized_native_win32(GfxWindow* win)
 {
 	Win32_WINDOWPLACEMENT placement;
 	win32::getWindowPlacement(win.src.window, &placement);
 	return placement.showCmd == win32::SW_SHOWMINIMIZED;
 }
 
-fn void _window_resize_native(GfxWindow* win, GfxSize size)
+fn void _window_resize_native_win32(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
 	Win32_RECT rect = { 0, 0, ...size };
@@ -433,13 +433,13 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
 }
 
-fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h) @private
+fn void _window_set_aspect_ratio_native_win32(GfxWindow* win, int w, int h) @private
 {
 	win.src.aspectRatioW = w;
 	win.src.aspectRatioH = h;
 }
 
-fn GfxPoint _window_fetch_size_native(GfxWindow* win)
+fn GfxPoint _window_fetch_size_native_win32(GfxWindow* win)
 {
 	Win32_RECT area;
 	win32::getClientRect(win.src.window, &area);
@@ -447,14 +447,14 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 	win.height = area.bottom;
 	return win.get_size();
 }
-fn bool _window_is_maximized_native(GfxWindow* win)
+fn bool _window_is_maximized_native_win32(GfxWindow* win)
 {
 	Win32_WINDOWPLACEMENT placement;
 	win32::getWindowPlacement(win.src.window, &placement);
 	return placement.showCmd == win32::SW_SHOWMAXIMIZED || win32::isZoomed(win.src.window);
 }
 
-fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
+fn GfxMonitorMode[] _monitor_get_modes_native_win32(GfxMonitor* monitor)
 {
 	uint mode_index = 0;
 	List{GfxMonitorMode} modes;
@@ -476,7 +476,7 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 	return modes.array_view();
 }
 
-fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+fn void? _monitor_request_mode_native_win32(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	Win32_DEVMODEW dm = { .dmSize = Win32_DEVMODEW::size };
 	uint index = 0;
@@ -502,7 +502,7 @@ fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, Gfx
 	return MONITOR_MODE_CHANGE_FAILED~;
 }
 
-fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType requested_type) => @pool()
+fn GfxDataTransfer? _read_clipboard_native_win32(Allocator allocator, GfxDataTransferType requested_type) => @pool()
 {
 	if (requested_type != TEXT) return CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
@@ -516,7 +516,7 @@ fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferT
 	return { .text = string::from_wstring(allocator, data), .type = TEXT };
 }
 
-fn void? _write_clipboard_native(GfxDataTransfer* data) => @pool()
+fn void? _write_clipboard_native_win32(GfxDataTransfer* data) => @pool()
 {
 	WString wstring = data.text.to_wstring(tmem)!;
 	void* object = win32::globalAlloc(0x0002 /* GMEM_MOVEABLE */, (Win32_SIZE_T)data.text.len * 2);
@@ -533,7 +533,7 @@ fn void? _write_clipboard_native(GfxDataTransfer* data) => @pool()
 	win32::closeClipboard();
 }
 
-fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+fn void? _surface_init_native_win32(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
 	surface.data = data;
 	surface.size = { w, h };
@@ -555,7 +555,7 @@ fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, Gfx
 	win32::selectObject(surface.native.hdcMem, surface.native.bitmap);
 }
 
-fn void _surface_release_native(GfxSurface* surface)
+fn void _surface_release_native_win32(GfxSurface* surface)
 {
 	if (!surface.data) return;
 	if (surface.native.hdcMem)
@@ -566,14 +566,14 @@ fn void _surface_release_native(GfxSurface* surface)
 	*surface = {};
 }
 
-fn GfxPoint _get_global_mouse_native()
+fn GfxPoint _get_global_mouse_native_win32()
 {
 	Win32_POINT p;
 	win32::getCursorPos(&p);
 	return { ...p };
 }
 
-fn void _poll_monitors_native()
+fn void _poll_monitors_native_win32()
 {
 	for (GfxMonitorNode* node = _gfx.monitors.list.head; node != null; node = node.next) node.disconnected = true;
 
@@ -659,20 +659,20 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	_gfx.helper_window = win32::createWindowExW(0, _gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx.instance, null);
 
 	char[4] blk;
-	_gfx.hiddenMouse = _create_mouse_native(&blk, { 1, 1 }, RGBA8) ?? null;
+	_gfx.hiddenMouse = _create_mouse_native_win32(&blk, { 1, 1 }, RGBA8) ?? null;
 }
 
-fn void _free_mouse(GfxMouse* mouse)
+fn void _free_mouse_win32(GfxMouse* mouse)
 {
 	win32::destroyCursor(mouse);
 }
 
-fn void _destroy_native()
+fn void _destroy_native_win32()
 {
 	win32::timeEndPeriod(1);
 	if (_gfx.helper_window) win32::destroyWindow(_gfx.helper_window);
 	if (_gfx.instance) win32::unregisterClassW(_gfx.wndClass.lpszClassName, _gfx.instance);
-	if (_gfx.hiddenMouse != null) _free_mouse(_gfx.hiddenMouse);
+	if (_gfx.hiddenMouse != null) _free_mouse_win32(_gfx.hiddenMouse);
 }
 
 
@@ -680,7 +680,7 @@ fn void _destroy_native()
 
 fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wParam, Win32_LPARAM lParam)
 {
-	if (message == win32::WM_DISPLAYCHANGE) _poll_monitors_native();
+	if (message == win32::WM_DISPLAYCHANGE) _poll_monitors_native_win32();
 
 	if (hWnd == _gfx.helper_window) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 
@@ -703,11 +703,11 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			_window_focus_callback(win, in_focus);
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_MOVE:
-			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
+			if (win.internal.capture_mouse) _window_set_capture_mouse_native_win32(win, true);
 			_window_moved_callback(win, _param_to_point(lParam));
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_SIZE:
-			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
+			if (win.internal.capture_mouse) _window_set_capture_mouse_native_win32(win, true);
 			_window_resized_callback(win, _param_to_point(lParam));
 			_window_check_mode(win);
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
@@ -719,7 +719,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_CAPTURECHANGED:
 			if (!lParam && win.src.actionFrame)
 			{
-				_window_set_capture_mouse_native(win, win.internal.capture_mouse);
+				_window_set_capture_mouse_native_win32(win, win.internal.capture_mouse);
 				win.src.actionFrame = false;
 			}
 		case win32::WM_DPICHANGED:
@@ -761,7 +761,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_ENTERSIZEMOVE:
 		case win32::WM_EXITSIZEMOVE:
-			if (win.src.actionFrame) _window_set_capture_mouse_native(win, win.internal.capture_mouse);
+			if (win.src.actionFrame) _window_set_capture_mouse_native_win32(win, win.internal.capture_mouse);
 		case win32::WM_TIMER:
 			_window_refresh_callback(win, { 0, 0, ...win.size });
 		case win32::WM_NCLBUTTONDOWN:
@@ -1045,7 +1045,7 @@ fn void _win32_get_mode(Win32_DEVMODEW* dm, GfxMonitorMode* mode)
 
 const WString WIDE_DISPLAY_NAME = @wstring("DISPLAY\0");
 
-fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a)
+fn GfxGammaRamp? _monitor_get_gamma_ramp_native_win32(GfxMonitor* monitor, Allocator a)
 {
 	ushort[] colors = mem::alloc::alloc_array(a, ushort, 768);
 	Win32_HDC dc = win32::createDCW(WIDE_DISPLAY_NAME, (WString)&monitor.node.adapter_name, null, null);
@@ -1063,13 +1063,13 @@ fn void? _gamma_set(GfxMonitor* monitor, ushort* gamma)
 	if (!win32::setDeviceGammaRamp(dc, gamma)) return GAMMA_COULD_NOT_BE_SET~;
 }
 
-fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
+fn void? _monitor_set_gamma_ramp_native_win32(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
 	if (ramp.red.len != 256) return GAMMA_COULD_NOT_BE_SET~;
 	return _gamma_set(monitor, ramp.red);
 }
 
-fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
+fn void? _monitor_set_gamma_native_win32(GfxMonitor* monitor, float gamma)
 {
 	ushort[768] g;
 	for (int i = 0; i < 256; i++)
@@ -1080,7 +1080,7 @@ fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
 	return _gamma_set(monitor, &g);
 }
 
-fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
+fn void? _monitor_set_mode_native_win32(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	Win32_DEVMODEW dm = {
 		.dmSize = Win32_DEVMODEW::size,
@@ -1168,7 +1168,7 @@ WglCreateContextAttribsArbProc wgl_create_context_attribs_arb_fn;
 WglChoosePixelFormatArbProc    wgl_choose_pixel_format_arb_fn;
 WglSwapIntervalExtProc         wgl_swap_interval_ext_fn;
 
-fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
+fn void? _window_init_opengl_context_native_win32(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
 	win.src.backing = { .opengl };
@@ -1258,9 +1258,9 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 			});
 		}
 
-		if (_opengl_extension_is_supported_native("WGL_ARB_create_context_no_error")) stack.push_all({ WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.no_error });
+		if (_opengl_extension_is_supported_native_win32("WGL_ARB_create_context_no_error")) stack.push_all({ WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.no_error });
 
-		if (_opengl_extension_is_supported_native("WGL_ARB_context_flush_control"))
+		if (_opengl_extension_is_supported_native_win32("WGL_ARB_context_flush_control"))
 		{
 			stack.push(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB);
 			stack.push(hints.release_behavior == FLUSH
@@ -1270,7 +1270,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 
 		int flags = 0;
 		if (hints.debug) flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
-		if (hints.robustness && _opengl_extension_is_supported_native("WGL_ARB_create_context_robustness")) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
+		if (hints.robustness && _opengl_extension_is_supported_native_win32("WGL_ARB_create_context_robustness")) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 		if (flags) stack.push_all({ WGL_CONTEXT_FLAGS_ARB, flags });
 
 		stack.push_all({ 0, 0 });
@@ -1286,33 +1286,33 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	win32::releaseDC(win.src.window, win.src.hdc);
 	win.src.hdc = win32::getDC(win.src.window);
 
-	if (hints.share != null) wgl_share_lists_fn(_get_current_opengl_context_native(), hints.share.ctx);
+	if (hints.share != null) wgl_share_lists_fn(_get_current_opengl_context_native_win32(), hints.share.ctx);
 
 	wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
 	log::info("Failed to create accelerated OpenGL context", category: log::CATEGORY_VIDEO);
 }
 
-fn bool _opengl_extension_is_supported_native(String extension)
+fn bool _opengl_extension_is_supported_native_win32(String extension)
 {
 	ZString extensions = null;
-	if (GetExtStringArbFn proc = _get_opengl_proc_native("wglGetExtensionsStringARB"))
+	if (GetExtStringArbFn proc = _get_opengl_proc_native_win32("wglGetExtensionsStringARB"))
 	{
 		extensions = proc(wgl_get_current_dc_fn());
 	}
-	else if (GetExtStringExtFn proc2 = _get_opengl_proc_native("wglGetExtensionsStringEXT"))
+	else if (GetExtStringExtFn proc2 = _get_opengl_proc_native_win32("wglGetExtensionsStringEXT"))
 	{
 		extensions = proc2();
 	}
 	return extensions && _extension_is_in_list(extensions.str_view(), extension);
 }
 
-fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
+fn void _window_release_opengl_context_native_win32(GfxWindow* win, GfxGlContext* ctx)
 {
 	wgl_delete_context_fn(ctx.ctx);
 	win.src.ctx.native.ctx = null;
 }
 
-fn void _window_make_opengl_current_context_native(GfxWindow* win)
+fn void _window_make_opengl_current_context_native_win32(GfxWindow* win)
 {
 	if (!win)
 	{
@@ -1322,12 +1322,12 @@ fn void _window_make_opengl_current_context_native(GfxWindow* win)
 	wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
 }
 
-fn void _window_opengl_swap_buffers_native(GfxWindow* win)
+fn void _window_opengl_swap_buffers_native_win32(GfxWindow* win)
 {
 	win32::swapBuffers(win.src.hdc);
 }
 
-fn void* _get_current_opengl_context_native()
+fn void* _get_current_opengl_context_native_win32()
 {
 	return wgl_get_current_context_fn();
 }
@@ -1370,9 +1370,9 @@ fn void? _load_opengl_win32() @private
 	wgl_make_current_fn(dummy_dc, dummy_context);
 	defer wgl_delete_context_fn(dummy_context);
 
-	wgl_create_context_attribs_arb_fn = _get_opengl_proc_native("wglCreateContextAttribsARB");
-	wgl_choose_pixel_format_arb_fn = _get_opengl_proc_native("wglChoosePixelFormatARB");
-	wgl_swap_interval_ext_fn = _get_opengl_proc_native("wglSwapIntervalEXT");
+	wgl_create_context_attribs_arb_fn = _get_opengl_proc_native_win32("wglCreateContextAttribsARB");
+	wgl_choose_pixel_format_arb_fn = _get_opengl_proc_native_win32("wglChoosePixelFormatARB");
+	wgl_swap_interval_ext_fn = _get_opengl_proc_native_win32("wglSwapIntervalEXT");
 
 	if (!wgl_swap_interval_ext_fn) return FAILED_TO_LOAD_SWAP_INTERVAL_FN~;
 
@@ -1382,7 +1382,7 @@ fn void? _load_opengl_win32() @private
 alias GetExtStringArbFn = fn ZString(Win32_HDC*);
 alias GetExtStringExtFn = fn ZString();
 
-fn void* _get_opengl_proc_native(ZString procname)
+fn void* _get_opengl_proc_native_win32(ZString procname)
 {
 	void* proc = _gfx.gl.get_proc_addr_fn ? _gfx.gl.get_proc_addr_fn(procname) : null;
 	if (proc) return proc;
@@ -1414,7 +1414,7 @@ fn void? _window_create_directx_swap_chain_native(GfxWindow* win, Win32_IDXGIFac
 
 alias VkGetPhysicalDeviceWin32PresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint);
 
-fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+fn bool _vulkan_get_physical_device_presentation_support_native_win32(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	GfxFn raw = _get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
 	if (raw == null) return false;
@@ -1457,7 +1457,7 @@ struct WgpuSurfaceSourceWindowsHWND
 	void* hwnd;
 }
 
-fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface _window_create_wgpu_surface_native_win32(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuSurfaceSourceWindowsHWND fromHwnd;
 	fromHwnd.chain.next = null;
@@ -1469,7 +1469,7 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
-fn void _init_keycodes_native()
+fn void _init_keycodes_native_win32()
 {
 	_gfx.keycodes = {
 		[0x00B] = NUM0,          [0x002] = NUM1,          [0x003] = NUM2,
@@ -1515,7 +1515,7 @@ fn void _init_keycodes_native()
 	};
 }
 
-fn GfxKey _physical_to_mapped_key_native(GfxKey key)
+fn GfxKey _physical_to_mapped_key_native_win32(GfxKey key)
 {
 	uint vsc = key.to_api();
 	char[256] keyboardState;
