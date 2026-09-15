@@ -1,13 +1,13 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @private;
 import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time;
-import std::gfx::wl @public;
+import std::gfx::wl @public, std::gfx::macos @public;
 
 
 fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _monitor_set_gamma_ramp_native_macos(monitor, ramp);
+			return macos::_monitor_set_gamma_ramp_native_macos(monitor, ramp);
 		$case $feat(WASM):
 			return _monitor_set_gamma_ramp_native_wasm(monitor, ramp);
 		$case $feat(WIN32):
@@ -28,7 +28,7 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _monitor_get_modes_native_macos(monitor);
+			return macos::_monitor_get_modes_native_macos(monitor);
 		$case $feat(WASM):
 			return _monitor_get_modes_native_wasm(monitor);
 		$case $feat(WIN32):
@@ -49,7 +49,7 @@ fn void _window_show_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_show_native_macos(win);
+			return macos::_window_show_native_macos(win);
 		$case $feat(WASM):
 			return _window_show_native_wasm(win);
 		$case $feat(WIN32):
@@ -70,7 +70,7 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a
 {
 	$switch:
 		$case $feat(MACOS):
-			return _monitor_get_gamma_ramp_native_macos(monitor, a);
+			return macos::_monitor_get_gamma_ramp_native_macos(monitor, a);
 		$case $feat(WASM):
 			return _monitor_get_gamma_ramp_native_wasm(monitor, a);
 		$case $feat(WIN32):
@@ -91,7 +91,7 @@ fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _monitor_set_gamma_native_macos(monitor, gamma);
+			return macos::_monitor_set_gamma_native_macos(monitor, gamma);
 		$case $feat(WASM):
 			return _monitor_set_gamma_native_wasm(monitor, gamma);
 		$case $feat(WIN32):
@@ -112,7 +112,7 @@ fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _monitor_set_mode_native_macos(mon, mode);
+			return macos::_monitor_set_mode_native_macos(mon, mode);
 		$case $feat(WASM):
 			return _monitor_set_mode_native_wasm(mon, mode);
 		$case $feat(WIN32):
@@ -133,7 +133,7 @@ fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _create_mouse_native_macos(data, size, format);
+			return macos::_create_mouse_native_macos(data, size, format);
 		$case $feat(WASM):
 			return _create_mouse_native_wasm(data, size, format);
 		$case $feat(WIN32):
@@ -154,7 +154,7 @@ fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _create_standard_mouse_native_macos(mouse);
+			return macos::_create_standard_mouse_native_macos(mouse);
 		$case $feat(WASM):
 			return _create_standard_mouse_native_wasm(mouse);
 		$case $feat(WIN32):
@@ -175,7 +175,7 @@ fn void _destroy_native()
 {
 	$switch:
 		$case $feat(MACOS):
-			return _destroy_native_macos();
+			return macos::_destroy_native_macos();
 		$case $feat(WASM):
 			return _destroy_native_wasm();
 		$case $feat(WIN32):
@@ -196,7 +196,7 @@ fn bool _opengl_extension_is_supported_native(String extension)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _opengl_extension_is_supported_native_macos(extension);
+			return macos::_opengl_extension_is_supported_native_macos(extension);
 		$case $feat(WASM):
 			return _opengl_extension_is_supported_native_wasm(extension);
 		$case $feat(WIN32):
@@ -217,7 +217,7 @@ fn void _free_mouse(GfxMouse* mouse)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _free_mouse_macos(mouse);
+			return macos::_free_mouse_macos(mouse);
 		$case $feat(WASM):
 			return _free_mouse_wasm(mouse);
 		$case $feat(WIN32):
@@ -238,7 +238,7 @@ fn void* _get_current_opengl_context_native()
 {
 	$switch:
 		$case $feat(MACOS):
-			return _get_current_opengl_context_native_macos();
+			return macos::_get_current_opengl_context_native_macos();
 		$case $feat(WASM):
 			return _get_current_opengl_context_native_wasm();
 		$case $feat(WIN32):
@@ -259,7 +259,7 @@ fn GfxPoint _get_global_mouse_native()
 {
 	$switch:
 		$case $feat(MACOS):
-			return _get_global_mouse_native_macos();
+			return macos::_get_global_mouse_native_macos();
 		$case $feat(WASM):
 			return _get_global_mouse_native_wasm();
 		$case $feat(WIN32):
@@ -280,7 +280,7 @@ fn void* _get_opengl_proc_native(ZString procname)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _get_opengl_proc_native_macos(procname);
+			return macos::_get_opengl_proc_native_macos(procname);
 		$case $feat(WASM):
 			return _get_opengl_proc_native_wasm(procname);
 		$case $feat(WIN32):
@@ -301,7 +301,7 @@ fn void _init_keycodes_native()
 {
 	$switch:
 		$case $feat(MACOS):
-			return _init_keycodes_native_macos();
+			return macos::_init_keycodes_native_macos();
 		$case $feat(WASM):
 			return _init_keycodes_native_wasm();
 		$case $feat(WIN32):
@@ -322,7 +322,7 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 {
 	$switch:
 		$case $feat(MACOS):
-			return _create_window_native_macos(name, flags, win);
+			return macos::_create_window_native_macos(name, flags, win);
 		$case $feat(WASM):
 			return _create_window_native_wasm(name, flags, win);
 		$case $feat(WIN32):
@@ -343,7 +343,7 @@ fn void _monitor_node_free_native(GfxMonitorNode* node)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _monitor_node_free_native_macos(node);
+			return macos::_monitor_node_free_native_macos(node);
 		$case $feat(WASM):
 			return _monitor_node_free_native_wasm(node);
 		$case $feat(WIN32):
@@ -364,7 +364,7 @@ fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _monitor_get_workarea_macos(monitor);
+			return macos::_monitor_get_workarea_macos(monitor);
 		$case $feat(WASM):
 			return _monitor_get_workarea_wasm(monitor);
 		$case $feat(WIN32):
@@ -385,7 +385,7 @@ fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, Gfx
 {
 	$switch:
 		$case $feat(MACOS):
-			return _monitor_request_mode_native_macos(mon, mode, request);
+			return macos::_monitor_request_mode_native_macos(mon, mode, request);
 		$case $feat(WASM):
 			return _monitor_request_mode_native_wasm(mon, mode, request);
 		$case $feat(WIN32):
@@ -406,7 +406,7 @@ fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _physical_to_mapped_key_native_macos(key);
+			return macos::_physical_to_mapped_key_native_macos(key);
 		$case $feat(WASM):
 			return _physical_to_mapped_key_native_wasm(key);
 		$case $feat(WIN32):
@@ -427,7 +427,7 @@ fn void _poll_events_native()
 {
 	$switch:
 		$case $feat(MACOS):
-			return _poll_events_native_macos();
+			return macos::_poll_events_native_macos();
 		$case $feat(WASM):
 			return _poll_events_native_wasm();
 		$case $feat(WIN32):
@@ -448,7 +448,7 @@ fn void _poll_monitors_native()
 {
 	$switch:
 		$case $feat(MACOS):
-			return _poll_monitors_native_macos();
+			return macos::_poll_monitors_native_macos();
 		$case $feat(WASM):
 			return _poll_monitors_native_wasm();
 		$case $feat(WIN32):
@@ -469,7 +469,7 @@ fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferT
 {
 	$switch:
 		$case $feat(MACOS):
-			return _read_clipboard_native_macos(allocator, type);
+			return macos::_read_clipboard_native_macos(allocator, type);
 		$case $feat(WASM):
 			return _read_clipboard_native_wasm(allocator, type);
 		$case $feat(WIN32):
@@ -490,7 +490,7 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_blit_surface_native_macos(win, surface);
+			return macos::_window_blit_surface_native_macos(win, surface);
 		$case $feat(WASM):
 			return _window_blit_surface_native_wasm(win, surface);
 		$case $feat(WIN32):
@@ -511,7 +511,7 @@ fn void _window_close_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_close_native_macos(win);
+			return macos::_window_close_native_macos(win);
 		$case $feat(WASM):
 			return _window_close_native_wasm(win);
 		$case $feat(WIN32):
@@ -532,7 +532,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* contex
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_init_opengl_context_native_macos(win, context, hints);
+			return macos::_window_init_opengl_context_native_macos(win, context, hints);
 		$case $feat(WASM):
 			return _window_init_opengl_context_native_wasm(win, context, hints);
 		$case $feat(WIN32):
@@ -553,7 +553,7 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_create_wgpu_surface_native_macos(window, instance);
+			return macos::_window_create_wgpu_surface_native_macos(window, instance);
 		$case $feat(WASM):
 			return _window_create_wgpu_surface_native_wasm(window, instance);
 		$case $feat(WIN32):
@@ -574,7 +574,7 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_release_opengl_context_native_macos(win, ctx);
+			return macos::_window_release_opengl_context_native_macos(win, ctx);
 		$case $feat(WASM):
 			return _window_release_opengl_context_native_wasm(win, ctx);
 		$case $feat(WIN32):
@@ -595,7 +595,7 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_fetch_size_native_macos(win);
+			return macos::_window_fetch_size_native_macos(win);
 		$case $feat(WASM):
 			return _window_fetch_size_native_wasm(win);
 		$case $feat(WIN32):
@@ -616,7 +616,7 @@ fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_flash_native_macos(win, request);
+			return macos::_window_flash_native_macos(win, request);
 		$case $feat(WASM):
 			return _window_flash_native_wasm(win, request);
 		$case $feat(WIN32):
@@ -637,7 +637,7 @@ fn void _window_focus_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_focus_native_macos(win);
+			return macos::_window_focus_native_macos(win);
 		$case $feat(WASM):
 			return _window_focus_native_wasm(win);
 		$case $feat(WIN32):
@@ -658,7 +658,7 @@ fn void _window_hide_native(GfxWindow* win) @private
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_hide_native_macos(win);
+			return macos::_window_hide_native_macos(win);
 		$case $feat(WASM):
 			return _window_hide_native_wasm(win);
 		$case $feat(WIN32):
@@ -679,7 +679,7 @@ fn bool _window_is_hidden_native(GfxWindow* win) @private
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_is_hidden_native_macos(win);
+			return macos::_window_is_hidden_native_macos(win);
 		$case $feat(WASM):
 			return _window_is_hidden_native_wasm(win);
 		$case $feat(WIN32):
@@ -700,7 +700,7 @@ fn bool _window_is_maximized_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_is_maximized_native_macos(win);
+			return macos::_window_is_maximized_native_macos(win);
 		$case $feat(WASM):
 			return _window_is_maximized_native_wasm(win);
 		$case $feat(WIN32):
@@ -721,7 +721,7 @@ fn bool _window_is_minimized_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_is_minimized_native_macos(win);
+			return macos::_window_is_minimized_native_macos(win);
 		$case $feat(WASM):
 			return _window_is_minimized_native_wasm(win);
 		$case $feat(WIN32):
@@ -742,7 +742,7 @@ fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_make_opengl_current_context_native_macos(win);
+			return macos::_window_make_opengl_current_context_native_macos(win);
 		$case $feat(WASM):
 			return _window_make_opengl_current_context_native_wasm(win);
 		$case $feat(WIN32):
@@ -763,7 +763,7 @@ fn void _window_maximize_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_maximize_native_macos(win);
+			return macos::_window_maximize_native_macos(win);
 		$case $feat(WASM):
 			return _window_maximize_native_wasm(win);
 		$case $feat(WIN32):
@@ -784,7 +784,7 @@ fn void _window_minimize_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_minimize_native_macos(win);
+			return macos::_window_minimize_native_macos(win);
 		$case $feat(WASM):
 			return _window_minimize_native_wasm(win);
 		$case $feat(WIN32):
@@ -805,7 +805,7 @@ fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_move_mouse_macos(win, where);
+			return macos::_window_move_mouse_macos(win, where);
 		$case $feat(WASM):
 			return _window_move_mouse_wasm(win, where);
 		$case $feat(WIN32):
@@ -826,7 +826,7 @@ fn void _window_move_native(GfxWindow* win, GfxPoint where)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_move_native_macos(win, where);
+			return macos::_window_move_native_macos(win, where);
 		$case $feat(WASM):
 			return _window_move_native_wasm(win, where);
 		$case $feat(WIN32):
@@ -847,7 +847,7 @@ fn void _window_raise_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_raise_native_macos(win);
+			return macos::_window_raise_native_macos(win);
 		$case $feat(WASM):
 			return _window_raise_native_wasm(win);
 		$case $feat(WIN32):
@@ -868,7 +868,7 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_resize_native_macos(win, size);
+			return macos::_window_resize_native_macos(win, size);
 		$case $feat(WASM):
 			return _window_resize_native_wasm(win, size);
 		$case $feat(WIN32):
@@ -889,7 +889,7 @@ fn void _window_restore_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_restore_native_macos(win);
+			return macos::_window_restore_native_macos(win);
 		$case $feat(WASM):
 			return _window_restore_native_wasm(win);
 		$case $feat(WIN32):
@@ -910,7 +910,7 @@ fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_aspect_ratio_native_macos(win, w, h);
+			return macos::_window_set_aspect_ratio_native_macos(win, w, h);
 		$case $feat(WASM):
 			return _window_set_aspect_ratio_native_wasm(win, w, h);
 		$case $feat(WIN32):
@@ -931,7 +931,7 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_border_native_macos(win, border);
+			return macos::_window_set_border_native_macos(win, border);
 		$case $feat(WASM):
 			return _window_set_border_native_wasm(win, border);
 		$case $feat(WIN32):
@@ -952,7 +952,7 @@ fn void _window_set_floating_native(GfxWindow* win, bool floating)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_floating_native_macos(win, floating);
+			return macos::_window_set_floating_native_macos(win, floating);
 		$case $feat(WASM):
 			return _window_set_floating_native_wasm(win, floating);
 		$case $feat(WIN32):
@@ -973,7 +973,7 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_fullscreen_native_macos(win, fullscreen);
+			return macos::_window_set_fullscreen_native_macos(win, fullscreen);
 		$case $feat(WASM):
 			return _window_set_fullscreen_native_wasm(win, fullscreen);
 		$case $feat(WIN32):
@@ -994,7 +994,7 @@ fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_max_size_native_macos(win, size);
+			return macos::_window_set_max_size_native_macos(win, size);
 		$case $feat(WASM):
 			return _window_set_max_size_native_wasm(win, size);
 		$case $feat(WIN32):
@@ -1015,7 +1015,7 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_min_size_native_macos(win, size);
+			return macos::_window_set_min_size_native_macos(win, size);
 		$case $feat(WASM):
 			return _window_set_min_size_native_wasm(win, size);
 		$case $feat(WIN32):
@@ -1036,7 +1036,7 @@ fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_mouse_passthrough_native_macos(win, passthrough);
+			return macos::_window_set_mouse_passthrough_native_macos(win, passthrough);
 		$case $feat(WASM):
 			return _window_set_mouse_passthrough_native_wasm(win, passthrough);
 		$case $feat(WIN32):
@@ -1057,7 +1057,7 @@ fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_mouse_native_macos(win, mouse);
+			return macos::_window_set_mouse_native_macos(win, mouse);
 		$case $feat(WASM):
 			return _window_set_mouse_native_wasm(win, mouse);
 		$case $feat(WIN32):
@@ -1078,7 +1078,7 @@ fn void _window_set_opacity_native(GfxWindow* win, char opacity)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_opacity_native_macos(win, opacity);
+			return macos::_window_set_opacity_native_macos(win, opacity);
 		$case $feat(WASM):
 			return _window_set_opacity_native_wasm(win, opacity);
 		$case $feat(WIN32):
@@ -1099,7 +1099,7 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_raw_mouse_mode_native_macos(win, state);
+			return macos::_window_set_raw_mouse_mode_native_macos(win, state);
 		$case $feat(WASM):
 			return _window_set_raw_mouse_mode_native_wasm(win, state);
 		$case $feat(WIN32):
@@ -1120,7 +1120,7 @@ fn void _window_opengl_swap_buffers_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_opengl_swap_buffers_native_macos(win);
+			return macos::_window_opengl_swap_buffers_native_macos(win);
 		$case $feat(WASM):
 			return _window_opengl_swap_buffers_native_wasm(win);
 		$case $feat(WIN32):
@@ -1141,7 +1141,7 @@ fn void? _write_clipboard_native(GfxDataTransfer* data)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _write_clipboard_native_macos(data);
+			return macos::_write_clipboard_native_macos(data);
 		$case $feat(WASM):
 			return _write_clipboard_native_wasm(data);
 		$case $feat(WIN32):
@@ -1162,7 +1162,7 @@ fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, Gfx
 {
 	$switch:
 		$case $feat(MACOS):
-			return _surface_init_native_macos(surface, data, w, h, format, window);
+			return macos::_surface_init_native_macos(surface, data, w, h, format, window);
 		$case $feat(WASM):
 			return _surface_init_native_wasm(surface, data, w, h, format, window);
 		$case $feat(WIN32):
@@ -1183,7 +1183,7 @@ fn void _surface_release_native(GfxSurface* surface)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _surface_release_native_macos(surface);
+			return macos::_surface_release_native_macos(surface);
 		$case $feat(WASM):
 			return _surface_release_native_wasm(surface);
 		$case $feat(WIN32):
@@ -1204,7 +1204,7 @@ fn bool _window_is_floating_native(GfxWindow* win) @private
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_is_floating_native_macos(win);
+			return macos::_window_is_floating_native_macos(win);
 		$case $feat(WASM):
 			return _window_is_floating_native_wasm(win);
 		$case $feat(WIN32):
@@ -1225,7 +1225,7 @@ fn void _window_set_name_native(GfxWindow* win, String name)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_name_native_macos(win, name);
+			return macos::_window_set_name_native_macos(win, name);
 		$case $feat(WASM):
 			return _window_set_name_native_wasm(win, name);
 		$case $feat(WIN32):
@@ -1246,7 +1246,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data_src, int w, int h, Gf
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_icon_native_macos(win, data_src, w, h, format, type);
+			return macos::_window_set_icon_native_macos(win, data_src, w, h, format, type);
 		$case $feat(WASM):
 			return _window_set_icon_native_wasm(win, data_src, w, h, format, type);
 		$case $feat(WIN32):
@@ -1267,7 +1267,7 @@ fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_find_monitor_native_macos(win);
+			return macos::_window_find_monitor_native_macos(win);
 		$case $feat(WASM):
 			return _window_find_monitor_native_wasm(win);
 		$case $feat(WIN32):
@@ -1288,7 +1288,7 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 {
 	$switch:
 		$case $feat(MACOS):
-			return _window_set_capture_mouse_native_macos(win, state);
+			return macos::_window_set_capture_mouse_native_macos(win, state);
 		$case $feat(WASM):
 			return _window_set_capture_mouse_native_wasm(win, state);
 		$case $feat(WIN32):
@@ -1309,7 +1309,7 @@ fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance insta
 {
 	$switch:
 		$case $feat(MACOS):
-			return _vulkan_get_physical_device_presentation_support_native_macos(instance, physical_device, queue_family_index);
+			return macos::_vulkan_get_physical_device_presentation_support_native_macos(instance, physical_device, queue_family_index);
 		$case $feat(WASM):
 			return _vulkan_get_physical_device_presentation_support_native_wasm(instance, physical_device, queue_family_index);
 		$case $feat(WIN32):

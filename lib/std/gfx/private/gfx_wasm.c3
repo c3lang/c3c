@@ -1,3 +1,8 @@
+module std::gfx::wasm @feat(WASM) @private;
+import std::math, std::time;
+import std::gfx::egl @public;
+
+
 module std::gfx @feat(WASM) @private;
 import std::math, std::time;
 import std::gfx::egl @public;

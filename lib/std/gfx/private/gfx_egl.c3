@@ -17,6 +17,7 @@ module std::gfx::egl @feat(MACOS, BSD, LINUX, WASM, WIN32) @private;
 import libc, std::os, std::gfx @public;
 import std::gfx::wl @public;
 import std::collections::fixedlist;
+import std::gfx::macos @public;
 
 
 fn void? load_lib()
@@ -198,7 +199,7 @@ fn void? init_window_context(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hin
 	$switch:
 		$case $feat(MACOS):
 			ObjId nativeWindow = win.src.window;
-			if (win.src.view) nativeWindow = gfx::_get_layer_macos();
+			if (win.src.view) nativeWindow = macos::_get_layer_macos();
 			ctx.surface = create_window_surface_fn((EglDisplay)gfx::_gfx.egl.display, config, (void*)nativeWindow, null);
 			if (!ctx.surface) return SURFACE_CREATION_FAILED~;
 		$case gfx::WAYLAND:

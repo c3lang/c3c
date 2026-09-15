@@ -5,6 +5,7 @@ module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import std::math, std::os, std::os::darwin, libc, std::time;
 import std::gfx::x11 @public, std::gfx::egl @public;
 import std::gfx::wl @public;
+import std::gfx::macos @public;
 
 // The GFX module provides basic window handling across multiple platforms.
 // This implementation was strongly based on RGFW 2.0 by Riley Mabb
@@ -1716,7 +1717,7 @@ fn void? load_opengl()
 {
 	$switch:
 		$case $feat(MACOS):
-			return _load_opengl_macos();
+			return macos::_load_opengl_macos();
 		$case $feat(WIN32):
 			return _load_opengl_win32();
 		$case $feat(WASM):
