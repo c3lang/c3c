@@ -93,7 +93,7 @@ struct GfxContext
 		WlProxy* wlKeyboard;
 		WlProxy* xdgWmBase;
 		WlProxy* decorationManager;
-		WlProxy* constraintManager;
+		WlProxy* constraint_manager;
 		WlProxy* relativePointerManager;
 		WlProxy* relativePointer;
 		WlProxy* iconManager;

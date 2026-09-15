@@ -41,13 +41,13 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return wl::_monitor_get_modes_wayland(monitor);
+			return wl::monitor_get_modes(monitor);
 		$case X11_ONLY:
 			return _monitor_get_modes_x11(monitor);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return wl::_monitor_get_modes_wayland(monitor);
+				return wl::monitor_get_modes(monitor);
 			}
 			return _monitor_get_modes_x11(monitor);
 	$endswitch
@@ -74,13 +74,13 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return wl::_monitor_get_gamma_ramp_wayland(monitor, a);
+			return wl::monitor_get_gamma_ramp(monitor, a);
 		$case X11_ONLY:
 			return _monitor_get_gamma_ramp_x11(monitor, a);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return wl::_monitor_get_gamma_ramp_wayland(monitor, a);
+				return wl::monitor_get_gamma_ramp(monitor, a);
 			}
 			return _monitor_get_gamma_ramp_x11(monitor, a);
 	$endswitch
@@ -90,13 +90,13 @@ fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return wl::_monitor_set_gamma_ramp_wayland(monitor, ramp);
+			return wl::monitor_set_gamma_ramp(monitor, ramp);
 		$case X11_ONLY:
 			return monitor_set_gamma_ramp_x11(monitor, ramp);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return wl::_monitor_set_gamma_ramp_wayland(monitor, ramp);
+				return wl::monitor_set_gamma_ramp(monitor, ramp);
 			}
 			return monitor_set_gamma_ramp_x11(monitor, ramp);
 	$endswitch
@@ -106,13 +106,13 @@ fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return wl::_monitor_set_gamma_wayland(monitor, gamma);
+			return wl::monitor_set_gamma(monitor, gamma);
 		$case X11_ONLY:
 			return monitor_set_gamma_x11(monitor, gamma);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return wl::_monitor_set_gamma_wayland(monitor, gamma);
+				return wl::monitor_set_gamma(monitor, gamma);
 			}
 			return monitor_set_gamma_x11(monitor, gamma);
 	$endswitch
@@ -122,13 +122,13 @@ fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return wl::_monitor_set_mode_wayland(mon, mode);
+			return wl::monitor_set_mode(mon, mode);
 		$case X11_ONLY:
 			return _monitor_set_mode_native_x11(mon, mode);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return wl::_monitor_set_mode_wayland(mon, mode);
+				return wl::monitor_set_mode(mon, mode);
 			}
 			return _monitor_set_mode_native_x11(mon, mode);
 	$endswitch
@@ -138,13 +138,13 @@ fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return wl::_create_mouse_wayland(data, size, format);
+			return wl::create_mouse(data, size, format);
 		$case X11_ONLY:
 			return _create_mouse_x11(data, size, format);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return wl::_create_mouse_wayland(data, size, format);
+				return wl::create_mouse(data, size, format);
 			}
 			return _create_mouse_x11(data, size, format);
 	$endswitch
@@ -205,13 +205,13 @@ fn void _free_mouse(GfxMouse* mouse)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return wl::_free_mouse_wayland(mouse);
+			return wl::free_mouse(mouse);
 		$case X11_ONLY:
 			return _free_mouse_x11(mouse);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return wl::_free_mouse_wayland(mouse);
+				return wl::free_mouse(mouse);
 			}
 			return _free_mouse_x11(mouse);
 	$endswitch
@@ -1142,13 +1142,13 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 {
 	$switch:
 		$case WAYLAND_ONLY:
-			return wl::_window_capture_mouse_wayland(win, state);
+			return wl::window_capture_mouse(win, state);
 		$case X11_ONLY:
 			return _window_capture_mouse_x11(win, state);
 		$default:
 			if (_gfx.use_wayland)
 			{
-				return wl::_window_capture_mouse_wayland(win, state);
+				return wl::window_capture_mouse(win, state);
 			}
 			return _window_capture_mouse_x11(win, state);
 	$endswitch
