@@ -1724,13 +1724,13 @@ fn void? load_opengl()
 		$case WAYLAND_ONLY:
 			return wl::_load_opengl_wayland();
 		$case X11_ONLY:
-			return _load_opengl_x11();
+			return x11::_load_opengl_x11();
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland)
 			{
 				return wl::_load_opengl_wayland();
 			}
-			return _load_opengl_x11();
+			return x11::_load_opengl_x11();
 		$default:
 			return NOT_IMPLEMENTED~;
 	$endswitch

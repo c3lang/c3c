@@ -1,6 +1,6 @@
 module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import std::os::macos, std::os::darwin, std::os::win32;
-import std::gfx::wl @public;
+import std::gfx::wl @public, std::gfx::x11 @public;
 
 const GfxGlHints GLOBAL_HINTS = {
 	0, 0, 0, 0, 1,
@@ -99,9 +99,9 @@ fn void _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 			{
 				return wl::_window_opengl_swap_interval_wayland(win, swap_interval);
 			}
-			return _window_opengl_swap_interval_x11(win, swap_interval);
+			return x11::_window_opengl_swap_interval_x11(win, swap_interval);
 		$case X11:
-			return _window_opengl_swap_interval_x11(win, swap_interval);
+			return x11::_window_opengl_swap_interval_x11(win, swap_interval);
 		$case WAYLAND:
 			return wl::_window_opengl_swap_interval_wayland(win, swap_interval);
 		$default:
