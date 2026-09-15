@@ -1030,6 +1030,7 @@ jobs:
         with:
           os: 'iOS'
           os_version: ">=14.0"
+          wait_for_boot: true
 
       - name: Run Unified Tests (iOS)
         run: |
