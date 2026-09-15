@@ -698,8 +698,8 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			_window_close_callback(win);
 			return 0;
 		case win32::WM_ACTIVATEAPP:
-			bool inFocus = (wParam & 0xffff) != 0;
-			_window_focus_callback(win, inFocus);
+			bool in_focus = (wParam & 0xffff) != 0;
+			_window_focus_callback(win, in_focus);
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_MOVE:
 			if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, true);
@@ -1198,20 +1198,20 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 			WGL_SUPPORT_OPENGL_ARB, 1,
 			WGL_COLOR_BITS_ARB, 32,
 			WGL_DOUBLE_BUFFER_ARB, 1,
-			WGL_ALPHA_BITS_ARB, hints.alpha,
-			WGL_DEPTH_BITS_ARB, hints.depth,
-			WGL_STENCIL_BITS_ARB, hints.stencil,
-			WGL_STEREO_ARB, hints.stereo,
-			WGL_AUX_BUFFERS_ARB, hints.auxBuffers,
-			WGL_RED_BITS_ARB, hints.red,
-			WGL_GREEN_BITS_ARB, hints.blue,
-			WGL_BLUE_BITS_ARB, hints.green,
-			WGL_ACCUM_RED_BITS_ARB, hints.accumRed,
-			WGL_ACCUM_GREEN_BITS_ARB, hints.accumGreen,
-			WGL_ACCUM_BLUE_BITS_ARB, hints.accumBlue,
-			WGL_ACCUM_ALPHA_BITS_ARB, hints.accumAlpha,
+			WGL_ALPHA_BITS_ARB,         hints.rgba_size.a,
+			WGL_DEPTH_BITS_ARB,         hints.depth,
+			WGL_STENCIL_BITS_ARB,       hints.stencil,
+			WGL_STEREO_ARB,             hints.stereo,
+			WGL_AUX_BUFFERS_ARB,        hints.auxBuffers,
+			WGL_RED_BITS_ARB,           hints.rgba_size.r,
+			WGL_GREEN_BITS_ARB,         hints.rgba_size.g,
+			WGL_BLUE_BITS_ARB,          hints.rgba_size.b,
+			WGL_ACCUM_RED_BITS_ARB,     hints.accum_size.r,
+			WGL_ACCUM_GREEN_BITS_ARB,   hints.accum_size.g,
+			WGL_ACCUM_BLUE_BITS_ARB,    hints.accum_size.b,
+			WGL_ACCUM_ALPHA_BITS_ARB,   hints.accum_size.a,
 		});
-		if (hints.sRGB)
+		if (hints.srgb)
 		{
 			if (hints.profile != ES)
 			{
@@ -1219,7 +1219,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 			}
 			else
 			{
-				stack.push_all({WGL_COLORSPACE_SRGB_EXT, (int)hints.sRGB});
+				stack.push_all({WGL_COLORSPACE_SRGB_EXT, (int)hints.srgb});
 			}
 		}
 		stack.push_all({ WGL_COVERAGE_SAMPLES_NV, hints.samples, 0, 0 });
@@ -1257,7 +1257,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 			});
 		}
 
-		if (_opengl_extension_is_supported_native("WGL_ARB_create_context_no_error")) stack.push_all({ WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError });
+		if (_opengl_extension_is_supported_native("WGL_ARB_create_context_no_error")) stack.push_all({ WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.no_error });
 
 		if (_opengl_extension_is_supported_native("WGL_ARB_context_flush_control"))
 		{

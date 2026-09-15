@@ -2,7 +2,10 @@ module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import std::os::macos, std::os::darwin, std::os::win32;
 
 const GfxGlHints GLOBAL_HINTS = {
-	0, 0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0,
+	0, 0, 0, 0, 1,
+	{ 8, 8, 8, 8 },
+	24,
+	{ 0, 0, 0, 0 },
 	false, false, false, false, NONE,
 	CORE, 1, 0, null, null, ACCELERATED
 };
@@ -17,13 +20,13 @@ struct GfxGlHints
 	int stereo;
 	int auxBuffers;
 	int doubleBuffer;
-	int red, green, blue, alpha;
+	int[<4>] rgba_size;
 	int depth;
-	int accumRed, accumGreen, accumBlue, accumAlpha;
-	bool sRGB;
+	int[<4>] accum_size;
+	bool srgb;
 	bool robustness;
 	bool debug;
-	bool noError;
+	bool no_error;
 	GfxGlReleaseBehavior release_behavior;
 	GfxGlProfile profile;
 	int major, minor;
@@ -77,13 +80,13 @@ fn void _window_destroy_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	if (win.src.backing.owned) free(ctx);
 }
 
-fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
+fn void _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 {
 	$switch:
 		$case $feat(MACOS):
-			if (self.src.ctx.native && self.src.ctx.native.ctx)
+			if (win.src.ctx.native && win.src.ctx.native.ctx)
 			{
-				_opengl_context_set_values((ObjId)self.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
+				_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
 			}
 		$case $feat(WIN32):
 			if (!wgl_swap_interval_ext_fn || !wgl_swap_interval_ext_fn(swap_interval))
@@ -93,15 +96,15 @@ fn void GfxWindow.opengl_swap_interval(&self, int swap_interval)
 		$case X11_WAYLAND:
 			$switch:
 				$case WAYLAND_ONLY:
-					return _window_opengl_swap_interval_wayland(self, swap_interval);
+					return _window_opengl_swap_interval_wayland(win, swap_interval);
 				$case X11_ONLY:
-					return _window_opengl_swap_interval_x11(self, swap_interval);
+					return _window_opengl_swap_interval_x11(win, swap_interval);
 				$default:
 					if (_gfx.use_wayland)
 					{
-						return _window_opengl_swap_interval_wayland(self, swap_interval);
+						return _window_opengl_swap_interval_wayland(win, swap_interval);
 					}
-					return _window_opengl_swap_interval_x11(self, swap_interval);
+					return _window_opengl_swap_interval_x11(win, swap_interval);
 			$endswitch
 		$default:
 		// Nothing

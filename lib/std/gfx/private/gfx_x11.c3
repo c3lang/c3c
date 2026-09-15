@@ -1473,25 +1473,25 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 		GLX_X_RENDERABLE, 1,
 		GLX_RENDER_TYPE, GLX_RGBA_BIT,
 		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-		GLX_DOUBLEBUFFER, 1,
-		GLX_ALPHA_SIZE, hints.alpha,
-		GLX_DEPTH_SIZE, hints.depth,
-		GLX_STENCIL_SIZE, hints.stencil,
-		GLX_STEREO, hints.stereo,
-		GLX_AUX_BUFFERS, hints.auxBuffers,
-		GLX_RED_SIZE, hints.red,
-		GLX_GREEN_SIZE, hints.green,
-		GLX_BLUE_SIZE, hints.blue,
-		GLX_ACCUM_RED_SIZE, hints.accumRed,
-		GLX_ACCUM_GREEN_SIZE, hints.accumGreen,
-		GLX_ACCUM_BLUE_SIZE, hints.accumBlue,
-		GLX_ACCUM_ALPHA_SIZE, hints.accumAlpha,
+		GLX_DOUBLEBUFFER,      1,
+		GLX_ALPHA_SIZE,        hints.rgba_size.a,
+		GLX_DEPTH_SIZE,        hints.depth,
+		GLX_STENCIL_SIZE,      hints.stencil,
+		GLX_STEREO,            hints.stereo,
+		GLX_AUX_BUFFERS,       hints.auxBuffers,
+		GLX_RED_SIZE,          hints.rgba_size.r,
+		GLX_GREEN_SIZE,        hints.rgba_size.g,
+		GLX_BLUE_SIZE,         hints.rgba_size.b,
+		GLX_ACCUM_RED_SIZE,    hints.accum_size.r,
+		GLX_ACCUM_GREEN_SIZE,  hints.accum_size.g,
+		GLX_ACCUM_BLUE_SIZE,   hints.accum_size.b,
+		GLX_ACCUM_ALPHA_SIZE,  hints.accum_size.a,
 	});
 
-	if (hints.sRGB)
+	if (hints.srgb)
 	{
-		if (_opengl_extension_is_supported_x11("GLX_ARB_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB, (int)hints.sRGB });
-		if (_opengl_extension_is_supported_x11("GLX_EXT_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT, (int)hints.sRGB });
+		if (_opengl_extension_is_supported_x11("GLX_ARB_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB, (int)hints.srgb });
+		if (_opengl_extension_is_supported_x11("GLX_EXT_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT, (int)hints.srgb });
 	}
 
 	stack.push_all({0, 0});
@@ -1558,7 +1558,7 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	if (hints.robustness && _opengl_extension_is_supported_x11("GLX_ARB_create_context_robustness")) glFlags |= GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 	if (glFlags != 0) stack.push_all({ GLX_CONTEXT_FLAGS_ARB, glFlags });
 
-	if (_opengl_extension_is_supported_x11("GLX_ARB_create_context_no_error")) stack.push_all({ GLX_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.noError });
+	if (_opengl_extension_is_supported_x11("GLX_ARB_create_context_no_error")) stack.push_all({ GLX_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.no_error });
 
 	stack.push_all({0, 0});
 
@@ -1584,7 +1584,7 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	win.src.ctx.native.window = _glx_create_window_fn(_gfx.display, bestFbc, win.src.window, null);
 	_glx_make_current_fn(_gfx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
 	log::info("OpenGL context initalized.", category: log::CATEGORY_VIDEO);
-	win.opengl_swap_interval(0);
+	_window_set_opengl_swap_interval(win, 0);
 }
 
 // private

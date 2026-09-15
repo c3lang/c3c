@@ -798,7 +798,7 @@ fn void? _window_init_opengl_context_wayland(GfxWindow* win, GfxGlContext* conte
 {
 	_window_init_egl_context_wayland(win, (GfxEglContext*)context, hints)!;
 	win.src.backing = { .opengl };
-	win.opengl_swap_interval(0);
+	_window_set_opengl_swap_interval(win, 0);
 }
 
 // public
@@ -1129,12 +1129,12 @@ fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, Gf
 	FixedList{EglInt, 32} stack;
 	stack.push_all( {
 		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-		EGL_RED_SIZE, hints.red,
-		EGL_GREEN_SIZE, hints.green,
-		EGL_BLUE_SIZE, hints.blue,
-		EGL_ALPHA_SIZE, hints.alpha,
-		EGL_DEPTH_SIZE, hints.depth,
-		EGL_STENCIL_SIZE, hints.stencil,
+		EGL_RED_SIZE,        hints.rgba_size.r,
+		EGL_GREEN_SIZE,      hints.rgba_size.g,
+		EGL_BLUE_SIZE,       hints.rgba_size.b,
+		EGL_ALPHA_SIZE,      hints.rgba_size.a,
+		EGL_DEPTH_SIZE,      hints.depth,
+		EGL_STENCIL_SIZE,    hints.stencil,
 		EGL_RENDERABLE_TYPE, hints.profile == ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT,
 		EGL_NONE, EGL_NONE,
 	});
@@ -1635,7 +1635,7 @@ fn void _wl_xdg_surface_conf_cb(void* data, WlProxy* xdgSurface, uint serial)
 fn void _wl_xdg_toplevel_close_cb(void* data, WlProxy* toplevel)
 {
 	GfxWindow* win = (GfxWindow*)data;
-	if (!win.internal.shouldClose) _window_close_callback(win);
+	if (!win.internal.should_close) _window_close_callback(win);
 }
 
 fn void _wl_xdg_toplevel_conf_cb(void* data, WlProxy* toplevel, int width, int height, WlArray* states)

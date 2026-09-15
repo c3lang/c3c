@@ -184,10 +184,10 @@ struct GfxWindowInternal
 	GfxKey exit_key;
 	GfxPoint last_mouse;
 	bool is_collected;
-	bool shouldClose;
+	bool should_close;
 	bool raw_mouse;
 	bool capture_mouse;
-	bool inFocus;
+	bool in_focus;
 	bool mouse_inside;
 	GfxKeyModifier mod;
 	GfxEventMask enabled_events;
@@ -491,14 +491,14 @@ fn void _window_maximized_callback(GfxWindow* win, IntRect bounds)
 	_event_queue_call_push(&event);
 }
 
-fn void _window_focus_callback(GfxWindow* win, bool inFocus)
+fn void _window_focus_callback(GfxWindow* win, bool in_focus)
 {
-	win.internal.inFocus = inFocus;
-	if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, inFocus);
+	win.internal.in_focus = in_focus;
+	if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, in_focus);
 	GfxEvent event;
 	event.common.win = win;
-	event.focus.state = inFocus;
-	if (inFocus == true)
+	event.focus.state = in_focus;
+	if (in_focus == true)
 	{
 		if (win.internal.flags.fullscreen) _window_raise_native(win);
 		event.type = WINDOW_FOCUS_IN;
@@ -752,7 +752,7 @@ fn void _window_restored_callback(GfxWindow* win, IntRect bounds)
 }
 fn void _window_close_callback(GfxWindow* win)
 {
-	win.internal.shouldClose = true;
+	win.internal.should_close = true;
 	if (!win.internal.enabled_events.window_close) return;
 	GfxEvent event;
 	event.type = WINDOW_CLOSE;

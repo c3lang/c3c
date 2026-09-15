@@ -174,7 +174,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	if (!handle) return OPENGL_CTX_CREATION_FAILED~;
 	ctx.ctx = (void*)(uptr)handle;
 	gfxJsWebglMakeCurrent(handle);
-	win.opengl_swap_interval(0);
+	_window_set_opengl_swap_interval(win, 0);
 }
 
 struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector

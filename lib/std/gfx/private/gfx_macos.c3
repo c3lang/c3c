@@ -72,10 +72,10 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	win.src.backing = { .opengl };
 
 	FixedList{int, 40} stack;
-	int colorBits = (hints.red + hints.green + hints.blue + hints.alpha) / 4;
+	int color_bits = (hints.rgba_size.sum()) / 4;
 	stack.push_all({
-		NS_OPEN_GL_PFA_COLOR_SIZE, colorBits,
-		NS_OPEN_GL_PFA_ALPHA_SIZE, hints.alpha,
+		NS_OPEN_GL_PFA_COLOR_SIZE, color_bits,
+		NS_OPEN_GL_PFA_ALPHA_SIZE, hints.rgba_size.a,
 		NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth,
 		NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil,
 		NS_OPEN_GL_PFA_AUX_BUFFERS, hints.auxBuffers,
@@ -93,8 +93,8 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 	stack.push(hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
 	if (hints.major <= 2)
 	{
-		int accumSize = (hints.accumRed + hints.accumGreen + hints.accumBlue + hints.accumAlpha) / 4;
-		stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, accumSize });
+		int accum_size = hints.accum_size.sum() / 4;
+		stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, accum_size });
 	}
 	if (hints.renderer == SOFTWARE)
 	{
@@ -122,7 +122,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* ctx, G
 		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
 	}
 	_window_make_opengl_current_context_native(win);
-	win.opengl_swap_interval(0);
+	_window_set_opengl_swap_interval(win, 0);
 }
 
 fn void* _get_current_opengl_context_native()
@@ -178,12 +178,12 @@ fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, Gfx
 	FixedList{EglInt, 32} stack;
 	stack.push_all({
 		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-		EGL_RED_SIZE, hints.red,
-		EGL_GREEN_SIZE, hints.green,
-		EGL_BLUE_SIZE, hints.blue,
-		EGL_ALPHA_SIZE, hints.alpha,
-		EGL_DEPTH_SIZE, hints.depth,
-		EGL_STENCIL_SIZE, hints.stencil,
+		EGL_RED_SIZE,        hints.rgba_size.r,
+		EGL_GREEN_SIZE,      hints.rgba_size.g,
+		EGL_BLUE_SIZE,       hints.rgba_size.b,
+		EGL_ALPHA_SIZE,      hints.rgba_size.a,
+		EGL_DEPTH_SIZE,      hints.depth,
+		EGL_STENCIL_SIZE,    hints.stencil,
 		EGL_RENDERABLE_TYPE, hints.profile == ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT,
 		EGL_NONE, EGL_NONE
 	});
@@ -370,7 +370,7 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 fn void _window_focus_native(GfxWindow* win)
 {
 	win.src.window.send_void("makeKeyWindow", null);
-	win.internal.inFocus = true;
+	win.internal.in_focus = true;
 }
 
 fn void _window_resize_native(GfxWindow* win, GfxSize size)

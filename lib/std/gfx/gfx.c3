@@ -806,7 +806,7 @@ fn GfxPoint GfxWindow.get_mouse(&win) => win.internal.last_mouse;
 *>
 fn bool GfxWindow.should_close(&self)
 {
-	return self.internal.shouldClose || (self.internal.exit_key && is_key_down(self.internal.exit_key));
+	return self.internal.should_close || (self.internal.exit_key && is_key_down(self.internal.exit_key));
 }
 
 fn void GfxWindow.focus(&self)
@@ -818,7 +818,7 @@ fn void GfxWindow.set_should_close(&win, bool should_close)
 {
 	if (!should_close)
 	{
-		win.internal.shouldClose = false;
+		win.internal.should_close = false;
 		return;
 	}
 	_window_close_callback(win);
@@ -847,6 +847,11 @@ fn VkSurfaceKHR? GfxWindow.create_vulkan_surface(&self, VkInstance instance)
 fn WGPUSurface GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
 {
 	return _window_create_wgpu_surface_native(self, instance);
+}
+
+fn void GfxWindow.set_opengl_swap_interval(&self, int swap_interval)
+{
+	_window_set_opengl_swap_interval(self, swap_interval);
 }
 
 fn void? GfxWindow.create_directx_swap_chain(&self, Win32_IDXGIFactory* factory, void* device, void** swapchain) @feat(WIN32)
@@ -1014,7 +1019,7 @@ fn void GfxWindow.set_flags(&win, GfxWindowFlags flags)
 	_window_set_flags(win, flags, win.internal.flags);
 }
 
-fn bool GfxWindow.has_focus(&win) => win.internal.inFocus;
+fn bool GfxWindow.has_focus(&win) => win.internal.in_focus;
 
 
 <*
