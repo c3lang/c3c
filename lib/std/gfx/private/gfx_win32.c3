@@ -1,3 +1,7 @@
+module std::gfx::win32 @feat(WIN32) @private;
+import std::os::win32, std::collections, std::time, std::math, std::os;
+import std::gfx::egl @public;
+
 module std::gfx @feat(WIN32) @private;
 import std::os::win32, std::collections, std::time, std::math, std::os;
 import std::gfx::egl @public;
@@ -87,11 +91,7 @@ fn void _poll_events_native_win32()
 	}
 }
 
-fn void _window_move_mouse_win32(GfxWindow* win, GfxPoint where)
-{
-	win.internal.last_mouse = where - win.origin;
-	win32::setCursorPos(...where);
-}
+
 
 fn void _window_show_native_win32(GfxWindow* win)
 {

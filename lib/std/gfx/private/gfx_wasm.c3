@@ -2,42 +2,9 @@ module std::gfx::wasm @feat(WASM) @private;
 import std::math, std::time;
 import std::gfx::egl @public;
 
-
-module std::gfx @feat(WASM) @private;
-import std::math, std::time;
-import std::gfx::egl @public;
-
-struct GfxGlContext
-{
-	void* ctx;
-	void* format;
-}
-
-struct GfxNativeImage
-{
-	GfxFormat format;
-	char* buffer;
-	void* native0;
-	void* native1;
-	void* native2;
-}
-
-struct GfxEglContext
-{
-	void* ctx;
-	void* surface;
-	void* egl_window;
-}
-
+fn GfxMouse*? _create_mouse_native_wasm(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
 
 fn void _destroy_native_wasm() {}
-
-fn void _stop_check_events_native()
-{
-	_gfx.stop_check_events = true;
-}
-
-fn GfxMouse*? _create_mouse_native_wasm(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
 
 fn IntRect _monitor_get_workarea_wasm(GfxMonitor* monitor) => { -1, -1, -1, -1 };
 fn void? _monitor_request_mode_native_wasm(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
@@ -51,7 +18,6 @@ fn GfxDataTransfer? _read_clipboard_native_wasm(Allocator allocator, GfxDataTran
 
 fn void _poll_monitors_native_wasm() {}
 fn void _free_mouse_wasm(GfxMouse* mouse) {}
-fn void _wait_for_event_native(Duration duration) {}
 fn void _window_show_native_wasm(GfxWindow* win) {}
 fn bool _window_is_hidden_native_wasm(GfxWindow* win) => false;
 fn bool _window_is_minimized_native_wasm(GfxWindow* win) => false;
@@ -78,27 +44,290 @@ fn void _window_set_raw_mouse_mode_native_wasm(GfxWindow* win, bool state) {}
 fn bool _window_set_mouse_native_wasm(GfxWindow* win, GfxMouse* mouse)
 {
 	ZString name = (ZString)mouse;
-	gfxJsSetCursor(name, name.len());
+	gfx::gfxJsSetCursor(name, name.len());
 	return true;
 }
-
 fn void _window_set_opacity_native_wasm(GfxWindow* win, char opacity)
 {
-	gfxJsSetOpacity((float)opacity / 255.0f);
+	gfx::gfxJsSetOpacity((float)opacity / 255.0f);
 }
-
 fn void _window_maximize_native_wasm(GfxWindow* win)
 {
 	(void)win.resize(_window_find_monitor_native_wasm(win).mode.size);
 	win.move({});
 }
-
-fn GfxMonitor*? _window_find_monitor_native_wasm(GfxWindow* win) => get_primary_monitor();
-
+fn GfxMonitor*? _window_find_monitor_native_wasm(GfxWindow* win) => gfx::get_primary_monitor();
 fn void _window_resize_native_wasm(GfxWindow* win, GfxSize size)
 {
-	gfxJsSetCanvasSize(...size);
+	gfx::gfxJsSetCanvasSize(...size);
 }
+fn void _window_blit_surface_native_wasm(GfxWindow* win, GfxSurface* surface)
+{
+	int minH = win.height < surface.size.y ? win.height : surface.size.y;
+	gfx::copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
+	gfx::gfxJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
+}
+fn void _window_set_capture_mouse_native_wasm(GfxWindow* win, bool state)
+{
+	if (state)
+	{
+		gfx::gfxJsRequestPointerLock();
+	}
+	else
+	{
+		gfx::gfxJsExitPointerLock();
+	}
+}
+fn void _window_set_fullscreen_native_wasm(GfxWindow* win, bool fullscreen)
+{
+	if (fullscreen)
+	{
+		win.internal.flags.fullscreen = true;
+		gfx::gfxJsRequestFullscreen();
+		return;
+	}
+	win.internal.flags.fullscreen = false;
+	gfx::gfxJsExitFullscreen();
+}
+fn GfxPoint _get_global_mouse_native_wasm()
+{
+	return { gfx::gfxJsGetMouseX(), gfx::gfxJsGetMouseY() };
+}
+fn void _window_set_name_native_wasm(GfxWindow* win, String name)
+{
+	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
+}
+fn void _window_set_mouse_passthrough_native_wasm(GfxWindow* win, bool passthrough)
+{
+	gfx::gfxJsSetPointerEvents((int)passthrough);
+}
+fn bool _vulkan_get_physical_device_presentation_support_native_wasm(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
+fn bool _opengl_extension_is_supported_native_wasm(String extension)
+{
+	return gfx::gfxJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
+}
+fn void* _get_opengl_proc_native_wasm(ZString procname)
+{
+	return gfx::gfxJsGetProcAddress(procname);
+}
+fn void? _window_init_opengl_context_native_wasm(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
+{
+	win.src.ctx.native = ctx;
+	win.src.backing = { .opengl };
+	int handle = gfx::gfxJsWebglCreateContext(hints);
+	if (!handle) return gfx::OPENGL_CTX_CREATION_FAILED~;
+	ctx.ctx = (void*)(uptr)handle;
+	gfx::gfxJsWebglMakeCurrent(handle);
+	gfx::_window_set_opengl_swap_interval(win, 0);
+}
+fn WGPUSurface _window_create_wgpu_surface_native_wasm(GfxWindow* window, WGPUInstance instance)
+{
+	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
+	canvasDesc.chain.next = null;
+	canvasDesc.chain.sType = gfx::WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR;
+	canvasDesc.selector.data = "#canvas";
+	canvasDesc.selector.length = 7;
+	WgpuSurfaceDescriptor surfaceDesc;
+	surfaceDesc.nextInChain = (WgpuChainedStruct*)&canvasDesc;
+	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
+}
+fn GfxPoint _window_fetch_size_native_wasm(GfxWindow* win)
+{
+	return win.get_size();
+}
+fn void _window_release_opengl_context_native_wasm(GfxWindow* win, GfxGlContext* ctx)
+{
+	gfx::gfxJsWebglDestroyContext((int)(uptr)ctx.ctx);
+	win.src.ctx.native.ctx = null;
+}
+fn void _window_opengl_swap_buffers_native_wasm(GfxWindow* win)
+{
+	gfx::gfxJsWebglCommitFrame();
+}
+fn void? _create_window_native_wasm(String name, GfxWindowFlags flags, GfxWindow* win)
+{
+	gfx::gfxJsSetCanvasSize(win.width, win.height);
+	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
+	gfx::gfxJsSetupWindowListeners();
+
+	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
+
+	gfx::gfxJsSetupDropListeners();
+
+	gfx::_window_set_flags(win, flags, {});
+	win.src.backing = {};
+	if (flags.open_gl) gfx::_window_create_opengl_context_native(win, gfx::get_global_opengl_hints())!;
+	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
+}
+fn void _poll_events_native_wasm()
+{
+	if (gfx::_gfx.usingAsyncify == -1) gfx::_gfx.usingAsyncify = gfx::gfxJsUsingAsyncify();
+	gfx::_reset_prev_state();
+	if (gfx::_gfx.usingAsyncify) gfx::gfxJsSleep(0);
+}
+fn void _surface_release_native_wasm(GfxSurface* surface)
+{
+	*surface = {};
+}
+fn void? _write_clipboard_native_wasm(GfxDataTransfer* data)
+{
+	gfx::gfxJsWriteClipboard(data.text, data.text.len);
+}
+fn GfxMonitorMode[] _monitor_get_modes_native_wasm(GfxMonitor* mon) => {};
+fn void? _surface_init_native_wasm(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+{
+	surface.data = data;
+	surface.size = { w, h };
+	surface.format = format;
+}
+fn void _window_make_opengl_current_context_native_wasm(GfxWindow* win)
+{
+	if (!win)
+	{
+		gfx::gfxJsWebglMakeCurrent(0);
+	}
+	else
+	{
+		gfx::gfxJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx);
+	}
+}
+fn void* _get_current_opengl_context_native_wasm()
+{
+	return (void*)(uptr)gfx::gfxJsWebglGetCurrentContext();
+}
+fn GfxMouse*? _create_standard_mouse_native_wasm(GfxMouseIcon mouse)
+{
+	ZString cursor_name;
+	switch (mouse)
+	{
+		case NORMAL: cursor_name = "default";
+		case ARROW: cursor_name = "default";
+		case IBEAM: cursor_name = "text";
+		case CROSSHAIR: cursor_name = "crosshair";
+		case POINTING_HAND: cursor_name = "pointer";
+		case RESIZE_EW: cursor_name = "ew-resize";
+		case RESIZE_NS: cursor_name = "ns-resize";
+		case RESIZE_NWSE: cursor_name = "nwse-resize";
+		case RESIZE_NESW: cursor_name = "nesw-resize";
+		case RESIZE_NW: cursor_name = "nw-resize";
+		case RESIZE_N: cursor_name = "n-resize";
+		case RESIZE_NE: cursor_name = "ne-resize";
+		case RESIZE_E: cursor_name = "e-resize";
+		case RESIZE_SE: cursor_name = "se-resize";
+		case RESIZE_S: cursor_name = "s-resize";
+		case RESIZE_SW: cursor_name = "sw-resize";
+		case RESIZE_W: cursor_name = "w-resize";
+		case RESIZE_ALL: cursor_name = "move";
+		case NOT_ALLOWED: cursor_name = "not-allowed";
+		case WAIT: cursor_name = "wait";
+		case PROGRESS: cursor_name = "progress";
+		default: return gfx::MOUSE_NOT_SUPPORTED~;
+	}
+	return (GfxMouse*)cursor_name;
+}
+fn GfxKey _physical_to_mapped_key_native_wasm(GfxKey key) => key;
+fn void _init_keycodes_native_wasm()
+{
+	gfx::_gfx.keycodes = {
+		[DOM_VK_BACK_QUOTE] = BACKTICK,         [DOM_VK_0] = NUM0,                      [DOM_VK_1] = NUM1,
+		[DOM_VK_2] = NUM2,                      [DOM_VK_3] = NUM3,                      [DOM_VK_4] = NUM4,
+		[DOM_VK_5] = NUM5,                      [DOM_VK_6] = NUM6,                      [DOM_VK_7] = NUM7,
+		[DOM_VK_8] = NUM8,                      [DOM_VK_9] = NUM9,                      [DOM_VK_SPACE] = SPACE,
+		[DOM_VK_A] = A,                         [DOM_VK_B] = B,                         [DOM_VK_C] = C,
+		[DOM_VK_D] = D,                         [DOM_VK_E] = E,                         [DOM_VK_F] = F,
+		[DOM_VK_G] = G,                         [DOM_VK_H] = H,                         [DOM_VK_I] = I,
+		[DOM_VK_J] = J,                         [DOM_VK_K] = K,                         [DOM_VK_L] = L,
+		[DOM_VK_M] = M,                         [DOM_VK_N] = N,                         [DOM_VK_O] = O,
+		[DOM_VK_P] = P,                         [DOM_VK_Q] = Q,                         [DOM_VK_R] = R,
+		[DOM_VK_S] = S,                         [DOM_VK_T] = T,                         [DOM_VK_U] = U,
+		[DOM_VK_V] = V,                         [DOM_VK_W] = W,                         [DOM_VK_X] = X,
+		[DOM_VK_Y] = Y,                         [DOM_VK_Z] = Z,                         [DOM_VK_PERIOD] = PERIOD,
+		[DOM_VK_COMMA] = COMMA,                 [DOM_VK_SLASH] = SLASH,                 [DOM_VK_OPEN_BRACKET] = BRACKET,
+		[DOM_VK_CLOSE_BRACKET] = CLOSE_BRACKET, [DOM_VK_SEMICOLON] = SEMICOLON,         [DOM_VK_QUOTE] = APOSTROPHE,
+		[DOM_VK_BACK_SLASH] = BACK_SLASH,       [DOM_VK_RETURN] = RETURN,               [DOM_VK_DELETE] = DELETE,
+		[DOM_VK_NUM_LOCK] = NUM_LOCK,           [DOM_VK_DIVIDE] = PAD_SLASH,            [DOM_VK_MULTIPLY] = PAD_MULTIPLY,
+		[DOM_VK_SUBTRACT] = PAD_MINUS,          [DOM_VK_NUMPAD1] = PAD1,                [DOM_VK_NUMPAD2] = PAD2,
+		[DOM_VK_NUMPAD3] = PAD3,                [DOM_VK_NUMPAD4] = PAD4,                [DOM_VK_NUMPAD5] = PAD5,
+		[DOM_VK_NUMPAD6] = PAD6,                [DOM_VK_NUMPAD9] = PAD9,                [DOM_VK_NUMPAD0] = PAD0,
+		[DOM_VK_DECIMAL] = PAD_PERIOD,          [DOM_VK_HYPHEN_MINUS] = MINUS,          [DOM_VK_EQUALS] = EQUALS,
+		[DOM_VK_BACK_SPACE] = BACK_SPACE,       [DOM_VK_TAB] = TAB,                     [DOM_VK_CAPS_LOCK] = CAPS_LOCK,
+		[DOM_VK_SHIFT] = SHIFT_L,               [DOM_VK_CONTROL] = CONTROL_L,           [DOM_VK_ALT] = ALT_L,
+		[DOM_VK_META] = SUPER_L,                [DOM_VK_F1] = F1,                       [DOM_VK_F2] = F2,
+		[DOM_VK_F3] = F3,                       [DOM_VK_F4] = F4,                       [DOM_VK_F5] = F5,
+		[DOM_VK_F6] = F6,                       [DOM_VK_F7] = F7,                       [DOM_VK_F8] = F8,
+		[DOM_VK_F9] = F9,                       [DOM_VK_F10] = F10,                     [DOM_VK_F11] = F11,
+		[DOM_VK_F12] = F12,                     [DOM_VK_UP] = UP,                       [DOM_VK_DOWN] = DOWN,
+		[DOM_VK_LEFT] = LEFT,                   [DOM_VK_RIGHT] = RIGHT,                 [DOM_VK_INSERT] = INSERT,
+		[DOM_VK_END] = END,                     [DOM_VK_PAGE_UP] = PAGE_UP,             [DOM_VK_PAGE_DOWN] = PAGE_DOWN,
+		[DOM_VK_ESCAPE] = ESCAPE,               [DOM_VK_HOME] = HOME,                   [DOM_VK_SCROLL_LOCK] = SCROLL_LOCK,
+		[DOM_VK_PRINTSCREEN] = PRINT_SCREEN,    [DOM_VK_PAUSE] = PAUSE,                 [DOM_VK_F13] = F13,
+		[DOM_VK_F14] = F14,                     [DOM_VK_F15] = F15,                     [DOM_VK_F16] = F16,
+		[DOM_VK_F17] = F17,                     [DOM_VK_F18] = F18,                     [DOM_VK_F19] = F19,
+		[DOM_VK_F20] = F20,                     [DOM_VK_F21] = F21,                     [DOM_VK_F22] = F22,
+		[DOM_VK_F23] = F23,                     [DOM_VK_F24] = F24,
+	};
+}
+
+// ---- DOM virtual key codes ----
+const int DOM_VK_BACK_QUOTE = 192; const int DOM_VK_0 = 48; const int DOM_VK_1 = 49; const int DOM_VK_2 = 50;
+const int DOM_VK_3 = 51; const int DOM_VK_4 = 52; const int DOM_VK_5 = 53; const int DOM_VK_6 = 54;
+const int DOM_VK_7 = 55; const int DOM_VK_8 = 56; const int DOM_VK_9 = 57; const int DOM_VK_SPACE = 32;
+const int DOM_VK_A = 65; const int DOM_VK_B = 66; const int DOM_VK_C = 67; const int DOM_VK_D = 68;
+const int DOM_VK_E = 69; const int DOM_VK_F = 70; const int DOM_VK_G = 71; const int DOM_VK_H = 72;
+const int DOM_VK_I = 73; const int DOM_VK_J = 74; const int DOM_VK_K = 75; const int DOM_VK_L = 76;
+const int DOM_VK_M = 77; const int DOM_VK_N = 78; const int DOM_VK_O = 79; const int DOM_VK_P = 80;
+const int DOM_VK_Q = 81; const int DOM_VK_R = 82; const int DOM_VK_S = 83; const int DOM_VK_T = 84;
+const int DOM_VK_U = 85; const int DOM_VK_V = 86; const int DOM_VK_W = 87; const int DOM_VK_X = 88;
+const int DOM_VK_Y = 89; const int DOM_VK_Z = 90;
+const int DOM_VK_PERIOD = 190; const int DOM_VK_COMMA = 188; const int DOM_VK_SLASH = 191;
+const int DOM_VK_OPEN_BRACKET = 219; const int DOM_VK_CLOSE_BRACKET = 221; const int DOM_VK_SEMICOLON = 186;
+const int DOM_VK_QUOTE = 222; const int DOM_VK_BACK_SLASH = 220; const int DOM_VK_RETURN = 13;
+const int DOM_VK_DELETE = 46; const int DOM_VK_NUM_LOCK = 144; const int DOM_VK_DIVIDE = 111;
+const int DOM_VK_MULTIPLY = 106; const int DOM_VK_SUBTRACT = 109;
+const int DOM_VK_NUMPAD1 = 97; const int DOM_VK_NUMPAD2 = 98; const int DOM_VK_NUMPAD3 = 99;
+const int DOM_VK_NUMPAD4 = 100; const int DOM_VK_NUMPAD5 = 101; const int DOM_VK_NUMPAD6 = 102;
+const int DOM_VK_NUMPAD9 = 105; const int DOM_VK_NUMPAD0 = 96; const int DOM_VK_DECIMAL = 110;
+const int DOM_VK_HYPHEN_MINUS = 173; const int DOM_VK_EQUALS = 61;
+const int DOM_VK_BACK_SPACE = 8; const int DOM_VK_TAB = 9; const int DOM_VK_CAPS_LOCK = 20;
+const int DOM_VK_SHIFT = 16; const int DOM_VK_CONTROL = 17; const int DOM_VK_ALT = 18; const int DOM_VK_META = 91;
+const int DOM_VK_F1 = 112; const int DOM_VK_F2 = 113; const int DOM_VK_F3 = 114; const int DOM_VK_F4 = 115;
+const int DOM_VK_F5 = 116; const int DOM_VK_F6 = 117; const int DOM_VK_F7 = 118; const int DOM_VK_F8 = 119;
+const int DOM_VK_F9 = 120; const int DOM_VK_F10 = 121; const int DOM_VK_F11 = 122; const int DOM_VK_F12 = 123;
+const int DOM_VK_F13 = 124; const int DOM_VK_F14 = 125; const int DOM_VK_F15 = 126; const int DOM_VK_F16 = 127;
+const int DOM_VK_F17 = 128; const int DOM_VK_F18 = 129; const int DOM_VK_F19 = 130; const int DOM_VK_F20 = 131;
+const int DOM_VK_F21 = 132; const int DOM_VK_F22 = 133; const int DOM_VK_F23 = 134; const int DOM_VK_F24 = 135;
+const int DOM_VK_UP = 38; const int DOM_VK_DOWN = 40; const int DOM_VK_LEFT = 37; const int DOM_VK_RIGHT = 39;
+const int DOM_VK_INSERT = 45; const int DOM_VK_END = 35; const int DOM_VK_PAGE_UP = 33; const int DOM_VK_PAGE_DOWN = 34;
+const int DOM_VK_ESCAPE = 27; const int DOM_VK_HOME = 36; const int DOM_VK_SCROLL_LOCK = 145;
+const int DOM_VK_PRINTSCREEN = 44; const int DOM_VK_PAUSE = 19;
+
+module std::gfx @feat(WASM) @private;
+import std::math, std::time;
+import std::gfx::egl @public;
+import std::gfx::wasm @public;
+
+struct GfxGlContext
+{
+	void* ctx;
+	void* format;
+}
+
+struct GfxNativeImage
+{
+	GfxFormat format;
+	char* buffer;
+	void* native0;
+	void* native1;
+	void* native2;
+}
+
+struct GfxEglContext
+{
+	void* ctx;
+	void* surface;
+	void* egl_window;
+}
+
 
 fn void _window_show_mouse_native(GfxWindow* win, bool show)
 {
@@ -113,127 +342,11 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show)
 	}
 }
 
-fn void _window_blit_surface_native_wasm(GfxWindow* win, GfxSurface* surface)
-{
-	int minH = win.height < surface.size.y ? win.height : surface.size.y;
-	copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
-	gfxJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
-}
-
-fn void _window_set_capture_mouse_native_wasm(GfxWindow* win, bool state)
-{
-	if (state)
-	{
-		gfxJsRequestPointerLock();
-	}
-	else
-	{
-		gfxJsExitPointerLock();
-	}
-}
-
-
-fn void _window_set_fullscreen_native_wasm(GfxWindow* win, bool fullscreen)
-{
-	if (fullscreen)
-	{
-		win.internal.flags.fullscreen = true;
-		gfxJsRequestFullscreen();
-		return;
-	}
-	win.internal.flags.fullscreen = false;
-	gfxJsExitFullscreen();
-}
-
-fn GfxPoint _get_global_mouse_native_wasm()
-{
-	return { gfxJsGetMouseX(), gfxJsGetMouseY() };
-}
-
-fn void _window_set_name_native_wasm(GfxWindow* win, String name)
-{
-	gfxJsSetWindowTitle((ZString)name, name.len);
-}
-
-fn void _window_set_mouse_passthrough_native_wasm(GfxWindow* win, bool passthrough)
-{
-	gfxJsSetPointerEvents((int)passthrough);
-}
-
-fn bool _vulkan_get_physical_device_presentation_support_native_wasm(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
-
-fn bool _opengl_extension_is_supported_native_wasm(String extension)
-{
-	return gfxJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
-}
-
-fn void* _get_opengl_proc_native_wasm(ZString procname)
-{
-	return gfxJsGetProcAddress(procname);
-}
-
-fn void? _window_init_opengl_context_native_wasm(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
-{
-	win.src.ctx.native = ctx;
-	win.src.backing = { .opengl };
-	int handle = gfxJsWebglCreateContext(hints);
-	if (!handle) return OPENGL_CTX_CREATION_FAILED~;
-	ctx.ctx = (void*)(uptr)handle;
-	gfxJsWebglMakeCurrent(handle);
-	_window_set_opengl_swap_interval(win, 0);
-}
-
 struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector
 {
 	WgpuChainedStruct chain;
 	WgpuStringView selector;
 }
-
-fn WGPUSurface _window_create_wgpu_surface_native_wasm(GfxWindow* window, WGPUInstance instance)
-{
-	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
-	canvasDesc.chain.next = null;
-	canvasDesc.chain.sType = WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR;
-	canvasDesc.selector.data = "#canvas";
-	canvasDesc.selector.length = 7;
-	WgpuSurfaceDescriptor surfaceDesc;
-	surfaceDesc.nextInChain = (WgpuChainedStruct*)&canvasDesc;
-	return wgpuInstanceCreateSurface(instance, &surfaceDesc);
-}
-
-fn GfxPoint _window_fetch_size_native_wasm(GfxWindow* win)
-{
-	return win.get_size();
-}
-
-fn void _window_release_opengl_context_native_wasm(GfxWindow* win, GfxGlContext* ctx)
-{
-	gfxJsWebglDestroyContext((int)(uptr)ctx.ctx);
-	win.src.ctx.native.ctx = null;
-}
-
-fn void _window_opengl_swap_buffers_native_wasm(GfxWindow* win)
-{
-	gfxJsWebglCommitFrame();
-}
-
-
-fn void? _create_window_native_wasm(String name, GfxWindowFlags flags, GfxWindow* win)
-{
-	gfxJsSetCanvasSize(win.width, win.height);
-	gfxJsSetWindowTitle((ZString)name, name.len);
-	gfxJsSetupWindowListeners();
-
-	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
-
-	gfxJsSetupDropListeners();
-
-	_window_set_flags(win, flags, {});
-	win.src.backing = {};
-	if (flags.open_gl) _window_create_opengl_context_native(win, get_global_opengl_hints())!;
-	if (flags.egl) egl::create_context(win, get_global_opengl_hints())!;
-}
-
 
 fn void? _init_native(String class_name, GfxInitOption flags)
 {
@@ -260,26 +373,6 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 		_monitor_callback(_gfx.root, &node.mon, true);
 	}
 }
-
-fn void _poll_events_native_wasm()
-{
-	if (_gfx.usingAsyncify == -1) _gfx.usingAsyncify = gfxJsUsingAsyncify();
-	_reset_prev_state();
-	if (_gfx.usingAsyncify) gfxJsSleep(0);
-}
-
-fn void _surface_release_native_wasm(GfxSurface* surface)
-{
-	*surface = {};
-}
-
-fn void? _write_clipboard_native_wasm(GfxDataTransfer* data)
-{
-	gfxJsWriteClipboard(data.text, data.text.len);
-}
-
-
-fn GfxMonitorMode[] _monitor_get_modes_native_wasm(GfxMonitor* mon) => {};
 
 // --- exported
 
@@ -330,104 +423,6 @@ fn void handle_key_mods_callback(bool capital, bool numlock, bool control, bool 
 
 
 // public
-fn void? _surface_init_native_wasm(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
-{
-	surface.data = data;
-	surface.size = { w, h };
-	surface.format = format;
-}
-
-fn void _window_make_opengl_current_context_native_wasm(GfxWindow* win)
-{
-	if (!win)
-	{
-		gfxJsWebglMakeCurrent(0);
-	}
-	else
-	{
-		gfxJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx);
-	}
-}
-
-fn void* _get_current_opengl_context_native_wasm()
-{
-	return (void*)(uptr)gfxJsWebglGetCurrentContext();
-}
-
-fn GfxMouse*? _create_standard_mouse_native_wasm(GfxMouseIcon mouse)
-{
-	ZString cursor_name;
-	switch (mouse)
-	{
-		case NORMAL: cursor_name = "default";
-		case ARROW: cursor_name = "default";
-		case IBEAM: cursor_name = "text";
-		case CROSSHAIR: cursor_name = "crosshair";
-		case POINTING_HAND: cursor_name = "pointer";
-		case RESIZE_EW: cursor_name = "ew-resize";
-		case RESIZE_NS: cursor_name = "ns-resize";
-		case RESIZE_NWSE: cursor_name = "nwse-resize";
-		case RESIZE_NESW: cursor_name = "nesw-resize";
-		case RESIZE_NW: cursor_name = "nw-resize";
-		case RESIZE_N: cursor_name = "n-resize";
-		case RESIZE_NE: cursor_name = "ne-resize";
-		case RESIZE_E: cursor_name = "e-resize";
-		case RESIZE_SE: cursor_name = "se-resize";
-		case RESIZE_S: cursor_name = "s-resize";
-		case RESIZE_SW: cursor_name = "sw-resize";
-		case RESIZE_W: cursor_name = "w-resize";
-		case RESIZE_ALL: cursor_name = "move";
-		case NOT_ALLOWED: cursor_name = "not-allowed";
-		case WAIT: cursor_name = "wait";
-		case PROGRESS: cursor_name = "progress";
-		default: return MOUSE_NOT_SUPPORTED~;
-	}
-	return (GfxMouse*)cursor_name;
-}
-
-fn GfxKey _physical_to_mapped_key_native_wasm(GfxKey key) => key;
-
-fn void _init_keycodes_native_wasm()
-{
-	_gfx.keycodes = {
-		[DOM_VK_BACK_QUOTE] = BACKTICK,         [DOM_VK_0] = NUM0,                      [DOM_VK_1] = NUM1,
-		[DOM_VK_2] = NUM2,                      [DOM_VK_3] = NUM3,                      [DOM_VK_4] = NUM4,
-		[DOM_VK_5] = NUM5,                      [DOM_VK_6] = NUM6,                      [DOM_VK_7] = NUM7,
-		[DOM_VK_8] = NUM8,                      [DOM_VK_9] = NUM9,                      [DOM_VK_SPACE] = SPACE,
-		[DOM_VK_A] = A,                         [DOM_VK_B] = B,                         [DOM_VK_C] = C,
-		[DOM_VK_D] = D,                         [DOM_VK_E] = E,                         [DOM_VK_F] = F,
-		[DOM_VK_G] = G,                         [DOM_VK_H] = H,                         [DOM_VK_I] = I,
-		[DOM_VK_J] = J,                         [DOM_VK_K] = K,                         [DOM_VK_L] = L,
-		[DOM_VK_M] = M,                         [DOM_VK_N] = N,                         [DOM_VK_O] = O,
-		[DOM_VK_P] = P,                         [DOM_VK_Q] = Q,                         [DOM_VK_R] = R,
-		[DOM_VK_S] = S,                         [DOM_VK_T] = T,                         [DOM_VK_U] = U,
-		[DOM_VK_V] = V,                         [DOM_VK_W] = W,                         [DOM_VK_X] = X,
-		[DOM_VK_Y] = Y,                         [DOM_VK_Z] = Z,                         [DOM_VK_PERIOD] = PERIOD,
-		[DOM_VK_COMMA] = COMMA,                 [DOM_VK_SLASH] = SLASH,                 [DOM_VK_OPEN_BRACKET] = BRACKET,
-		[DOM_VK_CLOSE_BRACKET] = CLOSE_BRACKET, [DOM_VK_SEMICOLON] = SEMICOLON,         [DOM_VK_QUOTE] = APOSTROPHE,
-		[DOM_VK_BACK_SLASH] = BACK_SLASH,       [DOM_VK_RETURN] = RETURN,               [DOM_VK_DELETE] = DELETE,
-		[DOM_VK_NUM_LOCK] = NUM_LOCK,           [DOM_VK_DIVIDE] = PAD_SLASH,            [DOM_VK_MULTIPLY] = PAD_MULTIPLY,
-		[DOM_VK_SUBTRACT] = PAD_MINUS,          [DOM_VK_NUMPAD1] = PAD1,                [DOM_VK_NUMPAD2] = PAD2,
-		[DOM_VK_NUMPAD3] = PAD3,                [DOM_VK_NUMPAD4] = PAD4,                [DOM_VK_NUMPAD5] = PAD5,
-		[DOM_VK_NUMPAD6] = PAD6,                [DOM_VK_NUMPAD9] = PAD9,                [DOM_VK_NUMPAD0] = PAD0,
-		[DOM_VK_DECIMAL] = PAD_PERIOD,          [DOM_VK_HYPHEN_MINUS] = MINUS,          [DOM_VK_EQUALS] = EQUALS,
-		[DOM_VK_BACK_SPACE] = BACK_SPACE,       [DOM_VK_TAB] = TAB,                     [DOM_VK_CAPS_LOCK] = CAPS_LOCK,
-		[DOM_VK_SHIFT] = SHIFT_L,               [DOM_VK_CONTROL] = CONTROL_L,           [DOM_VK_ALT] = ALT_L,
-		[DOM_VK_META] = SUPER_L,                [DOM_VK_F1] = F1,                       [DOM_VK_F2] = F2,
-		[DOM_VK_F3] = F3,                       [DOM_VK_F4] = F4,                       [DOM_VK_F5] = F5,
-		[DOM_VK_F6] = F6,                       [DOM_VK_F7] = F7,                       [DOM_VK_F8] = F8,
-		[DOM_VK_F9] = F9,                       [DOM_VK_F10] = F10,                     [DOM_VK_F11] = F11,
-		[DOM_VK_F12] = F12,                     [DOM_VK_UP] = UP,                       [DOM_VK_DOWN] = DOWN,
-		[DOM_VK_LEFT] = LEFT,                   [DOM_VK_RIGHT] = RIGHT,                 [DOM_VK_INSERT] = INSERT,
-		[DOM_VK_END] = END,                     [DOM_VK_PAGE_UP] = PAGE_UP,             [DOM_VK_PAGE_DOWN] = PAGE_DOWN,
-		[DOM_VK_ESCAPE] = ESCAPE,               [DOM_VK_HOME] = HOME,                   [DOM_VK_SCROLL_LOCK] = SCROLL_LOCK,
-		[DOM_VK_PRINTSCREEN] = PRINT_SCREEN,    [DOM_VK_PAUSE] = PAUSE,                 [DOM_VK_F13] = F13,
-		[DOM_VK_F14] = F14,                     [DOM_VK_F15] = F15,                     [DOM_VK_F16] = F16,
-		[DOM_VK_F17] = F17,                     [DOM_VK_F18] = F18,                     [DOM_VK_F19] = F19,
-		[DOM_VK_F20] = F20,                     [DOM_VK_F21] = F21,                     [DOM_VK_F22] = F22,
-		[DOM_VK_F23] = F23,                     [DOM_VK_F24] = F24,
-	};
-}
 
 // ---
 
@@ -540,38 +535,6 @@ fn void gfxEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @expor
 	}
 }
 
-const int DOM_VK_BACK_QUOTE = 192; const int DOM_VK_0 = 48; const int DOM_VK_1 = 49; const int DOM_VK_2 = 50;
-const int DOM_VK_3 = 51; const int DOM_VK_4 = 52; const int DOM_VK_5 = 53; const int DOM_VK_6 = 54;
-const int DOM_VK_7 = 55; const int DOM_VK_8 = 56; const int DOM_VK_9 = 57; const int DOM_VK_SPACE = 32;
-const int DOM_VK_A = 65; const int DOM_VK_B = 66; const int DOM_VK_C = 67; const int DOM_VK_D = 68;
-const int DOM_VK_E = 69; const int DOM_VK_F = 70; const int DOM_VK_G = 71; const int DOM_VK_H = 72;
-const int DOM_VK_I = 73; const int DOM_VK_J = 74; const int DOM_VK_K = 75; const int DOM_VK_L = 76;
-const int DOM_VK_M = 77; const int DOM_VK_N = 78; const int DOM_VK_O = 79; const int DOM_VK_P = 80;
-const int DOM_VK_Q = 81; const int DOM_VK_R = 82; const int DOM_VK_S = 83; const int DOM_VK_T = 84;
-const int DOM_VK_U = 85; const int DOM_VK_V = 86; const int DOM_VK_W = 87; const int DOM_VK_X = 88;
-const int DOM_VK_Y = 89; const int DOM_VK_Z = 90;
-const int DOM_VK_PERIOD = 190; const int DOM_VK_COMMA = 188; const int DOM_VK_SLASH = 191;
-const int DOM_VK_OPEN_BRACKET = 219; const int DOM_VK_CLOSE_BRACKET = 221; const int DOM_VK_SEMICOLON = 186;
-const int DOM_VK_QUOTE = 222; const int DOM_VK_BACK_SLASH = 220; const int DOM_VK_RETURN = 13;
-const int DOM_VK_DELETE = 46; const int DOM_VK_NUM_LOCK = 144; const int DOM_VK_DIVIDE = 111;
-const int DOM_VK_MULTIPLY = 106; const int DOM_VK_SUBTRACT = 109;
-const int DOM_VK_NUMPAD1 = 97; const int DOM_VK_NUMPAD2 = 98; const int DOM_VK_NUMPAD3 = 99;
-const int DOM_VK_NUMPAD4 = 100; const int DOM_VK_NUMPAD5 = 101; const int DOM_VK_NUMPAD6 = 102;
-const int DOM_VK_NUMPAD9 = 105; const int DOM_VK_NUMPAD0 = 96; const int DOM_VK_DECIMAL = 110;
-const int DOM_VK_HYPHEN_MINUS = 173; const int DOM_VK_EQUALS = 61;
-const int DOM_VK_BACK_SPACE = 8; const int DOM_VK_TAB = 9; const int DOM_VK_CAPS_LOCK = 20;
-const int DOM_VK_SHIFT = 16; const int DOM_VK_CONTROL = 17; const int DOM_VK_ALT = 18; const int DOM_VK_META = 91;
-const int DOM_VK_F1 = 112; const int DOM_VK_F2 = 113; const int DOM_VK_F3 = 114; const int DOM_VK_F4 = 115;
-const int DOM_VK_F5 = 116; const int DOM_VK_F6 = 117; const int DOM_VK_F7 = 118; const int DOM_VK_F8 = 119;
-const int DOM_VK_F9 = 120; const int DOM_VK_F10 = 121; const int DOM_VK_F11 = 122; const int DOM_VK_F12 = 123;
-const int DOM_VK_F13 = 124; const int DOM_VK_F14 = 125; const int DOM_VK_F15 = 126; const int DOM_VK_F16 = 127;
-const int DOM_VK_F17 = 128; const int DOM_VK_F18 = 129; const int DOM_VK_F19 = 130; const int DOM_VK_F20 = 131;
-const int DOM_VK_F21 = 132; const int DOM_VK_F22 = 133; const int DOM_VK_F23 = 134; const int DOM_VK_F24 = 135;
-const int DOM_VK_UP = 38; const int DOM_VK_DOWN = 40; const int DOM_VK_LEFT = 37; const int DOM_VK_RIGHT = 39;
-const int DOM_VK_INSERT = 45; const int DOM_VK_END = 35; const int DOM_VK_PAGE_UP = 33; const int DOM_VK_PAGE_DOWN = 34;
-const int DOM_VK_ESCAPE = 27; const int DOM_VK_HOME = 36; const int DOM_VK_SCROLL_LOCK = 145;
-const int DOM_VK_PRINTSCREEN = 44; const int DOM_VK_PAUSE = 19;
-
 fn GfxKey _wasm_physical_to_gfx(uint hash)
 {
 	switch (hash)
@@ -626,3 +589,10 @@ fn GfxKey _wasm_physical_to_gfx(uint hash)
 		default: return NULL;
 	}
 }
+
+fn void _stop_check_events_native()
+{
+	_gfx.stop_check_events = true;
+}
+
+fn void _wait_for_event_native(Duration duration) {}
