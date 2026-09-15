@@ -1,5 +1,10 @@
 # C3C Release Notes
 
+## 0.8.5 Change list
+
+### Fixes
+- Regression for `vec.pow(x)`.
+
 ## 0.8.4 Change list
 
 ### Changes / improvements
