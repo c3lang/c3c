@@ -1572,6 +1572,17 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->cc = next_arg();
 				return;
 			}
+			if ((argopt = match_argopt("cflags"))) // NOLINT
+			{
+				options->cflags = argopt;
+				return;
+			}
+			if (match_longopt("cflags"))
+			{
+				if (at_end()) error_exit("error: --cflags needs an argument string.");
+				options->cflags = next_arg();
+				return;
+			}
 			if (match_longopt("stdlib"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --stdlib needs a directory.");
