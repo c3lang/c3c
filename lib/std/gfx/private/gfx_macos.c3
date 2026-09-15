@@ -1,5 +1,5 @@
 module std::gfx @feat(MACOS) @private @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
-import std::os::macos, std::math, std::time, std::os::darwin, std::collections;
+import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 
 struct GfxGlContext
 {
@@ -163,63 +163,11 @@ fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param)
 }
 
 
-fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hints)
-{
-	_load_egl_native()!;
-	if (!_gfx.egl.display)
-	{
-		_gfx.egl.display = egl_get_display_fn(null);
-		if (!_gfx.egl.display) return EGL_DISPLAY_NOT_FOUND~;
-		EglInt major, minor;
-		if (!egl_initialize_fn(_gfx.egl.display, &major, &minor)) return EGL_DISPLAY_FAILED_TO_INITIALIZE~;
-	}
-
-	EglInt[32] cfg;
-	FixedList{EglInt, 32} stack;
-	stack.push_all({
-		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-		EGL_RED_SIZE,        hints.rgba_size.r,
-		EGL_GREEN_SIZE,      hints.rgba_size.g,
-		EGL_BLUE_SIZE,       hints.rgba_size.b,
-		EGL_ALPHA_SIZE,      hints.rgba_size.a,
-		EGL_DEPTH_SIZE,      hints.depth,
-		EGL_STENCIL_SIZE,    hints.stencil,
-		EGL_RENDERABLE_TYPE, hints.profile == ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT,
-		EGL_NONE, EGL_NONE
-	});
-
-	EglConfig config = null;
-	EglInt num = 0;
-	if (!egl_choose_config_fn((EglDisplay)_gfx.egl.display, &cfg, &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
-	egl_bind_api_fn(hints.profile == ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
-
-	stack.clear();
-	if (hints.profile == ES) stack.push_all({EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2});
-	stack.push_all({EGL_NONE, EGL_NONE});
-
-	EglContext share = hints.share_egl ? hints.share_egl.ctx : null;
-	ctx.ctx = egl_create_context_fn(_gfx.egl.display, config, share, stack.array_view());
-	if (!ctx.ctx) return EGL_CTX_CREATION_FAILED~;
-	defer catch
-	{
-		egl_destroy_context_fn(_gfx.egl.display, ctx.ctx);
-		ctx.ctx = null;
-	}
-
-	ObjId nativeWindow = win.src.window;
-	if (win.src.view) nativeWindow = _get_layer_macos();
-	ctx.surface = egl_create_window_surface_fn((EglDisplay)_gfx.egl.display, config, (void*)nativeWindow, null);
-	if (!ctx.surface) return EGL_SURFACE_CREATION_FAILED~;
-
-	win.src.ctx.egl = ctx;
-	win.src.backing = { .egl };
-	_window_make_current_egl_context(win);
-}
 
 fn void _window_release_egl_context_native(GfxWindow* win, GfxEglContext* ctx)
 {
-	if (ctx.surface) egl_destroy_surface_fn(_gfx.egl.display, ctx.surface);
-	if (ctx.ctx) egl_destroy_context_fn(_gfx.egl.display, ctx.ctx);
+	if (ctx.surface) egl::destroy_surface_fn(_gfx.egl.display, ctx.surface);
+	if (ctx.ctx) egl::destroy_context_fn(_gfx.egl.display, ctx.ctx);
 	ctx.surface = null;
 	ctx.ctx = null;
 	win.src.ctx.egl = null;
@@ -853,11 +801,7 @@ fn void _surface_release_native(GfxSurface* surface)
 	*surface = {};
 }
 
-struct WgpuSurfaceSourceMetalLayer
-{
-	WgpuChainedStruct chain;
-	ObjId layer;
-}
+struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
 
 fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)
 {

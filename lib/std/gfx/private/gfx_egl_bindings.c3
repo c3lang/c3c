@@ -1,4 +1,5 @@
-module std::gfx @private @feat(MACOS, BSD, LINUX);
+module std::gfx::egl @weak @private @feat(MACOS, BSD, LINUX);
+import std::gfx @public;
 
 const EglInt EGL_NONE = 0x3038;
 const EglInt EGL_RED_SIZE = 0x3024;
@@ -17,21 +18,21 @@ const EglInt EGL_OPENGL_ES_API = 0x30a0;
 const EglInt EGL_CONTEXT_CLIENT_VERSION = 0x3098;
 const EglInt EGL_EXTENSIONS = 0x3055;
 
-EglGetDisplayProc egl_get_display_fn;
-EglInitializeProc egl_initialize_fn;
-EglTerminateProc egl_terminate_fn;
-EglBindApiProc egl_bind_api_fn;
-EglChooseConfigProc egl_choose_config_fn;
-EglCreateContextProc egl_create_context_fn;
-EglDestroyContextProc egl_destroy_context_fn;
-EglCreateWindowSurfaceProc egl_create_window_surface_fn;
-EglDestroySurfaceProc egl_destroy_surface_fn;
-EglMakeCurrentProc egl_make_current_fn;
-EglSwapBuffersProc egl_swap_buffers_fn;
-EglSwapIntervalProc egl_swap_interval_fn;
-EglGetCurrentContextProc egl_get_current_context_fn;
-EglQueryStringProc egl_query_string_fn;
-EglGetConfigAttribProc egl_get_config_attrib_fn;
+EglGetDisplayProc          get_display_fn;
+EglInitializeProc          initialize_fn;
+EglTerminateProc           terminate_fn;
+EglBindApiProc             bind_api_fn;
+EglChooseConfigProc        choose_config_fn;
+EglCreateContextProc       create_context_fn;
+EglDestroyContextProc      destroy_context_fn;
+EglCreateWindowSurfaceProc create_window_surface_fn;
+EglDestroySurfaceProc      destroy_surface_fn;
+EglMakeCurrentProc         make_current_fn;
+EglSwapBuffersProc         swap_buffers_fn;
+EglSwapIntervalProc        swap_interval_fn;
+EglGetCurrentContextProc   get_current_context_fn;
+EglQueryStringProc         query_string_fn;
+EglGetConfigAttribProc     get_config_attrib_fn;
 
 alias EglDisplay = void*;
 alias EglContext = void*;
@@ -59,19 +60,19 @@ alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig confi
 
 fn void? bind_egl()
 {
-	egl_get_display_fn           = _find_egl_proc("eglGetDisplay")!;
-	egl_initialize_fn            = _find_egl_proc("eglInitialize")!;
-	egl_terminate_fn             = _find_egl_proc("eglTerminate")!;
-	egl_bind_api_fn              = _find_egl_proc("eglBindAPI")!;
-	egl_choose_config_fn         = _find_egl_proc("eglChooseConfig")!;
-	egl_create_context_fn        = _find_egl_proc("eglCreateContext")!;
-	egl_destroy_context_fn       = _find_egl_proc("eglDestroyContext")!;
-	egl_create_window_surface_fn = _find_egl_proc("eglCreateWindowSurface")!;
-	egl_destroy_surface_fn       = _find_egl_proc("eglDestroySurface")!;
-	egl_make_current_fn          = _find_egl_proc("eglMakeCurrent")!;
-	egl_swap_buffers_fn          = _find_egl_proc("eglSwapBuffers")!;
-	egl_swap_interval_fn         = _find_egl_proc("eglSwapInterval")!;
-	egl_get_current_context_fn   = _find_egl_proc("eglGetCurrentContext")!;
-	egl_query_string_fn          = _find_egl_proc("eglQueryString")!;
-	egl_get_config_attrib_fn     = _find_egl_proc("eglGetConfigAttrib")!;
+	get_display_fn           = gfx::_find_egl_proc("eglGetDisplay")!;
+	initialize_fn            = gfx::_find_egl_proc("eglInitialize")!;
+	terminate_fn             = gfx::_find_egl_proc("eglTerminate")!;
+	bind_api_fn              = gfx::_find_egl_proc("eglBindAPI")!;
+	choose_config_fn         = gfx::_find_egl_proc("eglChooseConfig")!;
+	create_context_fn        = gfx::_find_egl_proc("eglCreateContext")!;
+	destroy_context_fn       = gfx::_find_egl_proc("eglDestroyContext")!;
+	create_window_surface_fn = gfx::_find_egl_proc("eglCreateWindowSurface")!;
+	destroy_surface_fn       = gfx::_find_egl_proc("eglDestroySurface")!;
+	make_current_fn          = gfx::_find_egl_proc("eglMakeCurrent")!;
+	swap_buffers_fn          = gfx::_find_egl_proc("eglSwapBuffers")!;
+	swap_interval_fn         = gfx::_find_egl_proc("eglSwapInterval")!;
+	get_current_context_fn   = gfx::_find_egl_proc("eglGetCurrentContext")!;
+	query_string_fn          = gfx::_find_egl_proc("eglQueryString")!;
+	get_config_attrib_fn     = gfx::_find_egl_proc("eglGetConfigAttrib")!;
 }

@@ -1448,7 +1448,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance
 	return surface;
 }
 
-const Char16[] RENAME_PROP_NAME = {'C', '3', 'G', 'F', 'X', 0};
+const WString RENAME_PROP_NAME = @wstring("C3GFX\0");
 
 // wgpu
 

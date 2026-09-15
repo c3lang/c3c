@@ -1997,7 +1997,6 @@ fn void _window_opengl_swap_interval_x11(GfxWindow* win, int swapInterval)
 
 // --- wgpu
 
-const WGPUSType WGPU_STYPE_SURFACE_SOURCE_XLIB_WINDOW = 0x00000006;
 struct WgpuSurfaceSourceXlibWindow
 {
 	WgpuChainedStruct chain;

@@ -547,21 +547,6 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* contex
 	$endswitch
 }
 
-fn void? _window_init_egl_context_native(GfxWindow* win, GfxEglContext* context, GfxGlHints* hints)
-{
-	$switch:
-		$case WAYLAND_ONLY:
-			return _window_init_egl_context_wayland(win, context, hints);
-		$case X11_ONLY:
-			return NOT_IMPLEMENTED~;
-		$default:
-			if (_gfx.use_wayland)
-			{
-				return _window_init_egl_context_wayland(win, context, hints);
-			}
-			return NOT_IMPLEMENTED~;
-	$endswitch
-}
 
 // public
 fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstance instance)

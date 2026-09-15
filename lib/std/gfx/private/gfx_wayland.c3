@@ -1,5 +1,6 @@
 module std::gfx @feat(BSD, LINUX) @feat(WAYLAND) @private;
 import std::math, std::collections, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
+import std::gfx::egl @public;
 
 const uint WL_MARSHAL_FLAG_DESTROY = 1;
 
@@ -796,7 +797,7 @@ fn void _window_close_wayland(GfxWindow* win)
 
 fn void? _window_init_opengl_context_wayland(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
-	_window_init_egl_context_wayland(win, (GfxEglContext*)context, hints)!;
+	_window_init_egl_context_native(win, (GfxEglContext*)context, hints, _gfx.wlDisplay)!;
 	win.src.backing = { .opengl };
 	_window_set_opengl_swap_interval(win, 0);
 }
@@ -1114,61 +1115,12 @@ fn void _toggle_wayland_maximized(GfxWindow* win, bool maximized)
 	}
 }
 
-fn void? _window_init_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hints)
-{
-	_load_egl_native()!;
-
-	if (!_gfx.egl.display)
-	{
-		_gfx.egl.display = egl_get_display_fn(_gfx.wlDisplay);
-		if (!_gfx.egl.display) return EGL_DISPLAY_NOT_FOUND~;
-		EglInt major, minor;
-		if (!egl_initialize_fn(_gfx.egl.display, &major, &minor)) return EGL_DISPLAY_FAILED_TO_INITIALIZE~;
-	}
-
-	FixedList{EglInt, 32} stack;
-	stack.push_all( {
-		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-		EGL_RED_SIZE,        hints.rgba_size.r,
-		EGL_GREEN_SIZE,      hints.rgba_size.g,
-		EGL_BLUE_SIZE,       hints.rgba_size.b,
-		EGL_ALPHA_SIZE,      hints.rgba_size.a,
-		EGL_DEPTH_SIZE,      hints.depth,
-		EGL_STENCIL_SIZE,    hints.stencil,
-		EGL_RENDERABLE_TYPE, hints.profile == ES ? EGL_OPENGL_ES2_BIT : EGL_OPENGL_BIT,
-		EGL_NONE, EGL_NONE,
-	});
-	EglConfig config = null;
-	EglInt num = 0;
-	if (!egl_choose_config_fn((EglDisplay)_gfx.egl.display, stack.array_view(), &config, 1, &num) || !num) return EGL_CONFIG_NOT_FOUND~;
-	egl_bind_api_fn(hints.profile == ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
-
-	stack.clear();
-	if (hints.profile == ES) stack.push_all({ EGL_CONTEXT_CLIENT_VERSION, hints.major != 0 ? hints.major : 2 });
-	stack.push_all({ EGL_NONE, EGL_NONE });
-
-	EglContext share = hints.share_egl ? hints.share_egl.ctx : null;
-	ctx.ctx = egl_create_context_fn(_gfx.egl.display, config, share, stack.array_view());
-	if (!ctx.ctx) return EGL_CTX_CREATION_FAILED~;
-	defer catch
-	{
-		egl_destroy_context_fn(_gfx.egl.display, ctx.ctx);
-		ctx.ctx = null;
-	}
-	WlEglWindow* egl_window = wl_egl_window_create(win.src.surface, win.width, win.height);
-	ctx.egl_window = egl_window;
-	ctx.surface = egl_create_window_surface_fn(_gfx.egl.display, config, egl_window, null);
-	if (!ctx.surface) return EGL_SURFACE_CREATION_FAILED~;
-	win.src.ctx.egl = ctx;
-	win.src.backing = { .egl };
-	_window_make_current_egl_context(win);
-}
 
 
 fn void _window_release_egl_context_wayland(GfxWindow* win, GfxEglContext* ctx)
 {
-	if (ctx.surface) egl_destroy_surface_fn(_gfx.egl.display, ctx.surface);
-	if (ctx.ctx) egl_destroy_context_fn(_gfx.egl.display, ctx.ctx);
+	if (ctx.surface) egl::destroy_surface_fn(_gfx.egl.display, ctx.surface);
+	if (ctx.ctx) egl::destroy_context_fn(_gfx.egl.display, ctx.ctx);
 	if (ctx.egl_window) wl_egl_window_destroy(ctx.egl_window);
 	ctx.surface = null;
 	ctx.ctx = null;
@@ -1750,7 +1702,6 @@ fn void _wl_set_opaque(GfxWindow* win)
 }
 
 // -- wgpu
-const WGPUSType WGPU_STYPE_SURFACE_SOURCE_WAYLAND_SURFACE = 0x00000007;
 struct WgpuSurfaceSourceWaylandSurface
 {
 	WgpuChainedStruct chain;
