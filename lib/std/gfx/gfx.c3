@@ -723,7 +723,7 @@ fn void? init(String class_name, GfxInitOption options)
 	_init_native(class_name, options)!;
 	foreach (icon : GfxMouseIcon::values)
 	{
-		_gfx.standardMice[icon.ordinal] = _create_standard_mouse_native(icon) ?? null;
+		_gfx.standardMice[icon.ordinal] = _create_standard_mouse(icon) ?? null;
 	}
 	_poll_monitors_native();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
@@ -1110,7 +1110,7 @@ fn void wait_for_event(Duration duration)
 
 fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
 {
-	return _create_mouse_native(data, size, format);
+	return _create_mouse(data, size, format);
 }
 
 
@@ -1280,7 +1280,7 @@ fn void? GfxMonitor.scale_to_window(&self, GfxWindow* win)
 
 fn void? GfxMonitor.set_mode_native(&self, GfxMonitorMode* mode)
 {
-	return _monitor_set_mode_native(self, mode);
+	return _monitor_set_mode(self, mode);
 }
 
 fn void? GfxMonitor.request_mode(&self, GfxMonitorMode* mode, GfxMonitorModeRequest request)
@@ -1347,7 +1347,7 @@ fn void free_monitors()
 
 fn GfxPoint get_global_mouse()
 {
-	return _get_global_mouse_native();
+	return _get_global_mouse();
 }
 
 fn GfxMonitor*[] get_monitors()
@@ -1379,7 +1379,7 @@ fn GfxMonitor*? get_primary_monitor()
 // public
 fn GfxMonitorMode[] GfxMonitor.get_modes(&monitor, Allocator allocator)
 {
-	return alloc::clone_slice(allocator, _monitor_get_modes_native(monitor));
+	return alloc::clone_slice(allocator, _monitor_get_modes(monitor));
 }
 
 fn IntRect GfxMonitor.get_workarea(&monitor)
@@ -1391,7 +1391,7 @@ fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mo
 {
 	GfxMonitorMode* chosen;
 	int top_score = 1;
-	foreach (&mode2 : _monitor_get_modes_native(monitor))
+	foreach (&mode2 : _monitor_get_modes(monitor))
 	{
 		int score = 0;
 		if (mode.size == mode2.size) score += 1000;
@@ -1429,12 +1429,17 @@ fn GfxMonitorMode GfxMonitor.get_mode(&self)
 
 fn void? GfxMonitor.set_gamma(&self, float gamma) => @pool()
 {
-	return _monitor_set_gamma_native(self, gamma);
+	return _monitor_set_gamma(self, gamma);
+}
+
+fn void? GfxMonitor.set_gamma_ramp(&self, GfxGammaRamp ramp)
+{
+	return _monitor_set_gamma_ramp(self, ramp);
 }
 
 fn GfxGammaRamp? GfxMonitor.get_gamma_ramp(&self, Allocator allocator)
 {
-	return _monitor_get_gamma_ramp_native(self, allocator);
+	return _monitor_get_gamma_ramp(self, allocator);
 }
 
 fn void GfxGammaRamp.free(&self)
@@ -1578,7 +1583,7 @@ fn void GfxWindow.show(&self)
 {
 	if (self.internal.flags.focus_on_show) _window_focus_native(self);
 	self.internal.flags.hide = false;
-	_window_show_native(self);
+	_window_show(self);
 	if (self.internal.flags.maximize) self.maximize();
 }
 

@@ -266,7 +266,7 @@ fn bool _window_is_hidden_native_macos(GfxWindow* win) @private
 	if (win.src.window) return !win.src.window.send(bool, "isVisible");
 	return win.internal.flags.hide;
 }
-fn void _free_mouse_macos(GfxMouse* mouse)
+fn void free_mouse(GfxMouse* mouse)
 {
 	objc::release((ObjId)mouse);
 }
@@ -317,7 +317,7 @@ fn void? _create_window_native_macos(String name, GfxWindowFlags flags, GfxWindo
 	nswin.send_void("setAcceptsMouseMovedEvents:", true);
 	win.set_name(name);
 	_window_set_floating_native_macos(win, flags.floating);
-	if (!(flags.hide)) _window_show_native_macos(win);
+	if (!(flags.hide)) window_show(win);
 	if (flags.maximize) _window_maximize_native_macos(win);
 	if (flags.minimize) _window_minimize_native_macos(win);
 	if (flags.fullscreen) _window_set_fullscreen_native_macos(win, true);
@@ -329,7 +329,7 @@ fn void? _create_window_native_macos(String name, GfxWindowFlags flags, GfxWindo
 	gfx::_macos_init_view(win);
 }
 fn GfxMonitor*? _window_find_monitor_native_macos(GfxWindow* win) => gfx::get_primary_monitor();
-fn void? _monitor_set_gamma_ramp_native_macos(GfxMonitor* monitor, GfxGammaRamp ramp) => @pool()
+fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => @pool()
 {
 	if (!ramp.red) return gfx::GAMMA_COULD_NOT_BE_SET~;
 	sz len = ramp.red.len;
@@ -344,7 +344,7 @@ fn void? _monitor_set_gamma_ramp_native_macos(GfxMonitor* monitor, GfxGammaRamp 
 	}
 	if (!gfx::_monitor_display(monitor).setTransferByTable((uint)len, rgb.ptr, g, b)) return gfx::GAMMA_COULD_NOT_BE_SET~;
 }
-fn void? _monitor_set_gamma_native_macos(GfxMonitor* monitor, float gamma) => @pool()
+fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => @pool()
 {
 	CGDirectDisplayID display = gfx::_monitor_display(monitor);
 	uint len = display.gammaTableCapacity();
@@ -356,7 +356,7 @@ fn void? _monitor_set_gamma_native_macos(GfxMonitor* monitor, float gamma) => @p
 	}
 	if (!gfx::_monitor_display(monitor).setTransferByTable((uint)len, gamma_array, gamma_array, gamma_array)) return gfx::GAMMA_COULD_NOT_BE_SET~;
 }
-fn GfxGammaRamp? _monitor_get_gamma_ramp_native_macos(GfxMonitor* monitor, Allocator a) => @pool()
+fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => @pool()
 {
 	CGDirectDisplayID display = gfx::_monitor_display(monitor);
 	sz count = (sz)display.gammaTableCapacity();
@@ -379,7 +379,7 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native_macos(GfxMonitor* monitor, Alloc
 	}
 	return { ramp_r, ramp_g, ramp_b, a };
 }
-fn GfxMonitorMode[] _monitor_get_modes_native_macos(GfxMonitor* monitor)
+fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 {
 	CFArrayRef list = gfx::_monitor_display(monitor).copyAllDisplayModes(null);
 	if (!list) return {};
@@ -466,7 +466,7 @@ fn void _window_set_floating_native_macos(GfxWindow* win, bool floating)
 	if (win.src.window) win.src.window.send_void("setLevel:", floating ? NSWindowLevel.FLOATING : NSWindowLevel.NORMAL);
 	win.internal.flags.floating = floating;
 }
-fn void _window_show_native_macos(GfxWindow* win)
+fn void window_show(GfxWindow* win)
 {
 	if (!win.src.window) return;
 	win.src.window.send_void("makeKeyAndOrderFront:", null);
@@ -508,7 +508,7 @@ fn GfxDataTransfer? _read_clipboard_native_macos(Allocator allocator, GfxDataTra
 
 	return { .text = raw.str_view().copy(allocator), .type = TEXT };
 }
-fn GfxMouse*? _create_standard_mouse_native_macos(GfxMouseIcon mouse)
+fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 {
 	ObjClass cls = objc::class("NSCursor");
 	if (!cls) return gfx::MOUSE_NOT_SUPPORTED~;
@@ -541,7 +541,7 @@ fn GfxMouse*? _create_standard_mouse_native_macos(GfxMouseIcon mouse)
 	if (cursor) return gfx::MOUSE_NOT_SUPPORTED~;
 	return (GfxMouse*)objc::retain(cursor);
 }
-fn GfxMouse*? _create_mouse_native_macos(void* data, GfxSize size, GfxFormat format)
+fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
 {
 	if (!data) return gfx::IMAGE_COULD_NOT_LOAD~;
 	ObjId rep = gfx::_new_nsbitmap_image_rep(...size);
@@ -579,14 +579,14 @@ fn void _monitor_node_free_native_macos(GfxMonitorNode* node)
 }
 fn void? _monitor_request_mode_native_macos(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
-	return _monitor_set_mode_native_macos(mon, mode);
+	return monitor_set_mode(mon, mode);
 }
-fn void? _monitor_set_mode_native_macos(GfxMonitor* mon, GfxMonitorMode* mode)
+fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	if (!mode.src) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 	if (gfx::_monitor_display(mon).setDisplayMode((CGDisplayModeRef)mode.src, null)) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 }
-fn GfxPoint _get_global_mouse_native_macos()
+fn GfxPoint get_global_mouse()
 {
 	CGEventRef event = cg::eventCreate(null);
 	if (!event) return { -1, -1 };

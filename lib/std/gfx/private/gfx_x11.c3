@@ -164,7 +164,7 @@ fn void _window_blit_surface_x11(GfxWindow* win, GfxSurface* surface)
 	xPutImage(gfx::_gfx.display, win.src.window, win.src.gc, surface.native.bitmap, 0, 0, 0, 0, (uint)min.x, (uint)min.y);
 }
 
-fn GfxPoint _get_global_mouse_x11()
+fn GfxPoint get_global_mouse()
 {
 	int x, y, fX, fY;
 	uint z;
@@ -195,7 +195,7 @@ fn void _window_set_mouse_passthrough_x11(GfxWindow* win, bool passthrough)
 	if (xshape_combine_mask_fn) xshape_combine_mask_fn(gfx::_gfx.display, win.src.window, 2, 0, 0, 0, 0);
 }
 
-fn GfxGammaRamp? _monitor_get_gamma_ramp_x11(GfxMonitor* monitor, Allocator a)
+fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
 {
 	sz size = (sz)xRRGetCrtcGammaSize(gfx::_gfx.display, monitor.node.crtc);
 	if (!size) return gfx::CANNOT_RETRIEVE_GAMMA~;
@@ -212,7 +212,7 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_x11(GfxMonitor* monitor, Allocator a)
 	return { red, green, blue, a };
 }
 
-fn void? monitor_set_gamma_ramp_x11(GfxMonitor* monitor, GfxGammaRamp ramp)
+fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
 	sz size = (sz)xRRGetCrtcGammaSize(gfx::_gfx.display, monitor.node.crtc);
 	if (size != ramp.red.len) return gfx::GAMMA_COULD_NOT_BE_SET~;
@@ -244,7 +244,7 @@ fn void? monitor_set_gamma_x11(GfxMonitor* monitor, float gamma)
 	xRRSetCrtcGamma(gfx::_gfx.display, monitor.node.crtc, gamma_data);
 }
 
-fn GfxMouse*? _create_mouse_x11(char* data, GfxSize size, GfxFormat format)
+fn GfxMouse*? create_mouse(char* data, GfxSize size, GfxFormat format)
 {
 	if (!xcursor_image_create_fn) return gfx::IMAGE_COULD_NOT_LOAD~;
 	XcursorImage* native = xcursor_image_create_fn(...size);
@@ -260,7 +260,7 @@ fn GfxMouse*? _create_mouse_x11(char* data, GfxSize size, GfxFormat format)
 	return (GfxMouse*)cursor;
 }
 
-fn GfxMouse*? _create_mouse_standard_x11(GfxMouseIcon mouse)
+fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 {
 	uint mouseIcon = 0;
 	switch (mouse)
@@ -393,7 +393,7 @@ fn void _destroy_x11()
 	}
 	if (gfx::_gfx.im) xCloseIM(gfx::_gfx.im);
 	if (gfx::_gfx.unixClipboard) free(gfx::_gfx.unixClipboard);
-	if (gfx::_gfx.hiddenMouse) _free_mouse_x11(gfx::_gfx.hiddenMouse);
+	if (gfx::_gfx.hiddenMouse) free_mouse(gfx::_gfx.hiddenMouse);
 	if (gfx::_gfx.helper_window) xDestroyWindow(gfx::_gfx.display, gfx::_gfx.helper_window);
 	if (gfx::_gfx.display) xCloseDisplay(gfx::_gfx.display);
 
@@ -407,7 +407,7 @@ fn bool _opengl_extension_is_supported_x11(String extension)
 	return extensions && gfx::_extension_is_in_list(extensions.str_view(), extension);
 }
 
-fn void _free_mouse_x11(GfxMouse* mouse)
+fn void free_mouse(GfxMouse* mouse)
 {
 	xFreeCursor(gfx::_gfx.display, (XCursor)mouse);
 }
@@ -487,7 +487,7 @@ fn void? _init_x11(String class_name, GfxInitOption flags)
 	dload_cursor_xi_ext();
 
 	char[4] blk;
-	gfx::_gfx.hiddenMouse = gfx::_create_mouse_native((void*)&blk, { 1, 1 }, RGBA8) ?? null;
+	gfx::_gfx.hiddenMouse = gfx::_create_mouse((void*)&blk, { 1, 1 }, RGBA8) ?? null;
 	gfx::_gfx.unixClipboard = null;
 
 	xSetErrorHandler(&_x_error_handler);
@@ -538,7 +538,7 @@ fn void? _load_opengl_x11()
 fn void _monitor_node_free_x11(GfxMonitorNode* node) {}
 
 // private
-fn GfxMonitorMode[] _monitor_get_modes_x11(GfxMonitor* monitor)
+fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 {
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(gfx::_gfx.display, xDefaultRootWindow(gfx::_gfx.display));
 	if (!res) return {};
@@ -621,7 +621,7 @@ fn void? _monitor_request_mode_x11(GfxMonitor* mon, GfxMonitorMode* mode, GfxMon
 	if (!output) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 }
 
-fn void? _monitor_set_mode_native_x11(GfxMonitor* mon, GfxMonitorMode* mode)
+fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	bool out = false;
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(gfx::_gfx.display, xDefaultRootWindow(gfx::_gfx.display));
@@ -1708,7 +1708,7 @@ fn GfxMonitor*? _window_find_monitor_x11(GfxWindow* win)
 }
 
 // public
-fn void _window_show_x11(GfxWindow* win)
+fn void window_show(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
 	if (!gfx::_window_is_hidden_native(win)) return;

@@ -8,12 +8,12 @@ fn void _window_move_mouse_win32(GfxWindow* win, GfxPoint where)
 	win32::setCursorPos(...where);
 }
 
-fn GfxMouse*? _create_mouse_native_win32(char* data, GfxSize size, GfxFormat format)
+fn GfxMouse*? create_mouse(char* data, GfxSize size, GfxFormat format)
 {
 	return (GfxMouse*)gfx::_load_handle_image(data, ...size, format, 0);
 }
 
-fn GfxMouse*? _create_standard_mouse_native_win32(GfxMouseIcon mouse)
+fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 {
 	iptr mouseIcon;
 	switch (mouse)
@@ -57,7 +57,7 @@ fn void _poll_events_native_win32()
 	}
 }
 
-fn void _window_show_native_win32(GfxWindow* win)
+fn void window_show(GfxWindow* win)
 {
 	if (!win.internal.flags.maximize) win32::showWindow(win.src.window, win32::SW_RESTORE);
 }
@@ -336,7 +336,7 @@ fn void _window_set_fullscreen_native_win32(GfxWindow* win, bool fullscreen)
 	if (!fullscreen)
 	{
 		// Ignore errors
-		(void)_monitor_set_mode_native_win32(mon, &win.internal.oldMode);
+		(void)monitor_set_mode(mon, &win.internal.oldMode);
 		_window_set_border_native_win32(win, true);
 
 		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
@@ -419,7 +419,7 @@ fn bool _window_is_maximized_native_win32(GfxWindow* win)
 	return placement.showCmd == win32::SW_SHOWMAXIMIZED || win32::isZoomed(win.src.window);
 }
 
-fn GfxMonitorMode[] _monitor_get_modes_native_win32(GfxMonitor* monitor)
+fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 {
 	uint mode_index = 0;
 	List{GfxMonitorMode} modes;
@@ -531,7 +531,7 @@ fn void _surface_release_native_win32(GfxSurface* surface)
 	*surface = {};
 }
 
-fn GfxPoint _get_global_mouse_native_win32()
+fn GfxPoint get_global_mouse()
 {
 	Win32_POINT p;
 	win32::getCursorPos(&p);
@@ -592,7 +592,7 @@ fn void _poll_monitors_native_win32()
 	gfx::refresh_monitors();
 }
 
-fn void _free_mouse_win32(GfxMouse* mouse)
+fn void free_mouse(GfxMouse* mouse)
 {
 	win32::destroyCursor(mouse);
 }
@@ -602,10 +602,10 @@ fn void _destroy_native_win32()
 	win32::timeEndPeriod(1);
 	if (gfx::_gfx.helper_window) win32::destroyWindow(gfx::_gfx.helper_window);
 	if (gfx::_gfx.instance) win32::unregisterClassW(gfx::_gfx.wndClass.lpszClassName, gfx::_gfx.instance);
-	if (gfx::_gfx.hiddenMouse != null) _free_mouse_win32(gfx::_gfx.hiddenMouse);
+	if (gfx::_gfx.hiddenMouse != null) free_mouse(gfx::_gfx.hiddenMouse);
 }
 
-fn GfxGammaRamp? _monitor_get_gamma_ramp_native_win32(GfxMonitor* monitor, Allocator a)
+fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
 {
 	ushort[] colors = mem::alloc::alloc_array(a, ushort, 768);
 	Win32_HDC dc = win32::createDCW(gfx::WIDE_DISPLAY_NAME, (WString)&monitor.node.adapter_name, null, null);
@@ -615,13 +615,13 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native_win32(GfxMonitor* monitor, Alloc
 	return { colors[:256], colors[256:256], colors[512:256], a };
 }
 
-fn void? _monitor_set_gamma_ramp_native_win32(GfxMonitor* monitor, GfxGammaRamp ramp)
+fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
 	if (ramp.red.len != 256) return gfx::GAMMA_COULD_NOT_BE_SET~;
 	return gfx::_gamma_set(monitor, ramp.red);
 }
 
-fn void? _monitor_set_gamma_native_win32(GfxMonitor* monitor, float gamma)
+fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma)
 {
 	ushort[768] g;
 	for (int i = 0; i < 256; i++)
@@ -632,7 +632,7 @@ fn void? _monitor_set_gamma_native_win32(GfxMonitor* monitor, float gamma)
 	return gfx::_gamma_set(monitor, &g);
 }
 
-fn void? _monitor_set_mode_native_win32(GfxMonitor* mon, GfxMonitorMode* mode)
+fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	Win32_DEVMODEW dm = {
 		.dmSize = Win32_DEVMODEW::size,
@@ -1089,7 +1089,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	_gfx.helper_window = win32::createWindowExW(0, _gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx.instance, null);
 
 	char[4] blk;
-	_gfx.hiddenMouse = win32::_create_mouse_native_win32(&blk, { 1, 1 }, RGBA8) ?? null;
+	_gfx.hiddenMouse = win32::create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
 }
 
 // --- Event handling

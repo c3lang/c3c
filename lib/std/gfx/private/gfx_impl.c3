@@ -3,99 +3,102 @@ import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, 
 import std::gfx::wl @public, std::gfx::macos @public, std::gfx::wasm @public;
 import std::gfx::win32 @public;
 
-fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_monitor_set_gamma_ramp_native_macos(monitor, ramp);
-		$case $feat(WASM):
-			return wasm::_monitor_set_gamma_ramp_native_wasm(monitor, ramp);
-		$case $feat(WIN32):
-			return win32::_monitor_set_gamma_ramp_native_win32(monitor, ramp);
-		$case WAYLAND_ONLY:
-			return wl::monitor_set_gamma_ramp(monitor, ramp);
-		$case X11_ONLY:
-			return x11::monitor_set_gamma_ramp_x11(monitor, ramp);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::monitor_set_gamma_ramp(monitor, ramp);
-			return x11::monitor_set_gamma_ramp_x11(monitor, ramp);
-		$default:
-			unreachable();
-	$endswitch
-}
+// --- GfxMonitor functions
 
-fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
+
+fn GfxMonitorMode[] _monitor_get_modes(GfxMonitor* monitor)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_monitor_get_modes_native_macos(monitor);
+			return macos::monitor_get_modes(monitor);
 		$case $feat(WASM):
-			return wasm::_monitor_get_modes_native_wasm(monitor);
+			return wasm::monitor_get_modes(monitor);
 		$case $feat(WIN32):
-			return win32::_monitor_get_modes_native_win32(monitor);
+			return win32::monitor_get_modes(monitor);
 		$case WAYLAND_ONLY:
 			return wl::monitor_get_modes(monitor);
 		$case X11_ONLY:
-			return x11::_monitor_get_modes_x11(monitor);
+			return x11::monitor_get_modes(monitor);
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::monitor_get_modes(monitor);
-			return x11::_monitor_get_modes_x11(monitor);
+			return x11::monitor_get_modes(monitor);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn void _window_show_native(GfxWindow* win)
+fn void? _monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_window_show_native_macos(win);
+			return macos::monitor_set_mode(mon, mode);
 		$case $feat(WASM):
-			return wasm::_window_show_native_wasm(win);
+			return wasm::monitor_set_mode(mon, mode);
 		$case $feat(WIN32):
-			return win32::_window_show_native_win32(win);
+			return win32::monitor_set_mode(mon, mode);
 		$case WAYLAND_ONLY:
-			return wl::_window_show_wayland(win);
+			return wl::monitor_set_mode(mon, mode);
 		$case X11_ONLY:
-			return x11::_window_show_x11(win);
+			return x11::monitor_set_mode(mon, mode);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_show_wayland(win);
-			return x11::_window_show_x11(win);
+			if (_gfx.use_wayland) return wl::monitor_set_mode(mon, mode);
+			return x11::monitor_set_mode(mon, mode);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a)
+fn GfxGammaRamp? _monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_monitor_get_gamma_ramp_native_macos(monitor, a);
+			return macos::monitor_get_gamma_ramp(monitor, a);
 		$case $feat(WASM):
-			return wasm::_monitor_get_gamma_ramp_native_wasm(monitor, a);
+			return wasm::monitor_get_gamma_ramp(monitor, a);
 		$case $feat(WIN32):
-			return win32::_monitor_get_gamma_ramp_native_win32(monitor, a);
+			return win32::monitor_get_gamma_ramp(monitor, a);
 		$case WAYLAND_ONLY:
 			return wl::monitor_get_gamma_ramp(monitor, a);
 		$case X11_ONLY:
-			return x11::_monitor_get_gamma_ramp_x11(monitor, a);
+			return x11::monitor_get_gamma_ramp(monitor, a);
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::monitor_get_gamma_ramp(monitor, a);
-			return x11::_monitor_get_gamma_ramp_x11(monitor, a);
+			return x11::monitor_get_gamma_ramp(monitor, a);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
+fn void? _monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_monitor_set_gamma_native_macos(monitor, gamma);
+			return macos::monitor_set_gamma_ramp(monitor, ramp);
 		$case $feat(WASM):
-			return wasm::_monitor_set_gamma_native_wasm(monitor, gamma);
+			return wasm::monitor_set_gamma_ramp(monitor, ramp);
 		$case $feat(WIN32):
-			return win32::_monitor_set_gamma_native_win32(monitor, gamma);
+			return win32::monitor_set_gamma_ramp(monitor, ramp);
+		$case WAYLAND_ONLY:
+			return wl::monitor_set_gamma_ramp(monitor, ramp);
+		$case X11_ONLY:
+			return x11::monitor_set_gamma_ramp(monitor, ramp);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::monitor_set_gamma_ramp(monitor, ramp);
+			return x11::monitor_set_gamma_ramp(monitor, ramp);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void? _monitor_set_gamma(GfxMonitor* monitor, float gamma)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::monitor_set_gamma(monitor, gamma);
+		$case $feat(WASM):
+			return wasm::monitor_set_gamma(monitor, gamma);
+		$case $feat(WIN32):
+			return win32::monitor_set_gamma(monitor, gamma);
 		$case WAYLAND_ONLY:
 			return wl::monitor_set_gamma(monitor, gamma);
 		$case X11_ONLY:
@@ -108,68 +111,116 @@ fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
 	$endswitch
 }
 
-fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_monitor_set_mode_native_macos(mon, mode);
-		$case $feat(WASM):
-			return wasm::_monitor_set_mode_native_wasm(mon, mode);
-		$case $feat(WIN32):
-			return win32::_monitor_set_mode_native_win32(mon, mode);
-		$case WAYLAND_ONLY:
-			return wl::monitor_set_mode(mon, mode);
-		$case X11_ONLY:
-			return x11::_monitor_set_mode_native_x11(mon, mode);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::monitor_set_mode(mon, mode);
-			return x11::_monitor_set_mode_native_x11(mon, mode);
-		$default:
-			unreachable();
-	$endswitch
-}
+// --- GfxMouse and mouse related
 
-fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format)
+fn GfxMouse*? _create_mouse(void* data, GfxSize size, GfxFormat format)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_create_mouse_native_macos(data, size, format);
+			return macos::create_mouse(data, size, format);
 		$case $feat(WASM):
-			return wasm::_create_mouse_native_wasm(data, size, format);
+			return wasm::create_mouse(data, size, format);
 		$case $feat(WIN32):
-			return win32::_create_mouse_native_win32(data, size, format);
+			return win32::create_mouse(data, size, format);
 		$case WAYLAND_ONLY:
 			return wl::create_mouse(data, size, format);
 		$case X11_ONLY:
-			return x11::_create_mouse_x11(data, size, format);
+			return x11::create_mouse(data, size, format);
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::create_mouse(data, size, format);
-			return x11::_create_mouse_x11(data, size, format);
+			return x11::create_mouse(data, size, format);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
+fn GfxMouse*? _create_standard_mouse(GfxMouseIcon mouse)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_create_standard_mouse_native_macos(mouse);
+			return macos::create_standard_mouse(mouse);
 		$case $feat(WASM):
-			return wasm::_create_standard_mouse_native_wasm(mouse);
+			return wasm::create_standard_mouse(mouse);
 		$case $feat(WIN32):
-			return win32::_create_standard_mouse_native_win32(mouse);
+			return win32::create_standard_mouse(mouse);
 		$case WAYLAND_ONLY:
-			return wl::_create_mouse_standard_wayland(mouse);
+			return wl::create_standard_mouse(mouse);
 		$case X11_ONLY:
-			return x11::_create_mouse_standard_x11(mouse);
+			return x11::create_standard_mouse(mouse);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_create_mouse_standard_wayland(mouse);
-			return x11::_create_mouse_standard_x11(mouse);
+			if (_gfx.use_wayland) return wl::create_standard_mouse(mouse);
+			return x11::create_standard_mouse(mouse);
 		$default:
 			unreachable();
 	$endswitch
 }
+
+fn void _free_mouse(GfxMouse* mouse)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::free_mouse(mouse);
+		$case $feat(WASM):
+			return wasm::free_mouse(mouse);
+		$case $feat(WIN32):
+			return win32::free_mouse(mouse);
+		$case WAYLAND_ONLY:
+			return wl::free_mouse(mouse);
+		$case X11_ONLY:
+			return x11::free_mouse(mouse);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::free_mouse(mouse);
+			return x11::free_mouse(mouse);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn GfxPoint _get_global_mouse()
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::get_global_mouse();
+		$case $feat(WASM):
+			return wasm::get_global_mouse();
+		$case $feat(WIN32):
+			return win32::get_global_mouse();
+		$case WAYLAND_ONLY:
+			return wl::get_global_mouse();
+		$case X11_ONLY:
+			return x11::get_global_mouse();
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::get_global_mouse();
+			return x11::get_global_mouse();
+		$default:
+			unreachable();
+	$endswitch
+}
+
+// --- GfxWindow
+
+fn void _window_show(GfxWindow* win)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::window_show(win);
+		$case $feat(WASM):
+			return wasm::window_show(win);
+		$case $feat(WIN32):
+			return win32::window_show(win);
+		$case WAYLAND_ONLY:
+			return wl::window_show(win);
+		$case X11_ONLY:
+			return x11::window_show(win);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::window_show(win);
+			return x11::window_show(win);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+
 
 fn void _destroy_native()
 {
@@ -213,26 +264,6 @@ fn bool _opengl_extension_is_supported_native(String extension)
 	$endswitch
 }
 
-fn void _free_mouse(GfxMouse* mouse)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_free_mouse_macos(mouse);
-		$case $feat(WASM):
-			return wasm::_free_mouse_wasm(mouse);
-		$case $feat(WIN32):
-			return win32::_free_mouse_win32(mouse);
-		$case WAYLAND_ONLY:
-			return wl::free_mouse(mouse);
-		$case X11_ONLY:
-			return x11::_free_mouse_x11(mouse);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::free_mouse(mouse);
-			return x11::_free_mouse_x11(mouse);
-		$default:
-			unreachable();
-	$endswitch
-}
 
 fn void* _get_current_opengl_context_native()
 {
@@ -250,27 +281,6 @@ fn void* _get_current_opengl_context_native()
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::_get_current_opengl_context_wayland();
 			return x11::_get_current_opengl_context_x11();
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn GfxPoint _get_global_mouse_native()
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_get_global_mouse_native_macos();
-		$case $feat(WASM):
-			return wasm::_get_global_mouse_native_wasm();
-		$case $feat(WIN32):
-			return win32::_get_global_mouse_native_win32();
-		$case WAYLAND_ONLY:
-			return wl::_get_global_mouse_wayland();
-		$case X11_ONLY:
-			return x11::_get_global_mouse_x11();
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_get_global_mouse_wayland();
-			return x11::_get_global_mouse_x11();
 		$default:
 			unreachable();
 	$endswitch

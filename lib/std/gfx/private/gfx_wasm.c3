@@ -2,23 +2,23 @@ module std::gfx::wasm @feat(WASM) @private;
 import std::math, std::time;
 import std::gfx::egl @public;
 
-fn GfxMouse*? _create_mouse_native_wasm(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
+fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
 
 fn void _destroy_native_wasm() {}
 
 fn IntRect _monitor_get_workarea_wasm(GfxMonitor* monitor) => { -1, -1, -1, -1 };
 fn void? _monitor_request_mode_native_wasm(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
-fn void? _monitor_set_mode_native_wasm(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
-fn GfxGammaRamp? _monitor_get_gamma_ramp_native_wasm(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
-fn void? _monitor_set_gamma_ramp_native_wasm(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
-fn void? _monitor_set_gamma_native_wasm(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
+fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
+fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
+fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
+fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
 fn void _monitor_node_free_native_wasm(GfxMonitorNode* node) {}
 
 fn GfxDataTransfer? _read_clipboard_native_wasm(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
 
 fn void _poll_monitors_native_wasm() {}
-fn void _free_mouse_wasm(GfxMouse* mouse) {}
-fn void _window_show_native_wasm(GfxWindow* win) {}
+fn void free_mouse(GfxMouse* mouse) {}
+fn void window_show(GfxWindow* win) {}
 fn bool _window_is_hidden_native_wasm(GfxWindow* win) => false;
 fn bool _window_is_minimized_native_wasm(GfxWindow* win) => false;
 fn bool _window_is_maximized_native_wasm(GfxWindow* win) => false;
@@ -89,7 +89,7 @@ fn void _window_set_fullscreen_native_wasm(GfxWindow* win, bool fullscreen)
 	win.internal.flags.fullscreen = false;
 	gfx::gfxJsExitFullscreen();
 }
-fn GfxPoint _get_global_mouse_native_wasm()
+fn GfxPoint get_global_mouse()
 {
 	return { gfx::gfxJsGetMouseX(), gfx::gfxJsGetMouseY() };
 }
@@ -173,7 +173,7 @@ fn void? _write_clipboard_native_wasm(GfxDataTransfer* data)
 {
 	gfx::gfxJsWriteClipboard(data.text, data.text.len);
 }
-fn GfxMonitorMode[] _monitor_get_modes_native_wasm(GfxMonitor* mon) => {};
+fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* mon) => {};
 fn void? _surface_init_native_wasm(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
 	surface.data = data;
@@ -195,7 +195,7 @@ fn void* _get_current_opengl_context_native_wasm()
 {
 	return (void*)(uptr)gfx::gfxJsWebglGetCurrentContext();
 }
-fn GfxMouse*? _create_standard_mouse_native_wasm(GfxMouseIcon mouse)
+fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 {
 	ZString cursor_name;
 	switch (mouse)

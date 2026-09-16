@@ -44,7 +44,7 @@ fn GfxMouse*? create_mouse(char* data, GfxSize size, GfxFormat format)
 	return (GfxMouse*)surface;
 }
 
-fn GfxMouse*? _create_mouse_standard_wayland(GfxMouseIcon mouse)
+fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 {
 	ZString cursorName;
 	switch (mouse)
@@ -123,7 +123,7 @@ fn void free_mouse(GfxMouse* mouse)
 
 fn void* _get_current_opengl_context_wayland() => egl::get_current_context();
 
-fn GfxPoint _get_global_mouse_wayland()
+fn GfxPoint get_global_mouse()
 {
 	return { -1, -1 };
 }
@@ -157,7 +157,7 @@ fn void? _init_wayland(String class_name, GfxInitOption flags)
 	}
 
 	char[4] blk;
-	gfx::_gfx.hiddenMouse = gfx::_create_mouse_native(&blk, { 1, 1 }, RGBA8) ?? null;
+	gfx::_gfx.hiddenMouse = gfx::_create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
 
 	static XdgWmBaseListener wmBaseListener = { .ping = &_wl_xdg_wm_base_ping_cb };
 	xdgWmBaseAddListener(gfx::_gfx.xdgWmBase, &wmBaseListener, null);
@@ -267,7 +267,7 @@ fn void? _monitor_request_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode, Gf
 	for (sz i = 0; i < mon.node.mode_count; i++)
 	{
 		if (!mode.equals_request(&mon.node.modes[i], request)) continue;
-		(void)gfx::_monitor_set_mode_native(mon, &mon.node.modes[i]);
+		(void)monitor_set_mode(mon, &mon.node.modes[i]);
 		return;
 	}
 	return gfx::MONITOR_MODE_CHANGE_FAILED~;
@@ -654,7 +654,7 @@ fn void _window_opengl_swap_buffers_wayland(GfxWindow* win)
 	egl::swap_window_buffers(win);
 }
 
-fn void _window_show_wayland(GfxWindow* win)
+fn void window_show(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
 	wlSurfaceCommit(win.src.surface);
