@@ -8,6 +8,7 @@
 - Add `std::collections::Ref`
 
 ### Fixes
+- Regression for `vec.pow(x)`.
 
 ## 0.8.4 Change list
 
