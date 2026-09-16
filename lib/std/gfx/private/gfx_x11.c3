@@ -13,7 +13,7 @@ const char MOD2_MASK = 1 << 4;
 const char MOD3_MASK = 1 << 5;
 
 
-fn void _surface_release_x11(GfxSurface* surface)
+fn void surface_release(GfxSurface* surface)
 {
 	if (!surface.data) return;
 	if (surface.native.bitmap)
@@ -25,7 +25,7 @@ fn void _surface_release_x11(GfxSurface* surface)
 	*surface = {};
 }
 
-fn void _window_set_border_x11(GfxWindow* win, bool border)
+fn void _window_set_border(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
 	X11WindowHints hints;
@@ -39,7 +39,7 @@ fn void _window_set_border_x11(GfxWindow* win, bool border)
 	}
 }
 
-fn void _window_set_raw_mouse_mode_x11(GfxWindow* win, bool state)
+fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 {
 	char[4] mask;
 	if (state) xi_set_mask((char*)&mask, 6 /* XI_RawMotion */);
@@ -50,7 +50,7 @@ fn void _window_set_raw_mouse_mode_x11(GfxWindow* win, bool state)
 	if (xi_select_events_fn) xi_select_events_fn(gfx::_gfx.display, xDefaultRootWindow(gfx::_gfx.display), &em, 1);
 }
 
-fn void _window_capture_mouse_x11(GfxWindow* win, bool state)
+fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 {
 	if (state)
 	{
@@ -63,7 +63,7 @@ fn void _window_capture_mouse_x11(GfxWindow* win, bool state)
 	}
 }
 
-fn WGPUSurface _window_create_wgpu_surface_x11(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuSurfaceSourceXlibWindow fromXlib;
 	fromXlib.chain.next = null;
@@ -76,7 +76,7 @@ fn WGPUSurface _window_create_wgpu_surface_x11(GfxWindow* window, WGPUInstance i
 }
 
 // public
-fn void _window_set_aspect_ratio_x11(GfxWindow* win, int w, int h)
+fn void window_set_aspect_ratio(GfxWindow* win, int w, int h)
 {
 	if (w == 0 && h == 0) return;
 	XSizeHints hints;
@@ -115,7 +115,7 @@ fn GfxPoint window_fetch_size(GfxWindow* win)
 }
 
 // public
-fn void _window_set_mouse_passthrough_x11(GfxWindow* win, bool passthrough)
+fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
 {
 	if (passthrough)
 	{
@@ -312,7 +312,7 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	gfx::_window_set_flags(win, flags, {});
 }
 
-fn void _destroy_x11()
+fn void destroy_platform()
 {
 	if (gfx::_gfx.display)
 	{
@@ -333,7 +333,7 @@ fn void _destroy_x11()
 }
 
 // private
-fn bool _opengl_extension_is_supported_x11(String extension)
+fn bool opengl_extension_is_supported_platform(String extension)
 {
 	ZString extensions = _glx_query_extensions_string_fn(gfx::_gfx.display, xDefaultScreen(gfx::_gfx.display));
 	return extensions && gfx::_extension_is_in_list(extensions.str_view(), extension);
@@ -345,17 +345,17 @@ fn void free_mouse(GfxMouse* mouse)
 }
 
 // private
-fn void* _get_current_opengl_context_x11() => _glx_get_current_context_fn();
+fn void* get_current_opengl_context() => _glx_get_current_context_fn();
 
 // private
-fn GfxFn _get_opengl_proc(ZString procname)
+fn GfxFn get_opengl_proc(ZString procname)
 {
 	if (!gfx::_gfx.gl.get_proc_addr_fn) return null;
 	return gfx::_gfx.gl.get_proc_addr_fn(procname);
 }
 
 // private
-fn void _init_keycodes_native_x11()
+fn void init_keycodes_platform()
 {
 	// A full evdev-keycode -> _KEY table walk (xkbGetKeyboardByName) is left
 	// out of this mechanical pass; keycodes[] stays zeroed (_KEY_NULL).
@@ -565,7 +565,7 @@ fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 }
 
 // private
-fn GfxKey _physical_to_mapped_key_native_x11(GfxKey key)
+fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	KeyCode keycode = (KeyCode)key.to_api();
 	KeySym sym = xkbKeycodeToKeysym(gfx::_gfx.display, keycode, 0, 0);
@@ -638,7 +638,7 @@ fn void _wait_for_event_x11(Posix_pollfd[] fds, Duration duration)
 	}
 }
 
-fn void _poll_events_x11()
+fn void poll_events_platform()
 {
 	gfx::_reset_prev_state();
 	xPending(gfx::_gfx.display);
@@ -1126,7 +1126,7 @@ fn void window_destroy_platform(GfxWindow* win)
 	xDestroyWindow(gfx::_gfx.display, win.src.window);
 }
 
-fn void _window_release_opengl_context_x11(GfxWindow* win, GfxGlContext* ctx)
+fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
 {
 	if (win.src.ctx.native.window != win.src.window) _glx_destroy_window_fn(gfx::_gfx.display, win.src.ctx.native.window);
 	_glx_destroy_context_fn(gfx::_gfx.display, ctx.ctx);
@@ -1198,7 +1198,7 @@ fn bool window_is_minimized(GfxWindow* win)
 }
 
 // private
-fn void _window_make_opengl_current_x11(GfxWindow* win)
+fn void window_make_current_opengl_context(GfxWindow* win)
 {
 	if (!win)
 	{
@@ -1210,9 +1210,9 @@ fn void _window_make_opengl_current_x11(GfxWindow* win)
 	}
 }
 
-fn void _window_maximize_x11(GfxWindow* win) => _toggle_x_maximized(win, true);
+fn void window_maximize_platform(GfxWindow* win) => _toggle_x_maximized(win, true);
 
-fn void _window_minimize_x11(GfxWindow* win)
+fn void window_minimize_platform(GfxWindow* win)
 {
 	if (x11::window_is_maximized(win)) return;
 	win.internal.old_bounds = win.bounds;
@@ -1220,7 +1220,7 @@ fn void _window_minimize_x11(GfxWindow* win)
 	xFlush(gfx::_gfx.display);
 }
 
-fn void _window_move_mouse_x11(GfxWindow* win, GfxPoint where)
+fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	int rootX, rootY, win_x, win_y;
 	uint mask;
@@ -1231,20 +1231,20 @@ fn void _window_move_mouse_x11(GfxWindow* win, GfxPoint where)
 	xWarpPointer(gfx::_gfx.display, 0, win.src.window, 0, 0, 0, 0, ...(where - win.origin));
 }
 
-fn void _window_move_x11(GfxWindow* win, GfxPoint where)
+fn void window_move_platform(GfxWindow* win, GfxPoint where)
 {
 	win.origin = where;
 	xMoveWindow(gfx::_gfx.display, win.src.window, ...where);
 }
 
-fn void _window_raise_x11(GfxWindow* win)
+fn void window_raise(GfxWindow* win)
 {
 	xMapRaised(gfx::_gfx.display, win.src.window);
-	gfx::_window_set_fullscreen_native(win, win.is_fullscreen());
+	window_set_fullscreen(win, win.is_fullscreen());
 }
 
 // private
-fn void _window_resize_x11(GfxWindow* win, GfxSize size)
+fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
 	xResizeWindow(gfx::_gfx.display, win.src.window, (uint)size.x, (uint)size.y);
@@ -1259,15 +1259,15 @@ fn void _window_resize_x11(GfxWindow* win, GfxSize size)
 }
 
 // private
-fn void _window_restore_x11(GfxWindow* win)
+fn void window_restore_platform(GfxWindow* win)
 {
 	_toggle_x_maximized(win, false);
 	xFlush(gfx::_gfx.display);
 }
 
-fn void _window_set_floating_x11(GfxWindow* win, bool floating) => _window_set_x_atom(win, gfx::_gfx.netWmStateAbove, floating);
+fn void window_set_floating(GfxWindow* win, bool floating) => _window_set_x_atom(win, gfx::_gfx.netWmStateAbove, floating);
 
-fn void _window_set_fullscreen_x11(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
@@ -1290,7 +1290,7 @@ fn void _window_set_fullscreen_x11(GfxWindow* win, bool fullscreen)
 }
 
 // private
-fn void _window_set_max_size_x11(GfxWindow* win, GfxSize size)
+fn void window_set_max_size(GfxWindow* win, GfxSize size)
 {
 	CLong flags;
 	XSizeHints hints;
@@ -1301,7 +1301,7 @@ fn void _window_set_max_size_x11(GfxWindow* win, GfxSize size)
 }
 
 // private
-fn void _window_set_min_size_x11(GfxWindow* win, GfxSize size)
+fn void window_set_min_size(GfxWindow* win, GfxSize size)
 {
 	CLong flags;
 	XSizeHints hints;
@@ -1311,22 +1311,21 @@ fn void _window_set_min_size_x11(GfxWindow* win, GfxSize size)
 	xSetWMNormalHints(gfx::_gfx.display, win.src.window, &hints);
 }
 
-fn bool _window_set_mouse_x11(GfxWindow* win, GfxMouse* mouse)
+fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 {
 	xDefineCursor(gfx::_gfx.display, win.src.window, (XCursor)mouse);
-	return true;
 }
 
-fn void _window_set_opacity_x11(GfxWindow* win, float opacity)
+fn void window_set_opacity(GfxWindow* win, float opacity)
 {
 	uint value = (uint)math::round(uint::max * opacity);
 	xChangeProperty(gfx::_gfx.display, win.src.window, gfx::_gfx.netWmWindowOpacity, 6, 32, 0, (char*)&value, 1);
 }
 
-fn void _window_opengl_swap_buffers_x11(GfxWindow* win) { _glx_swap_buffers_fn(gfx::_gfx.display, win.src.ctx.native.window); }
+fn void window_opengl_swap_buffers(GfxWindow* win) { _glx_swap_buffers_fn(gfx::_gfx.display, win.src.ctx.native.window); }
 
 // private
-fn void? _write_clipboard_x11(GfxDataTransfer* data)
+fn void? write_clipboard(GfxDataTransfer* data)
 {
 	xSetSelectionOwner(gfx::_gfx.display, gfx::_gfx.clipboardAtom, gfx::_gfx.helper_window, 0);
 	if (xGetSelectionOwner(gfx::_gfx.display, gfx::_gfx.clipboardAtom) != gfx::_gfx.helper_window)
@@ -1347,7 +1346,7 @@ fn void? _write_clipboard_x11(GfxDataTransfer* data)
 	gfx::_gfx.unixClipboard.type = TEXT;
 }
 
-fn GfxDataTransfer? _read_clipboard_x11(Allocator allocator, GfxDataTransferType type)
+fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type)
 {
 	if (type != TEXT) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
@@ -1384,7 +1383,7 @@ fn GfxDataTransfer? _read_clipboard_x11(Allocator allocator, GfxDataTransferType
 }
 
 // private
-fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
+fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
 	win.src.ctx.native = context;
 	win.src.backing = { .opengl };
@@ -1421,8 +1420,8 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 
 	if (hints.srgb)
 	{
-		if (_opengl_extension_is_supported_x11("GLX_ARB_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB, (int)hints.srgb });
-		if (_opengl_extension_is_supported_x11("GLX_EXT_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT, (int)hints.srgb });
+		if (opengl_extension_is_supported_platform("GLX_ARB_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB, (int)hints.srgb });
+		if (opengl_extension_is_supported_platform("GLX_EXT_framebuffer_sRGB")) stack.push_all({ GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT, (int)hints.srgb });
 	}
 
 	stack.push_all({0, 0});
@@ -1473,7 +1472,7 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 		stack.push_all({ GLX_CONTEXT_MAJOR_VERSION_ARB, hints.major, GLX_CONTEXT_MINOR_VERSION_ARB, hints.minor });
 	}
 
-	if (_opengl_extension_is_supported_x11("GLX_ARB_context_flush_control"))
+	if (opengl_extension_is_supported_platform("GLX_ARB_context_flush_control"))
 	{
 		switch (hints.release_behavior)
 		{
@@ -1486,10 +1485,10 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 
 	int glFlags = 0;
 	if (hints.debug) glFlags |= GLX_CONTEXT_DEBUG_BIT_ARB;
-	if (hints.robustness && _opengl_extension_is_supported_x11("GLX_ARB_create_context_robustness")) glFlags |= GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB;
+	if (hints.robustness && opengl_extension_is_supported_platform("GLX_ARB_create_context_robustness")) glFlags |= GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 	if (glFlags != 0) stack.push_all({ GLX_CONTEXT_FLAGS_ARB, glFlags });
 
-	if (_opengl_extension_is_supported_x11("GLX_ARB_create_context_no_error")) stack.push_all({ GLX_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.no_error });
+	if (opengl_extension_is_supported_platform("GLX_ARB_create_context_no_error")) stack.push_all({ GLX_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.no_error });
 
 	stack.push_all({0, 0});
 
@@ -1540,7 +1539,7 @@ fn void window_flash(GfxWindow* win, GfxFlashRequest request)
 }
 
 // private
-fn void? _init_surface_x11(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
 	if (!window) window = gfx::_gfx.root;
 	surface.data = data;
@@ -1559,7 +1558,7 @@ fn void? _init_surface_x11(GfxSurface* surface, void* data, int w, int h, GfxFor
 }
 
 // private
-fn bool _window_is_floating_x11(GfxWindow* win)
+fn bool window_is_floating(GfxWindow* win)
 {
 	Atom actualType;
 	int actualFormat;
@@ -1573,7 +1572,7 @@ fn bool _window_is_floating_x11(GfxWindow* win)
 }
 
 // private
-fn void _window_set_name_x11(GfxWindow* win, String name) => @pool()
+fn void _window_set_name(GfxWindow* win, String name) => @pool()
 {
 	ZString cstring = name.zstr_copy(tmem);
 	xutf8SetWMProperties(gfx::_gfx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
@@ -1582,7 +1581,7 @@ fn void _window_set_name_x11(GfxWindow* win, String name) => @pool()
 }
 
 // private
-fn bool _window_set_icon_x11(GfxWindow* win, char* dataSrc, int w, int h, GfxFormat format, GfxWindowIconType type)
+fn bool window_set_icon(GfxWindow* win, char* dataSrc, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
 	if (dataSrc == null)
 	{
@@ -1624,7 +1623,7 @@ fn bool _window_set_icon_x11(GfxWindow* win, char* dataSrc, int w, int h, GfxFor
 	return res;
 }
 
-fn GfxMonitor*? _window_find_monitor_x11(GfxWindow* win)
+fn GfxMonitor*? window_find_monitor(GfxWindow* win)
 {
 	XWindowAttributes attrs;
 	if (xGetWindowAttributes(gfx::_gfx.display, win.src.window, &attrs) == 0) return NOT_FOUND~;
@@ -1640,14 +1639,14 @@ fn GfxMonitor*? _window_find_monitor_x11(GfxWindow* win)
 }
 
 // public
-fn void window_show(GfxWindow* win)
+fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
 	if (!window_is_hidden(win)) return;
 	xMapWindow(gfx::_gfx.display, win.src.window);
 	_wait_for_show_event_x11(win);
 	win.move(win.origin);
-	gfx::_window_set_fullscreen_native(win, win.is_fullscreen());
+	window_set_fullscreen(win, win.is_fullscreen());
 }
 
 // public
@@ -1963,7 +1962,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface_x11(GfxWindow* win, VkInstance in
 alias VkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, XDisplay*, VisualID);
 
 // public
-fn bool _vulkan_get_physical_device_presentation_support_x11(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	VkGetPhysicalDeviceXlibPresentationSupportKHRProc proc = (VkGetPhysicalDeviceXlibPresentationSupportKHRProc)gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
 	if (!proc) return false;

@@ -2,127 +2,31 @@ module std::gfx::win32 @feat(WIN32) @private;
 import std::os::win32, std::collections, std::time, std::math, std::os;
 import std::gfx::egl @public;
 
-fn void _window_move_mouse_win32(GfxWindow* win, GfxPoint where)
+// --- implementations
+
+// --- Window impls
+
+fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
-	win.internal.last_mouse = where - win.origin;
-	win32::setCursorPos(...where);
+	GfxPoint blit = math::min(win.size, surface.size);
+	gfx::copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
+	win32::bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdcMem, 0, 0, win32::SRCCOPY);
 }
 
-fn GfxMouse*? create_mouse(char* data, GfxSize size, GfxFormat format)
+fn GfxPoint window_fetch_size(GfxWindow* win)
 {
-	return (GfxMouse*)gfx::_load_handle_image(data, ...size, format, 0);
+	Win32_RECT area;
+	win32::getClientRect(win.src.window, &area);
+	win.width = area.right;
+	win.height = area.bottom;
+	return win.get_size();
 }
 
-fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
+fn bool window_is_maximized(GfxWindow* win)
 {
-	iptr mouseIcon;
-	switch (mouse)
-	{
-		case NORMAL:
-		case ARROW:          mouseIcon = win32::IDC_ARROW;
-		case IBEAM:          mouseIcon = win32::IDC_IBEAM;
-		case WAIT:           mouseIcon = win32::IDC_WAIT;
-		case CROSSHAIR:      mouseIcon = win32::IDC_CROSS;
-		case PROGRESS:       mouseIcon = win32::IDC_APPSTARTING;
-		case RESIZE_NW:
-		case RESIZE_SE:
-		case RESIZE_NWSE:    mouseIcon = win32::IDC_SIZENWSE;
-		case RESIZE_NE:
-		case RESIZE_SW:
-		case RESIZE_NESW:    mouseIcon = win32::IDC_SIZENESW;
-		case RESIZE_E:
-		case RESIZE_W:
-		case RESIZE_EW:      mouseIcon = win32::IDC_SIZEWE;
-		case RESIZE_N:
-		case RESIZE_S:
-		case RESIZE_NS:      mouseIcon = win32::IDC_SIZENS;
-		case RESIZE_ALL:     mouseIcon = win32::IDC_SIZEALL;
-		case NOT_ALLOWED:    mouseIcon = win32::IDC_NO;
-		case POINTING_HAND:  mouseIcon = win32::IDC_HAND;
-		default: return gfx::MOUSE_NOT_SUPPORTED~;
-	}
-	void* cursor = win32::loadCursorA(null, (Win32_LPCSTR)mouseIcon);
-	if (!cursor) return gfx::MOUSE_NOT_SUPPORTED~;
-	return cursor;
-}
-
-fn void _poll_events_native_win32()
-{
-	gfx::_reset_prev_state();
-	Win32_MSG msg;
-	while (win32::peekMessageA(&msg, null, 0, 0, win32::PM_REMOVE))
-	{
-		win32::translateMessage(&msg);
-		win32::dispatchMessageA(&msg);
-	}
-}
-
-fn void window_show(GfxWindow* win)
-{
-	if (!win.internal.flags.maximize) win32::showWindow(win.src.window, win32::SW_RESTORE);
-}
-
-fn bool _window_set_mouse_native_win32(GfxWindow* win, GfxMouse* mouse)
-{
-	if (!mouse) return false;
-	win32::setClassLongPtrA(win.src.window, win32::GCLP_HCURSOR, (iptr)mouse);
-	win32::setCursor(mouse);
-	return true;
-}
-
-fn void window_flash(GfxWindow* win, GfxFlashRequest request) @private
-{
-	if (win.has_focus() && request != CANCEL) return;
-	Win32_FLASHWINFO desc = { .cbSize = Win32_FLASHWINFO::size, .hwnd = win.src.window };
-	switch (request)
-	{
-		case CANCEL:
-			desc.dwFlags = win32::FLASHW_STOP;
-		case BRIEFLY:
-			desc.dwFlags = win32::FLASHW_TRAY;
-			desc.uCount = 1;
-		case UNTIL_FOCUSED:
-			desc.dwFlags = win32::FLASHW_TRAY | win32::FLASHW_TIMERNOFG;
-		default:
-			break;
-	}
-	win32::flashWindowEx(&desc);
-}
-
-fn void _window_minimize_native_win32(GfxWindow* win)
-{
-	win32::showWindow(win.src.window, win32::SW_MINIMIZE);
-}
-
-fn void _window_set_max_size_native_win32(GfxWindow* win, GfxSize size)
-{
-	win.src.max_size = size;
-}
-
-fn void _window_set_border_native_win32(GfxWindow* win, bool border)
-{
-	win.internal.flags.no_border = !border;
-	Win32_RECT rect;
-	win32::getClientRect(win.src.window, &rect);
-	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
-	style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
-
-	if (!border)
-	{
-		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
-	}
-	else
-	{
-		if (win.internal.flags.no_resize) style &= ~(Win32_LONG)win32::WS_MAXIMIZEBOX;
-		style |= win32::WS_OVERLAPPEDWINDOW;
-	}
-
-	Win32_DWORD exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
-	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, exStyle);
-	win32::setWindowLongW(win.src.window, -16, style);
-	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
+	Win32_WINDOWPLACEMENT placement;
+	win32::getWindowPlacement(win.src.window, &placement);
+	return placement.showCmd == win32::SW_SHOWMAXIMIZED || win32::isZoomed(win.src.window);
 }
 
 fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags) => @pool()
@@ -169,19 +73,6 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
 }
 
-fn IntRect monitor_get_workarea(GfxMonitor* monitor)
-{
-	Win32_MONITORINFOEXW mi;
-	mi.cbSize = Win32_MONITORINFOEXW::size;
-	win32::getMonitorInfoW(monitor.node.monitor, &mi);
-	return { mi.rcWork.left, mi.rcWork.top, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top };
-}
-
-fn void monitor_node_free(GfxMonitorNode* node)
-{}
-
-fn void _window_restore_native_win32(GfxWindow* win) {}
-
 fn void window_destroy_platform(GfxWindow* win)
 {
 	win32::removePropW(win.src.window, gfx::RENAME_PROP_NAME);
@@ -191,182 +82,28 @@ fn void window_destroy_platform(GfxWindow* win)
 	if (win.src.hIconBig) win32::destroyIcon(win.src.hIconBig);
 }
 
-fn void _window_set_floating_native_win32(GfxWindow* win, bool floating)
+fn void window_show_platform(GfxWindow* win)
 {
-	if (floating)
+	if (!win.internal.flags.maximize) win32::showWindow(win.src.window, win32::SW_RESTORE);
+}
+
+fn void window_flash(GfxWindow* win, GfxFlashRequest request)
+{
+	if (win.has_focus() && request != CANCEL) return;
+	Win32_FLASHWINFO desc = { .cbSize = Win32_FLASHWINFO::size, .hwnd = win.src.window };
+	switch (request)
 	{
-		win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040);
+		case CANCEL:
+			desc.dwFlags = win32::FLASHW_STOP;
+		case BRIEFLY:
+			desc.dwFlags = win32::FLASHW_TRAY;
+			desc.uCount = 1;
+		case UNTIL_FOCUSED:
+			desc.dwFlags = win32::FLASHW_TRAY | win32::FLASHW_TIMERNOFG;
+		default:
+			break;
 	}
-	else
-	{
-		win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-2) /* HWND_NOTOPMOST */, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040);
-	}
-}
-
-fn void _window_maximize_native_win32(GfxWindow* win)
-{
-	win.hide();
-	win32::showWindow(win.src.window, win32::SW_MAXIMIZE);
-}
-
-fn void _window_set_opacity_native_win32(GfxWindow* win, float opacity)
-{
-	win32::setWindowLongA(win.src.window, -20, 0x00080000);
-	win32::setLayeredWindowAttributes(win.src.window, 0, (char)math::round(opacity * 255), 2);
-}
-
-fn void _window_raise_native_win32(GfxWindow* win)
-{
-	win32::bringWindowToTop(win.src.window);
-	win32::setWindowPos(win.src.window, null, win.x, win.y, win.width, win.height, 0x0001 | 0x0002 | 0x0200 | 0x0020); // |NOMOVE|NOOWNERZORDER|FRAMECHANGED
-}
-
-fn void _window_set_capture_mouse_native_win32(GfxWindow* win, bool state)
-{
-	if (!state)
-	{
-		win32::clipCursor(null);
-		return;
-	}
-
-	Win32_RECT clip_rect;
-	win32::getClientRect(win.src.window, &clip_rect);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&clip_rect.left);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&clip_rect.right);
-	win32::clipCursor(&clip_rect);
-}
-
-fn void _window_set_raw_mouse_mode_native_win32(GfxWindow* win, bool state)
-{
-	Win32_RAWINPUTDEVICE id = {0x01, 0x02, 0, win.src.window};
-	id.dwFlags = state ? 0 : win32::RIDEV_REMOVE;
-	win32::registerRawInputDevices(&id, 1, Win32_RAWINPUTDEVICE::size);
-}
-
-fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
-{
-	GfxPoint blit = math::min(win.size, surface.size);
-	gfx::copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
-	win32::bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdcMem, 0, 0, win32::SRCCOPY);
-}
-
-fn bool _window_set_icon_native_win32(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
-{
-	if (win.src.hIconSmall && type & WINDOW) win32::destroyIcon(win.src.hIconSmall);
-	if (win.src.hIconBig && type & TASKBAR) win32::destroyIcon(win.src.hIconBig);
-
-	if (!data)
-	{
-		Win32_HICON defaultIcon = win32::loadIconA(null, (Win32_LPCSTR)win32::IDI_APPLICATION);
-		if (type & WINDOW) win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)defaultIcon);
-		if (type & TASKBAR) win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)defaultIcon);
-		return true;
-	}
-
-	if (type & WINDOW)
-	{
-		win.src.hIconSmall = gfx::_load_handle_image(data, w, h, format, 1);
-		win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)win.src.hIconSmall);
-	}
-	if (type & TASKBAR)
-	{
-		win.src.hIconBig = gfx::_load_handle_image(data, w, h, format, 1);
-		win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)win.src.hIconBig);
-	}
-	return true;
-}
-
-fn void _window_set_min_size_native_win32(GfxWindow* win, GfxSize size)
-{
-	win.src.min_size = size;
-}
-
-fn void _window_set_mouse_passthrough_native_win32(GfxWindow* win, bool passthrough)
-{
-	uint key = 0;
-	char alpha = 0;
-	uint flags = 0;
-	CLong exStyle = win32::getWindowLongW(win.src.window, win32::GWL_EXSTYLE);
-	if (exStyle & (CLong)win32::WS_EX_LAYERED) win32::getLayeredWindowAttributes(win.src.window, &key, &alpha, &flags);
-
-	if (passthrough)
-	{
-		exStyle |= (CLong)(win32::WS_EX_TRANSPARENT | win32::WS_EX_LAYERED);
-	}
-	else
-	{
-		exStyle &= ~(CLong)win32::WS_EX_TRANSPARENT;
-		if (exStyle & (CLong)win32::WS_EX_LAYERED && flags & 2 == 0) exStyle &= ~(CLong)win32::WS_EX_LAYERED;
-	}
-
-	win32::setWindowLongW(win.src.window, win32::GWL_EXSTYLE, exStyle);
-	if (passthrough) win32::setLayeredWindowAttributes(win.src.window, key, alpha, flags);
-}
-
-fn void _window_set_name_native_win32(GfxWindow* win, String name) => @pool()
-{
-	win32::setWindowTextW(win.src.window, name.to_wstring(tmem)!!);
-}
-
-fn bool _window_is_floating_native_win32(GfxWindow* win)
-{
-	return win32::getWindowLongPtr(win.src.window, -20) & 0x00000008 != 0;
-}
-
-fn bool window_is_hidden(GfxWindow* win)
-{
-	return !win32::isWindowVisible(win.src.window) && !window_is_minimized(win);
-}
-
-fn GfxMonitor*? _window_find_monitor_native_win32(GfxWindow* win)
-{
-	Win32_HMONITOR src = win32::monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
-	for (GfxMonitorNode* node = gfx::_gfx.monitors.list.head; node != null; node = node.next)
-	{
-		if (node.monitor == src) return &node.mon;
-	}
-	return gfx::get_primary_monitor();
-}
-
-fn void _window_set_fullscreen_native_win32(GfxWindow* win, bool fullscreen)
-{
-	GfxMonitor*? mon = _window_find_monitor_native_win32(win);
-	if (catch mon) return;
-
-	if (!fullscreen)
-	{
-		// Ignore errors
-		(void)monitor_set_mode(mon, &win.internal.oldMode);
-		_window_set_border_native_win32(win, true);
-
-		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
-		uint style = gfx::_winapi_window_get_style(win.internal.flags);
-		uint exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
-		win32::adjustWindowRectEx(&rect, style, 0, exStyle);
-		win32::setWindowPos(win.src.window, null, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
-
-		win.internal.flags.fullscreen = false;
-		win.bounds = win.internal.old_bounds;
-		return;
-	}
-
-	win.internal.old_bounds = win.bounds;
-	win.internal.oldMode = mon.mode;
-	win.internal.flags.fullscreen = true;
-	_window_set_border_native_win32(win, false);
-
-	win32::setWindowPos(win.src.window, win32::HWND_TOPMOST, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
-	win.origin = mon.origin;
-
-	(void)mon.scale_to_window(win);
-	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, ...mon.mode.size, 0x0200 | 0x0020 | 0x0040 | 0x0002);
-	win.size = mon.mode.size;
-}
-
-fn void _window_move_native_win32(GfxWindow* win, GfxPoint where)
-{
-	win.origin = where;
-	win32::setWindowPos(win.src.window, (Win32_HWND){}, ...where, 0, 0, 0x0001 /* SWP_NOSIZE */);
+	win32::flashWindowEx(&desc);
 }
 
 fn void window_hide(GfxWindow* win)
@@ -387,156 +124,7 @@ fn bool window_is_minimized(GfxWindow* win)
 	return placement.showCmd == win32::SW_SHOWMINIMIZED;
 }
 
-fn void _window_resize_native_win32(GfxWindow* win, GfxSize size)
-{
-	win.size = size;
-	Win32_RECT rect = { 0, 0, ...size };
-	uint style = gfx::_winapi_window_get_style(win.internal.flags);
-	uint exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
-	win32::adjustWindowRectEx(&rect, style, 0, exStyle);
-	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
-}
-
-fn void _window_set_aspect_ratio_native_win32(GfxWindow* win, int w, int h) @private
-{
-	win.src.aspectRatioW = w;
-	win.src.aspectRatioH = h;
-}
-
-fn GfxPoint window_fetch_size(GfxWindow* win)
-{
-	Win32_RECT area;
-	win32::getClientRect(win.src.window, &area);
-	win.width = area.right;
-	win.height = area.bottom;
-	return win.get_size();
-}
-
-fn bool window_is_maximized(GfxWindow* win)
-{
-	Win32_WINDOWPLACEMENT placement;
-	win32::getWindowPlacement(win.src.window, &placement);
-	return placement.showCmd == win32::SW_SHOWMAXIMIZED || win32::isZoomed(win.src.window);
-}
-
-fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
-{
-	uint mode_index = 0;
-	List{GfxMonitorMode} modes;
-	for OUTER: (;;)
-	{
-		Win32_DEVMODEW dm = { .dmSize = (ushort)Win32_DEVMODEW::size };
-		if (win32::enumDisplaySettingsW((WString)&monitor.node.adapter_name, mode_index, &dm) == 0) break;
-		if (win32::changeDisplaySettingsExW((WString)&monitor.node.adapter_name, &dm, null, win32::CDS_TEST, null) != win32::DISP_CHANGE_SUCCESSFUL) continue;
-		mode_index++;
-		if (dm.dmBitsPerPel < 15) continue;
-		GfxMonitorMode mode;
-		gfx::_win32_get_mode(&dm, &mode);
-		foreach (&mode2 : modes)
-		{
-			if (mode2.equals_request(&mode, ALL)) continue OUTER;
-		}
-		modes.push(mode);
-	}
-	return modes.array_view();
-}
-
-fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
-{
-	Win32_DEVMODEW dm = { .dmSize = Win32_DEVMODEW::size };
-	uint index = 0;
-	for (;;)
-	{
-		if (win32::enumDisplaySettingsW((ushort*)&mon.node.adapter_name, index, &dm) == 0) break;
-		index += 1;
-
-		if (request & SCALE) { dm.dmFields |= win32::DM_PELSWIDTH | win32::DM_PELSHEIGHT; dm.dmPelsWidth = (uint)mode.size.x; dm.dmPelsHeight = (uint)mode.size.y; }
-		if (request & REFRESH) { dm.dmFields |= win32::DM_DISPLAYFREQUENCY; dm.dmDisplayFrequency = (uint)mode.refresh_rate; }
-		if (request & RGB) { dm.dmFields |= win32::DM_BITSPERPEL; dm.dmBitsPerPel = (uint)(mode.rgb.sum()); }
-
-		if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapter_name, &dm, null, win32::CDS_TEST, null) == win32::DISP_CHANGE_SUCCESSFUL)
-		{
-			if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapter_name, &dm, null, win32::CDS_UPDATEREGISTRY, null) == win32::DISP_CHANGE_SUCCESSFUL)
-			{
-				gfx::_win32_get_mode(&dm, &mon.mode);
-				return;
-			}
-			return gfx::MONITOR_MODE_CHANGE_FAILED~;
-		}
-	}
-	return gfx::MONITOR_MODE_CHANGE_FAILED~;
-}
-
-fn GfxDataTransfer? _read_clipboard_native_win32(Allocator allocator, GfxDataTransferType requested_type) => @pool()
-{
-	if (requested_type != TEXT) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
-
-	gfx::_open_clipboard()!;
-	defer win32::closeClipboard();
-	void* hdata = win32::getClipboardData(13 /* CF_UNICODETEXT */);
-	if (!hdata) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
-
-	WString data = (WString)win32::globalLock(hdata);
-	defer win32::globalUnlock(hdata);
-	return { .text = string::from_wstring(allocator, data), .type = TEXT };
-}
-
-fn void? _write_clipboard_native_win32(GfxDataTransfer* data) => @pool()
-{
-	WString wstring = data.text.to_wstring(tmem)!;
-	void* object = win32::globalAlloc(0x0002 /* GMEM_MOVEABLE */, (Win32_SIZE_T)data.text.len * 2);
-	if (!object) return mem::OUT_OF_MEMORY~;
-	defer catch win32::globalFree(object);
-	Char16* buffer = (ushort*)win32::globalLock(object);
-	if (!buffer) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
-	defer win32::globalUnlock(object);
-	sz len = data.text.len + 1;
-	buffer[:len] = wstring[:len];
-	gfx::_open_clipboard()!;
-	win32::emptyClipboard();
-	win32::setClipboardData(13, object);
-	win32::closeClipboard();
-}
-
-fn void? _surface_init_native_win32(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
-{
-	surface.data = data;
-	surface.size = { w, h };
-	surface.format = format;
-
-	Win32_BITMAPV5HEADER bi = {
-	    .bV5Size = Win32_BITMAPV5HEADER::size,
-	    .bV5Width = w,
-	    .bV5Height = -h,
-	    .bV5Planes = 1,
-	    .bV5BitCount = (ushort)format.channels * 8,
-	    .bV5Compression = win32::BI_RGB,
-	};
-	surface.native.format = format.channels > 3 ? BGRA8 : BGR8;
-	surface.native.bitmap = win32::createDIBSection(gfx::_gfx.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
-	if (!surface.native.bitmap) return egl::SURFACE_CREATION_FAILED~;
-	defer catch surface.release();
-	surface.native.hdcMem = win32::createCompatibleDC(gfx::_gfx.root.src.hdc);
-	win32::selectObject(surface.native.hdcMem, surface.native.bitmap);
-}
-
-fn void _surface_release_native_win32(GfxSurface* surface)
-{
-	if (!surface.data) return;
-	if (surface.native.hdcMem)
-	{
-		win32::deleteDC(surface.native.hdcMem);
-		win32::deleteObject(surface.native.bitmap);
-	}
-	*surface = {};
-}
-
-fn GfxPoint get_global_mouse()
-{
-	Win32_POINT p;
-	win32::getCursorPos(&p);
-	return { ...p };
-}
+// --- Monitor impls
 
 fn void poll_monitors()
 {
@@ -592,17 +180,37 @@ fn void poll_monitors()
 	gfx::refresh_monitors();
 }
 
-fn void free_mouse(GfxMouse* mouse)
+fn IntRect monitor_get_workarea(GfxMonitor* monitor)
 {
-	win32::destroyCursor(mouse);
+	Win32_MONITORINFOEXW mi;
+	mi.cbSize = Win32_MONITORINFOEXW::size;
+	win32::getMonitorInfoW(monitor.node.monitor, &mi);
+	return { mi.rcWork.left, mi.rcWork.top, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top };
 }
 
-fn void _destroy_native_win32()
+fn void monitor_node_free(GfxMonitorNode* node)
+{}
+
+fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 {
-	win32::timeEndPeriod(1);
-	if (gfx::_gfx.helper_window) win32::destroyWindow(gfx::_gfx.helper_window);
-	if (gfx::_gfx.instance) win32::unregisterClassW(gfx::_gfx.wndClass.lpszClassName, gfx::_gfx.instance);
-	if (gfx::_gfx.hiddenMouse != null) free_mouse(gfx::_gfx.hiddenMouse);
+	uint mode_index = 0;
+	List{GfxMonitorMode} modes;
+	for OUTER: (;;)
+	{
+		Win32_DEVMODEW dm = { .dmSize = (ushort)Win32_DEVMODEW::size };
+		if (win32::enumDisplaySettingsW((WString)&monitor.node.adapter_name, mode_index, &dm) == 0) break;
+		if (win32::changeDisplaySettingsExW((WString)&monitor.node.adapter_name, &dm, null, win32::CDS_TEST, null) != win32::DISP_CHANGE_SUCCESSFUL) continue;
+		mode_index++;
+		if (dm.dmBitsPerPel < 15) continue;
+		GfxMonitorMode mode;
+		gfx::_win32_get_mode(&dm, &mode);
+		foreach (&mode2 : modes)
+		{
+			if (mode2.equals_request(&mode, ALL)) continue OUTER;
+		}
+		modes.push(mode);
+	}
+	return modes.array_view();
 }
 
 fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
@@ -653,7 +261,420 @@ fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 	gfx::_win32_get_mode(&dm, &mon.mode);
 }
 
-fn void? _window_init_opengl_context_native_win32(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
+fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+{
+	Win32_DEVMODEW dm = { .dmSize = Win32_DEVMODEW::size };
+	uint index = 0;
+	for (;;)
+	{
+		if (win32::enumDisplaySettingsW((ushort*)&mon.node.adapter_name, index, &dm) == 0) break;
+		index += 1;
+
+		if (request & SCALE) { dm.dmFields |= win32::DM_PELSWIDTH | win32::DM_PELSHEIGHT; dm.dmPelsWidth = (uint)mode.size.x; dm.dmPelsHeight = (uint)mode.size.y; }
+		if (request & REFRESH) { dm.dmFields |= win32::DM_DISPLAYFREQUENCY; dm.dmDisplayFrequency = (uint)mode.refresh_rate; }
+		if (request & RGB) { dm.dmFields |= win32::DM_BITSPERPEL; dm.dmBitsPerPel = (uint)(mode.rgb.sum()); }
+
+		if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapter_name, &dm, null, win32::CDS_TEST, null) == win32::DISP_CHANGE_SUCCESSFUL)
+		{
+			if (win32::changeDisplaySettingsExW((ushort*)&mon.node.adapter_name, &dm, null, win32::CDS_UPDATEREGISTRY, null) == win32::DISP_CHANGE_SUCCESSFUL)
+			{
+				gfx::_win32_get_mode(&dm, &mon.mode);
+				return;
+			}
+			return gfx::MONITOR_MODE_CHANGE_FAILED~;
+		}
+	}
+	return gfx::MONITOR_MODE_CHANGE_FAILED~;
+}
+
+// --- Mouse impls
+
+fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
+{
+	iptr mouseIcon;
+	switch (mouse)
+	{
+		case NORMAL:
+		case ARROW:          mouseIcon = win32::IDC_ARROW;
+		case IBEAM:          mouseIcon = win32::IDC_IBEAM;
+		case WAIT:           mouseIcon = win32::IDC_WAIT;
+		case CROSSHAIR:      mouseIcon = win32::IDC_CROSS;
+		case PROGRESS:       mouseIcon = win32::IDC_APPSTARTING;
+		case RESIZE_NW:
+		case RESIZE_SE:
+		case RESIZE_NWSE:    mouseIcon = win32::IDC_SIZENWSE;
+		case RESIZE_NE:
+		case RESIZE_SW:
+		case RESIZE_NESW:    mouseIcon = win32::IDC_SIZENESW;
+		case RESIZE_E:
+		case RESIZE_W:
+		case RESIZE_EW:      mouseIcon = win32::IDC_SIZEWE;
+		case RESIZE_N:
+		case RESIZE_S:
+		case RESIZE_NS:      mouseIcon = win32::IDC_SIZENS;
+		case RESIZE_ALL:     mouseIcon = win32::IDC_SIZEALL;
+		case NOT_ALLOWED:    mouseIcon = win32::IDC_NO;
+		case POINTING_HAND:  mouseIcon = win32::IDC_HAND;
+		default: return gfx::MOUSE_NOT_SUPPORTED~;
+	}
+	void* cursor = win32::loadCursorA(null, (Win32_LPCSTR)mouseIcon);
+	if (!cursor) return gfx::MOUSE_NOT_SUPPORTED~;
+	return cursor;
+}
+
+
+// --- the rest
+fn void window_move_mouse(GfxWindow* win, GfxPoint where)
+{
+	win.internal.last_mouse = where - win.origin;
+	win32::setCursorPos(...where);
+}
+
+fn GfxMouse*? create_mouse(char* data, GfxSize size, GfxFormat format)
+{
+	return (GfxMouse*)_load_handle_image(data, ...size, format, 0);
+}
+
+
+fn void poll_events_platform()
+{
+	gfx::_reset_prev_state();
+	Win32_MSG msg;
+	while (win32::peekMessageA(&msg, null, 0, 0, win32::PM_REMOVE))
+	{
+		win32::translateMessage(&msg);
+		win32::dispatchMessageA(&msg);
+	}
+}
+
+
+fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
+{
+	win32::setClassLongPtrA(win.src.window, win32::GCLP_HCURSOR, (iptr)mouse);
+	win32::setCursor(mouse);
+}
+
+
+fn void window_minimize_platform(GfxWindow* win)
+{
+	win32::showWindow(win.src.window, win32::SW_MINIMIZE);
+}
+
+fn void window_set_max_size(GfxWindow* win, GfxSize size)
+{
+	win.src.max_size = size;
+}
+
+fn void _window_set_border(GfxWindow* win, bool border)
+{
+	win.internal.flags.no_border = !border;
+	Win32_RECT rect;
+	win32::getClientRect(win.src.window, &rect);
+	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
+	style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
+
+	if (!border)
+	{
+		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
+	}
+	else
+	{
+		if (win.internal.flags.no_resize) style &= ~(Win32_LONG)win32::WS_MAXIMIZEBOX;
+		style |= win32::WS_OVERLAPPEDWINDOW;
+	}
+
+	Win32_DWORD exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
+	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, exStyle);
+	win32::setWindowLongW(win.src.window, -16, style);
+	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
+}
+
+
+
+fn void window_restore_platform(GfxWindow* win) {}
+
+
+fn void window_set_floating(GfxWindow* win, bool floating)
+{
+	if (floating)
+	{
+		win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040);
+	}
+	else
+	{
+		win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-2) /* HWND_NOTOPMOST */, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040);
+	}
+}
+
+fn void window_maximize_platform(GfxWindow* win)
+{
+	win.hide();
+	win32::showWindow(win.src.window, win32::SW_MAXIMIZE);
+}
+
+fn void window_set_opacity(GfxWindow* win, float opacity)
+{
+	win32::setWindowLongA(win.src.window, -20, 0x00080000);
+	win32::setLayeredWindowAttributes(win.src.window, 0, (char)math::round(opacity * 255), 2);
+}
+
+fn void window_raise(GfxWindow* win)
+{
+	win32::bringWindowToTop(win.src.window);
+	win32::setWindowPos(win.src.window, null, win.x, win.y, win.width, win.height, 0x0001 | 0x0002 | 0x0200 | 0x0020); // |NOMOVE|NOOWNERZORDER|FRAMECHANGED
+}
+
+fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
+{
+	if (!state)
+	{
+		win32::clipCursor(null);
+		return;
+	}
+
+	Win32_RECT clip_rect;
+	win32::getClientRect(win.src.window, &clip_rect);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&clip_rect.left);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&clip_rect.right);
+	win32::clipCursor(&clip_rect);
+}
+
+fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
+{
+	Win32_RAWINPUTDEVICE id = {0x01, 0x02, 0, win.src.window};
+	id.dwFlags = state ? 0 : win32::RIDEV_REMOVE;
+	win32::registerRawInputDevices(&id, 1, Win32_RAWINPUTDEVICE::size);
+}
+
+
+fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
+{
+	if (win.src.hIconSmall && type & WINDOW) win32::destroyIcon(win.src.hIconSmall);
+	if (win.src.hIconBig && type & TASKBAR) win32::destroyIcon(win.src.hIconBig);
+
+	if (!data)
+	{
+		Win32_HICON defaultIcon = win32::loadIconA(null, (Win32_LPCSTR)win32::IDI_APPLICATION);
+		if (type & WINDOW) win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)defaultIcon);
+		if (type & TASKBAR) win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)defaultIcon);
+		return true;
+	}
+
+	if (type & WINDOW)
+	{
+		win.src.hIconSmall = _load_handle_image(data, w, h, format, 1);
+		win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)win.src.hIconSmall);
+	}
+	if (type & TASKBAR)
+	{
+		win.src.hIconBig = _load_handle_image(data, w, h, format, 1);
+		win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)win.src.hIconBig);
+	}
+	return true;
+}
+
+fn void window_set_min_size(GfxWindow* win, GfxSize size)
+{
+	win.src.min_size = size;
+}
+
+fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
+{
+	uint key = 0;
+	char alpha = 0;
+	uint flags = 0;
+	CLong exStyle = win32::getWindowLongW(win.src.window, win32::GWL_EXSTYLE);
+	if (exStyle & (CLong)win32::WS_EX_LAYERED) win32::getLayeredWindowAttributes(win.src.window, &key, &alpha, &flags);
+
+	if (passthrough)
+	{
+		exStyle |= (CLong)(win32::WS_EX_TRANSPARENT | win32::WS_EX_LAYERED);
+	}
+	else
+	{
+		exStyle &= ~(CLong)win32::WS_EX_TRANSPARENT;
+		if (exStyle & (CLong)win32::WS_EX_LAYERED && flags & 2 == 0) exStyle &= ~(CLong)win32::WS_EX_LAYERED;
+	}
+
+	win32::setWindowLongW(win.src.window, win32::GWL_EXSTYLE, exStyle);
+	if (passthrough) win32::setLayeredWindowAttributes(win.src.window, key, alpha, flags);
+}
+
+fn void _window_set_name(GfxWindow* win, String name) => @pool()
+{
+	win32::setWindowTextW(win.src.window, name.to_wstring(tmem)!!);
+}
+
+fn bool window_is_floating(GfxWindow* win)
+{
+	return win32::getWindowLongPtr(win.src.window, -20) & 0x00000008 != 0;
+}
+
+fn bool window_is_hidden(GfxWindow* win)
+{
+	return !win32::isWindowVisible(win.src.window) && !window_is_minimized(win);
+}
+
+fn GfxMonitor*? window_find_monitor(GfxWindow* win)
+{
+	Win32_HMONITOR src = win32::monitorFromWindow(win.src.window, 1 /* MONITOR_DEFAULTTOPRIMARY */);
+	for (GfxMonitorNode* node = gfx::_gfx.monitors.list.head; node != null; node = node.next)
+	{
+		if (node.monitor == src) return &node.mon;
+	}
+	return gfx::get_primary_monitor();
+}
+
+fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
+{
+	GfxMonitor*? mon = window_find_monitor(win);
+	if (catch mon) return;
+
+	if (!fullscreen)
+	{
+		// Ignore errors
+		(void)monitor_set_mode(mon, &win.internal.oldMode);
+		_window_set_border(win, true);
+
+		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
+		uint style = gfx::_winapi_window_get_style(win.internal.flags);
+		uint exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
+		win32::adjustWindowRectEx(&rect, style, 0, exStyle);
+		win32::setWindowPos(win.src.window, null, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
+
+		win.internal.flags.fullscreen = false;
+		win.bounds = win.internal.old_bounds;
+		return;
+	}
+
+	win.internal.old_bounds = win.bounds;
+	win.internal.oldMode = mon.mode;
+	win.internal.flags.fullscreen = true;
+	_window_set_border(win, false);
+
+	win32::setWindowPos(win.src.window, win32::HWND_TOPMOST, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
+	win.origin = mon.origin;
+
+	(void)mon.scale_to_window(win);
+	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, ...mon.mode.size, 0x0200 | 0x0020 | 0x0040 | 0x0002);
+	win.size = mon.mode.size;
+}
+
+fn void window_move_platform(GfxWindow* win, GfxPoint where)
+{
+	win.origin = where;
+	win32::setWindowPos(win.src.window, (Win32_HWND){}, ...where, 0, 0, 0x0001 /* SWP_NOSIZE */);
+}
+
+
+
+fn void window_resize_platform(GfxWindow* win, GfxSize size)
+{
+	win.size = size;
+	Win32_RECT rect = { 0, 0, ...size };
+	uint style = gfx::_winapi_window_get_style(win.internal.flags);
+	uint exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
+	win32::adjustWindowRectEx(&rect, style, 0, exStyle);
+	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
+}
+
+fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
+{
+	win.src.aspectRatioW = w;
+	win.src.aspectRatioH = h;
+}
+
+
+
+fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType requested_type) => @pool()
+{
+	if (requested_type != TEXT) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+
+	gfx::_open_clipboard()!;
+	defer win32::closeClipboard();
+	void* hdata = win32::getClipboardData(13 /* CF_UNICODETEXT */);
+	if (!hdata) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
+
+	WString data = (WString)win32::globalLock(hdata);
+	defer win32::globalUnlock(hdata);
+	return { .text = string::from_wstring(allocator, data), .type = TEXT };
+}
+
+fn void? write_clipboard(GfxDataTransfer* data) => @pool()
+{
+	WString wstring = data.text.to_wstring(tmem)!;
+	void* object = win32::globalAlloc(0x0002 /* GMEM_MOVEABLE */, (Win32_SIZE_T)data.text.len * 2);
+	if (!object) return mem::OUT_OF_MEMORY~;
+	defer catch win32::globalFree(object);
+	Char16* buffer = (ushort*)win32::globalLock(object);
+	if (!buffer) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
+	defer win32::globalUnlock(object);
+	sz len = data.text.len + 1;
+	buffer[:len] = wstring[:len];
+	gfx::_open_clipboard()!;
+	win32::emptyClipboard();
+	win32::setClipboardData(13, object);
+	win32::closeClipboard();
+}
+
+fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+{
+	surface.data = data;
+	surface.size = { w, h };
+	surface.format = format;
+
+	Win32_BITMAPV5HEADER bi = {
+	    .bV5Size = Win32_BITMAPV5HEADER::size,
+	    .bV5Width = w,
+	    .bV5Height = -h,
+	    .bV5Planes = 1,
+	    .bV5BitCount = (ushort)format.channels * 8,
+	    .bV5Compression = win32::BI_RGB,
+	};
+	surface.native.format = format.channels > 3 ? BGRA8 : BGR8;
+	surface.native.bitmap = win32::createDIBSection(gfx::_gfx.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
+	if (!surface.native.bitmap) return egl::SURFACE_CREATION_FAILED~;
+	defer catch surface.release();
+	surface.native.hdcMem = win32::createCompatibleDC(gfx::_gfx.root.src.hdc);
+	win32::selectObject(surface.native.hdcMem, surface.native.bitmap);
+}
+
+fn void surface_release(GfxSurface* surface)
+{
+	if (!surface.data) return;
+	if (surface.native.hdcMem)
+	{
+		win32::deleteDC(surface.native.hdcMem);
+		win32::deleteObject(surface.native.bitmap);
+	}
+	*surface = {};
+}
+
+fn GfxPoint get_global_mouse()
+{
+	Win32_POINT p;
+	win32::getCursorPos(&p);
+	return { ...p };
+}
+
+
+fn void free_mouse(GfxMouse* mouse)
+{
+	win32::destroyCursor(mouse);
+}
+
+fn void destroy_platform()
+{
+	win32::timeEndPeriod(1);
+	if (gfx::_gfx.helper_window) win32::destroyWindow(gfx::_gfx.helper_window);
+	if (gfx::_gfx.instance) win32::unregisterClassW(gfx::_gfx.wndClass.lpszClassName, gfx::_gfx.instance);
+	if (gfx::_gfx.hiddenMouse != null) free_mouse(gfx::_gfx.hiddenMouse);
+}
+
+
+fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
 	win.src.backing = { .opengl };
@@ -743,9 +764,9 @@ fn void? _window_init_opengl_context_native_win32(GfxWindow* win, GfxGlContext* 
 			});
 		}
 
-		if (_opengl_extension_is_supported_native_win32("WGL_ARB_create_context_no_error")) stack.push_all({ WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.no_error });
+		if (opengl_extension_is_supported_platform("WGL_ARB_create_context_no_error")) stack.push_all({ WGL_CONTEXT_OPENGL_NO_ERROR_ARB, (int)hints.no_error });
 
-		if (_opengl_extension_is_supported_native_win32("WGL_ARB_context_flush_control"))
+		if (opengl_extension_is_supported_platform("WGL_ARB_context_flush_control"))
 		{
 			stack.push(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB);
 			stack.push(hints.release_behavior == FLUSH
@@ -755,7 +776,7 @@ fn void? _window_init_opengl_context_native_win32(GfxWindow* win, GfxGlContext* 
 
 		int flags = 0;
 		if (hints.debug) flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
-		if (hints.robustness && _opengl_extension_is_supported_native_win32("WGL_ARB_create_context_robustness")) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
+		if (hints.robustness && opengl_extension_is_supported_platform("WGL_ARB_create_context_robustness")) flags |= WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB;
 		if (flags) stack.push_all({ WGL_CONTEXT_FLAGS_ARB, flags });
 
 		stack.push_all({ 0, 0 });
@@ -771,33 +792,33 @@ fn void? _window_init_opengl_context_native_win32(GfxWindow* win, GfxGlContext* 
 	win32::releaseDC(win.src.window, win.src.hdc);
 	win.src.hdc = win32::getDC(win.src.window);
 
-	if (hints.share != null) gfx::wgl_share_lists_fn(_get_current_opengl_context_native_win32(), hints.share.ctx);
+	if (hints.share != null) gfx::wgl_share_lists_fn(get_current_opengl_context(), hints.share.ctx);
 
 	gfx::wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
 	log::info("Failed to create accelerated OpenGL context", category: log::CATEGORY_VIDEO);
 }
 
-fn bool _opengl_extension_is_supported_native_win32(String extension)
+fn bool opengl_extension_is_supported_platform(String extension)
 {
 	ZString extensions = null;
-	if (GetExtStringArbFn proc = _get_opengl_proc_native_win32("wglGetExtensionsStringARB"))
+	if (GetExtStringArbFn proc = get_opengl_proc("wglGetExtensionsStringARB"))
 	{
 		extensions = proc(gfx::wgl_get_current_dc_fn());
 	}
-	else if (GetExtStringExtFn proc2 = _get_opengl_proc_native_win32("wglGetExtensionsStringEXT"))
+	else if (GetExtStringExtFn proc2 = get_opengl_proc("wglGetExtensionsStringEXT"))
 	{
 		extensions = proc2();
 	}
 	return extensions && gfx::_extension_is_in_list(extensions.str_view(), extension);
 }
 
-fn void _window_release_opengl_context_native_win32(GfxWindow* win, GfxGlContext* ctx)
+fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
 {
 	gfx::wgl_delete_context_fn(ctx.ctx);
 	win.src.ctx.native.ctx = null;
 }
 
-fn void _window_make_opengl_current_context_native_win32(GfxWindow* win)
+fn void window_make_current_opengl_context(GfxWindow* win)
 {
 	if (!win)
 	{
@@ -807,12 +828,12 @@ fn void _window_make_opengl_current_context_native_win32(GfxWindow* win)
 	gfx::wgl_make_current_fn(win.src.hdc, win.src.ctx.native.ctx);
 }
 
-fn void _window_opengl_swap_buffers_native_win32(GfxWindow* win)
+fn void window_opengl_swap_buffers(GfxWindow* win)
 {
 	win32::swapBuffers(win.src.hdc);
 }
 
-fn void* _get_current_opengl_context_native_win32()
+fn void* get_current_opengl_context()
 {
 	return gfx::wgl_get_current_context_fn();
 }
@@ -855,23 +876,23 @@ fn void? _load_opengl_win32() @private
 	gfx::wgl_make_current_fn(dummy_dc, dummy_context);
 	defer gfx::wgl_delete_context_fn(dummy_context);
 
-	gfx::wgl_create_context_attribs_arb_fn = _get_opengl_proc_native_win32("wglCreateContextAttribsARB");
-	gfx::wgl_choose_pixel_format_arb_fn = _get_opengl_proc_native_win32("wglChoosePixelFormatARB");
-	gfx::wgl_swap_interval_ext_fn = _get_opengl_proc_native_win32("wglSwapIntervalEXT");
+	gfx::wgl_create_context_attribs_arb_fn = get_opengl_proc("wglCreateContextAttribsARB");
+	gfx::wgl_choose_pixel_format_arb_fn = get_opengl_proc("wglChoosePixelFormatARB");
+	gfx::wgl_swap_interval_ext_fn = get_opengl_proc("wglSwapIntervalEXT");
 
 	if (!gfx::wgl_swap_interval_ext_fn) return gfx::FAILED_TO_LOAD_SWAP_INTERVAL_FN~;
 
 	gfx::wgl_make_current_fn(dummy_dc, cur);
 }
 
-fn void* _get_opengl_proc_native_win32(ZString procname)
+fn void* get_opengl_proc(ZString procname)
 {
 	void* proc = gfx::_gfx.gl.get_proc_addr_fn ? gfx::_gfx.gl.get_proc_addr_fn(procname) : null;
 	if (proc) return proc;
 	return os::dlsym(gfx::_gfx.gl.native_handle, procname);
 }
 
-fn bool _vulkan_get_physical_device_presentation_support_native_win32(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	GfxFn raw = gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
 	if (raw == null) return false;
@@ -879,7 +900,7 @@ fn bool _vulkan_get_physical_device_presentation_support_native_win32(VkInstance
 	return out != 0;
 }
 
-fn WGPUSurface _window_create_wgpu_surface_native_win32(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuSurfaceSourceWindowsHWND fromHwnd;
 	fromHwnd.chain.next = null;
@@ -891,7 +912,7 @@ fn WGPUSurface _window_create_wgpu_surface_native_win32(GfxWindow* window, WGPUI
 	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
-fn void _init_keycodes_native_win32()
+fn void init_keycodes_platform()
 {
 	gfx::_gfx.keycodes = {
 		[0x00B] = NUM0,          [0x002] = NUM1,          [0x003] = NUM2,
@@ -937,7 +958,7 @@ fn void _init_keycodes_native_win32()
 	};
 }
 
-fn GfxKey _physical_to_mapped_key_native_win32(GfxKey key)
+fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	uint vsc = key.to_api();
 	char[256] keyboardState;
@@ -1016,6 +1037,40 @@ const int WGL_CONTEXT_MINOR_VERSION_ARB = 0x2092;
 const int WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB = 0x20A9;
 const int WGL_CONTEXT_DEBUG_BIT_ARB = 0x00000001;
 const int WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB = 0x00000004;
+
+// --- helpers
+
+fn Win32_HICON _load_handle_image(char* data, int w, int h, GfxFormat format, int icon) @local
+{
+	Win32_BITMAPV5HEADER bi = {
+		.bV5Size = Win32_BITMAPV5HEADER::size,
+		.bV5Width = w,
+		.bV5Height = -h,
+		.bV5Planes = 1,
+		.bV5BitCount = 32,
+		.bV5Compression = win32::BI_RGB,
+	};
+
+	Win32_HDC dc = win32::getDC(null);
+	char* target;
+	Win32_HBITMAP color = win32::createDIBSection(dc, &bi, 0, &target, null, 0);
+	gfx::copy_image_data(target, w, h, BGRA8, data, format, null);
+	win32::releaseDC(null, dc);
+
+	Win32_HBITMAP mask = win32::createBitmap(w, h, 1, 1, null);
+
+	Win32_ICONINFO ii;
+	ii.fIcon = icon;
+	ii.xHotspot = (uint)w / 2;
+	ii.yHotspot = (uint)h / 2;
+	ii.hbmMask = mask;
+	ii.hbmColor = color;
+
+	Win32_HICON handle = win32::createIconIndirect(&ii);
+	win32::deleteObject(color);
+	win32::deleteObject(mask);
+	return handle;
+}
 
 module std::gfx @feat(WIN32) @private;
 import std::os::win32, std::collections, std::time, std::math, std::os;
@@ -1119,11 +1174,11 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			_window_focus_callback(win, in_focus);
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_MOVE:
-			if (win.internal.capture_mouse) win32::_window_set_capture_mouse_native_win32(win, true);
+			if (win.internal.capture_mouse) win32::window_set_capture_mouse_platform(win, true);
 			_window_moved_callback(win, _param_to_point(lParam));
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_SIZE:
-			if (win.internal.capture_mouse) win32::_window_set_capture_mouse_native_win32(win, true);
+			if (win.internal.capture_mouse) win32::window_set_capture_mouse_platform(win, true);
 			_window_resized_callback(win, _param_to_point(lParam));
 			_window_check_mode(win);
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
@@ -1135,7 +1190,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_CAPTURECHANGED:
 			if (!lParam && win.src.actionFrame)
 			{
-				win32::_window_set_capture_mouse_native_win32(win, win.internal.capture_mouse);
+				win32::window_set_capture_mouse_platform(win, win.internal.capture_mouse);
 				win.src.actionFrame = false;
 			}
 		case win32::WM_DPICHANGED:
@@ -1177,7 +1232,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_ENTERSIZEMOVE:
 		case win32::WM_EXITSIZEMOVE:
-			if (win.src.actionFrame) win32::_window_set_capture_mouse_native_win32(win, win.internal.capture_mouse);
+			if (win.src.actionFrame) win32::window_set_capture_mouse_platform(win, win.internal.capture_mouse);
 		case win32::WM_TIMER:
 			_window_refresh_callback(win, { 0, 0, ...win.size });
 		case win32::WM_NCLBUTTONDOWN:
@@ -1563,37 +1618,6 @@ struct WgpuSurfaceSourceWindowsHWND
 
 // --- helpers
 
-fn Win32_HICON _load_handle_image(char* data, int w, int h, GfxFormat format, int icon)
-{
-	Win32_BITMAPV5HEADER bi = {
-		.bV5Size = Win32_BITMAPV5HEADER::size,
-		.bV5Width = w,
-		.bV5Height = -h,
-		.bV5Planes = 1,
-		.bV5BitCount = 32,
-		.bV5Compression = win32::BI_RGB,
-	};
-
-	Win32_HDC dc = win32::getDC(null);
-	char* target;
-	Win32_HBITMAP color = win32::createDIBSection(dc, &bi, 0, &target, null, 0);
-	copy_image_data(target, w, h, BGRA8, data, format, null);
-	win32::releaseDC(null, dc);
-
-	Win32_HBITMAP mask = win32::createBitmap(w, h, 1, 1, null);
-
-	Win32_ICONINFO ii;
-	ii.fIcon = icon;
-	ii.xHotspot = (uint)w / 2;
-	ii.yHotspot = (uint)h / 2;
-	ii.hbmMask = mask;
-	ii.hbmColor = color;
-
-	Win32_HICON handle = win32::createIconIndirect(&ii);
-	win32::deleteObject(color);
-	win32::deleteObject(mask);
-	return handle;
-}
 
 fn void? _open_clipboard()
 {

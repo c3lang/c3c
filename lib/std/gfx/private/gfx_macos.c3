@@ -1,7 +1,7 @@
 module std::gfx::macos @feat(MACOS) @private;
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 
-fn void _window_move_mouse_macos(GfxWindow* win, GfxPoint where)
+fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	cg::warpMouseCursorPosition({ ...where });
 	if (win) win.internal.last_mouse = where;
@@ -12,14 +12,14 @@ fn void? _load_opengl_macos()
 	if (gfx::_gfx.gl.native_handle) return;
 	gfx::_gfx.gl.native_handle = cf::bundle_for_name("com.apple.opengl");
 	if (!gfx::_gfx.gl.native_handle) return gfx::MISSING_OPENGL_LIB~;
-	gfx::_gfx.gl.get_proc_addr_fn = &_get_opengl_proc_native_macos;
+	gfx::_gfx.gl.get_proc_addr_fn = &get_opengl_proc;
 }
-fn bool _opengl_extension_is_supported_native_macos(String extension)
+fn bool opengl_extension_is_supported_platform(String extension)
 {
-	if (gfx::_opengl_extension_supported_base(extension, &_get_opengl_proc_native_macos)) return true;
-	return _opengl_extension_is_supported_native_macos(extension);
+	if (gfx::_opengl_extension_supported_base(extension, &get_opengl_proc)) return true;
+	return opengl_extension_is_supported_platform(extension);
 }
-fn void* _get_opengl_proc_native_macos(ZString procname)
+fn void* get_opengl_proc(ZString procname)
 {
 	if (!gfx::_gfx.gl.native_handle || !procname) return null;
 	CFStringRef symbol_name = cf::stringCreateWithCString(null, procname, 0x0600);
@@ -27,7 +27,7 @@ fn void* _get_opengl_proc_native_macos(ZString procname)
 	defer symbol_name.release();
 	return cf::bundleGetFunctionPointerForName((CFBundleRef)gfx::_gfx.gl.native_handle, symbol_name);
 }
-fn void? _window_init_opengl_context_native_macos(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
+fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
 	win.src.backing = { .opengl };
@@ -82,18 +82,18 @@ fn void? _window_init_opengl_context_native_macos(GfxWindow* win, GfxGlContext* 
 		int opacity = 0;
 		gfx::_opengl_context_set_values((ObjId)ctx.ctx, &opacity, gfx::NS_OPEN_GL_CP_SURFACE_OPACITY);
 	}
-	_window_make_opengl_current_context_native_macos(win);
+	window_make_current_opengl_context(win);
 	gfx::_window_set_opengl_swap_interval(win, 0);
 }
-fn void* _get_current_opengl_context_native_macos()
+fn void* get_current_opengl_context()
 {
 	return (void*)objc::send(objc::@class("NSOpenGLContext"), ObjId, "currentContext");
 }
-fn void _window_opengl_swap_buffers_native_macos(GfxWindow* win)
+fn void window_opengl_swap_buffers(GfxWindow* win)
 {
 	if (win.src.ctx.native && win.src.ctx.native.ctx) win.src.ctx.native.ctx.send_void("flushBuffer");
 }
-fn void _window_make_opengl_current_context_native_macos(GfxWindow* win)
+fn void window_make_current_opengl_context(GfxWindow* win)
 {
 	if (win && win.src.ctx.native && win.src.ctx.native.ctx)
 	{
@@ -104,7 +104,7 @@ fn void _window_make_opengl_current_context_native_macos(GfxWindow* win)
 		objc::send_void(objc::@class("NSOpenGLContext"), "clearCurrentContext");
 	}
 }
-fn void _window_release_opengl_context_native_macos(GfxWindow* win, GfxGlContext* ctx)
+fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
 {
 	objc::release(ctx.format);
 	objc::release(ctx.ctx);
@@ -112,15 +112,15 @@ fn void _window_release_opengl_context_native_macos(GfxWindow* win, GfxGlContext
 	ctx.ctx = null;
 	win.src.ctx.native = null;
 }
-fn bool _vulkan_get_physical_device_presentation_support_native_macos(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	return false;
 }
-fn void _window_set_capture_mouse_native_macos(GfxWindow* win, bool state)
+fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 {
 	cg::associateMouseAndMouseCursorPosition(!state);
 }
-fn void _window_maximize_native_macos(GfxWindow* win)
+fn void window_maximize_platform(GfxWindow* win)
 {
 	win.src.window.send_void("zoom:", null);
 }
@@ -142,7 +142,7 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	if (!surface.data) return;
 	GfxPoint min = math::min(win.size, surface.size);
-	if (try mon = _window_find_monitor_native_macos(win))
+	if (try mon = window_find_monitor(win))
 	{
 		min = (GfxPoint)((Vec2)min * mon.pixelRatio);
 	}
@@ -157,17 +157,17 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 	layer.send_void("setContents:", image);
 	objc::release(image);
 }
-fn void _window_set_raw_mouse_mode_native_macos(GfxWindow* win, bool state)
+fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 {
 	gfx::_gfx.raw_mouse = state;
 }
-fn bool _window_is_floating_native_macos(GfxWindow* win)
+fn bool window_is_floating(GfxWindow* win)
 {
 	if (!win) return false;
 	if (win.src.window) return win.src.window.send(NSInteger, "level") > NSWindowLevel.NORMAL;
 	return win.internal.flags.floating;
 }
-fn void _window_set_border_native_macos(GfxWindow* win, bool border)
+fn void _window_set_border(GfxWindow* win, bool border)
 {
 	if (!win.src.window) return;
 	CGRect frame = win.src.window.send(CGRect, "frame");
@@ -201,7 +201,7 @@ fn GfxPoint window_fetch_size(GfxWindow* win)
 	}
 	return win.size;
 }
-fn void _window_set_fullscreen_native_macos(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 {
 	if (win.src.window) win.src.window.send_void("toggleFullScreen:", null);
 	win.internal.flags.fullscreen = fullscreen;
@@ -211,7 +211,7 @@ fn void window_focus(GfxWindow* win)
 	win.src.window.send_void("makeKeyWindow", null);
 	win.internal.in_focus = true;
 }
-fn void _window_resize_native_macos(GfxWindow* win, GfxSize size)
+fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
 	if (!win.src.window) return;
 	CGRect frame = win.src.window.send(CGRect, "frame");
@@ -219,7 +219,7 @@ fn void _window_resize_native_macos(GfxWindow* win, GfxSize size)
 	double offset = frame.size.height - content.size.height;
 	win.src.window.send_void("setFrame:display:", (CGRect){{ ...win.origin }, { size.x, (double)size.y + offset}}, true);
 }
-fn void _window_move_native_macos(GfxWindow* win, GfxPoint where)
+fn void window_move_platform(GfxWindow* win, GfxPoint where)
 {
 	if (!win.src.window) return;
 	CGRect content = win.src.view.send(CGRect, "frame");
@@ -228,11 +228,11 @@ fn void _window_move_native_macos(GfxWindow* win, GfxPoint where)
 	CGPoint origin = { ...where };
 	win.src.window.send_void("setFrameOrigin:", origin);
 }
-fn void _window_set_min_size_native_macos(GfxWindow* win, GfxSize size)
+fn void window_set_min_size(GfxWindow* win, GfxSize size)
 {
 	win.src.window.send_void("setMinSize:", (CGSize) { ...size });
 }
-fn bool _window_set_icon_native_macos(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
+fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
 	if (!gfx::_gfx.ns_app) return false;
 	if (!data)
@@ -250,7 +250,7 @@ fn bool _window_set_icon_native_macos(GfxWindow* win, void* data, int w, int h, 
 	gfx::_gfx.ns_app.send_void("setApplicationIconImage:", image);
 	return true;
 }
-fn void _window_set_aspect_ratio_native_macos(GfxWindow* win, int w, int h) @private
+fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
 {
 	if (!win.src.window) return;
 	if (w == 0 && h == 0)
@@ -270,7 +270,7 @@ fn void free_mouse(GfxMouse* mouse)
 {
 	objc::release((ObjId)mouse);
 }
-fn void _poll_events_native_macos()
+fn void poll_events_platform()
 {
 	objc::@autoreleasepool()
 	{
@@ -316,11 +316,11 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	nswin.send_void("makeFirstResponder:", view);
 	nswin.send_void("setAcceptsMouseMovedEvents:", true);
 	win.set_name(name);
-	_window_set_floating_native_macos(win, flags.floating);
-	if (!(flags.hide)) window_show(win);
-	if (flags.maximize) _window_maximize_native_macos(win);
-	if (flags.minimize) _window_minimize_native_macos(win);
-	if (flags.fullscreen) _window_set_fullscreen_native_macos(win, true);
+	window_set_floating(win, flags.floating);
+	if (!(flags.hide)) window_show_platform(win);
+	if (flags.maximize) window_maximize_platform(win);
+	if (flags.minimize) window_minimize_platform(win);
+	if (flags.fullscreen) window_set_fullscreen(win, true);
 
 	gfx::_window_set_flags(win, flags, {});
 	win.src.backing = {};
@@ -328,7 +328,7 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
 	gfx::_macos_init_view(win);
 }
-fn GfxMonitor*? _window_find_monitor_native_macos(GfxWindow* win) => gfx::get_primary_monitor();
+fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor();
 fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => @pool()
 {
 	if (!ramp.red) return gfx::GAMMA_COULD_NOT_BE_SET~;
@@ -404,31 +404,31 @@ fn IntRect monitor_get_workarea(GfxMonitor* monitor)
 	CGRect bounds = _monitor_display(monitor).bounds();
 	return { (int)bounds.origin.x, (int)bounds.origin.y, (int)bounds.size.width, (int)bounds.size.height };
 }
-fn void _window_set_max_size_native_macos(GfxWindow* win, GfxSize size)
+fn void window_set_max_size(GfxWindow* win, GfxSize size)
 {
 	if (!win.src.window) return;
 	if (size == { 0, 0 })
 	{
-		if (try mon = _window_find_monitor_native_macos(win)) size = mon.mode.size;
+		if (try mon = window_find_monitor(win)) size = mon.mode.size;
 	}
 	win.src.window.send_void("setMaxSize:", (CGSize){ ...size });
 }
-fn void _window_set_name_native_macos(GfxWindow* win, String name)
+fn void _window_set_name(GfxWindow* win, String name)
 {
 	win.src.window.send_void("setTitle:", name.to_nsstring());
 }
-fn void _window_restore_native_macos(GfxWindow* win)
+fn void window_restore_platform(GfxWindow* win)
 {
 	if (!win.src.window) return;
 	win.src.window.send_void("deminiaturize:", null);
 	win.internal.flags.minimize = false;
 	win.internal.flags.maximize = false;
 }
-fn void _window_raise_native_macos(GfxWindow* win)
+fn void window_raise(GfxWindow* win)
 {
 	win.src.window.send_void("orderFrontRegardless", null);
 }
-fn void _window_set_mouse_passthrough_native_macos(GfxWindow* win, bool passthrough)
+fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
 {
 	if (win.src.window) win.src.window.send_void("setIgnoresMouseEvents:", passthrough);
 }
@@ -437,14 +437,16 @@ fn bool window_is_maximized(GfxWindow* win)
 	if (win.src.window) return win.src.window.send(bool, "isZoomed");
 	return win.internal.flags.maximize;
 }
-fn void _window_set_opacity_native_macos(GfxWindow* win, float opacity)
+fn void window_set_opacity(GfxWindow* win, float opacity)
 {
 	win.src.window.send_void("setAlphaValue:", (CGFloat)opacity);
 }
-fn void _window_minimize_native_macos(GfxWindow* win)
+
+fn void window_minimize_platform(GfxWindow* win)
 {
 	win.src.window.send_void("miniaturize:", null);
 }
+
 fn void window_destroy_platform(GfxWindow* win)
 {
 	win.src.window.send_void("close");
@@ -455,27 +457,26 @@ fn void window_destroy_platform(GfxWindow* win)
 	win.src.view = null;
 	win.src.window = null;
 }
-fn bool _window_set_mouse_native_macos(GfxWindow* win, GfxMouse* mouse)
+fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 {
 	ObjId mouse_native = (ObjId)mouse;
 	cg::mainDisplayID().showCursor();
 	mouse_native.send_void("set");
 	win.src.mouse = mouse_native;
-	return true;
 }
-fn void _window_set_floating_native_macos(GfxWindow* win, bool floating)
+fn void window_set_floating(GfxWindow* win, bool floating)
 {
 	if (win.src.window) win.src.window.send_void("setLevel:", floating ? NSWindowLevel.FLOATING : NSWindowLevel.NORMAL);
 	win.internal.flags.floating = floating;
 }
-fn void window_show(GfxWindow* win)
+fn void window_show_platform(GfxWindow* win)
 {
 	if (!win.src.window) return;
 	win.src.window.send_void("makeKeyAndOrderFront:", null);
 	if (gfx::_gfx.ns_app) gfx::_gfx.ns_app.send_void("activateIgnoringOtherApps:", true);
 	win.internal.flags.hide = false;
 }
-fn void _destroy_native_macos()
+fn void destroy_platform()
 {
 	if (gfx::_gfx.ns_pool)
 	{
@@ -483,7 +484,7 @@ fn void _destroy_native_macos()
 		gfx::_gfx.ns_pool = null;
 	}
 }
-fn void? _write_clipboard_native_macos(GfxDataTransfer* data)
+fn void? write_clipboard(GfxDataTransfer* data)
 {
 	if (data.type != TEXT || !data.text) return NOT_IMPLEMENTED~;
 	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
@@ -495,7 +496,7 @@ fn void? _write_clipboard_native_macos(GfxDataTransfer* data)
 		return gfx::CLIPBOARD_WRITE_FAILED~;
 	}
 }
-fn GfxDataTransfer? _read_clipboard_native_macos(Allocator allocator, GfxDataTransferType type)
+fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type)
 {
 	if (type != TEXT) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
@@ -596,7 +597,7 @@ fn GfxPoint get_global_mouse()
 	CGPoint point = event.getLocation();
 	return { (int)point.x, (int)point.y };
 }
-fn void? _surface_init_native_macos(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
 	surface.data = data;
 	surface.size = { w, h };
@@ -604,14 +605,14 @@ fn void? _surface_init_native_macos(GfxSurface* surface, void* data, int w, int 
 	surface.native.format = RGBA8;
 	surface.native.buffer = malloc((sz)w * h * 4);
 }
-fn void _surface_release_native_macos(GfxSurface* surface)
+fn void surface_release(GfxSurface* surface)
 {
 	if (!surface.data) return;
 	if (surface.native.native0) objc::release(surface.native.native0);
 	if (surface.native.buffer) free(surface.native.buffer);
 	*surface = {};
 }
-fn WGPUSurface _window_create_wgpu_surface_native_macos(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	if (!window.src.view)
 	{
@@ -640,7 +641,7 @@ fn void _window_set_layer_macos(GfxWindow* win, ObjId layer)
 {
 	if (win.src.view) win.src.view.send_void("setLayer:", layer);
 }
-fn void _init_keycodes_native_macos()
+fn void init_keycodes_platform()
 {
 	gfx::_gfx.keycodes = {
 		[0x00] = A,             [0x01] = S,             [0x02] = D,
@@ -682,7 +683,7 @@ fn void _init_keycodes_native_macos()
 		[0x51] = PAD_EQUAL,     [0x43] = PAD_MULTIPLY,  [0x4E] = PAD_MINUS,
 	};
 }
-fn GfxKey _physical_to_mapped_key_native_macos(GfxKey key)
+fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	ushort keycode = (ushort)key.to_api();
 	TISInputSourceRef source = macos::tisCopyCurrentKeyboardLayoutInputSource();
@@ -973,7 +974,7 @@ fn void _osx_window_did_resize(ObjId self, ObjSel sel, ObjId notification)
 	if (!size.x || !size.y) return;
 	win.size = size;
 
-	GfxMonitor*? mon = macos::_window_find_monitor_native_macos(win);
+	GfxMonitor*? mon = macos::window_find_monitor(win);
 	if (catch mon) return;
 
 	switch
@@ -1090,7 +1091,7 @@ fn void _osx_view_did_change_backing_properties(ObjId self, ObjSel sel)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
-	(void)_scale_updated_callback(win, macos::_window_find_monitor_native_macos(win).scale);
+	(void)_scale_updated_callback(win, macos::window_find_monitor(win).scale);
 }
 
 fn NSUInteger _osx_dragging_entered(ObjId self, ObjSel sel, ObjId sender)

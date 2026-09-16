@@ -240,7 +240,7 @@ alias GfxGetProcFn = fn void*(ZString);
 fn void _init_keycodes()
 {
 	_gfx.keycodes = {};
-	_init_keycodes_native();
+	_init_keycodes_platform();
 	for (int i = 0; i < GFX_KEYS; i++)
 	{
 		for (int y = 0; y < _gfx.keycodes.len; y++)
@@ -405,8 +405,8 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	if (flags.center_cursor) _window_move_mouse(win, win.origin + win.size / 2);
 	switch
 	{
-		case flags.fullscreen: _window_set_fullscreen_native(win, true);
-		case cmpFlags.fullscreen: _window_set_fullscreen_native(win, false);
+		case flags.fullscreen: _window_set_fullscreen(win, true);
+		case cmpFlags.fullscreen: _window_set_fullscreen(win, false);
 	}
 	if (flags.hide_mouse)
 	{
@@ -426,11 +426,11 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	}
 	if (flags.floating)
 	{
-		_window_set_floating_native(win, true);
+		_window_set_floating(win, true);
 	}
 	else if (cmpFlags.floating)
 	{
-		_window_set_floating_native(win, false);
+		_window_set_floating(win, false);
 	}
 	if (flags.raw_mouse)
 	{
@@ -453,11 +453,11 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	switch (true)
 	{
 		case flags.no_resize:
-			_window_set_max_size_native(win, win.size);
-			_window_set_min_size_native(win, win.size);
+			_window_set_max_size(win, win.size);
+			_window_set_min_size(win, win.size);
 		case cmpFlags.no_resize:
-			_window_set_max_size_native(win, {});
-			_window_set_min_size_native(win, {});
+			_window_set_max_size(win, {});
+			_window_set_min_size(win, {});
 	}
 	win.internal.flags = flags;
 }
@@ -498,13 +498,13 @@ fn void _window_maximized_callback(GfxWindow* win, IntRect bounds)
 fn void _window_focus_callback(GfxWindow* win, bool in_focus)
 {
 	win.internal.in_focus = in_focus;
-	if (win.internal.capture_mouse) _window_set_capture_mouse_native(win, in_focus);
+	if (win.internal.capture_mouse) _window_set_capture_mouse_platform(win, in_focus);
 	GfxEvent event;
 	event.common.win = win;
 	event.focus.state = in_focus;
 	if (in_focus == true)
 	{
-		if (win.internal.flags.fullscreen) _window_raise_native(win);
+		if (win.internal.flags.fullscreen) _window_raise(win);
 		event.type = WINDOW_FOCUS_IN;
 	}
 	else

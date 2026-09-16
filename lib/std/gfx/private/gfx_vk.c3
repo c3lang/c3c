@@ -43,7 +43,7 @@ alias VkCreateSurfaceKHRProc = fn VkResult(VkInstance instance, void* create_inf
 
 fn bool vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	return _vulkan_get_physical_device_presentation_support_native(instance, physical_device, queue_family_index);
+	return _vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
 }
 
 // public

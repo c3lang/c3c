@@ -7,7 +7,7 @@ fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_I
 fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
 fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
 
-fn void window_capture_mouse(GfxWindow* win, bool capture)
+fn void window_set_capture_mouse_platform(GfxWindow* win, bool capture)
 {
 	if (!gfx::_gfx.constraint_manager) return;
 
@@ -84,7 +84,7 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 	return (GfxMouse*)surface;
 }
 
-fn void _destroy_wayland()
+fn void destroy_platform()
 {
 	if (gfx::_gfx.unixClipboard) free(gfx::_gfx.unixClipboard);
 	if (gfx::_gfx.wlPointer) wlPointerDestroy(gfx::_gfx.wlPointer);
@@ -109,7 +109,7 @@ fn void _destroy_wayland()
 	if (gfx::_gfx.wlDisplay) wlDisplayDisconnect(gfx::_gfx.wlDisplay);
 }
 
-fn bool _opengl_extension_is_supported_wayland(String extension)
+fn bool opengl_extension_is_supported_platform(String extension)
 {
 	return gfx::egl_extension_is_supported(extension);
 }
@@ -121,7 +121,7 @@ fn void free_mouse(GfxMouse* mouse)
 	surface.destroy();
 }
 
-fn void* _get_current_opengl_context_wayland() => egl::get_current_context();
+fn void* get_current_opengl_context() => egl::get_current_context();
 
 fn GfxPoint get_global_mouse()
 {
@@ -129,7 +129,7 @@ fn GfxPoint get_global_mouse()
 }
 
 
-fn void _init_keycodes_native_wayland()
+fn void init_keycodes_platform()
 {
 	// Wayland keycodes come directly from the evdev-based xkb keymap (key+8);
 	// no separate keycode table walk is needed the way X11's is.
@@ -274,7 +274,7 @@ fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorM
 }
 
 // private
-fn GfxKey _physical_to_mapped_key_native_wayland(GfxKey key)
+fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	XkbKeycode kc = key.to_api() + 8;
 	XkbKeysym sym = xkbStateKeyGetOneSym(gfx::_gfx.xkbState, kc);
@@ -403,7 +403,7 @@ fn void _wait_for_event_wayland(Posix_pollfd[] fds, Duration duration)
 }
 
 // private
-fn void _poll_events_wayland()
+fn void poll_events_platform()
 {
 	gfx::_reset_prev_state();
 
@@ -453,7 +453,7 @@ fn void poll_monitors()
 	gfx::_gfx.monitors.primary = gfx::_gfx.monitors.list.head;
 }
 
-fn GfxDataTransfer? _read_clipboard_wayland(Allocator allocator, GfxDataTransferType type)
+fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type)
 {
 	if (type != TEXT || !gfx::_gfx.unixClipboard || !gfx::_gfx.unixClipboard.text) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
@@ -486,7 +486,7 @@ fn void window_destroy_platform(GfxWindow* win)
 	wlSurfaceDestroy(win.src.surface);
 }
 
-fn void? _window_init_opengl_context_wayland(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
+fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
 	egl::init_window_context(win, (GfxEglContext*)context, hints, gfx::_gfx.wlDisplay)!;
 	win.src.backing = { .opengl };
@@ -500,7 +500,7 @@ fn void _window_opengl_swap_interval_wayland(GfxWindow* win, int swapInterval)
 }
 
 
-fn WGPUSurface _window_create_wgpu_surface_wayland(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuSurfaceSourceWaylandSurface fromWl;
 	fromWl.chain.next = null;
@@ -512,7 +512,7 @@ fn WGPUSurface _window_create_wgpu_surface_wayland(GfxWindow* window, WGPUInstan
 	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
 
-fn void _window_release_opengl_context_wayland(GfxWindow* win, GfxGlContext* ctx)
+fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
 {
 	egl::destroy_context_in_window((GfxEglContext*)ctx, null);
 	win.src.ctx.native = null;
@@ -524,10 +524,10 @@ fn void window_focus(GfxWindow* win) {}
 fn bool window_is_hidden(GfxWindow* win) => false;
 fn bool window_is_maximized(GfxWindow* win) => win.src.maximized;
 fn bool window_is_minimized(GfxWindow* win) => win.src.minimized;
-fn void _window_raise_wayland(GfxWindow* win) {}
-fn void _window_set_floating_wayland(GfxWindow* win, bool floating) {}
-fn void _window_set_opacity_wayland(GfxWindow* win, float opacity) {}
-fn void _window_set_mouse_passthrough_wayland(GfxWindow* win, bool passthrough) {}
+fn void window_raise(GfxWindow* win) {}
+fn void window_set_floating(GfxWindow* win, bool floating) {}
+fn void window_set_opacity(GfxWindow* win, float opacity) {}
+fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough) {}
 
 fn void window_hide(GfxWindow* win)
 {
@@ -536,17 +536,17 @@ fn void window_hide(GfxWindow* win)
 	win.internal.flags.hide = true;
 }
 
-fn void _window_make_opengl_current_context_wayland(GfxWindow* win)
+fn void window_make_current_opengl_context(GfxWindow* win)
 {
 	egl::set_current_window(win);
 }
 
-fn void _window_maximize_wayland(GfxWindow* win)
+fn void window_maximize_platform(GfxWindow* win)
 {
 	_toggle_wayland_maximized(win, true);
 }
 
-fn void _window_minimize_wayland(GfxWindow* win)
+fn void window_minimize_platform(GfxWindow* win)
 {
 	if (window_is_maximized(win)) return;
 	win.internal.old_bounds = win.bounds;
@@ -554,18 +554,18 @@ fn void _window_minimize_wayland(GfxWindow* win)
 	xdgToplevelSetMinimized(win.src.xdgToplevel);
 }
 
-fn void _window_move_mouse_wayland(GfxWindow* win, GfxPoint where)
+fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	if (!gfx::_gfx.wp_pointer_warp) return;
 	_wp_pointer_warp_v1_warp_pointer(gfx::_gfx.wp_pointer_warp, win.src.surface, gfx::_gfx.wlPointer, wlFixedFromInt(where.x), wlFixedFromInt(where.y), gfx::_gfx.mouseEnterSerial);
 }
 
-fn void _window_move_wayland(GfxWindow* win, GfxPoint where)
+fn void window_move_platform(GfxWindow* win, GfxPoint where)
 {
 	win.origin = where;
 }
 
-fn void _window_resize_wayland(GfxWindow* win, GfxSize size)
+fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
 	if (gfx::_gfx.compositor != null)
@@ -575,18 +575,18 @@ fn void _window_resize_wayland(GfxWindow* win, GfxSize size)
 	}
 }
 
-fn void _window_restore_wayland(GfxWindow* win)
+fn void window_restore_platform(GfxWindow* win)
 {
 	_toggle_wayland_maximized(win, false);
 }
 
-fn void _window_set_aspect_ratio_wayland(GfxWindow* win, int w, int h)
+fn void window_set_aspect_ratio(GfxWindow* win, int w, int h)
 {
 	if (w == 0 && h == 0) return;
 	_xdg_toplevel_set_max_size(win.src.xdgToplevel, w, h);
 }
 
-fn void _window_set_border_wayland(GfxWindow* win, bool border)
+fn void _window_set_border(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
 	if (gfx::_gfx.decorationManager)
@@ -595,7 +595,7 @@ fn void _window_set_border_wayland(GfxWindow* win, bool border)
 	}
 }
 
-fn void _window_set_fullscreen_wayland(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
@@ -610,29 +610,28 @@ fn void _window_set_fullscreen_wayland(GfxWindow* win, bool fullscreen)
 	}
 }
 
-fn void _window_set_max_size_wayland(GfxWindow* win, GfxSize size)
+fn void window_set_max_size(GfxWindow* win, GfxSize size)
 {
 	_xdg_toplevel_set_max_size(win.src.xdgToplevel, ...size);
 }
 
-fn void _window_set_min_size_wayland(GfxWindow* win, GfxSize size)
+fn void window_set_min_size(GfxWindow* win, GfxSize size)
 {
 	xdgToplevelSetMinSize(win.src.xdgToplevel, ...size);
 }
 
-fn bool _window_set_mouse_wayland(GfxWindow* win, GfxMouse* mouse)
+fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 {
 	GfxSurface* surface = (GfxSurface*)mouse;
 	win.src.usingCustomCursor = true;
 	wlSurfaceAttach(win.src.customCursorSurface, surface.native.wlBuffer, 0, 0);
 	wlSurfaceDamage(win.src.customCursorSurface, 0, 0, ...surface.size);
 	wlSurfaceCommit(win.src.customCursorSurface);
-	return true;
 }
 
 
 // private
-fn void _window_set_raw_mouse_mode_wayland(GfxWindow* win, bool state)
+fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 {
 	if (!gfx::_gfx.relativePointerManager) return;
 
@@ -649,18 +648,18 @@ fn void _window_set_raw_mouse_mode_wayland(GfxWindow* win, bool state)
 	zwpRelativePointerV1AddListener(gfx::_gfx.relativePointer, &listener, &gfx::_gfx);
 }
 
-fn void _window_opengl_swap_buffers_wayland(GfxWindow* win)
+fn void window_opengl_swap_buffers(GfxWindow* win)
 {
 	egl::swap_window_buffers(win);
 }
 
-fn void window_show(GfxWindow* win)
+fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
 	wlSurfaceCommit(win.src.surface);
 }
 
-fn void? _write_clipboard_wayland(GfxDataTransfer* data)
+fn void? write_clipboard(GfxDataTransfer* data)
 {
 	if (!gfx::_gfx.dataDeviceManager) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
 	if (gfx::_gfx.unixClipboard)
@@ -701,7 +700,7 @@ fn void? _write_clipboard_wayland(GfxDataTransfer* data)
 }
 
 // private
-fn void? _init_surface_wayland(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
 	surface.data = data;
 	surface.size = { w, h };
@@ -723,7 +722,7 @@ fn void? _init_surface_wayland(GfxSurface* surface, void* data, int w, int h, Gf
 	}
 }
 
-fn void _surface_release_wayland(GfxSurface* surface)
+fn void surface_release(GfxSurface* surface)
 {
 	if (!surface.data) return;
 	if (surface.native.pool) wlShmPoolDestroy(surface.native.pool);
@@ -732,9 +731,9 @@ fn void _surface_release_wayland(GfxSurface* surface)
 	*surface = {};
 }
 
-fn bool _window_is_floating_wayland(GfxWindow* win) => !win.is_fullscreen() && !window_is_maximized(win);
+fn bool window_is_floating(GfxWindow* win) => !win.is_fullscreen() && !window_is_maximized(win);
 
-fn void _window_set_name_wayland(GfxWindow* win, String name)
+fn void _window_set_name(GfxWindow* win, String name)
 {
 	if (gfx::_gfx.compositor) @pool()
 	{
@@ -743,7 +742,7 @@ fn void _window_set_name_wayland(GfxWindow* win, String name)
 }
 
 // private
-fn bool _window_set_icon_wayland(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
+fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
 	if (!gfx::_gfx.iconManager || w != h) return false;
 
@@ -764,7 +763,7 @@ fn bool _window_set_icon_wayland(GfxWindow* win, char* data, int w, int h, GfxFo
 	return true;
 }
 
-fn GfxMonitor*? _window_find_monitor_wayland(GfxWindow* win)
+fn GfxMonitor*? window_find_monitor(GfxWindow* win)
 {
 	if (!win.src.activeMonitor) return gfx::get_primary_monitor();
 	return &win.src.activeMonitor.mon;
@@ -1392,7 +1391,7 @@ struct WgpuSurfaceSourceWaylandSurface
 
 alias VkGetPhysicalDeviceWaylandPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, WlDisplay*);
 
-fn bool _vulkan_get_physical_device_presentation_support_wayland(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	GfxFn raw = gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
 	if (raw == null) return false;

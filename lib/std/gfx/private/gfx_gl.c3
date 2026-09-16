@@ -70,14 +70,14 @@ fn GfxGlContext*? _window_create_opengl_context_native(GfxWindow* win, GfxGlHint
 {
 	GfxGlContext* context = mem::new(GfxGlContext);
 	defer catch free(context);
-	_window_init_opengl_context_native(win, context, hints)!;
+	_window_init_opengl_context_platform(win, context, hints)!;
 	win.src.backing.owned = true;
 	return context;
 }
 
 fn void _window_destroy_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 {
-	_window_release_opengl_context_native(win, ctx);
+	_window_release_opengl_context_platform(win, ctx);
 	if (win.src.backing.owned) free(ctx);
 }
 

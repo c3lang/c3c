@@ -4,7 +4,7 @@ import std::gfx::egl @public;
 
 fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
 
-fn void _destroy_native_wasm() {}
+fn void destroy_platform() {}
 
 fn IntRect monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
 fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
@@ -14,50 +14,49 @@ fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_I
 fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
 fn void monitor_node_free(GfxMonitorNode* node) {}
 
-fn GfxDataTransfer? _read_clipboard_native_wasm(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
+fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
 
 fn void poll_monitors() {}
 fn void free_mouse(GfxMouse* mouse) {}
-fn void window_show(GfxWindow* win) {}
+fn void window_show_platform(GfxWindow* win) {}
 fn bool window_is_hidden(GfxWindow* win) => false;
 fn bool window_is_minimized(GfxWindow* win) => false;
 fn bool window_is_maximized(GfxWindow* win) => false;
 fn void window_hide(GfxWindow* win) {}
 fn void window_flash(GfxWindow* win, GfxFlashRequest request) {}
-fn void _window_move_native_wasm(GfxWindow* win, GfxPoint where) {}
-fn void _window_restore_native_wasm(GfxWindow* win) {}
-fn void _window_set_border_native_wasm(GfxWindow* win, bool border) {}
-fn bool _window_set_icon_native_wasm(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type) => false;
-fn bool _window_is_floating_native_wasm(GfxWindow* win) => false;
-fn void _window_set_min_size_native_wasm(GfxWindow* win, GfxSize size) {}
+fn void window_move_platform(GfxWindow* win, GfxPoint where) {}
+fn void window_restore_platform(GfxWindow* win) {}
+fn void _window_set_border(GfxWindow* win, bool border) {}
+fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type) => false;
+fn bool window_is_floating(GfxWindow* win) => false;
+fn void window_set_min_size(GfxWindow* win, GfxSize size) {}
 fn void window_focus(GfxWindow* win) {}
-fn void _window_set_max_size_native_wasm(GfxWindow* win, GfxSize size) {}
-fn void _window_move_mouse_wasm(GfxWindow* win, GfxPoint where) {}
-fn void _window_set_aspect_ratio_native_wasm(GfxWindow* win, int w, int h) {}
-fn void _window_minimize_native_wasm(GfxWindow* win) {}
-fn void _window_raise_native_wasm(GfxWindow* win) {}
-fn void _window_set_floating_native_wasm(GfxWindow* win, bool floating) {}
+fn void window_set_max_size(GfxWindow* win, GfxSize size) {}
+fn void window_move_mouse(GfxWindow* win, GfxPoint where) {}
+fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) {}
+fn void window_minimize_platform(GfxWindow* win) {}
+fn void window_raise(GfxWindow* win) {}
+fn void window_set_floating(GfxWindow* win, bool floating) {}
 fn void window_destroy_platform(GfxWindow* win) {}
-fn void _window_set_raw_mouse_mode_native_wasm(GfxWindow* win, bool state) {}
+fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state) {}
 
 
-fn bool _window_set_mouse_native_wasm(GfxWindow* win, GfxMouse* mouse)
+fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 {
 	ZString name = (ZString)mouse;
 	gfx::gfxJsSetCursor(name, name.len());
-	return true;
 }
-fn void _window_set_opacity_native_wasm(GfxWindow* win, float opacity)
+fn void window_set_opacity(GfxWindow* win, float opacity)
 {
 	gfx::gfxJsSetOpacity(opacity);
 }
-fn void _window_maximize_native_wasm(GfxWindow* win)
+fn void window_maximize_platform(GfxWindow* win)
 {
-	(void)win.resize(_window_find_monitor_native_wasm(win).mode.size);
+	(void)win.resize(window_find_monitor(win).mode.size);
 	win.move({});
 }
-fn GfxMonitor*? _window_find_monitor_native_wasm(GfxWindow* win) => gfx::get_primary_monitor();
-fn void _window_resize_native_wasm(GfxWindow* win, GfxSize size)
+fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor();
+fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
 	gfx::gfxJsSetCanvasSize(...size);
 }
@@ -67,7 +66,7 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 	gfx::copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
 	gfx::gfxJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
 }
-fn void _window_set_capture_mouse_native_wasm(GfxWindow* win, bool state)
+fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 {
 	if (state)
 	{
@@ -78,7 +77,7 @@ fn void _window_set_capture_mouse_native_wasm(GfxWindow* win, bool state)
 		gfx::gfxJsExitPointerLock();
 	}
 }
-fn void _window_set_fullscreen_native_wasm(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
@@ -93,24 +92,24 @@ fn GfxPoint get_global_mouse()
 {
 	return { gfx::gfxJsGetMouseX(), gfx::gfxJsGetMouseY() };
 }
-fn void _window_set_name_native_wasm(GfxWindow* win, String name)
+fn void _window_set_name(GfxWindow* win, String name)
 {
 	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
 }
-fn void _window_set_mouse_passthrough_native_wasm(GfxWindow* win, bool passthrough)
+fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
 {
 	gfx::gfxJsSetPointerEvents((int)passthrough);
 }
-fn bool _vulkan_get_physical_device_presentation_support_native_wasm(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
-fn bool _opengl_extension_is_supported_native_wasm(String extension)
+fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
+fn bool opengl_extension_is_supported_platform(String extension)
 {
 	return gfx::gfxJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
 }
-fn void* _get_opengl_proc_native_wasm(ZString procname)
+fn void* get_opengl_proc(ZString procname)
 {
 	return gfx::gfxJsGetProcAddress(procname);
 }
-fn void? _window_init_opengl_context_native_wasm(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
+fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
 	win.src.backing = { .opengl };
@@ -120,7 +119,7 @@ fn void? _window_init_opengl_context_native_wasm(GfxWindow* win, GfxGlContext* c
 	gfx::gfxJsWebglMakeCurrent(handle);
 	gfx::_window_set_opengl_swap_interval(win, 0);
 }
-fn WGPUSurface _window_create_wgpu_surface_native_wasm(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
 	canvasDesc.chain.next = null;
@@ -135,12 +134,12 @@ fn GfxPoint window_fetch_size(GfxWindow* win)
 {
 	return win.get_size();
 }
-fn void _window_release_opengl_context_native_wasm(GfxWindow* win, GfxGlContext* ctx)
+fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
 {
 	gfx::gfxJsWebglDestroyContext((int)(uptr)ctx.ctx);
 	win.src.ctx.native.ctx = null;
 }
-fn void _window_opengl_swap_buffers_native_wasm(GfxWindow* win)
+fn void window_opengl_swap_buffers(GfxWindow* win)
 {
 	gfx::gfxJsWebglCommitFrame();
 }
@@ -159,28 +158,28 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	if (flags.open_gl) gfx::_window_create_opengl_context_native(win, gfx::get_global_opengl_hints())!;
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
 }
-fn void _poll_events_native_wasm()
+fn void poll_events_platform()
 {
 	if (gfx::_gfx.usingAsyncify == -1) gfx::_gfx.usingAsyncify = gfx::gfxJsUsingAsyncify();
 	gfx::_reset_prev_state();
 	if (gfx::_gfx.usingAsyncify) gfx::gfxJsSleep(0);
 }
-fn void _surface_release_native_wasm(GfxSurface* surface)
+fn void surface_release(GfxSurface* surface)
 {
 	*surface = {};
 }
-fn void? _write_clipboard_native_wasm(GfxDataTransfer* data)
+fn void? write_clipboard(GfxDataTransfer* data)
 {
 	gfx::gfxJsWriteClipboard(data.text, data.text.len);
 }
 fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* mon) => {};
-fn void? _surface_init_native_wasm(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
 {
 	surface.data = data;
 	surface.size = { w, h };
 	surface.format = format;
 }
-fn void _window_make_opengl_current_context_native_wasm(GfxWindow* win)
+fn void window_make_current_opengl_context(GfxWindow* win)
 {
 	if (!win)
 	{
@@ -191,7 +190,7 @@ fn void _window_make_opengl_current_context_native_wasm(GfxWindow* win)
 		gfx::gfxJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx);
 	}
 }
-fn void* _get_current_opengl_context_native_wasm()
+fn void* get_current_opengl_context()
 {
 	return (void*)(uptr)gfx::gfxJsWebglGetCurrentContext();
 }
@@ -225,8 +224,8 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 	}
 	return (GfxMouse*)cursor_name;
 }
-fn GfxKey _physical_to_mapped_key_native_wasm(GfxKey key) => key;
-fn void _init_keycodes_native_wasm()
+fn GfxKey physical_to_mapped_key(GfxKey key) => key;
+fn void init_keycodes_platform()
 {
 	gfx::_gfx.keycodes = {
 		[DOM_VK_BACK_QUOTE] = BACKTICK,         [DOM_VK_0] = NUM0,                      [DOM_VK_1] = NUM1,

@@ -713,7 +713,7 @@ fn void? init(String class_name, GfxInitOption options)
 	_gfx.windows.init(mem);
 	defer catch
 	{
-		_destroy_native();
+		_destroy_platform();
 		_gfx = {};
 	}
 	if (options & INIT_OPEN_GL) load_opengl()!;
@@ -745,7 +745,7 @@ fn void finalize()
 	}
 	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
-	_destroy_native();
+	_destroy_platform();
 	unload_egl();
 	unload_opengl();
 	_gfx.root = null;
@@ -767,12 +767,12 @@ fn GfxSurface*? create_surface(char* data, int w, int h, GfxFormat format, GfxWi
 
 fn void GfxSurface.release(&self)
 {
-	_surface_release_native(self);
+	_surface_release(self);
 }
 
 fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
-	return _surface_init_native(self, data, w, h, format, window);
+	return _surface_init(self, data, w, h, format, window);
 }
 
 <*
@@ -802,7 +802,7 @@ fn void GfxWindow.flash(&self, GfxFlashRequest request) => _window_flash(self, r
 
 fn void GfxWindow.set_floating(&self, bool floating)
 {
-	_window_set_floating_native(self, floating);
+	_window_set_floating(self, floating);
 }
 
 <*
@@ -812,7 +812,7 @@ fn void GfxWindow.set_floating(&self, bool floating)
 *>
 fn void GfxWindow.set_opacity(&self, float opacity)
 {
-	_window_set_opacity_native(self, opacity);
+	_window_set_opacity(self, opacity);
 }
 
 <*
@@ -868,7 +868,7 @@ fn VkSurfaceKHR? GfxWindow.create_vulkan_surface(&self, VkInstance instance)
 
 fn WGPUSurface GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
 {
-	return _window_create_wgpu_surface_native(self, instance);
+	return _window_create_wgpu_surface(self, instance);
 }
 
 fn void GfxWindow.set_opengl_swap_interval(&self, int swap_interval)
@@ -888,7 +888,7 @@ fn void? GfxWindow.create_directx_swap_chain(&self, Win32_IDXGIFactory* factory,
 
 fn void GfxWindow.swap_opengl_buffers(&self)
 {
-	_window_opengl_swap_buffers_native(self);
+	_window_opengl_swap_buffers(self);
 }
 
 fn void GfxWindow.swap_egl_buffers(&self)
@@ -898,7 +898,7 @@ fn void GfxWindow.swap_egl_buffers(&self)
 
 fn void set_current_opengl_window(GfxWindow* win)
 {
-	_window_make_opengl_current_context_native(win);
+	_window_make_current_opengl_context(win);
 }
 
 fn void set_current_egl_window(GfxWindow* win)
@@ -913,13 +913,13 @@ fn void* get_current_egl_context()
 
 fn void* get_current_opengl_context()
 {
-	return _get_current_opengl_context_native();
+	return _get_current_opengl_context();
 }
 
 fn bool opengl_extension_is_supported(String extension)
 {
-	if (_opengl_extension_supported_base(extension, &_get_opengl_proc_native)) return true;
-	return _opengl_extension_is_supported_native(extension);
+	if (_opengl_extension_supported_base(extension, &get_opengl_proc)) return true;
+	return _opengl_extension_is_supported_platform(extension);
 }
 
 fn bool egl_extension_is_supported(String extension)
@@ -947,7 +947,7 @@ fn GfxWindowFlags GfxWindow.get_flags(&self)
 
 fn void GfxWindow.set_fullscreen(&self, bool fullscreen)
 {
-	_window_set_fullscreen_native(self, fullscreen);
+	_window_set_fullscreen(self, fullscreen);
 }
 
 fn GfxKey GfxWindow.get_exit_key(&self)
@@ -978,7 +978,7 @@ fn void GfxWindow.set_disabled_events(&self, GfxEventMask events)
 
 fn void GfxWindow.scale_to_monitor(&self)
 {
-	(void)self.resize((GfxSize)(_window_find_monitor_native(self).scale * (Vec2)self.size));
+	(void)self.resize((GfxSize)(_window_find_monitor(self).scale * (Vec2)self.size));
 }
 
 fn void GfxWindow.move_to_monitor(&self, GfxMonitor* m)
@@ -988,17 +988,17 @@ fn void GfxWindow.move_to_monitor(&self, GfxMonitor* m)
 
 fn void GfxWindow.set_min_size(&self, GfxSize size)
 {
-	_window_set_min_size_native(self, size) @inline;
+	_window_set_min_size(self, size) @inline;
 }
 
 fn void GfxWindow.set_max_size(&self, GfxSize size)
 {
-	_window_set_max_size_native(self, size) @inline;
+	_window_set_max_size(self, size) @inline;
 }
 
 fn void GfxWindow.set_border(&self, bool border)
 {
-	_window_set_border_native(self, border);
+	_window_set_border(self, border);
 }
 
 fn void* GfxWindow.get_user_ptr(&self)
@@ -1013,7 +1013,7 @@ fn void GfxWindow.set_user_ptr(&self, void* ptr)
 
 fn GfxPoint GfxWindow.get_size_in_pixels(&self)
 {
-	return (GfxPoint)((Vec2)self.size * _window_find_monitor_native(self).pixelRatio) ?? { -1, -1 };
+	return (GfxPoint)((Vec2)self.size * _window_find_monitor(self).pixelRatio) ?? { -1, -1 };
 }
 
 fn bool GfxWindow.did_mouse_leave(&self)
@@ -1033,12 +1033,12 @@ fn bool GfxWindow.is_mouse_inside(&self)
 
 fn void GfxWindow.set_name(&self, String name)
 {
-	_window_set_name_native(self, name);
+	_window_set_name(self, name);
 }
 
 fn void GfxWindow.set_mouse_passthrough(&self, bool passthrough)
 {
-	_window_set_mouse_passthrough_native(self, passthrough);
+	_window_set_mouse_passthrough(self, passthrough);
 }
 
 fn bool GfxWindow.is_data_dragging(&self)
@@ -1184,12 +1184,12 @@ fn GfxEvent? event_queue_pop()
 
 fn void? write_clipboard(GfxDataTransfer* data) @maydiscard
 {
-	return _write_clipboard_native(data) @inline;
+	return _write_clipboard(data) @inline;
 }
 
 fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type)
 {
-	return _read_clipboard_native(allocator, type) @inline;
+	return _read_clipboard(allocator, type) @inline;
 }
 
 // public
@@ -1198,7 +1198,7 @@ fn GfxEvent? check_event()
 	if (!_gfx.eventLen && !_gfx.polledEvents)
 	{
 		_gfx.queueEvents = true;
-		_poll_events_native();
+		_poll_events_platform();
 		_gfx.polledEvents = true;
 	}
 	defer catch _gfx.polledEvents = false;
@@ -1238,7 +1238,7 @@ fn GfxEvent? check_window_event(GfxWindow* win)
 	if (!_gfx.eventLen && !_gfx.polledEvents)
 	{
 		_gfx.queueEvents = true;
-		_poll_events_native();
+		_poll_events_platform();
 		_gfx.polledEvents = true;
 	}
 	defer catch _gfx.polledEvents = false;
@@ -1255,6 +1255,11 @@ fn GfxKey key_from_api(uint keycode)
 fn uint GfxKey.to_api(self)
 {
 	return _gfx.apiKeycodes[self];
+}
+
+fn GfxKey GfxKey.to_mapped(self)
+{
+	return _physical_to_mapped_key(self);
 }
 
 fn void reset_key()
@@ -1288,12 +1293,12 @@ fn GfxWindow* get_root_window()
 
 fn GfxMonitor*? GfxWindow.find_monitor(&self)
 {
-	return _window_find_monitor_native(self);
+	return _window_find_monitor(self);
 }
 
 fn void GfxWindow.center_on_screen(&self)
 {
-	GfxMonitor*? mon = _window_find_monitor_native(self);
+	GfxMonitor*? mon = _window_find_monitor(self);
 	(void)self.move(mon.origin + (mon.mode.size - self.size) / 2);
 }
 
@@ -1503,12 +1508,12 @@ fn bool GfxWindow.is_maximized(&self)
 
 fn bool GfxWindow.is_floating(&self)
 {
-	return _window_is_floating_native(self);
+	return _window_is_floating(self);
 }
 
 fn bool GfxWindow.set_icon(&self, void* data_src, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
 {
-	return _window_set_icon_native(self, data_src, w, h, format, type);
+	return _window_set_icon(self, data_src, w, h, format, type);
 }
 
 fn bool GfxWindow.is_minimized(&self)
@@ -1519,24 +1524,34 @@ fn bool GfxWindow.is_minimized(&self)
 fn void GfxWindow.set_capture_mouse(&self, bool capture)
 {
 	self.internal.capture_mouse = capture;
-	_window_set_capture_mouse_native(self, capture);
+	_window_set_capture_mouse_platform(self, capture);
 }
 
 macro void GfxWindow.set_aspect_ratio(&self, int w, int h)
 {
-	_window_set_aspect_ratio_native(self, w, h);
+	_window_set_aspect_ratio(self, w, h);
 }
 
 fn void GfxWindow.set_raw_mouse_mode(&self, bool enabled)
 {
 	self.internal.raw_mouse = enabled;
-	_window_set_raw_mouse_mode_native(self, enabled);
+	_window_set_raw_mouse_mode_platform(self, enabled);
 }
 
 fn void GfxWindow.set_capture_raw_mouse(&self, bool enabled)
 {
 	self.set_capture_mouse(enabled);
 	self.set_raw_mouse_mode(enabled);
+}
+
+fn void GfxWindow.raise(&self)
+{
+	return _window_raise(self);
+}
+
+fn void GfxWindow.move_mouse(&self, GfxPoint where)
+{
+	return _window_move_mouse(self, where);
 }
 
 fn bool GfxWindow.is_mouse_hidden(&self)
@@ -1575,21 +1590,21 @@ fn bool GfxWindow.allows_dnd(&win)
 }
 
 
-fn bool GfxWindow.set_mouse_default(&self)
+fn void GfxWindow.set_mouse_default(&self)
 {
-	return self.set_mouse_standard(NORMAL);
+	self.set_mouse_standard(NORMAL);
 }
 
-fn bool GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
+fn void GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
 {
-	return self.set_mouse(_gfx.standardMice[(sz)icon]);
+	self.set_mouse(_gfx.standardMice[(sz)icon]);
 }
 
-fn bool GfxWindow.set_mouse(&self, GfxMouse* mouse)
+fn void GfxWindow.set_mouse(&self, GfxMouse* mouse)
 {
-	if (!mouse) return false;
+	if (!mouse) return;
 	if (mouse != _gfx.hiddenMouse) self.internal.mouse = mouse;
-	return _window_set_mouse_native(self, mouse);
+	_window_set_mouse_platform(self, mouse);
 }
 
 fn void GfxMouse.free_mouse(&self)
@@ -1604,7 +1619,7 @@ fn void stop_check_events()
 fn void set_raw_mouse_mode(bool enabled)
 {
 	_gfx.raw_mouse = enabled;
-	if (_gfx.root) _window_set_raw_mouse_mode_native(_gfx.root, enabled);
+	if (_gfx.root) _window_set_raw_mouse_mode_platform(_gfx.root, enabled);
 }
 
 
@@ -1617,13 +1632,13 @@ fn void GfxWindow.show(&self)
 {
 	if (self.internal.flags.focus_on_show) _window_focus(self);
 	self.internal.flags.hide = false;
-	_window_show(self);
+	_window_show_platform(self);
 	if (self.internal.flags.maximize) self.maximize();
 }
 
 fn void GfxWindow.restore(&self)
 {
-	_window_restore_native(self);
+	_window_restore_platform(self);
 	self.internal.flags.maximize = false;
 	self.show();
 	self.move(self.internal.old_bounds.origin);
@@ -1632,7 +1647,7 @@ fn void GfxWindow.restore(&self)
 
 fn void GfxWindow.minimize(&self)
 {
-	_window_minimize_native(self);
+	_window_minimize_platform(self);
 	self.internal.flags.maximize = false;
 }
 
@@ -1658,20 +1673,20 @@ fn void GfxWindow.maximize(&self)
 	self.internal.old_bounds = self.bounds;
 	self.internal.flags.maximize = true;
 	_window_fetch_size(self);
-	_window_maximize_native(self);
+	_window_maximize_platform(self);
 }
 
 fn void GfxWindow.move(&self, GfxPoint where)
 {
 	self.origin = where;
-	_window_move_native(self, where);
+	_window_move_platform(self, where);
 	self.internal.flags.maximize = false;
 }
 
 fn void GfxWindow.resize(&self, GfxSize size)
 {
 	self.size = size;
-	_window_resize_native(self, size);
+	_window_resize_platform(self, size);
 	self.internal.flags.maximize = false;
 }
 
@@ -1710,7 +1725,7 @@ fn void GfxWindow.set_dnd(&self, bool allow)
 
 fn void* get_opengl_proc(ZString s)
 {
-	return _get_opengl_proc_native(s);
+	return _get_opengl_proc(s);
 }
 
 <*
