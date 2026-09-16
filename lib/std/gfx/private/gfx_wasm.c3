@@ -225,80 +225,160 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 	return (GfxMouse*)cursor_name;
 }
 fn GfxKey physical_to_mapped_key(GfxKey key) => key;
+
 fn void init_keycodes_platform()
 {
 	gfx::_gfx.keycodes = {
-		[DOM_VK_BACK_QUOTE] = BACKTICK,         [DOM_VK_0] = NUM0,                      [DOM_VK_1] = NUM1,
-		[DOM_VK_2] = NUM2,                      [DOM_VK_3] = NUM3,                      [DOM_VK_4] = NUM4,
-		[DOM_VK_5] = NUM5,                      [DOM_VK_6] = NUM6,                      [DOM_VK_7] = NUM7,
-		[DOM_VK_8] = NUM8,                      [DOM_VK_9] = NUM9,                      [DOM_VK_SPACE] = SPACE,
-		[DOM_VK_A] = A,                         [DOM_VK_B] = B,                         [DOM_VK_C] = C,
-		[DOM_VK_D] = D,                         [DOM_VK_E] = E,                         [DOM_VK_F] = F,
-		[DOM_VK_G] = G,                         [DOM_VK_H] = H,                         [DOM_VK_I] = I,
-		[DOM_VK_J] = J,                         [DOM_VK_K] = K,                         [DOM_VK_L] = L,
-		[DOM_VK_M] = M,                         [DOM_VK_N] = N,                         [DOM_VK_O] = O,
-		[DOM_VK_P] = P,                         [DOM_VK_Q] = Q,                         [DOM_VK_R] = R,
-		[DOM_VK_S] = S,                         [DOM_VK_T] = T,                         [DOM_VK_U] = U,
-		[DOM_VK_V] = V,                         [DOM_VK_W] = W,                         [DOM_VK_X] = X,
-		[DOM_VK_Y] = Y,                         [DOM_VK_Z] = Z,                         [DOM_VK_PERIOD] = PERIOD,
-		[DOM_VK_COMMA] = COMMA,                 [DOM_VK_SLASH] = SLASH,                 [DOM_VK_OPEN_BRACKET] = BRACKET,
-		[DOM_VK_CLOSE_BRACKET] = CLOSE_BRACKET, [DOM_VK_SEMICOLON] = SEMICOLON,         [DOM_VK_QUOTE] = APOSTROPHE,
-		[DOM_VK_BACK_SLASH] = BACK_SLASH,       [DOM_VK_RETURN] = RETURN,               [DOM_VK_DELETE] = DELETE,
-		[DOM_VK_NUM_LOCK] = NUM_LOCK,           [DOM_VK_DIVIDE] = PAD_SLASH,            [DOM_VK_MULTIPLY] = PAD_MULTIPLY,
-		[DOM_VK_SUBTRACT] = PAD_MINUS,          [DOM_VK_NUMPAD1] = PAD1,                [DOM_VK_NUMPAD2] = PAD2,
-		[DOM_VK_NUMPAD3] = PAD3,                [DOM_VK_NUMPAD4] = PAD4,                [DOM_VK_NUMPAD5] = PAD5,
-		[DOM_VK_NUMPAD6] = PAD6,                [DOM_VK_NUMPAD9] = PAD9,                [DOM_VK_NUMPAD0] = PAD0,
-		[DOM_VK_DECIMAL] = PAD_PERIOD,          [DOM_VK_HYPHEN_MINUS] = MINUS,          [DOM_VK_EQUALS] = EQUALS,
-		[DOM_VK_BACK_SPACE] = BACK_SPACE,       [DOM_VK_TAB] = TAB,                     [DOM_VK_CAPS_LOCK] = CAPS_LOCK,
-		[DOM_VK_SHIFT] = SHIFT_L,               [DOM_VK_CONTROL] = CONTROL_L,           [DOM_VK_ALT] = ALT_L,
-		[DOM_VK_META] = SUPER_L,                [DOM_VK_F1] = F1,                       [DOM_VK_F2] = F2,
-		[DOM_VK_F3] = F3,                       [DOM_VK_F4] = F4,                       [DOM_VK_F5] = F5,
-		[DOM_VK_F6] = F6,                       [DOM_VK_F7] = F7,                       [DOM_VK_F8] = F8,
-		[DOM_VK_F9] = F9,                       [DOM_VK_F10] = F10,                     [DOM_VK_F11] = F11,
-		[DOM_VK_F12] = F12,                     [DOM_VK_UP] = UP,                       [DOM_VK_DOWN] = DOWN,
-		[DOM_VK_LEFT] = LEFT,                   [DOM_VK_RIGHT] = RIGHT,                 [DOM_VK_INSERT] = INSERT,
-		[DOM_VK_END] = END,                     [DOM_VK_PAGE_UP] = PAGE_UP,             [DOM_VK_PAGE_DOWN] = PAGE_DOWN,
-		[DOM_VK_ESCAPE] = ESCAPE,               [DOM_VK_HOME] = HOME,                   [DOM_VK_SCROLL_LOCK] = SCROLL_LOCK,
-		[DOM_VK_PRINTSCREEN] = PRINT_SCREEN,    [DOM_VK_PAUSE] = PAUSE,                 [DOM_VK_F13] = F13,
-		[DOM_VK_F14] = F14,                     [DOM_VK_F15] = F15,                     [DOM_VK_F16] = F16,
-		[DOM_VK_F17] = F17,                     [DOM_VK_F18] = F18,                     [DOM_VK_F19] = F19,
-		[DOM_VK_F20] = F20,                     [DOM_VK_F21] = F21,                     [DOM_VK_F22] = F22,
-		[DOM_VK_F23] = F23,                     [DOM_VK_F24] = F24,
+		[DomKey.VK_BACK_QUOTE] = BACKTICK,         [DomKey.VK_0] = NUM0,                      [DomKey.VK_1] = NUM1,
+		[DomKey.VK_2] = NUM2,                      [DomKey.VK_3] = NUM3,                      [DomKey.VK_4] = NUM4,
+		[DomKey.VK_5] = NUM5,                      [DomKey.VK_6] = NUM6,                      [DomKey.VK_7] = NUM7,
+		[DomKey.VK_8] = NUM8,                      [DomKey.VK_9] = NUM9,                      [DomKey.VK_SPACE] = SPACE,
+		[DomKey.VK_A] = A,                         [DomKey.VK_B] = B,                         [DomKey.VK_C] = C,
+		[DomKey.VK_D] = D,                         [DomKey.VK_E] = E,                         [DomKey.VK_F] = F,
+		[DomKey.VK_G] = G,                         [DomKey.VK_H] = H,                         [DomKey.VK_I] = I,
+		[DomKey.VK_J] = J,                         [DomKey.VK_K] = K,                         [DomKey.VK_L] = L,
+		[DomKey.VK_M] = M,                         [DomKey.VK_N] = N,                         [DomKey.VK_O] = O,
+		[DomKey.VK_P] = P,                         [DomKey.VK_Q] = Q,                         [DomKey.VK_R] = R,
+		[DomKey.VK_S] = S,                         [DomKey.VK_T] = T,                         [DomKey.VK_U] = U,
+		[DomKey.VK_V] = V,                         [DomKey.VK_W] = W,                         [DomKey.VK_X] = X,
+		[DomKey.VK_Y] = Y,                         [DomKey.VK_Z] = Z,                         [DomKey.VK_PERIOD] = PERIOD,
+		[DomKey.VK_COMMA] = COMMA,                 [DomKey.VK_SLASH] = SLASH,                 [DomKey.VK_OPEN_BRACKET] = BRACKET,
+		[DomKey.VK_CLOSE_BRACKET] = CLOSE_BRACKET, [DomKey.VK_SEMICOLON] = SEMICOLON,         [DomKey.VK_QUOTE] = APOSTROPHE,
+		[DomKey.VK_BACK_SLASH] = BACK_SLASH,       [DomKey.VK_RETURN] = RETURN,               [DomKey.VK_DELETE] = DELETE,
+		[DomKey.VK_NUM_LOCK] = NUM_LOCK,           [DomKey.VK_DIVIDE] = PAD_SLASH,            [DomKey.VK_MULTIPLY] = PAD_MULTIPLY,
+		[DomKey.VK_SUBTRACT] = PAD_MINUS,          [DomKey.VK_NUMPAD1] = PAD1,                [DomKey.VK_NUMPAD2] = PAD2,
+		[DomKey.VK_NUMPAD3] = PAD3,                [DomKey.VK_NUMPAD4] = PAD4,                [DomKey.VK_NUMPAD5] = PAD5,
+		[DomKey.VK_NUMPAD6] = PAD6,                [DomKey.VK_NUMPAD9] = PAD9,                [DomKey.VK_NUMPAD0] = PAD0,
+		[DomKey.VK_DECIMAL] = PAD_PERIOD,          [DomKey.VK_HYPHEN_MINUS] = MINUS,          [DomKey.VK_EQUALS] = EQUALS,
+		[DomKey.VK_BACK_SPACE] = BACK_SPACE,       [DomKey.VK_TAB] = TAB,                     [DomKey.VK_CAPS_LOCK] = CAPS_LOCK,
+		[DomKey.VK_SHIFT] = SHIFT_L,               [DomKey.VK_CONTROL] = CONTROL_L,           [DomKey.VK_ALT] = ALT_L,
+		[DomKey.VK_META] = SUPER_L,                [DomKey.VK_F1] = F1,                       [DomKey.VK_F2] = F2,
+		[DomKey.VK_F3] = F3,                       [DomKey.VK_F4] = F4,                       [DomKey.VK_F5] = F5,
+		[DomKey.VK_F6] = F6,                       [DomKey.VK_F7] = F7,                       [DomKey.VK_F8] = F8,
+		[DomKey.VK_F9] = F9,                       [DomKey.VK_F10] = F10,                     [DomKey.VK_F11] = F11,
+		[DomKey.VK_F12] = F12,                     [DomKey.VK_UP] = UP,                       [DomKey.VK_DOWN] = DOWN,
+		[DomKey.VK_LEFT] = LEFT,                   [DomKey.VK_RIGHT] = RIGHT,                 [DomKey.VK_INSERT] = INSERT,
+		[DomKey.VK_END] = END,                     [DomKey.VK_PAGE_UP] = PAGE_UP,             [DomKey.VK_PAGE_DOWN] = PAGE_DOWN,
+		[DomKey.VK_ESCAPE] = ESCAPE,               [DomKey.VK_HOME] = HOME,                   [DomKey.VK_SCROLL_LOCK] = SCROLL_LOCK,
+		[DomKey.VK_PRINTSCREEN] = PRINT_SCREEN,    [DomKey.VK_PAUSE] = PAUSE,                 [DomKey.VK_F13] = F13,
+		[DomKey.VK_F14] = F14,                     [DomKey.VK_F15] = F15,                     [DomKey.VK_F16] = F16,
+		[DomKey.VK_F17] = F17,                     [DomKey.VK_F18] = F18,                     [DomKey.VK_F19] = F19,
+		[DomKey.VK_F20] = F20,                     [DomKey.VK_F21] = F21,                     [DomKey.VK_F22] = F22,
+		[DomKey.VK_F23] = F23,                     [DomKey.VK_F24] = F24,
 	};
 }
 
 // ---- DOM virtual key codes ----
-const int DOM_VK_BACK_QUOTE = 192; const int DOM_VK_0 = 48; const int DOM_VK_1 = 49; const int DOM_VK_2 = 50;
-const int DOM_VK_3 = 51; const int DOM_VK_4 = 52; const int DOM_VK_5 = 53; const int DOM_VK_6 = 54;
-const int DOM_VK_7 = 55; const int DOM_VK_8 = 56; const int DOM_VK_9 = 57; const int DOM_VK_SPACE = 32;
-const int DOM_VK_A = 65; const int DOM_VK_B = 66; const int DOM_VK_C = 67; const int DOM_VK_D = 68;
-const int DOM_VK_E = 69; const int DOM_VK_F = 70; const int DOM_VK_G = 71; const int DOM_VK_H = 72;
-const int DOM_VK_I = 73; const int DOM_VK_J = 74; const int DOM_VK_K = 75; const int DOM_VK_L = 76;
-const int DOM_VK_M = 77; const int DOM_VK_N = 78; const int DOM_VK_O = 79; const int DOM_VK_P = 80;
-const int DOM_VK_Q = 81; const int DOM_VK_R = 82; const int DOM_VK_S = 83; const int DOM_VK_T = 84;
-const int DOM_VK_U = 85; const int DOM_VK_V = 86; const int DOM_VK_W = 87; const int DOM_VK_X = 88;
-const int DOM_VK_Y = 89; const int DOM_VK_Z = 90;
-const int DOM_VK_PERIOD = 190; const int DOM_VK_COMMA = 188; const int DOM_VK_SLASH = 191;
-const int DOM_VK_OPEN_BRACKET = 219; const int DOM_VK_CLOSE_BRACKET = 221; const int DOM_VK_SEMICOLON = 186;
-const int DOM_VK_QUOTE = 222; const int DOM_VK_BACK_SLASH = 220; const int DOM_VK_RETURN = 13;
-const int DOM_VK_DELETE = 46; const int DOM_VK_NUM_LOCK = 144; const int DOM_VK_DIVIDE = 111;
-const int DOM_VK_MULTIPLY = 106; const int DOM_VK_SUBTRACT = 109;
-const int DOM_VK_NUMPAD1 = 97; const int DOM_VK_NUMPAD2 = 98; const int DOM_VK_NUMPAD3 = 99;
-const int DOM_VK_NUMPAD4 = 100; const int DOM_VK_NUMPAD5 = 101; const int DOM_VK_NUMPAD6 = 102;
-const int DOM_VK_NUMPAD9 = 105; const int DOM_VK_NUMPAD0 = 96; const int DOM_VK_DECIMAL = 110;
-const int DOM_VK_HYPHEN_MINUS = 173; const int DOM_VK_EQUALS = 61;
-const int DOM_VK_BACK_SPACE = 8; const int DOM_VK_TAB = 9; const int DOM_VK_CAPS_LOCK = 20;
-const int DOM_VK_SHIFT = 16; const int DOM_VK_CONTROL = 17; const int DOM_VK_ALT = 18; const int DOM_VK_META = 91;
-const int DOM_VK_F1 = 112; const int DOM_VK_F2 = 113; const int DOM_VK_F3 = 114; const int DOM_VK_F4 = 115;
-const int DOM_VK_F5 = 116; const int DOM_VK_F6 = 117; const int DOM_VK_F7 = 118; const int DOM_VK_F8 = 119;
-const int DOM_VK_F9 = 120; const int DOM_VK_F10 = 121; const int DOM_VK_F11 = 122; const int DOM_VK_F12 = 123;
-const int DOM_VK_F13 = 124; const int DOM_VK_F14 = 125; const int DOM_VK_F15 = 126; const int DOM_VK_F16 = 127;
-const int DOM_VK_F17 = 128; const int DOM_VK_F18 = 129; const int DOM_VK_F19 = 130; const int DOM_VK_F20 = 131;
-const int DOM_VK_F21 = 132; const int DOM_VK_F22 = 133; const int DOM_VK_F23 = 134; const int DOM_VK_F24 = 135;
-const int DOM_VK_UP = 38; const int DOM_VK_DOWN = 40; const int DOM_VK_LEFT = 37; const int DOM_VK_RIGHT = 39;
-const int DOM_VK_INSERT = 45; const int DOM_VK_END = 35; const int DOM_VK_PAGE_UP = 33; const int DOM_VK_PAGE_DOWN = 34;
-const int DOM_VK_ESCAPE = 27; const int DOM_VK_HOME = 36; const int DOM_VK_SCROLL_LOCK = 145;
-const int DOM_VK_PRINTSCREEN = 44; const int DOM_VK_PAUSE = 19;
+constset DomKey : inline int
+{
+	VK_BACK_SPACE    = 8,
+	VK_TAB           = 9,
+	VK_RETURN        = 13,
+	VK_SHIFT         = 16,
+	VK_CONTROL       = 17,
+	VK_ALT           = 18,
+	VK_PAUSE         = 19,
+	VK_CAPS_LOCK     = 20,
+	VK_ESCAPE        = 27,
+	VK_SPACE         = 32,
+	VK_PAGE_UP       = 33,
+	VK_PAGE_DOWN     = 34,
+	VK_END           = 35,
+	VK_HOME          = 36,
+	VK_LEFT          = 37,
+	VK_UP            = 38,
+	VK_RIGHT         = 39,
+	VK_DOWN          = 40,
+	VK_PRINTSCREEN   = 44,
+	VK_INSERT        = 45,
+	VK_DELETE        = 46,
+	VK_0             = 48,
+	VK_1             = 49,
+	VK_2             = 50,
+	VK_3             = 51,
+	VK_4             = 52,
+	VK_5             = 53,
+	VK_6             = 54,
+	VK_7             = 55,
+	VK_8             = 56,
+	VK_9             = 57,
+	VK_EQUALS        = 61,
+	VK_A             = 65,
+	VK_B             = 66,
+	VK_C             = 67,
+	VK_D             = 68,
+	VK_E             = 69,
+	VK_F             = 70,
+	VK_G             = 71,
+	VK_H             = 72,
+	VK_I             = 73,
+	VK_J             = 74,
+	VK_K             = 75,
+	VK_L             = 76,
+	VK_M             = 77,
+	VK_N             = 78,
+	VK_O             = 79,
+	VK_P             = 80,
+	VK_Q             = 81,
+	VK_R             = 82,
+	VK_S             = 83,
+	VK_T             = 84,
+	VK_U             = 85,
+	VK_V             = 86,
+	VK_W             = 87,
+	VK_X             = 88,
+	VK_Y             = 89,
+	VK_Z             = 90,
+	VK_META          = 91,
+	VK_NUMPAD0       = 96,
+	VK_NUMPAD1       = 97,
+	VK_NUMPAD2       = 98,
+	VK_NUMPAD3       = 99,
+	VK_NUMPAD4       = 100,
+	VK_NUMPAD5       = 101,
+	VK_NUMPAD6       = 102,
+	VK_NUMPAD9       = 105,
+	VK_MULTIPLY      = 106,
+	VK_SUBTRACT      = 109,
+	VK_DECIMAL       = 110,
+	VK_DIVIDE        = 111,
+	VK_F1            = 112,
+	VK_F2            = 113,
+	VK_F3            = 114,
+	VK_F4            = 115,
+	VK_F5            = 116,
+	VK_F6            = 117,
+	VK_F7            = 118,
+	VK_F8            = 119,
+	VK_F9            = 120,
+	VK_F10           = 121,
+	VK_F11           = 122,
+	VK_F12           = 123,
+	VK_F13           = 124,
+	VK_F14           = 125,
+	VK_F15           = 126,
+	VK_F16           = 127,
+	VK_F17           = 128,
+	VK_F18           = 129,
+	VK_F19           = 130,
+	VK_F20           = 131,
+	VK_F21           = 132,
+	VK_F22           = 133,
+	VK_F23           = 134,
+	VK_F24           = 135,
+	VK_NUM_LOCK      = 144,
+	VK_SCROLL_LOCK   = 145,
+	VK_HYPHEN_MINUS  = 173,
+	VK_SEMICOLON     = 186,
+	VK_COMMA         = 188,
+	VK_PERIOD        = 190,
+	VK_SLASH         = 191,
+	VK_BACK_QUOTE    = 192,
+	VK_OPEN_BRACKET  = 219,
+	VK_BACK_SLASH    = 220,
+	VK_CLOSE_BRACKET = 221,
+	VK_QUOTE         = 222,
+}
 
 module std::gfx @feat(WASM) @private;
 import std::math, std::time;
