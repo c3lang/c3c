@@ -1352,6 +1352,27 @@ fn void* _get_opengl_proc(ZString procname)
 	$endswitch
 }
 
+fn void? _load_opengl()
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::load_opengl();
+		$case $feat(WIN32):
+			return win32::load_opengl();
+		$case $feat(WASM):
+			return;
+		$case WAYLAND_ONLY:
+			return wl::load_opengl();
+		$case X11_ONLY:
+			return x11::load_opengl();
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::load_opengl();
+			return x11::load_opengl();
+		$default:
+			return NOT_IMPLEMENTED~;
+	$endswitch
+}
+
 fn bool _opengl_extension_is_supported_platform(String extension)
 {
 	$switch:
@@ -1371,6 +1392,16 @@ fn bool _opengl_extension_is_supported_platform(String extension)
 		$default:
 			unreachable();
 	$endswitch
+}
+
+fn void _unload_opengl()
+{
+	$if !$feat(MACOS):
+		_gfx.gl.native_handle.close();
+	$else
+		_gfx.gl.native_handle = null;
+	$endif
+	_gfx.gl.get_proc_addr_fn = null;
 }
 
 // --- Keys

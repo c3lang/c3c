@@ -870,6 +870,53 @@ fn void* get_opengl_proc(ZString procname)
 	return os::dlsym(gfx::_gfx.gl.native_handle, procname);
 }
 
+fn void? load_opengl()
+{
+	if (gfx::_gfx.gl.native_handle && gfx::_gfx.gl.get_proc_addr_fn) return;
+	gfx::_gfx.gl.native_handle = os::dlopen("opengl32.dll") ?: gfx::MISSING_OPENGL_LIB~!;
+	gfx::_gfx.gl.get_proc_addr_fn = os::dlsym(gfx::_gfx.gl.native_handle, "wglGetProcAddress") ?: gfx::MISSING_GL_GET_PROC_ADDR~!;
+	gfx::wgl_create_context_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglCreateContext")!;
+	gfx::wgl_delete_context_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglDeleteContext")!;
+	gfx::wgl_make_current_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglMakeCurrent")!;
+	gfx::wgl_get_current_dc_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglGetCurrentDC")!;
+	gfx::wgl_get_current_context_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglGetCurrentContext")!;
+	gfx::wgl_share_lists_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglShareLists")!;
+
+	Win32_HWND dummyWin = win32::createWindowExW(0, gfx::_gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, gfx::_gfx.instance, null);
+	defer win32::destroyWindow(dummyWin);
+	Win32_HDC dummy_dc = win32::getDC(dummyWin);
+	defer win32::releaseDC(dummyWin, dummy_dc);
+	uint pfdFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
+
+	Win32_PIXELFORMATDESCRIPTOR pfd = {
+		.nSize = Win32_PIXELFORMATDESCRIPTOR::size,
+		.nVersion = 1,
+		.dwFlags = pfdFlags,
+		.iPixelType = win32::PFD_TYPE_RGBA,
+		.cColorBits = 32,
+		.cAlphaBits = 8,
+		.iLayerType = win32::PFD_MAIN_PLANE,
+		.cDepthBits = 32,
+		.cStencilBits = 8
+	};
+
+	int dummyPixelFormat = win32::choosePixelFormat(dummy_dc, &pfd);
+	win32::setPixelFormat(dummy_dc, dummyPixelFormat, &pfd);
+
+	void* dummy_context = gfx::wgl_create_context_fn(dummy_dc);
+	void* cur = gfx::wgl_get_current_context_fn();
+	gfx::wgl_make_current_fn(dummy_dc, dummy_context);
+	defer gfx::wgl_delete_context_fn(dummy_context);
+
+	gfx::wgl_create_context_attribs_arb_fn = get_opengl_proc("wglCreateContextAttribsARB");
+	gfx::wgl_choose_pixel_format_arb_fn = get_opengl_proc("wglChoosePixelFormatARB");
+	gfx::wgl_swap_interval_ext_fn = get_opengl_proc("wglSwapIntervalEXT");
+
+	if (!gfx::wgl_swap_interval_ext_fn) return gfx::FAILED_TO_LOAD_SWAP_INTERVAL_FN~;
+
+	gfx::wgl_make_current_fn(dummy_dc, cur);
+}
+
 fn bool opengl_extension_is_supported_platform(String extension)
 {
 	ZString extensions = null;
@@ -984,52 +1031,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 // --- Mouse impls
 
 
-fn void? _load_opengl_win32() @private
-{
-	if (gfx::_gfx.gl.native_handle && gfx::_gfx.gl.get_proc_addr_fn) return;
-	gfx::_gfx.gl.native_handle = os::dlopen("opengl32.dll") ?: gfx::MISSING_OPENGL_LIB~!;
-	gfx::_gfx.gl.get_proc_addr_fn = os::dlsym(gfx::_gfx.gl.native_handle, "wglGetProcAddress") ?: gfx::MISSING_GL_GET_PROC_ADDR~!;
-	gfx::wgl_create_context_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglCreateContext")!;
-	gfx::wgl_delete_context_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglDeleteContext")!;
-	gfx::wgl_make_current_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglMakeCurrent")!;
-	gfx::wgl_get_current_dc_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglGetCurrentDC")!;
-	gfx::wgl_get_current_context_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglGetCurrentContext")!;
-	gfx::wgl_share_lists_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglShareLists")!;
-
-	Win32_HWND dummyWin = win32::createWindowExW(0, gfx::_gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, gfx::_gfx.instance, null);
-	defer win32::destroyWindow(dummyWin);
-	Win32_HDC dummy_dc = win32::getDC(dummyWin);
-	defer win32::releaseDC(dummyWin, dummy_dc);
-	uint pfdFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
-
-	Win32_PIXELFORMATDESCRIPTOR pfd = {
-		.nSize = Win32_PIXELFORMATDESCRIPTOR::size,
-		.nVersion = 1,
-		.dwFlags = pfdFlags,
-		.iPixelType = win32::PFD_TYPE_RGBA,
-		.cColorBits = 32,
-		.cAlphaBits = 8,
-		.iLayerType = win32::PFD_MAIN_PLANE,
-		.cDepthBits = 32,
-		.cStencilBits = 8
-	};
-
-	int dummyPixelFormat = win32::choosePixelFormat(dummy_dc, &pfd);
-	win32::setPixelFormat(dummy_dc, dummyPixelFormat, &pfd);
-
-	void* dummy_context = gfx::wgl_create_context_fn(dummy_dc);
-	void* cur = gfx::wgl_get_current_context_fn();
-	gfx::wgl_make_current_fn(dummy_dc, dummy_context);
-	defer gfx::wgl_delete_context_fn(dummy_context);
-
-	gfx::wgl_create_context_attribs_arb_fn = get_opengl_proc("wglCreateContextAttribsARB");
-	gfx::wgl_choose_pixel_format_arb_fn = get_opengl_proc("wglChoosePixelFormatARB");
-	gfx::wgl_swap_interval_ext_fn = get_opengl_proc("wglSwapIntervalEXT");
-
-	if (!gfx::wgl_swap_interval_ext_fn) return gfx::FAILED_TO_LOAD_SWAP_INTERVAL_FN~;
-
-	gfx::wgl_make_current_fn(dummy_dc, cur);
-}
 
 
 // ---- WGL pixel-format / context attributes ----

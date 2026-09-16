@@ -716,6 +716,14 @@ fn void* get_opengl_proc(ZString procname)
 	return cf::bundleGetFunctionPointerForName((CFBundleRef)gfx::_gfx.gl.native_handle, symbol_name);
 }
 
+fn void? load_opengl()
+{
+	if (gfx::_gfx.gl.native_handle) return;
+	gfx::_gfx.gl.native_handle = cf::bundle_for_name("com.apple.opengl");
+	if (!gfx::_gfx.gl.native_handle) return gfx::MISSING_OPENGL_LIB~;
+	gfx::_gfx.gl.get_proc_addr_fn = &get_opengl_proc;
+}
+
 fn bool opengl_extension_is_supported_platform(String extension)
 {
 	if (gfx::_opengl_extension_supported_base(extension, &get_opengl_proc)) return true;
@@ -790,13 +798,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 	return key;
 }
 
-fn void? _load_opengl_macos()
-{
-	if (gfx::_gfx.gl.native_handle) return;
-	gfx::_gfx.gl.native_handle = cf::bundle_for_name("com.apple.opengl");
-	if (!gfx::_gfx.gl.native_handle) return gfx::MISSING_OPENGL_LIB~;
-	gfx::_gfx.gl.get_proc_addr_fn = &get_opengl_proc;
-}
 
 
 fn ObjId _get_layer_macos()

@@ -621,6 +621,12 @@ fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkP
 
 fn void* get_current_opengl_context() => egl::get_current_context();
 
+fn void? load_opengl()
+{
+	// Wayland only ever renders through EGL; "OpenGL" here just means EGL is ready.
+	return gfx::load_egl();
+}
+
 fn bool opengl_extension_is_supported_platform(String extension)
 {
 	return gfx::egl_extension_is_supported(extension);
@@ -752,11 +758,6 @@ fn void? _init_wayland(String class_name, GfxInitOption flags)
 	}
 }
 
-fn void? _load_opengl_wayland()
-{
-	// Wayland only ever renders through EGL; "OpenGL" here just means EGL is ready.
-	return gfx::load_egl();
-}
 
 
 fn void _wait_for_event_wayland(Posix_pollfd[] fds, Duration duration)
