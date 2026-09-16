@@ -5,8 +5,6 @@ module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import std::math, std::os, std::os::darwin, libc, std::time;
 import std::gfx::x11 @public, std::gfx::egl @public;
 import std::gfx::wl @public;
-import std::gfx::macos @public;
-import std::gfx::win32 @public;
 
 // The GFX module provides basic window handling across multiple platforms.
 // This implementation was strongly based on RGFW 2.0 by Riley Mabb
@@ -1707,10 +1705,7 @@ fn GfxEglContext*? GfxWindow.create_egl_context(&self, GfxGlHints* hints)
 
 fn void GfxWindow.set_dnd(&self, bool allow)
 {
-	self.internal.flags.allow_dnd = allow;
-	$if $feat(WIN32):
-		win32::dragAcceptFiles(self.src.window, (int)allow);
-	$endif
+	_window_set_dnd(self, allow);
 }
 
 fn void* get_opengl_proc(ZString s)

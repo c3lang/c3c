@@ -240,16 +240,16 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	NSWindowStyleMask style = TITLED | CLOSABLE | MINIATURIZABLE;
 	if (!flags.no_resize) style |= RESIZABLE;
 	if (flags.no_border) style = BORDERLESS;
-	CGRect rect = { { win.x, gfx::flip_y((float)(win.y + win.height - 1)) } , { ...win.size }};
+	CGRect rect = { { win.x, flip_y((float)(win.y + win.height - 1)) } , { ...win.size }};
 	ObjId nswin = objc::alloc_by_name("NSWindow").send(ObjId, "initWithContentRect:styleMask:backing:defer:", rect, style, NSBackingStoreType.BUFFERED, false);
 	if (!nswin) return gfx::NSWINDOW_CREATION_FAILED~;
-	ObjId view = gfx::_macos_view_class ? objc::send(gfx::_macos_view_class, ObjId, "alloc") : objc::alloc_by_name("NSView");
+	ObjId view = _macos_view_class ? objc::send(_macos_view_class, ObjId, "alloc") : objc::alloc_by_name("NSView");
 	view = view.send(ObjId, "initWithFrame:", (CGRect) { { } , { ...win.size } });
-	if (gfx::_macos_view_class) view.set_ivar("gfx_window", win);
+	if (_macos_view_class) view.set_ivar("gfx_window", win);
 	ObjId delegate = null;
-	if (gfx::_macos_window_delegate_class)
+	if (_macos_window_delegate_class)
 	{
-		delegate = objc::alloc(gfx::_macos_window_delegate_class).send(ObjId, "init");
+		delegate = objc::alloc(_macos_window_delegate_class).send(ObjId, "init");
 		delegate.set_ivar("gfx_window", win);
 		nswin.send_void("setDelegate:", delegate);
 	}
@@ -360,7 +360,7 @@ fn void window_move_platform(GfxWindow* win, GfxPoint where)
 	if (!win.src.window) return;
 	CGRect content = win.src.view.send(CGRect, "frame");
 	win.x = where.x;
-	win.y = (int)gfx::flip_y((float)where.y + (float)content.size.height - 1.0f);
+	win.y = (int)flip_y((float)where.y + (float)content.size.height - 1.0f);
 	CGPoint origin = { ...where };
 	win.src.window.send_void("setFrameOrigin:", origin);
 }
@@ -522,35 +522,35 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	FixedList{int, 40} stack;
 	int color_bits = (hints.rgba_size.sum()) / 4;
 	stack.push_all({
-		gfx::NS_OPEN_GL_PFA_COLOR_SIZE, color_bits,
-		gfx::NS_OPEN_GL_PFA_ALPHA_SIZE, hints.rgba_size.a,
-		gfx::NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth,
-		gfx::NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil,
-		gfx::NS_OPEN_GL_PFA_AUX_BUFFERS, hints.auxBuffers,
-		gfx::NS_OPEN_GL_PFA_CLOSEST_POLICY});
+		NS_OPEN_GL_PFA_COLOR_SIZE, color_bits,
+		NS_OPEN_GL_PFA_ALPHA_SIZE, hints.rgba_size.a,
+		NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth,
+		NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil,
+		NS_OPEN_GL_PFA_AUX_BUFFERS, hints.auxBuffers,
+		NS_OPEN_GL_PFA_CLOSEST_POLICY});
 	if (hints.samples)
 	{
-		stack.push_all({ gfx::NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1 , gfx::NS_OPEN_GL_PFA_SAMPLES, hints.samples });
+		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1 , NS_OPEN_GL_PFA_SAMPLES, hints.samples });
 	}
 	else
 	{
-		stack.push_all({ gfx::NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0 });
+		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0 });
 	}
-	if (hints.doubleBuffer) stack.push(gfx::NS_OPEN_GL_PFA_DOUBLE_BUFFER);
-	stack.push(gfx::NS_OPEN_GL_PFA_OPEN_GL_PROFILE);
-	stack.push(hints.major >= 4 ? gfx::NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? gfx::NS_OPEN_GL_PROFILE_3_2_CORE : gfx::NS_OPEN_GL_PROFILE_LEGACY));
+	if (hints.doubleBuffer) stack.push(NS_OPEN_GL_PFA_DOUBLE_BUFFER);
+	stack.push(NS_OPEN_GL_PFA_OPEN_GL_PROFILE);
+	stack.push(hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
 	if (hints.major <= 2)
 	{
 		int accum_size = hints.accum_size.sum() / 4;
-		stack.push_all({ gfx::NS_OPEN_GL_PFA_ACCUM_SIZE, accum_size });
+		stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, accum_size });
 	}
 	if (hints.renderer == SOFTWARE)
 	{
-		stack.push_all({ gfx::NS_OPEN_GL_PFA_RENDERER_ID, gfx::K_CGL_RENDERER_GENERIC_FLOAT_ID });
+		stack.push_all({ NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID });
 	}
 	else
 	{
-		stack.push(gfx::NS_OPEN_GL_PFA_ACCELERATED);
+		stack.push(NS_OPEN_GL_PFA_ACCELERATED);
 	}
 	stack.push_all({0, 0});
 
@@ -567,10 +567,10 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	if (win.internal.flags.transparent)
 	{
 		int opacity = 0;
-		gfx::_opengl_context_set_values((ObjId)ctx.ctx, &opacity, gfx::NS_OPEN_GL_CP_SURFACE_OPACITY);
+		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
 	}
 	window_make_current_opengl_context(win);
-	gfx::_window_set_opengl_swap_interval(win, 0);
+	window_set_opengl_swap_interval(win, 0);
 }
 
 fn void window_make_current_opengl_context(GfxWindow* win)
@@ -603,7 +603,7 @@ fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 {
 	if (win.src.ctx.native && win.src.ctx.native.ctx)
 	{
-		gfx::_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, gfx::NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
+		_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
 	}
 }
 
@@ -617,7 +617,7 @@ fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instanc
 	ObjId layer = objc::send(objc::@class("CAMetalLayer"), ObjId, "layer");
 	if (!layer) return gfx::SURFACE_CREATION_FAILED~;
 	win.src.view.send_void("setWantsLayer:", true);
-	macos::_window_set_layer_macos(win, layer);
+	_window_set_layer_macos(win, layer);
 	VkMetalSurfaceCreateInfoEXT create_info;
 
 	create_info.sType = gfx::VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
@@ -806,8 +806,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 	return key;
 }
 
-
-
 fn ObjId _get_layer_macos()
 {
 	if (!gfx::_gfx.current || !gfx::_gfx.current.src.view) return null;
@@ -838,102 +836,35 @@ fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
 	mon.pixelRatio = mon.scale.x;
 }
 
+// -- globals
+
+ObjClass _macos_window_delegate_class;
+ObjClass _macos_view_class;
+
 // --- helpers
 
-fn CGDirectDisplayID _monitor_display(GfxMonitor* monitor) @local
+fn GfxKeyModifier _osx_modifiers_to_gfx(NSUInteger flags) @local
 {
-	if (monitor && monitor.node && monitor.node.display) return (CGDirectDisplayID)monitor.node.display;
-	return cg::mainDisplayID();
+	return {
+		.shift     = flags & 0x00020000 != 0,
+		.control   = flags & 0x00040000 != 0,
+		.alt       = flags & 0x00080000 != 0,
+		.super     = flags & 0x00100000 != 0,
+		.caps_lock = flags & 0x00010000 != 0,
+	};
 }
 
-module std::gfx @feat(MACOS) @private @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
-import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
-import std::gfx::macos @public;
-
-struct GfxGlContext
+fn float flip_y(float y)
 {
-	ObjId ctx;
-	ObjId format;
+	return (float)(cg::mainDisplayID().bounds().size.height - (double)y - 1.0);
 }
 
-struct GfxEglContext
+fn GfxWindow*? _fetch_win(ObjId self) @local
 {
-	void* ctx;
-	void* surface;
-	void* egl_window;
+	void* out = null;
+	self.get_ivar("gfx_window", &out);
+	return out ?: NOT_FOUND~;
 }
-
-struct GfxNativeImage
-{
-	GfxFormat format;
-	char* buffer;
-	ObjId native0;
-	void* native1;
-	void* native2;
-}
-
-const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
-const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;
-const int NS_OPEN_GL_PFA_COLOR_SIZE = 8;
-const int NS_OPEN_GL_PFA_ALPHA_SIZE = 11;
-const int NS_OPEN_GL_PFA_DEPTH_SIZE = 12;
-const int NS_OPEN_GL_PFA_STENCIL_SIZE = 13;
-const int NS_OPEN_GL_PFA_ACCUM_SIZE = 14;
-const int NS_OPEN_GL_PFA_CLOSEST_POLICY = 74;
-const int NS_OPEN_GL_PFA_ACCELERATED = 73;
-const int NS_OPEN_GL_PFA_SAMPLE_BUFFERS = 55;
-const int NS_OPEN_GL_PFA_SAMPLES = 56;
-const int NS_OPEN_GL_PFA_RENDERER_ID = 70;
-const int NS_OPEN_GL_PFA_OPEN_GL_PROFILE = 99;
-const int NS_OPEN_GL_PROFILE_LEGACY = 0x1000;
-const int NS_OPEN_GL_PROFILE_3_2_CORE = 0x3200;
-const int NS_OPEN_GL_PROFILE_4_1_CORE = 0x3200;
-const int NS_OPEN_GL_CP_SURFACE_OPACITY = 236;
-const int NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL = 222;
-const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
-
-fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param)
-{
-	context.send_void("setValues:forParameter:", vals, param);
-}
-
-
-struct VkMetalSurfaceCreateInfoEXT
-{
-	int sType;
-	void* pNext;
-	uint flags;
-	void* pLayer;
-}
-alias VkCreateMetalSurfaceExtFn = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
-
-
-fn void? _init_native(String class_name, GfxInitOption flags)
-{
-	_gfx.ns_pool = objc::pool_push();
-	ObjId app = _gfx.ns_app = objc::send(objc::class("NSApplication"), ObjId, "sharedApplication");
-	if (!app) return NSAPP_CREATION_FAILED~;
-	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
-	app.send_void("finishLaunching");
-	_osx_register_classes()!;
-	macos::poll_monitors();
-}
-
-fn void _wait_for_event_native(Duration duration)
-{
-	if (!_gfx.ns_app) return;
-	CFTimeInterval time = duration.to_sec();
-	if (duration == WAIT_FOREVER) time = CFTimeInterval::max;
-	if (time < 0) time = 0;
-	ObjId date = objc::send(objc::@class("NSDate"), ObjId, "dateWithTimeIntervalSinceNow:", time);
-	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
-	ObjId ev = _gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
-	if (ev) _gfx.ns_app.send_void("postEvent:atStart:", ev, true);
-}
-
-struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
-
-
 // MacOS callbacks
 
 fn void? _osx_register_classes()
@@ -941,10 +872,10 @@ fn void? _osx_register_classes()
 	if (_macos_window_delegate_class) return;
 
 	_macos_window_delegate_class = objc::class("NSObject").new_subclass("C3GFXWindowDelegate");
-	if (!_macos_window_delegate_class) return DELEGATE_CREATION_FAILED~;
+	if (!_macos_window_delegate_class) return gfx::DELEGATE_CREATION_FAILED~;
 	defer catch _macos_window_delegate_class = (ObjClass)0;
 	_macos_window_delegate_class.add_ivar("gfx_window", void*, "^v");
-	
+
 	_macos_window_delegate_class.add_method("windowWillClose:",        &_osx_window_will_close, "v@:@");
 	_macos_window_delegate_class.add_method("windowDidResize:",        &_osx_window_did_resize, "v@:@");
 	_macos_window_delegate_class.add_method("windowDidMove:",          &_osx_window_did_move, "v@:@");
@@ -956,7 +887,7 @@ fn void? _osx_register_classes()
 	objc::register_new_subclass(_macos_window_delegate_class);
 
 	_macos_view_class = objc::class("NSView").new_subclass("GfxViewC3");
-	if (!_macos_view_class) return DELEGATE_CREATION_FAILED~;
+	if (!_macos_view_class) return gfx::DELEGATE_CREATION_FAILED~;
 
 	_macos_view_class.add_ivar("gfx_window", void*, "^v");
 	_macos_view_class.add_method("acceptsFirstResponder",    &_osx_accepts_first_responder, "c@:");
@@ -994,12 +925,12 @@ fn void _osx_key_updown(ObjId self, ObjId event, bool down)
 	if (catch win) return;
 	ushort keyCode = event.send(ushort, "keyCode");
 	if (keyCode >= 256) return;
-	GfxKey key = _gfx.keycodes[(sz)keyCode];
+	GfxKey key = gfx::_gfx.keycodes[(sz)keyCode];
 	// Unmapped key
 	if (!key) return;
 	bool repeat = down ? event.send(bool, "isARepeat") : false;
 	GfxKeyModifier mods = _osx_modifiers_to_gfx(event.send(NSUInteger, "modifierFlags"));
-	_key_callback(win, key, mods, repeat, down);
+	gfx::_key_callback(win, key, mods, repeat, down);
 }
 
 fn void _osx_key_down(ObjId self, ObjSel sel, ObjId event) => _osx_key_updown(self, event, true);
@@ -1010,12 +941,12 @@ fn void _osx_mouse_entered(ObjId self, ObjSel sel, ObjId event)
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
 	CGPoint p = event.send(CGPoint, "locationInWindow");
-	_mouse_notify_callback(win, { (int)p.x, win.height - (int)p.y }, true);
+	gfx::_mouse_notify_callback(win, { (int)p.x, win.height - (int)p.y }, true);
 }
 
 fn void _osx_mouse_exited(ObjId self, ObjSel sel, ObjId event)
 {
-	if (try win = _fetch_win(self)) _mouse_notify_callback(win, win.internal.last_mouse, false);
+	if (try win = _fetch_win(self)) gfx::_mouse_notify_callback(win, win.internal.last_mouse, false);
 }
 
 fn void _osx_window_did_move(ObjId self, ObjSel sel, ObjId notification)
@@ -1026,27 +957,27 @@ fn void _osx_window_did_move(ObjId self, ObjSel sel, ObjId notification)
 	CGRect frame = win.src.window.send(CGRect, "frame");
 	CGRect content = win.src.window.send(CGRect, "contentRectForFrameRect:", frame);
 	float y = flip_y((float)(content.origin.y + content.size.height - 1));
-	_window_moved_callback(win, { (int)content.origin.x, (int)y });
+	gfx::_window_moved_callback(win, { (int)content.origin.x, (int)y });
 }
 
 fn void _osx_window_did_miniaturize(ObjId self, ObjSel sel, ObjId notification)
 {
-	(void)_window_minimized_callback(_fetch_win(self));
+	(void)gfx::_window_minimized_callback(_fetch_win(self));
 }
 
 fn void _osx_window_did_deminiaturize(ObjId self, ObjSel sel, ObjId notification)
 {
-	if (try win = _fetch_win(self)) _window_restored_callback(win, win.bounds);
+	if (try win = _fetch_win(self)) gfx::_window_restored_callback(win, win.bounds);
 }
 
 fn void _osx_window_did_become_key(ObjId self, ObjSel sel, ObjId notification)
 {
-	(void)_window_focus_callback(_fetch_win(self), true);
+	(void)gfx::_window_focus_callback(_fetch_win(self), true);
 }
 
 fn void _osx_window_will_close(ObjId self, ObjSel sel, ObjId notification)
 {
-	(void)_window_close_callback(_fetch_win(self));
+	(void)gfx::_window_close_callback(_fetch_win(self));
 }
 
 fn void _osx_window_did_resize(ObjId self, ObjSel sel, ObjId notification)
@@ -1060,22 +991,22 @@ fn void _osx_window_did_resize(ObjId self, ObjSel sel, ObjId notification)
 	if (!size.x || !size.y) return;
 	win.size = size;
 
-	GfxMonitor*? mon = macos::window_find_monitor(win);
+	GfxMonitor*? mon = window_find_monitor(win);
 	if (catch mon) return;
 
 	switch
 	{
 		case mon.mode.size.x == size.x && mon.mode.size.y - 102 <= size.y:
-			_window_maximized_callback(win, { 0, 0, ...size });
+			gfx::_window_maximized_callback(win, { 0, 0, ...size });
 		case win.internal.flags.maximize:
-			_window_restored_callback(win, { ...win.origin, ...size });
+			gfx::_window_restored_callback(win, { ...win.origin, ...size });
 	}
-	_window_resized_callback(win, size);
+	gfx::_window_resized_callback(win, size);
 }
 
 fn void _osx_window_did_resign_key(ObjId self, ObjSel sel, ObjId notification)
 {
-	(void)_window_focus_callback(_fetch_win(self), false);
+	(void)gfx::_window_focus_callback(_fetch_win(self), false);
 }
 
 fn void _osx_mouse_moved_common(ObjId self, ObjId event)
@@ -1083,7 +1014,7 @@ fn void _osx_mouse_moved_common(ObjId self, ObjId event)
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
 	CGPoint p = event.send(CGPoint, "locationInWindow");
-	_mouse_motion_callback(win, { (int)p.x, win.height - (int)p.y });
+	gfx::_mouse_motion_callback(win, { (int)p.x, win.height - (int)p.y });
 }
 
 fn void _osx_mouse_moved(ObjId self, ObjSel sel, ObjId event) => _osx_mouse_moved_common(self, event);
@@ -1102,7 +1033,7 @@ fn void _osx_mouse_button_common(ObjId self, ObjId event, bool down, GfxMouseBut
 		case 2: gfx_button = MIDDLE;
 		default: gfx_button = (GfxMouseButton)button;
 	}
-	_mouse_button_callback(win, gfx_button, down);
+	gfx::_mouse_button_callback(win, gfx_button, down);
 	_osx_mouse_moved_common(self, event);
 }
 
@@ -1119,7 +1050,7 @@ fn void _osx_scroll_wheel(ObjId self, ObjSel sel, ObjId event)
 	if (catch win) return;
 	CGFloat x = event.send(CGFloat, "scrollingDeltaX");
 	CGFloat y = event.send(CGFloat, "scrollingDeltaY");
-	_mouse_scroll_callback(win, { (float)x, (float)y });
+	gfx::_mouse_scroll_callback(win, { (float)x, (float)y });
 }
 
 fn void _osx_flags_changed(ObjId self, ObjSel sel, ObjId event)
@@ -1131,32 +1062,32 @@ fn void _osx_flags_changed(ObjId self, ObjSel sel, ObjId event)
 	bool pressed = false;
 
 	NSUInteger flags = event.send(NSUInteger, "modifierFlags");
-	_key_update_key_mods_ex(win,
-		flags & 0x00010000 != 0,
-		flags & 0x00200000 != 0,
-		flags & 0x00040000 != 0,
-		flags & 0x00080000 != 0,
-		flags & 0x00020000 != 0,
-		flags & 0x00100000 != 0,
-		false);
+	gfx::_key_update_key_mods_ex(win,
+	flags & 0x00010000 != 0,
+	flags & 0x00200000 != 0,
+	flags & 0x00040000 != 0,
+	flags & 0x00080000 != 0,
+	flags & 0x00020000 != 0,
+	flags & 0x00100000 != 0,
+	false);
 
 	for (int i = 0; i < 9; i++)
 	{
 		GfxKey modKey = CAPS_LOCK + (GfxKey)i;
-		_gfx.keyboard[modKey].prev = _gfx.keyboard[modKey].current;
+		gfx::_gfx.keyboard[modKey].prev = gfx::_gfx.keyboard[modKey].current;
 	}
 
 	for (int i = 0; i < 5; i++)
 	{
 		NSUInteger shift = (NSUInteger)1 << (uint)(i + 16);
 		GfxKey key = CAPS_LOCK + (GfxKey)i;
-		if (flags & shift && !is_key_down(key))
+		if (flags & shift && !gfx::is_key_down(key))
 		{
 			pressed = true;
 			value = key;
 			break;
 		}
-		if (flags & shift == 0 && is_key_down(key))
+		if (flags & shift == 0 && gfx::is_key_down(key))
 		{
 			pressed = false;
 			value = key;
@@ -1164,11 +1095,11 @@ fn void _osx_flags_changed(ObjId self, ObjSel sel, ObjId event)
 		}
 	}
 
-	_key_callback(win, value, win.internal.mod, is_key_down(value) && pressed, pressed);
+	gfx::_key_callback(win, value, win.internal.mod, gfx::is_key_down(value) && pressed, pressed);
 	if (value != CAPS_LOCK)
 	{
 		GfxKey other = (GfxKey)(value + 4);
-		_key_callback(win, other, win.internal.mod, is_key_down(other) && pressed, pressed);
+		gfx::_key_callback(win, other, win.internal.mod, gfx::is_key_down(other) && pressed, pressed);
 	}
 }
 
@@ -1176,7 +1107,7 @@ fn void _osx_view_did_change_backing_properties(ObjId self, ObjSel sel)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
-	(void)_scale_updated_callback(win, macos::window_find_monitor(win).scale);
+	(void)gfx::_scale_updated_callback(win, window_find_monitor(win).scale);
 }
 
 fn NSUInteger _osx_dragging_entered(ObjId self, ObjSel sel, ObjId sender)
@@ -1184,7 +1115,7 @@ fn NSUInteger _osx_dragging_entered(ObjId self, ObjSel sel, ObjId sender)
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return 0;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
-	_data_drag_callback(win, FILE, ENTER, { (int)p.x, win.height - (int)p.y });
+	gfx::_data_drag_callback(win, FILE, ENTER, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -1194,7 +1125,7 @@ fn NSUInteger _osx_dragging_updated(ObjId self, ObjSel sel, ObjId sender)
 	if (catch win) return 0;
 	if (!win.internal.enabled_events.data_drag) return 1;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
-	_data_drag_callback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
+	gfx::_data_drag_callback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -1204,7 +1135,7 @@ fn void _osx_dragging_ended(ObjId self, ObjSel sel, ObjId sender)
 	if (catch win) return;
 	if (!win.internal.enabled_events.data_drag) return;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
-	_data_drag_callback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
+	gfx::_data_drag_callback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
 }
 
 fn bool _osx_prepare_for_drag_operation(ObjId self, ObjSel sel, ObjId sender)
@@ -1237,7 +1168,7 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 	{
 		NSUInteger stringCount = propertyList.send(NSUInteger, "length");
 		ZString filePath = darwin::string_to_zstr(propertyList);
-		_data_drop_callback(win, filePath, (sz)stringCount + 1, FILE);
+		gfx::_data_drop_callback(win, filePath, (sz)stringCount + 1, FILE);
 	}
 	if (!propertyList.send(bool, "isKindOfClass:", objc::@class("NSArray"))) return false;
 
@@ -1249,7 +1180,7 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 		ObjId file_url = propertyList.send(ObjId, "objectAtIndex:", i);
 		ZString filePath = darwin::string_to_zstr(file_url);
 		NSUInteger string_count = file_url.send(NSUInteger, "length");
-		_data_drop_callback(win, filePath, (sz)string_count + 1, FILE);
+		gfx::_data_drop_callback(win, filePath, (sz)string_count + 1, FILE);
 	}
 	return false;
 }
@@ -1258,7 +1189,7 @@ fn bool _osx_wants_update_layer(ObjId self, ObjSel sel) => true;
 
 fn void _osx_update_layer(ObjId self, ObjSel sel)
 {
-	if (try win = _fetch_win(self)) _window_refresh_callback(win, { 0, 0, ...win.size });
+	if (try win = _fetch_win(self)) gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
 }
 
 fn bool _osx_accepts_first_responder(ObjId self, ObjSel sel) => true;
@@ -1268,8 +1199,105 @@ fn void _osx_draw_rect(ObjId self, ObjSel sel, CGRect rect)
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
 	float y = flip_y((float)(rect.size.height - 1));
-	_window_refresh_callback(win, { (int)rect.origin.x, (int)y, (int)rect.size.width, (int)rect.size.height });
+	gfx::_window_refresh_callback(win, { (int)rect.origin.x, (int)y, (int)rect.size.width, (int)rect.size.height });
 }
+
+fn CGDirectDisplayID _monitor_display(GfxMonitor* monitor) @local
+{
+	if (monitor && monitor.node && monitor.node.display) return (CGDirectDisplayID)monitor.node.display;
+	return cg::mainDisplayID();
+}
+
+fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param) @local
+{
+	context.send_void("setValues:forParameter:", vals, param);
+}
+
+const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
+const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;
+const int NS_OPEN_GL_PFA_COLOR_SIZE = 8;
+const int NS_OPEN_GL_PFA_ALPHA_SIZE = 11;
+const int NS_OPEN_GL_PFA_DEPTH_SIZE = 12;
+const int NS_OPEN_GL_PFA_STENCIL_SIZE = 13;
+const int NS_OPEN_GL_PFA_ACCUM_SIZE = 14;
+const int NS_OPEN_GL_PFA_CLOSEST_POLICY = 74;
+const int NS_OPEN_GL_PFA_ACCELERATED = 73;
+const int NS_OPEN_GL_PFA_SAMPLE_BUFFERS = 55;
+const int NS_OPEN_GL_PFA_SAMPLES = 56;
+const int NS_OPEN_GL_PFA_RENDERER_ID = 70;
+const int NS_OPEN_GL_PFA_OPEN_GL_PROFILE = 99;
+const int NS_OPEN_GL_PROFILE_LEGACY = 0x1000;
+const int NS_OPEN_GL_PROFILE_3_2_CORE = 0x3200;
+const int NS_OPEN_GL_PROFILE_4_1_CORE = 0x4100;
+const int NS_OPEN_GL_CP_SURFACE_OPACITY = 236;
+const int NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL = 222;
+const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
+
+module std::gfx @feat(MACOS) @private @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
+import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
+import std::gfx::macos @public;
+
+struct GfxGlContext
+{
+	ObjId ctx;
+	ObjId format;
+}
+
+struct GfxEglContext
+{
+	void* ctx;
+	void* surface;
+	void* egl_window;
+}
+
+struct GfxNativeImage
+{
+	GfxFormat format;
+	char* buffer;
+	ObjId native0;
+	void* native1;
+	void* native2;
+}
+
+
+
+
+struct VkMetalSurfaceCreateInfoEXT
+{
+	int sType;
+	void* pNext;
+	uint flags;
+	void* pLayer;
+}
+alias VkCreateMetalSurfaceExtFn = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
+
+
+fn void? _init_native(String class_name, GfxInitOption flags)
+{
+	_gfx.ns_pool = objc::pool_push();
+	ObjId app = _gfx.ns_app = objc::send(objc::class("NSApplication"), ObjId, "sharedApplication");
+	if (!app) return NSAPP_CREATION_FAILED~;
+	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
+	app.send_void("finishLaunching");
+	macos::_osx_register_classes()!;
+	macos::poll_monitors();
+}
+
+fn void _wait_for_event_native(Duration duration)
+{
+	if (!_gfx.ns_app) return;
+	CFTimeInterval time = duration.to_sec();
+	if (duration == WAIT_FOREVER) time = CFTimeInterval::max;
+	if (time < 0) time = 0;
+	ObjId date = objc::send(objc::@class("NSDate"), ObjId, "dateWithTimeIntervalSinceNow:", time);
+	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
+	ObjId ev = _gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
+	if (ev) _gfx.ns_app.send_void("postEvent:atStart:", ev, true);
+}
+
+struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
+
+
 
 // --- helpers
 
@@ -1289,17 +1317,8 @@ fn ObjId _new_nsbitmap_image_rep(int w, int h)
 		(NSUInteger)2, (NSInteger)(w * 4), (NSInteger)32);
 }
 
-fn GfxWindow*? _fetch_win(ObjId self)
-{
-	void* out = null;
-	self.get_ivar("gfx_window", &out);
-	return out ?: NOT_FOUND~;
-}
 
-fn float flip_y(float y)
-{
-	return (float)(cg::mainDisplayID().bounds().size.height - (double)y - 1.0);
-}
+
 
 fn void _macos_init_view(GfxWindow* win)
 {
@@ -1321,16 +1340,6 @@ fn void _macos_init_view(GfxWindow* win)
 	tracking_area.release();
 }
 
-fn GfxKeyModifier _osx_modifiers_to_gfx(NSUInteger flags)
-{
-	return {
-		.shift     = flags & 0x00020000 != 0,
-		.control   = flags & 0x00040000 != 0,
-		.alt       = flags & 0x00080000 != 0,
-		.super     = flags & 0x00100000 != 0,
-		.caps_lock = flags & 0x00010000 != 0,
-	};
-}
 
 fn ObjId _get_nsscreen_for_display(uint display_id)
 {
@@ -1348,7 +1357,3 @@ fn ObjId _get_nsscreen_for_display(uint display_id)
 	return null;
 }
 
-// -- globals
-
-ObjClass _macos_window_delegate_class;
-ObjClass _macos_view_class;

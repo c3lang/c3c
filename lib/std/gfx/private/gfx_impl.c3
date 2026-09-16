@@ -834,6 +834,14 @@ fn void _window_set_capture_mouse_platform(GfxWindow* win, bool state)
 	$endswitch
 }
 
+fn void _window_set_dnd(GfxWindow* win, bool allow)
+{
+	win.internal.flags.allow_dnd = allow;
+	$if $feat(WIN32):
+		win32::dragAcceptFiles(win.src.window, (int)allow);
+	$endif
+}
+
 fn void _window_set_floating(GfxWindow* win, bool floating)
 {
 	$switch:
