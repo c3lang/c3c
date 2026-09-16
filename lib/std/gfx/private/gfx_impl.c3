@@ -1,7 +1,7 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @private;
 import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time;
 import std::gfx::wl @public, std::gfx::macos @public, std::gfx::wasm @public;
-
+import std::gfx::win32 @public;
 
 fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
 {
@@ -11,7 +11,7 @@ fn void? _monitor_set_gamma_ramp_native(GfxMonitor* monitor, GfxGammaRamp ramp)
 		$case $feat(WASM):
 			return wasm::_monitor_set_gamma_ramp_native_wasm(monitor, ramp);
 		$case $feat(WIN32):
-			return _monitor_set_gamma_ramp_native_win32(monitor, ramp);
+			return win32::_monitor_set_gamma_ramp_native_win32(monitor, ramp);
 		$case WAYLAND_ONLY:
 			return wl::monitor_set_gamma_ramp(monitor, ramp);
 		$case X11_ONLY:
@@ -32,7 +32,7 @@ fn GfxMonitorMode[] _monitor_get_modes_native(GfxMonitor* monitor)
 		$case $feat(WASM):
 			return wasm::_monitor_get_modes_native_wasm(monitor);
 		$case $feat(WIN32):
-			return _monitor_get_modes_native_win32(monitor);
+			return win32::_monitor_get_modes_native_win32(monitor);
 		$case WAYLAND_ONLY:
 			return wl::monitor_get_modes(monitor);
 		$case X11_ONLY:
@@ -53,7 +53,7 @@ fn void _window_show_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_show_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_show_native_win32(win);
+			return win32::_window_show_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_show_wayland(win);
 		$case X11_ONLY:
@@ -74,7 +74,7 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp_native(GfxMonitor* monitor, Allocator a
 		$case $feat(WASM):
 			return wasm::_monitor_get_gamma_ramp_native_wasm(monitor, a);
 		$case $feat(WIN32):
-			return _monitor_get_gamma_ramp_native_win32(monitor, a);
+			return win32::_monitor_get_gamma_ramp_native_win32(monitor, a);
 		$case WAYLAND_ONLY:
 			return wl::monitor_get_gamma_ramp(monitor, a);
 		$case X11_ONLY:
@@ -95,7 +95,7 @@ fn void? _monitor_set_gamma_native(GfxMonitor* monitor, float gamma)
 		$case $feat(WASM):
 			return wasm::_monitor_set_gamma_native_wasm(monitor, gamma);
 		$case $feat(WIN32):
-			return _monitor_set_gamma_native_win32(monitor, gamma);
+			return win32::_monitor_set_gamma_native_win32(monitor, gamma);
 		$case WAYLAND_ONLY:
 			return wl::monitor_set_gamma(monitor, gamma);
 		$case X11_ONLY:
@@ -116,7 +116,7 @@ fn void? _monitor_set_mode_native(GfxMonitor* mon, GfxMonitorMode* mode)
 		$case $feat(WASM):
 			return wasm::_monitor_set_mode_native_wasm(mon, mode);
 		$case $feat(WIN32):
-			return _monitor_set_mode_native_win32(mon, mode);
+			return win32::_monitor_set_mode_native_win32(mon, mode);
 		$case WAYLAND_ONLY:
 			return wl::monitor_set_mode(mon, mode);
 		$case X11_ONLY:
@@ -137,7 +137,7 @@ fn GfxMouse*? _create_mouse_native(void* data, GfxSize size, GfxFormat format)
 		$case $feat(WASM):
 			return wasm::_create_mouse_native_wasm(data, size, format);
 		$case $feat(WIN32):
-			return _create_mouse_native_win32(data, size, format);
+			return win32::_create_mouse_native_win32(data, size, format);
 		$case WAYLAND_ONLY:
 			return wl::create_mouse(data, size, format);
 		$case X11_ONLY:
@@ -158,7 +158,7 @@ fn GfxMouse*? _create_standard_mouse_native(GfxMouseIcon mouse)
 		$case $feat(WASM):
 			return wasm::_create_standard_mouse_native_wasm(mouse);
 		$case $feat(WIN32):
-			return _create_standard_mouse_native_win32(mouse);
+			return win32::_create_standard_mouse_native_win32(mouse);
 		$case WAYLAND_ONLY:
 			return wl::_create_mouse_standard_wayland(mouse);
 		$case X11_ONLY:
@@ -179,7 +179,7 @@ fn void _destroy_native()
 		$case $feat(WASM):
 			return wasm::_destroy_native_wasm();
 		$case $feat(WIN32):
-			return _destroy_native_win32();
+			return win32::_destroy_native_win32();
 		$case WAYLAND_ONLY:
 			return wl::_destroy_wayland();
 		$case X11_ONLY:
@@ -200,7 +200,7 @@ fn bool _opengl_extension_is_supported_native(String extension)
 		$case $feat(WASM):
 			return wasm::_opengl_extension_is_supported_native_wasm(extension);
 		$case $feat(WIN32):
-			return _opengl_extension_is_supported_native_win32(extension);
+			return win32::_opengl_extension_is_supported_native_win32(extension);
 		$case WAYLAND_ONLY:
 			return wl::_opengl_extension_is_supported_wayland(extension);
 		$case X11_ONLY:
@@ -221,7 +221,7 @@ fn void _free_mouse(GfxMouse* mouse)
 		$case $feat(WASM):
 			return wasm::_free_mouse_wasm(mouse);
 		$case $feat(WIN32):
-			return _free_mouse_win32(mouse);
+			return win32::_free_mouse_win32(mouse);
 		$case WAYLAND_ONLY:
 			return wl::free_mouse(mouse);
 		$case X11_ONLY:
@@ -242,7 +242,7 @@ fn void* _get_current_opengl_context_native()
 		$case $feat(WASM):
 			return wasm::_get_current_opengl_context_native_wasm();
 		$case $feat(WIN32):
-			return _get_current_opengl_context_native_win32();
+			return win32::_get_current_opengl_context_native_win32();
 		$case WAYLAND_ONLY:
 			return wl::_get_current_opengl_context_wayland();
 		$case X11_ONLY:
@@ -263,7 +263,7 @@ fn GfxPoint _get_global_mouse_native()
 		$case $feat(WASM):
 			return wasm::_get_global_mouse_native_wasm();
 		$case $feat(WIN32):
-			return _get_global_mouse_native_win32();
+			return win32::_get_global_mouse_native_win32();
 		$case WAYLAND_ONLY:
 			return wl::_get_global_mouse_wayland();
 		$case X11_ONLY:
@@ -284,7 +284,7 @@ fn void* _get_opengl_proc_native(ZString procname)
 		$case $feat(WASM):
 			return wasm::_get_opengl_proc_native_wasm(procname);
 		$case $feat(WIN32):
-			return _get_opengl_proc_native_win32(procname);
+			return win32::_get_opengl_proc_native_win32(procname);
 		$case WAYLAND_ONLY:
 			return egl::get_proc(procname);
 		$case X11_ONLY:
@@ -305,7 +305,7 @@ fn void _init_keycodes_native()
 		$case $feat(WASM):
 			return wasm::_init_keycodes_native_wasm();
 		$case $feat(WIN32):
-			return _init_keycodes_native_win32();
+			return win32::_init_keycodes_native_win32();
 		$case WAYLAND_ONLY:
 			return wl::_init_keycodes_native_wayland();
 		$case X11_ONLY:
@@ -326,7 +326,7 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 		$case $feat(WASM):
 			return wasm::_create_window_native_wasm(name, flags, win);
 		$case $feat(WIN32):
-			return _create_window_native_win32(name, flags, win);
+			return win32::_create_window_native_win32(name, flags, win);
 		$case WAYLAND_ONLY:
 			return wl::_create_window_wayland(name, flags, win);
 		$case X11_ONLY:
@@ -347,7 +347,7 @@ fn void _monitor_node_free_native(GfxMonitorNode* node)
 		$case $feat(WASM):
 			return wasm::_monitor_node_free_native_wasm(node);
 		$case $feat(WIN32):
-			return _monitor_node_free_native_win32(node);
+			return win32::_monitor_node_free_native_win32(node);
 		$case WAYLAND_ONLY:
 			return wl::_monitor_node_free_wayland(node);
 		$case X11_ONLY:
@@ -368,7 +368,7 @@ fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 		$case $feat(WASM):
 			return wasm::_monitor_get_workarea_wasm(monitor);
 		$case $feat(WIN32):
-			return _monitor_get_workarea_win32(monitor);
+			return win32::_monitor_get_workarea_win32(monitor);
 		$case WAYLAND_ONLY:
 			return wl::_monitor_get_workarea_wayland(monitor);
 		$case X11_ONLY:
@@ -389,7 +389,7 @@ fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, Gfx
 		$case $feat(WASM):
 			return wasm::_monitor_request_mode_native_wasm(mon, mode, request);
 		$case $feat(WIN32):
-			return _monitor_request_mode_native_win32(mon, mode, request);
+			return win32::_monitor_request_mode_native_win32(mon, mode, request);
 		$case WAYLAND_ONLY:
 			return wl::_monitor_request_mode_wayland(mon, mode, request);
 		$case X11_ONLY:
@@ -410,7 +410,7 @@ fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 		$case $feat(WASM):
 			return wasm::_physical_to_mapped_key_native_wasm(key);
 		$case $feat(WIN32):
-			return _physical_to_mapped_key_native_win32(key);
+			return win32::_physical_to_mapped_key_native_win32(key);
 		$case WAYLAND_ONLY:
 			return wl::_physical_to_mapped_key_native_wayland(key);
 		$case X11_ONLY:
@@ -431,7 +431,7 @@ fn void _poll_events_native()
 		$case $feat(WASM):
 			return wasm::_poll_events_native_wasm();
 		$case $feat(WIN32):
-			return _poll_events_native_win32();
+			return win32::_poll_events_native_win32();
 		$case WAYLAND_ONLY:
 			return wl::_poll_events_wayland();
 		$case X11_ONLY:
@@ -452,7 +452,7 @@ fn void _poll_monitors_native()
 		$case $feat(WASM):
 			return wasm::_poll_monitors_native_wasm();
 		$case $feat(WIN32):
-			return _poll_monitors_native_win32();
+			return win32::_poll_monitors_native_win32();
 		$case WAYLAND_ONLY:
 			return wl::_poll_monitors_wayland();
 		$case X11_ONLY:
@@ -473,7 +473,7 @@ fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferT
 		$case $feat(WASM):
 			return wasm::_read_clipboard_native_wasm(allocator, type);
 		$case $feat(WIN32):
-			return _read_clipboard_native_win32(allocator, type);
+			return win32::_read_clipboard_native_win32(allocator, type);
 		$case WAYLAND_ONLY:
 			return wl::_read_clipboard_wayland(allocator, type);
 		$case X11_ONLY:
@@ -494,7 +494,7 @@ fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
 		$case $feat(WASM):
 			return wasm::_window_blit_surface_native_wasm(win, surface);
 		$case $feat(WIN32):
-			return _window_blit_surface_native_win32(win, surface);
+			return win32::_window_blit_surface_native_win32(win, surface);
 		$case WAYLAND_ONLY:
 			return wl::_window_blit_surface_wayland(win, surface);
 		$case X11_ONLY:
@@ -515,7 +515,7 @@ fn void _window_close_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_close_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_close_native_win32(win);
+			return win32::_window_close_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_close_wayland(win);
 		$case X11_ONLY:
@@ -536,7 +536,7 @@ fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* contex
 		$case $feat(WASM):
 			return wasm::_window_init_opengl_context_native_wasm(win, context, hints);
 		$case $feat(WIN32):
-			return _window_init_opengl_context_native_win32(win, context, hints);
+			return win32::_window_init_opengl_context_native_win32(win, context, hints);
 		$case WAYLAND_ONLY:
 			return wl::_window_init_opengl_context_wayland(win, context, hints);
 		$case X11_ONLY:
@@ -557,7 +557,7 @@ fn WGPUSurface _window_create_wgpu_surface_native(GfxWindow* window, WGPUInstanc
 		$case $feat(WASM):
 			return wasm::_window_create_wgpu_surface_native_wasm(window, instance);
 		$case $feat(WIN32):
-			return _window_create_wgpu_surface_native_win32(window, instance);
+			return win32::_window_create_wgpu_surface_native_win32(window, instance);
 		$case WAYLAND_ONLY:
 			return wl::_window_create_wgpu_surface_wayland(window, instance);
 		$case X11_ONLY:
@@ -578,7 +578,7 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 		$case $feat(WASM):
 			return wasm::_window_release_opengl_context_native_wasm(win, ctx);
 		$case $feat(WIN32):
-			return _window_release_opengl_context_native_win32(win, ctx);
+			return win32::_window_release_opengl_context_native_win32(win, ctx);
 		$case WAYLAND_ONLY:
 			return wl::_window_release_opengl_context_wayland(win, ctx);
 		$case X11_ONLY:
@@ -599,7 +599,7 @@ fn GfxPoint _window_fetch_size_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_fetch_size_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_fetch_size_native_win32(win);
+			return win32::_window_fetch_size_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_fetch_size_wayland(win);
 		$case X11_ONLY:
@@ -620,7 +620,7 @@ fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request)
 		$case $feat(WASM):
 			return wasm::_window_flash_native_wasm(win, request);
 		$case $feat(WIN32):
-			return _window_flash_native_win32(win, request);
+			return win32::_window_flash_native_win32(win, request);
 		$case WAYLAND_ONLY:
 			return wl::_window_flash_wayland(win, request);
 		$case X11_ONLY:
@@ -641,7 +641,7 @@ fn void _window_focus_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_focus_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_focus_native_win32(win);
+			return win32::_window_focus_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_focus_wayland(win);
 		$case X11_ONLY:
@@ -662,7 +662,7 @@ fn void _window_hide_native(GfxWindow* win) @private
 		$case $feat(WASM):
 			return wasm::_window_hide_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_hide_native_win32(win);
+			return win32::_window_hide_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_hide_wayland(win);
 		$case X11_ONLY:
@@ -683,7 +683,7 @@ fn bool _window_is_hidden_native(GfxWindow* win) @private
 		$case $feat(WASM):
 			return wasm::_window_is_hidden_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_is_hidden_native_win32(win);
+			return win32::_window_is_hidden_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_is_hidden_wayland(win);
 		$case X11_ONLY:
@@ -704,7 +704,7 @@ fn bool _window_is_maximized_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_is_maximized_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_is_maximized_native_win32(win);
+			return win32::_window_is_maximized_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_is_maximized_wayland(win);
 		$case X11_ONLY:
@@ -725,7 +725,7 @@ fn bool _window_is_minimized_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_is_minimized_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_is_minimized_native_win32(win);
+			return win32::_window_is_minimized_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_is_minimized_wayland(win);
 		$case X11_ONLY:
@@ -746,7 +746,7 @@ fn void _window_make_opengl_current_context_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_make_opengl_current_context_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_make_opengl_current_context_native_win32(win);
+			return win32::_window_make_opengl_current_context_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_make_opengl_current_context_wayland(win);
 		$case X11_ONLY:
@@ -767,7 +767,7 @@ fn void _window_maximize_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_maximize_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_maximize_native_win32(win);
+			return win32::_window_maximize_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_maximize_wayland(win);
 		$case X11_ONLY:
@@ -788,7 +788,7 @@ fn void _window_minimize_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_minimize_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_minimize_native_win32(win);
+			return win32::_window_minimize_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_minimize_wayland(win);
 		$case X11_ONLY:
@@ -809,7 +809,7 @@ fn void _window_move_mouse(GfxWindow* win, GfxPoint where)
 		$case $feat(WASM):
 			return wasm::_window_move_mouse_wasm(win, where);
 		$case $feat(WIN32):
-			return _window_move_mouse_win32(win, where);
+			return win32::_window_move_mouse_win32(win, where);
 		$case WAYLAND_ONLY:
 			return wl::_window_move_mouse_wayland(win, where);
 		$case X11_ONLY:
@@ -830,7 +830,7 @@ fn void _window_move_native(GfxWindow* win, GfxPoint where)
 		$case $feat(WASM):
 			return wasm::_window_move_native_wasm(win, where);
 		$case $feat(WIN32):
-			return _window_move_native_win32(win, where);
+			return win32::_window_move_native_win32(win, where);
 		$case WAYLAND_ONLY:
 			return wl::_window_move_wayland(win, where);
 		$case X11_ONLY:
@@ -851,7 +851,7 @@ fn void _window_raise_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_raise_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_raise_native_win32(win);
+			return win32::_window_raise_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_raise_wayland(win);
 		$case X11_ONLY:
@@ -872,7 +872,7 @@ fn void _window_resize_native(GfxWindow* win, GfxSize size)
 		$case $feat(WASM):
 			return wasm::_window_resize_native_wasm(win, size);
 		$case $feat(WIN32):
-			return _window_resize_native_win32(win, size);
+			return win32::_window_resize_native_win32(win, size);
 		$case WAYLAND_ONLY:
 			return wl::_window_resize_wayland(win, size);
 		$case X11_ONLY:
@@ -893,7 +893,7 @@ fn void _window_restore_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_restore_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_restore_native_win32(win);
+			return win32::_window_restore_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_restore_wayland(win);
 		$case X11_ONLY:
@@ -914,7 +914,7 @@ fn void _window_set_aspect_ratio_native(GfxWindow* win, int w, int h)
 		$case $feat(WASM):
 			return wasm::_window_set_aspect_ratio_native_wasm(win, w, h);
 		$case $feat(WIN32):
-			return _window_set_aspect_ratio_native_win32(win, w, h);
+			return win32::_window_set_aspect_ratio_native_win32(win, w, h);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_aspect_ratio_wayland(win, w, h);
 		$case X11_ONLY:
@@ -935,7 +935,7 @@ fn void _window_set_border_native(GfxWindow* win, bool border)
 		$case $feat(WASM):
 			return wasm::_window_set_border_native_wasm(win, border);
 		$case $feat(WIN32):
-			return _window_set_border_native_win32(win, border);
+			return win32::_window_set_border_native_win32(win, border);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_border_wayland(win, border);
 		$case X11_ONLY:
@@ -956,7 +956,7 @@ fn void _window_set_floating_native(GfxWindow* win, bool floating)
 		$case $feat(WASM):
 			return wasm::_window_set_floating_native_wasm(win, floating);
 		$case $feat(WIN32):
-			return _window_set_floating_native_win32(win, floating);
+			return win32::_window_set_floating_native_win32(win, floating);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_floating_wayland(win, floating);
 		$case X11_ONLY:
@@ -977,7 +977,7 @@ fn void _window_set_fullscreen_native(GfxWindow* win, bool fullscreen)
 		$case $feat(WASM):
 			return wasm::_window_set_fullscreen_native_wasm(win, fullscreen);
 		$case $feat(WIN32):
-			return _window_set_fullscreen_native_win32(win, fullscreen);
+			return win32::_window_set_fullscreen_native_win32(win, fullscreen);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_fullscreen_wayland(win, fullscreen);
 		$case X11_ONLY:
@@ -998,7 +998,7 @@ fn void _window_set_max_size_native(GfxWindow* win, GfxSize size)
 		$case $feat(WASM):
 			return wasm::_window_set_max_size_native_wasm(win, size);
 		$case $feat(WIN32):
-			return _window_set_max_size_native_win32(win, size);
+			return win32::_window_set_max_size_native_win32(win, size);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_max_size_wayland(win, size);
 		$case X11_ONLY:
@@ -1019,7 +1019,7 @@ fn void _window_set_min_size_native(GfxWindow* win, GfxSize size)
 		$case $feat(WASM):
 			return wasm::_window_set_min_size_native_wasm(win, size);
 		$case $feat(WIN32):
-			return _window_set_min_size_native_win32(win, size);
+			return win32::_window_set_min_size_native_win32(win, size);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_min_size_wayland(win, size);
 		$case X11_ONLY:
@@ -1040,7 +1040,7 @@ fn void _window_set_mouse_passthrough_native(GfxWindow* win, bool passthrough)
 		$case $feat(WASM):
 			return wasm::_window_set_mouse_passthrough_native_wasm(win, passthrough);
 		$case $feat(WIN32):
-			return _window_set_mouse_passthrough_native_win32(win, passthrough);
+			return win32::_window_set_mouse_passthrough_native_win32(win, passthrough);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_mouse_passthrough_wayland(win, passthrough);
 		$case X11_ONLY:
@@ -1061,7 +1061,7 @@ fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 		$case $feat(WASM):
 			return wasm::_window_set_mouse_native_wasm(win, mouse);
 		$case $feat(WIN32):
-			return _window_set_mouse_native_win32(win, mouse);
+			return win32::_window_set_mouse_native_win32(win, mouse);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_mouse_wayland(win, mouse);
 		$case X11_ONLY:
@@ -1082,7 +1082,7 @@ fn void _window_set_opacity_native(GfxWindow* win, char opacity)
 		$case $feat(WASM):
 			return wasm::_window_set_opacity_native_wasm(win, opacity);
 		$case $feat(WIN32):
-			return _window_set_opacity_native_win32(win, opacity);
+			return win32::_window_set_opacity_native_win32(win, opacity);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_opacity_wayland(win, opacity);
 		$case X11_ONLY:
@@ -1103,7 +1103,7 @@ fn void _window_set_raw_mouse_mode_native(GfxWindow* win, bool state)
 		$case $feat(WASM):
 			return wasm::_window_set_raw_mouse_mode_native_wasm(win, state);
 		$case $feat(WIN32):
-			return _window_set_raw_mouse_mode_native_win32(win, state);
+			return win32::_window_set_raw_mouse_mode_native_win32(win, state);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_raw_mouse_mode_wayland(win, state);
 		$case X11_ONLY:
@@ -1124,7 +1124,7 @@ fn void _window_opengl_swap_buffers_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_opengl_swap_buffers_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_opengl_swap_buffers_native_win32(win);
+			return win32::_window_opengl_swap_buffers_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_opengl_swap_buffers_wayland(win);
 		$case X11_ONLY:
@@ -1145,7 +1145,7 @@ fn void? _write_clipboard_native(GfxDataTransfer* data)
 		$case $feat(WASM):
 			return wasm::_write_clipboard_native_wasm(data);
 		$case $feat(WIN32):
-			return _write_clipboard_native_win32(data);
+			return win32::_write_clipboard_native_win32(data);
 		$case WAYLAND_ONLY:
 			return wl::_write_clipboard_wayland(data);
 		$case X11_ONLY:
@@ -1166,7 +1166,7 @@ fn void? _surface_init_native(GfxSurface* surface, void* data, int w, int h, Gfx
 		$case $feat(WASM):
 			return wasm::_surface_init_native_wasm(surface, data, w, h, format, window);
 		$case $feat(WIN32):
-			return _surface_init_native_win32(surface, data, w, h, format, window);
+			return win32::_surface_init_native_win32(surface, data, w, h, format, window);
 		$case WAYLAND_ONLY:
 			return wl::_init_surface_wayland(surface, data, w, h, format, window);
 		$case X11_ONLY:
@@ -1187,7 +1187,7 @@ fn void _surface_release_native(GfxSurface* surface)
 		$case $feat(WASM):
 			return wasm::_surface_release_native_wasm(surface);
 		$case $feat(WIN32):
-			return _surface_release_native_win32(surface);
+			return win32::_surface_release_native_win32(surface);
 		$case WAYLAND_ONLY:
 			return wl::_surface_release_wayland(surface);
 		$case X11_ONLY:
@@ -1208,7 +1208,7 @@ fn bool _window_is_floating_native(GfxWindow* win) @private
 		$case $feat(WASM):
 			return wasm::_window_is_floating_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_is_floating_native_win32(win);
+			return win32::_window_is_floating_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_is_floating_wayland(win);
 		$case X11_ONLY:
@@ -1229,7 +1229,7 @@ fn void _window_set_name_native(GfxWindow* win, String name)
 		$case $feat(WASM):
 			return wasm::_window_set_name_native_wasm(win, name);
 		$case $feat(WIN32):
-			return _window_set_name_native_win32(win, name);
+			return win32::_window_set_name_native_win32(win, name);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_name_wayland(win, name);
 		$case X11_ONLY:
@@ -1250,7 +1250,7 @@ fn bool _window_set_icon_native(GfxWindow* win, void* data_src, int w, int h, Gf
 		$case $feat(WASM):
 			return wasm::_window_set_icon_native_wasm(win, data_src, w, h, format, type);
 		$case $feat(WIN32):
-			return _window_set_icon_native_win32(win, data_src, w, h, format, type);
+			return win32::_window_set_icon_native_win32(win, data_src, w, h, format, type);
 		$case WAYLAND_ONLY:
 			return wl::_window_set_icon_wayland(win, data_src, w, h, format, type);
 		$case X11_ONLY:
@@ -1271,7 +1271,7 @@ fn GfxMonitor*? _window_find_monitor_native(GfxWindow* win)
 		$case $feat(WASM):
 			return wasm::_window_find_monitor_native_wasm(win);
 		$case $feat(WIN32):
-			return _window_find_monitor_native_win32(win);
+			return win32::_window_find_monitor_native_win32(win);
 		$case WAYLAND_ONLY:
 			return wl::_window_find_monitor_wayland(win);
 		$case X11_ONLY:
@@ -1292,7 +1292,7 @@ fn void _window_set_capture_mouse_native(GfxWindow* win, bool state)
 		$case $feat(WASM):
 			return wasm::_window_set_capture_mouse_native_wasm(win, state);
 		$case $feat(WIN32):
-			return _window_set_capture_mouse_native_win32(win, state);
+			return win32::_window_set_capture_mouse_native_win32(win, state);
 		$case WAYLAND_ONLY:
 			return wl::window_capture_mouse(win, state);
 		$case X11_ONLY:
@@ -1313,7 +1313,7 @@ fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance insta
 		$case $feat(WASM):
 			return wasm::_vulkan_get_physical_device_presentation_support_native_wasm(instance, physical_device, queue_family_index);
 		$case $feat(WIN32):
-			return _vulkan_get_physical_device_presentation_support_native_win32(instance, physical_device, queue_family_index);
+			return win32::_vulkan_get_physical_device_presentation_support_native_win32(instance, physical_device, queue_family_index);
 		$case WAYLAND_ONLY:
 			return wl::_vulkan_get_physical_device_presentation_support_wayland(instance, physical_device, queue_family_index);
 		$case X11_ONLY:
