@@ -1457,9 +1457,9 @@ fn GfxMonitorMode GfxMonitor.get_mode(&self)
 <*
  Set the gamma of the monitor.
 
- @param gamma : "The new gamma as a float between 0 and 1"
+ @param gamma : "The gamma exponent, greater than zero. 1.0 is identity, 2.2 is standard sRGB."
 
- @require [gamma] gamma >= 0.0 && gamma <= 1.0 : "Gamma must be in the range of 0.0 to 1.0"
+ @require [gamma] gamma > 0.0 : "Gamma must be greater than zero"
 *>
 fn void? GfxMonitor.set_gamma(&self, float gamma) => @pool()
 {
