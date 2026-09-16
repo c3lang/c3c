@@ -1,6 +1,6 @@
 module std::gfx::x11 @feat(LINUX, BSD) @feat(!NO_X11) @private;
 import std::math, std::collections, std::os, libc, std::time, std::time::clock, std::net, std::net::os;
-import std::gfx::egl @public;
+import std::gfx::egl, std::gfx @public;
 
 const int X_TRUE = 1;
 const int X_FALSE = 0;
@@ -32,7 +32,7 @@ fn void _window_set_border_x11(GfxWindow* win, bool border)
 	hints.flags = 2;
 	hints.decorations = (CULong)border;
 	xChangeProperty(gfx::_gfx.display, win.src.window, gfx::_gfx.motifWmHints, gfx::_gfx.motifWmHints, 32, 0, (char*)&hints, 5);
-	if (!_window_is_hidden_x11(win))
+	if (!window_is_hidden(win))
 	{
 		win.hide();
 		win.show();
@@ -89,7 +89,7 @@ fn void _window_set_aspect_ratio_x11(GfxWindow* win, int w, int h)
 }
 
 // public
-fn void _window_blit_surface_x11(GfxWindow* win, GfxSurface* surface)
+fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint min = math::min(win.size, surface.size);
 	gfx::copy_image_data(surface.native.buffer, surface.size.x, min.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
@@ -106,7 +106,7 @@ fn GfxPoint get_global_mouse()
 }
 
 // public
-fn GfxPoint _window_fetch_size_x11(GfxWindow* win)
+fn GfxPoint window_fetch_size(GfxWindow* win)
 {
 	XWindowAttributes attribs;
 	xGetWindowAttributes(gfx::_gfx.display, win.src.window, &attribs);
@@ -294,7 +294,7 @@ fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags,
 	xSetWindowBackgroundPixmap(gfx::_gfx.display, win.src.window, 0);
 }
 
-fn void? _create_window_x11(String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
 {
 	win.src.backing = {};
 	if (flags.open_gl || flags.egl)
@@ -816,7 +816,7 @@ fn void _x_handle_event()
 				bool handled = false;
 				if (e.xproperty.atom == gfx::_gfx.wmState)
 				{
-					if (gfx::_window_is_minimized_native(win) && !(win.internal.flags.minimize))
+					if (window_is_minimized(win) && !(win.internal.flags.minimize))
 					{
 						gfx::_window_minimized_callback(win);
 						handled = true;
@@ -824,7 +824,7 @@ fn void _x_handle_event()
 				}
 				else if (e.xproperty.atom == gfx::_gfx.netWmState)
 				{
-					if (gfx::_window_is_maximized_native(win) && !(win.internal.flags.maximize))
+					if (window_is_maximized(win) && !(win.internal.flags.maximize))
 					{
 						gfx::_window_maximized_callback(win, win.bounds);
 						handled = true;
@@ -1114,7 +1114,7 @@ fn void poll_monitors()
 }
 
 // private
-fn void _window_close_native_x11(GfxWindow* win)
+fn void window_destroy_platform(GfxWindow* win)
 {
 	if (win.src.ic)
 	{
@@ -1134,7 +1134,7 @@ fn void _window_release_opengl_context_x11(GfxWindow* win, GfxGlContext* ctx)
 }
 
 
-fn void _window_focus_x11(GfxWindow* win)
+fn void window_focus(GfxWindow* win)
 {
 	XWindowAttributes attr;
 	xGetWindowAttributes(gfx::_gfx.display, win.src.window, &attr);
@@ -1143,14 +1143,14 @@ fn void _window_focus_x11(GfxWindow* win)
 	xFlush(gfx::_gfx.display);
 }
 
-fn void _window_hide_x11(GfxWindow* win)
+fn void window_hide(GfxWindow* win)
 {
 	win.internal.flags.hide = true;
 	xUnmapWindow(gfx::_gfx.display, win.src.window);
 	xFlush(gfx::_gfx.display);
 }
 
-fn bool _window_is_hidden_x11(GfxWindow* win)
+fn bool window_is_hidden(GfxWindow* win)
 {
 	XWindowAttributes windowAttributes;
 	xGetWindowAttributes(gfx::_gfx.display, win.src.window, &windowAttributes);
@@ -1158,7 +1158,7 @@ fn bool _window_is_hidden_x11(GfxWindow* win)
 }
 
 // private
-fn bool _window_is_maximized_x11(GfxWindow* win)
+fn bool window_is_maximized(GfxWindow* win)
 {
 	Atom actualType;
 	int actualFormat;
@@ -1179,7 +1179,7 @@ fn bool _window_is_maximized_x11(GfxWindow* win)
 }
 
 // private
-fn bool _window_is_minimized_x11(GfxWindow* win)
+fn bool window_is_minimized(GfxWindow* win)
 {
 	Atom actualType;
 	int actualFormat;
@@ -1214,7 +1214,7 @@ fn void _window_maximize_x11(GfxWindow* win) => _toggle_x_maximized(win, true);
 
 fn void _window_minimize_x11(GfxWindow* win)
 {
-	if (gfx::_window_is_maximized_native(win)) return;
+	if (x11::window_is_maximized(win)) return;
 	win.internal.old_bounds = win.bounds;
 	xIconifyWindow(gfx::_gfx.display, win.src.window, xDefaultScreen(gfx::_gfx.display));
 	xFlush(gfx::_gfx.display);
@@ -1317,9 +1317,9 @@ fn bool _window_set_mouse_x11(GfxWindow* win, GfxMouse* mouse)
 	return true;
 }
 
-fn void _window_set_opacity_x11(GfxWindow* win, char opacity)
+fn void _window_set_opacity_x11(GfxWindow* win, float opacity)
 {
-	uint value = (uint)(4294967295.0 * (double)opacity);
+	uint value = (uint)math::round(uint::max * opacity);
 	xChangeProperty(gfx::_gfx.display, win.src.window, gfx::_gfx.netWmWindowOpacity, 6, 32, 0, (char*)&value, 1);
 }
 
@@ -1392,8 +1392,8 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 	bool show_window = false;
 	if (win.src.window)
 	{
-		show_window = !gfx::_window_is_minimized_native(win);
-		gfx::_window_close_native(win);
+		show_window = !window_is_minimized(win);
+		x11::window_destroy_platform(win);
 	}
 
 	bool transparent = win.internal.flags.transparent;
@@ -1519,7 +1519,7 @@ fn void? _window_init_opengl_context_x11(GfxWindow* win, GfxGlContext* context, 
 }
 
 // private
-fn void _window_flash_x11(GfxWindow* win, GfxFlashRequest request)
+fn void window_flash(GfxWindow* win, GfxFlashRequest request)
 {
 	if (win.has_focus() && request != CANCEL) return;
 	XWMHints* wmhints = xGetWMHints(gfx::_gfx.display, win.src.window);
@@ -1643,7 +1643,7 @@ fn GfxMonitor*? _window_find_monitor_x11(GfxWindow* win)
 fn void window_show(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
-	if (!gfx::_window_is_hidden_native(win)) return;
+	if (!window_is_hidden(win)) return;
 	xMapWindow(gfx::_gfx.display, win.src.window);
 	_wait_for_show_event_x11(win);
 	win.move(win.origin);

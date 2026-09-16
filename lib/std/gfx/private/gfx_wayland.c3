@@ -183,7 +183,7 @@ fn void? _load_opengl_wayland()
 	return gfx::load_egl();
 }
 
-fn void? _create_window_wayland(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
+fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags) => @pool()
 {
 	win.src.surface = wlCompositorCreateSurface(gfx::_gfx.compositor);
 	static WlSurfaceListener listener = {
@@ -461,7 +461,7 @@ fn GfxDataTransfer? _read_clipboard_wayland(Allocator allocator, GfxDataTransfer
 }
 
 // private
-fn void _window_blit_surface_wayland(GfxWindow* win, GfxSurface* surface)
+fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint min = math::min(win.size, surface.size);
 	surface.native.wlBuffer = wlShmPoolCreateBuffer(surface.native.pool, 0, ...min, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
@@ -475,7 +475,7 @@ fn void _window_blit_surface_wayland(GfxWindow* win, GfxSurface* surface)
 }
 
 // private
-fn void _window_close_wayland(GfxWindow* win)
+fn void window_destroy_platform(GfxWindow* win)
 {
 	if (win.src.decoration) zxdgToplevelDecorationV1Destroy(win.src.decoration);
 	if (win.src.xdgToplevel) xdgToplevelDestroy(win.src.xdgToplevel);
@@ -518,18 +518,18 @@ fn void _window_release_opengl_context_wayland(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native = null;
 }
 
-fn GfxPoint _window_fetch_size_wayland(GfxWindow* win) => win.get_size();
-fn void _window_flash_wayland(GfxWindow* win, GfxFlashRequest request) {}
-fn void _window_focus_wayland(GfxWindow* win) {}
-fn bool _window_is_hidden_wayland(GfxWindow* win) => false;
-fn bool _window_is_maximized_wayland(GfxWindow* win) => win.src.maximized;
-fn bool _window_is_minimized_wayland(GfxWindow* win) => win.src.minimized;
+fn GfxPoint window_fetch_size(GfxWindow* win) => win.get_size();
+fn void window_flash(GfxWindow* win, GfxFlashRequest request) {}
+fn void window_focus(GfxWindow* win) {}
+fn bool window_is_hidden(GfxWindow* win) => false;
+fn bool window_is_maximized(GfxWindow* win) => win.src.maximized;
+fn bool window_is_minimized(GfxWindow* win) => win.src.minimized;
 fn void _window_raise_wayland(GfxWindow* win) {}
 fn void _window_set_floating_wayland(GfxWindow* win, bool floating) {}
-fn void _window_set_opacity_wayland(GfxWindow* win, char opacity) {}
+fn void _window_set_opacity_wayland(GfxWindow* win, float opacity) {}
 fn void _window_set_mouse_passthrough_wayland(GfxWindow* win, bool passthrough) {}
 
-fn void _window_hide_wayland(GfxWindow* win)
+fn void window_hide(GfxWindow* win)
 {
 	wlSurfaceAttach(win.src.surface, null, 0, 0);
 	wlSurfaceCommit(win.src.surface);
@@ -548,7 +548,7 @@ fn void _window_maximize_wayland(GfxWindow* win)
 
 fn void _window_minimize_wayland(GfxWindow* win)
 {
-	if (gfx::_window_is_maximized_native(win)) return;
+	if (window_is_maximized(win)) return;
 	win.internal.old_bounds = win.bounds;
 	win.src.minimized = true;
 	xdgToplevelSetMinimized(win.src.xdgToplevel);
@@ -732,7 +732,7 @@ fn void _surface_release_wayland(GfxSurface* surface)
 	*surface = {};
 }
 
-fn bool _window_is_floating_wayland(GfxWindow* win) => !win.is_fullscreen() && !gfx::_window_is_maximized_native(win);
+fn bool _window_is_floating_wayland(GfxWindow* win) => !win.is_fullscreen() && !window_is_maximized(win);
 
 fn void _window_set_name_wayland(GfxWindow* win, String name)
 {

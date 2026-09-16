@@ -286,6 +286,7 @@ fn GfxPoint _get_global_mouse()
 
 // --- GfxWindow
 
+
 fn void _window_show(GfxWindow* win)
 {
 	$switch:
@@ -307,241 +308,238 @@ fn void _window_show(GfxWindow* win)
 	$endswitch
 }
 
-
-
-fn void _destroy_native()
+<*
+ Create the actual window on the platform itself.
+*>
+fn void? _window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_destroy_native_macos();
+			return macos::window_create_platform(win, name, flags);
 		$case $feat(WASM):
-			return wasm::_destroy_native_wasm();
+			return wasm::window_create_platform(win, name, flags);
 		$case $feat(WIN32):
-			return win32::_destroy_native_win32();
+			return win32::window_create_platform(win, name, flags);
 		$case WAYLAND_ONLY:
-			return wl::_destroy_wayland();
+			return wl::window_create_platform(win, name, flags);
 		$case X11_ONLY:
-			return x11::_destroy_x11();
+			return x11::window_create_platform(win, name, flags);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_destroy_wayland();
-			return x11::_destroy_x11();
+			if (_gfx.use_wayland) return wl::window_create_platform(win, name, flags);
+			return x11::window_create_platform(win, name, flags);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn bool _opengl_extension_is_supported_native(String extension)
+<*
+ Destroy the platform native window.
+*>
+fn void _window_destroy_platform(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_opengl_extension_is_supported_native_macos(extension);
+			return macos::window_destroy_platform(win);
 		$case $feat(WASM):
-			return wasm::_opengl_extension_is_supported_native_wasm(extension);
+			return wasm::window_destroy_platform(win);
 		$case $feat(WIN32):
-			return win32::_opengl_extension_is_supported_native_win32(extension);
+			return win32::window_destroy_platform(win);
 		$case WAYLAND_ONLY:
-			return wl::_opengl_extension_is_supported_wayland(extension);
+			return wl::window_destroy_platform(win);
 		$case X11_ONLY:
-			return x11::_opengl_extension_is_supported_x11(extension);
+			return x11::window_destroy_platform(win);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_opengl_extension_is_supported_wayland(extension);
-			return x11::_opengl_extension_is_supported_x11(extension);
+			if (_gfx.use_wayland) return wl::window_destroy_platform(win);
+			return x11::window_destroy_platform(win);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-
-fn void* _get_current_opengl_context_native()
+<*
+ Retrieve the size of the window from the underlying platform.
+*>
+fn GfxPoint _window_fetch_size(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_get_current_opengl_context_native_macos();
+			return macos::window_fetch_size(win);
 		$case $feat(WASM):
-			return wasm::_get_current_opengl_context_native_wasm();
+			return wasm::window_fetch_size(win);
 		$case $feat(WIN32):
-			return win32::_get_current_opengl_context_native_win32();
+			return win32::window_fetch_size(win);
 		$case WAYLAND_ONLY:
-			return wl::_get_current_opengl_context_wayland();
+			return wl::window_fetch_size(win);
 		$case X11_ONLY:
-			return x11::_get_current_opengl_context_x11();
+			return x11::window_fetch_size(win);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_get_current_opengl_context_wayland();
-			return x11::_get_current_opengl_context_x11();
+			if (_gfx.use_wayland) return wl::window_fetch_size(win);
+			return x11::window_fetch_size(win);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn void* _get_opengl_proc_native(ZString procname)
+<*
+ Blit the surface to the window
+*>
+fn void _window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_get_opengl_proc_native_macos(procname);
+			return macos::window_blit_surface(win, surface);
 		$case $feat(WASM):
-			return wasm::_get_opengl_proc_native_wasm(procname);
+			return wasm::window_blit_surface(win, surface);
 		$case $feat(WIN32):
-			return win32::_get_opengl_proc_native_win32(procname);
+			return win32::window_blit_surface(win, surface);
 		$case WAYLAND_ONLY:
-			return egl::get_proc(procname);
+			return wl::window_blit_surface(win, surface);
 		$case X11_ONLY:
-			return x11::_get_opengl_proc(procname);
+			return x11::window_blit_surface(win, surface);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return egl::get_proc(procname);
-			return x11::_get_opengl_proc(procname);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn void _init_keycodes_native()
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_init_keycodes_native_macos();
-		$case $feat(WASM):
-			return wasm::_init_keycodes_native_wasm();
-		$case $feat(WIN32):
-			return win32::_init_keycodes_native_win32();
-		$case WAYLAND_ONLY:
-			return wl::_init_keycodes_native_wayland();
-		$case X11_ONLY:
-			return x11::_init_keycodes_native_x11();
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_init_keycodes_native_wayland();
-			return x11::_init_keycodes_native_x11();
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_create_window_native_macos(name, flags, win);
-		$case $feat(WASM):
-			return wasm::_create_window_native_wasm(name, flags, win);
-		$case $feat(WIN32):
-			return win32::_create_window_native_win32(name, flags, win);
-		$case WAYLAND_ONLY:
-			return wl::_create_window_wayland(name, flags, win);
-		$case X11_ONLY:
-			return x11::_create_window_x11(name, flags, win);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_create_window_wayland(name, flags, win);
-			return x11::_create_window_x11(name, flags, win);
+			if (_gfx.use_wayland) return wl::window_blit_surface(win, surface);
+			return x11::window_blit_surface(win, surface);
 		$default:
 			unreachable();
 	$endswitch
 }
 
 
-fn GfxKey _physical_to_mapped_key_native(GfxKey key)
+fn void _window_flash(GfxWindow* win, GfxFlashRequest request)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_physical_to_mapped_key_native_macos(key);
+			return macos::window_flash(win, request);
 		$case $feat(WASM):
-			return wasm::_physical_to_mapped_key_native_wasm(key);
+			return wasm::window_flash(win, request);
 		$case $feat(WIN32):
-			return win32::_physical_to_mapped_key_native_win32(key);
+			return win32::window_flash(win, request);
 		$case WAYLAND_ONLY:
-			return wl::_physical_to_mapped_key_native_wayland(key);
+			return wl::window_flash(win, request);
 		$case X11_ONLY:
-			return x11::_physical_to_mapped_key_native_x11(key);
+			return x11::window_flash(win, request);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_physical_to_mapped_key_native_wayland(key);
-			return x11::_physical_to_mapped_key_native_x11(key);
+			if (_gfx.use_wayland) return wl::window_flash(win, request);
+			return x11::window_flash(win, request);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn void _poll_events_native()
+fn void _window_focus(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_poll_events_native_macos();
+			return macos::window_focus(win);
 		$case $feat(WASM):
-			return wasm::_poll_events_native_wasm();
+			return wasm::window_focus(win);
 		$case $feat(WIN32):
-			return win32::_poll_events_native_win32();
+			return win32::window_focus(win);
 		$case WAYLAND_ONLY:
-			return wl::_poll_events_wayland();
+			return wl::window_focus(win);
 		$case X11_ONLY:
-			return x11::_poll_events_x11();
+			return x11::window_focus(win);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_poll_events_wayland();
-			return x11::_poll_events_x11();
+			if (_gfx.use_wayland) return wl::window_focus(win);
+			return x11::window_focus(win);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-
-fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType type)
+fn void _window_hide(GfxWindow* win) @private
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_read_clipboard_native_macos(allocator, type);
+			return macos::window_hide(win);
 		$case $feat(WASM):
-			return wasm::_read_clipboard_native_wasm(allocator, type);
+			return wasm::window_hide(win);
 		$case $feat(WIN32):
-			return win32::_read_clipboard_native_win32(allocator, type);
+			return win32::window_hide(win);
 		$case WAYLAND_ONLY:
-			return wl::_read_clipboard_wayland(allocator, type);
+			return wl::window_hide(win);
 		$case X11_ONLY:
-			return x11::_read_clipboard_x11(allocator, type);
+			return x11::window_hide(win);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_read_clipboard_wayland(allocator, type);
-			return x11::_read_clipboard_x11(allocator, type);
+			if (_gfx.use_wayland) return wl::window_hide(win);
+			return x11::window_hide(win);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn void _window_blit_surface_native(GfxWindow* win, GfxSurface* surface)
+<*
+ Return whether the underlying platform window is hidden or not.
+*>
+fn bool _window_is_hidden(GfxWindow* win) @private
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_window_blit_surface_native_macos(win, surface);
+			return macos::window_is_hidden(win);
 		$case $feat(WASM):
-			return wasm::_window_blit_surface_native_wasm(win, surface);
+			return wasm::window_is_hidden(win);
 		$case $feat(WIN32):
-			return win32::_window_blit_surface_native_win32(win, surface);
+			return win32::window_is_hidden(win);
 		$case WAYLAND_ONLY:
-			return wl::_window_blit_surface_wayland(win, surface);
+			return wl::window_is_hidden(win);
 		$case X11_ONLY:
-			return x11::_window_blit_surface_x11(win, surface);
+			return x11::window_is_hidden(win);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_blit_surface_wayland(win, surface);
-			return x11::_window_blit_surface_x11(win, surface);
+			if (_gfx.use_wayland) return wl::window_is_hidden(win);
+			return x11::window_is_hidden(win);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn void _window_close_native(GfxWindow* win)
+<*
+ Check if the underlying window is maximized.
+*>
+fn bool _window_is_maximized(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_window_close_native_macos(win);
+			return macos::window_is_maximized(win);
 		$case $feat(WASM):
-			return wasm::_window_close_native_wasm(win);
+			return wasm::window_is_maximized(win);
 		$case $feat(WIN32):
-			return win32::_window_close_native_win32(win);
+			return win32::window_is_maximized(win);
 		$case WAYLAND_ONLY:
-			return wl::_window_close_wayland(win);
+			return wl::window_is_maximized(win);
 		$case X11_ONLY:
-			return x11::_window_close_native_x11(win);
+			return x11::window_is_maximized(win);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_close_wayland(win);
-			return x11::_window_close_native_x11(win);
+			if (_gfx.use_wayland) return wl::window_is_maximized(win);
+			return x11::window_is_maximized(win);
 		$default:
 			unreachable();
 	$endswitch
 }
+
+<*
+ Check if the underlying window is minimized.
+*>
+fn bool _window_is_minimized(GfxWindow* win)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::window_is_minimized(win);
+		$case $feat(WASM):
+			return wasm::window_is_minimized(win);
+		$case $feat(WIN32):
+			return win32::window_is_minimized(win);
+		$case WAYLAND_ONLY:
+			return wl::window_is_minimized(win);
+		$case X11_ONLY:
+			return x11::window_is_minimized(win);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::window_is_minimized(win);
+			return x11::window_is_minimized(win);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 
 fn void? _window_init_opengl_context_native(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
@@ -606,152 +604,7 @@ fn void _window_release_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	$endswitch
 }
 
-fn GfxPoint _window_fetch_size_native(GfxWindow* win)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_window_fetch_size_native_macos(win);
-		$case $feat(WASM):
-			return wasm::_window_fetch_size_native_wasm(win);
-		$case $feat(WIN32):
-			return win32::_window_fetch_size_native_win32(win);
-		$case WAYLAND_ONLY:
-			return wl::_window_fetch_size_wayland(win);
-		$case X11_ONLY:
-			return x11::_window_fetch_size_x11(win);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_fetch_size_wayland(win);
-			return x11::_window_fetch_size_x11(win);
-		$default:
-			unreachable();
-	$endswitch
-}
 
-fn void _window_flash_native(GfxWindow* win, GfxFlashRequest request)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_window_flash_native_macos(win, request);
-		$case $feat(WASM):
-			return wasm::_window_flash_native_wasm(win, request);
-		$case $feat(WIN32):
-			return win32::_window_flash_native_win32(win, request);
-		$case WAYLAND_ONLY:
-			return wl::_window_flash_wayland(win, request);
-		$case X11_ONLY:
-			return x11::_window_flash_x11(win, request);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_flash_wayland(win, request);
-			return x11::_window_flash_x11(win, request);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn void _window_focus_native(GfxWindow* win)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_window_focus_native_macos(win);
-		$case $feat(WASM):
-			return wasm::_window_focus_native_wasm(win);
-		$case $feat(WIN32):
-			return win32::_window_focus_native_win32(win);
-		$case WAYLAND_ONLY:
-			return wl::_window_focus_wayland(win);
-		$case X11_ONLY:
-			return x11::_window_focus_x11(win);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_focus_wayland(win);
-			return x11::_window_focus_x11(win);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn void _window_hide_native(GfxWindow* win) @private
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_window_hide_native_macos(win);
-		$case $feat(WASM):
-			return wasm::_window_hide_native_wasm(win);
-		$case $feat(WIN32):
-			return win32::_window_hide_native_win32(win);
-		$case WAYLAND_ONLY:
-			return wl::_window_hide_wayland(win);
-		$case X11_ONLY:
-			return x11::_window_hide_x11(win);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_hide_wayland(win);
-			return x11::_window_hide_x11(win);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn bool _window_is_hidden_native(GfxWindow* win) @private
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_window_is_hidden_native_macos(win);
-		$case $feat(WASM):
-			return wasm::_window_is_hidden_native_wasm(win);
-		$case $feat(WIN32):
-			return win32::_window_is_hidden_native_win32(win);
-		$case WAYLAND_ONLY:
-			return wl::_window_is_hidden_wayland(win);
-		$case X11_ONLY:
-			return x11::_window_is_hidden_x11(win);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_is_hidden_wayland(win);
-			return x11::_window_is_hidden_x11(win);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn bool _window_is_maximized_native(GfxWindow* win)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_window_is_maximized_native_macos(win);
-		$case $feat(WASM):
-			return wasm::_window_is_maximized_native_wasm(win);
-		$case $feat(WIN32):
-			return win32::_window_is_maximized_native_win32(win);
-		$case WAYLAND_ONLY:
-			return wl::_window_is_maximized_wayland(win);
-		$case X11_ONLY:
-			return x11::_window_is_maximized_x11(win);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_is_maximized_wayland(win);
-			return x11::_window_is_maximized_x11(win);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn bool _window_is_minimized_native(GfxWindow* win)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_window_is_minimized_native_macos(win);
-		$case $feat(WASM):
-			return wasm::_window_is_minimized_native_wasm(win);
-		$case $feat(WIN32):
-			return win32::_window_is_minimized_native_win32(win);
-		$case WAYLAND_ONLY:
-			return wl::_window_is_minimized_wayland(win);
-		$case X11_ONLY:
-			return x11::_window_is_minimized_x11(win);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_is_minimized_wayland(win);
-			return x11::_window_is_minimized_x11(win);
-		$default:
-			unreachable();
-	$endswitch
-}
 
 fn void _window_make_opengl_current_context_native(GfxWindow* win)
 {
@@ -1089,7 +942,7 @@ fn bool _window_set_mouse_native(GfxWindow* win, GfxMouse* mouse)
 	$endswitch
 }
 
-fn void _window_set_opacity_native(GfxWindow* win, char opacity)
+fn void _window_set_opacity_native(GfxWindow* win, float opacity)
 {
 	$switch:
 		$case $feat(MACOS):
@@ -1340,3 +1193,176 @@ fn bool _vulkan_get_physical_device_presentation_support_native(VkInstance insta
 			unreachable();
 	$endswitch
 }
+
+fn void _destroy_native()
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::_destroy_native_macos();
+		$case $feat(WASM):
+			return wasm::_destroy_native_wasm();
+		$case $feat(WIN32):
+			return win32::_destroy_native_win32();
+		$case WAYLAND_ONLY:
+			return wl::_destroy_wayland();
+		$case X11_ONLY:
+			return x11::_destroy_x11();
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::_destroy_wayland();
+			return x11::_destroy_x11();
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn bool _opengl_extension_is_supported_native(String extension)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::_opengl_extension_is_supported_native_macos(extension);
+		$case $feat(WASM):
+			return wasm::_opengl_extension_is_supported_native_wasm(extension);
+		$case $feat(WIN32):
+			return win32::_opengl_extension_is_supported_native_win32(extension);
+		$case WAYLAND_ONLY:
+			return wl::_opengl_extension_is_supported_wayland(extension);
+		$case X11_ONLY:
+			return x11::_opengl_extension_is_supported_x11(extension);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::_opengl_extension_is_supported_wayland(extension);
+			return x11::_opengl_extension_is_supported_x11(extension);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+
+fn void* _get_current_opengl_context_native()
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::_get_current_opengl_context_native_macos();
+		$case $feat(WASM):
+			return wasm::_get_current_opengl_context_native_wasm();
+		$case $feat(WIN32):
+			return win32::_get_current_opengl_context_native_win32();
+		$case WAYLAND_ONLY:
+			return wl::_get_current_opengl_context_wayland();
+		$case X11_ONLY:
+			return x11::_get_current_opengl_context_x11();
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::_get_current_opengl_context_wayland();
+			return x11::_get_current_opengl_context_x11();
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void* _get_opengl_proc_native(ZString procname)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::_get_opengl_proc_native_macos(procname);
+		$case $feat(WASM):
+			return wasm::_get_opengl_proc_native_wasm(procname);
+		$case $feat(WIN32):
+			return win32::_get_opengl_proc_native_win32(procname);
+		$case WAYLAND_ONLY:
+			return egl::get_proc(procname);
+		$case X11_ONLY:
+			return x11::_get_opengl_proc(procname);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return egl::get_proc(procname);
+			return x11::_get_opengl_proc(procname);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void _init_keycodes_native()
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::_init_keycodes_native_macos();
+		$case $feat(WASM):
+			return wasm::_init_keycodes_native_wasm();
+		$case $feat(WIN32):
+			return win32::_init_keycodes_native_win32();
+		$case WAYLAND_ONLY:
+			return wl::_init_keycodes_native_wayland();
+		$case X11_ONLY:
+			return x11::_init_keycodes_native_x11();
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::_init_keycodes_native_wayland();
+			return x11::_init_keycodes_native_x11();
+		$default:
+			unreachable();
+	$endswitch
+}
+
+
+
+fn GfxKey _physical_to_mapped_key_native(GfxKey key)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::_physical_to_mapped_key_native_macos(key);
+		$case $feat(WASM):
+			return wasm::_physical_to_mapped_key_native_wasm(key);
+		$case $feat(WIN32):
+			return win32::_physical_to_mapped_key_native_win32(key);
+		$case WAYLAND_ONLY:
+			return wl::_physical_to_mapped_key_native_wayland(key);
+		$case X11_ONLY:
+			return x11::_physical_to_mapped_key_native_x11(key);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::_physical_to_mapped_key_native_wayland(key);
+			return x11::_physical_to_mapped_key_native_x11(key);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void _poll_events_native()
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::_poll_events_native_macos();
+		$case $feat(WASM):
+			return wasm::_poll_events_native_wasm();
+		$case $feat(WIN32):
+			return win32::_poll_events_native_win32();
+		$case WAYLAND_ONLY:
+			return wl::_poll_events_wayland();
+		$case X11_ONLY:
+			return x11::_poll_events_x11();
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::_poll_events_wayland();
+			return x11::_poll_events_x11();
+		$default:
+			unreachable();
+	$endswitch
+}
+
+
+fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType type)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::_read_clipboard_native_macos(allocator, type);
+		$case $feat(WASM):
+			return wasm::_read_clipboard_native_wasm(allocator, type);
+		$case $feat(WIN32):
+			return win32::_read_clipboard_native_win32(allocator, type);
+		$case WAYLAND_ONLY:
+			return wl::_read_clipboard_wayland(allocator, type);
+		$case X11_ONLY:
+			return x11::_read_clipboard_x11(allocator, type);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::_read_clipboard_wayland(allocator, type);
+			return x11::_read_clipboard_x11(allocator, type);
+		$default:
+			unreachable();
+	$endswitch
+}
+

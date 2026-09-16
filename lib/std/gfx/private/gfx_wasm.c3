@@ -19,25 +19,25 @@ fn GfxDataTransfer? _read_clipboard_native_wasm(Allocator allocator, GfxDataTran
 fn void poll_monitors() {}
 fn void free_mouse(GfxMouse* mouse) {}
 fn void window_show(GfxWindow* win) {}
-fn bool _window_is_hidden_native_wasm(GfxWindow* win) => false;
-fn bool _window_is_minimized_native_wasm(GfxWindow* win) => false;
-fn bool _window_is_maximized_native_wasm(GfxWindow* win) => false;
-fn void _window_hide_native_wasm(GfxWindow* win) {}
-fn void _window_flash_native_wasm(GfxWindow* win, GfxFlashRequest request) {}
+fn bool window_is_hidden(GfxWindow* win) => false;
+fn bool window_is_minimized(GfxWindow* win) => false;
+fn bool window_is_maximized(GfxWindow* win) => false;
+fn void window_hide(GfxWindow* win) {}
+fn void window_flash(GfxWindow* win, GfxFlashRequest request) {}
 fn void _window_move_native_wasm(GfxWindow* win, GfxPoint where) {}
 fn void _window_restore_native_wasm(GfxWindow* win) {}
 fn void _window_set_border_native_wasm(GfxWindow* win, bool border) {}
 fn bool _window_set_icon_native_wasm(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type) => false;
 fn bool _window_is_floating_native_wasm(GfxWindow* win) => false;
 fn void _window_set_min_size_native_wasm(GfxWindow* win, GfxSize size) {}
-fn void _window_focus_native_wasm(GfxWindow* win) {}
+fn void window_focus(GfxWindow* win) {}
 fn void _window_set_max_size_native_wasm(GfxWindow* win, GfxSize size) {}
 fn void _window_move_mouse_wasm(GfxWindow* win, GfxPoint where) {}
 fn void _window_set_aspect_ratio_native_wasm(GfxWindow* win, int w, int h) {}
 fn void _window_minimize_native_wasm(GfxWindow* win) {}
 fn void _window_raise_native_wasm(GfxWindow* win) {}
 fn void _window_set_floating_native_wasm(GfxWindow* win, bool floating) {}
-fn void _window_close_native_wasm(GfxWindow* win) {}
+fn void window_destroy_platform(GfxWindow* win) {}
 fn void _window_set_raw_mouse_mode_native_wasm(GfxWindow* win, bool state) {}
 
 
@@ -47,9 +47,9 @@ fn bool _window_set_mouse_native_wasm(GfxWindow* win, GfxMouse* mouse)
 	gfx::gfxJsSetCursor(name, name.len());
 	return true;
 }
-fn void _window_set_opacity_native_wasm(GfxWindow* win, char opacity)
+fn void _window_set_opacity_native_wasm(GfxWindow* win, float opacity)
 {
-	gfx::gfxJsSetOpacity((float)opacity / 255.0f);
+	gfx::gfxJsSetOpacity(opacity);
 }
 fn void _window_maximize_native_wasm(GfxWindow* win)
 {
@@ -61,7 +61,7 @@ fn void _window_resize_native_wasm(GfxWindow* win, GfxSize size)
 {
 	gfx::gfxJsSetCanvasSize(...size);
 }
-fn void _window_blit_surface_native_wasm(GfxWindow* win, GfxSurface* surface)
+fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	int minH = win.height < surface.size.y ? win.height : surface.size.y;
 	gfx::copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
@@ -131,7 +131,7 @@ fn WGPUSurface _window_create_wgpu_surface_native_wasm(GfxWindow* window, WGPUIn
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&canvasDesc;
 	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
-fn GfxPoint _window_fetch_size_native_wasm(GfxWindow* win)
+fn GfxPoint window_fetch_size(GfxWindow* win)
 {
 	return win.get_size();
 }
@@ -144,7 +144,7 @@ fn void _window_opengl_swap_buffers_native_wasm(GfxWindow* win)
 {
 	gfx::gfxJsWebglCommitFrame();
 }
-fn void? _create_window_native_wasm(String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
 {
 	gfx::gfxJsSetCanvasSize(win.width, win.height);
 	gfx::gfxJsSetWindowTitle((ZString)name, name.len);

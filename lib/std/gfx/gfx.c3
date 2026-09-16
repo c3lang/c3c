@@ -704,7 +704,7 @@ fn void copy_image_data(char* dest_data, int w, int h, GfxFormat dest_format, ch
 
 <*
  @require !_gfx.initialized : "Already initialized"
- @require class_name.len < 254 : "Class name is too long"
+ @require [class_name] class_name.len < 254 : "Class name is too long"
 *>
 fn void? init(String class_name, GfxInitOption options)
 {
@@ -798,12 +798,23 @@ fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowF
 
 fn bool is_mouse_pressed(GfxMouseButton button) => _gfx.mouseButtons[(sz)button].current && !_gfx.mouseButtons[(sz)button].prev;
 
-fn void GfxWindow.flash(&self, GfxFlashRequest request) => _window_flash_native(self, request);
+fn void GfxWindow.flash(&self, GfxFlashRequest request) => _window_flash(self, request);
 
 fn void GfxWindow.set_floating(&self, bool floating)
 {
 	_window_set_floating_native(self, floating);
 }
+
+<*
+ Set the opacity of the window on supported platforms.
+
+ @require [opacity] opacity >= 0.0 && opacity <= 1.0 : "Opacity must be in the range 0 to 1"
+*>
+fn void GfxWindow.set_opacity(&self, float opacity)
+{
+	_window_set_opacity_native(self, opacity);
+}
+
 <*
  Get the (last) mouse position inside of a window.
 *>
@@ -822,7 +833,7 @@ fn bool GfxWindow.should_close(&self)
 
 fn void GfxWindow.focus(&self)
 {
-	_window_focus_native(self);
+	_window_focus(self);
 }
 
 fn void GfxWindow.set_should_close(&win, bool should_close)
@@ -1443,6 +1454,13 @@ fn GfxMonitorMode GfxMonitor.get_mode(&self)
 	return self.mode;
 }
 
+<*
+ Set the gamma of the monitor.
+
+ @param gamma : "The new gamma as a float between 0 and 1"
+
+ @require [gamma] gamma >= 0.0 && gamma <= 1.0 : "Gamma must be in the range of 0.0 to 1.0"
+*>
 fn void? GfxMonitor.set_gamma(&self, float gamma) => @pool()
 {
 	return _monitor_set_gamma(self, gamma);
@@ -1470,17 +1488,17 @@ fn bool GfxWindow.is_raw_mouse(&self) => self.internal.raw_mouse;
 
 fn bool GfxWindow.is_hidden(&self)
 {
-	return _window_is_hidden_native(self);
+	return _window_is_hidden(self);
 }
 
 fn void GfxWindow.blit_surface(&self, GfxSurface* surface)
 {
-	_window_blit_surface_native(self, surface);
+	_window_blit_surface(self, surface);
 }
 
 fn bool GfxWindow.is_maximized(&self)
 {
-	return _window_is_maximized_native(self);
+	return _window_is_maximized(self);
 }
 
 fn bool GfxWindow.is_floating(&self)
@@ -1495,7 +1513,7 @@ fn bool GfxWindow.set_icon(&self, void* data_src, int w, int h, GfxFormat format
 
 fn bool GfxWindow.is_minimized(&self)
 {
-	return _window_is_minimized_native(self);
+	return _window_is_minimized(self);
 }
 
 fn void GfxWindow.set_capture_mouse(&self, bool capture)
@@ -1592,12 +1610,12 @@ fn void set_raw_mouse_mode(bool enabled)
 
 fn void GfxWindow.hide(&self)
 {
-	_window_hide_native(self);
+	_window_hide(self);
 }
 
 fn void GfxWindow.show(&self)
 {
-	if (self.internal.flags.focus_on_show) _window_focus_native(self);
+	if (self.internal.flags.focus_on_show) _window_focus(self);
 	self.internal.flags.hide = false;
 	_window_show(self);
 	if (self.internal.flags.maximize) self.maximize();
@@ -1620,7 +1638,7 @@ fn void GfxWindow.minimize(&self)
 
 fn GfxPoint GfxWindow.fetch_size(&self)
 {
-	return _window_fetch_size_native(self);
+	return _window_fetch_size(self);
 }
 
 fn void GfxWindow.set_event_state(&self, GfxEventMask event, bool state)
@@ -1639,7 +1657,7 @@ fn void GfxWindow.maximize(&self)
 {
 	self.internal.old_bounds = self.bounds;
 	self.internal.flags.maximize = true;
-	_window_fetch_size_native(self);
+	_window_fetch_size(self);
 	_window_maximize_native(self);
 }
 

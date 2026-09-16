@@ -124,21 +124,21 @@ fn void _window_maximize_native_macos(GfxWindow* win)
 {
 	win.src.window.send_void("zoom:", null);
 }
-fn void _window_hide_native_macos(GfxWindow* win)
+fn void window_hide(GfxWindow* win)
 {
 	win.src.window.send_void("orderOut:", null);
 	win.internal.flags.hide = true;
 }
-fn bool _window_is_minimized_native_macos(GfxWindow* win)
+fn bool window_is_minimized(GfxWindow* win)
 {
 	if (win.src.window) return win.src.window.send(bool, "isMiniaturized");
 	return win.internal.flags.minimize;
 }
-fn void _window_flash_native_macos(GfxWindow* win, GfxFlashRequest request)
+fn void window_flash(GfxWindow* win, GfxFlashRequest request)
 {
 	gfx::_gfx.ns_app.send(NSInteger, "requestUserAttention:", (NSUInteger)request);
 }
-fn void _window_blit_surface_native_macos(GfxWindow* win, GfxSurface* surface)
+fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	if (!surface.data) return;
 	GfxPoint min = math::min(win.size, surface.size);
@@ -192,7 +192,7 @@ fn void _window_set_border_native_macos(GfxWindow* win, bool border)
 	win.resize(win.size + { 0, (int)offset });
 	win.height -= (int)offset;
 }
-fn GfxPoint _window_fetch_size_native_macos(GfxWindow* win)
+fn GfxPoint window_fetch_size(GfxWindow* win)
 {
 	if (win.src.view)
 	{
@@ -206,7 +206,7 @@ fn void _window_set_fullscreen_native_macos(GfxWindow* win, bool fullscreen)
 	if (win.src.window) win.src.window.send_void("toggleFullScreen:", null);
 	win.internal.flags.fullscreen = fullscreen;
 }
-fn void _window_focus_native_macos(GfxWindow* win)
+fn void window_focus(GfxWindow* win)
 {
 	win.src.window.send_void("makeKeyWindow", null);
 	win.internal.in_focus = true;
@@ -261,7 +261,7 @@ fn void _window_set_aspect_ratio_native_macos(GfxWindow* win, int w, int h) @pri
 	CGSize size = { w, h };
 	win.src.window.send_void("setContentAspectRatio:", size);
 }
-fn bool _window_is_hidden_native_macos(GfxWindow* win) @private
+fn bool window_is_hidden(GfxWindow* win) @private
 {
 	if (win.src.window) return !win.src.window.send(bool, "isVisible");
 	return win.internal.flags.hide;
@@ -290,7 +290,7 @@ fn void _poll_events_native_macos()
 	};
 
 }
-fn void? _create_window_native_macos(String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
 {
 	NSWindowStyleMask style = TITLED | CLOSABLE | MINIATURIZABLE;
 	if (!flags.no_resize) style |= RESIZABLE;
@@ -432,20 +432,20 @@ fn void _window_set_mouse_passthrough_native_macos(GfxWindow* win, bool passthro
 {
 	if (win.src.window) win.src.window.send_void("setIgnoresMouseEvents:", passthrough);
 }
-fn bool _window_is_maximized_native_macos(GfxWindow* win)
+fn bool window_is_maximized(GfxWindow* win)
 {
 	if (win.src.window) return win.src.window.send(bool, "isZoomed");
 	return win.internal.flags.maximize;
 }
-fn void _window_set_opacity_native_macos(GfxWindow* win, char opacity)
+fn void _window_set_opacity_native_macos(GfxWindow* win, float opacity)
 {
-	win.src.window.send_void("setAlphaValue:", (CGFloat)opacity / 255.0);
+	win.src.window.send_void("setAlphaValue:", (CGFloat)opacity);
 }
 fn void _window_minimize_native_macos(GfxWindow* win)
 {
 	win.src.window.send_void("miniaturize:", null);
 }
-fn void _window_close_native_macos(GfxWindow* win)
+fn void window_destroy_platform(GfxWindow* win)
 {
 	win.src.window.send_void("close");
 	win.src.delegate.release();

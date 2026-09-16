@@ -70,7 +70,7 @@ fn bool _window_set_mouse_native_win32(GfxWindow* win, GfxMouse* mouse)
 	return true;
 }
 
-fn void _window_flash_native_win32(GfxWindow* win, GfxFlashRequest request) @private
+fn void window_flash(GfxWindow* win, GfxFlashRequest request) @private
 {
 	if (win.has_focus() && request != CANCEL) return;
 	Win32_FLASHWINFO desc = { .cbSize = Win32_FLASHWINFO::size, .hwnd = win.src.window };
@@ -125,7 +125,7 @@ fn void _window_set_border_native_win32(GfxWindow* win, bool border)
 	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
 }
 
-fn void? _create_window_native_win32(String name, GfxWindowFlags flags, GfxWindow* win) => @pool()
+fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags) => @pool()
 {
 	if (!name.len) name = " ";
 	win.src.hIconSmall = null; win.src.hIconBig = null;
@@ -182,7 +182,7 @@ fn void monitor_node_free(GfxMonitorNode* node)
 
 fn void _window_restore_native_win32(GfxWindow* win) {}
 
-fn void _window_close_native_win32(GfxWindow* win)
+fn void window_destroy_platform(GfxWindow* win)
 {
 	win32::removePropW(win.src.window, gfx::RENAME_PROP_NAME);
 	win32::releaseDC(win.src.window, win.src.hdc);
@@ -209,10 +209,10 @@ fn void _window_maximize_native_win32(GfxWindow* win)
 	win32::showWindow(win.src.window, win32::SW_MAXIMIZE);
 }
 
-fn void _window_set_opacity_native_win32(GfxWindow* win, char opacity)
+fn void _window_set_opacity_native_win32(GfxWindow* win, float opacity)
 {
 	win32::setWindowLongA(win.src.window, -20, 0x00080000);
-	win32::setLayeredWindowAttributes(win.src.window, 0, opacity, 2);
+	win32::setLayeredWindowAttributes(win.src.window, 0, (char)math::round(opacity * 255), 2);
 }
 
 fn void _window_raise_native_win32(GfxWindow* win)
@@ -243,7 +243,7 @@ fn void _window_set_raw_mouse_mode_native_win32(GfxWindow* win, bool state)
 	win32::registerRawInputDevices(&id, 1, Win32_RAWINPUTDEVICE::size);
 }
 
-fn void _window_blit_surface_native_win32(GfxWindow* win, GfxSurface* surface)
+fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint blit = math::min(win.size, surface.size);
 	gfx::copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
@@ -313,9 +313,9 @@ fn bool _window_is_floating_native_win32(GfxWindow* win)
 	return win32::getWindowLongPtr(win.src.window, -20) & 0x00000008 != 0;
 }
 
-fn bool _window_is_hidden_native_win32(GfxWindow* win)
+fn bool window_is_hidden(GfxWindow* win)
 {
-	return !win32::isWindowVisible(win.src.window) && !_window_is_minimized_native_win32(win);
+	return !win32::isWindowVisible(win.src.window) && !window_is_minimized(win);
 }
 
 fn GfxMonitor*? _window_find_monitor_native_win32(GfxWindow* win)
@@ -369,18 +369,18 @@ fn void _window_move_native_win32(GfxWindow* win, GfxPoint where)
 	win32::setWindowPos(win.src.window, (Win32_HWND){}, ...where, 0, 0, 0x0001 /* SWP_NOSIZE */);
 }
 
-fn void _window_hide_native_win32(GfxWindow* win)
+fn void window_hide(GfxWindow* win)
 {
 	win32::showWindow(win.src.window, win32::SW_HIDE);
 }
 
-fn void _window_focus_native_win32(GfxWindow* win)
+fn void window_focus(GfxWindow* win)
 {
 	win32::setForegroundWindow(win.src.window);
 	win32::setFocus(win.src.window);
 }
 
-fn bool _window_is_minimized_native_win32(GfxWindow* win)
+fn bool window_is_minimized(GfxWindow* win)
 {
 	Win32_WINDOWPLACEMENT placement;
 	win32::getWindowPlacement(win.src.window, &placement);
@@ -403,7 +403,7 @@ fn void _window_set_aspect_ratio_native_win32(GfxWindow* win, int w, int h) @pri
 	win.src.aspectRatioH = h;
 }
 
-fn GfxPoint _window_fetch_size_native_win32(GfxWindow* win)
+fn GfxPoint window_fetch_size(GfxWindow* win)
 {
 	Win32_RECT area;
 	win32::getClientRect(win.src.window, &area);
@@ -412,7 +412,7 @@ fn GfxPoint _window_fetch_size_native_win32(GfxWindow* win)
 	return win.get_size();
 }
 
-fn bool _window_is_maximized_native_win32(GfxWindow* win)
+fn bool window_is_maximized(GfxWindow* win)
 {
 	Win32_WINDOWPLACEMENT placement;
 	win32::getWindowPlacement(win.src.window, &placement);

@@ -327,7 +327,7 @@ fn void _window_release(GfxWindow* win)
 		_window_destroy_opengl_context_native(win, win.src.ctx.native);
 		win.src.ctx.native = null;
 	}
-	_window_close_native(win);
+	_window_destroy_platform(win);
 	if (_gfx.clipboard) free(_gfx.clipboard);
 	_gfx.clipboard = null;
 	_gfx.active_windows--;
@@ -368,7 +368,7 @@ fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindow
 	win.internal.mouse = _gfx.standardMice[GfxMouseIcon.NORMAL.ordinal];
 	win.internal.flags = flags;
 	win.internal.enabled_events = ALL_EVENTS;
-	_create_window_native(name, flags, win)!;
+	_window_create_platform(win, name, flags)!;
 	if (!flags.hide_mouse) win.set_mouse_default();
 
 	win.set_name(name);
@@ -448,7 +448,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	{
 		win.set_capture_mouse(false);
 	}
-	if (flags.focus) _window_focus_native(win);
+	if (flags.focus) _window_focus(win);
 	if (flags.scale_to_monitor) win.scale_to_monitor();
 	switch (true)
 	{
@@ -633,12 +633,12 @@ fn void _window_check_mode(GfxWindow* win)
 {
 	switch
 	{
-		case _window_is_minimized_native(win) && win.internal.enabled_events.window_minimized:
+		case _window_is_minimized(win) && win.internal.enabled_events.window_minimized:
 			_window_minimized_callback(win);
-		case _window_is_maximized_native(win) && win.internal.enabled_events.window_maximized:
+		case _window_is_maximized(win) && win.internal.enabled_events.window_maximized:
 			_window_maximized_callback(win, win.bounds);
-		case (win.internal.flags.minimize && !_window_is_maximized_native(win)) ||
-		(win.internal.flags.maximize && !_window_is_maximized_native(win)):
+		case (win.internal.flags.minimize && !_window_is_maximized(win)) ||
+		(win.internal.flags.maximize && !_window_is_maximized(win)):
 			if (win.internal.enabled_events.window_restored) _window_restored_callback(win, win.bounds);
 	}
 }
@@ -746,7 +746,7 @@ fn void _window_restored_callback(GfxWindow* win, IntRect bounds)
 {
 	win.internal.flags.minimize = false;
 	win.bounds = bounds;
-	if (!_window_is_maximized_native(win)) win.internal.flags.maximize = false;
+	if (!_window_is_maximized(win)) win.internal.flags.maximize = false;
 	if (!win.internal.enabled_events.window_restored) return;
 	GfxEvent event;
 	event.type = WINDOW_RESTORED;
