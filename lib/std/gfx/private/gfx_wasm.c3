@@ -6,17 +6,17 @@ fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format) => NOT_IM
 
 fn void _destroy_native_wasm() {}
 
-fn IntRect _monitor_get_workarea_wasm(GfxMonitor* monitor) => { -1, -1, -1, -1 };
-fn void? _monitor_request_mode_native_wasm(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
+fn IntRect monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
+fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
 fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
 fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
 fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
 fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
-fn void _monitor_node_free_native_wasm(GfxMonitorNode* node) {}
+fn void monitor_node_free(GfxMonitorNode* node) {}
 
 fn GfxDataTransfer? _read_clipboard_native_wasm(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
 
-fn void _poll_monitors_native_wasm() {}
+fn void poll_monitors() {}
 fn void free_mouse(GfxMouse* mouse) {}
 fn void window_show(GfxWindow* win) {}
 fn bool _window_is_hidden_native_wasm(GfxWindow* win) => false;

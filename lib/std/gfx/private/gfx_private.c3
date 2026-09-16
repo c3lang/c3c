@@ -812,7 +812,7 @@ fn GfxMonitorNode* _monitor_add(GfxMonitor* mon)
 fn void _remove_monitor(GfxMonitorNode* node, GfxMonitorNode* prev)
 {
 	_gfx.monitors.count--;
-	_monitor_node_free_native(node);
+	_monitor_node_free(node);
 	if (prev)
 	{
 		prev.next = node.next;

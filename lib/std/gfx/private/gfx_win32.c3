@@ -169,7 +169,7 @@ fn void? _create_window_native_win32(String name, GfxWindowFlags flags, GfxWindo
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
 }
 
-fn IntRect _monitor_get_workarea_win32(GfxMonitor* monitor)
+fn IntRect monitor_get_workarea(GfxMonitor* monitor)
 {
 	Win32_MONITORINFOEXW mi;
 	mi.cbSize = Win32_MONITORINFOEXW::size;
@@ -177,7 +177,7 @@ fn IntRect _monitor_get_workarea_win32(GfxMonitor* monitor)
 	return { mi.rcWork.left, mi.rcWork.top, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top };
 }
 
-fn void _monitor_node_free_native_win32(GfxMonitorNode* node)
+fn void monitor_node_free(GfxMonitorNode* node)
 {}
 
 fn void _window_restore_native_win32(GfxWindow* win) {}
@@ -441,7 +441,7 @@ fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 	return modes.array_view();
 }
 
-fn void? _monitor_request_mode_native_win32(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	Win32_DEVMODEW dm = { .dmSize = Win32_DEVMODEW::size };
 	uint index = 0;
@@ -538,7 +538,7 @@ fn GfxPoint get_global_mouse()
 	return { ...p };
 }
 
-fn void _poll_monitors_native_win32()
+fn void poll_monitors()
 {
 	for (GfxMonitorNode* node = gfx::_gfx.monitors.list.head; node != null; node = node.next) node.disconnected = true;
 
@@ -1096,7 +1096,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 
 fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wParam, Win32_LPARAM lParam)
 {
-	if (message == win32::WM_DISPLAYCHANGE) win32::_poll_monitors_native_win32();
+	if (message == win32::WM_DISPLAYCHANGE) win32::poll_monitors();
 
 	if (hWnd == _gfx.helper_window) return win32::defWindowProcW(hWnd, message, wParam, lParam);
 

@@ -725,7 +725,7 @@ fn void? init(String class_name, GfxInitOption options)
 	{
 		_gfx.standardMice[icon.ordinal] = _create_standard_mouse(icon) ?? null;
 	}
-	_poll_monitors_native();
+	_poll_monitors();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
 }
 
@@ -754,7 +754,7 @@ fn void finalize()
 
 fn void poll_monitors()
 {
-	_poll_monitors_native();
+	_poll_monitors();
 }
 
 fn GfxSurface*? create_surface(char* data, int w, int h, GfxFormat format, GfxWindow* window = null)
@@ -1275,7 +1275,7 @@ fn void? GfxMonitor.scale_to_window(&self, GfxWindow* win)
 	GfxMonitorMode mode;
 	mode.size = win.size;
 	defer win.move(self.origin);
-	return _monitor_request_mode_native(self, &mode, SCALE);
+	return _monitor_request_mode(self, &mode, SCALE);
 }
 
 fn void? GfxMonitor.set_mode_native(&self, GfxMonitorMode* mode)
@@ -1285,7 +1285,7 @@ fn void? GfxMonitor.set_mode_native(&self, GfxMonitorMode* mode)
 
 fn void? GfxMonitor.request_mode(&self, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
-	return _monitor_request_mode_native(self, mode, request);
+	return _monitor_request_mode(self, mode, request);
 }
 
 fn GfxNativeImage* GfxSurface.get_native_image(&self)

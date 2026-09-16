@@ -246,7 +246,7 @@ fn void? _create_window_wayland(String name, GfxWindowFlags flags, GfxWindow* wi
 
 }
 
-fn void _monitor_node_free_wayland(GfxMonitorNode* node)
+fn void monitor_node_free(GfxMonitorNode* node)
 {
 	if (node.output) wlOutputDestroy(node.output);
 	if (node.xdg_output) zxdgOutputV1Destroy(node.xdg_output);
@@ -257,12 +257,12 @@ fn void _monitor_node_free_wayland(GfxMonitorNode* node)
 	}
 }
 
-fn IntRect _monitor_get_workarea_wayland(GfxMonitor* monitor)
+fn IntRect monitor_get_workarea(GfxMonitor* monitor)
 {
 	return { ...monitor.origin, ...monitor.mode.size };
 }
 
-fn void? _monitor_request_mode_wayland(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	for (sz i = 0; i < mon.node.mode_count; i++)
 	{
@@ -448,7 +448,7 @@ fn void _poll_events_wayland()
 }
 
 // private
-fn void _poll_monitors_wayland()
+fn void poll_monitors()
 {
 	gfx::_gfx.monitors.primary = gfx::_gfx.monitors.list.head;
 }

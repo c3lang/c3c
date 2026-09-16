@@ -102,14 +102,101 @@ fn void? _monitor_set_gamma(GfxMonitor* monitor, float gamma)
 		$case WAYLAND_ONLY:
 			return wl::monitor_set_gamma(monitor, gamma);
 		$case X11_ONLY:
-			return x11::monitor_set_gamma_x11(monitor, gamma);
+			return x11::monitor_set_gamma(monitor, gamma);
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::monitor_set_gamma(monitor, gamma);
-			return x11::monitor_set_gamma_x11(monitor, gamma);
+			return x11::monitor_set_gamma(monitor, gamma);
 		$default:
 			unreachable();
 	$endswitch
 }
+
+fn void _monitor_node_free(GfxMonitorNode* node)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::monitor_node_free(node);
+		$case $feat(WASM):
+			return wasm::monitor_node_free(node);
+		$case $feat(WIN32):
+			return win32::monitor_node_free(node);
+		$case WAYLAND_ONLY:
+			return wl::monitor_node_free(node);
+		$case X11_ONLY:
+			return x11::monitor_node_free(node);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::monitor_node_free(node);
+			return x11::monitor_node_free(node);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+
+fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::monitor_get_workarea(monitor);
+		$case $feat(WASM):
+			return wasm::monitor_get_workarea(monitor);
+		$case $feat(WIN32):
+			return win32::monitor_get_workarea(monitor);
+		$case WAYLAND_ONLY:
+			return wl::monitor_get_workarea(monitor);
+		$case X11_ONLY:
+			return x11::monitor_get_workarea(monitor);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::monitor_get_workarea(monitor);
+			return x11::monitor_get_workarea(monitor);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+
+fn void? _monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::monitor_request_mode(mon, mode, request);
+		$case $feat(WASM):
+			return wasm::monitor_request_mode(mon, mode, request);
+		$case $feat(WIN32):
+			return win32::monitor_request_mode(mon, mode, request);
+		$case WAYLAND_ONLY:
+			return wl::monitor_request_mode(mon, mode, request);
+		$case X11_ONLY:
+			return x11::monitor_request_mode(mon, mode, request);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::monitor_request_mode(mon, mode, request);
+			return x11::monitor_request_mode(mon, mode, request);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void _poll_monitors()
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::poll_monitors();
+		$case $feat(WASM):
+			return wasm::poll_monitors();
+		$case $feat(WIN32):
+			return win32::poll_monitors();
+		$case WAYLAND_ONLY:
+			return wl::poll_monitors();
+		$case X11_ONLY:
+			return x11::poll_monitors();
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::poll_monitors();
+			return x11::poll_monitors();
+		$default:
+			unreachable();
+	$endswitch
+}
+
 
 // --- GfxMouse and mouse related
 
@@ -349,68 +436,6 @@ fn void? _create_window_native(String name, GfxWindowFlags flags, GfxWindow* win
 	$endswitch
 }
 
-fn void _monitor_node_free_native(GfxMonitorNode* node)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_monitor_node_free_native_macos(node);
-		$case $feat(WASM):
-			return wasm::_monitor_node_free_native_wasm(node);
-		$case $feat(WIN32):
-			return win32::_monitor_node_free_native_win32(node);
-		$case WAYLAND_ONLY:
-			return wl::_monitor_node_free_wayland(node);
-		$case X11_ONLY:
-			return x11::_monitor_node_free_x11(node);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_monitor_node_free_wayland(node);
-			return x11::_monitor_node_free_x11(node);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_monitor_get_workarea_macos(monitor);
-		$case $feat(WASM):
-			return wasm::_monitor_get_workarea_wasm(monitor);
-		$case $feat(WIN32):
-			return win32::_monitor_get_workarea_win32(monitor);
-		$case WAYLAND_ONLY:
-			return wl::_monitor_get_workarea_wayland(monitor);
-		$case X11_ONLY:
-			return x11::_monitor_get_workarea_x11(monitor);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_monitor_get_workarea_wayland(monitor);
-			return x11::_monitor_get_workarea_x11(monitor);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn void? _monitor_request_mode_native(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_monitor_request_mode_native_macos(mon, mode, request);
-		$case $feat(WASM):
-			return wasm::_monitor_request_mode_native_wasm(mon, mode, request);
-		$case $feat(WIN32):
-			return win32::_monitor_request_mode_native_win32(mon, mode, request);
-		$case WAYLAND_ONLY:
-			return wl::_monitor_request_mode_wayland(mon, mode, request);
-		$case X11_ONLY:
-			return x11::_monitor_request_mode_x11(mon, mode, request);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_monitor_request_mode_wayland(mon, mode, request);
-			return x11::_monitor_request_mode_x11(mon, mode, request);
-		$default:
-			unreachable();
-	$endswitch
-}
 
 fn GfxKey _physical_to_mapped_key_native(GfxKey key)
 {
@@ -454,26 +479,6 @@ fn void _poll_events_native()
 	$endswitch
 }
 
-fn void _poll_monitors_native()
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::_poll_monitors_native_macos();
-		$case $feat(WASM):
-			return wasm::_poll_monitors_native_wasm();
-		$case $feat(WIN32):
-			return win32::_poll_monitors_native_win32();
-		$case WAYLAND_ONLY:
-			return wl::_poll_monitors_wayland();
-		$case X11_ONLY:
-			return x11::_poll_monitors_x11();
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_poll_monitors_wayland();
-			return x11::_poll_monitors_x11();
-		$default:
-			unreachable();
-	$endswitch
-}
 
 fn GfxDataTransfer? _read_clipboard_native(Allocator allocator, GfxDataTransferType type)
 {

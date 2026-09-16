@@ -342,11 +342,12 @@ fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => @pool
 		g[i] = ramp.green[i] / 65535.0f;
 		b[i] = ramp.blue[i] / 65535.0f;
 	}
-	if (!gfx::_monitor_display(monitor).setTransferByTable((uint)len, rgb.ptr, g, b)) return gfx::GAMMA_COULD_NOT_BE_SET~;
+	if (!_monitor_display(monitor).setTransferByTable((uint)len, rgb.ptr, g, b)) return gfx::GAMMA_COULD_NOT_BE_SET~;
 }
+
 fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => @pool()
 {
-	CGDirectDisplayID display = gfx::_monitor_display(monitor);
+	CGDirectDisplayID display = _monitor_display(monitor);
 	uint len = display.gammaTableCapacity();
 	if (!len) return gfx::CANNOT_RETRIEVE_GAMMA~;
 	float[] gamma_array = mem::temp_array(float, len);
@@ -354,11 +355,12 @@ fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => @pool()
 	{
 		*g = gfx::_gamma_for_index(gamma, i, len) / 65535.0f;
 	}
-	if (!gfx::_monitor_display(monitor).setTransferByTable((uint)len, gamma_array, gamma_array, gamma_array)) return gfx::GAMMA_COULD_NOT_BE_SET~;
+	if (!_monitor_display(monitor).setTransferByTable((uint)len, gamma_array, gamma_array, gamma_array)) return gfx::GAMMA_COULD_NOT_BE_SET~;
 }
+
 fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => @pool()
 {
-	CGDirectDisplayID display = gfx::_monitor_display(monitor);
+	CGDirectDisplayID display = _monitor_display(monitor);
 	sz count = (sz)display.gammaTableCapacity();
 	if (!count) return gfx::CANNOT_RETRIEVE_GAMMA~;
 	float[] rgb = mem::temp_array(float, (sz)count * 3);
@@ -381,7 +383,7 @@ fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => @po
 }
 fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 {
-	CFArrayRef list = gfx::_monitor_display(monitor).copyAllDisplayModes(null);
+	CFArrayRef list = _monitor_display(monitor).copyAllDisplayModes(null);
 	if (!list) return {};
 
 	List{GfxMonitorMode} modes;
@@ -397,9 +399,9 @@ fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 	list.release();
 	return modes.array_view();
 }
-fn IntRect _monitor_get_workarea_macos(GfxMonitor* monitor)
+fn IntRect monitor_get_workarea(GfxMonitor* monitor)
 {
-	CGRect bounds = gfx::_monitor_display(monitor).bounds();
+	CGRect bounds = _monitor_display(monitor).bounds();
 	return { (int)bounds.origin.x, (int)bounds.origin.y, (int)bounds.size.width, (int)bounds.size.height };
 }
 fn void _window_set_max_size_native_macos(GfxWindow* win, GfxSize size)
@@ -557,7 +559,7 @@ fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
 	if (!cursor) return gfx::IMAGE_COULD_NOT_LOAD~;
 	return (GfxMouse*)cursor;
 }
-fn void _poll_monitors_native_macos()
+fn void poll_monitors()
 {
 	if (gfx::_gfx.monitors.count != 0) gfx::free_monitors();
 	uint count = 0;
@@ -573,18 +575,18 @@ fn void _poll_monitors_native_macos()
 		if (displays[i] == cg::mainDisplayID()) gfx::_gfx.monitors.primary = node;
 	}
 }
-fn void _monitor_node_free_native_macos(GfxMonitorNode* node)
+fn void monitor_node_free(GfxMonitorNode* node)
 {
 	if (node.mon.mode.src) CFType.release(node.mon.mode.src);
 }
-fn void? _monitor_request_mode_native_macos(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	return monitor_set_mode(mon, mode);
 }
 fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 {
 	if (!mode.src) return gfx::MONITOR_MODE_CHANGE_FAILED~;
-	if (gfx::_monitor_display(mon).setDisplayMode((CGDisplayModeRef)mode.src, null)) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	if (_monitor_display(mon).setDisplayMode((CGDisplayModeRef)mode.src, null)) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 }
 fn GfxPoint get_global_mouse()
 {
@@ -723,6 +725,14 @@ fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
 	mon.pixelRatio = mon.scale.x;
 }
 
+// --- helpers
+
+fn CGDirectDisplayID _monitor_display(GfxMonitor* monitor) @local
+{
+	if (monitor && monitor.node && monitor.node.display) return (CGDirectDisplayID)monitor.node.display;
+	return cg::mainDisplayID();
+}
+
 module std::gfx @feat(MACOS) @private @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 import std::gfx::macos @public;
@@ -814,7 +824,7 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
 	app.send_void("finishLaunching");
 	_osx_register_classes()!;
-	macos::_poll_monitors_native_macos();
+	macos::poll_monitors();
 }
 
 fn void _wait_for_event_native(Duration duration)
@@ -1178,11 +1188,6 @@ fn void _osx_draw_rect(ObjId self, ObjSel sel, CGRect rect)
 
 // --- helpers
 
-fn CGDirectDisplayID _monitor_display(GfxMonitor* monitor)
-{
-	if (monitor && monitor.node && monitor.node.display) return (CGDirectDisplayID)monitor.node.display;
-	return cg::mainDisplayID();
-}
 
 fn ObjId _new_nsimage(int w, int h, ObjId rep = null)
 {

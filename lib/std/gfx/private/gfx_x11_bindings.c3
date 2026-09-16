@@ -475,3 +475,89 @@ extern fn int xRRQueryExtension(XDisplay* d, int* eventBase, int* errorBase) @cn
 extern fn int xRRSelectInput(XDisplay* d, XWindow w, int mask) @cname("XRRSelectInput");
 
 extern fn VisualID xVisualIDFromVisual(XVisual* visual) @cname("XVisualIDFromVisual");
+
+// --- XIm
+alias XImCallbackProc = fn void(void* im, void* client_data, void* call_data);
+struct XImCallback
+{
+	XPointer client_data;
+	XImCallbackProc callback;
+}
+
+struct XImStyles
+{
+	ushort count_styles;
+	XIMStyle* supported_styles;
+}
+
+alias XImInstantiateCallbackProc = fn void(XDisplay* d, XPointer client_data, XPointer call_data);
+
+
+// core GLX 1.0 attributes
+const GLX_USE_GL           = 1;
+const GLX_BUFFER_SIZE      = 2;
+const GLX_LEVEL            = 3;
+const GLX_RGBA             = 4;
+const GLX_DOUBLEBUFFER     = 5;
+const GLX_STEREO           = 6;
+const GLX_AUX_BUFFERS      = 7;
+const GLX_RED_SIZE         = 8;
+const GLX_GREEN_SIZE       = 9;
+const GLX_BLUE_SIZE        = 10;
+const GLX_ALPHA_SIZE       = 11;
+const GLX_DEPTH_SIZE       = 12;
+const GLX_STENCIL_SIZE     = 13;
+const GLX_ACCUM_RED_SIZE   = 14;
+const GLX_ACCUM_GREEN_SIZE = 15;
+const GLX_ACCUM_BLUE_SIZE  = 16;
+const GLX_ACCUM_ALPHA_SIZE = 17;
+
+// GLX 1.3 FBConfig attributes
+const GLX_CONFIG_CAVEAT     = 0x20;
+const GLX_X_VISUAL_TYPE     = 0x22;
+const GLX_DRAWABLE_TYPE     = 0x8010;
+const GLX_RENDER_TYPE       = 0x8011;
+const GLX_X_RENDERABLE      = 0x8012;
+const GLX_FBCONFIG_ID       = 0x8013;
+const GLX_RGBA_TYPE         = 0x8014;
+const GLX_COLOR_INDEX_TYPE  = 0x8015;
+
+// GLX_X_VISUAL_TYPE values
+const GLX_NONE         = 0x8000;
+const GLX_TRUE_COLOR   = 0x8002;
+const GLX_DIRECT_COLOR = 0x8003;
+const GLX_PSEUDO_COLOR = 0x8004;
+const GLX_STATIC_COLOR = 0x8005;
+const GLX_GRAY_SCALE   = 0x8006;
+const GLX_STATIC_GRAY  = 0x8007;
+
+// GLX_DRAWABLE_TYPE / GLX_RENDER_TYPE bits
+const GLX_RGBA_BIT        = 0x00000001;
+const GLX_COLOR_INDEX_BIT = 0x00000002;
+const GLX_WINDOW_BIT      = 0x00000001;
+const GLX_PIXMAP_BIT      = 0x00000002;
+const GLX_PBUFFER_BIT     = 0x00000004;
+
+// GLX_ARB_multisample
+const GLX_SAMPLE_BUFFERS = 100000;
+const GLX_SAMPLES        = 100001;
+
+// GLX_ARB_create_context and friends
+const GLX_CONTEXT_MAJOR_VERSION_ARB             = 0x2091;
+const GLX_CONTEXT_MINOR_VERSION_ARB             = 0x2092;
+const GLX_CONTEXT_FLAGS_ARB                     = 0x2094;
+const GLX_CONTEXT_PROFILE_MASK_ARB              = 0x9126;
+const GLX_CONTEXT_CORE_PROFILE_BIT_ARB          = 0x00000001;
+const GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB = 0x00000002;
+const GLX_CONTEXT_DEBUG_BIT_ARB                 = 0x00000001;
+const GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB    = 0x00000002;
+const GLX_CONTEXT_ES_PROFILE_BIT_EXT            = 0x00000004;
+const GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB         = 0x00000004;
+const GLX_CONTEXT_RELEASE_BEHAVIOR_ARB          = 0x2097;
+const GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB     = 0x0;
+const GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB    = 0x2098;
+const GLX_CONTEXT_OPENGL_NO_ERROR_ARB           = 0x31B3;
+
+// GLX_ARB_framebuffer_sRGB / GLX_EXT_framebuffer_sRGB — same value, different extension namespace
+const GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB = 0x20B2;
+const GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT = 0x20B2;
