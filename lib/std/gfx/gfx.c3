@@ -769,12 +769,28 @@ fn void GfxSurface.release(&self)
 {
 	_surface_release_native(self);
 }
+
 fn void? GfxSurface.init(&self, void* data, int w, int h, GfxFormat format, GfxWindow* window = null)
 {
 	return _surface_init_native(self, data, w, h, format, window);
 }
 
-// public
+<*
+ Create a new window.
+
+ @param [in] name : "The window title"
+ @param x : "Starting x position"
+ @param y : "Starting y position"
+ @param w : "Window width"
+ @param h : "Window height"
+ @param flags : "Customizable window properties"
+
+ @return "The window"
+
+ @ensure return != null
+ @require [w] w >= 0 : "Width may not be negative"
+ @require [h] h >= 0 : "height may not be negative"
+*>
 fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
 {
 	return _create_window(name, x, y, w, h, flags);
@@ -786,7 +802,7 @@ fn void GfxWindow.flash(&self, GfxFlashRequest request) => _window_flash_native(
 
 fn void GfxWindow.set_floating(&self, bool floating)
 {
-	return _window_set_floating_native(self, floating);
+	_window_set_floating_native(self, floating);
 }
 <*
  Get the (last) mouse position inside of a window.
