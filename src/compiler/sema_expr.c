@@ -7288,7 +7288,7 @@ FOUND_MEMBER_REFLECT:
 	Decl *private = NULL;
 	if (!member && decl->decl_kind == DECL_INTERFACE)
 	{
-		Decl *inf;
+		Decl *inf = NULL;
 		FOREACH(TypeInfo *, parent_interface, decl->interfaces)
 		{
 			if (!sema_resolve_type_info(context, parent_interface, RESOLVE_TYPE_NO_CHECK_DISTINCT)) return false;

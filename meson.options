@@ -1,0 +1,26 @@
+option('with_llvm', type: 'boolean', value: true,
+       description: 'Build with LLVM backend')
+option('fetch_llvm', type: 'boolean', value: false,
+       description: 'Download prebuilt LLVM artifacts')
+option('llvm_tag', type: 'string', value: 'latest',
+       description: 'LLVM artifact release tag')
+option('link_dynamic', type: 'boolean', value: false,
+       description: 'Link dynamically with LLVM/LLD')
+option('llvm_version', type: 'string', value: 'auto',
+       description: 'Required LLVM version')
+option('lld_dir', type: 'string', value: '',
+       description: 'Custom directory containing LLD libraries')
+option('lld_include_dir', type: 'string', value: '',
+       description: 'Custom directory containing LLD headers')
+option('use_tb', type: 'boolean', value: false,
+       description: 'Enable Tilde Backend')
+option('use_mimalloc', type: 'boolean', value: false,
+       description: 'Use mimalloc memory allocator')
+option('curl', type: 'feature', value: 'auto',
+       description: 'Enable libcurl support')
+option('avr_disable', type: 'boolean', value: false,
+       description: 'Disable AVR target support')
+option('profiling', type: 'boolean', value: false,
+       description: 'Build with profiling options')
+option('tcc_lib_path', type: 'string', value: '/usr/lib/tcc/libtcc1.a',
+       description: 'Custom path to libtcc1.a when compiling with TinyCC')
