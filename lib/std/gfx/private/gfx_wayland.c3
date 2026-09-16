@@ -190,23 +190,6 @@ fn GfxPoint get_global_mouse()
 
 // --- GfxWindow
 
-fn void _window_set_border(GfxWindow* win, bool border)
-{
-	win.internal.flags.no_border = !border;
-	if (gfx::_gfx.decorationManager)
-	{
-		zxdgToplevelDecorationV1SetMode(win.src.decoration, border ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE : ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
-	}
-}
-
-fn void _window_set_name(GfxWindow* win, String name)
-{
-	if (gfx::_gfx.compositor) @pool()
-	{
-		xdgToplevelSetTitle(win.src.xdgToplevel, name.zstr_copy(tmem));
-	};
-}
-
 fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint min = math::min(win.size, surface.size);
@@ -368,6 +351,15 @@ fn void window_set_aspect_ratio(GfxWindow* win, int w, int h)
 	_xdg_toplevel_set_max_size(win.src.xdgToplevel, w, h);
 }
 
+fn void window_set_border(GfxWindow* win, bool border)
+{
+	win.internal.flags.no_border = !border;
+	if (gfx::_gfx.decorationManager)
+	{
+		zxdgToplevelDecorationV1SetMode(win.src.decoration, border ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE : ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+	}
+}
+
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool capture)
 {
 	if (!gfx::_gfx.constraint_manager) return;
@@ -443,6 +435,14 @@ fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 	wlSurfaceAttach(win.src.customCursorSurface, surface.native.wlBuffer, 0, 0);
 	wlSurfaceDamage(win.src.customCursorSurface, 0, 0, ...surface.size);
 	wlSurfaceCommit(win.src.customCursorSurface);
+}
+
+fn void window_set_name(GfxWindow* win, String name)
+{
+	if (gfx::_gfx.compositor) @pool()
+	{
+		xdgToplevelSetTitle(win.src.xdgToplevel, name.zstr_copy(tmem));
+	};
 }
 
 fn void window_set_opacity(GfxWindow* win, float opacity) {}
@@ -711,8 +711,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 	}
 	return NULL;
 }
-
-
 
 fn void? _init_wayland(String class_name, GfxInitOption flags)
 {

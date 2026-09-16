@@ -317,28 +317,6 @@ fn GfxPoint get_global_mouse()
 
 // --- GfxWindow
 
-fn void _window_set_border(GfxWindow* win, bool border)
-{
-	win.internal.flags.no_border = !border;
-	X11WindowHints hints;
-	hints.flags = 2;
-	hints.decorations = (CULong)border;
-	xChangeProperty(gfx::_gfx.display, win.src.window, gfx::_gfx.motifWmHints, gfx::_gfx.motifWmHints, 32, 0, (char*)&hints, 5);
-	if (!window_is_hidden(win))
-	{
-		win.hide();
-		win.show();
-	}
-}
-
-fn void _window_set_name(GfxWindow* win, String name) => @pool()
-{
-	ZString cstring = name.zstr_copy(tmem);
-	xutf8SetWMProperties(gfx::_gfx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
-	xStoreName(gfx::_gfx.display, win.src.window, cstring);
-	xChangeProperty(gfx::_gfx.display, win.src.window, gfx::_gfx.netWmName, gfx::_gfx.utf8String, 8, 0, cstring, name.len);
-}
-
 fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint min = math::min(win.size, surface.size);
@@ -558,6 +536,20 @@ fn void window_set_aspect_ratio(GfxWindow* win, int w, int h)
 	xSetWMNormalHints(gfx::_gfx.display, win.src.window, &hints);
 }
 
+fn void window_set_border(GfxWindow* win, bool border)
+{
+	win.internal.flags.no_border = !border;
+	X11WindowHints hints;
+	hints.flags = 2;
+	hints.decorations = (CULong)border;
+	xChangeProperty(gfx::_gfx.display, win.src.window, gfx::_gfx.motifWmHints, gfx::_gfx.motifWmHints, 32, 0, (char*)&hints, 5);
+	if (!window_is_hidden(win))
+	{
+		win.hide();
+		win.show();
+	}
+}
+
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 {
 	if (state)
@@ -672,6 +664,14 @@ fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
 fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 {
 	xDefineCursor(gfx::_gfx.display, win.src.window, (XCursor)mouse);
+}
+
+fn void window_set_name(GfxWindow* win, String name) => @pool()
+{
+	ZString cstring = name.zstr_copy(tmem);
+	xutf8SetWMProperties(gfx::_gfx.display, win.src.window, cstring, cstring, null, 0, null, null, null);
+	xStoreName(gfx::_gfx.display, win.src.window, cstring);
+	xChangeProperty(gfx::_gfx.display, win.src.window, gfx::_gfx.netWmName, gfx::_gfx.utf8String, 8, 0, cstring, name.len);
 }
 
 fn void window_set_opacity(GfxWindow* win, float opacity)
@@ -1063,7 +1063,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 
 	return NULL;
 }
-
 
 const int X_TRUE = 1;
 const int X_FALSE = 0;

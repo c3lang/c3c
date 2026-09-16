@@ -245,37 +245,6 @@ fn GfxPoint get_global_mouse()
 
 // --- GfxWindow
 
-fn void _window_set_border(GfxWindow* win, bool border)
-{
-	win.internal.flags.no_border = !border;
-	Win32_RECT rect;
-	win32::getClientRect(win.src.window, &rect);
-	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
-	style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
-
-	if (!border)
-	{
-		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
-	}
-	else
-	{
-		if (win.internal.flags.no_resize) style &= ~(Win32_LONG)win32::WS_MAXIMIZEBOX;
-		style |= win32::WS_OVERLAPPEDWINDOW;
-	}
-
-	Win32_DWORD exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
-	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
-	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, exStyle);
-	win32::setWindowLongW(win.src.window, -16, style);
-	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
-}
-
-fn void _window_set_name(GfxWindow* win, String name) => @pool()
-{
-	win32::setWindowTextW(win.src.window, name.to_wstring(tmem)!!);
-}
-
 fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint blit = math::min(win.size, surface.size);
@@ -456,6 +425,32 @@ fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
 	win.src.aspectRatioH = h;
 }
 
+fn void window_set_border(GfxWindow* win, bool border)
+{
+	win.internal.flags.no_border = !border;
+	Win32_RECT rect;
+	win32::getClientRect(win.src.window, &rect);
+	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
+	style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
+
+	if (!border)
+	{
+		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
+	}
+	else
+	{
+		if (win.internal.flags.no_resize) style &= ~(Win32_LONG)win32::WS_MAXIMIZEBOX;
+		style |= win32::WS_OVERLAPPEDWINDOW;
+	}
+
+	Win32_DWORD exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
+	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
+	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, exStyle);
+	win32::setWindowLongW(win.src.window, -16, style);
+	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
+}
+
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 {
 	if (!state)
@@ -492,7 +487,7 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 	{
 		// Ignore errors
 		(void)monitor_set_mode(mon, &win.internal.oldMode);
-		_window_set_border(win, true);
+		window_set_border(win, true);
 
 		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
 		uint style = gfx::_winapi_window_get_style(win.internal.flags);
@@ -508,7 +503,7 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 	win.internal.old_bounds = win.bounds;
 	win.internal.oldMode = mon.mode;
 	win.internal.flags.fullscreen = true;
-	_window_set_border(win, false);
+	window_set_border(win, false);
 
 	win32::setWindowPos(win.src.window, win32::HWND_TOPMOST, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
 	win.origin = mon.origin;
@@ -580,6 +575,11 @@ fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 {
 	win32::setClassLongPtrA(win.src.window, win32::GCLP_HCURSOR, (iptr)mouse);
 	win32::setCursor(mouse);
+}
+
+fn void window_set_name(GfxWindow* win, String name) => @pool()
+{
+	win32::setWindowTextW(win.src.window, name.to_wstring(tmem)!!);
 }
 
 fn void window_set_opacity(GfxWindow* win, float opacity)
@@ -972,7 +972,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 		default: return NULL;
 	}
 }
-
 
 // --- implementations
 

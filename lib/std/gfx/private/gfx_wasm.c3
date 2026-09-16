@@ -77,13 +77,6 @@ fn GfxPoint get_global_mouse()
 
 // --- GfxWindow
 
-fn void _window_set_border(GfxWindow* win, bool border) {}
-
-fn void _window_set_name(GfxWindow* win, String name)
-{
-	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
-}
-
 fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	int minH = win.height < surface.size.y ? win.height : surface.size.y;
@@ -153,6 +146,8 @@ fn void window_restore_platform(GfxWindow* win) {}
 
 fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) {}
 
+fn void window_set_border(GfxWindow* win, bool border) {}
+
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 {
 	if (state)
@@ -194,6 +189,11 @@ fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 {
 	ZString name = (ZString)mouse;
 	gfx::gfxJsSetCursor(name, name.len());
+}
+
+fn void window_set_name(GfxWindow* win, String name)
+{
+	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
 }
 
 fn void window_set_opacity(GfxWindow* win, float opacity)
@@ -344,8 +344,6 @@ fn void init_keycodes_platform()
 }
 
 fn GfxKey physical_to_mapped_key(GfxKey key) => key;
-
-
 
 // ---- DOM virtual key codes ----
 constset DomKey : inline int
@@ -578,8 +576,6 @@ fn void handle_key_mods_callback(bool capital, bool numlock, bool control, bool 
 {
 	_key_update_key_mods_ex(_gfx.root, capital, numlock, control, alt, shift, super, scroll);
 }
-
-
 
 // ---
 

@@ -215,37 +215,6 @@ fn GfxPoint get_global_mouse()
 
 // --- GfxWindow
 
-fn void _window_set_border(GfxWindow* win, bool border)
-{
-	if (!win.src.window) return;
-	CGRect frame = win.src.window.send(CGRect, "frame");
-	CGRect content = win.src.view.send(CGRect, "frame");
-	double offset = 0;
-
-	win.internal.flags.no_border = !border;
-	NSWindowStyleMask styleMask = BORDERLESS | FULL_SIZE_CONTENT_VIEW;
-	if (border) styleMask = TITLED | CLOSABLE | MINIATURIZABLE;
-	if (!win.internal.flags.no_resize) styleMask |= RESIZABLE;
-
-	win.src.window.send_void("setStyleMask:", styleMask);
-
-	if (!border)
-	{
-		ObjId miniaturizeButton = win.src.window.send(ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
-		ObjId titleBarView = miniaturizeButton.send(ObjId, "superview");
-		titleBarView.send_void("setHidden:", true);
-		offset = (double)(frame.size.height - content.size.height);
-	}
-
-	win.resize(win.size + { 0, (int)offset });
-	win.height -= (int)offset;
-}
-
-fn void _window_set_name(GfxWindow* win, String name)
-{
-	win.src.window.send_void("setTitle:", name.to_nsstring());
-}
-
 fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	if (!surface.data) return;
@@ -430,6 +399,32 @@ fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
 	win.src.window.send_void("setContentAspectRatio:", size);
 }
 
+fn void window_set_border(GfxWindow* win, bool border)
+{
+	if (!win.src.window) return;
+	CGRect frame = win.src.window.send(CGRect, "frame");
+	CGRect content = win.src.view.send(CGRect, "frame");
+	double offset = 0;
+
+	win.internal.flags.no_border = !border;
+	NSWindowStyleMask styleMask = BORDERLESS | FULL_SIZE_CONTENT_VIEW;
+	if (border) styleMask = TITLED | CLOSABLE | MINIATURIZABLE;
+	if (!win.internal.flags.no_resize) styleMask |= RESIZABLE;
+
+	win.src.window.send_void("setStyleMask:", styleMask);
+
+	if (!border)
+	{
+		ObjId miniaturizeButton = win.src.window.send(ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
+		ObjId titleBarView = miniaturizeButton.send(ObjId, "superview");
+		titleBarView.send_void("setHidden:", true);
+		offset = (double)(frame.size.height - content.size.height);
+	}
+
+	win.resize(win.size + { 0, (int)offset });
+	win.height -= (int)offset;
+}
+
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 {
 	cg::associateMouseAndMouseCursorPosition(!state);
@@ -492,6 +487,11 @@ fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 	cg::mainDisplayID().showCursor();
 	mouse_native.send_void("set");
 	win.src.mouse = mouse_native;
+}
+
+fn void window_set_name(GfxWindow* win, String name)
+{
+	win.src.window.send_void("setTitle:", name.to_nsstring());
 }
 
 fn void window_set_opacity(GfxWindow* win, float opacity)
@@ -789,8 +789,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 
 	return key;
 }
-
-
 
 fn void? _load_opengl_macos()
 {

@@ -796,18 +796,18 @@ fn void _window_set_border(GfxWindow* win, bool border)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_window_set_border(win, border);
+			return macos::window_set_border(win, border);
 		$case $feat(WASM):
-			return wasm::_window_set_border(win, border);
+			return wasm::window_set_border(win, border);
 		$case $feat(WIN32):
-			return win32::_window_set_border(win, border);
+			return win32::window_set_border(win, border);
 		$case WAYLAND_ONLY:
-			return wl::_window_set_border(win, border);
+			return wl::window_set_border(win, border);
 		$case X11_ONLY:
-			return x11::_window_set_border(win, border);
+			return x11::window_set_border(win, border);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_set_border(win, border);
-			return x11::_window_set_border(win, border);
+			if (_gfx.use_wayland) return wl::window_set_border(win, border);
+			return x11::window_set_border(win, border);
 		$default:
 			unreachable();
 	$endswitch
@@ -985,18 +985,18 @@ fn void _window_set_name(GfxWindow* win, String name)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_window_set_name(win, name);
+			return macos::window_set_name(win, name);
 		$case $feat(WASM):
-			return wasm::_window_set_name(win, name);
+			return wasm::window_set_name(win, name);
 		$case $feat(WIN32):
-			return win32::_window_set_name(win, name);
+			return win32::window_set_name(win, name);
 		$case WAYLAND_ONLY:
-			return wl::_window_set_name(win, name);
+			return wl::window_set_name(win, name);
 		$case X11_ONLY:
-			return x11::_window_set_name(win, name);
+			return x11::window_set_name(win, name);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_set_name(win, name);
-			return x11::_window_set_name(win, name);
+			if (_gfx.use_wayland) return wl::window_set_name(win, name);
+			return x11::window_set_name(win, name);
 		$default:
 			unreachable();
 	$endswitch
