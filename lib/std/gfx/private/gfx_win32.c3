@@ -111,6 +111,11 @@ fn void window_hide(GfxWindow* win)
 	win32::showWindow(win.src.window, win32::SW_HIDE);
 }
 
+fn void stop_check_events()
+{
+	win32::postMessageW(gfx::_gfx.helper_window, 0, 0, 0);
+}
+
 fn void window_focus(GfxWindow* win)
 {
 	win32::setForegroundWindow(win.src.window);
@@ -333,6 +338,21 @@ fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 fn GfxMouse*? create_mouse(char* data, GfxSize size, GfxFormat format)
 {
 	return (GfxMouse*)_load_handle_image(data, ...size, format, 0);
+}
+
+fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance)
+{
+	VkSurfaceKHR surface;
+	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)gfx::_get_instance_proc_vulkan(instance, "vkCreateWin32SurfaceKHR");
+	if (!proc) return gfx::VULKAN_NOT_LOADED~;
+	VkWin32SurfaceCreateInfoKHR create_info;
+	create_info.sType = gfx::VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	create_info.pNext = null;
+	create_info.flags = 0;
+	create_info.hinstance = gfx::_gfx.instance;
+	create_info.hwnd = win.src.window;
+	if (proc(instance, &create_info, null, &surface)) return gfx::SURFACE_CREATION_FAILED~;
+	return surface;
 }
 
 
@@ -1099,10 +1119,6 @@ struct GfxEglContext
 }
 
 
-fn void _stop_check_events_native()
-{
-	win32::postMessageW(_gfx.helper_window, 0, 0, 0);
-}
 
 fn void _wait_for_event_native(Duration duration)
 {
@@ -1590,20 +1606,6 @@ struct VkWin32SurfaceCreateInfoKHR
 	void* hwnd;
 }
 
-fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance)
-{
-	VkSurfaceKHR surface;
-	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)_get_instance_proc_vulkan(instance, "vkCreateWin32SurfaceKHR");
-	if (!proc) return VULKAN_NOT_LOADED~;
-	VkWin32SurfaceCreateInfoKHR create_info;
-	create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	create_info.pNext = null;
-	create_info.flags = 0;
-	create_info.hinstance = _gfx.instance;
-	create_info.hwnd = win.src.window;
-	if (proc(instance, &create_info, null, &surface)) return SURFACE_CREATION_FAILED~;
-	return surface;
-}
 
 const WString RENAME_PROP_NAME = @wstring("C3GFX\0");
 

@@ -863,7 +863,7 @@ fn GfxPoint GfxWindow.get_size(&self)
 
 fn VkSurfaceKHR? GfxWindow.create_vulkan_surface(&self, VkInstance instance)
 {
-	return _window_create_vulkan_surface_native(self, instance);
+	return _window_create_vulkan_surface(self, instance);
 }
 
 fn WGPUSurface GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
@@ -1614,8 +1614,9 @@ fn void GfxMouse.free_mouse(&self)
 
 fn void stop_check_events()
 {
-	_stop_check_events_native();
+	_stop_check_events();
 }
+
 fn void set_raw_mouse_mode(bool enabled)
 {
 	_gfx.raw_mouse = enabled;

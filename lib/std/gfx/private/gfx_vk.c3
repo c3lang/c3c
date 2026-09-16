@@ -69,7 +69,7 @@ macro get_required_vulkan_extensions()
 	return $ext;
 }
 
-fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance) @weak @private => NOT_IMPLEMENTED~;
+
 
 fn void _unload_vulkan_native()
 {

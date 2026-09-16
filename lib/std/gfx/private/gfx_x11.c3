@@ -294,6 +294,21 @@ fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags,
 	xSetWindowBackgroundPixmap(gfx::_gfx.display, win.src.window, 0);
 }
 
+fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private
+{
+	VkSurfaceKHR surface;
+	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)gfx::_get_instance_proc_vulkan(instance, "vkCreateXlibSurfaceKHR");
+	if (!proc) return gfx::VULKAN_NOT_LOADED~;
+	VkXlibSurfaceCreateInfoKHR create_info = {
+		.sType = gfx::VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+		.dpy = gfx::_gfx.display,
+		.window = win.src.window
+	};
+	if (proc(instance, &create_info, null, &surface)) return gfx::SURFACE_CREATION_FAILED~;
+	return surface;
+}
+
+
 fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
 {
 	win.src.backing = {};
@@ -1945,19 +1960,6 @@ struct VkXlibSurfaceCreateInfoKHR
 	XWindow window;
 }
 
-fn VkSurfaceKHR? _window_create_vulkan_surface_x11(GfxWindow* win, VkInstance instance) @private
-{
-	VkSurfaceKHR surface;
-	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)gfx::_get_instance_proc_vulkan(instance, "vkCreateXlibSurfaceKHR");
-	if (!proc) return gfx::VULKAN_NOT_LOADED~;
-	VkXlibSurfaceCreateInfoKHR create_info = {
-		.sType = gfx::VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
-		.dpy = gfx::_gfx.display,
-		.window = win.src.window
-	};
-	if (proc(instance, &create_info, null, &surface)) return gfx::SURFACE_CREATION_FAILED~;
-	return surface;
-}
 
 alias VkGetPhysicalDeviceXlibPresentationSupportKHRProc = fn uint(VkPhysicalDevice, uint, XDisplay*, VisualID);
 

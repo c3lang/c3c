@@ -31,6 +31,27 @@ fn void _destroy_platform()
 }
 
 
+fn void _stop_check_events()
+{
+	$switch:
+		$case $feat(MACOS):
+		$case $feat(WASM):
+			_gfx.stop_check_events = true;
+		$case $feat(WIN32):
+			return win32::stop_check_events();
+		$case WAYLAND || X11:
+			_gfx.eventWait_forceStop[2] = 1;
+			while (true)
+			{
+				char byte = 0;
+				sz result = libc::write(_gfx.eventWait_forceStop[1], &byte, 1);
+				if (result == 1 || result == -1) break;
+			}
+		$default:
+			unreachable();
+	$endswitch
+}
+
 fn void _poll_events_platform()
 {
 	$switch:
@@ -1138,6 +1159,30 @@ fn void _window_opengl_swap_buffers(GfxWindow* win)
 			unreachable();
 	$endswitch
 }
+
+// Vulkan
+
+fn VkSurfaceKHR? _window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::window_create_vulkan_surface(win, instance);
+		$case $feat(WASM):
+			return NOT_IMPLEMENTED~;
+		$case $feat(WIN32):
+			return win32::window_create_vulkan_surface(win, instance);
+		$case WAYLAND_ONLY:
+			return wl::window_create_vulkan_surface(win, instance);
+		$case X11_ONLY:
+			return x11::window_create_vulkan_surface(win, instance);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::window_create_vulkan_surface(win, instance);
+			return x11::window_create_vulkan_surface(win, instance);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 
 // Window WGPU
 

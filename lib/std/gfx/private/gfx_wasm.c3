@@ -589,9 +589,5 @@ fn GfxKey _wasm_physical_to_gfx(uint hash)
 	}
 }
 
-fn void _stop_check_events_native()
-{
-	_gfx.stop_check_events = true;
-}
 
 fn void _wait_for_event_native(Duration duration) {}

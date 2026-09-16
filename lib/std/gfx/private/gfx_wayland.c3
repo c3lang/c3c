@@ -84,6 +84,21 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 	return (GfxMouse*)surface;
 }
 
+fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private
+{
+	VkSurfaceKHR surface;
+	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)gfx::_get_instance_proc_vulkan(instance, "vkCreateWaylandSurfaceKHR");
+	if (!proc) return gfx::VULKAN_NOT_LOADED~;
+	VkWaylandSurfaceCreateInfoKHR create_info = {
+		.sType = gfx::VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
+		.display = gfx::_gfx.wlDisplay,
+		.surface = win.src.surface
+	};
+	if (proc(instance, &create_info, null, &surface)) return gfx::SURFACE_CREATION_FAILED~;
+	return surface;
+}
+
+
 fn void destroy_platform()
 {
 	if (gfx::_gfx.unixClipboard) free(gfx::_gfx.unixClipboard);
@@ -1410,16 +1425,3 @@ struct VkWaylandSurfaceCreateInfoKHR
 	WlProxy* surface;
 }
 
-fn VkSurfaceKHR? _window_create_vulkan_surface_wayland(GfxWindow* win, VkInstance instance) @private
-{
-	VkSurfaceKHR surface;
-	VkCreateSurfaceKHRProc proc = (VkCreateSurfaceKHRProc)gfx::_get_instance_proc_vulkan(instance, "vkCreateWaylandSurfaceKHR");
-	if (!proc) return gfx::VULKAN_NOT_LOADED~;
-	VkWaylandSurfaceCreateInfoKHR create_info = {
-		.sType = gfx::VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
-		.display = gfx::_gfx.wlDisplay,
-		.surface = win.src.surface
-	};
-	if (proc(instance, &create_info, null, &surface)) return gfx::SURFACE_CREATION_FAILED~;
-	return surface;
-}

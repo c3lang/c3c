@@ -85,6 +85,8 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	window_make_current_opengl_context(win);
 	gfx::_window_set_opengl_swap_interval(win, 0);
 }
+
+
 fn void* get_current_opengl_context()
 {
 	return (void*)objc::send(objc::@class("NSOpenGLContext"), ObjId, "currentContext");
@@ -612,6 +614,27 @@ fn void surface_release(GfxSurface* surface)
 	if (surface.native.buffer) free(surface.native.buffer);
 	*surface = {};
 }
+
+
+fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private
+{
+	VkSurfaceKHR surface;
+	VkCreateSurfaceKHRProc raw = (VkCreateSurfaceKHRProc)gfx::_get_instance_proc_vulkan(instance, "vkCreateMetalSurfaceEXT");
+	if (!raw) return gfx::VULKAN_NOT_LOADED~;
+	ObjId layer = objc::send(objc::@class("CAMetalLayer"), ObjId, "layer");
+	if (!layer) return gfx::SURFACE_CREATION_FAILED~;
+	win.src.view.send_void("setWantsLayer:", true);
+	macos::_window_set_layer_macos(win, layer);
+	VkMetalSurfaceCreateInfoEXT create_info;
+
+	create_info.sType = gfx::VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+	create_info.pNext = null;
+	create_info.flags = 0;
+	create_info.pLayer = (void*)layer;
+	if (raw(instance, &create_info, null, &surface)) return gfx::SURFACE_CREATION_FAILED~;
+	return surface;
+}
+
 fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	if (!window.src.view)
@@ -798,24 +821,6 @@ struct VkMetalSurfaceCreateInfoEXT
 alias VkCreateMetalSurfaceExtFn = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
 
 
-fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance) @private
-{
-	VkSurfaceKHR surface;
-	VkCreateSurfaceKHRProc raw = (VkCreateSurfaceKHRProc)_get_instance_proc_vulkan(instance, "vkCreateMetalSurfaceEXT");
-	if (!raw) return VULKAN_NOT_LOADED~;
-	ObjId layer = objc::send(objc::@class("CAMetalLayer"), ObjId, "layer");
-	if (!layer) return SURFACE_CREATION_FAILED~;
-	win.src.view.send_void("setWantsLayer:", true);
-	macos::_window_set_layer_macos(win, layer);
-	VkMetalSurfaceCreateInfoEXT create_info;
-
-	create_info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
-	create_info.pNext = null;
-	create_info.flags = 0;
-	create_info.pLayer = (void*)layer;
-	if (raw(instance, &create_info, null, &surface)) return SURFACE_CREATION_FAILED~;
-	return surface;
-}
 
 fn void? _init_native(String class_name, GfxInitOption flags)
 {
@@ -842,10 +847,6 @@ fn void _wait_for_event_native(Duration duration)
 
 struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
 
-fn void _stop_check_events_native()
-{
-	_gfx.stop_check_events = true;
-}
 
 
 // MacOS callbacks

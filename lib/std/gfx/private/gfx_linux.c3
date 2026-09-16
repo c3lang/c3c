@@ -64,22 +64,6 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 }
 
 
-// public
-
-// public
-
-// public
-
-fn void _stop_check_events_native()
-{
-	_gfx.eventWait_forceStop[2] = 1;
-	while (true)
-	{
-		char byte = 0;
-		sz result = libc::write(_gfx.eventWait_forceStop[1], &byte, 1);
-		if (result == 1 || result == -1) break;
-	}
-}
 
 fn void _wait_for_event_native(Duration duration)
 {
@@ -102,7 +86,7 @@ fn void _wait_for_event_native(Duration duration)
 
 	$switch:
 		$case WAYLAND_ONLY:
-wl::_wait_for_event_wayland(fds[..], duration);
+			wl::_wait_for_event_wayland(fds[..], duration);
 		$case X11_ONLY:
 			x11::_wait_for_event_x11(fds[..], duration);
 		$default:
@@ -124,20 +108,4 @@ wl::_wait_for_event_wayland(fds[..], duration);
 
 		_gfx.eventWait_forceStop[2] = 0;
 	}
-}
-
-fn VkSurfaceKHR? _window_create_vulkan_surface_native(GfxWindow* win, VkInstance instance) @private
-{
-	ZString name;
-	int type;
-	$switch:
-		$case WAYLAND_ONLY:
-			return wl::_window_create_vulkan_surface_wayland(win, instance);
-		$case X11_ONLY:
-			return x11::_window_create_vulkan_surface_x11(win, instance);
-		$default:
-			return _gfx.use_wayland
-				? wl::_window_create_vulkan_surface_wayland(win, instance)
-				: x11::_window_create_vulkan_surface_x11(win, instance);
-	$endswitch
 }
