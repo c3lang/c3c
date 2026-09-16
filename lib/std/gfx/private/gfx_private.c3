@@ -775,7 +775,6 @@ fn void _key_update_key_mods_ex(GfxWindow* win, bool capital, bool numlock, bool
 	win.update_key_modifier(KEYMOD_SCROLL_LOCK, scroll);
 }
 
-// public
 fn void _key_update_key_mods(GfxWindow* win, bool capital, bool numlock, bool scroll)
 {
 	_key_update_key_mods_ex(win, capital, numlock,

@@ -1082,28 +1082,26 @@ fn void set_build_dnd(bool allow)
 	_gfx.dnd_build = allow;
 }
 
-// public
 fn bool is_key_pressed(GfxKey key, GfxWindow* window = null)
 {
 	return _gfx.keyboard[key].current && !_gfx.keyboard[key].prev && (!window || window.has_focus());
 }
-// public
+
 fn bool is_key_down(GfxKey key, GfxWindow* window = null)
 {
 	return _gfx.keyboard[key].current && (!window || window.has_focus());
 }
-// public
+
 fn bool is_key_released(GfxKey key, GfxWindow* window = null)
 {
 	return !_gfx.keyboard[key].current && _gfx.keyboard[key].prev && (!window || window.has_focus());
 }
-// public
+
 fn bool is_mouse_down(GfxMouseButton button, GfxWindow* window = null)
 {
 	return _gfx.mouseButtons[(sz)button].current && (!window || window.has_focus());
 }
 
-// public
 fn bool is_mouse_released(GfxMouseButton button, GfxWindow* window = null)
 {
 	return !_gfx.mouseButtons[button].current && _gfx.mouseButtons[button].prev && (!window || window.has_focus());
@@ -1121,7 +1119,6 @@ fn GfxGenericFunc set_event_callback(GfxEventType type, GfxGenericFunc func)
 	return old;
 }
 
-// public
 fn void set_dual_event_callback(GfxEventType type, GfxGenericFunc func, GfxGenericFunc* first, GfxGenericFunc* second)
 {
 	GfxGenericFunc func1 = set_event_callback(type, func);
@@ -1141,7 +1138,6 @@ fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
 }
 
 
-// public
 fn void set_all_event_callback(GfxGenericFunc func, GfxEventCallbacks* callbacks)
 {
 	foreach (i : GfxEventType::values[1..])
@@ -1171,7 +1167,6 @@ fn void event_queue_push(GfxEvent* event)
 	_gfx.events[eventTop] = *event;
 }
 
-// public
 fn GfxEvent? event_queue_pop()
 {
 	if (!_gfx.eventLen) return NO_MORE_ELEMENT~;
@@ -1192,7 +1187,6 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 	return _read_clipboard(allocator, type) @inline;
 }
 
-// public
 fn GfxEvent? check_event()
 {
 	if (!_gfx.eventLen && !_gfx.polledEvents)
@@ -1205,14 +1199,12 @@ fn GfxEvent? check_event()
 	return check_queued_event();
 }
 
-// public
 fn GfxEvent? check_queued_event()
 {
 	_gfx.queueEvents = true;
 	return event_queue_pop();
 }
 
-// public
 fn GfxEvent? window_event_queue_pop(GfxWindow* win)
 {
 	GfxEvent ev = event_queue_pop()!;
@@ -1225,14 +1217,12 @@ fn GfxEvent? window_event_queue_pop(GfxWindow* win)
 	return ev;
 }
 
-// public
 fn GfxEvent? check_queued_window_event(GfxWindow* win)
 {
 	_gfx.queueEvents = true;
 	return window_event_queue_pop(win);
 }
 
-// public
 fn GfxEvent? check_window_event(GfxWindow* win)
 {
 	if (!_gfx.eventLen && !_gfx.polledEvents)
@@ -1408,7 +1398,6 @@ fn GfxMonitor*? get_primary_monitor()
 	return &_gfx.monitors.primary.mon;
 }
 
-// public
 fn GfxMonitorMode[] GfxMonitor.get_modes(&monitor, Allocator allocator)
 {
 	return alloc::clone_slice(allocator, _monitor_get_modes(monitor));
@@ -1418,7 +1407,7 @@ fn IntRect GfxMonitor.get_workarea(&monitor)
 {
 	return _monitor_get_workarea(monitor);
 }
-// public
+
 fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mode) => @pool()
 {
 	GfxMonitorMode* chosen;

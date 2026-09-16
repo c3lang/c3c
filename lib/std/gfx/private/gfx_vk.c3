@@ -46,7 +46,6 @@ fn bool vulkan_get_physical_device_presentation_support_native(VkInstance instan
 	return _vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
 }
 
-// public
 fn GfxFn _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(!WASM)
 {
 	if (!_gfx.vk_get_instance_proc_address) return null;

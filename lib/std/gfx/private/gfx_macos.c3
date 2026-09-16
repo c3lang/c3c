@@ -1,32 +1,519 @@
 module std::gfx::macos @feat(MACOS) @private;
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 
+// --- Gfx
+
+fn void destroy_platform()
+{
+	if (gfx::_gfx.ns_pool)
+	{
+		objc::pool_pop(gfx::_gfx.ns_pool);
+		gfx::_gfx.ns_pool = null;
+	}
+}
+
+fn void poll_events_platform()
+{
+	objc::@autoreleasepool()
+	{
+		gfx::_reset_prev_state();
+		if (!gfx::_gfx.ns_app) return;
+		ObjId distantPast = objc::send(objc::@class("NSDate"), ObjId, "distantPast");
+		ObjId mode = darwin::string("kCFRunLoopDefaultMode");
+		while (true)
+		{
+			objc::@autoreleasepool()
+			{
+				ObjId ev = gfx::_gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
+				if (!ev) break;
+				gfx::_gfx.ns_app.send_void("sendEvent:", ev);
+			};
+		}
+	};
+
+}
+
+// --- GfxMonitor functions
+
+fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => @pool()
+{
+	CGDirectDisplayID display = _monitor_display(monitor);
+	sz count = (sz)display.gammaTableCapacity();
+	if (!count) return gfx::CANNOT_RETRIEVE_GAMMA~;
+	float[] rgb = mem::temp_array(float, (sz)count * 3);
+	uint actual = 0;
+	float[] red = rgb[:count];
+	float[] green = rgb[count:count];
+	float[] blue = rgb[count * 2:count];
+	if (!display.transferByTable((uint)count, red, green, blue, &actual)) return gfx::CANNOT_RETRIEVE_GAMMA~;
+	ushort[] ramp = alloc::alloc_array(a, ushort, (sz)actual * 3);
+	ushort[] ramp_r = ramp[:actual];
+	ushort[] ramp_g = ramp[actual:actual];
+	ushort[] ramp_b = ramp[actual * 2:actual];
+	for (sz i = 0; i < (sz)actual; i++)
+	{
+		ramp_r[i] = (ushort)(red[i] * 65535.0);
+		ramp_g[i] = (ushort)(green[i] * 65535.0);
+		ramp_b[i] = (ushort)(blue[i] * 65535.0);
+	}
+	return { ramp_r, ramp_g, ramp_b, a };
+}
+
+fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
+{
+	CFArrayRef list = _monitor_display(monitor).copyAllDisplayModes(null);
+	if (!list) return {};
+
+	List{GfxMonitorMode} modes;
+	foreach (CGDisplayModeRef mode : list)
+	{
+		modes.push({
+			.size = { (int)mode.getWidth(), (int)mode.getHeight() },
+			.refresh_rate = (float)mode.getRefreshRate(),
+			.rgb = (char[<3>])8,
+			.src = mode
+		});
+	}
+	list.release();
+	return modes.array_view();
+}
+
+fn IntRect monitor_get_workarea(GfxMonitor* monitor)
+{
+	CGRect bounds = _monitor_display(monitor).bounds();
+	return { (int)bounds.origin.x, (int)bounds.origin.y, (int)bounds.size.width, (int)bounds.size.height };
+}
+
+fn void monitor_node_free(GfxMonitorNode* node)
+{
+	if (node.mon.mode.src) CFType.release(node.mon.mode.src);
+}
+
+fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
+{
+	return monitor_set_mode(mon, mode);
+}
+
+fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => @pool()
+{
+	CGDirectDisplayID display = _monitor_display(monitor);
+	uint len = display.gammaTableCapacity();
+	if (!len) return gfx::CANNOT_RETRIEVE_GAMMA~;
+	float[] gamma_array = mem::temp_array(float, len);
+	foreach (i, &g : gamma_array)
+	{
+		*g = gfx::_gamma_for_index(gamma, i, len) / 65535.0f;
+	}
+	if (!_monitor_display(monitor).setTransferByTable((uint)len, gamma_array, gamma_array, gamma_array)) return gfx::GAMMA_COULD_NOT_BE_SET~;
+}
+
+fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => @pool()
+{
+	if (!ramp.red) return gfx::GAMMA_COULD_NOT_BE_SET~;
+	sz len = ramp.red.len;
+	float[] rgb = mem::temp_array(float, len * 3);
+	float[] g = rgb[len:len];
+	float[] b = rgb[len * 2..];
+	foreach (i, red : ramp.red)
+	{
+		rgb[i] = red / 65535.0f;
+		g[i] = ramp.green[i] / 65535.0f;
+		b[i] = ramp.blue[i] / 65535.0f;
+	}
+	if (!_monitor_display(monitor).setTransferByTable((uint)len, rgb.ptr, g, b)) return gfx::GAMMA_COULD_NOT_BE_SET~;
+}
+
+fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
+{
+	if (!mode.src) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	if (_monitor_display(mon).setDisplayMode((CGDisplayModeRef)mode.src, null)) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+}
+
+fn void poll_monitors()
+{
+	if (gfx::_gfx.monitors.count != 0) gfx::free_monitors();
+	uint count = 0;
+	CGDirectDisplayID[16] displays;
+	if (cg::getActiveDisplayList(16, &displays, &count) != 0) return;
+	for (uint i = 0; i < count; i++)
+	{
+		GfxMonitor mon;
+		_monitor_from_display(displays[i], &mon);
+		GfxMonitorNode* node = gfx::_monitor_add(&mon);
+		if (node == null) continue;
+		node.display = displays[i];
+		if (displays[i] == cg::mainDisplayID()) gfx::_gfx.monitors.primary = node;
+	}
+}
+
+// --- GfxMouse and mouse related
+
+fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
+{
+	if (!data) return gfx::IMAGE_COULD_NOT_LOAD~;
+	ObjId rep = gfx::_new_nsbitmap_image_rep(...size);
+	defer objc::release(rep);
+	char* pixels = rep.send(char*, "bitmapData");
+	if (!pixels) return gfx::IMAGE_COULD_NOT_LOAD~;
+	gfx::copy_image_data(pixels, ...size, RGBA8, data, format, null);
+	ObjId image = gfx::_new_nsimage(...size, rep);
+	CGPoint hot;
+	hot.x = 0.0; hot.y = 0.0;
+	ObjId cursor = objc::alloc_by_name("NSCursor").send(ObjId, "initWithImage:hotSpot:", image, hot);
+	objc::release(image);
+	if (!cursor) return gfx::IMAGE_COULD_NOT_LOAD~;
+	return (GfxMouse*)cursor;
+}
+
+fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
+{
+	ObjClass cls = objc::class("NSCursor");
+	if (!cls) return gfx::MOUSE_NOT_SUPPORTED~;
+	ObjId cursor = null;
+	switch (mouse)
+	{
+		case NORMAL:        cursor = objc::send(cls, ObjId, "arrowCursor");
+		case ARROW:         cursor = objc::send(cls, ObjId, "arrowCursor");
+		case IBEAM:         cursor = objc::send(cls, ObjId, "IBeamCursor");
+		case CROSSHAIR:     cursor = objc::send(cls, ObjId, "crosshairCursor");
+		case POINTING_HAND: cursor = objc::send(cls, ObjId, "pointingHandCursor");
+		case RESIZE_EW:     cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
+		case RESIZE_E:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
+		case RESIZE_W:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
+		case RESIZE_NS:     cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
+		case RESIZE_N:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
+		case RESIZE_S:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
+		case RESIZE_NWSE:   cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_SE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
+		case RESIZE_NESW:   cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_NE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_SW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
+		case RESIZE_ALL:    cursor = objc::send(cls, ObjId, "openHandCursor");
+		case NOT_ALLOWED:   cursor = objc::send(cls, ObjId, "operationNotAllowedCursor");
+		case WAIT:          cursor = objc::send(cls, ObjId, "arrowCursor");
+		case PROGRESS:      cursor = objc::send(cls, ObjId, "arrowCursor");
+		default:            cursor = objc::send(cls, ObjId, "arrowCursor");
+	}
+	if (cursor) return gfx::MOUSE_NOT_SUPPORTED~;
+	return (GfxMouse*)objc::retain(cursor);
+}
+
+fn void free_mouse(GfxMouse* mouse)
+{
+	objc::release((ObjId)mouse);
+}
+
+fn GfxPoint get_global_mouse()
+{
+	CGEventRef event = cg::eventCreate(null);
+	if (!event) return { -1, -1 };
+	defer event.release();
+	CGPoint point = event.getLocation();
+	return { (int)point.x, (int)point.y };
+}
+
+// --- GfxWindow
+
+fn void _window_set_border(GfxWindow* win, bool border)
+{
+	if (!win.src.window) return;
+	CGRect frame = win.src.window.send(CGRect, "frame");
+	CGRect content = win.src.view.send(CGRect, "frame");
+	double offset = 0;
+
+	win.internal.flags.no_border = !border;
+	NSWindowStyleMask styleMask = BORDERLESS | FULL_SIZE_CONTENT_VIEW;
+	if (border) styleMask = TITLED | CLOSABLE | MINIATURIZABLE;
+	if (!win.internal.flags.no_resize) styleMask |= RESIZABLE;
+
+	win.src.window.send_void("setStyleMask:", styleMask);
+
+	if (!border)
+	{
+		ObjId miniaturizeButton = win.src.window.send(ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
+		ObjId titleBarView = miniaturizeButton.send(ObjId, "superview");
+		titleBarView.send_void("setHidden:", true);
+		offset = (double)(frame.size.height - content.size.height);
+	}
+
+	win.resize(win.size + { 0, (int)offset });
+	win.height -= (int)offset;
+}
+
+fn void _window_set_name(GfxWindow* win, String name)
+{
+	win.src.window.send_void("setTitle:", name.to_nsstring());
+}
+
+fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
+{
+	if (!surface.data) return;
+	GfxPoint min = math::min(win.size, surface.size);
+	if (try mon = window_find_monitor(win))
+	{
+		min = (GfxPoint)((Vec2)min * mon.pixelRatio);
+	}
+	ObjId rep = gfx::_new_nsbitmap_image_rep(...min);
+	char* pixels = rep.send(char*, "bitmapData");
+	defer objc::release(rep);
+	if (!pixels) return;
+	gfx::copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
+	ObjId image = gfx::_new_nsimage(...min, rep);
+	win.src.view.send_void("setWantsLayer:", true);
+	ObjId layer = win.src.view.send(ObjId, "layer");
+	layer.send_void("setContents:", image);
+	objc::release(image);
+}
+
+fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
+{
+	NSWindowStyleMask style = TITLED | CLOSABLE | MINIATURIZABLE;
+	if (!flags.no_resize) style |= RESIZABLE;
+	if (flags.no_border) style = BORDERLESS;
+	CGRect rect = { { win.x, gfx::flip_y((float)(win.y + win.height - 1)) } , { ...win.size }};
+	ObjId nswin = objc::alloc_by_name("NSWindow").send(ObjId, "initWithContentRect:styleMask:backing:defer:", rect, style, NSBackingStoreType.BUFFERED, false);
+	if (!nswin) return gfx::NSWINDOW_CREATION_FAILED~;
+	ObjId view = gfx::_macos_view_class ? objc::send(gfx::_macos_view_class, ObjId, "alloc") : objc::alloc_by_name("NSView");
+	view = view.send(ObjId, "initWithFrame:", (CGRect) { { } , { ...win.size } });
+	if (gfx::_macos_view_class) view.set_ivar("gfx_window", win);
+	ObjId delegate = null;
+	if (gfx::_macos_window_delegate_class)
+	{
+		delegate = objc::alloc(gfx::_macos_window_delegate_class).send(ObjId, "init");
+		delegate.set_ivar("gfx_window", win);
+		nswin.send_void("setDelegate:", delegate);
+	}
+	win.src.window = nswin.retain();
+	win.src.view = view.retain();
+	win.src.delegate = delegate;
+	win.src.bounds = win.bounds;
+	nswin.send_void("setContentView:", view);
+	nswin.send_void("makeFirstResponder:", view);
+	nswin.send_void("setAcceptsMouseMovedEvents:", true);
+	win.set_name(name);
+	window_set_floating(win, flags.floating);
+	if (!(flags.hide)) window_show_platform(win);
+	if (flags.maximize) window_maximize_platform(win);
+	if (flags.minimize) window_minimize_platform(win);
+	if (flags.fullscreen) window_set_fullscreen(win, true);
+
+	gfx::_window_set_flags(win, flags, {});
+	win.src.backing = {};
+	if (flags.open_gl) gfx::_window_create_opengl_context_native(win, gfx::get_global_opengl_hints())!;
+	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
+	gfx::_macos_init_view(win);
+}
+
+fn void window_destroy_platform(GfxWindow* win)
+{
+	win.src.window.send_void("close");
+	win.src.delegate.release();
+	win.src.view.release();
+	win.src.window.release();
+	win.src.delegate = null;
+	win.src.view = null;
+	win.src.window = null;
+}
+
+fn GfxPoint window_fetch_size(GfxWindow* win)
+{
+	if (win.src.view)
+	{
+		CGRect frame = win.src.view.send(CGRect, "frame");
+		win.size = { (int)frame.size.width, (int)frame.size.height };
+	}
+	return win.size;
+}
+
+fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor();
+
+fn void window_flash(GfxWindow* win, GfxFlashRequest request)
+{
+	gfx::_gfx.ns_app.send(NSInteger, "requestUserAttention:", (NSUInteger)request);
+}
+
+fn void window_focus(GfxWindow* win)
+{
+	win.src.window.send_void("makeKeyWindow", null);
+	win.internal.in_focus = true;
+}
+
+fn void window_hide(GfxWindow* win)
+{
+	win.src.window.send_void("orderOut:", null);
+	win.internal.flags.hide = true;
+}
+
+fn bool window_is_floating(GfxWindow* win)
+{
+	if (!win) return false;
+	if (win.src.window) return win.src.window.send(NSInteger, "level") > NSWindowLevel.NORMAL;
+	return win.internal.flags.floating;
+}
+
+fn bool window_is_hidden(GfxWindow* win) @private
+{
+	if (win.src.window) return !win.src.window.send(bool, "isVisible");
+	return win.internal.flags.hide;
+}
+
+fn bool window_is_maximized(GfxWindow* win)
+{
+	if (win.src.window) return win.src.window.send(bool, "isZoomed");
+	return win.internal.flags.maximize;
+}
+
+fn bool window_is_minimized(GfxWindow* win)
+{
+	if (win.src.window) return win.src.window.send(bool, "isMiniaturized");
+	return win.internal.flags.minimize;
+}
+
+fn void window_maximize_platform(GfxWindow* win)
+{
+	win.src.window.send_void("zoom:", null);
+}
+
+fn void window_minimize_platform(GfxWindow* win)
+{
+	win.src.window.send_void("miniaturize:", null);
+}
+
 fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	cg::warpMouseCursorPosition({ ...where });
 	if (win) win.internal.last_mouse = where;
 }
 
-fn void? _load_opengl_macos()
+fn void window_move_platform(GfxWindow* win, GfxPoint where)
 {
-	if (gfx::_gfx.gl.native_handle) return;
-	gfx::_gfx.gl.native_handle = cf::bundle_for_name("com.apple.opengl");
-	if (!gfx::_gfx.gl.native_handle) return gfx::MISSING_OPENGL_LIB~;
-	gfx::_gfx.gl.get_proc_addr_fn = &get_opengl_proc;
+	if (!win.src.window) return;
+	CGRect content = win.src.view.send(CGRect, "frame");
+	win.x = where.x;
+	win.y = (int)gfx::flip_y((float)where.y + (float)content.size.height - 1.0f);
+	CGPoint origin = { ...where };
+	win.src.window.send_void("setFrameOrigin:", origin);
 }
-fn bool opengl_extension_is_supported_platform(String extension)
+
+fn void window_raise(GfxWindow* win)
 {
-	if (gfx::_opengl_extension_supported_base(extension, &get_opengl_proc)) return true;
-	return opengl_extension_is_supported_platform(extension);
+	win.src.window.send_void("orderFrontRegardless", null);
 }
-fn void* get_opengl_proc(ZString procname)
+
+fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
-	if (!gfx::_gfx.gl.native_handle || !procname) return null;
-	CFStringRef symbol_name = cf::stringCreateWithCString(null, procname, 0x0600);
-	if (!symbol_name) return null;
-	defer symbol_name.release();
-	return cf::bundleGetFunctionPointerForName((CFBundleRef)gfx::_gfx.gl.native_handle, symbol_name);
+	if (!win.src.window) return;
+	CGRect frame = win.src.window.send(CGRect, "frame");
+	CGRect content = win.src.window.send(CGRect, "contentRectForFrameRect:", frame);
+	double offset = frame.size.height - content.size.height;
+	win.src.window.send_void("setFrame:display:", (CGRect){{ ...win.origin }, { size.x, (double)size.y + offset}}, true);
 }
+
+fn void window_restore_platform(GfxWindow* win)
+{
+	if (!win.src.window) return;
+	win.src.window.send_void("deminiaturize:", null);
+	win.internal.flags.minimize = false;
+	win.internal.flags.maximize = false;
+}
+
+fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
+{
+	if (!win.src.window) return;
+	if (w == 0 && h == 0)
+	{
+		w = 1;
+		h = 1;
+	}
+	CGSize size = { w, h };
+	win.src.window.send_void("setContentAspectRatio:", size);
+}
+
+fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
+{
+	cg::associateMouseAndMouseCursorPosition(!state);
+}
+
+fn void window_set_floating(GfxWindow* win, bool floating)
+{
+	if (win.src.window) win.src.window.send_void("setLevel:", floating ? NSWindowLevel.FLOATING : NSWindowLevel.NORMAL);
+	win.internal.flags.floating = floating;
+}
+
+fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
+{
+	if (win.src.window) win.src.window.send_void("toggleFullScreen:", null);
+	win.internal.flags.fullscreen = fullscreen;
+}
+
+fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
+{
+	if (!gfx::_gfx.ns_app) return false;
+	if (!data)
+	{
+		gfx::_gfx.ns_app.send_void("setApplicationIconImage:", null);
+		return true;
+	}
+	ObjId rep = gfx::_new_nsbitmap_image_rep(w, h);
+	defer objc::release(rep);
+	char* pixels = rep.send(char*, "bitmapData");
+	if (!pixels) return false;
+	gfx::copy_image_data(pixels, w, h, RGBA8, data, format, null);
+	ObjId image = gfx::_new_nsimage(w, h, rep);
+	defer objc::release(image);
+	gfx::_gfx.ns_app.send_void("setApplicationIconImage:", image);
+	return true;
+}
+
+fn void window_set_max_size(GfxWindow* win, GfxSize size)
+{
+	if (!win.src.window) return;
+	if (size == { 0, 0 })
+	{
+		if (try mon = window_find_monitor(win)) size = mon.mode.size;
+	}
+	win.src.window.send_void("setMaxSize:", (CGSize){ ...size });
+}
+
+fn void window_set_min_size(GfxWindow* win, GfxSize size)
+{
+	win.src.window.send_void("setMinSize:", (CGSize) { ...size });
+}
+
+fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
+{
+	if (win.src.window) win.src.window.send_void("setIgnoresMouseEvents:", passthrough);
+}
+
+fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
+{
+	ObjId mouse_native = (ObjId)mouse;
+	cg::mainDisplayID().showCursor();
+	mouse_native.send_void("set");
+	win.src.mouse = mouse_native;
+}
+
+fn void window_set_opacity(GfxWindow* win, float opacity)
+{
+	win.src.window.send_void("setAlphaValue:", (CGFloat)opacity);
+}
+
+fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
+{
+	gfx::_gfx.raw_mouse = state;
+}
+
+fn void window_show_platform(GfxWindow* win)
+{
+	if (!win.src.window) return;
+	win.src.window.send_void("makeKeyAndOrderFront:", null);
+	if (gfx::_gfx.ns_app) gfx::_gfx.ns_app.send_void("activateIgnoringOtherApps:", true);
+	win.internal.flags.hide = false;
+}
+
+// Window - opengl
+
 fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
 	win.src.ctx.native = ctx;
@@ -86,15 +573,6 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	gfx::_window_set_opengl_swap_interval(win, 0);
 }
 
-
-fn void* get_current_opengl_context()
-{
-	return (void*)objc::send(objc::@class("NSOpenGLContext"), ObjId, "currentContext");
-}
-fn void window_opengl_swap_buffers(GfxWindow* win)
-{
-	if (win.src.ctx.native && win.src.ctx.native.ctx) win.src.ctx.native.ctx.send_void("flushBuffer");
-}
 fn void window_make_current_opengl_context(GfxWindow* win)
 {
 	if (win && win.src.ctx.native && win.src.ctx.native.ctx)
@@ -106,6 +584,12 @@ fn void window_make_current_opengl_context(GfxWindow* win)
 		objc::send_void(objc::@class("NSOpenGLContext"), "clearCurrentContext");
 	}
 }
+
+fn void window_opengl_swap_buffers(GfxWindow* win)
+{
+	if (win.src.ctx.native && win.src.ctx.native.ctx) win.src.ctx.native.ctx.send_void("flushBuffer");
+}
+
 fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
 {
 	objc::release(ctx.format);
@@ -114,507 +598,8 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	ctx.ctx = null;
 	win.src.ctx.native = null;
 }
-fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
-{
-	return false;
-}
-fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
-{
-	cg::associateMouseAndMouseCursorPosition(!state);
-}
-fn void window_maximize_platform(GfxWindow* win)
-{
-	win.src.window.send_void("zoom:", null);
-}
-fn void window_hide(GfxWindow* win)
-{
-	win.src.window.send_void("orderOut:", null);
-	win.internal.flags.hide = true;
-}
-fn bool window_is_minimized(GfxWindow* win)
-{
-	if (win.src.window) return win.src.window.send(bool, "isMiniaturized");
-	return win.internal.flags.minimize;
-}
-fn void window_flash(GfxWindow* win, GfxFlashRequest request)
-{
-	gfx::_gfx.ns_app.send(NSInteger, "requestUserAttention:", (NSUInteger)request);
-}
-fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
-{
-	if (!surface.data) return;
-	GfxPoint min = math::min(win.size, surface.size);
-	if (try mon = window_find_monitor(win))
-	{
-		min = (GfxPoint)((Vec2)min * mon.pixelRatio);
-	}
-	ObjId rep = gfx::_new_nsbitmap_image_rep(...min);
-	char* pixels = rep.send(char*, "bitmapData");
-	defer objc::release(rep);
-	if (!pixels) return;
-	gfx::copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
-	ObjId image = gfx::_new_nsimage(...min, rep);
-	win.src.view.send_void("setWantsLayer:", true);
-	ObjId layer = win.src.view.send(ObjId, "layer");
-	layer.send_void("setContents:", image);
-	objc::release(image);
-}
-fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
-{
-	gfx::_gfx.raw_mouse = state;
-}
-fn bool window_is_floating(GfxWindow* win)
-{
-	if (!win) return false;
-	if (win.src.window) return win.src.window.send(NSInteger, "level") > NSWindowLevel.NORMAL;
-	return win.internal.flags.floating;
-}
-fn void _window_set_border(GfxWindow* win, bool border)
-{
-	if (!win.src.window) return;
-	CGRect frame = win.src.window.send(CGRect, "frame");
-	CGRect content = win.src.view.send(CGRect, "frame");
-	double offset = 0;
 
-	win.internal.flags.no_border = !border;
-	NSWindowStyleMask styleMask = BORDERLESS | FULL_SIZE_CONTENT_VIEW;
-	if (border) styleMask = TITLED | CLOSABLE | MINIATURIZABLE;
-	if (!win.internal.flags.no_resize) styleMask |= RESIZABLE;
-
-	win.src.window.send_void("setStyleMask:", styleMask);
-
-	if (!border)
-	{
-		ObjId miniaturizeButton = win.src.window.send(ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
-		ObjId titleBarView = miniaturizeButton.send(ObjId, "superview");
-		titleBarView.send_void("setHidden:", true);
-		offset = (double)(frame.size.height - content.size.height);
-	}
-
-	win.resize(win.size + { 0, (int)offset });
-	win.height -= (int)offset;
-}
-fn GfxPoint window_fetch_size(GfxWindow* win)
-{
-	if (win.src.view)
-	{
-		CGRect frame = win.src.view.send(CGRect, "frame");
-		win.size = { (int)frame.size.width, (int)frame.size.height };
-	}
-	return win.size;
-}
-fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
-{
-	if (win.src.window) win.src.window.send_void("toggleFullScreen:", null);
-	win.internal.flags.fullscreen = fullscreen;
-}
-fn void window_focus(GfxWindow* win)
-{
-	win.src.window.send_void("makeKeyWindow", null);
-	win.internal.in_focus = true;
-}
-fn void window_resize_platform(GfxWindow* win, GfxSize size)
-{
-	if (!win.src.window) return;
-	CGRect frame = win.src.window.send(CGRect, "frame");
-	CGRect content = win.src.window.send(CGRect, "contentRectForFrameRect:", frame);
-	double offset = frame.size.height - content.size.height;
-	win.src.window.send_void("setFrame:display:", (CGRect){{ ...win.origin }, { size.x, (double)size.y + offset}}, true);
-}
-fn void window_move_platform(GfxWindow* win, GfxPoint where)
-{
-	if (!win.src.window) return;
-	CGRect content = win.src.view.send(CGRect, "frame");
-	win.x = where.x;
-	win.y = (int)gfx::flip_y((float)where.y + (float)content.size.height - 1.0f);
-	CGPoint origin = { ...where };
-	win.src.window.send_void("setFrameOrigin:", origin);
-}
-fn void window_set_min_size(GfxWindow* win, GfxSize size)
-{
-	win.src.window.send_void("setMinSize:", (CGSize) { ...size });
-}
-fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
-{
-	if (!gfx::_gfx.ns_app) return false;
-	if (!data)
-	{
-		gfx::_gfx.ns_app.send_void("setApplicationIconImage:", null);
-		return true;
-	}
-	ObjId rep = gfx::_new_nsbitmap_image_rep(w, h);
-	defer objc::release(rep);
-	char* pixels = rep.send(char*, "bitmapData");
-	if (!pixels) return false;
-	gfx::copy_image_data(pixels, w, h, RGBA8, data, format, null);
-	ObjId image = gfx::_new_nsimage(w, h, rep);
-	defer objc::release(image);
-	gfx::_gfx.ns_app.send_void("setApplicationIconImage:", image);
-	return true;
-}
-fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
-{
-	if (!win.src.window) return;
-	if (w == 0 && h == 0)
-	{
-		w = 1;
-		h = 1;
-	}
-	CGSize size = { w, h };
-	win.src.window.send_void("setContentAspectRatio:", size);
-}
-fn bool window_is_hidden(GfxWindow* win) @private
-{
-	if (win.src.window) return !win.src.window.send(bool, "isVisible");
-	return win.internal.flags.hide;
-}
-fn void free_mouse(GfxMouse* mouse)
-{
-	objc::release((ObjId)mouse);
-}
-fn void poll_events_platform()
-{
-	objc::@autoreleasepool()
-	{
-		gfx::_reset_prev_state();
-		if (!gfx::_gfx.ns_app) return;
-		ObjId distantPast = objc::send(objc::@class("NSDate"), ObjId, "distantPast");
-		ObjId mode = darwin::string("kCFRunLoopDefaultMode");
-		while (true)
-		{
-			objc::@autoreleasepool()
-			{
-				ObjId ev = gfx::_gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
-				if (!ev) break;
-				gfx::_gfx.ns_app.send_void("sendEvent:", ev);
-			};
-		}
-	};
-
-}
-fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
-{
-	NSWindowStyleMask style = TITLED | CLOSABLE | MINIATURIZABLE;
-	if (!flags.no_resize) style |= RESIZABLE;
-	if (flags.no_border) style = BORDERLESS;
-	CGRect rect = { { win.x, gfx::flip_y((float)(win.y + win.height - 1)) } , { ...win.size }};
-	ObjId nswin = objc::alloc_by_name("NSWindow").send(ObjId, "initWithContentRect:styleMask:backing:defer:", rect, style, NSBackingStoreType.BUFFERED, false);
-	if (!nswin) return gfx::NSWINDOW_CREATION_FAILED~;
-	ObjId view = gfx::_macos_view_class ? objc::send(gfx::_macos_view_class, ObjId, "alloc") : objc::alloc_by_name("NSView");
-	view = view.send(ObjId, "initWithFrame:", (CGRect) { { } , { ...win.size } });
-	if (gfx::_macos_view_class) view.set_ivar("gfx_window", win);
-	ObjId delegate = null;
-	if (gfx::_macos_window_delegate_class)
-	{
-		delegate = objc::alloc(gfx::_macos_window_delegate_class).send(ObjId, "init");
-		delegate.set_ivar("gfx_window", win);
-		nswin.send_void("setDelegate:", delegate);
-	}
-	win.src.window = nswin.retain();
-	win.src.view = view.retain();
-	win.src.delegate = delegate;
-	win.src.bounds = win.bounds;
-	nswin.send_void("setContentView:", view);
-	nswin.send_void("makeFirstResponder:", view);
-	nswin.send_void("setAcceptsMouseMovedEvents:", true);
-	win.set_name(name);
-	window_set_floating(win, flags.floating);
-	if (!(flags.hide)) window_show_platform(win);
-	if (flags.maximize) window_maximize_platform(win);
-	if (flags.minimize) window_minimize_platform(win);
-	if (flags.fullscreen) window_set_fullscreen(win, true);
-
-	gfx::_window_set_flags(win, flags, {});
-	win.src.backing = {};
-	if (flags.open_gl) gfx::_window_create_opengl_context_native(win, gfx::get_global_opengl_hints())!;
-	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
-	gfx::_macos_init_view(win);
-}
-fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor();
-fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => @pool()
-{
-	if (!ramp.red) return gfx::GAMMA_COULD_NOT_BE_SET~;
-	sz len = ramp.red.len;
-	float[] rgb = mem::temp_array(float, len * 3);
-	float[] g = rgb[len:len];
-	float[] b = rgb[len * 2..];
-	foreach (i, red : ramp.red)
-	{
-		rgb[i] = red / 65535.0f;
-		g[i] = ramp.green[i] / 65535.0f;
-		b[i] = ramp.blue[i] / 65535.0f;
-	}
-	if (!_monitor_display(monitor).setTransferByTable((uint)len, rgb.ptr, g, b)) return gfx::GAMMA_COULD_NOT_BE_SET~;
-}
-
-fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => @pool()
-{
-	CGDirectDisplayID display = _monitor_display(monitor);
-	uint len = display.gammaTableCapacity();
-	if (!len) return gfx::CANNOT_RETRIEVE_GAMMA~;
-	float[] gamma_array = mem::temp_array(float, len);
-	foreach (i, &g : gamma_array)
-	{
-		*g = gfx::_gamma_for_index(gamma, i, len) / 65535.0f;
-	}
-	if (!_monitor_display(monitor).setTransferByTable((uint)len, gamma_array, gamma_array, gamma_array)) return gfx::GAMMA_COULD_NOT_BE_SET~;
-}
-
-fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => @pool()
-{
-	CGDirectDisplayID display = _monitor_display(monitor);
-	sz count = (sz)display.gammaTableCapacity();
-	if (!count) return gfx::CANNOT_RETRIEVE_GAMMA~;
-	float[] rgb = mem::temp_array(float, (sz)count * 3);
-	uint actual = 0;
-	float[] red = rgb[:count];
-	float[] green = rgb[count:count];
-	float[] blue = rgb[count * 2:count];
-	if (!display.transferByTable((uint)count, red, green, blue, &actual)) return gfx::CANNOT_RETRIEVE_GAMMA~;
-	ushort[] ramp = alloc::alloc_array(a, ushort, (sz)actual * 3);
-	ushort[] ramp_r = ramp[:actual];
-	ushort[] ramp_g = ramp[actual:actual];
-	ushort[] ramp_b = ramp[actual * 2:actual];
-	for (sz i = 0; i < (sz)actual; i++)
-	{
-		ramp_r[i] = (ushort)(red[i] * 65535.0);
-		ramp_g[i] = (ushort)(green[i] * 65535.0);
-		ramp_b[i] = (ushort)(blue[i] * 65535.0);
-	}
-	return { ramp_r, ramp_g, ramp_b, a };
-}
-fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
-{
-	CFArrayRef list = _monitor_display(monitor).copyAllDisplayModes(null);
-	if (!list) return {};
-
-	List{GfxMonitorMode} modes;
-	foreach (CGDisplayModeRef mode : list)
-	{
-		modes.push({
-			.size = { (int)mode.getWidth(), (int)mode.getHeight() },
-			.refresh_rate = (float)mode.getRefreshRate(),
-			.rgb = (char[<3>])8,
-			.src = mode
-		});
-	}
-	list.release();
-	return modes.array_view();
-}
-fn IntRect monitor_get_workarea(GfxMonitor* monitor)
-{
-	CGRect bounds = _monitor_display(monitor).bounds();
-	return { (int)bounds.origin.x, (int)bounds.origin.y, (int)bounds.size.width, (int)bounds.size.height };
-}
-fn void window_set_max_size(GfxWindow* win, GfxSize size)
-{
-	if (!win.src.window) return;
-	if (size == { 0, 0 })
-	{
-		if (try mon = window_find_monitor(win)) size = mon.mode.size;
-	}
-	win.src.window.send_void("setMaxSize:", (CGSize){ ...size });
-}
-fn void _window_set_name(GfxWindow* win, String name)
-{
-	win.src.window.send_void("setTitle:", name.to_nsstring());
-}
-fn void window_restore_platform(GfxWindow* win)
-{
-	if (!win.src.window) return;
-	win.src.window.send_void("deminiaturize:", null);
-	win.internal.flags.minimize = false;
-	win.internal.flags.maximize = false;
-}
-fn void window_raise(GfxWindow* win)
-{
-	win.src.window.send_void("orderFrontRegardless", null);
-}
-fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
-{
-	if (win.src.window) win.src.window.send_void("setIgnoresMouseEvents:", passthrough);
-}
-fn bool window_is_maximized(GfxWindow* win)
-{
-	if (win.src.window) return win.src.window.send(bool, "isZoomed");
-	return win.internal.flags.maximize;
-}
-fn void window_set_opacity(GfxWindow* win, float opacity)
-{
-	win.src.window.send_void("setAlphaValue:", (CGFloat)opacity);
-}
-
-fn void window_minimize_platform(GfxWindow* win)
-{
-	win.src.window.send_void("miniaturize:", null);
-}
-
-fn void window_destroy_platform(GfxWindow* win)
-{
-	win.src.window.send_void("close");
-	win.src.delegate.release();
-	win.src.view.release();
-	win.src.window.release();
-	win.src.delegate = null;
-	win.src.view = null;
-	win.src.window = null;
-}
-fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
-{
-	ObjId mouse_native = (ObjId)mouse;
-	cg::mainDisplayID().showCursor();
-	mouse_native.send_void("set");
-	win.src.mouse = mouse_native;
-}
-fn void window_set_floating(GfxWindow* win, bool floating)
-{
-	if (win.src.window) win.src.window.send_void("setLevel:", floating ? NSWindowLevel.FLOATING : NSWindowLevel.NORMAL);
-	win.internal.flags.floating = floating;
-}
-fn void window_show_platform(GfxWindow* win)
-{
-	if (!win.src.window) return;
-	win.src.window.send_void("makeKeyAndOrderFront:", null);
-	if (gfx::_gfx.ns_app) gfx::_gfx.ns_app.send_void("activateIgnoringOtherApps:", true);
-	win.internal.flags.hide = false;
-}
-fn void destroy_platform()
-{
-	if (gfx::_gfx.ns_pool)
-	{
-		objc::pool_pop(gfx::_gfx.ns_pool);
-		gfx::_gfx.ns_pool = null;
-	}
-}
-fn void? write_clipboard(GfxDataTransfer* data)
-{
-	if (data.type != TEXT || !data.text) return NOT_IMPLEMENTED~;
-	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
-	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
-	pb.send_void("clearContents");
-
-	if (!pb.send(bool, "setString:forType:", data.text.to_nsstring(), "public.utf8-plain-text".to_nsstring()))
-	{
-		return gfx::CLIPBOARD_WRITE_FAILED~;
-	}
-}
-fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type)
-{
-	if (type != TEXT) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
-
-	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
-	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
-
-	ObjId str = pb.send(ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
-	if (!str) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
-
-	ZString raw = darwin::string_to_zstr(str);
-	if (!raw) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
-
-	return { .text = raw.str_view().copy(allocator), .type = TEXT };
-}
-fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
-{
-	ObjClass cls = objc::class("NSCursor");
-	if (!cls) return gfx::MOUSE_NOT_SUPPORTED~;
-	ObjId cursor = null;
-	switch (mouse)
-	{
-		case NORMAL:        cursor = objc::send(cls, ObjId, "arrowCursor");
-		case ARROW:         cursor = objc::send(cls, ObjId, "arrowCursor");
-		case IBEAM:         cursor = objc::send(cls, ObjId, "IBeamCursor");
-		case CROSSHAIR:     cursor = objc::send(cls, ObjId, "crosshairCursor");
-		case POINTING_HAND: cursor = objc::send(cls, ObjId, "pointingHandCursor");
-		case RESIZE_EW:     cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
-		case RESIZE_E:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
-		case RESIZE_W:      cursor = objc::send(cls, ObjId, "resizeLeftRightCursor");
-		case RESIZE_NS:     cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
-		case RESIZE_N:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
-		case RESIZE_S:      cursor = objc::send(cls, ObjId, "resizeUpDownCursor");
-		case RESIZE_NWSE:   cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_NW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_SE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthWestSouthEastCursor");
-		case RESIZE_NESW:   cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_NE:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_SW:     cursor = objc::send(cls, ObjId, "_windowResizeNorthEastSouthWestCursor");
-		case RESIZE_ALL:    cursor = objc::send(cls, ObjId, "openHandCursor");
-		case NOT_ALLOWED:   cursor = objc::send(cls, ObjId, "operationNotAllowedCursor");
-		case WAIT:          cursor = objc::send(cls, ObjId, "arrowCursor");
-		case PROGRESS:      cursor = objc::send(cls, ObjId, "arrowCursor");
-		default:            cursor = objc::send(cls, ObjId, "arrowCursor");
-	}
-	if (cursor) return gfx::MOUSE_NOT_SUPPORTED~;
-	return (GfxMouse*)objc::retain(cursor);
-}
-fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
-{
-	if (!data) return gfx::IMAGE_COULD_NOT_LOAD~;
-	ObjId rep = gfx::_new_nsbitmap_image_rep(...size);
-	defer objc::release(rep);
-	char* pixels = rep.send(char*, "bitmapData");
-	if (!pixels) return gfx::IMAGE_COULD_NOT_LOAD~;
-	gfx::copy_image_data(pixels, ...size, RGBA8, data, format, null);
-	ObjId image = gfx::_new_nsimage(...size, rep);
-	CGPoint hot;
-	hot.x = 0.0; hot.y = 0.0;
-	ObjId cursor = objc::alloc_by_name("NSCursor").send(ObjId, "initWithImage:hotSpot:", image, hot);
-	objc::release(image);
-	if (!cursor) return gfx::IMAGE_COULD_NOT_LOAD~;
-	return (GfxMouse*)cursor;
-}
-fn void poll_monitors()
-{
-	if (gfx::_gfx.monitors.count != 0) gfx::free_monitors();
-	uint count = 0;
-	CGDirectDisplayID[16] displays;
-	if (cg::getActiveDisplayList(16, &displays, &count) != 0) return;
-	for (uint i = 0; i < count; i++)
-	{
-		GfxMonitor mon;
-		_monitor_from_display(displays[i], &mon);
-		GfxMonitorNode* node = gfx::_monitor_add(&mon);
-		if (node == null) continue;
-		node.display = displays[i];
-		if (displays[i] == cg::mainDisplayID()) gfx::_gfx.monitors.primary = node;
-	}
-}
-fn void monitor_node_free(GfxMonitorNode* node)
-{
-	if (node.mon.mode.src) CFType.release(node.mon.mode.src);
-}
-fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
-{
-	return monitor_set_mode(mon, mode);
-}
-fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
-{
-	if (!mode.src) return gfx::MONITOR_MODE_CHANGE_FAILED~;
-	if (_monitor_display(mon).setDisplayMode((CGDisplayModeRef)mode.src, null)) return gfx::MONITOR_MODE_CHANGE_FAILED~;
-}
-fn GfxPoint get_global_mouse()
-{
-	CGEventRef event = cg::eventCreate(null);
-	if (!event) return { -1, -1 };
-	defer event.release();
-	CGPoint point = event.getLocation();
-	return { (int)point.x, (int)point.y };
-}
-fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
-{
-	surface.data = data;
-	surface.size = { w, h };
-	surface.format = format;
-	surface.native.format = RGBA8;
-	surface.native.buffer = malloc((sz)w * h * 4);
-}
-fn void surface_release(GfxSurface* surface)
-{
-	if (!surface.data) return;
-	if (surface.native.native0) objc::release(surface.native.native0);
-	if (surface.native.buffer) free(surface.native.buffer);
-	*surface = {};
-}
-
+// Vulkan
 
 fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private
 {
@@ -634,6 +619,8 @@ fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instanc
 	if (raw(instance, &create_info, null, &surface)) return gfx::SURFACE_CREATION_FAILED~;
 	return surface;
 }
+
+// Window WGPU
 
 fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
@@ -655,15 +642,88 @@ fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instan
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromMetal;
 	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
 }
-fn ObjId _get_layer_macos()
+
+// --- Clipboard
+
+fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type)
 {
-	if (!gfx::_gfx.current || !gfx::_gfx.current.src.view) return null;
-	return gfx::_gfx.current.src.view.send(ObjId, "layer");
+	if (type != TEXT) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+
+	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
+	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
+
+	ObjId str = pb.send(ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
+	if (!str) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+
+	ZString raw = darwin::string_to_zstr(str);
+	if (!raw) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+
+	return { .text = raw.str_view().copy(allocator), .type = TEXT };
 }
-fn void _window_set_layer_macos(GfxWindow* win, ObjId layer)
+
+fn void? write_clipboard(GfxDataTransfer* data)
 {
-	if (win.src.view) win.src.view.send_void("setLayer:", layer);
+	if (data.type != TEXT || !data.text) return NOT_IMPLEMENTED~;
+	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
+	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
+	pb.send_void("clearContents");
+
+	if (!pb.send(bool, "setString:forType:", data.text.to_nsstring(), "public.utf8-plain-text".to_nsstring()))
+	{
+		return gfx::CLIPBOARD_WRITE_FAILED~;
+	}
 }
+
+// --- GfxSurface
+
+fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+{
+	surface.data = data;
+	surface.size = { w, h };
+	surface.format = format;
+	surface.native.format = RGBA8;
+	surface.native.buffer = malloc((sz)w * h * 4);
+}
+
+fn void surface_release(GfxSurface* surface)
+{
+	if (!surface.data) return;
+	if (surface.native.native0) objc::release(surface.native.native0);
+	if (surface.native.buffer) free(surface.native.buffer);
+	*surface = {};
+}
+
+// --- Vulkan
+
+fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+{
+	return false;
+}
+
+// --- Opengl
+
+fn void* get_current_opengl_context()
+{
+	return (void*)objc::send(objc::@class("NSOpenGLContext"), ObjId, "currentContext");
+}
+
+fn void* get_opengl_proc(ZString procname)
+{
+	if (!gfx::_gfx.gl.native_handle || !procname) return null;
+	CFStringRef symbol_name = cf::stringCreateWithCString(null, procname, 0x0600);
+	if (!symbol_name) return null;
+	defer symbol_name.release();
+	return cf::bundleGetFunctionPointerForName((CFBundleRef)gfx::_gfx.gl.native_handle, symbol_name);
+}
+
+fn bool opengl_extension_is_supported_platform(String extension)
+{
+	if (gfx::_opengl_extension_supported_base(extension, &get_opengl_proc)) return true;
+	return opengl_extension_is_supported_platform(extension);
+}
+
+// --- Keys
+
 fn void init_keycodes_platform()
 {
 	gfx::_gfx.keycodes = {
@@ -706,6 +766,7 @@ fn void init_keycodes_platform()
 		[0x51] = PAD_EQUAL,     [0x43] = PAD_MULTIPLY,  [0x4E] = PAD_MINUS,
 	};
 }
+
 fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	ushort keycode = (ushort)key.to_api();
@@ -727,6 +788,27 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 	if (status == 0 && len == 1 && chars[0] < 256) return (GfxKey)chars[0];
 
 	return key;
+}
+
+
+
+fn void? _load_opengl_macos()
+{
+	if (gfx::_gfx.gl.native_handle) return;
+	gfx::_gfx.gl.native_handle = cf::bundle_for_name("com.apple.opengl");
+	if (!gfx::_gfx.gl.native_handle) return gfx::MISSING_OPENGL_LIB~;
+	gfx::_gfx.gl.get_proc_addr_fn = &get_opengl_proc;
+}
+
+
+fn ObjId _get_layer_macos()
+{
+	if (!gfx::_gfx.current || !gfx::_gfx.current.src.view) return null;
+	return gfx::_gfx.current.src.view.send(ObjId, "layer");
+}
+fn void _window_set_layer_macos(GfxWindow* win, ObjId layer)
+{
+	if (win.src.view) win.src.view.send_void("setLayer:", layer);
 }
 
 fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
@@ -809,8 +891,6 @@ fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param)
 }
 
 
-
-
 struct VkMetalSurfaceCreateInfoEXT
 {
 	int sType;
@@ -819,7 +899,6 @@ struct VkMetalSurfaceCreateInfoEXT
 	void* pLayer;
 }
 alias VkCreateMetalSurfaceExtFn = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
-
 
 
 fn void? _init_native(String class_name, GfxInitOption flags)
@@ -846,7 +925,6 @@ fn void _wait_for_event_native(Duration duration)
 }
 
 struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
-
 
 
 // MacOS callbacks
@@ -1004,7 +1082,6 @@ fn void _osx_mouse_moved_common(ObjId self, ObjId event)
 fn void _osx_mouse_moved(ObjId self, ObjSel sel, ObjId event) => _osx_mouse_moved_common(self, event);
 fn void _osx_mouse_dragged(ObjId self, ObjSel sel, ObjId event) => _osx_mouse_moved_common(self, event);
 
-// private
 fn void _osx_mouse_button_common(ObjId self, ObjId event, bool down, GfxMouseButton fallback)
 {
 	GfxWindow*? win = _fetch_win(self);
@@ -1131,7 +1208,6 @@ fn bool _osx_prepare_for_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 	return win.internal.flags.allow_dnd;
 }
 
-// private
 fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 {
 	GfxWindow*? win = _fetch_win(self);

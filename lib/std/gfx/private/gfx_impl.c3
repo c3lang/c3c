@@ -30,6 +30,26 @@ fn void _destroy_platform()
 	$endswitch
 }
 
+fn void _poll_events_platform()
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::poll_events_platform();
+		$case $feat(WASM):
+			return wasm::poll_events_platform();
+		$case $feat(WIN32):
+			return win32::poll_events_platform();
+		$case WAYLAND_ONLY:
+			return wl::poll_events_platform();
+		$case X11_ONLY:
+			return x11::poll_events_platform();
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::poll_events_platform();
+			return x11::poll_events_platform();
+		$default:
+			unreachable();
+	$endswitch
+}
 
 fn void _stop_check_events()
 {
@@ -52,72 +72,7 @@ fn void _stop_check_events()
 	$endswitch
 }
 
-fn void _poll_events_platform()
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::poll_events_platform();
-		$case $feat(WASM):
-			return wasm::poll_events_platform();
-		$case $feat(WIN32):
-			return win32::poll_events_platform();
-		$case WAYLAND_ONLY:
-			return wl::poll_events_platform();
-		$case X11_ONLY:
-			return x11::poll_events_platform();
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::poll_events_platform();
-			return x11::poll_events_platform();
-		$default:
-			unreachable();
-	$endswitch
-}
-
-
 // --- GfxMonitor functions
-
-
-fn GfxMonitorMode[] _monitor_get_modes(GfxMonitor* monitor)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::monitor_get_modes(monitor);
-		$case $feat(WASM):
-			return wasm::monitor_get_modes(monitor);
-		$case $feat(WIN32):
-			return win32::monitor_get_modes(monitor);
-		$case WAYLAND_ONLY:
-			return wl::monitor_get_modes(monitor);
-		$case X11_ONLY:
-			return x11::monitor_get_modes(monitor);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::monitor_get_modes(monitor);
-			return x11::monitor_get_modes(monitor);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn void? _monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::monitor_set_mode(mon, mode);
-		$case $feat(WASM):
-			return wasm::monitor_set_mode(mon, mode);
-		$case $feat(WIN32):
-			return win32::monitor_set_mode(mon, mode);
-		$case WAYLAND_ONLY:
-			return wl::monitor_set_mode(mon, mode);
-		$case X11_ONLY:
-			return x11::monitor_set_mode(mon, mode);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::monitor_set_mode(mon, mode);
-			return x11::monitor_set_mode(mon, mode);
-		$default:
-			unreachable();
-	$endswitch
-}
 
 fn GfxGammaRamp? _monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
 {
@@ -140,43 +95,43 @@ fn GfxGammaRamp? _monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
 	$endswitch
 }
 
-fn void? _monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp)
+fn GfxMonitorMode[] _monitor_get_modes(GfxMonitor* monitor)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::monitor_set_gamma_ramp(monitor, ramp);
+			return macos::monitor_get_modes(monitor);
 		$case $feat(WASM):
-			return wasm::monitor_set_gamma_ramp(monitor, ramp);
+			return wasm::monitor_get_modes(monitor);
 		$case $feat(WIN32):
-			return win32::monitor_set_gamma_ramp(monitor, ramp);
+			return win32::monitor_get_modes(monitor);
 		$case WAYLAND_ONLY:
-			return wl::monitor_set_gamma_ramp(monitor, ramp);
+			return wl::monitor_get_modes(monitor);
 		$case X11_ONLY:
-			return x11::monitor_set_gamma_ramp(monitor, ramp);
+			return x11::monitor_get_modes(monitor);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::monitor_set_gamma_ramp(monitor, ramp);
-			return x11::monitor_set_gamma_ramp(monitor, ramp);
+			if (_gfx.use_wayland) return wl::monitor_get_modes(monitor);
+			return x11::monitor_get_modes(monitor);
 		$default:
 			unreachable();
 	$endswitch
 }
 
-fn void? _monitor_set_gamma(GfxMonitor* monitor, float gamma)
+fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::monitor_set_gamma(monitor, gamma);
+			return macos::monitor_get_workarea(monitor);
 		$case $feat(WASM):
-			return wasm::monitor_set_gamma(monitor, gamma);
+			return wasm::monitor_get_workarea(monitor);
 		$case $feat(WIN32):
-			return win32::monitor_set_gamma(monitor, gamma);
+			return win32::monitor_get_workarea(monitor);
 		$case WAYLAND_ONLY:
-			return wl::monitor_set_gamma(monitor, gamma);
+			return wl::monitor_get_workarea(monitor);
 		$case X11_ONLY:
-			return x11::monitor_set_gamma(monitor, gamma);
+			return x11::monitor_get_workarea(monitor);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::monitor_set_gamma(monitor, gamma);
-			return x11::monitor_set_gamma(monitor, gamma);
+			if (_gfx.use_wayland) return wl::monitor_get_workarea(monitor);
+			return x11::monitor_get_workarea(monitor);
 		$default:
 			unreachable();
 	$endswitch
@@ -203,29 +158,6 @@ fn void _monitor_node_free(GfxMonitorNode* node)
 	$endswitch
 }
 
-
-fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::monitor_get_workarea(monitor);
-		$case $feat(WASM):
-			return wasm::monitor_get_workarea(monitor);
-		$case $feat(WIN32):
-			return win32::monitor_get_workarea(monitor);
-		$case WAYLAND_ONLY:
-			return wl::monitor_get_workarea(monitor);
-		$case X11_ONLY:
-			return x11::monitor_get_workarea(monitor);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::monitor_get_workarea(monitor);
-			return x11::monitor_get_workarea(monitor);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-
 fn void? _monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
 	$switch:
@@ -242,6 +174,69 @@ fn void? _monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitor
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::monitor_request_mode(mon, mode, request);
 			return x11::monitor_request_mode(mon, mode, request);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void? _monitor_set_gamma(GfxMonitor* monitor, float gamma)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::monitor_set_gamma(monitor, gamma);
+		$case $feat(WASM):
+			return wasm::monitor_set_gamma(monitor, gamma);
+		$case $feat(WIN32):
+			return win32::monitor_set_gamma(monitor, gamma);
+		$case WAYLAND_ONLY:
+			return wl::monitor_set_gamma(monitor, gamma);
+		$case X11_ONLY:
+			return x11::monitor_set_gamma(monitor, gamma);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::monitor_set_gamma(monitor, gamma);
+			return x11::monitor_set_gamma(monitor, gamma);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void? _monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::monitor_set_gamma_ramp(monitor, ramp);
+		$case $feat(WASM):
+			return wasm::monitor_set_gamma_ramp(monitor, ramp);
+		$case $feat(WIN32):
+			return win32::monitor_set_gamma_ramp(monitor, ramp);
+		$case WAYLAND_ONLY:
+			return wl::monitor_set_gamma_ramp(monitor, ramp);
+		$case X11_ONLY:
+			return x11::monitor_set_gamma_ramp(monitor, ramp);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::monitor_set_gamma_ramp(monitor, ramp);
+			return x11::monitor_set_gamma_ramp(monitor, ramp);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void? _monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::monitor_set_mode(mon, mode);
+		$case $feat(WASM):
+			return wasm::monitor_set_mode(mon, mode);
+		$case $feat(WIN32):
+			return win32::monitor_set_mode(mon, mode);
+		$case WAYLAND_ONLY:
+			return wl::monitor_set_mode(mon, mode);
+		$case X11_ONLY:
+			return x11::monitor_set_mode(mon, mode);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::monitor_set_mode(mon, mode);
+			return x11::monitor_set_mode(mon, mode);
 		$default:
 			unreachable();
 	$endswitch
@@ -267,7 +262,6 @@ fn void _poll_monitors()
 			unreachable();
 	$endswitch
 }
-
 
 // --- GfxMouse and mouse related
 
@@ -357,23 +351,25 @@ fn GfxPoint _get_global_mouse()
 
 // --- GfxWindow
 
-
-fn void _window_show_platform(GfxWindow* win)
+<*
+ Blit the surface to the window
+*>
+fn void _window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::window_show_platform(win);
+			return macos::window_blit_surface(win, surface);
 		$case $feat(WASM):
-			return wasm::window_show_platform(win);
+			return wasm::window_blit_surface(win, surface);
 		$case $feat(WIN32):
-			return win32::window_show_platform(win);
+			return win32::window_blit_surface(win, surface);
 		$case WAYLAND_ONLY:
-			return wl::window_show_platform(win);
+			return wl::window_blit_surface(win, surface);
 		$case X11_ONLY:
-			return x11::window_show_platform(win);
+			return x11::window_blit_surface(win, surface);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_show_platform(win);
-			return x11::window_show_platform(win);
+			if (_gfx.use_wayland) return wl::window_blit_surface(win, surface);
+			return x11::window_blit_surface(win, surface);
 		$default:
 			unreachable();
 	$endswitch
@@ -451,30 +447,26 @@ fn GfxPoint _window_fetch_size(GfxWindow* win)
 	$endswitch
 }
 
-<*
- Blit the surface to the window
-*>
-fn void _window_blit_surface(GfxWindow* win, GfxSurface* surface)
+fn GfxMonitor*? _window_find_monitor(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::window_blit_surface(win, surface);
+			return macos::window_find_monitor(win);
 		$case $feat(WASM):
-			return wasm::window_blit_surface(win, surface);
+			return wasm::window_find_monitor(win);
 		$case $feat(WIN32):
-			return win32::window_blit_surface(win, surface);
+			return win32::window_find_monitor(win);
 		$case WAYLAND_ONLY:
-			return wl::window_blit_surface(win, surface);
+			return wl::window_find_monitor(win);
 		$case X11_ONLY:
-			return x11::window_blit_surface(win, surface);
+			return x11::window_find_monitor(win);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_blit_surface(win, surface);
-			return x11::window_blit_surface(win, surface);
+			if (_gfx.use_wayland) return wl::window_find_monitor(win);
+			return x11::window_find_monitor(win);
 		$default:
 			unreachable();
 	$endswitch
 }
-
 
 fn void _window_flash(GfxWindow* win, GfxFlashRequest request)
 {
@@ -534,6 +526,27 @@ fn void _window_hide(GfxWindow* win) @private
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::window_hide(win);
 			return x11::window_hide(win);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn bool _window_is_floating(GfxWindow* win) @private
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::window_is_floating(win);
+		$case $feat(WASM):
+			return wasm::window_is_floating(win);
+		$case $feat(WIN32):
+			return win32::window_is_floating(win);
+		$case WAYLAND_ONLY:
+			return wl::window_is_floating(win);
+		$case X11_ONLY:
+			return x11::window_is_floating(win);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::window_is_floating(win);
+			return x11::window_is_floating(win);
 		$default:
 			unreachable();
 	$endswitch
@@ -800,6 +813,27 @@ fn void _window_set_border(GfxWindow* win, bool border)
 	$endswitch
 }
 
+fn void _window_set_capture_mouse_platform(GfxWindow* win, bool state)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::window_set_capture_mouse_platform(win, state);
+		$case $feat(WASM):
+			return wasm::window_set_capture_mouse_platform(win, state);
+		$case $feat(WIN32):
+			return win32::window_set_capture_mouse_platform(win, state);
+		$case WAYLAND_ONLY:
+			return wl::window_set_capture_mouse_platform(win, state);
+		$case X11_ONLY:
+			return x11::window_set_capture_mouse_platform(win, state);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::window_set_capture_mouse_platform(win, state);
+			return x11::window_set_capture_mouse_platform(win, state);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 fn void _window_set_floating(GfxWindow* win, bool floating)
 {
 	$switch:
@@ -842,6 +876,27 @@ fn void _window_set_fullscreen(GfxWindow* win, bool fullscreen)
 	$endswitch
 }
 
+fn bool _window_set_icon(GfxWindow* win, void* data_src, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::window_set_icon(win, data_src, w, h, format, type);
+		$case $feat(WASM):
+			return wasm::window_set_icon(win, data_src, w, h, format, type);
+		$case $feat(WIN32):
+			return win32::window_set_icon(win, data_src, w, h, format, type);
+		$case WAYLAND_ONLY:
+			return wl::window_set_icon(win, data_src, w, h, format, type);
+		$case X11_ONLY:
+			return x11::window_set_icon(win, data_src, w, h, format, type);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::window_set_icon(win, data_src, w, h, format, type);
+			return x11::window_set_icon(win, data_src, w, h, format, type);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 fn void _window_set_max_size(GfxWindow* win, GfxSize size)
 {
 	$switch:
@@ -858,27 +913,6 @@ fn void _window_set_max_size(GfxWindow* win, GfxSize size)
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::window_set_max_size(win, size);
 			return x11::window_set_max_size(win, size);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn bool _window_is_floating(GfxWindow* win) @private
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::window_is_floating(win);
-		$case $feat(WASM):
-			return wasm::window_is_floating(win);
-		$case $feat(WIN32):
-			return win32::window_is_floating(win);
-		$case WAYLAND_ONLY:
-			return wl::window_is_floating(win);
-		$case X11_ONLY:
-			return x11::window_is_floating(win);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_is_floating(win);
-			return x11::window_is_floating(win);
 		$default:
 			unreachable();
 	$endswitch
@@ -947,6 +981,27 @@ fn void _window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 	$endswitch
 }
 
+fn void _window_set_name(GfxWindow* win, String name)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::_window_set_name(win, name);
+		$case $feat(WASM):
+			return wasm::_window_set_name(win, name);
+		$case $feat(WIN32):
+			return win32::_window_set_name(win, name);
+		$case WAYLAND_ONLY:
+			return wl::_window_set_name(win, name);
+		$case X11_ONLY:
+			return x11::_window_set_name(win, name);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::_window_set_name(win, name);
+			return x11::_window_set_name(win, name);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 fn void _window_set_opacity(GfxWindow* win, float opacity)
 {
 	$switch:
@@ -989,85 +1044,22 @@ fn void _window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 	$endswitch
 }
 
-fn void _window_set_name(GfxWindow* win, String name)
+fn void _window_show_platform(GfxWindow* win)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::_window_set_name(win, name);
+			return macos::window_show_platform(win);
 		$case $feat(WASM):
-			return wasm::_window_set_name(win, name);
+			return wasm::window_show_platform(win);
 		$case $feat(WIN32):
-			return win32::_window_set_name(win, name);
+			return win32::window_show_platform(win);
 		$case WAYLAND_ONLY:
-			return wl::_window_set_name(win, name);
+			return wl::window_show_platform(win);
 		$case X11_ONLY:
-			return x11::_window_set_name(win, name);
+			return x11::window_show_platform(win);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::_window_set_name(win, name);
-			return x11::_window_set_name(win, name);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn bool _window_set_icon(GfxWindow* win, void* data_src, int w, int h, GfxFormat format, GfxWindowIconType type = BOTH)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::window_set_icon(win, data_src, w, h, format, type);
-		$case $feat(WASM):
-			return wasm::window_set_icon(win, data_src, w, h, format, type);
-		$case $feat(WIN32):
-			return win32::window_set_icon(win, data_src, w, h, format, type);
-		$case WAYLAND_ONLY:
-			return wl::window_set_icon(win, data_src, w, h, format, type);
-		$case X11_ONLY:
-			return x11::window_set_icon(win, data_src, w, h, format, type);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_set_icon(win, data_src, w, h, format, type);
-			return x11::window_set_icon(win, data_src, w, h, format, type);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn GfxMonitor*? _window_find_monitor(GfxWindow* win)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::window_find_monitor(win);
-		$case $feat(WASM):
-			return wasm::window_find_monitor(win);
-		$case $feat(WIN32):
-			return win32::window_find_monitor(win);
-		$case WAYLAND_ONLY:
-			return wl::window_find_monitor(win);
-		$case X11_ONLY:
-			return x11::window_find_monitor(win);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_find_monitor(win);
-			return x11::window_find_monitor(win);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn void _window_set_capture_mouse_platform(GfxWindow* win, bool state)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::window_set_capture_mouse_platform(win, state);
-		$case $feat(WASM):
-			return wasm::window_set_capture_mouse_platform(win, state);
-		$case $feat(WIN32):
-			return win32::window_set_capture_mouse_platform(win, state);
-		$case WAYLAND_ONLY:
-			return wl::window_set_capture_mouse_platform(win, state);
-		$case X11_ONLY:
-			return x11::window_set_capture_mouse_platform(win, state);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_set_capture_mouse_platform(win, state);
-			return x11::window_set_capture_mouse_platform(win, state);
+			if (_gfx.use_wayland) return wl::window_show_platform(win);
+			return x11::window_show_platform(win);
 		$default:
 			unreachable();
 	$endswitch
@@ -1095,28 +1087,6 @@ fn void? _window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* cont
 			unreachable();
 	$endswitch
 }
-
-fn void _window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::window_release_opengl_context_platform(win, ctx);
-		$case $feat(WASM):
-			return wasm::window_release_opengl_context_platform(win, ctx);
-		$case $feat(WIN32):
-			return win32::window_release_opengl_context_platform(win, ctx);
-		$case WAYLAND_ONLY:
-			return wl::window_release_opengl_context_platform(win, ctx);
-		$case X11_ONLY:
-			return x11::window_release_opengl_context_platform(win, ctx);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_release_opengl_context_platform(win, ctx);
-			return x11::window_release_opengl_context_platform(win, ctx);
-		$default:
-			unreachable();
-	$endswitch
-}
-
 
 fn void _window_make_current_opengl_context(GfxWindow* win)
 {
@@ -1160,6 +1130,27 @@ fn void _window_opengl_swap_buffers(GfxWindow* win)
 	$endswitch
 }
 
+fn void _window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::window_release_opengl_context_platform(win, ctx);
+		$case $feat(WASM):
+			return wasm::window_release_opengl_context_platform(win, ctx);
+		$case $feat(WIN32):
+			return win32::window_release_opengl_context_platform(win, ctx);
+		$case WAYLAND_ONLY:
+			return wl::window_release_opengl_context_platform(win, ctx);
+		$case X11_ONLY:
+			return x11::window_release_opengl_context_platform(win, ctx);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::window_release_opengl_context_platform(win, ctx);
+			return x11::window_release_opengl_context_platform(win, ctx);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 // Vulkan
 
 fn VkSurfaceKHR? _window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private
@@ -1182,7 +1173,6 @@ fn VkSurfaceKHR? _window_create_vulkan_surface(GfxWindow* win, VkInstance instan
 			unreachable();
 	$endswitch
 }
-
 
 // Window WGPU
 
@@ -1209,27 +1199,6 @@ fn WGPUSurface _window_create_wgpu_surface(GfxWindow* window, WGPUInstance insta
 
 // --- Clipboard
 
-fn void? _write_clipboard(GfxDataTransfer* data)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::write_clipboard(data);
-		$case $feat(WASM):
-			return wasm::write_clipboard(data);
-		$case $feat(WIN32):
-			return win32::write_clipboard(data);
-		$case WAYLAND_ONLY:
-			return wl::write_clipboard(data);
-		$case X11_ONLY:
-			return x11::write_clipboard(data);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::write_clipboard(data);
-			return x11::write_clipboard(data);
-		$default:
-			unreachable();
-	$endswitch
-}
-
 fn GfxDataTransfer? _read_clipboard(Allocator allocator, GfxDataTransferType type)
 {
 	$switch:
@@ -1246,6 +1215,27 @@ fn GfxDataTransfer? _read_clipboard(Allocator allocator, GfxDataTransferType typ
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::read_clipboard(allocator, type);
 			return x11::read_clipboard(allocator, type);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+fn void? _write_clipboard(GfxDataTransfer* data)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::write_clipboard(data);
+		$case $feat(WASM):
+			return wasm::write_clipboard(data);
+		$case $feat(WIN32):
+			return win32::write_clipboard(data);
+		$case WAYLAND_ONLY:
+			return wl::write_clipboard(data);
+		$case X11_ONLY:
+			return x11::write_clipboard(data);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::write_clipboard(data);
+			return x11::write_clipboard(data);
 		$default:
 			unreachable();
 	$endswitch
@@ -1320,27 +1310,6 @@ fn bool _vulkan_get_physical_device_presentation_support(VkInstance instance, Vk
 
 // --- Opengl
 
-fn bool _opengl_extension_is_supported_platform(String extension)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::opengl_extension_is_supported_platform(extension);
-		$case $feat(WASM):
-			return wasm::opengl_extension_is_supported_platform(extension);
-		$case $feat(WIN32):
-			return win32::opengl_extension_is_supported_platform(extension);
-		$case WAYLAND_ONLY:
-			return wl::opengl_extension_is_supported_platform(extension);
-		$case X11_ONLY:
-			return x11::opengl_extension_is_supported_platform(extension);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::opengl_extension_is_supported_platform(extension);
-			return x11::opengl_extension_is_supported_platform(extension);
-		$default:
-			unreachable();
-	$endswitch
-}
-
 fn void* _get_current_opengl_context()
 {
 	$switch:
@@ -1383,7 +1352,28 @@ fn void* _get_opengl_proc(ZString procname)
 	$endswitch
 }
 
-// -- Keys
+fn bool _opengl_extension_is_supported_platform(String extension)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::opengl_extension_is_supported_platform(extension);
+		$case $feat(WASM):
+			return wasm::opengl_extension_is_supported_platform(extension);
+		$case $feat(WIN32):
+			return win32::opengl_extension_is_supported_platform(extension);
+		$case WAYLAND_ONLY:
+			return wl::opengl_extension_is_supported_platform(extension);
+		$case X11_ONLY:
+			return x11::opengl_extension_is_supported_platform(extension);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::opengl_extension_is_supported_platform(extension);
+			return x11::opengl_extension_is_supported_platform(extension);
+		$default:
+			unreachable();
+	$endswitch
+}
+
+// --- Keys
 
 fn void _init_keycodes_platform()
 {
@@ -1426,7 +1416,3 @@ fn GfxKey _physical_to_mapped_key(GfxKey key)
 			unreachable();
 	$endswitch
 }
-
-
-
-

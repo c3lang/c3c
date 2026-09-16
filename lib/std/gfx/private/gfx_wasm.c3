@@ -2,198 +2,41 @@ module std::gfx::wasm @feat(WASM) @private;
 import std::math, std::time;
 import std::gfx::egl @public;
 
-fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
+// --- Gfx
 
 fn void destroy_platform() {}
 
-fn IntRect monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
-fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
-fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
-fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
-fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
-fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
-fn void monitor_node_free(GfxMonitorNode* node) {}
-
-fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
-
-fn void poll_monitors() {}
-fn void free_mouse(GfxMouse* mouse) {}
-fn void window_show_platform(GfxWindow* win) {}
-fn bool window_is_hidden(GfxWindow* win) => false;
-fn bool window_is_minimized(GfxWindow* win) => false;
-fn bool window_is_maximized(GfxWindow* win) => false;
-fn void window_hide(GfxWindow* win) {}
-fn void window_flash(GfxWindow* win, GfxFlashRequest request) {}
-fn void window_move_platform(GfxWindow* win, GfxPoint where) {}
-fn void window_restore_platform(GfxWindow* win) {}
-fn void _window_set_border(GfxWindow* win, bool border) {}
-fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type) => false;
-fn bool window_is_floating(GfxWindow* win) => false;
-fn void window_set_min_size(GfxWindow* win, GfxSize size) {}
-fn void window_focus(GfxWindow* win) {}
-fn void window_set_max_size(GfxWindow* win, GfxSize size) {}
-fn void window_move_mouse(GfxWindow* win, GfxPoint where) {}
-fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) {}
-fn void window_minimize_platform(GfxWindow* win) {}
-fn void window_raise(GfxWindow* win) {}
-fn void window_set_floating(GfxWindow* win, bool floating) {}
-fn void window_destroy_platform(GfxWindow* win) {}
-fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state) {}
-
-
-fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
-{
-	ZString name = (ZString)mouse;
-	gfx::gfxJsSetCursor(name, name.len());
-}
-fn void window_set_opacity(GfxWindow* win, float opacity)
-{
-	gfx::gfxJsSetOpacity(opacity);
-}
-fn void window_maximize_platform(GfxWindow* win)
-{
-	(void)win.resize(window_find_monitor(win).mode.size);
-	win.move({});
-}
-fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor();
-fn void window_resize_platform(GfxWindow* win, GfxSize size)
-{
-	gfx::gfxJsSetCanvasSize(...size);
-}
-fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
-{
-	int minH = win.height < surface.size.y ? win.height : surface.size.y;
-	gfx::copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
-	gfx::gfxJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
-}
-fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
-{
-	if (state)
-	{
-		gfx::gfxJsRequestPointerLock();
-	}
-	else
-	{
-		gfx::gfxJsExitPointerLock();
-	}
-}
-fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
-{
-	if (fullscreen)
-	{
-		win.internal.flags.fullscreen = true;
-		gfx::gfxJsRequestFullscreen();
-		return;
-	}
-	win.internal.flags.fullscreen = false;
-	gfx::gfxJsExitFullscreen();
-}
-fn GfxPoint get_global_mouse()
-{
-	return { gfx::gfxJsGetMouseX(), gfx::gfxJsGetMouseY() };
-}
-fn void _window_set_name(GfxWindow* win, String name)
-{
-	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
-}
-fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
-{
-	gfx::gfxJsSetPointerEvents((int)passthrough);
-}
-fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
-fn bool opengl_extension_is_supported_platform(String extension)
-{
-	return gfx::gfxJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
-}
-fn void* get_opengl_proc(ZString procname)
-{
-	return gfx::gfxJsGetProcAddress(procname);
-}
-fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
-{
-	win.src.ctx.native = ctx;
-	win.src.backing = { .opengl };
-	int handle = gfx::gfxJsWebglCreateContext(hints);
-	if (!handle) return gfx::OPENGL_CTX_CREATION_FAILED~;
-	ctx.ctx = (void*)(uptr)handle;
-	gfx::gfxJsWebglMakeCurrent(handle);
-	gfx::_window_set_opengl_swap_interval(win, 0);
-}
-fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
-{
-	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
-	canvasDesc.chain.next = null;
-	canvasDesc.chain.sType = gfx::WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR;
-	canvasDesc.selector.data = "#canvas";
-	canvasDesc.selector.length = 7;
-	WgpuSurfaceDescriptor surfaceDesc;
-	surfaceDesc.nextInChain = (WgpuChainedStruct*)&canvasDesc;
-	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
-}
-fn GfxPoint window_fetch_size(GfxWindow* win)
-{
-	return win.get_size();
-}
-fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
-{
-	gfx::gfxJsWebglDestroyContext((int)(uptr)ctx.ctx);
-	win.src.ctx.native.ctx = null;
-}
-fn void window_opengl_swap_buffers(GfxWindow* win)
-{
-	gfx::gfxJsWebglCommitFrame();
-}
-fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
-{
-	gfx::gfxJsSetCanvasSize(win.width, win.height);
-	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
-	gfx::gfxJsSetupWindowListeners();
-
-	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
-
-	gfx::gfxJsSetupDropListeners();
-
-	gfx::_window_set_flags(win, flags, {});
-	win.src.backing = {};
-	if (flags.open_gl) gfx::_window_create_opengl_context_native(win, gfx::get_global_opengl_hints())!;
-	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
-}
 fn void poll_events_platform()
 {
 	if (gfx::_gfx.usingAsyncify == -1) gfx::_gfx.usingAsyncify = gfx::gfxJsUsingAsyncify();
 	gfx::_reset_prev_state();
 	if (gfx::_gfx.usingAsyncify) gfx::gfxJsSleep(0);
 }
-fn void surface_release(GfxSurface* surface)
-{
-	*surface = {};
-}
-fn void? write_clipboard(GfxDataTransfer* data)
-{
-	gfx::gfxJsWriteClipboard(data.text, data.text.len);
-}
+
+// --- GfxMonitor functions
+
+fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
+
 fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* mon) => {};
-fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
-{
-	surface.data = data;
-	surface.size = { w, h };
-	surface.format = format;
-}
-fn void window_make_current_opengl_context(GfxWindow* win)
-{
-	if (!win)
-	{
-		gfx::gfxJsWebglMakeCurrent(0);
-	}
-	else
-	{
-		gfx::gfxJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx);
-	}
-}
-fn void* get_current_opengl_context()
-{
-	return (void*)(uptr)gfx::gfxJsWebglGetCurrentContext();
-}
+
+fn IntRect monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
+
+fn void monitor_node_free(GfxMonitorNode* node) {}
+
+fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request) => NOT_IMPLEMENTED~;
+
+fn void? monitor_set_gamma(GfxMonitor* monitor, float gamma) => NOT_IMPLEMENTED~;
+
+fn void? monitor_set_gamma_ramp(GfxMonitor* monitor, GfxGammaRamp ramp) => NOT_IMPLEMENTED~;
+
+fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode) => NOT_IMPLEMENTED~;
+
+fn void poll_monitors() {}
+
+// --- GfxMouse and mouse related
+
+fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format) => NOT_IMPLEMENTED~;
+
 fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 {
 	ZString cursor_name;
@@ -224,7 +67,239 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 	}
 	return (GfxMouse*)cursor_name;
 }
-fn GfxKey physical_to_mapped_key(GfxKey key) => key;
+
+fn void free_mouse(GfxMouse* mouse) {}
+
+fn GfxPoint get_global_mouse()
+{
+	return { gfx::gfxJsGetMouseX(), gfx::gfxJsGetMouseY() };
+}
+
+// --- GfxWindow
+
+fn void _window_set_border(GfxWindow* win, bool border) {}
+
+fn void _window_set_name(GfxWindow* win, String name)
+{
+	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
+}
+
+fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
+{
+	int minH = win.height < surface.size.y ? win.height : surface.size.y;
+	gfx::copy_image_data(surface.data, surface.size.x, minH, RGBA8, surface.data, surface.format, surface.convert_fn);
+	gfx::gfxJsBlitSurface(surface.data, surface.size.x, surface.size.y, minH);
+}
+
+fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
+{
+	gfx::gfxJsSetCanvasSize(win.width, win.height);
+	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
+	gfx::gfxJsSetupWindowListeners();
+
+	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
+
+	gfx::gfxJsSetupDropListeners();
+
+	gfx::_window_set_flags(win, flags, {});
+	win.src.backing = {};
+	if (flags.open_gl) gfx::_window_create_opengl_context_native(win, gfx::get_global_opengl_hints())!;
+	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
+}
+
+fn void window_destroy_platform(GfxWindow* win) {}
+
+fn GfxPoint window_fetch_size(GfxWindow* win)
+{
+	return win.get_size();
+}
+
+fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor();
+
+fn void window_flash(GfxWindow* win, GfxFlashRequest request) {}
+
+fn void window_focus(GfxWindow* win) {}
+
+fn void window_hide(GfxWindow* win) {}
+
+fn bool window_is_floating(GfxWindow* win) => false;
+
+fn bool window_is_hidden(GfxWindow* win) => false;
+
+fn bool window_is_maximized(GfxWindow* win) => false;
+
+fn bool window_is_minimized(GfxWindow* win) => false;
+
+fn void window_maximize_platform(GfxWindow* win)
+{
+	(void)win.resize(window_find_monitor(win).mode.size);
+	win.move({});
+}
+
+fn void window_minimize_platform(GfxWindow* win) {}
+
+fn void window_move_mouse(GfxWindow* win, GfxPoint where) {}
+
+fn void window_move_platform(GfxWindow* win, GfxPoint where) {}
+
+fn void window_raise(GfxWindow* win) {}
+
+fn void window_resize_platform(GfxWindow* win, GfxSize size)
+{
+	gfx::gfxJsSetCanvasSize(...size);
+}
+
+fn void window_restore_platform(GfxWindow* win) {}
+
+fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) {}
+
+fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
+{
+	if (state)
+	{
+		gfx::gfxJsRequestPointerLock();
+	}
+	else
+	{
+		gfx::gfxJsExitPointerLock();
+	}
+}
+
+fn void window_set_floating(GfxWindow* win, bool floating) {}
+
+fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
+{
+	if (fullscreen)
+	{
+		win.internal.flags.fullscreen = true;
+		gfx::gfxJsRequestFullscreen();
+		return;
+	}
+	win.internal.flags.fullscreen = false;
+	gfx::gfxJsExitFullscreen();
+}
+
+fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type) => false;
+
+fn void window_set_max_size(GfxWindow* win, GfxSize size) {}
+
+fn void window_set_min_size(GfxWindow* win, GfxSize size) {}
+
+fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
+{
+	gfx::gfxJsSetPointerEvents((int)passthrough);
+}
+
+fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
+{
+	ZString name = (ZString)mouse;
+	gfx::gfxJsSetCursor(name, name.len());
+}
+
+fn void window_set_opacity(GfxWindow* win, float opacity)
+{
+	gfx::gfxJsSetOpacity(opacity);
+}
+
+fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state) {}
+
+fn void window_show_platform(GfxWindow* win) {}
+
+// Window - opengl
+
+fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
+{
+	win.src.ctx.native = ctx;
+	win.src.backing = { .opengl };
+	int handle = gfx::gfxJsWebglCreateContext(hints);
+	if (!handle) return gfx::OPENGL_CTX_CREATION_FAILED~;
+	ctx.ctx = (void*)(uptr)handle;
+	gfx::gfxJsWebglMakeCurrent(handle);
+	gfx::_window_set_opengl_swap_interval(win, 0);
+}
+
+fn void window_make_current_opengl_context(GfxWindow* win)
+{
+	if (!win)
+	{
+		gfx::gfxJsWebglMakeCurrent(0);
+	}
+	else
+	{
+		gfx::gfxJsWebglMakeCurrent((int)(uptr)win.src.ctx.native.ctx);
+	}
+}
+
+fn void window_opengl_swap_buffers(GfxWindow* win)
+{
+	gfx::gfxJsWebglCommitFrame();
+}
+
+fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
+{
+	gfx::gfxJsWebglDestroyContext((int)(uptr)ctx.ctx);
+	win.src.ctx.native.ctx = null;
+}
+
+// Window WGPU
+
+fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
+{
+	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
+	canvasDesc.chain.next = null;
+	canvasDesc.chain.sType = gfx::WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR;
+	canvasDesc.selector.data = "#canvas";
+	canvasDesc.selector.length = 7;
+	WgpuSurfaceDescriptor surfaceDesc;
+	surfaceDesc.nextInChain = (WgpuChainedStruct*)&canvasDesc;
+	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
+}
+
+// --- Clipboard
+
+fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType requestedType) => NOT_IMPLEMENTED~;
+
+fn void? write_clipboard(GfxDataTransfer* data)
+{
+	gfx::gfxJsWriteClipboard(data.text, data.text.len);
+}
+
+// --- GfxSurface
+
+fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat format, GfxWindow* window)
+{
+	surface.data = data;
+	surface.size = { w, h };
+	surface.format = format;
+}
+
+fn void surface_release(GfxSurface* surface)
+{
+	*surface = {};
+}
+
+// --- Vulkan
+
+fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) => false;
+
+// --- Opengl
+
+fn void* get_current_opengl_context()
+{
+	return (void*)(uptr)gfx::gfxJsWebglGetCurrentContext();
+}
+
+fn void* get_opengl_proc(ZString procname)
+{
+	return gfx::gfxJsGetProcAddress(procname);
+}
+
+fn bool opengl_extension_is_supported_platform(String extension)
+{
+	return gfx::gfxJsExtensionSupported((ZString)extension.ptr, extension.len) != 0;
+}
+
+// --- Keys
 
 fn void init_keycodes_platform()
 {
@@ -267,6 +342,10 @@ fn void init_keycodes_platform()
 		[DomKey.VK_F23] = F23,                     [DomKey.VK_F24] = F24,
 	};
 }
+
+fn GfxKey physical_to_mapped_key(GfxKey key) => key;
+
+
 
 // ---- DOM virtual key codes ----
 constset DomKey : inline int
@@ -501,7 +580,6 @@ fn void handle_key_mods_callback(bool capital, bool numlock, bool control, bool 
 }
 
 
-// public
 
 // ---
 
@@ -582,7 +660,6 @@ fn void gfxEmscriptenOnMouseUp(int button) @export("c3gfx_on_mouseup")
 
 fn void gfxEmscriptenOnWheel(float deltaX, float deltaY) @export("c3gfx_on_wheel") { _mouse_scroll_callback(_gfx.root, { deltaX, deltaY }); }
 
-// private
 fn void gfxEmscriptenOnTouch(int numTouches, int* xs, int* ys, char down) @export("c3gfx_on_touch")
 {
 	// down == 255 is the sentinel for touchmove (no button state change).
