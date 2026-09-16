@@ -241,6 +241,8 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native.ctx = null;
 }
 
+fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval) {}
+
 // Window WGPU
 
 fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)

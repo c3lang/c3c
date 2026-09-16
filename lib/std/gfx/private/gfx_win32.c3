@@ -747,6 +747,14 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native.ctx = null;
 }
 
+fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+{
+	if (!gfx::wgl_swap_interval_ext_fn || !gfx::wgl_swap_interval_ext_fn(swap_interval))
+	{
+		log::error("Failed to set OpenGL swap interval", category: log::CATEGORY_VIDEO);
+	}
+}
+
 // Vulkan
 
 fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance)

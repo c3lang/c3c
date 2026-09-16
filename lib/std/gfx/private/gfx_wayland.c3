@@ -495,6 +495,11 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native = null;
 }
 
+fn void window_set_opengl_swap_interval(GfxWindow* win, int swapInterval)
+{
+	egl::set_swap_interval(win, swapInterval);
+}
+
 // Vulkan
 
 fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private
@@ -808,12 +813,6 @@ fn void _wait_for_event_wayland(Posix_pollfd[] fds, Duration duration)
 
 	// queue contains events from read, dispatch them
 	if (wlDisplayDispatchPending(gfx::_gfx.wlDisplay) == -1) return;
-}
-
-
-fn void _window_opengl_swap_interval_wayland(GfxWindow* win, int swapInterval)
-{
-	egl::set_swap_interval(win, swapInterval);
 }
 
 

@@ -1151,6 +1151,27 @@ fn void _window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ct
 	$endswitch
 }
 
+fn void _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::window_set_opengl_swap_interval(win, swap_interval);
+		$case $feat(WASM):
+			return wasm::window_set_opengl_swap_interval(win, swap_interval);
+		$case $feat(WIN32):
+			return win32::window_set_opengl_swap_interval(win, swap_interval);
+		$case WAYLAND_ONLY:
+			return wl::window_set_opengl_swap_interval(win, swap_interval);
+		$case X11_ONLY:
+			return x11::window_set_opengl_swap_interval(win, swap_interval);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::window_set_opengl_swap_interval(win, swap_interval);
+			return x11::window_set_opengl_swap_interval(win, swap_interval);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 // Vulkan
 
 fn VkSurfaceKHR? _window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private

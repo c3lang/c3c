@@ -599,6 +599,14 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native = null;
 }
 
+fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
+{
+	if (win.src.ctx.native && win.src.ctx.native.ctx)
+	{
+		gfx::_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, gfx::NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
+	}
+}
+
 // Vulkan
 
 fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private

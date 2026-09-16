@@ -858,6 +858,19 @@ fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx
 	win.src.ctx.native = null;
 }
 
+fn void window_set_opengl_swap_interval(GfxWindow* win, int swapInterval)
+{
+	switch
+	{
+		case _glx_swap_interval_ext_fn != null:
+			_glx_swap_interval_ext_fn(gfx::_gfx.display, win.src.ctx.native.window, swapInterval);
+		case _glx_swap_interval_native_fn != null:
+			_glx_swap_interval_native_fn(swapInterval);
+		default:
+			log::warn("Failed to load swap interval function", category: log::CATEGORY_VIDEO);
+	}
+}
+
 // Vulkan
 
 fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private
@@ -1921,20 +1934,6 @@ fn GfxFormat _x_image_get_format(void* imagePtr)
 	// right after xCreateImage, so this mirrors the original's fallback path.
 	return BGRA8;
 }
-
-fn void _window_opengl_swap_interval_x11(GfxWindow* win, int swapInterval)
-{
-	switch
-	{
-		case _glx_swap_interval_ext_fn != null:
-			_glx_swap_interval_ext_fn(gfx::_gfx.display, win.src.ctx.native.window, swapInterval);
-		case _glx_swap_interval_native_fn != null:
-			_glx_swap_interval_native_fn(swapInterval);
-		default:
-			log::warn("Failed to load swap interval function", category: log::CATEGORY_VIDEO);
-	}
-}
-
 
 // --- wgpu
 

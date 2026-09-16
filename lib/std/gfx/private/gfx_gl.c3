@@ -82,32 +82,5 @@ fn void _window_destroy_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
 	if (win.src.backing.owned) free(ctx);
 }
 
-fn void _window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
-{
-	$switch:
-		$case $feat(MACOS):
-			if (win.src.ctx.native && win.src.ctx.native.ctx)
-			{
-				_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
-			}
-		$case $feat(WIN32):
-			if (!wgl_swap_interval_ext_fn || !wgl_swap_interval_ext_fn(swap_interval))
-			{
-				log::error("Failed to set OpenGL swap interval", category: log::CATEGORY_VIDEO);
-			}
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland)
-			{
-				return wl::_window_opengl_swap_interval_wayland(win, swap_interval);
-			}
-			return x11::_window_opengl_swap_interval_x11(win, swap_interval);
-		$case X11:
-			return x11::_window_opengl_swap_interval_x11(win, swap_interval);
-		$case WAYLAND:
-			return wl::_window_opengl_swap_interval_wayland(win, swap_interval);
-		$default:
-		// Nothing
-	$endswitch
-}
 
 
