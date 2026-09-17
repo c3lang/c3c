@@ -1369,22 +1369,22 @@ fn void _surface_release(GfxSurface* surface)
 
 // --- Vulkan
 
-fn bool _vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) @private
+fn bool _get_vulkan_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index) @private
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
+			return macos::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 		$case $feat(WASM):
-			return wasm::vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
+			return wasm::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 		$case $feat(WIN32):
-			return win32::vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
+			return win32::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 		$case WAYLAND_ONLY:
-			return wl::vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
+			return wl::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 		$case X11_ONLY:
-			return x11::vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
+			return x11::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
-			return x11::vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
+			if (_gfx.use_wayland) return wl::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
+			return x11::get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 		$default:
 			unreachable();
 	$endswitch

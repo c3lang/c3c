@@ -731,7 +731,7 @@ fn void surface_release(GfxSurface* surface)
 
 // --- Vulkan
 
-fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+fn bool get_vulkan_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	return false;
 }

@@ -900,7 +900,7 @@ fn void surface_release(GfxSurface* surface)
 
 // --- Vulkan
 
-fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+fn bool get_vulkan_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	VkGetPhysicalDeviceWin32PresentationSupportKHRProc raw = gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
 	return raw && raw(physical_device, queue_family_index) != 0;

@@ -41,9 +41,9 @@ const int VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT   = 1000217000;
 alias GfxVkGetInstanceProcAddressProc = fn void*(VkInstance instance, ZString procname);
 alias VkCreateSurfaceKHRProc = fn VkResult(VkInstance instance, void* create_info, void* allocator, VkSurfaceKHR* surface);
 
-fn bool vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
+fn bool get_vulkan_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	return _vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
+	return _get_vulkan_physical_device_presentation_support(instance, physical_device, queue_family_index);
 }
 
 fn void* _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(!WASM)
@@ -52,7 +52,7 @@ fn void* _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(
 	return _gfx.vk_get_instance_proc_address(instance, procname);
 }
 
-macro get_required_vulkan_extensions()
+macro String[] _get_required_vulkan_extensions()
 {
 	String[1] $ext = { "VK_KHR_surface" };
 	$switch:
@@ -65,7 +65,8 @@ macro get_required_vulkan_extensions()
 			$ext +++= "VK_KHR_win32_surface";
 		$default:
 	$endswitch
-	return $ext;
+	const String[] EXT = $ext;
+	return EXT;
 }
 
 
