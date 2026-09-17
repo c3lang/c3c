@@ -1,7 +1,19 @@
-module std::os::macos @feat(MACOS) @link("Cocoa.framework");
+module std::os::macos @feat(MACOS) @link("AppKit.framework");
 import std::os::darwin;
 
 extern fn int nsApplicationMain(int argc, char **argv) @cname("NSApplicationMain");
+
+fn ObjClass nsapplication() => objc::@class("NSApplication");
+fn ObjClass nsscreen() => objc::@class("NSScreen");
+fn ObjClass nsopengl_context() => objc::@class("NSOpenGLContext");
+fn ObjClass nsopengl_pixel_format() => objc::@class("NSOpenGLPixelFormat");
+fn ObjClass nspasteboard() => objc::@class("NSPasteboard");
+fn ObjClass nsimage() => objc::@class("NSImage");
+fn ObjClass nsbitmap_image_rep() => objc::@class("NSBitmapImageRep");
+fn ObjClass nstracking_area() => objc::@class("NSTrackingArea");
+fn ObjClass nscursor() => objc::@class("NSCursor");
+fn ObjClass nswindow() => objc::@class("NSWindow");
+fn ObjClass nsview() => objc::@class("NSView");
 
 constset NSApplicationActivationPolicy : inline NSInteger
 {

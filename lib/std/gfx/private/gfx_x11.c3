@@ -31,6 +31,58 @@ fn void poll_events_platform()
 	while (xQLength(gfx::_gfx.display)) _x_handle_event();
 }
 
+fn void wait_for_event(Duration duration)
+{
+	if (gfx::_gfx.eventWait_forceStop[0] == 0 || gfx::_gfx.eventWait_forceStop[1] == 0)
+	{
+		if (posix::pipe((int[2]*)&gfx::_gfx.eventWait_forceStop) != -1)
+		{
+			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[0], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[0], os::F_GETFD, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[1], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[1], os::F_GETFD, 0);
+		}
+	}
+
+	Posix_pollfd[2] fds;
+	fds[0].fd = 0;
+	fds[0].events = (short)os::POLLIN;
+	fds[1].fd = gfx::_gfx.eventWait_forceStop[0];
+	fds[1].events = (short)os::POLLIN;
+
+	defer
+	{
+		// drain any data in the stop request
+		if (gfx::_gfx.eventWait_forceStop[2])
+		{
+			char[64] data;
+			libc::read(gfx::_gfx.eventWait_forceStop[0], &data, 64);
+
+			gfx::_gfx.eventWait_forceStop[2] = 0;
+		}
+	}
+
+	fds[0].fd = xConnectionNumber(gfx::_gfx.display);
+
+	bool infinity = duration == gfx::WAIT_FOREVER;
+	bool once = true;
+	Clock start = clock::now();
+	while (!xPending(gfx::_gfx.display))
+	{
+		Duration diff = duration - start.to_now().to_duration();
+		long ms = diff.to_ms();
+		if (ms < 0)
+		{
+			if (!once) break;
+			ms = 0;
+		}
+		if (infinity || ms > CInt::max) ms = -1;
+		if (os::poll(&fds[0], 1, (CInt)ms) <= 0) break;
+		once = false;
+	}
+}
+
+
 // --- GfxMonitor functions
 
 fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
@@ -889,7 +941,7 @@ fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instanc
 
 // Window WGPU
 
-fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuSurfaceSourceXlibWindow fromXlib;
 	fromXlib.chain.next = null;
@@ -898,7 +950,7 @@ fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instan
 	fromXlib.window = window.src.window;
 	WgpuSurfaceDescriptor surfaceDesc;
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromXlib;
-	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
+	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc) ?: gfx::SURFACE_CREATION_FAILED~;
 }
 
 // --- Clipboard
@@ -1264,27 +1316,6 @@ fn void? _init_x11(String class_name, GfxInitOption flags)
 
 
 
-fn void _wait_for_event_x11(Posix_pollfd[] fds, Duration duration)
-{
-	fds[0].fd = xConnectionNumber(gfx::_gfx.display);
-
-	bool infinity = duration == gfx::WAIT_FOREVER;
-	bool once = true;
-	Clock start = clock::now();
-	while (!xPending(gfx::_gfx.display))
-	{
-		Duration diff = duration - start.to_now().to_duration();
-		long ms = diff.to_ms();
-		if (ms < 0)
-		{
-			if (!once) break;
-			ms = 0;
-		}
-		if (infinity || ms > CInt::max) ms = -1;
-		if (os::poll(&fds[0], 1, (CInt)ms) <= 0) break;
-		once = false;
-	}
-}
 
 
 fn void _x_handle_event()
@@ -1688,7 +1719,7 @@ fn bool _wait_for_show_event_x11(GfxWindow* win)
 	XEvent dummy;
 	while (xCheckTypedWindowEvent(gfx::_gfx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
 	{
-		gfx::_wait_for_event_native(time::ms(100));
+		wait_for_event(time::ms(100));
 	}
 	return true;
 }

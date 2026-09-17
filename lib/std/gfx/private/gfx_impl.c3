@@ -72,6 +72,27 @@ fn void _stop_check_events()
 	$endswitch
 }
 
+fn void _wait_for_event(Duration duration)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::wait_for_event(duration);
+		$case $feat(WASM):
+			return wasm::wait_for_event(duration);
+		$case $feat(WIN32):
+			return win32::wait_for_event(duration);
+		$case WAYLAND_ONLY:
+			return wl::wait_for_event(duration);
+		$case X11_ONLY:
+			return x11::wait_for_event(duration);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::wait_for_event(duration);
+			return x11::wait_for_event(duration);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 // --- GfxMonitor functions
 
 fn GfxGammaRamp? _monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
@@ -1205,7 +1226,7 @@ fn VkSurfaceKHR? _window_create_vulkan_surface(GfxWindow* win, VkInstance instan
 
 // Window WGPU
 
-fn WGPUSurface _window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface? _window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	$switch:
 		$case $feat(MACOS):

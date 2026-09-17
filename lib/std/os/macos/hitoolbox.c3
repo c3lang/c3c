@@ -1,4 +1,4 @@
-module std::os::macos @feat(MACOS);
+module std::os::macos @feat(MACOS) @link("Carbon.framework");
 import std::os::darwin;
 
 const uint UC_KEY_ACTION_DOWN = 0;

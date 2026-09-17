@@ -55,6 +55,8 @@ fn ObjId retain(ObjId id)
 	return id;
 }
 
+fn ObjClass nsobject() => objc::@class("NSObject");
+
 macro ObjClass @class(ZString $class)
 {
 	static ObjClass cls;
@@ -84,6 +86,8 @@ fn ObjId alloc(ObjClass cls)
 	return ((SendId)&msgSend)((ObjId)cls, s);
 }
 
+fn ObjId ObjClass.alloc(self) => alloc(self);
+
 fn ObjId alloc_by_name(ZString name)
 {
 	ObjClass cls = objc::lookUpClass(name);
@@ -93,6 +97,8 @@ fn ObjId alloc_by_name(ZString name)
 
 macro ObjId.send(self, $RType, ZString $selector, ...)  => send(self, $RType, $selector, ...$vaarg);
 macro ObjId.send_void(self, ZString $selector, ...)  => send_void(self, $selector, ...$vaarg);
+macro ObjClass.send(self, $RType, ZString $selector, ...)  => send((ObjId)self, $RType, $selector, ...$vaarg);
+macro ObjClass.send_void(self, ZString $selector, ...)  => send_void((ObjId)self, $selector, ...$vaarg);
 
 macro send_void(id, ZString $selector, ...)
 {

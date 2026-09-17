@@ -28,6 +28,14 @@ fn void stop_check_events()
 	win32::postMessageW(gfx::_gfx.helper_window, 0, 0, 0);
 }
 
+fn void wait_for_event(Duration duration)
+{
+	if (duration < time::DURATION_ZERO) duration = time::DURATION_ZERO;
+	long duration_ms = duration.to_ms();
+	Win32_DWORD ms = duration_ms > Win32_DWORD::max ? win32::INFINITE : (uint)duration_ms;
+	win32::msgWaitForMultipleObjects(0, null, 0, ms, 0x04FF /* QS_ALLINPUT */);
+}
+
 // --- GfxMonitor functions
 
 fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
@@ -774,7 +782,7 @@ fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instanc
 
 // Window WGPU
 
-fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuSurfaceSourceWindowsHWND fromHwnd;
 	fromHwnd.chain.next = null;
@@ -783,7 +791,7 @@ fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instan
 	fromHwnd.hinstance = gfx::_gfx.instance;
 	WgpuSurfaceDescriptor surfaceDesc;
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromHwnd;
-	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
+	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc) ?: gfx::SURFACE_CREATION_FAILED~;
 }
 
 // --- Clipboard
@@ -1141,13 +1149,6 @@ struct GfxEglContext
 }
 
 
-fn void _wait_for_event_native(Duration duration)
-{
-	if (duration < time::DURATION_ZERO) duration = time::DURATION_ZERO;
-	long duration_ms = duration.to_ms();
-	Win32_DWORD ms = duration_ms > Win32_DWORD::max ? win32::INFINITE : (uint)duration_ms;
-	win32::msgWaitForMultipleObjects(0, null, 0, ms, 0x04FF /* QS_ALLINPUT */);
-}
 
 fn void? _init_native(String class_name, GfxInitOption flags)
 {

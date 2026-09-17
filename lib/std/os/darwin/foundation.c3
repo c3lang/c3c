@@ -4,10 +4,15 @@ import std::io, std::os::darwin::objc;
 alias NSUInteger = env::ARCH_64_BIT ??? ulong : uint;
 alias NSInteger = env::ARCH_64_BIT ??? long : int;
 
+fn ObjClass nsstring() => objc::@class("NSString");
+fn ObjClass nsmutable_string() => objc::@class("NSMutableString");
+fn ObjClass nsarray() => objc::@class("NSArray");
+fn ObjClass nsmutable_array() => objc::@class("NSMutableArray");
+fn ObjClass nsdate() => objc::@class("NSDate");
 
 fn ObjId string(ZString str)
 {
-	return objc::send(objc::@class("NSString"), ObjId, "stringWithUTF8String:", str);
+	return nsstring().send(ObjId, "stringWithUTF8String:", str);
 }
 
 fn ZString string_to_zstr(ObjId str)

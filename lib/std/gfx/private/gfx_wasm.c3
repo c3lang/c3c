@@ -13,6 +13,10 @@ fn void poll_events_platform()
 	if (gfx::_gfx.usingAsyncify) gfx::gfxJsSleep(0);
 }
 
+fn void wait_for_event(Duration duration)
+{}
+
+
 // --- GfxMonitor functions
 
 fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => NOT_IMPLEMENTED~;
@@ -245,7 +249,7 @@ fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval) {}
 
 // Window WGPU
 
-fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
 	canvasDesc.chain.next = null;
@@ -254,7 +258,7 @@ fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instan
 	canvasDesc.selector.length = 7;
 	WgpuSurfaceDescriptor surfaceDesc;
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&canvasDesc;
-	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
+	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc) ?: gfx::SURFACE_CREATION_FAILED~;
 }
 
 // --- Clipboard
@@ -745,4 +749,3 @@ fn GfxKey _wasm_physical_to_gfx(uint hash)
 }
 
 
-fn void _wait_for_event_native(Duration duration) {}

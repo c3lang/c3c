@@ -1,4 +1,4 @@
-module std::os::macos::cg @feat(DARWIN);
+module std::os::macos::cg @feat(DARWIN) @link("CoreGraphics.framework");
 import std::os::darwin::cf;
 
 typedef CGDirectDisplayID = uint;

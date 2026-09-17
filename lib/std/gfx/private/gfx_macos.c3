@@ -1,4 +1,4 @@
-module std::gfx::macos @feat(MACOS) @private;
+module std::gfx::macos @feat(MACOS) @private @link("Cocoa.framework", "AppKit.framework");
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 
 // --- Gfx
@@ -18,7 +18,7 @@ fn void poll_events_platform()
 	{
 		gfx::_reset_prev_state();
 		if (!gfx::_gfx.ns_app) return;
-		ObjId distantPast = objc::send(objc::@class("NSDate"), ObjId, "distantPast");
+		ObjId distantPast = darwin::nsdate().send(ObjId, "distantPast");
 		ObjId mode = darwin::string("kCFRunLoopDefaultMode");
 		while (true)
 		{
@@ -32,6 +32,19 @@ fn void poll_events_platform()
 	};
 
 }
+
+fn void wait_for_event(Duration duration)
+{
+	if (!gfx::_gfx.ns_app) return;
+	CFTimeInterval time = duration.to_sec();
+	if (duration == gfx::WAIT_FOREVER) time = CFTimeInterval::max;
+	if (time < 0) time = 0;
+	ObjId date = darwin::nsdate().send(ObjId, "dateWithTimeIntervalSinceNow:", time);
+	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
+	ObjId ev = gfx::_gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
+	if (ev) gfx::_gfx.ns_app.send_void("postEvent:atStart:", ev, true);
+}
+
 
 // --- GfxMonitor functions
 
@@ -151,15 +164,15 @@ fn void poll_monitors()
 fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
 {
 	if (!data) return gfx::IMAGE_COULD_NOT_LOAD~;
-	ObjId rep = gfx::_new_nsbitmap_image_rep(...size);
+	ObjId rep = _new_nsbitmap_image_rep(...size);
 	defer objc::release(rep);
 	char* pixels = rep.send(char*, "bitmapData");
 	if (!pixels) return gfx::IMAGE_COULD_NOT_LOAD~;
 	gfx::copy_image_data(pixels, ...size, RGBA8, data, format, null);
-	ObjId image = gfx::_new_nsimage(...size, rep);
+	ObjId image = _new_nsimage(...size, rep);
 	CGPoint hot;
 	hot.x = 0.0; hot.y = 0.0;
-	ObjId cursor = objc::alloc_by_name("NSCursor").send(ObjId, "initWithImage:hotSpot:", image, hot);
+	ObjId cursor = macos::nscursor().alloc().send(ObjId, "initWithImage:hotSpot:", image, hot);
 	objc::release(image);
 	if (!cursor) return gfx::IMAGE_COULD_NOT_LOAD~;
 	return (GfxMouse*)cursor;
@@ -167,8 +180,7 @@ fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
 
 fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 {
-	ObjClass cls = objc::class("NSCursor");
-	if (!cls) return gfx::MOUSE_NOT_SUPPORTED~;
+	ObjClass cls = macos::nscursor();
 	ObjId cursor = null;
 	switch (mouse)
 	{
@@ -195,7 +207,7 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 		case PROGRESS:      cursor = objc::send(cls, ObjId, "arrowCursor");
 		default:            cursor = objc::send(cls, ObjId, "arrowCursor");
 	}
-	if (cursor) return gfx::MOUSE_NOT_SUPPORTED~;
+	if (!cursor) return gfx::MOUSE_NOT_SUPPORTED~;
 	return (GfxMouse*)objc::retain(cursor);
 }
 
@@ -223,12 +235,12 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 	{
 		min = (GfxPoint)((Vec2)min * mon.pixelRatio);
 	}
-	ObjId rep = gfx::_new_nsbitmap_image_rep(...min);
+	ObjId rep = _new_nsbitmap_image_rep(...min);
 	char* pixels = rep.send(char*, "bitmapData");
 	defer objc::release(rep);
 	if (!pixels) return;
 	gfx::copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
-	ObjId image = gfx::_new_nsimage(...min, rep);
+	ObjId image = _new_nsimage(...min, rep);
 	win.src.view.send_void("setWantsLayer:", true);
 	ObjId layer = win.src.view.send(ObjId, "layer");
 	layer.send_void("setContents:", image);
@@ -241,9 +253,9 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	if (!flags.no_resize) style |= RESIZABLE;
 	if (flags.no_border) style = BORDERLESS;
 	CGRect rect = { { win.x, flip_y((float)(win.y + win.height - 1)) } , { ...win.size }};
-	ObjId nswin = objc::alloc_by_name("NSWindow").send(ObjId, "initWithContentRect:styleMask:backing:defer:", rect, style, NSBackingStoreType.BUFFERED, false);
+	ObjId nswin = macos::nswindow().alloc().send(ObjId, "initWithContentRect:styleMask:backing:defer:", rect, style, NSBackingStoreType.BUFFERED, false);
 	if (!nswin) return gfx::NSWINDOW_CREATION_FAILED~;
-	ObjId view = _macos_view_class ? objc::send(_macos_view_class, ObjId, "alloc") : objc::alloc_by_name("NSView");
+	ObjId view = _macos_view_class ? _macos_view_class.alloc() : macos::nsview().alloc();
 	view = view.send(ObjId, "initWithFrame:", (CGRect) { { } , { ...win.size } });
 	if (_macos_view_class) view.set_ivar("gfx_window", win);
 	ObjId delegate = null;
@@ -271,7 +283,7 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	win.src.backing = {};
 	if (flags.open_gl) gfx::_window_create_opengl_context_native(win, gfx::get_global_opengl_hints())!;
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
-	gfx::_macos_init_view(win);
+	_macos_init_view(win);
 }
 
 fn void window_destroy_platform(GfxWindow* win)
@@ -450,12 +462,12 @@ fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat form
 		gfx::_gfx.ns_app.send_void("setApplicationIconImage:", null);
 		return true;
 	}
-	ObjId rep = gfx::_new_nsbitmap_image_rep(w, h);
+	ObjId rep = _new_nsbitmap_image_rep(w, h);
 	defer objc::release(rep);
 	char* pixels = rep.send(char*, "bitmapData");
 	if (!pixels) return false;
 	gfx::copy_image_data(pixels, w, h, RGBA8, data, format, null);
-	ObjId image = gfx::_new_nsimage(w, h, rep);
+	ObjId image = _new_nsimage(w, h, rep);
 	defer objc::release(image);
 	gfx::_gfx.ns_app.send_void("setApplicationIconImage:", image);
 	return true;
@@ -554,12 +566,12 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	}
 	stack.push_all({0, 0});
 
-	ObjId format = objc::alloc_by_name("NSOpenGLPixelFormat").send(ObjId, "initWithAttributes:", stack.array_view());
+	ObjId format = macos::nsopengl_pixel_format().alloc().send(ObjId, "initWithAttributes:", stack.array_view());
 	if (!format) return gfx::OPENGL_PIXEL_FORMAT_LOAD_FAILED~;
 	defer catch objc::release(format);
 
 	ObjId share = hints.share ? hints.share.ctx : null;
-	ctx.ctx = objc::alloc_by_name("NSOpenGLContext").send(ObjId, "initWithFormat:shareContext:", format, share);
+	ctx.ctx = macos::nsopengl_context().alloc().send(ObjId, "initWithFormat:shareContext:", format, share);
 	if (!ctx.ctx) return gfx::OPENGL_CTX_CREATION_FAILED~;
 	ctx.format = format;
 
@@ -581,7 +593,7 @@ fn void window_make_current_opengl_context(GfxWindow* win)
 	}
 	else
 	{
-		objc::send_void(objc::@class("NSOpenGLContext"), "clearCurrentContext");
+		objc::send_void(macos::nsopengl_context(), "clearCurrentContext");
 	}
 }
 
@@ -609,12 +621,16 @@ fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 
 // Vulkan
 
-fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance) @private
+struct VkMetalSurfaceCreateInfoEXT { int sType; void* pNext; uint flags; void* pLayer; }
+alias VkCreateMetalSurfaceExtFn = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
+struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
+
+fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instance)
 {
 	VkSurfaceKHR surface;
 	VkCreateSurfaceKHRProc raw = (VkCreateSurfaceKHRProc)gfx::_get_instance_proc_vulkan(instance, "vkCreateMetalSurfaceEXT");
 	if (!raw) return gfx::VULKAN_NOT_LOADED~;
-	ObjId layer = objc::send(objc::@class("CAMetalLayer"), ObjId, "layer");
+	ObjId layer = objc::send(darwin::cametal_layer(), ObjId, "layer");
 	if (!layer) return gfx::SURFACE_CREATION_FAILED~;
 	win.src.view.send_void("setWantsLayer:", true);
 	_window_set_layer_macos(win, layer);
@@ -630,16 +646,17 @@ fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instanc
 
 // Window WGPU
 
-fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
+fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
 	if (!window.src.view)
 	{
 		log::error("NSView is NULL for macOS window", category: log::CATEGORY_VIDEO);
-		return null;
+		return gfx::SURFACE_CREATION_FAILED~;
 	}
+
+	ObjId layer = objc::send(darwin::cametal_layer(), ObjId, "layer");
+	if (!layer) return gfx::SURFACE_CREATION_FAILED~;
 	window.src.view.send_void("setWantsLayer:", true);
-	ObjId layer = _get_layer_macos();
-	if (!layer) return null;
 	_window_set_layer_macos(window, layer);
 
 	WgpuSurfaceSourceMetalLayer fromMetal;
@@ -648,7 +665,7 @@ fn WGPUSurface window_create_wgpu_surface(GfxWindow* window, WGPUInstance instan
 	fromMetal.layer = layer;
 	WgpuSurfaceDescriptor surfaceDesc;
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromMetal;
-	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc);
+	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc) ?: gfx::SURFACE_CREATION_FAILED~;
 }
 
 // --- Clipboard
@@ -657,7 +674,7 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 {
 	if (type != TEXT) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
-	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
+	ObjId pb = objc::send(macos::nspasteboard(), ObjId, "generalPasteboard");
 	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
 
 	ObjId str = pb.send(ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
@@ -672,7 +689,7 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 fn void? write_clipboard(GfxDataTransfer* data)
 {
 	if (data.type != TEXT || !data.text) return NOT_IMPLEMENTED~;
-	ObjId pb = objc::send(objc::@class("NSPasteboard"), ObjId, "generalPasteboard");
+	ObjId pb = objc::send(macos::nspasteboard(), ObjId, "generalPasteboard");
 	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
 	pb.send_void("clearContents");
 
@@ -712,7 +729,7 @@ fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkP
 
 fn void* get_current_opengl_context()
 {
-	return (void*)objc::send(objc::@class("NSOpenGLContext"), ObjId, "currentContext");
+	return (void*)objc::send(macos::nsopengl_context(), ObjId, "currentContext");
 }
 
 fn void* get_opengl_proc(ZString procname)
@@ -843,6 +860,23 @@ ObjClass _macos_view_class;
 
 // --- helpers
 
+fn ObjId _new_nsimage(int w, int h, ObjId rep = null) @local
+{
+	CGSize size = { w, h };
+	ObjId image = macos::nsimage().alloc().send(ObjId, "initWithSize:", size);
+	if (rep) image.send_void("addRepresentation:", rep);
+	return image;
+}
+
+fn ObjId _new_nsbitmap_image_rep(int w, int h) @local
+{
+	return macos::nsbitmap_image_rep().alloc().send(ObjId,
+		"initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bitmapFormat:bytesPerRow:bitsPerPixel:",
+		(ZString*)null, (NSInteger)w, (NSInteger)h, (NSInteger)8, (NSInteger)4, true, false, darwin::string("NSCalibratedRGBColorSpace"),
+		(NSUInteger)2, (NSInteger)(w * 4), (NSInteger)32);
+}
+
+
 fn GfxKeyModifier _osx_modifiers_to_gfx(NSUInteger flags) @local
 {
 	return {
@@ -859,6 +893,26 @@ fn float flip_y(float y)
 	return (float)(cg::mainDisplayID().bounds().size.height - (double)y - 1.0);
 }
 
+fn void _macos_init_view(GfxWindow* win)
+{
+	CGRect content_rect = { .size = { ...win.size } };
+
+	win.src.view.send_void("setFrame:", content_rect);
+
+	// win.src.view.send_void("setFrameAutosaveName:", <todo>);
+
+	win.src.view.set_ivar("gfx_window", win);
+	win.src.window.send_void("setContentView:", win.src.view);
+	win.src.view.send_void("setWantsLayer:", true);
+	win.src.view.send_void("setLayerContentsPlacement:",  4);
+	ObjId tracking_area = macos::nstracking_area().alloc().send(ObjId,
+		"initWithRect:options:owner:userInfo:", content_rect,
+		NSTrackingAreaOptions.MOUSE_ENTERED_AND_EXITED | NSTrackingAreaOptions.ACTIVE_ALWAYS | NSTrackingAreaOptions.IN_VISIBLE_RECT,
+		win.src.view, null);
+	win.src.view.send_void("addTrackingArea:", tracking_area);
+	tracking_area.release();
+}
+
 fn GfxWindow*? _fetch_win(ObjId self) @local
 {
 	void* out = null;
@@ -871,7 +925,7 @@ fn void? _osx_register_classes()
 {
 	if (_macos_window_delegate_class) return;
 
-	_macos_window_delegate_class = objc::class("NSObject").new_subclass("C3GFXWindowDelegate");
+	_macos_window_delegate_class = objc::nsobject().new_subclass("C3GFXWindowDelegate");
 	if (!_macos_window_delegate_class) return gfx::DELEGATE_CREATION_FAILED~;
 	defer catch _macos_window_delegate_class = (ObjClass)0;
 	_macos_window_delegate_class.add_ivar("gfx_window", void*, "^v");
@@ -886,7 +940,7 @@ fn void? _osx_register_classes()
 
 	objc::register_new_subclass(_macos_window_delegate_class);
 
-	_macos_view_class = objc::class("NSView").new_subclass("GfxViewC3");
+	_macos_view_class = macos::nsview().new_subclass("GfxViewC3");
 	if (!_macos_view_class) return gfx::DELEGATE_CREATION_FAILED~;
 
 	_macos_view_class.add_ivar("gfx_window", void*, "^v");
@@ -1164,13 +1218,13 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 
 	ObjId propertyList = pasteBoard.send(ObjId, "propertyListForType:", file_urls_type);
 
-	if (propertyList.send(bool, "isKindOfClass:", objc::@class("NSString")))
+	if (propertyList.send(bool, "isKindOfClass:", darwin::nsstring()))
 	{
 		NSUInteger stringCount = propertyList.send(NSUInteger, "length");
 		ZString filePath = darwin::string_to_zstr(propertyList);
 		gfx::_data_drop_callback(win, filePath, (sz)stringCount + 1, FILE);
 	}
-	if (!propertyList.send(bool, "isKindOfClass:", objc::@class("NSArray"))) return false;
+	if (!propertyList.send(bool, "isKindOfClass:", darwin::nsarray())) return false;
 
 	NSUInteger count = propertyList.send(NSUInteger, "count");
 	if (!count) return false;
@@ -1233,7 +1287,7 @@ const int NS_OPEN_GL_CP_SURFACE_OPACITY = 236;
 const int NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL = 222;
 const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 
-module std::gfx @feat(MACOS) @private @link("Cocoa.framework", "CoreGraphics.framework", "ApplicationServices.framework", "QuartzCore.framework", "Carbon.framework", "CoreFoundation.framework", "objc");
+module std::gfx @feat(MACOS) @private;
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 import std::gfx::macos @public;
 
@@ -1260,22 +1314,10 @@ struct GfxNativeImage
 }
 
 
-
-
-struct VkMetalSurfaceCreateInfoEXT
-{
-	int sType;
-	void* pNext;
-	uint flags;
-	void* pLayer;
-}
-alias VkCreateMetalSurfaceExtFn = fn VkResult(VkInstance instance, VkMetalSurfaceCreateInfoEXT* create_info, void* allocator, VkSurfaceKHR* surface);
-
-
 fn void? _init_native(String class_name, GfxInitOption flags)
 {
 	_gfx.ns_pool = objc::pool_push();
-	ObjId app = _gfx.ns_app = objc::send(objc::class("NSApplication"), ObjId, "sharedApplication");
+	ObjId app = _gfx.ns_app = objc::send(macos::nsapplication(), ObjId, "sharedApplication");
 	if (!app) return NSAPP_CREATION_FAILED~;
 	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
 	app.send_void("finishLaunching");
@@ -1283,67 +1325,15 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	macos::poll_monitors();
 }
 
-fn void _wait_for_event_native(Duration duration)
-{
-	if (!_gfx.ns_app) return;
-	CFTimeInterval time = duration.to_sec();
-	if (duration == WAIT_FOREVER) time = CFTimeInterval::max;
-	if (time < 0) time = 0;
-	ObjId date = objc::send(objc::@class("NSDate"), ObjId, "dateWithTimeIntervalSinceNow:", time);
-	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
-	ObjId ev = _gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
-	if (ev) _gfx.ns_app.send_void("postEvent:atStart:", ev, true);
-}
-
-struct WgpuSurfaceSourceMetalLayer { WgpuChainedStruct chain; ObjId layer; }
 
 
 
 // --- helpers
 
 
-fn ObjId _new_nsimage(int w, int h, ObjId rep = null)
-{
-	CGSize size = { w, h };
-	ObjId image = objc::alloc_by_name("NSImage").send(ObjId, "initWithSize:", size);
-	if (rep) image.send_void("addRepresentation:", rep);
-	return image;
-}
-fn ObjId _new_nsbitmap_image_rep(int w, int h)
-{
-	return objc::send(objc::alloc_by_name("NSBitmapImageRep"), ObjId,
-		"initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bitmapFormat:bytesPerRow:bitsPerPixel:",
-		(ZString*)null, (NSInteger)w, (NSInteger)h, (NSInteger)8, (NSInteger)4, true, false, darwin::string("NSCalibratedRGBColorSpace"),
-		(NSUInteger)2, (NSInteger)(w * 4), (NSInteger)32);
-}
-
-
-
-
-fn void _macos_init_view(GfxWindow* win)
-{
-	CGRect content_rect = { .size = { ...win.size } };
-
-	win.src.view.send_void("setFrame:", content_rect);
-
-	// win.src.view.send_void("setFrameAutosaveName:", <todo>);
-
-	win.src.view.set_ivar("gfx_window", win);
-	win.src.window.send_void("setContentView:", win.src.view);
-	win.src.view.send_void("setWantsLayer:", true);
-	win.src.view.send_void("setLayerContentsPlacement:",  4);
-	ObjId tracking_area = objc::alloc_by_name("NSTrackingArea")
-		.send(ObjId, "initWithRect:options:owner:userInfo:", content_rect,
-		NSTrackingAreaOptions.MOUSE_ENTERED_AND_EXITED | NSTrackingAreaOptions.ACTIVE_ALWAYS | NSTrackingAreaOptions.IN_VISIBLE_RECT,
-		win.src.view, null);
-	win.src.view.send_void("addTrackingArea:", tracking_area);
-	tracking_area.release();
-}
-
-
 fn ObjId _get_nsscreen_for_display(uint display_id)
 {
-	ObjId screens = objc::send(objc::@class("NSScreen"), ObjId, "screens");
+	ObjId screens = objc::send(macos::nsscreen(), ObjId, "screens");
 	if (!screens) return null;
 	NSUInteger count = screens.send(NSUInteger, "count");
 	for (NSUInteger i = 0; i < count; i++)

@@ -864,7 +864,7 @@ fn VkSurfaceKHR? GfxWindow.create_vulkan_surface(&self, VkInstance instance)
 	return _window_create_vulkan_surface(self, instance);
 }
 
-fn WGPUSurface GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
+fn WGPUSurface? GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
 {
 	return _window_create_wgpu_surface(self, instance);
 }
@@ -1127,7 +1127,7 @@ fn void set_dual_event_callback(GfxEventType type, GfxGenericFunc func, GfxGener
 
 fn void wait_for_event(Duration duration)
 {
-	_wait_for_event_native(duration);
+	_wait_for_event(duration);
 }
 
 fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
