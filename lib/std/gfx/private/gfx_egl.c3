@@ -15,6 +15,7 @@ fn void? load_lib()
 	$endif
 }
 
+
 fn void unload_lib() @private
 {
 	$if !$feat(WASM):
@@ -76,8 +77,11 @@ fn void destroy_context_in_window(GfxEglContext* ctx, GfxWindow* win)
 		$endif
 		ctx.surface = null;
 		ctx.ctx = null;
-		if (win) win.src.ctx.egl = null;
-		if (win.src.backing.owned) free(ctx);
+		if (win)
+		{
+			win.src.ctx.egl = null;
+			if (win.src.backing.owned) free(ctx);
+		}
 	$endif
 
 }

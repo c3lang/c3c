@@ -842,9 +842,9 @@ fn void finalize()
 	}
 	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
-	_destroy_platform();
 	unload_egl();
 	unload_opengl();
+	_destroy_platform();
 	_gfx.root = null;
 	_gfx = {};
 }
