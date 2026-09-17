@@ -4,6 +4,46 @@ import std::gfx::egl, std::gfx @public;
 
 // --- Gfx
 
+fn void? init_platform(String class_name, GfxInitOption flags)
+{
+	gfx::_gfx.wlDisplay = wl_display_connect(null);
+	if (!gfx::_gfx.wlDisplay) return gfx::WAYLAND_DISPLAY_NOT_LOADED~;
+
+	gfx::_gfx.compositor = null;
+	gfx::_gfx.registry = wl_display_get_registry(gfx::_gfx.wlDisplay);
+	static WlRegistryListener listener = { .global = &_global_registry_cb, .globalRemove = &_global_registry_remove_cb };
+
+	wl_registry_add_listener(gfx::_gfx.registry, &listener, &gfx::_gfx);
+	wl_display_roundtrip(gfx::_gfx.wlDisplay);
+
+	if (!gfx::_gfx.compositor) return gfx::WAYLAND_COMPOSITOR_NOT_FOUND~;
+
+	if (!gfx::_gfx.wlCursorTheme)
+	{
+		gfx::_gfx.wlCursorTheme = wl_cursor_theme_load(null, 24, gfx::_gfx.shm);
+		gfx::_gfx.cursorSurface = wl_compositor_create_surface(gfx::_gfx.compositor);
+	}
+
+	char[4] blk;
+	gfx::_gfx.hiddenMouse = gfx::_create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
+
+	static XdgWmBaseListener wmBaseListener = { .ping = &_xdg_wm_base_ping_cb };
+	xdg_wm_base_add_listener(gfx::_gfx.xdgWmBase, &wmBaseListener, null);
+
+	gfx::_gfx.xkbContext = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+
+	static WlDataDeviceListener dataDeviceListener = {
+		.dataOffer = &_data_device_data_offer_cb, .enter = &_data_device_nothing_enter_cb, .leave = &_data_device_nothing_cb,
+		.motion = &_data_device_nothing_motion_cb, .drop = &_data_device_nothing_cb, .selection = &_data_device_selection_cb
+	};
+
+	if (gfx::_gfx.seat && gfx::_gfx.dataDeviceManager)
+	{
+		gfx::_gfx.dataDevice = wl_data_device_manager_get_data_device(gfx::_gfx.dataDeviceManager, gfx::_gfx.seat);
+		wl_data_device_add_listener(gfx::_gfx.dataDevice, &dataDeviceListener, null);
+	}
+}
+
 fn void destroy_platform()
 {
 	if (gfx::_gfx.unixClipboard) free(gfx::_gfx.unixClipboard);
@@ -700,10 +740,8 @@ fn void surface_release(GfxSurface* surface)
 
 fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	GfxFn raw = gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
-	if (raw == null) return false;
-	uint out = ((VkGetPhysicalDeviceWaylandPresentationSupportKHRProc)raw)(physical_device, queue_family_index, gfx::_gfx.wlDisplay);
-	return out != 0;
+	VkGetPhysicalDeviceWaylandPresentationSupportKHRProc raw = gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
+	return raw && raw(physical_device, queue_family_index, gfx::_gfx.wlDisplay) != 0;
 }
 
 // --- Opengl
@@ -807,45 +845,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 	return NULL;
 }
 
-fn void? _init_wayland(String class_name, GfxInitOption flags)
-{
-	gfx::_gfx.wlDisplay = wl_display_connect(null);
-	if (!gfx::_gfx.wlDisplay) return gfx::WAYLAND_DISPLAY_NOT_LOADED~;
-
-	gfx::_gfx.compositor = null;
-	gfx::_gfx.registry = wl_display_get_registry(gfx::_gfx.wlDisplay);
-	static WlRegistryListener listener = { .global = &_global_registry_cb, .globalRemove = &_global_registry_remove_cb };
-
-	wl_registry_add_listener(gfx::_gfx.registry, &listener, &gfx::_gfx);
-	wl_display_roundtrip(gfx::_gfx.wlDisplay);
-
-	if (!gfx::_gfx.compositor) return gfx::WAYLAND_COMPOSITOR_NOT_FOUND~;
-
-	if (!gfx::_gfx.wlCursorTheme)
-	{
-		gfx::_gfx.wlCursorTheme = wl_cursor_theme_load(null, 24, gfx::_gfx.shm);
-		gfx::_gfx.cursorSurface = wl_compositor_create_surface(gfx::_gfx.compositor);
-	}
-
-	char[4] blk;
-	gfx::_gfx.hiddenMouse = gfx::_create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
-
-	static XdgWmBaseListener wmBaseListener = { .ping = &_xdg_wm_base_ping_cb };
-	xdg_wm_base_add_listener(gfx::_gfx.xdgWmBase, &wmBaseListener, null);
-
-	gfx::_gfx.xkbContext = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-
-	static WlDataDeviceListener dataDeviceListener = {
-		.dataOffer = &_data_device_data_offer_cb, .enter = &_data_device_nothing_enter_cb, .leave = &_data_device_nothing_cb,
-		.motion = &_data_device_nothing_motion_cb, .drop = &_data_device_nothing_cb, .selection = &_data_device_selection_cb
-	};
-
-	if (gfx::_gfx.seat && gfx::_gfx.dataDeviceManager)
-	{
-		gfx::_gfx.dataDevice = wl_data_device_manager_get_data_device(gfx::_gfx.dataDeviceManager, gfx::_gfx.seat);
-		wl_data_device_add_listener(gfx::_gfx.dataDevice, &dataDeviceListener, null);
-	}
-}
 
 // --- Helpers
 

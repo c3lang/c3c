@@ -4,6 +4,42 @@ import std::gfx::egl @public;
 
 // --- Gfx
 
+fn void? init_platform(String class_name, GfxInitOption flags) => @pool()
+{
+	win32::setProcessDPIAware();
+	win32::timeBeginPeriod(1);
+
+	Win32_HMODULE instance = gfx::_gfx.instance = win32::getModuleHandleW(null);
+
+	{
+		assert(class_name.len < 254);
+		WString str = class_name.to_temp_wstring()!;
+		sz len = str.len();
+		mem::copy(&gfx::_gfx.wideClassName, str, len);
+		gfx::_gfx.wideClassName[len] = 0;
+	};
+
+	gfx::_gfx.wndClass = {
+		.lpszClassName = (WString)&gfx::_gfx.wideClassName,
+		.hInstance = instance,
+		.hCursor = win32::loadCursorA(null, (Win32_LPCSTR)win32::IDC_ARROW),
+		.lpfnWndProc = &gfx::_wnd_proc,
+		.cbClsExtra = sz::size,
+		.hIcon = (Win32_HICON)win32::loadImageA(instance, "C3GFX", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */)
+	};
+
+	if (!gfx::_gfx.wndClass.hIcon)
+	{
+		gfx::_gfx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(null, (Win32_LPCSTR)win32::IDI_APPLICATION, 1, 0, 0, 0x00000040 | 0x00008000);
+	}
+
+	win32::registerClassW(&gfx::_gfx.wndClass);
+	gfx::_gfx.helper_window = win32::createWindowExW(0, gfx::_gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, instance, null);
+
+	char[4] blk;
+	gfx::_gfx.hiddenMouse = win32::create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
+}
+
 fn void destroy_platform()
 {
 	win32::timeEndPeriod(1);
@@ -866,10 +902,8 @@ fn void surface_release(GfxSurface* surface)
 
 fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	GfxFn raw = gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
-	if (raw == null) return false;
-	uint out = ((VkGetPhysicalDeviceWin32PresentationSupportKHRProc)raw)(physical_device, queue_family_index);
-	return out != 0;
+	VkGetPhysicalDeviceWin32PresentationSupportKHRProc raw = gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
+	return raw && raw(physical_device, queue_family_index) != 0;
 }
 
 // --- Opengl
@@ -1036,19 +1070,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 	}
 }
 
-// --- implementations
-
-// --- Window impls
-
-
-// --- Monitor impls
-
-
-// --- Mouse impls
-
-
-
-
 // ---- WGL pixel-format / context attributes ----
 const int WGL_ACCELERATION_ARB = 0x2003;
 const int WGL_FULL_ACCELERATION_ARB = 0x2027;
@@ -1137,40 +1158,6 @@ struct GfxNativeImage
 	Win32_HDC hdcMem;
 }
 
-fn void? _init_native(String class_name, GfxInitOption flags)
-{
-	win32::setProcessDPIAware();
-	win32::timeBeginPeriod(1);
-
-	_gfx.instance = win32::getModuleHandleW(null);
-	@pool()
-	{
-		assert(class_name.len < 254);
-		WString str = class_name.to_temp_wstring()!;
-		sz len = str.len();
-		mem::copy(&_gfx.wideClassName, str, len);
-		_gfx.wideClassName[len] = 0;
-	};
-
-	_gfx.wndClass = {};
-	_gfx.wndClass.lpszClassName = (WString)&_gfx.wideClassName;
-	_gfx.wndClass.hInstance = _gfx.instance;
-	_gfx.wndClass.hCursor = win32::loadCursorA(null, (Win32_LPCSTR)win32::IDC_ARROW);
-	_gfx.wndClass.lpfnWndProc = &_wnd_proc;
-	_gfx.wndClass.cbClsExtra = sz::size;
-
-	_gfx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(_gfx.instance, "C3GFX", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */);
-	if (!_gfx.wndClass.hIcon)
-	{
-		_gfx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(null, (Win32_LPCSTR)win32::IDI_APPLICATION, 1, 0, 0, 0x00000040 | 0x00008000);
-	}
-
-	win32::registerClassW(&_gfx.wndClass);
-	_gfx.helper_window = win32::createWindowExW(0, _gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, _gfx.instance, null);
-
-	char[4] blk;
-	_gfx.hiddenMouse = win32::create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
-}
 
 // --- Event handling
 

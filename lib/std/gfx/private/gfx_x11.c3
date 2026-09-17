@@ -5,6 +5,80 @@ import std::gfx::gl @public;
 
 // --- Gfx
 
+fn void? init_platform(String class_name, GfxInitOption flags)
+{
+	gfx::_gfx.class_name = class_name;
+
+	xInitThreads();
+	gfx::_gfx.display = xOpenDisplay(null);
+	if (!gfx::_gfx.display) return gfx::X11_DISPLAY_NOT_LOADED~;
+
+	gfx::_gfx.netCurrentDesktop = xInternAtom(gfx::_gfx.display, "_NET_CURRENT_DESKTOP", 0);
+	gfx::_gfx.net_wm_state_maximized_vert = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE_MAXIMIZED_VERT", 0);
+	gfx::_gfx.net_wm_state_maximized_horz = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE_MAXIMIZED_HORZ", 0);
+	gfx::_gfx.netWmBypassCompositor = xInternAtom(gfx::_gfx.display, "_NET_WM_BYPASS_COMPOSITOR", 0);
+	gfx::_gfx.netWmState = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE", 0);
+	gfx::_gfx.motifWmHints = xInternAtom(gfx::_gfx.display, "_MOTIF_WM_HINTS", 0);
+	gfx::_gfx.wmDeleteWindow = xInternAtom(gfx::_gfx.display, "WM_DELETE_WINDOW", 0);
+	gfx::_gfx.netWmSyncRequestCounter = xInternAtom(gfx::_gfx.display, "_NET_WM_SYNC_REQUEST_COUNTER", 0);
+	gfx::_gfx.netWmSyncRequest = xInternAtom(gfx::_gfx.display, "_NET_WM_SYNC_REQUEST", 0);
+	gfx::_gfx.atomPair = xInternAtom(gfx::_gfx.display, "ATOM_PAIR", 0);
+	gfx::_gfx.multiple = xInternAtom(gfx::_gfx.display, "MULTIPLE", 0);
+	gfx::_gfx.targets = xInternAtom(gfx::_gfx.display, "TARGETS", 0);
+	gfx::_gfx.saveTargets = xInternAtom(gfx::_gfx.display, "SAVE_TARGETS", 0);
+	gfx::_gfx.utf8String = xInternAtom(gfx::_gfx.display, "UTF8_STRING", 0);
+	gfx::_gfx.xdndTypeList = xInternAtom(gfx::_gfx.display, "XdndTypeList", 0);
+	gfx::_gfx.xdndSelection = xInternAtom(gfx::_gfx.display, "XdndSelection", 0);
+	gfx::_gfx.xdndAware = xInternAtom(gfx::_gfx.display, "XdndAware", 0);
+	gfx::_gfx.xdndEnter = xInternAtom(gfx::_gfx.display, "XdndEnter", 0);
+	gfx::_gfx.xdndPosition = xInternAtom(gfx::_gfx.display, "XdndPosition", 0);
+	gfx::_gfx.xdndStatus = xInternAtom(gfx::_gfx.display, "XdndStatus", 0);
+	gfx::_gfx.xdndLeave = xInternAtom(gfx::_gfx.display, "XdndLeave", 0);
+	gfx::_gfx.xdndDrop = xInternAtom(gfx::_gfx.display, "XdndDrop", 0);
+	gfx::_gfx.xdndFinished = xInternAtom(gfx::_gfx.display, "XdndFinished", 0);
+	gfx::_gfx.xdndActionCopy = xInternAtom(gfx::_gfx.display, "XdndActionCopy", 0);
+	gfx::_gfx.wmProtocols = xInternAtom(gfx::_gfx.display, "WM_PROTOCOLS", 0);
+	gfx::_gfx.wmState = xInternAtom(gfx::_gfx.display, "WM_STATE", 0);
+	gfx::_gfx.netWmStateFullscreen = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE_FULLSCREEN", 0);
+	gfx::_gfx.netWmStateAbove = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE_ABOVE", 0);
+	gfx::_gfx.netWmWindowOpacity = xInternAtom(gfx::_gfx.display, "_NET_WM_WINDOW_OPACITY", 0);
+	gfx::_gfx.netWmName = xInternAtom(gfx::_gfx.display, "_NET_WM_NAME", 0);
+	gfx::_gfx.netWmIcon = xInternAtom(gfx::_gfx.display, "_NET_WM_ICON", 0);
+	gfx::_gfx.xselData = xInternAtom(gfx::_gfx.display, "XSEL_DATA", 0);
+	gfx::_gfx.clipboardAtom = xInternAtom(gfx::_gfx.display, "CLIPBOARD", 0);
+	gfx::_gfx.clipboardManager = xInternAtom(gfx::_gfx.display, "CLIPBOARD_MANAGER", 0);
+	gfx::_gfx.netWorkarea = xInternAtom(gfx::_gfx.display, "_NET_WORKAREA", 0);
+	gfx::_gfx.xtextUriList = xInternAtom(gfx::_gfx.display, "text/uri-list", 0);
+	gfx::_gfx.xtextPlain = xInternAtom(gfx::_gfx.display, "text/plain", 0);
+
+	gfx::_gfx.context = xUniqueContext();
+	if (!gfx::_gfx.context) return gfx::X11_CTX_CREATION_FAILED~;
+
+	XSetWindowAttributes wa;
+	wa.event_mask = 1 << 22; // PropertyChangeMask
+	gfx::_gfx.helper_window = xCreateWindow(gfx::_gfx.display, xDefaultRootWindow(gfx::_gfx.display), 0, 0, 1, 1, 0, 0,
+	2 /* InputOnly */, xDefaultVisual(gfx::_gfx.display, xDefaultScreen(gfx::_gfx.display)), 1 << 11, &wa);
+	if (gfx::_gfx.helper_window == 0) return gfx::X11_WINDOW_CREATION_FAILED~;
+
+	dload_cursor_xi_ext();
+
+	char[4] blk;
+	gfx::_gfx.hiddenMouse = gfx::_create_mouse((void*)&blk, { 1, 1 }, RGBA8) ?? null;
+	gfx::_gfx.unixClipboard = null;
+
+	xSetErrorHandler(&_x_error_handler);
+	xSync(gfx::_gfx.display, 0);
+
+	xSetLocaleModifiers("");
+	xRegisterIMInstantiateCallback(gfx::_gfx.display, null, null, null, (void*)&_x11_im_init_callback, null);
+
+	int errorBase;
+	if (xRRQueryExtension(gfx::_gfx.display, &gfx::_gfx.xrandrEventBase, &errorBase) != 0)
+	{
+		xRRSelectInput(gfx::_gfx.display, xRootWindow(gfx::_gfx.display, xDefaultScreen(gfx::_gfx.display)), 1 << 4); // RROutputChangeNotifyMask
+	}
+}
+
 fn void destroy_platform()
 {
 	if (gfx::_gfx.display)
@@ -1048,7 +1122,7 @@ fn void surface_release(GfxSurface* surface)
 
 fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
-	VkGetPhysicalDeviceXlibPresentationSupportKHRProc proc = (VkGetPhysicalDeviceXlibPresentationSupportKHRProc)gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
+	VkGetPhysicalDeviceXlibPresentationSupportKHRProc proc = gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceXlibPresentationSupportKHR");
 	if (!proc) return false;
 	XVisual* visual = xDefaultVisual(gfx::_gfx.display, xDefaultScreen(gfx::_gfx.display));
 	uint out = proc(physical_device, queue_family_index, gfx::_gfx.display, xVisualIDFromVisual(visual));
@@ -1059,7 +1133,7 @@ fn bool vulkan_get_physical_device_presentation_support(VkInstance instance, VkP
 
 fn void* get_current_opengl_context() => _glx_get_current_context_fn();
 
-fn GfxFn get_opengl_proc(ZString procname)
+fn void* get_opengl_proc(ZString procname)
 {
 	if (!gfx::_gfx.gl.get_proc_addr_fn) return null;
 	return gfx::_gfx.gl.get_proc_addr_fn(procname);
@@ -1240,79 +1314,6 @@ fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags,
 }
 
 
-fn void? _init_x11(String class_name, GfxInitOption flags)
-{
-	gfx::_gfx.class_name = class_name;
-
-	xInitThreads();
-	gfx::_gfx.display = xOpenDisplay(null);
-	if (!gfx::_gfx.display) return gfx::X11_DISPLAY_NOT_LOADED~;
-
-	gfx::_gfx.netCurrentDesktop = xInternAtom(gfx::_gfx.display, "_NET_CURRENT_DESKTOP", 0);
-	gfx::_gfx.net_wm_state_maximized_vert = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE_MAXIMIZED_VERT", 0);
-	gfx::_gfx.net_wm_state_maximized_horz = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE_MAXIMIZED_HORZ", 0);
-	gfx::_gfx.netWmBypassCompositor = xInternAtom(gfx::_gfx.display, "_NET_WM_BYPASS_COMPOSITOR", 0);
-	gfx::_gfx.netWmState = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE", 0);
-	gfx::_gfx.motifWmHints = xInternAtom(gfx::_gfx.display, "_MOTIF_WM_HINTS", 0);
-	gfx::_gfx.wmDeleteWindow = xInternAtom(gfx::_gfx.display, "WM_DELETE_WINDOW", 0);
-	gfx::_gfx.netWmSyncRequestCounter = xInternAtom(gfx::_gfx.display, "_NET_WM_SYNC_REQUEST_COUNTER", 0);
-	gfx::_gfx.netWmSyncRequest = xInternAtom(gfx::_gfx.display, "_NET_WM_SYNC_REQUEST", 0);
-	gfx::_gfx.atomPair = xInternAtom(gfx::_gfx.display, "ATOM_PAIR", 0);
-	gfx::_gfx.multiple = xInternAtom(gfx::_gfx.display, "MULTIPLE", 0);
-	gfx::_gfx.targets = xInternAtom(gfx::_gfx.display, "TARGETS", 0);
-	gfx::_gfx.saveTargets = xInternAtom(gfx::_gfx.display, "SAVE_TARGETS", 0);
-	gfx::_gfx.utf8String = xInternAtom(gfx::_gfx.display, "UTF8_STRING", 0);
-	gfx::_gfx.xdndTypeList = xInternAtom(gfx::_gfx.display, "XdndTypeList", 0);
-	gfx::_gfx.xdndSelection = xInternAtom(gfx::_gfx.display, "XdndSelection", 0);
-	gfx::_gfx.xdndAware = xInternAtom(gfx::_gfx.display, "XdndAware", 0);
-	gfx::_gfx.xdndEnter = xInternAtom(gfx::_gfx.display, "XdndEnter", 0);
-	gfx::_gfx.xdndPosition = xInternAtom(gfx::_gfx.display, "XdndPosition", 0);
-	gfx::_gfx.xdndStatus = xInternAtom(gfx::_gfx.display, "XdndStatus", 0);
-	gfx::_gfx.xdndLeave = xInternAtom(gfx::_gfx.display, "XdndLeave", 0);
-	gfx::_gfx.xdndDrop = xInternAtom(gfx::_gfx.display, "XdndDrop", 0);
-	gfx::_gfx.xdndFinished = xInternAtom(gfx::_gfx.display, "XdndFinished", 0);
-	gfx::_gfx.xdndActionCopy = xInternAtom(gfx::_gfx.display, "XdndActionCopy", 0);
-	gfx::_gfx.wmProtocols = xInternAtom(gfx::_gfx.display, "WM_PROTOCOLS", 0);
-	gfx::_gfx.wmState = xInternAtom(gfx::_gfx.display, "WM_STATE", 0);
-	gfx::_gfx.netWmStateFullscreen = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE_FULLSCREEN", 0);
-	gfx::_gfx.netWmStateAbove = xInternAtom(gfx::_gfx.display, "_NET_WM_STATE_ABOVE", 0);
-	gfx::_gfx.netWmWindowOpacity = xInternAtom(gfx::_gfx.display, "_NET_WM_WINDOW_OPACITY", 0);
-	gfx::_gfx.netWmName = xInternAtom(gfx::_gfx.display, "_NET_WM_NAME", 0);
-	gfx::_gfx.netWmIcon = xInternAtom(gfx::_gfx.display, "_NET_WM_ICON", 0);
-	gfx::_gfx.xselData = xInternAtom(gfx::_gfx.display, "XSEL_DATA", 0);
-	gfx::_gfx.clipboardAtom = xInternAtom(gfx::_gfx.display, "CLIPBOARD", 0);
-	gfx::_gfx.clipboardManager = xInternAtom(gfx::_gfx.display, "CLIPBOARD_MANAGER", 0);
-	gfx::_gfx.netWorkarea = xInternAtom(gfx::_gfx.display, "_NET_WORKAREA", 0);
-	gfx::_gfx.xtextUriList = xInternAtom(gfx::_gfx.display, "text/uri-list", 0);
-	gfx::_gfx.xtextPlain = xInternAtom(gfx::_gfx.display, "text/plain", 0);
-
-	gfx::_gfx.context = xUniqueContext();
-	if (!gfx::_gfx.context) return gfx::X11_CTX_CREATION_FAILED~;
-
-	XSetWindowAttributes wa;
-	wa.event_mask = 1 << 22; // PropertyChangeMask
-	gfx::_gfx.helper_window = xCreateWindow(gfx::_gfx.display, xDefaultRootWindow(gfx::_gfx.display), 0, 0, 1, 1, 0, 0,
-		2 /* InputOnly */, xDefaultVisual(gfx::_gfx.display, xDefaultScreen(gfx::_gfx.display)), 1 << 11, &wa);
-	if (gfx::_gfx.helper_window == 0) return gfx::X11_WINDOW_CREATION_FAILED~;
-
-	dload_cursor_xi_ext();
-
-	char[4] blk;
-	gfx::_gfx.hiddenMouse = gfx::_create_mouse((void*)&blk, { 1, 1 }, RGBA8) ?? null;
-	gfx::_gfx.unixClipboard = null;
-
-	xSetErrorHandler(&_x_error_handler);
-	xSync(gfx::_gfx.display, 0);
-
-	xSetLocaleModifiers("");
-	xRegisterIMInstantiateCallback(gfx::_gfx.display, null, null, null, (void*)&_x11_im_init_callback, null);
-
-	int errorBase;
-	if (xRRQueryExtension(gfx::_gfx.display, &gfx::_gfx.xrandrEventBase, &errorBase) != 0)
-	{
-		xRRSelectInput(gfx::_gfx.display, xRootWindow(gfx::_gfx.display, xDefaultScreen(gfx::_gfx.display)), 1 << 4); // RROutputChangeNotifyMask
-	}
-}
 
 
 

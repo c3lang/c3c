@@ -4,6 +4,29 @@ import std::gfx::egl @public;
 
 // --- Gfx
 
+fn void? init_platform(String class_name, GfxInitOption flags)
+{
+	gfx::_gfx.usingAsyncify = -1;
+	GfxMonitor monitor;
+	monitor.origin = {};
+	monitor.pixelRatio = (float)gfx::gfxJsDevicePixelRatio();
+	monitor.mode.size = { gfx::gfxJsInnerWidth(), gfx::gfxJsInnerHeight() };
+	monitor.phys_size = {
+		(float)(int)(monitor.mode.size.x * monitor.pixelRatio + 0.5f),
+		(float)(int)(monitor.mode.size.y * monitor.pixelRatio + 0.5f)
+	};
+
+	float dpi = 96.0f * monitor.pixelRatio;
+	monitor.scale = (Vec2)(dpi / 96.0f);
+
+	gfx::_split_bpp(32, &monitor.mode);
+	monitor.mode.refresh_rate = 0;
+
+	GfxMonitorNode* node = gfx::_monitor_add(&monitor);
+	gfx::_gfx.monitors.primary = node;
+	gfx::_monitor_callback(gfx::_gfx.root, &node.mon, true);
+}
+
 fn void destroy_platform() {}
 
 fn void poll_events_platform()
@@ -499,28 +522,6 @@ struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector
 	WgpuStringView selector;
 }
 
-fn void? _init_native(String class_name, GfxInitOption flags)
-{
-	_gfx.usingAsyncify = -1;
-	GfxMonitor monitor;
-	monitor.origin = {};
-	monitor.pixelRatio = (float)gfxJsDevicePixelRatio();
-	monitor.mode.size = { gfxJsInnerWidth(), gfxJsInnerHeight() };
-	monitor.phys_size = {
-		(float)(int)(monitor.mode.size.x * monitor.pixelRatio + 0.5f),
-		(float)(int)(monitor.mode.size.y * monitor.pixelRatio + 0.5f)
-	};
-
-	float dpi = 96.0f * monitor.pixelRatio;
-	monitor.scale = (Vec2)(dpi / 96.0f);
-
-	_split_bpp(32, &monitor.mode);
-	monitor.mode.refresh_rate = 0;
-
-	GfxMonitorNode* node = _monitor_add(&monitor);
-	_gfx.monitors.primary = node;
-	_monitor_callback(_gfx.root, &node.mon, true);
-}
 
 // --- exported
 
@@ -622,7 +623,7 @@ extern fn void gfxJsWebglMakeCurrent(int ctx) @wasm("env", "emscripten_webgl_mak
 extern fn void gfxJsWebglCommitFrame() @wasm("env", "emscripten_webgl_commit_frame");
 extern fn int gfxJsWebglGetCurrentContext() @wasm("env", "emscripten_webgl_get_current_context");
 extern fn int gfxJsExtensionSupported(ZString name, sz len) @wasm("env", "emscripten_extension_supported");
-extern fn GfxFn gfxJsGetProcAddress(ZString name) @wasm("env", "emscripten_webgl_get_proc_address");
+extern fn void* gfxJsGetProcAddress(ZString name) @wasm("env", "emscripten_webgl_get_proc_address");
 extern fn void gfxJsMkdir(ZString name) @wasm("env", "emscripten_mkdir");
 extern fn void gfxJsWriteFile(ZString path, char* data, sz len) @wasm("env", "emscripten_write_file");
 

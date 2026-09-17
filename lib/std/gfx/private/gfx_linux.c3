@@ -17,30 +17,4 @@ struct GfxNativeImage
 
 
 
-fn void? _init_native(String class_name, GfxInitOption flags)
-{
-	$switch:
-		$case WAYLAND_ONLY:
-			return wl::_init_wayland(class_name, flags);
-		$case X11_ONLY:
-			return x11::_init_x11(class_name, flags);
-		$default:
-			if (!(flags & ENABLE_X11))
-			{
-				String wayland_display = env::tget_var("WAYLAND_DISPLAY") ?? "";
-				_gfx.use_wayland = wayland_display != "";
-				if (_gfx.use_wayland)
-				{
-					if (try wl::_init_wayland(class_name, flags)) return;
-					log::info("Falling back to X11", category: log::CATEGORY_VIDEO);
-					_gfx.use_wayland = false;
-				}
-			}
-			else
-			{
-				_gfx.use_wayland = false;
-			}
-			return x11::_init_x11(class_name, flags);
-	$endswitch
-}
 

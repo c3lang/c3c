@@ -9,6 +9,37 @@ import std::gfx::win32 @public;
 
 // --- Gfx
 
+fn void? _init_platform(String class_name, GfxInitOption options)
+{
+	$switch:
+		$case $feat(MACOS):
+			return macos::init_platform(class_name, options);
+		$case $feat(WASM):
+			return wasm::init_platform(class_name, options);
+		$case $feat(WIN32):
+			return win32::init_platform(class_name, options);
+		$case WAYLAND_ONLY:
+			return wl::init_platform(class_name, options);
+		$case X11_ONLY:
+			return x11::init_platform(class_name, options);
+		$case X11_OR_WAYLAND:
+			if (!options.enable_x11)
+			{
+				String wayland_display = env::tget_var("WAYLAND_DISPLAY") ?? "";
+				_gfx.use_wayland = wayland_display != "";
+				if (_gfx.use_wayland)
+				{
+					if (try wl::init_platform(class_name, options)) return;
+					log::info("Falling back to X11", category: log::CATEGORY_VIDEO);
+					_gfx.use_wayland = false;
+				}
+			}
+			return x11::init_platform(class_name, options);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 fn void _destroy_platform()
 {
 	$switch:

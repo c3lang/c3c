@@ -59,7 +59,6 @@ excuse
 
 const Duration WAIT_FOREVER = Duration::max;
 
-alias GfxFn = fn void();
 alias GfxGenericFunc = fn void(GfxEvent* e);
 alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
 alias GfxPoint = int[<2>];
@@ -398,13 +397,12 @@ constset GfxMonitorModeRequest : char
 	ALL     = 0b111,
 }
 
-constset GfxInitOption : char
+bitstruct GfxInitOption : char
 {
-	NONE         = 0b0000,
-	INIT_OPEN_GL = 0b0001,
-	INIT_EGL     = 0b0010,
-	INIT_VULKAN  = 0b0100,
-	ENABLE_X11   = 0b1000,
+	bool init_opengl;
+	bool init_egl;
+	bool init_vulkan;
+	bool enable_x11;
 }
 
 enum GfxFormat : char (int channels, GfxColorLayout layout)
@@ -785,11 +783,11 @@ fn void? init(String class_name, GfxInitOption options)
 		_destroy_platform();
 		_gfx = {};
 	}
-	if (options & INIT_OPEN_GL) load_opengl()!;
-	if (options & INIT_EGL) load_egl()!;
-	if (options & INIT_VULKAN) load_vulkan()!;
+	if (options.init_opengl) load_opengl()!;
+	if (options.init_egl) load_egl()!;
+	if (options.init_vulkan) load_vulkan()!;
 	_init_keycodes();
-	_init_native(class_name, options)!;
+	_init_platform(class_name, options)!;
 	foreach (icon : GfxMouseIcon::values)
 	{
 		_gfx.standardMice[icon.ordinal] = _create_standard_mouse(icon) ?? null;

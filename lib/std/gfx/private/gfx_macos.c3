@@ -4,6 +4,17 @@ import std::gfx::gl @public;
 
 // --- Gfx
 
+fn void? init_platform(String class_name, GfxInitOption flags)
+{
+	gfx::_gfx.ns_pool = objc::pool_push();
+	ObjId app = gfx::_gfx.ns_app = objc::send(macos::nsapplication(), ObjId, "sharedApplication");
+	if (!app) return gfx::NSAPP_CREATION_FAILED~;
+	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
+	app.send_void("finishLaunching");
+	_osx_register_classes()!;
+	poll_monitors();
+}
+
 fn void destroy_platform()
 {
 	if (gfx::_gfx.ns_pool)
@@ -1301,16 +1312,6 @@ struct GfxNativeImage
 }
 
 
-fn void? _init_native(String class_name, GfxInitOption flags)
-{
-	_gfx.ns_pool = objc::pool_push();
-	ObjId app = _gfx.ns_app = objc::send(macos::nsapplication(), ObjId, "sharedApplication");
-	if (!app) return NSAPP_CREATION_FAILED~;
-	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
-	app.send_void("finishLaunching");
-	macos::_osx_register_classes()!;
-	macos::poll_monitors();
-}
 
 
 
