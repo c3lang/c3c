@@ -82,39 +82,6 @@ struct GfxContext
 	}
 	GfxDataTransfer* unixClipboard @feat(LINUX, BSD);
 
-	struct @feat(WAYLAND)
-	{
-		WlDisplay* wlDisplay;
-		WlProxy* registry;
-		WlProxy* compositor;
-		WlProxy* seat;
-		WlProxy* shm;
-		WlProxy* wlPointer;
-		WlProxy* wlKeyboard;
-		WlProxy* xdgWmBase;
-		WlProxy* decorationManager;
-		WlProxy* constraint_manager;
-		WlProxy* relativePointerManager;
-		WlProxy* relativePointer;
-		WlProxy* iconManager;
-		WlProxy* xdgOutputManager;
-		WlProxy* wp_pointer_warp;
-		WlProxy* dataDeviceManager;
-		WlProxy* dataDevice;
-		WlCursorTheme* wlCursorTheme;
-		WlProxy* cursorSurface;
-		GfxWindow* mouseOwner;
-		GfxWindow* kbOwner;
-		uint mouseEnterSerial;
-		XkbContext* xkbContext;
-		XkbKeymap* keymap;
-		XkbState* xkbState;
-		XkbComposeState* composeState;
-		int wlRepeatInfoRate;
-		int wlRepeatInfoDelay;
-		uint lastKey;
-		Clock lastKeyTime;
-	}
 	struct @feat(LINUX, BSD) @feat(!NO_X11)
 	{
 		XDisplay* display;

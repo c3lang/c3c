@@ -2,117 +2,155 @@ module std::gfx::wl @feat(BSD, LINUX) @feat(WAYLAND) @private;
 import std::math, std::collections, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
 import std::gfx::egl, std::gfx @public;
 
+struct GfxWaylandCtx
+{
+	WlDisplay* wl_display;
+	WlProxy* registry;
+	WlProxy* compositor;
+	WlProxy* seat;
+	WlProxy* shm;
+	WlProxy* wl_pointer;
+	WlProxy* wl_keyboard;
+	WlProxy* xdg_wm_base;
+	WlProxy* decoration_manager;
+	WlProxy* constraint_manager;
+	WlProxy* relative_pointer_manager;
+	WlProxy* relative_pointer;
+	WlProxy* icon_manager;
+	WlProxy* xdg_output_manager;
+	WlProxy* wp_pointer_warp;
+	WlProxy* data_device_manager;
+	WlProxy* data_device;
+	WlCursorTheme* wl_cursor_theme;
+	WlProxy* cursor_surface;
+	GfxWindow* mouse_owner;
+	GfxWindow* kb_owner;
+	uint mouse_enter_serial;
+	XkbContext* xkb_context;
+	XkbKeymap* keymap;
+	XkbState* xkb_state;
+	XkbComposeState* compose_state;
+	int wl_repeat_info_rate;
+	int wl_repeat_info_delay;
+	uint last_key;
+	Clock last_key_time;
+}
+
+GfxWaylandCtx ctx;
+
 // --- Gfx
 
 fn void? init_platform(String class_name, GfxInitOption flags)
 {
-	gfx::_gfx.wlDisplay = wl_display_connect(null);
-	if (!gfx::_gfx.wlDisplay) return gfx::WAYLAND_DISPLAY_NOT_LOADED~;
+	ctx = { .wl_display = wl_display_connect(null) };
+	if (!ctx.wl_display) return gfx::WAYLAND_DISPLAY_NOT_LOADED~;
 
-	gfx::_gfx.compositor = null;
-	gfx::_gfx.registry = wl_display_get_registry(gfx::_gfx.wlDisplay);
+	ctx.compositor = null;
+	ctx.registry = wl_display_get_registry(ctx.wl_display);
 	static WlRegistryListener listener = { .global = &_global_registry_cb, .globalRemove = &_global_registry_remove_cb };
 
-	wl_registry_add_listener(gfx::_gfx.registry, &listener, &gfx::_gfx);
-	wl_display_roundtrip(gfx::_gfx.wlDisplay);
+	wl_registry_add_listener(ctx.registry, &listener, null);
+	wl_display_roundtrip(ctx.wl_display);
 
-	if (!gfx::_gfx.compositor) return gfx::WAYLAND_COMPOSITOR_NOT_FOUND~;
+	if (!ctx.compositor) return gfx::WAYLAND_COMPOSITOR_NOT_FOUND~;
 
-	if (!gfx::_gfx.wlCursorTheme)
+	if (!ctx.wl_cursor_theme)
 	{
-		gfx::_gfx.wlCursorTheme = wl_cursor_theme_load(null, 24, gfx::_gfx.shm);
-		gfx::_gfx.cursorSurface = wl_compositor_create_surface(gfx::_gfx.compositor);
+		ctx.wl_cursor_theme = wl_cursor_theme_load(null, 24, ctx.shm);
+		ctx.cursor_surface = wl_compositor_create_surface(ctx.compositor);
 	}
 
 	char[4] blk;
 	gfx::_gfx.hiddenMouse = gfx::_create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
 
-	static XdgWmBaseListener wmBaseListener = { .ping = &_xdg_wm_base_ping_cb };
-	xdg_wm_base_add_listener(gfx::_gfx.xdgWmBase, &wmBaseListener, null);
+	static XdgWmBaseListener wm_base_listener = { .ping = &_xdg_wm_base_ping_cb };
+	xdg_wm_base_add_listener(ctx.xdg_wm_base, &wm_base_listener, null);
 
-	gfx::_gfx.xkbContext = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	ctx.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
-	static WlDataDeviceListener dataDeviceListener = {
+	static WlDataDeviceListener data_device_listener = {
 		.dataOffer = &_data_device_data_offer_cb, .enter = &_data_device_nothing_enter_cb, .leave = &_data_device_nothing_cb,
 		.motion = &_data_device_nothing_motion_cb, .drop = &_data_device_nothing_cb, .selection = &_data_device_selection_cb
 	};
 
-	if (gfx::_gfx.seat && gfx::_gfx.dataDeviceManager)
+	if (ctx.seat && ctx.data_device_manager)
 	{
-		gfx::_gfx.dataDevice = wl_data_device_manager_get_data_device(gfx::_gfx.dataDeviceManager, gfx::_gfx.seat);
-		wl_data_device_add_listener(gfx::_gfx.dataDevice, &dataDeviceListener, null);
+		ctx.data_device = wl_data_device_manager_get_data_device(ctx.data_device_manager, ctx.seat);
+		wl_data_device_add_listener(ctx.data_device, &data_device_listener, null);
 	}
 }
 
 fn void destroy_platform()
 {
 	if (gfx::_gfx.unixClipboard) free(gfx::_gfx.unixClipboard);
-	if (gfx::_gfx.wlPointer) wl_pointer_release(gfx::_gfx.wlPointer);
-	if (gfx::_gfx.wlKeyboard) wl_keyboard_release(gfx::_gfx.wlKeyboard);
-	if (gfx::_gfx.registry) wl_registry_destroy(gfx::_gfx.registry);
-	if (gfx::_gfx.decorationManager) zxdg_decoration_manager_v1_destroy(gfx::_gfx.decorationManager);
-	if (gfx::_gfx.relativePointerManager) zwp_relative_pointer_manager_v1_destroy(gfx::_gfx.relativePointerManager);
-	if (gfx::_gfx.relativePointer) zwp_relative_pointer_v1_destroy(gfx::_gfx.relativePointer);
-	if (gfx::_gfx.constraint_manager) zwp_pointer_constraints_v1_destroy(gfx::_gfx.constraint_manager);
-	if (gfx::_gfx.iconManager) xdg_toplevel_icon_manager_v1_destroy(gfx::_gfx.iconManager);
-	if (gfx::_gfx.xdgOutputManager) zxdg_output_manager_v1_destroy(gfx::_gfx.xdgOutputManager);
-	if (gfx::_gfx.dataDeviceManager) wl_data_device_manager_destroy(gfx::_gfx.dataDeviceManager);
-	if (gfx::_gfx.dataDevice) wl_data_device_destroy(gfx::_gfx.dataDevice);
-	if (gfx::_gfx.wlCursorTheme) wl_cursor_theme_destroy(gfx::_gfx.wlCursorTheme);
-	if (gfx::_gfx.wp_pointer_warp) wp_pointer_warp_v1_destroy(gfx::_gfx.wp_pointer_warp);
+	if (ctx.wl_pointer) wl_pointer_release(ctx.wl_pointer);
+	if (ctx.wl_keyboard) wl_keyboard_release(ctx.wl_keyboard);
+	if (ctx.registry) wl_registry_destroy(ctx.registry);
+	if (ctx.decoration_manager) zxdg_decoration_manager_v1_destroy(ctx.decoration_manager);
+	if (ctx.relative_pointer_manager) zwp_relative_pointer_manager_v1_destroy(ctx.relative_pointer_manager);
+	if (ctx.relative_pointer) zwp_relative_pointer_v1_destroy(ctx.relative_pointer);
+	if (ctx.constraint_manager) zwp_pointer_constraints_v1_destroy(ctx.constraint_manager);
+	if (ctx.icon_manager) xdg_toplevel_icon_manager_v1_destroy(ctx.icon_manager);
+	if (ctx.xdg_output_manager) zxdg_output_manager_v1_destroy(ctx.xdg_output_manager);
+	if (ctx.data_device_manager) wl_data_device_manager_destroy(ctx.data_device_manager);
+	if (ctx.data_device) wl_data_device_destroy(ctx.data_device);
+	if (ctx.wl_cursor_theme) wl_cursor_theme_destroy(ctx.wl_cursor_theme);
+	if (ctx.wp_pointer_warp) wp_pointer_warp_v1_destroy(ctx.wp_pointer_warp);
 	if (gfx::_gfx.hiddenMouse) free_mouse(gfx::_gfx.hiddenMouse);
-	if (gfx::_gfx.cursorSurface) wl_surface_destroy(gfx::_gfx.cursorSurface);
-	if (gfx::_gfx.shm) wl_shm_destroy(gfx::_gfx.shm);
-	if (gfx::_gfx.seat) wl_seat_destroy(gfx::_gfx.seat);
-	if (gfx::_gfx.xdgWmBase) xdg_wm_base_destroy(gfx::_gfx.xdgWmBase);
-	if (gfx::_gfx.compositor) wl_compositor_destroy(gfx::_gfx.compositor);
-	if (gfx::_gfx.wlDisplay) wl_display_disconnect(gfx::_gfx.wlDisplay);
+	if (ctx.cursor_surface) wl_surface_destroy(ctx.cursor_surface);
+	if (ctx.shm) wl_shm_destroy(ctx.shm);
+	if (ctx.seat) wl_seat_destroy(ctx.seat);
+	if (ctx.xdg_wm_base) xdg_wm_base_destroy(ctx.xdg_wm_base);
+	if (ctx.compositor) wl_compositor_destroy(ctx.compositor);
+	if (ctx.wl_display) wl_display_disconnect(ctx.wl_display);
+
+	ctx = {};
 }
 
 fn void poll_events_platform()
 {
 	gfx::_reset_prev_state();
 
-	while (wl_display_flush(gfx::_gfx.wlDisplay) == -1)
+	while (wl_display_flush(ctx.wl_display) == -1)
 	{
 		if (libc::errno() != EAGAIN) return;
-		if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) == -1) return;
+		if (wl_display_dispatch_pending(ctx.wl_display) == -1) return;
 	}
 
-	if (gfx::_gfx.wlRepeatInfoRate != 0 && gfx::_gfx.lastKey != 0)
+	if (ctx.wl_repeat_info_rate != 0 && ctx.last_key != 0)
 	{
-		if (gfx::_gfx.lastKeyTime.to_now() >= time::NANO_DURATION_ZERO)
+		if (ctx.last_key_time.to_now() >= time::NANO_DURATION_ZERO)
 		{
-			_send_key_event(gfx::_gfx.lastKey);
-			gfx::_gfx.lastKeyTime = clock::now() + time::from_float(1.0 / gfx::_gfx.wlRepeatInfoRate).to_nano();
+			_send_key_event(ctx.last_key);
+			ctx.last_key_time = clock::now() + time::from_float(1.0 / ctx.wl_repeat_info_rate).to_nano();
 		}
 	}
 
 	Posix_pollfd fds;
-	fds.fd = wl_display_get_fd(gfx::_gfx.wlDisplay);
+	fds.fd = wl_display_get_fd(ctx.wl_display);
 	fds.events = (short)os::POLLIN;
 
 	while (true)
 	{
-		while (wl_display_prepare_read(gfx::_gfx.wlDisplay) != 0)
+		while (wl_display_prepare_read(ctx.wl_display) != 0)
 		{
-			if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) > 0) return;
+			if (wl_display_dispatch_pending(ctx.wl_display) > 0) return;
 		}
 
 		if (os::poll(&fds, 1, 0) == 0)
 		{
-			wl_display_cancel_read(gfx::_gfx.wlDisplay);
+			wl_display_cancel_read(ctx.wl_display);
 			return;
 		}
 
 		if (fds.revents & os::POLLIN)
 		{
-			wl_display_read_events(gfx::_gfx.wlDisplay);
-			if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) > 0) return;
+			wl_display_read_events(ctx.wl_display);
+			if (wl_display_dispatch_pending(ctx.wl_display) > 0) return;
 		}
 		else
 		{
-			wl_display_cancel_read(gfx::_gfx.wlDisplay);
+			wl_display_cancel_read(ctx.wl_display);
 		}
 	}
 }
@@ -147,22 +185,22 @@ fn void wait_for_event(Duration duration)
 			gfx::_gfx.eventWait_forceStop[2] = 0;
 		}
 	}
-	fds[0].fd = wl_display_get_fd(gfx::_gfx.wlDisplay);
+	fds[0].fd = wl_display_get_fd(ctx.wl_display);
 
 	// empty the queue
-	while (wl_display_prepare_read(gfx::_gfx.wlDisplay))
+	while (wl_display_prepare_read(ctx.wl_display))
 	{
 		// error occured when dispatching the queue
-		if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) == -1) return;
+		if (wl_display_dispatch_pending(ctx.wl_display) == -1) return;
 	}
 
 	// send any pending requests to the compositor
-	while (wl_display_flush(gfx::_gfx.wlDisplay) == -1)
+	while (wl_display_flush(ctx.wl_display) == -1)
 	{
 		// queue is full dispatch them
 		if (libc::errno() == EAGAIN)
 		{
-			if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) == -1) return;
+			if (wl_display_dispatch_pending(ctx.wl_display) == -1) return;
 		}
 		else
 		{
@@ -173,7 +211,7 @@ fn void wait_for_event(Duration duration)
 	bool infinity = duration == gfx::WAIT_FOREVER;
 	bool once = true;
 	Clock start = clock::now();
-	while (!wl_display_dispatch_pending(gfx::_gfx.wlDisplay))
+	while (!wl_display_dispatch_pending(ctx.wl_display))
 	{
 		Duration diff = duration - start.to_now().to_duration();
 		long ms = diff.to_ms();
@@ -184,15 +222,15 @@ fn void wait_for_event(Duration duration)
 		}
 		if (ms < 0 || os::poll(&fds[0], 1, infinity || ms > CInt::max ? -1 : (CInt)ms) <= 0)
 		{
-			wl_display_cancel_read(gfx::_gfx.wlDisplay);
+			wl_display_cancel_read(ctx.wl_display);
 			break;
 		}
 		once = false;
-		if (wl_display_read_events(gfx::_gfx.wlDisplay) == -1) return;
+		if (wl_display_read_events(ctx.wl_display) == -1) return;
 	}
 
 	// queue contains events from read, dispatch them
-	if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) == -1) return;
+	if (wl_display_dispatch_pending(ctx.wl_display) == -1) return;
 
 
 }
@@ -289,7 +327,7 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 		default: return gfx::MOUSE_NOT_SUPPORTED~;
 	}
 
-	WlCursor* wlcursor = wl_cursor_theme_get_cursor(gfx::_gfx.wlCursorTheme, cursorName);
+	WlCursor* wlcursor = wl_cursor_theme_get_cursor(ctx.wl_cursor_theme, cursorName);
 	if (!wlcursor) return gfx::MOUSE_NOT_SUPPORTED~;
 	WlCursorImage* cursorImage = wlcursor.images[0];
 	WlProxy* cursorBuffer = wl_cursor_image_get_buffer(cursorImage);
@@ -329,7 +367,7 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 
 fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags) => @pool()
 {
-	win.src.surface = wl_compositor_create_surface(gfx::_gfx.compositor);
+	win.src.surface = wl_compositor_create_surface(ctx.compositor);
 	static WlSurfaceListener listener = {
 		.enter = &_surface_enter_cb,
 		.leave = &_surface_leave_cb,
@@ -339,13 +377,13 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	wl_surface_add_listener(win.src.surface, &listener, win);
 	wl_surface_set_user_data(win.src.surface, win);
 
-	win.src.customCursorSurface = wl_compositor_create_surface(gfx::_gfx.compositor);
+	win.src.customCursorSurface = wl_compositor_create_surface(ctx.compositor);
 
-	win.src.xdgSurface = xdg_wm_base_get_xdg_surface(gfx::_gfx.xdgWmBase, win.src.surface);
+	win.src.xdgSurface = xdg_wm_base_get_xdg_surface(ctx.xdg_wm_base, win.src.surface);
 	static XdgSurfaceListener surface_listener = { .configure = &_xdg_surface_conf_cb };
 
 	xdg_surface_add_listener(win.src.xdgSurface, &surface_listener, win);
-	xdg_wm_base_set_user_data(gfx::_gfx.xdgWmBase, win);
+	xdg_wm_base_set_user_data(ctx.xdg_wm_base, win);
 
 	win.src.xdgToplevel = xdg_surface_get_toplevel(win.src.xdgSurface);
 	xdg_toplevel_set_app_id(win.src.xdgToplevel, name.zstr_copy(tmem));
@@ -357,10 +395,10 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 
 	xdg_toplevel_add_listener(win.src.xdgToplevel, &toplevel_listener, win);
 
-	if (gfx::_gfx.decorationManager)
+	if (ctx.decoration_manager)
 	{
 		uint decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
-		win.src.decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(gfx::_gfx.decorationManager, win.src.xdgToplevel);
+		win.src.decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(ctx.decoration_manager, win.src.xdgToplevel);
 		static ZxdgToplevelDecorationV1Listener decoration_listener = { .configure = &_xdg_dec_conf_cb };
 
 		zxdg_toplevel_decoration_v1_add_listener(win.src.decoration, &decoration_listener, win);
@@ -368,11 +406,11 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 		zxdg_toplevel_decoration_v1_set_mode(win.src.decoration, decorationMode);
 	}
 
-	if (gfx::_gfx.iconManager) xdg_toplevel_icon_manager_v1_set_icon(gfx::_gfx.iconManager, win.src.xdgToplevel, null);
+	if (ctx.icon_manager) xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdgToplevel, null);
 
 	wl_surface_commit(win.src.surface);
 
-	while (!win.src.configured) wl_display_dispatch(gfx::_gfx.wlDisplay);
+	while (!win.src.configured) wl_display_dispatch(ctx.wl_display);
 
 	gfx::_window_set_flags(win, flags, {});
 	win.src.backing = {};
@@ -443,8 +481,8 @@ fn void window_minimize_platform(GfxWindow* win)
 
 fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 {
-	if (!gfx::_gfx.wp_pointer_warp) return;
-	wp_pointer_warp_v1_warp_pointer(gfx::_gfx.wp_pointer_warp, win.src.surface, gfx::_gfx.wlPointer, wlfixed_from_int(where.x), wlfixed_from_int(where.y), gfx::_gfx.mouseEnterSerial);
+	if (!ctx.wp_pointer_warp) return;
+	wp_pointer_warp_v1_warp_pointer(ctx.wp_pointer_warp, win.src.surface, ctx.wl_pointer, wlfixed_from_int(where.x), wlfixed_from_int(where.y), ctx.mouse_enter_serial);
 }
 
 fn void window_move_platform(GfxWindow* win, GfxPoint where)
@@ -457,7 +495,7 @@ fn void window_raise(GfxWindow* win) {}
 fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
-	if (gfx::_gfx.compositor != null)
+	if (ctx.compositor != null)
 	{
 		xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, ...size);
 		if (win.src.ctx.egl && win.src.ctx.egl.egl_window) wl_egl_window_resize((WlEglWindow*)win.src.ctx.egl.egl_window, ...size, 0, 0);
@@ -478,7 +516,7 @@ fn void window_set_aspect_ratio(GfxWindow* win, int w, int h)
 fn void window_set_border(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
-	if (gfx::_gfx.decorationManager)
+	if (ctx.decoration_manager)
 	{
 		zxdg_toplevel_decoration_v1_set_mode(win.src.decoration, border ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE : ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
 	}
@@ -486,7 +524,7 @@ fn void window_set_border(GfxWindow* win, bool border)
 
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool capture)
 {
-	if (!gfx::_gfx.constraint_manager) return;
+	if (!ctx.constraint_manager) return;
 
 	if (!capture)
 	{
@@ -497,9 +535,9 @@ fn void window_set_capture_mouse_platform(GfxWindow* win, bool capture)
 
 	if (win.src.locked_pointer) return;
 
-	win.src.locked_pointer = zwp_pointer_constraints_v1_lock_pointer(gfx::_gfx.constraint_manager, win.src.surface, gfx::_gfx.wlPointer, null, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
+	win.src.locked_pointer = zwp_pointer_constraints_v1_lock_pointer(ctx.constraint_manager, win.src.surface, ctx.wl_pointer, null, ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
 	static ZwpLockedPointerV1Listener listener = { .locked = &_pointer_locked_cb, .unlocked = &_unlocked_noop_cb };
-	zwp_locked_pointer_v1_add_listener(win.src.locked_pointer, &listener, &gfx::_gfx);
+	zwp_locked_pointer_v1_add_listener(win.src.locked_pointer, &listener, null);
 }
 
 fn void window_set_floating(GfxWindow* win, bool floating) {}
@@ -521,7 +559,7 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 
 fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
-	if (!gfx::_gfx.iconManager || w != h) return false;
+	if (!ctx.icon_manager || w != h) return false;
 
 	if (win.src.icon != null) { xdg_toplevel_icon_v1_destroy(win.src.icon); win.src.icon = null; }
 
@@ -532,10 +570,10 @@ fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat form
 	int minH = h < surface.size.y ? h : surface.size.y;
 	gfx::copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
 
-	win.src.icon = xdg_toplevel_icon_manager_v1_create_icon(gfx::_gfx.iconManager);
+	win.src.icon = xdg_toplevel_icon_manager_v1_create_icon(ctx.icon_manager);
 	surface.native.wlBuffer = wl_shm_pool_create_buffer(surface.native.pool, 0, w, h, w * 4, WL_SHM_FORMAT_ARGB8888);
 	xdg_toplevel_icon_v1_add_buffer(win.src.icon, surface.native.wlBuffer, 1);
-	xdg_toplevel_icon_manager_v1_set_icon(gfx::_gfx.iconManager, win.src.xdgToplevel, win.src.icon);
+	xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdgToplevel, win.src.icon);
 
 	return true;
 }
@@ -563,7 +601,7 @@ fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 
 fn void window_set_name(GfxWindow* win, String name)
 {
-	if (gfx::_gfx.compositor) @pool()
+	if (ctx.compositor) @pool()
 	{
 		xdg_toplevel_set_title(win.src.xdgToplevel, name.zstr_copy(tmem));
 	};
@@ -573,19 +611,19 @@ fn void window_set_opacity(GfxWindow* win, float opacity) {}
 
 fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 {
-	if (!gfx::_gfx.relativePointerManager) return;
+	if (!ctx.relative_pointer_manager) return;
 
 	if (!state)
 	{
-		if (gfx::_gfx.relativePointer) zwp_relative_pointer_v1_destroy(gfx::_gfx.relativePointer);
-		gfx::_gfx.relativePointer = null;
+		if (ctx.relative_pointer) zwp_relative_pointer_v1_destroy(ctx.relative_pointer);
+		ctx.relative_pointer = null;
 		return;
 	}
-	if (gfx::_gfx.relativePointer) return;
+	if (ctx.relative_pointer) return;
 
-	gfx::_gfx.relativePointer = zwp_relative_pointer_manager_v1_get_relative_pointer(gfx::_gfx.relativePointerManager, gfx::_gfx.wlPointer);
+	ctx.relative_pointer = zwp_relative_pointer_manager_v1_get_relative_pointer(ctx.relative_pointer_manager, ctx.wl_pointer);
 	static ZwpRelativePointerV1Listener listener = { .relativeMotion = &_rel_pointer_motion_cb };
-	zwp_relative_pointer_v1_add_listener(gfx::_gfx.relativePointer, &listener, &gfx::_gfx);
+	zwp_relative_pointer_v1_add_listener(ctx.relative_pointer, &listener, null);
 }
 
 fn void window_show_platform(GfxWindow* win)
@@ -598,7 +636,7 @@ fn void window_show_platform(GfxWindow* win)
 
 fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
-	egl::init_window_context(win, (GfxEglContext*)context, hints, gfx::_gfx.wlDisplay)!;
+	egl::init_window_context(win, (GfxEglContext*)context, hints, ctx.wl_display)!;
 	win.src.backing = { .opengl };
 	gfx::_window_set_opengl_swap_interval(win, 0);
 }
@@ -633,7 +671,7 @@ fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instanc
 	if (!proc) return gfx::VULKAN_NOT_LOADED~;
 	VkWaylandSurfaceCreateInfoKHR create_info = {
 		.sType = gfx::VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
-		.display = gfx::_gfx.wlDisplay,
+		.display = ctx.wl_display,
 		.surface = win.src.surface
 	};
 	if (proc(instance, &create_info, null, &surface)) return gfx::SURFACE_CREATION_FAILED~;
@@ -647,7 +685,7 @@ fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance insta
 	WgpuSurfaceSourceWaylandSurface fromWl;
 	fromWl.chain.next = null;
 	fromWl.chain.sType = gfx::WGPU_STYPE_SURFACE_SOURCE_WAYLAND_SURFACE;
-	fromWl.display = gfx::_gfx.wlDisplay;
+	fromWl.display = ctx.wl_display;
 	fromWl.surface = window.src.surface;
 	WgpuSurfaceDescriptor surfaceDesc;
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromWl;
@@ -665,7 +703,7 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 
 fn void? write_clipboard(GfxDataTransfer* data)
 {
-	if (!gfx::_gfx.dataDeviceManager) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
+	if (!ctx.data_device_manager) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
 	if (gfx::_gfx.unixClipboard)
 	{
 		free(gfx::_gfx.unixClipboard);
@@ -680,14 +718,14 @@ fn void? write_clipboard(GfxDataTransfer* data)
 	gfx::_gfx.unixClipboard.text = s;
 	gfx::_gfx.unixClipboard.type = TEXT;
 
-	GfxWindow* win = gfx::_gfx.kbOwner;
+	GfxWindow* win = ctx.kb_owner;
 	if (win.src.dataSource)
 	{
 		wl_data_source_destroy(win.src.dataSource);
 		win.src.dataSource = null;
 	}
 
-	win.src.dataSource = wl_data_device_manager_create_data_source(gfx::_gfx.dataDeviceManager);
+	win.src.dataSource = wl_data_device_manager_create_data_source(ctx.data_device_manager);
 	if (!win.src.dataSource) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
 
 	static WlDataSourceListener listener = {
@@ -699,7 +737,7 @@ fn void? write_clipboard(GfxDataTransfer* data)
 		.cancelled = &_data_source_cancelled_cb
 	};
 
-	wl_data_source_add_listener(win.src.dataSource, &listener, &gfx::_gfx);
+	wl_data_source_add_listener(win.src.dataSource, &listener, null);
 	wl_data_source_offer(win.src.dataSource, "text/plain;charset=utf-8");
 }
 
@@ -715,7 +753,7 @@ fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat f
 	int fd = _create_shm_file((sz)size);
 	if (fd < 0) return gfx::SURFACE_CREATION_FAILED~;
 	defer catch surface.release();
-	surface.native.pool = wl_shm_create_pool(gfx::_gfx.shm, fd, (int)size);
+	surface.native.pool = wl_shm_create_pool(ctx.shm, fd, (int)size);
 	surface.native.buffer = posix::mmap(null, (usz)size, posix::PROT_READ | posix::PROT_WRITE, posix::MAP_SHARED, fd, 0);
 	surface.native.fd = fd;
 	surface.native.format = BGRA8;
@@ -741,7 +779,7 @@ fn void surface_release(GfxSurface* surface)
 fn bool get_vulkan_physical_device_presentation_support(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
 {
 	VkGetPhysicalDeviceWaylandPresentationSupportKHRProc raw = gfx::_get_instance_proc_vulkan(instance, "vkGetPhysicalDeviceWaylandPresentationSupportKHR");
-	return raw && raw(physical_device, queue_family_index, gfx::_gfx.wlDisplay) != 0;
+	return raw && raw(physical_device, queue_family_index, ctx.wl_display) != 0;
 }
 
 // --- Opengl
@@ -770,7 +808,7 @@ fn void init_keycodes_platform()
 fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	XkbKeycode kc = key.to_api() + 8;
-	XkbKeysym sym = xkb_state_key_get_one_sym(gfx::_gfx.xkbState, kc);
+	XkbKeysym sym = xkb_state_key_get_one_sym(ctx.xkb_state, kc);
 	if (sym < 256) return (GfxKey)sym;
 
 	switch (sym)
@@ -876,14 +914,15 @@ fn int _anonymous_shm_open() @local
 	return -1;
 }
 
-fn XkbKeysym _compose_symbol(GfxContext* info, XkbKeysym sym) @local
+fn XkbKeysym _compose_symbol(XkbKeysym sym) @local
 {
-	if (sym == XKB_KEY_NO_SYMBOL || !info.composeState) return sym;
-	if (xkb_compose_state_feed(info.composeState, sym) != XKB_COMPOSE_FEED_ACCEPTED) return sym;
-	switch (xkb_compose_state_get_status(info.composeState))
+	XkbComposeState* compose_state = ctx.compose_state;
+	if (sym == XKB_KEY_NO_SYMBOL || !compose_state) return sym;
+	if (xkb_compose_state_feed(compose_state, sym) != XKB_COMPOSE_FEED_ACCEPTED) return sym;
+	switch (xkb_compose_state_get_status(compose_state))
 	{
 		case XKB_COMPOSE_COMPOSED:
-			return xkb_compose_state_get_one_sym(info.composeState);
+			return xkb_compose_state_get_one_sym(compose_state);
 		case XKB_COMPOSE_COMPOSING:
 		case XKB_COMPOSE_CANCELLED:
 			return XKB_KEY_NO_SYMBOL;
@@ -898,7 +937,7 @@ fn void _create_outputs(WlProxy* registry, uint id) @local => @pool()
 	// If wl_seat hasn't been bound yet (compositor announced wl_output first), fall back to
 	// version 4 instead of calling wl_proxy_get_version(null), which would crash.
 	uint fallbackVersion = 4;
-	WlProxy* output = wl_registry_bind(registry, id, &wlOutputInterface, gfx::_gfx.seat ? wl_proxy_get_version(gfx::_gfx.seat) : fallbackVersion);
+	WlProxy* output = wl_registry_bind(registry, id, &wlOutputInterface, ctx.seat ? wl_proxy_get_version(ctx.seat) : fallbackVersion);
 	if (!output) return;
 
 	GfxMonitor mon;
@@ -926,9 +965,9 @@ fn void _create_outputs(WlProxy* registry, uint id) @local => @pool()
 
 	wl_output_add_listener(output, &wl_output_listener, node);
 
-	if (!gfx::_gfx.xdgOutputManager) return;
+	if (!ctx.xdg_output_manager) return;
 
-	node.xdg_output = zxdg_output_manager_v1_get_xdg_output(gfx::_gfx.xdgOutputManager, node.output);
+	node.xdg_output = zxdg_output_manager_v1_get_xdg_output(ctx.xdg_output_manager, node.output);
 	
 	static ZxdgOutputV1Listener xdg_output_listener = {
 		.name = &_xdg_output_nothing_string_cb,
@@ -957,17 +996,17 @@ fn int _create_shm_file(sz size) @local
 fn void _send_key_event(uint key) @local
 {
 	XkbKeysym* keysyms;
-	if (xkb_state_key_get_syms(gfx::_gfx.xkbState, key + 8, &keysyms) == 1)
+	if (xkb_state_key_get_syms(ctx.xkb_state, key + 8, &keysyms) == 1)
 	{
-		XkbKeysym keysym = _compose_symbol(&gfx::_gfx, keysyms[0]);
+		XkbKeysym keysym = _compose_symbol(keysyms[0]);
 		uint codepoint = xkb_keysym_to_utf32(keysym);
-		if (codepoint != 0) gfx::_key_char_callback(gfx::_gfx.kbOwner, codepoint);
+		if (codepoint != 0) gfx::_key_char_callback(ctx.kb_owner, codepoint);
 	}
 }
 
 fn void _window_set_opaque(GfxWindow* win) @local
 {
-	WlProxy* region = wl_compositor_create_region(gfx::_gfx.compositor);
+	WlProxy* region = wl_compositor_create_region(ctx.compositor);
 	if (!region) return;
 	wl_region_add(region, 0, 0, win.width, win.height);
 	wl_surface_set_opaque_region(win.src.surface, region);
@@ -1006,8 +1045,7 @@ fn void _shm_format_cb(void* data, WlProxy* shm, uint format) @local {}
 
 fn void _data_source_cancelled_cb(void* data, WlProxy* source) @local
 {
-	GfxContext* info = data;
-	if (info.kbOwner && info.kbOwner.src.dataSource == source) info.kbOwner.src.dataSource = null;
+	if (ctx.kb_owner && ctx.kb_owner.src.dataSource == source) ctx.kb_owner.src.dataSource = null;
 	wl_data_source_destroy(source);
 }
 
@@ -1023,46 +1061,44 @@ fn void _data_source_send_cb(void* data, WlProxy* source, ZString mime_type, int
 
 fn void _global_registry_cb(void* data, WlProxy* registry, uint id, ZString iface_str, uint version) @local
 {
-	GfxContext* info = data;
 	String iface = iface_str.str_view();
 	switch (iface)
 	{
 		case "wl_compositor":
-			info.compositor = wl_registry_bind(registry, id, &wlCompositorInterface, 4);
+			ctx.compositor = wl_registry_bind(registry, id, &wlCompositorInterface, 4);
 		case "xdg_wm_base":
-			info.xdgWmBase = wl_registry_bind(registry, id, &xdgWmBaseInterface, 1);
+			ctx.xdg_wm_base = wl_registry_bind(registry, id, &xdgWmBaseInterface, 1);
 		case zxdgDecorationManagerV1Interface.name.str_view():
-			info.decorationManager = wl_registry_bind(registry, id, &zxdgDecorationManagerV1Interface, 1);
+			ctx.decoration_manager = wl_registry_bind(registry, id, &zxdgDecorationManagerV1Interface, 1);
 		case zwpPointerConstraintsV1Interface.name.str_view():
-			info.constraint_manager = wl_registry_bind(registry, id, &zwpPointerConstraintsV1Interface, 1);
+			ctx.constraint_manager = wl_registry_bind(registry, id, &zwpPointerConstraintsV1Interface, 1);
 		case zwpRelativePointerManagerV1Interface.name.str_view():
-			info.relativePointerManager = wl_registry_bind(registry, id, &zwpRelativePointerManagerV1Interface, 1);
+			ctx.relative_pointer_manager = wl_registry_bind(registry, id, &zwpRelativePointerManagerV1Interface, 1);
 		case xdgToplevelIconManagerV1Interface.name.str_view():
-			info.iconManager = wl_registry_bind(registry, id, &xdgToplevelIconManagerV1Interface, 1);
+			ctx.icon_manager = wl_registry_bind(registry, id, &xdgToplevelIconManagerV1Interface, 1);
 		case "wl_shm":
-			info.shm = wl_registry_bind(registry, id, &wlShmInterface, 1);
+			ctx.shm = wl_registry_bind(registry, id, &wlShmInterface, 1);
 			static WlShmListener listener = { .format = &_shm_format_cb };
-			wl_shm_add_listener(info.shm, &listener, info);
+			wl_shm_add_listener(ctx.shm, &listener, data);
 		case "wl_seat":
-			info.seat = wl_registry_bind(registry, id, &wlSeatInterface, version < 4 ? 3 : 4);
+			ctx.seat = wl_registry_bind(registry, id, &wlSeatInterface, version < 4 ? 3 : 4);
 			static WlSeatListener listener = { .capabilities = &_seat_capabilities_cb, .name = &_seat_name_cb };
-			wl_seat_add_listener(info.seat, &listener, info);
+			wl_seat_add_listener(ctx.seat, &listener, data);
 		case zxdgOutputManagerV1Interface.name.str_view():
-			info.xdgOutputManager = wl_registry_bind(registry, id, &zxdgOutputManagerV1Interface, 1);
+			ctx.xdg_output_manager = wl_registry_bind(registry, id, &zxdgOutputManagerV1Interface, 1);
 		case "wl_output":
 			_create_outputs(registry, id);
 		case wpPointerWarpV1Interface.name.str_view():
-			info.wp_pointer_warp = wl_registry_bind(registry, id, &wpPointerWarpV1Interface, 1);
+			ctx.wp_pointer_warp = wl_registry_bind(registry, id, &wpPointerWarpV1Interface, 1);
 		case "wl_data_device_manager":
-			info.dataDeviceManager = wl_registry_bind(registry, id, &wlDataDeviceManagerInterface, 1);
+			ctx.data_device_manager = wl_registry_bind(registry, id, &wlDataDeviceManagerInterface, 1);
 	}
 }
 
 fn void _global_registry_remove_cb(void* data, WlProxy* registry, uint id) @local
 {
-	GfxContext* info = data;
 	GfxMonitorNode* prev = null;
-	GfxMonitorNode* node = info.monitors.list.head;
+	GfxMonitorNode* node = gfx::_gfx.monitors.list.head;
 	while (node)
 	{
 		if (node.id == id)
@@ -1078,70 +1114,64 @@ fn void _global_registry_remove_cb(void* data, WlProxy* registry, uint id) @loca
 
 fn void _keyboard_enter_cb(void* data, WlProxy* keyboard, uint serial, WlProxy* surface, WlArray* keys) @local
 {
-	GfxContext* info = data;
 	GfxWindow* win = (GfxWindow*)wl_surface_get_user_data(surface);
-	info.kbOwner = win;
+	ctx.kb_owner = win;
 
-	if (info.dataDevice && win.src.dataSource) wl_data_device_set_selection(info.dataDevice, win.src.dataSource, serial);
+	if (ctx.data_device && win.src.dataSource) wl_data_device_set_selection(ctx.data_device, win.src.dataSource, serial);
 	if (win.src.minimized) win.src.minimized = false;
 	gfx::_window_focus_callback(win, true);
 }
 
 fn void _keyboard_key_cb(void* data, WlProxy* keyboard, uint serial, uint time, uint key, uint state) @local
 {
-	GfxContext* info = data;
-	if (!info.kbOwner) return;
-
-	GfxWindow* win = info.kbOwner;
+	GfxWindow* win = ctx.kb_owner;
+	if (!win) return;
 	GfxKey gfx_key = gfx::key_from_api(key + 8);
 
-	gfx::_key_update_key_mods(win, xkb_keymap_mod_get_index(info.keymap, "Lock") != 0, xkb_keymap_mod_get_index(info.keymap, "Mod2") != 0, xkb_keymap_mod_get_index(info.keymap, "ScrollLock") != 0);
+	gfx::_key_update_key_mods(win, xkb_keymap_mod_get_index(ctx.keymap, "Lock") != 0, xkb_keymap_mod_get_index(ctx.keymap, "Mod2") != 0, xkb_keymap_mod_get_index(ctx.keymap, "ScrollLock") != 0);
 	gfx::_key_callback(win, gfx_key, win.internal.mod, gfx::is_key_down(gfx_key) && state, !!state);
 
-	info.lastKey = state ? key : 0;
-	info.lastKeyTime = clock::now() + time::ms(gfx::_gfx.wlRepeatInfoDelay);
-	if (state) _send_key_event(gfx::_gfx.lastKey);
+	ctx.last_key = state ? key : 0;
+	ctx.last_key_time = clock::now() + time::ms(ctx.wl_repeat_info_delay);
+	if (state) _send_key_event(ctx.last_key);
 }
 
 fn void _keyboard_keymap_cb(void* data, WlProxy* keyboard, uint format, int fd, uint size) @local => @pool()
 {
-	GfxContext* info = data;
-	ZString keymapString = (ZString)posix::mmap(null, size, posix::PROT_READ, posix::MAP_SHARED, fd, 0);
-	xkb_keymap_unref(info.keymap);
-	info.keymap = xkb_keymap_new_from_string(info.xkbContext, keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
-	posix::munmap(keymapString, size);
+	ZString keymap_string = (ZString)posix::mmap(null, size, posix::PROT_READ, posix::MAP_SHARED, fd, 0);
+	xkb_keymap_unref(ctx.keymap);
+	ctx.keymap = xkb_keymap_new_from_string(ctx.xkb_context, keymap_string, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
+	posix::munmap(keymap_string, size);
 	libc::close(fd);
-	xkb_state_unref(info.xkbState);
-	info.xkbState = xkb_state_new(info.keymap);
+	xkb_state_unref(ctx.xkb_state);
+	ctx.xkb_state = xkb_state_new(ctx.keymap);
 
 	String locale = env::tget_var("LC_ALL") ?? env::tget_var("LC_CTYPE") ?? env::tget_var("LANG") ?? "C";
 
-	XkbComposeTable* composeTable = xkb_compose_table_new_from_locale(info.xkbContext, (ZString)locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
-	if (composeTable)
+	XkbComposeTable* compose_table = xkb_compose_table_new_from_locale(ctx.xkb_context, (ZString)locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
+	if (compose_table)
 	{
-		info.composeState = xkb_compose_state_new(composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
-		xkb_compose_table_unref(composeTable);
+		ctx.compose_state = xkb_compose_state_new(compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
+		xkb_compose_table_unref(compose_table);
 	}
 }
 
 fn void _keyboard_leave_cb(void* data, WlProxy* keyboard, uint serial, WlProxy* surface) @local
 {
-	GfxContext* info = data;
 	GfxWindow* win = (GfxWindow*)wl_surface_get_user_data(surface);
-	if (info.kbOwner == win) info.kbOwner = null;
+	if (ctx.kb_owner == win) ctx.kb_owner = null;
 	gfx::_window_focus_callback(win, false);
 }
 
 fn void _keyboard_mods_cb(void* data, WlProxy* keyboard, uint serial, uint modsDepressed, uint modsLatched, uint modsLocked, uint group) @local
 {
-	GfxContext* info = data;
-	xkb_state_update_mask(info.xkbState, modsDepressed, modsLatched, modsLocked, 0, 0, group);
+	xkb_state_update_mask(ctx.xkb_state, modsDepressed, modsLatched, modsLocked, 0, 0, group);
 }
 
 fn void _keyboard_repeat_info_cb(void* data, WlProxy* keyboard, int rate, int delay) @local
 {
-	gfx::_gfx.wlRepeatInfoRate = rate;
-	gfx::_gfx.wlRepeatInfoDelay = delay;
+	ctx.wl_repeat_info_rate = rate;
+	ctx.wl_repeat_info_delay = delay;
 }
 
 
@@ -1207,8 +1237,7 @@ fn void _output_set_scale_cb(void* data, WlProxy* output, int factor) @local
 
 fn void _pointer_axis_cb(void* data, WlProxy* pointer, uint time, uint axis, WlFixed value) @local
 {
-	GfxContext* info = data;
-	GfxWindow* win = info.mouseOwner;
+	GfxWindow* win = ctx.mouse_owner;
 	if (!win) return;
 	Vec2 scroll = {};
 	if (!(win.internal.enabled_events.mouse_scroll)) return;
@@ -1225,8 +1254,7 @@ fn void _pointer_axis_cb(void* data, WlProxy* pointer, uint time, uint axis, WlF
 
 fn void _pointer_button_cb(void* data, WlProxy* pointer, uint serial, uint time, uint button, uint state) @local
 {
-	GfxContext* info = data;
-	GfxWindow* win = info.mouseOwner;
+	GfxWindow* win = ctx.mouse_owner;
 	if (!win) return;
 	uint b = button - 0x110;
 	switch (b)
@@ -1239,12 +1267,11 @@ fn void _pointer_button_cb(void* data, WlProxy* pointer, uint serial, uint time,
 
 fn void _pointer_enter_cb(void* data, WlProxy* pointer, uint serial, WlProxy* surface, WlFixed surface_x, WlFixed surface_y) @local
 {
-	GfxContext* info = data;
 	GfxWindow* win = (GfxWindow*)wl_surface_get_user_data(surface);
-	info.mouseEnterSerial = serial;
+	ctx.mouse_enter_serial = serial;
 	win.internal.mouse_inside = true;
-	info.window_state.mouse_enter = true;
-	info.mouseOwner = win;
+	gfx::_gfx.window_state.mouse_enter = true;
+	ctx.mouse_owner = win;
 
 	if (win.src.usingCustomCursor)
 	{
@@ -1263,21 +1290,18 @@ fn void _pointer_enter_cb(void* data, WlProxy* pointer, uint serial, WlProxy* su
 fn void _pointer_leave_cb(void* data, WlProxy* pointer, uint serial, WlProxy* surface) @local
 {
 	GfxWindow* win = (GfxWindow*)wl_surface_get_user_data(surface);
-	GfxContext* info = data;
-	if (info.mouseOwner == win) info.mouseOwner = null;
+	if (ctx.mouse_owner == win) ctx.mouse_owner = null;
 	gfx::_mouse_notify_callback(win, win.internal.last_mouse, false);
 }
 
 fn void _pointer_locked_cb(void* data, WlProxy* locked_pointer) @local
 {
-	GfxContext* info = data;
-	wl_pointer_set_cursor(info.wlPointer, info.mouseEnterSerial, null, 0, 0);
+	wl_pointer_set_cursor(ctx.wl_pointer, ctx.mouse_enter_serial, null, 0, 0);
 }
 
 fn void _pointer_motion_cb(void* data, WlProxy* pointer, uint time, WlFixed x, WlFixed y) @local
 {
-	GfxContext* info = data;
-	GfxWindow* win = info.mouseOwner;
+	GfxWindow* win = ctx.mouse_owner;
 	if (!win) return;
 	int cx = (int)x.to_double();
 	int cy = (int)y.to_double();
@@ -1286,19 +1310,16 @@ fn void _pointer_motion_cb(void* data, WlProxy* pointer, uint time, WlFixed x, W
 
 fn void _rel_pointer_motion_cb(void* data, WlProxy* relPointer, uint timeHi, uint timeLo, WlFixed dx, WlFixed dy, WlFixed dxUnaccel, WlFixed dyUnaccel) @local
 {
-	GfxContext* info = data;
-	GfxWindow* win = info.mouseOwner;
+	GfxWindow* win = ctx.mouse_owner;
 	if (!win) return;
 	gfx::_raw_motion_callback(win, { (float)dx.to_double(), (float)dy.to_double() });
 }
 
 fn void _seat_capabilities_cb(void* data, WlProxy* seat, uint capabilities) @local
 {
-	GfxContext* info = data;
-
-	if (capabilities & WL_SEAT_CAPABILITY_POINTER && !info.wlPointer)
+	if (capabilities & WL_SEAT_CAPABILITY_POINTER && !ctx.wl_pointer)
 	{
-		info.wlPointer = wl_seat_get_pointer(seat);
+		ctx.wl_pointer = wl_seat_get_pointer(seat);
 		static WlPointerListener listener = {
 			.enter = &_pointer_enter_cb,
 			.leave = &_pointer_leave_cb,
@@ -1306,11 +1327,11 @@ fn void _seat_capabilities_cb(void* data, WlProxy* seat, uint capabilities) @loc
 			.button = &_pointer_button_cb,
 			.axis = &_pointer_axis_cb
 		};
-		wl_pointer_add_listener(info.wlPointer, &listener, info);
+		wl_pointer_add_listener(ctx.wl_pointer, &listener, data);
 	}
-	if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD && !info.wlKeyboard)
+	if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD && !ctx.wl_keyboard)
 	{
-		info.wlKeyboard = wl_seat_get_keyboard(seat);
+		ctx.wl_keyboard = wl_seat_get_keyboard(seat);
 		static WlKeyboardListener listener = {
 			.keymap = &_keyboard_keymap_cb,
 			.enter = &_keyboard_enter_cb,
@@ -1319,10 +1340,10 @@ fn void _seat_capabilities_cb(void* data, WlProxy* seat, uint capabilities) @loc
 			.modifiers = &_keyboard_mods_cb,
 			.repeatInfo = &_keyboard_repeat_info_cb
 		};
-		wl_keyboard_add_listener(info.wlKeyboard, &listener, info);
+		wl_keyboard_add_listener(ctx.wl_keyboard, &listener, data);
 	}
-	if (!(capabilities & WL_SEAT_CAPABILITY_POINTER) && info.wlPointer) wl_pointer_release(info.wlPointer);
-	if (!(capabilities & WL_SEAT_CAPABILITY_KEYBOARD) && info.wlKeyboard) wl_keyboard_release(info.wlKeyboard);
+	if (!(capabilities & WL_SEAT_CAPABILITY_POINTER) && ctx.wl_pointer) wl_pointer_release(ctx.wl_pointer);
+	if (!(capabilities & WL_SEAT_CAPABILITY_KEYBOARD) && ctx.wl_keyboard) wl_keyboard_release(ctx.wl_keyboard);
 }
 
 fn void _surface_enter_cb(void* data, WlProxy* surface, WlProxy* output) @local
@@ -1343,7 +1364,7 @@ fn void _xdg_dec_conf_cb(void* data, WlProxy* decoration, uint mode) @local
 fn void _xdg_surface_conf_cb(void* data, WlProxy* xdgSurface, uint serial) @local
 {
 	xdg_surface_ack_configure(xdgSurface, serial);
-	GfxWindow* win = (GfxWindow*)data ?: gfx::_gfx.kbOwner;
+	GfxWindow* win = (GfxWindow*)data ?: ctx.kb_owner;
 	if (!win) return;
 
 	if (win.src.activated != win.src.pendingActivated) win.src.activated = win.src.pendingActivated;
@@ -1432,7 +1453,7 @@ fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @
 	posix::pipe(&pfds);
 	wl_data_offer_receive(offer, "text/plain", pfds[1]);
 	libc::close(pfds[1]);
-	wl_display_roundtrip(gfx::_gfx.wlDisplay);
+	wl_display_roundtrip(ctx.wl_display);
 
 	char[1024] buf;
 	sz n = libc::read(pfds[0], &buf, 1024);

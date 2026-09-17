@@ -94,7 +94,7 @@ fn GfxEglContext*? create_context(GfxWindow* win, GfxGlHints* hints)
 		$if gfx::WAYLAND || $feat(MACOS):
 			GfxEglContext* context = mem::new(GfxEglContext);
 			defer catch free(context);
-			init_window_context(win, context, hints, gfx::WAYLAND ??? gfx::_gfx.wlDisplay : null)!;
+			init_window_context(win, context, hints, gfx::WAYLAND ??? wl::ctx.wl_display : null)!;
 			win.src.backing.owned = true;
 			return context;
 		$else
