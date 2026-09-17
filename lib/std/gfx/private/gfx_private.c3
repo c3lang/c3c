@@ -82,27 +82,6 @@ struct GfxContext
 	}
 	GfxDataTransfer* unixClipboard @feat(LINUX, BSD);
 
-	struct @feat(LINUX, BSD) @feat(!NO_X11)
-	{
-		XDisplay* display;
-		int context;
-		XWindow helper_window;
-		String class_name;
-		XlibIM im;
-		int xrandrEventBase;
-		XWindow x11Source;
-		int x11Version;
-		int x11Format;
-		GfxDataTransferType x11TransferType;
-		XErrorEvent* x11Error;
-		Atom netCurrentDesktop, net_wm_state_maximized_vert, net_wm_state_maximized_horz, netWmBypassCompositor;
-		Atom netWmState, motifWmHints, wmDeleteWindow, netWmSyncRequestCounter, netWmSyncRequest;
-		Atom atomPair, multiple, targets, saveTargets, utf8String;
-		Atom xdndTypeList, xdndSelection, xdndAware, xdndEnter, xdndPosition, xdndStatus, xdndLeave, xdndDrop, xdndFinished, xdndActionCopy;
-		Atom wmProtocols, wmState, netWmStateFullscreen, netWmStateAbove, netWmWindowOpacity;
-		Atom netWmName, netWmIcon, xselData, clipboardAtom, clipboardManager;
-		Atom xtextUriList, xtextPlain, netWorkarea;
-	}
 	bool use_wayland @feat(WAYLAND & !NO_X11);
 	bool raw_mouse;
 	struct window_state
