@@ -787,6 +787,9 @@ fn void _key_update_key_mods(GfxWindow* win, bool capital, bool numlock, bool sc
 
 
 
+<*
+ @ensure return != null
+*>
 fn GfxMonitorNode* _monitor_add(GfxMonitor* mon)
 {
 	GfxMonitorNode* node = mem::new(GfxMonitorNode);

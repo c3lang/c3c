@@ -529,11 +529,8 @@ fn void? _init_native(String class_name, GfxInitOption flags)
 	monitor.mode.refresh_rate = 0;
 
 	GfxMonitorNode* node = _monitor_add(&monitor);
-	if (node)
-	{
-		_gfx.monitors.primary = node;
-		_monitor_callback(_gfx.root, &node.mon, true);
-	}
+	_gfx.monitors.primary = node;
+	_monitor_callback(_gfx.root, &node.mon, true);
 }
 
 // --- exported

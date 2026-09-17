@@ -192,7 +192,7 @@ fn void poll_monitors()
 					break;
 				}
 			}
-			if (node != null) continue;
+			if (node) continue;
 			gfx::_create_monitor(&adapter, null);
 		}
 	}

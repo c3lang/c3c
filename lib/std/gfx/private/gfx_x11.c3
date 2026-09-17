@@ -246,7 +246,7 @@ fn void poll_monitors()
 		{
 			if (node.rr_output == res.outputs[i]) break;
 		}
-		if (node != null)
+		if (node)
 		{
 			node.disconnected = false;
 			if (node.rr_output == primary) gfx::_gfx.monitors.primary = node;
@@ -290,7 +290,6 @@ fn void poll_monitors()
 
 		xRRFreeCrtcInfo(ci);
 		node = gfx::_monitor_add(&monitor);
-		if (node == null) break;
 		node.rr_output = res.outputs[i];
 		node.crtc = info.crtc;
 		if (node.rr_output == primary) gfx::_gfx.monitors.primary = node;

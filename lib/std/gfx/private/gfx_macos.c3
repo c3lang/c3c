@@ -153,7 +153,6 @@ fn void poll_monitors()
 		GfxMonitor mon;
 		_monitor_from_display(displays[i], &mon);
 		GfxMonitorNode* node = gfx::_monitor_add(&mon);
-		if (node == null) continue;
 		node.display = displays[i];
 		if (displays[i] == cg::mainDisplayID()) gfx::_gfx.monitors.primary = node;
 	}

@@ -14,12 +14,12 @@ const uint ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT = 2;
 
 typedef WlDisplay = void;
 typedef WlProxy = void;
-alias WlFixed = int;
+typedef WlFixed = int;
 
-macro WlFixed wlFixedFromInt(int i) => (WlFixed)(i * 256);
+macro WlFixed wlfixed_from_int(int i) => (WlFixed)(i * 256);
 macro int WlFixed.to_int(self) => self / 256;
 macro double WlFixed.to_double(self) => (double)self / 256.0;
-macro WlFixed wlFixedFromDouble(double d) => (WlFixed)(d * 256.0);
+macro WlFixed wlfixed_from_double(double d) => (WlFixed)(d * 256.0);
 
 struct WlRegistryListener
 {

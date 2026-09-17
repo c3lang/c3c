@@ -1,6 +1,6 @@
 module std::gfx::wl @feat(BSD, LINUX) @feat(WAYLAND) @private;
 import std::math, std::collections, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
-import std::gfx::egl @public;
+import std::gfx::egl, std::gfx @public;
 
 // --- Gfx
 
@@ -35,11 +35,8 @@ fn void poll_events_platform()
 
 	while (wl_display_flush(gfx::_gfx.wlDisplay) == -1)
 	{
-		if (libc::errno() == EAGAIN)
-		{
-			if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) == -1) return;
-		}
-		else { return; }
+		if (libc::errno() != EAGAIN) return;
+		if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) == -1) return;
 	}
 
 	if (gfx::_gfx.wlRepeatInfoRate != 0 && gfx::_gfx.lastKey != 0)
@@ -62,14 +59,21 @@ fn void poll_events_platform()
 			if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) > 0) return;
 		}
 
-		if (os::poll(&fds, 1, 0) == 0) { wl_display_cancel_read(gfx::_gfx.wlDisplay); return; }
+		if (os::poll(&fds, 1, 0) == 0)
+		{
+			wl_display_cancel_read(gfx::_gfx.wlDisplay);
+			return;
+		}
 
 		if (fds.revents & os::POLLIN)
 		{
 			wl_display_read_events(gfx::_gfx.wlDisplay);
 			if (wl_display_dispatch_pending(gfx::_gfx.wlDisplay) > 0) return;
 		}
-		else { wl_display_cancel_read(gfx::_gfx.wlDisplay); }
+		else
+		{
+			wl_display_cancel_read(gfx::_gfx.wlDisplay);
+		}
 	}
 }
 
@@ -386,7 +390,7 @@ fn bool window_is_minimized(GfxWindow* win) => win.src.minimized;
 
 fn void window_maximize_platform(GfxWindow* win)
 {
-	_toggle_wayland_maximized(win, true);
+	_toggle_maximized(win, true);
 }
 
 fn void window_minimize_platform(GfxWindow* win)
@@ -400,7 +404,7 @@ fn void window_minimize_platform(GfxWindow* win)
 fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 {
 	if (!gfx::_gfx.wp_pointer_warp) return;
-	wp_pointer_warp_v1_warp_pointer(gfx::_gfx.wp_pointer_warp, win.src.surface, gfx::_gfx.wlPointer, wlFixedFromInt(where.x), wlFixedFromInt(where.y), gfx::_gfx.mouseEnterSerial);
+	wp_pointer_warp_v1_warp_pointer(gfx::_gfx.wp_pointer_warp, win.src.surface, gfx::_gfx.wlPointer, wlfixed_from_int(where.x), wlfixed_from_int(where.y), gfx::_gfx.mouseEnterSerial);
 }
 
 fn void window_move_platform(GfxWindow* win, GfxPoint where)
@@ -422,7 +426,7 @@ fn void window_resize_platform(GfxWindow* win, GfxSize size)
 
 fn void window_restore_platform(GfxWindow* win)
 {
-	_toggle_wayland_maximized(win, false);
+	_toggle_maximized(win, false);
 }
 
 fn void window_set_aspect_ratio(GfxWindow* win, int w, int h)
@@ -668,7 +672,7 @@ fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat f
 	surface.format = format;
 
 	int size = w * h * 4;
-	int fd = _wl_create_shm_file((sz)size);
+	int fd = _create_shm_file((sz)size);
 	if (fd < 0) return gfx::SURFACE_CREATION_FAILED~;
 	defer catch surface.release();
 	surface.native.pool = wl_shm_create_pool(gfx::_gfx.shm, fd, (int)size);
@@ -843,11 +847,9 @@ fn void? _init_wayland(String class_name, GfxInitOption flags)
 	}
 }
 
+// --- Helpers
 
-
-
-
-fn void _toggle_wayland_maximized(GfxWindow* win, bool maximized)
+fn void _toggle_maximized(GfxWindow* win, bool maximized) @local
 {
 	win.src.maximized = maximized;
 	if (maximized)
@@ -860,8 +862,7 @@ fn void _toggle_wayland_maximized(GfxWindow* win, bool maximized)
 	}
 }
 
-
-fn int _wl_anonymous_shm_open()
+fn int _anonymous_shm_open() @local
 {
 	for (int i = 0; i < 100; i++) @pool()
 	{
@@ -876,24 +877,30 @@ fn int _wl_anonymous_shm_open()
 	return -1;
 }
 
-fn XkbKeysym _wl_compose_symbol(GfxContext* info, XkbKeysym sym)
+fn XkbKeysym _compose_symbol(GfxContext* info, XkbKeysym sym) @local
 {
 	if (sym == XKB_KEY_NO_SYMBOL || !info.composeState) return sym;
 	if (xkb_compose_state_feed(info.composeState, sym) != XKB_COMPOSE_FEED_ACCEPTED) return sym;
-	int status = xkb_compose_state_get_status(info.composeState);
-	if (status == XKB_COMPOSE_COMPOSED) return xkb_compose_state_get_one_sym(info.composeState);
-	if (status == XKB_COMPOSE_COMPOSING || status == XKB_COMPOSE_CANCELLED) return XKB_KEY_NO_SYMBOL;
-	return sym;
+	switch (xkb_compose_state_get_status(info.composeState))
+	{
+		case XKB_COMPOSE_COMPOSED:
+			return xkb_compose_state_get_one_sym(info.composeState);
+		case XKB_COMPOSE_COMPOSING:
+		case XKB_COMPOSE_CANCELLED:
+			return XKB_KEY_NO_SYMBOL;
+		default:
+			return sym;	
+	}
 }
 
-fn void _wl_create_outputs(WlProxy* registry, uint id)
+fn void _create_outputs(WlProxy* registry, uint id) @local => @pool()
 {
 	// wl_output name/description events require version 4+.
 	// If wl_seat hasn't been bound yet (compositor announced wl_output first), fall back to
 	// version 4 instead of calling wl_proxy_get_version(null), which would crash.
 	uint fallbackVersion = 4;
-	WlProxy* output = wl_registry_bind(registry, id, &wlOutputInterface, gfx::_gfx.seat == null ? fallbackVersion : wl_proxy_get_version(gfx::_gfx.seat));
-	if (output == null) return;
+	WlProxy* output = wl_registry_bind(registry, id, &wlOutputInterface, gfx::_gfx.seat ? wl_proxy_get_version(gfx::_gfx.seat) : fallbackVersion);
+	if (!output) return;
 
 	GfxMonitor mon;
 	ZString s = string::tformat_zstr("monitor-%02d", gfx::_gfx.monitors.count);
@@ -903,12 +910,8 @@ fn void _wl_create_outputs(WlProxy* registry, uint id)
 	mon.pixelRatio = 1.0f;
 
 	GfxMonitorNode* node = gfx::_monitor_add(&mon);
-	if (node == null) return;
-
-	node.mode_count = 0;
-	node.disconnected = true;
-	node.id = id;
-	node.output = output;
+	
+	*node = { .disconnected = true, .id = id, .output = output };
 
 	wl_output_set_user_data(output, node);
 
@@ -939,9 +942,10 @@ fn void _wl_create_outputs(WlProxy* registry, uint id)
 	zxdg_output_v1_add_listener(node.xdg_output, &xdg_output_listener, node);
 }
 
-fn int _wl_create_shm_file(sz size)
+
+fn int _create_shm_file(sz size) @local
 {
-	int fd = _wl_anonymous_shm_open();
+	int fd = _anonymous_shm_open();
 	if (fd < 0) return fd;
 	if (libc::ftruncate(fd, size) < 0)
 	{
@@ -949,6 +953,26 @@ fn int _wl_create_shm_file(sz size)
 		return -1;
 	}
 	return fd;
+}
+
+fn void _send_key_event(uint key) @local
+{
+	XkbKeysym* keysyms;
+	if (xkb_state_key_get_syms(gfx::_gfx.xkbState, key + 8, &keysyms) == 1)
+	{
+		XkbKeysym keysym = _compose_symbol(&gfx::_gfx, keysyms[0]);
+		uint codepoint = xkb_keysym_to_utf32(keysym);
+		if (codepoint != 0) gfx::_key_char_callback(gfx::_gfx.kbOwner, codepoint);
+	}
+}
+
+fn void _window_set_opaque(GfxWindow* win) @local
+{
+	WlProxy* region = wl_compositor_create_region(gfx::_gfx.compositor);
+	if (!region) return;
+	wl_region_add(region, 0, 0, win.width, win.height);
+	wl_surface_set_opaque_region(win.src.surface, region);
+	wl_region_destroy(region);
 }
 
 // wl callbacks
@@ -1027,7 +1051,7 @@ fn void _global_registry_cb(void* data, WlProxy* registry, uint id, ZString ifac
 		case zxdgOutputManagerV1Interface.name.str_view():
 			info.xdgOutputManager = wl_registry_bind(registry, id, &zxdgOutputManagerV1Interface, 1);
 		case "wl_output":
-			_wl_create_outputs(registry, id);
+			_create_outputs(registry, id);
 		case wpPointerWarpV1Interface.name.str_view():
 			info.wp_pointer_warp = wl_registry_bind(registry, id, &wpPointerWarpV1Interface, 1);
 		case "wl_data_device_manager":
@@ -1327,7 +1351,7 @@ fn void _xdg_surface_conf_cb(void* data, WlProxy* xdgSurface, uint serial) @loca
 
 	if (win.src.maximized != win.src.pendingMaximized)
 	{
-		_toggle_wayland_maximized(win, win.src.pendingMaximized);
+		_toggle_maximized(win, win.src.pendingMaximized);
 		gfx::_window_check_mode(win);
 	}
 
@@ -1437,25 +1461,6 @@ fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @
 // ---
 
 
-fn void _send_key_event(uint key) @local
-{
-	XkbKeysym* keysyms;
-	if (xkb_state_key_get_syms(gfx::_gfx.xkbState, key + 8, &keysyms) == 1)
-	{
-		XkbKeysym keysym = _wl_compose_symbol(&gfx::_gfx, keysyms[0]);
-		uint codepoint = xkb_keysym_to_utf32(keysym);
-		if (codepoint != 0) gfx::_key_char_callback(gfx::_gfx.kbOwner, codepoint);
-	}
-}
-
-fn void _window_set_opaque(GfxWindow* win) @local
-{
-	WlProxy* region = wl_compositor_create_region(gfx::_gfx.compositor);
-	if (!region) return;
-	wl_region_add(region, 0, 0, win.width, win.height);
-	wl_surface_set_opaque_region(win.src.surface, region);
-	wl_region_destroy(region);
-}
 
 // -- wgpu
 struct WgpuSurfaceSourceWaylandSurface
