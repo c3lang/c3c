@@ -86,7 +86,7 @@ fn void destroy_context_in_window(GfxEglContext* ctx, GfxWindow* win)
 		if (ctx.ctx) egl::destroy_context_fn(gfx::_gfx.egl.display, ctx.ctx);
 
 		$if (gfx::WAYLAND):
-			if (ctx.egl_window) wl::egl_window_destroy(ctx.egl_window);
+			if (ctx.egl_window) wl::wl_egl_window_destroy(ctx.egl_window);
 			ctx.egl_window = null;
 		$endif
 		ctx.surface = null;

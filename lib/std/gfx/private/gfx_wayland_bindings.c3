@@ -177,87 +177,87 @@ struct ZxdgOutputV1Listener
 typedef WlEglWindow = void;
 
 // ==== thin wl_proxy_marshal_flags wrappers (normally wayland-scanner "static inline") ====
-fn WlProxy* wlDisplayGetRegistry(WlDisplay* display) => wlProxyMarshalFlags((WlProxy*)display, 1, &wlRegistryInterface, wlProxyGetVersion((WlProxy*)display), 0, null);
-fn void* wlRegistryBind(WlProxy* registry, uint name, WlInterface* iface, uint version) => (void*)wlProxyMarshalFlags(registry, 0, iface, version, 0, name, iface.name, version, null);
-fn int wl_registry_add_listener(WlProxy* registry, WlRegistryListener* listener, void* data) => wlProxyAddListener(registry, listener, data);
-fn void wlRegistryDestroy(WlProxy* registry) { wlProxyDestroy(registry); }
+fn WlProxy* wl_display_get_registry(WlDisplay* display) => wl_proxy_marshal_flags((WlProxy*)display, 1, &wlRegistryInterface, wl_proxy_get_version((WlProxy*)display), 0, null);
+fn void* wl_registry_bind(WlProxy* registry, uint name, WlInterface* iface, uint version) => (void*)wl_proxy_marshal_flags(registry, 0, iface, version, 0, name, iface.name, version, null);
+fn int wl_registry_add_listener(WlProxy* registry, WlRegistryListener* listener, void* data) => wl_proxy_add_listener(registry, listener, data);
+fn void wl_registry_destroy(WlProxy* registry) => wl_proxy_destroy(registry);
 
-fn WlProxy* wlCompositorCreateSurface(WlProxy* compositor) => wlProxyMarshalFlags(compositor, 0, &wlSurfaceInterface, wlProxyGetVersion(compositor), 0, null);
-fn WlProxy* wlCompositorCreateRegion(WlProxy* compositor) => wlProxyMarshalFlags(compositor, 1, &wlRegionInterface, wlProxyGetVersion(compositor), 0, null);
-fn void wlCompositorDestroy(WlProxy* compositor) { wlProxyDestroy(compositor); }
+fn WlProxy* wl_compositor_create_surface(WlProxy* compositor) => wl_proxy_marshal_flags(compositor, 0, &wlSurfaceInterface, wl_proxy_get_version(compositor), 0, null);
+fn WlProxy* wl_compositor_create_region(WlProxy* compositor) => wl_proxy_marshal_flags(compositor, 1, &wlRegionInterface, wl_proxy_get_version(compositor), 0, null);
+fn void wl_compositor_destroy(WlProxy* compositor) => wl_proxy_destroy(compositor);
 
-fn void wlRegionAdd(WlProxy* region, int x, int y, int w, int h) { wlProxyMarshalFlags(region, 1, null, wlProxyGetVersion(region), 0, x, y, w, h); }
-fn void wlRegionDestroy(WlProxy* region) { wlProxyMarshalFlags(region, 0, null, wlProxyGetVersion(region), WL_MARSHAL_FLAG_DESTROY); }
+fn void wl_region_add(WlProxy* region, int x, int y, int w, int h) => wl_proxy_marshal_flags(region, 1, null, wl_proxy_get_version(region), 0, x, y, w, h);
+fn void wl_region_destroy(WlProxy* region) => wl_proxy_marshal_flags(region, 0, null, wl_proxy_get_version(region), WL_MARSHAL_FLAG_DESTROY); 
 
-fn int wlSurfaceAddListener(WlProxy* surface, WlSurfaceListener* listener, void* data) => wlProxyAddListener(surface, listener, data);
-fn void wlSurfaceAttach(WlProxy* surface, WlProxy* buffer, int x, int y) { wlProxyMarshalFlags(surface, 1, null, wlProxyGetVersion(surface), 0, buffer, x, y); }
-fn void wlSurfaceDamage(WlProxy* surface, int x, int y, int w, int h) { wlProxyMarshalFlags(surface, 2, null, wlProxyGetVersion(surface), 0, x, y, w, h); }
-fn void wlSurfaceCommit(WlProxy* surface) { wlProxyMarshalFlags(surface, 6, null, wlProxyGetVersion(surface), 0); }
-fn void wlSurfaceSetOpaqueRegion(WlProxy* surface, WlProxy* region) { wlProxyMarshalFlags(surface, 4, null, wlProxyGetVersion(surface), 0, region); }
-fn void wlSurfaceDestroy(WlProxy* surface) { wlProxyMarshalFlags(surface, 0, null, wlProxyGetVersion(surface), WL_MARSHAL_FLAG_DESTROY); }
-fn void* wlSurfaceGetUserData(WlProxy* surface) => wlProxyGetUserData(surface);
-fn void wlSurfaceSetUserData(WlProxy* surface, void* data) { wlProxySetUserData(surface, data); }
+fn int wl_surface_add_listener(WlProxy* surface, WlSurfaceListener* listener, void* data) => wl_proxy_add_listener(surface, listener, data);
+fn void wl_surface_attach(WlProxy* surface, WlProxy* buffer, int x, int y) => wl_proxy_marshal_flags(surface, 1, null, wl_proxy_get_version(surface), 0, buffer, x, y);
+fn void wl_surface_damage(WlProxy* surface, int x, int y, int w, int h) => wl_proxy_marshal_flags(surface, 2, null, wl_proxy_get_version(surface), 0, x, y, w, h);
+fn void wl_surface_commit(WlProxy* surface) => wl_proxy_marshal_flags(surface, 6, null, wl_proxy_get_version(surface), 0);
+fn void wl_surface_set_opaque_region(WlProxy* surface, WlProxy* region) => wl_proxy_marshal_flags(surface, 4, null, wl_proxy_get_version(surface), 0, region);
+fn void wl_surface_destroy(WlProxy* surface) => wl_proxy_marshal_flags(surface, 0, null, wl_proxy_get_version(surface), WL_MARSHAL_FLAG_DESTROY);
+fn void* wl_surface_get_user_data(WlProxy* surface) => wl_proxy_get_user_data(surface);
+fn void wl_surface_set_user_data(WlProxy* surface, void* data) => wl_proxy_set_user_data(surface, data);
 
-fn WlProxy* wlSeatGetPointer(WlProxy* seat) => wlProxyMarshalFlags(seat, 0, &wlPointerInterface, wlProxyGetVersion(seat), 0, null);
-fn WlProxy* wlSeatGetKeyboard(WlProxy* seat) => wlProxyMarshalFlags(seat, 1, &wlKeyboardInterface, wlProxyGetVersion(seat), 0, null);
-fn int wlSeatAddListener(WlProxy* seat, WlSeatListener* listener, void* data) => wlProxyAddListener(seat, listener, data);
-fn void wlSeatRelease(WlProxy* seat) { wlProxyDestroy(seat); }
+fn WlProxy* wl_seat_get_pointer(WlProxy* seat) => wl_proxy_marshal_flags(seat, 0, &wlPointerInterface, wl_proxy_get_version(seat), 0, null);
+fn WlProxy* wl_seat_get_keyboard(WlProxy* seat) => wl_proxy_marshal_flags(seat, 1, &wlKeyboardInterface, wl_proxy_get_version(seat), 0, null);
+fn int wl_seat_add_listener(WlProxy* seat, WlSeatListener* listener, void* data) => wl_proxy_add_listener(seat, listener, data);
+fn void wl_seat_destroy(WlProxy* seat) => wl_proxy_destroy(seat);
 
-fn int wlPointerAddListener(WlProxy* pointer, WlPointerListener* listener, void* data) => wlProxyAddListener(pointer, listener, data);
-fn void wlPointerSetCursor(WlProxy* pointer, uint serial, WlProxy* surface, int hotspotX, int hotspotY) { wlProxyMarshalFlags(pointer, 0, null, wlProxyGetVersion(pointer), 0, serial, surface, hotspotX, hotspotY); }
-fn void wlPointerDestroy(WlProxy* pointer) { wlProxyMarshalFlags(pointer, 1, null, wlProxyGetVersion(pointer), WL_MARSHAL_FLAG_DESTROY); }
+fn int wl_pointer_add_listener(WlProxy* pointer, WlPointerListener* listener, void* data) => wl_proxy_add_listener(pointer, listener, data);
+fn void wl_pointer_set_cursor(WlProxy* pointer, uint serial, WlProxy* surface, int hotspotX, int hotspotY) => wl_proxy_marshal_flags(pointer, 0, null, wl_proxy_get_version(pointer), 0, serial, surface, hotspotX, hotspotY);
+fn void wl_pointer_release(WlProxy* pointer) => wl_proxy_marshal_flags(pointer, 1, null, wl_proxy_get_version(pointer), WL_MARSHAL_FLAG_DESTROY);
 
-fn int wlKeyboardAddListener(WlProxy* keyboard, WlKeyboardListener* listener, void* data) => wlProxyAddListener(keyboard, listener, data);
-fn void wlKeyboardDestroy(WlProxy* keyboard) { wlProxyMarshalFlags(keyboard, 0, null, wlProxyGetVersion(keyboard), WL_MARSHAL_FLAG_DESTROY); }
+fn int wl_keyboard_add_listener(WlProxy* keyboard, WlKeyboardListener* listener, void* data) => wl_proxy_add_listener(keyboard, listener, data);
+fn void wl_keyboard_release(WlProxy* keyboard) => wl_proxy_marshal_flags(keyboard, 0, null, wl_proxy_get_version(keyboard), WL_MARSHAL_FLAG_DESTROY);
 
-fn int wlOutputAddListener(WlProxy* output, WlOutputListener* listener, void* data) => wlProxyAddListener(output, listener, data);
-fn void* wlOutputGetUserData(WlProxy* output) => wlProxyGetUserData(output);
-fn void wlOutputSetUserData(WlProxy* output, void* data) { wlProxySetUserData(output, data); }
-fn void wlOutputDestroy(WlProxy* output) { wlProxyMarshalFlags(output, 0, null, wlProxyGetVersion(output), WL_MARSHAL_FLAG_DESTROY); }
+fn int wl_output_add_listener(WlProxy* output, WlOutputListener* listener, void* data) => wl_proxy_add_listener(output, listener, data);
+fn void* wl_output_get_user_data(WlProxy* output) => wl_proxy_get_user_data(output);
+fn void wl_output_set_user_data(WlProxy* output, void* data) => wl_proxy_set_user_data(output, data);
+fn void wl_output_release(WlProxy* output) => wl_proxy_marshal_flags(output, 0, null, wl_proxy_get_version(output), WL_MARSHAL_FLAG_DESTROY);
 
-fn int wlShmAddListener(WlProxy* shm, WlShmListener* listener, void* data) => wlProxyAddListener(shm, listener, data);
-fn WlProxy* wlShmCreatePool(WlProxy* shm, int fd, int size) => wlProxyMarshalFlags(shm, 0, &wlShmPoolInterface, wlProxyGetVersion(shm), 0, null, fd, size);
-fn void wlShmDestroy(WlProxy* shm) { wlProxyDestroy(shm); }
+fn int wl_shm_add_listener(WlProxy* shm, WlShmListener* listener, void* data) => wl_proxy_add_listener(shm, listener, data);
+fn WlProxy* wl_shm_create_pool(WlProxy* shm, int fd, int size) => wl_proxy_marshal_flags(shm, 0, &wlShmPoolInterface, wl_proxy_get_version(shm), 0, null, fd, size);
+fn void wl_shm_destroy(WlProxy* shm) => wl_proxy_destroy(shm);
 
-fn WlProxy* wlShmPoolCreateBuffer(WlProxy* pool, int offset, int w, int h, int stride, uint format) => wlProxyMarshalFlags(pool, 0, &wlBufferInterface, wlProxyGetVersion(pool), 0, null, offset, w, h, stride, format);
-fn void wlShmPoolDestroy(WlProxy* pool) { wlProxyMarshalFlags(pool, 1, null, wlProxyGetVersion(pool), WL_MARSHAL_FLAG_DESTROY); }
+fn WlProxy* wl_shm_pool_create_buffer(WlProxy* pool, int offset, int w, int h, int stride, uint format) => wl_proxy_marshal_flags(pool, 0, &wlBufferInterface, wl_proxy_get_version(pool), 0, null, offset, w, h, stride, format);
+fn void wl_shm_pool_destroy(WlProxy* pool) => wl_proxy_marshal_flags(pool, 1, null, wl_proxy_get_version(pool), WL_MARSHAL_FLAG_DESTROY);
 
-fn void wlBufferDestroy(WlProxy* buffer) { wlProxyMarshalFlags(buffer, 0, null, wlProxyGetVersion(buffer), WL_MARSHAL_FLAG_DESTROY); }
+fn void wl_buffer_destroy(WlProxy* buffer) => wl_proxy_marshal_flags(buffer, 0, null, wl_proxy_get_version(buffer), WL_MARSHAL_FLAG_DESTROY);
 
-fn WlProxy* wlDataDeviceManagerCreateDataSource(WlProxy* mgr) => wlProxyMarshalFlags(mgr, 0, &wlDataSourceInterface, wlProxyGetVersion(mgr), 0, null);
-fn WlProxy* wlDataDeviceManagerGetDataDevice(WlProxy* mgr, WlProxy* seat) => wlProxyMarshalFlags(mgr, 1, &wlDataDeviceInterface, wlProxyGetVersion(mgr), 0, null, seat);
-fn void wlDataDeviceManagerDestroy(WlProxy* mgr) { wlProxyDestroy(mgr); }
+fn WlProxy* wl_data_device_manager_create_data_source(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 0, &wlDataSourceInterface, wl_proxy_get_version(mgr), 0, null);
+fn WlProxy* wl_data_device_manager_get_data_device(WlProxy* mgr, WlProxy* seat) => wl_proxy_marshal_flags(mgr, 1, &wlDataDeviceInterface, wl_proxy_get_version(mgr), 0, null, seat);
+fn void wl_data_device_manager_destroy(WlProxy* mgr) => wl_proxy_destroy(mgr);
 
-fn void wlDataSourceOffer(WlProxy* source, ZString mimeType) { wlProxyMarshalFlags(source, 0, null, wlProxyGetVersion(source), 0, mimeType); }
-fn int wlDataSourceAddListener(WlProxy* source, WlDataSourceListener* listener, void* data) => wlProxyAddListener(source, listener, data);
-fn void wlDataSourceDestroy(WlProxy* source) { wlProxyMarshalFlags(source, 1, null, wlProxyGetVersion(source), WL_MARSHAL_FLAG_DESTROY); }
+fn void wl_data_source_offer(WlProxy* source, ZString mimeType) => wl_proxy_marshal_flags(source, 0, null, wl_proxy_get_version(source), 0, mimeType);
+fn int wl_data_source_add_listener(WlProxy* source, WlDataSourceListener* listener, void* data) => wl_proxy_add_listener(source, listener, data);
+fn void wl_data_source_destroy(WlProxy* source) => wl_proxy_marshal_flags(source, 1, null, wl_proxy_get_version(source), WL_MARSHAL_FLAG_DESTROY);
 
-fn int wlDataOfferAddListener(WlProxy* offer, WlDataOfferListener* listener, void* data) => wlProxyAddListener(offer, listener, data);
-fn void wlDataOfferReceive(WlProxy* offer, ZString mimeType, int fd) { wlProxyMarshalFlags(offer, 1, null, wlProxyGetVersion(offer), 0, mimeType, fd); }
-fn void wlDataOfferDestroy(WlProxy* offer) { wlProxyMarshalFlags(offer, 2, null, wlProxyGetVersion(offer), WL_MARSHAL_FLAG_DESTROY); }
+fn int wl_data_offer_add_listener(WlProxy* offer, WlDataOfferListener* listener, void* data) => wl_proxy_add_listener(offer, listener, data);
+fn void wl_data_offer_receive(WlProxy* offer, ZString mimeType, int fd) => wl_proxy_marshal_flags(offer, 1, null, wl_proxy_get_version(offer), 0, mimeType, fd);
+fn void wl_data_offer_destroy(WlProxy* offer) => wl_proxy_marshal_flags(offer, 2, null, wl_proxy_get_version(offer), WL_MARSHAL_FLAG_DESTROY);
 
-fn int wlDataDeviceAddListener(WlProxy* dev, WlDataDeviceListener* listener, void* data) => wlProxyAddListener(dev, listener, data);
-fn void wlDataDeviceSetSelection(WlProxy* dev, WlProxy* source, uint serial) { wlProxyMarshalFlags(dev, 1, null, wlProxyGetVersion(dev), 0, source, serial); }
-fn void wlDataDeviceDestroy(WlProxy* dev) { wlProxyDestroy(dev); }
+fn int wl_data_device_add_listener(WlProxy* dev, WlDataDeviceListener* listener, void* data) => wl_proxy_add_listener(dev, listener, data);
+fn void wl_data_device_set_selection(WlProxy* dev, WlProxy* source, uint serial) => wl_proxy_marshal_flags(dev, 1, null, wl_proxy_get_version(dev), 0, source, serial);
+fn void wl_data_device_destroy(WlProxy* dev) => wl_proxy_destroy(dev);
 
-extern fn WlDisplay* wlDisplayConnect(ZString name) @cname("wl_display_connect");
-extern fn void wlDisplayDisconnect(WlDisplay* display) @cname("wl_display_disconnect");
-extern fn int wlDisplayGetFd(WlDisplay* display) @cname("wl_display_get_fd");
-extern fn int wlDisplayDispatch(WlDisplay* display) @cname("wl_display_dispatch");
-extern fn int wlDisplayDispatchPending(WlDisplay* display) @cname("wl_display_dispatch_pending");
-extern fn int wlDisplayFlush(WlDisplay* display) @cname("wl_display_flush");
-extern fn int wlDisplayRoundtrip(WlDisplay* display) @cname("wl_display_roundtrip");
-extern fn int wlDisplayPrepareRead(WlDisplay* display) @cname("wl_display_prepare_read");
-extern fn int wlDisplayReadEvents(WlDisplay* display) @cname("wl_display_read_events");
-extern fn void wlDisplayCancelRead(WlDisplay* display) @cname("wl_display_cancel_read");
-extern fn int wlDisplayGetError(WlDisplay* display) @cname("wl_display_get_error");
-extern fn WlProxy* wlProxyMarshalFlags(WlProxy* proxy, uint opcode, WlInterface* iface, uint version, uint flags, ...) @cname("wl_proxy_marshal_flags");
-extern fn int wlProxyAddListener(WlProxy* proxy, void* implementation, void* data) @cname("wl_proxy_add_listener");
-extern fn void* wlProxyGetUserData(WlProxy* proxy) @cname("wl_proxy_get_user_data");
-extern fn void wlProxySetUserData(WlProxy* proxy, void* data) @cname("wl_proxy_set_user_data");
-extern fn uint wlProxyGetVersion(WlProxy* proxy) @cname("wl_proxy_get_version");
-extern fn void wlProxyDestroy(WlProxy* proxy) @cname("wl_proxy_destroy");
-extern fn void wlProxyMarshal(WlProxy* proxy, uint opcode, ...) @cname("wl_proxy_marshal");
+extern fn WlDisplay* wl_display_connect(ZString name);
+extern fn void wl_display_disconnect(WlDisplay* display);
+extern fn int wl_display_get_fd(WlDisplay* display);
+extern fn int wl_display_dispatch(WlDisplay* display);
+extern fn int wl_display_dispatch_pending(WlDisplay* display);
+extern fn int wl_display_flush(WlDisplay* display);
+extern fn int wl_display_roundtrip(WlDisplay* display);
+extern fn int wl_display_prepare_read(WlDisplay* display);
+extern fn int wl_display_read_events(WlDisplay* display);
+extern fn void wl_display_cancel_read(WlDisplay* display);
+extern fn int wl_display_get_error(WlDisplay* display);
+extern fn WlProxy* wl_proxy_marshal_flags(WlProxy* proxy, uint opcode, WlInterface* iface, uint version, uint flags, ...);
+extern fn int wl_proxy_add_listener(WlProxy* proxy, void* implementation, void* data);
+extern fn void* wl_proxy_get_user_data(WlProxy* proxy);
+extern fn void wl_proxy_set_user_data(WlProxy* proxy, void* data);
+extern fn uint wl_proxy_get_version(WlProxy* proxy);
+extern fn void wl_proxy_destroy(WlProxy* proxy);
+extern fn void wl_proxy_marshal(WlProxy* proxy, uint opcode, ...);
 
 extern WlInterface wlRegistryInterface @cname("wl_registry_interface");
 extern WlInterface wlCompositorInterface @cname("wl_compositor_interface");
@@ -276,32 +276,32 @@ extern WlInterface wlDataSourceInterface @cname("wl_data_source_interface");
 extern WlInterface wlDataOfferInterface @cname("wl_data_offer_interface");
 
 // ---- xdg-toplevel-icon-v1 ----
-fn void xdgToplevelIconManagerV1SetIcon(WlProxy* mgr, WlProxy* toplevel, WlProxy* icon) { wlProxyMarshalFlags(mgr, 2, null, wlProxyGetVersion(mgr), 0, toplevel, icon); }
-fn WlProxy* xdgToplevelIconManagerV1CreateIcon(WlProxy* mgr) => wlProxyMarshalFlags(mgr, 1, &xdgToplevelIconV1Interface, wlProxyGetVersion(mgr), 0, null);
-fn void xdgToplevelIconManagerV1Destroy(WlProxy* mgr) { wlProxyMarshalFlags(mgr, 0, null, wlProxyGetVersion(mgr), WL_MARSHAL_FLAG_DESTROY); }
-fn void xdgToplevelIconV1AddBuffer(WlProxy* icon, WlProxy* buffer, int scale) { wlProxyMarshalFlags(icon, 2, null, wlProxyGetVersion(icon), 0, buffer, scale); }
-fn void xdgToplevelIconV1Destroy(WlProxy* icon) { wlProxyMarshalFlags(icon, 0, null, wlProxyGetVersion(icon), WL_MARSHAL_FLAG_DESTROY); }
+fn void xdg_toplevel_icon_manager_v1_set_icon(WlProxy* mgr, WlProxy* toplevel, WlProxy* icon) => wl_proxy_marshal_flags(mgr, 2, null, wl_proxy_get_version(mgr), 0, toplevel, icon);
+fn WlProxy* xdg_toplevel_icon_manager_v1_create_icon(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 1, &xdgToplevelIconV1Interface, wl_proxy_get_version(mgr), 0, null);
+fn void xdg_toplevel_icon_manager_v1_destroy(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 0, null, wl_proxy_get_version(mgr), WL_MARSHAL_FLAG_DESTROY);
+fn void xdg_toplevel_icon_v1_add_buffer(WlProxy* icon, WlProxy* buffer, int scale) => wl_proxy_marshal_flags(icon, 2, null, wl_proxy_get_version(icon), 0, buffer, scale);
+fn void xdg_toplevel_icon_v1_destroy(WlProxy* icon) => wl_proxy_marshal_flags(icon, 0, null, wl_proxy_get_version(icon), WL_MARSHAL_FLAG_DESTROY);
 
 // ---- xdg-output-unstable-v1 ----
-fn WlProxy* zxdgOutputManagerV1GetXdgOutput(WlProxy* mgr, WlProxy* output) => wlProxyMarshalFlags(mgr, 1, &zxdgOutputV1Interface, wlProxyGetVersion(mgr), 0, null, output);
-fn void zxdgOutputManagerV1Destroy(WlProxy* mgr) { wlProxyMarshalFlags(mgr, 0, null, wlProxyGetVersion(mgr), WL_MARSHAL_FLAG_DESTROY); }
-fn void zxdgOutputV1AddListener(WlProxy* out, ZxdgOutputV1Listener* listener, void* data) { wlProxyAddListener(out, listener, data); }
-fn void zxdgOutputV1Destroy(WlProxy* out) { wlProxyMarshalFlags(out, 0, null, wlProxyGetVersion(out), WL_MARSHAL_FLAG_DESTROY); }
+fn WlProxy* zxdg_output_manager_v1_get_xdg_output(WlProxy* mgr, WlProxy* output) => wl_proxy_marshal_flags(mgr, 1, &zxdgOutputV1Interface, wl_proxy_get_version(mgr), 0, null, output);
+fn void zxdg_output_manager_v1_destroy(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 0, null, wl_proxy_get_version(mgr), WL_MARSHAL_FLAG_DESTROY);
+fn void zxdg_output_v1_add_listener(WlProxy* out, ZxdgOutputV1Listener* listener, void* data) => wl_proxy_add_listener(out, listener, data);
+fn void zxdg_output_v1_destroy(WlProxy* out) => wl_proxy_marshal_flags(out, 0, null, wl_proxy_get_version(out), WL_MARSHAL_FLAG_DESTROY);
 
 // ---- pointer-warp-v1 ----
-fn void _wp_pointer_warp_v1_warp_pointer(WlProxy* warp, WlProxy* surface, WlProxy* pointer, WlFixed x, WlFixed y, uint serial) { wlProxyMarshalFlags(warp, 1, null, wlProxyGetVersion(warp), 0, surface, pointer, x, y, serial); }
-fn void wpPointerWarpV1Destroy(WlProxy* warp) { wlProxyMarshalFlags(warp, 0, null, wlProxyGetVersion(warp), WL_MARSHAL_FLAG_DESTROY); }
+fn void wp_pointer_warp_v1_warp_pointer(WlProxy* warp, WlProxy* surface, WlProxy* pointer, WlFixed x, WlFixed y, uint serial) => wl_proxy_marshal_flags(warp, 1, null, wl_proxy_get_version(warp), 0, surface, pointer, x, y, serial);
+fn void wp_pointer_warp_v1_destroy(WlProxy* warp) => wl_proxy_marshal_flags(warp, 0, null, wl_proxy_get_version(warp), WL_MARSHAL_FLAG_DESTROY);
 
 // ---- libwayland-egl ----
 extern fn WlEglWindow* wl_egl_window_create(WlProxy* surface, int width, int height);
-extern fn void egl_window_destroy(WlEglWindow* window);
+extern fn void wl_egl_window_destroy(WlEglWindow* window);
 extern fn void wl_egl_window_resize(WlEglWindow* window, int width, int height, int dx, int dy);
 
 // ---- libwayland-cursor ----
-extern fn WlCursorTheme* wlCursorThemeLoad(ZString name, int size, void* shm) @cname("wl_cursor_theme_load");
-extern fn void wlCursorThemeDestroy(WlCursorTheme* theme) @cname("wl_cursor_theme_destroy");
-extern fn WlCursor* wlCursorThemeGetCursor(WlCursorTheme* theme, ZString name) @cname("wl_cursor_theme_get_cursor");
-extern fn WlProxy* wlCursorImageGetBuffer(WlCursorImage* image) @cname("wl_cursor_image_get_buffer");
+extern fn WlCursorTheme* wl_cursor_theme_load(ZString name, int size, void* shm);
+extern fn void wl_cursor_theme_destroy(WlCursorTheme* theme);
+extern fn WlCursor* wl_cursor_theme_get_cursor(WlCursorTheme* theme, ZString name);
+extern fn WlProxy* wl_cursor_image_get_buffer(WlCursorImage* image);
 
 // ---- libxkbcommon ----
 typedef XkbContext = void;
@@ -311,68 +311,68 @@ typedef XkbComposeTable = void;
 typedef XkbComposeState = void;
 alias XkbKeysym = uint;
 alias XkbKeycode = uint;
-extern fn XkbContext* xkbContextNew(int flags) @cname("xkb_context_new");
-extern fn void xkbContextUnref(XkbContext* ctx) @cname("xkb_context_unref");
-extern fn XkbKeymap* xkbKeymapNewFromString(XkbContext* ctx, ZString string, int format, int flags) @cname("xkb_keymap_new_from_string");
-extern fn void xkbKeymapUnref(XkbKeymap* keymap) @cname("xkb_keymap_unref");
-extern fn int xkbKeymapModGetIndex(XkbKeymap* keymap, ZString name) @cname("xkb_keymap_mod_get_index");
-extern fn XkbState* xkbStateNew(XkbKeymap* keymap) @cname("xkb_state_new");
-extern fn void xkbStateUnref(XkbState* state) @cname("xkb_state_unref");
-extern fn uint xkbStateUpdateMask(XkbState* state, uint depressed, uint latched, uint locked, uint depressedLayout, uint latchedLayout, uint lockedLayout) @cname("xkb_state_update_mask");
-extern fn int xkbStateKeyGetSyms(XkbState* state, XkbKeycode key, XkbKeysym** syms) @cname("xkb_state_key_get_syms");
-extern fn XkbKeysym xkbStateKeyGetOneSym(XkbState* state, XkbKeycode key) @cname("xkb_state_key_get_one_sym");
-extern fn uint xkbKeysymToUtf32(XkbKeysym sym) @cname("xkb_keysym_to_utf32");
-extern fn XkbComposeTable* xkbComposeTableNewFromLocale(XkbContext* ctx, ZString locale, int flags) @cname("xkb_compose_table_new_from_locale");
-extern fn void xkbComposeTableUnref(XkbComposeTable* table) @cname("xkb_compose_table_unref");
-extern fn XkbComposeState* xkbComposeStateNew(XkbComposeTable* table, int flags) @cname("xkb_compose_state_new");
-extern fn void xkbComposeStateUnref(XkbComposeState* state) @cname("xkb_compose_state_unref");
-extern fn int xkbComposeStateFeed(XkbComposeState* state, XkbKeysym sym) @cname("xkb_compose_state_feed");
-extern fn int xkbComposeStateGetStatus(XkbComposeState* state) @cname("xkb_compose_state_get_status");
-extern fn XkbKeysym xkbComposeStateGetOneSym(XkbComposeState* state) @cname("xkb_compose_state_get_one_sym");
+extern fn XkbContext* xkb_context_new(int flags);
+extern fn void xkb_context_unref(XkbContext* ctx);
+extern fn XkbKeymap* xkb_keymap_new_from_string(XkbContext* ctx, ZString string, int format, int flags);
+extern fn void xkb_keymap_unref(XkbKeymap* keymap);
+extern fn int xkb_keymap_mod_get_index(XkbKeymap* keymap, ZString name);
+extern fn XkbState* xkb_state_new(XkbKeymap* keymap);
+extern fn void xkb_state_unref(XkbState* state);
+extern fn uint xkb_state_update_mask(XkbState* state, uint depressed, uint latched, uint locked, uint depressedLayout, uint latchedLayout, uint lockedLayout);
+extern fn int xkb_state_key_get_syms(XkbState* state, XkbKeycode key, XkbKeysym** syms);
+extern fn XkbKeysym xkb_state_key_get_one_sym(XkbState* state, XkbKeycode key);
+extern fn uint xkb_keysym_to_utf32(XkbKeysym sym);
+extern fn XkbComposeTable* xkb_compose_table_new_from_locale(XkbContext* ctx, ZString locale, int flags);
+extern fn void xkb_compose_table_unref(XkbComposeTable* table);
+extern fn XkbComposeState* xkb_compose_state_new(XkbComposeTable* table, int flags);
+extern fn void xkb_compose_state_unref(XkbComposeState* state);
+extern fn int xkb_compose_state_feed(XkbComposeState* state, XkbKeysym sym);
+extern fn int xkb_compose_state_get_status(XkbComposeState* state);
+extern fn XkbKeysym xkb_compose_state_get_one_sym(XkbComposeState* state);
 
 // ---- pointer-constraints-unstable-v1 ----
-fn WlProxy* zwpPointerConstraintsV1LockPointer(WlProxy* mgr, WlProxy* surface, WlProxy* pointer, WlProxy* region, uint lifetime) => wlProxyMarshalFlags(mgr, 1, &zwpLockedPointerV1Interface, wlProxyGetVersion(mgr), 0, null, surface, pointer, region, lifetime);
-fn void zwpPointerConstraintsV1Destroy(WlProxy* mgr) { wlProxyMarshalFlags(mgr, 0, null, wlProxyGetVersion(mgr), WL_MARSHAL_FLAG_DESTROY); }
-fn void zwpLockedPointerV1AddListener(WlProxy* lp, ZwpLockedPointerV1Listener* listener, void* data) { wlProxyAddListener(lp, listener, data); }
-fn void zwpLockedPointerV1Destroy(WlProxy* lp) { wlProxyMarshalFlags(lp, 0, null, wlProxyGetVersion(lp), WL_MARSHAL_FLAG_DESTROY); }
+fn WlProxy* zwp_pointer_constraints_v1_lock_pointer(WlProxy* mgr, WlProxy* surface, WlProxy* pointer, WlProxy* region, uint lifetime) => wl_proxy_marshal_flags(mgr, 1, &zwpLockedPointerV1Interface, wl_proxy_get_version(mgr), 0, null, surface, pointer, region, lifetime);
+fn void zwp_pointer_constraints_v1_destroy(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 0, null, wl_proxy_get_version(mgr), WL_MARSHAL_FLAG_DESTROY);
+fn void zwp_locked_pointer_v1_add_listener(WlProxy* lp, ZwpLockedPointerV1Listener* listener, void* data) => wl_proxy_add_listener(lp, listener, data);
+fn void zwp_locked_pointer_v1_destroy(WlProxy* lp) => wl_proxy_marshal_flags(lp, 0, null, wl_proxy_get_version(lp), WL_MARSHAL_FLAG_DESTROY);
 
 // ---- relative-pointer-unstable-v1 ----
-fn WlProxy* zwpRelativePointerManagerV1GetRelativePointer(WlProxy* mgr, WlProxy* pointer) => wlProxyMarshalFlags(mgr, 1, &zwpRelativePointerV1Interface, wlProxyGetVersion(mgr), 0, null, pointer);
-fn void zwpRelativePointerManagerV1Destroy(WlProxy* mgr) { wlProxyMarshalFlags(mgr, 0, null, wlProxyGetVersion(mgr), WL_MARSHAL_FLAG_DESTROY); }
-fn void zwpRelativePointerV1AddListener(WlProxy* rel, ZwpRelativePointerV1Listener* listener, void* data) { wlProxyAddListener(rel, listener, data); }
-fn void zwpRelativePointerV1Destroy(WlProxy* rel) { wlProxyMarshalFlags(rel, 0, null, wlProxyGetVersion(rel), WL_MARSHAL_FLAG_DESTROY); }
+fn WlProxy* zwp_relative_pointer_manager_v1_get_relative_pointer(WlProxy* mgr, WlProxy* pointer) => wl_proxy_marshal_flags(mgr, 1, &zwpRelativePointerV1Interface, wl_proxy_get_version(mgr), 0, null, pointer);
+fn void zwp_relative_pointer_manager_v1_destroy(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 0, null, wl_proxy_get_version(mgr), WL_MARSHAL_FLAG_DESTROY);
+fn void zwp_relative_pointer_v1_add_listener(WlProxy* rel, ZwpRelativePointerV1Listener* listener, void* data) => wl_proxy_add_listener(rel, listener, data);
+fn void zwp_relative_pointer_v1_destroy(WlProxy* rel) => wl_proxy_marshal_flags(rel, 0, null, wl_proxy_get_version(rel), WL_MARSHAL_FLAG_DESTROY);
 
 // ---- xdg-decoration-unstable-v1 ----
-fn WlProxy* zxdgDecorationManagerV1GetToplevelDecoration(WlProxy* mgr, WlProxy* toplevel) => wlProxyMarshalFlags(mgr, 1, &zxdgToplevelDecorationV1Interface, wlProxyGetVersion(mgr), 0, null, toplevel);
-fn void zxdgDecorationManagerV1Destroy(WlProxy* mgr) { wlProxyMarshalFlags(mgr, 0, null, wlProxyGetVersion(mgr), WL_MARSHAL_FLAG_DESTROY); }
-fn void zxdgToplevelDecorationV1AddListener(WlProxy* dec, ZxdgToplevelDecorationV1Listener* listener, void* data) { wlProxyAddListener(dec, listener, data); }
-fn void zxdgToplevelDecorationV1SetMode(WlProxy* dec, uint mode) { wlProxyMarshalFlags(dec, 1, null, wlProxyGetVersion(dec), 0, mode); }
-fn void zxdgToplevelDecorationV1Destroy(WlProxy* dec) { wlProxyMarshalFlags(dec, 0, null, wlProxyGetVersion(dec), WL_MARSHAL_FLAG_DESTROY); }
+fn WlProxy* zxdg_decoration_manager_v1_get_toplevel_decoration(WlProxy* mgr, WlProxy* toplevel) => wl_proxy_marshal_flags(mgr, 1, &zxdgToplevelDecorationV1Interface, wl_proxy_get_version(mgr), 0, null, toplevel);
+fn void zxdg_decoration_manager_v1_destroy(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 0, null, wl_proxy_get_version(mgr), WL_MARSHAL_FLAG_DESTROY);
+fn void zxdg_toplevel_decoration_v1_add_listener(WlProxy* dec, ZxdgToplevelDecorationV1Listener* listener, void* data) => wl_proxy_add_listener(dec, listener, data);
+fn void zxdg_toplevel_decoration_v1_set_mode(WlProxy* dec, uint mode) => wl_proxy_marshal_flags(dec, 1, null, wl_proxy_get_version(dec), 0, mode);
+fn void zxdg_toplevel_decoration_v1_destroy(WlProxy* dec) => wl_proxy_marshal_flags(dec, 0, null, wl_proxy_get_version(dec), WL_MARSHAL_FLAG_DESTROY);
 
 // ---- xdg-shell (stable) ----
-fn void xdgWmBaseAddListener(WlProxy* base, XdgWmBaseListener* listener, void* data) { wlProxyAddListener(base, listener, data); }
-fn void xdgWmBasePong(WlProxy* base, uint serial) { wlProxyMarshalFlags(base, 3, null, wlProxyGetVersion(base), 0, serial); }
-fn WlProxy* xdgWmBaseGetXdgSurface(WlProxy* base, WlProxy* surface) => wlProxyMarshalFlags(base, 2, &xdgSurfaceInterface, wlProxyGetVersion(base), 0, null, surface);
-fn void xdgWmBaseSetUserData(WlProxy* base, void* data) { wlProxySetUserData(base, data); }
-fn void xdgWmBaseDestroy(WlProxy* base) { wlProxyMarshalFlags(base, 0, null, wlProxyGetVersion(base), WL_MARSHAL_FLAG_DESTROY); }
+fn void xdg_wm_base_add_listener(WlProxy* base, XdgWmBaseListener* listener, void* data) => wl_proxy_add_listener(base, listener, data);
+fn void xdg_wm_base_pong(WlProxy* base, uint serial) => wl_proxy_marshal_flags(base, 3, null, wl_proxy_get_version(base), 0, serial);
+fn WlProxy* xdg_wm_base_get_xdg_surface(WlProxy* base, WlProxy* surface) => wl_proxy_marshal_flags(base, 2, &xdgSurfaceInterface, wl_proxy_get_version(base), 0, null, surface);
+fn void xdg_wm_base_set_user_data(WlProxy* base, void* data) => wl_proxy_set_user_data(base, data);
+fn void xdg_wm_base_destroy(WlProxy* base) => wl_proxy_marshal_flags(base, 0, null, wl_proxy_get_version(base), WL_MARSHAL_FLAG_DESTROY);
 
-fn void xdgSurfaceAddListener(WlProxy* surface, XdgSurfaceListener* listener, void* data) { wlProxyAddListener(surface, listener, data); }
-fn void xdgSurfaceAckConfigure(WlProxy* surface, uint serial) { wlProxyMarshalFlags(surface, 4, null, wlProxyGetVersion(surface), 0, serial); }
-fn WlProxy* xdgSurfaceGetToplevel(WlProxy* surface) => wlProxyMarshalFlags(surface, 1, &xdgToplevelInterface, wlProxyGetVersion(surface), 0, null);
-fn void _xdg_surface_set_window_geometry(WlProxy* surface, int x, int y, int w, int h) { wlProxyMarshalFlags(surface, 3, null, wlProxyGetVersion(surface), 0, x, y, w, h); }
-fn void xdgSurfaceDestroy(WlProxy* surface) { wlProxyMarshalFlags(surface, 0, null, wlProxyGetVersion(surface), WL_MARSHAL_FLAG_DESTROY); }
+fn void xdg_surface_add_listener(WlProxy* surface, XdgSurfaceListener* listener, void* data) => wl_proxy_add_listener(surface, listener, data);
+fn void xdg_surface_ack_configure(WlProxy* surface, uint serial) => wl_proxy_marshal_flags(surface, 4, null, wl_proxy_get_version(surface), 0, serial);
+fn WlProxy* xdg_surface_get_toplevel(WlProxy* surface) => wl_proxy_marshal_flags(surface, 1, &xdgToplevelInterface, wl_proxy_get_version(surface), 0, null);
+fn void xdg_surface_set_window_geometry(WlProxy* surface, int x, int y, int w, int h) => wl_proxy_marshal_flags(surface, 3, null, wl_proxy_get_version(surface), 0, x, y, w, h);
+fn void xdg_surface_destroy(WlProxy* surface) => wl_proxy_marshal_flags(surface, 0, null, wl_proxy_get_version(surface), WL_MARSHAL_FLAG_DESTROY);
 
-fn void xdgToplevelAddListener(WlProxy* toplevel, XdgToplevelListener* listener, void* data) { wlProxyAddListener(toplevel, listener, data); }
-fn void xdgToplevelSetTitle(WlProxy* toplevel, ZString title) { wlProxyMarshalFlags(toplevel, 2, null, wlProxyGetVersion(toplevel), 0, title); }
-fn void _xdg_toplevel_set_app_id(WlProxy* toplevel, ZString appId) { wlProxyMarshalFlags(toplevel, 3, null, wlProxyGetVersion(toplevel), 0, appId); }
-fn void _xdg_toplevel_set_max_size(WlProxy* toplevel, int w, int h) { wlProxyMarshalFlags(toplevel, 7, null, wlProxyGetVersion(toplevel), 0, w, h); }
-fn void xdgToplevelSetMinSize(WlProxy* toplevel, int w, int h) { wlProxyMarshalFlags(toplevel, 8, null, wlProxyGetVersion(toplevel), 0, w, h); }
-fn void xdgToplevelSetMaximized(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 9, null, wlProxyGetVersion(toplevel), 0); }
-fn void _xdg_toplevel_unset_maximized(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 10, null, wlProxyGetVersion(toplevel), 0); }
-fn void xdgToplevelSetFullscreen(WlProxy* toplevel, WlProxy* output) { wlProxyMarshalFlags(toplevel, 11, null, wlProxyGetVersion(toplevel), 0, output); }
-fn void xdgToplevelUnsetFullscreen(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 12, null, wlProxyGetVersion(toplevel), 0); }
-fn void xdgToplevelSetMinimized(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 13, null, wlProxyGetVersion(toplevel), 0); }
-fn void xdgToplevelDestroy(WlProxy* toplevel) { wlProxyMarshalFlags(toplevel, 0, null, wlProxyGetVersion(toplevel), WL_MARSHAL_FLAG_DESTROY); }
+fn void xdg_toplevel_add_listener(WlProxy* toplevel, XdgToplevelListener* listener, void* data) => wl_proxy_add_listener(toplevel, listener, data);
+fn void xdg_toplevel_set_title(WlProxy* toplevel, ZString title) => wl_proxy_marshal_flags(toplevel, 2, null, wl_proxy_get_version(toplevel), 0, title);
+fn void xdg_toplevel_set_app_id(WlProxy* toplevel, ZString appId) => wl_proxy_marshal_flags(toplevel, 3, null, wl_proxy_get_version(toplevel), 0, appId);
+fn void xdg_toplevel_set_max_size(WlProxy* toplevel, int w, int h) => wl_proxy_marshal_flags(toplevel, 7, null, wl_proxy_get_version(toplevel), 0, w, h);
+fn void xdg_toplevel_set_min_size(WlProxy* toplevel, int w, int h) => wl_proxy_marshal_flags(toplevel, 8, null, wl_proxy_get_version(toplevel), 0, w, h);
+fn void xdg_toplevel_set_maximized(WlProxy* toplevel) => wl_proxy_marshal_flags(toplevel, 9, null, wl_proxy_get_version(toplevel), 0);
+fn void xdg_toplevel_unset_maximized(WlProxy* toplevel) => wl_proxy_marshal_flags(toplevel, 10, null, wl_proxy_get_version(toplevel), 0);
+fn void xdg_toplevel_set_fullscreen(WlProxy* toplevel, WlProxy* output) => wl_proxy_marshal_flags(toplevel, 11, null, wl_proxy_get_version(toplevel), 0, output);
+fn void xdg_toplevel_unset_fullscreen(WlProxy* toplevel) => wl_proxy_marshal_flags(toplevel, 12, null, wl_proxy_get_version(toplevel), 0);
+fn void xdg_toplevel_set_minimized(WlProxy* toplevel) => wl_proxy_marshal_flags(toplevel, 13, null, wl_proxy_get_version(toplevel), 0);
+fn void xdg_toplevel_destroy(WlProxy* toplevel) => wl_proxy_marshal_flags(toplevel, 0, null, wl_proxy_get_version(toplevel), WL_MARSHAL_FLAG_DESTROY);
 
 
 // ---- libxkbcommon (keysyms and flags) ----
