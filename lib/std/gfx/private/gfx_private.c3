@@ -69,17 +69,7 @@ struct GfxContext
 	{
 		int usingAsyncify;
 	}
-	struct @feat(MACOS)
-	{
-		void* x11_handle;
-		void* x11_display;
-		CULong x11_root;
-		void* wayland_handle;
-		void* wl_display;
-		ObjId ns_app;
-		void* ns_pool;
-		NSUInteger windowNumberSeed;
-	}
+
 	GfxDataTransfer* unixClipboard @feat(LINUX, BSD);
 
 	bool use_wayland @feat(WAYLAND & !NO_X11);

@@ -2,12 +2,20 @@ module std::gfx::macos @feat(MACOS) @private @link("Cocoa.framework", "AppKit.fr
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 import std::gfx::gl @public;
 
+struct GfxMacosCtx
+{
+	ObjId app;
+	void* pool;
+}
+
+GfxMacosCtx ctx;
+
 // --- Gfx
 
 fn void? init_platform(String class_name, GfxInitOption flags)
 {
-	gfx::_gfx.ns_pool = objc::pool_push();
-	ObjId app = gfx::_gfx.ns_app = objc::send(macos::nsapplication(), ObjId, "sharedApplication");
+	ctx = { .pool = objc::pool_push() };
+	ObjId app = ctx.app = macos::nsapplication().send(ObjId, "sharedApplication");
 	if (!app) return gfx::NSAPP_CREATION_FAILED~;
 	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
 	app.send_void("finishLaunching");
@@ -16,11 +24,11 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 
 fn void destroy_platform()
 {
-	if (gfx::_gfx.ns_pool)
+	if (ctx.pool)
 	{
-		objc::pool_pop(gfx::_gfx.ns_pool);
-		gfx::_gfx.ns_pool = null;
+		objc::pool_pop(ctx.pool);
 	}
+	ctx = {};
 }
 
 fn void poll_events_platform()
@@ -28,16 +36,16 @@ fn void poll_events_platform()
 	objc::@autoreleasepool()
 	{
 		gfx::_reset_prev_state();
-		if (!gfx::_gfx.ns_app) return;
+		if (!ctx.app) return;
 		ObjId distantPast = darwin::nsdate().send(ObjId, "distantPast");
 		ObjId mode = darwin::string("kCFRunLoopDefaultMode");
 		while (true)
 		{
 			objc::@autoreleasepool()
 			{
-				ObjId ev = gfx::_gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
+				ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
 				if (!ev) break;
-				gfx::_gfx.ns_app.send_void("sendEvent:", ev);
+				ctx.app.send_void("sendEvent:", ev);
 			};
 		}
 	};
@@ -46,14 +54,14 @@ fn void poll_events_platform()
 
 fn void wait_for_event(Duration duration)
 {
-	if (!gfx::_gfx.ns_app) return;
+	if (!ctx.app) return;
 	CFTimeInterval time = duration.to_sec();
 	if (duration == gfx::WAIT_FOREVER) time = CFTimeInterval::max;
 	if (time < 0) time = 0;
 	ObjId date = darwin::nsdate().send(ObjId, "dateWithTimeIntervalSinceNow:", time);
 	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
-	ObjId ev = gfx::_gfx.ns_app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
-	if (ev) gfx::_gfx.ns_app.send_void("postEvent:atStart:", ev, true);
+	ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
+	if (ev) ctx.app.send_void("postEvent:atStart:", ev, true);
 }
 
 
@@ -361,7 +369,7 @@ fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor(
 
 fn void window_flash(GfxWindow* win, GfxFlashRequest request)
 {
-	gfx::_gfx.ns_app.send(NSInteger, "requestUserAttention:", (NSUInteger)request);
+	ctx.app.send(NSInteger, "requestUserAttention:", (NSUInteger)request);
 }
 
 fn void window_focus(GfxWindow* win)
@@ -506,10 +514,10 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 
 fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
-	if (!gfx::_gfx.ns_app) return false;
+	if (!ctx.app) return false;
 	if (!data)
 	{
-		gfx::_gfx.ns_app.send_void("setApplicationIconImage:", null);
+		ctx.app.send_void("setApplicationIconImage:", null);
 		return true;
 	}
 	ObjId rep = _new_nsbitmap_image_rep(w, h);
@@ -519,7 +527,7 @@ fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat form
 	gfx::copy_image_data(pixels, w, h, RGBA8, data, format, null);
 	ObjId image = _new_nsimage(w, h, rep);
 	defer objc::release(image);
-	gfx::_gfx.ns_app.send_void("setApplicationIconImage:", image);
+	ctx.app.send_void("setApplicationIconImage:", image);
 	return true;
 }
 
@@ -570,7 +578,7 @@ fn void window_show_platform(GfxWindow* win)
 {
 	if (!win.src.window) return;
 	win.src.window.send_void("makeKeyAndOrderFront:", null);
-	if (gfx::_gfx.ns_app) gfx::_gfx.ns_app.send_void("activateIgnoringOtherApps:", true);
+	if (ctx.app) ctx.app.send_void("activateIgnoringOtherApps:", true);
 	win.internal.flags.hide = false;
 }
 
