@@ -59,7 +59,7 @@ fn bool is_extension_supported(String extension) @feat(WASM) => false;
 
 fn bool is_extension_supported(String extension) @feat(!WASM)
 {
-	if (gfx::_opengl_extension_supported_base(extension, &get_proc)) return true;
+	if (gl::extension_supported_base(extension, &get_proc)) return true;
 	if (!query_string_fn || !gfx::_gfx.egl.display) return false;
 	ZString extensions = query_string_fn((EglDisplay)gfx::_gfx.egl.display, EGL_EXTENSIONS);
 	return extensions && gfx::_extension_is_in_list(extensions.str_view(), extension);

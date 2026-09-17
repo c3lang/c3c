@@ -1,4 +1,3 @@
-
 module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
 import std::os::macos, std::os::darwin, std::os::win32;
 import std::gfx::wl @public, std::gfx::x11 @public;
@@ -37,6 +36,9 @@ struct GfxGlHints
 	GfxGlRenderer renderer;
 }
 
+module std::gfx::gl @feat(MACOS, LINUX, BSD, WASM, WIN32);
+import std::gfx @public;
+
 const uint GL_EXTENSIONS     = 0x1F03;
 const uint GL_NUM_EXTENSIONS = 0x821D;
 
@@ -44,9 +46,9 @@ alias GlGetString      = fn ZString(uint name);
 alias GlGetStringi     = fn ZString(uint name, uint index);
 alias GlGetIntegerv    = fn void(uint pname, int* data);
 
-fn bool _opengl_extension_supported_base(String extension, GfxGetProcFn proc)
+fn bool extension_supported_base(String extension, GfxGetProcFn proc)
 {
-	if (get_global_opengl_hints().major >= 3)
+	if (gfx::get_global_opengl_hints().major >= 3)
 	{
 		GlGetIntegerv get_integerv = proc("glGetIntegerv");
 		GlGetStringi get_stringi = proc("glGetStringi");
@@ -64,23 +66,7 @@ fn bool _opengl_extension_supported_base(String extension, GfxGetProcFn proc)
 	GlGetString get_string = proc("glGetString");
 	if (!get_string) return false;
 	ZString extensions = get_string(GL_EXTENSIONS);
-	return extensions && _extension_is_in_list(extensions.str_view(), extension);
+	return extensions && gfx::_extension_is_in_list(extensions.str_view(), extension);
 }
-
-fn GfxGlContext*? _window_create_opengl_context_native(GfxWindow* win, GfxGlHints* hints)
-{
-	GfxGlContext* context = mem::new(GfxGlContext);
-	defer catch free(context);
-	_window_init_opengl_context_platform(win, context, hints)!;
-	win.src.backing.owned = true;
-	return context;
-}
-
-fn void _window_destroy_opengl_context_native(GfxWindow* win, GfxGlContext* ctx)
-{
-	_window_release_opengl_context_platform(win, ctx);
-	if (win.src.backing.owned) free(ctx);
-}
-
 
 

@@ -1,5 +1,6 @@
 module std::gfx::macos @feat(MACOS) @private @link("Cocoa.framework", "AppKit.framework");
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
+import std::gfx::gl @public;
 
 // --- Gfx
 
@@ -280,7 +281,7 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 
 	gfx::_window_set_flags(win, flags, {});
 	win.src.backing = {};
-	if (flags.open_gl) gfx::_window_create_opengl_context_native(win, gfx::get_global_opengl_hints())!;
+	if (flags.open_gl) win.create_opengl_context(gfx::get_global_opengl_hints())!;
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
 	_macos_init_view(win);
 }
@@ -750,8 +751,7 @@ fn void? load_opengl()
 
 fn bool opengl_extension_is_supported_platform(String extension)
 {
-	if (gfx::_opengl_extension_supported_base(extension, &get_opengl_proc)) return true;
-	return opengl_extension_is_supported_platform(extension);
+	return false;
 }
 
 // --- Keys

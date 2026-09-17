@@ -916,7 +916,7 @@ fn void* get_current_opengl_context()
 
 fn bool opengl_extension_is_supported(String extension)
 {
-	if (_opengl_extension_supported_base(extension, &get_opengl_proc)) return true;
+	if (gl::extension_supported_base(extension, &get_opengl_proc)) return true;
 	return _opengl_extension_is_supported_platform(extension);
 }
 
@@ -1685,12 +1685,16 @@ fn void GfxWindow.show_mouse(&self, bool show)
 
 fn GfxGlContext*? GfxWindow.create_opengl_context(&self, GfxGlHints* hints)
 {
-	return _window_create_opengl_context_native(self, hints);
+	GfxGlContext* context = mem::new(GfxGlContext);
+	defer catch free(context);
+	_window_init_opengl_context_platform(self, context, hints)!;
+	self.src.backing.owned = true;
+	return context;
 }
 
 fn void GfxWindow.destroy_opengl_context(&self, GfxGlContext* context)
 {
-	_window_destroy_opengl_context_native(self, context);
+	_window_destroy_opengl_context(self, context);
 }
 
 fn void GfxWindow.destroy_egl_context(&self, GfxEglContext* context)

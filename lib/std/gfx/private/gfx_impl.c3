@@ -1096,6 +1096,28 @@ fn void _window_show_platform(GfxWindow* win)
 
 // Window - opengl
 
+fn void _window_destroy_opengl_context(GfxWindow* win, GfxGlContext* ctx)
+{
+	defer if (win.src.backing.owned) free(ctx);
+	$switch:
+		$case $feat(MACOS):
+			return macos::window_release_opengl_context_platform(win, ctx);
+		$case $feat(WASM):
+			return wasm::window_release_opengl_context_platform(win, ctx);
+		$case $feat(WIN32):
+			return win32::window_release_opengl_context_platform(win, ctx);
+		$case WAYLAND_ONLY:
+			return wl::window_release_opengl_context_platform(win, ctx);
+		$case X11_ONLY:
+			return x11::window_release_opengl_context_platform(win, ctx);
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::window_release_opengl_context_platform(win, ctx);
+			return x11::window_release_opengl_context_platform(win, ctx);
+		$default:
+			unreachable();
+	$endswitch
+}
+
 fn void? _window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* context, GfxGlHints* hints)
 {
 	$switch:
@@ -1154,27 +1176,6 @@ fn void _window_opengl_swap_buffers(GfxWindow* win)
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland) return wl::window_opengl_swap_buffers(win);
 			return x11::window_opengl_swap_buffers(win);
-		$default:
-			unreachable();
-	$endswitch
-}
-
-fn void _window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
-{
-	$switch:
-		$case $feat(MACOS):
-			return macos::window_release_opengl_context_platform(win, ctx);
-		$case $feat(WASM):
-			return wasm::window_release_opengl_context_platform(win, ctx);
-		$case $feat(WIN32):
-			return win32::window_release_opengl_context_platform(win, ctx);
-		$case WAYLAND_ONLY:
-			return wl::window_release_opengl_context_platform(win, ctx);
-		$case X11_ONLY:
-			return x11::window_release_opengl_context_platform(win, ctx);
-		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_release_opengl_context_platform(win, ctx);
-			return x11::window_release_opengl_context_platform(win, ctx);
 		$default:
 			unreachable();
 	$endswitch

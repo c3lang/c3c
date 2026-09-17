@@ -324,7 +324,7 @@ fn void _window_release(GfxWindow* win)
 	}
 	if (win.src.backing.opengl && win.src.ctx.native != null)
 	{
-		_window_destroy_opengl_context_native(win, win.src.ctx.native);
+		_window_destroy_opengl_context(win, win.src.ctx.native);
 		win.src.ctx.native = null;
 	}
 	_window_destroy_platform(win);

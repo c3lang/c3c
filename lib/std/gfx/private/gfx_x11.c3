@@ -1,6 +1,7 @@
 module std::gfx::x11 @feat(LINUX, BSD) @feat(!NO_X11) @private;
 import std::math, std::collections, std::os, libc, std::time, std::time::clock, std::net, std::net::os;
 import std::gfx::egl, std::gfx @public;
+import std::gfx::gl @public;
 
 // --- Gfx
 
@@ -381,7 +382,7 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	if (flags.open_gl || flags.egl)
 	{
 		win.src.window = 0;
-		if (flags.open_gl) gfx::_window_create_opengl_context_native(win, gfx::get_global_opengl_hints())!;
+		if (flags.open_gl) win.create_opengl_context(gfx::get_global_opengl_hints())!;
 		if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
 	}
 	else
