@@ -1,42 +1,4 @@
-module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
-import std::os::macos, std::os::darwin, std::os::win32;
-import std::gfx::wl @public, std::gfx::x11 @public;
-
-const GfxGlHints GLOBAL_HINTS = {
-	0, 0, 0, 0, 1,
-	{ 8, 8, 8, 8 },
-	24,
-	{ 0, 0, 0, 0 },
-	false, false, false, false, NONE,
-	CORE, 1, 0, null, null, ACCELERATED
-};
-
-GfxGlHints _global_hints_open_gl = GLOBAL_HINTS;
-
-
-struct GfxGlHints
-{
-	int stencil;
-	int samples;
-	int stereo;
-	int auxBuffers;
-	int doubleBuffer;
-	int[<4>] rgba_size;
-	int depth;
-	int[<4>] accum_size;
-	bool srgb;
-	bool robustness;
-	bool debug;
-	bool no_error;
-	GfxGlReleaseBehavior release_behavior;
-	GfxGlProfile profile;
-	int major, minor;
-	GfxGlContext* share;
-	GfxEglContext* share_egl;
-	GfxGlRenderer renderer;
-}
-
-module std::gfx::gl @feat(MACOS, LINUX, BSD, WASM, WIN32);
+module std::gfx::gl @feat(MACOS, LINUX, BSD, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
 import std::gfx @public;
 
 const uint GL_EXTENSIONS     = 0x1F03;

@@ -845,7 +845,7 @@ fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat f
 	};
 	surface.native.format = format.channels > 3 ? BGRA8 : BGR8;
 	surface.native.bitmap = win32::createDIBSection(gfx::_gfx.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
-	if (!surface.native.bitmap) return egl::SURFACE_CREATION_FAILED~;
+	if (!surface.native.bitmap) return gfx::EGL_SURFACE_CREATION_FAILED~;
 	defer catch surface.release();
 	surface.native.hdcMem = win32::createCompatibleDC(gfx::_gfx.root.src.hdc);
 	win32::selectObject(surface.native.hdcMem, surface.native.bitmap);
@@ -1128,10 +1128,6 @@ import std::gfx::egl @public;
 import std::gfx::win32 @public;
 
 
-struct GfxGlContext
-{
-	Win32_HGLRC ctx;
-}
 
 struct GfxNativeImage
 {
@@ -1140,15 +1136,6 @@ struct GfxNativeImage
 	Win32_HBITMAP bitmap;
 	Win32_HDC hdcMem;
 }
-
-struct GfxEglContext
-{
-	void* ctx;
-	void* surface;
-	void* egl_window;
-}
-
-
 
 fn void? _init_native(String class_name, GfxInitOption flags)
 {

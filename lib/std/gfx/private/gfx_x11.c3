@@ -883,8 +883,8 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 		}
 	}
 
-	win.src.ctx.native.window = _glx_create_window_fn(gfx::_gfx.display, bestFbc, win.src.window, null);
-	_glx_make_current_fn(gfx::_gfx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
+	win.src.ctx.native.window = (void*)_glx_create_window_fn(gfx::_gfx.display, bestFbc, win.src.window, null);
+	_glx_make_current_fn(gfx::_gfx.display, (GLXWindow)win.src.ctx.native.window, win.src.ctx.native.ctx);
 	log::info("OpenGL context initalized.", category: log::CATEGORY_VIDEO);
 	gfx::_window_set_opengl_swap_interval(win, 0);
 }
@@ -897,15 +897,15 @@ fn void window_make_current_opengl_context(GfxWindow* win)
 	}
 	else
 	{
-		_glx_make_current_fn(gfx::_gfx.display, win.src.ctx.native.window, win.src.ctx.native.ctx);
+		_glx_make_current_fn(gfx::_gfx.display, (GLXWindow)win.src.ctx.native.window, win.src.ctx.native.ctx);
 	}
 }
 
-fn void window_opengl_swap_buffers(GfxWindow* win) { _glx_swap_buffers_fn(gfx::_gfx.display, win.src.ctx.native.window); }
+fn void window_opengl_swap_buffers(GfxWindow* win) { _glx_swap_buffers_fn(gfx::_gfx.display, (GLXWindow)win.src.ctx.native.window); }
 
 fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx)
 {
-	if (win.src.ctx.native.window != win.src.window) _glx_destroy_window_fn(gfx::_gfx.display, win.src.ctx.native.window);
+	if ((GLXWindow)win.src.ctx.native.window != win.src.window) _glx_destroy_window_fn(gfx::_gfx.display, (GLXWindow)win.src.ctx.native.window);
 	_glx_destroy_context_fn(gfx::_gfx.display, ctx.ctx);
 	win.src.ctx.native = null;
 }
@@ -915,7 +915,7 @@ fn void window_set_opengl_swap_interval(GfxWindow* win, int swapInterval)
 	switch
 	{
 		case _glx_swap_interval_ext_fn != null:
-			_glx_swap_interval_ext_fn(gfx::_gfx.display, win.src.ctx.native.window, swapInterval);
+			_glx_swap_interval_ext_fn(gfx::_gfx.display, (GLXWindow)win.src.ctx.native.window, swapInterval);
 		case _glx_swap_interval_native_fn != null:
 			_glx_swap_interval_native_fn(swapInterval);
 		default:

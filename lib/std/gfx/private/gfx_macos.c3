@@ -1290,18 +1290,6 @@ module std::gfx @feat(MACOS) @private;
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 import std::gfx::macos @public;
 
-struct GfxGlContext
-{
-	ObjId ctx;
-	ObjId format;
-}
-
-struct GfxEglContext
-{
-	void* ctx;
-	void* surface;
-	void* egl_window;
-}
 
 struct GfxNativeImage
 {

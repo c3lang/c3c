@@ -1,4 +1,4 @@
-module std::gfx @feat(LINUX, BSD) @private;
+module std::gfx @feat(LINUX, BSD) @feat(WAYLAND | !NO_X11) @private;
 import std::math, std::collections::list, libc, std::time, std::os::env, std::os::posix, std::net::os;
 import std::gfx::x11 @public, std::gfx::wl @public, std::gfx::egl @public;
 
@@ -15,25 +15,6 @@ struct GfxNativeImage
 	}
 }
 
-struct GfxGlContext
-{
-	struct @feat(!NO_X11)
-	{
-		GLXContext ctx;
-		GLXWindow window;
-	}
-	struct @feat(WAYLAND)
-	{
-		GfxEglContext egl;
-	}
-}
-
-struct GfxEglContext
-{
-	void* ctx;
-	void* surface;
-	void* egl_window;
-}
 
 
 fn void? _init_native(String class_name, GfxInitOption flags)

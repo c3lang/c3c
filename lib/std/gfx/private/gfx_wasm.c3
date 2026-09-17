@@ -468,11 +468,6 @@ import std::math, std::time;
 import std::gfx::egl @public;
 import std::gfx::wasm @public;
 
-struct GfxGlContext
-{
-	void* ctx;
-	void* format;
-}
 
 struct GfxNativeImage
 {
@@ -483,12 +478,6 @@ struct GfxNativeImage
 	void* native2;
 }
 
-struct GfxEglContext
-{
-	void* ctx;
-	void* surface;
-	void* egl_window;
-}
 
 
 fn void _window_show_mouse_native(GfxWindow* win, bool show)

@@ -38,7 +38,7 @@ const int VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR = 1000006000;
 const int VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR    = 1000004000;
 const int VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT   = 1000217000;
 
-alias GfxVkGetInstanceProcAddressProc = fn GfxFn(VkInstance instance, ZString procname);
+alias GfxVkGetInstanceProcAddressProc = fn void*(VkInstance instance, ZString procname);
 alias VkCreateSurfaceKHRProc = fn VkResult(VkInstance instance, void* create_info, void* allocator, VkSurfaceKHR* surface);
 
 fn bool vulkan_get_physical_device_presentation_support_native(VkInstance instance, VkPhysicalDevice physical_device, uint queue_family_index)
@@ -46,7 +46,7 @@ fn bool vulkan_get_physical_device_presentation_support_native(VkInstance instan
 	return _vulkan_get_physical_device_presentation_support(instance, physical_device, queue_family_index);
 }
 
-fn GfxFn _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(!WASM)
+fn void* _get_instance_proc_vulkan(VkInstance instance, ZString procname) @feat(!WASM)
 {
 	if (!_gfx.vk_get_instance_proc_address) return null;
 	return _gfx.vk_get_instance_proc_address(instance, procname);

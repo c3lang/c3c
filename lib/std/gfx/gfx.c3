@@ -1,9 +1,9 @@
 // Copyright (c) 2026 Christoffer Lernö. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32);
+module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11);
 import std::math, std::os, std::os::darwin, libc, std::time;
-import std::gfx::x11 @public, std::gfx::egl @public;
+import std::gfx::x11 @public, std::gfx::egl @public, std::gfx::gl @public;
 import std::gfx::wl @public;
 
 // The GFX module provides basic window handling across multiple platforms.
@@ -44,6 +44,16 @@ excuse
 	FAILED_TO_LOAD_SWAP_INTERVAL_FN,
 	MOUSE_NOT_SUPPORTED,
 	IMAGE_COULD_NOT_LOAD,
+	EGL_LIBRARY_NOT_FOUND,
+	EGL_MISSING_GET_PROC_ADDR,
+	EGL_BINDING_FAILED,
+	EGL_PROC_LOAD_FAILED,
+	EGL_CONTEXT_CREATION_FAILED,
+	EGL_SURFACE_CREATION_FAILED,
+	EGL_NOT_SUPPORTED,
+	EGL_FAILED_TO_INIT_DISPLAY,
+	EGL_DISPLAY_NOT_FOUND,
+	EGL_CONFIG_NOT_FOUND,
 }
 
 
@@ -290,6 +300,67 @@ struct GfxEventCallbacks
 {
 	GfxGenericFunc[25] arr;
 }
+
+struct GfxGlContext
+{
+	struct @feat(MACOS)
+	{
+		ObjId ctx;
+		ObjId format;
+	}
+	struct @feat(!MACOS)
+	{
+		void* ctx;
+		void* window @feat(!(WIN32 | WASM));
+		void* format @feat(WASM);
+	}
+	struct @feat(WAYLAND)
+	{
+		GfxEglContext egl;
+	}
+}
+
+struct GfxEglContext
+{
+	void* ctx;
+	void* surface;
+	void* egl_window;
+}
+
+const GfxGlHints GLOBAL_HINTS = {
+	0, 0, 0, 0, 1,
+	{ 8, 8, 8, 8 },
+	24,
+	{ 0, 0, 0, 0 },
+	false, false, false, false, NONE,
+	CORE, 1, 0, null, null, ACCELERATED
+};
+
+GfxGlHints _global_hints_open_gl = GLOBAL_HINTS;
+
+
+struct GfxGlHints
+{
+	int stencil;
+	int samples;
+	int stereo;
+	int auxBuffers;
+	int doubleBuffer;
+	int[<4>] rgba_size;
+	int depth;
+	int[<4>] accum_size;
+	bool srgb;
+	bool robustness;
+	bool debug;
+	bool no_error;
+	GfxGlReleaseBehavior release_behavior;
+	GfxGlProfile profile;
+	int major, minor;
+	GfxGlContext* share;
+	GfxEglContext* share_egl;
+	GfxGlRenderer renderer;
+}
+
 
 constset GfxWindowIconType
 {

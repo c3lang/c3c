@@ -1,19 +1,4 @@
-module std::gfx::egl;
-
-excuse
-{
-	LIBRARY_NOT_FOUND,
-	PROC_LOAD_FAILED,
-	MISSING_GET_PROC_ADDR,
-	BINDING_FAILED,
-	DISPLAY_NOT_FOUND,
-	FAILED_TO_INIT_DISPLAY,
-	CONFIG_NOT_FOUND,
-	CONTEXT_CREATION_FAILED,
-	SURFACE_CREATION_FAILED,
-}
-
-module std::gfx::egl @feat(MACOS, BSD, LINUX, WASM, WIN32) @private;
+module std::gfx::egl @feat(MACOS, BSD, LINUX, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
 import libc, std::os, std::gfx @public;
 import std::gfx::wl @public;
 import std::collections::fixedlist;
@@ -23,10 +8,10 @@ import std::gfx::macos @public;
 fn void? load_lib()
 {
 	if (gfx::_gfx.egl.handle) return;
-	gfx::_gfx.egl.handle = os::dlopen_any("libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll", opts: { .global_symbols, .safe_search }) ?? LIBRARY_NOT_FOUND~!;
-	gfx::_gfx.egl.get_proc_addr_fn = os::dlsym(gfx::_gfx.egl.handle, "eglGetProcAddress") ?: MISSING_GET_PROC_ADDR~!;
+	gfx::_gfx.egl.handle = os::dlopen_any("libEGL.dylib", "libEGL.1.dylib", "libEGL.so.1", "libEGL.so", "EGL.dll", opts: { .global_symbols, .safe_search }) ?? gfx::EGL_LIBRARY_NOT_FOUND~!;
+	gfx::_gfx.egl.get_proc_addr_fn = os::dlsym(gfx::_gfx.egl.handle, "eglGetProcAddress") ?: gfx::EGL_MISSING_GET_PROC_ADDR~!;
 	$if $defined(bind_egl):
-		if (catch bind_egl()) return BINDING_FAILED~;
+		if (catch bind_egl()) return gfx::EGL_BINDING_FAILED~;
 	$endif
 }
 
@@ -43,10 +28,10 @@ fn void unload_lib() @private
 
 fn void*? find_proc(ZString name)
 {
-	if (!gfx::_gfx.egl.handle) return PROC_LOAD_FAILED~;
+	if (!gfx::_gfx.egl.handle) return gfx::EGL_PROC_LOAD_FAILED~;
 	void* proc = os::dlsym(gfx::_gfx.egl.handle, name);
 	if (!proc && gfx::_gfx.egl.get_proc_addr_fn) proc = gfx::_gfx.egl.get_proc_addr_fn(name);
-	if (!proc) return PROC_LOAD_FAILED~;
+	if (!proc) return gfx::EGL_PROC_LOAD_FAILED~;
 	return proc;
 }
 
@@ -100,7 +85,7 @@ fn void destroy_context_in_window(GfxEglContext* ctx, GfxWindow* win)
 fn GfxEglContext*? create_context(GfxWindow* win, GfxGlHints* hints)
 {
 	$if $feat(WASM) || gfx::X11_ONLY:
-		return NOT_IMPLEMENTED~;
+		return gfx::EGL_NOT_SUPPORTED~;
 	$else
 		$if gfx::WAYLAND || $feat(MACOS):
 			GfxEglContext* context = mem::new(GfxEglContext);
@@ -109,7 +94,7 @@ fn GfxEglContext*? create_context(GfxWindow* win, GfxGlHints* hints)
 			win.src.backing.owned = true;
 			return context;
 		$else
-			return NOT_IMPLEMENTED~;
+			return gfx::EGL_NOT_SUPPORTED~;
 		$endif
 	$endif
 }
@@ -154,15 +139,15 @@ fn void set_swap_interval(GfxWindow* win, int swap_interval)
 fn void? init_window_context(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hints, void* display) @feat(WAYLAND, MACOS) @feat(MACOS, BSD, LINUX)
 {
 	$if $feat(WAYLAND) && !$feat(NO_X11):
-		if (!gfx::_gfx.use_wayland) return NOT_IMPLEMENTED~;
+		if (!gfx::_gfx.use_wayland) return gfx::EGL_NOT_SUPPORTED~;
 	$endif
 	load_lib()!;
 	if (!gfx::_gfx.egl.display)
 	{
 		gfx::_gfx.egl.display = get_display_fn(display);
-		if (!gfx::_gfx.egl.display) return DISPLAY_NOT_FOUND~;
+		if (!gfx::_gfx.egl.display) return gfx::EGL_DISPLAY_NOT_FOUND~;
 		EglInt major, minor;
-		if (!initialize_fn(gfx::_gfx.egl.display, &major, &minor)) return FAILED_TO_INIT_DISPLAY~;
+		if (!initialize_fn(gfx::_gfx.egl.display, &major, &minor)) return gfx::EGL_FAILED_TO_INIT_DISPLAY~;
 	}
 
 	FixedList{EglInt, 32} stack;
@@ -180,7 +165,7 @@ fn void? init_window_context(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hin
 
 	EglConfig config = null;
 	EglInt num = 0;
-	if (!choose_config_fn((EglDisplay)gfx::_gfx.egl.display, stack.array_view(), &config, 1, &num) || !num) return CONFIG_NOT_FOUND~;
+	if (!choose_config_fn((EglDisplay)gfx::_gfx.egl.display, stack.array_view(), &config, 1, &num) || !num) return gfx::EGL_CONFIG_NOT_FOUND~;
 	bind_api_fn(hints.profile == ES ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
 
 	stack.clear();
@@ -189,7 +174,7 @@ fn void? init_window_context(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hin
 
 	EglContext share = hints.share_egl ? hints.share_egl.ctx : null;
 	ctx.ctx = create_context_fn(gfx::_gfx.egl.display, config, share, stack.array_view());
-	if (!ctx.ctx) return CONTEXT_CREATION_FAILED~;
+	if (!ctx.ctx) return gfx::EGL_CONTEXT_CREATION_FAILED~;
 	defer catch
 	{
 		destroy_context_fn(gfx::_gfx.egl.display, ctx.ctx);
@@ -201,14 +186,14 @@ fn void? init_window_context(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hin
 			ObjId nativeWindow = win.src.window;
 			if (win.src.view) nativeWindow = macos::_get_layer_macos();
 			ctx.surface = create_window_surface_fn((EglDisplay)gfx::_gfx.egl.display, config, (void*)nativeWindow, null);
-			if (!ctx.surface) return SURFACE_CREATION_FAILED~;
+			if (!ctx.surface) return gfx::EGL_SURFACE_CREATION_FAILED~;
 		$case gfx::WAYLAND:
 			WlEglWindow* egl_window = wl::wl_egl_window_create(win.src.surface, win.width, win.height);
 			ctx.egl_window = egl_window;
 			ctx.surface = create_window_surface_fn(gfx::_gfx.egl.display, config, egl_window, null);
-			if (!ctx.surface) return SURFACE_CREATION_FAILED~;
+			if (!ctx.surface) return gfx::EGL_SURFACE_CREATION_FAILED~;
 		$default:
-			return NOT_IMPLEMENTED~;
+			return gfx::EGL_NOT_SUPPORTED~;
 	$endswitch
 	win.src.ctx.egl = ctx;
 	win.src.backing = { .egl };
