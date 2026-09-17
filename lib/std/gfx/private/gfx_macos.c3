@@ -12,7 +12,6 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 	app.send_void("setActivationPolicy:", NSApplicationActivationPolicy.REGULAR);
 	app.send_void("finishLaunching");
 	_osx_register_classes()!;
-	poll_monitors();
 }
 
 fn void destroy_platform()
@@ -105,8 +104,19 @@ fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 
 fn IntRect monitor_get_workarea(GfxMonitor* monitor)
 {
-	CGRect bounds = _monitor_display(monitor).bounds();
-	return { (int)bounds.origin.x, (int)bounds.origin.y, (int)bounds.size.width, (int)bounds.size.height };
+	ObjId screen = monitor.node ? (ObjId)monitor.node.screen : null;
+	if (!screen)
+	{
+		CGRect bounds = _monitor_display(monitor).bounds();
+		return { (int)bounds.origin.x, (int)bounds.origin.y, (int)bounds.size.width, (int)bounds.size.height };
+	}
+	CGRect frame = screen.send(CGRect, "visibleFrame");
+	return {
+		(int)frame.origin.x,
+		(int)flip_y((float)(frame.origin.y + frame.size.height - 1.0)),
+		(int)frame.size.width,
+		(int)frame.size.height
+	};
 }
 
 fn void monitor_node_free(GfxMonitorNode* node)
@@ -154,20 +164,49 @@ fn void? monitor_set_mode(GfxMonitor* mon, GfxMonitorMode* mode)
 	if (_monitor_display(mon).setDisplayMode((CGDisplayModeRef)mode.src, null)) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 }
 
-fn void poll_monitors()
+fn void poll_monitors() => @pool()
 {
-	if (gfx::_gfx.monitors.count != 0) gfx::free_monitors();
 	uint count = 0;
-	CGDirectDisplayID[16] displays;
-	if (cg::getActiveDisplayList(16, &displays, &count) != 0) return;
-	for (uint i = 0; i < count; i++)
+	if (cg::getActiveDisplayList(0, null, &count) != 0) return;
+	CGDirectDisplayID[] displays = {};
+	while (count != displays.len)
 	{
-		GfxMonitor mon;
-		_monitor_from_display(displays[i], &mon);
-		GfxMonitorNode* node = gfx::_monitor_add(&mon);
-		node.display = displays[i];
-		if (displays[i] == cg::mainDisplayID()) gfx::_gfx.monitors.primary = node;
+		displays = mem::temp_array(CGDirectDisplayID, count);
+		if (cg::getActiveDisplayList(count, displays, &count) != 0) return;
 	}
+
+	for (GfxMonitorNode* node = gfx::_gfx.monitors.list.head; node; node = node.next) node.disconnected = true;
+
+	CGDirectDisplayID primary = cg::mainDisplayID();
+	foreach (display : displays)
+	{
+		uint unit = display.unitNumber();
+		ObjId screen = _get_nsscreen_for_unit(unit);
+
+		GfxMonitorNode* node = null;
+		for (node = gfx::_gfx.monitors.list.head; node != null; node = node.next)
+		{
+			if (node.num == unit) break;
+		}
+		if (node)
+		{
+			node.screen = (void*)screen;
+			node.display = display;
+			node.disconnected = false;
+			if (display == primary) gfx::_gfx.monitors.primary = node;
+			continue;
+		}
+
+		GfxMonitor mon;
+		_monitor_from_display(display, screen, &mon);
+		node = gfx::_monitor_add(&mon);
+		node.screen = (void*)screen;
+		node.display = display;
+		node.num = unit;
+		if (display == primary) gfx::_gfx.monitors.primary = node;
+		gfx::_monitor_callback(gfx::_gfx.root, &node.mon, true);
+	}
+	gfx::refresh_monitors();
 }
 
 // --- GfxMouse and mouse related
@@ -843,7 +882,23 @@ fn void _window_set_layer_macos(GfxWindow* win, ObjId layer)
 	if (win.src.view) win.src.view.send_void("setLayer:", layer);
 }
 
-fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
+fn ObjId _get_nsscreen_for_unit(uint unit_number) @local
+{
+	ObjId screens = objc::send(macos::nsscreen(), ObjId, "screens");
+	if (!screens) return null;
+	NSUInteger count = screens.send(NSUInteger, "count");
+	for (NSUInteger i = 0; i < count; i++)
+	{
+		ObjId screen = screens.send(ObjId, "objectAtIndex:", i);
+		ObjId desc = screen.send(ObjId, "deviceDescription");
+		ObjId number = desc.send(ObjId, "objectForKey:", darwin::string("NSScreenNumber"));
+		CGDirectDisplayID display = (CGDirectDisplayID)number.send(NSUInteger, "unsignedIntValue");
+		if (display.unitNumber() == unit_number) return screen;
+	}
+	return null;
+}
+
+fn void _monitor_from_display(CGDirectDisplayID display, ObjId screen, GfxMonitor* mon) @local
 {
 	*mon = {};
 	mem::copy(&mon.name, "Display", 8);
@@ -852,15 +907,18 @@ fn void _monitor_from_display(CGDirectDisplayID display, GfxMonitor* mon) @local
 	mon.origin = { (int)bounds.origin.x, (int)bounds.origin.y };
 	mon.mode.size.x = mode ? (int)mode.getWidth() : (int)bounds.size.width;
 	mon.mode.size.y = mode ? (int)mode.getHeight() : (int)bounds.size.height;
-	mon.mode.refresh_rate = mode ? (float)mode.getRefreshRate() : 60.0;
+	mon.mode.refresh_rate = _refresh_rate(mode);
 	mon.mode.rgb = { 8, 8, 8 };
 	mon.mode.src = mode;
-	mon.phys_size = (float[<2>])(double[<2>]){ ...display.screenSize() };
-	mon.scale = {
-		mon.mode.size.x > 0 ? (float)bounds.size.width / (float)mon.mode.size.x : 1.0,
-		mon.mode.size.y > 0 ? (float)bounds.size.height / (float)mon.mode.size.y : 1.0
-	};
-	mon.pixelRatio = mon.scale.x;
+	mon.phys_size = (float[<2>])(double[<2>]){ ...display.screenSize() } / 25.4f;
+	mon.pixelRatio = screen ? (float)screen.send(CGFloat, "backingScaleFactor") : 1.0f;
+	mon.scale = (Vec2)mon.pixelRatio;
+}
+
+fn float _refresh_rate(CGDisplayModeRef mode) @local
+{
+	float rate = mode ? (float)mode.getRefreshRate() : 0;
+	return rate <= 0 ? 60 : rate;
 }
 
 // -- globals
@@ -1309,29 +1367,5 @@ struct GfxNativeImage
 	ObjId native0;
 	void* native1;
 	void* native2;
-}
-
-
-
-
-
-
-// --- helpers
-
-
-fn ObjId _get_nsscreen_for_display(uint display_id)
-{
-	ObjId screens = objc::send(macos::nsscreen(), ObjId, "screens");
-	if (!screens) return null;
-	NSUInteger count = screens.send(NSUInteger, "count");
-	for (NSUInteger i = 0; i < count; i++)
-	{
-		ObjId screen = screens.send(ObjId, "objectAtIndex:", i);
-		ObjId desc = screen.send(ObjId, "deviceDescription");
-		ObjId number = desc.send(ObjId, "objectForKey:", darwin::string("NSScreenNumber"));
-		uint display = (uint)number.send(NSUInteger, "unsignedIntValue");
-		if (display == display_id) return screen;
-	}
-	return null;
 }
 

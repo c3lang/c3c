@@ -36,6 +36,7 @@ extern fn CGRect CGDirectDisplayID.bounds(self) @cname("CGDisplayBounds");
 extern fn CGDisplayModeRef CGDirectDisplayID.copyDisplayMode(self) @cname("CGDisplayCopyDisplayMode");
 extern fn CFArrayRef CGDirectDisplayID.copyAllDisplayModes(self, void* options) @cname("CGDisplayCopyAllDisplayModes");
 extern fn CGSize CGDirectDisplayID.screenSize(&self) @cname("CGDisplayScreenSize");
+extern fn uint CGDirectDisplayID.unitNumber(self) @cname("CGDisplayUnitNumber");
 extern fn uint CGDirectDisplayID.gammaTableCapacity(self) @cname("CGDisplayGammaTableCapacity");
 extern fn int CGDirectDisplayID.transferByTable(self, uint capacity, float* red, float* green, float* blue, uint* sampleCount) @cname("CGGetDisplayTransferByTable");
 extern fn int CGDirectDisplayID.setTransferByTable(self, uint count, float* red, float* green, float* blue) @cname("CGSetDisplayTransferByTable");
