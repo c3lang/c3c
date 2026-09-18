@@ -1421,6 +1421,7 @@ fn void _handle_present(GfxWindow* win) @local
 {
 	if (!win.src.counter || !win.src.resize_in_progress) return;
 	xsync_set_counter_fn(ctx.display, win.src.counter, win.src.resize_id);
+	xFlush(ctx.display);
 	win.src.resize_id = {};
 	win.src.resize_in_progress = false;
 }
