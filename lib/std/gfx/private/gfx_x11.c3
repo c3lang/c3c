@@ -24,6 +24,8 @@ struct GfxX11Ctx
 	Atom wm_protocols, wm_state, net_wm_state_fullscreen, net_wm_state_above, net_wm_window_opacity;
 	Atom net_wm_name, net_wm_icon, xsel_data, clipboard_atom, clipboard_manager;
 	Atom xtext_uri_list, xtext_plain, net_workarea;
+	bool xsync_available;
+	bool resize_sync_enabled;
 }
 
 GfxX11Ctx ctx;
@@ -91,7 +93,7 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 	gfx::_gfx.hiddenMouse = gfx::_create_mouse((void*)&blk, { 1, 1 }, RGBA8) ?? null;
 	gfx::_gfx.unixClipboard = null;
 
-	xSetErrorHandler(&_x_error_handler);
+	xSetErrorHandler(&_error_handler);
 	xSync(ctx.display, 0);
 
 	xSetLocaleModifiers("");
@@ -102,6 +104,9 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 	{
 		xRRSelectInput(ctx.display, xRootWindow(ctx.display, xDefaultScreen(ctx.display)), 1 << 4); // RROutputChangeNotifyMask
 	}
+
+	ctx.resize_sync_enabled = flags.enable_x11_resize_sync;
+	if (ctx.resize_sync_enabled) _init_xsync();
 }
 
 fn void destroy_platform()
@@ -111,7 +116,7 @@ fn void destroy_platform()
 		if (xGetSelectionOwner(ctx.display, ctx.clipboard_atom) == ctx.helper_window)
 		{
 			xConvertSelection(ctx.display, ctx.clipboard_manager, ctx.save_targets, 0, ctx.helper_window, 0);
-			while (x_handle_clipboard_selection_helper() != 0) {}
+			while (_handle_clipboard_selection_helper() != 0) {}
 		}
 		xUnregisterIMInstantiateCallback(ctx.display, null, null, null, (void*)&_x11_im_init_callback, null);
 	}
@@ -129,7 +134,7 @@ fn void poll_events_platform()
 {
 	gfx::_reset_prev_state();
 	xPending(ctx.display);
-	while (xQLength(ctx.display)) _x_handle_event();
+	while (xQLength(ctx.display)) _handle_event();
 }
 
 fn void wait_for_event(Duration duration)
@@ -214,7 +219,7 @@ fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode mode;
-		_x_get_mode(ci, res, oi.modes[i], &mode);
+		_get_mode(ci, res, oi.modes[i], &mode);
 		modes.push(mode);
 	}
 	xRRFreeOutputInfo(oi);
@@ -271,7 +276,7 @@ fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorM
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode found_mode;
-		void* mi = _x_get_mode(ci, res, oi.modes[i], &found_mode);
+		void* mi = _get_mode(ci, res, oi.modes[i], &found_mode);
 		if (mi == null) continue;
 		if (mode.equals_request(&found_mode, request))
 		{
@@ -382,11 +387,11 @@ fn void poll_monitors()
 		monitor.origin = { ci.x, ci.y };
 
 		float dpi = 96.0f;
-		_x_get_system_content_dpi(&dpi);
+		_get_system_content_dpi(&dpi);
 		monitor.scale = (Vec2)(dpi / 96.0f);
 		monitor.pixelRatio = dpi >= 192.0f ? 2.0f : 1.0f;
 
-		void* mi = _x_get_mode(ci, res, ci.mode, &monitor.mode);
+		void* mi = _get_mode(ci, res, ci.mode, &monitor.mode);
 		if (mi == null) break;
 
 		xRRFreeCrtcInfo(ci);
@@ -474,6 +479,7 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 	GfxPoint min = math::min(win.size, surface.size);
 	gfx::copy_image_data(surface.native.buffer, surface.size.x, min.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
 	xPutImage(ctx.display, win.src.window, win.src.gc, surface.native.bitmap, 0, 0, 0, 0, (uint)min.x, (uint)min.y);
+	_handle_present(win);
 }
 
 fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
@@ -489,13 +495,14 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	{
 		XVisualInfo visual;
 		_get_visual_for_window(&visual, win.internal.flags.transparent);
-		_x_create_window(visual, name, flags, win)!;
+		_create_window(visual, name, flags, win)!;
 	}
 	gfx::_window_set_flags(win, flags, {});
 }
 
 fn void window_destroy_platform(GfxWindow* win)
 {
+	_term_resize_sync(win);
 	if (win.src.ic)
 	{
 		xDestroyIC(win.src.ic);
@@ -623,7 +630,7 @@ fn bool window_is_minimized(GfxWindow* win)
 	return windowAttributes.map_state != 2;
 }
 
-fn void window_maximize_platform(GfxWindow* win) => _toggle_x_maximized(win, true);
+fn void window_maximize_platform(GfxWindow* win) => _toggle_maximized(win, true);
 
 fn void window_minimize_platform(GfxWindow* win)
 {
@@ -672,7 +679,7 @@ fn void window_resize_platform(GfxWindow* win, GfxSize size)
 
 fn void window_restore_platform(GfxWindow* win)
 {
-	_toggle_x_maximized(win, false);
+	_toggle_maximized(win, false);
 	xFlush(ctx.display);
 }
 
@@ -715,7 +722,7 @@ fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 	}
 }
 
-fn void window_set_floating(GfxWindow* win, bool floating) => _window_set_x_atom(win, ctx.net_wm_state_above, floating);
+fn void window_set_floating(GfxWindow* win, bool floating) => _window_set_atom(win, ctx.net_wm_state_above, floating);
 
 fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 {
@@ -730,7 +737,7 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 	}
 
 	xRaiseWindow(ctx.display, win.src.window);
-	_window_set_x_atom(win, ctx.net_wm_state_fullscreen, fullscreen);
+	_window_set_atom(win, ctx.net_wm_state_fullscreen, fullscreen);
 
 	if (!(win.internal.flags.transparent))
 	{
@@ -848,7 +855,7 @@ fn void window_show_platform(GfxWindow* win)
 	win.internal.flags.hide = false;
 	if (!window_is_hidden(win)) return;
 	xMapWindow(ctx.display, win.src.window);
-	_wait_for_show_event_x11(win);
+	_wait_for_show_event(win);
 	win.move(win.origin);
 	window_set_fullscreen(win, win.is_fullscreen());
 }
@@ -925,7 +932,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 	XVisualInfo visual = *vi;
 	xFree(vi);
 
-	_x_create_window(visual, "", win.internal.flags, win)!;
+	_create_window(visual, "", win.internal.flags, win)!;
 
 	if (show_window) win.show();
 
@@ -1001,7 +1008,11 @@ fn void window_make_current_opengl_context(GfxWindow* win)
 	}
 }
 
-fn void window_opengl_swap_buffers(GfxWindow* win) { _glx_swap_buffers_fn(ctx.display, (GLXWindow)win.src.ctx.native.window); }
+fn void window_opengl_swap_buffers(GfxWindow* win)
+{
+	_glx_swap_buffers_fn(ctx.display, (GLXWindow)win.src.ctx.native.window);
+	_handle_present(win);
+}
 
 fn void window_release_opengl_context_platform(GfxWindow* win, GfxGlContext* gl_ctx)
 {
@@ -1128,7 +1139,7 @@ fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat f
 	if (!surface.native.bitmap) return gfx::SURFACE_CREATION_FAILED~;
 	surface.native.buffer = malloc((sz)w * h * 4);
 	((XImageHeader*)surface.native.bitmap).data = surface.native.buffer;
-	surface.native.format = _x_image_get_format(surface.native.bitmap);
+	surface.native.format = _image_get_format(surface.native.bitmap);
 
 }
 
@@ -1270,7 +1281,7 @@ const char MOD2_MASK = 1 << 4;
 const char MOD3_MASK = 1 << 5;
 
 
-fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags, GfxWindow* win)
+fn void? _create_window(XVisualInfo visual, String name, GfxWindowFlags flags, GfxWindow* win) @local
 {
 	if (!name) name = "C3GFX";
 	// KeyPress | KeyRelease | ButtonPress | ButtonRelease | PointerMotion | StructureNotify | FocusChange |
@@ -1299,7 +1310,7 @@ fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags,
 	if (ctx.im != null)
 	{
 		XImCallback callback;
-		callback.callback = &_x11_ic_callback;
+		callback.callback = &_ic_callback;
 		callback.client_data = (XPointer)win;
 
 		win.src.ic = xCreateIC(ctx.im, "inputStyle", (CULong)(0x0008 | 0x0400) /* XIMPreeditNothing | XIMStatusNothing */,
@@ -1321,7 +1332,14 @@ fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags,
 	xSetWMHints(ctx.display, win.src.window, &hints);
 
 	xSelectInput(ctx.display, win.src.window, eventMask);
-	xSetWMProtocols(ctx.display, win.src.window, &ctx.wm_delete_window, 1);
+	// Only advertise _NET_WM_SYNC_REQUEST when the counter is in place: a window that
+	// claims the protocol but never acks leaves the WM waiting on every resize.
+	bool resize_sync = ctx.resize_sync_enabled && flags.open_gl && _init_resize_sync(win);
+	Atom[2] protocols;
+	int protocol_count = 0;
+	protocols[protocol_count++] = ctx.wm_delete_window;
+	if (resize_sync) protocols[protocol_count++] = ctx.net_wm_sync_request;
+	xSetWMProtocols(ctx.display, win.src.window, &protocols, protocol_count);
 	win.set_name(name);
 	xMoveWindow(ctx.display, win.src.window, win.x, win.y);
 
@@ -1340,11 +1358,74 @@ fn void? _x_create_window(XVisualInfo visual, String name, GfxWindowFlags flags,
 
 
 
+fn void _init_xsync() @local
+{
+	ctx.xsync_available = false;
+	if (!xsync_initialize_fn || !xsync_create_counter_fn || !xsync_set_counter_fn || !xsync_destroy_counter_fn) return;
+	int opcode, event, error;
+	if (!xQueryExtension(ctx.display, "SYNC", &opcode, &event, &error)) return;
+	// Seeded with the version we would like; the server writes back what it has.
+	int major = 5;
+	int minor = 0;
+	xsync_initialize_fn(ctx.display, &major, &minor);
+	if (major < 3) return;
+	ctx.xsync_available = true;
+}
 
+<*
+ @require win != null
+ @return "true if the counter was created and published on the window"
+*>
+fn bool _init_resize_sync(GfxWindow* win) @local
+{
+	win.src.counter = 0;
+	win.src.resize_id = {};
+	win.src.resize_in_progress = false;
+	if (!ctx.xsync_available) return false;
 
+	XSyncCounter counter = xsync_create_counter_fn(ctx.display, (XSyncValue){});
+	if (!counter) return false;
+	win.src.counter = counter;
 
+	uint counter_id = (uint)counter;
+	xChangeProperty(ctx.display, win.src.window, ctx.net_wm_sync_request_counter, XA_CARDINAL, 32, 0 /* PropModeReplace */, (char*)&counter_id, 1);
+	return true;
+}
 
-fn void _x_handle_event()
+<*
+ @require win != null
+*>
+fn void _term_resize_sync(GfxWindow* win) @local
+{
+	if (!win.src.counter) return;
+	xDeleteProperty(ctx.display, win.src.window, ctx.net_wm_sync_request_counter);
+	xsync_destroy_counter_fn(ctx.display, win.src.counter);
+	win.src.counter = 0;
+	win.src.resize_id = {};
+	win.src.resize_in_progress = false;
+}
+
+fn void _handle_sync_request(GfxWindow* win, XClientMessageEvent* event) @local
+{
+	win.src.resize_id.lo = (uint)event.data.l[2];
+	win.src.resize_id.hi = (int)event.data.l[3];
+	win.src.resize_in_progress = false;
+}
+
+fn void _handle_configure(GfxWindow* win) @local
+{
+	if (win.src.resize_id.lo || win.src.resize_id.hi) win.src.resize_in_progress = true;
+}
+
+fn void _handle_present(GfxWindow* win) @local
+{
+	if (!win.src.counter || !win.src.resize_in_progress) return;
+	xsync_set_counter_fn(ctx.display, win.src.counter, win.src.resize_id);
+	win.src.resize_id = {};
+	win.src.resize_in_progress = false;
+}
+
+fn void _handle_event() @local
 {
 	static Vec2 delta = {};
 
@@ -1364,7 +1445,7 @@ fn void _x_handle_event()
 
 	if (e.type == 30 /* SelectionRequest */)
 	{
-		_x_handle_clipboard_selection(&e);
+		_handle_clipboard_selection(&e);
 		return;
 	}
 
@@ -1536,10 +1617,22 @@ fn void _x_handle_event()
 			break;
 		case 33: // ClientMessage
 			{
-				if ((CULong)e.xclient.data.l[0] == ctx.wm_delete_window)
+				// Both of these arrive as WM_PROTOCOLS messages carrying the protocol
+				// atom in data.l[0]; checking the payload without the message type
+				// would let any unrelated client message that happens to start with
+				// the same value close the window.
+				if (e.xclient.message_type == ctx.wm_protocols && e.xclient.format == 32)
 				{
-					gfx::_window_close_callback(win);
-					break;
+					if ((CULong)e.xclient.data.l[0] == ctx.wm_delete_window)
+					{
+						gfx::_window_close_callback(win);
+						break;
+					}
+					if ((CULong)e.xclient.data.l[0] == ctx.net_wm_sync_request)
+					{
+						_handle_sync_request(win, &e.xclient);
+						break;
+					}
 				}
 
 				if (!(win.internal.flags.allow_dnd) || ctx.x11_version > 5 /* _XDND_VERSION */) return;
@@ -1696,6 +1789,7 @@ fn void _x_handle_event()
 			}
 		case 22: // ConfigureNotify
 			{
+				_handle_configure(win);
 				if (e.xconfigure.width != win.src.width || e.xconfigure.height != win.src.height)
 				{
 					gfx::_window_check_mode(win);
@@ -1736,7 +1830,7 @@ fn void _x_handle_event()
 }
 
 
-fn bool _wait_for_show_event_x11(GfxWindow* win)
+fn bool _wait_for_show_event(GfxWindow* win) @local
 {
 	XEvent dummy;
 	while (xCheckTypedWindowEvent(ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
@@ -1746,7 +1840,7 @@ fn bool _wait_for_show_event_x11(GfxWindow* win)
 	return true;
 }
 
-fn void _toggle_x_maximized(GfxWindow* win, bool maximized)
+fn void _toggle_maximized(GfxWindow* win, bool maximized) @local
 {
 	XEvent xev;
 	xev.type = 33; // ClientMessage
@@ -1789,7 +1883,7 @@ fn void _get_visual_for_window(XVisualInfo* visual, bool transparent)
 	}
 }
 
-fn void _window_set_x_atom(GfxWindow* win, Atom netAtom, bool fullscreen)
+fn void _window_set_atom(GfxWindow* win, Atom netAtom, bool fullscreen) @local
 {
 	XEvent xev;
 	xev.xclient.type = 33;
@@ -1802,7 +1896,7 @@ fn void _window_set_x_atom(GfxWindow* win, Atom netAtom, bool fullscreen)
 	xSendEvent(ctx.display, xDefaultRootWindow(ctx.display), 0, (1 << 19) | (1 << 20), &xev);
 }
 
-fn void _x11_ic_callback(void* ic, void* client_data, void* call_data)
+fn void _ic_callback(void* ic, void* client_data, void* call_data) @local
 {
 	GfxWindow* win = client_data;
 	win.src.ic = null;
@@ -1853,7 +1947,7 @@ fn void _x11_im_init_callback(XDisplay* d, XPointer client_data, XPointer call_d
 	xSetIMValues(ctx.im, "destroyCallback", &callback, (char*)null);
 }
 
-fn int _x_error_handler(XDisplay* display, XErrorEvent* ev)
+fn int _error_handler(XDisplay* display, XErrorEvent* ev) @local
 {
 	char[512] errorText;
 	xGetErrorText(display, ev.error_code, (char*)&errorText, 512);
@@ -1862,7 +1956,7 @@ fn int _x_error_handler(XDisplay* display, XErrorEvent* ev)
 	return 0;
 }
 
-fn void* _x_get_mode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxMonitorMode* found_mode)
+fn void* _get_mode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxMonitorMode* found_mode) @local
 {
 	XRRModeInfoNative* mi = null;
 	for (int j = 0; j < res.nmode; j++) if (res.modes[j].id == mode) mi = &res.modes[j];
@@ -1888,7 +1982,7 @@ fn void* _x_get_mode(XRRCrtcInfo* ci, XRRScreenResources* res, RRMode mode, GfxM
 	return mi;
 }
 
-fn void _x_get_system_content_dpi(float* dpi)
+fn void _get_system_content_dpi(float* dpi) @local
 {
 	if (dpi == null) return;
 	float dpiOutput = 96.0f;
@@ -1902,7 +1996,7 @@ fn void _x_get_system_content_dpi(float* dpi)
 	*dpi = dpiOutput;
 }
 
-fn void _x_handle_clipboard_selection(XEvent* event)
+fn void _handle_clipboard_selection(XEvent* event) @local
 {
 	XSelectionRequestEvent* request = &event.xselectionrequest;
 	Atom[2] formats = {ctx.utf8_string, 31 /* XA_STRING */};
@@ -1963,7 +2057,7 @@ fn void _x_handle_clipboard_selection(XEvent* event)
 	xFlush(ctx.display);
 }
 
-fn int x_handle_clipboard_selection_helper()
+fn int _handle_clipboard_selection_helper() @local
 {
 	XEvent event;
 	xPending(ctx.display);
@@ -1976,11 +2070,11 @@ fn int x_handle_clipboard_selection_helper()
 		return 0;
 	}
 
-	if (event.type == 30) { _x_handle_clipboard_selection(&event); return 0; } // SelectionRequest
+	if (event.type == 30) { _handle_clipboard_selection(&event); return 0; } // SelectionRequest
 	return 0;
 }
 
-fn GfxFormat _x_image_get_format(void* imagePtr)
+fn GfxFormat _image_get_format(void* imagePtr) @local
 {
 	// XImage*: bits_per_pixel/red_mask/green_mask/blue_mask live at a fixed
 	// offset in the real struct; here we only ever set the format ourselves

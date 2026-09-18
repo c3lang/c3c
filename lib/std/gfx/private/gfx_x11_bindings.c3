@@ -8,6 +8,8 @@ alias XISelectEventsFn = fn int(XDisplay*, XWindow, XIEventMask*, int);
 alias XSyncIntToValueFn = fn void(XSyncValue*, int);
 alias XSyncSetCounterFn = fn int(XDisplay*, XSyncCounter, XSyncValue);
 alias XSyncCreateCounterFn = fn XSyncCounter(XDisplay*, XSyncValue);
+alias XSyncDestroyCounterFn = fn int(XDisplay*, XSyncCounter);
+alias XSyncInitializeFn = fn int(XDisplay*, int*, int*);
 alias XShapeCombineMaskFn = fn void(XDisplay*, XWindow, int, int, int, Pixmap, int);
 alias XShapeCombineRegionFn = fn void(XDisplay*, XWindow, int, int, int, Region, int);
 
@@ -18,6 +20,8 @@ XISelectEventsFn         xi_select_events_fn;
 XSyncIntToValueFn        xsync_int_to_value_fn;
 XSyncSetCounterFn        xsync_set_counter_fn;
 XSyncCreateCounterFn     xsync_create_counter_fn;
+XSyncDestroyCounterFn    xsync_destroy_counter_fn;
+XSyncInitializeFn        xsync_initialize_fn;
 XShapeCombineMaskFn      xshape_combine_mask_fn;
 XShapeCombineRegionFn    xshape_combine_region_fn;
 
@@ -71,6 +75,9 @@ struct XIRawEvent
 	XIValuatorState valuators;
 	double* raw_values;
 }
+// Predefined X11 atom, see X11/Xatom.h
+const Atom XA_CARDINAL = 6;
+
 struct XSyncValue
 {
 	int hi;
@@ -352,6 +359,8 @@ fn void dload_cursor_xi_ext()
 		xsync_create_counter_fn = libc::dlsym(ext_handle, "XSyncCreateCounter");
 		xsync_int_to_value_fn = libc::dlsym(ext_handle, "XSyncIntToValue");
 		xsync_set_counter_fn = libc::dlsym(ext_handle, "XSyncSetCounter");
+		xsync_destroy_counter_fn = libc::dlsym(ext_handle, "XSyncDestroyCounter");
+		xsync_initialize_fn = libc::dlsym(ext_handle, "XSyncInitialize");
 		xshape_combine_region_fn = libc::dlsym(ext_handle, "XShapeCombineRegion");
 		xshape_combine_mask_fn = libc::dlsym(ext_handle, "XShapeCombineMask");
 	}
@@ -424,6 +433,7 @@ extern fn int xChangeProperty(XDisplay* d, XWindow w, Atom property, Atom type, 
 extern fn int xGetWindowProperty(XDisplay* d, XWindow w, Atom property, CLong offset, CLong length, int delet, Atom reqType, Atom* actualType, int* actualFormat, CULong* nitems, CULong* bytesAfter, char** propReturn) @cname("XGetWindowProperty");
 extern fn int xDeleteProperty(XDisplay* d, XWindow w, Atom property) @cname("XDeleteProperty");
 extern fn Atom xInternAtom(XDisplay* d, ZString name, int onlyIfExists) @cname("XInternAtom");
+extern fn int xQueryExtension(XDisplay* d, ZString name, int* majorOpcode, int* firstEvent, int* firstError) @cname("XQueryExtension");
 extern fn int xConvertSelection(XDisplay* d, Atom selection, Atom target, Atom property, XWindow requestor, Time_t time) @cname("XConvertSelection");
 extern fn XWindow xGetSelectionOwner(XDisplay* d, Atom selection) @cname("XGetSelectionOwner");
 extern fn int xSetSelectionOwner(XDisplay* d, Atom selection, XWindow owner, Time_t time) @cname("XSetSelectionOwner");

@@ -1245,7 +1245,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			win32::postMessage(win.src.window, win32::WM_MOUSEMOVE, 0, (iptr)((uint)point.x | ((uint)point.y << 16)));
 		case win32::WM_PAINT:
 			Win32_RECT rect;
-			if (!win32::getUpdateRect(hWnd, &rect, 0))
+			if (win32::getUpdateRect(hWnd, &rect, 0))
 			{
 				_window_refresh_callback(win, { rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top });
 			}

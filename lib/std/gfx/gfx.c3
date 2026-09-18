@@ -181,8 +181,10 @@ struct GfxWindowSrc @feat(BSD, LINUX)
 		GContext gc;
 		XlibIC ic;
 		Clock flashEnd;
-		long counter_value;
+		// _NET_WM_SYNC_REQUEST resize handshake state, see _init_resize_sync.
 		XSyncCounter counter;
+		XSyncValue resize_id;
+		bool resize_in_progress;
 	}
 	struct @feat(WAYLAND)
 	{
@@ -423,6 +425,12 @@ bitstruct GfxInitOption : char
 	bool init_egl;
 	bool init_vulkan;
 	bool enable_x11;
+	<*
+	 Opt in to the X11 _NET_WM_SYNC_REQUEST resize handshake, which lets the window
+	 manager pace a resize against the frames actually drawn. Only applied to windows
+	 created with `opengl`, matching SDL, which reports it working poorly with Vulkan.
+	*>
+	bool enable_x11_resize_sync;
 }
 
 enum GfxFormat : char (int channels, GfxColorLayout layout)
