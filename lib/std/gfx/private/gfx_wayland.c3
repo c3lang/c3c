@@ -61,7 +61,7 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 	}
 
 	char[4] blk;
-	gfx::_gfx.hiddenMouse = gfx::_create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
+	gfx::_gfx.hidden_mouse = gfx::_create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
 
 	static XdgWmBaseListener wm_base_listener = { .ping = &_xdg_wm_base_ping_cb };
 	xdg_wm_base_add_listener(ctx.xdg_wm_base, &wm_base_listener, null);
@@ -82,7 +82,7 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 
 fn void destroy_platform()
 {
-	if (gfx::_gfx.unixClipboard) free(gfx::_gfx.unixClipboard);
+	if (gfx::_gfx.unix_clipboard) free(gfx::_gfx.unix_clipboard);
 	if (ctx.wl_pointer) wl_pointer_release(ctx.wl_pointer);
 	if (ctx.wl_keyboard) wl_keyboard_release(ctx.wl_keyboard);
 	if (ctx.registry) wl_registry_destroy(ctx.registry);
@@ -96,7 +96,7 @@ fn void destroy_platform()
 	if (ctx.data_device) wl_data_device_destroy(ctx.data_device);
 	if (ctx.wl_cursor_theme) wl_cursor_theme_destroy(ctx.wl_cursor_theme);
 	if (ctx.wp_pointer_warp) wp_pointer_warp_v1_destroy(ctx.wp_pointer_warp);
-	if (gfx::_gfx.hiddenMouse) free_mouse(gfx::_gfx.hiddenMouse);
+	if (gfx::_gfx.hidden_mouse) free_mouse(gfx::_gfx.hidden_mouse);
 	if (ctx.cursor_surface) wl_surface_destroy(ctx.cursor_surface);
 	if (ctx.shm) wl_shm_destroy(ctx.shm);
 	if (ctx.seat) wl_seat_destroy(ctx.seat);
@@ -157,32 +157,32 @@ fn void poll_events_platform()
 
 fn void wait_for_event(Duration duration)
 {
-	if (gfx::_gfx.eventWait_forceStop[0] == 0 || gfx::_gfx.eventWait_forceStop[1] == 0)
+	if (gfx::_gfx.event_wait_force_stop[0] == 0 || gfx::_gfx.event_wait_force_stop[1] == 0)
 	{
-		if (posix::pipe((int[2]*)&gfx::_gfx.eventWait_forceStop) != -1)
+		if (posix::pipe((int[2]*)&gfx::_gfx.event_wait_force_stop) != -1)
 		{
-			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[0], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[0], os::F_GETFD, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[1], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[1], os::F_GETFD, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[0], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[0], os::F_GETFD, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[1], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[1], os::F_GETFD, 0);
 		}
 	}
 
 	Posix_pollfd[2] fds;
 	fds[0].fd = 0;
 	fds[0].events = (short)os::POLLIN;
-	fds[1].fd = gfx::_gfx.eventWait_forceStop[0];
+	fds[1].fd = gfx::_gfx.event_wait_force_stop[0];
 	fds[1].events = (short)os::POLLIN;
 
 	defer
 	{
 		// drain any data in the stop request
-		if (gfx::_gfx.eventWait_forceStop[2])
+		if (gfx::_gfx.event_wait_force_stop[2])
 		{
 			char[64] data;
-			libc::read(gfx::_gfx.eventWait_forceStop[0], &data, 64);
+			libc::read(gfx::_gfx.event_wait_force_stop[0], &data, 64);
 
-			gfx::_gfx.eventWait_forceStop[2] = 0;
+			gfx::_gfx.event_wait_force_stop[2] = 0;
 		}
 	}
 	fds[0].fd = wl_display_get_fd(ctx.wl_display);
@@ -696,27 +696,27 @@ fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance insta
 
 fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type)
 {
-	if (type != TEXT || !gfx::_gfx.unixClipboard || !gfx::_gfx.unixClipboard.text) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+	if (type != TEXT || !gfx::_gfx.unix_clipboard || !gfx::_gfx.unix_clipboard.text) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
-	return { .type = TEXT, .text = gfx::_gfx.unixClipboard.text.copy(allocator) };
+	return { .type = TEXT, .text = gfx::_gfx.unix_clipboard.text.copy(allocator) };
 }
 
 fn void? write_clipboard(GfxDataTransfer* data)
 {
 	if (!ctx.data_device_manager) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
-	if (gfx::_gfx.unixClipboard)
+	if (gfx::_gfx.unix_clipboard)
 	{
-		free(gfx::_gfx.unixClipboard);
-		gfx::_gfx.unixClipboard = null;
+		free(gfx::_gfx.unix_clipboard);
+		gfx::_gfx.unix_clipboard = null;
 	}
 
 	sz length = data.text.len;
-	gfx::_gfx.unixClipboard = mem::new_with_padding(GfxDataTransfer, length + 1);
-	char* data_ptr = (char*)gfx::_gfx.unixClipboard + GfxDataTransfer::size - 1;
+	gfx::_gfx.unix_clipboard = mem::new_with_padding(GfxDataTransfer, length + 1);
+	char* data_ptr = (char*)gfx::_gfx.unix_clipboard + GfxDataTransfer::size - 1;
 	String s = (String)data_ptr[:length];
 	s[..] = data.text[..];
-	gfx::_gfx.unixClipboard.text = s;
-	gfx::_gfx.unixClipboard.type = TEXT;
+	gfx::_gfx.unix_clipboard.text = s;
+	gfx::_gfx.unix_clipboard.type = TEXT;
 
 	GfxWindow* win = ctx.kb_owner;
 	if (win.src.dataSource)
@@ -1052,7 +1052,7 @@ fn void _data_source_send_cb(void* data, WlProxy* source, ZString mime_type, int
 {
 	if (mime_type && mime_type.str_view().contains("text/plain"))
 	{
-		String s = gfx::_gfx.unixClipboard.text;
+		String s = gfx::_gfx.unix_clipboard.text;
 		libc::write(fd, s, s.len);
 	}
 	libc::close(fd);
@@ -1466,13 +1466,13 @@ fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @
 	sz length = (sz)n;
 	if (buf[n - 1] != 0) length += 1;
 
-	if (gfx::_gfx.unixClipboard != null) free(gfx::_gfx.unixClipboard);
-	gfx::_gfx.unixClipboard = mem::new_with_padding(GfxDataTransfer, length);
-	char* data_ptr = (char*)gfx::_gfx.unixClipboard + GfxDataTransfer::size - 1;
+	if (gfx::_gfx.unix_clipboard != null) free(gfx::_gfx.unix_clipboard);
+	gfx::_gfx.unix_clipboard = mem::new_with_padding(GfxDataTransfer, length);
+	char* data_ptr = (char*)gfx::_gfx.unix_clipboard + GfxDataTransfer::size - 1;
 	String s = (String)data_ptr[:length - 1];
 	data_ptr[:s.len] = buf[:s.len];
-	gfx::_gfx.unixClipboard.text = s;
-	gfx::_gfx.unixClipboard.type = TEXT;
+	gfx::_gfx.unix_clipboard.text = s;
+	gfx::_gfx.unix_clipboard.type = TEXT;
 
 	libc::close(pfds[0]);
 	wl_data_offer_destroy(offer);

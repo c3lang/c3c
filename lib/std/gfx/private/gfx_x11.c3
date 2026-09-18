@@ -90,8 +90,8 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 	dload_cursor_xi_ext();
 
 	char[4] blk;
-	gfx::_gfx.hiddenMouse = gfx::_create_mouse((void*)&blk, { 1, 1 }, RGBA8) ?? null;
-	gfx::_gfx.unixClipboard = null;
+	gfx::_gfx.hidden_mouse = gfx::_create_mouse((void*)&blk, { 1, 1 }, RGBA8) ?? null;
+	gfx::_gfx.unix_clipboard = null;
 
 	xSetErrorHandler(&_error_handler);
 	xSync(ctx.display, 0);
@@ -121,8 +121,8 @@ fn void destroy_platform()
 		xUnregisterIMInstantiateCallback(ctx.display, null, null, null, (void*)&_x11_im_init_callback, null);
 	}
 	if (ctx.im) xCloseIM(ctx.im);
-	if (gfx::_gfx.unixClipboard) free(gfx::_gfx.unixClipboard);
-	if (gfx::_gfx.hiddenMouse) free_mouse(gfx::_gfx.hiddenMouse);
+	if (gfx::_gfx.unix_clipboard) free(gfx::_gfx.unix_clipboard);
+	if (gfx::_gfx.hidden_mouse) free_mouse(gfx::_gfx.hidden_mouse);
 	if (ctx.helper_window) xDestroyWindow(ctx.display, ctx.helper_window);
 	if (ctx.display) xCloseDisplay(ctx.display);
 
@@ -139,32 +139,32 @@ fn void poll_events_platform()
 
 fn void wait_for_event(Duration duration)
 {
-	if (gfx::_gfx.eventWait_forceStop[0] == 0 || gfx::_gfx.eventWait_forceStop[1] == 0)
+	if (gfx::_gfx.event_wait_force_stop[0] == 0 || gfx::_gfx.event_wait_force_stop[1] == 0)
 	{
-		if (posix::pipe((int[2]*)&gfx::_gfx.eventWait_forceStop) != -1)
+		if (posix::pipe((int[2]*)&gfx::_gfx.event_wait_force_stop) != -1)
 		{
-			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[0], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[0], os::F_GETFD, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[1], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.eventWait_forceStop[1], os::F_GETFD, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[0], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[0], os::F_GETFD, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[1], os::F_GETFL, 0);
+			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[1], os::F_GETFD, 0);
 		}
 	}
 
 	Posix_pollfd[2] fds;
 	fds[0].fd = 0;
 	fds[0].events = (short)os::POLLIN;
-	fds[1].fd = gfx::_gfx.eventWait_forceStop[0];
+	fds[1].fd = gfx::_gfx.event_wait_force_stop[0];
 	fds[1].events = (short)os::POLLIN;
 
 	defer
 	{
 		// drain any data in the stop request
-		if (gfx::_gfx.eventWait_forceStop[2])
+		if (gfx::_gfx.event_wait_force_stop[2])
 		{
 			char[64] data;
-			libc::read(gfx::_gfx.eventWait_forceStop[0], &data, 64);
+			libc::read(gfx::_gfx.event_wait_force_stop[0], &data, 64);
 
-			gfx::_gfx.eventWait_forceStop[2] = 0;
+			gfx::_gfx.event_wait_force_stop[2] = 0;
 		}
 	}
 
@@ -1072,8 +1072,8 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 
 	if (xGetSelectionOwner(ctx.display, ctx.clipboard_atom) == ctx.helper_window)
 	{
-		if (!gfx::_gfx.unixClipboard.text) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
-		return { .type = TEXT, .text = gfx::_gfx.unixClipboard.text.copy(allocator) };
+		if (!gfx::_gfx.unix_clipboard.text) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
+		return { .type = TEXT, .text = gfx::_gfx.unix_clipboard.text.copy(allocator) };
 	}
 
 	xConvertSelection(ctx.display, ctx.clipboard_atom, ctx.utf8_string, ctx.xsel_data, ctx.helper_window, 0);
@@ -1110,17 +1110,17 @@ fn void? write_clipboard(GfxDataTransfer* data)
 		return gfx::COULD_NOT_OWN_X11_CLIPBOARD~;
 	}
 
-	if (gfx::_gfx.unixClipboard)
+	if (gfx::_gfx.unix_clipboard)
 	{
-		free(gfx::_gfx.unixClipboard);
-		gfx::_gfx.unixClipboard = null;
+		free(gfx::_gfx.unix_clipboard);
+		gfx::_gfx.unix_clipboard = null;
 	}
 
-	gfx::_gfx.unixClipboard = mem::new_with_padding(GfxDataTransfer, data.text.len);
-	char* data_ptr = (char*)gfx::_gfx.unixClipboard + GfxDataTransfer::size - 1;
+	gfx::_gfx.unix_clipboard = mem::new_with_padding(GfxDataTransfer, data.text.len);
+	char* data_ptr = (char*)gfx::_gfx.unix_clipboard + GfxDataTransfer::size - 1;
 	data_ptr[:data.text.len] = data.text[..];
-	gfx::_gfx.unixClipboard.text = (String)data_ptr[:data.text.len];
-	gfx::_gfx.unixClipboard.type = TEXT;
+	gfx::_gfx.unix_clipboard.text = (String)data_ptr[:data.text.len];
+	gfx::_gfx.unix_clipboard.type = TEXT;
 }
 
 // --- GfxSurface
@@ -2021,7 +2021,7 @@ fn void _handle_clipboard_selection(XEvent* event) @local
 			if (targets[i] == ctx.utf8_string || targets[i] == 31 /* XA_STRING */)
 			{
 				xChangeProperty(ctx.display, request.requestor, targets[i + 1], targets[i],
-				8, 0, gfx::_gfx.unixClipboard.text, (int)gfx::_gfx.unixClipboard.text.len);
+				8, 0, gfx::_gfx.unix_clipboard.text, (int)gfx::_gfx.unix_clipboard.text.len);
 			}
 			else
 			{
@@ -2042,7 +2042,7 @@ fn void _handle_clipboard_selection(XEvent* event) @local
 		for (sz i = 0; i < 2; i++)
 		{
 			if (request.target != formats[i]) continue;
-			xChangeProperty(ctx.display, request.requestor, request.property, request.target, 8, 0, gfx::_gfx.unixClipboard.text, (int)gfx::_gfx.unixClipboard.text.len);
+			xChangeProperty(ctx.display, request.requestor, request.property, request.target, 8, 0, gfx::_gfx.unix_clipboard.text, (int)gfx::_gfx.unix_clipboard.text.len);
 		}
 	}
 

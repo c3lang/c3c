@@ -18,22 +18,22 @@ struct GfxContext
 	List{GfxWindow} windows;
 	GfxWindow* root;
 	int active_windows;
-	GfxMouse* hiddenMouse;
-	GfxMouse*[21] standardMice;
+	GfxMouse* hidden_mouse;
+	GfxMouse*[21] standard_mice;
 	GfxGenericFunc[25] callbacks;
 	GfxEvent[MAX_EVENTS] events;
-	int eventBottom;
-	int eventLen;
-	bool queueEvents;
-	bool polledEvents;
-	uint[GFX_KEYS] apiKeycodes;
+	int event_bottom;
+	int event_len;
+	bool queue_events;
+	bool polled_events;
+	uint[GFX_KEYS] api_keycodes;
 	GfxKey[$feat(WIN32) ? 512 : 256] keycodes;
 	bool stop_check_events;
-	int[3] eventWait_forceStop @feat(LINUX, BSD);
+	int[3] event_wait_force_stop @feat(LINUX, BSD);
 	GfxDataTransfer* clipboard;
 	bool dnd_build;
-	GfxDataDropNode* dndRoot;
-	GfxDataDropNode* dndCur;
+	GfxDataDropNode* dnd_root;
+	GfxDataDropNode* dnd_cur;
 
 	struct monitors
 	{
@@ -69,7 +69,7 @@ struct GfxContext
 		int usingAsyncify;
 	}
 
-	GfxDataTransfer* unixClipboard @feat(LINUX, BSD);
+	GfxDataTransfer* unix_clipboard @feat(LINUX, BSD);
 
 	bool use_wayland @feat(WAYLAND & !NO_X11);
 	bool raw_mouse;
@@ -234,7 +234,7 @@ fn void _init_keycodes()
 		{
 			if (_gfx.keycodes[y] == (GfxKey)i)
 			{
-				_gfx.apiKeycodes[i] = (uint)y;
+				_gfx.api_keycodes[i] = (uint)y;
 				break;
 			}
 		}
@@ -275,6 +275,26 @@ fn void _event_queue_call_push(GfxEvent* event)
 	event_queue_push(event);
 }
 
+<*
+ Remove and return the oldest queued event belonging to a window.
+
+ Events for other windows are rotated to the back of the queue rather than discarded.
+
+ @param [in] win : "The window to filter on"
+ @return "The oldest event for this window, or a window-independent event"
+ @return? NO_MORE_ELEMENT : "If no matching event is queued"
+*>
+fn GfxEvent? _window_event_queue_pop(GfxWindow* win)
+{
+	GfxEvent ev = event_queue_pop()!;
+	for (int i = 1; i < _gfx.event_len && ev.common.win != win && ev.common.win != null; i++)
+	{
+		event_queue_push(&ev);
+		ev = event_queue_pop()!!;
+	}
+	if (ev.common.win != win && ev.common.win != null) return NO_MORE_ELEMENT~;
+	return ev;
+}
 
 fn void _reset_prev_state()
 {
@@ -286,15 +306,15 @@ fn void _reset_prev_state()
 	_gfx.scroll = {};
 	_gfx.vector = {};
 	_gfx.window_state = {};
-	GfxDataDropNode* node = _gfx.dndRoot;
+	GfxDataDropNode* node = _gfx.dnd_root;
 	while (node != null)
 	{
 		GfxDataDropNode* next = node.next;
 		free(node);
 		node = next;
 	}
-	_gfx.dndRoot = null;
-	_gfx.dndCur = null;
+	_gfx.dnd_root = null;
+	_gfx.dnd_cur = null;
 }
 
 <*
@@ -352,7 +372,7 @@ fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindow
 	_gfx.active_windows++;
 	if (!_gfx.root) set_root_window(win);
 	win.bounds = { x, y, w, h };
-	win.internal.mouse = _gfx.standardMice[GfxMouseIcon.NORMAL.ordinal];
+	win.internal.mouse = _gfx.standard_mice[GfxMouseIcon.NORMAL.ordinal];
 	win.internal.flags = flags;
 	win.internal.enabled_events = ALL_EVENTS;
 	_window_create_platform(win, name, flags)!;
@@ -655,21 +675,21 @@ fn void _data_drop_callback(GfxWindow* win, char* data, sz length, GfxDataTransf
 	event.drop.value = &node;
 	event.common.win = win;
 	if (_gfx.callbacks[(sz)event.type] != null) _gfx.callbacks[(sz)event.type](&event);
-	if (!_gfx.queueEvents && !_gfx.dnd_build) return;
+	if (!_gfx.queue_events && !_gfx.dnd_build) return;
 	char* dataCopy = malloc(length);
 	mem::copy(dataCopy, data, length);
 	node.data = dataCopy;
 	GfxDataDropNode* heapNode = mem::new(GfxDataDropNode);
 	*heapNode = node;
-	if (_gfx.dndRoot == null)
+	if (_gfx.dnd_root == null)
 	{
-		_gfx.dndRoot = heapNode;
-		_gfx.dndCur = heapNode;
+		_gfx.dnd_root = heapNode;
+		_gfx.dnd_cur = heapNode;
 	}
 	else
 	{
-		_gfx.dndCur.next = heapNode;
-		_gfx.dndCur = heapNode;
+		_gfx.dnd_cur.next = heapNode;
+		_gfx.dnd_cur = heapNode;
 	}
 	event.drop.value = heapNode;
 	event_queue_push(&event);
@@ -849,7 +869,7 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show) @feat(!WASM)
 	}
 	else
 	{
-		win.set_mouse(_gfx.hiddenMouse);
+		win.set_mouse(_gfx.hidden_mouse);
 	}
 }
 

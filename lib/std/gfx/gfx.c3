@@ -844,7 +844,7 @@ fn void? init(String class_name, GfxInitOption options)
 	_init_platform(class_name, options)!;
 	foreach (icon : GfxMouseIcon::values)
 	{
-		_gfx.standardMice[icon.ordinal] = _create_standard_mouse(icon) ?? null;
+		_gfx.standard_mice[icon.ordinal] = _create_standard_mouse(icon) ?? null;
 	}
 	_poll_monitors();
 	log::info("Global context initialized", category: log::CATEGORY_VIDEO);
@@ -868,7 +868,7 @@ fn void finalize()
 
 	foreach (icon : GfxMouseIcon::values)
 	{
-		if (_gfx.standardMice[icon.ordinal]) _free_mouse(_gfx.standardMice[icon.ordinal]);
+		if (_gfx.standard_mice[icon.ordinal]) _free_mouse(_gfx.standard_mice[icon.ordinal]);
 	}
 	free_monitors();
 	log::info("Global context destroyed", category: log::CATEGORY_VIDEO);
@@ -1661,7 +1661,7 @@ fn void set_all_event_callback(GfxGenericFunc func, GfxEventCallbacks* callbacks
 *>
 fn void event_queue_flush()
 {
-	_gfx.eventLen = 0;
+	_gfx.event_len = 0;
 }
 
 <*
@@ -1675,15 +1675,15 @@ fn void event_queue_flush()
 *>
 fn void event_queue_push(GfxEvent* event)
 {
-	if (!_gfx.queueEvents) return;
-	if (_gfx.eventLen >= MAX_EVENTS)
+	if (!_gfx.queue_events) return;
+	if (_gfx.event_len >= MAX_EVENTS)
 	{
 		log::error("Event queue limit 'MAX_EVENTS' has been reached automatically flushing queue.", category: log::CATEGORY_VIDEO);
 		event_queue_flush();
 		return;
 	}
-	int eventTop = (_gfx.eventBottom + _gfx.eventLen) % MAX_EVENTS;
-	_gfx.eventLen += 1;
+	int eventTop = (_gfx.event_bottom + _gfx.event_len) % MAX_EVENTS;
+	_gfx.event_len += 1;
 	_gfx.events[eventTop] = *event;
 }
 
@@ -1695,10 +1695,10 @@ fn void event_queue_push(GfxEvent* event)
 *>
 fn GfxEvent? event_queue_pop()
 {
-	if (!_gfx.eventLen) return NO_MORE_ELEMENT~;
-	GfxEvent* ev = &_gfx.events[_gfx.eventBottom];
-	_gfx.eventLen--;
-	_gfx.eventBottom = (_gfx.eventBottom + 1) % MAX_EVENTS;
+	if (!_gfx.event_len) return NO_MORE_ELEMENT~;
+	GfxEvent* ev = &_gfx.events[_gfx.event_bottom];
+	_gfx.event_len--;
+	_gfx.event_bottom = (_gfx.event_bottom + 1) % MAX_EVENTS;
 	return *ev;
 }
 
@@ -1735,16 +1735,16 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
  @return "The next event"
  @return? NO_MORE_ELEMENT : "If no event is pending"
 *>
-fn GfxEvent? check_event()
+fn GfxEvent? poll()
 {
-	if (!_gfx.eventLen && !_gfx.polledEvents)
+	if (!_gfx.event_len && !_gfx.polled_events)
 	{
-		_gfx.queueEvents = true;
+		_gfx.queue_events = true;
 		_poll_events_platform();
-		_gfx.polledEvents = true;
+		_gfx.polled_events = true;
 	}
-	defer catch _gfx.polledEvents = false;
-	return check_queued_event();
+	defer catch _gfx.polled_events = false;
+	return peep();
 }
 
 <*
@@ -1753,63 +1753,42 @@ fn GfxEvent? check_event()
  @return "The next event"
  @return? NO_MORE_ELEMENT : "If the queue is empty"
 *>
-fn GfxEvent? check_queued_event()
+fn GfxEvent? peep()
 {
-	_gfx.queueEvents = true;
+	_gfx.queue_events = true;
 	return event_queue_pop();
-}
-
-<*
- Remove and return the oldest queued event belonging to a window.
-
- Events for other windows are rotated to the back of the queue rather than discarded.
-
- @param [in] win : "The window to filter on"
- @return "The oldest event for this window, or a window-independent event"
- @return? NO_MORE_ELEMENT : "If no matching event is queued"
-*>
-fn GfxEvent? window_event_queue_pop(GfxWindow* win)
-{
-	GfxEvent ev = event_queue_pop()!;
-	for (int i = 1; i < _gfx.eventLen && ev.common.win != win && ev.common.win != null; i++)
-	{
-		event_queue_push(&ev);
-		ev = event_queue_pop()!!;
-	}
-	if (ev.common.win != win && ev.common.win != null) return NO_MORE_ELEMENT~;
-	return ev;
 }
 
 <*
  Get the next queued event for a window without polling the platform.
 
- @param [in] win : "The window to filter on"
+ @param [&in] self : "The window to filter on"
  @return "The next event for this window"
  @return? NO_MORE_ELEMENT : "If no matching event is queued"
 *>
-fn GfxEvent? check_queued_window_event(GfxWindow* win)
+fn GfxEvent? GfxWindow.peep(&self)
 {
-	_gfx.queueEvents = true;
-	return window_event_queue_pop(win);
+	_gfx.queue_events = true;
+	return _window_event_queue_pop(self);
 }
 
 <*
  Get the next event for a window, polling the platform first if the queue is empty.
 
- @param [in] win : "The window to filter on"
+ @param [&in] self : "The window to filter on"
  @return "The next event for this window"
  @return? NO_MORE_ELEMENT : "If no matching event is pending"
 *>
-fn GfxEvent? check_window_event(GfxWindow* win)
+fn GfxEvent? GfxWindow.poll(&self)
 {
-	if (!_gfx.eventLen && !_gfx.polledEvents)
+	if (!_gfx.event_len && !_gfx.polled_events)
 	{
-		_gfx.queueEvents = true;
+		_gfx.queue_events = true;
 		_poll_events_platform();
-		_gfx.polledEvents = true;
+		_gfx.polled_events = true;
 	}
-	defer catch _gfx.polledEvents = false;
-	return check_queued_window_event(win);
+	defer catch _gfx.polled_events = false;
+	return self.peep();
 }
 
 
@@ -1832,7 +1811,7 @@ fn GfxKey key_from_api(uint keycode)
 *>
 fn uint GfxKey.to_api(self)
 {
-	return _gfx.apiKeycodes[self];
+	return _gfx.api_keycodes[self];
 }
 
 <*
@@ -1866,7 +1845,7 @@ fn void reset_key()
 *>
 fn void set_queue_events(bool queue)
 {
-	_gfx.queueEvents = queue;
+	_gfx.queue_events = queue;
 }
 
 
@@ -1878,7 +1857,7 @@ fn void set_queue_events(bool queue)
 fn GfxDataDropNode* GfxWindow.get_data_drop(&self)
 {
 	if (_gfx.window_state.win != self || !_gfx.window_state.dataDrop) return null;
-	return _gfx.dndRoot;
+	return _gfx.dnd_root;
 }
 
 
@@ -2451,7 +2430,7 @@ fn void GfxWindow.set_mouse_default(&self)
 *>
 fn void GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
 {
-	self.set_mouse(_gfx.standardMice[(sz)icon]);
+	self.set_mouse(_gfx.standard_mice[(sz)icon]);
 }
 
 <*
@@ -2465,7 +2444,7 @@ fn void GfxWindow.set_mouse_standard(&self, GfxMouseIcon icon)
 fn void GfxWindow.set_mouse(&self, GfxMouse* mouse)
 {
 	if (!mouse) return;
-	if (mouse != _gfx.hiddenMouse) self.internal.mouse = mouse;
+	if (mouse != _gfx.hidden_mouse) self.internal.mouse = mouse;
 	_window_set_mouse_platform(self, mouse);
 }
 

@@ -37,7 +37,7 @@ fn void? init_platform(String class_name, GfxInitOption flags) => @pool()
 	gfx::_gfx.helper_window = win32::createWindowExW(0, gfx::_gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, instance, null);
 
 	char[4] blk;
-	gfx::_gfx.hiddenMouse = win32::create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
+	gfx::_gfx.hidden_mouse = win32::create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
 }
 
 fn void destroy_platform()
@@ -45,7 +45,7 @@ fn void destroy_platform()
 	win32::timeEndPeriod(1);
 	if (gfx::_gfx.helper_window) win32::destroyWindow(gfx::_gfx.helper_window);
 	if (gfx::_gfx.instance) win32::unregisterClassW(gfx::_gfx.wndClass.lpszClassName, gfx::_gfx.instance);
-	if (gfx::_gfx.hiddenMouse != null) free_mouse(gfx::_gfx.hiddenMouse);
+	if (gfx::_gfx.hidden_mouse != null) free_mouse(gfx::_gfx.hidden_mouse);
 }
 
 fn void poll_events_platform()

@@ -91,11 +91,11 @@ fn void _stop_check_events()
 		$case $feat(WIN32):
 			return win32::stop_check_events();
 		$case WAYLAND || X11:
-			_gfx.eventWait_forceStop[2] = 1;
+			_gfx.event_wait_force_stop[2] = 1;
 			while (true)
 			{
 				char byte = 0;
-				sz result = libc::write(_gfx.eventWait_forceStop[1], &byte, 1);
+				sz result = libc::write(_gfx.event_wait_force_stop[1], &byte, 1);
 				if (result == 1 || result == -1) break;
 			}
 		$default:
