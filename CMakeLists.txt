@@ -295,6 +295,11 @@ if(C3_WITH_LLVM)
     string(REPLACE "." ";" VERSION_LIST ${LLVM_PACKAGE_VERSION})
     list(GET VERSION_LIST 0 LLVM_MAJOR_VERSION)
 
+    if(C3_LLD_DIR AND EXISTS "${C3_LLD_DIR}")
+        list(APPEND LLVM_LIBRARY_DIRS "${C3_LLD_DIR}")
+        list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
+    endif()
+
     include_directories(${LLVM_INCLUDE_DIRS})
     link_directories(${LLVM_LIBRARY_DIRS})
     separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
@@ -344,11 +349,6 @@ if(C3_WITH_LLVM)
         )
 
         llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
-
-        if(NOT ${C3_LLD_DIR} EQUAL "" AND EXISTS ${C3_LLD_DIR})
-            list(APPEND LLVM_LIBRARY_DIRS ${C3_LLD_DIR})
-            list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
-        endif()
 
         message(STATUS "Looking for static lld libraries in ${LLVM_LIBRARY_DIRS}")
 
