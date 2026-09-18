@@ -310,43 +310,6 @@ xz_dep = declare_dependency(
   include_directories: include_directories('dependencies/xz'),
 )
 
-tb_dep = declare_dependency()
-tb_sources = []
-c_args += ['-DTB_AVAILABLE=' + (get_option('use_tb') ? '1' : '0')]
-
-if get_option('use_tb')
-  tb_files = files(
-    'tilde-backend/src/tb/codegen/codegen.c',
-    'tilde-backend/src/tb/bigint/bigint.c',
-    'tilde-backend/src/tb/system/system.c',
-    'tilde-backend/src/tb/debug/cv/cv.c',
-    'tilde-backend/src/tb/opt/opt.c',
-    'tilde-backend/src/tb/x64/x64.c',
-    'tilde-backend/src/tb/wasm/wasm.c',
-    'tilde-backend/src/tb/aarch64/aarch64.c',
-  )
-  tb_lib = static_library(
-    'tilde-backend',
-    sources: tb_files,
-    include_directories: include_directories('tilde-backend/src', 'tilde-backend/include'),
-    override_options: ['warning_level=0', 'werror=false'],
-  )
-  tb_dep = declare_dependency(
-    link_with: tb_lib,
-    include_directories: include_directories('tilde-backend/include'),
-  )
-  tb_sources += files(
-    'src/compiler/tilde_codegen.c',
-    'src/compiler/tilde_codegen_instr.c',
-    'src/compiler/tilde_codegen_value.c',
-    'src/compiler/tilde_codegen_storeload.c',
-    'src/compiler/tilde_codegen_expr.c',
-    'src/compiler/tilde_codegen_stmt.c',
-    'src/compiler/tilde_codegen_type.c',
-    'src/compiler/tilde_codegen_abi.c',
-  )
-endif
-
 c3c_wrappers_dep = declare_dependency()
 if with_llvm
   wrapper_cpp_args = is_msvc ? cpp_args : cpp_args + ['-fno-rtti']
@@ -481,8 +444,6 @@ else
   c3c_sources += files('src/utils/hostinfo.c')
 endif
 
-c3c_sources += tb_sources
-
 # -----------------------------------------------------------------------------
 # 7. Executable Target & Installation
 # -----------------------------------------------------------------------------
@@ -501,7 +462,6 @@ c3c_exe = executable(
     mimalloc_dep,
     miniz_dep,
     xz_dep,
-    tb_dep,
     c3c_wrappers_dep,
   ] + win_deps,
   c_args: c_args,

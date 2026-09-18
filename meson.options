@@ -12,8 +12,6 @@ option('lld_dir', type: 'string', value: '',
        description: 'Custom directory containing LLD libraries')
 option('lld_include_dir', type: 'string', value: '',
        description: 'Custom directory containing LLD headers')
-option('use_tb', type: 'boolean', value: false,
-       description: 'Enable Tilde Backend')
 option('use_mimalloc', type: 'boolean', value: false,
        description: 'Use mimalloc memory allocator')
 option('curl', type: 'feature', value: 'auto',
