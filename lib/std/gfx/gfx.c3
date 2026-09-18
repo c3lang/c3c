@@ -149,6 +149,7 @@ struct GfxWindowSrc @feat(MACOS)
 	ObjId             view;
 	ObjId             mouse;
 	ObjId             delegate;
+	ObjId             resize_timer;
 	GfxBackingContext ctx;
 	GfxBacking        backing;
 }
@@ -164,6 +165,7 @@ struct GfxWindowSrc @feat(WIN32)
 	GfxPoint            max_size;
 	int                 aspectRatioW, aspectRatioH;
 	bool                actionFrame;
+	int                 modal_loop_depth;
 	ushort              highSurrogate;
 	GfxBackingContext   ctx;
 	GfxBacking          backing;

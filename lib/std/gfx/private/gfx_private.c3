@@ -497,17 +497,30 @@ fn void _window_focus_callback(GfxWindow* win, bool in_focus)
 	else
 	{
 		if (win.internal.flags.fullscreen) win.minimize();
-		for (int i = 0; i < GFX_KEYS; i++)
-		{
-			GfxKey key = (GfxKey)i;
-			if (!is_key_down(key)) continue;
-			_gfx.keyboard[i].current = false;
-			if (win.internal.enabled_events.key_released) _key_callback(win, key, win.internal.mod, false, false);
-		}
-		reset_key();
+		_release_all_keys(win);
 		event.type = WINDOW_FOCUS_OUT;
 	}
 	_event_queue_call_push(&event);
+}
+
+<*
+ Report every currently held key as released, then clear all keyboard state.
+
+ Used whenever key-up events can no longer be expected to arrive: losing focus, and
+ on Win32 entering a modal resize/menu loop, which runs its own message pump.
+
+ @require win != null
+*>
+fn void _release_all_keys(GfxWindow* win)
+{
+	for (int i = 0; i < GFX_KEYS; i++)
+	{
+		GfxKey key = (GfxKey)i;
+		if (!is_key_down(key)) continue;
+		_gfx.keyboard[i].current = false;
+		if (win.internal.enabled_events.key_released) _key_callback(win, key, win.internal.mod, false, false);
+	}
+	reset_key();
 }
 
 fn void _data_drag_callback(GfxWindow* win, GfxDataTransferType dataType, GfxDndActionType action, GfxPoint pos)

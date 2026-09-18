@@ -1151,6 +1151,10 @@ import std::gfx::win32 @public;
 
 // --- Event handling
 
+// Timer id for the modal-loop redraw pump. Scoped to our own window, so any fixed
+// value is unique enough; WM_TIMER still checks it so other timers pass through.
+const Win32_UINT_PTR MODAL_REDRAW_TIMER = 1;
+
 fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wParam, Win32_LPARAM lParam)
 {
 	if (message == win32::WM_DISPLAYCHANGE) win32::poll_monitors();
@@ -1233,9 +1237,24 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			mmi.ptMaxTrackSize.y = win.src.max_size.y + (frame.bottom - frame.top);
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_ENTERSIZEMOVE:
-		case win32::WM_EXITSIZEMOVE:
+		case win32::WM_ENTERMENULOOP:
 			if (win.src.actionFrame) win32::window_set_capture_mouse_platform(win, win.internal.capture_mouse);
+			if (++win.src.modal_loop_depth == 1)
+			{
+				win32::setTimer(win.src.window, MODAL_REDRAW_TIMER, win32::USER_TIMER_MINIMUM, null);
+				// No key-up arrives while the loop owns the pump, so held keys would stick.
+				_release_all_keys(win);
+			}
+		case win32::WM_EXITSIZEMOVE:
+		case win32::WM_EXITMENULOOP:
+			if (win.src.actionFrame) win32::window_set_capture_mouse_platform(win, win.internal.capture_mouse);
+			if (win.src.modal_loop_depth > 0 && --win.src.modal_loop_depth == 0)
+			{
+				win32::killTimer(win.src.window, MODAL_REDRAW_TIMER);
+			}
 		case win32::WM_TIMER:
+			// Leave any other timer on this window to DefWindowProc.
+			if (wParam != MODAL_REDRAW_TIMER) break;
 			_window_refresh_callback(win, { 0, 0, ...win.size });
 		case win32::WM_NCLBUTTONDOWN:
 		// workaround for half-second pause when starting to move window

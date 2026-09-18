@@ -345,6 +345,7 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 
 fn void window_destroy_platform(GfxWindow* win)
 {
+	_osx_stop_resize_timer(win);
 	win.src.window.send_void("close");
 	win.src.delegate.release();
 	win.src.view.release();
@@ -1004,13 +1005,17 @@ fn void? _osx_register_classes()
 	defer catch _macos_window_delegate_class = (ObjClass)0;
 	_macos_window_delegate_class.add_ivar("gfx_window", void*, "^v");
 
-	_macos_window_delegate_class.add_method("windowWillClose:",        &_osx_window_will_close, "v@:@");
-	_macos_window_delegate_class.add_method("windowDidResize:",        &_osx_window_did_resize, "v@:@");
-	_macos_window_delegate_class.add_method("windowDidMove:",          &_osx_window_did_move, "v@:@");
-	_macos_window_delegate_class.add_method("windowDidMiniaturize:",   &_osx_window_did_miniaturize, "v@:@");
-	_macos_window_delegate_class.add_method("windowDidDeminiaturize:", &_osx_window_did_deminiaturize, "v@:@");
-	_macos_window_delegate_class.add_method("windowDidBecomeKey:",     &_osx_window_did_become_key, "v@:@");
-	_macos_window_delegate_class.add_method("windowDidResignKey:",     &_osx_window_did_resign_key, "v@:@");
+	_macos_window_delegate_class.add_method("windowWillClose:",            &_osx_window_will_close, "v@:@");
+	_macos_window_delegate_class.add_method("windowDidResize:",            &_osx_window_did_resize, "v@:@");
+	_macos_window_delegate_class.add_method("windowDidMove:",              &_osx_window_did_move, "v@:@");
+	_macos_window_delegate_class.add_method("windowDidMiniaturize:",       &_osx_window_did_miniaturize, "v@:@");
+	_macos_window_delegate_class.add_method("windowDidDeminiaturize:",     &_osx_window_did_deminiaturize, "v@:@");
+	_macos_window_delegate_class.add_method("windowDidBecomeKey:",         &_osx_window_did_become_key, "v@:@");
+	_macos_window_delegate_class.add_method("windowDidResignKey:",         &_osx_window_did_resign_key, "v@:@");
+	_macos_window_delegate_class.add_method("windowWillStartLiveResize:",  &_osx_window_will_start_live_resize, "v@:@");
+	_macos_window_delegate_class.add_method("windowDidEndLiveResize:",     &_osx_window_did_end_live_resize, "v@:@");
+
+	_macos_window_delegate_class.add_method("resizeTimer:",                &_osx_resize_timer, "v@:@");
 
 	objc::register_new_subclass(_macos_window_delegate_class);
 
@@ -1106,6 +1111,49 @@ fn void _osx_window_did_become_key(ObjId self, ObjSel sel, ObjId notification)
 fn void _osx_window_will_close(ObjId self, ObjSel sel, ObjId notification)
 {
 	(void)gfx::_window_close_callback(_fetch_win(self));
+}
+
+// AppKit runs its own event loop while the user drags a window edge, so the
+// application's loop gets no control until the drag ends. A timer registered in the
+// common run loop modes still fires inside that loop, which is the only chance to
+// drive a redraw. Applications see this as WINDOW_REFRESH, so drawing during a live
+// resize needs an installed callback -- a polling loop is blocked for the duration.
+fn void _osx_window_will_start_live_resize(ObjId self, ObjSel sel, ObjId notification)
+{
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	if (!win.src.view) return;
+	// Aim for 60 FPS while resizing, as SDL does.
+	double interval = 1.0 / 60.0;
+	win.src.resize_timer = darwin::nstimer().send(ObjId, "scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:",
+		interval, win.src.delegate, objc::sel_getUid("resizeTimer:"), null, true);
+	darwin::nsrun_loop().send(ObjId, "currentRunLoop").send_void("addTimer:forMode:", win.src.resize_timer, (ObjId)cf::KCF_RUNLOOP_COMMON_MODES);
+}
+
+// A redraw only: windowDidResize: still reports the geometry changes, so driving the
+// resize path from here would double every WINDOW_RESIZED and re-run the
+// maximize/restore detection on every tick.
+fn void _osx_resize_timer(ObjId self, ObjSel sel, ObjId userinfo)
+{
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	if (!win.src.view) return;
+	gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
+}
+
+fn void _osx_window_did_end_live_resize(ObjId self, ObjSel sel, ObjId notification)
+{
+	GfxWindow*? win = _fetch_win(self);
+	if (catch win) return;
+	_osx_stop_resize_timer(win);
+}
+
+// The run loop owns the scheduled timer, so it is invalidated, never released.
+fn void _osx_stop_resize_timer(GfxWindow* win) @local
+{
+	if (!win.src.resize_timer) return;
+	win.src.resize_timer.send_void("invalidate");
+	win.src.resize_timer = null;
 }
 
 fn void _osx_window_did_resize(ObjId self, ObjSel sel, ObjId notification)

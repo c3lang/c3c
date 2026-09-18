@@ -64,3 +64,4 @@ constset CFStringEncoding : uint
 }
 
 extern const CFStringRef KCF_RUNLOOP_DEFAULT_MODE @cname("kCFRunLoopDefaultMode");
+extern const CFStringRef KCF_RUNLOOP_COMMON_MODES @cname("kCFRunLoopCommonModes");

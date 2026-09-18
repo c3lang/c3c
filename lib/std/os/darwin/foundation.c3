@@ -9,6 +9,8 @@ fn ObjClass nsmutable_string() => objc::@class("NSMutableString");
 fn ObjClass nsarray() => objc::@class("NSArray");
 fn ObjClass nsmutable_array() => objc::@class("NSMutableArray");
 fn ObjClass nsdate() => objc::@class("NSDate");
+fn ObjClass nstimer() => objc::@class("NSTimer");
+fn ObjClass nsrun_loop() => objc::@class("NSRunLoop");
 
 fn ObjId string(ZString str)
 {
