@@ -173,6 +173,58 @@ struct GfxMonitorNode
 
 alias GfxGetProcFn = fn void*(ZString);
 
+<*
+ The evdev keycode table shared by X11 and Wayland.
+
+ X11 keycodes and Wayland's `wl_keyboard.key` + 8 are the same evdev values, so
+ both backends use this one table rather than querying the server (which would
+ not work under Wayland).
+*>
+fn void _init_unix_keycodes() @feat(LINUX, BSD)
+{
+	_gfx.keycodes = {
+		[  9] = ESCAPE,           [ 10] = NUM1,             [ 11] = NUM2,
+		[ 12] = NUM3,             [ 13] = NUM4,             [ 14] = NUM5,
+		[ 15] = NUM6,             [ 16] = NUM7,             [ 17] = NUM8,
+		[ 18] = NUM9,             [ 19] = NUM0,             [ 20] = MINUS,
+		[ 21] = EQUALS,           [ 22] = BACK_SPACE,       [ 23] = TAB,
+		[ 24] = Q,                [ 25] = W,                [ 26] = E,
+		[ 27] = R,                [ 28] = T,                [ 29] = Y,
+		[ 30] = U,                [ 31] = I,                [ 32] = O,
+		[ 33] = P,                [ 34] = BRACKET,          [ 35] = CLOSE_BRACKET,
+		[ 36] = RETURN,           [ 37] = CONTROL_L,        [ 38] = A,
+		[ 39] = S,                [ 40] = D,                [ 41] = F,
+		[ 42] = G,                [ 43] = H,                [ 44] = J,
+		[ 45] = K,                [ 46] = L,                [ 47] = SEMICOLON,
+		[ 48] = APOSTROPHE,       [ 49] = BACKTICK,         [ 50] = SHIFT_L,
+		[ 51] = BACK_SLASH,       [ 52] = Z,                [ 53] = X,
+		[ 54] = C,                [ 55] = V,                [ 56] = B,
+		[ 57] = N,                [ 58] = M,                [ 59] = COMMA,
+		[ 60] = PERIOD,           [ 61] = SLASH,            [ 62] = SHIFT_R,
+		[ 63] = PAD_MULTIPLY,     [ 64] = ALT_L,            [ 65] = SPACE,
+		[ 66] = CAPS_LOCK,        [ 67] = F1,               [ 68] = F2,
+		[ 69] = F3,               [ 70] = F4,               [ 71] = F5,
+		[ 72] = F6,               [ 73] = F7,               [ 74] = F8,
+		[ 75] = F9,               [ 76] = F10,              [ 77] = NUM_LOCK,
+		[ 78] = SCROLL_LOCK,      [ 81] = PAD9,             [ 82] = PAD_MINUS,
+		[ 83] = PAD4,             [ 84] = PAD5,             [ 85] = PAD6,
+		[ 86] = PAD_PLUS,         [ 87] = PAD1,             [ 88] = PAD2,
+		[ 89] = PAD3,             [ 90] = PAD0,             [ 91] = PAD_PERIOD,
+		[ 95] = F11,              [ 96] = F12,              [104] = PAD_RETURN,
+		[105] = CONTROL_R,        [106] = PAD_SLASH,        [107] = PRINT_SCREEN,
+		[108] = ALT_R,            [110] = HOME,             [111] = UP,
+		[112] = PAGE_UP,          [113] = LEFT,             [114] = RIGHT,
+		[115] = END,              [116] = DOWN,             [117] = PAGE_DOWN,
+		[118] = INSERT,           [119] = DELETE,           [128] = PAUSE,
+		[133] = SUPER_L,          [134] = SUPER_R,          [142] = PAD_EQUAL,
+		[161] = WORLD1,           [162] = WORLD2,           [191] = F13,
+		[192] = F14,              [193] = F15,              [194] = F16,
+		[195] = F17,              [196] = F18,              [197] = F19,
+		[198] = F20,              [199] = F21,              [200] = F22,
+		[201] = F23,              [202] = F24,              [203] = F25,
+	};
+}
+
 fn void _init_keycodes()
 {
 	_gfx.keycodes = {};

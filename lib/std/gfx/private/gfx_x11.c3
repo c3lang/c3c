@@ -1206,8 +1206,7 @@ fn bool opengl_extension_is_supported_platform(String extension)
 
 fn void init_keycodes_platform()
 {
-	// A full evdev-keycode -> _KEY table walk (xkbGetKeyboardByName) is left
-	// out of this mechanical pass; keycodes[] stays zeroed (_KEY_NULL).
+	gfx::_init_unix_keycodes();
 }
 
 fn GfxKey physical_to_mapped_key(GfxKey key)

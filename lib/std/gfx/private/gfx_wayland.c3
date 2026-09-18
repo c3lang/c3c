@@ -801,8 +801,7 @@ fn bool opengl_extension_is_supported_platform(String extension)
 
 fn void init_keycodes_platform()
 {
-	// Wayland keycodes come directly from the evdev-based xkb keymap (key+8);
-	// no separate keycode table walk is needed the way X11's is.
+	gfx::_init_unix_keycodes();
 }
 
 fn GfxKey physical_to_mapped_key(GfxKey key)
