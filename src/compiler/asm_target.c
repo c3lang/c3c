@@ -590,7 +590,7 @@ static void init_asm_x86(PlatformTarget* target)
 	Clobbers rax_mask = clobbers_make(X86_RAX, -1);
 	Clobbers cc_flag_mask = clobbers_make(X86_CC, -1);
 	Clobbers rax_cc_mask = clobbers_make_from(cc_flag_mask, X86_RAX, -1);
-	Clobbers rcx_cc_mask = clobbers_make_from(cc_flag_mask, X86_RCX, -1); 
+	Clobbers rcx_cc_mask = clobbers_make_from(cc_flag_mask, X86_RCX, -1);
 	Clobbers rax_rdx_cc_mask = clobbers_make_from(cc_flag_mask, X86_RAX, X86_RDX, -1);
 	Clobbers xmm_0_7_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM3, X86_XMM4, X86_XMM5, X86_XMM6, X86_XMM7, -1);
 	Clobbers xmm_0_2_xmm_4_6_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM4, X86_XMM5, X86_XMM6, -1);
@@ -599,10 +599,10 @@ static void init_asm_x86(PlatformTarget* target)
 	Clobbers xmm0_cc_mask = clobbers_make_from(cc_flag_mask, X86_XMM0, -1);
 	Clobbers rax_xmm0_cc_mask = clobbers_make_from(cc_flag_mask, X86_RAX, X86_XMM0, -1);
 	Clobbers lo16_vec_mask = clobbers_make(X86_XMM0, X86_XMM1, X86_XMM2, X86_XMM3, X86_XMM4, X86_XMM5, X86_XMM6, X86_XMM7,
-			X86_XMM8, X86_XMM9, X86_XMM10, X86_XMM11, X86_XMM12, X86_XMM13, X86_XMM14, X86_XMM15, -1); 
+			X86_XMM8, X86_XMM9, X86_XMM10, X86_XMM11, X86_XMM12, X86_XMM13, X86_XMM14, X86_XMM15, -1);
 
-	
-	
+
+
 	bool is_x64 = target->arch == ARCH_TYPE_X86_64;
 	if (!is_x64)
 	{
@@ -746,11 +746,17 @@ static void init_asm_x86(PlatformTarget* target)
 	reg_instr(target, "iretq", NULL);
 	reg_instr_clob(target, "rdtsc",  clobbers_make_from(rax_mask, X86_RDX, -1), NULL);
 	reg_instr_clob(target, "rdtscp",  clobbers_make_from(rax_mask, X86_RDX, X86_RCX, -1), NULL);
+	reg_instr_clob(target, "rdmsr", clobbers_make_from(rax_mask, X86_RDX, -1), NULL);
+	reg_instr_clob(target, "wrmsr", clobbers_make_from(rax_mask, X86_RDX, -1), NULL);
+	reg_instr_clob(target, "shlb", cc_flag_mask, "rw:r8/mem, r8/imm8");
+	reg_instr_clob(target, "shlw", cc_flag_mask, "rw:r16/mem, r8/imm8");
+	reg_instr_clob(target, "shll", cc_flag_mask, "rw:r32/mem, r8/imm8");
+	reg_instr_clob(target, "shlq", cc_flag_mask, "rw:r64/mem, r8/imm8");
 	reg_instr(target, "ret", NULL);
 	reg_instr(target, "push", "imm8");
 	reg_instr(target, "pushw", "r16/mem/imm16");
 	reg_instr(target, "popw", "w:r16/mem");
-	
+
 	reg_instr(target, "stui", NULL);
 	reg_instr(target, "clui", NULL);
 	reg_instr(target, "senduipi", "r64");
@@ -799,7 +805,7 @@ static void init_asm_x86(PlatformTarget* target)
 	// SSE4.2 and VEX versions (no EVEX PCMPGTQ)
 	// Wish I could split crc32[l,q] here since it's got weird encodings, but AT&T does it's suffixes off of
 	// the source here, which I thought was worse. Ideally this has no suffixes anyway.
-	reg_instr_clob(target, "crc32", cc_flag_mask, "rw:r32/r64, r8/r16/r32/r64/mem"); 
+	reg_instr_clob(target, "crc32", cc_flag_mask, "rw:r32/r64, r8/r16/r32/r64/mem");
 	reg_instr_clob(target, "pcmpestri", rcx_cc_mask, "v128, v128, imm8");
 	reg_instr_clob(target, "vpcmpestri", rcx_cc_mask, "v128, v128, imm8");
 	reg_instr_clob(target, "pcmpestrm", xmm0_cc_mask, "v128, v128, imm8");
