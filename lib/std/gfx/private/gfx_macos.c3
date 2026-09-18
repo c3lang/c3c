@@ -770,7 +770,6 @@ fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat f
 fn void surface_release(GfxSurface* surface)
 {
 	if (!surface.data) return;
-	if (surface.native.native0) objc::release(surface.native.native0);
 	if (surface.native.buffer) free(surface.native.buffer);
 	*surface = {};
 }
@@ -1367,12 +1366,4 @@ import std::os::macos, std::math, std::time, std::os::darwin, std::collections, 
 import std::gfx::macos @public;
 
 
-struct GfxNativeImage
-{
-	GfxFormat format;
-	char* buffer;
-	ObjId native0;
-	void* native1;
-	void* native2;
-}
 

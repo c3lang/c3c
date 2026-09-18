@@ -29,7 +29,6 @@ struct GfxContext
 	uint[GFX_KEYS] apiKeycodes;
 	GfxKey[$feat(WIN32) ? 512 : 256] keycodes;
 	bool stop_check_events;
-	ulong timerOffset;
 	int[3] eventWait_forceStop @feat(LINUX, BSD);
 	GfxDataTransfer* clipboard;
 	bool dnd_build;

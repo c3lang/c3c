@@ -491,18 +491,6 @@ import std::math, std::time;
 import std::gfx::egl @public;
 import std::gfx::wasm @public;
 
-
-struct GfxNativeImage
-{
-	GfxFormat format;
-	char* buffer;
-	void* native0;
-	void* native1;
-	void* native2;
-}
-
-
-
 fn void _window_show_mouse_native(GfxWindow* win, bool show)
 {
 	_window_show_mouse_flags(win, show);

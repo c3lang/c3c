@@ -293,7 +293,7 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint blit = math::min(win.size, surface.size);
 	gfx::copy_image_data(surface.native.buffer, surface.size.x, blit.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
-	win32::bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdcMem, 0, 0, win32::SRCCOPY);
+	win32::bitBlt(win.src.hdc, 0, 0, ...blit, surface.native.hdc_mem, 0, 0, win32::SRCCOPY);
 }
 
 fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags) => @pool()
@@ -883,16 +883,16 @@ fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat f
 	surface.native.bitmap = win32::createDIBSection(gfx::_gfx.root.src.hdc, &bi, 0, (void**)&surface.native.buffer, null, 0);
 	if (!surface.native.bitmap) return gfx::EGL_SURFACE_CREATION_FAILED~;
 	defer catch surface.release();
-	surface.native.hdcMem = win32::createCompatibleDC(gfx::_gfx.root.src.hdc);
-	win32::selectObject(surface.native.hdcMem, surface.native.bitmap);
+	surface.native.hdc_mem = win32::createCompatibleDC(gfx::_gfx.root.src.hdc);
+	win32::selectObject(surface.native.hdc_mem, surface.native.bitmap);
 }
 
 fn void surface_release(GfxSurface* surface)
 {
 	if (!surface.data) return;
-	if (surface.native.hdcMem)
+	if (surface.native.hdc_mem)
 	{
-		win32::deleteDC(surface.native.hdcMem);
+		win32::deleteDC(surface.native.hdc_mem);
 		win32::deleteObject(surface.native.bitmap);
 	}
 	*surface = {};
@@ -1147,16 +1147,6 @@ module std::gfx @feat(WIN32) @private;
 import std::os::win32, std::collections, std::time, std::math, std::os;
 import std::gfx::egl @public;
 import std::gfx::win32 @public;
-
-
-
-struct GfxNativeImage
-{
-	GfxFormat format;
-	char* buffer; // bitmapBits
-	Win32_HBITMAP bitmap;
-	Win32_HDC hdcMem;
-}
 
 
 // --- Event handling

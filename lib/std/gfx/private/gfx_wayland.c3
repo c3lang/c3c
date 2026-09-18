@@ -292,7 +292,7 @@ fn void poll_monitors()
 fn GfxMouse*? create_mouse(char* data, GfxSize size, GfxFormat format)
 {
 	GfxSurface* surface = gfx::create_surface(data, ...size, format)!;
-	surface.native.wlBuffer = wl_shm_pool_create_buffer(surface.native.pool, 0, ...surface.size, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
+	surface.native.wl_buffer = wl_shm_pool_create_buffer(surface.native.pool, 0, ...surface.size, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
 	GfxSize min = math::min(size, surface.size);
 	gfx::copy_image_data(surface.native.buffer, min.x, min.y, surface.native.format, surface.data, surface.format, null);
 	return (GfxMouse*)surface;
@@ -330,18 +330,18 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 	WlCursor* wlcursor = wl_cursor_theme_get_cursor(ctx.wl_cursor_theme, cursorName);
 	if (!wlcursor) return gfx::MOUSE_NOT_SUPPORTED~;
 	WlCursorImage* cursorImage = wlcursor.images[0];
-	WlProxy* cursorBuffer = wl_cursor_image_get_buffer(cursorImage);
+	WlProxy* cursor_buffer = wl_cursor_image_get_buffer(cursorImage);
 
 	GfxSurface* surface = mem::new(GfxSurface);
 	surface.size = { (int)cursorImage.width, (int)cursorImage.height };
-	surface.native.wlBuffer = cursorBuffer;
+	surface.native.wl_buffer = cursor_buffer;
 	return (GfxMouse*)surface;
 }
 
 fn void free_mouse(GfxMouse* mouse)
 {
 	GfxSurface* surface = (GfxSurface*)mouse;
-	if (surface.native.buffer && surface.native.wlBuffer) wl_buffer_destroy(surface.native.wlBuffer);
+	if (surface.native.buffer && surface.native.wl_buffer) wl_buffer_destroy(surface.native.wl_buffer);
 	surface.destroy();
 }
 
@@ -355,14 +355,14 @@ fn GfxPoint get_global_mouse()
 fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	GfxPoint min = math::min(win.size, surface.size);
-	surface.native.wlBuffer = wl_shm_pool_create_buffer(surface.native.pool, 0, ...min, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
+	surface.native.wl_buffer = wl_shm_pool_create_buffer(surface.native.pool, 0, ...min, surface.size.x * 4, WL_SHM_FORMAT_ARGB8888);
 	gfx::copy_image_data(surface.native.buffer, min.x, min.y, surface.native.format, surface.data, surface.format, surface.convert_fn);
 
-	wl_surface_attach(win.src.surface, surface.native.wlBuffer, 0, 0);
+	wl_surface_attach(win.src.surface, surface.native.wl_buffer, 0, 0);
 	wl_surface_damage(win.src.surface, 0, 0, ...min);
 	wl_surface_commit(win.src.surface);
-	wl_buffer_destroy(surface.native.wlBuffer);
-	surface.native.wlBuffer = null;
+	wl_buffer_destroy(surface.native.wl_buffer);
+	surface.native.wl_buffer = null;
 }
 
 fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags) => @pool()
@@ -571,8 +571,8 @@ fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat form
 	gfx::copy_image_data(surface.native.buffer, minW, minH, surface.native.format, surface.data, surface.format, null);
 
 	win.src.icon = xdg_toplevel_icon_manager_v1_create_icon(ctx.icon_manager);
-	surface.native.wlBuffer = wl_shm_pool_create_buffer(surface.native.pool, 0, w, h, w * 4, WL_SHM_FORMAT_ARGB8888);
-	xdg_toplevel_icon_v1_add_buffer(win.src.icon, surface.native.wlBuffer, 1);
+	surface.native.wl_buffer = wl_shm_pool_create_buffer(surface.native.pool, 0, w, h, w * 4, WL_SHM_FORMAT_ARGB8888);
+	xdg_toplevel_icon_v1_add_buffer(win.src.icon, surface.native.wl_buffer, 1);
 	xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdgToplevel, win.src.icon);
 
 	return true;
@@ -594,7 +594,7 @@ fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 {
 	GfxSurface* surface = (GfxSurface*)mouse;
 	win.src.usingCustomCursor = true;
-	wl_surface_attach(win.src.customCursorSurface, surface.native.wlBuffer, 0, 0);
+	wl_surface_attach(win.src.customCursorSurface, surface.native.wl_buffer, 0, 0);
 	wl_surface_damage(win.src.customCursorSurface, 0, 0, ...surface.size);
 	wl_surface_commit(win.src.customCursorSurface);
 }

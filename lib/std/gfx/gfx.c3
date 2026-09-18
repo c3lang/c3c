@@ -207,6 +207,26 @@ struct GfxWindowSrc @feat(BSD, LINUX)
 	}
 }
 
+struct GfxNativeImage
+{
+	GfxFormat format;
+	char* buffer;
+	struct @feat(BSD, LINUX) @feat(!NO_X11) // X11
+	{
+		void* bitmap ;   // XImage*
+	}
+	struct @feat(WAYLAND)
+	{
+		void* pool;      // wl_shm_pool* (Wayland)
+		int fd;          // Wayland
+		void* wl_buffer; // wl_buffer* (Wayland)
+	}
+	struct @feat(WIN32)
+	{
+		Win32_HBITMAP bitmap;
+		Win32_HDC hdc_mem;
+	}
+}
 
 
 struct GfxCommonEvent
