@@ -2,7 +2,8 @@
 import re
 from pathlib import Path
 
-content = Path("src/version.h").read_text(encoding="utf-8")
+root = Path(__file__).resolve().parents[2]
+content = (root / "src" / "version.h").read_text(encoding="utf-8")
 match = re.search(r'COMPILER_VERSION\s+"([^"]+)"', content)
 if match:
     print(match.group(1), end="")
