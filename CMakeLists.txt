@@ -110,7 +110,6 @@ set(C3_PROFILING            OFF                         CACHE BOOL   "Build for 
 set(C3_LLVM_VERSION         "auto"                      CACHE STRING "Use LLVM version [default: auto]")
 set(C3_USE_MIMALLOC         OFF                         CACHE BOOL   "Use built-in mimalloc")
 set(C3_MIMALLOC_TAG         "v1.7.3"                    CACHE STRING "Used version of mimalloc")
-set(C3_USE_TB               OFF                         CACHE BOOL   "Use TB")
 set(C3_LLD_DIR              ""                          CACHE STRING "Use custom LLD directory")
 set(C3_LLD_INCLUDE_DIR      ""                          CACHE STRING "Use custom LLD include directory")
 set(C3_ENABLE_CLANGD_LSP    OFF                         CACHE BOOL   "Enable/Disable output of compile commands during generation")
@@ -152,21 +151,6 @@ if(C3_USE_MIMALLOC)
             GIT_TAG ${C3_MIMALLOC_TAG}
     )
     FetchContent_MakeAvailable(mimalloc)
-endif()
-
-find_package(Git QUIET)
-if(C3_USE_TB AND GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
-    # Update submodules as needed
-    option(GIT_SUBMODULE "Check submodules during build" ON)
-    if(GIT_SUBMODULE)
-        message(STATUS "Submodule update")
-        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                RESULT_VARIABLE GIT_SUBMOD_RESULT)
-        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-            message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
-        endif()
-    endif()
 endif()
 
 # Clangd LSP support
@@ -676,44 +660,7 @@ target_include_directories(miniz PUBLIC
 target_include_directories(xz_embedded PUBLIC
         "${CMAKE_SOURCE_DIR}/dependencies/xz/")
 
-if (C3_USE_TB)
-    file(GLOB tilde-sources
-            tilde-backend/src/tb/*.c
-            tilde-backend/src/tb/codegen/*.c
-            tilde-backend/src/tb/bigint/*.c
-            tilde-backend/src/tb/objects/*.c
-            tilde-backend/src/tb/system/*.c
-            tilde-backend/src/tb/debug/cv/*.c
-            tilde-backend/src/tb/opt/*.c
-            tilde-backend/src/tb/x64/*.c
-            tilde-backend/src/tb/wasm/*.c
-            tilde-backend/src/tb/aarch64/*.c
-    )
-    target_sources(c3c PRIVATE
-            src/compiler/tilde_codegen.c
-            src/compiler/tilde_codegen_instr.c
-            src/compiler/tilde_codegen_value.c
-            src/compiler/tilde_codegen_storeload.c
-            src/compiler/tilde_codegen_expr.c
-            src/compiler/tilde_codegen_stmt.c
-            src/compiler/tilde_codegen_type.c
-            src/compiler/tilde_codegen_abi.c
-            src/compiler/tilde_codegen_storeload.c)
-
-    target_compile_definitions(c3c PUBLIC TB_AVAILABLE=1)
-    target_link_libraries(c3c PRIVATE tilde-backend)
-    add_library(tilde-backend STATIC ${tilde-sources})
-    target_include_directories(tilde-backend PRIVATE
-            "${CMAKE_SOURCE_DIR}/tilde-backend/src/" "${CMAKE_SOURCE_DIR}/tilde-backend/include")
-
-    target_include_directories(c3c PRIVATE
-            "${CMAKE_SOURCE_DIR}/tilde-backend/include/")
-
-else()
-
-    target_compile_definitions(c3c PUBLIC TB_AVAILABLE=0)
-
-endif()
+target_compile_definitions(c3c PUBLIC TB_AVAILABLE=0)
 
 if(C3_WITH_LLVM)
     target_link_libraries(c3c PRIVATE miniz xz_embedded c3c_wrappers)

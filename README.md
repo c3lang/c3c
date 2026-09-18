@@ -434,49 +434,50 @@ called `hello_world` or `hello_world.exe`depending on platform.
 #### Compiling on MacOS
 
 1. Install [Homebrew](https://brew.sh/)
-2. Install CMake: `brew install cmake`
+2. Install Meson and Ninja: `brew install meson ninja`
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-4. Enter the C3C directory `cd c3c`.
-5. Set up CMake build: `cmake -B build -S . -DC3_FETCH_LLVM=ON`
-6. Build: `cmake --build build`
-7. Change directory to the build directory `cd build`
+   *(If you only need the latest commit, add `--depth=1` to the clone command)*
+4. Enter the C3C directory: `cd c3c`
+5. Set up Meson build: `meson setup build --buildtype=release -Dfetch_llvm=true`
+6. Build: `meson compile -C build`
 
 #### Compiling on Windows
 
-1. Make sure you have Visual Studio 17 2022 installed or alternatively install the "Buildtools for Visual Studio" (https://aka.ms/vs/17/release/vs_BuildTools.exe) and then select "Desktop development with C++"
-2. Install CMake
+1. Install Visual Studio 17 2022 or the [Buildtools for Visual Studio](https://aka.ms/vs/17/release/vs_BuildTools.exe) (select "Desktop development with C++").
+2. Install Meson and Ninja using either the [official MSI installer](https://github.com/mesonbuild/meson/releases) (includes Python and Ninja bundled), `winget install Meson.Meson Ninja-build.Ninja`, or `pip install meson ninja`.
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-4. Enter the C3C directory: `cd c3c`.
-5. Set up the CMake build: `cmake --preset windows-vs-2022-release -D C3_FETCH_LLVM=ON`
-6. Build: `cmake --build --preset windows-vs-2022-release`
+   *(If you only need the latest commit, add `--depth=1` to the clone command)*
+4. Enter the C3C directory: `cd c3c`
+5. In an **x64 Native Tools Command Prompt for VS 2022**, configure:
+   ```cmd
+   meson setup build --buildtype=release -Dfetch_llvm=true
+   ```
+6. Build:
+   ```cmd
+   meson compile -C build
+   ```
 
-You should now have a `c3c` executable in `build\Release`.
+You should now have a `c3c.exe` executable in `build`. You can try it out by running: `.\build\c3c.exe compile resources\examples\hash.c3`
 
-You can try it out by running some sample code: `c3c.exe compile ../../resources/examples/hash.c3`
+*(For a Debug build, replace `--buildtype=release` with `--buildtype=debug`).*
 
-Building `c3c` using Visual Studio Code is also supported when using the `CMake Tools` extension. Simply select the `Windows x64 Visual Studio 17 2022` configure preset and build.
-
-*Note that if you run into linking issues when building, make sure that you are using the latest version of VS17.*
-
-> [!NOTE]
-> **Debug Build:**
-> To avoid LLVM library conflicts, configure and build using the debug preset instead:
-> ```bash
-> cmake --preset windows-vs-2022-debug -D C3_FETCH_LLVM=ON
-> cmake --build --preset windows-vs-2022-debug
-> ```
-> *(Your executable will be located in `build-debug\Debug`)*
+To generate a Visual Studio solution instead of using Ninja, pass `--backend=vs2022 --buildtype=debug`:
+```cmd
+meson setup build --backend=vs2022 --buildtype=debug -Dfetch_llvm=true
+```
+Then open `build\c3c.sln` in Visual Studio.
 
 #### Compiling on Linux
 
 1. Install required build dependencies using your distribution's package manager:
-   - **Ubuntu / Debian:** `sudo apt-get install cmake git clang libcurl4-openssl-dev liblld-21`
-   - **Fedora:** `sudo dnf install cmake clang git libcurl-devel`
-   - **Arch Linux:** `sudo pacman -S curl clang cmake git`
-   - **Void Linux:** `sudo xbps-install git cmake clang libcurl-devel`
-   - **Alpine Linux:** `sudo apk add build-base cmake git curl-dev samurai zstd-static zstd-dev`
-   - **Chimera Linux:** `sudo apk add cmake git curl-devel ninja llvm-devel lld-devel`
-   - *Other distributions: Install CMake, Git, a C compiler (like Clang), and libcurl development headers.*
+   - **Ubuntu:** `sudo apt-get install git clang meson ninja-build libcurl4-openssl-dev libzstd-dev python3`
+   - **Debian 12:** `sudo apt-get install git clang ninja-build libcurl4-openssl-dev libzstd-dev python3 python3-pip && pip install 'meson>=1.1.0'`
+   - **Fedora:** `sudo dnf install git meson ninja-build clang libcurl-devel libzstd-devel python3 gcc-c++`
+   - **Arch Linux:** `sudo pacman -S meson ninja clang curl zstd python base-devel`
+   - **Void Linux:** `sudo xbps-install git meson ninja clang libcurl-devel libzstd-devel python3 base-devel`
+   - **Alpine Linux:** `sudo apk add build-base meson samurai git curl-dev zstd-dev python3 ca-certificates`
+   - **Chimera Linux:** `sudo apk add meson ninja clang lld git curl-devel libzstd-devel llvm-devel lld-devel python`
+   - *Other distributions: Install Meson (>= 1.1.0), Ninja, Git, a C/C++ compiler (GCC or Clang), Python 3, and development headers for libcurl and libzstd.*
 
 2. Clone the C3C repository and enter the directory:
    ```bash
@@ -485,15 +486,15 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
    ```
    *(If you only need the latest commit, add `--depth=1` to the clone command)*
 
-3. Create the CMake build cache:
+3. Create the Meson build directory:
    ```bash
-   cmake -B build -S . -DC3_FETCH_LLVM=ON -DCMAKE_BUILD_TYPE=Release
+   meson setup build --buildtype=release -Dfetch_llvm=true
    ```
-   *(Note: On Chimera Linux, omit `-DC3_FETCH_LLVM=ON` or pass `-DC3_FETCH_LLVM=OFF` to build using the system LLVM packages installed above).*
+   *(Note: On Chimera Linux, omit `-Dfetch_llvm=true` to build using the system LLVM/LLD packages installed above).*
 
 4. Build the compiler:
    ```bash
-   cmake --build build -j
+   meson compile -C build
    ```
 
 5. You should now have a `c3c` executable in the `build` directory. You can test it by compiling an example:
@@ -501,19 +502,19 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
    ./build/c3c compile resources/examples/hash.c3
    ```
 
-   *(Optional) Install globally: `sudo cmake --install build`*
-   *Or install to `~/.local`: `cmake --install build --prefix ~/.local`*
+   *(Optional) Install globally: `sudo meson install -C build`*
+   *Or install to `~/.local`: `meson install -C build --destdir ~/.local`*
 
 #### Compiling on NixOS
 
 1. Enter nix shell, by typing `nix develop` in root directory
-2. Configure cmake via `cmake . -Bbuild $=C3_CMAKE_FLAGS`. Note: passing `C3_CMAKE_FLAGS` is needed to generate `compile_commands.json` and find missing libs.
-3. Build it `cmake --build build`
+2. Configure: `meson setup build $=C3_MESON_FLAGS` (or `$C3_MESON_FLAGS` in bash)
+3. Build: `meson compile -C build`
 4. Test it out: `./build/c3c -V`
-5. If you use `clangd` lsp server for your editor, it is recommended to make a symbolic link to `compile_command.json` in the root: `ln -s ./build/compile_commands.json compile_commands.json`
+5. If you use `clangd` lsp server for your editor, link compile commands: `ln -s ./build/compile_commands.json compile_commands.json`
 
 *A note on compiling for Linux/Unix/MacOS: to be able to [fetch vendor libraries](# "`c3c vendor-fetch` will list easily downloadable bindings. For example: `c3c vendor-fetch raylib`")
-libcurl is needed. The CMake script should detect it if it is available. Note that
+libcurl is needed. Meson will detect it if available. Note that
 this functionality is non-essential and it is perfectly fine to use the compiler without it.*
 
 #### Licensing

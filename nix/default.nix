@@ -1,9 +1,13 @@
 {
   lib,
   llvmPackages,
-  cmake,
+  meson,
+  ninja,
+  pkg-config,
+  python3,
   curl,
   libxml2,
+  zstd,
   libffi,
   xar,
   rev,
@@ -34,7 +38,7 @@ in llvmPackages.stdenv.mkDerivation (_:
   # Similar situation is with __DATE__ and __TIME__ macros, which are
   # set to "Jan 01 1980 00:00:00" by default.
   postPatch = ''
-    substituteInPlace git_hash.cmake --replace-fail "\''${GIT_HASH}" "${rev}"
+    substituteInPlace scripts/meson/git_hash.h.in --replace-fail "@VCS_TAG@" "${rev}"
 
     local FILE_NAMES="$(find src -type f)"
     substituteInPlace $FILE_NAMES --replace-quiet "__DATE__" "\"$(date '+%b %d %Y')\""
@@ -52,18 +56,20 @@ in llvmPackages.stdenv.mkDerivation (_:
       --replace-fail 'ARGS="$ARGS --linker=builtin"' 'ARGS="$ARGS"'
   '';
 
-  cmakeBuildType = if debug then "Debug" else "Release";
+  mesonBuildType = if debug then "debug" else "release";
 
-  # Only set LLVM_CRT_LIBRARY_DIR for Darwin.
-  cmakeFlags = [
-    "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
-    "-DC3_LLD_DIR=${llvmPackages.lld.lib}/lib"
-  ] ++ lib.optionals llvmPackages.stdenv.hostPlatform.isDarwin [
-    "-DLLVM_CRT_LIBRARY_DIR=${llvmPackages.compiler-rt}/lib/darwin"
+  hardeningDisable = lib.optional debug "fortify";
+
+  mesonFlags = [
+    "-Dlld_dir=${llvmPackages.lld.lib}/lib"
+    "-Dlld_include_dir=${llvmPackages.lld.dev}/include"
   ];
 
   nativeBuildInputs = [
-    cmake
+    meson
+    ninja
+    pkg-config
+    python3
     llvmPackages.llvm
     llvmPackages.lld 
     llvmPackages.compiler-rt
@@ -72,6 +78,7 @@ in llvmPackages.stdenv.mkDerivation (_:
   buildInputs = [
     curl
     libxml2
+    zstd
     libffi
   ] ++ lib.optionals llvmPackages.stdenv.hostPlatform.isDarwin [ xar ];
 
