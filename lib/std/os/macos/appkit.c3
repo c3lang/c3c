@@ -215,3 +215,5 @@ constset NSApplicationTerminateReply : inline NSUInteger
 	NOW    = 1,
 	LATER  = 2,
 }
+
+extern ObjId nsCalibratedRGBColorSpace @cname("NSCalibratedRGBColorSpace");

@@ -1,5 +1,4 @@
 module std::os::darwin::cf @feat(DARWIN) @link("CoreFoundation.framework");
-
 alias OSStatus = int;
 typedef CFType = void;
 typedef CFTypeRef = CFType*;
@@ -63,3 +62,5 @@ constset CFStringEncoding : uint
     UTF32BE           = 0x18000100,
     UTF32LE           = 0x1c000100
 }
+
+extern const CFStringRef KCF_RUNLOOP_DEFAULT_MODE @cname("kCFRunLoopDefaultMode");

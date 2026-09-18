@@ -38,12 +38,12 @@ fn void poll_events_platform()
 		gfx::_reset_prev_state();
 		if (!ctx.app) return;
 		ObjId distantPast = darwin::nsdate().send(ObjId, "distantPast");
-		ObjId mode = darwin::string("kCFRunLoopDefaultMode");
+
 		while (true)
 		{
 			objc::@autoreleasepool()
 			{
-				ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, mode, true);
+				ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
 				if (!ev) break;
 				ctx.app.send_void("sendEvent:", ev);
 			};
@@ -52,15 +52,14 @@ fn void poll_events_platform()
 
 }
 
-fn void wait_for_event(Duration duration)
+fn void wait_for_event(Duration duration) => objc::@autoreleasepool()
 {
 	if (!ctx.app) return;
 	CFTimeInterval time = duration.to_sec();
 	if (duration == gfx::WAIT_FOREVER) time = CFTimeInterval::max;
 	if (time < 0) time = 0;
 	ObjId date = darwin::nsdate().send(ObjId, "dateWithTimeIntervalSinceNow:", time);
-	ObjId mode = darwin::string("kCFRunLoopDefaultMode");
-	ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, mode, true);
+	ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
 	if (ev) ctx.app.send_void("postEvent:atStart:", ev, true);
 }
 
@@ -288,21 +287,21 @@ fn GfxPoint get_global_mouse()
 fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 {
 	if (!surface.data) return;
-	GfxPoint min = math::min(win.size, surface.size);
-	if (try mon = window_find_monitor(win))
+	objc::@autoreleasepool()
 	{
-		min = (GfxPoint)((Vec2)min * mon.pixelRatio);
-	}
-	ObjId rep = _new_nsbitmap_image_rep(...min);
-	char* pixels = rep.send(char*, "bitmapData");
-	defer objc::release(rep);
-	if (!pixels) return;
-	gfx::copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
-	ObjId image = _new_nsimage(...min, rep);
-	win.src.view.send_void("setWantsLayer:", true);
-	ObjId layer = win.src.view.send(ObjId, "layer");
-	layer.send_void("setContents:", image);
-	objc::release(image);
+		GfxPoint min = math::min(win.size, surface.size);
+		ObjId rep = _new_nsbitmap_image_rep(...min);
+		char* pixels = rep.send(char*, "bitmapData");
+		defer objc::release(rep);
+		if (!pixels) return;
+		gfx::copy_image_data(pixels, ...min, RGBA8, surface.data, surface.format, surface.convert_fn);
+		ObjId image = _new_nsimage(...min, rep);
+		win.src.view.send_void("setWantsLayer:", true);
+		ObjId layer = win.src.view.send(ObjId, "layer");
+		layer.send_void("setContentsScale:", (CGFloat)1.0);
+		layer.send_void("setContents:", image);
+		objc::release(image);
+	};
 }
 
 fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
@@ -948,7 +947,7 @@ fn ObjId _new_nsbitmap_image_rep(int w, int h) @local
 {
 	return macos::nsbitmap_image_rep().alloc().send(ObjId,
 		"initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bitmapFormat:bytesPerRow:bitsPerPixel:",
-		(ZString*)null, (NSInteger)w, (NSInteger)h, (NSInteger)8, (NSInteger)4, true, false, darwin::string("NSCalibratedRGBColorSpace"),
+		(ZString*)null, (NSInteger)w, (NSInteger)h, (NSInteger)8, (NSInteger)4, true, false, macos::nsCalibratedRGBColorSpace,
 		(NSUInteger)2, (NSInteger)(w * 4), (NSInteger)32);
 }
 
