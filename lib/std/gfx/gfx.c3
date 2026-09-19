@@ -1750,10 +1750,15 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
  cannot interrupt that. To keep drawing during it, install a WINDOW_REFRESH callback,
  which is invoked from inside the platform loop.
 
+ If a window is given it instead picks next queued event for that window. Events belonging
+ to other windows are kept, not discarded; they are rotated to the back of the
+ queue and remain available to those windows.
+
+ @param [in] window : "Optionally only get events pertaining to a particular window"
  @return "The next event"
  @return? NO_MORE_ELEMENT : "If no event is pending"
 *>
-fn GfxEvent? poll()
+fn GfxEvent? poll(GfxWindow* window = null)
 {
 	if (!_gfx.event_len && !_gfx.polled_events)
 	{
@@ -1762,7 +1767,7 @@ fn GfxEvent? poll()
 		_gfx.polled_events = true;
 	}
 	defer catch _gfx.polled_events = false;
-	return peep();
+	return peep(window);
 }
 
 <*
@@ -1771,54 +1776,19 @@ fn GfxEvent? poll()
  Use this to drain what is already queued without giving the platform a chance to
  deliver more; poll() is the usual choice.
 
+ If a window is given it instead picks next queued event for that window. Events belonging
+ to other windows are kept, not discarded; they are rotated to the back of the
+ queue and remain available to those windows.
+
+ @param [in] window : "Optionally the window to filter on"
  @return "The next event"
  @return? NO_MORE_ELEMENT : "If the queue is empty"
 *>
-fn GfxEvent? peep()
+fn GfxEvent? peep(GfxWindow* window = null)
 {
 	_gfx.queue_events = true;
-	return event_queue_pop();
+	return window ? _window_event_queue_pop(window) : event_queue_pop();
 }
-
-<*
- Get the next queued event for this window without pumping the platform.
-
- Events belonging to other windows are kept, not discarded; they are rotated to the
- back of the queue and remain available to those windows.
-
- @param [&in] self : "The window to filter on"
- @return "The next event for this window, or a window-independent event"
- @return? NO_MORE_ELEMENT : "If no matching event is queued"
-*>
-fn GfxEvent? GfxWindow.peep(&self)
-{
-	_gfx.queue_events = true;
-	return _window_event_queue_pop(self);
-}
-
-<*
- Get the next event for this window, pumping the platform first if the queue is empty.
-
- Events belonging to other windows are kept, not discarded; they are rotated to the
- back of the queue and remain available to those windows. The same platform-loop
- caveat as poll() applies.
-
- @param [&in] self : "The window to filter on"
- @return "The next event for this window, or a window-independent event"
- @return? NO_MORE_ELEMENT : "If no matching event is pending"
-*>
-fn GfxEvent? GfxWindow.poll(&self)
-{
-	if (!_gfx.event_len && !_gfx.polled_events)
-	{
-		_gfx.queue_events = true;
-		_poll_events_platform();
-		_gfx.polled_events = true;
-	}
-	defer catch _gfx.polled_events = false;
-	return self.peep();
-}
-
 
 <*
  Translate a platform keycode into a GfxKey.
