@@ -1033,7 +1033,8 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 	{
 		case VARDECL_CONST:
 			if (decl->is_extern) return true;
-			if (type_is_aggregate(decl->type)) return true;
+			// Only fold aggregates if they are untyped and local
+			if ((decl->var.type_info || !decl->var.is_static) && type_is_aggregate(decl->type)) return true;
 			expr_replace(expr, copy_expr_single(decl->var.init_expr));
 			if (!sema_analyse_expr_rvalue(context, expr)) return false;
 			if (!sema_cast_const(expr) && !expr_is_runtime_const(expr))
