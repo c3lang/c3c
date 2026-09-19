@@ -669,7 +669,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 		.cAlphaBits = 8,
 		.cDepthBits = 24,
 		.cStencilBits = (char)hints.stencil,
-		.cAuxBuffers = (char)hints.auxBuffers,
+		.cAuxBuffers = (char)hints.aux_buffers,
 	};
 	if (hints.stereo) pfd.dwFlags |= win32::PFD_STEREO;
 	if (hints.renderer == SOFTWARE) pfd.dwFlags |= win32::PFD_GENERIC_FORMAT | win32::PFD_GENERIC_ACCELERATED;
@@ -689,7 +689,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 			WGL_DEPTH_BITS_ARB,         hints.depth,
 			WGL_STENCIL_BITS_ARB,       hints.stencil,
 			WGL_STEREO_ARB,             hints.stereo,
-			WGL_AUX_BUFFERS_ARB,        hints.auxBuffers,
+			WGL_AUX_BUFFERS_ARB,        hints.aux_buffers,
 			WGL_RED_BITS_ARB,           hints.rgba_size.r,
 			WGL_GREEN_BITS_ARB,         hints.rgba_size.g,
 			WGL_BLUE_BITS_ARB,          hints.rgba_size.b,

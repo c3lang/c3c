@@ -186,7 +186,6 @@ struct GfxWindowSrc @feat(BSD, LINUX)
 		GContext gc;
 		XlibIC ic;
 		Clock flashEnd;
-		// _NET_WM_SYNC_REQUEST resize handshake state, see _init_resize_sync.
 		XSyncCounter counter;
 		XSyncValue resize_id;
 		bool resize_in_progress;
@@ -299,6 +298,7 @@ struct GfxMonitorEvent
 	GfxMonitor* monitor;
 	bool state;
 }
+
 struct GfxWindowUpdateEvent
 {
 	inline GfxCommonEvent common;
@@ -351,12 +351,14 @@ struct GfxEglContext
 }
 
 const GfxGlHints GLOBAL_HINTS = {
-	0, 0, 0, 0, 1,
-	{ 8, 8, 8, 8 },
-	24,
-	{ 0, 0, 0, 0 },
-	false, false, false, false, NONE,
-	CORE, 1, 0, null, null, ACCELERATED
+	.double_buffer = 1,
+	.rgba_size = (int[<4>])8,
+	.depth = 24,
+	.release_behavior = NONE,
+	.profile = CORE,
+	.major = 1,
+	.minor = 0,
+	.renderer = ACCELERATED,
 };
 
 GfxGlHints _global_hints_open_gl = GLOBAL_HINTS;
@@ -367,8 +369,8 @@ struct GfxGlHints
 	int stencil;
 	int samples;
 	int stereo;
-	int auxBuffers;
-	int doubleBuffer;
+	int aux_buffers;
+	int double_buffer;
 	int[<4>] rgba_size;
 	int depth;
 	int[<4>] accum_size;
@@ -1595,6 +1597,16 @@ fn GfxGenericFn set_event_callback(GfxEventType type, GfxGenericFn func)
 	return old;
 }
 
+<*
+ - Runs synchronously on the UI/event thread.
+ - May run while poll() or wait() is still on the stack.
+ - Is not queued or affected by event masks.
+ - Receives a damage hint in defined coordinates.
+ - Sees the latest window size.
+ - Does not make a graphics context current automatically.
+ - May draw/present, but must return promptly.
+ - Must not destroy the window, recursively pump events, or perform potentially reentrant native mutations.
+*>
 fn GfxRepaintFn GfxWindow.set_repaint_callback(&self, GfxRepaintFn repaint_fn)
 {
 	GfxRepaintFn old = self.repaint_fn;

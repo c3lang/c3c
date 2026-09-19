@@ -606,7 +606,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 		NS_OPEN_GL_PFA_ALPHA_SIZE, hints.rgba_size.a,
 		NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth,
 		NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil,
-		NS_OPEN_GL_PFA_AUX_BUFFERS, hints.auxBuffers,
+		NS_OPEN_GL_PFA_AUX_BUFFERS, hints.aux_buffers,
 		NS_OPEN_GL_PFA_CLOSEST_POLICY});
 	if (hints.samples)
 	{
@@ -616,7 +616,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	{
 		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0 });
 	}
-	if (hints.doubleBuffer) stack.push(NS_OPEN_GL_PFA_DOUBLE_BUFFER);
+	if (hints.double_buffer) stack.push(NS_OPEN_GL_PFA_DOUBLE_BUFFER);
 	stack.push(NS_OPEN_GL_PFA_OPEN_GL_PROFILE);
 	stack.push(hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
 	if (hints.major <= 2)

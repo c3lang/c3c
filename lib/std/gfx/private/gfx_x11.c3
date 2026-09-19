@@ -891,7 +891,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* conte
 		GLX_DEPTH_SIZE,        hints.depth,
 		GLX_STENCIL_SIZE,      hints.stencil,
 		GLX_STEREO,            hints.stereo,
-		GLX_AUX_BUFFERS,       hints.auxBuffers,
+		GLX_AUX_BUFFERS,       hints.aux_buffers,
 		GLX_RED_SIZE,          hints.rgba_size.r,
 		GLX_GREEN_SIZE,        hints.rgba_size.g,
 		GLX_BLUE_SIZE,         hints.rgba_size.b,
@@ -1301,8 +1301,10 @@ fn void? _create_window(XVisualInfo visual, String name, GfxWindowFlags flags, G
 	swa.event_mask = eventMask;
 	swa.background_pixmap = 0;
 
+	swa.bit_gravity = 1; // NorthWestGravity
+	// valuemask: CWBorderPixel (1<<3) | CWBitGravity (1<<4) | CWColormap (1<<13) | CWEventMask (1<<11)
 	win.src.window = xCreateWindow(ctx.display, win.src.parent, win.x, win.y, (uint)win.width, (uint)win.height,
-	0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 13) | (1 << 11), &swa);
+	0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 4) | (1 << 13) | (1 << 11), &swa);
 	// CWBorderPixel | CWColormap | CWEventMask
 	if (!win.src.window) return gfx::X11_WINDOW_CREATION_FAILED~;
 
