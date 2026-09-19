@@ -119,7 +119,7 @@ fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 	return modes.array_view();
 }
 
-fn IntRect monitor_get_workarea(GfxMonitor* monitor)
+fn GfxRect monitor_get_workarea(GfxMonitor* monitor)
 {
 	ObjId screen = monitor.node ? (ObjId)monitor.node.screen : null;
 	if (!screen)
@@ -1126,13 +1126,12 @@ fn void _osx_window_will_close(ObjId self, ObjSel sel, ObjId notification)
 // AppKit runs its own event loop while the user drags a window edge, so the
 // application's loop gets no control until the drag ends. A timer registered in the
 // common run loop modes still fires inside that loop, which is the only chance to
-// drive a redraw. Applications see this as WINDOW_REFRESH, so drawing during a live
-// resize needs an installed callback -- a polling loop is blocked for the duration.
+// drive a redraw. Applications will get a repaint callback during resize.
 fn void _osx_window_will_start_live_resize(ObjId self, ObjSel sel, ObjId notification)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
-	if (!win.src.view) return;
+	if (!win.src.view || !win.repaint_fn) return;
 	// Aim for 60 FPS while resizing, as SDL does.
 	double interval = 1.0 / 60.0;
 	win.src.resize_timer = darwin::nstimer().send(ObjId, "scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:",
@@ -1140,9 +1139,7 @@ fn void _osx_window_will_start_live_resize(ObjId self, ObjSel sel, ObjId notific
 	darwin::nsrun_loop().send(ObjId, "currentRunLoop").send_void("addTimer:forMode:", win.src.resize_timer, (ObjId)cf::KCF_RUNLOOP_COMMON_MODES);
 }
 
-// A redraw only: windowDidResize: still reports the geometry changes, so driving the
-// resize path from here would double every WINDOW_RESIZED and re-run the
-// maximize/restore detection on every tick.
+// A redraw only: windowDidResize: still reports the geometry changes, so this is just to ensure redraw during resize.
 fn void _osx_resize_timer(ObjId self, ObjSel sel, ObjId userinfo)
 {
 	GfxWindow*? win = _fetch_win(self);

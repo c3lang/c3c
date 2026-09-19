@@ -46,7 +46,7 @@ fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => NOT
 
 fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* mon) => {};
 
-fn IntRect monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
+fn GfxRect monitor_get_workarea(GfxMonitor* monitor) => { -1, -1, -1, -1 };
 
 fn void monitor_node_free(GfxMonitorNode* node) {}
 

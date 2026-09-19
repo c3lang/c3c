@@ -232,7 +232,7 @@ fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 	return modes.array_view();
 }
 
-fn IntRect monitor_get_workarea(GfxMonitor* monitor)
+fn GfxRect monitor_get_workarea(GfxMonitor* monitor)
 {
 	XWindow root = xDefaultRootWindow(ctx.display);
 	int areaX = monitor.origin.x;

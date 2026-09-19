@@ -24,6 +24,7 @@ struct GfxContext
 	GfxEvent[MAX_EVENTS] events;
 	int event_bottom;
 	int event_len;
+	bool event_error_reported;
 	bool queue_events;
 	bool polled_events;
 	uint[GFX_KEYS] api_keycodes;
@@ -130,7 +131,7 @@ struct GfxWindowInternal
 	GfxKeyModifier mod;
 	GfxEventMask enabled_events;
 	GfxWindowFlags flags;
-	IntRect old_bounds;
+	GfxRect old_bounds;
 	GfxMonitorMode oldMode;
 	GfxMouse* mouse;
 }
@@ -489,7 +490,7 @@ fn void _mouse_button_callback(GfxWindow* win, GfxMouseButton button, bool press
 	_event_queue_call_push(&event);
 }
 
-fn void _window_maximized_callback(GfxWindow* win, IntRect bounds)
+fn void _window_maximized_callback(GfxWindow* win, GfxRect bounds)
 {
 	win.internal.flags.maximize = true;
 	win.bounds = bounds;
@@ -605,14 +606,9 @@ fn void _mouse_scroll_callback(GfxWindow* win, Vec2 delta)
 	_event_queue_call_push(&event);
 }
 
-fn void _window_refresh_callback(GfxWindow* win, IntRect bounds)
+fn void _window_refresh_callback(GfxWindow* win, GfxRect bounds)
 {
-	if (!win.internal.enabled_events.window_refresh) return;
-	GfxEvent event;
-	event.type = WINDOW_REFRESH;
-	event.update.bounds = bounds;
-	event.common.win = win;
-	_event_queue_call_push(&event);
+	if (GfxRepaintFn f = win.repaint_fn) f(win, bounds);
 }
 
 fn void _raw_motion_callback(GfxWindow* win, Vec2 delta)
@@ -630,6 +626,7 @@ fn void _window_resized_callback(GfxWindow* win, GfxSize size)
 {
 	win.size = size;
 	if (!win.internal.enabled_events.window_resized) return;
+
 	GfxEvent event;
 	event.type = WINDOW_RESIZED;
 	event.update.bounds = win.bounds;
@@ -761,7 +758,7 @@ fn void _key_char_callback(GfxWindow* win, uint codepoint)
 	_event_queue_call_push(&event);
 }
 
-fn void _window_restored_callback(GfxWindow* win, IntRect bounds)
+fn void _window_restored_callback(GfxWindow* win, GfxRect bounds)
 {
 	win.internal.flags.minimize = false;
 	win.bounds = bounds;

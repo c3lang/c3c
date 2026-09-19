@@ -56,13 +56,15 @@ excuse
 	EGL_CONFIG_NOT_FOUND,
 }
 
-
 const Duration WAIT_FOREVER = Duration::max;
 
-alias GfxGenericFunc = fn void(GfxEvent* e);
+alias GfxGenericFn = fn void(GfxEvent* e);
 alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
+alias GfxRepaintFn = fn void(GfxWindow* w, GfxRect rect);
+
 alias GfxPoint = int[<2>];
 alias GfxSize = int[<2>];
+alias GfxRect = IntRect;
 typedef GfxMouse = void;
 
 struct GfxSurface
@@ -110,10 +112,11 @@ struct GfxMonitor
 
 struct GfxWindow
 {
-	inline IntRect bounds;
-	GfxWindowSrc src;
+	inline GfxRect    bounds;
+	GfxRepaintFn      repaint_fn;
+	GfxWindowSrc      src;
 	GfxWindowInternal internal;
-	void* user_ptr;
+	void*             user_ptr;
 }
 
 struct GfxDataTransfer
@@ -132,7 +135,7 @@ struct GfxDataDropNode
 
 struct GfxWindowSrc @feat(WASM)
 {
-	inline IntRect    bounds;
+	inline GfxRect    bounds;
 	void*             window;
 	void*             view;
 	void*             mouse;
@@ -144,7 +147,7 @@ struct GfxWindowSrc @feat(WASM)
 
 struct GfxWindowSrc @feat(MACOS)
 {
-	inline IntRect    bounds;
+	inline GfxRect    bounds;
 	ObjId             window;
 	ObjId             view;
 	ObjId             mouse;
@@ -156,7 +159,7 @@ struct GfxWindowSrc @feat(MACOS)
 
 struct GfxWindowSrc @feat(WIN32)
 {
-	inline IntRect      bounds;
+	inline GfxRect      bounds;
 	Win32_HWND          window;
 	Win32_HDC           hdc;
 	Win32_HICON         hIconSmall;
@@ -173,7 +176,7 @@ struct GfxWindowSrc @feat(WIN32)
 
 struct GfxWindowSrc @feat(BSD, LINUX)
 {
-	inline IntRect bounds;
+	inline GfxRect bounds;
 	GfxBackingContext ctx;
 	GfxBacking backing;
 	struct @feat(!NO_X11)
@@ -299,7 +302,7 @@ struct GfxMonitorEvent
 struct GfxWindowUpdateEvent
 {
 	inline GfxCommonEvent common;
-	IntRect bounds;
+	GfxRect bounds;
 }
 
 union GfxEvent
@@ -319,7 +322,7 @@ union GfxEvent
 	GfxMonitorEvent monitor;
 }
 
-alias GfxEventCallbacks = EnumMap{GfxEventType, GfxGenericFunc};
+alias GfxEventCallbacks = EnumMap{GfxEventType, GfxGenericFn};
 
 struct GfxGlContext
 {
@@ -639,7 +642,6 @@ enum GfxEventType : char
 	WINDOW_RESIZED,
 	WINDOW_FOCUS_IN,
 	WINDOW_FOCUS_OUT,
-	WINDOW_REFRESH,
 	WINDOW_CLOSE,
 	WINDOW_MAXIMIZED,
 	WINDOW_MINIMIZED,
@@ -667,21 +669,20 @@ bitstruct GfxEventMask : uint
 	bool window_resized        : 12;
 	bool window_focus_in       : 13;
 	bool window_focus_out      : 14;
-	bool window_refresh        : 15;
-	bool window_close          : 16;
-	bool window_maximized      : 17;
-	bool window_minimized      : 18;
-	bool window_restored       : 19;
-	bool data_drop             : 20;
-	bool data_drag             : 21;
-	bool scale_updated         : 22;
-	bool monitor_connected     : 23;
-	bool monitor_disconnected  : 24;
+	bool window_close          : 15;
+	bool window_maximized      : 16;
+	bool window_minimized      : 17;
+	bool window_restored       : 18;
+	bool data_drop             : 19;
+	bool data_drag             : 20;
+	bool scale_updated         : 21;
+	bool monitor_connected     : 22;
+	bool monitor_disconnected  : 23;
 }
 
 const GfxEventMask KEY_EVENTS            = { .key_pressed, .key_released, .key_char };
 const GfxEventMask MOUSE_EVENTS          = { .mouse_button_pressed, .mouse_button_released, .mouse_scroll, .mouse_motion, .mouse_raw_motion, .mouse_enter, .mouse_leave };
-const GfxEventMask WINDOW_EVENTS         = { .window_moved, .window_resized, .window_refresh, .window_maximized, .window_minimized, .window_restored, .scale_updated };
+const GfxEventMask WINDOW_EVENTS         = { .window_moved, .window_resized, .window_maximized, .window_minimized, .window_restored, .scale_updated };
 const GfxEventMask WINDOW_FOCUS_EVENTS   = { .window_focus_in, .window_focus_out };
 const GfxEventMask DATA_DRAG_DROP_EVENTS = { .data_drop, .data_drag };
 const GfxEventMask MONITOR_EVENTS        = { .monitor_connected, .monitor_disconnected };
@@ -1587,10 +1588,17 @@ fn Vec2 get_mouse_delta() => _gfx.vector;
  @param func : "The callback, or null to remove the current one"
  @return "The callback that was previously installed, or null if there was none"
 *>
-fn GfxGenericFunc set_event_callback(GfxEventType type, GfxGenericFunc func)
+fn GfxGenericFn set_event_callback(GfxEventType type, GfxGenericFn func)
 {
-	GfxGenericFunc old = _gfx.callbacks[type];
+	GfxGenericFn old = _gfx.callbacks[type];
 	_gfx.callbacks[type] = func;
+	return old;
+}
+
+fn GfxRepaintFn GfxWindow.set_repaint_callback(&self, GfxRepaintFn repaint_fn)
+{
+	GfxRepaintFn old = self.repaint_fn;
+	self.repaint_fn = repaint_fn;
 	return old;
 }
 
@@ -1604,10 +1612,10 @@ fn GfxGenericFunc set_event_callback(GfxEventType type, GfxGenericFunc func)
  @param [out] first : "Receives the previous callback for type, may be null"
  @param [out] second : "Receives the previous callback for the following type, may be null"
 *>
-fn void set_dual_event_callback(GfxEventType type, GfxGenericFunc func, GfxGenericFunc* first, GfxGenericFunc* second)
+fn void set_dual_event_callback(GfxEventType type, GfxGenericFn func, GfxGenericFn* first, GfxGenericFn* second)
 {
-	GfxGenericFunc func1 = set_event_callback(type, func);
-	GfxGenericFunc func2 = set_event_callback((GfxEventType)(type.ordinal + 1), func);
+	GfxGenericFn func1 = set_event_callback(type, func);
+	GfxGenericFn func2 = set_event_callback((GfxEventType)(type.ordinal + 1), func);
 	if (first != null) *first = func1;
 	if (second != null) *second = func2;
 }
@@ -1655,7 +1663,7 @@ fn GfxMouse*? create_mouse(void* data, GfxSize size, GfxFormat format)
  @param func : "The callback to install"
  @param [out] callbacks : "Receives the callbacks being replaced, may be null"
 *>
-fn void set_all_event_callback(GfxGenericFunc func, GfxEventCallbacks* callbacks)
+fn void set_all_event_callback(GfxGenericFn func, GfxEventCallbacks* callbacks)
 {
 	foreach (i : GfxEventType::values[1..])
 	{
@@ -1687,13 +1695,27 @@ fn void event_queue_push(GfxEvent* event)
 	if (!_gfx.queue_events) return;
 	if (_gfx.event_len >= MAX_EVENTS)
 	{
-		log::error("Event queue limit 'MAX_EVENTS' has been reached automatically flushing queue.", category: log::CATEGORY_VIDEO);
-		event_queue_flush();
+		if (!_gfx.event_error_reported)
+		{
+			log::error("Event queue limit 'MAX_EVENTS' has been reached, dropping events.", category: log::CATEGORY_VIDEO);
+			_gfx.event_error_reported = true;
+		}
+		(void)event_queue_pop();
 		return;
 	}
-	int eventTop = (_gfx.event_bottom + _gfx.event_len) % MAX_EVENTS;
+	// Coalesce window resized.
+	if (event.type == WINDOW_RESIZED && _gfx.event_len)
+	{
+		int event_prev = (_gfx.event_bottom + _gfx.event_len + MAX_EVENTS - 1) % MAX_EVENTS;
+		if (_gfx.events[event_prev].type == WINDOW_RESIZED)
+		{
+			_gfx.events[event_prev] = *event;
+			return;
+		}
+	}
+	int event_top = (_gfx.event_bottom + _gfx.event_len) % MAX_EVENTS;
 	_gfx.event_len += 1;
-	_gfx.events[eventTop] = *event;
+	_gfx.events[event_top] = *event;
 }
 
 <*
@@ -1706,7 +1728,8 @@ fn GfxEvent? event_queue_pop()
 {
 	if (!_gfx.event_len) return NO_MORE_ELEMENT~;
 	GfxEvent* ev = &_gfx.events[_gfx.event_bottom];
-	_gfx.event_len--;
+	if (_gfx.event_len-- == 1) _gfx.event_error_reported = false;
+
 	_gfx.event_bottom = (_gfx.event_bottom + 1) % MAX_EVENTS;
 	return *ev;
 }
@@ -1744,7 +1767,7 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 
  While the user drags or resizes a window, or opens a menu, the platform runs its own
  loop inside this call and it does not return until that finishes. wake()
- cannot interrupt that. To keep drawing during it, install a WINDOW_REFRESH callback,
+ cannot interrupt that. To keep drawing during it, install a set_repaint_callback callback,
  which is invoked from inside the platform loop.
 
  If a window is given it instead picks next queued event for that window. Events belonging
@@ -2076,7 +2099,7 @@ fn GfxMonitorMode[] GfxMonitor.get_modes(&monitor, Allocator allocator)
 
  @return "The usable rectangle in screen coordinates"
 *>
-fn IntRect GfxMonitor.get_workarea(&monitor)
+fn GfxRect GfxMonitor.get_workarea(&monitor)
 {
 	return _monitor_get_workarea(monitor);
 }
@@ -2459,7 +2482,7 @@ fn void GfxMouse.free_mouse(&self)
 
  This has no effect on a poll() that has entered a platform modal loop, such as an
  interactive resize or an open menu: that loop belongs to the window system and
- cannot be cancelled. Draw from a WINDOW_REFRESH callback instead.
+ cannot be cancelled. Draw from a set_repaint_callback callback instead.
 *>
 fn void wake()
 {

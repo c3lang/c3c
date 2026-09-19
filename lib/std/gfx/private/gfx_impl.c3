@@ -177,7 +177,7 @@ fn GfxMonitorMode[] _monitor_get_modes(GfxMonitor* monitor)
 	$endswitch
 }
 
-fn IntRect _monitor_get_workarea(GfxMonitor* monitor)
+fn GfxRect _monitor_get_workarea(GfxMonitor* monitor)
 {
 	$switch:
 		$case $feat(MACOS):

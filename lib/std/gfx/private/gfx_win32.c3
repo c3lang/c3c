@@ -114,7 +114,7 @@ fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 	return modes.array_view();
 }
 
-fn IntRect monitor_get_workarea(GfxMonitor* monitor)
+fn GfxRect monitor_get_workarea(GfxMonitor* monitor)
 {
 	Win32_MONITORINFOEXW mi;
 	mi.cbSize = Win32_MONITORINFOEXW::size;
