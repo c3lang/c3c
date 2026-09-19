@@ -783,7 +783,7 @@ fn void convert_image_data_64(char* dst_data, char* src_data, GfxColorLayout* sr
 }
 
 <*
- @require !@catch(dest_w.overflow_mul(dest_h))
+ @require !@catch(dst_w.overflow_mul(dst_h))
 *>
 fn void copy_image_data_64(char* dst_data, int dst_w, int dst_h, GfxFormat dst_format, char* src_data, GfxFormat src_format, bool is64bit, GfxConvertImageDataFn func)
 {
