@@ -1,6 +1,8 @@
 module std::time::clock;
 import std::time::os;
 
+const Clock FAR_FUTURE = (Clock)long::max;
+
 fn Clock now()
 {
 	$if $defined(os::native_clock):
