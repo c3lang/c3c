@@ -137,7 +137,7 @@ fn void poll_events_platform()
 	while (xQLength(ctx.display)) _handle_event();
 }
 
-fn void wait_for_event(Duration duration)
+fn void _wait_platform(Duration duration)
 {
 	if (gfx::_gfx.event_wait_force_stop[0] == 0 || gfx::_gfx.event_wait_force_stop[1] == 0)
 	{
@@ -186,6 +186,10 @@ fn void wait_for_event(Duration duration)
 		if (os::poll(&fds[0], 1, (CInt)ms) <= 0) break;
 		once = false;
 	}
+	// Dispatch the event that ended the wait, so a caller that woke on an event finds
+	// it queued rather than having to poll again. The loop also exits on timeout and
+	// on a wake, where there is nothing pending.
+	if (xQLength(ctx.display)) _handle_event();
 }
 
 
@@ -1836,7 +1840,7 @@ fn bool _wait_for_show_event(GfxWindow* win) @local
 	XEvent dummy;
 	while (xCheckTypedWindowEvent(ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
 	{
-		wait_for_event(time::ms(100));
+		_wait_platform(time::ms(100));
 	}
 	return true;
 }

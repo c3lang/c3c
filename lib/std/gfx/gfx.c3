@@ -1616,13 +1616,25 @@ fn void set_dual_event_callback(GfxEventType type, GfxGenericFunc func, GfxGener
 }
 
 <*
- Block until an event arrives or the timeout expires.
+ Block until an event arrives, the timeout expires, or wake() is called.
+
+ If an event was already queued this returns immediately without blocking. When the
+ wait ends because a platform event arrived, that event is dispatched before
+ returning, so it is available here rather than only on the next poll().
+
+ Returns nothing when the timeout expires, when the wait was interrupted by
+ wake(), or when the arriving event was filtered out by the receiving
+ window's enabled events. All three are ordinary outcomes, not errors.
+
+ Blocking is not possible while the platform owns the loop -- see poll().
 
  @param duration : "How long to wait; WAIT_FOREVER to block indefinitely"
+ @return "The event that ended the wait"
+ @return? NO_MORE_ELEMENT : "On timeout, on interruption, or if the event was filtered"
 *>
-fn void wait_for_event(Duration duration)
+fn GfxEvent? wait(Duration duration)
 {
-	_wait_for_event(duration);
+	return _wait(duration);
 }
 
 <*
@@ -1727,10 +1739,16 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 }
 
 <*
- Get the next event for any window, polling the platform first if the queue is empty.
+ Get the next event for any window, pumping the platform first if the queue is empty.
 
  This is the normal driver for an event loop; it both pumps the platform and drains
- the queue.
+ the queue. The platform is pumped at most once per drain, so looping on this until
+ it yields nothing costs a single pump.
+
+ While the user drags or resizes a window, or opens a menu, the platform runs its own
+ loop inside this call and it does not return until that finishes. wake()
+ cannot interrupt that. To keep drawing during it, install a WINDOW_REFRESH callback,
+ which is invoked from inside the platform loop.
 
  @return "The next event"
  @return? NO_MORE_ELEMENT : "If no event is pending"
@@ -1748,7 +1766,10 @@ fn GfxEvent? poll()
 }
 
 <*
- Get the next queued event without polling the platform.
+ Get the next queued event without pumping the platform.
+
+ Use this to drain what is already queued without giving the platform a chance to
+ deliver more; poll() is the usual choice.
 
  @return "The next event"
  @return? NO_MORE_ELEMENT : "If the queue is empty"
@@ -1760,10 +1781,13 @@ fn GfxEvent? peep()
 }
 
 <*
- Get the next queued event for a window without polling the platform.
+ Get the next queued event for this window without pumping the platform.
+
+ Events belonging to other windows are kept, not discarded; they are rotated to the
+ back of the queue and remain available to those windows.
 
  @param [&in] self : "The window to filter on"
- @return "The next event for this window"
+ @return "The next event for this window, or a window-independent event"
  @return? NO_MORE_ELEMENT : "If no matching event is queued"
 *>
 fn GfxEvent? GfxWindow.peep(&self)
@@ -1773,10 +1797,14 @@ fn GfxEvent? GfxWindow.peep(&self)
 }
 
 <*
- Get the next event for a window, polling the platform first if the queue is empty.
+ Get the next event for this window, pumping the platform first if the queue is empty.
+
+ Events belonging to other windows are kept, not discarded; they are rotated to the
+ back of the queue and remain available to those windows. The same platform-loop
+ caveat as poll() applies.
 
  @param [&in] self : "The window to filter on"
- @return "The next event for this window"
+ @return "The next event for this window, or a window-independent event"
  @return? NO_MORE_ELEMENT : "If no matching event is pending"
 *>
 fn GfxEvent? GfxWindow.poll(&self)
@@ -2457,11 +2485,18 @@ fn void GfxMouse.free_mouse(&self)
 }
 
 <*
- Wake a thread blocked in wait_for_event().
+ Interrupt a wait() in progress, which then returns with no event.
+
+ Safe to call when nothing is waiting, in which case the next wait()
+ returns immediately.
+
+ This has no effect on a poll() that has entered a platform modal loop, such as an
+ interactive resize or an open menu: that loop belongs to the window system and
+ cannot be cancelled. Draw from a WINDOW_REFRESH callback instead.
 *>
-fn void stop_check_events()
+fn void wake()
 {
-	_stop_check_events();
+	_wake();
 }
 
 <*

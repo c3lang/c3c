@@ -36,7 +36,7 @@ fn void poll_events_platform()
 	if (gfx::_gfx.usingAsyncify) gfx::gfxJsSleep(0);
 }
 
-fn void wait_for_event(Duration duration)
+fn void _wait_platform(Duration duration)
 {}
 
 

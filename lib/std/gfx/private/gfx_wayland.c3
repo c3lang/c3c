@@ -155,7 +155,7 @@ fn void poll_events_platform()
 	}
 }
 
-fn void wait_for_event(Duration duration)
+fn void _wait_platform(Duration duration)
 {
 	if (gfx::_gfx.event_wait_force_stop[0] == 0 || gfx::_gfx.event_wait_force_stop[1] == 0)
 	{

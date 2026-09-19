@@ -31,6 +31,16 @@ fn void destroy_platform()
 	ctx = {};
 }
 
+fn void wake() => objc::@autoreleasepool()
+{
+	if (!ctx.app) return;
+	ObjId ev = macos::nsevent().send(ObjId,
+		"otherEventWithType:location:modifierFlags:timestamp:windowNumber:context:subtype:data1:data2:",
+		NSEventType.APPLICATION_DEFINED, (CGPoint){ 0, 0 }, (NSUInteger)0, (CFTimeInterval)0,
+		(NSInteger)0, (ObjId)null, (short)0, (NSInteger)0, (NSInteger)0);
+	if (ev) ctx.app.send_void("postEvent:atStart:", ev, true);
+}
+
 fn void poll_events_platform()
 {
 	objc::@autoreleasepool()
@@ -52,7 +62,7 @@ fn void poll_events_platform()
 
 }
 
-fn void wait_for_event(Duration duration) => objc::@autoreleasepool()
+fn void _wait_platform(Duration duration) => objc::@autoreleasepool()
 {
 	if (!ctx.app) return;
 	CFTimeInterval time = duration.to_sec();
@@ -60,7 +70,7 @@ fn void wait_for_event(Duration duration) => objc::@autoreleasepool()
 	if (time < 0) time = 0;
 	ObjId date = darwin::nsdate().send(ObjId, "dateWithTimeIntervalSinceNow:", time);
 	ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
-	if (ev) ctx.app.send_void("postEvent:atStart:", ev, true);
+	if (ev) ctx.app.send_void("sendEvent:", ev);
 }
 
 

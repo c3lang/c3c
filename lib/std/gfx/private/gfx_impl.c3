@@ -82,14 +82,15 @@ fn void _poll_events_platform()
 	$endswitch
 }
 
-fn void _stop_check_events()
+fn void _wake()
 {
 	$switch:
 		$case $feat(MACOS):
+			return macos::wake();
 		$case $feat(WASM):
-			_gfx.stop_check_events = true;
+			return;
 		$case $feat(WIN32):
-			return win32::stop_check_events();
+			return win32::wake();
 		$case WAYLAND || X11:
 			_gfx.event_wait_force_stop[2] = 1;
 			while (true)
@@ -103,25 +104,33 @@ fn void _stop_check_events()
 	$endswitch
 }
 
-fn void _wait_for_event(Duration duration)
+fn GfxEvent? _wait(Duration duration)
 {
+	if (_gfx.event_len) return peep();
 	$switch:
 		$case $feat(MACOS):
-			return macos::wait_for_event(duration);
+			macos::_wait_platform(duration);
 		$case $feat(WASM):
-			return wasm::wait_for_event(duration);
+			wasm::_wait_platform(duration);
 		$case $feat(WIN32):
-			return win32::wait_for_event(duration);
+			win32::_wait_platform(duration);
 		$case WAYLAND_ONLY:
-			return wl::wait_for_event(duration);
+			wl::_wait_platform(duration);
 		$case X11_ONLY:
-			return x11::wait_for_event(duration);
+			x11::_wait_platform(duration);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::wait_for_event(duration);
-			return x11::wait_for_event(duration);
+			if (_gfx.use_wayland)
+			{
+				wl::_wait_platform(duration);
+			}
+			else
+			{
+				x11::_wait_platform(duration);
+			}
 		$default:
 			unreachable();
 	$endswitch
+	return peep();
 }
 
 // --- GfxMonitor functions

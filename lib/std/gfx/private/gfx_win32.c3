@@ -59,17 +59,25 @@ fn void poll_events_platform()
 	}
 }
 
-fn void stop_check_events()
+fn void wake()
 {
 	win32::postMessageW(gfx::_gfx.helper_window, 0, 0, 0);
 }
 
-fn void wait_for_event(Duration duration)
+fn void _wait_platform(Duration duration)
 {
 	if (duration < time::DURATION_ZERO) duration = time::DURATION_ZERO;
 	long duration_ms = duration.to_ms();
 	Win32_DWORD ms = duration_ms > Win32_DWORD::max ? win32::INFINITE : (uint)duration_ms;
 	win32::msgWaitForMultipleObjects(0, null, 0, ms, 0x04FF /* QS_ALLINPUT */);
+	// Dispatch the message that ended the wait, so a caller that woke on an event
+	// finds it queued rather than having to poll again.
+	Win32_MSG msg;
+	if (win32::peekMessageA(&msg, null, 0, 0, win32::PM_REMOVE))
+	{
+		win32::translateMessage(&msg);
+		win32::dispatchMessageA(&msg);
+	}
 }
 
 // --- GfxMonitor functions

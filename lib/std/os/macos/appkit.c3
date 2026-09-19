@@ -14,6 +14,7 @@ fn ObjClass nstracking_area() => objc::@class("NSTrackingArea");
 fn ObjClass nscursor() => objc::@class("NSCursor");
 fn ObjClass nswindow() => objc::@class("NSWindow");
 fn ObjClass nsview() => objc::@class("NSView");
+fn ObjClass nsevent() => objc::@class("NSEvent");
 
 constset NSApplicationActivationPolicy : inline NSInteger
 {
