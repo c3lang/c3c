@@ -4,6 +4,7 @@
 
 ### Fixes
 - Regression for `vec.pow(x)`.
+- Macros with "const" declarations were compile time folded despite needing the declaration.
 
 ### Stdlib changes
 - Added `std::gfx` module.
