@@ -7,6 +7,12 @@
 
 ### Stdlib changes
 - Added `std::gfx` module.
+- Added `IntRect`, `IntVec2`, `IntVec3` and `IntVec4` types.
+- Updated organization of the MacOS / Darwin bindings, reorganized by framework, added many functions and split into std::os::darwin and std::os::macos, with among other things easy ObjC dispatch.
+- Updated win32 bindings with many functions, reorganized by header.
+- Cross-platform dylib handling with `DylibHandler`, `os::dlopen`, `os::dlsym` and related functions in `std::os`.
+- Added `Duration.to_sec`
+- Updated posix libc with `shm_open`, `shm_unlink`, `truncate` and `ftruncate`.
 
 ## 0.8.4 Change list
 
