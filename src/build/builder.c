@@ -775,10 +775,12 @@ BUILD:
 			target->feature.sanitize_address = false;
 			target->feature.sanitize_memory = false;
 			target->feature.sanitize_thread = false;
+			target->feature.sanitize_fuzzer = false;
 			break;
 		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
 		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
 		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
+		case SANITIZE_FUZZER: target->feature.sanitize_fuzzer = true; break;
 		default: UNREACHABLE_VOID;
 	}
 

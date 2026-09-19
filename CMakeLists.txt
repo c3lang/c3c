@@ -418,6 +418,7 @@ if(C3_WITH_LLVM)
         if (llvm_dir)
             file(GLOB_RECURSE RT_ASAN_DYNAMIC "${llvm_dir}/*libclang_rt.asan_osx_dynamic.dylib")
             file(GLOB_RECURSE RT_TSAN_DYNAMIC "${llvm_dir}/*libclang_rt.tsan_osx_dynamic.dylib")
+            file(GLOB_RECURSE RT_FUZZER_DYNAMIC "${llvm_dir}/*libclang_rt.fuzzer_osx_dynamic.dylib")
         endif()
 
         if (NOT RT_ASAN_DYNAMIC OR NOT RT_TSAN_DYNAMIC)
@@ -432,18 +433,29 @@ if(C3_WITH_LLVM)
             endif()
         endif()
 
+        if (NOT RT_FUZZER_DYNAMIC)
+            find_file(RT_FUZZER_DYNAMIC_PATH NAMES libclang_rt.fuzzer_osx_dynamic.dylib PATHS ${LLVM_LIBRARY_DIRS} PATH_SUFFIXES "clang/${LLVM_MAJOR_VERSION}/lib/darwin" "clang/${LLVM_PACKAGE_VERSION}/lib/darwin")
+            if (RT_FUZZER_DYNAMIC_PATH)
+                set(RT_FUZZER_DYNAMIC ${RT_FUZZER_DYNAMIC_PATH})
+            endif()
+        endif()
+
         if (RT_ASAN_DYNAMIC)
             list(GET RT_ASAN_DYNAMIC 0 RT_ASAN_DYNAMIC)
         endif()
         if (RT_TSAN_DYNAMIC)
             list(GET RT_TSAN_DYNAMIC 0 RT_TSAN_DYNAMIC)
         endif()
+        if (RT_FUZZER_DYNAMIC)
+            list(GET RT_FUZZER_DYNAMIC 0 RT_FUZZER_DYNAMIC)
+        endif()
 
-        if (RT_ASAN_DYNAMIC AND RT_TSAN_DYNAMIC)
-            set(sanitizer_runtime_libraries
-                    ${RT_ASAN_DYNAMIC}
-                    ${RT_TSAN_DYNAMIC}
-            )
+        if (RT_FUZZER_DYNAMIC)
+            if (RT_ASAN_DYNAMIC AND RT_TSAN_DYNAMIC)
+                list(APPEND sanitizer_runtime_libraries ${RT_FUZZER_DYNAMIC})
+            else()
+                set(sanitizer_runtime_libraries ${RT_FUZZER_DYNAMIC})
+            endif()
         endif()
     endif()
 

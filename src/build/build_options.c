@@ -248,7 +248,7 @@ static void usage(bool full)
 		PRINTF("");
 		print_opt("--bsd-sysroot <dir>", "Set the BSD sysroot directory.");
 		PRINTF("");
-		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
+		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread or fuzzer.");
 	}
 	if (!full)
 	{

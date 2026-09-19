@@ -506,6 +506,7 @@ typedef struct
 		bool sanitize_address : 1;
 		bool sanitize_memory : 1;
 		bool sanitize_thread : 1;
+		bool sanitize_fuzzer : 1;
 		ImplicitFloat implicit_float : 3;
 		FpOpt fp_math;
 		SafetyLevel safe_mode;
