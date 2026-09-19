@@ -59,7 +59,7 @@ excuse
 const Duration WAIT_FOREVER = Duration::max;
 
 alias GfxGenericFn = fn void(GfxEvent* e);
-alias GfxConvertImageDataFn = fn void(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count);
+alias GfxConvertImageDataFn = fn void(char* dst_data, char* src_data, GfxColorLayout* src_layout, GfxColorLayout* dst_layout, sz count);
 alias GfxRepaintFn = fn void(GfxWindow* w, GfxRect rect);
 
 alias GfxPoint = int[<2>];
@@ -753,30 +753,30 @@ constset GfxFlashRequest
 <*
  Convert a run of pixels from one channel layout to another.
 
- @param [out] dest_data : "Destination pixel buffer"
+ @param [out] dst_data : "Destination pixel buffer"
  @param [in] src_data : "Source pixel buffer"
- @param [in] srcLayout : "Channel offsets of the source format"
- @param [in] destLayout : "Channel offsets of the destination format"
+ @param [in] src_layout : "Channel offsets of the source format"
+ @param [in] dst_layout : "Channel offsets of the destination format"
  @param count : "Number of pixels to convert"
  @param is64bit : "Write every second destination pixel, for 64-bit destination rows"
- @require srcLayout != null && destLayout != null
+ @require src_layout != null && dst_layout != null
 *>
-fn void convert_image_data_64(char* dest_data, char* src_data, GfxColorLayout* srcLayout, GfxColorLayout* destLayout, sz count, bool is64bit)
+fn void convert_image_data_64(char* dst_data, char* src_data, GfxColorLayout* src_layout, GfxColorLayout* dst_layout, sz count, bool is64bit)
 {
 	char[4] rgba = {0, 0, 0, 0};
 	sz i2 = 0;
 	for (sz i = 0; i < count; i++)
 	{
-		char* src_px = &src_data[i * srcLayout.channels];
-		char* dst_px = &dest_data[i2 * destLayout.channels];
-		rgba[0] = src_px[srcLayout.r];
-		rgba[1] = src_px[srcLayout.g];
-		rgba[2] = src_px[srcLayout.b];
-		rgba[3] = srcLayout.channels == 4 ? src_px[srcLayout.a] : 255;
-		dst_px[destLayout.r] = rgba[0];
-		dst_px[destLayout.g] = rgba[1];
-		dst_px[destLayout.b] = rgba[2];
-		if (destLayout.channels == 4) dst_px[destLayout.a] = rgba[3];
+		char* src_px = &src_data[i * src_layout.channels];
+		char* dst_px = &dst_data[i2 * dst_layout.channels];
+		rgba[0] = src_px[src_layout.r];
+		rgba[1] = src_px[src_layout.g];
+		rgba[2] = src_px[src_layout.b];
+		rgba[3] = src_layout.channels == 4 ? src_px[src_layout.a] : 255;
+		dst_px[dst_layout.r] = rgba[0];
+		dst_px[dst_layout.g] = rgba[1];
+		dst_px[dst_layout.b] = rgba[2];
+		if (dst_layout.channels == 4) dst_px[dst_layout.a] = rgba[3];
 		i2 += 1 + (sz)is64bit;
 	}
 }
@@ -784,43 +784,44 @@ fn void convert_image_data_64(char* dest_data, char* src_data, GfxColorLayout* s
 <*
  @require !@catch(dest_w.overflow_mul(dest_h))
 *>
-fn void copy_image_data_64(char* dest_data, int dest_w, int dest_h, GfxFormat dest_format, char* src_data, GfxFormat src_format, bool is64bit, GfxConvertImageDataFn func)
+fn void copy_image_data_64(char* dst_data, int dst_w, int dst_h, GfxFormat dst_format, char* src_data, GfxFormat src_format, bool is64bit, GfxConvertImageDataFn func)
 {
-	sz count = (sz)dest_w * dest_h;
-	if (src_format == dest_format)
+	sz count = (sz)dst_w * dst_h;
+	if (src_format == dst_format)
 	{
-		int channels = dest_format.channels;
-		mem::copy(dest_data, src_data, count * channels);
+		if (dst_data == src_data) return;
+		int channels = dst_format.channels;
+		mem::copy(dst_data, src_data, count * channels);
 		return;
 	}
-	GfxColorLayout* srcLayout = &&src_format.layout;
-	GfxColorLayout* destLayout = &&dest_format.layout;
-	if (is64bit || func == null)
+	GfxColorLayout* src_layout = &&src_format.layout;
+	GfxColorLayout* dst_layout = &&dst_format.layout;
+	if (is64bit || !func)
 	{
-		convert_image_data_64(dest_data, src_data, srcLayout, destLayout, count, is64bit);
+		convert_image_data_64(dst_data, src_data, src_layout, dst_layout, count, is64bit);
 	}
 	else
 	{
-		func(dest_data, src_data, srcLayout, destLayout, count);
+		func(dst_data, src_data, src_layout, dst_layout, count);
 	}
 }
 
 <*
  Copy an image, converting between pixel formats if they differ.
 
- @param [out] dest_data : "Destination pixel buffer, at least w * h * dest_format.channels bytes"
+ @param [out] dst_data : "Destination pixel buffer, at least w * h * dst_format.channels bytes"
  @param w : "Image width in pixels"
  @param h : "Image height in pixels"
- @param dest_format : "Pixel format to write"
+ @param dst_format : "Pixel format to write"
  @param [in] src_data : "Source pixel buffer"
  @param src_format : "Pixel format of the source"
  @param func : "Optional accelerated converter, null to use the generic path"
  @require w >= 0 && h >= 0 : "Dimensions may not be negative"
  @require !@catch(w.overflow_mul(h)) : "Image dimensions overflow"
 *>
-fn void copy_image_data(char* dest_data, int w, int h, GfxFormat dest_format, char* src_data, GfxFormat src_format, GfxConvertImageDataFn func)
+fn void copy_image_data(char* dst_data, int w, int h, GfxFormat dst_format, char* src_data, GfxFormat src_format, GfxConvertImageDataFn func)
 {
-	copy_image_data_64(dest_data, w, h, dest_format, src_data, src_format, false, func);
+	copy_image_data_64(dst_data, w, h, dst_format, src_data, src_format, false, func);
 }
 
 <*
@@ -837,11 +838,11 @@ fn void? init(String class_name, GfxInitOption options)
 		_destroy_platform();
 		_gfx = {};
 	}
+	_init_platform(class_name, options)!;
 	if (options.init_opengl) load_opengl()!;
 	if (options.init_egl) load_egl()!;
 	if (options.init_vulkan) load_vulkan()!;
 	_init_keycodes();
-	_init_platform(class_name, options)!;
 	foreach (icon : GfxMouseIcon::values)
 	{
 		_gfx.standard_mice[icon.ordinal] = _create_standard_mouse(icon) ?? null;
