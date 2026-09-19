@@ -8,6 +8,7 @@ import std::gfx::wl @public;
 
 // The GFX module provides basic window handling across multiple platforms.
 // This implementation was strongly based on RGFW 2.0 by Riley Mabb
+// Although not in `std::experimental`, consider the code largely experimental until 0.8.6
 
 excuse
 {

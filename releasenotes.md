@@ -5,6 +5,9 @@
 ### Fixes
 - Regression for `vec.pow(x)`.
 
+### Stdlib changes
+- Added `std::gfx` module.
+
 ## 0.8.4 Change list
 
 ### Changes / improvements
