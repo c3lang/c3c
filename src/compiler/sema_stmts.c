@@ -3324,7 +3324,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 	UNREACHABLE
 }
 
-
 bool sema_analyse_statement(SemaContext *context, Ast *statement)
 {
 	if (context->active_scope.is_poisoned) return false;
@@ -3351,8 +3350,6 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 	}
 	return true;
 }
-
-
 
 static bool sema_analyse_ensure(SemaContext *context, Expr *directive)
 {
