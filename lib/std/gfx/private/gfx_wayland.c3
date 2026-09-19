@@ -1379,6 +1379,7 @@ fn void _xdg_surface_conf_cb(void* data, WlProxy* xdgSurface, uint serial) @loca
 		gfx::_window_resized_callback(win, win.size);
 		win.resize(win.size);
 		if (!(win.internal.flags.transparent)) _window_set_opaque(win);
+		gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
 	}
 
 	win.src.configured = true;
