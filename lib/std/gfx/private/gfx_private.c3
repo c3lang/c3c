@@ -20,7 +20,7 @@ struct GfxContext
 	int active_windows;
 	GfxMouse* hidden_mouse;
 	GfxMouse*[21] standard_mice;
-	GfxGenericFunc[25] callbacks;
+	GfxEventCallbacks callbacks;
 	GfxEvent[MAX_EVENTS] events;
 	int event_bottom;
 	int event_len;
@@ -673,7 +673,7 @@ fn void _data_drop_callback(GfxWindow* win, char* data, sz length, GfxDataTransf
 	event.type = DATA_DROP;
 	event.drop.value = &node;
 	event.common.win = win;
-	if (_gfx.callbacks[(sz)event.type] != null) _gfx.callbacks[(sz)event.type](&event);
+	if (_gfx.callbacks[event.type] != null) _gfx.callbacks[event.type](&event);
 	if (!_gfx.queue_events && !_gfx.dnd_build) return;
 	char* dataCopy = malloc(length);
 	mem::copy(dataCopy, data, length);

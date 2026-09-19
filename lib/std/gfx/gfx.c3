@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::gfx @feat(MACOS, LINUX, BSD, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11);
-import std::math, std::os, std::os::darwin, libc, std::time;
+import std::math, std::os, std::os::darwin, libc, std::time, std::collections::enummap;
 import std::gfx::x11 @public, std::gfx::egl @public, std::gfx::gl @public;
 import std::gfx::wl @public;
 
@@ -319,10 +319,7 @@ union GfxEvent
 	GfxMonitorEvent monitor;
 }
 
-struct GfxEventCallbacks
-{
-	GfxGenericFunc[25] arr;
-}
+alias GfxEventCallbacks = EnumMap{GfxEventType, GfxGenericFunc};
 
 struct GfxGlContext
 {
@@ -1662,7 +1659,7 @@ fn void set_all_event_callback(GfxGenericFunc func, GfxEventCallbacks* callbacks
 {
 	foreach (i : GfxEventType::values[1..])
 	{
-		if (callbacks != null) callbacks.arr[i.ordinal] = _gfx.callbacks[i.ordinal];
+		if (callbacks != null) callbacks.[i] = _gfx.callbacks[i];
 		set_event_callback(i, func);
 	}
 }
