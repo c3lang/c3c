@@ -1,4 +1,5 @@
 module std::math::geometry;
 
-alias Bounds = BoundingBox {float};
-alias Rect = Rectangle {float};
+alias Bounds = BoundingBox{float};
+alias Rect = Rectangle{float};
+alias IntRect = Rectangle{int};
