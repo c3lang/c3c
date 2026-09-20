@@ -39,48 +39,6 @@ struct GfxWaylandCtx
 
 GfxWaylandCtx ctx;
 
-enum WlLayer : char @public
-{
-	BACKGROUND,
-	BOTTOM,
-	TOP,
-	OVERLAY,
-}
-
-bitstruct WlAnchor : char @public
-{
-	bool top;
-	bool bottom;
-	bool left;
-	bool right;
-}
-
-enum WlKeyboardInteractivity : char @public
-{
-	NONE,
-	EXCLUSIVE,
-	ON_DEMAND,
-}
-
-struct WlMargin @public
-{
-	int top;
-	int right;
-	int bottom;
-	int left;
-}
-
-struct WlLayerConfig @public
-{
-	WlLayer layer;
-	WlAnchor anchor;
-	int exclusive_zone;
-	WlMargin margin;
-	WlKeyboardInteractivity keyboard;
-	GfxMonitor* monitor;
-	String namespace;
-}
-
 // --- Gfx
 
 fn void? init_platform(String class_name, GfxInitOption flags)
@@ -524,7 +482,7 @@ fn void _layer_surface_closed_cb(void* data, WlProxy* layer_surface) @local
 	if (win && !win.internal.should_close) gfx::_window_close_callback(win);
 }
 
-fn void? _bind_layer_shell(GfxWindow* win, WlLayerConfig config) @local => @pool()
+fn void? _bind_layer_shell(GfxWindow* win, GfxWlLayerConfig config) @local => @pool()
 {
 	if (!ctx.layer_shell) return gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED~;
 
@@ -557,20 +515,7 @@ fn void? _bind_layer_shell(GfxWindow* win, WlLayerConfig config) @local => @pool
 	zwlr_layer_surface_v1_set_keyboard_interactivity(win.src.layerSurface, (uint)config.keyboard);
 }
 
-<*
- Create a layer-shell surface (dock, bar, wallpaper, notification, overlay).
-
- @param name : "Window title / identifier"
- @param w : "Initial width, 0 to let anchors dictate width"
- @param h : "Initial height, 0 to let anchors dictate height"
- @param config : "Layer-shell positioning and behavior parameters"
- @param flags : "Optional standard window flags"
- @return "The created layer-shell window"
- @return? gfx::GFX_CONTEXT_NOT_INITIALIZED : "If gfx::init has not been called"
- @return? gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED : "If compositor lacks zwlr_layer_shell_v1"
- @return? gfx::SURFACE_CREATION_FAILED : "If surface could not be created"
-*>
-fn GfxWindow*? create_layer_window(String name, int w, int h, WlLayerConfig config, GfxWindowFlags flags = {}) @public => @pool()
+fn GfxWindow*? _create_layer_window(String name, int w, int h, GfxWlLayerConfig config, GfxWindowFlags flags = {}) @public => @pool()
 {
 	if (!gfx::_gfx.initialized) return gfx::GFX_CONTEXT_NOT_INITIALIZED~;
 	$if gfx::X11_OR_WAYLAND:
@@ -600,60 +545,42 @@ fn GfxWindow*? create_layer_window(String name, int w, int h, WlLayerConfig conf
 	return win;
 }
 
-<*
- Set anchor edges for a layer surface.
-*>
-fn void set_anchor(GfxWindow* win, WlAnchor anchor) @public
+fn void _set_layer_anchor(GfxWindow* win, GfxWlAnchor anchor) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_anchor(win.src.layerSurface, (uint)(char)anchor);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Set exclusive zone in pixels (>0 reserves space, 0 is normal, -1 ignores other zones).
-*>
-fn void set_exclusive_zone(GfxWindow* win, int zone) @public
+fn void _set_layer_exclusive_zone(GfxWindow* win, int zone) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_exclusive_zone(win.src.layerSurface, zone);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Set margin offsets around the layer surface.
-*>
-fn void set_margin(GfxWindow* win, WlMargin margin) @public
+fn void _set_layer_margin(GfxWindow* win, GfxWlMargin margin) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_margin(win.src.layerSurface, margin.top, margin.right, margin.bottom, margin.left);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Set keyboard focus interactivity (NONE, EXCLUSIVE, ON_DEMAND).
-*>
-fn void set_keyboard_interactivity(GfxWindow* win, WlKeyboardInteractivity mode) @public
+fn void _set_layer_keyboard_interactivity(GfxWindow* win, GfxWlKeyboardInteractivity mode) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_keyboard_interactivity(win.src.layerSurface, (uint)mode);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Move the layer surface to another z-order layer.
-*>
-fn void set_layer(GfxWindow* win, WlLayer layer) @public
+fn void _set_layer(GfxWindow* win, GfxWlLayer layer) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_layer(win.src.layerSurface, (uint)layer);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Disambiguate which edge exclusive zone applies to when multiple anchors are set (protocol v5+).
-*>
-fn void set_exclusive_edge(GfxWindow* win, WlAnchor edge) @public
+fn void _set_layer_exclusive_edge(GfxWindow* win, GfxWlAnchor edge) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	if (wl_proxy_get_version(win.src.layerSurface) >= 5)
