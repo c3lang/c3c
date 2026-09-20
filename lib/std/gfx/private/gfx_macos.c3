@@ -111,7 +111,7 @@ fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 		modes.push({
 			.size = { (int)mode.getWidth(), (int)mode.getHeight() },
 			.refresh_rate = (float)mode.getRefreshRate(),
-			.rgb = (char[<3>])8,
+			.rgb = { 8, 8, 8 },
 			.src = mode
 		});
 	}
