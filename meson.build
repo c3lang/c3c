@@ -252,6 +252,11 @@ if get_option('avr_disable')
   c_args += ['-DAVR_DISABLE']
 endif
 
+if get_option('xtensa_enable')
+  c_args += ['-DXTENSA_ENABLE']
+  cpp_args += ['-DXTENSA_ENABLE']
+endif
+
 if host_machine.system() == 'emscripten'
   c_args += ['-DARM_DISABLE', '-DAARCH64_DISABLE', '-DRISCV_DISABLE', '-DX86_DISABLE']
 endif

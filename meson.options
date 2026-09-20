@@ -18,6 +18,8 @@ option('curl', type: 'feature', value: 'auto',
        description: 'Enable libcurl support')
 option('avr_disable', type: 'boolean', value: false,
        description: 'Disable AVR target support')
+option('xtensa_enable', type: 'boolean', value: false,
+       description: 'Enable Xtensa target support')
 option('profiling', type: 'boolean', value: false,
        description: 'Build with profiling options')
 option('tcc_lib_path', type: 'string', value: '/usr/lib/tcc/libtcc1.a',
