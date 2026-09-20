@@ -5,6 +5,9 @@ import std::math @public;
 alias Vec2 @weak = float[<2>];
 alias Vec3 @weak = float[<3>];
 alias Vec4 @weak = float[<4>];
+alias IntVec2 @weak = int[<2>];
+alias IntVec3 @weak = int[<3>];
+alias IntVec4 @weak = int[<4>];
 
 <*
  @require $Type::kind == VECTOR &&& @kindof(($Type){}[0]) == BOOL : "Expected a bool vector"
