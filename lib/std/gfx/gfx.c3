@@ -355,7 +355,7 @@ struct GfxEglContext
 
 const GfxGlHints GLOBAL_HINTS = {
 	.double_buffer = 1,
-	.rgba_size = (int[<4>])8,
+	.rgba_size = { 8, 8, 8, 8 },
 	.depth = 24,
 	.release_behavior = NONE,
 	.profile = CORE,
