@@ -7,6 +7,7 @@
 ### Fixes
 - Regression for `vec.pow(x)`.
 - Macros with "const" declarations were compile time folded despite needing the declaration.
+- Vectors created through casts in globals would miscompile, e.g. `Foo global = { .v = (int[<3>])8 }`.
 
 ### Stdlib changes
 - Added `std::gfx` module.
