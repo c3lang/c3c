@@ -18,6 +18,7 @@ struct GfxWaylandCtx
 	WlProxy* relative_pointer;
 	WlProxy* icon_manager;
 	WlProxy* xdg_output_manager;
+	WlProxy* layer_shell;
 	WlProxy* wp_pointer_warp;
 	WlProxy* data_device_manager;
 	WlProxy* data_device;
@@ -37,6 +38,48 @@ struct GfxWaylandCtx
 }
 
 GfxWaylandCtx ctx;
+
+enum WlLayer : char @public
+{
+	BACKGROUND,
+	BOTTOM,
+	TOP,
+	OVERLAY,
+}
+
+bitstruct WlAnchor : char @public
+{
+	bool top;
+	bool bottom;
+	bool left;
+	bool right;
+}
+
+enum WlKeyboardInteractivity : char @public
+{
+	NONE,
+	EXCLUSIVE,
+	ON_DEMAND,
+}
+
+struct WlMargin @public
+{
+	int top;
+	int right;
+	int bottom;
+	int left;
+}
+
+struct WlLayerConfig @public
+{
+	WlLayer layer;
+	WlAnchor anchor;
+	int exclusive_zone;
+	WlMargin margin;
+	WlKeyboardInteractivity keyboard;
+	GfxMonitor* monitor;
+	String namespace;
+}
 
 // --- Gfx
 
@@ -92,6 +135,17 @@ fn void destroy_platform()
 	if (ctx.constraint_manager) zwp_pointer_constraints_v1_destroy(ctx.constraint_manager);
 	if (ctx.icon_manager) xdg_toplevel_icon_manager_v1_destroy(ctx.icon_manager);
 	if (ctx.xdg_output_manager) zxdg_output_manager_v1_destroy(ctx.xdg_output_manager);
+	if (ctx.layer_shell)
+	{
+		if (wl_proxy_get_version(ctx.layer_shell) >= 3)
+		{
+			zwlr_layer_shell_v1_destroy(ctx.layer_shell);
+		}
+		else
+		{
+			wl_proxy_destroy(ctx.layer_shell);
+		}
+	}
 	if (ctx.data_device_manager) wl_data_device_manager_destroy(ctx.data_device_manager);
 	if (ctx.data_device) wl_data_device_destroy(ctx.data_device);
 	if (ctx.wl_cursor_theme) wl_cursor_theme_destroy(ctx.wl_cursor_theme);
@@ -365,7 +419,7 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 	surface.native.wl_buffer = null;
 }
 
-fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags) => @pool()
+fn void _init_base_surface(GfxWindow* win) @local
 {
 	win.src.surface = wl_compositor_create_surface(ctx.compositor);
 	static WlSurfaceListener listener = {
@@ -378,7 +432,10 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	wl_surface_set_user_data(win.src.surface, win);
 
 	win.src.customCursorSurface = wl_compositor_create_surface(ctx.compositor);
+}
 
+fn void _bind_xdg_shell(GfxWindow* win, String name, GfxWindowFlags flags) @local => @pool()
+{
 	win.src.xdgSurface = xdg_wm_base_get_xdg_surface(ctx.xdg_wm_base, win.src.surface);
 	static XdgSurfaceListener surface_listener = { .configure = &_xdg_surface_conf_cb };
 
@@ -388,8 +445,6 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	win.src.xdgToplevel = xdg_surface_get_toplevel(win.src.xdgSurface);
 	xdg_toplevel_set_app_id(win.src.xdgToplevel, name.zstr_copy(tmem));
 	xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, win.width, win.height);
-
-	if (!win.internal.flags.transparent) _window_set_opaque(win);
 
 	static XdgToplevelListener toplevel_listener = { .configure = &_xdg_toplevel_conf_cb, .close = &_xdg_toplevel_close_cb };
 
@@ -407,6 +462,11 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	}
 
 	if (ctx.icon_manager) xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdgToplevel, null);
+}
+
+fn void? _init_graphics_and_show(GfxWindow* win, GfxWindowFlags flags) @local
+{
+	if (!win.internal.flags.transparent) _window_set_opaque(win);
 
 	wl_surface_commit(win.src.surface);
 
@@ -425,17 +485,193 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 		free(blank);
 		blank_surface.release();
 	}
+}
 
+fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags) => @pool()
+{
+	_init_base_surface(win);
+	_bind_xdg_shell(win, name, flags);
+	_init_graphics_and_show(win, flags)!;
+}
+
+fn void _layer_surface_conf_cb(void* data, WlProxy* layer_surface, uint serial, uint width, uint height) @local
+{
+	zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
+	GfxWindow* win = (GfxWindow*)data;
+	if (!win) return;
+
+	int new_w = width != 0 ? (int)width : win.width;
+	int new_h = height != 0 ? (int)height : win.height;
+	if (win.width != new_w || win.height != new_h)
+	{
+		win.size = { new_w, new_h };
+		win.src.size = win.size;
+		if (win.src.ctx.egl && win.src.ctx.egl.egl_window)
+		{
+			wl_egl_window_resize((WlEglWindow*)win.src.ctx.egl.egl_window, new_w, new_h, 0, 0);
+		}
+		gfx::_window_resized_callback(win, win.size);
+		if (!(win.internal.flags.transparent)) _window_set_opaque(win);
+		gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
+	}
+
+	win.src.configured = true;
+}
+
+fn void _layer_surface_closed_cb(void* data, WlProxy* layer_surface) @local
+{
+	GfxWindow* win = (GfxWindow*)data;
+	if (win && !win.internal.should_close) gfx::_window_close_callback(win);
+}
+
+fn void? _bind_layer_shell(GfxWindow* win, WlLayerConfig config) @local => @pool()
+{
+	if (!ctx.layer_shell) return gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED~;
+
+	WlProxy* wl_output = null;
+	if (config.monitor && config.monitor.node)
+	{
+		wl_output = config.monitor.node.output;
+	}
+
+	ZString ns = (config.namespace ?: "gfx-layer").zstr_copy(tmem);
+	win.src.layerSurface = zwlr_layer_shell_v1_get_layer_surface(
+		ctx.layer_shell,
+		win.src.surface,
+		wl_output,
+		(uint)config.layer,
+		ns
+	);
+	if (!win.src.layerSurface) return gfx::SURFACE_CREATION_FAILED~;
+
+	static ZwlrLayerSurfaceV1Listener layer_listener = {
+		.configure = &_layer_surface_conf_cb,
+		.closed = &_layer_surface_closed_cb
+	};
+	zwlr_layer_surface_v1_add_listener(win.src.layerSurface, &layer_listener, win);
+
+	zwlr_layer_surface_v1_set_size(win.src.layerSurface, (uint)win.width, (uint)win.height);
+	zwlr_layer_surface_v1_set_anchor(win.src.layerSurface, (uint)(char)config.anchor);
+	zwlr_layer_surface_v1_set_exclusive_zone(win.src.layerSurface, config.exclusive_zone);
+	zwlr_layer_surface_v1_set_margin(win.src.layerSurface, config.margin.top, config.margin.right, config.margin.bottom, config.margin.left);
+	zwlr_layer_surface_v1_set_keyboard_interactivity(win.src.layerSurface, (uint)config.keyboard);
+}
+
+<*
+ Create a layer-shell surface (dock, bar, wallpaper, notification, overlay).
+
+ @param name : "Window title / identifier"
+ @param w : "Initial width, 0 to let anchors dictate width"
+ @param h : "Initial height, 0 to let anchors dictate height"
+ @param config : "Layer-shell positioning and behavior parameters"
+ @param flags : "Optional standard window flags"
+ @return "The created layer-shell window"
+ @return? gfx::GFX_CONTEXT_NOT_INITIALIZED : "If gfx::init has not been called"
+ @return? gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED : "If compositor lacks zwlr_layer_shell_v1"
+ @return? gfx::SURFACE_CREATION_FAILED : "If surface could not be created"
+*>
+fn GfxWindow*? create_layer_window(String name, int w, int h, WlLayerConfig config, GfxWindowFlags flags = {}) @public => @pool()
+{
+	if (!gfx::_gfx.initialized) return gfx::GFX_CONTEXT_NOT_INITIALIZED~;
+	$if gfx::X11_OR_WAYLAND:
+		if (!gfx::_gfx.use_wayland) return gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED~;
+	$endif
+
+	GfxWindow* win = gfx::_allocate_window()!;
+	defer catch
+	{
+		if (win.src.customCursorSurface) wl_surface_destroy(win.src.customCursorSurface);
+		if (win.src.layerSurface) zwlr_layer_surface_v1_destroy(win.src.layerSurface);
+		if (win.src.surface) wl_surface_destroy(win.src.surface);
+		win.internal.is_collected = true;
+		gfx::_gfx.active_windows--;
+	}
+
+	win.bounds = { 0, 0, w, h };
+	win.internal.mouse = gfx::_gfx.standard_mice[GfxMouseIcon.NORMAL.ordinal];
+	win.internal.flags = flags;
+	win.internal.enabled_events = gfx::ALL_EVENTS;
+
+	_init_base_surface(win);
+	_bind_layer_shell(win, config)!;
+	_init_graphics_and_show(win, flags)!;
+
+	if (!flags.hide_mouse) win.set_mouse_default();
+	return win;
+}
+
+<*
+ Set anchor edges for a layer surface.
+*>
+fn void set_anchor(GfxWindow* win, WlAnchor anchor) @public
+{
+	if (!win || !win.src.layerSurface) return;
+	zwlr_layer_surface_v1_set_anchor(win.src.layerSurface, (uint)(char)anchor);
+	wl_surface_commit(win.src.surface);
+}
+
+<*
+ Set exclusive zone in pixels (>0 reserves space, 0 is normal, -1 ignores other zones).
+*>
+fn void set_exclusive_zone(GfxWindow* win, int zone) @public
+{
+	if (!win || !win.src.layerSurface) return;
+	zwlr_layer_surface_v1_set_exclusive_zone(win.src.layerSurface, zone);
+	wl_surface_commit(win.src.surface);
+}
+
+<*
+ Set margin offsets around the layer surface.
+*>
+fn void set_margin(GfxWindow* win, WlMargin margin) @public
+{
+	if (!win || !win.src.layerSurface) return;
+	zwlr_layer_surface_v1_set_margin(win.src.layerSurface, margin.top, margin.right, margin.bottom, margin.left);
+	wl_surface_commit(win.src.surface);
+}
+
+<*
+ Set keyboard focus interactivity (NONE, EXCLUSIVE, ON_DEMAND).
+*>
+fn void set_keyboard_interactivity(GfxWindow* win, WlKeyboardInteractivity mode) @public
+{
+	if (!win || !win.src.layerSurface) return;
+	zwlr_layer_surface_v1_set_keyboard_interactivity(win.src.layerSurface, (uint)mode);
+	wl_surface_commit(win.src.surface);
+}
+
+<*
+ Move the layer surface to another z-order layer.
+*>
+fn void set_layer(GfxWindow* win, WlLayer layer) @public
+{
+	if (!win || !win.src.layerSurface) return;
+	zwlr_layer_surface_v1_set_layer(win.src.layerSurface, (uint)layer);
+	wl_surface_commit(win.src.surface);
+}
+
+<*
+ Disambiguate which edge exclusive zone applies to when multiple anchors are set (protocol v5+).
+*>
+fn void set_exclusive_edge(GfxWindow* win, WlAnchor edge) @public
+{
+	if (!win || !win.src.layerSurface) return;
+	if (wl_proxy_get_version(win.src.layerSurface) >= 5)
+	{
+		zwlr_layer_surface_v1_set_exclusive_edge(win.src.layerSurface, (uint)(char)edge);
+		wl_surface_commit(win.src.surface);
+	}
 }
 
 fn void window_destroy_platform(GfxWindow* win)
 {
+	if (win.src.layerSurface) zwlr_layer_surface_v1_destroy(win.src.layerSurface);
 	if (win.src.decoration) zxdg_toplevel_decoration_v1_destroy(win.src.decoration);
 	if (win.src.xdgToplevel) xdg_toplevel_destroy(win.src.xdgToplevel);
 	wl_surface_destroy(win.src.customCursorSurface);
 	if (win.src.locked_pointer) zwp_locked_pointer_v1_destroy(win.src.locked_pointer);
 	if (win.src.icon) xdg_toplevel_icon_v1_destroy(win.src.icon);
-	xdg_surface_destroy(win.src.xdgSurface);
+	if (win.src.xdgSurface) xdg_surface_destroy(win.src.xdgSurface);
 	wl_surface_destroy(win.src.surface);
 }
 
@@ -497,7 +733,12 @@ fn void window_resize_platform(GfxWindow* win, GfxSize size)
 	win.size = size;
 	if (ctx.compositor != null)
 	{
-		xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, ...size);
+		if (win.src.xdgSurface) xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, ...size);
+		if (win.src.layerSurface)
+		{
+			zwlr_layer_surface_v1_set_size(win.src.layerSurface, (uint)size.x, (uint)size.y);
+			wl_surface_commit(win.src.surface);
+		}
 		if (win.src.ctx.egl && win.src.ctx.egl.egl_window) wl_egl_window_resize((WlEglWindow*)win.src.ctx.egl.egl_window, ...size, 0, 0);
 	}
 }
@@ -601,7 +842,7 @@ fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 
 fn void window_set_name(GfxWindow* win, String name)
 {
-	if (ctx.compositor) @pool()
+	if (ctx.compositor && win.src.xdgToplevel) @pool()
 	{
 		xdg_toplevel_set_title(win.src.xdgToplevel, name.zstr_copy(tmem));
 	};
@@ -994,6 +1235,7 @@ fn int _create_shm_file(sz size) @local
 
 fn void _send_key_event(uint key) @local
 {
+	if (!ctx.kb_owner) return;
 	XkbKeysym* keysyms;
 	if (xkb_state_key_get_syms(ctx.xkb_state, key + 8, &keysyms) == 1)
 	{
@@ -1087,6 +1329,8 @@ fn void _global_registry_cb(void* data, WlProxy* registry, uint id, ZString ifac
 			ctx.xdg_output_manager = wl_registry_bind(registry, id, &zxdgOutputManagerV1Interface, 1);
 		case "wl_output":
 			_create_outputs(registry, id);
+		case zwlrLayerShellV1Interface.name.str_view():
+			ctx.layer_shell = wl_registry_bind(registry, id, &zwlrLayerShellV1Interface, version < 5 ? version : 5);
 		case wpPointerWarpV1Interface.name.str_view():
 			ctx.wp_pointer_warp = wl_registry_bind(registry, id, &wpPointerWarpV1Interface, 1);
 		case "wl_data_device_manager":
@@ -1159,6 +1403,7 @@ fn void _keyboard_leave_cb(void* data, WlProxy* keyboard, uint serial, WlProxy* 
 {
 	GfxWindow* win = (GfxWindow*)wl_surface_get_user_data(surface);
 	if (ctx.kb_owner == win) ctx.kb_owner = null;
+	ctx.last_key = 0;
 	gfx::_window_focus_callback(win, false);
 }
 

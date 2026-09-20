@@ -17,6 +17,7 @@ excuse
 	SURFACE_CREATION_FAILED,
 	WAYLAND_DISPLAY_NOT_LOADED,
 	WAYLAND_COMPOSITOR_NOT_FOUND,
+	WAYLAND_LAYER_SHELL_NOT_SUPPORTED,
 	X11_DISPLAY_NOT_LOADED,
 	X11_WINDOW_CREATION_FAILED,
 	X11_CTX_CREATION_FAILED,
@@ -194,6 +195,7 @@ struct GfxWindowSrc @feat(BSD, LINUX)
 	struct @feat(WAYLAND)
 	{
 		WlProxy* surface;
+		WlProxy* layerSurface;
 		WlProxy* xdgSurface;
 		WlProxy* xdgToplevel;
 		WlProxy* decoration;
