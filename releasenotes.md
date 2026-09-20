@@ -2,6 +2,8 @@
 
 ## 0.8.5 Change list
 
+### Changes / improvements
+
 ### Fixes
 - Regression for `vec.pow(x)`.
 - Macros with "const" declarations were compile time folded despite needing the declaration.
@@ -14,6 +16,7 @@
 - Cross-platform dylib handling with `DylibHandler`, `os::dlopen`, `os::dlsym` and related functions in `std::os`.
 - Added `Duration.to_sec`
 - Updated posix libc with `shm_open`, `shm_unlink`, `truncate` and `ftruncate`.
+- Add `NonNull` and `Nullable` types for members with mandatory null checks.
 
 ## 0.8.4 Change list
 
