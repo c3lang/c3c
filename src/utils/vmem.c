@@ -8,6 +8,7 @@
 #if PLATFORM_POSIX
 #include <sys/mman.h>
 #include <errno.h>
+#include <unistd.h>
 
 #endif
 
@@ -28,11 +29,16 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 	}
 #elif PLATFORM_POSIX
 	void* ptr = NULL;
+	long page_size = sysconf(_SC_PAGESIZE);
+	if (page_size <= 0)
+	{
+		FATAL_ERROR("Failed to get the system page size.");
+	}
 	size_t min_size = size / 512;
 	if (min_size < 1) min_size = size;
 	while (size >= min_size)
 	{
-		ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		ptr = mmap(0, size, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
 		// It worked?
 		if (ptr != MAP_FAILED) break;
 		// Did it fail in a non-retriable way?
@@ -46,6 +52,8 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 		FATAL_ERROR("Failed to map a virtual memory block.");
 	}
 	// Otherwise, record the size and we're fine!
+	vmem->committed = 0;
+	vmem->page_size = (size_t)page_size;
 #else
 	FATAL_ERROR("Unsupported platform.");
 #endif
@@ -57,6 +65,18 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 {
 	size_t allocated_after = to_allocate + vmem->allocated;
+	if (vmem->size < allocated_after)
+	{
+		if (to_allocate < 0x1000)
+		{
+			error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
+				"exceeding the current maximum limit. Perhaps you called some recursive macro?",
+				(unsigned)(vmem->size / (1024 * 1024)));
+		}
+		error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
+			"exceeding the current maximum limit. The last allocation was for %llu bytes.",
+			(unsigned)(vmem->size / (1024 * 1024)), (unsigned long long)to_allocate);
+	}
 #if PLATFORM_WINDOWS
 	size_t blocks_committed = vmem->committed / COMMIT_PAGE_SIZE;
 	size_t end_block = (allocated_after + COMMIT_PAGE_SIZE - 1) / COMMIT_PAGE_SIZE;  // round up
@@ -79,21 +99,26 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 		}
 		vmem->committed += to_commit;
 	}
+#elif PLATFORM_POSIX
+	size_t committed_after =
+		((allocated_after + vmem->page_size - 1) / vmem->page_size) * vmem->page_size;
+	if (committed_after > vmem->size)
+	{
+		FATAL_ERROR("Failed to commit a virtual memory block.");
+	}
+	if (committed_after > vmem->committed)
+	{
+		size_t to_commit = committed_after - vmem->committed;
+		void *commit_start = ((char*)vmem->ptr) + vmem->committed;
+		if (mprotect(commit_start, to_commit, PROT_READ | PROT_WRITE) != 0)
+		{
+			FATAL_ERROR("Failed to commit a virtual memory block.");
+		}
+		vmem->committed = committed_after;
+	}
 #endif
 	void *ptr = ((uint8_t *)vmem->ptr) + vmem->allocated;
 	vmem->allocated = allocated_after;
-	if (vmem->size < allocated_after)
-	{
-		if (to_allocate < 0x1000)
-		{
-			error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
-				"exceeding the current maximum limit. Perhaps you called some recursive macro?",
-				(unsigned)(vmem->size / (1024 * 1024)));
-		}
-		error_exit("⚠️Fatal Error! The compiler ran out of memory: more than %u MB was allocated from a single memory arena, "
-			"exceeding the current maximum limit. The last allocation was for %llu bytes.",
-			(unsigned)(vmem->size / (1024 * 1024)), (unsigned long long)to_allocate);
-	}
 	return ptr;
 }
 
@@ -125,4 +150,8 @@ void vmem_free(Vmem *vmem)
 	vmem->allocated = 0;
 	vmem->ptr = 0;
 	vmem->size = 0;
+#if PLATFORM_POSIX
+	vmem->committed = 0;
+	vmem->page_size = 0;
+#endif
 }

@@ -13,6 +13,9 @@ typedef struct
 	size_t size;
 #if PLATFORM_WINDOWS
 	size_t committed;
+#elif PLATFORM_POSIX
+	size_t committed;
+	size_t page_size;
 #endif
 } Vmem;
 
