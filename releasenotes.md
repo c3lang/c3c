@@ -8,6 +8,7 @@
 - Regression for `vec.pow(x)`.
 - Macros with "const" declarations were compile time folded despite needing the declaration.
 - Vectors created through casts in globals would miscompile, e.g. `Foo global = { .v = (int[<3>])8 }`.
+- Support $$bswap for all power of two integers, including single bytes (in which case it is a no-op).
 
 ### Stdlib changes
 - Added `std::gfx` module.
