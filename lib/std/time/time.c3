@@ -243,7 +243,22 @@ fn Duration NanoDuration.to_duration(nd) => (Duration)((long)nd / 1_000);
 fn NanoDuration Duration.to_nano(td)     => _time_mul(NanoDuration, td, 1_000);
 fn double Duration.to_sec(nd)            => _div_time_to_float(nd, SEC);
 fn long Duration.to_ms(td)               => _time_div(long, td, 1_000);
-macro Duration Duration.mult(#td, long #val) @operator_s(*) @safemacro => _time_mul(Duration, #td, #val);
+
+macro Duration Duration.mult(#td, long #val) @operator_s(*) @safemacro
+{
+	$if $reflect(#td).is_const && $reflect(#val).is_const:
+		var $td = (int128)#td;
+		var $val = (int128)#val;
+		int128 $mul = $td * $val;
+		$switch:
+			$case $mul < long::min: return (Duration)long::min;
+			$case $mul > long::max: return (Duration)long::max;
+			$default:               return (Duration)$mul;
+		$endswitch
+	$else
+		return _time_mul(Duration, #td, #val);
+	$endif
+}
 
 fn String NanoDuration.unit_str(&self, Allocator allocator, bool use_short_units = true)
 {
