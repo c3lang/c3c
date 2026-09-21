@@ -1,12 +1,26 @@
 module libc @feat(POSIX);
 
-const CInt SHUT_RD = 0;
-const CInt SHUT_WR = 1;
+const CInt SHUT_RD   = 0;
+const CInt SHUT_WR   = 1;
 const CInt SHUT_RDWR = 2;
 extern fn CInt shutdown(Fd sockfd, CInt how);
 
 extern fn sz recv(Fd socket, void *buffer, usz length, CInt flags);
 extern fn sz send(Fd socket, void *buffer, usz length, CInt flags);
+
+const CInt O_RDONLY = 0x0000;
+const CInt O_WRONLY = 0x0001;
+const CInt O_RDWR   = 0x0002;
+const CInt O_ASYNC  = $feat(LINUX) ? 0x2000 : 0x0040;
+const CInt O_CREAT  = $feat(LINUX) ? 0x0040 : 0x0200;
+const CInt O_EXCL   = $feat(LINUX) ? 0x0080 : 0x0800;
+const CInt O_TRUNC  = $feat(LINUX) ? 0x0200 : 0x0400;
+
+extern fn int shm_open(ZString name, int oflag, int mode);
+extern fn int shm_unlink(ZString name);
+
+extern fn int ftruncate(int fildes, Off_t length);
+extern fn int truncate(ZString path, Off_t length);
 
 extern fn void* dlopen(ZString path, int flags);
 extern fn CInt dlclose(void*);
