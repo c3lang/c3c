@@ -3,6 +3,7 @@
 ## 0.8.5 Change list
 
 ### Changes / improvements
+- Fetching MSVC also optionally fetches C/C++ headers for cross-compilation
 
 ### Fixes
 - Regression for `vec.pow(x)`.
@@ -52,7 +53,6 @@
 - Add `--warn-unusedlocal` and `--warn-unusedparam` to detect unused parameters and locals. #3485
 - Improve the error message for build options which use `=`.
 - Add control registers to x86 inline assembly
-- Fetching MSVC also provides C/C++ headers for cross-compilation
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.

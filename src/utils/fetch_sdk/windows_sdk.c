@@ -799,8 +799,9 @@ void fetch_winsdk(BuildOptions *options)
 	for (int i = 0; i < (int)vec_size(archs); i++)
 	{
 		const char *arch = archs[i];
-		const char *arch_suffixes[] = {"crt.headers.base", "crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base"};
-		for (int j = 0; j < (int)ELEMENTLEN(arch_suffixes); j++)
+		const char *arch_suffixes[4] = {"crt.%s.desktop.base", "crt.%s.store.base", "asan.%s.base", "crt.headers.base"};
+		int arch_len = options->msvc_fetch_headers ? 4 : 3;
+		for (int j = 0; j < arch_len; j++)
 		{
 			char *suffix = str_printf(arch_suffixes[j], arch);
 			char *pid_part = str_printf("microsoft.vc.%s.%s", full_msvc_v, suffix);
@@ -817,7 +818,7 @@ void fetch_winsdk(BuildOptions *options)
 					}
 				}
 			}
-			progress += (32 / ((int)vec_size(archs) * (int)ELEMENTLEN(arch_suffixes)));
+			progress += 32 / ((int)vec_size(archs) * arch_len);
 			sdk_progress(progress);
 		}
 	}
@@ -907,10 +908,9 @@ void fetch_winsdk(BuildOptions *options)
 
 	if (options->msvc_fetch_headers)
 	{
-
 		char *s_msvc_inc = s_msvc_base ? find_folder_inf(s_msvc_base, "include", true) : NULL;
 		char *s_inc = s_kits ? find_folder_inf(s_kits, "include", true) : NULL;
-		char *s_inc_v = s_lib ? find_folder_inf(s_inc, sdk_key, false) : NULL;
+		char *s_inc_v = s_inc ? find_folder_inf(s_inc, sdk_key, false) : NULL;
 
 		char *s_inc_ucrt = s_inc_v ? find_folder_inf(s_inc_v, "ucrt", true) : NULL;
 		char *s_inc_um = s_inc_v ? find_folder_inf(s_inc_v, "um", true) : NULL;
