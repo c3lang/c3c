@@ -18,6 +18,9 @@
 - Added `Duration.to_sec`
 - Updated posix libc with `shm_open`, `shm_unlink`, `truncate` and `ftruncate`.
 - Add `NonNull` and `Nullable` types for members with mandatory null checks.
+- Cap durations and time to long::max/long::min with saturating maths.
+- Added `time::FOREVER_PAST`, `Time::diff_years`, `Time::diff_months`, `time::day`, `time::week`, `time::month`, `time::year`.
+- Added `double.is_inf`, `float.is_inf`.
 
 ## 0.8.4 Change list
 
