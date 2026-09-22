@@ -873,10 +873,12 @@ macro @next_power_of_2($x)
 	return $v + 1;
 }
 
-
 macro uint double.high_word(double d) => (uint)(bitcast(d, ulong) >> 32);
 macro uint double.low_word(double d) => (uint)bitcast(d, ulong);
-macro uint float.word(float d) => bitcast(d, uint);
+macro bool double.is_inf(double d) => d.high_word() & 0x7FFFFFFF == 0x7FF00000 && !d.low_word();
+
+macro uint float.word(float f) => bitcast(f, uint);
+macro bool float.is_inf(float f) => f.word() & 0x7FFFFFFF == 0x7F800000;
 
 macro void double.set_high_word(double* d, uint u)
 {
