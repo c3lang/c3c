@@ -46,7 +46,8 @@ fn FlatSet* FlatSet.init(
 	float load_factor = DEFAULT_LOAD_FACTOR
 )
 {
-	sz mem_req = calc_mem_req(math::next_power_of_2(capacity));
+	capacity = math::next_power_of_2(capacity);
+	sz mem_req = calc_mem_req(capacity);
 	self.data = alloc::malloc(allocator, mem_req);
 	self.capacity = capacity;
 	self.count = 0;
@@ -145,41 +146,32 @@ fn bool add_inner(HashType* data, sz capacity, sz* count, HashType hash, Value v
 	Value[] values     =  values_array(data, capacity);
 	sz insert_slot_idx = -1;
 
-	for (; curr_idx < capacity; ++curr_idx)
+	for (;;)
 	{
-		// We need to try to find closest slot possible, but we can't break from here.
-		// We need to iterate over all probe sequence to scan for duplicates.
-		if (insert_slot_idx == -1 && data[curr_idx] < HASH_FIRST_VALID)
+		HashType slot_hash = data[curr_idx];
+
+		// The probe chain ends at the first empty slot; nothing beyond
+		// it can hold this value, so probing must stop here.
+		if (slot_hash == HASH_EMPTY)
 		{
-			insert_slot_idx = curr_idx;
-			continue;
+			if (insert_slot_idx == -1) insert_slot_idx = curr_idx;
+			break;
 		}
-		// Element was already in the set.
-		if (hash == data[curr_idx] && values[curr_idx] == value) return false;
-	}
 
-	if (insert_slot_idx != -1)
-	{
-		data[insert_slot_idx] = hash;
-		values[insert_slot_idx] = value;
-		if (count) (*count)++;
-		return true;
-	}
-
-	// Wrapped around, start from first entry.
-	curr_idx = 0;
-
-	for (; curr_idx < start_idx; ++curr_idx)
-	{
-		// We need to try to find closest slot possible, but we can't break from here.
-		// We need to iterate over all probe sequence to scan for duplicates.
-		if (insert_slot_idx == -1 && data[curr_idx] < HASH_FIRST_VALID)
+		// Tombstones keep the chain intact, so peek for a reusable slot
+		// but keep scanning in case a duplicate hides behind it.
+		if (slot_hash == HASH_DELETED)
 		{
-			insert_slot_idx = curr_idx;
-			continue;
+			if (insert_slot_idx == -1) insert_slot_idx = curr_idx;
+		} // Element was already in the set.
+		else if (hash == slot_hash && values[curr_idx] == value)
+		{
+			return false;
 		}
-		// Element was already in the set.
-		if (hash == data[curr_idx] && values[curr_idx] == value) return false;
+
+		// Wrapped around the entire table; load factor guarantees a slot exists.
+		curr_idx = (curr_idx + 1) & (capacity - 1);
+		if (curr_idx == start_idx) break;
 	}
 
 	if (@unlikely(insert_slot_idx == -1))
@@ -301,7 +293,6 @@ fn bool FlatSet.remove(&self, Value value)
 *>
 fn FlatSet FlatSet.set_union(&self, Allocator allocator, FlatSet* other)
 {
-	sz new_capacity = math::next_power_of_2(self.count + other.count);
 	FlatSet result;
 	result.init(allocator, self.capacity + other.capacity, self.load_factor);
 	result.add_all_from(self);
@@ -329,7 +320,7 @@ fn FlatSet FlatSet.intersection(&self, Allocator allocator, FlatSet* other)
 
 	smaller.@each(; Value value)
 	{
-		if (larger.contains(value)) result.add(value);
+		if (larger.contains(value)) (void)result.add(value);
 	};
 
 	return result;
@@ -350,10 +341,7 @@ fn FlatSet FlatSet.difference(&self, Allocator allocator, FlatSet* other)
 	result.init(allocator, self.capacity, self.load_factor);
 	self.@each(; Value value)
 	{
-		if (!other.contains(value))
-		{
-			(void)result.add(value);
-		}
+		if (!other.contains(value)) (void)result.add(value);
 	};
 	return result;
 }
@@ -374,10 +362,7 @@ fn FlatSet FlatSet.symmetric_difference(&self, Allocator allocator, FlatSet* oth
 	result.add_all_from(self);
 	other.@each(; Value value)
 	{
-		if (!result.add(value))
-		{
-			(void)result.remove(value);
-		}
+		if (!result.add(value)) (void)result.remove(value);
 	};
 	return result;
 }
