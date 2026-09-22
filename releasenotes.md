@@ -3,6 +3,7 @@
 ## 0.8.5 Change list
 
 ### Changes / improvements
+- Fetching MSVC also optionally fetches C/C++ headers for cross-compilation
 
 ### Fixes
 - Regression for `vec.pow(x)`.
