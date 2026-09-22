@@ -39,6 +39,48 @@ struct GfxWaylandCtx
 
 GfxWaylandCtx ctx;
 
+enum WlLayer : char @public
+{
+	BACKGROUND,
+	BOTTOM,
+	TOP,
+	OVERLAY,
+}
+
+bitstruct WlAnchor : char @public
+{
+	bool top;
+	bool bottom;
+	bool left;
+	bool right;
+}
+
+enum WlKeyboardInteractivity : char @public
+{
+	NONE,
+	EXCLUSIVE,
+	ON_DEMAND,
+}
+
+struct WlMargin @public
+{
+	int top;
+	int right;
+	int bottom;
+	int left;
+}
+
+struct WlLayerConfig @public
+{
+	WlLayer layer;
+	WlAnchor anchor;
+	int exclusive_zone;
+	WlMargin margin;
+	WlKeyboardInteractivity keyboard;
+	GfxMonitor* monitor;
+	String namespace;
+}
+
 // --- Gfx
 
 fn void? init_platform(String class_name, GfxInitOption flags)
@@ -445,13 +487,6 @@ fn void? _init_graphics_and_show(GfxWindow* win, GfxWindowFlags flags) @local
 	}
 }
 
-fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags) => @pool()
-{
-	_init_base_surface(win);
-	_bind_xdg_shell(win, name, flags);
-	_init_graphics_and_show(win, flags)!;
-}
-
 fn void _layer_surface_conf_cb(void* data, WlProxy* layer_surface, uint serial, uint width, uint height) @local
 {
 	zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
@@ -482,7 +517,7 @@ fn void _layer_surface_closed_cb(void* data, WlProxy* layer_surface) @local
 	if (win && !win.internal.should_close) gfx::_window_close_callback(win);
 }
 
-fn void? _bind_layer_shell(GfxWindow* win, GfxWlLayerConfig config) @local => @pool()
+fn void? _bind_layer_shell(GfxWindow* win, WlLayerConfig* config) @local => @pool()
 {
 	if (!ctx.layer_shell) return gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED~;
 
@@ -515,72 +550,81 @@ fn void? _bind_layer_shell(GfxWindow* win, GfxWlLayerConfig config) @local => @p
 	zwlr_layer_surface_v1_set_keyboard_interactivity(win.src.layerSurface, (uint)config.keyboard);
 }
 
-fn GfxWindow*? _create_layer_window(String name, int w, int h, GfxWlLayerConfig config, GfxWindowFlags flags = {}) @public => @pool()
+<*
+ Create a layer-shell surface (dock, bar, wallpaper, notification, overlay).
+
+ @param name : "Window title / identifier"
+ @param w : "Initial width, 0 to let anchors dictate width"
+ @param h : "Initial height, 0 to let anchors dictate height"
+ @param config : "Layer-shell positioning and behavior parameters"
+ @param flags : "Optional standard window flags"
+ @return "The created layer-shell window"
+ @return? gfx::GFX_CONTEXT_NOT_INITIALIZED : "If gfx::init has not been called"
+ @return? gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED : "If compositor lacks zwlr_layer_shell_v1"
+ @return? gfx::SURFACE_CREATION_FAILED : "If surface could not be created"
+*>
+fn GfxWindow*? create_layer_window(String name, int w, int h, WlLayerConfig config, GfxWindowFlags flags = {}) @public => @pool()
 {
-	if (!gfx::_gfx.initialized) return gfx::GFX_CONTEXT_NOT_INITIALIZED~;
 	$if gfx::X11_OR_WAYLAND:
 		if (!gfx::_gfx.use_wayland) return gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED~;
 	$endif
-
-	GfxWindow* win = gfx::_allocate_window()!;
-	defer catch
-	{
-		if (win.src.customCursorSurface) wl_surface_destroy(win.src.customCursorSurface);
-		if (win.src.layerSurface) zwlr_layer_surface_v1_destroy(win.src.layerSurface);
-		if (win.src.surface) wl_surface_destroy(win.src.surface);
-		win.internal.is_collected = true;
-		gfx::_gfx.active_windows--;
-	}
-
-	win.bounds = { 0, 0, w, h };
-	win.internal.mouse = gfx::_gfx.standard_mice[GfxMouseIcon.NORMAL.ordinal];
-	win.internal.flags = flags;
-	win.internal.enabled_events = gfx::ALL_EVENTS;
-
-	_init_base_surface(win);
-	_bind_layer_shell(win, config)!;
-	_init_graphics_and_show(win, flags)!;
-
-	if (!flags.hide_mouse) win.set_mouse_default();
-	return win;
+	return gfx::_create_window(name, 0, 0, w, h, flags, &config);
 }
 
-fn void _set_layer_anchor(GfxWindow* win, GfxWlAnchor anchor) @public
+<*
+ Set anchor edges for a layer surface.
+*>
+fn void set_layer_anchor(GfxWindow* win, WlAnchor anchor) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_anchor(win.src.layerSurface, (uint)(char)anchor);
 	wl_surface_commit(win.src.surface);
 }
 
-fn void _set_layer_exclusive_zone(GfxWindow* win, int zone) @public
+<*
+ Set exclusive zone in pixels (>0 reserves space, 0 is normal, -1 ignores other zones).
+*>
+fn void set_layer_exclusive_zone(GfxWindow* win, int zone) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_exclusive_zone(win.src.layerSurface, zone);
 	wl_surface_commit(win.src.surface);
 }
 
-fn void _set_layer_margin(GfxWindow* win, GfxWlMargin margin) @public
+<*
+ Set margin offsets around the layer surface.
+*>
+fn void set_layer_margin(GfxWindow* win, WlMargin margin) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_margin(win.src.layerSurface, margin.top, margin.right, margin.bottom, margin.left);
 	wl_surface_commit(win.src.surface);
 }
 
-fn void _set_layer_keyboard_interactivity(GfxWindow* win, GfxWlKeyboardInteractivity mode) @public
+<*
+ Set keyboard focus interactivity (NONE, EXCLUSIVE, ON_DEMAND).
+*>
+fn void set_layer_keyboard_interactivity(GfxWindow* win, WlKeyboardInteractivity mode) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_keyboard_interactivity(win.src.layerSurface, (uint)mode);
 	wl_surface_commit(win.src.surface);
 }
 
-fn void _set_layer(GfxWindow* win, GfxWlLayer layer) @public
+<*
+ Move the layer surface to another z-order layer.
+*>
+fn void set_layer(GfxWindow* win, WlLayer layer) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_layer(win.src.layerSurface, (uint)layer);
 	wl_surface_commit(win.src.surface);
 }
 
-fn void _set_layer_exclusive_edge(GfxWindow* win, GfxWlAnchor edge) @public
+<*
+ Disambiguate which edge exclusive zone applies to when multiple anchors are set (protocol v5+).
+*>
+fn void set_layer_exclusive_edge(GfxWindow* win, WlAnchor edge) @public
 {
 	if (!win || !win.src.layerSurface) return;
 	if (wl_proxy_get_version(win.src.layerSurface) >= 5)
@@ -588,6 +632,20 @@ fn void _set_layer_exclusive_edge(GfxWindow* win, GfxWlAnchor edge) @public
 		zwlr_layer_surface_v1_set_exclusive_edge(win.src.layerSurface, (uint)(char)edge);
 		wl_surface_commit(win.src.surface);
 	}
+}
+
+fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags, void* platform_data = null) => @pool()
+{
+	_init_base_surface(win);
+	if (platform_data)
+	{
+		_bind_layer_shell(win, (WlLayerConfig*)platform_data)!;
+	}
+	else
+	{
+		_bind_xdg_shell(win, name, flags);
+	}
+	_init_graphics_and_show(win, flags)!;
 }
 
 fn void window_destroy_platform(GfxWindow* win)

@@ -355,7 +355,7 @@ struct GfxEglContext
 
 const GfxGlHints GLOBAL_HINTS = {
 	.double_buffer = 1,
-	.rgba_size = { 8, 8, 8, 8 },
+	.rgba_size = (int[<4>])8,
 	.depth = 24,
 	.release_behavior = NONE,
 	.profile = CORE,
@@ -2805,112 +2805,4 @@ fn void? load_vulkan()
 fn void unload_vulkan()
 {
 	_unload_vulkan_native() @inline;
-}
-
-enum GfxWlLayer : char @feat(WAYLAND)
-{
-	BACKGROUND,
-	BOTTOM,
-	TOP,
-	OVERLAY,
-}
-
-bitstruct GfxWlAnchor : char @feat(WAYLAND)
-{
-	bool top;
-	bool bottom;
-	bool left;
-	bool right;
-}
-
-enum GfxWlKeyboardInteractivity : char @feat(WAYLAND)
-{
-	NONE,
-	EXCLUSIVE,
-	ON_DEMAND,
-}
-
-struct GfxWlMargin @feat(WAYLAND)
-{
-	int top;
-	int right;
-	int bottom;
-	int left;
-}
-
-struct GfxWlLayerConfig @feat(WAYLAND)
-{
-	GfxWlLayer layer;
-	GfxWlAnchor anchor;
-	int exclusive_zone;
-	GfxWlMargin margin;
-	GfxWlKeyboardInteractivity keyboard;
-	GfxMonitor* monitor;
-	String namespace;
-}
-
-<*
- Create a Wayland layer-shell surface (dock, bar, wallpaper, notification, overlay).
-
- @param name : "Window title / identifier"
- @param w : "Initial width, 0 to let anchors dictate width"
- @param h : "Initial height, 0 to let anchors dictate height"
- @param config : "Layer-shell positioning and behavior parameters"
- @param flags : "Optional standard window flags"
- @return "The created layer-shell window"
- @return? GFX_CONTEXT_NOT_INITIALIZED : "If gfx::init has not been called"
- @return? WAYLAND_LAYER_SHELL_NOT_SUPPORTED : "If compositor lacks zwlr_layer_shell_v1"
- @return? SURFACE_CREATION_FAILED : "If surface could not be created"
-*>
-fn GfxWindow*? create_layer_window(String name, int w, int h, GfxWlLayerConfig config, GfxWindowFlags flags = {}) @feat(WAYLAND)
-{
-	return wl::_create_layer_window(name, w, h, config, flags);
-}
-
-<*
- Set anchor edges for a layer surface.
-*>
-fn void set_layer_anchor(GfxWindow* win, GfxWlAnchor anchor) @feat(WAYLAND)
-{
-	wl::_set_layer_anchor(win, anchor);
-}
-
-<*
- Set exclusive zone in pixels (>0 reserves space, 0 is normal, -1 ignores other zones).
-*>
-fn void set_layer_exclusive_zone(GfxWindow* win, int zone) @feat(WAYLAND)
-{
-	wl::_set_layer_exclusive_zone(win, zone);
-}
-
-<*
- Set margin offsets around the layer surface.
-*>
-fn void set_layer_margin(GfxWindow* win, GfxWlMargin margin) @feat(WAYLAND)
-{
-	wl::_set_layer_margin(win, margin);
-}
-
-<*
- Set keyboard focus interactivity (NONE, EXCLUSIVE, ON_DEMAND).
-*>
-fn void set_layer_keyboard_interactivity(GfxWindow* win, GfxWlKeyboardInteractivity mode) @feat(WAYLAND)
-{
-	wl::_set_layer_keyboard_interactivity(win, mode);
-}
-
-<*
- Move the layer surface to another z-order layer.
-*>
-fn void set_layer(GfxWindow* win, GfxWlLayer layer) @feat(WAYLAND)
-{
-	wl::_set_layer(win, layer);
-}
-
-<*
- Disambiguate which edge exclusive zone applies to when multiple anchors are set (protocol v5+).
-*>
-fn void set_layer_exclusive_edge(GfxWindow* win, GfxWlAnchor edge) @feat(WAYLAND)
-{
-	wl::_set_layer_exclusive_edge(win, edge);
 }

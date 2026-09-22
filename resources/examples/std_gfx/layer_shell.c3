@@ -23,7 +23,7 @@ fn int main()
 	gfx::init("LayerShellTest", { .enable_x11 = false })!!;
 	defer gfx::finalize();
 
-	GfxWlLayerConfig config = {
+	WlLayerConfig config = {
 		.layer = TOP,
 		.anchor = { .top = true, .left = true, .right = true },
 		.exclusive_zone = 36,
@@ -31,7 +31,7 @@ fn int main()
 		.namespace = "c3-bar-test",
 	};
 
-	GfxWindow* win = gfx::create_layer_window("C3 Layer Bar", 800, 36, config)!!;
+	GfxWindow* win = wl::create_layer_window("C3 Layer Bar", 800, 36, config)!!;
 	defer win.destroy();
 
 	uint[4] colors = { 0xFF282A36, 0xFF44475A, 0xFF6272A4, 0xFFBD93F9 };
@@ -39,7 +39,7 @@ fn int main()
 	bool anchored_top = true;
 	int exclusive = 36;
 	bool has_margin = false;
-	GfxWlKeyboardInteractivity kbd = ON_DEMAND;
+	WlKeyboardInteractivity kbd = ON_DEMAND;
 
 	redraw(win, colors[color_idx]);
 
@@ -80,8 +80,8 @@ fn int main()
 							color_idx = (color_idx + 1) % colors.len;
 							redraw(win, colors[color_idx]);
 						case RIGHT:
-							kbd = (GfxWlKeyboardInteractivity)(((int)kbd + 1) % 3);
-							gfx::set_layer_keyboard_interactivity(win, kbd);
+							kbd = (WlKeyboardInteractivity)(((int)kbd + 1) % 3);
+							wl::set_layer_keyboard_interactivity(win, kbd);
 							io::printfn("Keyboard interactivity -> %s", kbd.description);
 						case MIDDLE:
 							break MAIN_LOOP;
@@ -94,41 +94,40 @@ fn int main()
 						case ESCAPE:
 							break MAIN_LOOP;
 						case NUM1:
-							gfx::set_layer(win, BACKGROUND);
+							wl::set_layer(win, BACKGROUND);
 							io::printn("Layer -> BACKGROUND");
 						case NUM2:
-							gfx::set_layer(win, BOTTOM);
+							wl::set_layer(win, BOTTOM);
 							io::printn("Layer -> BOTTOM");
 						case NUM3:
-							gfx::set_layer(win, TOP);
+							wl::set_layer(win, TOP);
 							io::printn("Layer -> TOP");
 						case NUM4:
-							gfx::set_layer(win, OVERLAY);
+							wl::set_layer(win, OVERLAY);
 							io::printn("Layer -> OVERLAY");
 						case SPACE:
 							exclusive = exclusive == 36 ? 0 : 36;
-							gfx::set_layer_exclusive_zone(win, exclusive);
+							wl::set_layer_exclusive_zone(win, exclusive);
 							io::printfn("Exclusive zone -> %d", exclusive);
 						case A:
 							anchored_top = !anchored_top;
-							GfxWlAnchor anchor = anchored_top
-								? (GfxWlAnchor){ .top = true, .left = true, .right = true }
-								: (GfxWlAnchor){ .bottom = true, .left = true, .right = true };
-							gfx::set_layer_anchor(win, anchor);
+							WlAnchor anchor = anchored_top
+								? (WlAnchor){ .top = true, .left = true, .right = true }
+								: (WlAnchor){ .bottom = true, .left = true, .right = true };
+							wl::set_layer_anchor(win, anchor);
 							io::printfn("Anchor -> %s", anchored_top ? "TOP" : "BOTTOM");
 						case M:
 							has_margin = !has_margin;
-							GfxWlMargin m = has_margin ? { 8, 16, 8, 16 } : {};
-							gfx::set_layer_margin(win, m);
+							WlMargin m = has_margin ? { 8, 16, 8, 16 } : {};
+							wl::set_layer_margin(win, m);
 							io::printfn("Margin -> %s", has_margin ? "8,16,8,16" : "0");
 						case K:
-							kbd = (GfxWlKeyboardInteractivity)(((int)kbd + 1) % 3);
-							gfx::set_layer_keyboard_interactivity(win, kbd);
+							kbd = (WlKeyboardInteractivity)(((int)kbd + 1) % 3);
+							wl::set_layer_keyboard_interactivity(win, kbd);
 							io::printfn("Keyboard interactivity -> %s", kbd.description);
 						default:
 							break;
-					}
-				case KEY_CHAR:
+					}				case KEY_CHAR:
 					io::printfn("Char received: %c (%d)", (char)ev.keyChar.value, ev.keyChar.value);
 				default:
 					break;
