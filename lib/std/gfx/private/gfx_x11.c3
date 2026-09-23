@@ -517,7 +517,13 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 		_get_visual_for_window(&visual, win.internal.flags.transparent);
 		_create_window(visual, name, flags, win)!;
 	}
-	gfx::_window_set_flags(win, flags, {});
+	// Maximized and floating are installed as initial EWMH properties by
+	// _create_window.  Client messages are only valid once the window is mapped.
+	GfxWindowFlags runtime_flags = flags;
+	runtime_flags.maximize = false;
+	runtime_flags.floating = false;
+	gfx::_window_set_flags(win, runtime_flags, {});
+	win.internal.flags = flags;
 }
 
 fn void window_destroy_platform(GfxWindow* win)
@@ -631,12 +637,12 @@ fn bool window_is_maximized(GfxWindow* win)
 	Atom actualType;
 	int actualFormat;
 	CULong nitems, bytesAfter;
-	char* propData;
-	int status = xGetWindowProperty(ctx.display, win.src.window, ctx.net_wm_state, 0, 1024, 0, 4, &actualType, &actualFormat, &nitems, &bytesAfter, &propData);
+	Atom* propData = null;
+	int status = xGetWindowProperty(ctx.display, win.src.window, ctx.net_wm_state, 0, 1024, 0, 4, &actualType, &actualFormat, &nitems, &bytesAfter, (char**)&propData);
 	if (status != 0) { if (propData != null) xFree(propData); return false; }
 	for (CULong i = 0; i < nitems; i++)
 	{
-		if ((Atom)propData[i] == ctx.net_wm_state_maximized_vert || (Atom)propData[i] == ctx.net_wm_state_maximized_horz)
+		if (propData[i] == ctx.net_wm_state_maximized_vert || propData[i] == ctx.net_wm_state_maximized_horz)
 		{
 			xFree(propData);
 			return true;
@@ -651,17 +657,11 @@ fn bool window_is_minimized(GfxWindow* win)
 	Atom actualType;
 	int actualFormat;
 	CULong nitems, bytesAfter;
-	char* propData;
-	int status = xGetWindowProperty(ctx.display, win.src.window, ctx.wm_state, 0, 2, 0, 0, &actualType, &actualFormat, &nitems, &bytesAfter, &propData);
-	if (status == 0 && nitems >= 1 && propData == (char*)(uptr)3 /* IconicState */)
-	{
-		xFree(propData);
-		return true;
-	}
+	CLong* propData = null;
+	int status = xGetWindowProperty(ctx.display, win.src.window, ctx.wm_state, 0, 2, 0, ctx.wm_state, &actualType, &actualFormat, &nitems, &bytesAfter, (char**)&propData);
+	bool minimized = status == 0 && actualType == ctx.wm_state && actualFormat == 32 && nitems >= 1 && propData[0] == 3 /* IconicState */;
 	if (propData != null) xFree(propData);
-	XWindowAttributes windowAttributes;
-	xGetWindowAttributes(ctx.display, win.src.window, &windowAttributes);
-	return windowAttributes.map_state != 2;
+	return minimized;
 }
 
 fn void window_maximize_platform(GfxWindow* win) => _toggle_maximized(win, true);
@@ -890,7 +890,7 @@ fn void window_show_platform(GfxWindow* win)
 	if (!window_is_hidden(win)) return;
 	xMapWindow(ctx.display, win.src.window);
 	_wait_for_show_event(win);
-	win.move(win.origin);
+	window_move_platform(win, win.origin);
 	window_set_fullscreen(win, win.is_fullscreen());
 }
 
@@ -1337,6 +1337,21 @@ fn void? _create_window(XVisualInfo visual, String name, GfxWindowFlags flags, G
 	0, visual.depth, 1 /* InputOutput */, visual.visual, (1 << 3) | (1 << 4) | (1 << 13) | (1 << 11), &swa);
 	// CWBorderPixel | CWColormap | CWEventMask
 	if (!win.src.window) return gfx::X11_WINDOW_CREATION_FAILED~;
+
+	// EWMH requires initial state to be set as a property before the first map.
+	// Runtime state changes use ClientMessage requests to the window manager.
+	Atom[3] states;
+	int state_count = 0;
+	if (flags.floating) states[state_count++] = ctx.net_wm_state_above;
+	if (flags.maximize)
+	{
+		states[state_count++] = ctx.net_wm_state_maximized_vert;
+		states[state_count++] = ctx.net_wm_state_maximized_horz;
+	}
+	if (state_count)
+	{
+		xChangeProperty(ctx.display, win.src.window, ctx.net_wm_state, 4 /* XA_ATOM */, 32, 0 /* PropModeReplace */, (char*)&states, state_count);
+	}
 
 	win.src.flashEnd = {};
 	xFreeColors(ctx.display, cmap, null, 0, 0);
@@ -1853,23 +1868,18 @@ fn void _handle_event() @local
 fn bool _wait_for_show_event(GfxWindow* win) @local
 {
 	Posix_pollfd fd = { .fd = xConnectionNumber(ctx.display), .events = os::POLLIN };
-
 	XEvent dummy;
+	Clock start = clock::now();
 
-	while (true)
+	while (!xCheckTypedWindowEvent(ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy))
 	{
-		xPending(ctx.display);
-
-		if (xCheckTypedWindowEvent(ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy)) return true;
-
-		gfx::_reset_prev_state();
-		while (xQLength(ctx.display)) _handle_event();
-
+		Duration remaining = time::ms(100) - start.to_now().to_duration();
+		if (remaining <= time::DURATION_ZERO) return false;
 		fd.revents = 0;
-		int ready = os::poll(&fd, 1, 100);
-		if (ready < 0) return false;
-		if (ready > 0 && fd.revents & os::POLLIN == 0) return false;
+		int ready = os::poll(&fd, 1, (CInt)max(remaining.to_ms(), 1));
+		if (ready <= 0 || fd.revents & os::POLLIN == 0) return false;
 	}
+	return true;
 }
 
 fn void _toggle_maximized(GfxWindow* win, bool maximized) @local
