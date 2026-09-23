@@ -91,14 +91,13 @@ fn void _wake()
 			return;
 		$case $feat(WIN32):
 			return win32::wake();
-		$case WAYLAND || X11:
-			_gfx.event_wait_force_stop[2] = 1;
-			while (true)
-			{
-				char byte = 0;
-				sz result = libc::write(_gfx.event_wait_force_stop[1], &byte, 1);
-				if (result == 1 || result == -1) break;
-			}
+		$case WAYLAND_ONLY:
+			return wl::wake();
+		$case X11_ONLY:
+			return x11::wake();
+		$case X11_OR_WAYLAND:
+			if (_gfx.use_wayland) return wl::wake();
+			return x11::wake();
 		$default:
 			unreachable();
 	$endswitch
@@ -106,7 +105,8 @@ fn void _wake()
 
 fn GfxEvent? _wait(Duration duration)
 {
-	if (_gfx.event_len) return peep();
+	if (duration <= time::DURATION_ZERO) return poll();
+	if (try ev = peep()) return ev;
 	$switch:
 		$case $feat(MACOS):
 			macos::_wait_platform(duration);
@@ -115,13 +115,13 @@ fn GfxEvent? _wait(Duration duration)
 		$case $feat(WIN32):
 			win32::_wait_platform(duration);
 		$case WAYLAND_ONLY:
-			wl::_wait_platform(duration);
+			(void)wl::_wait_platform(duration);
 		$case X11_ONLY:
 			x11::_wait_platform(duration);
 		$case X11_OR_WAYLAND:
 			if (_gfx.use_wayland)
 			{
-				wl::_wait_platform(duration);
+				(void)wl::_wait_platform(duration);
 			}
 			else
 			{

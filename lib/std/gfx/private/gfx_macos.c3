@@ -41,11 +41,11 @@ fn void wake() => objc::@autoreleasepool()
 	if (ev) ctx.app.send_void("postEvent:atStart:", ev, true);
 }
 
-fn void poll_events_platform()
+fn void poll_events_platform(bool reset_state = true)
 {
 	objc::@autoreleasepool()
 	{
-		gfx::_reset_prev_state();
+		if (reset_state) gfx::_reset_prev_state();
 		if (!ctx.app) return;
 		ObjId distantPast = darwin::nsdate().send(ObjId, "distantPast");
 
@@ -62,15 +62,20 @@ fn void poll_events_platform()
 
 }
 
+<* @require duration > time::DURATION_ZERO *>
 fn void _wait_platform(Duration duration) => objc::@autoreleasepool()
 {
 	if (!ctx.app) return;
 	CFTimeInterval time = duration.to_sec();
 	if (duration == gfx::WAIT_FOREVER) time = CFTimeInterval::max;
-	if (time < 0) time = 0;
 	ObjId date = darwin::nsdate().send(ObjId, "dateWithTimeIntervalSinceNow:", time);
 	ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
-	if (ev) ctx.app.send_void("sendEvent:", ev);
+	if (ev)
+	{
+		gfx::_reset_prev_state();
+		ctx.app.send_void("sendEvent:", ev);
+		poll_events_platform(reset_state: false);
+	}
 }
 
 
@@ -340,13 +345,8 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	nswin.send_void("makeFirstResponder:", view);
 	nswin.send_void("setAcceptsMouseMovedEvents:", true);
 	win.set_name(name);
-	window_set_floating(win, flags.floating);
-	if (!(flags.hide)) window_show_platform(win);
-	if (flags.maximize) window_maximize_platform(win);
-	if (flags.minimize) window_minimize_platform(win);
-	if (flags.fullscreen) window_set_fullscreen(win, true);
-
 	gfx::_window_set_flags(win, flags, {});
+	win.internal.maximized_state = nswin.send(bool, "isZoomed");
 	win.src.backing = {};
 	if (flags.open_gl) win.create_opengl_context(gfx::get_global_opengl_hints())!;
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
@@ -375,7 +375,18 @@ fn GfxPoint window_fetch_size(GfxWindow* win)
 	return win.size;
 }
 
-fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor();
+fn GfxMonitor*? window_find_monitor(GfxWindow* win)
+{
+	if (win.src.window)
+	{
+		ObjId screen = win.src.window.send(ObjId, "screen");
+		for (GfxMonitorNode* node = gfx::_gfx.monitors.list.head; node; node = node.next)
+		{
+			if (!node.disconnected && (ObjId)node.screen == screen) return &node.mon;
+		}
+	}
+	return gfx::get_primary_monitor();
+}
 
 fn void window_flash(GfxWindow* win, GfxFlashRequest request)
 {
@@ -421,11 +432,12 @@ fn bool window_is_minimized(GfxWindow* win)
 
 fn void window_maximize_platform(GfxWindow* win)
 {
-	win.src.window.send_void("zoom:", null);
+	if (!win.src.window.send(bool, "isZoomed")) win.src.window.send_void("zoom:", null);
 }
 
 fn void window_minimize_platform(GfxWindow* win)
 {
+	if (!win.internal.flags.maximize) win.internal.old_bounds = win.bounds;
 	win.src.window.send_void("miniaturize:", null);
 }
 
@@ -438,11 +450,10 @@ fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 fn void window_move_platform(GfxWindow* win, GfxPoint where)
 {
 	if (!win.src.window) return;
-	CGRect content = win.src.view.send(CGRect, "frame");
-	win.x = where.x;
-	win.y = (int)flip_y((float)where.y + (float)content.size.height - 1.0f);
-	CGPoint origin = { ...where };
-	win.src.window.send_void("setFrameOrigin:", origin);
+	CGRect content_rect = win.src.view.send(CGRect, "frame");
+	CGRect dummy_rect = { { where.x, flip_y((float)where.y + (float)content_rect.size.height - 1.0f) }, {} };
+	CGRect frame_rect = win.src.window.send(CGRect, "frameRectForContentRect:", dummy_rect);
+	win.src.window.send_void("setFrameOrigin:", frame_rect.origin);
 }
 
 fn void window_raise(GfxWindow* win)
@@ -453,18 +464,24 @@ fn void window_raise(GfxWindow* win)
 fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
 	if (!win.src.window) return;
-	CGRect frame = win.src.window.send(CGRect, "frame");
-	CGRect content = win.src.window.send(CGRect, "contentRectForFrameRect:", frame);
-	double offset = frame.size.height - content.size.height;
-	win.src.window.send_void("setFrame:display:", (CGRect){{ ...win.origin }, { size.x, (double)size.y + offset}}, true);
+	CGRect content_rect = win.src.window.send(CGRect, "contentRectForFrameRect:", win.src.window.send(CGRect, "frame"));
+	content_rect.origin.y += content_rect.size.height - (double)size.y;
+	content_rect.size = { ...size };
+	CGRect frame_rect = win.src.window.send(CGRect, "frameRectForContentRect:", content_rect);
+	win.src.window.send_void("setFrame:display:", frame_rect, true);
 }
 
 fn void window_restore_platform(GfxWindow* win)
 {
 	if (!win.src.window) return;
-	win.src.window.send_void("deminiaturize:", null);
-	win.internal.flags.minimize = false;
-	win.internal.flags.maximize = false;
+	if (win.src.window.send(bool, "isMiniaturized"))
+	{
+		win.src.window.send_void("deminiaturize:", null);
+	}
+	else if (win.src.window.send(bool, "isZoomed"))
+	{
+		win.src.window.send_void("zoom:", null);
+	}
 }
 
 fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
@@ -596,18 +613,16 @@ fn void window_show_platform(GfxWindow* win)
 
 fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
-	win.src.ctx.native = ctx;
-	win.src.backing = { .opengl };
-
 	FixedList{int, 40} stack;
-	int color_bits = (hints.rgba_size.sum()) / 4;
+	int color_bits = hints.rgba_size.sum();
 	stack.push_all({
 		NS_OPEN_GL_PFA_COLOR_SIZE, color_bits,
 		NS_OPEN_GL_PFA_ALPHA_SIZE, hints.rgba_size.a,
 		NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth,
 		NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil,
 		NS_OPEN_GL_PFA_AUX_BUFFERS, hints.aux_buffers,
-		NS_OPEN_GL_PFA_CLOSEST_POLICY});
+
+	});
 	if (hints.samples)
 	{
 		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1 , NS_OPEN_GL_PFA_SAMPLES, hints.samples });
@@ -617,12 +632,18 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0 });
 	}
 	if (hints.double_buffer) stack.push(NS_OPEN_GL_PFA_DOUBLE_BUFFER);
+	if (hints.stereo) stack.push(NS_OPEN_GL_PFA_STEREO);
+	bool legacy = hints.profile == COMPATIBILITY;
 	stack.push(NS_OPEN_GL_PFA_OPEN_GL_PROFILE);
-	stack.push(hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
-	if (hints.major <= 2)
+	switch
 	{
-		int accum_size = hints.accum_size.sum() / 4;
-		stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, accum_size });
+		case legacy:
+			stack.push(NS_OPEN_GL_PROFILE_LEGACY);
+			stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, hints.accum_size.sum() });
+		case hints.major >= 4:
+			stack.push(NS_OPEN_GL_PROFILE_4_1_CORE);
+		default:
+			stack.push(NS_OPEN_GL_PROFILE_3_2_CORE);
 	}
 	if (hints.renderer == SOFTWARE)
 	{
@@ -641,14 +662,18 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	ObjId share = hints.share ? hints.share.ctx : null;
 	ctx.ctx = macos::nsopengl_context().alloc().send(ObjId, "initWithFormat:shareContext:", format, share);
 	if (!ctx.ctx) return gfx::OPENGL_CTX_CREATION_FAILED~;
-	ctx.format = format;
 
+	ctx.format = format;
+	win.src.view.send_void("setWantsBestResolutionOpenGLSurface:", true);
 	ctx.ctx.send_void("setView:", win.src.view);
+
 	if (win.internal.flags.transparent)
 	{
 		int opacity = 0;
 		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
 	}
+	win.src.ctx.native = ctx;
+	win.src.backing = { .opengl };
 	window_make_current_opengl_context(win);
 	window_set_opengl_swap_interval(win, 0);
 }
@@ -1173,16 +1198,24 @@ fn void _osx_window_did_resize(ObjId self, ObjSel sel, ObjId notification)
 	GfxSize size = { (int)frame.size.width, (int)frame.size.height };
 	if (!size.x || !size.y) return;
 	win.size = size;
+	CGRect window_frame = win.src.window.send(CGRect, "frame");
+	CGRect content_rect = win.src.window.send(CGRect, "contentRectForFrameRect:", window_frame);
+	GfxPoint origin = { (int)content_rect.origin.x, (int)flip_y((float)(content_rect.origin.y + content_rect.size.height - 1.0)) };
+	gfx::_window_moved_callback(win, origin);
 
-	GfxMonitor*? mon = window_find_monitor(win);
-	if (catch mon) return;
-
-	switch
+	if (win.src.backing.opengl && win.src.ctx.native)
 	{
-		case mon.mode.size.x == size.x && mon.mode.size.y - 102 <= size.y:
-			gfx::_window_maximized_callback(win, { 0, 0, ...size });
-		case win.internal.flags.maximize:
-			gfx::_window_restored_callback(win, { ...win.origin, ...size });
+		win.src.ctx.native.ctx.send_void("update");
+	}
+	bool maximized = win.src.window.send(bool, "isZoomed");
+	GfxRect bounds = { ...origin, ...size };
+	if (maximized)
+	{
+		gfx::_window_maximized_callback(win, bounds);
+	}
+	else
+	{
+		gfx::_window_restored_callback(win, bounds);
 	}
 	gfx::_window_resized_callback(win, size);
 }
@@ -1290,6 +1323,10 @@ fn void _osx_view_did_change_backing_properties(ObjId self, ObjSel sel)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
+	if (win.src.backing.opengl && win.src.ctx.native)
+	{
+		win.src.ctx.native.ctx.send_void("update");
+	}
 	(void)gfx::_scale_updated_callback(win, window_find_monitor(win).scale);
 }
 
@@ -1397,6 +1434,7 @@ fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param) @l
 }
 
 const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
+const int NS_OPEN_GL_PFA_STEREO = 6;
 const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;
 const int NS_OPEN_GL_PFA_COLOR_SIZE = 8;
 const int NS_OPEN_GL_PFA_ALPHA_SIZE = 11;
@@ -1419,6 +1457,3 @@ const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 module std::gfx @feat(MACOS) @private;
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 import std::gfx::macos @public;
-
-
-

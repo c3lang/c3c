@@ -21,6 +21,11 @@ macro int WlFixed.to_int(self) => self / 256;
 macro double WlFixed.to_double(self) => (double)self / 256.0;
 macro WlFixed wlfixed_from_double(double d) => (WlFixed)(d * 256.0);
 
+struct WlCallbackListener
+{
+	void* done; // fn void(void* data, WlProxy* callback, uint callback_data)
+}
+
 struct WlRegistryListener
 {
 	void* global;
@@ -177,6 +182,9 @@ struct ZxdgOutputV1Listener
 typedef WlEglWindow = void;
 
 // ==== thin wl_proxy_marshal_flags wrappers (normally wayland-scanner "static inline") ====
+fn WlProxy* wl_display_sync(WlDisplay* display) => wl_proxy_marshal_flags((WlProxy*)display, 0, &wlCallbackInterface, wl_proxy_get_version((WlProxy*)display), 0, null);
+fn int wl_callback_add_listener(WlProxy* callback, WlCallbackListener* listener, void* data) => wl_proxy_add_listener(callback, listener, data);
+fn void wl_callback_destroy(WlProxy* callback) => wl_proxy_destroy(callback);
 fn WlProxy* wl_display_get_registry(WlDisplay* display) => wl_proxy_marshal_flags((WlProxy*)display, 1, &wlRegistryInterface, wl_proxy_get_version((WlProxy*)display), 0, null);
 fn void* wl_registry_bind(WlProxy* registry, uint name, WlInterface* iface, uint version) => (void*)wl_proxy_marshal_flags(registry, 0, iface, version, 0, name, iface.name, version, null);
 fn int wl_registry_add_listener(WlProxy* registry, WlRegistryListener* listener, void* data) => wl_proxy_add_listener(registry, listener, data);
@@ -259,6 +267,7 @@ extern fn uint wl_proxy_get_version(WlProxy* proxy);
 extern fn void wl_proxy_destroy(WlProxy* proxy);
 extern fn void wl_proxy_marshal(WlProxy* proxy, uint opcode, ...);
 
+extern WlInterface wlCallbackInterface @cname("wl_callback_interface");
 extern WlInterface wlRegistryInterface @cname("wl_registry_interface");
 extern WlInterface wlCompositorInterface @cname("wl_compositor_interface");
 extern WlInterface wlSurfaceInterface @cname("wl_surface_interface");

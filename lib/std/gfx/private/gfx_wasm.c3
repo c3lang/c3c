@@ -34,10 +34,18 @@ fn void poll_events_platform()
 	if (gfx::_gfx.usingAsyncify == -1) gfx::_gfx.usingAsyncify = gfx::gfxJsUsingAsyncify();
 	gfx::_reset_prev_state();
 	if (gfx::_gfx.usingAsyncify) gfx::gfxJsSleep(0);
+	if (gfx::_pending_resize_w > 0 && gfx::_pending_resize_h > 0)
+	{
+		gfx::emscripten_set_canvas_element_size(gfx::_wasm_target(), gfx::_pending_resize_w, gfx::_pending_resize_h);
+		gfx::_pending_resize_w = 0;
+		gfx::_pending_resize_h = 0;
+	}
 }
 
 fn void _wait_platform(Duration duration)
-{}
+{
+	poll_events_platform();
+}
 
 
 // --- GfxMonitor functions
@@ -113,13 +121,21 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 
 fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
 {
-	gfx::gfxJsSetCanvasSize(win.width, win.height);
+	win.src.window = (void*)((name.len > 0 && name[0] == '#') ? (ZString)name : gfx::DEFAULT_CANVAS_TARGET);
+
+	if (flags.maximize)
+	{
+		win.width = gfx::gfxJsInnerWidth();
+		win.height = gfx::gfxJsInnerHeight();
+	}
+
+	gfx::gfxJsSetCanvasSize(win, win.width, win.height);
 	gfx::gfxJsSetWindowTitle((ZString)name, name.len);
-	gfx::gfxJsSetupWindowListeners();
+	gfx::gfxJsSetupWindowListeners(win);
 
 	if (flags.allow_dnd) win.internal.flags.allow_dnd = true;
 
-	gfx::gfxJsSetupDropListeners();
+	gfx::gfxJsSetupDropListeners(win);
 
 	gfx::_window_set_flags(win, flags, {});
 	win.src.backing = {};
@@ -127,7 +143,10 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
 }
 
-fn void window_destroy_platform(GfxWindow* win) {}
+fn void window_destroy_platform(GfxWindow* win)
+{
+	gfx::gfxJsRemoveWindowListeners(win);
+}
 
 fn GfxPoint window_fetch_size(GfxWindow* win)
 {
@@ -138,7 +157,10 @@ fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor(
 
 fn void window_flash(GfxWindow* win, GfxFlashRequest request) {}
 
-fn void window_focus(GfxWindow* win) {}
+fn void window_focus(GfxWindow* win)
+{
+	gfx::gfxJsFocusCanvas(win);
+}
 
 fn void window_hide(GfxWindow* win) {}
 
@@ -146,14 +168,16 @@ fn bool window_is_floating(GfxWindow* win) => false;
 
 fn bool window_is_hidden(GfxWindow* win) => false;
 
-fn bool window_is_maximized(GfxWindow* win) => false;
+fn bool window_is_maximized(GfxWindow* win) => win.internal.flags.maximize;
 
 fn bool window_is_minimized(GfxWindow* win) => false;
 
 fn void window_maximize_platform(GfxWindow* win)
 {
-	(void)win.resize(window_find_monitor(win).mode.size);
-	win.move({});
+	int w = gfx::gfxJsInnerWidth();
+	int h = gfx::gfxJsInnerHeight();
+	gfx::gfxJsSetCanvasSize(win, w, h);
+	gfx::_window_resized_callback(win, { w, h });
 }
 
 fn void window_minimize_platform(GfxWindow* win) {}
@@ -166,7 +190,7 @@ fn void window_raise(GfxWindow* win) {}
 
 fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
-	gfx::gfxJsSetCanvasSize(...size);
+	gfx::gfxJsSetCanvasSize(win, ...size);
 }
 
 fn void window_restore_platform(GfxWindow* win) {}
@@ -209,13 +233,13 @@ fn void window_set_min_size(GfxWindow* win, GfxSize size) {}
 
 fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
 {
-	gfx::gfxJsSetPointerEvents((int)passthrough);
+	gfx::gfxJsSetPointerEvents(win, passthrough);
 }
 
 fn void window_set_mouse_platform(GfxWindow* win, GfxMouse* mouse)
 {
 	ZString name = (ZString)mouse;
-	gfx::gfxJsSetCursor(name, name.len());
+	gfx::gfxJsSetCursor(win, name, name.len());
 }
 
 fn void window_set_name(GfxWindow* win, String name)
@@ -225,7 +249,7 @@ fn void window_set_name(GfxWindow* win, String name)
 
 fn void window_set_opacity(GfxWindow* win, float opacity)
 {
-	gfx::gfxJsSetOpacity(opacity);
+	gfx::gfxJsSetOpacity(win, opacity);
 }
 
 fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state) {}
@@ -238,7 +262,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 {
 	win.src.ctx.native = ctx;
 	win.src.backing = { .opengl };
-	int handle = gfx::gfxJsWebglCreateContext(hints);
+	int handle = gfx::gfxJsWebglCreateContext(win, hints);
 	if (!handle) return gfx::OPENGL_CTX_CREATION_FAILED~;
 	ctx.ctx = (void*)(uptr)handle;
 	gfx::gfxJsWebglMakeCurrent(handle);
@@ -277,8 +301,9 @@ fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance insta
 	WgpuEmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc;
 	canvasDesc.chain.next = null;
 	canvasDesc.chain.sType = gfx::WGPU_STYPE_EMSCRIPTEN_SURFACE_SOURCE_CANVAS_HTML_SELECTOR;
-	canvasDesc.selector.data = "#canvas";
-	canvasDesc.selector.length = 7;
+	ZString target = gfx::_wasm_target(window);
+	canvasDesc.selector.data = target;
+	canvasDesc.selector.length = target.len();
 	WgpuSurfaceDescriptor surfaceDesc;
 	surfaceDesc.nextInChain = (WgpuChainedStruct*)&canvasDesc;
 	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc) ?: gfx::SURFACE_CREATION_FAILED~;
@@ -491,6 +516,20 @@ import std::math, std::time;
 import std::gfx::egl @public;
 import std::gfx::wasm @public;
 
+const ZString DEFAULT_CANVAS_TARGET = "#canvas";
+
+fn ZString _wasm_target(GfxWindow* win = null)
+{
+	if (win && win.src.window) return (ZString)win.src.window;
+	if (_gfx.root && _gfx.root.src.window) return (ZString)_gfx.root.src.window;
+	return DEFAULT_CANVAS_TARGET;
+}
+
+int _pending_resize_w;
+int _pending_resize_h;
+int _global_mouse_x;
+int _global_mouse_y;
+
 fn void _window_show_mouse_native(GfxWindow* win, bool show)
 {
 	_window_show_mouse_flags(win, show);
@@ -500,7 +539,7 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show)
 	}
 	else
 	{
-		gfxJsHideCursor();
+		gfxJsHideCursor(win);
 	}
 }
 
@@ -532,7 +571,7 @@ fn void _emscripten_on_fullscreenchange(int screenW, int screenH, bool entering)
 		_gfx.root.size = original;
 	}
 	gfxJsFocusCanvas();
-	gfxJsSetCanvasSize(..._gfx.root.size);
+	gfxJsSetCanvasSize(_gfx.root, ..._gfx.root.size);
 	_window_resized_callback(_gfx.root, _gfx.root.size);
 }
 
@@ -575,6 +614,8 @@ extern fn int emscripten_set_touchstart_callback_on_thread(ZString target, void*
 extern fn int emscripten_set_touchmove_callback_on_thread(ZString target, void* userData, int useCapture, void* callback, void* targetThread) @cname("emscripten_set_touchmove_callback_on_thread");
 extern fn int emscripten_set_touchend_callback_on_thread(ZString target, void* userData, int useCapture, void* callback, void* targetThread) @cname("emscripten_set_touchend_callback_on_thread");
 extern fn int emscripten_set_touchcancel_callback_on_thread(ZString target, void* userData, int useCapture, void* callback, void* targetThread) @cname("emscripten_set_touchcancel_callback_on_thread");
+extern fn int emscripten_set_keydown_callback_on_thread(ZString target, void* userData, int useCapture, void* callback, void* targetThread) @cname("emscripten_set_keydown_callback_on_thread");
+extern fn int emscripten_set_keyup_callback_on_thread(ZString target, void* userData, int useCapture, void* callback, void* targetThread) @cname("emscripten_set_keyup_callback_on_thread");
 
 extern fn int emscripten_request_pointerlock(ZString target, int defer_event) @cname("emscripten_request_pointerlock");
 extern fn int emscripten_exit_pointerlock() @cname("emscripten_exit_pointerlock");
@@ -582,27 +623,29 @@ extern fn void emscripten_sleep(uint ms) @cname("emscripten_sleep");
 
 extern fn int emscripten_webgl_make_context_current(int context) @cname("emscripten_webgl_make_context_current");
 extern fn int emscripten_webgl_destroy_context(int context) @cname("emscripten_webgl_destroy_context");
-extern fn void emscripten_webgl_commit_frame() @cname("emscripten_webgl_commit_frame");
+extern fn int emscripten_webgl_commit_frame() @cname("emscripten_webgl_commit_frame");
 extern fn int emscripten_webgl_get_current_context() @cname("emscripten_webgl_get_current_context");
 extern fn void* emscripten_webgl_get_proc_address(ZString name) @cname("emscripten_webgl_get_proc_address");
 
 struct EmscriptenWebGLContextAttributes
 {
-	int alpha;
-	int depth;
-	int stencil;
-	int antialias;
-	int premultipliedAlpha;
-	int preserveDrawingBuffer;
+	bool alpha;
+	bool depth;
+	bool stencil;
+	bool antialias;
+	bool premultipliedAlpha;
+	bool preserveDrawingBuffer;
 	int powerPreference;
-	int failIfMajorPerformanceCaveat;
+	bool failIfMajorPerformanceCaveat;
 	int majorVersion;
 	int minorVersion;
-	int enableExtensionsByDefault;
-	int explicitSwapControl;
+	bool enableExtensionsByDefault;
+	bool explicitSwapControl;
 	int proxyContextToMainThread;
-	int renderViaOffscreenBackBuffer;
+	bool renderViaOffscreenBackBuffer;
+	bool desynchronized;
 }
+
 extern fn void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes* attrs) @cname("emscripten_webgl_init_context_attributes");
 extern fn int emscripten_webgl_create_context(ZString target, EmscriptenWebGLContextAttributes* attrs) @cname("emscripten_webgl_create_context");
 
@@ -616,109 +659,222 @@ fn int gfxJsInnerWidth() => emscripten_run_script_int("window.innerWidth || 0;")
 fn int gfxJsInnerHeight() => emscripten_run_script_int("window.innerHeight || 0;");
 fn int gfxJsUsingAsyncify() => emscripten_run_script_int("'Asyncify' in Module;");
 
-fn void gfxJsSetCanvasSize(int w, int h) => (void)emscripten_set_canvas_element_size("#canvas", w, h);
+fn void gfxJsSetCanvasSize(GfxWindow* win, int w, int h) => (void)emscripten_set_canvas_element_size(_wasm_target(win), w, h);
 fn void gfxJsSetWindowTitle(ZString name, sz len) => emscripten_set_window_title(name);
 fn void gfxJsSleep(int ms) => emscripten_sleep((uint)ms);
-fn void gfxJsFocusCanvas() => emscripten_run_script("Module.canvas.focus();");
-fn void gfxJsSetCursor(ZString name, sz len) => emscripten_run_script(string::tformat_zstr("document.getElementById('canvas').style.cursor = '%s';", name));
-fn void gfxJsHideCursor() => emscripten_run_script("document.getElementById('canvas').style.cursor = 'none';");
-fn void gfxJsRequestPointerLock() => (void)emscripten_request_pointerlock("#canvas", 1);
+fn void gfxJsFocusCanvas(GfxWindow* win = null) => emscripten_run_script(string::tformat_zstr("var el = document.querySelector('%s') || Module.canvas; if (el) el.focus();", _wasm_target(win)));
+fn void gfxJsSetCursor(GfxWindow* win, ZString name, sz len) => emscripten_run_script(string::tformat_zstr("var el = document.querySelector('%s') || Module.canvas; if (el) el.style.cursor = '%s';", _wasm_target(win), name));
+fn void gfxJsHideCursor(GfxWindow* win = null) => emscripten_run_script(string::tformat_zstr("var el = document.querySelector('%s') || Module.canvas; if (el) el.style.cursor = 'none';", _wasm_target(win)));
+fn void gfxJsRequestPointerLock(GfxWindow* win = null) => (void)emscripten_request_pointerlock(_wasm_target(win), 1);
 fn void gfxJsExitPointerLock() => (void)emscripten_exit_pointerlock();
 fn void gfxJsRequestFullscreen() => emscripten_run_script("Module.requestFullscreen(false, true);");
 fn void gfxJsExitFullscreen() => emscripten_run_script("Module.exitFullscreen(false, true);");
-fn void gfxJsSetOpacity(float opacity) => emscripten_run_script(string::tformat_zstr("var el = document.getElementById('canvas'); if (el) el.style.opacity = %f;", opacity));
+fn void gfxJsSetOpacity(GfxWindow* win, float opacity) => emscripten_run_script(string::tformat_zstr("var el = document.querySelector('%s') || Module.canvas; if (el) el.style.opacity = %f;", _wasm_target(win), opacity));
 
-fn int gfxJsWebglCreateContext(GfxGlHints* hints)
+fn int gfxJsWebglCreateContext(GfxWindow* win, GfxGlHints* hints)
 {
 	EmscriptenWebGLContextAttributes attrs;
 	emscripten_webgl_init_context_attributes(&attrs);
-	attrs.majorVersion = 2;
-	attrs.depth = 1;
-	attrs.stencil = 1;
-	attrs.antialias = 1;
-	attrs.explicitSwapControl = 0;
-	return emscripten_webgl_create_context("#canvas", &attrs);
+	attrs.majorVersion = (hints && hints.major == 2) ? 1 : 2;
+	attrs.depth = hints ? hints.depth > 0 : true;
+	attrs.stencil = hints ? hints.stencil > 0 : true;
+	attrs.antialias = hints ? hints.samples > 0 : true;
+	attrs.explicitSwapControl = false;
+	return emscripten_webgl_create_context(_wasm_target(win), &attrs);
 }
 fn void gfxJsWebglDestroyContext(int ctx) => (void)emscripten_webgl_destroy_context(ctx);
 fn void gfxJsWebglMakeCurrent(int ctx) => (void)emscripten_webgl_make_context_current(ctx);
-fn void gfxJsWebglCommitFrame() => emscripten_webgl_commit_frame();
+fn void gfxJsWebglCommitFrame() => (void)emscripten_webgl_commit_frame();
 fn int gfxJsWebglGetCurrentContext() => emscripten_webgl_get_current_context();
 fn int gfxJsExtensionSupported(ZString name, sz len) => 0;
 fn void* gfxJsGetProcAddress(ZString name) => emscripten_webgl_get_proc_address(name);
 
 fn void gfxJsBlitSurface(char* data, int w, int h, int minH) {}
-fn int gfxJsGetMouseX() => 0;
-fn int gfxJsGetMouseY() => 0;
-fn void gfxJsSetPointerEvents(int passthrough) {}
+fn int gfxJsGetMouseX() => _global_mouse_x;
+fn int gfxJsGetMouseY() => _global_mouse_y;
+fn void gfxJsSetPointerEvents(GfxWindow* win, bool passthrough)
+{
+	emscripten_run_script(string::tformat_zstr(
+		"var el = document.querySelector('%s') || Module.canvas; if (el) el.style.pointerEvents = %s;",
+		_wasm_target(win),
+		passthrough ? "'none'" : "'auto'"
+	));
+}
 fn void gfxJsWriteClipboard(char* data, sz len) {}
 
 // RGFW's RGFW_createWindowPlatform callback loader
-fn void gfxJsSetupWindowListeners()
+fn void gfxJsSetupWindowListeners(GfxWindow* win)
 {
 	void* thread_ctx = (void*)2; // EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD
 	ZString target_doc = (ZString)(uptr)1; // EMSCRIPTEN_EVENT_TARGET_DOCUMENT
 	ZString target_win = (ZString)(uptr)2; // EMSCRIPTEN_EVENT_TARGET_WINDOW
+	ZString target_canvas = _wasm_target(win);
 
 	emscripten_set_resize_callback_on_thread(target_win, null, 0, &c3_on_resize, thread_ctx);
 	emscripten_set_fullscreenchange_callback_on_thread(target_doc, null, 0, &c3_on_fullscreenchange, thread_ctx);
-	emscripten_set_mousemove_callback_on_thread("#canvas", null, 0, &c3_on_mousemove, thread_ctx);
-	emscripten_set_touchstart_callback_on_thread("#canvas", null, 0, &c3_on_touchstart, thread_ctx);
-	emscripten_set_touchend_callback_on_thread("#canvas", null, 0, &c3_on_touchend, thread_ctx);
-	emscripten_set_touchmove_callback_on_thread("#canvas", null, 0, &c3_on_touchmove, thread_ctx);
-	emscripten_set_touchcancel_callback_on_thread("#canvas", null, 0, &c3_on_touchcancel, thread_ctx);
-	emscripten_set_mousedown_callback_on_thread("#canvas", null, 0, &c3_on_mousedown, thread_ctx);
+	emscripten_set_mousemove_callback_on_thread(target_canvas, null, 0, &c3_on_mousemove, thread_ctx);
+	emscripten_set_touchstart_callback_on_thread(target_canvas, null, 0, &c3_on_touchstart, thread_ctx);
+	emscripten_set_touchend_callback_on_thread(target_canvas, null, 0, &c3_on_touchend, thread_ctx);
+	emscripten_set_touchmove_callback_on_thread(target_canvas, null, 0, &c3_on_touchmove, thread_ctx);
+	emscripten_set_touchcancel_callback_on_thread(target_canvas, null, 0, &c3_on_touchcancel, thread_ctx);
+	emscripten_set_mousedown_callback_on_thread(target_canvas, null, 0, &c3_on_mousedown, thread_ctx);
 	emscripten_set_mouseup_callback_on_thread(target_win, null, 0, &c3_on_mouseup, thread_ctx);
-	emscripten_set_wheel_callback_on_thread("#canvas", null, 0, &c3_on_wheel, thread_ctx);
+	emscripten_set_wheel_callback_on_thread(target_canvas, null, 0, &c3_on_wheel, thread_ctx);
 	emscripten_set_focusin_callback_on_thread(target_win, null, 0, &c3_on_focusin, thread_ctx);
 	emscripten_set_focusout_callback_on_thread(target_win, null, 0, &c3_on_focusout, thread_ctx);
+	emscripten_set_keydown_callback_on_thread(target_win, null, 1, &c3_on_keydown, thread_ctx);
+	emscripten_set_keyup_callback_on_thread(target_win, null, 1, &c3_on_keyup, thread_ctx);
+}
 
-	// Direct port of RGFW's key listener EM_ASM (RGFW.h)
-	emscripten_run_script(
-		"window.addEventListener('keydown', (event) => {"
-		"  var code = stringToNewUTF8(event.code);"
-		"  Module._c3gfx_handleKeyMods(event.getModifierState('CapsLock'), event.getModifierState('NumLock'), event.getModifierState('Control'), event.getModifierState('Alt'), event.getModifierState('Shift'), event.getModifierState('Meta'), event.getModifierState('ScrollLock'));"
-		"  var codepoint = event.key.charCodeAt(0);"
-		"  if (codepoint < 0x7f && event.key.length > 1) codepoint = 0;"
-		"  Module._c3gfx_handleKeyEvent(code, codepoint, 1);"
-		"  _free(code);"
-		"}, true);"
-		"window.addEventListener('keyup', (event) => {"
-		"  var code = stringToNewUTF8(event.code);"
-		"  Module._c3gfx_handleKeyMods(event.getModifierState('CapsLock'), event.getModifierState('NumLock'), event.getModifierState('Control'), event.getModifierState('Alt'), event.getModifierState('Shift'), event.getModifierState('Meta'), event.getModifierState('ScrollLock'));"
-		"  Module._c3gfx_handleKeyEvent(code, 0, 0);"
-		"  _free(code);"
-		"}, true);"
-	);
+fn void gfxJsRemoveWindowListeners(GfxWindow* win = null)
+{
+	void* thread_ctx = (void*)2;
+	ZString target_doc = (ZString)(uptr)1;
+	ZString target_win = (ZString)(uptr)2;
+	ZString target_canvas = _wasm_target(win);
+
+	emscripten_set_resize_callback_on_thread(target_win, null, 0, null, thread_ctx);
+	emscripten_set_fullscreenchange_callback_on_thread(target_doc, null, 0, null, thread_ctx);
+	emscripten_set_mousemove_callback_on_thread(target_canvas, null, 0, null, thread_ctx);
+	emscripten_set_touchstart_callback_on_thread(target_canvas, null, 0, null, thread_ctx);
+	emscripten_set_touchend_callback_on_thread(target_canvas, null, 0, null, thread_ctx);
+	emscripten_set_touchmove_callback_on_thread(target_canvas, null, 0, null, thread_ctx);
+	emscripten_set_touchcancel_callback_on_thread(target_canvas, null, 0, null, thread_ctx);
+	emscripten_set_mousedown_callback_on_thread(target_canvas, null, 0, null, thread_ctx);
+	emscripten_set_mouseup_callback_on_thread(target_win, null, 0, null, thread_ctx);
+	emscripten_set_wheel_callback_on_thread(target_canvas, null, 0, null, thread_ctx);
+	emscripten_set_focusin_callback_on_thread(target_win, null, 0, null, thread_ctx);
+	emscripten_set_focusout_callback_on_thread(target_win, null, 0, null, thread_ctx);
+	emscripten_set_keydown_callback_on_thread(target_win, null, 1, null, thread_ctx);
+	emscripten_set_keyup_callback_on_thread(target_win, null, 1, null, thread_ctx);
 }
 
 // Direct port of RGFW's drop listener EM_ASM (RGFW.h)
-fn void gfxJsSetupDropListeners()
+fn void gfxJsSetupDropListeners(GfxWindow* win = null)
 {
-	emscripten_run_script(
-		"var canvas = document.getElementById('canvas');"
+	emscripten_run_script(string::tformat_zstr(
+		"var canvas = document.querySelector('%s') || Module.canvas;"
 		"if (canvas) {"
 		"  canvas.addEventListener('dragover', (e) => { e.preventDefault(); return false; }, true);"
-		"}"
-	);
+		"}",
+		_wasm_target(win)
+	));
 }
 
 // Emscripten HTML5 C callback trampolines (RGFW.h)
 struct EmscriptenUiEvent { int detail; int documentBodyClientWidth; int documentBodyClientHeight; int windowInnerWidth; int windowInnerHeight; int windowOuterWidth; int windowOuterHeight; int scrollTop; int scrollLeft; }
-struct EmscriptenMouseEvent { double timestamp; int targetX; int targetY; int clientX; int clientY; int screenX; int screenY; int pageX; int pageY; int movementX; int movementY; ushort button; ushort buttons; ushort ctrlKey; ushort shiftKey; ushort altKey; ushort metaKey; }
-struct EmscriptenWheelEvent { EmscriptenMouseEvent mouse; double deltaX; double deltaY; double deltaZ; uint deltaMode; }
-struct EmscriptenFocusEvent { int nodeName; int id; int className; }
-struct EmscriptenTouchPoint { int identifier; int screenX; int screenY; int clientX; int clientY; int pageX; int pageY; int isChanged; int onTarget; int targetX; int targetY; }
-struct EmscriptenTouchEvent { int numTouches; ushort ctrlKey; ushort shiftKey; ushort altKey; ushort metaKey; EmscriptenTouchPoint[32] touches; }
-struct EmscriptenFullscreenChangeEvent { int isFullscreen; int fullscreenIsHidden; int screenWidth; int screenHeight; }
+struct EmscriptenMouseEvent
+{
+	double timestamp;
+	int screenX;
+	int screenY;
+	int clientX;
+	int clientY;
+	bool ctrlKey;
+	bool shiftKey;
+	bool altKey;
+	bool metaKey;
+	ushort button;
+	ushort buttons;
+	int movementX;
+	int movementY;
+	int targetX;
+	int targetY;
+	int canvasOffsetX;
+	int canvasOffsetY;
+	int padding;
+}
+
+struct EmscriptenWheelEvent
+{
+	EmscriptenMouseEvent mouse;
+	double deltaX;
+	double deltaY;
+	double deltaZ;
+	uint deltaMode;
+}
+
+struct EmscriptenFocusEvent
+{
+	char[128] nodeName;
+	char[128] id;
+}
+
+struct EmscriptenKeyboardEvent
+{
+	double timestamp;
+	uint location;
+	bool ctrlKey;
+	bool shiftKey;
+	bool altKey;
+	bool metaKey;
+	bool repeat;
+	uint charCode;
+	uint keyCode;
+	uint which;
+	char[32] key;
+	char[32] code;
+	char[32] charValue;
+	char[32] locale;
+}
+
+struct EmscriptenTouchPoint
+{
+	int identifier;
+	int screenX;
+	int screenY;
+	int clientX;
+	int clientY;
+	int pageX;
+	int pageY;
+	bool isChanged;
+	bool onTarget;
+	int targetX;
+	int targetY;
+}
+
+struct EmscriptenTouchEvent
+{
+	double timestamp;
+	int numTouches;
+	bool ctrlKey;
+	bool shiftKey;
+	bool altKey;
+	bool metaKey;
+	EmscriptenTouchPoint[32] touches;
+}
+
+struct EmscriptenFullscreenChangeEvent
+{
+	bool isFullscreen;
+	bool fullscreenEnabled;
+	char[128] nodeName;
+	char[128] id;
+	int elementWidth;
+	int elementHeight;
+	int screenWidth;
+	int screenHeight;
+}
 
 extern fn int emscripten_get_canvas_element_size(ZString target, int* width, int* height) @cname("emscripten_get_canvas_element_size");
 
 fn int c3_on_resize(int eventType, EmscriptenUiEvent* e, void* userData)
 {
-	int w = 0;
-	int h = 0;
-	emscripten_get_canvas_element_size("#canvas", &w, &h);
-	if (w > 0 && h > 0 && _gfx.root)
+	if (!_gfx.root) return 1;
+	int w;
+	int h;
+	if (_gfx.root.internal.flags.maximize)
+	{
+		w = e.windowInnerWidth;
+		h = e.windowInnerHeight;
+		_pending_resize_w = w;
+		_pending_resize_h = h;
+	}
+	else
+	{
+		emscripten_get_canvas_element_size(_wasm_target(), &w, &h);
+	}
+	if (w > 0 && h > 0)
 	{
 		_window_resized_callback(_gfx.root, { w, h });
 	}
@@ -728,7 +884,7 @@ fn int c3_on_resize(int eventType, EmscriptenUiEvent* e, void* userData)
 fn int c3_on_fullscreenchange(int eventType, EmscriptenFullscreenChangeEvent* e, void* userData)
 {
 	gfxJsFocusCanvas();
-	emscripten_set_canvas_element_size("#canvas", e.screenWidth, e.screenHeight);
+	emscripten_set_canvas_element_size(_wasm_target(), e.screenWidth, e.screenHeight);
 	_window_resized_callback(_gfx.root, { e.screenWidth, e.screenHeight });
 	return 1;
 }
@@ -747,20 +903,27 @@ fn int c3_on_focusout(int eventType, EmscriptenFocusEvent* e, void* userData)
 
 extern fn int emscripten_get_element_css_size(ZString target, double* width, double* height) @cname("emscripten_get_element_css_size");
 
-fn GfxPoint _wasm_mouse_pos(EmscriptenMouseEvent* e)
+fn GfxPoint _wasm_pos(int targetX, int targetY)
 {
 	double cw = 0;
 	double ch = 0;
-	emscripten_get_element_css_size("#canvas", &cw, &ch);
+	emscripten_get_element_css_size(_wasm_target(), &cw, &ch);
 
-	int x = e.targetX;
-	int y = e.targetY;
+	int x = targetX;
+	int y = targetY;
 	if (cw > 0.0 && ch > 0.0 && _gfx.root)
 	{
-		x = (int)((double)e.targetX * (double)_gfx.root.width / cw);
-		y = (int)((double)e.targetY * (double)_gfx.root.height / ch);
+		x = (int)((double)targetX * (double)_gfx.root.width / cw);
+		y = (int)((double)targetY * (double)_gfx.root.height / ch);
 	}
 	return { x, y };
+}
+
+fn GfxPoint _wasm_mouse_pos(EmscriptenMouseEvent* e)
+{
+	_global_mouse_x = e.screenX;
+	_global_mouse_y = e.screenY;
+	return _wasm_pos(e.targetX, e.targetY);
 }
 
 fn int c3_on_mousemove(int eventType, EmscriptenMouseEvent* e, void* userData)
@@ -797,11 +960,27 @@ fn int c3_on_wheel(int eventType, EmscriptenWheelEvent* e, void* userData)
 	return 1;
 }
 
+fn int c3_on_keydown(int eventType, EmscriptenKeyboardEvent* e, void* userData)
+{
+	_key_update_key_mods_ex(_gfx.root, false, false, e.ctrlKey, e.altKey, e.shiftKey, e.metaKey, false);
+	uint codepoint = (uint)e.key[0];
+	if (codepoint < 0x7f && e.key[1] != 0) codepoint = 0;
+	handle_key_event_callback((ZString)&e.code, codepoint, true);
+	return 1;
+}
+
+fn int c3_on_keyup(int eventType, EmscriptenKeyboardEvent* e, void* userData)
+{
+	_key_update_key_mods_ex(_gfx.root, false, false, e.ctrlKey, e.altKey, e.shiftKey, e.metaKey, false);
+	handle_key_event_callback((ZString)&e.code, 0, false);
+	return 1;
+}
+
 fn int c3_on_touchstart(int eventType, EmscriptenTouchEvent* e, void* userData)
 {
 	for (int i = 0; i < e.numTouches; i++)
 	{
-		_mouse_motion_callback(_gfx.root, { e.touches[i].targetX, e.touches[i].targetY });
+		_mouse_motion_callback(_gfx.root, _wasm_pos(e.touches[i].targetX, e.touches[i].targetY));
 		_mouse_button_callback(_gfx.root, LEFT, true);
 	}
 	return 1;
@@ -811,7 +990,7 @@ fn int c3_on_touchmove(int eventType, EmscriptenTouchEvent* e, void* userData)
 {
 	for (int i = 0; i < e.numTouches; i++)
 	{
-		_mouse_motion_callback(_gfx.root, { e.touches[i].targetX, e.touches[i].targetY });
+		_mouse_motion_callback(_gfx.root, _wasm_pos(e.touches[i].targetX, e.touches[i].targetY));
 	}
 	return 1;
 }
@@ -825,7 +1004,14 @@ fn int c3_on_touchend(int eventType, EmscriptenTouchEvent* e, void* userData)
 	return 1;
 }
 
-fn int c3_on_touchcancel(int eventType, EmscriptenTouchEvent* e, void* userData) => 1;
+fn int c3_on_touchcancel(int eventType, EmscriptenTouchEvent* e, void* userData)
+{
+	for (int i = 0; i < e.numTouches; i++)
+	{
+		_mouse_button_callback(_gfx.root, LEFT, false);
+	}
+	return 1;
+}
 
 fn void gfxEmscriptenOnResize(int w, int h) @export("c3gfx_on_resize")
 {
