@@ -29,7 +29,6 @@ struct GfxContext
 	bool polled_events;
 	uint[GFX_KEYS] api_keycodes;
 	GfxKey[$feat(WIN32) ? 512 : 256] keycodes;
-	int[3] event_wait_force_stop @feat(LINUX, BSD);
 	GfxDataTransfer* clipboard;
 	bool dnd_build;
 	GfxDataDropNode* dnd_root;
