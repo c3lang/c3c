@@ -278,6 +278,7 @@ typedef struct BuildOptions_
 	bool docgen_append;
 	bool fetch_accept_license;
 	bool msvc_show_versions;
+	bool msvc_fetch_headers;
 	ImplicitFloat implicit_float;
 	const char *msvc_version_override;
 	const char *msvc_sdk_version_override;

@@ -1,4 +1,4 @@
-module std::os::macos::cf @test @feat(DARWIN);
+module std::os::macos::cg @test @feat(DARWIN);
 
 fn void test_cgfloat_type()
 {

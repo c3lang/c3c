@@ -1,5 +1,31 @@
 module std::os::darwin @feat(DARWIN) @link("Foundation.framework");
-import std::os::macos::cf, std::os::macos::objc, std::io;
+import std::io, std::os::darwin::objc;
+
+alias NSUInteger = env::ARCH_64_BIT ??? ulong : uint;
+alias NSInteger = env::ARCH_64_BIT ??? long : int;
+
+fn ObjClass nsstring() => objc::@class("NSString");
+fn ObjClass nsmutable_string() => objc::@class("NSMutableString");
+fn ObjClass nsarray() => objc::@class("NSArray");
+fn ObjClass nsmutable_array() => objc::@class("NSMutableArray");
+fn ObjClass nsdate() => objc::@class("NSDate");
+fn ObjClass nstimer() => objc::@class("NSTimer");
+fn ObjClass nsrun_loop() => objc::@class("NSRunLoop");
+
+fn ObjId string(ZString str)
+{
+	return nsstring().send(ObjId, "stringWithUTF8String:", str);
+}
+
+fn ZString string_to_zstr(ObjId str)
+{
+	return str.send(ZString, "UTF8String");
+}
+
+fn ObjId String.to_nsstring(self) => @pool()
+{
+	return string(self.zstr_copy(tmem));
+}
 
 constset NSSearchPathDomainMask : NSUInteger
 {
@@ -9,6 +35,7 @@ constset NSSearchPathDomainMask : NSUInteger
 	SYSTEM = 8,
 	ALL = 0x0ffff
 }
+
 
 constset NSSearchPathDirectory : NSUInteger
 {
@@ -41,7 +68,6 @@ constset NSSearchPathDirectory : NSUInteger
 	TRASH = 102,
 }
 
-// real signature in Foundation
 extern fn CFArrayRef nsSearchPathForDirectoriesInDomains(NSSearchPathDirectory directory, NSSearchPathDomainMask domainMask, bool expandTilde) @cname("NSSearchPathForDirectoriesInDomains");
 
 fn String? find_first_directory_temp(NSSearchPathDirectory directory, NSSearchPathDomainMask domainMask)
@@ -50,9 +76,9 @@ fn String? find_first_directory_temp(NSSearchPathDirectory directory, NSSearchPa
 	{
 		CFArrayRef arr = nsSearchPathForDirectoriesInDomains(directory, domainMask, true);
 		if (!arr.getCount()) return io::PATH_COULD_NOT_BE_FOUND~;
-        CFStringRef str = (CFStringRef)arr.getValueAtIndex(0);
+		CFStringRef str = (CFStringRef)arr.getValueAtIndex(0);
 		char* buffer = tmalloc(2048);
-        if (!str.getCString(buffer, 2048, UTF8)) return io::PATH_COULD_NOT_BE_FOUND~;
-        return ((ZString)buffer).str_view();
+		if (!str.getCString(buffer, 2048, UTF8)) return io::PATH_COULD_NOT_BE_FOUND~;
+		return ((ZString)buffer).str_view();
 	};
 }

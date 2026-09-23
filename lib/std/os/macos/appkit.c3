@@ -1,94 +1,26 @@
-module std::os::macos::objc @feat(DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
+module std::os::macos @feat(MACOS) @link("AppKit.framework");
+import std::os::darwin;
 
-typedef ObjcClass = void*;
-typedef ObjcMethod = void*;
-typedef ObjcIvar = void*;
-typedef ObjcSelector = void*;
-alias ObjcId = void*;
-alias SendVoid = fn void*(void*, ObjcSelector);
+extern fn int nsApplicationMain(int argc, char **argv) @cname("NSApplicationMain");
 
-excuse { CLASS_NOT_FOUND, UNKNOWN_EVENT }
-
-macro ZString ObjcClass.name(ObjcClass cls) => class_getName(cls);
-macro ObjcClass ObjcClass.superclass(ObjcClass cls) => class_getSuperclass(cls);
-macro bool ObjcClass.responds_to(ObjcClass cls, ObjcSelector sel) => class_respondsToSelector(cls, sel);
-macro ObjcMethod ObjcClass.method(ObjcClass cls, ObjcSelector name) => class_getClassMethod(cls, name);
-
-macro bool ObjcSelector.equals(ObjcSelector a, ObjcSelector b) => a == b;
-macro bool ObjcClass.equals(ObjcClass a, ObjcClass b) => a == b;
-
-fn ObjcId alloc(ObjcClass cls) => objc::msg_send(cls, SendVoid, "alloc");
-fn void release(ObjcId id) => objc::msg_send(id, SendVoid, "release");
-
-alias NSUInteger = env::ARCH_64_BIT ??? ulong : uint;
-alias NSInteger = env::ARCH_64_BIT ??? long : int;
-
-macro ObjcClass? class_by_name(ZString c)
-{
-	ObjcClass cls = objc::lookUpClass(c);
-	return cls ?: CLASS_NOT_FOUND~;
-}
-
-macro ObjcClass[] class_get_list(Allocator allocator)
-{
-	int num_classes = objc::getClassList(null, 0);
-	if (!num_classes) return {};
-	ObjcClass[] entries = allocator.new_array(ObjcClass, num_classes);
-	objc::getClassList(entries.ptr, entries.len);
-	return entries;
-}
-
-extern fn void msgSend(...) @cname("objc_msgSend") @builtin;
-extern fn ObjcSelector sel_getUid(ZString);
-
-macro msg_send(id, $FunctionType, ZString $selector, ...)
-{
-	return (($FunctionType)&msgSend)((ObjcId)id, sel_getUid($selector), ...$vaarg);
-}
-
-macro void @autoreleasepool(;@body())
-{
-	void* ctx = objc_autoreleasePoolPush();
-	defer objc_autoreleasePoolPop(ctx);
-	@body();
-}
-
-extern fn void* objc_autoreleasePoolPush();
-extern fn void objc_autoreleasePoolPop(void* context);
-extern fn ObjcClass getClass(ZString name) @cname("objc_getClass");
-extern fn int getClassList(ObjcClass* buffer, int buffer_count) @cname("objc_getClassList");
-extern fn ObjcClass lookUpClass(ZString name) @cname("objc_lookUpClass") @builtin;
-
-extern fn ZString class_getName(ObjcClass cls);
-extern fn ObjcClass class_getSuperclass(ObjcClass cls);
-extern fn ObjcMethod class_getClassMethod(ObjcClass cls, ObjcSelector name);
-extern fn bool class_respondsToSelector(ObjcClass cls, ObjcSelector name);
-extern fn ObjcSelector sel_registerName(ZString str);
-extern fn bool class_addIvar(ObjcClass cls, ZString name, int size, double alignment, ZString types);
-extern fn bool class_addMethod(ObjcClass cls, ObjcSelector name, void* imp, ZString types);
-
-extern fn ObjcIvar getInstanceVariable(ObjcId id, ZString name, void* outValue) @cname("object_getInstanceVariable");
-extern fn ObjcIvar setInstanceVariable(ObjcId id, ZString name, void* value) @cname("object_setInstanceVariable");
-extern fn ObjcClass allocateClassPair(ObjcClass cls, ZString name, uint extraBytes) @cname("objc_allocateClassPair");
-extern fn void registerClassPair(ObjcClass cls) @cname("objc_registerClassPair");
-
-module std::os::macos::objc::ns @feat(DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
-import std::os::macos::cf;
-
+fn ObjClass nsapplication() => objc::@class("NSApplication");
+fn ObjClass nsscreen() => objc::@class("NSScreen");
+fn ObjClass nsopengl_context() => objc::@class("NSOpenGLContext");
+fn ObjClass nsopengl_pixel_format() => objc::@class("NSOpenGLPixelFormat");
+fn ObjClass nspasteboard() => objc::@class("NSPasteboard");
+fn ObjClass nsimage() => objc::@class("NSImage");
+fn ObjClass nsbitmap_image_rep() => objc::@class("NSBitmapImageRep");
+fn ObjClass nstracking_area() => objc::@class("NSTrackingArea");
+fn ObjClass nscursor() => objc::@class("NSCursor");
+fn ObjClass nswindow() => objc::@class("NSWindow");
+fn ObjClass nsview() => objc::@class("NSView");
+fn ObjClass nsevent() => objc::@class("NSEvent");
 
 constset NSApplicationActivationPolicy : inline NSInteger
 {
 	REGULAR    = 0,
 	ACCESSORY  = 1,
 	PROHIBITED = 2,
-}
-
-
-constset NSBackingStoreType : inline NSUInteger
-{
-	RETAINED    = 0,
-	NONRETAINED = 1,
-	BUFFERED    = 2
 }
 
 constset NSEventType : inline NSUInteger
@@ -129,6 +61,15 @@ constset NSEventType : inline NSUInteger
 	CHANGE_MODE         = 38,
 }
 
+constset NSWindowButton : inline NSUInteger
+{
+	CLOSE             = 0,
+	MINIATURIZE       = 1,
+	ZOOM              = 2,
+	TOOLBAR           = 3,
+	DOCUMENT_ICON     = 4,
+	DOCUMENT_VERSIONS = 6,
+}
 
 constset NSEventMask : inline ulong
 {
@@ -169,7 +110,7 @@ constset NSEventMask : inline ulong
 	ANY                 = ulong::max,
 }
 
-fn NSEventMask event_mask_from_type(NSEventType type) => (NSEventMask)1ul << type;
+fn NSEventMask nsevent_mask_from_type(NSEventType type) => (NSEventMask)1ul << type;
 
 
 constset NSEventModifierFlags : inline NSUInteger
@@ -218,6 +159,27 @@ constset NSWindowLevel : inline NSInteger
 	SCREEN_SAVER    = 1000,
 }
 
+constset NSBackingStoreType : inline NSUInteger
+{
+	RETAINED     = 0,
+	NON_RETAINED = 1,
+	BUFFERED     = 2,
+}
+
+constset NSTrackingAreaOptions : inline NSUInteger
+{
+	MOUSE_ENTERED_AND_EXITED      = 0x01,
+	MOUSE_MOVED                   = 0x02,
+	CURSOR_UPDATE                 = 0x04,
+	ACTIVE_WHEN_FIRST_RESPONDER   = 0x10,
+	ACTIVE_IN_KEY_WINDOW          = 0x20,
+	ACTIVE_IN_ACTIVE_APP          = 0x40,
+	ACTIVE_ALWAYS                 = 0x80,
+	ASSUME_INSIDE                 = 0x100,
+	IN_VISIBLE_RECT               = 0x200,
+	ENABLED_DURING_MOUSE_DRAG     = 0x400,
+}
+
 constset NSWindowStyleMask : inline NSUInteger
 {
 	BORDERLESS                = 0,
@@ -254,3 +216,5 @@ constset NSApplicationTerminateReply : inline NSUInteger
 	NOW    = 1,
 	LATER  = 2,
 }
+
+extern ObjId nsCalibratedRGBColorSpace @cname("NSCalibratedRGBColorSpace");

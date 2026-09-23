@@ -1,0 +1,13 @@
+// #target: macos-aarch64
+module test;
+import std;
+
+float[<3>][4] top = { [2] = (float[<3>])7 };
+fn int main()
+{
+	top[1][0] = 1;
+	return 0;
+}
+/* #expect: test.ll
+
+@test.top = local_unnamed_addr global { [2 x [3 x float]], [3 x float], [3 x float] } { [2 x [3 x float]] zeroinitializer, [3 x float] [float 7.000000e+00, float 7.000000e+00, float 7.000000e+00], [3 x float] zeroinitializer }, align 4
