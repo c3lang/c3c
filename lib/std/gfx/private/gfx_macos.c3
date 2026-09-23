@@ -345,7 +345,6 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	nswin.send_void("makeFirstResponder:", view);
 	nswin.send_void("setAcceptsMouseMovedEvents:", true);
 	win.set_name(name);
-	if (!flags.hide) window_show_platform(win);
 	gfx::_window_set_flags(win, flags, {});
 	win.internal.maximized_state = nswin.send(bool, "isZoomed");
 	win.src.backing = {};
