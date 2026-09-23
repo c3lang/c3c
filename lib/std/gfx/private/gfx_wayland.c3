@@ -1,6 +1,6 @@
 module std::gfx::wl @feat(BSD, LINUX) @feat(WAYLAND) @private;
 import std::math, std::collections, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
-import std::gfx::egl, std::gfx @public;
+import std::gfx::egl, std::gfx @public, std::io;
 
 struct GfxWaylandCtx
 {
@@ -107,132 +107,136 @@ fn void destroy_platform()
 	ctx = {};
 }
 
+fn bool _send_key_repeat_maybe(bool cancel_read = false) @local
+{
+	if (ctx.wl_repeat_info_rate && ctx.last_key
+		&& ctx.last_key_time.to_now() >= time::NANO_DURATION_ZERO)
+	{
+		if (cancel_read) wl_display_cancel_read(ctx.wl_display);
+		_send_key_event(ctx.last_key);
+		ctx.last_key_time = clock::now() + time::from_float(1.0 / ctx.wl_repeat_info_rate).to_nano();
+		return true;
+	}
+	return false;
+}
+
 fn void poll_events_platform()
 {
 	gfx::_reset_prev_state();
 
-	while (wl_display_flush(ctx.wl_display) == -1)
-	{
-		if (libc::errno() != EAGAIN) return;
-		if (wl_display_dispatch_pending(ctx.wl_display) == -1) return;
-	}
+	if (wl_display_flush(ctx.wl_display) == -1 && libc::errno() != EAGAIN) return;
 
-	if (ctx.wl_repeat_info_rate != 0 && ctx.last_key != 0)
-	{
-		if (ctx.last_key_time.to_now() >= time::NANO_DURATION_ZERO)
-		{
-			_send_key_event(ctx.last_key);
-			ctx.last_key_time = clock::now() + time::from_float(1.0 / ctx.wl_repeat_info_rate).to_nano();
-		}
-	}
+	_send_key_repeat_maybe();
 
-	Posix_pollfd fds;
-	fds.fd = wl_display_get_fd(ctx.wl_display);
-	fds.events = (short)os::POLLIN;
+	Posix_pollfd fds = { .fd = wl_display_get_fd(ctx.wl_display), .events = os::POLLIN };
 
 	while (true)
 	{
 		while (wl_display_prepare_read(ctx.wl_display) != 0)
 		{
-			if (wl_display_dispatch_pending(ctx.wl_display) > 0) return;
+			if (wl_display_dispatch_pending(ctx.wl_display) != 0) return;
 		}
 
-		if (os::poll(&fds, 1, 0) == 0)
+		if (os::poll(&fds, 1, 0) <= 0)
 		{
 			wl_display_cancel_read(ctx.wl_display);
 			return;
 		}
 
-		if (fds.revents & os::POLLIN)
-		{
-			wl_display_read_events(ctx.wl_display);
-			if (wl_display_dispatch_pending(ctx.wl_display) > 0) return;
-		}
-		else
+		if (fds.revents & os::POLLIN == 0)
 		{
 			wl_display_cancel_read(ctx.wl_display);
+			return;
 		}
+		if (wl_display_read_events(ctx.wl_display) == -1) return;
+		if (wl_display_dispatch_pending(ctx.wl_display) != 0) return;
 	}
 }
 
-fn void _wait_platform(Duration duration)
+// The compositor's reply to wl_display.sync arrives on the display descriptor, which
+// is what a blocked _wait_platform is already polling. The callback exists only to be
+// destroyed; leaving it would leak one proxy per wake.
+fn void _sync_done_cb(void* data, WlProxy* callback, uint callback_data) @local
 {
-	if (gfx::_gfx.event_wait_force_stop[0] == 0 || gfx::_gfx.event_wait_force_stop[1] == 0)
-	{
-		if (posix::pipe((int[2]*)&gfx::_gfx.event_wait_force_stop) != -1)
-		{
-			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[0], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[0], os::F_GETFD, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[1], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[1], os::F_GETFD, 0);
-		}
-	}
+	wl_callback_destroy(callback);
+}
 
-	Posix_pollfd[2] fds;
-	fds[0].fd = 0;
-	fds[0].events = (short)os::POLLIN;
-	fds[1].fd = gfx::_gfx.event_wait_force_stop[0];
-	fds[1].events = (short)os::POLLIN;
+<*
+ Interrupt a blocked _wait_platform.
+*>
+fn void wake()
+{
+	if (!ctx.wl_display) return;
+	static WlCallbackListener listener = { .done = &_sync_done_cb };
+	WlProxy* callback = wl_display_sync(ctx.wl_display);
+	if (!callback) return;
+	wl_callback_add_listener(callback, &listener, null);
+	wl_display_flush(ctx.wl_display);
+}
 
-	defer
-	{
-		// drain any data in the stop request
-		if (gfx::_gfx.event_wait_force_stop[2])
-		{
-			char[64] data;
-			libc::read(gfx::_gfx.event_wait_force_stop[0], &data, 64);
-
-			gfx::_gfx.event_wait_force_stop[2] = 0;
-		}
-	}
-	fds[0].fd = wl_display_get_fd(ctx.wl_display);
-
-	// empty the queue
-	while (wl_display_prepare_read(ctx.wl_display))
-	{
-		// error occured when dispatching the queue
-		if (wl_display_dispatch_pending(ctx.wl_display) == -1) return;
-	}
-
-	// send any pending requests to the compositor
-	while (wl_display_flush(ctx.wl_display) == -1)
-	{
-		// queue is full dispatch them
-		if (libc::errno() == EAGAIN)
-		{
-			if (wl_display_dispatch_pending(ctx.wl_display) == -1) return;
-		}
-		else
-		{
-			return;
-		}
-	}
-
-	bool infinity = duration == gfx::WAIT_FOREVER;
-	bool once = true;
+fn void? _wait_platform(Duration duration)
+{
 	Clock start = clock::now();
-	while (!wl_display_dispatch_pending(ctx.wl_display))
+	bool infinity = duration == gfx::WAIT_FOREVER;
+
+	Posix_pollfd fd = { .fd = wl_display_get_fd(ctx.wl_display), .events = os::POLLIN };
+	defer catch wl_display_cancel_read(ctx.wl_display);
+
+	gfx::_reset_prev_state();
+	while (true)
 	{
-		Duration diff = duration - start.to_now().to_duration();
-		long ms = diff.to_ms();
-		if (ms < 0 && once)
+		while (wl_display_prepare_read(ctx.wl_display))
 		{
-			once = false;
-			ms = 0;
+			// Events handled or error occured
+			if (wl_display_dispatch_pending(ctx.wl_display)) return;
 		}
-		if (ms < 0 || os::poll(&fds[0], 1, infinity || ms > CInt::max ? -1 : (CInt)ms) <= 0)
+		bool needs_flush = wl_display_flush(ctx.wl_display) == -1;
+		if (needs_flush && libc::errno() != EAGAIN) return io::GENERAL_ERROR~;
+		while (true)
 		{
-			wl_display_cancel_read(ctx.wl_display);
-			break;
+			long ms = -1;
+			if (!infinity)
+			{
+				Duration remaining = duration - start.to_now().to_duration();
+				if (remaining <= time::DURATION_ZERO) return io::GENERAL_ERROR~;
+				ms = min(remaining.to_ms(), CInt::max);
+				if (!ms) ms = 1;
+			}
+			if (_send_key_repeat_maybe(true)) return;
+			if (ctx.wl_repeat_info_rate && ctx.last_key)
+			{
+				long repeat_ms = max(-ctx.last_key_time.to_now().to_ms(), 1);
+				ms = infinity ? repeat_ms : min(ms, repeat_ms);
+			}
+			fd.events = os::POLLIN | (needs_flush ? os::POLLOUT : 0);
+			fd.revents = 0;
+			int ready = os::poll(&fd, 1, (CInt)ms);
+			if (ready < 0)
+			{
+				switch (libc::errno())
+				{
+					case EINTR:
+					case EAGAIN:
+						continue;
+					default:
+						return io::GENERAL_ERROR~;
+				}
+			}
+			if (!ready) continue;
+			if (needs_flush && fd.revents & os::POLLOUT)
+			{
+				needs_flush = wl_display_flush(ctx.wl_display) < 0;
+				if (needs_flush && libc::errno() != EAGAIN) return io::GENERAL_ERROR~;
+			}
+			if (fd.revents & os::POLLIN)
+			{
+				if (wl_display_read_events(ctx.wl_display) == -1) return;
+				break;
+			}
+			if (fd.revents & (os::POLLERR | os::POLLHUP | os::POLLNVAL)) return io::GENERAL_ERROR~;
 		}
-		once = false;
-		if (wl_display_read_events(ctx.wl_display) == -1) return;
+		if (wl_display_dispatch_pending(ctx.wl_display)) return;
 	}
-
-	// queue contains events from read, dispatch them
-	if (wl_display_dispatch_pending(ctx.wl_display) == -1) return;
-
-
 }
 
 // --- GfxMonitor functions
@@ -999,7 +1003,7 @@ fn void _send_key_event(uint key) @local
 	{
 		XkbKeysym keysym = _compose_symbol(keysyms[0]);
 		uint codepoint = xkb_keysym_to_utf32(keysym);
-		if (codepoint != 0) gfx::_key_char_callback(ctx.kb_owner, codepoint);
+		if (codepoint != 0 && ctx.kb_owner) gfx::_key_char_callback(ctx.kb_owner, codepoint);
 	}
 }
 
@@ -1158,7 +1162,11 @@ fn void _keyboard_keymap_cb(void* data, WlProxy* keyboard, uint format, int fd, 
 fn void _keyboard_leave_cb(void* data, WlProxy* keyboard, uint serial, WlProxy* surface) @local
 {
 	GfxWindow* win = (GfxWindow*)wl_surface_get_user_data(surface);
-	if (ctx.kb_owner == win) ctx.kb_owner = null;
+	if (ctx.kb_owner == win)
+	{
+		ctx.kb_owner = null;
+		ctx.last_key = 0;
+	}
 	gfx::_window_focus_callback(win, false);
 }
 

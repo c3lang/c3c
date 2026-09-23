@@ -43,7 +43,9 @@ fn void poll_events_platform()
 }
 
 fn void _wait_platform(Duration duration)
-{}
+{
+	poll_events_platform();
+}
 
 
 // --- GfxMonitor functions

@@ -41,11 +41,11 @@ fn void wake() => objc::@autoreleasepool()
 	if (ev) ctx.app.send_void("postEvent:atStart:", ev, true);
 }
 
-fn void poll_events_platform()
+fn void poll_events_platform(bool reset_state = true)
 {
 	objc::@autoreleasepool()
 	{
-		gfx::_reset_prev_state();
+		if (reset_state) gfx::_reset_prev_state();
 		if (!ctx.app) return;
 		ObjId distantPast = darwin::nsdate().send(ObjId, "distantPast");
 
@@ -62,15 +62,20 @@ fn void poll_events_platform()
 
 }
 
+<* @require duration > time::DURATION_ZERO *>
 fn void _wait_platform(Duration duration) => objc::@autoreleasepool()
 {
 	if (!ctx.app) return;
 	CFTimeInterval time = duration.to_sec();
 	if (duration == gfx::WAIT_FOREVER) time = CFTimeInterval::max;
-	if (time < 0) time = 0;
 	ObjId date = darwin::nsdate().send(ObjId, "dateWithTimeIntervalSinceNow:", time);
 	ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
-	if (ev) ctx.app.send_void("sendEvent:", ev);
+	if (ev)
+	{
+		gfx::_reset_prev_state();
+		ctx.app.send_void("sendEvent:", ev);
+		poll_events_platform(reset_state: false);
+	}
 }
 
 
@@ -596,18 +601,16 @@ fn void window_show_platform(GfxWindow* win)
 
 fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, GfxGlHints* hints)
 {
-	win.src.ctx.native = ctx;
-	win.src.backing = { .opengl };
-
 	FixedList{int, 40} stack;
-	int color_bits = (hints.rgba_size.sum()) / 4;
+	int color_bits = hints.rgba_size.sum();
 	stack.push_all({
 		NS_OPEN_GL_PFA_COLOR_SIZE, color_bits,
 		NS_OPEN_GL_PFA_ALPHA_SIZE, hints.rgba_size.a,
 		NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth,
 		NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil,
 		NS_OPEN_GL_PFA_AUX_BUFFERS, hints.aux_buffers,
-		NS_OPEN_GL_PFA_CLOSEST_POLICY});
+
+	});
 	if (hints.samples)
 	{
 		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1 , NS_OPEN_GL_PFA_SAMPLES, hints.samples });
@@ -617,12 +620,12 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0 });
 	}
 	if (hints.double_buffer) stack.push(NS_OPEN_GL_PFA_DOUBLE_BUFFER);
+	if (hints.stereo) stack.push(NS_OPEN_GL_PFA_STEREO);
 	stack.push(NS_OPEN_GL_PFA_OPEN_GL_PROFILE);
 	stack.push(hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
 	if (hints.major <= 2)
 	{
-		int accum_size = hints.accum_size.sum() / 4;
-		stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, accum_size });
+		stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, hints.accum_size.sum() });
 	}
 	if (hints.renderer == SOFTWARE)
 	{
@@ -641,14 +644,18 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	ObjId share = hints.share ? hints.share.ctx : null;
 	ctx.ctx = macos::nsopengl_context().alloc().send(ObjId, "initWithFormat:shareContext:", format, share);
 	if (!ctx.ctx) return gfx::OPENGL_CTX_CREATION_FAILED~;
-	ctx.format = format;
 
+	ctx.format = format;
+	win.src.view.send_void("setWantsBestResolutionOpenGLSurface:", true);
 	ctx.ctx.send_void("setView:", win.src.view);
+
 	if (win.internal.flags.transparent)
 	{
 		int opacity = 0;
 		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
 	}
+	win.src.ctx.native = ctx;
+	win.src.backing = { .opengl };
 	window_make_current_opengl_context(win);
 	window_set_opengl_swap_interval(win, 0);
 }
@@ -1397,6 +1404,7 @@ fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param) @l
 }
 
 const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
+const int NS_OPEN_GL_PFA_STEREO = 6;
 const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;
 const int NS_OPEN_GL_PFA_COLOR_SIZE = 8;
 const int NS_OPEN_GL_PFA_ALPHA_SIZE = 11;

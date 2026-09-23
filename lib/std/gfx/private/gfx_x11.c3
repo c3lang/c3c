@@ -1,5 +1,5 @@
 module std::gfx::x11 @feat(LINUX, BSD) @feat(!NO_X11) @private;
-import std::math, std::collections, std::os, libc, std::time, std::time::clock, std::net, std::net::os;
+import std::math, std::collections, std::os, libc, std::time, std::time::clock, std::net;
 import std::gfx::egl, std::gfx @public;
 import std::gfx::gl @public;
 
@@ -24,6 +24,9 @@ struct GfxX11Ctx
 	Atom wm_protocols, wm_state, net_wm_state_fullscreen, net_wm_state_above, net_wm_window_opacity;
 	Atom net_wm_name, net_wm_icon, xsel_data, clipboard_atom, clipboard_manager;
 	Atom xtext_uri_list, xtext_plain, net_workarea;
+	// Second connection plus a private atom, used only to wake a blocked wait.
+	XDisplay* request_display;
+	Atom gfx_wakeup;
 	bool xsync_available;
 	bool resize_sync_enabled;
 }
@@ -39,6 +42,12 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 	xInitThreads();
 	ctx.display = xOpenDisplay(null);
 	if (!ctx.display) return gfx::X11_DISPLAY_NOT_LOADED~;
+
+	// wake() sends on its own connection so another thread never contends on the
+	// main one. Atoms are per-server, so interning on either connection agrees.
+	ctx.request_display = xOpenDisplay(null);
+	if (!ctx.request_display) return gfx::X11_DISPLAY_NOT_LOADED~;
+	ctx.gfx_wakeup = xInternAtom(ctx.display, "_GFX_WAKEUP", 0);
 
 	ctx.net_current_desktop = xInternAtom(ctx.display, "_NET_CURRENT_DESKTOP", 0);
 	ctx.net_wm_state_maximized_vert = xInternAtom(ctx.display, "_NET_WM_STATE_MAXIMIZED_VERT", 0);
@@ -124,6 +133,7 @@ fn void destroy_platform()
 	if (gfx::_gfx.unix_clipboard) free(gfx::_gfx.unix_clipboard);
 	if (gfx::_gfx.hidden_mouse) free_mouse(gfx::_gfx.hidden_mouse);
 	if (ctx.helper_window) xDestroyWindow(ctx.display, ctx.helper_window);
+	if (ctx.request_display) xCloseDisplay(ctx.request_display);
 	if (ctx.display) xCloseDisplay(ctx.display);
 
 	dlclose_cursor_xi_ext();
@@ -137,59 +147,65 @@ fn void poll_events_platform()
 	while (xQLength(ctx.display)) _handle_event();
 }
 
+<*
+ Interrupt a blocked _wait_platform.
+
+ A client message addressed to our own helper window lands in the same event queue
+ the wait already watches, so no second descriptor is needed. An event mask of 0
+ delivers to the client that created the window regardless of event selection, and
+ _handle_event drops it because the helper window is not registered in the window
+ context.
+*>
+fn void wake()
+{
+	if (!ctx.request_display || !ctx.helper_window) return;
+	XEvent ev;
+	ev.xclient.type = 33; // ClientMessage
+	ev.xclient.send_event = 1;
+	ev.xclient.display = ctx.request_display;
+	ev.xclient.window = ctx.helper_window;
+	ev.xclient.message_type = ctx.gfx_wakeup;
+	ev.xclient.format = 8;
+	xSendEvent(ctx.request_display, ctx.helper_window, 0, 0, &ev);
+	xFlush(ctx.request_display);
+}
+
 fn void _wait_platform(Duration duration)
 {
-	if (gfx::_gfx.event_wait_force_stop[0] == 0 || gfx::_gfx.event_wait_force_stop[1] == 0)
-	{
-		if (posix::pipe((int[2]*)&gfx::_gfx.event_wait_force_stop) != -1)
-		{
-			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[0], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[0], os::F_GETFD, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[1], os::F_GETFL, 0);
-			os::fcntl((NativeSocket)gfx::_gfx.event_wait_force_stop[1], os::F_GETFD, 0);
-		}
-	}
+	// A wake is an ordinary client message on this connection, so one descriptor
+	// covers both real events and wakes, and a wake posted before we get here is
+	// already queued and therefore seen by xPending below.
+	Posix_pollfd fd = { .fd = xConnectionNumber(ctx.display), .events = os::POLLIN };
 
-	Posix_pollfd[2] fds;
-	fds[0].fd = 0;
-	fds[0].events = (short)os::POLLIN;
-	fds[1].fd = gfx::_gfx.event_wait_force_stop[0];
-	fds[1].events = (short)os::POLLIN;
-
-	defer
-	{
-		// drain any data in the stop request
-		if (gfx::_gfx.event_wait_force_stop[2])
-		{
-			char[64] data;
-			libc::read(gfx::_gfx.event_wait_force_stop[0], &data, 64);
-
-			gfx::_gfx.event_wait_force_stop[2] = 0;
-		}
-	}
-
-	fds[0].fd = xConnectionNumber(ctx.display);
+	defer poll_events_platform();
 
 	bool infinity = duration == gfx::WAIT_FOREVER;
-	bool once = true;
 	Clock start = clock::now();
 	while (!xPending(ctx.display))
 	{
-		Duration diff = duration - start.to_now().to_duration();
-		long ms = diff.to_ms();
-		if (ms < 0)
+		long ms = -1;
+		if (!infinity)
 		{
-			if (!once) break;
-			ms = 0;
+			Duration diff = duration - start.to_now().to_duration();
+			if (diff <= time::DURATION_ZERO) break;
+			ms = min(diff.to_ms(), CInt::max);
+			if (ms < 1) ms = 1;
 		}
-		if (infinity || ms > CInt::max) ms = -1;
-		if (os::poll(&fds[0], 1, (CInt)ms) <= 0) break;
-		once = false;
+		int ready = os::poll(&fd, 1, (CInt)ms);
+		if (ready < 0)
+		{
+			switch (libc::errno())
+			{
+				case EINTR:
+				case EAGAIN:
+					continue;
+				default:
+					return;
+			}
+		}
+		if (!ready) continue;
+		if (!(fd.revents & os::POLLIN)) break;
 	}
-	// Dispatch the event that ended the wait, so a caller that woke on an event finds
-	// it queued rather than having to poll again. The loop also exits on timeout and
-	// on a wake, where there is nothing pending.
-	if (xQLength(ctx.display)) _handle_event();
 }
 
 
@@ -1836,15 +1852,26 @@ fn void _handle_event() @local
 	xFlush(ctx.display);
 }
 
-
 fn bool _wait_for_show_event(GfxWindow* win) @local
 {
+	Posix_pollfd fd = { .fd = xConnectionNumber(ctx.display), .events = os::POLLIN };
+
 	XEvent dummy;
-	while (xCheckTypedWindowEvent(ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy) == 0)
+
+	while (true)
 	{
-		_wait_platform(time::ms(100));
+		xPending(ctx.display);
+
+		if (xCheckTypedWindowEvent(ctx.display, win.src.window, 15 /* VisibilityNotify */, &dummy)) return true;
+
+		gfx::_reset_prev_state();
+		while (xQLength(ctx.display)) _handle_event();
+
+		fd.revents = 0;
+		int ready = os::poll(&fd, 1, 100);
+		if (ready < 0) return false;
+		if (ready > 0 && fd.revents & os::POLLIN == 0) return false;
 	}
-	return true;
 }
 
 fn void _toggle_maximized(GfxWindow* win, bool maximized) @local
