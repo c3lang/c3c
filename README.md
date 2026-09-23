@@ -149,7 +149,7 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.8.3**.
+The current stable version of the compiler is **version 0.8.4**.
 
 The upcoming 0.8.4 release will further refine the standard library and fix bugs.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
@@ -474,6 +474,8 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
    - **Fedora:** `sudo dnf install cmake clang git libcurl-devel`
    - **Arch Linux:** `sudo pacman -S curl clang cmake git`
    - **Void Linux:** `sudo xbps-install git cmake clang libcurl-devel`
+   - **Alpine Linux:** `sudo apk add build-base cmake git curl-dev samurai zstd-static zstd-dev`
+   - **Chimera Linux:** `sudo apk add cmake git curl-devel ninja llvm-devel lld-devel`
    - *Other distributions: Install CMake, Git, a C compiler (like Clang), and libcurl development headers.*
 
 2. Clone the C3C repository and enter the directory:
@@ -487,6 +489,7 @@ Building `c3c` using Visual Studio Code is also supported when using the `CMake 
    ```bash
    cmake -B build -S . -DC3_FETCH_LLVM=ON -DCMAKE_BUILD_TYPE=Release
    ```
+   *(Note: On Chimera Linux, omit `-DC3_FETCH_LLVM=ON` or pass `-DC3_FETCH_LLVM=OFF` to build using the system LLVM packages installed above).*
 
 4. Build the compiler:
    ```bash

@@ -846,6 +846,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTLIKE}, 1)) return false;
 			rtype = args[0]->type;
+			if (func == BUILTIN_BSWAP
+				&& (type_size(rtype) == 1
+					|| (type_flat_is_vector(rtype) && type_size(type_flatten(rtype)->array.base) == 1)))
+			{
+				expr_replace(expr, args[0]);
+			}
 			break;
 		case BUILTIN_MATRIX_TRANSPOSE:
 		{
