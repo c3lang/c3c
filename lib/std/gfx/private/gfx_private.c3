@@ -127,6 +127,7 @@ struct GfxWindowInternal
 	bool capture_mouse;
 	bool in_focus;
 	bool mouse_inside;
+	bool maximized_state;
 	GfxKeyModifier mod;
 	GfxEventMask enabled_events;
 	GfxWindowFlags flags;
@@ -397,6 +398,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 		case flags.no_border: win.set_border(false);
 		case cmpFlags.no_border: win.set_border(true);
 	}
+	if (flags.center) win.center_on_screen();
 	switch
 	{
 		case flags.maximize: win.maximize();
@@ -407,7 +409,6 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 		case flags.minimize: win.minimize();
 		case cmpFlags.minimize: win.restore();
 	}
-	if (flags.center) win.center_on_screen();
 	if (flags.center_cursor) _window_move_mouse(win, win.origin + win.size / 2);
 	switch
 	{
@@ -491,8 +492,11 @@ fn void _mouse_button_callback(GfxWindow* win, GfxMouseButton button, bool press
 
 fn void _window_maximized_callback(GfxWindow* win, GfxRect bounds)
 {
+	bool maximized = win.internal.maximized_state;
+	win.internal.maximized_state = true;
 	win.internal.flags.maximize = true;
 	win.bounds = bounds;
+	if (maximized) return;
 	if (!win.internal.enabled_events.window_maximized) return;
 	GfxEvent event;
 	event.type = WINDOW_MAXIMIZED;
@@ -559,6 +563,7 @@ fn void _data_drag_callback(GfxWindow* win, GfxDataTransferType dataType, GfxDnd
 
 fn void _window_minimized_callback(GfxWindow* win)
 {
+	if (win.internal.flags.minimize) return;
 	win.internal.flags.minimize = true;
 	if (!win.internal.enabled_events.window_minimized) return;
 	GfxEvent event;
@@ -635,6 +640,7 @@ fn void _window_resized_callback(GfxWindow* win, GfxSize size)
 
 fn void _window_moved_callback(GfxWindow* win, GfxPoint where)
 {
+	if (win.origin == where) return;
 	win.origin = where;
 	if (!win.internal.enabled_events.window_moved) return;
 	GfxEvent event;
@@ -644,17 +650,20 @@ fn void _window_moved_callback(GfxWindow* win, GfxPoint where)
 	_event_queue_call_push(&event);
 }
 
-fn void _window_check_mode(GfxWindow* win)
+fn void _window_check_mode(GfxWindow* win) => _window_check_mode_with_bounds(win, win.bounds);
+
+fn void _window_check_mode_with_bounds(GfxWindow* win, GfxRect bounds)
 {
+	bool minimized = _window_is_minimized(win);
+	bool maximized = _window_is_maximized(win);
 	switch
 	{
-		case _window_is_minimized(win) && win.internal.enabled_events.window_minimized:
+		case minimized && !win.internal.flags.minimize:
 			_window_minimized_callback(win);
-		case _window_is_maximized(win) && win.internal.enabled_events.window_maximized:
-			_window_maximized_callback(win, win.bounds);
-		case (win.internal.flags.minimize && !_window_is_maximized(win)) ||
-		(win.internal.flags.maximize && !_window_is_maximized(win)):
-			if (win.internal.enabled_events.window_restored) _window_restored_callback(win, win.bounds);
+		case maximized && !win.internal.maximized_state:
+			_window_maximized_callback(win, bounds);
+		case !minimized && !maximized && (win.internal.flags.minimize || win.internal.maximized_state):
+			_window_restored_callback(win, bounds);
 	}
 }
 
@@ -759,9 +768,14 @@ fn void _key_char_callback(GfxWindow* win, uint codepoint)
 
 fn void _window_restored_callback(GfxWindow* win, GfxRect bounds)
 {
+	if (!win.internal.flags.minimize && !win.internal.maximized_state) return;
 	win.internal.flags.minimize = false;
 	win.bounds = bounds;
-	if (!_window_is_maximized(win)) win.internal.flags.maximize = false;
+	if (!_window_is_maximized(win))
+	{
+		win.internal.flags.maximize = false;
+		win.internal.maximized_state = false;
+	}
 	if (!win.internal.enabled_events.window_restored) return;
 	GfxEvent event;
 	event.type = WINDOW_RESTORED;
@@ -871,4 +885,3 @@ fn void _window_show_mouse_native(GfxWindow* win, bool show) @feat(!WASM)
 
 
 // --- vulkan
-

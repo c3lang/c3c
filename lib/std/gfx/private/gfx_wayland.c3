@@ -412,11 +412,21 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 
 	if (ctx.icon_manager) xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdgToplevel, null);
 
+	// Initial toplevel state must be requested before the first surface commit so
+	// the compositor can include it in the initial configure.
+	if (flags.maximize)
+	{
+		win.internal.old_bounds = win.bounds;
+		xdg_toplevel_set_maximized(win.src.xdgToplevel);
+	}
 	wl_surface_commit(win.src.surface);
 
 	while (!win.src.configured) wl_display_dispatch(ctx.wl_display);
 
-	gfx::_window_set_flags(win, flags, {});
+	GfxWindowFlags runtime_flags = flags;
+	runtime_flags.maximize = false;
+	gfx::_window_set_flags(win, runtime_flags, {});
+	win.internal.flags = flags;
 	win.src.backing = {};
 	if (flags.open_gl) win.create_opengl_context(gfx::get_global_opengl_hints())!;
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
@@ -891,7 +901,6 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 
 fn void _toggle_maximized(GfxWindow* win, bool maximized) @local
 {
-	win.src.maximized = maximized;
 	if (maximized)
 	{
 		xdg_toplevel_set_maximized(win.src.xdgToplevel);
@@ -1378,14 +1387,14 @@ fn void _xdg_surface_conf_cb(void* data, WlProxy* xdgSurface, uint serial) @loca
 
 	if (win.src.maximized != win.src.pendingMaximized)
 	{
-		_toggle_maximized(win, win.src.pendingMaximized);
+		win.src.maximized = win.src.pendingMaximized;
 		gfx::_window_check_mode(win);
 	}
 
 	if (win.src.resizing)
 	{
 		gfx::_window_resized_callback(win, win.size);
-		win.resize(win.size);
+		window_resize_platform(win, win.size);
 		if (!(win.internal.flags.transparent)) _window_set_opaque(win);
 		gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
 	}

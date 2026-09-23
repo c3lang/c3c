@@ -1698,8 +1698,9 @@ fn void event_queue_flush()
 <*
  Append an event to the queue.
 
- Does nothing when queueing is disabled. If the queue is full it is flushed and the
- event dropped, with an error logged.
+ Does nothing when queueing is disabled. Superseded move and resize events for the
+ same window are removed before appending the newest one. If the queue is full the
+ new event is dropped, with an error logged.
 
  @param [in] event : "The event to copy into the queue"
  @require event != null
@@ -1707,6 +1708,24 @@ fn void event_queue_flush()
 fn void event_queue_push(GfxEvent* event)
 {
 	if (!_gfx.queue_events) return;
+	// Like SDL, discard an older superseded geometry event before appending the
+	// replacement. Appending keeps its ordering relative to unrelated events.
+	if ((event.type == WINDOW_RESIZED || event.type == WINDOW_MOVED) && _gfx.event_len)
+	{
+		for (int i = 0; i < _gfx.event_len; i++)
+		{
+			int idx = (_gfx.event_bottom + i) % MAX_EVENTS;
+			if (_gfx.events[idx].type != event.type || _gfx.events[idx].common.win != event.common.win) continue;
+			for (int j = i; j < _gfx.event_len - 1; j++)
+			{
+				int to = (_gfx.event_bottom + j) % MAX_EVENTS;
+				int from = (_gfx.event_bottom + j + 1) % MAX_EVENTS;
+				_gfx.events[to] = _gfx.events[from];
+			}
+			_gfx.event_len--;
+			break;
+		}
+	}
 	if (_gfx.event_len >= MAX_EVENTS)
 	{
 		if (!_gfx.event_error_reported)
@@ -1714,18 +1733,7 @@ fn void event_queue_push(GfxEvent* event)
 			log::error("Event queue limit 'MAX_EVENTS' has been reached, dropping events.", category: log::CATEGORY_VIDEO);
 			_gfx.event_error_reported = true;
 		}
-		(void)event_queue_pop();
 		return;
-	}
-	// Coalesce window resized.
-	if (event.type == WINDOW_RESIZED && _gfx.event_len)
-	{
-		int event_prev = (_gfx.event_bottom + _gfx.event_len + MAX_EVENTS - 1) % MAX_EVENTS;
-		if (_gfx.events[event_prev].type == WINDOW_RESIZED)
-		{
-			_gfx.events[event_prev] = *event;
-			return;
-		}
 	}
 	int event_top = (_gfx.event_bottom + _gfx.event_len) % MAX_EVENTS;
 	_gfx.event_len += 1;
@@ -1930,7 +1938,9 @@ fn GfxMonitor*? GfxWindow.find_monitor(&self)
 fn void GfxWindow.center_on_screen(&self)
 {
 	GfxMonitor*? mon = _window_find_monitor(self);
-	(void)self.move(mon.origin + (mon.mode.size - self.size) / 2);
+	if (catch mon) return;
+	GfxRect workarea = mon.get_workarea();
+	(void)self.move(workarea.origin + (workarea.size - self.size) / 2);
 }
 
 <*
@@ -2531,7 +2541,7 @@ fn void GfxWindow.show(&self)
 	if (self.internal.flags.focus_on_show) _window_focus(self);
 	self.internal.flags.hide = false;
 	_window_show_platform(self);
-	if (self.internal.flags.maximize) self.maximize();
+	if (self.internal.flags.maximize && !_window_is_maximized(self)) self.maximize();
 }
 
 <*
@@ -2542,8 +2552,10 @@ fn void GfxWindow.restore(&self)
 	_window_restore_platform(self);
 	self.internal.flags.maximize = false;
 	self.show();
-	self.move(self.internal.old_bounds.origin);
-	self.resize(self.internal.old_bounds.size);
+	$if !$feat(MACOS):
+		self.move(self.internal.old_bounds.origin);
+		self.resize(self.internal.old_bounds.size);
+	$endif
 }
 
 <*
