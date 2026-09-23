@@ -9,11 +9,15 @@ module c3_earth;
 import std, opengl::gl;
 
 alias EmCallback @feat(EMSCRIPTEN | WASM) = fn void();
-extern fn void emscripten_set_main_loop(EmCallback func, int fps, int simulate_infinite_loop) @cname("emscripten_set_main_loop") @feat(EMSCRIPTEN | WASM);
+extern fn void emscripten_set_main_loop(
+	EmCallback func,
+	int fps,
+	int simulate_infinite_loop
+) @cname("emscripten_set_main_loop") @feat(EMSCRIPTEN | WASM);
 
-const String WINDOW_TITLE    = "C3 Earth Explorer";
-const int    WINDOW_WIDTH    = 1280;
-const int    WINDOW_HEIGHT   = 768;
+const String WINDOW_TITLE = "C3 Earth Explorer";
+const int WINDOW_WIDTH    = 1280;
+const int WINDOW_HEIGHT   = 768;
 
 const char[*] EARTH_QOI_DATA   = $embed("earth.qoi");
 const char[*] STARMAP_QOI_DATA = $embed("starmap.qoi");
@@ -21,30 +25,30 @@ const char[*] STARMAP_QOI_DATA = $embed("starmap.qoi");
 const float DEG2RAD = (float)(math::PI / 180.0);
 const float RAD2DEG = (float)(180.0 / math::PI);
 
-const float EARTH_RADIUS            =   3.0f;
-const float SKYBOX_RADIUS           = 100.0f;
-const float CAMERA_SETTLE_THRESHOLD =   0.5f * DEG2RAD;
+const float EARTH_RADIUS            =  3.0f;
+const float SKYBOX_RADIUS           =  100.0f;
+const float CAMERA_SETTLE_THRESHOLD =  0.5f * DEG2RAD;
 const float CAMERA_LERP_SPEED       =  10.0f;
 const float CAMERA_ZOOM_SPEED       =  10.0f;
-const float CAMERA_ANIM_DURATION    =   1.0f;
-const float CAMERA_MIN_RADIUS       =   3.5f;
+const float CAMERA_ANIM_DURATION    =  1.0f;
+const float CAMERA_MIN_RADIUS       =  3.5f;
 const float CAMERA_MAX_RADIUS       =  40.0f;
-const float CAMERA_JUMP_RADIUS      =   5.0f;
+const float CAMERA_JUMP_RADIUS      =  5.0f;
 const float CAMERA_INITIAL_RADIUS   =  12.0f;
 const float CAMERA_INITIAL_PITCH    =  20.0f * DEG2RAD;
-const float CAMERA_INITIAL_YAW      = (float)math::HALF_PI - (-30.0f * DEG2RAD);
-const float CAMERA_PITCH_LIMIT      =   1.5f;
+const float CAMERA_INITIAL_YAW      =  (float)math::HALF_PI - (-30.0f * DEG2RAD);
+const float CAMERA_PITCH_LIMIT      =  1.5f;
 const float CAMERA_FOVY             =  45.0f;
-const float CAMERA_NEAR_Z           =   0.1f;
-const float CAMERA_FAR_Z            = 200.0f;
+const float CAMERA_NEAR_Z           =  0.1f;
+const float CAMERA_FAR_Z            =  200.0f;
 const float SUN_GEO_ADJUSTMENT      = -15.0f * DEG2RAD;
-const float FADE_RADIUS_MIN         =   4.5f;
-const float FADE_RADIUS_RANGE       =   2.5f;
+const float FADE_RADIUS_MIN         =  4.5f;
+const float FADE_RADIUS_RANGE       =  2.5f;
 
 const float PIN_BASE_RADIUS  = 0.01f;
 const float PIN_HEAD_RADIUS  = 0.03f;
 const float PIN_HEIGHT_SCALE = 1.03f;
-const int   PIN_SIDES        = 8;
+const int PIN_SIDES          = 8;
 
 constdef Ui : inline int
 {
@@ -60,22 +64,21 @@ constdef Ui : inline int
 
 struct AppState
 {
-	GfxWindow*   win;
-	GlobeCamera  cam;
-	Renderer     renderer;
-	Texture      earth_tex;
-	Texture      star_tex;
-	Shader       shader;
-	Mesh         earth_mesh;
-	Mesh         skybox_mesh;
-	int          sun_pos_loc;
-	int          is_skybox_loc;
-	int          sun_fade_loc;
-	List{Pin}    pins;
-	InputState   input;
-	FrameTimer   timer;
-	double       last_sun_update;
-	Vec3         sun_pos_cache;
+	GfxWindow* win;
+	GlobeCamera cam;
+	Renderer renderer;
+	Texture earth_tex;
+	Texture star_tex;
+	Shader shader;
+	Mesh earth_mesh;
+	Mesh skybox_mesh;
+	int sun_pos_loc;
+	int is_skybox_loc;
+	int sun_fade_loc;
+	List{Pin} pins;
+	FrameTimer timer;
+	double last_sun_update;
+	Vec3 sun_pos_cache;
 }
 
 AppState state;
@@ -101,47 +104,73 @@ fn void main() @winmain
 
 fn void step() => @pool()
 {
-	state.input.begin_frame(state.win);
-	state.timer.update();
+	bool mouse_pressed_left  = false;
+	bool mouse_released_left = false;
+	bool mouse_pressed_right = false;
+	float mouse_wheel        = 0.0f;
 
-	foreach (idx, city : City::values)
+	while (try event = gfx::poll(state.win))
 	{
-		if (state.input.is_key_pressed((int)idx + 1))
+		switch (event.type)
 		{
-			state.cam.jump_to(city);
+			case WINDOW_RESIZED:
+				GfxSize win_sz = state.win.get_size();
+				gl::viewport(0, 0, win_sz.x, win_sz.y);
+			case KEY_PRESSED:
+				GfxKey k = event.key.value;
+				if (k >= NUM1 && k <= NUM9)
+				{
+					state.cam.jump_to(City::values[k - NUM1]);
+				}
+			case MOUSE_BUTTON_PRESSED:
+				if (event.button.value == LEFT) mouse_pressed_left = true;
+				if (event.button.value == RIGHT) mouse_pressed_right = true;
+			case MOUSE_BUTTON_RELEASED:
+				if (event.button.value == LEFT) mouse_released_left = true;
+			case MOUSE_SCROLL:
+				mouse_wheel += event.delta.vector.y;
+			default:
+				break;
 		}
 	}
 
-	float dt = math::min(state.timer.dt, 0.1f);
+	float dt       = math::min(state.timer.update(), 0.1f);
 	GfxSize win_sz = state.win.get_size();
 	float aspect   = (float)win_sz.x / (float)win_sz.y;
 	Mat4 proj      = perspective(state.cam.fovy, aspect, CAMERA_NEAR_Z, CAMERA_FAR_Z);
-	Mat4 view      = look_at(state.cam.position, { 0.0f, 0.0f, 0.0f }, state.cam.up);
+	Mat4 view      = math::matrix::look_at(state.cam.position, (Vec3) { 0.0f, 0.0f, 0.0f }, state.cam.up);
 
-	state.cam.update(&state.input, win_sz, proj, view, dt);
-	view = look_at(state.cam.position, { 0.0f, 0.0f, 0.0f }, state.cam.up);
+	state.cam.update(state.win, win_sz, proj, view, dt, mouse_wheel, mouse_pressed_left, mouse_released_left);
+	view = math::matrix::look_at(state.cam.position, (Vec3) { 0.0f, 0.0f, 0.0f }, state.cam.up);
 
 	float sun_fade = math::clamp((state.cam.current.radius - FADE_RADIUS_MIN) / FADE_RADIUS_RANGE, 0.0f, 1.0f);
 	state.shader.set_float(state.sun_fade_loc, sun_fade);
 
 	if (state.timer.elapsed() - state.last_sun_update > 1.0)
 	{
-		DateTime now        = datetime::from_time_tz(time::now(), 0).date_time;
-		float hours_utc     = now.hour + now.min / 60.0f + now.sec / 3600.0f;
-		float day_of_year   = now.year_day;
+		DateTime now      = datetime::from_time_tz(time::now(), 0).date_time;
+		float hours_utc   = now.hour + now.min / 60.0f + now.sec / 3600.0f;
+		float day_of_year = now.year_day;
 
-		float day_angle     = 6.24004077f + 0.01720197f * (day_of_year - 1.0f);
+		float day_angle     =  6.24004077f + 0.01720197f * (day_of_year - 1.0f);
 		float eq_time_mins  = -7.659f * math::sin(day_angle) + 9.863f * math::sin(2.0f * day_angle + 3.5932f);
-		float eq_time_hours = eq_time_mins / 60.0f;
-		float sun_yaw       = (float)math::HALF_PI + (hours_utc + eq_time_hours - 12.0f) * ((float)math::PI / 12.0f) + SUN_GEO_ADJUSTMENT;
-		float orbit_angle   = 2.0f * (float)math::PI * (day_of_year - 81.0f) / 365.0f;
-		float declination   = 23.45f * DEG2RAD * math::sin(orbit_angle);
-		state.sun_pos_cache  = { math::cos(declination) * math::cos(sun_yaw), math::sin(declination), math::cos(declination) * math::sin(sun_yaw) };
+		float eq_time_hours =  eq_time_mins / 60.0f;
+		float sun_yaw       =  (float)math::HALF_PI + (hours_utc + eq_time_hours - 12.0f) * ((float)math::PI / 12.0f)
+			+ SUN_GEO_ADJUSTMENT;
+		float orbit_angle   =  2.0f * (float)math::PI * (day_of_year - 81.0f) / 365.0f;
+		float declination   =  23.45f.to_radians() * math::sin(orbit_angle);
+		state.sun_pos_cache = {
+			math::cos(declination) * math::cos(sun_yaw),
+			math::sin(declination),
+			math::cos(declination) * math::sin(sun_yaw)
+		};
 		state.last_sun_update = state.timer.elapsed();
 	}
 	state.shader.set_vec3(state.sun_pos_loc, state.sun_pos_cache);
 
-	Ray ray                = get_screen_to_world_ray(state.input.mouse_pos, state.cam.position, win_sz, proj, view);
+	GfxPoint cur_mouse     = state.win.get_mouse();
+	Vec2 mouse_pos         = { (float)cur_mouse.x, (float)cur_mouse.y };
+	Ray ray                = get_screen_to_world_ray(mouse_pos, state.cam.position, win_sz, proj, view);
 	RayCollision collision = ray.get_collision_sphere({ 0.0f, 0.0f, 0.0f }, EARTH_RADIUS);
 
 	gl::clearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -157,19 +186,28 @@ fn void step() => @pool()
 
 	foreach (p : state.pins)
 	{
-		Vec3 base = spherical_to_vec3((float)math::HALF_PI - (p.lon * DEG2RAD), p.lat * DEG2RAD, EARTH_RADIUS);
+		Vec3 base = spherical_to_vec3((float)math::HALF_PI - p.lon.to_radians(), p.lat.to_radians(), EARTH_RADIUS);
 		Vec3 head = base * PIN_HEIGHT_SCALE;
 		state.renderer.draw_cylinder(proj, view, base, head, PIN_BASE_RADIUS, PIN_BASE_RADIUS, PIN_SIDES, COLOR_WHITE);
 		state.renderer.draw_sphere(proj, view, head, PIN_HEAD_RADIUS, COLOR_RED);
 	}
 
-	if (collision.hit && (state.cam.dragging || math::abs(state.cam.target.yaw - state.cam.current.yaw) < CAMERA_SETTLE_THRESHOLD))
+	if (collision.hit && (state.cam.dragging || math::abs(
+		state.cam.target.yaw - state.cam.current.yaw
+	) < CAMERA_SETTLE_THRESHOLD))
 	{
 		Vec3 p    = collision.point.normalize();
-		float lat = math::asin(p[1]) * RAD2DEG;
-		float lon = math::atan2(p[0], p[2]) * RAD2DEG;
-		state.renderer.draw_text(win_sz, string::tformat("Lat: %.3f Lon: %.3f", lat, lon), Ui.MARGIN, win_sz.y - (Ui.MARGIN + 10), Ui.FONT_SIZE, COLOR_SKYBLUE);
-		if (state.input.is_mouse_pressed(RIGHT))
+		float lat = math::asin(p[1]).to_degrees();
+		float lon = math::atan2(p[0], p[2]).to_degrees();
+		state.renderer.draw_text(
+			win_sz,
+			string::tformat("Lat: %.3f Lon: %.3f", lat, lon),
+			Ui.MARGIN,
+			win_sz.y - (Ui.MARGIN + 10),
+			Ui.FONT_SIZE,
+			COLOR_SKYBLUE
+		);
+		if (mouse_pressed_right)
 		{
 			state.pins.push({ lat, lon });
 		}
@@ -180,9 +218,23 @@ fn void step() => @pool()
 	Color ui_white    = { 255, 255, 255, ui_alpha };
 	Color ui_raywhite = { 245, 245, 245, ui_alpha };
 
-	state.renderer.draw_text(win_sz, "C3 Earth Explorer (Left Click: Rotate, Right Click: Pin, Wheel: Zoom, 1-9: Cities)", Ui.MARGIN, Ui.MARGIN, Ui.FONT_SIZE, ui_raywhite);
+	state.renderer.draw_text(
+		win_sz,
+		"C3 Earth Explorer (Left Click: Rotate, Right Click: Pin, Wheel: Zoom, 1-9: Cities)",
+		Ui.MARGIN,
+		Ui.MARGIN,
+		Ui.FONT_SIZE,
+		ui_raywhite
+	);
 	$foreach $city : City::values:
-		state.renderer.draw_text(win_sz, string::tformat("%d: %s", $city.ordinal + 1, $city.name), Ui.MARGIN, Ui.LIST_OFFSET + $city.ordinal * Ui.LINE_HEIGHT, Ui.FONT_SIZE, ui_white);
+		state.renderer.draw_text(
+			win_sz,
+			string::tformat("%d: %s", $city.ordinal + 1, $city.name),
+			Ui.MARGIN,
+			Ui.LIST_OFFSET + $city.ordinal * Ui.LINE_HEIGHT,
+			Ui.FONT_SIZE,
+			ui_white
+		);
 	$endforeach
 
 	state.win.swap_opengl_buffers();
@@ -222,12 +274,12 @@ fn void init()
 
 	state.shader = load_shader_from_memory(EARTH_VERTEX_SHADER, EARTH_FRAGMENT_SHADER);
 
-	state.earth_mesh  = gen_mesh_sphere(EARTH_RADIUS, 64, 64);
+	state.earth_mesh = gen_mesh_sphere(EARTH_RADIUS, 64, 64);
 	state.skybox_mesh = gen_mesh_sphere(SKYBOX_RADIUS, 64, 64);
 
-	state.sun_pos_loc   = state.shader.get_location("sunPos");
+	state.sun_pos_loc = state.shader.get_location("sunPos");
 	state.is_skybox_loc = state.shader.get_location("isSkybox");
-	state.sun_fade_loc  = state.shader.get_location("sunFade");
+	state.sun_fade_loc = state.shader.get_location("sunFade");
 
 	state.pins.init(mem);
 	state.timer.init();
@@ -245,7 +297,7 @@ fn void cleanup()
 	state.renderer.destroy();
 	state.win.destroy();
 	gfx::finalize();
-	state = {};
+	state = { };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -270,49 +322,76 @@ struct GlobeCamera
 	bool dragging;
 	float anim_timer;
 	Vec2 vel;
+	GfxPoint last_mouse;
 }
 
 fn void GlobeCamera.init(&self)
 {
 	SphericalCoord initial_pos = {
-		.yaw    = CAMERA_INITIAL_YAW,
-		.pitch  = CAMERA_INITIAL_PITCH,
+		.yaw = CAMERA_INITIAL_YAW,
+		.pitch = CAMERA_INITIAL_PITCH,
 		.radius = CAMERA_INITIAL_RADIUS
 	};
 
 	*self = {
-		.target     = initial_pos,
-		.current    = initial_pos,
-		.up         = { 0.0f, 1.0f, 0.0f },
-		.fovy       = CAMERA_FOVY,
+		.target = initial_pos,
+		.current = initial_pos,
+		.up = { 0.0f, 1.0f, 0.0f },
+		.fovy = CAMERA_FOVY,
 		.anim_timer = CAMERA_ANIM_DURATION,
-		.vel        = { 0.0f, 0.0f }
+		.vel = { 0.0f, 0.0f }
 	};
 	self.position = spherical_to_vec3(initial_pos.yaw, initial_pos.pitch, initial_pos.radius);
 }
 
-fn void GlobeCamera.update(&self, InputState* in, GfxSize win_sz, Mat4 proj, Mat4 view, float dt)
-{
-	if (in.mouse_wheel != 0.0f)
-	{
-		float wheel = math::copysign(1.0f, in.mouse_wheel);
-		self.target.radius = math::clamp(self.target.radius - wheel * self.target.radius * 0.1f, CAMERA_MIN_RADIUS, CAMERA_MAX_RADIUS);
-	}
-	self.current.radius += (self.target.radius - self.current.radius) * CAMERA_ZOOM_SPEED * dt;
+macro lerp(a, b, t) => a + (b - a) * t;
 
-	if (in.is_mouse_pressed(LEFT))
+fn void GlobeCamera.update(
+	&self,
+	GfxWindow* win,
+	GfxSize win_sz,
+	Mat4 proj,
+	Mat4 view,
+	float dt,
+	float wheel,
+	bool mouse_pressed_left,
+	bool mouse_released_left
+)
+{
+	if (wheel != 0.0f)
 	{
-		Ray ray = get_screen_to_world_ray(in.mouse_pos, self.position, win_sz, proj, view);
+		float dir = math::copysign(1.0f, wheel);
+		self.target.radius = math::clamp(
+			self.target.radius - dir * self.target.radius * 0.1f,
+			CAMERA_MIN_RADIUS,
+			CAMERA_MAX_RADIUS
+		);
+		// Abort jump animation on wheel so radius change takes effect smoothly.
+		if (self.anim_timer < CAMERA_ANIM_DURATION)
+		{
+			self.start = self.current;
+			self.anim_timer = CAMERA_ANIM_DURATION;
+		}
+	}
+
+	GfxPoint cur   = win.get_mouse();
+	Vec2 mouse_pos = { (float)cur.x, (float)cur.y };
+	Vec2 delta     = { (float)(cur.x - self.last_mouse.x), (float)(cur.y - self.last_mouse.y) };
+	self.last_mouse = cur;
+
+	if (mouse_pressed_left)
+	{
+		Ray ray = get_screen_to_world_ray(mouse_pos, self.position, win_sz, proj, view);
 		if (ray.get_collision_sphere({ 0.0f, 0.0f, 0.0f }, EARTH_RADIUS).hit)
 		{
-			self.dragging     = true;
-			self.anim_timer   = CAMERA_ANIM_DURATION;
-			self.target.yaw   = self.current.yaw;
+			self.dragging = true;
+			self.anim_timer = CAMERA_ANIM_DURATION;
+			self.target.yaw = self.current.yaw;
 			self.target.pitch = self.current.pitch;
 		}
 	}
 
-	if (in.is_mouse_released(LEFT))
+	if (mouse_released_left)
 	{
 		self.dragging = false;
 	}
@@ -320,9 +399,8 @@ fn void GlobeCamera.update(&self, InputState* in, GfxSize win_sz, Mat4 proj, Mat
 	switch
 	{
 		case self.dragging:
-			Vec2 delta            = in.mouse_delta;
 			float dist_to_surface = self.current.radius - EARTH_RADIUS;
-			float viewport_height = 2.0f * dist_to_surface * math::tan(self.fovy * 0.5f * DEG2RAD);
+			float viewport_height = 2.0f * dist_to_surface * math::tan((self.fovy * 0.5f).to_radians());
 			float angle_per_pixel = viewport_height / (float)win_sz.y / EARTH_RADIUS;
 
 			self.vel = {
@@ -330,27 +408,28 @@ fn void GlobeCamera.update(&self, InputState* in, GfxSize win_sz, Mat4 proj, Mat
 				delta.y * angle_per_pixel
 			};
 
-			self.target.yaw   += self.vel.x;
-			self.target.pitch  = math::clamp(self.target.pitch + self.vel.y, -CAMERA_PITCH_LIMIT, CAMERA_PITCH_LIMIT);
-			self.current.yaw   = self.target.yaw;
+			self.target.yaw += self.vel.x;
+			self.target.pitch = math::clamp(self.target.pitch + self.vel.y, -CAMERA_PITCH_LIMIT, CAMERA_PITCH_LIMIT);
+			self.current.yaw = self.target.yaw;
 			self.current.pitch = self.target.pitch;
 
 		case self.anim_timer < CAMERA_ANIM_DURATION:
 			self.anim_timer += dt;
-			float t       = math::min(self.anim_timer / CAMERA_ANIM_DURATION, 1.0f);
+			float t = math::min(self.anim_timer / CAMERA_ANIM_DURATION, 1.0f);
 			float eased_t = t * t * (3.0f - 2.0f * t);
-			self.current.yaw    = self.start.yaw    + (self.target.yaw    - self.start.yaw)    * eased_t;
-			self.current.pitch  = self.start.pitch  + (self.target.pitch  - self.start.pitch)  * eased_t;
-			self.current.radius = self.start.radius + (self.target.radius - self.start.radius) * eased_t;
+			self.current.yaw = lerp(self.start.yaw, self.target.yaw, eased_t);
+			self.current.pitch = lerp(self.start.pitch, self.target.pitch, eased_t);
+			self.current.radius = lerp(self.start.radius, self.target.radius, eased_t);
 			self.vel = { 0.0f, 0.0f };
 
 		default:
-			self.target.yaw   += self.vel.x;
-			self.target.pitch  = math::clamp(self.target.pitch + self.vel.y, -CAMERA_PITCH_LIMIT, CAMERA_PITCH_LIMIT);
-			self.vel          *= math::pow(0.8f, dt * 60.0f);
+			self.target.yaw += self.vel.x;
+			self.target.pitch = math::clamp(self.target.pitch + self.vel.y, -CAMERA_PITCH_LIMIT, CAMERA_PITCH_LIMIT);
+			self.vel *= math::pow(0.8f, dt * 60.0f);
 
-			self.current.yaw   += (self.target.yaw   - self.current.yaw)   * CAMERA_LERP_SPEED * dt;
-			self.current.pitch += (self.target.pitch - self.current.pitch) * CAMERA_LERP_SPEED * dt;
+			self.current.yaw = lerp(self.current.yaw, self.target.yaw, CAMERA_LERP_SPEED * dt);
+			self.current.pitch = lerp(self.current.pitch, self.target.pitch, CAMERA_LERP_SPEED * dt);
+			self.current.radius = lerp(self.current.radius, self.target.radius, CAMERA_ZOOM_SPEED * dt);
 	}
 
 	self.position = spherical_to_vec3(self.current.yaw, self.current.pitch, self.current.radius);
@@ -360,8 +439,8 @@ fn void GlobeCamera.jump_to(&self, City city)
 {
 	self.start = self.current;
 
-	self.target.pitch  = city.lat * DEG2RAD;
-	self.target.yaw    = (float)math::HALF_PI - (float)(city.lon * DEG2RAD);
+	self.target.pitch = city.lat.to_radians();
+	self.target.yaw = (float)math::HALF_PI - city.lon.to_radians();
 	self.target.radius = CAMERA_JUMP_RADIUS;
 
 	float diff = self.target.yaw - self.start.yaw;
@@ -379,7 +458,7 @@ fn void GlobeCamera.jump_to(&self, City city)
 fn Vec3 spherical_to_vec3(float yaw, float pitch, float radius)
 {
 	float cos_pitch = math::cos(pitch);
-	return radius * (Vec3){ cos_pitch * math::cos(yaw), math::sin(pitch), cos_pitch * math::sin(yaw) };
+	return radius * (Vec3) { cos_pitch * math::cos(yaw), math::sin(pitch), cos_pitch * math::sin(yaw) };
 }
 
 struct Ray
@@ -399,13 +478,13 @@ fn Ray get_screen_to_world_ray(Vec2 mouse_pos, Vec3 cam_pos, GfxSize win_sz, Mat
 	float nx = (2.0f * mouse_pos.x) / (float)win_sz.x - 1.0f;
 	float ny = 1.0f - (2.0f * mouse_pos.y) / (float)win_sz.y;
 
-	float tan_half_fov = 1.0f / proj.m[1][1];
-	float aspect       = proj.m[1][1] / proj.m[0][0];
+	float tan_half_fov = 1.0f / proj.m11;
+	float aspect       = proj.m11 / proj.m00;
 	Vec3 ray_eye       = { nx * tan_half_fov * aspect, ny * tan_half_fov, -1.0f };
 
-	Vec3 right   = { view.m[0][0], view.m[1][0], view.m[2][0] };
-	Vec3 up      = { view.m[0][1], view.m[1][1], view.m[2][1] };
-	Vec3 forward = { -view.m[0][2], -view.m[1][2], -view.m[2][2] };
+	Vec3 right   = { view.m00, view.m01, view.m02 };
+	Vec3 up      = { view.m10, view.m11, view.m12 };
+	Vec3 forward = { -view.m20, -view.m21, -view.m22 };
 
 	Vec3 dir = (ray_eye.x * right + ray_eye.y * up + forward).normalize();
 	return { .position = cam_pos, .direction = dir };
@@ -413,18 +492,18 @@ fn Ray get_screen_to_world_ray(Vec2 mouse_pos, Vec3 cam_pos, GfxSize win_sz, Mat
 
 fn RayCollision Ray.get_collision_sphere(&self, Vec3 center, float radius)
 {
-	Vec3 oc = self.position - center;
-	float b = 2.0f * self.direction.dot(oc);
-	float c = oc.dot(oc) - radius * radius;
+	Vec3 oc    = self.position - center;
+	float b    = 2.0f * self.direction.dot(oc);
+	float c    = oc.dot(oc) - radius * radius;
 	float disc = b * b - 4.0f * c;
 	if (disc < 0.0f)
 	{
-		return {};
+		return { };
 	}
 	float t = (-b - math::sqrt(disc)) * 0.5f;
 	if (t < 0.0f)
 	{
-		return {};
+		return { };
 	}
 	Vec3 pt = self.position + t * self.direction;
 	return { .hit = true, .point = pt };
@@ -466,9 +545,9 @@ fn Mesh gen_mesh_sphere(float radius, int rings, int slices) => @pool()
 		for (int s = 0; s <= slices; s++)
 		{
 			float theta = (float)s / (float)slices * 2.0f * (float)math::PI;
-			float x = math::sin(phi) * math::sin(theta);
-			float y = math::cos(phi);
-			float z = math::sin(phi) * math::cos(theta);
+			float x     = math::sin(phi) * math::sin(theta);
+			float y     = math::cos(phi);
+			float z     = math::sin(phi) * math::cos(theta);
 			verts.push(radius * x);
 			verts.push(radius * y);
 			verts.push(radius * z);
@@ -531,7 +610,7 @@ fn Texture load_texture_from_memory(char[] bytes)
 	char[]? data = qoi::decode(mem, bytes, &desc, RGBA);
 	if (catch data)
 	{
-		return {};
+		return { };
 	}
 	defer free(data);
 
@@ -616,7 +695,7 @@ fn void draw_mesh(Mesh mesh, Texture texture, Shader s, Mat4 proj, Mat4 view, Ve
 	gl::useProgram(s.id);
 
 	Mat4 mat_model = mat4_translate_scale(position, scale);
-	Mat4 mvp       = mat4_mul(mat4_mul(proj, view), mat_model);
+	Mat4 mvp       = proj * view * mat_model;
 
 	int loc_mvp   = gl::getUniformLocation(s.id, "mvp");
 	int loc_model = gl::getUniformLocation(s.id, "matModel");
@@ -656,7 +735,7 @@ struct Renderer
 
 fn void Renderer.init(&self)
 {
-	self.color_shader  = load_shader_from_memory(COLOR_VERTEX_SHADER, COLOR_FRAGMENT_SHADER).id;
+	self.color_shader = load_shader_from_memory(COLOR_VERTEX_SHADER, COLOR_FRAGMENT_SHADER).id;
 	self.loc_color_mvp = gl::getUniformLocation(self.color_shader, "mvp");
 	self.loc_color_col = gl::getUniformLocation(self.color_shader, "color");
 
@@ -680,8 +759,8 @@ fn void Renderer.init(&self)
 			continue;
 		}
 		ulong bits = g.bitmap;
-		int gx = (i % 16) * 8;
-		int gy = (i / 16) * 8;
+		int gx     = (i % 16) * 8;
+		int gy     = (i / 16) * 8;
 		for (int r = 0; r < 8; r++)
 		{
 			for (int c = 0; c < 5; c++)
@@ -701,7 +780,7 @@ fn void Renderer.init(&self)
 	gl::texParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)GL_NEAREST);
 	gl::texParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)GL_NEAREST);
 
-	self.text_shader  = load_shader_from_memory(TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER).id;
+	self.text_shader = load_shader_from_memory(TEXT_VERTEX_SHADER, TEXT_FRAGMENT_SHADER).id;
 	self.loc_text_col = gl::getUniformLocation(self.text_shader, "color");
 
 	gl::genVertexArrays(1, &self.text_vao);
@@ -742,7 +821,17 @@ fn void Renderer.destroy(&self)
 	}
 }
 
-fn void Renderer.draw_cylinder(&self, Mat4 proj, Mat4 view, Vec3 start, Vec3 end, float r1, float r2, int sides, Color c)
+fn void Renderer.draw_cylinder(
+	&self,
+	Mat4 proj,
+	Mat4 view,
+	Vec3 start,
+	Vec3 end,
+	float r1,
+	float r2,
+	int sides,
+	Color c
+)
 {
 	if (sides < 3)
 	{
@@ -756,12 +845,12 @@ fn void Renderer.draw_cylinder(&self, Mat4 proj, Mat4 view, Vec3 start, Vec3 end
 	}
 	Vec3 dir = axis / len;
 
-	Vec3 up = math::abs(dir.y) < 0.99f ? (Vec3){ 0.0f, 1.0f, 0.0f } : (Vec3){ 1.0f, 0.0f, 0.0f };
+	Vec3 up = math::abs(dir.y) < 0.99f ? (Vec3) { 0.0f, 1.0f, 0.0f } : (Vec3) { 1.0f, 0.0f, 0.0f };
 	Vec3 u  = dir.cross(up).normalize();
 	Vec3 v  = dir.cross(u).normalize();
 
-	List{float} verts;
-	verts.init(tmem);
+	List{Vec3} verts;
+	verts.init(tmem, (sz)(sides * 6));
 
 	for (int i = 0; i < sides; i++)
 	{
@@ -773,20 +862,14 @@ fn void Renderer.draw_cylinder(&self, Mat4 proj, Mat4 view, Vec3 start, Vec3 end
 
 		Vec3 b1 = start + r1 * rad1;
 		Vec3 b2 = start + r1 * rad2;
-		Vec3 t1 = end   + r2 * rad1;
-		Vec3 t2 = end   + r2 * rad2;
+		Vec3 t1 = end + r2 * rad1;
+		Vec3 t2 = end + r2 * rad2;
 
-		verts.push(b1.x); verts.push(b1.y); verts.push(b1.z);
-		verts.push(b2.x); verts.push(b2.y); verts.push(b2.z);
-		verts.push(t1.x); verts.push(t1.y); verts.push(t1.z);
-
-		verts.push(b2.x); verts.push(b2.y); verts.push(b2.z);
-		verts.push(t2.x); verts.push(t2.y); verts.push(t2.z);
-		verts.push(t1.x); verts.push(t1.y); verts.push(t1.z);
+		verts.push_all({ b1, b2, t1, b2, t2, t1 });
 	}
 
 	gl::useProgram(self.color_shader);
-	Mat4 mvp = mat4_mul(proj, view);
+	Mat4 mvp = proj * view;
 	gl::uniformMatrix4fv(self.loc_color_mvp, 1, GL_FALSE, (float*)&mvp);
 
 	Vec4 col = { (float)c.r / 255.0f, (float)c.g / 255.0f, (float)c.b / 255.0f, (float)c.a / 255.0f };
@@ -794,7 +877,7 @@ fn void Renderer.draw_cylinder(&self, Mat4 proj, Mat4 view, Vec3 start, Vec3 end
 
 	gl::bindVertexArray(self.dyn_vao);
 	gl::bindBuffer(GL_ARRAY_BUFFER, self.dyn_vbo);
-	gl::bufferData(GL_ARRAY_BUFFER, (usz)(verts.len() * float::size), verts.entries, GL_DYNAMIC_DRAW);
+	gl::bufferData(GL_ARRAY_BUFFER, (usz)(verts.len() * Vec3::size), verts.entries, GL_DYNAMIC_DRAW);
 	gl::drawArrays(GL_TRIANGLES, 0, sides * 6);
 	gl::bindVertexArray(0);
 }
@@ -803,7 +886,7 @@ fn void Renderer.draw_sphere(&self, Mat4 proj, Mat4 view, Vec3 pos, float r, Col
 {
 	gl::useProgram(self.color_shader);
 	Mat4 mat_model = mat4_translate_scale(pos, r);
-	Mat4 mvp       = mat4_mul(mat4_mul(proj, view), mat_model);
+	Mat4 mvp       = proj * view * mat_model;
 	gl::uniformMatrix4fv(self.loc_color_mvp, 1, GL_FALSE, (float*)&mvp);
 
 	Vec4 col = { (float)c.r / 255.0f, (float)c.g / 255.0f, (float)c.b / 255.0f, (float)c.a / 255.0f };
@@ -826,8 +909,8 @@ fn void Renderer.draw_text(&self, GfxSize win_sz, String text, int x, int y, int
 	float cur_x   = (float)x;
 	float cur_y   = (float)y;
 
-	List{float} verts;
-	verts.init(tmem);
+	List{Vec4} verts;
+	verts.init(tmem, text.len * 6);
 
 	foreach (char c : text)
 	{
@@ -857,13 +940,16 @@ fn void Renderer.draw_text(&self, GfxSize win_sz, String text, int x, int y, int
 		float x1 = ((cur_x + 5.0f * scale) / (float)win_sz.x) * 2.0f - 1.0f;
 		float y1 = 1.0f - ((cur_y + 8.0f * scale) / (float)win_sz.y) * 2.0f;
 
-		verts.push(x0); verts.push(y0); verts.push(u0); verts.push(v0);
-		verts.push(x0); verts.push(y1); verts.push(u0); verts.push(v1);
-		verts.push(x1); verts.push(y0); verts.push(u1); verts.push(v0);
-
-		verts.push(x1); verts.push(y0); verts.push(u1); verts.push(v0);
-		verts.push(x0); verts.push(y1); verts.push(u0); verts.push(v1);
-		verts.push(x1); verts.push(y1); verts.push(u1); verts.push(v1);
+		verts.push_all(
+			{
+				{ x0, y0, u0, v0 },
+				{ x0, y1, u0, v1 },
+				{ x1, y0, u1, v0 },
+				{ x1, y0, u1, v0 },
+				{ x0, y1, u0, v1 },
+				{ x1, y1, u1, v1 }
+			}
+		);
 
 		cur_x += advance;
 	}
@@ -887,8 +973,8 @@ fn void Renderer.draw_text(&self, GfxSize win_sz, String text, int x, int y, int
 
 	gl::bindVertexArray(self.text_vao);
 	gl::bindBuffer(GL_ARRAY_BUFFER, self.text_vbo);
-	gl::bufferData(GL_ARRAY_BUFFER, (usz)(verts.len() * float::size), verts.entries, GL_DYNAMIC_DRAW);
-	gl::drawArrays(GL_TRIANGLES, 0, (int)(verts.len() / 4));
+	gl::bufferData(GL_ARRAY_BUFFER, (usz)(verts.len() * Vec4::size), verts.entries, GL_DYNAMIC_DRAW);
+	gl::drawArrays(GL_TRIANGLES, 0, (int)verts.len());
 	gl::bindVertexArray(0);
 
 	gl::enable(GL_DEPTH_TEST);
@@ -896,170 +982,50 @@ fn void Renderer.draw_text(&self, GfxSize win_sz, String text, int x, int y, int
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Input & Window Helpers
+// Frame Timing
 // ─────────────────────────────────────────────────────────────────────────────
-
-struct InputState
-{
-	Vec2 mouse_pos;
-	Vec2 mouse_delta;
-	float mouse_wheel;
-	bool[3] mouse_pressed;
-	bool[3] mouse_released;
-	bool[10] keys_pressed;
-	GfxPoint last_mouse;
-	bool has_last_mouse;
-}
-
-fn void InputState.begin_frame(&self, GfxWindow* w)
-{
-	self.mouse_delta    = { 0.0f, 0.0f };
-	self.mouse_wheel    = 0.0f;
-	self.mouse_pressed  = {};
-	self.mouse_released = {};
-	self.keys_pressed   = {};
-
-	while (try event = gfx::poll(w))
-	{
-		switch (event.type)
-		{
-			case WINDOW_RESIZED:
-				GfxSize win_sz = w.get_size();
-				gl::viewport(0, 0, win_sz.x, win_sz.y);
-			case MOUSE_BUTTON_PRESSED:
-				int b = event.button.value == LEFT ? 0 : (event.button.value == RIGHT ? 1 : 2);
-				self.mouse_pressed[b] = true;
-			case MOUSE_BUTTON_RELEASED:
-				int b = event.button.value == LEFT ? 0 : (event.button.value == RIGHT ? 1 : 2);
-				self.mouse_released[b] = true;
-			case MOUSE_SCROLL:
-				self.mouse_wheel += event.delta.vector.y;
-			case KEY_PRESSED:
-				GfxKey k = event.key.value;
-				if (k >= NUM1 && k <= NUM9)
-				{
-					self.keys_pressed[(int)(k - NUM1) + 1] = true;
-				}
-				if (k == NUM0)
-				{
-					self.keys_pressed[0] = true;
-				}
-			default:
-				break;
-		}
-	}
-
-	GfxPoint cur = w.get_mouse();
-	self.mouse_pos = { (float)cur.x, (float)cur.y };
-	if (self.has_last_mouse)
-	{
-		self.mouse_delta = { (float)(cur.x - self.last_mouse.x), (float)(cur.y - self.last_mouse.y) };
-	}
-	else
-	{
-		self.has_last_mouse = true;
-	}
-	self.last_mouse = cur;
-}
-
-fn bool InputState.is_mouse_pressed(&self, MouseButton b) => self.mouse_pressed[(int)b];
-fn bool InputState.is_mouse_released(&self, MouseButton b) => self.mouse_released[(int)b];
-fn bool InputState.is_key_pressed(&self, int k) => (k >= 0 && k < 10) && self.keys_pressed[k];
 
 struct FrameTimer
 {
-	Time last_time;
-	double start_time;
-	float dt;
+	Clock clock;
+	Clock start;
 }
 
 fn void FrameTimer.init(&self)
 {
-	self.last_time  = time::now();
-	self.start_time = (double)self.last_time / (double)time::SEC;
+	self.clock = clock::now();
+	self.start = self.clock;
 }
 
-fn void FrameTimer.update(&self)
-{
-	Time now = time::now();
-	self.dt = (float)((double)(now - self.last_time) / (double)time::SEC);
-	self.last_time = now;
-}
-
-fn double FrameTimer.elapsed(&self) => (double)time::now() / (double)time::SEC - self.start_time;
+fn float FrameTimer.update(&self) => (float)self.clock.mark().to_sec();
+fn double FrameTimer.elapsed(&self) => self.start.to_now().to_sec();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Matrix Math
 // ─────────────────────────────────────────────────────────────────────────────
 
-struct Mat4
-{
-	float[4][4] m;
-}
-
+// stdlib perspective is [0,1] depth (Vulkan/Metal); OpenGL NDC is [-1,1], so...
+// this:
 fn Mat4 perspective(float fovy_deg, float aspect, float near_z, float far_z)
 {
-	float f  = 1.0f / math::tan(fovy_deg * DEG2RAD * 0.5f);
+	float f  = 1.0f / math::tan((fovy_deg * 0.5f).to_radians());
 	float nf = 1.0f / (near_z - far_z);
-	Mat4 m = {};
-	m.m[0][0] =  f / aspect;
-	m.m[1][1] =  f;
-	m.m[2][2] =  (far_z + near_z) * nf;
-	m.m[2][3] = -1.0f;
-	m.m[3][2] =  2.0f * far_z * near_z * nf;
-	return m;
-}
-
-fn Mat4 look_at(Vec3 eye, Vec3 center, Vec3 up)
-{
-	Vec3 f = (center - eye).normalize();
-	Vec3 r = f.cross(up).normalize();
-	Vec3 u = r.cross(f);
-
-	Mat4 m = {};
-	m.m[0][0] =  r.x;
-	m.m[1][0] =  r.y;
-	m.m[2][0] =  r.z;
-	m.m[3][0] = -r.dot(eye);
-	m.m[0][1] =  u.x;
-	m.m[1][1] =  u.y;
-	m.m[2][1] =  u.z;
-	m.m[3][1] = -u.dot(eye);
-	m.m[0][2] = -f.x;
-	m.m[1][2] = -f.y;
-	m.m[2][2] = -f.z;
-	m.m[3][2] =  f.dot(eye);
-	m.m[3][3] =  1.0f;
-	return m;
+	return (Mat4) {
+		.m = {
+			[0] = f / aspect,
+			[5] = f,
+			[10] = (far_z + near_z) * nf,
+			[11] = -1.0f,
+			[14] = 2.0f * far_z * near_z * nf
+		}
+	};
 }
 
 fn Mat4 mat4_translate_scale(Vec3 pos, float scale)
 {
-	Mat4 m = {};
-	m.m[0][0] = scale;
-	m.m[1][1] = scale;
-	m.m[2][2] = scale;
-	m.m[3][0] = pos.x;
-	m.m[3][1] = pos.y;
-	m.m[3][2] = pos.z;
-	m.m[3][3] = 1.0f;
-	return m;
-}
-
-fn Mat4 mat4_mul(Mat4 a, Mat4 b)
-{
-	Mat4 r = {};
-	for (int col = 0; col < 4; col++)
-	{
-		for (int row = 0; row < 4; row++)
-		{
-			for (int k = 0; k < 4; k++)
-			{
-				r.m[col][row] += a.m[k][row] * b.m[col][k];
-			}
-		}
-	}
-	return r;
+	Mat4 m = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
+	m = m.translate(pos);
+	return m.scale({ scale, scale, scale });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1068,22 +1034,15 @@ fn Mat4 mat4_mul(Mat4 a, Mat4 b)
 
 enum City : int (float lat, float lon, String name)
 {
-	SALA         {  59.9f,  16.5f, "Sala, Sweden" },
+	SALA         { 59.9f, 16.5f, "Sala, Sweden" },
 	BUENOS_AIRES { -34.6f, -58.4f, "Buenos Aires" },
-	TOKYO        {  35.7f, 139.7f, "Tokyo" },
-	DELHI        {  28.6f,  77.2f, "Delhi" },
-	SHANGHAI     {  31.2f, 121.5f, "Shanghai" },
+	TOKYO        { 35.7f, 139.7f, "Tokyo" },
+	DELHI        { 28.6f, 77.2f, "Delhi" },
+	SHANGHAI     { 31.2f, 121.5f, "Shanghai" },
 	SAO_PAULO    { -23.5f, -46.6f, "Sao Paulo" },
-	MEXICO       {  19.4f, -99.1f, "Mexico City" },
-	CAIRO        {  30.0f,  31.2f, "Cairo" },
-	MUMBAI       {  19.1f,  72.9f, "Mumbai" },
-}
-
-enum MouseButton : int
-{
-	LEFT,
-	RIGHT,
-	MIDDLE
+	MEXICO       { 19.4f, -99.1f, "Mexico City" },
+	CAIRO        { 30.0f, 31.2f, "Cairo" },
+	MUMBAI       { 19.1f, 72.9f, "Mumbai" },
 }
 
 struct Color
@@ -1111,7 +1070,8 @@ struct Pin
 const String SHADER_PREFIX @feat(EMSCRIPTEN)  = "#version 300 es\nprecision highp float;\n";
 const String SHADER_PREFIX @feat(!EMSCRIPTEN) = "#version 330 core\n";
 
-const ZString EARTH_VERTEX_SHADER = SHADER_PREFIX +++ `layout(location = 0) in vec3 vertexPosition;
+const ZString EARTH_VERTEX_SHADER = SHADER_PREFIX
+	+++ `layout(location = 0) in vec3 vertexPosition;
 uniform mat4 mvp;
 uniform mat4 matModel;
 out vec3 fragPos;
@@ -1121,7 +1081,8 @@ void main() {
 }
 `;
 
-const ZString EARTH_FRAGMENT_SHADER = SHADER_PREFIX +++ `in vec3 fragPos;
+const ZString EARTH_FRAGMENT_SHADER = SHADER_PREFIX
+	+++ `in vec3 fragPos;
 uniform sampler2D texture0;
 uniform vec3 sunPos;
 uniform int isSkybox;
@@ -1146,21 +1107,24 @@ void main() {
 }
 `;
 
-const ZString COLOR_VERTEX_SHADER = SHADER_PREFIX +++ `layout(location = 0) in vec3 vertexPosition;
+const ZString COLOR_VERTEX_SHADER = SHADER_PREFIX
+	+++ `layout(location = 0) in vec3 vertexPosition;
 uniform mat4 mvp;
 void main() {
     gl_Position = mvp * vec4(vertexPosition, 1.0);
 }
 `;
 
-const ZString COLOR_FRAGMENT_SHADER = SHADER_PREFIX +++ `uniform vec4 color;
+const ZString COLOR_FRAGMENT_SHADER = SHADER_PREFIX
+	+++ `uniform vec4 color;
 out vec4 finalColor;
 void main() {
     finalColor = color;
 }
 `;
 
-const ZString TEXT_VERTEX_SHADER = SHADER_PREFIX +++ `layout(location = 0) in vec2 vertexPosition;
+const ZString TEXT_VERTEX_SHADER = SHADER_PREFIX
+	+++ `layout(location = 0) in vec2 vertexPosition;
 layout(location = 1) in vec2 vertexTexCoord;
 out vec2 fragTexCoord;
 void main() {
@@ -1169,7 +1133,8 @@ void main() {
 }
 `;
 
-const ZString TEXT_FRAGMENT_SHADER = SHADER_PREFIX +++ `in vec2 fragTexCoord;
+const ZString TEXT_FRAGMENT_SHADER = SHADER_PREFIX
+	+++ `in vec2 fragTexCoord;
 uniform sampler2D fontTex;
 uniform vec4 color;
 out vec4 finalColor;
@@ -1296,43 +1261,43 @@ fn void init(GLLoadFn load)
 	load_gl(load);
 }
 
-alias GLenum     = uint;
-alias GLboolean  = char;
+alias GLenum = uint;
+alias GLboolean = char;
 alias GLbitfield = uint;
-alias GLint      = int;
-alias GLuint     = uint;
-alias GLsizei    = int;
-alias GLfloat    = float;
-alias GLchar     = char;
+alias GLint = int;
+alias GLuint = uint;
+alias GLsizei = int;
+alias GLfloat = float;
+alias GLchar = char;
 alias GLsizeiptr = sz;
-alias GLLoadFn   = fn void*(char*);
+alias GLLoadFn = fn void*(char*);
 
-const GLenum GL_DEPTH_BUFFER_BIT     @builtin = 0x00000100;
-const GLenum GL_COLOR_BUFFER_BIT     @builtin = 0x00004000;
-const GLboolean GL_FALSE             @builtin = 0;
-const GLenum GL_TRIANGLES            @builtin = 0x0004;
-const GLenum GL_LESS                 @builtin = 0x0201;
-const GLenum GL_SRC_ALPHA            @builtin = 0x0302;
-const GLenum GL_ONE_MINUS_SRC_ALPHA  @builtin = 0x0303;
-const GLenum GL_CULL_FACE            @builtin = 0x0B44;
-const GLenum GL_DEPTH_TEST           @builtin = 0x0B71;
-const GLenum GL_BLEND                @builtin = 0x0BE2;
-const GLenum GL_TEXTURE_2D           @builtin = 0x0DE1;
-const GLenum GL_UNSIGNED_BYTE        @builtin = 0x1401;
-const GLenum GL_UNSIGNED_INT         @builtin = 0x1405;
-const GLenum GL_FLOAT                @builtin = 0x1406;
-const GLenum GL_RGBA                 @builtin = 0x1908;
-const GLenum GL_NEAREST              @builtin = 0x2600;
-const GLenum GL_LINEAR               @builtin = 0x2601;
-const GLenum GL_TEXTURE_MAG_FILTER   @builtin = 0x2800;
-const GLenum GL_TEXTURE_MIN_FILTER   @builtin = 0x2801;
-const GLenum GL_TEXTURE0             @builtin = 0x84C0;
-const GLenum GL_ARRAY_BUFFER         @builtin = 0x8892;
+const GLenum GL_DEPTH_BUFFER_BIT @builtin     = 0x00000100;
+const GLenum GL_COLOR_BUFFER_BIT @builtin     = 0x00004000;
+const GLboolean GL_FALSE @builtin             = 0;
+const GLenum GL_TRIANGLES @builtin            = 0x0004;
+const GLenum GL_LESS @builtin                 = 0x0201;
+const GLenum GL_SRC_ALPHA @builtin            = 0x0302;
+const GLenum GL_ONE_MINUS_SRC_ALPHA @builtin  = 0x0303;
+const GLenum GL_CULL_FACE @builtin            = 0x0B44;
+const GLenum GL_DEPTH_TEST @builtin           = 0x0B71;
+const GLenum GL_BLEND @builtin                = 0x0BE2;
+const GLenum GL_TEXTURE_2D @builtin           = 0x0DE1;
+const GLenum GL_UNSIGNED_BYTE @builtin        = 0x1401;
+const GLenum GL_UNSIGNED_INT @builtin         = 0x1405;
+const GLenum GL_FLOAT @builtin                = 0x1406;
+const GLenum GL_RGBA @builtin                 = 0x1908;
+const GLenum GL_NEAREST @builtin              = 0x2600;
+const GLenum GL_LINEAR @builtin               = 0x2601;
+const GLenum GL_TEXTURE_MAG_FILTER @builtin   = 0x2800;
+const GLenum GL_TEXTURE_MIN_FILTER @builtin   = 0x2801;
+const GLenum GL_TEXTURE0 @builtin             = 0x84C0;
+const GLenum GL_ARRAY_BUFFER @builtin         = 0x8892;
 const GLenum GL_ELEMENT_ARRAY_BUFFER @builtin = 0x8893;
-const GLenum GL_STATIC_DRAW          @builtin = 0x88E4;
-const GLenum GL_DYNAMIC_DRAW         @builtin = 0x88E8;
-const GLenum GL_FRAGMENT_SHADER      @builtin = 0x8B30;
-const GLenum GL_VERTEX_SHADER        @builtin = 0x8B31;
+const GLenum GL_STATIC_DRAW @builtin          = 0x88E4;
+const GLenum GL_DYNAMIC_DRAW @builtin         = 0x88E8;
+const GLenum GL_FRAGMENT_SHADER @builtin      = 0x8B30;
+const GLenum GL_VERTEX_SHADER @builtin        = 0x8B31;
 
 alias PfnViewport = fn void(GLint, GLint, GLsizei, GLsizei);
 alias PfnEnable = fn void(GLenum);
