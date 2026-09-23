@@ -114,8 +114,9 @@ fn void step() => @pool()
 		switch (event.type)
 		{
 			case WINDOW_RESIZED:
-				GfxSize win_sz = state.win.get_size();
-				gl::viewport(0, 0, win_sz.x, win_sz.y);
+			case SCALE_UPDATED:
+				GfxSize px_sz = state.win.get_size_in_pixels();
+				gl::viewport(0, 0, px_sz.x, px_sz.y);
 			case KEY_PRESSED:
 				GfxKey k = event.key.value;
 				if (k >= NUM1 && k <= NUM9)
@@ -256,8 +257,8 @@ fn void init()
 
 	gl::init((gl::GLLoadFn)&gfx::get_opengl_proc);
 
-	GfxSize initial_sz = state.win.get_size();
-	gl::viewport(0, 0, initial_sz.x, initial_sz.y);
+	GfxSize initial_px = state.win.get_size_in_pixels();
+	gl::viewport(0, 0, initial_px.x, initial_px.y);
 	gl::enable(GL_DEPTH_TEST);
 	gl::enable(GL_CULL_FACE);
 	gl::depthFunc(GL_LESS);

@@ -621,11 +621,17 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	}
 	if (hints.double_buffer) stack.push(NS_OPEN_GL_PFA_DOUBLE_BUFFER);
 	if (hints.stereo) stack.push(NS_OPEN_GL_PFA_STEREO);
+	bool legacy = hints.profile == COMPATIBILITY;
 	stack.push(NS_OPEN_GL_PFA_OPEN_GL_PROFILE);
-	stack.push(hints.major >= 4 ? NS_OPEN_GL_PROFILE_4_1_CORE : (hints.major >= 3 ? NS_OPEN_GL_PROFILE_3_2_CORE : NS_OPEN_GL_PROFILE_LEGACY));
-	if (hints.major <= 2)
+	switch
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, hints.accum_size.sum() });
+		case legacy:
+			stack.push(NS_OPEN_GL_PROFILE_LEGACY);
+			stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, hints.accum_size.sum() });
+		case hints.major >= 4:
+			stack.push(NS_OPEN_GL_PROFILE_4_1_CORE);
+		default:
+			stack.push(NS_OPEN_GL_PROFILE_3_2_CORE);
 	}
 	if (hints.renderer == SOFTWARE)
 	{
@@ -1184,6 +1190,10 @@ fn void _osx_window_did_resize(ObjId self, ObjSel sel, ObjId notification)
 	GfxMonitor*? mon = window_find_monitor(win);
 	if (catch mon) return;
 
+	if (win.src.backing.opengl && win.src.ctx.native)
+	{
+		win.src.ctx.native.ctx.send_void("update");
+	}
 	switch
 	{
 		case mon.mode.size.x == size.x && mon.mode.size.y - 102 <= size.y:
@@ -1297,6 +1307,10 @@ fn void _osx_view_did_change_backing_properties(ObjId self, ObjSel sel)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
+	if (win.src.backing.opengl && win.src.ctx.native)
+	{
+		win.src.ctx.native.ctx.send_void("update");
+	}
 	(void)gfx::_scale_updated_callback(win, window_find_monitor(win).scale);
 }
 

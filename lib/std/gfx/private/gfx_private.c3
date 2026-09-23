@@ -491,6 +491,7 @@ fn void _mouse_button_callback(GfxWindow* win, GfxMouseButton button, bool press
 
 fn void _window_maximized_callback(GfxWindow* win, GfxRect bounds)
 {
+	if (win.internal.flags.maximize && win.bounds == bounds) return;
 	win.internal.flags.maximize = true;
 	win.bounds = bounds;
 	if (!win.internal.enabled_events.window_maximized) return;
@@ -635,6 +636,7 @@ fn void _window_resized_callback(GfxWindow* win, GfxSize size)
 
 fn void _window_moved_callback(GfxWindow* win, GfxPoint where)
 {
+	if (win.origin == where) return;
 	win.origin = where;
 	if (!win.internal.enabled_events.window_moved) return;
 	GfxEvent event;
@@ -759,6 +761,7 @@ fn void _key_char_callback(GfxWindow* win, uint codepoint)
 
 fn void _window_restored_callback(GfxWindow* win, GfxRect bounds)
 {
+	if (!win.internal.flags.minimize && !win.internal.flags.maximize) return;
 	win.internal.flags.minimize = false;
 	win.bounds = bounds;
 	if (!_window_is_maximized(win)) win.internal.flags.maximize = false;
