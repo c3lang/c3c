@@ -127,7 +127,8 @@ fn int main()
 							io::printfn("Keyboard interactivity -> %s", kbd.description);
 						default:
 							break;
-					}				case KEY_CHAR:
+					}
+				case KEY_CHAR:
 					io::printfn("Char received: %c (%d)", (char)ev.keyChar.value, ev.keyChar.value);
 				default:
 					break;
