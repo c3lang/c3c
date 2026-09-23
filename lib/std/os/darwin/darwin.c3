@@ -43,6 +43,7 @@ extern fn uint _dyld_image_count();
 extern fn ZString _dyld_get_image_name(uint image_index);
 extern fn iptr _dyld_get_image_vmaddr_slide(uint image_index);
 extern fn CInt dladdr(void* addr, Darwin_Dl_info* info);
+extern fn usz malloc_size(void* ptr);
 
 struct Darwin_Dl_info
 {

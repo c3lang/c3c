@@ -429,10 +429,10 @@ bool ast_is_compile_time(Ast *ast)
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
 					UNREACHABLE
+				case VARDECL_CONST:
+					return !ast->declare_stmt->var.type_info;
 				case VARDECL_LOCAL:
 					return false;
-				case VARDECL_CONST:
-					return !ast->declare_stmt->var.is_addr;
 				case VARDECL_LOCAL_CT:
 				case VARDECL_LOCAL_CT_TYPE:
 					return true;

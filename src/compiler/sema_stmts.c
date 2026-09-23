@@ -2010,7 +2010,6 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	bool reverse = false;
 	SCOPE_OUTER_START(statement->loc)
 	{
-
 		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
 		if (success && cond->expr_kind == EXPR_COND)
 		{
@@ -3325,7 +3324,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 	UNREACHABLE
 }
 
-
 bool sema_analyse_statement(SemaContext *context, Ast *statement)
 {
 	if (context->active_scope.is_poisoned) return false;
@@ -3352,8 +3350,6 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 	}
 	return true;
 }
-
-
 
 static bool sema_analyse_ensure(SemaContext *context, Expr *directive)
 {

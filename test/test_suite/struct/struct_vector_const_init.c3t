@@ -20,10 +20,10 @@ fn int main()
 
 /* #expect: test.ll
 
-%Foo2 = type { <4 x i32> }
 %Foo1 = type { [3 x i32] }
+%Foo2 = type { <4 x i32> }
 
-@.__const = private unnamed_addr constant { [3 x i32] } { [3 x i32] [i32 1, i32 2, i32 3] }, align 4
+@.__const = private unnamed_addr constant %Foo1 { [3 x i32] [i32 1, i32 2, i32 3] }, align 4
 @.__const.1 = private unnamed_addr constant %Foo2 { <4 x i32> <i32 1, i32 2, i32 3, i32 4> }, align 16
 
 define i32 @main() #0 {
