@@ -1,4 +1,4 @@
-module flatmap_bench;
+module flatmap_benchmarks;
 import std::math::random;
 
 const ITERATIONS = 10;
@@ -22,7 +22,7 @@ fn String generate_key(sz key_len)
 	return key;
 }
 
-module flatmap_bench @benchmark;
+module flatmap_benchmarks @benchmark;
 
 import std::collections::flatmap;
 import std::collections::map;

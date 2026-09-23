@@ -136,64 +136,64 @@ fn void FlatMap.clear(&self)
 
 <*
  Inserts key-value pair into the flat map.
+
+ @return "False it item was already in the map, true otherwise"
 *>
-fn void FlatMap.set(&self, Key key, Value val)
+fn bool FlatMap.set(&self, Key key, Value val)
 {
 	if (crossed_threshold(self)) grow(self);
 	HashType hash = calc_hash(key);
-	set_inner(self.data, self.capacity, &self.count, hash, key, val);
+	return set_inner(self.data, self.capacity, &self.count, hash, key, val);
 }
 
-fn void set_inner(HashType* data, sz capacity, sz* count, HashType hash, Key key, Value val) @private @inline
+<*
+ @return "False it item was already in the map, true otherwise"
+*>
+fn bool set_inner(HashType* data, sz capacity, sz* count, HashType hash, Key key, Value value) @private @inline
 {
-	sz start_idx            = get_idx(hash, capacity);
-	sz curr_idx             = start_idx;
-	Pair{Key[], Value[]} kv = keys_values_array(data, capacity);
-	Key[] keys              = kv.first;
-	Value[] values          = kv.second;
+	sz start_idx            =  get_idx(hash, capacity);
+	sz curr_idx             =  start_idx;
+	Pair{Key[], Value[]} kv =  keys_values_array(data, capacity);
+	Key[] keys              =  kv.first;
+	Value[] values          =  kv.second;
+	sz insert_slot_idx      = -1;
+	HashType slot_hash @noinit;
 
-	for (; curr_idx < capacity; ++curr_idx)
+	for (;;)
 	{
-		if (data[curr_idx] < HASH_FIRST_VALID)
+		slot_hash = data[curr_idx];
+
+		// The probe chain ends at the first empty slot; nothing beyond
+		// it can hold this value, so probing must stop here.
+		if (slot_hash == HASH_EMPTY)
 		{
-			data[curr_idx] = hash;
-			keys[curr_idx] = key;
-			values[curr_idx] = val;
-			if (count) (*count)++;
-			return;
+			if (insert_slot_idx == -1) insert_slot_idx = curr_idx;
+			break;
 		}
-		else if (hash == data[curr_idx] && keys[curr_idx] == key)
+
+		// Tombstones keep the chain intact, so peek for a reusable slot
+		// but keep scanning in case a duplicate hides behind it.
+		if (slot_hash == HASH_DELETED)
 		{
-			data[curr_idx] = hash;
-			keys[curr_idx] = key;
-			values[curr_idx] = val;
-			return;
+			if (insert_slot_idx == -1) insert_slot_idx = curr_idx;
+		} // Element was already in the map.
+		else if (hash == slot_hash && keys[curr_idx] == key)
+		{
+			values[curr_idx] = value;
+			return false;
 		}
+
+		curr_idx = (curr_idx + 1) & (capacity - 1);
+		if (curr_idx == start_idx) break;
 	}
 
-	// Wrapped around, start from first entry.
-	curr_idx = 0;
+	assert(insert_slot_idx != -1, "Failed to insert a value into a map");
 
-	for (; curr_idx < start_idx; ++curr_idx)
-	{
-		if (data[curr_idx] < HASH_FIRST_VALID)
-		{
-			data[curr_idx] = hash;
-			keys[curr_idx] = key;
-			values[curr_idx] = val;
-			if (count) (*count)++;
-			return;
-		}
-		else if (hash == data[curr_idx] && keys[curr_idx] == key)
-		{
-			data[curr_idx] = hash;
-			keys[curr_idx] = key;
-			values[curr_idx] = val;
-			return;
-		}
-	}
-
-	unreachable("Failed to insert a value into a hashmap");
+	data[insert_slot_idx] = hash;
+	keys[insert_slot_idx] = key;
+	values[insert_slot_idx] = value;
+	if (count) (*count)++;
+	return true;
 }
 
 <*
@@ -208,27 +208,16 @@ fn Value*? FlatMap.get_ref(&self, Key key)
 	Key[] keys              = kv.first;
 	Value[] values          = kv.second;
 
-	for (; curr_idx != self.capacity; ++curr_idx)
+	for (;;)
 	{
 		if (self.data[curr_idx] == HASH_EMPTY) return NOT_FOUND~;
 		if (self.data[curr_idx] == search_hash && keys[curr_idx] == key)
 		{
 			return &values[curr_idx];
 		}
-	}
 
-	// if we searched from the start, no need to do wrap around search.
-	if (start_idx == 0) return NOT_FOUND~;
-
-	curr_idx = 0;
-
-	for (; curr_idx < start_idx; ++curr_idx)
-	{
-		if (self.data[curr_idx] == HASH_EMPTY) return NOT_FOUND~;
-		if (self.data[curr_idx] == search_hash && keys[curr_idx] == key)
-		{
-			return &values[curr_idx];
-		}
+		curr_idx = (curr_idx + 1) & (self.capacity - 1);
+		if (curr_idx == start_idx) break;
 	}
 
 	return NOT_FOUND~;
@@ -249,14 +238,16 @@ fn Value? FlatMap.get(&self, Key key)
 <*
  Checks if flat map has a value associated with the provided key.
 *>
-fn bool FlatMap.has(&self, Key key)
+fn bool FlatMap.contains(&self, Key key)
 {
-	if (catch self.get(key)) return false;
+	if (catch self.get_ref(key)) return false;
 	return true;
 }
 
 <*
- Removes key-value pair from a flat map if it exists.
+ Removes key-value pair from a flat map if it exists, otherwise returns a fault.
+
+ @return ? NOT_FOUND : "If the entry is not found"
 *>
 fn void? FlatMap.remove(&self, Key key) @maydiscard
 {
@@ -267,7 +258,7 @@ fn void? FlatMap.remove(&self, Key key) @maydiscard
 	Key[] keys              = kv.first;
 	Value[] values          = kv.second;
 
-	for (; curr_idx < self.capacity; ++curr_idx)
+	for (;;)
 	{
 		if (self.data[curr_idx] == HASH_EMPTY) return NOT_FOUND~;
 		if (self.data[curr_idx] == search_hash && keys[curr_idx] == key)
@@ -276,22 +267,9 @@ fn void? FlatMap.remove(&self, Key key) @maydiscard
 			self.count--;
 			return;
 		}
-	}
 
-	// if we searched from the start, no need to do wrap around search.
-	if (start_idx == 0) return NOT_FOUND~;
-
-	curr_idx = 0;
-
-	for (; curr_idx < start_idx; ++curr_idx)
-	{
-		if (self.data[curr_idx] == HASH_EMPTY) return NOT_FOUND~;
-		if (self.data[curr_idx] == search_hash && keys[curr_idx] == key)
-		{
-			self.data[curr_idx] = HASH_DELETED;
-			self.count--;
-			return;
-		}
+		curr_idx = (curr_idx + 1) & (self.capacity - 1);
+		if (curr_idx == start_idx) break;
 	}
 
 	return NOT_FOUND~;
@@ -502,7 +480,7 @@ fn Value[] values_array(FlatMap* self) @private
 	return ((Value*)mem::aligned_pointer((Value*)(keys.ptr + self.capacity), Value::alignment))[:self.capacity];
 }
 
-fn HashType calc_hash(Key key) @inline
+fn HashType calc_hash(Key key) @private @inline
 {
 	HashType hash = key.hash();
 	return max(hash, HASH_FIRST_VALID);
@@ -511,8 +489,8 @@ fn HashType calc_hash(Key key) @inline
 <*
  @require math::is_power_of_2(capacity) : "Must be a power of 2"
 *>
-fn sz get_idx(HashType hash, sz capacity) @inline
+fn sz get_idx(HashType hash, sz capacity) @private @inline
 {
 	HashType cap_u = (HashType)capacity;
-	return max((sz)(hash & (cap_u - 1u)) - (sz)HASH_FIRST_VALID, (sz)0);
+	return (sz)(hash & (cap_u - 1u));
 }

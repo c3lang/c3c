@@ -52,7 +52,7 @@ fn void test_init_from_keys_and_values()
 	test::eq(map.get(10)!!, (sz)1);
 	test::eq(map.get(20)!!, (sz)2);
 	test::eq(map.get(30)!!, (sz)3);
-	test::eq(map.has(40), false);
+	test::eq(map.contains(40), false);
 
 	FlatMap{sz, sz} tmap;
 	tmap.tinit_from_keys_and_values({ 1, 2, 3 }, { 4, 5, 6 });
@@ -106,13 +106,13 @@ fn void test_get_ref()
 	test::@error(map.get_ref(42));
 }
 
-fn void test_has()
+fn void test_contains()
 {
 	FlatMap{sz, sz} map;
 	map.tinit();
 	map.set(1, 10);
-	test::eq(map.has(1), true);
-	test::eq(map.has(2), false);
+	test::eq(map.contains(1), true);
+	test::eq(map.contains(2), false);
 }
 
 fn void test_remove()
@@ -124,7 +124,7 @@ fn void test_remove()
 
 	// Removing a present key succeeds.
 	if (catch map.remove(1)) return;
-	test::eq(map.has(1), false);
+	test::eq(map.contains(1), false);
 
 	// Removing the same key again yields NOT_FOUND.
 	test::@error(map.remove(1));
@@ -143,8 +143,8 @@ fn void test_clear()
 
 	map.clear();
 	test::@error(map.get(1));
-	test::eq(map.has(1), false);
-	test::eq(map.has(2), false);
+	test::eq(map.contains(1), false);
+	test::eq(map.contains(2), false);
 
 	// Map remains usable after clear.
 	map.set(3, 30);
@@ -270,7 +270,7 @@ fn void test_string_keys()
 	test::eq(map.get("cherry")!!, (sz)2);
 
 	if (catch map.remove("banana")) return;
-	test::eq(map.has("banana"), false);
+	test::eq(map.contains("banana"), false);
 
 	sz[] vals = map.tvalues();
 	test::eq(vals.len, (sz)3);

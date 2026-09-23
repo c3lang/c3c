@@ -1,4 +1,4 @@
-module flatmap_bench;
+module flatset_benchmarks;
 import std::math::random;
 
 const ITERATIONS = 10;
@@ -22,7 +22,7 @@ fn String generate_key(sz key_len)
 	return key;
 }
 
-module flatmap_bench @benchmark;
+module flatset_benchmarks @benchmark;
 
 import std::collections::flatset;
 import std::collections::set;
@@ -117,7 +117,7 @@ fn void flatset_operations() => @pool()
 
 	foreach (s : keys)
 	{
-		if (!set.remove(s))
+        if (catch set.remove(s))
 		{
 			io::printfn("Error happened: remove");
 			abort();

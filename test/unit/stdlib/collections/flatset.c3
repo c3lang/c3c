@@ -72,11 +72,11 @@ fn void test_remove()
 	set.add(1);
 	set.add(2);
 
-	test::eq(set.remove(1), true);
+	if (catch set.remove(1)) return;
 	test::eq(set.contains(1), false);
 
-	// Removing an absent value reports false.
-	test::eq(set.remove(1), false);
+	// Removing the same key again yields NOT_FOUND.
+	test::@error(set.remove(1));
 
 	// Re-adding after removal reuses the deleted slot.
 	set.add(1);
@@ -227,8 +227,7 @@ fn void test_is_subset()
 fn void test_values()
 {
 	FlatSet{sz} set = range_set(0, 8);
-	bool removed    = set.remove(3);
-	test::eq(removed, true);
+	set.remove(3)!!;
 
 	sz[] values  = set.values(tmem);
 	sz[] tvalues = set.tvalues();

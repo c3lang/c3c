@@ -131,6 +131,8 @@ fn void FlatSet.clear(&self)
 
 <*
  Inserts a value into the flat set.
+
+ @return "False it item was already in the set, true otherwise"
 *>
 fn bool FlatSet.add(&self, Value value)
 {
@@ -139,16 +141,20 @@ fn bool FlatSet.add(&self, Value value)
 	return add_inner(self.data, self.capacity, &self.count, hash, value);
 }
 
+<*
+ @return "False it item was already in the set, true otherwise"
+*>
 fn bool add_inner(HashType* data, sz capacity, sz* count, HashType hash, Value value) @private @inline
 {
 	sz start_idx       =  get_idx(hash, capacity);
 	sz curr_idx        =  start_idx;
 	Value[] values     =  values_array(data, capacity);
 	sz insert_slot_idx = -1;
+	HashType slot_hash @noinit;
 
 	for (;;)
 	{
-		HashType slot_hash = data[curr_idx];
+		slot_hash = data[curr_idx];
 
 		// The probe chain ends at the first empty slot; nothing beyond
 		// it can hold this value, so probing must stop here.
@@ -174,10 +180,7 @@ fn bool add_inner(HashType* data, sz capacity, sz* count, HashType hash, Value v
 		if (curr_idx == start_idx) break;
 	}
 
-	if (@unlikely(insert_slot_idx == -1))
-	{
-		unreachable("Failed to insert a value into a hashset");
-	}
+	assert(insert_slot_idx != -1, "Failed to insert a value into a set");
 
 	data[insert_slot_idx] = hash;
 	values[insert_slot_idx] = value;
@@ -216,27 +219,16 @@ fn bool FlatSet.contains(&self, Value value)
 	sz curr_idx          = start_idx;
 	Value[] values       = values_array(self.data, self.capacity);
 
-	for (; curr_idx != self.capacity; ++curr_idx)
+	for (;;)
 	{
 		if (self.data[curr_idx] == HASH_EMPTY) return false;
 		if (self.data[curr_idx] == search_hash && values[curr_idx] == value)
 		{
 			return true;
 		}
-	}
 
-	// if we searched from the start, no need to do wrap around search.
-	if (start_idx == 0) return false;
-
-	curr_idx = 0;
-
-	for (; curr_idx < start_idx; ++curr_idx)
-	{
-		if (self.data[curr_idx] == HASH_EMPTY) return false;
-		if (self.data[curr_idx] == search_hash && values[curr_idx] == value)
-		{
-			return true;
-		}
+		curr_idx = (curr_idx + 1) & (self.capacity - 1);
+		if (curr_idx == start_idx) break;
 	}
 
 	return false;
@@ -244,42 +236,31 @@ fn bool FlatSet.contains(&self, Value value)
 
 <*
  Removes the value from a flat set if it exists.
+
+ @return ? NOT_FOUND : "If the entry is not found"
 *>
-fn bool FlatSet.remove(&self, Value value)
+fn void? FlatSet.remove(&self, Value value) @maydiscard
 {
 	HashType search_hash = calc_hash(value);
 	sz start_idx         = get_idx(search_hash, self.capacity);
 	sz curr_idx          = start_idx;
 	Value[] values       = values_array(self.data, self.capacity);
 
-	for (; curr_idx < self.capacity; ++curr_idx)
+	for (;;)
 	{
-		if (self.data[curr_idx] == HASH_EMPTY) return false;
+		if (self.data[curr_idx] == HASH_EMPTY) return NOT_FOUND~;
 		if (self.data[curr_idx] == search_hash && values[curr_idx] == value)
 		{
 			self.data[curr_idx] = HASH_DELETED;
 			self.count--;
-			return true;
+			return;
 		}
+
+		curr_idx = (curr_idx + 1) & (self.capacity - 1);
+		if (curr_idx == start_idx) break;
 	}
 
-	// if we searched from the start, no need to do wrap around search.
-	if (start_idx == 0) return false;
-
-	curr_idx = 0;
-
-	for (; curr_idx < start_idx; ++curr_idx)
-	{
-		if (self.data[curr_idx] == HASH_EMPTY) return false;
-		if (self.data[curr_idx] == search_hash && values[curr_idx] == value)
-		{
-			self.data[curr_idx] = HASH_DELETED;
-			self.count--;
-			return true;
-		}
-	}
-
-	return false;
+	return NOT_FOUND~;
 }
 
 // Set operations.
@@ -503,7 +484,7 @@ fn Value[] values_array(HashType* data, sz capacity) @private
 	return ptr[:capacity];
 }
 
-fn HashType calc_hash(Value val) @inline
+fn HashType calc_hash(Value val) @private @inline
 {
 	HashType hash = val.hash();
 	return max(hash, HASH_FIRST_VALID);
@@ -512,8 +493,8 @@ fn HashType calc_hash(Value val) @inline
 <*
  @require math::is_power_of_2(capacity) : "Must be a power of 2"
 *>
-fn sz get_idx(HashType hash, sz capacity) @inline
+fn sz get_idx(HashType hash, sz capacity) @private @inline
 {
 	HashType cap_u = (HashType)capacity;
-	return max((sz)(hash & (cap_u - 1u)) - (sz)HASH_FIRST_VALID, (sz)0);
+	return (sz)(hash & (cap_u - 1u));
 }
