@@ -541,6 +541,20 @@ fn GfxPoint window_fetch_size(GfxWindow* win)
 	return win.get_size();
 }
 
+fn GfxRect _window_bounds_from_server(GfxWindow* win) @local
+{
+	XWindowAttributes attrs;
+	if (!xGetWindowAttributes(ctx.display, win.src.window, &attrs)) return win.bounds;
+	GfxPoint origin = { attrs.x, attrs.y };
+	XWindow root = xDefaultRootWindow(ctx.display);
+	if (win.src.parent != root)
+	{
+		XWindow dummy;
+		xTranslateCoordinates(ctx.display, win.src.parent, root, ...origin, &origin.x, &origin.y, &dummy);
+	}
+	return { ...origin, attrs.width, attrs.height };
+}
+
 fn GfxMonitor*? window_find_monitor(GfxWindow* win)
 {
 	XWindowAttributes attrs;
@@ -1614,29 +1628,13 @@ fn void _handle_event() @local
 		case 6: gfx::_mouse_motion_callback(win, { e.xmotion.x, e.xmotion.y }); // MotionNotify
 		case 12: gfx::_window_refresh_callback(win, { e.xexpose.x, e.xexpose.y, e.xexpose.width, e.xexpose.height }); // Expose
 		case 28: // PropertyNotify
-			if (e.xproperty.state == 0 /* PropertyNewValue */)
+			if (e.xproperty.state == 0 /* PropertyNewValue */ &&
+				(e.xproperty.atom == ctx.wm_state || e.xproperty.atom == ctx.net_wm_state))
 			{
-				bool handled = false;
-				if (e.xproperty.atom == ctx.wm_state)
-				{
-					if (window_is_minimized(win) && !(win.internal.flags.minimize))
-					{
-						gfx::_window_minimized_callback(win);
-						handled = true;
-					}
-				}
-				else if (e.xproperty.atom == ctx.net_wm_state)
-				{
-					if (window_is_maximized(win) && !(win.internal.flags.maximize))
-					{
-						gfx::_window_maximized_callback(win, win.bounds);
-						handled = true;
-					}
-				}
-				if (!handled) gfx::_window_check_mode(win);
+				gfx::_window_check_mode_with_bounds(win, _window_bounds_from_server(win));
 			}
 		case 19: case 18: // MapNotify, UnmapNotify
-			gfx::_window_check_mode(win);
+			gfx::_window_check_mode_with_bounds(win, _window_bounds_from_server(win));
 			break;
 		case 33: // ClientMessage
 			{
@@ -1815,7 +1813,6 @@ fn void _handle_event() @local
 				_handle_configure(win);
 				if (e.xconfigure.width != win.src.width || e.xconfigure.height != win.src.height)
 				{
-					gfx::_window_check_mode(win);
 					win.src.size = { e.xconfigure.width, e.xconfigure.height };
 					gfx::_window_resized_callback(win, win.src.size);
 				}
@@ -1830,11 +1827,12 @@ fn void _handle_event() @local
 					xTranslateCoordinates(ctx.display, win.src.parent, root, ...configure, &configure.x, &configure.y, &dummy);
 				}
 
-				if (configure != win.origin)
+				if (configure != win.src.origin)
 				{
 					win.src.origin = configure;
 					gfx::_window_moved_callback(win, configure);
 				}
+				gfx::_window_check_mode(win);
 				return;
 			}
 		case 9: // FocusIn

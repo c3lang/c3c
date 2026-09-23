@@ -345,13 +345,9 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	nswin.send_void("makeFirstResponder:", view);
 	nswin.send_void("setAcceptsMouseMovedEvents:", true);
 	win.set_name(name);
-	window_set_floating(win, flags.floating);
-	if (!(flags.hide)) window_show_platform(win);
-	if (flags.maximize) window_maximize_platform(win);
-	if (flags.minimize) window_minimize_platform(win);
-	if (flags.fullscreen) window_set_fullscreen(win, true);
-
+	if (!flags.hide) window_show_platform(win);
 	gfx::_window_set_flags(win, flags, {});
+	win.internal.maximized_state = nswin.send(bool, "isZoomed");
 	win.src.backing = {};
 	if (flags.open_gl) win.create_opengl_context(gfx::get_global_opengl_hints())!;
 	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
@@ -380,7 +376,18 @@ fn GfxPoint window_fetch_size(GfxWindow* win)
 	return win.size;
 }
 
-fn GfxMonitor*? window_find_monitor(GfxWindow* win) => gfx::get_primary_monitor();
+fn GfxMonitor*? window_find_monitor(GfxWindow* win)
+{
+	if (win.src.window)
+	{
+		ObjId screen = win.src.window.send(ObjId, "screen");
+		for (GfxMonitorNode* node = gfx::_gfx.monitors.list.head; node; node = node.next)
+		{
+			if (!node.disconnected && (ObjId)node.screen == screen) return &node.mon;
+		}
+	}
+	return gfx::get_primary_monitor();
+}
 
 fn void window_flash(GfxWindow* win, GfxFlashRequest request)
 {
@@ -426,11 +433,12 @@ fn bool window_is_minimized(GfxWindow* win)
 
 fn void window_maximize_platform(GfxWindow* win)
 {
-	win.src.window.send_void("zoom:", null);
+	if (!win.src.window.send(bool, "isZoomed")) win.src.window.send_void("zoom:", null);
 }
 
 fn void window_minimize_platform(GfxWindow* win)
 {
+	if (!win.internal.flags.maximize) win.internal.old_bounds = win.bounds;
 	win.src.window.send_void("miniaturize:", null);
 }
 
@@ -443,11 +451,10 @@ fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 fn void window_move_platform(GfxWindow* win, GfxPoint where)
 {
 	if (!win.src.window) return;
-	CGRect content = win.src.view.send(CGRect, "frame");
-	win.x = where.x;
-	win.y = (int)flip_y((float)where.y + (float)content.size.height - 1.0f);
-	CGPoint origin = { ...where };
-	win.src.window.send_void("setFrameOrigin:", origin);
+	CGRect content_rect = win.src.view.send(CGRect, "frame");
+	CGRect dummy_rect = { { where.x, flip_y((float)where.y + (float)content_rect.size.height - 1.0f) }, {} };
+	CGRect frame_rect = win.src.window.send(CGRect, "frameRectForContentRect:", dummy_rect);
+	win.src.window.send_void("setFrameOrigin:", frame_rect.origin);
 }
 
 fn void window_raise(GfxWindow* win)
@@ -458,18 +465,24 @@ fn void window_raise(GfxWindow* win)
 fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
 	if (!win.src.window) return;
-	CGRect frame = win.src.window.send(CGRect, "frame");
-	CGRect content = win.src.window.send(CGRect, "contentRectForFrameRect:", frame);
-	double offset = frame.size.height - content.size.height;
-	win.src.window.send_void("setFrame:display:", (CGRect){{ ...win.origin }, { size.x, (double)size.y + offset}}, true);
+	CGRect content_rect = win.src.window.send(CGRect, "contentRectForFrameRect:", win.src.window.send(CGRect, "frame"));
+	content_rect.origin.y += content_rect.size.height - (double)size.y;
+	content_rect.size = { ...size };
+	CGRect frame_rect = win.src.window.send(CGRect, "frameRectForContentRect:", content_rect);
+	win.src.window.send_void("setFrame:display:", frame_rect, true);
 }
 
 fn void window_restore_platform(GfxWindow* win)
 {
 	if (!win.src.window) return;
-	win.src.window.send_void("deminiaturize:", null);
-	win.internal.flags.minimize = false;
-	win.internal.flags.maximize = false;
+	if (win.src.window.send(bool, "isMiniaturized"))
+	{
+		win.src.window.send_void("deminiaturize:", null);
+	}
+	else if (win.src.window.send(bool, "isZoomed"))
+	{
+		win.src.window.send_void("zoom:", null);
+	}
 }
 
 fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
@@ -1186,20 +1199,24 @@ fn void _osx_window_did_resize(ObjId self, ObjSel sel, ObjId notification)
 	GfxSize size = { (int)frame.size.width, (int)frame.size.height };
 	if (!size.x || !size.y) return;
 	win.size = size;
-
-	GfxMonitor*? mon = window_find_monitor(win);
-	if (catch mon) return;
+	CGRect window_frame = win.src.window.send(CGRect, "frame");
+	CGRect content_rect = win.src.window.send(CGRect, "contentRectForFrameRect:", window_frame);
+	GfxPoint origin = { (int)content_rect.origin.x, (int)flip_y((float)(content_rect.origin.y + content_rect.size.height - 1.0)) };
+	gfx::_window_moved_callback(win, origin);
 
 	if (win.src.backing.opengl && win.src.ctx.native)
 	{
 		win.src.ctx.native.ctx.send_void("update");
 	}
-	switch
+	bool maximized = win.src.window.send(bool, "isZoomed");
+	GfxRect bounds = { ...origin, ...size };
+	if (maximized)
 	{
-		case mon.mode.size.x == size.x && mon.mode.size.y - 102 <= size.y:
-			gfx::_window_maximized_callback(win, { 0, 0, ...size });
-		case win.internal.flags.maximize:
-			gfx::_window_restored_callback(win, { ...win.origin, ...size });
+		gfx::_window_maximized_callback(win, bounds);
+	}
+	else
+	{
+		gfx::_window_restored_callback(win, bounds);
 	}
 	gfx::_window_resized_callback(win, size);
 }
@@ -1441,6 +1458,3 @@ const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 module std::gfx @feat(MACOS) @private;
 import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
 import std::gfx::macos @public;
-
-
-
