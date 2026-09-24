@@ -21,6 +21,11 @@ macro int WlFixed.to_int(self) => self / 256;
 macro double WlFixed.to_double(self) => (double)self / 256.0;
 macro WlFixed wlfixed_from_double(double d) => (WlFixed)(d * 256.0);
 
+struct WlCallbackListener
+{
+	void* done; // fn void(void* data, WlProxy* callback, uint callback_data)
+}
+
 struct WlRegistryListener
 {
 	void* global;
@@ -177,6 +182,9 @@ struct ZxdgOutputV1Listener
 typedef WlEglWindow = void;
 
 // ==== thin wl_proxy_marshal_flags wrappers (normally wayland-scanner "static inline") ====
+fn WlProxy* wl_display_sync(WlDisplay* display) => wl_proxy_marshal_flags((WlProxy*)display, 0, &wlCallbackInterface, wl_proxy_get_version((WlProxy*)display), 0, null);
+fn int wl_callback_add_listener(WlProxy* callback, WlCallbackListener* listener, void* data) => wl_proxy_add_listener(callback, listener, data);
+fn void wl_callback_destroy(WlProxy* callback) => wl_proxy_destroy(callback);
 fn WlProxy* wl_display_get_registry(WlDisplay* display) => wl_proxy_marshal_flags((WlProxy*)display, 1, &wlRegistryInterface, wl_proxy_get_version((WlProxy*)display), 0, null);
 fn void* wl_registry_bind(WlProxy* registry, uint name, WlInterface* iface, uint version) => (void*)wl_proxy_marshal_flags(registry, 0, iface, version, 0, name, iface.name, version, null);
 fn int wl_registry_add_listener(WlProxy* registry, WlRegistryListener* listener, void* data) => wl_proxy_add_listener(registry, listener, data);
@@ -259,6 +267,7 @@ extern fn uint wl_proxy_get_version(WlProxy* proxy);
 extern fn void wl_proxy_destroy(WlProxy* proxy);
 extern fn void wl_proxy_marshal(WlProxy* proxy, uint opcode, ...);
 
+extern WlInterface wlCallbackInterface @cname("wl_callback_interface");
 extern WlInterface wlRegistryInterface @cname("wl_registry_interface");
 extern WlInterface wlCompositorInterface @cname("wl_compositor_interface");
 extern WlInterface wlSurfaceInterface @cname("wl_surface_interface");
@@ -341,6 +350,39 @@ fn WlProxy* zwp_relative_pointer_manager_v1_get_relative_pointer(WlProxy* mgr, W
 fn void zwp_relative_pointer_manager_v1_destroy(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 0, null, wl_proxy_get_version(mgr), WL_MARSHAL_FLAG_DESTROY);
 fn void zwp_relative_pointer_v1_add_listener(WlProxy* rel, ZwpRelativePointerV1Listener* listener, void* data) => wl_proxy_add_listener(rel, listener, data);
 fn void zwp_relative_pointer_v1_destroy(WlProxy* rel) => wl_proxy_marshal_flags(rel, 0, null, wl_proxy_get_version(rel), WL_MARSHAL_FLAG_DESTROY);
+
+// ---- wlr-layer-shell-unstable-v1 ----
+struct ZwlrLayerSurfaceV1Listener
+{
+	void* configure;
+	void* closed;
+}
+
+fn WlProxy* zwlr_layer_shell_v1_get_layer_surface(WlProxy* shell, WlProxy* surface, WlProxy* output, uint layer, ZString namespace) =>
+	wl_proxy_marshal_flags(shell, 0, &zwlrLayerSurfaceV1Interface, wl_proxy_get_version(shell), 0, null, surface, output, layer, namespace);
+fn void zwlr_layer_shell_v1_destroy(WlProxy* shell) =>
+	wl_proxy_marshal_flags(shell, 1, null, wl_proxy_get_version(shell), WL_MARSHAL_FLAG_DESTROY);
+
+fn void zwlr_layer_surface_v1_add_listener(WlProxy* ls, ZwlrLayerSurfaceV1Listener* listener, void* data) =>
+	wl_proxy_add_listener(ls, listener, data);
+fn void zwlr_layer_surface_v1_set_size(WlProxy* ls, uint width, uint height) =>
+	wl_proxy_marshal_flags(ls, 0, null, wl_proxy_get_version(ls), 0, width, height);
+fn void zwlr_layer_surface_v1_set_anchor(WlProxy* ls, uint anchor) =>
+	wl_proxy_marshal_flags(ls, 1, null, wl_proxy_get_version(ls), 0, anchor);
+fn void zwlr_layer_surface_v1_set_exclusive_zone(WlProxy* ls, int zone) =>
+	wl_proxy_marshal_flags(ls, 2, null, wl_proxy_get_version(ls), 0, zone);
+fn void zwlr_layer_surface_v1_set_margin(WlProxy* ls, int top, int right, int bottom, int left) =>
+	wl_proxy_marshal_flags(ls, 3, null, wl_proxy_get_version(ls), 0, top, right, bottom, left);
+fn void zwlr_layer_surface_v1_set_keyboard_interactivity(WlProxy* ls, uint interactivity) =>
+	wl_proxy_marshal_flags(ls, 4, null, wl_proxy_get_version(ls), 0, interactivity);
+fn void zwlr_layer_surface_v1_ack_configure(WlProxy* ls, uint serial) =>
+	wl_proxy_marshal_flags(ls, 6, null, wl_proxy_get_version(ls), 0, serial);
+fn void zwlr_layer_surface_v1_destroy(WlProxy* ls) =>
+	wl_proxy_marshal_flags(ls, 7, null, wl_proxy_get_version(ls), WL_MARSHAL_FLAG_DESTROY);
+fn void zwlr_layer_surface_v1_set_layer(WlProxy* ls, uint layer) =>
+	wl_proxy_marshal_flags(ls, 8, null, wl_proxy_get_version(ls), 0, layer);
+fn void zwlr_layer_surface_v1_set_exclusive_edge(WlProxy* ls, uint edge) =>
+	wl_proxy_marshal_flags(ls, 9, null, wl_proxy_get_version(ls), 0, edge);
 
 // ---- xdg-decoration-unstable-v1 ----
 fn WlProxy* zxdg_decoration_manager_v1_get_toplevel_decoration(WlProxy* mgr, WlProxy* toplevel) => wl_proxy_marshal_flags(mgr, 1, &zxdgToplevelDecorationV1Interface, wl_proxy_get_version(mgr), 0, null, toplevel);
@@ -653,4 +695,38 @@ WlInterface wpPointerWarpV1Interface @weak @export("wp_pointer_warp_v1_interface
 	.name = "wp_pointer_warp_v1", .version = 1,
 	.methodCount = 2, .methods = &wp_pointer_warp_v1_requests[0],
 	.eventCount = 0, .events = null,
+};
+
+// zwlr_layer_shell_v1
+WlMessage[2] zwlr_layer_shell_v1_requests = {
+	{ "get_layer_surface", "no?ous", null },
+	{ "destroy", "3", null },
+};
+WlInterface zwlrLayerShellV1Interface @weak @export("zwlr_layer_shell_v1_interface") = {
+	.name = "zwlr_layer_shell_v1", .version = 5,
+	.methodCount = 2, .methods = &zwlr_layer_shell_v1_requests[0],
+	.eventCount = 0, .events = null,
+};
+
+// zwlr_layer_surface_v1
+WlMessage[10] zwlr_layer_surface_v1_requests = {
+	{ "set_size", "uu", null },
+	{ "set_anchor", "u", null },
+	{ "set_exclusive_zone", "i", null },
+	{ "set_margin", "iiii", null },
+	{ "set_keyboard_interactivity", "u", null },
+	{ "get_popup", "o", null },
+	{ "ack_configure", "u", null },
+	{ "destroy", "", null },
+	{ "set_layer", "2u", null },
+	{ "set_exclusive_edge", "5u", null },
+};
+WlMessage[2] zwlr_layer_surface_v1_events = {
+	{ "configure", "uuu", null },
+	{ "closed", "", null },
+};
+WlInterface zwlrLayerSurfaceV1Interface @weak @export("zwlr_layer_surface_v1_interface") = {
+	.name = "zwlr_layer_surface_v1", .version = 5,
+	.methodCount = 10, .methods = &zwlr_layer_surface_v1_requests[0],
+	.eventCount = 2, .events = &zwlr_layer_surface_v1_events[0],
 };

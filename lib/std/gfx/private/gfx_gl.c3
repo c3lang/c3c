@@ -10,11 +10,10 @@ alias GlGetIntegerv    = fn void(uint pname, int* data);
 
 fn bool extension_supported_base(String extension, GfxGetProcFn proc)
 {
-	if (gfx::get_global_opengl_hints().major >= 3)
+	GlGetIntegerv get_integerv = proc("glGetIntegerv");
+	GlGetStringi get_stringi = proc("glGetStringi");
+	if (get_integerv && get_stringi)
 	{
-		GlGetIntegerv get_integerv = proc("glGetIntegerv");
-		GlGetStringi get_stringi = proc("glGetStringi");
-		if (!get_integerv || !get_stringi) return false;
 		int count = 0;
 		get_integerv(GL_NUM_EXTENSIONS, &count);
 		for (int i = 0; i < count; i++)

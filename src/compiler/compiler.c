@@ -809,7 +809,7 @@ void compiler_compile(void)
 			const char *name = output_exe;
 			while (name[0] == '.' && name[1] == '/') name += 2;
 			scratch_buffer_clear();
-			if (compiler.platform.os == OS_TYPE_WIN32)
+			if (PLATFORM_WINDOWS)
 			{
 				int len = (int)strlen(name);
 				for (int i = 0; i < len; i++)
