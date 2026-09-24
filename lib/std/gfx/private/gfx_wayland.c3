@@ -39,47 +39,6 @@ struct GfxWaylandCtx
 
 GfxWaylandCtx ctx;
 
-enum WlLayer : char @public
-{
-	BACKGROUND,
-	BOTTOM,
-	TOP,
-	OVERLAY,
-}
-
-bitstruct WlAnchor : char @public
-{
-	bool top;
-	bool bottom;
-	bool left;
-	bool right;
-}
-
-enum WlKeyboardInteractivity : char @public
-{
-	NONE,
-	EXCLUSIVE,
-	ON_DEMAND,
-}
-
-struct WlMargin @public
-{
-	int top;
-	int right;
-	int bottom;
-	int left;
-}
-
-struct WlLayerConfig @public
-{
-	WlLayer layer;
-	WlAnchor anchor;
-	int exclusive_zone;
-	WlMargin margin;
-	WlKeyboardInteractivity keyboard;
-	GfxMonitor* monitor;
-	String namespace;
-}
 
 // --- Gfx
 
@@ -423,224 +382,45 @@ fn void window_blit_surface(GfxWindow* win, GfxSurface* surface)
 	surface.native.wl_buffer = null;
 }
 
-fn void _init_base_surface(GfxWindow* win) @local
+
+fn void window_set_layer_anchor(GfxWindow* win, WlAnchor anchor)
 {
-	win.src.surface = wl_compositor_create_surface(ctx.compositor);
-	static WlSurfaceListener listener = {
-		.enter = &_surface_enter_cb,
-		.leave = &_surface_leave_cb,
-		.preferredBufferScale = &_surface_pref_scale_cb,
-		.preferredBufferTransform = &_surface_pref_transform_cb
-	};
-	wl_surface_add_listener(win.src.surface, &listener, win);
-	wl_surface_set_user_data(win.src.surface, win);
-
-	win.src.customCursorSurface = wl_compositor_create_surface(ctx.compositor);
-}
-
-fn void _bind_xdg_shell(GfxWindow* win, String name, GfxWindowFlags flags) @local => @pool()
-{
-	win.src.xdgSurface = xdg_wm_base_get_xdg_surface(ctx.xdg_wm_base, win.src.surface);
-	static XdgSurfaceListener surface_listener = { .configure = &_xdg_surface_conf_cb };
-
-	xdg_surface_add_listener(win.src.xdgSurface, &surface_listener, win);
-	xdg_wm_base_set_user_data(ctx.xdg_wm_base, win);
-
-	win.src.xdgToplevel = xdg_surface_get_toplevel(win.src.xdgSurface);
-	xdg_toplevel_set_app_id(win.src.xdgToplevel, name.zstr_copy(tmem));
-	xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, win.width, win.height);
-
-	static XdgToplevelListener toplevel_listener = { .configure = &_xdg_toplevel_conf_cb, .close = &_xdg_toplevel_close_cb };
-
-	xdg_toplevel_add_listener(win.src.xdgToplevel, &toplevel_listener, win);
-
-	if (ctx.decoration_manager)
-	{
-		uint decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
-		win.src.decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(ctx.decoration_manager, win.src.xdgToplevel);
-		static ZxdgToplevelDecorationV1Listener decoration_listener = { .configure = &_xdg_dec_conf_cb };
-
-		zxdg_toplevel_decoration_v1_add_listener(win.src.decoration, &decoration_listener, win);
-		if (flags.no_border) decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
-		zxdg_toplevel_decoration_v1_set_mode(win.src.decoration, decorationMode);
-	}
-
-	if (ctx.icon_manager) xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdgToplevel, null);
-}
-
-fn void? _init_graphics_and_show(GfxWindow* win, GfxWindowFlags flags) @local
-{
-	if (!win.internal.flags.transparent) _window_set_opaque(win);
-
-	// Initial toplevel state must be requested before the first surface commit so
-	// the compositor can include it in the initial configure.
-	if (flags.maximize)
-	{
-		win.internal.old_bounds = win.bounds;
-		xdg_toplevel_set_maximized(win.src.xdgToplevel);
-	}
-	wl_surface_commit(win.src.surface);
-
-	while (!win.src.configured) wl_display_dispatch(ctx.wl_display);
-
-	GfxWindowFlags runtime_flags = flags;
-	runtime_flags.maximize = false;
-	gfx::_window_set_flags(win, runtime_flags, {});
-	win.internal.flags = flags;
-	win.src.backing = {};
-	if (flags.open_gl) win.create_opengl_context(gfx::get_global_opengl_hints())!;
-	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
-	if (!flags.open_gl && !flags.egl)
-	{
-		sz blank_size = (sz)win.width * win.height * 3;
-		char* blank = calloc(blank_size);
-		GfxSurface* blank_surface = gfx::create_surface(blank, ...win.size, BGR8, win)!;
-		win.blit_surface(blank_surface);
-		free(blank);
-		blank_surface.release();
-	}
-}
-
-fn void _layer_surface_conf_cb(void* data, WlProxy* layer_surface, uint serial, uint width, uint height) @local
-{
-	zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
-	GfxWindow* win = (GfxWindow*)data;
-	if (!win) return;
-
-	int new_w = width != 0 ? (int)width : win.width;
-	int new_h = height != 0 ? (int)height : win.height;
-	if (win.width != new_w || win.height != new_h)
-	{
-		win.size = { new_w, new_h };
-		win.src.size = win.size;
-		if (win.src.ctx.egl && win.src.ctx.egl.egl_window)
-		{
-			wl_egl_window_resize((WlEglWindow*)win.src.ctx.egl.egl_window, new_w, new_h, 0, 0);
-		}
-		gfx::_window_resized_callback(win, win.size);
-		if (!(win.internal.flags.transparent)) _window_set_opaque(win);
-		gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
-	}
-
-	win.src.configured = true;
-}
-
-fn void _layer_surface_closed_cb(void* data, WlProxy* layer_surface) @local
-{
-	GfxWindow* win = (GfxWindow*)data;
-	if (win && !win.internal.should_close) gfx::_window_close_callback(win);
-}
-
-fn void? _bind_layer_shell(GfxWindow* win, WlLayerConfig* config) @local => @pool()
-{
-	if (!ctx.layer_shell) return gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED~;
-
-	WlProxy* wl_output = null;
-	if (config.monitor && config.monitor.node)
-	{
-		wl_output = config.monitor.node.output;
-	}
-
-	ZString ns = (config.namespace ?: "gfx-layer").zstr_copy(tmem);
-	win.src.layerSurface = zwlr_layer_shell_v1_get_layer_surface(
-		ctx.layer_shell,
-		win.src.surface,
-		wl_output,
-		(uint)config.layer,
-		ns
-	);
-	if (!win.src.layerSurface) return gfx::SURFACE_CREATION_FAILED~;
-
-	static ZwlrLayerSurfaceV1Listener layer_listener = {
-		.configure = &_layer_surface_conf_cb,
-		.closed = &_layer_surface_closed_cb
-	};
-	zwlr_layer_surface_v1_add_listener(win.src.layerSurface, &layer_listener, win);
-
-	zwlr_layer_surface_v1_set_size(win.src.layerSurface, (uint)win.width, (uint)win.height);
-	zwlr_layer_surface_v1_set_anchor(win.src.layerSurface, (uint)(char)config.anchor);
-	zwlr_layer_surface_v1_set_exclusive_zone(win.src.layerSurface, config.exclusive_zone);
-	zwlr_layer_surface_v1_set_margin(win.src.layerSurface, config.margin.top, config.margin.right, config.margin.bottom, config.margin.left);
-	zwlr_layer_surface_v1_set_keyboard_interactivity(win.src.layerSurface, (uint)config.keyboard);
-}
-
-<*
- Create a layer-shell surface (dock, bar, wallpaper, notification, overlay).
-
- @param name : "Window title / identifier"
- @param w : "Initial width, 0 to let anchors dictate width"
- @param h : "Initial height, 0 to let anchors dictate height"
- @param config : "Layer-shell positioning and behavior parameters"
- @param flags : "Optional standard window flags"
- @return "The created layer-shell window"
- @return? gfx::GFX_CONTEXT_NOT_INITIALIZED : "If gfx::init has not been called"
- @return? gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED : "If compositor lacks zwlr_layer_shell_v1"
- @return? gfx::SURFACE_CREATION_FAILED : "If surface could not be created"
-*>
-fn GfxWindow*? create_layer_window(String name, int w, int h, WlLayerConfig config, GfxWindowFlags flags = {}) @public => @pool()
-{
-	$if gfx::X11_OR_WAYLAND:
-		if (!gfx::_gfx.use_wayland) return gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED~;
-	$endif
-	return gfx::_create_window(name, 0, 0, w, h, flags, &config);
-}
-
-<*
- Set anchor edges for a layer surface.
-*>
-fn void set_layer_anchor(GfxWindow* win, WlAnchor anchor) @public
-{
-	if (!win || !win.src.layerSurface) return;
+	if (!win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_anchor(win.src.layerSurface, (uint)(char)anchor);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Set exclusive zone in pixels (>0 reserves space, 0 is normal, -1 ignores other zones).
-*>
-fn void set_layer_exclusive_zone(GfxWindow* win, int zone) @public
+fn void window_set_layer_exclusive_zone(GfxWindow* win, int zone)
 {
-	if (!win || !win.src.layerSurface) return;
+	if (!win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_exclusive_zone(win.src.layerSurface, zone);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Set margin offsets around the layer surface.
-*>
-fn void set_layer_margin(GfxWindow* win, WlMargin margin) @public
+fn void window_set_layer_margin(GfxWindow* win, WlMargin margin)
 {
-	if (!win || !win.src.layerSurface) return;
+	if (!win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_margin(win.src.layerSurface, margin.top, margin.right, margin.bottom, margin.left);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Set keyboard focus interactivity (NONE, EXCLUSIVE, ON_DEMAND).
-*>
-fn void set_layer_keyboard_interactivity(GfxWindow* win, WlKeyboardInteractivity mode) @public
+fn void window_set_layer_keyboard_interactivity(GfxWindow* win, WlKeyboardInteractivity mode)
 {
-	if (!win || !win.src.layerSurface) return;
+	if (!win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_keyboard_interactivity(win.src.layerSurface, (uint)mode);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Move the layer surface to another z-order layer.
-*>
-fn void set_layer(GfxWindow* win, WlLayer layer) @public
+fn void window_set_layer(GfxWindow* win, WlLayer layer)
 {
-	if (!win || !win.src.layerSurface) return;
+	if (!win.src.layerSurface) return;
 	zwlr_layer_surface_v1_set_layer(win.src.layerSurface, (uint)layer);
 	wl_surface_commit(win.src.surface);
 }
 
-<*
- Disambiguate which edge exclusive zone applies to when multiple anchors are set (protocol v5+).
-*>
-fn void set_layer_exclusive_edge(GfxWindow* win, WlAnchor edge) @public
+fn void window_set_layer_exclusive_edge(GfxWindow* win, WlAnchor edge)
 {
-	if (!win || !win.src.layerSurface) return;
+	if (!win.src.layerSurface) return;
 	if (wl_proxy_get_version(win.src.layerSurface) >= 5)
 	{
 		zwlr_layer_surface_v1_set_exclusive_edge(win.src.layerSurface, (uint)(char)edge);
@@ -651,6 +431,7 @@ fn void set_layer_exclusive_edge(GfxWindow* win, WlAnchor edge) @public
 fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags, void* platform_data = null) => @pool()
 {
 	_init_base_surface(win);
+	defer catch window_destroy_platform(win);
 	if (platform_data)
 	{
 		_bind_layer_shell(win, (WlLayerConfig*)platform_data)!;
@@ -708,6 +489,7 @@ fn void window_maximize_platform(GfxWindow* win)
 
 fn void window_minimize_platform(GfxWindow* win)
 {
+	if (!win.src.xdgToplevel) return;
 	if (window_is_maximized(win)) return;
 	win.internal.old_bounds = win.bounds;
 	win.src.minimized = true;
@@ -750,13 +532,14 @@ fn void window_restore_platform(GfxWindow* win)
 fn void window_set_aspect_ratio(GfxWindow* win, int w, int h)
 {
 	if (w == 0 && h == 0) return;
+	if (!win.src.xdgToplevel) return;
 	xdg_toplevel_set_max_size(win.src.xdgToplevel, w, h);
 }
 
 fn void window_set_border(GfxWindow* win, bool border)
 {
 	win.internal.flags.no_border = !border;
-	if (ctx.decoration_manager)
+	if (ctx.decoration_manager && win.src.decoration)
 	{
 		zxdg_toplevel_decoration_v1_set_mode(win.src.decoration, border ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE : ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
 	}
@@ -784,6 +567,7 @@ fn void window_set_floating(GfxWindow* win, bool floating) {}
 
 fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 {
+	if (!win.src.xdgToplevel) return;
 	if (fullscreen)
 	{
 		win.internal.flags.fullscreen = true;
@@ -799,8 +583,9 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 
 fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
 {
-	if (!ctx.icon_manager || w != h) return false;
+	if (!win.src.xdgToplevel) return false;
 
+	if (!ctx.icon_manager || w != h) return false;
 	if (win.src.icon != null) { xdg_toplevel_icon_v1_destroy(win.src.icon); win.src.icon = null; }
 
 	GfxSurface*? surface = gfx::create_surface(data, w, h, format);
@@ -820,11 +605,13 @@ fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat form
 
 fn void window_set_max_size(GfxWindow* win, GfxSize size)
 {
+	if (!win.src.xdgToplevel) return;
 	xdg_toplevel_set_max_size(win.src.xdgToplevel, ...size);
 }
 
 fn void window_set_min_size(GfxWindow* win, GfxSize size)
 {
+	if (!win.src.xdgToplevel) return;
 	xdg_toplevel_set_min_size(win.src.xdgToplevel, ...size);
 }
 
@@ -1125,8 +912,148 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 
 // --- Helpers
 
+fn void _init_base_surface(GfxWindow* win) @local
+{
+	win.src.surface = wl_compositor_create_surface(ctx.compositor);
+	static WlSurfaceListener listener = {
+		.enter = &_surface_enter_cb,
+		.leave = &_surface_leave_cb,
+		.preferredBufferScale = &_surface_pref_scale_cb,
+		.preferredBufferTransform = &_surface_pref_transform_cb
+	};
+	wl_surface_add_listener(win.src.surface, &listener, win);
+	wl_surface_set_user_data(win.src.surface, win);
+
+	win.src.customCursorSurface = wl_compositor_create_surface(ctx.compositor);
+}
+
+fn void _bind_xdg_shell(GfxWindow* win, String name, GfxWindowFlags flags) @local => @pool()
+{
+	win.src.xdgSurface = xdg_wm_base_get_xdg_surface(ctx.xdg_wm_base, win.src.surface);
+	static XdgSurfaceListener surface_listener = { .configure = &_xdg_surface_conf_cb };
+
+	xdg_surface_add_listener(win.src.xdgSurface, &surface_listener, win);
+	xdg_wm_base_set_user_data(ctx.xdg_wm_base, win);
+
+	win.src.xdgToplevel = xdg_surface_get_toplevel(win.src.xdgSurface);
+	xdg_toplevel_set_app_id(win.src.xdgToplevel, name.zstr_copy(tmem));
+	xdg_surface_set_window_geometry(win.src.xdgSurface, 0, 0, win.width, win.height);
+
+	static XdgToplevelListener toplevel_listener = { .configure = &_xdg_toplevel_conf_cb, .close = &_xdg_toplevel_close_cb };
+
+	xdg_toplevel_add_listener(win.src.xdgToplevel, &toplevel_listener, win);
+
+	if (ctx.decoration_manager)
+	{
+		uint decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+		win.src.decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(ctx.decoration_manager, win.src.xdgToplevel);
+		static ZxdgToplevelDecorationV1Listener decoration_listener = { .configure = &_xdg_dec_conf_cb };
+
+		zxdg_toplevel_decoration_v1_add_listener(win.src.decoration, &decoration_listener, win);
+		if (flags.no_border) decorationMode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
+		zxdg_toplevel_decoration_v1_set_mode(win.src.decoration, decorationMode);
+	}
+
+	if (ctx.icon_manager) xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdgToplevel, null);
+}
+
+fn void? _init_graphics_and_show(GfxWindow* win, GfxWindowFlags flags) @local
+{
+	if (!win.internal.flags.transparent) _window_set_opaque(win);
+
+	// Initial toplevel state must be requested before the first surface commit so
+	// the compositor can include it in the initial configure.
+	if (flags.maximize)
+	{
+		win.internal.old_bounds = win.bounds;
+		_toggle_maximized(win, true);
+	}
+	wl_surface_commit(win.src.surface);
+
+	while (!win.src.configured)
+	{
+		if (wl_display_dispatch(ctx.wl_display) < 0) return gfx::SURFACE_CREATION_FAILED~;
+	}
+	GfxWindowFlags runtime_flags = flags;
+	runtime_flags.maximize = false;
+	gfx::_window_set_flags(win, runtime_flags, {});
+	win.internal.flags = flags;
+	win.src.backing = {};
+	if (flags.open_gl) win.create_opengl_context(gfx::get_global_opengl_hints())!;
+	if (flags.egl) egl::create_context(win, gfx::get_global_opengl_hints())!;
+	if (!flags.open_gl && !flags.egl)
+	{
+		sz blank_size = (sz)win.width * win.height * 3;
+		char* blank = calloc(blank_size);
+		GfxSurface* blank_surface = gfx::create_surface(blank, ...win.size, BGR8, win)!;
+		win.blit_surface(blank_surface);
+		free(blank);
+		blank_surface.release();
+	}
+}
+
+fn void _layer_surface_conf_cb(void* data, WlProxy* layer_surface, uint serial, uint width, uint height) @local
+{
+	zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
+	GfxWindow* win = (GfxWindow*)data;
+	if (!win) return;
+
+	int new_w = width != 0 ? (int)width : win.width;
+	int new_h = height != 0 ? (int)height : win.height;
+	if (win.width != new_w || win.height != new_h)
+	{
+		win.size = { new_w, new_h };
+		win.src.size = win.size;
+		if (win.src.ctx.egl && win.src.ctx.egl.egl_window)
+		{
+			wl_egl_window_resize((WlEglWindow*)win.src.ctx.egl.egl_window, new_w, new_h, 0, 0);
+		}
+		gfx::_window_resized_callback(win, win.size);
+		if (!(win.internal.flags.transparent)) _window_set_opaque(win);
+		gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
+	}
+
+	win.src.configured = true;
+}
+
+fn void _layer_surface_closed_cb(void* data, WlProxy* layer_surface) @local
+{
+	GfxWindow* win = (GfxWindow*)data;
+	if (win && !win.internal.should_close) gfx::_window_close_callback(win);
+}
+
+fn void? _bind_layer_shell(GfxWindow* win, WlLayerConfig* config) @local => @pool()
+{
+	if (!ctx.layer_shell) return gfx::WAYLAND_LAYER_SHELL_NOT_SUPPORTED~;
+
+	WlProxy* wl_output = null;
+	if (config.monitor && config.monitor.node)
+	{
+		wl_output = config.monitor.node.output;
+	}
+
+	ZString ns = (config.namespace ?: "gfx-layer").zstr_copy(tmem);
+	win.src.layerSurface = zwlr_layer_shell_v1_get_layer_surface(ctx.layer_shell,
+		win.src.surface, wl_output, (uint)config.layer, ns);
+
+	if (!win.src.layerSurface) return gfx::SURFACE_CREATION_FAILED~;
+
+	static ZwlrLayerSurfaceV1Listener layer_listener = {
+		.configure = &_layer_surface_conf_cb,
+		.closed = &_layer_surface_closed_cb
+	};
+	zwlr_layer_surface_v1_add_listener(win.src.layerSurface, &layer_listener, win);
+
+	zwlr_layer_surface_v1_set_size(win.src.layerSurface, (uint)win.width, (uint)win.height);
+	zwlr_layer_surface_v1_set_anchor(win.src.layerSurface, (uint)(char)config.anchor);
+	zwlr_layer_surface_v1_set_exclusive_zone(win.src.layerSurface, config.exclusive_zone);
+	zwlr_layer_surface_v1_set_margin(win.src.layerSurface, config.margin.top, config.margin.right, config.margin.bottom, config.margin.left);
+	zwlr_layer_surface_v1_set_keyboard_interactivity(win.src.layerSurface, (uint)config.keyboard);
+}
+
 fn void _toggle_maximized(GfxWindow* win, bool maximized) @local
 {
+	if (!win.src.xdgToplevel) return;
 	if (maximized)
 	{
 		xdg_toplevel_set_maximized(win.src.xdgToplevel);

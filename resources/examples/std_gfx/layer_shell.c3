@@ -31,7 +31,7 @@ fn int main()
 		.namespace = "c3-bar-test",
 	};
 
-	GfxWindow* win = wl::create_layer_window("C3 Layer Bar", 800, 36, config)!!;
+	GfxWindow* win = gfx::create_layer_window("C3 Layer Bar", 800, 36, config)!!;
 	defer win.destroy();
 
 	uint[4] colors = { 0xFF282A36, 0xFF44475A, 0xFF6272A4, 0xFFBD93F9 };
@@ -81,7 +81,7 @@ fn int main()
 							redraw(win, colors[color_idx]);
 						case RIGHT:
 							kbd = (WlKeyboardInteractivity)(((int)kbd + 1) % 3);
-							wl::set_layer_keyboard_interactivity(win, kbd);
+							win.set_layer_keyboard_interactivity(kbd);
 							io::printfn("Keyboard interactivity -> %s", kbd.description);
 						case MIDDLE:
 							break MAIN_LOOP;
@@ -94,36 +94,36 @@ fn int main()
 						case ESCAPE:
 							break MAIN_LOOP;
 						case NUM1:
-							wl::set_layer(win, BACKGROUND);
+							win.set_layer(BACKGROUND);
 							io::printn("Layer -> BACKGROUND");
 						case NUM2:
-							wl::set_layer(win, BOTTOM);
+							win.set_layer(BOTTOM);
 							io::printn("Layer -> BOTTOM");
 						case NUM3:
-							wl::set_layer(win, TOP);
+							win.set_layer(TOP);
 							io::printn("Layer -> TOP");
 						case NUM4:
-							wl::set_layer(win, OVERLAY);
+							win.set_layer(OVERLAY);
 							io::printn("Layer -> OVERLAY");
 						case SPACE:
 							exclusive = exclusive == 36 ? 0 : 36;
-							wl::set_layer_exclusive_zone(win, exclusive);
+							win.set_layer_exclusive_zone(exclusive);
 							io::printfn("Exclusive zone -> %d", exclusive);
 						case A:
 							anchored_top = !anchored_top;
 							WlAnchor anchor = anchored_top
 								? (WlAnchor){ .top = true, .left = true, .right = true }
 								: (WlAnchor){ .bottom = true, .left = true, .right = true };
-							wl::set_layer_anchor(win, anchor);
+							win.set_layer_anchor(anchor);
 							io::printfn("Anchor -> %s", anchored_top ? "TOP" : "BOTTOM");
 						case M:
 							has_margin = !has_margin;
 							WlMargin m = has_margin ? { 8, 16, 8, 16 } : {};
-							wl::set_layer_margin(win, m);
+							win.set_layer_margin(m);
 							io::printfn("Margin -> %s", has_margin ? "8,16,8,16" : "0");
 						case K:
 							kbd = (WlKeyboardInteractivity)(((int)kbd + 1) % 3);
-							wl::set_layer_keyboard_interactivity(win, kbd);
+							win.set_layer_keyboard_interactivity(kbd);
 							io::printfn("Keyboard interactivity -> %s", kbd.description);
 						default:
 							break;
