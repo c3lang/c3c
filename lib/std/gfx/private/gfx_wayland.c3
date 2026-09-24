@@ -972,6 +972,7 @@ fn void? _init_graphics_and_show(GfxWindow* win, GfxWindowFlags flags) @local
 
 	while (!win.src.configured)
 	{
+		// TODO maybe add more handling here to handle close.
 		if (wl_display_dispatch(ctx.wl_display) < 0) return gfx::SURFACE_CREATION_FAILED~;
 	}
 	GfxWindowFlags runtime_flags = flags;
