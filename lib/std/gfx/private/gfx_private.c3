@@ -342,7 +342,7 @@ fn void _window_release(GfxWindow* win)
 	log::debug("A window was freed", category: log::CATEGORY_VIDEO);
 }
 
-fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags)
+fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindowFlags flags, void* platform_data = null)
 {
 	if (!_gfx.initialized) return GFX_CONTEXT_NOT_INITIALIZED~;
 
@@ -367,15 +367,20 @@ fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindow
 	}
 
 	assert (win, "A window should always be found");
-	defer catch win.internal.is_collected = true;
+	defer catch
+	{
+		win.internal.is_collected = true;
+		_gfx.active_windows--;
+	}
 
 	_gfx.active_windows++;
 	if (!_gfx.root) set_root_window(win);
+
 	win.bounds = { x, y, w, h };
 	win.internal.mouse = _gfx.standard_mice[GfxMouseIcon.NORMAL.ordinal];
 	win.internal.flags = flags;
 	win.internal.enabled_events = ALL_EVENTS;
-	_window_create_platform(win, name, flags)!;
+	_window_create_platform(win, name, flags, platform_data)!;
 	if (!flags.hide_mouse) win.set_mouse_default();
 
 	win.set_name(name);

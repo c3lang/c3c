@@ -439,7 +439,7 @@ fn void _window_blit_surface(GfxWindow* win, GfxSurface* surface)
 <*
  Create the actual window on the platform itself.
 *>
-fn void? _window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags)
+fn void? _window_create_platform(GfxWindow* win, String name, GfxWindowFlags flags, void* platform_data = null)
 {
 	$switch:
 		$case $feat(MACOS):
@@ -449,11 +449,11 @@ fn void? _window_create_platform(GfxWindow* win, String name, GfxWindowFlags fla
 		$case $feat(WIN32):
 			return win32::window_create_platform(win, name, flags);
 		$case WAYLAND_ONLY:
-			return wl::window_create_platform(win, name, flags);
+			return wl::window_create_platform(win, name, flags, platform_data);
 		$case X11_ONLY:
 			return x11::window_create_platform(win, name, flags);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_create_platform(win, name, flags);
+			if (_gfx.use_wayland) return wl::window_create_platform(win, name, flags, platform_data);
 			return x11::window_create_platform(win, name, flags);
 		$default:
 			unreachable();
