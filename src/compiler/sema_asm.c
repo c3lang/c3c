@@ -371,9 +371,10 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 	bool is_write = arg_type.is_write;
 	bool is_read = !arg_type.is_write || arg_type.is_readwrite;
 	arg->ident.is_input = !is_write;
+	decl_used(decl);
 	if (is_read)
 	{
-		decl->var.is_read = true;
+		decl_read(decl);
 		if (decl->var.out_param)
 		{
 			RETURN_SEMA_ERROR(expr, "An 'out' variable may not be read from.");
@@ -382,7 +383,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 	}
 	if (is_write)
 	{
-		decl->var.is_written = true;
+		decl_write(decl);
 		if (decl->var.in_param)
 		{
 			RETURN_SEMA_ERROR(expr, "An 'in' variable may not be written to.");
@@ -443,9 +444,10 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 	bool is_write = arg_type.is_write;
 	bool is_read = !arg_type.is_write || arg_type.is_readwrite;
 	arg->ident.is_input = !is_write;
+	decl_used(decl);
 	if (is_read)
 	{
-		decl->var.is_read = true;
+		decl_read(decl);
 		if (decl->var.out_param && !decl->var.in_param)
 		{
 			RETURN_SEMA_ERROR(expr, "An 'out' variable may not be read from.");
@@ -454,7 +456,7 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 	}
 	if (is_write)
 	{
-		decl->var.is_written = true;
+		decl_write(decl);
 		if (decl->var.in_param && !decl->var.out_param)
 		{
 			RETURN_SEMA_ERROR(expr, "An 'in' variable may not be written to.");
@@ -479,7 +481,8 @@ static inline bool sema_check_asm_arg_addrof_var(SemaContext *context, AsmInline
 		RETURN_SEMA_ERROR(expr, "This slot is written to, you can't use an address for that, maybe you intended [&foo] or similar?");
 	}
 	arg->ident.is_input = true;
-	decl->var.is_read = true;
+	decl_used(decl);
+
 	if (decl->var.out_param && !decl->var.in_param)
 	{
 		RETURN_SEMA_ERROR(expr, "An 'out' variable may not be read from.");

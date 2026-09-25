@@ -1320,7 +1320,7 @@ void platform_linker(const char *output_file, const char **files, int file_count
 	else
 	{
 		INFO_LOG("Using cc linker.");
-		vec_add(parts, compiler.build.cc ? compiler.build.cc : default_c_compiler());
+		vec_add(parts, find_c_compiler());
 	}
 
 	if (file_is_dir(output_file))
@@ -1431,6 +1431,10 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 #endif
 
 	const char *output = assemble_linker_command(parts, PLATFORM_WINDOWS);
+	if (compiler.build.print_linking)
+	{
+		puts(output);
+	}
 	DEBUG_LOG("Compiling c sources using '%s'", output);
 	if (system(output) != 0)
 	{

@@ -553,6 +553,7 @@ BUILD:
 	target->read_stdin = options->read_stdin;
 
 	if (options->cc) target->cc = options->cc;
+	if (options->cflags) target->cflags = options->cflags;
 	set_if_updated(target->optlevel, options->optlevel);
 	set_if_updated(target->optsize, options->optsize);
 	set_if_updated(target->optsetting, options->optsetting);
@@ -640,6 +641,8 @@ BUILD:
 		case VALIDATION_LENIENT:
 			update_warning_if_not_set(&target->warnings.builtin, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.dead_code, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.unused_parameter, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.unused_local, WARNING_SILENT);
 			update_warning_if_not_set(&target->warnings.recursive_contracts, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.deprecation, WARNING_SILENT);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_WARN);
@@ -649,6 +652,8 @@ BUILD:
 			target->validation_level = VALIDATION_STRICT;
 			FALLTHROUGH;
 		case VALIDATION_STRICT:
+			update_warning_if_not_set(&target->warnings.unused_parameter, WARNING_SILENT);
+			update_warning_if_not_set(&target->warnings.unused_local, WARNING_SILENT);
 			update_warning_if_not_set(&target->warnings.builtin, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.dead_code, WARNING_WARN);
 			update_warning_if_not_set(&target->warnings.deprecation, WARNING_WARN);
@@ -663,6 +668,8 @@ BUILD:
 			update_warning_if_not_set(&target->warnings.recursive_contracts, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.method_visibility, WARNING_ERROR);
 			update_warning_if_not_set(&target->warnings.methods_not_resolved, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.unused_parameter, WARNING_ERROR);
+			update_warning_if_not_set(&target->warnings.unused_local, WARNING_ERROR);
 			break;
 	}
 	update_warning(&target->warnings.builtin, options->warnings.builtin);
@@ -671,6 +678,8 @@ BUILD:
 	update_warning(&target->warnings.deprecation, options->warnings.deprecation);
 	update_warning(&target->warnings.method_visibility, options->warnings.method_visibility);
 	update_warning(&target->warnings.methods_not_resolved, options->warnings.methods_not_resolved);
+	update_warning(&target->warnings.unused_local, options->warnings.unused_local);
+	update_warning(&target->warnings.unused_parameter, options->warnings.unused_parameter);
 
 	if (options->keep_object_files)
 	{

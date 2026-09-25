@@ -193,8 +193,8 @@ entry:
   store ptr %3, ptr %asdf, align 8, !dbg !61
   %ptradd2 = getelementptr inbounds i8, ptr %args, i64 8, !dbg !62
   %4 = load i64, ptr %ptradd2, align 8, !dbg !62
-  %neq = icmp ne i64 %4, 0, !dbg !62
-  %ternary = select i1 %neq, <4 x float>
+  %ne = icmp ne i64 %4, 0, !dbg !62
+  %ternary = select i1 %ne, <4 x float>
   %5 = call ptr @test.test(<4 x float> %ternary), !dbg !64
   %6 = call ptr @test.test2(), !dbg !65
   ret i32 0, !dbg !66
@@ -415,8 +415,8 @@ entry:
   %8 = load i64, ptr %elements, align 8
   store i64 %8, ptr %elements7, align 8
   %9 = load ptr, ptr %allocator, align 8, !dbg !215
-  %neq = icmp ne ptr %9, null, !dbg !215
-  call void @llvm.assume(i1 %neq), !dbg !215
+  %ne = icmp ne ptr %9, null, !dbg !215
+  call void @llvm.assume(i1 %ne), !dbg !215
   %10 = load i64, ptr %elements7, align 8, !dbg !217
   %ge = icmp sge i64 %10, 0, !dbg !218
   call void @llvm.assume(i1 %ge), !dbg !218
@@ -426,8 +426,8 @@ entry:
   %11 = load i64, ptr %elements7, align 8
   store i64 %11, ptr %elements10, align 8
   %12 = load ptr, ptr %allocator9, align 8, !dbg !232
-  %neq12 = icmp ne ptr %12, null, !dbg !232
-  call void @llvm.assume(i1 %neq12), !dbg !232
+  %ne12 = icmp ne ptr %12, null, !dbg !232
+  call void @llvm.assume(i1 %ne12), !dbg !232
   %13 = load i64, ptr %elements10, align 8, !dbg !234
   %ge13 = icmp sge i64 %13, 0, !dbg !235
   call void @llvm.assume(i1 %ge13), !dbg !235
@@ -438,8 +438,8 @@ entry:
     #dbg_declare(ptr %size, !244, !DIExpression(), !245)
   store i64 %mul, ptr %size, align 8
   %15 = load ptr, ptr %allocator14, align 8, !dbg !246
-  %neq16 = icmp ne ptr %15, null, !dbg !246
-  call void @llvm.assume(i1 %neq16), !dbg !246
+  %ne16 = icmp ne ptr %15, null, !dbg !246
+  call void @llvm.assume(i1 %ne16), !dbg !246
   %16 = load i64, ptr %size, align 8, !dbg !248
   %ge17 = icmp sge i64 %16, 0, !dbg !249
   call void @llvm.assume(i1 %ge17), !dbg !249

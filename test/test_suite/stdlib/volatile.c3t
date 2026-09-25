@@ -14,11 +14,11 @@ define void @test.main() #0 {
 entry:
   %y = alloca i32, align 4
   store i32 0, ptr %y, align 4
-  %neq = icmp ne ptr %y, null
-  call void @llvm.assume(i1 %neq)
+  %ne = icmp ne ptr %y, null
+  call void @llvm.assume(i1 %ne)
   store volatile i32 20, ptr %y, align 4
-  %neq1 = icmp ne ptr %y, null
-  call void @llvm.assume(i1 %neq1)
+  %ne1 = icmp ne ptr %y, null
+  call void @llvm.assume(i1 %ne1)
   %0 = load volatile i32, ptr %y, align 4
   ret void
 }

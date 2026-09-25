@@ -92,7 +92,6 @@ fn char[]? decode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base3
 {
 	if (src.len == 0) return dst[:0];
 	char* dst_ptr = dst;
-	sz dn = decode_len(src.len, padding);
 	sz n;
 	char[8] buf;
 	while (src.len > 0 && dst.len > 0)

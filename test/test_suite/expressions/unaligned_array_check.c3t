@@ -29,8 +29,8 @@ entry:
   call void @llvm.memset.p0.i64(ptr align 16 %x, i8 0, i64 35, i1 false)
   call void @llvm.memset.p0.i64(ptr align 16 %w, i8 0, i64 24, i1 false)
   %ptradd = getelementptr inbounds i8, ptr %x, i64 1
-  %neq = icmp ne ptr %ptradd, null
-  br i1 %neq, label %assert_ok, label %assert_fail
+  %ne = icmp ne ptr %ptradd, null
+  br i1 %ne, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %entry
   %0 = load ptr, ptr @std.core.builtin.panic, align 8

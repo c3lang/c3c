@@ -306,18 +306,18 @@ entry:
   %0 = call ptr @llvm.threadlocal.address.p0(ptr @std.core.mem.allocators.thread_allocator)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator, ptr align 8 %0, i32 16, i1 false)
   %1 = load ptr, ptr %allocator, align 8
-  %neq = icmp ne ptr %1, null
-  call void @llvm.assume(i1 %neq)
+  %ne = icmp ne ptr %1, null
+  call void @llvm.assume(i1 %ne)
   call void @llvm.assume(i1 true)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator1, ptr align 8 %allocator, i32 16, i1 false)
   %2 = load ptr, ptr %allocator1, align 8
-  %neq2 = icmp ne ptr %2, null
-  call void @llvm.assume(i1 %neq2)
+  %ne2 = icmp ne ptr %2, null
+  call void @llvm.assume(i1 %ne2)
   call void @llvm.assume(i1 true)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %allocator3, ptr align 8 %allocator1, i32 16, i1 false)
   %3 = load ptr, ptr %allocator3, align 8
-  %neq4 = icmp ne ptr %3, null
-  call void @llvm.assume(i1 %neq4)
+  %ne4 = icmp ne ptr %3, null
+  call void @llvm.assume(i1 %ne4)
   call void @llvm.assume(i1 true)
   br label %if.exit
 

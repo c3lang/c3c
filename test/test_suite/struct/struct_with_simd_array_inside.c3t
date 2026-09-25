@@ -31,4 +31,4 @@ fn void main ()
 
 %Entity = type { i32, i8, [1 x [2 x i32]], [2 x i32], i8 }
 
-@test.ENTITY_DEFAULTS = local_unnamed_addr constant { %Entity, { i32, i8, [1 x [2 x i32]], [2 x i32], i8 } } { %Entity zeroinitializer, { i32, i8, [1 x [2 x i32]], [2 x i32], i8 } { i32 1, i8 0, [1 x [2 x i32]] zeroinitializer, [2 x i32] zeroinitializer, i8 0 } }, align 4
+@test.ENTITY_DEFAULTS = local_unnamed_addr constant [2 x %Entity] [%Entity zeroinitializer, %Entity { i32 1, i8 0, [1 x [2 x i32]] zeroinitializer, [2 x i32] zeroinitializer, i8 0 }], align 4

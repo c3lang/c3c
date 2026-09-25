@@ -148,8 +148,8 @@ noerr_block18:                                    ; preds = %after_check16
   br label %voiderr
 
 voiderr:                                          ; preds = %noerr_block18, %guard_block17, %guard_block11, %guard_block
-  %neq = icmp ne ptr %t, null
-  call void @llvm.assume(i1 %neq)
+  %ne = icmp ne ptr %t, null
+  call void @llvm.assume(i1 %ne)
   %ptradd19 = getelementptr inbounds i8, ptr %t, i64 8
   %ptradd20 = getelementptr inbounds i8, ptr %ptradd19, i64 12
   %23 = load i32, ptr %ptradd20, align 4

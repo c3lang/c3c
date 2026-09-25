@@ -244,7 +244,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 		{
 			ASSERT(type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
-			Type *element_type = type->array.base;
+			Type *element_type = lowered_array_element_type(type);
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			ConstInitializer **elements = const_init->init_array_full;
 			ASSERT(type_is_arraylike(type));
@@ -272,7 +272,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 		{
 			ASSERT(type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
-			Type *element_type = type->array.base;
+			Type *element_type = lowered_array_element_type(type);
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			AlignSize expected_align = llvm_abi_alignment(c, element_type_llvm);
 			ConstInitializer **elements = const_init->init_array.elements;
@@ -389,9 +389,10 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 					vec_add(entries, llvm_emit_const_padding(c, member->padding));
 				}
 				LLVMValueRef element = llvm_emit_const_initializer(c, const_init->init_struct[i], true);
+				Type *member_type = lowered_member_type(member);
 				LLVMTypeRef element_type = LLVMTypeOf(element);
 				//ASSERT(LLVMIsConstant(element));
-				if (llvm_get_type(c, member->type) != element_type)
+				if (llvm_get_type(c, member_type) != element_type)
 				{
 					was_modified = true;
 				}
@@ -428,7 +429,17 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 		{
 			BEValue value;
 			llvm_emit_expr_global_value(c, &value, const_init->init_value);
-			return llvm_load_value_store(c, &value);
+			LLVMValueRef val = llvm_load_value_store(c, &value);
+
+			// In some cases we will get a vector here, even if we didn't want it.
+			// So convert it.
+			LLVMTypeRef element_type = LLVMTypeOf(val);
+			if (LLVMGetTypeKind(element_type) == LLVMVectorTypeKind && !type_is_vec(type))
+			{
+				llvm_emit_vec_to_array(c, &value, type);
+				val = llvm_load_value_store(c, &value);
+			}
+			return val;
 		}
 	}
 	UNREACHABLE
@@ -1692,11 +1703,25 @@ void **llvm_gen(Module** modules, int module_count)
 			vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
 		}
 		int count = vec_size(gen_contexts);
-		for (int i = 1; i < count; i++)
+		while (count > 1)
 		{
-			GenContext *other = gen_contexts[i];
-			LLVMLinkModules2(first->module, other->module);
-			gencontext_destroy(other);
+			int new_count = 0;
+			for (int i = 0; i < count; i += 2)
+			{
+				if (i + 1 < count)
+				{
+					GenContext *dst = gen_contexts[i];
+					GenContext *src = gen_contexts[i + 1];
+					LLVMLinkModules2(dst->module, src->module);
+					gencontext_destroy(src);
+					gen_contexts[new_count++] = dst;
+				}
+				else
+				{
+					gen_contexts[new_count++] = gen_contexts[i];
+				}
+			}
+			count = new_count;
 		}
 		vec_resize(gen_contexts, 1);
 		return (void**)gen_contexts;

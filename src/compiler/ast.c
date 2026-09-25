@@ -191,6 +191,7 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceLocId loc)
 	Decl *decl = decl_calloc();
 	decl->decl_kind = DECL_VAR;
 	decl->loc = loc;
+	decl->is_used = true;
 	decl->name = NULL;
 	decl->var.kind = kind;
 	decl->var.is_temp = true;
@@ -428,10 +429,10 @@ bool ast_is_compile_time(Ast *ast)
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
 					UNREACHABLE
+				case VARDECL_CONST:
+					return !ast->declare_stmt->var.type_info;
 				case VARDECL_LOCAL:
 					return false;
-				case VARDECL_CONST:
-					return !ast->declare_stmt->var.is_addr;
 				case VARDECL_LOCAL_CT:
 				case VARDECL_LOCAL_CT_TYPE:
 					return true;

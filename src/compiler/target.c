@@ -153,6 +153,7 @@ static const char *x86_feature_name[] = {
 	[X86_FEAT_AVX5124FMAPS] = "avx5124fmaps",
 	[X86_FEAT_AVX512VPOPCNTDQ] = "avx512vpopcntdq",
 	[X86_FEAT_AVX512VBMI2] = "avx512vbmi2",
+	[X86_FEAT_AVX512BMM] = "avx512bmm",
 	[X86_FEAT_GFNI] = "gfni",
 	[X86_FEAT_VPCLMULQDQ] = "vpclmulqdq",
 	[X86_FEAT_AVX512VNNI] = "avx512vnni",
@@ -523,18 +524,11 @@ static void cpu_features_add_feature_single(CpuFeatures *cpu_features, int featu
 }
 
 
-static X86Feature x86feature_from_string(const char *str)
+static X86Feature x86feature_from_slice(StringSlice slice)
 {
 	for (int i = 0; i <= X86_FEATURE_LAST; i++)
 	{
-		const char *feature = x86_feature_name[i];
-		for (int j = 0;; j++)
-		{
-			char c = str[j];
-			if (feature[j] != c) goto NEXT;
-			if (c == 0) return i;
-		}
-		NEXT:;
+		if (slice_strcmp(slice, x86_feature_name[i])) return i;
 	}
 	return -1;
 }
@@ -730,6 +724,7 @@ static void x86_features_add_feature(CpuFeatures *cpu_features, X86Feature featu
 		case X86_FEAT_AVX512VBMI2:
 		case X86_FEAT_AVX512BITALG:
 		case X86_FEAT_AVX512BF16:
+		case X86_FEAT_AVX512BMM:
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512BW);
 			return;
 		case X86_FEAT_AVX5124VNNIW:
@@ -907,6 +902,7 @@ static void x64features_limit_from_capability(CpuFeatures *cpu_features, X86Vect
 			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX10_1_512);
 			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX10_1_256);
 			cpu_features_remove_feature(cpu_features, X86_FEAT_USERMSR);
+			cpu_features_remove_feature(cpu_features, X86_FEAT_AVX512BMM);
 			break;
 		case X86VECTOR_CPU:
 		case X86VECTOR_DEFAULT:
@@ -947,34 +943,35 @@ static void x86_features_from_host(CpuFeatures *cpu_features)
 	INFO_LOG("Detected the following host features: %s", features);
 	INFO_LOG("For %s", LLVMGetHostCPUName());
 
-	char *tok = strtok(features, ",");
+	StringSlice features_slice = slice_from_string(features);
 	*cpu_features = cpu_feature_zero;
-	while (tok != NULL)
+	while (features_slice.len)
 	{
-		if (tok[0] == '-')
+		StringSlice token = slice_next_token(&features_slice, ',');
+		if (!token.len) continue;
+		StringSlice feature = { token.ptr + 1, token.len - 1 };
+		if (token.ptr[0] == '-')
 		{
-			int i = x86feature_from_string(&tok[1]);
+			int i = x86feature_from_slice(feature);
 			if (i < 0)
 			{
-				if (debug_log || PRERELEASE) printf("WARNING, unknown feature %s - skipping\n", &tok[1]);
-				goto NEXT;
+				if (debug_log || PRERELEASE) printf("WARNING, unknown feature %.*s - skipping\n", (int)feature.len, feature.ptr);
+				continue;
 			}
 			cpu_features_remove_feature(cpu_features, (X86Feature)i);
 		}
-		else if (tok[0] == '+')
+		else if (token.ptr[0] == '+')
 		{
-			int i = x86feature_from_string(&tok[1]);
+			int i = x86feature_from_slice(feature);
 			if (i < 0)
 			{
 				// Ignore "64bit"
-				if (strlen(&tok[1]) == 5 && memcmp(&tok[1], "64bit", 5) == 0) goto NEXT;
-				if (debug_log || PRERELEASE) printf("WARNING, unknown feature %s - skipping\n", &tok[1]);
-				goto NEXT;
+				if (slice_strcmp(feature, "64bit")) continue;
+				if (debug_log || PRERELEASE) printf("WARNING, unknown feature %.*s - skipping\n", (int)feature.len, feature.ptr);
+				continue;
 			}
 			x86_features_add_feature(cpu_features, (X86Feature)i);
 		}
-		NEXT:
-		tok = strtok(NULL, ",");
 	}
 	LLVMDisposeMessage(features);
 #else

@@ -45,8 +45,8 @@ checkok9:                                         ; preds = %checkok
   %6 = insertvalue %"char[]" %5, i64 3, 1
   %7 = extractvalue %"char[]" %6, 0
   %8 = extractvalue %"char[]" %6, 1
-  %neq = icmp ne i64 %8, 3
-  %9 = call i1 @llvm.expect.i1(i1 %neq, i1 false)
+  %ne = icmp ne i64 %8, 3
+  %9 = call i1 @llvm.expect.i1(i1 %ne, i1 false)
   br i1 %9, label %panic10, label %checkok17
 
 checkok17:                                        ; preds = %checkok9

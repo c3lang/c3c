@@ -16,7 +16,7 @@ constset AtomicOrderingRT : inline CInt
 
 // --- Runtime functions ---
 
-fn bool __atomic_is_lock_free(sz size, void* ptr) @weak @nostrip @cname("__atomic_is_lock_free")
+fn bool __atomic_is_lock_free(sz size, void*) @weak @nostrip @cname("__atomic_is_lock_free")
 {
 	switch (size)
 	{

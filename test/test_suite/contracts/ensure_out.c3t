@@ -56,8 +56,8 @@ checkok6:                                         ; preds = %checkok3
 
 checkok14:                                        ; preds = %checkok6
   %11 = load i32, ptr %0, align 4
-  %neq = icmp ne i32 %11, 0
-  br i1 %neq, label %assert_ok, label %assert_fail
+  %ne = icmp ne i32 %11, 0
+  br i1 %ne, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %checkok14
   %12 = load ptr, ptr @std.core.builtin.panic, align 8

@@ -161,21 +161,21 @@ entry:
   %y85 = alloca i32, align 4
   %y92 = alloca ptr, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const.2, i32 12, i1 false)
-  %neq = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq)
-  %neq1 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq1)
+  %ne = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne)
+  %ne1 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne1)
   %ptradd = getelementptr inbounds i8, ptr %x, i64 4
-  %neq2 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq2)
+  %ne2 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne2)
   %ptradd3 = getelementptr inbounds i8, ptr %x, i64 8
   %0 = load i32, ptr %x, align 4
   %1 = load i32, ptr %ptradd, align 4
   %2 = load i32, ptr %ptradd3, align 4
   call void (ptr, ...) @printf(ptr @.str.3, i32 %0, i32 %1, i32 %2)
   %3 = call ptr @foo.call(ptr %x)
-  %neq4 = icmp ne ptr %3, null
-  call void @llvm.assume(i1 %neq4)
+  %ne4 = icmp ne ptr %3, null
+  call void @llvm.assume(i1 %ne4)
   store i32 0, ptr %.anon, align 4
   br label %loop.cond
 
@@ -189,8 +189,8 @@ loop.body:                                        ; preds = %loop.cond
   store i32 %5, ptr %i, align 4
   %6 = load i32, ptr %.anon, align 4
   store i32 %6, ptr %a, align 4
-  %neq5 = icmp ne ptr %3, null
-  call void @llvm.assume(i1 %neq5)
+  %ne5 = icmp ne ptr %3, null
+  call void @llvm.assume(i1 %ne5)
   %7 = load i32, ptr %a, align 4
   %sext = sext i32 %7 to i64
   %ptroffset = getelementptr inbounds [4 x i8], ptr %3, i64 %sext
@@ -205,8 +205,8 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %neq6 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq6)
+  %ne6 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne6)
   store i32 0, ptr %.anon7, align 4
   br label %loop.cond8
 
@@ -220,8 +220,8 @@ loop.body10:                                      ; preds = %loop.cond8
   store i32 %13, ptr %i11, align 4
   %14 = load i32, ptr %.anon7, align 4
   store i32 %14, ptr %a13, align 4
-  %neq14 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq14)
+  %ne14 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne14)
   %15 = load i32, ptr %a13, align 4
   %sext15 = sext i32 %15 to i64
   %ptroffset16 = getelementptr inbounds [4 x i8], ptr %x, i64 %sext15
@@ -240,8 +240,8 @@ loop.body10:                                      ; preds = %loop.cond8
   br label %loop.cond8
 
 loop.exit18:                                      ; preds = %loop.cond8
-  %neq19 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq19)
+  %ne19 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne19)
   store i32 0, ptr %.anon20, align 4
   br label %loop.cond21
 
@@ -255,8 +255,8 @@ loop.body23:                                      ; preds = %loop.cond21
   store i32 %23, ptr %i24, align 4
   %24 = load i32, ptr %.anon20, align 4
   store i32 %24, ptr %a26, align 4
-  %neq27 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq27)
+  %ne27 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne27)
   %25 = load i32, ptr %a26, align 4
   %sext28 = sext i32 %25 to i64
   %ptroffset29 = getelementptr inbounds [4 x i8], ptr %x, i64 %sext28
@@ -271,8 +271,8 @@ loop.body23:                                      ; preds = %loop.cond21
   br label %loop.cond21
 
 loop.exit31:                                      ; preds = %loop.cond21
-  %neq32 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq32)
+  %ne32 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne32)
   store i32 0, ptr %.anon33, align 4
   br label %loop.cond34
 
@@ -286,8 +286,8 @@ loop.body36:                                      ; preds = %loop.cond34
   store i32 %31, ptr %i37, align 4
   %32 = load i32, ptr %.anon33, align 4
   store i32 %32, ptr %a39, align 4
-  %neq40 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq40)
+  %ne40 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne40)
   %33 = load i32, ptr %a39, align 4
   %sext41 = sext i32 %33 to i64
   %ptroffset42 = getelementptr inbounds [4 x i8], ptr %x, i64 %sext41
@@ -302,8 +302,8 @@ loop.body36:                                      ; preds = %loop.cond34
   br label %loop.cond34
 
 loop.exit44:                                      ; preds = %loop.cond34
-  %neq45 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq45)
+  %ne45 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne45)
   store i32 0, ptr %.anon46, align 4
   br label %loop.cond47
 
@@ -317,8 +317,8 @@ loop.body49:                                      ; preds = %loop.cond47
   store i32 %39, ptr %i50, align 4
   %40 = load i32, ptr %.anon46, align 4
   store i32 %40, ptr %a52, align 4
-  %neq53 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq53)
+  %ne53 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne53)
   %41 = load i32, ptr %a52, align 4
   %sext54 = sext i32 %41 to i64
   %ptroffset55 = getelementptr inbounds [4 x i8], ptr %x, i64 %sext54
@@ -414,26 +414,26 @@ loop.body83:                                      ; preds = %loop.cond81
   br label %loop.cond81
 
 loop.exit88:                                      ; preds = %loop.cond81
-  %neq89 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq89)
-  %neq90 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq90)
+  %ne89 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne89)
+  %ne90 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne90)
   %ptradd91 = getelementptr inbounds i8, ptr %x, i64 4
   %69 = load i32, ptr %x, align 4
   %70 = load i32, ptr %ptradd91, align 4
   call void (ptr, ...) @printf(ptr @.str.13, i32 %69, i32 %70)
-  %neq93 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq93)
+  %ne93 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne93)
   %ptradd94 = getelementptr inbounds i8, ptr %x, i64 4
   store ptr %ptradd94, ptr %y92, align 8
   %71 = load ptr, ptr %y92, align 8
   %72 = load i32, ptr %71, align 4
   %add95 = add i32 %72, 1
   store i32 %add95, ptr %71, align 4
-  %neq96 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq96)
-  %neq97 = icmp ne ptr %x, null
-  call void @llvm.assume(i1 %neq97)
+  %ne96 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne96)
+  %ne97 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %ne97)
   %ptradd98 = getelementptr inbounds i8, ptr %x, i64 4
   %73 = load i32, ptr %x, align 4
   %74 = load i32, ptr %ptradd98, align 4

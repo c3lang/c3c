@@ -1,0 +1,28 @@
+// #target: macos-x64
+module test;
+import std;
+
+fn void main()
+{
+	FixedList{float, 16} list;
+	list.push(0);
+	list.push(0);
+	FixedList{float, 16}* ref = &list;
+	list[^1] = 4; // Doesn't work
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %list = alloca %"FixedList{float, 16}", align 8
+  %ref = alloca ptr, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %list, i8 0, i64 72, i1 false)
+  call void @"std.collections.fixedlist.FixedList$float$16$.push"(ptr %list, float 0.000000e+00) #2
+  call void @"std.collections.fixedlist.FixedList$float$16$.push"(ptr %list, float 0.000000e+00) #2
+  store ptr %list, ptr %ref, align 8
+  %0 = call i64 @"std.collections.fixedlist.FixedList$float$16$.len"(ptr %list) #2
+  %sub = sub i64 %0, 1
+  call void @"std.collections.fixedlist.FixedList$float$16$.set"(ptr %list, i64 %sub, float 4.000000e+00)
+  ret void
+}

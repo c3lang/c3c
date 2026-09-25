@@ -23,7 +23,6 @@ macro any_to_enum_ordinal(any v, $Type)
 macro any_to_int(any v, $Type)
 {
 	typeid any_type = v.type;
-	TypeKind kind = any_type.kind;
 	bool is_mixed_signed = $Type::kind != any_type.kind;
 	$Type max = $Type::max;
 	$Type min = $Type::min;

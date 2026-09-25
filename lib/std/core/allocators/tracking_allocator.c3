@@ -84,7 +84,7 @@ fn sz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
 *>
 fn sz TrackingAllocator.max_allocated(&self) => self.max_usage;
 
-fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator) => self.mutex.@in_lock()
+fn Allocation[] TrackingAllocator.allocations_tlist(&self) => self.mutex.@in_lock()
 {
 	return self.map.tvalues();
 }

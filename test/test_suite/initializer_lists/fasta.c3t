@@ -197,8 +197,8 @@ if.exit:                                          ; preds = %if.then, %loop.body
 loop.exit:                                        ; preds = %loop.cond
   %11 = load i32, ptr %i, align 4
   %smod4 = srem i32 %11, 60
-  %neq = icmp ne i32 %smod4, 0
-  br i1 %neq, label %if.then5, label %if.exit6
+  %ne = icmp ne i32 %smod4, 0
+  br i1 %ne, label %if.then5, label %if.exit6
 if.then5:                                         ; preds = %loop.exit
   call void @putchar(i32 10)
   br label %if.exit6
@@ -291,8 +291,8 @@ if.exit13:                                        ; preds = %if.then12, %loop.ex
 loop.exit15:                                      ; preds = %loop.cond
   %23 = load i32, ptr %i, align 4
   %smod16 = srem i32 %23, 60
-  %neq = icmp ne i32 %smod16, 0
-  br i1 %neq, label %if.then17, label %if.exit18
+  %ne = icmp ne i32 %smod16, 0
+  br i1 %ne, label %if.then17, label %if.exit18
 if.then17:                                        ; preds = %loop.exit15
   call void @putchar(i32 10)
   br label %if.exit18

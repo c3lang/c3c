@@ -35,6 +35,10 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
     cmake_policy(SET CMP0135 NEW)
 endif()
 
+if (POLICY CMP0156)
+    cmake_policy(SET CMP0156 NEW)
+endif()
+
 if (NOT DEFINED CMAKE_INSTALL_LIBDIR)
     if (WIN32)
         set(CMAKE_INSTALL_LIBDIR "c:\\c3c\\lib")
@@ -307,6 +311,11 @@ if(C3_WITH_LLVM)
     string(REPLACE "." ";" VERSION_LIST ${LLVM_PACKAGE_VERSION})
     list(GET VERSION_LIST 0 LLVM_MAJOR_VERSION)
 
+    if(C3_LLD_DIR AND EXISTS "${C3_LLD_DIR}")
+        list(APPEND LLVM_LIBRARY_DIRS "${C3_LLD_DIR}")
+        list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
+    endif()
+
     include_directories(${LLVM_INCLUDE_DIRS})
     link_directories(${LLVM_LIBRARY_DIRS})
     separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
@@ -356,11 +365,6 @@ if(C3_WITH_LLVM)
         )
 
         llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
-
-        if(NOT ${C3_LLD_DIR} EQUAL "" AND EXISTS ${C3_LLD_DIR})
-            list(APPEND LLVM_LIBRARY_DIRS ${C3_LLD_DIR})
-            list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
-        endif()
 
         message(STATUS "Looking for static lld libraries in ${LLVM_LIBRARY_DIRS}")
 
@@ -565,6 +569,13 @@ add_executable(c3c
         src/utils/unzipper.c
         src/utils/msi.c
         src/compiler/c_codegen.c
+        src/compiler/c_codegen_builtins.c
+        src/compiler/c_codegen_expr.c
+        src/compiler/c_codegen_stmt.c
+        src/compiler/c_codegen_type.c
+        src/compiler/c_codegen_lvalue.c
+        src/compiler/c_codegen_function.c
+        src/compiler/c_codegen_module.c
         src/compiler/decltable.c
         src/compiler/methodtable.c
         src/utils/fetch_sdk/fetch_sdk.c

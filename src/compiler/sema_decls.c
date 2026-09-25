@@ -2200,6 +2200,7 @@ const char *operator_overload_to_string(OperatorOverload operator_overload)
 {
 	switch (operator_overload)
 	{
+		case OVERLOAD_NONE:
 		case OVERLOAD_ELEMENT_AT:
 		case OVERLOAD_ELEMENT_REF:
 		case OVERLOAD_ELEMENT_SET:
@@ -2406,6 +2407,7 @@ static bool sema_check_operator_method_validity(SemaContext *context, Decl *meth
 		case OVERLOAD_NEGATE:
 		case OVERLOAD_UNARY_MINUS:
 			return sema_analyse_operator_unary(context, method, operator);
+		case OVERLOAD_NONE:
 			UNREACHABLE
 	}
 	ASSERT_SPANF(method, false, "Method had unexpected operator %d", operator);

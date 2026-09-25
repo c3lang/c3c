@@ -6,6 +6,12 @@ fn void main()
 {
 	int[<4>] a = { 1, -3, 5, -7 };
 	io::printfn("%s", $$reverse(a));
+
+	char[<256>] b = {};
+	b[0] = 1;
+	b[255] = 2;
+	char[<256>] rev = $$reverse(b);
+	assert(rev[0] == 2 && rev[255] == 1);
 }
 
 /* #expect: std.test.ll

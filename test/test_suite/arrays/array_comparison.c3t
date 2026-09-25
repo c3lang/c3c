@@ -97,8 +97,8 @@ entry:
   %4 = zext i1 %eq to i8
   store i8 %4, ptr %x2, align 1
   %cmp5 = call i32 @memcmp(ptr %a2, ptr %b2, i64 8)
-  %neq = icmp ne i32 %cmp5, 0
-  %5 = zext i1 %neq to i8
+  %ne = icmp ne i32 %cmp5, 0
+  %5 = zext i1 %ne to i8
   store i8 %5, ptr %y2, align 1
   call void @get3(ptr %a3)
   call void @get3(ptr %b3)
@@ -191,8 +191,8 @@ array_cmp_exit10:                                 ; preds = %array_loop_comparis
   %8 = zext i1 %eq12 to i8
   store i8 %8, ptr %x2, align 1
   %cmp13 = call i32 @memcmp(ptr %a2, ptr %b2, i64 800)
-  %neq = icmp ne i32 %cmp13, 0
-  %9 = zext i1 %neq to i8
+  %ne = icmp ne i32 %cmp13, 0
+  %9 = zext i1 %ne to i8
   store i8 %9, ptr %y2, align 1
   call void @aget3(ptr %a3)
   call void @aget3(ptr %b3)

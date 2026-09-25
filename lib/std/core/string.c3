@@ -1074,7 +1074,6 @@ fn String String.pascal_to_snake_copy(self, Allocator allocator) => @pool()
 {
 	DString d;
 	d.init(tmem, (sz)(self.len * 1.5));
-	sz index = 0;
 	foreach (i, c : self)
 	{
 		if (c.is_upper())

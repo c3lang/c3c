@@ -81,12 +81,12 @@ interface Logger
  @param fmt : "The format string"
  @param category : "The category to log under, defaults to the current `default_category`"
 *>
-macro void verbose(String fmt, ..., LogCategory category = default_category) => call_log(VERBOSE, category, fmt, ...$vaarg);
-macro void debug(String fmt, ..., LogCategory category = default_category) => call_log(DEBUG, category, fmt, ...$vaarg);
-macro void info(String fmt, ..., LogCategory category = default_category) => call_log(INFO, category, fmt, ...$vaarg);
-macro void warn(String fmt, ..., LogCategory category = default_category) => call_log(WARN, category, fmt, ...$vaarg);
-macro void error(String fmt, ..., LogCategory category = default_category) => call_log(ERROR, category, fmt, ...$vaarg);
-macro void critical(String fmt, ..., LogCategory category = default_category) => call_log(CRITICAL, category, fmt, ...$vaarg);
+macro void verbose(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(VERBOSE, category, fmt, ...$vaarg);
+macro void debug(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(DEBUG, category, fmt, ...$vaarg);
+macro void info(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(INFO, category, fmt, ...$vaarg);
+macro void warn(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(WARN, category, fmt, ...$vaarg);
+macro void error(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(ERROR, category, fmt, ...$vaarg);
+macro void critical(String fmt, ..., LogCategory category = default_category) @format(0) => call_log(CRITICAL, category, fmt, ...$vaarg);
 
 <*
  Run `@body` with `default_category` temporarily set to `new_category`, restored on exit.
@@ -139,12 +139,8 @@ macro void push_tag(String tag_prefix = "")
 fn LogTag create_tag(String tag_prefix)
 {
 	LogTag tag @noinit;
-	int start = 0;
-	foreach (int i, c : tag_prefix)
-	{
-		if (c == 0) break;
-		tag[start++] = c;
-	}
+	tag[:tag_prefix.len] = tag_prefix[..];
+	int start = tag_prefix.len;
 	if (start > 0) tag[start++] = '_';
 	for (int i = start; i < tag.len; i++)
 	{

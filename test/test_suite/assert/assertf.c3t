@@ -26,8 +26,8 @@ loop.cond:                                        ; preds = %assert_ok, %entry
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %i, align 8
-  %neq = icmp ne i64 %1, 2
-  br i1 %neq, label %assert_ok, label %assert_fail
+  %ne = icmp ne i64 %1, 2
+  br i1 %ne, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %loop.body
   %2 = insertvalue %any undef, ptr %i, 0

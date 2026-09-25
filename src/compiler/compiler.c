@@ -163,6 +163,12 @@ void thread_compile_task_llvm(void *compile_data)
 }
 #endif 
 
+void thread_compile_task_c(void *compile_data)
+{
+	CompileData *data = compile_data;
+	data->object_name = c_codegen(data->context);
+}
+
 void thread_compile_task_tb(void *compile_data)
 {
 	CompileData *data = compile_data;
@@ -309,7 +315,7 @@ static int compile_cfiles(const char *cc, const char **files, const char *flags,
 {
 	if (!cc || !file_executable_in_path(cc))
 	{
-		cc = default_c_compiler();
+		cc = find_c_compiler();
 	}
 	int total = 0;
 	FOREACH(const char *, file, files)
@@ -559,8 +565,8 @@ void compiler_compile(void)
 	{
 		case BACKEND_C:
 			gen_contexts = c_gen(modules, module_count);
-			(void)gen_contexts;
-			error_exit("Unfinished C backend!");
+			task = &thread_compile_task_c;
+			break;
 		case BACKEND_LLVM:
 #if LLVM_AVAILABLE
 			llvm_setup();
@@ -696,7 +702,8 @@ void compiler_compile(void)
 	int task_count = (int)vec_size(tasks);
 	if (task_count > 0)
 	{
-		taskqueue_run((int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads), tasks);
+		int threads = (int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads);
+		taskqueue_run(threads, tasks);
 	}
 	if (compiler.build.print_output)
 	{
@@ -743,7 +750,7 @@ void compiler_compile(void)
 		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
 		if (system_linker_available)
 		{
-			const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
+			const char *cc = find_c_compiler();
 			if (!file_executable_in_path(cc)) system_linker_available = false;
 			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && compiler.build.linker_type != LINKER_TYPE_BUILTIN && (!file_executable_in_path(cc) || !strstr(cc, "emcc")))
 			{
@@ -756,7 +763,7 @@ void compiler_compile(void)
 			case LINKER_TYPE_CC:
 				if (!system_linker_available)
 				{
-					const char *cc = compiler.build.cc ? compiler.build.cc : default_c_compiler();
+					const char *cc = find_c_compiler();
 					OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
 					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
 					use_system_linker = false;
@@ -802,7 +809,7 @@ void compiler_compile(void)
 			const char *name = output_exe;
 			while (name[0] == '.' && name[1] == '/') name += 2;
 			scratch_buffer_clear();
-			if (compiler.platform.os == OS_TYPE_WIN32)
+			if (PLATFORM_WINDOWS)
 			{
 				int len = (int)strlen(name);
 				for (int i = 0; i < len; i++)
@@ -2014,8 +2021,9 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	return source_file_text_load(file, out);
 }
 
-const char *default_c_compiler(void)
+const char *find_c_compiler(void)
 {
+	if (compiler.build.cc) return compiler.build.cc;
 	static const char *cc = NULL;
 	if (cc) return cc;
 	const char *cc_env = getenv("C3C_CC");

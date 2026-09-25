@@ -38,8 +38,8 @@ checkok13:                                        ; preds = %checkok
   %7 = load ptr, ptr %i, align 8
   store ptr %7, ptr %ptr, align 8
   %8 = load ptr, ptr %ptr, align 8
-  %neq = icmp ne ptr %8, null
-  br i1 %neq, label %assert_ok, label %assert_fail
+  %ne = icmp ne ptr %8, null
+  br i1 %ne, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %checkok13
   %9 = load ptr, ptr @std.core.builtin.panic, align 8
@@ -67,8 +67,8 @@ checkok24:                                        ; preds = %checkok16
   %18 = load ptr, ptr %i, align 8
   store ptr %18, ptr %ptr25, align 8
   %19 = load ptr, ptr %ptr25, align 8
-  %neq26 = icmp ne ptr %19, null
-  br i1 %neq26, label %assert_ok28, label %assert_fail27
+  %ne26 = icmp ne ptr %19, null
+  br i1 %ne26, label %assert_ok28, label %assert_fail27
 
 assert_fail27:                                    ; preds = %checkok24
   %20 = load ptr, ptr @std.core.builtin.panic, align 8

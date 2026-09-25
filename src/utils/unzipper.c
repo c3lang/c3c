@@ -8,8 +8,8 @@
 #define ZIP_BUFFER_SIZE 65536
 #define FILE_OUTBUF_LEN 65536
 
-uint8_t internal_buffer[ZIP_BUFFER_SIZE]; // limits maximum zip descriptor size
-uint8_t file_out_buffer[FILE_OUTBUF_LEN];
+static uint8_t internal_buffer[ZIP_BUFFER_SIZE]; // limits maximum zip descriptor size
+static uint8_t file_out_buffer[FILE_OUTBUF_LEN];
 
 typedef PACK(struct
 {
@@ -356,4 +356,3 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 	inflateEnd(&strm);
 	return NULL;
 }
-

@@ -1,5 +1,30 @@
 # C3C Release Notes
 
+## 0.8.5 Change list
+
+### Changes / improvements
+- Fetching MSVC also optionally fetches C/C++ headers for cross-compilation
+- Experimental C backend.
+ 
+### Fixes
+- Regression for `vec.pow(x)`.
+- Macros with "const" declarations were compile time folded despite needing the declaration.
+- Vectors created through casts in globals would miscompile, e.g. `Foo global = { .v = (int[<3>])8 }`.
+- Support $$bswap for all power of two integers, including single bytes (in which case it is a no-op).
+
+### Stdlib changes
+- Added `std::gfx` module.
+- Added `IntRect`, `IntVec2`, `IntVec3` and `IntVec4` types.
+- Updated organization of the MacOS / Darwin bindings, reorganized by framework, added many functions and split into std::os::darwin and std::os::macos, with among other things easy ObjC dispatch.
+- Updated win32 bindings with many functions, reorganized by header.
+- Cross-platform dylib handling with `DylibHandler`, `os::dlopen`, `os::dlsym` and related functions in `std::os`.
+- Added `Duration.to_sec`
+- Updated posix libc with `shm_open`, `shm_unlink`, `truncate` and `ftruncate`.
+- Add `NonNull` and `Nullable` types for members with mandatory null checks.
+- Cap durations and time to long::max/long::min with saturating maths.
+- Added `time::FOREVER_PAST`, `Time::diff_years`, `Time::diff_months`, `time::day`, `time::week`, `time::month`, `time::year`.
+- Added `double.is_inf`, `float.is_inf`.
+
 ## 0.8.4 Change list
 
 ### Changes / improvements
@@ -26,6 +51,10 @@
 - Support for iOS.
 - Allow `-` in `c3c init some-project`.
 - `--keep-obj` added, to prevent object files from being deleted after building/linking.
+- Slice equality for flat types is now lowered to `memcmp`, avoiding scalar loops. #3491
+- Add `--warn-unusedlocal` and `--warn-unusedparam` to detect unused parameters and locals. #3485
+- Improve the error message for build options which use `=`.
+- Add control registers to x86 inline assembly
 
 ### Stdlib changes
 - `CachedInStream` and `CachedOutStream` added.
@@ -59,6 +88,11 @@
 - Fix bug in `mem::equals` calculating the last part to compare.
 - Miscompilation of struct initializers when a struct contained an array of vectors, causing incorrect alignment. #3483
 - `String.escape` would not correctly handle UTF16 pairs.
+- Heap buffer corruption when reversing vectors larger than 128 elements due to an undersized allocation.
+- `$$mod` on unsigned integers emitted signed division instead of unsigned remainder.
+- Improved codegen for casting an optional vector to an array.
+- Overload for `^1`, e.g. `foo[^1] = 2` did not work correctly. #3496
+- Correctly use defined C compiler in all cases. #3495
 
 ## 0.8.3 Change list
 

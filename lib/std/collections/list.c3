@@ -423,7 +423,7 @@ fn void List.reserve(&self, sz added)
 	list_ensure_capacity(self, new_capacity);
 }
 
-fn void list_update_size_change(List* self,sz old_size, sz new_size) @private
+fn void list_update_size_change(List* self, sz old_size, sz new_size) @private
 {
 	if (old_size == new_size) return;
 	$if $feat(ASAN):
@@ -500,7 +500,7 @@ fn bool List.equals(&self, List other_list) @if(ELEMENT_IS_EQUATABLE)
 *>
 fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
-	foreach (i, v : self)
+	foreach (v : self)
 	{
 		if (equals(v, value)) return true;
 	}

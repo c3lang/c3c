@@ -106,6 +106,7 @@ static void usage(bool full)
 		print_opt("--validation=<option>", "Strictness of code validation: lenient (default), strict, obnoxious (very strict)");
 		print_opt("--stdlib <dir>", "Use this directory as the C3 standard library path.");
 		print_opt("--no-entry", "Do not generate (or require) a main function.");
+		print_opt("--cflags <flag>", "Add flags passed to the compiler when using the C backend.");
 		print_opt("--path <dir>", "Use this as the base directory for the current command.");
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
@@ -147,6 +148,8 @@ static void usage(bool full)
 		print_opt("--warn-methodsnotresolved=<yes|no|error>", "Print warning on methods not resolved when accessed: yes, no, error.");
 		print_opt("--warn-deprecation=<yes|no|error>", "Print warning when using deprecated code and constructs: yes, no, error.");
 		print_opt("--warn-builtin=<yes|no|error>", "Print warning when using builtin functions outside of the stdlib: yes, no, error.");
+		print_opt("--warn-unusedparam=<yes|no|error>", "Print warning when a parameter is not used after compile-time folding: yes, no, error.");
+		print_opt("--warn-unusedlocal=<yes|no|error>", "Print warning when a local is not used after compile-time folding: yes, no, error.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -267,6 +270,7 @@ static void fetch_windows_usage(void)
 	print_opt("--msvc-version <ver>", "Specify a particular MSVC version to fetch.");
 	print_opt("--sdk-version <ver>", "Specify a particular Windows SDK version to fetch.");
 	print_opt("--arch <arch>", "Target architecture to fetch (x64, arm64). May be specified multiple times.");
+	print_opt("--fetch-headers", "Also fetch headers, do not specify more than one architecture!");
 	PRINTF("");
 }
 
@@ -699,6 +703,11 @@ static void parse_command(BuildOptions *options)
 					vec_add(options->fetch_sdk_archs, next_arg());
 					continue;
 				}
+				if (match_longopt("fetch-headers"))
+				{
+					options->msvc_fetch_headers = true;
+					continue;
+				}
 			}
 			else if (str_eq(options->fetch_sdk_target, "android") || str_eq(options->fetch_sdk_target, "ndk"))
 			{
@@ -1104,6 +1113,16 @@ static void parse_option(BuildOptions *options) // NOLINT
 			if ((argopt = match_argopt("warn-recursivecontracts"))) // NOLINT
 			{
 				options->warnings.recursive_contracts = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-unusedparam"))) // NOLINT
+			{
+				options->warnings.unused_parameter = parse_opt_select(WarningLevel, argopt, warnings);
+				return;
+			}
+			if ((argopt = match_argopt("warn-unusedlocal"))) // NOLINT
+			{
+				options->warnings.unused_local = parse_opt_select(WarningLevel, argopt, warnings);
 				return;
 			}
 			if ((argopt = match_argopt("warn-builtin"))) // NOLINT
@@ -1558,6 +1577,12 @@ static void parse_option(BuildOptions *options) // NOLINT
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --cc needs a compiler name.");
 				options->cc = next_arg();
+				return;
+			}
+			if (match_longopt("cflags"))
+			{
+				if (at_end()) error_exit("error: --cflags needs an argument string.");
+				options->cflags = next_arg();
 				return;
 			}
 			if (match_longopt("stdlib"))
@@ -2092,7 +2117,14 @@ static inline const char *match_argopt(const char *name)
 {
 	size_t len = strlen(name);
 	if (!str_start_with(&current_arg[2], name)) return NULL;
-	if (current_arg[2 + len] != '=') return NULL;
+	if (current_arg[2 + len] != '=')
+	{
+		if (current_arg[2 + len] == 0)
+		{
+			FAIL_WITH_ERR("'%s' should be followed by a '='. Use it like: '--%s=<option>'", name, name);
+		}
+		return NULL;
+	}
 	return &current_arg[2 + len + 1];
 }
 

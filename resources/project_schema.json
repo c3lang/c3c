@@ -179,7 +179,6 @@
     "cc": {
       "type": "string",
       "description": "C compiler to use for compiling C sources (if C sources are compiled together with C3 files).",
-      "default": "cc"
     },
     "cpu": {
       "type": "string",

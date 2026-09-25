@@ -29,14 +29,8 @@ struct Win32_WIN32_FIND_DATAW
 	Win32_DWORD         nFileSizeLow;
 	Win32_DWORD         dwReserved0;
 	Win32_DWORD         dwReserved1;
-	Win32_WCHAR[260]    cFileName;
+	Win32_WCHAR[MAX_PATH] cFileName;
 	Win32_WCHAR[14]     cAlternateFileName;
-	<* Obsolete. Do not use. *>
-	Win32_DWORD         dwFileType;
-	<* Obsolete. Do not use *>
-	Win32_DWORD         dwCreatorType;
-	<* Obsolete. Do not use *>
-	Win32_WORD          wFinderFlags;
 }
 
 alias Win32_LPWIN32_FIND_DATAW = Win32_WIN32_FIND_DATAW*;

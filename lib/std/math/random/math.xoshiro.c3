@@ -188,7 +188,6 @@ fn uint Xoroshiro.next(&self) @if (BIT_SIZE == 64) => xoroshiro(self);
 
 macro xoroshiro(Xoroshiro* self) @local
 {
-	uint a, b, c;
 	$switch BIT_SIZE:
 		$case 64:
 			uint result;
@@ -207,13 +206,13 @@ macro xoroshiro(Xoroshiro* self) @local
 			$switch OPERATION:
 				$case PLUS:
 					result = self.state[0] + self.state[1];
-					a = 24; b = 16; c = 37;
+					uint a = 24; uint b = 16; uint c = 37;
 				$case PLUS_PLUS:
 					result = (self.state[0] + self.state[1]).rotl(17) + self.state[0];
-					a = 49; b = 21; c = 28;
+					uint a = 49; uint b = 21; uint c = 28;
 				$case STAR_STAR:
 					result = (self.state[0] * 5u).rotl(7u) * 9u;
-					a = 24; b = 16; c = 37;
+					uint a = 24; uint b = 16; uint c = 37;
 				$default: $error "Invalid bit-size and XorshiftType combination.";
 			$endswitch
 			self.state[0] = self.state[0].rotl(a) ^ s1 ^ (s1 << b);

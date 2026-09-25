@@ -766,6 +766,7 @@ typedef struct Decl_
 	bool is_template : 1;
 	bool is_templated : 1;
 	bool is_method_checked : 1;
+	bool is_used : 1;
 	union
 	{
 		void *backend_ref;
@@ -2421,6 +2422,7 @@ void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
+const char *c_codegen(void *context);
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
 void **c_gen(Module** modules, int module_count);
@@ -2854,6 +2856,7 @@ INLINE bool type_is_union_or_strukt(Type *type);
 INLINE bool type_flat_is_vector(Type *type);
 INLINE bool type_flat_is_vector_bitstruct(Type *type);
 INLINE AlignSize type_min_alignment(AlignSize a, AlignSize b);
+INLINE AlignSize type_min_alignment_size(ByteSize a, AlignSize b);
 INLINE AlignSize type_max_alignment(AlignSize a, AlignSize b);
 INLINE BitSize type_bit_size(Type *type);
 INLINE Type *type_vector_type(Type *type);
@@ -3832,6 +3835,31 @@ INLINE bool decl_is_user_defined_type(Decl *decl)
 			;
 }
 
+INLINE void decl_used(Decl *decl)
+{
+	decl->is_used = true;
+}
+INLINE void decl_read(Decl *decl)
+{
+	decl->is_used = true;
+	assert(decl->decl_kind == DECL_VAR);
+	decl->var.is_read = true;
+}
+
+INLINE void decl_write(Decl *decl)
+{
+	assert(decl->decl_kind == DECL_VAR);
+	decl->is_used = true;
+	decl->var.is_written = true;
+}
+
+INLINE void decl_addr(Decl *decl)
+{
+	assert(decl->decl_kind == DECL_VAR);
+	decl->is_used = true;
+	decl->var.is_addr = true;
+}
+
 INLINE Decl *decl_flatten(Decl *decl)
 {
 	if (decl->decl_kind == DECL_ALIAS)
@@ -4185,11 +4213,24 @@ INLINE bool type_is_promotable_float(Type *type)
 
 /**
  * Minimum alignment, values are either offsets or alignments.
- * @return
+ * @return the alignment
  */
 INLINE AlignSize type_min_alignment(AlignSize a, AlignSize b)
 {
+	assert(a >= 0 && b >= 0);
 	return (a | b) & (1 + ~(a | b));
+}
+
+/**
+ * Minimum alignment, values are either offsets or alignments.
+ * Safe for sizes of a that exceed AlignSize.
+ *
+ * @return the alignment
+ */
+INLINE AlignSize type_min_alignment_size(ByteSize a, AlignSize b)
+{
+	if (a > ALIGN_SIZE_MAX) a = ALIGN_SIZE_MAX;
+	return type_min_alignment((AlignSize)a, b);
 }
 
 /**
@@ -4858,7 +4899,7 @@ INLINE ResolvedAttrData *decl_create_resolved_attributes(Decl *decl)
 	return decl->attrs_resolved = CALLOCS(ResolvedAttrData);
 }
 
-const char *default_c_compiler(void);
+const char *find_c_compiler(void);
 
 void print_build_env(void);
 void print_asm(PlatformTarget *target);

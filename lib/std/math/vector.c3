@@ -5,6 +5,9 @@ import std::math @public;
 alias Vec2 @weak = float[<2>];
 alias Vec3 @weak = float[<3>];
 alias Vec4 @weak = float[<4>];
+alias IntVec2 @weak = int[<2>];
+alias IntVec3 @weak = int[<3>];
+alias IntVec4 @weak = int[<4>];
 
 <*
  @require $Type::kind == VECTOR &&& @kindof(($Type){}[0]) == BOOL : "Expected a bool vector"
@@ -70,7 +73,7 @@ macro float[<*>] float[<*>].copysign(float[<*>] mag, float[<*>] sgn) => $$copysi
 macro float[<*>] float[<*>].fma(float[<*>] a, float[<*>] b, float[<*>] c) => $$fma(a, b, c);
 macro float[<*>] float[<*>].floor(float[<*>] x) => $$floor(x);
 macro float[<*>] float[<*>].nearbyint(float[<*>] x) => $$nearbyint(x);
-macro float[<*>] float[<*>].pow(float[<*>] x, exp) => pow(x, exp);
+macro float[<*>] float[<*>].pow(float[<*>] x, float exp) => math::pow(x, exp);
 macro float[<*>] float[<*>].rint(float[<*>] x) => $$rint(x);
 macro float[<*>] float[<*>].round(float[<*>] x) => $$round(x);
 macro float[<*>] float[<*>].roundeven(float[<*>] x) => $$roundeven(x);
@@ -105,7 +108,7 @@ macro double[<*>] double[<*>].copysign(double[<*>] mag, double[<*>] sgn) => $$co
 macro double[<*>] double[<*>].floor(double[<*>] x) => $$floor(x);
 macro double[<*>] double[<*>].fma(double[<*>] a, double[<*>] b, double[<*>] c) => $$fma(a, b, c);
 macro double[<*>] double[<*>].nearbyint(double[<*>] x) => $$nearbyint(x);
-macro double[<*>] double[<*>].pow(double[<*>] x, exp) => pow(x, exp);
+macro double[<*>] double[<*>].pow(double[<*>] x, double exp) => math::pow(x, exp);
 macro double[<*>] double[<*>].rint(double[<*>] x) => $$rint(x);
 macro double[<*>] double[<*>].round(double[<*>] x) => $$round(x);
 macro double[<*>] double[<*>].roundeven(double[<*>] x) => $$roundeven(x);
