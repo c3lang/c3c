@@ -1032,7 +1032,7 @@ fn GfxWindow*? _fetch_win(ObjId self) @local
 }
 // MacOS callbacks
 
-fn void _macos_register_dnd(ObjId view)
+fn void _macos_register_dnd(ObjId view) @local
 {
 	ObjId types = darwin::nsmutable_array().send(ObjId, "array");
 	types.send_void("addObject:", "public.file-url".to_nsstring());
@@ -1040,7 +1040,7 @@ fn void _macos_register_dnd(ObjId view)
 	view.send_void("registerForDraggedTypes:", types);
 }
 
-fn void? _osx_register_classes()
+fn void? _osx_register_classes() @local
 {
 	if (_macos_window_delegate_class) return;
 
