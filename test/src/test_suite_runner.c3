@@ -119,6 +119,12 @@ fn void RunFile.close(&self)
 	self.closed = true;
 }
 
+enum RunMode : int (String command)
+{
+	COMPILE_ONLY    { "compile-only" },
+	STATIC_LIB      { "static-lib" },
+}
+
 struct RunSettings
 {
 	bool safe;
@@ -129,6 +135,7 @@ struct RunSettings
 	List{RunFile*} input_files;
 	List{RunFile*} output_files;
 	RunFile* current_file;
+	RunMode mode;
 }
 
 /* --------------------- Error parsing helpers -------------------------- */
@@ -303,6 +310,20 @@ fn bool parse_header_directive(int* line_no, String line, RunSettings* settings,
 	{
 		case "error":
 			if (!is_output) settings.current_file.errors.push({ *line_no, value, false });
+		case "mode":
+			if (!is_output)
+			{
+				switch (value)
+				{
+					case "compile-only":
+						settings.mode = RunMode.COMPILE_ONLY;
+					case "static-lib":
+						settings.mode = RunMode.STATIC_LIB;
+					default:
+						io::fprintfn(output_stream, "FAILED - Unknown compilation mode '%s'", value)!!;
+						return false;
+				}
+			}
 		case "safe":
 			if (!is_output) settings.safe = value == "yes";
 		case "debuginfo":
@@ -461,6 +482,7 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 	String content = (String)content_raw;
 
 	RunSettings settings;
+	settings.mode = RunMode.COMPILE_ONLY;
 	settings.opts.init(tmem);
 	settings.input_files.init(tmem);
 	settings.output_files.init(tmem);
@@ -532,14 +554,26 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 	cmdline.init(tmem, 32);
 	cmdline.push(context.compiler_path);
 
+	cmdline.push(settings.mode.command);
 	cmdline.push_all({
-		"compile-only",
 		"-O0",
 		"--test",
 		"--max-mem", "512",
-		"--no-obj",
 		"--threads", "1"
 	});
+
+	bool static_lib = settings.mode == RunMode.STATIC_LIB;
+	switch (settings.mode)
+	{
+		case RunMode.COMPILE_ONLY:
+			cmdline.push("--no-obj");
+		case RunMode.STATIC_LIB:
+			cmdline.push_all({
+				"-C", "-o", "test",
+				"--output-dir", test_dir,
+				"--header-output", test_dir
+			});
+	}
 
 	if (context.backend)
 	{
@@ -571,7 +605,7 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 		cmdline.push(test_dir.tappend(file.name)!!);
 	}
 
-	if (!single && context.backend != "c")
+	if (!static_lib && !single && context.backend != "c")
 	{
 		cmdline.push("--emit-llvm");
 	}
@@ -631,7 +665,7 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 
 	if (!parse_result(out, settings, &cmdline, output_stream, result)) return false;
 
-	if (context.backend != "c")
+	if (static_lib || context.backend != "c")
 	{
 		foreach (file : settings.output_files)
 		{
