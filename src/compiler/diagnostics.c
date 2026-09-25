@@ -126,7 +126,7 @@ static void print_error_type_at(SourceLoc *location, const char *message, PrintT
 		eprintf("\n");
 		return;
 	}
-	else if (compiler.build.test_output || compiler.build.benchmark_output)
+	if (compiler.build.test_output || compiler.build.benchmark_output)
 	{
 		switch (print_type)
 		{
@@ -402,7 +402,26 @@ void print_error_at(SourceLocId loc, const char *message, ...)
 void print_error_after(SourceLoc *curr, const char *message, ...)
 {
 	SourceLoc loc = *curr;
-	loc.col += loc.length;
+	// Spans cover every line of a multiline token, so the position after
+	// it is on its last row, not at the start column plus the full length.
+	const char *start = source_file_by_id(loc.file_id)->contents + loc.offset;
+	const char *end = start + loc.length;
+	const char *last_row_start = NULL;
+	for (const char *p = start; p < end; p++)
+	{
+		if (*p != '\n') continue;
+		loc.row++;
+		last_row_start = p + 1;
+	}
+	if (last_row_start)
+	{
+		loc.col = (uint16_t)(end - last_row_start + 1);
+		loc.offset += loc.length;
+	}
+	else
+	{
+		loc.col += loc.length;
+	}
 	loc.length = 1;
 	va_list list;
 	va_start(list, message);
