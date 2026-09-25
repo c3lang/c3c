@@ -59,13 +59,13 @@ struct GfxContext
 	struct @feat(WIN32)
 	{
 		Win32_HINSTANCE instance;
-		Win32_WNDCLASSW wndClass;
-		ushort[256]     wideClassName;
+		Win32_WNDCLASSW wnd_class;
+		ushort[256]     wide_class_name;
 		Win32_HWND      helper_window;
 	}
 	struct @feat(WASM)
 	{
-		int usingAsyncify;
+		int using_asyncify;
 	}
 
 	GfxDataTransfer* unix_clipboard @feat(LINUX, BSD);
@@ -76,14 +76,14 @@ struct GfxContext
 	{
 		GfxPoint drop;
 		bool mouse_enter;
-		bool dataDragging;
-		bool dataDrop;
+		bool data_dragging;
+		bool data_drop;
 		bool mouse_leave;
 		GfxWindow* win;
 		GfxWindow* win_leave;
-		sz dataLength;
+		sz data_length;
 	}
-	GfxKeyState[8] mouseButtons;
+	GfxKeyState[8] mouse_buttons;
 	GfxKeyState[GFX_KEYS] keyboard;
 	Vec2 scroll;
 	Vec2 vector;
@@ -132,7 +132,7 @@ struct GfxWindowInternal
 	GfxEventMask enabled_events;
 	GfxWindowFlags flags;
 	GfxRect old_bounds;
-	GfxMonitorMode oldMode;
+	GfxMonitorMode old_mode;
 	GfxMouse* mouse;
 }
 
@@ -301,7 +301,7 @@ fn void _reset_prev_state()
 	foreach (&entry : _gfx.keyboard) entry.prev = entry.current;
 	foreach (mouse : GfxMouseButton::values)
 	{
-		_gfx.mouseButtons[mouse.ordinal].prev = _gfx.mouseButtons[mouse.ordinal].current;
+		_gfx.mouse_buttons[mouse.ordinal].prev = _gfx.mouse_buttons[mouse.ordinal].current;
 	}
 	_gfx.scroll = {};
 	_gfx.vector = {};
@@ -397,35 +397,35 @@ fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindow
 }
 
 
-fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags cmpFlags) @private
+fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags cmp_flags) @private
 {
 	switch
 	{
 		case flags.no_border: win.set_border(false);
-		case cmpFlags.no_border: win.set_border(true);
+		case cmp_flags.no_border: win.set_border(true);
 	}
 	if (flags.center) win.center_on_screen();
 	switch
 	{
 		case flags.maximize: win.maximize();
-		case cmpFlags.maximize: win.restore();
+		case cmp_flags.maximize: win.restore();
 	}
 	switch
 	{
 		case flags.minimize: win.minimize();
-		case cmpFlags.minimize: win.restore();
+		case cmp_flags.minimize: win.restore();
 	}
 	if (flags.center_cursor) _window_move_mouse(win, win.origin + win.size / 2);
 	switch
 	{
 		case flags.fullscreen: _window_set_fullscreen(win, true);
-		case cmpFlags.fullscreen: _window_set_fullscreen(win, false);
+		case cmp_flags.fullscreen: _window_set_fullscreen(win, false);
 	}
 	if (flags.hide_mouse)
 	{
 		win.show_mouse(false);
 	}
-	else if (cmpFlags.hide_mouse)
+	else if (cmp_flags.hide_mouse)
 	{
 		win.show_mouse(true);
 	}
@@ -433,7 +433,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	{
 		win.hide();
 	}
-	else if (cmpFlags.hide)
+	else if (cmp_flags.hide)
 	{
 		win.show();
 	}
@@ -441,7 +441,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	{
 		_window_set_floating(win, true);
 	}
-	else if (cmpFlags.floating)
+	else if (cmp_flags.floating)
 	{
 		_window_set_floating(win, false);
 	}
@@ -449,7 +449,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	{
 		win.set_raw_mouse_mode(true);
 	}
-	else if (cmpFlags.raw_mouse)
+	else if (cmp_flags.raw_mouse)
 	{
 		win.set_raw_mouse_mode(false);
 	}
@@ -457,7 +457,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	{
 		win.set_capture_raw_mouse(true);
 	}
-	else if (cmpFlags.capture_mouse)
+	else if (cmp_flags.capture_mouse)
 	{
 		win.set_capture_mouse(false);
 	}
@@ -468,7 +468,7 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 		case flags.no_resize:
 			_window_set_max_size(win, win.size);
 			_window_set_min_size(win, win.size);
-		case cmpFlags.no_resize:
+		case cmp_flags.no_resize:
 			_window_set_max_size(win, {});
 			_window_set_min_size(win, {});
 	}
@@ -488,8 +488,8 @@ fn void _mouse_button_callback(GfxWindow* win, GfxMouseButton button, bool press
 		if (!win.internal.enabled_events.mouse_button_released) return;
 		event.type = MOUSE_BUTTON_RELEASED;
 	}
-	_gfx.mouseButtons[(sz)button].prev = _gfx.mouseButtons[(sz)button].current;
-	_gfx.mouseButtons[(sz)button].current = press;
+	_gfx.mouse_buttons[(sz)button].prev = _gfx.mouse_buttons[(sz)button].current;
+	_gfx.mouse_buttons[(sz)button].current = press;
 	event.button.value = button;
 	event.button.state = press;
 	event.common.win = win;
@@ -552,17 +552,17 @@ fn void _release_all_keys(GfxWindow* win)
 	reset_key();
 }
 
-fn void _data_drag_callback(GfxWindow* win, GfxDataTransferType dataType, GfxDndActionType action, GfxPoint pos)
+fn void _data_drag_callback(GfxWindow* win, GfxDataTransferType data_type, GfxDndActionType action, GfxPoint pos)
 {
 	if (!win.internal.enabled_events.data_drag || !win.internal.flags.allow_dnd) return;
 	_gfx.window_state.win = win;
-	_gfx.window_state.dataDragging = true;
+	_gfx.window_state.data_dragging = true;
 	_gfx.window_state.drop = pos;
 	GfxEvent event;
 	event.type = DATA_DRAG;
 	event.drag.pos = pos;
 	event.drag.action = action;
-	event.drag.dataType = dataType;
+	event.drag.data_type = data_type;
 	event.common.win = win;
 	_event_queue_call_push(&event);
 }
@@ -689,13 +689,13 @@ fn void _drop_url_data(GfxWindow* win, char[] data) => @pool()
 	}
 }
 
-fn void _data_drop_callback(GfxWindow* win, char[] data, GfxDataTransferType dataType)
+fn void _data_drop_callback(GfxWindow* win, char[] data, GfxDataTransferType data_type)
 {
 	if (!win.internal.enabled_events.data_drop || !win.internal.flags.allow_dnd) return;
 	_gfx.window_state.win = win;
-	_gfx.window_state.dataDrop = true;
-	_gfx.window_state.dataLength = data.len;
-	GfxDataDropNode node = { .data = data, .type = dataType };
+	_gfx.window_state.data_drop = true;
+	_gfx.window_state.data_length = data.len;
+	GfxDataDropNode node = { .data = data, .type = data_type };
 	GfxEvent event;
 	event.type = DATA_DROP;
 	event.drop.value = &node;
@@ -703,19 +703,19 @@ fn void _data_drop_callback(GfxWindow* win, char[] data, GfxDataTransferType dat
 	if (_gfx.callbacks[event.type] != null) _gfx.callbacks[event.type](&event);
 	if (!_gfx.queue_events && !_gfx.dnd_build) return;
 	node.data = mem::@clone_slice(data);
-	GfxDataDropNode* heapNode = mem::new(GfxDataDropNode);
-	*heapNode = node;
+	GfxDataDropNode* heap_node = mem::new(GfxDataDropNode);
+	*heap_node = node;
 	if (_gfx.dnd_root == null)
 	{
-		_gfx.dnd_root = heapNode;
-		_gfx.dnd_cur = heapNode;
+		_gfx.dnd_root = heap_node;
+		_gfx.dnd_cur = heap_node;
 	}
 	else
 	{
-		_gfx.dnd_cur.next = heapNode;
-		_gfx.dnd_cur = heapNode;
+		_gfx.dnd_cur.next = heap_node;
+		_gfx.dnd_cur = heap_node;
 	}
-	event.drop.value = heapNode;
+	event.drop.value = heap_node;
 	event_queue_push(&event);
 }
 
@@ -781,7 +781,7 @@ fn void _key_char_callback(GfxWindow* win, uint codepoint)
 	if (!win.internal.enabled_events.key_char) return;
 	GfxEvent event;
 	event.type = KEY_CHAR;
-	event.keyChar.value = codepoint;
+	event.key_char.value = codepoint;
 	event.common.win = win;
 	_event_queue_call_push(&event);
 }

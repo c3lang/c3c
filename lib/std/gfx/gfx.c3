@@ -105,7 +105,7 @@ struct GfxMonitor
 	GfxPoint origin;
 	char[128] name;
 	Vec2 scale;
-	float pixelRatio;
+	float pixel_ratio;
 	Vec2 phys_size;
 	GfxMonitorMode mode;
 	void* user_ptr;
@@ -167,10 +167,10 @@ struct GfxWindowSrc @feat(WIN32)
 	Win32_HICON         hIconBig;
 	GfxPoint            min_size;
 	GfxPoint            max_size;
-	int                 aspectRatioW, aspectRatioH;
-	bool                actionFrame;
+	int                 aspect_ratio_w, aspect_ratio_h;
+	bool                action_frame;
 	int                 modal_loop_depth;
-	ushort              highSurrogate;
+	ushort              high_surrogate;
 	GfxBackingContext   ctx;
 	GfxBacking          backing;
 }
@@ -186,7 +186,7 @@ struct GfxWindowSrc @feat(BSD, LINUX)
 		XWindow parent;
 		GContext gc;
 		XlibIC ic;
-		Clock flashEnd;
+		Clock flash_end;
 		XSyncCounter counter;
 		XSyncValue resize_id;
 		bool resize_in_progress;
@@ -194,24 +194,24 @@ struct GfxWindowSrc @feat(BSD, LINUX)
 	struct @feat(WAYLAND)
 	{
 		WlProxy* surface;
-		WlProxy* layerSurface;
-		WlProxy* xdgSurface;
-		WlProxy* xdgToplevel;
+		WlProxy* layer_surface;
+		WlProxy* xdg_surface;
+		WlProxy* xdg_toplevel;
 		WlProxy* decoration;
 		WlProxy* locked_pointer;
 		WlProxy* icon;
-		WlProxy* dataSource;
-		WlProxy* customCursorSurface;
-		GfxMonitorNode* activeMonitor;
-		uint decorationMode;
-		bool pendingActivated;
+		WlProxy* data_source;
+		WlProxy* custom_cursor_surface;
+		GfxMonitorNode* active_monitor;
+		uint decoration_mode;
+		bool pending_activated;
 		bool activated;
 		bool resizing;
-		bool pendingMaximized;
+		bool pending_maximized;
 		bool maximized;
 		bool minimized;
 		bool configured;
-		bool usingCustomCursor;
+		bool using_custom_cursor;
 	}
 }
 
@@ -287,7 +287,7 @@ struct GfxDataDragEvent
 	inline GfxCommonEvent common;
 	GfxPoint pos;
 	GfxDndActionType action;
-	GfxDataTransferType dataType;
+	GfxDataTransferType data_type;
 }
 struct GfxScaleUpdatedEvent
 {
@@ -317,7 +317,7 @@ union GfxEvent
 	GfxMouseDeltaEvent delta;
 	GfxMouseMotionEvent mouse;
 	GfxKeyEvent key;
-	GfxKeyCharEvent keyChar;
+	GfxKeyCharEvent key_char;
 	GfxDataDropEvent drop;
 	GfxDataDragEvent drag;
 	GfxScaleUpdatedEvent scale;
@@ -964,7 +964,7 @@ fn GfxWindow*? create_window(String name, int x, int y, int w, int h, GfxWindowF
  @param button : "The button to test"
  @return "True if the button is down now and was up on the previous poll"
 *>
-fn bool is_mouse_pressed(GfxMouseButton button) => _gfx.mouseButtons[(sz)button].current && !_gfx.mouseButtons[(sz)button].prev;
+fn bool is_mouse_pressed(GfxMouseButton button) => _gfx.mouse_buttons[(sz)button].current && !_gfx.mouse_buttons[(sz)button].prev;
 
 <*
  Request attention for the window, typically by flashing its taskbar entry.
@@ -1389,7 +1389,7 @@ fn void GfxWindow.set_user_ptr(&self, void* ptr)
 *>
 fn GfxPoint GfxWindow.get_size_in_pixels(&self)
 {
-	return (GfxPoint)((Vec2)self.size * _window_find_monitor(self).pixelRatio) ?? { -1, -1 };
+	return (GfxPoint)((Vec2)self.size * _window_find_monitor(self).pixel_ratio) ?? { -1, -1 };
 }
 
 <*
@@ -1449,7 +1449,7 @@ fn void GfxWindow.set_mouse_passthrough(&self, bool passthrough)
 *>
 fn bool GfxWindow.is_data_dragging(&self)
 {
-	return _gfx.window_state.win == self && _gfx.window_state.dataDragging;
+	return _gfx.window_state.win == self && _gfx.window_state.data_dragging;
 }
 
 <*
@@ -1556,7 +1556,7 @@ fn bool is_key_released(GfxKey key, GfxWindow* window = null)
 *>
 fn bool is_mouse_down(GfxMouseButton button, GfxWindow* window = null)
 {
-	return _gfx.mouseButtons[(sz)button].current && (!window || window.has_focus());
+	return _gfx.mouse_buttons[(sz)button].current && (!window || window.has_focus());
 }
 
 <*
@@ -1568,7 +1568,7 @@ fn bool is_mouse_down(GfxMouseButton button, GfxWindow* window = null)
 *>
 fn bool is_mouse_released(GfxMouseButton button, GfxWindow* window = null)
 {
-	return !_gfx.mouseButtons[button].current && _gfx.mouseButtons[button].prev && (!window || window.has_focus());
+	return !_gfx.mouse_buttons[button].current && _gfx.mouse_buttons[button].prev && (!window || window.has_focus());
 }
 
 <*
@@ -1897,7 +1897,7 @@ fn void set_queue_events(bool queue)
 *>
 fn GfxDataDropNode* GfxWindow.get_data_drop(&self)
 {
-	if (_gfx.window_state.win != self || !_gfx.window_state.dataDrop) return null;
+	if (_gfx.window_state.win != self || !_gfx.window_state.data_drop) return null;
 	return _gfx.dnd_root;
 }
 

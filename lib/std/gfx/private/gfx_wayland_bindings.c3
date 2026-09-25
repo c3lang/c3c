@@ -29,7 +29,7 @@ struct WlCallbackListener
 struct WlRegistryListener
 {
 	void* global;
-	void* globalRemove;
+	void* global_remove;
 }
 struct WlSeatListener
 {
@@ -48,9 +48,9 @@ struct WlPointerListener
 	void* button;
 	void* axis;
 	void* frame;
-	void* axisSource;
-	void* axisStop;
-	void* axisDiscrete;
+	void* axis_source;
+	void* axis_stop;
+	void* axis_discrete;
 }
 
 struct WlKeyboardListener
@@ -60,7 +60,7 @@ struct WlKeyboardListener
 	void* leave;
 	void* key;
 	void* modifiers;
-	void* repeatInfo;
+	void* repeat_info;
 }
 
 struct WlOutputListener
@@ -83,9 +83,9 @@ struct WlInterface
 {
 	ZString name;
 	int version;
-	int methodCount;
+	int method_count;
 	WlMessage* methods;
-	int eventCount;
+	int event_count;
 	WlMessage* events;
 }
 struct WlArray
@@ -100,13 +100,13 @@ struct WlCursorImage
 {
 	uint width;
 	uint height;
-	uint hotspotX;
-	uint hotspotY;
+	uint hotspot_x;
+	uint hotspot_y;
 	uint delay;
 }
 struct WlCursor
 {
-	uint imageCount;
+	uint image_count;
 	WlCursorImage** images;
 	ZString name;
 }
@@ -115,27 +115,27 @@ struct WlSurfaceListener
 {
 	void* enter;
 	void* leave;
-	void* preferredBufferScale;
-	void* preferredBufferTransform;
+	void* preferred_buffer_scale;
+	void* preferred_buffer_transform;
 }
 struct WlDataSourceListener
 {
 	void* target;
 	void* send;
 	void* cancelled;
-	void* dndDropPerformed;
-	void* dndFinished;
+	void* dnd_drop_performed;
+	void* dnd_finished;
 	void* action;
 }
 struct WlDataOfferListener
 {
 	void* offer;
-	void* sourceActions;
+	void* source_actions;
 	void* action;
 }
 struct WlDataDeviceListener
 {
-	void* dataOffer;
+	void* data_offer;
 	void* enter;
 	void* leave;
 	void* motion;
@@ -154,8 +154,8 @@ struct XdgToplevelListener
 {
 	void* configure;
 	void* close;
-	void* configureBounds;
-	void* wmCapabilities;
+	void* configure_bounds;
+	void* wm_capabilities;
 }
 struct ZxdgToplevelDecorationV1Listener
 {
@@ -163,7 +163,7 @@ struct ZxdgToplevelDecorationV1Listener
 }
 struct ZwpRelativePointerV1Listener
 {
-	void* relativeMotion;
+	void* relative_motion;
 }
 struct ZwpLockedPointerV1Listener
 {
@@ -172,8 +172,8 @@ struct ZwpLockedPointerV1Listener
 }
 struct ZxdgOutputV1Listener
 {
-	void* logicalPosition;
-	void* logicalSize;
+	void* logical_position;
+	void* logical_size;
 	void* done;
 	void* name;
 	void* description;
@@ -212,7 +212,7 @@ fn int wl_seat_add_listener(WlProxy* seat, WlSeatListener* listener, void* data)
 fn void wl_seat_destroy(WlProxy* seat) => wl_proxy_destroy(seat);
 
 fn int wl_pointer_add_listener(WlProxy* pointer, WlPointerListener* listener, void* data) => wl_proxy_add_listener(pointer, listener, data);
-fn void wl_pointer_set_cursor(WlProxy* pointer, uint serial, WlProxy* surface, int hotspotX, int hotspotY) => wl_proxy_marshal_flags(pointer, 0, null, wl_proxy_get_version(pointer), 0, serial, surface, hotspotX, hotspotY);
+fn void wl_pointer_set_cursor(WlProxy* pointer, uint serial, WlProxy* surface, int hotspot_x, int hotspot_y) => wl_proxy_marshal_flags(pointer, 0, null, wl_proxy_get_version(pointer), 0, serial, surface, hotspot_x, hotspot_y);
 fn void wl_pointer_release(WlProxy* pointer) => wl_proxy_marshal_flags(pointer, 1, null, wl_proxy_get_version(pointer), WL_MARSHAL_FLAG_DESTROY);
 
 fn int wl_keyboard_add_listener(WlProxy* keyboard, WlKeyboardListener* listener, void* data) => wl_proxy_add_listener(keyboard, listener, data);
@@ -237,13 +237,13 @@ fn WlProxy* wl_data_device_manager_get_data_device(WlProxy* mgr, WlProxy* seat) 
 fn void wl_data_device_manager_release(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 2, null, wl_proxy_get_version(mgr), WL_MARSHAL_FLAG_DESTROY);
 fn void wl_data_device_manager_destroy(WlProxy* mgr) => wl_proxy_destroy(mgr);
 
-fn void wl_data_source_offer(WlProxy* source, ZString mimeType) => wl_proxy_marshal_flags(source, 0, null, wl_proxy_get_version(source), 0, mimeType);
+fn void wl_data_source_offer(WlProxy* source, ZString mime_type) => wl_proxy_marshal_flags(source, 0, null, wl_proxy_get_version(source), 0, mime_type);
 fn int wl_data_source_add_listener(WlProxy* source, WlDataSourceListener* listener, void* data) => wl_proxy_add_listener(source, listener, data);
 fn void wl_data_source_destroy(WlProxy* source) => wl_proxy_marshal_flags(source, 1, null, wl_proxy_get_version(source), WL_MARSHAL_FLAG_DESTROY);
 
 fn int wl_data_offer_add_listener(WlProxy* offer, WlDataOfferListener* listener, void* data) => wl_proxy_add_listener(offer, listener, data);
-fn void wl_data_offer_accept(WlProxy* offer, uint serial, ZString mimeType) => wl_proxy_marshal_flags(offer, 0, null, wl_proxy_get_version(offer), 0, serial, mimeType);
-fn void wl_data_offer_receive(WlProxy* offer, ZString mimeType, int fd) => wl_proxy_marshal_flags(offer, 1, null, wl_proxy_get_version(offer), 0, mimeType, fd);
+fn void wl_data_offer_accept(WlProxy* offer, uint serial, ZString mime_type) => wl_proxy_marshal_flags(offer, 0, null, wl_proxy_get_version(offer), 0, serial, mime_type);
+fn void wl_data_offer_receive(WlProxy* offer, ZString mime_type, int fd) => wl_proxy_marshal_flags(offer, 1, null, wl_proxy_get_version(offer), 0, mime_type, fd);
 fn void wl_data_offer_destroy(WlProxy* offer) => wl_proxy_marshal_flags(offer, 2, null, wl_proxy_get_version(offer), WL_MARSHAL_FLAG_DESTROY);
 fn void wl_data_offer_finish(WlProxy* offer) => wl_proxy_marshal_flags(offer, 3, null, wl_proxy_get_version(offer), 0);
 fn void wl_data_offer_set_actions(WlProxy* offer, uint dnd_actions, uint preferred_action) => wl_proxy_marshal_flags(offer, 4, null, wl_proxy_get_version(offer), 0, dnd_actions, preferred_action);
@@ -332,7 +332,7 @@ extern fn void xkb_keymap_unref(XkbKeymap* keymap);
 extern fn int xkb_keymap_mod_get_index(XkbKeymap* keymap, ZString name);
 extern fn XkbState* xkb_state_new(XkbKeymap* keymap);
 extern fn void xkb_state_unref(XkbState* state);
-extern fn uint xkb_state_update_mask(XkbState* state, uint depressed, uint latched, uint locked, uint depressedLayout, uint latchedLayout, uint lockedLayout);
+extern fn uint xkb_state_update_mask(XkbState* state, uint depressed, uint latched, uint locked, uint depressed_layout, uint latched_layout, uint locked_layout);
 extern fn int xkb_state_key_get_syms(XkbState* state, XkbKeycode key, XkbKeysym** syms);
 extern fn XkbKeysym xkb_state_key_get_one_sym(XkbState* state, XkbKeycode key);
 extern fn uint xkb_keysym_to_utf32(XkbKeysym sym);
@@ -411,7 +411,7 @@ fn void xdg_surface_destroy(WlProxy* surface) => wl_proxy_marshal_flags(surface,
 
 fn void xdg_toplevel_add_listener(WlProxy* toplevel, XdgToplevelListener* listener, void* data) => wl_proxy_add_listener(toplevel, listener, data);
 fn void xdg_toplevel_set_title(WlProxy* toplevel, ZString title) => wl_proxy_marshal_flags(toplevel, 2, null, wl_proxy_get_version(toplevel), 0, title);
-fn void xdg_toplevel_set_app_id(WlProxy* toplevel, ZString appId) => wl_proxy_marshal_flags(toplevel, 3, null, wl_proxy_get_version(toplevel), 0, appId);
+fn void xdg_toplevel_set_app_id(WlProxy* toplevel, ZString app_id) => wl_proxy_marshal_flags(toplevel, 3, null, wl_proxy_get_version(toplevel), 0, app_id);
 fn void xdg_toplevel_set_max_size(WlProxy* toplevel, int w, int h) => wl_proxy_marshal_flags(toplevel, 7, null, wl_proxy_get_version(toplevel), 0, w, h);
 fn void xdg_toplevel_set_min_size(WlProxy* toplevel, int w, int h) => wl_proxy_marshal_flags(toplevel, 8, null, wl_proxy_get_version(toplevel), 0, w, h);
 fn void xdg_toplevel_set_maximized(WlProxy* toplevel) => wl_proxy_marshal_flags(toplevel, 9, null, wl_proxy_get_version(toplevel), 0);
@@ -515,8 +515,8 @@ WlMessage[1] xdg_wm_base_events = {
 };
 WlInterface xdgWmBaseInterface @weak @export("xdg_wm_base_interface") = {
 	.name = "xdg_wm_base", .version = 7,
-	.methodCount = 4, .methods = &xdg_wm_base_requests,
-	.eventCount = 1, .events = &xdg_wm_base_events,
+	.method_count = 4, .methods = &xdg_wm_base_requests,
+	.event_count = 1, .events = &xdg_wm_base_events,
 };
 
 // xdg_surface
@@ -532,8 +532,8 @@ WlMessage[1] xdg_surface_events = {
 };
 WlInterface xdgSurfaceInterface @weak @export("xdg_surface_interface") = {
 	.name = "xdg_surface", .version = 7,
-	.methodCount = 5, .methods = &xdg_surface_requests[0],
-	.eventCount = 1, .events = &xdg_surface_events[0],
+	.method_count = 5, .methods = &xdg_surface_requests[0],
+	.event_count = 1, .events = &xdg_surface_events[0],
 };
 
 // xdg_toplevel
@@ -561,8 +561,8 @@ WlMessage[4] xdg_toplevel_events = {
 };
 WlInterface xdgToplevelInterface @weak @export("xdg_toplevel_interface") = {
 	.name = "xdg_toplevel", .version = 7,
-	.methodCount = 14, .methods = &xdg_toplevel_requests[0],
-	.eventCount = 4, .events = &xdg_toplevel_events[0],
+	.method_count = 14, .methods = &xdg_toplevel_requests[0],
+	.event_count = 4, .events = &xdg_toplevel_events[0],
 };
 
 // zxdg_decoration_manager_v1
@@ -572,8 +572,8 @@ WlMessage[2] zxdg_decoration_manager_v1_requests = {
 };
 WlInterface zxdgDecorationManagerV1Interface @weak @export("zxdg_decoration_manager_v1_interface") = {
 	.name = "zxdg_decoration_manager_v1", .version = 2,
-	.methodCount = 2, .methods = &zxdg_decoration_manager_v1_requests[0],
-	.eventCount = 0, .events = null,
+	.method_count = 2, .methods = &zxdg_decoration_manager_v1_requests[0],
+	.event_count = 0, .events = null,
 };
 
 WlMessage[3] zxdg_toplevel_decoration_v1_requests = {
@@ -586,8 +586,8 @@ WlMessage[1] zxdg_toplevel_decoration_v1_events = {
 };
 WlInterface zxdgToplevelDecorationV1Interface @weak @export("zxdg_toplevel_decoration_v1_interface") = {
 	.name = "zxdg_toplevel_decoration_v1", .version = 2,
-	.methodCount = 3, .methods = &zxdg_toplevel_decoration_v1_requests[0],
-	.eventCount = 1, .events = &zxdg_toplevel_decoration_v1_events[0],
+	.method_count = 3, .methods = &zxdg_toplevel_decoration_v1_requests[0],
+	.event_count = 1, .events = &zxdg_toplevel_decoration_v1_events[0],
 };
 
 // zwp_pointer_constraints_v1
@@ -598,8 +598,8 @@ WlMessage[3] zwp_pointer_constraints_v1_requests = {
 };
 WlInterface zwpPointerConstraintsV1Interface @weak @export("zwp_pointer_constraints_v1_interface") = {
 	.name = "zwp_pointer_constraints_v1", .version = 1,
-	.methodCount = 3, .methods = &zwp_pointer_constraints_v1_requests[0],
-	.eventCount = 0, .events = null,
+	.method_count = 3, .methods = &zwp_pointer_constraints_v1_requests[0],
+	.event_count = 0, .events = null,
 };
 
 WlMessage[3] zwp_locked_pointer_v1_requests = {
@@ -613,8 +613,8 @@ WlMessage[2] zwp_locked_pointer_v1_events = {
 };
 WlInterface zwpLockedPointerV1Interface @weak @export("zwp_locked_pointer_v1_interface") = {
 	.name = "zwp_locked_pointer_v1", .version = 1,
-	.methodCount = 3, .methods = &zwp_locked_pointer_v1_requests[0],
-	.eventCount = 2, .events = &zwp_locked_pointer_v1_events[0],
+	.method_count = 3, .methods = &zwp_locked_pointer_v1_requests[0],
+	.event_count = 2, .events = &zwp_locked_pointer_v1_events[0],
 };
 
 // zwp_relative_pointer_manager_v1
@@ -624,8 +624,8 @@ WlMessage[2] zwp_relative_pointer_manager_v1_requests = {
 };
 WlInterface zwpRelativePointerManagerV1Interface @weak @export("zwp_relative_pointer_manager_v1_interface") = {
 	.name = "zwp_relative_pointer_manager_v1", .version = 1,
-	.methodCount = 2, .methods = &zwp_relative_pointer_manager_v1_requests[0],
-	.eventCount = 0, .events = null,
+	.method_count = 2, .methods = &zwp_relative_pointer_manager_v1_requests[0],
+	.event_count = 0, .events = null,
 };
 
 WlMessage[1] zwp_relative_pointer_v1_requests = {
@@ -636,8 +636,8 @@ WlMessage[1] zwp_relative_pointer_v1_events = {
 };
 WlInterface zwpRelativePointerV1Interface @weak @export("zwp_relative_pointer_v1_interface") = {
 	.name = "zwp_relative_pointer_v1", .version = 1,
-	.methodCount = 1, .methods = &zwp_relative_pointer_v1_requests[0],
-	.eventCount = 1, .events = &zwp_relative_pointer_v1_events[0],
+	.method_count = 1, .methods = &zwp_relative_pointer_v1_requests[0],
+	.event_count = 1, .events = &zwp_relative_pointer_v1_events[0],
 };
 
 // zxdg_output_manager_v1
@@ -647,8 +647,8 @@ WlMessage[2] zxdg_output_manager_v1_requests = {
 };
 WlInterface zxdgOutputManagerV1Interface @weak @export("zxdg_output_manager_v1_interface") = {
 	.name = "zxdg_output_manager_v1", .version = 3,
-	.methodCount = 2, .methods = &zxdg_output_manager_v1_requests[0],
-	.eventCount = 0, .events = null,
+	.method_count = 2, .methods = &zxdg_output_manager_v1_requests[0],
+	.event_count = 0, .events = null,
 };
 
 WlMessage[1] zxdg_output_v1_requests = {
@@ -663,8 +663,8 @@ WlMessage[5] zxdg_output_v1_events = {
 };
 WlInterface zxdgOutputV1Interface @weak @export("zxdg_output_v1_interface") = {
 	.name = "zxdg_output_v1", .version = 3,
-	.methodCount = 1, .methods = &zxdg_output_v1_requests[0],
-	.eventCount = 5, .events = &zxdg_output_v1_events[0],
+	.method_count = 1, .methods = &zxdg_output_v1_requests[0],
+	.event_count = 5, .events = &zxdg_output_v1_events[0],
 };
 
 // xdg_toplevel_icon_manager_v1
@@ -679,8 +679,8 @@ WlMessage[2] xdg_toplevel_icon_manager_v1_events = {
 };
 WlInterface xdgToplevelIconManagerV1Interface @weak @export("xdg_toplevel_icon_manager_v1_interface") = {
 	.name = "xdg_toplevel_icon_manager_v1", .version = 1,
-	.methodCount = 3, .methods = &xdg_toplevel_icon_manager_v1_requests[0],
-	.eventCount = 2, .events = &xdg_toplevel_icon_manager_v1_events[0],
+	.method_count = 3, .methods = &xdg_toplevel_icon_manager_v1_requests[0],
+	.event_count = 2, .events = &xdg_toplevel_icon_manager_v1_events[0],
 };
 
 WlMessage[3] xdg_toplevel_icon_v1_requests = {
@@ -690,8 +690,8 @@ WlMessage[3] xdg_toplevel_icon_v1_requests = {
 };
 WlInterface xdgToplevelIconV1Interface @weak @export("xdg_toplevel_icon_v1_interface") = {
 	.name = "xdg_toplevel_icon_v1", .version = 1,
-	.methodCount = 3, .methods = &xdg_toplevel_icon_v1_requests[0],
-	.eventCount = 0, .events = null,
+	.method_count = 3, .methods = &xdg_toplevel_icon_v1_requests[0],
+	.event_count = 0, .events = null,
 };
 
 // wp_pointer_warp_v1
@@ -701,8 +701,8 @@ WlMessage[2] wp_pointer_warp_v1_requests = {
 };
 WlInterface wpPointerWarpV1Interface @weak @export("wp_pointer_warp_v1_interface") = {
 	.name = "wp_pointer_warp_v1", .version = 1,
-	.methodCount = 2, .methods = &wp_pointer_warp_v1_requests[0],
-	.eventCount = 0, .events = null,
+	.method_count = 2, .methods = &wp_pointer_warp_v1_requests[0],
+	.event_count = 0, .events = null,
 };
 
 // zwlr_layer_shell_v1
@@ -712,8 +712,8 @@ WlMessage[2] zwlr_layer_shell_v1_requests = {
 };
 WlInterface zwlrLayerShellV1Interface @weak @export("zwlr_layer_shell_v1_interface") = {
 	.name = "zwlr_layer_shell_v1", .version = 5,
-	.methodCount = 2, .methods = &zwlr_layer_shell_v1_requests[0],
-	.eventCount = 0, .events = null,
+	.method_count = 2, .methods = &zwlr_layer_shell_v1_requests[0],
+	.event_count = 0, .events = null,
 };
 
 // zwlr_layer_surface_v1
@@ -735,6 +735,6 @@ WlMessage[2] zwlr_layer_surface_v1_events = {
 };
 WlInterface zwlrLayerSurfaceV1Interface @weak @export("zwlr_layer_surface_v1_interface") = {
 	.name = "zwlr_layer_surface_v1", .version = 5,
-	.methodCount = 10, .methods = &zwlr_layer_surface_v1_requests[0],
-	.eventCount = 2, .events = &zwlr_layer_surface_v1_events[0],
+	.method_count = 10, .methods = &zwlr_layer_surface_v1_requests[0],
+	.event_count = 2, .events = &zwlr_layer_surface_v1_events[0],
 };

@@ -129,7 +129,7 @@ fn int main()
 							break;
 					}
 				case KEY_CHAR:
-					io::printfn("Char received: %c (%d)", (char)ev.keyChar.value, ev.keyChar.value);
+					io::printfn("Char received: %c (%d)", (char)ev.key_char.value, ev.key_char.value);
 				default:
 					break;
 			}

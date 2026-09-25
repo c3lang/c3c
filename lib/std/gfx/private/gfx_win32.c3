@@ -15,12 +15,12 @@ fn void? init_platform(String class_name, GfxInitOption flags) => @pool()
 		assert(class_name.len < 254);
 		WString str = class_name.to_temp_wstring()!;
 		sz len = str.len();
-		mem::copy(&gfx::_gfx.wideClassName, str, len);
-		gfx::_gfx.wideClassName[len] = 0;
+		mem::copy(&gfx::_gfx.wide_class_name, str, len);
+		gfx::_gfx.wide_class_name[len] = 0;
 	};
 
-	gfx::_gfx.wndClass = {
-		.lpszClassName = (WString)&gfx::_gfx.wideClassName,
+	gfx::_gfx.wnd_class = {
+		.lpszClassName = (WString)&gfx::_gfx.wide_class_name,
 		.hInstance = instance,
 		.hCursor = win32::loadCursorA(null, (Win32_LPCSTR)win32::IDC_ARROW),
 		.lpfnWndProc = &gfx::_wnd_proc,
@@ -28,13 +28,13 @@ fn void? init_platform(String class_name, GfxInitOption flags) => @pool()
 		.hIcon = (Win32_HICON)win32::loadImageA(instance, "C3GFX", 1 /* IMAGE_ICON */, 0, 0, 0x00000040 | 0x00008000 /* LR_DEFAULTSIZE|LR_SHARED */)
 	};
 
-	if (!gfx::_gfx.wndClass.hIcon)
+	if (!gfx::_gfx.wnd_class.hIcon)
 	{
-		gfx::_gfx.wndClass.hIcon = (Win32_HICON)win32::loadImageA(null, (Win32_LPCSTR)win32::IDI_APPLICATION, 1, 0, 0, 0x00000040 | 0x00008000);
+		gfx::_gfx.wnd_class.hIcon = (Win32_HICON)win32::loadImageA(null, (Win32_LPCSTR)win32::IDI_APPLICATION, 1, 0, 0, 0x00000040 | 0x00008000);
 	}
 
-	win32::registerClassW(&gfx::_gfx.wndClass);
-	gfx::_gfx.helper_window = win32::createWindowExW(0, gfx::_gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, instance, null);
+	win32::registerClassW(&gfx::_gfx.wnd_class);
+	gfx::_gfx.helper_window = win32::createWindowExW(0, gfx::_gfx.wnd_class.lpszClassName, null, 0, 0, 0, 0, 0, null, null, instance, null);
 
 	char[4] blk;
 	gfx::_gfx.hidden_mouse = win32::create_mouse(&blk, { 1, 1 }, RGBA8) ?? null;
@@ -44,7 +44,7 @@ fn void destroy_platform()
 {
 	win32::timeEndPeriod(1);
 	if (gfx::_gfx.helper_window) win32::destroyWindow(gfx::_gfx.helper_window);
-	if (gfx::_gfx.instance) win32::unregisterClassW(gfx::_gfx.wndClass.lpszClassName, gfx::_gfx.instance);
+	if (gfx::_gfx.instance) win32::unregisterClassW(gfx::_gfx.wnd_class.lpszClassName, gfx::_gfx.instance);
 	if (gfx::_gfx.hidden_mouse != null) free_mouse(gfx::_gfx.hidden_mouse);
 }
 
@@ -190,10 +190,10 @@ fn void poll_monitors()
 {
 	for (GfxMonitorNode* node = gfx::_gfx.monitors.list.head; node != null; node = node.next) node.disconnected = true;
 
-	for (uint adapterNum = 0;; adapterNum++)
+	for (uint adapter_num = 0;; adapter_num++)
 	{
 		Win32_DISPLAY_DEVICEW adapter = { .cb = Win32_DISPLAY_DEVICEW::size };
-		if (!win32::enumDisplayDevicesW(null, adapterNum, &adapter, 0)) break;
+		if (!win32::enumDisplayDevicesW(null, adapter_num, &adapter, 0)) break;
 		if (!(adapter.stateFlags & win32::DISPLAY_DEVICE_ACTIVE)) continue;
 
 		Win32_DWORD device_num;
@@ -249,33 +249,33 @@ fn GfxMouse*? create_mouse(char* data, GfxSize size, GfxFormat format)
 
 fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 {
-	iptr mouseIcon;
+	iptr mouse_icon;
 	switch (mouse)
 	{
 		case NORMAL:
-		case ARROW:          mouseIcon = win32::IDC_ARROW;
-		case IBEAM:          mouseIcon = win32::IDC_IBEAM;
-		case WAIT:           mouseIcon = win32::IDC_WAIT;
-		case CROSSHAIR:      mouseIcon = win32::IDC_CROSS;
-		case PROGRESS:       mouseIcon = win32::IDC_APPSTARTING;
+		case ARROW:          mouse_icon = win32::IDC_ARROW;
+		case IBEAM:          mouse_icon = win32::IDC_IBEAM;
+		case WAIT:           mouse_icon = win32::IDC_WAIT;
+		case CROSSHAIR:      mouse_icon = win32::IDC_CROSS;
+		case PROGRESS:       mouse_icon = win32::IDC_APPSTARTING;
 		case RESIZE_NW:
 		case RESIZE_SE:
-		case RESIZE_NWSE:    mouseIcon = win32::IDC_SIZENWSE;
+		case RESIZE_NWSE:    mouse_icon = win32::IDC_SIZENWSE;
 		case RESIZE_NE:
 		case RESIZE_SW:
-		case RESIZE_NESW:    mouseIcon = win32::IDC_SIZENESW;
+		case RESIZE_NESW:    mouse_icon = win32::IDC_SIZENESW;
 		case RESIZE_E:
 		case RESIZE_W:
-		case RESIZE_EW:      mouseIcon = win32::IDC_SIZEWE;
+		case RESIZE_EW:      mouse_icon = win32::IDC_SIZEWE;
 		case RESIZE_N:
 		case RESIZE_S:
-		case RESIZE_NS:      mouseIcon = win32::IDC_SIZENS;
-		case RESIZE_ALL:     mouseIcon = win32::IDC_SIZEALL;
-		case NOT_ALLOWED:    mouseIcon = win32::IDC_NO;
-		case POINTING_HAND:  mouseIcon = win32::IDC_HAND;
+		case RESIZE_NS:      mouse_icon = win32::IDC_SIZENS;
+		case RESIZE_ALL:     mouse_icon = win32::IDC_SIZEALL;
+		case NOT_ALLOWED:    mouse_icon = win32::IDC_NO;
+		case POINTING_HAND:  mouse_icon = win32::IDC_HAND;
 		default: return gfx::MOUSE_NOT_SUPPORTED~;
 	}
-	void* cursor = win32::loadCursorA(null, (Win32_LPCSTR)mouseIcon);
+	void* cursor = win32::loadCursorA(null, (Win32_LPCSTR)mouse_icon);
 	if (!cursor) return gfx::MOUSE_NOT_SUPPORTED~;
 	return cursor;
 }
@@ -307,7 +307,7 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	win.src.hIconSmall = null; win.src.hIconBig = null;
 	win.src.max_size = {};
 	win.src.min_size = {};
-	win.src.aspectRatioW = 0; win.src.aspectRatioH = 0;
+	win.src.aspect_ratio_w = 0; win.src.aspect_ratio_h = 0;
 
 	uint window_style = win32::WS_CLIPSIBLINGS | win32::WS_CLIPCHILDREN;
 	if (!flags.no_border)
@@ -322,10 +322,10 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 
 	Win32_RECT rect = {0, 0, win.width, win.height};
 	uint style = gfx::_winapi_window_get_style(flags);
-	uint exStyle = gfx::_winapi_window_get_style_ex(win, flags);
-	win32::adjustWindowRectEx(&rect, style, 0, exStyle);
+	uint ex_style = gfx::_winapi_window_get_style_ex(win, flags);
+	win32::adjustWindowRectEx(&rect, style, 0, ex_style);
 
-	win.src.window = win32::createWindowExW(0, gfx::_gfx.wndClass.lpszClassName, name.to_wstring(tmem)!!, window_style, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, gfx::_gfx.instance, null);
+	win.src.window = win32::createWindowExW(0, gfx::_gfx.wnd_class.lpszClassName, name.to_wstring(tmem)!!, window_style, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, gfx::_gfx.instance, null);
 	win32::setPropW(win.src.window, gfx::RENAME_PROP_NAME, win);
 	win.resize(win.size);
 
@@ -461,8 +461,8 @@ fn void window_resize_platform(GfxWindow* win, GfxSize size)
 	win.size = size;
 	Win32_RECT rect = { 0, 0, ...size };
 	uint style = gfx::_winapi_window_get_style(win.internal.flags);
-	uint exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
-	win32::adjustWindowRectEx(&rect, style, 0, exStyle);
+	uint ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
+	win32::adjustWindowRectEx(&rect, style, 0, ex_style);
 	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)0, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0002 | 0x0004);
 }
 
@@ -470,8 +470,8 @@ fn void window_restore_platform(GfxWindow* win) {}
 
 fn void window_set_aspect_ratio(GfxWindow* win, int w, int h) @private
 {
-	win.src.aspectRatioW = w;
-	win.src.aspectRatioH = h;
+	win.src.aspect_ratio_w = w;
+	win.src.aspect_ratio_h = h;
 }
 
 fn void window_set_border(GfxWindow* win, bool border)
@@ -492,10 +492,10 @@ fn void window_set_border(GfxWindow* win, bool border)
 		style |= win32::WS_OVERLAPPEDWINDOW;
 	}
 
-	Win32_DWORD exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
+	Win32_DWORD ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
 	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.left);
 	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
-	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, exStyle);
+	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, ex_style);
 	win32::setWindowLongW(win.src.window, -16, style);
 	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
 }
@@ -535,13 +535,13 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 	if (!fullscreen)
 	{
 		// Ignore errors
-		(void)monitor_set_mode(mon, &win.internal.oldMode);
+		(void)monitor_set_mode(mon, &win.internal.old_mode);
 		window_set_border(win, true);
 
 		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
 		uint style = gfx::_winapi_window_get_style(win.internal.flags);
-		uint exStyle = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
-		win32::adjustWindowRectEx(&rect, style, 0, exStyle);
+		uint ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
+		win32::adjustWindowRectEx(&rect, style, 0, ex_style);
 		win32::setWindowPos(win.src.window, null, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
 
 		win.internal.flags.fullscreen = false;
@@ -550,7 +550,7 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 	}
 
 	win.internal.old_bounds = win.bounds;
-	win.internal.oldMode = mon.mode;
+	win.internal.old_mode = mon.mode;
 	win.internal.flags.fullscreen = true;
 	window_set_border(win, false);
 
@@ -569,9 +569,9 @@ fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat form
 
 	if (!data)
 	{
-		Win32_HICON defaultIcon = win32::loadIconA(null, (Win32_LPCSTR)win32::IDI_APPLICATION);
-		if (type & WINDOW) win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)defaultIcon);
-		if (type & TASKBAR) win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)defaultIcon);
+		Win32_HICON default_icon = win32::loadIconA(null, (Win32_LPCSTR)win32::IDI_APPLICATION);
+		if (type & WINDOW) win32::sendMessageA(win.src.window, win32::WM_SETICON, 0, (iptr)default_icon);
+		if (type & TASKBAR) win32::sendMessageA(win.src.window, win32::WM_SETICON, 1, (iptr)default_icon);
 		return true;
 	}
 
@@ -603,20 +603,20 @@ fn void window_set_mouse_passthrough(GfxWindow* win, bool passthrough)
 	uint key = 0;
 	char alpha = 0;
 	uint flags = 0;
-	CLong exStyle = win32::getWindowLongW(win.src.window, win32::GWL_EXSTYLE);
-	if (exStyle & (CLong)win32::WS_EX_LAYERED) win32::getLayeredWindowAttributes(win.src.window, &key, &alpha, &flags);
+	CLong ex_style = win32::getWindowLongW(win.src.window, win32::GWL_EXSTYLE);
+	if (ex_style & (CLong)win32::WS_EX_LAYERED) win32::getLayeredWindowAttributes(win.src.window, &key, &alpha, &flags);
 
 	if (passthrough)
 	{
-		exStyle |= (CLong)(win32::WS_EX_TRANSPARENT | win32::WS_EX_LAYERED);
+		ex_style |= (CLong)(win32::WS_EX_TRANSPARENT | win32::WS_EX_LAYERED);
 	}
 	else
 	{
-		exStyle &= ~(CLong)win32::WS_EX_TRANSPARENT;
-		if (exStyle & (CLong)win32::WS_EX_LAYERED && flags & 2 == 0) exStyle &= ~(CLong)win32::WS_EX_LAYERED;
+		ex_style &= ~(CLong)win32::WS_EX_TRANSPARENT;
+		if (ex_style & (CLong)win32::WS_EX_LAYERED && flags & 2 == 0) ex_style &= ~(CLong)win32::WS_EX_LAYERED;
 	}
 
-	win32::setWindowLongW(win.src.window, win32::GWL_EXSTYLE, exStyle);
+	win32::setWindowLongW(win.src.window, win32::GWL_EXSTYLE, ex_style);
 	if (passthrough) win32::setLayeredWindowAttributes(win.src.window, key, alpha, flags);
 }
 
@@ -671,7 +671,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	if (hints.stereo) pfd.dwFlags |= win32::PFD_STEREO;
 	if (hints.renderer == SOFTWARE) pfd.dwFlags |= win32::PFD_GENERIC_FORMAT | win32::PFD_GENERIC_ACCELERATED;
 
-	int pixelFormat = win32::choosePixelFormat(win.src.hdc, &pfd);
+	int pixel_format = win32::choosePixelFormat(win.src.hdc, &pfd);
 	if (gfx::wgl_choose_pixel_format_arb_fn)
 	{
 		FixedList{int, 50} stack;
@@ -708,16 +708,16 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 		}
 		stack.push_all({ WGL_COVERAGE_SAMPLES_NV, hints.samples, 0, 0 });
 
-		int newPixelFormat;
-		uint numFormats;
-		gfx::wgl_choose_pixel_format_arb_fn(win.src.hdc, stack.array_view(), null, 1, &newPixelFormat, &numFormats);
-		if (!numFormats) return gfx::FAILED_TO_CREATE_WGL_PIXEL_FORMAT~;
-		pixelFormat = newPixelFormat;
+		int new_pixel_format;
+		uint num_formats;
+		gfx::wgl_choose_pixel_format_arb_fn(win.src.hdc, stack.array_view(), null, 1, &new_pixel_format, &num_formats);
+		if (!num_formats) return gfx::FAILED_TO_CREATE_WGL_PIXEL_FORMAT~;
+		pixel_format = new_pixel_format;
 	}
 
 	Win32_PIXELFORMATDESCRIPTOR suggested;
-	if (!win32::describePixelFormat(win.src.hdc, pixelFormat, Win32_PIXELFORMATDESCRIPTOR::size, &suggested)
-		|| !win32::setPixelFormat(win.src.hdc, pixelFormat, &pfd)) return gfx::FAILED_TO_SET_WGL_PIXEL_FORMAT~;
+	if (!win32::describePixelFormat(win.src.hdc, pixel_format, Win32_PIXELFORMATDESCRIPTOR::size, &suggested)
+		|| !win32::setPixelFormat(win.src.hdc, pixel_format, &pfd)) return gfx::FAILED_TO_SET_WGL_PIXEL_FORMAT~;
 
 	if (gfx::wgl_create_context_attribs_arb_fn != null)
 	{
@@ -825,14 +825,14 @@ fn VkSurfaceKHR? window_create_vulkan_surface(GfxWindow* win, VkInstance instanc
 
 fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance instance)
 {
-	WgpuSurfaceSourceWindowsHWND fromHwnd;
-	fromHwnd.chain.next = null;
-	fromHwnd.chain.sType = gfx::WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND;
-	fromHwnd.hwnd = window.src.window;
-	fromHwnd.hinstance = gfx::_gfx.instance;
-	WgpuSurfaceDescriptor surfaceDesc;
-	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromHwnd;
-	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc) ?: gfx::SURFACE_CREATION_FAILED~;
+	WgpuSurfaceSourceWindowsHWND from_hwnd;
+	from_hwnd.chain.next = null;
+	from_hwnd.chain.sType = gfx::WGPU_STYPE_SURFACE_SOURCE_WINDOWS_HWND;
+	from_hwnd.hwnd = window.src.window;
+	from_hwnd.hinstance = gfx::_gfx.instance;
+	WgpuSurfaceDescriptor surface_desc;
+	surface_desc.nextInChain = (WgpuChainedStruct*)&from_hwnd;
+	return gfx::wgpuInstanceCreateSurface(instance, &surface_desc) ?: gfx::SURFACE_CREATION_FAILED~;
 }
 
 // --- Clipboard
@@ -937,16 +937,16 @@ fn void? load_opengl()
 	gfx::wgl_get_current_context_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglGetCurrentContext")!;
 	gfx::wgl_share_lists_fn = os::dlsym_try(gfx::_gfx.gl.native_handle, "wglShareLists")!;
 
-	Win32_HWND dummyWin = win32::createWindowExW(0, gfx::_gfx.wndClass.lpszClassName, null, 0, 0, 0, 0, 0, null, null, gfx::_gfx.instance, null);
-	defer win32::destroyWindow(dummyWin);
-	Win32_HDC dummy_dc = win32::getDC(dummyWin);
-	defer win32::releaseDC(dummyWin, dummy_dc);
-	uint pfdFlags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
+	Win32_HWND dummy_win = win32::createWindowExW(0, gfx::_gfx.wnd_class.lpszClassName, null, 0, 0, 0, 0, 0, null, null, gfx::_gfx.instance, null);
+	defer win32::destroyWindow(dummy_win);
+	Win32_HDC dummy_dc = win32::getDC(dummy_win);
+	defer win32::releaseDC(dummy_win, dummy_dc);
+	uint pfd_flags = win32::PFD_DRAW_TO_WINDOW | win32::PFD_SUPPORT_OPENGL | win32::PFD_DOUBLEBUFFER;
 
 	Win32_PIXELFORMATDESCRIPTOR pfd = {
 		.nSize = Win32_PIXELFORMATDESCRIPTOR::size,
 		.nVersion = 1,
-		.dwFlags = pfdFlags,
+		.dwFlags = pfd_flags,
 		.iPixelType = win32::PFD_TYPE_RGBA,
 		.cColorBits = 32,
 		.cAlphaBits = 8,
@@ -955,8 +955,8 @@ fn void? load_opengl()
 		.cStencilBits = 8
 	};
 
-	int dummyPixelFormat = win32::choosePixelFormat(dummy_dc, &pfd);
-	win32::setPixelFormat(dummy_dc, dummyPixelFormat, &pfd);
+	int dummy_pixel_format = win32::choosePixelFormat(dummy_dc, &pfd);
+	win32::setPixelFormat(dummy_dc, dummy_pixel_format, &pfd);
 
 	void* dummy_context = gfx::wgl_create_context_fn(dummy_dc);
 	void* cur = gfx::wgl_get_current_context_fn();
@@ -1037,15 +1037,15 @@ fn void init_keycodes_platform()
 fn GfxKey physical_to_mapped_key(GfxKey key)
 {
 	uint vsc = key.to_api();
-	char[256] keyboardState;
-	if (win32::getKeyboardState((char*)&keyboardState) == 0) return key;
+	char[256] keyboard_state;
+	if (win32::getKeyboardState((char*)&keyboard_state) == 0) return key;
 
 	uint vk = win32::mapVirtualKeyW(vsc, 1 /* MAPVK_VSC_TO_VK */);
 	void* layout = win32::getKeyboardLayout(0);
 
-	ushort[4] charBuffer;
-	int result = win32::toUnicodeEx(vk, vsc, (char*)&keyboardState, &charBuffer, 1, 0, layout);
-	if (result == 1 && charBuffer[0] < 256) return (GfxKey)charBuffer[0];
+	ushort[4] char_buffer;
+	int result = win32::toUnicodeEx(vk, vsc, (char*)&keyboard_state, &char_buffer, 1, 0, layout);
+	if (result == 1 && char_buffer[0] < 256) return (GfxKey)char_buffer[0];
 
 	switch (vk)
 	{
@@ -1171,8 +1171,8 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 
 	Win32_RECT frame;
 	uint style = _winapi_window_get_style(win.internal.flags);
-	uint exStyle = _winapi_window_get_style_ex(win, win.internal.flags);
-	win32::adjustWindowRectEx(&frame, style, 0, exStyle);
+	uint ex_style = _winapi_window_get_style_ex(win, win.internal.flags);
+	win32::adjustWindowRectEx(&frame, style, 0, ex_style);
 
 	switch (message)
 	{
@@ -1196,24 +1196,24 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_MOUSEACTIVATE:
 			if ((lParam >> 16) & 0xffff == win32::WM_LBUTTONDOWN)
 			{
-				if ((lParam & 0xffff) != win32::HTCLIENT) win.src.actionFrame = true;
+				if ((lParam & 0xffff) != win32::HTCLIENT) win.src.action_frame = true;
 			}
 		case win32::WM_CAPTURECHANGED:
-			if (!lParam && win.src.actionFrame)
+			if (!lParam && win.src.action_frame)
 			{
 				win32::window_set_capture_mouse_platform(win, win.internal.capture_mouse);
-				win.src.actionFrame = false;
+				win.src.action_frame = false;
 			}
 		case win32::WM_DPICHANGED:
-			float scaleX = (float)((wParam >> 16) & 0xffff) / 96.0f;
-			float scaleY = (float)(wParam & 0xffff) / 96.0f;
-			_scale_updated_callback(win, { scaleX, scaleY});
+			float scale_x = (float)((wParam >> 16) & 0xffff) / 96.0f;
+			float scale_y = (float)(wParam & 0xffff) / 96.0f;
+			_scale_updated_callback(win, { scale_x, scale_y});
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_SIZING:
-			if (!win.src.aspectRatioW && !win.src.aspectRatioH) break;
+			if (!win.src.aspect_ratio_w && !win.src.aspect_ratio_h) break;
 			Win32_RECT* area = (Win32_RECT*)(uptr)lParam;
 			int edge = (int)wParam;
-			double ratio = (double)win.src.aspectRatioW / (double)win.src.aspectRatioH;
+			double ratio = (double)win.src.aspect_ratio_w / (double)win.src.aspect_ratio_h;
 			switch (edge)
 			{
 				case win32::WMSZ_LEFT:
@@ -1243,7 +1243,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_ENTERSIZEMOVE:
 		case win32::WM_ENTERMENULOOP:
-			if (win.src.actionFrame) win32::window_set_capture_mouse_platform(win, win.internal.capture_mouse);
+			if (win.src.action_frame) win32::window_set_capture_mouse_platform(win, win.internal.capture_mouse);
 			if (++win.src.modal_loop_depth == 1)
 			{
 				win32::setTimer(win.src.window, MODAL_REDRAW_TIMER, win32::USER_TIMER_MINIMUM, null);
@@ -1252,7 +1252,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			}
 		case win32::WM_EXITSIZEMOVE:
 		case win32::WM_EXITMENULOOP:
-			if (win.src.actionFrame) win32::window_set_capture_mouse_platform(win, win.internal.capture_mouse);
+			if (win.src.action_frame) win32::window_set_capture_mouse_platform(win, win.internal.capture_mouse);
 			if (win.src.modal_loop_depth > 0 && --win.src.modal_loop_depth == 0)
 			{
 				win32::killTimer(win.src.window, MODAL_REDRAW_TIMER);
@@ -1288,15 +1288,15 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case win32::WM_SYSCHAR:
 			if (wParam >= 0xd800 && wParam <= 0xdbff)
 			{
-				win.src.highSurrogate = (ushort)wParam;
+				win.src.high_surrogate = (ushort)wParam;
 				return 0;
 			}
 			uint codepoint = 0;
 			if (wParam >= 0xdc00 && wParam <= 0xdfff)
 			{
-				if (win.src.highSurrogate != 0)
+				if (win.src.high_surrogate != 0)
 				{
-					codepoint += (uint)((win.src.highSurrogate - 0xd800) << 10);
+					codepoint += (uint)((win.src.high_surrogate - 0xd800) << 10);
 					codepoint += (uint)((ushort)wParam - 0xdc00);
 					codepoint += 0x10000;
 				}
@@ -1305,7 +1305,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			{
 				codepoint = (ushort)wParam;
 			}
-			win.src.highSurrogate = 0;
+			win.src.high_surrogate = 0;
 			_key_char_callback(win, codepoint);
 			return 0;
 		case win32::WM_UNICHAR:
@@ -1361,8 +1361,8 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 
 			if (raw.header.dwType != win32::RIM_TYPEMOUSE || (!raw.mouse.lLastX && !raw.mouse.lLastY)) break;
 
-			float vecX = 0.0f;
-			float vecY = 0.0f;
+			float vec_x = 0.0f;
+			float vec_y = 0.0f;
 
 			if (raw.mouse.usFlags & win32::MOUSE_MOVE_ABSOLUTE)
 			{
@@ -1385,16 +1385,16 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 				pos.y += (int)(((float)raw.mouse.lLastY / 65535.0f) * (float)height);
 				win32::screenToClient(win.src.window, &pos);
 
-				vecX = (float)(pos.x - win.internal.last_mouse.x);
-				vecY = (float)(pos.y - win.internal.last_mouse.y);
+				vec_x = (float)(pos.x - win.internal.last_mouse.x);
+				vec_y = (float)(pos.y - win.internal.last_mouse.y);
 			}
 			else
 			{
-				vecX = (float)raw.mouse.lLastX;
-				vecY = (float)raw.mouse.lLastY;
+				vec_x = (float)raw.mouse.lLastX;
+				vec_y = (float)raw.mouse.lLastY;
 			}
 
-			_raw_motion_callback(win, { vecX, vecY });
+			_raw_motion_callback(win, { vec_x, vec_y });
 		case win32::WM_MOUSELEAVE:
 			_mouse_notify_callback(win, win.internal.last_mouse, false);
 		case 0x0201: _mouse_button_callback(win, LEFT, true);
@@ -1406,11 +1406,11 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 		case 0x0208: _mouse_button_callback(win, MIDDLE, false);
 		case 0x020C: _mouse_button_callback(win, (GfxMouseButton)(GfxMouseButton.MISC1.ordinal + (((wParam >> 16) & 0xffff) == 2 ? 1 : 0)), false);
 		case win32::WM_MOUSEWHEEL:
-			float scrollY = (float)((short)((wParam >> 16) & 0xffff)) / 120.0f; // WHEEL_DELTA
-			_mouse_scroll_callback(win, { 0.0f, scrollY });
+			float scroll_y = (float)((short)((wParam >> 16) & 0xffff)) / 120.0f; // WHEEL_DELTA
+			_mouse_scroll_callback(win, { 0.0f, scroll_y });
 		case win32::WM_MOUSEHWHEEL:
-			float scrollX = -(float)((short)((wParam >> 16) & 0xffff)) / 120.0f;
-			_mouse_scroll_callback(win, { scrollX, 0.0f });
+			float scroll_x = -(float)((short)((wParam >> 16) & 0xffff)) / 120.0f;
+			_mouse_scroll_callback(win, { scroll_x, 0.0f });
 		case win32::WM_DROPFILES:
 			void* drop = (void*)wParam;
 			Win32_POINT pt;
@@ -1468,24 +1468,24 @@ fn void _create_monitor(Win32_DISPLAY_DEVICEW* adapter, Win32_DISPLAY_DEVICEW* d
 
 	_win32_get_mode(&dm, &node.mon.mode);
 
-	Win32_MONITORINFOEXW monitorInfo;
-	monitorInfo.cbSize = Win32_MONITORINFOEXW::size;
-	win32::getMonitorInfoW(node.monitor, &monitorInfo);
+	Win32_MONITORINFOEXW monitor_info;
+	monitor_info.cbSize = Win32_MONITORINFOEXW::size;
+	win32::getMonitorInfoW(node.monitor, &monitor_info);
 
-	node.mon.origin = { monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top};
+	node.mon.origin = { monitor_info.rcMonitor.left, monitor_info.rcMonitor.top};
 
-	Win32_HDC hdc = win32::createDCW((WString)&monitorInfo.szDevice, null, null, null);
-	float dpiX = win32::getDeviceCaps(hdc, 88 /* LOGPIXELSX */);
-	float dpiY = win32::getDeviceCaps(hdc, 90 /* LOGPIXELSY */);
-	node.mon.scale = { dpiX / 96.0f, dpiY / 96.0f };
-	node.mon.pixelRatio = dpiX >= 192.0f ? 2.0f : 1.0f;
+	Win32_HDC hdc = win32::createDCW((WString)&monitor_info.szDevice, null, null, null);
+	float dpi_x = win32::getDeviceCaps(hdc, 88 /* LOGPIXELSX */);
+	float dpi_y = win32::getDeviceCaps(hdc, 90 /* LOGPIXELSY */);
+	node.mon.scale = { dpi_x / 96.0f, dpi_y / 96.0f };
+	node.mon.pixel_ratio = dpi_x >= 192.0f ? 2.0f : 1.0f;
 	node.mon.phys_size = {
 		win32::getDeviceCaps(hdc, 4 /* HORZSIZE */) / 25.4f,
 		win32::getDeviceCaps(hdc, 6 /* VERTSIZE */) / 25.4f
 	};
 	win32::deleteDC(hdc);
 
-	if (monitorInfo.dwFlags & win32::MONITORINFOF_PRIMARY) _gfx.monitors.primary = node;
+	if (monitor_info.dwFlags & win32::MONITORINFOF_PRIMARY) _gfx.monitors.primary = node;
 	_monitor_callback(_gfx.root, &node.mon, true);
 }
 

@@ -47,13 +47,13 @@ fn void poll_events_platform(bool reset_state = true)
 	{
 		if (reset_state) gfx::_reset_prev_state();
 		if (!ctx.app) return;
-		ObjId distantPast = darwin::nsdate().send(ObjId, "distantPast");
+		ObjId distant_past = darwin::nsdate().send(ObjId, "distantPast");
 
 		while (true)
 		{
 			objc::@autoreleasepool()
 			{
-				ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distantPast, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
+				ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, distant_past, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
 				if (!ev) break;
 				ctx.app.send_void("sendEvent:", ev);
 			};
@@ -504,17 +504,17 @@ fn void window_set_border(GfxWindow* win, bool border)
 	double offset = 0;
 
 	win.internal.flags.no_border = !border;
-	NSWindowStyleMask styleMask = BORDERLESS | FULL_SIZE_CONTENT_VIEW;
-	if (border) styleMask = TITLED | CLOSABLE | MINIATURIZABLE;
-	if (!win.internal.flags.no_resize) styleMask |= RESIZABLE;
+	NSWindowStyleMask style_mask = BORDERLESS | FULL_SIZE_CONTENT_VIEW;
+	if (border) style_mask = TITLED | CLOSABLE | MINIATURIZABLE;
+	if (!win.internal.flags.no_resize) style_mask |= RESIZABLE;
 
-	win.src.window.send_void("setStyleMask:", styleMask);
+	win.src.window.send_void("setStyleMask:", style_mask);
 
 	if (!border)
 	{
-		ObjId miniaturizeButton = win.src.window.send(ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
-		ObjId titleBarView = miniaturizeButton.send(ObjId, "superview");
-		titleBarView.send_void("setHidden:", true);
+		ObjId miniaturize_button = win.src.window.send(ObjId, "standardWindowButton:", NSWindowButton.MINIATURIZE);
+		ObjId title_bar_view = miniaturize_button.send(ObjId, "superview");
+		title_bar_view.send_void("setHidden:", true);
 		offset = (double)(frame.size.height - content.size.height);
 	}
 
@@ -752,13 +752,13 @@ fn WGPUSurface? window_create_wgpu_surface(GfxWindow* window, WGPUInstance insta
 	window.src.view.send_void("setWantsLayer:", true);
 	_window_set_layer_macos(window, layer);
 
-	WgpuSurfaceSourceMetalLayer fromMetal;
-	fromMetal.chain.next = null;
-	fromMetal.chain.sType = gfx::WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER;
-	fromMetal.layer = layer;
-	WgpuSurfaceDescriptor surfaceDesc;
-	surfaceDesc.nextInChain = (WgpuChainedStruct*)&fromMetal;
-	return gfx::wgpuInstanceCreateSurface(instance, &surfaceDesc) ?: gfx::SURFACE_CREATION_FAILED~;
+	WgpuSurfaceSourceMetalLayer from_metal;
+	from_metal.chain.next = null;
+	from_metal.chain.sType = gfx::WGPU_STYPE_SURFACE_SOURCE_METAL_LAYER;
+	from_metal.layer = layer;
+	WgpuSurfaceDescriptor surface_desc;
+	surface_desc.nextInChain = (WgpuChainedStruct*)&from_metal;
+	return gfx::wgpuInstanceCreateSurface(instance, &surface_desc) ?: gfx::SURFACE_CREATION_FAILED~;
 }
 
 // --- Clipboard
@@ -897,17 +897,17 @@ fn GfxKey physical_to_mapped_key(GfxKey key)
 	TISInputSourceRef source = macos::tisCopyCurrentKeyboardLayoutInputSource();
 	if (!source) return key;
 
-	CFDataRef layoutData = source.getProperty(macos::kTISPropertyUnicodeKeyLayoutData);
+	CFDataRef layout_data = source.getProperty(macos::kTISPropertyUnicodeKeyLayoutData);
 	defer source.release();
-	if (!layoutData) return key;
+	if (!layout_data) return key;
 
-	UCKeyboardLayout* layout = (UCKeyboardLayout*)layoutData.getBytePtr();
+	UCKeyboardLayout* layout = (UCKeyboardLayout*)layout_data.getBytePtr();
 
-	uint deadKeyState = 0;
+	uint dead_key_state = 0;
 	ushort[4] chars;
 	uint len = 0;
 	uint type = macos::lmGetKbdType();
-	int status = macos::ucKeyTranslate(layout, keycode, macos::UC_KEY_ACTION_DOWN, 0, type, macos::UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT, &deadKeyState, 4, &len, &chars[0]);
+	int status = macos::ucKeyTranslate(layout, keycode, macos::UC_KEY_ACTION_DOWN, 0, type, macos::UC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT, &dead_key_state, 4, &len, &chars[0]);
 
 	if (status == 0 && len == 1 && chars[0] < 256) return (GfxKey)chars[0];
 
@@ -953,8 +953,8 @@ fn void _monitor_from_display(CGDirectDisplayID display, ObjId screen, GfxMonito
 	mon.mode.rgb = { 8, 8, 8 };
 	mon.mode.src = mode;
 	mon.phys_size = (float[<2>])(double[<2>]){ ...display.screenSize() } / 25.4f;
-	mon.pixelRatio = screen ? (float)screen.send(CGFloat, "backingScaleFactor") : 1.0f;
-	mon.scale = (Vec2)mon.pixelRatio;
+	mon.pixel_ratio = screen ? (float)screen.send(CGFloat, "backingScaleFactor") : 1.0f;
+	mon.scale = (Vec2)mon.pixel_ratio;
 }
 
 fn float _refresh_rate(CGDisplayModeRef mode) @local
@@ -1091,9 +1091,9 @@ fn void _osx_key_updown(ObjId self, ObjId event, bool down)
 {
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return;
-	ushort keyCode = event.send(ushort, "keyCode");
-	if (keyCode >= 256) return;
-	GfxKey key = gfx::_gfx.keycodes[(sz)keyCode];
+	ushort key_code = event.send(ushort, "keyCode");
+	if (key_code >= 256) return;
+	GfxKey key = gfx::_gfx.keycodes[(sz)key_code];
 	// Unmapped key
 	if (!key) return;
 	bool repeat = down ? event.send(bool, "isARepeat") : false;
@@ -1289,8 +1289,8 @@ fn void _osx_flags_changed(ObjId self, ObjSel sel, ObjId event)
 
 	for (int i = 0; i < 9; i++)
 	{
-		GfxKey modKey = CAPS_LOCK + (GfxKey)i;
-		gfx::_gfx.keyboard[modKey].prev = gfx::_gfx.keyboard[modKey].current;
+		GfxKey mod_key = CAPS_LOCK + (GfxKey)i;
+		gfx::_gfx.keyboard[mod_key].prev = gfx::_gfx.keyboard[mod_key].current;
 	}
 
 	for (int i = 0; i < 5; i++)
@@ -1372,8 +1372,8 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 	if (catch win) return false;
 	if (!win.internal.enabled_events.data_drop) return false;
 
-	ObjId pasteBoard = sender.send(ObjId, "draggingPasteboard");
-	ObjId types = pasteBoard.send(ObjId, "types");
+	ObjId pasteboard = sender.send(ObjId, "draggingPasteboard");
+	ObjId types = pasteboard.send(ObjId, "types");
 	ObjId file_urls_type = "NSFilenamesPboardType".to_nsstring();
 
 	if (!types.send(bool, "containsObject:", file_urls_type))
@@ -1382,23 +1382,23 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 		return false;
 	}
 
-	ObjId propertyList = pasteBoard.send(ObjId, "propertyListForType:", file_urls_type);
+	ObjId property_list = pasteboard.send(ObjId, "propertyListForType:", file_urls_type);
 
-	if (propertyList.send(bool, "isKindOfClass:", darwin::nsstring()))
+	if (property_list.send(bool, "isKindOfClass:", darwin::nsstring()))
 	{
-		ZString filePath = darwin::string_to_zstr(propertyList);
-		gfx::_data_drop_callback(win, filePath.str_view(), FILE);
+		ZString file_path = darwin::string_to_zstr(property_list);
+		gfx::_data_drop_callback(win, file_path.str_view(), FILE);
 	}
-	if (!propertyList.send(bool, "isKindOfClass:", darwin::nsarray())) return false;
+	if (!property_list.send(bool, "isKindOfClass:", darwin::nsarray())) return false;
 
-	NSUInteger count = propertyList.send(NSUInteger, "count");
+	NSUInteger count = property_list.send(NSUInteger, "count");
 	if (!count) return false;
 
 	for (NSUInteger i = 0; i < count; i++)
 	{
-		ObjId file_url = propertyList.send(ObjId, "objectAtIndex:", i);
-		ZString filePath = darwin::string_to_zstr(file_url);
-		gfx::_data_drop_callback(win, filePath.str_view(), FILE);
+		ObjId file_url = property_list.send(ObjId, "objectAtIndex:", i);
+		ZString file_path = darwin::string_to_zstr(file_url);
+		gfx::_data_drop_callback(win, file_path.str_view(), FILE);
 	}
 	return false;
 }

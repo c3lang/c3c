@@ -187,9 +187,9 @@ fn void? init_window_context(GfxWindow* win, GfxEglContext* ctx, GfxGlHints* hin
 
 	$switch:
 		$case $feat(MACOS):
-			ObjId nativeWindow = win.src.window;
-			if (win.src.view) nativeWindow = macos::_get_layer_macos();
-			ctx.surface = create_window_surface_fn((EglDisplay)gfx::_gfx.egl.display, config, (void*)nativeWindow, null);
+			ObjId native_window = win.src.window;
+			if (win.src.view) native_window = macos::_get_layer_macos();
+			ctx.surface = create_window_surface_fn((EglDisplay)gfx::_gfx.egl.display, config, (void*)native_window, null);
 			if (!ctx.surface) return gfx::EGL_SURFACE_CREATION_FAILED~;
 		$case gfx::WAYLAND:
 			WlEglWindow* egl_window = wl::wl_egl_window_create(win.src.surface, win.width, win.height);
