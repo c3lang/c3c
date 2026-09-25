@@ -393,6 +393,7 @@ static void header_gen_struct_union_top(HeaderContext *c, Decl *decl, GenType ge
 		vec_add(c->type_queue, decl);
 		return;
 	}
+	printf("%s decl", decl->extname);
 	header_ensure_member_types_exist(c, decl->strukt.members);
 	PRINTF("%s %s__\n", struct_union_str(decl), decl->extname);
 	PRINTF("{\n");
@@ -748,6 +749,9 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, int modu
 		{
 			FOREACH(Decl *, method, unit->methods)
 			{
+				Type* parent_type = typeget(method->func_decl.type_parent);
+				if (!parent_type) continue;
+				method->is_export = parent_type->decl->is_export;
 				header_gen_function(c, method, fn_globals, &methods_found);
 			}
 		}
