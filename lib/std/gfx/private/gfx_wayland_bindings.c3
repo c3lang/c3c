@@ -496,10 +496,13 @@ const XkbKeysym XKB_KEY_KP_9 = 0xffb9;
 const XkbKeysym XKB_KEY_PRINT = 0xff61;
 const XkbKeysym XKB_KEY_PAUSE = 0xff13;
 
+// Dummy types table to prevent libwayland-client from dereferencing NULL[i]
+void*[8] wl_untyped_args = { null, null, null, null, null, null, null, null };
+
 WlMessage[4] xdg_wm_base_requests = {
 	{ "destroy", "", null },
-	{ "create_positioner", "n", null },
-	{ "get_xdg_surface", "no", null },
+	{ "create_positioner", "n", &wl_untyped_args[0] },
+	{ "get_xdg_surface", "no", &wl_untyped_args[0] },
 	{ "pong", "u", null },
 };
 WlMessage[1] xdg_wm_base_events = {
@@ -514,8 +517,8 @@ WlInterface xdgWmBaseInterface @weak @export("xdg_wm_base_interface") = {
 // xdg_surface
 WlMessage[5] xdg_surface_requests = {
 	{ "destroy", "", null },
-	{ "get_toplevel", "n", null },
-	{ "get_popup", "n?oo", null },
+	{ "get_toplevel", "n", &wl_untyped_args[0] },
+	{ "get_popup", "n?oo", &wl_untyped_args[0] },
 	{ "set_window_geometry", "iiii", null },
 	{ "ack_configure", "u", null },
 };
@@ -531,17 +534,17 @@ WlInterface xdgSurfaceInterface @weak @export("xdg_surface_interface") = {
 // xdg_toplevel
 WlMessage[14] xdg_toplevel_requests = {
 	{ "destroy", "", null },
-	{ "set_parent", "?o", null },
+	{ "set_parent", "?o", &wl_untyped_args[0] },
 	{ "set_title", "s", null },
 	{ "set_app_id", "s", null },
-	{ "show_window_menu", "ouii", null },
-	{ "move", "ou", null },
-	{ "resize", "ouu", null },
+	{ "show_window_menu", "ouii", &wl_untyped_args[0] },
+	{ "move", "ou", &wl_untyped_args[0] },
+	{ "resize", "ouu", &wl_untyped_args[0] },
 	{ "set_max_size", "ii", null },
 	{ "set_min_size", "ii", null },
 	{ "set_maximized", "", null },
 	{ "unset_maximized", "", null },
-	{ "set_fullscreen", "?o", null },
+	{ "set_fullscreen", "?o", &wl_untyped_args[0] },
 	{ "unset_fullscreen", "", null },
 	{ "set_minimized", "", null },
 };
@@ -560,7 +563,7 @@ WlInterface xdgToplevelInterface @weak @export("xdg_toplevel_interface") = {
 // zxdg_decoration_manager_v1
 WlMessage[2] zxdg_decoration_manager_v1_requests = {
 	{ "destroy", "", null },
-	{ "get_toplevel_decoration", "no", null },
+	{ "get_toplevel_decoration", "no", &wl_untyped_args[0] },
 };
 WlInterface zxdgDecorationManagerV1Interface @weak @export("zxdg_decoration_manager_v1_interface") = {
 	.name = "zxdg_decoration_manager_v1", .version = 2,
@@ -585,8 +588,8 @@ WlInterface zxdgToplevelDecorationV1Interface @weak @export("zxdg_toplevel_decor
 // zwp_pointer_constraints_v1
 WlMessage[3] zwp_pointer_constraints_v1_requests = {
 	{ "destroy", "", null },
-	{ "lock_pointer", "noo?ou", null },
-	{ "confine_pointer", "noo?ou", null },
+	{ "lock_pointer", "noo?ou", &wl_untyped_args[0] },
+	{ "confine_pointer", "noo?ou", &wl_untyped_args[0] },
 };
 WlInterface zwpPointerConstraintsV1Interface @weak @export("zwp_pointer_constraints_v1_interface") = {
 	.name = "zwp_pointer_constraints_v1", .version = 1,
@@ -597,7 +600,7 @@ WlInterface zwpPointerConstraintsV1Interface @weak @export("zwp_pointer_constrai
 WlMessage[3] zwp_locked_pointer_v1_requests = {
 	{ "destroy", "", null },
 	{ "set_cursor_position_hint", "ff", null },
-	{ "set_region", "?o", null },
+	{ "set_region", "?o", &wl_untyped_args[0] },
 };
 WlMessage[2] zwp_locked_pointer_v1_events = {
 	{ "locked", "", null },
@@ -612,7 +615,7 @@ WlInterface zwpLockedPointerV1Interface @weak @export("zwp_locked_pointer_v1_int
 // zwp_relative_pointer_manager_v1
 WlMessage[2] zwp_relative_pointer_manager_v1_requests = {
 	{ "destroy", "", null },
-	{ "get_relative_pointer", "no", null },
+	{ "get_relative_pointer", "no", &wl_untyped_args[0] },
 };
 WlInterface zwpRelativePointerManagerV1Interface @weak @export("zwp_relative_pointer_manager_v1_interface") = {
 	.name = "zwp_relative_pointer_manager_v1", .version = 1,
@@ -635,7 +638,7 @@ WlInterface zwpRelativePointerV1Interface @weak @export("zwp_relative_pointer_v1
 // zxdg_output_manager_v1
 WlMessage[2] zxdg_output_manager_v1_requests = {
 	{ "destroy", "", null },
-	{ "get_xdg_output", "no", null },
+	{ "get_xdg_output", "no", &wl_untyped_args[0] },
 };
 WlInterface zxdgOutputManagerV1Interface @weak @export("zxdg_output_manager_v1_interface") = {
 	.name = "zxdg_output_manager_v1", .version = 3,
@@ -662,8 +665,8 @@ WlInterface zxdgOutputV1Interface @weak @export("zxdg_output_v1_interface") = {
 // xdg_toplevel_icon_manager_v1
 WlMessage[3] xdg_toplevel_icon_manager_v1_requests = {
 	{ "destroy", "", null },
-	{ "create_icon", "n", null },
-	{ "set_icon", "o?o", null },
+	{ "create_icon", "n", &wl_untyped_args[0] },
+	{ "set_icon", "o?o", &wl_untyped_args[0] },
 };
 WlMessage[2] xdg_toplevel_icon_manager_v1_events = {
 	{ "icon_size", "i", null },
@@ -678,7 +681,7 @@ WlInterface xdgToplevelIconManagerV1Interface @weak @export("xdg_toplevel_icon_m
 WlMessage[3] xdg_toplevel_icon_v1_requests = {
 	{ "destroy", "", null },
 	{ "set_name", "s", null },
-	{ "add_buffer", "oi", null },
+	{ "add_buffer", "oi", &wl_untyped_args[0] },
 };
 WlInterface xdgToplevelIconV1Interface @weak @export("xdg_toplevel_icon_v1_interface") = {
 	.name = "xdg_toplevel_icon_v1", .version = 1,
@@ -689,7 +692,7 @@ WlInterface xdgToplevelIconV1Interface @weak @export("xdg_toplevel_icon_v1_inter
 // wp_pointer_warp_v1
 WlMessage[2] wp_pointer_warp_v1_requests = {
 	{ "destroy", "", null },
-	{ "warp_pointer", "ooffu", null },
+	{ "warp_pointer", "ooffu", &wl_untyped_args[0] },
 };
 WlInterface wpPointerWarpV1Interface @weak @export("wp_pointer_warp_v1_interface") = {
 	.name = "wp_pointer_warp_v1", .version = 1,
@@ -699,7 +702,7 @@ WlInterface wpPointerWarpV1Interface @weak @export("wp_pointer_warp_v1_interface
 
 // zwlr_layer_shell_v1
 WlMessage[2] zwlr_layer_shell_v1_requests = {
-	{ "get_layer_surface", "no?ous", null },
+	{ "get_layer_surface", "no?ous", &wl_untyped_args[0] },
 	{ "destroy", "3", null },
 };
 WlInterface zwlrLayerShellV1Interface @weak @export("zwlr_layer_shell_v1_interface") = {
@@ -715,7 +718,7 @@ WlMessage[10] zwlr_layer_surface_v1_requests = {
 	{ "set_exclusive_zone", "i", null },
 	{ "set_margin", "iiii", null },
 	{ "set_keyboard_interactivity", "u", null },
-	{ "get_popup", "o", null },
+	{ "get_popup", "o", &wl_untyped_args[0] },
 	{ "ack_configure", "u", null },
 	{ "destroy", "", null },
 	{ "set_layer", "2u", null },
