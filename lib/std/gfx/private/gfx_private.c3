@@ -310,6 +310,7 @@ fn void _reset_prev_state()
 	while (node != null)
 	{
 		GfxDataDropNode* next = node.next;
+		free(node.data);
 		free(node);
 		node = next;
 	}
@@ -672,10 +673,10 @@ fn void _window_check_mode_with_bounds(GfxWindow* win, GfxRect bounds)
 	}
 }
 
-fn void _drop_url_data(GfxWindow* win, String data) => @pool()
+fn void _drop_url_data(GfxWindow* win, char[] data) => @pool()
 {
 	if (!data.len) return;
-	Splitter splitter = data.tokenize("\r\n");
+	Splitter splitter = ((String)data).tokenize("\r\n");
 	while (try line = splitter.next())
 	{
 		line = line.trim();
@@ -684,27 +685,24 @@ fn void _drop_url_data(GfxWindow* win, String data) => @pool()
 		Url? url = url::parse(tmem, line);
 		if (catch url) continue;
 		if (url.scheme != "file") continue;
-		_data_drop_callback(win, url.path.zstr_tcopy(), url.path.len, FILE);
+		_data_drop_callback(win, url.path, FILE);
 	}
 }
 
-fn void _data_drop_callback(GfxWindow* win, char* data, sz length, GfxDataTransferType dataType)
+fn void _data_drop_callback(GfxWindow* win, char[] data, GfxDataTransferType dataType)
 {
 	if (!win.internal.enabled_events.data_drop || !win.internal.flags.allow_dnd) return;
 	_gfx.window_state.win = win;
 	_gfx.window_state.dataDrop = true;
-	_gfx.window_state.dataLength = length;
-	GfxDataDropNode node = { .data = data, .length = length, .type = dataType };
+	_gfx.window_state.dataLength = data.len;
+	GfxDataDropNode node = { .data = data, .type = dataType };
 	GfxEvent event;
 	event.type = DATA_DROP;
 	event.drop.value = &node;
 	event.common.win = win;
 	if (_gfx.callbacks[event.type] != null) _gfx.callbacks[event.type](&event);
 	if (!_gfx.queue_events && !_gfx.dnd_build) return;
-	char* dataCopy = malloc(length + 1);
-	mem::copy(dataCopy, data, length);
-	dataCopy[length] = 0;
-	node.data = dataCopy;
+	node.data = mem::@clone_slice(data);
 	GfxDataDropNode* heapNode = mem::new(GfxDataDropNode);
 	*heapNode = node;
 	if (_gfx.dnd_root == null)

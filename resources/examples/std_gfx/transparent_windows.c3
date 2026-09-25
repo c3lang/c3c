@@ -63,7 +63,7 @@ fn int main()
 				case DATA_DROP:
 					for (GfxDataDropNode* node = e.drop.value; node; node = node.next)
 					{
-						io::printfn("Dropped [%s]: %s", node.type, (ZString)node.data);
+						io::printfn("Dropped [%s]: %s", node.type, (String)node.data);
 					}
 				default:
 					break;

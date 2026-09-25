@@ -129,8 +129,7 @@ struct GfxDataTransfer
 
 struct GfxDataDropNode
 {
-	char* data;
-	sz length;
+	char[] data;
 	GfxDataTransferType type;
 	GfxDataDropNode* next;
 }

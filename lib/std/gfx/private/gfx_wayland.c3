@@ -135,7 +135,7 @@ fn void destroy_platform()
 		}
 	}
 	if (ctx.wl_cursor_theme) wl_cursor_theme_destroy(ctx.wl_cursor_theme);
-	if (ctx.dnd_offer) wl_data_offer_destroy(ctx.dnd_offer);
+	_wl_data_offer_destroy_with_data(ctx.dnd_offer);
 	ctx.dnd_offer = null;
 	ctx.dnd_win = null;
 	if (ctx.wp_pointer_warp) wp_pointer_warp_v1_destroy(ctx.wp_pointer_warp);
@@ -477,11 +477,8 @@ fn void window_destroy_platform(GfxWindow* win)
 {
 	if (ctx.dnd_win == win)
 	{
-		if (ctx.dnd_offer)
-		{
-			wl_data_offer_destroy(ctx.dnd_offer);
-			ctx.dnd_offer = null;
-		}
+		_wl_data_offer_destroy_with_data(ctx.dnd_offer);
+		ctx.dnd_offer = null;
 		ctx.dnd_win = null;
 	}
 	if (win.src.layerSurface) zwlr_layer_surface_v1_destroy(win.src.layerSurface);
@@ -1263,9 +1260,6 @@ fn void _data_offer_string_cb(void* data, WlProxy* offer, ZString s) @local
 fn void _data_device_enter_cb(void* data, WlProxy* device, uint serial, WlProxy* surface, WlFixed x, WlFixed y, WlProxy* offer) @local
 {
 	GfxWindow* win = surface ? (GfxWindow*)wl_surface_get_user_data(surface) : null;
-	ctx.dnd_win = win;
-	ctx.dnd_offer = offer;
-	ctx.dnd_serial = serial;
 
 	WlDataOfferData* offer_data = offer ? (WlDataOfferData*)wl_proxy_get_user_data(offer) : null;
 	GfxDataTransferType type = offer_data ? offer_data.type : NONE;
@@ -1273,6 +1267,9 @@ fn void _data_device_enter_cb(void* data, WlProxy* device, uint serial, WlProxy*
 
 	if (offer && win && win.internal.flags.allow_dnd && type != NONE)
 	{
+		ctx.dnd_win = win;
+		ctx.dnd_offer = offer;
+		ctx.dnd_serial = serial;
 		if (wl_proxy_get_version(offer) >= 3)
 		{
 			wl_data_offer_set_actions(offer, 1 /* COPY */, 1 /* COPY */);
@@ -1281,14 +1278,16 @@ fn void _data_device_enter_cb(void* data, WlProxy* device, uint serial, WlProxy*
 		wl_data_offer_accept(offer, serial, mime);
 		gfx::_mouse_motion_callback(win, pos);
 		gfx::_data_drag_callback(win, type, ENTER, pos);
+		return;
 	}
-	else if (offer)
+	if (offer)
 	{
 		wl_data_offer_accept(offer, serial, null);
 		if (wl_proxy_get_version(offer) >= 3)
 		{
 			wl_data_offer_set_actions(offer, 0 /* NONE */, 0 /* NONE */);
 		}
+		_wl_data_offer_destroy_with_data(offer);
 	}
 }
 
@@ -1331,22 +1330,16 @@ fn void _data_device_drop_cb(void* data, WlProxy* device) @local => @pool()
 
 	WlDataOfferData* offer_data = (WlDataOfferData*)wl_proxy_get_user_data(offer);
 	GfxDataTransferType drop_type = offer_data ? offer_data.type : NONE;
-	if (drop_type == NONE)
-	{
-		_wl_data_offer_destroy_with_data(offer);
-		return;
-	}
+	defer _wl_data_offer_destroy_with_data(offer);
+	if (drop_type == NONE) return;
 
 	int[2] pfds;
-	if (posix::pipe(&pfds) < 0)
-	{
-		_wl_data_offer_destroy_with_data(offer);
-		return;
-	}
+	if (posix::pipe(&pfds) < 0) return;
 
 	ZString mime = drop_type == FILE ? "text/uri-list" : "text/plain;charset=utf-8";
 	wl_data_offer_receive(offer, mime, pfds[1]);
 	libc::close(pfds[1]);
+	defer libc::close(pfds[0]);
 	wl_display_flush(ctx.wl_display);
 
 	List{char} bytes;
@@ -1354,29 +1347,24 @@ fn void _data_device_drop_cb(void* data, WlProxy* device) @local => @pool()
 	char[1024] buf;
 	Posix_pollfd pfd = { .fd = pfds[0], .events = os::POLLIN };
 
-	while (os::poll(&pfd, 1, 1000) > 0)
+	while (os::poll(&pfd, 1, 100) > 0)
 	{
 		if (pfd.revents & os::POLLIN == 0) break;
 		sz n = libc::read(pfds[0], &buf, buf.len);
-		if (n <= 0) break;
+		if (n == 0) break;
+		if (n < 0) return;
 		bytes.push_all(buf[:n]);
+		if (bytes.len() > 64 * mem::MB) return;
 	}
-	libc::close(pfds[0]);
-
-	if (wl_proxy_get_version(offer) >= 3)
-	{
-		wl_data_offer_finish(offer);
-	}
-	_wl_data_offer_destroy_with_data(offer);
-
 	if (drop_type == FILE)
 	{
-		gfx::_drop_url_data(win, (String)bytes.array_view());
+		gfx::_drop_url_data(win, bytes.array_view());
 	}
 	else
 	{
-		gfx::_data_drop_callback(win, (char*)bytes.array_view().ptr, bytes.len(), TEXT);
+		gfx::_data_drop_callback(win, bytes.array_view(), TEXT);
 	}
+	if (wl_proxy_get_version(offer) >= 3) wl_data_offer_finish(offer);
 }
 
 fn void _data_device_nothing_cb(void* data, WlProxy* device) @local {}
@@ -1805,10 +1793,7 @@ fn void _xdg_output_logical_size_cb(void* data, WlProxy* xdgOutput, int width, i
 fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @local
 {
 	if (!offer) return;
-	if (offer == ctx.dnd_offer)
-	{
-		ctx.dnd_offer = null;
-	}
+	if (offer == ctx.dnd_offer) ctx.dnd_offer = null;
 
 	int[2] pfds;
 	posix::pipe(&pfds);
@@ -1816,14 +1801,14 @@ fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @
 	libc::close(pfds[1]);
 	wl_display_roundtrip(ctx.wl_display);
 
-	char[1024] buf;
-	sz n = libc::read(pfds[0], &buf, 1024);
-	if (n <= 0)
+	defer
 	{
 		libc::close(pfds[0]);
-		wl_data_offer_destroy(offer);
-		return;
+		_wl_data_offer_destroy_with_data(offer);
 	}
+	char[1024] buf;
+	sz n = libc::read(pfds[0], &buf, 1024);
+	if (n <= 0) return;
 
 	sz length = (sz)n;
 	if (buf[n - 1] != 0) length += 1;
@@ -1835,9 +1820,6 @@ fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @
 	data_ptr[:s.len] = buf[:s.len];
 	gfx::_gfx.unix_clipboard.text = s;
 	gfx::_gfx.unix_clipboard.type = TEXT;
-
-	libc::close(pfds[0]);
-	_wl_data_offer_destroy_with_data(offer);
 }
 // ---
 

@@ -1800,24 +1800,25 @@ fn void _handle_event() @local
 				CULong bytesAfter;
 
 				xGetWindowProperty(ctx.display, e.xselection.requestor, e.xselection.property, 0, ~0, 0, e.xselection.target,
-				&actualType, &actualFormat, &result, &bytesAfter, &data);
+					&actualType, &actualFormat, &result, &bytesAfter, &data);
 
-				if (result != 0 && data != null)
+				if (data)
 				{
-					gfx::_drop_url_data(win, (String)data[:(sz)result]);
+					if (result) gfx::_drop_url_data(win, data[:(sz)result]);
 					xFree(data);
 				}
 
 				if (ctx.x11_version >= 2)
 				{
-					XEvent reply;
-					reply.type = 33; // ClientMessage
-					reply.xclient.window = ctx.x11_source;
-					reply.xclient.message_type = ctx.xdnd_finished;
-					reply.xclient.format = 32;
-					reply.xclient.data.l[0] = (CLong)win.src.window;
-					reply.xclient.data.l[1] = (CLong)result;
-					reply.xclient.data.l[2] = (CLong)ctx.xdnd_action_copy;
+					XEvent reply = {
+						.type = 33, // ClientMessage
+						.xclient.window = ctx.x11_source,
+						.xclient.message_type = ctx.xdnd_finished,
+						.xclient.format = 32,
+						.xclient.data.l[0] = (CLong)win.src.window,
+						.xclient.data.l[1] = (CLong)(result ? 1 : 0),
+						.xclient.data.l[2] = (CLong)(result ? (CLong)ctx.xdnd_action_copy : 0),
+					};
 					xSendEvent(ctx.display, ctx.x11_source, 0, 0, &reply);
 					xFlush(ctx.display);
 				}
