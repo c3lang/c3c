@@ -66,13 +66,13 @@ fn void poll_events_platform(bool reset_state = true)
 fn void _wait_platform(Duration duration) => objc::@autoreleasepool()
 {
 	if (!ctx.app) return;
+	gfx::_reset_prev_state();
 	CFTimeInterval time = duration.to_sec();
 	if (duration == gfx::WAIT_FOREVER) time = CFTimeInterval::max;
 	ObjId date = darwin::nsdate().send(ObjId, "dateWithTimeIntervalSinceNow:", time);
 	ObjId ev = ctx.app.send(ObjId, "nextEventMatchingMask:untilDate:inMode:dequeue:", NSEventMask.ANY, date, cf::KCF_RUNLOOP_DEFAULT_MODE, true);
 	if (ev)
 	{
-		gfx::_reset_prev_state();
 		ctx.app.send_void("sendEvent:", ev);
 		poll_events_platform(reset_state: false);
 	}
@@ -340,6 +340,7 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	win.src.window = nswin.retain();
 	win.src.view = view.retain();
 	win.src.delegate = delegate;
+	if (flags.allow_dnd) _macos_register_dnd(view);
 	win.src.bounds = win.bounds;
 	nswin.send_void("setContentView:", view);
 	nswin.send_void("makeFirstResponder:", view);
@@ -1031,6 +1032,14 @@ fn GfxWindow*? _fetch_win(ObjId self) @local
 }
 // MacOS callbacks
 
+fn void _macos_register_dnd(ObjId view)
+{
+	ObjId types = darwin::nsmutable_array().send(ObjId, "array");
+	types.send_void("addObject:", "public.file-url".to_nsstring());
+	types.send_void("addObject:", "NSFilenamesPboardType".to_nsstring());
+	view.send_void("registerForDraggedTypes:", types);
+}
+
 fn void? _osx_register_classes()
 {
 	if (_macos_window_delegate_class) return;
@@ -1388,6 +1397,7 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 	{
 		ZString file_path = darwin::string_to_zstr(property_list);
 		gfx::_data_drop_callback(win, file_path.str_view(), FILE);
+		return true;
 	}
 	if (!property_list.send(bool, "isKindOfClass:", darwin::nsarray())) return false;
 
@@ -1400,7 +1410,7 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 		ZString file_path = darwin::string_to_zstr(file_url);
 		gfx::_data_drop_callback(win, file_path.str_view(), FILE);
 	}
-	return false;
+	return true;
 }
 
 fn bool _osx_wants_update_layer(ObjId self, ObjSel sel) => true;

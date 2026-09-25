@@ -1711,7 +1711,7 @@ fn void event_queue_push(GfxEvent* event)
 	if (!_gfx.queue_events) return;
 	// Like SDL, discard an older superseded geometry event before appending the
 	// replacement. Appending keeps its ordering relative to unrelated events.
-	if ((event.type == WINDOW_RESIZED || event.type == WINDOW_MOVED) && _gfx.event_len)
+	if ((event.type == WINDOW_RESIZED || event.type == WINDOW_MOVED || event.type == DATA_DRAG) && _gfx.event_len)
 	{
 		for (int i = 0; i < _gfx.event_len; i++)
 		{
