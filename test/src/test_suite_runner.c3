@@ -68,6 +68,7 @@ struct RunFile
 {
 	String name;
 	bool is_output;
+	bool expect_absent;
 	bool closed;
 	union
 	{
@@ -346,6 +347,7 @@ fn bool parse_header_directive(int* line_no, String line, RunSettings* settings,
 			*line_no = 1;
 			settings.input_files.push(file);
 		case "expect":
+		case "expect-not":
 			if (is_single)
 			{
 				io::fprintn(output_stream, "FAILED - 'expect' directive only allowed with .c3t")!!;
@@ -353,6 +355,7 @@ fn bool parse_header_directive(int* line_no, String line, RunSettings* settings,
 			}
 			if (settings.current_file) settings.current_file.close();
 			RunFile* ofile = create_run_file(test_dir, value, true);
+			ofile.expect_absent = key_opt == "expect-not";
 			settings.current_file = ofile;
 			settings.output_files.push(ofile);
 		default:
@@ -674,6 +677,25 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 			{
 				io::fprintfn(output_stream, "FAILED - Did not compile file %s.", file.name)!!;
 				return false;
+			}
+
+			if (file.expect_absent)
+			{
+				if (file.expected_lines.is_empty())
+				{
+					io::fprintfn(output_stream, "FAILED - No text specified for #expect-not in %s.", file.name)!!;
+					return false;
+				}
+				String contents = (String)file::load_path_temp(expected_file)!!;
+				foreach (unexpected : file.expected_lines)
+				{
+					if (!contents.contains(unexpected)) continue;
+					io::fprintfn(output_stream,
+						"FAILED - %s unexpectedly contained: %s\n\nGenerated output:\n%s",
+						file.name, unexpected, contents)!!;
+					return false;
+				}
+				continue;
 			}
 
 			File file_ll = file::open(expected_file, "rb")!!;
