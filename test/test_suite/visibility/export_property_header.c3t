@@ -1,0 +1,47 @@
+// #mode: static-lib
+// #target: macos-aarch64
+module test;
+fn void test(Test a) @export
+{
+}
+
+enum Abc
+{
+	ABC,
+	DEF
+}
+struct Test
+{
+	struct
+	{
+		int a;
+		int b;
+	}
+	bitstruct : int
+	{
+		int fa : 1..6;
+	}
+	Abc y;
+	int[*] x;
+}
+
+/* #expect: test.h
+
+typedef struct test__Test__ test__Test;
+typedef enum test__Abc__
+{
+	test__Abc_ABC,
+	test__Abc_DEF,
+} test__Abc;
+struct test__Test__
+{
+	struct
+	{
+		int32_t a;
+		int32_t b;
+	};
+	int32_t __bits1;
+	test__Abc y;
+	int32_t x[];
+};
+extern void test__test(test__Test a);

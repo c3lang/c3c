@@ -1,0 +1,45 @@
+// A module level export exports everything inside, cannot hide currently
+// #mode: static-lib
+module test @export;
+
+struct Test
+{
+	int a;
+	int b;
+}
+
+struct Hidden @export("__hidden_try")
+{
+    int a;
+    int b;
+}
+
+fn int Hidden.mult(self) @export("try_show")
+{
+	return self.a * self.b;
+}
+
+fn int Hidden.hidden_mult(self) @export("__really_hidden_mult")
+{
+	return self.a * self.b;
+}
+
+fn int Test.mult(self)
+{
+	return self.a * self.b;
+}
+
+fn int Test.hidden_mult(self) @export("__hidden_mult")
+{
+	return self.a * self.b;
+}
+
+/* #expect: test.h
+typedef struct test__Test__ test__Test;
+/* #expect: test.h
+extern int32_t test__Test__mult(test__Test self);
+/* #expect: test.h
+hidden
+/* #expect: test.h
+try_show
+
