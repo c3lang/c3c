@@ -1793,31 +1793,32 @@ fn void _handle_event() @local
 			{
 				if (!win.internal.enabled_events.data_drop || e.xselection.property != ctx.xdnd_selection || !(win.internal.flags.allow_dnd)) return;
 
-				ZString data;
+				char* data;
 				CULong result;
 				Atom actualType;
 				int actualFormat;
 				CULong bytesAfter;
 
 				xGetWindowProperty(ctx.display, e.xselection.requestor, e.xselection.property, 0, ~0, 0, e.xselection.target,
-				&actualType, &actualFormat, &result, &bytesAfter, (char**)&data);
+					&actualType, &actualFormat, &result, &bytesAfter, &data);
 
-				if (result != 0)
+				if (data)
 				{
-					_drop_url(win, data);
-					if (data != null) xFree(data);
+					if (result) gfx::_drop_url_data(win, data[:(sz)result]);
+					xFree(data);
 				}
 
 				if (ctx.x11_version >= 2)
 				{
-					XEvent reply;
-					reply.type = 33; // ClientMessage
-					reply.xclient.window = ctx.x11_source;
-					reply.xclient.message_type = ctx.xdnd_finished;
-					reply.xclient.format = 32;
-					reply.xclient.data.l[0] = (CLong)win.src.window;
-					reply.xclient.data.l[1] = (CLong)result;
-					reply.xclient.data.l[2] = (CLong)ctx.xdnd_action_copy;
+					XEvent reply = {
+						.type = 33, // ClientMessage
+						.xclient.window = ctx.x11_source,
+						.xclient.message_type = ctx.xdnd_finished,
+						.xclient.format = 32,
+						.xclient.data.l[0] = (CLong)win.src.window,
+						.xclient.data.l[1] = (CLong)(result ? 1 : 0),
+						.xclient.data.l[2] = (CLong)(result ? (CLong)ctx.xdnd_action_copy : 0),
+					};
 					xSendEvent(ctx.display, ctx.x11_source, 0, 0, &reply);
 					xFlush(ctx.display);
 				}
@@ -1893,22 +1894,6 @@ fn void _toggle_maximized(GfxWindow* win, bool maximized) @local
 	xev.xclient.data.l[1] = (CLong)ctx.net_wm_state_maximized_horz;
 	xev.xclient.data.l[2] = (CLong)ctx.net_wm_state_maximized_vert;
 	xSendEvent(ctx.display, xDefaultRootWindow(ctx.display), 0, (1 << 20) | (1 << 19), &xev);
-}
-
-fn void _drop_url(GfxWindow* win, ZString data) => @pool()
-{
-	if (!data) return;
-	Splitter splitter = data.str_view().tokenize("\r\n");
-	while (try line = splitter.next())
-	{
-		line = line.trim();
-		if (!line) continue;
-		if (line[0] == '#') continue;
-		Url? url = url::parse(tmem, line);
-		if (catch url) continue;
-		if (url.scheme != "file") continue;
-		gfx::_data_drop_callback(win, url.path.zstr_tcopy(), url.path.len + 1, FILE);
-	}
 }
 
 fn void _get_visual_for_window(XVisualInfo* visual, bool transparent)

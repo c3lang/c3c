@@ -554,7 +554,7 @@ struct WgpuEmscriptenSurfaceSourceCanvasHTMLSelector
 
 fn void _emscripten_on_drop(char* file, sz size) @export("c3gfx_on_drop")
 {
-	_data_drop_callback(_gfx.root, file, size, FILE);
+	_data_drop_callback(_gfx.root, file[:size], FILE);
 }
 
 fn void _emscripten_on_fullscreenchange(int screenW, int screenH, bool entering) @export("c3gfx_on_fullscreenchange")

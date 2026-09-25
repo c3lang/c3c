@@ -1430,7 +1430,7 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 					log::error("Failed to convert drag %s", e, category: log::CATEGORY_VIDEO);
 					continue;
 				}
-				_data_drop_callback(win, s, s.len + 1, FILE);
+				_data_drop_callback(win, s, FILE);
 			};
 			win32::dragFinish(drop);
 		default:

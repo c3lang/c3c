@@ -1,5 +1,5 @@
 module std::gfx::wl @feat(BSD, LINUX) @feat(WAYLAND) @private;
-import std::math, std::collections, libc, std::os::posix, std::net::os, std::os::env, std::time::clock, std::time;
+import std::math, std::collections, libc, std::os::posix, std::net::os, std::net::url, std::os::env, std::time::clock, std::time;
 import std::gfx::egl, std::gfx @public, std::io;
 
 struct GfxWaylandCtx
@@ -22,6 +22,9 @@ struct GfxWaylandCtx
 	WlProxy* wp_pointer_warp;
 	WlProxy* data_device_manager;
 	WlProxy* data_device;
+	WlProxy* dnd_offer;
+	GfxWindow* dnd_win;
+	uint dnd_serial;
 	WlCursorTheme* wl_cursor_theme;
 	WlProxy* cursor_surface;
 	GfxWindow* mouse_owner;
@@ -71,8 +74,12 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 	ctx.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
 	static WlDataDeviceListener data_device_listener = {
-		.dataOffer = &_data_device_data_offer_cb, .enter = &_data_device_nothing_enter_cb, .leave = &_data_device_nothing_cb,
-		.motion = &_data_device_nothing_motion_cb, .drop = &_data_device_nothing_cb, .selection = &_data_device_selection_cb
+		.dataOffer = &_data_device_data_offer_cb,
+		.enter = &_data_device_enter_cb,
+		.leave = &_data_device_leave_cb,
+		.motion = &_data_device_motion_cb,
+		.drop = &_data_device_drop_cb,
+		.selection = &_data_device_selection_cb
 	};
 
 	if (ctx.seat && ctx.data_device_manager)
@@ -105,9 +112,32 @@ fn void destroy_platform()
 			wl_proxy_destroy(ctx.layer_shell);
 		}
 	}
-	if (ctx.data_device_manager) wl_data_device_manager_destroy(ctx.data_device_manager);
-	if (ctx.data_device) wl_data_device_destroy(ctx.data_device);
+	if (ctx.data_device)
+	{
+		if (wl_proxy_get_version(ctx.data_device) >= 2)
+		{
+			wl_data_device_release(ctx.data_device);
+		}
+		else
+		{
+			wl_data_device_destroy(ctx.data_device);
+		}
+	}
+	if (ctx.data_device_manager)
+	{
+		if (wl_proxy_get_version(ctx.data_device_manager) >= 4)
+		{
+			wl_data_device_manager_release(ctx.data_device_manager);
+		}
+		else
+		{
+			wl_data_device_manager_destroy(ctx.data_device_manager);
+		}
+	}
 	if (ctx.wl_cursor_theme) wl_cursor_theme_destroy(ctx.wl_cursor_theme);
+	_wl_data_offer_destroy_with_data(ctx.dnd_offer);
+	ctx.dnd_offer = null;
+	ctx.dnd_win = null;
 	if (ctx.wp_pointer_warp) wp_pointer_warp_v1_destroy(ctx.wp_pointer_warp);
 	if (gfx::_gfx.hidden_mouse) free_mouse(gfx::_gfx.hidden_mouse);
 	if (ctx.cursor_surface) wl_surface_destroy(ctx.cursor_surface);
@@ -445,6 +475,12 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 
 fn void window_destroy_platform(GfxWindow* win)
 {
+	if (ctx.dnd_win == win)
+	{
+		_wl_data_offer_destroy_with_data(ctx.dnd_offer);
+		ctx.dnd_offer = null;
+		ctx.dnd_win = null;
+	}
 	if (win.src.layerSurface) zwlr_layer_surface_v1_destroy(win.src.layerSurface);
 	if (win.src.decoration) zxdg_toplevel_decoration_v1_destroy(win.src.decoration);
 	if (win.src.xdgToplevel) xdg_toplevel_destroy(win.src.xdgToplevel);
@@ -1180,20 +1216,158 @@ fn void _window_set_opaque(GfxWindow* win) @local
 	wl_region_destroy(region);
 }
 
+struct WlDataOfferData
+{
+	GfxDataTransferType type;
+}
+
+fn void _wl_data_offer_destroy_with_data(WlProxy* offer) @local
+{
+	if (!offer) return;
+	WlDataOfferData* offer_data = (WlDataOfferData*)wl_proxy_get_user_data(offer);
+	if (offer_data) free(offer_data);
+	wl_data_offer_destroy(offer);
+}
+
 // wl callbacks
 fn void _data_device_data_offer_cb(void* data, WlProxy* device, WlProxy* offer) @local
 {
+	WlDataOfferData* offer_data = mem::new(WlDataOfferData);
+	*offer_data = { .type = NONE };
 	static WlDataOfferListener listener = {
-		.offer = &_data_offer_nothing_string_cb,
+		.offer = &_data_offer_string_cb,
 		.sourceActions = &_data_offer_nothing_uint_cb,
-		.action = &_data_offer_nothing_uint_cb };
-	wl_data_offer_add_listener(offer, &listener, null);
+		.action = &_data_offer_nothing_uint_cb
+	};
+	wl_data_offer_add_listener(offer, &listener, offer_data);
+}
+
+fn void _data_offer_string_cb(void* data, WlProxy* offer, ZString s) @local
+{
+	WlDataOfferData* offer_data = (WlDataOfferData*)data;
+	if (!s || !offer_data) return;
+	String mime = s.str_view();
+	if (mime == "text/uri-list")
+	{
+		offer_data.type = FILE;
+	}
+	else if (offer_data.type == NONE && (mime == "text/plain;charset=utf-8" || mime == "text/plain" || mime == "UTF8_STRING"))
+	{
+		offer_data.type = TEXT;
+	}
+}
+
+fn void _data_device_enter_cb(void* data, WlProxy* device, uint serial, WlProxy* surface, WlFixed x, WlFixed y, WlProxy* offer) @local
+{
+	GfxWindow* win = surface ? (GfxWindow*)wl_surface_get_user_data(surface) : null;
+
+	WlDataOfferData* offer_data = offer ? (WlDataOfferData*)wl_proxy_get_user_data(offer) : null;
+	GfxDataTransferType type = offer_data ? offer_data.type : NONE;
+	GfxPoint pos = { (int)x.to_double(), (int)y.to_double() };
+
+	if (offer && win && win.internal.flags.allow_dnd && type != NONE)
+	{
+		ctx.dnd_win = win;
+		ctx.dnd_offer = offer;
+		ctx.dnd_serial = serial;
+		if (wl_proxy_get_version(offer) >= 3)
+		{
+			wl_data_offer_set_actions(offer, 1 /* COPY */, 1 /* COPY */);
+		}
+		ZString mime = type == FILE ? "text/uri-list" : "text/plain;charset=utf-8";
+		wl_data_offer_accept(offer, serial, mime);
+		gfx::_mouse_motion_callback(win, pos);
+		gfx::_data_drag_callback(win, type, ENTER, pos);
+		return;
+	}
+	if (offer)
+	{
+		wl_data_offer_accept(offer, serial, null);
+		if (wl_proxy_get_version(offer) >= 3)
+		{
+			wl_data_offer_set_actions(offer, 0 /* NONE */, 0 /* NONE */);
+		}
+		_wl_data_offer_destroy_with_data(offer);
+	}
+}
+
+fn void _data_device_motion_cb(void* data, WlProxy* device, uint time, WlFixed x, WlFixed y) @local
+{
+	GfxWindow* win = ctx.dnd_win;
+	WlProxy* offer = ctx.dnd_offer;
+	if (!win || !offer) return;
+
+	WlDataOfferData* offer_data = (WlDataOfferData*)wl_proxy_get_user_data(offer);
+	GfxDataTransferType type = offer_data ? offer_data.type : NONE;
+	GfxPoint pos = { (int)x.to_double(), (int)y.to_double() };
+	gfx::_mouse_motion_callback(win, pos);
+	gfx::_data_drag_callback(win, type, MOVE, pos);
+}
+
+fn void _data_device_leave_cb(void* data, WlProxy* device) @local
+{
+	GfxWindow* win = ctx.dnd_win;
+	WlProxy* offer = ctx.dnd_offer;
+	if (win && offer)
+	{
+		WlDataOfferData* offer_data = (WlDataOfferData*)wl_proxy_get_user_data(offer);
+		GfxDataTransferType type = offer_data ? offer_data.type : NONE;
+		gfx::_data_drag_callback(win, type, EXIT, win.internal.last_mouse);
+	}
+	if (offer) _wl_data_offer_destroy_with_data(offer);
+	ctx.dnd_offer = null;
+	ctx.dnd_win = null;
+}
+
+fn void _data_device_drop_cb(void* data, WlProxy* device) @local => @pool()
+{
+	GfxWindow* win = ctx.dnd_win;
+	WlProxy* offer = ctx.dnd_offer;
+	ctx.dnd_win = null;
+	ctx.dnd_offer = null;
+
+	if (!offer || !win) return;
+
+	WlDataOfferData* offer_data = (WlDataOfferData*)wl_proxy_get_user_data(offer);
+	GfxDataTransferType drop_type = offer_data ? offer_data.type : NONE;
+	defer _wl_data_offer_destroy_with_data(offer);
+	if (drop_type == NONE) return;
+
+	int[2] pfds;
+	if (posix::pipe(&pfds) < 0) return;
+
+	ZString mime = drop_type == FILE ? "text/uri-list" : "text/plain;charset=utf-8";
+	wl_data_offer_receive(offer, mime, pfds[1]);
+	libc::close(pfds[1]);
+	defer libc::close(pfds[0]);
+	wl_display_flush(ctx.wl_display);
+
+	List{char} bytes;
+	bytes.init(tmem);
+	char[1024] buf;
+	Posix_pollfd pfd = { .fd = pfds[0], .events = os::POLLIN };
+
+	while (os::poll(&pfd, 1, 100) > 0)
+	{
+		if (pfd.revents & os::POLLIN == 0) break;
+		sz n = libc::read(pfds[0], &buf, buf.len);
+		if (n == 0) break;
+		if (n < 0) return;
+		bytes.push_all(buf[:n]);
+		if (bytes.len() > 64 * mem::MB) return;
+	}
+	if (drop_type == FILE)
+	{
+		gfx::_drop_url_data(win, bytes.array_view());
+	}
+	else
+	{
+		gfx::_data_drop_callback(win, bytes.array_view(), TEXT);
+	}
+	if (wl_proxy_get_version(offer) >= 3) wl_data_offer_finish(offer);
 }
 
 fn void _data_device_nothing_cb(void* data, WlProxy* device) @local {}
-fn void _data_device_nothing_enter_cb(void* data, WlProxy* device, uint serial, WlProxy* surface, WlFixed x, WlFixed y, WlProxy* offer) @local {}
-fn void _data_device_nothing_motion_cb(void* data, WlProxy* device, uint time, WlFixed x, WlFixed y) @local {}
-fn void _data_offer_nothing_string_cb(void* data, WlProxy* offer, ZString s) @local {}
 fn void _data_offer_nothing_uint_cb(void* data, WlProxy* offer, uint u) @local {}
 fn void _data_source_nothing_cb(void* data, WlProxy* source) @local {}
 fn void _data_source_nothing_string_cb(void* data, WlProxy* source, ZString s) @local {}
@@ -1260,7 +1434,7 @@ fn void _global_registry_cb(void* data, WlProxy* registry, uint id, ZString ifac
 		case wpPointerWarpV1Interface.name.str_view():
 			ctx.wp_pointer_warp = wl_registry_bind(registry, id, &wpPointerWarpV1Interface, 1);
 		case "wl_data_device_manager":
-			ctx.data_device_manager = wl_registry_bind(registry, id, &wlDataDeviceManagerInterface, 1);
+			ctx.data_device_manager = wl_registry_bind(registry, id, &wlDataDeviceManagerInterface, version < 4 ? version : 4);
 	}
 }
 
@@ -1619,6 +1793,7 @@ fn void _xdg_output_logical_size_cb(void* data, WlProxy* xdgOutput, int width, i
 fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @local
 {
 	if (!offer) return;
+	if (offer == ctx.dnd_offer) ctx.dnd_offer = null;
 
 	int[2] pfds;
 	posix::pipe(&pfds);
@@ -1626,14 +1801,14 @@ fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @
 	libc::close(pfds[1]);
 	wl_display_roundtrip(ctx.wl_display);
 
-	char[1024] buf;
-	sz n = libc::read(pfds[0], &buf, 1024);
-	if (n <= 0)
+	defer
 	{
 		libc::close(pfds[0]);
-		wl_data_offer_destroy(offer);
-		return;
+		_wl_data_offer_destroy_with_data(offer);
 	}
+	char[1024] buf;
+	sz n = libc::read(pfds[0], &buf, 1024);
+	if (n <= 0) return;
 
 	sz length = (sz)n;
 	if (buf[n - 1] != 0) length += 1;
@@ -1645,9 +1820,6 @@ fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @
 	data_ptr[:s.len] = buf[:s.len];
 	gfx::_gfx.unix_clipboard.text = s;
 	gfx::_gfx.unix_clipboard.type = TEXT;
-
-	libc::close(pfds[0]);
-	wl_data_offer_destroy(offer);
 }
 // ---
 

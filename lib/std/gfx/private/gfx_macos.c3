@@ -1386,9 +1386,8 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 
 	if (propertyList.send(bool, "isKindOfClass:", darwin::nsstring()))
 	{
-		NSUInteger stringCount = propertyList.send(NSUInteger, "length");
 		ZString filePath = darwin::string_to_zstr(propertyList);
-		gfx::_data_drop_callback(win, filePath, (sz)stringCount + 1, FILE);
+		gfx::_data_drop_callback(win, filePath.str_view(), FILE);
 	}
 	if (!propertyList.send(bool, "isKindOfClass:", darwin::nsarray())) return false;
 
@@ -1399,8 +1398,7 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 	{
 		ObjId file_url = propertyList.send(ObjId, "objectAtIndex:", i);
 		ZString filePath = darwin::string_to_zstr(file_url);
-		NSUInteger string_count = file_url.send(NSUInteger, "length");
-		gfx::_data_drop_callback(win, filePath, (sz)string_count + 1, FILE);
+		gfx::_data_drop_callback(win, filePath.str_view(), FILE);
 	}
 	return false;
 }

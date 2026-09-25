@@ -234,6 +234,7 @@ fn void wl_buffer_destroy(WlProxy* buffer) => wl_proxy_marshal_flags(buffer, 0, 
 
 fn WlProxy* wl_data_device_manager_create_data_source(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 0, &wlDataSourceInterface, wl_proxy_get_version(mgr), 0, null);
 fn WlProxy* wl_data_device_manager_get_data_device(WlProxy* mgr, WlProxy* seat) => wl_proxy_marshal_flags(mgr, 1, &wlDataDeviceInterface, wl_proxy_get_version(mgr), 0, null, seat);
+fn void wl_data_device_manager_release(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 2, null, wl_proxy_get_version(mgr), WL_MARSHAL_FLAG_DESTROY);
 fn void wl_data_device_manager_destroy(WlProxy* mgr) => wl_proxy_destroy(mgr);
 
 fn void wl_data_source_offer(WlProxy* source, ZString mimeType) => wl_proxy_marshal_flags(source, 0, null, wl_proxy_get_version(source), 0, mimeType);
@@ -241,11 +242,15 @@ fn int wl_data_source_add_listener(WlProxy* source, WlDataSourceListener* listen
 fn void wl_data_source_destroy(WlProxy* source) => wl_proxy_marshal_flags(source, 1, null, wl_proxy_get_version(source), WL_MARSHAL_FLAG_DESTROY);
 
 fn int wl_data_offer_add_listener(WlProxy* offer, WlDataOfferListener* listener, void* data) => wl_proxy_add_listener(offer, listener, data);
+fn void wl_data_offer_accept(WlProxy* offer, uint serial, ZString mimeType) => wl_proxy_marshal_flags(offer, 0, null, wl_proxy_get_version(offer), 0, serial, mimeType);
 fn void wl_data_offer_receive(WlProxy* offer, ZString mimeType, int fd) => wl_proxy_marshal_flags(offer, 1, null, wl_proxy_get_version(offer), 0, mimeType, fd);
 fn void wl_data_offer_destroy(WlProxy* offer) => wl_proxy_marshal_flags(offer, 2, null, wl_proxy_get_version(offer), WL_MARSHAL_FLAG_DESTROY);
+fn void wl_data_offer_finish(WlProxy* offer) => wl_proxy_marshal_flags(offer, 3, null, wl_proxy_get_version(offer), 0);
+fn void wl_data_offer_set_actions(WlProxy* offer, uint dnd_actions, uint preferred_action) => wl_proxy_marshal_flags(offer, 4, null, wl_proxy_get_version(offer), 0, dnd_actions, preferred_action);
 
 fn int wl_data_device_add_listener(WlProxy* dev, WlDataDeviceListener* listener, void* data) => wl_proxy_add_listener(dev, listener, data);
 fn void wl_data_device_set_selection(WlProxy* dev, WlProxy* source, uint serial) => wl_proxy_marshal_flags(dev, 1, null, wl_proxy_get_version(dev), 0, source, serial);
+fn void wl_data_device_release(WlProxy* dev) => wl_proxy_marshal_flags(dev, 2, null, wl_proxy_get_version(dev), WL_MARSHAL_FLAG_DESTROY);
 fn void wl_data_device_destroy(WlProxy* dev) => wl_proxy_destroy(dev);
 
 extern fn WlDisplay* wl_display_connect(ZString name);
@@ -496,10 +501,13 @@ const XkbKeysym XKB_KEY_KP_9 = 0xffb9;
 const XkbKeysym XKB_KEY_PRINT = 0xff61;
 const XkbKeysym XKB_KEY_PAUSE = 0xff13;
 
+// Dummy types table to prevent libwayland-client from dereferencing NULL[i] on WAYLAND_DEBUG=1
+void*[8] wl_untyped_args = {  };
+
 WlMessage[4] xdg_wm_base_requests = {
 	{ "destroy", "", null },
-	{ "create_positioner", "n", null },
-	{ "get_xdg_surface", "no", null },
+	{ "create_positioner", "n", &wl_untyped_args },
+	{ "get_xdg_surface", "no", &wl_untyped_args },
 	{ "pong", "u", null },
 };
 WlMessage[1] xdg_wm_base_events = {
@@ -507,15 +515,15 @@ WlMessage[1] xdg_wm_base_events = {
 };
 WlInterface xdgWmBaseInterface @weak @export("xdg_wm_base_interface") = {
 	.name = "xdg_wm_base", .version = 7,
-	.methodCount = 4, .methods = &xdg_wm_base_requests[0],
-	.eventCount = 1, .events = &xdg_wm_base_events[0],
+	.methodCount = 4, .methods = &xdg_wm_base_requests,
+	.eventCount = 1, .events = &xdg_wm_base_events,
 };
 
 // xdg_surface
 WlMessage[5] xdg_surface_requests = {
 	{ "destroy", "", null },
-	{ "get_toplevel", "n", null },
-	{ "get_popup", "n?oo", null },
+	{ "get_toplevel", "n", &wl_untyped_args },
+	{ "get_popup", "n?oo", &wl_untyped_args },
 	{ "set_window_geometry", "iiii", null },
 	{ "ack_configure", "u", null },
 };
@@ -531,17 +539,17 @@ WlInterface xdgSurfaceInterface @weak @export("xdg_surface_interface") = {
 // xdg_toplevel
 WlMessage[14] xdg_toplevel_requests = {
 	{ "destroy", "", null },
-	{ "set_parent", "?o", null },
+	{ "set_parent", "?o", &wl_untyped_args },
 	{ "set_title", "s", null },
 	{ "set_app_id", "s", null },
-	{ "show_window_menu", "ouii", null },
-	{ "move", "ou", null },
-	{ "resize", "ouu", null },
+	{ "show_window_menu", "ouii", &wl_untyped_args },
+	{ "move", "ou", &wl_untyped_args },
+	{ "resize", "ouu", &wl_untyped_args },
 	{ "set_max_size", "ii", null },
 	{ "set_min_size", "ii", null },
 	{ "set_maximized", "", null },
 	{ "unset_maximized", "", null },
-	{ "set_fullscreen", "?o", null },
+	{ "set_fullscreen", "?o", &wl_untyped_args },
 	{ "unset_fullscreen", "", null },
 	{ "set_minimized", "", null },
 };
@@ -560,7 +568,7 @@ WlInterface xdgToplevelInterface @weak @export("xdg_toplevel_interface") = {
 // zxdg_decoration_manager_v1
 WlMessage[2] zxdg_decoration_manager_v1_requests = {
 	{ "destroy", "", null },
-	{ "get_toplevel_decoration", "no", null },
+	{ "get_toplevel_decoration", "no", &wl_untyped_args },
 };
 WlInterface zxdgDecorationManagerV1Interface @weak @export("zxdg_decoration_manager_v1_interface") = {
 	.name = "zxdg_decoration_manager_v1", .version = 2,
@@ -585,8 +593,8 @@ WlInterface zxdgToplevelDecorationV1Interface @weak @export("zxdg_toplevel_decor
 // zwp_pointer_constraints_v1
 WlMessage[3] zwp_pointer_constraints_v1_requests = {
 	{ "destroy", "", null },
-	{ "lock_pointer", "noo?ou", null },
-	{ "confine_pointer", "noo?ou", null },
+	{ "lock_pointer", "noo?ou", &wl_untyped_args },
+	{ "confine_pointer", "noo?ou", &wl_untyped_args },
 };
 WlInterface zwpPointerConstraintsV1Interface @weak @export("zwp_pointer_constraints_v1_interface") = {
 	.name = "zwp_pointer_constraints_v1", .version = 1,
@@ -597,7 +605,7 @@ WlInterface zwpPointerConstraintsV1Interface @weak @export("zwp_pointer_constrai
 WlMessage[3] zwp_locked_pointer_v1_requests = {
 	{ "destroy", "", null },
 	{ "set_cursor_position_hint", "ff", null },
-	{ "set_region", "?o", null },
+	{ "set_region", "?o", &wl_untyped_args },
 };
 WlMessage[2] zwp_locked_pointer_v1_events = {
 	{ "locked", "", null },
@@ -612,7 +620,7 @@ WlInterface zwpLockedPointerV1Interface @weak @export("zwp_locked_pointer_v1_int
 // zwp_relative_pointer_manager_v1
 WlMessage[2] zwp_relative_pointer_manager_v1_requests = {
 	{ "destroy", "", null },
-	{ "get_relative_pointer", "no", null },
+	{ "get_relative_pointer", "no", &wl_untyped_args },
 };
 WlInterface zwpRelativePointerManagerV1Interface @weak @export("zwp_relative_pointer_manager_v1_interface") = {
 	.name = "zwp_relative_pointer_manager_v1", .version = 1,
@@ -635,7 +643,7 @@ WlInterface zwpRelativePointerV1Interface @weak @export("zwp_relative_pointer_v1
 // zxdg_output_manager_v1
 WlMessage[2] zxdg_output_manager_v1_requests = {
 	{ "destroy", "", null },
-	{ "get_xdg_output", "no", null },
+	{ "get_xdg_output", "no", &wl_untyped_args },
 };
 WlInterface zxdgOutputManagerV1Interface @weak @export("zxdg_output_manager_v1_interface") = {
 	.name = "zxdg_output_manager_v1", .version = 3,
@@ -662,8 +670,8 @@ WlInterface zxdgOutputV1Interface @weak @export("zxdg_output_v1_interface") = {
 // xdg_toplevel_icon_manager_v1
 WlMessage[3] xdg_toplevel_icon_manager_v1_requests = {
 	{ "destroy", "", null },
-	{ "create_icon", "n", null },
-	{ "set_icon", "o?o", null },
+	{ "create_icon", "n", &wl_untyped_args },
+	{ "set_icon", "o?o", &wl_untyped_args },
 };
 WlMessage[2] xdg_toplevel_icon_manager_v1_events = {
 	{ "icon_size", "i", null },
@@ -678,7 +686,7 @@ WlInterface xdgToplevelIconManagerV1Interface @weak @export("xdg_toplevel_icon_m
 WlMessage[3] xdg_toplevel_icon_v1_requests = {
 	{ "destroy", "", null },
 	{ "set_name", "s", null },
-	{ "add_buffer", "oi", null },
+	{ "add_buffer", "oi", &wl_untyped_args },
 };
 WlInterface xdgToplevelIconV1Interface @weak @export("xdg_toplevel_icon_v1_interface") = {
 	.name = "xdg_toplevel_icon_v1", .version = 1,
@@ -689,7 +697,7 @@ WlInterface xdgToplevelIconV1Interface @weak @export("xdg_toplevel_icon_v1_inter
 // wp_pointer_warp_v1
 WlMessage[2] wp_pointer_warp_v1_requests = {
 	{ "destroy", "", null },
-	{ "warp_pointer", "ooffu", null },
+	{ "warp_pointer", "ooffu", &wl_untyped_args },
 };
 WlInterface wpPointerWarpV1Interface @weak @export("wp_pointer_warp_v1_interface") = {
 	.name = "wp_pointer_warp_v1", .version = 1,
@@ -699,7 +707,7 @@ WlInterface wpPointerWarpV1Interface @weak @export("wp_pointer_warp_v1_interface
 
 // zwlr_layer_shell_v1
 WlMessage[2] zwlr_layer_shell_v1_requests = {
-	{ "get_layer_surface", "no?ous", null },
+	{ "get_layer_surface", "no?ous", &wl_untyped_args[0] },
 	{ "destroy", "3", null },
 };
 WlInterface zwlrLayerShellV1Interface @weak @export("zwlr_layer_shell_v1_interface") = {
@@ -715,7 +723,7 @@ WlMessage[10] zwlr_layer_surface_v1_requests = {
 	{ "set_exclusive_zone", "i", null },
 	{ "set_margin", "iiii", null },
 	{ "set_keyboard_interactivity", "u", null },
-	{ "get_popup", "o", null },
+	{ "get_popup", "o", &wl_untyped_args },
 	{ "ack_configure", "u", null },
 	{ "destroy", "", null },
 	{ "set_layer", "2u", null },
