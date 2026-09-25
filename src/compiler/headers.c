@@ -748,6 +748,9 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, int modu
 		{
 			FOREACH(Decl *, method, unit->methods)
 			{
+				Type* parent_type = typeget(method->func_decl.type_parent);
+				if (!parent_type) continue;
+				method->is_export = parent_type->decl->is_export;
 				header_gen_function(c, method, fn_globals, &methods_found);
 			}
 		}
