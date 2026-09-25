@@ -4,7 +4,8 @@
 
 ### Changes / improvements
 - Fetching MSVC also optionally fetches C/C++ headers for cross-compilation
-
+- Experimental C backend.
+ 
 ### Fixes
 - Regression for `vec.pow(x)`.
 - Macros with "const" declarations were compile time folded despite needing the declaration.

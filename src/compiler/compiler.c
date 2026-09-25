@@ -163,6 +163,12 @@ void thread_compile_task_llvm(void *compile_data)
 }
 #endif 
 
+void thread_compile_task_c(void *compile_data)
+{
+	CompileData *data = compile_data;
+	data->object_name = c_codegen(data->context);
+}
+
 void thread_compile_task_tb(void *compile_data)
 {
 	CompileData *data = compile_data;
@@ -559,8 +565,8 @@ void compiler_compile(void)
 	{
 		case BACKEND_C:
 			gen_contexts = c_gen(modules, module_count);
-			(void)gen_contexts;
-			error_exit("Unfinished C backend!");
+			task = &thread_compile_task_c;
+			break;
 		case BACKEND_LLVM:
 #if LLVM_AVAILABLE
 			llvm_setup();
@@ -696,7 +702,8 @@ void compiler_compile(void)
 	int task_count = (int)vec_size(tasks);
 	if (task_count > 0)
 	{
-		taskqueue_run((int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads), tasks);
+		int threads = (int)(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads);
+		taskqueue_run(threads, tasks);
 	}
 	if (compiler.build.print_output)
 	{
