@@ -569,6 +569,13 @@ add_executable(c3c
         src/utils/unzipper.c
         src/utils/msi.c
         src/compiler/c_codegen.c
+        src/compiler/c_codegen_builtins.c
+        src/compiler/c_codegen_expr.c
+        src/compiler/c_codegen_stmt.c
+        src/compiler/c_codegen_type.c
+        src/compiler/c_codegen_lvalue.c
+        src/compiler/c_codegen_function.c
+        src/compiler/c_codegen_module.c
         src/compiler/decltable.c
         src/compiler/methodtable.c
         src/utils/fetch_sdk/fetch_sdk.c
