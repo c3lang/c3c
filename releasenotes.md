@@ -4,7 +4,7 @@
 
 ### Changes / improvements
 - Fetching MSVC also optionally fetches C/C++ headers for cross-compilation
-- Experimental C backend added.
+- Experimental C backend.
  
 ### Fixes
 - Regression for `vec.pow(x)`.
