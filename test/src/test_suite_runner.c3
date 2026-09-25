@@ -64,12 +64,18 @@ struct Error
 	bool found;
 }
 
+enum RunFileMode
+{
+	EXPECTED,
+	UNEXPECTED
+}
+
 struct RunFile
 {
 	String name;
 	bool is_output;
-	bool expect_absent;
 	bool closed;
+	RunFileMode mode;
 	union
 	{
 		struct
@@ -79,7 +85,7 @@ struct RunFile
 			List{Error} errors;
 			int line_offset;
 		}
-		List{String} expected_lines;
+		List{String} lines;
 	}
 }
 
@@ -89,7 +95,7 @@ fn void RunFile.add_line(&self, String line)
 	{
 		line = line.trim();
 		if (line == "") return;
-		self.expected_lines.push(line);
+		self.lines.push(line);
 	}
 	else
 	{
@@ -97,13 +103,13 @@ fn void RunFile.add_line(&self, String line)
 	}
 }
 
-fn RunFile* create_run_file(Path test_dir, String filename, bool is_output)
+fn RunFile* create_run_file(Path test_dir, String filename, bool is_output, RunFileMode mode)
 {
 	RunFile* rf = mem::tnew(RunFile);
-	*rf = { .name = filename, .is_output = is_output };
+	*rf = { .name = filename, .is_output = is_output, .mode = mode };
 	if (is_output)
 	{
-		rf.expected_lines.init(tmem);
+		rf.lines.init(tmem);
 	}
 	else
 	{
@@ -342,7 +348,7 @@ fn bool parse_header_directive(int* line_no, String line, RunSettings* settings,
 				return false;
 			}
 			settings.current_file.close();
-			RunFile* file = create_run_file(test_dir, value, false);
+			RunFile* file = create_run_file(test_dir, value, false, RunFileMode.EXPECTED);
 			settings.current_file = file;
 			*line_no = 1;
 			settings.input_files.push(file);
@@ -354,8 +360,11 @@ fn bool parse_header_directive(int* line_no, String line, RunSettings* settings,
 				return false;
 			}
 			if (settings.current_file) settings.current_file.close();
-			RunFile* ofile = create_run_file(test_dir, value, true);
-			ofile.expect_absent = key_opt == "expect-not";
+			RunFileMode m = RunFileMode.EXPECTED;
+			if (key_opt == "expect-not") {
+				m = RunFileMode.UNEXPECTED;
+			}
+			RunFile* ofile = create_run_file(test_dir, value, true, m);
 			settings.current_file = ofile;
 			settings.output_files.push(ofile);
 		default:
@@ -491,7 +500,7 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 	settings.output_files.init(tmem);
 
 	String target_c3_name = file_path.basename().strip_suffix(single ? ".c3" : ".c3t").tconcat(".c3");
-	RunFile* rf = create_run_file(test_dir, target_c3_name, false);
+	RunFile* rf = create_run_file(test_dir, target_c3_name, false, RunFileMode.EXPECTED);
 
 	settings.current_file = rf;
 	settings.input_files.push(rf);
@@ -679,43 +688,37 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 				return false;
 			}
 
-			if (file.expect_absent)
-			{
-				if (file.expected_lines.is_empty())
-				{
-					io::fprintfn(output_stream, "FAILED - No text specified for #expect-not in %s.", file.name)!!;
-					return false;
-				}
-				String contents = (String)file::load_path_temp(expected_file)!!;
-				foreach (unexpected : file.expected_lines)
-				{
-					if (!contents.contains(unexpected)) continue;
-					io::fprintfn(output_stream,
-						"FAILED - %s unexpectedly contained: %s\n\nGenerated output:\n%s",
-						file.name, unexpected, contents)!!;
-					return false;
-				}
-				continue;
-			}
-
 			File file_ll = file::open(expected_file, "rb")!!;
 			defer (void)file_ll.close();
 
-			String? next = file.expected_lines.pop_first();
+			String? next = file.lines.pop_first();
 			while (try line = io::treadline(&file_ll) && try next_value = next)
 			{
 				line = line.trim();
 				if (line == "") continue;
-				if (line.contains(next_value))
+				if (file.mode == RunFileMode.EXPECTED && line.contains(next_value))
 				{
-					next = file.expected_lines.pop_first();
+					next = file.lines.pop_first();
+				}
+				if (file.mode == RunFileMode.UNEXPECTED && !line.contains(next_value))
+				{
+					next = file.lines.pop_first();
 				}
 			}
 
 			if (try next)
 			{
-				io::fprintfn(output_stream,
-					"FAILED - %s did not contain: %s", file.name, next)!!;
+				switch(file.mode)
+				{
+					case RunFileMode.EXPECTED:
+						io::fprintfn(output_stream,
+							"FAILED - %s did not contain: %s", file.name, next)!!;
+						break;
+					case RunFileMode.UNEXPECTED:
+						io::fprintfn(output_stream,
+							"FAILED - %s did contain: %s", file.name, next)!!;
+						break;
+				}
 				io::fprintfn(output_stream,
 					"\n\n------------------------------------------------>>>> %s\n", file.name)!!;
 				(void)file_ll.seek(0);
