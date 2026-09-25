@@ -106,6 +106,7 @@ static void usage(bool full)
 		print_opt("--validation=<option>", "Strictness of code validation: lenient (default), strict, obnoxious (very strict)");
 		print_opt("--stdlib <dir>", "Use this directory as the C3 standard library path.");
 		print_opt("--no-entry", "Do not generate (or require) a main function.");
+		print_opt("--cflags <flag>", "Add flags passed to the compiler when using the C backend.");
 		print_opt("--path <dir>", "Use this as the base directory for the current command.");
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
@@ -1576,11 +1577,6 @@ static void parse_option(BuildOptions *options) // NOLINT
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --cc needs a compiler name.");
 				options->cc = next_arg();
-				return;
-			}
-			if ((argopt = match_argopt("cflags"))) // NOLINT
-			{
-				options->cflags = argopt;
 				return;
 			}
 			if (match_longopt("cflags"))
