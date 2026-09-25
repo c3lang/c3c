@@ -393,7 +393,6 @@ static void header_gen_struct_union_top(HeaderContext *c, Decl *decl, GenType ge
 		vec_add(c->type_queue, decl);
 		return;
 	}
-	printf("%s decl", decl->extname);
 	header_ensure_member_types_exist(c, decl->strukt.members);
 	PRINTF("%s %s__\n", struct_union_str(decl), decl->extname);
 	PRINTF("{\n");
