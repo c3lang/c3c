@@ -234,6 +234,7 @@ fn void wl_buffer_destroy(WlProxy* buffer) => wl_proxy_marshal_flags(buffer, 0, 
 
 fn WlProxy* wl_data_device_manager_create_data_source(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 0, &wlDataSourceInterface, wl_proxy_get_version(mgr), 0, null);
 fn WlProxy* wl_data_device_manager_get_data_device(WlProxy* mgr, WlProxy* seat) => wl_proxy_marshal_flags(mgr, 1, &wlDataDeviceInterface, wl_proxy_get_version(mgr), 0, null, seat);
+fn void wl_data_device_manager_release(WlProxy* mgr) => wl_proxy_marshal_flags(mgr, 2, null, wl_proxy_get_version(mgr), WL_MARSHAL_FLAG_DESTROY);
 fn void wl_data_device_manager_destroy(WlProxy* mgr) => wl_proxy_destroy(mgr);
 
 fn void wl_data_source_offer(WlProxy* source, ZString mimeType) => wl_proxy_marshal_flags(source, 0, null, wl_proxy_get_version(source), 0, mimeType);
@@ -241,11 +242,15 @@ fn int wl_data_source_add_listener(WlProxy* source, WlDataSourceListener* listen
 fn void wl_data_source_destroy(WlProxy* source) => wl_proxy_marshal_flags(source, 1, null, wl_proxy_get_version(source), WL_MARSHAL_FLAG_DESTROY);
 
 fn int wl_data_offer_add_listener(WlProxy* offer, WlDataOfferListener* listener, void* data) => wl_proxy_add_listener(offer, listener, data);
+fn void wl_data_offer_accept(WlProxy* offer, uint serial, ZString mimeType) => wl_proxy_marshal_flags(offer, 0, null, wl_proxy_get_version(offer), 0, serial, mimeType);
 fn void wl_data_offer_receive(WlProxy* offer, ZString mimeType, int fd) => wl_proxy_marshal_flags(offer, 1, null, wl_proxy_get_version(offer), 0, mimeType, fd);
 fn void wl_data_offer_destroy(WlProxy* offer) => wl_proxy_marshal_flags(offer, 2, null, wl_proxy_get_version(offer), WL_MARSHAL_FLAG_DESTROY);
+fn void wl_data_offer_finish(WlProxy* offer) => wl_proxy_marshal_flags(offer, 3, null, wl_proxy_get_version(offer), 0);
+fn void wl_data_offer_set_actions(WlProxy* offer, uint dnd_actions, uint preferred_action) => wl_proxy_marshal_flags(offer, 4, null, wl_proxy_get_version(offer), 0, dnd_actions, preferred_action);
 
 fn int wl_data_device_add_listener(WlProxy* dev, WlDataDeviceListener* listener, void* data) => wl_proxy_add_listener(dev, listener, data);
 fn void wl_data_device_set_selection(WlProxy* dev, WlProxy* source, uint serial) => wl_proxy_marshal_flags(dev, 1, null, wl_proxy_get_version(dev), 0, source, serial);
+fn void wl_data_device_release(WlProxy* dev) => wl_proxy_marshal_flags(dev, 2, null, wl_proxy_get_version(dev), WL_MARSHAL_FLAG_DESTROY);
 fn void wl_data_device_destroy(WlProxy* dev) => wl_proxy_destroy(dev);
 
 extern fn WlDisplay* wl_display_connect(ZString name);

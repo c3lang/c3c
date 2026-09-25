@@ -1,5 +1,5 @@
 module std::gfx @feat(LINUX, BSD, MACOS, WASM, WIN32) @feat(!(BSD | LINUX) | WAYLAND | !NO_X11) @private;
-import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time;
+import libc, std::math, std::collections::list, std::os, std::gfx::x11 @public, std::gfx::egl @public, std::time, std::net::url;
 import std::gfx::wl @public;
 
 const MAX_EVENTS = 32;
@@ -672,6 +672,22 @@ fn void _window_check_mode_with_bounds(GfxWindow* win, GfxRect bounds)
 	}
 }
 
+fn void _drop_url_data(GfxWindow* win, String data) => @pool()
+{
+	if (!data.len) return;
+	Splitter splitter = data.tokenize("\r\n");
+	while (try line = splitter.next())
+	{
+		line = line.trim();
+		if (!line) continue;
+		if (line[0] == '#') continue;
+		Url? url = url::parse(tmem, line);
+		if (catch url) continue;
+		if (url.scheme != "file") continue;
+		_data_drop_callback(win, url.path.zstr_tcopy(), url.path.len, FILE);
+	}
+}
+
 fn void _data_drop_callback(GfxWindow* win, char* data, sz length, GfxDataTransferType dataType)
 {
 	if (!win.internal.enabled_events.data_drop || !win.internal.flags.allow_dnd) return;
@@ -685,8 +701,9 @@ fn void _data_drop_callback(GfxWindow* win, char* data, sz length, GfxDataTransf
 	event.common.win = win;
 	if (_gfx.callbacks[event.type] != null) _gfx.callbacks[event.type](&event);
 	if (!_gfx.queue_events && !_gfx.dnd_build) return;
-	char* dataCopy = malloc(length);
+	char* dataCopy = malloc(length + 1);
 	mem::copy(dataCopy, data, length);
+	dataCopy[length] = 0;
 	node.data = dataCopy;
 	GfxDataDropNode* heapNode = mem::new(GfxDataDropNode);
 	*heapNode = node;
