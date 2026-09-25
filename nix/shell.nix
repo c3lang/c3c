@@ -17,6 +17,6 @@ mkShell.override {
     clang-tools 
   ];
 
-  # Usage: 'cmake . -Bbuild $C3_CMAKE_FLAGS' or 'cmake . -Bbuild $=C3_CMAKE_FLAGS' on zsh
-  C3_CMAKE_FLAGS = lib.concatStringsSep " " c3c.cmakeFlags;
+  # Usage: 'meson setup build $C3_MESON_FLAGS' or 'meson setup build $=C3_MESON_FLAGS' on zsh
+  C3_MESON_FLAGS = lib.concatStringsSep " " c3c.mesonFlags;
 }

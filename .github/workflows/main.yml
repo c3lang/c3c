@@ -60,37 +60,42 @@ jobs:
       - name: Get current date context
         id: date
         run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
-  
+
       - uses: actions/cache@v6
         with:
-          path: |
-            build-release/_deps
-            build-debug/_deps
-          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ steps.date.outputs.date }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
+          path: C:\Users\runneradmin\AppData\Local\c3c\llvm
+          key: ${{ runner.os }}-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ steps.date.outputs.date }}-${{ hashFiles('meson.build', '.github/workflows/main.yml') }}
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: false
+
+      - name: Install Meson and Ninja
+        run: uv tool install meson && uv tool install ninja
 
       # set up the environment for Ninja
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: x64
 
-      - name: CMake Build (Release)
+      - name: Meson Build (Release)
         run: |
-          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
-          cmake --build build-release --config Release
+          meson setup build-release --buildtype=release -Dfetch_llvm=true
+          meson compile -C build-release
 
       - name: Bundle (Windows Release)
         shell: bash
-        run: ./scripts/tools/package_build.sh "./build-release/c3c.exe" "c3-windows-Release" "zip"
+        run: python3 ./scripts/meson/package.py --bin ./build-release/c3c.exe --out c3-windows-Release --format zip
 
       - uses: actions/upload-artifact@v7
         with:
           name: c3-windows-Release
           path: c3-windows-Release.zip
 
-      - name: CMake Build (Debug)
+      - name: Meson Build (Debug)
         run: |
-          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
-          cmake --build build-debug --config Debug
+          meson setup build-debug --buildtype=debug -Dfetch_llvm=true
+          meson compile -C build-debug
 
       # We remove the GNU link tool so C3C picks up the MSVC link.exe
       - name: Remove GNU Link
@@ -109,7 +114,7 @@ jobs:
 
       - name: Bundle (Windows Debug)
         shell: bash
-        run: ./scripts/tools/package_build.sh "./build-debug/c3c.exe" "c3-windows-Debug" "zip"
+        run: python3 ./scripts/meson/package.py --bin ./build-debug/c3c.exe --out c3-windows-Debug --format zip
 
       - uses: actions/upload-artifact@v7
         with:
@@ -162,37 +167,40 @@ jobs:
       - name: Get current date context
         id: date
         run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
-  
+
       - uses: actions/cache@v6
         with:
-          path: |
-            build-release/_deps
-            build-debug/_deps
-          key: ${{ runner.os }}-aarch64-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ steps.date.outputs.date }}-${{ hashFiles('CMakeLists.txt', '.github/workflows/main.yml') }}
-          
+          path: C:\Users\runneradmin\AppData\Local\c3c\llvm
+          key: ${{ runner.os }}-aarch64-llvm-${{ env.LLVM_RELEASE_VERSION }}-Release-Debug-${{ steps.date.outputs.date }}-${{ hashFiles('meson.build', '.github/workflows/main.yml') }}
+
+      - uses: astral-sh/setup-uv@v10.1.0
+
+      - name: Install Meson and Ninja
+        run: uv tool install meson && uv tool install ninja
+
       # set up the environment for Ninja
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: arm64
 
-      - name: CMake Build (Release)
+      - name: Meson Build (Release)
         run: |
-          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
-          cmake --build build-release --config Release
+          meson setup build-release --buildtype=release -Dfetch_llvm=true
+          meson compile -C build-release
 
       - name: Bundle (Windows Release)
         shell: bash
-        run: ./scripts/tools/package_build.sh "./build-release/c3c.exe" "c3-windows-aarch64-Release" "zip"
+        run: python3 ./scripts/meson/package.py --bin ./build-release/c3c.exe --out c3-windows-aarch64-Release --format zip
 
       - uses: actions/upload-artifact@v7
         with:
           name: c3-windows-aarch64-Release
           path: c3-windows-aarch64-Release.zip
 
-      - name: CMake Build (Debug)
+      - name: Meson Build (Debug)
         run: |
-          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
-          cmake --build build-debug --config Debug
+          meson setup build-debug --buildtype=debug -Dfetch_llvm=true
+          meson compile -C build-debug
 
       # We remove the GNU link tool so C3C picks up the MSVC link.exe
       - name: Remove GNU Link
@@ -211,7 +219,7 @@ jobs:
 
       - name: Bundle (Windows Debug)
         shell: bash
-        run: ./scripts/tools/package_build.sh "./build-debug/c3c.exe" "c3-windows-aarch64-Debug" "zip"
+        run: python3 ./scripts/meson/package.py --bin ./build-debug/c3c.exe --out c3-windows-aarch64-Debug --format zip
 
       - uses: actions/upload-artifact@v7
         with:
@@ -248,7 +256,7 @@ jobs:
         with:
           name: c3-windows-setup-aarch64-Debug
           path: resources/nsis/c3-windows-setup-aarch64-Debug.exe
-          
+
   build-msys2:
     name: Windows (${{ matrix.arch }}) ${{ matrix.sys }}
     needs: changes
@@ -273,7 +281,7 @@ jobs:
           update: true
           cache: true
           pacboy: >-
-            cmake:p
+            meson:p
             ninja:p
             llvm:p
             lld:p
@@ -284,20 +292,30 @@ jobs:
             zlib:p
             zstd:p
             libxml2:p
+
       # (MINGW64) Force LLD as the linker to resolve __imp_ symbol thunking issues from
       # static LLVM archives (LNK4217), which the GNU linker (ld) cannot resolve automatically.
-      - name: CMake Build
+      - name: Meson Build
         run: |
-          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_LINKER=lld -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DC3_LINK_DYNAMIC=OFF -DLLVM_DIR=${{ matrix.prefix }}/lib/cmake/llvm -DC3_LLD_DIR=${{ matrix.prefix }}/lib/
-          cmake --build build
+          export CC="clang -fuse-ld=lld" CXX="clang++ -fuse-ld=lld" LLVM_CONFIG=${{ matrix.prefix }}/bin/llvm-config
+          LLD_DIR=$(cygpath -m ${{ matrix.prefix }}/lib)
+          LLD_INC=$(cygpath -m ${{ matrix.prefix }}/include)
+          meson setup build \
+            --buildtype=debug \
+            -Dc_link_args="-fuse-ld=lld" \
+            -Dcpp_link_args="-fuse-ld=lld" \
+            -Dlld_dir="$LLD_DIR" \
+            -Dlld_include_dir="$LLD_INC" || { cat build/meson-logs/meson-log.txt; exit 1; }
+          meson compile -C build
+
       - name: Cache FreeBSD Sysroot
         uses: actions/cache@v6
         with:
           path: .cache
           key: ${{ runner.os }}-${{ matrix.arch }}-freebsd-sysroot-15.0
-      - name: Run Unified Tests
-        run: ./scripts/tools/ci_tests.sh "./build/c3c"
 
+      - name: Run Unified Tests
+        run: ./scripts/tools/ci_tests.sh "./build/c3c.exe"
 
   build-linux:
     name: Linux (x64) Ubuntu
@@ -309,40 +327,43 @@ jobs:
       - name: Get current date context
         id: date
         run: echo "date=$(date +'${{ env.CACHE_INVALIDATION_SEED }}')" >> $GITHUB_OUTPUT
+
       - name: Cache APT archives
         uses: actions/cache@v6
         with:
           path: apt-cache
           key: apt-cache-${{ runner.os }}-${{ steps.date.outputs.date }}
+
       - run: |
           mkdir -p apt-cache/partial
           for i in 1 2 3; do sudo apt-get update && break || sleep 2; done
-          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing zlib1g zlib1g-dev python3 ninja-build curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev && break || sleep 2; done
+          for i in 1 2 3; do sudo apt-get install -y -o dir::cache::archives="$(pwd)/apt-cache" --fix-missing meson ninja-build zlib1g zlib1g-dev python3 curl libcurl4-openssl-dev opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev && break || sleep 2; done
           sudo chown -R $USER:$USER apt-cache
 
-      - name: CMake Build (Release)
+      - name: Meson Build (Release)
         run: |
-          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
-          cmake --build build-release
+          meson setup build-release --buildtype=release -Dfetch_llvm=true
+          meson compile -C build-release
 
-      - name: Bundle & Upload (Linux Release)
-        run: |
-          bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-linux-Release" "tar"
+      - name: Bundle (Linux Release)
+        run: python3 ./scripts/meson/package.py --bin ./build-release/c3c --out c3-linux-Release --format tar
+
       - uses: actions/upload-artifact@v7
         with:
           name: c3-linux-Release
           path: c3-linux-Release.tar.gz
 
-      - name: CMake Build (Debug)
+      - name: Meson Build (Debug)
         run: |
-          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
-          cmake --build build-debug
+          meson setup build-debug --buildtype=debug -Dfetch_llvm=true
+          meson compile -C build-debug
 
       - name: Cache FreeBSD Sysroot
         uses: actions/cache@v6
         with:
           path: .cache
           key: ${{ runner.os }}-freebsd-sysroot-15.0
+
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
 
@@ -351,9 +372,9 @@ jobs:
           cd resources/examples/embedded/riscv-qemu
           make C3C_PATH=../../../../build-debug/ run
 
-      - name: Bundle & Upload (Linux Debug)
-        run: |
-          bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-linux-Debug" "tar"
+      - name: Bundle (Linux Debug)
+        run: python3 ./scripts/meson/package.py --bin ./build-debug/c3c --out c3-linux-Debug --format tar
+
       - uses: actions/upload-artifact@v7
         with:
           name: c3-linux-Debug
@@ -378,7 +399,7 @@ jobs:
       - name: Extract C3
         run: |
           tar -xzf bin/c3-linux-${{matrix.build_type}}.tar.gz -C bin
-          # The package_build.sh creates a 'c3' directory inside the tar
+          # The package.py creates a 'c3' directory inside the tar
           chmod +x bin/c3/c3c
 
       - name: Setup Emscripten
@@ -412,39 +433,40 @@ jobs:
         run: |
           apk update
           apk add \
-            build-base bash cmake ninja python3 linux-headers \
+            build-base bash meson ninja python3 linux-headers \
             zlib-dev zlib-static zstd-dev zstd-static curl-dev curl-static \
             openssl-libs-static brotli-static nghttp2-static libpsl-static \
             libidn2-static libunistring-static nghttp3-static c-ares-dev \
             curl-dev openssl-dev brotli-dev libpsl-dev libidn2-dev \
             libunistring-dev nghttp2-dev nghttp3-dev c-ares-dev
 
-      - name: CMake Build (static musl Release)
+      - name: Meson Build (static musl Release)
         run: |
-          cmake -B build-release -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DC3_FETCH_LLVM=ON \
-            -DC3_LINK_DYNAMIC=OFF \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libstdc++ -static-libgcc"
-          cmake --build build-release
+          meson setup build-release \
+            --buildtype=release \
+            -Dfetch_llvm=true \
+            -Ddefault_library=static \
+            -Dc_link_args="-static -static-libstdc++ -static-libgcc" \
+            -Dcpp_link_args="-static -static-libstdc++ -static-libgcc"
+          meson compile -C build-release
 
       - name: Bundle (Release)
-        run: bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-linux-static-Release" "tar"
+        run: python3 ./scripts/meson/package.py --bin ./build-release/c3c --out c3-linux-static-Release --format tar
+
       - uses: actions/upload-artifact@v7
         with:
           name: c3-linux-static-Release
           path: c3-linux-static-Release.tar.gz
 
-      - name: CMake Build (static musl Debug)
+      - name: Meson Build (static musl Debug)
         run: |
-          cmake -B build-debug -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DC3_FETCH_LLVM=ON \
-            -DC3_LINK_DYNAMIC=OFF \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libstdc++ -static-libgcc"
-          cmake --build build-debug
+          meson setup build-debug \
+            --buildtype=debug \
+            -Dfetch_llvm=true \
+            -Ddefault_library=static \
+            -Dc_link_args="-static -static-libstdc++ -static-libgcc" \
+            -Dcpp_link_args="-static -static-libstdc++ -static-libgcc"
+          meson compile -C build-debug
 
       - name: Verify Static
         run: |
@@ -456,7 +478,8 @@ jobs:
         run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
 
       - name: Bundle (Debug)
-        run: bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-linux-static-Debug" "tar"
+        run: python3 ./scripts/meson/package.py --bin ./build-debug/c3c --out c3-linux-static-Debug --format tar
+
       - uses: actions/upload-artifact@v7
         with:
           name: c3-linux-static-Debug
@@ -501,46 +524,45 @@ jobs:
           for i in 1 2 3; do apk update && break || sleep 2; done
           for i in 1 2 3; do \
             apk add \
-              build-base bash cmake ninja \
+              build-base bash meson ninja \
               tar zstd \
               curl-dev \
               llvm${V}-dev \
               llvm${V}-static \
-              llvm${V}-gtest \
               lld${V}-dev \
               lld${V}-libs && break || sleep 2; \
           done
 
-      - name: CMake Build (Release)
+      - name: Meson Build (Release)
         run: |
-          cmake -B build-release -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DC3_FETCH_LLVM=OFF \
-            -DLLVM_ENABLE_LIBXML2=OFF \
-            -DC3_LINK_DYNAMIC=ON
-          cmake --build build-release
+          meson setup build-release \
+            --buildtype=release \
+            -Dfetch_llvm=false \
+            -Dlink_dynamic=true
+          meson compile -C build-release
 
-      - name: Bundle & Upload (Alpine Release)
-        run: bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-linux-musl-Release" "tar"
+      - name: Bundle (Alpine Release)
+        run: python3 ./scripts/meson/package.py --bin ./build-release/c3c --out c3-linux-musl-Release --format tar
+
       - uses: actions/upload-artifact@v7
         with:
           name: c3-linux-musl-Release
           path: c3-linux-musl-Release.tar.gz
 
-      - name: CMake Build (Debug)
+      - name: Meson Build (Debug)
         run: |
-          cmake -B build-debug -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DC3_FETCH_LLVM=OFF \
-            -DLLVM_ENABLE_LIBXML2=OFF \
-            -DC3_LINK_DYNAMIC=ON
-          cmake --build build-debug
+          meson setup build-debug \
+            --buildtype=debug \
+            -Dfetch_llvm=false \
+            -Dlink_dynamic=true
+          meson compile -C build-debug
 
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
 
-      - name: Bundle & Upload (Alpine Debug)
-        run: bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-linux-musl-Debug" "tar"
+      - name: Bundle (Alpine Debug)
+        run: python3 ./scripts/meson/package.py --bin ./build-debug/c3c --out c3-linux-musl-Debug --format tar
+
       - uses: actions/upload-artifact@v7
         with:
           name: c3-linux-musl-Debug
@@ -553,28 +575,33 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
-      - name: CMake Build (Release)
-        run: |
-          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DC3_FETCH_LLVM=ON
-          cmake --build build-release
+      - name: Install Meson and Ninja
+        run: brew install meson ninja
 
-      - name: Bundle & Upload (Mac Release)
-        run: bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-macos-Release" "zip"
+      - name: Meson Build (Release)
+        run: |
+          meson setup build-release --buildtype=release -Dfetch_llvm=true
+          meson compile -C build-release
+
+      - name: Bundle (Mac Release)
+        run: python3 ./scripts/meson/package.py --bin ./build-release/c3c --out c3-macos-Release --format zip
+
       - uses: actions/upload-artifact@v7
         with:
           name: c3-macos-Release
           path: c3-macos-Release.zip
 
-      - name: CMake Build (Debug)
+      - name: Meson Build (Debug)
         run: |
-          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
-          cmake --build build-debug
+          meson setup build-debug --buildtype=debug -Dfetch_llvm=true
+          meson compile -C build-debug
 
       - name: Cache FreeBSD Sysroot
         uses: actions/cache@v6
         with:
           path: .cache
           key: ${{ runner.os }}-freebsd-sysroot-15.0
+
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build-debug/c3c"
 
@@ -583,8 +610,9 @@ jobs:
           cd resources/testproject
           ../../build-debug/c3c build hello_world_lib -vv --trust=full
 
-      - name: Bundle & Upload (Mac Debug)
-        run: bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-macos-Debug" "zip"
+      - name: Bundle (Mac Debug)
+        run: python3 ./scripts/meson/package.py --bin ./build-debug/c3c --out c3-macos-Debug --format zip
+
       - uses: actions/upload-artifact@v7
         with:
           name: c3-macos-Debug
@@ -622,22 +650,22 @@ jobs:
             fi
           done
           for i in 1 2 3; do
-            sudo pkg_add ninja cmake llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash && break || sleep 5
+            sudo pkg_add meson ninja llvm%${{ env.LLVM_RELEASE_VERSION_OPENBSD }} bash python3 && break || sleep 5
           done
 
       - name: Build (Release)
         shell: cpa.sh {0}
         run: |
           export MALLOC_OPTIONS=j
-          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-release
+          meson setup build-release --buildtype=release
+          meson compile -C build-release
 
       - name: Build (Debug)
         shell: cpa.sh {0}
         run: |
           export MALLOC_OPTIONS=j
-          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build-debug
+          meson setup build-debug --buildtype=debug
+          meson compile -C build-debug
 
       - name: Run Tests
         shell: cpa.sh {0}
@@ -646,12 +674,13 @@ jobs:
           ulimit -d $(ulimit -Hd) || true
           ./scripts/tools/ci_tests.sh build-debug/c3c
 
+      # We package here because we need the OpenBSD environment
       - name: Package
         shell: cpa.sh {0}
         run: |
           export MALLOC_OPTIONS=j
-          ./scripts/tools/package_build.sh "./build-release/c3c" "c3-openbsd-Release" "tar"
-          ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-openbsd-Debug" "tar"
+          python3 ./scripts/meson/package.py --bin ./build-release/c3c --out c3-openbsd-Release --format tar
+          python3 ./scripts/meson/package.py --bin ./build-debug/c3c --out c3-openbsd-Debug --format tar
 
       - name: Upload Artifacts (Release)
         uses: actions/upload-artifact@v7
@@ -710,30 +739,28 @@ jobs:
 
           for i in 1 2 3; do
             sudo pkgin -y update && \
-            sudo pkgin -y install cmake gcc14 ninja-build bash \
+            sudo pkgin -y install meson ninja-build gcc14 bash python311 \
               "llvm>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
               "clang>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" \
               "lld>=${{ env.LLVM_RELEASE_VERSION_NETBSD }}" && break || sleep 5
           done
+          sudo ln -sf /usr/pkg/bin/python3.11 /usr/pkg/bin/python3
 
       - name: Build (Release)
         shell: cpa.sh {0}
         run: |
           export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
-          export CC=clang
-          export CXX=clang++
-
-          cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-release
+          export CC=clang CXX=clang++
+          meson setup build-release --buildtype=release
+          meson compile -C build-release
 
       - name: Build (Debug)
         shell: cpa.sh {0}
         run: |
           export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
-          export CC=clang
-          export CXX=clang++
-          cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build-debug
+          export CC=clang CXX=clang++
+          meson setup build-debug --buildtype=debug
+          meson compile -C build-debug
 
       - name: Run Tests
         shell: cpa.sh {0}
@@ -745,8 +772,8 @@ jobs:
         shell: cpa.sh {0}
         run: |
           export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
-          ./scripts/tools/package_build.sh "./build-release/c3c" "c3-netbsd-Release" "tar"
-          ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-netbsd-Debug" "tar"
+          python3 ./scripts/meson/package.py --bin ./build-release/c3c --out c3-netbsd-Release --format tar
+          python3 ./scripts/meson/package.py --bin ./build-debug/c3c --out c3-netbsd-Debug --format tar
 
       - name: Upload Artifacts (Release)
         uses: actions/upload-artifact@v7
@@ -798,22 +825,15 @@ jobs:
           rm -rf build bin
           mkdir -p build bin
           chmod -R 777 build bin
-          docker run --rm \
+          docker run --rm -u 0 \
             -v "$(pwd):/home/c3c/source" \
             -w /home/c3c/source \
             c3c-builder:latest \
             bash -c "git config --global --add safe.directory /home/c3c/source && \
-            cmake -S . -B build \
-                    -G Ninja \
-                    -DCMAKE_BUILD_TYPE=Debug \
-                    -DCMAKE_C_COMPILER=clang-${{ matrix.llvm_version }} \
-                    -DCMAKE_CXX_COMPILER=clang++-${{ matrix.llvm_version }} \
-                    -DCMAKE_LINKER=lld-${{ matrix.llvm_version }} \
-                    -DCMAKE_OBJCOPY=llvm-objcopy-${{ matrix.llvm_version }} \
-                    -DCMAKE_STRIP=llvm-strip-${{ matrix.llvm_version }} \
-                    -DCMAKE_DLLTOOL=llvm-dlltool-${{ matrix.llvm_version }} \
-                    -DC3_LLVM_VERSION=auto && \
-            cmake --build build && \
+            apt-get update && apt-get install -y meson && \
+            export CC=clang-${{ matrix.llvm_version }} CXX=clang++-${{ matrix.llvm_version }} LLVM_CONFIG=llvm-config-${{ matrix.llvm_version }} && \
+            meson setup build --buildtype=debug -Dc_link_args='-fuse-ld=lld-${{ matrix.llvm_version }}' -Dcpp_link_args='-fuse-ld=lld-${{ matrix.llvm_version }}' && \
+            meson compile -C build && \
             cp -r build/c3c build/lib bin"
 
       - name: Run Unified Tests
@@ -842,22 +862,19 @@ jobs:
           sudo apt-get install -y wget lsb-release gnupg software-properties-common
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-
           sudo ./llvm.sh 23 all
-
           sudo apt-get install -y \
+            meson ninja-build python3 \
             liblld-23-dev \
             libpolly-23-dev \
             zlib1g-dev \
-            ninja-build \
-            python3 \
             libx11-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev libxcursor-dev
 
-      - name: CMake Build
+      - name: Meson Build
         run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build
+          export LLVM_CONFIG=llvm-config-23
+          meson setup build --buildtype=debug
+          meson compile -C build
 
       - name: Run Unified Tests
         run: ./scripts/tools/ci_tests.sh "./build/c3c"
@@ -880,7 +897,7 @@ jobs:
     - name: Update flake
       if: matrix.nixpkgs == 'Latest'
       run: nix flake update
-    - name: CMake build and run Unified Tests
+    - name: Build and run Unified Tests
       run: |
         CHECK_NAME=".#c3c-checks"
         if [[ ${{ matrix.build_type }} = "Debug" ]]; then CHECK_NAME=".#c3c-debug-checks"; fi
@@ -922,16 +939,13 @@ jobs:
             "https://ftp.agdsn.de/termux/termux-main" \
             "https://linux.domainesia.com/applications/termux/termux-main"
           do
-            echo "Trying mirror: $m"
             printf "deb %s stable main\n" "$m" > "${PREFIX}/etc/apt/sources.list"
             if /entrypoint.sh pkg update -y; then
-              echo "Selected mirror: $m"
               exit 0
             fi
           done
-    
-          echo "All mirrors failed"
           exit 1
+
       - name: prepare termux
         run: |
           ln -sf ${PREFIX}/etc/termux/mirrors/default ${PREFIX}/etc/termux/chosen_mirrors
@@ -973,18 +987,17 @@ jobs:
         run: |
           for i in 1 2; do \
             /entrypoint.sh pkg update -y && \
-            /entrypoint.sh pkg install -y llvm binutils libgc build-essential cmake git libedit zlib clang make mlir llvm-tools libpolly python libllvm-static && break || sleep 10; \
+            /entrypoint.sh pkg install -y ninja llvm binutils libgc build-essential git libedit zlib clang make mlir llvm-tools libpolly python uv libllvm-static && break || sleep 10; \
           done
+          /entrypoint.sh uv pip install --system --break-system-packages meson
 
       - name: build (Release)
         run: |
-          cmake -B build-release -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-release
+          /entrypoint.sh meson setup build-release --buildtype=release
+          /entrypoint.sh meson compile -C build-release
 
       - name: Bundle Release
-        run: |
-          chmod +x ./scripts/tools/package_build.sh
-          bash ./scripts/tools/package_build.sh "./build-release/c3c" "c3-android-${{matrix.architecture}}-Release" "tar"
+        run: /entrypoint.sh python3 ./scripts/meson/package.py --bin ./build-release/c3c --out c3-android-${{matrix.architecture}}-Release --format tar
 
       - name: upload artifacts (Release)
         uses: actions/upload-artifact@v7
@@ -994,16 +1007,14 @@ jobs:
 
       - name: build (Debug)
         run: |
-          cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build-debug
+          /entrypoint.sh meson setup build-debug --buildtype=debug
+          /entrypoint.sh meson compile -C build-debug
 
       - name: Run Unified Tests
         run: bash ./scripts/tools/ci_tests.sh "./build-debug/c3c" "android"
 
       - name: Bundle Debug
-        run: |
-          chmod +x ./scripts/tools/package_build.sh
-          bash ./scripts/tools/package_build.sh "./build-debug/c3c" "c3-android-${{matrix.architecture}}-Debug" "tar"
+        run: /entrypoint.sh python3 ./scripts/meson/package.py --bin ./build-debug/c3c --out c3-android-${{matrix.architecture}}-Debug --format tar
 
       - name: upload artifacts (Debug)
         uses: actions/upload-artifact@v7
@@ -1018,13 +1029,14 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Install Meson and Ninja
+        run: brew install meson ninja
       
-      - name: CMake Build (Host)
+      - name: Meson Build (Host)
         run: |
-          cmake -B build-debug -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DC3_FETCH_LLVM=ON
-          cmake --build build-debug
+          meson setup build-debug --buildtype=debug -Dfetch_llvm=true
+          meson compile -C build-debug
+          chmod +x build-debug/c3c
 
       - name: Setup and Boot iOS Simulator
         uses: futureware-tech/simulator-action@v5
