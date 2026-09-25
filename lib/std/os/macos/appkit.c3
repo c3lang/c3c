@@ -217,4 +217,23 @@ constset NSApplicationTerminateReply : inline NSUInteger
 	LATER  = 2,
 }
 
+extern const ObjId NS_PASTEBOARD_TYPE_COLOR                   @cname("NSPasteboardTypeColor");
+extern const ObjId NS_PASTEBOARD_TYPE_FILE_URL                @cname("NSPasteboardTypeFileURL");
+extern const ObjId NS_PASTEBOARD_TYPE_FONT                    @cname("NSPasteboardTypeFont");
+extern const ObjId NS_PASTEBOARD_TYPE_HTML                    @cname("NSPasteboardTypeHTML");
+extern const ObjId NS_PASTEBOARD_TYPE_MULTIPLE_TEXT_SELECTION @cname("NSPasteboardTypeMultipleTextSelection");
+extern const ObjId NS_PASTEBOARD_TYPE_PDF                     @cname("NSPasteboardTypePDF");
+extern const ObjId NS_PASTEBOARD_TYPE_PNG                     @cname("NSPasteboardTypePNG");
+extern const ObjId NS_PASTEBOARD_TYPE_RTF                     @cname("NSPasteboardTypeRTF");
+extern const ObjId NS_PASTEBOARD_TYPE_RTFD                    @cname("NSPasteboardTypeRTFD");
+extern const ObjId NS_PASTEBOARD_TYPE_RULER                   @cname("NSPasteboardTypeRuler");
+extern const ObjId NS_PASTEBOARD_TYPE_SOUND                   @cname("NSPasteboardTypeSound");
+extern const ObjId NS_PASTEBOARD_TYPE_STRING                  @cname("NSPasteboardTypeString");
+extern const ObjId NS_PASTEBOARD_TYPE_TIFF                    @cname("NSPasteboardTypeTIFF");
+extern const ObjId NS_PASTEBOARD_TYPE_TABULAR_TEXT            @cname("NSPasteboardTypeTabularText");
+extern const ObjId NS_PASTEBOARD_TYPE_TEXT_FINDER_OPTIONS     @cname("NSPasteboardTypeTextFinderOptions");
+extern const ObjId NS_PASTEBOARD_TYPE_URL                     @cname("NSPasteboardTypeURL");
+
+extern const ObjId NS_PASTEBOARD_URL_READING_FILE_URLS_ONLY_KEY @cname("NSPasteboardURLReadingFileURLsOnlyKey");
+
 extern ObjId nsCalibratedRGBColorSpace @cname("NSCalibratedRGBColorSpace");

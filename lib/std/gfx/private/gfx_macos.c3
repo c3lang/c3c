@@ -771,7 +771,7 @@ fn GfxDataTransfer? read_clipboard(Allocator allocator, GfxDataTransferType type
 	ObjId pb = objc::send(macos::nspasteboard(), ObjId, "generalPasteboard");
 	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
 
-	ObjId str = pb.send(ObjId, "stringForType:", "public.utf8-plain-text".to_nsstring());
+	ObjId str = pb.send(ObjId, "stringForType:", macos::NS_PASTEBOARD_TYPE_STRING);
 	if (!str) return gfx::CLIPBOARD_DID_NOT_CONTAIN_TYPE~;
 
 	ZString raw = darwin::string_to_zstr(str);
@@ -787,7 +787,7 @@ fn void? write_clipboard(GfxDataTransfer* data)
 	if (!pb) return gfx::CLIPBOARD_COULD_NOT_BE_OPENED~;
 	pb.send_void("clearContents");
 
-	if (!pb.send(bool, "setString:forType:", data.text.to_nsstring(), "public.utf8-plain-text".to_nsstring()))
+	if (!pb.send(bool, "setString:forType:", data.text.to_nsstring(), macos::NS_PASTEBOARD_TYPE_STRING))
 	{
 		return gfx::CLIPBOARD_WRITE_FAILED~;
 	}
@@ -1035,9 +1035,18 @@ fn GfxWindow*? _fetch_win(ObjId self) @local
 fn void _macos_register_dnd(ObjId view) @local
 {
 	ObjId types = darwin::nsmutable_array().send(ObjId, "array");
-	types.send_void("addObject:", "public.file-url".to_nsstring());
-	types.send_void("addObject:", "NSFilenamesPboardType".to_nsstring());
+	types.send_void("addObject:", macos::NS_PASTEBOARD_TYPE_FILE_URL);
+	types.send_void("addObject:", macos::NS_PASTEBOARD_TYPE_URL);
+	types.send_void("addObject:", macos::NS_PASTEBOARD_TYPE_STRING);
 	view.send_void("registerForDraggedTypes:", types);
+}
+
+// Files win over text: a file dragged from Finder can carry its name as text as well.
+fn GfxDataTransferType _drag_data_type(ObjId sender) @local
+{
+	ObjId types = sender.send(ObjId, "draggingPasteboard").send(ObjId, "types");
+	if (types.send(bool, "containsObject:", macos::NS_PASTEBOARD_TYPE_FILE_URL)) return FILE;
+	return TEXT;
 }
 
 fn void? _osx_register_classes() @local
@@ -1344,7 +1353,7 @@ fn NSUInteger _osx_dragging_entered(ObjId self, ObjSel sel, ObjId sender)
 	GfxWindow*? win = _fetch_win(self);
 	if (catch win) return 0;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
-	gfx::_data_drag_callback(win, FILE, ENTER, { (int)p.x, win.height - (int)p.y });
+	gfx::_data_drag_callback(win, _drag_data_type(sender), ENTER, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -1354,7 +1363,7 @@ fn NSUInteger _osx_dragging_updated(ObjId self, ObjSel sel, ObjId sender)
 	if (catch win) return 0;
 	if (!win.internal.enabled_events.data_drag) return 1;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
-	gfx::_data_drag_callback(win, FILE, MOVE, { (int)p.x, win.height - (int)p.y });
+	gfx::_data_drag_callback(win, _drag_data_type(sender), MOVE, { (int)p.x, win.height - (int)p.y });
 	return 1;
 }
 
@@ -1364,7 +1373,7 @@ fn void _osx_dragging_ended(ObjId self, ObjSel sel, ObjId sender)
 	if (catch win) return;
 	if (!win.internal.enabled_events.data_drag) return;
 	CGPoint p = sender.send(CGPoint, "draggingLocation");
-	gfx::_data_drag_callback(win,FILE, EXIT, { (int)p.x, win.height - (int)p.y });
+	gfx::_data_drag_callback(win, _drag_data_type(sender), EXIT, { (int)p.x, win.height - (int)p.y });
 }
 
 fn bool _osx_prepare_for_drag_operation(ObjId self, ObjSel sel, ObjId sender)
@@ -1375,6 +1384,24 @@ fn bool _osx_prepare_for_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 	return win.internal.flags.allow_dnd;
 }
 
+fn bool _drop_text(GfxWindow* win, ObjId pasteboard, ObjId types) @local
+{
+	// A dragged web link has no plain text form, so it is delivered as its URL.
+	ObjId type = macos::NS_PASTEBOARD_TYPE_STRING;
+	if (!types.send(bool, "containsObject:", type)) type = macos::NS_PASTEBOARD_TYPE_URL;
+	if (!types.send(bool, "containsObject:", type))
+	{
+		log::warn("No files or text found on the pasteboard", category: log::CATEGORY_VIDEO);
+		return false;
+	}
+	ObjId text = pasteboard.send(ObjId, "stringForType:", type);
+	if (!text) return false;
+	String utf8 = darwin::string_to_zstr(text).str_view();
+	if (!utf8.len) return false;
+	gfx::_data_drop_callback(win, utf8, TEXT);
+	return true;
+}
+
 fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 {
 	GfxWindow*? win = _fetch_win(self);
@@ -1383,32 +1410,21 @@ fn bool _osx_perform_drag_operation(ObjId self, ObjSel sel, ObjId sender)
 
 	ObjId pasteboard = sender.send(ObjId, "draggingPasteboard");
 	ObjId types = pasteboard.send(ObjId, "types");
-	ObjId file_urls_type = "NSFilenamesPboardType".to_nsstring();
+	if (!types.send(bool, "containsObject:", macos::NS_PASTEBOARD_TYPE_FILE_URL)) return _drop_text(win, pasteboard, types);
 
-	if (!types.send(bool, "containsObject:", file_urls_type))
-	{
-		log::warn("No files found on the pasteboard", category: log::CATEGORY_VIDEO);
-		return false;
-	}
-
-	ObjId property_list = pasteboard.send(ObjId, "propertyListForType:", file_urls_type);
-
-	if (property_list.send(bool, "isKindOfClass:", darwin::nsstring()))
-	{
-		ZString file_path = darwin::string_to_zstr(property_list);
-		gfx::_data_drop_callback(win, file_path.str_view(), FILE);
-		return true;
-	}
-	if (!property_list.send(bool, "isKindOfClass:", darwin::nsarray())) return false;
-
-	NSUInteger count = property_list.send(NSUInteger, "count");
+	// Only file URLs: the pasteboard can carry web links as well. Older apps that offer just
+	// NSFilenamesPboardType are converted to file URLs by AppKit.
+	ObjId classes = darwin::nsarray().send(ObjId, "arrayWithObject:", (ObjId)objc::@class("NSURL"));
+	ObjId file_only = objc::@class("NSNumber").send(ObjId, "numberWithBool:", true);
+	ObjId options = objc::@class("NSDictionary").send(ObjId, "dictionaryWithObject:forKey:", file_only, macos::NS_PASTEBOARD_URL_READING_FILE_URLS_ONLY_KEY);
+	ObjId urls = pasteboard.send(ObjId, "readObjectsForClasses:options:", classes, options);
+	NSUInteger count = urls ? urls.send(NSUInteger, "count") : 0;
 	if (!count) return false;
 
 	for (NSUInteger i = 0; i < count; i++)
 	{
-		ObjId file_url = property_list.send(ObjId, "objectAtIndex:", i);
-		ZString file_path = darwin::string_to_zstr(file_url);
-		gfx::_data_drop_callback(win, file_path.str_view(), FILE);
+		ZString file_path = urls.send(ObjId, "objectAtIndex:", i).send(ZString, "fileSystemRepresentation");
+		if (file_path) gfx::_data_drop_callback(win, file_path.str_view(), FILE);
 	}
 	return true;
 }

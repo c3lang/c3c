@@ -715,7 +715,7 @@ fn void _data_drop_callback(GfxWindow* win, char[] data, GfxDataTransferType dat
 		_gfx.dnd_cur.next = heap_node;
 		_gfx.dnd_cur = heap_node;
 	}
-	event.drop.value = heap_node;
+	event.drop.value = _gfx.dnd_root;
 	event_queue_push(&event);
 }
 

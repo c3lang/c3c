@@ -868,7 +868,7 @@ fn void finalize()
 	}
 	assert (_gfx.active_windows == 0);
 	_gfx.windows.free();
-
+	_reset_prev_state(); // Will cleanup the drag and drop.
 	foreach (icon : GfxMouseIcon::values)
 	{
 		if (_gfx.standard_mice[icon.ordinal]) _free_mouse(_gfx.standard_mice[icon.ordinal]);
@@ -1699,9 +1699,9 @@ fn void event_queue_flush()
 <*
  Append an event to the queue.
 
- Does nothing when queueing is disabled. Superseded move and resize events for the
- same window are removed before appending the newest one. If the queue is full the
- new event is dropped, with an error logged.
+ Does nothing when queueing is disabled. Superseded move, resize, drag and drop events
+ for the same window are removed before appending the newest one. If the queue is full
+ the new event is dropped, with an error logged.
 
  @param [in] event : "The event to copy into the queue"
  @require event != null
@@ -1711,7 +1711,7 @@ fn void event_queue_push(GfxEvent* event)
 	if (!_gfx.queue_events) return;
 	// Like SDL, discard an older superseded geometry event before appending the
 	// replacement. Appending keeps its ordering relative to unrelated events.
-	if ((event.type == WINDOW_RESIZED || event.type == WINDOW_MOVED || event.type == DATA_DRAG) && _gfx.event_len)
+	if ((event.type == WINDOW_RESIZED || event.type == WINDOW_MOVED || event.type == DATA_DRAG || event.type == DATA_DROP) && _gfx.event_len)
 	{
 		for (int i = 0; i < _gfx.event_len; i++)
 		{
