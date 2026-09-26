@@ -128,11 +128,14 @@ struct GfxWindowInternal
 	bool in_focus;
 	bool mouse_inside;
 	bool maximized_state;
+	bool old_borderless;
+	GfxMonitor* monitor;
 	GfxKeyModifier mod;
 	GfxEventMask enabled_events;
 	GfxWindowFlags flags;
 	GfxRect old_bounds;
 	GfxMonitorMode old_mode;
+	GfxMonitorMode new_mode;
 	GfxMouse* mouse;
 }
 
@@ -324,6 +327,11 @@ fn void _reset_prev_state()
 fn void _window_release(GfxWindow* win)
 {
 	if (win.internal.is_collected) return;
+	if (win.internal.flags.fullscreen_exclusive && win.internal.monitor)
+	{
+		(void)win.internal.monitor.set_mode_native(&win.internal.old_mode);
+		win.internal.monitor = null;
+	}
 	if (win.internal.capture_mouse) win.set_capture_mouse(false);
 	if (win.src.backing.egl && win.src.ctx.egl != null)
 	{
@@ -390,12 +398,79 @@ fn GfxWindow*? _create_window(String name, int x, int y, int w, int h, GfxWindow
 		case !flags.hide:
 			flags.hide = true;
 			win.show();
-		case flags.maximize || flags.fullscreen:
+		case flags.maximize || flags.fullscreen_exclusive || flags.fullscreen_borderless:
 			win.hide();
 	}
 	return win;
 }
 
+fn void _window_set_fullscreen(GfxWindow* win, GfxFullscreenMode mode)
+{
+	bool is_curr_exclusive = win.internal.flags.fullscreen_exclusive;
+	bool is_curr_borderless = win.internal.flags.fullscreen_borderless;
+	bool is_curr_fs = is_curr_exclusive || is_curr_borderless;
+
+	if ((mode == EXCLUSIVE && is_curr_exclusive) ||
+		(mode == BORDERLESS && is_curr_borderless) ||
+		(mode == NONE && !is_curr_fs))
+	{
+		return;
+	}
+
+	if ((mode == EXCLUSIVE && is_curr_borderless) ||
+		(mode == BORDERLESS && is_curr_exclusive))
+	{
+		_window_set_fullscreen(win, NONE);
+	}
+
+	if (mode != NONE)
+	{
+		win.internal.old_bounds = win.bounds;
+		win.internal.old_borderless = win.is_borderless();
+		win.set_border(false);
+
+		GfxMonitor*? mon = win.find_monitor();
+		if (catch mon) mon = get_primary_monitor();
+
+		if (mode == EXCLUSIVE)
+		{
+			if (try m = mon)
+			{
+				win.internal.old_mode = m.mode;
+				(void)m.scale_to_window(win);
+				win.internal.monitor = m;
+				win.internal.new_mode = m.mode;
+			}
+			win.internal.flags.fullscreen_exclusive = true;
+		}
+		else
+		{
+			win.internal.flags.fullscreen_borderless = true;
+			win.internal.monitor = null;
+			if (try m = mon) win.move(m.origin);
+		}
+
+		if (try m = mon) win.resize(m.mode.size);
+	}
+
+	_window_set_fullscreen_platform(win, mode != NONE);
+
+	if (mode == NONE)
+	{
+		if (win.internal.monitor)
+		{
+			(void)win.internal.monitor.set_mode_native(&win.internal.old_mode);
+			win.internal.monitor = null;
+		}
+
+		win.internal.flags.fullscreen_exclusive = false;
+		win.internal.flags.fullscreen_borderless = false;
+
+		win.set_border(!win.internal.old_borderless);
+		win.move(win.internal.old_bounds.origin);
+		win.resize(win.internal.old_bounds.size);
+	}
+}
 
 fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags cmp_flags) @private
 {
@@ -418,8 +493,13 @@ fn void _window_set_flags(GfxWindow* win, GfxWindowFlags flags, GfxWindowFlags c
 	if (flags.center_cursor) _window_move_mouse(win, win.origin + win.size / 2);
 	switch
 	{
-		case flags.fullscreen: _window_set_fullscreen(win, true);
-		case cmp_flags.fullscreen: _window_set_fullscreen(win, false);
+		case flags.fullscreen_exclusive:     _window_set_fullscreen(win, EXCLUSIVE);
+		case cmp_flags.fullscreen_exclusive: _window_set_fullscreen(win, NONE);
+	}
+	switch
+	{
+		case flags.fullscreen_borderless: _window_set_fullscreen(win, BORDERLESS);
+		case cmp_flags.fullscreen_borderless: _window_set_fullscreen(win, NONE);
 	}
 	if (flags.hide_mouse)
 	{
@@ -518,14 +598,22 @@ fn void _window_focus_callback(GfxWindow* win, bool in_focus)
 	GfxEvent event;
 	event.common.win = win;
 	event.focus.state = in_focus;
-	if (in_focus == true)
+	if (in_focus)
 	{
-		if (win.internal.flags.fullscreen) _window_raise(win);
+		if (win.internal.flags.fullscreen_exclusive && win.internal.monitor)
+		{
+			_window_raise(win);
+			(void)win.internal.monitor.set_mode_native(&win.internal.new_mode);
+		}
 		event.type = WINDOW_FOCUS_IN;
 	}
 	else
 	{
-		if (win.internal.flags.fullscreen) win.minimize();
+		if (win.internal.flags.fullscreen_exclusive && win.internal.monitor)
+		{
+			win.minimize();
+			(void)win.internal.monitor.set_mode_native(&win.internal.old_mode);
+		}
 		_release_all_keys(win);
 		event.type = WINDOW_FOCUS_OUT;
 	}

@@ -230,21 +230,28 @@ fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
 
 fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 {
+	if (!monitor || !monitor.node) return {};
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(ctx.display, xDefaultRootWindow(ctx.display));
 	if (!res) return {};
+	defer xRRFreeScreenResources(res);
+
 	XRRCrtcInfo* ci = xRRGetCrtcInfo(ctx.display, res, monitor.node.crtc);
+	if (!ci) return {};
+	defer xRRFreeCrtcInfo(ci);
+
 	GfxXRROutputInfo* oi = xRRGetOutputInfo(ctx.display, res, monitor.node.rr_output);
-	sz count = (sz)oi.nmode;
+	if (!oi) return {};
+	defer xRRFreeOutputInfo(oi);
+
 	List{GfxMonitorMode} modes;
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode mode;
-		_get_mode(ci, res, oi.modes[i], &mode);
-		modes.push(mode);
+		if (_get_mode(ci, res, oi.modes[i], &mode) != null)
+		{
+			modes.push(mode);
+		}
 	}
-	xRRFreeOutputInfo(oi);
-	xRRFreeCrtcInfo(ci);
-	xRRFreeScreenResources(res);
 	return modes.array_view();
 }
 
@@ -286,11 +293,20 @@ fn void monitor_node_free(GfxMonitorNode* node) {}
 
 fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
-	bool output = false;
+	if (!mon || !mon.node) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(ctx.display, xDefaultRootWindow(ctx.display));
 	if (!res) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	defer xRRFreeScreenResources(res);
+
 	XRRCrtcInfo* ci = xRRGetCrtcInfo(ctx.display, res, mon.node.crtc);
+	if (!ci) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	defer xRRFreeCrtcInfo(ci);
+
 	GfxXRROutputInfo* oi = xRRGetOutputInfo(ctx.display, res, mon.node.rr_output);
+	if (!oi) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	defer xRRFreeOutputInfo(oi);
+
+	bool output = false;
 	RRMode native = 0;
 
 	for (int i = 0; i < oi.nmode; i++)
@@ -306,10 +322,10 @@ fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorM
 			break;
 		}
 	}
-	if (native != 0) xRRSetCrtcConfig(ctx.display, res, mon.node.crtc, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
-	xRRFreeOutputInfo(oi);
-	xRRFreeCrtcInfo(ci);
-	xRRFreeScreenResources(res);
+	if (native != 0)
+	{
+		xRRSetCrtcConfig(ctx.display, res, mon.node.crtc, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
+	}
 	if (!output) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 }
 
@@ -694,7 +710,7 @@ fn void window_move_platform(GfxWindow* win, GfxPoint where)
 fn void window_raise(GfxWindow* win)
 {
 	xMapRaised(ctx.display, win.src.window);
-	window_set_fullscreen(win, win.is_fullscreen());
+	window_set_fullscreen_platform(win, win.is_fullscreen());
 }
 
 fn void window_resize_platform(GfxWindow* win, GfxSize size)
@@ -734,13 +750,8 @@ fn void window_set_border(GfxWindow* win, bool border)
 	win.internal.flags.no_border = !border;
 	X11WindowHints hints;
 	hints.flags = 2;
-	hints.decorations = (CULong)border;
-	xChangeProperty(ctx.display, win.src.window, ctx.motif_wm_hints, ctx.motif_wm_hints, 32, 0, (char*)&hints, 5);
-	if (!window_is_hidden(win))
-	{
-		win.hide();
-		win.show();
-	}
+	hints.decorations = border ? 1 : 0;
+	xChangeProperty(ctx.display, win.src.window, ctx.motif_wm_hints, ctx.motif_wm_hints, 32, 0, (char*)&hints, X11WindowHints::members.len);
 }
 
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
@@ -758,18 +769,8 @@ fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 
 fn void window_set_floating(GfxWindow* win, bool floating) => _window_set_atom(win, ctx.net_wm_state_above, floating);
 
-fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen_platform(GfxWindow* win, bool fullscreen)
 {
-	if (fullscreen)
-	{
-		win.internal.flags.fullscreen = true;
-		win.internal.old_bounds = win.bounds;
-	}
-	else
-	{
-		win.internal.flags.fullscreen = false;
-	}
-
 	xRaiseWindow(ctx.display, win.src.window);
 	_window_set_atom(win, ctx.net_wm_state_fullscreen, fullscreen);
 
@@ -887,11 +888,14 @@ fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
-	if (!window_is_hidden(win)) return;
+	if (!window_is_hidden(win))
+	{
+		return;
+	}
 	xMapWindow(ctx.display, win.src.window);
 	_wait_for_show_event(win);
 	window_move_platform(win, win.origin);
-	window_set_fullscreen(win, win.is_fullscreen());
+	window_set_fullscreen_platform(win, win.is_fullscreen());
 }
 
 // Window - opengl

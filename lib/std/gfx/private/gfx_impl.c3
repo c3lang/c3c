@@ -924,22 +924,22 @@ fn void _window_set_floating(GfxWindow* win, bool floating)
 	$endswitch
 }
 
-fn void _window_set_fullscreen(GfxWindow* win, bool fullscreen)
+fn void _window_set_fullscreen_platform(GfxWindow* win, bool fullscreen)
 {
 	$switch:
 		$case $feat(MACOS):
-			return macos::window_set_fullscreen(win, fullscreen);
+			return macos::window_set_fullscreen_platform(win, fullscreen);
 		$case $feat(WASM):
-			return wasm::window_set_fullscreen(win, fullscreen);
+			return wasm::window_set_fullscreen_platform(win, fullscreen);
 		$case $feat(WIN32):
-			return win32::window_set_fullscreen(win, fullscreen);
+			return win32::window_set_fullscreen_platform(win, fullscreen);
 		$case WAYLAND_ONLY:
-			return wl::window_set_fullscreen(win, fullscreen);
+			return wl::window_set_fullscreen_platform(win, fullscreen);
 		$case X11_ONLY:
-			return x11::window_set_fullscreen(win, fullscreen);
+			return x11::window_set_fullscreen_platform(win, fullscreen);
 		$case X11_OR_WAYLAND:
-			if (_gfx.use_wayland) return wl::window_set_fullscreen(win, fullscreen);
-			return x11::window_set_fullscreen(win, fullscreen);
+			if (_gfx.use_wayland) return wl::window_set_fullscreen_platform(win, fullscreen);
+			return x11::window_set_fullscreen_platform(win, fullscreen);
 		$default:
 			unreachable();
 	$endswitch

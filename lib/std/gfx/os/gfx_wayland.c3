@@ -56,7 +56,7 @@ struct WlLayerConfig
  @return? WAYLAND_LAYER_SHELL_NOT_SUPPORTED : "If compositor lacks zwlr_layer_shell_v1"
  @return? SURFACE_CREATION_FAILED : "If surface could not be created"
 
- @require [flags] !flags.maximize && !flags.minimize && !flags.fullscreen && !flags.no_border : "Maximize, minimize, fullscreen and no-border options may not be used for layers"
+ @require [flags] !flags.maximize && !flags.minimize && !flags.fullscreen_exclusive && !flags.fullscreen_borderless && !flags.no_border : "Maximize, minimize, fullscreen and no-border options may not be used for layers"
 *>
 fn GfxWindow*? create_layer_window(String name, int w, int h, WlLayerConfig config, GfxWindowFlags flags = {}) => @pool()
 {

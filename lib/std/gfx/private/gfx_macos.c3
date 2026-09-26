@@ -534,10 +534,15 @@ fn void window_set_floating(GfxWindow* win, bool floating)
 	win.internal.flags.floating = floating;
 }
 
-fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen_platform(GfxWindow* win, bool fullscreen)
 {
-	if (win.src.window) win.src.window.send_void("toggleFullScreen:", null);
-	win.internal.flags.fullscreen = fullscreen;
+	if (!win.src.window) return;
+	if (fullscreen)
+	{
+		win.src.window.send_void("orderFront:", null);
+		win.src.window.send_void("setLevel:", (NSInteger)25);
+	}
+	win.src.window.send_void("toggleFullScreen:", null);
 }
 
 fn bool window_set_icon(GfxWindow* win, void* data, int w, int h, GfxFormat format, GfxWindowIconType type)

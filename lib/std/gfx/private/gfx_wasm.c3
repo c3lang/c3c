@@ -213,15 +213,13 @@ fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 
 fn void window_set_floating(GfxWindow* win, bool floating) {}
 
-fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen_platform(GfxWindow* win, bool fullscreen)
 {
 	if (fullscreen)
 	{
-		win.internal.flags.fullscreen = true;
 		gfx::gfxJsRequestFullscreen();
 		return;
 	}
-	win.internal.flags.fullscreen = false;
 	gfx::gfxJsExitFullscreen();
 }
 
