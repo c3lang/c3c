@@ -258,35 +258,35 @@ fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 fn GfxRect monitor_get_workarea(GfxMonitor* monitor)
 {
 	XWindow root = xDefaultRootWindow(ctx.display);
-	int area_x = monitor.origin.x;
-	int area_y = monitor.origin.y;
-	int area_w = monitor.mode.size.x;
-	int area_h = monitor.mode.size.y;
+	GfxRect mon_rect = { ...monitor.origin, ...monitor.mode.size };
 
-	if (ctx.net_workarea != 0 && ctx.net_current_desktop != 0)
+	if (ctx.net_workarea == 0) return mon_rect;
+
+	Atom actual_type;
+	int actual_format;
+	CULong items_read, items_left;
+	CLong* propdata = null;
+
+	int status = xGetWindowProperty(ctx.display, root, ctx.net_workarea, 0L, 4L, 0, 6 /* XA_CARDINAL */,
+		&actual_type, &actual_format, &items_read, &items_left, (char**)&propdata);
+
+	if (status == 0 && items_read >= 4 && propdata != null)
 	{
-		Atom* extents = null;
-		Atom* desktop = null;
-		Atom actual_type; int actual_format; CULong extent_count, bytes_after, count;
-		xGetWindowProperty(ctx.display, root, ctx.net_workarea, 0, ~0, 0, 6, &actual_type, &actual_format, &extent_count, &bytes_after, (char**)&extents);
-		xGetWindowProperty(ctx.display, root, ctx.net_current_desktop, 0, ~0, 0, 6, &actual_type, &actual_format, &count, &bytes_after, (char**)&desktop);
+		defer xFree(propdata);
+		int ux = (int)propdata[0];
+		int uy = (int)propdata[1];
+		int uw = (int)propdata[2];
+		int uh = (int)propdata[3];
 
-		if (count != 0 && extent_count >= 4 && *desktop < extent_count / 4)
-		{
-			int global_x = (int)extents[*desktop * 4 + 0];
-			int global_y = (int)extents[*desktop * 4 + 1];
-			int global_w = (int)extents[*desktop * 4 + 2];
-			int global_h = (int)extents[*desktop * 4 + 3];
-			if (area_x < global_x) { area_w -= global_x - area_x; area_x = global_x; }
-			if (area_y < global_y) { area_h -= global_y - area_y; area_y = global_y; }
-			if (area_x + area_w > global_x + global_w) area_w = global_x - area_x + global_w;
-			if (area_y + area_h > global_y + global_h) area_h = global_y - area_y + global_h;
-		}
-		if (extents != null) xFree(extents);
-		if (desktop != null) xFree(desktop);
+		int x1 = math::max(mon_rect.x, ux);
+		int y1 = math::max(mon_rect.y, uy);
+		int x2 = math::min(mon_rect.x + mon_rect.width, ux + uw);
+		int y2 = math::min(mon_rect.y + mon_rect.height, uy + uh);
+
+		if (x2 > x1 && y2 > y1) return { x1, y1, x2 - x1, y2 - y1 };
 	}
 
-	return { area_x, area_y, area_w, area_h };
+	return mon_rect;
 }
 
 fn void monitor_node_free(GfxMonitorNode* node) {}

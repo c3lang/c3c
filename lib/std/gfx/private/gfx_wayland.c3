@@ -56,6 +56,7 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 
 	wl_registry_add_listener(ctx.registry, &listener, null);
 	wl_display_roundtrip(ctx.wl_display);
+	wl_display_roundtrip(ctx.wl_display); // This second roundtrip during Wayland init is intentional
 
 	if (!ctx.compositor) return gfx::WAYLAND_COMPOSITOR_NOT_FOUND~;
 
