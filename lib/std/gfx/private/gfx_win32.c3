@@ -489,11 +489,7 @@ fn void window_set_border(GfxWindow* win, bool border)
 	else
 	{
 		style &= ~(Win32_LONG)win32::WS_POPUP;
-		style |= (Win32_LONG)(win32::WS_CAPTION | win32::WS_SYSMENU | win32::WS_MINIMIZEBOX);
-		if (!win.internal.flags.no_resize)
-		{
-			style |= (Win32_LONG)(win32::WS_THICKFRAME | win32::WS_MAXIMIZEBOX);
-		}
+		style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
 	}
 
 	Win32_DWORD ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
