@@ -540,7 +540,7 @@ fn void window_set_fullscreen_platform(GfxWindow* win, bool fullscreen)
 	if (fullscreen)
 	{
 		win.src.window.send_void("orderFront:", null);
-		win.src.window.send_void("setLevel:", (NSInteger)25);
+		win.src.window.send_void("setLevel:", NSWindowLevel.STATUS);
 	}
 	win.src.window.send_void("toggleFullScreen:", null);
 }
