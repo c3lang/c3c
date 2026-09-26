@@ -325,9 +325,20 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	uint ex_style = gfx::_winapi_window_get_style_ex(win, flags);
 	win32::adjustWindowRectEx(&rect, style, 0, ex_style);
 
-	win.src.window = win32::createWindowExW(0, gfx::_gfx.wnd_class.lpszClassName, name.to_wstring(tmem)!!, window_style, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, gfx::_gfx.instance, null);
+	int init_x = win.x + rect.left;
+	int init_y = win.y + rect.top;
+	if (!flags.no_border)
+	{
+		if (win.x >= 0 && init_x < 0) init_x = 0;
+		if (win.y >= 0 && init_y < 0) init_y = 0;
+	}
+
+	win.src.window = win32::createWindowExW(0, gfx::_gfx.wnd_class.lpszClassName, name.to_wstring(tmem)!!, window_style, init_x, init_y, rect.right - rect.left, rect.bottom - rect.top, null, null, gfx::_gfx.instance, null);
 	win32::setPropW(win.src.window, gfx::RENAME_PROP_NAME, win);
 	win.resize(win.size);
+	Win32_POINT pt = {};
+	win32::clientToScreen(win.src.window, &pt);
+	win.origin = { pt.x, pt.y };
 
 	if (flags.allow_dnd)
 	{
@@ -447,7 +458,15 @@ fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 fn void window_move_platform(GfxWindow* win, GfxPoint where)
 {
 	win.origin = where;
-	win32::setWindowPos(win.src.window, (Win32_HWND){}, ...where, 0, 0, 0x0001 /* SWP_NOSIZE */);
+	Win32_RECT r;
+	win32::getWindowRect(win.src.window, &r);
+	Win32_POINT pt = {};
+	win32::clientToScreen(win.src.window, &pt);
+
+	int x = where.x + (r.left - pt.x);
+	int y = where.y + (r.top - pt.y);
+
+	win32::setWindowPos(win.src.window, null, x, y, 0, 0, 0x0001 | 0x0004 | 0x0010);
 }
 
 fn void window_raise(GfxWindow* win)
@@ -1245,7 +1264,8 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			if (wParam != MODAL_REDRAW_TIMER) break;
 			_window_refresh_callback(win, { 0, 0, ...win.size });
 		case win32::WM_NCLBUTTONDOWN:
-		// workaround for half-second pause when starting to move window
+			if (win.is_maximized()) break;
+			// workaround for half-second pause when starting to move window
 			Win32_POINT point = {};
 			if (win32::sendMessageA(win.src.window, win32::WM_NCHITTEST, wParam, lParam) != win32::HTCAPTION || !win32::getCursorPos(&point)) break;
 			win32::screenToClient(win.src.window, &point);
