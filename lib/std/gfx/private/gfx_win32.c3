@@ -325,9 +325,20 @@ fn void? window_create_platform(GfxWindow* win, String name, GfxWindowFlags flag
 	uint ex_style = gfx::_winapi_window_get_style_ex(win, flags);
 	win32::adjustWindowRectEx(&rect, style, 0, ex_style);
 
-	win.src.window = win32::createWindowExW(0, gfx::_gfx.wnd_class.lpszClassName, name.to_wstring(tmem)!!, window_style, win.x + rect.left, win.y + rect.top, rect.right - rect.left, rect.bottom - rect.top, null, null, gfx::_gfx.instance, null);
+	int init_x = win.x + rect.left;
+	int init_y = win.y + rect.top;
+	if (!flags.no_border)
+	{
+		if (win.x >= 0 && init_x < 0) init_x = 0;
+		if (win.y >= 0 && init_y < 0) init_y = 0;
+	}
+
+	win.src.window = win32::createWindowExW(0, gfx::_gfx.wnd_class.lpszClassName, name.to_wstring(tmem)!!, window_style, init_x, init_y, rect.right - rect.left, rect.bottom - rect.top, null, null, gfx::_gfx.instance, null);
 	win32::setPropW(win.src.window, gfx::RENAME_PROP_NAME, win);
 	win.resize(win.size);
+	Win32_POINT pt = {};
+	win32::clientToScreen(win.src.window, &pt);
+	win.origin = { pt.x, pt.y };
 
 	if (flags.allow_dnd)
 	{
@@ -447,7 +458,15 @@ fn void window_move_mouse(GfxWindow* win, GfxPoint where)
 fn void window_move_platform(GfxWindow* win, GfxPoint where)
 {
 	win.origin = where;
-	win32::setWindowPos(win.src.window, (Win32_HWND){}, ...where, 0, 0, 0x0001 /* SWP_NOSIZE */);
+	Win32_RECT r;
+	win32::getWindowRect(win.src.window, &r);
+	Win32_POINT pt = {};
+	win32::clientToScreen(win.src.window, &pt);
+
+	int x = where.x + (r.left - pt.x);
+	int y = where.y + (r.top - pt.y);
+
+	win32::setWindowPos(win.src.window, null, x, y, 0, 0, 0x0001 | 0x0004 | 0x0010);
 }
 
 fn void window_raise(GfxWindow* win)
@@ -480,16 +499,16 @@ fn void window_set_border(GfxWindow* win, bool border)
 	Win32_RECT rect;
 	win32::getClientRect(win.src.window, &rect);
 	Win32_LONG style = win32::getWindowLongW(win.src.window, win32::GWL_STYLE);
-	style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
 
 	if (!border)
 	{
 		style &= ~(Win32_LONG)win32::WS_OVERLAPPEDWINDOW;
+		style |= (Win32_LONG)win32::WS_POPUP;
 	}
 	else
 	{
-		if (win.internal.flags.no_resize) style &= ~(Win32_LONG)win32::WS_MAXIMIZEBOX;
-		style |= win32::WS_OVERLAPPEDWINDOW;
+		style &= ~(Win32_LONG)win32::WS_POPUP;
+		style |= (Win32_LONG)gfx::_winapi_window_get_style(win.internal.flags);
 	}
 
 	Win32_DWORD ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
@@ -497,7 +516,7 @@ fn void window_set_border(GfxWindow* win, bool border)
 	win32::clientToScreen(win.src.window, (Win32_POINT*)&rect.right);
 	win32::adjustWindowRectEx(&rect, (Win32_DWORD)style, 0, ex_style);
 	win32::setWindowLongW(win.src.window, -16, style);
-	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004); // SWP_FRAMECHANGED|NOACTIVATE|NOZORDER
+	win32::setWindowPos(win.src.window, win32::HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0020 | 0x0010 | 0x0004);
 }
 
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
@@ -527,39 +546,12 @@ fn void window_set_floating(GfxWindow* win, bool floating)
 	}
 }
 
-fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen_platform(GfxWindow* win, bool fullscreen)
 {
-	GfxMonitor*? mon = window_find_monitor(win);
-	if (catch mon) return;
-
-	if (!fullscreen)
+	if (!fullscreen && !win.internal.flags.floating)
 	{
-		// Ignore errors
-		(void)monitor_set_mode(mon, &win.internal.old_mode);
-		window_set_border(win, true);
-
-		Win32_RECT rect = {0, 0, ...win.internal.old_bounds.size};
-		uint style = gfx::_winapi_window_get_style(win.internal.flags);
-		uint ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
-		win32::adjustWindowRectEx(&rect, style, 0, ex_style);
-		win32::setWindowPos(win.src.window, null, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
-
-		win.internal.flags.fullscreen = false;
-		win.bounds = win.internal.old_bounds;
-		return;
+		win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-2) /* HWND_NOTOPMOST */, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0020);
 	}
-
-	win.internal.old_bounds = win.bounds;
-	win.internal.old_mode = mon.mode;
-	win.internal.flags.fullscreen = true;
-	window_set_border(win, false);
-
-	win32::setWindowPos(win.src.window, win32::HWND_TOPMOST, ...mon.origin, 0, 0, 0x0200 | 0x0020 | 0x0040 | 0x0001);
-	win.origin = mon.origin;
-
-	(void)mon.scale_to_window(win);
-	win32::setWindowPos(win.src.window, (Win32_HWND*)(uptr)(-1), 0, 0, ...mon.mode.size, 0x0200 | 0x0020 | 0x0040 | 0x0002);
-	win.size = mon.mode.size;
 }
 
 fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat format, GfxWindowIconType type)
@@ -1231,15 +1223,25 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			return 1;
 		case win32::WM_GETMINMAXINFO:
 			Win32_MINMAXINFO* mmi = (Win32_MINMAXINFO*)(uptr)lParam;
-			bool resize = win.src.min_size == win.src.max_size;
-			win.internal.flags.no_resize = resize;
+			if (win.internal.flags.no_resize)
+			{
+				mmi.ptMinTrackSize.x = win.width + (frame.right - frame.left);
+				mmi.ptMinTrackSize.y = win.height + (frame.bottom - frame.top);
+				mmi.ptMaxTrackSize.x = win.width + (frame.right - frame.left);
+				mmi.ptMaxTrackSize.y = win.height + (frame.bottom - frame.top);
+				return 0;
+			}
 
-			mmi.ptMinTrackSize.x = win.src.min_size.x + (frame.right - frame.left);
-			mmi.ptMinTrackSize.y = win.src.min_size.y + (frame.bottom - frame.top);
-			if (win.src.max_size == { 0, 0 }) return win32::defWindowProcW(hWnd, message, wParam, lParam);
-
-			mmi.ptMaxTrackSize.x = win.src.max_size.x + (frame.right - frame.left);
-			mmi.ptMaxTrackSize.y = win.src.max_size.y + (frame.bottom - frame.top);
+			if (win.src.min_size != { 0, 0 })
+			{
+				mmi.ptMinTrackSize.x = win.src.min_size.x + (frame.right - frame.left);
+				mmi.ptMinTrackSize.y = win.src.min_size.y + (frame.bottom - frame.top);
+			}
+			if (win.src.max_size != { 0, 0 })
+			{
+				mmi.ptMaxTrackSize.x = win.src.max_size.x + (frame.right - frame.left);
+				mmi.ptMaxTrackSize.y = win.src.max_size.y + (frame.bottom - frame.top);
+			}
 			return win32::defWindowProcW(hWnd, message, wParam, lParam);
 		case win32::WM_ENTERSIZEMOVE:
 		case win32::WM_ENTERMENULOOP:
@@ -1262,7 +1264,8 @@ fn Win32_LRESULT _wnd_proc(Win32_HWND hWnd, Win32_UINT message, Win32_WPARAM wPa
 			if (wParam != MODAL_REDRAW_TIMER) break;
 			_window_refresh_callback(win, { 0, 0, ...win.size });
 		case win32::WM_NCLBUTTONDOWN:
-		// workaround for half-second pause when starting to move window
+			if (win.is_maximized()) break;
+			// workaround for half-second pause when starting to move window
 			Win32_POINT point = {};
 			if (win32::sendMessageA(win.src.window, win32::WM_NCHITTEST, wParam, lParam) != win32::HTCAPTION || !win32::getCursorPos(&point)) break;
 			win32::screenToClient(win.src.window, &point);
@@ -1511,7 +1514,7 @@ macro GfxPoint _param_to_point(iptr lParam)
 fn uint _winapi_window_get_style(GfxWindowFlags flags)
 {
 	uint style = win32::WS_CLIPSIBLINGS | win32::WS_CLIPCHILDREN;
-	if (flags.fullscreen)
+	if (flags.fullscreen_exclusive)
 	{
 		style |= win32::WS_POPUP;
 		return style;
@@ -1553,7 +1556,7 @@ fn void? _gamma_set(GfxMonitor* monitor, ushort* gamma)
 fn uint _winapi_window_get_style_ex(GfxWindow* win, GfxWindowFlags flags)
 {
 	uint style = win32::WS_EX_APPWINDOW;
-	if (flags.fullscreen || flags.floating || win.is_floating()) style |= win32::WS_EX_TOPMOST;
+	if (flags.fullscreen_exclusive || flags.floating || win.is_floating()) style |= win32::WS_EX_TOPMOST;
 	return style;
 }
 

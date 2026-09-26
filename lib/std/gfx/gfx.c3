@@ -694,13 +694,20 @@ const GfxEventMask ALL_EVENTS            = (GfxEventMask)uint::max;
 
 
 
+enum GfxFullscreenMode : char
+{
+	NONE,
+	BORDERLESS,
+	EXCLUSIVE,
+}
+
 bitstruct GfxWindowFlags : uint
 {
 	bool no_border;
 	bool no_resize;
 	bool allow_dnd;
 	bool hide_mouse;
-	bool fullscreen;
+	bool fullscreen_exclusive;
 	bool transparent;
 	bool center;
 	bool raw_mouse;
@@ -715,9 +722,13 @@ bitstruct GfxWindowFlags : uint
 	bool capture_mouse;
 	bool open_gl;
 	bool egl;
+	bool fullscreen_borderless;
 }
 
-const GfxWindowFlags WINDOWED_FULLSCREEN = { .no_border, .maximize };
+const GfxWindowFlags FULLSCREEN_EXCLUSIVE = { .fullscreen_exclusive };
+const GfxWindowFlags FULLSCREEN_BORDERLESS = { .fullscreen_borderless };
+const GfxWindowFlags FULLSCREEN = FULLSCREEN_EXCLUSIVE;
+const GfxWindowFlags WINDOWED_FULLSCREEN = FULLSCREEN_BORDERLESS;
 const GfxWindowFlags CAPTURE_RAW_MOUSE = { .capture_mouse, .raw_mouse };
 
 enum GfxMouseIcon : char
@@ -1253,11 +1264,11 @@ fn GfxWindowFlags GfxWindow.get_flags(&self)
 <*
  Enter or leave fullscreen on the window's current monitor.
 
- @param fullscreen : "True to go fullscreen, false to restore"
+ @param mode : "The desired fullscreen mode (NONE, BORDERLESS, EXCLUSIVE)"
 *>
-fn void GfxWindow.set_fullscreen(&self, bool fullscreen)
+fn void GfxWindow.set_fullscreen(&self, GfxFullscreenMode mode)
 {
-	_window_set_fullscreen(self, fullscreen);
+	_window_set_fullscreen(self, mode);
 }
 
 <*
@@ -1954,10 +1965,12 @@ fn void GfxWindow.center_on_screen(&self)
 *>
 fn void? GfxMonitor.scale_to_window(&self, GfxWindow* win)
 {
-	GfxMonitorMode mode;
+	GfxMonitorMode mode = self.mode;
 	mode.size = win.size;
 	defer win.move(self.origin);
-	return _monitor_request_mode(self, &mode, SCALE);
+	if (try _monitor_request_mode(self, &mode, SCALE)) return;
+	GfxMonitorMode closest = self.get_best_matching_mode(mode)!;
+	return self.set_mode_native(&closest);
 }
 
 <*
@@ -2132,7 +2145,7 @@ fn GfxRect GfxMonitor.get_workarea(&monitor)
 <*
  Find the supported mode closest to a desired one.
 
- Modes are scored on size, colour depth and refresh rate, in that order of importance.
+ Modes are scored by distance across color depth, resolution, and refresh rate.
 
  @param mode : "The desired mode"
  @return "The best available match"
@@ -2140,17 +2153,32 @@ fn GfxRect GfxMonitor.get_workarea(&monitor)
 *>
 fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mode) => @pool()
 {
-	GfxMonitorMode* chosen;
-	int top_score = 1;
+	GfxMonitorMode* chosen = null;
+	uint size_score = uint::max;
+	uint rate_score = uint::max;
+	uint color_score = uint::max;
+
 	foreach (&mode2 : _monitor_get_modes(monitor))
 	{
-		int score = 0;
-		if (mode.size == mode2.size) score += 1000;
-		if (mode.rgb == mode2.rgb) score += 100;
-		if (mode.refresh_rate == mode2.refresh_rate) score += 10;
-		if (score > top_score)
+		uint curr_color_score = 0;
+		if (mode.rgb.r) curr_color_score += (uint)math::abs((int)mode2.rgb.r - (int)mode.rgb.r);
+		if (mode.rgb.g) curr_color_score += (uint)math::abs((int)mode2.rgb.g - (int)mode.rgb.g);
+		if (mode.rgb.b) curr_color_score += (uint)math::abs((int)mode2.rgb.b - (int)mode.rgb.b);
+
+		int dw = mode2.size.x - mode.size.x;
+		int dh = mode2.size.y - mode.size.y;
+		uint curr_size_score = (uint)math::abs(dw * dw + dh * dh);
+
+		uint curr_rate_score = uint::max - (uint)mode2.refresh_rate;
+		if (mode.refresh_rate != 0) curr_rate_score = (uint)math::abs((int)mode2.refresh_rate - (int)mode.refresh_rate);
+
+		if (curr_color_score < color_score ||
+			(curr_color_score == color_score && curr_size_score < size_score) ||
+			(curr_color_score == color_score && curr_size_score == size_score && curr_rate_score < rate_score))
 		{
-			top_score = score;
+			size_score = curr_size_score;
+			rate_score = curr_rate_score;
+			color_score = curr_color_score;
 			chosen = mode2;
 		}
 	}
@@ -2441,11 +2469,11 @@ fn bool GfxWindow.is_borderless(&win)
 <*
  Check whether the window is fullscreen.
 
- @return "True if the window is fullscreen"
+ @return "True if the window is in exclusive or borderless fullscreen"
 *>
 fn bool GfxWindow.is_fullscreen(&win)
 {
-	return win.internal.flags.fullscreen;
+	return win.internal.flags.fullscreen_exclusive || win.internal.flags.fullscreen_borderless;
 }
 <*
  Check whether the window accepts dropped files and data.

@@ -230,67 +230,83 @@ fn GfxGammaRamp? monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a)
 
 fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 {
+	if (!monitor || !monitor.node) return {};
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(ctx.display, xDefaultRootWindow(ctx.display));
 	if (!res) return {};
+	defer xRRFreeScreenResources(res);
+
 	XRRCrtcInfo* ci = xRRGetCrtcInfo(ctx.display, res, monitor.node.crtc);
+	if (!ci) return {};
+	defer xRRFreeCrtcInfo(ci);
+
 	GfxXRROutputInfo* oi = xRRGetOutputInfo(ctx.display, res, monitor.node.rr_output);
-	sz count = (sz)oi.nmode;
+	if (!oi) return {};
+	defer xRRFreeOutputInfo(oi);
+
 	List{GfxMonitorMode} modes;
 	for (int i = 0; i < oi.nmode; i++)
 	{
 		GfxMonitorMode mode;
-		_get_mode(ci, res, oi.modes[i], &mode);
-		modes.push(mode);
+		if (_get_mode(ci, res, oi.modes[i], &mode) != null)
+		{
+			modes.push(mode);
+		}
 	}
-	xRRFreeOutputInfo(oi);
-	xRRFreeCrtcInfo(ci);
-	xRRFreeScreenResources(res);
 	return modes.array_view();
 }
 
 fn GfxRect monitor_get_workarea(GfxMonitor* monitor)
 {
 	XWindow root = xDefaultRootWindow(ctx.display);
-	int area_x = monitor.origin.x;
-	int area_y = monitor.origin.y;
-	int area_w = monitor.mode.size.x;
-	int area_h = monitor.mode.size.y;
+	GfxRect mon_rect = { ...monitor.origin, ...monitor.mode.size };
 
-	if (ctx.net_workarea != 0 && ctx.net_current_desktop != 0)
+	if (ctx.net_workarea == 0) return mon_rect;
+
+	Atom actual_type;
+	int actual_format;
+	CULong items_read, items_left;
+	CLong* propdata = null;
+
+	int status = xGetWindowProperty(ctx.display, root, ctx.net_workarea, 0L, 4L, 0, 6 /* XA_CARDINAL */,
+		&actual_type, &actual_format, &items_read, &items_left, (char**)&propdata);
+
+	if (status == 0 && items_read >= 4 && propdata != null)
 	{
-		Atom* extents = null;
-		Atom* desktop = null;
-		Atom actual_type; int actual_format; CULong extent_count, bytes_after, count;
-		xGetWindowProperty(ctx.display, root, ctx.net_workarea, 0, ~0, 0, 6, &actual_type, &actual_format, &extent_count, &bytes_after, (char**)&extents);
-		xGetWindowProperty(ctx.display, root, ctx.net_current_desktop, 0, ~0, 0, 6, &actual_type, &actual_format, &count, &bytes_after, (char**)&desktop);
+		defer xFree(propdata);
+		int ux = (int)propdata[0];
+		int uy = (int)propdata[1];
+		int uw = (int)propdata[2];
+		int uh = (int)propdata[3];
 
-		if (count != 0 && extent_count >= 4 && *desktop < extent_count / 4)
-		{
-			int global_x = (int)extents[*desktop * 4 + 0];
-			int global_y = (int)extents[*desktop * 4 + 1];
-			int global_w = (int)extents[*desktop * 4 + 2];
-			int global_h = (int)extents[*desktop * 4 + 3];
-			if (area_x < global_x) { area_w -= global_x - area_x; area_x = global_x; }
-			if (area_y < global_y) { area_h -= global_y - area_y; area_y = global_y; }
-			if (area_x + area_w > global_x + global_w) area_w = global_x - area_x + global_w;
-			if (area_y + area_h > global_y + global_h) area_h = global_y - area_y + global_h;
-		}
-		if (extents != null) xFree(extents);
-		if (desktop != null) xFree(desktop);
+		int x1 = math::max(mon_rect.x, ux);
+		int y1 = math::max(mon_rect.y, uy);
+		int x2 = math::min(mon_rect.x + mon_rect.width, ux + uw);
+		int y2 = math::min(mon_rect.y + mon_rect.height, uy + uh);
+
+		if (x2 > x1 && y2 > y1) return { x1, y1, x2 - x1, y2 - y1 };
 	}
 
-	return { area_x, area_y, area_w, area_h };
+	return mon_rect;
 }
 
 fn void monitor_node_free(GfxMonitorNode* node) {}
 
 fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
-	bool output = false;
+	if (!mon || !mon.node) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 	XRRScreenResources* res = xRRGetScreenResourcesCurrent(ctx.display, xDefaultRootWindow(ctx.display));
 	if (!res) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	defer xRRFreeScreenResources(res);
+
 	XRRCrtcInfo* ci = xRRGetCrtcInfo(ctx.display, res, mon.node.crtc);
+	if (!ci) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	defer xRRFreeCrtcInfo(ci);
+
 	GfxXRROutputInfo* oi = xRRGetOutputInfo(ctx.display, res, mon.node.rr_output);
+	if (!oi) return gfx::MONITOR_MODE_CHANGE_FAILED~;
+	defer xRRFreeOutputInfo(oi);
+
+	bool output = false;
 	RRMode native = 0;
 
 	for (int i = 0; i < oi.nmode; i++)
@@ -306,10 +322,10 @@ fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorM
 			break;
 		}
 	}
-	if (native != 0) xRRSetCrtcConfig(ctx.display, res, mon.node.crtc, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
-	xRRFreeOutputInfo(oi);
-	xRRFreeCrtcInfo(ci);
-	xRRFreeScreenResources(res);
+	if (native != 0)
+	{
+		xRRSetCrtcConfig(ctx.display, res, mon.node.crtc, 0, ci.x, ci.y, native, ci.rotation, ci.outputs, ci.noutput);
+	}
 	if (!output) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 }
 
@@ -694,7 +710,7 @@ fn void window_move_platform(GfxWindow* win, GfxPoint where)
 fn void window_raise(GfxWindow* win)
 {
 	xMapRaised(ctx.display, win.src.window);
-	window_set_fullscreen(win, win.is_fullscreen());
+	window_set_fullscreen_platform(win, win.is_fullscreen());
 }
 
 fn void window_resize_platform(GfxWindow* win, GfxSize size)
@@ -734,13 +750,8 @@ fn void window_set_border(GfxWindow* win, bool border)
 	win.internal.flags.no_border = !border;
 	X11WindowHints hints;
 	hints.flags = 2;
-	hints.decorations = (CULong)border;
-	xChangeProperty(ctx.display, win.src.window, ctx.motif_wm_hints, ctx.motif_wm_hints, 32, 0, (char*)&hints, 5);
-	if (!window_is_hidden(win))
-	{
-		win.hide();
-		win.show();
-	}
+	hints.decorations = border ? 1 : 0;
+	xChangeProperty(ctx.display, win.src.window, ctx.motif_wm_hints, ctx.motif_wm_hints, 32, 0, (char*)&hints, X11WindowHints::members.len);
 }
 
 fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
@@ -758,18 +769,8 @@ fn void window_set_capture_mouse_platform(GfxWindow* win, bool state)
 
 fn void window_set_floating(GfxWindow* win, bool floating) => _window_set_atom(win, ctx.net_wm_state_above, floating);
 
-fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen_platform(GfxWindow* win, bool fullscreen)
 {
-	if (fullscreen)
-	{
-		win.internal.flags.fullscreen = true;
-		win.internal.old_bounds = win.bounds;
-	}
-	else
-	{
-		win.internal.flags.fullscreen = false;
-	}
-
 	xRaiseWindow(ctx.display, win.src.window);
 	_window_set_atom(win, ctx.net_wm_state_fullscreen, fullscreen);
 
@@ -887,11 +888,14 @@ fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
-	if (!window_is_hidden(win)) return;
+	if (!window_is_hidden(win))
+	{
+		return;
+	}
 	xMapWindow(ctx.display, win.src.window);
 	_wait_for_show_event(win);
 	window_move_platform(win, win.origin);
-	window_set_fullscreen(win, win.is_fullscreen());
+	window_set_fullscreen_platform(win, win.is_fullscreen());
 }
 
 // Window - opengl

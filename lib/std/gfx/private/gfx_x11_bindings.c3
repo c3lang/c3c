@@ -89,10 +89,13 @@ struct XAspect
 {
 	int x, y;
 }
+
+<* https://fossies.org/linux/motif/lib/Xm/MwmUtil.h *>
 struct X11WindowHints
 {
-	CULong flags, functions, decorations, status;
+	CULong flags, functions, decorations;
 	CLong input_mode;
+	CULong status;
 }
 
 struct XSetWindowAttributes
@@ -290,10 +293,10 @@ struct XRRCrtcInfo
 	int x, y;
 	uint width, height;
 	RRMode mode;
-	int rotation;
+	ushort rotation;
 	int noutput;
 	RROutput* outputs;
-	int rotations;
+	ushort rotations;
 	int npossible;
 	RROutput* possible;
 }
@@ -305,8 +308,8 @@ struct GfxXRROutputInfo
 	int nameLen;
 	CULong mm_width;
 	CULong mm_height;
-	int connection;
-	int subpixel_order;
+	ushort connection;
+	ushort subpixel_order;
 	int ncrtc;
 	RRCrtc* crtcs;
 	int nclone;
@@ -401,7 +404,7 @@ extern fn ZString xSetIMValues(XlibIM im, ...) @cname("XSetIMValues");
 extern fn int xRegisterIMInstantiateCallback(XDisplay* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer client_data) @cname("XRegisterIMInstantiateCallback");
 extern fn int xUnregisterIMInstantiateCallback(XDisplay* d, void* db, ZString res_name, ZString res_class, void* callback, XPointer client_data) @cname("XUnregisterIMInstantiateCallback");
 extern fn ZString xSetLocaleModifiers(ZString modifier_list) @cname("XSetLocaleModifiers");
-extern fn sz xutf8LookupString(XlibIC ic, XKeyEvent* event, char* buffer, int bytes, KeySym* keysym, int* status) @cname("Xutf8LookupString");
+extern fn int xutf8LookupString(XlibIC ic, XKeyEvent* event, char* buffer, int bytes, KeySym* keysym, int* status) @cname("Xutf8LookupString");
 extern fn int xutf8SetWMProperties(XDisplay* d, XWindow w, ZString window_name, ZString icon_name, ZString* argv, int argc, XSizeHints* hints, XWMHints* wm_hints, void* class_hints) @cname("Xutf8SetWMProperties");
 extern fn int xSetClassHint(XDisplay* d, XWindow w, XClassHint* hint) @cname("XSetClassHint");
 extern fn int xSetWMHints(XDisplay* d, XWindow w, XWMHints* hints) @cname("XSetWMHints");

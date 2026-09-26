@@ -56,6 +56,7 @@ fn void? init_platform(String class_name, GfxInitOption flags)
 
 	wl_registry_add_listener(ctx.registry, &listener, null);
 	wl_display_roundtrip(ctx.wl_display);
+	wl_display_roundtrip(ctx.wl_display); // This second roundtrip during Wayland init is intentional
 
 	if (!ctx.compositor) return gfx::WAYLAND_COMPOSITOR_NOT_FOUND~;
 
@@ -288,6 +289,7 @@ fn GfxGammaRamp monitor_get_gamma_ramp(GfxMonitor* monitor, Allocator a) => {};
 
 fn GfxMonitorMode[] monitor_get_modes(GfxMonitor* monitor)
 {
+	if (!monitor || !monitor.node || !monitor.node.modes) return {};
 	List{GfxMonitorMode} modes;
 	for (int i = 0; i < monitor.node.mode_count; i++)
 	{
@@ -314,6 +316,7 @@ fn void monitor_node_free(GfxMonitorNode* node)
 
 fn void? monitor_request_mode(GfxMonitor* mon, GfxMonitorMode* mode, GfxMonitorModeRequest request)
 {
+	if (!mon || !mon.node || !mon.node.modes) return gfx::MONITOR_MODE_CHANGE_FAILED~;
 	for (sz i = 0; i < mon.node.mode_count; i++)
 	{
 		if (!mode.equals_request(&mon.node.modes[i], request)) continue;
@@ -601,18 +604,15 @@ fn void window_set_capture_mouse_platform(GfxWindow* win, bool capture)
 
 fn void window_set_floating(GfxWindow* win, bool floating) {}
 
-fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
+fn void window_set_fullscreen_platform(GfxWindow* win, bool fullscreen)
 {
 	if (!win.src.xdg_toplevel) return;
 	if (fullscreen)
 	{
-		win.internal.flags.fullscreen = true;
-		win.internal.old_bounds = win.bounds;
 		xdg_toplevel_set_fullscreen(win.src.xdg_toplevel, null);
 	}
 	else
 	{
-		win.internal.flags.fullscreen = false;
 		xdg_toplevel_unset_fullscreen(win.src.xdg_toplevel);
 	}
 }
@@ -1150,8 +1150,9 @@ fn void _create_outputs(WlProxy* registry, uint id) @local => @pool()
 	mon.pixel_ratio = 1.0f;
 
 	GfxMonitorNode* node = gfx::_monitor_add(&mon);
-	
-	*node = { .disconnected = true, .id = id, .output = output };
+	node.disconnected = true;
+	node.id = id;
+	node.output = output;
 
 	wl_output_set_user_data(output, node);
 
