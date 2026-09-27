@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Fetching MSVC also optionally fetches C/C++ headers for cross-compilation
 - Experimental C backend.
+- Allow the `@section` attribute on local static variables.
  
 ### Fixes
 - Regression for `vec.pow(x)`.
