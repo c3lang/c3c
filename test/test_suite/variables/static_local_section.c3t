@@ -1,0 +1,13 @@
+// #target: linux-x64
+module test;
+
+fn int main()
+{
+	static int value @align(32) @section(".c3_local_static");
+	value++;
+	return value;
+}
+
+/* #expect: test.ll
+
+@main.value = internal unnamed_addr global i32 0, section ".c3_local_static", align 32
