@@ -478,6 +478,142 @@ static void create_output_dir(const char *dir)
 	}
 }
 
+static void compiler_run_after_compile(const char *output_exe)
+{
+	DEBUG_LOG("Run %s", output_exe);
+	const char *name = output_exe;
+	while (name[0] == '.' && name[1] == '/') name += 2;
+	scratch_buffer_clear();
+#if PLATFORM_WINDOWS
+	int len = (int)strlen(name);
+	for (int i = 0; i < len; i++)
+	{
+		if (name[i] == '/')
+		{
+			if (name[i + 1] == '.' && name[i + 2] == '/')
+			{
+				i++;
+				continue;
+			}
+			scratch_buffer_append_char('\\');
+			continue;
+		}
+		scratch_buffer_append_char(name[i]);
+	}
+#else
+	if (name[0] != '/') scratch_buffer_append("./");
+	scratch_buffer_append(name);
+#endif
+	name = scratch_buffer_to_string();
+	const char *full_path = realpath(scratch_buffer_to_string(), NULL);
+	if (!full_path)
+	{
+		error_exit("The binary '%s' was unexpectedly not found.", scratch_buffer_to_string());
+	}
+	if (compiler.platform.os == OS_TYPE_EMSCRIPTEN)
+	{
+		if (str_has_suffix(name, ".js"))
+		{
+			OUTF("Emscripten target detected. To run, use 'node %s'.\n", name);
+		}
+		else if (str_has_suffix(name, ".html"))
+		{
+			OUTF("Emscripten target detected. To run, use 'emrun %s'.\n", name);
+		}
+		else
+		{
+			OUTF("Emscripten target detected. Not auto-running.\n");
+		}
+		return;
+	}
+	if (arch_is_wasm(compiler.platform.arch))
+	{
+		OUTF("WASM target detected. Not auto-running (use wasmtime, wasmer, or similar).\n");
+		return;
+	}
+	OUTF("Launching %s", name);
+	FOREACH(const char *, arg, compiler.build.args)
+	{
+		OUTF(" %s", arg);
+	}
+	if (compiler.build.run_dir)
+	{
+		OUTF(" from directory %s", compiler.build.run_dir);
+		dir_change(compiler.build.run_dir);
+	}
+	OUTN("");
+	int ret = run_subprocess(full_path, compiler.build.args);
+	if (compiler.build.delete_after_run)
+	{
+		file_delete_file(full_path);
+	}
+	if (ret < 0) exit_compiler(EXIT_FAILURE);
+	OUTF("Program completed with exit code %d.\n", ret);
+	if (ret != 0) exit_compiler(ret);
+}
+
+static const char *expand_and_create_build_output_path(const char *output_file)
+{
+	if (file_path_is_relative(output_file))
+	{
+		output_file = file_append_path(compiler.build.output_dir, output_file);
+	}
+	file_create_folders(output_file);
+	return output_file;
+}
+static bool compiler_link_exe(const char *output_exe, const char **obj_files, int output_file_count)
+{
+	bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
+	bool is_emscripten = compiler.platform.os == OS_TYPE_EMSCRIPTEN;
+	const char *cc = NULL;
+	if (system_linker_available)
+	{
+		cc = find_c_compiler();
+		if (!file_executable_in_path(cc)) system_linker_available = false;
+		if (is_emscripten && compiler.build.linker_type != LINKER_TYPE_BUILTIN && (!file_executable_in_path(cc) || !str_contains(cc, "emcc")))
+		{
+			error_exit("\"emscripten\" target requires Emscripten to be installed on your system; \"%s\" was not found.", cc);
+		}
+	}
+	bool use_system_linker = system_linker_available && (compiler.build.arch_os_target == default_target || is_emscripten);
+	switch (compiler.build.linker_type)
+	{
+		case LINKER_TYPE_CC:
+			if (!system_linker_available)
+			{
+				cc = cc ? cc : find_c_compiler();
+				OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
+				compiler.build.linker_type = LINKER_TYPE_BUILTIN;
+				use_system_linker = false;
+				break;
+			}
+			use_system_linker = true;
+			break;
+		case LINKER_TYPE_BUILTIN:
+			use_system_linker = false;
+			break;
+		default:
+			if (!use_system_linker && compiler.build.linker_type == LINKER_TYPE_NOT_SET)
+			{
+				compiler.build.linker_type = LINKER_TYPE_BUILTIN;
+			}
+			break;
+		}
+	if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)
+	{
+		platform_linker(output_exe, obj_files, output_file_count);
+		compiler_link_time = bench_mark();
+		return true;
+	}
+	if (!obj_format_linking_supported(compiler.platform.object_format) || !linker(output_exe, obj_files, output_file_count))
+	{
+		eprintf("No linking is performed due to missing linker support.\n");
+		compiler.build.run_after_compile = false;
+		return false;
+	}
+	compiler_link_time = bench_mark();
+	return true;
+}
 
 void compiler_compile(void)
 {
@@ -659,11 +795,8 @@ void compiler_compile(void)
 			error_exit("No output files were generated. This may happen if the program is not "
 					   "linked with anything and all the code is optimized away.");
 		}
-		else
-		{
-			error_exit("No output files were generated. This may happen if there were no exported functions "
-					   "and all the other code was optimized away.");
-		}
+		error_exit("No output files were generated. This may happen if there were no exported functions "
+				   "and all the other code was optimized away.");
 	}
 
 	CompileData *compile_data = ccalloc(sizeof(CompileData), output_file_count);
@@ -738,185 +871,62 @@ void compiler_compile(void)
 		}
 		error_exit("Compilation produced no object files, maybe there was no code?");
 	}
-	if (vec_size(compiler.build.emit_only)) goto SKIP;
+
+	bool should_delete_object_files = true;
+
+	// No output if we have some "emitted only"
+	if (vec_size(compiler.build.emit_only)) output_exe = output_static = output_dynamic = NULL;
+
 	if (output_exe)
 	{
-		if (file_path_is_relative(output_exe))
+		output_exe = expand_and_create_build_output_path(output_exe);
+		should_delete_object_files = false;
+		if (compiler_link_exe(output_exe, obj_files, output_file_count))
 		{
-			output_exe = file_append_path(compiler.build.output_dir, output_exe);
-		}
-		;
-		file_create_folders(output_exe);
-		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
-		if (system_linker_available)
-		{
-			const char *cc = find_c_compiler();
-			if (!file_executable_in_path(cc)) system_linker_available = false;
-			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN && compiler.build.linker_type != LINKER_TYPE_BUILTIN && (!file_executable_in_path(cc) || !strstr(cc, "emcc")))
-			{
-				error_exit("\"emscripten\" target requires Emscripten to be installed on your system; \"%s\" was not found.", cc);
-			}
-		}
-		bool use_system_linker = system_linker_available && (compiler.build.arch_os_target == default_target || compiler.platform.os == OS_TYPE_EMSCRIPTEN);
-		switch (compiler.build.linker_type)
-		{
-			case LINKER_TYPE_CC:
-				if (!system_linker_available)
-				{
-					const char *cc = find_c_compiler();
-					OUTF("C compiler '%s' not found or system linker is unsupported; using built-in linker instead.\n", cc);
-					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
-					use_system_linker = false;
-					break;
-				}
-				use_system_linker = true;
-				break;
-			case LINKER_TYPE_BUILTIN:
-				use_system_linker = false;
-				break;
-			default:
-				if (!use_system_linker && compiler.build.linker_type == LINKER_TYPE_NOT_SET)
-				{
-					compiler.build.linker_type = LINKER_TYPE_BUILTIN;
-				}
-				break;
-		}
-		if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)
-		{
-			platform_linker(output_exe, obj_files, output_file_count);
-			compiler_link_time = bench_mark();
 			compiler_print_bench();
 			delete_object_files(obj_files, objfile_delete_count);
+			if (compiler.build.run_after_compile)
+			{
+				DEBUG_LOG("Will run");
+				compiler_run_after_compile(output_exe);
+			}
 		}
 		else
 		{
 			compiler_print_bench();
-			if (!obj_format_linking_supported(compiler.platform.object_format) || !linker(output_exe, obj_files,
-																						output_file_count))
-			{
-				eprintf("No linking is performed due to missing linker support.\n");
-				compiler.build.run_after_compile = false;
-			}
-			else
-			{
-				delete_object_files(obj_files, objfile_delete_count);
-			}
 		}
-
-		if (compiler.build.run_after_compile)
-		{
-			DEBUG_LOG("Will run");
-			const char *name = output_exe;
-			while (name[0] == '.' && name[1] == '/') name += 2;
-			scratch_buffer_clear();
-			if (PLATFORM_WINDOWS)
-			{
-				int len = (int)strlen(name);
-				for (int i = 0; i < len; i++)
-				{
-					if (name[i] == '/')
-					{
-						if (name[i + 1] == '.' && name[i + 2] == '/')
-						{
-							i++;
-							continue;
-						}
-						scratch_buffer_append_char('\\');
-						continue;
-					}
-					scratch_buffer_append_char(name[i]);
-				}
-			}
-			else
-			{
-				if (name[0] != '/') scratch_buffer_append("./");
-				scratch_buffer_append(name);
-			}
-			name = scratch_buffer_to_string();
-			const char *full_path = realpath(scratch_buffer_to_string(), NULL);
-			if (!full_path)
-			{
-				error_exit("The binary '%s' was unexpectedly not found.", scratch_buffer_to_string());
-			}
-			if (compiler.platform.os == OS_TYPE_EMSCRIPTEN)
-			{
-				if (str_has_suffix(name, ".js"))
-				{
-					OUTF("Emscripten target detected. To run, use 'node %s'.\n", name);
-				}
-				else if (str_has_suffix(name, ".html"))
-				{
-					OUTF("Emscripten target detected. To run, use 'emrun %s'.\n", name);
-				}
-				else
-				{
-					OUTF("Emscripten target detected. Not auto-running.\n");
-				}
-				return;
-			}
-			if (arch_is_wasm(compiler.platform.arch))
-			{
-				OUTF("WASM target detected. Not auto-running (use wasmtime, wasmer, or similar).\n");
-				return;
-			}
-			OUTF("Launching %s", name);
-			FOREACH(const char *, arg, compiler.build.args)
-			{
-				OUTF(" %s", arg);
-			}
-			if (compiler.build.run_dir)
-			{
-				OUTF(" from directory %s", compiler.build.run_dir);
-				dir_change(compiler.build.run_dir);
-			}
-			OUTN("");
-			int ret = run_subprocess(full_path, compiler.build.args);
-			if (compiler.build.delete_after_run)
-			{
-				file_delete_file(full_path);
-			}
-			if (ret < 0) exit_compiler(EXIT_FAILURE);
-			OUTF("Program completed with exit code %d.\n", ret);
-			if (ret != 0) exit_compiler(ret);
-		}
+		// Note that cleanup doesn't happen on failure to link.
 	}
 	else if (output_static)
 	{
-		if (file_path_is_relative(output_static))
-		{
-			output_static = file_append_path(compiler.build.output_dir, output_static);
-		}
-		file_create_folders(output_static);
+		output_static = expand_and_create_build_output_path(output_static);
 		if (!static_lib_linker(output_static, obj_files, output_file_count))
 		{
+			delete_object_files(obj_files, objfile_delete_count);
 			error_exit("Failed to produce static library '%s'.", output_static);
 		}
-		delete_object_files(obj_files, objfile_delete_count);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
 		OUTF("Static library '%s' created.\n", output_static);
 	}
 	else if (output_dynamic)
 	{
-		if (file_path_is_relative(output_dynamic))
-		{
-			output_dynamic = file_append_path(compiler.build.output_dir, output_dynamic);
-		}
-		file_create_folders(output_dynamic);
+		output_dynamic = expand_and_create_build_output_path(output_dynamic);
 		if (!dynamic_lib_linker(output_dynamic, obj_files, output_file_count))
 		{
+			delete_object_files(obj_files, objfile_delete_count);
 			error_exit("Failed to produce dynamic library '%s'.", output_dynamic);
 		}
-		delete_object_files(obj_files, objfile_delete_count);
 		OUTF("Dynamic library '%s' created.\n", output_dynamic);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
 	}
 	else
 	{
-		SKIP:
+		should_delete_object_files = false;
 		compiler_print_bench();
 	}
+	if (should_delete_object_files) delete_object_files(obj_files, objfile_delete_count);
 	free(obj_files);
 }
 INLINE void expand_csources(const char *base_dir, const char **source_dirs, const char ***sources_ref)
