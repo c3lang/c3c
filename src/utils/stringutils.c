@@ -226,6 +226,11 @@ const char *str_remove_suffix(const char *name, const char *suffix)
 	return name_copy;
 }
 
+bool str_contains(const char *haystack, const char *needle)
+{
+	return strstr(haystack, needle) != NULL;
+}
+
 bool str_has_suffix(const char *name, const char *suffix)
 {
 	size_t name_len = strlen(name);
