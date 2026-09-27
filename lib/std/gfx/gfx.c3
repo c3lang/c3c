@@ -1954,10 +1954,12 @@ fn void GfxWindow.center_on_screen(&self)
 *>
 fn void? GfxMonitor.scale_to_window(&self, GfxWindow* win)
 {
-	GfxMonitorMode mode;
+	GfxMonitorMode mode = self.mode;
 	mode.size = win.size;
 	defer win.move(self.origin);
-	return _monitor_request_mode(self, &mode, SCALE);
+	if (try _monitor_request_mode(self, &mode, SCALE)) return;
+	GfxMonitorMode closest = self.get_best_matching_mode(mode)!;
+	return self.set_mode_native(&closest);
 }
 
 <*
@@ -2129,10 +2131,23 @@ fn GfxRect GfxMonitor.get_workarea(&monitor)
 	return _monitor_get_workarea(monitor);
 }
 
+fn int _cmp_modes(GfxMonitorMode* a, GfxMonitorMode* b) @local
+{
+	if (a.size.x != b.size.x) return b.size.x - a.size.x;
+	if (a.size.y != b.size.y) return b.size.y - a.size.y;
+	int bpp_a = (int)a.rgb.sum();
+	int bpp_b = (int)b.rgb.sum();
+	if (bpp_a != bpp_b) return bpp_b - bpp_a;
+	int rate_a = (int)(a.refresh_rate * 100.0f);
+	int rate_b = (int)(b.refresh_rate * 100.0f);
+	if (rate_a != rate_b) return rate_b - rate_a;
+	return 0;
+}
+
 <*
  Find the supported mode closest to a desired one.
 
- Modes are scored on size, colour depth and refresh rate, in that order of importance.
+ Enclosing modes are scored by aspect ratio match, resolution, refresh rate, and color depth.
 
  @param mode : "The desired mode"
  @return "The best available match"
@@ -2140,20 +2155,59 @@ fn GfxRect GfxMonitor.get_workarea(&monitor)
 *>
 fn GfxMonitorMode? GfxMonitor.get_best_matching_mode(&monitor, GfxMonitorMode mode) => @pool()
 {
-	GfxMonitorMode* chosen;
-	int top_score = 1;
-	foreach (&mode2 : _monitor_get_modes(monitor))
+	GfxMonitorMode[] modes = alloc::clone_slice(tmem, _monitor_get_modes(monitor));
+	if (!modes.len) return NOT_FOUND~;
+
+	// Sort modes descending, matching SDL's cmpmodes
+	for (sz i = 1; i < modes.len; i++)
 	{
-		int score = 0;
-		if (mode.size == mode2.size) score += 1000;
-		if (mode.rgb == mode2.rgb) score += 100;
-		if (mode.refresh_rate == mode2.refresh_rate) score += 10;
-		if (score > top_score)
+		GfxMonitorMode key = modes[i];
+		sz j = i;
+		while (j > 0 && _cmp_modes(&modes[j - 1], &key) > 0)
 		{
-			top_score = score;
-			chosen = mode2;
+			modes[j] = modes[j - 1];
+			j--;
 		}
+		modes[j] = key;
 	}
+
+	int w = mode.size.x;
+	int h = mode.size.y;
+	float aspect_ratio = h > 0 ? (float)w / (float)h : 1.0f;
+	float target_rate = mode.refresh_rate != 0.0f ? mode.refresh_rate : monitor.mode.refresh_rate;
+
+	GfxMonitorMode* chosen = null;
+
+	foreach (&m : modes)
+	{
+		if (w > m.size.x) break;
+		if (h > m.size.y) continue;
+
+		if (chosen)
+		{
+			float cur_aspect = (float)m.size.x / (float)m.size.y;
+			float chosen_aspect = (float)chosen.size.x / (float)chosen.size.y;
+			if (math::abs(aspect_ratio - chosen_aspect) < math::abs(aspect_ratio - cur_aspect))
+			{
+				continue;
+			}
+
+			if (m.size == chosen.size)
+			{
+				if (math::abs(chosen.refresh_rate - target_rate) < math::abs(m.refresh_rate - target_rate))
+				{
+					continue;
+				}
+				if (chosen.rgb.sum() > m.rgb.sum())
+				{
+					continue;
+				}
+			}
+		}
+
+		chosen = m;
+	}
+
 	return chosen ? *chosen : NOT_FOUND~;
 }
 
