@@ -3174,6 +3174,7 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 		case ATTR_NONE:             UNREACHABLE
 		case ATTR_MACRO:            return "macro";
 		case ATTR_LOCAL:            return "local variable";
+		case ATTR_LOCAL_STATIC:     return "local static variable";
 		case ATTR_BITSTRUCT:        return "bitstruct";
 		case ATTR_INTERFACE:        return "interface";
 		case ATTR_MEMBER:           return "member";
@@ -3336,7 +3337,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	ASSERT(type >= 0 && type < NUMBER_OF_ATTRIBUTES);
 	// NOLINTBEGIN(*.EnumCastOutOfRange)
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
-			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
+			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | LOCAL_VARIABLE_TYPES | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
 			[ATTRIBUTE_ALLOW_DEPRECATED] = ATTR_FUNC,
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
@@ -3368,7 +3369,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
 			[ATTRIBUTE_NOALIAS] = ATTR_PARAM,
 			[ATTRIBUTE_NODISCARD] = CALLABLE_TYPE,
-			[ATTRIBUTE_NOINIT] = ATTR_GLOBAL | ATTR_LOCAL,
+			[ATTRIBUTE_NOINIT] = ATTR_GLOBAL | LOCAL_VARIABLE_TYPES,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOPADDING] = ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_NORETURN] = CALLABLE_TYPE,
@@ -3387,10 +3388,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
-			[ATTRIBUTE_SAFEINFER] = ATTR_GLOBAL | ATTR_LOCAL,
-			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
+			[ATTRIBUTE_SAFEINFER] = ATTR_GLOBAL | LOCAL_VARIABLE_TYPES,
+			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_LOCAL_STATIC,
 			[ATTRIBUTE_SIMD] = (AttributeDomain)0,
-			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_LOCAL | ATTR_GLOBAL | ATTR_PARAM,
+			[ATTRIBUTE_TAG] = ATTR_BITSTRUCT_MEMBER | ATTR_MEMBER | USER_DEFINED_TYPES | CALLABLE_TYPE | LOCAL_VARIABLE_TYPES | ATTR_GLOBAL | ATTR_PARAM,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL),
@@ -4961,7 +4962,7 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 			domain = ATTR_PARAM;
 			break;
 		default:
-			domain = ATTR_LOCAL;
+			domain = decl->var.is_static ? ATTR_LOCAL_STATIC : ATTR_LOCAL;
 			break;
 	}
 	if (!sema_analyse_attributes(context, decl, decl->attributes, domain, erase_decl)) return decl_poison(decl);
