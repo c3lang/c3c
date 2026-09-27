@@ -553,6 +553,9 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 
 	if (!fullscreen)
 	{
+		win.internal.flags.fullscreen = false;
+		win.bounds = win.internal.old_bounds;
+
 		// Ignore errors
 		(void)monitor_set_mode(mon, &win.internal.old_mode);
 		window_set_border(win, true);
@@ -561,10 +564,8 @@ fn void window_set_fullscreen(GfxWindow* win, bool fullscreen)
 		uint style = gfx::_winapi_window_get_style(win.internal.flags);
 		uint ex_style = gfx::_winapi_window_get_style_ex(win, win.internal.flags);
 		win32::adjustWindowRectEx(&rect, style, 0, ex_style);
-		win32::setWindowPos(win.src.window, null, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0004);
-
-		win.internal.flags.fullscreen = false;
-		win.bounds = win.internal.old_bounds;
+		Win32_HWND z_order = win.internal.flags.floating ? win32::HWND_TOPMOST : (Win32_HWND*)(uptr)(-2) /* HWND_NOTOPMOST */;
+		win32::setWindowPos(win.src.window, z_order, ...win.internal.old_bounds.origin, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0200 | 0x0020);
 		return;
 	}
 
