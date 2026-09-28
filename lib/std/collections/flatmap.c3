@@ -1,5 +1,4 @@
 <*
- @require types::has_equals(Key) : "Must have equality operator overloaded"
  @require $defined((Key) { }.hash()) : "Must be hashable"
 *>
 module std::collections::flatmap <Key, Value>;
@@ -137,7 +136,7 @@ fn void FlatMap.clear(&self)
 <*
  Inserts key-value pair into the flat map.
 
- @return "False it item was already in the map, true otherwise"
+ @return "True if the key was already present and its value was replaced, false if a new entry was added"
 *>
 fn bool FlatMap.set(&self, Key key, Value val)
 {
@@ -147,7 +146,7 @@ fn bool FlatMap.set(&self, Key key, Value val)
 }
 
 <*
- @return "False it item was already in the map, true otherwise"
+ @return "True if the key was already present and its value was replaced, false if a new entry was added"
 *>
 fn bool set_inner(HashType* data, sz capacity, sz* count, HashType hash, Key key, Value value) @private @inline
 {
@@ -180,9 +179,10 @@ fn bool set_inner(HashType* data, sz capacity, sz* count, HashType hash, Key key
 		else if (hash == slot_hash && keys[curr_idx] == key)
 		{
 			values[curr_idx] = value;
-			return false;
+			return true;
 		}
 
+		// Wrapped around the entire table; the load factor guarantees a slot exists.
 		curr_idx = (curr_idx + 1) & (capacity - 1);
 		if (curr_idx == start_idx) break;
 	}
@@ -193,7 +193,7 @@ fn bool set_inner(HashType* data, sz capacity, sz* count, HashType hash, Key key
 	keys[insert_slot_idx] = key;
 	values[insert_slot_idx] = value;
 	if (count) (*count)++;
-	return true;
+	return false;
 }
 
 <*
@@ -378,6 +378,11 @@ fn bool FlatMap.is_empty(&self) @inline
 	return self.count == 0;
 }
 
+fn sz FlatMap.len(&self) @operator(len) @inline
+{
+	return self.count;
+}
+
 <*
  Returns array of all keys.
 *>
@@ -482,8 +487,14 @@ fn Value[] values_array(FlatMap* self) @private
 
 fn HashType calc_hash(Key key) @private @inline
 {
-	HashType hash = key.hash();
+	HashType hash = rehash(key.hash());
 	return max(hash, HASH_FIRST_VALID);
+}
+
+fn HashType rehash(HashType hash) @private @inline
+{
+	hash ^= (hash >> 20) ^ (hash >> 12);
+	return hash ^ ((hash >> 7) ^ (hash >> 4));
 }
 
 <*

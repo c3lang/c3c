@@ -84,6 +84,26 @@ fn void test_remove()
 	test::eq(set.contains(2), true);
 }
 
+fn void test_len()
+{
+	FlatSet{sz} set = range_set(0, 10);
+	test::eq(set.len(), (sz)10);
+
+	set.remove(3);
+	test::eq(set.len(), (sz)9);
+
+	set.add(3);
+	test::eq(set.len(), (sz)10);
+
+	// Duplicates never change the count.
+	test::eq(set.add(3), false);
+	test::eq(set.len(), (sz)10);
+
+	set.clear();
+	test::eq(set.len(), (sz)0);
+	test::eq(set.is_empty(), true);
+}
+
 fn void test_add_all_from()
 {
 	FlatSet{sz} a;

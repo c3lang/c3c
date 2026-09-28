@@ -83,11 +83,56 @@ fn void test_set_get()
 	}
 
 	// Overwriting an existing key does not add a new entry.
-	map.set(0, 42);
+	test::eq(map.set(0, 42), true);
 	test::eq(map.get(0)!!, (sz)42);
+	test::eq(map.len(), (sz)100);
 
 	// Getting a missing key yields NOT_FOUND.
 	test::@error(map.get(10000));
+}
+
+fn void test_set_return_value()
+{
+	FlatMap{sz, sz} map;
+	map.tinit();
+
+	// Same contract as HashMap.set: true when an existing entry was replaced.
+	test::eq(map.set(1, 10), false);
+	test::eq(map.set(2, 20), false);
+	test::eq(map.set(1, 99), true);
+	test::eq(map.get(1)!!, (sz)99);
+	test::eq(map.get(2)!!, (sz)20);
+	test::eq(map.len(), (sz)2);
+}
+
+fn void test_len()
+{
+	FlatMap{sz, sz} map;
+	map.tinit();
+	test::eq(map.len(), (sz)0);
+	test::eq(map.is_empty(), true);
+
+	for (sz i = 0; i < 25; ++i)
+	{
+		map.set(i, i);
+	}
+	test::eq(map.len(), (sz)25);
+	test::eq(map.is_empty(), false);
+
+	map.remove(7);
+	test::eq(map.len(), (sz)24);
+
+	// Re-adding a removed key is a fresh insert, so the count goes back up.
+	map.set(7, 7);
+	test::eq(map.len(), (sz)25);
+
+	// Overwriting a present key does not change the count.
+	test::eq(map.set(7, 70), true);
+	test::eq(map.len(), (sz)25);
+
+	map.clear();
+	test::eq(map.len(), (sz)0);
+	test::eq(map.is_empty(), true);
 }
 
 fn void test_get_ref()

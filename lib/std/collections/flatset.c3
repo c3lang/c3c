@@ -1,11 +1,9 @@
 <*
- @require types::has_equals(Value) : "Must have equality operator overloaded"
  @require $defined((Value) { }.hash()) : "Must be hashable"
 *>
 module std::collections::flatset <Value>;
 import std::math;
 import std::io;
-import std::collections::pair;
 
 alias HashType = uint;
 const sz DEFAULT_CAPACITY @private       = 16;
@@ -454,6 +452,11 @@ fn bool FlatSet.is_empty(&self) @inline
 	return self.count == 0;
 }
 
+fn sz FlatSet.len(&self) @operator(len) @inline
+{
+	return self.count;
+}
+
 fn void reset_hashes(HashType[] hashes) @private
 {
 	foreach (&hash : hashes)
@@ -486,8 +489,14 @@ fn Value[] values_array(HashType* data, sz capacity) @private
 
 fn HashType calc_hash(Value val) @private @inline
 {
-	HashType hash = val.hash();
+	HashType hash = rehash(val.hash());
 	return max(hash, HASH_FIRST_VALID);
+}
+
+fn HashType rehash(HashType hash) @private @inline
+{
+	hash ^= (hash >> 20) ^ (hash >> 12);
+	return hash ^ ((hash >> 7) ^ (hash >> 4));
 }
 
 <*
