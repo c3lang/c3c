@@ -308,7 +308,7 @@ static void analyze_generics(Module *module)
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		bool remove = false;
-		if (unit->feat_attributes && sema_remove_due_to_conditionals(unit->feat_attributes) != BOOL_FALSE)
+		if (unit->feat_attributes && sema_retain_conditional_feat(unit->feat_attributes) != BOOL_TRUE)
 		{
 			remove = true;
 		}

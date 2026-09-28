@@ -297,15 +297,15 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 	ASSERT_SPAN(decl, !decl->unit || decl->is_templated);
 	if (decl->is_feat_cond)
 	{
-		switch (sema_remove_due_to_conditionals(decl->attributes))
+		switch (sema_retain_conditional_feat(decl->attributes))
 		{
-			case BOOL_TRUE:
+			case BOOL_FALSE:
 				decl->decl_kind = DECL_ERASED;
 				return;
 			case BOOL_ERR:
 				decl->decl_kind = DECL_POISONED;
 				return;
-			case BOOL_FALSE:
+			case BOOL_TRUE:
 				break;
 		}
 	}

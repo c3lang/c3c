@@ -53,7 +53,7 @@ void sema_analyse_pass_remove_feat_conditionals(Module *module)
 {
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		if (unit->feat_attributes && sema_remove_due_to_conditionals(unit->feat_attributes) != BOOL_FALSE)
+		if (unit->feat_attributes && sema_retain_conditional_feat(unit->feat_attributes) != BOOL_TRUE)
 		{
 			vec_resize(unit->module_aliases, 0);
 			vec_resize(unit->imports, 0);

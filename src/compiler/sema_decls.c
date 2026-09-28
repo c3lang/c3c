@@ -3618,11 +3618,11 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->var.no_alias = true;
 			break;
 		case ATTRIBUTE_FEAT:
-			switch (sema_remove_due_to_conditional(attr))
+			switch (sema_retain_feat(attr))
 			{
 				case BOOL_ERR: return false;
-				case BOOL_TRUE: *erase_decl = true; return true;
-				case BOOL_FALSE: return true;
+				case BOOL_FALSE: *erase_decl = true; return true;
+				case BOOL_TRUE: return true;
 			}
 			UNREACHABLE
 		case ATTRIBUTE_IF:
@@ -4301,7 +4301,7 @@ static inline BoolErr sema_evaluate_feature(Expr *expr)
 		RETURN_PRINT_ERROR_AT(BOOL_ERR, expr, "A feature name cannot have a path, did you want to use `@if` instead?");
 	}
 	const char *name = expr->unresolved_ident_expr.ident;
-	return !htable_get(&compiler.context.features, (void *)name) ? BOOL_FALSE : BOOL_TRUE;
+	return htable_get(&compiler.context.features, (void *)name) ? BOOL_TRUE : BOOL_FALSE;
 
 }
 
@@ -4341,34 +4341,37 @@ static inline BoolErr sema_evaluate_feature_expression(Expr *expr)
 	return sema_evaluate_feature(expr);
 }
 
-BoolErr sema_remove_due_to_conditional(Attr *attr)
+BoolErr sema_evaluate_feature_expr_list(Expr** exprs)
 {
-	ASSERT(attr->attr_kind == ATTRIBUTE_FEAT);
-	BoolErr res = BOOL_TRUE;
-	if (!vec_size(attr->exprs)) RETURN_PRINT_ERROR_AT(BOOL_ERR, attr, "'@feat' needs at least one feature to match.");
-
-	FOREACH (Expr *, expr, attr->exprs)
+	FOREACH (Expr *, expr, exprs)
 	{
 		BoolErr res_inner = sema_evaluate_feature_expression(expr);
 		switch (res_inner)
 		{
-			case BOOL_ERR: return BOOL_ERR;
-			case BOOL_TRUE: res = BOOL_FALSE; break;
-			case BOOL_FALSE: break;
+			case BOOL_ERR:   return BOOL_ERR;
+			case BOOL_TRUE:  return BOOL_TRUE;
+			case BOOL_FALSE: continue;
 		}
 	}
-	return res;
+	return BOOL_FALSE;
 }
 
-BoolErr sema_remove_due_to_conditionals(Attr **attrs)
+BoolErr sema_retain_feat(Attr *attr)
+{
+	ASSERT(attr->attr_kind == ATTRIBUTE_FEAT);
+	if (!vec_size(attr->exprs)) RETURN_PRINT_ERROR_AT(BOOL_ERR, attr, "'@feat' needs at least one feature to match.");
+	return sema_evaluate_feature_expr_list(attr->exprs);
+}
+
+BoolErr sema_retain_conditional_feat(Attr **attrs)
 {
 	FOREACH(Attr *, attr, attrs)
 	{
 		if (attr->attr_kind != ATTRIBUTE_FEAT) continue;
-		BoolErr result = sema_remove_due_to_conditional(attr);
-		if (result != BOOL_FALSE) return result;
+		BoolErr result = sema_retain_feat(attr);
+		if (result != BOOL_TRUE) return result;
 	}
-	return BOOL_FALSE;
+	return BOOL_TRUE;
 }
 
 Decl *sema_create_runner_main(SemaContext *context, Decl *decl)

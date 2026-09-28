@@ -6,7 +6,8 @@
 - Fetching MSVC also optionally fetches C/C++ headers for cross-compilation
 - Experimental C backend.
 - Allow the `@section` attribute on local static variables.
- 
+- Make `$feat` accept the same syntax as `@feat`.
+
 ### Fixes
 - Regression for `vec.pow(x)`.
 - Macros with "const" declarations were compile time folded despite needing the declaration.

@@ -11544,6 +11544,21 @@ static inline bool sema_expr_analyse_ct_feature(SemaContext *context, Expr *expr
 	if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
 
 	Expr *inner = expr->inner_expr;
+	if (inner->expr_kind == EXPR_EXPRESSION_LIST)
+	{
+		switch (sema_evaluate_feature_expr_list(inner->expression_list))
+		{
+			case BOOL_TRUE:
+				expr_rewrite_const_bool(expr, type_bool, true);
+				return true;
+			case BOOL_FALSE:
+				expr_rewrite_const_bool(expr, type_bool, false);
+				return true;
+			case BOOL_ERR:
+				return false;
+		}
+		UNREACHABLE
+	}
 	if (inner->expr_kind != EXPR_UNRESOLVED_IDENTIFIER) goto ERROR;
 	if (!inner->unresolved_ident_expr.is_const) goto ERROR;
 

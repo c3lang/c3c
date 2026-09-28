@@ -1356,7 +1356,7 @@ static Expr *parse_ct_feat(ParseContext *c, Expr *left, SourceLoc *lhs_start UNU
 	Expr *expr = expr_new_loc(EXPR_CT_FEATURE, &c->span);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expression_list(c, false), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;

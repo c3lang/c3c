@@ -2610,8 +2610,9 @@ void sema_decl_stack_restore(Decl **state);
 void sema_decl_stack_push(Decl *decl);
 Decl *sema_find_generic_instance(SemaContext *context, Module *module, Decl *generic, Decl *instance, const char *name);
 
-BoolErr sema_remove_due_to_conditionals(Attr **attrs);
-BoolErr sema_remove_due_to_conditional(Attr *attr);
+BoolErr sema_retain_conditional_feat(Attr **attrs);
+BoolErr sema_retain_feat(Attr *attr);
+BoolErr sema_evaluate_feature_expr_list(Expr** exprs);
 bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *to);
 bool sema_add_local(SemaContext *context, Decl *decl);
 void sema_unwrap_var(SemaContext *context, Decl *decl);
