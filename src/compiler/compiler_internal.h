@@ -958,7 +958,7 @@ typedef struct
 	SubscriptIndex index;
 	bool no_check;
 	bool ref;
-	bool may_no_ref;
+	bool prefer_ref;
 } ExprSubscript;
 
 typedef struct

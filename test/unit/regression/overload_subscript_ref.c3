@@ -47,3 +47,25 @@ fn void FixedList.set(&self, sz index, Type value) @operator([]=)
 }
 
 fn sz FixedList.len(&self) @operator(len) @inline => self.size;
+
+module subscript_tester2;
+import std;
+struct Test { int v; }
+
+alias Fl = FixedList{FixedList{Test, 4}, 2};
+
+fn void test_subscript_subscript() @test
+{
+	Fl t;
+	t.push({});
+	t.push({});
+	t[1].push_all({{},{},{},{}});
+	Test* tref = &t[1][^1];
+	t[1][3].v = 99;
+	assert(tref.v == 99);
+	assert(t[1][3].v == 99);
+
+	tref = &t[1][t[1].len() - 1];
+	t[1][3].v = 88;
+	assert(tref.v == 88);
+}
