@@ -14,6 +14,7 @@
 - Vectors created through casts in globals would miscompile, e.g. `Foo global = { .v = (int[<3>])8 }`.
 - Support $$bswap for all power of two integers, including single bytes (in which case it is a no-op).
 - Fix source locations for byte literal values continued on a new line.
+- Faulty selection of subscript operator overload when calling method #3499
 
 ### Stdlib changes
 - Added `std::gfx` module.

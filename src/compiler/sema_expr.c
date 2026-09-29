@@ -4182,99 +4182,113 @@ static bool sema_subscript_rewrite_index_const_list(Expr *const_list, ArrayIndex
 	return expr_rewrite_to_const_initializer_index(const_list->type, const_list->const_expr.initializer, result, index, from_back);
 }
 
+struct SubcriptLookup
+{
+	Expr *subscripted;
+	Type *subscripted_type; // Might be flat version of subscripted's type.
+	OperatorOverload operator_overload;
+	Decl *overload_method;
+	Type *subscript_value_type;
+	bool is_ref;
+	bool may_fallback_ref;
+	bool fallback_ref_used;
+} typedef SubscriptLookup;
+
 /**
  * Find subscript type or overload for subscript.
  */
-static Expr *sema_expr_find_subscript_type_or_overload_for_subscript(SemaContext *context, Expr *current_expr,
-                                                                     OperatorOverload overload_type,
-																	 Type **subscript_type_ptr,
-                                                                     Decl **overload_ptr)
+static bool sema_expr_find_subscript_type_or_overload_for_subscript(SemaContext *context, SubscriptLookup* lookup)
 {
 	Decl *overload = NULL;
-	overload = sema_find_untyped_operator(current_expr->type, overload_type, NULL);
+	OperatorOverload overload_type = lookup->operator_overload;
+	overload = sema_find_untyped_operator(lookup->subscripted->type, overload_type, NULL);
 	if (overload)
 	{
+		lookup->overload_method = overload;
 		// Overload for []=
 		if (overload_type == OVERLOAD_ELEMENT_SET)
 		{
-			*overload_ptr = overload;
 			ASSERT(vec_size(overload->func_decl.signature.params) == 3);
-			*subscript_type_ptr = overload->func_decl.signature.params[2]->type;
-			return current_expr;
+			lookup->subscript_value_type = overload->func_decl.signature.params[2]->type;
+			return true;
 		}
 		// Overload found for [] and &[]
-		*overload_ptr = overload;
 		ASSERT(overload->func_decl.signature.rtype);
-		*subscript_type_ptr = type_infoptr(overload->func_decl.signature.rtype)->type;
-		return current_expr;
+		lookup->subscript_value_type = type_infoptr(overload->func_decl.signature.rtype)->type;
+		return true;
+	}
+	// &[] -> []
+	if (lookup->may_fallback_ref && overload_type == OVERLOAD_ELEMENT_REF)
+	{
+		overload = sema_find_untyped_operator(lookup->subscripted->type, OVERLOAD_ELEMENT_AT, NULL);
+		if (overload)
+		{
+			lookup->overload_method = overload;
+			ASSERT(overload->func_decl.signature.rtype);
+			lookup->subscript_value_type = type_infoptr(overload->func_decl.signature.rtype)->type;
+			lookup->fallback_ref_used = true;
+			return true;
+		}
 	}
 	// Otherwise, see if we have an indexed type.
-	Type *inner_type = type_get_indexed_type(current_expr->type);
+	Expr *subscripted = lookup->subscripted;
+	Type *inner_type = type_get_indexed_type(subscripted->type);
 	if (inner_type)
 	{
-		*subscript_type_ptr = inner_type;
-		*overload_ptr = NULL;
-		return current_expr;
+		lookup->subscript_value_type = inner_type;
+		lookup->overload_method = NULL;
+		return true;
 	}
-	if (type_is_substruct(current_expr->type))
+	if (type_is_substruct(subscripted->type))
 	{
-		Expr *embedded_struct = expr_access_inline_member(current_expr, current_expr->type->decl);
-		return sema_expr_find_subscript_type_or_overload_for_subscript(context, embedded_struct, overload_type,
-		                                                               subscript_type_ptr,
-		                                                               overload_ptr);
+		Expr *embedded_struct = expr_access_inline_member(subscripted, subscripted->type->decl);
+		lookup->subscripted = embedded_struct;
+		return sema_expr_find_subscript_type_or_overload_for_subscript(context, lookup);
 	}
-	return NULL;
+	return false;
 }
 
-static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr *expr, Expr *subscripted, Expr *index, Type **current_type_ref, Expr **current_expr_ref, Type **subscript_type_ref, Decl **overload_ref, int64_t *index_ref, bool is_ref, OperatorOverload overload_type, bool* missing_ref)
+static inline bool sema_expr_resolve_subscript_index(SemaContext *context, SubscriptLookup *lookup, Expr *expr, Expr *index, int64_t *index_ref, bool* missing_ref)
 {
-	Decl *overload = NULL;
-	Type *subscript_type = NULL;
-	Expr *current_expr;
-	Type *current_type = subscripted->type->canonical;
-	if (current_type == type_untypedlist)
+	Expr *starting_subscripted = lookup->subscripted;
+	Type *current_type = starting_subscripted->type->canonical;
+	if (current_type != type_untypedlist)
 	{
-		current_expr = subscripted;
-	}
-	else
-	{
-		current_expr = sema_expr_find_subscript_type_or_overload_for_subscript(context,
-																			   subscripted,
-																			   overload_type,
-		                                                                       &subscript_type,
-		                                                                       &overload);
-		if (!overload && !subscript_type && is_ref)
+		bool ok = sema_expr_find_subscript_type_or_overload_for_subscript(context, lookup);
+		if (!ok && lookup->is_ref)
 		{
 			// Maybe there is a [] overload?
-			if (sema_expr_find_subscript_type_or_overload_for_subscript(context, subscripted, overload_type, &subscript_type,
-			                                                            &overload))
+			lookup->operator_overload = OVERLOAD_ELEMENT_AT;
+			lookup->subscripted = starting_subscripted;
+			if (sema_expr_find_subscript_type_or_overload_for_subscript(context, lookup))
 			{
 				if (missing_ref) return *missing_ref = true, false;
 				RETURN_SEMA_ERROR(expr, "A function or macro with '@operator(&[])' is not defined for %s, "
 				                        "so you need && to take the address of the temporary.",
-				                  type_quoted_error_string(subscripted->type));
+				                  type_quoted_error_string(starting_subscripted->type));
 			}
 		}
-		if (!subscript_type)
+		if (!lookup->subscript_value_type)
 		{
 			if (missing_ref) return *missing_ref = true, false;
-			switch (overload_type)
+			switch (lookup->operator_overload)
 			{
 				case OVERLOAD_ELEMENT_REF:
-					RETURN_SEMA_ERROR(expr, "Getting a reference to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
+					RETURN_SEMA_ERROR(expr, "Getting a reference to a subscript of %s is not possible.", type_quoted_error_string(starting_subscripted->type));
 				case OVERLOAD_ELEMENT_SET:
-					RETURN_SEMA_ERROR(expr, "Assigning to a subscript of %s is not possible.", type_quoted_error_string(subscripted->type));
+					RETURN_SEMA_ERROR(expr, "Assigning to a subscript of %s is not possible.", type_quoted_error_string(starting_subscripted->type));
 				default:
-					RETURN_SEMA_ERROR(expr, "Indexing a value of type %s is not possible.", type_quoted_error_string(subscripted->type));
+					RETURN_SEMA_ERROR(expr, "Indexing a value of type %s is not possible.", type_quoted_error_string(starting_subscripted->type));
 			}
 		}
-		if (!overload) current_type = type_flatten(current_expr->type);
+		if (!lookup->overload_method) current_type = type_flatten(lookup->subscripted->type);
 	}
+	Expr *current_expr = lookup->subscripted;
 	ASSERT(current_type == current_type->canonical);
 	Type *index_type = NULL;
-	if (overload)
+	if (lookup->overload_method)
 	{
-		index_type = overload->func_decl.signature.params[1]->type;
+		index_type = lookup->overload_method->func_decl.signature.params[1]->type;
 		if (!sema_analyse_inferred_expr(context, index_type, index, NULL))
 		{
 			expr_poison(index);
@@ -4353,10 +4367,7 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 	}
 SKIP:
 	*index_ref = index_value;
-	*current_type_ref = current_type;
-	*current_expr_ref = current_expr;
-	*overload_ref = overload;
-	*subscript_type_ref = subscript_type;
+	lookup->subscripted_type = current_type;
 	return true;
 }
 
@@ -4410,15 +4421,14 @@ DEFAULT:
 	// 3. Check failability due to value.
 	bool optional = IS_OPTIONAL(subscripted);
 
-	Type *current_type;
-	Expr *current_expr;
-	Decl *overload;
-	Type *subscript_type;
 	int64_t index_value;
-	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, false, OVERLOAD_ELEMENT_SET, failed_ref))
-	{
-		return false;
-	}
+	SubscriptLookup lookup = {
+		.operator_overload = OVERLOAD_ELEMENT_SET,
+		.subscripted = subscripted
+	};
+	if (!sema_expr_resolve_subscript_index(context, &lookup, expr, index, &index_value, failed_ref)) return false;
+	Expr *current_expr = lookup.subscripted;
+	Type *current_type = lookup.subscripted_type;
 
 	// 4. If we are indexing into a complist
 	if (expr_is_ct_ident(current_expr))
@@ -4435,7 +4445,7 @@ DEFAULT:
 	}
 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
-	if (overload)
+	if (lookup.overload_method)
 	{
 		if (start_from_end)
 		{
@@ -4462,10 +4472,10 @@ DEFAULT:
 			if (!sema_analyse_expr_rvalue(context, index)) return false;
 		}
 		expr->expr_kind = EXPR_SUBSCRIPT_ASSIGN;
-		expr->type = subscript_type;
+		expr->type = lookup.subscript_value_type;
 		expr->subscript_assign_expr.expr = exprid(current_expr);
 		expr->subscript_assign_expr.index = exprid(index);
-		expr->subscript_assign_expr.method = declid(overload);
+		expr->subscript_assign_expr.method = declid(lookup.overload_method);
 		return true;
 	}
 
@@ -4486,7 +4496,7 @@ DEFAULT:
 	}
 
 	expr->subscript_expr.expr = exprid(current_expr);
-	expr->type = type_add_optional(subscript_type, optional);
+	expr->type = type_add_optional(lookup.subscript_value_type, optional);
 	return true;
 VALID_FAIL_POISON:
 	*failed_ref = true;
@@ -4541,14 +4551,19 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	// 2. Evaluate the index.
 	Expr *index = exprptr(expr->subscript_expr.index.expr);
 
-	Decl *overload = NULL;
-	Type *subscript_type = NULL;
-	Expr *current_expr;
-	Type *current_type = subscripted->type->canonical;
 	int64_t index_value;
 	OperatorOverload overload_type = (is_eval_ref || expr->subscript_expr.ref) ? OVERLOAD_ELEMENT_REF : OVERLOAD_ELEMENT_AT;
 
-	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, is_eval_ref, overload_type, failed_ref)) return false;
+	SubscriptLookup lookup = {
+		.operator_overload = overload_type,
+		.subscripted = subscripted,
+		.is_ref = is_eval_ref,
+		.may_fallback_ref = expr->subscript_expr.may_no_ref,
+	};
+	if (!sema_expr_resolve_subscript_index(context, &lookup, expr, index, &index_value, failed_ref)) return false;
+
+	Expr *current_expr = lookup.subscripted;
+	Type *current_type = lookup.subscripted_type;
 
 	// 4. If we are indexing into a complist
 	if (current_type == type_untypedlist)
@@ -4574,7 +4589,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 
 
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
-	if (overload)
+	if (lookup.overload_method)
 	{
 		if (start_from_end)
 		{
@@ -4611,7 +4626,10 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		}
 		Expr **args = NULL;
 		vec_add(args, index);
-		return sema_insert_method_call(context, expr, overload, current_expr, args, false);
+		if (!sema_insert_method_call(context, expr, lookup.overload_method, current_expr, args, false)) return false;
+		// We might have a &[] -> [] conversion.
+		if (lookup.fallback_ref_used) expr_insert_addr(expr);
+		return true;
 	}
 
 	// Cast to an appropriate type for index.
@@ -4630,6 +4648,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		start_from_end = expr->subscript_expr.index.start_from_end = false;
 	}
 
+	Type *subscript_type = lookup.subscript_value_type;
 	if (is_eval_ref)
 	{
 		subscript_type = type_get_ptr(subscript_type);
@@ -7028,6 +7047,12 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	{
 		times_to_deref = 2;
 		expr_set_to_ref(parent);
+	}
+	else if (parent->expr_kind == EXPR_SUBSCRIPT)
+	{
+		parent->subscript_expr.ref = true;
+		parent->subscript_expr.may_no_ref = true;
+		times_to_deref = 2;
 	}
 
 	// 1. Resolve the left hand
