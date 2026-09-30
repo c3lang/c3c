@@ -174,6 +174,16 @@ static LLVMValueRef llvm_emit_macho_xtor(GenContext *c, LLVMValueRef *list, cons
 
 void llvm_emit_constructors_and_destructors(GenContext *c)
 {
+	int no_strips = vec_size(c->no_strip);
+	if (no_strips > 0)
+	{
+		LLVMValueRef array = LLVMConstArray(c->ptr_type, c->no_strip, no_strips);
+		LLVMValueRef global_used = LLVMAddGlobal(c->module, LLVMTypeOf(array), "llvm.used");
+		LLVMSetLinkage(global_used, LLVMAppendingLinkage);
+		LLVMSetInitializer(global_used, array);
+		LLVMSetNoSanitizeAddress(global_used);
+	}
+
 	if (compiler.platform.object_format == OBJ_FORMAT_MACHO)
 	{
 
@@ -506,7 +516,7 @@ static void llvm_set_external_reference(LLVMValueRef ref, bool is_weak)
 	LLVMSetVisibility(ref, LLVMDefaultVisibility);
 }
 
-void llvm_set_decl_linkage(GenContext *c, Decl *decl)
+void llvm_set_decl_linkage(GenContext *c, Decl *decl, bool store_nostrip)
 {
 	bool is_var = decl->decl_kind == DECL_VAR;
 	bool is_weak = decl->is_weak_link;
@@ -516,6 +526,13 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 	bool is_static = is_var && decl->var.is_static;
 	// Static variables in a different modules should be copied to the current module.
 	bool same_module = is_static || decl->unit->module == c->code_module;
+
+	if (same_module && decl->no_strip && store_nostrip)
+	{
+		vec_add(c->no_strip, ref);
+		if (opt_ref) vec_add(c->no_strip, opt_ref);
+	}
+
 	if (decl->is_extern || !same_module)
 	{
 		llvm_set_external_reference(ref, should_weaken);
@@ -677,7 +694,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		LLVMDeleteGlobal(old);
 	}
 
-	llvm_set_decl_linkage(c, decl);
+	llvm_set_decl_linkage(c, decl, true);
 
 }
 static void gencontext_verify_ir(GenContext *context)
@@ -1188,7 +1205,7 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 		scratch_buffer_append(".f");
 		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), fault, 0);
 	}
-	llvm_set_decl_linkage(c, decl);
+	llvm_set_decl_linkage(c, decl, !same_module);
 	llvm_set_global_tls(decl);
 }
 
@@ -1489,7 +1506,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 				backend_ref = decl->backend_ref = LLVMAddFunction(c->module, name, type);
 			}
 			llvm_append_function_attributes(c, decl);
-			llvm_set_decl_linkage(c, decl);
+			llvm_set_decl_linkage(c, decl, true);
 			return backend_ref;
 		case DECL_ALIAS:
 			return llvm_get_ref(c, decl->define_decl.alias);

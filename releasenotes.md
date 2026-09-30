@@ -15,6 +15,7 @@
 - Support $$bswap for all power of two integers, including single bytes (in which case it is a no-op).
 - Fix source locations for byte literal values continued on a new line.
 - Faulty selection of subscript operator overload when calling method #3499
+- Retain `@nostrip` on optimized code even if no use is found, static variables may now also have nostrip. #3500
 
 ### Stdlib changes
 - Added `std::gfx` module.
