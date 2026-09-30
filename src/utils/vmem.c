@@ -20,6 +20,14 @@
 // 4 MB at a time
 #define COMMIT_PAGE_SIZE (MB_SIZE * 4U)
 
+// NetBSD (PaX MPROTECT) refuses to upgrade a PROT_NONE mapping unless the
+// maximum protection was declared at mmap time.
+#if PLATFORM_POSIX && defined(PROT_MPROTECT)
+#define RESERVE_PROT (PROT_NONE | PROT_MPROTECT(PROT_READ | PROT_WRITE))
+#else
+#define RESERVE_PROT PROT_NONE
+#endif
+
 #if PLATFORM_LINUX
 #define EXTRA_ALLOCATION (2 * MB_SIZE)
 #else
@@ -44,7 +52,7 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 	if (min_size < COMMIT_PAGE_SIZE) min_size = COMMIT_PAGE_SIZE;
 	while (size >= min_size)
 	{
-		ptr = mmap(0, size + EXTRA_ALLOCATION, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		ptr = mmap(0, size + EXTRA_ALLOCATION, RESERVE_PROT, MAP_PRIVATE | MAP_ANON, -1, 0);
 		// It worked?
 		if (ptr != MAP_FAILED) break;
 		// Did it fail in a non-retriable way?
