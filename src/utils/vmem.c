@@ -94,9 +94,11 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 		char *start_ptr = ((char*)vmem->ptr) + vmem->committed;
 #if PLATFORM_POSIX
 		bool success = mprotect(start_ptr, to_commit, PROT_READ | PROT_WRITE) == 0;
-	#if PLATFORM_LINUX
-		#ifdef MADV_POPULATE_WRITE
-			if (success) madvise(start_ptr, to_commit, MADV_POPULATE_WRITE);
+	#ifdef MADV_POPULATE_WRITE
+		if (success) madvise(start_ptr, to_commit, MADV_POPULATE_WRITE);
+	#else
+		#ifdef POSIX_MADV_WILLNEED
+			if (success) posix_madvise(start_ptr, to_commit, POSIX_MADV_WILLNEED);
 		#endif
 	#endif
 #elif PLATFORM_WINDOWS
