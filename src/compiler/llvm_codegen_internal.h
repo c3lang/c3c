@@ -8,7 +8,6 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Target.h>
-#include <llvm-c/Analysis.h>
 #include <llvm-c/DebugInfo.h>
 #include "dwarf.h"
 #include "c3_llvm.h"
