@@ -41,11 +41,18 @@
 #if defined( _WIN32 ) || defined( __WIN32__ ) || defined( _WIN64 )
 #define PLATFORM_WINDOWS 1
 #define PLATFORM_POSIX 0
+#define PLATFORM_LINUX 0
 #define STRCASECMP _stricmp
 #define STRNCASECMP _strnicmp
 #else
 #define PLATFORM_WINDOWS 0
 #define PLATFORM_POSIX 1
+#if defined(__linux__) || defined(__gnu_linux__)
+#define PLATFORM_LINUX 1
+#else
+#define PLATFORM_LINUX 0
+#endif
+
 #include <strings.h>
 #define STRCASECMP strcasecmp
 #define STRNCASECMP strncasecmp
