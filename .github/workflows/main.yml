@@ -642,8 +642,6 @@ jobs:
       - name: Run Tests
         shell: cpa.sh {0}
         run: |
-          export MALLOC_OPTIONS=j
-          ulimit -d $(ulimit -Hd) || true
           ./scripts/tools/ci_tests.sh build-debug/c3c
 
       - name: Package
