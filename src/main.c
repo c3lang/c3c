@@ -44,13 +44,6 @@ int main_real(int argc, const char *argv[])
 {
 	srand((unsigned int)time(NULL));
 	compiler_exe_name = argv[0];
-#ifdef __OpenBSD__
-	// override data size constrain set up by the system */
-	struct rlimit l;
-	getrlimit(RLIMIT_DATA, &l);
-	l.rlim_cur = l.rlim_max;
-	setrlimit(RLIMIT_DATA, &l);
-#endif
 #if PLATFORM_WINDOWS
 	// Set the console input and output codepage to utf8 to handle utf8 text correctly
 	SetConsoleCP(65001);
