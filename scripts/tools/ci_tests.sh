@@ -210,6 +210,13 @@ run_dynlib_tests() {
         ./multi
     fi
 
+    if [[ "$OS_MODE" == "mac" ]]; then
+        local DL_DIR="$ROOT_DIR/resources/examples/dynlib-test"
+        run_c3c -vv dynamic-lib "$DL_DIR/linked_a.c3" "$DL_DIR/linked_foo.c3" -o linked_a
+        run_c3c -vv dynamic-lib "$DL_DIR/linked_b.c3" "$DL_DIR/linked_foo.c3" -o linked_b
+        run_c3c -vv compile-run "$DL_DIR/linked_main.c3" "$DL_DIR/linked_foo.c3" -l linked_a.dylib -l linked_b.dylib
+    fi
+
     if [[ "$OS_MODE" == "windows" ]]; then
         run_c3c -vv compile-run "$ROOT_DIR/resources/examples/dynlib-test/test.c3" -l "add.lib"
     elif [[ "$OS_MODE" == "mac" ]]; then

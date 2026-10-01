@@ -7,6 +7,7 @@
 - Experimental C backend.
 - Allow the `@section` attribute on local static variables.
 - Make `$feat` accept the same syntax as `@feat`.
+- `@asmname` allows defining external names like `@cname` but without normal name mangling.
 
 ### Fixes
 - Regression for `vec.pow(x)`.
@@ -16,6 +17,7 @@
 - Fix source locations for byte literal values continued on a new line.
 - Faulty selection of subscript operator overload when calling method #3499
 - Retain `@nostrip` on optimized code even if no use is found, static variables may now also have nostrip. #3500
+- Fixed regression for MacOS loading multiple C3 dylibs. `@finalizer` now correctly works in descending order.
 
 ### Stdlib changes
 - Added `std::gfx` module.
