@@ -970,10 +970,9 @@ void c_emit_global_decl(GenContext *c, Decl *var)
 		PRINT("__c3_thread_local ");
 	}
 	PRINTF("%s%s %s", align_str, tname, vname);
-	const char *asm_name = c_get_decl_asm_name(var);
-	if (asm_name && (strncmp(asm_name, "__atomic_", 9) == 0 || strncmp(asm_name, "__builtin_", 10) == 0))
+	if (c_decl_needs_asm_label(var))
 	{
-		PRINTF(" __asm__(\"%s\")", asm_name);
+		PRINTF(" __asm__(\"%s\")", c_get_decl_asm_name(var));
 	}
 	PRINT(";\n");
 	if (IS_OPTIONAL(var))

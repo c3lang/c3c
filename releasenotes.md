@@ -3,7 +3,11 @@
 ## 0.8.6 Change list
 
 ### Changes / improvements
+- `@asmname` allows defining external names like `@cname` but without normal name mangling.
+
 ### Fixes
+- Fixed regression for MacOS loading multiple C3 dylibs. `@finalizer` now correctly works in descending order.
+
 ### Stdlib changes
 
 ## 0.8.5 Change list
@@ -13,7 +17,6 @@
 - Experimental C backend.
 - Allow the `@section` attribute on local static variables.
 - Make `$feat` accept the same syntax as `@feat`.
-- Added `@asmname`, which is similar to `@cname` but does not add any normal name-prefixing on targets where that is normal (such as MachO).
 - Add `--function-sections` and `--data-sections` (`function-sections` / `data-sections` in project.json) to place each function or global variable in its own section, so the linker can discard unused ones #3051.
 - Removed experimental support for `cenum`, `faultset` and `distinct` alternative names.
 - Docs now use the `constset`, `attrmacro` and `excuse`.
@@ -27,12 +30,12 @@
 - Fix source locations for byte literal values continued on a new line.
 - Faulty selection of subscript operator overload when calling method #3499
 - Retain `@nostrip` on optimized code even if no use is found, static variables may now also have nostrip. #3500
+
 - `!=` overloads on structs behaved as `==` #3547.
 - Multi-dimensional array comparisons on types with `==` overloaded would not compare.
 - Lazy resolution of function pointer types could cause a segfault when unifying ternary types. #3552
 - `@swap` now works with non-pure arguments.
 - Incorrect lowering of vectors when created from designated initializers with zeroes at the end.
-
 ### Stdlib changes
 - Added `std::gfx` module.
 - Added `IntRect`, `IntVec2`, `IntVec3` and `IntVec4` types.

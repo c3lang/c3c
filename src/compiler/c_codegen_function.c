@@ -475,10 +475,9 @@ bool c_emit_function_decl(GenContext *c, Decl *fn, bool is_current_module)
 		PRINT("void");
 	}
 	PRINT(")");
-	const char *asm_name = c_get_decl_asm_name(fn);
-	if (asm_name && (strncmp(asm_name, "__atomic_", 9) == 0 || strncmp(asm_name, "__builtin_", 10) == 0))
+	if (c_decl_needs_asm_label(fn))
 	{
-		PRINTF(" __asm__(\"%s\")", asm_name);
+		PRINTF(" __asm__(\"%s\")", c_get_decl_asm_name(fn));
 	}
 	PRINT(";\n");
 	return !fn->is_extern;

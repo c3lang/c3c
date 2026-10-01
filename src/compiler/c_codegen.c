@@ -87,7 +87,7 @@ const char *c_sanitize_name(const char *name)
 
 static inline bool c_is_builtin_symbol_collision(const char *name)
 {
-	return strncmp(name, "__atomic_", 9) == 0 || strncmp(name, "__builtin_", 10) == 0;
+	return str_start_with(name, "__atomic_") || str_start_with(name, "__builtin_");
 }
 
 static const char *c_check_collision(const char *name)
@@ -99,6 +99,27 @@ static const char *c_check_collision(const char *name)
 	return name;
 }
 
+INLINE bool c_extname_is_asm(const char *extname)
+{
+	return extname && extname[0] == '\x01';
+}
+
+static bool c_decl_has_asm_name(Decl *decl)
+{
+	if (!decl) return false;
+	decl = c_decl_unwrap(decl);
+	return decl->has_extname && c_extname_is_asm(decl->extname);
+}
+
+static const char *c_extname_identifier(const char *extname)
+{
+	if (c_extname_is_asm(extname))
+	{
+		return c_intern(str_printf("__c3_asm_%s", c_sanitize_name(extname + 1)));
+	}
+	return c_sanitize_name(extname);
+}
+
 const char *c_get_decl_asm_name(Decl *decl)
 {
 	if (!decl)
@@ -108,13 +129,19 @@ const char *c_get_decl_asm_name(Decl *decl)
 	decl = c_decl_unwrap(decl);
 	if (decl->has_extname && decl->extname)
 	{
-		return decl->extname;
+		return c_extname_is_asm(decl->extname) ? decl->extname + 1 : decl->extname;
 	}
 	if (decl->is_extern && decl->name)
 	{
 		return decl->name;
 	}
 	return NULL;
+}
+
+bool c_decl_needs_asm_label(Decl *decl)
+{
+	const char *asm_name = c_get_decl_asm_name(decl);
+	return asm_name && (c_decl_has_asm_name(decl) || c_is_builtin_symbol_collision(asm_name));
 }
 
 const char *c_get_decl_name(Decl *decl)
@@ -148,7 +175,7 @@ const char *c_get_decl_name(Decl *decl)
 		const char *name = NULL;
 		if (decl->has_extname && decl->extname)
 		{
-			name = c_sanitize_name(decl->extname);
+			name = c_extname_identifier(decl->extname);
 		}
 		else if (decl->name)
 		{
@@ -167,7 +194,7 @@ const char *c_get_decl_name(Decl *decl)
 
 	if (decl->has_extname && decl->extname)
 	{
-		return c_check_collision(c_sanitize_name(decl->extname));
+		return c_check_collision(c_extname_identifier(decl->extname));
 	}
 
 	if (!decl->unit || !decl->unit->module)

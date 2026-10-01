@@ -133,6 +133,7 @@ const char *c_intern(const char *str);
 const char *c_sanitize_name(const char *name);
 const char *c_get_decl_name(Decl *decl);
 const char *c_get_decl_asm_name(Decl *decl);
+bool c_decl_needs_asm_label(Decl *decl);
 const char *c_get_enum_assoc_name(Decl *enum_decl, Decl *param);
 void c_emit_string_literal(GenContext *c, const char *bytes, ArrayIndex len);
 void c_traverse_all_modules(GenContext *c, CDeclVisitor visitor, void *userdata);
