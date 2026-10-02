@@ -1247,11 +1247,9 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	{
 		if (type_is_void(type_no_optional(last->type)) && cast_to_bool)
 		{
-			SEMA_ERROR(last, "Use '@ok(<expr>)' or '@catch(<expr>)' to explicitly convert a 'void!' to a boolean.");
-			return false;
+			RETURN_SEMA_ERROR(last, "Use '@ok(<expr>)' or '@catch(<expr>)' to explicitly convert a 'void!' to a boolean.");
 		}
-		SEMA_ERROR(last, "The expression may not be an optional, but was %s.", type_quoted_error_string(last->type));
-		return false;
+		RETURN_SEMA_ERROR(last, "The expression may not be an optional, but was %s.", type_quoted_error_string(last->type));
 	}
 	// 3b. Cast to bool if that is needed
 	if (cast_to_bool)

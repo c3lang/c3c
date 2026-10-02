@@ -9388,36 +9388,6 @@ INLINE Decl *ast_append_generated_local(Ast **ast_current_ref, Expr *init)
 	return var;
 }
 
-static inline bool sema_rewrite_expr_as_macro_block(SemaContext *context, Expr *expr, AstId start)
-{
-	Type *old_expected_block = context->expected_block_type;
-	BlockExit **old_exit_ref = context->block_exit_ref;
-	Ast **old_block_returns = context->block_returns;
-	context->expected_block_type = type_bool;
-	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
-	context->block_exit_ref = block_exit_ref;
-	bool success;
-	Ast *compound_stmt = ast_new(AST_COMPOUND_STMT, expr->loc);
-	compound_stmt->compound_stmt.first_stmt = start;
-	SCOPE_START_WITH_FLAGS(SCOPE_MACRO, compound_stmt->loc)
-	{
-		success = sema_analyse_stmt_chain(context, compound_stmt);
-	}
-	SCOPE_END;
-	context->expected_block_type = old_expected_block;
-	context->block_exit_ref = old_exit_ref;
-	context->block_returns = old_block_returns;
-
-	if (!success) return false;
-	expr->expr_kind = EXPR_MACRO_BLOCK;
-	expr->resolve_status = RESOLVE_DONE;
-	expr->type = type_bool;
-	expr->macro_block = (ExprMacroBlock) {
-		.first_stmt = astid(compound_stmt),
-		.block_exit = block_exit_ref
-	};
-	return true;
-}
 static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *max)
 {
 	BinaryOp op = expr->binary_expr.operator;
@@ -9429,6 +9399,39 @@ static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr
 	Decl *len_var_left = NULL;
 	ArrayIndex len = 0;
 	SourceLocId default_loc = expr->loc;
+	bool optional = IS_OPTIONAL(left_var) || IS_OPTIONAL(right_var);
+	Type *return_type = optional ? type_get_optional(type_bool) : type_bool;
+
+	Ast *compound_stmt = ast_new(AST_COMPOUND_STMT, default_loc);
+	Type *old_expected_block = context->expected_block_type;
+	BlockExit **old_exit_ref = context->block_exit_ref;
+	Ast **old_block_returns = context->block_returns;
+	context->expected_block_type = return_type;
+	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
+	context->block_exit_ref = block_exit_ref;
+	bool success = false;
+	SCOPE_START_WITH_FLAGS(SCOPE_MACRO, default_loc)
+
+	if (IS_OPTIONAL(left_var))
+	{
+		Expr *expr_var = expr_variable(left_var);
+		Expr *rethrow = expr_new(EXPR_RETHROW, left->loc);
+		rethrow->rethrow_expr.inner = expr_var;
+		context->active_scope.flags |= SCOPE_COMPARISON;
+		if (!sema_analyse_expr(context, rethrow)) goto EXIT;
+		context->active_scope.flags &= ~SCOPE_COMPARISON;
+		left_var = ast_append_generated_local(&current, rethrow);
+	}
+	if (IS_OPTIONAL(right_var))
+	{
+		Expr *expr_var = expr_variable(right_var);
+		Expr *rethrow = expr_new(EXPR_RETHROW, right->loc);
+		rethrow->rethrow_expr.inner = expr_var;
+		context->active_scope.flags |= SCOPE_COMPARISON;
+		if (!sema_analyse_expr(context, rethrow)) goto EXIT;
+		context->active_scope.flags &= ~SCOPE_COMPARISON;
+		right_var = ast_append_generated_local(&current, rethrow);
+	}
 	if (max->type_kind == TYPE_ARRAY)
 	{
 		len = max->array.len;
@@ -9441,8 +9444,8 @@ static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr
 		len_right->inner_expr = expr_variable(right_var);
 		len_left->type = type_sz;
 		len_right->type = type_sz;
-		if (!sema_analyse_expr_rvalue(context, len_left)) return false;
-		if (!sema_analyse_expr_rvalue(context, len_right)) return false;
+		if (!sema_analyse_expr_rvalue(context, len_left)) goto EXIT;
+		if (!sema_analyse_expr_rvalue(context, len_right)) goto EXIT;
 		len_var_left = ast_append_generated_local(&current, len_left);
 		Ast *ast_if = ast_new(AST_IF_STMT, default_loc);
 		Expr *expr_comparison = expr_new_binary(default_loc, expr_variable(len_var_left), len_right, BINARYOP_NE);
@@ -9497,8 +9500,30 @@ static bool sema_rewrite_slice_comparison(SemaContext *context, Expr *expr, Expr
 	Ast *ast_after = ast_new(AST_RETURN_STMT, default_loc);
 	ast_after->return_stmt.expr = expr_new_const_bool((int)default_loc, type_bool, is_eq);
 	current->next = astid(ast_after);
+	AstId start = dummy.next;
 
-	return sema_rewrite_expr_as_macro_block(context, expr, dummy.next);
+
+	// Create macro
+	compound_stmt->compound_stmt.first_stmt = start;
+
+	success = sema_analyse_stmt_chain(context, compound_stmt);
+
+EXIT:
+	SCOPE_END_CHECK;
+	context->expected_block_type = old_expected_block;
+	context->block_exit_ref = old_exit_ref;
+	context->block_returns = old_block_returns;
+
+	if (!success) return false;
+
+	expr->expr_kind = EXPR_MACRO_BLOCK;
+	expr->resolve_status = RESOLVE_DONE;
+	expr->type = return_type;
+	expr->macro_block = (ExprMacroBlock) {
+		.first_stmt = astid(compound_stmt),
+		.block_exit = block_exit_ref
+	};
+	return true;
 }
 
 /**
@@ -9632,6 +9657,9 @@ NEXT:
 		if (is_equality_type_op && (max->type_kind == TYPE_SLICE || max->type_kind == TYPE_ARRAY))
 		{
 			Type *base = max->array.base;
+			// Walk through nested arrays/slices
+			while (base->type_kind == TYPE_SLICE || base->type_kind == TYPE_ARRAY) base = base->array.base;
+
 			switch (sema_type_has_equality_overload(context, base))
 			{
 				case BOOL_ERR:
@@ -10717,7 +10745,7 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, T
 		}
 		RETURN_SEMA_ERROR(expr, "Rethrow cannot be used outside of a function.");
 	}
-	if (!context->current_macro && context->active_scope.flags & (SCOPE_MACRO | SCOPE_ENSURE | SCOPE_ENSURE_MACRO))
+	if (!context->current_macro && (context->active_scope.flags & (SCOPE_MACRO | SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) && !(context->active_scope.flags & SCOPE_COMPARISON))
 	{
 		RETURN_SEMA_ERROR(expr, "Rethrows using '!' is not allowed in contracts.");
 	}
@@ -10735,11 +10763,14 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr, T
 
 	if (context->active_scope.flags & SCOPE_MACRO)
 	{
-		TypeInfoId rtype = context->current_macro->func_decl.signature.rtype;
-		if (rtype && !type_is_optional(typeget(rtype)))
+		if (!(context->active_scope.flags & SCOPE_COMPARISON))
 		{
-			RETURN_SEMA_ERROR(expr, "Rethrow is only allowed in macros with an optional or inferred return type. "
-									"Did you mean to use '!!' instead?");
+			TypeInfoId rtype = context->current_macro->func_decl.signature.rtype;
+			if (rtype && !type_is_optional(typeget(rtype)))
+			{
+				RETURN_SEMA_ERROR(expr, "Rethrow is only allowed in macros with an optional or inferred return type. "
+										"Did you mean to use '!!' instead?");
+			}
 		}
 		vec_add(context->block_returns, NULL);
 		expr->rethrow_expr.in_block = context->block_exit_ref;

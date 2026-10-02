@@ -17,6 +17,7 @@
 - Faulty selection of subscript operator overload when calling method #3499
 - Retain `@nostrip` on optimized code even if no use is found, static variables may now also have nostrip. #3500
 - `!=` overload would on structs would behave as `==` #3547.
+- Multi-dimensional array comparisons on types with `==` overloaded would not compare.
 
 ### Stdlib changes
 - Added `std::gfx` module.
