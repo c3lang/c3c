@@ -52,7 +52,11 @@ fi
 C3FMT_URL=""
 C3FMT_NAME=""
 if [[ "$OUT_NAME" == *windows* || "$C3C_BIN" == *.exe ]]; then
-    C3FMT_URL="https://github.com/lmichaudel/c3fmt/releases/latest/download/c3fmt-windows.exe"
+    if [[ "$OUT_NAME" == *windows-aarch64* ]]; then
+        C3FMT_URL="https://github.com/lmichaudel/c3fmt/releases/latest/download/c3fmt-windows-aarch64.exe"
+    else
+        C3FMT_URL="https://github.com/lmichaudel/c3fmt/releases/latest/download/c3fmt-windows.exe"
+    fi
     C3FMT_NAME="c3fmt.exe"
 elif [[ "$OUT_NAME" == *linux* ]]; then
     C3FMT_URL="https://github.com/lmichaudel/c3fmt/releases/latest/download/c3fmt-linux"
