@@ -81,6 +81,8 @@ void LLVMMemCpySetVolatile(LLVMValueRef memcpy, LLVMValueRef val);
 bool LLVMHasUseList(LLVMValueRef value);
 void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option);
 void LLVMSetDSOLocal(LLVMValueRef Global, bool value);
+void LLVMSetTargetMachineEmitFunctionSections(LLVMTargetMachineRef ref, bool emit_function_sections);
+void LLVMSetTargetMachineEmitDataSections(LLVMTargetMachineRef ref, bool emit_data_sections);
 void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
 void LLVMSetTargetMachineEmulatedTLS(LLVMTargetMachineRef ref, bool emulated_tls);
 void LLVMSetNoSanitizeAddress(LLVMValueRef Global);

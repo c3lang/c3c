@@ -274,6 +274,8 @@ static void view_target(BuildParseContext context, JSONObject *target, bool verb
 	TARGET_VIEW_BOOL("SLP auto-vectorization", "slp-vectorize");
 	TARGET_VIEW_BOOL("Loop auto-vectorization", "loop-vectorize");
 	TARGET_VIEW_BOOL("Merge functions", "merge-functions");
+	TARGET_VIEW_BOOL("Function sections", "function-sections");
+	TARGET_VIEW_BOOL("Data sections", "data-sections");
 }
 
 

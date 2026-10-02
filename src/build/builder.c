@@ -560,6 +560,8 @@ BUILD:
 	set_if_updated(target->single_module, options->single_module);
 	set_if_updated(target->unroll_loops, options->unroll_loops);
 	set_if_updated(target->merge_functions, options->merge_functions);
+	set_if_updated(target->data_sections, options->data_sections);
+	set_if_updated(target->function_sections, options->function_sections);
 	set_if_updated(target->loop_vectorization, options->loop_vectorization);
 	set_if_updated(target->slp_vectorization, options->slp_vectorization);
 	set_if_updated(target->validation_level, options->validation_level);

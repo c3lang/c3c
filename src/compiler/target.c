@@ -2043,10 +2043,13 @@ void *llvm_target_machine_create(void)
 										   compiler.platform.cpu ? compiler.platform.cpu : "", compiler.platform.features ? compiler.platform.features : "",
 										   (LLVMCodeGenOptLevel)compiler.platform.llvm_opt_level,
 										   reloc_mode, model);
+	if (!result) error_exit("Failed to create target machine.");
+
 	LLVMSetTargetMachineUseInitArray(result, true);
+	if (compiler.build.function_sections == SECTIONS_SETTING_ON) LLVMSetTargetMachineEmitFunctionSections(result, true);
+	if (compiler.build.data_sections == SECTIONS_SETTING_ON) LLVMSetTargetMachineEmitDataSections(result, true);
 	if (compiler.platform.emulated_tls) LLVMSetTargetMachineEmulatedTLS(result, true);
 
-	if (!result) error_exit("Failed to create target machine.");
 	LLVMSetTargetMachineAsmVerbosity(result, 1);
 	return result;
 }

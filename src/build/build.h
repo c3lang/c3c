@@ -258,6 +258,8 @@ typedef struct BuildOptions_
 	SingleModule single_module;
 	UnrollLoops unroll_loops;
 	MergeFunctions merge_functions;
+	SectionsSetting function_sections;
+	SectionsSetting data_sections;
 	AutoVectorization loop_vectorization;
 	AutoVectorization slp_vectorization;
 	bool emit_llvm;
@@ -463,6 +465,8 @@ typedef struct
 	ShowBacktrace show_backtrace;
 	StripUnused strip_unused;
 	DebugInfo debug_info;
+	SectionsSetting function_sections;
+	SectionsSetting data_sections;
 	MergeFunctions merge_functions;
 	UnrollLoops unroll_loops;
 	AutoVectorization loop_vectorization;
@@ -590,6 +594,8 @@ static BuildTarget default_build_target = {
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
+		.function_sections = SECTIONS_SETTING_NOT_SET,
+		.data_sections = SECTIONS_SETTING_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.symtab_size = DEFAULT_SYMTAB_SIZE,
 		.reloc_model = RELOC_DEFAULT,

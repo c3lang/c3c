@@ -138,6 +138,8 @@ static void usage(bool full)
 		print_opt("--loop-vectorize=<yes|no>", "Enable loop auto-vectorization.");
 		print_opt("--slp-vectorize=<yes|no>", "Enable SLP (superword-level parallelism) auto-vectorization.");
 		print_opt("--merge-functions=<yes|no>", "Enable function merging.");
+		print_opt("--function-sections=<yes|no>", "Place each function in its own section, so the linker can discard unused ones (no effect on Mach-O).");
+		print_opt("--data-sections=<yes|no>", "Place each global variable in its own section, so the linker can discard unused ones (no effect on Mach-O).");
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
@@ -1236,6 +1238,16 @@ static void parse_option(BuildOptions *options) // NOLINT
 				options->merge_functions = parse_opt_select(MergeFunctions, argopt, on_off);
 				return;
 			}
+			if ((argopt = match_argopt("data-sections"))) // NOLINT
+			{
+				options->data_sections = parse_opt_select(SectionsSetting, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("function-sections"))) // NOLINT
+			{
+				options->function_sections = parse_opt_select(SectionsSetting, argopt, on_off);
+				return;
+			}
 			if ((argopt = match_argopt("loop-vectorize"))) // NOLINT
 			{
 				options->loop_vectorization = parse_opt_select(AutoVectorization, argopt, on_off);
@@ -1933,6 +1945,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.sanitize_mode = SANITIZE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
+		.data_sections = SECTIONS_SETTING_NOT_SET,
+		.function_sections = SECTIONS_SETTING_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
 		.loop_vectorization = VECTORIZATION_NOT_SET,
 		.linux_libc = LINUX_LIBC_NOT_SET,

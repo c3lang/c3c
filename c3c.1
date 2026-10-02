@@ -459,6 +459,18 @@ Enable SLP (superword-level parallelism) auto-vectorization.
 Enable function merging.
 .RE
 .PP
+.B --function-sections=
+\fIyes|no\fR
+.RS
+Place each function in its own section, so the linker can discard unused ones (no effect on Mach-O).
+.RE
+.PP
+.B --data-sections=
+\fIyes|no\fR
+.RS
+Place each global variable in its own section, so the linker can discard unused ones (no effect on Mach-O).
+.RE
+.PP
 .B --single-module=
 \fIyes|no\fR
 .RS

@@ -326,6 +326,18 @@ bool llvm_ar(const char *out_name, const char **args, size_t count, int ArFormat
 
 int llvm_version_major = LLVM_VERSION_MAJOR;
 
+void LLVMSetTargetMachineEmitFunctionSections(LLVMTargetMachineRef ref, bool emit_function_sections)
+{
+	auto machine = (llvm::TargetMachine*)ref;
+	machine->Options.FunctionSections = emit_function_sections;
+}
+
+void LLVMSetTargetMachineEmitDataSections(LLVMTargetMachineRef ref, bool emit_data_sections)
+{
+	auto machine = (llvm::TargetMachine*)ref;
+	machine->Options.DataSections = emit_data_sections;
+}
+
 void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array)
 {
 	auto machine = (llvm::TargetMachine*)ref;
