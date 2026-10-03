@@ -146,11 +146,11 @@ fn void Sha512.update(&self, char[] data)
 	{
 		if (len < 128 - r)
 		{
-			for (long l = 0; l < len; l++) self.buffer[r+l] = p[l];
+			for (long l = 0; l < len; l++) self.buffer[r + l] = p[l];
 			return;
 		}
 
-		for (long l = 0; l < 128 - r; l++) self.buffer[r+l] = p[l];
+		for (long l = 0; l < 128 - r; l++) self.buffer[r + l] = p[l];
 
 		len -= (128 - r);
 		p = &p[128 - r];
@@ -173,7 +173,7 @@ fn char[HASH_SIZE] Sha512.final(&self)
 
 	if (r > 112)
 	{
-		for (int i = 0; i < 128 - r; i++) self.buffer[r+i] = 0;
+		for (int i = 0; i < 128 - r; i++) self.buffer[r + i] = 0;
 
 		r = 0;
 

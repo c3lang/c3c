@@ -141,7 +141,7 @@ typedef Pthread_mutexattr_t = ulong[2];
 typedef Pthread_rwlock_t = ulong[8];
 typedef Pthread_rwlockattr_t = ulong[2];
 
-typedef Pthread_mutex_t @feat(X86_64)= ulong[6];
+typedef Pthread_mutex_t @feat(X86_64) = ulong[6];
 typedef Pthread_once_t @feat(X86_64) = ulong[7];
 typedef Pthread_mutex_t @feat(!X86_64) = ulong[5];
 typedef Pthread_once_t @feat(!X86_64) = ulong[6];

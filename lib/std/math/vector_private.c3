@@ -6,7 +6,7 @@ macro cubic_hermite3(v1, tangent1, v2, tangent2, amount)
 	var amount_pow2 = amount * amount;
 	var amount_pow3 = amount_pow2 * amount;
 
-	return (2 * amount_pow3 - 3 *amount_pow2 + 1) * v1
+	return (2 * amount_pow3 - 3 * amount_pow2 + 1) * v1
 		+ (amount_pow3 - 2 * amount_pow2 + amount) * tangent1
 		+ (-2 * amount_pow3 + 3 * amount_pow2) * v2
 		+ (amount_pow3 - amount_pow2) * tangent2;

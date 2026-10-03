@@ -210,7 +210,7 @@ fn void update_game()
 				}
 				// Hit above
 				else if (ball.position.y + ball.radius >= brick[i][j].position.y - brick_size.y / 2
-						&& ball.position.y + ball.radius < brick[i][j].position.y - brick_size.y/2 + ball.speed.y
+						&& ball.position.y + ball.radius < brick[i][j].position.y - brick_size.y / 2 + ball.speed.y
 						&& math::abs(ball.position.x - brick[i][j].position.x) < brick_size.x / 2 + ball.radius * 2.0f / 3
 						&& ball.speed.y > 0)
 				{
@@ -270,10 +270,10 @@ fn void draw_game()
 	if (!game_over)
 	{
 		// Draw player bar
-		rl::draw_rectangle((int)(player.position.x - player.size.x/2), (int)(player.position.y - player.size.y/2), (int)player.size.x, (int)player.size.y, rl::BLACK);
+		rl::draw_rectangle((int)(player.position.x - player.size.x / 2), (int)(player.position.y - player.size.y / 2), (int)player.size.x, (int)player.size.y, rl::BLACK);
 
 		// Draw player lives
-		for (int i = 0; i < player.life; i++) rl::draw_rectangle(20 + 40*i, SCREEN_HEIGHT - 30, 35, 10, rl::LIGHTGRAY);
+		for (int i = 0; i < player.life; i++) rl::draw_rectangle(20 + 40 * i, SCREEN_HEIGHT - 30, 35, 10, rl::LIGHTGRAY);
 
 		// Draw ball
 		rl::draw_circle_v(ball.position, ball.radius, rl::MAROON);
@@ -302,7 +302,7 @@ fn void draw_game()
 	}
 	else
 	{
-		rl::draw_text("PRESS [ENTER] TO PLAY AGAIN", rl::get_screen_width()/2 - rl::measure_text("PRESS [ENTER] TO PLAY AGAIN", 20) / 2, rl::get_screen_height() / 2 - 50, 20, rl::GRAY);
+		rl::draw_text("PRESS [ENTER] TO PLAY AGAIN", rl::get_screen_width() / 2 - rl::measure_text("PRESS [ENTER] TO PLAY AGAIN", 20) / 2, rl::get_screen_height() / 2 - 50, 20, rl::GRAY);
 	}
 }
 

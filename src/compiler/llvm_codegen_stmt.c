@@ -579,7 +579,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			return;
 		}
 		ASSERT(!incr && "There should not be an incr in do-while");
-		// do while(0) -> emit once
+		// do while (0) -> emit once
 		LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "loop.exit");
 		ast->for_stmt.codegen.continue_block = exit_block;
 		ast->for_stmt.codegen.exit_block = exit_block;

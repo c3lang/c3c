@@ -1063,7 +1063,7 @@ static void parse_option(BuildOptions *options) // NOLINT
 					next_arg();
 					append_file(options);
 
-				} while(!(at_end() || next_is_opt()));
+				} while (!(at_end() || next_is_opt()));
 				return;
 			}
 			if (match_longopt("test-filter"))

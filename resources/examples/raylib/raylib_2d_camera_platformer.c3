@@ -281,8 +281,8 @@ fn void update_camera_player_bounds_push(RLCamera2D* camera, Player* player, Env
 {
 	const RLVector2 BBOX = { 0.2f, 0.2f };
 
-	RLVector2 bboxWorldMin = rl::get_screen_to_world2d({ (1 - BBOX.x) * 0.5f * width, (1 - BBOX.y) * 0.5f*height }, *camera);
-	RLVector2 bboxWorldMax = rl::get_screen_to_world2d({ (1 + BBOX.x) * 0.5f * width, (1 + BBOX.y) * 0.5f*height }, *camera);
+	RLVector2 bboxWorldMin = rl::get_screen_to_world2d({ (1 - BBOX.x) * 0.5f * width, (1 - BBOX.y) * 0.5f * height }, *camera);
+	RLVector2 bboxWorldMax = rl::get_screen_to_world2d({ (1 + BBOX.x) * 0.5f * width, (1 + BBOX.y) * 0.5f * height }, *camera);
 	camera.offset = { (1 - BBOX.x) * 0.5f * width, (1 - BBOX.y) * 0.5f * height };
 
 	if (player.position.x < bboxWorldMin.x) camera.target.x = player.position.x;

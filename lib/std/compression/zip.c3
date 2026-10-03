@@ -1224,7 +1224,7 @@ fn void? _init_aex_reader(File* f, ZipEntry* entry, ZipLFH* lfh, String password
 
 		char[] aes_key = dk[0:key_len];
 		char[] mac_key = dk[key_len:key_len];
-		char[] pv_derived = dk[key_len*2:2];
+		char[] pv_derived = dk[key_len * 2:2];
 
 		if (pv_stored != pv_derived) return PASSWORD_MISMATCH~;
 

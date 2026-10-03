@@ -113,7 +113,7 @@ fn sz? decode_len(String s, UrlEncodingMode mode) @inline
 	foreach (i, c: s)
 	{
 		if (c != '%') continue;
-		if (i + 2 >= s.len || !s[i+1].is_xdigit() || !s[i+2].is_xdigit())
+		if (i + 2 >= s.len || !s[i + 1].is_xdigit() || !s[i + 2].is_xdigit())
 		{
 			return INVALID_HEX~;
 		}
@@ -142,7 +142,7 @@ fn String? decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool
 		{
 			// decode encoded char
 			case '%':
-				char[] hex = hex::tdecode(s[i+1:2])!;
+				char[] hex = hex::tdecode(s[i + 1:2])!;
 				builder.append(hex);
 				i += 2;
 

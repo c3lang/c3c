@@ -360,7 +360,7 @@ $endif
 		mem.free();
 		alloc::free(context.stored.allocator, mem);
 	}
-	io::printfn("\n%d test%s run.\n", test_count-tests_skipped, test_count != 1 ? "s" : "");
+	io::printfn("\n%d test%s run.\n", test_count - tests_skipped, test_count != 1 ? "s" : "");
 
 	int n_failed = test_count - tests_passed - tests_skipped;
 	io::printf("Test Result: %s%s%s: ",

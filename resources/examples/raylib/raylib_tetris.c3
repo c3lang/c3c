@@ -153,7 +153,7 @@ fn void init_game()
 	// Initialize incoming piece matrices
 	for (int i = 0; i < 4; i++)
 	{
-		for (int j = 0; j< 4; j++)
+		for (int j = 0; j < 4; j++)
 		{
 			incoming_piece[i][j] = EMPTY;
 		}
@@ -350,7 +350,7 @@ fn void draw_game()
 
 	if (pause)
 	{
-		rl::draw_text("GAME PAUSED", SCREEN_WIDTH / 2 - rl::measure_text("GAME PAUSED", 40)/2, SCREEN_HEIGHT/2 - 40, 40, rl::GRAY);
+		rl::draw_text("GAME PAUSED", SCREEN_WIDTH / 2 - rl::measure_text("GAME PAUSED", 40) / 2, SCREEN_HEIGHT / 2 - 40, 40, rl::GRAY);
 	}
 }
 
@@ -372,7 +372,7 @@ fn void update_draw_frame()
 //--------------------------------------------------------------------------------------
 fn bool create_piece()
 {
-	piece_position_x = (int)((GRID_HORIZONTAL_SIZE - 4)/2);
+	piece_position_x = (int)((GRID_HORIZONTAL_SIZE - 4) / 2);
 	piece_position_y = 0;
 
 	// If the game is starting and you are going to create the first piece, we create an extra one
@@ -385,7 +385,7 @@ fn bool create_piece()
 	// We assign the incoming piece to the actual piece
 	for (int i = 0; i < 4; i++)
 	{
-		for (int j = 0; j< 4; j++)
+		for (int j = 0; j < 4; j++)
 		{
 			piece[i][j] = incoming_piece[i][j];
 		}
@@ -486,7 +486,7 @@ fn void resolve_falling_movement(bool* detection_ref, bool* piece_active_ref)
 			{
 				if (grid[i][j] == MOVING)
 				{
-					grid[i][j+1] = MOVING;
+					grid[i][j + 1] = MOVING;
 					grid[i][j] = EMPTY;
 				}
 			}
@@ -733,7 +733,7 @@ fn int delete_complete_lines()
 				grid[i][j] = EMPTY;
 			}
 
-			for (int j2 = j-1; j2 >= 0; j2--)
+			for (int j2 = j - 1; j2 >= 0; j2--)
 			{
 				for (int i2 = 1; i2 < GRID_HORIZONTAL_SIZE - 1; i2++)
 				{

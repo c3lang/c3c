@@ -122,10 +122,10 @@ fn QuaternionNumber from_euler(Real pitch, Real yaw, Real roll)
 	Real z1 = math::sin(roll / 2);
 
 	return {
-		x1*y0*z0 - x0*y1*z1,
-		x0*y1*z0 + x1*y0*z1,
-		x0*y0*z1 - x1*y1*z0,
-		x0*y0*z0 + x1*y1*z1
+		x1 * y0 * z0 - x0 * y1 * z1,
+		x0 * y1 * z0 + x1 * y0 * z1,
+		x0 * y0 * z1 - x1 * y1 * z0,
+		x0 * y0 * z0 + x1 * y1 * z1
 	};
 }
 

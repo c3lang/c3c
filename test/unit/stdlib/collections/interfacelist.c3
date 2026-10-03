@@ -113,7 +113,115 @@ fn void retain_with_test() => @pool()
 	assert(to_ints(l) == {});
 }
 
+fn void remove_if_tests_each_element_once() => @pool()
+{
+	TestL l;
+	for (int i = 1; i <= 7; i++) l.push((Test1){i});
+	call_count = 0;
+	sz removed = l.remove_if(&counting_odd);
+	assert(removed == 4);
+	assert(to_ints(l) == {2, 4, 6});
+	assert(call_count == 7);
+}
+
+fn void retain_if_tests_each_element_once() => @pool()
+{
+	TestL l;
+	for (int i = 1; i <= 7; i++) l.push((Test1){i});
+	call_count = 0;
+	sz removed = l.retain_if(&counting_odd);
+	assert(removed == 3);
+	assert(to_ints(l) == {1, 3, 5, 7});
+	assert(call_count == 7);
+}
+
+fn void remove_if_mixed_runs() => @pool()
+{
+	// Leading run, interior runs of different lengths and a trailing run of removals.
+	TestL l;
+	foreach (int v : { 1, 3, 5, 2, 4, 7, 9, 6, 11, 13, 8, 15, 17 }) l.push((Test1){v});
+	call_count = 0;
+	sz removed = l.remove_if(&counting_odd);
+	assert(removed == 9);
+	assert(to_ints(l) == {2, 4, 6, 8});
+	assert(call_count == 13);
+}
+
+fn void remove_if_and_retain_if_edge_cases() => @pool()
+{
+	TestL l;
+	// Empty list
+	call_count = 0;
+	assert(l.remove_if(&counting_odd) == 0);
+	assert(l.retain_if(&counting_odd) == 0);
+	assert(call_count == 0);
+	assert(l.len() == 0);
+
+	// Nothing to remove
+	foreach (int v : { 2, 4, 6 }) l.push((Test1){v});
+	call_count = 0;
+	assert(l.remove_if(&counting_odd) == 0);
+	assert(to_ints(l) == {2, 4, 6});
+	assert(call_count == 3);
+
+	// Remove everything
+	call_count = 0;
+	assert(l.retain_if(&counting_odd) == 3);
+	assert(l.len() == 0);
+	assert(call_count == 3);
+
+	// Retain everything
+	foreach (int v : { 1, 3, 5 }) l.push((Test1){v});
+	call_count = 0;
+	assert(l.retain_if(&counting_odd) == 0);
+	assert(to_ints(l) == {1, 3, 5});
+	assert(call_count == 3);
+}
+
+fn void remove_if_frees_removed_elements() => @pool()
+{
+	// The list owns copies of its elements: removed ones must be freed exactly once, kept ones not at all.
+	TrackingAllocator tracker;
+	tracker.init(tmem);
+	defer tracker.free();
+	TestL l;
+	l.init(&tracker);
+	foreach (int v : { 1, 2, 3, 4, 5, 6, 7, 8 }) l.push((Test1){v});
+	assert(tracker.allocation_count() == 9); // 8 elements + the backing array
+	sz removed = l.remove_if(&counting_odd);
+	assert(removed == 4);
+	assert(to_ints(l) == {2, 4, 6, 8});
+	assert(tracker.allocation_count() == 5); // 4 elements + the backing array
+	l.free();
+	assert(tracker.allocation_count() == 0);
+}
+
+fn void retain_if_frees_removed_elements() => @pool()
+{
+	TrackingAllocator tracker;
+	tracker.init(tmem);
+	defer tracker.free();
+	TestL l;
+	l.init(&tracker);
+	foreach (int v : { 1, 2, 3, 4, 5, 6, 7, 8 }) l.push((Test1){v});
+	assert(tracker.allocation_count() == 9);
+	sz removed = l.retain_if(&counting_odd);
+	assert(removed == 4);
+	assert(to_ints(l) == {1, 3, 5, 7});
+	assert(tracker.allocation_count() == 5);
+	l.free();
+	assert(tracker.allocation_count() == 0);
+}
+
 module interfacelist_test;
+
+int call_count;
+
+fn bool counting_odd(Test x)
+{
+	call_count++;
+	return x.test() % 2 != 0;
+}
 
 fn int[] to_ints(TestL l) => @map(tmem, l.array_view(), fn int(Test x) => x.test());
 

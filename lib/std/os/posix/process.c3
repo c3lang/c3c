@@ -81,7 +81,7 @@ fn void install_signal_handler(CInt signal, SigActionFunction func)
 fn CInt backtrace(void** buffer, CInt size) @feat(!OPENBSD & !NETBSD)
 {
 	if (size < 1) return 0;
-	void* handle = libc::dlopen("libc.so.6", libc::RTLD_LAZY|libc::RTLD_NODELETE);
+	void* handle = libc::dlopen("libc.so.6", libc::RTLD_LAZY | libc::RTLD_NODELETE);
 	if (handle)
 	{
 		defer libc::dlclose(handle);

@@ -182,9 +182,9 @@ fn String encode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base32
 	for (sz i = 0; i < n; i += 5)
 	{
 		// to fit 40 bits we need two 32-bit uints
-		msb = (uint)src[i] << 24 | (uint)src[i+1] << 16
-				| (uint)src[i+2] << 8 | (uint)src[i+3];
-		lsb = msb << 8 | (uint)src[i+4];
+		msb = (uint)src[i] << 24 | (uint)src[i + 1] << 16
+				| (uint)src[i + 2] << 8 | (uint)src[i + 3];
+		lsb = msb << 8 | (uint)src[i + 4];
 
 		// now slice them into 5-bit chunks and translate to the
 		// alphabet.
@@ -207,17 +207,17 @@ fn String encode_into(char[] dst, char[] src, char padding = DEFAULT_PAD, Base32
 	switch (trailing)
 	{
 		case 4:
-			msb |= (uint)src[n+3];
+			msb |= (uint)src[n + 3];
 			lsb = msb << 8;
 			dst[6] = alphabet.encoding[(lsb >> 5) & MASK];
 			dst[5] = alphabet.encoding[(msb >> 2) & MASK];
 			nextcase 3;
 		case 3:
-			msb |= (uint)src[n+2] << 8;
+			msb |= (uint)src[n + 2] << 8;
 			dst[4] = alphabet.encoding[(msb >> 7) & MASK];
 			nextcase 2;
 		case 2:
-			msb |= (uint)src[n+1] << 16;
+			msb |= (uint)src[n + 1] << 16;
 			dst[3] = alphabet.encoding[(msb >> 12) & MASK];
 			dst[2] = alphabet.encoding[(msb >> 17) & MASK];
 			nextcase 1;

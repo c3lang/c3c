@@ -228,7 +228,7 @@ macro double? decfloat(char[] chars, int $bits, int $emin, int sign)
 		if (i == B1B_DIG && rp == 9 * B1B_DIG) break;
 		if (rp > 9 + 9 * B1B_DIG) sh = 9;
 		e2 += sh;
-		for (k = a; k != z; k = (k+1) & MASK)
+		for (k = a; k != z; k = (k + 1) & MASK)
 		{
 			uint tmp = x[k] & (1 << sh - 1);
 			x[k] = x[k] >> sh + carry;
