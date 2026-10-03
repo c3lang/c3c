@@ -500,7 +500,6 @@ fn void window_destroy_platform(GfxWindow* win)
 	if (win.src.xdg_toplevel) xdg_toplevel_destroy(win.src.xdg_toplevel);
 	wl_surface_destroy(win.src.custom_cursor_surface);
 	if (win.src.locked_pointer) zwp_locked_pointer_v1_destroy(win.src.locked_pointer);
-	if (win.src.icon) xdg_toplevel_icon_v1_destroy(win.src.icon);
 	if (win.src.xdg_surface) xdg_surface_destroy(win.src.xdg_surface);
 	wl_surface_destroy(win.src.surface);
 }
@@ -638,7 +637,6 @@ fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat form
 	if (!win.src.xdg_toplevel) return false;
 
 	if (!ctx.icon_manager || w != h) return false;
-	if (win.src.icon != null) { xdg_toplevel_icon_v1_destroy(win.src.icon); win.src.icon = null; }
 
 	GfxSurface*? surface = gfx::create_surface(data, w, h, format);
 	if (catch surface) return false;
@@ -646,12 +644,12 @@ fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat form
 	int min_w = w < surface.size.x ? w : surface.size.x;
 	int min_h = h < surface.size.y ? h : surface.size.y;
 	gfx::copy_image_data(surface.native.buffer, min_w, min_h, surface.native.format, surface.data, surface.format, null);
-
-	win.src.icon = xdg_toplevel_icon_manager_v1_create_icon(ctx.icon_manager);
+	WlProxy* icon = xdg_toplevel_icon_manager_v1_create_icon(ctx.icon_manager);
+	if (!icon) return false;
+	defer xdg_toplevel_icon_v1_destroy(icon);
 	surface.native.wl_buffer = wl_shm_pool_create_buffer(surface.native.pool, 0, w, h, w * 4, WL_SHM_FORMAT_ARGB8888);
-	xdg_toplevel_icon_v1_add_buffer(win.src.icon, surface.native.wl_buffer, 1);
-	xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdg_toplevel, win.src.icon);
-
+	xdg_toplevel_icon_v1_add_buffer(icon, surface.native.wl_buffer, 1);
+	xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdg_toplevel, icon);
 	return true;
 }
 
@@ -708,15 +706,8 @@ fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
-	if (!win.src.configured)
-	{
-		wl_surface_commit(win.src.surface);
-		_wait_for_configure(win);
-	}
-	else
-	{
-		wl_surface_commit(win.src.surface);
-	}
+	wl_surface_commit(win.src.surface);
+	if (!win.src.configured) _wait_for_configure(win);
 }
 
 // Window - opengl
