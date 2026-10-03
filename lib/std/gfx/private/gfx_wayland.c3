@@ -710,18 +710,8 @@ fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
 	win.src.minimized = false;
-	if (win.src.xdg_surface && !win.src.configured)
-	{
-		wl_surface_commit(win.src.surface);
-		while (!win.src.configured)
-		{
-			if (wl_display_dispatch(ctx.wl_display) < 0) return;
-		}
-	}
-	else
-	{
-		wl_surface_commit(win.src.surface);
-	}
+	wl_surface_commit(win.src.surface);
+	if (win.src.xdg_surface) _wait_for_configure(win);
 }
 
 // Window - opengl
@@ -1040,11 +1030,7 @@ fn void? _init_graphics_and_show(GfxWindow* win, GfxWindowFlags flags) @local
 	}
 	wl_surface_commit(win.src.surface);
 
-	while (!win.src.configured)
-	{
-		// TODO maybe add more handling here to handle close.
-		if (wl_display_dispatch(ctx.wl_display) < 0) return gfx::SURFACE_CREATION_FAILED~;
-	}
+	if (!_wait_for_configure(win)) return gfx::SURFACE_CREATION_FAILED~;
 	GfxWindowFlags runtime_flags = flags;
 	runtime_flags.maximize = false;
 	gfx::_window_set_flags(win, runtime_flags, {});
@@ -1855,6 +1841,16 @@ fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @
 	data_ptr[:s.len] = buf[:s.len];
 	gfx::_gfx.unix_clipboard.text = s;
 	gfx::_gfx.unix_clipboard.type = TEXT;
+}
+
+fn bool _wait_for_configure(GfxWindow* win) @local
+{
+	while (!win.src.configured)
+	{
+		// Maybe handle close
+		if (wl_display_dispatch(ctx.wl_display) < 0) return false;
+	}
+	return true;
 }
 // ---
 

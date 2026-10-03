@@ -20,12 +20,12 @@ fn void unload_lib() @private
 {
 	$if !$feat(WASM):
 		if (!gfx::_gfx.egl.handle) return;
-		if (gfx::_gfx.egl.display != null)
+		if (gfx::_gfx.egl.display)
 		{
-			if (make_current_fn != null) make_current_fn((EglDisplay)gfx::_gfx.egl.display, null, null, null);
-			if (egl::terminate_fn != null) egl::terminate_fn((EglDisplay)gfx::_gfx.egl.display);
+			if (make_current_fn) make_current_fn((EglDisplay)gfx::_gfx.egl.display, null, null, null);
+			if (egl::terminate_fn) egl::terminate_fn((EglDisplay)gfx::_gfx.egl.display);
 		}
-		if (release_thread_fn != null) release_thread_fn();
+		if (release_thread_fn) release_thread_fn();
 		gfx::_gfx.egl.handle.close();
 		gfx::_gfx.egl.display = null;
 		gfx::_gfx.egl.get_proc_addr_fn = null;
