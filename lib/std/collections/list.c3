@@ -326,6 +326,8 @@ fn void List.swap(&self, sz i, sz j)
 *>
 fn sz List.remove_if(&self, ElementPredicate filter)
 {
+	sz old_size = self.size;
+	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
 	return list_common::list_remove_if(self, filter, false);
 }
 
@@ -335,6 +337,8 @@ fn sz List.remove_if(&self, ElementPredicate filter)
 *>
 fn sz List.retain_if(&self, ElementPredicate selection)
 {
+	sz old_size = self.size;
+	defer if (old_size != self.size) list_update_size_change(self, old_size, self.size);
 	return list_common::list_remove_if(self, selection, true);
 }
 
