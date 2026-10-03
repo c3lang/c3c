@@ -64,11 +64,18 @@ struct Error
 	bool found;
 }
 
+enum RunFileMode
+{
+	EXPECTED,
+	UNEXPECTED
+}
+
 struct RunFile
 {
 	String name;
 	bool is_output;
 	bool closed;
+	RunFileMode mode;
 	union
 	{
 		struct
@@ -78,7 +85,7 @@ struct RunFile
 			List{Error} errors;
 			int line_offset;
 		}
-		List{String} expected_lines;
+		List{String} lines;
 	}
 }
 
@@ -88,7 +95,7 @@ fn void RunFile.add_line(&self, String line)
 	{
 		line = line.trim();
 		if (line == "") return;
-		self.expected_lines.push(line);
+		self.lines.push(line);
 	}
 	else
 	{
@@ -96,13 +103,13 @@ fn void RunFile.add_line(&self, String line)
 	}
 }
 
-fn RunFile* create_run_file(Path test_dir, String filename, bool is_output)
+fn RunFile* create_run_file(Path test_dir, String filename, bool is_output, RunFileMode mode)
 {
 	RunFile* rf = mem::tnew(RunFile);
-	*rf = { .name = filename, .is_output = is_output };
+	*rf = { .name = filename, .is_output = is_output, .mode = mode };
 	if (is_output)
 	{
-		rf.expected_lines.init(tmem);
+		rf.lines.init(tmem);
 	}
 	else
 	{
@@ -119,6 +126,12 @@ fn void RunFile.close(&self)
 	self.closed = true;
 }
 
+enum RunMode : int (String command)
+{
+	COMPILE_ONLY    { "compile-only" },
+	STATIC_LIB      { "static-lib" },
+}
+
 struct RunSettings
 {
 	bool safe;
@@ -129,6 +142,7 @@ struct RunSettings
 	List{RunFile*} input_files;
 	List{RunFile*} output_files;
 	RunFile* current_file;
+	RunMode mode;
 }
 
 /* --------------------- Error parsing helpers -------------------------- */
@@ -303,6 +317,20 @@ fn bool parse_header_directive(int* line_no, String line, RunSettings* settings,
 	{
 		case "error":
 			if (!is_output) settings.current_file.errors.push({ *line_no, value, false });
+		case "mode":
+			if (!is_output)
+			{
+				switch (value)
+				{
+					case "compile-only":
+						settings.mode = RunMode.COMPILE_ONLY;
+					case "static-lib":
+						settings.mode = RunMode.STATIC_LIB;
+					default:
+						io::fprintfn(output_stream, "FAILED - Unknown compilation mode '%s'", value)!!;
+						return false;
+				}
+			}
 		case "safe":
 			if (!is_output) settings.safe = value == "yes";
 		case "debuginfo":
@@ -320,18 +348,23 @@ fn bool parse_header_directive(int* line_no, String line, RunSettings* settings,
 				return false;
 			}
 			settings.current_file.close();
-			RunFile* file = create_run_file(test_dir, value, false);
+			RunFile* file = create_run_file(test_dir, value, false, RunFileMode.EXPECTED);
 			settings.current_file = file;
 			*line_no = 1;
 			settings.input_files.push(file);
 		case "expect":
+		case "expect-not":
 			if (is_single)
 			{
 				io::fprintn(output_stream, "FAILED - 'expect' directive only allowed with .c3t")!!;
 				return false;
 			}
 			if (settings.current_file) settings.current_file.close();
-			RunFile* ofile = create_run_file(test_dir, value, true);
+			RunFileMode m = RunFileMode.EXPECTED;
+			if (key_opt == "expect-not") {
+				m = RunFileMode.UNEXPECTED;
+			}
+			RunFile* ofile = create_run_file(test_dir, value, true, m);
 			settings.current_file = ofile;
 			settings.output_files.push(ofile);
 		default:
@@ -461,12 +494,13 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 	String content = (String)content_raw;
 
 	RunSettings settings;
+	settings.mode = RunMode.COMPILE_ONLY;
 	settings.opts.init(tmem);
 	settings.input_files.init(tmem);
 	settings.output_files.init(tmem);
 
 	String target_c3_name = file_path.basename().strip_suffix(single ? ".c3" : ".c3t").tconcat(".c3");
-	RunFile* rf = create_run_file(test_dir, target_c3_name, false);
+	RunFile* rf = create_run_file(test_dir, target_c3_name, false, RunFileMode.EXPECTED);
 
 	settings.current_file = rf;
 	settings.input_files.push(rf);
@@ -532,14 +566,26 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 	cmdline.init(tmem, 32);
 	cmdline.push(context.compiler_path);
 
+	cmdline.push(settings.mode.command);
 	cmdline.push_all({
-		"compile-only",
 		"-O0",
 		"--test",
 		"--max-mem", "512",
-		"--no-obj",
 		"--threads", "1"
 	});
+
+	bool static_lib = settings.mode == RunMode.STATIC_LIB;
+	switch (settings.mode)
+	{
+		case RunMode.COMPILE_ONLY:
+			cmdline.push("--no-obj");
+		case RunMode.STATIC_LIB:
+			cmdline.push_all({
+				"-C", "-o", "test",
+				"--output-dir", test_dir,
+				"--header-output", test_dir
+			});
+	}
 
 	if (context.backend)
 	{
@@ -571,7 +617,7 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 		cmdline.push(test_dir.tappend(file.name)!!);
 	}
 
-	if (!single && context.backend != "c")
+	if (!static_lib && !single && context.backend != "c")
 	{
 		cmdline.push("--emit-llvm");
 	}
@@ -631,7 +677,7 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 
 	if (!parse_result(out, settings, &cmdline, output_stream, result)) return false;
 
-	if (context.backend != "c")
+	if (static_lib || context.backend != "c")
 	{
 		foreach (file : settings.output_files)
 		{
@@ -645,21 +691,34 @@ fn bool test_file(Path file_path, Path test_dir, OutStream output_stream, sz ind
 			File file_ll = file::open(expected_file, "rb")!!;
 			defer (void)file_ll.close();
 
-			String? next = file.expected_lines.pop_first();
+			String? next = file.lines.pop_first();
 			while (try line = io::treadline(&file_ll) && try next_value = next)
 			{
 				line = line.trim();
 				if (line == "") continue;
-				if (line.contains(next_value))
+				if (file.mode == RunFileMode.EXPECTED && line.contains(next_value))
 				{
-					next = file.expected_lines.pop_first();
+					next = file.lines.pop_first();
+				}
+				if (file.mode == RunFileMode.UNEXPECTED && !line.contains(next_value))
+				{
+					next = file.lines.pop_first();
 				}
 			}
 
 			if (try next)
 			{
-				io::fprintfn(output_stream,
-					"FAILED - %s did not contain: %s", file.name, next)!!;
+				switch(file.mode)
+				{
+					case RunFileMode.EXPECTED:
+						io::fprintfn(output_stream,
+							"FAILED - %s did not contain: %s", file.name, next)!!;
+						break;
+					case RunFileMode.UNEXPECTED:
+						io::fprintfn(output_stream,
+							"FAILED - %s did contain: %s", file.name, next)!!;
+						break;
+				}
 				io::fprintfn(output_stream,
 					"\n\n------------------------------------------------>>>> %s\n", file.name)!!;
 				(void)file_ll.seek(0);
