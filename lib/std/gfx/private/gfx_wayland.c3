@@ -148,6 +148,11 @@ fn void destroy_platform()
 	if (ctx.compositor) wl_compositor_destroy(ctx.compositor);
 	if (ctx.wl_display) wl_display_disconnect(ctx.wl_display);
 
+	if (ctx.compose_state) xkb_compose_state_unref(ctx.compose_state);
+	if (ctx.xkb_state)     xkb_state_unref(ctx.xkb_state);
+	if (ctx.keymap)        xkb_keymap_unref(ctx.keymap);
+	if (ctx.xkb_context)   xkb_context_unref(ctx.xkb_context);
+
 	ctx = {};
 }
 
