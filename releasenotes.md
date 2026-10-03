@@ -7,6 +7,7 @@
 - Experimental C backend.
 - Allow the `@section` attribute on local static variables.
 - Make `$feat` accept the same syntax as `@feat`.
+- Added `@asmname`, which works similar to `@cname` but do not add any normal name-prefixing on targets where that is normal (such as MachO).
 - Add `--function-sections` and `--data-sections` (`function-sections` / `data-sections` in project.json) to place each function or global variable in its own section, so the linker can discard unused ones #3051.
 
 ### Fixes
