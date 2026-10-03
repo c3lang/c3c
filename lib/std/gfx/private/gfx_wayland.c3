@@ -521,12 +521,13 @@ fn void window_hide(GfxWindow* win)
 {
 	wl_surface_attach(win.src.surface, null, 0, 0);
 	wl_surface_commit(win.src.surface);
+	win.src.configured = false;
 	win.internal.flags.hide = true;
 }
 
 fn bool window_is_floating(GfxWindow* win) => !win.is_fullscreen() && !window_is_maximized(win);
 
-fn bool window_is_hidden(GfxWindow* win) => false;
+fn bool window_is_hidden(GfxWindow* win) => win.internal.flags.hide;
 
 fn bool window_is_maximized(GfxWindow* win) => win.src.maximized;
 
@@ -561,6 +562,7 @@ fn void window_raise(GfxWindow* win) {}
 
 fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
+	if (size.x <= 0 || size.y <= 0) return;
 	win.size = size;
 	if (ctx.compositor != null)
 	{
@@ -576,6 +578,7 @@ fn void window_resize_platform(GfxWindow* win, GfxSize size)
 
 fn void window_restore_platform(GfxWindow* win)
 {
+	win.src.minimized = false;
 	_toggle_maximized(win, false);
 }
 
@@ -706,7 +709,19 @@ fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
-	wl_surface_commit(win.src.surface);
+	win.src.minimized = false;
+	if (win.src.xdg_surface && !win.src.configured)
+	{
+		wl_surface_commit(win.src.surface);
+		while (!win.src.configured)
+		{
+			if (wl_display_dispatch(ctx.wl_display) < 0) return;
+		}
+	}
+	else
+	{
+		wl_surface_commit(win.src.surface);
+	}
 }
 
 // Window - opengl
