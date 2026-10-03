@@ -398,7 +398,6 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 fn void free_mouse(GfxMouse* mouse)
 {
 	GfxSurface* surface = (GfxSurface*)mouse;
-	if (surface.native.buffer && surface.native.wl_buffer) wl_buffer_destroy(surface.native.wl_buffer);
 	surface.destroy();
 }
 
@@ -841,6 +840,11 @@ fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat f
 fn void surface_release(GfxSurface* surface)
 {
 	if (!surface.data) return;
+	if (surface.native.wl_buffer)
+	{
+		wl_buffer_destroy(surface.native.wl_buffer);
+		surface.native.wl_buffer = null;
+	}
 	if (surface.native.pool) wl_shm_pool_destroy(surface.native.pool);
 	if (surface.native.fd) libc::close(surface.native.fd);
 	if (surface.native.buffer) posix::munmap(surface.native.buffer, (usz)(surface.size.x * surface.size.y * 4));
