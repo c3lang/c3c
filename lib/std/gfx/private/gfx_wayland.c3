@@ -578,7 +578,6 @@ fn void window_resize_platform(GfxWindow* win, GfxSize size)
 
 fn void window_restore_platform(GfxWindow* win)
 {
-	win.src.minimized = false;
 	_toggle_maximized(win, false);
 }
 
@@ -709,9 +708,15 @@ fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
-	win.src.minimized = false;
-	wl_surface_commit(win.src.surface);
-	if (win.src.xdg_surface) _wait_for_configure(win);
+	if (!win.src.configured)
+	{
+		wl_surface_commit(win.src.surface);
+		_wait_for_configure(win);
+	}
+	else
+	{
+		wl_surface_commit(win.src.surface);
+	}
 }
 
 // Window - opengl
@@ -1045,7 +1050,7 @@ fn void? _init_graphics_and_show(GfxWindow* win, GfxWindowFlags flags) @local
 		GfxSurface* blank_surface = gfx::create_surface(blank, ...win.size, BGR8, win)!;
 		win.blit_surface(blank_surface);
 		free(blank);
-		blank_surface.release();
+		blank_surface.destroy();
 	}
 }
 
