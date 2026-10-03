@@ -26,11 +26,11 @@ const SIZE_512 = 64;
 
 fn void _g(sz r, NumType[] m, char[16][] s, sz i, NumType* a, NumType* b, NumType* c, NumType* d) <NumType> @local
 {
-	*a += *b + m[s[r][2*i+0]];
+	*a += *b + m[s[r][2 * i + 0]];
 	*d = (*d ^ *a).rotr(NumType == ulong ??? 32 : 16);
 	*c += *d;
 	*b = (*b ^ *c).rotr(NumType == ulong ??? 24 : 12);
-	*a += *b + m[s[r][2*i+1]];
+	*a += *b + m[s[r][2 * i + 1]];
 	*d = (*d ^ *a).rotr(NumType == ulong ??? 16 : 8);
 	*c += *d;
 	*b = (*b ^ *c).rotr(NumType == ulong ??? 63 : 7);
@@ -100,7 +100,7 @@ macro common_init(instance, $ParamType, $iv, sz out_len, char[] key = {}, char[]
 
 	if (key.len)
 	{
-		char[@sizeof($iv[0])*16] dummy = {};
+		char[@sizeof($iv[0]) * 16] dummy = {};
 		dummy[:key.len] = key[..];
 		instance.update(dummy[..]); // consume a FULL block
 		mem::zero_volatile(dummy[..]); // do not optimize clearing this from the stack

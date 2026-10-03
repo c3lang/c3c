@@ -257,7 +257,7 @@ fn void GrowableBitSet.unset(&self, sz i)
 	sz q = i / BITS;
 	uint r = (uint)(i % BITS);
 	if (q >= self.data.len()) return;
-	self.data.set(q, self.data[q] &~ ((Type)1 << r));
+	self.data.set(q, self.data[q] & ~((Type)1 << r));
 }
 
 fn bool GrowableBitSet.get(&self, sz i) @operator([]) @inline

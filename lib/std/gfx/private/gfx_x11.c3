@@ -1779,7 +1779,7 @@ fn void _handle_event() @local
 				{
 					if (ctx.x11_format != 0)
 					{
-						Time_t time = ctx.x11_version >= 1 ?(Time_t)e.xclient.data.l[2] : 0; // CurrentTime
+						Time_t time = ctx.x11_version >= 1 ? (Time_t)e.xclient.data.l[2] : 0; // CurrentTime
 						xConvertSelection(ctx.display, ctx.xdnd_selection, (Atom)ctx.x11_format,
 						ctx.xdnd_selection, win.src.window, time);
 					}

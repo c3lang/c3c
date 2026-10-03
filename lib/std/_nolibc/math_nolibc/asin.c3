@@ -41,7 +41,7 @@ fn double _asin(double x) @weak @cname("asin") @nostrip
 		/* |x| >= 1 or nan */
 		case ix >= 0x3ff00000:
 			uint lx = x.low_word();
-			if ((ix-0x3ff00000 | lx) == 0)
+			if ((ix - 0x3ff00000 | lx) == 0)
 			{
 				/* asin(1) = +-pi/2 with inexact */
 				return x * PIO2_HI + 0x1p-120f;

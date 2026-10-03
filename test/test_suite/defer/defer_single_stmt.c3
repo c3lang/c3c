@@ -35,7 +35,7 @@ fn void test4()
 
 fn void test4a()
 {
-	for(;;) { defer foo(); }
+	for (;;) { defer foo(); }
 }
 
 fn void foo() {}

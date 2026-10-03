@@ -422,7 +422,7 @@ static void init_asm_riscv(PlatformTarget *target)
 	target->clobber_name_list = RISCVClobberNames;
 	target->extra_clobbers = NULL;
 	int bits = 0;
-	switch(target->arch) {
+	switch (target->arch) {
 		case ARCH_TYPE_RISCV64:
 			// math
 			reg_instr(target, "add", "w:r64/mem, r64/mem, r64/mem");

@@ -229,7 +229,7 @@ fn void test_t_mean_variance() @test
 {
 	TDist dist = distributions::t_distribution(10.0);
 	approx(dist.mean(), 0.0, TOLERANCE);
-	approx(dist.variance(), 10.0/8.0, TOLERANCE);
+	approx(dist.variance(), 10.0 / 8.0, TOLERANCE);
 }
 
 fn void test_t_pdf_symmetry() @test
@@ -263,7 +263,7 @@ fn void test_t_quantile() @test
 
 fn void test_f_mean() @test
 {
-	FDist dist =distributions::f_distribution(5.0, 10.0);
+	FDist dist = distributions::f_distribution(5.0, 10.0);
 	double expected_mean = 10.0 / 8.0;
 	approx(dist.mean(), expected_mean, TOLERANCE);
 }
@@ -271,21 +271,21 @@ fn void test_f_mean() @test
 fn void test_f_pdf() @test
 {
 	// FIXME: add tests for pdf
-	FDist dist =distributions::f_distribution(5.0, 10.0);
+	FDist dist = distributions::f_distribution(5.0, 10.0);
 	approx(dist.pdf(0.5), 0.687607, RELAXED_TOLERANCE, "PDF at x=0.5 for F(5,10) is wrong");
 	approx(dist.pdf(10.0), 0.000478163, RELAXED_TOLERANCE, "PDF at x=10.0 for F(5,10) is wrong");
 }
 
 fn void test_f_cdf() @test
 {
-	FDist dist =distributions::f_distribution(5.0, 10.0);
+	FDist dist = distributions::f_distribution(5.0, 10.0);
 	approx(dist.cdf(0.0), 0.0, TOLERANCE, "CDF at 0");
 	approx(dist.cdf(-1.0), 0.0, TOLERANCE, "CDF for negative x");
 }
 
 fn void test_f_quantile() @test
 {
-	FDist dist =distributions::f_distribution(5.0, 10.0);
+	FDist dist = distributions::f_distribution(5.0, 10.0);
 	double x_median = dist.quantile(0.5);
 	assert(x_median > 0.0, "Median positive");
 
@@ -296,7 +296,7 @@ fn void test_f_quantile() @test
 
 fn void test_f_random_samples() @test
 {
-	FDist dist =distributions::f_distribution(5.0, 10.0);
+	FDist dist = distributions::f_distribution(5.0, 10.0);
 
  	DefaultRandom r;
 	random::seed_entropy(&r);
@@ -471,7 +471,7 @@ fn void test_beta_function() @test
 {
 	assert(distributions::beta_function(2.5, 1.5) == distributions::beta_function(1.5, 2.5), "Beta function not symmetrical.");
 	assert(math::is_approx(distributions::beta_function(3.0, 2.0), 0.08333333333, 1e-6), "Beta(3,2) is wrong");
-	assert(math::is_approx(distributions::beta_function(4.0, 1.0), 1.0/4.0, 1e-6), "Beta(4,1) is wrong");
+	assert(math::is_approx(distributions::beta_function(4.0, 1.0), 1.0 / 4.0, 1e-6), "Beta(4,1) is wrong");
 }
 
 fn void test_lower_incomplete_gamma() @test

@@ -3826,14 +3826,14 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->strukt.is_packed = true;
 			break;
 		case ATTRIBUTE_UNUSED:
-			if(decl->is_must_use)
+			if (decl->is_must_use)
 			{
 				RETURN_SEMA_ERROR(attr, "@unused cannot be combined with @used.");
 			}
 			decl->is_maybe_unused = true;
 			break;
 		case ATTRIBUTE_USED:
-			if(decl->is_maybe_unused)
+			if (decl->is_maybe_unused)
 			{
 				RETURN_SEMA_ERROR(attr, "@used cannot be combined with @unused.");
 			}

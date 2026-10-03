@@ -226,7 +226,7 @@ fn void test_parse_fragment_with_escape_sequence()
 
 fn void test_string_foo()
 {
-	Url url = {.scheme="foo", .host="example.com", .port=8042, .path="/over/there", .query="name=ferret", .fragment="nose"};
+	Url url = {.scheme = "foo", .host = "example.com", .port = 8042, .path = "/over/there", .query = "name=ferret", .fragment = "nose"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 
@@ -235,7 +235,7 @@ fn void test_string_foo()
 
 fn void test_string_urn()
 {
-	Url url = {.scheme="urn", .path="example:animal:ferret:nose"};
+	Url url = {.scheme = "urn", .path = "example:animal:ferret:nose"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 
@@ -244,7 +244,7 @@ fn void test_string_urn()
 
 fn void test_string_jdbc()
 {
-	Url url = {.scheme="jdbc:mysql", .host="localhost", .port=3306, .username="test_user", .password="ouupppssss", .path="/sakila", .query="profileSQL=true"};
+	Url url = {.scheme = "jdbc:mysql", .host = "localhost", .port = 3306, .username = "test_user", .password = "ouupppssss", .path = "/sakila", .query = "profileSQL=true"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 
@@ -253,7 +253,7 @@ fn void test_string_jdbc()
 
 fn void test_string_ftp()
 {
-	Url url = {.scheme="ftp", .host="ftp.is.co.za", .path="/rfc/rfc1808.txt"};
+	Url url = {.scheme = "ftp", .host = "ftp.is.co.za", .path = "/rfc/rfc1808.txt"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 
@@ -262,7 +262,7 @@ fn void test_string_ftp()
 
 fn void test_string_http()
 {
-	Url url = {.scheme="http", .host="www.ietf.org", .path="/rfc/rfc2396.txt", .fragment="header1"};
+	Url url = {.scheme = "http", .host = "www.ietf.org", .path = "/rfc/rfc2396.txt", .fragment = "header1"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 
@@ -271,7 +271,7 @@ fn void test_string_http()
 
 fn void test_string_ldap()
 {
-	Url url = {.scheme="ldap", .host="[2001:db8::7]", .path="/c=GB", .query="objectClass=one&objectClass=two"};
+	Url url = {.scheme = "ldap", .host = "[2001:db8::7]", .path = "/c=GB", .query = "objectClass=one&objectClass=two"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 
@@ -280,7 +280,7 @@ fn void test_string_ldap()
 
 fn void test_string_mailto()
 {
-	Url url = {.scheme="mailto", .path="John.Doe@example.com"};
+	Url url = {.scheme = "mailto", .path = "John.Doe@example.com"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 
@@ -289,7 +289,7 @@ fn void test_string_mailto()
 
 fn void test_string_news()
 {
-	Url url = {.scheme="news", .path="comp.infosystems.www.servers.unix"};
+	Url url = {.scheme = "news", .path = "comp.infosystems.www.servers.unix"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 	assert(str == "news:comp.infosystems.www.servers.unix");
@@ -297,7 +297,7 @@ fn void test_string_news()
 
 fn void test_string_tel()
 {
-	Url url = {.scheme="tel", .path="+1-816-555-1212"};
+	Url url = {.scheme = "tel", .path = "+1-816-555-1212"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 
@@ -306,7 +306,7 @@ fn void test_string_tel()
 
 fn void test_string_telnet()
 {
-	Url url = {.scheme="telnet", .host="192.0.2.16", .port=80, .path="/"};
+	Url url = {.scheme = "telnet", .host = "192.0.2.16", .port = 80, .path = "/"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 
@@ -315,7 +315,7 @@ fn void test_string_telnet()
 
 fn void test_string_urn2()
 {
-	Url url = {.scheme="urn", .path="oasis:names:specification:docbook:dtd:xml:4.1.2"};
+	Url url = {.scheme = "urn", .path = "oasis:names:specification:docbook:dtd:xml:4.1.2"};
 	String str = string::format(mem, "%s", url);
 	defer free(str);
 

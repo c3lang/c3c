@@ -1479,7 +1479,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 				}
 			}
 			SCOPE_END;
-			// Rewrite do { } while(true) to while(true) { }
+			// Rewrite do { } while(true) to while (true) { }
 			if (is_infinite)
 			{
 				ASSERT(!statement->for_stmt.cond);

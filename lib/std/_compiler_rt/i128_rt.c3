@@ -450,7 +450,7 @@ macro fixuint(a) @private
 	$endswitch
 	const $Rep MAX_EXPONENT = ($Rep)1 << EXPONENT_BITS - 1u;
 	const $Rep EXPONENT_BIAS = MAX_EXPONENT >> 1u;
-	const $Rep ONE_REP =EXPONENT_BIAS << SIGNIFICANT_BITS;
+	const $Rep ONE_REP = EXPONENT_BIAS << SIGNIFICANT_BITS;
 	const $Rep SIGN_BIT = ($Rep)1 << (EXPONENT_BITS + SIGNIFICANT_BITS);
 	const $Rep ABS_MASK = SIGN_BIT - 1u;
 	const $Rep IMPLICIT_BIT = ($Rep)1 << SIGNIFICANT_BITS;

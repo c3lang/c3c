@@ -4,7 +4,7 @@ import std::io, std::math;
 const SOLAR_MASS = 4 * math::PI * math::PI;
 const DAYS_PER_YEAR = 365.24;
 const DT = 1e-2;
-const RECIP_DT = (1.0/DT);
+const RECIP_DT = (1.0 / DT);
 
 struct Planet
 {

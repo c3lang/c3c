@@ -60,7 +60,7 @@ fn void simple_verify()
 fn void many_lanes()
 {
 	const String EXPECTED = "$argon2id$v=19$m=2048,t=3,p=256$MTIzNDEyMzQ$c333ffXMw/Om2Z6QIozFEyElORODnvyWzspNjCb0y+w";
-	String result = argon2::thash(RFC_PASSWORD, { .iterations = 3, .salt = "12341234", .key = {}, .assoc = {}, .mem_size = 8*256, .lanes = 256, .algorithm = ARGON2_ID });
+	String result = argon2::thash(RFC_PASSWORD, { .iterations = 3, .salt = "12341234", .key = {}, .assoc = {}, .mem_size = 8 * 256, .lanes = 256, .algorithm = ARGON2_ID });
 	test::eq(result, EXPECTED);
 }
 

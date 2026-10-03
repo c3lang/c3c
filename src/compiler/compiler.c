@@ -1122,7 +1122,7 @@ void vendor_fetch(BuildOptions *options)
 		return;
 	}
 
-	for(int i = 0; i < total_libraries; i++)
+	for (int i = 0; i < total_libraries; i++)
 	{
 		const char *lib = options->libraries_to_fetch[i];
 		printf("Fetching library '%s'...\n", lib);

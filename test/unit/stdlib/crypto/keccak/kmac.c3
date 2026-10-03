@@ -192,13 +192,13 @@ fn void simple()
 		{
 			foreach (j, w : keccak_test::CUSTOMIZATION_STRINGS)
 			{
-				test::@check(kmac::hash(128, 32,  u, v, w)[..] == expected[i][k][(j*6) + 0], `128(32): Failed on vector "%s" (c: "%s").`, v, w);
-				test::@check(kmac::hash(128, 64,  u, v, w)[..] == expected[i][k][(j*6) + 1], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
-				test::@check(kmac::hash(128, 128, u, v, w)[..] == expected[i][k][(j*6) + 2], `128(128): Failed on vector "%s" (c: "%s").`, v, w);
+				test::@check(kmac::hash(128, 32,  u, v, w)[..] == expected[i][k][(j * 6) + 0], `128(32): Failed on vector "%s" (c: "%s").`, v, w);
+				test::@check(kmac::hash(128, 64,  u, v, w)[..] == expected[i][k][(j * 6) + 1], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
+				test::@check(kmac::hash(128, 128, u, v, w)[..] == expected[i][k][(j * 6) + 2], `128(128): Failed on vector "%s" (c: "%s").`, v, w);
 
-				test::@check(kmac::hash(256, 32,  u, v, w)[..] == expected[i][k][(j*6) + 3], `128(32): Failed on vector "%s" (c: "%s").`, v, w);
-				test::@check(kmac::hash(256, 64,  u, v, w)[..] == expected[i][k][(j*6) + 4], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
-				test::@check(kmac::hash(256, 128, u, v, w)[..] == expected[i][k][(j*6) + 5], `128(128): Failed on vector "%s" (c: "%s").`, v, w);
+				test::@check(kmac::hash(256, 32,  u, v, w)[..] == expected[i][k][(j * 6) + 3], `128(32): Failed on vector "%s" (c: "%s").`, v, w);
+				test::@check(kmac::hash(256, 64,  u, v, w)[..] == expected[i][k][(j * 6) + 4], `128(64): Failed on vector "%s" (c: "%s").`, v, w);
+				test::@check(kmac::hash(256, 128, u, v, w)[..] == expected[i][k][(j * 6) + 5], `128(128): Failed on vector "%s" (c: "%s").`, v, w);
 			}
 		}
 	}

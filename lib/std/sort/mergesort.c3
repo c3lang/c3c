@@ -62,7 +62,7 @@ fn void merge(ListType list, ElementType[] buff, sz left, sz mid, sz right, CmpF
 	sz i = left;
 	sz j = mid;
 	sz k = left;
-	while(i < mid && j < right){
+	while (i < mid && j < right){
 		$switch:
 			$case $cmp_by_value && $has_context:
 				bool cmp_result = cmp(list_get(list, i), list_get(list, j), context) <= 0;

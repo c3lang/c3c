@@ -245,5 +245,5 @@ fn void ordered_map_clear()
 	m.set("x", 10);
 	assert(m.len() == 1);
 	assert(@ok(m.get("x")));
-	assert((m.get("x")??0) == 10);
+	assert((m.get("x") ?? 0) == 10);
 }

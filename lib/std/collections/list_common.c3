@@ -89,24 +89,20 @@ macro sz list_remove_item(self, value)
 macro sz list_remove_if(self, filter, bool $invert)
 {
 	sz size = self.size;
-	for (sz i = size, sz k = size; k > 0; k = i)
+	sz write = 0;
+	for (sz read = 0; read < size; read++)
 	{
-		// Find last index of item to be deleted.
 		$if $invert:
-			while (i > 0 && !filter(&self.entries[i - 1])) i--;
+			bool keep = filter(&self.entries[read]);
 		$else
-			while (i > 0 && filter(&self.entries[i - 1])) i--;
+			bool keep = !filter(&self.entries[read]);
 		$endif
-		// Remove the items from this index up to the one not to be deleted.
-		sz n = self.size - k;
-		self.entries[i:n] = self.entries[k:n];
-		self.size -= k - i;
-		// Find last index of item not to be deleted.
-		$if $invert:
-			while (i > 0 && filter(&self.entries[i - 1])) i--;
-		$else
-			while (i > 0 && !filter(&self.entries[i - 1])) i--;
-		$endif
+		if (keep)
+		{
+			if (write != read) self.entries[write] = self.entries[read];
+			write++;
+		}
 	}
-	return size - self.size;
+	self.size = write;
+	return size - write;
 }

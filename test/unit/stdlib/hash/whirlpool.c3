@@ -25,7 +25,7 @@ fn void test_whirlpool_test_vector()
 
 fn void test_whirlpool_gigahash_zeroes() @feat(SLOW_TESTS)
 {
-    char[] c = calloc(257 * (1024*1024))[:(257*1024*1024)];   // 257 MiB
+    char[] c = calloc(257 * (1024 * 1024))[:(257 * 1024 * 1024)];   // 257 MiB
     defer free(c);
 
     assert(whirlpool::hash(c) == x'1476b930d51cb9a7649a46f723f999896ce37c41186ceeafe1290151bf2dfb4a14e4a3f9fed16fcaea31f874108d51284f07883652cda30c9a3427041fc35dff');

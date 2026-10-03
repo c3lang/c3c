@@ -398,10 +398,10 @@ fn void b_256__pairs()
 		Blake2b b @noinit;
 		b.init(blake2::SIZE_256);
 		// streaming the data because we're cool like that
-		b.update(p.first[                    : p.first.len/4 ]);
-		b.update(p.first[ 1*(p.first.len/4)  : p.first.len/4 ]);
-		b.update(p.first[ 2*(p.first.len/4)  : p.first.len/4 ]);
-		b.update(p.first[ 3*(p.first.len/4)  ..              ]);
+		b.update(p.first[                    : p.first.len / 4 ]);
+		b.update(p.first[ 1 * (p.first.len / 4)  : p.first.len / 4 ]);
+		b.update(p.first[ 2 * (p.first.len / 4)  : p.first.len / 4 ]);
+		b.update(p.first[ 3 * (p.first.len / 4)  ..              ]);
 		b.final(result[..]);
 
 		test::@check(blake2::b_256(p.first)[..] == p.second, "Mismatch on test index %d...", i);
@@ -775,10 +775,10 @@ fn void s_256__pairs()
 		Blake2s s @noinit;
 		s.init(blake2::SIZE_256);
 		// streaming the data because we're cool like that
-		s.update(p.first[                    : p.first.len/4 ]);
-		s.update(p.first[ 1*(p.first.len/4)  : p.first.len/4 ]);
-		s.update(p.first[ 2*(p.first.len/4)  : p.first.len/4 ]);
-		s.update(p.first[ 3*(p.first.len/4)  ..              ]);
+		s.update(p.first[                    : p.first.len / 4 ]);
+		s.update(p.first[ 1 * (p.first.len / 4)  : p.first.len / 4 ]);
+		s.update(p.first[ 2 * (p.first.len / 4)  : p.first.len / 4 ]);
+		s.update(p.first[ 3 * (p.first.len / 4)  ..              ]);
 		s.final(result[..]);
 
 		test::@check(blake2::s_256(p.first)[..] == p.second, "Mismatch on test index %d...", i);
