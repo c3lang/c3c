@@ -199,7 +199,6 @@ struct GfxWindowSrc @feat(BSD, LINUX)
 		WlProxy* xdg_toplevel;
 		WlProxy* decoration;
 		WlProxy* locked_pointer;
-		WlProxy* icon;
 		WlProxy* data_source;
 		WlProxy* custom_cursor_surface;
 		GfxMonitorNode* active_monitor;
