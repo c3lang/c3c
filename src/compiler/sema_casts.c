@@ -734,7 +734,7 @@ bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len)
 
 Type *cast_numeric_arithmetic_promotion(Type *type)
 {
-	if (!type) return NULL;
+	if (!type || type == poisoned_type) return type;
 	Type *canonical = type->canonical;
 	switch (canonical->type_kind)
 	{

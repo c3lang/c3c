@@ -2038,15 +2038,15 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
  *
  * @param type
  * @param other
- * @return the max pointer type or NULL if none can be found.
+ * @return the max pointer type, poison if on-demand resolution fails, or NULL if none can be found.
  */
-static inline Type *type_find_max_ptr_type(Type *type, Type *other)
+static inline Type *type_find_max_ptr_type(SemaContext *context, Type *type, Type *other)
 {
 	// Slice and vararray can implicitly convert to a pointer.
 	if (other->type_kind == TYPE_SLICE)
 	{
-		Type *max_type = type_find_max_type(type->pointer, other->pointer, false, false);
-		if (!max_type) return NULL;
+		Type *max_type = type_find_max_type(context, type->pointer, other->pointer, false, false);
+		if (!max_type || max_type == poisoned_type) return max_type;
 		return type_get_ptr(max_type);
 	}
 
@@ -2079,8 +2079,8 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 	{
 		return other;
 	}
-	Type *max_type = type_find_max_type(pointer_type, other_pointer_type, false, false);
-	if (!max_type) return NULL;
+	Type *max_type = type_find_max_type(context, pointer_type, other_pointer_type, false, false);
+	if (!max_type || max_type == poisoned_type) return max_type;
 	return type_get_ptr(max_type);
 }
 
@@ -2131,7 +2131,7 @@ static inline Type *type_find_max_distinct_type(Type *left, Type *right)
 }
 
 
-Type *type_find_max_type(Type *type, Type *other, Expr *first, Expr *second)
+Type *type_find_max_type(SemaContext *context, Type *type, Type *other, Expr *first, Expr *second)
 {
 	type = type->canonical;
 	other = other->canonical;
@@ -2251,7 +2251,7 @@ RETRY_DISTINCT:
 			type = type_decay_array_pointer(type);
 			// And possibly the other pointer as well
 			if (other->type_kind == TYPE_POINTER) other = type_decay_array_pointer(other);
-			return type_find_max_ptr_type(type, other);
+			return type_find_max_ptr_type(context, type, other);
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 			if (type_has_inline(other))
@@ -2268,6 +2268,8 @@ RETRY_DISTINCT:
 				goto RETRY_DISTINCT;
 			}
 			if (other->type_kind != TYPE_FUNC_PTR) return NULL;
+			if (!type->pointer->function.prototype && !sema_resolve_type_decl(context, type->pointer)) return poisoned_type;
+			if (!other->pointer->function.prototype && !sema_resolve_type_decl(context, other->pointer)) return poisoned_type;
 			if (other->pointer->function.prototype->raw_type != type->pointer->function.prototype->raw_type) return NULL;
 			return type;
 		case TYPE_TYPEDEF:

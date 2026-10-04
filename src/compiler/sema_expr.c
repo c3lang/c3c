@@ -1167,13 +1167,13 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 	Type *right_canonical = right->type->canonical;
 	if (left_canonical != right_canonical)
 	{
-		Type *max = type_find_max_type(type_no_optional(left_canonical), type_no_optional(right_canonical), left, right);
+		Type *max = type_find_max_type(context, type_no_optional(left_canonical), type_no_optional(right_canonical), left, right);
 		if (!max)
 		{
-			SEMA_ERROR(expr, "Cannot find a common parent type of '%s' and '%s'",
-					   type_to_error_string(left->type), type_to_error_string(right->type));
-			return false;
+			RETURN_SEMA_ERROR(expr, "Cannot find a common parent type of '%s' and '%s'",
+				type_to_error_string(left->type), type_to_error_string(right->type));
 		}
+		if (max == poisoned_type) return false;
 		Type *no_fail_max = type_no_optional(max);
 		if (!cast_implicit_binary(context, left, no_fail_max, NULL)
 			|| !cast_implicit_binary(context, right, no_fail_max, NULL)) return false;
@@ -2880,8 +2880,8 @@ static inline Type *context_unify_returns(SemaContext *context)
 		if (common_type == rtype || (type_is_void(common_type) && rtype == type_wildcard)) continue;
 
 		// 4. Find the max of the old and new.
-		Type *max = type_find_max_type(common_type, rtype, NULL, NULL); // NOLINT(readability-suspicious-call-argument)
-
+		Type *max = type_find_max_type(context, common_type, rtype, NULL, NULL); // NOLINT(readability-suspicious-call-argument)
+		if (max == poisoned_type) return NULL;
 		// 5. No match -> error.
 		if (!max)
 		{
@@ -4780,11 +4780,14 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	if (IS_OPTIONAL(start)) range->is_optional = true;
 	if (end && end_type != start_type)
 	{
-		Type *common = type_find_max_type(start_type, end_type, NULL, NULL);
+		Type *common = type_find_max_type(context, start_type, end_type, NULL, NULL);
 		if (!common)
 		{
 			RETURN_SEMA_ERROR_AT(make_loc(extend_loc_with_token(sourcelocptr(start->loc), sourcelocptr(end->loc))), "No common type can be found between start and end index.");
 		}
+		// Resolution might have failed.
+		if (common == poisoned_type) return false;
+
 		if (!cast_implicit(context, start, common, false) || !cast_implicit(context, end, common, false)) return false;
 	}
 	// Check range
@@ -8478,7 +8481,9 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		}
 	}
 
-	Type *max = cast_numeric_arithmetic_promotion(type_find_max_type(left_type, right_type, left, right));
+	Type *max = cast_numeric_arithmetic_promotion(type_find_max_type(context, left_type, right_type, left, right));
+	// Failed to resolve.
+	if (max == poisoned_type) return false;
 	Type *flat_max = max ? type_flatten(max) : NULL;
 	if (!max || (!type_is_numeric(flat_max) && !(allow_bool_vec && (flat_max == type_bool || type_flat_is_bool_vector(flat_max)))))
 	{
@@ -9603,7 +9608,7 @@ NEXT:
 	right_type = type_flat_distinct_inline(right_type)->canonical;
 
 	// 3. In the normal case, treat this as a binary op, finding the max type.
-	Type *max = type_find_max_type(left_type, right_type, left, right);
+	Type *max = type_find_max_type(context, left_type, right_type, left, right);
 
 	// 4. If no common type, then that's an error:
 	if (!max)
@@ -9612,6 +9617,7 @@ NEXT:
 		RETURN_SEMA_ERROR(expr, "%s and %s are different types and cannot be compared.",
 						  type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
+	if (max == poisoned_type) return false;
 
 	max = max->canonical;
 
@@ -10548,7 +10554,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 	bool add_optional = type_is_optional(else_type);
 	type = type_no_optional(type);
 	else_type = type_no_optional(else_type);
-	Type *common = type_find_max_type(type, else_type, left, right);
+	Type *common = type_find_max_type(context, type, else_type, left, right);
 	if (!common)
 	{
 		CHECK_ON_DEFINED(failed_ref);
@@ -10558,6 +10564,9 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 		}
 		RETURN_SEMA_ERROR(right, "Cannot find a common type for %s and %s.", type_quoted_error_string(type), type_quoted_error_string(else_type));
 	}
+	// Might have been an error.
+	if (common == poisoned_type) return false;
+
 	if (!cast_both_implicit(context, left, right, common, false, failed_ref)) return false;
 	expr->type = type_add_optional(common, add_optional);
 	return true;
