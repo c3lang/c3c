@@ -21,6 +21,7 @@
 - `!=` overload would on structs would behave as `==` #3547.
 - Multi-dimensional array comparisons on types with `==` overloaded would not compare.
 - Lazy resolution of function pointer types could cause a segfault when unifying ternary types. #3552
+- `@swap` now works with non-pure arguments.
 
 ### Stdlib changes
 - Added `std::gfx` module.

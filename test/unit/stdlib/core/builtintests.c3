@@ -1,4 +1,5 @@
 module std::core::builtins @test;
+import std::math::random;
 
 fn void test_anycast()
 {
@@ -311,6 +312,72 @@ fn void test_member_eq()
 	test::@check(!member_eq(x, y));
 }
 
+bitstruct SwapBits : char
+{
+	bool a;
+	bool b;
+}
+
+struct SwapPair
+{
+	int x;
+	int y;
+}
+
+fn void test_swap()
+{
+	int a = 1;
+	int b = 2;
+	@swap(a, b);
+	assert(a == 2 && b == 1);
+
+	int[3] arr = { 10, 11, 12 };
+	@swap(arr[0], arr[2]);
+	assert(arr[0] == 12 && arr[1] == 11 && arr[2] == 10);
+
+	SwapPair pair = { 5, 6 };
+	@swap(pair.x, pair.y);
+	assert(pair.x == 6 && pair.y == 5);
+
+	// Operands that don't have an address.
+	SwapBits bits = { .a = true, .b = false };
+	@swap(bits.a, bits.b);
+	assert(!bits.a && bits.b);
+
+	int[<3>] vec = { 1, 2, 3 };
+	@swap(vec[0], vec[2]);
+	assert(vec[0] == 3 && vec[1] == 2 && vec[2] == 1);
+}
+
+// The operands may have side effects, they must only be evaluated once.
+fn void test_swap_evaluates_operands_once()
+{
+	int[4] arr = { 10, 11, 12, 13 };
+	swap_calls = 0;
+	@swap(arr[swap_index(0)], arr[swap_index(3)]);
+	assert(swap_calls == 2, "Each operand should be evaluated exactly once");
+	assert(arr[0] == 13 && arr[1] == 11 && arr[2] == 12 && arr[3] == 10);
+
+	int* p = &arr[0];
+	int* q = &arr[3];
+	@swap(*p++, *q--);
+	assert(p == &arr[1] && q == &arr[2], "Each operand should be evaluated exactly once");
+	assert(arr[0] == 10 && arr[3] == 13);
+}
+
+// The usual Fisher-Yates shuffle, with the random index directly in the swap.
+fn void test_swap_random_index()
+{
+	for (int run = 0; run < 1000; run++)
+	{
+		int[8] arr = { 0, 1, 2, 3, 4, 5, 6, 7 };
+		for (int i = 7; i > 0; i--) @swap(arr[i], arr[rand(i + 1)]);
+		int seen;
+		foreach (v : arr) seen |= 1 << v;
+		assert(seen == 0xFF, "The shuffled array is not a permutation");
+	}
+}
+
 
 module std::core::builtins;
 
@@ -360,6 +427,14 @@ fn void test_hash_vector_internal() <Type>
 import std::io; /* for FILE_NOT_FOUND */
 
 fn bool? foo_fault(int in) @local => in < 5 ? true : SOME_FAULT~;
+
+int swap_calls;
+
+fn int swap_index(int i) @private
+{
+	swap_calls++;
+	return i;
+}
 
 fn void test_fault_short_name_rt() @test
 {
