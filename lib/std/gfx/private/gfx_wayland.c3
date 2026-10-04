@@ -706,8 +706,14 @@ fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
+	win.src.configured = false;
+	if (win.src.xdg_surface)
+	{
+		xdg_surface_set_window_geometry(win.src.xdg_surface, 0, 0, ...win.size);
+	}
+	if (!win.internal.flags.transparent) _window_set_opaque(win);
 	wl_surface_commit(win.src.surface);
-	if (!win.src.configured) _wait_for_configure(win);
+	_wait_for_configure(win);
 }
 
 // Window - opengl
