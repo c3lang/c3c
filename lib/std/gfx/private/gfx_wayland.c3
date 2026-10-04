@@ -38,6 +38,7 @@ struct GfxWaylandCtx
 	int wl_repeat_info_delay;
 	uint last_key;
 	Clock last_key_time;
+	bool woken;
 }
 
 GfxWaylandCtx ctx;
@@ -148,6 +149,11 @@ fn void destroy_platform()
 	if (ctx.compositor) wl_compositor_destroy(ctx.compositor);
 	if (ctx.wl_display) wl_display_disconnect(ctx.wl_display);
 
+	if (ctx.compose_state) xkb_compose_state_unref(ctx.compose_state);
+	if (ctx.xkb_state)     xkb_state_unref(ctx.xkb_state);
+	if (ctx.keymap)        xkb_keymap_unref(ctx.keymap);
+	if (ctx.xkb_context)   xkb_context_unref(ctx.xkb_context);
+
 	ctx = {};
 }
 
@@ -202,10 +208,11 @@ fn void poll_events_platform()
 }
 
 // The compositor's reply to wl_display.sync arrives on the display descriptor, which
-// is what a blocked _wait_platform is already polling. The callback exists only to be
-// destroyed; leaving it would leak one proxy per wake.
+// is what a blocked _wait_platform is already polling. The callback signals the wake
+// and destroys the proxy to prevent leaks.
 fn void _sync_done_cb(void* data, WlProxy* callback, uint callback_data) @local
 {
+	ctx.woken = true;
 	wl_callback_destroy(callback);
 }
 
@@ -226,6 +233,7 @@ fn void? _wait_platform(Duration duration)
 {
 	Clock start = clock::now();
 	bool infinity = duration == gfx::WAIT_FOREVER;
+	ctx.woken = false;
 
 	Posix_pollfd fd = { .fd = wl_display_get_fd(ctx.wl_display), .events = os::POLLIN };
 	defer catch wl_display_cancel_read(ctx.wl_display);
@@ -236,7 +244,8 @@ fn void? _wait_platform(Duration duration)
 		while (wl_display_prepare_read(ctx.wl_display))
 		{
 			// Events handled or error occured
-			if (wl_display_dispatch_pending(ctx.wl_display)) return;
+			if (wl_display_dispatch_pending(ctx.wl_display) < 0) return io::GENERAL_ERROR~;
+			if (gfx::_gfx.event_len > 0 || ctx.woken) return;
 		}
 		bool needs_flush = wl_display_flush(ctx.wl_display) == -1;
 		if (needs_flush && libc::errno() != EAGAIN) return io::GENERAL_ERROR~;
@@ -283,7 +292,8 @@ fn void? _wait_platform(Duration duration)
 			}
 			if (fd.revents & (os::POLLERR | os::POLLHUP | os::POLLNVAL)) return io::GENERAL_ERROR~;
 		}
-		if (wl_display_dispatch_pending(ctx.wl_display)) return;
+		if (wl_display_dispatch_pending(ctx.wl_display) < 0) return io::GENERAL_ERROR~;
+		if (gfx::_gfx.event_len > 0 || ctx.woken) return;
 	}
 }
 
@@ -393,7 +403,6 @@ fn GfxMouse*? create_standard_mouse(GfxMouseIcon mouse)
 fn void free_mouse(GfxMouse* mouse)
 {
 	GfxSurface* surface = (GfxSurface*)mouse;
-	if (surface.native.buffer && surface.native.wl_buffer) wl_buffer_destroy(surface.native.wl_buffer);
 	surface.destroy();
 }
 
@@ -491,7 +500,6 @@ fn void window_destroy_platform(GfxWindow* win)
 	if (win.src.xdg_toplevel) xdg_toplevel_destroy(win.src.xdg_toplevel);
 	wl_surface_destroy(win.src.custom_cursor_surface);
 	if (win.src.locked_pointer) zwp_locked_pointer_v1_destroy(win.src.locked_pointer);
-	if (win.src.icon) xdg_toplevel_icon_v1_destroy(win.src.icon);
 	if (win.src.xdg_surface) xdg_surface_destroy(win.src.xdg_surface);
 	wl_surface_destroy(win.src.surface);
 }
@@ -512,12 +520,13 @@ fn void window_hide(GfxWindow* win)
 {
 	wl_surface_attach(win.src.surface, null, 0, 0);
 	wl_surface_commit(win.src.surface);
+	win.src.configured = false;
 	win.internal.flags.hide = true;
 }
 
 fn bool window_is_floating(GfxWindow* win) => !win.is_fullscreen() && !window_is_maximized(win);
 
-fn bool window_is_hidden(GfxWindow* win) => false;
+fn bool window_is_hidden(GfxWindow* win) => win.internal.flags.hide;
 
 fn bool window_is_maximized(GfxWindow* win) => win.src.maximized;
 
@@ -552,6 +561,7 @@ fn void window_raise(GfxWindow* win) {}
 
 fn void window_resize_platform(GfxWindow* win, GfxSize size)
 {
+	if (size.x <= 0 || size.y <= 0) return;
 	win.size = size;
 	if (ctx.compositor != null)
 	{
@@ -627,7 +637,6 @@ fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat form
 	if (!win.src.xdg_toplevel) return false;
 
 	if (!ctx.icon_manager || w != h) return false;
-	if (win.src.icon != null) { xdg_toplevel_icon_v1_destroy(win.src.icon); win.src.icon = null; }
 
 	GfxSurface*? surface = gfx::create_surface(data, w, h, format);
 	if (catch surface) return false;
@@ -635,12 +644,12 @@ fn bool window_set_icon(GfxWindow* win, char* data, int w, int h, GfxFormat form
 	int min_w = w < surface.size.x ? w : surface.size.x;
 	int min_h = h < surface.size.y ? h : surface.size.y;
 	gfx::copy_image_data(surface.native.buffer, min_w, min_h, surface.native.format, surface.data, surface.format, null);
-
-	win.src.icon = xdg_toplevel_icon_manager_v1_create_icon(ctx.icon_manager);
+	WlProxy* icon = xdg_toplevel_icon_manager_v1_create_icon(ctx.icon_manager);
+	if (!icon) return false;
+	defer xdg_toplevel_icon_v1_destroy(icon);
 	surface.native.wl_buffer = wl_shm_pool_create_buffer(surface.native.pool, 0, w, h, w * 4, WL_SHM_FORMAT_ARGB8888);
-	xdg_toplevel_icon_v1_add_buffer(win.src.icon, surface.native.wl_buffer, 1);
-	xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdg_toplevel, win.src.icon);
-
+	xdg_toplevel_icon_v1_add_buffer(icon, surface.native.wl_buffer, 1);
+	xdg_toplevel_icon_manager_v1_set_icon(ctx.icon_manager, win.src.xdg_toplevel, icon);
 	return true;
 }
 
@@ -697,7 +706,17 @@ fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
+	win.src.configured = false;
+	if (win.src.xdg_surface)
+	{
+		xdg_surface_set_window_geometry(win.src.xdg_surface, 0, 0, ...win.size);
+	}
+	if (!win.internal.flags.transparent) _window_set_opaque(win);
 	wl_surface_commit(win.src.surface);
+	_wait_for_configure(win);
+	// invoke repaint on show, user would expect this, otherwise win.show()
+	// doesn't show the window unless/after a blit occurs
+	gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
 }
 
 // Window - opengl
@@ -836,6 +855,11 @@ fn void? surface_init(GfxSurface* surface, void* data, int w, int h, GfxFormat f
 fn void surface_release(GfxSurface* surface)
 {
 	if (!surface.data) return;
+	if (surface.native.wl_buffer)
+	{
+		wl_buffer_destroy(surface.native.wl_buffer);
+		surface.native.wl_buffer = null;
+	}
 	if (surface.native.pool) wl_shm_pool_destroy(surface.native.pool);
 	if (surface.native.fd) libc::close(surface.native.fd);
 	if (surface.native.buffer) posix::munmap(surface.native.buffer, (usz)(surface.size.x * surface.size.y * 4));
@@ -1011,11 +1035,7 @@ fn void? _init_graphics_and_show(GfxWindow* win, GfxWindowFlags flags) @local
 	}
 	wl_surface_commit(win.src.surface);
 
-	while (!win.src.configured)
-	{
-		// TODO maybe add more handling here to handle close.
-		if (wl_display_dispatch(ctx.wl_display) < 0) return gfx::SURFACE_CREATION_FAILED~;
-	}
+	if (!_wait_for_configure(win)) return gfx::SURFACE_CREATION_FAILED~;
 	GfxWindowFlags runtime_flags = flags;
 	runtime_flags.maximize = false;
 	gfx::_window_set_flags(win, runtime_flags, {});
@@ -1030,7 +1050,7 @@ fn void? _init_graphics_and_show(GfxWindow* win, GfxWindowFlags flags) @local
 		GfxSurface* blank_surface = gfx::create_surface(blank, ...win.size, BGR8, win)!;
 		win.blit_surface(blank_surface);
 		free(blank);
-		blank_surface.release();
+		blank_surface.destroy();
 	}
 }
 
@@ -1826,6 +1846,16 @@ fn void _data_device_selection_cb(void* data, WlProxy* device, WlProxy* offer) @
 	data_ptr[:s.len] = buf[:s.len];
 	gfx::_gfx.unix_clipboard.text = s;
 	gfx::_gfx.unix_clipboard.type = TEXT;
+}
+
+fn bool _wait_for_configure(GfxWindow* win) @local
+{
+	while (!win.src.configured)
+	{
+		// Maybe handle close
+		if (wl_display_dispatch(ctx.wl_display) < 0) return false;
+	}
+	return true;
 }
 // ---
 

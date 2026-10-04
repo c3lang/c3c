@@ -20,7 +20,12 @@ fn void unload_lib() @private
 {
 	$if !$feat(WASM):
 		if (!gfx::_gfx.egl.handle) return;
-		if (gfx::_gfx.egl.display != null && egl::terminate_fn != null) egl::terminate_fn((EglDisplay)gfx::_gfx.egl.display);
+		if (gfx::_gfx.egl.display)
+		{
+			if (make_current_fn) make_current_fn((EglDisplay)gfx::_gfx.egl.display, null, null, null);
+			if (egl::terminate_fn) egl::terminate_fn((EglDisplay)gfx::_gfx.egl.display);
+		}
+		if (release_thread_fn) release_thread_fn();
 		gfx::_gfx.egl.handle.close();
 		gfx::_gfx.egl.display = null;
 		gfx::_gfx.egl.get_proc_addr_fn = null;
@@ -68,6 +73,13 @@ fn void destroy_context_in_window(GfxEglContext* ctx, GfxWindow* win)
 		$if gfx::X11_OR_WAYLAND:
 			if (!gfx::_gfx.use_wayland) return;
 		$endif
+		if (make_current_fn && gfx::_gfx.egl.display)
+		{
+			if (!get_current_context_fn || get_current_context_fn() == ctx.ctx)
+			{
+				make_current_fn((EglDisplay)gfx::_gfx.egl.display, null, null, null);
+			}
+		}
 		if (ctx.surface) egl::destroy_surface_fn(gfx::_gfx.egl.display, ctx.surface);
 		if (ctx.ctx) egl::destroy_context_fn(gfx::_gfx.egl.display, ctx.ctx);
 

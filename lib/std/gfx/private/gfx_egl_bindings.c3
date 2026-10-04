@@ -33,6 +33,7 @@ EglSwapIntervalProc        swap_interval_fn;
 EglGetCurrentContextProc   get_current_context_fn;
 EglQueryStringProc         query_string_fn;
 EglGetConfigAttribProc     get_config_attrib_fn;
+EglReleaseThreadProc       release_thread_fn;
 
 alias EglDisplay = void*;
 alias EglContext = void*;
@@ -57,6 +58,7 @@ alias EglSwapIntervalProc = fn EglBoolean(EglDisplay display, EglInt interval);
 alias EglGetCurrentContextProc = fn EglContext();
 alias EglQueryStringProc = fn ZString(EglDisplay display, EglInt name);
 alias EglGetConfigAttribProc = fn EglBoolean(EglDisplay display, EglConfig config, EglInt attribute, EglInt* value);
+alias EglReleaseThreadProc = fn EglBoolean();
 
 fn void? bind_egl()
 {
@@ -75,4 +77,5 @@ fn void? bind_egl()
 	get_current_context_fn   = find_proc("eglGetCurrentContext")!;
 	query_string_fn          = find_proc("eglQueryString")!;
 	get_config_attrib_fn     = find_proc("eglGetConfigAttrib")!;
+	release_thread_fn        = find_proc("eglReleaseThread")!;
 }
