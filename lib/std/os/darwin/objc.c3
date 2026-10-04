@@ -11,6 +11,7 @@ alias SendId = fn ObjId(ObjId, ObjSel);
 alias ObjcVoidBool = fn void(ObjId, ObjSel, bool);
 
 extern fn void msgSend(...) @cname("objc_msgSend") @builtin;
+extern fn void msgSendStret(...) @cname("objc_msgSend_stret") @builtin @feat(!AARCH64);
 extern fn ObjSel sel_getUid(ZString);
 extern fn ObjClass allocateClassPair(ObjClass superclass, ZString name, sz extra_bytes) @cname("objc_allocateClassPair");
 extern fn void registerClassPair(ObjClass cls) @cname("objc_registerClassPair");
@@ -128,7 +129,11 @@ macro send(id, $RType, ZString $selector, ...)
 	$expand($string);
 	if (id)
 	{
-		return (($FunctionType)&msgSend)((ObjId)id, sel_getUid($selector), ...$vaarg);
+		$if !$feat(AARCH64) &&& $RType::size > 16:
+			return (($FunctionType)&msgSendStret)((ObjId)id, sel_getUid($selector), ...$vaarg);
+		$else
+			return (($FunctionType)&msgSend)((ObjId)id, sel_getUid($selector), ...$vaarg);
+		$endif
 	}
 	return ($RType){};
 }
