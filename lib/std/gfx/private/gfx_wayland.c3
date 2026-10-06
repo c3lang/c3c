@@ -706,14 +706,16 @@ fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
-	win.src.configured = false;
 	if (win.src.xdg_surface)
 	{
 		xdg_surface_set_window_geometry(win.src.xdg_surface, 0, 0, ...win.size);
 	}
 	if (!win.internal.flags.transparent) _window_set_opaque(win);
 	wl_surface_commit(win.src.surface);
-	_wait_for_configure(win);
+	if (!win.src.configured)
+	{
+		_wait_for_configure(win);
+	}
 	// invoke repaint on show, user would expect this, otherwise win.show()
 	// doesn't show the window unless/after a blit occurs
 	gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
