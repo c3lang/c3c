@@ -520,7 +520,162 @@ fn Matrix4x4 frustum(Real left, Real right, Real bottom, Real top, Real z_near, 
 	} };
 }
 
-const Matrix2x2 IDENTITY2 = { .m = { 1, 0, 0, 1 } };
+<*
+ Right-handed [0, 1] perspective with an infinite far plane.
+ 
+ @require z_near > 0 : "Near plane must be positive"
+*>
+fn Matrix4x4 perspective_infinite(Real fovy, Real aspect, Real z_near)
+{
+	Real tan_half_fovy = math::tan(fovy / 2);
+	return (Matrix4x4) { .m = {
+		[0] = 1 / (aspect * tan_half_fovy),
+		[5] = 1 / tan_half_fovy,
+		[10] = -1,
+		[11] = -1,
+		[14] = -z_near,
+	} };
+}
+
+<*
+ Right-handed reversed-Z perspective (near maps to 1, far maps to 0), depth range [0, 1].
+ Reversed-Z maximizes floating point depth precision.
+
+ @require z_near != z_far : "Near and far cannot be the same"
+*>
+fn Matrix4x4 perspective_reverse_z(Real fovy, Real aspect, Real z_near, Real z_far)
+{
+	Real tan_half_fovy = math::tan(fovy / 2);
+	Real depth_inv = 1 / (z_far - z_near);
+	return (Matrix4x4) { .m = {
+		[0] = 1 / (aspect * tan_half_fovy),
+		[5] = 1 / tan_half_fovy,
+		[10] = z_near * depth_inv,
+		[11] = -1,
+		[14] = z_far * z_near * depth_inv,
+	} };
+}
+
+// Column and row access. Storage is column-major: column c starts at m[c * N].
+
+<*
+ @require index < 2
+*>
+fn Real[<2>] Matrix2x2.column(&self, usz index) => {self.m[index * 2], self.m[index * 2 + 1] };
+
+<*
+ @require index < 3
+*>
+fn Real[<3>] Matrix3x3.column(&self, usz index) => {self.m[index * 3], self.m[index * 3 + 1], self.m[index * 3 + 2] };
+
+<*
+ @require index < 4
+*>
+fn Real[<4>] Matrix4x4.column(&self, usz index) => {self.m[index * 4], self.m[index * 4 + 1], self.m[index * 4 + 2], self.m[index * 4 + 3]};
+
+<*
+ @require index < 2
+*>
+
+fn Real[<2>] Matrix2x2.row(&self, usz index) => {self.m[index], self.m[2 + index]};
+<*
+ @require index < 3
+*>
+
+fn Real[<3>] Matrix3x3.row(&self, usz index) => {self.m[index], self.m[3 + index], self.m[6 + index]};
+<*
+ @require index < 4
+*>
+fn Real[<4>] Matrix4x4.row(&self, usz index) => {self.m[index], self.m[4 + index], self.m[8 + index], self.m[12 + index]};
+
+<*
+ @require index < 2
+*>
+fn Matrix2x2 Matrix2x2.set_column(&self, usz index, Real[<2>] v)
+{
+	Matrix2x2 result = *self;
+	result.m[index * 2] = v.x;
+	result.m[index * 2 + 1] = v.y;
+	return result;
+}
+
+<*
+ @require index < 3
+*>
+fn Matrix3x3 Matrix3x3.set_column(&self, usz index, Real[<3>] v)
+{
+	Matrix3x3 result = *self;
+	result.m[index * 3] = v.x;
+	result.m[index * 3 + 1] = v.y;
+	result.m[index * 3 + 2] = v.z;
+	return result;
+}
+
+<*
+ @require index < 4
+*>
+fn Matrix4x4 Matrix4x4.set_column(&self, usz index, Real[<4>] v)
+{
+	Matrix4x4 result = *self;
+	result.m[index * 4] = v.x;
+	result.m[index * 4 + 1] = v.y;
+	result.m[index * 4 + 2] = v.z;
+	result.m[index * 4 + 3] = v.w;
+	return result;
+}
+
+<*
+ @require index < 2
+*>
+fn Matrix2x2 Matrix2x2.set_row(&self, usz index, Real[<2>] v)
+{
+	Matrix2x2 result = *self;
+	result.m[index] = v.x;
+	result.m[2 + index] = v.y;
+	return result;
+}
+
+<*
+ @require index < 3
+*>
+fn Matrix3x3 Matrix3x3.set_row(&self, usz index, Real[<3>] v)
+{
+	Matrix3x3 result = *self;
+	result.m[index] = v.x;
+	result.m[3 + index] = v.y;
+	result.m[6 + index] = v.z;
+	return result;
+}
+
+<*
+ @require index < 4
+*>
+fn Matrix4x4 Matrix4x4.set_row(&self, usz index, Real[<4>] v)
+{
+	Matrix4x4 result = *self;
+	result.m[index] = v.x;
+	result.m[4 + index] = v.y;
+	result.m[8 + index] = v.z;
+	result.m[12 + index] = v.w;
+	return result;
+}
+
+// The translation part (last column) of a transform.
+fn Real[<2>] Matrix3x3.position(&self) => { self.m02, self.m12 };
+fn Real[<3>] Matrix4x4.position(&self) => { self.m03, self.m13, self.m23 };
+
+// Per-axis scale factors: the lengths of the first three basis columns.
+fn Real[<3>] Matrix4x4.get_scale(&self)
+{
+	Real[<16>] m = self.m;
+	return {
+		math::sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]),
+		math::sqrt(m[4] * m[4] + m[5] * m[5] + m[6] * m[6]),
+		math::sqrt(m[8] * m[8] + m[9] * m[9] + m[10] * m[10]),
+	};
+}
+
+const Matrix2x2 IDENTITY2 ={ .m = { 1, 0, 0, 1 } };
 const Matrix3x3 IDENTITY3 = { .m = { [0] = 1, [4] = 1, [8] = 1 } };
 const Matrix4x4 IDENTITY4 = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
 
