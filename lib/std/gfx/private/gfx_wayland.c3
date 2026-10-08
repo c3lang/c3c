@@ -712,10 +712,7 @@ fn void window_show_platform(GfxWindow* win)
 	}
 	if (!win.internal.flags.transparent) _window_set_opaque(win);
 	wl_surface_commit(win.src.surface);
-	if (!win.src.configured)
-	{
-		_wait_for_configure(win);
-	}
+	_wait_for_configure(win);
 	// invoke repaint on show, user would expect this, otherwise win.show()
 	// doesn't show the window unless/after a blit occurs
 	gfx::_window_refresh_callback(win, { 0, 0, ...win.size });
