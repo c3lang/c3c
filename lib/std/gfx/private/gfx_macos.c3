@@ -619,42 +619,41 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	FixedList{int, 40} stack;
 	int color_bits = hints.rgba_size.sum();
 	stack.push_all({
-		NS_OPEN_GL_PFA_COLOR_SIZE, color_bits,
-		NS_OPEN_GL_PFA_ALPHA_SIZE, hints.rgba_size.a,
-		NS_OPEN_GL_PFA_DEPTH_SIZE, hints.depth,
-		NS_OPEN_GL_PFA_STENCIL_SIZE, hints.stencil,
-		NS_OPEN_GL_PFA_AUX_BUFFERS, hints.aux_buffers,
+		NSOpenGLPixelFormatAttribute.COLOR_SIZE, color_bits,
+		NSOpenGLPixelFormatAttribute.ALPHA_SIZE, hints.rgba_size.a,
+		NSOpenGLPixelFormatAttribute.DEPTH_SIZE, hints.depth,
+		NSOpenGLPixelFormatAttribute.STENCIL_SIZE, hints.stencil,
+		NSOpenGLPixelFormatAttribute.AUX_BUFFERS, hints.aux_buffers,
 
 	});
 	if (hints.samples)
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 1 , NS_OPEN_GL_PFA_SAMPLES, hints.samples });
+		stack.push_all({
+			NSOpenGLPixelFormatAttribute.SAMPLE_BUFFERS, 1 ,
+			NSOpenGLPixelFormatAttribute.SAMPLES, hints.samples
+		});
 	}
 	else
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_SAMPLE_BUFFERS, 0 });
+		stack.push_all({ NSOpenGLPixelFormatAttribute.SAMPLE_BUFFERS, 0 });
 	}
-	if (hints.double_buffer) stack.push(NS_OPEN_GL_PFA_DOUBLE_BUFFER);
-	if (hints.stereo) stack.push(NS_OPEN_GL_PFA_STEREO);
+	if (hints.double_buffer) stack.push(NSOpenGLPixelFormatAttribute.DOUBLE_BUFFER);
+	if (hints.stereo) stack.push(NSOpenGLPixelFormatAttribute.STEREO);
 	bool legacy = hints.profile == COMPATIBILITY;
-	stack.push(NS_OPEN_GL_PFA_OPEN_GL_PROFILE);
+	stack.push(NSOpenGLPixelFormatAttribute.OPEN_GL_PROFILE);
 	switch
 	{
 		case legacy:
-			stack.push(NS_OPEN_GL_PROFILE_LEGACY);
-			stack.push_all({ NS_OPEN_GL_PFA_ACCUM_SIZE, hints.accum_size.sum() });
+			stack.push(NSOpenGLProfileVersion.LEGACY);
+			stack.push_all({ NSOpenGLPixelFormatAttribute.ACCUM_SIZE, hints.accum_size.sum() });
 		case hints.major >= 4:
-			stack.push(NS_OPEN_GL_PROFILE_4_1_CORE);
+			stack.push(NSOpenGLProfileVersion.CORE_4_1);
 		default:
-			stack.push(NS_OPEN_GL_PROFILE_3_2_CORE);
+			stack.push(NSOpenGLProfileVersion.CORE_3_2);
 	}
 	if (hints.renderer == SOFTWARE)
 	{
-		stack.push_all({ NS_OPEN_GL_PFA_RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID });
-	}
-	else
-	{
-		stack.push(NS_OPEN_GL_PFA_ACCELERATED);
+		stack.push_all({ NSOpenGLPixelFormatAttribute.RENDERER_ID, K_CGL_RENDERER_GENERIC_FLOAT_ID });
 	}
 	stack.push_all({0, 0});
 
@@ -673,7 +672,7 @@ fn void? window_init_opengl_context_platform(GfxWindow* win, GfxGlContext* ctx, 
 	if (win.internal.flags.transparent)
 	{
 		int opacity = 0;
-		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NS_OPEN_GL_CP_SURFACE_OPACITY);
+		_opengl_context_set_values((ObjId)ctx.ctx, &opacity, NSOpenGLContextParameter.SURFACE_OPACITY);
 	}
 	win.src.ctx.native = ctx;
 	win.src.backing = { .opengl };
@@ -711,7 +710,7 @@ fn void window_set_opengl_swap_interval(GfxWindow* win, int swap_interval)
 {
 	if (win.src.ctx.native && win.src.ctx.native.ctx)
 	{
-		_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL);
+		_opengl_context_set_values((ObjId)win.src.ctx.native.ctx, &swap_interval, NSOpenGLContextParameter.SWAP_INTERVAL);
 	}
 }
 
@@ -1521,29 +1520,6 @@ fn void _opengl_context_set_values(ObjId context, int* vals, NSInteger param) @l
 	context.send_void("setValues:forParameter:", vals, param);
 }
 
-const int NS_OPEN_GL_PFA_DOUBLE_BUFFER = 5;
-const int NS_OPEN_GL_PFA_STEREO = 6;
-const int NS_OPEN_GL_PFA_AUX_BUFFERS = 7;
-const int NS_OPEN_GL_PFA_COLOR_SIZE = 8;
-const int NS_OPEN_GL_PFA_ALPHA_SIZE = 11;
-const int NS_OPEN_GL_PFA_DEPTH_SIZE = 12;
-const int NS_OPEN_GL_PFA_STENCIL_SIZE = 13;
-const int NS_OPEN_GL_PFA_ACCUM_SIZE = 14;
-const int NS_OPEN_GL_PFA_CLOSEST_POLICY = 74;
-const int NS_OPEN_GL_PFA_ACCELERATED = 73;
-const int NS_OPEN_GL_PFA_SAMPLE_BUFFERS = 55;
-const int NS_OPEN_GL_PFA_SAMPLES = 56;
-const int NS_OPEN_GL_PFA_RENDERER_ID = 70;
-const int NS_OPEN_GL_PFA_OPEN_GL_PROFILE = 99;
-const int NS_OPEN_GL_PROFILE_LEGACY = 0x1000;
-const int NS_OPEN_GL_PROFILE_3_2_CORE = 0x3200;
-const int NS_OPEN_GL_PROFILE_4_1_CORE = 0x4100;
-const int NS_OPEN_GL_CP_SURFACE_OPACITY = 236;
-const int NS_OPEN_GL_CONTEXT_PARAMETER_SWAP_INTERVAL = 222;
 const int K_CGL_RENDERER_GENERIC_FLOAT_ID = 0x00020400;
 
-module std::gfx @feat(MACOS) @private;
-import std::os::macos, std::math, std::time, std::os::darwin, std::collections, std::gfx::egl @public;
-import std::gfx::macos @public;
 
-fn void*? _window_create_metal_layer_native(GfxWindow* win) => macos::window_create_metal_layer(win);

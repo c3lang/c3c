@@ -1108,9 +1108,11 @@ fn WGPUSurface? GfxWindow.create_wgpu_surface(&self, WGPUInstance instance)
  the new window size. The drawable size follows the size of the window in pixels. The layer presents with the transaction, so draw by:
  commit the command buffer, waitUntilScheduled, then present the drawable.
 
+ It is only supported on MacOS.
+
  @return "The CAMetalLayer"
 *>
-fn void*? GfxWindow.create_metal_layer(&self) @feat(MACOS)
+fn void*? GfxWindow.create_metal_layer(&self)
 {
 	return _window_create_metal_layer_native(self);
 }
