@@ -180,6 +180,22 @@ constset NSTrackingAreaOptions : inline NSUInteger
 	ENABLED_DURING_MOUSE_DRAG     = 0x400,
 }
 
+constset NSViewLayerContentsPlacement : inline NSInteger
+{
+	SCALE_AXES_INDEPENDENTLY     = 0,
+	SCALE_PROPORTIONALLY_TO_FIT  = 1,
+	SCALE_PROPORTIONALLY_TO_FILL = 2,
+	CENTER                       = 3,
+	TOP                          = 4,
+	TOP_RIGHT                    = 5,
+	RIGHT                        = 6,
+	BOTTOM_RIGHT                 = 7,
+	BOTTOM                       = 8,
+	BOTTOM_LEFT                  = 9,
+	LEFT                         = 10,
+	TOP_LEFT                     = 11,
+}
+
 constset NSWindowStyleMask : inline NSUInteger
 {
 	BORDERLESS                = 0,
