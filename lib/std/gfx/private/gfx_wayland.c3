@@ -706,7 +706,6 @@ fn void window_set_raw_mouse_mode_platform(GfxWindow* win, bool state)
 fn void window_show_platform(GfxWindow* win)
 {
 	win.internal.flags.hide = false;
-	win.src.configured = false;
 	if (win.src.xdg_surface)
 	{
 		xdg_surface_set_window_geometry(win.src.xdg_surface, 0, 0, ...win.size);
