@@ -26,6 +26,7 @@
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
+#include "llvm/Transforms/Instrumentation/SanitizerCoverage.h"
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/JumpThreading.h"
@@ -270,6 +271,17 @@ bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm, LLVMPasses *passe
 			passes->sanitizer.recover,
 			passes->opt_level == LLVM_O0
 		}));
+	}
+	if (passes->sanitizer.fuzzer)
+	{
+		llvm::SanitizerCoverageOptions options;
+		options.CoverageType = llvm::SanitizerCoverageOptions::SCK_Edge;
+		options.Inline8bitCounters = true;
+		options.PCTable = true;
+		options.IndirectCalls = true;
+		options.TraceCmp = true;
+		options.StackDepth = true;
+		MPM.addPass(llvm::SanitizerCoveragePass(options));
 	}
 	// MPM.addPass(DataFlowSanitizerPass(LangOpts.NoSanitizeFiles));
 
